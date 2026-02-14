@@ -69,9 +69,6 @@ func TestWaterfallOnDemand_FreshDataNoQuery(t *testing.T) {
 // TestWaterfallOnDemand_StaleDataCreatesQuery verifies that stale data (>1s old)
 // triggers a waterfall query to the extension.
 func TestWaterfallOnDemand_StaleDataCreatesQuery(t *testing.T) {
-	if testing.Short() {
-		t.Skip("skips slow waterfall test in short mode")
-	}
 	t.Parallel()
 
 	server, err := NewServer("/tmp/test-waterfall-stale.jsonl", 1000)
@@ -119,7 +116,7 @@ func TestWaterfallOnDemand_StaleDataCreatesQuery(t *testing.T) {
 							"transfer_size":  1024,
 						},
 					},
-					"pageURL": "https://example.com/page",
+					"page_url": "https://example.com/page",
 				}
 				resultBytes, _ := json.Marshal(result)
 				cap.SetQueryResult(q.ID, resultBytes)
@@ -190,7 +187,7 @@ func TestWaterfallOnDemand_EmptyBufferCreatesQuery(t *testing.T) {
 				// Return empty entries (no network activity)
 				result := map[string]any{
 					"entries": []map[string]any{},
-					"pageURL": "https://example.com",
+					"page_url": "https://example.com",
 				}
 				resultBytes, _ := json.Marshal(result)
 				cap.SetQueryResult(q.ID, resultBytes)
@@ -216,9 +213,6 @@ func TestWaterfallOnDemand_EmptyBufferCreatesQuery(t *testing.T) {
 // TestWaterfallOnDemand_TimeoutHandling verifies graceful handling when
 // extension doesn't respond within timeout.
 func TestWaterfallOnDemand_TimeoutHandling(t *testing.T) {
-	if testing.Short() {
-		t.Skip("skips slow waterfall test in short mode")
-	}
 	t.Parallel()
 
 	server, err := NewServer("/tmp/test-waterfall-timeout.jsonl", 1000)
@@ -258,9 +252,6 @@ func TestWaterfallOnDemand_TimeoutHandling(t *testing.T) {
 // TestWaterfallOnDemand_ConcurrentRequests verifies that concurrent requests
 // don't cause data races or deadlocks.
 func TestWaterfallOnDemand_ConcurrentRequests(t *testing.T) {
-	if testing.Short() {
-		t.Skip("skips slow waterfall test in short mode")
-	}
 	t.Parallel()
 
 	server, err := NewServer("/tmp/test-waterfall-concurrent.jsonl", 1000)
@@ -282,7 +273,7 @@ func TestWaterfallOnDemand_ConcurrentRequests(t *testing.T) {
 						"entries": []map[string]any{
 							{"url": "https://example.com/resource", "duration": 100.0},
 						},
-						"pageURL": "https://example.com",
+						"page_url": "https://example.com",
 					}
 					resultBytes, _ := json.Marshal(result)
 					cap.SetQueryResult(q.ID, resultBytes)
@@ -368,9 +359,6 @@ func TestWaterfallQueryType_ExistsInPendingQueries(t *testing.T) {
 
 // TestWaterfallStalenessThreshold verifies the 1-second staleness threshold.
 func TestWaterfallStalenessThreshold(t *testing.T) {
-	if testing.Short() {
-		t.Skip("skips slow waterfall test in short mode")
-	}
 	t.Parallel()
 
 	server, err := NewServer("/tmp/test-waterfall-threshold.jsonl", 1000)
@@ -405,14 +393,13 @@ func TestWaterfallStalenessThreshold(t *testing.T) {
 		pending := cap.GetPendingQueries()
 		for _, q := range pending {
 			if q.Type == "waterfall" {
-				result := map[string]any{"entries": []any{}, "pageURL": "https://example.com"}
+				result := map[string]any{"entries": []any{}, "page_url": "https://example.com"}
 				resultBytes, _ := json.Marshal(result)
 				cap.SetQueryResult(q.ID, resultBytes)
 			}
 		}
 	}()
 
-	pendingBefore = len(cap.GetPendingQueries())
 	_ = th.toolGetNetworkWaterfall(JSONRPCRequest{JSONRPC: "2.0", ID: 1}, json.RawMessage(`{}`))
 
 	t.Log("✅ 1-second staleness threshold verified")

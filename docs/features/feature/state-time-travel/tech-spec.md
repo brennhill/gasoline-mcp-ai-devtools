@@ -11,7 +11,7 @@ status: proposed
 
 State Time-Travel captures and buffers page events (user actions, network, DOM, console) in a persistent ring buffer. When the AI calls `observe({what: 'history'})`, Gasoline returns a curated timeline with causal links.
 
-**Three layers:**
+### Three layers:
 
 1. **Event Capture** — Asynchronously record user actions, network, DOM mutations, console events
 2. **Causal Linking** — Group related events and link cause → effect
@@ -22,7 +22,7 @@ State Time-Travel captures and buffers page events (user actions, network, DOM, 
 ### 1. Event Capture System
 **Purpose:** Record all page events without blocking the main thread.
 
-**Sources:**
+#### Sources:
 - **User actions** — `click`, `input`, `change`, `submit` events on interactive elements
 - **Network requests** — Intercept `fetch()` and XHR calls
 - **Network responses** — Store response status, body (opt-in), timing
@@ -32,13 +32,13 @@ State Time-Travel captures and buffers page events (user actions, network, DOM, 
 - **Custom events** — `CustomEvent` dispatches (app-specific signals)
 - **Errors** — `error` and `unhandledrejection` events
 
-**Implementation approach:**
+#### Implementation approach:
 - Async queue per event source (separate queues for network, console, DOM to avoid bottlenecks)
 - Event listeners registered at page load via content script
 - Events added to queue with timestamp (performance.now())
 - Batch worker processes queue every 50ms (async, non-blocking)
 
-**Data structure per event:**
+#### Data structure per event:
 ```
 {
   timestamp: number (milliseconds since page load),
@@ -52,17 +52,17 @@ State Time-Travel captures and buffers page events (user actions, network, DOM, 
 ### 2. Ring Buffer Storage
 **Purpose:** Bounded storage that survives page reload and navigation.
 
-**Storage mechanism:**
+#### Storage mechanism:
 - Primary: sessionStorage (survives reload/nav, lost on tab close)
 - Fallback: in-memory ring buffer (if sessionStorage unavailable or quota exceeded)
 - Format: JSON lines (one event per line, easy to parse and prune)
 
-**Ring buffer specifics:**
+#### Ring buffer specifics:
 - Fixed capacity: 60 seconds of events (adjust dynamically based on event rate)
 - Eviction policy: FIFO (oldest events dropped first)
 - Compression: Optional gzip compression for storage if events > 500KB
 
-**Example structure in sessionStorage:**
+#### Example structure in sessionStorage:
 ```
 sessionStorage['gasoline-event-buffer'] = '
 {"timestamp":0,"type":"page_load","url":"..."}
@@ -72,7 +72,7 @@ sessionStorage['gasoline-event-buffer'] = '
 '
 ```
 
-**Recovery on page load:**
+#### Recovery on page load:
 - Content script checks sessionStorage for existing buffer
 - Reads last event timestamp
 - Continues buffer from there (don't reset on reload)
@@ -81,7 +81,7 @@ sessionStorage['gasoline-event-buffer'] = '
 ### 3. Causal Linking Engine
 **Purpose:** Connect events to show cause → effect chains.
 
-**Linking rules:**
+#### Linking rules:
 
 | Event Pair | Link Rule |
 |---|---|
@@ -91,13 +91,13 @@ sessionStorage['gasoline-event-buffer'] = '
 | network_response + console_error | Link if error occurs <200ms after response |
 | user_action + subsequent dom_mutation | Link if same element involved |
 
-**Algorithm:**
+#### Algorithm:
 1. For each event E, search back in time for causal parents (last 5 seconds)
 2. Apply linking rules: does E match a parent event pattern?
 3. If match found, set `E.cause = parent_event_id`
 4. Store causal graph in memory (WeakMap to avoid memory leak)
 
-**Example causal chain:**
+#### Example causal chain:
 ```
 Event A: user_action (click Save) [timestamp: 1000]
 Event B: network_request (POST /api/save) [timestamp: 1010, cause: A]
@@ -109,22 +109,22 @@ Event E: dom_mutation (Error modal appeared) [timestamp: 1080, cause: D]
 ### 4. Snapshot & Diff Generator
 **Purpose:** Capture before/after state for user actions.
 
-**Before snapshot (on user action):**
+#### Before snapshot (on user action):
 - Freeze current DOM state (serialize to JSON)
 - Capture current console buffer
 - Store network requests initiated by action (empty initially)
 
-**During action:**
+#### During action:
 - Record all events triggered by this action
 - Track timing
 
-**After snapshot (on action completion):**
+#### After snapshot (on action completion):
 - Freeze new DOM state
 - Generate diff: which nodes added/removed/changed?
 - Summarize: "3 nodes added, 1 node removed, 2 attributes changed"
 - Calculate execution time: timestamp_after - timestamp_before
 
-**Result summary generation:**
+#### Result summary generation:
 ```
 Action: [action description]
 Duration: [N ms]
@@ -137,13 +137,13 @@ Result: [success/failure/timeout]
 ### 5. Timeline Serialization
 **Purpose:** Convert causal graph to AI-readable format.
 
-**Output format:**
+#### Output format:
 - Chronological event list (sorted by timestamp)
 - Each event includes: timestamp, type, summary, causal link
 - Grouped events (e.g., all network activity from one user action)
 - Context: "Action: click" → all related network/DOM/error events
 
-**Example output:**
+#### Example output:
 ```json
 {
   "timeline": [
@@ -354,7 +354,7 @@ Buffer now includes events across reload
 
 ## Serialization Format
 
-**JSON schema for timeline:**
+### JSON schema for timeline:
 
 ```json
 {

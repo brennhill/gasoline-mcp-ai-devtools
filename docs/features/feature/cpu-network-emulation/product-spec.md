@@ -50,7 +50,7 @@ Add `emulation` mode to the `configure` tool. Agent can apply network profiles (
 
 ## Examples
 
-**Apply Slow 3G:**
+### Apply Slow 3G:
 ```json
 {
   "action": "emulation",
@@ -58,7 +58,7 @@ Add `emulation` mode to the `configure` tool. Agent can apply network profiles (
 }
 ```
 
-**Apply CPU 4x slowdown:**
+### Apply CPU 4x slowdown:
 ```json
 {
   "action": "emulation",
@@ -66,7 +66,7 @@ Add `emulation` mode to the `configure` tool. Agent can apply network profiles (
 }
 ```
 
-**Custom network profile:**
+### Custom network profile:
 ```json
 {
   "action": "emulation",
@@ -78,7 +78,7 @@ Add `emulation` mode to the `configure` tool. Agent can apply network profiles (
 }
 ```
 
-**Offline mode:**
+### Offline mode:
 ```json
 {
   "action": "emulation",
@@ -86,7 +86,7 @@ Add `emulation` mode to the `configure` tool. Agent can apply network profiles (
 }
 ```
 
-**Reset all throttling:**
+### Reset all throttling:
 ```json
 {
   "action": "emulation",

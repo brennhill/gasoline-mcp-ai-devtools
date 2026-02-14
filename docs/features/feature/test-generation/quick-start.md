@@ -115,7 +115,7 @@ go test -short ./cmd/dev-console/
 
 ## What Makes This Special
 
-**TestSprite can't test WebSocket apps.**
+### TestSprite can't test WebSocket apps.
 
 Gasoline captures WebSocket frames in real-time and generates tests with frame-level assertions.
 

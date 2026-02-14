@@ -98,7 +98,7 @@ type RequestID string  // Format: "req-" + hex(16 random bytes) = "req-12345a7f8
 ## Examples
 
 ### Example 1: User Checkout Flow
-**Frontend:**
+#### Frontend:
 ```
 Session: session-xyz
 [10:00:00] Page load: /checkout
@@ -114,7 +114,7 @@ Session: session-xyz
     → Calls email service to send confirmation
 ```
 
-**Backend logs (all tagged with session: session-xyz, request: req-002):**
+#### Backend logs (all tagged with session: session-xyz, request: req-002):
 ```
 api-server: INFO - Processing payment (request_id: req-002, session_id: session-xyz)
 payment-service: INFO - Authorizing with Stripe (request_id: req-002)
@@ -122,7 +122,7 @@ inventory-service: INFO - Reserving items (request_id: req-002)
 email-service: INFO - Sending confirmation (request_id: req-002)
 ```
 
-**Gasoline query:**
+#### Gasoline query:
 ```javascript
 observe({
   what: 'session-trace',

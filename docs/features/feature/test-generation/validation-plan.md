@@ -54,7 +54,7 @@ Our implementation has the **logic** but lacks **real-world validation**. This i
 
 **Objective:** Prove one complete cycle works end-to-end
 
-**Steps:**
+#### Steps:
 
 1. **Create a broken test file**
    ```typescript
@@ -118,7 +118,7 @@ Our implementation has the **logic** but lacks **real-world validation**. This i
 5. **Manually apply suggested fixes**
 6. **Re-run test and verify it passes**
 
-**Success Criteria:**
+#### Success Criteria:
 - ✅ At least 3/4 selectors healed with confidence >= 0.7
 - ✅ Healed test passes when run
 - ✅ Entire cycle takes < 5 minutes
@@ -127,7 +127,7 @@ Our implementation has the **logic** but lacks **real-world validation**. This i
 
 **Objective:** Generate a test from a real error
 
-**Steps:**
+#### Steps:
 
 1. **Navigate to demo app and trigger an error**
    - Open browser with Gasoline extension
@@ -175,7 +175,7 @@ Our implementation has the **logic** but lacks **real-world validation**. This i
    npx playwright test tests/generated.spec.ts
    ```
 
-**Success Criteria:**
+#### Success Criteria:
 - ✅ Generated test is valid Playwright syntax
 - ✅ Generated test reproduces the error when run
 - ✅ Generated test uses stable selectors (testId > aria > text)
@@ -184,7 +184,7 @@ Our implementation has the **logic** but lacks **real-world validation**. This i
 
 **Objective:** Classify real test failures accurately
 
-**Steps:**
+#### Steps:
 
 1. **Collect 10 real test failures** from a test suite
    - 3 selector broken (timeout waiting for selector)
@@ -216,7 +216,7 @@ Our implementation has the **logic** but lacks **real-world validation**. This i
 
 3. **Verify classification accuracy**
 
-**Success Criteria:**
+#### Success Criteria:
 - ✅ At least 7/10 classified correctly
 - ✅ High confidence (>= 0.7) for correct classifications
 - ✅ Low confidence (< 0.5) triggers uncertain error
@@ -288,7 +288,7 @@ The following features are implemented in code but not wired up:
 
 ## Next Steps
 
-**Before claiming TestSprite parity:**
+### Before claiming TestSprite parity:
 
 1. ✅ Complete `test_classify.batch` implementation
 2. ⬜ Wire up DOM query integration

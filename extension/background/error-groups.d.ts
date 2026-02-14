@@ -3,48 +3,44 @@
  * Manages error group tracking, deduplication within configurable windows,
  * and cleanup of stale error groups.
  */
-import type { LogEntry } from '../types';
+import type { LogEntry } from '../types'
 /** Error group max age - cleanup after 1 hour */
-export declare const ERROR_GROUP_MAX_AGE_MS = 3600000;
+export declare const ERROR_GROUP_MAX_AGE_MS = 3600000
 /** Internal error group structure */
 interface InternalErrorGroup {
-    entry: LogEntry;
-    count: number;
-    firstSeen: number;
-    lastSeen: number;
+  entry: LogEntry
+  count: number
+  firstSeen: number
+  lastSeen: number
 }
 /** Process error group result */
 interface ProcessErrorGroupResult {
-    shouldSend: boolean;
-    entry?: LogEntry & {
-        _previousOccurrences?: number;
-    };
+  shouldSend: boolean
+  entry?: LogEntry & {
+    _previousOccurrences?: number
+  }
 }
 /** Processed log entry with aggregation metadata */
 export type ProcessedLogEntry = LogEntry & {
-    _aggregatedCount?: number;
-    _firstSeen?: string;
-    _lastSeen?: string;
-};
-/**
- * Create a signature for an error to identify duplicates
- */
-export declare function createErrorSignature(entry: LogEntry): string;
-/**
- * Process an error through the grouping system
- */
-export declare function processErrorGroup(entry: LogEntry): ProcessErrorGroupResult;
+  _aggregatedCount?: number
+  _firstSeen?: string
+  _lastSeen?: string
+}
+export declare function createErrorSignature(entry: LogEntry): string
+export declare function processErrorGroup(entry: LogEntry): ProcessErrorGroupResult
 /**
  * Get current state of error groups (for testing)
  */
-export declare function getErrorGroupsState(): Map<string, InternalErrorGroup>;
+export declare function getErrorGroupsState(): Map<string, InternalErrorGroup>
 /**
  * Clean up stale error groups older than ERROR_GROUP_MAX_AGE_MS
  */
-export declare function cleanupStaleErrorGroups(debugLogFn?: (category: string, message: string, data?: unknown) => void): void;
+export declare function cleanupStaleErrorGroups(
+  debugLogFn?: (category: string, message: string, data?: unknown) => void
+): void
 /**
  * Flush error groups - send any accumulated counts
  */
-export declare function flushErrorGroups(): ProcessedLogEntry[];
-export {};
+export declare function flushErrorGroups(): ProcessedLogEntry[]
+export {}
 //# sourceMappingURL=error-groups.d.ts.map

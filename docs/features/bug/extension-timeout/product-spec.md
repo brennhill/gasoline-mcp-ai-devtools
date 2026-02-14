@@ -12,7 +12,7 @@ version: 5.2.0
 
 After performing 5-6 operations (DOM queries, accessibility audits, network captures, etc.), the Gasoline extension becomes unresponsive. Subsequent MCP tool calls hang, timeout, or return no data. The extension appears frozen and requires a browser restart to recover.
 
-**Current User Experience:**
+### Current User Experience:
 1. User starts session, performs 3-4 operations successfully
 2. After 5th or 6th operation, next operation hangs indefinitely
 3. MCP tools timeout waiting for extension response
@@ -30,7 +30,7 @@ After performing 5-6 operations (DOM queries, accessibility audits, network capt
 
 Identify and fix the resource leak or queue bottleneck that causes the extension to become unresponsive after several operations. Ensure the extension can handle unlimited consecutive operations without degradation.
 
-**Fixed User Experience:**
+### Fixed User Experience:
 1. User performs 5-6 operations successfully
 2. Continues to perform 10, 20, 50+ operations
 3. All operations complete normally
@@ -67,13 +67,13 @@ Identify and fix the resource leak or queue bottleneck that causes the extension
 
 ## User Workflow
 
-**Before Fix:**
+### Before Fix:
 1. User performs 5 operations successfully
 2. 6th operation hangs
 3. User waits, sees timeout error
 4. Reloads extension or browser
 
-**After Fix:**
+### After Fix:
 1. User performs 5, 10, 20, 50 operations
 2. All operations complete normally
 3. Consistent performance throughout
@@ -83,7 +83,7 @@ Identify and fix the resource leak or queue bottleneck that causes the extension
 
 ### Example 1: Consecutive DOM Queries (Before Fix)
 
-**Operations:**
+#### Operations:
 1. `generate({action: "query_dom", selector: "h1"})` → Success (2s)
 2. `generate({action: "query_dom", selector: "button"})` → Success (2s)
 3. `generate({action: "query_dom", selector: "a"})` → Success (2s)
@@ -93,7 +93,7 @@ Identify and fix the resource leak or queue bottleneck that causes the extension
 
 ### Example 2: Consecutive DOM Queries (After Fix)
 
-**Operations:**
+#### Operations:
 1. `generate({action: "query_dom", selector: "h1"})` → Success (2s)
 2. `generate({action: "query_dom", selector: "button"})` → Success (2s)
 ...
@@ -105,7 +105,7 @@ All operations complete with consistent latency.
 
 ### Example 3: Mixed Operations (After Fix)
 
-**Operations:**
+#### Operations:
 1. `observe({what: "errors"})` → Success
 2. `generate({action: "query_dom"})` → Success
 3. `observe({what: "network_bodies"})` → Success
@@ -116,7 +116,7 @@ All operations complete with consistent latency.
 
 ### Example 4: Health Check After 50 Operations
 
-**Request:**
+#### Request:
 ```json
 {
   "tool": "configure",
@@ -126,7 +126,7 @@ All operations complete with consistent latency.
 }
 ```
 
-**Response:**
+#### Response:
 ```json
 {
   "status": "healthy",

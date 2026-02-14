@@ -113,7 +113,7 @@ export function canTakeScreenshot(tabId: number): RateLimitResult {
     return {
       allowed: false,
       reason: 'rate_limit',
-      nextAllowedIn: SCREENSHOT_RATE_LIMIT_MS - (now - lastTimestamp),
+      nextAllowedIn: SCREENSHOT_RATE_LIMIT_MS - (now - lastTimestamp)
     }
   }
 
@@ -192,7 +192,7 @@ export function checkMemoryPressure(buffers: BufferState): {
       level: 'hard',
       action: 'disable_network_capture',
       estimatedMemory,
-      alreadyApplied,
+      alreadyApplied
     }
   }
 
@@ -207,7 +207,7 @@ export function checkMemoryPressure(buffers: BufferState): {
       level: 'soft',
       action: 'reduce_capacities',
       estimatedMemory,
-      alreadyApplied,
+      alreadyApplied
     }
   }
 
@@ -218,7 +218,7 @@ export function checkMemoryPressure(buffers: BufferState): {
     level: 'normal',
     action: 'none',
     estimatedMemory,
-    alreadyApplied: false,
+    alreadyApplied: false
   }
 }
 
@@ -230,7 +230,7 @@ export function getMemoryPressureState(): MemoryPressureState {
     memoryPressureLevel,
     lastMemoryCheck,
     networkBodyCaptureDisabled,
-    reducedCapacities,
+    reducedCapacities
   }
 }
 

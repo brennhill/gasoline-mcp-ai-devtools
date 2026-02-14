@@ -1,51 +1,52 @@
 /**
  * @fileoverview Shared constants for the Gasoline extension capture modules.
  */
-export declare const MAX_STRING_LENGTH = 10240;
-export declare const MAX_RESPONSE_LENGTH = 5120;
-export declare const MAX_DEPTH = 10;
-export declare const MAX_CONTEXT_SIZE = 50;
-export declare const MAX_CONTEXT_VALUE_SIZE = 4096;
-export declare const SENSITIVE_HEADERS: readonly string[];
-export declare const MAX_ACTION_BUFFER_SIZE = 20;
-export declare const SCROLL_THROTTLE_MS = 250;
-export declare const SENSITIVE_INPUT_TYPES: readonly string[];
-export declare const MAX_WATERFALL_ENTRIES = 50;
-export declare const WATERFALL_TIME_WINDOW_MS = 30000;
-export declare const MAX_PERFORMANCE_ENTRIES = 50;
-export declare const PERFORMANCE_TIME_WINDOW_MS = 60000;
-export declare const WS_MAX_BODY_SIZE = 4096;
-export declare const WS_PREVIEW_LIMIT = 200;
-export declare const REQUEST_BODY_MAX = 8192;
-export declare const RESPONSE_BODY_MAX = 16384;
-export declare const BODY_READ_TIMEOUT_MS = 5;
-export declare const SENSITIVE_HEADER_PATTERNS: RegExp;
-export declare const BINARY_CONTENT_TYPES: RegExp;
-export declare const DOM_QUERY_MAX_ELEMENTS = 50;
-export declare const DOM_QUERY_MAX_TEXT = 500;
-export declare const DOM_QUERY_MAX_DEPTH = 5;
-export declare const DOM_QUERY_MAX_HTML = 200;
-export declare const A11Y_MAX_NODES_PER_VIOLATION = 10;
-export declare const A11Y_AUDIT_TIMEOUT_MS = 30000;
-export declare const MEMORY_SOFT_LIMIT_MB = 20;
-export declare const MEMORY_HARD_LIMIT_MB = 50;
-export declare const AI_CONTEXT_SNIPPET_LINES = 5;
-export declare const AI_CONTEXT_MAX_LINE_LENGTH = 200;
-export declare const AI_CONTEXT_MAX_SNIPPETS_SIZE = 10240;
-export declare const AI_CONTEXT_MAX_ANCESTRY_DEPTH = 10;
-export declare const AI_CONTEXT_MAX_PROP_KEYS = 20;
-export declare const AI_CONTEXT_MAX_STATE_KEYS = 10;
-export declare const AI_CONTEXT_MAX_RELEVANT_SLICE = 10;
-export declare const AI_CONTEXT_MAX_VALUE_LENGTH = 200;
-export declare const AI_CONTEXT_SOURCE_MAP_CACHE_SIZE = 20;
-export declare const AI_CONTEXT_PIPELINE_TIMEOUT_MS = 3000;
-export declare const ENHANCED_ACTION_BUFFER_SIZE = 50;
-export declare const CSS_PATH_MAX_DEPTH = 5;
-export declare const SELECTOR_TEXT_MAX_LENGTH = 50;
-export declare const SCRIPT_MAX_SIZE = 51200;
-export declare const CLICKABLE_TAGS: ReadonlySet<string>;
-export declare const ACTIONABLE_KEYS: ReadonlySet<string>;
-export declare const MAX_LONG_TASKS = 50;
-export declare const MAX_SLOWEST_REQUESTS = 3;
-export declare const MAX_URL_LENGTH = 80;
+export declare const MAX_STRING_LENGTH = 10240
+export declare const MAX_RESPONSE_LENGTH = 5120
+export declare const MAX_DEPTH = 10
+export declare const MAX_CONTEXT_SIZE = 50
+export declare const MAX_CONTEXT_VALUE_SIZE = 4096
+export declare const SENSITIVE_HEADERS: readonly string[]
+export declare const MAX_ACTION_BUFFER_SIZE = 20
+export declare const SCROLL_THROTTLE_MS = 250
+export declare const SENSITIVE_INPUT_TYPES: readonly string[]
+export declare const MAX_WATERFALL_ENTRIES = 50
+export declare const WATERFALL_TIME_WINDOW_MS = 30000
+export declare const MAX_PERFORMANCE_ENTRIES = 50
+export declare const PERFORMANCE_TIME_WINDOW_MS = 60000
+export declare const WS_MAX_BODY_SIZE = 4096
+export declare const WS_PREVIEW_LIMIT = 200
+export declare const REQUEST_BODY_MAX = 8192
+export declare const RESPONSE_BODY_MAX = 16384
+export declare const BODY_READ_TIMEOUT_MS = 5
+export declare const SENSITIVE_HEADER_PATTERNS: RegExp
+export declare const BINARY_CONTENT_TYPES: RegExp
+export declare const DOM_QUERY_MAX_ELEMENTS = 50
+export declare const DOM_QUERY_MAX_TEXT = 500
+export declare const DOM_QUERY_MAX_DEPTH = 5
+export declare const DOM_QUERY_MAX_HTML = 200
+export declare const A11Y_MAX_NODES_PER_VIOLATION = 10
+export declare const ASYNC_COMMAND_TIMEOUT_MS = 60000
+export declare const A11Y_AUDIT_TIMEOUT_MS = 60000
+export declare const MEMORY_SOFT_LIMIT_MB = 20
+export declare const MEMORY_HARD_LIMIT_MB = 50
+export declare const AI_CONTEXT_SNIPPET_LINES = 5
+export declare const AI_CONTEXT_MAX_LINE_LENGTH = 200
+export declare const AI_CONTEXT_MAX_SNIPPETS_SIZE = 10240
+export declare const AI_CONTEXT_MAX_ANCESTRY_DEPTH = 10
+export declare const AI_CONTEXT_MAX_PROP_KEYS = 20
+export declare const AI_CONTEXT_MAX_STATE_KEYS = 10
+export declare const AI_CONTEXT_MAX_RELEVANT_SLICE = 10
+export declare const AI_CONTEXT_MAX_VALUE_LENGTH = 200
+export declare const AI_CONTEXT_SOURCE_MAP_CACHE_SIZE = 20
+export declare const AI_CONTEXT_PIPELINE_TIMEOUT_MS = 3000
+export declare const ENHANCED_ACTION_BUFFER_SIZE = 50
+export declare const CSS_PATH_MAX_DEPTH = 5
+export declare const SELECTOR_TEXT_MAX_LENGTH = 50
+export declare const SCRIPT_MAX_SIZE = 51200
+export declare const CLICKABLE_TAGS: ReadonlySet<string>
+export declare const ACTIONABLE_KEYS: ReadonlySet<string>
+export declare const MAX_LONG_TASKS = 50
+export declare const MAX_SLOWEST_REQUESTS = 3
+export declare const MAX_URL_LENGTH = 80
 //# sourceMappingURL=constants.d.ts.map

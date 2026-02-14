@@ -8,10 +8,27 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 	"time"
 
 	recordingtypes "github.com/dev-console/dev-console/internal/recording"
+	"github.com/dev-console/dev-console/internal/state"
 )
+
+// validateRecordingID rejects IDs containing path traversal sequences.
+func validateRecordingID(id string) error {
+	if id == "" {
+		return fmt.Errorf("recording_id_empty: Recording ID must not be empty")
+	}
+	if strings.Contains(id, "..") || strings.ContainsAny(id, `/\`) {
+		return fmt.Errorf("recording_id_invalid: Recording ID contains illegal characters")
+	}
+	// After cleaning, the ID must be a single path component
+	if filepath.Base(id) != id {
+		return fmt.Errorf("recording_id_invalid: Recording ID must be a single directory name")
+	}
+	return nil
+}
 
 // ============================================================================
 // Constants
@@ -20,7 +37,6 @@ import (
 const (
 	recordingStorageMax   = 1024 * 1024 * 1024 // 1GB max storage
 	recordingWarningLevel = 800 * 1024 * 1024  // 800MB warning threshold (80%)
-	recordingBaseDir      = ".gasoline/recordings"
 	recordingMetadataFile = "metadata.json"
 )
 
@@ -55,7 +71,7 @@ func (r *RecordingManager) StartRecording(name string, pageURL string, sensitive
 
 	// Check storage quota
 	if r.recordingStorageUsed >= recordingStorageMax {
-		return "", fmt.Errorf("recording_storage_full: Recording storage at capacity (1GB). Please delete old recordings.")
+		return "", fmt.Errorf("recording_storage_full: Recording storage at capacity (1GB). Please delete old recordings")
 	}
 
 	// Warn if approaching limit (80%) - goes to stderr, not stdout (MCP stdio silence)
@@ -64,9 +80,9 @@ func (r *RecordingManager) StartRecording(name string, pageURL string, sensitive
 			r.recordingStorageUsed, recordingStorageMax)
 	}
 
-	// Generate recording ID: name-YYYYMMDDTHHMMSSZ
+	// Generate recording ID: name-YYYYMMDDTHHMMSS-nnnnnnnnnZ (nanosecond precision prevents collisions)
 	now := time.Now()
-	timestamp := now.Format("20060102T150405Z")
+	timestamp := fmt.Sprintf("%s-%09dZ", now.Format("20060102T150405"), now.Nanosecond())
 	var recordingID string
 	if name != "" {
 		recordingID = fmt.Sprintf("%s-%s", name, timestamp)
@@ -121,7 +137,7 @@ func (r *RecordingManager) StopRecording(recordingID string) (int, int64, error)
 	// Persist to disk
 	err := r.persistRecordingToDisk(recording)
 	if err != nil {
-		return 0, 0, fmt.Errorf("recording_save_failed: Failed to save recording: %v", err)
+		return 0, 0, fmt.Errorf("recording_save_failed: Failed to save recording: %w", err)
 	}
 
 	// Update storage used
@@ -170,20 +186,47 @@ func (r *RecordingManager) AddRecordingAction(action RecordingAction) error {
 // Persistence
 // ============================================================================
 
-// persistRecordingToDisk writes recording metadata.json to ~/.gasoline/recordings/{id}/
-func (r *RecordingManager) persistRecordingToDisk(recording *Recording) error {
-	// Determine storage directory
-	homeDir, err := os.UserHomeDir()
+func primaryRecordingsDir() (string, error) {
+	return state.RecordingsDir()
+}
+
+func legacyRecordingsDir() (string, error) {
+	return state.LegacyRecordingsDir()
+}
+
+// recordingReadRoots returns directories to search for existing recordings.
+// New state location is preferred; legacy location is included when it exists.
+func (r *RecordingManager) recordingReadRoots() ([]string, error) {
+	primaryDir, err := primaryRecordingsDir()
 	if err != nil {
-		return fmt.Errorf("cannot_find_home: %v", err)
+		return nil, fmt.Errorf("cannot_determine_recordings_dir: %w", err)
 	}
 
-	recordingDir := filepath.Join(homeDir, recordingBaseDir, recording.ID)
+	roots := []string{primaryDir}
+	legacyDir, err := legacyRecordingsDir()
+	if err != nil || legacyDir == "" || legacyDir == primaryDir {
+		return roots, nil
+	}
+	if info, statErr := os.Stat(legacyDir); statErr == nil && info.IsDir() {
+		roots = append(roots, legacyDir)
+	}
+	return roots, nil
+}
+
+// persistRecordingToDisk writes recording metadata.json to state/recordings/{id}/
+func (r *RecordingManager) persistRecordingToDisk(recording *Recording) error {
+	// Determine storage directory
+	recordingsDir, err := primaryRecordingsDir()
+	if err != nil {
+		return fmt.Errorf("cannot_find_recordings_dir: %w", err)
+	}
+
+	recordingDir := filepath.Join(recordingsDir, recording.ID)
 
 	// Create directory
 	err = os.MkdirAll(recordingDir, 0755)
 	if err != nil {
-		return fmt.Errorf("mkdir_failed: %v", err)
+		return fmt.Errorf("mkdir_failed: %w", err)
 	}
 
 	// Create metadata
@@ -203,14 +246,14 @@ func (r *RecordingManager) persistRecordingToDisk(recording *Recording) error {
 	// Marshal to JSON
 	data, err := json.MarshalIndent(metadata, "", "  ")
 	if err != nil {
-		return fmt.Errorf("json_marshal_failed: %v", err)
+		return fmt.Errorf("json_marshal_failed: %w", err)
 	}
 
 	// Write file
 	metadataPath := filepath.Join(recordingDir, recordingMetadataFile)
 	err = os.WriteFile(metadataPath, data, 0600)
 	if err != nil {
-		return fmt.Errorf("write_file_failed: %v", err)
+		return fmt.Errorf("write_file_failed: %w", err)
 	}
 
 	return nil
@@ -220,45 +263,47 @@ func (r *RecordingManager) persistRecordingToDisk(recording *Recording) error {
 // Querying
 // ============================================================================
 
+// collectRecordingsFromRoots loads recordings from disk directories, deduplicating by name.
+func (r *RecordingManager) collectRecordingsFromRoots(roots []string, limit int) ([]Recording, error) {
+	recordings := make([]Recording, 0)
+	seen := make(map[string]bool)
+
+	for _, recordingsDir := range roots {
+		entries, err := os.ReadDir(recordingsDir)
+		if err != nil {
+			if os.IsNotExist(err) {
+				continue
+			}
+			return nil, fmt.Errorf("readdir_failed: %w", err)
+		}
+		for _, entry := range entries {
+			if !entry.IsDir() || seen[entry.Name()] {
+				continue
+			}
+			seen[entry.Name()] = true
+			recording, err := r.loadRecordingFromDisk(entry.Name())
+			if err != nil {
+				continue
+			}
+			recordings = append(recordings, *recording)
+			if limit > 0 && len(recordings) >= limit {
+				return recordings, nil
+			}
+		}
+	}
+	return recordings, nil
+}
+
 // ListRecordings returns all saved recordings from disk.
 func (r *RecordingManager) ListRecordings(limit int) ([]Recording, error) {
-	homeDir, err := os.UserHomeDir()
+	roots, err := r.recordingReadRoots()
 	if err != nil {
-		return nil, fmt.Errorf("cannot_find_home: %v", err)
+		return nil, err
 	}
 
-	recordingsDir := filepath.Join(homeDir, recordingBaseDir)
-
-	// Check if directory exists
-	if _, err := os.Stat(recordingsDir); os.IsNotExist(err) {
-		return []Recording{}, nil // No recordings yet
-	}
-
-	entries, err := os.ReadDir(recordingsDir)
+	recordings, err := r.collectRecordingsFromRoots(roots, limit)
 	if err != nil {
-		return nil, fmt.Errorf("readdir_failed: %v", err)
-	}
-
-	recordings := make([]Recording, 0)
-
-	for _, entry := range entries {
-		if !entry.IsDir() {
-			continue
-		}
-
-		// Try to load metadata
-		recording, err := r.loadRecordingFromDisk(entry.Name())
-		if err != nil {
-			// Skip broken recordings
-			continue
-		}
-
-		recordings = append(recordings, *recording)
-
-		// Respect limit
-		if limit > 0 && len(recordings) >= limit {
-			break
-		}
+		return nil, err
 	}
 
 	// Sort by created_at (newest first)
@@ -273,46 +318,62 @@ func (r *RecordingManager) ListRecordings(limit int) ([]Recording, error) {
 
 // GetRecording loads a specific recording by ID.
 func (r *RecordingManager) GetRecording(recordingID string) (*Recording, error) {
+	if err := validateRecordingID(recordingID); err != nil {
+		return nil, err
+	}
 	return r.loadRecordingFromDisk(recordingID)
 }
 
 // loadRecordingFromDisk reads metadata.json and returns the Recording.
 func (r *RecordingManager) loadRecordingFromDisk(recordingID string) (*Recording, error) {
-	homeDir, err := os.UserHomeDir()
+	roots, err := r.recordingReadRoots()
 	if err != nil {
-		return nil, fmt.Errorf("cannot_find_home: %v", err)
+		return nil, err
 	}
 
-	metadataPath := filepath.Join(homeDir, recordingBaseDir, recordingID, recordingMetadataFile)
+	var lastErr error
+	for _, root := range roots {
+		metadataPath := filepath.Join(root, recordingID, recordingMetadataFile)
 
-	// Read file
-	data, err := os.ReadFile(metadataPath)
-	if err != nil {
-		return nil, fmt.Errorf("read_failed: %v", err)
+		// Read file
+		data, err := os.ReadFile(metadataPath) // nosemgrep: go_filesystem_rule-fileread -- CLI tool reads local recording metadata
+		if err != nil {
+			if os.IsNotExist(err) {
+				continue
+			}
+			lastErr = fmt.Errorf("read_failed: %w", err)
+			continue
+		}
+
+		// Unmarshal metadata
+		metadata := &recordingtypes.RecordingMetadata{}
+		err = json.Unmarshal(data, metadata)
+		if err != nil {
+			lastErr = fmt.Errorf("json_unmarshal_failed: %w", err)
+			continue
+		}
+
+		// Convert to Recording
+		recording := &Recording{
+			ID:                   metadata.ID,
+			Name:                 metadata.Name,
+			CreatedAt:            metadata.CreatedAt,
+			StartURL:             metadata.StartURL,
+			Viewport:             metadata.Viewport,
+			Duration:             metadata.Duration,
+			ActionCount:          metadata.ActionCount,
+			Actions:              metadata.Actions,
+			SensitiveDataEnabled: metadata.SensitiveDataEnabled,
+			TestID:               metadata.TestID,
+		}
+
+		return recording, nil
 	}
 
-	// Unmarshal metadata
-	metadata := &recordingtypes.RecordingMetadata{}
-	err = json.Unmarshal(data, metadata)
-	if err != nil {
-		return nil, fmt.Errorf("json_unmarshal_failed: %v", err)
+	if lastErr != nil {
+		return nil, lastErr
 	}
-
-	// Convert to Recording
-	recording := &Recording{
-		ID:                   metadata.ID,
-		Name:                 metadata.Name,
-		CreatedAt:            metadata.CreatedAt,
-		StartURL:             metadata.StartURL,
-		Viewport:             metadata.Viewport,
-		Duration:             metadata.Duration,
-		ActionCount:          metadata.ActionCount,
-		Actions:              metadata.Actions,
-		SensitiveDataEnabled: metadata.SensitiveDataEnabled,
-		TestID:               metadata.TestID,
-	}
-
-	return recording, nil
+	return nil, fmt.Errorf("read_failed: recording not found: %s", recordingID)
 }
 
 // ============================================================================
@@ -358,44 +419,62 @@ func (r *RecordingManager) GetStorageInfo() (StorageInfo, error) {
 	}, nil
 }
 
+// deleteRecordingFromRoot attempts to delete a recording from a single root directory.
+// Returns bytes removed and whether the recording was found.
+func (r *RecordingManager) deleteRecordingFromRoot(root, recordingID string) (int64, bool, error) {
+	recordingDir := filepath.Join(root, recordingID)
+	if _, statErr := os.Stat(recordingDir); os.IsNotExist(statErr) {
+		return 0, false, nil
+	} else if statErr != nil {
+		return 0, false, fmt.Errorf("delete_failed: %w", statErr)
+	}
+
+	sizeBefore, sizeErr := r.getDirectorySize(recordingDir)
+	if sizeErr != nil {
+		return 0, false, fmt.Errorf("size_calculation_failed: %w", sizeErr)
+	}
+	if removeErr := os.RemoveAll(recordingDir); removeErr != nil {
+		return 0, false, fmt.Errorf("delete_failed: %w", removeErr)
+	}
+	return sizeBefore, true, nil
+}
+
 // DeleteRecording deletes a recording from disk and updates storage tracking.
 func (r *RecordingManager) DeleteRecording(recordingID string) error {
+	if err := validateRecordingID(recordingID); err != nil {
+		return err
+	}
+
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
-	homeDir, err := os.UserHomeDir()
+	roots, err := r.recordingReadRoots()
 	if err != nil {
-		return fmt.Errorf("cannot_find_home: %v", err)
+		return err
 	}
 
-	recordingDir := filepath.Join(homeDir, recordingBaseDir, recordingID)
+	var totalRemoved int64
+	found := false
+	for _, root := range roots {
+		removed, ok, delErr := r.deleteRecordingFromRoot(root, recordingID)
+		if delErr != nil {
+			return delErr
+		}
+		if ok {
+			totalRemoved += removed
+			found = true
+		}
+	}
 
-	// Check if recording exists
-	if _, err := os.Stat(recordingDir); os.IsNotExist(err) {
+	if !found {
 		return fmt.Errorf("recording_not_found: No recording with id: %s", recordingID)
 	}
 
-	// Get size before deletion
-	sizeBefore, err := r.getDirectorySize(recordingDir)
-	if err != nil {
-		return fmt.Errorf("size_calculation_failed: %v", err)
-	}
-
-	// Delete the recording directory
-	err = os.RemoveAll(recordingDir)
-	if err != nil {
-		return fmt.Errorf("delete_failed: %v", err)
-	}
-
-	// Update storage tracking
-	r.recordingStorageUsed -= sizeBefore
+	r.recordingStorageUsed -= totalRemoved
 	if r.recordingStorageUsed < 0 {
 		r.recordingStorageUsed = 0
 	}
-
-	// Remove from in-memory map if present
 	delete(r.recordings, recordingID)
-
 	return nil
 }
 
@@ -417,43 +496,52 @@ func (r *RecordingManager) RecalculateStorageUsed() error {
 // calculateStorageFromDisk calculates total storage usage by scanning disk.
 // Returns (bytes used, recording count, error).
 func (r *RecordingManager) calculateStorageFromDisk() (int64, int, error) {
-	homeDir, err := os.UserHomeDir()
+	roots, err := r.recordingReadRoots()
 	if err != nil {
-		return 0, 0, fmt.Errorf("cannot_find_home: %v", err)
-	}
-
-	recordingsDir := filepath.Join(homeDir, recordingBaseDir)
-
-	// Check if directory exists
-	if _, err := os.Stat(recordingsDir); os.IsNotExist(err) {
-		return 0, 0, nil // No recordings yet
-	}
-
-	entries, err := os.ReadDir(recordingsDir)
-	if err != nil {
-		return 0, 0, fmt.Errorf("readdir_failed: %v", err)
+		return 0, 0, err
 	}
 
 	var totalSize int64
 	recordingCount := 0
+	seen := make(map[string]bool)
 
-	for _, entry := range entries {
-		if !entry.IsDir() {
-			continue
+	for _, recordingsDir := range roots {
+		size, count, scanErr := r.scanRootForStorage(recordingsDir, seen)
+		if scanErr != nil {
+			return 0, 0, scanErr
 		}
-
-		recordingDir := filepath.Join(recordingsDir, entry.Name())
-		size, err := r.getDirectorySize(recordingDir)
-		if err != nil {
-			// Skip broken recordings
-			continue
-		}
-
 		totalSize += size
-		recordingCount++
+		recordingCount += count
 	}
 
 	return totalSize, recordingCount, nil
+}
+
+// scanRootForStorage scans a single root directory for recording sizes.
+func (r *RecordingManager) scanRootForStorage(dir string, seen map[string]bool) (int64, int, error) {
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return 0, 0, nil
+		}
+		return 0, 0, fmt.Errorf("readdir_failed: %w", err)
+	}
+
+	var totalSize int64
+	count := 0
+	for _, entry := range entries {
+		if !entry.IsDir() || seen[entry.Name()] {
+			continue
+		}
+		seen[entry.Name()] = true
+		size, sizeErr := r.getDirectorySize(filepath.Join(dir, entry.Name()))
+		if sizeErr != nil {
+			continue
+		}
+		totalSize += size
+		count++
+	}
+	return totalSize, count, nil
 }
 
 // getDirectorySize calculates the total size of a directory recursively.

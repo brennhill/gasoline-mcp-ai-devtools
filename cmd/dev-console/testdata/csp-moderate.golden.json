@@ -1,0 +1,26 @@
+{
+  "connect-src": [
+    "'self'",
+    "https://api.example.com"
+  ],
+  "default-src": [
+    "'self'"
+  ],
+  "font-src": [
+    "'self'",
+    "https://fonts.gstatic.com"
+  ],
+  "img-src": [
+    "'self'",
+    "https://images.example.com"
+  ],
+  "script-src": [
+    "'self'",
+    "https://cdn.example.com"
+  ],
+  "style-src": [
+    "'self'",
+    "https://cdn.example.com",
+    "https://fonts.googleapis.com"
+  ]
+}

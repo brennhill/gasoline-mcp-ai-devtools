@@ -20,7 +20,8 @@ const (
 	// State errors — LLM must change state before retrying
 	ErrNotInitialized    = "not_initialized"
 	ErrNoData            = "no_data"
-	ErrCodePilotDisabled = "pilot_disabled" // Named ErrCodePilotDisabled to avoid collision with var ErrCodePilotDisabled in pilot.go
+	ErrCodePilotDisabled    = "pilot_disabled" // Named ErrCodePilotDisabled to avoid collision with var ErrCodePilotDisabled in pilot.go
+	ErrOsAutomationDisabled = "os_automation_disabled"
 	ErrRateLimited       = "rate_limited"
 	ErrCursorExpired     = "cursor_expired" // Cursor pagination: buffer overflow evicted cursor position
 
@@ -75,4 +76,35 @@ func withParam(p string) func(*StructuredError) {
 // withHint is an option function to add hint field to StructuredError.
 func withHint(h string) func(*StructuredError) {
 	return func(se *StructuredError) { se.Hint = h }
+}
+
+// diagnosticHint returns a snapshot of system state for inclusion in error hints.
+// Helps LLMs diagnose why a command failed by showing pilot/extension/tracking status.
+func (h *ToolHandler) diagnosticHint() func(*StructuredError) {
+	extConnected := h.capture.IsExtensionConnected()
+	pilotEnabled := h.capture.IsPilotEnabled()
+	enabled, tabID, tabURL := h.capture.GetTrackingStatus()
+
+	var parts []string
+	if extConnected {
+		parts = append(parts, "extension=connected")
+	} else {
+		parts = append(parts, "extension=DISCONNECTED")
+	}
+	if pilotEnabled {
+		parts = append(parts, "pilot=enabled")
+	} else {
+		parts = append(parts, "pilot=DISABLED")
+	}
+	if enabled && tabURL != "" {
+		parts = append(parts, fmt.Sprintf("tracked_tab=%q (id=%d)", tabURL, tabID))
+	} else {
+		parts = append(parts, "tracked_tab=NONE")
+	}
+
+	hint := "Current state: " + parts[0]
+	for _, p := range parts[1:] {
+		hint += ", " + p
+	}
+	return withHint(hint)
 }

@@ -35,7 +35,7 @@ def info(message, details=""):
 
 def json_diff(before, after):
     """Format JSON diff for dry-run."""
-    import json
+    import json  # pylint: disable=import-outside-toplevel
 
     before_str = json.dumps(before, indent=2)
     after_str = json.dumps(after, indent=2)
@@ -66,45 +66,45 @@ def install_result(result):
     return output
 
 
+def _format_tool_ok(tool):
+    """Format a tool with 'ok' status."""
+    return f"✅ {tool['name']}\n   {tool['path']} - Configured and ready\n\n"
+
+
+def _format_tool_problem(tool):
+    """Format a tool with 'error' or 'warning' status."""
+    icon = "❌" if tool["status"] == "error" else "⚠️ "
+    fix_label = "Fix" if tool["status"] == "error" else "Suggestion"
+    output = f"{icon} {tool['name']}\n   {tool['path']}\n"
+    for issue in tool.get("issues", []):
+        output += f"   Issue: {issue}\n"
+    for suggestion in tool.get("suggestions", []):
+        output += f"   {fix_label}: {suggestion}\n"
+    return output + "\n"
+
+
+def _format_binary(binary):
+    """Format binary check section."""
+    if binary.get("ok"):
+        output = f"✅ Binary Check\n   Gasoline binary found at {binary['path']}\n"
+        if binary.get("version"):
+            output += f"   Version: {binary['version']}\n"
+        return output
+    return f"❌ Binary Check\n   {binary['error']}\n"
+
+
 def diagnostic_report(report):
     """Format diagnostic report."""
     output = "\n📋 Gasoline MCP Diagnostic Report\n\n"
 
     for tool in report.get("tools", []):
         if tool["status"] == "ok":
-            output += f"✅ {tool['name']}\n"
-            output += f"   {tool['path']} - Configured and ready\n\n"
-        elif tool["status"] == "error":
-            output += f"❌ {tool['name']}\n"
-            output += f"   {tool['path']}\n"
-            if tool.get("issues"):
-                for issue in tool["issues"]:
-                    output += f"   Issue: {issue}\n"
-            if tool.get("suggestions"):
-                for suggestion in tool["suggestions"]:
-                    output += f"   Fix: {suggestion}\n"
-            output += "\n"
-        elif tool["status"] == "warning":
-            output += f"⚠️  {tool['name']}\n"
-            output += f"   {tool['path']}\n"
-            if tool.get("issues"):
-                for issue in tool["issues"]:
-                    output += f"   Issue: {issue}\n"
-            if tool.get("suggestions"):
-                for suggestion in tool["suggestions"]:
-                    output += f"   Suggestion: {suggestion}\n"
-            output += "\n"
+            output += _format_tool_ok(tool)
+        else:
+            output += _format_tool_problem(tool)
 
     if report.get("binary"):
-        binary = report["binary"]
-        if binary.get("ok"):
-            output += "✅ Binary Check\n"
-            output += f"   Gasoline binary found at {binary['path']}\n"
-            if binary.get("version"):
-                output += f"   Version: {binary['version']}\n"
-        else:
-            output += "❌ Binary Check\n"
-            output += f"   {binary['error']}\n"
+        output += _format_binary(report["binary"])
 
     if report.get("summary"):
         output += f"\n{report['summary']}\n"

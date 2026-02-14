@@ -46,7 +46,7 @@ This prevents runaway agents from self-authorizing code execution or state manip
 
 **Purpose:** AI points at DOM elements so developer can visually confirm "this is the button I'm talking about."
 
-**How It Works:**
+#### How It Works:
 1. MCP tool receives CSS selector + optional duration (default 5000ms)
 2. Server forwards to extension via existing WebSocket channel
 3. Extension injects `#gasoline-highlighter` div with:
@@ -57,7 +57,7 @@ This prevents runaway agents from self-authorizing code execution or state manip
 4. Div positioned via `element.getBoundingClientRect()`
 5. Auto-removed after duration or on next highlight call
 
-**Tool Schema:**
+#### Tool Schema:
 ```
 highlight_element
   selector: string (required) — CSS selector for target element
@@ -72,14 +72,14 @@ highlight_element
 
 **Purpose:** Save and restore `localStorage`, `sessionStorage`, and cookies to skip repetitive click-through flows.
 
-**How It Works:**
+#### How It Works:
 1. **Save:** Extension serializes all three storage types + current URL into a snapshot object
 2. **Load:** Extension clears existing state, restores from snapshot, optionally navigates to saved URL
 3. **List:** Returns available snapshot names with metadata (URL, timestamp, size)
 
 Snapshots stored in extension's `chrome.storage.local` under `gasoline_snapshots` namespace.
 
-**Tool Schema:**
+#### Tool Schema:
 ```
 manage_state
   action: "save" | "load" | "list" | "delete" (required)
@@ -87,7 +87,7 @@ manage_state
   include_url: boolean (default true) — Navigate to saved URL on load
 ```
 
-**Returns:**
+#### Returns:
 - Save: `{ success: true, snapshot_name: "...", size_bytes: 1234 }`
 - Load: `{ success: true, snapshot_name: "...", restored: { localStorage: 5, sessionStorage: 2, cookies: 3 } }`
 - List: `{ snapshots: [{ name, url, timestamp, size_bytes }] }`
@@ -98,19 +98,19 @@ manage_state
 
 **Purpose:** Run arbitrary JS in browser context to inspect runtime state (Redux stores, globals, framework internals).
 
-**How It Works:**
+#### How It Works:
 1. MCP tool receives JS code string
 2. Server forwards to extension
 3. Extension executes via `new Function()` in page context (not extension context)
 4. Result JSON-serialized and returned
 5. Execution timeout: 5000ms (prevents infinite loops)
 
-**Security:**
+#### Security:
 - Localhost-only (Gasoline already binds to 127.0.0.1)
 - Human opt-in required (part of AI Web Pilot toggle)
 - No persistent side effects guaranteed (user's responsibility)
 
-**Tool Schema:**
+#### Tool Schema:
 ```
 execute_javascript
   script: string (required) — JS code to execute, must return JSON-serializable value
@@ -119,7 +119,7 @@ execute_javascript
 
 **Returns:** `{ success: true, result: <any> }` or `{ success: false, error: "...", stack: "..." }`
 
-**Example Uses:**
+#### Example Uses:
 - `window.__REDUX_DEVTOOLS_EXTENSION__ && store.getState()`
 - `window.__NEXT_DATA__`
 - `document.querySelector('#app').__vue__.$data`
@@ -159,7 +159,7 @@ Toggle state stored in `chrome.storage.sync` as `aiWebPilotEnabled`.
 
 **UI:** Button in popup.html labeled "Track This Page" (blue) that toggles to "Stop Tracking" (red) when active.
 
-**How It Works:**
+#### How It Works:
 1. User clicks "Track This Page" in extension popup
 2. Extension stores current tab ID and URL in `chrome.storage.local`:
    ```javascript
@@ -170,7 +170,7 @@ Toggle state stored in `chrome.storage.sync` as `aiWebPilotEnabled`.
 5. Click "Stop Tracking" to clear and return to active-tab behavior
 6. Auto-clears tracking if tracked tab is closed
 
-**Implementation:**
+#### Implementation:
 ```javascript
 // In handlePendingQuery()
 const storage = await chrome.storage.local.get(['trackedTabId'])
@@ -187,7 +187,7 @@ if (storage.trackedTabId) {
 
 **Polling Behavior:** Extension continues polling `/pending-queries` every 1 second regardless of which tab is active or tracked. Only query execution is routed to the tracked tab.
 
-**Use Cases:**
+#### Use Cases:
 - Debugging extension behavior on specific localhost development server
 - Isolating AI Web Pilot commands to a single test page
 - Troubleshooting state management for a particular application

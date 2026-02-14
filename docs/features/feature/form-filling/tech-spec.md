@@ -11,7 +11,7 @@ status: proposed
 
 Form filling is implemented as a new action (`fill_form`) under the existing `interact` tool. Server receives field specifications via MCP, creates async pending query, extension polls, executes filling logic in page context via inject.js, posts results back to server.
 
-Follows standard async command pattern: MCP returns immediately with correlation_id, extension polls `/pending-queries`, executes with 2s decision point + 10s total timeout, posts result to `/execute-result`, client polls via `observe({what: "command_result"})`.
+Follows standard async command pattern: MCP returns immediately with correlation_id, extension polls `/pending-queries`, executes with a 60s timeout window, posts result to `/execute-result`, client polls via `observe({what: "command_result"})`.
 
 ## Key Components
 
@@ -40,7 +40,7 @@ AI: interact({action: "fill_form", fields: [...]})
 
 ## Implementation Strategy
 
-**Field filling approach:**
+### Field filling approach:
 1. Iterate through fields array in order (order matters for conditional logic)
 2. For each field:
    - Query selector (try querySelector first, fallback to XPath)
@@ -55,12 +55,12 @@ AI: interact({action: "fill_form", fields: [...]})
    - Collect result: {selector, status: "filled"|"error", value, message}
 3. Return aggregated results: {status: "success"|"partial"|"error", results: [...]}
 
-**Event triggering:**
+### Event triggering:
 - Modern frameworks (React, Vue, Angular) require proper event sequences
 - Trigger: `input` event (React detects changes), `change` event (standard DOM), `blur` event (validation)
 - Use `new Event()` with `bubbles: true` to propagate through shadow DOM
 
-**Validation handling:**
+### Validation handling:
 - After setting value, call `element.checkValidity()` (HTML5 validation API)
 - If invalid, capture `element.validationMessage` and include in error result
 - Respect `required`, `pattern`, `min`, `max`, `minlength`, `maxlength` attributes
@@ -78,7 +78,7 @@ AI: interact({action: "fill_form", fields: [...]})
 ## Risks & Mitigations
 
 - **Risk 1**: Framework validation doesn't trigger → **Mitigation**: Trigger all standard events (input, change, blur) that frameworks listen to
-- **Risk 2**: Timeout on complex forms → **Mitigation**: Use 10s total timeout, fail fast on first error, return partial results
+- **Risk 2**: Timeout on complex forms → **Mitigation**: Use 60s timeout, fail fast on first error, return partial results
 - **Risk 3**: Value doesn't persist (React overwrites) → **Mitigation**: Trigger input event with `bubbles: true` to notify React of change
 - **Risk 4**: File upload security block → **Mitigation**: Document limitation, return clear error message
 - **Risk 5**: CAPTCHA blocks form submission → **Mitigation**: Out of scope, agent must handle separately
@@ -92,8 +92,8 @@ AI: interact({action: "fill_form", fields: [...]})
 ## Performance Considerations
 
 - Field filling is synchronous in inject.js (loops through fields)
-- Large forms (100+ fields) should complete within 2s decision point
-- If form triggers complex JS on field change, may approach 10s timeout
+- Large forms (100+ fields) should complete well within the 60s timeout
+- If form triggers complex JS on field change, monitor for timeout conditions
 - Return partial results if timeout occurs mid-filling
 
 ## Security Considerations

@@ -1,3 +1,4 @@
+# pylint: disable=duplicate-code
 """Custom error classes for Gasoline MCP CLI."""
 
 import os
@@ -20,14 +21,17 @@ class GasolineError(Exception):
         return output
 
 
-class PermissionError(GasolineError):
+class FilePermissionError(GasolineError):
     """Raised when permission is denied."""
 
     def __init__(self, path):
         msg = f"Permission denied writing {path}"
-        recovery = f"Try: sudo gasoline-mcp --install\nOr: Check permissions with: ls -la {os.path.dirname(path)}"
+        recovery = (
+            "Try: sudo gasoline-mcp --install\n"
+            f"Or: Check permissions with: ls -la {os.path.dirname(path)}"
+        )
         super().__init__(msg, recovery)
-        self.name = "PermissionError"
+        self.name = "FilePermissionError"
 
 
 class InvalidJSONError(GasolineError):
@@ -39,7 +43,11 @@ class InvalidJSONError(GasolineError):
             msg += f" at line {line_number}"
         if error_message:
             msg += f"\n   {error_message}"
-        recovery = f"Fix options:\n   1. Manually edit: code {path}\n   2. Restore from backup and try --install again\n   3. Run: gasoline-mcp --doctor (for more info)"
+        recovery = (
+            f"Fix options:\n   1. Manually edit: code {path}"
+            "\n   2. Restore from backup and try --install again"
+            "\n   3. Run: gasoline-mcp --doctor (for more info)"
+        )
         super().__init__(msg, recovery)
         self.name = "InvalidJSONError"
 
@@ -49,7 +57,10 @@ class BinaryNotFoundError(GasolineError):
 
     def __init__(self, expected_path):
         msg = f"Gasoline binary not found at {expected_path}"
-        recovery = "Reinstall: pip install -U gasoline-mcp\nOr build from source: go build ./cmd/dev-console"
+        recovery = (
+            "Reinstall: pip install -U gasoline-mcp\n"
+            "Or build from source: go build ./cmd/dev-console"
+        )
         super().__init__(msg, recovery)
         self.name = "BinaryNotFoundError"
 
@@ -59,7 +70,11 @@ class InvalidEnvFormatError(GasolineError):
 
     def __init__(self, env_str):
         msg = f'Invalid env format "{env_str}". Expected: KEY=VALUE'
-        recovery = "Examples of valid formats:\n   - --env DEBUG=1\n   - --env GASOLINE_SERVER=http://localhost:7890\n   - --env LOG_LEVEL=info"
+        recovery = (
+            "Examples of valid formats:\n   - --env DEBUG=1"
+            "\n   - --env GASOLINE_SERVER=http://localhost:7890"
+            "\n   - --env LOG_LEVEL=info"
+        )
         super().__init__(msg, recovery)
         self.name = "InvalidEnvFormatError"
 
@@ -99,6 +114,9 @@ class FileSizeError(GasolineError):
 
     def __init__(self, path, size):
         msg = f"File {path} is too large ({size} bytes, max 1MB)"
-        recovery = "The config file is too large. Please reduce its size or delete it and reinstall."
+        recovery = (
+            "The config file is too large."
+            " Please reduce its size or delete it and reinstall."
+        )
         super().__init__(msg, recovery)
         self.name = "FileSizeError"

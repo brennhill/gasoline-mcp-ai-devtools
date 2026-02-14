@@ -1,7 +1,7 @@
 #!/bin/bash
 # test-all-split.sh — Run all tests in two phases: Original + New
 
-set -e
+set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 

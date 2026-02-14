@@ -1,0 +1,246 @@
+// upload_form_submit.go — Stage 3 form submission logic with multipart streaming.
+package main
+
+import (
+	"context"
+	"fmt"
+	"io"
+	"mime/multipart"
+	"net/http"
+	"net/textproto"
+	"os"
+	"path/filepath"
+	"strings"
+	"time"
+)
+
+// uploadHTTPClient is a shared client for Stage 3 form submissions.
+// Reuses connections via the default transport pool.
+var uploadHTTPClient = &http.Client{
+	Timeout: 10 * time.Minute, // Large file uploads can take a while
+	Transport: newSSRFSafeTransport(func() bool {
+		return skipSSRFCheck
+	}),
+	CheckRedirect: func(req *http.Request, via []*http.Request) error {
+		// Prevent redirect to private IPs (SSRF via redirect)
+		if err := validateFormActionURL(req.URL.String()); err != nil {
+			return fmt.Errorf("redirect blocked: %w", err)
+		}
+		if len(via) >= 10 {
+			return fmt.Errorf("too many redirects")
+		}
+		return nil
+	},
+}
+
+// handleFormSubmitInternal is the core logic for form submission, testable without HTTP.
+// Stage 3 requires --upload-dir.
+func handleFormSubmitInternal(req FormSubmitRequest, sec *UploadSecurity) UploadStageResponse {
+	return handleFormSubmitInternalCtx(context.Background(), req, sec)
+}
+
+func formSubmitStage3Error(msg string) UploadStageResponse {
+	return UploadStageResponse{Success: false, Stage: 3, Error: msg}
+}
+
+func validateFormSubmitFields(req *FormSubmitRequest, sec *UploadSecurity) (*PathValidationResult, error) {
+	if req.FormAction == "" {
+		return nil, fmt.Errorf("missing required parameter: form_action")
+	}
+	if req.FilePath == "" {
+		return nil, fmt.Errorf("missing required parameter: file_path")
+	}
+	if req.FileInputName == "" {
+		return nil, fmt.Errorf("missing required parameter: file_input_name")
+	}
+
+	pathResult, pathErr := sec.ValidateFilePath(req.FilePath, true)
+	if pathErr != nil {
+		return nil, pathErr
+	}
+
+	if err := validateFormActionURL(req.FormAction); err != nil {
+		return nil, fmt.Errorf("invalid form_action URL: %w", err)
+	}
+
+	if req.Method == "" {
+		req.Method = "POST"
+	}
+	if err := validateHTTPMethod(req.Method); err != nil {
+		return nil, err
+	}
+
+	if err := validateCookieHeader(req.Cookies); err != nil {
+		return nil, err
+	}
+
+	for k := range req.Fields {
+		if strings.ContainsAny(k, "\r\n\x00\"") {
+			return nil, fmt.Errorf("form field name %q contains invalid characters", k)
+		}
+	}
+
+	return pathResult, nil
+}
+
+func openAndValidateFile(resolvedPath, displayPath string) (*os.File, os.FileInfo, error) {
+	// #nosec G304 -- file path validated by UploadSecurity chain
+	file, err := os.Open(resolvedPath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, nil, fmt.Errorf("file not found: %s", displayPath)
+		}
+		return nil, nil, fmt.Errorf("failed to open file: %s", displayPath)
+	}
+
+	info, err := file.Stat()
+	if err != nil {
+		file.Close() //nolint:errcheck // closing on error path
+		return nil, nil, fmt.Errorf("failed to stat file: %s", displayPath)
+	}
+
+	if err := checkHardlink(info); err != nil {
+		file.Close() //nolint:errcheck // closing on error path
+		return nil, nil, err
+	}
+
+	return file, info, nil
+}
+
+var httpStatusErrors = map[int]string{
+	401: "User not logged into platform (HTTP 401). Please log in and retry.",
+	403: "CSRF token mismatch or forbidden (HTTP 403). Token may be expired.",
+	422: "Form validation failed (HTTP 422). Check required fields.",
+}
+
+func buildHTTPErrorResponse(resp *http.Response, fileName string, fileSize int64, elapsed int64) UploadStageResponse {
+	bodyBytes := make([]byte, 1024)
+	n, _ := resp.Body.Read(bodyBytes)
+	bodyPreview := string(bodyBytes[:n])
+
+	errMsg, ok := httpStatusErrors[resp.StatusCode]
+	if !ok {
+		errMsg = fmt.Sprintf("Platform returned HTTP %d", resp.StatusCode)
+	}
+
+	return UploadStageResponse{
+		Success:       false,
+		Stage:         3,
+		Error:         errMsg,
+		FileName:      fileName,
+		FileSizeBytes: fileSize,
+		DurationMs:    elapsed,
+		Suggestions:   []string{"Check authentication", "Verify CSRF token", "Response: " + truncate(bodyPreview, 200)},
+	}
+}
+
+func streamMultipartForm(pw *io.PipeWriter, writer *multipart.Writer, req FormSubmitRequest, file *os.File) error {
+	defer pw.Close() //nolint:errcheck // pipe close
+
+	if req.CSRFToken != "" {
+		if err := writer.WriteField("csrf_token", req.CSRFToken); err != nil {
+			return err
+		}
+	}
+
+	for k, v := range req.Fields {
+		if err := writer.WriteField(k, v); err != nil {
+			return err
+		}
+	}
+
+	fileName := filepath.Base(req.FilePath)
+	mimeType := detectMimeType(fileName)
+	partHeader := make(textproto.MIMEHeader)
+	safeName := sanitizeForContentDisposition(req.FileInputName)
+	safeFileName := sanitizeForContentDisposition(fileName)
+	partHeader.Set("Content-Disposition",
+		fmt.Sprintf(`form-data; name="%s"; filename="%s"`, safeName, safeFileName))
+	partHeader.Set("Content-Type", mimeType)
+
+	fw, err := writer.CreatePart(partHeader)
+	if err != nil {
+		return err
+	}
+
+	if _, err := io.Copy(fw, file); err != nil {
+		return err
+	}
+
+	return writer.Close()
+}
+
+func executeFormSubmit(ctx context.Context, req FormSubmitRequest, file *os.File, info os.FileInfo, writer *multipart.Writer, pr *io.PipeReader, pw *io.PipeWriter, start time.Time) UploadStageResponse {
+	writeErrCh := make(chan error, 1)
+	go func() { // lint:allow-bare-goroutine — short-lived pipe writer, error captured via channel
+		writeErrCh <- streamMultipartForm(pw, writer, req, file)
+	}()
+
+	httpReq, err := http.NewRequestWithContext(ctx, req.Method, req.FormAction, pr)
+	if err != nil {
+		_ = pr.Close()
+		<-writeErrCh
+		return formSubmitStage3Error("Failed to create HTTP request: " + err.Error())
+	}
+
+	httpReq.Header.Set("Content-Type", writer.FormDataContentType())
+	if req.Cookies != "" {
+		httpReq.Header.Set("Cookie", req.Cookies)
+	}
+
+	// #nosec G704 -- req.FormAction is pre-validated by validateFormActionURL and redirect callback revalidates
+	httpResp, err := uploadHTTPClient.Do(httpReq)
+	if err != nil {
+		<-writeErrCh
+		return UploadStageResponse{
+			Success: false, Stage: 3,
+			Error: "Form submission failed: " + err.Error(), FileName: filepath.Base(req.FilePath),
+			FileSizeBytes: info.Size(), DurationMs: time.Since(start).Milliseconds(),
+		}
+	}
+	defer httpResp.Body.Close() //nolint:errcheck // deferred close
+
+	if writeErr := <-writeErrCh; writeErr != nil {
+		return UploadStageResponse{
+			Success: false, Stage: 3,
+			Error: "Error writing form data: " + writeErr.Error(), DurationMs: time.Since(start).Milliseconds(),
+		}
+	}
+
+	if httpResp.StatusCode >= 400 {
+		return buildHTTPErrorResponse(httpResp, filepath.Base(req.FilePath), info.Size(), time.Since(start).Milliseconds())
+	}
+
+	return UploadStageResponse{
+		Success: true, Stage: 3,
+		Status:        fmt.Sprintf("Form interception: %s submitted to platform (HTTP %d)", req.Method, httpResp.StatusCode),
+		FileName:      filepath.Base(req.FilePath),
+		FileSizeBytes: info.Size(), DurationMs: time.Since(start).Milliseconds(),
+	}
+}
+
+// handleFormSubmitInternalCtx is the context-aware form submission handler.
+func handleFormSubmitInternalCtx(ctx context.Context, req FormSubmitRequest, sec *UploadSecurity) UploadStageResponse {
+	start := time.Now()
+
+	pathResult, err := validateFormSubmitFields(&req, sec)
+	if err != nil {
+		return formSubmitStage3Error(err.Error())
+	}
+
+	file, info, err := openAndValidateFile(pathResult.ResolvedPath, req.FilePath)
+	if err != nil {
+		return formSubmitStage3Error(err.Error())
+	}
+	defer file.Close() //nolint:errcheck // deferred close
+
+	pr, pw := io.Pipe()
+	writer := multipart.NewWriter(pw)
+
+	return executeFormSubmit(ctx, req, file, info, writer, pr, pw, start)
+}
+
+// handleFormSubmitInternalMethod is the ToolHandler method wrapper for testing
+func (h *ToolHandler) handleFormSubmitInternal(req FormSubmitRequest) UploadStageResponse {
+	return handleFormSubmitInternal(req, h.uploadSecurity)
+}

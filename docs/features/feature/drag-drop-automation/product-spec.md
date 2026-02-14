@@ -50,7 +50,7 @@ Add `drag_drop` action to the `interact` tool. Agent specifies source element (w
 
 ## Examples
 
-**Trello-style card move:**
+### Trello-style card move:
 ```json
 {
   "action": "drag_drop",
@@ -59,7 +59,7 @@ Add `drag_drop` action to the `interact` tool. Agent specifies source element (w
 }
 ```
 
-**Sortable list reorder:**
+### Sortable list reorder:
 ```json
 {
   "action": "drag_drop",
@@ -69,7 +69,7 @@ Add `drag_drop` action to the `interact` tool. Agent specifies source element (w
 }
 ```
 
-**File drop simulation:**
+### File drop simulation:
 ```json
 {
   "action": "drag_drop",
@@ -81,7 +81,7 @@ Add `drag_drop` action to the `interact` tool. Agent specifies source element (w
 }
 ```
 
-**Coordinate-based drop (canvas):**
+### Coordinate-based drop (canvas):
 ```json
 {
   "action": "drag_drop",
@@ -96,5 +96,5 @@ Add `drag_drop` action to the `interact` tool. Agent specifies source element (w
 ## Notes
 
 - Supports both HTML5 and legacy mouse event patterns
-- Uses async command architecture (2s/10s timeouts)
+- Uses async command architecture (60s timeout window)
 - AI Web Pilot toggle must be enabled

@@ -41,7 +41,7 @@ Test Execution (CI)
 ### 1. Snapshot Capture Engine
 **What it does:** Records full browser + network + logs state at named checkpoints
 
-**Inside the engine:**
+#### Inside the engine:
 - **DOM Serializer:** Walks DOM tree, captures structure + attributes (but prunes non-essential data like internal framework props)
 - **Network Interceptor:** Captures requests + responses (matching existing Gasoline network logging)
 - **Log Collector:** Gathers console.log/warn/error (already done by Gasoline)
@@ -49,7 +49,7 @@ Test Execution (CI)
 - **Compression:** Snapshots gzipped before storage (reduce size ~80%)
 - **Storage:** In-memory (ephemeral), tied to test execution lifecycle
 
-**Data model:**
+#### Data model:
 ```
 Snapshot {
   id: uuid
@@ -80,19 +80,19 @@ Snapshot {
 ### 2. Test Boundary Manager
 **What it does:** Tags logs/network calls as "test-specific" or "background"
 
-**How it works:**
+#### How it works:
 - Developer calls `gasoline.testBoundary('test-name')`
 - Gasoline adds tag to subsequent log entries: `{level, message, boundary: 'test-name'}`
 - Developer ends test (Jest afterEach, Playwright teardown, etc.)
 - Gasoline removes tag for next test
 - When AI queries logs, can filter: `logs.filter(l => l.boundary === 'test-name')`
 
-**Noise filtering:**
+#### Noise filtering:
 - Exclude log sources: /analytics, /metrics, /telemetry, /sentry, background jobs, timers
 - Exclude patterns: "Analytics event", "Heartbeat", "Background sync"
 - Result: 80%+ reduction in irrelevant logs (from 1000 lines → 50-100 relevant lines)
 
-**Data model:**
+#### Data model:
 ```
 LogEntry {
   level: 'info' | 'warn' | 'error' | 'debug'
@@ -106,7 +106,7 @@ LogEntry {
 ### 3. Network Mocking Service
 **What it does:** Intercepts HTTP requests, returns mocked responses
 
-**Implementation approach:**
+#### Implementation approach:
 - Leverage existing Gasoline network interception (already intercepts Fetch + XHR)
 - Add mock registry: `{endpoint: '/api/users', response: {...}}`
 - On request to /api/users:
@@ -115,14 +115,14 @@ LogEntry {
   - If no: forward to real backend
 - Automatic cleanup: mocks cleared after test ends
 
-**Capabilities:**
+#### Capabilities:
 - Mock any endpoint (request path + method)
 - Return custom status code (200, 400, 500, etc.)
 - Return custom response body
 - Simulate error paths (timeouts, partial responses)
 - Delay response (simulate slow API)
 
-**Data model:**
+#### Data model:
 ```
 Mock {
   endpoint: string          // e.g., '/api/order'
@@ -140,27 +140,27 @@ Mock {
 ### 4. Async Command Executor
 **What it does:** Wraps long-running operations so they don't block MCP server
 
-**Problem it solves:**
+#### Problem it solves:
 - `gasoline.rerunTest('checkout.spec.ts')` takes 30+ seconds
 - If called synchronously, MCP server blocked (no other requests processed)
 - LLM can't send new queries while waiting
 
-**Solution:**
+#### Solution:
 - Wrap in async handler: `await gasoline.async(() => rerunTest())`
 - Operation runs in background thread/goroutine
 - MCP server remains responsive
 - Result returned asynchronously via callback or polling
 
-**Timeout protection:**
+#### Timeout protection:
 - Operations exceeding 5 minutes fail gracefully (return error, don't hang)
 - MCP server never permanently blocked
 
-**Concurrency:**
+#### Concurrency:
 - Multiple async operations can run concurrently
 - Each gets its own execution context (no shared state)
 - Results independent per operation
 
-**Data model:**
+#### Data model:
 ```
 AsyncOperation {
   id: uuid
@@ -230,7 +230,7 @@ test('my test', async ({ page, gasoline }) => {
 });
 ```
 
-**How it works:**
+##### How it works:
 - Base fixture extends @playwright/test
 - Gasoline fixture initializes on test start
 - Provides `gasoline` object with all APIs

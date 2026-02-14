@@ -3,7 +3,7 @@
   "info": {
     "title": "Gasoline MCP Server",
     "description": "Browser observability for AI agents. Streams console logs, network errors, and user actions from Chrome to Claude Code, Cursor, and Copilot via MCP protocol.",
-    "version": "5.8.1",
+    "version": "0.7.0",
     "license": {
       "name": "MIT"
     }
@@ -20,25 +20,44 @@
       }
     }
   ],
+  "x-planes": {
+    "control": "Server lifecycle, health, and protocol endpoints",
+    "data-ingest": "Extension → Server telemetry ingestion (POST only)",
+    "data-read": "Server → MCP client telemetry reads (GET only)",
+    "data-sync": "Bidirectional extension ↔ server sync",
+    "data-results": "Extension → Server query/command result submission",
+    "management": "Multi-client and session management",
+    "media": "Screenshot, video recording, and annotation capture",
+    "ci": "CI/CD infrastructure: snapshots, buffer clear, test boundaries",
+    "automation": "File and form automation (Stage 4 OS automation gated by --enable-os-upload-automation)"
+  },
   "tags": [
-    { "name": "Core", "description": "Server health, discovery, and lifecycle" },
-    { "name": "MCP", "description": "MCP JSON-RPC 2.0 protocol bridge" },
-    { "name": "Logs", "description": "Console log ingestion and retrieval" },
-    { "name": "Network", "description": "Network waterfall and request body capture" },
-    { "name": "WebSocket", "description": "WebSocket event and connection monitoring" },
-    { "name": "Actions", "description": "User action recording and retrieval" },
-    { "name": "Performance", "description": "Web Vitals and performance snapshots" },
-    { "name": "Queries", "description": "Pending query polling and result submission" },
-    { "name": "Media", "description": "Screenshot and video recording" },
-    { "name": "Clients", "description": "Multi-client registration and management" },
-    { "name": "CI", "description": "CI infrastructure: snapshots, clear, test boundaries" },
-    { "name": "Sync", "description": "Unified extension sync endpoint" },
-    { "name": "Extension", "description": "Extension status and internal logs" }
+    { "name": "Control", "description": "Server health, discovery, lifecycle, and protocol", "x-plane": "control" },
+    {
+      "name": "Data Ingest",
+      "description": "Extension → Server telemetry ingestion (POST only)",
+      "x-plane": "data-ingest"
+    },
+    { "name": "Data Read", "description": "Unified telemetry buffer reads", "x-plane": "data-read" },
+    { "name": "Data Sync", "description": "Bidirectional extension sync", "x-plane": "data-sync" },
+    { "name": "Data Results", "description": "Query/command result submission", "x-plane": "data-results" },
+    {
+      "name": "Management",
+      "description": "Multi-client registration and session management",
+      "x-plane": "management"
+    },
+    { "name": "Media", "description": "Screenshot, video recording, and annotation capture", "x-plane": "media" },
+    { "name": "CI", "description": "CI infrastructure: snapshots, clear, test boundaries", "x-plane": "ci" },
+    {
+      "name": "Automation",
+      "description": "Upload automation endpoints (Stage 4 requires --enable-os-upload-automation flag)",
+      "x-plane": "automation"
+    }
   ],
   "paths": {
     "/": {
       "get": {
-        "tags": ["Core"],
+        "tags": ["Control"],
         "summary": "API discovery",
         "description": "Returns server name, version, and links to key endpoints.",
         "operationId": "getRoot",
@@ -51,7 +70,7 @@
                   "type": "object",
                   "properties": {
                     "name": { "type": "string", "example": "gasoline" },
-                    "version": { "type": "string", "example": "5.8.1" },
+                    "version": { "type": "string", "example": "0.7.0" },
                     "health": { "type": "string", "example": "/health" },
                     "logs": { "type": "string", "example": "/logs" }
                   }
@@ -64,7 +83,7 @@
     },
     "/health": {
       "get": {
-        "tags": ["Core"],
+        "tags": ["Control"],
         "summary": "Health check",
         "description": "Returns server status, version, log stats, and capture state.",
         "operationId": "getHealth",
@@ -82,7 +101,7 @@
     },
     "/diagnostics": {
       "get": {
-        "tags": ["Core"],
+        "tags": ["Control"],
         "summary": "Diagnostic report",
         "description": "Comprehensive diagnostic information for bug reports: system info, buffer counts, extension state, circuit breaker status.",
         "operationId": "getDiagnostics",
@@ -100,7 +119,7 @@
     },
     "/shutdown": {
       "post": {
-        "tags": ["Core"],
+        "tags": ["Control"],
         "summary": "Graceful shutdown",
         "description": "Initiates graceful server shutdown. Sends SIGTERM after response.",
         "operationId": "postShutdown",
@@ -124,7 +143,7 @@
     },
     "/openapi.json": {
       "get": {
-        "tags": ["Core"],
+        "tags": ["Control"],
         "summary": "OpenAPI specification",
         "description": "Returns this OpenAPI 3.1.0 specification as JSON.",
         "operationId": "getOpenAPI",
@@ -142,7 +161,7 @@
     },
     "/mcp": {
       "post": {
-        "tags": ["MCP"],
+        "tags": ["Control"],
         "summary": "MCP JSON-RPC bridge",
         "description": "MCP protocol bridge for HTTP clients. Accepts JSON-RPC 2.0 requests with methods: observe, generate, configure, interact.",
         "operationId": "postMcp",
@@ -167,33 +186,8 @@
       }
     },
     "/logs": {
-      "get": {
-        "tags": ["Logs"],
-        "summary": "Get log entries",
-        "description": "Retrieve all buffered console log entries.",
-        "operationId": "getLogs",
-        "responses": {
-          "200": {
-            "description": "Log entries",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "entries": {
-                      "type": "array",
-                      "items": { "$ref": "#/components/schemas/LogEntry" }
-                    },
-                    "count": { "type": "integer" }
-                  }
-                }
-              }
-            }
-          }
-        }
-      },
       "post": {
-        "tags": ["Logs"],
+        "tags": ["Data Ingest"],
         "summary": "Add log entries",
         "description": "Ingest console log entries from the browser extension.",
         "operationId": "postLogs",
@@ -233,7 +227,7 @@
         }
       },
       "delete": {
-        "tags": ["Logs"],
+        "tags": ["Data Ingest"],
         "summary": "Clear logs",
         "description": "Clear all buffered log entries.",
         "operationId": "deleteLogs",
@@ -255,34 +249,8 @@
       }
     },
     "/network-waterfall": {
-      "get": {
-        "tags": ["Network"],
-        "summary": "Get network waterfall",
-        "description": "Retrieve network waterfall entries with PerformanceResourceTiming data.",
-        "operationId": "getNetworkWaterfall",
-        "security": [{ "extensionClient": [] }],
-        "responses": {
-          "200": {
-            "description": "Waterfall entries",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "waterfall": {
-                      "type": "array",
-                      "items": { "$ref": "#/components/schemas/WaterfallEntry" }
-                    },
-                    "count": { "type": "integer" }
-                  }
-                }
-              }
-            }
-          }
-        }
-      },
       "post": {
-        "tags": ["Network"],
+        "tags": ["Data Ingest"],
         "summary": "Record waterfall entries",
         "description": "Record network waterfall entries from the browser extension.",
         "operationId": "postNetworkWaterfall",
@@ -323,34 +291,8 @@
       }
     },
     "/network-bodies": {
-      "get": {
-        "tags": ["Network"],
-        "summary": "Get network bodies",
-        "description": "Retrieve captured network request/response bodies.",
-        "operationId": "getNetworkBodies",
-        "security": [{ "extensionClient": [] }],
-        "responses": {
-          "200": {
-            "description": "Network bodies",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "bodies": {
-                      "type": "array",
-                      "items": { "$ref": "#/components/schemas/NetworkBody" }
-                    },
-                    "count": { "type": "integer" }
-                  }
-                }
-              }
-            }
-          }
-        }
-      },
       "post": {
-        "tags": ["Network"],
+        "tags": ["Data Ingest"],
         "summary": "Record network bodies",
         "description": "Record network request/response bodies from the browser extension.",
         "operationId": "postNetworkBodies",
@@ -390,34 +332,8 @@
       }
     },
     "/websocket-events": {
-      "get": {
-        "tags": ["WebSocket"],
-        "summary": "Get WebSocket events",
-        "description": "Retrieve captured WebSocket events (newest first).",
-        "operationId": "getWebSocketEvents",
-        "security": [{ "extensionClient": [] }],
-        "responses": {
-          "200": {
-            "description": "WebSocket events",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "events": {
-                      "type": "array",
-                      "items": { "$ref": "#/components/schemas/WebSocketEvent" }
-                    },
-                    "count": { "type": "integer" }
-                  }
-                }
-              }
-            }
-          }
-        }
-      },
       "post": {
-        "tags": ["WebSocket"],
+        "tags": ["Data Ingest"],
         "summary": "Record WebSocket events",
         "description": "Record WebSocket events from the browser extension.",
         "operationId": "postWebSocketEvents",
@@ -445,9 +361,64 @@
         }
       }
     },
+    "/telemetry": {
+      "get": {
+        "tags": ["Data Read"],
+        "summary": "Read telemetry buffers",
+        "description": "Unified read endpoint for all telemetry buffers. Replaces individual GET endpoints on /logs, /network-waterfall, /network-bodies, /websocket-events, /enhanced-actions, /performance-snapshots.",
+        "operationId": "getTelemetry",
+        "parameters": [
+          {
+            "name": "type",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "logs",
+                "network_waterfall",
+                "network_bodies",
+                "websocket_events",
+                "actions",
+                "performance_snapshots",
+                "extension_logs",
+                "websocket_status"
+              ]
+            },
+            "description": "Telemetry buffer to read"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": { "type": "integer", "minimum": 1 },
+            "description": "Maximum entries to return (returns most recent N)"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Telemetry data",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "type": { "type": "string" },
+                    "items": { "type": "array" },
+                    "count": { "type": "integer" }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Missing or invalid type parameter"
+          }
+        }
+      }
+    },
     "/websocket-status": {
       "get": {
-        "tags": ["WebSocket"],
+        "tags": ["Data Read"],
         "summary": "Get WebSocket connection status",
         "description": "Returns active and recently-closed WebSocket connections with message rates and sampling info.",
         "operationId": "getWebSocketStatus",
@@ -465,34 +436,8 @@
       }
     },
     "/enhanced-actions": {
-      "get": {
-        "tags": ["Actions"],
-        "summary": "Get user actions",
-        "description": "Retrieve recorded user actions (clicks, types, scrolls, etc.).",
-        "operationId": "getEnhancedActions",
-        "security": [{ "extensionClient": [] }],
-        "responses": {
-          "200": {
-            "description": "User actions",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "actions": {
-                      "type": "array",
-                      "items": { "$ref": "#/components/schemas/EnhancedAction" }
-                    },
-                    "count": { "type": "integer" }
-                  }
-                }
-              }
-            }
-          }
-        }
-      },
       "post": {
-        "tags": ["Actions"],
+        "tags": ["Data Ingest"],
         "summary": "Record user actions",
         "description": "Record user actions from the browser extension.",
         "operationId": "postEnhancedActions",
@@ -532,34 +477,8 @@
       }
     },
     "/performance-snapshots": {
-      "get": {
-        "tags": ["Performance"],
-        "summary": "Get performance snapshots",
-        "description": "Retrieve Web Vitals performance snapshots.",
-        "operationId": "getPerformanceSnapshots",
-        "security": [{ "extensionClient": [] }],
-        "responses": {
-          "200": {
-            "description": "Performance data",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "snapshots": {
-                      "type": "array",
-                      "items": { "$ref": "#/components/schemas/PerformanceSnapshot" }
-                    },
-                    "count": { "type": "integer" }
-                  }
-                }
-              }
-            }
-          }
-        }
-      },
       "post": {
-        "tags": ["Performance"],
+        "tags": ["Data Ingest"],
         "summary": "Record performance snapshots",
         "description": "Record Web Vitals snapshots from the browser extension.",
         "operationId": "postPerformanceSnapshots",
@@ -598,154 +517,18 @@
         }
       }
     },
-    "/pending-queries": {
-      "get": {
-        "tags": ["Queries"],
-        "summary": "Poll pending queries",
-        "description": "Extension polls for pending DOM, accessibility, execute, highlight, state, and recording queries.",
-        "operationId": "getPendingQueries",
-        "security": [{ "extensionClient": [] }],
-        "responses": {
-          "200": {
-            "description": "Pending queries",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "queries": {
-                      "type": "array",
-                      "items": { "$ref": "#/components/schemas/PendingQuery" }
-                    },
-                    "count": { "type": "integer" }
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/dom-result": {
+    "/query-result": {
       "post": {
-        "tags": ["Queries"],
-        "summary": "Submit DOM query result",
-        "description": "Extension submits the result of a DOM query.",
-        "operationId": "postDomResult",
-        "security": [{ "extensionClient": [] }],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": { "$ref": "#/components/schemas/QueryResult" }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Accepted",
-            "content": {
-              "application/json": {
-                "schema": { "$ref": "#/components/schemas/StatusOk" }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/a11y-result": {
-      "post": {
-        "tags": ["Queries"],
-        "summary": "Submit accessibility result",
-        "description": "Extension submits the result of an accessibility audit.",
-        "operationId": "postA11yResult",
-        "security": [{ "extensionClient": [] }],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": { "$ref": "#/components/schemas/QueryResult" }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Accepted",
-            "content": {
-              "application/json": {
-                "schema": { "$ref": "#/components/schemas/StatusOk" }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/execute-result": {
-      "post": {
-        "tags": ["Queries"],
-        "summary": "Submit execute result",
-        "description": "Extension submits the result of a script execution or async command.",
-        "operationId": "postExecuteResult",
+        "tags": ["Data Results"],
+        "summary": "Submit query/command result",
+        "description": "Unified endpoint for extension to submit results of any query or async command. Replaces separate dom-result, a11y-result, state-result, execute-result, highlight-result endpoints.",
+        "operationId": "postQueryResult",
         "security": [{ "extensionClient": [] }],
         "requestBody": {
           "required": true,
           "content": {
             "application/json": {
               "schema": { "$ref": "#/components/schemas/AsyncCommandResult" }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Accepted",
-            "content": {
-              "application/json": {
-                "schema": { "$ref": "#/components/schemas/StatusOk" }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/highlight-result": {
-      "post": {
-        "tags": ["Queries"],
-        "summary": "Submit highlight result",
-        "description": "Extension submits the result of an element highlight operation.",
-        "operationId": "postHighlightResult",
-        "security": [{ "extensionClient": [] }],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": { "$ref": "#/components/schemas/QueryResult" }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Accepted",
-            "content": {
-              "application/json": {
-                "schema": { "$ref": "#/components/schemas/StatusOk" }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/state-result": {
-      "post": {
-        "tags": ["Queries"],
-        "summary": "Submit state result",
-        "description": "Extension submits the result of a state management operation.",
-        "operationId": "postStateResult",
-        "security": [{ "extensionClient": [] }],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": { "$ref": "#/components/schemas/QueryResult" }
             }
           }
         },
@@ -852,7 +635,7 @@
     },
     "/clients": {
       "get": {
-        "tags": ["Clients"],
+        "tags": ["Management"],
         "summary": "List MCP clients",
         "description": "List all registered MCP clients.",
         "operationId": "getClients",
@@ -878,7 +661,7 @@
         }
       },
       "post": {
-        "tags": ["Clients"],
+        "tags": ["Management"],
         "summary": "Register MCP client",
         "description": "Register a new MCP client with a working directory.",
         "operationId": "postClients",
@@ -916,7 +699,7 @@
     },
     "/clients/{id}": {
       "get": {
-        "tags": ["Clients"],
+        "tags": ["Management"],
         "summary": "Get client",
         "description": "Get a specific MCP client registration.",
         "operationId": "getClient",
@@ -944,7 +727,7 @@
         }
       },
       "delete": {
-        "tags": ["Clients"],
+        "tags": ["Management"],
         "summary": "Unregister client",
         "description": "Unregister an MCP client.",
         "operationId": "deleteClient",
@@ -976,7 +759,7 @@
     },
     "/sync": {
       "post": {
-        "tags": ["Sync"],
+        "tags": ["Data Sync"],
         "summary": "Extension sync",
         "description": "Unified bidirectional sync endpoint. Replaces separate polling for pending-queries, settings, extension-logs, and extension-status. The extension sends its state and receives commands in a single round-trip.",
         "operationId": "postSync",
@@ -1097,36 +880,12 @@
         }
       }
     },
-    "/pilot-status": {
-      "get": {
-        "tags": ["Extension"],
-        "summary": "Get AI Pilot status",
-        "description": "Check if AI Web Pilot is enabled in the extension.",
-        "operationId": "getPilotStatus",
-        "security": [{ "extensionClient": [] }],
-        "responses": {
-          "200": {
-            "description": "Pilot status",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "enabled": { "type": "boolean" }
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/extension-logs": {
+    "/draw-mode/complete": {
       "post": {
-        "tags": ["Extension"],
-        "summary": "Record extension logs",
-        "description": "Record internal logs from extension background/content scripts.",
-        "operationId": "postExtensionLogs",
+        "tags": ["Media"],
+        "summary": "Complete draw mode session",
+        "description": "Receives annotation data and screenshot from the extension when the user finishes a draw mode session.",
+        "operationId": "postDrawModeComplete",
         "security": [{ "extensionClient": [] }],
         "requestBody": {
           "required": true,
@@ -1135,33 +894,42 @@
               "schema": {
                 "type": "object",
                 "properties": {
-                  "logs": {
+                  "screenshot_data_url": { "type": "string", "description": "Base64 data URL of the screenshot" },
+                  "annotations": {
                     "type": "array",
-                    "items": {
-                      "type": "object",
-                      "properties": {
-                        "timestamp": { "type": "string", "format": "date-time" },
-                        "level": { "type": "string" },
-                        "message": { "type": "string" },
-                        "context": { "type": "string" }
-                      }
-                    }
-                  }
-                }
+                    "items": { "type": "object" },
+                    "description": "Annotation objects from the draw session"
+                  },
+                  "element_details": {
+                    "type": "object",
+                    "additionalProperties": { "type": "object" },
+                    "description": "Map of correlation_id to element detail objects"
+                  },
+                  "page_url": { "type": "string" },
+                  "tab_id": { "type": "integer" },
+                  "session_name": { "type": "string" }
+                },
+                "required": ["tab_id"]
               }
             }
           }
         },
         "responses": {
           "200": {
-            "description": "Logs recorded",
+            "description": "Annotations stored",
             "content": {
               "application/json": {
                 "schema": {
                   "type": "object",
                   "properties": {
-                    "status": { "type": "string", "example": "ok" },
-                    "logs_stored": { "type": "integer" }
+                    "status": { "type": "string", "example": "stored" },
+                    "annotation_count": { "type": "integer" },
+                    "screenshot": { "type": "string", "description": "Path to saved screenshot" },
+                    "warnings": {
+                      "type": "array",
+                      "items": { "type": "string" },
+                      "description": "Parse warnings for malformed annotations"
+                    }
                   }
                 }
               }
@@ -1170,49 +938,271 @@
         }
       }
     },
-    "/api/extension-status": {
+    "/recordings/storage": {
       "get": {
-        "tags": ["Extension"],
-        "summary": "Get extension status",
-        "description": "Get current extension tracking status.",
-        "operationId": "getExtensionStatus",
+        "tags": ["Media"],
+        "summary": "Get recording storage info",
+        "description": "Returns storage usage information for saved recordings.",
+        "operationId": "getRecordingStorage",
         "security": [{ "extensionClient": [] }],
         "responses": {
           "200": {
-            "description": "Extension status",
+            "description": "Storage info",
             "content": {
               "application/json": {
-                "schema": { "$ref": "#/components/schemas/ExtensionStatus" }
+                "schema": { "type": "object" }
               }
             }
           }
         }
       },
+      "delete": {
+        "tags": ["Media"],
+        "summary": "Delete recording",
+        "description": "Delete a specific recording by ID.",
+        "operationId": "deleteRecordingStorage",
+        "security": [{ "extensionClient": [] }],
+        "parameters": [
+          {
+            "name": "recording_id",
+            "in": "query",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Recording deleted"
+          }
+        }
+      },
       "post": {
-        "tags": ["Extension"],
-        "summary": "Update extension status",
-        "description": "Update extension tracking state.",
-        "operationId": "postExtensionStatus",
+        "tags": ["Media"],
+        "summary": "Recalculate recording storage",
+        "description": "Recalculate storage usage for all saved recordings.",
+        "operationId": "postRecordingStorage",
+        "security": [{ "extensionClient": [] }],
+        "responses": {
+          "200": {
+            "description": "Storage recalculated"
+          }
+        }
+      }
+    },
+    "/recordings/reveal": {
+      "post": {
+        "tags": ["Media"],
+        "summary": "Reveal recording in file manager",
+        "description": "Opens the recording file in the system file manager (Finder on macOS, Explorer on Windows).",
+        "operationId": "postRecordingReveal",
         "security": [{ "extensionClient": [] }],
         "requestBody": {
           "required": true,
           "content": {
             "application/json": {
-              "schema": { "$ref": "#/components/schemas/ExtensionStatus" }
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "path": { "type": "string", "description": "Path to the recording file" }
+                },
+                "required": ["path"]
+              }
             }
           }
         },
         "responses": {
           "200": {
-            "description": "Status received",
+            "description": "File revealed",
             "content": {
               "application/json": {
                 "schema": {
                   "type": "object",
                   "properties": {
-                    "received": { "type": "boolean", "example": true }
+                    "status": { "type": "string", "example": "revealed" },
+                    "path": { "type": "string" }
                   }
                 }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/file/read": {
+      "post": {
+        "tags": ["Automation"],
+        "summary": "Read file for upload",
+        "description": "Read a local file for upload automation (Stage 1, always available).",
+        "operationId": "postFileRead",
+        "security": [{ "extensionClient": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "file_path": { "type": "string" }
+                },
+                "required": ["file_path"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "File data",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean" },
+                    "file_name": { "type": "string" },
+                    "file_size": { "type": "integer", "format": "int64" },
+                    "mime_type": { "type": "string" },
+                    "data_base64": { "type": "string" },
+                    "error": { "type": "string" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/file/dialog/inject": {
+      "post": {
+        "tags": ["Automation"],
+        "summary": "Inject file dialog",
+        "description": "Inject a file path into a native file dialog (Stage 2, always available).",
+        "operationId": "postFileDialogInject",
+        "security": [{ "extensionClient": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "file_path": { "type": "string" },
+                  "browser_pid": { "type": "integer" }
+                },
+                "required": ["file_path", "browser_pid"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Injection result",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/UploadStageResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/form/submit": {
+      "post": {
+        "tags": ["Automation"],
+        "summary": "Submit form with file",
+        "description": "Submit an HTML form with file upload via multipart (Stage 3, always available).",
+        "operationId": "postFormSubmit",
+        "security": [{ "extensionClient": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "form_action": { "type": "string" },
+                  "method": { "type": "string" },
+                  "fields": {
+                    "type": "object",
+                    "additionalProperties": { "type": "string" }
+                  },
+                  "file_input_name": { "type": "string" },
+                  "file_path": { "type": "string" },
+                  "csrf_token": { "type": "string" },
+                  "cookies": { "type": "string" }
+                },
+                "required": ["form_action", "file_input_name", "file_path"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Submission result",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/UploadStageResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/os-automation/inject": {
+      "post": {
+        "tags": ["Automation"],
+        "summary": "OS-level file dialog automation",
+        "description": "Use OS automation (AppleScript/xdotool) to inject file path into native dialog. Requires --enable-os-upload-automation flag.",
+        "operationId": "postOSAutomationInject",
+        "security": [{ "extensionClient": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "file_path": { "type": "string" },
+                  "browser_pid": { "type": "integer" },
+                  "retry_count": { "type": "integer" }
+                },
+                "required": ["file_path", "browser_pid"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Automation result",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/UploadStageResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/os-automation/dismiss": {
+      "post": {
+        "tags": ["Automation"],
+        "summary": "Dismiss dangling native file dialog",
+        "description": "Sends Escape key to close a dangling native file dialog after a failed upload automation (Stage 4 cleanup). Requires --enable-os-upload-automation flag.",
+        "operationId": "postOSAutomationDismiss",
+        "security": [{ "extensionClient": [] }],
+        "responses": {
+          "200": {
+            "description": "Dialog dismissed successfully",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/UploadStageResponse" }
+              }
+            }
+          },
+          "403": {
+            "description": "OS automation is disabled",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/UploadStageResponse" }
               }
             }
           }
@@ -1241,14 +1231,19 @@
         "properties": {
           "status": { "type": "string", "example": "ok" },
           "version": { "type": "string" },
-          "availableVersion": { "type": "string" },
+          "available_version": { "type": "string" },
           "logs": {
             "type": "object",
             "properties": {
               "entries": { "type": "integer" },
-              "maxEntries": { "type": "integer" },
-              "logFile": { "type": "string" },
-              "logFileSize": { "type": "integer", "format": "int64" }
+              "max_entries": { "type": "integer" },
+              "log_file": { "type": "string" },
+              "log_file_size": { "type": "integer", "format": "int64" },
+              "dropped_count": {
+                "type": "integer",
+                "format": "int64",
+                "description": "Total log entries dropped due to buffer overflow"
+              }
             }
           },
           "capture": {
@@ -1301,7 +1296,7 @@
         "properties": {
           "jsonrpc": { "type": "string", "enum": ["2.0"] },
           "id": { "oneOf": [{ "type": "string" }, { "type": "integer" }] },
-          "method": { "type": "string", "enum": ["observe", "generate", "configure", "interact"] },
+          "method": { "type": "string", "enum": ["observe", "generate", "configure", "interact", "analyze"] },
           "params": { "type": "object" }
         }
       },
@@ -1410,7 +1405,29 @@
         "type": "object",
         "properties": {
           "id": { "type": "string" },
-          "type": { "type": "string", "enum": ["dom", "a11y", "execute", "highlight", "state", "record_start", "record_stop", "browser_action", "page_info", "tabs", "subtitle", "screenshot", "dom_action", "state_capture", "state_save", "state_load", "state_list", "state_delete"] },
+          "type": {
+            "type": "string",
+            "enum": [
+              "dom",
+              "a11y",
+              "execute",
+              "highlight",
+              "state",
+              "record_start",
+              "record_stop",
+              "browser_action",
+              "page_info",
+              "tabs",
+              "subtitle",
+              "screenshot",
+              "dom_action",
+              "state_capture",
+              "state_save",
+              "state_load",
+              "state_list",
+              "state_delete"
+            ]
+          },
           "params": { "type": "object" },
           "correlation_id": { "type": "string" }
         }
@@ -1475,8 +1492,16 @@
               "tracking_enabled": { "type": "boolean" },
               "tracked_tab_id": { "type": "integer" },
               "tracked_tab_url": { "type": "string" },
-              "tracked_tab_title": { "type": "string" }
+              "tracked_tab_title": { "type": "string" },
+              "capture_logs": { "type": "boolean", "description": "Whether console log capture is enabled" },
+              "capture_network": { "type": "boolean", "description": "Whether network capture is enabled" },
+              "capture_websocket": { "type": "boolean", "description": "Whether WebSocket capture is enabled" },
+              "capture_actions": { "type": "boolean", "description": "Whether user action capture is enabled" }
             }
+          },
+          "last_command_ack": {
+            "type": "string",
+            "description": "ID of the last command acknowledged by the extension"
           },
           "extension_logs": {
             "type": "array",
@@ -1492,7 +1517,8 @@
           },
           "command_results": {
             "type": "array",
-            "items": { "$ref": "#/components/schemas/AsyncCommandResult" }
+            "items": { "$ref": "#/components/schemas/SyncCommandResult" },
+            "description": "Results from async commands the extension has executed"
           }
         }
       },
@@ -1542,6 +1568,37 @@
             }
           }
         }
+      },
+      "UploadStageResponse": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean" },
+          "stage": { "type": "integer" },
+          "status": { "type": "string" },
+          "error": { "type": "string" },
+          "file_name": { "type": "string" },
+          "file_size_bytes": { "type": "integer", "format": "int64" },
+          "duration_ms": { "type": "integer", "format": "int64" },
+          "escalation_reason": { "type": "string" },
+          "suggestions": { "type": "array", "items": { "type": "string" } },
+          "bytes_sent": { "type": "integer", "format": "int64" },
+          "total_bytes": { "type": "integer", "format": "int64" },
+          "percent": { "type": "number" },
+          "eta_seconds": { "type": "integer" },
+          "speed_mbps": { "type": "number" }
+        }
+      },
+      "SyncCommandResult": {
+        "type": "object",
+        "description": "Result of an async command execution returned by the extension via /sync.",
+        "properties": {
+          "id": { "type": "string" },
+          "correlation_id": { "type": "string" },
+          "status": { "type": "string", "enum": ["complete", "error", "timeout"] },
+          "result": { "description": "Command result data" },
+          "error": { "type": "string" }
+        },
+        "required": ["id", "status"]
       },
       "ExtensionStatus": {
         "type": "object",

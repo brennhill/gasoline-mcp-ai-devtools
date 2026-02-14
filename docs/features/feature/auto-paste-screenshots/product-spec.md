@@ -29,7 +29,7 @@ MCP supports returning images as base64-encoded content blocks alongside text. T
 
 Extend Gasoline's MCP response pipeline to optionally include a screenshot as a base64 image content block appended to any `observe` or `generate` tool response. The screenshot is captured on-demand at response time (not from a stale cache), ensuring the AI sees the current page state.
 
-**Design decision: `configure`-based global setting, not per-request parameter.**
+### Design decision: `configure`-based global setting, not per-request parameter.
 
 Rationale:
 - A per-request `include_screenshot: true` parameter on `observe` would add a boolean to every single observe call, inflating every request. Most AI agents would either always want screenshots or never want them -- a per-call toggle adds friction without flexibility.
@@ -189,7 +189,7 @@ At quality 60 (R9), typical screenshots will be 150-300KB base64. This is signif
 ## Edge Cases
 
 - **No tracked tab:** If no tab is being tracked, screenshot capture is skipped. A text block `[Screenshot unavailable: no tracked tab]` is appended instead. Expected behavior: response still contains all text data; only the image block is replaced with an explanation.
-- **Extension disconnected:** If the extension is not connected, the async command to capture a screenshot will time out. Expected behavior: append `[Screenshot unavailable: extension not connected]` text block after the standard timeout (2s decision point).
+- **Extension disconnected:** If the extension is not connected, the async command to capture a screenshot will time out. Expected behavior: append `[Screenshot unavailable: extension not connected]` text block after the standard async timeout window.
 - **Tab closed during capture:** The `chrome.tabs.captureVisibleTab` call may fail if the tab closes mid-capture. Expected behavior: graceful failure, append text explanation, do not crash or corrupt the response.
 - **Rate-limited:** If screenshots are requested faster than the 5s cooldown or the session max (10) is exceeded, capture is skipped. Expected behavior: append `[Screenshot unavailable: rate-limited (5s cooldown)]` or `[Screenshot unavailable: session limit reached (10/10)]`.
 - **Concurrent MCP requests:** Two MCP requests arriving simultaneously both want screenshots. Expected behavior: first gets the screenshot, second may be rate-limited. This is acceptable -- the data is near-identical at sub-5s intervals.

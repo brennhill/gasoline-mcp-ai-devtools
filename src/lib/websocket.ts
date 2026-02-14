@@ -88,6 +88,7 @@ let webSocketCaptureMode: WebSocketCaptureMode = 'medium'
 /**
  * Get the byte size of a WebSocket message
  */
+// #lizard forgives
 export function getSize(data: WebSocketMessageData | SizedObject | null): number {
   if (typeof data === 'string') {
     return _textEncoder ? _textEncoder.encode(data).length : data.length
@@ -139,6 +140,7 @@ export function formatPayload(data: WebSocketMessageData | null): string {
 /**
  * Truncate a WebSocket message to the size limit
  */
+// #lizard forgives
 export function truncateWsMessage(message: string): TruncationResult {
   if (typeof message === 'string' && message.length > WS_MAX_BODY_SIZE) {
     return { data: message.slice(0, WS_MAX_BODY_SIZE), truncated: true }
@@ -149,6 +151,7 @@ export function truncateWsMessage(message: string): TruncationResult {
 /**
  * Create a connection tracker for adaptive sampling and schema detection
  */
+// #lizard forgives
 export function createConnectionTracker(id: string, url: string): ConnectionTracker {
   const tracker: ConnectionTracker = {
     id,
@@ -164,7 +167,7 @@ export function createConnectionTracker(id: string, url: string): ConnectionTrac
 
     stats: {
       incoming: { count: 0, bytes: 0, lastPreview: null, lastAt: null },
-      outgoing: { count: 0, bytes: 0, lastPreview: null, lastAt: null },
+      outgoing: { count: 0, bytes: 0, lastPreview: null, lastAt: null }
     },
 
     /**
@@ -222,7 +225,7 @@ export function createConnectionTracker(id: string, url: string): ConnectionTrac
      *   shouldSample() which implements adaptive sampling: high-frequency connections
      *   (>200 msg/s) sample at 1-in-100; low-frequency (<2 msg/s) capture all messages.
      *   This ensures detailed visibility on slow links without bloating on high-volume.
-    */
+     */
     recordMessage(direction: MessageDirection, data: WebSocketMessageData | null): void {
       this.messageCount++
       const size = data ? (typeof data === 'string' ? data.length : getSize(data)) : 0
@@ -331,7 +334,7 @@ export function createConnectionTracker(id: string, url: string): ConnectionTrac
       return {
         rate: `${rate}/s`,
         logged: `${targetRate}/${Math.round(rate)}`,
-        window: '5s',
+        window: '5s'
       }
     },
 
@@ -379,7 +382,7 @@ export function createConnectionTracker(id: string, url: string): ConnectionTrac
       return {
         detectedKeys: allKeys.size > 0 ? Array.from(allKeys).sort() : null,
         consistent: this._schemaConsistent,
-        variants: variants.length > 1 ? variants : undefined,
+        variants: variants.length > 1 ? variants : undefined
       }
     },
 
@@ -399,7 +402,7 @@ export function createConnectionTracker(id: string, url: string): ConnectionTrac
       } catch {
         return false
       }
-    },
+    }
   }
 
   return tracker
@@ -435,6 +438,7 @@ export function installWebSocketCapture(): void {
   if (typeof window === 'undefined') return
   if (!window.WebSocket) return // No WebSocket support
   if (originalWebSocket) return // Already installed
+  webSocketCaptureEnabled = true // Ensure capture is enabled when installing
 
   // Check for early-patch: use the saved original, not the early-patch wrapper
   const earlyOriginal = window.__GASOLINE_ORIGINAL_WS__
@@ -453,9 +457,9 @@ export function installWebSocketCapture(): void {
       window.postMessage(
         {
           type: 'GASOLINE_WS',
-          payload: { type: 'websocket', event: 'open', id: connectionId, url: urlString, ts: new Date().toISOString() },
+          payload: { type: 'websocket', event: 'open', id: connectionId, url: urlString, ts: new Date().toISOString() }
         } as GasolineWsMessage,
-        window.location.origin,
+        window.location.origin
       )
     })
 
@@ -471,10 +475,10 @@ export function installWebSocketCapture(): void {
             url: urlString,
             code: event.code,
             reason: event.reason,
-            ts: new Date().toISOString(),
-          },
+            ts: new Date().toISOString()
+          }
         } as GasolineWsMessage,
-        window.location.origin,
+        window.location.origin
       )
     })
 
@@ -488,10 +492,10 @@ export function installWebSocketCapture(): void {
             event: 'error',
             id: connectionId,
             url: urlString,
-            ts: new Date().toISOString(),
-          },
+            ts: new Date().toISOString()
+          }
         } as GasolineWsMessage,
-        window.location.origin,
+        window.location.origin
       )
     })
 
@@ -517,10 +521,10 @@ export function installWebSocketCapture(): void {
             data: truncatedData,
             size,
             truncated: truncated || undefined,
-            ts: new Date().toISOString(),
-          },
+            ts: new Date().toISOString()
+          }
         } as GasolineWsMessage,
-        window.location.origin,
+        window.location.origin
       )
     })
 
@@ -547,10 +551,10 @@ export function installWebSocketCapture(): void {
               data: truncatedData,
               size,
               truncated: truncated || undefined,
-              ts: new Date().toISOString(),
-            },
+              ts: new Date().toISOString()
+            }
           } as GasolineWsMessage,
-          '*',
+          window.location.origin
         )
       }
 
@@ -613,10 +617,10 @@ function adoptEarlyConnections(): void {
             event: 'open',
             id: connectionId,
             url: urlString,
-            ts: openEvent ? new Date(openEvent.ts).toISOString() : new Date().toISOString(),
-          },
+            ts: openEvent ? new Date(openEvent.ts).toISOString() : new Date().toISOString()
+          }
         } as GasolineWsMessage,
-        window.location.origin,
+        window.location.origin
       )
     }
 
@@ -633,10 +637,10 @@ function adoptEarlyConnections(): void {
             url: urlString,
             code: event.code,
             reason: event.reason,
-            ts: new Date().toISOString(),
-          },
+            ts: new Date().toISOString()
+          }
         } as GasolineWsMessage,
-        window.location.origin,
+        window.location.origin
       )
     })
 
@@ -646,9 +650,9 @@ function adoptEarlyConnections(): void {
       window.postMessage(
         {
           type: 'GASOLINE_WS',
-          payload: { type: 'websocket', event: 'error', id: connectionId, url: urlString, ts: new Date().toISOString() },
+          payload: { type: 'websocket', event: 'error', id: connectionId, url: urlString, ts: new Date().toISOString() }
         } as GasolineWsMessage,
-        window.location.origin,
+        window.location.origin
       )
     })
 
@@ -675,10 +679,10 @@ function adoptEarlyConnections(): void {
             data: truncatedData,
             size,
             truncated: truncated || undefined,
-            ts: new Date().toISOString(),
-          },
+            ts: new Date().toISOString()
+          }
         } as GasolineWsMessage,
-        window.location.origin,
+        window.location.origin
       )
     })
 
@@ -705,10 +709,10 @@ function adoptEarlyConnections(): void {
               data: truncatedData,
               size,
               truncated: truncated || undefined,
-              ts: new Date().toISOString(),
-            },
+              ts: new Date().toISOString()
+            }
           } as GasolineWsMessage,
-          '*',
+          window.location.origin
         )
       }
 

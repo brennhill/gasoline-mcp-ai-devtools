@@ -38,7 +38,7 @@ function formatFailureSummary(snapshot) {
     `Errors: ${stats.error_count || 0}`,
     `Warnings: ${stats.warning_count || 0}`,
     `Network failures: ${stats.network_failures || 0}`,
-    `WebSocket connections: ${stats.ws_connections || 0}`,
+    `WebSocket connections: ${stats.ws_connections || 0}`
   ]
 
   if ((stats.error_count || 0) > 0) {
@@ -78,8 +78,10 @@ const test = base.extend({
     await fetch(`${baseUrl}/test-boundary`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ test_id: testId, action: 'start' }),
-    }).catch(() => {}) // Server might not be running yet
+      body: JSON.stringify({ test_id: testId, action: 'start' })
+    }).catch(() => {
+      /* no-op */
+    }) // Server might not be running yet
 
     const fixture = {
       getSnapshot: async (since) => {
@@ -93,7 +95,7 @@ const test = base.extend({
           return { timestamp: new Date().toISOString(), stats: {}, logs: [], network_bodies: [] }
         }
       },
-      clear: async () => {
+      clearBuffers: async () => {
         try {
           await fetch(`${baseUrl}/clear`, { method: 'POST' })
         } catch {
@@ -105,12 +107,12 @@ const test = base.extend({
           await fetch(`${baseUrl}/test-boundary`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ test_id: id, action }),
+            body: JSON.stringify({ test_id: id, action })
           })
         } catch {
           // Server unreachable — safe to ignore
         }
-      },
+      }
     }
 
     await use(fixture)
@@ -121,12 +123,12 @@ const test = base.extend({
         const snapshot = await fixture.getSnapshot()
         await testInfo.attach('gasoline-snapshot', {
           body: JSON.stringify(snapshot, null, 2),
-          contentType: 'application/json',
+          contentType: 'application/json'
         })
         const summary = formatFailureSummary(snapshot)
         await testInfo.attach('gasoline-summary', {
           body: summary,
-          contentType: 'text/plain',
+          contentType: 'text/plain'
         })
       } catch {
         // Server unreachable — skip attachment
@@ -137,8 +139,9 @@ const test = base.extend({
     await fixture.markTest(testId, 'end')
 
     // Clear between tests
-    await fixture.clear()
-  },
+    await fixture.clearBuffers()
+    return
+  }
 })
 
 module.exports = { test }

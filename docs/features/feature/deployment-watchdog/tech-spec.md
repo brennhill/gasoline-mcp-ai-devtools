@@ -149,40 +149,40 @@ AI stops watchdog (or duration elapses)
 
 ## Risks & Mitigations
 
-**Risk 1: False positive from expected changes**
+### Risk 1: False positive from expected changes
 - **Description**: Deployment intentionally changes behavior (new feature adds API calls), watchdog flags as regression.
 - **Mitigation**: AI sets appropriate thresholds for expected changes. For example, if new feature adds network calls, increase `max_network_error_rate` threshold or disable network checks (`null`). Threshold configuration is per-session.
 
-**Risk 2: Session persists after server restart**
+### Risk 2: Session persists after server restart
 - **Description**: Watchdog session lost on restart, AI doesn't know monitoring stopped.
 - **Mitigation**: `observe({what: "deployment_status"})` returns empty list when no sessions exist. AI detects absence and can restart session. Documenting that sessions are ephemeral sets correct expectations.
 
-**Risk 3: Memory exhaustion from many sessions**
+### Risk 3: Memory exhaustion from many sessions
 - **Description**: Many concurrent watchdogs consume excessive memory.
 - **Mitigation**: Hard cap of 3 concurrent watchdogs. Fourth start attempt rejected with error. Each session ~200KB, so max 600KB total.
 
-**Risk 4: Baseline staleness not detected**
+### Risk 4: Baseline staleness not detected
 - **Description**: AI starts watchdog with baseline captured hours ago, false positives from drift.
 - **Mitigation**: Watchdog records baseline capture timestamp. Status response includes baseline age. AI can check age and decide whether to recapture before starting.
 
-**Risk 5: Alert spam from transient issues**
+### Risk 5: Alert spam from transient issues
 - **Description**: Network hiccup causes temporary latency spike, fires alert, resolves immediately.
 - **Mitigation**: Regression checker requires condition to persist across 2 consecutive checks (60 seconds) before firing alert. Single-check spikes ignored. This reduces noise from transient conditions.
 
 ## Dependencies
 
-**Depends on:**
+### Depends on:
 - `diff_sessions` (shipped): Snapshot capture and comparison primitives.
 - `observe({what: "changes"})` (shipped): Alert delivery through changes polling stream.
 - Push regression alerts (shipped): Alert delivery pattern and suppression coordination.
 - Web vitals (shipped): CLS, LCP, FCP metrics.
 - Performance data capture (shipped): Load time, TTFB metrics.
 
-**Optionally composes with:**
+### Optionally composes with:
 - Behavioral baselines (in-progress): Richer comparison with API shape and per-endpoint tolerances.
 - Performance budget (shipped): Budget thresholds as additional regression signals.
 
-**Depended on by:**
+### Depended on by:
 - Agentic CI/CD (proposed): Deployment watchdog is building block for fully autonomous CI/CD workflows.
 
 ## Performance Considerations

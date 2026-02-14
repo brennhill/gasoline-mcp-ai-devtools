@@ -889,38 +889,18 @@ func TestV4ToolGetWSStatus_BothFilters(t *testing.T) {
 // HandleWebSocketEvents: GET handler (returning events)
 // ============================================
 
-// Test: HandleWebSocketEvents GET returns JSON with events and count.
-func TestV4HandleWebSocketEvents_GET(t *testing.T) {
+// Test: HandleWebSocketEvents rejects GET (reads go through /telemetry).
+func TestV4HandleWebSocketEvents_RejectsGET(t *testing.T) {
 	t.Parallel()
 	capture := setupTestCapture(t)
-
-	capture.AddWebSocketEvents([]WebSocketEvent{
-		{ID: "ws-1", Event: "open", URL: "wss://example.com/ws"},
-		{ID: "ws-1", Event: "message", Direction: "incoming", Data: "hello"},
-	})
 
 	req := httptest.NewRequest("GET", "/websocket-events", nil)
 	rec := httptest.NewRecorder()
 
 	capture.HandleWebSocketEvents(rec, req)
 
-	if rec.Code != http.StatusOK {
-		t.Errorf("expected 200, got %d", rec.Code)
-	}
-
-	var resp struct {
-		Events []WebSocketEvent `json:"events"`
-		Count  int              `json:"count"`
-	}
-	if err := json.Unmarshal(rec.Body.Bytes(), &resp); err != nil {
-		t.Fatalf("expected valid JSON: %v", err)
-	}
-
-	if resp.Count != 2 {
-		t.Errorf("expected count=2, got %d", resp.Count)
-	}
-	if len(resp.Events) != 2 {
-		t.Errorf("expected 2 events, got %d", len(resp.Events))
+	if rec.Code != http.StatusMethodNotAllowed {
+		t.Errorf("expected 405, got %d", rec.Code)
 	}
 }
 

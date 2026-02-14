@@ -94,7 +94,7 @@ feature: Visual-Semantic Bridge
 
 ### Scenario 1: Basic Visibility Detection
 
-**Setup:**
+#### Setup:
 1. Load a test page with buttons in different visibility states
 2. Page HTML:
    ```html
@@ -104,24 +104,24 @@ feature: Visual-Semantic Bridge
    <div id="modal-overlay" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 100;"></div>
    ```
 
-**Steps:**
+#### Steps:
 1. [ ] Open Gasoline DevTools
 2. [ ] Call `observe({what: 'page'})`
 3. [ ] Review returned DOM metadata
 
-**Expected Result:**
+#### Expected Result:
 - Visible button marked with `visible: true`, `off_screen: false`, `covered_by: null`
 - Hidden button marked with `visible: false`
 - Covered button marked with `visible: false, covered_by: "modal-overlay"`
 
-**Verification:**
+#### Verification:
 - Each button has a unique `gasoline_id` (e.g., `btn-visible`, `btn-hidden-css`, `btn-covered`)
 - Bounding boxes are present and non-zero for visible elements
 - Bounding box is present but off-screen for hidden elements
 
 ### Scenario 2: Ghost Click Problem Solved
 
-**Setup:**
+#### Setup:
 1. Load a page with a mobile menu
 2. Page HTML:
    ```html
@@ -131,7 +131,7 @@ feature: Visual-Semantic Bridge
    </nav>
    ```
 
-**Steps:**
+#### Steps:
 1. [ ] AI agent starts with `observe({what: 'page'})`
 2. [ ] Menu is closed (off-screen)
 3. [ ] Agent observes: Close button is `off_screen: true`
@@ -142,19 +142,19 @@ feature: Visual-Semantic Bridge
 8. [ ] Close button now shows `off_screen: false`
 9. [ ] Agent can now click Close button safely
 
-**Expected Result:**
+#### Expected Result:
 - No timeout or failed click on off-screen element
 - Menu toggle works correctly
 - Menu can be closed after opening
 
-**Verification:**
+#### Verification:
 - Bounding box changes between calls (before: left -100, after: left 0)
 - Off-screen flag changes correctly
 - No 5-second retry loops
 
 ### Scenario 3: Hallucinated Selector Problem Solved
 
-**Setup:**
+#### Setup:
 1. Load a page with many blue buttons
 2. Page HTML:
    ```html
@@ -163,62 +163,62 @@ feature: Visual-Semantic Bridge
    <button class="btn-primary bg-blue-500">Publish</button>
    ```
 
-**Steps:**
+#### Steps:
 1. [ ] AI observes DOM
 2. [ ] Reviews returned metadata
 3. [ ] AI agent is instructed to click "Submit" button
 4. [ ] Agent uses `data-gasoline-id="btn-submit"` instead of `.bg-blue-500`
 5. [ ] Agent executes: `document.querySelector('[data-gasoline-id="btn-submit"]').click()`
 
-**Expected Result:**
+#### Expected Result:
 - Each button has a unique semantic ID (different from others)
 - Agent clicks the correct button (Submit, not Save)
 - Form submits successfully
 
-**Verification:**
+#### Verification:
 - Semantic IDs are stable across page reloads
 - No ambiguous clicks
 - Test passes on first try
 
 ### Scenario 4: Framework Component Mapping
 
-**Setup:**
+#### Setup:
 1. Load a React app (e.g., Next.js example)
 2. App contains: UserCard component, SaveButton component, Modal component
 
-**Steps:**
+#### Steps:
 1. [ ] Enable DevTools in React app
 2. [ ] Open Gasoline and observe page
 3. [ ] Review component metadata for each element
 
-**Expected Result:**
+#### Expected Result:
 - Button element is mapped to: `component: "SaveButton", file: "components/SaveButton.tsx:42"`
 - Card element is mapped to: `component: "UserCard", file: "components/UserCard.tsx:10"`
 - Modal element is mapped to: `component: "Modal", file: "components/Modal.tsx:5"`
 
-**Verification:**
+#### Verification:
 - Component names are readable and useful for AI
 - File paths are accurate
 - Prop names are listed (values are redacted)
 
 ### Scenario 5: Smart DOM Pruning Reduces Context
 
-**Setup:**
+#### Setup:
 1. Load a complex web app (Gmail, Google Docs, etc.)
 2. Extract full DOM and pruned DOM
 
-**Steps:**
+#### Steps:
 1. [ ] Measure size of raw `outerHTML` for the page
 2. [ ] Call `observe({what: 'page'})` with pruning enabled
 3. [ ] Measure returned DOM string
 4. [ ] Calculate tokens for each (rough estimate: 1 token ≈ 4 chars)
 
-**Expected Result:**
+#### Expected Result:
 - Raw DOM: 50KB+ (12,000+ tokens)
 - Pruned DOM: 10-15KB (2,500-3,750 tokens)
 - Reduction: 3-5x
 
-**Verification:**
+#### Verification:
 - No interactive elements are stripped (buttons, inputs, links still present)
 - Semantic text (headings, labels) still present
 - No visible content lost
@@ -227,7 +227,7 @@ feature: Visual-Semantic Bridge
 
 ## Regression Testing
 
-**Existing features to verify don't break:**
+### Existing features to verify don't break:
 
 - [ ] `observe({what: 'page'})` still works without enrichment (backward compat)
 - [ ] `observe({what: 'dom'})` (if distinct from 'page') still works
@@ -237,7 +237,7 @@ feature: Visual-Semantic Bridge
 - [ ] Tab switching still works with semantic metadata
 - [ ] Session diffing still works with enriched DOM
 
-**Performance regression:**
+### Performance regression:
 
 - [ ] observe() latency increase is <50ms (p95)
 - [ ] Extension doesn't hang after repeated observe() calls

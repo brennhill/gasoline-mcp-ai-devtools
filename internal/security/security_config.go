@@ -7,9 +7,10 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"path/filepath"
 	"sync"
 	"time"
+
+	"github.com/dev-console/dev-console/internal/state"
 )
 
 // ============================================
@@ -99,16 +100,27 @@ func getSecurityConfigPath() string {
 		return securityConfigPath
 	}
 
-	homeDir, err := os.UserHomeDir()
+	path, err := state.SecurityConfigFile()
 	if err != nil {
+		if legacyPath, legacyErr := state.LegacySecurityConfigFile(); legacyErr == nil {
+			return legacyPath
+		}
 		return ""
 	}
 
-	return filepath.Join(homeDir, ".gasoline", "security.json")
+	return path
 }
 
 func setSecurityConfigPath(path string) {
 	securityConfigPath = path
+}
+
+func securityConfigEditInstruction() string {
+	path := getSecurityConfigPath()
+	if path == "" {
+		return "Edit the security configuration file manually"
+	}
+	return "Edit " + path + " manually"
 }
 
 // ============================================
@@ -119,15 +131,15 @@ func setSecurityConfigPath(path string) {
 // BLOCKED in MCP mode - requires human review
 func AddToWhitelist(origin string) error {
 	if IsMCPMode() {
-		return errors.New("security config updates require human review - edit ~/.gasoline/security.json manually")
+		return errors.New("security config updates require human review - " + securityConfigEditInstruction())
 	}
 
 	if !IsInteractiveTerminal() {
-		return errors.New("not in interactive mode - edit ~/.gasoline/security.json manually")
+		return errors.New("not in interactive mode - " + securityConfigEditInstruction())
 	}
 
 	// TODO(future): Implement interactive confirmation and config file update
-	// For now, users must manually edit ~/.gasoline/security.json
+	// For now, users must manually edit the config file.
 	return fmt.Errorf("AddToWhitelist not yet fully implemented for origin: %s", origin)
 }
 
@@ -135,15 +147,15 @@ func AddToWhitelist(origin string) error {
 // BLOCKED in MCP mode - requires human review
 func SetMinSeverity(severity string) error {
 	if IsMCPMode() {
-		return errors.New("security config updates require human review - edit ~/.gasoline/security.json manually")
+		return errors.New("security config updates require human review - " + securityConfigEditInstruction())
 	}
 
 	if !IsInteractiveTerminal() {
-		return errors.New("not in interactive mode - edit ~/.gasoline/security.json manually")
+		return errors.New("not in interactive mode - " + securityConfigEditInstruction())
 	}
 
 	// TODO(future): Implement interactive confirmation and config file update
-	// For now, users must manually edit ~/.gasoline/security.json
+	// For now, users must manually edit the config file.
 	return fmt.Errorf("SetMinSeverity not yet fully implemented for severity: %s", severity)
 }
 
@@ -151,15 +163,15 @@ func SetMinSeverity(severity string) error {
 // BLOCKED in MCP mode - requires human review
 func ClearWhitelist() error {
 	if IsMCPMode() {
-		return errors.New("security config updates require human review - edit ~/.gasoline/security.json manually")
+		return errors.New("security config updates require human review - " + securityConfigEditInstruction())
 	}
 
 	if !IsInteractiveTerminal() {
-		return errors.New("not in interactive mode - edit ~/.gasoline/security.json manually")
+		return errors.New("not in interactive mode - " + securityConfigEditInstruction())
 	}
 
 	// TODO(future): Implement interactive confirmation and config file update
-	// For now, users must manually edit ~/.gasoline/security.json
+	// For now, users must manually edit the config file.
 	return errors.New("ClearWhitelist not yet fully implemented")
 }
 
@@ -178,7 +190,7 @@ func LogSecurityEvent(event SecurityAuditEvent) {
 
 	securityAuditLog = append(securityAuditLog, event)
 
-	// TODO(future): Persist to ~/.gasoline/security-audit.jsonl for audit trail across sessions
+	// TODO(future): Persist to runtime state security-audit.jsonl for audit trail across sessions
 	// Currently, audit log is in-memory only and cleared on restart
 }
 

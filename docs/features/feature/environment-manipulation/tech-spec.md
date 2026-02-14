@@ -308,7 +308,7 @@ observe({
 
 ## Code References
 
-**New files to create:**
+### New files to create:
 - `cmd/server/env/discovery.go` — Service and config discovery
 - `cmd/server/env/inspector.go` — Environment variable inspection
 - `cmd/server/env/modifier.go` — Environment modification
@@ -318,7 +318,7 @@ observe({
 - `cmd/server/env/restart.go` — Service restart management
 - `cmd/server/env/audit.go` — Audit logger
 
-**Existing files to modify:**
+### Existing files to modify:
 - `cmd/server/mcp/server.go` — Add environment_* action handlers
 - `cmd/server/mcp/configure.go` — Add environment snapshot support
 - `cmd/server/mcp/observe.go` — Add environment_audit mode

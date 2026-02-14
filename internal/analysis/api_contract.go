@@ -23,11 +23,11 @@ import (
 // ============================================
 
 const (
-	maxContractEndpoints     = 30  // Max tracked endpoints
-	maxStatusHistory         = 20  // Status codes to keep per endpoint
-	minCallsToEstablishShape = 3   // Observations needed before flagging violations
-	maxViolationsPerEndpoint = 10  // Cap violations per endpoint
-	maxShapeComparisonDepth  = 3   // Nested object comparison depth
+	maxContractEndpoints     = 30 // Max tracked endpoints
+	maxStatusHistory         = 20 // Status codes to keep per endpoint
+	minCallsToEstablishShape = 3  // Observations needed before flagging violations
+	maxViolationsPerEndpoint = 10 // Cap violations per endpoint
+	maxShapeComparisonDepth  = 3  // Nested object comparison depth
 )
 
 // ============================================
@@ -45,37 +45,37 @@ type EndpointTracker struct {
 	Endpoint         string                 `json:"endpoint"`          // "METHOD /path"
 	EstablishedShape any                    `json:"established_shape"` // Learned response shape
 	CallCount        int                    `json:"call_count"`
-	SuccessCount     int                    `json:"success_count"`     // 2xx responses
-	ConsistentCount  int                    `json:"consistent_count"`  // Responses matching established shape
-	StatusHistory    []int                  `json:"status_history"`    // Last N status codes
-	FieldPresence    map[string]int         `json:"field_presence"`    // field -> count of appearances
-	FieldTypes       map[string]string      `json:"field_types"`       // field -> inferred type
-	FirstCalled      time.Time              `json:"first_called"`      // When endpoint was first seen
+	SuccessCount     int                    `json:"success_count"`    // 2xx responses
+	ConsistentCount  int                    `json:"consistent_count"` // Responses matching established shape
+	StatusHistory    []int                  `json:"status_history"`   // Last N status codes
+	FieldPresence    map[string]int         `json:"field_presence"`   // field -> count of appearances
+	FieldTypes       map[string]string      `json:"field_types"`      // field -> inferred type
+	FirstCalled      time.Time              `json:"first_called"`     // When endpoint was first seen
 	LastCalled       time.Time              `json:"last_called"`
 	Violations       []APIContractViolation `json:"violations"`
 }
 
 // APIContractViolation represents a detected contract violation.
 type APIContractViolation struct {
-	Endpoint          string                 `json:"endpoint"`
-	Type              string                 `json:"type"`           // "shape_change", "type_change", "error_spike", "new_field", "null_field"
-	ViolationType     string                 `json:"violation_type"` // Same as Type, explicit for LLM consumption
-	Severity          string                 `json:"severity"`       // "critical", "high", "medium", "low"
-	Description       string                 `json:"description"`
-	AffectedCallCount int                    `json:"affected_call_count"`        // How many calls violated this rule
-	FirstSeenAt       string                 `json:"first_seen_at,omitempty"`    // RFC3339 when violation first detected
-	LastSeenAt        string                 `json:"last_seen_at,omitempty"`     // RFC3339 when violation last detected
-	ExpectedShape     map[string]any         `json:"expected_shape,omitempty"`
-	ActualShape       map[string]any         `json:"actual_shape,omitempty"`
-	MissingFields     []string               `json:"missing_fields,omitempty"`
-	NewFields         []string               `json:"new_fields,omitempty"`
-	Field             string                 `json:"field,omitempty"`
-	ExpectedType      string                 `json:"expected_type,omitempty"`
-	ActualType        string                 `json:"actual_type,omitempty"`
-	SampleValue       any                    `json:"sample_value,omitempty"`
-	StatusHistory     []int                  `json:"status_history,omitempty"`
-	LastErrorBody     map[string]any         `json:"last_error_body,omitempty"`
-	Occurrences       *ViolationOccurrences  `json:"occurrences,omitempty"`
+	Endpoint          string                `json:"endpoint"`
+	Type              string                `json:"type"`           // "shape_change", "type_change", "error_spike", "new_field", "null_field"
+	ViolationType     string                `json:"violation_type"` // Same as Type, explicit for LLM consumption
+	Severity          string                `json:"severity"`       // "critical", "high", "medium", "low"
+	Description       string                `json:"description"`
+	AffectedCallCount int                   `json:"affected_call_count"`     // How many calls violated this rule
+	FirstSeenAt       string                `json:"first_seen_at,omitempty"` // RFC3339 when violation first detected
+	LastSeenAt        string                `json:"last_seen_at,omitempty"`  // RFC3339 when violation last detected
+	ExpectedShape     map[string]any        `json:"expected_shape,omitempty"`
+	ActualShape       map[string]any        `json:"actual_shape,omitempty"`
+	MissingFields     []string              `json:"missing_fields,omitempty"`
+	NewFields         []string              `json:"new_fields,omitempty"`
+	Field             string                `json:"field,omitempty"`
+	ExpectedType      string                `json:"expected_type,omitempty"`
+	ActualType        string                `json:"actual_type,omitempty"`
+	SampleValue       any                   `json:"sample_value,omitempty"`
+	StatusHistory     []int                 `json:"status_history,omitempty"`
+	LastErrorBody     map[string]any        `json:"last_error_body,omitempty"`
+	Occurrences       *ViolationOccurrences `json:"occurrences,omitempty"`
 }
 
 // ViolationOccurrences tracks when a violation was first seen and how often.
@@ -112,13 +112,13 @@ type APIContractAnalyzeResult struct {
 	AnalyzedAt             string                 `json:"analyzed_at"`
 	DataWindowStartedAt    string                 `json:"data_window_started_at,omitempty"`
 	AppliedFilter          *AppliedFilterEcho     `json:"applied_filter,omitempty"`
-	Summary                *AnalyzeSummary        `json:"summary"`                           // Aggregate counts
+	Summary                *AnalyzeSummary        `json:"summary"` // Aggregate counts
 	Violations             []APIContractViolation `json:"violations"`
 	TrackedEndpoints       int                    `json:"tracked_endpoints"`
 	TotalRequestsAnalyzed  int                    `json:"total_requests_analyzed"`
 	CleanEndpoints         int                    `json:"clean_endpoints"`
 	PossibleViolationTypes []string               `json:"possible_violation_types"`
-	Hint                   string                 `json:"hint,omitempty"`         // Helpful hint when no violations found
+	Hint                   string                 `json:"hint,omitempty"` // Helpful hint when no violations found
 }
 
 // APIContractReportResult is the response from the report action.
@@ -367,6 +367,25 @@ func (v *APIContractValidator) Validate(body capture.NetworkBody) []APIContractV
 
 	endpoint := normalizeEndpoint(body.Method, body.URL)
 	tracker := v.getOrCreateTracker(endpoint)
+	v.recordObservation(tracker, body.Status)
+
+	// Check for error spike on error responses
+	if body.Status >= 400 {
+		return v.validateErrorResponse(tracker, body)
+	}
+
+	// Still learning — not enough samples to validate
+	if tracker.SuccessCount < minCallsToEstablishShape {
+		tracker.SuccessCount++
+		v.learnShape(tracker, body)
+		return nil
+	}
+
+	return v.validateShapeConsistency(tracker, endpoint, body)
+}
+
+// recordObservation updates tracker counters and status history for a new observation.
+func (v *APIContractValidator) recordObservation(tracker *EndpointTracker, status int) {
 	tracker.CallCount++
 	now := time.Now()
 	if tracker.FirstCalled.IsZero() {
@@ -374,58 +393,47 @@ func (v *APIContractValidator) Validate(body capture.NetworkBody) []APIContractV
 	}
 	tracker.LastCalled = now
 
-	// Track status
-	tracker.StatusHistory = append(tracker.StatusHistory, body.Status)
+	tracker.StatusHistory = append(tracker.StatusHistory, status)
 	if len(tracker.StatusHistory) > maxStatusHistory {
 		newHistory := make([]int, len(tracker.StatusHistory)-1)
 		copy(newHistory, tracker.StatusHistory[1:])
 		tracker.StatusHistory = newHistory
 	}
+}
 
-	var violations []APIContractViolation
-
-	// Check for error spike
-	if body.Status >= 400 {
-		spike := v.detectErrorSpike(tracker, body)
-		if spike != nil {
-			violations = append(violations, *spike)
-			v.addViolation(tracker, *spike)
-		}
-		return violations // Don't validate shape for error responses
+// validateErrorResponse checks for error spikes in error responses.
+func (v *APIContractValidator) validateErrorResponse(tracker *EndpointTracker, body capture.NetworkBody) []APIContractViolation {
+	spike := v.detectErrorSpike(tracker, body)
+	if spike == nil {
+		return nil
 	}
+	v.addViolation(tracker, *spike)
+	return []APIContractViolation{*spike}
+}
 
-	// Skip validation if shape not yet established
-	if tracker.SuccessCount < minCallsToEstablishShape {
-		tracker.SuccessCount++
-		v.learnShape(tracker, body)
-		return violations
+// validateShapeConsistency compares a successful response shape against the established schema.
+func (v *APIContractValidator) validateShapeConsistency(tracker *EndpointTracker, endpoint string, body capture.NetworkBody) []APIContractViolation {
+	if body.ResponseBody == "" {
+		return nil
 	}
-
-	// Parse response
-	if body.ResponseBody == "" || (body.ContentType != "" && !strings.Contains(body.ContentType, "json")) {
-		return violations
+	if body.ContentType != "" && !strings.Contains(body.ContentType, "json") {
+		return nil
 	}
 
 	var parsed any
 	if err := json.Unmarshal([]byte(body.ResponseBody), &parsed); err != nil {
-		return violations
+		return nil
 	}
 
 	actualShape := v.extractShape(parsed, 0)
-
-	// Compare shapes
 	shapeViolations := v.compareShapes(endpoint, tracker.EstablishedShape, actualShape, parsed)
 	for _, viol := range shapeViolations {
-		violations = append(violations, viol)
 		v.addViolation(tracker, viol)
 	}
-
-	// Update consistency tracking
 	if len(shapeViolations) == 0 {
 		tracker.ConsistentCount++
 	}
-
-	return violations
+	return shapeViolations
 }
 
 // ============================================

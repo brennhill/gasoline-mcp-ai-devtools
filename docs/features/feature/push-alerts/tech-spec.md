@@ -19,7 +19,7 @@ last-verified: 2026-01-31
 1. **Push-alerts (passive):** Alerts attached to `observe` responses — always enabled
 2. **Context streaming (active):** Proactive MCP notifications — opt-in via `configure_streaming`
 
-SSE endpoint (`/events/stream`) is **deferred to v2**. MCP notifications are the primary active delivery mechanism.
+Dedicated HTTP event-stream endpoints are **deferred to v2**. MCP notifications are the primary active delivery mechanism.
 
 ---
 
@@ -337,6 +337,6 @@ type ToolHandler struct {
 
 ## Deferred to v2
 
-- **SSE endpoint (`/events/stream`):** For non-MCP consumers (dashboards, custom tooling)
-- **WebSocket delivery:** Alternative to SSE for bidirectional communication
+- **Dedicated event endpoint (`/events/stream`):** For non-MCP consumers (dashboards, custom tooling)
+- **WebSocket delivery:** Alternative push channel for bidirectional communication
 - **Persistence:** Alerts lost on server restart; could persist to disk for recovery

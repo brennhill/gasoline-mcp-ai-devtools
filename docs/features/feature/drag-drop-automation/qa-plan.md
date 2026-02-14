@@ -37,7 +37,7 @@ feature: drag-drop-automation
 
 ## Human UAT Walkthrough
 
-**Scenario 1: Sortable List Reorder (Happy Path)**
+### Scenario 1: Sortable List Reorder (Happy Path)
 1. Setup:
    - Open page with sortable list (e.g., jQuery UI Sortable demo)
    - Enable AI Web Pilot toggle
@@ -49,7 +49,7 @@ feature: drag-drop-automation
 3. Expected Result: List item reordered
 4. Verification: Observe DOM to confirm new order
 
-**Scenario 2: Trello Card Move Between Columns**
+### Scenario 2: Trello Card Move Between Columns
 1. Setup:
    - Open Trello board (or similar kanban)
    - Identify card in "To Do" column, target "Done" column
@@ -60,7 +60,7 @@ feature: drag-drop-automation
 3. Expected Result: Card moved, backend updated
 4. Verification: Network shows API call, card persists in new column on refresh
 
-**Scenario 3: File Drop Simulation**
+### Scenario 3: File Drop Simulation
 1. Setup:
    - Open page with file upload drop zone
 2. Steps:
@@ -70,7 +70,7 @@ feature: drag-drop-automation
 3. Expected Result: Drop zone recognizes file drop
 4. Verification: UI shows "test.pdf ready to upload"
 
-**Scenario 4: Canvas Drag (Coordinate-Based)**
+### Scenario 4: Canvas Drag (Coordinate-Based)
 1. Setup:
    - Open diagram editor or visual canvas
 2. Steps:
@@ -79,7 +79,7 @@ feature: drag-drop-automation
 3. Expected Result: Shape repositioned on canvas
 4. Verification: Observe DOM or call execute_js to get element position
 
-**Scenario 5: AI Web Pilot Toggle OFF (Error Path)**
+### Scenario 5: AI Web Pilot Toggle OFF (Error Path)
 1. Setup:
    - Disable AI Web Pilot toggle
 2. Steps:
@@ -100,4 +100,4 @@ feature: drag-drop-automation
 ## Performance/Load Testing
 
 - Test drag-drop with 100 intermediate mousemove events (< 500ms)
-- Test complex drop handler (should complete within 2s decision point)
+- Test complex drop handler (should complete within the async timeout window)

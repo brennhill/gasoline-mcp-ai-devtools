@@ -48,12 +48,12 @@ This is the key differentiator: Gasoline doesn't just tell you what's wrong — 
 
 Current AI coding assistants are reactive: they wait for humans to describe problems, then suggest fixes. Agentic CI/CD inverts this — AI proactively discovers problems through observation and autonomously implements solutions.
 
-**Traditional flow:**
+### Traditional flow:
 ```
 Human notices bug → Human describes to AI → AI suggests fix → Human applies
 ```
 
-**Agentic flow:**
+### Agentic flow:
 ```
 AI observes via Gasoline → AI diagnoses root cause → AI implements fix → AI verifies fix worked
 ```
@@ -71,12 +71,12 @@ AI observes via Gasoline → AI diagnoses root cause → AI implements fix → A
 
 **Implementation:** Claude Code skill, NOT a Gasoline tool.
 
-**Prerequisites:**
+#### Prerequisites:
 - ✅ Tab targeting (Phase 0) — completed
 - ✅ Verification loop (`verify_fix`) — completed
 - ⚠️ Gasoline CI infrastructure — required for headless capture
 
-**CI Dependency Check:**
+#### CI Dependency Check:
 
 The skill must verify Gasoline is running before attempting diagnosis:
 
@@ -88,7 +88,7 @@ preconditions:
     on_fail: "Gasoline server not running. Start with: npx gasoline-mcp"
 ```
 
-**Workflow:**
+## Workflow:
 ```
 1. CI runs tests, one fails
 2. Agent receives failure notification (webhook or poll)
@@ -103,7 +103,7 @@ preconditions:
 11. Agent commits fix with explanation
 ```
 
-**Gasoline tools used:**
+## Gasoline tools used:
 - `GET /snapshot` — All browser state at failure point (CI endpoint)
 - `observe {what: "errors"}` — Console errors during test
 - `observe {what: "network"}` — API responses
@@ -113,7 +113,7 @@ preconditions:
 
 **Key insight:** Gasoline's DOM observation and network capture give AI the same visibility a developer would have in DevTools, but programmatically accessible.
 
-**Edge Cases:**
+## Edge Cases:
 
 | Case | Handling |
 |------|----------|
@@ -123,7 +123,7 @@ preconditions:
 | Protected files | Respect `.gitignore`, file permissions. Report instead of fail. |
 | Infinite loop (fix breaks something else) | Circuit breaker: max 3 fix attempts per test per run. |
 
-**Security:**
+## Security:
 - AI must not commit credentials (pre-commit hook required)
 - Human approval gate for security-related test changes
 - Audit trail of all AI-generated commits
@@ -139,7 +139,7 @@ preconditions:
 
 **Solution:** Specialized self-healing focused on API contract mismatches.
 
-**Workflow:**
+#### Workflow:
 ```
 1. E2E test fails with "Cannot read property 'userName' of undefined"
 2. Agent captures network response: {user_name: "Alice"}
@@ -151,7 +151,7 @@ preconditions:
 8. Agent verifies all affected tests pass
 ```
 
-**Gasoline tools used:**
+#### Gasoline tools used:
 - `observe {what: "network"}` — Actual API response
 - `analyze {target: "api"}` — Inferred API schema from traffic
 - `validate_api` — Compare expected vs actual contract
@@ -170,7 +170,7 @@ preconditions:
 3. Observes for errors, regressions, accessibility issues
 4. Reports findings or proposes fixes directly on the PR
 
-**Workflow:**
+#### Workflow:
 ```
 1. PR opened → preview deployed at preview-123.example.com
 2. Agent receives webhook notification
@@ -182,7 +182,7 @@ preconditions:
 8. Agent comments on PR with fix, or pushes fix commit
 ```
 
-**Gasoline tools used:**
+#### Gasoline tools used:
 - `browser_action {action: "navigate", url: "..."}` — Open preview
 - `execute_javascript` — Interact with page
 - `observe {what: "errors"}` — Runtime errors
@@ -203,7 +203,7 @@ preconditions:
 3. Continuously monitors for regressions
 4. If regression detected: diagnoses, optionally triggers rollback
 
-**Workflow:**
+#### Workflow:
 ```
 1. Pre-deploy: Agent captures session snapshot "pre-v2.3.0"
 2. Deploy completes
@@ -216,7 +216,7 @@ preconditions:
 9. Agent notifies: Posts to Slack with diagnosis
 ```
 
-**Gasoline tools used:**
+#### Gasoline tools used:
 - `diff_sessions` — Compare before/after state
 - `observe {what: "errors"}` — New errors post-deploy
 - `analyze {target: "performance"}` — Performance regressions

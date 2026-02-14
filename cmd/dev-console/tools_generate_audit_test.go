@@ -124,6 +124,48 @@ func TestGenerateAudit_Test_DataFlow(t *testing.T) {
 	}
 }
 
+// TestGenerateAudit_Test_ScriptContent verifies test format returns non-empty Playwright skeleton
+func TestGenerateAudit_Test_ScriptContent(t *testing.T) {
+	env := newGenerateTestEnv(t)
+
+	result, ok := env.callGenerate(t, `{"format":"test","test_name":"smoke-test"}`)
+	if !ok {
+		t.Fatal("test format should return result")
+	}
+
+	if result.IsError {
+		t.Fatalf("test format should NOT return isError\nGot: %+v", result)
+	}
+	if len(result.Content) == 0 {
+		t.Fatal("test format should return content block")
+	}
+
+	text := result.Content[0].Text
+
+	// Summary line should mention Playwright test name and action count
+	if !strings.Contains(text, "Playwright test 'smoke-test'") {
+		t.Errorf("summary should contain Playwright test name\nGot: %s", text)
+	}
+
+	// Script must contain Playwright imports and test skeleton
+	for _, want := range []string{
+		`"script":`,
+		`import { test, expect }`,
+		`test.describe('smoke-test'`,
+		`page.goto`,
+		`expect(page)`,
+	} {
+		if !strings.Contains(text, want) {
+			t.Errorf("response missing expected pattern %q\nGot: %s", want, text)
+		}
+	}
+
+	// Script must NOT be empty
+	if strings.Contains(text, `"script":""`) {
+		t.Error("script must NOT be empty — even with 0 actions, a skeleton should be generated")
+	}
+}
+
 // TestGenerateAudit_PRSummary_DataFlow verifies pr_summary format returns summary
 func TestGenerateAudit_PRSummary_DataFlow(t *testing.T) {
 	env := newGenerateTestEnv(t)

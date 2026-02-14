@@ -12,14 +12,14 @@ import assert from 'node:assert'
 const mockChrome = {
   runtime: {
     sendMessage: mock.fn(),
-    onMessage: { addListener: mock.fn() },
+    onMessage: { addListener: mock.fn() }
   },
   storage: {
     local: {
       get: mock.fn((keys, cb) => cb({})),
-      set: mock.fn((data, cb) => cb && cb()),
-    },
-  },
+      set: mock.fn((data, cb) => cb && cb())
+    }
+  }
 }
 
 globalThis.chrome = mockChrome
@@ -52,23 +52,25 @@ function createMockDocument() {
               } else {
                 this._classes.add(c)
               }
-            },
+            }
           },
           style: {},
-          addEventListener: mock.fn(),
+          addEventListener: mock.fn()
         }
       }
       return elements[id]
     },
     addEventListener: mock.fn(),
+    querySelector: mock.fn(() => null),
+    querySelectorAll: mock.fn(() => []),
     readyState: 'complete',
-    _elements: elements,
+    _elements: elements
   }
 }
 
 globalThis.document = createMockDocument()
 
-const { loadOptions, saveOptions, toggleDeferral } = await import('../../extension/options.js')
+const { loadOptions, saveOptions, toggleDeferral, toggleDebugMode } = await import('../../extension/options.js')
 
 describe('Options Deferral Toggle', () => {
   beforeEach(() => {
@@ -153,8 +155,8 @@ describe('Options Deferral Toggle', () => {
 
     assert.ok(
       mockChrome.runtime.sendMessage.mock.calls.some(
-        (c) => c.arguments[0].type === 'setDeferralEnabled' && c.arguments[0].enabled === true,
-      ),
+        (c) => c.arguments[0].type === 'setDeferralEnabled' && c.arguments[0].enabled === true
+      )
     )
   })
 
@@ -166,8 +168,248 @@ describe('Options Deferral Toggle', () => {
 
     assert.ok(
       mockChrome.runtime.sendMessage.mock.calls.some(
-        (c) => c.arguments[0].type === 'setDeferralEnabled' && c.arguments[0].enabled === false,
-      ),
+        (c) => c.arguments[0].type === 'setDeferralEnabled' && c.arguments[0].enabled === false
+      )
+    )
+  })
+})
+
+describe('Options Screenshot Toggle', () => {
+  beforeEach(() => {
+    globalThis.document = createMockDocument()
+    mockChrome.runtime.sendMessage = mock.fn()
+    mockChrome.storage.local.get = mock.fn((keys, cb) => cb({}))
+    mockChrome.storage.local.set = mock.fn((data, cb) => cb && cb())
+  })
+
+  test('should not activate screenshot toggle when no saved value (default: off)', () => {
+    mockChrome.storage.local.get = mock.fn((keys, cb) => cb({}))
+
+    loadOptions()
+
+    const toggle = document.getElementById('screenshot-toggle')
+    assert.ok(!toggle.classList.contains('active'))
+  })
+
+  test('should activate screenshot toggle when saved as true', () => {
+    mockChrome.storage.local.get = mock.fn((keys, cb) => {
+      cb({ screenshotOnError: true })
+    })
+
+    loadOptions()
+
+    const toggle = document.getElementById('screenshot-toggle')
+    assert.ok(toggle.classList.contains('active'))
+  })
+
+  test('should not activate screenshot toggle when saved as false', () => {
+    mockChrome.storage.local.get = mock.fn((keys, cb) => {
+      cb({ screenshotOnError: false })
+    })
+
+    loadOptions()
+
+    const toggle = document.getElementById('screenshot-toggle')
+    assert.ok(!toggle.classList.contains('active'))
+  })
+
+  test('should include screenshotOnError=false in save when inactive', () => {
+    mockChrome.storage.local.get = mock.fn((keys, cb) => cb({}))
+    loadOptions()
+
+    saveOptions()
+
+    assert.ok(mockChrome.storage.local.set.mock.calls.some((c) => c.arguments[0].screenshotOnError === false))
+  })
+
+  test('should include screenshotOnError=true in save when active', () => {
+    mockChrome.storage.local.get = mock.fn((keys, cb) => cb({ screenshotOnError: true }))
+    loadOptions()
+
+    saveOptions()
+
+    assert.ok(mockChrome.storage.local.set.mock.calls.some((c) => c.arguments[0].screenshotOnError === true))
+  })
+
+  test('should send setScreenshotOnError message on save', () => {
+    mockChrome.storage.local.get = mock.fn((keys, cb) => cb({ screenshotOnError: true }))
+    loadOptions()
+
+    saveOptions()
+
+    assert.ok(
+      mockChrome.runtime.sendMessage.mock.calls.some(
+        (c) => c.arguments[0].type === 'setScreenshotOnError' && c.arguments[0].enabled === true
+      )
+    )
+  })
+})
+
+describe('Options Source Map Toggle', () => {
+  beforeEach(() => {
+    globalThis.document = createMockDocument()
+    mockChrome.runtime.sendMessage = mock.fn()
+    mockChrome.storage.local.get = mock.fn((keys, cb) => cb({}))
+    mockChrome.storage.local.set = mock.fn((data, cb) => cb && cb())
+  })
+
+  test('should not activate source map toggle when no saved value (default: off)', () => {
+    mockChrome.storage.local.get = mock.fn((keys, cb) => cb({}))
+
+    loadOptions()
+
+    const toggle = document.getElementById('sourcemap-toggle')
+    assert.ok(!toggle.classList.contains('active'))
+  })
+
+  test('should activate source map toggle when saved as true', () => {
+    mockChrome.storage.local.get = mock.fn((keys, cb) => {
+      cb({ sourceMapEnabled: true })
+    })
+
+    loadOptions()
+
+    const toggle = document.getElementById('sourcemap-toggle')
+    assert.ok(toggle.classList.contains('active'))
+  })
+
+  test('should not activate source map toggle when saved as false', () => {
+    mockChrome.storage.local.get = mock.fn((keys, cb) => {
+      cb({ sourceMapEnabled: false })
+    })
+
+    loadOptions()
+
+    const toggle = document.getElementById('sourcemap-toggle')
+    assert.ok(!toggle.classList.contains('active'))
+  })
+
+  test('should include sourceMapEnabled=false in save when inactive', () => {
+    mockChrome.storage.local.get = mock.fn((keys, cb) => cb({}))
+    loadOptions()
+
+    saveOptions()
+
+    assert.ok(mockChrome.storage.local.set.mock.calls.some((c) => c.arguments[0].sourceMapEnabled === false))
+  })
+
+  test('should include sourceMapEnabled=true in save when active', () => {
+    mockChrome.storage.local.get = mock.fn((keys, cb) => cb({ sourceMapEnabled: true }))
+    loadOptions()
+
+    saveOptions()
+
+    assert.ok(mockChrome.storage.local.set.mock.calls.some((c) => c.arguments[0].sourceMapEnabled === true))
+  })
+
+  test('should send setSourceMapEnabled message on save', () => {
+    mockChrome.storage.local.get = mock.fn((keys, cb) => cb({ sourceMapEnabled: true }))
+    loadOptions()
+
+    saveOptions()
+
+    assert.ok(
+      mockChrome.runtime.sendMessage.mock.calls.some(
+        (c) => c.arguments[0].type === 'setSourceMapEnabled' && c.arguments[0].enabled === true
+      )
+    )
+  })
+})
+
+describe('Options Debug Mode Toggle', () => {
+  beforeEach(() => {
+    globalThis.document = createMockDocument()
+    mockChrome.runtime.sendMessage = mock.fn()
+    mockChrome.storage.local.get = mock.fn((keys, cb) => cb({}))
+    mockChrome.storage.local.set = mock.fn((data, cb) => cb && cb())
+  })
+
+  test('should not activate debug mode toggle when no saved value (default: off)', () => {
+    mockChrome.storage.local.get = mock.fn((keys, cb) => cb({}))
+
+    loadOptions()
+
+    const toggle = document.getElementById('debug-mode-toggle')
+    assert.ok(!toggle.classList.contains('active'))
+  })
+
+  test('should activate debug mode toggle when saved as true', () => {
+    mockChrome.storage.local.get = mock.fn((keys, cb) => {
+      cb({ debugMode: true })
+    })
+
+    loadOptions()
+
+    const toggle = document.getElementById('debug-mode-toggle')
+    assert.ok(toggle.classList.contains('active'))
+  })
+
+  test('should not activate debug mode toggle when saved as false', () => {
+    mockChrome.storage.local.get = mock.fn((keys, cb) => {
+      cb({ debugMode: false })
+    })
+
+    loadOptions()
+
+    const toggle = document.getElementById('debug-mode-toggle')
+    assert.ok(!toggle.classList.contains('active'))
+  })
+
+  test('should toggle debug mode state on click', () => {
+    mockChrome.storage.local.get = mock.fn((keys, cb) => cb({ debugMode: true }))
+    loadOptions()
+
+    const toggle = document.getElementById('debug-mode-toggle')
+    assert.ok(toggle.classList.contains('active'))
+
+    toggleDebugMode()
+    assert.ok(!toggle.classList.contains('active'))
+
+    toggleDebugMode()
+    assert.ok(toggle.classList.contains('active'))
+  })
+
+  test('should include debugMode=false in save when inactive', () => {
+    mockChrome.storage.local.get = mock.fn((keys, cb) => cb({}))
+    loadOptions()
+
+    saveOptions()
+
+    assert.ok(mockChrome.storage.local.set.mock.calls.some((c) => c.arguments[0].debugMode === false))
+  })
+
+  test('should include debugMode=true in save when active', () => {
+    mockChrome.storage.local.get = mock.fn((keys, cb) => cb({ debugMode: true }))
+    loadOptions()
+
+    saveOptions()
+
+    assert.ok(mockChrome.storage.local.set.mock.calls.some((c) => c.arguments[0].debugMode === true))
+  })
+
+  test('should send setDebugMode message on save', () => {
+    mockChrome.storage.local.get = mock.fn((keys, cb) => cb({ debugMode: true }))
+    loadOptions()
+
+    saveOptions()
+
+    assert.ok(
+      mockChrome.runtime.sendMessage.mock.calls.some(
+        (c) => c.arguments[0].type === 'setDebugMode' && c.arguments[0].enabled === true
+      )
+    )
+  })
+
+  test('should send setDebugMode=false when disabled', () => {
+    mockChrome.storage.local.get = mock.fn((keys, cb) => cb({ debugMode: false }))
+    loadOptions()
+
+    saveOptions()
+
+    assert.ok(
+      mockChrome.runtime.sendMessage.mock.calls.some(
+        (c) => c.arguments[0].type === 'setDebugMode' && c.arguments[0].enabled === false
+      )
     )
   })
 })

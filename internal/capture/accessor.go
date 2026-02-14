@@ -75,12 +75,12 @@ func (c *Capture) GetActionTimestamps() []time.Time {
 
 // GetCaptureSnapshot returns a snapshot of buffer state with proper locking
 type CaptureSnapshot struct {
-	NetworkTotalAdded int64
+	NetworkTotalAdded   int64
 	WebSocketTotalAdded int64
-	ActionTotalAdded int64
-	NetworkCount    int
-	WebSocketCount  int
-	ActionCount     int
+	ActionTotalAdded    int64
+	NetworkCount        int
+	WebSocketCount      int
+	ActionCount         int
 }
 
 // GetSnapshot returns a thread-safe snapshot of the capture buffer state
@@ -208,7 +208,7 @@ func (c *Capture) GetHealthSnapshot() HealthSnapshot {
 
 // LogHTTPDebugEntry logs an HTTP debug entry. Delegates to DebugLogger (own lock).
 func (c *Capture) LogHTTPDebugEntry(entry HTTPDebugEntry) {
-	c.debug.LogHTTPDebugEntry(entry)
+	c.debug.LogHTTPDebugEntry(c.redactHTTPDebugEntry(entry))
 }
 
 // GetHTTPDebugLog returns a copy of the HTTP debug log. Delegates to DebugLogger (own lock).
@@ -299,4 +299,3 @@ func (c *Capture) GetAndDeleteBeforeSnapshot(correlationID string) (PerformanceS
 	}
 	return snap, ok
 }
-

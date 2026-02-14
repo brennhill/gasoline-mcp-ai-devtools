@@ -8,6 +8,8 @@ import (
 	"net/http"
 	"sync"
 	"time"
+
+	"github.com/dev-console/dev-console/internal/util"
 )
 
 // CircuitBreaker implements a rate limiter with circuit breaker pattern.
@@ -118,11 +120,17 @@ func (cb *CircuitBreaker) evaluateCircuit() {
 			cb.circuitOpen = true
 			cb.circuitOpenedAt = time.Now()
 			cb.circuitReason = "rate_exceeded"
-			go cb.emitEvent("circuit_opened", map[string]any{
-				"reason":    "rate_exceeded",
-				"streak":    cb.rateLimitStreak,
-				"rate":      cb.windowEventCount,
-				"threshold": RateLimitThreshold,
+			// Capture values before goroutine to avoid data race on struct fields
+			streak := cb.rateLimitStreak
+			rate := cb.windowEventCount
+			emitFn := cb.emitEvent
+			util.SafeGo(func() {
+				emitFn("circuit_opened", map[string]any{
+					"reason":    "rate_exceeded",
+					"streak":    streak,
+					"rate":      rate,
+					"threshold": RateLimitThreshold,
+				})
 			})
 			return
 		}
@@ -146,11 +154,16 @@ func (cb *CircuitBreaker) evaluateCircuit() {
 	cb.circuitOpen = false
 	cb.circuitReason = ""
 	cb.rateLimitStreak = 0
+	// Capture values before goroutine to avoid data race on struct fields
+	rate := cb.windowEventCount
+	emitFn := cb.emitEvent
 
-	go cb.emitEvent("circuit_closed", map[string]any{
-		"previous_reason":    prevReason,
-		"open_duration_secs": openDuration.Seconds(),
-		"rate":               cb.windowEventCount,
+	util.SafeGo(func() {
+		emitFn("circuit_closed", map[string]any{
+			"previous_reason":    prevReason,
+			"open_duration_secs": openDuration.Seconds(),
+			"rate":               rate,
+		})
 	})
 }
 

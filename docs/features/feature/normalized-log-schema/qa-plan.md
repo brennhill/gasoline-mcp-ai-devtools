@@ -12,22 +12,22 @@ last-verified: 2026-01-31
 ## Test Scenarios
 
 ### Scenario 1: JSON Log Parsing
-**Setup:**
+#### Setup:
 - Go service logging JSON format
 
-**Steps:**
+#### Steps:
 1. Go service logs: `{"timestamp":"2026-01-31T10:15:23Z","level":"ERROR","message":"Failed","user_id":123}`
 2. Log ingested and parsed
 3. Query: `observe({what: 'normalized-logs', service: 'payment-service'})`
 
-**Expected Result:**
+#### Expected Result:
 - Log normalized to canonical schema
 - Timestamp parsed as ISO 8601
 - Level: "ERROR"
 - Message: "Failed"
 - Fields: {user_id: 123}
 
-**Acceptance Criteria:**
+#### Acceptance Criteria:
 - [ ] JSON parsed correctly
 - [ ] Timestamp in canonical format
 - [ ] All fields extracted
@@ -36,21 +36,21 @@ last-verified: 2026-01-31
 ---
 
 ### Scenario 2: Text Log Parsing with Regex
-**Setup:**
+#### Setup:
 - Node.js service logging text format: `[10:15:23] ERROR: Failed - user_id: 123`
 
-**Steps:**
+#### Steps:
 1. Configure regex parser for api-server service
 2. Node.js logs with text format
 3. Parser applies regex pattern
 4. Query normalized logs
 
-**Expected Result:**
+#### Expected Result:
 - Regex pattern extracts: timestamp, level, message
 - Context extraction gets user_id
 - Normalized to canonical schema
 
-**Acceptance Criteria:**
+#### Acceptance Criteria:
 - [ ] Regex pattern matches
 - [ ] Fields extracted correctly
 - [ ] Timestamp parsed
@@ -59,20 +59,20 @@ last-verified: 2026-01-31
 ---
 
 ### Scenario 3: Cross-Service Query
-**Setup:**
+#### Setup:
 - Go service + Node.js service + Python service, different formats
 
-**Steps:**
+#### Steps:
 1. Each service logs in its native format
 2. All services send logs to Gasoline
 3. Query: `observe({what: 'normalized-logs', level: 'ERROR'})`
 
-**Expected Result:**
+#### Expected Result:
 - All ERROR logs returned regardless of format
 - All in canonical schema
 - Service field identifies source
 
-**Acceptance Criteria:**
+#### Acceptance Criteria:
 - [ ] All formats parsed
 - [ ] All ERROR logs returned
 - [ ] Service field correct
@@ -81,21 +81,21 @@ last-verified: 2026-01-31
 ---
 
 ### Scenario 4: Field-Based Querying
-**Setup:**
+#### Setup:
 - Multiple logs from multiple services
 - Each has user_id field (extracted from different locations per format)
 
-**Steps:**
+#### Steps:
 1. Go logs with user_id in JSON: `{"user_id": 123}`
 2. Node logs with user_id in text: `user_id: 123`
 3. Query: `observe({what: 'normalized-logs', field: 'user_id:123'})`
 
-**Expected Result:**
+#### Expected Result:
 - Both logs returned
 - user_id field normalized
 - No need for separate queries per format
 
-**Acceptance Criteria:**
+#### Acceptance Criteria:
 - [ ] Both sources found
 - [ ] Field query works across formats
 - [ ] Value coercion correct (string "123" vs. number 123)
@@ -103,22 +103,22 @@ last-verified: 2026-01-31
 ---
 
 ### Scenario 5: Malformed Log Handling
-**Setup:**
+#### Setup:
 - One log is malformed, others are valid
 
-**Steps:**
+#### Steps:
 1. Send valid JSON log
 2. Send invalid JSON log (missing closing brace)
 3. Send text log
 4. Query logs
 
-**Expected Result:**
+#### Expected Result:
 - Valid logs parsed and returned
 - Malformed log not crashed system
 - Error logged but gracefully handled
 - Valid logs still queryable
 
-**Acceptance Criteria:**
+#### Acceptance Criteria:
 - [ ] No crash on malformed logs
 - [ ] Valid logs parsed
 - [ ] Error logged for diagnostics
@@ -127,25 +127,25 @@ last-verified: 2026-01-31
 ---
 
 ### Scenario 6: Timestamp Normalization
-**Setup:**
+#### Setup:
 - Logs with timestamps in different formats:
   - Go: `2026-01-31T10:15:23Z`
   - Node: `[10:15:23]` (same date)
   - Python: `2026-01-31 10:15:23`
 
-**Steps:**
+#### Steps:
 1. Each service logs with its timestamp format
 2. Query all logs
 3. Verify timestamps are in same format
 4. Verify ordering is correct
 
-**Expected Result:**
+#### Expected Result:
 - All timestamps converted to ISO 8601
 - Order preserved
 - Timezone handling correct
 - Comparable for range queries
 
-**Acceptance Criteria:**
+#### Acceptance Criteria:
 - [ ] All timestamps in ISO 8601
 - [ ] Ordering correct
 - [ ] Timezone converted correctly
@@ -154,21 +154,21 @@ last-verified: 2026-01-31
 ---
 
 ### Scenario 7: Custom Field Extraction
-**Setup:**
+#### Setup:
 - Service with custom log format, not standard
 - Regex pattern defined for extraction
 
-**Steps:**
+#### Steps:
 1. Configure custom regex pattern
 2. Service logs with custom format
 3. Query using extracted field
 
-**Expected Result:**
+#### Expected Result:
 - Regex pattern matches
 - Custom fields extracted
 - Available in query results
 
-**Acceptance Criteria:**
+#### Acceptance Criteria:
 - [ ] Pattern configuration loaded
 - [ ] Pattern matches successfully
 - [ ] Fields extracted
@@ -177,21 +177,21 @@ last-verified: 2026-01-31
 ---
 
 ### Scenario 8: Performance - High Volume
-**Setup:**
+#### Setup:
 - 10K logs/sec from multiple services in different formats
 
-**Steps:**
+#### Steps:
 1. Send 10K logs/sec for 10 seconds (100K logs)
 2. Measure parse time, memory, CPU
 3. Query all logs
 
-**Expected Result:**
+#### Expected Result:
 - All logs parsed (<1ms each)
 - Memory under control
 - CPU <80% during ingestion
 - Query still responsive (<100ms)
 
-**Acceptance Criteria:**
+#### Acceptance Criteria:
 - [ ] Parse latency <1ms per log
 - [ ] No memory growth >100MB
 - [ ] CPU <80%
@@ -200,21 +200,21 @@ last-verified: 2026-01-31
 ---
 
 ### Scenario 9: Format Detection Accuracy
-**Setup:**
+#### Setup:
 - Mixed logs: some JSON, some text, some syslog
 
-**Steps:**
+#### Steps:
 1. Send 100 JSON logs
 2. Send 100 text logs
 3. Send 100 syslog logs
 4. Verify format detection accuracy
 
-**Expected Result:**
+#### Expected Result:
 - Correct parser selected for each log
 - Detection is automatic (no config needed)
 - >95% accuracy
 
-**Acceptance Criteria:**
+#### Acceptance Criteria:
 - [ ] JSON detected correctly
 - [ ] Text detected correctly
 - [ ] Syslog detected correctly

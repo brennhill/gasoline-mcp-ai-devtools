@@ -28,7 +28,8 @@ cleanup() {
 # Important: Keep stdin open long enough for full connection setup to avoid context cancellation
 mcp_connect() {
     local timeout_sec=${1:-10}
-    local tmp_out=$(mktemp)
+    local tmp_out
+    tmp_out="$(mktemp)"
 
     # Run in background - keep stdin open for 5s to allow full connection setup
     (
@@ -39,12 +40,12 @@ mcp_connect() {
 
     # Wait for response (but don't wait for stdin to close)
     local count=0
-    while [ $count -lt $timeout_sec ]; do
+    while [ "$count" -lt "$timeout_sec" ]; do
         if grep -q '"protocolVersion"' "$tmp_out" 2>/dev/null; then
             # Response received - wait a bit for connection to stabilize
             sleep 1
-            kill $mcp_pid 2>/dev/null || true
-            wait $mcp_pid 2>/dev/null || true
+            kill "$mcp_pid" 2>/dev/null || true
+            wait "$mcp_pid" 2>/dev/null || true
             cat "$tmp_out"
             rm -f "$tmp_out"
             return 0
@@ -53,8 +54,8 @@ mcp_connect() {
         count=$((count + 1))
     done
 
-    kill $mcp_pid 2>/dev/null || true
-    wait $mcp_pid 2>/dev/null || true
+    kill "$mcp_pid" 2>/dev/null || true
+    wait "$mcp_pid" 2>/dev/null || true
     cat "$tmp_out"
     rm -f "$tmp_out"
     return 1
@@ -179,13 +180,13 @@ rm -f "$PID_FILE"
 sleep 1
 
 # Start a simple HTTP server to block the port
-python3 -m http.server $PORT --bind 127.0.0.1 >/dev/null 2>&1 &
+python3 -m http.server "$PORT" --bind 127.0.0.1 >/dev/null 2>&1 &
 BLOCKER_PID=$!
 sleep 1
 
 # Verify blocker is running
-if ! lsof -ti :$PORT >/dev/null 2>&1; then
-    kill $BLOCKER_PID 2>/dev/null || true
+if ! lsof -ti :"$PORT" >/dev/null 2>&1; then
+    kill "$BLOCKER_PID" 2>/dev/null || true
     fail "Could not start port blocker"
 fi
 
@@ -216,8 +217,8 @@ else
 fi
 
 # Clean up
-kill $BIN_PID 2>/dev/null || true
-kill $BLOCKER_PID 2>/dev/null || true
+kill "$BIN_PID" 2>/dev/null || true
+kill "$BLOCKER_PID" 2>/dev/null || true
 rm -f "$tmp_out"
 
 # Final cleanup

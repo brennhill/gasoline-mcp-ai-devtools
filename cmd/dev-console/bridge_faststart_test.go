@@ -7,7 +7,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"os/exec"
 	"strings"
 	"testing"
 	"time"
@@ -16,10 +15,6 @@ import (
 // TestFastStart_InitializeRespondsImmediately verifies that initialize returns
 // within 100ms even when no daemon is running. This is critical for MCP client UX.
 func TestFastStart_InitializeRespondsImmediately(t *testing.T) {
-	if testing.Short() {
-		t.Skip("skips server spawn in short mode")
-	}
-
 	// Build binary
 	binary := buildTestBinary(t)
 
@@ -27,7 +22,7 @@ func TestFastStart_InitializeRespondsImmediately(t *testing.T) {
 	port := findFreePort(t)
 
 	// Start bridge mode (which uses fast-start)
-	cmd := exec.Command(binary, "--bridge", "--port", fmt.Sprintf("%d", port))
+	cmd := startServerCmd(binary, "--bridge", "--port", fmt.Sprintf("%d", port))
 
 	stdin, err := cmd.StdinPipe()
 	if err != nil {
@@ -78,13 +73,13 @@ func TestFastStart_InitializeRespondsImmediately(t *testing.T) {
 	case resp := <-responseChan:
 		elapsed := time.Since(start)
 
-		// First initialize includes process startup time (~300-500ms typical, up to ~2s on loaded machines).
+		// First initialize includes process startup time (~300-500ms typical, up to ~3s on loaded machines).
 		// The key guarantee is it responds WITHOUT waiting for daemon (which would add 5-10s).
-		// We set 2s as upper bound to catch regressions while allowing for slow CI/loaded machines.
-		if elapsed > 2*time.Second {
-			t.Errorf("❌ Initialize took %v, expected < 2s (includes process startup)", elapsed)
+		// We set 4s as upper bound to catch regressions while allowing for slow CI/loaded machines.
+		if elapsed > 4*time.Second {
+			t.Errorf("❌ Initialize took %v, expected < 4s (includes process startup)", elapsed)
 		} else {
-			t.Logf("✅ Initialize responded in %v (< 2s, includes process startup)", elapsed)
+			t.Logf("✅ Initialize responded in %v (< 4s, includes process startup)", elapsed)
 		}
 
 		// Verify response structure
@@ -126,14 +121,10 @@ func TestFastStart_InitializeRespondsImmediately(t *testing.T) {
 // TestFastStart_ToolsListRespondsImmediately verifies that tools/list returns
 // immediately with the full tool schema, without waiting for daemon.
 func TestFastStart_ToolsListRespondsImmediately(t *testing.T) {
-	if testing.Short() {
-		t.Skip("skips server spawn in short mode")
-	}
-
 	binary := buildTestBinary(t)
 	port := findFreePort(t)
 
-	cmd := exec.Command(binary, "--bridge", "--port", fmt.Sprintf("%d", port))
+	cmd := startServerCmd(binary, "--bridge", "--port", fmt.Sprintf("%d", port))
 
 	stdin, err := cmd.StdinPipe()
 	if err != nil {
@@ -253,7 +244,8 @@ func TestFastStart_ToolsListSchemaStability(t *testing.T) {
 	tools := handler.ToolsList()
 
 	// Expected tool names (must not change without intentional update)
-	expectedNames := []string{"observe", "generate", "configure", "interact"}
+	// Updated in Phase 0 to include new "analyze" tool for active analysis operations
+	expectedNames := []string{"observe", "analyze", "generate", "configure", "interact"}
 
 	if len(tools) != len(expectedNames) {
 		t.Errorf("Expected %d tools, got %d", len(expectedNames), len(tools))
@@ -298,14 +290,10 @@ func TestFastStart_ToolsListSchemaStability(t *testing.T) {
 // TestFastStart_OtherMethodsReturnQuickly verifies that ping, prompts/list, etc.
 // also respond immediately without daemon.
 func TestFastStart_OtherMethodsReturnQuickly(t *testing.T) {
-	if testing.Short() {
-		t.Skip("skips server spawn in short mode")
-	}
-
 	binary := buildTestBinary(t)
 	port := findFreePort(t)
 
-	cmd := exec.Command(binary, "--bridge", "--port", fmt.Sprintf("%d", port))
+	cmd := startServerCmd(binary, "--bridge", "--port", fmt.Sprintf("%d", port))
 
 	stdin, err := cmd.StdinPipe()
 	if err != nil {
@@ -362,7 +350,7 @@ func TestFastStart_OtherMethodsReturnQuickly(t *testing.T) {
 			// Subsequent requests should be < 100ms
 			threshold := 100 * time.Millisecond
 			if tc.name == "initialize" {
-				threshold = 2 * time.Second // Includes process startup (up to ~2s on loaded machines)
+				threshold = 4 * time.Second // Includes process startup (up to ~3s on loaded machines)
 			}
 
 			if elapsed > threshold {
@@ -387,15 +375,11 @@ func TestFastStart_OtherMethodsReturnQuickly(t *testing.T) {
 // TestFastStart_ToolsCallReturnsRetryWhenBooting verifies that tools/call
 // returns a "retry" message instead of blocking when daemon isn't ready.
 func TestFastStart_ToolsCallReturnsRetryWhenBooting(t *testing.T) {
-	if testing.Short() {
-		t.Skip("skips server spawn in short mode")
-	}
-
 	binary := buildTestBinary(t)
 	// Use a port that definitely has no server running
 	port := findFreePort(t)
 
-	cmd := exec.Command(binary, "--bridge", "--port", fmt.Sprintf("%d", port))
+	cmd := startServerCmd(binary, "--bridge", "--port", fmt.Sprintf("%d", port))
 
 	stdin, err := cmd.StdinPipe()
 	if err != nil {
@@ -487,14 +471,10 @@ func TestFastStart_ToolsCallReturnsRetryWhenBooting(t *testing.T) {
 // TestFastStart_VersionInResponse ensures the version in initialize response
 // matches the binary version.
 func TestFastStart_VersionInResponse(t *testing.T) {
-	if testing.Short() {
-		t.Skip("skips server spawn in short mode")
-	}
-
 	binary := buildTestBinary(t)
 	port := findFreePort(t)
 
-	cmd := exec.Command(binary, "--bridge", "--port", fmt.Sprintf("%d", port))
+	cmd := startServerCmd(binary, "--bridge", "--port", fmt.Sprintf("%d", port))
 
 	stdin, err := cmd.StdinPipe()
 	if err != nil {

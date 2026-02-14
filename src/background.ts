@@ -28,7 +28,7 @@ export {
   MEMORY_AVG_LOG_ENTRY_SIZE,
   MEMORY_AVG_WS_EVENT_SIZE,
   MEMORY_AVG_NETWORK_BODY_SIZE,
-  MEMORY_AVG_ACTION_SIZE,
+  MEMORY_AVG_ACTION_SIZE
 } from './background/state-manager'
 
 // Rate limiting constants
@@ -46,7 +46,7 @@ export {
   currentLogLevel,
   screenshotOnError,
   extensionLogQueue,
-  DebugCategory,
+  DebugCategory
 } from './background/index'
 
 // =============================================================================
@@ -65,7 +65,7 @@ export {
   wsBatcher,
   enhancedActionBatcher,
   networkBodyBatcher,
-  perfBatcher,
+  perfBatcher
 } from './background/index'
 
 // =============================================================================
@@ -77,16 +77,14 @@ export {
   handleClearLogs,
   isConnectionCheckRunning,
   checkConnectionAndUpdate,
-  applyCaptureOverrides,
+  applyCaptureOverrides
 } from './background/index'
 
 // =============================================================================
 // === PUBLIC API: POLLING WRAPPERS
 // =============================================================================
 
-export {
-  sendStatusPingWrapper,
-} from './background/index'
+export { sendStatusPingWrapper } from './background/index'
 
 // =============================================================================
 // === PUBLIC API: VERSION CHECKING
@@ -99,14 +97,14 @@ export {
   updateVersionFromHealth,
   updateVersionBadge,
   getUpdateInfo,
-  resetVersionCheck,
+  resetVersionCheck
 } from './background/version-check'
 
 // =============================================================================
 // === PUBLIC API: PENDING QUERIES & PILOT
 // =============================================================================
 
-export { handlePendingQuery, handlePilotCommand, isAiWebPilotEnabled } from './background/index'
+export { handlePendingQuery, handlePilotCommand, isAiWebPilotEnabled, markInitComplete } from './background/index'
 
 // =============================================================================
 // === PUBLIC API: STATE MANAGEMENT (Tests, Initialization)
@@ -125,7 +123,7 @@ export {
   getMemoryPressureState,
   resetMemoryPressureState,
   getProcessingQueriesState,
-  cleanupStaleProcessingQueries,
+  cleanupStaleProcessingQueries
 } from './background/state-manager'
 
 // Context and annotations
@@ -133,7 +131,7 @@ export {
   measureContextSize,
   checkContextAnnotations,
   getContextWarning,
-  resetContextWarning,
+  resetContextWarning
 } from './background/state-manager'
 
 // Source map management
@@ -144,7 +142,7 @@ export {
   SOURCE_MAP_CACHE_SIZE,
   setSourceMapCacheEntry,
   getSourceMapCacheEntry,
-  getSourceMapCacheSize,
+  getSourceMapCacheSize
 } from './background/cache-limits'
 
 // =============================================================================
@@ -160,7 +158,7 @@ export {
   checkServerHealth,
   updateBadge,
   formatLogEntry,
-  shouldCaptureLog,
+  shouldCaptureLog
 } from './background/communication'
 
 export { postQueryResult, pollPendingQueries } from './background/server'
@@ -173,7 +171,7 @@ export {
   saveStateSnapshot,
   loadStateSnapshot,
   listStateSnapshots,
-  deleteStateSnapshot,
+  deleteStateSnapshot
 } from './background/message-handlers'
 
 // =============================================================================
@@ -186,7 +184,7 @@ export {
   __aiWebPilotEnabledCache,
   __aiWebPilotCacheInitialized,
   __pilotInitCallback,
-  _resetPilotCacheForTesting,
+  _resetPilotCacheForTesting
 } from './background/index'
 
 // =============================================================================

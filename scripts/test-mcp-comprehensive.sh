@@ -1,5 +1,5 @@
 #!/bin/bash
-set -e
+set -euo pipefail
 
 # Comprehensive MCP Integration Test
 # Tests all tools (observe, generate, configure, interact) in various scenarios
@@ -21,7 +21,7 @@ echo ""
 
 # Helper: Kill server
 kill_server() {
-    lsof -ti :$PORT 2>/dev/null | xargs kill -9 2>/dev/null || true
+    lsof -ti :"$PORT" 2>/dev/null | xargs kill -9 2>/dev/null || true
     sleep 0.5
 }
 
@@ -34,11 +34,10 @@ test_request() {
     local log_file="$TEMP_DIR/${test_name}.log"
 
     # Send request
-    echo "$request" | $WRAPPER --port $PORT > "$log_file" 2>&1
-    local exit_code=$?
-
+    echo "$request" | "$WRAPPER" --port "$PORT" > "$log_file" 2>&1
     # Check stderr is silent
-    local stderr_lines=$(grep '^\[gasoline' "$log_file" 2>/dev/null | wc -l | tr -d ' ' || echo "0")
+    local stderr_lines
+    stderr_lines=$(grep -c '^\[gasoline' "$log_file" 2>/dev/null || echo "0")
 
     # Check for JSON-RPC response
     if grep -q '"result"' "$log_file" 2>/dev/null; then
@@ -79,7 +78,7 @@ test_request "cold_start_list_tools" \
     "success"
 
 # Check server spawned
-if lsof -ti :$PORT >/dev/null 2>&1; then
+if lsof -ti :"$PORT" >/dev/null 2>&1; then
     echo "  ✅ Server spawned and running"
 else
     echo "  ❌ Server not running after cold start"
@@ -153,8 +152,8 @@ echo "==============================================="
 PIDS=()
 for i in 1 2 3 4 5; do
     REQUEST='{"jsonrpc":"2.0","id":'$((100+i))',"method":"tools/call","params":{"name":"configure","arguments":{"action":"get_health"}}}'
-    (echo "$REQUEST"; sleep 0.3) | $WRAPPER --port $PORT > "$TEMP_DIR/concurrent_$i.log" 2>&1 &
-    PIDS+=($!)
+    (echo "$REQUEST"; sleep 0.3) | "$WRAPPER" --port "$PORT" > "$TEMP_DIR/concurrent_$i.log" 2>&1 &
+    PIDS+=("$!")
 done
 
 # Wait for all
@@ -177,7 +176,7 @@ fi
 
 # Kill leftover processes
 for pid in "${PIDS[@]}"; do
-    kill $pid 2>/dev/null || true
+    kill "$pid" 2>/dev/null || true
 done
 
 echo ""
@@ -189,7 +188,7 @@ echo "============================================="
 RAPID_SUCCESS=0
 for i in 1 2 3 4 5 6 7 8 9 10; do
     REQUEST='{"jsonrpc":"2.0","id":'$((200+i))',"method":"tools/call","params":{"name":"configure","arguments":{"action":"get_health"}}}'
-    if echo "$REQUEST" | $WRAPPER --port $PORT 2>/dev/null | grep -q '"result"'; then
+    if echo "$REQUEST" | "$WRAPPER" --port "$PORT" 2>/dev/null | grep -q '"result"'; then
         RAPID_SUCCESS=$((RAPID_SUCCESS + 1))
     fi
 done
@@ -207,11 +206,11 @@ echo ""
 echo "Test 6: Server Persistence Check"
 echo "================================="
 
-if lsof -ti :$PORT >/dev/null 2>&1; then
+if lsof -ti :"$PORT" >/dev/null 2>&1; then
     echo "  ✅ Server persisted through all tests"
 
     # Get server health
-    HEALTH=$(curl -s http://localhost:$PORT/health 2>/dev/null || echo "")
+    HEALTH=$(curl -s "http://localhost:$PORT/health" 2>/dev/null || echo "")
     if [ -n "$HEALTH" ]; then
         VERSION=$(echo "$HEALTH" | jq -r '.version' 2>/dev/null || echo "unknown")
         UPTIME=$(echo "$HEALTH" | jq -r '.server.uptime' 2>/dev/null || echo "unknown")
@@ -235,9 +234,9 @@ echo "=================================="
 
 SILENCE_LOG="$TEMP_DIR/final_silence.log"
 REQUEST='{"jsonrpc":"2.0","id":999,"method":"tools/list","params":{}}'
-echo "$REQUEST" | $WRAPPER --port $PORT > "$SILENCE_LOG" 2>&1
+echo "$REQUEST" | "$WRAPPER" --port "$PORT" > "$SILENCE_LOG" 2>&1
 
-FINAL_STDERR=$(grep '^\[gasoline' "$SILENCE_LOG" | wc -l | tr -d ' ')
+FINAL_STDERR=$(grep -c '^\[gasoline' "$SILENCE_LOG" 2>/dev/null || echo "0")
 if [ "$FINAL_STDERR" -eq 0 ]; then
     echo "  ✅ Zero stderr output (stdio silence maintained)"
     PASS_COUNT=$((PASS_COUNT + 1))

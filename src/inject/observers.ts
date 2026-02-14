@@ -9,13 +9,13 @@ import {
   installWebSocketCapture,
   setWebSocketCaptureMode,
   setWebSocketCaptureEnabled,
-  uninstallWebSocketCapture,
+  uninstallWebSocketCapture
 } from '../lib/websocket'
 import {
   setNetworkWaterfallEnabled,
   setNetworkBodyCaptureEnabled,
   setServerUrl,
-  wrapFetchWithBodies,
+  wrapFetchWithBodies
 } from '../lib/network'
 import { installConsoleCapture, uninstallConsoleCapture } from '../lib/console'
 import { installExceptionCapture, uninstallExceptionCapture } from '../lib/exceptions'
@@ -23,7 +23,7 @@ import {
   installActionCapture,
   uninstallActionCapture,
   installNavigationCapture,
-  uninstallNavigationCapture,
+  uninstallNavigationCapture
 } from '../lib/actions'
 import { postLog } from '../lib/bridge'
 import { MAX_RESPONSE_LENGTH, SENSITIVE_HEADERS, MEMORY_SOFT_LIMIT_MB, MEMORY_HARD_LIMIT_MB } from '../lib/constants'
@@ -58,7 +58,9 @@ interface NetworkErrorLog {
 /**
  * Wrap fetch to capture network errors
  */
+// #lizard forgives
 export function wrapFetch(originalFetchFn: typeof fetch): typeof fetch {
+  // #lizard forgives
   return async function (input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
     const startTime = Date.now()
     const url = typeof input === 'string' ? input : (input as Request).url
@@ -106,7 +108,7 @@ export function wrapFetch(originalFetchFn: typeof fetch): typeof fetch {
           statusText: response.statusText,
           duration,
           response: responseBody,
-          ...(Object.keys(safeHeaders).length > 0 ? { headers: safeHeaders } : {}),
+          ...(Object.keys(safeHeaders).length > 0 ? { headers: safeHeaders } : {})
         }
 
         postLog(logPayload)
@@ -138,7 +140,7 @@ export function wrapFetch(originalFetchFn: typeof fetch): typeof fetch {
         url,
         error: (error as Error).message,
         duration,
-        ...(Object.keys(safeHeaders).length > 0 ? { headers: safeHeaders } : {}),
+        ...(Object.keys(safeHeaders).length > 0 ? { headers: safeHeaders } : {})
       }
 
       postLog(logPayload)
@@ -308,7 +310,7 @@ export function getDeferralState(): DeferralState {
     deferralEnabled,
     phase2Installed,
     injectionTimestamp,
-    phase2Timestamp,
+    phase2Timestamp
   }
 }
 

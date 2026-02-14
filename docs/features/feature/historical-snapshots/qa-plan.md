@@ -12,21 +12,21 @@ last-verified: 2026-01-31
 ## Test Scenarios
 
 ### Scenario 1: Periodic Snapshot Creation
-**Setup:**
+#### Setup:
 - Gasoline running with snapshot interval = 1 minute
 - Events being generated
 
-**Steps:**
+#### Steps:
 1. Let Gasoline run for 5 minutes
 2. Check disk: ~/.gasoline/snapshots/
 3. Verify snapshots created at each interval
 
-**Expected Result:**
+#### Expected Result:
 - Snapshots created every 1 minute
 - 5 snapshots total (at 0, 1, 2, 3, 4 minutes)
 - Each has metadata with correct timestamp
 
-**Acceptance Criteria:**
+#### Acceptance Criteria:
 - [ ] Snapshots created on schedule
 - [ ] Correct number created
 - [ ] Timestamps accurate
@@ -35,22 +35,22 @@ last-verified: 2026-01-31
 ---
 
 ### Scenario 2: Snapshot Content Verification
-**Setup:**
+#### Setup:
 - Snapshot created with known events
 
-**Steps:**
+#### Steps:
 1. Generate 100 events over 1 minute
 2. Snapshot created automatically
 3. Load snapshot and query it
 4. Verify all 100 events present
 
-**Expected Result:**
+#### Expected Result:
 - All events in snapshot
 - No events lost or duplicated
 - Events in correct order
 - Indexes rebuilt correctly
 
-**Acceptance Criteria:**
+#### Acceptance Criteria:
 - [ ] All 100 events in snapshot
 - [ ] 0% data loss
 - [ ] Order preserved
@@ -59,20 +59,20 @@ last-verified: 2026-01-31
 ---
 
 ### Scenario 3: Query on Loaded Snapshot
-**Setup:**
+#### Setup:
 - Snapshot from 10 minutes ago loaded
 
-**Steps:**
+#### Steps:
 1. Load snapshot with query: `{what: 'network', level: 'ERROR'}`
 2. Verify results identical to live query at that time
 
-**Expected Result:**
+#### Expected Result:
 - Query works on loaded snapshot
 - Same results as original query
 - No differences in output format
 - Performance <500ms
 
-**Acceptance Criteria:**
+#### Acceptance Criteria:
 - [ ] Query works on snapshot
 - [ ] Results match original
 - [ ] Performance acceptable
@@ -80,23 +80,23 @@ last-verified: 2026-01-31
 ---
 
 ### Scenario 4: Metadata Tagging
-**Setup:**
+#### Setup:
 - Test run with Git commit and feature flags
 
-**Steps:**
+#### Steps:
 1. Start test on commit abc1234
 2. Feature flag 'new_ui' enabled
 3. Snapshot created during test
 4. Query snapshots with git_commit filter
 
-**Expected Result:**
+#### Expected Result:
 - Snapshot metadata includes:
   - git_commit: "abc1234"
   - git_branch: "feature/x"
   - feature_flags: {new_ui: true}
 - Can filter snapshots by these metadata
 
-**Acceptance Criteria:**
+#### Acceptance Criteria:
 - [ ] Metadata collected correctly
 - [ ] Snapshot has git_commit
 - [ ] Snapshot has feature flags
@@ -105,21 +105,21 @@ last-verified: 2026-01-31
 ---
 
 ### Scenario 5: Snapshot on Test Failure
-**Setup:**
+#### Setup:
 - Test fails, auto-save-on-failure enabled
 
-**Steps:**
+#### Steps:
 1. Run test, test fails
 2. Gasoline automatically saves snapshot with tag
 3. Developer queries: `observe({what: 'snapshots', test_run_id: 'xyz'})`
 
-**Expected Result:**
+#### Expected Result:
 - Snapshot saved immediately on failure
 - Tagged with test_run_id
 - Queryable
 - Contains all events up to failure
 
-**Acceptance Criteria:**
+#### Acceptance Criteria:
 - [ ] Snapshot saved on failure
 - [ ] Tagged with test ID
 - [ ] Accessible via query
@@ -128,21 +128,21 @@ last-verified: 2026-01-31
 ---
 
 ### Scenario 6: Snapshot Retention Policy
-**Setup:**
+#### Setup:
 - Retention set to 2 days
 - Snapshots exist from 1, 2, 3 days ago
 
-**Steps:**
+#### Steps:
 1. Run cleanup (or wait for scheduled cleanup)
 2. List snapshots
 3. Verify old snapshots deleted
 
-**Expected Result:**
+#### Expected Result:
 - Snapshots >2 days old deleted
 - Snapshots <2 days old retained
 - Disk space reclaimed
 
-**Acceptance Criteria:**
+#### Acceptance Criteria:
 - [ ] Old snapshots deleted
 - [ ] Recent snapshots kept
 - [ ] Cleanup runs automatically
@@ -151,22 +151,22 @@ last-verified: 2026-01-31
 ---
 
 ### Scenario 7: Snapshot Differ
-**Setup:**
+#### Setup:
 - Two snapshots from different times
 - System state changed between them
 
-**Steps:**
+#### Steps:
 1. Load snapshot A (10:00)
 2. Load snapshot B (10:05)
 3. Call: `analyze({what: 'snapshot-diff', snapshot_a: 'A', snapshot_b: 'B'})`
 
-**Expected Result:**
+#### Expected Result:
 - Diff shows:
   - New events added between snapshots
   - Events removed (if any)
   - Statistics: event count changes, error count changes
 
-**Acceptance Criteria:**
+#### Acceptance Criteria:
 - [ ] Diff identifies new events
 - [ ] Statistics accurate
 - [ ] Added/removed counts correct
@@ -174,23 +174,23 @@ last-verified: 2026-01-31
 ---
 
 ### Scenario 8: Snapshot with Large Event Count
-**Setup:**
+#### Setup:
 - 10K events in session over 1 minute
 - Snapshot created with all events
 
-**Steps:**
+#### Steps:
 1. Generate 10K events
 2. Snapshot created
 3. Snapshot file size measured
 4. Load and query snapshot
 
-**Expected Result:**
+#### Expected Result:
 - Snapshot <50MB
 - All 10K events preserved
 - Load time <500ms
 - Query latency <100ms
 
-**Acceptance Criteria:**
+#### Acceptance Criteria:
 - [ ] Snapshot <50MB
 - [ ] No data loss
 - [ ] Load <500ms
@@ -199,23 +199,23 @@ last-verified: 2026-01-31
 ---
 
 ### Scenario 9: Disk Usage & Cleanup
-**Setup:**
+#### Setup:
 - Continuous snapshot creation for 1 week
 - Disk usage monitored
 
-**Steps:**
+#### Steps:
 1. Snapshots created every minute for 7 days
 2. Monitor disk usage
 3. Verify doesn't exceed limits
 4. Run cleanup, verify old snapshots removed
 
-**Expected Result:**
+#### Expected Result:
 - Disk usage stable (not growing unbounded)
 - Cleanup runs as scheduled
 - Old snapshots removed
 - Disk limit respected
 
-**Acceptance Criteria:**
+#### Acceptance Criteria:
 - [ ] Disk growth controlled
 - [ ] Cleanup effective
 - [ ] Retention policy enforced
@@ -224,11 +224,11 @@ last-verified: 2026-01-31
 ---
 
 ### Scenario 10: Snapshot Round-Trip
-**Setup:**
+#### Setup:
 - Original session with known events
 - Snapshot created and loaded
 
-**Steps:**
+#### Steps:
 1. Create session, generate 500 events
 2. Create snapshot
 3. Delete live session data (simulate restart)
@@ -236,13 +236,13 @@ last-verified: 2026-01-31
 5. Query snapshot for specific event
 6. Compare with original
 
-**Expected Result:**
+#### Expected Result:
 - All events preserved in snapshot
 - Query results identical to original
 - No data corruption
 - Indexes rebuilt correctly
 
-**Acceptance Criteria:**
+#### Acceptance Criteria:
 - [ ] Perfect round-trip (no data loss)
 - [ ] Query results identical
 - [ ] Indexes functional

@@ -1,0 +1,516 @@
+// recording_manager_test.go — Tests for RecordingManager lifecycle, validation, and actions.
+package capture
+
+import (
+	"fmt"
+	"strings"
+	"testing"
+	"time"
+
+	"github.com/dev-console/dev-console/internal/state"
+)
+
+// ============================================
+// NewRecordingManager Tests
+// ============================================
+
+func TestNewNewRecordingManager_Initialization(t *testing.T) {
+	t.Parallel()
+
+	mgr := NewRecordingManager()
+
+	if mgr.recordings == nil {
+		t.Fatal("recordings map should be initialized")
+	}
+	if len(mgr.recordings) != 0 {
+		t.Errorf("recordings len = %d, want 0", len(mgr.recordings))
+	}
+	if mgr.activeRecordingID != "" {
+		t.Errorf("activeRecordingID = %q, want empty", mgr.activeRecordingID)
+	}
+	if mgr.recordingStorageUsed != 0 {
+		t.Errorf("recordingStorageUsed = %d, want 0", mgr.recordingStorageUsed)
+	}
+}
+
+// ============================================
+// validateRecordingID Tests
+// ============================================
+
+func TestNewValidateRecordingID_ValidID(t *testing.T) {
+	t.Parallel()
+
+	validIDs := []string{
+		"my-recording-20240115T103000-123456789Z",
+		"recording-20240101T000000-000000000Z",
+		"test",
+		"a",
+		"recording-with-dashes",
+	}
+
+	for _, id := range validIDs {
+		if err := validateRecordingID(id); err != nil {
+			t.Errorf("validateRecordingID(%q) = %v, want nil", id, err)
+		}
+	}
+}
+
+func TestNewValidateRecordingID_EmptyID(t *testing.T) {
+	t.Parallel()
+
+	err := validateRecordingID("")
+	if err == nil {
+		t.Fatal("validateRecordingID('') should return error")
+	}
+	if !strings.Contains(err.Error(), "recording_id_empty") {
+		t.Errorf("error = %q, want recording_id_empty prefix", err.Error())
+	}
+}
+
+func TestNewValidateRecordingID_PathTraversal(t *testing.T) {
+	t.Parallel()
+
+	dangerous := []string{
+		"../etc/passwd",
+		"recording/../secret",
+		"..\\windows\\system32",
+		"recording/subdir",
+		"recording\\subdir",
+	}
+
+	for _, id := range dangerous {
+		err := validateRecordingID(id)
+		if err == nil {
+			t.Errorf("validateRecordingID(%q) should return error for path traversal", id)
+			continue
+		}
+		if !strings.Contains(err.Error(), "recording_id_invalid") {
+			t.Errorf("validateRecordingID(%q) error = %q, want recording_id_invalid", id, err.Error())
+		}
+	}
+}
+
+// ============================================
+// StartRecording Tests
+// ============================================
+
+func TestNewStartRecording_WithName(t *testing.T) {
+	t.Parallel()
+
+	mgr := NewRecordingManager()
+
+	id, err := mgr.StartRecording("login-flow", "https://example.com/login", false)
+	if err != nil {
+		t.Fatalf("StartRecording error = %v", err)
+	}
+
+	if !strings.HasPrefix(id, "login-flow-") {
+		t.Errorf("id = %q, want prefix 'login-flow-'", id)
+	}
+
+	if mgr.recordings[id] == nil {
+		t.Fatal("recording not stored in manager")
+	}
+
+	rec := mgr.recordings[id]
+	if rec.ID != id {
+		t.Errorf("rec.ID = %q, want %q", rec.ID, id)
+	}
+	if rec.Name != "login-flow" {
+		t.Errorf("rec.Name = %q, want login-flow", rec.Name)
+	}
+	if rec.StartURL != "https://example.com/login" {
+		t.Errorf("rec.StartURL = %q, want https://example.com/login", rec.StartURL)
+	}
+	if rec.SensitiveDataEnabled {
+		t.Error("SensitiveDataEnabled should be false")
+	}
+	if rec.CreatedAt == "" {
+		t.Error("CreatedAt should be set")
+	}
+	if rec.Viewport.Width != 1920 || rec.Viewport.Height != 1080 {
+		t.Errorf("Viewport = %+v, want 1920x1080", rec.Viewport)
+	}
+	if rec.Actions == nil {
+		t.Error("Actions should be initialized (not nil)")
+	}
+
+	if mgr.activeRecordingID != id {
+		t.Errorf("activeRecordingID = %q, want %q", mgr.activeRecordingID, id)
+	}
+}
+
+func TestNewStartRecording_WithoutName(t *testing.T) {
+	t.Parallel()
+
+	mgr := NewRecordingManager()
+
+	id, err := mgr.StartRecording("", "https://example.com", false)
+	if err != nil {
+		t.Fatalf("StartRecording error = %v", err)
+	}
+
+	if !strings.HasPrefix(id, "recording-") {
+		t.Errorf("id = %q, want prefix 'recording-' for auto-name", id)
+	}
+}
+
+func TestNewStartRecording_SensitiveDataEnabled(t *testing.T) {
+	t.Parallel()
+
+	mgr := NewRecordingManager()
+
+	id, err := mgr.StartRecording("test", "https://example.com", true)
+	if err != nil {
+		t.Fatalf("StartRecording error = %v", err)
+	}
+
+	rec := mgr.recordings[id]
+	if !rec.SensitiveDataEnabled {
+		t.Error("SensitiveDataEnabled should be true")
+	}
+}
+
+func TestNewStartRecording_AlreadyRecording(t *testing.T) {
+	t.Parallel()
+
+	mgr := NewRecordingManager()
+
+	_, err := mgr.StartRecording("first", "https://first.com", false)
+	if err != nil {
+		t.Fatalf("first StartRecording error = %v", err)
+	}
+
+	_, err = mgr.StartRecording("second", "https://second.com", false)
+	if err == nil {
+		t.Fatal("second StartRecording should fail when already recording")
+	}
+	if !strings.Contains(err.Error(), "already_recording") {
+		t.Errorf("error = %q, want already_recording", err.Error())
+	}
+}
+
+func TestNewStartRecording_StorageFull(t *testing.T) {
+	t.Parallel()
+
+	mgr := NewRecordingManager()
+	mgr.recordingStorageUsed = recordingStorageMax
+
+	_, err := mgr.StartRecording("test", "https://example.com", false)
+	if err == nil {
+		t.Fatal("StartRecording should fail when storage is full")
+	}
+	if !strings.Contains(err.Error(), "recording_storage_full") {
+		t.Errorf("error = %q, want recording_storage_full", err.Error())
+	}
+}
+
+func TestNewStartRecording_UniqueIDs(t *testing.T) {
+	t.Parallel()
+
+	mgr := NewRecordingManager()
+
+	ids := make(map[string]bool)
+	for i := 0; i < 3; i++ {
+		id, err := mgr.StartRecording(fmt.Sprintf("test-%d", i), "https://example.com", false)
+		if err != nil {
+			t.Fatalf("StartRecording[%d] error = %v", i, err)
+		}
+		if ids[id] {
+			t.Fatalf("duplicate recording ID: %q", id)
+		}
+		ids[id] = true
+		mgr.activeRecordingID = ""
+	}
+}
+
+// ============================================
+// StopRecording Tests
+// ============================================
+
+func TestNewStopRecording_Success(t *testing.T) {
+	stateRoot := t.TempDir()
+	t.Setenv(state.StateDirEnv, stateRoot)
+
+	mgr := NewRecordingManager()
+
+	id, err := mgr.StartRecording("test", "https://example.com", false)
+	if err != nil {
+		t.Fatalf("StartRecording error = %v", err)
+	}
+
+	mgr.AddRecordingAction(RecordingAction{Type: "click", Selector: "#btn"})
+	mgr.AddRecordingAction(RecordingAction{Type: "type", Text: "hello"})
+
+	actionCount, duration, err := mgr.StopRecording(id)
+	if err != nil {
+		t.Fatalf("StopRecording error = %v", err)
+	}
+
+	if actionCount != 2 {
+		t.Errorf("actionCount = %d, want 2", actionCount)
+	}
+	if duration < 0 {
+		t.Errorf("duration = %d, want >= 0", duration)
+	}
+
+	if mgr.activeRecordingID != "" {
+		t.Errorf("activeRecordingID = %q, want empty after stop", mgr.activeRecordingID)
+	}
+}
+
+func TestNewStopRecording_NotFound(t *testing.T) {
+	t.Parallel()
+
+	mgr := NewRecordingManager()
+
+	_, _, err := mgr.StopRecording("nonexistent")
+	if err == nil {
+		t.Fatal("StopRecording should fail for nonexistent recording")
+	}
+	if !strings.Contains(err.Error(), "recording_not_found") {
+		t.Errorf("error = %q, want recording_not_found", err.Error())
+	}
+}
+
+// ============================================
+// AddRecordingAction Tests
+// ============================================
+
+func TestNewAddRecordingAction_Success(t *testing.T) {
+	t.Parallel()
+
+	mgr := NewRecordingManager()
+
+	id, err := mgr.StartRecording("test", "https://example.com", true)
+	if err != nil {
+		t.Fatalf("StartRecording error = %v", err)
+	}
+
+	err = mgr.AddRecordingAction(RecordingAction{
+		Type:     "click",
+		Selector: "#submit-btn",
+		X:        100,
+		Y:        200,
+	})
+	if err != nil {
+		t.Fatalf("AddRecordingAction error = %v", err)
+	}
+
+	rec := mgr.recordings[id]
+	if len(rec.Actions) != 1 {
+		t.Fatalf("actions len = %d, want 1", len(rec.Actions))
+	}
+
+	action := rec.Actions[0]
+	if action.Type != "click" {
+		t.Errorf("Type = %q, want click", action.Type)
+	}
+	if action.Selector != "#submit-btn" {
+		t.Errorf("Selector = %q, want #submit-btn", action.Selector)
+	}
+	if action.X != 100 {
+		t.Errorf("X = %d, want 100", action.X)
+	}
+	if action.Y != 200 {
+		t.Errorf("Y = %d, want 200", action.Y)
+	}
+}
+
+func TestNewAddRecordingAction_NoActiveRecording(t *testing.T) {
+	t.Parallel()
+
+	mgr := NewRecordingManager()
+
+	err := mgr.AddRecordingAction(RecordingAction{Type: "click"})
+	if err == nil {
+		t.Fatal("AddRecordingAction should fail when not recording")
+	}
+	if !strings.Contains(err.Error(), "not_recording") {
+		t.Errorf("error = %q, want not_recording", err.Error())
+	}
+}
+
+func TestNewAddRecordingAction_SensitiveDataRedaction(t *testing.T) {
+	t.Parallel()
+
+	mgr := NewRecordingManager()
+	id, _ := mgr.StartRecording("test", "https://example.com", false)
+
+	mgr.AddRecordingAction(RecordingAction{Type: "type", Text: "my-secret-password"})
+
+	rec := mgr.recordings[id]
+	if rec.Actions[0].Text != "[redacted]" {
+		t.Errorf("Text = %q, want [redacted] (sensitive data disabled)", rec.Actions[0].Text)
+	}
+}
+
+func TestNewAddRecordingAction_SensitiveDataPreserved(t *testing.T) {
+	t.Parallel()
+
+	mgr := NewRecordingManager()
+	id, _ := mgr.StartRecording("test", "https://example.com", true)
+
+	mgr.AddRecordingAction(RecordingAction{Type: "type", Text: "my-secret-password"})
+
+	rec := mgr.recordings[id]
+	if rec.Actions[0].Text != "my-secret-password" {
+		t.Errorf("Text = %q, want my-secret-password (sensitive data enabled)", rec.Actions[0].Text)
+	}
+}
+
+func TestNewAddRecordingAction_SetsTimestampIfMissing(t *testing.T) {
+	t.Parallel()
+
+	mgr := NewRecordingManager()
+	id, _ := mgr.StartRecording("test", "https://example.com", true)
+
+	before := time.Now().UnixMilli()
+	mgr.AddRecordingAction(RecordingAction{Type: "click", TimestampMs: 0})
+	after := time.Now().UnixMilli()
+
+	rec := mgr.recordings[id]
+	ts := rec.Actions[0].TimestampMs
+	if ts < before || ts > after {
+		t.Errorf("TimestampMs = %d, want between %d and %d", ts, before, after)
+	}
+}
+
+func TestNewAddRecordingAction_PreservesExplicitTimestamp(t *testing.T) {
+	t.Parallel()
+
+	mgr := NewRecordingManager()
+	id, _ := mgr.StartRecording("test", "https://example.com", true)
+
+	mgr.AddRecordingAction(RecordingAction{Type: "click", TimestampMs: 1700000000000})
+
+	rec := mgr.recordings[id]
+	if rec.Actions[0].TimestampMs != 1700000000000 {
+		t.Errorf("TimestampMs = %d, want 1700000000000 (preserved)", rec.Actions[0].TimestampMs)
+	}
+}
+
+func TestNewAddRecordingAction_NonTypeActionNotRedacted(t *testing.T) {
+	t.Parallel()
+
+	mgr := NewRecordingManager()
+	id, _ := mgr.StartRecording("test", "https://example.com", false)
+
+	mgr.AddRecordingAction(RecordingAction{Type: "click", Text: "Click Me"})
+
+	rec := mgr.recordings[id]
+	if rec.Actions[0].Text != "Click Me" {
+		t.Errorf("Text = %q, want 'Click Me' (click actions not redacted)", rec.Actions[0].Text)
+	}
+}
+
+// ============================================
+// calculateRecordingSize Tests
+// ============================================
+
+func TestNewCalculateRecordingSize_EmptyRecording(t *testing.T) {
+	t.Parallel()
+
+	rec := &Recording{Name: "", Actions: []RecordingAction{}}
+
+	size := calculateRecordingSize(rec)
+	if size < 500 {
+		t.Errorf("size = %d, want >= 500 (base overhead)", size)
+	}
+}
+
+func TestNewCalculateRecordingSize_WithActions(t *testing.T) {
+	t.Parallel()
+
+	rec := &Recording{
+		Name:     "test-recording",
+		StartURL: "https://example.com/page",
+		TestID:   "test-123",
+		Actions:  []RecordingAction{{Type: "click"}, {Type: "type"}, {Type: "navigate"}},
+	}
+
+	size := calculateRecordingSize(rec)
+	expectedMin := int64(len(rec.Name) + len(rec.StartURL) + len(rec.TestID) + 500 + 3*200)
+	if size != expectedMin {
+		t.Errorf("size = %d, want %d", size, expectedMin)
+	}
+}
+
+func TestNewCalculateRecordingSize_LargeRecording(t *testing.T) {
+	t.Parallel()
+
+	actions := make([]RecordingAction, 100)
+	for i := range actions {
+		actions[i] = RecordingAction{Type: "click"}
+	}
+
+	rec := &Recording{Name: "large-test", StartURL: "https://example.com", Actions: actions}
+
+	size := calculateRecordingSize(rec)
+	if size < 20000 {
+		t.Errorf("size = %d, want >= 20000 for 100 actions", size)
+	}
+}
+
+// ============================================
+// CategorizeActionTypes Tests
+// ============================================
+
+func TestNewCategorizeActionTypes_MixedActions(t *testing.T) {
+	t.Parallel()
+
+	mgr := NewRecordingManager()
+
+	rec := &Recording{
+		Actions: []RecordingAction{
+			{Type: "click"}, {Type: "click"}, {Type: "type"},
+			{Type: "navigate"}, {Type: "scroll"}, {Type: "click"}, {Type: "error"},
+		},
+	}
+
+	counts := mgr.CategorizeActionTypes(rec)
+
+	if counts["click"] != 3 {
+		t.Errorf("click count = %d, want 3", counts["click"])
+	}
+	if counts["type"] != 1 {
+		t.Errorf("type count = %d, want 1", counts["type"])
+	}
+	if counts["navigate"] != 1 {
+		t.Errorf("navigate count = %d, want 1", counts["navigate"])
+	}
+	if counts["scroll"] != 1 {
+		t.Errorf("scroll count = %d, want 1", counts["scroll"])
+	}
+	if counts["error"] != 1 {
+		t.Errorf("error count = %d, want 1", counts["error"])
+	}
+}
+
+func TestNewCategorizeActionTypes_EmptyRecording(t *testing.T) {
+	t.Parallel()
+
+	mgr := NewRecordingManager()
+	counts := mgr.CategorizeActionTypes(&Recording{Actions: []RecordingAction{}})
+
+	if len(counts) != 0 {
+		t.Errorf("counts len = %d, want 0 for empty recording", len(counts))
+	}
+}
+
+func TestNewCategorizeActionTypes_SingleType(t *testing.T) {
+	t.Parallel()
+
+	mgr := NewRecordingManager()
+	rec := &Recording{
+		Actions: []RecordingAction{{Type: "click"}, {Type: "click"}, {Type: "click"}},
+	}
+
+	counts := mgr.CategorizeActionTypes(rec)
+	if counts["click"] != 3 {
+		t.Errorf("click count = %d, want 3", counts["click"])
+	}
+	if len(counts) != 1 {
+		t.Errorf("counts has %d types, want 1", len(counts))
+	}
+}

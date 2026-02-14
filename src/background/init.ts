@@ -14,6 +14,7 @@ import {
   setAiWebPilotCacheInitialized,
   setPilotInitCallback,
   resetSyncClientConnection,
+  markInitComplete
 } from './index'
 import * as stateManager from './state-manager'
 import * as eventListeners from './event-listeners'
@@ -111,7 +112,7 @@ async function initializeExtensionAsync(): Promise<void> {
     if (wasRestarted) {
       console.warn(
         '[Gasoline] Service worker restarted - ephemeral state cleared. ' +
-          'User preferences restored from persistent storage.',
+          'User preferences restored from persistent storage.'
       )
       index.debugLog(index.DebugCategory.LIFECYCLE, 'Service worker restarted, ephemeral state recovered')
     }
@@ -163,17 +164,37 @@ async function initializeExtensionAsync(): Promise<void> {
       },
       onTrackedTabChanged: (newTabId, oldTabId) => {
         index.sendStatusPingWrapper()
-        // Reset connection when tracking is enabled to allow immediate reconnection
         if (newTabId !== null) {
           resetSyncClientConnection()
           console.log('[Gasoline] Sync client reset due to tracking enabled')
+        } else if (oldTabId !== null) {
+          // Tracking was lost — notify user on active tab
+          console.log('[Gasoline] Tracking lost for tab', oldTabId)
+          chrome.tabs
+            .query({ active: true, currentWindow: true })
+            .then((tabs) => {
+              if (tabs[0]?.id) {
+                chrome.tabs
+                  .sendMessage(tabs[0].id, {
+                    type: 'GASOLINE_ACTION_TOAST',
+                    text: 'Tab tracking lost',
+                    detail: 'Re-enable in Gasoline popup',
+                    state: 'warning',
+                    duration_ms: 5000
+                  })
+                  .catch(() => {})
+              }
+            })
+            .catch(() => {})
         }
-        // Broadcast to tracked tab for favicon flicker (pass old tab to notify it to stop flicker)
-        broadcastTrackingState(oldTabId).catch((err) => console.error('[Gasoline] Error broadcasting tracking state:', err))
-      },
+        broadcastTrackingState(oldTabId).catch((err) =>
+          console.error('[Gasoline] Error broadcasting tracking state:', err)
+        )
+      }
     })
 
     // ============= STEP 7: Install message handler =============
+    // #lizard forgives
     const deps: MessageHandlerDependencies = {
       getServerUrl: () => index.serverUrl,
       getConnectionStatus: () => index.connectionStatus,
@@ -230,7 +251,7 @@ async function initializeExtensionAsync(): Promise<void> {
           null,
           stateManager.canTakeScreenshot,
           stateManager.recordScreenshot,
-          index.debugLog,
+          index.debugLog
         ),
       checkConnectionAndUpdate: index.checkConnectionAndUpdate,
       clearSourceMapCache: stateManager.clearSourceMapCache,
@@ -240,7 +261,7 @@ async function initializeExtensionAsync(): Promise<void> {
       clearDebugLog: index.clearDebugLog,
 
       saveSetting: eventListeners.saveSetting,
-      forwardToAllContentScripts: (msg) => eventListeners.forwardToAllContentScripts(msg, index.debugLog),
+      forwardToAllContentScripts: (msg) => eventListeners.forwardToAllContentScripts(msg, index.debugLog)
     }
 
     installMessageListener(deps)
@@ -258,7 +279,7 @@ async function initializeExtensionAsync(): Promise<void> {
       onMemoryCheck: () => {
         index.debugLog(index.DebugCategory.LIFECYCLE, 'Memory check alarm fired')
       },
-      onErrorGroupCleanup: () => stateManager.cleanupStaleErrorGroups(index.debugLog),
+      onErrorGroupCleanup: () => stateManager.cleanupStaleErrorGroups(index.debugLog)
     })
 
     // ============= STEP 9: Install tab removed listener =============
@@ -272,20 +293,32 @@ async function initializeExtensionAsync(): Promise<void> {
       eventListeners.handleTrackedTabUrlChange(tabId, newUrl, (msg) => console.log(msg))
     })
 
-    // ============= STEP 10: Initial connection check =============
+    // ============= STEP 9.6: Install draw mode keyboard shortcut listener =============
+    eventListeners.installDrawModeCommandListener((msg) => console.log(`[Gasoline] ${msg}`))
+
+    // ============= STEP 10: Set disconnected badge immediately =============
+    // Badge must reflect disconnected state BEFORE the async health check.
+    // Without this, a stale "connected" badge persists from a previous SW session
+    // until the health check completes (could be seconds if server is slow to refuse).
+    communication.updateBadge(index.connectionStatus)
+
+    // ============= STEP 11: Initial connection check =============
+    // Await the connection check to keep the SW alive until the badge is updated.
+    // Without await, Chrome may suspend the SW before the fetch completes.
     if (index.__aiWebPilotCacheInitialized) {
-      index.checkConnectionAndUpdate()
+      await index.checkConnectionAndUpdate()
     } else {
       setPilotInitCallback(index.checkConnectionAndUpdate)
     }
 
     // ============= INITIALIZATION COMPLETE =============
+    markInitComplete()
     index.debugLog(index.DebugCategory.LIFECYCLE, 'Extension initialized', {
       serverUrl: index.serverUrl,
       logLevel: index.currentLogLevel,
       screenshotOnError: index.screenshotOnError,
       sourceMapEnabled: stateManager.isSourceMapEnabled(),
-      debugMode: index.debugMode,
+      debugMode: index.debugMode
     })
   } catch (error) {
     console.error('[Gasoline] Error during extension initialization:', error)

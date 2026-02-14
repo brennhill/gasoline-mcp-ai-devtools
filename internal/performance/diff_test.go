@@ -786,11 +786,11 @@ func TestMetricDiff_Round(t *testing.T) {
 }
 
 // ============================================
-// JSON deserialization: snake_case → PerformanceSnapshot
+// JSON deserialization: camelCase → PerformanceSnapshot
 // ============================================
-// The extension sends snake_case JSON. These tests verify that Go's
+// The extension sends camelCase JSON. These tests verify that Go's
 // json.Unmarshal populates all fields correctly. If a JSON tag is
-// changed (e.g. from "first_contentful_paint" to "firstContentfulPaint"),
+// changed (e.g. from "first_contentful_paint" to something else),
 // these tests will fail.
 
 func TestSnapshotJSON_AllWebVitalsDeserialize(t *testing.T) {
@@ -883,11 +883,11 @@ func TestSnapshotJSON_UserTimingRoundTrip(t *testing.T) {
 		"cumulative_layout_shift": 0.01,
 		"user_timing": {
 			"marks": [
-				{"name": "app-init", "startTime": 150},
-				{"name": "hydration-complete", "startTime": 800}
+				{"name": "app-init", "start_time": 150},
+				{"name": "hydration-complete", "start_time": 800}
 			],
 			"measures": [
-				{"name": "hydration", "startTime": 150, "duration": 650}
+				{"name": "hydration", "start_time": 150, "duration": 650}
 			]
 		}
 	}`

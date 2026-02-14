@@ -7,6 +7,10 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"time"
+
+	"github.com/dev-console/dev-console/internal/capture"
+	"github.com/dev-console/dev-console/internal/pagination"
 )
 
 // safeMarshal performs defensive JSON marshaling with a fallback value.
@@ -73,6 +77,28 @@ func mcpMarkdownResponse(summary string, markdown string) json.RawMessage {
 	return safeMarshal(result, `{"content":[{"type":"text","text":"Internal error: failed to marshal result"}],"isError":true}`)
 }
 
+// mcpJSONErrorResponse constructs an MCP tool error result with a summary line
+// followed by compact JSON. Sets IsError: true so LLMs recognize the failure.
+func mcpJSONErrorResponse(summary string, data any) json.RawMessage {
+	dataJSON, err := json.Marshal(data)
+	if err != nil {
+		return mcpErrorResponse("Failed to serialize response: " + err.Error())
+	}
+
+	var text string
+	if summary != "" {
+		text = summary + "\n" + string(dataJSON)
+	} else {
+		text = string(dataJSON)
+	}
+
+	result := MCPToolResult{
+		Content: []MCPContentBlock{{Type: "text", Text: text}},
+		IsError: true,
+	}
+	return safeMarshal(result, `{"content":[{"type":"text","text":"Internal error: failed to marshal result"}],"isError":true}`)
+}
+
 // mcpJSONResponse constructs an MCP tool result with a summary line prefix
 // followed by compact JSON. Use for nested, irregular, or highly variable data.
 func mcpJSONResponse(summary string, data any) json.RawMessage {
@@ -91,6 +117,7 @@ func mcpJSONResponse(summary string, data any) json.RawMessage {
 	result := MCPToolResult{
 		Content: []MCPContentBlock{{Type: "text", Text: text}},
 	}
+	// Error impossible: simple struct with no circular refs or unsupported types
 	resultJSON, _ := json.Marshal(result)
 	return json.RawMessage(resultJSON)
 }
@@ -145,6 +172,64 @@ func truncate(s string, maxLen int) string {
 	return s[:maxLen-3] + "..."
 }
 
+// ============================================
+// Response Metadata (Staleness)
+// ============================================
+
+// ResponseMetadata provides freshness information for buffer-backed observe responses.
+type ResponseMetadata struct {
+	RetrievedAt string `json:"retrieved_at"`
+	IsStale     bool   `json:"is_stale"`
+	DataAge     string `json:"data_age"`
+}
+
+// buildResponseMetadata constructs freshness metadata for an observe response.
+// newestEntry is the timestamp of the most recent entry in the buffer (zero if empty).
+// cap is used to check extension connectivity.
+func buildResponseMetadata(cap *capture.Capture, newestEntry time.Time) ResponseMetadata {
+	now := time.Now()
+	meta := ResponseMetadata{
+		RetrievedAt: now.Format(time.RFC3339),
+		IsStale:     !cap.IsExtensionConnected(),
+	}
+	if !newestEntry.IsZero() {
+		age := now.Sub(newestEntry)
+		meta.DataAge = fmt.Sprintf("%.1fs", age.Seconds())
+	} else {
+		meta.DataAge = "no_data"
+	}
+	return meta
+}
+
+// buildPaginatedResponseMetadata merges freshness metadata with cursor pagination metadata.
+func buildPaginatedResponseMetadata(cap *capture.Capture, newestEntry time.Time, pMeta *pagination.CursorPaginationMetadata) map[string]any {
+	base := buildResponseMetadata(cap, newestEntry)
+	meta := map[string]any{
+		"retrieved_at": base.RetrievedAt,
+		"is_stale":     base.IsStale,
+		"data_age":     base.DataAge,
+		"total":        pMeta.Total,
+		"has_more":     pMeta.HasMore,
+	}
+	if pMeta.Cursor != "" {
+		meta["cursor"] = pMeta.Cursor
+	}
+	if pMeta.OldestTimestamp != "" {
+		meta["oldest_timestamp"] = pMeta.OldestTimestamp
+	}
+	if pMeta.NewestTimestamp != "" {
+		meta["newest_timestamp"] = pMeta.NewestTimestamp
+	}
+	if pMeta.CursorRestarted {
+		meta["cursor_restarted"] = true
+		meta["original_cursor"] = pMeta.OriginalCursor
+	}
+	if pMeta.Warning != "" {
+		meta["warning"] = pMeta.Warning
+	}
+	return meta
+}
+
 // appendWarningsToResponse adds a warnings content block to an MCP response if there are any.
 func appendWarningsToResponse(resp JSONRPCResponse, warnings []string) JSONRPCResponse {
 	if len(warnings) == 0 {
@@ -159,6 +244,7 @@ func appendWarningsToResponse(resp JSONRPCResponse, warnings []string) JSONRPCRe
 		Type: "text",
 		Text: warningText,
 	})
+	// Error impossible: simple struct with no circular refs or unsupported types
 	resultJSON, _ := json.Marshal(result)
 	resp.Result = json.RawMessage(resultJSON)
 	return resp

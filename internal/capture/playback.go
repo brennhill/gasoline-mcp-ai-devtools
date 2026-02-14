@@ -57,7 +57,7 @@ func (r *RecordingManager) StartPlayback(recordingID string) (*PlaybackSession, 
 		// Try to load from disk
 		loaded, err := r.loadRecordingFromDisk(recordingID)
 		if err != nil {
-			return nil, fmt.Errorf("playback_recording_not_found: Recording %s not found: %v", recordingID, err)
+			return nil, fmt.Errorf("playback_recording_not_found: Recording %s not found: %w", recordingID, err)
 		}
 		recording = loaded
 	}

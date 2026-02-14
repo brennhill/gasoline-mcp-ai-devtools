@@ -59,107 +59,128 @@ func (v *APIContractValidator) detectErrorSpike(tracker *EndpointTracker, body c
 
 // compareShapes compares expected vs actual shape and returns violations.
 func (v *APIContractValidator) compareShapes(endpoint string, expected, actual, actualData any) []APIContractViolation {
-	var violations []APIContractViolation
-
 	expectedMap, eOK := expected.(map[string]any)
 	actualMap, aOK := actual.(map[string]any)
 
 	if !eOK || !aOK {
-		// Top-level type change
-		if fmt.Sprintf("%T", expected) != fmt.Sprintf("%T", actual) {
-			violations = append(violations, APIContractViolation{
-				Endpoint:     endpoint,
-				Type:         "type_change",
-				Description:  "Response type changed",
-				ExpectedType: describeType(expected),
-				ActualType:   describeType(actual),
-			})
-		}
-		return violations
+		return detectTopLevelTypeChange(endpoint, expected, actual)
 	}
 
-	// Check for missing fields
-	var missingFields []string
+	var violations []APIContractViolation
+	violations = append(violations, detectMissingFields(endpoint, expectedMap, actualMap)...)
+	violations = append(violations, detectNewFields(endpoint, expectedMap, actualMap)...)
+	violations = append(violations, detectFieldTypeChanges(endpoint, expectedMap, actualMap, actualData)...)
+	return violations
+}
+
+// detectTopLevelTypeChange reports a violation if the top-level response type changed.
+func detectTopLevelTypeChange(endpoint string, expected, actual any) []APIContractViolation {
+	if fmt.Sprintf("%T", expected) == fmt.Sprintf("%T", actual) {
+		return nil
+	}
+	return []APIContractViolation{{
+		Endpoint:     endpoint,
+		Type:         "type_change",
+		Description:  "Response type changed",
+		ExpectedType: describeType(expected),
+		ActualType:   describeType(actual),
+	}}
+}
+
+// detectMissingFields returns a shape_change violation if fields from the expected shape are missing.
+func detectMissingFields(endpoint string, expectedMap, actualMap map[string]any) []APIContractViolation {
+	var missing []string
 	for field := range expectedMap {
+		if field == "$array" {
+			continue
+		}
 		if _, found := actualMap[field]; !found {
-			// Skip $array marker
-			if field == "$array" {
-				continue
-			}
-			missingFields = append(missingFields, field)
+			missing = append(missing, field)
 		}
 	}
-	if len(missingFields) > 0 {
-		sort.Strings(missingFields)
-		violations = append(violations, APIContractViolation{
-			Endpoint:      endpoint,
-			Type:          "shape_change",
-			Description:   fmt.Sprintf("Field(s) missing from response: %s", strings.Join(missingFields, ", ")),
-			MissingFields: missingFields,
-			ExpectedShape: toStringMap(expectedMap),
-			ActualShape:   toStringMap(actualMap),
-		})
+	if len(missing) == 0 {
+		return nil
 	}
+	sort.Strings(missing)
+	return []APIContractViolation{{
+		Endpoint:      endpoint,
+		Type:          "shape_change",
+		Description:   fmt.Sprintf("Field(s) missing from response: %s", strings.Join(missing, ", ")),
+		MissingFields: missing,
+		ExpectedShape: toStringMap(expectedMap),
+		ActualShape:   toStringMap(actualMap),
+	}}
+}
 
-	// Check for new fields
+// detectNewFields returns a new_field violation if unexpected fields appeared.
+func detectNewFields(endpoint string, expectedMap, actualMap map[string]any) []APIContractViolation {
 	var newFields []string
 	for field := range actualMap {
+		if field == "$array" {
+			continue
+		}
 		if _, found := expectedMap[field]; !found {
-			if field == "$array" {
-				continue
-			}
 			newFields = append(newFields, field)
 		}
 	}
-	if len(newFields) > 0 {
-		sort.Strings(newFields)
-		violations = append(violations, APIContractViolation{
-			Endpoint:    endpoint,
-			Type:        "new_field",
-			Description: fmt.Sprintf("New field(s) appeared in response: %s", strings.Join(newFields, ", ")),
-			NewFields:   newFields,
-		})
+	if len(newFields) == 0 {
+		return nil
 	}
+	sort.Strings(newFields)
+	return []APIContractViolation{{
+		Endpoint:    endpoint,
+		Type:        "new_field",
+		Description: fmt.Sprintf("New field(s) appeared in response: %s", strings.Join(newFields, ", ")),
+		NewFields:   newFields,
+	}}
+}
 
-	// Check for type changes in existing fields
+// detectFieldTypeChanges returns violations for fields whose types changed or became null.
+func detectFieldTypeChanges(endpoint string, expectedMap, actualMap map[string]any, actualData any) []APIContractViolation {
 	actualDataMap, _ := actualData.(map[string]any)
+	var violations []APIContractViolation
 	for field, expectedType := range expectedMap {
 		actualType, found := actualMap[field]
 		if !found {
 			continue
 		}
+		expectedStr := describeType(expectedType)
+		actualStr := describeType(actualType)
 
-		expectedTypeStr := describeType(expectedType)
-		actualTypeStr := describeType(actualType)
-
-		// Check for null transition
-		if actualTypeStr == "null" && expectedTypeStr != "null" {
-			violations = append(violations, APIContractViolation{
-				Endpoint:     endpoint,
-				Type:         "null_field",
-				Description:  fmt.Sprintf("Field '%s' became null (was %s)", field, expectedTypeStr),
-				Field:        field,
-				ExpectedType: expectedTypeStr,
-				ActualType:   "null",
-			})
-		} else if expectedTypeStr != actualTypeStr && actualTypeStr != "null" {
-			var sampleValue any
-			if actualDataMap != nil {
-				sampleValue = actualDataMap[field]
-			}
-			violations = append(violations, APIContractViolation{
-				Endpoint:     endpoint,
-				Type:         "type_change",
-				Description:  fmt.Sprintf("Field '%s' changed type from %s to %s", field, expectedTypeStr, actualTypeStr),
-				Field:        field,
-				ExpectedType: expectedTypeStr,
-				ActualType:   actualTypeStr,
-				SampleValue:  sampleValue,
-			})
+		if v := classifyFieldTypeChange(endpoint, field, expectedStr, actualStr, actualDataMap); v != nil {
+			violations = append(violations, *v)
 		}
 	}
-
 	return violations
+}
+
+// classifyFieldTypeChange returns a violation if a field's type changed, or nil.
+func classifyFieldTypeChange(endpoint, field, expectedType, actualType string, actualDataMap map[string]any) *APIContractViolation {
+	if expectedType == actualType {
+		return nil
+	}
+	if actualType == "null" && expectedType != "null" {
+		return &APIContractViolation{
+			Endpoint: endpoint, Type: "null_field",
+			Description:  fmt.Sprintf("Field '%s' became null (was %s)", field, expectedType),
+			Field:        field,
+			ExpectedType: expectedType, ActualType: "null",
+		}
+	}
+	if actualType != "null" {
+		var sampleValue any
+		if actualDataMap != nil {
+			sampleValue = actualDataMap[field]
+		}
+		return &APIContractViolation{
+			Endpoint: endpoint, Type: "type_change",
+			Description:  fmt.Sprintf("Field '%s' changed type from %s to %s", field, expectedType, actualType),
+			Field:        field,
+			ExpectedType: expectedType, ActualType: actualType,
+			SampleValue: sampleValue,
+		}
+	}
+	return nil
 }
 
 func (v *APIContractValidator) addViolation(tracker *EndpointTracker, violation APIContractViolation) {
@@ -213,80 +234,83 @@ func violationSeverity(violationType string) string {
 // MCP Tool Interface
 // ============================================
 
+// analyzeAccum holds intermediate totals during endpoint analysis.
+type analyzeAccum struct {
+	violations       []APIContractViolation
+	totalRequests    int
+	cleanEndpoints   int
+	trackedEndpoints int
+	earliestCall     time.Time
+}
+
 // Analyze processes tracked endpoints and returns all violations.
 func (v *APIContractValidator) Analyze(filter APIContractFilter) APIContractAnalyzeResult {
 	v.mu.RLock()
 	defer v.mu.RUnlock()
 
-	var violations []APIContractViolation
-	totalRequests := 0
-	cleanEndpoints := 0
-	trackedEndpoints := 0
-	var earliestCall time.Time
+	acc := v.accumulateViolations(filter)
 
+	sort.Slice(acc.violations, func(i, j int) bool {
+		return acc.violations[i].Endpoint < acc.violations[j].Endpoint
+	})
+
+	return v.buildAnalyzeResult(acc, filter)
+}
+
+// accumulateViolations collects violations and statistics from all tracked endpoints.
+func (v *APIContractValidator) accumulateViolations(filter APIContractFilter) analyzeAccum {
+	var acc analyzeAccum
 	for endpoint, tracker := range v.trackers {
 		if !v.matchesFilter(endpoint, filter) {
 			continue
 		}
-		trackedEndpoints++
-		totalRequests += tracker.CallCount
-
-		// Track earliest call for dataWindowStartedAt
-		if !tracker.FirstCalled.IsZero() && (earliestCall.IsZero() || tracker.FirstCalled.Before(earliestCall)) {
-			earliestCall = tracker.FirstCalled
+		acc.trackedEndpoints++
+		acc.totalRequests += tracker.CallCount
+		if !tracker.FirstCalled.IsZero() && (acc.earliestCall.IsZero() || tracker.FirstCalled.Before(acc.earliestCall)) {
+			acc.earliestCall = tracker.FirstCalled
 		}
-
 		if len(tracker.Violations) > 0 {
-			violations = append(violations, tracker.Violations...)
+			acc.violations = append(acc.violations, tracker.Violations...)
 		} else {
-			cleanEndpoints++
+			acc.cleanEndpoints++
 		}
 	}
+	return acc
+}
 
-	// Sort violations by endpoint for deterministic output
-	sort.Slice(violations, func(i, j int) bool {
-		return violations[i].Endpoint < violations[j].Endpoint
-	})
-
+// buildAnalyzeResult constructs the final analysis result from accumulated data.
+func (v *APIContractValidator) buildAnalyzeResult(acc analyzeAccum, filter APIContractFilter) APIContractAnalyzeResult {
 	result := APIContractAnalyzeResult{
 		Action:                "analyzed",
 		AnalyzedAt:            time.Now().Format(time.RFC3339),
-		Violations:            violations,
-		TrackedEndpoints:      trackedEndpoints,
-		TotalRequestsAnalyzed: totalRequests,
-		CleanEndpoints:        cleanEndpoints,
+		Violations:            acc.violations,
+		TrackedEndpoints:      acc.trackedEndpoints,
+		TotalRequestsAnalyzed: acc.totalRequests,
+		CleanEndpoints:        acc.cleanEndpoints,
 		Summary: &AnalyzeSummary{
-			Violations:     len(violations),
-			Endpoints:      trackedEndpoints,
-			TotalRequests:  totalRequests,
-			CleanEndpoints: cleanEndpoints,
+			Violations: len(acc.violations), Endpoints: acc.trackedEndpoints,
+			TotalRequests: acc.totalRequests, CleanEndpoints: acc.cleanEndpoints,
 		},
 		PossibleViolationTypes: []string{"shape_change", "type_change", "error_spike", "new_field", "null_field"},
 	}
-
-	// dataWindowStartedAt: when data collection began
-	if !earliestCall.IsZero() {
-		result.DataWindowStartedAt = earliestCall.Format(time.RFC3339)
+	if !acc.earliestCall.IsZero() {
+		result.DataWindowStartedAt = acc.earliestCall.Format(time.RFC3339)
 	}
-
-	// appliedFilter echo
 	if filter.URLFilter != "" || len(filter.IgnoreEndpoints) > 0 {
-		result.AppliedFilter = &AppliedFilterEcho{
-			URL:             filter.URLFilter,
-			IgnoreEndpoints: filter.IgnoreEndpoints,
-		}
+		result.AppliedFilter = &AppliedFilterEcho{URL: filter.URLFilter, IgnoreEndpoints: filter.IgnoreEndpoints}
 	}
-
-	// Helpful hint when no violations found
-	if len(violations) == 0 {
-		if trackedEndpoints > 0 {
-			result.Hint = fmt.Sprintf("No violations detected. All %d tracked endpoint(s) have consistent response shapes.", trackedEndpoints)
-		} else {
-			result.Hint = "No violations detected. No endpoints tracked yet — browse your application to capture API traffic."
-		}
+	if len(acc.violations) == 0 {
+		result.Hint = analyzeHint(acc.trackedEndpoints)
 	}
-
 	return result
+}
+
+// analyzeHint returns a helpful hint when no violations are found.
+func analyzeHint(trackedEndpoints int) string {
+	if trackedEndpoints > 0 {
+		return fmt.Sprintf("No violations detected. All %d tracked endpoint(s) have consistent response shapes.", trackedEndpoints)
+	}
+	return "No violations detected. No endpoints tracked yet — browse your application to capture API traffic."
 }
 
 // Report returns the current state of all tracked endpoint schemas.
@@ -295,60 +319,11 @@ func (v *APIContractValidator) Report(filter APIContractFilter) APIContractRepor
 	defer v.mu.RUnlock()
 
 	var endpoints []EndpointContractReport
-
 	for endpoint, tracker := range v.trackers {
 		if !v.matchesFilter(endpoint, filter) {
 			continue
 		}
-
-		// Build status code map
-		statusCodes := make(map[string]int)
-		for _, status := range tracker.StatusHistory {
-			key := fmt.Sprintf("%d", status)
-			statusCodes[key]++
-		}
-
-		// Calculate consistency percentage
-		consistency := "100%"
-		if tracker.CallCount > 0 {
-			pct := float64(tracker.ConsistentCount) / float64(tracker.CallCount) * 100
-			consistency = fmt.Sprintf("%.0f%%", pct)
-		}
-
-		// Calculate consistency score (0-1)
-		consistencyScore := 1.0
-		if tracker.CallCount > 0 {
-			consistencyScore = float64(tracker.ConsistentCount) / float64(tracker.CallCount)
-		}
-
-		// Extract method from endpoint
-		parts := strings.SplitN(endpoint, " ", 2)
-		method := parts[0]
-
-		report := EndpointContractReport{
-			Endpoint:         endpoint,
-			Method:           method,
-			CallCount:        tracker.CallCount,
-			StatusCodes:      statusCodes,
-			Consistency:      consistency,
-			ConsistencyScore: consistencyScore,
-		}
-
-		if !tracker.LastCalled.IsZero() {
-			report.LastCalledAt = tracker.LastCalled.Format(time.RFC3339)
-		}
-
-		if !tracker.FirstCalled.IsZero() {
-			report.FirstCalledAt = tracker.FirstCalled.Format(time.RFC3339)
-		}
-
-		if tracker.EstablishedShape != nil {
-			if shapeMap, ok := tracker.EstablishedShape.(map[string]any); ok {
-				report.EstablishedShape = toStringMap(shapeMap)
-			}
-		}
-
-		endpoints = append(endpoints, report)
+		endpoints = append(endpoints, buildEndpointReport(endpoint, tracker))
 	}
 
 	// Sort by call count (most used first)
@@ -377,6 +352,47 @@ func (v *APIContractValidator) Report(filter APIContractFilter) APIContractRepor
 	}
 
 	return result
+}
+
+// buildEndpointReport creates a contract report for a single endpoint tracker.
+func buildEndpointReport(endpoint string, tracker *EndpointTracker) EndpointContractReport {
+	statusCodes := make(map[string]int)
+	for _, status := range tracker.StatusHistory {
+		statusCodes[fmt.Sprintf("%d", status)]++
+	}
+
+	consistency, score := computeConsistency(tracker.ConsistentCount, tracker.CallCount)
+	parts := strings.SplitN(endpoint, " ", 2)
+
+	report := EndpointContractReport{
+		Endpoint:         endpoint,
+		Method:           parts[0],
+		CallCount:        tracker.CallCount,
+		StatusCodes:      statusCodes,
+		Consistency:      consistency,
+		ConsistencyScore: score,
+	}
+	if !tracker.LastCalled.IsZero() {
+		report.LastCalledAt = tracker.LastCalled.Format(time.RFC3339)
+	}
+	if !tracker.FirstCalled.IsZero() {
+		report.FirstCalledAt = tracker.FirstCalled.Format(time.RFC3339)
+	}
+	if tracker.EstablishedShape != nil {
+		if shapeMap, ok := tracker.EstablishedShape.(map[string]any); ok {
+			report.EstablishedShape = toStringMap(shapeMap)
+		}
+	}
+	return report
+}
+
+// computeConsistency returns the human-readable consistency string and numeric score.
+func computeConsistency(consistentCount, callCount int) (string, float64) {
+	if callCount == 0 {
+		return "100%", 1.0
+	}
+	score := float64(consistentCount) / float64(callCount)
+	return fmt.Sprintf("%.0f%%", score*100), score
 }
 
 // Clear resets all tracked endpoint data.

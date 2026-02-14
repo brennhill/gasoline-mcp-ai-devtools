@@ -40,35 +40,35 @@ func extractJSONFromText(text string) string {
 
 // Sample console error from browser
 var sampleConsoleError = LogEntry{
-	"type":      "console",
-	"level":     "error",
-	"message":   "Uncaught TypeError: Cannot read property 'foo' of undefined",
-	"source":    "https://example.com/app.js",
-	"url":       "https://example.com/app.js",
-	"line":      42,
-	"column":    15,
-	"stack":     "TypeError: Cannot read property 'foo' of undefined\n    at handleClick (app.js:42:15)",
-	"timestamp": time.Now().UTC().Format(time.RFC3339),
+	"type":    "console",
+	"level":   "error",
+	"message": "Uncaught TypeError: Cannot read property 'foo' of undefined",
+	"source":  "https://example.com/app.js",
+	"url":     "https://example.com/app.js",
+	"line":    42,
+	"column":  15,
+	"stack":   "TypeError: Cannot read property 'foo' of undefined\n    at handleClick (app.js:42:15)",
+	"ts":      time.Now().UTC().Format(time.RFC3339),
 }
 
 // Sample console warning
 var sampleConsoleWarning = LogEntry{
-	"type":      "console",
-	"level":     "warn",
-	"message":   "Deprecation warning: componentWillMount is deprecated",
-	"source":    "https://example.com/react.js",
-	"url":       "https://example.com/react.js",
-	"line":      100,
-	"timestamp": time.Now().UTC().Format(time.RFC3339),
+	"type":    "console",
+	"level":   "warn",
+	"message": "Deprecation warning: componentWillMount is deprecated",
+	"source":  "https://example.com/react.js",
+	"url":     "https://example.com/react.js",
+	"line":    100,
+	"ts":      time.Now().UTC().Format(time.RFC3339),
 }
 
 // Sample console log
 var sampleConsoleLog = LogEntry{
-	"type":      "console",
-	"level":     "log",
-	"message":   "User clicked button",
-	"source":    "https://example.com/app.js",
-	"timestamp": time.Now().UTC().Format(time.RFC3339),
+	"type":    "console",
+	"level":   "log",
+	"message": "User clicked button",
+	"source":  "https://example.com/app.js",
+	"ts":      time.Now().UTC().Format(time.RFC3339),
 }
 
 // Sample network waterfall entry
@@ -122,9 +122,7 @@ func TestObserveErrors_EndToEnd(t *testing.T) {
 
 	// Use the server's /logs handler
 	server.mu.Lock()
-	for _, entry := range logsPayload["entries"].([]LogEntry) {
-		server.entries = append(server.entries, entry)
-	}
+	server.entries = append(server.entries, logsPayload["entries"].([]LogEntry)...)
 	server.mu.Unlock()
 
 	// Step 2: Call observe errors via MCP tool
@@ -310,7 +308,7 @@ func TestObserveNetworkWaterfall_URLFilter(t *testing.T) {
 
 	// Filter by "api.example.com"
 	th := handler.toolHandler.(*ToolHandler)
-	resp := th.toolGetNetworkWaterfall(JSONRPCRequest{JSONRPC: "2.0", ID: 1}, json.RawMessage(`{"url_filter":"api.example.com"}`))
+	resp := th.toolGetNetworkWaterfall(JSONRPCRequest{JSONRPC: "2.0", ID: 1}, json.RawMessage(`{"url":"api.example.com"}`))
 
 	var result map[string]any
 	json.Unmarshal(resp.Result, &result)
@@ -338,21 +336,8 @@ func TestObserveExtensionLogs_EndToEnd(t *testing.T) {
 	cap := capture.NewCapture()
 	handler := NewToolHandler(server, cap)
 
-	// Simulate extension logs POST
-	logsPayload := struct {
-		Logs []capture.ExtensionLog `json:"logs"`
-	}{
-		Logs: []capture.ExtensionLog{sampleExtensionLog},
-	}
-	body, _ := json.Marshal(logsPayload)
-	req := httptest.NewRequest("POST", "/extension-logs", bytes.NewReader(body))
-	req.Header.Set("Content-Type", "application/json")
-	w := httptest.NewRecorder()
-	cap.HandleExtensionLogs(w, req)
-
-	if w.Code != http.StatusOK {
-		t.Fatalf("Expected 200 OK, got %d", w.Code)
-	}
+	// Add extension logs directly
+	cap.AddExtensionLogs([]capture.ExtensionLog{sampleExtensionLog})
 
 	// Call observe extension_logs
 	th := handler.toolHandler.(*ToolHandler)

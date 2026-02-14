@@ -15,7 +15,7 @@ feature: Gasoline CI Infrastructure
 **Current spec says:** "Later mock overwrites earlier (LIFO stack)"
 **Problem:** If AI mocks `/api/order → 200`, then immediately mocks `/api/order → 500`, which one applies?
 
-**Questions that need answers:**
+#### Questions that need answers:
 - Does LIFO mean last-registered wins? Or first-registered wins?
 - What if mocks are registered in rapid succession (race condition)?
 - Should mock scope be per-test or per-request?
@@ -36,7 +36,7 @@ await gasoline.unmock(mock1)                       // Clear specific mock
 **Severity:** MEDIUM
 **Confusion:** Spec says "keep snapshots <10MB each", but doesn't define what happens if exceeded.
 
-**Questions:**
+#### Questions:
 - Does system reject snapshot if >10MB? Or truncate?
 - What's truncated? (DOM, network, logs?)
 - What warning/error does AI see?
@@ -55,13 +55,13 @@ await gasoline.unmock(mock1)                       // Clear specific mock
 **Severity:** MEDIUM
 **Confusion:** Spec says "auto-cleanup on test end", but doesn't specify WHEN.
 
-**Questions:**
+#### Questions:
 - Is cleanup immediate (afterEach hook)?
 - Is cleanup deferred (end of all tests)?
 - If developer forgets to call `testBoundary()`, are ALL logs marked as test-specific?
 - What if test crashes mid-execution?
 
-**Example that's confusing:**
+#### Example that's confusing:
 ```javascript
 test('test1', async ({ gasoline }) => {
   await gasoline.testBoundary('test1');
@@ -77,7 +77,7 @@ test('test2', async ({ gasoline }) => {
 });
 ```
 
-**Recommendation:**
+#### Recommendation:
 - **Explicit cleanup:** `await gasoline.endBoundary()`
 - **Or auto-cleanup:** Tie to test lifecycle (afterEach)
 - **Or scoped:** `async with boundary('test1'): ...` (context manager)
@@ -90,13 +90,13 @@ test('test2', async ({ gasoline }) => {
 **Severity:** MEDIUM
 **Confusion:** Spec says snapshots are "ephemeral" but doesn't say HOW LONG they live.
 
-**Questions:**
+#### Questions:
 - Do snapshots live for entire test suite execution?
 - Do they live for single test only?
 - Are they cleared on CI job end?
 - Can AI query snapshots from previous tests?
 
-**Timeline that's confusing:**
+#### Timeline that's confusing:
 ```
 Test 1 runs
   → Snapshot captured ('snapshot1')
@@ -128,7 +128,7 @@ Snapshot Lifetime:
 **Severity:** HIGH
 **Confusion:** What happens if AI queues 5 async test re-runs concurrently?
 
-**Scenario:**
+#### Scenario:
 ```javascript
 // AI does this (in parallel):
 result1 = await gasoline.async(() => rerunTest('test1.spec.ts'))  // 30 sec
@@ -137,13 +137,13 @@ result3 = await gasoline.async(() => rerunTest('test3.spec.ts'))  // 30 sec
 // ... all queued at once
 ```
 
-**Questions:**
+#### Questions:
 - Do they run in parallel (true concurrency) or queued (serial)?
 - If parallel: Are they isolated (separate browser contexts)?
 - If serial: What's the queue order?
 - What happens if system runs out of resources?
 
-**Recommendation:**
+#### Recommendation:
 ```
 Concurrency Model:
 - Max 3 concurrent test re-runs (configurable)
@@ -161,7 +161,7 @@ Concurrency Model:
 **Severity:** HIGH
 **Confusion:** What if mock endpoint is malformed?
 
-**Example:**
+#### Example:
 ```javascript
 await gasoline.configure({
   action: 'mock',
@@ -173,7 +173,7 @@ await gasoline.configure({
 fetch('/api/order')  // Will this match 'api/order'?
 ```
 
-**Questions:**
+#### Questions:
 - Does system validate endpoint format (must start with /)?
 - Does system reject invalid endpoints, or silently ignore?
 - What error message does AI see?
@@ -201,7 +201,7 @@ If invalid:
 **Severity:** MEDIUM
 **Confusion:** What does "restore to snapshot" actually do?
 
-**Questions:**
+#### Questions:
 - Does it reload the page to match snapshot state?
 - Does it revert DOM mutations?
 - Does it restore network state (undo pending requests)?
@@ -232,7 +232,7 @@ Snapshot Restoration:
 **Severity:** MEDIUM
 **Confusion:** Can a test have multiple boundaries?
 
-**Example:**
+#### Example:
 ```javascript
 test('complex test', async ({ gasoline }) => {
   await gasoline.testBoundary('setup');
@@ -246,7 +246,7 @@ test('complex test', async ({ gasoline }) => {
 });
 ```
 
-**Questions:**
+#### Questions:
 - Does second `testBoundary()` REPLACE the first, or create nested boundary?
 - Can logs be tagged with multiple boundaries?
 - What happens if AI queries with `boundary: 'setup'`?
@@ -380,13 +380,13 @@ Rule: Only ONE active boundary per test
 
 ### Scenario 1: Developer Pushes Code, Test Fails, AI Fixes
 
-**Setup:**
+#### Setup:
 1. Clone Gasoline repo
 2. Create simple Playwright test that fails (timeout)
 3. Push to GitHub
 4. GitHub Actions runs tests with Gasoline CI Infrastructure
 
-**Steps:**
+#### Steps:
 
 1. [ ] **Test Fails:** Test fails with "Timeout waiting for element"
 2. [ ] **Snapshot Captured:** Gasoline auto-captures snapshot (DOM, network, logs)
@@ -408,12 +408,12 @@ Rule: Only ONE active boundary per test
 
 ### Scenario 2: Works Locally, Fails in CI (Environment Mismatch)
 
-**Setup:**
+#### Setup:
 1. Create test that assumes PostgreSQL 12 schema
 2. Local machine: PostgreSQL 12 (test passes)
 3. CI container: PostgreSQL 14 (test fails with schema error)
 
-**Steps:**
+#### Steps:
 
 1. [ ] **Test Passes Locally:** Engineer runs `npm test` locally, passes
 2. [ ] **Test Fails in CI:** GitHub Actions runs same test, fails: "Column 'user_metadata' not found"
@@ -432,12 +432,12 @@ Rule: Only ONE active boundary per test
 
 ### Scenario 3: Compliance Review (Enterprise)
 
-**Setup:**
+#### Setup:
 1. Enterprise team wants to enable AI to modify code
 2. CISO requires: "Proof that fix works before merge"
 3. Compliance team needs: "Full audit trail"
 
-**Steps:**
+#### Steps:
 
 1. [ ] **AI Proposes Fix:** AI suggests code change to test file
 2. [ ] **Snapshot Provided:** AI includes snapshot context (what was broken)
@@ -526,7 +526,7 @@ Rule: Only ONE active boundary per test
 
 **Status:** BLOCKED - AWAITING CLARIFICATIONS
 
-**Cannot proceed with implementation until these 8 critical issues are resolved:**
+### Cannot proceed with implementation until these 8 critical issues are resolved:
 
 1. [ ] **Mock Scope** — Define LIFO vs explicit mock IDs
 2. [ ] **Snapshot Size Limits** — Define hard limit + truncation behavior

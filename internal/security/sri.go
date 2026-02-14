@@ -71,158 +71,162 @@ func NewSRIGenerator() *SRIGenerator {
 // Main Generation Logic
 // ============================================
 
+// sriFilterConfig holds pre-computed filter state for SRI generation.
+type sriFilterConfig struct {
+	firstPartyOrigins map[string]bool
+	originFilter      map[string]bool
+	includeScripts    bool
+	includeStyles     bool
+}
+
+// newSRIFilterConfig builds the filter config from params and page URLs.
+func newSRIFilterConfig(pageURLs []string, params SRIParams) sriFilterConfig {
+	cfg := sriFilterConfig{
+		firstPartyOrigins: make(map[string]bool),
+		originFilter:      make(map[string]bool),
+		includeScripts:    true,
+		includeStyles:     true,
+	}
+	for _, pageURL := range pageURLs {
+		if origin := extractOriginForSRI(pageURL); origin != "" {
+			cfg.firstPartyOrigins[origin] = true
+		}
+	}
+	for _, o := range params.Origins {
+		cfg.originFilter[o] = true
+	}
+	if len(params.ResourceTypes) > 0 {
+		cfg.includeScripts = false
+		cfg.includeStyles = false
+		for _, rt := range params.ResourceTypes {
+			switch rt {
+			case "scripts":
+				cfg.includeScripts = true
+			case "styles":
+				cfg.includeStyles = true
+			}
+		}
+	}
+	return cfg
+}
+
+// shouldIncludeResourceType returns true if this resource type passes the filter.
+func (cfg sriFilterConfig) shouldIncludeResourceType(resType string) bool {
+	return (resType == "script" && cfg.includeScripts) || (resType == "style" && cfg.includeStyles)
+}
+
+// hasVaryUserAgent checks if response headers contain Vary: User-Agent.
+func hasVaryUserAgent(headers map[string]string) bool {
+	if headers == nil {
+		return false
+	}
+	for key, val := range headers {
+		if strings.EqualFold(key, "Vary") && strings.Contains(strings.ToLower(val), "user-agent") {
+			return true
+		}
+	}
+	return false
+}
+
+// sriBodyOutcome describes the result of evaluating a single network body for SRI.
+type sriBodyOutcome struct {
+	thirdParty bool
+	resType    string // "script", "style", or "" if not applicable
+	skip       bool   // true when filtered out or duplicate
+	truncated  bool
+	varyUA     bool
+	resource   SRIResource
+}
+
+// evaluateBody checks a single network body against filters and, when eligible,
+// computes its SRI hash. The seenURLs map is updated for deduplication.
+func (g *SRIGenerator) evaluateBody(body capture.NetworkBody, cfg sriFilterConfig, seenURLs map[string]bool) sriBodyOutcome {
+	if body.ResponseBody == "" {
+		return sriBodyOutcome{skip: true}
+	}
+	origin := extractOriginForSRI(body.URL)
+	if origin == "" || cfg.firstPartyOrigins[origin] {
+		return sriBodyOutcome{skip: true}
+	}
+
+	resType := sriResourceType(body.ContentType)
+	if resType == "" {
+		return sriBodyOutcome{thirdParty: true, skip: true}
+	}
+	if !cfg.shouldIncludeResourceType(resType) || (len(cfg.originFilter) > 0 && !cfg.originFilter[origin]) || seenURLs[body.URL] {
+		return sriBodyOutcome{thirdParty: true, resType: resType, skip: true}
+	}
+	seenURLs[body.URL] = true
+
+	if body.ResponseTruncated {
+		return sriBodyOutcome{thirdParty: true, resType: resType, truncated: true}
+	}
+
+	hash := computeSHA384(body.ResponseBody)
+	return sriBodyOutcome{
+		thirdParty: true,
+		resType:    resType,
+		varyUA:     hasVaryUserAgent(body.ResponseHeaders),
+		resource: SRIResource{
+			URL: body.URL, Type: resType, Hash: hash,
+			Crossorigin: "anonymous", TagTemplate: generateTagTemplate(body.URL, hash, resType),
+			SizeBytes: len(body.ResponseBody), AlreadyHasSRI: false,
+		},
+	}
+}
+
+// buildSRIWarnings converts collected URL lists into human-readable warning strings.
+func buildSRIWarnings(truncated, varyUA []string) []string {
+	warnings := make([]string, 0, len(truncated)+len(varyUA))
+	for _, u := range truncated {
+		warnings = append(warnings, fmt.Sprintf("%s — body was truncated, cannot compute SRI hash. Consider increasing capture limit.", u))
+	}
+	for _, u := range varyUA {
+		warnings = append(warnings, fmt.Sprintf("%s — responds with Vary: User-Agent header. SRI hash may differ across browsers.", u))
+	}
+	return warnings
+}
+
 // Generate analyzes network bodies and produces SRI hashes for third-party scripts/styles.
 func (g *SRIGenerator) Generate(bodies []capture.NetworkBody, pageURLs []string, params SRIParams) SRIResult {
-	result := SRIResult{
-		Resources: []SRIResource{},
-		Warnings:  []string{},
-	}
-
-	// Build set of first-party origins from page URLs
-	firstPartyOrigins := make(map[string]bool)
-	for _, pageURL := range pageURLs {
-		origin := extractOriginForSRI(pageURL)
-		if origin != "" {
-			firstPartyOrigins[origin] = true
-		}
-	}
-
-	// Build origin filter set if specified
-	originFilter := make(map[string]bool)
-	for _, o := range params.Origins {
-		originFilter[o] = true
-	}
-
-	// Determine which resource types to include
-	includeScripts := true
-	includeStyles := true
-	if len(params.ResourceTypes) > 0 {
-		includeScripts = false
-		includeStyles = false
-		for _, rt := range params.ResourceTypes {
-			if rt == "scripts" {
-				includeScripts = true
-			}
-			if rt == "styles" {
-				includeStyles = true
-			}
-		}
-	}
-
-	// Track seen URLs for deduplication
+	cfg := newSRIFilterConfig(pageURLs, params)
+	result := SRIResult{Resources: []SRIResource{}, Warnings: []string{}}
 	seenURLs := make(map[string]bool)
 
-	// Track stats for summary
-	totalThirdParty := 0
-	scriptsWithoutSRI := 0
-	stylesWithoutSRI := 0
-	truncatedResources := []string{}
-	varyUserAgentResources := []string{}
+	var totalThirdParty, scriptsWithoutSRI, stylesWithoutSRI int
+	var truncated, varyUA []string
 
 	for _, body := range bodies {
-		// Skip empty bodies
-		if body.ResponseBody == "" {
-			continue
+		out := g.evaluateBody(body, cfg, seenURLs)
+		if out.thirdParty {
+			totalThirdParty++
 		}
-
-		// Extract origin and check if third-party
-		origin := extractOriginForSRI(body.URL)
-		if origin == "" {
-			continue
-		}
-
-		// Skip first-party origins
-		if firstPartyOrigins[origin] {
-			continue
-		}
-
-		// Count as third-party resource (all types)
-		totalThirdParty++
-
-		// Determine resource type from content-type
-		resType := sriResourceType(body.ContentType)
-		if resType == "" {
-			continue // Not a script or style - skip hash generation but counted above
-		}
-
-		// Track scripts/styles for summary
-		switch resType {
+		switch out.resType {
 		case "script":
 			scriptsWithoutSRI++
 		case "style":
 			stylesWithoutSRI++
 		}
-
-		// Apply resource type filter
-		if resType == "script" && !includeScripts {
+		if out.truncated {
+			truncated = append(truncated, body.URL)
 			continue
 		}
-		if resType == "style" && !includeStyles {
+		if out.skip || out.resType == "" {
 			continue
 		}
-
-		// Apply origin filter if specified
-		if len(originFilter) > 0 && !originFilter[origin] {
-			continue
+		if out.varyUA {
+			varyUA = append(varyUA, body.URL)
 		}
-
-		// Skip duplicates
-		if seenURLs[body.URL] {
-			continue
-		}
-		seenURLs[body.URL] = true
-
-		// Check for truncated body
-		if body.ResponseTruncated {
-			truncatedResources = append(truncatedResources, body.URL)
-			continue
-		}
-
-		// Check for Vary: User-Agent header
-		if body.ResponseHeaders != nil {
-			for key, val := range body.ResponseHeaders {
-				if strings.EqualFold(key, "Vary") && strings.Contains(strings.ToLower(val), "user-agent") {
-					varyUserAgentResources = append(varyUserAgentResources, body.URL)
-				}
-			}
-		}
-
-		// Compute SHA-384 hash
-		hash := computeSHA384(body.ResponseBody)
-
-		// Generate tag template
-		tagTemplate := generateTagTemplate(body.URL, hash, resType)
-
-		resource := SRIResource{
-			URL:          body.URL,
-			Type:         resType,
-			Hash:         hash,
-			Crossorigin:  "anonymous",
-			TagTemplate:  tagTemplate,
-			SizeBytes:    len(body.ResponseBody),
-			AlreadyHasSRI: false,
-		}
-
-		result.Resources = append(result.Resources, resource)
+		result.Resources = append(result.Resources, out.resource)
 	}
 
-	// Build warnings
-	for _, url := range truncatedResources {
-		result.Warnings = append(result.Warnings, fmt.Sprintf("%s — body was truncated, cannot compute SRI hash. Consider increasing capture limit.", url))
-	}
-	for _, url := range varyUserAgentResources {
-		result.Warnings = append(result.Warnings, fmt.Sprintf("%s — responds with Vary: User-Agent header. SRI hash may differ across browsers.", url))
-	}
-
-	// Build summary
+	result.Warnings = buildSRIWarnings(truncated, varyUA)
 	result.Summary = SRISummary{
 		TotalThirdPartyResources: totalThirdParty,
 		ScriptsWithoutSRI:        scriptsWithoutSRI,
 		StylesWithoutSRI:         stylesWithoutSRI,
-		AlreadyProtected:         0,
 		HashesGenerated:          len(result.Resources),
 	}
-
 	return result
 }
 

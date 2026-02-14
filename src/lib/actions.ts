@@ -54,7 +54,7 @@ export function recordAction(action: Omit<ActionRecord, 'ts'>): void {
 
   actionBuffer.push({
     ts: new Date().toISOString(),
-    ...action,
+    ...action
   })
 
   // Keep buffer size limited
@@ -88,7 +88,7 @@ export function handleClick(event: MouseEvent): void {
     type: 'click',
     target: getElementSelector(target),
     x: event.clientX,
-    y: event.clientY,
+    y: event.clientY
   }
 
   // Include button text if available (truncated)
@@ -111,7 +111,7 @@ export function handleInput(event: Event): void {
   const action: Omit<ActionRecord, 'ts'> = {
     type: 'input',
     target: getElementSelector(target),
-    inputType: target.type || 'text',
+    inputType: target.type || 'text'
   }
 
   // Only include value for non-sensitive fields
@@ -141,9 +141,9 @@ export function handleScroll(event: Event): void {
     type: 'scroll',
     scrollX: Math.round(window.scrollX),
     scrollY: Math.round(window.scrollY),
-    target: target === document ? 'document' : getElementSelector(target as Element),
+    target: target === document ? 'document' : getElementSelector(target as Element)
   })
-  recordEnhancedAction('scroll', null, { scrollY: Math.round(window.scrollY) })
+  recordEnhancedAction('scroll', null, { scroll_y: Math.round(window.scrollY) })
 }
 
 /**
@@ -166,7 +166,7 @@ export function handleChange(event: Event): void {
   const selectedValue = target.value || ''
   const selectedText = selectedOption ? selectedOption.text || '' : ''
 
-  recordEnhancedAction('select', target, { selectedValue, selectedText })
+  recordEnhancedAction('select', target, { selected_value: selectedValue, selected_text: selectedText })
 }
 
 /**
@@ -240,13 +240,13 @@ let originalReplaceState: typeof history.replaceState | null = null
 export function installNavigationCapture(): void {
   if (typeof window === 'undefined') return
 
-  // Track current URL for fromUrl
+  // Track current URL for from_url
   let lastUrl = window.location.href
 
   // Popstate handler (back/forward)
   navigationPopstateHandler = function (): void {
     const toUrl = window.location.href
-    recordEnhancedAction('navigate', null, { fromUrl: lastUrl, toUrl })
+    recordEnhancedAction('navigate', null, { from_url: lastUrl, to_url: toUrl })
     lastUrl = toUrl
   }
   window.addEventListener('popstate', navigationPopstateHandler)
@@ -258,12 +258,12 @@ export function installNavigationCapture(): void {
       this: History,
       state: unknown,
       title: string,
-      url?: string | URL | null,
+      url?: string | URL | null
     ): void {
       const fromUrl = lastUrl
       originalPushState!.call(this, state, title, url)
       const toUrl = url || window.location.href
-      recordEnhancedAction('navigate', null, { fromUrl, toUrl: String(toUrl) })
+      recordEnhancedAction('navigate', null, { from_url: fromUrl, to_url: String(toUrl) })
       lastUrl = window.location.href
     }
   }
@@ -275,12 +275,12 @@ export function installNavigationCapture(): void {
       this: History,
       state: unknown,
       title: string,
-      url?: string | URL | null,
+      url?: string | URL | null
     ): void {
       const fromUrl = lastUrl
       originalReplaceState!.call(this, state, title, url)
       const toUrl = url || window.location.href
-      recordEnhancedAction('navigate', null, { fromUrl, toUrl: String(toUrl) })
+      recordEnhancedAction('navigate', null, { from_url: fromUrl, to_url: String(toUrl) })
       lastUrl = window.location.href
     }
   }

@@ -1,8 +1,3 @@
-//go:build integration
-// +build integration
-
-// NOTE: These tests use NetworkBody which needs to be imported from capture package.
-// Run with: go test -tags=integration ./internal/security/...
 package security
 
 import (
@@ -10,7 +5,11 @@ import (
 	"fmt"
 	"testing"
 	"time"
+
+	"github.com/dev-console/dev-console/internal/capture"
 )
+
+type NetworkBody = capture.NetworkBody
 
 func TestSecuritySnapshotCapture(t *testing.T) {
 	t.Parallel()
@@ -285,7 +284,7 @@ func TestSecurityDiffHeaderAdded(t *testing.T) {
 			URL:         "https://myapp.com/",
 			ContentType: "text/html",
 			ResponseHeaders: map[string]string{
-				"X-Frame-Options":        "DENY",
+				"X-Frame-Options":         "DENY",
 				"Content-Security-Policy": "default-src 'self'",
 			},
 		},
@@ -731,8 +730,8 @@ func TestSecurityDiffSummary(t *testing.T) {
 			Method:      "GET",
 			ContentType: "text/html",
 			ResponseHeaders: map[string]string{
-				"X-Frame-Options":        "DENY",
-				"X-Content-Type-Options": "nosniff",
+				"X-Frame-Options":         "DENY",
+				"X-Content-Type-Options":  "nosniff",
 				"Content-Security-Policy": "default-src 'self'",
 			},
 			HasAuthHeader: true,
@@ -742,11 +741,11 @@ func TestSecurityDiffSummary(t *testing.T) {
 	// After: all headers removed, auth dropped
 	afterBodies := []NetworkBody{
 		{
-			URL:            "https://myapp.com/",
-			Method:         "GET",
-			ContentType:    "text/html",
+			URL:             "https://myapp.com/",
+			Method:          "GET",
+			ContentType:     "text/html",
 			ResponseHeaders: map[string]string{},
-			HasAuthHeader:  false,
+			HasAuthHeader:   false,
 		},
 	}
 
@@ -986,4 +985,3 @@ func TestSecurityDiffExpiredSnapshot(t *testing.T) {
 		}
 	}
 }
-

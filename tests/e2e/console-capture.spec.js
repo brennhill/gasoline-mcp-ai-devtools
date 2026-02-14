@@ -97,9 +97,7 @@ test.describe('Console Error Capture', () => {
     const data = await response.json()
 
     // Warnings should not appear at 'error' log level
-    const warnEntry = (data.entries || []).find(
-      (e) => e.level === 'warn' && entryContains(e, 'Test warning message')
-    )
+    const warnEntry = (data.entries || []).find((e) => e.level === 'warn' && entryContains(e, 'Test warning message'))
     expect(warnEntry).toBeUndefined()
   })
 

@@ -143,7 +143,7 @@ cmd/dev-console/
 └── tools.go             # Extend: Add new generate modes
 ```
 
-**Internal organization of testgen.go:**
+#### Internal organization of testgen.go:
 ```go
 // testgen.go
 
@@ -303,14 +303,14 @@ func (h *ToolHandler) GenerateTestFromError(req TestFromContextRequest) (*Genera
 }
 ```
 
-**Algorithm:**
+#### Algorithm:
 1. Lookup error by ID (or use most recent console error)
 2. Get enhanced actions within ±5 seconds of error timestamp
 3. Get network requests in same window
 4. Use existing `generatePlaywrightScript()` for base test
 5. Add error assertion at the end
 
-**Selector Priority (reuse from codegen.go):**
+#### Selector Priority (reuse from codegen.go):
 1. `data-testid` / `data-test`
 2. ARIA role + name
 3. ARIA label
@@ -330,7 +330,7 @@ func (h *ToolHandler) HealSelector(oldSelector string, domSnapshot DOMSnapshot) 
 }
 ```
 
-**Healing Strategies:**
+#### Healing Strategies:
 
 | Strategy | Description | Confidence Modifier |
 |----------|-------------|-------------------|
@@ -340,7 +340,7 @@ func (h *ToolHandler) HealSelector(oldSelector string, domSnapshot DOMSnapshot) 
 | `attribute_match` | Similar href, action, name attrs | +0.0 |
 | `structural_match` | Same position in DOM tree | -0.2 |
 
-**Confidence Calculation:**
+#### Confidence Calculation:
 ```
 base_confidence = 0.5
 + strategy_modifier
@@ -362,7 +362,7 @@ func (h *ToolHandler) ClassifyFailure(failure TestFailure) *FailureClassificatio
 }
 ```
 
-**Classification Patterns:**
+#### Classification Patterns:
 
 | Pattern | Category | Confidence |
 |---------|----------|------------|
@@ -381,7 +381,7 @@ All responses use existing `mcpJSONResponse(summary, data)` pattern from tools.g
 
 **Summary:** "Generated Playwright test 'error-form-validation.spec.ts' (3 assertions)"
 
-**Data:**
+#### Data:
 ```json
 {
   "test": {
@@ -408,7 +408,7 @@ All responses use existing `mcpJSONResponse(summary, data)` pattern from tools.g
 
 **Summary:** "Healed 1/2 selectors in login.spec.ts (1 unhealed, requires manual review)"
 
-**Data:**
+#### Data:
 ```json
 {
   "healed": [
@@ -435,7 +435,7 @@ All responses use existing `mcpJSONResponse(summary, data)` pattern from tools.g
 
 **Summary:** "Classified as selector_broken (92% confidence) — recommended: heal selector"
 
-**Data:**
+#### Data:
 ```json
 {
   "classification": {
@@ -505,7 +505,7 @@ func validateTestFilePath(path string) error {
 
 ### File Write Security Model (S1-1 Resolution)
 
-**File writes via `test_heal.repair` with `auto_apply: true` require:**
+#### File writes via `test_heal.repair` with `auto_apply: true` require:
 1. AI Web Pilot toggle MUST be enabled (same as `interact` tool)
 2. Path MUST pass `validateTestFilePath()` check
 3. Confidence MUST be >= 0.9 for auto-apply

@@ -25,132 +25,13 @@ func (h *ToolHandler) handleGenerateTestClassify(req JSONRPCRequest, args json.R
 		}
 	}
 
-	// Validate required parameters
-	if params.Action == "" {
-		return JSONRPCResponse{
-			JSONRPC: "2.0",
-			ID:      req.ID,
-			Result: mcpStructuredError(
-				ErrMissingParam,
-				"Required parameter 'action' is missing",
-				"Add the 'action' parameter and call again",
-				withParam("action"),
-				withHint("Valid values: failure"),
-			),
-		}
+	if errResp, ok := validateClassifyParams(req.ID, params); !ok {
+		return errResp
 	}
 
-	// Validate action value
-	if params.Action != "failure" && params.Action != "batch" {
-		return JSONRPCResponse{
-			JSONRPC: "2.0",
-			ID:      req.ID,
-			Result: mcpStructuredError(
-				ErrInvalidParam,
-				"Invalid action value: "+params.Action,
-				"Use a valid action value",
-				withParam("action"),
-				withHint("Valid values: failure, batch"),
-			),
-		}
-	}
-
-	// Handle based on action
-	var result any
-	var summary string
-
-	switch params.Action {
-	case "failure":
-		// Validate failure parameter
-		if params.Failure == nil {
-			return JSONRPCResponse{
-				JSONRPC: "2.0",
-				ID:      req.ID,
-				Result: mcpStructuredError(
-					ErrMissingParam,
-					"Required parameter 'failure' is missing for failure action",
-					"Add the 'failure' parameter and call again",
-					withParam("failure"),
-				),
-			}
-		}
-
-		// Classify the failure
-		classification := h.classifyFailure(params.Failure)
-
-		// Check if classification is uncertain
-		if classification.Confidence < 0.5 {
-			return JSONRPCResponse{
-				JSONRPC: "2.0",
-				ID:      req.ID,
-				Result: mcpStructuredError(
-					ErrClassificationUncertain,
-					fmt.Sprintf("Could not classify failure with sufficient confidence (%.2f < 0.50)", classification.Confidence),
-					"Provide more context or manually review the failure",
-					withHint("Category: "+classification.Category),
-				),
-			}
-		}
-
-		// Format response
-		summary = fmt.Sprintf("Classified as %s (%.0f%% confidence) — recommended: %s",
-			classification.Category,
-			classification.Confidence*100,
-			classification.RecommendedAction)
-
-		data := map[string]any{
-			"classification": classification,
-		}
-
-		if classification.SuggestedFix != nil {
-			data["suggested_fix"] = classification.SuggestedFix
-		}
-
-		result = data
-
-	case "batch":
-		// Validate failures parameter
-		if len(params.Failures) == 0 {
-			return JSONRPCResponse{
-				JSONRPC: "2.0",
-				ID:      req.ID,
-				Result: mcpStructuredError(
-					ErrMissingParam,
-					"Required parameter 'failures' is missing for batch action",
-					"Add the 'failures' parameter and call again",
-					withParam("failures"),
-				),
-			}
-		}
-
-		// Check batch size limits
-		const MaxFailuresPerBatch = 20
-		if len(params.Failures) > MaxFailuresPerBatch {
-			return JSONRPCResponse{
-				JSONRPC: "2.0",
-				ID:      req.ID,
-				Result: mcpStructuredError(
-					ErrBatchTooLarge,
-					fmt.Sprintf("Batch contains %d failures, max is %d", len(params.Failures), MaxFailuresPerBatch),
-					"Reduce the number of failures and try again",
-				),
-			}
-		}
-
-		// Classify all failures
-		batchResult := h.classifyFailureBatch(params.Failures)
-
-		// Format summary
-		summary = fmt.Sprintf("Classified %d failures: %d real bugs, %d flaky, %d test issues, %d uncertain",
-			batchResult.TotalClassified,
-			batchResult.RealBugs,
-			batchResult.FlakyTests,
-			batchResult.TestBugs,
-			batchResult.Uncertain)
-
-		result = map[string]any{
-			"batch_result": batchResult,
-		}
+	result, summary, errResp := h.dispatchClassifyAction(req.ID, params)
+	if errResp != nil {
+		return *errResp
 	}
 
 	resp := JSONRPCResponse{
@@ -158,45 +39,169 @@ func (h *ToolHandler) handleGenerateTestClassify(req JSONRPCRequest, args json.R
 		ID:      req.ID,
 		Result:  mcpJSONResponse(summary, result),
 	}
-
 	return appendWarningsToResponse(resp, warnings)
+}
+
+func (h *ToolHandler) dispatchClassifyAction(reqID any, params TestClassifyRequest) (any, string, *JSONRPCResponse) {
+	switch params.Action {
+	case "failure":
+		result, summary, errResp, ok := h.classifySingleFailure(reqID, params)
+		if !ok {
+			return nil, "", &errResp
+		}
+		return result, summary, nil
+	case "batch":
+		result, summary, errResp, ok := h.classifyBatchFailures(reqID, params)
+		if !ok {
+			return nil, "", &errResp
+		}
+		return result, summary, nil
+	}
+	return nil, "", nil
+}
+
+var validClassifyActions = map[string]bool{"failure": true, "batch": true}
+
+func validateClassifyParams(reqID any, params TestClassifyRequest) (JSONRPCResponse, bool) {
+	if params.Action == "" {
+		return JSONRPCResponse{
+			JSONRPC: "2.0",
+			ID:      reqID,
+			Result: mcpStructuredError(
+				ErrMissingParam,
+				"Required parameter 'action' is missing",
+				"Add the 'action' parameter and call again",
+				withParam("action"),
+				withHint("Valid values: failure"),
+			),
+		}, false
+	}
+	if !validClassifyActions[params.Action] {
+		return JSONRPCResponse{
+			JSONRPC: "2.0",
+			ID:      reqID,
+			Result: mcpStructuredError(
+				ErrInvalidParam,
+				"Invalid action value: "+params.Action,
+				"Use a valid action value",
+				withParam("action"),
+				withHint("Valid values: failure, batch"),
+			),
+		}, false
+	}
+	return JSONRPCResponse{}, true
+}
+
+func (h *ToolHandler) classifySingleFailure(reqID any, params TestClassifyRequest) (any, string, JSONRPCResponse, bool) {
+	if params.Failure == nil {
+		return nil, "", JSONRPCResponse{
+			JSONRPC: "2.0",
+			ID:      reqID,
+			Result: mcpStructuredError(
+				ErrMissingParam,
+				"Required parameter 'failure' is missing for failure action",
+				"Add the 'failure' parameter and call again",
+				withParam("failure"),
+			),
+		}, false
+	}
+
+	classification := h.classifyFailure(params.Failure)
+
+	if classification.Confidence < 0.5 {
+		return nil, "", JSONRPCResponse{
+			JSONRPC: "2.0",
+			ID:      reqID,
+			Result: mcpStructuredError(
+				ErrClassificationUncertain,
+				fmt.Sprintf("Could not classify failure with sufficient confidence (%.2f < 0.50)", classification.Confidence),
+				"Provide more context or manually review the failure",
+				withHint("Category: "+classification.Category),
+			),
+		}, false
+	}
+
+	summary := fmt.Sprintf("Classified as %s (%.0f%% confidence) — recommended: %s",
+		classification.Category,
+		classification.Confidence*100,
+		classification.RecommendedAction)
+
+	data := map[string]any{"classification": classification}
+	if classification.SuggestedFix != nil {
+		data["suggested_fix"] = classification.SuggestedFix
+	}
+	return data, summary, JSONRPCResponse{}, true
+}
+
+const maxFailuresPerBatch = 20
+
+func (h *ToolHandler) classifyBatchFailures(reqID any, params TestClassifyRequest) (any, string, JSONRPCResponse, bool) {
+	if len(params.Failures) == 0 {
+		return nil, "", JSONRPCResponse{
+			JSONRPC: "2.0",
+			ID:      reqID,
+			Result: mcpStructuredError(
+				ErrMissingParam,
+				"Required parameter 'failures' is missing for batch action",
+				"Add the 'failures' parameter and call again",
+				withParam("failures"),
+			),
+		}, false
+	}
+
+	if len(params.Failures) > maxFailuresPerBatch {
+		return nil, "", JSONRPCResponse{
+			JSONRPC: "2.0",
+			ID:      reqID,
+			Result: mcpStructuredError(
+				ErrBatchTooLarge,
+				fmt.Sprintf("Batch contains %d failures, max is %d", len(params.Failures), maxFailuresPerBatch),
+				"Reduce the number of failures and try again",
+			),
+		}, false
+	}
+
+	batchResult := h.classifyFailureBatch(params.Failures)
+
+	summary := fmt.Sprintf("Classified %d failures: %d real bugs, %d flaky, %d test issues, %d uncertain",
+		batchResult.TotalClassified,
+		batchResult.RealBugs,
+		batchResult.FlakyTests,
+		batchResult.TestBugs,
+		batchResult.Uncertain)
+
+	result := map[string]any{"batch_result": batchResult}
+	return result, summary, JSONRPCResponse{}, true
+}
+
+// categoryActions maps failure categories to their recommended action.
+var categoryActions = map[string]string{
+	CategorySelectorBroken: "heal",
+	CategoryTimingFlaky:    "add_wait",
+	CategoryNetworkFlaky:   "mock_network",
+	CategoryRealBug:        "fix_bug",
+	CategoryTestBug:        "fix_test",
 }
 
 // classifyFailure analyzes a test failure and categorizes it
 func (h *ToolHandler) classifyFailure(failure *TestFailure) *FailureClassification {
-	// Match classification patterns
 	category, confidence, evidence := matchClassificationPattern(failure.Error)
 
-	// Set flags based on category
-	classification := &FailureClassification{
-		Category:      category,
-		Confidence:    confidence,
-		Evidence:      evidence,
-		IsRealBug:     category == CategoryRealBug,
-		IsFlaky:       category == CategoryTimingFlaky || category == CategoryNetworkFlaky,
-		IsEnvironment: category == CategoryNetworkFlaky,
+	action := categoryActions[category]
+	if action == "" {
+		action = "manual_review"
 	}
 
-	// Set recommended action
-	switch category {
-	case CategorySelectorBroken:
-		classification.RecommendedAction = "heal"
-	case CategoryTimingFlaky:
-		classification.RecommendedAction = "add_wait"
-	case CategoryNetworkFlaky:
-		classification.RecommendedAction = "mock_network"
-	case CategoryRealBug:
-		classification.RecommendedAction = "fix_bug"
-	case CategoryTestBug:
-		classification.RecommendedAction = "fix_test"
-	default:
-		classification.RecommendedAction = "manual_review"
+	return &FailureClassification{
+		Category:          category,
+		Confidence:        confidence,
+		Evidence:          evidence,
+		IsRealBug:         category == CategoryRealBug,
+		IsFlaky:           category == CategoryTimingFlaky || category == CategoryNetworkFlaky,
+		IsEnvironment:     category == CategoryNetworkFlaky,
+		RecommendedAction: action,
+		SuggestedFix:      generateSuggestedFix(category, failure.Error),
 	}
-
-	// Generate suggested fix
-	classification.SuggestedFix = generateSuggestedFix(category, failure.Error)
-
-	return classification
 }
 
 // classifyFailureBatch classifies multiple test failures
@@ -207,139 +212,155 @@ func (h *ToolHandler) classifyFailureBatch(failures []TestFailure) *BatchClassif
 		Summary:         make(map[string]int),
 	}
 
-	// Classify each failure
 	for i, failure := range failures {
 		classification := h.classifyFailure(&failure)
 		result.Classifications[i] = *classification
-
-		// Update counters
-		if classification.IsRealBug {
-			result.RealBugs++
-		}
-		if classification.IsFlaky {
-			result.FlakyTests++
-		}
-		if classification.Category == CategoryTestBug {
-			result.TestBugs++
-		}
-		if classification.Confidence < 0.5 {
-			result.Uncertain++
-		}
-
-		// Update summary
 		result.Summary[classification.Category]++
+		accumulateBatchCounters(result, classification)
 	}
 
 	return result
 }
 
+func accumulateBatchCounters(result *BatchClassifyResult, c *FailureClassification) {
+	if c.IsRealBug {
+		result.RealBugs++
+	}
+	if c.IsFlaky {
+		result.FlakyTests++
+	}
+	if c.Category == CategoryTestBug {
+		result.TestBugs++
+	}
+	if c.Confidence < 0.5 {
+		result.Uncertain++
+	}
+}
+
+// classificationRule defines a single error pattern matcher.
+type classificationRule struct {
+	match      func(string) bool
+	category   string
+	confidence float64
+	evidence   func(string) []string
+}
+
+var selectorExtractPattern = regexp.MustCompile(`selector\s+["']([^"']+)["']`)
+
+// classificationRules is evaluated in order; the first match wins.
+var classificationRules = []classificationRule{
+	{
+		match: func(msg string) bool {
+			if !strings.Contains(msg, "waiting for selector") {
+				return false
+			}
+			return selectorExtractPattern.MatchString(msg)
+		},
+		category:   CategorySelectorBroken,
+		confidence: 0.9,
+		evidence: func(msg string) []string {
+			matches := selectorExtractPattern.FindStringSubmatch(msg)
+			return []string{
+				fmt.Sprintf("Selector '%s' not found in current DOM", matches[1]),
+				"Error pattern matches 'Timeout waiting for selector'",
+			}
+		},
+	},
+	{
+		match: func(msg string) bool {
+			return strings.Contains(msg, "waiting for selector")
+		},
+		category:   CategoryTimingFlaky,
+		confidence: 0.8,
+		evidence: func(_ string) []string {
+			return []string{"Timeout waiting for selector", "Element might exist but timing is inconsistent"}
+		},
+	},
+	{
+		match: func(msg string) bool {
+			return strings.Contains(msg, "net::ERR_") || strings.Contains(msg, "Network")
+		},
+		category:   CategoryNetworkFlaky,
+		confidence: 0.85,
+		evidence: func(msg string) []string {
+			return []string{"Network error detected: " + msg, "Likely network connectivity or service availability issue"}
+		},
+	},
+	{
+		match: func(msg string) bool {
+			return strings.Contains(msg, "Expected") &&
+				(strings.Contains(msg, "to be") || strings.Contains(msg, "toBe") || strings.Contains(msg, "toEqual"))
+		},
+		category:   CategoryRealBug,
+		confidence: 0.7,
+		evidence: func(_ string) []string {
+			return []string{"Assertion failure detected", "Actual value differs from expected value"}
+		},
+	},
+	{
+		match: func(msg string) bool {
+			return strings.Contains(msg, "not attached to DOM") || strings.Contains(msg, "Element is not attached")
+		},
+		category:   CategoryTimingFlaky,
+		confidence: 0.8,
+		evidence: func(_ string) []string {
+			return []string{"Element detached from DOM during test", "Timing issue - element removed before interaction"}
+		},
+	},
+	{
+		match: func(msg string) bool {
+			return strings.Contains(msg, "outside viewport") || strings.Contains(msg, "not visible")
+		},
+		category:   CategoryTestBug,
+		confidence: 0.75,
+		evidence: func(_ string) []string {
+			return []string{"Element is outside viewport", "Test needs to scroll or resize viewport"}
+		},
+	},
+}
+
 // matchClassificationPattern matches error patterns and returns category, confidence, and evidence
 func matchClassificationPattern(errorMsg string) (string, float64, []string) {
-	evidence := []string{}
-
-	// Pattern: "Timeout waiting for selector" + selector missing
-	if strings.Contains(errorMsg, "Timeout waiting for selector") ||
-		strings.Contains(errorMsg, "waiting for selector") {
-
-		// Extract selector from error message
-		selectorPattern := regexp.MustCompile(`selector\s+["']([^"']+)["']`)
-		matches := selectorPattern.FindStringSubmatch(errorMsg)
-
-		if len(matches) > 1 {
-			selector := matches[1]
-			evidence = append(evidence, fmt.Sprintf("Selector '%s' not found in current DOM", selector))
-			evidence = append(evidence, "Error pattern matches 'Timeout waiting for selector'")
-			return CategorySelectorBroken, 0.9, evidence
+	for _, rule := range classificationRules {
+		if rule.match(errorMsg) {
+			return rule.category, rule.confidence, rule.evidence(errorMsg)
 		}
-
-		// If selector exists (would need DOM query, but assume timing issue for now)
-		evidence = append(evidence, "Timeout waiting for selector")
-		evidence = append(evidence, "Element might exist but timing is inconsistent")
-		return CategoryTimingFlaky, 0.8, evidence
 	}
+	return CategoryUnknown, 0.3, []string{"Error pattern not recognized", "Error message: " + errorMsg}
+}
 
-	// Pattern: "net::ERR_"
-	if strings.Contains(errorMsg, "net::ERR_") || strings.Contains(errorMsg, "Network") {
-		evidence = append(evidence, "Network error detected: "+errorMsg)
-		evidence = append(evidence, "Likely network connectivity or service availability issue")
-		return CategoryNetworkFlaky, 0.85, evidence
+// suggestedFixGenerators maps categories to fix-generation functions.
+var suggestedFixGenerators = map[string]func(string) *SuggestedFix{
+	CategorySelectorBroken: suggestedFixSelector,
+	CategoryTimingFlaky: func(_ string) *SuggestedFix {
+		return &SuggestedFix{Type: "add_wait", Code: "await page.waitForSelector('...', { state: 'visible' })"}
+	},
+	CategoryNetworkFlaky: func(_ string) *SuggestedFix {
+		return &SuggestedFix{Type: "mock_network", Code: "await page.route('**/api/**', route => route.fulfill({ ... }))"}
+	},
+	CategoryTestBug: suggestedFixTestBug,
+}
+
+func suggestedFixSelector(errorMsg string) *SuggestedFix {
+	matches := selectorExtractPattern.FindStringSubmatch(errorMsg)
+	if len(matches) > 1 {
+		return &SuggestedFix{Type: "selector_update", Old: matches[1], Code: "Use test_heal to find replacement selector"}
 	}
+	return &SuggestedFix{Type: "selector_update", Code: "Use test_heal to find replacement selector"}
+}
 
-	// Pattern: "Expected X to be Y" + values differ
-	if strings.Contains(errorMsg, "Expected") && (strings.Contains(errorMsg, "to be") ||
-		strings.Contains(errorMsg, "toBe") || strings.Contains(errorMsg, "toEqual")) {
-		evidence = append(evidence, "Assertion failure detected")
-		evidence = append(evidence, "Actual value differs from expected value")
-		return CategoryRealBug, 0.7, evidence
+func suggestedFixTestBug(errorMsg string) *SuggestedFix {
+	if strings.Contains(errorMsg, "viewport") {
+		return &SuggestedFix{Type: "scroll_to_element", Code: "await element.scrollIntoViewIfNeeded()"}
 	}
-
-	// Pattern: "Element is not attached to DOM"
-	if strings.Contains(errorMsg, "not attached to DOM") ||
-		strings.Contains(errorMsg, "Element is not attached") {
-		evidence = append(evidence, "Element detached from DOM during test")
-		evidence = append(evidence, "Timing issue - element removed before interaction")
-		return CategoryTimingFlaky, 0.8, evidence
-	}
-
-	// Pattern: "Element is outside viewport"
-	if strings.Contains(errorMsg, "outside viewport") ||
-		strings.Contains(errorMsg, "not visible") {
-		evidence = append(evidence, "Element is outside viewport")
-		evidence = append(evidence, "Test needs to scroll or resize viewport")
-		return CategoryTestBug, 0.75, evidence
-	}
-
-	// Unknown pattern
-	evidence = append(evidence, "Error pattern not recognized")
-	evidence = append(evidence, "Error message: "+errorMsg)
-	return CategoryUnknown, 0.3, evidence
+	return nil
 }
 
 // generateSuggestedFix creates a suggested fix based on category and error message
 func generateSuggestedFix(category string, errorMsg string) *SuggestedFix {
-	switch category {
-	case CategorySelectorBroken:
-		// Extract selector from error message
-		selectorPattern := regexp.MustCompile(`selector\s+["']([^"']+)["']`)
-		matches := selectorPattern.FindStringSubmatch(errorMsg)
-
-		if len(matches) > 1 {
-			selector := matches[1]
-			return &SuggestedFix{
-				Type: "selector_update",
-				Old:  selector,
-				Code: "Use test_heal to find replacement selector",
-			}
-		}
-
-		return &SuggestedFix{
-			Type: "selector_update",
-			Code: "Use test_heal to find replacement selector",
-		}
-
-	case CategoryTimingFlaky:
-		return &SuggestedFix{
-			Type: "add_wait",
-			Code: "await page.waitForSelector('...', { state: 'visible' })",
-		}
-
-	case CategoryNetworkFlaky:
-		return &SuggestedFix{
-			Type: "mock_network",
-			Code: "await page.route('**/api/**', route => route.fulfill({ ... }))",
-		}
-
-	case CategoryTestBug:
-		if strings.Contains(errorMsg, "viewport") {
-			return &SuggestedFix{
-				Type: "scroll_to_element",
-				Code: "await element.scrollIntoViewIfNeeded()",
-			}
-		}
-
-	default:
+	gen := suggestedFixGenerators[category]
+	if gen == nil {
 		return nil
 	}
-
-	return nil
+	return gen(errorMsg)
 }

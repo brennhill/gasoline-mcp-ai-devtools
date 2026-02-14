@@ -3,7 +3,9 @@
 VERSION := $(shell cat VERSION)
 BINARY_NAME := gasoline
 BUILD_DIR := dist
-LDFLAGS := -s -w -X main.version=$(VERSION)
+LDFLAGS := -s -w -X main.version=$(VERSION) -X github.com/dev-console/dev-console/internal/export.version=$(VERSION)
+CMD_PKG ?= ./cmd/dev-console
+CMD_DIR ?= $(patsubst ./%,%,$(CMD_PKG))
 
 # Build targets
 PLATFORMS := \
@@ -13,17 +15,25 @@ PLATFORMS := \
 	linux-arm64 \
 	windows-amd64
 
-.PHONY: all clean build test test-js test-fast test-all test-race test-cover test-bench test-fuzz \
-	test-unit test-commit test-full kill-zombies \
+.PHONY: all clean build test test-js test-fast test-all test-go-quick test-go-long test-go-sharded test-race test-cover test-cover-integration test-cover-all test-bench test-fuzz \
 	dev run checksums verify-zero-deps verify-imports verify-size check-file-length \
 	lint lint-go lint-js format format-fix typecheck check ci \
 	ci-local ci-go ci-js ci-security ci-e2e ci-bench ci-fuzz \
 	release-check install-hooks bench-baseline sync-version \
 	pypi-binaries pypi-build pypi-publish pypi-test-publish pypi-clean \
-	security-check pre-commit verify-all npm-binaries \
+	security-check pre-commit verify-all npm-binaries validate-semver \
+	test-upgrade-guards release-gate \
 	$(PLATFORMS)
 
-all: clean build
+GO_TEST_SHARDS ?= 4
+GO_TEST_COUNT ?= 1
+GO_TEST_PARALLEL ?= 16
+GO_TEST_P ?= 8
+GO_TEST_STATE_DIR ?= /tmp/gasoline-state-test
+GO_TEST_TOOLCHAIN ?= auto
+GO_TEST_CACHE_DIR ?= /tmp/go-build-cache
+
+all: validate-semver clean build
 
 clean:
 	rm -rf $(BUILD_DIR)
@@ -54,49 +64,31 @@ compile-ts:
 	@echo "✅ TypeScript compilation successful"
 
 test:
-	CGO_ENABLED=0 go test -v ./...
+	$(MAKE) test-go-quick
+
+test-long:
+	$(MAKE) test-go-long
 
 test-js:
-	node --test --test-force-exit --test-timeout=15000 --test-concurrency=4 --test-reporter=dot tests/extension/*.test.js
+	./scripts/test-js-sharded.sh
 
-test-fast: test-unit
+test-fast:
+	go vet $(CMD_PKG)/
+	$(MAKE) test-go-quick
+	./scripts/test-js-sharded.sh
 
-test-all: test-commit
+test-all: test test-js
 
-# Tier 1: Unit tests only (~30s) - run constantly during development
-test-unit:
-	@echo "=== Unit Tests (Go -short + Extension JS in parallel) ==="
-	@GO_PASS=false JS_PASS=false; \
-	(CGO_ENABLED=0 go test -short -count=1 ./... && GO_PASS=true) & GO_PID=$$!; \
-	(node --test --test-force-exit --test-timeout=15000 --test-concurrency=4 \
-		--test-reporter=dot tests/extension/*.test.js && JS_PASS=true) & JS_PID=$$!; \
-	GO_EXIT=0; JS_EXIT=0; \
-	wait $$GO_PID || GO_EXIT=$$?; \
-	wait $$JS_PID || JS_EXIT=$$?; \
-	if [ $$GO_EXIT -ne 0 ]; then echo "Go tests FAILED"; fi; \
-	if [ $$JS_EXIT -ne 0 ]; then echo "JS tests FAILED"; fi; \
-	if [ $$GO_EXIT -ne 0 ] || [ $$JS_EXIT -ne 0 ]; then exit 1; fi
-	@echo "=== Unit tests complete ==="
+test-go-quick:
+	CGO_ENABLED=0 GOTOOLCHAIN=$(GO_TEST_TOOLCHAIN) GOCACHE=$(GO_TEST_CACHE_DIR) GASOLINE_STATE_DIR=$(GO_TEST_STATE_DIR) go test -short -count=$(GO_TEST_COUNT) -p $(GO_TEST_P) -parallel $(GO_TEST_PARALLEL) ./internal/...
+	CGO_ENABLED=0 GOTOOLCHAIN=$(GO_TEST_TOOLCHAIN) GOCACHE=$(GO_TEST_CACHE_DIR) GASOLINE_STATE_DIR=$(GO_TEST_STATE_DIR) GO_TEST_SHARDS=$(GO_TEST_SHARDS) GO_TEST_COUNT=$(GO_TEST_COUNT) GASOLINE_CMD_PKG=$(CMD_PKG) ./scripts/test-go-sharded.sh --package $(CMD_PKG) --short -- -parallel $(GO_TEST_PARALLEL)
 
-# Tier 2: Pre-commit (~3min) - all Go + JS tests
-test-commit: kill-zombies
-	@echo "=== Pre-Commit Tests ==="
-	CGO_ENABLED=0 go test -v -count=1 ./...
-	node --test --test-force-exit --test-timeout=15000 --test-concurrency=4 \
-		--test-reporter=dot tests/extension/*.test.js
-	@$(MAKE) kill-zombies
-	@echo "=== Pre-commit tests complete ==="
+test-go-long:
+	CGO_ENABLED=0 GOTOOLCHAIN=$(GO_TEST_TOOLCHAIN) GOCACHE=$(GO_TEST_CACHE_DIR) GASOLINE_STATE_DIR=$(GO_TEST_STATE_DIR) go test -count=$(GO_TEST_COUNT) -p $(GO_TEST_P) -parallel $(GO_TEST_PARALLEL) ./internal/...
+	CGO_ENABLED=0 GOTOOLCHAIN=$(GO_TEST_TOOLCHAIN) GOCACHE=$(GO_TEST_CACHE_DIR) GASOLINE_STATE_DIR=$(GO_TEST_STATE_DIR) GO_TEST_SHARDS=$(GO_TEST_SHARDS) GO_TEST_COUNT=$(GO_TEST_COUNT) GASOLINE_CMD_PKG=$(CMD_PKG) ./scripts/test-go-sharded.sh --package $(CMD_PKG) -- -parallel $(GO_TEST_PARALLEL)
 
-# Tier 3: Full suite (~5-8min) - everything including regression + race
-test-full: kill-zombies test-commit
-	@echo "=== Full Test Suite ==="
-	./tests/regression/run-all.sh
-	@$(MAKE) kill-zombies
-	@echo "=== Full suite complete ==="
-
-# Kill zombie test servers (preserves main server on port 7890)
-kill-zombies:
-	@./scripts/kill-test-servers.sh
+test-go-sharded:
+	CGO_ENABLED=0 GOTOOLCHAIN=$(GO_TEST_TOOLCHAIN) GOCACHE=$(GO_TEST_CACHE_DIR) GASOLINE_STATE_DIR=$(GO_TEST_STATE_DIR) GO_TEST_SHARDS=$(GO_TEST_SHARDS) GO_TEST_COUNT=$(GO_TEST_COUNT) GASOLINE_CMD_PKG=$(CMD_PKG) ./scripts/test-go-sharded.sh --package $(CMD_PKG) -- -parallel $(GO_TEST_PARALLEL)
 
 test-race:
 	go test -race -v ./...
@@ -106,11 +98,25 @@ test-cover:
 	@go tool cover -func=coverage.out | grep total | awk '{print $$3}' | sed 's/%//' | \
 		awk '{if ($$1 < 89) {print "FAIL: Coverage " $$1 "% is below 89% threshold"; exit 1} else {print "OK: Coverage " $$1 "%"}}'
 
+test-cover-integration:
+	@mkdir -p coverage/integration
+	GOCOVERDIR=coverage/integration go test -cover -timeout 120s $(CMD_PKG)/ -count=1
+	@go tool covdata percent -i=coverage/integration
+
+test-cover-all:
+	@mkdir -p coverage/unit coverage/integration coverage/merged
+	GOCOVERDIR=coverage/unit go test -cover ./internal/...
+	GOCOVERDIR=coverage/integration go test -cover -timeout 120s $(CMD_PKG)/ -count=1
+	go tool covdata merge -i=coverage/unit,coverage/integration -o=coverage/merged
+	go tool covdata textfmt -i=coverage/merged -o=coverage/coverage.txt
+	@go tool cover -func=coverage/coverage.txt | grep total
+	@echo "HTML report: go tool cover -html=coverage/coverage.txt"
+
 test-bench:
-	go test -bench=. -benchmem -count=3 ./cmd/dev-console/...
+	go test -bench=. -benchmem -count=3 $(CMD_PKG)/...
 
 test-fuzz:
-	go test -fuzz=. -fuzztime=10s ./cmd/dev-console/...
+	go test -fuzz=. -fuzztime=10s $(CMD_PKG)/...
 
 verify-zero-deps:
 	@if grep -q '^require' go.mod; then echo "FAIL: go.mod contains external dependencies"; exit 1; fi
@@ -118,7 +124,7 @@ verify-zero-deps:
 	@echo "OK: Zero external dependencies verified"
 
 verify-imports:
-	@VIOLATIONS=$$(go list -f '{{range .Imports}}{{.}} {{end}}' ./cmd/dev-console/ | tr ' ' '\n' | grep -v '^$$' | grep -v '^[a-z]' | grep -v '^github.com/dev-console/dev-console'); \
+	@VIOLATIONS=$$(go list -f '{{range .Imports}}{{.}} {{end}}' $(CMD_PKG)/ | tr ' ' '\n' | grep -v '^$$' | grep -v '^[a-z]' | grep -v '^github.com/dev-console/dev-console'); \
 	if [ -n "$$VIOLATIONS" ]; then echo "FAIL: Non-stdlib imports found:"; echo "$$VIOLATIONS"; exit 1; fi
 	@echo "OK: All imports are stdlib or internal"
 
@@ -145,23 +151,23 @@ build: $(PLATFORMS)
 
 darwin-amd64:
 	@mkdir -p $(BUILD_DIR)
-	GOOS=darwin GOARCH=amd64 CGO_ENABLED=0 go build -ldflags="$(LDFLAGS)" -o $(BUILD_DIR)/$(BINARY_NAME)-darwin-x64 ./cmd/dev-console
+	GOOS=darwin GOARCH=amd64 CGO_ENABLED=0 go build -ldflags="$(LDFLAGS)" -o $(BUILD_DIR)/$(BINARY_NAME)-darwin-x64 $(CMD_PKG)
 
 darwin-arm64:
 	@mkdir -p $(BUILD_DIR)
-	GOOS=darwin GOARCH=arm64 CGO_ENABLED=0 go build -ldflags="$(LDFLAGS)" -o $(BUILD_DIR)/$(BINARY_NAME)-darwin-arm64 ./cmd/dev-console
+	GOOS=darwin GOARCH=arm64 CGO_ENABLED=0 go build -ldflags="$(LDFLAGS)" -o $(BUILD_DIR)/$(BINARY_NAME)-darwin-arm64 $(CMD_PKG)
 
 linux-amd64:
 	@mkdir -p $(BUILD_DIR)
-	GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -ldflags="$(LDFLAGS)" -o $(BUILD_DIR)/$(BINARY_NAME)-linux-x64 ./cmd/dev-console
+	GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -ldflags="$(LDFLAGS)" -o $(BUILD_DIR)/$(BINARY_NAME)-linux-x64 $(CMD_PKG)
 
 linux-arm64:
 	@mkdir -p $(BUILD_DIR)
-	GOOS=linux GOARCH=arm64 CGO_ENABLED=0 go build -ldflags="$(LDFLAGS)" -o $(BUILD_DIR)/$(BINARY_NAME)-linux-arm64 ./cmd/dev-console
+	GOOS=linux GOARCH=arm64 CGO_ENABLED=0 go build -ldflags="$(LDFLAGS)" -o $(BUILD_DIR)/$(BINARY_NAME)-linux-arm64 $(CMD_PKG)
 
 windows-amd64:
 	@mkdir -p $(BUILD_DIR)
-	GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -ldflags="$(LDFLAGS)" -o $(BUILD_DIR)/$(BINARY_NAME)-win32-x64.exe ./cmd/dev-console
+	GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -ldflags="$(LDFLAGS)" -o $(BUILD_DIR)/$(BINARY_NAME)-win32-x64.exe $(CMD_PKG)
 
 # Build and copy binaries to NPM package directories (for releases)
 npm-binaries: build
@@ -182,11 +188,11 @@ npm-binaries: build
 
 # Build for current platform only (for development)
 dev:
-	CGO_ENABLED=0 go build -o $(BUILD_DIR)/$(BINARY_NAME) ./cmd/dev-console
+	CGO_ENABLED=0 go build -o $(BUILD_DIR)/$(BINARY_NAME) $(CMD_PKG)
 
 # Run the server locally
 run:
-	CGO_ENABLED=0 go run ./cmd/dev-console
+	CGO_ENABLED=0 go run $(CMD_PKG)
 
 # Create checksums
 checksums:
@@ -197,19 +203,22 @@ checksums:
 lint: lint-go lint-js
 
 lint-go:
-	go vet ./cmd/dev-console/
-	@command -v golangci-lint >/dev/null 2>&1 && golangci-lint run ./cmd/dev-console/ || echo "golangci-lint not installed (optional)"
+	go vet $(CMD_PKG)/
+	@command -v golangci-lint >/dev/null 2>&1 && golangci-lint run $(CMD_PKG)/... ./internal/... || echo "golangci-lint not installed (optional)"
+
+lint-hardening:
+	@./scripts/lint-hardening.sh
 
 lint-js:
 	npx eslint extension/ tests/extension/
 
 format:
 	@echo "Checking Go formatting..."
-	@test -z "$$(gofmt -l ./cmd/dev-console/)" || (gofmt -l ./cmd/dev-console/ && exit 1)
+	@test -z "$$(gofmt -l $(CMD_DIR)/)" || (gofmt -l $(CMD_DIR)/ && exit 1)
 	npx prettier --check .
 
 format-fix:
-	gofmt -w ./cmd/dev-console/
+	gofmt -w $(CMD_DIR)/
 	npx prettier --write .
 
 typecheck:
@@ -219,6 +228,7 @@ check: lint format typecheck check-invariants
 
 check-invariants:
 	@./scripts/check-sync-invariants.sh
+	@./scripts/validate-codex-skills.sh
 
 ci: check test test-js validate-deps-versions
 
@@ -249,7 +259,7 @@ release-check: ci-local ci-e2e
 	@echo "All release checks passed (CI + E2E)"
 
 ci-go:
-	go vet ./cmd/dev-console/
+	go vet $(CMD_PKG)/
 	make test-race
 	make test-cover
 	make build
@@ -259,29 +269,29 @@ ci-js:
 	npm ci
 	npx eslint extension/ tests/extension/
 	npx tsc --noEmit
-	node --test --test-force-exit --test-timeout=20000 --test-concurrency=4 --test-reporter=dot tests/extension/*.test.js
+	JS_TEST_TIMEOUT=20000 ./scripts/test-js-sharded.sh
 
 ci-security:
-	@command -v gosec >/dev/null 2>&1 && gosec -exclude=G104,G114,G204,G301,G304,G306 ./cmd/dev-console/ || echo "gosec not installed (optional - GitHub Actions will verify)"
+	@command -v gosec >/dev/null 2>&1 && gosec -exclude=G104,G114,G204,G301,G304,G306 $(CMD_PKG)/ || echo "gosec not installed (optional - GitHub Actions will verify)"
 
 ci-bench:
 	@command -v benchstat >/dev/null 2>&1 || { echo "benchstat not found. Install: go install golang.org/x/perf/cmd/benchstat@latest"; exit 1; }
 	@test -f docs/benchmarks/baseline.txt || { echo "FAIL: No baseline. Run 'make bench-baseline' first."; exit 1; }
-	go test -bench=. -benchmem -count=6 -run=^$$ ./cmd/dev-console/ > /tmp/gasoline-bench-current.txt
+	go test -bench=. -benchmem -count=6 -run=^$$ $(CMD_PKG)/ > /tmp/gasoline-bench-current.txt
 	benchstat docs/benchmarks/baseline.txt /tmp/gasoline-bench-current.txt
 
 ci-fuzz:
-	go test -fuzz=FuzzPostLogs -fuzztime=30s ./cmd/dev-console/
-	go test -fuzz=FuzzMCPRequest -fuzztime=30s ./cmd/dev-console/
-	go test -fuzz=FuzzNetworkBodies -fuzztime=30s ./cmd/dev-console/
-	go test -fuzz=FuzzWebSocketEvents -fuzztime=30s ./cmd/dev-console/
-	go test -fuzz=FuzzEnhancedActions -fuzztime=30s ./cmd/dev-console/
-	go test -fuzz=FuzzValidateLogEntry -fuzztime=30s ./cmd/dev-console/
-	go test -fuzz=FuzzScreenshotEndpoint -fuzztime=30s ./cmd/dev-console/
+	go test -fuzz=FuzzPostLogs -fuzztime=30s $(CMD_PKG)/
+	go test -fuzz=FuzzMCPRequest -fuzztime=30s $(CMD_PKG)/
+	go test -fuzz=FuzzNetworkBodies -fuzztime=30s $(CMD_PKG)/
+	go test -fuzz=FuzzWebSocketEvents -fuzztime=30s $(CMD_PKG)/
+	go test -fuzz=FuzzEnhancedActions -fuzztime=30s $(CMD_PKG)/
+	go test -fuzz=FuzzValidateLogEntry -fuzztime=30s $(CMD_PKG)/
+	go test -fuzz=FuzzScreenshotEndpoint -fuzztime=30s $(CMD_PKG)/
 
 bench-baseline:
 	@mkdir -p benchmarks
-	go test -bench=. -benchmem -count=6 -run=^$$ ./cmd/dev-console/ > docs/benchmarks/baseline.txt
+	go test -bench=. -benchmem -count=6 -run=^$$ $(CMD_PKG)/ > docs/benchmarks/baseline.txt
 	@echo "Baseline saved to docs/benchmarks/baseline.txt"
 
 install-hooks:
@@ -296,7 +306,7 @@ install-hooks:
 security-check:
 	@echo "Running security checks..."
 	@command -v gosec >/dev/null 2>&1 || { echo "gosec not found. Install: go install github.com/securego/gosec/v2/cmd/gosec@latest"; exit 1; }
-	gosec -exclude=G104,G114,G204,G301,G304,G306 -severity=high ./cmd/dev-console/
+	gosec -exclude=G104,G114,G204,G301,G304,G306 -severity=high $(CMD_PKG)/
 	npx eslint extension/ tests/extension/
 	@echo "All security checks passed"
 
@@ -309,7 +319,7 @@ verify-all: lint security-check test-cover test-js
 	@echo "All verification checks passed"
 
 # Quality gate for top 1% standards (comprehensive)
-quality-gate: check-file-length lint typecheck security-check test test-js validate-deps-versions
+quality-gate: check-file-length lint lint-hardening typecheck security-check test test-js validate-deps-versions
 	@echo ""
 	@echo "═══════════════════════════════════════════"
 	@echo "✅ QUALITY GATE PASSED - Top 1% Standards"
@@ -323,16 +333,27 @@ quality-gate: check-file-length lint typecheck security-check test test-js valid
 	@echo "  ✓ Version consistency verified"
 	@echo "═══════════════════════════════════════════"
 
+# Upgrade/install guardrail suite: prevents stale daemons from surviving release upgrades.
+test-upgrade-guards:
+	go test ./cmd/dev-console -run 'TestConnectWithRetriesRejectsVersionMismatch' -count=1
+	node --test npm/gasoline-mcp/lib/kill-daemon.test.js
+	python3 -m unittest discover -s pypi/gasoline-mcp/tests -p 'test_*.py'
+	node scripts/install-upgrade-regression.mjs
+
+# Release gate for daemon cleanup/version safety.
+release-gate: quality-gate test-upgrade-guards
+	@echo "✅ release-gate passed"
+
 # Update all version references to match VERSION (single source of truth)
 sync-version:
 	@echo "Syncing version to $(VERSION)..."
 	@# JSON "version" fields
 	@perl -pi -e 's/"version": "[0-9]+\.[0-9]+\.[0-9]+"/"version": "$(VERSION)"/g' \
-		extension/manifest.json extension/package.json server/package.json \
-		npm/gasoline-mcp/package.json npm/darwin-x64/package.json \
-		npm/darwin-arm64/package.json npm/linux-x64/package.json \
-		npm/linux-arm64/package.json npm/win32-x64/package.json \
-		cmd/dev-console/testdata/mcp-initialize.golden.json
+			extension/manifest.json extension/package.json server/package.json \
+			npm/gasoline-mcp/package.json npm/darwin-x64/package.json \
+			npm/darwin-arm64/package.json npm/linux-x64/package.json \
+			npm/linux-arm64/package.json npm/win32-x64/package.json \
+			$(CMD_DIR)/testdata/mcp-initialize.golden.json
 	@# NPM optionalDependencies versions
 	@perl -pi -e 's/("@brennhill\/gasoline-[^"]+": ")[0-9]+\.[0-9]+\.[0-9]+(")/$${1}$(VERSION)$$2/g' \
 		npm/gasoline-mcp/package.json
@@ -364,7 +385,7 @@ sync-version:
 		server/scripts/install.js
 	@# Go version fallback
 	@perl -pi -e 's/var version = "[0-9]+\.[0-9]+\.[0-9]+"/var version = "$(VERSION)"/' \
-		cmd/dev-console/main.go
+		$(CMD_DIR)/main.go
 	@# README badge and benchmark
 	@perl -pi -e 's/version-[0-9]+\.[0-9]+\.[0-9]+-green/version-$(VERSION)-green/' README.md
 	@perl -pi -e 's/\(v[0-9]+\.[0-9]+\.[0-9]+\)/(v$(VERSION))/' README.md
@@ -407,11 +428,11 @@ context-size:
 
 pypi-binaries: build
 	@echo "Copying binaries to PyPI platform packages..."
-	@cp $(BUILD_DIR)/$(BINARY_NAME)-darwin-arm64 pypi/gasoline-mcp-darwin-arm64/gasoline_mcp_darwin_arm64/
-	@cp $(BUILD_DIR)/$(BINARY_NAME)-darwin-x64 pypi/gasoline-mcp-darwin-x64/gasoline_mcp_darwin_x64/
-	@cp $(BUILD_DIR)/$(BINARY_NAME)-linux-arm64 pypi/gasoline-mcp-linux-arm64/gasoline_mcp_linux_arm64/
-	@cp $(BUILD_DIR)/$(BINARY_NAME)-linux-x64 pypi/gasoline-mcp-linux-x64/gasoline_mcp_linux_x64/
-	@cp $(BUILD_DIR)/$(BINARY_NAME)-win32-x64.exe pypi/gasoline-mcp-win32-x64/gasoline_mcp_win32_x64/
+	@cp $(BUILD_DIR)/$(BINARY_NAME)-darwin-arm64 pypi/gasoline-mcp-darwin-arm64/gasoline_mcp_darwin_arm64/gasoline
+	@cp $(BUILD_DIR)/$(BINARY_NAME)-darwin-x64 pypi/gasoline-mcp-darwin-x64/gasoline_mcp_darwin_x64/gasoline
+	@cp $(BUILD_DIR)/$(BINARY_NAME)-linux-arm64 pypi/gasoline-mcp-linux-arm64/gasoline_mcp_linux_arm64/gasoline
+	@cp $(BUILD_DIR)/$(BINARY_NAME)-linux-x64 pypi/gasoline-mcp-linux-x64/gasoline_mcp_linux_x64/gasoline
+	@cp $(BUILD_DIR)/$(BINARY_NAME)-win32-x64.exe pypi/gasoline-mcp-win32-x64/gasoline_mcp_win32_x64/gasoline.exe
 	@echo "Binaries copied successfully"
 
 pypi-build: pypi-binaries

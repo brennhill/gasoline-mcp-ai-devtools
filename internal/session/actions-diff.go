@@ -39,41 +39,39 @@ func (sm *SessionManager) diffErrors(a, b *NamedSnapshot) ErrorDiff {
 	return diff
 }
 
+// countPerfRegressions counts how many performance metrics regressed.
+func countPerfRegressions(perf PerformanceDiff) int {
+	count := 0
+	for _, mc := range []*MetricChange{perf.LoadTime, perf.RequestCount, perf.TransferSize} {
+		if mc != nil && mc.Regression {
+			count++
+		}
+	}
+	return count
+}
+
+// hasStatusRegression returns true if any status change went from OK to error.
+func hasStatusRegression(changes []SessionNetworkChange) bool {
+	for _, sc := range changes {
+		if sc.AfterStatus >= 400 && sc.BeforeStatus < 400 {
+			return true
+		}
+	}
+	return false
+}
+
 // computeSummary derives the verdict and aggregate counts from diff.
 func (sm *SessionManager) computeSummary(result *SessionDiffResult) DiffSummary {
 	summary := DiffSummary{
-		NewErrors:        len(result.Errors.New),
-		ResolvedErrors:   len(result.Errors.Resolved),
-		NewNetworkErrors: len(result.Network.NewErrors),
+		NewErrors:              len(result.Errors.New),
+		ResolvedErrors:         len(result.Errors.Resolved),
+		NewNetworkErrors:       len(result.Network.NewErrors),
+		PerformanceRegressions: countPerfRegressions(result.Performance),
 	}
 
-	// Count performance regressions
-	if result.Performance.LoadTime != nil && result.Performance.LoadTime.Regression {
-		summary.PerformanceRegressions++
-	}
-	if result.Performance.RequestCount != nil && result.Performance.RequestCount.Regression {
-		summary.PerformanceRegressions++
-	}
-	if result.Performance.TransferSize != nil && result.Performance.TransferSize.Regression {
-		summary.PerformanceRegressions++
-	}
-
-	// Verdict logic:
-	// "improved" if resolved > 0 AND new == 0 AND no regressions
-	// "regressed" if new > 0 OR performance_regressions > 0 OR new_network_errors > 0
-	// "unchanged" if no differences
-	// "mixed" if both resolved and new
-
-	hasRegressions := summary.NewErrors > 0 || summary.PerformanceRegressions > 0 || summary.NewNetworkErrors > 0
+	hasRegressions := summary.NewErrors > 0 || summary.PerformanceRegressions > 0 ||
+		summary.NewNetworkErrors > 0 || hasStatusRegression(result.Network.StatusChanges)
 	hasImprovements := summary.ResolvedErrors > 0
-
-	// Also check for status changes where a previously-OK endpoint now errors
-	for _, sc := range result.Network.StatusChanges {
-		if sc.AfterStatus >= 400 && sc.BeforeStatus < 400 {
-			hasRegressions = true
-			break
-		}
-	}
 
 	switch {
 	case hasRegressions && hasImprovements:

@@ -1,5 +1,5 @@
 #!/bin/bash
-set -e
+set -euo pipefail
 
 # MCP Spec Compliance Test Suite
 # Validates all JSON-RPC responses match the MCP specification
@@ -20,7 +20,7 @@ echo "Temp: $TEMP_DIR"
 echo ""
 
 # Kill any existing server
-lsof -ti :$PORT 2>/dev/null | xargs kill -9 2>/dev/null || true
+lsof -ti :"$PORT" 2>/dev/null | xargs kill -9 2>/dev/null || true
 sleep 0.5
 
 # Helper: Send request and get response
@@ -28,7 +28,7 @@ send_request() {
     local request="$1"
     local output_file="$TEMP_DIR/response.json"
 
-    (echo "$request"; sleep 0.3) | $WRAPPER --port $PORT > "$output_file" 2>/dev/null
+    (echo "$request"; sleep 0.3) | "$WRAPPER" --port "$PORT" > "$output_file" 2>/dev/null
     cat "$output_file"
 }
 
@@ -61,7 +61,8 @@ validate_response() {
     fi
 
     # Check jsonrpc version
-    local jsonrpc=$(echo "$response" | jq -r '.jsonrpc')
+    local jsonrpc
+    jsonrpc=$(echo "$response" | jq -r '.jsonrpc')
     if [ "$jsonrpc" != "2.0" ]; then
         echo "  ❌ $test_name: jsonrpc must be '2.0', got '$jsonrpc'"
         FAIL=$((FAIL + 1))
@@ -69,7 +70,8 @@ validate_response() {
     fi
 
     # Check id matches request id
-    local resp_id=$(echo "$response" | jq -r '.id')
+    local resp_id
+    resp_id=$(echo "$response" | jq -r '.id')
     if [ "$resp_id" = "null" ]; then
         echo "  ❌ $test_name: id must not be null"
         FAIL=$((FAIL + 1))
@@ -82,8 +84,10 @@ validate_response() {
     fi
 
     # Check result or error (mutually exclusive)
-    local has_result=$(echo "$response" | jq 'has("result")')
-    local has_error=$(echo "$response" | jq 'has("error")')
+    local has_result
+    has_result=$(echo "$response" | jq 'has("result")')
+    local has_error
+    has_error=$(echo "$response" | jq 'has("error")')
 
     if [ "$has_result" = "true" ] && [ "$has_error" = "true" ]; then
         echo "  ❌ $test_name: Response has both 'result' and 'error' (invalid)"
@@ -105,8 +109,10 @@ validate_response() {
             return 1
         fi
         # Validate error structure
-        local error_code=$(echo "$response" | jq -r '.error.code')
-        local error_message=$(echo "$response" | jq -r '.error.message')
+        local error_code
+        error_code=$(echo "$response" | jq -r '.error.code')
+        local error_message
+        error_message=$(echo "$response" | jq -r '.error.message')
         if [ "$error_code" = "null" ] || [ -z "$error_message" ]; then
             echo "  ❌ $test_name: Error must have 'code' and 'message'"
             FAIL=$((FAIL + 1))
@@ -159,12 +165,12 @@ echo ""
 # For notifications, we need to check that no response comes back
 # Send notification and check output is empty or just whitespace
 NOTIF_OUTPUT="$TEMP_DIR/notif_output.txt"
-(echo '{"jsonrpc":"2.0","method":"notifications/initialized"}'; sleep 0.3) | $WRAPPER --port $PORT > "$NOTIF_OUTPUT" 2>/dev/null
+(echo '{"jsonrpc":"2.0","method":"notifications/initialized"}'; sleep 0.3) | "$WRAPPER" --port "$PORT" > "$NOTIF_OUTPUT" 2>/dev/null
 
 # Check if output contains any JSON-RPC response
 if grep -q '"jsonrpc"' "$NOTIF_OUTPUT" 2>/dev/null; then
     # There's a response - check if it has id:null (bad) or is something else
-    NOTIF_ID=$(cat "$NOTIF_OUTPUT" | grep '"jsonrpc"' | head -1 | jq -r '.id' 2>/dev/null)
+    NOTIF_ID=$(grep '"jsonrpc"' < "$NOTIF_OUTPUT" | head -1 | jq -r '.id' 2>/dev/null)
     if [ "$NOTIF_ID" = "null" ]; then
         echo "  ❌ notifications/initialized: Got response with id:null (should be no response)"
         FAIL=$((FAIL + 1))
@@ -192,7 +198,7 @@ if [ "$TOOLS_ARRAY" != "null" ]; then
 
     # Check first tool has required fields
     FIRST_TOOL_NAME=$(echo "$RESP" | jq -r '.result.tools[0].name')
-    FIRST_TOOL_DESC=$(echo "$RESP" | jq -r '.result.tools[0].description')
+    _FIRST_TOOL_DESC=$(echo "$RESP" | jq -r '.result.tools[0].description')
     HAS_INPUT_SCHEMA=$(echo "$RESP" | jq '.result.tools[0] | has("inputSchema")')
 
     if [ "$FIRST_TOOL_NAME" != "null" ] && [ -n "$FIRST_TOOL_NAME" ]; then
@@ -354,7 +360,7 @@ fi
 echo ""
 
 # Cleanup
-lsof -ti :$PORT 2>/dev/null | xargs kill -9 2>/dev/null || true
+lsof -ti :"$PORT" 2>/dev/null | xargs kill -9 2>/dev/null || true
 rm -rf "$TEMP_DIR"
 
 # Summary

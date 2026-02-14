@@ -20,34 +20,34 @@ type: review
 
 ### Critical Issues
 
-**P1-1: axe-core lazy loading strategy is underspecified**
+#### P1-1: axe-core lazy loading strategy is underspecified
 - TECH_SPEC says "Lazy-load only when analyze called" but doesn't specify:
   - Where the loaded state is tracked (content.js or inject.js)
   - How to avoid re-injection if already loaded
   - Memory cleanup strategy after analysis completes
 - **Resolution required**: Add explicit loading state machine
 
-**P1-2: Lighthouse integration via chrome.debugger is blocking**
+#### P1-2: Lighthouse integration via chrome.debugger is blocking
 - Using `chrome.debugger` API requires attaching to the tab, which can block other DevTools operations
 - TECH_SPEC mentions "simulate throttling" but this still involves substantial main thread work
 - **Resolution required**: Clarify that Lighthouse runs in a worker or background context, or accept this limitation with clear documentation
 
 ### Medium Issues
 
-**P2-1: 30-second timeout may be insufficient for full audits**
+#### P2-1: 30-second timeout may be insufficient for full audits
 - PRODUCT_SPEC says "Audits complete in < 5 seconds for typical pages"
 - TECH_SPEC specifies 30-second timeout
 - axe-core on complex pages (1000+ elements) can take 10-15 seconds
 - Full Lighthouse audit takes 20-40 seconds even with throttling
 - **Suggestion**: Consider per-action timeouts (5s for accessibility, 30s for Lighthouse)
 
-**P2-2: Memory snapshot via performance.memory is deprecated**
+#### P2-2: Memory snapshot via performance.memory is deprecated
 - `performance.memory` is a non-standard Chrome-only API that may be removed
 - **Suggestion**: Document as Chrome-only feature, add fallback detection
 
 ### Minor Issues
 
-**P3-1: Caching strategy (10 seconds) may cause stale results**
+#### P3-1: Caching strategy (10 seconds) may cause stale results
 - If user fixes an issue and immediately re-runs audit, cached result won't reflect the fix
 - **Suggestion**: Add `force_refresh` parameter
 
@@ -57,7 +57,7 @@ type: review
 
 ### Critical Issues
 
-**C1-1: No goroutine lifecycle management specified for analysis workers**
+#### C1-1: No goroutine lifecycle management specified for analysis workers
 - Current pilot.go pattern uses pending queries with WaitForResult (blocking)
 - execute_js uses async pattern with correlation IDs (non-blocking)
 - TECH_SPEC doesn't specify which pattern `analyze` will use
@@ -67,13 +67,13 @@ type: review
 
 ### Medium Issues
 
-**C2-1: Multiple concurrent analyses not addressed**
+#### C2-1: Multiple concurrent analyses not addressed
 - QA_PLAN mentions "Multiple concurrent analyses" test case but TECH_SPEC doesn't specify:
   - Maximum concurrent analyses per tab
   - How to handle conflicts (e.g., two memory snapshots)
 - **Suggestion**: Implement per-tab analysis mutex or queue
 
-**C2-2: Race condition possible during page navigation**
+#### C2-2: Race condition possible during page navigation
 - TECH_SPEC says "Page navigates during analysis → Cancel analysis, return partial results"
 - But inject.js may have already started axe-core which continues running
 - **Suggestion**: Add navigation listener that sends abort signal to inject.js
@@ -84,7 +84,7 @@ type: review
 
 ### Critical Issues
 
-**D1-1: Response format not fully specified**
+#### D1-1: Response format not fully specified
 - PRODUCT_SPEC shows sample response but doesn't define:
   - Complete schema for each action type
   - Error response format (should use existing StructuredError pattern from tools.go)
@@ -93,18 +93,18 @@ type: review
 
 ### Medium Issues
 
-**D2-1: Severity levels inconsistent with existing security_audit**
+#### D2-1: Severity levels inconsistent with existing security_audit
 - PRODUCT_SPEC uses: `critical`, `high`, `medium`, `low`
 - Existing security_audit in observe tool uses: `critical`, `high`, `medium`, `low`, `info`
 - **Suggestion**: Align severity enums across all security-related features
 
-**D2-2: Memory mode response schema missing**
+#### D2-2: Memory mode response schema missing
 - PRODUCT_SPEC lists "Response includes" but no sample JSON
 - **Suggestion**: Add explicit response schema for memory.snapshot, memory.compare, memory.leaks
 
 ### Minor Issues
 
-**D3-1: Bundle mode may not be implementable as specified**
+#### D3-1: Bundle mode may not be implementable as specified
 - "Duplicate dependencies" and "Unused exports" require source maps or build-time analysis
 - Browser cannot detect these from runtime inspection alone
 - **Suggestion**: Either scope to what's observable (loaded chunk sizes) or document as "requires build integration"
@@ -115,19 +115,19 @@ type: review
 
 ### Critical Issues
 
-**E1-1: CSP blocking scenario not fully addressed**
+#### E1-1: CSP blocking scenario not fully addressed
 - TECH_SPEC says "Fallback: Return error with guidance to adjust CSP"
 - But this leaves user with no analysis capability
 - **Resolution required**: Implement isolated context injection via chrome.debugger as primary fallback
 
 ### Medium Issues
 
-**E2-1: React DevTools fallback is too coarse**
+#### E2-1: React DevTools fallback is too coarse
 - TECH_SPEC says "Return 'React DevTools required for render analysis'"
 - This message doesn't help Vue/Svelte users
 - **Suggestion**: Detect framework first, then provide framework-specific guidance
 
-**E2-2: Error codes not specified**
+#### E2-2: Error codes not specified
 - Need to define new error codes for analyze-specific failures:
   - `axe_injection_failed`
   - `lighthouse_unavailable`
@@ -141,7 +141,7 @@ type: review
 
 ### Critical Issues
 
-**S1-1: AI Web Pilot toggle requirement needs enforcement path**
+#### S1-1: AI Web Pilot toggle requirement needs enforcement path
 - TECH_SPEC says "Requires AI Web Pilot toggle enabled"
 - But PRODUCT_SPEC describes analyze as "read-only (unlike interact's execute_js)"
 - If analyze is read-only, does it really need the same high-trust toggle?
@@ -151,12 +151,12 @@ type: review
 
 ### Medium Issues
 
-**S2-1: Cookie value redaction mentioned but not specified**
+#### S2-1: Cookie value redaction mentioned but not specified
 - TECH_SPEC says "Sanitized output: Strip sensitive data from findings"
 - But no redaction patterns specified
 - **Suggestion**: Reuse existing redaction_test.go patterns; document what gets redacted
 
-**S2-2: Storage audit may expose sensitive data**
+#### S2-2: Storage audit may expose sensitive data
 - security.storage "Audit localStorage/sessionStorage for sensitive data"
 - Returning detected patterns could itself leak sensitive info to AI
 - **Suggestion**: Return only keys and pattern matches, not values
@@ -167,7 +167,7 @@ type: review
 
 ### Critical Issues
 
-**M1-1: Extension code organization unclear**
+#### M1-1: Extension code organization unclear
 - migration.md says create `extension/lib/analyze.js`
 - But current extension has modular structure (console.js, network.js, etc.)
 - Need to decide: one analyze.js or per-mode files (audit.js, memory.js, etc.)
@@ -175,21 +175,21 @@ type: review
 
 ### Medium Issues
 
-**M2-1: Test file locations inconsistent**
+#### M2-1: Test file locations inconsistent
 - QA_PLAN specifies:
   - `cmd/dev-console/analyze_test.go` (matches existing pattern)
   - `tests/extension/analyze.test.js` (correct)
   - `tests/integration/analyze_test.go` (no integration test folder exists currently)
 - **Suggestion**: Clarify integration test location or create the folder
 
-**M2-2: Version bump rationale is weak**
+#### M2-2: Version bump rationale is weak
 - migration.md says "minor version bump (v6.x → v7.0)"
 - But current version in main.go is 5.2.0
 - **Suggestion**: Clarify version numbering rationale
 
 ### Minor Issues
 
-**M3-1: Documentation updates incomplete**
+#### M3-1: Documentation updates incomplete
 - migration.md lists files to update but misses:
   - `/docs/core/UAT-TEST-PLAN.md` (needs analyze scenarios)
   - Extension manifest.json (may need new permissions for chrome.debugger)

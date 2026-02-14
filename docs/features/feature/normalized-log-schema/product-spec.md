@@ -94,17 +94,17 @@ services:
 ## Examples
 
 ### Example 1: Querying Across Languages
-**Go service logs:**
+#### Go service logs:
 ```json
 {"timestamp":"2026-01-31T10:15:23.456Z","level":"ERROR","message":"Payment failed","user_id":123}
 ```
 
-**Node.js service logs:**
+#### Node.js service logs:
 ```
 [10:15:23] ERROR: Payment failed - user_id: 123
 ```
 
-**Gasoline query:**
+#### Gasoline query:
 ```javascript
 observe({
   what: 'normalized-logs',

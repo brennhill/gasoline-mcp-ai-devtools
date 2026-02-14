@@ -10,7 +10,7 @@ version: v6.0
 
 ## Problem Statement
 
-**Developers waste time communicating visual bugs and demonstrating features.**
+### Developers waste time communicating visual bugs and demonstrating features.
 
 Today's workflow for sharing what happened in a browser:
 
@@ -26,14 +26,14 @@ Today's workflow for sharing what happened in a browser:
 
 **Tab Recording** captures the browser tab as a WebM video, triggered by the AI via MCP or manually from the extension popup.
 
-**The workflow:**
+### The workflow:
 
 1. Start recording (AI says `interact({action: "record_start", name: "checkout bug"})` or user clicks Record in popup)
 2. Interact with the page normally — Gasoline's subtitles and action toasts are captured in the video automatically
 3. Stop recording → video saved to `~/.gasoline/recordings/` with a metadata sidecar file
 4. AI can list recordings via `observe({what: "saved_videos"})` and reference them by name
 
-**Why this belongs in Gasoline:**
+### Why this belongs in Gasoline:
 
 - **Subtitles and toasts are already in-page** — they appear in the recorded video for free, providing narration without extra tooling
 - **Zero extra apps** — no Loom, no OBS, no browser extension conflicts
@@ -98,7 +98,7 @@ Today's workflow for sharing what happened in a browser:
 
 ### R1: MCP-Triggered Recording
 
-**Start:**
+#### Start:
 
 - [ ] `interact({action: "record_start"})` — starts recording the active tab at default 15fps
 - [ ] `interact({action: "record_start", name: "checkout bug"})` — starts with a user-provided name
@@ -111,19 +111,19 @@ Today's workflow for sharing what happened in a browser:
 - [ ] Returns: `{status: "recording", name: "checkout-bug--2026-02-07-1423", path: "~/.gasoline/recordings/checkout-bug--2026-02-07-1423.webm", fps: 15}`
 - [ ] If already recording, returns error: `"RECORD_START: Already recording. Stop current recording first."`
 
-**Stop:**
+#### Stop:
 - [ ] `interact({action: "record_stop"})` — stops recording, saves video + metadata
 - [ ] Returns: `{status: "saved", name: "checkout-bug--2026-02-07-1423", path: "...", duration_seconds: 154, size_bytes: 18400000}`
 - [ ] If not recording, returns error: `"RECORD_STOP: No active recording."`
 
-**Name Resolution:**
+#### Name Resolution:
 - [ ] User provides name → sanitize to filesystem-safe slug (lowercase, hyphens, no special chars)
 - [ ] Append `--{ISO8601-short}` timestamp: `checkout-bug--2026-02-07-1423`
 - [ ] No name provided → `recording--2026-02-07-1423`
 
 ### R2: Manual Recording from Popup
 
-**UI:**
+#### UI:
 - [ ] New "Record" section in popup (below existing toggles)
 - [ ] Button: "Start Recording" (red circle icon)
 - [ ] While recording:
@@ -132,7 +132,7 @@ Today's workflow for sharing what happened in a browser:
   - Optional: name input field (empty = auto-name)
 - [ ] Recording state synced to `chrome.storage.local` so popup reopening shows correct state
 
-**Behavior:**
+#### Behavior:
 - [ ] Popup start → triggers same recording pipeline as MCP `record_start`
 - [ ] Popup stop → triggers same pipeline as MCP `record_stop`
 - [ ] If MCP starts a recording, popup shows recording state
@@ -141,12 +141,12 @@ Today's workflow for sharing what happened in a browser:
 
 ### R3: Video Listing
 
-**MCP API:**
+#### MCP API:
 - [ ] `observe({what: "saved_videos"})` — list all recordings
 - [ ] `observe({what: "saved_videos", url: "checkout"})` — filter by name substring
 - [ ] `observe({what: "saved_videos", last_n: 5})` — most recent N recordings
 
-**Response:**
+#### Response:
 ```json
 {
   "recordings": [
@@ -165,7 +165,7 @@ Today's workflow for sharing what happened in a browser:
 }
 ```
 
-**Implementation:**
+#### Implementation:
 - [ ] Server globs `~/.gasoline/recordings/*.webm`
 - [ ] Reads sidecar `*_meta.json` for each video
 - [ ] Returns sorted by `created_at` descending (newest first)
@@ -174,14 +174,14 @@ Today's workflow for sharing what happened in a browser:
 
 **Directory:** `~/.gasoline/recordings/` (created on first recording)
 
-**Files per recording:**
+#### Files per recording:
 ```
 ~/.gasoline/recordings/
   checkout-bug-repro--2026-02-07-1423.webm        # video
   checkout-bug-repro--2026-02-07-1423_meta.json    # metadata sidecar
 ```
 
-**Metadata sidecar format:**
+#### Metadata sidecar format:
 ```json
 {
   "name": "checkout-bug-repro--2026-02-07-1423",
@@ -196,7 +196,7 @@ Today's workflow for sharing what happened in a browser:
 }
 ```
 
-**Naming convention:**
+#### Naming convention:
 - `{slug}--{YYYY-MM-DD-HHmm}.webm`
 - `{slug}--{YYYY-MM-DD-HHmm}_meta.json`
 - Slug: user-provided name sanitized (lowercase, spaces→hyphens, strip special chars)
@@ -212,11 +212,11 @@ Today's workflow for sharing what happened in a browser:
 
 ### R6: Recording Indicator
 
-**In popup:**
+#### In popup:
 - [ ] Red dot + "Recording" label + elapsed time when active
 - [ ] Visible immediately when popup opens during active recording
 
-**In page (optional, v6.1):**
+#### In page (optional, v6.1):
 - [ ] Small recording indicator overlay (red dot + timer) in corner of page
 - [ ] Non-intrusive, similar to Loom's recording indicator
 - [ ] Can be disabled in settings

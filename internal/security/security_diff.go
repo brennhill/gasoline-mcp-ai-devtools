@@ -6,13 +6,14 @@
 package security
 
 import (
-	"github.com/dev-console/dev-console/internal/capture"
 	"encoding/json"
 	"fmt"
 	"net/url"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/dev-console/dev-console/internal/capture"
 )
 
 // ============================================
@@ -32,10 +33,10 @@ type SecurityDiffManager struct {
 type SecuritySnapshot struct {
 	Name      string                       `json:"name"`
 	TakenAt   time.Time                    `json:"taken_at"`
-	Headers   map[string]map[string]string `json:"headers"`   // origin → headerName → value
-	Cookies   map[string][]SecurityCookie  `json:"cookies"`   // origin → cookies
-	Auth      map[string]bool              `json:"auth"`      // endpoint (method+url) → has_auth
-	Transport map[string]string            `json:"transport"` // origin → "https" or "http"
+	Headers   map[string]map[string]string `json:"headers"`   // origin -> headerName -> value
+	Cookies   map[string][]SecurityCookie  `json:"cookies"`   // origin -> cookies
+	Auth      map[string]bool              `json:"auth"`      // endpoint (method+url) -> has_auth
+	Transport map[string]string            `json:"transport"` // origin -> "https" or "http"
 }
 
 // SecurityCookie records cookie attributes for comparison.
@@ -56,11 +57,11 @@ type SecurityDiffResult struct {
 
 // SecurityChange describes a single security posture change.
 type SecurityChange struct {
-	Category       string `json:"category"`                // "headers", "cookies", "auth", "transport"
-	Severity       string `json:"severity"`                // "critical", "high", "warning", "info"
+	Category       string `json:"category"`            // "headers", "cookies", "auth", "transport"
+	Severity       string `json:"severity"`            // "critical", "high", "warning", "info"
 	Origin         string `json:"origin,omitempty"`
 	Endpoint       string `json:"endpoint,omitempty"`
-	Change         string `json:"change"`                  // "header_removed", "header_added", "flag_removed", "flag_added", "auth_removed", "auth_added", "transport_downgrade", "transport_upgrade"
+	Change         string `json:"change"`              // "header_removed", "header_added", etc.
 	Header         string `json:"header,omitempty"`
 	CookieName     string `json:"cookie_name,omitempty"`
 	Flag           string `json:"flag,omitempty"`
@@ -98,6 +99,15 @@ var trackedSecurityHeaders = []string{
 	"Permissions-Policy",
 }
 
+var headerRemovedRecommendations = map[string]string{
+	"X-Frame-Options":           "X-Frame-Options was present before but is now missing. This exposes the app to clickjacking.",
+	"Strict-Transport-Security": "Strict-Transport-Security was present before but is now missing. This exposes the app to MITM downgrade.",
+	"X-Content-Type-Options":    "X-Content-Type-Options was present before but is now missing. This exposes the app to MIME sniffing.",
+	"Content-Security-Policy":   "Content-Security-Policy was present before but is now missing. This exposes the app to XSS.",
+	"Referrer-Policy":           "Referrer-Policy was present before but is now missing. This exposes the app to referrer leakage.",
+	"Permissions-Policy":        "Permissions-Policy was present before but is now missing. This exposes the app to feature abuse.",
+}
+
 // ============================================
 // Constructor
 // ============================================
@@ -118,78 +128,20 @@ func NewSecurityDiffManager() *SecurityDiffManager {
 
 // TakeSnapshot captures the current security posture from network bodies.
 func (m *SecurityDiffManager) TakeSnapshot(name string, bodies []capture.NetworkBody) (*SecuritySnapshot, error) {
-	// Validate name
-	if name == "" {
-		return nil, fmt.Errorf("snapshot name cannot be empty")
-	}
-	if name == "current" {
-		return nil, fmt.Errorf("snapshot name 'current' is reserved")
-	}
-	if len(name) > 50 {
-		return nil, fmt.Errorf("snapshot name exceeds 50 characters")
+	if err := validateSnapshotName(name); err != nil {
+		return nil, err
 	}
 
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	// If name already exists, remove it from order (will be re-added)
 	if _, exists := m.snapshots[name]; exists {
 		m.removeFromOrder(name)
 	}
+	m.evictOldest()
 
-	// Evict oldest if at capacity
-	for len(m.order) >= m.maxSnaps {
-		oldest := m.order[0]
-		newOrder := make([]string, len(m.order)-1)
-		copy(newOrder, m.order[1:])
-		m.order = newOrder
-		delete(m.snapshots, oldest)
-	}
-
-	// Build snapshot
-	snap := &SecuritySnapshot{
-		Name:      name,
-		TakenAt:   time.Now(),
-		Headers:   make(map[string]map[string]string),
-		Cookies:   make(map[string][]SecurityCookie),
-		Auth:      make(map[string]bool),
-		Transport: make(map[string]string),
-	}
-
-	for _, body := range bodies {
-		origin := extractSnapshotOrigin(body.URL)
-
-		// Headers: only from HTML responses with ResponseHeaders
-		if isHTMLResponse(body) && body.ResponseHeaders != nil {
-			if snap.Headers[origin] == nil {
-				snap.Headers[origin] = make(map[string]string)
-			}
-			for _, hdr := range trackedSecurityHeaders {
-				if val, ok := body.ResponseHeaders[hdr]; ok && val != "" {
-					snap.Headers[origin][hdr] = val
-				}
-			}
-		}
-
-		// Cookies: from Set-Cookie header
-		if body.ResponseHeaders != nil {
-			if setCookie, ok := body.ResponseHeaders["Set-Cookie"]; ok && setCookie != "" {
-				cookies := parseSnapshotCookies(setCookie)
-				if len(cookies) > 0 {
-					snap.Cookies[origin] = append(snap.Cookies[origin], cookies...)
-				}
-			}
-		}
-
-		// Auth: method + url → has_auth
-		endpoint := body.Method + " " + body.URL
-		snap.Auth[endpoint] = body.HasAuthHeader
-
-		// Transport: origin → scheme
-		if scheme := extractScheme(body.URL); scheme != "" {
-			snap.Transport[origin] = scheme
-		}
-	}
+	snap := newEmptySnapshot(name)
+	populateSnapshotFromBodies(snap, bodies)
 
 	m.snapshots[name] = snap
 	m.order = append(m.order, name)
@@ -202,68 +154,18 @@ func (m *SecurityDiffManager) Compare(fromName, toName string, currentBodies []c
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 
-	// Load "from" snapshot
-	fromSnap, ok := m.snapshots[fromName]
-	if !ok {
-		return nil, fmt.Errorf("snapshot %q not found", fromName)
-	}
-	if m.isExpired(fromSnap) {
-		return nil, fmt.Errorf("snapshot %q has expired (TTL: %v)", fromName, m.ttl)
+	fromSnap, err := m.resolveSnapshot(fromName)
+	if err != nil {
+		return nil, err
 	}
 
-	// Load "to" snapshot
-	var toSnap *SecuritySnapshot
-	if toName == "" || toName == "current" {
-		// Build ephemeral snapshot from currentBodies
-		var err error
-		toSnap, err = m.buildEphemeralSnapshot(currentBodies)
-		if err != nil {
-			return nil, fmt.Errorf("failed to build current snapshot: %w", err)
-		}
-	} else {
-		var exists bool
-		toSnap, exists = m.snapshots[toName]
-		if !exists {
-			return nil, fmt.Errorf("snapshot %q not found", toName)
-		}
-		if m.isExpired(toSnap) {
-			return nil, fmt.Errorf("snapshot %q has expired (TTL: %v)", toName, m.ttl)
-		}
+	toSnap, err := m.resolveToSnapshot(toName, currentBodies)
+	if err != nil {
+		return nil, err
 	}
 
-	// Compare
-	var regressions []SecurityChange
-	var improvements []SecurityChange
-
-	// Header comparison
-	headerReg, headerImp := m.compareHeaders(fromSnap, toSnap)
-	regressions = append(regressions, headerReg...)
-	improvements = append(improvements, headerImp...)
-
-	// Cookie comparison
-	cookieReg, cookieImp := m.compareCookies(fromSnap, toSnap)
-	regressions = append(regressions, cookieReg...)
-	improvements = append(improvements, cookieImp...)
-
-	// Auth comparison
-	authReg, authImp := m.compareAuth(fromSnap, toSnap)
-	regressions = append(regressions, authReg...)
-	improvements = append(improvements, authImp...)
-
-	// Transport comparison
-	transReg, transImp := m.compareTransport(fromSnap, toSnap)
-	regressions = append(regressions, transReg...)
-	improvements = append(improvements, transImp...)
-
-	// Determine verdict
-	verdict := "unchanged"
-	if len(regressions) > 0 {
-		verdict = "regressed"
-	} else if len(improvements) > 0 {
-		verdict = "improved"
-	}
-
-	// Build summary
+	regressions, improvements := m.collectAllChanges(fromSnap, toSnap)
+	verdict := determineVerdict(regressions, improvements)
 	summary := buildDiffSummary(regressions, improvements)
 
 	return &SecurityDiffResult{
@@ -331,20 +233,11 @@ func (m *SecurityDiffManager) HandleDiffSecurity(params json.RawMessage, bodies 
 
 func (m *SecurityDiffManager) compareHeaders(from, to *SecuritySnapshot) ([]SecurityChange, []SecurityChange) {
 	var regressions, improvements []SecurityChange
-
-	// Collect all origins from both snapshots
-	origins := make(map[string]bool)
-	for origin := range from.Headers {
-		origins[origin] = true
-	}
-	for origin := range to.Headers {
-		origins[origin] = true
-	}
+	origins := collectMapKeys(from.Headers, to.Headers)
 
 	for origin := range origins {
 		fromHeaders := from.Headers[origin]
 		toHeaders := to.Headers[origin]
-
 		if fromHeaders == nil {
 			fromHeaders = make(map[string]string)
 		}
@@ -352,35 +245,9 @@ func (m *SecurityDiffManager) compareHeaders(from, to *SecuritySnapshot) ([]Secu
 			toHeaders = make(map[string]string)
 		}
 
-		// Headers in "from" but not in "to" → regression
-		for _, hdr := range trackedSecurityHeaders {
-			fromVal, fromHas := fromHeaders[hdr]
-			toVal, toHas := toHeaders[hdr]
-
-			if fromHas && !toHas {
-				regressions = append(regressions, SecurityChange{
-					Category:       "headers",
-					Severity:       "warning",
-					Origin:         origin,
-					Change:         "header_removed",
-					Header:         hdr,
-					Before:         fromVal,
-					After:          "",
-					Recommendation: headerRemovedRecommendation(hdr),
-				})
-			} else if !fromHas && toHas {
-				improvements = append(improvements, SecurityChange{
-					Category:       "headers",
-					Severity:       "info",
-					Origin:         origin,
-					Change:         "header_added",
-					Header:         hdr,
-					Before:         "",
-					After:          toVal,
-					Recommendation: fmt.Sprintf("%s header has been added, improving security posture.", hdr),
-				})
-			}
-		}
+		reg, imp := diffHeadersForOrigin(origin, fromHeaders, toHeaders)
+		regressions = append(regressions, reg...)
+		improvements = append(improvements, imp...)
 	}
 
 	return regressions, improvements
@@ -388,117 +255,20 @@ func (m *SecurityDiffManager) compareHeaders(from, to *SecuritySnapshot) ([]Secu
 
 func (m *SecurityDiffManager) compareCookies(from, to *SecuritySnapshot) ([]SecurityChange, []SecurityChange) {
 	var regressions, improvements []SecurityChange
-
-	// Collect all origins
-	origins := make(map[string]bool)
-	for origin := range from.Cookies {
-		origins[origin] = true
-	}
-	for origin := range to.Cookies {
-		origins[origin] = true
-	}
+	origins := collectCookieMapKeys(from.Cookies, to.Cookies)
 
 	for origin := range origins {
-		fromCookies := from.Cookies[origin]
-		toCookies := to.Cookies[origin]
+		fromMap := cookieSliceToMap(from.Cookies[origin])
+		toMap := cookieSliceToMap(to.Cookies[origin])
 
-		// Build maps by cookie name
-		fromMap := make(map[string]SecurityCookie)
-		for _, c := range fromCookies {
-			fromMap[c.Name] = c
-		}
-		toMap := make(map[string]SecurityCookie)
-		for _, c := range toCookies {
-			toMap[c.Name] = c
-		}
-
-		// Compare matching cookies
 		for name, fromCookie := range fromMap {
 			toCookie, exists := toMap[name]
 			if !exists {
-				continue // Cookie removed entirely — not tracked as flag change
+				continue
 			}
-
-			// HttpOnly flag
-			if fromCookie.HttpOnly && !toCookie.HttpOnly {
-				regressions = append(regressions, SecurityChange{
-					Category:       "cookies",
-					Severity:       "warning",
-					Origin:         origin,
-					Change:         "flag_removed",
-					CookieName:     name,
-					Flag:           "HttpOnly",
-					Before:         "present",
-					After:          "absent",
-					Recommendation: fmt.Sprintf("Cookie '%s' lost HttpOnly flag. Client-side JavaScript can now read it.", name),
-				})
-			} else if !fromCookie.HttpOnly && toCookie.HttpOnly {
-				improvements = append(improvements, SecurityChange{
-					Category:       "cookies",
-					Severity:       "info",
-					Origin:         origin,
-					Change:         "flag_added",
-					CookieName:     name,
-					Flag:           "HttpOnly",
-					Before:         "absent",
-					After:          "present",
-					Recommendation: fmt.Sprintf("Cookie '%s' gained HttpOnly flag.", name),
-				})
-			}
-
-			// Secure flag
-			if fromCookie.Secure && !toCookie.Secure {
-				regressions = append(regressions, SecurityChange{
-					Category:       "cookies",
-					Severity:       "warning",
-					Origin:         origin,
-					Change:         "flag_removed",
-					CookieName:     name,
-					Flag:           "Secure",
-					Before:         "present",
-					After:          "absent",
-					Recommendation: fmt.Sprintf("Cookie '%s' lost Secure flag. Cookie can now be sent over HTTP.", name),
-				})
-			} else if !fromCookie.Secure && toCookie.Secure {
-				improvements = append(improvements, SecurityChange{
-					Category:       "cookies",
-					Severity:       "info",
-					Origin:         origin,
-					Change:         "flag_added",
-					CookieName:     name,
-					Flag:           "Secure",
-					Before:         "absent",
-					After:          "present",
-					Recommendation: fmt.Sprintf("Cookie '%s' gained Secure flag.", name),
-				})
-			}
-
-			// SameSite flag
-			if fromCookie.SameSite != "" && toCookie.SameSite == "" {
-				regressions = append(regressions, SecurityChange{
-					Category:       "cookies",
-					Severity:       "warning",
-					Origin:         origin,
-					Change:         "flag_removed",
-					CookieName:     name,
-					Flag:           "SameSite",
-					Before:         fromCookie.SameSite,
-					After:          "",
-					Recommendation: fmt.Sprintf("Cookie '%s' lost SameSite flag. Cookie may now be sent in cross-site requests.", name),
-				})
-			} else if fromCookie.SameSite == "" && toCookie.SameSite != "" {
-				improvements = append(improvements, SecurityChange{
-					Category:       "cookies",
-					Severity:       "info",
-					Origin:         origin,
-					Change:         "flag_added",
-					CookieName:     name,
-					Flag:           "SameSite",
-					Before:         "",
-					After:          toCookie.SameSite,
-					Recommendation: fmt.Sprintf("Cookie '%s' gained SameSite flag.", name),
-				})
-			}
+			reg, imp := diffCookieFlags(origin, name, fromCookie, toCookie)
+			regressions = append(regressions, reg...)
+			improvements = append(improvements, imp...)
 		}
 	}
 
@@ -507,15 +277,7 @@ func (m *SecurityDiffManager) compareCookies(from, to *SecuritySnapshot) ([]Secu
 
 func (m *SecurityDiffManager) compareAuth(from, to *SecuritySnapshot) ([]SecurityChange, []SecurityChange) {
 	var regressions, improvements []SecurityChange
-
-	// Check all endpoints from both snapshots
-	endpoints := make(map[string]bool)
-	for ep := range from.Auth {
-		endpoints[ep] = true
-	}
-	for ep := range to.Auth {
-		endpoints[ep] = true
-	}
+	endpoints := collectBoolMapKeys(from.Auth, to.Auth)
 
 	for endpoint := range endpoints {
 		fromAuth := from.Auth[endpoint]
@@ -550,40 +312,9 @@ func (m *SecurityDiffManager) compareAuth(from, to *SecuritySnapshot) ([]Securit
 func (m *SecurityDiffManager) compareTransport(from, to *SecuritySnapshot) ([]SecurityChange, []SecurityChange) {
 	var regressions, improvements []SecurityChange
 
-	// Collect all origins
-	origins := make(map[string]bool)
-	for origin := range from.Transport {
-		origins[origin] = true
-	}
-	for origin := range to.Transport {
-		origins[origin] = true
-	}
-
-	// For transport comparison, we need to normalize origins to just host
-	// since the scheme is the thing that changes
-	fromByHost := make(map[string]string) // host → scheme
-	toByHost := make(map[string]string)
-
-	for origin, scheme := range from.Transport {
-		host := extractHostFromOrigin(origin)
-		if host != "" {
-			fromByHost[host] = scheme
-		}
-	}
-	for origin, scheme := range to.Transport {
-		host := extractHostFromOrigin(origin)
-		if host != "" {
-			toByHost[host] = scheme
-		}
-	}
-
-	hosts := make(map[string]bool)
-	for h := range fromByHost {
-		hosts[h] = true
-	}
-	for h := range toByHost {
-		hosts[h] = true
-	}
+	fromByHost := normalizeTransportByHost(from.Transport)
+	toByHost := normalizeTransportByHost(to.Transport)
+	hosts := collectStringMapKeys(fromByHost, toByHost)
 
 	for host := range hosts {
 		fromScheme := fromByHost[host]
@@ -619,6 +350,70 @@ func (m *SecurityDiffManager) compareTransport(from, to *SecuritySnapshot) ([]Se
 // Internal Helpers
 // ============================================
 
+func validateSnapshotName(name string) error {
+	if name == "" {
+		return fmt.Errorf("snapshot name cannot be empty")
+	}
+	if name == "current" {
+		return fmt.Errorf("snapshot name 'current' is reserved")
+	}
+	if len(name) > 50 {
+		return fmt.Errorf("snapshot name exceeds 50 characters")
+	}
+	return nil
+}
+
+func newEmptySnapshot(name string) *SecuritySnapshot {
+	return &SecuritySnapshot{
+		Name:      name,
+		TakenAt:   time.Now(),
+		Headers:   make(map[string]map[string]string),
+		Cookies:   make(map[string][]SecurityCookie),
+		Auth:      make(map[string]bool),
+		Transport: make(map[string]string),
+	}
+}
+
+func populateSnapshotFromBodies(snap *SecuritySnapshot, bodies []capture.NetworkBody) {
+	for _, body := range bodies {
+		origin := extractSnapshotOrigin(body.URL)
+		populateHeaders(snap, origin, body)
+		populateCookies(snap, origin, body)
+		snap.Auth[body.Method+" "+body.URL] = body.HasAuthHeader
+		if scheme := extractScheme(body.URL); scheme != "" {
+			snap.Transport[origin] = scheme
+		}
+	}
+}
+
+func populateHeaders(snap *SecuritySnapshot, origin string, body capture.NetworkBody) {
+	if !isHTMLResponse(body) || body.ResponseHeaders == nil {
+		return
+	}
+	if snap.Headers[origin] == nil {
+		snap.Headers[origin] = make(map[string]string)
+	}
+	for _, hdr := range trackedSecurityHeaders {
+		if val, ok := body.ResponseHeaders[hdr]; ok && val != "" {
+			snap.Headers[origin][hdr] = val
+		}
+	}
+}
+
+func populateCookies(snap *SecuritySnapshot, origin string, body capture.NetworkBody) {
+	if body.ResponseHeaders == nil {
+		return
+	}
+	setCookie, ok := body.ResponseHeaders["Set-Cookie"]
+	if !ok || setCookie == "" {
+		return
+	}
+	cookies := parseSnapshotCookies(setCookie)
+	if len(cookies) > 0 {
+		snap.Cookies[origin] = append(snap.Cookies[origin], cookies...)
+	}
+}
+
 func (m *SecurityDiffManager) isExpired(snap *SecuritySnapshot) bool {
 	return time.Since(snap.TakenAt) > m.ttl
 }
@@ -635,52 +430,244 @@ func (m *SecurityDiffManager) removeFromOrder(name string) {
 	}
 }
 
-func (m *SecurityDiffManager) buildEphemeralSnapshot(bodies []capture.NetworkBody) (*SecuritySnapshot, error) {
-	snap := &SecuritySnapshot{
-		Name:      "current",
-		TakenAt:   time.Now(),
-		Headers:   make(map[string]map[string]string),
-		Cookies:   make(map[string][]SecurityCookie),
-		Auth:      make(map[string]bool),
-		Transport: make(map[string]string),
+func (m *SecurityDiffManager) evictOldest() {
+	for len(m.order) >= m.maxSnaps {
+		oldest := m.order[0]
+		newOrder := make([]string, len(m.order)-1)
+		copy(newOrder, m.order[1:])
+		m.order = newOrder
+		delete(m.snapshots, oldest)
 	}
+}
 
-	for _, body := range bodies {
-		origin := extractSnapshotOrigin(body.URL)
-
-		// Headers
-		if isHTMLResponse(body) && body.ResponseHeaders != nil {
-			if snap.Headers[origin] == nil {
-				snap.Headers[origin] = make(map[string]string)
-			}
-			for _, hdr := range trackedSecurityHeaders {
-				if val, ok := body.ResponseHeaders[hdr]; ok && val != "" {
-					snap.Headers[origin][hdr] = val
-				}
-			}
-		}
-
-		// Cookies
-		if body.ResponseHeaders != nil {
-			if setCookie, ok := body.ResponseHeaders["Set-Cookie"]; ok && setCookie != "" {
-				cookies := parseSnapshotCookies(setCookie)
-				if len(cookies) > 0 {
-					snap.Cookies[origin] = append(snap.Cookies[origin], cookies...)
-				}
-			}
-		}
-
-		// Auth
-		endpoint := body.Method + " " + body.URL
-		snap.Auth[endpoint] = body.HasAuthHeader
-
-		// Transport
-		if scheme := extractScheme(body.URL); scheme != "" {
-			snap.Transport[origin] = scheme
-		}
+func (m *SecurityDiffManager) resolveSnapshot(name string) (*SecuritySnapshot, error) {
+	snap, ok := m.snapshots[name]
+	if !ok {
+		return nil, fmt.Errorf("snapshot %q not found", name)
 	}
-
+	if m.isExpired(snap) {
+		return nil, fmt.Errorf("snapshot %q has expired (TTL: %v)", name, m.ttl)
+	}
 	return snap, nil
+}
+
+func (m *SecurityDiffManager) resolveToSnapshot(toName string, currentBodies []capture.NetworkBody) (*SecuritySnapshot, error) {
+	if toName == "" || toName == "current" {
+		snap := newEmptySnapshot("current")
+		populateSnapshotFromBodies(snap, currentBodies)
+		return snap, nil
+	}
+	return m.resolveSnapshot(toName)
+}
+
+func (m *SecurityDiffManager) collectAllChanges(from, to *SecuritySnapshot) ([]SecurityChange, []SecurityChange) {
+	var regressions, improvements []SecurityChange
+
+	compareFns := []func(*SecuritySnapshot, *SecuritySnapshot) ([]SecurityChange, []SecurityChange){
+		m.compareHeaders,
+		m.compareCookies,
+		m.compareAuth,
+		m.compareTransport,
+	}
+	for _, fn := range compareFns {
+		reg, imp := fn(from, to)
+		regressions = append(regressions, reg...)
+		improvements = append(improvements, imp...)
+	}
+
+	return regressions, improvements
+}
+
+func determineVerdict(regressions, improvements []SecurityChange) string {
+	if len(regressions) > 0 {
+		return "regressed"
+	}
+	if len(improvements) > 0 {
+		return "improved"
+	}
+	return "unchanged"
+}
+
+func diffHeadersForOrigin(origin string, fromHeaders, toHeaders map[string]string) ([]SecurityChange, []SecurityChange) {
+	var regressions, improvements []SecurityChange
+
+	for _, hdr := range trackedSecurityHeaders {
+		fromVal, fromHas := fromHeaders[hdr]
+		toVal, toHas := toHeaders[hdr]
+
+		if fromHas && !toHas {
+			regressions = append(regressions, SecurityChange{
+				Category:       "headers",
+				Severity:       "warning",
+				Origin:         origin,
+				Change:         "header_removed",
+				Header:         hdr,
+				Before:         fromVal,
+				After:          "",
+				Recommendation: headerRemovedRecommendation(hdr),
+			})
+		} else if !fromHas && toHas {
+			improvements = append(improvements, SecurityChange{
+				Category:       "headers",
+				Severity:       "info",
+				Origin:         origin,
+				Change:         "header_added",
+				Header:         hdr,
+				Before:         "",
+				After:          toVal,
+				Recommendation: fmt.Sprintf("%s header has been added, improving security posture.", hdr),
+			})
+		}
+	}
+
+	return regressions, improvements
+}
+
+type cookieFlagSpec struct {
+	flagName   string
+	fromActive bool
+	toActive   bool
+	fromVal    string
+	toVal      string
+	lostMsg    string
+	gainedMsg  string
+}
+
+func diffCookieFlags(origin, name string, from, to SecurityCookie) ([]SecurityChange, []SecurityChange) {
+	var regressions, improvements []SecurityChange
+
+	flags := []cookieFlagSpec{
+		{
+			flagName: "HttpOnly", fromActive: from.HttpOnly, toActive: to.HttpOnly,
+			fromVal: "present", toVal: "present",
+			lostMsg:   fmt.Sprintf("Cookie '%s' lost HttpOnly flag. Client-side JavaScript can now read it.", name),
+			gainedMsg: fmt.Sprintf("Cookie '%s' gained HttpOnly flag.", name),
+		},
+		{
+			flagName: "Secure", fromActive: from.Secure, toActive: to.Secure,
+			fromVal: "present", toVal: "present",
+			lostMsg:   fmt.Sprintf("Cookie '%s' lost Secure flag. Cookie can now be sent over HTTP.", name),
+			gainedMsg: fmt.Sprintf("Cookie '%s' gained Secure flag.", name),
+		},
+		{
+			flagName: "SameSite", fromActive: from.SameSite != "", toActive: to.SameSite != "",
+			fromVal: from.SameSite, toVal: to.SameSite,
+			lostMsg:   fmt.Sprintf("Cookie '%s' lost SameSite flag. Cookie may now be sent in cross-site requests.", name),
+			gainedMsg: fmt.Sprintf("Cookie '%s' gained SameSite flag.", name),
+		},
+	}
+
+	for _, f := range flags {
+		change := diffSingleCookieFlag(origin, name, f)
+		if change == nil {
+			continue
+		}
+		if change.Change == "flag_removed" {
+			regressions = append(regressions, *change)
+		} else {
+			improvements = append(improvements, *change)
+		}
+	}
+
+	return regressions, improvements
+}
+
+func diffSingleCookieFlag(origin, cookieName string, f cookieFlagSpec) *SecurityChange {
+	if f.fromActive && !f.toActive {
+		before := f.fromVal
+		if f.flagName != "SameSite" {
+			before = "present"
+		}
+		return &SecurityChange{
+			Category: "cookies", Severity: "warning", Origin: origin,
+			Change: "flag_removed", CookieName: cookieName, Flag: f.flagName,
+			Before: before, After: flagAbsentValue(f.flagName, ""),
+			Recommendation: f.lostMsg,
+		}
+	}
+	if !f.fromActive && f.toActive {
+		after := f.toVal
+		if f.flagName != "SameSite" {
+			after = "present"
+		}
+		return &SecurityChange{
+			Category: "cookies", Severity: "info", Origin: origin,
+			Change: "flag_added", CookieName: cookieName, Flag: f.flagName,
+			Before: flagAbsentValue(f.flagName, ""), After: after,
+			Recommendation: f.gainedMsg,
+		}
+	}
+	return nil
+}
+
+func flagAbsentValue(flagName, fallback string) string {
+	if flagName == "SameSite" {
+		return fallback
+	}
+	return "absent"
+}
+
+func normalizeTransportByHost(transport map[string]string) map[string]string {
+	byHost := make(map[string]string, len(transport))
+	for origin, scheme := range transport {
+		host := extractHostFromOrigin(origin)
+		if host != "" {
+			byHost[host] = scheme
+		}
+	}
+	return byHost
+}
+
+func cookieSliceToMap(cookies []SecurityCookie) map[string]SecurityCookie {
+	m := make(map[string]SecurityCookie, len(cookies))
+	for _, c := range cookies {
+		m[c.Name] = c
+	}
+	return m
+}
+
+func collectMapKeys[V any](a, b map[string]map[string]V) map[string]bool {
+	keys := make(map[string]bool, len(a)+len(b))
+	for k := range a {
+		keys[k] = true
+	}
+	for k := range b {
+		keys[k] = true
+	}
+	return keys
+}
+
+func collectCookieMapKeys(a, b map[string][]SecurityCookie) map[string]bool {
+	keys := make(map[string]bool, len(a)+len(b))
+	for k := range a {
+		keys[k] = true
+	}
+	for k := range b {
+		keys[k] = true
+	}
+	return keys
+}
+
+func collectBoolMapKeys(a, b map[string]bool) map[string]bool {
+	keys := make(map[string]bool, len(a)+len(b))
+	for k := range a {
+		keys[k] = true
+	}
+	for k := range b {
+		keys[k] = true
+	}
+	return keys
+}
+
+func collectStringMapKeys(a, b map[string]string) map[string]bool {
+	keys := make(map[string]bool, len(a)+len(b))
+	for k := range a {
+		keys[k] = true
+	}
+	for k := range b {
+		keys[k] = true
+	}
+	return keys
 }
 
 func extractSnapshotOrigin(rawURL string) string {
@@ -724,22 +711,10 @@ func parseSnapshotCookies(setCookieHeader string) []SecurityCookie {
 }
 
 func headerRemovedRecommendation(header string) string {
-	switch header {
-	case "X-Frame-Options":
-		return "X-Frame-Options was present before but is now missing. This exposes the app to clickjacking."
-	case "Strict-Transport-Security":
-		return "Strict-Transport-Security was present before but is now missing. This exposes the app to MITM downgrade."
-	case "X-Content-Type-Options":
-		return "X-Content-Type-Options was present before but is now missing. This exposes the app to MIME sniffing."
-	case "Content-Security-Policy":
-		return "Content-Security-Policy was present before but is now missing. This exposes the app to XSS."
-	case "Referrer-Policy":
-		return "Referrer-Policy was present before but is now missing. This exposes the app to referrer leakage."
-	case "Permissions-Policy":
-		return "Permissions-Policy was present before but is now missing. This exposes the app to feature abuse."
-	default:
-		return fmt.Sprintf("%s was present before but is now missing.", header)
+	if rec, ok := headerRemovedRecommendations[header]; ok {
+		return rec
 	}
+	return fmt.Sprintf("%s was present before but is now missing.", header)
 }
 
 func buildDiffSummary(regressions, improvements []SecurityChange) SecurityDiffSummary {

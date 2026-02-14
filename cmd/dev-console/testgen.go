@@ -8,6 +8,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -31,13 +32,13 @@ type TestFromContextRequest struct {
 
 // GeneratedTest represents the output of test generation
 type GeneratedTest struct {
-	Framework string          `json:"framework"`
-	Filename  string          `json:"filename"`
-	Content   string          `json:"content"`
-	Selectors []string        `json:"selectors"`
-	Assertions int            `json:"assertions"`
-	Coverage  TestCoverage    `json:"coverage"`
-	Metadata  TestGenMetadata `json:"metadata"`
+	Framework  string          `json:"framework"`
+	Filename   string          `json:"filename"`
+	Content    string          `json:"content"`
+	Selectors  []string        `json:"selectors"`
+	Assertions int             `json:"assertions"`
+	Coverage   TestCoverage    `json:"coverage"`
+	Metadata   TestGenMetadata `json:"metadata"`
 }
 
 // TestCoverage describes what the generated test covers
@@ -147,13 +148,13 @@ type SuggestedFix struct {
 
 // BatchClassifyResult represents the result of classifying multiple failures
 type BatchClassifyResult struct {
-	TotalClassified  int                      `json:"total_classified"`
-	RealBugs         int                      `json:"real_bugs"`
-	FlakyTests       int                      `json:"flaky_tests"`
-	TestBugs         int                      `json:"test_bugs"`
-	Uncertain        int                      `json:"uncertain"`
-	Classifications  []FailureClassification  `json:"classifications"`
-	Summary          map[string]int           `json:"summary"` // category -> count
+	TotalClassified int                     `json:"total_classified"`
+	RealBugs        int                     `json:"real_bugs"`
+	FlakyTests      int                     `json:"flaky_tests"`
+	TestBugs        int                     `json:"test_bugs"`
+	Uncertain       int                     `json:"uncertain"`
+	Classifications []FailureClassification `json:"classifications"`
+	Summary         map[string]int          `json:"summary"` // category -> count
 }
 
 // Error codes for test generation (ErrPathNotAllowed is defined in tools.go)
@@ -171,7 +172,7 @@ const (
 // Batch limits (from TECH_SPEC §2)
 const (
 	MaxFilesPerBatch    = 20
-	MaxFileSizeBytes    = 500 * 1024 // 500KB
+	MaxFileSizeBytes    = 500 * 1024      // 500KB
 	MaxTotalBatchSize   = 5 * 1024 * 1024 // 5MB
 	MaxSelectorsPerFile = 50
 )
@@ -186,11 +187,46 @@ const (
 	CategoryUnknown        = "unknown"
 )
 
+// testGenContextDispatch maps context values to their generator functions.
+var testGenContextDispatch = map[string]func(h *ToolHandler, params TestFromContextRequest) (*GeneratedTest, error){
+	"error":       (*ToolHandler).generateTestFromError,
+	"interaction": (*ToolHandler).generateTestFromInteraction,
+	"regression":  (*ToolHandler).generateTestFromRegression,
+}
+
+// testGenErrorMap maps error code substrings to structured error responses.
+type testGenErrorMapping struct {
+	code    string
+	message string
+	retry   string
+	hint    string
+}
+
+var testGenErrorMappings = []testGenErrorMapping{
+	{
+		code:    ErrNoErrorContext,
+		message: "No console errors captured to generate test from",
+		retry:   "Trigger an error in the browser first, then retry",
+		hint:    "Use the observe tool to verify errors are being captured",
+	},
+	{
+		code:    ErrNoActionsCaptured,
+		message: "No user actions recorded in the session",
+		retry:   "Interact with the page first (click, type, navigate), then retry",
+		hint:    "Use the observe tool with what=actions to verify actions are being captured",
+	},
+	{
+		code:    ErrNoBaseline,
+		message: "No regression baseline available",
+		retry:   "Capture a baseline first by interacting with the page, then retry",
+		hint:    "The regression mode generates tests by comparing current state against a baseline",
+	},
+}
+
 // ============================================
 // Section 2: Entry Points
 // ============================================
 
-// handleGenerateTestFromContext handles the test_from_context mode of the generate tool
 func (h *ToolHandler) handleGenerateTestFromContext(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	var params TestFromContextRequest
 
@@ -199,46 +235,14 @@ func (h *ToolHandler) handleGenerateTestFromContext(req JSONRPCRequest, args jso
 		return JSONRPCResponse{
 			JSONRPC: "2.0",
 			ID:      req.ID,
-			Result: mcpStructuredError(
-				ErrInvalidJSON,
-				"Invalid JSON arguments: "+err.Error(),
-				"Fix JSON syntax and call again",
-			),
+			Result:  mcpStructuredError(ErrInvalidJSON, "Invalid JSON arguments: "+err.Error(), "Fix JSON syntax and call again"),
 		}
 	}
 
-	// Validate required parameters
-	if params.Context == "" {
-		return JSONRPCResponse{
-			JSONRPC: "2.0",
-			ID:      req.ID,
-			Result: mcpStructuredError(
-				ErrMissingParam,
-				"Required parameter 'context' is missing",
-				"Add the 'context' parameter and call again",
-				withParam("context"),
-				withHint("Valid values: error, interaction, regression"),
-			),
-		}
+	if errResp, ok := validateTestFromContextParams(req.ID, params); !ok {
+		return errResp
 	}
 
-	// Validate context value
-	validContexts := map[string]bool{"error": true, "interaction": true, "regression": true}
-	if !validContexts[params.Context] {
-		return JSONRPCResponse{
-			JSONRPC: "2.0",
-			ID:      req.ID,
-			Result: mcpStructuredError(
-				ErrInvalidParam,
-				"Invalid context value: "+params.Context,
-				"Use a valid context value",
-				withParam("context"),
-				withHint("Valid values: error, interaction, regression"),
-			),
-		}
-	}
-
-	// Set defaults
 	if params.Framework == "" {
 		params.Framework = "playwright"
 	}
@@ -246,77 +250,12 @@ func (h *ToolHandler) handleGenerateTestFromContext(req JSONRPCRequest, args jso
 		params.OutputFormat = "inline"
 	}
 
-	// Dispatch based on context
-	var generatedTest *GeneratedTest
-	switch params.Context {
-	case "error":
-		generatedTest, err = h.generateTestFromError(params)
-	case "interaction":
-		generatedTest, err = h.generateTestFromInteraction(params)
-	case "regression":
-		generatedTest, err = h.generateTestFromRegression(params)
-	default:
-		return JSONRPCResponse{
-			JSONRPC: "2.0",
-			ID:      req.ID,
-			Result: mcpStructuredError(
-				ErrInvalidParam,
-				"Unknown context: "+params.Context,
-				"Use a valid context value",
-				withParam("context"),
-			),
-		}
-	}
-
+	generator := testGenContextDispatch[params.Context]
+	generatedTest, err := generator(h, params)
 	if err != nil {
-		// Check for specific error codes
-		errStr := err.Error()
-		if strings.Contains(errStr, ErrNoErrorContext) {
-			return JSONRPCResponse{
-				JSONRPC: "2.0",
-				ID:      req.ID,
-				Result: mcpStructuredError(
-					ErrNoErrorContext,
-					"No console errors captured to generate test from",
-					"Trigger an error in the browser first, then retry",
-					withHint("Use the observe tool to verify errors are being captured"),
-				),
-			}
-		}
-		if strings.Contains(errStr, ErrNoActionsCaptured) {
-			return JSONRPCResponse{
-				JSONRPC: "2.0",
-				ID:      req.ID,
-				Result: mcpStructuredError(
-					ErrNoActionsCaptured,
-					"No user actions recorded in the session",
-					"Interact with the page first (click, type, navigate), then retry",
-					withHint("Use the observe tool with what=actions to verify actions are being captured"),
-				),
-			}
-		}
-		if strings.Contains(errStr, ErrNoBaseline) {
-			return JSONRPCResponse{
-				JSONRPC: "2.0",
-				ID:      req.ID,
-				Result: mcpStructuredError(
-					ErrNoBaseline,
-					"No regression baseline available",
-					"Capture a baseline first by interacting with the page, then retry",
-					withHint("The regression mode generates tests by comparing current state against a baseline"),
-				),
-			}
-		}
-
-		// Generic error
-		return JSONRPCResponse{
-			JSONRPC: "2.0",
-			ID:      req.ID,
-			Result: mcpErrorResponse("Failed to generate test: " + err.Error()),
-		}
+		return testGenErrorToResponse(req.ID, err)
 	}
 
-	// Format response using mcpJSONResponse pattern
 	summary := fmt.Sprintf("Generated %s test '%s' (%d assertions)",
 		generatedTest.Framework,
 		generatedTest.Filename,
@@ -336,22 +275,102 @@ func (h *ToolHandler) handleGenerateTestFromContext(req JSONRPCRequest, args jso
 	return appendWarningsToResponse(resp, warnings)
 }
 
+func validateTestFromContextParams(reqID any, params TestFromContextRequest) (JSONRPCResponse, bool) {
+	if params.Context == "" {
+		return JSONRPCResponse{
+			JSONRPC: "2.0",
+			ID:      reqID,
+			Result: mcpStructuredError(
+				ErrMissingParam,
+				"Required parameter 'context' is missing",
+				"Add the 'context' parameter and call again",
+				withParam("context"),
+				withHint("Valid values: error, interaction, regression"),
+			),
+		}, false
+	}
+
+	if _, ok := testGenContextDispatch[params.Context]; !ok {
+		return JSONRPCResponse{
+			JSONRPC: "2.0",
+			ID:      reqID,
+			Result: mcpStructuredError(
+				ErrInvalidParam,
+				"Invalid context value: "+params.Context,
+				"Use a valid context value",
+				withParam("context"),
+				withHint("Valid values: error, interaction, regression"),
+			),
+		}, false
+	}
+
+	return JSONRPCResponse{}, true
+}
+
+func testGenErrorToResponse(reqID any, err error) JSONRPCResponse {
+	errStr := err.Error()
+	for _, m := range testGenErrorMappings {
+		if strings.Contains(errStr, m.code) {
+			return JSONRPCResponse{
+				JSONRPC: "2.0",
+				ID:      reqID,
+				Result:  mcpStructuredError(m.code, m.message, m.retry, withHint(m.hint)),
+			}
+		}
+	}
+	return JSONRPCResponse{
+		JSONRPC: "2.0",
+		ID:      reqID,
+		Result:  mcpStructuredError(ErrInternal, "Failed to generate test: "+err.Error(), "Check the input parameters and ensure captured data is available, then retry"),
+	}
+}
+
 // ============================================
 // Section 3: test_from_context Implementation
 // ============================================
 
-// generateTestFromError creates a Playwright test that reproduces a captured console error
 func (h *ToolHandler) generateTestFromError(req TestFromContextRequest) (*GeneratedTest, error) {
-	// 1. Get error context from capture
+	targetError, errorID, errorTimestamp := h.findTargetError(req.ErrorID)
+	if targetError == nil {
+		return nil, errors.New(ErrNoErrorContext)
+	}
+
+	errorMessage, _ := targetError["message"].(string)
+
+	relevantActions, err := h.getActionsInTimeWindow(errorTimestamp, 5000)
+	if err != nil {
+		return nil, err
+	}
+
+	script := generatePlaywrightScript(relevantActions, errorMessage, req.BaseURL)
+	assertionCount := strings.Count(script, "expect(") + 1
+	filename := generateTestFilename(errorMessage, req.Framework)
+	selectors := extractSelectorsFromActions(relevantActions)
+
+	return &GeneratedTest{
+		Framework:  req.Framework,
+		Filename:   filename,
+		Content:    script,
+		Selectors:  selectors,
+		Assertions: assertionCount,
+		Coverage: TestCoverage{
+			ErrorReproduced: true,
+			NetworkMocked:   req.IncludeMocks,
+			StateCaptured:   len(relevantActions) > 0,
+		},
+		Metadata: TestGenMetadata{
+			SourceError: errorID,
+			GeneratedAt: time.Now().Format(time.RFC3339),
+			ContextUsed: []string{"console", "actions"},
+		},
+	}, nil
+}
+
+func (h *ToolHandler) findTargetError(errorID string) (LogEntry, string, int64) {
 	h.server.mu.RLock()
 	entries := make([]LogEntry, len(h.server.entries))
 	copy(entries, h.server.entries)
 	h.server.mu.RUnlock()
-
-	// Find the most recent error (or specific error by ID if provided)
-	var targetError LogEntry
-	var errorTimestamp int64
-	var errorID string
 
 	for i := len(entries) - 1; i >= 0; i-- {
 		entry := entries[i]
@@ -360,164 +379,65 @@ func (h *ToolHandler) generateTestFromError(req TestFromContextRequest) (*Genera
 			continue
 		}
 
-		// If error_id specified, match it
-		if req.ErrorID != "" {
+		if errorID != "" {
 			entryID, _ := entry["error_id"].(string)
-			if entryID == req.ErrorID {
-				targetError = entry
-				errorID = entryID
-				tsStr, _ := entry["ts"].(string)
-				errorTimestamp = normalizeTimestamp(tsStr)
-				break
+			if entryID != errorID {
+				continue
 			}
-		} else {
-			// Use most recent error
-			targetError = entry
 			tsStr, _ := entry["ts"].(string)
-			errorTimestamp = normalizeTimestamp(tsStr)
-			errorID, _ = entry["error_id"].(string)
-			break
+			return entry, entryID, normalizeTimestamp(tsStr)
 		}
+
+		tsStr, _ := entry["ts"].(string)
+		id, _ := entry["error_id"].(string)
+		return entry, id, normalizeTimestamp(tsStr)
 	}
 
-	if targetError == nil {
-		return nil, fmt.Errorf(ErrNoErrorContext)
-	}
+	return nil, "", 0
+}
 
-	errorMessage, _ := targetError["message"].(string)
-
-	// 2. Get actions leading up to error (±5 seconds window)
+func (h *ToolHandler) getActionsInTimeWindow(centerTimestamp int64, windowMs int64) ([]capture.EnhancedAction, error) {
 	allActions := h.capture.GetAllEnhancedActions()
 	if len(allActions) == 0 {
-		return nil, fmt.Errorf(ErrNoActionsCaptured)
+		return nil, errors.New(ErrNoActionsCaptured)
 	}
 
-	// Filter actions within time window
-	const timeWindowMs = 5000 // ±5 seconds
-	var relevantActions []capture.EnhancedAction
+	var relevant []capture.EnhancedAction
 	for i := range allActions {
 		action := &allActions[i]
-		timeDiff := action.Timestamp - errorTimestamp
-		if timeDiff >= -timeWindowMs && timeDiff <= timeWindowMs {
-			relevantActions = append(relevantActions, *action)
+		timeDiff := action.Timestamp - centerTimestamp
+		if timeDiff >= -windowMs && timeDiff <= windowMs {
+			relevant = append(relevant, *action)
 		}
 	}
 
-	if len(relevantActions) == 0 {
-		return nil, fmt.Errorf(ErrNoActionsCaptured)
+	if len(relevant) == 0 {
+		return nil, errors.New(ErrNoActionsCaptured)
 	}
 
-	// 3. Generate test using existing codegen infrastructure
-	script := generatePlaywrightScript(relevantActions, errorMessage, req.BaseURL)
-
-	// 4. Count assertions (simple heuristic: count expect() calls + error comment)
-	assertionCount := strings.Count(script, "expect(") + 1 // +1 for error comment
-
-	// 5. Generate filename
-	filename := generateTestFilename(errorMessage, req.Framework)
-
-	// 6. Extract selectors used in test
-	selectors := extractSelectorsFromActions(relevantActions)
-
-	// 7. Build metadata
-	metadata := TestGenMetadata{
-		SourceError: errorID,
-		GeneratedAt: time.Now().Format(time.RFC3339),
-		ContextUsed: []string{"console", "actions"},
-	}
-
-	// 8. Build coverage info
-	coverage := TestCoverage{
-		ErrorReproduced: true,
-		NetworkMocked:   req.IncludeMocks,
-		StateCaptured:   len(relevantActions) > 0,
-	}
-
-	return &GeneratedTest{
-		Framework:  req.Framework,
-		Filename:   filename,
-		Content:    script,
-		Selectors:  selectors,
-		Assertions: assertionCount,
-		Coverage:   coverage,
-		Metadata:   metadata,
-	}, nil
+	return relevant, nil
 }
 
-// generateTestFromInteraction creates a Playwright test from recorded user interactions
 func (h *ToolHandler) generateTestFromInteraction(req TestFromContextRequest) (*GeneratedTest, error) {
-	// 1. Get all enhanced actions
 	allActions := h.capture.GetAllEnhancedActions()
 	if len(allActions) == 0 {
-		return nil, fmt.Errorf(ErrNoActionsCaptured)
+		return nil, errors.New(ErrNoActionsCaptured)
 	}
 
-	// 2. Filter actions if needed (by time window or action count)
-	// Note: For interaction mode, we can use last_n_actions from session timeline
-	// For now, use all actions (filtering can be added via request parameters)
 	relevantActions := allActions
-
-	// 3. Generate test using existing codegen infrastructure
-	// No error message for interaction mode
 	script := generatePlaywrightScript(relevantActions, "", req.BaseURL)
-
-	// 4. Count assertions
-	// For interaction mode, we count URL assertions and any expect() calls
 	assertionCount := strings.Count(script, "expect(")
 
-	// Add network assertions if requested
 	if req.IncludeMocks {
-		// Get network bodies for the same time window
-		h.server.mu.RLock()
-		entries := make([]LogEntry, len(h.server.entries))
-		copy(entries, h.server.entries)
-		h.server.mu.RUnlock()
-
-		// Get network data from capture
-		networkBodies := h.capture.GetNetworkBodies()
-
-		// Add network assertions to script
-		if len(networkBodies) > 0 {
-			// Count network responses that would be asserted
-			for _, nb := range networkBodies {
-				if nb.Status > 0 {
-					assertionCount++
-				}
-			}
-		}
+		assertionCount += h.countNetworkAssertions()
 	}
 
-	// 5. Generate filename based on first action or URL
-	testName := "user-interaction"
-	if len(relevantActions) > 0 {
-		if relevantActions[0].URL != "" {
-			testName = relevantActions[0].URL
-		} else if relevantActions[0].Type != "" {
-			testName = relevantActions[0].Type + "-flow"
-		}
-	}
-	filename := generateTestFilename(testName, req.Framework)
-
-	// 6. Extract selectors used in test
+	filename := generateTestFilename(deriveInteractionTestName(relevantActions), req.Framework)
 	selectors := extractSelectorsFromActions(relevantActions)
 
-	// 7. Build metadata
-	metadata := TestGenMetadata{
-		SourceError: "", // No error for interaction mode
-		GeneratedAt: time.Now().Format(time.RFC3339),
-		ContextUsed: []string{"actions"},
-	}
-
-	// Add network to context if mocks included
+	contextUsed := []string{"actions"}
 	if req.IncludeMocks {
-		metadata.ContextUsed = append(metadata.ContextUsed, "network")
-	}
-
-	// 8. Build coverage info
-	coverage := TestCoverage{
-		ErrorReproduced: false, // No error in interaction mode
-		NetworkMocked:   req.IncludeMocks,
-		StateCaptured:   len(relevantActions) > 0,
+		contextUsed = append(contextUsed, "network")
 	}
 
 	return &GeneratedTest{
@@ -526,128 +446,152 @@ func (h *ToolHandler) generateTestFromInteraction(req TestFromContextRequest) (*
 		Content:    script,
 		Selectors:  selectors,
 		Assertions: assertionCount,
-		Coverage:   coverage,
-		Metadata:   metadata,
+		Coverage: TestCoverage{
+			ErrorReproduced: false,
+			NetworkMocked:   req.IncludeMocks,
+			StateCaptured:   len(relevantActions) > 0,
+		},
+		Metadata: TestGenMetadata{
+			GeneratedAt: time.Now().Format(time.RFC3339),
+			ContextUsed: contextUsed,
+		},
 	}, nil
 }
 
-// generateTestFromRegression creates a Playwright test that verifies behavior against a baseline
+func deriveInteractionTestName(actions []capture.EnhancedAction) string {
+	if len(actions) == 0 {
+		return "user-interaction"
+	}
+	if actions[0].URL != "" {
+		return actions[0].URL
+	}
+	if actions[0].Type != "" {
+		return actions[0].Type + "-flow"
+	}
+	return "user-interaction"
+}
+
+func (h *ToolHandler) countNetworkAssertions() int {
+	networkBodies := h.capture.GetNetworkBodies()
+	count := 0
+	for _, nb := range networkBodies {
+		if nb.Status > 0 {
+			count++
+		}
+	}
+	return count
+}
+
 func (h *ToolHandler) generateTestFromRegression(req TestFromContextRequest) (*GeneratedTest, error) {
-	// 1. Get current session actions as the baseline
 	allActions := h.capture.GetAllEnhancedActions()
 	if len(allActions) == 0 {
-		return nil, fmt.Errorf(ErrNoActionsCaptured)
+		return nil, errors.New(ErrNoActionsCaptured)
 	}
 
-	// 2. Get console entries to check for baseline state
+	errorMessages := h.collectErrorMessages(5)
+	networkBodies := h.capture.GetNetworkBodies()
+
+	assertions, assertionCount := buildRegressionAssertions(errorMessages, networkBodies)
+
+	script := generatePlaywrightScript(allActions, "", req.BaseURL)
+	script = insertAssertionsBeforeClose(script, assertions)
+
+	return &GeneratedTest{
+		Framework:  req.Framework,
+		Filename:   generateTestFilename("regression-test", req.Framework),
+		Content:    script,
+		Selectors:  extractSelectorsFromActions(allActions),
+		Assertions: assertionCount,
+		Coverage: TestCoverage{
+			ErrorReproduced: false,
+			NetworkMocked:   req.IncludeMocks,
+			StateCaptured:   len(allActions) > 0,
+		},
+		Metadata: TestGenMetadata{
+			GeneratedAt: time.Now().Format(time.RFC3339),
+			ContextUsed: []string{"actions", "console", "network", "performance"},
+		},
+	}, nil
+}
+
+func (h *ToolHandler) collectErrorMessages(limit int) []string {
 	h.server.mu.RLock()
 	entries := make([]LogEntry, len(h.server.entries))
 	copy(entries, h.server.entries)
 	h.server.mu.RUnlock()
 
-	// 3. Count console errors for baseline
-	errorCount := 0
-	var errorMessages []string
+	var messages []string
 	for _, entry := range entries {
 		level, _ := entry["level"].(string)
-		if level == "error" {
-			errorCount++
-			msg, _ := entry["message"].(string)
-			if msg != "" && len(errorMessages) < 5 { // Limit to first 5 errors
-				errorMessages = append(errorMessages, msg)
-			}
+		if level != "error" {
+			continue
+		}
+		msg, _ := entry["message"].(string)
+		if msg != "" && len(messages) < limit {
+			messages = append(messages, msg)
 		}
 	}
+	return messages
+}
 
-	// 4. Get network data from capture
-	networkBodies := h.capture.GetNetworkBodies()
-
-	// 5. Build assertions based on baseline state
+func buildRegressionAssertions(errorMessages []string, networkBodies []capture.NetworkBody) ([]string, int) {
 	var assertions []string
 	assertionCount := 0
 
-	// Add error assertion if baseline was clean
-	if errorCount == 0 {
-		assertions = append(assertions, "  // Assert no console errors (baseline was clean)")
-		assertions = append(assertions, "  const consoleErrors = []")
-		assertions = append(assertions, "  page.on('console', msg => { if (msg.type() === 'error') consoleErrors.push(msg.text()) })")
-		assertions = append(assertions, "  // After actions complete:")
-		assertions = append(assertions, "  expect(consoleErrors).toHaveLength(0)")
+	if len(errorMessages) == 0 {
+		assertions = append(assertions,
+			"  // Assert no console errors (baseline was clean)",
+			"  const consoleErrors = []",
+			"  page.on('console', msg => { if (msg.type() === 'error') consoleErrors.push(msg.text()) })",
+			"  // After actions complete:",
+			"  expect(consoleErrors).toHaveLength(0)",
+		)
 		assertionCount++
 	} else {
-		assertions = append(assertions, fmt.Sprintf("  // Baseline had %d console errors", errorCount))
-		assertions = append(assertions, "  // TODO: Add assertions to verify errors haven't changed")
+		assertions = append(assertions,
+			fmt.Sprintf("  // Baseline had %d console errors", len(errorMessages)),
+			"  // TODO: Add assertions to verify errors haven't changed",
+		)
 	}
 
-	// Add network assertions for key requests
 	networkAssertions := 0
 	for _, nb := range networkBodies {
 		if nb.Status > 0 && networkAssertions < 3 {
-			assertions = append(assertions, fmt.Sprintf("  // Assert %s %s returns %d", nb.Method, nb.URL, nb.Status))
-			assertions = append(assertions, fmt.Sprintf("  // TODO: await page.waitForResponse(r => r.url().includes('%s') && r.status() === %d)", nb.URL, nb.Status))
+			assertions = append(assertions,
+				fmt.Sprintf("  // Assert %s %s returns %d", nb.Method, nb.URL, nb.Status),
+				fmt.Sprintf("  // TODO: await page.waitForResponse(r => r.url().includes('%s') && r.status() === %d)", nb.URL, nb.Status),
+			)
 			networkAssertions++
 			assertionCount++
 		}
 	}
 
-	// Add performance TODO
-	assertions = append(assertions, "")
-	assertions = append(assertions, "  // TODO: Add performance assertions")
-	assertions = append(assertions, "  // - Load time within acceptable range")
-	assertions = append(assertions, "  // - Key metrics (FCP, LCP) haven't regressed")
+	assertions = append(assertions,
+		"",
+		"  // TODO: Add performance assertions",
+		"  // - Load time within acceptable range",
+		"  // - Key metrics (FCP, LCP) haven't regressed",
+	)
 
-	// 6. Generate test using existing codegen infrastructure
-	script := generatePlaywrightScript(allActions, "", req.BaseURL)
+	return assertions, assertionCount
+}
 
-	// Insert assertions before the closing brace
+func insertAssertionsBeforeClose(script string, assertions []string) string {
 	assertionBlock := strings.Join(assertions, "\n")
-	// Find the last });\n and insert before it
 	lastBrace := strings.LastIndex(script, "});")
 	if lastBrace > 0 {
-		script = script[:lastBrace] + "\n" + assertionBlock + "\n" + script[lastBrace:]
+		return script[:lastBrace] + "\n" + assertionBlock + "\n" + script[lastBrace:]
 	}
-
-	// 7. Generate filename
-	filename := generateTestFilename("regression-test", req.Framework)
-
-	// 8. Extract selectors used in test
-	selectors := extractSelectorsFromActions(allActions)
-
-	// 9. Build metadata
-	contextUsed := []string{"actions", "console", "network", "performance"}
-	metadata := TestGenMetadata{
-		SourceError: "", // No specific error for regression mode
-		GeneratedAt: time.Now().Format(time.RFC3339),
-		ContextUsed: contextUsed,
-	}
-
-	// 10. Build coverage info
-	coverage := TestCoverage{
-		ErrorReproduced: false, // Regression tests verify behavior, not errors
-		NetworkMocked:   req.IncludeMocks,
-		StateCaptured:   len(allActions) > 0,
-	}
-
-	return &GeneratedTest{
-		Framework:  req.Framework,
-		Filename:   filename,
-		Content:    script,
-		Selectors:  selectors,
-		Assertions: assertionCount,
-		Coverage:   coverage,
-		Metadata:   metadata,
-	}, nil
+	return script
 }
 
 // ============================================
 // Section 4: Helper Functions
 // ============================================
 
-// generateErrorID creates a unique error ID following format: err_{timestamp_ms}_{hash8}
 func generateErrorID(message, stack, url string) string {
 	timestamp := time.Now().UnixMilli()
 
-	// Create hash from message + stack + url
 	h := sha256.New()
 	h.Write([]byte(message))
 	h.Write([]byte(stack))
@@ -655,30 +599,24 @@ func generateErrorID(message, stack, url string) string {
 	hashBytes := h.Sum(nil)
 	hashHex := hex.EncodeToString(hashBytes)
 
-	// Take first 8 characters of hash
 	hash8 := hashHex[:8]
 
 	return fmt.Sprintf("err_%d_%s", timestamp, hash8)
 }
 
-// generateTestFilename creates a filename for the generated test
 func generateTestFilename(errorMessage, framework string) string {
-	// Sanitize error message for filename
 	name := strings.ToLower(errorMessage)
 	name = strings.ReplaceAll(name, " ", "-")
 	name = strings.ReplaceAll(name, ":", "")
 	name = strings.ReplaceAll(name, "'", "")
 	name = strings.ReplaceAll(name, "\"", "")
 
-	// Truncate if too long
 	if len(name) > 50 {
 		name = name[:50]
 	}
 
-	// Trim trailing hyphens
 	name = strings.TrimRight(name, "-")
 
-	// Add extension based on framework
 	ext := ".spec.ts"
 	if framework == "vitest" || framework == "jest" {
 		ext = ".test.ts"
@@ -687,37 +625,12 @@ func generateTestFilename(errorMessage, framework string) string {
 	return name + ext
 }
 
-// extractSelectorsFromActions extracts all selectors used in actions
 func extractSelectorsFromActions(actions []capture.EnhancedAction) []string {
 	selectorSet := make(map[string]bool)
 	for i := range actions {
-		selectors := actions[i].Selectors
-		if selectors == nil {
-			continue
-		}
-
-		// Extract testId
-		if testID, ok := selectors["testId"].(string); ok && testID != "" {
-			selectorSet["[data-testid=\""+testID+"\"]"] = true
-		}
-
-		// Extract role
-		if roleData, ok := selectors["role"]; ok {
-			if roleMap, ok := roleData.(map[string]any); ok {
-				role, _ := roleMap["role"].(string)
-				if role != "" {
-					selectorSet["[role=\""+role+"\"]"] = true
-				}
-			}
-		}
-
-		// Extract ID
-		if id, ok := selectors["id"].(string); ok && id != "" {
-			selectorSet["#"+id] = true
-		}
+		addSelectorsFromEntry(selectorSet, actions[i].Selectors)
 	}
 
-	// Convert to slice
 	var result []string
 	for selector := range selectorSet {
 		result = append(result, selector)
@@ -725,11 +638,37 @@ func extractSelectorsFromActions(actions []capture.EnhancedAction) []string {
 	return result
 }
 
-// normalizeTimestamp converts ISO 8601 timestamp string to milliseconds since epoch
+func addSelectorsFromEntry(selectorSet map[string]bool, selectors map[string]any) {
+	if selectors == nil {
+		return
+	}
+	if testID, ok := selectors["testId"].(string); ok && testID != "" {
+		selectorSet["[data-testid=\""+testID+"\"]"] = true
+	}
+	if role := extractRoleFromSelectors(selectors); role != "" {
+		selectorSet["[role=\""+role+"\"]"] = true
+	}
+	if id, ok := selectors["id"].(string); ok && id != "" {
+		selectorSet["#"+id] = true
+	}
+}
+
+func extractRoleFromSelectors(selectors map[string]any) string {
+	roleData, ok := selectors["role"]
+	if !ok {
+		return ""
+	}
+	roleMap, ok := roleData.(map[string]any)
+	if !ok {
+		return ""
+	}
+	role, _ := roleMap["role"].(string)
+	return role
+}
+
 func normalizeTimestamp(tsStr string) int64 {
 	t, err := time.Parse(time.RFC3339, tsStr)
 	if err != nil {
-		// Try alternate formats if RFC3339 fails
 		t, err = time.Parse(time.RFC3339Nano, tsStr)
 		if err != nil {
 			return 0
@@ -738,7 +677,43 @@ func normalizeTimestamp(tsStr string) int64 {
 	return t.UnixMilli()
 }
 
-// generatePlaywrightScript creates a basic Playwright test script from actions
+func targetSelector(action capture.EnhancedAction) (string, bool) {
+	if action.Selectors == nil {
+		return "", false
+	}
+	sel, ok := action.Selectors["target"].(string)
+	if !ok || sel == "" {
+		return "", false
+	}
+	return sel, true
+}
+
+func playwrightActionLine(action capture.EnhancedAction) string {
+	switch action.Type {
+	case "click":
+		sel, ok := targetSelector(action)
+		if !ok {
+			return ""
+		}
+		return fmt.Sprintf("  await page.click('%s');\n", sel)
+	case "input":
+		sel, ok := targetSelector(action)
+		if !ok {
+			return ""
+		}
+		return fmt.Sprintf("  await page.fill('%s', '%s');\n", sel, action.Value)
+	case "navigate":
+		if action.ToURL == "" {
+			return ""
+		}
+		return fmt.Sprintf("  await page.goto('%s');\n", action.ToURL)
+	case "wait":
+		return fmt.Sprintf("  await page.waitForTimeout(%d);\n", 100)
+	default:
+		return ""
+	}
+}
+
 func generatePlaywrightScript(actions []capture.EnhancedAction, errorMessage string, baseURL string) string {
 	var script strings.Builder
 	script.WriteString("import { test, expect } from '@playwright/test';\n\n")
@@ -748,28 +723,10 @@ func generatePlaywrightScript(actions []capture.EnhancedAction, errorMessage str
 		script.WriteString(fmt.Sprintf("  await page.goto('%s');\n", baseURL))
 	}
 
-	// Generate Playwright code for each action
 	for _, action := range actions {
-		switch action.Type {
-		case "click":
-			// Extract selector from Selectors map if available
-			if selectors, ok := action.Selectors["target"].(string); ok {
-				script.WriteString(fmt.Sprintf("  await page.click('%s');\n", selectors))
-			}
-		case "input":
-			if selectors, ok := action.Selectors["target"].(string); ok {
-				script.WriteString(fmt.Sprintf("  await page.fill('%s', '%s');\n", selectors, action.Value))
-			}
-		case "navigate":
-			if action.ToURL != "" {
-				script.WriteString(fmt.Sprintf("  await page.goto('%s');\n", action.ToURL))
-			}
-		case "wait":
-			script.WriteString(fmt.Sprintf("  await page.waitForTimeout(%d);\n", 100))
-		}
+		script.WriteString(playwrightActionLine(action))
 	}
 
-	// Add assertion for error if provided
 	if errorMessage != "" {
 		script.WriteString(fmt.Sprintf("  // Expected error: %s\n", errorMessage))
 		script.WriteString("  // TODO: Add specific assertion for this error\n")

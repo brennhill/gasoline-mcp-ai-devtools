@@ -8,6 +8,16 @@ import type { WebSocketCaptureMode } from '../types'
 /** Whether inject.bundled.js has been injected into the page (MAIN world) */
 let injected = false
 
+/** Per-page-load nonce for authenticating postMessages to inject.js */
+const pageNonce = crypto
+  .getRandomValues(new Uint8Array(16))
+  .reduce((s: string, b: number) => s + b.toString(16).padStart(2, '0'), '')
+
+/** Get the page nonce for authenticating postMessages to inject.js */
+export function getPageNonce(): string {
+  return pageNonce
+}
+
 /** Check if inject script has been loaded into the page context */
 export function isInjectScriptLoaded(): boolean {
   return injected
@@ -24,7 +34,7 @@ const SYNC_SETTINGS: readonly {
   { storageKey: 'networkWaterfallEnabled', messageType: 'setNetworkWaterfallEnabled' },
   { storageKey: 'performanceMarksEnabled', messageType: 'setPerformanceMarksEnabled' },
   { storageKey: 'actionReplayEnabled', messageType: 'setActionReplayEnabled' },
-  { storageKey: 'networkBodyCaptureEnabled', messageType: 'setNetworkBodyCaptureEnabled' },
+  { storageKey: 'networkBodyCaptureEnabled', messageType: 'setNetworkBodyCaptureEnabled' }
 ]
 
 /**
@@ -41,13 +51,18 @@ function syncStoredSettings(): void {
 
       if (setting.isMode) {
         window.postMessage(
-          { type: 'GASOLINE_SETTING', setting: setting.messageType, mode: value as WebSocketCaptureMode },
-          window.location.origin,
+          {
+            type: 'GASOLINE_SETTING',
+            setting: setting.messageType,
+            mode: value as WebSocketCaptureMode,
+            _nonce: pageNonce
+          },
+          window.location.origin
         )
       } else {
         window.postMessage(
-          { type: 'GASOLINE_SETTING', setting: setting.messageType, enabled: value as boolean },
-          window.location.origin,
+          { type: 'GASOLINE_SETTING', setting: setting.messageType, enabled: value as boolean, _nonce: pageNonce },
+          window.location.origin
         )
       }
     }
@@ -72,6 +87,7 @@ export function injectScript(): void {
   const script = document.createElement('script')
   script.src = chrome.runtime.getURL('inject.bundled.js')
   script.type = 'module'
+  script.dataset.gasolineNonce = pageNonce
   script.onload = () => {
     script.remove()
     injected = true
@@ -94,7 +110,7 @@ export function initScriptInjection(): void {
         injectAxeCore() // Inject axe-core first (needed by inject script)
         injectScript()
       },
-      { once: true },
+      { once: true }
     )
   } else {
     injectAxeCore() // Inject axe-core first (needed by inject script)

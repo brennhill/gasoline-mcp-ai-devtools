@@ -4,12 +4,12 @@
  */
 /** Log categories for debug output */
 export const DebugCategory = {
-    CONNECTION: 'connection',
-    CAPTURE: 'capture',
-    ERROR: 'error',
-    LIFECYCLE: 'lifecycle',
-    SETTINGS: 'settings',
-    SOURCEMAP: 'sourcemap',
-    QUERY: 'query',
-};
+  CONNECTION: 'connection',
+  CAPTURE: 'capture',
+  ERROR: 'error',
+  LIFECYCLE: 'lifecycle',
+  SETTINGS: 'settings',
+  SOURCEMAP: 'sourcemap',
+  QUERY: 'query'
+}
 //# sourceMappingURL=debug.js.map

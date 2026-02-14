@@ -54,68 +54,65 @@ const maxReproOutputBytes = 200 * 1024 // 200KB cap
 
 // toolGetReproductionScriptImpl generates a reproduction script from captured actions.
 func (h *ToolHandler) toolGetReproductionScriptImpl(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+	params := parseReproParams(args)
+
+	if err := validateReproOutputFormat(params.OutputFormat); err != "" {
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(
+			ErrInvalidParam, err, "Use 'gasoline' or 'playwright'", withParam("output_format"),
+		)}
+	}
+
+	allActions := h.capture.GetAllEnhancedActions()
+	actions := filterLastN(allActions, params.LastN)
+
+	script := generateReproScript(actions, params)
+	result := buildReproResult(script, params, actions, allActions)
+
+	summary := fmt.Sprintf("Reproduction script (%s, %d actions)", params.OutputFormat, len(actions))
+	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse(summary, result)}
+}
+
+func parseReproParams(args json.RawMessage) ReproductionParams {
 	var params ReproductionParams
 	if len(args) > 0 {
 		_ = json.Unmarshal(args, &params)
 	}
-
-	// Default output format
 	if params.OutputFormat == "" {
 		params.OutputFormat = "gasoline"
 	}
+	return params
+}
 
-	// Validate output format
-	if params.OutputFormat != "gasoline" && params.OutputFormat != "playwright" {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(
-			ErrInvalidParam,
-			"Invalid output_format: "+params.OutputFormat,
-			"Use 'gasoline' or 'playwright'",
-			withParam("output_format"),
-		)}
+func validateReproOutputFormat(format string) string {
+	if format != "gasoline" && format != "playwright" {
+		return "Invalid output_format: " + format
 	}
+	return ""
+}
 
-	// Get actions from capture buffer
-	allActions := h.capture.GetAllEnhancedActions()
-	if len(allActions) == 0 {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(
-			ErrNoActionsCaptured,
-			"No user actions recorded in the session",
-			"Interact with the page first (click, type, navigate), then retry",
-		)}
+func filterLastN(actions []capture.EnhancedAction, lastN int) []capture.EnhancedAction {
+	if lastN > 0 && lastN < len(actions) {
+		return actions[len(actions)-lastN:]
 	}
+	return actions
+}
 
-	// Apply last_n filter
-	actions := allActions
-	if params.LastN > 0 && params.LastN < len(actions) {
-		actions = actions[len(actions)-params.LastN:]
-	}
-
-	// Generate script
-	var script string
+func generateReproScript(actions []capture.EnhancedAction, params ReproductionParams) string {
 	switch params.OutputFormat {
-	case "gasoline":
-		script = generateGasolineScript(actions, params)
 	case "playwright":
-		script = generateReproPlaywrightScript(actions, params)
+		return generateReproPlaywrightScript(actions, params)
+	default:
+		return generateGasolineScript(actions, params)
 	}
+}
 
-	// Compute metadata
-	startURL := ""
-	if len(actions) > 0 {
-		startURL = actions[0].URL
-		if actions[0].Type == "navigate" && actions[0].ToURL != "" {
-			startURL = actions[0].ToURL
-		}
-	}
-
+func buildReproResult(script string, params ReproductionParams, actions, allActions []capture.EnhancedAction) ReproductionResult {
+	startURL := reproStartURL(actions)
 	var durationMs int64
 	if len(actions) > 1 {
 		durationMs = actions[len(actions)-1].Timestamp - actions[0].Timestamp
 	}
-
-	selectorTypes := collectSelectorTypes(actions)
-
-	result := ReproductionResult{
+	return ReproductionResult{
 		Script:      script,
 		Format:      params.OutputFormat,
 		ActionCount: len(actions),
@@ -123,14 +120,21 @@ func (h *ToolHandler) toolGetReproductionScriptImpl(req JSONRPCRequest, args jso
 		StartURL:    startURL,
 		Metadata: ReproductionMeta{
 			GeneratedAt:      time.Now().Format(time.RFC3339),
-			SelectorsUsed:    selectorTypes,
+			SelectorsUsed:    collectSelectorTypes(actions),
 			ActionsAvailable: len(allActions),
 			ActionsIncluded:  len(actions),
 		},
 	}
+}
 
-	summary := fmt.Sprintf("Reproduction script (%s, %d actions)", params.OutputFormat, len(actions))
-	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse(summary, result)}
+func reproStartURL(actions []capture.EnhancedAction) string {
+	if len(actions) == 0 {
+		return ""
+	}
+	if actions[0].Type == "navigate" && actions[0].ToURL != "" {
+		return actions[0].ToURL
+	}
+	return actions[0].URL
 }
 
 // ============================================
@@ -142,100 +146,101 @@ func generateGasolineScript(actions []capture.EnhancedAction, opts ReproductionP
 	if len(actions) == 0 {
 		return "# No actions captured\n"
 	}
-
-	// Apply last_n filter
-	if opts.LastN > 0 && opts.LastN < len(actions) {
-		actions = actions[len(actions)-opts.LastN:]
-	}
+	actions = filterLastN(actions, opts.LastN)
 
 	var b strings.Builder
-
-	// Header
-	startURL := actions[0].URL
-	if actions[0].Type == "navigate" && actions[0].ToURL != "" {
-		startURL = actions[0].ToURL
-	}
-	desc := "captured user actions"
-	if opts.ErrorMessage != "" {
-		desc = opts.ErrorMessage
-		if len(desc) > 80 {
-			desc = desc[:80]
-		}
-	}
-	b.WriteString(fmt.Sprintf("# Reproduction: %s\n", desc))
-	b.WriteString(fmt.Sprintf("# Captured: %s | %d actions | %s\n\n",
-		time.Now().Format(time.RFC3339), len(actions), startURL))
-
-	stepNum := 0
-	var prevTs int64
-
-	for _, action := range actions {
-		// Timing pause
-		if prevTs > 0 && action.Timestamp-prevTs > 2000 {
-			gap := (action.Timestamp - prevTs) / 1000
-			b.WriteString(fmt.Sprintf("   [%ds pause]\n", gap))
-		}
-		prevTs = action.Timestamp
-
-		line := gasolineStep(action, opts)
-		if line == "" {
-			continue // skip actions with no meaningful output (e.g. navigate with no URL)
-		}
-		stepNum++
-
-		prefix := ""
-		if action.Source == "ai" {
-			prefix = "(AI) "
-		}
-		b.WriteString(fmt.Sprintf("%d. %s%s\n", stepNum, prefix, line))
-	}
+	writeGasolineHeader(&b, actions, opts)
+	writeGasolineSteps(&b, actions, opts)
 
 	if opts.ErrorMessage != "" {
 		b.WriteString(fmt.Sprintf("\n# Error: %s\n", opts.ErrorMessage))
 	}
-
 	return b.String()
+}
+
+func writeGasolineHeader(b *strings.Builder, actions []capture.EnhancedAction, opts ReproductionParams) {
+	startURL := reproStartURL(actions)
+	desc := "captured user actions"
+	if opts.ErrorMessage != "" {
+		desc = chopString(opts.ErrorMessage, 80)
+	}
+	fmt.Fprintf(b, "# Reproduction: %s\n", desc)
+	fmt.Fprintf(b, "# Captured: %s | %d actions | %s\n\n",
+		time.Now().Format(time.RFC3339), len(actions), startURL)
+}
+
+func writeGasolineSteps(b *strings.Builder, actions []capture.EnhancedAction, opts ReproductionParams) {
+	stepNum := 0
+	var prevTs int64
+	for _, action := range actions {
+		writePauseComment(b, prevTs, action.Timestamp, "   [%ds pause]\n")
+		prevTs = action.Timestamp
+
+		line := gasolineStep(action, opts)
+		if line == "" {
+			continue
+		}
+		stepNum++
+		prefix := ""
+		if action.Source == "ai" {
+			prefix = "(AI) "
+		}
+		fmt.Fprintf(b, "%d. %s%s\n", stepNum, prefix, line)
+	}
+}
+
+func writePauseComment(b *strings.Builder, prevTs, curTs int64, format string) {
+	if prevTs > 0 && curTs-prevTs > 2000 {
+		gap := (curTs - prevTs) / 1000
+		fmt.Fprintf(b, format, gap)
+	}
 }
 
 // gasolineStep converts a single action to a natural language step.
 func gasolineStep(action capture.EnhancedAction, opts ReproductionParams) string {
 	switch action.Type {
 	case "navigate":
-		toURL := action.ToURL
-		if toURL == "" {
-			return ""
-		}
-		if opts.BaseURL != "" {
-			toURL = rewriteURL(toURL, opts.BaseURL)
-		}
-		return "Navigate to: " + toURL
-
+		return gasolineNavigateStep(action, opts)
 	case "click":
 		return "Click: " + describeElement(action)
-
 	case "input":
-		value := action.Value
-		if value == "[redacted]" {
-			value = "[user-provided]"
-		}
-		return fmt.Sprintf("Type %q into: %s", value, describeElement(action))
-
+		return gasolineInputStep(action)
 	case "select":
-		text := action.SelectedText
-		if text == "" {
-			text = action.SelectedValue
-		}
-		return fmt.Sprintf("Select %q from: %s", text, describeElement(action))
-
+		return gasolineSelectStep(action)
 	case "keypress":
 		return "Press: " + action.Key
-
 	case "scroll":
 		return fmt.Sprintf("Scroll to: y=%d", action.ScrollY)
-
 	default:
 		return ""
 	}
+}
+
+func gasolineNavigateStep(action capture.EnhancedAction, opts ReproductionParams) string {
+	toURL := action.ToURL
+	if toURL == "" {
+		return ""
+	}
+	if opts.BaseURL != "" {
+		toURL = rewriteURL(toURL, opts.BaseURL)
+	}
+	return "Navigate to: " + toURL
+}
+
+func gasolineInputStep(action capture.EnhancedAction) string {
+	value := action.Value
+	if value == "[redacted]" {
+		value = "[user-provided]"
+	}
+	return fmt.Sprintf("Type %q into: %s", value, describeElement(action))
+}
+
+func gasolineSelectStep(action capture.EnhancedAction) string {
+	text := action.SelectedText
+	if text == "" {
+		text = action.SelectedValue
+	}
+	return fmt.Sprintf("Select %q from: %s", text, describeElement(action))
 }
 
 // ============================================
@@ -247,47 +252,12 @@ func generateReproPlaywrightScript(actions []capture.EnhancedAction, opts Reprod
 	if len(actions) == 0 {
 		return "// No actions captured\n"
 	}
-
-	// Apply last_n filter
-	if opts.LastN > 0 && opts.LastN < len(actions) {
-		actions = actions[len(actions)-opts.LastN:]
-	}
+	actions = filterLastN(actions, opts.LastN)
 
 	var b strings.Builder
-
-	b.WriteString("import { test, expect } from '@playwright/test';\n\n")
-
-	testName := "reproduction: captured user actions"
-	if opts.ErrorMessage != "" {
-		name := opts.ErrorMessage
-		if len(name) > 80 {
-			name = name[:80]
-		}
-		testName = "reproduction: " + name
-	}
-	b.WriteString(fmt.Sprintf("test('%s', async ({ page }) => {\n", escapeJS(testName)))
-
-	var prevTs int64
-
-	for _, action := range actions {
-		// Timing pause comment
-		if prevTs > 0 && action.Timestamp-prevTs > 2000 {
-			gap := (action.Timestamp - prevTs) / 1000
-			b.WriteString(fmt.Sprintf("  // [%ds pause]\n", gap))
-		}
-		prevTs = action.Timestamp
-
-		line := playwrightStep(action, opts)
-		if line != "" {
-			b.WriteString("  " + line + "\n")
-		}
-	}
-
-	if opts.ErrorMessage != "" {
-		b.WriteString(fmt.Sprintf("  // Error: %s\n", opts.ErrorMessage))
-	}
-
-	b.WriteString("});\n")
+	writePlaywrightHeader(&b, opts)
+	writePlaywrightSteps(&b, actions, opts)
+	writePlaywrightFooter(&b, opts)
 
 	script := b.String()
 	if len(script) > maxReproOutputBytes {
@@ -296,58 +266,101 @@ func generateReproPlaywrightScript(actions []capture.EnhancedAction, opts Reprod
 	return script
 }
 
+func writePlaywrightHeader(b *strings.Builder, opts ReproductionParams) {
+	b.WriteString("import { test, expect } from '@playwright/test';\n\n")
+	testName := "reproduction: captured user actions"
+	if opts.ErrorMessage != "" {
+		testName = "reproduction: " + chopString(opts.ErrorMessage, 80)
+	}
+	fmt.Fprintf(b, "test('%s', async ({ page }) => {\n", escapeJS(testName))
+}
+
+func writePlaywrightSteps(b *strings.Builder, actions []capture.EnhancedAction, opts ReproductionParams) {
+	var prevTs int64
+	for _, action := range actions {
+		writePauseComment(b, prevTs, action.Timestamp, "  // [%ds pause]\n")
+		prevTs = action.Timestamp
+		line := playwrightStep(action, opts)
+		if line != "" {
+			b.WriteString("  " + line + "\n")
+		}
+	}
+}
+
+func writePlaywrightFooter(b *strings.Builder, opts ReproductionParams) {
+	if opts.ErrorMessage != "" {
+		fmt.Fprintf(b, "  // Error: %s\n", opts.ErrorMessage)
+	}
+	b.WriteString("});\n")
+}
+
 // playwrightStep converts a single action to a Playwright code line.
 func playwrightStep(action capture.EnhancedAction, opts ReproductionParams) string {
 	switch action.Type {
 	case "navigate":
-		toURL := action.ToURL
-		if toURL == "" {
-			return ""
-		}
-		if opts.BaseURL != "" {
-			toURL = rewriteURL(toURL, opts.BaseURL)
-		}
-		return fmt.Sprintf("await page.goto('%s');", escapeJS(toURL))
-
+		return pwNavigateStep(action, opts)
 	case "click":
-		loc := playwrightLocator(action.Selectors)
-		if loc == "" {
-			return "// click - no selector available"
-		}
-		return fmt.Sprintf("await page.%s.click();", loc)
-
+		return pwLocatorAction(action, "click", "click")
 	case "input":
-		loc := playwrightLocator(action.Selectors)
-		if loc == "" {
-			return "// input - no selector available"
-		}
-		value := action.Value
-		if value == "[redacted]" {
-			value = "[user-provided]"
-		}
-		return fmt.Sprintf("await page.%s.fill('%s');", loc, escapeJS(value))
-
+		return pwInputStep(action)
 	case "select":
-		loc := playwrightLocator(action.Selectors)
-		if loc == "" {
-			return "// select - no selector available"
-		}
-		return fmt.Sprintf("await page.%s.selectOption('%s');", loc, escapeJS(action.SelectedValue))
-
+		return pwSelectStep(action)
 	case "keypress":
 		return fmt.Sprintf("await page.keyboard.press('%s');", escapeJS(action.Key))
-
 	case "scroll":
 		return fmt.Sprintf("// Scroll to y=%d", action.ScrollY)
-
 	default:
 		return ""
 	}
 }
 
+func pwNavigateStep(action capture.EnhancedAction, opts ReproductionParams) string {
+	toURL := action.ToURL
+	if toURL == "" {
+		return ""
+	}
+	if opts.BaseURL != "" {
+		toURL = rewriteURL(toURL, opts.BaseURL)
+	}
+	return fmt.Sprintf("await page.goto('%s');", escapeJS(toURL))
+}
+
+func pwLocatorAction(action capture.EnhancedAction, actionName, fallbackLabel string) string {
+	loc := playwrightLocator(action.Selectors)
+	if loc == "" {
+		return fmt.Sprintf("// %s - no selector available", fallbackLabel)
+	}
+	return fmt.Sprintf("await page.%s.%s();", loc, actionName)
+}
+
+func pwInputStep(action capture.EnhancedAction) string {
+	loc := playwrightLocator(action.Selectors)
+	if loc == "" {
+		return "// input - no selector available"
+	}
+	value := action.Value
+	if value == "[redacted]" {
+		value = "[user-provided]"
+	}
+	return fmt.Sprintf("await page.%s.fill('%s');", loc, escapeJS(value))
+}
+
+func pwSelectStep(action capture.EnhancedAction) string {
+	loc := playwrightLocator(action.Selectors)
+	if loc == "" {
+		return "// select - no selector available"
+	}
+	return fmt.Sprintf("await page.%s.selectOption('%s');", loc, escapeJS(action.SelectedValue))
+}
+
 // ============================================
 // Selector Helpers
 // ============================================
+
+type elementCandidate struct {
+	label string
+	ok    bool
+}
 
 // describeElement returns the most human-readable description of the target element.
 // Priority: text+role > ariaLabel+role > role.name+role > testId > text > ariaLabel > id > cssPath
@@ -356,7 +369,6 @@ func describeElement(action capture.EnhancedAction) string {
 	if s == nil {
 		return "(unknown element)"
 	}
-
 	text := selectorStr(s, "text")
 	ariaLabel := selectorStr(s, "ariaLabel")
 	testID := selectorStr(s, "testId")
@@ -364,40 +376,52 @@ func describeElement(action capture.EnhancedAction) string {
 	cssPath := selectorStr(s, "cssPath")
 	role, roleName := selectorRole(s)
 
-	// Priority 1: text + role
-	if text != "" && role != "" {
-		return fmt.Sprintf("%q %s", text, role)
+	desc := describeWithRole(text, ariaLabel, roleName, role)
+	if desc != "" {
+		return desc
 	}
-	// Priority 2: ariaLabel + role
-	if ariaLabel != "" && role != "" {
-		return fmt.Sprintf("%q %s", ariaLabel, role)
+	return describeWithoutRole(testID, text, ariaLabel, id, cssPath)
+}
+
+func describeWithRole(text, ariaLabel, roleName, role string) string {
+	if role == "" {
+		return ""
 	}
-	// Priority 3: role name + role (from role map)
-	if roleName != "" && role != "" {
-		return fmt.Sprintf("%q %s", roleName, role)
+	candidates := []elementCandidate{
+		{text, text != ""},
+		{ariaLabel, ariaLabel != ""},
+		{roleName, roleName != ""},
 	}
-	// Priority 4: testId
+	for _, c := range candidates {
+		if c.ok {
+			return fmt.Sprintf("%q %s", c.label, role)
+		}
+	}
+	return ""
+}
+
+func describeWithoutRole(testID, text, ariaLabel, id, cssPath string) string {
 	if testID != "" {
 		return fmt.Sprintf("[data-testid=%q]", testID)
 	}
-	// Priority 5: text alone
 	if text != "" {
 		return fmt.Sprintf("%q", text)
 	}
-	// Priority 6: ariaLabel alone
 	if ariaLabel != "" {
 		return fmt.Sprintf("%q", ariaLabel)
 	}
-	// Priority 7: id
 	if id != "" {
 		return "#" + id
 	}
-	// Priority 8: cssPath
 	if cssPath != "" {
 		return cssPath
 	}
-
 	return "(unknown element)"
+}
+
+type pwLocatorCandidate struct {
+	value  string
+	format func(string) string
 }
 
 // playwrightLocator returns the best Playwright locator string for a selector map.
@@ -407,40 +431,40 @@ func playwrightLocator(selectors map[string]any) string {
 		return ""
 	}
 
-	testID := selectorStr(selectors, "testId")
-	if testID != "" {
-		return fmt.Sprintf("getByTestId('%s')", escapeJS(testID))
-	}
-
+	// Role has special handling for optional name parameter.
 	role, roleName := selectorRole(selectors)
-	if role != "" {
-		if roleName != "" {
-			return fmt.Sprintf("getByRole('%s', { name: '%s' })", escapeJS(role), escapeJS(roleName))
+	if loc := pwRoleLocator(role, roleName); loc != "" {
+		// Role is priority 2; check testId first.
+		testID := selectorStr(selectors, "testId")
+		if testID != "" {
+			return fmt.Sprintf("getByTestId('%s')", escapeJS(testID))
 		}
-		return fmt.Sprintf("getByRole('%s')", escapeJS(role))
+		return loc
 	}
 
-	ariaLabel := selectorStr(selectors, "ariaLabel")
-	if ariaLabel != "" {
-		return fmt.Sprintf("getByLabel('%s')", escapeJS(ariaLabel))
+	candidates := []pwLocatorCandidate{
+		{selectorStr(selectors, "testId"), func(v string) string { return fmt.Sprintf("getByTestId('%s')", escapeJS(v)) }},
+		{selectorStr(selectors, "ariaLabel"), func(v string) string { return fmt.Sprintf("getByLabel('%s')", escapeJS(v)) }},
+		{selectorStr(selectors, "text"), func(v string) string { return fmt.Sprintf("getByText('%s')", escapeJS(v)) }},
+		{selectorStr(selectors, "id"), func(v string) string { return fmt.Sprintf("locator('#%s')", escapeJS(v)) }},
+		{selectorStr(selectors, "cssPath"), func(v string) string { return fmt.Sprintf("locator('%s')", escapeJS(v)) }},
 	}
-
-	text := selectorStr(selectors, "text")
-	if text != "" {
-		return fmt.Sprintf("getByText('%s')", escapeJS(text))
+	for _, c := range candidates {
+		if c.value != "" {
+			return c.format(c.value)
+		}
 	}
-
-	id := selectorStr(selectors, "id")
-	if id != "" {
-		return fmt.Sprintf("locator('#%s')", escapeJS(id))
-	}
-
-	cssPath := selectorStr(selectors, "cssPath")
-	if cssPath != "" {
-		return fmt.Sprintf("locator('%s')", escapeJS(cssPath))
-	}
-
 	return ""
+}
+
+func pwRoleLocator(role, roleName string) string {
+	if role == "" {
+		return ""
+	}
+	if roleName != "" {
+		return fmt.Sprintf("getByRole('%s', { name: '%s' })", escapeJS(role), escapeJS(roleName))
+	}
+	return fmt.Sprintf("getByRole('%s')", escapeJS(role))
 }
 
 // selectorStr extracts a string value from the selectors map.
@@ -488,6 +512,13 @@ func rewriteURL(originalURL, baseURL string) string {
 		return originalURL
 	}
 	return strings.TrimRight(baseURL, "/") + parsed.Path
+}
+
+func chopString(s string, maxLen int) string {
+	if len(s) > maxLen {
+		return s[:maxLen]
+	}
+	return s
 }
 
 // collectSelectorTypes returns the unique selector types present across actions.

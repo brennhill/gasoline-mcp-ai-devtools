@@ -47,7 +47,7 @@ Agent calls observe({what: "server_config"}):
 
 ## Implementation Strategy
 
-**Allowlist file format (YAML):**
+### Allowlist file format (YAML):
 ```yaml
 # Comments supported
 allowed_tools:
@@ -57,13 +57,13 @@ allowed_tools:
   - "interact.refresh"      # Specific: only refresh
 ```
 
-**Pattern matching:**
+## Pattern matching:
 - Exact match: "interact.navigate" matches only that action
 - Wildcard tool: "observe.*" matches all observe modes
 - Wildcard all: "*" matches everything (dev profile)
 - Case-insensitive matching
 
-**Allowlist matcher algorithm:**
+## Allowlist matcher algorithm:
 1. Parse incoming request: extract tool name, action name
 2. Build qualified name: "{tool}.{action}" (e.g., "interact.navigate")
 3. Iterate allowlist patterns:
@@ -72,7 +72,7 @@ allowed_tools:
    - If pattern is exact match, check exact match
 4. If any pattern matches, allow; else deny
 
-**Error response format:**
+## Error response format:
 ```json
 {
   "error": "tool_not_allowed",
@@ -83,7 +83,7 @@ allowed_tools:
 }
 ```
 
-**Hot-reload (optional):**
+## Hot-reload (optional):
 - Use file watcher (fsnotify or similar) to detect config file changes
 - On change, re-parse YAML, update in-memory allowlist
 - Log: "Allowlist reloaded, X tools/actions permitted"

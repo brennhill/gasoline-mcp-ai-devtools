@@ -16,7 +16,7 @@ tier: v6.0 Wave 1 (Core Thesis)
 
 **Solution:** Gasoline CI Infrastructure brings full observability to CI pipelines. Test failures autonomously diagnosed and repaired **in seconds, with proof**, using the same browser context AI has in local development.
 
-**Business Impact:**
+### Business Impact:
 - **60% reduction** in mean time to debug (MTTD) — from 45 minutes to 18 minutes
 - **80% fewer** "false alarm" test reruns — automated diagnosis catches real issues
 - **3-5x faster** autonomous repair loops — verify in CI, not locally
@@ -59,7 +59,7 @@ tier: v6.0 Wave 1 (Core Thesis)
 
 ### The Real Cost
 
-**For a 100-person engineering team:**
+#### For a 100-person engineering team:
 
 ```
 Scenario: 20 CI failures per day (realistic for active team)
@@ -75,7 +75,7 @@ Annual impact:
   @ $200/hour fully-loaded = $750,000/year in waste
 ```
 
-**Why So Slow?**
+#### Why So Slow?
 1. **Context Lost:** No browser visible in CI; just error text
 2. **Environment Gap:** Local ≠ CI (different node versions, dependencies, secrets)
 3. **No Autonomy:** AI sees error, but can't inspect DOM/network/logs
@@ -134,17 +134,17 @@ Annual impact:
 
 **Who:** EM, Engineering Lead, DevOps Engineer (50-500 person orgs)
 
-**Pain Point:**
+#### Pain Point:
 - "Our top engineers spend 30% of time on CI debugging, not shipping"
 - "Test flakiness blocks releases; can't deploy with red builds"
 - "AI coding agents propose fixes, but can't verify in CI"
 
-**Value Proposition:**
+#### Value Proposition:
 - **Reclaim 30% engineering productivity** — CI debugging becomes autonomous
 - **Faster releases** — Red builds resolved in minutes, not hours
 - **Confidence in AI agents** — Fixes verified in CI before human review
 
-**Success Metrics They Care About:**
+#### Success Metrics They Care About:
 - Time-to-green (red build → green) ✓ Reduced by 80%
 - Developer context-switch rate ✓ Reduced by 60%
 - Test reliability (reduce flakes) ✓ Root causes captured automatically
@@ -155,17 +155,17 @@ Annual impact:
 
 **Who:** Anthropic, Cursor, GitHub Copilot, etc. (integrating Gasoline)
 
-**Pain Point:**
+#### Pain Point:
 - "Our agents work great locally, but fail in CI"
 - "Can't repair tests autonomously in pipelines"
 - "Competitors offer end-to-end autonomy; we stop at suggestions"
 
-**Value Proposition:**
+#### Value Proposition:
 - **End-to-end autonomy:** Test fails → diagnose → repair → verify (all autonomous)
 - **Competitive moat:** Only solution that works in CI at scale
 - **Enterprise unlock:** "AI-verified fixes" sells to risk-averse buyers
 
-**Success Metrics They Care About:**
+#### Success Metrics They Care About:
 - Repair success rate in CI ✓ 85%+ autonomous (same as local)
 - Customer satisfaction ✓ "AI just fixed my failing tests"
 - Enterprise adoption ✓ Compliance teams approve
@@ -176,17 +176,17 @@ Annual impact:
 
 **Who:** CISO, Compliance Officer (Financial, Healthcare, SaaS)
 
-**Pain Point:**
+#### Pain Point:
 - "We want AI in development, but need audit trails"
 - "Can't let AI modify code without proof it works"
 - "Need to trace: failure → fix → verification → deployment"
 
-**Value Proposition:**
+#### Value Proposition:
 - **Full observability:** HAR files, SARIF reports, screenshots (for audit)
 - **Autonomous verification:** Fix not trusted until re-run passes
 - **Compliance-ready:** Snapshot context + test logs + verification evidence
 
-**Success Metrics They Care About:**
+#### Success Metrics They Care About:
 - Audit trail completeness ✓ 100% (failure → fix → verify captured)
 - Risk reduction ✓ AI fixes verified before merge
 - Compliance sign-off ✓ "AI can modify CI-gated code"
@@ -199,17 +199,17 @@ Annual impact:
 
 **Scenario:** Playwright/Cypress/Jest tests fail in GitHub Actions
 
-**Today:**
+#### Today:
 ```
 Test fails → Engineer investigates → 30-45 min lost
 ```
 
-**With CI Infrastructure:**
+#### With CI Infrastructure:
 ```
 Test fails → Snapshot captured → AI diagnoses → Re-runs → Verified (3-5 min)
 ```
 
-**ROI Per Day:**
+#### ROI Per Day:
 - 15-20 test failures/day × 35-40 min savings = 8-12 hours reclaimed
 - For 100-person team = $5,000-10,000/day in productivity
 
@@ -221,17 +221,17 @@ Test fails → Snapshot captured → AI diagnoses → Re-runs → Verified (3-5 
 
 **Scenario:** Tests pass locally, fail in CI (environment mismatch)
 
-**Today:**
+#### Today:
 ```
 Passes locally, fails CI → Engineer reproaches with CI env → 60+ min
 ```
 
-**With CI Infrastructure:**
+#### With CI Infrastructure:
 ```
 AI mocks CI-specific behavior → Re-runs test → Verifies (5 min)
 ```
 
-**Example:**
+#### Example:
 - Local: PostgreSQL 12, CI: PostgreSQL 14 (schema difference)
 - Local: Environment variables cached, CI: Fresh container
 - Local: Mock returns {id, name}, CI: API returns {id, name, metadata} (new field)
@@ -244,13 +244,13 @@ AI mocks CI-specific behavior → Re-runs test → Verifies (5 min)
 
 **Scenario:** Performance regression detected in CI (metrics exceed baseline)
 
-**Today:**
+#### Today:
 ```
 Perf test fails → Engineer profiles locally → Can't match CI hardware
 → Guesses fix → Re-runs multiple times (120+ min)
 ```
 
-**With CI Infrastructure:**
+#### With CI Infrastructure:
 ```
 AI captures performance snapshot → Analyzes bottleneck → Proposes optimization
 → Verifies in same CI hardware (30-45 min)
@@ -264,12 +264,12 @@ AI captures performance snapshot → Analyzes bottleneck → Proposes optimizati
 
 **Scenario:** Enterprise with AI coding agents + strict compliance
 
-**Today:**
+#### Today:
 ```
 AI proposes code fix → Engineer manually verifies → Human approval required
 ```
 
-**With CI Infrastructure:**
+#### With CI Infrastructure:
 ```
 AI proposes fix → Gasoline captures snapshot → Test re-runs autonomously
 → Evidence trail generated → Audit log created
@@ -285,7 +285,7 @@ AI proposes fix → Gasoline captures snapshot → Test re-runs autonomously
 
 **Target:** Solo developers, small teams (<10 engineers)
 
-**Features:**
+#### Features:
 - Test snapshots (up to 100/month)
 - Test boundaries (basic isolation)
 - Network mocking (single endpoint)
@@ -299,19 +299,19 @@ AI proposes fix → Gasoline captures snapshot → Test re-runs autonomously
 
 **Target:** Mid-market teams (10-50 engineers)
 
-**Features:**
+#### Features:
 - Unlimited test snapshots
 - Advanced test isolation
 - Network mocking (all endpoints)
 - GitLab CI, CircleCI integration
 - Async command execution
 
-**Pricing:**
+#### Pricing:
 - Base: $50/month
 - Per 1000 snapshots/month: $10
 - Average: $200-500/month for active team
 
-**ROI for Customer:**
+#### ROI for Customer:
 - Saves 50-100 hours/month of engineer time
 - Cost: $300/month
 - Payback: <1 day
@@ -322,18 +322,18 @@ AI proposes fix → Gasoline captures snapshot → Test re-runs autonomously
 
 **Target:** Large teams (100+ engineers)
 
-**Features:**
+#### Features:
 - Everything in Team tier
 - Advanced SARIF/HAR generation
 - Custom artifact retention
 - Compliance audit logging
 - Dedicated support
 
-**Pricing:**
+#### Pricing:
 - Per engineer/month: $20-30
 - Enterprise discount (100+ engineers): $15-20/engineer
 
-**ROI for Customer:**
+#### ROI for Customer:
 - Saves 500-1000 hours/month of engineer time
 - Cost: $2,000-3,000/month
 - Payback: <1 day
@@ -344,12 +344,12 @@ AI proposes fix → Gasoline captures snapshot → Test re-runs autonomously
 
 ### Versus GitHub Actions built-ins
 
-**GitHub Actions (native):**
+#### GitHub Actions (native):
 - ✗ No root cause analysis (just error text)
 - ✗ No autonomous repair
 - ✗ No browser context in CI
 
-**Gasoline CI:**
+#### Gasoline CI:
 - ✓ Full browser context (snapshots)
 - ✓ Autonomous diagnosis + repair
 - ✓ Integrated with AI agents
@@ -360,13 +360,13 @@ AI proposes fix → Gasoline captures snapshot → Test re-runs autonomously
 
 ### Versus Playwright/Cypress built-in features
 
-**Playwright Trace Viewer (native):**
+#### Playwright Trace Viewer (native):
 - ✓ Records full test trace (DOM, network, logs)
 - ✗ Requires manual inspection (not autonomous)
 - ✗ No diagnosis; human must interpret
 - ✗ No repair capability
 
-**Gasoline CI:**
+#### Gasoline CI:
 - ✓ Captures trace automatically
 - ✓ AI diagnoses autonomously
 - ✓ AI repairs + verifies
@@ -377,7 +377,7 @@ AI proposes fix → Gasoline captures snapshot → Test re-runs autonomously
 
 ### Versus Manual Debugging Workflows
 
-**Current Manual Process:**
+#### Current Manual Process:
 - Engineer checks CI logs
 - Reproduces locally
 - Inspects DOM/network manually
@@ -386,7 +386,7 @@ AI proposes fix → Gasoline captures snapshot → Test re-runs autonomously
 - Commits + waits for CI
 - MTTD: 45 minutes
 
-**Gasoline CI Process:**
+#### Gasoline CI Process:
 - AI analyzes snapshot automatically
 - AI re-runs test in CI (same hardware)
 - AI generates fix + evidence
@@ -401,36 +401,36 @@ AI proposes fix → Gasoline captures snapshot → Test re-runs autonomously
 
 ### Year 1 (v6.0 Launch + 6 months)
 
-**Adoption:**
+#### Adoption:
 - 1,000 free tier users (solos + small teams)
 - 50 paid tier teams (Team plan, $300/month avg)
 - 5 enterprise contracts (Enterprise plan, $2,500/month avg)
 
-**Revenue:**
+#### Revenue:
 - Paid tier: 50 × $300 = $15,000/month = $180,000/year
 - Enterprise: 5 × $2,500 = $12,500/month = $150,000/year
 - **Total Year 1: $330,000**
 
 ### Year 2 (Maturity + marketing)
 
-**Adoption:**
+#### Adoption:
 - 10,000 free tier users (word of mouth)
 - 500 paid tier teams
 - 50 enterprise contracts
 
-**Revenue:**
+#### Revenue:
 - Paid tier: 500 × $300 = $150,000/month = $1.8M/year
 - Enterprise: 50 × $2,500 = $125,000/month = $1.5M/year
 - **Total Year 2: $3.3M**
 
 ### Year 3 (Market penetration)
 
-**Adoption:**
+#### Adoption:
 - 50,000+ free tier users (de facto standard)
 - 2,000 paid tier teams
 - 200 enterprise contracts
 
-**Revenue:**
+#### Revenue:
 - Paid tier: 2,000 × $300 = $600,000/month = $7.2M/year
 - Enterprise: 200 × $2,500 = $500,000/month = $6M/year
 - **Total Year 3: $13.2M**
@@ -441,7 +441,7 @@ AI proposes fix → Gasoline captures snapshot → Test re-runs autonomously
 
 ### Phase 1: Developer Mindshare (Months 1-3)
 
-**Channels:**
+#### Channels:
 - Twitter/X: "CI test failures fixed autonomously in 3 minutes"
 - Dev blogs: "How Gasoline cuts MTTD by 12x"
 - HN, Reddit, Product Hunt: Launch story
@@ -454,7 +454,7 @@ AI proposes fix → Gasoline captures snapshot → Test re-runs autonomously
 
 ### Phase 2: Enterprise Sales (Months 4-12)
 
-**Channels:**
+#### Channels:
 - Case studies: "Team X saved $500k/year on CI debugging"
 - Sales outreach to DevOps/EM community
 - Compliance + audit positioning
@@ -467,7 +467,7 @@ AI proposes fix → Gasoline captures snapshot → Test re-runs autonomously
 
 ### Phase 3: Platform Lock-in (Year 2+)
 
-**Strategy:**
+#### Strategy:
 - Become **default CI diagnostics layer** for Anthropic + partners
 - GitHub/GitLab marketplace listings
 - Native integrations (GitHub Actions marketplace)
@@ -480,7 +480,7 @@ AI proposes fix → Gasoline captures snapshot → Test re-runs autonomously
 
 ### Risk 1: "Developers won't trust AI fixes in CI"
 
-**Mitigation:**
+#### Mitigation:
 - Require verification before merge (re-run test passes)
 - Full audit trail (failure → fix → verify → evidence)
 - Human review required (GitHub required reviewers still apply)
@@ -490,7 +490,7 @@ AI proposes fix → Gasoline captures snapshot → Test re-runs autonomously
 
 ### Risk 2: "CI infrastructure too complex to adopt"
 
-**Mitigation:**
+#### Mitigation:
 - GitHub Actions wizard (one-click setup)
 - Pre-built fixtures (copy-paste Playwright integration)
 - Terraform modules for self-hosted
@@ -499,7 +499,7 @@ AI proposes fix → Gasoline captures snapshot → Test re-runs autonomously
 
 ### Risk 3: "Performance degradation in CI"
 
-**Mitigation:**
+#### Mitigation:
 - Snapshots are incremental (only changes sent)
 - Network mocking is fast (<10ms overhead)
 - Async command execution prevents blocking
@@ -510,18 +510,18 @@ AI proposes fix → Gasoline captures snapshot → Test re-runs autonomously
 
 **Today:** CI test failures waste 750,000+ hours/year across 100-person teams.
 
-**With Gasoline CI Infrastructure:**
+### With Gasoline CI Infrastructure:
 - **12-15x faster** failure diagnosis (30 min → 3 min)
 - **95% cost reduction** ($100-200/failure → $5-10/failure)
 - **Autonomous repair** (AI diagnoses + verifies in CI)
 - **Enterprise compliance** (audit trails + verification evidence)
 
-**Market Opportunity:**
+### Market Opportunity:
 - TAM: Every mid-market & enterprise engineering team (100,000+ teams)
 - Addressable: Teams with flaky tests + AI agent interest (10,000+ teams)
 - Serviceable: Premium pricing to 1,000+ teams = $50M+ ARR potential
 
-**Competitive Advantage:**
+### Competitive Advantage:
 - Only solution that brings **full browser context + autonomous repair to CI**
 - Unique positioning: "AI closes the feedback loop, even in CI"
 - Lock-in: Becomes default layer for all CI debugging

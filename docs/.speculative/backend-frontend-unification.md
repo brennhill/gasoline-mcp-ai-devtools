@@ -27,14 +27,14 @@ Currently, AI debugging is **asymmetric**:
 
 ### Example: Checkout Bug
 
-**What AI sees today:**
+#### What AI sees today:
 ```
 POST /api/checkout → 500 Server Error
 UI shows "Payment failed"
 User reports issue
 ```
 
-**What AI needs to see:**
+#### What AI needs to see:
 ```
 [14:23:45.100] Browser: User clicks "checkout"
 [14:23:45.101] Browser: POST /api/checkout sent (request_id=abc123)
@@ -48,7 +48,7 @@ User reports issue
 [14:23:46.200] Git: Code change 3 days ago removed retry logic
 ```
 
-**AI can now diagnose:**
+#### AI can now diagnose:
 - Root cause: DB timeout, not rate limiting or payment service
 - Why it wasn't caught: Missing test case
 - How to fix: Restore retry logic OR increase DB timeout OR add test
@@ -169,13 +169,13 @@ All data normalized to:
 
 ### Correlation Strategy
 
-**Automatic extraction:**
+#### Automatic extraction:
 - Browser: Extract `x-request-id` from response headers
 - Backend: Parse logs for `trace_id=...`, `request_id=...`
 - Tests: Inject via `configure({action: "custom_event", ...})`
 - Git: Hash correlation (same code hash = related events)
 
-**Manual injection:**
+#### Manual injection:
 ```javascript
 // App code can inject correlation
 window.postMessage({
@@ -194,35 +194,35 @@ window.postMessage({
 
 ### Completeness
 
-**Question AI can answer:**
+#### Question AI can answer:
 - "Show me every event that touches user_id=42 in the last 10 minutes"
 - "What logs exist between this browser request starting and ending?"
 - "Did a test assertion ever cover this code path?"
 
-**Implementation:**
+#### Implementation:
 - Ring buffers for all sources (never lose events)
 - Cursor-based pagination for queries
 - TTL-based cleanup (configurable, default 24h)
 
 ### Causality
 
-**Question AI can answer:**
+#### Question AI can answer:
 - "This HTTP 500 happened at T+456ms. What caused it?"
 - "The UI shows wrong data. When was it last correct?"
 - "Test X fails. Which code change broke it?"
 
-**Implementation:**
+#### Implementation:
 - Correlation IDs link related events
 - Timestamps precise to 1ms
 - Before/after snapshots at causality breakpoints
 
 ### Latency Attribution
 
-**Question AI can answer:**
+#### Question AI can answer:
 - "Request took 2s. How much was browser, network, server?"
 - "Backend is slow. Is it DB, service, or external API?"
 
-**Implementation:**
+#### Implementation:
 - Browser: measure fetch() time + handler time
 - Network: measure HTTP round trip
 - Backend: parse service logs for component timings
@@ -286,7 +286,7 @@ Each feature has:
 - **TECH_SPEC.md** — Implementation, code references, data structures
 - **QA_PLAN.md** — Test scenarios and acceptance criteria
 
-**See feature navigation for links:**
+### See feature navigation for links:
 - [Backend Log Streaming](../features/feature/backend-log-streaming/product-spec.md)
 - [Custom Event API](../features/feature/custom-event-api/product-spec.md)
 - [Test Execution Capture](../features/feature/test-execution-capture/product-spec.md)
@@ -304,12 +304,12 @@ Each feature has:
 
 ## Release Timeline
 
-**v7.0: Phase 1 (EARS) + Phase 2 (EYES)**
+### v7.0: Phase 1 (EARS) + Phase 2 (EYES)
 - Weeks 1-4: EARS features (backend log streaming, custom events, test capture, git tracking)
 - Weeks 5-8: EYES features (correlation, causality, normalization, snapshots)
 - Week 9: Integration testing, polish, documentation
 
-**v7.1: Phase 3 (HANDS)**
+### v7.1: Phase 3 (HANDS)
 - Weeks 1-3: Backend control, code navigation
 - Weeks 4-5: Environment manipulation, timeline search
 - Week 6: Integration, polish
@@ -329,16 +329,16 @@ Each feature has:
 
 ## Appendix: Open Questions
 
-**Q: What log formats should v7.0 support?**
+### Q: What log formats should v7.0 support?
 A: JSON, syslog, plain text (regex). Priority: JSON (structured) > plain text (unstructured). No custom formats.
 
-**Q: How do we handle apps without correlation IDs?**
+### Q: How do we handle apps without correlation IDs?
 A: Browser timestamp + backend timestamp matching (within 1s window, highest confidence match). Imperfect but better than nothing.
 
-**Q: Can AI create its own tests based on discovered behavior?**
+### Q: Can AI create its own tests based on discovered behavior?
 A: Post-v7.0 feature. v7.0 focuses on ingestion and correlation.
 
-**Q: What about mobile apps or desktop apps?**
+### Q: What about mobile apps or desktop apps?
 A: Out of scope. v7.0 is web-only. Mobile is separate MCP client (different transport).
 
 ---

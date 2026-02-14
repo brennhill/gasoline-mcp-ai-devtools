@@ -51,18 +51,18 @@ const createMockDocument = () => ({
   readyState: 'complete',
   documentElement: {
     scrollHeight: 2400,
-    scrollWidth: 1440,
+    scrollWidth: 1440
   },
   head: {
-    appendChild: mock.fn(),
+    appendChild: mock.fn()
   },
   createElement: mock.fn((tag) => ({
     tagName: tag.toUpperCase(),
     onload: null,
     onerror: null,
     src: '',
-    setAttribute: mock.fn(),
-  })),
+    setAttribute: mock.fn()
+  }))
 })
 
 const createMockWindow = () => ({
@@ -71,13 +71,13 @@ const createMockWindow = () => ({
   removeEventListener: mock.fn(),
   location: {
     origin: 'http://localhost:3000',
-    href: 'http://localhost:3000/test',
+    href: 'http://localhost:3000/test'
   },
   innerWidth: 1440,
   innerHeight: 900,
   scrollX: 0,
   scrollY: 320,
-  axe: null,
+  axe: null
 })
 
 let originalDocument, originalWindow
@@ -112,12 +112,14 @@ describe('Bug #3: runAxeAuditWithTimeout is defined and accessible', () => {
 
     // Mock axe-core
     globalThis.window.axe = {
-      run: mock.fn(() => Promise.resolve({
-        violations: [],
-        passes: [],
-        incomplete: [],
-        inapplicable: [],
-      })),
+      run: mock.fn(() =>
+        Promise.resolve({
+          violations: [],
+          passes: [],
+          incomplete: [],
+          inapplicable: []
+        })
+      )
     }
 
     const result = runAxeAuditWithTimeout({})
@@ -161,41 +163,43 @@ describe('Accessibility audit returns real violations on pages with issues', () 
 
     // Mock axe-core with violations
     globalThis.window.axe = {
-      run: mock.fn(() => Promise.resolve({
-        violations: [
-          {
-            id: 'color-contrast',
-            impact: 'serious',
-            description: 'Elements must have sufficient color contrast',
-            helpUrl: 'https://dequeuniversity.com/rules/axe/4.10/color-contrast',
-            tags: ['wcag2aa'],
-            nodes: [
-              {
-                target: ['#low-contrast-text'],
-                html: '<span id="low-contrast-text" style="color: #777">Light text</span>',
-                failureSummary: 'Fix any of the following: Element has insufficient color contrast',
-              },
-            ],
-          },
-          {
-            id: 'image-alt',
-            impact: 'critical',
-            description: 'Images must have alternate text',
-            helpUrl: 'https://dequeuniversity.com/rules/axe/4.10/image-alt',
-            tags: ['wcag2a'],
-            nodes: [
-              {
-                target: ['img.logo'],
-                html: '<img class="logo" src="/logo.png">',
-                failureSummary: 'Fix any of the following: Element has no alt attribute',
-              },
-            ],
-          },
-        ],
-        passes: [],
-        incomplete: [],
-        inapplicable: [],
-      })),
+      run: mock.fn(() =>
+        Promise.resolve({
+          violations: [
+            {
+              id: 'color-contrast',
+              impact: 'serious',
+              description: 'Elements must have sufficient color contrast',
+              helpUrl: 'https://dequeuniversity.com/rules/axe/4.10/color-contrast',
+              tags: ['wcag2aa'],
+              nodes: [
+                {
+                  target: ['#low-contrast-text'],
+                  html: '<span id="low-contrast-text" style="color: #777">Light text</span>',
+                  failureSummary: 'Fix any of the following: Element has insufficient color contrast'
+                }
+              ]
+            },
+            {
+              id: 'image-alt',
+              impact: 'critical',
+              description: 'Images must have alternate text',
+              helpUrl: 'https://dequeuniversity.com/rules/axe/4.10/image-alt',
+              tags: ['wcag2a'],
+              nodes: [
+                {
+                  target: ['img.logo'],
+                  html: '<img class="logo" src="/logo.png">',
+                  failureSummary: 'Fix any of the following: Element has no alt attribute'
+                }
+              ]
+            }
+          ],
+          passes: [],
+          incomplete: [],
+          inapplicable: []
+        })
+      )
     }
 
     const result = await runAxeAuditWithTimeout({})
@@ -205,13 +209,13 @@ describe('Accessibility audit returns real violations on pages with issues', () 
     assert.strictEqual(result.violations.length, 2, 'Should have 2 violations')
 
     // Check first violation structure
-    const colorContrast = result.violations.find(v => v.id === 'color-contrast')
+    const colorContrast = result.violations.find((v) => v.id === 'color-contrast')
     assert.ok(colorContrast, 'Should include color-contrast violation')
     assert.strictEqual(colorContrast.impact, 'serious')
     assert.ok(colorContrast.nodes.length > 0, 'Should have affected nodes')
 
     // Check second violation
-    const imageAlt = result.violations.find(v => v.id === 'image-alt')
+    const imageAlt = result.violations.find((v) => v.id === 'image-alt')
     assert.ok(imageAlt, 'Should include image-alt violation')
     assert.strictEqual(imageAlt.impact, 'critical')
   })
@@ -220,25 +224,29 @@ describe('Accessibility audit returns real violations on pages with issues', () 
     const { runAxeAuditWithTimeout } = await import('../../extension/inject.js')
 
     globalThis.window.axe = {
-      run: mock.fn(() => Promise.resolve({
-        violations: [{
-          id: 'button-name',
-          impact: 'critical',
-          description: 'Buttons must have discernible text',
-          helpUrl: 'https://dequeuniversity.com/rules/axe/4.10/button-name',
-          tags: ['wcag2a', 'wcag412'],
-          nodes: [
+      run: mock.fn(() =>
+        Promise.resolve({
+          violations: [
             {
-              target: ['button.icon-only'],
-              html: '<button class="icon-only"><i class="fa-search"></i></button>',
-              failureSummary: 'Fix any of the following: Button has no text',
-            },
+              id: 'button-name',
+              impact: 'critical',
+              description: 'Buttons must have discernible text',
+              helpUrl: 'https://dequeuniversity.com/rules/axe/4.10/button-name',
+              tags: ['wcag2a', 'wcag412'],
+              nodes: [
+                {
+                  target: ['button.icon-only'],
+                  html: '<button class="icon-only"><i class="fa-search"></i></button>',
+                  failureSummary: 'Fix any of the following: Button has no text'
+                }
+              ]
+            }
           ],
-        }],
-        passes: [],
-        incomplete: [],
-        inapplicable: [],
-      })),
+          passes: [],
+          incomplete: [],
+          inapplicable: []
+        })
+      )
     }
 
     const result = await runAxeAuditWithTimeout({})
@@ -276,12 +284,14 @@ describe('Audit returns passes for accessible pages', () => {
     const { runAxeAuditWithTimeout } = await import('../../extension/inject.js')
 
     globalThis.window.axe = {
-      run: mock.fn(() => Promise.resolve({
-        violations: [],
-        passes: Array(25).fill({ id: 'pass', nodes: [] }),
-        incomplete: [],
-        inapplicable: Array(10).fill({ id: 'na', nodes: [] }),
-      })),
+      run: mock.fn(() =>
+        Promise.resolve({
+          violations: [],
+          passes: Array(25).fill({ id: 'pass', nodes: [] }),
+          incomplete: [],
+          inapplicable: Array(10).fill({ id: 'na', nodes: [] })
+        })
+      )
     }
 
     const result = await runAxeAuditWithTimeout({})
@@ -317,7 +327,7 @@ describe('Audit timeout after 10 seconds on complex page', () => {
 
     // Mock axe-core that never resolves
     globalThis.window.axe = {
-      run: mock.fn(() => new Promise(() => {})), // Never resolves
+      run: mock.fn(() => new Promise(() => {})) // Never resolves
     }
 
     // Use short timeout for testing
@@ -331,12 +341,14 @@ describe('Audit timeout after 10 seconds on complex page', () => {
     const { runAxeAuditWithTimeout } = await import('../../extension/inject.js')
 
     globalThis.window.axe = {
-      run: mock.fn(() => Promise.resolve({
-        violations: [],
-        passes: [],
-        incomplete: [],
-        inapplicable: [],
-      })),
+      run: mock.fn(() =>
+        Promise.resolve({
+          violations: [],
+          passes: [],
+          incomplete: [],
+          inapplicable: []
+        })
+      )
     }
 
     const result = await runAxeAuditWithTimeout({}, 5000)
@@ -373,7 +385,7 @@ describe('Clear error when axe-core is not loaded', () => {
         tagName: tag.toUpperCase(),
         src: '',
         onload: null,
-        onerror: null,
+        onerror: null
       }
       // Simulate load failure
       setTimeout(() => {
@@ -427,8 +439,8 @@ describe('Regression: DOM queries still work after fix', () => {
         getAttribute: () => null,
         getBoundingClientRect: () => ({ x: 0, y: 0, width: 100, height: 50 }),
         children: [],
-        offsetParent: {},
-      },
+        offsetParent: {}
+      }
     ])
 
     const result = await executeDOMQuery({ selector: 'div' })
@@ -488,12 +500,14 @@ describe('GASOLINE_A11Y_QUERY message handler uses runAxeAuditWithTimeout', () =
 
     // Mock axe-core
     globalThis.window.axe = {
-      run: mock.fn(() => Promise.resolve({
-        violations: [],
-        passes: [],
-        incomplete: [],
-        inapplicable: [],
-      })),
+      run: mock.fn(() =>
+        Promise.resolve({
+          violations: [],
+          passes: [],
+          incomplete: [],
+          inapplicable: []
+        })
+      )
     }
 
     // Simulate what the message handler does
@@ -504,9 +518,9 @@ describe('GASOLINE_A11Y_QUERY message handler uses runAxeAuditWithTimeout', () =
       {
         type: 'GASOLINE_A11Y_QUERY_RESPONSE',
         requestId,
-        result: auditResult,
+        result: auditResult
       },
-      globalThis.window.location.origin,
+      globalThis.window.location.origin
     )
 
     // Verify postMessage was called with correct structure
@@ -527,10 +541,9 @@ describe('GASOLINE_A11Y_QUERY message handler uses runAxeAuditWithTimeout', () =
 
     // Simulate the error response that inject.js would send
     const errorResult = {
-      error: `${expectedErrorMessage} \u2014 try reloading the extension`,
+      error: `${expectedErrorMessage} \u2014 try reloading the extension`
     }
 
-    assert.ok(errorResult.error.includes(expectedErrorMessage),
-      'Error message should indicate function not available')
+    assert.ok(errorResult.error.includes(expectedErrorMessage), 'Error message should indicate function not available')
   })
 })

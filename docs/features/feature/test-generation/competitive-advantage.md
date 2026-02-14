@@ -18,7 +18,7 @@ TestSprite operates on:
 3. Network requests (HTTP only)
 4. Screenshots (visual only)
 
-**TestSprite cannot capture:**
+#### TestSprite cannot capture:
 - ❌ WebSocket connection lifecycle
 - ❌ Individual frame content
 - ❌ Bidirectional message flow
@@ -46,14 +46,14 @@ Gasoline monitors **in real-time:**
 
 **Demo bug:** Live chat widget fails to display messages
 
-**TestSprite approach:**
+#### TestSprite approach:
 1. Test fails: "Expected message to be visible"
 2. Takes screenshot: Message not visible
 3. Classifies: "UI rendering issue"
 4. Suggests: "Check CSS visibility"
 5. ❌ **Misses root cause:** WebSocket sends `txt` field, client expects `text`
 
-**Gasoline approach:**
+#### Gasoline approach:
 1. Captures WebSocket frames in real-time
 2. Sees server sends: `{"type":"message","txt":"Hello"}`
 3. Sees client tries to read: `data.text` (undefined)
@@ -68,7 +68,7 @@ Gasoline monitors **in real-time:**
 
 **TestSprite:** Cannot test real-time multiplayer interactions at all.
 
-**Gasoline:**
+#### Gasoline:
 - Captures game state sync frames
 - Records player movement events
 - Monitors server tick rate
@@ -97,14 +97,14 @@ Gasoline monitors **in real-time:**
 
 ### Ideal Use Cases for Gasoline
 
-**Where Gasoline excels:**
+#### Where Gasoline excels:
 - Real-time applications (chat, games, collaboration)
 - WebSocket-heavy apps
 - Privacy-sensitive environments
 - Local development workflow
 - Open-source projects
 
-**Where TestSprite might be better:**
+#### Where TestSprite might be better:
 - Large teams needing cloud collaboration
 - Non-technical users generating tests from PRD
 - Budget for $99/month/user
@@ -249,18 +249,18 @@ After validation:
 
 **Question:** "Are we sure that this will actually do the same thing as TestSprite?"
 
-**Answer:**
+### Answer:
 
 ✅ **Feature parity:** Test generation, self-healing, failure classification
 ✅ **Cost advantage:** Free vs $29-99/month
 ✅ **Privacy advantage:** Localhost vs cloud
 ✅ **WebSocket advantage:** First-class support vs none
 
-**After validation, we can confidently say:**
+### After validation, we can confidently say:
 
 > "Gasoline provides everything TestSprite does, plus WebSocket monitoring, for free, with your data never leaving localhost."
 
-**The honest assessment:**
+### The honest assessment:
 
 We haven't validated in production yet, but:
 - Logic is sound (77 tests passing)
@@ -268,4 +268,4 @@ We haven't validated in production yet, but:
 - Validation plan complete (2 hours)
 - Unique advantage clear (WebSocket)
 
-**Validation will prove it works. WebSocket monitoring proves it's better for real-time apps.**
+### Validation will prove it works. WebSocket monitoring proves it's better for real-time apps.

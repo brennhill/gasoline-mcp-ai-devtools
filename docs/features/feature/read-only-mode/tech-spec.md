@@ -48,18 +48,18 @@ Agent calls configure({action: "clear"}):
 
 ## Implementation Strategy
 
-**Mutation detection:**
+### Mutation detection:
 - Categorize all tool actions as observation (allowed) or mutation (blocked)
 - Observation: observe (all modes), generate (all types), configure (query_dom, health, streaming status)
 - Mutation: interact (all actions), configure (store, load, clear, dismiss, noise_rule, diff_sessions)
 
-**Flag enforcement:**
+### Flag enforcement:
 1. Initialize ReadOnlyMode from CLI flag or env var at server start
 2. Make field immutable (no API to toggle at runtime)
 3. In each tool handler, add guard: if readOnly && isMutation { return error }
 4. Return consistent error response with actionable message
 
-**Error format:**
+### Error format:
 ```json
 {
   "error": "read_only_mode_enabled",
@@ -67,7 +67,7 @@ Agent calls configure({action: "clear"}):
 }
 ```
 
-**Server config exposure:**
+### Server config exposure:
 Add "server_config" mode to observe tool to expose current configuration:
 ```json
 observe({what: "server_config"})

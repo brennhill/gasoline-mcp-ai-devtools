@@ -41,7 +41,7 @@ test.describe('MCP HTTP Endpoint', () => {
   test('should return error for unknown tool', async ({ page, serverUrl }) => {
     const resp = await mcpCall(serverUrl, 'tools/call', {
       name: 'nonexistent_tool',
-      arguments: {},
+      arguments: {}
     })
 
     expect(resp.error).toBeDefined()
@@ -65,9 +65,7 @@ test.describe('MCP: Browser Logs', () => {
     expect(Array.isArray(errors)).toBe(true)
     expect(errors.length).toBeGreaterThan(0)
 
-    const mcpError = errors.find((e) =>
-      e.args?.some((a) => typeof a === 'string' && a.includes('MCP test error'))
-    )
+    const mcpError = errors.find((e) => e.args?.some((a) => typeof a === 'string' && a.includes('MCP test error')))
     expect(mcpError).toBeDefined()
   })
 

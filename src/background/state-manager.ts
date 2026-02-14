@@ -14,7 +14,7 @@ export {
   cleanupStaleErrorGroups,
   flushErrorGroups,
   type ProcessedLogEntry,
-  ERROR_GROUP_MAX_AGE_MS,
+  ERROR_GROUP_MAX_AGE_MS
 } from './error-groups'
 
 // Re-export cache and memory management
@@ -41,7 +41,7 @@ export {
   MEMORY_AVG_WS_EVENT_SIZE,
   MEMORY_AVG_NETWORK_BODY_SIZE,
   MEMORY_AVG_ACTION_SIZE,
-  MAX_PENDING_BUFFER,
+  MAX_PENDING_BUFFER
 } from './cache-limits'
 
 // Re-export source map and context monitoring
@@ -63,7 +63,7 @@ export {
   addProcessingQuery,
   removeProcessingQuery,
   isQueryProcessing,
-  cleanupStaleProcessingQueries,
+  cleanupStaleProcessingQueries
 } from './snapshots'
 
 // Debug log functions are defined and exported below

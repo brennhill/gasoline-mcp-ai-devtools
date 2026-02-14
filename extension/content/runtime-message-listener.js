@@ -2,345 +2,432 @@
  * @fileoverview Runtime Message Listener Module
  * Handles chrome.runtime messages from background script
  */
-import { isValidBackgroundSender, handlePing, handleToggleMessage, forwardHighlightMessage, handleStateCommand, handleExecuteJs, handleExecuteQuery, handleA11yQuery, handleDomQuery, handleGetNetworkWaterfall, } from './message-handlers.js';
+import {
+  isValidBackgroundSender,
+  handlePing,
+  handleToggleMessage,
+  forwardHighlightMessage,
+  handleStateCommand,
+  handleExecuteJs,
+  handleExecuteQuery,
+  handleA11yQuery,
+  handleDomQuery,
+  handleGetNetworkWaterfall,
+  handleLinkHealthQuery
+} from './message-handlers.js'
 /** Color themes for each toast state */
 const TOAST_THEMES = {
-    trying: { bg: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)', shadow: 'rgba(59, 130, 246, 0.4)' },
-    success: { bg: 'linear-gradient(135deg, #22c55e 0%, #16a34a 100%)', shadow: 'rgba(34, 197, 94, 0.4)' },
-    warning: { bg: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)', shadow: 'rgba(245, 158, 11, 0.4)' },
-    error: { bg: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)', shadow: 'rgba(239, 68, 68, 0.4)' },
-    audio: { bg: 'linear-gradient(135deg, #f97316 0%, #ea580c 100%)', shadow: 'rgba(249, 115, 22, 0.5)' },
-};
+  trying: { bg: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)', shadow: 'rgba(59, 130, 246, 0.4)' },
+  success: { bg: 'linear-gradient(135deg, #22c55e 0%, #16a34a 100%)', shadow: 'rgba(34, 197, 94, 0.4)' },
+  warning: { bg: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)', shadow: 'rgba(245, 158, 11, 0.4)' },
+  error: { bg: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)', shadow: 'rgba(239, 68, 68, 0.4)' },
+  audio: { bg: 'linear-gradient(135deg, #f97316 0%, #ea580c 100%)', shadow: 'rgba(249, 115, 22, 0.5)' }
+}
+/** Pre-built CSS for toast animations — extracted to reduce function complexity */
+// nosemgrep: missing-template-string-indicator
+const TOAST_ANIMATION_CSS = [
+  '@keyframes gasolineArrowBounceUp {',
+  '  0%, 100% { transform: translateY(0); opacity: 1; }',
+  '  50% { transform: translateY(-6px); opacity: 0.7; }',
+  '}',
+  '@keyframes gasolineToastPulse {',
+  '  0%, 100% { box-shadow: 0 4px 20px var(--toast-shadow); }',
+  '  50% { box-shadow: 0 8px 32px var(--toast-shadow-intense); }',
+  '}',
+  '.gasoline-toast-arrow {',
+  '  display: inline-block; margin-left: 8px;',
+  '  animation: gasolineArrowBounceUp 1.5s ease-in-out infinite;',
+  '}',
+  '.gasoline-toast-pulse { animation: gasolineToastPulse 2s ease-in-out infinite; }'
+].join('\n')
 /** Add animation keyframes to document */
 function injectToastAnimationStyles() {
-    if (document.getElementById('gasoline-toast-animations'))
-        return;
-    const style = document.createElement('style');
-    style.id = 'gasoline-toast-animations';
-    style.textContent = `
-    @keyframes gasolineArrowBounce {
-      0%, 100% { transform: translateY(0) translateX(0); opacity: 1; }
-      50% { transform: translateY(-4px) translateX(4px); opacity: 0.7; }
-    }
-    @keyframes gasolineArrowBounceUp {
-      0%, 100% { transform: translateY(0); opacity: 1; }
-      50% { transform: translateY(-6px); opacity: 0.7; }
-    }
-    @keyframes gasolineToastPulse {
-      0%, 100% { box-shadow: 0 4px 20px var(--toast-shadow); }
-      50% { box-shadow: 0 8px 32px var(--toast-shadow-intense); }
-    }
-    .gasoline-toast-arrow {
-      display: inline-block;
-      margin-left: 8px;
-      animation: gasolineArrowBounce 1.5s ease-in-out infinite;
-    }
-    @media (max-width: 767px) {
-      .gasoline-toast-arrow {
-        animation: gasolineArrowBounceUp 1.5s ease-in-out infinite;
-      }
-    }
-    .gasoline-toast-pulse {
-      animation: gasolineToastPulse 2s ease-in-out infinite;
-    }
-  `;
-    document.head.appendChild(style);
+  if (document.getElementById('gasoline-toast-animations')) return
+  const style = document.createElement('style')
+  style.id = 'gasoline-toast-animations'
+  style.textContent = TOAST_ANIMATION_CSS
+  document.head.appendChild(style)
 }
 /** Truncate text to maxLen characters with ellipsis */
 function truncateText(text, maxLen) {
-    if (text.length <= maxLen)
-        return text;
-    return text.slice(0, maxLen - 1) + '\u2026';
+  if (text.length <= maxLen) return text
+  return text.slice(0, maxLen - 1) + '\u2026'
 }
 /**
  * Show a brief visual toast overlay for AI actions.
  * Supports color-coded states and structured content with truncation.
  * For audio-related toasts, adds animated arrow pointing to extension icon.
  */
+// #lizard forgives
 function showActionToast(text, detail, state = 'trying', durationMs = 3000) {
-    // Remove existing toast
-    const existing = document.getElementById('gasoline-action-toast');
-    if (existing)
-        existing.remove();
-    // Inject animation styles once
-    injectToastAnimationStyles();
-    const theme = TOAST_THEMES[state] ?? TOAST_THEMES.trying;
-    const isAudioPrompt = state === 'audio' || (detail && detail.toLowerCase().includes('audio') && detail.toLowerCase().includes('click'));
-    // Detect screen size: small screens < 768px (mobile) vs larger
-    const isSmallScreen = typeof window !== 'undefined' && window.innerWidth < 768;
-    const arrowChar = isSmallScreen ? '↑' : '↗';
-    const toast = document.createElement('div');
-    toast.id = 'gasoline-action-toast';
-    if (isAudioPrompt) {
-        toast.className = 'gasoline-toast-pulse';
-    }
-    // Build content: label + truncated detail
-    const label = document.createElement('span');
-    label.textContent = truncateText(text, 30);
-    Object.assign(label.style, { fontWeight: '700' });
-    toast.appendChild(label);
-    if (detail) {
-        const sep = document.createElement('span');
-        sep.textContent = '  ';
-        Object.assign(sep.style, { opacity: '0.6', margin: '0 4px' });
-        toast.appendChild(sep);
-        const det = document.createElement('span');
-        det.textContent = truncateText(detail, 50);
-        Object.assign(det.style, { fontWeight: '400', opacity: '0.9' });
-        toast.appendChild(det);
-    }
-    // Add animated arrow for audio prompts (↗ on large screens, ↑ on small screens)
-    if (isAudioPrompt) {
-        const arrow = document.createElement('span');
-        arrow.className = 'gasoline-toast-arrow';
-        arrow.textContent = arrowChar;
-        Object.assign(arrow.style, {
-            fontSize: '16px',
-            fontWeight: '700',
-            marginLeft: '12px',
-            display: 'inline-block',
-        });
-        toast.appendChild(arrow);
-    }
-    Object.assign(toast.style, {
-        position: 'fixed',
-        top: '16px',
-        right: isAudioPrompt && !isSmallScreen ? '16px' : 'auto',
-        left: isAudioPrompt && isSmallScreen ? '50%' : (isAudioPrompt ? 'auto' : '50%'),
-        transform: isAudioPrompt && isSmallScreen ? 'translateX(-50%)' : (isAudioPrompt ? 'none' : 'translateX(-50%)'),
-        padding: isAudioPrompt ? '12px 24px' : '8px 20px',
-        background: theme.bg,
-        color: '#fff',
-        fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-        fontSize: isAudioPrompt ? '14px' : '13px',
-        fontWeight: isAudioPrompt ? '600' : '400',
-        borderRadius: '8px',
-        boxShadow: `0 4px 20px ${theme.shadow}`,
-        zIndex: '2147483647',
-        pointerEvents: 'none',
-        opacity: '0',
-        transition: 'opacity 0.2s ease-in',
-        maxWidth: isAudioPrompt ? '320px' : '500px',
-        whiteSpace: isAudioPrompt ? 'normal' : 'nowrap',
-        overflow: isAudioPrompt ? 'visible' : 'hidden',
-        display: 'flex',
-        alignItems: 'center',
-        gap: '0',
-        '--toast-shadow': theme.shadow,
-        '--toast-shadow-intense': theme.shadow.replace('0.4)', '0.7)'),
-    });
-    const target = document.body || document.documentElement;
-    if (!target)
-        return;
-    target.appendChild(toast);
-    // Fade in
-    requestAnimationFrame(() => {
-        toast.style.opacity = '1';
-    });
-    // Fade out and remove
-    setTimeout(() => {
-        toast.style.opacity = '0';
-        setTimeout(() => toast.remove(), 300);
-    }, durationMs);
+  // Remove existing toast
+  const existing = document.getElementById('gasoline-action-toast')
+  if (existing) existing.remove()
+  // Inject animation styles once
+  injectToastAnimationStyles()
+  const theme = TOAST_THEMES[state] ?? TOAST_THEMES.trying
+  const isAudioPrompt =
+    state === 'audio' || (detail && detail.toLowerCase().includes('audio') && detail.toLowerCase().includes('click'))
+  const arrowChar = '↑'
+  const toast = document.createElement('div')
+  toast.id = 'gasoline-action-toast'
+  if (isAudioPrompt) {
+    toast.className = 'gasoline-toast-pulse'
+  }
+  // Add gasoline icon for audio/extension-click prompts
+  if (isAudioPrompt) {
+    const icon = document.createElement('img')
+    icon.src = chrome.runtime.getURL('icons/icon-48.png')
+    Object.assign(icon.style, {
+      width: '20px',
+      height: '20px',
+      marginRight: '8px',
+      flexShrink: '0'
+    })
+    toast.appendChild(icon)
+  }
+  // Build content: label + truncated detail
+  const label = document.createElement('span')
+  label.textContent = truncateText(text, 30)
+  Object.assign(label.style, { fontWeight: '700' })
+  toast.appendChild(label)
+  if (detail) {
+    const sep = document.createElement('span')
+    sep.textContent = '  '
+    Object.assign(sep.style, { opacity: '0.6', margin: '0 4px' })
+    toast.appendChild(sep)
+    const det = document.createElement('span')
+    det.textContent = truncateText(detail, 50)
+    Object.assign(det.style, { fontWeight: '400', opacity: '0.9' })
+    toast.appendChild(det)
+  }
+  // Add animated arrow for audio prompts (↑ pointing to extension toolbar)
+  if (isAudioPrompt) {
+    const arrow = document.createElement('span')
+    arrow.className = 'gasoline-toast-arrow'
+    arrow.textContent = arrowChar
+    Object.assign(arrow.style, {
+      fontSize: '16px',
+      fontWeight: '700',
+      marginLeft: '12px',
+      display: 'inline-block'
+    })
+    toast.appendChild(arrow)
+  }
+  Object.assign(toast.style, {
+    position: 'fixed',
+    top: '16px',
+    right: isAudioPrompt ? '80px' : 'auto',
+    left: isAudioPrompt ? 'auto' : '50%',
+    transform: isAudioPrompt ? 'none' : 'translateX(-50%)',
+    padding: isAudioPrompt ? '12px 24px' : '8px 20px',
+    background: theme.bg,
+    color: '#fff',
+    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+    fontSize: isAudioPrompt ? '14px' : '13px',
+    fontWeight: isAudioPrompt ? '600' : '400',
+    borderRadius: '8px',
+    boxShadow: `0 4px 20px ${theme.shadow}`,
+    zIndex: '2147483647',
+    pointerEvents: 'none',
+    opacity: '0',
+    transition: 'opacity 0.2s ease-in',
+    maxWidth: isAudioPrompt ? '320px' : '500px',
+    whiteSpace: isAudioPrompt ? 'normal' : 'nowrap',
+    overflow: isAudioPrompt ? 'visible' : 'hidden',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '0',
+    '--toast-shadow': theme.shadow,
+    '--toast-shadow-intense': theme.shadow.replace('0.4)', '0.7)')
+  })
+  const target = document.body || document.documentElement
+  if (!target) return
+  target.appendChild(toast)
+  // Fade in
+  requestAnimationFrame(() => {
+    toast.style.opacity = '1'
+  })
+  // Fade out and remove
+  setTimeout(() => {
+    toast.style.opacity = '0'
+    setTimeout(() => toast.remove(), 300)
+  }, durationMs)
 }
 // Toggle state caches — updated by forwarded setting messages from background
-let actionToastsEnabled = true;
-let subtitlesEnabled = true;
+let actionToastsEnabled = true
+let subtitlesEnabled = true
+/** Active Escape key listener reference for subtitle dismiss */
+let subtitleEscapeHandler = null
+/** Fade out a DOM element and remove it after transition completes */
+// #lizard forgives
+function fadeOutAndRemove(elementId, delayMs) {
+  const el = document.getElementById(elementId)
+  if (!el) return
+  el.style.opacity = '0'
+  setTimeout(() => el.remove(), delayMs)
+}
+/** Detach the active Escape key listener if one exists */
+function detachEscapeListener() {
+  if (!subtitleEscapeHandler) return
+  document.removeEventListener('keydown', subtitleEscapeHandler)
+  subtitleEscapeHandler = null
+}
+/**
+ * Remove the subtitle element, clean up Escape listener.
+ */
+function clearSubtitle() {
+  fadeOutAndRemove('gasoline-subtitle', 200)
+  detachEscapeListener()
+}
 /**
  * Show or update a persistent subtitle bar at the bottom of the viewport.
- * Empty text clears the subtitle.
+ * Empty text clears the subtitle. Includes a hover close button and
+ * Escape key listener for dismissal.
  */
 function showSubtitle(text) {
-    const ELEMENT_ID = 'gasoline-subtitle';
-    if (!text) {
-        // Clear: remove existing element
-        const existing = document.getElementById(ELEMENT_ID);
-        if (existing) {
-            existing.style.opacity = '0';
-            setTimeout(() => existing.remove(), 200);
-        }
-        return;
+  const ELEMENT_ID = 'gasoline-subtitle'
+  const CLOSE_BTN_ID = 'gasoline-subtitle-close'
+  if (!text) {
+    clearSubtitle()
+    return
+  }
+  let bar = document.getElementById(ELEMENT_ID)
+  if (!bar) {
+    bar = document.createElement('div')
+    bar.id = ELEMENT_ID
+    Object.assign(bar.style, {
+      position: 'fixed',
+      bottom: '24px',
+      left: '50%',
+      transform: 'translateX(-50%)',
+      width: 'auto',
+      maxWidth: '80%',
+      padding: '12px 20px',
+      background: 'rgba(0, 0, 0, 0.85)',
+      color: '#fff',
+      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+      fontSize: '16px',
+      lineHeight: '1.4',
+      textAlign: 'center',
+      borderRadius: '4px',
+      zIndex: '2147483646',
+      pointerEvents: 'auto',
+      opacity: '0',
+      transition: 'opacity 0.2s ease-in',
+      maxHeight: '4.2em', // ~3 lines
+      overflow: 'hidden',
+      textOverflow: 'ellipsis',
+      boxSizing: 'border-box'
+    })
+    // Close button — visible only on hover over the subtitle bar
+    const closeBtn = document.createElement('button')
+    closeBtn.id = CLOSE_BTN_ID
+    closeBtn.textContent = '\u00d7' // multiplication sign (x)
+    Object.assign(closeBtn.style, {
+      position: 'absolute',
+      top: '-6px',
+      right: '-6px',
+      width: '16px',
+      height: '16px',
+      padding: '0',
+      margin: '0',
+      border: 'none',
+      borderRadius: '50%',
+      background: 'rgba(255, 255, 255, 0.25)',
+      color: '#fff',
+      fontSize: '12px',
+      lineHeight: '16px',
+      textAlign: 'center',
+      cursor: 'pointer',
+      pointerEvents: 'auto',
+      opacity: '0',
+      transition: 'opacity 0.15s ease-in',
+      fontFamily: 'sans-serif'
+    })
+    closeBtn.addEventListener('click', (e) => {
+      e.stopPropagation()
+      clearSubtitle()
+    })
+    bar.appendChild(closeBtn)
+    // Show close button on hover
+    bar.addEventListener('mouseenter', () => {
+      const btn = document.getElementById(CLOSE_BTN_ID)
+      if (btn) btn.style.opacity = '1'
+    })
+    bar.addEventListener('mouseleave', () => {
+      const btn = document.getElementById(CLOSE_BTN_ID)
+      if (btn) btn.style.opacity = '0'
+    })
+    const target = document.body || document.documentElement
+    if (!target) return
+    target.appendChild(bar)
+  }
+  // Update text content while preserving the close button
+  const closeBtn = document.getElementById(CLOSE_BTN_ID)
+  // Set text on bar, then re-append close button so it stays on top
+  bar.textContent = text
+  if (closeBtn) {
+    bar.appendChild(closeBtn)
+  }
+  // Register Escape key listener (replace any existing one)
+  if (subtitleEscapeHandler) {
+    document.removeEventListener('keydown', subtitleEscapeHandler)
+  }
+  subtitleEscapeHandler = (e) => {
+    if (e.key === 'Escape') {
+      clearSubtitle()
     }
-    let bar = document.getElementById(ELEMENT_ID);
-    if (!bar) {
-        bar = document.createElement('div');
-        bar.id = ELEMENT_ID;
-        Object.assign(bar.style, {
-            position: 'fixed',
-            bottom: '24px',
-            left: '50%',
-            transform: 'translateX(-50%)',
-            width: 'auto',
-            maxWidth: '80%',
-            padding: '12px 20px',
-            background: 'rgba(0, 0, 0, 0.85)',
-            color: '#fff',
-            fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-            fontSize: '16px',
-            lineHeight: '1.4',
-            textAlign: 'center',
-            borderRadius: '4px',
-            zIndex: '2147483646',
-            pointerEvents: 'none',
-            opacity: '0',
-            transition: 'opacity 0.2s ease-in',
-            maxHeight: '4.2em', // ~3 lines
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            boxSizing: 'border-box',
-        });
-        const target = document.body || document.documentElement;
-        if (!target)
-            return;
-        target.appendChild(bar);
-    }
-    bar.textContent = text;
-    // Force reflow so the browser registers opacity:0, then set to 1
-    // for the CSS transition. No timer needed — avoids rAF (paused in
-    // background tabs) and setTimeout (throttled to 1s in background tabs).
-    void bar.offsetHeight;
-    bar.style.opacity = '1';
+  }
+  document.addEventListener('keydown', subtitleEscapeHandler)
+  // Force reflow so the browser registers opacity:0, then set to 1
+  // for the CSS transition. No timer needed — avoids rAF (paused in
+  // background tabs) and setTimeout (throttled to 1s in background tabs).
+  void bar.offsetHeight
+  bar.style.opacity = '1'
 }
 /**
  * Show or hide a recording watermark (Gasoline flame icon) in the bottom-right corner.
  * The icon renders at 64x64px with 50% opacity, captured in the tab video.
  */
 function toggleRecordingWatermark(visible) {
-    const ELEMENT_ID = 'gasoline-recording-watermark';
-    if (!visible) {
-        const existing = document.getElementById(ELEMENT_ID);
-        if (existing) {
-            existing.style.opacity = '0';
-            setTimeout(() => existing.remove(), 300);
-        }
-        return;
+  const ELEMENT_ID = 'gasoline-recording-watermark'
+  if (!visible) {
+    const existing = document.getElementById(ELEMENT_ID)
+    if (existing) {
+      existing.style.opacity = '0'
+      setTimeout(() => existing.remove(), 300)
     }
-    // Don't create a duplicate
-    if (document.getElementById(ELEMENT_ID))
-        return;
-    const container = document.createElement('div');
-    container.id = ELEMENT_ID;
-    Object.assign(container.style, {
-        position: 'fixed',
-        bottom: '16px',
-        right: '16px',
-        width: '64px',
-        height: '64px',
-        opacity: '0',
-        transition: 'opacity 0.3s ease-in',
-        zIndex: '2147483645',
-        pointerEvents: 'none',
-    });
-    const img = document.createElement('img');
-    img.src = chrome.runtime.getURL('icons/icon.svg');
-    Object.assign(img.style, { width: '100%', height: '100%', opacity: '0.5' });
-    container.appendChild(img);
-    const target = document.body || document.documentElement;
-    if (!target)
-        return;
-    target.appendChild(container);
-    // Trigger reflow then fade in
-    void container.offsetHeight;
-    container.style.opacity = '1';
+    return
+  }
+  // Don't create a duplicate
+  if (document.getElementById(ELEMENT_ID)) return
+  const container = document.createElement('div')
+  container.id = ELEMENT_ID
+  Object.assign(container.style, {
+    position: 'fixed',
+    bottom: '16px',
+    right: '16px',
+    width: '64px',
+    height: '64px',
+    opacity: '0',
+    transition: 'opacity 0.3s ease-in',
+    zIndex: '2147483645',
+    pointerEvents: 'none'
+  })
+  const img = document.createElement('img')
+  img.src = chrome.runtime.getURL('icons/icon.svg')
+  Object.assign(img.style, { width: '100%', height: '100%', opacity: '0.5' })
+  container.appendChild(img)
+  const target = document.body || document.documentElement
+  if (!target) return
+  target.appendChild(container)
+  // Trigger reflow then fade in
+  void container.offsetHeight
+  container.style.opacity = '1'
 }
 /**
  * Initialize runtime message listener
  * Listens for messages from background (feature toggles and pilot commands)
  */
 export function initRuntimeMessageListener() {
-    // Load overlay toggle states from storage
-    chrome.storage.local.get(['actionToastsEnabled', 'subtitlesEnabled'], (result) => {
-        if (result.actionToastsEnabled !== undefined)
-            actionToastsEnabled = result.actionToastsEnabled;
-        if (result.subtitlesEnabled !== undefined)
-            subtitlesEnabled = result.subtitlesEnabled;
-    });
-    chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-        // SECURITY: Validate sender is from the extension background, not from page context
-        if (!isValidBackgroundSender(sender)) {
-            console.warn('[Gasoline] Rejected message from untrusted sender:', sender.id);
-            return false;
-        }
-        // Handle ping to check if content script is loaded
-        if (message.type === 'GASOLINE_PING') {
-            return handlePing(sendResponse);
-        }
-        // Show AI action toast overlay (gated by toggle)
-        if (message.type === 'GASOLINE_ACTION_TOAST') {
-            if (!actionToastsEnabled)
-                return false;
-            const msg = message;
-            if (msg.text)
-                showActionToast(msg.text, msg.detail, msg.state || 'trying', msg.duration_ms);
-            return false;
-        }
-        // Show/hide recording watermark overlay
-        if (message.type === 'GASOLINE_RECORDING_WATERMARK') {
-            const msg = message;
-            toggleRecordingWatermark(msg.visible ?? false);
-            return false;
-        }
-        // Show subtitle overlay (gated by toggle)
-        if (message.type === 'GASOLINE_SUBTITLE') {
-            if (!subtitlesEnabled)
-                return false;
-            const msg = message;
-            showSubtitle(msg.text ?? '');
-            return false;
-        }
-        // Handle overlay toggle updates from background
-        if (message.type === 'setActionToastsEnabled') {
-            actionToastsEnabled = message.enabled;
-            return false;
-        }
-        if (message.type === 'setSubtitlesEnabled') {
-            subtitlesEnabled = message.enabled;
-            return false;
-        }
-        // Handle toggle messages
-        handleToggleMessage(message);
-        // Handle GASOLINE_HIGHLIGHT from background
-        if (message.type === 'GASOLINE_HIGHLIGHT') {
-            forwardHighlightMessage(message)
-                .then((result) => {
-                sendResponse(result);
-            })
-                .catch((err) => {
-                sendResponse({ success: false, error: err.message });
-            });
-            return true; // Will respond asynchronously
-        }
-        // Handle state management commands from background
-        if (message.type === 'GASOLINE_MANAGE_STATE') {
-            // message.params contains action, state, include_url from the manage_state tool
-            // handleStateCommand accepts params with optional action (StateAction), name, state, include_url
-            handleStateCommand(message.params)
-                .then((result) => sendResponse(result))
-                .catch((err) => sendResponse({ error: err.message }));
-            return true; // Keep channel open for async response
-        }
-        // Handle GASOLINE_EXECUTE_JS from background (direct pilot command)
-        if (message.type === 'GASOLINE_EXECUTE_JS') {
-            const params = message.params || {};
-            return handleExecuteJs(params, sendResponse);
-        }
-        // Handle GASOLINE_EXECUTE_QUERY from background (polling system)
-        if (message.type === 'GASOLINE_EXECUTE_QUERY') {
-            return handleExecuteQuery(message.params || {}, sendResponse);
-        }
-        // Handle A11Y_QUERY from background (run accessibility audit in page context)
-        if (message.type === 'A11Y_QUERY') {
-            return handleA11yQuery(message.params || {}, sendResponse);
-        }
-        // Handle DOM_QUERY from background (execute CSS selector query in page context)
-        if (message.type === 'DOM_QUERY') {
-            return handleDomQuery(message.params || {}, sendResponse);
-        }
-        // Handle GET_NETWORK_WATERFALL from background (collect PerformanceResourceTiming data)
-        if (message.type === 'GET_NETWORK_WATERFALL') {
-            return handleGetNetworkWaterfall(sendResponse);
-        }
-        return undefined;
-    });
+  // Load overlay toggle states from storage
+  chrome.storage.local.get(['actionToastsEnabled', 'subtitlesEnabled'], (result) => {
+    if (result.actionToastsEnabled !== undefined) actionToastsEnabled = result.actionToastsEnabled
+    if (result.subtitlesEnabled !== undefined) subtitlesEnabled = result.subtitlesEnabled
+  })
+  const syncHandlers = {
+    GASOLINE_PING: () => {},
+    GASOLINE_ACTION_TOAST: (msg) => {
+      if (!actionToastsEnabled) return false
+      const m = msg
+      if (m.text) showActionToast(m.text, m.detail, m.state || 'trying', m.duration_ms)
+      return false
+    },
+    GASOLINE_RECORDING_WATERMARK: (msg) => {
+      toggleRecordingWatermark(msg.visible ?? false)
+      return false
+    },
+    GASOLINE_SUBTITLE: (msg) => {
+      if (!subtitlesEnabled) return false
+      showSubtitle(msg.text ?? '')
+      return false
+    },
+    setActionToastsEnabled: (msg) => {
+      actionToastsEnabled = msg.enabled
+      return false
+    },
+    setSubtitlesEnabled: (msg) => {
+      subtitlesEnabled = msg.enabled
+      return false
+    }
+  }
+  const delegatedHandlers = {
+    GASOLINE_DRAW_MODE_START: (msg, sr) => {
+      const m = msg
+      import(/* webpackIgnore: true */ chrome.runtime.getURL('content/draw-mode.js'))
+        .then((mod) => {
+          const result = mod.activateDrawMode(m.started_by || 'user', m.session_name || '', m.correlation_id || '')
+          sr(result)
+        })
+        .catch((e) => sr({ error: 'draw_mode_load_failed', message: e.message }))
+      return true
+    },
+    GASOLINE_DRAW_MODE_STOP: (_msg, sr) => {
+      import(/* webpackIgnore: true */ chrome.runtime.getURL('content/draw-mode.js'))
+        .then((mod) => {
+          const result = mod.deactivateAndSendResults?.() || mod.deactivateDrawMode?.()
+          sr(result || { status: 'stopped' })
+        })
+        .catch((e) => sr({ error: 'draw_mode_load_failed', message: e.message }))
+      return true
+    },
+    GASOLINE_GET_ANNOTATIONS: (_msg, sr) => {
+      import(/* webpackIgnore: true */ chrome.runtime.getURL('content/draw-mode.js'))
+        .then((mod) => {
+          sr({ draw_mode_active: mod.isDrawModeActive?.() ?? false })
+        })
+        .catch(() => sr({ draw_mode_active: false }))
+      return true
+    },
+    GASOLINE_HIGHLIGHT: (msg, sr) => {
+      forwardHighlightMessage(msg)
+        .then((r) => sr(r))
+        .catch((e) => sr({ success: false, error: e.message }))
+      return true
+    },
+    GASOLINE_MANAGE_STATE: (msg, sr) => {
+      handleStateCommand(msg.params)
+        .then((r) => sr(r))
+        .catch((e) => sr({ error: e.message }))
+      return true
+    },
+    GASOLINE_EXECUTE_JS: (msg, sr) => handleExecuteJs(msg.params || {}, sr),
+    GASOLINE_EXECUTE_QUERY: (msg, sr) => handleExecuteQuery(msg.params || {}, sr),
+    A11Y_QUERY: (msg, sr) => handleA11yQuery(msg.params || {}, sr),
+    DOM_QUERY: (msg, sr) => handleDomQuery(msg.params || {}, sr),
+    GET_NETWORK_WATERFALL: (_msg, sr) => handleGetNetworkWaterfall(sr),
+    LINK_HEALTH_QUERY: (msg, sr) => handleLinkHealthQuery(msg.params || {}, sr)
+  }
+  chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+    if (!isValidBackgroundSender(sender)) {
+      console.warn('[Gasoline] Rejected message from untrusted sender:', sender.id)
+      return false
+    }
+    // Ping is special: sync handler that needs sendResponse
+    if (message.type === 'GASOLINE_PING') return handlePing(sendResponse)
+    // Try sync handlers first
+    const syncHandler = syncHandlers[message.type] // nosemgrep: unsafe-dynamic-method
+    if (syncHandler) {
+      syncHandler(message)
+      return false
+    }
+    // Handle toggle messages (no dispatch needed, always runs)
+    handleToggleMessage(message)
+    // Try delegated handlers
+    const delegated = delegatedHandlers[message.type] // nosemgrep: unsafe-dynamic-method
+    if (delegated) return delegated(message, sendResponse)
+    return undefined
+  })
 }
 //# sourceMappingURL=runtime-message-listener.js.map

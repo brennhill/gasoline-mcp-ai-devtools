@@ -16,6 +16,7 @@ interface StorageResult {
   sourceMapEnabled?: boolean
   deferralEnabled?: boolean
   debugMode?: boolean
+  theme?: string
 }
 
 interface ExportResult {
@@ -34,12 +35,19 @@ interface ClearLogResponse {
  */
 export function loadOptions(): void {
   chrome.storage.local.get(
-    ['serverUrl', 'screenshotOnError', 'sourceMapEnabled', 'deferralEnabled', 'debugMode'],
+    ['serverUrl', 'screenshotOnError', 'sourceMapEnabled', 'deferralEnabled', 'debugMode', 'theme'],
     (result: StorageResult) => {
       // Set server URL
       const serverUrlInput = document.getElementById('server-url-input') as HTMLInputElement | null
       if (serverUrlInput) {
         serverUrlInput.value = result.serverUrl || DEFAULT_SERVER_URL
+      }
+
+      // Set theme toggle state (default: dark, toggle active = light)
+      const themeToggle = document.getElementById('theme-toggle')
+      if (result.theme === 'light') {
+        themeToggle?.classList.add('active')
+        document.body.classList.add('light-theme')
       }
 
       // Set screenshot toggle state
@@ -67,7 +75,7 @@ export function loadOptions(): void {
       if (result.debugMode) {
         debugToggle?.classList.add('active')
       }
-    },
+    }
   )
 }
 
@@ -79,6 +87,7 @@ export function loadOptions(): void {
  * Example: debugMode=true in storage enables logging immediately, AND background
  * updates its debugMode variable so new logs use the new setting.
  */
+// #lizard forgives
 export function saveOptions(): void {
   const serverUrlInput = document.getElementById('server-url-input') as HTMLInputElement | null
   const serverUrl = serverUrlInput?.value.trim() || DEFAULT_SERVER_URL
@@ -95,23 +104,29 @@ export function saveOptions(): void {
   const debugToggle = document.getElementById('debug-mode-toggle')
   const debugMode = debugToggle?.classList.contains('active') || false
 
-  chrome.storage.local.set({ serverUrl, screenshotOnError, sourceMapEnabled, deferralEnabled, debugMode }, () => {
-    // Show saved message
-    const message = document.getElementById('saved-message')
-    message?.classList.add('show')
+  const themeToggle = document.getElementById('theme-toggle')
+  const theme = themeToggle?.classList.contains('active') ? 'light' : 'dark'
 
-    // Notify background of changes so it can update its in-memory state
-    chrome.runtime.sendMessage({ type: 'setServerUrl', url: serverUrl })
-    chrome.runtime.sendMessage({ type: 'setScreenshotOnError', enabled: screenshotOnError })
-    chrome.runtime.sendMessage({ type: 'setSourceMapEnabled', enabled: sourceMapEnabled })
-    chrome.runtime.sendMessage({ type: 'setDeferralEnabled', enabled: deferralEnabled })
-    chrome.runtime.sendMessage({ type: 'setDebugMode', enabled: debugMode })
+  chrome.storage.local.set(
+    { serverUrl, screenshotOnError, sourceMapEnabled, deferralEnabled, debugMode, theme },
+    () => {
+      // Show saved message
+      const message = document.getElementById('saved-message')
+      message?.classList.add('show')
 
-    // Hide message after 2 seconds
-    setTimeout(() => {
-      message?.classList.remove('show')
-    }, 2000)
-  })
+      // Notify background of changes so it can update its in-memory state
+      chrome.runtime.sendMessage({ type: 'setServerUrl', url: serverUrl })
+      chrome.runtime.sendMessage({ type: 'setScreenshotOnError', enabled: screenshotOnError })
+      chrome.runtime.sendMessage({ type: 'setSourceMapEnabled', enabled: sourceMapEnabled })
+      chrome.runtime.sendMessage({ type: 'setDeferralEnabled', enabled: deferralEnabled })
+      chrome.runtime.sendMessage({ type: 'setDebugMode', enabled: debugMode })
+
+      // Hide message after 2 seconds
+      setTimeout(() => {
+        message?.classList.remove('show')
+      }, 2000)
+    }
+  )
 }
 
 /**
@@ -147,6 +162,15 @@ export function toggleDebugMode(): void {
 }
 
 /**
+ * Toggle theme between dark (default) and light
+ */
+export function toggleTheme(): void {
+  const toggle = document.getElementById('theme-toggle')
+  toggle?.classList.toggle('active')
+  document.body.classList.toggle('light-theme')
+}
+
+/**
  * Test connection to server
  */
 export async function testConnection(): Promise<void> {
@@ -168,7 +192,10 @@ export async function testConnection(): Promise<void> {
   }
 
   try {
-    const resp = await fetch(`${serverUrl}/health`, { signal: AbortSignal.timeout(3000) })
+    const resp = await fetch(`${serverUrl}/health`, {
+      signal: AbortSignal.timeout(3000),
+      headers: { 'X-Gasoline-Client': 'gasoline-extension' }
+    })
     if (!resp.ok) {
       throw new Error(`Failed to check server health at ${serverUrl}: HTTP ${resp.status} ${resp.statusText}`)
     }
@@ -272,6 +299,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
   const debugToggle = document.getElementById('debug-mode-toggle')
   debugToggle?.addEventListener('click', toggleDebugMode)
+
+  const themeToggle = document.getElementById('theme-toggle')
+  themeToggle?.addEventListener('click', toggleTheme)
 
   const testBtn = document.getElementById('test-connection-btn')
   testBtn?.addEventListener('click', testConnection)

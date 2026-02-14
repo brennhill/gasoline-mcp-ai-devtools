@@ -447,6 +447,227 @@ func TestRichAction_CommandResultIncludesTimingMs(t *testing.T) {
 }
 
 // ============================================
+// Bug reproduction: rAF hang → missing dom_summary
+// ============================================
+
+// TestRichAction_CompactClickMissingDomSummary_WhenExtensionHangs demonstrates
+// the downstream impact of the rAF hang bug in dom-primitives.ts.
+// When the extension's withMutationTracking Promise never resolves, the command
+// expires and neither timing_ms nor dom_summary are available.
+// This is exactly what smoke test 9.2 observes: "timeout waiting for click".
+func TestRichAction_CompactClickMissingDomSummary_WhenExtensionHangs(t *testing.T) {
+	env := newInteractTestEnv(t)
+	env.capture.SetPilotEnabled(true)
+
+	// Queue a click command
+	result, ok := env.callInteract(t, `{"action":"click","selector":"#btn"}`)
+	if !ok || result.IsError {
+		t.Fatal("click should succeed with pilot enabled")
+	}
+
+	pq := env.capture.GetLastPendingQuery()
+	corrID := pq.CorrelationID
+
+	// BUG SCENARIO: Extension never responds because withMutationTracking
+	// is stuck waiting for requestAnimationFrame in a backgrounded tab.
+	// Simulate this by expiring the command (no CompleteCommand call).
+	env.capture.ExpireCommand(corrID)
+
+	// Observe the expired command
+	req := JSONRPCRequest{JSONRPC: "2.0", ID: 2}
+	args := json.RawMessage(`{"correlation_id":"` + corrID + `"}`)
+	resp := env.handler.toolObserveCommandResult(req, args)
+
+	var observeResult MCPToolResult
+	if err := json.Unmarshal(resp.Result, &observeResult); err != nil {
+		t.Fatalf("Failed to parse result: %v", err)
+	}
+
+	// The command expired — IsError should be true
+	if !observeResult.IsError {
+		t.Error("Expired command (rAF hang) MUST set IsError=true")
+	}
+
+	text := observeResult.Content[0].Text
+
+	// KEY ASSERTION: timing_ms and dom_summary are both missing
+	// This is exactly what smoke test 9.2 observes as NO_JSON/timeout
+	if strings.Contains(text, "timing_ms") {
+		t.Error("Expired command should NOT contain timing_ms — extension never completed")
+	}
+	if strings.Contains(text, "dom_summary") {
+		t.Error("Expired command should NOT contain dom_summary — extension never completed")
+	}
+}
+
+// TestRichAction_CompactClickHasDomSummary_WhenExtensionResponds verifies that
+// when the extension DOES respond with dom_summary (rAF works), it passes through.
+// This test passes today — the Go server correctly passes through extension fields.
+// It exists to confirm the server isn't the problem.
+func TestRichAction_CompactClickHasDomSummary_WhenExtensionResponds(t *testing.T) {
+	env := newInteractTestEnv(t)
+	env.capture.SetPilotEnabled(true)
+
+	// Click without analyze:true (compact mode)
+	result, _ := env.callInteract(t, `{"action":"click","selector":"#btn"}`)
+	var resultData map[string]any
+	_ = json.Unmarshal([]byte(extractJSON(result.Content[0].Text)), &resultData)
+	corrID := resultData["correlation_id"].(string)
+
+	// Simulate extension responding WITH dom_summary (compact mode, no analyze)
+	extensionResult := json.RawMessage(`{
+		"success": true,
+		"action": "click",
+		"selector": "#btn",
+		"dom_summary": "1 added"
+	}`)
+	env.capture.CompleteCommand(corrID, extensionResult, "")
+
+	// Observe command_result
+	req := JSONRPCRequest{JSONRPC: "2.0", ID: 2}
+	args := json.RawMessage(`{"correlation_id":"` + corrID + `"}`)
+	resp := env.handler.toolObserveCommandResult(req, args)
+
+	var observeResult MCPToolResult
+	_ = json.Unmarshal(resp.Result, &observeResult)
+
+	var responseData map[string]any
+	if err := json.Unmarshal([]byte(extractJSON(observeResult.Content[0].Text)), &responseData); err != nil {
+		t.Fatalf("Failed to parse response JSON: %v", err)
+	}
+
+	// timing_ms should be at the top level (Go server adds this)
+	if _, exists := responseData["timing_ms"]; !exists {
+		t.Error("timing_ms should be present at top level (added by Go server)")
+	}
+
+	// dom_summary should be inside result (extension provides this)
+	extResult, ok := responseData["result"].(map[string]any)
+	if !ok {
+		t.Fatal("response should contain 'result' object")
+	}
+
+	domSummary, exists := extResult["dom_summary"]
+	if !exists {
+		t.Fatal("dom_summary should pass through from extension to command result")
+	}
+	if domSummary != "1 added" {
+		t.Errorf("dom_summary = %q, want '1 added'", domSummary)
+	}
+}
+
+// ============================================
+// Top-level surfacing: timing, dom_changes, analysis
+// ============================================
+
+func TestRichAction_AnalyzeFieldsSurfacedTopLevel(t *testing.T) {
+	env := newInteractTestEnv(t)
+	env.capture.SetPilotEnabled(true)
+
+	// Click with analyze:true
+	result, _ := env.callInteract(t, `{"action":"click","selector":"#btn","analyze":true}`)
+	var resultData map[string]any
+	_ = json.Unmarshal([]byte(extractJSON(result.Content[0].Text)), &resultData)
+	corrID := resultData["correlation_id"].(string)
+
+	// Simulate extension result with analyze enrichment fields
+	extensionResult := json.RawMessage(`{
+		"success": true,
+		"action": "click",
+		"timing": {"total_ms": 55, "js_blocking_ms": 12, "render_ms": 8},
+		"dom_changes": {"added": 3, "removed": 0, "modified": 1, "summary": "3 added, 1 modified"},
+		"analysis": "click completed in 55ms. 3 added, 1 modified."
+	}`)
+	env.capture.CompleteCommand(corrID, extensionResult, "")
+
+	// Observe command_result
+	req := JSONRPCRequest{JSONRPC: "2.0", ID: 2}
+	args := json.RawMessage(`{"correlation_id":"` + corrID + `"}`)
+	resp := env.handler.toolObserveCommandResult(req, args)
+
+	var observeResult MCPToolResult
+	_ = json.Unmarshal(resp.Result, &observeResult)
+
+	var responseData map[string]any
+	if err := json.Unmarshal([]byte(extractJSON(observeResult.Content[0].Text)), &responseData); err != nil {
+		t.Fatalf("Failed to parse response JSON: %v", err)
+	}
+
+	// timing must be surfaced at top level
+	timing, ok := responseData["timing"].(map[string]any)
+	if !ok {
+		t.Fatal("timing must be surfaced at top level of command_result response")
+	}
+	if totalMs, _ := timing["total_ms"].(float64); totalMs != 55 {
+		t.Errorf("timing.total_ms = %v, want 55", totalMs)
+	}
+
+	// dom_changes must be surfaced at top level
+	domChanges, ok := responseData["dom_changes"].(map[string]any)
+	if !ok {
+		t.Fatal("dom_changes must be surfaced at top level of command_result response")
+	}
+	if domChanges["summary"] != "3 added, 1 modified" {
+		t.Errorf("dom_changes.summary = %v, want '3 added, 1 modified'", domChanges["summary"])
+	}
+
+	// analysis must be surfaced at top level
+	analysis, ok := responseData["analysis"].(string)
+	if !ok || analysis == "" {
+		t.Fatal("analysis must be surfaced at top level of command_result response")
+	}
+	if !strings.Contains(analysis, "55ms") {
+		t.Errorf("analysis = %q, should mention 55ms", analysis)
+	}
+
+	// Fields must also still be in result (passthrough preserved)
+	extResult, ok := responseData["result"].(map[string]any)
+	if !ok {
+		t.Fatal("result envelope must still exist")
+	}
+	if _, exists := extResult["timing"]; !exists {
+		t.Error("timing must also remain inside result (passthrough)")
+	}
+}
+
+func TestRichAction_NoAnalyzeFieldsWhenAbsent(t *testing.T) {
+	env := newInteractTestEnv(t)
+	env.capture.SetPilotEnabled(true)
+
+	result, _ := env.callInteract(t, `{"action":"click","selector":"#btn"}`)
+	var resultData map[string]any
+	_ = json.Unmarshal([]byte(extractJSON(result.Content[0].Text)), &resultData)
+	corrID := resultData["correlation_id"].(string)
+
+	// Extension result WITHOUT analyze fields (compact mode)
+	extensionResult := json.RawMessage(`{"success": true, "action": "click", "dom_summary": "1 added"}`)
+	env.capture.CompleteCommand(corrID, extensionResult, "")
+
+	req := JSONRPCRequest{JSONRPC: "2.0", ID: 2}
+	args := json.RawMessage(`{"correlation_id":"` + corrID + `"}`)
+	resp := env.handler.toolObserveCommandResult(req, args)
+
+	var observeResult MCPToolResult
+	_ = json.Unmarshal(resp.Result, &observeResult)
+
+	var responseData map[string]any
+	if err := json.Unmarshal([]byte(extractJSON(observeResult.Content[0].Text)), &responseData); err != nil {
+		t.Fatalf("Failed to parse response JSON: %v", err)
+	}
+
+	// None of the analyze fields should be at top level
+	if _, exists := responseData["timing"]; exists {
+		t.Error("timing should NOT be at top level when extension doesn't provide it")
+	}
+	if _, exists := responseData["dom_changes"]; exists {
+		t.Error("dom_changes should NOT be at top level when extension doesn't provide it")
+	}
+	if _, exists := responseData["analysis"]; exists {
+		t.Error("analysis should NOT be at top level when extension doesn't provide it")
+	}
+}
+
+// ============================================
 // Command result passthrough: dom_summary, analyze fields
 // ============================================
 
@@ -626,5 +847,263 @@ func TestRichAction_PerfDiffWithFullWebVitals(t *testing.T) {
 	// Verdict must be "improved"
 	if diffMap["verdict"] != "improved" {
 		t.Errorf("verdict = %q, want 'improved'", diffMap["verdict"])
+	}
+}
+
+// ============================================
+// Failed command visibility: IsError signaling
+// ============================================
+
+func TestCommandResult_ExpiredSetsIsError(t *testing.T) {
+	env := newInteractTestEnv(t)
+	env.capture.SetPilotEnabled(true)
+
+	// Queue a command
+	result, ok := env.callInteract(t, `{"action":"click","selector":"#btn"}`)
+	if !ok || result.IsError {
+		t.Fatal("click should succeed")
+	}
+
+	pq := env.capture.GetLastPendingQuery()
+	corrID := pq.CorrelationID
+
+	// Simulate expiry — extension never responded
+	env.capture.ExpireCommand(corrID)
+
+	// Observe the expired command
+	req := JSONRPCRequest{JSONRPC: "2.0", ID: 2}
+	args := json.RawMessage(`{"correlation_id":"` + corrID + `"}`)
+	resp := env.handler.toolObserveCommandResult(req, args)
+
+	var observeResult MCPToolResult
+	if err := json.Unmarshal(resp.Result, &observeResult); err != nil {
+		t.Fatalf("Failed to parse result: %v", err)
+	}
+
+	if !observeResult.IsError {
+		t.Error("Expired command MUST set IsError=true so LLMs recognize failure")
+	}
+
+	text := observeResult.Content[0].Text
+	if !strings.Contains(text, "extension_timeout") {
+		t.Errorf("Expired command should include error code 'extension_timeout', got: %s", text)
+	}
+	if !strings.Contains(text, "retry") {
+		t.Errorf("Expired command should include retry instructions, got: %s", text)
+	}
+}
+
+func TestCommandResult_CompleteWithErrorSetsIsError(t *testing.T) {
+	env := newInteractTestEnv(t)
+	env.capture.SetPilotEnabled(true)
+
+	// Queue a command
+	result, ok := env.callInteract(t, `{"action":"click","selector":"#btn"}`)
+	if !ok || result.IsError {
+		t.Fatal("click should succeed")
+	}
+
+	pq := env.capture.GetLastPendingQuery()
+	corrID := pq.CorrelationID
+
+	// Simulate extension completing with an error
+	env.capture.CompleteCommand(corrID, json.RawMessage(`null`), "Element not found: #btn")
+
+	// Observe the failed command
+	req := JSONRPCRequest{JSONRPC: "2.0", ID: 2}
+	args := json.RawMessage(`{"correlation_id":"` + corrID + `"}`)
+	resp := env.handler.toolObserveCommandResult(req, args)
+
+	var observeResult MCPToolResult
+	if err := json.Unmarshal(resp.Result, &observeResult); err != nil {
+		t.Fatalf("Failed to parse result: %v", err)
+	}
+
+	if !observeResult.IsError {
+		t.Error("Command completed with error MUST set IsError=true so LLMs recognize failure")
+	}
+
+	text := observeResult.Content[0].Text
+	if !strings.Contains(text, "FAILED") {
+		t.Errorf("Failed command summary should include 'FAILED', got: %s", text)
+	}
+	if !strings.Contains(text, "Element not found") {
+		t.Errorf("Failed command should include error message, got: %s", text)
+	}
+}
+
+func TestCommandResult_SuccessDoesNotSetIsError(t *testing.T) {
+	env := newInteractTestEnv(t)
+	env.capture.SetPilotEnabled(true)
+
+	// Queue a command
+	result, ok := env.callInteract(t, `{"action":"click","selector":"#btn"}`)
+	if !ok || result.IsError {
+		t.Fatal("click should succeed")
+	}
+
+	pq := env.capture.GetLastPendingQuery()
+	corrID := pq.CorrelationID
+
+	// Simulate successful completion
+	env.capture.CompleteCommand(corrID, json.RawMessage(`{"success":true}`), "")
+
+	// Observe the successful command
+	req := JSONRPCRequest{JSONRPC: "2.0", ID: 2}
+	args := json.RawMessage(`{"correlation_id":"` + corrID + `"}`)
+	resp := env.handler.toolObserveCommandResult(req, args)
+
+	var observeResult MCPToolResult
+	if err := json.Unmarshal(resp.Result, &observeResult); err != nil {
+		t.Fatalf("Failed to parse result: %v", err)
+	}
+
+	if observeResult.IsError {
+		t.Error("Successful command should NOT set IsError")
+	}
+
+	text := observeResult.Content[0].Text
+	if strings.Contains(text, "FAILED") {
+		t.Errorf("Successful command should not contain 'FAILED', got: %s", text)
+	}
+}
+
+func TestCommandResult_ExpiredIncludesDiagnosticHint(t *testing.T) {
+	env := newInteractTestEnv(t)
+	env.capture.SetPilotEnabled(true)
+
+	result, ok := env.callInteract(t, `{"action":"click","selector":"#btn"}`)
+	if !ok || result.IsError {
+		t.Fatal("click should succeed")
+	}
+
+	pq := env.capture.GetLastPendingQuery()
+	corrID := pq.CorrelationID
+	env.capture.ExpireCommand(corrID)
+
+	req := JSONRPCRequest{JSONRPC: "2.0", ID: 2}
+	args := json.RawMessage(`{"correlation_id":"` + corrID + `"}`)
+	resp := env.handler.toolObserveCommandResult(req, args)
+
+	var observeResult MCPToolResult
+	if err := json.Unmarshal(resp.Result, &observeResult); err != nil {
+		t.Fatalf("Failed to parse result: %v", err)
+	}
+
+	text := observeResult.Content[0].Text
+
+	// Diagnostic hint must include pilot and tracking state
+	if !strings.Contains(text, "pilot=") {
+		t.Errorf("Error response must include pilot status in diagnostic hint, got: %s", text)
+	}
+	if !strings.Contains(text, "tracked_tab=") {
+		t.Errorf("Error response must include tracking status in diagnostic hint, got: %s", text)
+	}
+}
+
+// ============================================
+// Subtitle: correlation_id contract
+// ============================================
+// handleSubtitle() creates a PendingQuery with a correlationID but never
+// returns it in the MCP response. This makes it impossible for callers to
+// poll observe(command_result) for completion, causing race conditions in
+// smoke tests (test 11.1: "Subtitle still visible after clear").
+
+func TestSubtitle_SetResponse_HasCorrelationID(t *testing.T) {
+	t.Parallel()
+	env := newInteractTestEnv(t)
+
+	result, ok := env.callInteract(t, `{"action":"subtitle","text":"hello world"}`)
+	if !ok {
+		t.Fatal("subtitle set should return a result")
+	}
+	if result.IsError {
+		t.Fatal("subtitle set should not be an error")
+	}
+	if len(result.Content) == 0 {
+		t.Fatal("No content in result")
+	}
+
+	text := result.Content[0].Text
+	if !strings.Contains(text, "correlation_id") {
+		t.Errorf("Subtitle SET response must contain correlation_id so callers can poll for completion.\n"+
+			"Without it, callers cannot wait for the extension to process the command.\n"+
+			"Every other async handler (click, navigate, execute_js, highlight) returns correlation_id.\n"+
+			"Got: %s", text)
+	}
+	if !strings.Contains(text, "subtitle_") {
+		t.Errorf("Subtitle correlation_id should have subtitle_ prefix. Got: %s", text)
+	}
+}
+
+func TestSubtitle_ClearResponse_HasCorrelationID(t *testing.T) {
+	t.Parallel()
+	env := newInteractTestEnv(t)
+
+	result, ok := env.callInteract(t, `{"action":"subtitle","text":""}`)
+	if !ok {
+		t.Fatal("subtitle clear should return a result")
+	}
+	if result.IsError {
+		t.Fatal("subtitle clear should not be an error")
+	}
+	if len(result.Content) == 0 {
+		t.Fatal("No content in result")
+	}
+
+	text := result.Content[0].Text
+	if !strings.Contains(text, "correlation_id") {
+		t.Errorf("Subtitle CLEAR response must contain correlation_id so callers can poll for completion.\n"+
+			"Without it, the smoke test's interact_and_wait returns immediately and checks DOM\n"+
+			"before the extension has processed the clear — causing 'still visible after clear'.\n"+
+			"Got: %s", text)
+	}
+}
+
+func TestSubtitle_CorrelationID_MatchesPendingQuery(t *testing.T) {
+	t.Parallel()
+	env := newInteractTestEnv(t)
+
+	result, ok := env.callInteract(t, `{"action":"subtitle","text":"test"}`)
+	if !ok || result.IsError {
+		t.Fatal("subtitle should succeed")
+	}
+
+	// The PendingQuery IS created with a correlationID
+	pq := env.capture.GetLastPendingQuery()
+	if pq == nil {
+		t.Fatal("No pending query created for subtitle")
+	}
+	if pq.CorrelationID == "" {
+		t.Fatal("PendingQuery has empty correlationID")
+	}
+
+	// But the MCP response must also contain it
+	text := result.Content[0].Text
+	if !strings.Contains(text, pq.CorrelationID) {
+		t.Errorf("MCP response must contain the same correlation_id as the PendingQuery.\n"+
+			"PendingQuery has: %s\n"+
+			"Response text: %s", pq.CorrelationID, text)
+	}
+}
+
+func TestCommandResult_PilotDisabledIncludesDiagnosticHint(t *testing.T) {
+	env := newInteractTestEnv(t)
+	// Pilot is disabled by default in test env
+
+	result, ok := env.callInteract(t, `{"action":"click","selector":"#btn"}`)
+	if !ok {
+		t.Fatal("should return result")
+	}
+	if !result.IsError {
+		t.Fatal("pilot disabled should return error")
+	}
+
+	text := result.Content[0].Text
+	if !strings.Contains(text, "pilot=DISABLED") {
+		t.Errorf("pilot_disabled error must include 'pilot=DISABLED' in hint, got: %s", text)
+	}
+	if !strings.Contains(text, "tracked_tab=") {
+		t.Errorf("pilot_disabled error must include tracking status in hint, got: %s", text)
 	}
 }

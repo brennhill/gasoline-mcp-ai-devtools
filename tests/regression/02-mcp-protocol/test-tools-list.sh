@@ -95,4 +95,4 @@ run_test "Has 'generate' tool" test_has_generate_tool || ((FAILED++))
 run_test "Has 'interact' tool" test_has_interact_tool || ((FAILED++))
 run_test "All tools have inputSchema" test_tools_have_schema || ((FAILED++))
 
-exit $FAILED
+exit "$FAILED"

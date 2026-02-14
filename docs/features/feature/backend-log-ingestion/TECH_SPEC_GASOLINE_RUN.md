@@ -494,7 +494,7 @@ Pending read files:  buffer.001.jsonl       (Goroutine 3 reads & deletes)
                      buffer.003.jsonl
 ```
 
-**Writer (Goroutine 2):**
+##### Writer (Goroutine 2):
 1. Write events to `buffer.active.jsonl`
 2. Periodically check file size
 3. When file reaches 100MB (or every 10 seconds):
@@ -503,7 +503,7 @@ Pending read files:  buffer.001.jsonl       (Goroutine 3 reads & deletes)
    - Open new `buffer.active.jsonl`
 4. On shutdown: Rename active to pending sequence
 
-**Reader (Goroutine 3):**
+##### Reader (Goroutine 3):
 1. List all `buffer.NNN.jsonl` files (not `.active`)
 2. Read from lowest sequence number first
 3. Parse up to 10K lines
@@ -517,7 +517,7 @@ Pending read files:  buffer.001.jsonl       (Goroutine 3 reads & deletes)
 - **TTL per event:** 24 hours (delete older events)
 - **On startup:** Check if buffer files exist from previous run, send first
 
-**Cleanup:**
+##### Cleanup:
 1. If total buffer size > 1GB: Delete oldest sequence files until under 1GB
 2. Periodic cleanup: Every 60 seconds, delete events older than 24 hours
 3. On success POST: Immediately delete read file
@@ -537,7 +537,7 @@ t=20s:  buffer.active.jsonl (100MB) → rename to buffer.002.jsonl
 
 #### Race Condition Prevention (Two-Phase Commit)
 
-**Critical Race Window:**
+##### Critical Race Window:
 
 When Goroutine 2 (writer) rotates `buffer.active.jsonl` → `buffer.NNN.jsonl`, Goroutine 3 (reader) might begin reading that file mid-rotation, causing:
 
@@ -591,14 +591,14 @@ if batch.len() > 0 {
 }
 ```
 
-**Why This Works:**
+###### Why This Works:
 
 - Rename is atomic on POSIX: file either renamed or not, no half-state
 - 1-second stability check: ensures rename is complete before reader touches
 - File descriptor independence: writer has own fd, reader has own fd
 - Atomic delete: reader either deletes file or doesn't, no corruption
 
-**Inode Tracking (Extra Protection):**
+###### Inode Tracking (Extra Protection):
 
 ```go
 type RotatedFile struct {
@@ -615,7 +615,7 @@ if stat, _ := os.Stat(file.Path); getInode(stat) != file.Inode {
 }
 ```
 
-**Test Cases for Race Conditions:**
+###### Test Cases for Race Conditions:
 
 1. Reader blocks on first file, writer creates 10 more files → verify reader processes in order
 2. Writer rotates every 10ms, reader processes 100-line batches → verify no duplicates/skips
@@ -634,7 +634,7 @@ if stat, _ := os.Stat(file.Path); getInode(stat) != file.Inode {
 - **Disk acts as secondary limiter** — If daemon is offline, disk buffers up to 1GB
 - **No drop policy** — All lines are preserved. Queue size is the limit, not memory.
 
-**Failure Mode Handling:**
+#### Failure Mode Handling:
 
 | Scenario | Behavior |
 | --- | --- |
@@ -658,7 +658,7 @@ if stat, _ := os.Stat(file.Path); getInode(stat) != file.Inode {
 
 ### HTTP Endpoint: POST /events (Batch)
 
-**Request:**
+#### Request:
 ```
 POST http://localhost:7890/events
 Content-Type: application/json
@@ -690,7 +690,7 @@ Content-Type: application/json
 }
 ```
 
-**Response:**
+#### Response:
 ```
 200 OK
 {

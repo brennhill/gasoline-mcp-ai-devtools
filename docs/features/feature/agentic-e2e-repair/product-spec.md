@@ -146,26 +146,26 @@ The agent classifies each failure into one of five root cause categories. Each c
 
 ### Category 1: Selector Drift
 
-**Diagnostic signals:**
+#### Diagnostic signals:
 - Test fails with "element not found" or "locator timeout"
 - `query_dom` with the test's selector returns empty
 - `query_dom` with a relaxed selector (text content, role, partial class) finds a matching element
 - `observe({ what: "changes" })` shows DOM structure changed recently
 
-**Fix strategy:**
+#### Fix strategy:
 - Update the selector to match the current DOM structure
 - Prefer stable selectors: `data-testid`, ARIA roles, text content over CSS classes or XPath
 - If the element was removed (not renamed), escalate as a true regression
 
 ### Category 2: API Contract Drift
 
-**Diagnostic signals:**
+#### Diagnostic signals:
 - Test assertions on response body fields fail
 - `observe({ what: "network_bodies" })` shows the actual response has different field names or structure
 - `configure({ action: "validate_api", operation: "analyze" })` reports `shape_change`, `type_change`, or `new_field` violations
 - `observe({ what: "api" })` shows the inferred schema differs from the test's expectations
 
-**Fix strategy:**
+#### Fix strategy:
 - Update test assertions to match the new API shape
 - Update test mocks/fixtures to return the new shape
 - If both test and application code reference the old shape, prefer updating the test to match observed reality (the browser works; the test is wrong)
@@ -173,39 +173,39 @@ The agent classifies each failure into one of five root cause categories. Each c
 
 ### Category 3: Timing Fragility
 
-**Diagnostic signals:**
+#### Diagnostic signals:
 - Test fails intermittently (passes on retry)
 - `observe({ what: "network_waterfall" })` shows slow responses overlapping with the test's action
 - The test uses hard-coded waits or no waits at all
 - `observe({ what: "errors" })` shows errors related to incomplete loading ("Cannot read property of null" on data that should exist)
 
-**Fix strategy:**
+#### Fix strategy:
 - Add explicit wait conditions (`waitForResponse`, `waitForSelector`, `waitForLoadState`)
 - Replace hard-coded `setTimeout` with condition-based waits
 - Add retry logic for flaky network conditions
 
 ### Category 4: Mock/Fixture Staleness
 
-**Diagnostic signals:**
+#### Diagnostic signals:
 - Test mocks return data that does not match the actual API shape
 - `observe({ what: "network_bodies" })` shows real responses differ from mock data
 - `configure({ action: "validate_api" })` shows discrepancies between learned schema and test expectations
 - The test passes with mocks but fails against the real backend
 
-**Fix strategy:**
+#### Fix strategy:
 - Update mock data to match the current API response shape
 - Update fixture files with the correct field names, types, and structures
 - If the test suite uses a shared mock factory, update the factory rather than individual mocks
 
 ### Category 5: True Regression
 
-**Diagnostic signals:**
+#### Diagnostic signals:
 - The test's assertions match the documented API contract, but the application behavior changed
 - `observe({ what: "errors" })` shows application-level errors (not test errors)
 - `observe({ what: "error_clusters" })` shows a new cluster that did not exist in the last known-good run
 - The failure correlates with a recent code change (not a test change)
 
-**Fix strategy:**
+#### Fix strategy:
 - Do NOT fix the test. The test is correctly detecting a regression.
 - Report the regression with full diagnostic evidence: error cluster, network diff, DOM state
 - Generate a reproduction script via `generate({ type: "reproduction" })`

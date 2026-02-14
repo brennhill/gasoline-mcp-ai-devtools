@@ -1,2 +1,36 @@
-"use strict";(()=>{(function(){"use strict";if(typeof window>"u"||!window.WebSocket||window.__GASOLINE_ORIGINAL_WS__)return;let n=window.WebSocket;window.__GASOLINE_ORIGINAL_WS__=n;let o=[];window.__GASOLINE_EARLY_WS__=o;function e(i,s){let t=s!==void 0?new n(i,s):new n(i),r={ws:t,url:i.toString(),createdAt:Date.now(),events:[]};return t.addEventListener("open",()=>{r.events.push({type:"open",ts:Date.now()})}),t.addEventListener("close",a=>{r.events.push({type:"close",ts:Date.now(),code:a.code,reason:a.reason})}),t.addEventListener("error",()=>{r.events.push({type:"error",ts:Date.now()})}),o.push(r),o.length>50&&o.shift(),t}e.prototype=n.prototype,Object.defineProperty(e,"CONNECTING",{value:0,writable:!1}),Object.defineProperty(e,"OPEN",{value:1,writable:!1}),Object.defineProperty(e,"CLOSING",{value:2,writable:!1}),Object.defineProperty(e,"CLOSED",{value:3,writable:!1}),window.WebSocket=e})();})();
+'use strict'
+;(() => {
+  ;(function () {
+    'use strict'
+    if (typeof window > 'u' || !window.WebSocket || window.__GASOLINE_ORIGINAL_WS__) return
+    let n = window.WebSocket
+    window.__GASOLINE_ORIGINAL_WS__ = n
+    let o = []
+    window.__GASOLINE_EARLY_WS__ = o
+    function e(i, s) {
+      let t = s !== void 0 ? new n(i, s) : new n(i),
+        r = { ws: t, url: i.toString(), createdAt: Date.now(), events: [] }
+      return (
+        t.addEventListener('open', () => {
+          r.events.push({ type: 'open', ts: Date.now() })
+        }),
+        t.addEventListener('close', (a) => {
+          r.events.push({ type: 'close', ts: Date.now(), code: a.code, reason: a.reason })
+        }),
+        t.addEventListener('error', () => {
+          r.events.push({ type: 'error', ts: Date.now() })
+        }),
+        o.push(r),
+        o.length > 50 && o.shift(),
+        t
+      )
+    }
+    ;((e.prototype = n.prototype),
+      Object.defineProperty(e, 'CONNECTING', { value: 0, writable: !1 }),
+      Object.defineProperty(e, 'OPEN', { value: 1, writable: !1 }),
+      Object.defineProperty(e, 'CLOSING', { value: 2, writable: !1 }),
+      Object.defineProperty(e, 'CLOSED', { value: 3, writable: !1 }),
+      (window.WebSocket = e))
+  })()
+})()
 //# sourceMappingURL=early-patch.bundled.js.map

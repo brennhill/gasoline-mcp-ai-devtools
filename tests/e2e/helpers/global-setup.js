@@ -16,7 +16,7 @@ export default async function globalSetup() {
   console.log('[e2e] Building Go server binary...')
   execSync('make dev', {
     cwd: projectRoot,
-    stdio: 'pipe',
+    stdio: 'pipe'
   })
 
   if (!fs.existsSync(binaryPath)) {

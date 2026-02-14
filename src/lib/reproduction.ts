@@ -9,7 +9,7 @@ import {
   CSS_PATH_MAX_DEPTH,
   SELECTOR_TEXT_MAX_LENGTH,
   SCRIPT_MAX_SIZE,
-  CLICKABLE_TAGS,
+  CLICKABLE_TAGS
 } from './constants.js'
 import { isSensitiveInput } from './serialize.js'
 
@@ -38,14 +38,14 @@ interface EnhancedActionRecord {
   timestamp: number
   url: string
   selectors?: SelectorStrategies
-  inputType?: string
+  input_type?: string
   value?: string
   key?: string
-  fromUrl?: string
-  toUrl?: string
-  selectedValue?: string
-  selectedText?: string
-  scrollY?: number
+  from_url?: string
+  to_url?: string
+  selected_value?: string
+  selected_text?: string
+  scroll_y?: number
 }
 
 // Script generation options
@@ -67,56 +67,45 @@ let enhancedActionBuffer: EnhancedActionRecord[] = []
 /**
  * Get the implicit ARIA role for an element
  */
+const TAG_TO_ROLE: Record<string, string> = {
+  button: 'button',
+  textarea: 'textbox',
+  select: 'combobox',
+  nav: 'navigation',
+  main: 'main',
+  header: 'banner',
+  footer: 'contentinfo'
+}
+
+const INPUT_TYPE_TO_ROLE: Record<string, string> = {
+  text: 'textbox',
+  email: 'textbox',
+  password: 'textbox',
+  tel: 'textbox',
+  url: 'textbox',
+  checkbox: 'checkbox',
+  radio: 'radio',
+  search: 'searchbox',
+  number: 'spinbutton',
+  range: 'slider'
+}
+
 export function getImplicitRole(element: Element | null): string | null {
   if (!element || !element.tagName) return null
 
   const tag = element.tagName.toLowerCase()
   const el = element as ElementWithProperties
-  const type = el.getAttribute ? el.getAttribute('type') : null
 
-  switch (tag) {
-    case 'button':
-      return 'button'
-    case 'a':
-      return el.getAttribute && el.getAttribute('href') !== null ? 'link' : null
-    case 'textarea':
-      return 'textbox'
-    case 'select':
-      return 'combobox'
-    case 'nav':
-      return 'navigation'
-    case 'main':
-      return 'main'
-    case 'header':
-      return 'banner'
-    case 'footer':
-      return 'contentinfo'
-    case 'input': {
-      const inputType = type || 'text'
-      switch (inputType) {
-        case 'text':
-        case 'email':
-        case 'password':
-        case 'tel':
-        case 'url':
-          return 'textbox'
-        case 'checkbox':
-          return 'checkbox'
-        case 'radio':
-          return 'radio'
-        case 'search':
-          return 'searchbox'
-        case 'number':
-          return 'spinbutton'
-        case 'range':
-          return 'slider'
-        default:
-          return 'textbox'
-      }
-    }
-    default:
-      return null
+  if (tag === 'a') {
+    return el.getAttribute && el.getAttribute('href') !== null ? 'link' : null
   }
+
+  if (tag === 'input') {
+    const type = el.getAttribute ? el.getAttribute('type') : null
+    return INPUT_TYPE_TO_ROLE[type || 'text'] ?? 'textbox'
+  }
+
+  return TAG_TO_ROLE[tag] ?? null
 }
 
 /**
@@ -173,6 +162,7 @@ export function computeCssPath(element: Element | null): string {
 /**
  * Compute multi-strategy selectors for an element
  */
+// #lizard forgives
 export function computeSelectors(element: Element | null): SelectorStrategies {
   if (!element) return { cssPath: '' }
 
@@ -256,17 +246,13 @@ export function computeSelectors(element: Element | null): SelectorStrategies {
   // Priority 4: ID
   if (element.id) selectors.id = element.id
 
-  // Priority 5: Text content (for clickable elements only)
-  if (element.tagName && CLICKABLE_TAGS.has(element.tagName.toUpperCase())) {
+  // Priority 5: Text content (for clickable elements or role="button")
+  const isClickable =
+    (element.tagName && CLICKABLE_TAGS.has(element.tagName.toUpperCase())) ||
+    (el.getAttribute && el.getAttribute('role') === 'button')
+  if (isClickable) {
     const text = (el.textContent || el.innerText || '').trim()
-    if (text && text.length > 0) {
-      selectors.text = text.slice(0, SELECTOR_TEXT_MAX_LENGTH)
-    }
-  } else if (el.getAttribute && el.getAttribute('role') === 'button') {
-    const text = (el.textContent || el.innerText || '').trim()
-    if (text && text.length > 0) {
-      selectors.text = text.slice(0, SELECTOR_TEXT_MAX_LENGTH)
-    }
+    if (text) selectors.text = text.slice(0, SELECTOR_TEXT_MAX_LENGTH)
   }
 
   // Priority 6: CSS path (always computed as fallback)
@@ -279,11 +265,11 @@ export function computeSelectors(element: Element | null): SelectorStrategies {
 interface RecordActionOptions {
   value?: string
   key?: string
-  fromUrl?: string
-  toUrl?: string
-  selectedValue?: string
-  selectedText?: string
-  scrollY?: number
+  from_url?: string
+  to_url?: string
+  selected_value?: string
+  selected_text?: string
+  scroll_y?: number
 }
 
 // PostMessage payload type
@@ -292,54 +278,51 @@ interface GasolineEnhancedActionMessage {
   payload: EnhancedActionRecord
 }
 
+type ActionDataEnricher = (action: EnhancedActionRecord, element: Element | null, opts: RecordActionOptions) => void
+
+const ACTION_DATA_ENRICHERS: Record<string, ActionDataEnricher> = {
+  input: (a, el, o) => {
+    const typedEl = el as ElementWithProperties | null
+    const inputType = typedEl && typedEl.getAttribute ? typedEl.getAttribute('type') : 'text'
+    a.input_type = inputType || 'text'
+    a.value = inputType === 'password' || (el && isSensitiveInput(el)) ? '[redacted]' : o.value || ''
+  },
+  keypress: (a, _el, o) => {
+    a.key = o.key || ''
+  },
+  navigate: (a, _el, o) => {
+    a.from_url = o.from_url || ''
+    a.to_url = o.to_url || ''
+  },
+  select: (a, _el, o) => {
+    a.selected_value = o.selected_value || ''
+    a.selected_text = o.selected_text || ''
+  },
+  scroll: (a, _el, o) => {
+    a.scroll_y = o.scroll_y || 0
+  }
+}
+
 /**
  * Record an enhanced action with multi-strategy selectors
  */
 export function recordEnhancedAction(
   type: EnhancedActionType,
   element: Element | null,
-  opts: RecordActionOptions = {},
+  opts: RecordActionOptions = {}
 ): EnhancedActionRecord {
   const action: EnhancedActionRecord = {
     type,
     timestamp: Date.now(),
-    url: typeof window !== 'undefined' && window.location ? window.location.href : '',
+    url: typeof window !== 'undefined' && window.location ? window.location.href : ''
   }
 
-  // Compute selectors for element (if provided)
   if (element) {
     action.selectors = computeSelectors(element)
   }
 
-  // Type-specific data
-  switch (type) {
-    case 'input': {
-      const el = element as ElementWithProperties | null
-      const inputType = el && el.getAttribute ? el.getAttribute('type') : 'text'
-      action.inputType = inputType || 'text'
-      // Redact sensitive values
-      if (inputType === 'password' || (element && isSensitiveInput(element))) {
-        action.value = '[redacted]'
-      } else {
-        action.value = opts.value || ''
-      }
-      break
-    }
-    case 'keypress':
-      action.key = opts.key || ''
-      break
-    case 'navigate':
-      action.fromUrl = opts.fromUrl || ''
-      action.toUrl = opts.toUrl || ''
-      break
-    case 'select':
-      action.selectedValue = opts.selectedValue || ''
-      action.selectedText = opts.selectedText || ''
-      break
-    case 'scroll':
-      action.scrollY = opts.scrollY || 0
-      break
-  }
+  const enricher = ACTION_DATA_ENRICHERS[type]
+  if (enricher) enricher(action, element, opts)
 
   // Add to buffer
   enhancedActionBuffer.push(action)
@@ -351,7 +334,7 @@ export function recordEnhancedAction(
   if (typeof window !== 'undefined' && window.postMessage) {
     window.postMessage(
       { type: 'GASOLINE_ENHANCED_ACTION', payload: action } as GasolineEnhancedActionMessage,
-      window.location.origin,
+      window.location.origin
     )
   }
 
@@ -370,6 +353,44 @@ export function getEnhancedActionBuffer(): EnhancedActionRecord[] {
  */
 export function clearEnhancedActionBuffer(): void {
   enhancedActionBuffer = []
+}
+
+function rebaseUrl(url: string, baseUrl: string | undefined): string {
+  if (!baseUrl || !url) return url
+  try {
+    return baseUrl + new URL(url).pathname
+  } catch {
+    return url
+  }
+}
+
+type StepGenerator = (
+  action: EnhancedActionRecord,
+  locator: string | null,
+  baseUrl: string | undefined
+) => string | null
+
+const ACTION_STEP_GENERATORS: Record<string, StepGenerator> = {
+  click: (_action, locator) =>
+    locator ? `  await page.${locator}.click();` : `  // click action - no selector available`,
+  input: (action, locator) => {
+    if (!locator) return null
+    const value = action.value === '[redacted]' ? '[user-provided]' : action.value || ''
+    return `  await page.${locator}.fill('${escapeString(value)}');`
+  },
+  keypress: (action) => `  await page.keyboard.press('${escapeString(action.key || '')}');`,
+  navigate: (action, _locator, baseUrl) =>
+    `  await page.waitForURL('${escapeString(rebaseUrl(action.to_url || '', baseUrl))}');`,
+  select: (action, locator) =>
+    locator ? `  await page.${locator}.selectOption('${escapeString(action.selected_value || '')}');` : null,
+  scroll: (action) => `  // User scrolled to y=${action.scroll_y || 0}`
+}
+
+// #lizard forgives
+function actionToPlaywrightStep(action: EnhancedActionRecord, baseUrl: string | undefined): string | null {
+  const locator = getPlaywrightLocator(action.selectors || { cssPath: '' })
+  const generator = ACTION_STEP_GENERATORS[action.type]
+  return generator ? generator(action, locator, baseUrl) : null
 }
 
 /**
@@ -409,60 +430,19 @@ export function generatePlaywrightScript(actions: EnhancedActionRecord[], opts: 
   let prevTimestamp: number | null = null
 
   for (const action of filteredActions) {
-    // Add pause comment for long gaps
     if (prevTimestamp && action.timestamp - prevTimestamp > 2000) {
       const gap = Math.round((action.timestamp - prevTimestamp) / 1000)
       steps.push(`  // [${gap}s pause]`)
     }
     prevTimestamp = action.timestamp
 
-    const locator = getPlaywrightLocator(action.selectors || { cssPath: '' })
-
-    switch (action.type) {
-      case 'click':
-        if (locator) {
-          steps.push(`  await page.${locator}.click();`)
-        } else {
-          steps.push(`  // click action - no selector available`)
-        }
-        break
-      case 'input': {
-        const value = action.value === '[redacted]' ? '[user-provided]' : action.value || ''
-        if (locator) {
-          steps.push(`  await page.${locator}.fill('${escapeString(value)}');`)
-        }
-        break
-      }
-      case 'keypress':
-        steps.push(`  await page.keyboard.press('${escapeString(action.key || '')}');`)
-        break
-      case 'navigate': {
-        let toUrl = action.toUrl || ''
-        if (baseUrl && toUrl) {
-          try {
-            const parsed = new URL(toUrl)
-            toUrl = baseUrl + parsed.pathname
-          } catch {
-            /* use as-is */
-          }
-        }
-        steps.push(`  await page.waitForURL('${escapeString(toUrl)}');`)
-        break
-      }
-      case 'select':
-        if (locator) {
-          steps.push(`  await page.${locator}.selectOption('${escapeString(action.selectedValue || '')}');`)
-        }
-        break
-      case 'scroll':
-        steps.push(`  // User scrolled to y=${action.scrollY || 0}`)
-        break
-    }
+    const step = actionToPlaywrightStep(action, baseUrl)
+    if (step) steps.push(step)
   }
 
   // Assemble script
-  let script = `import { test, expect } from '@playwright/test';\n\n`
-  script += `test('${escapeString(testName)}', async ({ page }) => {\n`
+  let script = `import { test, expect } from '@playwright/test';\n\n` // nosemgrep: missing-template-string-indicator
+  script += `test('${escapeString(testName)}', async ({ page }) => {\n` // nosemgrep: missing-template-string-indicator
   if (startUrl) {
     script += `  await page.goto('${escapeString(startUrl)}');\n\n`
   }
@@ -486,27 +466,19 @@ export function generatePlaywrightScript(actions: EnhancedActionRecord[], opts: 
  * Priority: testId > role > ariaLabel > text > id > cssPath
  */
 function getPlaywrightLocator(selectors: SelectorStrategies): string | null {
-  if (selectors.testId) {
-    return `getByTestId('${escapeString(selectors.testId)}')`
-  }
+  if (selectors.testId) return `getByTestId('${escapeString(selectors.testId)}')`
+
   if (selectors.role && selectors.role.role) {
-    if (selectors.role.name) {
-      return `getByRole('${escapeString(selectors.role.role)}', { name: '${escapeString(selectors.role.name)}' })`
-    }
-    return `getByRole('${escapeString(selectors.role.role)}')`
+    const escaped = escapeString(selectors.role.role)
+    return selectors.role.name
+      ? `getByRole('${escaped}', { name: '${escapeString(selectors.role.name)}' })`
+      : `getByRole('${escaped}')`
   }
-  if (selectors.ariaLabel) {
-    return `getByLabel('${escapeString(selectors.ariaLabel)}')`
-  }
-  if (selectors.text) {
-    return `getByText('${escapeString(selectors.text)}')`
-  }
-  if (selectors.id) {
-    return `locator('#${escapeString(selectors.id)}')`
-  }
-  if (selectors.cssPath) {
-    return `locator('${escapeString(selectors.cssPath)}')`
-  }
+
+  if (selectors.ariaLabel) return `getByLabel('${escapeString(selectors.ariaLabel)}')`
+  if (selectors.text) return `getByText('${escapeString(selectors.text)}')`
+  if (selectors.id) return `locator('#${escapeString(selectors.id)}')`
+  if (selectors.cssPath) return `locator('${escapeString(selectors.cssPath)}')`
   return null
 }
 

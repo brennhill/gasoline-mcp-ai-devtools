@@ -27,7 +27,7 @@ These scenarios work with the current recording format and can be safely used in
 
 **Scenario**: User performs a sequence of straightforward actions without errors or conditionals.
 
-**Example: Product Search & Add to Cart**
+#### Example: Product Search & Add to Cart
 ```
 1. navigate("https://shop.example.com")                    → ✅ OK
 2. click("[data-testid=search-btn]")                        → ✅ OK
@@ -53,7 +53,7 @@ These scenarios work with the current recording format and can be safely used in
 
 **Scenario**: User repeats the same action multiple times (e.g., clicking "Next" button 5 times).
 
-**Example: Multi-page Form Navigation**
+#### Example: Multi-page Form Navigation
 ```
 1. click("[data-testid=form-step-1]")                      → ✅ OK
 2. type("[data-testid=input-name]", "John Doe")            → ✅ OK
@@ -79,7 +79,7 @@ These scenarios work with the current recording format and can be safely used in
 
 **Scenario**: User fills and submits forms across multiple steps without errors.
 
-**Example: Multi-step Checkout**
+#### Example: Multi-step Checkout
 ```
 1. navigate("https://shop.example.com/checkout/address")   → ✅ OK
    [Fill address form]
@@ -112,7 +112,7 @@ These scenarios work with the current recording format and can be safely used in
 
 **Scenario**: User encounters and dismisses single, expected error messages.
 
-**Example: Login with Wrong Password**
+#### Example: Login with Wrong Password
 ```
 1. navigate("https://auth.example.com/login")             → ✅ OK
 2. type("[name=username]", "john@example.com")            → ✅ OK
@@ -142,7 +142,7 @@ These scenarios work with the current recording format and can be safely used in
 
 **Scenario**: User navigates between pages with stable selectors (desktop SPA or server-rendered pages).
 
-**Example: Blog Navigation**
+#### Example: Blog Navigation
 ```
 1. navigate("https://blog.example.com")                   → ✅ OK
 2. click("[data-testid=post-1-link]")                     → ✅ OK
@@ -321,7 +321,7 @@ Actual: Records only ONE path (whichever user took)
 - Data table pagination (server-side filtering)
 - Infinite scroll loading more items
 - API requests completing before UI updates
-- Real-time data streams (WebSocket, Server-Sent Events)
+- Real-time data streams (WebSocket, long-lived HTTP streams)
 
 **Why Unsupported**:
 - Recording captures wall-clock timestamps (not event-based)
@@ -1030,7 +1030,7 @@ type RecordingAction struct {
 
 ### A.1 Supported Scenario Example
 
-**Scenario: Product Search & Purchase**
+#### Scenario: Product Search & Purchase
 
 ```json
 {
@@ -1108,7 +1108,7 @@ type RecordingAction struct {
 
 ### A.2 Unsupported Scenario Example
 
-**Scenario: Conditional Modal Handling**
+#### Scenario: Conditional Modal Handling
 
 ❌ **Cannot Record with Current Format**:
 ```
@@ -1120,7 +1120,7 @@ type RecordingAction struct {
 4. Project deleted
 ```
 
-**Workaround 1: Record Happy Path Only**
+#### Workaround 1: Record Happy Path Only
 ```json
 {
   "actions": [
@@ -1132,7 +1132,7 @@ type RecordingAction struct {
 }
 ```
 
-**Workaround 2: Separate Recordings**
+#### Workaround 2: Separate Recordings
 - recording-delete-confirm.json (user confirms)
 - recording-delete-cancel.json (user cancels)
 
@@ -1147,4 +1147,3 @@ Flow Recording & Playback v6.0 provides **production-ready support for linear, d
 2. Collect feedback from LLM test assistants on unsupported scenarios
 3. Prioritize Phase 1 extensions (wait conditions, branches) based on feedback
 4. Plan Phase 2 once Phase 1 deployed (estimated Q2 2026)
-

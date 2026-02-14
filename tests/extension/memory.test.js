@@ -19,39 +19,39 @@ import assert from 'node:assert'
 const mockChrome = {
   runtime: {
     onMessage: {
-      addListener: mock.fn(),
+      addListener: mock.fn()
     },
     onInstalled: {
-      addListener: mock.fn(),
+      addListener: mock.fn()
     },
-    sendMessage: mock.fn(() => Promise.resolve()),
+    sendMessage: mock.fn(() => Promise.resolve())
   },
   action: {
     setBadgeText: mock.fn(),
-    setBadgeBackgroundColor: mock.fn(),
+    setBadgeBackgroundColor: mock.fn()
   },
   storage: {
     local: {
       get: mock.fn((keys, callback) => callback({ logLevel: 'error' })),
-      set: mock.fn((data, callback) => callback && callback()),
-    },
+      set: mock.fn((data, callback) => callback && callback())
+    }
   },
   alarms: {
     create: mock.fn(),
     onAlarm: {
-      addListener: mock.fn(),
-    },
+      addListener: mock.fn()
+    }
   },
   tabs: {
     get: mock.fn((tabId) => Promise.resolve({ id: tabId, windowId: 1, url: 'http://localhost:3000' })),
     captureVisibleTab: mock.fn(() =>
-      Promise.resolve('data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkS'),
+      Promise.resolve('data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkS')
     ),
     query: mock.fn((query, callback) => callback([{ id: 1, windowId: 1 }])),
     onRemoved: {
-      addListener: mock.fn(),
-    },
-  },
+      addListener: mock.fn()
+    }
+  }
 }
 
 // Set global chrome mock
@@ -70,7 +70,7 @@ import {
   MEMORY_AVG_WS_EVENT_SIZE,
   MEMORY_AVG_NETWORK_BODY_SIZE,
   MEMORY_AVG_ACTION_SIZE,
-  createLogBatcher,
+  createLogBatcher
 } from '../../extension/background.js'
 
 describe('Memory Enforcement: Constants', () => {
@@ -113,7 +113,7 @@ describe('Memory Enforcement: estimateBufferMemory', () => {
       logEntries: [],
       wsEvents: [],
       networkBodies: [],
-      enhancedActions: [],
+      enhancedActions: []
     })
 
     assert.strictEqual(memory, 0)
@@ -125,7 +125,7 @@ describe('Memory Enforcement: estimateBufferMemory', () => {
       logEntries: entries,
       wsEvents: [],
       networkBodies: [],
-      enhancedActions: [],
+      enhancedActions: []
     })
 
     assert.strictEqual(memory, 100 * MEMORY_AVG_LOG_ENTRY_SIZE)
@@ -134,13 +134,13 @@ describe('Memory Enforcement: estimateBufferMemory', () => {
   test('should estimate memory for WS events (count * avg + data length)', () => {
     const events = [
       { event: 'message', data: 'x'.repeat(200) },
-      { event: 'message', data: 'y'.repeat(300) },
+      { event: 'message', data: 'y'.repeat(300) }
     ]
     const memory = estimateBufferMemory({
       logEntries: [],
       wsEvents: events,
       networkBodies: [],
-      enhancedActions: [],
+      enhancedActions: []
     })
 
     // 2 events * 300 avg + 200 data + 300 data = 600 + 500 = 1100
@@ -151,13 +151,13 @@ describe('Memory Enforcement: estimateBufferMemory', () => {
   test('should estimate memory for network bodies (count * avg + body lengths)', () => {
     const bodies = [
       { requestBody: 'req1', responseBody: 'resp1resp1' },
-      { requestBody: 'r2', responseBody: 'response2' },
+      { requestBody: 'r2', responseBody: 'response2' }
     ]
     const memory = estimateBufferMemory({
       logEntries: [],
       wsEvents: [],
       networkBodies: bodies,
-      enhancedActions: [],
+      enhancedActions: []
     })
 
     // 2 entries * 1000 avg + len(req1)=4 + len(resp1resp1)=10 + len(r2)=2 + len(response2)=9 = 2000 + 25 = 2025
@@ -171,7 +171,7 @@ describe('Memory Enforcement: estimateBufferMemory', () => {
       logEntries: [],
       wsEvents: [],
       networkBodies: [],
-      enhancedActions: actions,
+      enhancedActions: actions
     })
 
     assert.strictEqual(memory, 50 * MEMORY_AVG_ACTION_SIZE)
@@ -196,13 +196,13 @@ describe('Memory Enforcement: estimateBufferMemory', () => {
   test('should handle WS events without data field', () => {
     const events = [
       { event: 'open', url: 'wss://example.com' },
-      { event: 'close', code: 1000 },
+      { event: 'close', code: 1000 }
     ]
     const memory = estimateBufferMemory({
       logEntries: [],
       wsEvents: events,
       networkBodies: [],
-      enhancedActions: [],
+      enhancedActions: []
     })
 
     // 2 events * 300 avg + 0 data = 600
@@ -215,7 +215,7 @@ describe('Memory Enforcement: estimateBufferMemory', () => {
       logEntries: [],
       wsEvents: [],
       networkBodies: bodies,
-      enhancedActions: [],
+      enhancedActions: []
     })
 
     // 2 entries * 1000 avg + 0 + 0 + 4 + 0 = 2004
@@ -234,7 +234,7 @@ describe('Memory Enforcement: checkMemoryPressure', () => {
       logEntries: Array(10).fill({ level: 'error' }),
       wsEvents: [],
       networkBodies: [],
-      enhancedActions: [],
+      enhancedActions: []
     }
 
     const result = checkMemoryPressure(buffers)
@@ -249,7 +249,7 @@ describe('Memory Enforcement: checkMemoryPressure', () => {
       logEntries: Array(42000).fill({ level: 'error' }),
       wsEvents: [],
       networkBodies: [],
-      enhancedActions: [],
+      enhancedActions: []
     }
 
     const result = checkMemoryPressure(buffers)
@@ -264,7 +264,7 @@ describe('Memory Enforcement: checkMemoryPressure', () => {
       logEntries: Array(110000).fill({ level: 'error' }),
       wsEvents: [],
       networkBodies: [],
-      enhancedActions: [],
+      enhancedActions: []
     }
 
     const result = checkMemoryPressure(buffers)
@@ -278,7 +278,7 @@ describe('Memory Enforcement: checkMemoryPressure', () => {
       logEntries: Array(100).fill({ level: 'error' }),
       wsEvents: [],
       networkBodies: [],
-      enhancedActions: [],
+      enhancedActions: []
     }
 
     const result = checkMemoryPressure(buffers)
@@ -291,7 +291,7 @@ describe('Memory Enforcement: checkMemoryPressure', () => {
       logEntries: Array(10).fill({ level: 'error' }),
       wsEvents: [],
       networkBodies: [],
-      enhancedActions: [],
+      enhancedActions: []
     }
 
     const result = checkMemoryPressure(buffers)
@@ -320,7 +320,7 @@ describe('Memory Enforcement: getMemoryPressureState', () => {
       logEntries: Array(42000).fill({ level: 'error' }),
       wsEvents: [],
       networkBodies: [],
-      enhancedActions: [],
+      enhancedActions: []
     }
 
     checkMemoryPressure(buffers)
@@ -336,7 +336,7 @@ describe('Memory Enforcement: getMemoryPressureState', () => {
       logEntries: Array(110000).fill({ level: 'error' }),
       wsEvents: [],
       networkBodies: [],
-      enhancedActions: [],
+      enhancedActions: []
     }
 
     checkMemoryPressure(buffers)
@@ -353,7 +353,7 @@ describe('Memory Enforcement: getMemoryPressureState', () => {
       logEntries: Array(42000).fill({ level: 'error' }),
       wsEvents: [],
       networkBodies: [],
-      enhancedActions: [],
+      enhancedActions: []
     }
     checkMemoryPressure(highBuffers)
 
@@ -362,7 +362,7 @@ describe('Memory Enforcement: getMemoryPressureState', () => {
       logEntries: Array(10).fill({ level: 'error' }),
       wsEvents: [],
       networkBodies: [],
-      enhancedActions: [],
+      enhancedActions: []
     }
     checkMemoryPressure(lowBuffers)
 
@@ -378,7 +378,7 @@ describe('Memory Enforcement: getMemoryPressureState', () => {
       logEntries: Array(110000).fill({ level: 'error' }),
       wsEvents: [],
       networkBodies: [],
-      enhancedActions: [],
+      enhancedActions: []
     }
     checkMemoryPressure(hardBuffers)
 
@@ -387,7 +387,7 @@ describe('Memory Enforcement: getMemoryPressureState', () => {
       logEntries: Array(42000).fill({ level: 'error' }),
       wsEvents: [],
       networkBodies: [],
-      enhancedActions: [],
+      enhancedActions: []
     }
     checkMemoryPressure(softBuffers)
 
@@ -404,7 +404,7 @@ describe('Memory Enforcement: getMemoryPressureState', () => {
       logEntries: Array(10).fill({ level: 'error' }),
       wsEvents: [],
       networkBodies: [],
-      enhancedActions: [],
+      enhancedActions: []
     }
 
     const before = Date.now()
@@ -424,7 +424,7 @@ describe('Memory Enforcement: resetMemoryPressureState', () => {
       logEntries: Array(110000).fill({ level: 'error' }),
       wsEvents: [],
       networkBodies: [],
-      enhancedActions: [],
+      enhancedActions: []
     }
     checkMemoryPressure(buffers)
 
@@ -449,7 +449,7 @@ describe('Memory Enforcement: Multiple consecutive checks', () => {
       logEntries: Array(42000).fill({ level: 'error' }),
       wsEvents: [],
       networkBodies: [],
-      enhancedActions: [],
+      enhancedActions: []
     }
 
     const result1 = checkMemoryPressure(buffers)
@@ -466,7 +466,7 @@ describe('Memory Enforcement: Multiple consecutive checks', () => {
       logEntries: Array(110000).fill({ level: 'error' }),
       wsEvents: [],
       networkBodies: [],
-      enhancedActions: [],
+      enhancedActions: []
     }
 
     const result1 = checkMemoryPressure(buffers)
@@ -502,7 +502,7 @@ describe('Memory Enforcement: Network body rejection at hard limit', () => {
       logEntries: Array(110000).fill({ level: 'error' }),
       wsEvents: [],
       networkBodies: [],
-      enhancedActions: [],
+      enhancedActions: []
     }
 
     checkMemoryPressure(buffers)
@@ -517,7 +517,7 @@ describe('Memory Enforcement: Network body rejection at hard limit', () => {
       logEntries: Array(110000).fill({ level: 'error' }),
       wsEvents: [],
       networkBodies: [],
-      enhancedActions: [],
+      enhancedActions: []
     }
     checkMemoryPressure(hardBuffers)
 
@@ -526,7 +526,7 @@ describe('Memory Enforcement: Network body rejection at hard limit', () => {
       logEntries: Array(10).fill({ level: 'error' }),
       wsEvents: [],
       networkBodies: [],
-      enhancedActions: [],
+      enhancedActions: []
     }
     checkMemoryPressure(lowBuffers)
 
@@ -545,7 +545,7 @@ describe('Memory Enforcement: Capacity reduction at soft limit', () => {
       logEntries: Array(42000).fill({ level: 'error' }),
       wsEvents: [],
       networkBodies: [],
-      enhancedActions: [],
+      enhancedActions: []
     }
 
     checkMemoryPressure(buffers)
@@ -560,7 +560,7 @@ describe('Memory Enforcement: Capacity reduction at soft limit', () => {
       logEntries: Array(42000).fill({ level: 'error' }),
       wsEvents: [],
       networkBodies: [],
-      enhancedActions: [],
+      enhancedActions: []
     }
     checkMemoryPressure(softBuffers)
 
@@ -569,7 +569,7 @@ describe('Memory Enforcement: Capacity reduction at soft limit', () => {
       logEntries: Array(10).fill({ level: 'error' }),
       wsEvents: [],
       networkBodies: [],
-      enhancedActions: [],
+      enhancedActions: []
     }
     checkMemoryPressure(lowBuffers)
 
@@ -589,7 +589,7 @@ describe('Memory Enforcement: Hard limit disables network body batcher', () => {
       logEntries: Array(110000).fill({ level: 'error' }),
       wsEvents: [],
       networkBodies: [],
-      enhancedActions: [],
+      enhancedActions: []
     }
     checkMemoryPressure(hardBuffers)
 
@@ -603,7 +603,7 @@ describe('Memory Enforcement: Hard limit disables network body batcher', () => {
       logEntries: Array(110000).fill({ level: 'error' }),
       wsEvents: [],
       networkBodies: [],
-      enhancedActions: [],
+      enhancedActions: []
     }
 
     const result = checkMemoryPressure(hardBuffers)
@@ -623,7 +623,7 @@ describe('Memory Enforcement: Batcher interaction with memory pressure', () => {
     const batcher = createLogBatcher(flushFn, {
       debounceMs: 50,
       maxBatchSize: 50,
-      memoryPressureGetter: getMemoryPressureState,
+      memoryPressureGetter: getMemoryPressureState
     })
 
     assert.ok(batcher)
@@ -637,7 +637,7 @@ describe('Memory Enforcement: Batcher interaction with memory pressure', () => {
       logEntries: Array(42000).fill({ level: 'error' }),
       wsEvents: [],
       networkBodies: [],
-      enhancedActions: [],
+      enhancedActions: []
     }
     checkMemoryPressure(softBuffers)
 
@@ -645,7 +645,7 @@ describe('Memory Enforcement: Batcher interaction with memory pressure', () => {
     const batcher = createLogBatcher(flushFn, {
       debounceMs: 10000,
       maxBatchSize: 50,
-      memoryPressureGetter: getMemoryPressureState,
+      memoryPressureGetter: getMemoryPressureState
     })
 
     // Add 25 entries (half of 50) - should trigger flush at reduced capacity
@@ -661,7 +661,7 @@ describe('Memory Enforcement: Batcher interaction with memory pressure', () => {
     const flushFn = mock.fn()
     const batcher = createLogBatcher(flushFn, {
       debounceMs: 10000,
-      maxBatchSize: 50,
+      maxBatchSize: 50
     })
 
     // Add 50 entries - should flush at normal capacity

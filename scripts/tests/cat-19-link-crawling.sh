@@ -1,8 +1,10 @@
 #!/bin/bash
 # cat-19-link-crawling.sh — Link Health Domain Crawling Tests (6 tests)
 # Tests recursive link crawling, CORS boundaries, domain traversal.
+set -eo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+# shellcheck source=/dev/null
 source "$SCRIPT_DIR/framework.sh"
 
 init_framework "$1" "$2"
@@ -165,8 +167,8 @@ run_test_19_20() {
     fi
 
     local id1 id2
-    id1=$(echo "$response1" | jq -r '.result.content[0].text' 2>/dev/null | grep -o 'link_health_[a-z0-9]*' | head -1)
-    id2=$(echo "$response2" | jq -r '.result.content[0].text' 2>/dev/null | grep -o 'link_health_[a-z0-9]*' | head -1)
+    id1=$(echo "$response1" | jq -r '.result.content[0].text' 2>/dev/null | grep -o 'link_health_[a-z0-9]*' | head -1 || true)
+    id2=$(echo "$response2" | jq -r '.result.content[0].text' 2>/dev/null | grep -o 'link_health_[a-z0-9]*' | head -1 || true)
 
     if [ "$id1" != "$id2" ]; then
         pass "Two crawl operations have distinct correlation IDs (results tracked separately)"
@@ -206,4 +208,4 @@ run_test_19_21() {
 }
 run_test_19_21
 
-kill_server
+finish_category

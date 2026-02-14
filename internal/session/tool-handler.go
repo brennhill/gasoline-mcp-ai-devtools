@@ -16,6 +16,54 @@ type diffSessionsParams struct {
 	URLFilter string `json:"url,omitempty"`
 }
 
+// handleCapture handles the "capture" action for diff_sessions.
+func (sm *SessionManager) handleCapture(p diffSessionsParams) (any, error) {
+	if p.Name == "" {
+		return nil, fmt.Errorf("'name' is required for capture action")
+	}
+	snap, err := sm.Capture(p.Name, p.URLFilter)
+	if err != nil {
+		return nil, err
+	}
+	return map[string]any{
+		"action": "captured",
+		"name":   snap.Name,
+		"snapshot": map[string]any{
+			"captured_at":      snap.CapturedAt,
+			"console_errors":   len(snap.ConsoleErrors),
+			"console_warnings": len(snap.ConsoleWarnings),
+			"network_requests": len(snap.NetworkRequests),
+			"page_url":         snap.PageURL,
+		},
+	}, nil
+}
+
+// handleCompare handles the "compare" action for diff_sessions.
+func (sm *SessionManager) handleCompare(p diffSessionsParams) (any, error) {
+	if p.CompareA == "" || p.CompareB == "" {
+		return nil, fmt.Errorf("'compare_a' and 'compare_b' are required for compare action")
+	}
+	diff, err := sm.Compare(p.CompareA, p.CompareB)
+	if err != nil {
+		return nil, err
+	}
+	return map[string]any{
+		"action": "compared", "a": diff.A, "b": diff.B,
+		"diff": diff, "summary": diff.Summary,
+	}, nil
+}
+
+// handleDelete handles the "delete" action for diff_sessions.
+func (sm *SessionManager) handleDelete(p diffSessionsParams) (any, error) {
+	if p.Name == "" {
+		return nil, fmt.Errorf("'name' is required for delete action")
+	}
+	if err := sm.Delete(p.Name); err != nil {
+		return nil, err
+	}
+	return map[string]any{"action": "deleted", "name": p.Name}, nil
+}
+
 // HandleTool dispatches the diff_sessions MCP tool call.
 func (sm *SessionManager) HandleTool(params json.RawMessage) (any, error) {
 	var p diffSessionsParams
@@ -25,60 +73,13 @@ func (sm *SessionManager) HandleTool(params json.RawMessage) (any, error) {
 
 	switch p.Action {
 	case "capture":
-		if p.Name == "" {
-			return nil, fmt.Errorf("'name' is required for capture action")
-		}
-		snap, err := sm.Capture(p.Name, p.URLFilter)
-		if err != nil {
-			return nil, err
-		}
-		return map[string]any{
-			"action": "captured",
-			"name":   snap.Name,
-			"snapshot": map[string]any{
-				"captured_at":      snap.CapturedAt,
-				"console_errors":   len(snap.ConsoleErrors),
-				"console_warnings": len(snap.ConsoleWarnings),
-				"network_requests": len(snap.NetworkRequests),
-				"page_url":         snap.PageURL,
-			},
-		}, nil
-
+		return sm.handleCapture(p)
 	case "compare":
-		if p.CompareA == "" || p.CompareB == "" {
-			return nil, fmt.Errorf("'compare_a' and 'compare_b' are required for compare action")
-		}
-		diff, err := sm.Compare(p.CompareA, p.CompareB)
-		if err != nil {
-			return nil, err
-		}
-		return map[string]any{
-			"action":  "compared",
-			"a":       diff.A,
-			"b":       diff.B,
-			"diff":    diff,
-			"summary": diff.Summary,
-		}, nil
-
+		return sm.handleCompare(p)
 	case "list":
-		entries := sm.List()
-		return map[string]any{
-			"action":    "listed",
-			"snapshots": entries,
-		}, nil
-
+		return map[string]any{"action": "listed", "snapshots": sm.List()}, nil
 	case "delete":
-		if p.Name == "" {
-			return nil, fmt.Errorf("'name' is required for delete action")
-		}
-		if err := sm.Delete(p.Name); err != nil {
-			return nil, err
-		}
-		return map[string]any{
-			"action": "deleted",
-			"name":   p.Name,
-		}, nil
-
+		return sm.handleDelete(p)
 	default:
 		if p.Action == "" {
 			return nil, fmt.Errorf("'action' is required (capture, compare, list, delete)")

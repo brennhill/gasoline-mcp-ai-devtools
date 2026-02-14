@@ -8,7 +8,7 @@
 export class TimeoutError extends Error {
   constructor(
     message: string,
-    public fallback?: unknown,
+    public fallback?: unknown
   ) {
     super(message)
     this.name = 'TimeoutError'
@@ -40,7 +40,7 @@ export async function promiseRaceWithCleanup<T>(
   promise: Promise<T>,
   timeoutMs: number,
   timeoutFallback: T | undefined,
-  cleanup?: () => void,
+  cleanup?: () => void
 ): Promise<T> {
   try {
     return await Promise.race([
@@ -53,8 +53,8 @@ export async function promiseRaceWithCleanup<T>(
           } else {
             reject(new TimeoutError(`Operation timed out after ${timeoutMs}ms`))
           }
-        }, timeoutMs),
-      ),
+        }, timeoutMs)
+      )
     ])
   } catch (err) {
     if (err instanceof TimeoutError && err.fallback !== undefined) {

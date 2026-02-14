@@ -3,6 +3,9 @@
 // and error rates via the get_health MCP tool.
 // Design: Thread-safe counters using sync.RWMutex. Memory stats from runtime.
 // All metrics are computed on-demand when the tool is called.
+//
+// JSON CONVENTION: All fields MUST use snake_case. See .claude/refs/api-naming-standards.md
+// Deviations from snake_case MUST be tagged with // SPEC:<spec-name> at the field level.
 package main
 
 import (
@@ -123,7 +126,7 @@ type MemoryInfo struct {
 	CurrentMB       float64               `json:"current_mb"`
 	AllocMB         float64               `json:"alloc_mb"`
 	SysMB           float64               `json:"sys_mb"`
-	BufferBreakdown BufferMemoryBreakdown  `json:"buffer_breakdown"`
+	BufferBreakdown BufferMemoryBreakdown `json:"buffer_breakdown"`
 }
 
 // BufferMemoryBreakdown shows memory usage per buffer type.
@@ -146,15 +149,16 @@ type BufferStats struct {
 	Entries        int     `json:"entries"`
 	Capacity       int     `json:"capacity"`
 	UtilizationPct float64 `json:"utilization_pct"`
+	DroppedCount   int64   `json:"dropped_count"`
 }
 
 // RateLimitingInfo contains rate limiting state.
 type RateLimitingInfo struct {
-	CurrentRate    int    `json:"current_rate"`
-	Threshold      int    `json:"threshold"`
-	CircuitOpen    bool   `json:"circuit_open"`
-	CircuitReason  string `json:"circuit_reason,omitempty"`
-	Total429s      int    `json:"total_429s"`
+	CurrentRate   int    `json:"current_rate"`
+	Threshold     int    `json:"threshold"`
+	CircuitOpen   bool   `json:"circuit_open"`
+	CircuitReason string `json:"circuit_reason,omitempty"`
+	Total429s     int    `json:"total_429s"`
 }
 
 // AuditInfo contains tool invocation statistics.
@@ -180,96 +184,101 @@ type PilotInfo struct {
 // GetHealth computes and returns the current health metrics.
 // This is called on-demand when the get_health tool is invoked.
 func (hm *HealthMetrics) GetHealth(cap *capture.Capture, server *Server, ver string) MCPHealthResponse {
-	// Server info
-	serverInfo := ServerInfo{
+	return MCPHealthResponse{
+		Server:       hm.buildServerInfo(ver),
+		Memory:       buildMemoryInfo(cap),
+		Buffers:      buildBuffersInfo(cap, server),
+		RateLimiting: buildRateLimitInfo(cap),
+		Audit:        hm.buildAuditInfo(),
+		Pilot:        buildPilotInfo(cap),
+	}
+}
+
+// buildServerInfo returns server identification and uptime.
+func (hm *HealthMetrics) buildServerInfo(ver string) ServerInfo {
+	return ServerInfo{
 		Version:       ver,
 		UptimeSeconds: hm.GetUptime().Seconds(),
 		PID:           os.Getpid(),
 		Platform:      runtime.GOOS + "/" + runtime.GOARCH,
 		GoVersion:     runtime.Version(),
 	}
+}
 
-	// Memory info from runtime
+// buildMemoryInfo returns runtime memory statistics.
+func buildMemoryInfo(cap *capture.Capture) MemoryInfo {
 	var memStats runtime.MemStats
 	runtime.ReadMemStats(&memStats)
 
-	currentMB := float64(memStats.Alloc) / (1024 * 1024)
-
-	// Read all capture state under a single lock for atomic snapshot
-	var wsMem, nbMem, actionMem int64
-	var networkEntries, wsEntries, actionEntries int
-	var consoleEntries int
-	var currentRate int
-	var circuitOpen bool
-	var circuitReason string
-	if server != nil {
-		server.mu.RLock()
-		consoleEntries = len(server.entries)
-		server.mu.RUnlock()
+	return MemoryInfo{
+		CurrentMB: float64(memStats.Alloc) / (1024 * 1024),
+		AllocMB:   float64(memStats.Alloc) / (1024 * 1024),
+		SysMB:     float64(memStats.Sys) / (1024 * 1024),
+		BufferBreakdown: BufferMemoryBreakdown{
+			WebSocketBytes: 0,
+			NetworkBytes:   0,
+			ActionsBytes:   0,
+		},
 	}
+}
+
+// buildBuffersInfo returns buffer utilization stats from capture and server.
+func buildBuffersInfo(cap *capture.Capture, server *Server) BuffersInfo {
+	var networkEntries, wsEntries, actionEntries int
 	if cap != nil {
-		// Use getter methods instead of direct field access
 		health := cap.GetHealthSnapshot()
 		networkEntries = health.NetworkBodyCount
 		wsEntries = health.WebSocketCount
 		actionEntries = health.ActionCount
-		currentRate = health.WindowEventCount
-		circuitOpen = health.CircuitOpen
-		circuitReason = health.CircuitReason
-		// TODO: Get memory calculations through accessor if needed
-		// For now, using 0 as placeholder
-		wsMem = 0
-		nbMem = 0
-		actionMem = 0
 	}
 
-	memInfo := MemoryInfo{
-		CurrentMB: currentMB,
-		AllocMB:   float64(memStats.Alloc) / (1024 * 1024),
-		SysMB:     float64(memStats.Sys) / (1024 * 1024),
-		BufferBreakdown: BufferMemoryBreakdown{
-			WebSocketBytes: wsMem,
-			NetworkBytes:   nbMem,
-			ActionsBytes:   actionMem,
-		},
-	}
+	consoleEntries, consoleCapacity, consoleDropped := getConsoleStats(server)
 
-	consoleCapacity := defaultMaxEntries
-	if server != nil {
-		consoleCapacity = server.maxEntries
-	}
-	buffersInfo := BuffersInfo{
+	return BuffersInfo{
 		Console: BufferStats{
-			Entries:        consoleEntries,
-			Capacity:       consoleCapacity,
-			UtilizationPct: calcUtilization(consoleEntries, consoleCapacity),
+			Entries: consoleEntries, Capacity: consoleCapacity,
+			UtilizationPct: calcUtilization(consoleEntries, consoleCapacity), DroppedCount: consoleDropped,
 		},
 		Network: BufferStats{
-			Entries:        networkEntries,
-			Capacity:       capture.MaxNetworkBodies,
+			Entries: networkEntries, Capacity: capture.MaxNetworkBodies,
 			UtilizationPct: calcUtilization(networkEntries, capture.MaxNetworkBodies),
 		},
 		WebSocket: BufferStats{
-			Entries:        wsEntries,
-			Capacity:       capture.MaxWSEvents,
+			Entries: wsEntries, Capacity: capture.MaxWSEvents,
 			UtilizationPct: calcUtilization(wsEntries, capture.MaxWSEvents),
 		},
 		Actions: BufferStats{
-			Entries:        actionEntries,
-			Capacity:       capture.MaxEnhancedActions,
+			Entries: actionEntries, Capacity: capture.MaxEnhancedActions,
 			UtilizationPct: calcUtilization(actionEntries, capture.MaxEnhancedActions),
 		},
 	}
+}
 
-	rateLimitInfo := RateLimitingInfo{
-		CurrentRate:   currentRate,
-		Threshold:     capture.RateLimitThreshold,
-		CircuitOpen:   circuitOpen,
-		CircuitReason: circuitReason,
-		Total429s:     0, // Could be tracked separately if needed
+// getConsoleStats returns console buffer entries, capacity, and drop count from the server.
+func getConsoleStats(server *Server) (int, int, int64) {
+	if server == nil {
+		return 0, defaultMaxEntries, 0
 	}
+	server.mu.RLock()
+	entries := len(server.entries)
+	server.mu.RUnlock()
+	return entries, server.maxEntries, server.getLogDropCount()
+}
 
-	// Audit info
+// buildRateLimitInfo returns rate limiting state from capture.
+func buildRateLimitInfo(cap *capture.Capture) RateLimitingInfo {
+	info := RateLimitingInfo{Threshold: capture.RateLimitThreshold}
+	if cap != nil {
+		health := cap.GetHealthSnapshot()
+		info.CurrentRate = health.WindowEventCount
+		info.CircuitOpen = health.CircuitOpen
+		info.CircuitReason = health.CircuitReason
+	}
+	return info
+}
+
+// buildAuditInfo returns tool invocation statistics.
+func (hm *HealthMetrics) buildAuditInfo() AuditInfo {
 	hm.mu.RLock()
 	callsPerTool := make(map[string]int64, len(hm.requestCounts))
 	var totalCalls, totalErrors int64
@@ -287,50 +296,33 @@ func (hm *HealthMetrics) GetHealth(cap *capture.Capture, server *Server, ver str
 		errorRate = float64(totalErrors) / float64(totalCalls) * 100
 	}
 
-	auditInfo := AuditInfo{
-		TotalCalls:   totalCalls,
-		TotalErrors:  totalErrors,
-		ErrorRatePct: errorRate,
-		CallsPerTool: callsPerTool,
+	return AuditInfo{
+		TotalCalls: totalCalls, TotalErrors: totalErrors,
+		ErrorRatePct: errorRate, CallsPerTool: callsPerTool,
+	}
+}
+
+// buildPilotInfo returns AI Web Pilot status from capture.
+func buildPilotInfo(cap *capture.Capture) PilotInfo {
+	defaultStatus := PilotInfo{Source: "never_connected"}
+	if cap == nil {
+		return defaultStatus
 	}
 
-	// Pilot info
-	pilotStatus := PilotInfo{
-		Enabled:            false,
-		Source:             "never_connected",
-		ExtensionConnected: false,
-	}
-	if cap != nil {
-		statusMap := cap.GetPilotStatus()
-		if m, ok := statusMap.(map[string]any); ok {
-			enabled := false
-			if e, ok := m["enabled"].(bool); ok {
-				enabled = e
-			}
-			source := ""
-			if s, ok := m["source"].(string); ok {
-				source = s
-			}
-			extConn := false
-			if ec, ok := m["extension_connected"].(bool); ok {
-				extConn = ec
-			}
-			pilotStatus = PilotInfo{
-				Enabled:            enabled,
-				Source:             source,
-				ExtensionConnected: extConn,
-				LastPollAgo:        "",
-			}
-		}
+	statusMap := cap.GetPilotStatus()
+	m, ok := statusMap.(map[string]any)
+	if !ok {
+		return defaultStatus
 	}
 
-	return MCPHealthResponse{
-		Server:       serverInfo,
-		Memory:       memInfo,
-		Buffers:      buffersInfo,
-		RateLimiting: rateLimitInfo,
-		Audit:        auditInfo,
-		Pilot:        pilotStatus,
+	enabled, _ := m["enabled"].(bool)
+	source, _ := m["source"].(string)
+	extConn, _ := m["extension_connected"].(bool)
+
+	return PilotInfo{
+		Enabled:            enabled,
+		Source:             source,
+		ExtensionConnected: extConn,
 	}
 }
 
@@ -353,10 +345,6 @@ func (h *ToolHandler) toolGetHealth(req JSONRPCRequest) JSONRPCResponse {
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInternal, "Health metrics not initialized", "Internal server error — do not retry")}
 	}
 
-	hm, ok := h.healthMetrics.(*HealthMetrics)
-	if !ok {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInternal, "Health metrics type mismatch", "Internal server error — do not retry")}
-	}
-	response := hm.GetHealth(h.capture, h.server, version)
+	response := h.healthMetrics.GetHealth(h.capture, h.server, version)
 	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Server health", response)}
 }

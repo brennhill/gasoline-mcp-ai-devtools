@@ -177,9 +177,9 @@ func TestRecordingWebSocketConnectionDropFallback(t *testing.T) {
 	// Simulate events before connection drop
 	for i := 1; i <= 3; i++ {
 		action := RecordingAction{
-			Type:       "click",
+			Type:        "click",
 			TimestampMs: time.Now().UnixMilli(),
-			Selector:   fmt.Sprintf("button#pre-drop-%d", i),
+			Selector:    fmt.Sprintf("button#pre-drop-%d", i),
 		}
 		_ = capture.AddRecordingAction(action)
 	}
@@ -187,10 +187,10 @@ func TestRecordingWebSocketConnectionDropFallback(t *testing.T) {
 	// Simulate events after fallback to polling (should still be captured)
 	for i := 1; i <= 3; i++ {
 		action := RecordingAction{
-			Type:       "type",
+			Type:        "type",
 			TimestampMs: time.Now().UnixMilli(),
-			Selector:   fmt.Sprintf("input#post-drop-%d", i),
-			Text:       "[redacted]",
+			Selector:    fmt.Sprintf("input#post-drop-%d", i),
+			Text:        "[redacted]",
 		}
 		_ = capture.AddRecordingAction(action)
 	}
@@ -241,9 +241,9 @@ func TestRecordingWebSocketReconnectBackoff(t *testing.T) {
 	// Cycle 1: Initial connection
 	for i := 1; i <= 2; i++ {
 		action := RecordingAction{
-			Type:       "click",
+			Type:        "click",
 			TimestampMs: time.Now().UnixMilli(),
-			Selector:   fmt.Sprintf("button#cycle1-%d", i),
+			Selector:    fmt.Sprintf("button#cycle1-%d", i),
 		}
 		_ = capture.AddRecordingAction(action)
 	}
@@ -251,9 +251,9 @@ func TestRecordingWebSocketReconnectBackoff(t *testing.T) {
 	// Cycle 2: After connection drop and reconnect
 	for i := 1; i <= 2; i++ {
 		action := RecordingAction{
-			Type:       "click",
+			Type:        "click",
 			TimestampMs: time.Now().UnixMilli(),
-			Selector:   fmt.Sprintf("button#cycle2-%d", i),
+			Selector:    fmt.Sprintf("button#cycle2-%d", i),
 		}
 		_ = capture.AddRecordingAction(action)
 	}
@@ -261,9 +261,9 @@ func TestRecordingWebSocketReconnectBackoff(t *testing.T) {
 	// Cycle 3: After another reconnect cycle
 	for i := 1; i <= 2; i++ {
 		action := RecordingAction{
-			Type:       "click",
+			Type:        "click",
 			TimestampMs: time.Now().UnixMilli(),
-			Selector:   fmt.Sprintf("button#cycle3-%d", i),
+			Selector:    fmt.Sprintf("button#cycle3-%d", i),
 		}
 		_ = capture.AddRecordingAction(action)
 	}
@@ -1085,7 +1085,10 @@ func TestLogDiffNewErrors(t *testing.T) {
 	capture := setupTestCapture(t)
 
 	// Create original recording (no errors)
-	recordingID1, _ := capture.StartRecording("original", "https://example.com", false)
+	recordingID1, err := capture.StartRecording("original", "https://example.com", false)
+	if err != nil {
+		t.Fatalf("Failed to start original recording: %v", err)
+	}
 	for i := 0; i < 3; i++ {
 		action := RecordingAction{
 			Type:        "click",
@@ -1281,7 +1284,10 @@ func TestLogDiffCategorize(t *testing.T) {
 	capture := setupTestCapture(t)
 
 	// Create original recording with mixed action types
-	recordingID1, _ := capture.StartRecording("original", "https://example.com", false)
+	recordingID1, err := capture.StartRecording("original", "https://example.com", false)
+	if err != nil {
+		t.Fatalf("Failed to start original recording: %v", err)
+	}
 	actions1 := []RecordingAction{
 		{Type: "navigate", Selector: "", TimestampMs: 1000, Text: "https://example.com"},
 		{Type: "click", Selector: "button.login", TimestampMs: 2000},
@@ -1290,12 +1296,19 @@ func TestLogDiffCategorize(t *testing.T) {
 		{Type: "click", Selector: "button.submit", TimestampMs: 5000},
 	}
 	for _, a := range actions1 {
-		_ = capture.AddRecordingAction(a)
+		if err := capture.AddRecordingAction(a); err != nil {
+			t.Fatalf("Failed to add action to original recording: %v", err)
+		}
 	}
-	capture.StopRecording(recordingID1)
+	if _, _, err := capture.StopRecording(recordingID1); err != nil {
+		t.Fatalf("Failed to stop original recording: %v", err)
+	}
 
 	// Create replay recording with different action mix
-	recordingID2, _ := capture.StartRecording("replay", "https://example.com", false)
+	recordingID2, err := capture.StartRecording("replay", "https://example.com", false)
+	if err != nil {
+		t.Fatalf("Failed to start replay recording: %v", err)
+	}
 	actions2 := []RecordingAction{
 		{Type: "navigate", Selector: "", TimestampMs: 1000, Text: "https://example.com"},
 		{Type: "click", Selector: "button.login", TimestampMs: 2000},
@@ -1305,13 +1318,30 @@ func TestLogDiffCategorize(t *testing.T) {
 		{Type: "click", Selector: "button.submit", TimestampMs: 5000},
 	}
 	for _, a := range actions2 {
-		_ = capture.AddRecordingAction(a)
+		if err := capture.AddRecordingAction(a); err != nil {
+			t.Fatalf("Failed to add action to replay recording: %v", err)
+		}
 	}
-	capture.StopRecording(recordingID2)
+	if _, _, err := capture.StopRecording(recordingID2); err != nil {
+		t.Fatalf("Failed to stop replay recording: %v", err)
+	}
 
 	// Load both recordings
-	rec1, _ := capture.GetRecording(recordingID1)
-	rec2, _ := capture.GetRecording(recordingID2)
+	rec1, err := capture.GetRecording(recordingID1)
+	if err != nil {
+		t.Fatalf("Failed to load original recording: %v", err)
+	}
+	if rec1 == nil {
+		t.Fatal("Original recording is nil")
+	}
+
+	rec2, err := capture.GetRecording(recordingID2)
+	if err != nil {
+		t.Fatalf("Failed to load replay recording: %v", err)
+	}
+	if rec2 == nil {
+		t.Fatal("Replay recording is nil")
+	}
 
 	// Verify we can categorize action types
 	actionTypeCount1 := make(map[string]int)

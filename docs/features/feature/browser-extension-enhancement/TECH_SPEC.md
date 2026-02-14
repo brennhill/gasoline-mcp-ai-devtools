@@ -177,12 +177,12 @@ class ActionTimer {
 export const actionTimer = new ActionTimer();
 ```
 
-**Integration with v5.3:**
+#### Integration with v5.3:
 - Add to content script initialization
 - Events sent via postMessage (already trusted channel to background)
 - No breaking changes to existing telemetry
 
-**Tests:**
+#### Tests:
 - [ ] Click button, timing recorded
 - [ ] Type in input, timing recorded
 - [ ] Navigation tracked
@@ -312,12 +312,12 @@ class DOMSnapshotCapture {
 export const domSnapshot = new DOMSnapshotCapture();
 ```
 
-**Integration:**
+#### Integration:
 - Call `captureBeforeAction()` before emitting action start
 - Call `captureAfterAction()` after action completes
 - Emit as normalized event
 
-**Tests:**
+#### Tests:
 - [ ] Snapshot captures HTML
 - [ ] HTML compressed correctly
 - [ ] Diff detects added/removed elements
@@ -476,12 +476,12 @@ class AccessibilityContextCapture {
 export const a11yContext = new AccessibilityContextCapture();
 ```
 
-**Integration:**
+#### Integration:
 - Call on every interaction
 - Emit as normalized event
 - Use for AI semantic understanding
 
-**Tests:**
+#### Tests:
 - [ ] aria-label captured
 - [ ] role detected
 - [ ] Form context extracted
@@ -618,12 +618,12 @@ class SmartSelectorGenerator {
 export const selectorGenerator = new SmartSelectorGenerator();
 ```
 
-**Integration:**
+#### Integration:
 - Generate selector for every action
 - Include in action metadata
 - Used by LLM for test generation
 
-**Tests:**
+#### Tests:
 - [ ] data-testid used as primary
 - [ ] Fallback to class if no testid
 - [ ] Semantic text generated
@@ -674,14 +674,14 @@ interface NormalizedBrowserEvent {
 
 ## Performance Budget
 
-**Browser Extension Per-Event Overhead:**
+### Browser Extension Per-Event Overhead:
 - Action timing calculation: <0.1ms
 - DOM snapshot: <50ms (async, not blocking)
 - Accessibility scan: <10ms
 - Selector generation: <5ms
 - Total per action: <65ms (non-blocking)
 
-**Memory Footprint:**
+### Memory Footprint:
 - Timing records: ~1KB per 100 actions (maps cleared)
 - Last snapshot: ~10KB
 - Pending snapshots: ~20KB (max 2 concurrent)
@@ -692,20 +692,20 @@ interface NormalizedBrowserEvent {
 
 ## Testing Strategy
 
-**Unit Tests (v6.0):**
+### Unit Tests (v6.0):
 - [ ] Action timer accuracy (±5ms)
 - [ ] DOM snapshot compression
 - [ ] Diff algorithm correctness
 - [ ] Selector generation for common patterns
 - [ ] Accessibility violation detection
 
-**Integration Tests (v6.0):**
+### Integration Tests (v6.0):
 - [ ] Full action cycle: click → timing → snapshot → a11y → event
 - [ ] Multiple concurrent actions
 - [ ] Network request association
 - [ ] Event emission to background script
 
-**E2E Tests (v6.0):**
+### E2E Tests (v6.0):
 - [ ] Run on ShopBroken checkout flow
 - [ ] Verify all timing, snapshots, selectors captured
 - [ ] Performance acceptable
@@ -715,17 +715,17 @@ interface NormalizedBrowserEvent {
 
 ## Rollout Plan
 
-**Phase 1 (v6.0 sprint 1):**
+### Phase 1 (v6.0 sprint 1):
 - Implement action timing, DOM snapshots, a11y capture
 - Include in beta v6.0.0-beta.1
 - Test on ShopBroken
 
-**Phase 2 (v6.0 sprint 2):**
+### Phase 2 (v6.0 sprint 2):
 - Refine selector generation based on feedback
 - Add more accessibility checks
 - Release v6.0.0
 
-**Phase 3 (v6.1):**
+### Phase 3 (v6.1):
 - Add video recording of actions
 - Add pixel-level visual regression detection
 - Improve WCAG scanning

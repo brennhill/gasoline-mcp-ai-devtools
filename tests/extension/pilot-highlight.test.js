@@ -38,8 +38,8 @@ describe('highlightElement function', () => {
         width: 200,
         height: 100,
         x: 50,
-        y: 100,
-      })),
+        y: 100
+      }))
     }
     return el
   }
@@ -68,8 +68,8 @@ describe('highlightElement function', () => {
         appendChild: mock.fn((el) => {
           appendedElements.push(el)
           gasolineHighlighter = el
-        }),
-      },
+        })
+      }
     }
 
     mockWindow = createMockWindow({
@@ -77,8 +77,8 @@ describe('highlightElement function', () => {
       overrides: {
         setTimeout: mock.fn((_cb, _ms) => {
           return 123 // Return a mock timer ID
-        }),
-      },
+        })
+      }
     })
 
     globalThis.window = mockWindow
@@ -119,7 +119,7 @@ describe('highlightElement function', () => {
       backgroundColor: 'rgba(255, 0, 0, 0.1)',
       zIndex: '2147483647',
       pointerEvents: 'none',
-      boxSizing: 'border-box',
+      boxSizing: 'border-box'
     })
 
     document.body.appendChild(gasolineHighlighter)
@@ -134,7 +134,7 @@ describe('highlightElement function', () => {
     return {
       success: true,
       selector,
-      bounds: { x: rect.x, y: rect.y, width: rect.width, height: rect.height },
+      bounds: { x: rect.x, y: rect.y, width: rect.width, height: rect.height }
     }
   }
 
@@ -181,7 +181,7 @@ describe('highlightElement function', () => {
     assert.strictEqual(
       highlighter.style.backgroundColor,
       'rgba(255, 0, 0, 0.1)',
-      'Should have semi-transparent red background',
+      'Should have semi-transparent red background'
     )
   })
 
@@ -316,4 +316,3 @@ describe('highlightElement function', () => {
     assert.strictEqual(removedElements.length, 0, 'Should not remove anything')
   })
 })
-

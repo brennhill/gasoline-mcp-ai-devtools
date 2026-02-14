@@ -92,10 +92,6 @@ func createTestToolHandler(t *testing.T) *ToolHandler {
 
 // TestToolHandler_Observe_NoStdout verifies observe tool produces no stdout output
 func TestToolHandler_Observe_NoStdout(t *testing.T) {
-	if testing.Short() {
-		t.Skip("skips 5s+ waterfall timeout in short mode")
-	}
-
 	handler := createTestToolHandler(t)
 
 	testCases := []struct {
@@ -113,8 +109,6 @@ func TestToolHandler_Observe_NoStdout(t *testing.T) {
 		{"performance", "performance"},
 		{"vitals", "vitals"},
 		{"extension_logs", "extension_logs"},
-		{"api", "api"},
-		{"changes", "changes"},
 		{"timeline", "timeline"},
 		{"security_audit", "security_audit"},
 		{"accessibility", "accessibility"},

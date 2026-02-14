@@ -269,31 +269,39 @@ func (rb *RingBuffer[T]) positionToIndex(position int64) int {
 
 // ReadFromWithFilter reads entries from cursor and applies a filter function.
 // Only entries where filter returns true are included in the result.
+// currentCursor returns a cursor pointing to the current end of the buffer.
+func (rb *RingBuffer[T]) currentCursor() BufferCursor {
+	return BufferCursor{Position: rb.totalAdded, Timestamp: time.Now()}
+}
+
+// resolveStartPosition clamps a cursor position to the oldest available entry.
+// Returns the clamped start position and the number of entries available, or -1 if none.
+func (rb *RingBuffer[T]) resolveStartPosition(cursorPos int64) (int64, int64) {
+	oldestPosition := rb.totalAdded - int64(len(rb.entries))
+	if oldestPosition < 0 {
+		oldestPosition = 0
+	}
+	startPosition := cursorPos
+	if startPosition < oldestPosition {
+		startPosition = oldestPosition
+	}
+	return startPosition, rb.totalAdded - startPosition
+}
+
 func (rb *RingBuffer[T]) ReadFromWithFilter(cursor BufferCursor, filter func(T) bool, limit int) ([]T, BufferCursor) {
 	rb.mu.RLock()
 	defer rb.mu.RUnlock()
 
 	if len(rb.entries) == 0 {
-		return nil, BufferCursor{Position: rb.totalAdded, Timestamp: time.Now()}
+		return nil, rb.currentCursor()
 	}
 
-	oldestPosition := rb.totalAdded - int64(len(rb.entries))
-	if oldestPosition < 0 {
-		oldestPosition = 0
-	}
-
-	startPosition := cursor.Position
-	if startPosition < oldestPosition {
-		startPosition = oldestPosition
-	}
-
-	entriesAvailable := rb.totalAdded - startPosition
+	startPosition, entriesAvailable := rb.resolveStartPosition(cursor.Position)
 	if entriesAvailable <= 0 {
-		return nil, BufferCursor{Position: rb.totalAdded, Timestamp: time.Now()}
+		return nil, rb.currentCursor()
 	}
 
 	startIndex := rb.positionToIndex(startPosition)
-
 	capHint := int(entriesAvailable)
 	if limit > 0 && limit < capHint {
 		capHint = limit
@@ -301,16 +309,14 @@ func (rb *RingBuffer[T]) ReadFromWithFilter(cursor BufferCursor, filter func(T) 
 	result := make([]T, 0, capHint)
 	for i := int64(0); i < entriesAvailable; i++ {
 		idx := int((int64(startIndex) + i) % int64(len(rb.entries)))
-		entry := rb.entries[idx]
-		if filter(entry) {
-			result = append(result, entry)
+		if filter(rb.entries[idx]) {
+			result = append(result, rb.entries[idx])
 			if limit > 0 && len(result) >= limit {
 				break
 			}
 		}
 	}
-
-	return result, BufferCursor{Position: rb.totalAdded, Timestamp: time.Now()}
+	return result, rb.currentCursor()
 }
 
 // ReadAllWithFilter returns all entries that pass the filter, oldest first.

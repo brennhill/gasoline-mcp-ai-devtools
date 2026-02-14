@@ -19,6 +19,7 @@ export interface BridgePayload {
 /**
  * Post a log message to the content script
  */
+// #lizard forgives
 export function postLog(payload: BridgePayload): void {
   // Include context annotations and action replay for errors
   const context = getContextAnnotations()
@@ -55,9 +56,9 @@ export function postLog(payload: BridgePayload): void {
         ...(context && payload.level === 'error' ? { _context: context } : {}),
         ...(actions && actions.length > 0 ? { _actions: actions } : {}),
         // Any other fields from payload (excluding the ones we destructured)
-        ...otherFields,
-      },
+        ...otherFields
+      }
     },
-    window.location.origin,
+    window.location.origin
   )
 }

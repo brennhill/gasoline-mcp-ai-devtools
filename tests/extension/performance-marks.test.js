@@ -22,7 +22,7 @@ function createMockMark(name, startTime = 100, detail = null) {
     entryType: 'mark',
     startTime,
     duration: 0,
-    detail,
+    detail
   }
 }
 
@@ -32,7 +32,7 @@ function createMockMeasure(name, startTime = 100, duration = 50, detail = null) 
     entryType: 'measure',
     startTime,
     duration,
-    detail,
+    detail
   }
 }
 
@@ -66,7 +66,7 @@ function createMockPerformance() {
     now: mock.fn(() => Date.now()),
     _entries: entries,
     _addEntry: (entry) => entries.push(entry),
-    _clear: () => (entries.length = 0),
+    _clear: () => (entries.length = 0)
   }
 }
 
@@ -77,7 +77,7 @@ function createMockWindow() {
     performance: createMockPerformance(),
     PerformanceObserver: mock.fn((_callback) => ({
       observe: mock.fn(),
-      disconnect: mock.fn(),
+      disconnect: mock.fn()
     })),
     addEventListener: mock.fn(),
     removeEventListener: mock.fn(),
@@ -85,7 +85,7 @@ function createMockWindow() {
     innerWidth: 1920,
     innerHeight: 1080,
     scrollX: 0,
-    scrollY: 0,
+    scrollY: 0
   }
 }
 
@@ -93,6 +93,8 @@ function createMockDocument() {
   return {
     addEventListener: mock.fn(),
     removeEventListener: mock.fn(),
+    querySelector: mock.fn(() => null),
+    querySelectorAll: mock.fn(() => [])
   }
 }
 
@@ -394,7 +396,7 @@ describe('Performance Marks - Error Integration', () => {
     const errorEntry = {
       type: 'exception',
       level: 'error',
-      message: 'Test error',
+      message: 'Test error'
     }
 
     const snapshot = await getPerformanceSnapshotForError(errorEntry)
@@ -456,8 +458,8 @@ describe('Performance Marks - Error Integration', () => {
             startTime: 0,
             domContentLoadedEventEnd: 500,
             loadEventEnd: 1000,
-            type: 'navigate',
-          },
+            type: 'navigate'
+          }
         ]
       }
       return []
@@ -569,12 +571,12 @@ describe('Performance Marks - PerformanceObserver', () => {
           observe: function (_options) {
             observeMethodCalled = true
           },
-          disconnect: mock.fn(),
+          disconnect: mock.fn()
         }
       },
       addEventListener: mock.fn(),
       removeEventListener: mock.fn(),
-      onerror: null,
+      onerror: null
     }
     globalThis.performance = globalThis.window.performance
     // Code checks typeof PerformanceObserver (global), not window.PerformanceObserver

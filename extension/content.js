@@ -9,32 +9,37 @@
  * tracked tab. Validates message origin (event.source === window) to prevent
  * cross-frame injection. Attaches tabId to all forwarded messages.
  */
-import { initTabTracking } from './content/tab-tracking.js';
-import { initScriptInjection } from './content/script-injection.js';
-import { initRequestTracking, getPendingRequestStats, clearPendingRequests, cleanupRequestTracking } from './content/request-tracking.js';
-import { initWindowMessageListener } from './content/window-message-listener.js';
-import { initRuntimeMessageListener } from './content/runtime-message-listener.js';
-import { initFaviconReplacer } from './content/favicon-replacer.js';
+import { initTabTracking } from './content/tab-tracking.js'
+import { initScriptInjection } from './content/script-injection.js'
+import {
+  initRequestTracking,
+  getPendingRequestStats,
+  clearPendingRequests,
+  cleanupRequestTracking
+} from './content/request-tracking.js'
+import { initWindowMessageListener } from './content/window-message-listener.js'
+import { initRuntimeMessageListener } from './content/runtime-message-listener.js'
+import { initFaviconReplacer } from './content/favicon-replacer.js'
 // Export for testing
-export { getPendingRequestStats, clearPendingRequests, cleanupRequestTracking };
+export { getPendingRequestStats, clearPendingRequests, cleanupRequestTracking }
 // ============================================================================
 // INITIALIZATION
 // ============================================================================
 // Track whether scripts have been injected
-let scriptsInjected = false;
+let scriptsInjected = false
 // Initialize tab tracking first, with callback for injection
 initTabTracking((tracked) => {
-    if (tracked && !scriptsInjected) {
-        initScriptInjection();
-        scriptsInjected = true;
-    }
-});
+  if (tracked && !scriptsInjected) {
+    initScriptInjection()
+    scriptsInjected = true
+  }
+})
 // Initialize request tracking (cleanup handlers)
-initRequestTracking();
+initRequestTracking()
 // Initialize window message listener
-initWindowMessageListener();
+initWindowMessageListener()
 // Initialize runtime message listener
-initRuntimeMessageListener();
+initRuntimeMessageListener()
 // Initialize favicon replacer (visual indicator for tracked tabs)
-initFaviconReplacer();
+initFaviconReplacer()
 //# sourceMappingURL=content.js.map

@@ -11,7 +11,7 @@ export const DebugCategory = {
   LIFECYCLE: 'lifecycle' as const,
   SETTINGS: 'settings' as const,
   SOURCEMAP: 'sourcemap' as const,
-  QUERY: 'query' as const,
+  QUERY: 'query' as const
 }
 
 export type DebugCategoryType = (typeof DebugCategory)[keyof typeof DebugCategory]

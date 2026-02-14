@@ -3,7 +3,7 @@
 # Runs 4 test categories at a time with proper port spacing and cleanup delays
 # Addresses daemon lifecycle race conditions from previous parallel approach
 
-set -e
+set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 TEST_DIR="$SCRIPT_DIR/tests"
@@ -69,13 +69,13 @@ run_test_group() {
         RESULT_FILE="$RESULTS_DIR/group${group_num}-${test}.txt"
         bash "$TEST_DIR/${test}.sh" "$port" "$RESULT_FILE" >/dev/null 2>&1 &
         local pid=$!
-        pids+=($pid)
+        pids+=("$pid")
         port=$((port + 1))
     done
 
     # Wait for all tests in this group to complete
     for pid in "${pids[@]}"; do
-        wait $pid 2>/dev/null || true
+        wait "$pid" 2>/dev/null || true
     done
 
     echo "✅ Group $group_num complete"
@@ -119,6 +119,7 @@ for test in "${TESTS[@]}"; do
 
     if [ -f "$RESULT_FILE" ]; then
         # Source the result file to get counts
+        # shellcheck source=/dev/null
         source "$RESULT_FILE" 2>/dev/null || {
             echo "⚠️  $test: CORRUPTED RESULT FILE"
             continue
