@@ -49,6 +49,7 @@ export interface NetworkBodyPayload {
   readonly contentType: string
   readonly requestBody?: string
   readonly responseBody?: string
+  readonly responseTruncated?: boolean
   readonly duration: number
   readonly tabId?: number // Chrome tab ID that produced this request (v5.3+)
 }

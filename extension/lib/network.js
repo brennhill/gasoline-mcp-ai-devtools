@@ -331,13 +331,14 @@ async function readCapturedBody(url, cloned, contentType) {
     }
     return readResponseBodyWithTimeout(cloned);
 }
-function postNetworkBody(win, url, method, response, contentType, requestBody, duration, truncResp, truncReq) {
+function postNetworkBody(win, url, method, response, contentType, requestBody, duration, truncResp, truncReq, responseTruncated) {
     const message = {
         type: 'GASOLINE_NETWORK_BODY',
         payload: {
             url, method, status: response.status, contentType,
             requestBody: truncReq || (typeof requestBody === 'string' ? requestBody : undefined),
             responseBody: truncResp,
+            ...(responseTruncated ? { responseTruncated: true } : {}),
             duration
         }
     };
@@ -358,11 +359,11 @@ export function wrapFetchWithBodies(fetchFn) {
             .then(async () => {
             try {
                 const responseBody = await readCapturedBody(url, cloned, contentType);
-                const { body: truncResp } = truncateResponseBody(responseBody);
+                const { body: truncResp, truncated: respTruncated } = truncateResponseBody(responseBody);
                 const rawReq = SENSITIVE_URL_PATTERNS.test(url) ? '[REDACTED: auth endpoint]' : (typeof requestBody === 'string' ? requestBody : null);
                 const { body: truncReq } = truncateRequestBody(rawReq);
                 if (win && networkBodyCaptureEnabled) {
-                    postNetworkBody(win, url, method, response, contentType, requestBody, duration, truncResp || responseBody, truncReq);
+                    postNetworkBody(win, url, method, response, contentType, requestBody, duration, truncResp || responseBody, truncReq, respTruncated);
                 }
             }
             catch { /* Body capture failure should not affect user code */ }
