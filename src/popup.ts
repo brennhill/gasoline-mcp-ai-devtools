@@ -121,11 +121,20 @@ export async function initPopup(): Promise<void> {
   // Initialize recording UI
   setupRecordingUI()
 
-  // Check for pending audio recording that needs activeTab gesture.
+  // Check for pending recording that needs activeTab gesture.
   // When the user clicks the extension icon, activeTab is granted for the active tab.
-  // The popup auto-sends RECORDING_GESTURE_GRANTED to unblock the service worker.
+  // The popup auto-sends RECORDING_GESTURE_GRANTED to unblock the service worker,
+  // and shows visual feedback so the user knows recording is starting.
   chrome.storage.local.get('gasoline_pending_recording', (result: Record<string, unknown>) => {
     if (result.gasoline_pending_recording) {
+      // Show immediate feedback in the recording row
+      const recordLabel = document.getElementById('record-label')
+      const recordStatus = document.getElementById('recording-status')
+      const recordOptions = document.getElementById('record-options')
+      if (recordLabel) recordLabel.textContent = 'Starting...'
+      if (recordStatus) recordStatus.textContent = 'Permission granted'
+      if (recordOptions) recordOptions.style.display = 'none'
+
       chrome.runtime.sendMessage({ type: 'RECORDING_GESTURE_GRANTED' })
       chrome.storage.local.remove('gasoline_pending_recording')
     }
@@ -452,6 +461,9 @@ function setupRecordingUI(): void {
 
   const state: RecordingState = { isRecording: false, timerInterval: null }
 
+  // Hide recording row until state is known to prevent idle→recording flicker
+  row.style.visibility = 'hidden'
+
   chrome.storage.local.get(
     'gasoline_recording',
     (result: Record<string, { active?: boolean; name?: string; startTime?: number } | undefined>) => {
@@ -461,6 +473,7 @@ function setupRecordingUI(): void {
         console.log('[Gasoline REC] Popup: resuming recording UI for', rec.name)
         showRecording(els, state, rec.name, rec.startTime)
       }
+      row.style.visibility = 'visible'
     }
   )
 

@@ -300,6 +300,11 @@ export class SyncClient {
             this.log('Command dispatched OK', { id: command.id })
           } catch (err) {
             this.log('Command dispatch FAILED', { id: command.id, error: (err as Error).message })
+            this.queueCommandResult({
+              id: command.id,
+              status: 'error',
+              error: (err as Error).message || 'Command dispatch failed'
+            })
           }
         }
       }

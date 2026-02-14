@@ -30,10 +30,6 @@ const TOAST_THEMES: Record<string, { bg: string; shadow: string }> = {
 /** Pre-built CSS for toast animations — extracted to reduce function complexity */
 // nosemgrep: missing-template-string-indicator
 const TOAST_ANIMATION_CSS = [
-  '@keyframes gasolineArrowBounce {',
-  '  0%, 100% { transform: translateY(0) translateX(0); opacity: 1; }',
-  '  50% { transform: translateY(-4px) translateX(4px); opacity: 0.7; }',
-  '}',
   '@keyframes gasolineArrowBounceUp {',
   '  0%, 100% { transform: translateY(0); opacity: 1; }',
   '  50% { transform: translateY(-6px); opacity: 0.7; }',
@@ -44,10 +40,7 @@ const TOAST_ANIMATION_CSS = [
   '}',
   '.gasoline-toast-arrow {',
   '  display: inline-block; margin-left: 8px;',
-  '  animation: gasolineArrowBounce 1.5s ease-in-out infinite;',
-  '}',
-  '@media (max-width: 767px) {',
-  '  .gasoline-toast-arrow { animation: gasolineArrowBounceUp 1.5s ease-in-out infinite; }',
+  '  animation: gasolineArrowBounceUp 1.5s ease-in-out infinite;',
   '}',
   '.gasoline-toast-pulse { animation: gasolineToastPulse 2s ease-in-out infinite; }'
 ].join('\n')
@@ -90,14 +83,25 @@ function showActionToast(
   const isAudioPrompt =
     state === 'audio' || (detail && detail.toLowerCase().includes('audio') && detail.toLowerCase().includes('click'))
 
-  // Detect screen size: small screens < 768px (mobile) vs larger
-  const isSmallScreen = typeof window !== 'undefined' && window.innerWidth < 768
-  const arrowChar = isSmallScreen ? '↑' : '↗'
+  const arrowChar = '↑'
 
   const toast = document.createElement('div')
   toast.id = 'gasoline-action-toast'
   if (isAudioPrompt) {
     toast.className = 'gasoline-toast-pulse'
+  }
+
+  // Add gasoline icon for audio/extension-click prompts
+  if (isAudioPrompt) {
+    const icon = document.createElement('img')
+    icon.src = chrome.runtime.getURL('icons/icon-48.png')
+    Object.assign(icon.style, {
+      width: '20px',
+      height: '20px',
+      marginRight: '8px',
+      flexShrink: '0'
+    })
+    toast.appendChild(icon)
   }
 
   // Build content: label + truncated detail
@@ -118,7 +122,7 @@ function showActionToast(
     toast.appendChild(det)
   }
 
-  // Add animated arrow for audio prompts (↗ on large screens, ↑ on small screens)
+  // Add animated arrow for audio prompts (↑ pointing to extension toolbar)
   if (isAudioPrompt) {
     const arrow = document.createElement('span')
     arrow.className = 'gasoline-toast-arrow'
@@ -135,9 +139,9 @@ function showActionToast(
   Object.assign(toast.style, {
     position: 'fixed',
     top: '16px',
-    right: isAudioPrompt && !isSmallScreen ? '16px' : 'auto',
-    left: isAudioPrompt && isSmallScreen ? '50%' : isAudioPrompt ? 'auto' : '50%',
-    transform: isAudioPrompt && isSmallScreen ? 'translateX(-50%)' : isAudioPrompt ? 'none' : 'translateX(-50%)',
+    right: '16px',
+    left: 'auto',
+    transform: 'none',
     padding: isAudioPrompt ? '12px 24px' : '8px 20px',
     background: theme.bg,
     color: '#fff',
