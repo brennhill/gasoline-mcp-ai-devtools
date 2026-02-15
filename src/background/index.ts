@@ -455,7 +455,9 @@ function updateVersionFromHealthSafe(health: { version?: string; availableVersio
   }
 }
 
-function applyHealthLogs(health: { logs?: { logFile?: string; logFileSize?: number; entries?: number; maxEntries?: number } }): void {
+function applyHealthLogs(health: {
+  logs?: { logFile?: string; logFileSize?: number; entries?: number; maxEntries?: number }
+}): void {
   if (!health.logs) return
   connectionStatus.logFile = health.logs.logFile || connectionStatus.logFile
   connectionStatus.logFileSize = health.logs.logFileSize
@@ -471,7 +473,10 @@ function applyVersionMismatchCheck(health: { connected: boolean; version?: strin
   connectionStatus.versionMismatch = health.version.split('.')[0] !== extVersion.split('.')[0]
 }
 
-function logConnectionChange(wasConnected: boolean, health: { connected: boolean; error?: string; version?: string }): void {
+function logConnectionChange(
+  wasConnected: boolean,
+  health: { connected: boolean; error?: string; version?: string }
+): void {
   if (wasConnected === health.connected) return
   debugLog(DebugCategory.CONNECTION, health.connected ? 'Connected to server' : 'Disconnected from server', {
     entries: connectionStatus.entries,

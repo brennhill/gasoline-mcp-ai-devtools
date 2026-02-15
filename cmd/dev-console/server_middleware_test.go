@@ -4,18 +4,12 @@ package main
 import (
 	"net/http"
 	"net/http/httptest"
-	"path/filepath"
 	"testing"
-
-	"github.com/dev-console/dev-console/internal/state"
 )
 
 func TestIsAllowedOrigin(t *testing.T) {
-	t.Setenv(state.StateDirEnv, filepath.Join(t.TempDir(), "state"))
 	t.Setenv("GASOLINE_EXTENSION_ID", "")
 	t.Setenv("GASOLINE_FIREFOX_EXTENSION_ID", "")
-	resetExtensionTrustCacheForTests()
-	t.Cleanup(resetExtensionTrustCacheForTests)
 
 	tests := []struct {
 		origin string
@@ -33,7 +27,7 @@ func TestIsAllowedOrigin(t *testing.T) {
 		{"http://[::1]", true},
 		{"http://[::1]:3000", true},
 
-		// Browser extensions (first-seen trust mode)
+		// Browser extensions (any valid ID accepted)
 		{"chrome-extension://abcdefghijklmnop", true},
 		{"moz-extension://abcdefghijklmnop", true},
 
@@ -81,11 +75,8 @@ func TestIsAllowedHost(t *testing.T) {
 }
 
 func TestCorsMiddleware(t *testing.T) {
-	t.Setenv(state.StateDirEnv, filepath.Join(t.TempDir(), "state"))
 	t.Setenv("GASOLINE_EXTENSION_ID", "")
 	t.Setenv("GASOLINE_FIREFOX_EXTENSION_ID", "")
-	resetExtensionTrustCacheForTests()
-	t.Cleanup(resetExtensionTrustCacheForTests)
 
 	handler := corsMiddleware(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
@@ -181,33 +172,9 @@ func TestExtensionOnly(t *testing.T) {
 	})
 }
 
-func TestIsAllowedOriginTrustOnFirstUsePinsExtensionID(t *testing.T) {
-	t.Setenv(state.StateDirEnv, filepath.Join(t.TempDir(), "state"))
-	t.Setenv("GASOLINE_EXTENSION_ID", "")
-	t.Setenv("GASOLINE_FIREFOX_EXTENSION_ID", "")
-	resetExtensionTrustCacheForTests()
-	t.Cleanup(resetExtensionTrustCacheForTests)
-
-	first := "chrome-extension://aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
-	second := "chrome-extension://bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
-
-	if !isAllowedOrigin(first) {
-		t.Fatalf("first extension origin should be allowed for pairing")
-	}
-	if !isAllowedOrigin(first) {
-		t.Fatalf("paired extension origin should remain allowed")
-	}
-	if isAllowedOrigin(second) {
-		t.Fatalf("different extension origin should be rejected after pairing")
-	}
-}
-
 func TestIsAllowedOriginEnvOverrideRequiresExactExtensionID(t *testing.T) {
-	t.Setenv(state.StateDirEnv, filepath.Join(t.TempDir(), "state"))
 	t.Setenv("GASOLINE_EXTENSION_ID", "allowedextensionid123")
 	t.Setenv("GASOLINE_FIREFOX_EXTENSION_ID", "")
-	resetExtensionTrustCacheForTests()
-	t.Cleanup(resetExtensionTrustCacheForTests)
 
 	allowed := "chrome-extension://allowedextensionid123"
 	rejected := "chrome-extension://differentextensionid"
@@ -217,30 +184,5 @@ func TestIsAllowedOriginEnvOverrideRequiresExactExtensionID(t *testing.T) {
 	}
 	if isAllowedOrigin(rejected) {
 		t.Fatalf("non-configured extension origin should be rejected")
-	}
-}
-
-func TestIsAllowedOriginLoadsPersistedTrustedID(t *testing.T) {
-	t.Setenv(state.StateDirEnv, filepath.Join(t.TempDir(), "state"))
-	t.Setenv("GASOLINE_EXTENSION_ID", "")
-	t.Setenv("GASOLINE_FIREFOX_EXTENSION_ID", "")
-	resetExtensionTrustCacheForTests()
-	t.Cleanup(resetExtensionTrustCacheForTests)
-
-	pinned := "chrome-extension://cccccccccccccccccccccccccccccccc"
-	other := "chrome-extension://dddddddddddddddddddddddddddddddd"
-
-	if !isAllowedOrigin(pinned) {
-		t.Fatalf("first extension should be paired and allowed")
-	}
-
-	// Simulate process restart by clearing only in-memory cache.
-	resetExtensionTrustCacheForTests()
-
-	if !isAllowedOrigin(pinned) {
-		t.Fatalf("persisted extension id should be allowed after cache reset")
-	}
-	if isAllowedOrigin(other) {
-		t.Fatalf("non-persisted extension id should be rejected")
 	}
 }

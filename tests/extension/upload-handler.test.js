@@ -49,7 +49,7 @@ globalThis.chrome = {
 }
 
 // Mock fetch for daemon calls
-const originalFetch = globalThis.fetch
+const _originalFetch = globalThis.fetch
 const mockFetch = mock.fn()
 globalThis.fetch = mockFetch
 

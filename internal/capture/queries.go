@@ -149,6 +149,33 @@ func (qd *QueryDispatcher) GetPendingQueriesForClient(clientID string) []queries
 	return result
 }
 
+// AcknowledgePendingQuery removes delivered queries up to and including queryID.
+// last_command_ack semantics are "last processed command", so older entries are
+// also considered acknowledged and should not be redelivered.
+func (qd *QueryDispatcher) AcknowledgePendingQuery(queryID string) {
+	if queryID == "" {
+		return
+	}
+
+	qd.mu.Lock()
+	defer qd.mu.Unlock()
+
+	ackIndex := -1
+	for i, pq := range qd.pendingQueries {
+		if pq.query.ID == queryID {
+			ackIndex = i
+			break
+		}
+	}
+	if ackIndex < 0 {
+		return
+	}
+
+	remaining := make([]pendingQueryEntry, 0, len(qd.pendingQueries)-ackIndex-1)
+	remaining = append(remaining, qd.pendingQueries[ackIndex+1:]...)
+	qd.pendingQueries = remaining
+}
+
 // ExpireAllPendingQueries expires all pending queries with the given error reason.
 // Used when the extension disconnects to prevent queries from hanging indefinitely.
 // Collects correlation IDs under mu lock, then expires commands under resultsMu.

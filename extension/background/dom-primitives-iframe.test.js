@@ -25,10 +25,18 @@ class MockHTMLElement {
   }
   click() {}
   focus() {}
-  getAttribute() { return null }
-  closest() { return null }
-  querySelector() { return null }
-  querySelectorAll() { return [] }
+  getAttribute() {
+    return null
+  }
+  closest() {
+    return null
+  }
+  querySelector() {
+    return null
+  }
+  querySelectorAll() {
+    return []
+  }
   scrollIntoView() {}
   setAttribute() {}
   dispatchEvent() {}
@@ -43,7 +51,10 @@ globalThis.NodeFilter = { SHOW_TEXT: 4 }
 globalThis.InputEvent = class extends Event {}
 globalThis.KeyboardEvent = class extends Event {}
 globalThis.getComputedStyle = () => ({ visibility: 'visible', display: 'block' })
-globalThis.MutationObserver = class { observe() {} disconnect() {} }
+globalThis.MutationObserver = class {
+  observe() {}
+  disconnect() {}
+}
 globalThis.performance = { now: () => 0 }
 globalThis.requestAnimationFrame = (cb) => cb()
 globalThis.document = {
@@ -103,19 +114,17 @@ describe('iframe support: allFrames flag', () => {
   })
 
   test('executeStandardAction passes allFrames: true to chrome.scripting.executeScript', async () => {
-    executeScriptReturn.push([
-      { frameId: 0, result: { success: true, action: 'click', selector: '#btn' } }
-    ])
+    executeScriptReturn.push([{ frameId: 0, result: { success: true, action: 'click', selector: '#btn' } }])
     const res = captureAsyncResult()
 
-    await executeDOMAction(
-      makeQuery({ action: 'click', selector: '#btn' }),
-      1, makeSyncClient(), res.fn, noopToast
-    )
+    await executeDOMAction(makeQuery({ action: 'click', selector: '#btn' }), 1, makeSyncClient(), res.fn, noopToast)
 
     assert.strictEqual(executeScriptCalls.length, 1)
-    assert.strictEqual(executeScriptCalls[0].target.allFrames, true,
-      'executeScript target must include allFrames: true')
+    assert.strictEqual(
+      executeScriptCalls[0].target.allFrames,
+      true,
+      'executeScript target must include allFrames: true'
+    )
     assert.strictEqual(executeScriptCalls[0].target.tabId, 1)
   })
 
@@ -132,14 +141,15 @@ describe('iframe support: allFrames flag', () => {
 
     await executeDOMAction(
       makeQuery({ action: 'wait_for', selector: '#x', timeout_ms: 100 }),
-      1, makeSyncClient(), res.fn, noopToast
+      1,
+      makeSyncClient(),
+      res.fn,
+      noopToast
     )
 
     assert.strictEqual(executeScriptCalls.length, 2, 'should make 2 executeScript calls')
-    assert.strictEqual(executeScriptCalls[0].target.allFrames, true,
-      'quick-check must use allFrames: true')
-    assert.strictEqual(executeScriptCalls[1].target.allFrames, true,
-      'polling fallback must use allFrames: true')
+    assert.strictEqual(executeScriptCalls[0].target.allFrames, true, 'quick-check must use allFrames: true')
+    assert.strictEqual(executeScriptCalls[1].target.allFrames, true, 'polling fallback must use allFrames: true')
   })
 })
 
@@ -156,15 +166,11 @@ describe('iframe support: pickFrameResult', () => {
     ])
     const res = captureAsyncResult()
 
-    await executeDOMAction(
-      makeQuery({ action: 'get_text', selector: '#el' }),
-      1, makeSyncClient(), res.fn, noopToast
-    )
+    await executeDOMAction(makeQuery({ action: 'get_text', selector: '#el' }), 1, makeSyncClient(), res.fn, noopToast)
 
     assert.strictEqual(res.calls.length, 1)
     assert.strictEqual(res.calls[0].status, 'complete')
-    assert.strictEqual(res.calls[0].result.value, 'main-text',
-      'should prefer main frame result when both succeed')
+    assert.strictEqual(res.calls[0].result.value, 'main-text', 'should prefer main frame result when both succeed')
   })
 
   test('falls back to iframe success when main frame fails', async () => {
@@ -174,14 +180,10 @@ describe('iframe support: pickFrameResult', () => {
     ])
     const res = captureAsyncResult()
 
-    await executeDOMAction(
-      makeQuery({ action: 'click', selector: '#btn' }),
-      1, makeSyncClient(), res.fn, noopToast
-    )
+    await executeDOMAction(makeQuery({ action: 'click', selector: '#btn' }), 1, makeSyncClient(), res.fn, noopToast)
 
     assert.strictEqual(res.calls[0].status, 'complete')
-    assert.strictEqual(res.calls[0].result.success, true,
-      'should use successful iframe result when main frame fails')
+    assert.strictEqual(res.calls[0].result.success, true, 'should use successful iframe result when main frame fails')
   })
 
   test('returns main frame error when all frames fail', async () => {
@@ -191,31 +193,25 @@ describe('iframe support: pickFrameResult', () => {
     ])
     const res = captureAsyncResult()
 
-    await executeDOMAction(
-      makeQuery({ action: 'click', selector: '#btn' }),
-      1, makeSyncClient(), res.fn, noopToast
-    )
+    await executeDOMAction(makeQuery({ action: 'click', selector: '#btn' }), 1, makeSyncClient(), res.fn, noopToast)
 
     assert.strictEqual(res.calls[0].status, 'complete')
     assert.strictEqual(res.calls[0].result.success, false)
-    assert.strictEqual(res.calls[0].result.error, 'element_not_found',
-      'should return main frame error when all frames fail')
+    assert.strictEqual(
+      res.calls[0].result.error,
+      'element_not_found',
+      'should return main frame error when all frames fail'
+    )
   })
 
   test('handles single frame result (no iframes on page)', async () => {
-    executeScriptReturn.push([
-      { frameId: 0, result: { success: true, action: 'focus', selector: '#input' } }
-    ])
+    executeScriptReturn.push([{ frameId: 0, result: { success: true, action: 'focus', selector: '#input' } }])
     const res = captureAsyncResult()
 
-    await executeDOMAction(
-      makeQuery({ action: 'focus', selector: '#input' }),
-      1, makeSyncClient(), res.fn, noopToast
-    )
+    await executeDOMAction(makeQuery({ action: 'focus', selector: '#input' }), 1, makeSyncClient(), res.fn, noopToast)
 
     assert.strictEqual(res.calls[0].status, 'complete')
-    assert.strictEqual(res.calls[0].result.success, true,
-      'single frame result should work unchanged')
+    assert.strictEqual(res.calls[0].result.success, true, 'single frame result should work unchanged')
   })
 
   test('wait_for quick-check picks iframe success over main frame failure', async () => {
@@ -228,12 +224,18 @@ describe('iframe support: pickFrameResult', () => {
 
     await executeDOMAction(
       makeQuery({ action: 'wait_for', selector: '#el', timeout_ms: 100 }),
-      1, makeSyncClient(), res.fn, noopToast
+      1,
+      makeSyncClient(),
+      res.fn,
+      noopToast
     )
 
     // Should have only 1 executeScript call (quick-check succeeded via iframe)
-    assert.strictEqual(executeScriptCalls.length, 1,
-      'should not fall through to polling when quick-check found element in iframe')
+    assert.strictEqual(
+      executeScriptCalls.length,
+      1,
+      'should not fall through to polling when quick-check found element in iframe'
+    )
     assert.strictEqual(res.calls[0].result.success, true)
   })
 })
@@ -246,29 +248,45 @@ describe('iframe support: mergeListInteractive', () => {
 
   test('merges elements from main frame and iframes', async () => {
     executeScriptReturn.push([
-      { frameId: 0, result: { success: true, elements: [
-        { tag: 'button', selector: '#btn1', label: 'Main Button', visible: true },
-        { tag: 'a', selector: '#link1', label: 'Main Link', visible: true }
-      ]}},
-      { frameId: 1, result: { success: true, elements: [
-        { tag: 'input', selector: '#input1', label: 'Iframe Input', visible: true }
-      ]}},
-      { frameId: 2, result: { success: true, elements: [
-        { tag: 'button', selector: '#btn2', label: 'Iframe2 Button', visible: true }
-      ]}}
+      {
+        frameId: 0,
+        result: {
+          success: true,
+          elements: [
+            { tag: 'button', selector: '#btn1', label: 'Main Button', visible: true },
+            { tag: 'a', selector: '#link1', label: 'Main Link', visible: true }
+          ]
+        }
+      },
+      {
+        frameId: 1,
+        result: {
+          success: true,
+          elements: [{ tag: 'input', selector: '#input1', label: 'Iframe Input', visible: true }]
+        }
+      },
+      {
+        frameId: 2,
+        result: {
+          success: true,
+          elements: [{ tag: 'button', selector: '#btn2', label: 'Iframe2 Button', visible: true }]
+        }
+      }
     ])
     const res = captureAsyncResult()
 
     await executeDOMAction(
       makeQuery({ action: 'list_interactive', selector: '' }),
-      1, makeSyncClient(), res.fn, noopToast
+      1,
+      makeSyncClient(),
+      res.fn,
+      noopToast
     )
 
     assert.strictEqual(res.calls[0].status, 'complete')
     const result = res.calls[0].result
     assert.strictEqual(result.success, true)
-    assert.strictEqual(result.elements.length, 4,
-      'should merge elements from all 3 frames')
+    assert.strictEqual(result.elements.length, 4, 'should merge elements from all 3 frames')
     assert.strictEqual(result.elements[0].label, 'Main Button')
     assert.strictEqual(result.elements[2].label, 'Iframe Input')
     assert.strictEqual(result.elements[3].label, 'Iframe2 Button')
@@ -276,7 +294,10 @@ describe('iframe support: mergeListInteractive', () => {
 
   test('caps merged elements at 100', async () => {
     const manyElements = Array.from({ length: 60 }, (_, i) => ({
-      tag: 'button', selector: `#btn${i}`, label: `Button ${i}`, visible: true
+      tag: 'button',
+      selector: `#btn${i}`,
+      label: `Button ${i}`,
+      visible: true
     }))
     executeScriptReturn.push([
       { frameId: 0, result: { success: true, elements: manyElements } },
@@ -286,18 +307,21 @@ describe('iframe support: mergeListInteractive', () => {
 
     await executeDOMAction(
       makeQuery({ action: 'list_interactive', selector: '' }),
-      1, makeSyncClient(), res.fn, noopToast
+      1,
+      makeSyncClient(),
+      res.fn,
+      noopToast
     )
 
-    assert.strictEqual(res.calls[0].result.elements.length, 100,
-      'should cap at 100 elements across all frames')
+    assert.strictEqual(res.calls[0].result.elements.length, 100, 'should cap at 100 elements across all frames')
   })
 
   test('handles frames with no elements gracefully', async () => {
     executeScriptReturn.push([
-      { frameId: 0, result: { success: true, elements: [
-        { tag: 'button', selector: '#btn', label: 'Button', visible: true }
-      ]}},
+      {
+        frameId: 0,
+        result: { success: true, elements: [{ tag: 'button', selector: '#btn', label: 'Button', visible: true }] }
+      },
       { frameId: 1, result: { success: true, elements: [] } },
       { frameId: 2, result: null }
     ])
@@ -305,10 +329,12 @@ describe('iframe support: mergeListInteractive', () => {
 
     await executeDOMAction(
       makeQuery({ action: 'list_interactive', selector: '' }),
-      1, makeSyncClient(), res.fn, noopToast
+      1,
+      makeSyncClient(),
+      res.fn,
+      noopToast
     )
 
-    assert.strictEqual(res.calls[0].result.elements.length, 1,
-      'should handle empty/null frame results without error')
+    assert.strictEqual(res.calls[0].result.elements.length, 1, 'should handle empty/null frame results without error')
   })
 })

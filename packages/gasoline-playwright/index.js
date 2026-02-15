@@ -79,7 +79,9 @@ const test = base.extend({
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ test_id: testId, action: 'start' })
-    }).catch(() => { /* no-op */ }) // Server might not be running yet
+    }).catch(() => {
+      /* no-op */
+    }) // Server might not be running yet
 
     const fixture = {
       getSnapshot: async (since) => {

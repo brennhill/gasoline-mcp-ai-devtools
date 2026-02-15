@@ -134,7 +134,10 @@ function evictOldestGroup(): void {
   let oldestSig: string | null = null
   let oldestTime = Infinity
   for (const [sig, group] of errorGroups) {
-    if (group.lastSeen < oldestTime) { oldestTime = group.lastSeen; oldestSig = sig }
+    if (group.lastSeen < oldestTime) {
+      oldestTime = group.lastSeen
+      oldestSig = sig
+    }
   }
   if (oldestSig) errorGroups.delete(oldestSig)
 }

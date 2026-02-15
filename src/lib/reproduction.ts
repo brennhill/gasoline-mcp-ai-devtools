@@ -247,7 +247,8 @@ export function computeSelectors(element: Element | null): SelectorStrategies {
   if (element.id) selectors.id = element.id
 
   // Priority 5: Text content (for clickable elements or role="button")
-  const isClickable = (element.tagName && CLICKABLE_TAGS.has(element.tagName.toUpperCase())) ||
+  const isClickable =
+    (element.tagName && CLICKABLE_TAGS.has(element.tagName.toUpperCase())) ||
     (el.getAttribute && el.getAttribute('role') === 'button')
   if (isClickable) {
     const text = (el.textContent || el.innerText || '').trim()
@@ -284,12 +285,22 @@ const ACTION_DATA_ENRICHERS: Record<string, ActionDataEnricher> = {
     const typedEl = el as ElementWithProperties | null
     const inputType = typedEl && typedEl.getAttribute ? typedEl.getAttribute('type') : 'text'
     a.input_type = inputType || 'text'
-    a.value = (inputType === 'password' || (el && isSensitiveInput(el))) ? '[redacted]' : (o.value || '')
+    a.value = inputType === 'password' || (el && isSensitiveInput(el)) ? '[redacted]' : o.value || ''
   },
-  keypress: (a, _el, o) => { a.key = o.key || '' },
-  navigate: (a, _el, o) => { a.from_url = o.from_url || ''; a.to_url = o.to_url || '' },
-  select: (a, _el, o) => { a.selected_value = o.selected_value || ''; a.selected_text = o.selected_text || '' },
-  scroll: (a, _el, o) => { a.scroll_y = o.scroll_y || 0 }
+  keypress: (a, _el, o) => {
+    a.key = o.key || ''
+  },
+  navigate: (a, _el, o) => {
+    a.from_url = o.from_url || ''
+    a.to_url = o.to_url || ''
+  },
+  select: (a, _el, o) => {
+    a.selected_value = o.selected_value || ''
+    a.selected_text = o.selected_text || ''
+  },
+  scroll: (a, _el, o) => {
+    a.scroll_y = o.scroll_y || 0
+  }
 }
 
 /**
@@ -346,10 +357,18 @@ export function clearEnhancedActionBuffer(): void {
 
 function rebaseUrl(url: string, baseUrl: string | undefined): string {
   if (!baseUrl || !url) return url
-  try { return baseUrl + new URL(url).pathname } catch { return url }
+  try {
+    return baseUrl + new URL(url).pathname
+  } catch {
+    return url
+  }
 }
 
-type StepGenerator = (action: EnhancedActionRecord, locator: string | null, baseUrl: string | undefined) => string | null
+type StepGenerator = (
+  action: EnhancedActionRecord,
+  locator: string | null,
+  baseUrl: string | undefined
+) => string | null
 
 const ACTION_STEP_GENERATORS: Record<string, StepGenerator> = {
   click: (_action, locator) =>
@@ -359,14 +378,12 @@ const ACTION_STEP_GENERATORS: Record<string, StepGenerator> = {
     const value = action.value === '[redacted]' ? '[user-provided]' : action.value || ''
     return `  await page.${locator}.fill('${escapeString(value)}');`
   },
-  keypress: (action) =>
-    `  await page.keyboard.press('${escapeString(action.key || '')}');`,
+  keypress: (action) => `  await page.keyboard.press('${escapeString(action.key || '')}');`,
   navigate: (action, _locator, baseUrl) =>
     `  await page.waitForURL('${escapeString(rebaseUrl(action.to_url || '', baseUrl))}');`,
   select: (action, locator) =>
     locator ? `  await page.${locator}.selectOption('${escapeString(action.selected_value || '')}');` : null,
-  scroll: (action) =>
-    `  // User scrolled to y=${action.scroll_y || 0}`
+  scroll: (action) => `  // User scrolled to y=${action.scroll_y || 0}`
 }
 
 // #lizard forgives

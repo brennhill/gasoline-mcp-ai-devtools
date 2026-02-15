@@ -631,10 +631,8 @@ function isReadOnlyAction(action: string): boolean {
 }
 
 /** Pick the best result from multi-frame executeScript. Prefers main frame, falls back to first success. */
-function pickFrameResult(
-  results: chrome.scripting.InjectionResult[]
-): { result: unknown; frameId: number } | null {
-  const mainFrame = results.find(r => r.frameId === 0)
+function pickFrameResult(results: chrome.scripting.InjectionResult[]): { result: unknown; frameId: number } | null {
+  const mainFrame = results.find((r) => r.frameId === 0)
   if (mainFrame?.result && (mainFrame.result as DOMResult).success) {
     return { result: mainFrame.result, frameId: 0 }
   }
@@ -648,9 +646,7 @@ function pickFrameResult(
 }
 
 /** Merge list_interactive results from all frames (up to 100 elements). */
-function mergeListInteractive(
-  results: chrome.scripting.InjectionResult[]
-): { success: boolean; elements: unknown[] } {
+function mergeListInteractive(results: chrome.scripting.InjectionResult[]): { success: boolean; elements: unknown[] } {
   const elements: unknown[] = []
   for (const r of results) {
     const res = r.result as { success?: boolean; elements?: unknown[] } | null
@@ -666,48 +662,85 @@ async function executeWaitFor(
 ): Promise<chrome.scripting.InjectionResult[] | DOMResult> {
   const selector = params.selector || ''
   const quickCheck = await chrome.scripting.executeScript({
-    target: { tabId, allFrames: true }, world: 'MAIN', func: domPrimitive,
+    target: { tabId, allFrames: true },
+    world: 'MAIN',
+    func: domPrimitive,
     args: [params.action!, selector, { timeout_ms: params.timeout_ms }]
   })
   const quickResult = pickFrameResult(quickCheck)?.result as DOMResult | undefined
   if (quickResult?.success) return quickResult
 
   return chrome.scripting.executeScript({
-    target: { tabId, allFrames: true }, world: 'MAIN', func: domWaitFor,
+    target: { tabId, allFrames: true },
+    world: 'MAIN',
+    func: domWaitFor,
     args: [selector, params.timeout_ms || 5000]
   })
 }
 
-async function executeStandardAction(tabId: number, params: DOMActionParams): Promise<chrome.scripting.InjectionResult[]> {
+async function executeStandardAction(
+  tabId: number,
+  params: DOMActionParams
+): Promise<chrome.scripting.InjectionResult[]> {
   return chrome.scripting.executeScript({
-    target: { tabId, allFrames: true }, world: 'MAIN', func: domPrimitive,
+    target: { tabId, allFrames: true },
+    world: 'MAIN',
+    func: domPrimitive,
     args: [
-      params.action!, params.selector || '',
-      { text: params.text, value: params.value, clear: params.clear, checked: params.checked, name: params.name, timeout_ms: params.timeout_ms, analyze: params.analyze }
+      params.action!,
+      params.selector || '',
+      {
+        text: params.text,
+        value: params.value,
+        clear: params.clear,
+        checked: params.checked,
+        name: params.name,
+        timeout_ms: params.timeout_ms,
+        analyze: params.analyze
+      }
     ]
   })
 }
 
 function sendToastForResult(
-  tabId: number, readOnly: boolean, result: { success?: boolean; error?: string },
-  actionToast: ActionToast, toastLabel: string, toastDetail: string | undefined
+  tabId: number,
+  readOnly: boolean,
+  result: { success?: boolean; error?: string },
+  actionToast: ActionToast,
+  toastLabel: string,
+  toastDetail: string | undefined
 ): void {
   if (readOnly) return
-  if (result.success) { actionToast(tabId, toastLabel, toastDetail, 'success') }
-  else { actionToast(tabId, toastLabel, result.error || 'failed', 'error') }
+  if (result.success) {
+    actionToast(tabId, toastLabel, toastDetail, 'success')
+  } else {
+    actionToast(tabId, toastLabel, result.error || 'failed', 'error')
+  }
 }
 
 // #lizard forgives
 export async function executeDOMAction(
-  query: PendingQuery, tabId: number, syncClient: SyncClient,
-  sendAsyncResult: SendAsyncResult, actionToast: ActionToast
+  query: PendingQuery,
+  tabId: number,
+  syncClient: SyncClient,
+  sendAsyncResult: SendAsyncResult,
+  actionToast: ActionToast
 ): Promise<void> {
   const params = parseDOMParams(query)
-  if (!params) { sendAsyncResult(syncClient, query.id, query.correlation_id!, 'error', null, 'invalid_params'); return }
+  if (!params) {
+    sendAsyncResult(syncClient, query.id, query.correlation_id!, 'error', null, 'invalid_params')
+    return
+  }
 
   const { action, selector, reason } = params
-  if (!action) { sendAsyncResult(syncClient, query.id, query.correlation_id!, 'error', null, 'missing_action'); return }
-  if (action === 'wait_for' && !selector) { sendAsyncResult(syncClient, query.id, query.correlation_id!, 'error', null, 'missing_selector'); return }
+  if (!action) {
+    sendAsyncResult(syncClient, query.id, query.correlation_id!, 'error', null, 'missing_action')
+    return
+  }
+  if (action === 'wait_for' && !selector) {
+    sendAsyncResult(syncClient, query.id, query.correlation_id!, 'error', null, 'missing_selector')
+    return
+  }
 
   const toastLabel = reason || action
   const toastDetail = reason ? undefined : selector || 'page'
@@ -717,9 +750,8 @@ export async function executeDOMAction(
     const tryingShownAt = Date.now()
     if (!readOnly) actionToast(tabId, toastLabel, toastDetail, 'trying', 10000)
 
-    const rawResult = action === 'wait_for'
-      ? await executeWaitFor(tabId, params)
-      : await executeStandardAction(tabId, params)
+    const rawResult =
+      action === 'wait_for' ? await executeWaitFor(tabId, params) : await executeStandardAction(tabId, params)
 
     // wait_for quick-check can return a DOMResult directly
     if (!Array.isArray(rawResult)) {
@@ -743,7 +775,14 @@ export async function executeDOMAction(
     const picked = pickFrameResult(rawResult)
     const firstResult = picked?.result
     if (firstResult && typeof firstResult === 'object') {
-      sendToastForResult(tabId, readOnly, firstResult as { success?: boolean; error?: string }, actionToast, toastLabel, toastDetail)
+      sendToastForResult(
+        tabId,
+        readOnly,
+        firstResult as { success?: boolean; error?: string },
+        actionToast,
+        toastLabel,
+        toastDetail
+      )
       sendAsyncResult(syncClient, query.id, query.correlation_id!, 'complete', firstResult)
     } else {
       if (!readOnly) actionToast(tabId, toastLabel, 'no result', 'error')

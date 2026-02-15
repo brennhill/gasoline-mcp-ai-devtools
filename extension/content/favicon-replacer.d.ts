@@ -7,5 +7,5 @@
  * Initialize favicon replacement.
  * Listens for tracking state changes and updates favicon accordingly.
  */
-export declare function initFaviconReplacer(): void;
+export declare function initFaviconReplacer(): void
 //# sourceMappingURL=favicon-replacer.d.ts.map

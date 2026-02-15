@@ -4,9 +4,9 @@
  * forwarded settings, source map toggle, server URL change, draw mode.
  */
 
-import { test, describe, mock, beforeEach } from 'node:test'
+import { test, describe, mock, beforeEach as _beforeEach } from 'node:test'
 import assert from 'node:assert'
-import { MANIFEST_VERSION } from './helpers.js'
+import { MANIFEST_VERSION as _MANIFEST_VERSION } from './helpers.js'
 
 const { installMessageListener } = await import('../../extension/background/message-handlers.js')
 

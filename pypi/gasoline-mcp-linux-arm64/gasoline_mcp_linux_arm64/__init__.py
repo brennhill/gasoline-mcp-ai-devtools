@@ -1,3 +1,3 @@
 """Platform-specific Gasoline binary for linux-arm64."""
 
-__version__ = "6.1.9"
+__version__ = "0.7.0"

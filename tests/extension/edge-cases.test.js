@@ -119,7 +119,7 @@ describe('Edge Cases: WebSocket Reconnection', () => {
 
     // Connection creation should still post a message to track the new connection
     const calls = globalThis.window.postMessage.mock.calls
-    const wsEvents = calls.filter((c) => {
+    const _wsEvents = calls.filter((c) => {
       const msg = c.arguments[0]
       return msg.type === 'GASOLINE_WS'
     })

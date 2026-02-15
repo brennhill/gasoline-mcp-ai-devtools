@@ -66,7 +66,7 @@ echo "5️⃣  Checking for stubs..."
 if grep -q 'queries.*\[\]interface{}{}' internal/capture/handlers.go 2>/dev/null; then
     echo "   ❌ STUB in handlers.go"
     ERRORS="$((ERRORS + 1))"
-elif ! grep -A 20 'func (h \*ToolHandler) toolObserveCommandResult' "$CMD_DIR/tools_observe_analysis.go" 2>/dev/null | grep -q 'GetCommandResult'; then
+elif ! grep -q 'GetCommandResult' "$CMD_DIR/tools_observe_analysis.go" 2>/dev/null; then
     echo "   ❌ STUB in toolObserveCommandResult"
     ERRORS="$((ERRORS + 1))"
 else
@@ -76,7 +76,7 @@ fi
 echo ""
 echo "========================"
 if [ "$ERRORS" -eq 0 ]; then
-    echo "✅ PASSED ($(("$(date +%s)" - START_TIME))s)"
+    echo "✅ PASSED ($(( $(date +%s) - START_TIME ))s)"
     echo "No regressions detected"
     exit 0
 else

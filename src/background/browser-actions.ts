@@ -25,8 +25,12 @@ const ASYNC_BROWSER_ACTION_TIMEOUT_MS = ASYNC_COMMAND_TIMEOUT_MS
 // =============================================================================
 
 export type BrowserActionResult = {
-  success: boolean; action?: string; url?: string
-  content_script_status?: string; message?: string; error?: string
+  success: boolean
+  action?: string
+  url?: string
+  content_script_status?: string
+  message?: string
+  error?: string
 }
 
 // =============================================================================
@@ -57,7 +61,13 @@ export async function handleNavigateAction(
 
   const tab = await chrome.tabs.get(tabId)
   if (tab.url?.startsWith('file://')) {
-    return { success: true, action: 'navigate', url, content_script_status: 'unavailable', message: 'Content script cannot load on file:// URLs. Enable "Allow access to file URLs" in extension settings.' }
+    return {
+      success: true,
+      action: 'navigate',
+      url,
+      content_script_status: 'unavailable',
+      message: 'Content script cannot load on file:// URLs. Enable "Allow access to file URLs" in extension settings.'
+    }
   }
 
   debugLog(DebugCategory.CAPTURE, 'Content script not loaded after navigate, refreshing', { tabId, url })
@@ -67,10 +77,22 @@ export async function handleNavigateAction(
 
   if (await eventListeners.pingContentScript(tabId)) {
     broadcastTrackingState().catch(() => {})
-    return { success: true, action: 'navigate', url, content_script_status: 'refreshed', message: 'Page refreshed to load content script' }
+    return {
+      success: true,
+      action: 'navigate',
+      url,
+      content_script_status: 'refreshed',
+      message: 'Page refreshed to load content script'
+    }
   }
 
-  return { success: true, action: 'navigate', url, content_script_status: 'failed', message: 'Navigation complete but content script could not be loaded. AI Web Pilot tools may not work.' }
+  return {
+    success: true,
+    action: 'navigate',
+    url,
+    content_script_status: 'failed',
+    message: 'Navigation complete but content script could not be loaded. AI Web Pilot tools may not work.'
+  }
 }
 
 // =============================================================================

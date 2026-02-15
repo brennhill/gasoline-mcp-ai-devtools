@@ -3,71 +3,12 @@
 package main
 
 import (
-	"encoding/json"
 	"net"
 	"net/http"
 	"net/url"
 	"os"
-	"path/filepath"
 	"strings"
-	"sync"
-
-	"github.com/dev-console/dev-console/internal/state"
 )
-
-type extensionTrustConfig struct {
-	ChromeID  string `json:"chrome_id,omitempty"`
-	FirefoxID string `json:"firefox_id,omitempty"`
-}
-
-var (
-	extensionTrustMu     sync.Mutex
-	extensionTrustLoaded bool
-	extensionTrust       extensionTrustConfig
-)
-
-const trustedExtensionFileName = "trusted-extension-ids.json"
-
-func extensionTrustPath() (string, error) {
-	return state.InRoot("settings", trustedExtensionFileName)
-}
-
-func loadExtensionTrustLocked() {
-	if extensionTrustLoaded {
-		return
-	}
-	extensionTrustLoaded = true
-
-	path, err := extensionTrustPath()
-	if err != nil {
-		return
-	}
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return
-	}
-	_ = json.Unmarshal(data, &extensionTrust)
-}
-
-func saveExtensionTrustLocked() {
-	path, err := extensionTrustPath()
-	if err != nil {
-		return
-	}
-	if err := os.MkdirAll(filepath.Dir(path), 0o750); err != nil {
-		return
-	}
-
-	data, err := json.MarshalIndent(extensionTrust, "", "  ")
-	if err != nil {
-		return
-	}
-	tmpPath := path + ".tmp"
-	if err := os.WriteFile(tmpPath, data, 0o600); err != nil {
-		return
-	}
-	_ = os.Rename(tmpPath, path)
-}
 
 func isValidExtensionID(id string) bool {
 	if id == "" {
@@ -82,31 +23,17 @@ func isValidExtensionID(id string) bool {
 	return true
 }
 
-// resetExtensionTrustCacheForTests resets the in-memory trust cache.
-// Used by tests that assert first-seen extension pairing behavior.
-func resetExtensionTrustCacheForTests() {
-	extensionTrustMu.Lock()
-	defer extensionTrustMu.Unlock()
-	extensionTrustLoaded = false
-	extensionTrust = extensionTrustConfig{}
-}
-
-// isExtensionOrigin checks if origin matches a browser extension scheme and,
-// when an expected ID env var is set, verifies the full origin matches.
-//
-// Security model:
-// - If GASOLINE_EXTENSION_ID / GASOLINE_FIREFOX_EXTENSION_ID is set, only that ID is allowed.
-// - Otherwise, first-seen extension ID is paired (TOFU) and persisted in state.
-// - After pairing, only the stored ID is allowed for that browser family.
+// isExtensionOrigin checks if origin matches a browser extension scheme.
+// When GASOLINE_EXTENSION_ID or GASOLINE_FIREFOX_EXTENSION_ID env var is set,
+// only that specific ID is allowed. Otherwise any valid extension ID is accepted.
 func isExtensionOrigin(origin string) (matched bool, allowed bool) {
 	type extCheck struct {
-		prefix   string
-		envVar   string
-		isChrome bool
+		prefix string
+		envVar string
 	}
 	checks := []extCheck{
-		{"chrome-extension://", "GASOLINE_EXTENSION_ID", true},
-		{"moz-extension://", "GASOLINE_FIREFOX_EXTENSION_ID", false},
+		{"chrome-extension://", "GASOLINE_EXTENSION_ID"},
+		{"moz-extension://", "GASOLINE_FIREFOX_EXTENSION_ID"},
 	}
 	for _, c := range checks {
 		if strings.HasPrefix(origin, c.prefix) {
@@ -120,38 +47,10 @@ func isExtensionOrigin(origin string) (matched bool, allowed bool) {
 				return true, id == expectedID
 			}
 
-			allowed := checkOrPairExtensionID(id, c.isChrome)
-			return true, allowed
+			return true, true
 		}
 	}
 	return false, false
-}
-
-// checkOrPairExtensionID checks if the extension ID is trusted, or pairs it on first-seen (TOFU).
-// Uses defer for panic safety.
-func checkOrPairExtensionID(id string, isChrome bool) bool {
-	extensionTrustMu.Lock()
-	defer extensionTrustMu.Unlock()
-	loadExtensionTrustLocked()
-
-	var trustedID string
-	if isChrome {
-		trustedID = extensionTrust.ChromeID
-	} else {
-		trustedID = extensionTrust.FirefoxID
-	}
-
-	if trustedID == "" {
-		if isChrome {
-			extensionTrust.ChromeID = id
-		} else {
-			extensionTrust.FirefoxID = id
-		}
-		saveExtensionTrustLocked()
-		return true
-	}
-
-	return id == trustedID
 }
 
 // isAllowedOrigin checks if an Origin header value is from localhost or a browser extension.

@@ -214,6 +214,43 @@ func TestBridgeServerHealthHelpers(t *testing.T) {
 	}
 }
 
+func TestRunningServerVersionCompatible(t *testing.T) {
+	t.Parallel()
+
+	oldVersion := version
+	version = "9.9.9"
+	t.Cleanup(func() { version = oldVersion })
+	healthVersion := "9.9.9"
+
+	mux := http.NewServeMux()
+	mux.HandleFunc("/health", func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		_, _ = io.WriteString(w, `{"status":"ok","service-name":"gasoline","version":"`+healthVersion+`"}`)
+	})
+
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatalf("net.Listen error = %v", err)
+	}
+	port := ln.Addr().(*net.TCPAddr).Port
+	srv := &http.Server{Handler: mux}
+	go func() { _ = srv.Serve(ln) }()
+	t.Cleanup(func() {
+		_ = srv.Close()
+	})
+
+	compatible, gotVersion, gotService := runningServerVersionCompatible(port)
+	if !compatible || gotVersion != "9.9.9" || gotService != "gasoline" {
+		t.Fatalf("runningServerVersionCompatible() = (%v, %q, %q), want (true, %q, %q)", compatible, gotVersion, gotService, "9.9.9", "gasoline")
+	}
+
+	healthVersion = "1.0.0"
+	compatible, gotVersion, gotService = runningServerVersionCompatible(port)
+	if compatible || gotVersion != "1.0.0" || gotService != "gasoline" {
+		t.Fatalf("runningServerVersionCompatible() = (%v, %q, %q), want (false, %q, %q)", compatible, gotVersion, gotService, "1.0.0", "gasoline")
+	}
+}
+
 func TestFlushStdoutNoPanic(t *testing.T) {
 	// Do not run in parallel; test redirects process stdio.
 	outR, outW, err := os.Pipe()

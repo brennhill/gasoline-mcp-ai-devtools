@@ -136,7 +136,9 @@ export function createBatcherWithCircuitBreaker<T>(
       const stats = cb.getStats()
       const backoff = getScheduledBackoff(stats.consecutiveFailures)
       if (backoff > 0) {
-        await new Promise<void>((r) => { setTimeout(r, backoff) })
+        await new Promise<void>((r) => {
+          setTimeout(r, backoff)
+        })
       }
 
       try {
@@ -145,7 +147,10 @@ export function createBatcherWithCircuitBreaker<T>(
         return
       } catch {
         localConnectionStatus.connected = false
-        if (cb.getState() === 'open') { requeueEntries(entries); return }
+        if (cb.getState() === 'open') {
+          requeueEntries(entries)
+          return
+        }
       }
     }
   }
@@ -156,15 +161,24 @@ export function createBatcherWithCircuitBreaker<T>(
     const entries = pending
     pending = []
 
-    if (timeoutId) { clearTimeout(timeoutId); timeoutId = null }
-    if (cb.getState() === 'open') { requeueEntries(entries); return }
+    if (timeoutId) {
+      clearTimeout(timeoutId)
+      timeoutId = null
+    }
+    if (cb.getState() === 'open') {
+      requeueEntries(entries)
+      return
+    }
 
     try {
       await attemptSend(entries)
       localConnectionStatus.connected = true
     } catch {
       localConnectionStatus.connected = false
-      if (cb.getState() === 'open') { requeueEntries(entries); return }
+      if (cb.getState() === 'open') {
+        requeueEntries(entries)
+        return
+      }
       await retryWithBackoff(entries)
     }
   }

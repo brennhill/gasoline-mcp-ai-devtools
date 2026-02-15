@@ -2,5 +2,5 @@
  * @fileoverview DOM Query Types
  * DOM element queries and page information
  */
-export {};
+export {}
 //# sourceMappingURL=dom.js.map

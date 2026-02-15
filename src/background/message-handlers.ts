@@ -513,7 +513,10 @@ async function handleDrawModeCompletedAsync(
       const respBody = await response.text().catch(() => '')
       deps.debugLog('error', `Draw mode POST failed: ${response.status} ${respBody}`)
     } else {
-      deps.debugLog('draw', `Draw mode results delivered (${(message.annotations as unknown[])?.length || 0} annotations)`)
+      deps.debugLog(
+        'draw',
+        `Draw mode results delivered (${(message.annotations as unknown[])?.length || 0} annotations)`
+      )
     }
   } catch (err) {
     deps.debugLog('error', `Draw mode completion error: ${(err as Error).message}. Server may be unreachable.`)

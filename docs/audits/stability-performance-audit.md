@@ -3,7 +3,7 @@
 **Date:** 2026-02-14
 **Auditor:** Senior Reliability Engineer (automated)
 **Scope:** Go server (`cmd/dev-console/`), capture package (`internal/capture/`), utility packages
-**Version audited:** 6.1.9
+**Version audited:** 0.7.0
 
 ---
 

@@ -30,7 +30,10 @@ globalThis.chrome = {
     local: {
       get: mockStorageLocalGet,
       set: (_d, cb) => cb && cb(),
-      remove: (_k, cb) => { if (cb) cb(); return Promise.resolve() }
+      remove: (_k, cb) => {
+        if (cb) cb()
+        return Promise.resolve()
+      }
     },
     onChanged: { addListener: () => {} }
   },
@@ -50,9 +53,7 @@ globalThis.chrome = {
   commands: { onCommand: { addListener: () => {} } }
 }
 
-globalThis.fetch = mock.fn(() =>
-  Promise.resolve({ ok: true, json: () => Promise.resolve({}) })
-)
+globalThis.fetch = mock.fn(() => Promise.resolve({ ok: true, json: () => Promise.resolve({}) }))
 
 // ============================================
 // Import after mocks are set up
@@ -111,8 +112,7 @@ describe('handlePendingQuery — silent drop prevention', () => {
     // Should indicate an error, not success
     const result = results[0]
     const hasError =
-      result.status === 'error' ||
-      (result.result && typeof result.result === 'object' && 'error' in result.result)
+      result.status === 'error' || (result.result && typeof result.result === 'object' && 'error' in result.result)
     assert.ok(hasError, `Expected error result, got: ${JSON.stringify(result)}`)
   })
 
@@ -147,9 +147,7 @@ describe('handlePendingQuery — silent drop prevention', () => {
       cb({ trackedTabId: 999 })
     })
     // tabs.get(999) always fails (tab gone)
-    mockTabsGet.mock.mockImplementation(() =>
-      Promise.reject(new Error('No tab with id 999'))
-    )
+    mockTabsGet.mock.mockImplementation(() => Promise.reject(new Error('No tab with id 999')))
     // No active tab fallback
     mockTabsQuery.mock.mockImplementation(() => Promise.resolve([]))
 

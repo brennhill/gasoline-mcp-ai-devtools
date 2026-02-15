@@ -94,7 +94,9 @@
         headers: { 'Content-Type': 'application/json' },
         body,
         keepalive: true
-      }).catch(function () { /* no-op */ }) // Swallow errors — never interfere with the app
+      }).catch(function () {
+        /* no-op */
+      }) // Swallow errors — never interfere with the app
     }
     return
   }
@@ -181,7 +183,7 @@
       // eslint-disable-next-line security/detect-object-injection -- bracket access on trusted internal telemetry data
       originals[level] = console[level]
       // eslint-disable-next-line security/detect-object-injection -- bracket access on trusted internal telemetry data
-      console[level] = function (capturedLevel) {
+      console[level] = (function (capturedLevel) {
         return function () {
           var args = Array.prototype.slice.call(arguments)
           // eslint-disable-next-line security/detect-object-injection -- bracket access on trusted internal telemetry data
@@ -204,7 +206,7 @@
             source: 'console'
           })
         }
-      }(level)
+      })(level)
     }
     return
   }

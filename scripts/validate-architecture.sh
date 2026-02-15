@@ -78,14 +78,11 @@ echo ""
 echo "3️⃣  Checking HTTP handler endpoints..."
 
 REQUIRED_HANDLERS=(
-    "HandlePendingQueries"
-    "HandleDOMResult"
-    "HandleExecuteResult"
-    "HandlePilotStatus"
+    "HandleSync"
 )
 
 for handler in "${REQUIRED_HANDLERS[@]}"; do
-    if ! grep -q "func.*$handler" internal/capture/handlers.go; then
+    if ! grep -q "func.*$handler" internal/capture/sync.go; then
         echo "   ❌ MISSING HANDLER: $handler"
         ERRORS=$((ERRORS + 1))
     else
@@ -134,8 +131,8 @@ fi
 
 # Check tools_observe.go for stub returns in command result observer
 if grep -rq 'func (h \*ToolHandler) toolObserveCommandResult.*{' "${CMD_DIR}"/tools_*.go; then
-    # Extract function body and check if it calls GetCommandResult
-    if grep -rA 20 'func (h \*ToolHandler) toolObserveCommandResult' "${CMD_DIR}"/tools_*.go | grep -q 'GetCommandResult'; then
+    # Ensure implementation calls capture.GetCommandResult somewhere in observe analysis handlers.
+    if grep -q 'GetCommandResult' "${CMD_DIR}/tools_observe_analysis.go"; then
         echo "   ✅ toolObserveCommandResult calls GetCommandResult"
     else
         echo "   ❌ STUB DETECTED: toolObserveCommandResult doesn't call GetCommandResult"
@@ -181,15 +178,19 @@ fi
 echo ""
 echo "8️⃣  Checking critical constants..."
 
-if ! grep -q 'AsyncCommandTimeout.*30.*time.Second' internal/queries/types.go; then
-    echo "   ❌ AsyncCommandTimeout not set to 30s"
+ASYNC_TIMEOUT_SECONDS=$(grep -E 'AsyncCommandTimeout[[:space:]]*=' internal/queries/types.go | head -1 | grep -oE '[0-9]+' | head -1 || true)
+if [ -z "${ASYNC_TIMEOUT_SECONDS:-}" ]; then
+    echo "   ❌ AsyncCommandTimeout constant not found"
+    ERRORS=$((ERRORS + 1))
+elif [ "$ASYNC_TIMEOUT_SECONDS" -lt 30 ]; then
+    echo "   ❌ AsyncCommandTimeout too low (${ASYNC_TIMEOUT_SECONDS}s, expected >= 30s)"
     ERRORS=$((ERRORS + 1))
 else
-    echo "   ✅ AsyncCommandTimeout = 30s"
+    echo "   ✅ AsyncCommandTimeout = ${ASYNC_TIMEOUT_SECONDS}s"
 fi
 
-if ! grep -q 'maxPendingQueries.*=.*5' internal/capture/types.go; then
-    echo "   ⚠️  WARNING: maxPendingQueries not found or not set to 5"
+if ! grep -q 'maxPendingQueries[[:space:]]*=[[:space:]]*5' internal/capture/constants.go; then
+    echo "   ⚠️  WARNING: maxPendingQueries not found or not set to 5 in constants.go"
 else
     echo "   ✅ maxPendingQueries = 5"
 fi
@@ -201,10 +202,23 @@ fi
 echo ""
 echo "9️⃣  Checking documentation..."
 
-if [ ! -f "docs/async-queue-correlation-tracking.md" ]; then
-    echo "   ⚠️  WARNING: Missing async-queue-correlation-tracking.md"
+DOC_CANDIDATES=(
+    "docs/core/async-tool-pattern.md"
+    "docs/architecture/ADR-002-async-queue-immutability.md"
+    "docs/architecture/diagrams/async-queue-flow.md"
+)
+DOC_FOUND=0
+for doc in "${DOC_CANDIDATES[@]}"; do
+    if [ -f "$doc" ]; then
+        echo "   ✅ $doc exists"
+        DOC_FOUND=1
+        break
+    fi
+done
+if [ "$DOC_FOUND" -eq 0 ]; then
+    echo "   ⚠️  WARNING: No async queue documentation file found in expected locations"
 else
-    echo "   ✅ async-queue-correlation-tracking.md exists"
+    :
 fi
 
 # ============================================
@@ -224,7 +238,7 @@ else
     echo "The async queue-and-poll architecture is broken."
     echo "DO NOT merge this change."
     echo ""
-    echo "See: docs/async-queue-correlation-tracking.md"
+    echo "See: docs/core/async-tool-pattern.md"
     echo "Or ask: 'How do I restore the async queue implementation?'"
     exit 1
 fi

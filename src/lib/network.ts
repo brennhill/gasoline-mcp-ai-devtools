@@ -428,7 +428,10 @@ type FetchLike = (input: RequestInfo | URL, init?: RequestInit) => Promise<Respo
  * @param fetchFn - The original fetch function
  * @returns Wrapped fetch that captures bodies
  */
-function extractFetchInfo(input: RequestInfo | URL, init?: RequestInit): { url: string; method: string; requestBody: BodyInit | null | undefined } {
+function extractFetchInfo(
+  input: RequestInfo | URL,
+  init?: RequestInit
+): { url: string; method: string; requestBody: BodyInit | null | undefined } {
   let url = ''
   let method = 'GET'
   if (typeof input === 'string') {
@@ -437,7 +440,9 @@ function extractFetchInfo(input: RequestInfo | URL, init?: RequestInit): { url: 
     url = (input as unknown as Request).url
     method = (input as unknown as Request).method || 'GET'
   }
-  if (init) { method = init.method || method }
+  if (init) {
+    method = init.method || method
+  }
   return { url, method, requestBody: init?.body || null }
 }
 
@@ -452,14 +457,24 @@ async function readCapturedBody(url: string, cloned: Response | null, contentTyp
 }
 
 function postNetworkBody(
-  win: Window, url: string, method: string, response: Response,
-  contentType: string, requestBody: BodyInit | null | undefined, duration: number,
-  truncResp: string, truncReq: string | null, responseTruncated: boolean
+  win: Window,
+  url: string,
+  method: string,
+  response: Response,
+  contentType: string,
+  requestBody: BodyInit | null | undefined,
+  duration: number,
+  truncResp: string,
+  truncReq: string | null,
+  responseTruncated: boolean
 ): void {
   const message: NetworkBodyPostMessage = {
     type: 'GASOLINE_NETWORK_BODY',
     payload: {
-      url, method, status: response.status, contentType,
+      url,
+      method,
+      status: response.status,
+      contentType,
       requestBody: truncReq || (typeof requestBody === 'string' ? requestBody : undefined),
       responseBody: truncResp,
       ...(responseTruncated ? { responseTruncated: true } : {}),
@@ -486,14 +501,33 @@ export function wrapFetchWithBodies(fetchFn: FetchLike): FetchLike {
         try {
           const responseBody = await readCapturedBody(url, cloned, contentType)
           const { body: truncResp, truncated: respTruncated } = truncateResponseBody(responseBody)
-          const rawReq = SENSITIVE_URL_PATTERNS.test(url) ? '[REDACTED: auth endpoint]' : (typeof requestBody === 'string' ? requestBody : null)
+          const rawReq = SENSITIVE_URL_PATTERNS.test(url)
+            ? '[REDACTED: auth endpoint]'
+            : typeof requestBody === 'string'
+              ? requestBody
+              : null
           const { body: truncReq } = truncateRequestBody(rawReq)
           if (win && networkBodyCaptureEnabled) {
-            postNetworkBody(win, url, method, response, contentType, requestBody, duration, truncResp || responseBody, truncReq, respTruncated)
+            postNetworkBody(
+              win,
+              url,
+              method,
+              response,
+              contentType,
+              requestBody,
+              duration,
+              truncResp || responseBody,
+              truncReq,
+              respTruncated
+            )
           }
-        } catch { /* Body capture failure should not affect user code */ }
+        } catch {
+          /* Body capture failure should not affect user code */
+        }
       })
-      .catch((err: Error) => { console.debug('[Gasoline] Network body capture error:', err) })
+      .catch((err: Error) => {
+        console.debug('[Gasoline] Network body capture error:', err)
+      })
 
     return response
   }

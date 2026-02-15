@@ -35,7 +35,11 @@ function enrichAndPost(entry: ExceptionEntry): void {
     }
   })().catch((err: Error) => {
     console.error('[Gasoline] Exception enrichment error:', err)
-    try { postLog(entry as unknown as BridgePayload) } catch (postErr) { console.error('[Gasoline] Failed to log entry:', postErr) }
+    try {
+      postLog(entry as unknown as BridgePayload)
+    } catch (postErr) {
+      console.error('[Gasoline] Failed to log entry:', postErr)
+    }
   })
 }
 
@@ -49,13 +53,21 @@ export function installExceptionCapture(): void {
   originalOnerror = window.onerror
 
   window.onerror = function (
-    message: string | Event, filename?: string, lineno?: number, colno?: number, error?: Error
+    message: string | Event,
+    filename?: string,
+    lineno?: number,
+    colno?: number,
+    error?: Error
   ): boolean | void {
     const messageStr = typeof message === 'string' ? message : (message as Event).type || 'Error'
     const entry: ExceptionEntry = {
-      level: 'error', type: 'exception', message: messageStr,
+      level: 'error',
+      type: 'exception',
+      message: messageStr,
       source: filename ? `${filename}:${lineno || 0}` : '',
-      filename: filename || '', lineno: lineno || 0, colno: colno || 0,
+      filename: filename || '',
+      lineno: lineno || 0,
+      colno: colno || 0,
       stack: error?.stack || ''
     }
     enrichAndPost(entry)
@@ -66,8 +78,10 @@ export function installExceptionCapture(): void {
   unhandledrejectionHandler = function (event: PromiseRejectionEvent): void {
     const { message, stack } = extractRejectionInfo(event.reason)
     enrichAndPost({
-      level: 'error', type: 'exception',
-      message: `Unhandled Promise Rejection: ${message}`, stack
+      level: 'error',
+      type: 'exception',
+      message: `Unhandled Promise Rejection: ${message}`,
+      stack
     })
   }
 

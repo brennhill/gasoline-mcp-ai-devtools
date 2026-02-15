@@ -93,7 +93,8 @@ export default [
       globals: {
         ...globals.node,
         globalThis: 'readonly',
-        document: 'readonly'
+        document: 'readonly',
+        chrome: 'readonly'
       }
     },
     plugins: {
@@ -144,6 +145,9 @@ export default [
       globals: {
         ...globals.node
       }
+    },
+    plugins: {
+      security
     },
     rules: {
       'no-unused-vars': ['error', { argsIgnorePattern: '^_', varsIgnorePattern: '^_', caughtErrorsIgnorePattern: '^_' }]

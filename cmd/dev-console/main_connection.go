@@ -4,12 +4,16 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"io"
 	"net"
 	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
+	"strings"
 	"syscall"
 	"time"
 
@@ -21,6 +25,47 @@ import (
 type debugWriter struct {
 	path string
 	port int
+}
+
+type serverVersionMismatchError struct {
+	expected string
+	actual   string
+}
+
+func (e *serverVersionMismatchError) Error() string {
+	return fmt.Sprintf("server version mismatch: expected %s, got %s", e.expected, e.actual)
+}
+
+type nonGasolineServiceError struct {
+	serviceName string
+}
+
+func (e *nonGasolineServiceError) Error() string {
+	if e.serviceName == "" {
+		return "port occupied by non-gasoline service"
+	}
+	return fmt.Sprintf("port occupied by non-gasoline service %q", e.serviceName)
+}
+
+type healthMetadata struct {
+	Version     string `json:"version"`
+	ServiceName string `json:"service-name"`
+	Name        string `json:"name"`
+}
+
+func decodeHealthMetadata(body []byte) (healthMetadata, bool) {
+	var meta healthMetadata
+	if err := json.Unmarshal(body, &meta); err != nil {
+		return healthMetadata{}, false
+	}
+	return meta, true
+}
+
+func (m healthMetadata) resolvedServiceName() string {
+	if strings.TrimSpace(m.ServiceName) != "" {
+		return strings.TrimSpace(m.ServiceName)
+	}
+	return strings.TrimSpace(m.Name)
 }
 
 // write appends a debug entry to the debug file, creating it on first call.
@@ -72,6 +117,22 @@ func handleMCPConnection(server *Server, port int, apiKey string) {
 	if lastErr == nil {
 		return
 	}
+	var nonGasolineErr *nonGasolineServiceError
+	if errors.As(lastErr, &nonGasolineErr) {
+		diagnostics := gatherConnectionDiagnostics(port, serverURL, healthURL)
+		reportConnectionFailure(server, port, lastErr, diagnostics, dw)
+		return
+	}
+	var mismatchErr *serverVersionMismatchError
+	if errors.As(lastErr, &mismatchErr) {
+		server.logLifecycle("version_mismatch_detected", port, map[string]any{
+			"expected_version": mismatchErr.expected,
+			"actual_version":   mismatchErr.actual,
+		})
+		if recoverVersionMismatchServer(server, port, apiKey, mcpEndpoint) {
+			return
+		}
+	}
 
 	diagnostics := gatherConnectionDiagnostics(port, serverURL, healthURL)
 	server.logLifecycle("zombie_recovery_start", port, map[string]any{
@@ -92,6 +153,18 @@ func reportConnectionFailure(server *Server, port int, lastErr error, diagnostic
 		"error":       fmt.Sprintf("%v", lastErr),
 		"diagnostics": diagnostics,
 	})
+
+	var nonGasolineErr *nonGasolineServiceError
+	if errors.As(lastErr, &nonGasolineErr) {
+		fmt.Fprintf(os.Stderr, "[gasoline] ERROR: Port %d is occupied by another service\n", port)
+		if nonGasolineErr.serviceName != "" {
+			fmt.Fprintf(os.Stderr, "[gasoline] Service name: %s\n", nonGasolineErr.serviceName)
+		}
+		fmt.Fprintf(os.Stderr, "[gasoline] Use --port to select a free port, or stop that service first\n")
+		dw.write("connection_failure_non_gasoline", lastErr, diagnostics)
+		sendStartupError(fmt.Sprintf("Port %d is occupied by another service", port))
+		os.Exit(1)
+	}
 
 	maxRetries := 2
 	fmt.Fprintf(os.Stderr, "[gasoline] ERROR: Server unresponsive after %d retries and recovery failed\n", maxRetries)
@@ -193,7 +266,29 @@ func connectWithRetries(server *Server, healthURL string, mcpEndpoint string, dw
 		resp, err := http.DefaultClient.Do(req) // #nosec G704 -- healthURL is localhost-only from trusted port
 		cancel()
 		if err == nil && resp.StatusCode == http.StatusOK {
+			body, _ := io.ReadAll(io.LimitReader(resp.Body, 16*1024))
 			_ = resp.Body.Close()
+			meta, ok := decodeHealthMetadata(body)
+			if !ok {
+				return &nonGasolineServiceError{serviceName: ""}
+			}
+			serviceName := meta.resolvedServiceName()
+			if !strings.EqualFold(serviceName, "gasoline") {
+				return &nonGasolineServiceError{serviceName: serviceName}
+			}
+			runningVersion := strings.TrimSpace(meta.Version)
+			if runningVersion == "" {
+				return &serverVersionMismatchError{
+					expected: version,
+					actual:   "<missing>",
+				}
+			}
+			if !versionsMatch(runningVersion, version) {
+				return &serverVersionMismatchError{
+					expected: version,
+					actual:   runningVersion,
+				}
+			}
 			if attempt > 0 {
 				fmt.Fprintf(os.Stderr, "[gasoline] Connection successful after %d retries\n", attempt)
 			}
@@ -203,9 +298,121 @@ func connectWithRetries(server *Server, healthURL string, mcpEndpoint string, dw
 		if resp != nil {
 			_ = resp.Body.Close()
 		}
-		lastErr = err
+		if err != nil {
+			lastErr = err
+		} else if resp != nil {
+			lastErr = fmt.Errorf("health endpoint returned status %d", resp.StatusCode)
+		} else {
+			lastErr = errors.New("health request failed with empty response")
+		}
 	}
 	return lastErr
+}
+
+func normalizeVersionString(v string) string {
+	return strings.TrimPrefix(strings.TrimSpace(v), "v")
+}
+
+func versionsMatch(a string, b string) bool {
+	return normalizeVersionString(a) == normalizeVersionString(b)
+}
+
+func recoverVersionMismatchServer(server *Server, port int, apiKey string, mcpEndpoint string) bool {
+	server.logLifecycle("version_mismatch_recycle_start", port, nil)
+	if !stopServerForUpgrade(port) {
+		server.logLifecycle("version_mismatch_recycle_failed", port, nil)
+		return false
+	}
+	return respawnDaemon(server, port, apiKey, mcpEndpoint)
+}
+
+func stopServerForUpgrade(port int) bool {
+	_ = tryShutdownViaHTTP(port)
+	if waitForPortRelease(port, 500*time.Millisecond) {
+		removePIDFile(port)
+		return true
+	}
+
+	pid := readPIDFile(port)
+	if pid > 0 && pid != os.Getpid() {
+		terminatePIDQuiet(pid, false)
+	}
+
+	pids, err := findProcessOnPort(port)
+	if err == nil {
+		for _, pid := range pids {
+			if pid == os.Getpid() {
+				continue
+			}
+			terminatePIDQuiet(pid, false)
+		}
+	}
+
+	if waitForPortRelease(port, 1500*time.Millisecond) {
+		removePIDFile(port)
+		return true
+	}
+
+	pids, err = findProcessOnPort(port)
+	if err == nil {
+		for _, pid := range pids {
+			if pid == os.Getpid() {
+				continue
+			}
+			terminatePIDQuiet(pid, true)
+		}
+	}
+
+	released := waitForPortRelease(port, 1500*time.Millisecond)
+	if released {
+		removePIDFile(port)
+	}
+	return released
+}
+
+func tryShutdownViaHTTP(port int) bool {
+	shutdownURL := fmt.Sprintf("http://127.0.0.1:%d/shutdown", port)
+	client := &http.Client{Timeout: 500 * time.Millisecond}
+	req, _ := http.NewRequest(http.MethodPost, shutdownURL, nil)
+	resp, err := client.Do(req) // #nosec G704 -- shutdownURL is localhost-only from trusted port
+	if err != nil {
+		return false
+	}
+	_ = resp.Body.Close()
+	return resp.StatusCode == http.StatusOK
+}
+
+func waitForPortRelease(port int, timeout time.Duration) bool {
+	deadline := time.Now().Add(timeout)
+	for time.Now().Before(deadline) {
+		if !isServerRunning(port) {
+			return true
+		}
+		time.Sleep(50 * time.Millisecond)
+	}
+	return !isServerRunning(port)
+}
+
+func terminatePIDQuiet(pid int, force bool) {
+	process, err := os.FindProcess(pid)
+	if err != nil {
+		return
+	}
+	if force {
+		_ = process.Kill()
+		return
+	}
+
+	if runtime.GOOS == "windows" {
+		_ = process.Kill()
+		return
+	}
+
+	_ = process.Signal(syscall.SIGTERM)
+	time.Sleep(200 * time.Millisecond)
+	if isProcessAlive(pid) {
+		_ = process.Kill()
+	}
 }
 
 // recoverZombieServer attempts to detect and kill a zombie server process,

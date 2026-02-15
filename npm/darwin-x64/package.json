@@ -1,6 +1,6 @@
 {
   "name": "@brennhill/gasoline-darwin-x64",
-  "version": "6.1.9",
+  "version": "0.7.0",
   "description": "Gasoline binary for macOS x64 (Intel)",
   "license": "AGPL-3.0-only",
   "os": [

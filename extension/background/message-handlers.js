@@ -10,19 +10,19 @@
  * Prevents messages from untrusted sources
  */
 function isValidMessageSender(sender) {
-    // Content scripts have sender.tab with tabId and url
-    // Background/popup scripts have sender.id === chrome.runtime.id
-    // Extension pages (popup, options) have sender.tab?.url starting with 'chrome-extension://'
-    if (sender.tab?.id !== undefined && sender.tab?.url) {
-        // Content script: has tab context
-        return true;
-    }
-    if (typeof chrome !== 'undefined' && chrome.runtime && sender.id === chrome.runtime.id) {
-        // Internal extension message
-        return true;
-    }
-    // Reject messages from web pages
-    return false;
+  // Content scripts have sender.tab with tabId and url
+  // Background/popup scripts have sender.id === chrome.runtime.id
+  // Extension pages (popup, options) have sender.tab?.url starting with 'chrome-extension://'
+  if (sender.tab?.id !== undefined && sender.tab?.url) {
+    // Content script: has tab context
+    return true
+  }
+  if (typeof chrome !== 'undefined' && chrome.runtime && sender.id === chrome.runtime.id) {
+    // Internal extension message
+    return true
+  }
+  // Reject messages from web pages
+  return false
 }
 /**
  * Install the main message listener
@@ -30,32 +30,31 @@ function isValidMessageSender(sender) {
  */
 // #lizard forgives
 export function installMessageListener(deps) {
-    if (typeof chrome === 'undefined' || !chrome.runtime)
-        return;
-    chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-        // SECURITY: Validate sender before processing any message
-        if (!isValidMessageSender(sender)) {
-            deps.debugLog('error', 'Rejected message from untrusted sender', { senderId: sender.id, senderUrl: sender.url });
-            return false;
-        }
-        return handleMessage(message, sender, sendResponse, deps);
-    });
+  if (typeof chrome === 'undefined' || !chrome.runtime) return
+  chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+    // SECURITY: Validate sender before processing any message
+    if (!isValidMessageSender(sender)) {
+      deps.debugLog('error', 'Rejected message from untrusted sender', { senderId: sender.id, senderUrl: sender.url })
+      return false
+    }
+    return handleMessage(message, sender, sendResponse, deps)
+  })
 }
 /**
  * Type guard to validate message structure before processing
  * Returns true if message passes validation, logs rejection otherwise
  */
 function validateMessageType(message, expectedType, deps) {
-    if (typeof message !== 'object' || message === null) {
-        deps.debugLog('error', `Invalid message: not an object`, { messageType: typeof message });
-        return false;
-    }
-    const msg = message;
-    if (msg.type !== expectedType) {
-        deps.debugLog('error', `Message type mismatch`, { expected: expectedType, received: msg.type });
-        return false;
-    }
-    return true;
+  if (typeof message !== 'object' || message === null) {
+    deps.debugLog('error', `Invalid message: not an object`, { messageType: typeof message })
+    return false
+  }
+  const msg = message
+  if (msg.type !== expectedType) {
+    deps.debugLog('error', `Message type mismatch`, { expected: expectedType, received: msg.type })
+    return false
+  }
+  return true
 }
 /**
  * Handle incoming message
@@ -63,153 +62,151 @@ function validateMessageType(message, expectedType, deps) {
  * Security: All messages are type-validated using discriminated unions
  */
 function handleMessage(message, sender, sendResponse, deps) {
-    const messageType = message.type;
-    // Type validation: ensure message conforms to expected discriminated union
-    // TypeScript's type system ensures exhaustiveness, but add logging for debugging
-    switch (messageType) {
-        case 'GET_TAB_ID':
-            sendResponse({ tabId: sender.tab?.id });
-            return true;
-        case 'ws_event':
-            deps.addToWsBatcher(message.payload);
-            return false;
-        case 'enhanced_action':
-            deps.addToEnhancedActionBatcher(message.payload);
-            return false;
-        case 'network_body':
-            if (deps.isNetworkBodyCaptureDisabled()) {
-                deps.debugLog('capture', 'Network body dropped: capture disabled');
-                return true;
-            }
-            // Attach tabId to payload before batching (v5.3+)
-            deps.addToNetworkBodyBatcher({ ...message.payload, tabId: message.tabId });
-            return false;
-        case 'performance_snapshot':
-            deps.addToPerfBatcher(message.payload);
-            return false;
-        case 'log':
-            handleLogMessageAsync(message, sender, deps);
-            return true;
-        case 'getStatus':
-            sendResponse({
-                ...deps.getConnectionStatus(),
-                serverUrl: deps.getServerUrl(),
-                screenshotOnError: deps.getScreenshotOnError(),
-                sourceMapEnabled: deps.getSourceMapEnabled(),
-                debugMode: deps.getDebugMode(),
-                contextWarning: deps.getContextWarning(),
-                circuitBreakerState: deps.getCircuitBreakerState(),
-                memoryPressure: deps.getMemoryPressureState()
-            });
-            return false;
-        case 'clearLogs':
-            handleClearLogsAsync(sendResponse, deps);
-            return true;
-        case 'setLogLevel':
-            deps.setCurrentLogLevel(message.level);
-            deps.saveSetting('logLevel', message.level);
-            return false;
-        case 'setScreenshotOnError':
-            deps.setScreenshotOnError(message.enabled);
-            deps.saveSetting('screenshotOnError', message.enabled);
-            sendResponse({ success: true });
-            return false;
-        case 'setAiWebPilotEnabled':
-            handleSetAiWebPilotEnabled(message.enabled, sendResponse, deps);
-            return false;
-        case 'getAiWebPilotEnabled':
-            sendResponse({ enabled: deps.getAiWebPilotEnabled() });
-            return false;
-        case 'getTrackingState':
-            handleGetTrackingState(sendResponse, deps, sender.tab?.id);
-            return true;
-        case 'getDiagnosticState':
-            handleGetDiagnosticState(sendResponse, deps);
-            return true;
-        case 'captureScreenshot':
-            handleCaptureScreenshot(sendResponse, deps);
-            return true;
-        case 'setSourceMapEnabled':
-            deps.setSourceMapEnabled(message.enabled);
-            deps.saveSetting('sourceMapEnabled', message.enabled);
-            if (!message.enabled) {
-                deps.clearSourceMapCache();
-            }
-            sendResponse({ success: true });
-            return false;
-        case 'setNetworkWaterfallEnabled':
-        case 'setPerformanceMarksEnabled':
-        case 'setActionReplayEnabled':
-        case 'setWebSocketCaptureEnabled':
-        case 'setWebSocketCaptureMode':
-        case 'setPerformanceSnapshotEnabled':
-        case 'setDeferralEnabled':
-        case 'setNetworkBodyCaptureEnabled':
-        case 'setActionToastsEnabled':
-        case 'setSubtitlesEnabled':
-            handleForwardedSetting(message, sendResponse, deps);
-            return false;
-        case 'setDebugMode':
-            deps.setDebugMode(message.enabled);
-            deps.saveSetting('debugMode', message.enabled);
-            sendResponse({ success: true });
-            return false;
-        case 'getDebugLog':
-            sendResponse({ log: deps.exportDebugLog() });
-            return false;
-        case 'clearDebugLog':
-            deps.clearDebugLog();
-            deps.debugLog('lifecycle', 'Debug log cleared');
-            sendResponse({ success: true });
-            return false;
-        case 'setServerUrl':
-            handleSetServerUrl(message.url, sendResponse, deps);
-            return false;
-        case 'GASOLINE_CAPTURE_SCREENSHOT':
-            // Content script requests screenshot capture (while draw mode overlay is still visible)
-            handleDrawModeCaptureScreenshot(sender, sendResponse);
-            return true;
-        case 'DRAW_MODE_COMPLETED':
-            // Fire-and-forget: content script sends draw mode results
-            handleDrawModeCompletedAsync(message, sender, deps);
-            return false;
-        default:
-            // Unknown message type
-            return false;
-    }
+  const messageType = message.type
+  // Type validation: ensure message conforms to expected discriminated union
+  // TypeScript's type system ensures exhaustiveness, but add logging for debugging
+  switch (messageType) {
+    case 'GET_TAB_ID':
+      sendResponse({ tabId: sender.tab?.id })
+      return true
+    case 'ws_event':
+      deps.addToWsBatcher(message.payload)
+      return false
+    case 'enhanced_action':
+      deps.addToEnhancedActionBatcher(message.payload)
+      return false
+    case 'network_body':
+      if (deps.isNetworkBodyCaptureDisabled()) {
+        deps.debugLog('capture', 'Network body dropped: capture disabled')
+        return true
+      }
+      // Attach tabId to payload before batching (v5.3+)
+      deps.addToNetworkBodyBatcher({ ...message.payload, tabId: message.tabId })
+      return false
+    case 'performance_snapshot':
+      deps.addToPerfBatcher(message.payload)
+      return false
+    case 'log':
+      handleLogMessageAsync(message, sender, deps)
+      return true
+    case 'getStatus':
+      sendResponse({
+        ...deps.getConnectionStatus(),
+        serverUrl: deps.getServerUrl(),
+        screenshotOnError: deps.getScreenshotOnError(),
+        sourceMapEnabled: deps.getSourceMapEnabled(),
+        debugMode: deps.getDebugMode(),
+        contextWarning: deps.getContextWarning(),
+        circuitBreakerState: deps.getCircuitBreakerState(),
+        memoryPressure: deps.getMemoryPressureState()
+      })
+      return false
+    case 'clearLogs':
+      handleClearLogsAsync(sendResponse, deps)
+      return true
+    case 'setLogLevel':
+      deps.setCurrentLogLevel(message.level)
+      deps.saveSetting('logLevel', message.level)
+      return false
+    case 'setScreenshotOnError':
+      deps.setScreenshotOnError(message.enabled)
+      deps.saveSetting('screenshotOnError', message.enabled)
+      sendResponse({ success: true })
+      return false
+    case 'setAiWebPilotEnabled':
+      handleSetAiWebPilotEnabled(message.enabled, sendResponse, deps)
+      return false
+    case 'getAiWebPilotEnabled':
+      sendResponse({ enabled: deps.getAiWebPilotEnabled() })
+      return false
+    case 'getTrackingState':
+      handleGetTrackingState(sendResponse, deps, sender.tab?.id)
+      return true
+    case 'getDiagnosticState':
+      handleGetDiagnosticState(sendResponse, deps)
+      return true
+    case 'captureScreenshot':
+      handleCaptureScreenshot(sendResponse, deps)
+      return true
+    case 'setSourceMapEnabled':
+      deps.setSourceMapEnabled(message.enabled)
+      deps.saveSetting('sourceMapEnabled', message.enabled)
+      if (!message.enabled) {
+        deps.clearSourceMapCache()
+      }
+      sendResponse({ success: true })
+      return false
+    case 'setNetworkWaterfallEnabled':
+    case 'setPerformanceMarksEnabled':
+    case 'setActionReplayEnabled':
+    case 'setWebSocketCaptureEnabled':
+    case 'setWebSocketCaptureMode':
+    case 'setPerformanceSnapshotEnabled':
+    case 'setDeferralEnabled':
+    case 'setNetworkBodyCaptureEnabled':
+    case 'setActionToastsEnabled':
+    case 'setSubtitlesEnabled':
+      handleForwardedSetting(message, sendResponse, deps)
+      return false
+    case 'setDebugMode':
+      deps.setDebugMode(message.enabled)
+      deps.saveSetting('debugMode', message.enabled)
+      sendResponse({ success: true })
+      return false
+    case 'getDebugLog':
+      sendResponse({ log: deps.exportDebugLog() })
+      return false
+    case 'clearDebugLog':
+      deps.clearDebugLog()
+      deps.debugLog('lifecycle', 'Debug log cleared')
+      sendResponse({ success: true })
+      return false
+    case 'setServerUrl':
+      handleSetServerUrl(message.url, sendResponse, deps)
+      return false
+    case 'GASOLINE_CAPTURE_SCREENSHOT':
+      // Content script requests screenshot capture (while draw mode overlay is still visible)
+      handleDrawModeCaptureScreenshot(sender, sendResponse)
+      return true
+    case 'DRAW_MODE_COMPLETED':
+      // Fire-and-forget: content script sends draw mode results
+      handleDrawModeCompletedAsync(message, sender, deps)
+      return false
+    default:
+      // Unknown message type
+      return false
+  }
 }
 // =============================================================================
 // ASYNC HANDLERS
 // =============================================================================
 async function handleLogMessageAsync(message, sender, deps) {
-    try {
-        await deps.handleLogMessage(message.payload, sender, message.tabId);
-    }
-    catch (err) {
-        console.error('[Gasoline] Failed to handle log message:', err);
-    }
+  try {
+    await deps.handleLogMessage(message.payload, sender, message.tabId)
+  } catch (err) {
+    console.error('[Gasoline] Failed to handle log message:', err)
+  }
 }
 // #lizard forgives
 async function handleClearLogsAsync(sendResponse, deps) {
-    try {
-        const result = await deps.handleClearLogs();
-        sendResponse(result);
-    }
-    catch (err) {
-        console.error('[Gasoline] Failed to clear logs:', err);
-        sendResponse({ error: err.message });
-    }
+  try {
+    const result = await deps.handleClearLogs()
+    sendResponse(result)
+  } catch (err) {
+    console.error('[Gasoline] Failed to clear logs:', err)
+    sendResponse({ error: err.message })
+  }
 }
 function handleSetAiWebPilotEnabled(enabled, sendResponse, deps) {
-    const newValue = enabled === true;
-    console.log(`[Gasoline] AI Web Pilot toggle: -> ${newValue}`);
-    deps.setAiWebPilotEnabled(newValue, () => {
-        console.log(`[Gasoline] AI Web Pilot persisted to storage: ${newValue}`);
-        // Settings now sent automatically via /sync
-        // Broadcast tracking state change to tracked tab (for favicon flicker)
-        broadcastTrackingState();
-    });
-    sendResponse({ success: true });
+  const newValue = enabled === true
+  console.log(`[Gasoline] AI Web Pilot toggle: -> ${newValue}`)
+  deps.setAiWebPilotEnabled(newValue, () => {
+    console.log(`[Gasoline] AI Web Pilot persisted to storage: ${newValue}`)
+    // Settings now sent automatically via /sync
+    // Broadcast tracking state change to tracked tab (for favicon flicker)
+    broadcastTrackingState()
+  })
+  sendResponse({ success: true })
 }
 /**
  * Handle getTrackingState request from content script.
@@ -217,21 +214,20 @@ function handleSetAiWebPilotEnabled(enabled, sendResponse, deps) {
  * Uses sender's tab ID (not active tab query) to correctly identify the requesting tab.
  */
 async function handleGetTrackingState(sendResponse, deps, senderTabId) {
-    try {
-        const result = await chrome.storage.local.get(['trackedTabId']);
-        const trackedTabId = result.trackedTabId;
-        const aiPilotEnabled = deps.getAiWebPilotEnabled();
-        sendResponse({
-            state: {
-                isTracked: senderTabId !== undefined && senderTabId === trackedTabId,
-                aiPilotEnabled: aiPilotEnabled
-            }
-        });
-    }
-    catch (err) {
-        console.error('[Gasoline] Failed to get tracking state:', err);
-        sendResponse({ state: { isTracked: false, aiPilotEnabled: false } });
-    }
+  try {
+    const result = await chrome.storage.local.get(['trackedTabId'])
+    const trackedTabId = result.trackedTabId
+    const aiPilotEnabled = deps.getAiWebPilotEnabled()
+    sendResponse({
+      state: {
+        isTracked: senderTabId !== undefined && senderTabId === trackedTabId,
+        aiPilotEnabled: aiPilotEnabled
+      }
+    })
+  } catch (err) {
+    console.error('[Gasoline] Failed to get tracking state:', err)
+    sendResponse({ state: { isTracked: false, aiPilotEnabled: false } })
+  }
 }
 /**
  * Broadcast tracking state to the tracked tab.
@@ -240,218 +236,212 @@ async function handleGetTrackingState(sendResponse, deps, senderTabId) {
  * @param untrackedTabId - Optional tab ID that was just untracked (to notify it to stop flicker)
  */
 export async function broadcastTrackingState(untrackedTabId) {
-    try {
-        const result = await chrome.storage.local.get(['trackedTabId', 'aiWebPilotEnabled']);
-        const trackedTabId = result.trackedTabId;
-        const aiPilotEnabled = result.aiWebPilotEnabled === true;
-        // Notify the currently tracked tab it's being tracked
-        if (trackedTabId) {
-            chrome.tabs
-                .sendMessage(trackedTabId, {
-                type: 'trackingStateChanged',
-                state: {
-                    isTracked: true,
-                    aiPilotEnabled: aiPilotEnabled
-                }
-            })
-                .catch(() => {
-                // Tab might not have content script loaded yet, ignore
-            });
-        }
-        // Notify the previously tracked tab it's no longer tracked (to stop favicon flicker)
-        if (untrackedTabId && untrackedTabId !== trackedTabId) {
-            chrome.tabs
-                .sendMessage(untrackedTabId, {
-                type: 'trackingStateChanged',
-                state: {
-                    isTracked: false,
-                    aiPilotEnabled: false
-                }
-            })
-                .catch(() => {
-                // Tab might not have content script loaded, ignore
-            });
-        }
+  try {
+    const result = await chrome.storage.local.get(['trackedTabId', 'aiWebPilotEnabled'])
+    const trackedTabId = result.trackedTabId
+    const aiPilotEnabled = result.aiWebPilotEnabled === true
+    // Notify the currently tracked tab it's being tracked
+    if (trackedTabId) {
+      chrome.tabs
+        .sendMessage(trackedTabId, {
+          type: 'trackingStateChanged',
+          state: {
+            isTracked: true,
+            aiPilotEnabled: aiPilotEnabled
+          }
+        })
+        .catch(() => {
+          // Tab might not have content script loaded yet, ignore
+        })
     }
-    catch (err) {
-        console.error('[Gasoline] Failed to broadcast tracking state:', err);
+    // Notify the previously tracked tab it's no longer tracked (to stop favicon flicker)
+    if (untrackedTabId && untrackedTabId !== trackedTabId) {
+      chrome.tabs
+        .sendMessage(untrackedTabId, {
+          type: 'trackingStateChanged',
+          state: {
+            isTracked: false,
+            aiPilotEnabled: false
+          }
+        })
+        .catch(() => {
+          // Tab might not have content script loaded, ignore
+        })
     }
+  } catch (err) {
+    console.error('[Gasoline] Failed to broadcast tracking state:', err)
+  }
 }
 function handleGetDiagnosticState(sendResponse, deps) {
-    if (typeof chrome === 'undefined' || !chrome.storage) {
-        sendResponse({
-            cache: deps.getAiWebPilotEnabled(),
-            storage: undefined,
-            timestamp: new Date().toISOString()
-        });
-        return;
-    }
-    chrome.storage.local.get(['aiWebPilotEnabled'], (result) => {
-        sendResponse({
-            cache: deps.getAiWebPilotEnabled(),
-            storage: result.aiWebPilotEnabled,
-            timestamp: new Date().toISOString()
-        });
-    });
+  if (typeof chrome === 'undefined' || !chrome.storage) {
+    sendResponse({
+      cache: deps.getAiWebPilotEnabled(),
+      storage: undefined,
+      timestamp: new Date().toISOString()
+    })
+    return
+  }
+  chrome.storage.local.get(['aiWebPilotEnabled'], (result) => {
+    sendResponse({
+      cache: deps.getAiWebPilotEnabled(),
+      storage: result.aiWebPilotEnabled,
+      timestamp: new Date().toISOString()
+    })
+  })
 }
 function handleCaptureScreenshot(sendResponse, deps) {
-    if (typeof chrome === 'undefined' || !chrome.tabs) {
-        sendResponse({ success: false, error: 'Chrome tabs API not available' });
-        return;
+  if (typeof chrome === 'undefined' || !chrome.tabs) {
+    sendResponse({ success: false, error: 'Chrome tabs API not available' })
+    return
+  }
+  chrome.tabs.query({ active: true, currentWindow: true }, async (tabs) => {
+    if (tabs[0]?.id) {
+      const result = await deps.captureScreenshot(tabs[0].id, null)
+      if (result.success && result.entry) {
+        deps.addToLogBatcher(result.entry)
+      }
+      sendResponse(result)
+    } else {
+      sendResponse({ success: false, error: 'No active tab' })
     }
-    chrome.tabs.query({ active: true, currentWindow: true }, async (tabs) => {
-        if (tabs[0]?.id) {
-            const result = await deps.captureScreenshot(tabs[0].id, null);
-            if (result.success && result.entry) {
-                deps.addToLogBatcher(result.entry);
-            }
-            sendResponse(result);
-        }
-        else {
-            sendResponse({ success: false, error: 'No active tab' });
-        }
-    });
+  })
 }
 function handleForwardedSetting(message, sendResponse, deps) {
-    deps.debugLog('settings', `Setting ${message.type}: ${message.enabled ?? message.mode}`);
-    deps.forwardToAllContentScripts(message);
-    sendResponse({ success: true });
+  deps.debugLog('settings', `Setting ${message.type}: ${message.enabled ?? message.mode}`)
+  deps.forwardToAllContentScripts(message)
+  sendResponse({ success: true })
 }
 /**
  * Handle GASOLINE_CAPTURE_SCREENSHOT from content script.
  * Captures visible tab while draw mode overlay is still visible (annotations in screenshot).
  */
 async function handleDrawModeCaptureScreenshot(sender, sendResponse) {
-    const tabId = sender.tab?.id;
-    if (!tabId) {
-        sendResponse({ dataUrl: '' });
-        return;
-    }
-    try {
-        const tab = await chrome.tabs.get(tabId);
-        const dataUrl = await chrome.tabs.captureVisibleTab(tab.windowId, { format: 'png' });
-        sendResponse({ dataUrl });
-    }
-    catch (err) {
-        console.error('[Gasoline] Draw mode screenshot capture failed:', err.message);
-        sendResponse({ dataUrl: '' });
-    }
+  const tabId = sender.tab?.id
+  if (!tabId) {
+    sendResponse({ dataUrl: '' })
+    return
+  }
+  try {
+    const tab = await chrome.tabs.get(tabId)
+    const dataUrl = await chrome.tabs.captureVisibleTab(tab.windowId, { format: 'png' })
+    sendResponse({ dataUrl })
+  } catch (err) {
+    console.error('[Gasoline] Draw mode screenshot capture failed:', err.message)
+    sendResponse({ dataUrl: '' })
+  }
 }
 /**
  * Handle draw mode completion from content script.
  * Uses screenshot already captured by content script (before overlay removal).
  */
 async function handleDrawModeCompletedAsync(message, sender, deps) {
-    const tabId = sender.tab?.id;
-    if (!tabId)
-        return;
-    try {
-        const serverUrl = deps.getServerUrl();
-        const body = {
-            screenshot_data_url: message.screenshot_data_url || '',
-            annotations: message.annotations || [],
-            element_details: message.elementDetails || {},
-            page_url: message.page_url || '',
-            tab_id: tabId,
-            correlation_id: message.correlation_id || ''
-        };
-        if (message.session_name) {
-            body.session_name = message.session_name;
-        }
-        const response = await fetch(`${serverUrl}/draw-mode/complete`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'X-Gasoline-Client': 'gasoline-extension' },
-            body: JSON.stringify(body)
-        });
-        if (!response.ok) {
-            const respBody = await response.text().catch(() => '');
-            deps.debugLog('error', `Draw mode POST failed: ${response.status} ${respBody}`);
-        }
-        else {
-            deps.debugLog('draw', `Draw mode results delivered (${message.annotations?.length || 0} annotations)`);
-        }
+  const tabId = sender.tab?.id
+  if (!tabId) return
+  try {
+    const serverUrl = deps.getServerUrl()
+    const body = {
+      screenshot_data_url: message.screenshot_data_url || '',
+      annotations: message.annotations || [],
+      element_details: message.elementDetails || {},
+      page_url: message.page_url || '',
+      tab_id: tabId,
+      correlation_id: message.correlation_id || ''
     }
-    catch (err) {
-        deps.debugLog('error', `Draw mode completion error: ${err.message}. Server may be unreachable.`);
+    if (message.session_name) {
+      body.session_name = message.session_name
     }
+    const response = await fetch(`${serverUrl}/draw-mode/complete`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Gasoline-Client': 'gasoline-extension' },
+      body: JSON.stringify(body)
+    })
+    if (!response.ok) {
+      const respBody = await response.text().catch(() => '')
+      deps.debugLog('error', `Draw mode POST failed: ${response.status} ${respBody}`)
+    } else {
+      deps.debugLog('draw', `Draw mode results delivered (${message.annotations?.length || 0} annotations)`)
+    }
+  } catch (err) {
+    deps.debugLog('error', `Draw mode completion error: ${err.message}. Server may be unreachable.`)
+  }
 }
 function handleSetServerUrl(url, sendResponse, deps) {
-    deps.setServerUrl(url || 'http://localhost:7890');
-    deps.saveSetting('serverUrl', deps.getServerUrl());
-    deps.debugLog('settings', `Server URL changed to: ${deps.getServerUrl()}`);
-    // Broadcast to all content scripts
-    deps.forwardToAllContentScripts({ type: 'setServerUrl', url: deps.getServerUrl() });
-    // Re-check connection with new URL
-    deps.checkConnectionAndUpdate();
-    sendResponse({ success: true });
+  deps.setServerUrl(url || 'http://localhost:7890')
+  deps.saveSetting('serverUrl', deps.getServerUrl())
+  deps.debugLog('settings', `Server URL changed to: ${deps.getServerUrl()}`)
+  // Broadcast to all content scripts
+  deps.forwardToAllContentScripts({ type: 'setServerUrl', url: deps.getServerUrl() })
+  // Re-check connection with new URL
+  deps.checkConnectionAndUpdate()
+  sendResponse({ success: true })
 }
 // =============================================================================
 // STATE SNAPSHOT STORAGE
 // =============================================================================
-const SNAPSHOT_KEY = 'gasoline_state_snapshots';
+const SNAPSHOT_KEY = 'gasoline_state_snapshots'
 /**
  * Save a state snapshot to chrome.storage.local
  */
 export async function saveStateSnapshot(name, state) {
-    return new Promise((resolve) => {
-        chrome.storage.local.get(SNAPSHOT_KEY, (result) => {
-            const snapshots = result[SNAPSHOT_KEY] || {};
-            const sizeBytes = JSON.stringify(state).length; // nosemgrep: no-stringify-keys
-            snapshots[name] = {
-                ...state,
-                name,
-                size_bytes: sizeBytes
-            };
-            chrome.storage.local.set({ [SNAPSHOT_KEY]: snapshots }, () => {
-                resolve({
-                    success: true,
-                    snapshot_name: name,
-                    size_bytes: sizeBytes
-                });
-            });
-        });
-    });
+  return new Promise((resolve) => {
+    chrome.storage.local.get(SNAPSHOT_KEY, (result) => {
+      const snapshots = result[SNAPSHOT_KEY] || {}
+      const sizeBytes = JSON.stringify(state).length // nosemgrep: no-stringify-keys
+      snapshots[name] = {
+        ...state,
+        name,
+        size_bytes: sizeBytes
+      }
+      chrome.storage.local.set({ [SNAPSHOT_KEY]: snapshots }, () => {
+        resolve({
+          success: true,
+          snapshot_name: name,
+          size_bytes: sizeBytes
+        })
+      })
+    })
+  })
 }
 /**
  * Load a state snapshot from chrome.storage.local
  */
 export async function loadStateSnapshot(name) {
-    return new Promise((resolve) => {
-        chrome.storage.local.get(SNAPSHOT_KEY, (result) => {
-            const snapshots = result[SNAPSHOT_KEY] || {};
-            resolve(snapshots[name] || null);
-        });
-    });
+  return new Promise((resolve) => {
+    chrome.storage.local.get(SNAPSHOT_KEY, (result) => {
+      const snapshots = result[SNAPSHOT_KEY] || {}
+      resolve(snapshots[name] || null)
+    })
+  })
 }
 /**
  * List all state snapshots with metadata
  */
 export async function listStateSnapshots() {
-    return new Promise((resolve) => {
-        chrome.storage.local.get(SNAPSHOT_KEY, (result) => {
-            const snapshots = result[SNAPSHOT_KEY] || {};
-            const list = Object.values(snapshots).map((s) => ({
-                name: s.name,
-                url: s.url,
-                timestamp: s.timestamp,
-                size_bytes: s.size_bytes
-            }));
-            resolve(list);
-        });
-    });
+  return new Promise((resolve) => {
+    chrome.storage.local.get(SNAPSHOT_KEY, (result) => {
+      const snapshots = result[SNAPSHOT_KEY] || {}
+      const list = Object.values(snapshots).map((s) => ({
+        name: s.name,
+        url: s.url,
+        timestamp: s.timestamp,
+        size_bytes: s.size_bytes
+      }))
+      resolve(list)
+    })
+  })
 }
 /**
  * Delete a state snapshot from chrome.storage.local
  */
 export async function deleteStateSnapshot(name) {
-    return new Promise((resolve) => {
-        chrome.storage.local.get(SNAPSHOT_KEY, (result) => {
-            const snapshots = result[SNAPSHOT_KEY] || {};
-            delete snapshots[name];
-            chrome.storage.local.set({ [SNAPSHOT_KEY]: snapshots }, () => {
-                resolve({ success: true, deleted: name });
-            });
-        });
-    });
+  return new Promise((resolve) => {
+    chrome.storage.local.get(SNAPSHOT_KEY, (result) => {
+      const snapshots = result[SNAPSHOT_KEY] || {}
+      delete snapshots[name]
+      chrome.storage.local.set({ [SNAPSHOT_KEY]: snapshots }, () => {
+        resolve({ success: true, deleted: name })
+      })
+    })
+  })
 }
 //# sourceMappingURL=message-handlers.js.map
