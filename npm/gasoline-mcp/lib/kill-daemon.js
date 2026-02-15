@@ -107,6 +107,36 @@ function cleanupPIDFiles() {
     roots.push(path.join(process.env.XDG_STATE_HOME, 'gasoline', 'run'));
   }
 
+  for (const root of roots) {
+    try {
+      for (const entry of fs.readdirSync(root)) {
+        if (entry.startsWith('gasoline-') && entry.endsWith('.pid')) {
+          try {
+            fs.rmSync(path.join(root, entry), { force: true });
+          } catch (_) {
+            // Best effort only.
+          }
+        }
+      }
+    } catch (_) {
+      // Best effort only.
+    }
+  }
+
+  try {
+    for (const entry of fs.readdirSync(home)) {
+      if (entry.startsWith('.gasoline-') && entry.endsWith('.pid')) {
+        try {
+          fs.rmSync(path.join(home, entry), { force: true });
+        } catch (_) {
+          // Best effort only.
+        }
+      }
+    }
+  } catch (_) {
+    // Best effort only.
+  }
+
   for (const port of KNOWN_PORTS) {
     for (const root of roots) {
       try {

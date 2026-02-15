@@ -94,6 +94,34 @@ jobs:
       - name: Install Node dependencies
         run: npm ci
 
+      - name: Validate PyPI pyproject schema (pre-build)
+        run: node scripts/normalize-pypi-main-pyproject.js --check --validate
+
+      - name: Assert scripts metadata shape and log pyproject keys (pre-build)
+        run: |
+          python - <<'PY'
+          import sys
+          import tomllib
+
+          path = "pypi/gasoline-mcp/pyproject.toml"
+          with open(path, "rb") as fh:
+              data = tomllib.load(fh)
+
+          project = data.get("project", {})
+          scripts = project.get("scripts", {})
+          if not isinstance(scripts, dict):
+              print("ERROR: [project.scripts] must be a TOML table")
+              sys.exit(1)
+          if "dependencies" in scripts:
+              print("ERROR: project.scripts.dependencies must not exist")
+              sys.exit(1)
+
+          print("PyPI pyproject forensics:")
+          print("  project keys:", sorted(project.keys()))
+          print("  project.scripts keys:", sorted(scripts.keys()))
+          print("  project.dependencies count:", len(project.get("dependencies", [])))
+          PY
+
       - name: Build all platform binaries
         run: make build
         env:
@@ -139,14 +167,36 @@ jobs:
           for pkg in darwin-arm64 darwin-x64 linux-arm64 linux-x64 win32-x64; do
             echo "Publishing @brennhill/gasoline-$pkg..."
             cd npm/$pkg
-            npm publish --access public
+            set +e
+            OUTPUT=$(npm publish --access public 2>&1)
+            STATUS=$?
+            set -e
+            echo "$OUTPUT"
+            if [ $STATUS -ne 0 ]; then
+              if echo "$OUTPUT" | grep -q "cannot publish over the previously published versions"; then
+                echo "Already published @brennhill/gasoline-$pkg; continuing."
+              else
+                exit $STATUS
+              fi
+            fi
             cd ../..
           done
 
           # Publish main package last
           echo "Publishing gasoline-mcp..."
           cd npm/gasoline-mcp
-          npm publish --access public
+          set +e
+          OUTPUT=$(npm publish --access public 2>&1)
+          STATUS=$?
+          set -e
+          echo "$OUTPUT"
+          if [ $STATUS -ne 0 ]; then
+            if echo "$OUTPUT" | grep -q "cannot publish over the previously published versions"; then
+              echo "Already published gasoline-mcp; continuing."
+            else
+              exit $STATUS
+            fi
+          fi
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
@@ -159,14 +209,14 @@ jobs:
           for pkg in darwin-arm64 darwin-x64 linux-arm64 linux-x64 win32-x64; do
             echo "Publishing gasoline-mcp-$pkg to PyPI..."
             cd pypi/gasoline-mcp-$pkg
-            python -m twine upload dist/*
+            python -m twine upload --skip-existing dist/*
             cd ../..
           done
 
           # Publish main package last
           echo "Publishing gasoline-mcp to PyPI..."
           cd pypi/gasoline-mcp
-          python -m twine upload dist/*
+          python -m twine upload --skip-existing dist/*
         env:
           TWINE_USERNAME: __token__
           TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}

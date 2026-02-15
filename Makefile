@@ -436,14 +436,30 @@ pypi-binaries: build
 	@cp $(BUILD_DIR)/$(BINARY_NAME)-win32-x64.exe pypi/gasoline-mcp-win32-x64/gasoline_mcp_win32_x64/gasoline.exe
 	@echo "Binaries copied successfully"
 
-pypi-build: pypi-binaries
+pypi-preflight:
+	@python3 -c 'import importlib.util,sys; missing=[n for n in ("build","setuptools","wheel") if importlib.util.find_spec(n) is None]; (print("ERROR: Missing Python build modules: " + ", ".join(missing)), print("Install with: python3 -m pip install --upgrade build setuptools wheel"), sys.exit(1)) if missing else print("Python build modules available: build, setuptools, wheel")'
+
+pypi-schema-check:
+	@echo "Checking PyPI main pyproject normalization..."
+	@node scripts/normalize-pypi-main-pyproject.js --check --validate
+	@python3 -c 'import sys,tomllib; p="pypi/gasoline-mcp/pyproject.toml"; d=tomllib.load(open(p,"rb")); project=d.get("project", {}); scripts=project.get("scripts", {}); \
+	(isinstance(scripts, dict) or (print("ERROR: [project.scripts] must be a TOML table"), sys.exit(1))); \
+	("dependencies" not in scripts or (print("ERROR: project.scripts.dependencies must not exist"), sys.exit(1))); \
+	print("PyPI schema check ok"); print("project keys:", sorted(project.keys())); print("project.scripts keys:", sorted(scripts.keys())); print("project.dependencies count:", len(project.get("dependencies", [])))'
+
+pypi-build: pypi-preflight pypi-schema-check
+	@$(MAKE) pypi-binaries
+	@echo "Normalizing PyPI main pyproject metadata..."
+	@node scripts/normalize-pypi-main-pyproject.js
+	@echo "Validating PyPI main pyproject metadata..."
+	@node scripts/normalize-pypi-main-pyproject.js --validate
 	@echo "Building PyPI wheels..."
 	@for pkg in pypi/gasoline-mcp-*/; do \
 		echo "Building $$pkg..."; \
-		cd $$pkg && python3 -m build && cd ../..; \
+		(cd "$$pkg" && python3 -m build); \
 	done
 	@echo "Building main package..."
-	@cd pypi/gasoline-mcp && python3 -m build
+	@(cd pypi/gasoline-mcp && python3 -m build)
 	@echo "All PyPI packages built successfully"
 	@echo ""
 	@echo "Wheels created:"
@@ -454,10 +470,10 @@ pypi-test-publish: pypi-build
 	@echo "NOTE: Requires TWINE_USERNAME and TWINE_PASSWORD environment variables"
 	@for pkg in pypi/gasoline-mcp-*/; do \
 		echo "Uploading $$pkg..."; \
-		cd $$pkg && python3 -m twine upload --repository testpypi dist/* && cd ../..; \
+		(cd "$$pkg" && python3 -m twine upload --repository testpypi dist/*); \
 	done
 	@echo "Uploading main package..."
-	@cd pypi/gasoline-mcp && python3 -m twine upload --repository testpypi dist/*
+	@(cd pypi/gasoline-mcp && python3 -m twine upload --repository testpypi dist/*)
 	@echo "All packages published to Test PyPI"
 	@echo "Test installation: pip install --index-url https://test.pypi.org/simple/ gasoline-mcp"
 
@@ -468,10 +484,10 @@ pypi-publish: pypi-build
 	@read dummy
 	@for pkg in pypi/gasoline-mcp-*/; do \
 		echo "Uploading $$pkg..."; \
-		cd $$pkg && python3 -m twine upload dist/* && cd ../..; \
+		(cd "$$pkg" && python3 -m twine upload dist/*); \
 	done
 	@echo "Uploading main package..."
-	@cd pypi/gasoline-mcp && python3 -m twine upload dist/*
+	@(cd pypi/gasoline-mcp && python3 -m twine upload dist/*)
 	@echo "All packages published to PyPI"
 	@echo "Installation: pip install gasoline-mcp"
 

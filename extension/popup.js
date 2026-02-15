@@ -248,6 +248,9 @@ function showDrawModeError(label, message) {
     label.style.color = ''
   }, 3000)
 }
+function getNavigatorSafe() {
+  return typeof globalThis !== 'undefined' && globalThis.navigator ? globalThis.navigator : null
+}
 function setupDrawModeButton() {
   const row = document.getElementById('draw-mode-row')
   const label = document.getElementById('draw-mode-label')
@@ -255,7 +258,8 @@ function setupDrawModeButton() {
   // Set platform-aware keyboard shortcut hint
   const statusEl = document.getElementById('draw-mode-status')
   if (statusEl) {
-    const isMac = navigator.platform?.toUpperCase().includes('MAC') || navigator.userAgentData?.platform === 'macOS'
+    const nav = getNavigatorSafe()
+    const isMac = nav?.platform?.toUpperCase().includes('MAC') || nav?.userAgentData?.platform === 'macOS'
     statusEl.textContent = isMac ? '⌥⇧D' : 'Alt+Shift+D'
   }
   row.addEventListener('click', () => {
@@ -338,8 +342,15 @@ function showMicPermissionPrompt(saveInfoEl, audioMode) {
 }
 // #lizard forgives
 function tryMicPermissionThenStart(els, state, audioMode) {
+  const nav = getNavigatorSafe()
+  if (!nav?.mediaDevices?.getUserMedia) {
+    chrome.storage.local.remove('gasoline_mic_granted')
+    showIdle(els, state)
+    if (els.saveInfoEl) showMicPermissionPrompt(els.saveInfoEl, audioMode)
+    return
+  }
   console.log('[Gasoline REC] Popup: trying getUserMedia from popup...')
-  navigator.mediaDevices
+  nav.mediaDevices
     .getUserMedia({ audio: true })
     .then((micStream) => {
       console.log('[Gasoline REC] Popup: getUserMedia succeeded from popup')

@@ -35,6 +35,12 @@ test('cleanup targets legacy and current daemon names', () => {
   runKillDaemon({ homeDir: tmp, binDir, logPath });
 
   const log = fs.existsSync(logPath) ? fs.readFileSync(logPath, 'utf8') : '';
+  if (process.platform === 'win32') {
+    assert.match(log, /gasoline-mcp\.exe/, 'expected cleanup to target gasoline-mcp.exe');
+    assert.match(log, /dev-console\.exe/, 'expected cleanup to target legacy dev-console.exe');
+    return;
+  }
+
   assert.match(log, /\[pattern\] gasoline-mcp/, 'expected cleanup to target gasoline-mcp');
   assert.match(log, /\[pattern\] dev-console/, 'expected cleanup to target legacy dev-console');
 });
