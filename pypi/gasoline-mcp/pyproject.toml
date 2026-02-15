@@ -4,7 +4,7 @@ version = "0.7.2"
 description = "Gasoline MCP is an AI Debugger, Inspector, and Observability toolkit. It acts as Chrome DevTools for AI Agents using the Model Context Protocol (MCP)."
 readme = "README.md"
 requires-python = ">=3.8"
-license = {text = "AGPL-3.0-only"}
+license = "AGPL-3.0-only"
 authors = [
     {name = "Brennan Hill", email = "noreply@cookwithgasoline.com"}
 ]
@@ -21,7 +21,6 @@ keywords = [
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
-    "License :: OSI Approved :: GNU Affero General Public License v3",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.8",
     "Programming Language :: Python :: 3.9",
@@ -30,6 +29,13 @@ classifiers = [
     "Programming Language :: Python :: 3.12",
     "Topic :: Software Development :: Debuggers",
     "Topic :: Software Development :: Testing",
+]
+dependencies = [
+    "gasoline-mcp-darwin-arm64==0.7.2; sys_platform == 'darwin' and platform_machine == 'arm64'",
+    "gasoline-mcp-darwin-x64==0.7.2; sys_platform == 'darwin' and platform_machine == 'x86_64'",
+    "gasoline-mcp-linux-arm64==0.7.2; sys_platform == 'linux' and platform_machine == 'aarch64'",
+    "gasoline-mcp-linux-x64==0.7.2; sys_platform == 'linux' and platform_machine == 'x86_64'",
+    "gasoline-mcp-win32-x64==0.7.2; sys_platform == 'win32'",
 ]
 
 [project.urls]
@@ -40,14 +46,6 @@ Issues = "https://github.com/brennhill/gasoline-mcp-ai-devtools/issues"
 
 [project.scripts]
 gasoline-mcp = "gasoline_mcp.__main__:main"
-
-dependencies = [
-    "gasoline-mcp-darwin-arm64==0.7.2; sys_platform == 'darwin' and platform_machine == 'arm64'",
-    "gasoline-mcp-darwin-x64==0.7.2; sys_platform == 'darwin' and platform_machine == 'x86_64'",
-    "gasoline-mcp-linux-arm64==0.7.2; sys_platform == 'linux' and platform_machine == 'aarch64'",
-    "gasoline-mcp-linux-x64==0.7.2; sys_platform == 'linux' and platform_machine == 'x86_64'",
-    "gasoline-mcp-win32-x64==0.7.2; sys_platform == 'win32'",
-]
 
 [build-system]
 requires = ["setuptools>=61.0", "wheel"]

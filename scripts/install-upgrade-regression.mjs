@@ -80,6 +80,13 @@ async function waitForChildExit(child, timeoutMs = 10000) {
 
   await new Promise((resolve, reject) => {
     const timer = setTimeout(() => {
+      // On Windows, process handles can miss/lag exit events after external taskkill.
+      // Treat "pid is already gone" as a successful exit to avoid false negatives.
+      if (!pidAlive(child.pid)) {
+        cleanup()
+        resolve()
+        return
+      }
       cleanup()
       reject(new Error(`child ${child.pid} did not exit within ${timeoutMs}ms`))
     }, timeoutMs)

@@ -28,7 +28,7 @@ name = "${pkg_name}"
 version = "${VERSION}"
 description = "Gasoline MCP binary for ${platform}"
 requires-python = ">=3.8"
-license = {text = "AGPL-3.0-only"}
+license = "AGPL-3.0-only"
 authors = [
     {name = "Brennan Hill", email = "noreply@cookwithgasoline.com"}
 ]

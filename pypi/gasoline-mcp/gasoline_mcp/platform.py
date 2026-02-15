@@ -300,13 +300,108 @@ def _cleanup_unix():
     return killed
 
 
-def _cleanup_pid_files():
-    """Remove modern and legacy PID files for known ports."""
-    home = os.path.expanduser("~")
-    roots = [os.path.join(home, ".gasoline", "run")]
+def _normalize_path_for_set(path):
+    """Normalize path for stable dedupe across case-insensitive filesystems."""
+    return os.path.normcase(os.path.abspath(path))
+
+
+def _candidate_home_dirs():
+    """Return candidate home directories in priority order."""
+    homes = []
+    for value in [os.environ.get("HOME"), os.environ.get("USERPROFILE")]:
+        if value:
+            homes.append(value)
+
+    home_drive = os.environ.get("HOMEDRIVE")
+    home_path = os.environ.get("HOMEPATH")
+    if home_drive and home_path:
+        homes.append(os.path.join(home_drive, home_path))
+
+    expanded = os.path.expanduser("~")
+    if expanded:
+        homes.append(expanded)
+
+    deduped = []
+    seen = set()
+    for home in homes:
+        key = _normalize_path_for_set(home)
+        if key in seen:
+            continue
+        seen.add(key)
+        deduped.append(home)
+    return deduped
+
+
+def _pid_roots():
+    """Return all roots that may contain gasoline pid files."""
+    roots = []
+    seen = set()
+
+    for home in _candidate_home_dirs():
+        run_root = os.path.join(home, ".gasoline", "run")
+        key = _normalize_path_for_set(run_root)
+        if key not in seen:
+            seen.add(key)
+            roots.append(run_root)
+
     xdg_state_home = os.environ.get("XDG_STATE_HOME")
     if xdg_state_home:
-        roots.append(os.path.join(xdg_state_home, "gasoline", "run"))
+        xdg_root = os.path.join(xdg_state_home, "gasoline", "run")
+        key = _normalize_path_for_set(xdg_root)
+        if key not in seen:
+            seen.add(key)
+            roots.append(xdg_root)
+
+    return roots
+
+
+def _best_effort_remove(path):
+    """Remove a file path with fallback chmod retry for Windows read-only files."""
+    try:
+        os.remove(path)
+        return True
+    except FileNotFoundError:
+        return False
+    except PermissionError:
+        try:
+            os.chmod(path, 0o666)
+            os.remove(path)
+            return True
+        except OSError:
+            return False
+    except OSError:
+        return False
+
+
+def _cleanup_pid_files():
+    """Remove modern and legacy PID files for known ports."""
+    homes = _candidate_home_dirs()
+    roots = _pid_roots()
+
+    for root in roots:
+        try:
+            for entry in os.listdir(root):
+                if entry.startswith("gasoline-") and entry.endswith(".pid"):
+                    _best_effort_remove(os.path.join(root, entry))
+                if entry.startswith("dev-console-") and entry.endswith(".pid"):
+                    _best_effort_remove(os.path.join(root, entry))
+            try:
+                if not os.listdir(root):
+                    os.rmdir(root)
+            except OSError:
+                pass
+        except OSError:
+            pass
+
+    for home in homes:
+        try:
+            for entry in os.listdir(home):
+                if entry.startswith(".gasoline-") and entry.endswith(".pid"):
+                    _best_effort_remove(os.path.join(home, entry))
+                if entry.startswith(".dev-console-") and entry.endswith(".pid"):
+                    _best_effort_remove(os.path.join(home, entry))
+        except OSError:
+            pass
 
     for root in roots:
         try:
@@ -337,16 +432,12 @@ def _cleanup_pid_files():
     for port in KNOWN_PORTS:
         for root in roots:
             pid_path = os.path.join(root, f"gasoline-{port}.pid")
-            try:
-                os.remove(pid_path)
-            except OSError:
-                pass
+            _best_effort_remove(pid_path)
+            _best_effort_remove(os.path.join(root, f"dev-console-{port}.pid"))
 
-        legacy_path = os.path.join(home, f".gasoline-{port}.pid")
-        try:
-            os.remove(legacy_path)
-        except OSError:
-            pass
+        for home in homes:
+            _best_effort_remove(os.path.join(home, f".gasoline-{port}.pid"))
+            _best_effort_remove(os.path.join(home, f".dev-console-{port}.pid"))
 
 
 def cleanup_old_processes():

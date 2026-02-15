@@ -130,9 +130,28 @@ else
 fi
 
 # Check tools_observe.go for stub returns in command result observer
-if grep -rq 'func (h \*ToolHandler) toolObserveCommandResult.*{' "${CMD_DIR}"/tools_*.go; then
-    # Ensure implementation calls capture.GetCommandResult somewhere in observe analysis handlers.
-    if grep -q 'GetCommandResult' "${CMD_DIR}/tools_observe_analysis.go"; then
+if command -v rg >/dev/null 2>&1; then
+    OBSERVE_IMPL_FILES=$(rg -l 'func \(h \*ToolHandler\) toolObserveCommandResult\(' "${CMD_DIR}"/tools_*.go || true)
+else
+    OBSERVE_IMPL_FILES=$(grep -El 'func \(h \*ToolHandler\) toolObserveCommandResult\(' "${CMD_DIR}"/tools_*.go 2>/dev/null || true)
+fi
+if [ -z "${OBSERVE_IMPL_FILES:-}" ]; then
+    echo "   ❌ MISSING: toolObserveCommandResult implementation"
+    ERRORS=$((ERRORS + 1))
+else
+    OBSERVE_CALL_OK=0
+    for file in $OBSERVE_IMPL_FILES; do
+        if awk '
+            /func \(h \*ToolHandler\) toolObserveCommandResult\(/ { in_func=1; next }
+            in_func && /^func / { in_func=0 }
+            in_func && /GetCommandResult\(/ { found=1 }
+            END { exit(found ? 0 : 1) }
+        ' "$file"; then
+            OBSERVE_CALL_OK=1
+            break
+        fi
+    done
+    if [ "$OBSERVE_CALL_OK" -eq 1 ]; then
         echo "   ✅ toolObserveCommandResult calls GetCommandResult"
     else
         echo "   ❌ STUB DETECTED: toolObserveCommandResult doesn't call GetCommandResult"
