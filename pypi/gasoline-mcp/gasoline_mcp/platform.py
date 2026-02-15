@@ -308,6 +308,32 @@ def _cleanup_pid_files():
     if xdg_state_home:
         roots.append(os.path.join(xdg_state_home, "gasoline", "run"))
 
+    for root in roots:
+        try:
+            for entry in os.listdir(root):
+                if entry.startswith("gasoline-") and entry.endswith(".pid"):
+                    try:
+                        os.remove(os.path.join(root, entry))
+                    except OSError:
+                        pass
+            try:
+                if not os.listdir(root):
+                    os.rmdir(root)
+            except OSError:
+                pass
+        except OSError:
+            pass
+
+    try:
+        for entry in os.listdir(home):
+            if entry.startswith(".gasoline-") and entry.endswith(".pid"):
+                try:
+                    os.remove(os.path.join(home, entry))
+                except OSError:
+                    pass
+    except OSError:
+        pass
+
     for port in KNOWN_PORTS:
         for root in roots:
             pid_path = os.path.join(root, f"gasoline-{port}.pid")

@@ -139,14 +139,36 @@ jobs:
           for pkg in darwin-arm64 darwin-x64 linux-arm64 linux-x64 win32-x64; do
             echo "Publishing @brennhill/gasoline-$pkg..."
             cd npm/$pkg
-            npm publish --access public
+            set +e
+            OUTPUT=$(npm publish --access public 2>&1)
+            STATUS=$?
+            set -e
+            echo "$OUTPUT"
+            if [ $STATUS -ne 0 ]; then
+              if echo "$OUTPUT" | grep -q "cannot publish over the previously published versions"; then
+                echo "Already published @brennhill/gasoline-$pkg; continuing."
+              else
+                exit $STATUS
+              fi
+            fi
             cd ../..
           done
 
           # Publish main package last
           echo "Publishing gasoline-mcp..."
           cd npm/gasoline-mcp
-          npm publish --access public
+          set +e
+          OUTPUT=$(npm publish --access public 2>&1)
+          STATUS=$?
+          set -e
+          echo "$OUTPUT"
+          if [ $STATUS -ne 0 ]; then
+            if echo "$OUTPUT" | grep -q "cannot publish over the previously published versions"; then
+              echo "Already published gasoline-mcp; continuing."
+            else
+              exit $STATUS
+            fi
+          fi
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
