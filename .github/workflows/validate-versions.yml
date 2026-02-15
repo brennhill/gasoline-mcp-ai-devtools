@@ -21,6 +21,43 @@ jobs:
         with:
           node-version: "20"
 
+      - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6
+        with:
+          python-version: "3.12"
+
+      - name: Test PyPI pyproject normalizer
+        run: node --test scripts/normalize-pypi-main-pyproject.test.js
+
+      - name: Validate PyPI pyproject structure
+        run: |
+          node scripts/normalize-pypi-main-pyproject.js --check
+          node scripts/normalize-pypi-main-pyproject.js --validate
+
+      - name: Assert scripts metadata shape and log pyproject keys
+        run: |
+          python - <<'PY'
+          import sys
+          import tomllib
+
+          path = "pypi/gasoline-mcp/pyproject.toml"
+          with open(path, "rb") as fh:
+              data = tomllib.load(fh)
+
+          project = data.get("project", {})
+          scripts = project.get("scripts", {})
+          if not isinstance(scripts, dict):
+              print("ERROR: [project.scripts] must be a TOML table")
+              sys.exit(1)
+          if "dependencies" in scripts:
+              print("ERROR: project.scripts.dependencies must not exist")
+              sys.exit(1)
+
+          print("PyPI pyproject forensics:")
+          print("  project keys:", sorted(project.keys()))
+          print("  project.scripts keys:", sorted(scripts.keys()))
+          print("  project.dependencies count:", len(project.get("dependencies", [])))
+          PY
+
       - name: Validate all versions match VERSION file
         run: |
           VERSION=$(cat VERSION)

@@ -35,6 +35,13 @@ test('cleanup targets legacy and current daemon names', () => {
   runKillDaemon({ homeDir: tmp, binDir, logPath });
 
   const log = fs.existsSync(logPath) ? fs.readFileSync(logPath, 'utf8') : '';
+  if (process.platform === 'win32') {
+    assert.match(log, /gasoline\*\.exe/, 'expected cleanup to target gasoline*.exe');
+    assert.match(log, /dev-console\*\.exe/, 'expected cleanup to target legacy dev-console*.exe');
+    assert.match(log, /\[execFile\] gasoline-mcp --force/, 'expected cleanup to invoke gasoline-mcp --force');
+    return;
+  }
+
   assert.match(log, /\[pattern\] gasoline-mcp/, 'expected cleanup to target gasoline-mcp');
   assert.match(log, /\[pattern\] dev-console/, 'expected cleanup to target legacy dev-console');
 });
@@ -87,6 +94,22 @@ test('cleanup removes pid files across known ports and XDG state root', () => {
   for (const pidPath of trackedPaths) {
     assert.equal(fs.existsSync(pidPath), false, `expected pid file removed: ${pidPath}`);
   }
+});
+
+test('cleanup attempts to terminate pids discovered from pid files', () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'gasoline-kill-pid-kill-'));
+  const binDir = path.join(tmp, 'bin');
+  fs.mkdirSync(binDir, { recursive: true });
+
+  const modernPid = path.join(tmp, '.gasoline', 'run', 'gasoline-22222.pid');
+  fs.mkdirSync(path.dirname(modernPid), { recursive: true });
+  fs.writeFileSync(modernPid, '22222');
+
+  const logPath = path.join(tmp, 'kill-daemon.log');
+  runKillDaemon({ homeDir: tmp, binDir, logPath });
+
+  const log = fs.existsSync(logPath) ? fs.readFileSync(logPath, 'utf8') : '';
+  assert.match(log, /\[pid\] 22222/, 'expected cleanup to attempt pid-file based process termination');
 });
 
 test('npm lifecycle hooks invoke daemon cleanup script', () => {

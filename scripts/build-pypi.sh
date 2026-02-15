@@ -12,9 +12,9 @@ if ! command -v python3 &> /dev/null; then
     exit 1
 fi
 
-if ! python3 -c "import build" 2>/dev/null; then
-    echo "ERROR: Python 'build' module not found."
-    echo "Install with: pip install build"
+if ! python3 -c "import build, setuptools, wheel" 2>/dev/null; then
+    echo "ERROR: Required Python build modules are missing (build, setuptools, wheel)."
+    echo "Install with: python3 -m pip install --upgrade build setuptools wheel"
     exit 1
 fi
 

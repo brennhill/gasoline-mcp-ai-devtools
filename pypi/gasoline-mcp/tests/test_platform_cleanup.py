@@ -17,10 +17,13 @@ class PlatformCleanupTests(unittest.TestCase):
     def test_cleanup_removes_modern_and_legacy_pid_files(self, mock_run):
         with tempfile.TemporaryDirectory() as home:
             modern_pid = os.path.join(home, ".gasoline", "run", "gasoline-7890.pid")
+            random_pid = os.path.join(home, ".gasoline", "run", "gasoline-44539.pid")
             legacy_pid = os.path.join(home, ".gasoline-7890.pid")
             os.makedirs(os.path.dirname(modern_pid), exist_ok=True)
             with open(modern_pid, "w", encoding="utf-8") as f:
                 f.write("111")
+            with open(random_pid, "w", encoding="utf-8") as f:
+                f.write("333")
             with open(legacy_pid, "w", encoding="utf-8") as f:
                 f.write("222")
 
@@ -29,6 +32,7 @@ class PlatformCleanupTests(unittest.TestCase):
                 platform.cleanup_old_processes()
 
             self.assertFalse(os.path.exists(modern_pid), f"expected pid removed: {modern_pid}")
+            self.assertFalse(os.path.exists(random_pid), f"expected pid removed: {random_pid}")
             self.assertFalse(os.path.exists(legacy_pid), f"expected pid removed: {legacy_pid}")
 
     @patch("gasoline_mcp.platform.subprocess.run")
@@ -58,6 +62,43 @@ class PlatformCleanupTests(unittest.TestCase):
             lsof_targets,
             "expected lsof lookup on every known gasoline port",
         )
+
+    @patch("gasoline_mcp.platform.subprocess.run")
+    def test_cleanup_windows_prefers_home_env_when_expanduser_differs(self, mock_run):
+        with tempfile.TemporaryDirectory() as home, tempfile.TemporaryDirectory() as other_home:
+            modern_pid = os.path.join(home, ".gasoline", "run", "gasoline-7890.pid")
+            os.makedirs(os.path.dirname(modern_pid), exist_ok=True)
+            with open(modern_pid, "w", encoding="utf-8") as f:
+                f.write("111")
+
+            with patch.object(platform.sys, "platform", "win32"), \
+                 patch.dict(os.environ, {"HOME": home, "USERPROFILE": other_home}, clear=False), \
+                 patch("gasoline_mcp.platform.os.path.expanduser", return_value=other_home):
+                mock_run.return_value.stdout = ""
+                platform.cleanup_old_processes()
+
+            self.assertFalse(os.path.exists(modern_pid), f"expected pid removed: {modern_pid}")
+
+    @patch("gasoline_mcp.platform.subprocess.run")
+    def test_cleanup_windows_falls_back_to_userprofile_when_home_missing(self, mock_run):
+        with tempfile.TemporaryDirectory() as userprofile, tempfile.TemporaryDirectory() as expanded_home:
+            modern_pid = os.path.join(userprofile, ".gasoline", "run", "gasoline-7890.pid")
+            legacy_pid = os.path.join(userprofile, ".dev-console-7890.pid")
+            os.makedirs(os.path.dirname(modern_pid), exist_ok=True)
+            with open(modern_pid, "w", encoding="utf-8") as f:
+                f.write("111")
+            with open(legacy_pid, "w", encoding="utf-8") as f:
+                f.write("222")
+
+            env = {"HOME": "", "USERPROFILE": userprofile}
+            with patch.object(platform.sys, "platform", "win32"), \
+                 patch.dict(os.environ, env, clear=False), \
+                 patch("gasoline_mcp.platform.os.path.expanduser", return_value=expanded_home):
+                mock_run.return_value.stdout = ""
+                platform.cleanup_old_processes()
+
+            self.assertFalse(os.path.exists(modern_pid), f"expected pid removed: {modern_pid}")
+            self.assertFalse(os.path.exists(legacy_pid), f"expected pid removed: {legacy_pid}")
 
 
 if __name__ == "__main__":
