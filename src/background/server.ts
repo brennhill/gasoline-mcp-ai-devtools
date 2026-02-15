@@ -345,7 +345,8 @@ export async function postAsyncCommandResult(
     })
 
     if (!response.ok) {
-      console.error(`[Gasoline] Failed to post async command result: HTTP ${response.status}`, { // nosemgrep: javascript.lang.security.audit.unsafe-formatstring.unsafe-formatstring -- console.log with internal server state, not user-controlled format string
+      console.error(`[Gasoline] Failed to post async command result: HTTP ${response.status}`, {
+        // nosemgrep: javascript.lang.security.audit.unsafe-formatstring.unsafe-formatstring -- console.log with internal server state, not user-controlled format string
         correlationId,
         status
       })

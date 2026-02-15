@@ -5,9 +5,10 @@
 # Parameter validation tests (15.1-15.9) work without extension.
 set -eo pipefail
 
-# Temp directory for all upload tests — under $HOME to avoid /tmp symlink issues
-# (macOS: /tmp → /private/tmp, daemon rejects symlink paths for --upload-dir)
-UPLOAD_TEST_DIR="${HOME}/.gasoline/tmp/smoke-upload-$$"
+# Temp directory for all upload tests — must be inside the daemon's default
+# Stage 4 upload-dir (~/gasoline-upload-dir) when bootstrap enables OS upload
+# automation without an explicit --upload-dir flag.
+UPLOAD_TEST_DIR="${HOME}/gasoline-upload-dir/smoke-upload-$$"
 mkdir -p "$UPLOAD_TEST_DIR"
 
 # ── MD5 helper: works on both macOS (md5) and Linux (md5sum) ──
@@ -63,6 +64,7 @@ _upload_and_poll() {
     local test_id="$1"
     local test_file="$2"
     UPLOAD_FINAL_STATUS="pending"
+    UPLOAD_FINAL_TEXT=""
 
     local response
     response=$(call_tool "interact" "{\"action\":\"upload\",\"selector\":\"#file-input\",\"file_path\":\"$test_file\"}")
@@ -77,8 +79,10 @@ _upload_and_poll() {
     if [ -z "$corr_id" ]; then
         if echo "$content_text" | grep -qi "error\|isError"; then
             UPLOAD_FINAL_STATUS="error: $(truncate "$content_text" 200)"
+            UPLOAD_FINAL_TEXT="$content_text"
         else
             UPLOAD_FINAL_STATUS="no_corr_id: $(truncate "$content_text" 200)"
+            UPLOAD_FINAL_TEXT="$content_text"
         fi
         return
     fi
@@ -91,20 +95,29 @@ _upload_and_poll() {
             # Check for pilot-disabled error masquerading as "complete"
             if echo "$poll_text" | grep -q 'ai_web_pilot_disabled'; then
                 UPLOAD_FINAL_STATUS="pilot_disabled"
+                UPLOAD_FINAL_TEXT="$poll_text"
                 log_diagnostic "$test_id" "poll pilot_disabled" "$poll_text" ""
+                return
+            elif echo "$poll_text" | grep -qi 'FAILED —\|\"error\":'; then
+                UPLOAD_FINAL_STATUS="failed"
+                UPLOAD_FINAL_TEXT="$poll_text"
+                log_diagnostic "$test_id" "poll complete-with-error" "$poll_text" ""
                 return
             fi
             UPLOAD_FINAL_STATUS="complete"
+            UPLOAD_FINAL_TEXT="$poll_text"
             log_diagnostic "$test_id" "poll complete" "$poll_text" ""
             return
         fi
         if echo "$poll_text" | grep -q '"status":"failed"'; then
             UPLOAD_FINAL_STATUS="failed"
+            UPLOAD_FINAL_TEXT="$poll_text"
             log_diagnostic "$test_id" "poll failed" "$poll_text" ""
             return
         fi
         if echo "$poll_text" | grep -q '"status":"error"'; then
             UPLOAD_FINAL_STATUS="error"
+            UPLOAD_FINAL_TEXT="$poll_text"
             log_diagnostic "$test_id" "poll error" "$poll_text" ""
             return
         fi
@@ -723,6 +736,13 @@ else:
         pass "File reached input: files[0].name = '$expected_name'."
     elif echo "$js_result" | grep -q "$expected_name"; then
         pass "File reached input: result contains '$expected_name'."
+    elif [ "$js_result" = "UNKNOWN" ]; then
+        if echo "$UPLOAD_FINAL_TEXT" | grep -q '"stage":1\|"stage": 1' && \
+           echo "$UPLOAD_FINAL_TEXT" | grep -q "\"file_name\":\"$expected_name\""; then
+            pass "execute_js returned no result, but upload completion confirms stage=1 file_name='$expected_name'."
+        else
+            fail "execute_js returned no result and upload completion lacks stage1/file_name evidence. Full: $(truncate "$INTERACT_RESULT" 300)"
+        fi
     elif [ "$js_result" = "NO_FILES" ]; then
         fail "File not set on input element (extension connected but files array empty)."
     elif [ "$js_result" = "NO_ELEMENT" ]; then
@@ -784,6 +804,11 @@ _upload_and_poll_stage4() {
                 UPLOAD_FINAL_STATUS="pilot_disabled"
                 UPLOAD_FINAL_TEXT="$poll_text"
                 log_diagnostic "$test_id" "poll pilot_disabled" "$poll_text" ""
+                return
+            elif echo "$poll_text" | grep -qi 'FAILED —\|\"error\":'; then
+                UPLOAD_FINAL_STATUS="failed"
+                UPLOAD_FINAL_TEXT="$poll_text"
+                log_diagnostic "$test_id" "poll complete-with-error" "$poll_text" ""
                 return
             fi
             UPLOAD_FINAL_STATUS="complete"
@@ -933,7 +958,13 @@ run_test_15_17() {
             fail "Upload timed out — extension did not report a result within 30s. Check: extension reloaded? daemon restarted? pilot enabled? accessibility granted?"
             ;;
         failed|error)
-            fail "Stage 4 failed: $(truncate "$UPLOAD_FINAL_TEXT" 200)"
+            if echo "$UPLOAD_FINAL_TEXT" | grep -qi "accessibility\|Accessibility"; then
+                skip "Stage 4 needs macOS Accessibility permission. Fix: System Settings > Privacy & Security > Accessibility. Error: $(truncate "$UPLOAD_FINAL_TEXT" 200)"
+            elif echo "$UPLOAD_FINAL_TEXT" | grep -qi "xdotool"; then
+                skip "Stage 4 needs xdotool. Fix: sudo apt install xdotool. Error: $(truncate "$UPLOAD_FINAL_TEXT" 200)"
+            else
+                fail "Stage 4 failed: $(truncate "$UPLOAD_FINAL_TEXT" 200)"
+            fi
             ;;
         *)
             fail "Upload failed: $UPLOAD_FINAL_STATUS"

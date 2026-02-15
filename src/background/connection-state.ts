@@ -185,35 +185,98 @@ export class ConnectionStateMachine {
   /** Transition table: each handler mutates the state draft */
   private static readonly transitions: Record<ConnectionEvent['type'], (next: ConnectionState) => void> = {
     // Server events
-    SERVER_UP: (n) => { n.server = 'up' },
-    SERVER_DOWN: (n) => { n.server = 'down'; n.extension = 'disconnected'; n.polling = 'stopped' },
-    SERVER_BOOTING: (n) => { n.server = 'booting'; n.extension = 'disconnected' },
+    SERVER_UP: (n) => {
+      n.server = 'up'
+    },
+    SERVER_DOWN: (n) => {
+      n.server = 'down'
+      n.extension = 'disconnected'
+      n.polling = 'stopped'
+    },
+    SERVER_BOOTING: (n) => {
+      n.server = 'booting'
+      n.extension = 'disconnected'
+    },
     // Health check events
-    HEALTH_OK: (n) => { n.lastHealthCheck = Date.now(); if (n.server !== 'up') n.server = 'up'; if (n.extension === 'disconnected') n.extension = 'connected' },
-    HEALTH_FAIL: (n) => { n.lastHealthCheck = Date.now(); if (n.extension !== 'disconnected') { n.extension = 'disconnected'; n.polling = 'stopped' } },
+    HEALTH_OK: (n) => {
+      n.lastHealthCheck = Date.now()
+      if (n.server !== 'up') n.server = 'up'
+      if (n.extension === 'disconnected') n.extension = 'connected'
+    },
+    HEALTH_FAIL: (n) => {
+      n.lastHealthCheck = Date.now()
+      if (n.extension !== 'disconnected') {
+        n.extension = 'disconnected'
+        n.polling = 'stopped'
+      }
+    },
     // Polling events
-    POLLING_STARTED: (n) => { n.polling = 'running'; if (n.extension === 'connected') n.extension = 'active' },
-    POLLING_STOPPED: (n) => { n.polling = 'stopped'; if (n.extension === 'active') n.extension = 'connected' },
-    POLL_SUCCESS: (n) => { n.lastSuccessfulPoll = Date.now() },
-    POLL_FAIL: () => { /* Record failure but don't immediately disconnect */ },
-    POLL_STALE: (n) => { n.extension = 'connected'; n.polling = 'stopped' },
+    POLLING_STARTED: (n) => {
+      n.polling = 'running'
+      if (n.extension === 'connected') n.extension = 'active'
+    },
+    POLLING_STOPPED: (n) => {
+      n.polling = 'stopped'
+      if (n.extension === 'active') n.extension = 'connected'
+    },
+    POLL_SUCCESS: (n) => {
+      n.lastSuccessfulPoll = Date.now()
+    },
+    POLL_FAIL: () => {
+      /* Record failure but don't immediately disconnect */
+    },
+    POLL_STALE: (n) => {
+      n.extension = 'connected'
+      n.polling = 'stopped'
+    },
     // Circuit breaker events
-    CB_OPENED: (n) => { n.circuit = 'open'; n.polling = 'stopped' },
-    CB_HALF_OPEN: (n) => { n.circuit = 'half-open' },
-    CB_CLOSED: (n) => { n.circuit = 'closed' },
-    CB_PROBE_SUCCESS: (n) => { n.circuit = 'closed' },
-    CB_PROBE_FAIL: (n) => { n.circuit = 'open' },
+    CB_OPENED: (n) => {
+      n.circuit = 'open'
+      n.polling = 'stopped'
+    },
+    CB_HALF_OPEN: (n) => {
+      n.circuit = 'half-open'
+    },
+    CB_CLOSED: (n) => {
+      n.circuit = 'closed'
+    },
+    CB_PROBE_SUCCESS: (n) => {
+      n.circuit = 'closed'
+    },
+    CB_PROBE_FAIL: (n) => {
+      n.circuit = 'open'
+    },
     // User action events
-    USER_RESET: (n) => { n.circuit = 'closed' },
-    PILOT_ENABLED: (n) => { n.pilot = 'enabled'; n.circuit = 'closed' },
-    PILOT_DISABLED: (n) => { n.pilot = 'disabled' },
-    TRACKING_ENABLED: (n) => { n.tracking = 'tab_tracked'; n.circuit = 'closed' },
-    TRACKING_DISABLED: (n) => { n.tracking = 'none' },
+    USER_RESET: (n) => {
+      n.circuit = 'closed'
+    },
+    PILOT_ENABLED: (n) => {
+      n.pilot = 'enabled'
+      n.circuit = 'closed'
+    },
+    PILOT_DISABLED: (n) => {
+      n.pilot = 'disabled'
+    },
+    TRACKING_ENABLED: (n) => {
+      n.tracking = 'tab_tracked'
+      n.circuit = 'closed'
+    },
+    TRACKING_DISABLED: (n) => {
+      n.tracking = 'none'
+    },
     // Command events
-    COMMAND_QUEUED: (n) => { if (n.commands === 'none') n.commands = 'queued' },
-    COMMAND_PROCESSING: (n) => { n.commands = 'processing' },
-    COMMAND_COMPLETED: (n) => { n.commands = 'none' },
-    COMMAND_TIMEOUT: (n) => { n.commands = 'none' }
+    COMMAND_QUEUED: (n) => {
+      if (n.commands === 'none') n.commands = 'queued'
+    },
+    COMMAND_PROCESSING: (n) => {
+      n.commands = 'processing'
+    },
+    COMMAND_COMPLETED: (n) => {
+      n.commands = 'none'
+    },
+    COMMAND_TIMEOUT: (n) => {
+      n.commands = 'none'
+    }
   }
 
   /**

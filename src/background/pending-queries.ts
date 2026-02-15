@@ -16,22 +16,13 @@ import type { SyncClient } from './sync-client'
 import * as eventListeners from './event-listeners'
 import * as index from './index'
 import { DebugCategory } from './debug'
-import {
-  saveStateSnapshot,
-  loadStateSnapshot,
-  listStateSnapshots,
-  deleteStateSnapshot
-} from './message-handlers'
+import { saveStateSnapshot, loadStateSnapshot, listStateSnapshots, deleteStateSnapshot } from './message-handlers'
 import { executeDOMAction } from './dom-primitives'
 import { executeUpload } from './upload-handler'
 import { canTakeScreenshot, recordScreenshot } from './state-manager'
 import { startRecording, stopRecording } from './recording'
 import { executeWithWorldRouting } from './query-execution'
-import {
-  handleBrowserAction,
-  handleAsyncBrowserAction,
-  handleAsyncExecuteCommand
-} from './browser-actions'
+import { handleBrowserAction, handleAsyncBrowserAction, handleAsyncExecuteCommand } from './browser-actions'
 
 // Extract values from index for easier reference (but NOT DebugCategory - imported directly above)
 const { debugLog, diagnosticLog } = index
@@ -317,7 +308,8 @@ export async function handlePendingQuery(query: PendingQuery, syncClient: SyncCl
       }
       const result = await handlePilotCommand('GASOLINE_HIGHLIGHT', params)
       if (query.correlation_id) {
-        const err = result && typeof result === 'object' && 'error' in result ? (result as { error: string }).error : undefined
+        const err =
+          result && typeof result === 'object' && 'error' in result ? (result as { error: string }).error : undefined
         sendAsyncResult(syncClient, query.id, query.correlation_id, 'complete', result, err)
       } else {
         sendResult(syncClient, query.id, result)
@@ -401,7 +393,14 @@ export async function handlePendingQuery(query: PendingQuery, syncClient: SyncCl
         }
       } catch (err) {
         if (query.correlation_id) {
-          sendAsyncResult(syncClient, query.id, query.correlation_id, 'complete', null, (err as Error).message || 'Failed to execute DOM query')
+          sendAsyncResult(
+            syncClient,
+            query.id,
+            query.correlation_id,
+            'complete',
+            null,
+            (err as Error).message || 'Failed to execute DOM query'
+          )
         } else {
           sendResult(syncClient, query.id, {
             error: 'dom_query_failed',
@@ -425,7 +424,14 @@ export async function handlePendingQuery(query: PendingQuery, syncClient: SyncCl
         }
       } catch (err) {
         if (query.correlation_id) {
-          sendAsyncResult(syncClient, query.id, query.correlation_id, 'complete', null, (err as Error).message || 'Failed to execute accessibility audit')
+          sendAsyncResult(
+            syncClient,
+            query.id,
+            query.correlation_id,
+            'complete',
+            null,
+            (err as Error).message || 'Failed to execute accessibility audit'
+          )
         } else {
           sendResult(syncClient, query.id, {
             error: 'a11y_audit_failed',

@@ -116,15 +116,21 @@ function getStreamId(tabId: number): Promise<string> {
  */
 async function requestRecordingGesture(
   tab: chrome.tabs.Tab,
-  name: string, fps: number, audio: string, mediaType: string
+  name: string,
+  fps: number,
+  audio: string,
+  mediaType: string
 ): Promise<{ status: string; name: string; error?: string }> {
   chrome.tabs.update(tab.id!, { active: true })
-  chrome.tabs.sendMessage(tab.id!, {
-    type: 'GASOLINE_ACTION_TOAST',
-    text: `\u2191 Click Gasoline Icon`,
-    detail: `Grant ${mediaType.toLowerCase()} recording permission`,
-    state: 'audio' as const, duration_ms: 30000
-  }).catch(() => {})
+  chrome.tabs
+    .sendMessage(tab.id!, {
+      type: 'GASOLINE_ACTION_TOAST',
+      text: `\u2191 Click Gasoline Icon`,
+      detail: `Grant ${mediaType.toLowerCase()} recording permission`,
+      state: 'audio' as const,
+      duration_ms: 30000
+    })
+    .catch(() => {})
 
   await chrome.storage.local.set({ gasoline_pending_recording: { name, fps, audio, tabId: tab.id, url: tab.url } })
   const gestureGranted = await waitForRecordingGesture(30000)
@@ -132,22 +138,31 @@ async function requestRecordingGesture(
 
   if (!gestureGranted) {
     console.log(LOG, 'GESTURE_TIMEOUT: User did not click the Gasoline icon within 30s')
-    chrome.tabs.sendMessage(tab.id!, {
-      type: 'GASOLINE_ACTION_TOAST',
-      text: `\u2191 Click Gasoline Icon`,
-      detail: `Grant ${mediaType.toLowerCase()} recording permission`,
-      state: 'audio' as const, duration_ms: 8000
-    }).catch(() => {})
+    chrome.tabs
+      .sendMessage(tab.id!, {
+        type: 'GASOLINE_ACTION_TOAST',
+        text: `\u2191 Click Gasoline Icon`,
+        detail: `Grant ${mediaType.toLowerCase()} recording permission`,
+        state: 'audio' as const,
+        duration_ms: 8000
+      })
+      .catch(() => {})
     return {
-      status: 'error', name: '',
+      status: 'error',
+      name: '',
       error: `RECORD_START: ${mediaType} recording requires permission. Click the Gasoline extension icon to grant ${mediaType.toLowerCase()} recording permission, then try again.`
     }
   }
 
-  chrome.tabs.sendMessage(tab.id!, {
-    type: 'GASOLINE_ACTION_TOAST', text: 'Recording', detail: 'Recording started',
-    state: 'success' as const, duration_ms: 2000
-  }).catch(() => {})
+  chrome.tabs
+    .sendMessage(tab.id!, {
+      type: 'GASOLINE_ACTION_TOAST',
+      text: 'Recording',
+      detail: 'Recording started',
+      state: 'success' as const,
+      duration_ms: 2000
+    })
+    .catch(() => {})
 
   return { status: 'ok', name }
 }

@@ -152,18 +152,21 @@ export function handleTrackedTabUrlChange(
   chrome.storage.local.get(['trackedTabId'], (result: { trackedTabId?: number }) => {
     if (result.trackedTabId === updatedTabId) {
       // Update URL immediately, then refresh title from the tab
-      chrome.tabs.get(updatedTabId).then((tab) => {
-        const updates: Record<string, string> = { trackedTabUrl: newUrl }
-        if (tab?.title) updates.trackedTabTitle = tab.title
-        chrome.storage.local.set(updates, () => {
-          if (logFn) {
-            logFn('[Gasoline] Tracked tab updated: ' + newUrl)
-          }
+      chrome.tabs
+        .get(updatedTabId)
+        .then((tab) => {
+          const updates: Record<string, string> = { trackedTabUrl: newUrl }
+          if (tab?.title) updates.trackedTabTitle = tab.title
+          chrome.storage.local.set(updates, () => {
+            if (logFn) {
+              logFn('[Gasoline] Tracked tab updated: ' + newUrl)
+            }
+          })
         })
-      }).catch(() => {
-        // Tab may have been closed — update URL only
-        chrome.storage.local.set({ trackedTabUrl: newUrl })
-      })
+        .catch(() => {
+          // Tab may have been closed — update URL only
+          chrome.storage.local.set({ trackedTabUrl: newUrl })
+        })
     }
   })
 }

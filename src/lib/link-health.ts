@@ -50,10 +50,23 @@ function extractUniqueLinks(): string[] {
 }
 
 function aggregateResults(results: LinkCheckResult[]): LinkHealthCheckResult['summary'] {
-  const summary = { totalLinks: results.length, ok: 0, redirect: 0, requiresAuth: 0, broken: 0, timeout: 0, corsBlocked: 0, needsServerVerification: 0 }
+  const summary = {
+    totalLinks: results.length,
+    ok: 0,
+    redirect: 0,
+    requiresAuth: 0,
+    broken: 0,
+    timeout: 0,
+    corsBlocked: 0,
+    needsServerVerification: 0
+  }
   const codeToField: Record<string, keyof typeof summary> = {
-    ok: 'ok', redirect: 'redirect', requires_auth: 'requiresAuth',
-    broken: 'broken', timeout: 'timeout', cors_blocked: 'corsBlocked'
+    ok: 'ok',
+    redirect: 'redirect',
+    requires_auth: 'requiresAuth',
+    broken: 'broken',
+    timeout: 'timeout',
+    cors_blocked: 'corsBlocked'
   }
   for (const result of results) {
     const field = codeToField[result.code]

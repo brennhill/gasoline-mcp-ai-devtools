@@ -98,12 +98,12 @@ type SyncCommand struct {
 
 // syncConnectionState holds the state captured during the connection update lock scope.
 type syncConnectionState struct {
-	wasConnected    bool
-	isReconnect     bool
-	wasDisconnected bool
+	wasConnected      bool
+	isReconnect       bool
+	wasDisconnected   bool
 	timeSinceLastPoll time.Duration
-	sessionID       string
-	pilotEnabled    bool
+	sessionID         string
+	pilotEnabled      bool
 }
 
 // updateSyncConnectionState updates connection state under lock and returns captured state.
@@ -237,6 +237,9 @@ func (c *Capture) HandleSync(w http.ResponseWriter, r *http.Request) {
 	}
 
 	c.processSyncCommandResults(req.CommandResults, clientID)
+	if req.LastCommandAck != "" {
+		c.AcknowledgePendingQuery(req.LastCommandAck)
+	}
 
 	if state.wasDisconnected {
 		c.qd.ExpireAllPendingQueries("extension_disconnected")

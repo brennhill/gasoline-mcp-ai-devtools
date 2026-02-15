@@ -28,9 +28,15 @@ class MockHTMLElement {
   }
   click() {}
   focus() {}
-  getAttribute() { return null }
-  closest() { return null }
-  querySelector() { return null }
+  getAttribute() {
+    return null
+  }
+  closest() {
+    return null
+  }
+  querySelector() {
+    return null
+  }
   scrollIntoView() {}
   setAttribute() {}
   dispatchEvent() {}
@@ -49,7 +55,9 @@ globalThis.getComputedStyle = () => ({ visibility: 'visible', display: 'block' }
 
 // MutationObserver mock
 class MockMutationObserver {
-  constructor(cb) { this._cb = cb }
+  constructor(cb) {
+    this._cb = cb
+  }
   observe() {}
   disconnect() {}
 }
@@ -72,7 +80,7 @@ function setupDocument() {
   Object.setPrototypeOf(btn, MockHTMLElement.prototype)
 
   globalThis.document = {
-    querySelector: (sel) => sel === '#test-btn' ? btn : null,
+    querySelector: (sel) => (sel === '#test-btn' ? btn : null),
     querySelectorAll: () => [],
     body: {
       querySelectorAll: () => [],
@@ -114,9 +122,11 @@ describe('BUG: click must resolve even when requestAnimationFrame is suppressed'
     ])
 
     // FAILS: Promise hangs because withMutationTracking depends on rAF
-    assert.strictEqual(winner.tag, 'resolved',
+    assert.strictEqual(
+      winner.tag,
+      'resolved',
       'click MUST resolve even when requestAnimationFrame never fires. ' +
-      'In backgrounded/headless tabs, rAF is suppressed indefinitely.'
+        'In backgrounded/headless tabs, rAF is suppressed indefinitely.'
     )
   })
 
@@ -138,12 +148,11 @@ describe('BUG: click must resolve even when requestAnimationFrame is suppressed'
     if (winner.tag === 'timeout') {
       assert.fail(
         'Cannot verify dom_summary — click Promise hung (rAF suppressed). ' +
-        'withMutationTracking needs a setTimeout fallback.'
+          'withMutationTracking needs a setTimeout fallback.'
       )
     }
 
-    assert.ok(winner.result.dom_summary,
-      'Click result must include dom_summary even when rAF is suppressed')
+    assert.ok(winner.result.dom_summary, 'Click result must include dom_summary even when rAF is suppressed')
   })
 
   test('MutationObserver is disconnected when rAF is suppressed (no resource leak)', async () => {
@@ -151,9 +160,13 @@ describe('BUG: click must resolve even when requestAnimationFrame is suppressed'
 
     let disconnected = false
     globalThis.MutationObserver = class {
-      constructor(cb) { this._cb = cb }
+      constructor(cb) {
+        this._cb = cb
+      }
       observe() {}
-      disconnect() { disconnected = true }
+      disconnect() {
+        disconnected = true
+      }
     }
 
     // rAF never fires
@@ -165,9 +178,11 @@ describe('BUG: click must resolve even when requestAnimationFrame is suppressed'
     await new Promise((resolve) => setTimeout(resolve, 600))
 
     // FAILS: observer is never disconnected because rAF never fires
-    assert.strictEqual(disconnected, true,
+    assert.strictEqual(
+      disconnected,
+      true,
       'MutationObserver MUST be disconnected even when rAF is suppressed. ' +
-      'Currently leaks an observer on document.body with childList+subtree+attributes.'
+        'Currently leaks an observer on document.body with childList+subtree+attributes.'
     )
 
     // Prevent unhandled rejection
@@ -182,7 +197,7 @@ describe('BUG: click must resolve even when requestAnimationFrame is suppressed'
       { action: 'click', opts: {} },
       { action: 'type', opts: { text: 'hello' } },
       { action: 'key_press', opts: { text: 'Enter' } },
-      { action: 'set_attribute', opts: { name: 'data-x', value: '1' } },
+      { action: 'set_attribute', opts: { name: 'data-x', value: '1' } }
     ]
 
     const hungActions = []
@@ -209,9 +224,11 @@ describe('BUG: click must resolve even when requestAnimationFrame is suppressed'
     }
 
     // FAILS: all mutation-tracked actions hang
-    assert.strictEqual(hungActions.length, 0,
+    assert.strictEqual(
+      hungActions.length,
+      0,
       `These actions hung when rAF was suppressed: [${hungActions.join(', ')}]. ` +
-      'All mutation-tracked actions need a setTimeout fallback.'
+        'All mutation-tracked actions need a setTimeout fallback.'
     )
   })
 })
@@ -232,8 +249,7 @@ describe('compact click feedback contract (when rAF works)', () => {
 
     assert.strictEqual(result.success, true)
     assert.strictEqual(result.action, 'click')
-    assert.ok('dom_summary' in result,
-      'Compact click result MUST include dom_summary — always-on feedback')
+    assert.ok('dom_summary' in result, 'Compact click result MUST include dom_summary — always-on feedback')
     assert.strictEqual(typeof result.dom_summary, 'string')
   })
 
@@ -242,8 +258,7 @@ describe('compact click feedback contract (when rAF works)', () => {
     btn.click = () => {}
 
     const compactResult = await domPrimitive('click', '#test-btn', {})
-    assert.strictEqual(compactResult.timing, undefined,
-      'Compact mode should NOT include timing object')
+    assert.strictEqual(compactResult.timing, undefined, 'Compact mode should NOT include timing object')
 
     const analyzeResult = await domPrimitive('click', '#test-btn', { analyze: true })
     assert.ok(analyzeResult.timing, 'analyze:true should include timing')

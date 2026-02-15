@@ -8,7 +8,6 @@ import { promisify } from 'util'
 import { exec as execCallback } from 'child_process'
 // fileURLToPath available if needed for __dirname resolution
 
-
 const exec = promisify(execCallback)
 
 // Get version from VERSION file

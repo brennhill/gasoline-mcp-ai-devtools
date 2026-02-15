@@ -390,21 +390,37 @@ export function initRuntimeMessageListener(): void {
   /** Sync message handlers — return false (no async response needed) */
   type SyncMsg = ContentMessage & { enabled?: boolean; mode?: WebSocketCaptureMode; url?: string; params?: unknown }
   const syncHandlers: Record<string, (msg: SyncMsg) => false | void> = {
-    GASOLINE_PING: () => { /* handled below via sendResponse */ },
+    GASOLINE_PING: () => {
+      /* handled below via sendResponse */
+    },
     GASOLINE_ACTION_TOAST: (msg) => {
       if (!actionToastsEnabled) return false
-      const m = msg as { text?: string; detail?: string; state?: 'trying' | 'success' | 'warning' | 'error'; duration_ms?: number }
+      const m = msg as {
+        text?: string
+        detail?: string
+        state?: 'trying' | 'success' | 'warning' | 'error'
+        duration_ms?: number
+      }
       if (m.text) showActionToast(m.text, m.detail, m.state || 'trying', m.duration_ms)
       return false
     },
-    GASOLINE_RECORDING_WATERMARK: (msg) => { toggleRecordingWatermark((msg as { visible?: boolean }).visible ?? false); return false },
+    GASOLINE_RECORDING_WATERMARK: (msg) => {
+      toggleRecordingWatermark((msg as { visible?: boolean }).visible ?? false)
+      return false
+    },
     GASOLINE_SUBTITLE: (msg) => {
       if (!subtitlesEnabled) return false
       showSubtitle((msg as { text?: string }).text ?? '')
       return false
     },
-    setActionToastsEnabled: (msg) => { actionToastsEnabled = (msg as { enabled: boolean }).enabled; return false },
-    setSubtitlesEnabled: (msg) => { subtitlesEnabled = (msg as { enabled: boolean }).enabled; return false }
+    setActionToastsEnabled: (msg) => {
+      actionToastsEnabled = (msg as { enabled: boolean }).enabled
+      return false
+    },
+    setSubtitlesEnabled: (msg) => {
+      subtitlesEnabled = (msg as { enabled: boolean }).enabled
+      return false
+    }
   }
 
   /** Delegated handlers — return boolean | undefined (some are async, returning true) */
@@ -438,14 +454,19 @@ export function initRuntimeMessageListener(): void {
       return true
     },
     GASOLINE_HIGHLIGHT: (msg, sr) => {
-      forwardHighlightMessage(msg as unknown as { params: { selector: string; duration_ms?: number } }).then((r) => sr(r)).catch((e: Error) => sr({ success: false, error: e.message }))
+      forwardHighlightMessage(msg as unknown as { params: { selector: string; duration_ms?: number } })
+        .then((r) => sr(r))
+        .catch((e: Error) => sr({ success: false, error: e.message }))
       return true
     },
     GASOLINE_MANAGE_STATE: (msg, sr) => {
-      handleStateCommand(msg.params as Record<string, unknown>).then((r) => sr(r)).catch((e: Error) => sr({ error: e.message }))
+      handleStateCommand(msg.params as Record<string, unknown>)
+        .then((r) => sr(r))
+        .catch((e: Error) => sr({ error: e.message }))
       return true
     },
-    GASOLINE_EXECUTE_JS: (msg, sr) => handleExecuteJs((msg.params as { script?: string; timeout_ms?: number }) || {}, sr),
+    GASOLINE_EXECUTE_JS: (msg, sr) =>
+      handleExecuteJs((msg.params as { script?: string; timeout_ms?: number }) || {}, sr),
     GASOLINE_EXECUTE_QUERY: (msg, sr) => handleExecuteQuery((msg.params || {}) as Record<string, unknown>, sr),
     A11Y_QUERY: (msg, sr) => handleA11yQuery((msg.params || {}) as Record<string, unknown>, sr),
     DOM_QUERY: (msg, sr) => handleDomQuery((msg.params || {}) as Record<string, unknown>, sr),
@@ -469,7 +490,10 @@ export function initRuntimeMessageListener(): void {
 
       // Try sync handlers first
       const syncHandler = syncHandlers[message.type] // nosemgrep: unsafe-dynamic-method
-      if (syncHandler) { syncHandler(message); return false }
+      if (syncHandler) {
+        syncHandler(message)
+        return false
+      }
 
       // Handle toggle messages (no dispatch needed, always runs)
       handleToggleMessage(message)

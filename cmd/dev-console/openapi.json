@@ -3,7 +3,7 @@
   "info": {
     "title": "Gasoline MCP Server",
     "description": "Browser observability for AI agents. Streams console logs, network errors, and user actions from Chrome to Claude Code, Cursor, and Copilot via MCP protocol.",
-    "version": "6.1.9",
+    "version": "0.7.0",
     "license": {
       "name": "MIT"
     }
@@ -33,14 +33,26 @@
   },
   "tags": [
     { "name": "Control", "description": "Server health, discovery, lifecycle, and protocol", "x-plane": "control" },
-    { "name": "Data Ingest", "description": "Extension → Server telemetry ingestion (POST only)", "x-plane": "data-ingest" },
+    {
+      "name": "Data Ingest",
+      "description": "Extension → Server telemetry ingestion (POST only)",
+      "x-plane": "data-ingest"
+    },
     { "name": "Data Read", "description": "Unified telemetry buffer reads", "x-plane": "data-read" },
     { "name": "Data Sync", "description": "Bidirectional extension sync", "x-plane": "data-sync" },
     { "name": "Data Results", "description": "Query/command result submission", "x-plane": "data-results" },
-    { "name": "Management", "description": "Multi-client registration and session management", "x-plane": "management" },
+    {
+      "name": "Management",
+      "description": "Multi-client registration and session management",
+      "x-plane": "management"
+    },
     { "name": "Media", "description": "Screenshot, video recording, and annotation capture", "x-plane": "media" },
     { "name": "CI", "description": "CI infrastructure: snapshots, clear, test boundaries", "x-plane": "ci" },
-    { "name": "Automation", "description": "Upload automation endpoints (Stage 4 requires --enable-os-upload-automation flag)", "x-plane": "automation" }
+    {
+      "name": "Automation",
+      "description": "Upload automation endpoints (Stage 4 requires --enable-os-upload-automation flag)",
+      "x-plane": "automation"
+    }
   ],
   "paths": {
     "/": {
@@ -58,7 +70,7 @@
                   "type": "object",
                   "properties": {
                     "name": { "type": "string", "example": "gasoline" },
-                    "version": { "type": "string", "example": "6.1.9" },
+                    "version": { "type": "string", "example": "0.7.0" },
                     "health": { "type": "string", "example": "/health" },
                     "logs": { "type": "string", "example": "/logs" }
                   }
@@ -362,7 +374,16 @@
             "required": true,
             "schema": {
               "type": "string",
-              "enum": ["logs", "network_waterfall", "network_bodies", "websocket_events", "actions", "performance_snapshots", "extension_logs", "websocket_status"]
+              "enum": [
+                "logs",
+                "network_waterfall",
+                "network_bodies",
+                "websocket_events",
+                "actions",
+                "performance_snapshots",
+                "extension_logs",
+                "websocket_status"
+              ]
             },
             "description": "Telemetry buffer to read"
           },
@@ -1218,7 +1239,11 @@
               "max_entries": { "type": "integer" },
               "log_file": { "type": "string" },
               "log_file_size": { "type": "integer", "format": "int64" },
-              "dropped_count": { "type": "integer", "format": "int64", "description": "Total log entries dropped due to buffer overflow" }
+              "dropped_count": {
+                "type": "integer",
+                "format": "int64",
+                "description": "Total log entries dropped due to buffer overflow"
+              }
             }
           },
           "capture": {
@@ -1380,7 +1405,29 @@
         "type": "object",
         "properties": {
           "id": { "type": "string" },
-          "type": { "type": "string", "enum": ["dom", "a11y", "execute", "highlight", "state", "record_start", "record_stop", "browser_action", "page_info", "tabs", "subtitle", "screenshot", "dom_action", "state_capture", "state_save", "state_load", "state_list", "state_delete"] },
+          "type": {
+            "type": "string",
+            "enum": [
+              "dom",
+              "a11y",
+              "execute",
+              "highlight",
+              "state",
+              "record_start",
+              "record_stop",
+              "browser_action",
+              "page_info",
+              "tabs",
+              "subtitle",
+              "screenshot",
+              "dom_action",
+              "state_capture",
+              "state_save",
+              "state_load",
+              "state_list",
+              "state_delete"
+            ]
+          },
           "params": { "type": "object" },
           "correlation_id": { "type": "string" }
         }
@@ -1452,7 +1499,10 @@
               "capture_actions": { "type": "boolean", "description": "Whether user action capture is enabled" }
             }
           },
-          "last_command_ack": { "type": "string", "description": "ID of the last command acknowledged by the extension" },
+          "last_command_ack": {
+            "type": "string",
+            "description": "ID of the last command acknowledged by the extension"
+          },
           "extension_logs": {
             "type": "array",
             "items": {

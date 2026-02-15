@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"net"
@@ -75,7 +76,7 @@ func TestHandleMCPConnectionConnectExistingSuccess(t *testing.T) {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/health", func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
-		_, _ = io.WriteString(w, `{"status":"ok","name":"gasoline"}`)
+		_, _ = io.WriteString(w, `{"status":"ok","service-name":"gasoline","version":"`+version+`"}`)
 	})
 	mux.HandleFunc("/mcp", func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
@@ -92,6 +93,74 @@ func TestHandleMCPConnectionConnectExistingSuccess(t *testing.T) {
 	})
 	if !strings.Contains(output, `"jsonrpc":"2.0"`) || !strings.Contains(output, `"id":1`) {
 		t.Fatalf("bridge output missing JSON-RPC response: %q", output)
+	}
+}
+
+func TestConnectWithRetriesRejectsVersionMismatch(t *testing.T) {
+	logFile := filepath.Join(t.TempDir(), "connection-version-mismatch.jsonl")
+	server, err := NewServer(logFile, 100)
+	if err != nil {
+		t.Fatalf("NewServer() error = %v", err)
+	}
+	defer server.shutdownAsyncLogger(2 * time.Second)
+
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatalf("net.Listen(:0) error = %v", err)
+	}
+	port := ln.Addr().(*net.TCPAddr).Port
+
+	mux := http.NewServeMux()
+	mux.HandleFunc("/health", func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		_, _ = io.WriteString(w, `{"status":"ok","service-name":"gasoline","version":"0.0.1"}`)
+	})
+	httpSrv := &http.Server{Handler: mux}
+	go func() { _ = httpSrv.Serve(ln) }()
+	defer func() { _ = httpSrv.Close() }()
+
+	healthURL := "http://127.0.0.1:" + strconv.Itoa(port) + "/health"
+	err = connectWithRetries(server, healthURL, "http://127.0.0.1:1/mcp", &debugWriter{port: port})
+	if err == nil {
+		t.Fatal("connectWithRetries() error = nil, want version mismatch error")
+	}
+	var mismatchErr *serverVersionMismatchError
+	if !errors.As(err, &mismatchErr) {
+		t.Fatalf("connectWithRetries() error = %v, want serverVersionMismatchError", err)
+	}
+}
+
+func TestConnectWithRetriesRejectsNonGasolineService(t *testing.T) {
+	logFile := filepath.Join(t.TempDir(), "connection-non-gasoline.jsonl")
+	server, err := NewServer(logFile, 100)
+	if err != nil {
+		t.Fatalf("NewServer() error = %v", err)
+	}
+	defer server.shutdownAsyncLogger(2 * time.Second)
+
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatalf("net.Listen(:0) error = %v", err)
+	}
+	port := ln.Addr().(*net.TCPAddr).Port
+
+	mux := http.NewServeMux()
+	mux.HandleFunc("/health", func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		_, _ = io.WriteString(w, `{"status":"ok","service-name":"other-service","version":"`+version+`"}`)
+	})
+	httpSrv := &http.Server{Handler: mux}
+	go func() { _ = httpSrv.Serve(ln) }()
+	defer func() { _ = httpSrv.Close() }()
+
+	healthURL := "http://127.0.0.1:" + strconv.Itoa(port) + "/health"
+	err = connectWithRetries(server, healthURL, "http://127.0.0.1:1/mcp", &debugWriter{port: port})
+	if err == nil {
+		t.Fatal("connectWithRetries() error = nil, want non-gasoline service error")
+	}
+	var nonGasolineErr *nonGasolineServiceError
+	if !errors.As(err, &nonGasolineErr) {
+		t.Fatalf("connectWithRetries() error = %v, want nonGasolineServiceError", err)
 	}
 }
 

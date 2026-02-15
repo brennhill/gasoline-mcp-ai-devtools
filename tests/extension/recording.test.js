@@ -11,7 +11,7 @@
  * message listeners behind a chrome runtime guard).
  */
 
-import { test, describe, mock, beforeEach, afterEach } from 'node:test'
+import { test, describe, mock, beforeEach as _beforeEach, afterEach } from 'node:test'
 import assert from 'node:assert'
 
 // =============================================================================

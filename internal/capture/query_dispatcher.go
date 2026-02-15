@@ -118,6 +118,11 @@ func (c *Capture) GetPendingQueriesForClient(clientID string) []queries.PendingQ
 	return c.qd.GetPendingQueriesForClient(clientID)
 }
 
+// AcknowledgePendingQuery delegates to QueryDispatcher.
+func (c *Capture) AcknowledgePendingQuery(queryID string) {
+	c.qd.AcknowledgePendingQuery(queryID)
+}
+
 // GetPendingQueriesDisconnectAware returns pending queries with disconnect detection.
 // If the extension has not synced within extensionDisconnectThreshold (10s) and has
 // synced at least once, all pending queries are expired with "extension_disconnected".

@@ -9,7 +9,7 @@ import assert from 'node:assert'
 import { MANIFEST_VERSION } from './helpers.js'
 
 // Store original fetch
-const originalFetch = globalThis.fetch
+const _originalFetch = globalThis.fetch
 
 // Mock fetch for server tests
 let mockFetch

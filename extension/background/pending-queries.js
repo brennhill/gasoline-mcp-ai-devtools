@@ -10,666 +10,647 @@
  * - query-execution.ts: JS execution with world-aware routing and CSP fallback
  * - browser-actions.ts: Browser navigation/action handlers with async timeout support
  */
-import * as eventListeners from './event-listeners.js';
-import * as index from './index.js';
-import { DebugCategory } from './debug.js';
-import { saveStateSnapshot, loadStateSnapshot, listStateSnapshots, deleteStateSnapshot } from './message-handlers.js';
-import { executeDOMAction } from './dom-primitives.js';
-import { executeUpload } from './upload-handler.js';
-import { canTakeScreenshot, recordScreenshot } from './state-manager.js';
-import { startRecording, stopRecording } from './recording.js';
-import { executeWithWorldRouting } from './query-execution.js';
-import { handleBrowserAction, handleAsyncBrowserAction, handleAsyncExecuteCommand } from './browser-actions.js';
+import * as eventListeners from './event-listeners.js'
+import * as index from './index.js'
+import { DebugCategory } from './debug.js'
+import { saveStateSnapshot, loadStateSnapshot, listStateSnapshots, deleteStateSnapshot } from './message-handlers.js'
+import { executeDOMAction } from './dom-primitives.js'
+import { executeUpload } from './upload-handler.js'
+import { canTakeScreenshot, recordScreenshot } from './state-manager.js'
+import { startRecording, stopRecording } from './recording.js'
+import { executeWithWorldRouting } from './query-execution.js'
+import { handleBrowserAction, handleAsyncBrowserAction, handleAsyncExecuteCommand } from './browser-actions.js'
 // Extract values from index for easier reference (but NOT DebugCategory - imported directly above)
-const { debugLog, diagnosticLog } = index;
+const { debugLog, diagnosticLog } = index
 // =============================================================================
 // RESULT HELPERS
 // =============================================================================
 /** Send a query result back through /sync */
 function sendResult(syncClient, queryId, result) {
-    debugLog(DebugCategory.CONNECTION, 'sendResult via /sync', { queryId, hasResult: result != null });
-    syncClient.queueCommandResult({ id: queryId, status: 'complete', result });
+  debugLog(DebugCategory.CONNECTION, 'sendResult via /sync', { queryId, hasResult: result != null })
+  syncClient.queueCommandResult({ id: queryId, status: 'complete', result })
 }
 /** Send an async command result back through /sync */
 function sendAsyncResult(syncClient, queryId, correlationId, status, result, error) {
-    debugLog(DebugCategory.CONNECTION, 'sendAsyncResult via /sync', {
-        queryId,
-        correlationId,
-        status,
-        hasResult: result != null,
-        error: error || null
-    });
-    syncClient.queueCommandResult({
-        id: queryId,
-        correlation_id: correlationId,
-        status,
-        result,
-        error
-    });
+  debugLog(DebugCategory.CONNECTION, 'sendAsyncResult via /sync', {
+    queryId,
+    correlationId,
+    status,
+    hasResult: result != null,
+    error: error || null
+  })
+  syncClient.queueCommandResult({
+    id: queryId,
+    correlation_id: correlationId,
+    status,
+    result,
+    error
+  })
 }
 /** Map raw action names to human-readable toast labels */
 const PRETTY_LABELS = {
-    navigate: 'Navigate to',
-    refresh: 'Refresh',
-    execute_js: 'Execute',
-    click: 'Click',
-    type: 'Type',
-    select: 'Select',
-    check: 'Check',
-    focus: 'Focus',
-    scroll_to: 'Scroll to',
-    wait_for: 'Wait for',
-    key_press: 'Key press',
-    highlight: 'Highlight',
-    subtitle: 'Subtitle',
-    upload: 'Upload file'
-};
+  navigate: 'Navigate to',
+  refresh: 'Refresh',
+  execute_js: 'Execute',
+  click: 'Click',
+  type: 'Type',
+  select: 'Select',
+  check: 'Check',
+  focus: 'Focus',
+  scroll_to: 'Scroll to',
+  wait_for: 'Wait for',
+  key_press: 'Key press',
+  highlight: 'Highlight',
+  subtitle: 'Subtitle',
+  upload: 'Upload file'
+}
 /** Show a visual action toast on the tracked tab */
 function actionToast(tabId, action, detail, state = 'success', durationMs = 3000) {
-    chrome.tabs
-        .sendMessage(tabId, {
-        type: 'GASOLINE_ACTION_TOAST',
-        text: PRETTY_LABELS[action] || action,
-        detail,
-        state,
-        duration_ms: durationMs
+  chrome.tabs
+    .sendMessage(tabId, {
+      type: 'GASOLINE_ACTION_TOAST',
+      text: PRETTY_LABELS[action] || action,
+      detail,
+      state,
+      duration_ms: durationMs
     })
-        .catch(() => { });
+    .catch(() => {})
 }
 // =============================================================================
 // PENDING QUERY HANDLING
 // =============================================================================
 export async function handlePendingQuery(query, syncClient) {
-    // Wait for initialization to complete (max 2s) so pilot cache is populated
-    await Promise.race([index.initReady, new Promise((r) => setTimeout(r, 2000))]);
-    debugLog(DebugCategory.CONNECTION, 'handlePendingQuery ENTER', {
-        id: query.id,
-        type: query.type,
-        correlation_id: query.correlation_id || null,
-        hasSyncClient: !!syncClient
-    });
-    try {
-        if (query.type.startsWith('state_')) {
-            await handleStateQuery(query, syncClient);
-            return;
-        }
-        const storage = await eventListeners.getTrackedTabInfo();
-        let tabId;
-        if (storage.trackedTabId) {
-            diagnosticLog(`[Diagnostic] Using tracked tab ${storage.trackedTabId} for query ${query.type}`);
-            try {
-                await chrome.tabs.get(storage.trackedTabId);
-                tabId = storage.trackedTabId;
-            }
-            catch {
-                // Retry once after delay — tabs.get can fail transiently during SW wakeup or navigation
-                await new Promise((r) => setTimeout(r, 300));
-                try {
-                    await chrome.tabs.get(storage.trackedTabId);
-                    tabId = storage.trackedTabId;
-                    diagnosticLog(`[Diagnostic] Tracked tab ${storage.trackedTabId} recovered on retry`);
-                }
-                catch {
-                    diagnosticLog(`[Diagnostic] Tracked tab ${storage.trackedTabId} confirmed gone, clearing tracking`);
-                    eventListeners.clearTrackedTab();
-                    // Show toast on the active tab so user knows tracking was lost
-                    try {
-                        const toastTabs = await chrome.tabs.query({ active: true, currentWindow: true });
-                        if (toastTabs[0]?.id) {
-                            chrome.tabs
-                                .sendMessage(toastTabs[0].id, {
-                                type: 'GASOLINE_ACTION_TOAST',
-                                text: 'Tracked tab closed',
-                                detail: 'Re-enable tracking in Gasoline popup',
-                                state: 'warning',
-                                duration_ms: 5000
-                            })
-                                .catch(() => { });
-                        }
-                    }
-                    catch {
-                        /* best effort */
-                    }
-                    const activeTabs = await chrome.tabs.query({ active: true, currentWindow: true });
-                    const firstActiveTab = activeTabs[0];
-                    if (!firstActiveTab?.id) {
-                        const errMsg = 'No active tab available (tracked tab was closed and no fallback tab found)';
-                        if (query.correlation_id) {
-                            sendAsyncResult(syncClient, query.id, query.correlation_id, 'error', null, errMsg);
-                        }
-                        else {
-                            sendResult(syncClient, query.id, { error: 'no_active_tab', message: errMsg });
-                        }
-                        return;
-                    }
-                    tabId = firstActiveTab.id;
-                }
-            }
-        }
-        else {
-            const activeTabs = await chrome.tabs.query({ active: true, currentWindow: true });
-            const firstActiveTab = activeTabs[0];
-            if (!firstActiveTab?.id) {
-                const errMsg = 'No active tab available';
-                if (query.correlation_id) {
-                    sendAsyncResult(syncClient, query.id, query.correlation_id, 'error', null, errMsg);
-                }
-                else {
-                    sendResult(syncClient, query.id, { error: 'no_active_tab', message: errMsg });
-                }
-                return;
-            }
-            tabId = firstActiveTab.id;
-        }
-        if (!tabId) {
-            const errMsg = 'No target tab resolved for query';
-            if (query.correlation_id) {
-                sendAsyncResult(syncClient, query.id, query.correlation_id, 'error', null, errMsg);
-            }
-            else {
-                sendResult(syncClient, query.id, { error: 'no_active_tab', message: errMsg });
-            }
-            return;
-        }
-        if (query.type === 'subtitle') {
-            let params;
-            try {
-                params = typeof query.params === 'string' ? JSON.parse(query.params) : query.params;
-            }
-            catch {
-                params = {};
-            }
-            chrome.tabs
-                .sendMessage(tabId, {
-                type: 'GASOLINE_SUBTITLE',
-                text: params.text ?? ''
-            })
-                .catch(() => { });
-            sendResult(syncClient, query.id, { success: true, subtitle: params.text || 'cleared' });
-            return;
-        }
-        if (query.type === 'screenshot') {
-            try {
-                const rateCheck = canTakeScreenshot(tabId);
-                if (!rateCheck.allowed) {
-                    sendResult(syncClient, query.id, {
-                        error: `Rate limited: ${rateCheck.reason}`,
-                        ...(rateCheck.nextAllowedIn != null ? { next_allowed_in: rateCheck.nextAllowedIn } : {})
-                    });
-                    return;
-                }
-                const tab = await chrome.tabs.get(tabId);
-                const dataUrl = await chrome.tabs.captureVisibleTab(tab.windowId, {
-                    format: 'jpeg',
-                    quality: 80
-                });
-                recordScreenshot(tabId);
-                // POST to /screenshots with query_id — server saves file and resolves query directly
-                const response = await fetch(`${index.serverUrl}/screenshots`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'X-Gasoline-Client': 'gasoline-extension' },
-                    body: JSON.stringify({
-                        data_url: dataUrl,
-                        url: tab.url,
-                        query_id: query.id
-                    })
-                });
-                if (!response.ok) {
-                    sendResult(syncClient, query.id, { error: `Server returned ${response.status}` });
-                }
-                // No sendResult needed — server resolves the query via query_id
-            }
-            catch (err) {
-                sendResult(syncClient, query.id, {
-                    error: 'screenshot_failed',
-                    message: err.message || 'Failed to capture screenshot'
-                });
-            }
-            return;
-        }
-        if (query.type === 'browser_action') {
-            let params;
-            try {
-                params = typeof query.params === 'string' ? JSON.parse(query.params) : query.params;
-            }
-            catch {
-                sendResult(syncClient, query.id, {
-                    success: false,
-                    error: 'invalid_params',
-                    message: 'Failed to parse browser_action params as JSON'
-                });
-                return;
-            }
-            if (query.correlation_id) {
-                await handleAsyncBrowserAction(query, tabId, params, syncClient, sendAsyncResult, actionToast);
-            }
-            else {
-                const result = await handleBrowserAction(tabId, params, actionToast);
-                sendResult(syncClient, query.id, result);
-            }
-            return;
-        }
-        if (query.type === 'highlight') {
-            let params;
-            try {
-                params = typeof query.params === 'string' ? JSON.parse(query.params) : query.params;
-            }
-            catch {
-                sendResult(syncClient, query.id, {
-                    error: 'invalid_params',
-                    message: 'Failed to parse highlight params as JSON'
-                });
-                return;
-            }
-            const result = await handlePilotCommand('GASOLINE_HIGHLIGHT', params);
-            if (query.correlation_id) {
-                const err = result && typeof result === 'object' && 'error' in result ? result.error : undefined;
-                sendAsyncResult(syncClient, query.id, query.correlation_id, 'complete', result, err);
-            }
-            else {
-                sendResult(syncClient, query.id, result);
-            }
-            return;
-        }
-        if (query.type === 'page_info') {
-            const tab = await chrome.tabs.get(tabId);
-            const result = {
-                url: tab.url,
-                title: tab.title,
-                favicon: tab.favIconUrl,
-                status: tab.status,
-                viewport: {
-                    width: tab.width,
-                    height: tab.height
-                }
-            };
-            sendResult(syncClient, query.id, result);
-            return;
-        }
-        if (query.type === 'tabs') {
-            const allTabs = await chrome.tabs.query({});
-            const tabsList = allTabs.map((tab) => ({
-                id: tab.id,
-                url: tab.url,
-                title: tab.title,
-                active: tab.active,
-                windowId: tab.windowId,
-                index: tab.index
-            }));
-            sendResult(syncClient, query.id, { tabs: tabsList });
-            return;
-        }
-        // Waterfall query - fetch network waterfall data on demand
-        if (query.type === 'waterfall') {
-            debugLog(DebugCategory.CAPTURE, 'Handling waterfall query', { queryId: query.id, tabId });
-            try {
-                const tab = await chrome.tabs.get(tabId);
-                debugLog(DebugCategory.CAPTURE, 'Got tab for waterfall', { tabId, url: tab.url });
-                const result = (await chrome.tabs.sendMessage(tabId, {
-                    type: 'GET_NETWORK_WATERFALL'
-                }));
-                debugLog(DebugCategory.CAPTURE, 'Waterfall result from content script', {
-                    entries: result?.entries?.length || 0
-                });
-                sendResult(syncClient, query.id, {
-                    entries: result?.entries || [],
-                    page_url: tab.url || '',
-                    count: result?.entries?.length || 0
-                });
-                debugLog(DebugCategory.CAPTURE, 'Posted waterfall result', { queryId: query.id });
-            }
-            catch (err) {
-                debugLog(DebugCategory.CAPTURE, 'Waterfall query error', {
-                    queryId: query.id,
-                    error: err.message
-                });
-                sendResult(syncClient, query.id, {
-                    error: 'waterfall_query_failed',
-                    message: err.message || 'Failed to fetch network waterfall',
-                    entries: []
-                });
-            }
-            return;
-        }
-        if (query.type === 'dom') {
-            try {
-                const result = await chrome.tabs.sendMessage(tabId, {
-                    type: 'DOM_QUERY',
-                    params: query.params
-                });
-                if (query.correlation_id) {
-                    sendAsyncResult(syncClient, query.id, query.correlation_id, 'complete', result);
-                }
-                else {
-                    sendResult(syncClient, query.id, result);
-                }
-            }
-            catch (err) {
-                if (query.correlation_id) {
-                    sendAsyncResult(syncClient, query.id, query.correlation_id, 'complete', null, err.message || 'Failed to execute DOM query');
-                }
-                else {
-                    sendResult(syncClient, query.id, {
-                        error: 'dom_query_failed',
-                        message: err.message || 'Failed to execute DOM query'
-                    });
-                }
-            }
-            return;
-        }
-        if (query.type === 'a11y') {
-            try {
-                const result = await chrome.tabs.sendMessage(tabId, {
-                    type: 'A11Y_QUERY',
-                    params: query.params
-                });
-                if (query.correlation_id) {
-                    sendAsyncResult(syncClient, query.id, query.correlation_id, 'complete', result);
-                }
-                else {
-                    sendResult(syncClient, query.id, result);
-                }
-            }
-            catch (err) {
-                if (query.correlation_id) {
-                    sendAsyncResult(syncClient, query.id, query.correlation_id, 'complete', null, err.message || 'Failed to execute accessibility audit');
-                }
-                else {
-                    sendResult(syncClient, query.id, {
-                        error: 'a11y_audit_failed',
-                        message: err.message || 'Failed to execute accessibility audit'
-                    });
-                }
-            }
-            return;
-        }
-        if (query.type === 'dom_action') {
-            if (!index.__aiWebPilotEnabledCache) {
-                sendAsyncResult(syncClient, query.id, query.correlation_id, 'complete', null, 'ai_web_pilot_disabled');
-                return;
-            }
-            await executeDOMAction(query, tabId, syncClient, sendAsyncResult, actionToast);
-            return;
-        }
-        if (query.type === 'upload') {
-            if (!index.__aiWebPilotEnabledCache) {
-                sendAsyncResult(syncClient, query.id, query.correlation_id, 'complete', null, 'ai_web_pilot_disabled');
-                return;
-            }
-            await executeUpload(query, tabId, syncClient, sendAsyncResult, actionToast);
-            return;
-        }
-        if (query.type === 'record_start') {
-            if (!index.__aiWebPilotEnabledCache) {
-                sendAsyncResult(syncClient, query.id, query.correlation_id, 'complete', undefined, 'ai_web_pilot_disabled');
-                return;
-            }
-            let params;
-            try {
-                params = typeof query.params === 'string' ? JSON.parse(query.params) : query.params;
-            }
-            catch {
-                params = {};
-            }
-            const result = await startRecording(params.name ?? 'recording', params.fps ?? 15, query.id, params.audio ?? '');
-            sendAsyncResult(syncClient, query.id, query.correlation_id, 'complete', result, result.error || undefined);
-            return;
-        }
-        if (query.type === 'record_stop') {
-            if (!index.__aiWebPilotEnabledCache) {
-                sendAsyncResult(syncClient, query.id, query.correlation_id, 'complete', undefined, 'ai_web_pilot_disabled');
-                return;
-            }
-            const result = await stopRecording();
-            sendAsyncResult(syncClient, query.id, query.correlation_id, 'complete', result, result.error || undefined);
-            return;
-        }
-        if (query.type === 'execute') {
-            if (!index.__aiWebPilotEnabledCache) {
-                if (query.correlation_id) {
-                    sendAsyncResult(syncClient, query.id, query.correlation_id, 'complete', null, 'ai_web_pilot_disabled');
-                }
-                else {
-                    sendResult(syncClient, query.id, {
-                        success: false,
-                        error: 'ai_web_pilot_disabled',
-                        message: 'AI Web Pilot is not enabled in the extension popup'
-                    });
-                }
-                return;
-            }
-            // Parse world param for routing
-            let execParams;
-            try {
-                execParams = typeof query.params === 'string' ? JSON.parse(query.params) : query.params;
-            }
-            catch {
-                execParams = {};
-            }
-            const world = execParams.world || 'auto';
-            if (query.correlation_id) {
-                await handleAsyncExecuteCommand(query, tabId, world, syncClient, sendAsyncResult, actionToast);
-            }
-            else {
-                try {
-                    const result = await executeWithWorldRouting(tabId, query.params, world);
-                    sendResult(syncClient, query.id, result);
-                }
-                catch (err) {
-                    sendResult(syncClient, query.id, {
-                        success: false,
-                        error: 'execution_failed',
-                        message: err.message || 'Execution failed'
-                    });
-                }
-            }
-            return;
-        }
-        if (query.type === 'link_health') {
-            try {
-                const result = await chrome.tabs.sendMessage(tabId, {
-                    type: 'LINK_HEALTH_QUERY',
-                    params: query.params
-                });
-                sendResult(syncClient, query.id, result);
-            }
-            catch (err) {
-                sendResult(syncClient, query.id, {
-                    error: 'link_health_failed',
-                    message: err.message || 'Link health check failed'
-                });
-            }
-            return;
-        }
-        if (query.type === 'draw_mode') {
-            if (!index.__aiWebPilotEnabledCache) {
-                sendResult(syncClient, query.id, {
-                    error: 'ai_web_pilot_disabled',
-                    message: 'AI Web Pilot is not enabled in the extension popup'
-                });
-                return;
-            }
-            let params;
-            try {
-                params = typeof query.params === 'string' ? JSON.parse(query.params) : query.params;
-            }
-            catch {
-                params = {};
-            }
-            if (params.action === 'start') {
-                try {
-                    const result = await chrome.tabs.sendMessage(tabId, {
-                        type: 'GASOLINE_DRAW_MODE_START',
-                        started_by: 'llm',
-                        session_name: params.session || '',
-                        correlation_id: query.correlation_id || query.id || ''
-                    });
-                    sendResult(syncClient, query.id, {
-                        status: result?.status || 'active',
-                        message: 'Draw mode activated. User can now draw annotations on the page. Results will be delivered when user finishes (presses ESC).',
-                        annotation_count: result?.annotation_count || 0
-                    });
-                }
-                catch (err) {
-                    sendResult(syncClient, query.id, {
-                        error: 'draw_mode_failed',
-                        message: err.message ||
-                            'Failed to activate draw mode. Ensure content script is loaded (try refreshing the page).'
-                    });
-                }
-            }
-            else {
-                sendResult(syncClient, query.id, {
-                    error: 'unknown_draw_mode_action',
-                    message: `Unknown draw mode action: ${params.action}. Use 'start'.`
-                });
-            }
-            return;
-        }
+  // Wait for initialization to complete (max 2s) so pilot cache is populated
+  await Promise.race([index.initReady, new Promise((r) => setTimeout(r, 2000))])
+  debugLog(DebugCategory.CONNECTION, 'handlePendingQuery ENTER', {
+    id: query.id,
+    type: query.type,
+    correlation_id: query.correlation_id || null,
+    hasSyncClient: !!syncClient
+  })
+  try {
+    if (query.type.startsWith('state_')) {
+      await handleStateQuery(query, syncClient)
+      return
     }
-    catch (err) {
-        const errMsg = err.message || 'Unexpected error handling query';
-        debugLog(DebugCategory.CONNECTION, 'Error handling pending query', {
-            type: query.type,
-            id: query.id,
-            error: errMsg
-        });
+    const storage = await eventListeners.getTrackedTabInfo()
+    let tabId
+    if (storage.trackedTabId) {
+      diagnosticLog(`[Diagnostic] Using tracked tab ${storage.trackedTabId} for query ${query.type}`)
+      try {
+        await chrome.tabs.get(storage.trackedTabId)
+        tabId = storage.trackedTabId
+      } catch {
+        // Retry once after delay — tabs.get can fail transiently during SW wakeup or navigation
+        await new Promise((r) => setTimeout(r, 300))
+        try {
+          await chrome.tabs.get(storage.trackedTabId)
+          tabId = storage.trackedTabId
+          diagnosticLog(`[Diagnostic] Tracked tab ${storage.trackedTabId} recovered on retry`)
+        } catch {
+          diagnosticLog(`[Diagnostic] Tracked tab ${storage.trackedTabId} confirmed gone, clearing tracking`)
+          eventListeners.clearTrackedTab()
+          // Show toast on the active tab so user knows tracking was lost
+          try {
+            const toastTabs = await chrome.tabs.query({ active: true, currentWindow: true })
+            if (toastTabs[0]?.id) {
+              chrome.tabs
+                .sendMessage(toastTabs[0].id, {
+                  type: 'GASOLINE_ACTION_TOAST',
+                  text: 'Tracked tab closed',
+                  detail: 'Re-enable tracking in Gasoline popup',
+                  state: 'warning',
+                  duration_ms: 5000
+                })
+                .catch(() => {})
+            }
+          } catch {
+            /* best effort */
+          }
+          const activeTabs = await chrome.tabs.query({ active: true, currentWindow: true })
+          const firstActiveTab = activeTabs[0]
+          if (!firstActiveTab?.id) {
+            const errMsg = 'No active tab available (tracked tab was closed and no fallback tab found)'
+            if (query.correlation_id) {
+              sendAsyncResult(syncClient, query.id, query.correlation_id, 'error', null, errMsg)
+            } else {
+              sendResult(syncClient, query.id, { error: 'no_active_tab', message: errMsg })
+            }
+            return
+          }
+          tabId = firstActiveTab.id
+        }
+      }
+    } else {
+      const activeTabs = await chrome.tabs.query({ active: true, currentWindow: true })
+      const firstActiveTab = activeTabs[0]
+      if (!firstActiveTab?.id) {
+        const errMsg = 'No active tab available'
         if (query.correlation_id) {
-            sendAsyncResult(syncClient, query.id, query.correlation_id, 'error', null, errMsg);
+          sendAsyncResult(syncClient, query.id, query.correlation_id, 'error', null, errMsg)
+        } else {
+          sendResult(syncClient, query.id, { error: 'no_active_tab', message: errMsg })
         }
-        else {
-            sendResult(syncClient, query.id, { error: 'query_handler_error', message: errMsg });
-        }
+        return
+      }
+      tabId = firstActiveTab.id
     }
+    if (!tabId) {
+      const errMsg = 'No target tab resolved for query'
+      if (query.correlation_id) {
+        sendAsyncResult(syncClient, query.id, query.correlation_id, 'error', null, errMsg)
+      } else {
+        sendResult(syncClient, query.id, { error: 'no_active_tab', message: errMsg })
+      }
+      return
+    }
+    if (query.type === 'subtitle') {
+      let params
+      try {
+        params = typeof query.params === 'string' ? JSON.parse(query.params) : query.params
+      } catch {
+        params = {}
+      }
+      chrome.tabs
+        .sendMessage(tabId, {
+          type: 'GASOLINE_SUBTITLE',
+          text: params.text ?? ''
+        })
+        .catch(() => {})
+      sendResult(syncClient, query.id, { success: true, subtitle: params.text || 'cleared' })
+      return
+    }
+    if (query.type === 'screenshot') {
+      try {
+        const rateCheck = canTakeScreenshot(tabId)
+        if (!rateCheck.allowed) {
+          sendResult(syncClient, query.id, {
+            error: `Rate limited: ${rateCheck.reason}`,
+            ...(rateCheck.nextAllowedIn != null ? { next_allowed_in: rateCheck.nextAllowedIn } : {})
+          })
+          return
+        }
+        const tab = await chrome.tabs.get(tabId)
+        const dataUrl = await chrome.tabs.captureVisibleTab(tab.windowId, {
+          format: 'jpeg',
+          quality: 80
+        })
+        recordScreenshot(tabId)
+        // POST to /screenshots with query_id — server saves file and resolves query directly
+        const response = await fetch(`${index.serverUrl}/screenshots`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'X-Gasoline-Client': 'gasoline-extension' },
+          body: JSON.stringify({
+            data_url: dataUrl,
+            url: tab.url,
+            query_id: query.id
+          })
+        })
+        if (!response.ok) {
+          sendResult(syncClient, query.id, { error: `Server returned ${response.status}` })
+        }
+        // No sendResult needed — server resolves the query via query_id
+      } catch (err) {
+        sendResult(syncClient, query.id, {
+          error: 'screenshot_failed',
+          message: err.message || 'Failed to capture screenshot'
+        })
+      }
+      return
+    }
+    if (query.type === 'browser_action') {
+      let params
+      try {
+        params = typeof query.params === 'string' ? JSON.parse(query.params) : query.params
+      } catch {
+        sendResult(syncClient, query.id, {
+          success: false,
+          error: 'invalid_params',
+          message: 'Failed to parse browser_action params as JSON'
+        })
+        return
+      }
+      if (query.correlation_id) {
+        await handleAsyncBrowserAction(query, tabId, params, syncClient, sendAsyncResult, actionToast)
+      } else {
+        const result = await handleBrowserAction(tabId, params, actionToast)
+        sendResult(syncClient, query.id, result)
+      }
+      return
+    }
+    if (query.type === 'highlight') {
+      let params
+      try {
+        params = typeof query.params === 'string' ? JSON.parse(query.params) : query.params
+      } catch {
+        sendResult(syncClient, query.id, {
+          error: 'invalid_params',
+          message: 'Failed to parse highlight params as JSON'
+        })
+        return
+      }
+      const result = await handlePilotCommand('GASOLINE_HIGHLIGHT', params)
+      if (query.correlation_id) {
+        const err = result && typeof result === 'object' && 'error' in result ? result.error : undefined
+        sendAsyncResult(syncClient, query.id, query.correlation_id, 'complete', result, err)
+      } else {
+        sendResult(syncClient, query.id, result)
+      }
+      return
+    }
+    if (query.type === 'page_info') {
+      const tab = await chrome.tabs.get(tabId)
+      const result = {
+        url: tab.url,
+        title: tab.title,
+        favicon: tab.favIconUrl,
+        status: tab.status,
+        viewport: {
+          width: tab.width,
+          height: tab.height
+        }
+      }
+      sendResult(syncClient, query.id, result)
+      return
+    }
+    if (query.type === 'tabs') {
+      const allTabs = await chrome.tabs.query({})
+      const tabsList = allTabs.map((tab) => ({
+        id: tab.id,
+        url: tab.url,
+        title: tab.title,
+        active: tab.active,
+        windowId: tab.windowId,
+        index: tab.index
+      }))
+      sendResult(syncClient, query.id, { tabs: tabsList })
+      return
+    }
+    // Waterfall query - fetch network waterfall data on demand
+    if (query.type === 'waterfall') {
+      debugLog(DebugCategory.CAPTURE, 'Handling waterfall query', { queryId: query.id, tabId })
+      try {
+        const tab = await chrome.tabs.get(tabId)
+        debugLog(DebugCategory.CAPTURE, 'Got tab for waterfall', { tabId, url: tab.url })
+        const result = await chrome.tabs.sendMessage(tabId, {
+          type: 'GET_NETWORK_WATERFALL'
+        })
+        debugLog(DebugCategory.CAPTURE, 'Waterfall result from content script', {
+          entries: result?.entries?.length || 0
+        })
+        sendResult(syncClient, query.id, {
+          entries: result?.entries || [],
+          page_url: tab.url || '',
+          count: result?.entries?.length || 0
+        })
+        debugLog(DebugCategory.CAPTURE, 'Posted waterfall result', { queryId: query.id })
+      } catch (err) {
+        debugLog(DebugCategory.CAPTURE, 'Waterfall query error', {
+          queryId: query.id,
+          error: err.message
+        })
+        sendResult(syncClient, query.id, {
+          error: 'waterfall_query_failed',
+          message: err.message || 'Failed to fetch network waterfall',
+          entries: []
+        })
+      }
+      return
+    }
+    if (query.type === 'dom') {
+      try {
+        const result = await chrome.tabs.sendMessage(tabId, {
+          type: 'DOM_QUERY',
+          params: query.params
+        })
+        if (query.correlation_id) {
+          sendAsyncResult(syncClient, query.id, query.correlation_id, 'complete', result)
+        } else {
+          sendResult(syncClient, query.id, result)
+        }
+      } catch (err) {
+        if (query.correlation_id) {
+          sendAsyncResult(
+            syncClient,
+            query.id,
+            query.correlation_id,
+            'complete',
+            null,
+            err.message || 'Failed to execute DOM query'
+          )
+        } else {
+          sendResult(syncClient, query.id, {
+            error: 'dom_query_failed',
+            message: err.message || 'Failed to execute DOM query'
+          })
+        }
+      }
+      return
+    }
+    if (query.type === 'a11y') {
+      try {
+        const result = await chrome.tabs.sendMessage(tabId, {
+          type: 'A11Y_QUERY',
+          params: query.params
+        })
+        if (query.correlation_id) {
+          sendAsyncResult(syncClient, query.id, query.correlation_id, 'complete', result)
+        } else {
+          sendResult(syncClient, query.id, result)
+        }
+      } catch (err) {
+        if (query.correlation_id) {
+          sendAsyncResult(
+            syncClient,
+            query.id,
+            query.correlation_id,
+            'complete',
+            null,
+            err.message || 'Failed to execute accessibility audit'
+          )
+        } else {
+          sendResult(syncClient, query.id, {
+            error: 'a11y_audit_failed',
+            message: err.message || 'Failed to execute accessibility audit'
+          })
+        }
+      }
+      return
+    }
+    if (query.type === 'dom_action') {
+      if (!index.__aiWebPilotEnabledCache) {
+        sendAsyncResult(syncClient, query.id, query.correlation_id, 'complete', null, 'ai_web_pilot_disabled')
+        return
+      }
+      await executeDOMAction(query, tabId, syncClient, sendAsyncResult, actionToast)
+      return
+    }
+    if (query.type === 'upload') {
+      if (!index.__aiWebPilotEnabledCache) {
+        sendAsyncResult(syncClient, query.id, query.correlation_id, 'complete', null, 'ai_web_pilot_disabled')
+        return
+      }
+      await executeUpload(query, tabId, syncClient, sendAsyncResult, actionToast)
+      return
+    }
+    if (query.type === 'record_start') {
+      if (!index.__aiWebPilotEnabledCache) {
+        sendAsyncResult(syncClient, query.id, query.correlation_id, 'complete', undefined, 'ai_web_pilot_disabled')
+        return
+      }
+      let params
+      try {
+        params = typeof query.params === 'string' ? JSON.parse(query.params) : query.params
+      } catch {
+        params = {}
+      }
+      const result = await startRecording(params.name ?? 'recording', params.fps ?? 15, query.id, params.audio ?? '')
+      sendAsyncResult(syncClient, query.id, query.correlation_id, 'complete', result, result.error || undefined)
+      return
+    }
+    if (query.type === 'record_stop') {
+      if (!index.__aiWebPilotEnabledCache) {
+        sendAsyncResult(syncClient, query.id, query.correlation_id, 'complete', undefined, 'ai_web_pilot_disabled')
+        return
+      }
+      const result = await stopRecording()
+      sendAsyncResult(syncClient, query.id, query.correlation_id, 'complete', result, result.error || undefined)
+      return
+    }
+    if (query.type === 'execute') {
+      if (!index.__aiWebPilotEnabledCache) {
+        if (query.correlation_id) {
+          sendAsyncResult(syncClient, query.id, query.correlation_id, 'complete', null, 'ai_web_pilot_disabled')
+        } else {
+          sendResult(syncClient, query.id, {
+            success: false,
+            error: 'ai_web_pilot_disabled',
+            message: 'AI Web Pilot is not enabled in the extension popup'
+          })
+        }
+        return
+      }
+      // Parse world param for routing
+      let execParams
+      try {
+        execParams = typeof query.params === 'string' ? JSON.parse(query.params) : query.params
+      } catch {
+        execParams = {}
+      }
+      const world = execParams.world || 'auto'
+      if (query.correlation_id) {
+        await handleAsyncExecuteCommand(query, tabId, world, syncClient, sendAsyncResult, actionToast)
+      } else {
+        try {
+          const result = await executeWithWorldRouting(tabId, query.params, world)
+          sendResult(syncClient, query.id, result)
+        } catch (err) {
+          sendResult(syncClient, query.id, {
+            success: false,
+            error: 'execution_failed',
+            message: err.message || 'Execution failed'
+          })
+        }
+      }
+      return
+    }
+    if (query.type === 'link_health') {
+      try {
+        const result = await chrome.tabs.sendMessage(tabId, {
+          type: 'LINK_HEALTH_QUERY',
+          params: query.params
+        })
+        sendResult(syncClient, query.id, result)
+      } catch (err) {
+        sendResult(syncClient, query.id, {
+          error: 'link_health_failed',
+          message: err.message || 'Link health check failed'
+        })
+      }
+      return
+    }
+    if (query.type === 'draw_mode') {
+      if (!index.__aiWebPilotEnabledCache) {
+        sendResult(syncClient, query.id, {
+          error: 'ai_web_pilot_disabled',
+          message: 'AI Web Pilot is not enabled in the extension popup'
+        })
+        return
+      }
+      let params
+      try {
+        params = typeof query.params === 'string' ? JSON.parse(query.params) : query.params
+      } catch {
+        params = {}
+      }
+      if (params.action === 'start') {
+        try {
+          const result = await chrome.tabs.sendMessage(tabId, {
+            type: 'GASOLINE_DRAW_MODE_START',
+            started_by: 'llm',
+            session_name: params.session || '',
+            correlation_id: query.correlation_id || query.id || ''
+          })
+          sendResult(syncClient, query.id, {
+            status: result?.status || 'active',
+            message:
+              'Draw mode activated. User can now draw annotations on the page. Results will be delivered when user finishes (presses ESC).',
+            annotation_count: result?.annotation_count || 0
+          })
+        } catch (err) {
+          sendResult(syncClient, query.id, {
+            error: 'draw_mode_failed',
+            message:
+              err.message || 'Failed to activate draw mode. Ensure content script is loaded (try refreshing the page).'
+          })
+        }
+      } else {
+        sendResult(syncClient, query.id, {
+          error: 'unknown_draw_mode_action',
+          message: `Unknown draw mode action: ${params.action}. Use 'start'.`
+        })
+      }
+      return
+    }
+  } catch (err) {
+    const errMsg = err.message || 'Unexpected error handling query'
+    debugLog(DebugCategory.CONNECTION, 'Error handling pending query', {
+      type: query.type,
+      id: query.id,
+      error: errMsg
+    })
+    if (query.correlation_id) {
+      sendAsyncResult(syncClient, query.id, query.correlation_id, 'error', null, errMsg)
+    } else {
+      sendResult(syncClient, query.id, { error: 'query_handler_error', message: errMsg })
+    }
+  }
 }
 // =============================================================================
 // STATE QUERY HANDLING
 // =============================================================================
 async function handleStateQuery(query, syncClient) {
-    if (!index.__aiWebPilotEnabledCache) {
-        sendResult(syncClient, query.id, { error: 'ai_web_pilot_disabled' });
-        return;
-    }
-    let params;
-    try {
-        params = typeof query.params === 'string' ? JSON.parse(query.params) : query.params;
-    }
-    catch {
-        sendResult(syncClient, query.id, {
-            error: 'invalid_params',
-            message: 'Failed to parse state query params as JSON'
-        });
-        return;
-    }
-    const action = params.action;
-    try {
-        let result;
-        switch (action) {
-            case 'capture': {
-                const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
-                const firstTab = tabs[0];
-                if (!firstTab?.id) {
-                    sendResult(syncClient, query.id, { error: 'no_active_tab' });
-                    return;
-                }
-                result = await chrome.tabs.sendMessage(firstTab.id, {
-                    type: 'GASOLINE_MANAGE_STATE',
-                    params: { action: 'capture' }
-                });
-                break;
-            }
-            case 'save': {
-                const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
-                const firstTab = tabs[0];
-                if (!firstTab?.id) {
-                    sendResult(syncClient, query.id, { error: 'no_active_tab' });
-                    return;
-                }
-                const captureResult = (await chrome.tabs.sendMessage(firstTab.id, {
-                    type: 'GASOLINE_MANAGE_STATE',
-                    params: { action: 'capture' }
-                }));
-                if (captureResult.error) {
-                    sendResult(syncClient, query.id, { error: captureResult.error });
-                    return;
-                }
-                result = await saveStateSnapshot(params.name, captureResult);
-                break;
-            }
-            case 'load': {
-                const snapshot = await loadStateSnapshot(params.name);
-                if (!snapshot) {
-                    sendResult(syncClient, query.id, {
-                        error: `Snapshot '${params.name}' not found`
-                    });
-                    return;
-                }
-                const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
-                const firstTab = tabs[0];
-                if (!firstTab?.id) {
-                    sendResult(syncClient, query.id, { error: 'no_active_tab' });
-                    return;
-                }
-                result = await chrome.tabs.sendMessage(firstTab.id, {
-                    type: 'GASOLINE_MANAGE_STATE',
-                    params: {
-                        action: 'restore',
-                        state: snapshot,
-                        include_url: params.include_url !== false
-                    }
-                });
-                break;
-            }
-            case 'list':
-                result = { snapshots: await listStateSnapshots() };
-                break;
-            case 'delete':
-                result = await deleteStateSnapshot(params.name);
-                break;
-            default:
-                result = { error: `Unknown action: ${action}` };
+  if (!index.__aiWebPilotEnabledCache) {
+    sendResult(syncClient, query.id, { error: 'ai_web_pilot_disabled' })
+    return
+  }
+  let params
+  try {
+    params = typeof query.params === 'string' ? JSON.parse(query.params) : query.params
+  } catch {
+    sendResult(syncClient, query.id, {
+      error: 'invalid_params',
+      message: 'Failed to parse state query params as JSON'
+    })
+    return
+  }
+  const action = params.action
+  try {
+    let result
+    switch (action) {
+      case 'capture': {
+        const tabs = await chrome.tabs.query({ active: true, currentWindow: true })
+        const firstTab = tabs[0]
+        if (!firstTab?.id) {
+          sendResult(syncClient, query.id, { error: 'no_active_tab' })
+          return
         }
-        sendResult(syncClient, query.id, result);
+        result = await chrome.tabs.sendMessage(firstTab.id, {
+          type: 'GASOLINE_MANAGE_STATE',
+          params: { action: 'capture' }
+        })
+        break
+      }
+      case 'save': {
+        const tabs = await chrome.tabs.query({ active: true, currentWindow: true })
+        const firstTab = tabs[0]
+        if (!firstTab?.id) {
+          sendResult(syncClient, query.id, { error: 'no_active_tab' })
+          return
+        }
+        const captureResult = await chrome.tabs.sendMessage(firstTab.id, {
+          type: 'GASOLINE_MANAGE_STATE',
+          params: { action: 'capture' }
+        })
+        if (captureResult.error) {
+          sendResult(syncClient, query.id, { error: captureResult.error })
+          return
+        }
+        result = await saveStateSnapshot(params.name, captureResult)
+        break
+      }
+      case 'load': {
+        const snapshot = await loadStateSnapshot(params.name)
+        if (!snapshot) {
+          sendResult(syncClient, query.id, {
+            error: `Snapshot '${params.name}' not found`
+          })
+          return
+        }
+        const tabs = await chrome.tabs.query({ active: true, currentWindow: true })
+        const firstTab = tabs[0]
+        if (!firstTab?.id) {
+          sendResult(syncClient, query.id, { error: 'no_active_tab' })
+          return
+        }
+        result = await chrome.tabs.sendMessage(firstTab.id, {
+          type: 'GASOLINE_MANAGE_STATE',
+          params: {
+            action: 'restore',
+            state: snapshot,
+            include_url: params.include_url !== false
+          }
+        })
+        break
+      }
+      case 'list':
+        result = { snapshots: await listStateSnapshots() }
+        break
+      case 'delete':
+        result = await deleteStateSnapshot(params.name)
+        break
+      default:
+        result = { error: `Unknown action: ${action}` }
     }
-    catch (err) {
-        sendResult(syncClient, query.id, { error: err.message });
-    }
+    sendResult(syncClient, query.id, result)
+  } catch (err) {
+    sendResult(syncClient, query.id, { error: err.message })
+  }
 }
 // =============================================================================
 // PILOT COMMAND
 // =============================================================================
 export async function handlePilotCommand(command, params) {
-    if (!index.__aiWebPilotEnabledCache) {
-        if (typeof chrome !== 'undefined' && chrome.storage) {
-            const localResult = await new Promise((resolve) => {
-                chrome.storage.local.get(['aiWebPilotEnabled'], (result) => {
-                    resolve(result);
-                });
-            });
-            if (localResult.aiWebPilotEnabled === true) {
-                // Update cache (note: this module imports from index.ts which has the state)
-                // We can't directly update it, so we return the error
-            }
-        }
+  if (!index.__aiWebPilotEnabledCache) {
+    if (typeof chrome !== 'undefined' && chrome.storage) {
+      const localResult = await new Promise((resolve) => {
+        chrome.storage.local.get(['aiWebPilotEnabled'], (result) => {
+          resolve(result)
+        })
+      })
+      if (localResult.aiWebPilotEnabled === true) {
+        // Update cache (note: this module imports from index.ts which has the state)
+        // We can't directly update it, so we return the error
+      }
     }
-    if (!index.__aiWebPilotEnabledCache) {
-        return { error: 'ai_web_pilot_disabled' };
+  }
+  if (!index.__aiWebPilotEnabledCache) {
+    return { error: 'ai_web_pilot_disabled' }
+  }
+  try {
+    const tabs = await chrome.tabs.query({ active: true, currentWindow: true })
+    const firstTab = tabs[0]
+    if (!firstTab?.id) {
+      return { error: 'no_active_tab' }
     }
-    try {
-        const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
-        const firstTab = tabs[0];
-        if (!firstTab?.id) {
-            return { error: 'no_active_tab' };
-        }
-        const tabId = firstTab.id;
-        const result = await chrome.tabs.sendMessage(tabId, {
-            type: command,
-            params
-        });
-        return result || { success: true };
-    }
-    catch (err) {
-        return { error: err.message || 'command_failed' };
-    }
+    const tabId = firstTab.id
+    const result = await chrome.tabs.sendMessage(tabId, {
+      type: command,
+      params
+    })
+    return result || { success: true }
+  } catch (err) {
+    return { error: err.message || 'command_failed' }
+  }
 }
 //# sourceMappingURL=pending-queries.js.map

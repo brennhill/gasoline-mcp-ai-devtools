@@ -109,6 +109,7 @@ export class SyncClient {
   private syncing = false
   private flushRequested = false
   private pendingResults: SyncCommandResult[] = []
+  private processedCommandIDs: Set<string> = new Set()
   private extensionVersion: string
 
   constructor(serverUrl: string, sessionId: string, callbacks: SyncClientCallbacks, extensionVersion = '') {
@@ -288,6 +289,10 @@ export class SyncClient {
       if (data.commands && data.commands.length > 0) {
         this.log('Received commands', { count: data.commands.length, ids: data.commands.map((c) => c.id) })
         for (const command of data.commands) {
+          if (command.id && this.processedCommandIDs.has(command.id)) {
+            this.log('Skipping already processed command', { id: command.id })
+            continue
+          }
           this.log('Dispatching command', {
             id: command.id,
             type: command.type,
@@ -305,6 +310,17 @@ export class SyncClient {
               status: 'error',
               error: (err as Error).message || 'Command dispatch failed'
             })
+          } finally {
+            if (command.id) {
+              this.processedCommandIDs.add(command.id)
+              const MAX_PROCESSED_COMMANDS = 1000
+              if (this.processedCommandIDs.size > MAX_PROCESSED_COMMANDS) {
+                const oldest = this.processedCommandIDs.values().next().value
+                if (oldest !== undefined) {
+                  this.processedCommandIDs.delete(oldest)
+                }
+              }
+            }
           }
         }
       }

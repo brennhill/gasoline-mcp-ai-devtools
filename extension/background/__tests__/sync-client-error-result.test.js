@@ -102,9 +102,7 @@ describe('SyncClient — error result on command dispatch failure', () => {
         json: () =>
           Promise.resolve({
             ack: true,
-            commands: [
-              { id: 'cmd-1', type: 'upload', params: '{}', correlation_id: 'corr-1' }
-            ],
+            commands: [{ id: 'cmd-1', type: 'upload', params: '{}', correlation_id: 'corr-1' }],
             next_poll_ms: 5000,
             server_time: new Date().toISOString()
           })
@@ -124,16 +122,8 @@ describe('SyncClient — error result on command dispatch failure', () => {
       queuedResults.length > 0,
       'Expected SyncClient to queue an error result when onCommand throws, but no result was queued (error swallowed)'
     )
-    assert.strictEqual(
-      queuedResults[0].id,
-      'cmd-1',
-      'Error result should reference the failed command ID'
-    )
-    assert.strictEqual(
-      queuedResults[0].status,
-      'error',
-      'Error result status should be "error"'
-    )
+    assert.strictEqual(queuedResults[0].id, 'cmd-1', 'Error result should reference the failed command ID')
+    assert.strictEqual(queuedResults[0].status, 'error', 'Error result status should be "error"')
     assert.ok(
       queuedResults[0].error && queuedResults[0].error.includes('handler exploded'),
       `Error message should contain the thrown error, got: ${queuedResults[0].error}`

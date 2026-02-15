@@ -438,10 +438,7 @@ function classifyValueType(value: unknown): string {
 const RELEVANT_STATE_KEYS = ['error', 'loading', 'status', 'failed']
 
 // #lizard forgives
-function buildRelevantSlice(
-  state: Record<string, unknown>,
-  errorWords: string[]
-): Record<string, unknown> {
+function buildRelevantSlice(state: Record<string, unknown>, errorWords: string[]): Record<string, unknown> {
   const relevantSlice: Record<string, unknown> = {}
   let sliceCount = 0
 
@@ -493,7 +490,10 @@ export function captureStateSnapshot(errorMessage: string): StateSnapshotResult 
       keys[key] = { type: classifyValueType(value) }
     }
 
-    const errorWords = (errorMessage || '').toLowerCase().split(/\W+/).filter((w) => w.length > 2)
+    const errorWords = (errorMessage || '')
+      .toLowerCase()
+      .split(/\W+/)
+      .filter((w) => w.length > 2)
     const relevantSlice = buildRelevantSlice(state, errorWords)
 
     return { source: 'redux', keys, relevantSlice }

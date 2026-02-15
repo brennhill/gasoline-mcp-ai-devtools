@@ -232,64 +232,93 @@ func runBridgeMode(port int, logFile string, maxEntries int) {
 		maxEntries: maxEntries,
 	}
 
+	shouldSpawn := true
+
 	// Check if server is already running
 	if isServerRunning(port) {
-		state.ready = true
-		close(state.readyCh)
-	} else {
-		// Spawn daemon in background (don't block on it)
-		util.SafeGo(func() {
-			exe, err := os.Executable()
-			if err != nil {
-				state.mu.Lock()
-				state.failed = true
-				state.err = "Cannot find executable: " + err.Error()
-				state.mu.Unlock()
-				close(state.failedCh)
-				return
-			}
-
-			args := []string{"--daemon", "--port", fmt.Sprintf("%d", port)}
-			if stateDir := os.Getenv(statecfg.StateDirEnv); stateDir != "" {
-				args = append(args, "--state-dir", stateDir)
-			}
-			if logFile != "" {
-				args = append(args, "--log-file", logFile)
-			}
-			if maxEntries > 0 {
-				args = append(args, "--max-entries", fmt.Sprintf("%d", maxEntries))
-			}
-			cmd := exec.Command(exe, args...) // #nosec G702 -- exe is our own binary path from os.Executable with fixed flags // nosemgrep: go.lang.security.audit.dangerous-exec-command.dangerous-exec-command, go_subproc_rule-subproc -- CLI bridge mode launches user-specified editor
-			cmd.Stdout = nil
-			cmd.Stderr = nil
-			cmd.Stdin = nil
-			if err := cmd.Start(); err != nil {
-				state.mu.Lock()
-				state.failed = true
-				state.err = "Failed to start daemon: " + err.Error()
-				state.mu.Unlock()
-				close(state.failedCh)
-				return
-			}
-
-			// Wait for server to be ready (max 4 seconds - fail fast)
-			if waitForServer(port, 4*time.Second) {
-				state.mu.Lock()
-				state.ready = true
-				state.mu.Unlock()
-				close(state.readyCh)
+		compatible, runningVersion, serviceName := runningServerVersionCompatible(port)
+		if compatible {
+			state.ready = true
+			close(state.readyCh)
+			shouldSpawn = false
+		} else {
+			if strings.EqualFold(serviceName, "gasoline") {
+				if !stopServerForUpgrade(port) {
+					state.failed = true
+					state.err = fmt.Sprintf("found running daemon version %s but could not recycle it", runningVersion)
+					close(state.failedCh)
+					shouldSpawn = false
+				}
 			} else {
-				state.mu.Lock()
+				if serviceName == "" {
+					serviceName = "unknown"
+				}
 				state.failed = true
-				state.err = fmt.Sprintf("Daemon started but not responding on port %d after 4s", port)
-				state.mu.Unlock()
+				state.err = fmt.Sprintf("port %d is occupied by non-gasoline service %q", port, serviceName)
 				close(state.failedCh)
+				shouldSpawn = false
 			}
-		})
+		}
+	}
+
+	if shouldSpawn {
+		spawnDaemonAsync(state)
 	}
 
 	// Bridge stdio <-> HTTP with fast-start support
 	bridgeStdioToHTTPFast(serverURL+"/mcp", state, port)
+}
+
+func spawnDaemonAsync(state *daemonState) {
+	// Spawn daemon in background (don't block on it)
+	util.SafeGo(func() {
+		exe, err := os.Executable()
+		if err != nil {
+			state.mu.Lock()
+			state.failed = true
+			state.err = "Cannot find executable: " + err.Error()
+			state.mu.Unlock()
+			close(state.failedCh)
+			return
+		}
+
+		args := []string{"--daemon", "--port", fmt.Sprintf("%d", state.port)}
+		if stateDir := os.Getenv(statecfg.StateDirEnv); stateDir != "" {
+			args = append(args, "--state-dir", stateDir)
+		}
+		if state.logFile != "" {
+			args = append(args, "--log-file", state.logFile)
+		}
+		if state.maxEntries > 0 {
+			args = append(args, "--max-entries", fmt.Sprintf("%d", state.maxEntries))
+		}
+		cmd := exec.Command(exe, args...) // #nosec G702 -- exe is our own binary path from os.Executable with fixed flags // nosemgrep: go.lang.security.audit.dangerous-exec-command.dangerous-exec-command, go_subproc_rule-subproc -- CLI bridge mode launches user-specified editor
+		cmd.Stdout = nil
+		cmd.Stderr = nil
+		cmd.Stdin = nil
+		if err := cmd.Start(); err != nil {
+			state.mu.Lock()
+			state.failed = true
+			state.err = "Failed to start daemon: " + err.Error()
+			state.mu.Unlock()
+			close(state.failedCh)
+			return
+		}
+
+		// Wait for server to be ready (max 4 seconds - fail fast)
+		if waitForServer(state.port, 4*time.Second) {
+			state.mu.Lock()
+			state.ready = true
+			state.mu.Unlock()
+			close(state.readyCh)
+		} else {
+			state.mu.Lock()
+			state.failed = true
+			state.err = fmt.Sprintf("Daemon started but not responding on port %d after 4s", state.port)
+			state.mu.Unlock()
+			close(state.failedCh)
+		}
+	})
 }
 
 // isServerRunning checks if a server is healthy on the given port via HTTP health check.
@@ -302,6 +331,39 @@ func isServerRunning(port int) bool {
 	}
 	defer func() { _ = resp.Body.Close() }() //nolint:errcheck // best-effort cleanup
 	return resp.StatusCode == http.StatusOK
+}
+
+func runningServerVersionCompatible(port int) (bool, string, string) {
+	client := &http.Client{Timeout: 500 * time.Millisecond}
+	resp, err := client.Get(fmt.Sprintf("http://127.0.0.1:%d/health", port)) // #nosec G704 -- localhost-only health probe
+	if err != nil {
+		return false, "", ""
+	}
+	defer func() { _ = resp.Body.Close() }()
+	if resp.StatusCode != http.StatusOK {
+		return false, "", ""
+	}
+
+	body, err := io.ReadAll(io.LimitReader(resp.Body, 16*1024))
+	if err != nil {
+		return false, "", ""
+	}
+
+	meta, ok := decodeHealthMetadata(body)
+	if !ok {
+		return false, "", ""
+	}
+
+	serviceName := meta.resolvedServiceName()
+	if !strings.EqualFold(serviceName, "gasoline") {
+		return false, strings.TrimSpace(meta.Version), serviceName
+	}
+
+	runningVersion := strings.TrimSpace(meta.Version)
+	if runningVersion == "" {
+		return false, "<missing>", serviceName
+	}
+	return versionsMatch(runningVersion, version), runningVersion, serviceName
 }
 
 // waitForServer waits for the server to start accepting connections
@@ -497,7 +559,7 @@ func bridgeDoHTTP(ctx context.Context, client *http.Client, endpoint string, lin
 // #lizard forgives
 func bridgeForwardRequest(client *http.Client, endpoint string, req JSONRPCRequest, line []byte, timeout time.Duration, state *daemonState, signal func()) {
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
-	defer cancel()
+	activeCancel := cancel
 
 	resp, err := bridgeDoHTTP(ctx, client, endpoint, line)
 	if err != nil && isConnectionError(err) && state != nil {
@@ -505,10 +567,12 @@ func bridgeForwardRequest(client *http.Client, endpoint string, req JSONRPCReque
 		// (original context may have little time left after respawn delay).
 		if state.respawnIfNeeded() {
 			cancel()
-			ctx, cancel = context.WithTimeout(context.Background(), timeout)
-			resp, err = bridgeDoHTTP(ctx, client, endpoint, line)
+			retryCtx, retryCancel := context.WithTimeout(context.Background(), timeout)
+			resp, err = bridgeDoHTTP(retryCtx, client, endpoint, line)
+			activeCancel = retryCancel
 		}
 	}
+	defer activeCancel()
 	if err != nil {
 		sendBridgeError(req.ID, -32603, "Server connection error: "+err.Error())
 		signal()

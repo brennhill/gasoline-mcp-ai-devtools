@@ -349,8 +349,13 @@
       }
 
       @keyframes tracking-pulse {
-        0%, 100% { opacity: 1; }
-        50% { opacity: 0.4; }
+        0%,
+        100% {
+          opacity: 1;
+        }
+        50% {
+          opacity: 0.4;
+        }
       }
 
       .tracking-bar-url {
@@ -897,7 +902,11 @@
     </style>
   </head>
   <body>
-    <script>chrome.storage.local.get('theme', r => { if (r.theme === 'light') document.body.classList.add('light-theme') })</script>
+    <script>
+      chrome.storage.local.get('theme', (r) => {
+        if (r.theme === 'light') document.body.classList.add('light-theme')
+      })
+    </script>
     <h1>
       <img class="logo" src="icons/icon-48.png" alt="" />
       Gasoline

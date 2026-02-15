@@ -73,7 +73,7 @@ func findProcessOnPort(port int) ([]int, error) {
 	if runtime.GOOS == "windows" {
 		cmd = exec.Command("netstat", "-ano")
 	} else {
-		cmd = exec.Command("lsof", "-ti", fmt.Sprintf(":%d", port))
+		cmd = exec.Command("lsof", "-tiTCP:"+strconv.Itoa(port), "-sTCP:LISTEN")
 	}
 
 	output, err := cmd.Output()

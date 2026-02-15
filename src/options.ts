@@ -107,23 +107,26 @@ export function saveOptions(): void {
   const themeToggle = document.getElementById('theme-toggle')
   const theme = themeToggle?.classList.contains('active') ? 'light' : 'dark'
 
-  chrome.storage.local.set({ serverUrl, screenshotOnError, sourceMapEnabled, deferralEnabled, debugMode, theme }, () => {
-    // Show saved message
-    const message = document.getElementById('saved-message')
-    message?.classList.add('show')
+  chrome.storage.local.set(
+    { serverUrl, screenshotOnError, sourceMapEnabled, deferralEnabled, debugMode, theme },
+    () => {
+      // Show saved message
+      const message = document.getElementById('saved-message')
+      message?.classList.add('show')
 
-    // Notify background of changes so it can update its in-memory state
-    chrome.runtime.sendMessage({ type: 'setServerUrl', url: serverUrl })
-    chrome.runtime.sendMessage({ type: 'setScreenshotOnError', enabled: screenshotOnError })
-    chrome.runtime.sendMessage({ type: 'setSourceMapEnabled', enabled: sourceMapEnabled })
-    chrome.runtime.sendMessage({ type: 'setDeferralEnabled', enabled: deferralEnabled })
-    chrome.runtime.sendMessage({ type: 'setDebugMode', enabled: debugMode })
+      // Notify background of changes so it can update its in-memory state
+      chrome.runtime.sendMessage({ type: 'setServerUrl', url: serverUrl })
+      chrome.runtime.sendMessage({ type: 'setScreenshotOnError', enabled: screenshotOnError })
+      chrome.runtime.sendMessage({ type: 'setSourceMapEnabled', enabled: sourceMapEnabled })
+      chrome.runtime.sendMessage({ type: 'setDeferralEnabled', enabled: deferralEnabled })
+      chrome.runtime.sendMessage({ type: 'setDebugMode', enabled: debugMode })
 
-    // Hide message after 2 seconds
-    setTimeout(() => {
-      message?.classList.remove('show')
-    }, 2000)
-  })
+      // Hide message after 2 seconds
+      setTimeout(() => {
+        message?.classList.remove('show')
+      }, 2000)
+    }
+  )
 }
 
 /**

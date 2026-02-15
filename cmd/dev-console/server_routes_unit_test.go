@@ -65,6 +65,9 @@ func TestSetupHTTPRoutesBasicEndpoints(t *testing.T) {
 	if healthBody["status"] != "ok" {
 		t.Fatalf("health status = %v, want ok", healthBody["status"])
 	}
+	if healthBody["service-name"] != "gasoline" {
+		t.Fatalf("health service-name = %v, want gasoline", healthBody["service-name"])
+	}
 
 	healthBadReq := localRequest(http.MethodPost, "/health", nil)
 	healthBadRR := httptest.NewRecorder()

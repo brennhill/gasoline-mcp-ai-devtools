@@ -22,6 +22,7 @@ PLATFORMS := \
 	release-check install-hooks bench-baseline sync-version \
 	pypi-binaries pypi-build pypi-publish pypi-test-publish pypi-clean \
 	security-check pre-commit verify-all npm-binaries validate-semver \
+	test-upgrade-guards release-gate \
 	$(PLATFORMS)
 
 GO_TEST_SHARDS ?= 4
@@ -331,6 +332,17 @@ quality-gate: check-file-length lint lint-hardening typecheck security-check tes
 	@echo "  ✓ All TypeScript tests passed"
 	@echo "  ✓ Version consistency verified"
 	@echo "═══════════════════════════════════════════"
+
+# Upgrade/install guardrail suite: prevents stale daemons from surviving release upgrades.
+test-upgrade-guards:
+	go test ./cmd/dev-console -run 'TestConnectWithRetriesRejectsVersionMismatch' -count=1
+	node --test npm/gasoline-mcp/lib/kill-daemon.test.js
+	python3 -m unittest discover -s pypi/gasoline-mcp/tests -p 'test_*.py'
+	node scripts/install-upgrade-regression.mjs
+
+# Release gate for daemon cleanup/version safety.
+release-gate: quality-gate test-upgrade-guards
+	@echo "✅ release-gate passed"
 
 # Update all version references to match VERSION (single source of truth)
 sync-version:

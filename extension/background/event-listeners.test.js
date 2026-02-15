@@ -45,23 +45,43 @@ const mockChrome = {
       })
     },
     sync: {
-      get: mock.fn((keys, callback) => { if (callback) callback({}); return Promise.resolve({}) }),
-      set: mock.fn((data, callback) => { if (callback) callback(); return Promise.resolve() }),
-      remove: mock.fn((keys, callback) => { if (callback) callback(); return Promise.resolve() })
+      get: mock.fn((keys, callback) => {
+        if (callback) callback({})
+        return Promise.resolve({})
+      }),
+      set: mock.fn((data, callback) => {
+        if (callback) callback()
+        return Promise.resolve()
+      }),
+      remove: mock.fn((keys, callback) => {
+        if (callback) callback()
+        return Promise.resolve()
+      })
     },
     session: {
-      get: mock.fn((keys, callback) => { if (callback) callback({}); return Promise.resolve({}) }),
-      set: mock.fn((data, callback) => { if (callback) callback(); return Promise.resolve() }),
-      remove: mock.fn((keys, callback) => { if (callback) callback(); return Promise.resolve() })
+      get: mock.fn((keys, callback) => {
+        if (callback) callback({})
+        return Promise.resolve({})
+      }),
+      set: mock.fn((data, callback) => {
+        if (callback) callback()
+        return Promise.resolve()
+      }),
+      remove: mock.fn((keys, callback) => {
+        if (callback) callback()
+        return Promise.resolve()
+      })
     },
     onChanged: { addListener: mock.fn() }
   },
   tabs: {
-    get: mock.fn((tabId) => Promise.resolve({
-      id: tabId,
-      url: 'https://example.com',
-      title: 'Example Domain'
-    })),
+    get: mock.fn((tabId) =>
+      Promise.resolve({
+        id: tabId,
+        url: 'https://example.com',
+        title: 'Example Domain'
+      })
+    ),
     onUpdated: { addListener: mock.fn() },
     onRemoved: { addListener: mock.fn() }
   },
@@ -98,11 +118,13 @@ describe('handleTrackedTabUrlChange — title staleness bug', () => {
     mock.restoreAll()
 
     // After navigation, chrome.tabs.get returns the NEW page info
-    mockChrome.tabs.get = mock.fn((tabId) => Promise.resolve({
-      id: tabId,
-      url: 'https://example.com',
-      title: 'Example Domain'
-    }))
+    mockChrome.tabs.get = mock.fn((tabId) =>
+      Promise.resolve({
+        id: tabId,
+        url: 'https://example.com',
+        title: 'Example Domain'
+      })
+    )
   })
 
   test('updates trackedTabTitle when tracked tab navigates', async () => {
@@ -115,16 +137,18 @@ describe('handleTrackedTabUrlChange — title staleness bug', () => {
     const info = await getTrackedTabInfo()
 
     // URL should be updated
-    assert.strictEqual(info.trackedTabUrl, 'https://example.com',
-      'URL should update to new page')
+    assert.strictEqual(info.trackedTabUrl, 'https://example.com', 'URL should update to new page')
 
     // Title MUST also update — this is the bug.
     // Currently, title stays as "Breaking News: Something Important"
     // even though the tab is now on example.com.
-    assert.notStrictEqual(info.trackedTabTitle, 'Breaking News: Something Important',
+    assert.notStrictEqual(
+      info.trackedTabTitle,
+      'Breaking News: Something Important',
       'Title must NOT stay stale from the previous page after navigation.\n' +
-      'handleTrackedTabUrlChange only updates trackedTabUrl but never trackedTabTitle.\n' +
-      'This causes observe(page) to return titles from completely unrelated pages.')
+        'handleTrackedTabUrlChange only updates trackedTabUrl but never trackedTabTitle.\n' +
+        'This causes observe(page) to return titles from completely unrelated pages.'
+    )
   })
 
   test('title matches the new page after URL change', async () => {
@@ -136,10 +160,13 @@ describe('handleTrackedTabUrlChange — title staleness bug', () => {
     const info = await getTrackedTabInfo()
 
     // The title should reflect the new page, not the old one
-    assert.strictEqual(info.trackedTabTitle, 'Example Domain',
+    assert.strictEqual(
+      info.trackedTabTitle,
+      'Example Domain',
       'After navigation, title should match the new page.\n' +
-      'chrome.tabs.get() returns the correct title, but handleTrackedTabUrlChange\n' +
-      'never calls it — it only calls chrome.storage.local.set({ trackedTabUrl }).')
+        'chrome.tabs.get() returns the correct title, but handleTrackedTabUrlChange\n' +
+        'never calls it — it only calls chrome.storage.local.set({ trackedTabUrl }).'
+    )
   })
 
   test('does not update title for non-tracked tabs', async () => {
@@ -151,9 +178,15 @@ describe('handleTrackedTabUrlChange — title staleness bug', () => {
     const info = await getTrackedTabInfo()
 
     // Title should remain unchanged for the tracked tab
-    assert.strictEqual(info.trackedTabTitle, 'Breaking News: Something Important',
-      'Title for tracked tab should not change when a different tab navigates')
-    assert.strictEqual(info.trackedTabUrl, 'https://news.example.com/article',
-      'URL for tracked tab should not change when a different tab navigates')
+    assert.strictEqual(
+      info.trackedTabTitle,
+      'Breaking News: Something Important',
+      'Title for tracked tab should not change when a different tab navigates'
+    )
+    assert.strictEqual(
+      info.trackedTabUrl,
+      'https://news.example.com/article',
+      'URL for tracked tab should not change when a different tab navigates'
+    )
   })
 })

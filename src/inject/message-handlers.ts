@@ -147,11 +147,7 @@ type PageMessageData =
  * Safe serialization for complex objects returned from executeJavaScript.
  */
 // #lizard forgives
-function serializeObject(
-  obj: object,
-  depth: number,
-  seen: WeakSet<object>
-): unknown {
+function serializeObject(obj: object, depth: number, seen: WeakSet<object>): unknown {
   if (seen.has(obj)) return '[Circular]'
   seen.add(obj)
 
@@ -332,13 +328,20 @@ function isValidSettingPayload(data: SettingMessageData): boolean {
 function handleLinkHealthMessage(data: LinkHealthQueryRequestMessageData): void {
   handleLinkHealthQuery(data)
     .then((result) => {
-      window.postMessage({ type: 'GASOLINE_LINK_HEALTH_RESPONSE', requestId: data.requestId, result }, window.location.origin)
+      window.postMessage(
+        { type: 'GASOLINE_LINK_HEALTH_RESPONSE', requestId: data.requestId, result },
+        window.location.origin
+      )
     })
     .catch((err: Error) => {
-      window.postMessage({
-        type: 'GASOLINE_LINK_HEALTH_RESPONSE', requestId: data.requestId,
-        result: { error: 'link_health_error', message: err.message || 'Failed to check link health' }
-      }, window.location.origin)
+      window.postMessage(
+        {
+          type: 'GASOLINE_LINK_HEALTH_RESPONSE',
+          requestId: data.requestId,
+          result: { error: 'link_health_error', message: err.message || 'Failed to check link health' }
+        },
+        window.location.origin
+      )
     })
 }
 
@@ -353,7 +356,8 @@ export function installMessageListener(
       const settingData = data as SettingMessageData
       if (isValidSettingPayload(settingData)) handleSetting(settingData)
     },
-    GASOLINE_STATE_COMMAND: (data) => handleStateCommand(data as StateCommandMessageData, captureStateFn, restoreStateFn),
+    GASOLINE_STATE_COMMAND: (data) =>
+      handleStateCommand(data as StateCommandMessageData, captureStateFn, restoreStateFn),
     GASOLINE_EXECUTE_JS: (data) => handleExecuteJs(data as ExecuteJsRequestMessageData),
     GASOLINE_A11Y_QUERY: (data) => handleA11yQuery(data as A11yQueryRequestMessageData),
     GASOLINE_DOM_QUERY: (data) => handleDomQuery(data as DomQueryRequestMessageData),

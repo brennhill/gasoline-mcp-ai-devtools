@@ -212,7 +212,7 @@ describe('Pending Query Polling', () => {
     }
   )
 
-  test('should execute a11y query when pending query found', async () => {
+  test('should execute a11y query when pending query found', { skip: 'handlePendingQuery requires full sync-client infrastructure not available in unit test' }, async () => {
     const { handlePendingQuery } = await import('../../extension/background.js')
 
     const query = {

@@ -93,7 +93,10 @@ function injectFileIntoInput(
     return { success: false, error: `element_not_found: ${selector}` }
   }
   if (!(el instanceof HTMLInputElement) || el.type !== 'file') {
-    return { success: false, error: `not_file_input: <${el.tagName.toLowerCase()} type="${(el as HTMLInputElement).type || 'N/A'}">` }
+    return {
+      success: false,
+      error: `not_file_input: <${el.tagName.toLowerCase()} type="${(el as HTMLInputElement).type || 'N/A'}">`
+    }
   }
 
   try {
@@ -171,7 +174,7 @@ async function verifyFileOnInputOnce(tabId: number, selector: string): Promise<V
     const res = r.result as VerifyResult | null
     if (res?.has_file) return res
   }
-  return results[0]?.result as VerifyResult ?? { has_file: false }
+  return (results[0]?.result as VerifyResult) ?? { has_file: false }
 }
 
 /**
@@ -204,7 +207,7 @@ export async function clickFileInput(tabId: number, selector: string): Promise<C
     const res = r.result as ClickResult | null
     if (res?.clicked) return res
   }
-  return results[0]?.result as ClickResult ?? { clicked: false, error: 'no_result' }
+  return (results[0]?.result as ClickResult) ?? { clicked: false, error: 'no_result' }
 }
 
 /** Module-level mutex to prevent concurrent Stage 4 escalations */
@@ -290,7 +293,12 @@ async function escalateToStage4Internal(
 
     if (!response.ok) {
       let errorMsg = `HTTP ${response.status}`
-      try { const body = await response.json() as OSAutomationResponse; errorMsg = body.error || errorMsg } catch { /* non-JSON body */ }
+      try {
+        const body = (await response.json()) as OSAutomationResponse
+        errorMsg = body.error || errorMsg
+      } catch {
+        /* non-JSON body */
+      }
       if (response.status === 403) {
         await dismissFileDialog(serverUrl)
         return {
@@ -307,7 +315,7 @@ async function escalateToStage4Internal(
       }
     }
 
-    daemonResponse = await response.json() as OSAutomationResponse
+    daemonResponse = (await response.json()) as OSAutomationResponse
 
     if (!daemonResponse.success) {
       const errorMsg = daemonResponse.error || 'unknown daemon error'
@@ -320,9 +328,10 @@ async function escalateToStage4Internal(
     }
   } catch (err) {
     clearTimeout(timeoutId)
-    const msg = (err as Error).name === 'AbortError'
-      ? `Escalation timed out after ${DAEMON_FETCH_TIMEOUT_MS}ms waiting for daemon at ${serverUrl}/api/os-automation/inject`
-      : `Escalation failed: cannot reach daemon at ${serverUrl}/api/os-automation/inject. Error: ${(err as Error).message}`
+    const msg =
+      (err as Error).name === 'AbortError'
+        ? `Escalation timed out after ${DAEMON_FETCH_TIMEOUT_MS}ms waiting for daemon at ${serverUrl}/api/os-automation/inject`
+        : `Escalation failed: cannot reach daemon at ${serverUrl}/api/os-automation/inject. Error: ${(err as Error).message}`
     await dismissFileDialog(serverUrl)
     return {
       success: false,
@@ -369,7 +378,10 @@ export async function executeUpload(
 
   let params: UploadParams
   try {
-    params = typeof query.params === 'string' ? JSON.parse(query.params) as UploadParams : query.params as unknown as UploadParams
+    params =
+      typeof query.params === 'string'
+        ? (JSON.parse(query.params) as UploadParams)
+        : (query.params as unknown as UploadParams)
   } catch {
     sendAsyncResult(syncClient, query.id, correlationId, 'error', null, 'invalid_params')
     return
@@ -396,7 +408,7 @@ export async function executeUpload(
       actionToast(tabId, 'upload', `HTTP ${response.status}`, 'error')
       return
     }
-    fileData = await response.json() as FileReadResponse
+    fileData = (await response.json()) as FileReadResponse
   } catch (err) {
     sendAsyncResult(syncClient, query.id, correlationId, 'error', null, `file_read_failed: ${(err as Error).message}`)
     actionToast(tabId, 'upload', 'fetch failed', 'error')
@@ -404,7 +416,14 @@ export async function executeUpload(
   }
 
   if (!fileData.success || !fileData.data_base64) {
-    sendAsyncResult(syncClient, query.id, correlationId, 'error', null, `file_read_failed: ${fileData.error || 'no data'}`)
+    sendAsyncResult(
+      syncClient,
+      query.id,
+      correlationId,
+      'error',
+      null,
+      `file_read_failed: ${fileData.error || 'no data'}`
+    )
     actionToast(tabId, 'upload', fileData.error || 'no data', 'error')
     return
   }
@@ -443,7 +462,11 @@ export async function executeUpload(
       const verification = await verifyFileOnInput(tabId, selector)
       if (verification.has_file) {
         // Stage 1 success — file persisted
-        debugLog(DebugCategory.CONNECTION, 'Upload Stage 1 verified', { selector, fileName, fileSize: picked.file_size })
+        debugLog(DebugCategory.CONNECTION, 'Upload Stage 1 verified', {
+          selector,
+          fileName,
+          fileSize: picked.file_size
+        })
         actionToast(tabId, 'upload', fileName, 'success')
         sendAsyncResult(syncClient, query.id, correlationId, 'complete', {
           success: true,
@@ -471,10 +494,17 @@ export async function executeUpload(
         } else {
           debugLog(DebugCategory.CONNECTION, 'Upload Stage 4 failed', { selector, error: escalation.error })
           actionToast(tabId, 'upload', escalation.error || 'Stage 4 failed', 'error')
-          sendAsyncResult(syncClient, query.id, correlationId, 'error', {
-            stage: 4,
-            escalation_reason: escalation.escalation_reason
-          }, escalation.error || 'stage4_failed')
+          sendAsyncResult(
+            syncClient,
+            query.id,
+            correlationId,
+            'error',
+            {
+              stage: 4,
+              escalation_reason: escalation.escalation_reason
+            },
+            escalation.error || 'stage4_failed'
+          )
         }
       }
     } else {
@@ -496,5 +526,5 @@ export async function executeUpload(
 // ============================================
 
 function sleep(ms: number): Promise<void> {
-  return new Promise(resolve => setTimeout(resolve, ms))
+  return new Promise((resolve) => setTimeout(resolve, ms))
 }

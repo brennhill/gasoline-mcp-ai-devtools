@@ -527,6 +527,41 @@ describe('SyncClient — Command dispatch', () => {
 
     assert.strictEqual(callbacks.onCommand.mock.calls.length, 0)
   })
+
+  test('should not redispatch a command ID that was already acknowledged', async () => {
+    let pollCount = 0
+    globalThis.fetch = mock.fn(() => {
+      pollCount++
+      if (pollCount === 1) {
+        return Promise.resolve({
+          ok: true,
+          json: () =>
+            Promise.resolve(
+              makeSyncResponse({
+                commands: [{ id: 'cmd-dup', type: 'dom_query', params: {} }],
+                next_poll_ms: 10
+              })
+            )
+        })
+      }
+      return Promise.resolve({
+        ok: true,
+        json: () =>
+          Promise.resolve(
+            makeSyncResponse({
+              commands: [{ id: 'cmd-dup', type: 'dom_query', params: {} }],
+              next_poll_ms: 60000
+            })
+          )
+      })
+    })
+
+    client = new SyncClient('http://localhost:7777', 'sess-1', callbacks)
+    client.start()
+    await tick(120)
+
+    assert.strictEqual(callbacks.onCommand.mock.calls.length, 1)
+  })
 })
 
 describe('SyncClient — Command result queuing', () => {

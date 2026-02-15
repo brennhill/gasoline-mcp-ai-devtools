@@ -6,7 +6,7 @@
 
 import { test, describe, mock, beforeEach } from 'node:test'
 import assert from 'node:assert'
-import { MANIFEST_VERSION } from './helpers.js'
+import { MANIFEST_VERSION as _MANIFEST_VERSION } from './helpers.js'
 
 let mockFetch
 
@@ -19,8 +19,8 @@ beforeEach(() => {
 const {
   sendLogsToServer,
   sendNetworkBodiesToServer,
-  sendWSEventsToServer,
-  sendEnhancedActionsToServer,
+  sendWSEventsToServer: _sendWSEventsToServer,
+  sendEnhancedActionsToServer: _sendEnhancedActionsToServer,
   sendPerformanceSnapshotsToServer,
   postQueryResult,
   postAsyncCommandResult,

@@ -19,7 +19,8 @@ function showInternalPageState(btn: HTMLButtonElement): void {
 
 function showTrackingState(
   btn: HTMLButtonElement,
-  trackedTabUrl: string | undefined, trackedTabId: number | undefined
+  trackedTabUrl: string | undefined,
+  trackedTabId: number | undefined
 ): void {
   // Hide the hero button area
   const heroEl = document.getElementById('track-hero')
@@ -50,7 +51,15 @@ function showIdleState(btn: HTMLButtonElement): void {
   const heroEl = document.getElementById('track-hero')
   if (heroEl) heroEl.style.display = ''
   btn.textContent = 'Track This Tab'
-  Object.assign(btn.style, { background: '#1a3a5c', color: '#58a6ff', borderColor: '#58a6ff', fontSize: '16px', fontWeight: '600', padding: '14px 16px', borderWidth: '2px' })
+  Object.assign(btn.style, {
+    background: '#1a3a5c',
+    color: '#58a6ff',
+    borderColor: '#58a6ff',
+    fontSize: '16px',
+    fontWeight: '600',
+    padding: '14px 16px',
+    borderWidth: '2px'
+  })
   const heroDesc = document.getElementById('track-hero-desc')
   if (heroDesc) heroDesc.style.display = ''
 
@@ -77,7 +86,9 @@ function handleStopTracking(): void {
 
       // Stop recording if active
       chrome.runtime.sendMessage({ type: 'record_stop' }, () => {
-        if (chrome.runtime.lastError) { /* no recording active — expected */ }
+        if (chrome.runtime.lastError) {
+          /* no recording active — expected */
+        }
       })
       // Notify content script so favicon restores without reload
       chrome.tabs
@@ -85,7 +96,9 @@ function handleStopTracking(): void {
           type: 'trackingStateChanged',
           state: { isTracked: false, aiPilotEnabled: false }
         })
-        .catch(() => { /* tab may be closed */ })
+        .catch(() => {
+          /* tab may be closed */
+        })
       console.log('[Gasoline] Stopped tracking via bar stop button')
     })
   })

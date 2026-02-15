@@ -380,8 +380,10 @@ func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request, cap *captu
 	versionCheckMu.Unlock()
 
 	resp := map[string]any{
-		"status":  "ok",
-		"version": version,
+		"status":       "ok",
+		"service-name": "gasoline",
+		"name":         "gasoline", // legacy compatibility
+		"version":      version,
 		"logs": map[string]any{
 			"entries":       s.getEntryCount(),
 			"max_entries":   s.maxEntries,
@@ -396,7 +398,7 @@ func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request, cap *captu
 	if cap != nil {
 		extStatus := cap.GetExtensionStatus()
 		resp["capture"] = map[string]any{
-			"available":            true,
+			"available":           true,
 			"pilot_enabled":       cap.IsPilotEnabled(),
 			"extension_connected": cap.IsExtensionConnected(),
 			"extension_last_seen": extStatus["last_seen"],
@@ -540,9 +542,9 @@ func appendCaptureDiagnostics(resp map[string]any, cap *capture.Capture) {
 		lastPoll = snap.LastPollTime.Format(time.RFC3339)
 	}
 	resp["extension"] = map[string]any{
-		"polling":      !snap.LastPollTime.IsZero(),
-		"last_poll_at": lastPoll,
-		"session":      snap.ExtensionSession,
+		"polling":       !snap.LastPollTime.IsZero(),
+		"last_poll_at":  lastPoll,
+		"session":       snap.ExtensionSession,
 		"pilot_enabled": snap.PilotEnabled,
 	}
 

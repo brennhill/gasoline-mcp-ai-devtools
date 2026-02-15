@@ -6,6 +6,8 @@ import platform
 import subprocess
 import os
 
+KNOWN_PORTS = [17890] + list(range(7890, 7911))
+
 
 def get_platform():
     """Detect the current platform and return the platform identifier."""
@@ -262,20 +264,48 @@ def _kill_pids_on_port(port):
 
 def _cleanup_unix():
     """Kill gasoline processes on Unix. Returns list of killed PIDs."""
-    subprocess.run(["pkill", "-f", "gasoline"], capture_output=True, check=False)
+    for pattern in ["gasoline-mcp", "dev-console", "gasoline"]:
+        subprocess.run(["pkill", "-f", pattern], capture_output=True, check=False)
     killed = []
-    for port in ["7890", "17890"]:
-        killed.extend(_kill_pids_on_port(port))
+    for port in KNOWN_PORTS:
+        killed.extend(_kill_pids_on_port(str(port)))
     return killed
+
+
+def _cleanup_pid_files():
+    """Remove modern and legacy PID files for known ports."""
+    home = os.path.expanduser("~")
+    roots = [os.path.join(home, ".gasoline", "run")]
+    xdg_state_home = os.environ.get("XDG_STATE_HOME")
+    if xdg_state_home:
+        roots.append(os.path.join(xdg_state_home, "gasoline", "run"))
+
+    for port in KNOWN_PORTS:
+        for root in roots:
+            pid_path = os.path.join(root, f"gasoline-{port}.pid")
+            try:
+                os.remove(pid_path)
+            except OSError:
+                pass
+
+        legacy_path = os.path.join(home, f".gasoline-{port}.pid")
+        try:
+            os.remove(legacy_path)
+        except OSError:
+            pass
 
 
 def cleanup_old_processes():
     """Kill all running gasoline processes to ensure clean upgrade."""
     try:
         if sys.platform == "win32":
-            return _cleanup_windows()
-        return _cleanup_unix()
+            killed = _cleanup_windows()
+        else:
+            killed = _cleanup_unix()
+        _cleanup_pid_files()
+        return killed
     except (OSError, subprocess.SubprocessError):
+        _cleanup_pid_files()
         return []
 
 

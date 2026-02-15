@@ -452,3 +452,51 @@ func TestHandleSync_WaterfallResultDelivery(t *testing.T) {
 		t.Errorf("Expected 1 entry in result, got: %v", storedResult)
 	}
 }
+
+func TestHandleSync_LastCommandAckPreventsRedelivery(t *testing.T) {
+	t.Parallel()
+	cap := NewCapture()
+
+	queryID := cap.CreatePendingQuery(queries.PendingQuery{
+		Type:   "dom",
+		Params: json.RawMessage(`{"selector":"body"}`),
+	})
+	if queryID == "" {
+		t.Fatal("expected query ID")
+	}
+
+	firstReqBody, _ := json.Marshal(SyncRequest{SessionID: "ack-session"})
+	firstReq := httptest.NewRequest("POST", "/sync", bytes.NewReader(firstReqBody))
+	firstResp := httptest.NewRecorder()
+	cap.HandleSync(firstResp, firstReq)
+	if firstResp.Code != http.StatusOK {
+		t.Fatalf("first sync status = %d, want 200", firstResp.Code)
+	}
+
+	var first SyncResponse
+	if err := json.NewDecoder(firstResp.Body).Decode(&first); err != nil {
+		t.Fatalf("decode first response: %v", err)
+	}
+	if len(first.Commands) == 0 || first.Commands[0].ID != queryID {
+		t.Fatalf("first sync should return query %q, got %+v", queryID, first.Commands)
+	}
+
+	ackReqBody, _ := json.Marshal(SyncRequest{
+		SessionID:      "ack-session",
+		LastCommandAck: queryID,
+	})
+	ackReq := httptest.NewRequest("POST", "/sync", bytes.NewReader(ackReqBody))
+	ackResp := httptest.NewRecorder()
+	cap.HandleSync(ackResp, ackReq)
+	if ackResp.Code != http.StatusOK {
+		t.Fatalf("ack sync status = %d, want 200", ackResp.Code)
+	}
+
+	var second SyncResponse
+	if err := json.NewDecoder(ackResp.Body).Decode(&second); err != nil {
+		t.Fatalf("decode second response: %v", err)
+	}
+	if len(second.Commands) != 0 {
+		t.Fatalf("acknowledged command %q should not be redelivered, got %+v", queryID, second.Commands)
+	}
+}

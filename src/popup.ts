@@ -43,7 +43,9 @@ function bindToggleVisibility(
   isVisible: () => boolean
 ): void {
   target.style.display = isVisible() ? 'block' : 'none'
-  toggle.addEventListener('change', () => { target.style.display = isVisible() ? 'block' : 'none' })
+  toggle.addEventListener('change', () => {
+    target.style.display = isVisible() ? 'block' : 'none'
+  })
 }
 
 // #lizard forgives
@@ -78,7 +80,9 @@ function setupToggleWarnings(): void {
     const warning = document.getElementById(warningId)
     if (toggle && warning) {
       warning.style.display = toggle.checked ? 'block' : 'none'
-      toggle.addEventListener('change', () => { warning.style.display = toggle.checked ? 'block' : 'none' })
+      toggle.addEventListener('change', () => {
+        warning.style.display = toggle.checked ? 'block' : 'none'
+      })
     }
   }
 }
@@ -245,16 +249,15 @@ function showSavedLink(saveInfoEl: HTMLElement, displayName: string, filePath: s
   if (linkEl) {
     linkEl.addEventListener('click', (e) => {
       e.preventDefault()
-      chrome.runtime.sendMessage(
-        { type: 'REVEAL_FILE', path: filePath },
-        (result: { error?: string } | undefined) => {
-          if (result?.error) {
-            saveInfoEl.textContent = `Could not open folder: ${result.error}`
-            saveInfoEl.style.color = '#f85149'
-            setTimeout(() => { saveInfoEl.style.display = 'none' }, 5000)
-          }
+      chrome.runtime.sendMessage({ type: 'REVEAL_FILE', path: filePath }, (result: { error?: string } | undefined) => {
+        if (result?.error) {
+          saveInfoEl.textContent = `Could not open folder: ${result.error}`
+          saveInfoEl.style.color = '#f85149'
+          setTimeout(() => {
+            saveInfoEl.style.display = 'none'
+          }, 5000)
         }
-      )
+      })
     })
   }
 }
@@ -271,7 +274,9 @@ function showSaveResult(
     saveInfoEl.textContent = `Saved: ${displayName}`
   }
   saveInfoEl.style.display = 'block'
-  setTimeout(() => { saveInfoEl.style.display = 'none' }, 12000)
+  setTimeout(() => {
+    saveInfoEl.style.display = 'none'
+  }, 12000)
 }
 
 function showStartError(saveInfoEl: HTMLElement | null, errorText: string): void {
@@ -304,7 +309,8 @@ function setupDrawModeButton(): void {
   // Set platform-aware keyboard shortcut hint
   const statusEl = document.getElementById('draw-mode-status')
   if (statusEl) {
-    const isMac = navigator.platform?.toUpperCase().includes('MAC') ||
+    const isMac =
+      navigator.platform?.toUpperCase().includes('MAC') ||
       (navigator as unknown as { userAgentData?: { platform?: string } }).userAgentData?.platform === 'macOS'
     statusEl.textContent = isMac ? '⌥⇧D' : 'Alt+Shift+D'
   }
@@ -316,7 +322,11 @@ function setupDrawModeButton(): void {
         showDrawModeError(label, 'No active tab')
         return
       }
-      if (tab.url?.startsWith('chrome://') || tab.url?.startsWith('about:') || tab.url?.startsWith('chrome-extension://')) {
+      if (
+        tab.url?.startsWith('chrome://') ||
+        tab.url?.startsWith('about:') ||
+        tab.url?.startsWith('chrome-extension://')
+      ) {
         showDrawModeError(label, 'Cannot draw on internal pages')
         return
       }
@@ -359,11 +369,7 @@ function handleStopClick(els: RecordingElements, state: RecordingState): void {
   )
 }
 
-function sendRecordStart(
-  els: RecordingElements,
-  state: RecordingState,
-  audioMode: string
-): void {
+function sendRecordStart(els: RecordingElements, state: RecordingState, audioMode: string): void {
   console.log('[Gasoline REC] Popup: sendStart() called, sending record_start with audio:', audioMode)
   chrome.runtime.sendMessage(
     { type: 'record_start', audio: audioMode },
@@ -382,10 +388,7 @@ function sendRecordStart(
   )
 }
 
-function showMicPermissionPrompt(
-  saveInfoEl: HTMLElement,
-  audioMode: string
-): void {
+function showMicPermissionPrompt(saveInfoEl: HTMLElement, audioMode: string): void {
   chrome.tabs.query({ active: true, currentWindow: true }, (activeTabs) => {
     chrome.storage.local.set({
       gasoline_pending_mic_recording: { audioMode, returnTabId: activeTabs[0]?.id }
@@ -406,11 +409,7 @@ function showMicPermissionPrompt(
 }
 
 // #lizard forgives
-function tryMicPermissionThenStart(
-  els: RecordingElements,
-  state: RecordingState,
-  audioMode: string
-): void {
+function tryMicPermissionThenStart(els: RecordingElements, state: RecordingState, audioMode: string): void {
   console.log('[Gasoline REC] Popup: trying getUserMedia from popup...')
   navigator.mediaDevices
     .getUserMedia({ audio: true })

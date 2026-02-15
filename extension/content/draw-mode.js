@@ -217,10 +217,15 @@ function createOverlay() {
     textAlign: 'center',
     lineHeight: '1.5'
   })
-  instruction.innerHTML = 'Draw a box around what you want to change<br><span style="font-size:13px;color:#aaa">Then type your instruction. Press ESC when done.</span>'
+  instruction.innerHTML =
+    'Draw a box around what you want to change<br><span style="font-size:13px;color:#aaa">Then type your instruction. Press ESC when done.</span>'
   overlay.appendChild(instruction)
-  setTimeout(() => { instruction.style.opacity = '0' }, 2500)
-  setTimeout(() => { instruction.remove() }, 3000)
+  setTimeout(() => {
+    instruction.style.opacity = '0'
+  }, 2500)
+  setTimeout(() => {
+    instruction.remove()
+  }, 3000)
 
   // Inject animation keyframes
   injectStyles()
@@ -628,8 +633,8 @@ function captureElementsUnderRect(rect) {
           if (seenElements.has(el)) continue
           const br = el.getBoundingClientRect()
           if (br.width === 0 && br.height === 0) continue
-          const overlaps = br.left < rect.x + rect.width && br.right > rect.x &&
-                           br.top < rect.y + rect.height && br.bottom > rect.y
+          const overlaps =
+            br.left < rect.x + rect.width && br.right > rect.x && br.top < rect.y + rect.height && br.bottom > rect.y
           if (overlaps) {
             seenElements.add(el)
             elements.push(el)
@@ -655,7 +660,7 @@ function captureElementsUnderRect(rect) {
 
     // Build comprehensive detail: primary element + all elements + iframes
     const primaryDetail = target ? buildElementDetail(target) : {}
-    const allElementDetails = elements.slice(0, MAX_CAPTURED_ELEMENTS).map(el => ({
+    const allElementDetails = elements.slice(0, MAX_CAPTURED_ELEMENTS).map((el) => ({
       tag: el.tagName.toLowerCase(),
       selector: buildCSSSelector(el),
       text: (el.textContent || '').trim().slice(0, 100),
@@ -693,8 +698,12 @@ function captureIframeElements(rect, seenElements) {
     for (const iframe of iframes) {
       const iframeRect = iframe.getBoundingClientRect()
       // Check if iframe overlaps with drawn rectangle
-      if (iframeRect.right < rect.x || iframeRect.left > rect.x + rect.width ||
-          iframeRect.bottom < rect.y || iframeRect.top > rect.y + rect.height) {
+      if (
+        iframeRect.right < rect.x ||
+        iframeRect.left > rect.x + rect.width ||
+        iframeRect.bottom < rect.y ||
+        iframeRect.top > rect.y + rect.height
+      ) {
         continue
       }
       try {
@@ -704,8 +713,8 @@ function captureIframeElements(rect, seenElements) {
           continue
         }
         // Adjust coordinates relative to iframe
-        const adjustedX = rect.x - iframeRect.left + (rect.width / 2)
-        const adjustedY = rect.y - iframeRect.top + (rect.height / 2)
+        const adjustedX = rect.x - iframeRect.left + rect.width / 2
+        const adjustedY = rect.y - iframeRect.top + rect.height / 2
         const els = iframeDoc.elementsFromPoint(adjustedX, adjustedY)
         const iframeEls = []
         for (const el of els) {
@@ -789,14 +798,43 @@ function buildElementSummary(el) {
 function buildElementDetail(el) {
   const computed = window.getComputedStyle(el)
   const styleProps = [
-    'background-color', 'color', 'font-size', 'font-weight', 'font-family',
-    'padding', 'margin', 'border', 'border-radius',
-    'display', 'position', 'z-index', 'width', 'height', 'opacity',
-    'flex-direction', 'flex-wrap', 'align-items', 'justify-content', 'gap',
-    'grid-template-columns', 'grid-template-rows',
-    'overflow', 'text-align', 'text-decoration', 'line-height', 'letter-spacing',
-    'box-shadow', 'transform', 'transition', 'cursor', 'visibility', 'white-space',
-    'max-width', 'min-width', 'max-height', 'min-height'
+    'background-color',
+    'color',
+    'font-size',
+    'font-weight',
+    'font-family',
+    'padding',
+    'margin',
+    'border',
+    'border-radius',
+    'display',
+    'position',
+    'z-index',
+    'width',
+    'height',
+    'opacity',
+    'flex-direction',
+    'flex-wrap',
+    'align-items',
+    'justify-content',
+    'gap',
+    'grid-template-columns',
+    'grid-template-rows',
+    'overflow',
+    'text-align',
+    'text-decoration',
+    'line-height',
+    'letter-spacing',
+    'box-shadow',
+    'transform',
+    'transition',
+    'cursor',
+    'visibility',
+    'white-space',
+    'max-width',
+    'min-width',
+    'max-height',
+    'min-height'
   ]
   const computedStyles = {}
   for (const prop of styleProps) {

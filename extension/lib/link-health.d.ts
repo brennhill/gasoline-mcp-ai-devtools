@@ -5,31 +5,31 @@
  * broken (4xx/5xx), or timeout.
  */
 export interface LinkHealthParams {
-    readonly timeout_ms?: number;
-    readonly max_workers?: number;
+  readonly timeout_ms?: number
+  readonly max_workers?: number
 }
 export interface LinkCheckResult {
-    readonly url: string;
-    readonly status: number | null;
-    readonly code: 'ok' | 'redirect' | 'requires_auth' | 'broken' | 'timeout' | 'cors_blocked';
-    readonly timeMs: number;
-    readonly isExternal: boolean;
-    readonly redirectTo?: string;
-    readonly error?: string;
-    readonly needsServerVerification?: boolean;
+  readonly url: string
+  readonly status: number | null
+  readonly code: 'ok' | 'redirect' | 'requires_auth' | 'broken' | 'timeout' | 'cors_blocked'
+  readonly timeMs: number
+  readonly isExternal: boolean
+  readonly redirectTo?: string
+  readonly error?: string
+  readonly needsServerVerification?: boolean
 }
 export interface LinkHealthCheckResult {
-    readonly summary: {
-        readonly totalLinks: number;
-        readonly ok: number;
-        readonly redirect: number;
-        readonly requiresAuth: number;
-        readonly broken: number;
-        readonly timeout: number;
-        readonly corsBlocked: number;
-        readonly needsServerVerification: number;
-    };
-    readonly results: LinkCheckResult[];
+  readonly summary: {
+    readonly totalLinks: number
+    readonly ok: number
+    readonly redirect: number
+    readonly requiresAuth: number
+    readonly broken: number
+    readonly timeout: number
+    readonly corsBlocked: number
+    readonly needsServerVerification: number
+  }
+  readonly results: LinkCheckResult[]
 }
-export declare function checkLinkHealth(params: LinkHealthParams): Promise<LinkHealthCheckResult>;
+export declare function checkLinkHealth(params: LinkHealthParams): Promise<LinkHealthCheckResult>
 //# sourceMappingURL=link-health.d.ts.map

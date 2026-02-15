@@ -1,6 +1,8 @@
 package main
 
 import (
+	"os"
+	"path/filepath"
 	"runtime"
 	"strings"
 	"testing"
@@ -88,5 +90,35 @@ func TestKillProcessByPID(t *testing.T) {
 	// We expect an error since process doesn't exist
 	if err == nil {
 		t.Log("killProcessByPID(999999) returned nil (process may exist)")
+	}
+}
+
+func TestFindProcessOnPortUsesListenFilterUnix(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("unix-only lsof behavior")
+	}
+
+	fakeBin := t.TempDir()
+	lsofPath := filepath.Join(fakeBin, "lsof")
+	script := `#!/bin/sh
+for arg in "$@"; do
+  if [ "$arg" = "-sTCP:LISTEN" ]; then
+    echo "43210"
+    exit 0
+  fi
+done
+exit 1
+`
+	if err := os.WriteFile(lsofPath, []byte(script), 0o755); err != nil {
+		t.Fatalf("WriteFile(%q) error = %v", lsofPath, err)
+	}
+	t.Setenv("PATH", fakeBin+string(os.PathListSeparator)+os.Getenv("PATH"))
+
+	pids, err := findProcessOnPort(7890)
+	if err != nil {
+		t.Fatalf("findProcessOnPort() error = %v", err)
+	}
+	if len(pids) != 1 || pids[0] != 43210 {
+		t.Fatalf("findProcessOnPort() = %v, want [43210]", pids)
 	}
 }

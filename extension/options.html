@@ -388,7 +388,11 @@
     </style>
   </head>
   <body>
-    <script>chrome.storage.local.get('theme', r => { if (r.theme === 'light') document.body.classList.add('light-theme') })</script>
+    <script>
+      chrome.storage.local.get('theme', (r) => {
+        if (r.theme === 'light') document.body.classList.add('light-theme')
+      })
+    </script>
     <a href="popup.html" class="back-link">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor">
         <path

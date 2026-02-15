@@ -56,8 +56,11 @@ function serializeObject(value: object, depth: number, seen: WeakSet<object>): J
 
   const result: Record<string, JsonValue> = {}
   for (const key of Object.keys(value).slice(0, 50)) {
-    try { result[key] = safeSerialize((value as Record<string, unknown>)[key], depth + 1, seen) }
-    catch { result[key] = '[Unserializable]' }
+    try {
+      result[key] = safeSerialize((value as Record<string, unknown>)[key], depth + 1, seen)
+    } catch {
+      result[key] = '[Unserializable]'
+    }
   }
   return result
 }
@@ -121,7 +124,9 @@ export function isSensitiveInput(element: Element | null): boolean {
   const autocomplete = (inputElement.autocomplete || '').toLowerCase()
   const name = (inputElement.name || '').toLowerCase()
 
-  return SENSITIVE_INPUT_TYPES.includes(type) ||
+  return (
+    SENSITIVE_INPUT_TYPES.includes(type) ||
     matchesAny(autocomplete, SENSITIVE_AUTOCOMPLETE_PATTERNS) ||
     matchesAny(name, SENSITIVE_NAME_PATTERNS)
+  )
 }

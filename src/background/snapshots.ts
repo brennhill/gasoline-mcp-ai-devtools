@@ -329,11 +329,7 @@ async function fetchWithTimeout(url: string): Promise<Response> {
   }
 }
 
-function parseInlineSourceMap(
-  dataUrl: string,
-  scriptUrl: string,
-  debugLogFn?: DebugLogFn
-): ParsedSourceMap | null {
+function parseInlineSourceMap(dataUrl: string, scriptUrl: string, debugLogFn?: DebugLogFn): ParsedSourceMap | null {
   const base64Match = dataUrl.match(/^data:application\/json;base64,(.+)$/)
   if (!base64Match || !base64Match[1]) return cacheNullAndReturn(scriptUrl)
 
@@ -376,7 +372,8 @@ async function fetchExternalSourceMap(
   try {
     sourceMap = await mapResponse.json()
   } catch {
-    if (debugLogFn) debugLogFn('sourcemap', 'Invalid JSON in external source map', { scriptUrl, sourceMapUrl: resolvedUrl })
+    if (debugLogFn)
+      debugLogFn('sourcemap', 'Invalid JSON in external source map', { scriptUrl, sourceMapUrl: resolvedUrl })
     return cacheNullAndReturn(scriptUrl)
   }
 
@@ -385,10 +382,7 @@ async function fetchExternalSourceMap(
   return parsed
 }
 
-export async function fetchSourceMap(
-  scriptUrl: string,
-  debugLogFn?: DebugLogFn
-): Promise<ParsedSourceMap | null> {
+export async function fetchSourceMap(scriptUrl: string, debugLogFn?: DebugLogFn): Promise<ParsedSourceMap | null> {
   if (getSourceMapCacheEntry(scriptUrl)) {
     return getSourceMapCacheEntry(scriptUrl) || null
   }
