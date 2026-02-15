@@ -130,7 +130,11 @@ else
 fi
 
 # Check tools_observe.go for stub returns in command result observer
-OBSERVE_IMPL_FILES=$(rg -l 'func \(h \*ToolHandler\) toolObserveCommandResult\(' "${CMD_DIR}"/tools_*.go || true)
+if command -v rg >/dev/null 2>&1; then
+    OBSERVE_IMPL_FILES=$(rg -l 'func \(h \*ToolHandler\) toolObserveCommandResult\(' "${CMD_DIR}"/tools_*.go || true)
+else
+    OBSERVE_IMPL_FILES=$(grep -El 'func \(h \*ToolHandler\) toolObserveCommandResult\(' "${CMD_DIR}"/tools_*.go 2>/dev/null || true)
+fi
 if [ -z "${OBSERVE_IMPL_FILES:-}" ]; then
     echo "   ❌ MISSING: toolObserveCommandResult implementation"
     ERRORS=$((ERRORS + 1))

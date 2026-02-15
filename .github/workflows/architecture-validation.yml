@@ -59,7 +59,11 @@ jobs:
 
           # Fail if toolObserveCommandResult doesn't call GetCommandResult.
           # Parse function bodies instead of fixed grep context windows.
-          OBSERVE_IMPL_FILES=$(rg -l 'func \(h \*ToolHandler\) toolObserveCommandResult\(' cmd/dev-console/tools_*.go || true)
+          if command -v rg >/dev/null 2>&1; then
+            OBSERVE_IMPL_FILES=$(rg -l 'func \(h \*ToolHandler\) toolObserveCommandResult\(' cmd/dev-console/tools_*.go || true)
+          else
+            OBSERVE_IMPL_FILES=$(grep -El 'func \(h \*ToolHandler\) toolObserveCommandResult\(' cmd/dev-console/tools_*.go 2>/dev/null || true)
+          fi
           if [ -z "${OBSERVE_IMPL_FILES:-}" ]; then
             echo "❌ STUB DETECTED in toolObserveCommandResult (implementation missing)"
             exit 1
