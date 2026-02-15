@@ -1,15 +1,15 @@
 
-[darwin-arm64]
-gasoline-mcp-darwin-arm64==6.0.3
+[:sys_platform == "darwin" and platform_machine == "arm64"]
+gasoline-mcp-darwin-arm64==0.7.2
 
-[darwin-x64]
-gasoline-mcp-darwin-x64==6.0.3
+[:sys_platform == "darwin" and platform_machine == "x86_64"]
+gasoline-mcp-darwin-x64==0.7.2
 
-[linux-arm64]
-gasoline-mcp-linux-arm64==6.0.3
+[:sys_platform == "linux" and platform_machine == "aarch64"]
+gasoline-mcp-linux-arm64==0.7.2
 
-[linux-x64]
-gasoline-mcp-linux-x64==6.0.3
+[:sys_platform == "linux" and platform_machine == "x86_64"]
+gasoline-mcp-linux-x64==0.7.2
 
-[win32-x64]
-gasoline-mcp-win32-x64==6.0.3
+[:sys_platform == "win32"]
+gasoline-mcp-win32-x64==0.7.2

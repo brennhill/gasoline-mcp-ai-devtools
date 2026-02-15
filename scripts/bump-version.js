@@ -17,6 +17,7 @@ import fs from 'fs'
 import path from 'path'
 // Node built-in import, not hiding a core module
 import { fileURLToPath } from 'url'
+import { normalizeMainPyprojectFile, validateMainPyprojectContent } from './normalize-pypi-main-pyproject.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const ROOT = path.join(__dirname, '..')
@@ -157,7 +158,7 @@ function updateVersionInFile(filePath, oldVersion, newVersion) {
       new RegExp(`version:\\s*"${oldVersion.replace(/\./g, '\\.')}"`, 'g'), // nosemgrep: javascript.lang.security.audit.detect-non-literal-regexp.detect-non-literal-regexp, javascript_dos_rule-non-literal-regexp -- RegExp from trusted local version string
       `version: "${newVersion}"`
     )
-    // __version__ = "0.7.1"
+    // __version__ = "0.7.2"
     updated = updated.replace(
       // eslint-disable-next-line security/detect-non-literal-regexp -- RegExp constructed from trusted local version string, not user input
       new RegExp(`__version__ = "${oldVersion.replace(/\./g, '\\.')}"`, 'g'), // nosemgrep: javascript.lang.security.audit.detect-non-literal-regexp.detect-non-literal-regexp, javascript_dos_rule-non-literal-regexp -- RegExp from trusted local version string
@@ -168,7 +169,7 @@ function updateVersionInFile(filePath, oldVersion, newVersion) {
       new RegExp(`__version__ = '${oldVersion.replace(/\./g, '\\.')}'`, 'g'), // nosemgrep: javascript.lang.security.audit.detect-non-literal-regexp.detect-non-literal-regexp, javascript_dos_rule-non-literal-regexp -- RegExp from trusted local version string
       `__version__ = '${newVersion}'`
     )
-    // const VERSION = '0.7.1' or const VERSION = "0.7.1"
+    // const VERSION = '0.7.2' or const VERSION = "0.7.2"
     updated = updated.replace(
       // eslint-disable-next-line security/detect-non-literal-regexp -- RegExp constructed from trusted local version string, not user input
       new RegExp(`const VERSION = '${oldVersion.replace(/\./g, '\\.')}'`, 'g'), // nosemgrep: javascript.lang.security.audit.detect-non-literal-regexp.detect-non-literal-regexp, javascript_dos_rule-non-literal-regexp -- RegExp from trusted local version string
@@ -180,7 +181,7 @@ function updateVersionInFile(filePath, oldVersion, newVersion) {
       `const VERSION = "${newVersion}"`
     )
   } else if (filePath.endsWith('.py')) {
-    // Python: __version__ = "0.7.1"
+    // Python: __version__ = "0.7.2"
     updated = updated.replace(
       // eslint-disable-next-line security/detect-non-literal-regexp -- RegExp constructed from trusted local version string, not user input
       new RegExp(`__version__ = "${oldVersion.replace(/\./g, '\\.')}"`, 'g'), // nosemgrep: javascript.lang.security.audit.detect-non-literal-regexp.detect-non-literal-regexp, javascript_dos_rule-non-literal-regexp -- RegExp from trusted local version string
@@ -329,6 +330,30 @@ async function main() {
     // CLI script exits with error status
     process.exit(1)
   }
+
+  // Step 5b: Normalize the main PyPI pyproject structure defensively.
+  const normalizeResult = normalizeMainPyprojectFile(path.join(ROOT, 'pypi', 'gasoline-mcp', 'pyproject.toml'), {
+    write: true
+  })
+  if (normalizeResult.changed) {
+    const normalizedRelPath = path.relative(ROOT, normalizeResult.filePath)
+    if (!updated.includes(normalizedRelPath)) {
+      updated.push(normalizedRelPath)
+    }
+    log('yellow', '⚠', `Normalized ${normalizedRelPath} (moved dependencies under [project])`)
+  }
+
+  const mainPyprojectPath = path.join(ROOT, 'pypi', 'gasoline-mcp', 'pyproject.toml')
+  const mainPyprojectContent = fs.readFileSync(mainPyprojectPath, 'utf8')
+  const metadataValidation = validateMainPyprojectContent(mainPyprojectContent, { expectedVersion: newVersion })
+  if (!metadataValidation.valid) {
+    log('red', 'ERROR:', 'PyPI main package metadata validation failed:')
+    for (const validationError of metadataValidation.errors) {
+      log('red', '  -', validationError)
+    }
+    process.exit(1)
+  }
+  log('green', '✓', 'PyPI main package metadata validated')
 
   // Step 6: Validate package.json dependencies
   log('cyan', '=>', '')

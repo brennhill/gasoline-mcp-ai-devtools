@@ -2,7 +2,7 @@
 set -euo pipefail
 
 PLATFORMS=("darwin-arm64" "darwin-x64" "linux-arm64" "linux-x64" "win32-x64")
-VERSION="0.7.1"
+VERSION="0.7.2"
 
 for platform in "${PLATFORMS[@]}"; do
     pkg_name="gasoline-mcp-${platform}"
@@ -28,7 +28,7 @@ name = "${pkg_name}"
 version = "${VERSION}"
 description = "Gasoline MCP binary for ${platform}"
 requires-python = ">=3.8"
-license = {text = "AGPL-3.0-only"}
+license = "AGPL-3.0-only"
 authors = [
     {name = "Brennan Hill", email = "noreply@cookwithgasoline.com"}
 ]

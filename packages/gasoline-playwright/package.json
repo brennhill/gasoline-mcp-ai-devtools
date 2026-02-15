@@ -1,6 +1,6 @@
 {
   "name": "@anthropic/gasoline-playwright",
-  "version": "0.7.1",
+  "version": "0.7.2",
   "description": "Playwright fixture for Gasoline CI browser observability",
   "main": "index.js",
   "types": "index.d.ts",
@@ -11,7 +11,7 @@
     "@playwright/test": ">=1.40.0"
   },
   "dependencies": {
-    "@anthropic/gasoline-ci": "0.7.1"
+    "@anthropic/gasoline-ci": "0.7.2"
   },
   "files": [
     "index.js",

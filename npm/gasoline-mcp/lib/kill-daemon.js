@@ -51,7 +51,8 @@ function runForceCleanupCommands() {
 
 function killByProcessName() {
   if (process.platform === 'win32') {
-    for (const image of ['gasoline.exe', 'gasoline-mcp.exe', 'dev-console.exe']) {
+    // Use wildcards so renamed test binaries (e.g. gasoline-old.exe) are cleaned too.
+    for (const image of ['gasoline*.exe', 'gasoline-mcp*.exe', 'dev-console*.exe']) {
       safeExec(`taskkill /F /IM ${image} 2>nul`);
     }
     return;
@@ -99,6 +100,34 @@ function killByKnownPorts() {
   }
 }
 
+function readPidFromFile(filePath) {
+  try {
+    const raw = fs.readFileSync(filePath, 'utf8').trim();
+    const pid = Number.parseInt(raw, 10);
+    if (!Number.isFinite(pid) || pid <= 0) return 0;
+    return pid;
+  } catch (_) {
+    return 0;
+  }
+}
+
+function killPid(pid) {
+  if (!pid || pid <= 0) return;
+  logLine(`[pid] ${pid}`);
+  if (DRY_RUN) return;
+
+  if (process.platform === 'win32') {
+    safeExec(`taskkill /F /PID ${pid} /T 2>nul`);
+    return;
+  }
+
+  try {
+    process.kill(pid, 'SIGKILL');
+  } catch (_) {
+    // Best effort only.
+  }
+}
+
 function cleanupPIDFiles() {
   const home = process.env.HOME || process.env.USERPROFILE || os.homedir();
   const modernRoot = path.join(home, '.gasoline', 'run');
@@ -107,16 +136,50 @@ function cleanupPIDFiles() {
     roots.push(path.join(process.env.XDG_STATE_HOME, 'gasoline', 'run'));
   }
 
-  for (const port of KNOWN_PORTS) {
-    for (const root of roots) {
-      try {
-        fs.rmSync(path.join(root, `gasoline-${port}.pid`), { force: true });
-      } catch (_) {
-        // Best effort only.
+  const pidFiles = new Set();
+
+  for (const root of roots) {
+    try {
+      for (const entry of fs.readdirSync(root)) {
+        if (entry.startsWith('gasoline-') && entry.endsWith('.pid')) {
+          pidFiles.add(path.join(root, entry));
+        }
+        if (entry.startsWith('dev-console-') && entry.endsWith('.pid')) {
+          pidFiles.add(path.join(root, entry));
+        }
+      }
+    } catch (_) {
+      // Best effort only.
+    }
+  }
+
+  try {
+    for (const entry of fs.readdirSync(home)) {
+      if (entry.startsWith('.gasoline-') && entry.endsWith('.pid')) {
+        pidFiles.add(path.join(home, entry));
+      }
+      if (entry.startsWith('.dev-console-') && entry.endsWith('.pid')) {
+        pidFiles.add(path.join(home, entry));
       }
     }
+  } catch (_) {
+    // Best effort only.
+  }
+
+  for (const port of KNOWN_PORTS) {
+    for (const root of roots) {
+      pidFiles.add(path.join(root, `gasoline-${port}.pid`));
+      pidFiles.add(path.join(root, `dev-console-${port}.pid`));
+    }
+    pidFiles.add(path.join(home, `.gasoline-${port}.pid`));
+    pidFiles.add(path.join(home, `.dev-console-${port}.pid`));
+  }
+
+  for (const pidPath of pidFiles) {
+    const pid = readPidFromFile(pidPath);
+    killPid(pid);
     try {
-      fs.rmSync(path.join(home, `.gasoline-${port}.pid`), { force: true });
+      fs.rmSync(pidPath, { force: true });
     } catch (_) {
       // Best effort only.
     }

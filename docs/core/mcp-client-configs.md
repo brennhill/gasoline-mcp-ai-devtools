@@ -76,7 +76,7 @@ All clients should use the same configuration pattern for consistency:
 Update all configs to a new version:
 
 ```bash
-VERSION="0.7.1"
+VERSION="0.7.2"
 
 # Claude Desktop
 sed -i '' "s/gasoline-mcp@[0-9.]*\"/gasoline-mcp@$VERSION\"/g" \

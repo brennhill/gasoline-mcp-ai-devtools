@@ -1,9 +1,9 @@
 Metadata-Version: 2.4
 Name: gasoline-mcp
-Version: 6.0.3
+Version: 0.7.2
 Summary: Gasoline MCP is an AI Debugger, Inspector, and Observability toolkit. It acts as Chrome DevTools for AI Agents using the Model Context Protocol (MCP).
 Author-email: Brennan Hill <noreply@cookwithgasoline.com>
-License: AGPL-3.0-only
+License-Expression: AGPL-3.0-only
 Project-URL: Homepage, https://cookwithgasoline.com
 Project-URL: Documentation, https://cookwithgasoline.com/getting-started/
 Project-URL: Repository, https://github.com/brennhill/gasoline-mcp-ai-devtools
@@ -11,7 +11,6 @@ Project-URL: Issues, https://github.com/brennhill/gasoline-mcp-ai-devtools/issue
 Keywords: mcp,mcp-server,ai-debugging,ai-observability,llm-ops,devtools,prompt-engineering,agent-inspection
 Classifier: Development Status :: 4 - Beta
 Classifier: Intended Audience :: Developers
-Classifier: License :: OSI Approved :: GNU Affero General Public License v3
 Classifier: Programming Language :: Python :: 3
 Classifier: Programming Language :: Python :: 3.8
 Classifier: Programming Language :: Python :: 3.9
@@ -22,16 +21,11 @@ Classifier: Topic :: Software Development :: Debuggers
 Classifier: Topic :: Software Development :: Testing
 Requires-Python: >=3.8
 Description-Content-Type: text/markdown
-Provides-Extra: darwin-arm64
-Requires-Dist: gasoline-mcp-darwin-arm64==6.0.3; extra == "darwin-arm64"
-Provides-Extra: darwin-x64
-Requires-Dist: gasoline-mcp-darwin-x64==6.0.3; extra == "darwin-x64"
-Provides-Extra: linux-arm64
-Requires-Dist: gasoline-mcp-linux-arm64==6.0.3; extra == "linux-arm64"
-Provides-Extra: linux-x64
-Requires-Dist: gasoline-mcp-linux-x64==6.0.3; extra == "linux-x64"
-Provides-Extra: win32-x64
-Requires-Dist: gasoline-mcp-win32-x64==6.0.3; extra == "win32-x64"
+Requires-Dist: gasoline-mcp-darwin-arm64==0.7.2; sys_platform == "darwin" and platform_machine == "arm64"
+Requires-Dist: gasoline-mcp-darwin-x64==0.7.2; sys_platform == "darwin" and platform_machine == "x86_64"
+Requires-Dist: gasoline-mcp-linux-arm64==0.7.2; sys_platform == "linux" and platform_machine == "aarch64"
+Requires-Dist: gasoline-mcp-linux-x64==0.7.2; sys_platform == "linux" and platform_machine == "x86_64"
+Requires-Dist: gasoline-mcp-win32-x64==0.7.2; sys_platform == "win32"
 
 # Gasoline MCP
 
@@ -58,8 +52,7 @@ Add to your `claude_desktop_config.json`:
   "mcpServers": {
     "gasoline": {
       "type": "stdio",
-      "command": "gasoline-mcp",
-      "args": ["--port", "7890", "--persist"]
+      "command": "gasoline-mcp"
     }
   }
 }
@@ -74,8 +67,7 @@ Add to your `.mcp.json`:
   "mcpServers": {
     "gasoline": {
       "type": "stdio",
-      "command": "gasoline-mcp",
-      "args": ["--port", "7890", "--persist"]
+      "command": "gasoline-mcp"
     }
   }
 }
@@ -84,7 +76,7 @@ Add to your `.mcp.json`:
 ### Standalone
 
 ```bash
-gasoline-mcp --port 7890
+gasoline-mcp
 ```
 
 ## Chrome Extension
