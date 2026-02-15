@@ -437,7 +437,14 @@ pypi-binaries: build
 	@echo "Binaries copied successfully"
 
 pypi-preflight:
-	@python3 -c 'import importlib.util,sys; missing=[n for n in ("build","setuptools","wheel") if importlib.util.find_spec(n) is None]; (print("ERROR: Missing Python build modules: " + ", ".join(missing)), print("Install with: python3 -m pip install --upgrade build setuptools wheel"), sys.exit(1)) if missing else print("Python build modules available: build, setuptools, wheel")'
+	@python3 -c 'import importlib.util,sys; missing=[n for n in ("build","setuptools","wheel") if importlib.util.find_spec(n) is None]; \
+	print("Python build modules available: build, setuptools, wheel") if not missing else ( \
+	print("ERROR: Missing Python build modules: " + ", ".join(missing)), \
+	print("System Python may be externally managed. Use a virtual environment:") if sys.prefix==sys.base_prefix else print("Install with: python -m pip install --upgrade build setuptools wheel"), \
+	print("  python3 -m venv .venv-build") if sys.prefix==sys.base_prefix else None, \
+	print("  source .venv-build/bin/activate") if sys.prefix==sys.base_prefix else None, \
+	print("  python -m pip install --upgrade pip build setuptools wheel") if sys.prefix==sys.base_prefix else None, \
+	sys.exit(1))'
 
 pypi-schema-check:
 	@echo "Checking PyPI main pyproject normalization..."

@@ -3,7 +3,7 @@ Name: gasoline-mcp-darwin-arm64
 Version: 0.7.2
 Summary: Gasoline MCP binary for darwin-arm64
 Author-email: Brennan Hill <noreply@cookwithgasoline.com>
-License: AGPL-3.0-only
+License-Expression: AGPL-3.0-only
 Project-URL: Homepage, https://cookwithgasoline.com
 Project-URL: Repository, https://github.com/brennhill/gasoline-mcp-ai-devtools
 Requires-Python: >=3.8

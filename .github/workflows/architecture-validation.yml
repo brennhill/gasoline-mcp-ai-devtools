@@ -57,9 +57,28 @@ jobs:
             exit 1
           fi
 
-          # Fail if toolObserveCommandResult doesn't call GetCommandResult
-          # Note: tools.go was split into tools_*.go files
-          if ! grep -rA 20 'func (h \*ToolHandler) toolObserveCommandResult' cmd/dev-console/tools_*.go | grep -q 'GetCommandResult'; then
+          # Fail if toolObserveCommandResult doesn't call GetCommandResult.
+          # Parse function bodies instead of fixed grep context windows.
+          OBSERVE_IMPL_FILES=$(rg -l 'func \(h \*ToolHandler\) toolObserveCommandResult\(' cmd/dev-console/tools_*.go || true)
+          if [ -z "${OBSERVE_IMPL_FILES:-}" ]; then
+            echo "❌ STUB DETECTED in toolObserveCommandResult (implementation missing)"
+            exit 1
+          fi
+
+          OBSERVE_CALL_OK=0
+          for file in $OBSERVE_IMPL_FILES; do
+            if awk '
+              /func \(h \*ToolHandler\) toolObserveCommandResult\(/ { in_func=1; next }
+              in_func && /^func / { in_func=0 }
+              in_func && /GetCommandResult\(/ { found=1 }
+              END { exit(found ? 0 : 1) }
+            ' "$file"; then
+              OBSERVE_CALL_OK=1
+              break
+            fi
+          done
+
+          if [ "$OBSERVE_CALL_OK" -ne 1 ]; then
             echo "❌ STUB DETECTED in toolObserveCommandResult"
             exit 1
           fi
