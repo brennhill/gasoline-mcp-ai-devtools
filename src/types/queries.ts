@@ -37,6 +37,7 @@ export interface PendingQuery {
   readonly type: QueryType
   readonly params: string | Record<string, unknown>
   readonly correlation_id?: string
+  readonly tab_id?: number
 }
 
 /**

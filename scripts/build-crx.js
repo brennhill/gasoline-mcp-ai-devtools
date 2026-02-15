@@ -2,7 +2,7 @@
 
 import fs from 'fs'
 import path from 'path'
-// eslint-disable-next-line n/no-hide-core-modules -- Node built-in import, not hiding a core module
+// Node built-in import, not hiding a core module
 import crypto from 'crypto'
 import { promisify } from 'util'
 import { exec as execCallback } from 'child_process'
@@ -24,7 +24,7 @@ async function buildCRX() {
     // eslint-disable-next-line security/detect-non-literal-fs-filename -- build script paths are hardcoded constants
     if (!fs.existsSync(KEY_FILE)) {
       console.error(`❌ Private key not found at ${KEY_FILE}`)
-      // eslint-disable-next-line n/no-process-exit -- CLI script exits with error status on fatal failure
+      // CLI script exits with error status on fatal failure
       process.exit(1)
     }
 
@@ -121,7 +121,7 @@ async function buildCRX() {
         -x "*.DS_Store" "package.json"`)
     } catch (err) {
       console.error('❌ Failed to create zip:', err.message)
-      // eslint-disable-next-line n/no-process-exit -- CLI script exits with error status
+      // CLI script exits with error status
       process.exit(1)
     }
 

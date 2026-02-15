@@ -264,9 +264,37 @@ def _kill_pids_on_port(port):
 
 def _cleanup_unix():
     """Kill gasoline processes on Unix. Returns list of killed PIDs."""
-    for pattern in ["gasoline-mcp", "dev-console", "gasoline"]:
-        subprocess.run(["pkill", "-f", pattern], capture_output=True, check=False)
     killed = []
+    self_pid = os.getpid()
+    parent_pid = os.getppid()
+
+    def _should_skip(cmdline):
+        return "python" in cmdline or "node" in cmdline or "npm" in cmdline
+
+    for pattern in ["gasoline-mcp", "dev-console", "gasoline"]:
+        result = subprocess.run(
+            ["pgrep", "-af", pattern],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        for line in (result.stdout or "").strip().split("\n"):
+            if not line:
+                continue
+            parts = line.split(maxsplit=1)
+            if not parts:
+                continue
+            try:
+                pid = int(parts[0])
+            except ValueError:
+                continue
+            cmdline = parts[1] if len(parts) > 1 else ""
+            if pid <= 1 or pid in (self_pid, parent_pid):
+                continue
+            if _should_skip(cmdline):
+                continue
+            subprocess.run(["kill", "-9", str(pid)], capture_output=True, check=False)
+            killed.append(str(pid))
     for port in KNOWN_PORTS:
         killed.extend(_kill_pids_on_port(str(port)))
     return killed

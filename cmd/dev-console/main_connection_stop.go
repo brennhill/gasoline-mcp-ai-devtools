@@ -250,7 +250,10 @@ func killWindowsGasolineProcesses() int {
 
 // cleanupPIDFiles removes PID files for common port range.
 func cleanupPIDFiles() {
-	ports := []int{7890, 7891, 7892, 7893, 7894, 7895, 7896, 7897, 7898, 7899}
+	ports := []int{17890}
+	for p := 7890; p <= 7910; p++ {
+		ports = append(ports, p)
+	}
 	for _, p := range ports {
 		removePIDFile(p)
 	}

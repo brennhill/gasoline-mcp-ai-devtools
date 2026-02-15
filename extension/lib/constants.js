@@ -1,6 +1,7 @@
 /**
  * @fileoverview Shared constants for the Gasoline extension capture modules.
  */
+import { scaleTimeout } from './timeouts.js'
 // Serialization limits
 export const MAX_STRING_LENGTH = 10240 // 10KB
 export const MAX_RESPONSE_LENGTH = 5120 // 5KB
@@ -45,7 +46,7 @@ export const DOM_QUERY_MAX_TEXT = 500
 export const DOM_QUERY_MAX_DEPTH = 5
 export const DOM_QUERY_MAX_HTML = 200
 export const A11Y_MAX_NODES_PER_VIOLATION = 10
-export const ASYNC_COMMAND_TIMEOUT_MS = 60000
+export const ASYNC_COMMAND_TIMEOUT_MS = scaleTimeout(60000)
 export const A11Y_AUDIT_TIMEOUT_MS = ASYNC_COMMAND_TIMEOUT_MS
 // Memory pressure settings
 export const MEMORY_SOFT_LIMIT_MB = 20
@@ -60,7 +61,7 @@ export const AI_CONTEXT_MAX_STATE_KEYS = 10
 export const AI_CONTEXT_MAX_RELEVANT_SLICE = 10
 export const AI_CONTEXT_MAX_VALUE_LENGTH = 200
 export const AI_CONTEXT_SOURCE_MAP_CACHE_SIZE = 20
-export const AI_CONTEXT_PIPELINE_TIMEOUT_MS = 3000
+export const AI_CONTEXT_PIPELINE_TIMEOUT_MS = scaleTimeout(3000)
 // Reproduction script settings
 export const ENHANCED_ACTION_BUFFER_SIZE = 50
 export const CSS_PATH_MAX_DEPTH = 5

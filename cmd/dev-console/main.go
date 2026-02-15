@@ -20,6 +20,7 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"io"
 	"net"
 	"net/http"
 	"os"
@@ -39,7 +40,7 @@ import (
 
 // version is set at build time via -ldflags "-X main.version=..."
 // Fallback used for `go run` and `make dev` (no ldflags).
-var version = "0.7.0"
+var version = "0.7.1"
 
 // startTime tracks when the server started for uptime calculation
 var startTime = time.Now()
@@ -70,6 +71,8 @@ var (
 	// Upload automation security flags (set by CLI flags, consumed by ToolHandler)
 	osUploadAutomationFlag bool            // --enable-os-upload-automation (Stage 4 only)
 	uploadSecurityConfig   *UploadSecurity // validated upload security config
+
+	startupWarnings []string
 )
 
 // findMCPConfig checks for MCP configuration files in common locations
@@ -249,6 +252,13 @@ type serverConfig struct {
 	daemonMode bool
 }
 
+type runtimeMode string
+
+const (
+	modeBridge runtimeMode = "bridge"
+	modeDaemon runtimeMode = "daemon"
+)
+
 // parsedFlags holds the raw parsed flag values before validation.
 type parsedFlags struct {
 	port, maxEntries                                         *int
@@ -405,8 +415,10 @@ func resolveDefaultLogFile(logFile *string) {
 	}
 	defaultLogFile, err := state.DefaultLogFile()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "[gasoline] Error determining default log file: %v\n", err)
-		os.Exit(1)
+		fallback := filepath.Join(os.TempDir(), "gasoline", "logs", "gasoline.jsonl")
+		startupWarnings = append(startupWarnings, fmt.Sprintf("state_dir_unwritable: %v; falling back to %s", err, fallback))
+		*logFile = fallback
+		return
 	}
 	*logFile = defaultLogFile
 }
@@ -528,37 +540,60 @@ func detectStdinMode() (isTTY bool, stdinMode os.FileMode) {
 	return isTTY, stdinMode
 }
 
+// selectRuntimeMode decides how to run based on flags.
+// Default is bridge mode so MCP startup is reliable regardless of PTY/stdio behavior.
+func selectRuntimeMode(cfg *serverConfig, _ bool) runtimeMode {
+	if cfg.bridgeMode {
+		return modeBridge
+	}
+	if cfg.daemonMode {
+		return modeDaemon
+	}
+	return modeBridge
+}
+
 // dispatchMode selects and runs the appropriate runtime mode based on config and stdin.
 func dispatchMode(server *Server, cfg *serverConfig) {
-	if cfg.bridgeMode {
-		server.logLifecycle("bridge_mode_start", cfg.port, nil)
-		fmt.Fprintf(os.Stderr, "[gasoline] Starting in bridge mode (stdio -> HTTP)\n")
-		runBridgeMode(cfg.port, cfg.logFile, cfg.maxEntries)
-		return
+	isTTY, stdinMode := detectStdinMode()
+	mcpConfigPath := findMCPConfig()
+	mode := selectRuntimeMode(cfg, isTTY)
+	if mode == modeBridge {
+		setStderrSink(io.Discard)
+	} else {
+		setStderrSink(os.Stderr)
 	}
 
-	if cfg.daemonMode {
+	server.logLifecycle("mode_detection", cfg.port, map[string]any{
+		"is_tty":          isTTY,
+		"stdin_mode":      fmt.Sprintf("%v", stdinMode),
+		"has_mcp_config":  mcpConfigPath != "",
+		"selected_runtime": mode,
+	})
+
+	switch mode {
+	case modeDaemon:
 		server.logLifecycle("daemon_mode_start", cfg.port, nil)
 		if err := runMCPMode(server, cfg.port, cfg.apiKey); err != nil {
-			fmt.Fprintf(os.Stderr, "[gasoline] Daemon error: %v\n", err)
+			stderrf("[gasoline] Daemon error: %v\n", err)
 			os.Exit(1)
 		}
 		return
-	}
-
-	isTTY, stdinMode := detectStdinMode()
-	server.logLifecycle("mode_detection", cfg.port, map[string]any{
-		"is_tty":     isTTY,
-		"stdin_mode": fmt.Sprintf("%v", stdinMode),
-	})
-
-	if isTTY {
-		runTTYMode(server, cfg)
+	case modeBridge:
+		server.logLifecycle("bridge_mode_start", cfg.port, nil)
+		if cfg.bridgeMode {
+			stderrf("[gasoline] Starting in bridge mode (stdio -> HTTP)\n")
+		} else if isTTY && mcpConfigPath != "" {
+			stderrf("[gasoline] MCP config detected at %s; running in bridge mode for tool compatibility.\n", mcpConfigPath)
+		} else if isTTY {
+			stderrf("[gasoline] Running in bridge mode by default. Use --daemon for server-only mode.\n")
+		}
+		runBridgeMode(cfg.port, cfg.logFile, cfg.maxEntries)
+		return
+	default:
+		// Defensive fallback (should be unreachable).
+		runBridgeMode(cfg.port, cfg.logFile, cfg.maxEntries)
 		return
 	}
-
-	// stdin is piped -> MCP mode (HTTP + MCP protocol)
-	runBridgeMode(cfg.port, cfg.logFile, cfg.maxEntries)
 }
 
 func main() {
@@ -578,6 +613,9 @@ func main() {
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "[gasoline] Error creating server: %v\n", err)
 		os.Exit(1)
+	}
+	for _, warning := range startupWarnings {
+		server.AddWarning(warning)
 	}
 
 	dispatchMode(server, cfg)

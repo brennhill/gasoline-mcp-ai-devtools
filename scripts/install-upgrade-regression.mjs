@@ -192,13 +192,31 @@ function ensureMcpRoundTrip(binaryPath, port, env) {
   }
 }
 
-async function expectDaemonVersion(port, expectedVersion, timeoutMs = 20000) {
+function resolveServiceName(health) {
+  if (!health || typeof health !== 'object') {
+    return ''
+  }
+  const dashed = typeof health['service-name'] === 'string' ? health['service-name'].trim() : ''
+  if (dashed) {
+    return dashed
+  }
+  return typeof health.service_name === 'string' ? health.service_name.trim() : ''
+}
+
+async function expectDaemonIdentity(port, expectedVersion, timeoutMs = 20000) {
   const health = await waitForPortHealth(port, timeoutMs)
   if (!health) {
     fail(`daemon on port ${port} did not become healthy`)
   }
-  if (health.version !== expectedVersion) {
-    fail(`daemon version mismatch on port ${port}`, `expected=${expectedVersion} actual=${health.version}`)
+
+  const serviceName = resolveServiceName(health)
+  if (serviceName.toLowerCase() !== 'gasoline') {
+    fail(`daemon service-name mismatch on port ${port}`, `expected=gasoline actual=${serviceName || '<missing>'}`)
+  }
+
+  const runningVersion = typeof health.version === 'string' ? health.version.trim() : ''
+  if (runningVersion !== expectedVersion) {
+    fail(`daemon version mismatch on port ${port}`, `expected=${expectedVersion} actual=${runningVersion || '<missing>'}`)
   }
 }
 
@@ -246,10 +264,10 @@ async function main() {
   try {
     info('stage 1: go wrapper version-mismatch recycle')
     daemon = startDaemon(oldBinary, port, envWithShims)
-    await expectDaemonVersion(port, '0.0.1')
+    await expectDaemonIdentity(port, '0.0.1')
     const oldPid = daemon.pid
     ensureMcpRoundTrip(newBinary, port, envWithShims)
-    await expectDaemonVersion(port, version)
+    await expectDaemonIdentity(port, version)
     await waitForChildExit(daemon, 12000)
     const newPid = readPidFile(pidFile)
     if (!newPid || newPid === oldPid) {
@@ -259,7 +277,7 @@ async function main() {
 
     info('stage 2: npm cleanup kills old daemon + pid file')
     daemon = startDaemon(oldBinary, port, envWithShims)
-    await expectDaemonVersion(port, '0.0.1')
+    await expectDaemonIdentity(port, '0.0.1')
     run('node', ['npm/gasoline-mcp/lib/kill-daemon.js'], { env: envWithShims })
     await waitForChildExit(daemon, 12000)
     if (fs.existsSync(pidFile)) {
@@ -268,7 +286,7 @@ async function main() {
 
     info('stage 3: pypi cleanup kills old daemon + pid file')
     daemon = startDaemon(oldBinary, port, envWithShims)
-    await expectDaemonVersion(port, '0.0.1')
+    await expectDaemonIdentity(port, '0.0.1')
     run(
       python,
       [

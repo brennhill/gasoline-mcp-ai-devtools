@@ -23,8 +23,7 @@ Add to your `claude_desktop_config.json`:
   "mcpServers": {
     "gasoline": {
       "type": "stdio",
-      "command": "gasoline-mcp",
-      "args": ["--port", "7890", "--persist"]
+      "command": "gasoline-mcp"
     }
   }
 }
@@ -39,8 +38,7 @@ Add to your `.mcp.json`:
   "mcpServers": {
     "gasoline": {
       "type": "stdio",
-      "command": "gasoline-mcp",
-      "args": ["--port", "7890", "--persist"]
+      "command": "gasoline-mcp"
     }
   }
 }
@@ -49,7 +47,7 @@ Add to your `.mcp.json`:
 ### Standalone
 
 ```bash
-gasoline-mcp --port 7890
+gasoline-mcp
 ```
 
 ## Chrome Extension

@@ -1145,3 +1145,17 @@ All endpoints require `X-Gasoline-Client` header with value `gasoline-extension`
 **MIME Type**: text/markdown
 
 **Content**: Comprehensive usage guide with tool reference table, key patterns (pagination, async commands, error debugging), common workflows, and tips.
+
+### gasoline://quickstart
+
+**Name**: Gasoline MCP Quickstart
+
+**MIME Type**: text/markdown
+
+**Content**: Short canonical MCP call examples for health, observe, analyze, and recording workflows.
+
+### Resource templates
+
+**Template**: gasoline://demo/{name}
+
+**Description**: Demo scripts for websockets, annotations, recording, and dependency vetting.

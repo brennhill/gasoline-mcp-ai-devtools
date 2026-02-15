@@ -21,7 +21,7 @@ Create `.mcp.json` in your project root:
     "gasoline": {
       "type": "stdio",
       "command": "npx",
-      "args": ["-y", "gasoline-mcp", "--port", "7890", "--persist"]
+      "args": ["-y", "gasoline-mcp"]
     }
   }
 }
@@ -39,7 +39,7 @@ Available in all projects — add to `~/.claude/settings.json`:
     "gasoline": {
       "type": "stdio",
       "command": "npx",
-      "args": ["-y", "gasoline-mcp", "--port", "7890", "--persist"]
+      "args": ["-y", "gasoline-mcp"]
     }
   }
 }

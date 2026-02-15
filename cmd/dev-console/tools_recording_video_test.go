@@ -482,6 +482,13 @@ func TestHandleRecordStartAndStop(t *testing.T) {
 	if startData["status"] != "queued" {
 		t.Fatalf("record_start status = %v, want queued", startData["status"])
 	}
+	if startData["requires_user_gesture"] != true {
+		t.Fatalf("record_start requires_user_gesture = %v, want true", startData["requires_user_gesture"])
+	}
+	userPrompt, _ := startData["user_prompt"].(string)
+	if !strings.Contains(strings.ToLower(userPrompt), "click the gasoline icon") {
+		t.Fatalf("record_start user_prompt = %q, want guidance to click the Gasoline icon", userPrompt)
+	}
 	if int(startData["fps"].(float64)) != 60 {
 		t.Fatalf("record_start fps = %v, want clamped 60", startData["fps"])
 	}

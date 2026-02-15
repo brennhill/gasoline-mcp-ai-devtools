@@ -65,6 +65,6 @@ try {
   console.log('✅ Offscreen recording script bundled successfully')
 } catch (error) {
   console.error('❌ Script bundling failed:', error)
-  // eslint-disable-next-line n/no-process-exit -- CLI script exits with error status on build failure
+  // CLI script exits with error status on build failure
   process.exit(1)
 }

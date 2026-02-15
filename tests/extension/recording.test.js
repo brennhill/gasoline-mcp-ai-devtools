@@ -164,6 +164,26 @@ function simulateOffscreenStopped(overrides = {}) {
   }
 }
 
+// Simulate popup gesture grant that unblocks MCP-initiated recording start.
+function simulateRecordingGestureGranted() {
+  const message = { type: 'RECORDING_GESTURE_GRANTED' }
+  for (const listener of [...onMessageListeners]) {
+    listener(message)
+  }
+}
+
+async function waitForPendingRecordingIntent(timeoutMs = 2500) {
+  const deadline = Date.now() + timeoutMs
+  while (Date.now() < deadline) {
+    const hasPendingIntent = globalThis.chrome.storage.local.set.mock.calls.some(
+      (call) => call.arguments[0]?.gasoline_pending_recording
+    )
+    if (hasPendingIntent) return
+    await new Promise((r) => setTimeout(r, 20))
+  }
+  throw new Error('Timed out waiting for pending recording gesture setup')
+}
+
 // =============================================================================
 // MODULE IMPORT
 // =============================================================================
@@ -300,6 +320,68 @@ describe('startRecording with no active tab', () => {
     assert.strictEqual(result.status, 'error')
     assert.ok(result.error.includes('No active tab'))
     assert.strictEqual(isRecording(), false)
+  })
+})
+
+// =============================================================================
+// MCP-INITIATED RECORDING FLOW
+// =============================================================================
+
+describe('MCP-initiated recording flow', () => {
+  afterEach(async () => {
+    if (isRecording()) {
+      const stopPromise = stopRecording()
+      await new Promise((r) => setTimeout(r, 50))
+      simulateOffscreenStopped()
+      await stopPromise.catch(() => {})
+    }
+  })
+
+  test('should activate the target tab and show permission toast on that tab', async () => {
+    globalThis.chrome = createRecordingChromeMock({
+      tabsQueryResult: [{ id: 42, url: 'http://active-tab.example', title: 'Active Tab' }]
+    })
+    globalThis.chrome.tabs.get = mock.fn((tabId) =>
+      Promise.resolve({
+        id: tabId,
+        windowId: 1,
+        status: 'complete',
+        url: `http://target-${tabId}.example`,
+        title: 'Target Tab'
+      })
+    )
+
+    const startPromise = startRecording('mcp-target-tab', 15, 'query-mcp-1', '', false, 77)
+
+    await waitForPendingRecordingIntent()
+    simulateRecordingGestureGranted()
+
+    // Allow recording startup to reach offscreen handshake.
+    await new Promise((r) => setTimeout(r, 50))
+    simulateOffscreenStarted(true)
+
+    const result = await startPromise
+    assert.strictEqual(result.status, 'recording')
+
+    const updateCalls = globalThis.chrome.tabs.update.mock.calls
+    const activatedTarget = updateCalls.some(
+      (c) => c.arguments[0] === 77 && c.arguments[1]?.active === true
+    )
+    assert.ok(activatedTarget, 'Should activate target tab for MCP recording')
+
+    const toastCalls = globalThis.chrome.tabs.sendMessage.mock.calls
+    const permissionToastOnTarget = toastCalls.some(
+      (c) =>
+        c.arguments[0] === 77 &&
+        c.arguments[1]?.type === 'GASOLINE_ACTION_TOAST' &&
+        String(c.arguments[1]?.text || '').includes('Click Gasoline Icon')
+    )
+    assert.ok(permissionToastOnTarget, 'Should show click-icon permission toast on target tab')
+
+    const stopPromise = stopRecording()
+    await new Promise((r) => setTimeout(r, 50))
+    simulateOffscreenStopped()
+    await stopPromise
   })
 })
 

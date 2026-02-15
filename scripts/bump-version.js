@@ -15,7 +15,7 @@
 
 import fs from 'fs'
 import path from 'path'
-// eslint-disable-next-line n/no-hide-core-modules -- Node built-in import, not hiding a core module
+// Node built-in import, not hiding a core module
 import { fileURLToPath } from 'url'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
@@ -113,117 +113,117 @@ function updateVersionInFile(filePath, oldVersion, newVersion) {
   if (filePath.endsWith('.json')) {
     // JSON files: "version": "6.0.1"
     updated = updated.replace(
-      // eslint-disable-next-line security/detect-non-literal-regexp, security-node/non-literal-reg-expr -- RegExp constructed from trusted local version string, not user input
+      // eslint-disable-next-line security/detect-non-literal-regexp -- RegExp constructed from trusted local version string, not user input
       new RegExp(`"version":\\s*"${oldVersion.replace(/\./g, '\\.')}"`, 'g'), // nosemgrep: javascript.lang.security.audit.detect-non-literal-regexp.detect-non-literal-regexp, javascript_dos_rule-non-literal-regexp -- RegExp from trusted local version string
       `"version": "${newVersion}"`
     )
     // optionalDependencies: "@package": "6.0.1"
     updated = updated.replace(
-      // eslint-disable-next-line security/detect-non-literal-regexp, security-node/non-literal-reg-expr -- RegExp constructed from trusted local version string, not user input
+      // eslint-disable-next-line security/detect-non-literal-regexp -- RegExp constructed from trusted local version string, not user input
       new RegExp(`"(@\\w+/[^"]+)":\\s*"${oldVersion.replace(/\./g, '\\.')}"`, 'g'), // nosemgrep: javascript.lang.security.audit.detect-non-literal-regexp.detect-non-literal-regexp, javascript_dos_rule-non-literal-regexp -- RegExp from trusted local version string
       `"$1": "${newVersion}"`
     )
     // JSON example values: "example": "6.0.1"
     updated = updated.replace(
-      // eslint-disable-next-line security/detect-non-literal-regexp, security-node/non-literal-reg-expr -- RegExp constructed from trusted local version string, not user input
+      // eslint-disable-next-line security/detect-non-literal-regexp -- RegExp constructed from trusted local version string, not user input
       new RegExp(`"example":\\s*"${oldVersion.replace(/\./g, '\\.')}"`, 'g'), // nosemgrep: javascript.lang.security.audit.detect-non-literal-regexp.detect-non-literal-regexp, javascript_dos_rule-non-literal-regexp -- RegExp from trusted local version string
       `"example": "${newVersion}"`
     )
   } else if (filePath.endsWith('.go')) {
     // Go: var version = "6.0.1"
     updated = updated.replace(
-      // eslint-disable-next-line security/detect-non-literal-regexp, security-node/non-literal-reg-expr -- RegExp constructed from trusted local version string, not user input
+      // eslint-disable-next-line security/detect-non-literal-regexp -- RegExp constructed from trusted local version string, not user input
       new RegExp(`version = "${oldVersion.replace(/\./g, '\\.')}"`, 'g'), // nosemgrep: javascript.lang.security.audit.detect-non-literal-regexp.detect-non-literal-regexp, javascript_dos_rule-non-literal-regexp -- RegExp from trusted local version string
       `version = "${newVersion}"`
     )
     // Go const
     updated = updated.replace(
-      // eslint-disable-next-line security/detect-non-literal-regexp, security-node/non-literal-reg-expr -- RegExp constructed from trusted local version string, not user input
+      // eslint-disable-next-line security/detect-non-literal-regexp -- RegExp constructed from trusted local version string, not user input
       new RegExp(`const version = "${oldVersion.replace(/\./g, '\\.')}"`, 'g'), // nosemgrep: javascript.lang.security.audit.detect-non-literal-regexp.detect-non-literal-regexp, javascript_dos_rule-non-literal-regexp -- RegExp from trusted local version string
       `const version = "${newVersion}"`
     )
     // Go User-Agent: "Gasoline/6.0.3 ..."
-    // eslint-disable-next-line security/detect-non-literal-regexp, security-node/non-literal-reg-expr -- RegExp constructed from trusted local version string, not user input
+    // eslint-disable-next-line security/detect-non-literal-regexp -- RegExp constructed from trusted local version string, not user input
     updated = updated.replace(new RegExp(`Gasoline/${oldVersion.replace(/\./g, '\\.')}`, 'g'), `Gasoline/${newVersion}`) // nosemgrep: javascript.lang.security.audit.detect-non-literal-regexp.detect-non-literal-regexp, javascript_dos_rule-non-literal-regexp -- RegExp from trusted local version string
   } else if (filePath.endsWith('.js') || filePath.endsWith('.ts')) {
     // JavaScript/TypeScript: version: '6.0.1' or version: "6.0.1"
     updated = updated.replace(
-      // eslint-disable-next-line security/detect-non-literal-regexp, security-node/non-literal-reg-expr -- RegExp constructed from trusted local version string, not user input
+      // eslint-disable-next-line security/detect-non-literal-regexp -- RegExp constructed from trusted local version string, not user input
       new RegExp(`version:\\s*'${oldVersion.replace(/\./g, '\\.')}'`, 'g'), // nosemgrep: javascript.lang.security.audit.detect-non-literal-regexp.detect-non-literal-regexp, javascript_dos_rule-non-literal-regexp -- RegExp from trusted local version string
       `version: '${newVersion}'`
     )
     updated = updated.replace(
-      // eslint-disable-next-line security/detect-non-literal-regexp, security-node/non-literal-reg-expr -- RegExp constructed from trusted local version string, not user input
+      // eslint-disable-next-line security/detect-non-literal-regexp -- RegExp constructed from trusted local version string, not user input
       new RegExp(`version:\\s*"${oldVersion.replace(/\./g, '\\.')}"`, 'g'), // nosemgrep: javascript.lang.security.audit.detect-non-literal-regexp.detect-non-literal-regexp, javascript_dos_rule-non-literal-regexp -- RegExp from trusted local version string
       `version: "${newVersion}"`
     )
-    // __version__ = "0.7.0"
+    // __version__ = "0.7.1"
     updated = updated.replace(
-      // eslint-disable-next-line security/detect-non-literal-regexp, security-node/non-literal-reg-expr -- RegExp constructed from trusted local version string, not user input
+      // eslint-disable-next-line security/detect-non-literal-regexp -- RegExp constructed from trusted local version string, not user input
       new RegExp(`__version__ = "${oldVersion.replace(/\./g, '\\.')}"`, 'g'), // nosemgrep: javascript.lang.security.audit.detect-non-literal-regexp.detect-non-literal-regexp, javascript_dos_rule-non-literal-regexp -- RegExp from trusted local version string
       `__version__ = "${newVersion}"`
     )
     updated = updated.replace(
-      // eslint-disable-next-line security/detect-non-literal-regexp, security-node/non-literal-reg-expr -- RegExp constructed from trusted local version string, not user input
+      // eslint-disable-next-line security/detect-non-literal-regexp -- RegExp constructed from trusted local version string, not user input
       new RegExp(`__version__ = '${oldVersion.replace(/\./g, '\\.')}'`, 'g'), // nosemgrep: javascript.lang.security.audit.detect-non-literal-regexp.detect-non-literal-regexp, javascript_dos_rule-non-literal-regexp -- RegExp from trusted local version string
       `__version__ = '${newVersion}'`
     )
-    // const VERSION = '0.7.0' or const VERSION = "0.7.0"
+    // const VERSION = '0.7.1' or const VERSION = "0.7.1"
     updated = updated.replace(
-      // eslint-disable-next-line security/detect-non-literal-regexp, security-node/non-literal-reg-expr -- RegExp constructed from trusted local version string, not user input
+      // eslint-disable-next-line security/detect-non-literal-regexp -- RegExp constructed from trusted local version string, not user input
       new RegExp(`const VERSION = '${oldVersion.replace(/\./g, '\\.')}'`, 'g'), // nosemgrep: javascript.lang.security.audit.detect-non-literal-regexp.detect-non-literal-regexp, javascript_dos_rule-non-literal-regexp -- RegExp from trusted local version string
       `const VERSION = '${newVersion}'`
     )
     updated = updated.replace(
-      // eslint-disable-next-line security/detect-non-literal-regexp, security-node/non-literal-reg-expr -- RegExp constructed from trusted local version string, not user input
+      // eslint-disable-next-line security/detect-non-literal-regexp -- RegExp constructed from trusted local version string, not user input
       new RegExp(`const VERSION = "${oldVersion.replace(/\./g, '\\.')}"`, 'g'), // nosemgrep: javascript.lang.security.audit.detect-non-literal-regexp.detect-non-literal-regexp, javascript_dos_rule-non-literal-regexp -- RegExp from trusted local version string
       `const VERSION = "${newVersion}"`
     )
   } else if (filePath.endsWith('.py')) {
-    // Python: __version__ = "0.7.0"
+    // Python: __version__ = "0.7.1"
     updated = updated.replace(
-      // eslint-disable-next-line security/detect-non-literal-regexp, security-node/non-literal-reg-expr -- RegExp constructed from trusted local version string, not user input
+      // eslint-disable-next-line security/detect-non-literal-regexp -- RegExp constructed from trusted local version string, not user input
       new RegExp(`__version__ = "${oldVersion.replace(/\./g, '\\.')}"`, 'g'), // nosemgrep: javascript.lang.security.audit.detect-non-literal-regexp.detect-non-literal-regexp, javascript_dos_rule-non-literal-regexp -- RegExp from trusted local version string
       `__version__ = "${newVersion}"`
     )
   } else if (filePath.endsWith('.toml')) {
     // TOML: version = "6.0.1"
     updated = updated.replace(
-      // eslint-disable-next-line security/detect-non-literal-regexp, security-node/non-literal-reg-expr -- RegExp constructed from trusted local version string, not user input
+      // eslint-disable-next-line security/detect-non-literal-regexp -- RegExp constructed from trusted local version string, not user input
       new RegExp(`version = "${oldVersion.replace(/\./g, '\\.')}"`, 'g'), // nosemgrep: javascript.lang.security.audit.detect-non-literal-regexp.detect-non-literal-regexp, javascript_dos_rule-non-literal-regexp -- RegExp from trusted local version string
       `version = "${newVersion}"`
     )
     // Dependencies in TOML (PEP 440: ==6.0.3)
-    // eslint-disable-next-line security/detect-non-literal-regexp, security-node/non-literal-reg-expr -- RegExp constructed from trusted local version string, not user input
+    // eslint-disable-next-line security/detect-non-literal-regexp -- RegExp constructed from trusted local version string, not user input
     updated = updated.replace(new RegExp(`==${oldVersion.replace(/\./g, '\\.')}`, 'g'), `==${newVersion}`) // nosemgrep: javascript.lang.security.audit.detect-non-literal-regexp.detect-non-literal-regexp, javascript_dos_rule-non-literal-regexp -- RegExp from trusted local version string
   } else if (filePath.endsWith('.md')) {
     // Markdown: version-6.0.1-green or just 6.0.1
-    // eslint-disable-next-line security/detect-non-literal-regexp, security-node/non-literal-reg-expr -- RegExp constructed from trusted local version string, not user input
+    // eslint-disable-next-line security/detect-non-literal-regexp -- RegExp constructed from trusted local version string, not user input
     updated = updated.replace(new RegExp(oldVersion.replace(/\./g, '\\.'), 'g'), newVersion) // nosemgrep: javascript.lang.security.audit.detect-non-literal-regexp.detect-non-literal-regexp, javascript_dos_rule-non-literal-regexp -- RegExp from trusted local version string
   } else if (filePath.endsWith('.yaml') || filePath.endsWith('.yml')) {
     // YAML: version: 6.0.1 or version: "6.0.1"
-    // eslint-disable-next-line security/detect-non-literal-regexp, security-node/non-literal-reg-expr -- RegExp constructed from trusted local version string, not user input
+    // eslint-disable-next-line security/detect-non-literal-regexp -- RegExp constructed from trusted local version string, not user input
     updated = updated.replace(new RegExp(`version: ${oldVersion.replace(/\./g, '\\.')}`, 'g'), `version: ${newVersion}`) // nosemgrep: javascript.lang.security.audit.detect-non-literal-regexp.detect-non-literal-regexp, javascript_dos_rule-non-literal-regexp -- RegExp from trusted local version string
     updated = updated.replace(
-      // eslint-disable-next-line security/detect-non-literal-regexp, security-node/non-literal-reg-expr -- RegExp constructed from trusted local version string, not user input
+      // eslint-disable-next-line security/detect-non-literal-regexp -- RegExp constructed from trusted local version string, not user input
       new RegExp(`version: "${oldVersion.replace(/\./g, '\\.')}"`, 'g'), // nosemgrep: javascript.lang.security.audit.detect-non-literal-regexp.detect-non-literal-regexp, javascript_dos_rule-non-literal-regexp -- RegExp from trusted local version string
       `version: "${newVersion}"`
     )
     updated = updated.replace(
-      // eslint-disable-next-line security/detect-non-literal-regexp, security-node/non-literal-reg-expr -- RegExp constructed from trusted local version string, not user input
+      // eslint-disable-next-line security/detect-non-literal-regexp -- RegExp constructed from trusted local version string, not user input
       new RegExp(`version: '${oldVersion.replace(/\./g, '\\.')}'`, 'g'), // nosemgrep: javascript.lang.security.audit.detect-non-literal-regexp.detect-non-literal-regexp, javascript_dos_rule-non-literal-regexp -- RegExp from trusted local version string
       `version: '${newVersion}'`
     )
   } else if (filePath.endsWith('.sh')) {
     // Shell: VERSION="6.0.1"
     updated = updated.replace(
-      // eslint-disable-next-line security/detect-non-literal-regexp, security-node/non-literal-reg-expr -- RegExp constructed from trusted local version string, not user input
+      // eslint-disable-next-line security/detect-non-literal-regexp -- RegExp constructed from trusted local version string, not user input
       new RegExp(`VERSION="${oldVersion.replace(/\./g, '\\.')}"`, 'g'), // nosemgrep: javascript.lang.security.audit.detect-non-literal-regexp.detect-non-literal-regexp, javascript_dos_rule-non-literal-regexp -- RegExp from trusted local version string
       `VERSION="${newVersion}"`
     )
     // Shell: VERSION='6.0.1'
     updated = updated.replace(
-      // eslint-disable-next-line security/detect-non-literal-regexp, security-node/non-literal-reg-expr -- RegExp constructed from trusted local version string, not user input
+      // eslint-disable-next-line security/detect-non-literal-regexp -- RegExp constructed from trusted local version string, not user input
       new RegExp(`VERSION='${oldVersion.replace(/\./g, '\\.')}'`, 'g'), // nosemgrep: javascript.lang.security.audit.detect-non-literal-regexp.detect-non-literal-regexp, javascript_dos_rule-non-literal-regexp -- RegExp from trusted local version string
       `VERSION='${newVersion}'`
     )
@@ -249,21 +249,21 @@ async function main() {
 
   // Step 2: Validate new version
   if (!newVersion) {
-    // eslint-disable-next-line xss/no-mixed-html -- HTML-like content in CLI log output, not rendered in browser
+    // HTML-like content in CLI log output, not rendered in browser
     log('red', 'ERROR:', 'No version provided. Usage: node scripts/bump-version.js <version>')
-    // eslint-disable-next-line n/no-process-exit -- CLI script exits with error status on validation failure
+    // CLI script exits with error status on validation failure
     process.exit(1)
   }
 
   if (!isValidSemver(newVersion)) {
     log('red', 'ERROR:', `Invalid semver format: ${newVersion}. Expected format: X.Y.Z`)
-    // eslint-disable-next-line n/no-process-exit -- CLI script exits with error status
+    // CLI script exits with error status
     process.exit(1)
   }
 
   if (newVersion === currentVersion) {
     log('yellow', 'WARN:', 'New version is same as current version. Skipping.')
-    // eslint-disable-next-line n/no-process-exit -- CLI script exits with error status on validation failure
+    // CLI script exits with error status on validation failure
     process.exit(0)
   }
 
@@ -277,7 +277,7 @@ async function main() {
     (next.major === current.major && next.minor === current.minor && next.patch < current.patch)
   ) {
     log('red', 'ERROR:', `Version regression detected: ${currentVersion} -> ${newVersion}`)
-    // eslint-disable-next-line n/no-process-exit -- CLI script exits with error status on validation failure
+    // CLI script exits with error status on validation failure
     process.exit(1)
   }
 
@@ -290,7 +290,7 @@ async function main() {
 
   if (filesWithVersion.length === 0) {
     log('red', 'ERROR:', `No files found containing version ${currentVersion}`)
-    // eslint-disable-next-line n/no-process-exit -- CLI script exits with error status on validation failure
+    // CLI script exits with error status on validation failure
     process.exit(1)
   }
 
@@ -326,7 +326,7 @@ async function main() {
   if (failed.length > 0) {
     log('red', '✗', `Failed to update ${failed.length} files:`)
     for (const f of failed) log('red', '  -', f)
-    // eslint-disable-next-line n/no-process-exit -- CLI script exits with error status
+    // CLI script exits with error status
     process.exit(1)
   }
 
@@ -347,7 +347,7 @@ async function main() {
 
   if (!depsMatch) {
     log('red', 'ERROR:', 'optionalDependencies version mismatch')
-    // eslint-disable-next-line n/no-process-exit -- CLI script exits with error status
+    // CLI script exits with error status
     process.exit(1)
   }
 
@@ -365,7 +365,7 @@ async function main() {
       log('green', '✓', file)
     } else {
       log('red', '✗', `${file} does NOT contain ${newVersion}`)
-      // eslint-disable-next-line n/no-process-exit -- CLI script exits with error status
+      // CLI script exits with error status
       process.exit(1)
     }
   }
@@ -388,6 +388,6 @@ async function main() {
 
 main().catch((error) => {
   log('red', 'ERROR:', error.message)
-  // eslint-disable-next-line n/no-process-exit -- CLI script exits with error status
+  // CLI script exits with error status
   process.exit(1)
 })

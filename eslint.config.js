@@ -65,7 +65,8 @@ export default [
       'security/detect-object-injection': 'warn',
       'security/detect-non-literal-regexp': 'warn',
       'security/detect-eval-with-expression': 'error',
-      'security/detect-no-csrf-before-method-override': 'error',
+      // eslint-plugin-security rule is incompatible with ESLint 10 context API
+      'security/detect-no-csrf-before-method-override': 'off',
       'security/detect-possible-timing-attacks': 'warn',
 
       // Best practices
@@ -138,7 +139,7 @@ export default [
 
   // Scripts (ESM, run in Node.js)
   {
-    files: ['scripts/**/*.js'],
+    files: ['scripts/**/*.js', 'scripts/**/*.mjs'],
     languageOptions: {
       ecmaVersion: 2022,
       sourceType: 'module',
@@ -163,6 +164,9 @@ export default [
       globals: {
         ...globals.browser
       }
+    },
+    plugins: {
+      security
     },
     rules: {
       'no-var': 'off', // Legacy code uses var

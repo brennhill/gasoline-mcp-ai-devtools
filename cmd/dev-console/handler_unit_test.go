@@ -6,6 +6,8 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/dev-console/dev-console/internal/capture"
@@ -137,8 +139,14 @@ func TestMCPHandlerResourceAndToolMethods(t *testing.T) {
 		t.Fatalf("resources/list response = %+v, want success", resources)
 	}
 	resourceData := mustDecodeJSON[MCPResourcesListResult](t, resources.Result)
-	if len(resourceData.Resources) != 1 || resourceData.Resources[0].URI != "gasoline://guide" {
-		t.Fatalf("resources/list result = %+v, want guide resource", resourceData)
+	if len(resourceData.Resources) != 2 {
+		t.Fatalf("resources/list result = %+v, want 2 resources", resourceData)
+	}
+	if resourceData.Resources[0].URI != "gasoline://guide" {
+		t.Fatalf("resources/list first resource = %q, want gasoline://guide", resourceData.Resources[0].URI)
+	}
+	if resourceData.Resources[1].URI != "gasoline://quickstart" {
+		t.Fatalf("resources/list second resource = %q, want gasoline://quickstart", resourceData.Resources[1].URI)
 	}
 
 	readInvalid := h.HandleRequest(JSONRPCRequest{
@@ -175,7 +183,35 @@ func TestMCPHandlerResourceAndToolMethods(t *testing.T) {
 		t.Fatalf("resources/read result = %+v, want one guide content entry", readData)
 	}
 
-	templates := h.HandleRequest(JSONRPCRequest{JSONRPC: "2.0", ID: 5, Method: "resources/templates/list"})
+	readQuickstart := h.HandleRequest(JSONRPCRequest{
+		JSONRPC: "2.0",
+		ID:      5,
+		Method:  "resources/read",
+		Params:  json.RawMessage(`{"uri":"gasoline://quickstart"}`),
+	})
+	if readQuickstart == nil || readQuickstart.Error != nil {
+		t.Fatalf("resources/read quickstart response = %+v, want success", readQuickstart)
+	}
+	readQuickData := mustDecodeJSON[MCPResourcesReadResult](t, readQuickstart.Result)
+	if len(readQuickData.Contents) != 1 || readQuickData.Contents[0].URI != "gasoline://quickstart" {
+		t.Fatalf("resources/read quickstart result = %+v, want one quickstart content entry", readQuickData)
+	}
+
+	readDemo := h.HandleRequest(JSONRPCRequest{
+		JSONRPC: "2.0",
+		ID:      6,
+		Method:  "resources/read",
+		Params:  json.RawMessage(`{"uri":"gasoline://demo/ws"}`),
+	})
+	if readDemo == nil || readDemo.Error != nil {
+		t.Fatalf("resources/read demo response = %+v, want success", readDemo)
+	}
+	readDemoData := mustDecodeJSON[MCPResourcesReadResult](t, readDemo.Result)
+	if len(readDemoData.Contents) != 1 || readDemoData.Contents[0].URI != "gasoline://demo/ws" {
+		t.Fatalf("resources/read demo result = %+v, want demo content entry", readDemoData)
+	}
+
+	templates := h.HandleRequest(JSONRPCRequest{JSONRPC: "2.0", ID: 7, Method: "resources/templates/list"})
 	if templates == nil || templates.Error != nil {
 		t.Fatalf("resources/templates/list response = %+v, want success", templates)
 	}
@@ -224,6 +260,74 @@ func TestMCPHandlerResourceAndToolMethods(t *testing.T) {
 	}
 	if redacted["secret"] != "[REDACTED]" {
 		t.Fatalf("redacted result = %+v, expected secret to be redacted", redacted)
+	}
+}
+
+func TestMCPHandler_AppendsServerWarningsToToolResponse(t *testing.T) {
+	t.Parallel()
+
+	logFile := filepath.Join(t.TempDir(), "warnings.jsonl")
+	srv, err := NewServer(logFile, 100)
+	if err != nil {
+		t.Fatalf("NewServer() error = %v", err)
+	}
+	srv.AddWarning("state_dir_not_writable: test warning")
+
+	h := NewMCPHandler(srv, "v-test")
+	h.SetToolHandler(&fakeToolHandlerForMCP{
+		cap:     capture.NewCapture(),
+		limiter: testLimiter{allowed: true},
+		handleFn: func(req JSONRPCRequest, name string, _ json.RawMessage) (JSONRPCResponse, bool) {
+			if name != "observe" {
+				return JSONRPCResponse{}, false
+			}
+			return JSONRPCResponse{
+				JSONRPC: "2.0",
+				ID:      req.ID,
+				Result:  mcpTextResponse("ok"),
+			}, true
+		},
+	})
+
+	resp := h.HandleRequest(JSONRPCRequest{
+		JSONRPC: "2.0",
+		ID:      1,
+		Method:  "tools/call",
+		Params:  json.RawMessage(`{"name":"observe","arguments":{"what":"errors"}}`),
+	})
+	if resp == nil || resp.Error != nil {
+		t.Fatalf("tools/call response = %+v, want success", resp)
+	}
+	var result MCPToolResult
+	if err := json.Unmarshal(resp.Result, &result); err != nil {
+		t.Fatalf("result unmarshal error = %v", err)
+	}
+	if len(result.Content) < 2 {
+		t.Fatalf("expected warnings content block, got %d blocks", len(result.Content))
+	}
+	last := result.Content[len(result.Content)-1].Text
+	if !strings.Contains(last, "_warnings:") {
+		t.Fatalf("expected warnings content block, got %q", last)
+	}
+
+	// Warning should be one-shot.
+	resp2 := h.HandleRequest(JSONRPCRequest{
+		JSONRPC: "2.0",
+		ID:      2,
+		Method:  "tools/call",
+		Params:  json.RawMessage(`{"name":"observe","arguments":{"what":"errors"}}`),
+	})
+	if resp2 == nil || resp2.Error != nil {
+		t.Fatalf("second tools/call response = %+v, want success", resp2)
+	}
+	var result2 MCPToolResult
+	if err := json.Unmarshal(resp2.Result, &result2); err != nil {
+		t.Fatalf("second result unmarshal error = %v", err)
+	}
+	for _, block := range result2.Content {
+		if strings.Contains(block.Text, "_warnings:") {
+			t.Fatalf("warning should be one-shot, got %q", block.Text)
+		}
 	}
 }
 

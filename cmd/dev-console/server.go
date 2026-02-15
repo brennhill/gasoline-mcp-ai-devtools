@@ -37,6 +37,11 @@ type Server struct {
 	logChan      chan []LogEntry // buffered channel for async log writes
 	logDropCount int64           // atomic counter for dropped logs (when channel full)
 	logDone      chan struct{}   // signal when async logger exits
+
+	// One-shot warnings surfaced via MCP tool responses.
+	warningsMu  sync.Mutex
+	warnings    []string
+	warningSeen map[string]struct{}
 }
 
 // NewServer creates a new server instance
@@ -48,23 +53,43 @@ func NewServer(logFile string, maxEntries int) (*Server, error) {
 		entries:     make([]LogEntry, 0),
 		logChan:     make(chan []LogEntry, 10000), // 10k buffer for burst traffic
 		logDone:     make(chan struct{}),
+		warningSeen: make(map[string]struct{}),
 	}
 
 	// Start async logger goroutine
 	util.SafeGo(func() { s.asyncLoggerWorker() })
 
 	// Ensure log directory exists
-	dir := filepath.Dir(logFile)
-	// #nosec G301 -- log directory: owner rwx, group rx for diagnostics
-	if err := os.MkdirAll(dir, 0o750); err != nil {
-		return nil, fmt.Errorf("failed to create log directory: %w", err)
+	if s.logFile != "" {
+		dir := filepath.Dir(s.logFile)
+		// #nosec G301 -- log directory: owner rwx, group rx for diagnostics
+		if err := os.MkdirAll(dir, 0o750); err != nil {
+			fallback := fallbackLogFilePath()
+			s.AddWarning(fmt.Sprintf("state_dir_not_writable: %v; falling back to %s", err, fallback))
+			s.logFile = fallback
+			_ = os.MkdirAll(filepath.Dir(s.logFile), 0o750)
+		}
+		if err := ensureLogFileWritable(s.logFile); err != nil {
+			fallback := fallbackLogFilePath()
+			s.AddWarning(fmt.Sprintf("state_dir_not_writable: %v; falling back to %s", err, fallback))
+			s.logFile = fallback
+			if err := os.MkdirAll(filepath.Dir(s.logFile), 0o750); err != nil {
+				s.AddWarning(fmt.Sprintf("log_persistence_disabled: %v", err))
+				s.logFile = ""
+			} else if err := ensureLogFileWritable(s.logFile); err != nil {
+				s.AddWarning(fmt.Sprintf("log_persistence_disabled: %v", err))
+				s.logFile = ""
+			}
+		}
 	}
 
 	// Load existing entries
-	if err := s.loadEntries(); err != nil {
-		// File might not exist yet, that's OK
-		if !os.IsNotExist(err) {
-			return nil, fmt.Errorf("failed to load existing entries: %w", err)
+	if s.logFile != "" {
+		if err := s.loadEntries(); err != nil {
+			// File might not exist yet, that's OK
+			if !os.IsNotExist(err) {
+				s.AddWarning(fmt.Sprintf("log_load_failed: %v", err))
+			}
 		}
 	}
 
@@ -131,6 +156,9 @@ func (s *Server) saveEntries() error {
 // The caller is responsible for providing a snapshot of the entries.
 // Uses atomic write pattern: write to temp file then rename for safety.
 func (s *Server) saveEntriesCopy(entries []LogEntry) error {
+	if s.logFile == "" {
+		return nil
+	}
 	// Write to temporary file first, then atomically rename
 	// This ensures log file remains intact if write fails partway through
 	tmpFile := s.logFile + ".tmp"
@@ -140,7 +168,7 @@ func (s *Server) saveEntriesCopy(entries []LogEntry) error {
 	}
 	defer func() {
 		if closeErr := file.Close(); closeErr != nil {
-			fmt.Fprintf(os.Stderr, "[gasoline] Error closing temp log file: %v\n", closeErr)
+			s.AddWarning(fmt.Sprintf("log_temp_close_failed: %v", closeErr))
 		}
 	}()
 
@@ -214,11 +242,11 @@ func (s *Server) addEntries(newEntries []LogEntry) int {
 	// 3. The window is very short (microseconds typically)
 	if rotated {
 		if err := s.saveEntriesCopy(entriesToSave); err != nil {
-			fmt.Fprintf(os.Stderr, "[gasoline] Error saving entries: %v\n", err)
+			s.AddWarning(fmt.Sprintf("log_save_failed: %v", err))
 		}
 	} else {
 		if err := s.appendToFile(appendOnly); err != nil {
-			fmt.Fprintf(os.Stderr, "[gasoline] Error saving entries: %v\n", err)
+			s.AddWarning(fmt.Sprintf("log_append_failed: %v", err))
 		}
 	}
 
@@ -238,21 +266,23 @@ func (s *Server) asyncLoggerWorker() {
 	for entries := range s.logChan {
 		// Synchronous file I/O happens here (off the hot path)
 		if err := s.appendToFileSync(entries); err != nil {
-			// Log to stderr but don't crash
-			fmt.Fprintf(os.Stderr, "[gasoline] Async logger error: %v\n", err)
+			s.AddWarning(fmt.Sprintf("log_write_failed: %v", err))
 		}
 	}
 }
 
 // appendToFileSync does synchronous file I/O (called by async worker only)
 func (s *Server) appendToFileSync(entries []LogEntry) error {
+	if s.logFile == "" {
+		return nil
+	}
 	f, err := os.OpenFile(s.logFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o600) // #nosec G304 -- path set at startup
 	if err != nil {
 		return err
 	}
 	defer func() {
 		if closeErr := f.Close(); closeErr != nil {
-			fmt.Fprintf(os.Stderr, "[gasoline] Error closing log file: %v\n", closeErr)
+			s.AddWarning(fmt.Sprintf("log_close_failed: %v", closeErr))
 		}
 	}()
 
@@ -294,11 +324,10 @@ func (s *Server) maybeRotateLogFile(f *os.File) {
 	oldFile := s.logFile + ".old"
 	// Rename overwrites any existing .old file atomically on POSIX systems
 	if err := os.Rename(s.logFile, oldFile); err != nil { // #nosec G703 -- s.logFile is configured by local operator, not remote input
-		fmt.Fprintf(os.Stderr, "[gasoline] Log file rotation failed: %v\n", err)
+		s.AddWarning(fmt.Sprintf("log_rotate_failed: %v", err))
 		return
 	}
-	fmt.Fprintf(os.Stderr, "[gasoline] Log file rotated: %s -> %s (%d bytes)\n",
-		s.logFile, oldFile, fi.Size())
+	s.AddWarning(fmt.Sprintf("log_rotated: %s -> %s (%d bytes)", s.logFile, oldFile, fi.Size()))
 }
 
 // appendToFile queues log entries for async writing (never blocks)
@@ -330,7 +359,7 @@ func (s *Server) clearEntries() {
 	// #nosec G306 -- log files are owner-only (0600) for privacy
 	if s.logFile != "" {
 		if err := os.WriteFile(s.logFile, []byte{}, 0600); err != nil {
-			fmt.Fprintf(os.Stderr, "[gasoline] Error clearing log file: %v\n", err)
+			s.AddWarning(fmt.Sprintf("log_clear_failed: %v", err))
 		}
 	}
 }
@@ -346,12 +375,57 @@ func (s *Server) shutdownAsyncLogger(timeout time.Duration) {
 		// Worker exited cleanly
 		dropped := atomic.LoadInt64(&s.logDropCount)
 		if dropped > 0 {
-			fmt.Fprintf(os.Stderr, "[gasoline] Async logger shutdown: %d logs were dropped during session\n", dropped)
+			s.AddWarning(fmt.Sprintf("log_drops: %d logs were dropped during session", dropped))
 		}
 	case <-time.After(timeout):
 		// Timeout - worker still draining, but we need to exit
-		fmt.Fprintf(os.Stderr, "[gasoline] Async logger shutdown timeout, %d logs may be lost\n", len(s.logChan))
+		s.AddWarning(fmt.Sprintf("log_shutdown_timeout: %d logs may be lost", len(s.logChan)))
 	}
+}
+
+// AddWarning stores a one-shot warning to be surfaced in the next tool response.
+func (s *Server) AddWarning(msg string) {
+	if msg == "" {
+		return
+	}
+	s.warningsMu.Lock()
+	defer s.warningsMu.Unlock()
+	if s.warningSeen == nil {
+		s.warningSeen = make(map[string]struct{})
+	}
+	if _, ok := s.warningSeen[msg]; ok {
+		return
+	}
+	s.warningSeen[msg] = struct{}{}
+	s.warnings = append(s.warnings, msg)
+}
+
+// TakeWarnings returns pending warnings and clears the pending list.
+func (s *Server) TakeWarnings() []string {
+	s.warningsMu.Lock()
+	defer s.warningsMu.Unlock()
+	if len(s.warnings) == 0 {
+		return nil
+	}
+	out := make([]string, len(s.warnings))
+	copy(out, s.warnings)
+	s.warnings = nil
+	return out
+}
+
+func fallbackLogFilePath() string {
+	return filepath.Join(os.TempDir(), "gasoline", "logs", "gasoline.jsonl")
+}
+
+func ensureLogFileWritable(path string) error {
+	if path == "" {
+		return fmt.Errorf("empty log file path")
+	}
+	f, err := os.OpenFile(path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o600) // #nosec G304 -- local path configured at startup
+	if err != nil {
+		return err
+	}
+	return f.Close()
 }
 
 // getLogDropCount returns the total number of dropped log entries (thread-safe).

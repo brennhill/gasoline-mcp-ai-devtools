@@ -404,7 +404,16 @@ export async function handlePendingQuery(query, syncClient) {
       } catch {
         params = {}
       }
-      const result = await startRecording(params.name ?? 'recording', params.fps ?? 15, query.id, params.audio ?? '')
+      const explicitTabId = typeof query.tab_id === 'number' && query.tab_id > 0 ? query.tab_id : undefined
+      const targetTabId = explicitTabId ?? tabId
+      const result = await startRecording(
+        params.name ?? 'recording',
+        params.fps ?? 15,
+        query.id,
+        params.audio ?? '',
+        false,
+        targetTabId
+      )
       sendAsyncResult(syncClient, query.id, query.correlation_id, 'complete', result, result.error || undefined)
       return
     }

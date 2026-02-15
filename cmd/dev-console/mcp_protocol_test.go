@@ -277,7 +277,7 @@ func TestMCPProtocol_JSONRPCStructure(t *testing.T) {
 	})
 }
 
-// TestMCPProtocol_IDNeverNull verifies ID is never null (Cursor rejects it).
+// TestMCPProtocol_IDNeverNull verifies ID is never null (except parse errors per JSON-RPC).
 func TestMCPProtocol_IDNeverNull(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping integration test in short mode")
@@ -310,10 +310,11 @@ func TestMCPProtocol_IDNeverNull(t *testing.T) {
 		name       string
 		request    string
 		expectedID any
+		expectNull bool
 	}{
-		{"string id", `{"jsonrpc":"2.0","id":"test-string-id","method":"ping","params":{}}`, "test-string-id"},
-		{"number id", `{"jsonrpc":"2.0","id":12345,"method":"ping","params":{}}`, float64(12345)},
-		{"parse error (malformed JSON)", `not valid json at all`, "error"}, // Fallback ID
+		{"string id", `{"jsonrpc":"2.0","id":"test-string-id","method":"ping","params":{}}`, "test-string-id", false},
+		{"number id", `{"jsonrpc":"2.0","id":12345,"method":"ping","params":{}}`, float64(12345), false},
+		{"parse error (malformed JSON)", `not valid json at all`, nil, true},
 	}
 
 	for _, tc := range testCases {
@@ -331,9 +332,17 @@ func TestMCPProtocol_IDNeverNull(t *testing.T) {
 
 			id := response["id"]
 
-			// ID must NEVER be null
+			// Parse errors must return null id per JSON-RPC.
+			if tc.expectNull {
+				if id != nil {
+					t.Errorf("parse error id = %v, want null", id)
+				}
+				return
+			}
+
+			// ID must NEVER be null for non-parse errors.
 			if id == nil {
-				t.Errorf("CRITICAL: ID is null (Cursor rejects this!)")
+				t.Errorf("CRITICAL: ID is null for non-parse error")
 			}
 
 			// Verify ID matches expected

@@ -2,6 +2,7 @@
 // Handles execute_js queries via content script (MAIN world) or chrome.scripting API (ISOLATED).
 import * as index from './index.js'
 import { DebugCategory } from './debug.js'
+import { scaleTimeout } from '../lib/timeouts.js'
 const { debugLog } = index
 /**
  * Execute JavaScript via chrome.scripting.executeScript.
@@ -120,7 +121,7 @@ export async function executeWithWorldRouting(tabId, queryParams, world) {
     parsedParams = {}
   }
   const script = parsedParams.script || ''
-  const timeoutMs = parsedParams.timeout_ms || 5000
+  const timeoutMs = parsedParams.timeout_ms || scaleTimeout(5000)
   if (world === 'isolated') {
     return executeViaScriptingAPI(tabId, script, timeoutMs)
   }

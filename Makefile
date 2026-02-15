@@ -336,6 +336,7 @@ quality-gate: check-file-length lint lint-hardening typecheck security-check tes
 # Upgrade/install guardrail suite: prevents stale daemons from surviving release upgrades.
 test-upgrade-guards:
 	go test ./cmd/dev-console -run 'TestConnectWithRetriesRejectsVersionMismatch' -count=1
+	node --test scripts/install-upgrade-regression.contract.test.mjs
 	node --test npm/gasoline-mcp/lib/kill-daemon.test.js
 	python3 -m unittest discover -s pypi/gasoline-mcp/tests -p 'test_*.py'
 	node scripts/install-upgrade-regression.mjs

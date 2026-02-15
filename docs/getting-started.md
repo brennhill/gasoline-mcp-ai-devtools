@@ -75,7 +75,7 @@ Drop this config and your AI tool fires up Gasoline automatically:
   "mcpServers": {
     "gasoline": {
       "command": "npx",
-      "args": ["-y", "gasoline-mcp", "--port", "7890", "--persist"]
+      "args": ["-y", "gasoline-mcp"]
     }
   }
 }
@@ -86,8 +86,7 @@ Drop this config and your AI tool fires up Gasoline automatically:
 {
   "mcpServers": {
     "gasoline": {
-      "command": "gasoline-mcp",
-      "args": ["--port", "7890", "--persist"]
+      "command": "gasoline-mcp"
     }
   }
 }
@@ -99,7 +98,7 @@ Drop this config and your AI tool fires up Gasoline automatically:
   "mcpServers": {
     "gasoline": {
       "command": "go",
-      "args": ["run", "./cmd/dev-console", "--port", "7890", "--persist"]
+      "args": ["run", "./cmd/dev-console"]
     }
   }
 }

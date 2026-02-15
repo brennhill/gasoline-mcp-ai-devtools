@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net"
 	"net/http"
@@ -12,6 +13,10 @@ import (
 	"testing"
 	"time"
 )
+
+func contentLengthFrame(payload string) string {
+	return fmt.Sprintf("Content-Length: %d\r\nContent-Type: application/json\r\n\r\n%s", len(payload), payload)
+}
 
 func captureBridgeIO(t *testing.T, input string, fn func()) string {
 	t.Helper()
@@ -46,6 +51,55 @@ func captureBridgeIO(t *testing.T, input string, fn func()) string {
 	}
 	_ = outR.Close()
 	return string(out)
+}
+
+func captureBridgeIOWithStderr(t *testing.T, input string, fn func()) (string, string) {
+	t.Helper()
+
+	inR, inW, err := os.Pipe()
+	if err != nil {
+		t.Fatalf("os.Pipe(stdin) error = %v", err)
+	}
+	outR, outW, err := os.Pipe()
+	if err != nil {
+		t.Fatalf("os.Pipe(stdout) error = %v", err)
+	}
+	errR, errW, err := os.Pipe()
+	if err != nil {
+		t.Fatalf("os.Pipe(stderr) error = %v", err)
+	}
+
+	oldIn := os.Stdin
+	oldOut := os.Stdout
+	oldErr := os.Stderr
+	os.Stdin = inR
+	os.Stdout = outW
+	os.Stderr = errW
+
+	_, _ = io.WriteString(inW, input)
+	_ = inW.Close()
+
+	fn()
+
+	os.Stdin = oldIn
+	os.Stdout = oldOut
+	os.Stderr = oldErr
+	_ = inR.Close()
+	_ = outW.Close()
+	_ = errW.Close()
+
+	stdout, readErr := io.ReadAll(outR)
+	if readErr != nil {
+		t.Fatalf("ReadAll(stdout) error = %v", readErr)
+	}
+	_ = outR.Close()
+	stderr, readErr := io.ReadAll(errR)
+	if readErr != nil {
+		t.Fatalf("ReadAll(stderr) error = %v", readErr)
+	}
+	_ = errR.Close()
+
+	return string(stdout), string(stderr)
 }
 
 func parseJSONLines(t *testing.T, output string) []JSONRPCResponse {
@@ -131,6 +185,38 @@ func TestBridgeFastPathCoreMethods(t *testing.T) {
 	}
 	if startupResult["isError"] != true {
 		t.Fatalf("startup result isError = %v, want true", startupResult["isError"])
+	}
+}
+
+func TestBridgeFastPathFramedInitializeAndToolsList(t *testing.T) {
+	// Do not run in parallel; test redirects process stdio.
+	state := &daemonState{readyCh: make(chan struct{}), failedCh: make(chan struct{})}
+	initReq := `{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"codex","version":"1"}}}`
+	toolsReq := `{"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}`
+	input := contentLengthFrame(initReq) + contentLengthFrame(toolsReq)
+
+	setStderrSink(io.Discard)
+	stdout, stderr := captureBridgeIOWithStderr(t, input, func() {
+		bridgeStdioToHTTPFast("http://127.0.0.1:1/mcp", state, 7890)
+	})
+	setStderrSink(os.Stderr)
+
+	if strings.TrimSpace(stderr) != "" {
+		t.Fatalf("framed startup emitted stderr output: %q", stderr)
+	}
+	if strings.Contains(stdout, `"code":-32700`) {
+		t.Fatalf("framed startup emitted parse error: %q", stdout)
+	}
+
+	responses := parseJSONLines(t, stdout)
+	if len(responses) != 2 {
+		t.Fatalf("response count = %d, want 2", len(responses))
+	}
+	if responses[0].Error != nil {
+		t.Fatalf("initialize returned protocol error: %+v", responses[0].Error)
+	}
+	if responses[1].Error != nil {
+		t.Fatalf("tools/list returned protocol error: %+v", responses[1].Error)
 	}
 }
 
