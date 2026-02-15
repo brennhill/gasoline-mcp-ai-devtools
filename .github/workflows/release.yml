@@ -4,6 +4,12 @@ on:
   push:
     tags:
       - 'v*.*.*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag to publish (e.g., v0.7.1)'
+        required: true
+        default: 'v0.7.1'
 
 permissions:
   contents: write
@@ -28,7 +34,12 @@ jobs:
       - name: Verify tag matches VERSION file
         id: check
         run: |
-          TAG_VERSION=${GITHUB_REF#refs/tags/v}
+          if [ "${GITHUB_EVENT_NAME}" = "workflow_dispatch" ]; then
+            TAG_REF="${{ github.event.inputs.tag }}"
+            TAG_VERSION="${TAG_REF#v}"
+          else
+            TAG_VERSION=${GITHUB_REF#refs/tags/v}
+          fi
           FILE_VERSION=$(cat VERSION)
 
           echo "Tag version: $TAG_VERSION"
@@ -60,7 +71,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@7a3fe6cf4cb3a834922a1244abfce67bcef6a0c5 # v6
         with:
-          go-version: '1.23'
+          go-version: '1.24.13'
 
       - name: Set up Python
         uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6
@@ -73,16 +84,15 @@ jobs:
           node-version: '20'
           registry-url: 'https://registry.npmjs.org'
 
-      - name: Set up Rust (for crx tool)
-        uses: dtolnay/rust-toolchain@4be9e76fd7c4901c61fb841f559994984270fce7 # stable
-
-      - name: Install crx tool
-        run: cargo install crx
+      # CRX build removed (requires local Chrome signing key)
 
       - name: Install Python dependencies
         run: |
           python -m pip install --upgrade pip
           pip install build twine
+      
+      - name: Install Node dependencies
+        run: npm ci
 
       - name: Build all platform binaries
         run: make build
@@ -105,10 +115,7 @@ jobs:
       - name: Compile TypeScript
         run: make compile-ts
 
-      - name: Build CRX extension
-        run: make extension-crx
-        env:
-          VERSION: ${{ steps.get_version.outputs.VERSION }}
+      # CRX build removed (requires local Chrome signing key)
 
       - name: Copy binaries to NPM packages
         run: |
@@ -173,7 +180,6 @@ jobs:
             dist/gasoline-linux-arm64
             dist/gasoline-linux-x64
             dist/gasoline-win32-x64.exe
-            dist/gasoline-extension-v${{ steps.get_version.outputs.VERSION }}.crx
           generate_release_notes: true
           draft: false
           prerelease: false

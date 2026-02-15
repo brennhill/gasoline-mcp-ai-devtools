@@ -317,14 +317,14 @@ if [ "$HAS_ERROR" = "true" ]; then
         echo "  ❌ parse error: expected error code -32700, got $ERROR_CODE"
         FAIL=$((FAIL + 1))
     fi
-    # Check id is NOT null
+    # For parse errors, JSON-RPC requires id to be null
     PARSE_ERROR_ID=$(echo "$RESP" | jq -r '.id')
     if [ "$PARSE_ERROR_ID" = "null" ]; then
-        echo "  ❌ parse error: id is null (should be a fallback value)"
-        FAIL=$((FAIL + 1))
-    else
-        echo "  ✅ parse error: id is '$PARSE_ERROR_ID' (not null)"
+        echo "  ✅ parse error: id is null (correct)"
         PASS=$((PASS + 1))
+    else
+        echo "  ❌ parse error: id should be null, got '$PARSE_ERROR_ID'"
+        FAIL=$((FAIL + 1))
     fi
 else
     echo "  ❌ parse error: no error response"

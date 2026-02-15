@@ -132,11 +132,38 @@ func cleanupStalePIDFile(server *Server, port int) error {
 		return nil
 	}
 
-	// Signal 0 checks existence without killing
+	// Signal 0 checks existence without killing.
+	// A live PID alone is not enough: PID reuse can point to an unrelated process.
+	// Only treat it as a conflict if that PID actually owns the target port.
 	if process.Signal(syscall.Signal(0)) == nil {
-		// Process is alive - real conflict
-		server.logLifecycle("port_conflict_detected", port, map[string]any{"existing_pid": pid})
-		return fmt.Errorf("port %d already in use by PID %d (run 'gasoline --stop --port %d' to stop it)", port, pid, port)
+		ownerPIDs, findErr := findProcessOnPort(port)
+		if findErr == nil {
+			for _, ownerPID := range ownerPIDs {
+				if ownerPID == pid {
+					server.logLifecycle("port_conflict_detected", port, map[string]any{"existing_pid": pid})
+					return fmt.Errorf("port %d already in use by PID %d (run 'gasoline --stop --port %d' to stop it)", port, pid, port)
+				}
+			}
+			server.logLifecycle("stale_pid_owner_mismatch", port, map[string]any{
+				"stale_pid":  pid,
+				"owner_pids": ownerPIDs,
+			})
+		} else {
+			// If process inspection fails, prefer removing stale metadata and allowing
+			// the later preflight bind check to authoritatively detect real conflicts.
+			server.logLifecycle("stale_pid_port_lookup_failed", port, map[string]any{
+				"stale_pid": pid,
+				"error":     findErr.Error(),
+			})
+		}
+
+		if err := os.Remove(pidFile); err != nil && !os.IsNotExist(err) {
+			server.logLifecycle("stale_pid_remove_failed", port, map[string]any{
+				"stale_pid": pid,
+				"error":     err.Error(),
+			})
+		}
+		return nil
 	}
 
 	// Process is dead - remove stale PID file

@@ -17,7 +17,7 @@ All clients should use the same configuration pattern for consistency:
 ```json
 {
   "command": "npx",
-  "args": ["-y", "gasoline-mcp@VERSION", "--port", "7890", "--persist"]
+  "args": ["-y", "gasoline-mcp@VERSION"]
 }
 ```
 
@@ -30,7 +30,7 @@ All clients should use the same configuration pattern for consistency:
   "mcpServers": {
     "gasoline": {
       "command": "npx",
-      "args": ["-y", "gasoline-mcp@5.5.0", "--port", "7890", "--persist"]
+      "args": ["-y", "gasoline-mcp@VERSION"]
     }
   }
 }
@@ -45,7 +45,7 @@ All clients should use the same configuration pattern for consistency:
   "mcpServers": {
     "gasoline": {
       "command": "npx",
-      "args": ["-y", "gasoline-mcp@5.5.0", "--port", "7890", "--persist"]
+      "args": ["-y", "gasoline-mcp@VERSION"]
     }
   }
 }
@@ -64,10 +64,7 @@ All clients should use the same configuration pattern for consistency:
       "command": [
         "npx",
         "-y",
-        "gasoline-mcp@5.5.0",
-        "--port",
-        "7890",
-        "--persist"
+        "gasoline-mcp@VERSION"
       ]
     }
   }
@@ -79,7 +76,7 @@ All clients should use the same configuration pattern for consistency:
 Update all configs to a new version:
 
 ```bash
-VERSION="5.5.0"
+VERSION="0.7.1"
 
 # Claude Desktop
 sed -i '' "s/gasoline-mcp@[0-9.]*\"/gasoline-mcp@$VERSION\"/g" \
@@ -111,8 +108,6 @@ After updating configs:
 | Flag | Purpose |
 |------|---------|
 | `-y` | Auto-confirm npx package installation |
-| `--port 7890` | Use HTTP transport (more reliable than stdio) |
-| `--persist` | Keep server running between sessions |
 
 ## Troubleshooting
 
@@ -120,8 +115,8 @@ After updating configs:
 - Upgrade to v5.5.0+ (fixed double-newline bug)
 
 **Connection timeout**
-- Ensure `--port` and `--persist` flags are set
-- Check if port 7890 is available: `lsof -i :7890`
+- Restart the MCP client after config changes
+- Verify Gasoline path/version is current (`gasoline-mcp --version`)
 
 **Tools not appearing**
 - Verify browser extension shows "Connected"

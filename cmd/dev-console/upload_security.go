@@ -8,7 +8,6 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
-	"syscall"
 )
 
 // ============================================
@@ -192,26 +191,7 @@ func isWithinDir(filePath, dirPath string) bool {
 	return pathHasPrefixFold(filePath, dirWithSep) || pathsEqualFold(filePath, dirPath)
 }
 
-// checkHardlink returns an error if the file has multiple hard links, which could
-// indicate a hardlink to a sensitive file that bypasses path-based security checks.
-// On Windows, nlink detection is not available so this is a no-op.
-func checkHardlink(info os.FileInfo) error {
-	if runtime.GOOS == "windows" {
-		return nil // Windows Stat_t doesn't expose Nlink reliably
-	}
-	sys := info.Sys()
-	if sys == nil {
-		return nil
-	}
-	stat, ok := sys.(*syscall.Stat_t)
-	if !ok {
-		return nil
-	}
-	if stat.Nlink > 1 {
-		return fmt.Errorf("file has %d hard links — hardlinks to sensitive files are not allowed. Copy the file instead", stat.Nlink)
-	}
-	return nil
-}
+// checkHardlink is defined in upload_security_unix.go and upload_security_windows.go
 
 // ============================================
 // Error Types

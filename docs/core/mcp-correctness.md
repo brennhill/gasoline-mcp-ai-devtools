@@ -38,7 +38,8 @@ Gasoline MCP implements [Model Context Protocol](https://modelcontextprotocol.io
 
 **Capabilities declared:**
 - `tools` — 4 tools: observe, generate, configure, interact
-- `resources` — 1 resource: `gasoline://guide`
+- `resources` — 2 resources: `gasoline://guide`, `gasoline://quickstart`
+- `resourceTemplates` — 1 template: `gasoline://demo/{name}`
 
 **Error handling:**
 - Three-tier model: transport (HTTP status) → protocol (JSON-RPC error) → application (`isError: true`)

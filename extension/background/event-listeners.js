@@ -2,6 +2,7 @@
  * @fileoverview Event Listeners - Handles Chrome alarms, tab listeners,
  * storage change listeners, and other Chrome extension events.
  */
+import { scaleTimeout } from '../lib/timeouts.js'
 // =============================================================================
 // CONSTANTS - Rate Limiting & DoS Protection
 // =============================================================================
@@ -260,7 +261,7 @@ export function installDrawModeCommandListener(logFn) {
 /**
  * Ping content script to check if it's loaded
  */
-export async function pingContentScript(tabId, timeoutMs = 500) {
+export async function pingContentScript(tabId, timeoutMs = scaleTimeout(500)) {
   try {
     const response = await Promise.race([
       chrome.tabs.sendMessage(tabId, { type: 'GASOLINE_PING' }),
@@ -279,7 +280,7 @@ export async function pingContentScript(tabId, timeoutMs = 500) {
 /**
  * Wait for tab to finish loading
  */
-export async function waitForTabLoad(tabId, timeoutMs = 5000) {
+export async function waitForTabLoad(tabId, timeoutMs = scaleTimeout(5000)) {
   const startTime = Date.now()
   while (Date.now() - startTime < timeoutMs) {
     try {
@@ -289,7 +290,7 @@ export async function waitForTabLoad(tabId, timeoutMs = 5000) {
       return false
     }
     await new Promise((r) => {
-      setTimeout(r, 100)
+      setTimeout(r, scaleTimeout(100))
     })
   }
   return false

@@ -173,13 +173,15 @@ func (h *ToolHandler) queueRecordStart(req JSONRPCRequest, fullName, audio, vide
 	h.recordAIAction("record_start", "", map[string]any{"name": fullName, "fps": fps, "audio": audio})
 
 	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Recording queued", map[string]any{
-		"status":         "queued",
-		"correlation_id": correlationID,
-		"name":           fullName,
-		"fps":            fps,
-		"audio":          audio,
-		"path":           videoPath,
-		"message":        "Recording start queued. Use observe({what: 'command_result', correlation_id: '" + correlationID + "'}) to confirm.",
+		"status":                "queued",
+		"correlation_id":        correlationID,
+		"name":                  fullName,
+		"fps":                   fps,
+		"audio":                 audio,
+		"path":                  videoPath,
+		"requires_user_gesture": true,
+		"user_prompt":           "Prompt the user to click the Gasoline icon to grant recording permission for the target tab.",
+		"message":               "Recording start queued. Prompt user to click the Gasoline icon to enable recording, then use observe({what: 'command_result', correlation_id: '" + correlationID + "'}) to confirm.",
 	})}
 }
 

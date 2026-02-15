@@ -12,6 +12,7 @@ import {
   A11Y_MAX_NODES_PER_VIOLATION,
   A11Y_AUDIT_TIMEOUT_MS
 } from './constants.js'
+import { scaleTimeout } from './timeouts'
 
 // DOM query parameters
 export interface DOMQueryParams {
@@ -322,7 +323,7 @@ function loadAxeCore(): Promise<void> {
         clearInterval(checkInterval)
         resolve()
       }
-    }, 100)
+    }, scaleTimeout(100))
 
     // Timeout after 5 seconds
     setTimeout(() => {
@@ -332,7 +333,7 @@ function loadAxeCore(): Promise<void> {
           'Accessibility audit failed: axe-core library not loaded (5s timeout). The extension content script may not have been injected on this page. Try reloading the tab and re-running the audit.'
         )
       )
-    }, 5000)
+    }, scaleTimeout(5000))
   })
 }
 

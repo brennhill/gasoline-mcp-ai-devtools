@@ -5,6 +5,7 @@
 
 import * as index from './index'
 import { pingContentScript, waitForTabLoad } from './event-listeners'
+import { scaleTimeout } from '../lib/timeouts'
 import type { OffscreenRecordingStartedMessage, OffscreenRecordingStoppedMessage } from '../types/runtime-messages'
 
 interface RecordingState {
@@ -34,7 +35,7 @@ let recordingState: RecordingState = { ...defaultState }
 const LOG = '[Gasoline REC]'
 
 /** Listener to re-send watermark when recording tab navigates or content script re-injects. */
-let tabUpdateListener: ((tabId: number, changeInfo: chrome.tabs.TabChangeInfo) => void) | null = null
+let tabUpdateListener: ((tabId: number, changeInfo: { status?: string }) => void) | null = null
 
 // Clear stale recording state from previous session (e.g., browser crash during recording)
 if (typeof chrome !== 'undefined' && chrome.storage?.local?.remove) {
@@ -87,7 +88,7 @@ async function getStreamIdWithRecovery(tabId: number): Promise<string> {
         /* might not exist */
       }
       // Brief pause to let Chrome release the capture
-      await new Promise((r) => setTimeout(r, 200))
+      await new Promise((r) => setTimeout(r, scaleTimeout(200)))
       console.log(LOG, 'Retrying getMediaStreamId after cleanup')
       return await getStreamId(tabId)
     }
@@ -128,12 +129,12 @@ async function requestRecordingGesture(
       text: `\u2191 Click Gasoline Icon`,
       detail: `Grant ${mediaType.toLowerCase()} recording permission`,
       state: 'audio' as const,
-      duration_ms: 30000
+      duration_ms: scaleTimeout(30000)
     })
     .catch(() => {})
 
   await chrome.storage.local.set({ gasoline_pending_recording: { name, fps, audio, tabId: tab.id, url: tab.url } })
-  const gestureGranted = await waitForRecordingGesture(30000)
+  const gestureGranted = await waitForRecordingGesture(scaleTimeout(30000))
   await chrome.storage.local.remove('gasoline_pending_recording')
 
   if (!gestureGranted) {
@@ -144,7 +145,7 @@ async function requestRecordingGesture(
         text: `\u2191 Click Gasoline Icon`,
         detail: `Grant ${mediaType.toLowerCase()} recording permission`,
         state: 'audio' as const,
-        duration_ms: 8000
+        duration_ms: scaleTimeout(8000)
       })
       .catch(() => {})
     return {
@@ -160,7 +161,7 @@ async function requestRecordingGesture(
       text: 'Recording',
       detail: 'Recording started',
       state: 'success' as const,
-      duration_ms: 2000
+      duration_ms: scaleTimeout(2000)
     })
     .catch(() => {})
 
@@ -168,7 +169,7 @@ async function requestRecordingGesture(
 }
 
 /**
- * Start recording the active tab.
+ * Start recording a target tab (or the active tab when no target is provided).
  * @param name — Pre-generated filename from the Go server (e.g., "checkout-bug--2026-02-07-1423")
  * @param fps — Framerate (5–60, default 15)
  * @param queryId — PendingQuery ID for result resolution
@@ -181,7 +182,8 @@ export async function startRecording(
   fps: number = 15,
   queryId: string = '',
   audio: string = '',
-  fromPopup: boolean = false
+  fromPopup: boolean = false,
+  targetTabId?: number
 ): Promise<{ status: string; name: string; startTime?: number; error?: string }> {
   console.log(LOG, 'startRecording called', {
     name,
@@ -189,6 +191,7 @@ export async function startRecording(
     queryId,
     audio,
     fromPopup,
+    targetTabId: targetTabId ?? null,
     currentlyActive: recordingState.active
   })
 
@@ -205,11 +208,23 @@ export async function startRecording(
   fps = Math.max(5, Math.min(60, fps))
 
   try {
-    // Get active tab
-    const tabs = await chrome.tabs.query({ active: true, currentWindow: true })
-    const tab = tabs[0]
-    console.log(LOG, 'Active tab:', {
-      id: tab?.id,
+    // Resolve target tab. MCP flows may provide an explicit tab_id.
+    let tab: chrome.tabs.Tab | undefined
+    if (targetTabId && targetTabId > 0) {
+      try {
+        tab = await chrome.tabs.get(targetTabId)
+      } catch {
+        recordingState.active = false // eslint-disable-line require-atomic-updates
+        console.error(LOG, 'START FAILED: target tab not found', { targetTabId })
+        return { status: 'error', name: '', error: `RECORD_START: Target tab ${targetTabId} not found.` }
+      }
+    } else {
+      const tabs = await chrome.tabs.query({ active: true, currentWindow: true })
+      tab = tabs[0]
+    }
+    console.log(LOG, 'Resolved recording tab:', {
+      requestedTabId: targetTabId ?? null,
+      resolvedTabId: tab?.id,
       url: tab?.url?.substring(0, 80),
       title: tab?.title?.substring(0, 40)
     })
@@ -239,11 +254,11 @@ export async function startRecording(
       if (!alive) {
         console.log(LOG, 'Reloading tab for content script injection')
         chrome.tabs.reload(tab.id)
-        await waitForTabLoad(tab.id, 5000)
+        await waitForTabLoad(tab.id, scaleTimeout(5000))
       }
       // Add extra delay to ensure extension is fully initialized for tabCapture
       console.log(LOG, 'Waiting for extension to fully initialize...')
-      await new Promise((r) => setTimeout(r, 1000))
+      await new Promise((r) => setTimeout(r, scaleTimeout(1000)))
     } else {
       console.log(LOG, 'Skipping content script ping (fromPopup=true)')
     }
@@ -298,7 +313,7 @@ export async function startRecording(
           success: false,
           error: 'RECORD_START: Offscreen document timed out.'
         })
-      }, 10000)
+      }, scaleTimeout(10000))
 
       const listener = (message: OffscreenRecordingStartedMessage) => {
         if (message.target === 'background' && message.type === 'OFFSCREEN_RECORDING_STARTED') {
@@ -358,7 +373,7 @@ export async function startRecording(
         type: 'GASOLINE_ACTION_TOAST',
         text: 'Recording started',
         state: 'success' as const,
-        duration_ms: 2000
+        duration_ms: scaleTimeout(2000)
       })
       .catch(() => {})
 
@@ -367,7 +382,7 @@ export async function startRecording(
 
     // Re-send watermark when recording tab navigates or content script re-injects
     if (tabUpdateListener) chrome.tabs.onUpdated.removeListener(tabUpdateListener)
-    tabUpdateListener = (updatedTabId: number, changeInfo: chrome.tabs.TabChangeInfo) => {
+    tabUpdateListener = (updatedTabId: number, changeInfo: { status?: string }) => {
       if (updatedTabId === recordingState.tabId && changeInfo.status === 'complete' && recordingState.active) {
         chrome.tabs.sendMessage(updatedTabId, { type: 'GASOLINE_RECORDING_WATERMARK', visible: true }).catch(() => {})
       }
@@ -438,7 +453,7 @@ export async function stopRecording(truncated: boolean = false): Promise<{
           name: recordingState.name || '',
           error: 'RECORD_STOP: Offscreen document timed out during save.'
         })
-      }, 30000)
+      }, scaleTimeout(30000))
 
       const listener = (message: OffscreenRecordingStoppedMessage) => {
         if (message.target === 'background' && message.type === 'OFFSCREEN_RECORDING_STOPPED') {
@@ -474,7 +489,7 @@ export async function stopRecording(truncated: boolean = false): Promise<{
           text: 'Recording saved',
           detail: `${stopResult.path ?? stopResult.name} (${sizeMB} MB)`,
           state: 'success' as const,
-          duration_ms: 5000
+          duration_ms: scaleTimeout(5000)
         })
         .catch(() => {})
     }
@@ -633,12 +648,12 @@ if (typeof chrome !== 'undefined' && chrome.runtime?.onMessage) {
                     text: 'Mic permission granted',
                     detail: 'Open Gasoline and click Record',
                     state: 'success' as const,
-                    duration_ms: 8000
+                    duration_ms: scaleTimeout(8000)
                   })
                   .catch((err) => {
                     console.error(LOG, 'Toast send FAILED to tab', returnTabId, ':', (err as Error).message)
                   })
-              }, 300)
+              }, scaleTimeout(300))
             })
             .catch((err) => {
               console.error(LOG, 'Tab activation FAILED for tab', returnTabId, ':', (err as Error).message)

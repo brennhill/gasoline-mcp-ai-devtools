@@ -4,6 +4,7 @@
  */
 
 import type { StorageChange } from '../types'
+import { scaleTimeout } from '../lib/timeouts'
 
 // =============================================================================
 // CONSTANTS - Rate Limiting & DoS Protection
@@ -311,7 +312,7 @@ export function installDrawModeCommandListener(logFn?: (message: string) => void
 /**
  * Ping content script to check if it's loaded
  */
-export async function pingContentScript(tabId: number, timeoutMs = 500): Promise<boolean> {
+export async function pingContentScript(tabId: number, timeoutMs = scaleTimeout(500)): Promise<boolean> {
   try {
     const response = (await Promise.race([
       chrome.tabs.sendMessage(tabId, { type: 'GASOLINE_PING' }),
@@ -331,7 +332,7 @@ export async function pingContentScript(tabId: number, timeoutMs = 500): Promise
 /**
  * Wait for tab to finish loading
  */
-export async function waitForTabLoad(tabId: number, timeoutMs = 5000): Promise<boolean> {
+export async function waitForTabLoad(tabId: number, timeoutMs = scaleTimeout(5000)): Promise<boolean> {
   const startTime = Date.now()
   while (Date.now() - startTime < timeoutMs) {
     try {
@@ -341,7 +342,7 @@ export async function waitForTabLoad(tabId: number, timeoutMs = 5000): Promise<b
       return false
     }
     await new Promise((r) => {
-      setTimeout(r, 100)
+      setTimeout(r, scaleTimeout(100))
     })
   }
   return false

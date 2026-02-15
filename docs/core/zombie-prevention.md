@@ -108,8 +108,7 @@ rm -rf ~/.npm/_npx
 {
   "mcpServers": {
     "gasoline": {
-      "command": "/path/to/dev/gasoline/dist/gasoline-darwin-arm64",
-      "args": ["--port", "7890"]
+      "command": "/path/to/dev/gasoline/dist/gasoline-darwin-arm64"
     }
   }
 }
@@ -120,8 +119,7 @@ rm -rf ~/.npm/_npx
 {
   "mcpServers": {
     "gasoline": {
-      "command": "gasoline-mcp",
-      "args": ["--port", "7890"]
+      "command": "gasoline-mcp"
     }
   }
 }

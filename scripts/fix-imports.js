@@ -7,7 +7,7 @@
 
 import fs from 'fs'
 import path from 'path'
-// eslint-disable-next-line n/no-hide-core-modules -- Node built-in import, not hiding a core module
+// Node built-in import, not hiding a core module
 import { fileURLToPath } from 'url'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))

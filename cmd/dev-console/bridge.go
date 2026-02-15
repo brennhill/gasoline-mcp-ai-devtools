@@ -15,6 +15,7 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -127,7 +128,7 @@ func (s *daemonState) respawnIfNeeded() bool {
 	failedCh := s.failedCh
 	s.mu.Unlock()
 
-	fmt.Fprintf(os.Stderr, "[gasoline] daemon not responding, respawning on port %d\n", s.port)
+	stderrf("[gasoline] daemon not responding, respawning on port %d\n", s.port)
 
 	exe, err := os.Executable()
 	if err != nil {
@@ -150,9 +151,10 @@ func (s *daemonState) respawnIfNeeded() bool {
 		args = append(args, "--max-entries", fmt.Sprintf("%d", s.maxEntries))
 	}
 	cmd := exec.Command(exe, args...) // #nosec G702 -- exe is our own binary path from os.Executable with fixed flags // nosemgrep: go.lang.security.audit.dangerous-exec-command.dangerous-exec-command, go_subproc_rule-subproc -- bridge respawns own daemon
-	cmd.Stdout = nil
-	cmd.Stderr = nil
+	cmd.Stdout = io.Discard
+	cmd.Stderr = io.Discard
 	cmd.Stdin = nil
+	util.SetDetachedProcess(cmd)
 	if err := cmd.Start(); err != nil {
 		s.mu.Lock()
 		s.failed = true
@@ -167,8 +169,8 @@ func (s *daemonState) respawnIfNeeded() bool {
 		s.ready = true
 		s.mu.Unlock()
 		close(readyCh)
-		fmt.Fprintf(os.Stderr, "[gasoline] daemon respawned successfully on port %d\n", s.port)
-		return true
+			stderrf("[gasoline] daemon respawned successfully on port %d\n", s.port)
+			return true
 	}
 
 	s.mu.Lock()
@@ -293,9 +295,10 @@ func spawnDaemonAsync(state *daemonState) {
 			args = append(args, "--max-entries", fmt.Sprintf("%d", state.maxEntries))
 		}
 		cmd := exec.Command(exe, args...) // #nosec G702 -- exe is our own binary path from os.Executable with fixed flags // nosemgrep: go.lang.security.audit.dangerous-exec-command.dangerous-exec-command, go_subproc_rule-subproc -- CLI bridge mode launches user-specified editor
-		cmd.Stdout = nil
-		cmd.Stderr = nil
+		cmd.Stdout = io.Discard
+		cmd.Stderr = io.Discard
 		cmd.Stdin = nil
+		util.SetDetachedProcess(cmd)
 		if err := cmd.Start(); err != nil {
 			state.mu.Lock()
 			state.failed = true
@@ -383,8 +386,8 @@ func waitForServer(port int, timeout time.Duration) bool {
 var fastPathResponses = map[string]string{
 	"ping":                     `{}`,
 	"prompts/list":             `{"prompts":[]}`,
-	"resources/list":           `{"resources":[{"uri":"gasoline://guide","name":"Gasoline Usage Guide","description":"How to use Gasoline MCP tools for browser debugging","mimeType":"text/markdown"}]}`,
-	"resources/templates/list": `{"resourceTemplates":[]}`,
+	"resources/list":           `{"resources":[{"uri":"gasoline://guide","name":"Gasoline Usage Guide","description":"How to use Gasoline MCP tools for browser debugging","mimeType":"text/markdown"},{"uri":"gasoline://quickstart","name":"Gasoline MCP Quickstart","description":"Short, canonical MCP call examples and workflows","mimeType":"text/markdown"}]}`,
+	"resources/templates/list": `{"resourceTemplates":[{"uriTemplate":"gasoline://demo/{name}","name":"Gasoline Demo Script","description":"Demo scripts for websockets, annotations, recording, and dependency vetting","mimeType":"text/markdown"}]}`,
 }
 
 // sendFastResponse marshals and sends a JSON-RPC response for the fast path.
@@ -401,6 +404,11 @@ func sendFastResponse(id any, result json.RawMessage) {
 // handleFastPath handles MCP methods that don't require the daemon.
 // Returns true if the method was handled.
 func handleFastPath(req JSONRPCRequest, toolsList []MCPTool) bool {
+	// MCP notifications are fire-and-forget; never respond on stdio.
+	if req.ID == nil && strings.HasPrefix(req.Method, "notifications/") {
+		return true
+	}
+
 	switch req.Method {
 	case "initialize":
 		result := map[string]any{
@@ -473,11 +481,7 @@ func checkDaemonStatus(state *daemonState, req JSONRPCRequest, port int) string 
 // immediately while daemon starts in background. Only blocks on tools/call.
 // #lizard forgives
 func bridgeStdioToHTTPFast(endpoint string, state *daemonState, port int) {
-	scanner := bufio.NewScanner(os.Stdin)
-
-	const maxScanTokenSize = 10 * 1024 * 1024
-	buf := make([]byte, maxScanTokenSize)
-	scanner.Buffer(buf, maxScanTokenSize)
+	reader := bufio.NewReaderSize(os.Stdin, 64*1024)
 
 	client := &http.Client{} // per-request timeouts via context
 
@@ -491,8 +495,17 @@ func bridgeStdioToHTTPFast(endpoint string, state *daemonState, port int) {
 	toolsHandler := &ToolHandler{}
 	toolsList := toolsHandler.ToolsList()
 
-	for scanner.Scan() {
-		line := scanner.Bytes()
+	var readErr error
+	for {
+		line, err := readMCPStdioMessage(reader)
+		if err != nil {
+			if errors.Is(err, io.EOF) {
+				break
+			}
+			debugf("stdin read error: %v", err)
+			readErr = err
+			break
+		}
 		if len(line) == 0 {
 			continue
 		}
@@ -503,6 +516,7 @@ func bridgeStdioToHTTPFast(endpoint string, state *daemonState, port int) {
 			signalResponseSent()
 			continue
 		}
+		debugf("request method=%s id=%v", req.Method, req.ID)
 
 		// FAST PATH: Handle initialize and tools/list directly (no daemon needed)
 		if handleFastPath(req, toolsList) {
@@ -526,7 +540,7 @@ func bridgeStdioToHTTPFast(endpoint string, state *daemonState, port int) {
 		})
 	}
 
-	bridgeShutdown(&wg, scanner, responseSent)
+	bridgeShutdown(&wg, readErr, responseSent)
 }
 
 // handleDaemonNotReady sends appropriate error responses when the daemon is not available.
@@ -605,18 +619,11 @@ func bridgeForwardRequest(client *http.Client, endpoint string, req JSONRPCReque
 	signal()
 }
 
-// sendBridgeParseError sends a JSON-RPC parse error, extracting the ID from malformed JSON if possible.
-func sendBridgeParseError(line []byte, err error) {
-	var partial map[string]any
-	var extractedID any = "error"
-	if json.Unmarshal(line, &partial) == nil {
-		if id, ok := partial["id"]; ok && id != nil {
-			extractedID = id
-		}
-	}
+// sendBridgeParseError sends a JSON-RPC parse error (id must be null per spec).
+func sendBridgeParseError(_ []byte, err error) {
 	errResp := JSONRPCResponse{
 		JSONRPC: "2.0",
-		ID:      extractedID,
+		ID:      nil, // JSON-RPC: parse errors must have null id
 		Error:   &JSONRPCError{Code: -32700, Message: "Parse error: " + err.Error()},
 	}
 	// Error impossible: simple struct with no circular refs or unsupported types
@@ -627,11 +634,73 @@ func sendBridgeParseError(line []byte, err error) {
 	mcpStdoutMu.Unlock()
 }
 
+// readMCPStdioMessage reads one MCP message from stdin.
+// Supports both line-delimited JSON and Content-Length framed messages.
+func readMCPStdioMessage(reader *bufio.Reader) ([]byte, error) {
+	for {
+		firstLineBytes, err := reader.ReadBytes('\n')
+		if err != nil {
+			if errors.Is(err, io.EOF) {
+				trimmed := strings.TrimSpace(string(firstLineBytes))
+				if trimmed == "" {
+					return nil, io.EOF
+				}
+				// Trailing non-empty bytes without newline: treat as final line-delimited message.
+				return []byte(trimmed), nil
+			}
+			return nil, err
+		}
+
+		firstLine := strings.TrimSpace(string(firstLineBytes))
+		if firstLine == "" {
+			continue
+		}
+
+		if !strings.HasPrefix(strings.ToLower(firstLine), "content-length:") {
+			// Line-delimited JSON (or malformed input handled by upstream JSON parse error path).
+			debugf("stdio line message bytes=%d", len(firstLine))
+			return []byte(firstLine), nil
+		}
+
+		parts := strings.SplitN(firstLine, ":", 2)
+		if len(parts) != 2 {
+			return []byte(firstLine), nil
+		}
+		contentLength, convErr := strconv.Atoi(strings.TrimSpace(parts[1]))
+		if convErr != nil || contentLength < 0 || contentLength > maxPostBodySize {
+			debugf("stdio framed header invalid length=%q", strings.TrimSpace(parts[1]))
+			return []byte(firstLine), nil
+		}
+
+		// Consume remaining headers until blank line.
+		for {
+			headerLine, headerErr := reader.ReadBytes('\n')
+			if headerErr != nil {
+				if errors.Is(headerErr, io.EOF) {
+					return nil, io.EOF
+				}
+				return nil, headerErr
+			}
+			if strings.TrimSpace(string(headerLine)) == "" {
+				break
+			}
+		}
+
+		payload := make([]byte, contentLength)
+		if _, readErr := io.ReadFull(reader, payload); readErr != nil {
+			debugf("stdio framed read error: %v", readErr)
+			return nil, readErr
+		}
+		debugf("stdio framed message bytes=%d", len(payload))
+		return bytes.TrimSpace(payload), nil
+	}
+}
+
 // bridgeShutdown waits for in-flight requests and performs clean shutdown.
-func bridgeShutdown(wg *sync.WaitGroup, scanner *bufio.Scanner, responseSent chan bool) {
+func bridgeShutdown(wg *sync.WaitGroup, readErr error, responseSent chan bool) {
 	wg.Wait()
-	if err := scanner.Err(); err != nil {
-		fmt.Fprintf(os.Stderr, "[gasoline-bridge] ERROR: stdin scanner error: %v\n", err)
+	if readErr != nil && !errors.Is(readErr, io.EOF) {
+		stderrf("[gasoline-bridge] ERROR: stdin read error: %v\n", readErr)
 	}
 
 	select {
@@ -646,11 +715,7 @@ func bridgeShutdown(wg *sync.WaitGroup, scanner *bufio.Scanner, responseSent cha
 
 // bridgeStdioToHTTP forwards JSON-RPC messages between stdin/stdout and HTTP endpoint
 func bridgeStdioToHTTP(endpoint string) {
-	scanner := bufio.NewScanner(os.Stdin)
-
-	const maxScanTokenSize = 10 * 1024 * 1024 // 10MB
-	buf := make([]byte, maxScanTokenSize)
-	scanner.Buffer(buf, maxScanTokenSize)
+	reader := bufio.NewReaderSize(os.Stdin, 64*1024)
 
 	client := &http.Client{} // per-request timeouts via context
 
@@ -661,8 +726,17 @@ func bridgeStdioToHTTP(endpoint string) {
 		responseOnce.Do(func() { responseSent <- true })
 	}
 
-	for scanner.Scan() {
-		line := scanner.Bytes()
+	var readErr error
+	for {
+		line, err := readMCPStdioMessage(reader)
+		if err != nil {
+			if errors.Is(err, io.EOF) {
+				break
+			}
+			debugf("stdin read error: %v", err)
+			readErr = err
+			break
+		}
 		if len(line) == 0 {
 			continue
 		}
@@ -673,6 +747,7 @@ func bridgeStdioToHTTP(endpoint string) {
 			signalResponseSent()
 			continue
 		}
+		debugf("request method=%s id=%v", req.Method, req.ID)
 
 		timeout := toolCallTimeout(req)
 		reqCopy, lineCopy := req, append([]byte(nil), line...)
@@ -683,7 +758,7 @@ func bridgeStdioToHTTP(endpoint string) {
 		})
 	}
 
-	bridgeShutdown(&wg, scanner, responseSent)
+	bridgeShutdown(&wg, readErr, responseSent)
 }
 
 // sendBridgeError sends a JSON-RPC error response to stdout

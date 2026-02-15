@@ -309,9 +309,11 @@ function setupDrawModeButton(): void {
   // Set platform-aware keyboard shortcut hint
   const statusEl = document.getElementById('draw-mode-status')
   if (statusEl) {
+    const hasNavigator = typeof navigator !== 'undefined'
     const isMac =
-      navigator.platform?.toUpperCase().includes('MAC') ||
-      (navigator as unknown as { userAgentData?: { platform?: string } }).userAgentData?.platform === 'macOS'
+      hasNavigator &&
+      (navigator.platform?.toUpperCase().includes('MAC') ||
+        (navigator as unknown as { userAgentData?: { platform?: string } }).userAgentData?.platform === 'macOS')
     statusEl.textContent = isMac ? '⌥⇧D' : 'Alt+Shift+D'
   }
 

@@ -2,7 +2,6 @@ package main
 
 import (
 	"errors"
-	"fmt"
 	"os"
 	"syscall"
 )
@@ -11,7 +10,7 @@ import (
 // Sync on pipes/ptys can return EINVAL/EBADF even when output is already delivered.
 func syncStdoutBestEffort() {
 	if err := os.Stdout.Sync(); err != nil && !isIgnorableStdoutSyncError(err) {
-		fmt.Fprintf(os.Stderr, "[gasoline] warning: stdout.Sync failed: %v\n", err)
+		stderrf("[gasoline] warning: stdout.Sync failed: %v\n", err)
 	}
 }
 

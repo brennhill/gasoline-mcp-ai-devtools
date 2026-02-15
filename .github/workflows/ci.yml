@@ -44,6 +44,9 @@ jobs:
       - name: Go mismatch guard
         run: go test ./cmd/dev-console -run TestConnectWithRetriesRejectsVersionMismatch -count=1
 
+      - name: Upgrade script contract tests
+        run: node --test scripts/install-upgrade-regression.contract.test.mjs
+
       - name: npm cleanup tests
         run: node --test npm/gasoline-mcp/lib/kill-daemon.test.js
 

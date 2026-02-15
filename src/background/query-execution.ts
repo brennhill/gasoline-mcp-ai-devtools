@@ -3,6 +3,7 @@
 
 import * as index from './index'
 import { DebugCategory } from './debug'
+import { scaleTimeout } from '../lib/timeouts'
 
 const { debugLog } = index
 
@@ -151,7 +152,7 @@ export async function executeWithWorldRouting(
     parsedParams = {}
   }
   const script = parsedParams.script || ''
-  const timeoutMs = parsedParams.timeout_ms || 5000
+  const timeoutMs = parsedParams.timeout_ms || scaleTimeout(5000)
 
   if (world === 'isolated') {
     return executeViaScriptingAPI(tabId, script, timeoutMs)
