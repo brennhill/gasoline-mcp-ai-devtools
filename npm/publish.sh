@@ -1,5 +1,5 @@
 #!/bin/bash
-set -e
+set -eo pipefail
 
 # Gasoline npm publish script
 # Usage: ./publish.sh [--dry-run]
@@ -50,13 +50,21 @@ PACKAGES=(
 for pkg in "${PACKAGES[@]}"; do
   echo "  Publishing @brennhill/gasoline-${pkg}..."
   cd "$SCRIPT_DIR/$pkg"
-  npm publish --access public $DRY_RUN
+  if [ -n "$DRY_RUN" ]; then
+    npm publish --access public "$DRY_RUN"
+  else
+    npm publish --access public
+  fi
 done
 
 echo ""
 echo "Publishing main package (gasoline-mcp)..."
 cd "$SCRIPT_DIR/gasoline-mcp"
-npm publish --access public $DRY_RUN
+if [ -n "$DRY_RUN" ]; then
+  npm publish --access public "$DRY_RUN"
+else
+  npm publish --access public
+fi
 
 echo ""
 echo "Done! All packages published."

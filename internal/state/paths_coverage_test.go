@@ -1,0 +1,772 @@
+// paths_coverage_test.go — Additional tests targeting uncovered branches in paths.go.
+// Covers InRoot error propagation, ProjectDir error paths, Legacy* function
+// success and error paths, RootDir XDG normalization errors, and normalizePath
+// edge cases.
+package state
+
+import (
+	"os"
+	"path/filepath"
+	"strings"
+	"testing"
+)
+
+// ---------------------------------------------------------------------------
+// RootDir — GASOLINE_STATE_DIR with spaces/dots (normalization)
+// ---------------------------------------------------------------------------
+
+func TestRootDir_OverrideWithTrailingSlash(t *testing.T) {
+	tmp := t.TempDir()
+	override := tmp + string(os.PathSeparator)
+	t.Setenv(StateDirEnv, override)
+	t.Setenv(xdgStateHomeEnv, "")
+
+	got, err := RootDir()
+	if err != nil {
+		t.Fatalf("RootDir() error = %v", err)
+	}
+	// filepath.Clean removes trailing separator
+	want := filepath.Clean(tmp)
+	if got != want {
+		t.Fatalf("RootDir() = %q, want %q", got, want)
+	}
+}
+
+func TestRootDir_OverrideWhitespaceOnly(t *testing.T) {
+	// Whitespace-only override should fall through to XDG or home
+	t.Setenv(StateDirEnv, "   ")
+	home := t.TempDir()
+	t.Setenv(xdgStateHomeEnv, "")
+	t.Setenv("HOME", home)
+	t.Setenv("USERPROFILE", home)
+
+	got, err := RootDir()
+	if err != nil {
+		t.Fatalf("RootDir() error = %v", err)
+	}
+	want := filepath.Join(home, ".gasoline")
+	if got != want {
+		t.Fatalf("RootDir() = %q, want %q (whitespace override should fall through)", got, want)
+	}
+}
+
+func TestRootDir_XDGWhitespaceOnly(t *testing.T) {
+	// Whitespace-only XDG_STATE_HOME should fall through to home
+	t.Setenv(StateDirEnv, "")
+	t.Setenv(xdgStateHomeEnv, "   ")
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	t.Setenv("USERPROFILE", home)
+
+	got, err := RootDir()
+	if err != nil {
+		t.Fatalf("RootDir() error = %v", err)
+	}
+	want := filepath.Join(home, ".gasoline")
+	if got != want {
+		t.Fatalf("RootDir() = %q, want %q (whitespace XDG should fall through)", got, want)
+	}
+}
+
+func TestRootDir_OverrideRelativePath(t *testing.T) {
+	// Relative path in GASOLINE_STATE_DIR should be resolved to absolute
+	t.Setenv(StateDirEnv, "relative-state-dir")
+	t.Setenv(xdgStateHomeEnv, "")
+
+	got, err := RootDir()
+	if err != nil {
+		t.Fatalf("RootDir() error = %v", err)
+	}
+	if !filepath.IsAbs(got) {
+		t.Fatalf("RootDir() = %q, want absolute path", got)
+	}
+}
+
+func TestRootDir_XDGRelativePath(t *testing.T) {
+	// Relative path in XDG_STATE_HOME should be resolved to absolute
+	t.Setenv(StateDirEnv, "")
+	t.Setenv(xdgStateHomeEnv, "relative-xdg-dir")
+
+	got, err := RootDir()
+	if err != nil {
+		t.Fatalf("RootDir() error = %v", err)
+	}
+	if !filepath.IsAbs(got) {
+		t.Fatalf("RootDir() = %q, want absolute path", got)
+	}
+	if !strings.HasSuffix(got, filepath.Join("relative-xdg-dir", appName)) {
+		t.Fatalf("RootDir() = %q, want suffix %q", got, filepath.Join("relative-xdg-dir", appName))
+	}
+}
+
+func TestRootDir_XDGAbsolutePath(t *testing.T) {
+	tmp := t.TempDir()
+	t.Setenv(StateDirEnv, "")
+	t.Setenv(xdgStateHomeEnv, tmp)
+
+	got, err := RootDir()
+	if err != nil {
+		t.Fatalf("RootDir() error = %v", err)
+	}
+	want := filepath.Join(tmp, appName)
+	if got != want {
+		t.Fatalf("RootDir() = %q, want %q", got, want)
+	}
+}
+
+// ---------------------------------------------------------------------------
+// InRoot — basic and error propagation
+// ---------------------------------------------------------------------------
+
+func TestInRoot_MultipleSegments(t *testing.T) {
+	root := t.TempDir()
+	t.Setenv(StateDirEnv, root)
+	t.Setenv(xdgStateHomeEnv, "")
+
+	got, err := InRoot("a", "b", "c")
+	if err != nil {
+		t.Fatalf("InRoot() error = %v", err)
+	}
+	want := filepath.Join(root, "a", "b", "c")
+	if got != want {
+		t.Fatalf("InRoot(a,b,c) = %q, want %q", got, want)
+	}
+}
+
+func TestInRoot_NoParts(t *testing.T) {
+	root := t.TempDir()
+	t.Setenv(StateDirEnv, root)
+	t.Setenv(xdgStateHomeEnv, "")
+
+	got, err := InRoot()
+	if err != nil {
+		t.Fatalf("InRoot() error = %v", err)
+	}
+	if got != root {
+		t.Fatalf("InRoot() = %q, want %q", got, root)
+	}
+}
+
+// ---------------------------------------------------------------------------
+// ProjectDir — additional coverage
+// ---------------------------------------------------------------------------
+
+func TestProjectDir_RelativePath(t *testing.T) {
+	root := t.TempDir()
+	t.Setenv(StateDirEnv, root)
+	t.Setenv(xdgStateHomeEnv, "")
+
+	got, err := ProjectDir("myproject")
+	if err != nil {
+		t.Fatalf("ProjectDir() error = %v", err)
+	}
+	if !filepath.IsAbs(got) {
+		t.Fatalf("ProjectDir() = %q, want absolute path", got)
+	}
+	if !strings.HasPrefix(got, filepath.Join(root, "projects")) {
+		t.Fatalf("ProjectDir() = %q, want prefix %q", got, filepath.Join(root, "projects"))
+	}
+}
+
+func TestProjectDir_WithDotDot(t *testing.T) {
+	root := t.TempDir()
+	t.Setenv(StateDirEnv, root)
+	t.Setenv(xdgStateHomeEnv, "")
+
+	got, err := ProjectDir("/Users/brenn/../brenn/dev")
+	if err != nil {
+		t.Fatalf("ProjectDir() error = %v", err)
+	}
+	// The ".." should be cleaned away
+	want := filepath.Join(root, "projects", "Users", "brenn", "dev")
+	if got != want {
+		t.Fatalf("ProjectDir() = %q, want %q", got, want)
+	}
+}
+
+// ---------------------------------------------------------------------------
+// LegacyRootDir
+// ---------------------------------------------------------------------------
+
+func TestLegacyRootDir_Success(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	t.Setenv("USERPROFILE", home)
+
+	got, err := LegacyRootDir()
+	if err != nil {
+		t.Fatalf("LegacyRootDir() error = %v", err)
+	}
+	configDir, _ := os.UserConfigDir()
+	want := filepath.Join(configDir, appName)
+	if got != want {
+		t.Fatalf("LegacyRootDir() = %q, want %q", got, want)
+	}
+}
+
+// ---------------------------------------------------------------------------
+// LegacyDefaultLogFile
+// ---------------------------------------------------------------------------
+
+func TestLegacyDefaultLogFile_Success(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	t.Setenv("USERPROFILE", home)
+
+	got, err := LegacyDefaultLogFile()
+	if err != nil {
+		t.Fatalf("LegacyDefaultLogFile() error = %v", err)
+	}
+	want := filepath.Join(home, "gasoline-logs.jsonl")
+	if got != want {
+		t.Fatalf("LegacyDefaultLogFile() = %q, want %q", got, want)
+	}
+}
+
+// ---------------------------------------------------------------------------
+// LegacyCrashLogFile
+// ---------------------------------------------------------------------------
+
+func TestLegacyCrashLogFile_Success(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	t.Setenv("USERPROFILE", home)
+
+	got, err := LegacyCrashLogFile()
+	if err != nil {
+		t.Fatalf("LegacyCrashLogFile() error = %v", err)
+	}
+	want := filepath.Join(home, "gasoline-crash.log")
+	if got != want {
+		t.Fatalf("LegacyCrashLogFile() = %q, want %q", got, want)
+	}
+}
+
+// ---------------------------------------------------------------------------
+// LegacyPIDFile
+// ---------------------------------------------------------------------------
+
+func TestLegacyPIDFile_Success(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	t.Setenv("USERPROFILE", home)
+
+	got, err := LegacyPIDFile(8080)
+	if err != nil {
+		t.Fatalf("LegacyPIDFile() error = %v", err)
+	}
+	want := filepath.Join(home, ".gasoline-8080.pid")
+	if got != want {
+		t.Fatalf("LegacyPIDFile() = %q, want %q", got, want)
+	}
+}
+
+func TestLegacyPIDFile_DifferentPorts(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	t.Setenv("USERPROFILE", home)
+
+	ports := []int{0, 1, 443, 8080, 65535}
+	for _, port := range ports {
+		got, err := LegacyPIDFile(port)
+		if err != nil {
+			t.Fatalf("LegacyPIDFile(%d) error = %v", port, err)
+		}
+		if !strings.Contains(got, ".gasoline-") {
+			t.Errorf("LegacyPIDFile(%d) = %q, missing .gasoline- prefix", port, got)
+		}
+		if !strings.HasSuffix(got, ".pid") {
+			t.Errorf("LegacyPIDFile(%d) = %q, missing .pid suffix", port, got)
+		}
+	}
+}
+
+// ---------------------------------------------------------------------------
+// LegacySettingsFile
+// ---------------------------------------------------------------------------
+
+func TestLegacySettingsFile_Success(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	t.Setenv("USERPROFILE", home)
+
+	got, err := LegacySettingsFile()
+	if err != nil {
+		t.Fatalf("LegacySettingsFile() error = %v", err)
+	}
+	want := filepath.Join(home, ".gasoline-settings.json")
+	if got != want {
+		t.Fatalf("LegacySettingsFile() = %q, want %q", got, want)
+	}
+}
+
+// ---------------------------------------------------------------------------
+// LegacyRecordingsDir
+// ---------------------------------------------------------------------------
+
+func TestLegacyRecordingsDir_Success(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	t.Setenv("USERPROFILE", home)
+
+	got, err := LegacyRecordingsDir()
+	if err != nil {
+		t.Fatalf("LegacyRecordingsDir() error = %v", err)
+	}
+	configDir, _ := os.UserConfigDir()
+	want := filepath.Join(configDir, appName, "recordings")
+	if got != want {
+		t.Fatalf("LegacyRecordingsDir() = %q, want %q", got, want)
+	}
+}
+
+// ---------------------------------------------------------------------------
+// LegacySecurityConfigFile
+// ---------------------------------------------------------------------------
+
+func TestLegacySecurityConfigFile_Success(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	t.Setenv("USERPROFILE", home)
+
+	got, err := LegacySecurityConfigFile()
+	if err != nil {
+		t.Fatalf("LegacySecurityConfigFile() error = %v", err)
+	}
+	configDir, _ := os.UserConfigDir()
+	want := filepath.Join(configDir, appName, "security.json")
+	if got != want {
+		t.Fatalf("LegacySecurityConfigFile() = %q, want %q", got, want)
+	}
+}
+
+// ---------------------------------------------------------------------------
+// PIDFile — various ports
+// ---------------------------------------------------------------------------
+
+func TestPIDFile_Ports(t *testing.T) {
+	root := t.TempDir()
+	t.Setenv(StateDirEnv, root)
+	t.Setenv(xdgStateHomeEnv, "")
+
+	tests := []struct {
+		port int
+		file string
+	}{
+		{0, "gasoline-0.pid"},
+		{80, "gasoline-80.pid"},
+		{8080, "gasoline-8080.pid"},
+		{65535, "gasoline-65535.pid"},
+	}
+	for _, tt := range tests {
+		got, err := PIDFile(tt.port)
+		if err != nil {
+			t.Fatalf("PIDFile(%d) error = %v", tt.port, err)
+		}
+		want := filepath.Join(root, "run", tt.file)
+		if got != want {
+			t.Fatalf("PIDFile(%d) = %q, want %q", tt.port, got, want)
+		}
+	}
+}
+
+// ---------------------------------------------------------------------------
+// LogsDir, RecordingsDir, ScreenshotsDir, SecurityConfigFile — verify paths
+// ---------------------------------------------------------------------------
+
+func TestLogsDirPath(t *testing.T) {
+	root := t.TempDir()
+	t.Setenv(StateDirEnv, root)
+	t.Setenv(xdgStateHomeEnv, "")
+
+	got, err := LogsDir()
+	if err != nil {
+		t.Fatalf("LogsDir() error = %v", err)
+	}
+	if got != filepath.Join(root, "logs") {
+		t.Fatalf("LogsDir() = %q, want %q", got, filepath.Join(root, "logs"))
+	}
+}
+
+func TestRecordingsDirPath(t *testing.T) {
+	root := t.TempDir()
+	t.Setenv(StateDirEnv, root)
+	t.Setenv(xdgStateHomeEnv, "")
+
+	got, err := RecordingsDir()
+	if err != nil {
+		t.Fatalf("RecordingsDir() error = %v", err)
+	}
+	if got != filepath.Join(root, "recordings") {
+		t.Fatalf("RecordingsDir() = %q, want %q", got, filepath.Join(root, "recordings"))
+	}
+}
+
+func TestScreenshotsDirPath(t *testing.T) {
+	root := t.TempDir()
+	t.Setenv(StateDirEnv, root)
+	t.Setenv(xdgStateHomeEnv, "")
+
+	got, err := ScreenshotsDir()
+	if err != nil {
+		t.Fatalf("ScreenshotsDir() error = %v", err)
+	}
+	if got != filepath.Join(root, "screenshots") {
+		t.Fatalf("ScreenshotsDir() = %q, want %q", got, filepath.Join(root, "screenshots"))
+	}
+}
+
+func TestSecurityConfigFilePath(t *testing.T) {
+	root := t.TempDir()
+	t.Setenv(StateDirEnv, root)
+	t.Setenv(xdgStateHomeEnv, "")
+
+	got, err := SecurityConfigFile()
+	if err != nil {
+		t.Fatalf("SecurityConfigFile() error = %v", err)
+	}
+	want := filepath.Join(root, "security", "security.json")
+	if got != want {
+		t.Fatalf("SecurityConfigFile() = %q, want %q", got, want)
+	}
+}
+
+func TestSettingsFilePath(t *testing.T) {
+	root := t.TempDir()
+	t.Setenv(StateDirEnv, root)
+	t.Setenv(xdgStateHomeEnv, "")
+
+	got, err := SettingsFile()
+	if err != nil {
+		t.Fatalf("SettingsFile() error = %v", err)
+	}
+	want := filepath.Join(root, "settings", "extension-settings.json")
+	if got != want {
+		t.Fatalf("SettingsFile() = %q, want %q", got, want)
+	}
+}
+
+func TestDefaultLogFilePath(t *testing.T) {
+	root := t.TempDir()
+	t.Setenv(StateDirEnv, root)
+	t.Setenv(xdgStateHomeEnv, "")
+
+	got, err := DefaultLogFile()
+	if err != nil {
+		t.Fatalf("DefaultLogFile() error = %v", err)
+	}
+	want := filepath.Join(root, "logs", "gasoline.jsonl")
+	if got != want {
+		t.Fatalf("DefaultLogFile() = %q, want %q", got, want)
+	}
+}
+
+func TestCrashLogFilePath(t *testing.T) {
+	root := t.TempDir()
+	t.Setenv(StateDirEnv, root)
+	t.Setenv(xdgStateHomeEnv, "")
+
+	got, err := CrashLogFile()
+	if err != nil {
+		t.Fatalf("CrashLogFile() error = %v", err)
+	}
+	want := filepath.Join(root, "logs", "crash.log")
+	if got != want {
+		t.Fatalf("CrashLogFile() = %q, want %q", got, want)
+	}
+}
+
+// ---------------------------------------------------------------------------
+// normalizePath — additional edge cases
+// ---------------------------------------------------------------------------
+
+func TestNormalizePath_AbsoluteWithDots(t *testing.T) {
+	t.Parallel()
+
+	input := filepath.Join(string(os.PathSeparator), "a", "b", "..", "c", ".", "d")
+	got, err := normalizePath(input)
+	if err != nil {
+		t.Fatalf("normalizePath() error = %v", err)
+	}
+	want := filepath.Join(string(os.PathSeparator), "a", "c", "d")
+	if got != want {
+		t.Fatalf("normalizePath(%q) = %q, want %q", input, got, want)
+	}
+}
+
+func TestNormalizePath_RelativeSimple(t *testing.T) {
+	t.Parallel()
+
+	got, err := normalizePath("foo")
+	if err != nil {
+		t.Fatalf("normalizePath(foo) error = %v", err)
+	}
+	if !filepath.IsAbs(got) {
+		t.Fatalf("normalizePath(foo) = %q, want absolute", got)
+	}
+	if !strings.HasSuffix(got, "foo") {
+		t.Fatalf("normalizePath(foo) = %q, want suffix 'foo'", got)
+	}
+}
+
+func TestNormalizePath_EmptyReturnsError(t *testing.T) {
+	t.Parallel()
+
+	_, err := normalizePath("")
+	if err == nil {
+		t.Fatal("normalizePath(\"\") should return error")
+	}
+	if !strings.Contains(err.Error(), "empty path") {
+		t.Fatalf("normalizePath(\"\") error = %q, want 'empty path'", err.Error())
+	}
+}
+
+// ---------------------------------------------------------------------------
+// StateDirEnv constant
+// ---------------------------------------------------------------------------
+
+func TestStateDirEnvConstant(t *testing.T) {
+	t.Parallel()
+
+	if StateDirEnv != "GASOLINE_STATE_DIR" {
+		t.Fatalf("StateDirEnv = %q, want GASOLINE_STATE_DIR", StateDirEnv)
+	}
+}
+
+// ---------------------------------------------------------------------------
+// Error paths — HOME unset triggers os.UserHomeDir/os.UserConfigDir failures.
+// These tests cannot use t.Parallel() because they use t.Setenv.
+// ---------------------------------------------------------------------------
+
+func TestRootDir_ErrorWhenHomeUndefined(t *testing.T) {
+	// No GASOLINE_STATE_DIR, no XDG, and no HOME => RootDir falls to
+	// os.UserHomeDir() which errors with "$HOME is not defined".
+	t.Setenv(StateDirEnv, "")
+	t.Setenv(xdgStateHomeEnv, "")
+	t.Setenv("HOME", "")
+	t.Setenv("USERPROFILE", "")
+
+	_, err := RootDir()
+	if err == nil {
+		t.Fatal("RootDir() expected error when HOME is empty, got nil")
+	}
+	if !strings.Contains(err.Error(), "home directory") {
+		t.Fatalf("RootDir() error = %q, want 'home directory'", err.Error())
+	}
+}
+
+func TestLegacyRootDir_ErrorWhenHomeUndefined(t *testing.T) {
+	t.Setenv("HOME", "")
+	t.Setenv("USERPROFILE", "")
+
+	_, err := LegacyRootDir()
+	if err == nil {
+		t.Fatal("LegacyRootDir() expected error when HOME is empty, got nil")
+	}
+	if !strings.Contains(err.Error(), "config directory") {
+		t.Fatalf("LegacyRootDir() error = %q, want 'config directory'", err.Error())
+	}
+}
+
+func TestLegacyDefaultLogFile_ErrorWhenHomeUndefined(t *testing.T) {
+	t.Setenv("HOME", "")
+	t.Setenv("USERPROFILE", "")
+
+	_, err := LegacyDefaultLogFile()
+	if err == nil {
+		t.Fatal("LegacyDefaultLogFile() expected error when HOME is empty, got nil")
+	}
+	if !strings.Contains(err.Error(), "home directory") {
+		t.Fatalf("LegacyDefaultLogFile() error = %q, want 'home directory'", err.Error())
+	}
+}
+
+func TestLegacyCrashLogFile_ErrorWhenHomeUndefined(t *testing.T) {
+	t.Setenv("HOME", "")
+	t.Setenv("USERPROFILE", "")
+
+	_, err := LegacyCrashLogFile()
+	if err == nil {
+		t.Fatal("LegacyCrashLogFile() expected error when HOME is empty, got nil")
+	}
+	if !strings.Contains(err.Error(), "home directory") {
+		t.Fatalf("LegacyCrashLogFile() error = %q, want 'home directory'", err.Error())
+	}
+}
+
+func TestLegacyPIDFile_ErrorWhenHomeUndefined(t *testing.T) {
+	t.Setenv("HOME", "")
+	t.Setenv("USERPROFILE", "")
+
+	_, err := LegacyPIDFile(8080)
+	if err == nil {
+		t.Fatal("LegacyPIDFile() expected error when HOME is empty, got nil")
+	}
+	if !strings.Contains(err.Error(), "home directory") {
+		t.Fatalf("LegacyPIDFile() error = %q, want 'home directory'", err.Error())
+	}
+}
+
+func TestLegacySettingsFile_ErrorWhenHomeUndefined(t *testing.T) {
+	t.Setenv("HOME", "")
+	t.Setenv("USERPROFILE", "")
+
+	_, err := LegacySettingsFile()
+	if err == nil {
+		t.Fatal("LegacySettingsFile() expected error when HOME is empty, got nil")
+	}
+	if !strings.Contains(err.Error(), "home directory") {
+		t.Fatalf("LegacySettingsFile() error = %q, want 'home directory'", err.Error())
+	}
+}
+
+func TestLegacyRecordingsDir_ErrorWhenHomeUndefined(t *testing.T) {
+	t.Setenv("HOME", "")
+	t.Setenv("USERPROFILE", "")
+
+	_, err := LegacyRecordingsDir()
+	if err == nil {
+		t.Fatal("LegacyRecordingsDir() expected error when HOME is empty, got nil")
+	}
+	if !strings.Contains(err.Error(), "config directory") {
+		t.Fatalf("LegacyRecordingsDir() error = %q, want 'config directory'", err.Error())
+	}
+}
+
+func TestLegacySecurityConfigFile_ErrorWhenHomeUndefined(t *testing.T) {
+	t.Setenv("HOME", "")
+	t.Setenv("USERPROFILE", "")
+
+	_, err := LegacySecurityConfigFile()
+	if err == nil {
+		t.Fatal("LegacySecurityConfigFile() expected error when HOME is empty, got nil")
+	}
+	if !strings.Contains(err.Error(), "config directory") {
+		t.Fatalf("LegacySecurityConfigFile() error = %q, want 'config directory'", err.Error())
+	}
+}
+
+func TestInRoot_ErrorWhenRootDirFails(t *testing.T) {
+	// Force RootDir to fail: no override, no XDG, no HOME
+	t.Setenv(StateDirEnv, "")
+	t.Setenv(xdgStateHomeEnv, "")
+	t.Setenv("HOME", "")
+	t.Setenv("USERPROFILE", "")
+
+	_, err := InRoot("logs")
+	if err == nil {
+		t.Fatal("InRoot() expected error when RootDir fails, got nil")
+	}
+}
+
+func TestProjectDir_ErrorWhenRootDirFails(t *testing.T) {
+	t.Setenv(StateDirEnv, "")
+	t.Setenv(xdgStateHomeEnv, "")
+	t.Setenv("HOME", "")
+	t.Setenv("USERPROFILE", "")
+
+	_, err := ProjectDir("/some/path")
+	if err == nil {
+		t.Fatal("ProjectDir() expected error when RootDir fails, got nil")
+	}
+}
+
+// ---------------------------------------------------------------------------
+// Functions that delegate to InRoot — error propagation when RootDir fails
+// ---------------------------------------------------------------------------
+
+func TestLogsDir_ErrorPropagation(t *testing.T) {
+	t.Setenv(StateDirEnv, "")
+	t.Setenv(xdgStateHomeEnv, "")
+	t.Setenv("HOME", "")
+	t.Setenv("USERPROFILE", "")
+
+	_, err := LogsDir()
+	if err == nil {
+		t.Fatal("LogsDir() expected error when RootDir fails, got nil")
+	}
+}
+
+func TestDefaultLogFile_ErrorPropagation(t *testing.T) {
+	t.Setenv(StateDirEnv, "")
+	t.Setenv(xdgStateHomeEnv, "")
+	t.Setenv("HOME", "")
+	t.Setenv("USERPROFILE", "")
+
+	_, err := DefaultLogFile()
+	if err == nil {
+		t.Fatal("DefaultLogFile() expected error when RootDir fails, got nil")
+	}
+}
+
+func TestCrashLogFile_ErrorPropagation(t *testing.T) {
+	t.Setenv(StateDirEnv, "")
+	t.Setenv(xdgStateHomeEnv, "")
+	t.Setenv("HOME", "")
+	t.Setenv("USERPROFILE", "")
+
+	_, err := CrashLogFile()
+	if err == nil {
+		t.Fatal("CrashLogFile() expected error when RootDir fails, got nil")
+	}
+}
+
+func TestPIDFile_ErrorPropagation(t *testing.T) {
+	t.Setenv(StateDirEnv, "")
+	t.Setenv(xdgStateHomeEnv, "")
+	t.Setenv("HOME", "")
+	t.Setenv("USERPROFILE", "")
+
+	_, err := PIDFile(8080)
+	if err == nil {
+		t.Fatal("PIDFile() expected error when RootDir fails, got nil")
+	}
+}
+
+func TestRecordingsDir_ErrorPropagation(t *testing.T) {
+	t.Setenv(StateDirEnv, "")
+	t.Setenv(xdgStateHomeEnv, "")
+	t.Setenv("HOME", "")
+	t.Setenv("USERPROFILE", "")
+
+	_, err := RecordingsDir()
+	if err == nil {
+		t.Fatal("RecordingsDir() expected error when RootDir fails, got nil")
+	}
+}
+
+func TestScreenshotsDir_ErrorPropagation(t *testing.T) {
+	t.Setenv(StateDirEnv, "")
+	t.Setenv(xdgStateHomeEnv, "")
+	t.Setenv("HOME", "")
+	t.Setenv("USERPROFILE", "")
+
+	_, err := ScreenshotsDir()
+	if err == nil {
+		t.Fatal("ScreenshotsDir() expected error when RootDir fails, got nil")
+	}
+}
+
+func TestSettingsFile_ErrorPropagation(t *testing.T) {
+	t.Setenv(StateDirEnv, "")
+	t.Setenv(xdgStateHomeEnv, "")
+	t.Setenv("HOME", "")
+	t.Setenv("USERPROFILE", "")
+
+	_, err := SettingsFile()
+	if err == nil {
+		t.Fatal("SettingsFile() expected error when RootDir fails, got nil")
+	}
+}
+
+func TestSecurityConfigFile_ErrorPropagation(t *testing.T) {
+	t.Setenv(StateDirEnv, "")
+	t.Setenv(xdgStateHomeEnv, "")
+	t.Setenv("HOME", "")
+	t.Setenv("USERPROFILE", "")
+
+	_, err := SecurityConfigFile()
+	if err == nil {
+		t.Fatal("SecurityConfigFile() expected error when RootDir fails, got nil")
+	}
+}

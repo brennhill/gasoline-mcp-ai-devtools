@@ -1,5 +1,5 @@
 #!/bin/bash
-set -e
+set -euo pipefail
 
 # Test script to verify MCP stdio silence invariant
 # This ensures the wrapper outputs ZERO noise to stderr during normal operation
@@ -17,13 +17,13 @@ echo "Port: $PORT"
 echo ""
 
 # Find the wrapper
-if ! command -v $WRAPPER &> /dev/null; then
+if ! command -v "$WRAPPER" &> /dev/null; then
     echo "❌ ERROR: gasoline-mcp not found in PATH"
     echo "Run 'npm link' from npm/gasoline-mcp first"
     exit 1
 fi
 
-echo "✅ Wrapper found: $(which $WRAPPER)"
+echo "✅ Wrapper found: $(which "$WRAPPER")"
 echo ""
 
 # Test 1: Normal connection
@@ -32,15 +32,15 @@ echo "==========================================="
 
 # Send MCP initialize request and capture output
 (echo '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test","version":"1.0"}}}'; sleep 0.5) | \
-    $WRAPPER --port $PORT > "$TEMP_DIR/stdout.txt" 2>"$TEMP_DIR/stderr.txt" &
+    "$WRAPPER" --port "$PORT" > "$TEMP_DIR/stdout.txt" 2>"$TEMP_DIR/stderr.txt" &
 CLIENT_PID=$!
 
 # Wait for connection
 sleep 2
 
 # Kill client
-kill $CLIENT_PID 2>/dev/null || true
-wait $CLIENT_PID 2>/dev/null || true
+kill "$CLIENT_PID" 2>/dev/null || true
+wait "$CLIENT_PID" 2>/dev/null || true
 
 # Check stderr - should be EMPTY
 STDERR_LINES=$(wc -l < "$TEMP_DIR/stderr.txt" 2>/dev/null | tr -d ' ' || echo "0")
@@ -69,7 +69,7 @@ else
     echo "  - /tmp/gasoline-debug-*.log (debug logs)"
     echo ""
     # Cleanup
-    lsof -ti :$PORT 2>/dev/null | xargs kill -9 2>/dev/null || true
+    lsof -ti :"$PORT" 2>/dev/null | xargs kill -9 2>/dev/null || true
     rm -rf "$TEMP_DIR"
     exit 1
 fi
@@ -89,7 +89,7 @@ else
 fi
 
 # Cleanup
-lsof -ti :$PORT 2>/dev/null | xargs kill -9 2>/dev/null || true
+lsof -ti :"$PORT" 2>/dev/null | xargs kill -9 2>/dev/null || true
 rm -rf "$TEMP_DIR"
 
 echo ""

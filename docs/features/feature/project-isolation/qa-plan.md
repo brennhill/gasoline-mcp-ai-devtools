@@ -35,7 +35,7 @@ feature: project-isolation
 - [ ] Test projectA cannot access projectB network data
 - [ ] Test projectA cannot execute projectB pending queries
 
-**Injection tests:**
+#### Injection tests:
 - [ ] Test malicious project_key (SQL injection attempt) rejected
 - [ ] Test project_key with path traversal (../../../) rejected
 
@@ -43,7 +43,7 @@ feature: project-isolation
 
 ## Human UAT Walkthrough
 
-**Scenario 1: Multi-Agent Isolation (Happy Path)**
+### Scenario 1: Multi-Agent Isolation (Happy Path)
 1. Setup:
    - Start Gasoline server
    - Open two Claude Code sessions (Agent A, Agent B)
@@ -59,7 +59,7 @@ feature: project-isolation
 3. Expected Result: Complete data isolation between projects
 4. Verification: Logs are project-scoped, no cross-project visibility
 
-**Scenario 2: Extension Multi-Project Routing**
+### Scenario 2: Extension Multi-Project Routing
 1. Setup:
    - Extension configured to send to specific project
 2. Steps:
@@ -74,7 +74,7 @@ feature: project-isolation
 3. Expected Result: Extension routes telemetry to correct project
 4. Verification: Logs correctly isolated by project
 
-**Scenario 3: Default Project (Backwards Compatibility)**
+### Scenario 3: Default Project (Backwards Compatibility)
 1. Setup:
    - Agent connects without project_key
 2. Steps:
@@ -85,7 +85,7 @@ feature: project-isolation
 3. Expected Result: Default project works transparently
 4. Verification: No project_key required for single-project use
 
-**Scenario 4: Project Expiration**
+### Scenario 4: Project Expiration
 1. Setup:
    - Start server with --project-expiration-minutes=1 (for testing)
    - Agent connects with project_key="temp"
@@ -98,7 +98,7 @@ feature: project-isolation
 3. Expected Result: Inactive projects expire, memory freed
 4. Verification: Project data cleared after expiration
 
-**Scenario 5: List Active Projects (Admin)**
+### Scenario 5: List Active Projects (Admin)
 1. Setup:
    - Multiple agents connected with different project_keys
 2. Steps:

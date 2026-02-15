@@ -116,7 +116,7 @@ type TestEvent struct {
 ## Examples
 
 ### Example 1: E2E Test with Network Failure
-**Test code:**
+#### Test code:
 ```javascript
 it('should process payment', async () => {
   await page.goto('http://localhost:3000/checkout');
@@ -126,7 +126,7 @@ it('should process payment', async () => {
 });
 ```
 
-**Gasoline Timeline (on failure):**
+#### Gasoline Timeline (on failure):
 ```
 [10:15:23.100] test:started (should process payment, trace-123)
 [10:15:23.200] page:load (checkout page)
@@ -144,7 +144,7 @@ it('should process payment', async () => {
 **Developer sees:** "Oh, the payment API returned 500 because the gateway timed out. I should increase the timeout or check gateway health."
 
 ### Example 2: Test Setup/Teardown Timing
-**Test framework adapter emits:**
+#### Test framework adapter emits:
 ```javascript
 emit({ type: 'test:setup:started', trace_id, file_path });
 // ... setup code ...
@@ -162,7 +162,7 @@ emit({ type: 'test:teardown:completed', trace_id, duration_ms: 100 });
 Gasoline report shows: "Setup took 450ms, test took 1800ms, teardown took 100ms. Consider optimizing setup (database seeding?)."
 
 ### Example 3: Assertion with Screenshot
-**Test fails:**
+#### Test fails:
 ```javascript
 await expect(page).toHaveSelector('.order-confirmation');
 // → assertion:failed event emitted with:

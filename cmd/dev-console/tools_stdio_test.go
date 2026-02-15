@@ -113,8 +113,6 @@ func TestToolHandler_Observe_NoStdout(t *testing.T) {
 		{"performance", "performance"},
 		{"vitals", "vitals"},
 		{"extension_logs", "extension_logs"},
-		{"api", "api"},
-		{"changes", "changes"},
 		{"timeline", "timeline"},
 		{"security_audit", "security_audit"},
 		{"accessibility", "accessibility"},

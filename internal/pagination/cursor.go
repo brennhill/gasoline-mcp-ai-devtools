@@ -71,9 +71,11 @@ func BuildCursor(timestamp string, sequence int64) string {
 
 // IsOlder returns true if this entry is older than the cursor (for backward pagination).
 // Compares timestamp first, then sequence as tiebreaker for same-millisecond entries.
+// For sequence-only cursors (no timestamp), compares by sequence number alone.
 func (c Cursor) IsOlder(entryTimestamp string, entrySequence int64) bool {
+	// Sequence-only cursor: compare by sequence number
 	if c.Timestamp == "" {
-		return true // No cursor = all entries are "older"
+		return entrySequence < c.Sequence
 	}
 
 	// Parse timestamps for comparison
@@ -102,9 +104,11 @@ func (c Cursor) IsOlder(entryTimestamp string, entrySequence int64) bool {
 }
 
 // IsNewer returns true if this entry is newer than the cursor (for forward pagination).
+// For sequence-only cursors (no timestamp), compares by sequence number alone.
 func (c Cursor) IsNewer(entryTimestamp string, entrySequence int64) bool {
+	// Sequence-only cursor: compare by sequence number
 	if c.Timestamp == "" {
-		return false // No cursor = no entries are "newer"
+		return entrySequence > c.Sequence
 	}
 
 	cursorTime, err := time.Parse(time.RFC3339Nano, c.Timestamp)

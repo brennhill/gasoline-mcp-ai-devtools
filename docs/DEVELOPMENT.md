@@ -58,7 +58,9 @@ go install github.com/securego/gosec/v2/cmd/gosec@latest
 
 ```bash
 # Go tests
-make test              # Full Go test suite
+make test-go-quick     # Fast lane: internal + sharded cmd tests (-short)
+make test-go-long      # Full Go test suite (sharded cmd tests)
+make test              # Alias for test-go-long
 make test-race         # Go tests with race detection
 make test-cover        # Go tests with coverage (95% minimum)
 
@@ -163,6 +165,9 @@ make verify-zero-deps
 
 | Target | Description |
 |--------|-------------|
+| `test-go-quick` | Fast Go lane (`-short`) with sharded `cmd/dev-console` |
+| `test-go-long` | Full Go lane with sharded `cmd/dev-console` |
+| `test-go-sharded` | Run only `cmd/dev-console` tests in parallel shards |
 | `lint` | Run all linters (lint-go + lint-js) |
 | `lint-go` | Go vet + golangci-lint |
 | `lint-js` | ESLint on extension code |

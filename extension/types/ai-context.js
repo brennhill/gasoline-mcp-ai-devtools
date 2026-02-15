@@ -2,5 +2,5 @@
  * @fileoverview AI Context Types
  * Stack frames, source snippets, and React component info for error analysis
  */
-export {};
+export {}
 //# sourceMappingURL=ai-context.js.map

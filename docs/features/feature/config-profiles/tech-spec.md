@@ -38,27 +38,27 @@ Server startup: gasoline --profile=restricted
 
 ## Implementation Strategy
 
-**Profile YAML format:**
+### Profile YAML format:
 - Flat key-value structure (no nesting)
 - Keys match CLI flag names (snake_case)
 - Values are typed (bool, string, int)
 
-**Profile loading:**
+### Profile loading:
 1. Check --profile flag or GASOLINE_PROFILE env var
 2. If set, load file from profiles/{name}.yaml or absolute path
 3. Parse YAML into map
 4. Iterate map, set corresponding config fields
 
-**CLI flag override logic:**
+### CLI flag override logic:
 - CLI flags are parsed AFTER profile loading
 - If CLI flag is explicitly set (not default), override profile value
 - Use flag library's "Changed" method to detect explicit vs default
 
-**Built-in profiles location:**
+### Built-in profiles location:
 - Ship with binary: embed profiles/*.yaml using go:embed
 - User can override with --profile=/custom/path.yaml
 
-**Profile validation:**
+### Profile validation:
 - Check all keys in profile are recognized (typo detection)
 - Check values match expected types (bool not string, etc.)
 - Check no conflicting settings (e.g., read_only=true but allowlist allows mutations)

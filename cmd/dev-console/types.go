@@ -33,6 +33,6 @@ type JSONRPCError struct {
 type MCPTool struct {
 	Name        string         `json:"name"`
 	Description string         `json:"description"`
-	InputSchema map[string]any `json:"inputSchema"` // camelCase: MCP spec standard
+	InputSchema map[string]any `json:"inputSchema"` // SPEC:MCP — camelCase required by MCP protocol
 	// Note: _meta removed - not in MCP spec, caused schema validation errors in Cursor
 }

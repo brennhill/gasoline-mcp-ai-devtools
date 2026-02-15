@@ -2,7 +2,7 @@
 # test-new-uat.sh — New UAT Tests (98 tests, 14 categories)
 # These are the newly built test categories
 
-set -e
+set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 TEST_DIR="$SCRIPT_DIR/tests"
@@ -40,7 +40,9 @@ TESTS=(
 )
 
 PORT=7890
+# shellcheck disable=SC2034 # used by sourced result files
 PASS_COUNT=0
+# shellcheck disable=SC2034 # used by sourced result files
 FAIL_COUNT=0
 START_TIME=$(date +%s)
 

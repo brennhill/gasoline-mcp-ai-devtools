@@ -37,21 +37,21 @@ feature: extension-timeout
 
 ### Performance Profiling Tests
 
-**Memory profiling:**
+#### Memory profiling:
 - [ ] Baseline memory: < 20MB before any operations
 - [ ] After 10 operations: < 40MB (growth rate acceptable)
 - [ ] After 50 operations: < 100MB (bounded growth)
 - [ ] No memory leaks detected via Chrome DevTools heap snapshot
 - [ ] Garbage collection reclaims memory after operations
 
-**Message queue profiling:**
+#### Message queue profiling:
 - [ ] Queue depth = 0 when idle
 - [ ] Queue depth max = 1 during normal operations (sequential)
 - [ ] Queue depth max = 10 when operations are concurrent (enforced limit)
 - [ ] Messages processed within 5ms each
 - [ ] No message queue backup after 50 operations
 
-**Event listener profiling:**
+#### Event listener profiling:
 - [ ] chrome.runtime.onMessage listeners: 1 (not accumulating)
 - [ ] window.addEventListener listeners: stable count (not growing)
 - [ ] chrome.tabs.onUpdated listeners: stable count
@@ -60,7 +60,7 @@ feature: extension-timeout
 
 ## Human UAT Walkthrough
 
-**Scenario 1: 50 Consecutive DOM Queries**
+### Scenario 1: 50 Consecutive DOM Queries
 1. Setup:
    - Start Gasoline server: `./dist/gasoline`
    - Load Chrome with extension, open DevTools
@@ -78,7 +78,7 @@ feature: extension-timeout
    - [ ] Operation 50 latency similar to operation 1 (no degradation)
 4. Verification: Extension remains responsive after 50 operations
 
-**Scenario 2: Mixed Operations (30 Total)**
+### Scenario 2: Mixed Operations (30 Total)
 1. Setup: Same as Scenario 1
 2. Steps:
    - [ ] Operation 1-5: DOM queries
@@ -93,7 +93,7 @@ feature: extension-timeout
    - [ ] Health check shows: queue_depth = 0, pending_operations = 0, memory < 80MB
 4. Verification: No operation type causes accumulation or hang
 
-**Scenario 3: Service Worker Restart During Operations**
+### Scenario 3: Service Worker Restart During Operations
 1. Setup:
    - Start operations sequence
    - Navigate to chrome://extensions
@@ -108,7 +108,7 @@ feature: extension-timeout
    - [ ] No indefinite hangs
 4. Verification: Service worker restart doesn't cause permanent failure
 
-**Scenario 4: Memory Profiling with Heap Snapshot**
+### Scenario 4: Memory Profiling with Heap Snapshot
 1. Setup: Chrome DevTools → Memory tab
 2. Steps:
    - [ ] Take heap snapshot (baseline)
@@ -123,7 +123,7 @@ feature: extension-timeout
    - [ ] Memory growth is linear and bounded (not exponential)
 4. Verification: No memory leaks detected
 
-**Scenario 5: Rapid Concurrent Operations**
+### Scenario 5: Rapid Concurrent Operations
 1. Setup: Same as Scenario 1
 2. Steps:
    - [ ] Send 10 operations simultaneously (via Promise.all or parallel script)
@@ -136,7 +136,7 @@ feature: extension-timeout
    - [ ] No crashes or errors
 4. Verification: Concurrent operations handled gracefully
 
-**Scenario 6: Operation Timeout on Frozen Page**
+### Scenario 6: Operation Timeout on Frozen Page
 1. Setup: Navigate to page, track tab
 2. Steps:
    - [ ] Freeze page via DevTools (Rendering → Rendering paused)
@@ -148,7 +148,7 @@ feature: extension-timeout
    - [ ] Extension remains responsive (not permanently hung)
 4. Verification: Timeout mechanism prevents indefinite hangs
 
-**Scenario 7: Health Check After Stress Test**
+### Scenario 7: Health Check After Stress Test
 1. Setup: Complete 50 operations as in Scenario 1
 2. Steps:
    - [ ] Call `configure({action: "health"})`
@@ -192,24 +192,24 @@ feature: extension-timeout
 
 ## Performance/Load Testing
 
-**Latency benchmarks:**
+### Latency benchmarks:
 - [ ] Operation 1: baseline latency (e.g., 2s for DOM query)
 - [ ] Operation 10: latency within 10% of baseline
 - [ ] Operation 25: latency within 10% of baseline
 - [ ] Operation 50: latency within 10% of baseline
 
-**Memory benchmarks:**
+### Memory benchmarks:
 - [ ] Baseline: < 20MB
 - [ ] After 10 ops: < 40MB
 - [ ] After 50 ops: < 100MB
 - [ ] After 100 ops: < 150MB (if testing further)
 
-**Queue depth benchmarks:**
+### Queue depth benchmarks:
 - [ ] Sequential operations: queue depth max = 1
 - [ ] Concurrent operations (10): queue depth max = 10
 - [ ] After all operations complete: queue depth = 0
 
-**Garbage collection:**
+### Garbage collection:
 - [ ] Force GC via DevTools after 50 operations
 - [ ] Memory drops to near baseline (some growth acceptable)
 - [ ] No large objects retained indefinitely
@@ -218,7 +218,7 @@ feature: extension-timeout
 
 ## Diagnostic Logging
 
-**Required logs for debugging:**
+### Required logs for debugging:
 - [ ] "Message received: [type]" when message arrives
 - [ ] "Forwarding query [id] to tab [tabId]"
 - [ ] "Query result posted to server [id]"
@@ -227,7 +227,7 @@ feature: extension-timeout
 - [ ] "Operation timed out [id]" when timeout occurs
 - [ ] "Event listener count: [N]" at startup and periodically
 
-**Console warnings to add:**
+### Console warnings to add:
 - [ ] Warning when queue depth > 5: "Message queue backing up"
 - [ ] Warning when memory > 80MB: "Extension memory high"
 - [ ] Warning when operation takes > 10s: "Operation slow"

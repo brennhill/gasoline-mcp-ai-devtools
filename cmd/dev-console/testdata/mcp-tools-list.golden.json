@@ -1,105 +1,45 @@
 [
   {
     "name": "observe",
-    "description": "Read current browser state. Call observe() first before interact() or generate().\n\nModes: errors, logs, extension_logs, network_waterfall, network_bodies, websocket_events, websocket_status, actions, vitals, page, tabs, pilot, performance, accessibility, timeline, error_clusters, error_bundles, screenshot, history, security_audit, third_party_audit, security_diff, command_result, pending_commands, failed_commands.\n\nFilters: limit, url, method, status_min/max, connection_id, direction, last_n, format, severity, min_level.\n\nPagination: Pass after_cursor/before_cursor/since_cursor from metadata. Use restart_on_eviction=true if cursor expires.\n\nResponses: JSON format.\n\nNote: network_bodies only captures fetch(). Use network_waterfall for all network requests.\nNote: extension_logs are internal Gasoline extension debug logs for troubleshooting the extension itself — NOT browser console output. Use 'logs' for browser console output.\nNote: error_bundles returns pre-assembled debugging context per error (error + recent network + actions + logs in one call). Use window_seconds param to control context window (default 3s).",
+    "description": "Read captured browser state from extension buffers.\n\nnetwork_bodies captures fetch() only; use network_waterfall for all requests. extension_logs = internal debug logs (use logs for console). error_bundles = pre-assembled debug context per error.\n\nPagination: pass after_cursor/before_cursor/since_cursor from response metadata. restart_on_eviction=true if cursor expired.",
     "inputSchema": {
       "properties": {
-        "action": {
-          "description": "Snapshot action: snapshot, compare, list (applies to security_diff)",
-          "enum": [
-            "snapshot",
-            "compare",
-            "list"
-          ],
-          "type": "string"
-        },
         "after_cursor": {
-          "description": "Return entries older than this cursor (backward pagination). Cursor format: 'timestamp:sequence' from previous response.",
+          "description": "Backward pagination cursor from response metadata",
           "type": "string"
         },
         "before_cursor": {
-          "description": "Return entries newer than this cursor (forward pagination).",
-          "type": "string"
-        },
-        "checks": {
-          "description": "Which checks to run (applies to security_audit)",
-          "items": {
-            "enum": [
-              "credentials",
-              "pii",
-              "headers",
-              "cookies",
-              "transport",
-              "auth"
-            ],
-            "type": "string"
-          },
-          "type": "array"
-        },
-        "compare_from": {
-          "description": "Baseline snapshot (applies to security_diff)",
-          "type": "string"
-        },
-        "compare_to": {
-          "description": "Target snapshot (applies to security_diff)",
+          "description": "Forward pagination cursor",
           "type": "string"
         },
         "connection_id": {
-          "description": "Filter by WebSocket connection ID",
+          "description": "WebSocket connection ID filter",
           "type": "string"
         },
         "correlation_id": {
-          "description": "Correlation ID for async command tracking (applies to command_result)",
+          "description": "Async command correlation ID",
           "type": "string"
         },
-        "custom_lists": {
-          "description": "Custom allowed/blocked/internal domain lists (applies to third_party_audit)",
-          "type": "object"
-        },
         "direction": {
-          "description": "Filter by direction",
           "enum": [
             "incoming",
             "outgoing"
           ],
           "type": "string"
         },
-        "first_party_origins": {
-          "description": "Origins to consider first-party (applies to third_party_audit)",
-          "items": {
-            "type": "string"
-          },
-          "type": "array"
-        },
-        "force_refresh": {
-          "description": "Bypass cache (applies to accessibility)",
-          "type": "boolean"
-        },
         "include": {
-          "description": "Categories to include (applies to timeline)",
+          "description": "Categories to include (timeline)",
           "items": {
             "type": "string"
           },
           "type": "array"
-        },
-        "include_static": {
-          "description": "Include static-only origins (applies to third_party_audit)",
-          "type": "boolean"
         },
         "last_n": {
-          "description": "Return only the last N items",
+          "description": "Return last N items only",
           "type": "number"
         },
-        "limit": {
-          "description": "Maximum entries to return (applies to logs, network_waterfall, network_bodies, websocket_events, actions, audit_log)",
-          "type": "number"
-        },
-        "method": {
-          "description": "Filter by HTTP method (applies to network_bodies)",
-          "type": "string"
-        },
-        "min_level": {
-          "description": "Minimum log level to return (applies to logs). Levels: debug < log < info < warn < error",
+        "level": {
+          "description": "Exact log level filter (logs)",
           "enum": [
             "debug",
             "log",
@@ -109,54 +49,50 @@
           ],
           "type": "string"
         },
-        "name": {
-          "description": "Snapshot name (applies to security_diff)",
+        "limit": {
+          "description": "Max entries to return (default 100, max 1000)",
+          "type": "number"
+        },
+        "method": {
+          "description": "HTTP method filter",
           "type": "string"
         },
-        "restart_on_eviction": {
-          "description": "If cursor expired (buffer overflow), automatically restart from oldest available entry.",
-          "type": "boolean"
-        },
-        "scope": {
-          "description": "CSS selector to scope audit (applies to accessibility)",
-          "type": "string"
-        },
-        "severity_min": {
-          "description": "Minimum severity to report (applies to security_audit)",
+        "min_level": {
+          "description": "Min log level (logs)",
           "enum": [
-            "critical",
-            "high",
-            "medium",
-            "low",
-            "info"
+            "debug",
+            "log",
+            "info",
+            "warn",
+            "error"
           ],
           "type": "string"
         },
+        "restart_on_eviction": {
+          "description": "Auto-restart if cursor expired",
+          "type": "boolean"
+        },
         "since_cursor": {
-          "description": "Return ALL entries newer than this cursor (inclusive, no limit).",
+          "description": "Return all entries newer than cursor (no limit)",
+          "type": "string"
+        },
+        "source": {
+          "description": "Exact source filter (logs)",
           "type": "string"
         },
         "status_max": {
-          "description": "Maximum status code (applies to network_bodies)",
+          "description": "Max HTTP status code",
           "type": "number"
         },
         "status_min": {
-          "description": "Minimum status code (applies to network_bodies)",
+          "description": "Min HTTP status code",
           "type": "number"
-        },
-        "tags": {
-          "description": "WCAG tags to test (applies to accessibility)",
-          "items": {
-            "type": "string"
-          },
-          "type": "array"
         },
         "url": {
           "description": "Filter by URL substring",
           "type": "string"
         },
         "what": {
-          "description": "What to observe or analyze",
           "enum": [
             "errors",
             "logs",
@@ -170,24 +106,21 @@
             "page",
             "tabs",
             "pilot",
-            "performance",
-            "accessibility",
             "timeline",
-            "error_clusters",
             "error_bundles",
             "screenshot",
-            "history",
-            "security_audit",
-            "third_party_audit",
-            "security_diff",
             "command_result",
             "pending_commands",
-            "failed_commands"
+            "failed_commands",
+            "saved_videos",
+            "recordings",
+            "recording_actions",
+            "log_diff_report"
           ],
           "type": "string"
         },
         "window_seconds": {
-          "description": "Context window in seconds for error_bundles (default 3, max 10). How far back to look for related network/actions/logs.",
+          "description": "error_bundles lookback seconds (default 3, max 10)",
           "type": "number"
         }
       },
@@ -198,76 +131,211 @@
     }
   },
   {
+    "name": "analyze",
+    "description": "Trigger active analysis. Creates async queries the extension executes.\n\nDraw Mode: Use annotations to get all annotations from the last draw mode session. Use annotation_detail with correlation_id to get full computed styles and DOM detail for a specific annotation.",
+    "inputSchema": {
+      "properties": {
+        "checks": {
+          "description": "Checks to run (security_audit)",
+          "items": {
+            "enum": [
+              "credentials",
+              "pii",
+              "headers",
+              "cookies",
+              "transport",
+              "auth"
+            ],
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "correlation_id": {
+          "description": "Correlation ID for fetching annotation detail (applies to annotation_detail)",
+          "type": "string"
+        },
+        "custom_lists": {
+          "description": "Custom domain allow/block lists (third_party_audit)",
+          "type": "object"
+        },
+        "domain": {
+          "description": "Domain to check (link_health)",
+          "type": "string"
+        },
+        "first_party_origins": {
+          "description": "First-party origins (third_party_audit)",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "force_refresh": {
+          "description": "Bypass cache (accessibility)",
+          "type": "boolean"
+        },
+        "ignore_endpoints": {
+          "description": "URL substrings to exclude (api_validation)",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "include_static": {
+          "description": "Include static-only origins (third_party_audit)",
+          "type": "boolean"
+        },
+        "max_workers": {
+          "description": "Max concurrent workers (link_health)",
+          "type": "number"
+        },
+        "operation": {
+          "description": "API validation operation",
+          "enum": [
+            "analyze",
+            "report",
+            "clear"
+          ],
+          "type": "string"
+        },
+        "scope": {
+          "description": "CSS selector scope (accessibility)",
+          "type": "string"
+        },
+        "selector": {
+          "description": "CSS selector (dom, accessibility)",
+          "type": "string"
+        },
+        "session": {
+          "description": "Named session for multi-page annotation review (applies to annotations). Accumulates annotations across pages.",
+          "type": "string"
+        },
+        "severity_min": {
+          "description": "Min severity (security_audit)",
+          "enum": [
+            "critical",
+            "high",
+            "medium",
+            "low",
+            "info"
+          ],
+          "type": "string"
+        },
+        "tags": {
+          "description": "WCAG tags (accessibility)",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "timeout_ms": {
+          "description": "Timeout ms (link_health, annotations). For annotations with wait=true: default 300000 (5 min), max 600000 (10 min).",
+          "type": "number"
+        },
+        "wait": {
+          "description": "Wait for annotations (applies to annotations). Returns immediately with a correlation_id. Poll with observe({what: 'command_result', correlation_id: '...'}) to get results when the user finishes drawing.",
+          "type": "boolean"
+        },
+        "what": {
+          "enum": [
+            "dom",
+            "performance",
+            "accessibility",
+            "error_clusters",
+            "history",
+            "security_audit",
+            "third_party_audit",
+            "link_health",
+            "link_validation",
+            "annotations",
+            "annotation_detail",
+            "api_validation",
+            "draw_history",
+            "draw_session"
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "what"
+      ],
+      "type": "object"
+    }
+  },
+  {
     "name": "generate",
-    "description": "CREATE ARTIFACTS. Generates production-ready outputs from captured data: test (Playwright tests), reproduction (bug scripts), pr_summary, csp, sarif, har, sri.",
+    "description": "Generate artifacts from captured data: reproduction (bug script), csp (Content Security Policy), sarif (accessibility report). Test generation: test_from_context, test_heal, test_classify. Annotation formats: visual_test, annotation_report, annotation_issues.",
     "inputSchema": {
       "properties": {
         "assert_network": {
-          "description": "Include network response assertions (applies to test)",
+          "description": "Assert network responses (test)",
           "type": "boolean"
         },
         "assert_no_errors": {
-          "description": "Assert no console errors occurred (applies to test)",
+          "description": "Assert no console errors (test)",
           "type": "boolean"
         },
         "assert_response_shape": {
-          "description": "Assert response body shape matches (applies to test)",
+          "description": "Assert response shape (test)",
           "type": "boolean"
         },
         "base_url": {
-          "description": "Replace origin in URLs (applies to reproduction, test)",
+          "description": "Replace origin in URLs",
           "type": "string"
         },
         "error_message": {
-          "description": "Error message for context (applies to reproduction)",
+          "description": "Error context (reproduction)",
           "type": "string"
         },
         "exclude_origins": {
-          "description": "Origins to exclude from CSP (applies to csp)",
+          "description": "Origins to exclude (csp)",
           "items": {
             "type": "string"
           },
           "type": "array"
         },
         "format": {
-          "description": "What to generate",
           "enum": [
             "reproduction",
             "test",
             "pr_summary",
-            "sarif",
             "har",
             "csp",
-            "sri"
+            "sri",
+            "sarif",
+            "visual_test",
+            "annotation_report",
+            "annotation_issues",
+            "test_from_context",
+            "test_heal",
+            "test_classify"
           ],
           "type": "string"
         },
         "generate_fixtures": {
-          "description": "Generate fixtures from captured network data (applies to reproduction)",
+          "description": "Generate network fixtures (reproduction)",
           "type": "boolean"
         },
         "include_passes": {
-          "description": "Include passing rules (applies to sarif)",
+          "description": "Include passing rules (sarif)",
           "type": "boolean"
         },
         "include_report_uri": {
-          "description": "Include report-uri directive (applies to csp)",
+          "description": "Include report-uri (csp)",
           "type": "boolean"
         },
         "include_screenshots": {
-          "description": "Insert page.screenshot() calls (applies to reproduction)",
+          "description": "Add screenshot calls (reproduction)",
           "type": "boolean"
         },
         "last_n": {
-          "description": "Use only the last N actions (applies to reproduction)",
+          "description": "Use last N actions (reproduction)",
           "type": "number"
         },
         "method": {
-          "description": "Filter by HTTP method (applies to har)",
+          "description": "HTTP method filter (har)",
           "type": "string"
         },
         "mode": {
-          "description": "CSP strictness mode (applies to csp)",
           "enum": [
             "strict",
             "moderate",
@@ -276,45 +344,49 @@
           "type": "string"
         },
         "origins": {
-          "description": "Filter by specific origins (applies to sri)",
+          "description": "Filter origins (sri)",
           "items": {
             "type": "string"
           },
           "type": "array"
         },
         "resource_types": {
-          "description": "Filter by resource type: 'script', 'stylesheet' (applies to sri)",
+          "description": "Resource types: script, stylesheet (sri)",
           "items": {
             "type": "string"
           },
           "type": "array"
         },
         "save_to": {
-          "description": "File path to save output (applies to sarif, har)",
+          "description": "File path to save output",
           "type": "string"
         },
         "scope": {
-          "description": "CSS selector to scope (applies to sarif)",
+          "description": "CSS selector scope (sarif)",
+          "type": "string"
+        },
+        "session": {
+          "description": "Named annotation session (applies to visual_test, annotation_report, annotation_issues)",
           "type": "string"
         },
         "status_max": {
-          "description": "Maximum status code (applies to har)",
+          "description": "Max status code (har)",
           "type": "number"
         },
         "status_min": {
-          "description": "Minimum status code (applies to har)",
+          "description": "Min status code (har)",
           "type": "number"
         },
         "test_name": {
-          "description": "Name for the generated test (applies to test)",
+          "description": "Test name (test, visual_test)",
           "type": "string"
         },
         "url": {
-          "description": "Filter by URL substring (applies to har)",
+          "description": "URL filter (har)",
           "type": "string"
         },
         "visual_assertions": {
-          "description": "Add toHaveScreenshot() assertions (applies to reproduction)",
+          "description": "Add visual assertions (reproduction)",
           "type": "boolean"
         }
       },
@@ -326,29 +398,27 @@
   },
   {
     "name": "configure",
-    "description": "CUSTOMIZE THE SESSION. Actions: noise_rule, store, load, diff_sessions, validate_api, audit_log, streaming, query_dom, clear, health, test_boundary_start, test_boundary_end.",
+    "description": "Session settings and utilities.\n\nKey actions: health (check server/extension status), clear (reset buffers), noise_rule (suppress recurring console noise), store/load (persist/retrieve session data), streaming (enable push notifications), recording_start/recording_stop (capture browser sessions), playback (replay recordings), log_diff (compare error states).",
     "inputSchema": {
       "properties": {
         "action": {
-          "description": "Configuration action to perform",
           "enum": [
             "store",
             "load",
             "noise_rule",
             "clear",
-            "query_dom",
-            "diff_sessions",
-            "validate_api",
-            "audit_log",
             "health",
             "streaming",
             "test_boundary_start",
-            "test_boundary_end"
+            "test_boundary_end",
+            "recording_start",
+            "recording_stop",
+            "playback",
+            "log_diff"
           ],
           "type": "string"
         },
         "buffer": {
-          "description": "Which buffer to clear",
           "enum": [
             "network",
             "websocket",
@@ -359,7 +429,6 @@
           "type": "string"
         },
         "category": {
-          "description": "Buffer category",
           "enum": [
             "console",
             "network",
@@ -368,11 +437,11 @@
           "type": "string"
         },
         "compare_a": {
-          "description": "First snapshot for comparison",
+          "description": "First snapshot to compare",
           "type": "string"
         },
         "compare_b": {
-          "description": "Second snapshot for comparison",
+          "description": "Second snapshot to compare",
           "type": "string"
         },
         "data": {
@@ -397,23 +466,16 @@
           },
           "type": "array"
         },
-        "ignore_endpoints": {
-          "description": "URL substrings to exclude",
-          "items": {
-            "type": "string"
-          },
-          "type": "array"
-        },
         "key": {
           "description": "Storage key",
           "type": "string"
         },
         "label": {
-          "description": "Human-readable label for test boundary",
+          "description": "Test boundary label",
           "type": "string"
         },
         "limit": {
-          "description": "Maximum entries to return (applies to audit_log)",
+          "description": "Max entries to return (default 100, max 1000)",
           "type": "number"
         },
         "name": {
@@ -421,11 +483,10 @@
           "type": "string"
         },
         "namespace": {
-          "description": "Logical grouping for store",
+          "description": "Store grouping",
           "type": "string"
         },
         "noise_action": {
-          "description": "Noise sub-action: add, remove, list, reset, auto_detect",
           "enum": [
             "add",
             "remove",
@@ -435,25 +496,20 @@
           ],
           "type": "string"
         },
-        "operation": {
-          "description": "API validation operation: analyze, report, clear",
-          "enum": [
-            "analyze",
-            "report",
-            "clear"
-          ],
-          "type": "string"
-        },
         "pattern": {
-          "description": "Regex pattern to match",
+          "description": "Regex pattern",
           "type": "string"
         },
         "reason": {
           "description": "Why this is noise",
           "type": "string"
         },
+        "recording_id": {
+          "description": "Recording ID (recording_stop, playback)",
+          "type": "string"
+        },
         "rule_id": {
-          "description": "ID of rule to remove",
+          "description": "Rule ID to remove",
           "type": "string"
         },
         "rules": {
@@ -463,12 +519,7 @@
           },
           "type": "array"
         },
-        "selector": {
-          "description": "CSS selector to query (applies to query_dom)",
-          "type": "string"
-        },
         "session_action": {
-          "description": "Session sub-action: capture, compare, list, delete",
           "enum": [
             "capture",
             "compare",
@@ -478,11 +529,10 @@
           "type": "string"
         },
         "session_id": {
-          "description": "Filter by MCP session ID (applies to audit_log)",
+          "description": "Filter by session ID",
           "type": "string"
         },
         "severity_min": {
-          "description": "Minimum severity to stream",
           "enum": [
             "info",
             "warning",
@@ -491,11 +541,10 @@
           "type": "string"
         },
         "since": {
-          "description": "Only entries after this ISO 8601 timestamp (applies to audit_log)",
+          "description": "Entries after ISO 8601 timestamp",
           "type": "string"
         },
         "store_action": {
-          "description": "Store sub-action: save, load, list, delete, stats",
           "enum": [
             "save",
             "load",
@@ -506,7 +555,6 @@
           "type": "string"
         },
         "streaming_action": {
-          "description": "Streaming sub-action: enable, disable, status",
           "enum": [
             "enable",
             "disable",
@@ -519,21 +567,17 @@
           "type": "number"
         },
         "test_id": {
-          "description": "Test ID for boundary marker",
+          "description": "Test boundary ID",
           "type": "string"
         },
         "throttle_seconds": {
-          "description": "Minimum seconds between notifications",
+          "description": "Min seconds between notifications",
           "maximum": 60,
           "minimum": 1,
           "type": "integer"
         },
         "tool_name": {
-          "description": "Filter by tool name (applies to audit_log)",
-          "type": "string"
-        },
-        "url": {
-          "description": "Filter by URL substring",
+          "description": "Filter by tool name",
           "type": "string"
         }
       },
@@ -545,11 +589,10 @@
   },
   {
     "name": "interact",
-    "description": "PERFORM BROWSER ACTIONS. Actions: navigate, execute_js, refresh, back, forward, new_tab, highlight, subtitle, save_state, load_state, list_states, delete_state. DOM primitives: click, type, select, check, get_text, get_value, get_attribute, set_attribute, focus, scroll_to, wait_for, key_press, list_interactive. Subtitle: persistent narration text at bottom of viewport (like closed captions). Use action='subtitle' with text param, or add 'subtitle' param to any other action for composable narration. Performance: set analyze=true on DOM actions to get perf_diff with timing breakdown and resource changes in the async result. Requires AI Web Pilot enabled.",
+    "description": "Browser actions. Requires AI Web Pilot.\n\nSelectors: CSS or semantic (text=Submit, role=button, placeholder=Email, label=Name, aria-label=Close). subtitle param composable with any action. analyze=true captures perf_diff. navigate/refresh auto-include perf_diff.\n\nDraw Mode: draw_mode_start activates annotation overlay — user draws rectangles and types feedback, presses ESC to finish. Use analyze({what:'annotations'}) to retrieve results.",
     "inputSchema": {
       "properties": {
         "action": {
-          "description": "Browser interaction to perform",
           "enum": [
             "highlight",
             "subtitle",
@@ -575,48 +618,69 @@
             "scroll_to",
             "wait_for",
             "key_press",
-            "list_interactive"
+            "list_interactive",
+            "record_start",
+            "record_stop",
+            "upload",
+            "draw_mode_start"
           ],
           "type": "string"
         },
         "analyze": {
-          "description": "Enable performance profiling for this action. When true, captures timing breakdown and perf_diff (before/after metrics) in the async result.",
+          "description": "Enable perf profiling (captures perf_diff)",
           "type": "boolean"
         },
+        "audio": {
+          "description": "Recording audio: tab, mic, both. Omit for video-only.",
+          "enum": [
+            "tab",
+            "mic",
+            "both"
+          ],
+          "type": "string"
+        },
         "checked": {
-          "description": "Whether to check or uncheck (applies to check, default: true)",
+          "description": "Check/uncheck (default true)",
           "type": "boolean"
         },
         "clear": {
-          "description": "Clear existing value before typing (applies to type)",
+          "description": "Clear before typing",
           "type": "boolean"
         },
         "correlation_id": {
-          "description": "Optional ID to link this action to a specific error or investigation.",
+          "description": "Link to error/investigation",
           "type": "string"
         },
         "duration_ms": {
-          "description": "Highlight duration in ms, default 5000",
+          "description": "Highlight duration ms (default 5000)",
+          "type": "number"
+        },
+        "fps": {
+          "description": "Recording FPS (5-60, default 15)",
           "type": "number"
         },
         "include_url": {
-          "description": "Include URL when restoring state",
+          "description": "Restore URL with state",
           "type": "boolean"
         },
         "name": {
-          "description": "Attribute name (applies to get_attribute, set_attribute)",
+          "description": "Attribute or recording name",
           "type": "string"
         },
         "reason": {
-          "description": "Why this action is being performed (shown in visual toast). Example: 'Opening compose to send test email'.",
+          "description": "Action reason (shown as toast)",
           "type": "string"
         },
         "script": {
-          "description": "JavaScript code to execute (applies to execute_js)",
+          "description": "JS code (execute_js)",
           "type": "string"
         },
         "selector": {
-          "description": "CSS selector or semantic selector for element (applies to highlight, click, type, select, check, get_text, get_value, get_attribute, set_attribute, focus, scroll_to, wait_for, key_press). Semantic: text=Submit, role=button, placeholder=Email, label=Name, aria-label=Close.",
+          "description": "CSS or semantic selector for target element",
+          "type": "string"
+        },
+        "session": {
+          "description": "Named session for multi-page annotation review (applies to draw_mode_start). Accumulates annotations across pages under a shared session name.",
           "type": "string"
         },
         "snapshot_name": {
@@ -624,31 +688,31 @@
           "type": "string"
         },
         "subtitle": {
-          "description": "Optional narration text displayed at bottom of viewport. Can be added to ANY action for composable narration in a single tool call. Empty string clears.",
+          "description": "Narration text, composable with any action. Empty clears.",
           "type": "string"
         },
         "tab_id": {
-          "description": "Target tab ID. Omit for active tab.",
+          "description": "Tab ID (default: active)",
           "type": "number"
         },
         "text": {
-          "description": "Text to type into the element (applies to type). Key name for key_press: Enter, Tab, Escape, Backspace, ArrowDown, ArrowUp, Space. Subtitle text (applies to subtitle action, required). Empty string clears.",
+          "description": "Text for type/subtitle. key_press keys: Enter, Tab, Escape, Backspace, ArrowDown, ArrowUp, Space.",
           "type": "string"
         },
         "timeout_ms": {
-          "description": "Execution timeout in ms, default 5000 (applies to execute_js, wait_for)",
+          "description": "Timeout ms (default 5000)",
           "type": "number"
         },
         "url": {
-          "description": "URL to navigate to (required for navigate, new_tab)",
+          "description": "URL (navigate, new_tab)",
           "type": "string"
         },
         "value": {
-          "description": "Value to set (applies to select, set_attribute)",
+          "description": "Value for select/set_attribute",
           "type": "string"
         },
         "world": {
-          "description": "Execution world: 'auto' (default, tries main then isolated on CSP error), 'main' (access page JS globals), or 'isolated' (bypasses page CSP, DOM access only). Use 'isolated' for sites with Trusted Types CSP like Gmail.",
+          "description": "JS world: auto (default), main (page globals), isolated (bypass CSP).",
           "enum": [
             "auto",
             "main",

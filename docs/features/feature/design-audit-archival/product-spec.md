@@ -35,7 +35,7 @@ A screenshot archival and queryable design system compliance tool that allows LL
 **I want to** capture screenshots across breakpoints and compare against historical versions
 **So that** I can detect design regressions and verify responsive behavior
 
-**Acceptance Criteria:**
+#### Acceptance Criteria:
 - Can capture 3 viewports (desktop, tablet, mobile) in parallel
 - Each screenshot tagged with component, variant, viewport size, timestamp
 - Can query by component name to see historical screenshots
@@ -48,7 +48,7 @@ A screenshot archival and queryable design system compliance tool that allows LL
 **I want to** archive all design variants and their visual appearance
 **So that** I can verify compliance with design system spec
 
-**Acceptance Criteria:**
+#### Acceptance Criteria:
 - Screenshots automatically tagged with component & variant metadata
 - Full-page and component-level capture supported
 - Queryable by component, variant, viewport, date range
@@ -61,7 +61,7 @@ A screenshot archival and queryable design system compliance tool that allows LL
 **I want to** control storage usage without manual cleanup
 **So that** the system doesn't consume unlimited disk space
 
-**Acceptance Criteria:**
+#### Acceptance Criteria:
 - Default storage limit: 5GB
 - Automatic cleanup job (daily, 2 AM UTC)
 - Age-based deletion if `max_age_days` configured

@@ -12,7 +12,7 @@ version: 5.2.0
 
 Users calling `observe({what: "network_bodies"})` receive empty arrays despite the browser making network requests that should have been captured. The network waterfall shows requests occurred, but the response bodies are not available.
 
-**Current User Experience:**
+### Current User Experience:
 1. User navigates to a page that makes API calls
 2. User calls `observe({what: "network_waterfall"})` and sees requests listed
 3. User calls `observe({what: "network_bodies"})` to get response bodies
@@ -30,7 +30,7 @@ Users calling `observe({what: "network_bodies"})` receive empty arrays despite t
 
 Fix the network body capture pipeline so that response bodies are actually captured, stored, and returned when requested. Ensure the capture mechanism is properly initialized and body data flows from the extension through to the server's ring buffer.
 
-**Fixed User Experience:**
+### Fixed User Experience:
 1. User navigates to a page that makes API calls
 2. User calls `observe({what: "network_bodies"})`
 3. Receives actual response bodies for network requests
@@ -67,13 +67,13 @@ Fix the network body capture pipeline so that response bodies are actually captu
 
 ## User Workflow
 
-**Before Fix:**
+### Before Fix:
 1. User makes API request via browser
 2. User calls `observe({what: "network_bodies"})`
 3. Receives empty array
 4. User cannot diagnose API issues
 
-**After Fix:**
+### After Fix:
 1. User makes API request via browser
 2. User calls `observe({what: "network_bodies"})`
 3. Receives response bodies with full data
@@ -83,7 +83,7 @@ Fix the network body capture pipeline so that response bodies are actually captu
 
 ### Example 1: Successful API Response Body
 
-**Request:**
+#### Request:
 ```json
 {
   "tool": "observe",
@@ -93,14 +93,14 @@ Fix the network body capture pipeline so that response bodies are actually captu
 }
 ```
 
-**Before Fix Response:**
+#### Before Fix Response:
 ```json
 {
   "entries": []
 }
 ```
 
-**After Fix Response:**
+#### After Fix Response:
 ```json
 {
   "entries": [
@@ -129,7 +129,7 @@ Fix the network body capture pipeline so that response bodies are actually captu
 
 **Request:** Same as Example 1
 
-**After Fix Response:**
+#### After Fix Response:
 ```json
 {
   "entries": [
@@ -156,7 +156,7 @@ Fix the network body capture pipeline so that response bodies are actually captu
 
 **Request:** Same as Example 1
 
-**After Fix Response:**
+#### After Fix Response:
 ```json
 {
   "entries": [
@@ -181,7 +181,7 @@ Fix the network body capture pipeline so that response bodies are actually captu
 
 **Request:** Same as Example 1
 
-**Response (If body capture is opt-in and not enabled):**
+#### Response (If body capture is opt-in and not enabled):
 ```json
 {
   "entries": [],

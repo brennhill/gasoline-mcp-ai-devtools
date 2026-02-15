@@ -51,14 +51,14 @@ Add read-only mode as a server-wide configuration flag. When enabled, all mutati
 
 ## Examples
 
-**Server start in read-only mode:**
+### Server start in read-only mode:
 ```bash
 gasoline --read-only --port 7890
 # or
 GASOLINE_READ_ONLY=true gasoline
 ```
 
-**Check read-only status:**
+## Check read-only status:
 ```json
 observe({what: "server_config"})
 // Returns:
@@ -69,7 +69,7 @@ observe({what: "server_config"})
 }
 ```
 
-**Mutation attempt fails:**
+## Mutation attempt fails:
 ```json
 interact({action: "execute_js", code: "alert('test')"})
 // Returns:
@@ -79,7 +79,7 @@ interact({action: "execute_js", code: "alert('test')"})
 }
 ```
 
-**Allowed operations:**
+## Allowed operations:
 ```json
 // Observation: allowed
 observe({what: "errors"})

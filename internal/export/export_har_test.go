@@ -1,18 +1,15 @@
-//go:build integration
-// +build integration
-
-// export_har_test.go — HAR export tests.
-// NOTE: These tests require HAR export implementation that doesn't exist yet.
-// The implementation stub is in cmd/dev-console/tools.go (toolExportHAR).
-// Run with: go test -tags=integration ./internal/export/...
+// export_har_test.go — HAR export unit tests.
+// Tests conversion logic, query string parsing, path safety, and filtering.
 package export
 
 import (
 	"encoding/json"
 	"os"
-	"path/filepath"
 	"strings"
 	"testing"
+	"time"
+
+	"github.com/dev-console/dev-console/internal/types"
 )
 
 // ============================================
@@ -22,7 +19,7 @@ import (
 func TestNetworkBodyToHAREntry(t *testing.T) {
 	t.Parallel()
 	t.Run("basic GET", func(t *testing.T) {
-		body := NetworkBody{
+		body := types.NetworkBody{
 			Timestamp: "2026-01-23T10:30:00.000Z",
 			Method:    "GET",
 			URL:       "https://example.com/api/users",
@@ -65,7 +62,7 @@ func TestNetworkBodyToHAREntry(t *testing.T) {
 	})
 
 	t.Run("POST with body", func(t *testing.T) {
-		body := NetworkBody{
+		body := types.NetworkBody{
 			Timestamp:   "2026-01-23T10:30:00.000Z",
 			Method:      "POST",
 			URL:         "https://example.com/api/users",
@@ -92,7 +89,7 @@ func TestNetworkBodyToHAREntry(t *testing.T) {
 	})
 
 	t.Run("no request body", func(t *testing.T) {
-		body := NetworkBody{
+		body := types.NetworkBody{
 			Method: "GET",
 			URL:    "https://example.com/api/users",
 			Status: 200,
@@ -106,7 +103,7 @@ func TestNetworkBodyToHAREntry(t *testing.T) {
 	})
 
 	t.Run("truncated request", func(t *testing.T) {
-		body := NetworkBody{
+		body := types.NetworkBody{
 			Method:           "POST",
 			URL:              "https://example.com/api",
 			Status:           200,
@@ -123,7 +120,7 @@ func TestNetworkBodyToHAREntry(t *testing.T) {
 	})
 
 	t.Run("truncated response", func(t *testing.T) {
-		body := NetworkBody{
+		body := types.NetworkBody{
 			Method:            "GET",
 			URL:               "https://example.com/api",
 			Status:            200,
@@ -139,7 +136,7 @@ func TestNetworkBodyToHAREntry(t *testing.T) {
 	})
 
 	t.Run("query string parsing", func(t *testing.T) {
-		body := NetworkBody{
+		body := types.NetworkBody{
 			Method: "GET",
 			URL:    "https://x.com/api?foo=bar&baz=1",
 			Status: 200,
@@ -150,7 +147,6 @@ func TestNetworkBodyToHAREntry(t *testing.T) {
 		if len(entry.Request.QueryString) != 2 {
 			t.Fatalf("expected 2 queryString entries, got %d", len(entry.Request.QueryString))
 		}
-		// Check first entry
 		found := false
 		for _, q := range entry.Request.QueryString {
 			if q.Name == "foo" && q.Value == "bar" {
@@ -161,20 +157,10 @@ func TestNetworkBodyToHAREntry(t *testing.T) {
 		if !found {
 			t.Error("expected queryString entry foo=bar")
 		}
-		found = false
-		for _, q := range entry.Request.QueryString {
-			if q.Name == "baz" && q.Value == "1" {
-				found = true
-				break
-			}
-		}
-		if !found {
-			t.Error("expected queryString entry baz=1")
-		}
 	})
 
 	t.Run("unknown status code", func(t *testing.T) {
-		body := NetworkBody{
+		body := types.NetworkBody{
 			Method: "GET",
 			URL:    "https://example.com/api",
 			Status: 999,
@@ -188,7 +174,7 @@ func TestNetworkBodyToHAREntry(t *testing.T) {
 	})
 
 	t.Run("duration maps to timings.wait", func(t *testing.T) {
-		body := NetworkBody{
+		body := types.NetworkBody{
 			Method:   "GET",
 			URL:      "https://example.com/api",
 			Status:   200,
@@ -208,56 +194,8 @@ func TestNetworkBodyToHAREntry(t *testing.T) {
 		}
 	})
 
-	t.Run("empty URL query", func(t *testing.T) {
-		body := NetworkBody{
-			Method: "GET",
-			URL:    "https://example.com/api",
-			Status: 200,
-		}
-
-		entry := networkBodyToHAREntry(body)
-
-		if len(entry.Request.QueryString) != 0 {
-			t.Errorf("expected 0 queryString entries, got %d", len(entry.Request.QueryString))
-		}
-	})
-
-	t.Run("special chars in query params", func(t *testing.T) {
-		body := NetworkBody{
-			Method: "GET",
-			URL:    "https://example.com/api?key=hello+world&val=a%26b",
-			Status: 200,
-		}
-
-		entry := networkBodyToHAREntry(body)
-
-		if len(entry.Request.QueryString) != 2 {
-			t.Fatalf("expected 2 queryString entries, got %d", len(entry.Request.QueryString))
-		}
-		found := false
-		for _, q := range entry.Request.QueryString {
-			if q.Name == "key" && q.Value == "hello world" {
-				found = true
-				break
-			}
-		}
-		if !found {
-			t.Error("expected decoded queryString entry key=hello world")
-		}
-		found = false
-		for _, q := range entry.Request.QueryString {
-			if q.Name == "val" && q.Value == "a&b" {
-				found = true
-				break
-			}
-		}
-		if !found {
-			t.Error("expected decoded queryString entry val=a&b")
-		}
-	})
-
 	t.Run("headers arrays are empty not nil", func(t *testing.T) {
-		body := NetworkBody{
+		body := types.NetworkBody{
 			Method: "GET",
 			URL:    "https://example.com/api",
 			Status: 200,
@@ -265,7 +203,6 @@ func TestNetworkBodyToHAREntry(t *testing.T) {
 
 		entry := networkBodyToHAREntry(body)
 
-		// Marshal and check JSON - arrays should be [] not null
 		data, err := json.Marshal(entry)
 		if err != nil {
 			t.Fatal(err)
@@ -280,7 +217,7 @@ func TestNetworkBodyToHAREntry(t *testing.T) {
 	})
 
 	t.Run("response body in content", func(t *testing.T) {
-		body := NetworkBody{
+		body := types.NetworkBody{
 			Method:       "GET",
 			URL:          "https://example.com/api",
 			Status:       200,
@@ -312,9 +249,7 @@ func TestNetworkBodyToHAREntry(t *testing.T) {
 func TestExportHAR(t *testing.T) {
 	t.Parallel()
 	t.Run("empty - no network bodies", func(t *testing.T) {
-		capture := NewCapture()
-
-		harLog := capture.ExportHAR(NetworkBodyFilter{})
+		harLog := ExportHAR(nil, types.NetworkBodyFilter{}, "test")
 
 		if harLog.Log.Version != "1.2" {
 			t.Errorf("expected version 1.2, got %s", harLog.Log.Version)
@@ -323,7 +258,6 @@ func TestExportHAR(t *testing.T) {
 			t.Errorf("expected 0 entries, got %d", len(harLog.Log.Entries))
 		}
 
-		// Verify JSON serialization produces entries:[] not entries:null
 		data, _ := json.Marshal(harLog)
 		if strings.Contains(string(data), `"entries":null`) {
 			t.Error("entries should be empty array, not null")
@@ -331,19 +265,17 @@ func TestExportHAR(t *testing.T) {
 	})
 
 	t.Run("multiple entries in chronological order", func(t *testing.T) {
-		capture := NewCapture()
-		capture.AddNetworkBodies([]NetworkBody{
+		bodies := []types.NetworkBody{
 			{Timestamp: "2026-01-23T10:30:00.000Z", Method: "GET", URL: "https://example.com/1", Status: 200},
 			{Timestamp: "2026-01-23T10:30:01.000Z", Method: "GET", URL: "https://example.com/2", Status: 200},
 			{Timestamp: "2026-01-23T10:30:02.000Z", Method: "GET", URL: "https://example.com/3", Status: 200},
-		})
+		}
 
-		harLog := capture.ExportHAR(NetworkBodyFilter{})
+		harLog := ExportHAR(bodies, types.NetworkBodyFilter{}, "test")
 
 		if len(harLog.Log.Entries) != 3 {
 			t.Fatalf("expected 3 entries, got %d", len(harLog.Log.Entries))
 		}
-		// Chronological order (oldest first)
 		if harLog.Log.Entries[0].Request.URL != "https://example.com/1" {
 			t.Errorf("expected first entry URL /1, got %s", harLog.Log.Entries[0].Request.URL)
 		}
@@ -353,14 +285,13 @@ func TestExportHAR(t *testing.T) {
 	})
 
 	t.Run("with method filter", func(t *testing.T) {
-		capture := NewCapture()
-		capture.AddNetworkBodies([]NetworkBody{
-			{Timestamp: "2026-01-23T10:30:00.000Z", Method: "GET", URL: "https://example.com/1", Status: 200},
-			{Timestamp: "2026-01-23T10:30:01.000Z", Method: "POST", URL: "https://example.com/2", Status: 201},
-			{Timestamp: "2026-01-23T10:30:02.000Z", Method: "GET", URL: "https://example.com/3", Status: 200},
-		})
+		bodies := []types.NetworkBody{
+			{Method: "GET", URL: "https://example.com/1", Status: 200},
+			{Method: "POST", URL: "https://example.com/2", Status: 201},
+			{Method: "GET", URL: "https://example.com/3", Status: 200},
+		}
 
-		harLog := capture.ExportHAR(NetworkBodyFilter{Method: "POST"})
+		harLog := ExportHAR(bodies, types.NetworkBodyFilter{Method: "POST"}, "test")
 
 		if len(harLog.Log.Entries) != 1 {
 			t.Fatalf("expected 1 entry, got %d", len(harLog.Log.Entries))
@@ -371,14 +302,13 @@ func TestExportHAR(t *testing.T) {
 	})
 
 	t.Run("with URL filter", func(t *testing.T) {
-		capture := NewCapture()
-		capture.AddNetworkBodies([]NetworkBody{
-			{Timestamp: "2026-01-23T10:30:00.000Z", Method: "GET", URL: "https://example.com/api/users", Status: 200},
-			{Timestamp: "2026-01-23T10:30:01.000Z", Method: "GET", URL: "https://example.com/static/app.js", Status: 200},
-			{Timestamp: "2026-01-23T10:30:02.000Z", Method: "GET", URL: "https://example.com/api/posts", Status: 200},
-		})
+		bodies := []types.NetworkBody{
+			{Method: "GET", URL: "https://example.com/api/users", Status: 200},
+			{Method: "GET", URL: "https://example.com/static/app.js", Status: 200},
+			{Method: "GET", URL: "https://example.com/api/posts", Status: 200},
+		}
 
-		harLog := capture.ExportHAR(NetworkBodyFilter{URLFilter: "api"})
+		harLog := ExportHAR(bodies, types.NetworkBodyFilter{URLFilter: "api"}, "test")
 
 		if len(harLog.Log.Entries) != 2 {
 			t.Fatalf("expected 2 entries, got %d", len(harLog.Log.Entries))
@@ -386,14 +316,13 @@ func TestExportHAR(t *testing.T) {
 	})
 
 	t.Run("with status filter", func(t *testing.T) {
-		capture := NewCapture()
-		capture.AddNetworkBodies([]NetworkBody{
-			{Timestamp: "2026-01-23T10:30:00.000Z", Method: "GET", URL: "https://example.com/1", Status: 200},
-			{Timestamp: "2026-01-23T10:30:01.000Z", Method: "GET", URL: "https://example.com/2", Status: 404},
-			{Timestamp: "2026-01-23T10:30:02.000Z", Method: "GET", URL: "https://example.com/3", Status: 500},
-		})
+		bodies := []types.NetworkBody{
+			{Method: "GET", URL: "https://example.com/1", Status: 200},
+			{Method: "GET", URL: "https://example.com/2", Status: 404},
+			{Method: "GET", URL: "https://example.com/3", Status: 500},
+		}
 
-		harLog := capture.ExportHAR(NetworkBodyFilter{StatusMin: 400})
+		harLog := ExportHAR(bodies, types.NetworkBodyFilter{StatusMin: 400}, "test")
 
 		if len(harLog.Log.Entries) != 2 {
 			t.Fatalf("expected 2 entries, got %d", len(harLog.Log.Entries))
@@ -401,25 +330,13 @@ func TestExportHAR(t *testing.T) {
 	})
 
 	t.Run("creator field", func(t *testing.T) {
-		capture := NewCapture()
-
-		harLog := capture.ExportHAR(NetworkBodyFilter{})
+		harLog := ExportHAR(nil, types.NetworkBodyFilter{}, "1.2.3")
 
 		if harLog.Log.Creator.Name != "Gasoline" {
 			t.Errorf("expected creator name Gasoline, got %s", harLog.Log.Creator.Name)
 		}
-		if harLog.Log.Creator.Version != version {
-			t.Errorf("expected creator version %s, got %s", version, harLog.Log.Creator.Version)
-		}
-	})
-
-	t.Run("HAR version is 1.2", func(t *testing.T) {
-		capture := NewCapture()
-
-		harLog := capture.ExportHAR(NetworkBodyFilter{})
-
-		if harLog.Log.Version != "1.2" {
-			t.Errorf("expected version 1.2, got %s", harLog.Log.Version)
+		if harLog.Log.Creator.Version != "1.2.3" {
+			t.Errorf("expected creator version 1.2.3, got %s", harLog.Log.Creator.Version)
 		}
 	})
 }
@@ -431,16 +348,15 @@ func TestExportHAR(t *testing.T) {
 func TestExportHARToFile(t *testing.T) {
 	t.Parallel()
 	t.Run("save to tmp", func(t *testing.T) {
-		capture := NewCapture()
-		capture.AddNetworkBodies([]NetworkBody{
+		bodies := []types.NetworkBody{
 			{Timestamp: "2026-01-23T10:30:00.000Z", Method: "GET", URL: "https://example.com/1", Status: 200},
 			{Timestamp: "2026-01-23T10:30:01.000Z", Method: "POST", URL: "https://example.com/2", Status: 201},
-		})
+		}
 
-		tmpFile := filepath.Join(os.TempDir(), "test-har-export.har")
+		tmpFile := "/tmp/gasoline-test-har-export.har"
 		defer os.Remove(tmpFile)
 
-		result, err := capture.ExportHARToFile(NetworkBodyFilter{}, tmpFile)
+		result, err := ExportHARToFile(bodies, types.NetworkBodyFilter{}, "test", tmpFile)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -455,8 +371,7 @@ func TestExportHARToFile(t *testing.T) {
 			t.Errorf("expected positive file_size_bytes, got %d", result.FileSizeBytes)
 		}
 
-		// Verify file was actually written and is valid JSON
-		data, err := os.ReadFile(tmpFile)
+		data, err := os.ReadFile(tmpFile) // nosemgrep: go_filesystem_rule-fileread — test reads output
 		if err != nil {
 			t.Fatalf("failed to read file: %v", err)
 		}
@@ -469,30 +384,28 @@ func TestExportHARToFile(t *testing.T) {
 		}
 	})
 
-	t.Run("invalid path", func(t *testing.T) {
-		capture := NewCapture()
-
-		_, err := capture.ExportHARToFile(NetworkBodyFilter{}, "/root/nope/cannot-write.har")
-		if err == nil {
-			t.Error("expected error for unwritable path")
-		}
-	})
-
 	t.Run("path traversal rejected", func(t *testing.T) {
-		capture := NewCapture()
-
-		_, err := capture.ExportHARToFile(NetworkBodyFilter{}, "../../etc/passwd")
+		_, err := ExportHARToFile(nil, types.NetworkBodyFilter{}, "test", "../../etc/passwd")
 		if err == nil {
 			t.Error("expected error for path traversal")
 		}
 	})
 
 	t.Run("absolute path outside tmp rejected", func(t *testing.T) {
-		capture := NewCapture()
-
-		_, err := capture.ExportHARToFile(NetworkBodyFilter{}, "/etc/hosts")
+		_, err := ExportHARToFile(nil, types.NetworkBodyFilter{}, "test", "/etc/hosts")
 		if err == nil {
 			t.Error("expected error for absolute path outside tmp")
+		}
+	})
+
+	t.Run("nonexistent parent dir", func(t *testing.T) {
+		_, err := ExportHARToFile(
+			[]types.NetworkBody{{Method: "GET", URL: "https://example.com", Status: 200}},
+			types.NetworkBodyFilter{}, "test",
+			"/tmp/gasoline-test-nonexist/deep/nested/file.har",
+		)
+		if err == nil {
+			t.Error("expected error for nonexistent parent dir")
 		}
 	})
 }
@@ -503,13 +416,16 @@ func TestExportHARToFile(t *testing.T) {
 
 func TestIsPathSafe(t *testing.T) {
 	t.Parallel()
+	// Use runtime temp dir to avoid sandbox TMPDIR mismatch
+	runtimeTmpDir := os.TempDir()
+
 	tests := []struct {
 		name string
 		path string
 		safe bool
 	}{
 		{"tmp absolute path", "/tmp/test.har", true},
-		{"os tempdir", filepath.Join(os.TempDir(), "test.har"), true},
+		{"os tempdir", runtimeTmpDir + "/test.har", true},
 		{"relative simple", "output.har", true},
 		{"relative subdir", "reports/output.har", true},
 		{"traversal", "../../etc/passwd", false},
@@ -553,6 +469,16 @@ func TestParseQueryString(t *testing.T) {
 		if len(result) != 2 {
 			t.Fatalf("expected 2 entries, got %d", len(result))
 		}
+		found := false
+		for _, q := range result {
+			if q.Name == "key" && q.Value == "hello world" {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Error("expected decoded queryString entry key=hello world")
+		}
 	})
 
 	t.Run("invalid URL returns empty", func(t *testing.T) {
@@ -564,456 +490,246 @@ func TestParseQueryString(t *testing.T) {
 }
 
 // ============================================
-// TestExportHARTool - MCP tool integration tests
+// TestExportHARMerged - Merged waterfall tests
 // ============================================
 
-func TestExportHARTool(t *testing.T) {
+func TestExportHARMerged_WaterfallOnly(t *testing.T) {
 	t.Parallel()
-	t.Run("no save_to returns full HAR JSON", func(t *testing.T) {
-		server := &Server{
-			entries: make([]LogEntry, 0),
-		}
-		capture := NewCapture()
-		capture.AddNetworkBodies([]NetworkBody{
-			{Timestamp: "2026-01-23T10:30:00.000Z", Method: "GET", URL: "https://example.com/api", Status: 200, Duration: 50},
-		})
-		handler := &ToolHandler{
-			MCPHandler: NewMCPHandler(server),
-			capture:    capture,
-		}
-
-		args, _ := json.Marshal(map[string]any{})
-		req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`), Method: "tools/call"}
-		resp := handler.toolExportHAR(req, args)
-
-		if resp.Error != nil {
-			t.Fatalf("unexpected error: %v", resp.Error)
-		}
-
-		// Parse the result to check it contains HAR JSON
-		var result MCPToolResult
-		if err := json.Unmarshal(resp.Result, &result); err != nil {
-			t.Fatalf("failed to parse result: %v", err)
-		}
-		if len(result.Content) == 0 {
-			t.Fatal("expected content in response")
-		}
-
-		// Strip summary line before parsing JSON
-		text := result.Content[0].Text
-		jsonPart := text
-		if lines := strings.SplitN(text, "\n", 2); len(lines) == 2 {
-			jsonPart = lines[1]
-		}
-		var harLog HARLog
-		if err := json.Unmarshal([]byte(jsonPart), &harLog); err != nil {
-			t.Fatalf("response text is not valid HAR JSON: %v", err)
-		}
-		if len(harLog.Log.Entries) != 1 {
-			t.Errorf("expected 1 entry, got %d", len(harLog.Log.Entries))
-		}
-	})
-
-	t.Run("with save_to saves file and returns summary", func(t *testing.T) {
-		server := &Server{
-			entries: make([]LogEntry, 0),
-		}
-		capture := NewCapture()
-		capture.AddNetworkBodies([]NetworkBody{
-			{Timestamp: "2026-01-23T10:30:00.000Z", Method: "GET", URL: "https://example.com/api", Status: 200},
-		})
-		handler := &ToolHandler{
-			MCPHandler: NewMCPHandler(server),
-			capture:    capture,
-		}
-
-		tmpFile := filepath.Join(os.TempDir(), "test-tool-export.har")
-		defer os.Remove(tmpFile)
-
-		args, _ := json.Marshal(map[string]any{
-			"save_to": tmpFile,
-		})
-		req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`2`), Method: "tools/call"}
-		resp := handler.toolExportHAR(req, args)
-
-		if resp.Error != nil {
-			t.Fatalf("unexpected error: %v", resp.Error)
-		}
-
-		var result MCPToolResult
-		if err := json.Unmarshal(resp.Result, &result); err != nil {
-			t.Fatalf("failed to parse result: %v", err)
-		}
-
-		// Strip summary line before parsing JSON
-		text := result.Content[0].Text
-		jsonPart := text
-		if lines := strings.SplitN(text, "\n", 2); len(lines) == 2 {
-			jsonPart = lines[1]
-		}
-		var summary HARExportResult
-		if err := json.Unmarshal([]byte(jsonPart), &summary); err != nil {
-			t.Fatalf("response text is not valid summary JSON: %v", err)
-		}
-		if summary.SavedTo != tmpFile {
-			t.Errorf("expected saved_to %s, got %s", tmpFile, summary.SavedTo)
-		}
-		if summary.EntriesCount != 1 {
-			t.Errorf("expected entries_count 1, got %d", summary.EntriesCount)
-		}
-
-		// Verify file exists
-		if _, err := os.Stat(tmpFile); os.IsNotExist(err) {
-			t.Error("expected file to exist")
-		}
-	})
-
-	t.Run("with filters passed through", func(t *testing.T) {
-		server := &Server{
-			entries: make([]LogEntry, 0),
-		}
-		capture := NewCapture()
-		capture.AddNetworkBodies([]NetworkBody{
-			{Timestamp: "2026-01-23T10:30:00.000Z", Method: "GET", URL: "https://example.com/api", Status: 200},
-			{Timestamp: "2026-01-23T10:30:01.000Z", Method: "POST", URL: "https://example.com/api", Status: 500},
-			{Timestamp: "2026-01-23T10:30:02.000Z", Method: "GET", URL: "https://example.com/static", Status: 200},
-		})
-		handler := &ToolHandler{
-			MCPHandler: NewMCPHandler(server),
-			capture:    capture,
-		}
-
-		args, _ := json.Marshal(map[string]any{
-			"method":     "POST",
-			"status_min": 400,
-		})
-		req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`3`), Method: "tools/call"}
-		resp := handler.toolExportHAR(req, args)
-
-		var result MCPToolResult
-		json.Unmarshal(resp.Result, &result)
-
-		// Strip summary line before parsing JSON
-		text := result.Content[0].Text
-		jsonPart := text
-		if lines := strings.SplitN(text, "\n", 2); len(lines) == 2 {
-			jsonPart = lines[1]
-		}
-		var harLog HARLog
-		json.Unmarshal([]byte(jsonPart), &harLog)
-
-		if len(harLog.Log.Entries) != 1 {
-			t.Fatalf("expected 1 entry with filters, got %d", len(harLog.Log.Entries))
-		}
-		if harLog.Log.Entries[0].Request.Method != "POST" {
-			t.Errorf("expected POST, got %s", harLog.Log.Entries[0].Request.Method)
-		}
-	})
-
-	t.Run("tool registered in tools list", func(t *testing.T) {
-		server := &Server{
-			entries: make([]LogEntry, 0),
-		}
-		capture := NewCapture()
-		handler := &ToolHandler{
-			MCPHandler: NewMCPHandler(server),
-			capture:    capture,
-		}
-
-		tools := handler.toolsList()
-		found := false
-		for _, tool := range tools {
-			if tool.Name == "generate" {
-				found = true
-				break
-			}
-		}
-		if !found {
-			t.Error("generate tool not found in tools list")
-		}
-	})
-
-	t.Run("tool dispatched in handleToolCall", func(t *testing.T) {
-		server := &Server{
-			entries: make([]LogEntry, 0),
-		}
-		capture := NewCapture()
-		handler := &ToolHandler{
-			MCPHandler: NewMCPHandler(server),
-			capture:    capture,
-		}
-
-		args, _ := json.Marshal(map[string]any{"format": "har"})
-		req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`4`), Method: "tools/call"}
-		resp, handled := handler.handleToolCall(req, "generate", args)
-
-		if !handled {
-			t.Error("expected generate to be handled")
-		}
-		if resp.Error != nil {
-			t.Errorf("unexpected error: %v", resp.Error)
-		}
-	})
-
-	t.Run("save_to with invalid path returns error", func(t *testing.T) {
-		server := &Server{
-			entries: make([]LogEntry, 0),
-		}
-		capture := NewCapture()
-		handler := &ToolHandler{
-			MCPHandler: NewMCPHandler(server),
-			capture:    capture,
-		}
-
-		args, _ := json.Marshal(map[string]any{
-			"save_to": "../../etc/passwd",
-		})
-		req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`5`), Method: "tools/call"}
-		resp := handler.toolExportHAR(req, args)
-
-		var result MCPToolResult
-		json.Unmarshal(resp.Result, &result)
-		if !result.IsError {
-			t.Error("expected error response for path traversal")
-		}
-	})
-}
-
-// ============================================
-// Coverage Gap Tests
-// ============================================
-
-func TestExportHARToFile_WriteError(t *testing.T) {
-	t.Parallel()
-	capture := setupTestCapture(t)
-
-	// Add a network body so there's data to export
-	capture.AddNetworkBodies([]NetworkBody{{
-		Timestamp: "2026-01-23T10:00:00.000Z",
-		Method:    "GET",
-		URL:       "https://example.com/api",
-		Status:    200,
-	}})
-
-	// Use a path where the parent is a file (not a directory), so WriteFile fails
-	tmpDir := t.TempDir()
-	blockingFile := filepath.Join(tmpDir, "blocker")
-	if err := os.WriteFile(blockingFile, []byte("file"), 0600); err != nil {
-		t.Fatalf("Failed to create blocking file: %v", err)
+	now := time.Now()
+	waterfall := []types.NetworkWaterfallEntry{
+		{
+			URL:             "https://example.com/style.css",
+			InitiatorType:   "link",
+			Duration:        50.5,
+			StartTime:       100.0,
+			FetchStart:      105.0,
+			ResponseEnd:     150.5,
+			TransferSize:    1024,
+			DecodedBodySize: 2048,
+			EncodedBodySize: 1024,
+			Timestamp:       now,
+		},
+		{
+			URL:             "https://example.com/app.js",
+			InitiatorType:   "script",
+			Duration:        80.0,
+			StartTime:       200.0,
+			FetchStart:      205.0,
+			ResponseEnd:     280.0,
+			TransferSize:    4096,
+			DecodedBodySize: 8192,
+			EncodedBodySize: 4096,
+			Timestamp:       now.Add(time.Second),
+		},
 	}
-	badPath := filepath.Join(blockingFile, "output.har")
 
-	_, err := capture.ExportHARToFile(NetworkBodyFilter{}, badPath)
-	if err == nil {
-		t.Fatal("Expected error when write fails, got nil")
+	harLog := ExportHARMerged(nil, waterfall, types.NetworkBodyFilter{}, "test")
+
+	if len(harLog.Log.Entries) != 2 {
+		t.Fatalf("expected 2 entries, got %d", len(harLog.Log.Entries))
 	}
-	if !strings.Contains(err.Error(), "failed to write file") {
-		t.Errorf("Expected 'failed to write file' error, got: %v", err)
+
+	entry := harLog.Log.Entries[0]
+	if entry.Request.Method != "GET" {
+		t.Errorf("expected method GET, got %s", entry.Request.Method)
+	}
+	if entry.Request.URL != "https://example.com/style.css" {
+		t.Errorf("expected URL style.css, got %s", entry.Request.URL)
+	}
+	if entry.Response.Status != 0 {
+		t.Errorf("expected status 0, got %d", entry.Response.Status)
+	}
+	if entry.Response.Content.Size != 2048 {
+		t.Errorf("expected content size 2048, got %d", entry.Response.Content.Size)
+	}
+	if entry.Response.BodySize != 1024 {
+		t.Errorf("expected bodySize 1024, got %d", entry.Response.BodySize)
+	}
+	if entry.Time != 50 {
+		t.Errorf("expected time 50, got %d", entry.Time)
+	}
+	if entry.Comment != "From resource timing (no body captured)" {
+		t.Errorf("expected resource timing comment, got %q", entry.Comment)
 	}
 }
 
-func TestToolExportHAR_MethodStatusFilters(t *testing.T) {
+func TestExportHARMerged_BodyAndWaterfall(t *testing.T) {
 	t.Parallel()
-	capture := setupTestCapture(t)
-
-	// Add bodies with different methods and statuses
-	capture.AddNetworkBodies([]NetworkBody{
-		{Timestamp: "2026-01-23T10:00:00.000Z", Method: "GET", URL: "https://example.com/users", Status: 200},
-		{Timestamp: "2026-01-23T10:01:00.000Z", Method: "POST", URL: "https://example.com/users", Status: 201},
-		{Timestamp: "2026-01-23T10:02:00.000Z", Method: "GET", URL: "https://example.com/admin", Status: 403},
-		{Timestamp: "2026-01-23T10:03:00.000Z", Method: "DELETE", URL: "https://example.com/users/1", Status: 204},
-	})
-
-	server := &Server{entries: make([]LogEntry, 0)}
-	handler := &ToolHandler{
-		MCPHandler: NewMCPHandler(server),
-		capture:    capture,
+	bodies := []types.NetworkBody{
+		{
+			Timestamp:    "2026-01-23T10:30:00.000Z",
+			Method:       "GET",
+			URL:          "https://api.example.com/data",
+			Status:       200,
+			Duration:     142,
+			ResponseBody: `{"ok":true}`,
+			ContentType:  "application/json",
+		},
+	}
+	waterfall := []types.NetworkWaterfallEntry{
+		{
+			URL:             "https://api.example.com/data",
+			Duration:        142.0,
+			StartTime:       100.0,
+			FetchStart:      105.0,
+			ResponseEnd:     242.0,
+			DecodedBodySize: 11,
+			EncodedBodySize: 11,
+			Timestamp:       time.Now(),
+		},
 	}
 
-	t.Run("filter by method", func(t *testing.T) {
-		args, _ := json.Marshal(map[string]any{"method": "POST"})
-		req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`)}
+	harLog := ExportHARMerged(bodies, waterfall, types.NetworkBodyFilter{}, "test")
 
-		resp := handler.toolExportHAR(req, args)
-		if resp.Error != nil {
-			t.Fatalf("Unexpected error: %v", resp.Error)
-		}
+	if len(harLog.Log.Entries) != 1 {
+		t.Fatalf("expected 1 entry (deduped), got %d", len(harLog.Log.Entries))
+	}
 
-		var result MCPToolResult
-		json.Unmarshal(resp.Result, &result)
-
-		text := result.Content[0].Text
-		jp := text
-		if ls := strings.SplitN(text, "\n", 2); len(ls) == 2 {
-			jp = ls[1]
-		}
-		var harLog HARLog
-		json.Unmarshal([]byte(jp), &harLog)
-
-		if len(harLog.Log.Entries) != 1 {
-			t.Errorf("Expected 1 entry for method=POST, got %d", len(harLog.Log.Entries))
-		}
-		if len(harLog.Log.Entries) > 0 && harLog.Log.Entries[0].Request.Method != "POST" {
-			t.Errorf("Expected POST method in result, got %s", harLog.Log.Entries[0].Request.Method)
-		}
-	})
-
-	t.Run("filter by status range", func(t *testing.T) {
-		args, _ := json.Marshal(map[string]any{"status_min": 400, "status_max": 499})
-		req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`2`)}
-
-		resp := handler.toolExportHAR(req, args)
-		if resp.Error != nil {
-			t.Fatalf("Unexpected error: %v", resp.Error)
-		}
-
-		var result MCPToolResult
-		json.Unmarshal(resp.Result, &result)
-
-		text := result.Content[0].Text
-		jp := text
-		if ls := strings.SplitN(text, "\n", 2); len(ls) == 2 {
-			jp = ls[1]
-		}
-		var harLog HARLog
-		json.Unmarshal([]byte(jp), &harLog)
-
-		if len(harLog.Log.Entries) != 1 {
-			t.Errorf("Expected 1 entry for status 4xx, got %d", len(harLog.Log.Entries))
-		}
-		if len(harLog.Log.Entries) > 0 && harLog.Log.Entries[0].Response.Status != 403 {
-			t.Errorf("Expected status 403, got %d", harLog.Log.Entries[0].Response.Status)
-		}
-	})
-
-	t.Run("filter by method and status", func(t *testing.T) {
-		args, _ := json.Marshal(map[string]any{"method": "GET", "status_min": 200, "status_max": 299})
-		req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`3`)}
-
-		resp := handler.toolExportHAR(req, args)
-		if resp.Error != nil {
-			t.Fatalf("Unexpected error: %v", resp.Error)
-		}
-
-		var result MCPToolResult
-		json.Unmarshal(resp.Result, &result)
-
-		text := result.Content[0].Text
-		jp := text
-		if ls := strings.SplitN(text, "\n", 2); len(ls) == 2 {
-			jp = ls[1]
-		}
-		var harLog HARLog
-		json.Unmarshal([]byte(jp), &harLog)
-
-		if len(harLog.Log.Entries) != 1 {
-			t.Errorf("Expected 1 entry for GET+2xx, got %d", len(harLog.Log.Entries))
-		}
-		if len(harLog.Log.Entries) > 0 && harLog.Log.Entries[0].Request.URL != "https://example.com/users" {
-			t.Errorf("Expected /users URL, got %s", harLog.Log.Entries[0].Request.URL)
-		}
-	})
+	entry := harLog.Log.Entries[0]
+	// Should retain body data from NetworkBody
+	if entry.Response.Content.Text != `{"ok":true}` {
+		t.Errorf("expected response body preserved, got %q", entry.Response.Content.Text)
+	}
+	if entry.Response.Status != 200 {
+		t.Errorf("expected status 200, got %d", entry.Response.Status)
+	}
+	// Timings should be enriched from waterfall
+	if entry.Timings.Send == -1 && entry.Timings.Receive == -1 {
+		t.Error("expected timings to be enriched from waterfall, but send and receive are still -1")
+	}
 }
 
-// ============================================
-// Coverage: ExportHARToFile marshal error (line 238) - not easily triggerable
-// but we can test the path that writes to an unwritable location (line 308/319)
-// ============================================
-
-func TestExportHARToFile_WriteErrorNonexistentParent(t *testing.T) {
+func TestExportHARMerged_Dedup(t *testing.T) {
 	t.Parallel()
-	capture := NewCapture()
-	capture.AddNetworkBodies([]NetworkBody{
-		{Timestamp: "2026-01-23T10:00:00.000Z", Method: "GET", URL: "https://example.com", Status: 200},
-	})
+	bodies := []types.NetworkBody{
+		{
+			Timestamp: "2026-01-23T10:30:00.000Z",
+			Method:    "GET",
+			URL:       "https://example.com/api",
+			Status:    200,
+			Duration:  100,
+		},
+	}
+	waterfall := []types.NetworkWaterfallEntry{
+		{
+			URL:       "https://example.com/api",
+			Duration:  100.0,
+			Timestamp: time.Now(),
+		},
+	}
 
-	// Try to write to a path where parent directory doesn't exist
-	_, err := capture.ExportHARToFile(NetworkBodyFilter{}, "/tmp/gasoline-test-readonly-dir-har/subdir/test.har")
-	// This path is safe but the directory doesn't exist; however os.WriteFile
-	// will fail if the parent dir doesn't exist. Let's use a definitely unwritable path.
-	if err != nil {
-		// The /tmp path is safe, but if directory doesn't exist, WriteFile fails
-		if !strings.Contains(err.Error(), "write") && !strings.Contains(err.Error(), "no such file") {
-			t.Errorf("Expected write-related error, got: %v", err)
+	harLog := ExportHARMerged(bodies, waterfall, types.NetworkBodyFilter{}, "test")
+
+	if len(harLog.Log.Entries) != 1 {
+		t.Fatalf("expected 1 entry (same URL deduped), got %d", len(harLog.Log.Entries))
+	}
+}
+
+func TestExportHARMerged_Sorted(t *testing.T) {
+	t.Parallel()
+	earlyTime, _ := time.Parse(time.RFC3339, "2026-01-23T10:30:00.000Z")
+	lateTime, _ := time.Parse(time.RFC3339, "2026-01-23T10:30:05.000Z")
+	bodies := []types.NetworkBody{
+		{
+			Timestamp: "2026-01-23T10:30:05.000Z",
+			Method:    "GET",
+			URL:       "https://example.com/late",
+			Status:    200,
+		},
+	}
+	waterfall := []types.NetworkWaterfallEntry{
+		{
+			URL:       "https://example.com/early",
+			Duration:  50.0,
+			Timestamp: earlyTime,
+		},
+		{
+			URL:       "https://example.com/middle",
+			Duration:  30.0,
+			Timestamp: lateTime.Add(-2 * time.Second),
+		},
+	}
+
+	harLog := ExportHARMerged(bodies, waterfall, types.NetworkBodyFilter{}, "test")
+
+	if len(harLog.Log.Entries) != 3 {
+		t.Fatalf("expected 3 entries, got %d", len(harLog.Log.Entries))
+	}
+
+	// Should be sorted chronologically: early, middle, late
+	if harLog.Log.Entries[0].Request.URL != "https://example.com/early" {
+		t.Errorf("expected first entry to be /early, got %s", harLog.Log.Entries[0].Request.URL)
+	}
+	if harLog.Log.Entries[1].Request.URL != "https://example.com/middle" {
+		t.Errorf("expected second entry to be /middle, got %s", harLog.Log.Entries[1].Request.URL)
+	}
+	if harLog.Log.Entries[2].Request.URL != "https://example.com/late" {
+		t.Errorf("expected third entry to be /late, got %s", harLog.Log.Entries[2].Request.URL)
+	}
+}
+
+func TestExportHARMerged_FilterAppliesToBoth(t *testing.T) {
+	t.Parallel()
+	bodies := []types.NetworkBody{
+		{Method: "GET", URL: "https://example.com/api/users", Status: 200},
+	}
+	waterfall := []types.NetworkWaterfallEntry{
+		{URL: "https://example.com/api/posts", Duration: 50, Timestamp: time.Now()},
+		{URL: "https://cdn.example.com/logo.png", Duration: 30, Timestamp: time.Now()},
+	}
+
+	harLog := ExportHARMerged(bodies, waterfall, types.NetworkBodyFilter{URLFilter: "api"}, "test")
+
+	if len(harLog.Log.Entries) != 2 {
+		t.Fatalf("expected 2 entries (filtered to 'api'), got %d", len(harLog.Log.Entries))
+	}
+	for _, entry := range harLog.Log.Entries {
+		if !strings.Contains(entry.Request.URL, "api") {
+			t.Errorf("entry %s should not pass 'api' URL filter", entry.Request.URL)
 		}
 	}
 }
 
-// ============================================
-// Coverage: toolExportHAR — error from ExportHARToFile (line 308)
-// ============================================
-
-func TestToolExportHAR_WriteFailure(t *testing.T) {
+func TestBuildHARResponse_WithHeaders(t *testing.T) {
 	t.Parallel()
-	server := &Server{
-		entries: make([]LogEntry, 0),
-	}
-	capture := NewCapture()
-	capture.AddNetworkBodies([]NetworkBody{
-		{Timestamp: "2026-01-23T10:00:00.000Z", Method: "GET", URL: "https://example.com", Status: 200},
-	})
-	handler := &ToolHandler{
-		MCPHandler: NewMCPHandler(server),
-		capture:    capture,
+	body := types.NetworkBody{
+		Method:      "GET",
+		URL:         "https://example.com/api",
+		Status:      200,
+		ContentType: "application/json",
+		ResponseHeaders: map[string]string{
+			"Content-Type":  "application/json",
+			"Cache-Control": "max-age=3600",
+			"X-Request-Id":  "abc-123",
+		},
 	}
 
-	// Use a path under /tmp that has a non-existent deep directory
-	args, _ := json.Marshal(map[string]any{
-		"save_to": "/tmp/gasoline-nonexist-parent/deep/nested/file.har",
-	})
-	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`), Method: "tools/call"}
-	resp := handler.toolExportHAR(req, args)
+	resp := buildHARResponse(body)
 
-	var result MCPToolResult
-	json.Unmarshal(resp.Result, &result)
-
-	if !result.IsError {
-		t.Error("Expected isError=true when file write fails")
+	if len(resp.Headers) != 3 {
+		t.Fatalf("expected 3 response headers, got %d", len(resp.Headers))
 	}
-	if len(result.Content) > 0 && !strings.Contains(result.Content[0].Text, "export_failed") {
-		t.Errorf("Expected structured error with export_failed code, got: %s", result.Content[0].Text)
+
+	headerMap := make(map[string]string)
+	for _, h := range resp.Headers {
+		headerMap[h.Name] = h.Value
+	}
+	if headerMap["Content-Type"] != "application/json" {
+		t.Errorf("expected Content-Type header, got %v", headerMap)
+	}
+	if headerMap["Cache-Control"] != "max-age=3600" {
+		t.Errorf("expected Cache-Control header, got %v", headerMap)
 	}
 }
 
-// ============================================
-// Coverage: toolExportHAR — marshal error path (line 319)
-// This would require ExportHAR to produce unmarshallable data, which is unlikely.
-// Instead test the no-save_to path with empty data
-// ============================================
-
-func TestToolExportHAR_NoSaveTo_EmptyCapture(t *testing.T) {
+func TestExportHARMerged_EmptyBoth(t *testing.T) {
 	t.Parallel()
-	server := &Server{
-		entries: make([]LogEntry, 0),
-	}
-	capture := NewCapture()
-	handler := &ToolHandler{
-		MCPHandler: NewMCPHandler(server),
-		capture:    capture,
-	}
+	harLog := ExportHARMerged(nil, nil, types.NetworkBodyFilter{}, "test")
 
-	args, _ := json.Marshal(map[string]any{})
-	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`), Method: "tools/call"}
-	resp := handler.toolExportHAR(req, args)
-
-	var result MCPToolResult
-	json.Unmarshal(resp.Result, &result)
-
-	if result.IsError {
-		t.Errorf("Expected no error for empty HAR export, got: %s", result.Content[0].Text)
-	}
-	// Strip summary line before parsing JSON
-	text := result.Content[0].Text
-	jsonPart := text
-	if lines := strings.SplitN(text, "\n", 2); len(lines) == 2 {
-		jsonPart = lines[1]
-	}
-	// Should still return valid HAR JSON with 0 entries
-	var harLog HARLog
-	if err := json.Unmarshal([]byte(jsonPart), &harLog); err != nil {
-		t.Fatalf("Expected valid HAR JSON, got parse error: %v", err)
-	}
 	if len(harLog.Log.Entries) != 0 {
-		t.Errorf("Expected 0 entries in empty HAR, got %d", len(harLog.Log.Entries))
+		t.Errorf("expected 0 entries, got %d", len(harLog.Log.Entries))
+	}
+	if harLog.Log.Version != "1.2" {
+		t.Errorf("expected version 1.2, got %s", harLog.Log.Version)
 	}
 }

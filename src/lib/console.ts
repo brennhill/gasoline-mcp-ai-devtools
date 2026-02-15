@@ -28,7 +28,7 @@ export function installConsoleCapture(): void {
       postLog({
         level: method,
         type: 'console',
-        args: args.map((arg) => safeSerialize(arg)),
+        args: args.map((arg) => safeSerialize(arg))
       })
 
       // Call original

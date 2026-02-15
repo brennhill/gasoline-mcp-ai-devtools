@@ -16,7 +16,7 @@ version: v6.0
 
 ## Testing Philosophy
 
-**Test-Driven Development (TDD):**
+### Test-Driven Development (TDD):
 1. Write failing tests FIRST (from this qa-plan.md)
 2. Run `make test` → see tests fail ✗
 3. Implement minimal code to make tests pass
@@ -25,7 +25,7 @@ version: v6.0
 
 **Coverage Target:** ≥ 90% for all new code
 
-**Test Execution:**
+### Test Execution:
 ```bash
 # All tests (Go + extension)
 make test
@@ -57,7 +57,7 @@ AND: Connection state = "connected"
 AND: No polling (WS is primary)
 ```
 
-**Implementation Notes:**
+##### Implementation Notes:
 - Mock WebSocket server using gorilla/websocket
 - Verify HTTP 101 upgrade response
 - Verify connection remains open for 5+ seconds
@@ -71,7 +71,7 @@ AND: Event order preserved
 AND: No duplicates
 ```
 
-**Implementation Notes:**
+##### Implementation Notes:
 - Send test log events from server → WS client
 - Measure latency (should be < 10ms, < 100ms is safe margin)
 - Verify event sequence numbers increment
@@ -85,7 +85,7 @@ AND: Warning logged: "WebSocket buffer overflow"
 AND: Newest 10,000 events retained
 ```
 
-**Implementation Notes:**
+##### Implementation Notes:
 - Fill broadcast buffer with dummy events
 - Verify FIFO (first-in-first-out) on overflow
 - Verify warning appears in logs
@@ -99,7 +99,7 @@ AND: Falls back to polling (GET /pending-queries)
 AND: Continues capturing events (no data loss)
 ```
 
-**Implementation Notes:**
+##### Implementation Notes:
 - Simulate network failure (close socket)
 - Verify extension timeout detection (5s)
 - Verify polling mode activated
@@ -114,7 +114,7 @@ AND: Eventually reconnects (< 10 seconds)
 AND: Resumes streaming (no polling after reconnect)
 ```
 
-**Implementation Notes:**
+##### Implementation Notes:
 - Simulate temporary network outage (1-5 seconds)
 - Verify backoff progression
 - Verify WS mode restored after reconnect
@@ -134,7 +134,7 @@ AND: File contains: id, name, created_at, duration, action_count, start_url, vie
 AND: Response: {status: "ok", recording_id: "checkout-20260130T143022Z"}
 ```
 
-**Implementation Notes:**
+##### Implementation Notes:
 - Create temp directory for test
 - Verify JSON structure
 - Verify timestamp is valid ISO8601
@@ -149,7 +149,7 @@ AND: Each action has: type, timestamp_ms, selector, x, y, screenshot_path
 AND: Timestamps in ascending order
 ```
 
-**Implementation Notes:**
+##### Implementation Notes:
 - Send 5 actions with varying timestamps
 - Verify in-memory buffer updated
 - Verify action order preserved
@@ -164,7 +164,7 @@ AND: action_count = 10
 AND: duration_ms > 0
 ```
 
-**Implementation Notes:**
+##### Implementation Notes:
 - Read back persisted metadata.json
 - Verify all 10 actions present
 - Verify no data loss
@@ -177,7 +177,7 @@ THEN: Stored as: {type: "type", text: "[redacted]", ...}
 AND: Original text never stored
 ```
 
-**Implementation Notes:**
+##### Implementation Notes:
 - Mock type action on password field
 - Verify redaction in metadata.json
 - Verify redaction applied by extension, not server
@@ -191,7 +191,7 @@ THEN: Stored as: {type: "type", text: "test_password", ...}
 AND: metadata.json: sensitive_data_enabled: true
 ```
 
-**Implementation Notes:**
+##### Implementation Notes:
 - Mock warning popup acceptance
 - Verify full text captured
 - Verify flag set in metadata
@@ -205,7 +205,7 @@ AND: No recording created
 AND: Next call still fails (no auto-delete)
 ```
 
-**Implementation Notes:**
+##### Implementation Notes:
 - Create 1GB of dummy recordings
 - Attempt to start new recording
 - Verify error code and message
@@ -219,7 +219,7 @@ THEN: Warning logged: "recording_storage_warning: Recording storage at 80%..."
 AND: Operation proceeds (non-blocking)
 ```
 
-**Implementation Notes:**
+##### Implementation Notes:
 - Create 800MB of dummy recordings
 - Start new recording
 - Verify warning in logs
@@ -234,7 +234,7 @@ AND: Each includes: id, name, created_at, action_count, url
 AND: Sorted by created_at (newest first)
 ```
 
-**Implementation Notes:**
+##### Implementation Notes:
 - Create 5 test recordings
 - Query via observe
 - Verify response format
@@ -249,7 +249,7 @@ AND: Each action has all fields
 AND: Timestamps in order
 ```
 
-**Implementation Notes:**
+##### Implementation Notes:
 - Create recording with 10 actions
 - Query actions
 - Verify all fields present
@@ -270,7 +270,7 @@ AND: All 8 actions in memory
 AND: No errors
 ```
 
-**Implementation Notes:**
+##### Implementation Notes:
 - Create test recording on disk
 - Call LoadRecording
 - Verify all actions loaded
@@ -286,7 +286,7 @@ AND: Timeout = 5 seconds (hard limit)
 AND: Result: {status: "ok", action_executed: true, duration_ms: 1250}
 ```
 
-**Implementation Notes:**
+##### Implementation Notes:
 - Mock HTTP request tracking
 - Mock setTimeout/network wait
 - Verify wait logic (100ms polling interval)
@@ -303,7 +303,7 @@ AND: Screenshot taken (if configured)
 AND: Result: {action_executed: true, errors: []}
 ```
 
-**Implementation Notes:**
+##### Implementation Notes:
 - Mock DOM querySelector
 - Verify click event fired
 - Verify no errors
@@ -319,7 +319,7 @@ AND: Element.value = "test@example.com"
 AND: Result: {action_executed: true}
 ```
 
-**Implementation Notes:**
+##### Implementation Notes:
 - Mock input element
 - Verify text entry
 - Verify no errors on valid input
@@ -338,7 +338,7 @@ AND: Screenshot taken with issue type: "selector_not_found"
 AND: Result: {action_executed: false, error: "Element not found..."}
 ```
 
-**Implementation Notes:**
+##### Implementation Notes:
 - Mock element not found scenario
 - Verify self-healing strategy progression
 - Verify fallback to x/y
@@ -357,7 +357,7 @@ AND: Screenshot with issue type: "moved-selector"
 AND: Recommendation: "Add data-testid=... or update selector"
 ```
 
-**Implementation Notes:**
+##### Implementation Notes:
 - Track selector location across runs
 - Verify fragility detection threshold (3+)
 - Verify warning message
@@ -372,7 +372,7 @@ AND: Stored at: ~/.gasoline/recordings/{id}/screenshots/{timestamp}-{index}-erro
 AND: Screenshot included in error response
 ```
 
-**Implementation Notes:**
+##### Implementation Notes:
 - Mock screenshot function
 - Trigger error scenario
 - Verify screenshot path
@@ -392,7 +392,7 @@ AND: All events tagged with test_id: 'variation-1'
 AND: Result: {status: "ok", actions_executed: 3, errors: []}
 ```
 
-**Implementation Notes:**
+##### Implementation Notes:
 - Accept custom action array
 - Verify execution same as recorded
 - Verify test boundary tagging
@@ -408,7 +408,7 @@ AND: Result: {actions_executed: 5, errors: [{action_index: 2, ...}]}
 AND: Playback completes successfully
 ```
 
-**Implementation Notes:**
+##### Implementation Notes:
 - Create scenario with one failing action
 - Verify non-blocking behavior
 - Verify all 5 executed (despite error)
@@ -432,7 +432,7 @@ WHEN: log-diff compares both
 THEN: Result: {status: "match", newErrors: [], missingEvents: [], changedValues: []}
 ```
 
-**Implementation Notes:**
+##### Implementation Notes:
 - Create two identical log sets
 - Compare via log-diff
 - Verify "match" status
@@ -447,7 +447,7 @@ THEN: Result includes:
 AND: status: "regression"
 ```
 
-**Implementation Notes:**
+##### Implementation Notes:
 - Original: 200 response
 - Replay: 404 response
 - Verify new error detected
@@ -463,7 +463,7 @@ THEN: Result includes:
 AND: status: "regression" (feature broken)
 ```
 
-**Implementation Notes:**
+##### Implementation Notes:
 - Original has success event
 - Replay missing it
 - Verify detection
@@ -481,7 +481,7 @@ THEN: Result includes:
 AND: status: "unknown" (manual review needed)
 ```
 
-**Implementation Notes:**
+##### Implementation Notes:
 - Compare response values
 - Detect differences
 - Verify value change logged
@@ -497,7 +497,7 @@ THEN: Result:
 AND: status: "fixed" (regression resolved)
 ```
 
-**Implementation Notes:**
+##### Implementation Notes:
 - Original has error
 - Replay succeeds
 - Verify status = "fixed"
@@ -517,7 +517,7 @@ THEN: Errors grouped by type:
   ]
 ```
 
-**Implementation Notes:**
+##### Implementation Notes:
 - Include all three log types
 - Verify categorization
 - Verify all types detected
@@ -534,7 +534,7 @@ THEN: Error includes:
   - affected_action: 5 (if matching action index)
 ```
 
-**Implementation Notes:**
+##### Implementation Notes:
 - Verify error details extracted
 - Verify correlation to action
 - Verify complete context
@@ -557,7 +557,7 @@ AND: MCP action sent: configure({action: 'recording_start', name: 'checkout-flow
 AND: Server responds with recording_id
 ```
 
-**Implementation Notes:**
+##### Implementation Notes:
 - Mock popup UI
 - Mock button click
 - Verify MCP call
@@ -573,7 +573,7 @@ AND: Button changes back to "Start Recording"
 AND: Recording saved to disk (via server)
 ```
 
-**Implementation Notes:**
+##### Implementation Notes:
 - Verify stop action sent
 - Verify state reset
 - Verify server receives stop
@@ -593,7 +593,7 @@ THEN: Action captured:
 AND: Sent to recording storage
 ```
 
-**Implementation Notes:**
+##### Implementation Notes:
 - Mock click event
 - Verify action structure
 - Verify selector extraction
@@ -616,7 +616,7 @@ THEN: Action captured:
 AND: If sensitive_data_enabled=false: text: "[redacted]"
 ```
 
-**Implementation Notes:**
+##### Implementation Notes:
 - Mock input element
 - Mock keypress events
 - Verify text captured (or redacted)
@@ -635,7 +635,7 @@ THEN: Action captured:
 AND: Sent to recording storage
 ```
 
-**Implementation Notes:**
+##### Implementation Notes:
 - Mock navigation event
 - Verify URL captured
 - Verify timestamp
@@ -650,7 +650,7 @@ AND: Stored at: ~/.gasoline/recordings/{id}/screenshots/{ts}-page-load.jpg
 AND: Reference stored in action metadata
 ```
 
-**Implementation Notes:**
+##### Implementation Notes:
 - Mock page load
 - Verify screenshot triggered
 - Verify stored correctly
@@ -664,7 +664,7 @@ THEN: Name auto-generated: "{adjective}-{noun}-{adjective}-{ISO8601}"
 AND: ID matches generated name
 ```
 
-**Implementation Notes:**
+##### Implementation Notes:
 - Mock empty name input
 - Verify auto-generation logic
 - Verify ID format
@@ -716,14 +716,14 @@ THEN:
   - LLM can see: "POST /api/checkout now succeeds (was failing)"
 ```
 
-**Success Criteria:**
+#### Success Criteria:
 - ✓ All 4 actions captured in original
 - ✓ All 4 actions executed in replay
 - ✓ Logs show progression from error → fix
 - ✓ Zero missing events
 - ✓ Diff clearly shows regression fixed
 
-**Validation Checklist:**
+#### Validation Checklist:
 - [ ] Original recording has 4 actions + logs
 - [ ] Playback summary: "4/4 actions executed"
 - [ ] Replay logs include success response
@@ -767,7 +767,7 @@ THEN:
   - LLM can see: "Both coupons work, SUMMER2026 gives $5 off"
 ```
 
-**Success Criteria:**
+#### Success Criteria:
 - ✓ Variation executes successfully
 - ✓ Different coupon code used
 - ✓ Discount amount reflected in logs
@@ -797,7 +797,7 @@ THEN:
   - LLM notified: "Consider adding data-testid or updating selector for stability"
 ```
 
-**Success Criteria:**
+#### Success Criteria:
 - ✓ All 4 runs execute successfully
 - ✓ Self-healing recovers moved elements
 - ✓ Fragility warning triggered after 3 moves
@@ -809,7 +809,7 @@ THEN:
 
 **Executor:** QA engineer or developer with Gasoline extension
 
-**Environment Setup:**
+### Environment Setup:
 ```bash
 # Start server
 go run ./cmd/dev-console/main.go
@@ -824,14 +824,14 @@ go run ./cmd/dev-console/main.go
 
 **Objective:** Verify recording captures realistic user interactions
 
-**Steps:**
+#### Steps:
 1. Open https://example.com (or test app)
 2. Click extension icon → "Start Recording"
 3. Enter name: "real-flow-test"
 4. Perform: Click header link → Type email → Click submit → Wait for success message
 5. Click "Stop Recording"
 
-**Expected Result:**
+#### Expected Result:
 - ✓ Extension shows "Recording saved"
 - ✓ Recording visible in extension popup (with timestamp, action count)
 - ✓ Recording metadata file exists: `~/.gasoline/recordings/real-flow-test-*/metadata.json`
@@ -839,7 +839,7 @@ go run ./cmd/dev-console/main.go
 - ✓ Screenshot files created in screenshots/ subdirectory
 - ✓ Timestamps make sense (ascending, reasonable intervals)
 
-**Validation:**
+#### Validation:
 ```bash
 # Check recording exists
 ls -lh ~/.gasoline/recordings/real-flow-test-*/metadata.json
@@ -854,7 +854,7 @@ jq . ~/.gasoline/recordings/real-flow-test-*/metadata.json
 
 **Objective:** Verify playback executes recorded actions
 
-**Steps:**
+#### Steps:
 1. Have recording from UAT 1
 2. Open browser to fresh session of <https://example.com>
 3. In Claude Code or console:
@@ -867,14 +867,14 @@ jq . ~/.gasoline/recordings/real-flow-test-*/metadata.json
    ```
 4. Watch playback execute (should take < 10 seconds)
 
-**Expected Result:**
+#### Expected Result:
 - ✓ Playback executes all 4 actions in order
 - ✓ Playback completes successfully
 - ✓ Response: `{status: "ok", actions_executed: 4, errors: []}`
 - ✓ Screenshot taken (if error occurs)
 - ✓ Duration reasonable (< 10 seconds)
 
-**Validation:**
+#### Validation:
 ```bash
 # Check replay logs captured
 observe({what: 'logs', test_id: 'replay-test'})
@@ -887,7 +887,7 @@ observe({what: 'logs', test_id: 'replay-test'})
 
 **Objective:** Verify log diffing shows differences (or match)
 
-**Steps:**
+#### Steps:
 1. Have recording from UAT 1 + replay from UAT 2
 2. Fetch original logs:
    ```javascript
@@ -899,13 +899,13 @@ observe({what: 'logs', test_id: 'replay-test'})
    ```
 4. Analyze: Do they match? Any new errors? Missing events?
 
-**Expected Result (Best Case):**
+#### Expected Result (Best Case):
 - ✓ Both logs nearly identical
 - ✓ Same API calls, same success/error messages
 - ✓ Timestamps differ (slightly) but order preserved
 - ✓ No regressions detected
 
-**Expected Result (If Bug Fix Worked):**
+#### Expected Result (If Bug Fix Worked):
 - ✓ Original logs: POST /api/submit → 500 Error
 - ✓ Replay logs: POST /api/submit → 200 OK
 - ✓ Log diff: "Regression FIXED ✓"
@@ -916,19 +916,19 @@ observe({what: 'logs', test_id: 'replay-test'})
 
 **Objective:** Verify credential recording is optional and safe by default
 
-**Steps:**
+#### Steps:
 1. Start recording with sensitive_data_enabled: false (default)
 2. Click password field
 3. Type: "my_secret_password"
 4. Stop recording
 5. Inspect metadata.json
 
-**Expected Result:**
+#### Expected Result:
 - ✓ Metadata contains: `{type: "type", text: "[redacted]", ...}`
 - ✓ Original password never stored
 - ✓ Metadata flag: `sensitive_data_enabled: false`
 
-**Steps (Opt-In):**
+#### Steps (Opt-In):
 1. Start recording with sensitive_data_enabled: true
 2. Extension shows warning: "You are recording credentials..."
 3. User clicks: "I confirm this is test data"
@@ -936,7 +936,7 @@ observe({what: 'logs', test_id: 'replay-test'})
 5. Stop recording
 6. Inspect metadata.json
 
-**Expected Result:**
+#### Expected Result:
 - ✓ Metadata contains: `{type: "type", text: "test_password_123", ...}`
 - ✓ Full password captured
 - ✓ Metadata flag: `sensitive_data_enabled: true`
@@ -948,7 +948,7 @@ observe({what: 'logs', test_id: 'replay-test'})
 
 **Objective:** Verify 1GB limit is enforced
 
-**Steps (Prep):**
+#### Steps (Prep):
 ```bash
 # Create dummy recordings to reach 800MB
 cd ~/.gasoline/recordings
@@ -960,7 +960,7 @@ cd -
 2. Extension should show warning: "Recording storage at 80%"
 3. Recording proceeds (non-blocking)
 
-**Steps (Quota Full):**
+## Steps (Quota Full):
 ```bash
 # Create 200MB more to hit 1GB limit
 dd if=/dev/zero of=dummy2.bin bs=1M count=200
@@ -970,7 +970,7 @@ dd if=/dev/zero of=dummy2.bin bs=1M count=200
 2. Expect error: "Recording storage at capacity (1GB). Delete old recordings..."
 3. Attempt fails
 
-**Expected Result:**
+## Expected Result:
 - ✓ Warning at 80% (continues)
 - ✓ Error at 100% (blocks)
 - ✓ User must manually delete to proceed
@@ -982,7 +982,7 @@ dd if=/dev/zero of=dummy2.bin bs=1M count=200
 
 **Objective:** Verify WebSocket is active and efficient
 
-**Steps:**
+#### Steps:
 1. Open Chrome DevTools → Network tab
 2. Filter to "WS" (WebSocket)
 3. Verify: `ws://localhost:3001/api/stream` connected
@@ -990,19 +990,19 @@ dd if=/dev/zero of=dummy2.bin bs=1M count=200
 5. Perform 10 actions (click, type, click, etc.)
 6. Watch Network tab
 
-**Expected Result:**
+#### Expected Result:
 - ✓ WebSocket shows single persistent connection (no polls)
 - ✓ Events arrive within 100ms of occurrence
 - ✓ No "pending" queries in background
 - ✓ Extension shows: "Connected via WebSocket"
 
-**Fallback Test:**
+#### Fallback Test:
 1. In Chrome DevTools, simulate network throttling
 2. Simulate offline (DevTools → Network → Offline)
 3. Wait 5 seconds
 4. Go back online
 
-**Expected Result:**
+#### Expected Result:
 - ✓ Extension detects loss, switches to polling
 - ✓ Popup shows: "Polling (WebSocket unavailable)"
 - ✓ Continues capturing (non-blocking)
@@ -1014,7 +1014,7 @@ dd if=/dev/zero of=dummy2.bin bs=1M count=200
 
 **Objective:** Full workflow from bug report to fix verification
 
-**Scenario:**
+#### Scenario:
 ```
 1. QA reports: "Checkout button broken in Safari, works in Chrome"
 2. Engineer wants to reproduce and verify fix
@@ -1023,9 +1023,9 @@ dd if=/dev/zero of=dummy2.bin bs=1M count=200
 5. Engineer re-runs to verify fix
 ```
 
-**Steps:**
+#### Steps:
 
-**Phase 1: Reproduce Bug**
+#### Phase 1: Reproduce Bug
 ```
 1. Open test shopping app
 2. configure({action: 'test_boundary_start', test_id: 'bug-report'})
@@ -1034,7 +1034,7 @@ dd if=/dev/zero of=dummy2.bin bs=1M count=200
 5. configure({action: 'test_boundary_end', test_id: 'bug-report'})
 ```
 
-**Phase 2: Engineer Investigates**
+#### Phase 2: Engineer Investigates
 ```
 1. observe({what: 'logs', test_id: 'bug-report'})
 2. LLM sees: "POST /api/checkout → 400, message: 'Invalid session'"
@@ -1043,7 +1043,7 @@ dd if=/dev/zero of=dummy2.bin bs=1M count=200
 5. Engineer: Redeploy app
 ```
 
-**Phase 3: Verify Fix**
+#### Phase 3: Verify Fix
 ```
 1. interact({
      action: 'playback',
@@ -1055,7 +1055,7 @@ dd if=/dev/zero of=dummy2.bin bs=1M count=200
 4. LLM: "Regression FIXED"
 ```
 
-**Expected Result:**
+#### Expected Result:
 - ✓ Original logs show 400 error
 - ✓ Replay logs show 200 success
 - ✓ LLM can clearly trace: "Session cookie was missing → now included"

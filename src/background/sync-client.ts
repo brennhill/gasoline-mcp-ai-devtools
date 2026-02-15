@@ -109,6 +109,7 @@ export class SyncClient {
   private syncing = false
   private flushRequested = false
   private pendingResults: SyncCommandResult[] = []
+  private processedCommandIDs: Set<string> = new Set()
   private extensionVersion: string
 
   constructor(serverUrl: string, sessionId: string, callbacks: SyncClientCallbacks, extensionVersion = '') {
@@ -120,7 +121,7 @@ export class SyncClient {
       connected: false,
       lastSyncAt: 0,
       consecutiveFailures: 0,
-      lastCommandAck: null,
+      lastCommandAck: null
     }
   }
 
@@ -215,7 +216,7 @@ export class SyncClient {
       const request: SyncRequest = {
         session_id: this.sessionId,
         extension_version: this.extensionVersion || undefined,
-        settings,
+        settings
       }
 
       // Include logs if any
@@ -242,16 +243,18 @@ export class SyncClient {
         headers: {
           'Content-Type': 'application/json',
           'X-Gasoline-Client': `gasoline-extension/${this.extensionVersion}`,
-          'X-Gasoline-Extension-Version': this.extensionVersion,
+          'X-Gasoline-Extension-Version': this.extensionVersion
         },
         body: JSON.stringify(request),
-        signal: controller.signal,
+        signal: controller.signal
       })
 
       clearTimeout(timeoutId)
 
       if (!response.ok) {
-        throw new Error(`Sync request failed: HTTP ${response.status} ${response.statusText} from ${this.serverUrl}/sync`)
+        throw new Error(
+          `Sync request failed: HTTP ${response.status} ${response.statusText} from ${this.serverUrl}/sync`
+        )
       }
 
       const data: SyncResponse = await response.json()
@@ -261,7 +264,7 @@ export class SyncClient {
         commands: data.commands?.length || 0,
         resultsSent: request.command_results?.length || 0,
         logsSent: request.extension_logs?.length || 0,
-        nextPollMs: data.next_poll_ms,
+        nextPollMs: data.next_poll_ms
       })
 
       // Success - update state
@@ -284,9 +287,17 @@ export class SyncClient {
 
       // Process commands
       if (data.commands && data.commands.length > 0) {
-        this.log('Received commands', { count: data.commands.length, ids: data.commands.map(c => c.id) })
+        this.log('Received commands', { count: data.commands.length, ids: data.commands.map((c) => c.id) })
         for (const command of data.commands) {
-          this.log('Dispatching command', { id: command.id, type: command.type, correlation_id: command.correlation_id })
+          if (command.id && this.processedCommandIDs.has(command.id)) {
+            this.log('Skipping already processed command', { id: command.id })
+            continue
+          }
+          this.log('Dispatching command', {
+            id: command.id,
+            type: command.type,
+            correlation_id: command.correlation_id
+          })
           try {
             await this.callbacks.onCommand(command)
             // Track ack only after successful execution
@@ -294,6 +305,22 @@ export class SyncClient {
             this.log('Command dispatched OK', { id: command.id })
           } catch (err) {
             this.log('Command dispatch FAILED', { id: command.id, error: (err as Error).message })
+            this.queueCommandResult({
+              id: command.id,
+              status: 'error',
+              error: (err as Error).message || 'Command dispatch failed'
+            })
+          } finally {
+            if (command.id) {
+              this.processedCommandIDs.add(command.id)
+              const MAX_PROCESSED_COMMANDS = 1000
+              if (this.processedCommandIDs.size > MAX_PROCESSED_COMMANDS) {
+                const oldest = this.processedCommandIDs.values().next().value
+                if (oldest !== undefined) {
+                  this.processedCommandIDs.delete(oldest)
+                }
+              }
+            }
           }
         }
       }
@@ -349,7 +376,7 @@ export class SyncClient {
     if (this.callbacks.debugLog) {
       this.callbacks.debugLog('sync', message, data)
     } else {
-      console.log(`[SyncClient] ${message}`, data || '')
+      console.log(`[SyncClient] ${message}`, data || '') // nosemgrep: javascript.lang.security.audit.unsafe-formatstring.unsafe-formatstring -- console.log with internal sync state, not user-controlled
     }
   }
 }
@@ -365,7 +392,7 @@ export function createSyncClient(
   serverUrl: string,
   sessionId: string,
   callbacks: SyncClientCallbacks,
-  extensionVersion = '',
+  extensionVersion = ''
 ): SyncClient {
   return new SyncClient(serverUrl, sessionId, callbacks, extensionVersion)
 }

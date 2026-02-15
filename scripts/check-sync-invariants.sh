@@ -3,7 +3,7 @@
 # Checks for known regression patterns that caused production issues.
 # Run in CI to catch regressions early.
 
-set -e
+set -euo pipefail
 
 echo "Checking sync client invariants..."
 

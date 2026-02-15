@@ -12,7 +12,7 @@ version: 5.2.0
 
 The MCP schema advertises a `query_dom` action under the `generate` tool, but when users attempt to call it, they receive misleading empty results instead of actual DOM query data. Even universal selectors like `"*"` return 0 matches on pages that clearly contain DOM elements.
 
-**Current User Experience:**
+### Current User Experience:
 1. User calls `generate({action: "query_dom", selector: "h1"})`
 2. Receives schema-compliant response: `{totalMatchCount: 0, matches: null, url: "", pageTitle: ""}`
 3. User assumes their selector is wrong or the page has no matching elements
@@ -24,7 +24,7 @@ The MCP schema advertises a `query_dom` action under the `generate` tool, but wh
 
 Complete the message forwarding chain so that DOM queries flow from the MCP tool through the server, to background.js, to content.js, to inject.js, where `executeDOMQuery()` executes and returns real results.
 
-**Fixed User Experience:**
+### Fixed User Experience:
 1. User calls `generate({action: "query_dom", selector: "h1"})`
 2. Query is forwarded to the content script on the tracked tab
 3. `executeDOMQuery()` runs and returns actual DOM elements
@@ -58,12 +58,12 @@ Complete the message forwarding chain so that DOM queries flow from the MCP tool
 
 ## User Workflow
 
-**Before Fix:**
+### Before Fix:
 1. User calls `generate({action: "query_dom", selector: "button"})`
 2. Receives 0 matches with empty url/pageTitle
 3. User debugs selector, wastes time
 
-**After Fix:**
+### After Fix:
 1. User calls `generate({action: "query_dom", selector: "button"})`
 2. Query executes in tracked tab's DOM
 3. User receives real button elements with their properties
@@ -82,7 +82,7 @@ Complete the message forwarding chain so that DOM queries flow from the MCP tool
 }
 ```
 
-**Before Fix Response:**
+#### Before Fix Response:
 ```json
 {
   "totalMatchCount": 0,
@@ -93,7 +93,7 @@ Complete the message forwarding chain so that DOM queries flow from the MCP tool
 }
 ```
 
-**After Fix Response:**
+#### After Fix Response:
 ```json
 {
   "totalMatchCount": 12,
@@ -123,7 +123,7 @@ Complete the message forwarding chain so that DOM queries flow from the MCP tool
 }
 ```
 
-**Response (No Tab Tracked):**
+#### Response (No Tab Tracked):
 ```json
 {
   "error": "No tab is currently tracked. Use interact({action: 'track_tab'}) first."

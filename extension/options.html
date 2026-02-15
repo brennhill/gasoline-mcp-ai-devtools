@@ -252,9 +252,147 @@
         border-radius: 6px;
         padding: 12px;
       }
+
+      /* ── Light Theme (class-based, dark is default) ────────────────────────────────── */
+      body.light-theme {
+        background: #ffffff;
+        color: #1a1a1a;
+      }
+
+      body.light-theme .back-link {
+        color: #0969da;
+      }
+
+      body.light-theme .subtitle {
+        color: #555;
+      }
+
+      body.light-theme .section-title {
+        color: #555;
+      }
+
+      body.light-theme .section-description {
+        color: #555;
+      }
+
+      body.light-theme textarea {
+        background: #ffffff;
+        border-color: #d0d0d0;
+        color: #1a1a1a;
+      }
+
+      body.light-theme textarea:focus {
+        border-color: #0969da;
+      }
+
+      body.light-theme input[type='text'] {
+        background: #ffffff;
+        border-color: #d0d0d0;
+        color: #1a1a1a;
+      }
+
+      body.light-theme input[type='text']:focus {
+        border-color: #0969da;
+      }
+
+      body.light-theme .help-text {
+        color: #555;
+      }
+
+      body.light-theme .help-text code {
+        background: #f5f5f5;
+      }
+
+      body.light-theme button {
+        background: #1a7f37;
+        color: #ffffff;
+      }
+
+      body.light-theme button:hover {
+        background: #1a8c3e;
+      }
+
+      body.light-theme button:active {
+        background: #1a7f37;
+      }
+
+      body.light-theme .saved-message {
+        color: #1a7f37;
+      }
+
+      body.light-theme .toggle-row {
+        border-bottom-color: #e0e0e0;
+      }
+
+      body.light-theme .toggle-label {
+        color: #1a1a1a;
+      }
+
+      body.light-theme .toggle-description {
+        color: #555;
+      }
+
+      body.light-theme .toggle {
+        background: #d0d0d0;
+      }
+
+      body.light-theme .toggle.active {
+        background: #1a7f37;
+      }
+
+      body.light-theme .toggle::after {
+        background: #ffffff;
+      }
+
+      body.light-theme .toggle.active::after {
+        background: #ffffff;
+      }
+
+      body.light-theme .examples {
+        background: #f8f8f8;
+      }
+
+      body.light-theme .examples h4 {
+        color: #555;
+      }
+
+      body.light-theme .examples li span {
+        color: #555;
+      }
+
+      body.light-theme .feature-section {
+        background: #f8f8f8;
+      }
+
+      /* ── Inline-style overrides (need !important) ── */
+
+      /* Test connection button */
+      body.light-theme #test-connection-btn {
+        background: #f5f5f5 !important;
+        border-color: #d0d0d0 !important;
+        color: #1a1a1a !important;
+      }
+
+      /* Export and clear debug buttons */
+      body.light-theme #export-debug-btn {
+        background: #f5f5f5 !important;
+        border-color: #d0d0d0 !important;
+        color: #1a1a1a !important;
+      }
+
+      body.light-theme #clear-debug-btn {
+        background: #f5f5f5 !important;
+        border-color: #d0d0d0 !important;
+        color: #1a1a1a !important;
+      }
     </style>
   </head>
   <body>
+    <script>
+      chrome.storage.local.get('theme', (r) => {
+        if (r.theme === 'light') document.body.classList.add('light-theme')
+      })
+    </script>
     <a href="popup.html" class="back-link">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor">
         <path
@@ -312,6 +450,19 @@
     </div>
 
     <div class="section">
+      <div class="section-title">Appearance</div>
+      <div class="feature-section">
+        <div class="toggle-row" style="border-bottom: none">
+          <div class="toggle-info">
+            <span class="toggle-label">Light Mode</span>
+            <span class="toggle-description">Switch to light color scheme</span>
+          </div>
+          <div id="theme-toggle" class="toggle"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
       <div class="section-title">Advanced Settings</div>
       <div class="feature-section">
         <div class="toggle-row">
@@ -332,8 +483,10 @@
 
         <div class="toggle-row">
           <div class="toggle-info">
-            <span class="toggle-label">Defer Heavy Interceptors</span>
-            <span class="toggle-description">Delays console/fetch/WS/error interception until after page load</span>
+            <span class="toggle-label">Optimize Page Load Speed</span>
+            <span class="toggle-description"
+              >Delays telemetry collection until page is interactive to reduce slowdown</span
+            >
           </div>
           <div id="deferral-toggle" class="toggle"></div>
         </div>

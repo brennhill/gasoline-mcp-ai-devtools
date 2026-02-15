@@ -43,7 +43,7 @@ interface NetworkTiming {
 
 interface UserTimingEntry {
   name: string
-  startTime: number
+  start_time: number
   duration?: number
 }
 
@@ -124,7 +124,7 @@ export function aggregateResourceTiming(): ResourceTimingSummary {
   const slowestRequests: SlowRequest[] = sorted.slice(0, MAX_SLOWEST_REQUESTS).map((r) => ({
     url: r.name.length > MAX_URL_LENGTH ? r.name.slice(0, MAX_URL_LENGTH) : r.name,
     duration: r.duration,
-    size: r.transferSize || 0,
+    size: r.transferSize || 0
   }))
 
   return {
@@ -132,7 +132,7 @@ export function aggregateResourceTiming(): ResourceTimingSummary {
     transfer_size: transferSize,
     decoded_size: decodedSize,
     by_type: byType,
-    slowest_requests: slowestRequests,
+    slowest_requests: slowestRequests
   }
 }
 
@@ -153,7 +153,7 @@ export function capturePerformanceSnapshot(): PerformanceSnapshotData | null {
     largest_contentful_paint: getLCP(),
     interaction_to_next_paint: getINP(),
     time_to_first_byte: nav.responseStart - nav.requestStart,
-    dom_interactive: nav.domInteractive,
+    dom_interactive: nav.domInteractive
   }
 
   const network = aggregateResourceTiming()
@@ -162,10 +162,13 @@ export function capturePerformanceSnapshot(): PerformanceSnapshotData | null {
   // Capture user timing marks and measures
   const marks = (performance.getEntriesByType('mark') as PerformanceEntry[]) || []
   const measures = (performance.getEntriesByType('measure') as PerformanceEntry[]) || []
-  const userTiming = (marks.length > 0 || measures.length > 0) ? {
-    marks: marks.slice(-50).map((m) => ({ name: m.name, startTime: m.startTime })),
-    measures: measures.slice(-50).map((m) => ({ name: m.name, startTime: m.startTime, duration: m.duration })),
-  } : undefined
+  const userTiming =
+    marks.length > 0 || measures.length > 0
+      ? {
+          marks: marks.slice(-50).map((m) => ({ name: m.name, start_time: m.startTime })),
+          measures: measures.slice(-50).map((m) => ({ name: m.name, start_time: m.startTime, duration: m.duration }))
+        }
+      : undefined
 
   return {
     url: window.location.pathname,
@@ -174,7 +177,7 @@ export function capturePerformanceSnapshot(): PerformanceSnapshotData | null {
     network,
     long_tasks: longTasks,
     cumulative_layout_shift: getCLS(),
-    user_timing: userTiming,
+    user_timing: userTiming
   }
 }
 
@@ -189,6 +192,7 @@ export function installPerfObservers(): void {
   inpValue = null
 
   // Long task observer
+  // #lizard forgives
   longTaskObserver = new PerformanceObserver((list: PerformanceObserverEntryList): void => {
     const entries = list.getEntries()
     for (const entry of entries) {
@@ -291,7 +295,7 @@ export function getLongTaskMetrics(): LongTaskMetrics {
   return {
     count: longTaskEntries.length,
     total_blocking_time: totalBlockingTime,
-    longest,
+    longest
   }
 }
 

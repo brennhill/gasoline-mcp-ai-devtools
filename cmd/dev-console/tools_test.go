@@ -5,6 +5,7 @@ package main
 import (
 	"encoding/json"
 	"testing"
+	"time"
 
 	"github.com/dev-console/dev-console/internal/capture"
 )
@@ -29,6 +30,19 @@ func TestNewToolHandler(t *testing.T) {
 	}
 	if handler.server != server {
 		t.Error("MCPHandler.server not set correctly")
+	}
+	if handler.toolHandler == nil {
+		t.Fatal("MCPHandler.toolHandler should not be nil")
+	}
+	th, ok := handler.toolHandler.(*ToolHandler)
+	if !ok {
+		t.Fatalf("toolHandler type = %T, want *ToolHandler", handler.toolHandler)
+	}
+	if th.server != server {
+		t.Error("ToolHandler.server not set correctly")
+	}
+	if th.capture != cap {
+		t.Error("ToolHandler.capture not set correctly")
 	}
 }
 
@@ -57,7 +71,10 @@ func TestHandleToolCall_UnknownTool(t *testing.T) {
 		t.Error("Expected handler to NOT handle unknown tool")
 	}
 	if resp.JSONRPC != "" {
-		t.Error("Expected empty response for unhandled tool")
+		t.Errorf("Expected empty JSONRPC version for unhandled tool, got %q", resp.JSONRPC)
+	}
+	if resp.Result != nil {
+		t.Errorf("Expected nil result for unhandled tool, got %s", string(resp.Result))
 	}
 }
 
@@ -86,7 +103,16 @@ func TestHandleToolCall_ObserveTool(t *testing.T) {
 	// Result should be valid JSON
 	var result MCPToolResult
 	if err := json.Unmarshal(resp.Result, &result); err != nil {
-		t.Errorf("Invalid result JSON: %v", err)
+		t.Fatalf("Invalid result JSON: %v", err)
+	}
+	if result.IsError {
+		t.Errorf("Expected observe(logs) to succeed, got error: %s", result.Content[0].Text)
+	}
+	if len(result.Content) == 0 {
+		t.Fatal("Expected at least one content block in observe response")
+	}
+	if result.Content[0].Type != "text" {
+		t.Errorf("Expected content type 'text', got %q", result.Content[0].Type)
 	}
 }
 
@@ -111,6 +137,17 @@ func TestHandleToolCall_GenerateTool(t *testing.T) {
 	if resp.JSONRPC != "2.0" {
 		t.Errorf("Expected JSON-RPC version 2.0, got %s", resp.JSONRPC)
 	}
+
+	var result MCPToolResult
+	if err := json.Unmarshal(resp.Result, &result); err != nil {
+		t.Fatalf("Invalid result JSON: %v", err)
+	}
+	if len(result.Content) == 0 {
+		t.Fatal("Expected at least one content block in generate response")
+	}
+	if result.Content[0].Type != "text" {
+		t.Errorf("Expected content type 'text', got %q", result.Content[0].Type)
+	}
 }
 
 func TestHandleToolCall_ConfigureTool(t *testing.T) {
@@ -133,6 +170,17 @@ func TestHandleToolCall_ConfigureTool(t *testing.T) {
 	}
 	if resp.JSONRPC != "2.0" {
 		t.Errorf("Expected JSON-RPC version 2.0, got %s", resp.JSONRPC)
+	}
+
+	var result MCPToolResult
+	if err := json.Unmarshal(resp.Result, &result); err != nil {
+		t.Fatalf("Invalid result JSON: %v", err)
+	}
+	if result.IsError {
+		t.Errorf("Expected configure(health) to succeed, got error: %s", result.Content[0].Text)
+	}
+	if len(result.Content) == 0 {
+		t.Fatal("Expected at least one content block in configure response")
 	}
 }
 
@@ -157,6 +205,17 @@ func TestHandleToolCall_InteractTool(t *testing.T) {
 	}
 	if resp.JSONRPC != "2.0" {
 		t.Errorf("Expected JSON-RPC version 2.0, got %s", resp.JSONRPC)
+	}
+
+	var result MCPToolResult
+	if err := json.Unmarshal(resp.Result, &result); err != nil {
+		t.Fatalf("Invalid result JSON: %v", err)
+	}
+	if len(result.Content) == 0 {
+		t.Fatal("Expected at least one content block in interact response")
+	}
+	if result.Content[0].Type != "text" {
+		t.Errorf("Expected content type 'text', got %q", result.Content[0].Type)
 	}
 }
 
@@ -183,7 +242,13 @@ func TestToolObserve_MissingWhat(t *testing.T) {
 	}
 
 	if !result.IsError {
-		t.Error("Expected error response for missing 'what' parameter")
+		t.Fatal("Expected error response for missing 'what' parameter")
+	}
+	if len(result.Content) == 0 {
+		t.Fatal("Expected content in error response")
+	}
+	if !containsSubstring(result.Content[0].Text, "missing_param") {
+		t.Errorf("Expected error code 'missing_param' in text, got: %s", result.Content[0].Text)
 	}
 }
 
@@ -206,7 +271,16 @@ func TestToolObserve_UnknownMode(t *testing.T) {
 	}
 
 	if !result.IsError {
-		t.Error("Expected error response for unknown mode")
+		t.Fatal("Expected error response for unknown mode")
+	}
+	if len(result.Content) == 0 {
+		t.Fatal("Expected content in error response")
+	}
+	if !containsSubstring(result.Content[0].Text, "unknown_mode") {
+		t.Errorf("Expected error code 'unknown_mode' in text, got: %s", result.Content[0].Text)
+	}
+	if !containsSubstring(result.Content[0].Text, "invalid_mode") {
+		t.Errorf("Expected invalid mode name in error text, got: %s", result.Content[0].Text)
 	}
 }
 
@@ -229,7 +303,13 @@ func TestToolObserve_NetworkBodies(t *testing.T) {
 	}
 
 	if result.IsError {
-		t.Error("Did not expect error for network_bodies mode")
+		t.Errorf("Did not expect error for network_bodies mode, got: %s", result.Content[0].Text)
+	}
+	if len(result.Content) == 0 {
+		t.Fatal("Expected at least one content block")
+	}
+	if result.Content[0].Type != "text" {
+		t.Errorf("Expected content type 'text', got %q", result.Content[0].Type)
 	}
 }
 
@@ -256,7 +336,10 @@ func TestToolGenerate_MissingFormat(t *testing.T) {
 	}
 
 	if !result.IsError {
-		t.Error("Expected error response for missing 'format' parameter")
+		t.Fatal("Expected error response for missing 'format' parameter")
+	}
+	if !containsSubstring(result.Content[0].Text, "missing_param") {
+		t.Errorf("Expected error code 'missing_param', got: %s", result.Content[0].Text)
 	}
 }
 
@@ -279,7 +362,13 @@ func TestToolGenerate_UnknownFormat(t *testing.T) {
 	}
 
 	if !result.IsError {
-		t.Error("Expected error response for unknown format")
+		t.Fatal("Expected error response for unknown format")
+	}
+	if !containsSubstring(result.Content[0].Text, "unknown_mode") {
+		t.Errorf("Expected error code 'unknown_mode', got: %s", result.Content[0].Text)
+	}
+	if !containsSubstring(result.Content[0].Text, "invalid_format") {
+		t.Errorf("Expected format name in error text, got: %s", result.Content[0].Text)
 	}
 }
 
@@ -306,7 +395,10 @@ func TestToolConfigure_MissingAction(t *testing.T) {
 	}
 
 	if !result.IsError {
-		t.Error("Expected error response for missing 'action' parameter")
+		t.Fatal("Expected error response for missing 'action' parameter")
+	}
+	if !containsSubstring(result.Content[0].Text, "missing_param") {
+		t.Errorf("Expected error code 'missing_param', got: %s", result.Content[0].Text)
 	}
 }
 
@@ -329,7 +421,13 @@ func TestToolConfigure_UnknownAction(t *testing.T) {
 	}
 
 	if !result.IsError {
-		t.Error("Expected error response for unknown action")
+		t.Fatal("Expected error response for unknown action")
+	}
+	if !containsSubstring(result.Content[0].Text, "unknown_mode") {
+		t.Errorf("Expected error code 'unknown_mode', got: %s", result.Content[0].Text)
+	}
+	if !containsSubstring(result.Content[0].Text, "invalid_action") {
+		t.Errorf("Expected action name in error text, got: %s", result.Content[0].Text)
 	}
 }
 
@@ -352,7 +450,17 @@ func TestToolConfigure_Health(t *testing.T) {
 	}
 
 	if result.IsError {
-		t.Error("Did not expect error for health action")
+		t.Fatalf("Did not expect error for health action, got: %s", result.Content[0].Text)
+	}
+	if len(result.Content) == 0 {
+		t.Fatal("Expected at least one content block")
+	}
+	if result.Content[0].Type != "text" {
+		t.Errorf("Expected content type 'text', got %q", result.Content[0].Type)
+	}
+	// Health response should contain non-empty text
+	if result.Content[0].Text == "" {
+		t.Error("Expected non-empty text in health response")
 	}
 }
 
@@ -379,7 +487,10 @@ func TestToolInteract_MissingAction(t *testing.T) {
 	}
 
 	if !result.IsError {
-		t.Error("Expected error response for missing 'action' parameter")
+		t.Fatal("Expected error response for missing 'action' parameter")
+	}
+	if !containsSubstring(result.Content[0].Text, "missing_param") {
+		t.Errorf("Expected error code 'missing_param', got: %s", result.Content[0].Text)
 	}
 }
 
@@ -402,7 +513,13 @@ func TestToolInteract_UnknownAction(t *testing.T) {
 	}
 
 	if !result.IsError {
-		t.Error("Expected error response for unknown action")
+		t.Fatal("Expected error response for unknown action")
+	}
+	if !containsSubstring(result.Content[0].Text, "unknown_mode") {
+		t.Errorf("Expected error code 'unknown_mode', got: %s", result.Content[0].Text)
+	}
+	if !containsSubstring(result.Content[0].Text, "invalid_action") {
+		t.Errorf("Expected action name in error text, got: %s", result.Content[0].Text)
 	}
 }
 
@@ -418,13 +535,15 @@ func TestToolsList(t *testing.T) {
 
 	tools := toolHandler.ToolsList()
 
-	if len(tools) != 4 {
-		t.Errorf("Expected 4 tools, got %d", len(tools))
+	if len(tools) != 5 {
+		t.Errorf("Expected 5 tools, got %d", len(tools))
 	}
 
 	// Check tool names
+	// Updated in Phase 0 to include new "analyze" tool for active analysis operations
 	expectedTools := map[string]bool{
 		"observe":   false,
+		"analyze":   false,
 		"generate":  false,
 		"configure": false,
 		"interact":  false,
@@ -508,13 +627,38 @@ func TestMcpJSONResponse(t *testing.T) {
 	// Text should contain the summary and JSON
 	text := result.Content[0].Text
 	if text == "" {
-		t.Error("Expected non-empty text")
+		t.Fatal("Expected non-empty text")
 	}
 
 	// Should start with summary
 	if len(text) < 12 || text[:12] != "Test summary" {
 		t.Error("Expected text to start with summary")
 	}
+
+	// Extract and validate JSON portion
+	jsonStart := -1
+	for i, c := range text {
+		if c == '{' {
+			jsonStart = i
+			break
+		}
+	}
+	if jsonStart < 0 {
+		t.Fatal("Expected JSON object in response text")
+	}
+	var parsed map[string]any
+	if err := json.Unmarshal([]byte(text[jsonStart:]), &parsed); err != nil {
+		t.Fatalf("Expected valid JSON in response, got error: %v", err)
+	}
+	if parsed["status"] != "ok" {
+		t.Errorf("Expected status 'ok', got %v", parsed["status"])
+	}
+	if parsed["count"] != float64(42) {
+		t.Errorf("Expected count 42, got %v", parsed["count"])
+	}
+
+	// Verify snake_case JSON field names
+	assertSnakeCaseFields(t, string(resp))
 }
 
 func TestMcpStructuredError(t *testing.T) {
@@ -532,12 +676,45 @@ func TestMcpStructuredError(t *testing.T) {
 	// Check that the text contains the error code
 	text := result.Content[0].Text
 	if text == "" {
-		t.Error("Expected non-empty text")
+		t.Fatal("Expected non-empty text")
 	}
 
 	// Should contain the error code and retry instruction
 	if !containsSubstring(text, "missing_param") {
 		t.Error("Expected text to contain error code 'missing_param'")
+	}
+	if !containsSubstring(text, "Missing parameter 'what'") {
+		t.Error("Expected text to contain message")
+	}
+	if !containsSubstring(text, "Add the 'what' parameter") {
+		t.Error("Expected text to contain retry instruction")
+	}
+	if !containsSubstring(text, "Valid values: logs, errors") {
+		t.Error("Expected text to contain hint")
+	}
+
+	// Verify the JSON portion is valid
+	jsonStart := -1
+	for i, c := range text {
+		if c == '{' {
+			jsonStart = i
+			break
+		}
+	}
+	if jsonStart >= 0 {
+		var se map[string]any
+		if err := json.Unmarshal([]byte(text[jsonStart:]), &se); err != nil {
+			t.Fatalf("Expected valid JSON in structured error, got error: %v", err)
+		}
+		if se["error"] != "missing_param" {
+			t.Errorf("Expected error code 'missing_param', got %v", se["error"])
+		}
+		if se["param"] != "what" {
+			t.Errorf("Expected param 'what', got %v", se["param"])
+		}
+
+		// Verify snake_case in the structured error JSON
+		assertSnakeCaseFields(t, text[jsonStart:])
 	}
 }
 
@@ -546,7 +723,7 @@ func TestMcpStructuredError(t *testing.T) {
 // ============================================
 
 func TestToolCallLimiter_Allow(t *testing.T) {
-	limiter := NewToolCallLimiter(3, 1000) // 3 calls per second
+	limiter := NewToolCallLimiter(3, time.Second) // 3 calls per second
 
 	// First 3 calls should be allowed
 	for i := 0; i < 3; i++ {

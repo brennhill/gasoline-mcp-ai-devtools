@@ -30,14 +30,14 @@ feature: local-web-scraping
 - [ ] Test scraped data subject to redaction rules
 - [ ] Test exported JSON doesn't include sensitive headers
 
-**Permission tests:**
+#### Permission tests:
 - [ ] Test scraping requires AI Web Pilot toggle enabled
 
 ---
 
 ## Human UAT Walkthrough
 
-**Scenario 1: Scrape Authenticated Dashboard Table (Happy Path)**
+### Scenario 1: Scrape Authenticated Dashboard Table (Happy Path)
 1. Setup:
    - Manually log into test app with dashboard containing data table
    - Enable AI Web Pilot toggle
@@ -51,7 +51,7 @@ feature: local-web-scraping
 3. Expected Result: Table data extracted and exported as JSON
 4. Verification: Open exported JSON file, verify contains table data
 
-**Scenario 2: Paginated Scraping (Multiple Pages)**
+### Scenario 2: Paginated Scraping (Multiple Pages)
 1. Setup:
    - Test app with paginated results (10 items per page, 5 pages)
 2. Steps:
@@ -66,7 +66,7 @@ feature: local-web-scraping
 3. Expected Result: All 50 items scraped across 5 pages
 4. Verification: Exported JSON contains 50 unique items
 
-**Scenario 3: AJAX-Loaded Content**
+### Scenario 3: AJAX-Loaded Content
 1. Setup:
    - Page with content loaded via AJAX after initial render
 2. Steps:
@@ -77,7 +77,7 @@ feature: local-web-scraping
 3. Expected Result: Data extracted only after AJAX completes
 4. Verification: Extracted data is complete (not empty)
 
-**Scenario 4: Session Expiration (Error Path)**
+### Scenario 4: Session Expiration (Error Path)
 1. Setup:
    - Log into app with short session timeout (or manually expire session)
 2. Steps:
@@ -88,7 +88,7 @@ feature: local-web-scraping
 3. Expected Result: Agent detects session expiration, returns error
 4. Verification: Agent reports authentication failure, prompts re-login
 
-**Scenario 5: Rate Limiting Handling**
+### Scenario 5: Rate Limiting Handling
 1. Setup:
    - Scrape site with aggressive rate limiting (or mock rate limit)
 2. Steps:

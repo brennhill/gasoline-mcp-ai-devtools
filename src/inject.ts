@@ -100,6 +100,7 @@ export {
   setWebSocketCaptureEnabled,
   getWebSocketCaptureMode,
   uninstallWebSocketCapture,
+  resetForTesting,
   executeDOMQuery,
   getPageInfo,
   runAxeAudit,
@@ -145,5 +146,5 @@ export {
   type DeferralState,
   type RestoreStateResult,
   type RestoredCounts,
-  type HighlightResult,
+  type HighlightResult
 } from './inject/index'

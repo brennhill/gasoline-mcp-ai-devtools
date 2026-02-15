@@ -12,10 +12,10 @@ last-verified: 2026-01-31
 ## Test Scenarios
 
 ### Scenario 1: Session ID Generation & Persistence
-**Setup:**
+#### Setup:
 - Fresh browser session, Gasoline extension installed
 
-**Steps:**
+#### Steps:
 1. Load first page
 2. Extension generates session ID
 3. Verify stored in localStorage
@@ -24,13 +24,13 @@ last-verified: 2026-01-31
 6. Close tab, open new tab on same site
 7. Verify NEW session ID generated
 
-**Expected Result:**
+#### Expected Result:
 - Session ID generated on first load
 - Same ID persists across reloads
 - Fresh tab gets new session ID
 - Format: "session-" + 32 hex characters
 
-**Acceptance Criteria:**
+#### Acceptance Criteria:
 - [ ] Session ID created and stored
 - [ ] Persists across page reloads
 - [ ] New tab = new session ID
@@ -39,11 +39,11 @@ last-verified: 2026-01-31
 ---
 
 ### Scenario 2: Session ID in Network Requests
-**Setup:**
+#### Setup:
 - Page loaded with session ID
 - Multiple network requests made
 
-**Steps:**
+#### Steps:
 1. Load page, capture session ID
 2. Make XHR request to backend
 3. Verify X-Session-ID header present
@@ -51,12 +51,12 @@ last-verified: 2026-01-31
 5. Make second request
 6. Verify same session ID in both requests
 
-**Expected Result:**
+#### Expected Result:
 - All requests include X-Session-ID header
 - Header value matches stored session ID
 - Multiple requests share same session ID
 
-**Acceptance Criteria:**
+#### Acceptance Criteria:
 - [ ] X-Session-ID header present in all requests
 - [ ] Header value is correct
 - [ ] Consistency across multiple requests
@@ -64,11 +64,11 @@ last-verified: 2026-01-31
 ---
 
 ### Scenario 3: Request ID Generation & Propagation
-**Setup:**
+#### Setup:
 - Session established with session ID
 - Backend middleware configured to extract request ID
 
-**Steps:**
+#### Steps:
 1. Frontend makes GET /api/data
 2. Verify traceparent header includes request ID
 3. Backend receives request, extracts request ID
@@ -76,13 +76,13 @@ last-verified: 2026-01-31
 5. Frontend makes second request
 6. Verify different request IDs for different requests
 
-**Expected Result:**
+#### Expected Result:
 - Each request gets unique request ID
 - traceparent header includes request ID
 - Backend successfully extracts ID
 - Request IDs are different for different requests
 
-**Acceptance Criteria:**
+#### Acceptance Criteria:
 - [ ] traceparent header present
 - [ ] traceparent format valid (W3C standard)
 - [ ] Backend extracts request ID correctly
@@ -91,11 +91,11 @@ last-verified: 2026-01-31
 ---
 
 ### Scenario 4: Multi-Service Request Propagation
-**Setup:**
+#### Setup:
 - Frontend request spawns backend calls to multiple services
 - All services configured to propagate request ID
 
-**Steps:**
+#### Steps:
 1. Frontend makes POST /api/checkout (req-001)
 2. Backend api-server receives, logs with req-001
 3. api-server calls payment-service, includes X-Request-ID: req-001
@@ -104,13 +104,13 @@ last-verified: 2026-01-31
 6. inventory-service logs with req-001
 7. Query by request_id to get all logs
 
-**Expected Result:**
+#### Expected Result:
 - Request ID flows through entire call chain
 - All services log with same request ID
 - Query returns all 3 logs (api-server, payment, inventory)
 - Timeline shows complete request flow
 
-**Acceptance Criteria:**
+#### Acceptance Criteria:
 - [ ] Request ID propagated through all services
 - [ ] All logs tagged with same ID
 - [ ] Query returns all related logs
@@ -119,19 +119,19 @@ last-verified: 2026-01-31
 ---
 
 ### Scenario 5: Session Query - Complete Activity
-**Setup:**
+#### Setup:
 - User completes multi-step workflow:
   - Load dashboard
   - Click settings
   - Save preferences
   - Logout
 
-**Steps:**
+#### Steps:
 1. User navigates through workflow
 2. Query: `observe({what: 'session-trace', session_id: 'xyz'})`
 3. Verify all activity returned
 
-**Expected Result:**
+#### Expected Result:
 - Dashboard page load event
 - Network requests for settings
 - Form submission request
@@ -139,7 +139,7 @@ last-verified: 2026-01-31
 - All events ordered by timestamp
 - Total count matches expected operations
 
-**Acceptance Criteria:**
+#### Acceptance Criteria:
 - [ ] All events included in session
 - [ ] Order is chronological
 - [ ] Event types accurate
@@ -148,23 +148,23 @@ last-verified: 2026-01-31
 ---
 
 ### Scenario 6: Request Query - Full Lifecycle
-**Setup:**
+#### Setup:
 - Single request that spawns multiple backend operations
 
-**Steps:**
+#### Steps:
 1. Frontend: POST /api/order (req-123)
 2. Backend logs processing start
 3. Backend calls inventory service
 4. Backend calls payment service
 5. Query: `observe({what: 'request-trace', request_id: 'req-123'})`
 
-**Expected Result:**
+#### Expected Result:
 - Request start event (XHR POST)
 - All backend logs for req-123
 - Related custom events
 - Complete timeline with duration
 
-**Acceptance Criteria:**
+#### Acceptance Criteria:
 - [ ] Request details present
 - [ ] All related logs included
 - [ ] Duration calculated correctly
@@ -173,23 +173,23 @@ last-verified: 2026-01-31
 ---
 
 ### Scenario 7: Error Tracking in Session
-**Setup:**
+#### Setup:
 - User session includes a failed operation
 - One request fails while others succeed
 
-**Steps:**
+#### Steps:
 1. User makes successful requests
 2. User makes failed request (e.g., payment decline)
 3. User continues with new session (retry)
 4. Query session including the failed request
 
-**Expected Result:**
+#### Expected Result:
 - Failed request identified with error status
 - Error message captured
 - Request still correlated with session
 - Later requests in same session visible
 
-**Acceptance Criteria:**
+#### Acceptance Criteria:
 - [ ] Error request identified (status 4xx or 5xx)
 - [ ] Error message included
 - [ ] Session continues after error
@@ -198,23 +198,23 @@ last-verified: 2026-01-31
 ---
 
 ### Scenario 8: Session Spanning Multiple Pages
-**Setup:**
+#### Setup:
 - User navigates from page A → page B → page C
 - Session ID should persist
 
-**Steps:**
+#### Steps:
 1. Load page A (session generated)
 2. Navigate to page B
 3. Query session
 4. Navigate to page C
 5. Query session again
 
-**Expected Result:**
+#### Expected Result:
 - Same session ID on all pages
 - All page load events in session
 - All requests across pages grouped
 
-**Acceptance Criteria:**
+#### Acceptance Criteria:
 - [ ] Session ID persists across navigation
 - [ ] All pages included in session trace
 - [ ] Query returns activity from all pages
@@ -222,24 +222,24 @@ last-verified: 2026-01-31
 ---
 
 ### Scenario 9: Concurrent Sessions
-**Setup:**
+#### Setup:
 - Two browser windows/tabs with different sessions
 - Make requests from each simultaneously
 
-**Steps:**
+#### Steps:
 1. Tab 1: Session-A, make request req-001
 2. Tab 2: Session-B, make request req-002
 3. Queries should not interfere
 4. Query Session-A should only show req-001
 5. Query Session-B should only show req-002
 
-**Expected Result:**
+#### Expected Result:
 - Sessions properly isolated
 - No event leakage between sessions
 - Concurrent queries work correctly
 - Each session has correct count of events
 
-**Acceptance Criteria:**
+#### Acceptance Criteria:
 - [ ] Sessions don't mix
 - [ ] Query A shows only A's events
 - [ ] Query B shows only B's events
@@ -248,23 +248,23 @@ last-verified: 2026-01-31
 ---
 
 ### Scenario 10: Session Timeout & Cleanup
-**Setup:**
+#### Setup:
 - Old session (>1 hour of inactivity)
 
-**Steps:**
+#### Steps:
 1. Verify old session still queryable
 2. Enable aggressive TTL (for testing)
 3. Wait for TTL to expire
 4. Attempt to query old session
 5. Verify graceful handling
 
-**Expected Result:**
+#### Expected Result:
 - Recent sessions queryable
 - Old sessions may be evicted (configurable)
 - No errors on old session query (just returns empty)
 - Memory stays within limits
 
-**Acceptance Criteria:**
+#### Acceptance Criteria:
 - [ ] TTL configurable (default 1 hour)
 - [ ] Old sessions evicted when TTL expires
 - [ ] Memory doesn't grow unbounded

@@ -19,7 +19,7 @@ This document outlines the migration plan for adding test generation capabilitie
 
 ### Phase 1: Core Infrastructure (Priority: HIGH)
 
-**Files to Create:**
+#### Files to Create:
 ```
 cmd/dev-console/
 ├── testgen.go           # Test generation from context
@@ -28,7 +28,7 @@ cmd/dev-console/
 └── testgen_test.go      # Unit tests
 ```
 
-**Files to Modify:**
+#### Files to Modify:
 ```
 cmd/dev-console/tools.go  # Add dispatch for new generate modes
 ```
@@ -39,7 +39,7 @@ cmd/dev-console/tools.go  # Add dispatch for new generate modes
 
 ### Phase 2: test_from_context Mode (Priority: HIGH)
 
-**Implementation Steps:**
+#### Implementation Steps:
 1. Create `TestFromContextRequest` struct
 2. Implement `toolGenerateTestFromContext()` handler
 3. Reuse `generatePlaywrightScript()` from codegen.go
@@ -47,14 +47,14 @@ cmd/dev-console/tools.go  # Add dispatch for new generate modes
 5. Add network mock generation (optional)
 6. Write unit tests
 
-**Integration Points:**
+#### Integration Points:
 - `observe` - for error context
 - `capture.GetEnhancedActions()` - for user actions
 - `capture.GetNetworkBodies()` - for network context
 
 ### Phase 3: test_heal Mode (Priority: HIGH)
 
-**Implementation Steps:**
+#### Implementation Steps:
 1. Create `TestHealRequest` struct
 2. Implement `HealSelector()` function
 3. Implement DOM query for candidate elements
@@ -62,12 +62,12 @@ cmd/dev-console/tools.go  # Add dispatch for new generate modes
 5. Implement test file parsing (extract selectors)
 6. Write unit tests
 
-**Extension Integration:**
+#### Extension Integration:
 - Uses existing `query_dom` via pilot.go
 
 ### Phase 4: test_classify Mode (Priority: MEDIUM)
 
-**Implementation Steps:**
+#### Implementation Steps:
 1. Create `TestClassifyRequest` struct
 2. Implement pattern-based classification
 3. Implement evidence collection
@@ -78,7 +78,7 @@ cmd/dev-console/tools.go  # Add dispatch for new generate modes
 
 ### Phase 5: Batch Operations (Priority: LOW)
 
-**Implementation Steps:**
+#### Implementation Steps:
 1. Implement `test_heal.batch` with directory traversal
 2. Implement `test_classify.batch` with test output parsing
 3. Add async pattern with correlation IDs

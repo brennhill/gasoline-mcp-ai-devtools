@@ -303,14 +303,7 @@ func TestContractBadPath_Interact_InvalidJSON(t *testing.T) {
 // Bad Path Contracts — Missing Required Params
 // ============================================
 
-func TestContractBadPath_Configure_QueryDOM_MissingSelector(t *testing.T) {
-	env := newConfigureContractEnv(t)
-	result, ok := env.callConfigure(t, `{"action":"query_dom"}`)
-	if !ok {
-		t.Fatal("configure query_dom: no result")
-	}
-	assertStructuredErrorCode(t, "query_dom (missing selector)", result, "missing_param")
-}
+// TestContractBadPath_Configure_QueryDOM_MissingSelector removed in Phase 0: moved to analyze({what:'dom'})
 
 func TestContractBadPath_Configure_TestBoundary_MissingTestID(t *testing.T) {
 	env := newConfigureContractEnv(t)

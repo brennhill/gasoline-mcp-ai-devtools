@@ -36,7 +36,7 @@ feature: tool-allowlisting
 - [ ] Test extension HTTP endpoints respect allowlist
 - [ ] Test concurrent requests all subject to allowlist
 
-**Audit tests:**
+#### Audit tests:
 - [ ] Test all blocked attempts logged
 - [ ] Test allowlist contents logged at startup
 
@@ -44,7 +44,7 @@ feature: tool-allowlisting
 
 ## Human UAT Walkthrough
 
-**Scenario 1: Production Profile (Observation-Only) (Happy Path)**
+### Scenario 1: Production Profile (Observation-Only) (Happy Path)
 1. Setup:
    - Create allowlist-production.yaml: `allowed_tools: [observe.*, generate.*, configure.query_dom]`
    - Start server: `gasoline --allowlist-config=allowlist-production.yaml`
@@ -58,7 +58,7 @@ feature: tool-allowlisting
 3. Expected Result: Observation works, mutations blocked
 4. Verification: Agent can analyze but not interact
 
-**Scenario 2: Staging Profile (Safe Interactions)**
+### Scenario 2: Staging Profile (Safe Interactions)
 1. Setup:
    - Create allowlist-staging.yaml: `allowed_tools: [observe.*, generate.*, interact.navigate, interact.refresh]`
 2. Steps:
@@ -70,7 +70,7 @@ feature: tool-allowlisting
 3. Expected Result: Navigation allowed, code execution blocked
 4. Verification: Safe interactions work, dangerous ones blocked
 
-**Scenario 3: Development Profile (Full Access)**
+### Scenario 3: Development Profile (Full Access)
 1. Setup:
    - Create allowlist-development.yaml: `allowed_tools: ["*"]`
 2. Steps:
@@ -81,7 +81,7 @@ feature: tool-allowlisting
 3. Expected Result: All tools/actions allowed
 4. Verification: Full access like default behavior
 
-**Scenario 4: Invalid Config (Error Path)**
+### Scenario 4: Invalid Config (Error Path)
 1. Setup:
    - Create malformed YAML: `allowed_tools: [observe.*, missing_quote`
 2. Steps:
@@ -91,7 +91,7 @@ feature: tool-allowlisting
 3. Expected Result: Server fails fast with clear error
 4. Verification: No partial startup, clear diagnostic
 
-**Scenario 5: Hot-Reload (Optional)**
+### Scenario 5: Hot-Reload (Optional)
 1. Setup:
    - Start server with allowlist
    - Modify allowlist file (add new allowed action)

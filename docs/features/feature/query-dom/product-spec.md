@@ -53,7 +53,7 @@ No new server code is required. No new extension library code is required. The e
 }
 ```
 
-**Parameters:**
+#### Parameters:
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
@@ -147,7 +147,7 @@ No new server code is required. No new extension library code is required. The e
 
 ## Tool Placement Decision
 
-**Decision: `query_dom` stays under `configure`.**
+### Decision: `query_dom` stays under `configure`.
 
 Rationale: While `observe` ("show me something") might seem like a natural fit, `query_dom` is not a passive read of buffered telemetry -- it is an on-demand command that creates a pending query, sends it to the extension, and waits for execution. This active command pattern is consistent with other `configure` actions that interact with the extension (e.g., `capture`, `health`). The `observe` tool reads from server-side ring buffers; `query_dom` triggers real-time extension-side execution. Changing the tool assignment would break existing integrations that already reference `configure` + `query_dom` in the schema.
 

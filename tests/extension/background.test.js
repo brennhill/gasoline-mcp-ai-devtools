@@ -8,22 +8,23 @@
 
 import { test, describe, mock, beforeEach } from 'node:test'
 import assert from 'node:assert'
+import { MANIFEST_VERSION } from './helpers.js'
 
 // Mock Chrome APIs
 const mockChrome = {
   runtime: {
     onMessage: {
-      addListener: mock.fn(),
+      addListener: mock.fn()
     },
     onInstalled: {
-      addListener: mock.fn(),
+      addListener: mock.fn()
     },
     sendMessage: mock.fn(() => Promise.resolve()),
-    getManifest: () => ({ version: '6.0.3' }),
+    getManifest: () => ({ version: MANIFEST_VERSION })
   },
   action: {
     setBadgeText: mock.fn(),
-    setBadgeBackgroundColor: mock.fn(),
+    setBadgeBackgroundColor: mock.fn()
   },
   storage: {
     local: {
@@ -32,7 +33,7 @@ const mockChrome = {
       remove: mock.fn((keys, callback) => {
         if (typeof callback === 'function') callback()
         else return Promise.resolve()
-      }),
+      })
     },
     sync: {
       get: mock.fn((keys, callback) => callback({})),
@@ -40,7 +41,7 @@ const mockChrome = {
       remove: mock.fn((keys, callback) => {
         if (typeof callback === 'function') callback()
         else return Promise.resolve()
-      }),
+      })
     },
     session: {
       get: mock.fn((keys, callback) => callback({})),
@@ -48,28 +49,28 @@ const mockChrome = {
       remove: mock.fn((keys, callback) => {
         if (typeof callback === 'function') callback()
         else return Promise.resolve()
-      }),
+      })
     },
     onChanged: {
-      addListener: mock.fn(),
-    },
+      addListener: mock.fn()
+    }
   },
   alarms: {
     create: mock.fn(),
     onAlarm: {
-      addListener: mock.fn(),
-    },
+      addListener: mock.fn()
+    }
   },
   tabs: {
     get: mock.fn((tabId) => Promise.resolve({ id: tabId, windowId: 1, url: 'http://localhost:3000' })),
     captureVisibleTab: mock.fn(() =>
-      Promise.resolve('data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkS'),
+      Promise.resolve('data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkS')
     ),
     query: mock.fn((query, callback) => callback([{ id: 1, windowId: 1 }])),
     onRemoved: {
-      addListener: mock.fn(),
-    },
-  },
+      addListener: mock.fn()
+    }
+  }
 }
 
 // Set global chrome mock
@@ -93,8 +94,70 @@ import {
   measureContextSize,
   checkContextAnnotations,
   getContextWarning,
-  resetContextWarning,
+  resetContextWarning
 } from '../../extension/background.js'
+
+// Import installMessageListener directly (not re-exported from barrel)
+import { installMessageListener } from '../../extension/background/message-handlers.js'
+
+// =============================================================================
+// Helper: Install the real message handler and extract the registered listener
+// =============================================================================
+/**
+ * Installs the real message handler via installMessageListener and returns
+ * the actual handler function that was registered on chrome.runtime.onMessage.
+ * Allows tests to invoke the real production handler directly.
+ */
+function getInstalledMessageHandler(depsOverrides = {}) {
+  // Reset the addListener mock to capture the new registration
+  mockChrome.runtime.onMessage.addListener.mock.resetCalls()
+
+  const baseDeps = {
+    getServerUrl: () => 'http://localhost:7890',
+    getConnectionStatus: () => ({ connected: true }),
+    getDebugMode: () => false,
+    getScreenshotOnError: () => false,
+    getSourceMapEnabled: () => false,
+    getCurrentLogLevel: () => 'all',
+    getContextWarning: () => null,
+    getCircuitBreakerState: () => 'closed',
+    getMemoryPressureState: () => ({ level: 'normal' }),
+    getAiWebPilotEnabled: () => false,
+    isNetworkBodyCaptureDisabled: () => false,
+    setServerUrl: mock.fn(),
+    setCurrentLogLevel: mock.fn(),
+    setScreenshotOnError: mock.fn(),
+    setSourceMapEnabled: mock.fn(),
+    setDebugMode: mock.fn(),
+    setAiWebPilotEnabled: mock.fn(),
+    addToLogBatcher: mock.fn(),
+    addToWsBatcher: mock.fn(),
+    addToEnhancedActionBatcher: mock.fn(),
+    addToNetworkBodyBatcher: mock.fn(),
+    addToPerfBatcher: mock.fn(),
+    handleLogMessage: mock.fn(),
+    handleClearLogs: mock.fn(),
+    captureScreenshot: mock.fn(),
+    checkConnectionAndUpdate: mock.fn(),
+    clearSourceMapCache: mock.fn(),
+    debugLog: mock.fn(),
+    exportDebugLog: mock.fn(),
+    clearDebugLog: mock.fn(),
+    saveSetting: mock.fn(),
+    forwardToAllContentScripts: mock.fn(),
+    ...depsOverrides
+  }
+
+  installMessageListener(baseDeps)
+
+  // The real handler was registered via chrome.runtime.onMessage.addListener
+  const calls = mockChrome.runtime.onMessage.addListener.mock.calls
+  assert.ok(calls.length > 0, 'installMessageListener should register a listener')
+  const handler = calls[calls.length - 1].arguments[0]
+  assert.strictEqual(typeof handler, 'function', 'Registered listener should be a function')
+
+  return { handler, deps: baseDeps }
+}
 
 describe('Log Batcher', () => {
   beforeEach(() => {
@@ -116,7 +179,12 @@ describe('Log Batcher', () => {
 
     // Should have flushed once with both entries
     assert.strictEqual(flushFn.mock.calls.length, 1)
-    assert.strictEqual(flushFn.mock.calls[0].arguments[0].length, 2)
+    const flushedBatch = flushFn.mock.calls[0].arguments[0]
+    assert.strictEqual(flushedBatch.length, 2)
+    assert.strictEqual(flushedBatch[0].level, 'error')
+    assert.strictEqual(flushedBatch[0].msg, 'test1')
+    assert.strictEqual(flushedBatch[1].level, 'error')
+    assert.strictEqual(flushedBatch[1].msg, 'test2')
   })
 
   test('should flush immediately when batch size reached', () => {
@@ -129,7 +197,11 @@ describe('Log Batcher', () => {
 
     batcher.add({ msg: '3' })
     assert.strictEqual(flushFn.mock.calls.length, 1)
-    assert.strictEqual(flushFn.mock.calls[0].arguments[0].length, 3)
+    const flushedBatch = flushFn.mock.calls[0].arguments[0]
+    assert.strictEqual(flushedBatch.length, 3)
+    assert.strictEqual(flushedBatch[0].msg, '1')
+    assert.strictEqual(flushedBatch[1].msg, '2')
+    assert.strictEqual(flushedBatch[2].msg, '3')
   })
 
   test('should clear pending logs on flush', async () => {
@@ -146,7 +218,9 @@ describe('Log Batcher', () => {
     // Each batch should be separate
     assert.strictEqual(flushFn.mock.calls.length, 2)
     assert.strictEqual(flushFn.mock.calls[0].arguments[0].length, 1)
+    assert.strictEqual(flushFn.mock.calls[0].arguments[0][0].msg, 'test')
     assert.strictEqual(flushFn.mock.calls[1].arguments[0].length, 1)
+    assert.strictEqual(flushFn.mock.calls[1].arguments[0][0].msg, 'test2')
   })
 
   test('should handle manual flush', () => {
@@ -157,6 +231,8 @@ describe('Log Batcher', () => {
     batcher.flush()
 
     assert.strictEqual(flushFn.mock.calls.length, 1)
+    assert.strictEqual(flushFn.mock.calls[0].arguments[0].length, 1)
+    assert.strictEqual(flushFn.mock.calls[0].arguments[0][0].msg, 'test')
   })
 
   test('should not flush if empty', () => {
@@ -177,14 +253,14 @@ describe('sendLogsToServer', () => {
     const mockFetch = mock.fn(() =>
       Promise.resolve({
         ok: true,
-        json: () => Promise.resolve({ entries: 2 }),
-      }),
+        json: () => Promise.resolve({ entries: 2 })
+      })
     )
     globalThis.fetch = mockFetch
 
     const entries = [
       { ts: '2024-01-22T10:00:00Z', level: 'error', msg: 'test1' },
-      { ts: '2024-01-22T10:00:01Z', level: 'warn', msg: 'test2' },
+      { ts: '2024-01-22T10:00:01Z', level: 'warn', msg: 'test2' }
     ]
 
     const result = await sendLogsToServer('http://localhost:7890', entries)
@@ -197,6 +273,10 @@ describe('sendLogsToServer', () => {
 
     const body = JSON.parse(options.body)
     assert.strictEqual(body.entries.length, 2)
+    assert.strictEqual(body.entries[0].level, 'error')
+    assert.strictEqual(body.entries[0].msg, 'test1')
+    assert.strictEqual(body.entries[1].level, 'warn')
+    assert.strictEqual(body.entries[1].msg, 'test2')
     assert.strictEqual(result.entries, 2)
   })
 
@@ -205,12 +285,12 @@ describe('sendLogsToServer', () => {
       Promise.resolve({
         ok: false,
         status: 500,
-        statusText: 'Internal Server Error',
-      }),
+        statusText: 'Internal Server Error'
+      })
     )
 
     await assert.rejects(() => sendLogsToServer('http://localhost:7890', [{ msg: 'test' }]), {
-      message: /Server error: 500/,
+      message: /Server error: 500/
     })
   })
 
@@ -218,7 +298,7 @@ describe('sendLogsToServer', () => {
     globalThis.fetch = mock.fn(() => Promise.reject(new Error('Network error')))
 
     await assert.rejects(() => sendLogsToServer('http://localhost:7890', [{ msg: 'test' }]), {
-      message: /Network error/,
+      message: /Network error/
     })
   })
 })
@@ -236,9 +316,9 @@ describe('checkServerHealth', () => {
           Promise.resolve({
             status: 'ok',
             entries: 42,
-            maxEntries: 1000,
-          }),
-      }),
+            maxEntries: 1000
+          })
+      })
     )
 
     const health = await checkServerHealth()
@@ -261,8 +341,8 @@ describe('checkServerHealth', () => {
     globalThis.fetch = mock.fn(() =>
       Promise.resolve({
         ok: false,
-        status: 500,
-      }),
+        status: 500
+      })
     )
 
     const health = await checkServerHealth()
@@ -284,11 +364,13 @@ describe('updateBadge', () => {
     assert.strictEqual(mockChrome.action.setBadgeText.mock.calls.length, 1)
     assert.strictEqual(mockChrome.action.setBadgeBackgroundColor.mock.calls.length, 1)
 
-    const [textCall] = mockChrome.action.setBadgeText.mock.calls
-    assert.strictEqual(textCall.arguments[0].text, '')
+    const textArg = mockChrome.action.setBadgeText.mock.calls[0].arguments[0]
+    assert.strictEqual(textArg.text, '')
+    assert.strictEqual(typeof textArg, 'object', 'setBadgeText argument should be an object')
 
-    const [colorCall] = mockChrome.action.setBadgeBackgroundColor.mock.calls
-    assert.strictEqual(colorCall.arguments[0].color, '#3fb950') // green
+    const colorArg = mockChrome.action.setBadgeBackgroundColor.mock.calls[0].arguments[0]
+    assert.strictEqual(colorArg.color, '#3fb950') // green
+    assert.strictEqual(typeof colorArg, 'object', 'setBadgeBackgroundColor argument should be an object')
   })
 
   test('should show error count when connected with errors', () => {
@@ -325,6 +407,8 @@ describe('formatLogEntry', () => {
 
     assert.ok(entry.ts)
     assert.ok(entry.ts.match(/^\d{4}-\d{2}-\d{2}T/)) // ISO format
+    assert.strictEqual(entry.level, 'error')
+    assert.strictEqual(entry.msg, 'test')
   })
 
   test('should preserve existing timestamp', () => {
@@ -339,7 +423,7 @@ describe('formatLogEntry', () => {
     const entry = formatLogEntry({
       level: 'log',
       type: 'console',
-      args: [largeString],
+      args: [largeString]
     })
 
     // Args should be truncated
@@ -354,7 +438,7 @@ describe('formatLogEntry', () => {
     const entry = formatLogEntry({
       level: 'log',
       type: 'console',
-      args: [obj],
+      args: [obj]
     })
 
     // Should not throw, should have placeholder
@@ -367,7 +451,7 @@ describe('formatLogEntry', () => {
     const entry = formatLogEntry({
       level: 'error',
       msg: 'test',
-      url: 'http://localhost:3000/page',
+      url: 'http://localhost:3000/page'
     })
 
     assert.strictEqual(entry.url, 'http://localhost:3000/page')
@@ -377,7 +461,7 @@ describe('formatLogEntry', () => {
     const entry = formatLogEntry({
       level: 'error',
       msg: 'test',
-      tabId: 42,
+      tabId: 42
     })
 
     assert.strictEqual(entry.tabId, 42)
@@ -386,7 +470,7 @@ describe('formatLogEntry', () => {
   test('should work without tabId (backward compat)', () => {
     const entry = formatLogEntry({
       level: 'error',
-      msg: 'test',
+      msg: 'test'
     })
 
     assert.strictEqual(entry.tabId, undefined)
@@ -435,7 +519,7 @@ describe('createErrorSignature', () => {
       type: 'exception',
       level: 'error',
       message: 'Cannot read property x',
-      stack: 'Error: Cannot read property x\n    at foo.js:10:5',
+      stack: 'Error: Cannot read property x\n    at foo.js:10:5'
     }
 
     const sig1 = createErrorSignature(entry)
@@ -452,13 +536,13 @@ describe('createErrorSignature', () => {
       type: 'exception',
       level: 'error',
       message: 'Error A',
-      stack: 'Error: Error A\n    at file1.js:10',
+      stack: 'Error: Error A\n    at file1.js:10'
     }
     const entry2 = {
       type: 'exception',
       level: 'error',
       message: 'Error B',
-      stack: 'Error: Error B\n    at file2.js:20',
+      stack: 'Error: Error B\n    at file2.js:20'
     }
 
     const sig1 = createErrorSignature(entry1)
@@ -473,7 +557,7 @@ describe('createErrorSignature', () => {
       level: 'error',
       method: 'POST',
       url: 'http://localhost:3000/api/users?id=123',
-      status: 401,
+      status: 401
     }
 
     const sig = createErrorSignature(entry)
@@ -488,7 +572,7 @@ describe('createErrorSignature', () => {
     const entry = {
       type: 'console',
       level: 'error',
-      args: ['User authentication failed'],
+      args: ['User authentication failed']
     }
 
     const sig = createErrorSignature(entry)
@@ -510,13 +594,16 @@ describe('processErrorGroup', () => {
       type: 'exception',
       level: 'error',
       message: 'Test error',
-      ts: new Date().toISOString(),
+      ts: new Date().toISOString()
     }
 
     const result = processErrorGroup(entry)
 
     assert.strictEqual(result.shouldSend, true)
     assert.deepStrictEqual(result.entry, entry)
+    assert.strictEqual(result.entry.type, 'exception')
+    assert.strictEqual(result.entry.level, 'error')
+    assert.strictEqual(result.entry.message, 'Test error')
   })
 
   test('should not send duplicate error within dedup window', () => {
@@ -524,7 +611,7 @@ describe('processErrorGroup', () => {
       type: 'exception',
       level: 'error',
       message: 'Duplicate error test',
-      ts: new Date().toISOString(),
+      ts: new Date().toISOString()
     }
 
     // First occurrence
@@ -541,7 +628,7 @@ describe('processErrorGroup', () => {
       type: 'console',
       level: 'log',
       args: ['Info message'],
-      ts: new Date().toISOString(),
+      ts: new Date().toISOString()
     }
 
     const result1 = processErrorGroup(entry)
@@ -556,7 +643,7 @@ describe('processErrorGroup', () => {
       type: 'console',
       level: 'warn',
       args: ['Warning message'],
-      ts: new Date().toISOString(),
+      ts: new Date().toISOString()
     }
 
     const result1 = processErrorGroup(entry)
@@ -579,7 +666,7 @@ describe('flushErrorGroups', () => {
       type: 'exception',
       level: 'error',
       message: 'Single error',
-      ts: new Date().toISOString(),
+      ts: new Date().toISOString()
     }
 
     processErrorGroup(entry)
@@ -594,7 +681,7 @@ describe('flushErrorGroups', () => {
       type: 'exception',
       level: 'error',
       message: 'Repeated error for flush',
-      ts: new Date().toISOString(),
+      ts: new Date().toISOString()
     }
 
     // Create duplicates
@@ -608,6 +695,11 @@ describe('flushErrorGroups', () => {
     assert.strictEqual(flushed[0]._aggregatedCount, 3)
     assert.ok(flushed[0]._firstSeen)
     assert.ok(flushed[0]._lastSeen)
+    assert.strictEqual(flushed[0].type, 'exception')
+    assert.strictEqual(flushed[0].level, 'error')
+    assert.strictEqual(flushed[0].message, 'Repeated error for flush')
+    assert.strictEqual(typeof flushed[0]._firstSeen, 'string')
+    assert.strictEqual(typeof flushed[0]._lastSeen, 'string')
   })
 })
 
@@ -753,8 +845,16 @@ describe('Debug Logging', () => {
     const parsed = JSON.parse(exported)
 
     assert.ok(parsed.exportedAt)
-    assert.strictEqual(parsed.version, '6.0.2')
+    assert.strictEqual(typeof parsed.exportedAt, 'string')
+    assert.strictEqual(parsed.version, MANIFEST_VERSION)
     assert.ok(Array.isArray(parsed.entries))
+    assert.ok(parsed.entries.length > 0, 'Expected at least one entry in exported log')
+    // Verify entry shape
+    const captureEntry = parsed.entries.find((e) => e.message === 'Capture test')
+    assert.ok(captureEntry, 'Expected to find the "Capture test" entry')
+    assert.strictEqual(captureEntry.category, 'capture')
+    assert.ok(captureEntry.ts, 'Expected ts field on entry')
+    assert.strictEqual(typeof captureEntry.ts, 'string')
   })
 
   // NOTE: setDebugMode test moved to co-located test file: extension/background/index.test.js
@@ -796,8 +896,8 @@ describe('Context Annotation Monitoring', () => {
         level: 'error',
         _context: {
           user: { id: 123, name: 'test' },
-          page: { route: '/checkout' },
-        },
+          page: { route: '/checkout' }
+        }
       }
       const size = measureContextSize(entry)
       assert.ok(size > 0)
@@ -814,8 +914,8 @@ describe('Context Annotation Monitoring', () => {
           key3: largeValue,
           key4: largeValue,
           key5: largeValue,
-          key6: largeValue, // 6 × 4000 = ~24KB, over threshold
-        },
+          key6: largeValue // 6 × 4000 = ~24KB, over threshold
+        }
       }
       const size = measureContextSize(entry)
       assert.ok(size > 20 * 1024, `Expected > 20KB, got ${size}`)
@@ -826,7 +926,7 @@ describe('Context Annotation Monitoring', () => {
     test('should not warn for entries with small context', () => {
       const entries = [
         { level: 'error', _context: { user: { id: 1 } } },
-        { level: 'error', _context: { page: '/home' } },
+        { level: 'error', _context: { page: '/home' } }
       ]
       checkContextAnnotations(entries)
       assert.strictEqual(getContextWarning(), null)
@@ -835,7 +935,7 @@ describe('Context Annotation Monitoring', () => {
     test('should not warn for entries without context', () => {
       const entries = [
         { level: 'error', args: ['test'] },
-        { level: 'warn', msg: 'hello' },
+        { level: 'warn', msg: 'hello' }
       ]
       checkContextAnnotations(entries)
       assert.strictEqual(getContextWarning(), null)
@@ -895,7 +995,7 @@ describe('Context Annotation Monitoring', () => {
         checkContextAnnotations([
           { level: 'error', _context: { small: 'val' } },
           { level: 'error', _context: largeContext },
-          { level: 'warn', msg: 'no context' },
+          { level: 'warn', msg: 'no context' }
         ])
       }
 
@@ -931,8 +1031,8 @@ describe('Enhanced Actions Server Communication', () => {
     globalThis.fetch = mock.fn(() =>
       Promise.resolve({
         ok: true,
-        json: () => Promise.resolve({ received: 1 }),
-      }),
+        json: () => Promise.resolve({ received: 1 })
+      })
     )
   })
 
@@ -945,8 +1045,8 @@ describe('Enhanced Actions Server Communication', () => {
         url: 'http://localhost:3000',
         selectors: { id: 'email' },
         value: 'test@test.com',
-        inputType: 'email',
-      },
+        input_type: 'email'
+      }
     ]
 
     await sendEnhancedActionsToServer('http://localhost:7890', actions)
@@ -961,7 +1061,12 @@ describe('Enhanced Actions Server Communication', () => {
     assert.ok(Array.isArray(body.actions))
     assert.strictEqual(body.actions.length, 2)
     assert.strictEqual(body.actions[0].type, 'click')
+    assert.strictEqual(body.actions[0].timestamp, 1705312200000)
+    assert.strictEqual(body.actions[0].url, 'http://localhost:3000')
+    assert.deepStrictEqual(body.actions[0].selectors, { testId: 'btn' })
     assert.strictEqual(body.actions[1].type, 'input')
+    assert.strictEqual(body.actions[1].value, 'test@test.com')
+    assert.strictEqual(body.actions[1].input_type, 'email')
   })
 
   test('sendEnhancedActionsToServer should throw on non-ok response', async () => {
@@ -971,7 +1076,7 @@ describe('Enhanced Actions Server Communication', () => {
 
     await assert.rejects(
       () => sendEnhancedActionsToServer('http://localhost:7890', actions),
-      (err) => err.message.includes('500'),
+      (err) => err.message.includes('500')
     )
   })
 
@@ -985,7 +1090,7 @@ describe('Enhanced Actions Server Communication', () => {
       timestamp: 1001,
       url: 'http://localhost:3000',
       selectors: { id: 'input' },
-      value: 'hi',
+      value: 'hi'
     }
 
     batcher.add(action1)
@@ -995,24 +1100,34 @@ describe('Enhanced Actions Server Communication', () => {
     await new Promise((r) => setTimeout(r, 100))
 
     assert.strictEqual(flushFn.mock.calls.length, 1)
-    assert.strictEqual(flushFn.mock.calls[0].arguments[0].length, 2)
-    assert.strictEqual(flushFn.mock.calls[0].arguments[0][0].type, 'click')
-    assert.strictEqual(flushFn.mock.calls[0].arguments[0][1].type, 'input')
+    const flushedActions = flushFn.mock.calls[0].arguments[0]
+    assert.strictEqual(flushedActions.length, 2)
+    assert.strictEqual(flushedActions[0].type, 'click')
+    assert.strictEqual(flushedActions[0].timestamp, 1000)
+    assert.strictEqual(flushedActions[0].url, 'http://localhost:3000')
+    assert.deepStrictEqual(flushedActions[0].selectors, { id: 'btn' })
+    assert.strictEqual(flushedActions[1].type, 'input')
+    assert.strictEqual(flushedActions[1].timestamp, 1001)
+    assert.strictEqual(flushedActions[1].value, 'hi')
   })
 
-  test('message handler should process enhanced_action messages via batcher', async () => {
-    // Simulate what the message handler does - adds to batcher
-    const flushFn = mock.fn()
-    const actionBatcher = createLogBatcher(flushFn, { debounceMs: 50, maxBatchSize: 50 })
+  test('message handler should process enhanced_action messages via batcher', () => {
+    // Install the real message handler with a spy on addToEnhancedActionBatcher
+    const addToEnhancedActionBatcher = mock.fn()
+    const { handler } = getInstalledMessageHandler({ addToEnhancedActionBatcher })
 
-    // Simulate receiving enhanced_action messages
+    const sendResponse = mock.fn()
+    const sender = { tab: { id: 1, url: 'http://localhost:3000' } }
     const payload = { type: 'click', timestamp: 1000, url: 'http://localhost:3000', selectors: { testId: 'btn' } }
-    actionBatcher.add(payload)
+    const message = { type: 'enhanced_action', payload }
 
-    await new Promise((r) => setTimeout(r, 100))
+    // Invoke the real message handler with an enhanced_action message
+    handler(message, sender, sendResponse)
 
-    assert.strictEqual(flushFn.mock.calls.length, 1)
-    assert.strictEqual(flushFn.mock.calls[0].arguments[0][0].type, 'click')
+    // The real handler should have called addToEnhancedActionBatcher with the payload
+    assert.strictEqual(addToEnhancedActionBatcher.mock.calls.length, 1)
+    assert.deepStrictEqual(addToEnhancedActionBatcher.mock.calls[0].arguments[0], payload)
+    assert.strictEqual(addToEnhancedActionBatcher.mock.calls[0].arguments[0].type, 'click')
   })
 })
 
@@ -1022,43 +1137,50 @@ describe('Enhanced Actions Server Communication', () => {
 
 describe('GET_TAB_ID Message Handler', () => {
   test('should respond with sender.tab.id when content script requests tab ID', () => {
-    // The GET_TAB_ID handler allows content scripts to discover their own tab ID
-    // since chrome.tabs API is not available in content script context.
+    // Install the real message handler and get the registered listener
+    const { handler } = getInstalledMessageHandler()
+
     const sendResponse = mock.fn()
-    const sender = { tab: { id: 42 } }
+    // Sender must pass isValidMessageSender: needs tab.id and tab.url
+    const sender = { tab: { id: 42, url: 'http://localhost:3000' } }
     const message = { type: 'GET_TAB_ID' }
 
-    // Simulate the handler logic that should exist in background.js
-    if (message.type === 'GET_TAB_ID') {
-      sendResponse({ tabId: sender.tab?.id })
-    }
+    // Invoke the real handler registered by installMessageListener
+    handler(message, sender, sendResponse)
 
     assert.strictEqual(sendResponse.mock.calls.length, 1)
     assert.deepStrictEqual(sendResponse.mock.calls[0].arguments[0], { tabId: 42 })
   })
 
   test('should respond with undefined tabId when sender has no tab', () => {
+    // Install the real message handler and get the registered listener
+    const { handler } = getInstalledMessageHandler()
+
     const sendResponse = mock.fn()
-    const sender = {}  // No tab (e.g., from popup or other extension page)
+    // Sender from popup/extension page: uses chrome.runtime.id for validation
+    mockChrome.runtime.id = 'test-extension-id'
+    const sender = { id: 'test-extension-id' } // No tab (e.g., from popup)
     const message = { type: 'GET_TAB_ID' }
 
-    if (message.type === 'GET_TAB_ID') {
-      sendResponse({ tabId: sender.tab?.id })
-    }
+    handler(message, sender, sendResponse)
 
     assert.strictEqual(sendResponse.mock.calls.length, 1)
     assert.deepStrictEqual(sendResponse.mock.calls[0].arguments[0], { tabId: undefined })
+
+    // Clean up
+    delete mockChrome.runtime.id
   })
 
   test('should return true for async response handling', () => {
-    // The handler must return true to indicate it will send a response
+    // Install the real message handler and get the registered listener
+    const { handler } = getInstalledMessageHandler()
+
+    const sendResponse = mock.fn()
+    const sender = { tab: { id: 99, url: 'http://localhost:3000' } }
     const message = { type: 'GET_TAB_ID' }
 
-    // Simulate the check in the message listener
-    let returnValue = false
-    if (message.type === 'GET_TAB_ID') {
-      returnValue = true
-    }
+    // The real handler returns true to keep the sendResponse channel open
+    const returnValue = handler(message, sender, sendResponse)
 
     assert.strictEqual(returnValue, true, 'Handler should return true for sendResponse')
   })
@@ -1074,7 +1196,7 @@ describe('Performance Snapshot Batching (W6)', () => {
     assert.strictEqual(
       typeof bgModule.sendPerformanceSnapshotToServer,
       'undefined',
-      'sendPerformanceSnapshotToServer should be removed; performance snapshots now use perfBatcher',
+      'sendPerformanceSnapshotToServer should be removed; performance snapshots now use perfBatcher'
     )
   })
 
@@ -1084,7 +1206,7 @@ describe('Performance Snapshot Batching (W6)', () => {
     assert.strictEqual(
       typeof commModule.sendPerformanceSnapshotsToServer,
       'function',
-      'sendPerformanceSnapshotsToServer (plural, batch) should be exported from communication.js',
+      'sendPerformanceSnapshotsToServer (plural, batch) should be exported from communication.js'
     )
   })
 })

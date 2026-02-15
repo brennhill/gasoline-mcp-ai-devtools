@@ -9,8 +9,3 @@ func (c *Capture) logPollingActivity(entry PollingLogEntry) {
 	c.debug.LogPollingActivity(entry)
 }
 
-// logHTTPDebugEntry delegates to the DebugLogger sub-struct.
-// Safe to call with or without c.mu held — DebugLogger has its own lock.
-func (c *Capture) logHTTPDebugEntry(entry HTTPDebugEntry) {
-	c.debug.LogHTTPDebugEntry(entry)
-}

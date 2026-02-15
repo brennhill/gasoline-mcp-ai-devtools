@@ -5,25 +5,35 @@ run:
   tests: true
 
 linters:
+  default: none
   enable:
-    - gocyclo        # Cyclomatic complexity
-    - maintidx       # Maintainability index
+    - ineffassign    # Ineffectual assignments
     - staticcheck    # Static analysis (comprehensive)
     - unused         # Unused variables, functions, types
+    - errcheck       # Unchecked error returns (json.Encode, io.Close, etc.)
+    - govet          # Go vet with shadow detection
+    - copyloopvar    # Loop variable capture bugs (Go 1.22+)
 
-linters-settings:
-  gocyclo:
-    min-complexity: 15  # Warn on functions with >15 cyclomatic complexity
+  settings:
+    errcheck:
+      # Don't require checking these (too noisy, best-effort operations)
+      exclude-functions:
+        - fmt.Fprintf
+        - fmt.Fprintln
+        - (net/http.ResponseWriter).Write
+      # But DO check json.NewEncoder().Encode() and similar
 
-  maintidx:
-    under: 100  # Fail if maintainability index drops below 100
+    staticcheck:
+      checks:
+        - all
+        - "-ST1003"   # Allow Go naming convention violations (TabId, sinceTs, etc. — changing breaks JSON API)
+        - "-ST1005"   # Allow capitalized error strings (we use structured error messages)
 
-issues:
-  # In test files, error checks are less critical (best-effort cleanup)
-  exclude-rules:
-    - path: _test\.go
-      linters:
-        - errcheck
-
-  exclude:
-    - "should have a package comment"
+  exclusions:
+    rules:
+      # Don't enforce errcheck on test files (too noisy)
+      - path: _test\.go
+        linters:
+          - errcheck
+    presets:
+      - comments

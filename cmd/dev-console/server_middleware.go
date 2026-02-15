@@ -10,35 +10,62 @@ import (
 	"strings"
 )
 
+func isValidExtensionID(id string) bool {
+	if id == "" {
+		return false
+	}
+	for _, r := range id {
+		if (r >= 'a' && r <= 'z') || (r >= '0' && r <= '9') || r == '-' || r == '_' {
+			continue
+		}
+		return false
+	}
+	return true
+}
+
+// isExtensionOrigin checks if origin matches a browser extension scheme.
+// When GASOLINE_EXTENSION_ID or GASOLINE_FIREFOX_EXTENSION_ID env var is set,
+// only that specific ID is allowed. Otherwise any valid extension ID is accepted.
+func isExtensionOrigin(origin string) (matched bool, allowed bool) {
+	type extCheck struct {
+		prefix string
+		envVar string
+	}
+	checks := []extCheck{
+		{"chrome-extension://", "GASOLINE_EXTENSION_ID"},
+		{"moz-extension://", "GASOLINE_FIREFOX_EXTENSION_ID"},
+	}
+	for _, c := range checks {
+		if strings.HasPrefix(origin, c.prefix) {
+			id := strings.TrimPrefix(origin, c.prefix)
+			if !isValidExtensionID(id) {
+				return true, false
+			}
+
+			expectedID := strings.TrimSpace(os.Getenv(c.envVar))
+			if expectedID != "" {
+				return true, id == expectedID
+			}
+
+			return true, true
+		}
+	}
+	return false, false
+}
+
 // isAllowedOrigin checks if an Origin header value is from localhost or a browser extension.
 // Returns true for empty origin (CLI/curl), localhost variants, and browser extension origins.
 func isAllowedOrigin(origin string) bool {
 	if origin == "" {
 		return true
 	}
-
-	// Browser extension origins - validate specific ID if configured
-	if strings.HasPrefix(origin, "chrome-extension://") {
-		expectedID := os.Getenv("GASOLINE_EXTENSION_ID")
-		if expectedID != "" {
-			return origin == "chrome-extension://"+expectedID
-		}
-		return true // Permissive mode when not configured
+	if matched, allowed := isExtensionOrigin(origin); matched {
+		return allowed
 	}
-	if strings.HasPrefix(origin, "moz-extension://") {
-		expectedID := os.Getenv("GASOLINE_FIREFOX_EXTENSION_ID")
-		if expectedID != "" {
-			return origin == "moz-extension://"+expectedID
-		}
-		return true // Permissive mode when not configured
-	}
-
-	// Parse the origin URL to extract the hostname
 	u, err := url.Parse(origin)
 	if err != nil {
 		return false
 	}
-
 	hostname := u.Hostname()
 	return hostname == "localhost" || hostname == "127.0.0.1" || hostname == "::1"
 }
@@ -106,13 +133,19 @@ func corsMiddleware(next http.HandlerFunc) http.HandlerFunc {
 }
 
 // extensionOnly wraps a handler to require the X-Gasoline-Client header
-// with a value starting with "gasoline-extension". Rejects with 403 if missing
-// or invalid. This ensures only the Gasoline browser extension can call
-// extension-facing endpoints.
+// from the Gasoline browser extension. Accepts:
+//   - "gasoline-extension" (exact match)
+//   - "gasoline-extension/{version}" (e.g., gasoline-extension/6.0.3)
+//   - "gasoline-extension-offscreen" (offscreen recording worker)
+//
+// Rejects with 403 if missing or invalid. This ensures only the Gasoline
+// browser extension can call extension-facing endpoints.
 func extensionOnly(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		client := r.Header.Get("X-Gasoline-Client")
-		if !strings.HasPrefix(client, "gasoline-extension") {
+		if client != "gasoline-extension" &&
+			client != "gasoline-extension-offscreen" &&
+			!strings.HasPrefix(client, "gasoline-extension/") {
 			http.Error(w, `{"error":"forbidden: missing or invalid X-Gasoline-Client header"}`, http.StatusForbidden)
 			return
 		}

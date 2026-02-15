@@ -5,7 +5,7 @@
 
 const fs = require('fs');
 const net = require('net');
-const { execSync } = require('child_process');
+const { execSync, execFileSync } = require('child_process');
 const { getConfigCandidates, getToolNameFromPath, readConfigFile } = require('./config');
 
 /**
@@ -37,9 +37,14 @@ function checkPort(port) {
  * @returns {{available: bool, error?: string}}
  */
 function checkPortSync(port) {
+  // Validate port is a safe integer to prevent shell injection
+  const portNum = parseInt(port, 10);
+  if (!Number.isInteger(portNum) || portNum < 1 || portNum > 65535) {
+    return { available: false, error: `Invalid port: ${port}` };
+  }
   try {
     // Try to check if something is listening
-    const result = execSync(`lsof -ti :${port} 2>/dev/null || true`, {
+    const result = execSync(`lsof -ti :${portNum} 2>/dev/null || true`, { // nosemgrep: javascript.lang.security.detect-child-process.detect-child-process -- spawning own gasoline binary for health check
       encoding: 'utf8',
       timeout: 2000,
     }).trim();
@@ -114,7 +119,7 @@ function testBinary() {
 
     // Test binary with --version
     try {
-      const version = execSync(`${binaryPath} --version`, {
+      const version = execFileSync(binaryPath, ['--version'], {
         encoding: 'utf8',
         stdio: ['pipe', 'pipe', 'pipe'],
       }).trim();

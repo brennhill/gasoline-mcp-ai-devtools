@@ -44,7 +44,7 @@ describe('Web Vitals Capture', () => {
       getEntriesByType: mock.fn(() => []),
       now: () => 1000,
       mark: mock.fn((name, _options) => ({ name, startTime: 1000, entryType: 'mark' })),
-      measure: mock.fn((name, _startMark, _endMark) => ({ name, duration: 0, startTime: 1000, entryType: 'measure' })),
+      measure: mock.fn((name, _startMark, _endMark) => ({ name, duration: 0, startTime: 1000, entryType: 'measure' }))
     }
     globalThis.window = {
       postMessage: mock.fn(),
@@ -56,16 +56,21 @@ describe('Web Vitals Capture', () => {
       onunhandledrejection: null,
       WebSocket: class {
         addEventListener() {}
-      },
+      }
     }
-    globalThis.document = { readyState: 'complete', addEventListener: mock.fn() }
+    globalThis.document = {
+      readyState: 'complete',
+      addEventListener: mock.fn(),
+      querySelector: () => null,
+      querySelectorAll: () => []
+    }
     if (!globalThis.console) {
       globalThis.console = {
         log: mock.fn(),
         warn: mock.fn(),
         error: mock.fn(),
         info: mock.fn(),
-        debug: mock.fn(),
+        debug: mock.fn()
       }
     }
   })
@@ -109,7 +114,7 @@ describe('Web Vitals Capture', () => {
 
     lcpObs._emit([
       { startTime: 1000, element: { tagName: 'DIV' }, size: 5000 },
-      { startTime: 2400, element: { tagName: 'IMG' }, size: 150000 },
+      { startTime: 2400, element: { tagName: 'IMG' }, size: 150000 }
     ])
 
     // Implementation keeps the last entry's startTime
@@ -126,7 +131,7 @@ describe('Web Vitals Capture', () => {
     clsObs._emit([
       { value: 0.02, hadRecentInput: false },
       { value: 0.03, hadRecentInput: false },
-      { value: 0.1, hadRecentInput: true }, // Should be ignored
+      { value: 0.1, hadRecentInput: true } // Should be ignored
     ])
 
     // Only non-input shifts are accumulated: 0.02 + 0.03 = 0.05
@@ -224,7 +229,7 @@ describe('Web Vitals Capture', () => {
     eventObs._emit([
       { duration: 120, interactionId: 1 },
       { duration: 200, interactionId: 2 },
-      { duration: 80, interactionId: 3 },
+      { duration: 80, interactionId: 3 }
     ])
 
     assert.strictEqual(mod.getINP(), 200)
@@ -240,7 +245,7 @@ describe('Web Vitals Capture', () => {
     eventObs._emit([
       { duration: 500, interactionId: 0 }, // falsy interactionId
       { duration: 300 }, // no interactionId
-      { duration: 100, interactionId: 1 }, // valid
+      { duration: 100, interactionId: 1 } // valid
     ])
 
     assert.strictEqual(mod.getINP(), 100)
@@ -301,7 +306,7 @@ describe('Performance Snapshot Message Flow', () => {
     globalThis.performance = {
       getEntriesByType: mock.fn(() => []),
       getEntries: mock.fn(() => []),
-      now: () => 1000,
+      now: () => 1000
     }
     globalThis.window = {
       postMessage: mock.fn(),
@@ -313,16 +318,21 @@ describe('Performance Snapshot Message Flow', () => {
       onunhandledrejection: null,
       WebSocket: class {
         addEventListener() {}
-      },
+      }
     }
-    globalThis.document = { readyState: 'complete', addEventListener: mock.fn() }
+    globalThis.document = {
+      readyState: 'complete',
+      addEventListener: mock.fn(),
+      querySelector: () => null,
+      querySelectorAll: () => []
+    }
     if (!globalThis.console) {
       globalThis.console = {
         log: mock.fn(),
         warn: mock.fn(),
         error: mock.fn(),
         info: mock.fn(),
-        debug: mock.fn(),
+        debug: mock.fn()
       }
     }
   })
@@ -344,8 +354,8 @@ describe('Performance Snapshot Message Flow', () => {
             loadEventEnd: 500,
             responseStart: 80,
             requestStart: 10,
-            domInteractive: 150,
-          },
+            domInteractive: 150
+          }
         ]
       }
       return []
@@ -377,8 +387,8 @@ describe('Performance Snapshot Message Flow', () => {
             loadEventEnd: 500,
             responseStart: 80,
             requestStart: 10,
-            domInteractive: 150,
-          },
+            domInteractive: 150
+          }
         ]
       }
       return []
@@ -399,9 +409,9 @@ describe('Performance Snapshot Message Flow', () => {
     const snapshotMessage = calls.find((c) => c.arguments[0]?.type === 'GASOLINE_PERFORMANCE_SNAPSHOT')
     assert.ok(snapshotMessage, 'Should post GASOLINE_PERFORMANCE_SNAPSHOT message')
     assert.strictEqual(
-      snapshotMessage.arguments[0].payload.timing.interactionToNextPaint,
+      snapshotMessage.arguments[0].payload.timing.interaction_to_next_paint,
       175,
-      'Payload timing should include interactionToNextPaint',
+      'Payload timing should include interaction_to_next_paint'
     )
   })
 

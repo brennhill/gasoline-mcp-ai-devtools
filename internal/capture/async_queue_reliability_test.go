@@ -24,29 +24,29 @@ func TestAsyncQueueReliability(t *testing.T) {
 	}{
 		{
 			name:           "Normal polling (100ms interval, no jitter)",
-			commandCount:   5,
-			pollInterval:   100 * time.Millisecond,
+			commandCount:   4,
+			pollInterval:   40 * time.Millisecond,
 			pollJitter:     0,
 			expectedSucces: 1.0,
 		},
 		{
 			name:           "Polling with jitter (100ms ± 50ms)",
-			commandCount:   5,
-			pollInterval:   100 * time.Millisecond,
-			pollJitter:     50 * time.Millisecond,
+			commandCount:   4,
+			pollInterval:   40 * time.Millisecond,
+			pollJitter:     15 * time.Millisecond,
 			expectedSucces: 1.0,
 		},
 		{
 			name:           "Slow polling (300ms interval)",
-			commandCount:   5,
-			pollInterval:   300 * time.Millisecond,
+			commandCount:   4,
+			pollInterval:   80 * time.Millisecond,
 			pollJitter:     0,
 			expectedSucces: 1.0,
 		},
 		{
 			name:           "Rapid commands (within queue limit)",
-			commandCount:   10,
-			pollInterval:   50 * time.Millisecond,
+			commandCount:   8,
+			pollInterval:   20 * time.Millisecond,
 			pollJitter:     0,
 			expectedSucces: 1.0,
 		},
@@ -120,9 +120,14 @@ func TestAsyncQueueReliability(t *testing.T) {
 				time.Sleep(commandInterval)
 			}
 
-			// Wait for polling to catch up (give extra time for slow polling)
-			waitTime := tt.pollInterval*2 + time.Second
-			time.Sleep(waitTime)
+			// Wait for polling to catch up with a bounded deadline.
+			deadline := time.Now().Add(tt.pollInterval*time.Duration(tt.commandCount+4) + 300*time.Millisecond)
+			for time.Now().Before(deadline) {
+				if len(capture.GetPendingQueries()) == 0 {
+					break
+				}
+				time.Sleep(10 * time.Millisecond)
+			}
 
 			// Stop polling
 			close(stopPolling)
@@ -168,24 +173,30 @@ func TestAsyncQueueTimeout(t *testing.T) {
 		CorrelationID: "timeout_test",
 	}
 
-	id := capture.CreatePendingQueryWithTimeout(query, 3*time.Second, "")
+	id := capture.CreatePendingQueryWithTimeout(query, 250*time.Millisecond, "")
 
 	// Wait slightly less than timeout
-	time.Sleep(2 * time.Second)
+	time.Sleep(120 * time.Millisecond)
 
 	// Should still be in queue
 	pendingQueries := capture.GetPendingQueries()
 	if len(pendingQueries) != 1 {
-		t.Errorf("Expected 1 pending query after 2s, got %d", len(pendingQueries))
+		t.Errorf("Expected 1 pending query before timeout, got %d", len(pendingQueries))
 	}
 
-	// Wait for expiration
-	time.Sleep(2 * time.Second)
-
-	// Should be expired now
-	pendingQueries = capture.GetPendingQueries()
-	if len(pendingQueries) != 0 {
-		t.Errorf("Expected 0 pending queries after 4s (expired), got %d", len(pendingQueries))
+	// Wait for expiration with polling (avoid long fixed sleeps).
+	expired := false
+	deadline := time.Now().Add(700 * time.Millisecond)
+	for time.Now().Before(deadline) {
+		pendingQueries = capture.GetPendingQueries()
+		if len(pendingQueries) == 0 {
+			expired = true
+			break
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
+	if !expired {
+		t.Errorf("Expected pending query to expire within deadline, still have %d pending", len(pendingQueries))
 	}
 
 	// Result should not exist

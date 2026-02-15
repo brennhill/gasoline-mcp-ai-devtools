@@ -174,14 +174,15 @@ Once installed, you'll see the Gasoline icon in your browser toolbar. Click it t
 
 ### That's It!
 
-Your AI assistant now has access to 4 tools:
+Your AI assistant now has access to 5 tools:
 
 | Tool | What it does |
 | ---- | ------------ |
-| `observe` | Real-time browser state (errors, logs, network, websocket, actions, vitals, page, performance, accessibility, security) |
-| `generate` | Code and report generation (reproduction, test, pr_summary, sarif, har, csp, sri) |
-| `configure` | Session management (store, noise_rule, query_dom, clear, validate_api, diff_sessions, health) |
-| `interact` | Browser control (navigate, execute_js, highlight, refresh, save_state, load_state) |
+| `observe` | Captured browser state (errors, logs, network, websocket, actions, vitals, page, tabs, timeline, error_bundles, screenshot) |
+| `analyze` | Active analysis (dom, performance, accessibility, security_audit, third_party_audit, error_clusters, link_health, annotations) |
+| `generate` | Artifacts (reproduction, csp, sarif, test_from_context, test_heal, test_classify, visual_test, annotation_report) |
+| `configure` | Session management (store, load, noise_rule, clear, health, streaming, recording_start, recording_stop, log_diff) |
+| `interact` | Browser automation (navigate, click, type, select, execute_js, highlight, scroll_to, key_press, upload, draw_mode_start) |
 
 Try it: open your web app, trigger an error, then ask your AI assistant _"What browser errors do you see?"_
 
@@ -218,6 +219,36 @@ gasoline-mcp [options]
   --version              Show version
   --help                 Show help
 ```
+
+### External Skills Catalog (Optional)
+
+`gasoline-mcp --install` can install managed skills from a separate GitHub repo (for example `brennhill/gasoline-skills`) instead of only the bundled package copy.
+
+Examples:
+
+```bash
+# Simple owner/repo source
+gasoline-mcp --install --skills-repo brennhill/gasoline-skills
+
+# GitHub tree URL with subpath (auto-detects ref and path)
+gasoline-mcp --install --skills-repo https://github.com/brennhill/gasoline-skills/tree/main/skills
+
+# Explicit manifest/path controls
+gasoline-mcp --install \
+  --skills-repo brennhill/gasoline-skills \
+  --skills-ref main \
+  --skills-manifest skills/skills.json \
+  --skills-path skills
+```
+
+Environment variable equivalents:
+
+- `GASOLINE_SKILLS_REPO`
+- `GASOLINE_SKILLS_REF`
+- `GASOLINE_SKILLS_MANIFEST_PATH`
+- `GASOLINE_SKILLS_PATH`
+- `GASOLINE_SKILLS_DIR` (local directory override)
+- `GASOLINE_SKILLS_NO_FALLBACK=1` (fail instead of falling back to bundled skills)
 
 ## Troubleshooting
 

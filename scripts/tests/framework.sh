@@ -2,6 +2,7 @@
 # framework.sh — Shared test harness for Gasoline MCP UAT.
 # Sourced by each category file. Provides assertion helpers,
 # MCP request sending, daemon lifecycle, and structured output.
+set -eo pipefail
 
 # ── Timeout Compatibility ──────────────────────────────────
 # macOS doesn't ship with `timeout`. Use gtimeout from coreutils if available.
@@ -27,13 +28,15 @@ CATEGORY_ID=""
 RESULTS_FILE=""
 OUTPUT_FILE=""
 START_TIME=""
+DAEMON_PID=""
 
 # ── Init ───────────────────────────────────────────────────
 init_framework() {
     PORT="${1:-7890}"
     RESULTS_FILE="${2:-/dev/null}"
-    TEMP_DIR=$(mktemp -d)
-    START_TIME=$(date +%s)
+    TEMP_DIR="$(mktemp -d)"
+    trap 'rm -rf "$TEMP_DIR"' EXIT
+    START_TIME="$(date +%s)"
 
     # Resolve binary: local build > PATH
     if [ -x "./gasoline-mcp" ]; then
@@ -50,8 +53,10 @@ init_framework() {
     script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
     local project_root="$script_dir/../.."
     if [ -f "$project_root/VERSION" ]; then
-        VERSION=$(cat "$project_root/VERSION" | tr -d '[:space:]')
+        # shellcheck disable=SC2034 # VERSION used by sourcing scripts
+        VERSION="$(tr -d '[:space:]' < "$project_root/VERSION")"
     else
+        # shellcheck disable=SC2034 # VERSION used by sourcing scripts
         VERSION="unknown"
     fi
 
@@ -92,7 +97,7 @@ begin_test() {
 # ── Pass/Fail ──────────────────────────────────────────────
 pass() {
     local description="$1"
-    PASS_COUNT=$((PASS_COUNT + 1))
+    PASS_COUNT="$((PASS_COUNT + 1))"
     {
         echo "  PASS: ${description}"
         echo ""
@@ -101,7 +106,7 @@ pass() {
 
 fail() {
     local description="$1"
-    FAIL_COUNT=$((FAIL_COUNT + 1))
+    FAIL_COUNT="$((FAIL_COUNT + 1))"
     {
         echo "  FAIL: ${description}"
         echo ""
@@ -110,7 +115,7 @@ fail() {
 
 skip() {
     local description="$1"
-    SKIP_COUNT=$((SKIP_COUNT + 1))
+    SKIP_COUNT="$((SKIP_COUNT + 1))"
     {
         echo "  SKIP: ${description}"
         echo ""
@@ -124,18 +129,34 @@ skip() {
 send_mcp() {
     local request="$1"
     local prefix="${2:-mcp}"
-    local stdout_file="$TEMP_DIR/${prefix}_${MCP_ID}_stdout.txt"
-    local stderr_file="$TEMP_DIR/${prefix}_${MCP_ID}_stderr.txt"
+    local max_retries=2
 
-    echo "$request" | $TIMEOUT_CMD 8 $WRAPPER --port "$PORT" > "$stdout_file" 2>"$stderr_file"
-    LAST_EXIT_CODE=$?
+    for attempt in $(seq 0 "$max_retries"); do
+        local stdout_file="$TEMP_DIR/${prefix}_${MCP_ID}_stdout.txt"
+        local stderr_file="$TEMP_DIR/${prefix}_${MCP_ID}_stderr.txt"
 
-    # Get last non-empty line (the JSON-RPC response)
-    LAST_RESPONSE=$(grep -v '^$' "$stdout_file" 2>/dev/null | tail -1)
-    LAST_STDOUT_FILE="$stdout_file"
-    LAST_STDERR_FILE="$stderr_file"
+        # Use || true to prevent set -eo pipefail from killing the script on timeout (exit 124)
+        echo "$request" | "$TIMEOUT_CMD" 8 "$WRAPPER" --port "$PORT" > "$stdout_file" 2>"$stderr_file" || true
+        # shellcheck disable=SC2034 # LAST_EXIT_CODE used by sourcing scripts
+        LAST_EXIT_CODE="${PIPESTATUS[1]:-$?}"
 
-    MCP_ID=$((MCP_ID + 1))
+        # Get last non-empty line (the JSON-RPC response)
+        LAST_RESPONSE="$(grep -v '^$' "$stdout_file" 2>/dev/null | tail -1 || true)"
+        # shellcheck disable=SC2034 # LAST_STDOUT_FILE used by sourcing scripts
+        LAST_STDOUT_FILE="$stdout_file"
+        # shellcheck disable=SC2034 # LAST_STDERR_FILE used by sourcing scripts
+        LAST_STDERR_FILE="$stderr_file"
+
+        # Retry on "starting up" — daemon needs more time to initialize
+        if echo "$LAST_RESPONSE" | grep -q "starting up" 2>/dev/null && [ "$attempt" -lt "$max_retries" ]; then
+            echo "  [retry] Daemon starting up, waiting 2s... (attempt $((attempt + 1))/$max_retries)" >&2
+            sleep 2
+            continue
+        fi
+        break
+    done
+
+    MCP_ID="$((MCP_ID + 1))"
     echo "$LAST_RESPONSE"
 }
 
@@ -146,13 +167,16 @@ send_mcp_multi() {
     local stdout_file="$TEMP_DIR/${prefix}_${MCP_ID}_stdout.txt"
     local stderr_file="$TEMP_DIR/${prefix}_${MCP_ID}_stderr.txt"
 
-    echo "$requests" | $TIMEOUT_CMD 12 $WRAPPER --port "$PORT" > "$stdout_file" 2>"$stderr_file"
-    LAST_EXIT_CODE=$?
+    echo "$requests" | "$TIMEOUT_CMD" 12 "$WRAPPER" --port "$PORT" > "$stdout_file" 2>"$stderr_file" || true
+    # shellcheck disable=SC2034 # LAST_EXIT_CODE used by sourcing scripts
+    LAST_EXIT_CODE="${PIPESTATUS[1]:-$?}"
+    # shellcheck disable=SC2034 # LAST_STDOUT_FILE used by sourcing scripts
     LAST_STDOUT_FILE="$stdout_file"
+    # shellcheck disable=SC2034 # LAST_STDERR_FILE used by sourcing scripts
     LAST_STDERR_FILE="$stderr_file"
 
-    MCP_ID=$((MCP_ID + 1))
-    grep -v '^$' "$stdout_file" 2>/dev/null
+    MCP_ID="$((MCP_ID + 1))"
+    grep -v '^$' "$stdout_file" 2>/dev/null || true
 }
 
 # Builds a tools/call JSON-RPC request and sends it.
@@ -168,7 +192,7 @@ call_tool() {
 # Extracts result.content[0].text from a JSON-RPC tool response
 extract_content_text() {
     local response="$1"
-    echo "$response" | jq -r '.result.content[0].text // empty' 2>/dev/null
+    echo "$response" | jq -r '.result.content[0].text // empty' 2>/dev/null || true
 }
 
 # Truncates a string for display in pass/fail messages
@@ -190,14 +214,14 @@ truncate() {
 check_not_error() {
     local response="$1"
     local is_error
-    is_error=$(echo "$response" | jq -r '.result.isError // false' 2>/dev/null)
+    is_error="$(echo "$response" | jq -r '.result.isError // false' 2>/dev/null)"
     [ "$is_error" != "true" ]
 }
 
 check_is_error() {
     local response="$1"
     local is_error
-    is_error=$(echo "$response" | jq -r '.result.isError // false' 2>/dev/null)
+    is_error="$(echo "$response" | jq -r '.result.isError // false' 2>/dev/null)"
     [ "$is_error" = "true" ]
 }
 
@@ -206,7 +230,7 @@ check_json_field() {
     local jq_path="$2"
     local expected="$3"
     local actual
-    actual=$(echo "$json" | jq -r "$jq_path" 2>/dev/null)
+    actual="$(echo "$json" | jq -r "$jq_path" 2>/dev/null)"
     [ "$actual" = "$expected" ]
 }
 
@@ -214,21 +238,31 @@ check_json_has() {
     local json="$1"
     local jq_path="$2"
     local value
-    value=$(echo "$json" | jq -e "$jq_path" 2>/dev/null)
-    [ $? -eq 0 ] && [ "$value" != "null" ]
+    if value="$(echo "$json" | jq -e "$jq_path" 2>/dev/null)"; then
+        [ "$value" != "null" ]
+    else
+        return 1
+    fi
 }
 
 check_contains() {
     local haystack="$1"
     local needle="$2"
-    echo "$haystack" | grep -q "$needle"
+    echo "$haystack" | grep -qF "$needle"
+}
+
+# Like check_contains but uses extended regex (supports alternation with |)
+check_matches() {
+    local haystack="$1"
+    local pattern="$2"
+    echo "$haystack" | grep -qiE "$pattern"
 }
 
 check_protocol_error() {
     local response="$1"
     local expected_code="$2"
     local code
-    code=$(echo "$response" | jq -r '.error.code // empty' 2>/dev/null)
+    code="$(echo "$response" | jq -r '.error.code // empty' 2>/dev/null)"
     [ "$code" = "$expected_code" ]
 }
 
@@ -249,9 +283,9 @@ check_http_status() {
     local extra_headers="${3:-}"
     local actual
     if [ -n "$extra_headers" ]; then
-        actual=$(curl -s --max-time 10 --connect-timeout 3 -o /dev/null -w "%{http_code}" $extra_headers "$url" 2>/dev/null)
+        actual="$(curl -s --max-time 10 --connect-timeout 3 -o /dev/null -w "%{http_code}" "$extra_headers" "$url" 2>/dev/null)"
     else
-        actual=$(curl -s --max-time 10 --connect-timeout 3 -o /dev/null -w "%{http_code}" "$url" 2>/dev/null)
+        actual="$(curl -s --max-time 10 --connect-timeout 3 -o /dev/null -w "%{http_code}" "$url" 2>/dev/null)"
     fi
     [ "$actual" = "$expected" ]
 }
@@ -270,14 +304,23 @@ get_http_body() {
 
 # ── Daemon Lifecycle ───────────────────────────────────────
 kill_server() {
-    lsof -ti :"$PORT" 2>/dev/null | xargs kill -9 2>/dev/null || true
-    sleep 0.3
-    # Double-check
-    if lsof -ti :"$PORT" >/dev/null 2>&1; then
-        sleep 0.5
-        lsof -ti :"$PORT" 2>/dev/null | xargs kill -9 2>/dev/null || true
-        sleep 0.3
+    # Prefer killing the tracked daemon PID over indiscriminate lsof
+    if [ -n "$DAEMON_PID" ]; then
+        # SIGTERM first for clean shutdown, then SIGKILL if still alive
+        kill "$DAEMON_PID" 2>/dev/null || true
+        sleep 0.2
+        kill -0 "$DAEMON_PID" 2>/dev/null && kill -9 "$DAEMON_PID" 2>/dev/null || true
+        DAEMON_PID=""
+        sleep 0.1
     fi
+    # Kill by port (e.g., if daemon was pre-existing)
+    lsof -ti :"$PORT" 2>/dev/null | xargs kill 2>/dev/null || true
+    sleep 0.2
+    lsof -ti :"$PORT" 2>/dev/null | xargs kill -9 2>/dev/null || true
+    # Also clean up via PID file — catches zombie daemons that are alive
+    # but no longer listening on the port
+    "$WRAPPER" --stop --port "$PORT" >/dev/null 2>&1 || true
+    sleep 0.1
 }
 
 wait_for_health() {
@@ -288,9 +331,9 @@ wait_for_health() {
         fi
         # Exponential backoff: 10ms → 50ms → 100ms
         # Typical startup is <100ms, so this is much faster than fixed 0.1s
-        if [ $i -lt 3 ]; then
+        if [ "$i" -lt 3 ]; then
             sleep 0.01
-        elif [ $i -lt 10 ]; then
+        elif [ "$i" -lt 10 ]; then
             sleep 0.05
         else
             sleep 0.1
@@ -300,8 +343,33 @@ wait_for_health() {
 }
 
 start_daemon() {
-    $WRAPPER --daemon --port "$PORT" >/dev/null 2>&1 &
-    wait_for_health 50
+    # Kill any existing daemon first to prevent PID leaks
+    kill_server
+    "$WRAPPER" --daemon --port "$PORT" >/dev/null 2>&1 &
+    DAEMON_PID=$!
+    if ! wait_for_health 50; then
+        echo "WARNING: daemon on port $PORT not healthy after startup (PID $DAEMON_PID)" >&2
+        return 1
+    fi
+    # Print daemon version to catch stale binary issues
+    local daemon_ver
+    daemon_ver="$(curl -s --connect-timeout 3 "http://localhost:${PORT}/health" 2>/dev/null | jq -r '.version // "unknown"' 2>/dev/null || echo "unknown")"
+    echo "  Daemon started: v${daemon_ver} (PID $DAEMON_PID, port $PORT)"
+}
+
+start_daemon_with_flags() {
+    # Kill any existing daemon first to prevent PID leaks
+    kill_server
+    "$WRAPPER" --daemon --port "$PORT" "$@" >/dev/null 2>&1 &
+    DAEMON_PID=$!
+    if ! wait_for_health 50; then
+        echo "WARNING: daemon on port $PORT not healthy after startup (PID $DAEMON_PID)" >&2
+        return 1
+    fi
+    # Print daemon version to catch stale binary issues
+    local daemon_ver
+    daemon_ver="$(curl -s --connect-timeout 3 "http://localhost:${PORT}/health" 2>/dev/null | jq -r '.version // "unknown"' 2>/dev/null || echo "unknown")"
+    echo "  Daemon started: v${daemon_ver} (PID $DAEMON_PID, port $PORT)"
 }
 
 ensure_daemon() {
@@ -312,11 +380,13 @@ ensure_daemon() {
 
 # ── Category Finish ────────────────────────────────────────
 finish_category() {
-    # Kill our daemon
+    # Kill our daemon (tracked PID + port fallback)
     kill_server
+    # Safety net: also kill by port in case DAEMON_PID was stale
+    lsof -ti :"$PORT" 2>/dev/null | xargs kill -9 2>/dev/null || true
 
     # Clean up temp
-    local elapsed=$(( $(date +%s) - START_TIME ))
+    local elapsed="$(( "$(date +%s)" - START_TIME ))"
 
     # Write structured results for the runner
     if [ "$RESULTS_FILE" != "/dev/null" ]; then

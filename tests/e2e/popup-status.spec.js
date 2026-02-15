@@ -26,7 +26,12 @@ test.describe('Popup Connection Status', () => {
     await popupPage.close()
   })
 
-  test('should show disconnected status when server is stopped', async ({ context, extensionId, server, serverPort }) => {
+  test('should show disconnected status when server is stopped', async ({
+    context,
+    extensionId,
+    server,
+    serverPort
+  }) => {
     // Give the extension time to initially connect
     await new Promise((r) => setTimeout(r, 2000))
 
@@ -42,10 +47,7 @@ test.describe('Popup Connection Status', () => {
     await triggerPage.goto(`chrome-extension://${extensionId}/options.html`)
     await triggerPage.evaluate((port) => {
       return new Promise((resolve) => {
-        chrome.runtime.sendMessage(
-          { type: 'setServerUrl', url: `http://127.0.0.1:${port}` },
-          () => resolve()
-        )
+        chrome.runtime.sendMessage({ type: 'setServerUrl', url: `http://127.0.0.1:${port}` }, () => resolve())
       })
     }, serverPort)
     // Wait for the health check to complete (and fail)
@@ -96,7 +98,7 @@ test.describe('Popup Connection Status', () => {
     expect(text).toMatch(/\d+ \/ \d+/)
 
     // The count should be > 0 since we generated an error
-    const count = parseInt(text.split('/')[0].trim())
+    const count = parseInt(text.split('/')[0].trim(), 10)
     expect(count).toBeGreaterThan(0)
 
     await popupPage.close()

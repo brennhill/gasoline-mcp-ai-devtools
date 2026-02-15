@@ -17,7 +17,7 @@ import {
   AI_CONTEXT_MAX_RELEVANT_SLICE,
   AI_CONTEXT_MAX_VALUE_LENGTH,
   AI_CONTEXT_SOURCE_MAP_CACHE_SIZE,
-  AI_CONTEXT_PIPELINE_TIMEOUT_MS,
+  AI_CONTEXT_PIPELINE_TIMEOUT_MS
 } from './constants.js'
 
 // =============================================================================
@@ -175,51 +175,45 @@ const aiSourceMapCache = new Map<string, ParsedSourceMap>()
  * @param stack - The stack trace string
  * @returns Array of frame objects { functionName, filename, lineno, colno }
  */
+type FrameParser = (line: string) => InternalStackFrame | null
+
+const CHROME_FRAME_RE = /^at\s+(?:(.+?)\s+\()?(.+?):(\d+):(\d+)\)?$/
+const FIREFOX_FRAME_RE = /^(.+?)@(.+?):(\d+):(\d+)$/
+
+function parseChromeFrame(line: string): InternalStackFrame | null {
+  const m = line.match(CHROME_FRAME_RE)
+  if (!m) return null
+  const filename = m[2]
+  if (!filename || filename.includes('<anonymous>')) return null
+  if (!m[3] || !m[4]) return null
+  return { functionName: m[1] || null, filename, lineno: parseInt(m[3], 10), colno: parseInt(m[4], 10) }
+}
+
+function parseFirefoxFrame(line: string): InternalStackFrame | null {
+  const m = line.match(FIREFOX_FRAME_RE)
+  if (!m) return null
+  const filename = m[2]
+  if (!filename || filename.includes('<anonymous>')) return null
+  if (!m[3] || !m[4]) return null
+  return { functionName: m[1] || null, filename, lineno: parseInt(m[3], 10), colno: parseInt(m[4], 10) }
+}
+
+const FRAME_PARSERS: FrameParser[] = [parseChromeFrame, parseFirefoxFrame]
+
 export function parseStackFrames(stack: string | undefined): InternalStackFrame[] {
   if (!stack) return []
 
   const frames: InternalStackFrame[] = []
-  const lines = stack.split('\n')
-
-  for (const line of lines) {
+  for (const line of stack.split('\n')) {
     const trimmed = line.trim()
-
-    // Chrome format: "    at functionName (url:line:col)"
-    // or "    at url:line:col"
-    const chromeMatch = trimmed.match(/^at\s+(?:(.+?)\s+\()?(.+?):(\d+):(\d+)\)?$/)
-    if (chromeMatch) {
-      const filename = chromeMatch[2]
-      if (!filename || filename.includes('<anonymous>')) continue
-      const lineStr = chromeMatch[3]
-      const colStr = chromeMatch[4]
-      if (!lineStr || !colStr) continue
-      frames.push({
-        functionName: chromeMatch[1] || null,
-        filename,
-        lineno: parseInt(lineStr, 10),
-        colno: parseInt(colStr, 10),
-      })
-      continue
-    }
-
-    // Firefox format: "functionName@url:line:col"
-    const firefoxMatch = trimmed.match(/^(.+?)@(.+?):(\d+):(\d+)$/)
-    if (firefoxMatch) {
-      const filename = firefoxMatch[2]
-      if (!filename || filename.includes('<anonymous>')) continue
-      const lineStr = firefoxMatch[3]
-      const colStr = firefoxMatch[4]
-      if (!lineStr || !colStr) continue
-      frames.push({
-        functionName: firefoxMatch[1] || null,
-        filename,
-        lineno: parseInt(lineStr, 10),
-        colno: parseInt(colStr, 10),
-      })
-      continue
+    for (const parser of FRAME_PARSERS) {
+      const frame = parser(trimmed)
+      if (frame) {
+        frames.push(frame)
+        break
+      }
     }
   }
-
   return frames
 }
 
@@ -301,7 +295,7 @@ type SourceMapLookup = Record<string, ParsedSourceMap>
  */
 export async function extractSourceSnippets(
   frames: InternalStackFrame[],
-  mockSourceMaps: SourceMapLookup,
+  mockSourceMaps: SourceMapLookup
 ): Promise<InternalSourceSnippet[]> {
   // SOURCE MAP CACHING STRATEGY:
   // This function works with a mockSourceMaps lookup that is pre-populated by
@@ -384,6 +378,7 @@ export function detectFramework(element: FrameworkElement | null | undefined): F
  * @param fiber - The React fiber node
  * @returns Array of { name, propKeys?, hasState?, stateKeys? } in root-first order
  */
+// #lizard forgives
 export function getReactComponentAncestry(fiber: ReactFiber | null | undefined): ReactComponentEntry[] | null {
   if (!fiber) return null
 
@@ -412,7 +407,7 @@ export function getReactComponentAncestry(fiber: ReactFiber | null | undefined):
         entry.hasState = true
         entry.stateKeys = Object.keys(current.memoizedState as Record<string, unknown>).slice(
           0,
-          AI_CONTEXT_MAX_STATE_KEYS,
+          AI_CONTEXT_MAX_STATE_KEYS
         )
       }
 
@@ -434,93 +429,74 @@ export function getReactComponentAncestry(fiber: ReactFiber | null | undefined):
  * @param errorMessage - The error message for keyword matching
  * @returns State snapshot or null
  */
+function classifyValueType(value: unknown): string {
+  if (Array.isArray(value)) return 'array'
+  if (value === null) return 'null'
+  return typeof value
+}
+
+const RELEVANT_STATE_KEYS = ['error', 'loading', 'status', 'failed']
+
+// #lizard forgives
+function buildRelevantSlice(state: Record<string, unknown>, errorWords: string[]): Record<string, unknown> {
+  const relevantSlice: Record<string, unknown> = {}
+  let sliceCount = 0
+
+  for (const [key, value] of Object.entries(state)) {
+    if (sliceCount >= AI_CONTEXT_MAX_RELEVANT_SLICE) break
+    if (typeof value !== 'object' || value === null || Array.isArray(value)) continue
+
+    for (const [subKey, subValue] of Object.entries(value as Record<string, unknown>)) {
+      if (sliceCount >= AI_CONTEXT_MAX_RELEVANT_SLICE) break
+      const isRelevantKey = RELEVANT_STATE_KEYS.some((k) => subKey.toLowerCase().includes(k))
+      const isKeywordMatch = errorWords.some((w) => key.toLowerCase().includes(w))
+      if (!isRelevantKey && !isKeywordMatch) continue
+
+      let val: unknown = subValue
+      if (typeof val === 'string' && val.length > AI_CONTEXT_MAX_VALUE_LENGTH) {
+        val = val.slice(0, AI_CONTEXT_MAX_VALUE_LENGTH)
+      }
+      relevantSlice[`${key}.${subKey}`] = val
+      sliceCount++
+    }
+  }
+
+  return relevantSlice
+}
+
+/**
+ * Capture application state snapshot from known store patterns.
+ *
+ * STATE RELEVANCE MATCHING STRATEGY:
+ * 1. Extract error keywords from the error message (words > 2 chars).
+ * 2. Build a "relevant slice" by matching nested state keys against common error state
+ *    keys ('error', 'loading', 'status', 'failed') and error message keywords.
+ * 3. Caps at AI_CONTEXT_MAX_RELEVANT_SLICE entries; values truncated at MAX_VALUE_LENGTH.
+ *
+ * NOTE: Only supports Redux. Other state management would need additional window.__* patterns.
+ */
 export function captureStateSnapshot(errorMessage: string): StateSnapshotResult | null {
   if (typeof window === 'undefined') return null
 
   try {
-    // Try Redux store
     const store = window.__REDUX_STORE__
     if (!store || typeof store.getState !== 'function') return null
 
     const state = store.getState()
     if (!state || typeof state !== 'object') return null
 
-    // REACT COMPONENT ANCESTRY DETECTION ALGORITHM:
-    // This function captures application state from Redux to provide context for AI debugging.
-    // The "ancestry" aspect applies to the React component tree via the accompanying
-    // getReactComponentAncestry() function that walks React fibers. Here, we focus on
-    // state relevance matching.
-    //
-    // STATE RELEVANCE MATCHING STRATEGY:
-    // 1. Extract error keywords from the error message (words > 2 chars) to contextually
-    //    identify relevant state slices. For example, "TypeError: Cannot read property 'user'"
-    //    makes 'user' a search keyword.
-    // 2. Build a "relevant slice" by traversing nested state objects and matching against:
-    //    - COMMON ERROR STATE KEYS: 'error', 'loading', 'status', 'failed' (always relevant)
-    //    - ERROR MESSAGE KEYWORDS: Any state key containing matched words from the error
-    // 3. This multi-strategy approach surfaces both generic error states and error-specific
-    //    slices without needing to inspect the entire state tree (which could be enormous).
-    //
-    // PERFORMANCE IMPLICATIONS:
-    // - Top-level state entries are iterated once (O(n) where n = Redux root keys)
-    // - Nested object entries only processed if parent is object && not array (simple guard)
-    // - Slice collection caps at AI_CONTEXT_MAX_RELEVANT_SLICE (typically 10 entries) to
-    //   prevent large state objects from dominating the error context
-    // - Individual values truncated at AI_CONTEXT_MAX_VALUE_LENGTH (2000 chars) to keep
-    //   serialized error entry small
-    // - Error message keyword extraction is single-pass, O(m) where m = error message length
-    //
-    // NOTE: This only supports Redux. Other state management (Zustand, Recoil, MobX)
-    // would require additional window.__* patterns and corresponding modifications.
-
-    // Build keys with types
     const keys: Record<string, { type: string }> = {}
     for (const [key, value] of Object.entries(state)) {
-      if (Array.isArray(value)) {
-        keys[key] = { type: 'array' }
-      } else if (value === null) {
-        keys[key] = { type: 'null' }
-      } else {
-        keys[key] = { type: typeof value }
-      }
+      keys[key] = { type: classifyValueType(value) }
     }
-
-    // Build relevant slice
-    const relevantSlice: Record<string, unknown> = {}
-    let sliceCount = 0
 
     const errorWords = (errorMessage || '')
       .toLowerCase()
       .split(/\W+/)
       .filter((w) => w.length > 2)
+    const relevantSlice = buildRelevantSlice(state, errorWords)
 
-    for (const [key, value] of Object.entries(state)) {
-      if (sliceCount >= AI_CONTEXT_MAX_RELEVANT_SLICE) break
-
-      if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
-        for (const [subKey, subValue] of Object.entries(value as Record<string, unknown>)) {
-          if (sliceCount >= AI_CONTEXT_MAX_RELEVANT_SLICE) break
-
-          const isRelevantKey = ['error', 'loading', 'status', 'failed'].some((k) => subKey.toLowerCase().includes(k))
-          const isKeywordMatch = errorWords.some((w) => key.toLowerCase().includes(w))
-
-          if (isRelevantKey || isKeywordMatch) {
-            let val: unknown = subValue
-            if (typeof val === 'string' && val.length > AI_CONTEXT_MAX_VALUE_LENGTH) {
-              val = val.slice(0, AI_CONTEXT_MAX_VALUE_LENGTH)
-            }
-            relevantSlice[`${key}.${subKey}`] = val
-            sliceCount++
-          }
-        }
-      }
-    }
-
-    return {
-      source: 'redux',
-      keys,
-      relevantSlice,
-    }
+    return { source: 'redux', keys, relevantSlice }
   } catch {
     return null
   }
@@ -555,7 +531,7 @@ export function generateAiSummary(data: AiSummaryData): string {
   if (data.stateSnapshot && data.stateSnapshot.relevantSlice) {
     const sliceKeys = Object.keys(data.stateSnapshot.relevantSlice)
     if (sliceKeys.length > 0) {
-      const stateInfo = sliceKeys.map((k) => `${k}=${JSON.stringify(data.stateSnapshot!.relevantSlice[k])}`).join(', ')
+      const stateInfo = sliceKeys.map((k) => `${k}=${JSON.stringify(data.stateSnapshot!.relevantSlice[k])}`).join(', ') // nosemgrep: no-stringify-keys
       parts.push(`State: ${stateInfo}.`)
     }
   }
@@ -580,76 +556,75 @@ interface ErrorEntryForEnrichment {
  * @param error - The error entry to enrich
  * @returns The enriched error entry
  */
+// #lizard forgives
+async function buildAiContext(error: ErrorEntryForEnrichment): Promise<InternalAiContext> {
+  const result: Partial<InternalAiContext> = {}
+  const frames = parseStackFrames(error.stack)
+
+  if (frames.length === 0) return { summary: error.message || 'Unknown error' }
+  const topFrame = frames[0]
+
+  // Source snippets (from cache)
+  if (topFrame) {
+    const cached = getSourceMapCache(topFrame.filename)
+    if (cached) {
+      const snippets = await extractSourceSnippets(frames, { [topFrame.filename]: cached })
+      if (snippets.length > 0) result.sourceSnippets = snippets
+    }
+  }
+
+  // Component ancestry from activeElement
+  result.componentAncestry = extractComponentAncestry() || undefined
+
+  // State snapshot (if enabled)
+  if (aiContextStateSnapshotEnabled) {
+    const snapshot = captureStateSnapshot(error.message || '')
+    if (snapshot) result.stateSnapshot = snapshot
+  }
+
+  result.summary = generateAiSummary({
+    errorType: error.message?.split(':')[0] || 'Error',
+    message: error.message || '',
+    file: topFrame?.filename || null,
+    line: topFrame?.lineno || null,
+    componentAncestry: result.componentAncestry || null,
+    stateSnapshot: result.stateSnapshot || null
+  })
+
+  return result as InternalAiContext
+}
+
+function extractComponentAncestry(): { framework: 'react'; components: ReactComponentEntry[] } | null {
+  if (typeof document === 'undefined' || !document.activeElement) return null
+  const framework = detectFramework(document.activeElement as unknown as FrameworkElement)
+  if (!framework || framework.framework !== 'react' || !framework.key) return null
+  const fiber = (document.activeElement as unknown as Record<string, ReactFiber>)[framework.key]
+  const components = getReactComponentAncestry(fiber)
+  if (!components || components.length === 0) return null
+  return { framework: 'react', components }
+}
+
+function applyAiContext(enriched: EnrichedErrorEntry, context: InternalAiContext): void {
+  enriched._aiContext = context as AiContextData
+  if (!enriched._enrichments) enriched._enrichments = []
+  enriched._enrichments.push('aiContext')
+}
+
 export async function enrichErrorWithAiContext(error: ErrorEntryForEnrichment): Promise<EnrichedErrorEntry> {
   if (!aiContextEnabled) return error as EnrichedErrorEntry
 
   const enriched: EnrichedErrorEntry = { ...error } as EnrichedErrorEntry
 
   try {
-    // Race the entire pipeline against a timeout
     const context = await Promise.race<InternalAiContext>([
-      (async (): Promise<InternalAiContext> => {
-        const result: Partial<InternalAiContext> = {}
-
-        // Parse stack frames
-        const frames = parseStackFrames(error.stack)
-        if (frames.length === 0) {
-          return { summary: error.message || 'Unknown error' }
-        }
-        const topFrame = frames[0]
-
-        // Source snippets (from cache)
-        if (topFrame) {
-          const cached = getSourceMapCache(topFrame.filename)
-          if (cached) {
-            const snippets = await extractSourceSnippets(frames, { [topFrame.filename]: cached })
-            if (snippets.length > 0) result.sourceSnippets = snippets
-          }
-        }
-
-        // Component ancestry from activeElement
-        if (typeof document !== 'undefined' && document.activeElement) {
-          const framework = detectFramework(document.activeElement as unknown as FrameworkElement)
-          if (framework && framework.framework === 'react' && framework.key) {
-            const fiber = (document.activeElement as unknown as Record<string, ReactFiber>)[framework.key]
-            const components = getReactComponentAncestry(fiber)
-            if (components && components.length > 0) {
-              result.componentAncestry = { framework: 'react', components }
-            }
-          }
-        }
-
-        // State snapshot (if enabled)
-        if (aiContextStateSnapshotEnabled) {
-          const snapshot = captureStateSnapshot(error.message || '')
-          if (snapshot) result.stateSnapshot = snapshot
-        }
-
-        // Generate summary
-        result.summary = generateAiSummary({
-          errorType: error.message?.split(':')[0] || 'Error',
-          message: error.message || '',
-          file: topFrame?.filename || null,
-          line: topFrame?.lineno || null,
-          componentAncestry: result.componentAncestry || null,
-          stateSnapshot: result.stateSnapshot || null,
-        })
-
-        return result as InternalAiContext
-      })(),
+      buildAiContext(error),
       new Promise<InternalAiContext>((resolve) => {
         setTimeout(() => resolve({ summary: `${error.message || 'Error'}` }), AI_CONTEXT_PIPELINE_TIMEOUT_MS)
-      }),
+      })
     ])
-
-    enriched._aiContext = context as AiContextData
-    if (!enriched._enrichments) enriched._enrichments = []
-    enriched._enrichments.push('aiContext')
+    applyAiContext(enriched, context)
   } catch {
-    // Pipeline failed, add minimal context
-    enriched._aiContext = { summary: error.message || 'Unknown error' }
-    if (!enriched._enrichments) enriched._enrichments = []
-    enriched._enrichments.push('aiContext')
+    applyAiContext(enriched, { summary: error.message || 'Unknown error' })
   }
 
   return enriched

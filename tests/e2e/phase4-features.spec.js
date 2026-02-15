@@ -22,7 +22,7 @@ test.describe('Phase 4: Capture Control', () => {
   test('should set a capture override via configure tool', async ({ page, serverUrl }) => {
     const text = await mcpToolText(serverUrl, 'configure', {
       action: 'capture',
-      settings: { log_level: 'all' },
+      settings: { log_level: 'all' }
     })
 
     expect(text).toContain('log_level')
@@ -33,7 +33,7 @@ test.describe('Phase 4: Capture Control', () => {
     // Set an override first
     await mcpToolText(serverUrl, 'configure', {
       action: 'capture',
-      settings: { ws_mode: 'medium' },
+      settings: { ws_mode: 'medium' }
     })
 
     // Poll /settings
@@ -49,7 +49,7 @@ test.describe('Phase 4: Capture Control', () => {
     // Set an override
     await mcpToolText(serverUrl, 'configure', {
       action: 'capture',
-      settings: { log_level: 'all' },
+      settings: { log_level: 'all' }
     })
 
     // Wait to avoid rate limit
@@ -58,7 +58,7 @@ test.describe('Phase 4: Capture Control', () => {
     // Reset
     const text = await mcpToolText(serverUrl, 'configure', {
       action: 'capture',
-      settings: 'reset',
+      settings: 'reset'
     })
 
     expect(text).toContain('reset')
@@ -72,7 +72,7 @@ test.describe('Phase 4: Capture Control', () => {
   test('should reject invalid setting names', async ({ page, serverUrl }) => {
     const text = await mcpToolText(serverUrl, 'configure', {
       action: 'capture',
-      settings: { invalid_setting: 'value' },
+      settings: { invalid_setting: 'value' }
     })
 
     expect(text).toContain('Unknown capture setting')
@@ -81,7 +81,7 @@ test.describe('Phase 4: Capture Control', () => {
   test('should reject invalid setting values', async ({ page, serverUrl }) => {
     const text = await mcpToolText(serverUrl, 'configure', {
       action: 'capture',
-      settings: { log_level: 'invalid_value' },
+      settings: { log_level: 'invalid_value' }
     })
 
     expect(text).toContain('Invalid value')
@@ -91,14 +91,14 @@ test.describe('Phase 4: Capture Control', () => {
     // First change should succeed
     const text1 = await mcpToolText(serverUrl, 'configure', {
       action: 'capture',
-      settings: { log_level: 'all' },
+      settings: { log_level: 'all' }
     })
     expect(text1).toContain('log_level')
 
     // Immediate second change should be rate-limited
     const text2 = await mcpToolText(serverUrl, 'configure', {
       action: 'capture',
-      settings: { log_level: 'warn' },
+      settings: { log_level: 'warn' }
     })
     expect(text2).toContain('Rate limited')
   })
@@ -160,8 +160,8 @@ test.describe('Phase 4: Navigation History', () => {
       event: {
         type: 'fix',
         description: 'Fixed null user in UserProfile component',
-        source: 'user-profile.js:42',
-      },
+        source: 'user-profile.js:42'
+      }
     })
 
     expect(text).toContain('Event recorded')
@@ -171,7 +171,7 @@ test.describe('Phase 4: Navigation History', () => {
   test('should reject record_event with missing type', async ({ page, serverUrl }) => {
     const text = await mcpToolText(serverUrl, 'configure', {
       action: 'record_event',
-      event: { description: 'Missing type field' },
+      event: { description: 'Missing type field' }
     })
 
     expect(text).toContain("'type' is missing")
@@ -180,7 +180,7 @@ test.describe('Phase 4: Navigation History', () => {
   test('should reject record_event with missing description', async ({ page, serverUrl }) => {
     const text = await mcpToolText(serverUrl, 'configure', {
       action: 'record_event',
-      event: { type: 'error' },
+      event: { type: 'error' }
     })
 
     expect(text).toContain("'description' is missing")
@@ -188,7 +188,7 @@ test.describe('Phase 4: Navigation History', () => {
 
   test('should reject record_event with missing event parameter', async ({ page, serverUrl }) => {
     const text = await mcpToolText(serverUrl, 'configure', {
-      action: 'record_event',
+      action: 'record_event'
     })
 
     expect(text).toContain("'event' is missing")

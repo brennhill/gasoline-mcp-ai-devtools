@@ -19,7 +19,7 @@ try {
     platform: 'browser',
     target: ['chrome120'],
     sourcemap: true,
-    minify: false, // Keep readable for debugging
+    minify: false // Keep readable for debugging
   })
   console.log('✅ Content script bundled successfully')
 
@@ -33,7 +33,7 @@ try {
     target: ['chrome120'],
     sourcemap: true,
     minify: false,
-    define: { '__GASOLINE_VERSION__': JSON.stringify(version) },
+    define: { __GASOLINE_VERSION__: JSON.stringify(version) }
   })
   console.log('✅ Inject script bundled successfully')
 
@@ -47,7 +47,7 @@ try {
     platform: 'browser',
     target: ['chrome120'],
     sourcemap: true,
-    minify: true,
+    minify: true
   })
   console.log('✅ Early-patch script bundled successfully')
 
@@ -60,10 +60,11 @@ try {
     platform: 'browser',
     target: ['chrome120'],
     sourcemap: true,
-    minify: false,
+    minify: false
   })
   console.log('✅ Offscreen recording script bundled successfully')
 } catch (error) {
   console.error('❌ Script bundling failed:', error)
+  // eslint-disable-next-line n/no-process-exit -- CLI script exits with error status on build failure
   process.exit(1)
 }

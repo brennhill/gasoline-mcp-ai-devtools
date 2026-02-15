@@ -253,7 +253,7 @@ observe({
 
 ## Code References
 
-**New files to create:**
+### New files to create:
 - `cmd/server/timeline/query.go` — Query parser and executor
 - `cmd/server/timeline/indexer.go` — Event indexer
 - `cmd/server/timeline/merger.go` — Event merging and sorting
@@ -261,7 +261,7 @@ observe({
 - `cmd/server/timeline/export.go` — Export manager
 - `cmd/server/timeline/events.go` — Event normalization types
 
-**Existing files to modify:**
+### Existing files to modify:
 - `cmd/server/mcp/observe.go` — Add timeline, timeline_search, timeline_stats modes
 - `cmd/server/mcp/server.go` — Add timeline_export action to interact()
 - All event sources — Ensure correlation_id propagated to all events

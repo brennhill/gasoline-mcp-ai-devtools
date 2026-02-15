@@ -51,7 +51,7 @@ Add feature flag system for dynamic capability gating. Flags are boolean toggles
 
 ## Examples
 
-**Feature flags config:**
+### Feature flags config:
 ```yaml
 # features.yaml
 features:
@@ -62,12 +62,12 @@ features:
   interact_drag_drop: false      # Disabled (rolling out gradually)
 ```
 
-**Start with feature flags:**
+## Start with feature flags:
 ```bash
 gasoline --feature-flags=features.yaml
 ```
 
-**Query feature flags:**
+## Query feature flags:
 ```json
 observe({what: "feature_flags"})
 // Returns:
@@ -80,7 +80,7 @@ observe({what: "feature_flags"})
 }
 ```
 
-**Disabled feature call:**
+## Disabled feature call:
 ```json
 generate({type: "har"})
 // Returns:
@@ -91,13 +91,13 @@ generate({type: "har"})
 }
 ```
 
-**Emergency disable via CLI:**
+## Emergency disable via CLI:
 ```bash
 # Override config, force disable
 gasoline --feature-flags=features.yaml --disable-feature=interact_execute_js
 ```
 
-**Hot-reload:**
+## Hot-reload:
 ```bash
 # Admin edits features.yaml, changes generate_har: false → true
 # Server detects file change within 10 seconds

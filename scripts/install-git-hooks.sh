@@ -2,7 +2,7 @@
 # Install git hooks for Gasoline project
 # Run this once: ./scripts/install-git-hooks.sh
 
-set -e
+set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
@@ -20,6 +20,7 @@ cat > "$HOOKS_DIR/pre-commit" << 'EOF'
 set -e
 
 echo "🔍 Pre-commit checks..."
+CMD_PKG="${GASOLINE_CMD_PKG:-./cmd/dev-console}"
 
 # Check if TypeScript source was modified
 if git diff --cached --name-only | grep -q "^src/.*\.ts$"; then
@@ -41,10 +42,10 @@ fi
 
 # Run quick tests
 echo "  🧪 Running quick tests..."
-if ! go vet ./cmd/dev-console/ >/dev/null 2>&1; then
+if ! go vet "${CMD_PKG}/" >/dev/null 2>&1; then
   echo ""
   echo "❌ go vet failed!"
-  echo "   Run 'go vet ./cmd/dev-console/' to see errors"
+  echo "   Run 'go vet ${CMD_PKG}/' to see errors"
   exit 1
 fi
 

@@ -1479,10 +1479,10 @@ func TestPerformanceTimingINPField(t *testing.T) {
 	}
 
 	if _, ok := m["interaction_to_next_paint"]; !ok {
-		t.Error("interactionToNextPaint field should be present in JSON")
+		t.Error("interaction_to_next_paint field should be present in JSON")
 	}
 	if m["interaction_to_next_paint"].(float64) != 175.0 {
-		t.Errorf("expected interactionToNextPaint 175, got %v", m["interaction_to_next_paint"])
+		t.Errorf("expected interaction_to_next_paint 175, got %v", m["interaction_to_next_paint"])
 	}
 }
 
@@ -1506,7 +1506,7 @@ func TestPerformanceTimingINPOmittedWhenNil(t *testing.T) {
 	}
 
 	if _, ok := m["interaction_to_next_paint"]; ok {
-		t.Error("interactionToNextPaint field should be omitted when nil")
+		t.Error("interaction_to_next_paint field should be omitted when nil")
 	}
 }
 

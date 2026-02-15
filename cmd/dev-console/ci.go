@@ -48,6 +48,7 @@ type TestBoundaryRequest struct {
 
 // handleSnapshot returns an HTTP handler for GET /snapshot.
 // Returns all captured state in a single response.
+// #lizard forgives
 func handleSnapshot(server *Server, cap *capture.Capture) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != "GET" {

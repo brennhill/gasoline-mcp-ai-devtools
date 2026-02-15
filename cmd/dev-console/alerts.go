@@ -13,7 +13,6 @@ import (
 	"net/http"
 	"sort"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/dev-console/dev-console/internal/types"
@@ -38,16 +37,6 @@ type CIResult = types.CIResult
 
 // CIFailure is a type alias for the canonical CI failure type from types package
 type CIFailure = types.CIFailure
-
-// AlertBuffer holds the alert state on ToolHandler.
-// Separated from other mutexes to avoid lock ordering issues.
-type AlertBuffer struct {
-	alertMu   sync.Mutex
-	alerts    []Alert
-	ciResults []CIResult
-	// Anomaly detection: sliding window error counter
-	errorTimes []time.Time
-}
 
 // addAlert appends an alert to the buffer, evicting the oldest if at capacity.
 // Also emits the alert as an MCP notification if streaming is enabled.
@@ -187,29 +176,30 @@ func correlateAlerts(alerts []Alert) []Alert {
 		}
 
 		// Look for correlation partner: regression + anomaly within 5s
-		if alerts[i].Category == "regression" || alerts[i].Category == "anomaly" {
-			for j := i + 1; j < len(alerts); j++ {
-				if used[j] {
-					continue
-				}
-				if canCorrelate(alerts[i], alerts[j]) {
-					// Merge into compound alert
-					compound := mergeAlerts(alerts[i], alerts[j])
-					result = append(result, compound)
-					used[i] = true
-					used[j] = true
-					break
-				}
-			}
-		}
-
-		if !used[i] {
+		if partner := findCorrelationPartner(alerts, used, i); partner >= 0 {
+			result = append(result, mergeAlerts(alerts[i], alerts[partner]))
+			used[i] = true
+			used[partner] = true
+		} else {
 			result = append(result, alerts[i])
 			used[i] = true
 		}
 	}
 
 	return result
+}
+
+// findCorrelationPartner returns the index of a correlatable alert, or -1 if none.
+func findCorrelationPartner(alerts []Alert, used []bool, i int) int {
+	if alerts[i].Category != "regression" && alerts[i].Category != "anomaly" {
+		return -1
+	}
+	for j := i + 1; j < len(alerts); j++ {
+		if !used[j] && canCorrelate(alerts[i], alerts[j]) {
+			return j
+		}
+	}
+	return -1
 }
 
 func canCorrelate(a, b Alert) bool {
@@ -290,78 +280,19 @@ func severityRank(s string) int {
 
 func (h *ToolHandler) handleCIWebhook(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "POST" {
-		http.Error(w, `{"error":"method not allowed"}`, http.StatusMethodNotAllowed)
+		jsonResponse(w, http.StatusMethodNotAllowed, map[string]string{"error": "method not allowed"})
 		return
 	}
 
-	// Limit request body to 1MB
-	r.Body = http.MaxBytesReader(w, r.Body, 1024*1024)
-
-	body, err := io.ReadAll(r.Body)
+	ciResult, err := parseCIWebhookBody(r)
 	if err != nil {
-		http.Error(w, `{"error":"request body too large"}`, http.StatusBadRequest)
-		return
-	}
-
-	var ciResult CIResult
-	if err := json.Unmarshal(body, &ciResult); err != nil {
-		http.Error(w, `{"error":"invalid JSON"}`, http.StatusBadRequest)
-		return
-	}
-
-	// Validate required fields
-	if ciResult.Status == "" {
-		http.Error(w, `{"error":"missing required field: status"}`, http.StatusBadRequest)
-		return
-	}
-	if ciResult.Source == "" {
-		http.Error(w, `{"error":"missing required field: source"}`, http.StatusBadRequest)
+		jsonResponse(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
 		return
 	}
 
 	ciResult.ReceivedAt = time.Now().UTC()
 
-	h.alertMu.Lock()
-
-	// Idempotency: check if same commit+status already exists
-	var newAlert *Alert
-	updated := false
-	for i := range h.ciResults {
-		if h.ciResults[i].Commit == ciResult.Commit && h.ciResults[i].Status == ciResult.Status {
-			h.ciResults[i] = ciResult
-			updated = true
-			// Also update the corresponding alert
-			for j, alert := range h.alerts {
-				if alert.Category == "ci" && strings.Contains(alert.Detail, ciResult.Commit) {
-					h.alerts[j] = h.buildCIAlert(ciResult)
-					break
-				}
-			}
-			break
-		}
-	}
-
-	if !updated {
-		// Cap CI results at 10
-		if len(h.ciResults) >= ciResultsCap {
-			newResults := make([]CIResult, len(h.ciResults)-1)
-			copy(newResults, h.ciResults[1:])
-			h.ciResults = newResults
-		}
-		h.ciResults = append(h.ciResults, ciResult)
-
-		// Generate alert
-		alert := h.buildCIAlert(ciResult)
-		if len(h.alerts) >= alertBufferCap {
-			newAlerts := make([]Alert, len(h.alerts)-1)
-			copy(newAlerts, h.alerts[1:])
-			h.alerts = newAlerts
-		}
-		h.alerts = append(h.alerts, alert)
-		newAlert = &alert
-	}
-
-	h.alertMu.Unlock()
+	newAlert := h.processCIResult(ciResult)
 
 	// Emit to streaming outside the lock (fixes C1: bypass of addAlert streaming path)
 	if newAlert != nil && h.streamState != nil {
@@ -371,6 +302,79 @@ func (h *ToolHandler) handleCIWebhook(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	_, _ = w.Write([]byte(`{"ok":true}`))
+}
+
+// parseCIWebhookBody reads and validates the CI webhook request body.
+func parseCIWebhookBody(r *http.Request) (CIResult, error) {
+	r.Body = http.MaxBytesReader(nil, r.Body, 1024*1024)
+
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		return CIResult{}, fmt.Errorf(`{"error":"request body too large"}`)
+	}
+
+	var ciResult CIResult
+	if err := json.Unmarshal(body, &ciResult); err != nil {
+		return CIResult{}, fmt.Errorf(`{"error":"invalid JSON"}`)
+	}
+
+	if ciResult.Status == "" {
+		return CIResult{}, fmt.Errorf(`{"error":"missing required field: status"}`)
+	}
+	if ciResult.Source == "" {
+		return CIResult{}, fmt.Errorf(`{"error":"missing required field: source"}`)
+	}
+
+	return ciResult, nil
+}
+
+// processCIResult stores the CI result and generates an alert if new.
+// Returns the new alert (for streaming), or nil if this was an idempotent update.
+func (h *ToolHandler) processCIResult(ciResult CIResult) *Alert {
+	h.alertMu.Lock()
+	defer h.alertMu.Unlock()
+
+	// Idempotency: check if same commit+status already exists
+	if h.updateExistingCIResult(ciResult) {
+		return nil
+	}
+
+	// Cap CI results at 10
+	if len(h.ciResults) >= ciResultsCap {
+		newResults := make([]CIResult, len(h.ciResults)-1)
+		copy(newResults, h.ciResults[1:])
+		h.ciResults = newResults
+	}
+	h.ciResults = append(h.ciResults, ciResult)
+
+	// Generate alert
+	alert := h.buildCIAlert(ciResult)
+	if len(h.alerts) >= alertBufferCap {
+		newAlerts := make([]Alert, len(h.alerts)-1)
+		copy(newAlerts, h.alerts[1:])
+		h.alerts = newAlerts
+	}
+	h.alerts = append(h.alerts, alert)
+	return &alert
+}
+
+// updateExistingCIResult checks for and updates an existing CI result with the same commit+status.
+// Must be called with h.alertMu held. Returns true if an existing entry was updated.
+func (h *ToolHandler) updateExistingCIResult(ciResult CIResult) bool {
+	for i := range h.ciResults {
+		if h.ciResults[i].Commit != ciResult.Commit || h.ciResults[i].Status != ciResult.Status {
+			continue
+		}
+		h.ciResults[i] = ciResult
+		for j, alert := range h.alerts {
+			if alert.Category == "ci" && strings.Contains(alert.Detail, ciResult.Commit) {
+				h.alerts[j] = h.buildCIAlert(ciResult)
+				break
+			}
+		}
+		return true
+	}
+	return false
 }
 
 func (h *ToolHandler) buildCIAlert(ci CIResult) Alert {
@@ -418,8 +422,30 @@ func (h *ToolHandler) recordErrorForAnomaly(t time.Time) {
 	h.alertMu.Lock()
 
 	h.errorTimes = append(h.errorTimes, t)
+	h.pruneErrorTimes(t)
 
-	// Prune entries older than the anomaly window
+	// Need at least 2 data points to compute a rate
+	if len(h.errorTimes) < 2 {
+		h.alertMu.Unlock()
+		return
+	}
+
+	recentCount := h.countRecentErrors(t)
+	rollingAvg := float64(len(h.errorTimes)) / (float64(anomalyWindowSeconds) / float64(anomalyBucketSeconds))
+
+	newAlert := h.maybeCreateAnomalyAlert(t, recentCount, rollingAvg)
+
+	h.alertMu.Unlock()
+
+	// Emit to streaming outside the lock (fixes C1: bypass of addAlert streaming path)
+	if newAlert != nil && h.streamState != nil {
+		h.streamState.EmitAlert(*newAlert)
+	}
+}
+
+// pruneErrorTimes removes error timestamps older than the anomaly window.
+// Must be called with h.alertMu held.
+func (h *ToolHandler) pruneErrorTimes(t time.Time) {
 	cutoff := t.Add(-time.Duration(anomalyWindowSeconds) * time.Second)
 	pruned := make([]time.Time, 0, len(h.errorTimes))
 	for _, et := range h.errorTimes {
@@ -428,66 +454,63 @@ func (h *ToolHandler) recordErrorForAnomaly(t time.Time) {
 		}
 	}
 	h.errorTimes = pruned
+}
 
-	// Need at least 2 data points to compute a rate
-	if len(h.errorTimes) < 2 {
-		h.alertMu.Unlock()
-		return
-	}
-
-	// Count errors in last bucket
+// countRecentErrors counts errors within the anomaly bucket window.
+// Must be called with h.alertMu held.
+func (h *ToolHandler) countRecentErrors(t time.Time) int {
 	recentCutoff := t.Add(-time.Duration(anomalyBucketSeconds) * time.Second)
-	recentCount := 0
+	count := 0
 	for _, et := range h.errorTimes {
 		if et.After(recentCutoff) {
-			recentCount++
+			count++
 		}
 	}
+	return count
+}
 
-	// Rolling average: total errors in window / number of buckets
-	totalCount := len(h.errorTimes)
-	numBuckets := float64(anomalyWindowSeconds) / float64(anomalyBucketSeconds)
-	rollingAvg := float64(totalCount) / numBuckets
-
-	// Spike detection: >3x the rolling average
-	var newAlert *Alert
-	if rollingAvg > 0 && float64(recentCount) > 3.0*rollingAvg {
-		// Check we haven't already generated an anomaly alert recently
-		alreadyAlerted := false
-		for _, a := range h.alerts {
-			if a.Category == "anomaly" && a.Source == "anomaly_detector" {
-				if at, err := time.Parse(time.RFC3339, a.Timestamp); err == nil {
-					if t.Sub(at) < time.Duration(anomalyBucketSeconds)*time.Second {
-						alreadyAlerted = true
-						break
-					}
-				}
-			}
-		}
-
-		if !alreadyAlerted {
-			alert := Alert{
-				Severity:  "warning",
-				Category:  "anomaly",
-				Title:     "Error frequency spike detected",
-				Detail:    fmt.Sprintf("%d errors in last %ds vs %.1f rolling average", recentCount, anomalyBucketSeconds, rollingAvg),
-				Timestamp: t.Format(time.RFC3339),
-				Source:    "anomaly_detector",
-			}
-			if len(h.alerts) >= alertBufferCap {
-				newAlerts := make([]Alert, len(h.alerts)-1)
-				copy(newAlerts, h.alerts[1:])
-				h.alerts = newAlerts
-			}
-			h.alerts = append(h.alerts, alert)
-			newAlert = &alert
-		}
+// maybeCreateAnomalyAlert checks for a spike and creates an alert if warranted.
+// Must be called with h.alertMu held. Returns the new alert or nil.
+func (h *ToolHandler) maybeCreateAnomalyAlert(t time.Time, recentCount int, rollingAvg float64) *Alert {
+	if rollingAvg <= 0 || float64(recentCount) <= 3.0*rollingAvg {
+		return nil
 	}
 
-	h.alertMu.Unlock()
-
-	// Emit to streaming outside the lock (fixes C1: bypass of addAlert streaming path)
-	if newAlert != nil && h.streamState != nil {
-		h.streamState.EmitAlert(*newAlert)
+	if h.hasRecentAnomalyAlert(t) {
+		return nil
 	}
+
+	alert := Alert{
+		Severity:  "warning",
+		Category:  "anomaly",
+		Title:     "Error frequency spike detected",
+		Detail:    fmt.Sprintf("%d errors in last %ds vs %.1f rolling average", recentCount, anomalyBucketSeconds, rollingAvg),
+		Timestamp: t.Format(time.RFC3339),
+		Source:    "anomaly_detector",
+	}
+	if len(h.alerts) >= alertBufferCap {
+		newAlerts := make([]Alert, len(h.alerts)-1)
+		copy(newAlerts, h.alerts[1:])
+		h.alerts = newAlerts
+	}
+	h.alerts = append(h.alerts, alert)
+	return &alert
+}
+
+// hasRecentAnomalyAlert checks if an anomaly alert was already generated recently.
+// Must be called with h.alertMu held.
+func (h *ToolHandler) hasRecentAnomalyAlert(t time.Time) bool {
+	for _, a := range h.alerts {
+		if a.Category != "anomaly" || a.Source != "anomaly_detector" {
+			continue
+		}
+		at, err := time.Parse(time.RFC3339, a.Timestamp)
+		if err != nil {
+			continue
+		}
+		if t.Sub(at) < time.Duration(anomalyBucketSeconds)*time.Second {
+			return true
+		}
+	}
+	return false
 }

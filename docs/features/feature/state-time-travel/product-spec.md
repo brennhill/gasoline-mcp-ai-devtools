@@ -12,7 +12,7 @@ version: v6.1
 
 Debugging requires seeing causality: what changed, when, and why. Standard Chrome DevTools shows a snapshot of the present. If something changes rapidly or the page reloads, critical information vanishes.
 
-**Three critical failure modes:**
+### Three critical failure modes:
 
 1. **Page Reloads Lose History** — Form submit crashes and reloads the page. Network logs and console errors are cleared (unless "Preserve Log" is manually enabled). AI sees the blank page but not what caused the crash.
 
@@ -171,7 +171,7 @@ Result: AI agents can rewind and understand what happened, not guess at what mig
 
 **Scenario:** Form submit is broken; accidentally calls `form.submit()` instead of `event.preventDefault()` + AJAX.
 
-**Without Time-Travel:**
+#### Without Time-Travel:
 ```
 AI clicks Save button.
 Page reloads.
@@ -180,7 +180,7 @@ AI says: "I clicked save, but nothing happened. Form is just empty now."
 AI can't debug because error is gone.
 ```
 
-**With Time-Travel:**
+#### With Time-Travel:
 ```
 AI calls observe({what: 'history'})
 Response includes:
@@ -201,7 +201,7 @@ AI immediately suggests: "You have e.preventDefault() missing. The form is submi
 
 **Scenario:** User complains: "The page freezes when I load it." You can't reproduce it.
 
-**Without Time-Travel:**
+#### Without Time-Travel:
 ```
 AI loads page.
 By the time observe() is called, page is already loaded and spinner is gone.
@@ -209,7 +209,7 @@ AI says: "Page loads fine for me. No spinner visible."
 AI can't help.
 ```
 
-**With Time-Travel:**
+#### With Time-Travel:
 ```
 AI calls observe({what: 'history'})
 Response includes:
@@ -227,7 +227,7 @@ AI suggests: "The /api/user_profile request is slow (5s). Add a loading state me
 
 **Scenario:** You have a race condition. Multiple errors appear but it's unclear which action caused them.
 
-**Without Time-Travel:**
+#### Without Time-Travel:
 ```
 AI sees:
   - Error: "Cannot read property 'email' of undefined"
@@ -238,7 +238,7 @@ AI guesses: "Maybe the network request failed? Or maybe the component unmounted 
 AI wastes time trying both hypotheses.
 ```
 
-**With Time-Travel:**
+#### With Time-Travel:
 ```
 AI calls observe({what: 'history'})
 Response includes causal chain:
@@ -257,17 +257,17 @@ AI suggests: "Add null check when accessing response.user.email, and cancel pend
 
 ## Notes
 
-**Related specs:**
+### Related specs:
 - Visual-Semantic Bridge (v6.1) — Provides element identifiers for causal linking
 - Prompt-Based Network Mocking (v6.2) — Works with Time-Travel to verify error handling
 
-**Design decisions:**
+### Design decisions:
 - **60-second buffer** — Typical debugging session; longer = more memory
 - **Ring buffer in sessionStorage** — Survives page reload/navigation; cleared on tab close
 - **Async event capture** — Non-blocking; events recorded asynchronously to avoid perf hit
 - **Causal linking via timestamps + element IDs** — Deterministic, no ML needed
 
-**Dependencies:**
+### Dependencies:
 - SessionStorage API (all modern browsers)
 - Page Visibility API (detect when tab switches)
 - MutationObserver (track DOM changes)

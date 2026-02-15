@@ -44,7 +44,7 @@ make dev
    - Message field mismatch (`txt` vs `text`)
    - Status stuck on "Connecting..."
 
-**Demo bugs hit:**
+#### Demo bugs hit:
 - Phase 1, Bug 3: WebSocket connects to wrong endpoint
 - Phase 1, Bug 4: Chat shows "Connecting..." forever
 - Phase 3, Bug 1: Messages not parsed (JSON.parse missing)
@@ -112,7 +112,7 @@ make dev
 }
 ```
 
-**Expected Output:**
+#### Expected Output:
 - Summary: "Generated Playwright test 'error-chat-websocket.spec.ts' (X assertions)"
 - Content: Valid Playwright test with:
   - `await page.goto('http://localhost:3000')`
@@ -148,7 +148,7 @@ npm install -D @playwright/test
 npx playwright test tests/generated-products-404.spec.ts
 ```
 
-**Success Criteria:**
+## Success Criteria:
 - ✅ Test runs without syntax errors
 - ✅ Test reproduces the 404 error
 - ✅ Test fails as expected (because bug exists)
@@ -191,19 +191,19 @@ npx playwright test tests/generated-products-404.spec.ts
 }
 ```
 
-**Expected Output:**
+## Expected Output:
 - Test includes all captured WebSocket frames
 - Assertions verify message content from frames
 - Assertions check typing indicator behavior
 - Assertions validate message ordering
 
-**Validation:**
+## Validation:
 ```bash
 # Run generated test
 npx playwright test tests/generated-chat-interaction.spec.ts
 ```
 
-**Success Criteria:**
+## Success Criteria:
 - ✅ Test captures WebSocket connection lifecycle
 - ✅ Test validates WebSocket frame content
 - ✅ Test reproduces chat interaction sequence
@@ -255,7 +255,7 @@ test('add to cart', async ({ page }) => {
 }
 ```
 
-**Expected Output:**
+#### Expected Output:
 - Summary: "Found 6 selectors in tests/broken-cart.spec.ts"
 - Selectors list: `#old-product-card-1`, `#old-add-to-cart-btn`, etc.
 
@@ -295,7 +295,7 @@ Then heal:
 }
 ```
 
-**Expected Output:**
+## Expected Output:
 - Summary: "Healed X/6 selectors (Y unhealed, Z auto-applied)"
 - Healed list with:
   - `old_selector`: "#old-product-card-1"
@@ -303,7 +303,7 @@ Then heal:
   - `confidence`: 0.7-0.95
   - `strategy`: "aria_match" or "text_match"
 
-**Success Criteria:**
+## Success Criteria:
 - ✅ At least 4/6 selectors healed
 - ✅ High-confidence healings (>= 0.9) use stable selectors (testId, aria)
 - ✅ Suggested selectors actually exist on the page
@@ -378,7 +378,7 @@ Extract error messages from test-results.json and classify:
 }
 ```
 
-**Expected Output:**
+#### Expected Output:
 - Summary: "Classified as selector_broken (90% confidence) — recommended: heal"
 - Category: `selector_broken`
 - Evidence: ["Selector '#non-existent-button' not found in current DOM"]
@@ -406,7 +406,7 @@ Extract error messages from test-results.json and classify:
 }
 ```
 
-**Expected Output:**
+#### Expected Output:
 - Category: `network_flaky`
 - Confidence: ~0.85
 - RecommendedAction: "mock_network"
@@ -433,12 +433,12 @@ Extract error messages from test-results.json and classify:
 }
 ```
 
-**Expected Output:**
+#### Expected Output:
 - Category: `real_bug` or `test_bug`
 - Confidence: ~0.7
 - IsRealBug: true or false (depends on pattern)
 
-**Success Criteria:**
+#### Success Criteria:
 - ✅ All 3 failures classified correctly
 - ✅ Confidence >= 0.7 for each
 - ✅ Recommended actions make sense
@@ -476,7 +476,7 @@ Extract error messages from test-results.json and classify:
 }
 ```
 
-**Expected Output:**
+### Expected Output:
 - Summary: "Classified 3 failures: X real bugs, Y flaky, Z test issues, 0 uncertain"
 - Total counts match
 - Summary object has category breakdown
@@ -536,7 +536,7 @@ After validation, document any issues found:
 
 ## Demo Script for User
 
-**2-minute demo showing test generation works:**
+### 2-minute demo showing test generation works:
 
 ```bash
 # Terminal 1: Start demo

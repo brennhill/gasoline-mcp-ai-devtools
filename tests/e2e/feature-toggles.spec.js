@@ -33,11 +33,14 @@ async function setLogLevel(context, extensionId, level) {
 async function setBackgroundToggle(context, extensionId, messageType, enabled) {
   const page = await context.newPage()
   await page.goto(`chrome-extension://${extensionId}/options.html`)
-  await page.evaluate(({ type, enabled }) => {
-    return new Promise((resolve) => {
-      chrome.runtime.sendMessage({ type, enabled }, () => resolve())
-    })
-  }, { type: messageType, enabled })
+  await page.evaluate(
+    ({ type, enabled }) => {
+      return new Promise((resolve) => {
+        chrome.runtime.sendMessage({ type, enabled }, () => resolve())
+      })
+    },
+    { type: messageType, enabled }
+  )
   await page.waitForTimeout(300)
   await page.close()
 }
@@ -46,9 +49,12 @@ async function setBackgroundToggle(context, extensionId, messageType, enabled) {
  * Helper: Enable/disable a feature on a page via GASOLINE_SETTING postMessage
  */
 async function setPageFeature(page, setting, enabled) {
-  await page.evaluate(({ setting, enabled }) => {
-    window.postMessage({ type: 'GASOLINE_SETTING', setting, enabled }, window.location.origin)
-  }, { setting, enabled })
+  await page.evaluate(
+    ({ setting, enabled }) => {
+      window.postMessage({ type: 'GASOLINE_SETTING', setting, enabled }, window.location.origin)
+    },
+    { setting, enabled }
+  )
   await page.waitForTimeout(500)
 }
 
@@ -89,7 +95,12 @@ test.describe('Log Level Filtering', () => {
     expect(logEntry.level).toBe('log')
   })
 
-  test('level "warn" should capture console.warn but NOT console.log', async ({ page, context, extensionId, serverUrl }) => {
+  test('level "warn" should capture console.warn but NOT console.log', async ({
+    page,
+    context,
+    extensionId,
+    serverUrl
+  }) => {
     await setLogLevel(context, extensionId, 'warn')
     await clearServerLogs(serverUrl)
 
@@ -109,7 +120,12 @@ test.describe('Log Level Filtering', () => {
     expect(logEntry).toBeUndefined()
   })
 
-  test('level "error" should capture console.error but NOT console.warn', async ({ page, context, extensionId, serverUrl }) => {
+  test('level "error" should capture console.error but NOT console.warn', async ({
+    page,
+    context,
+    extensionId,
+    serverUrl
+  }) => {
     await setLogLevel(context, extensionId, 'error')
     await clearServerLogs(serverUrl)
 
@@ -129,11 +145,18 @@ test.describe('Log Level Filtering', () => {
     expect(warnEntry).toBeUndefined()
   })
 
-  test('network errors are always captured regardless of log level', async ({ page, context, extensionId, serverUrl }) => {
+  test('network errors are always captured regardless of log level', async ({
+    page,
+    context,
+    extensionId,
+    serverUrl
+  }) => {
     await setLogLevel(context, extensionId, 'error')
     await clearServerLogs(serverUrl)
 
-    await page.goto(`file://${path.join(fixturesDir, 'toggle-test-page.html')}?serverUrl=${encodeURIComponent(serverUrl)}`)
+    await page.goto(
+      `file://${path.join(fixturesDir, 'toggle-test-page.html')}?serverUrl=${encodeURIComponent(serverUrl)}`
+    )
     await page.waitForTimeout(1000)
 
     await page.click('#trigger-network-error')
@@ -151,7 +174,12 @@ test.describe('Log Level Filtering', () => {
 // =============================================================================
 
 test.describe('Network Error Capture', () => {
-  test('should capture fetch connection failures as network errors', async ({ page, context, extensionId, serverUrl }) => {
+  test('should capture fetch connection failures as network errors', async ({
+    page,
+    context,
+    extensionId,
+    serverUrl
+  }) => {
     await setLogLevel(context, extensionId, 'error')
     await clearServerLogs(serverUrl)
 
@@ -173,7 +201,9 @@ test.describe('Network Error Capture', () => {
     await setLogLevel(context, extensionId, 'error')
     await clearServerLogs(serverUrl)
 
-    await page.goto(`file://${path.join(fixturesDir, 'toggle-test-page.html')}?serverUrl=${encodeURIComponent(serverUrl)}`)
+    await page.goto(
+      `file://${path.join(fixturesDir, 'toggle-test-page.html')}?serverUrl=${encodeURIComponent(serverUrl)}`
+    )
     await page.waitForTimeout(1000)
 
     await page.click('#trigger-fetch-404')
@@ -192,7 +222,12 @@ test.describe('Network Error Capture', () => {
 // =============================================================================
 
 test.describe('User Action Replay Toggle', () => {
-  test('when enabled, errors should include _actions from preceding clicks', async ({ page, context, extensionId, serverUrl }) => {
+  test('when enabled, errors should include _actions from preceding clicks', async ({
+    page,
+    context,
+    extensionId,
+    serverUrl
+  }) => {
     await setLogLevel(context, extensionId, 'error')
     await clearServerLogs(serverUrl)
 
@@ -283,7 +318,12 @@ test.describe('Performance Marks Toggle', () => {
     expect(testMark).toBeDefined()
   })
 
-  test('when disabled, performance.mark() wrapper should be uninstalled', async ({ page, context, extensionId, serverUrl }) => {
+  test('when disabled, performance.mark() wrapper should be uninstalled', async ({
+    page,
+    context,
+    extensionId,
+    serverUrl
+  }) => {
     await page.goto(`file://${path.join(fixturesDir, 'toggle-test-page.html')}`)
     await page.waitForTimeout(1000)
 
@@ -341,7 +381,9 @@ test.describe('Performance Marks Toggle', () => {
 
 test.describe('Network Waterfall Toggle', () => {
   test('when enabled, resource timing data should be collected', async ({ page, context, extensionId, serverUrl }) => {
-    await page.goto(`file://${path.join(fixturesDir, 'toggle-test-page.html')}?serverUrl=${encodeURIComponent(serverUrl)}`)
+    await page.goto(
+      `file://${path.join(fixturesDir, 'toggle-test-page.html')}?serverUrl=${encodeURIComponent(serverUrl)}`
+    )
     await page.waitForTimeout(1000)
 
     // Enable network waterfall
@@ -369,7 +411,9 @@ test.describe('Network Waterfall Toggle', () => {
   })
 
   test('when disabled, waterfall enrichment flag should be off', async ({ page, context, extensionId, serverUrl }) => {
-    await page.goto(`file://${path.join(fixturesDir, 'toggle-test-page.html')}?serverUrl=${encodeURIComponent(serverUrl)}`)
+    await page.goto(
+      `file://${path.join(fixturesDir, 'toggle-test-page.html')}?serverUrl=${encodeURIComponent(serverUrl)}`
+    )
     await page.waitForTimeout(1000)
 
     // First enable waterfall
@@ -407,7 +451,12 @@ test.describe('Network Waterfall Toggle', () => {
 // =============================================================================
 
 test.describe('Screenshot on Error Toggle', () => {
-  test('when enabled, exception should trigger screenshot entry in logs', async ({ page, context, extensionId, serverUrl }) => {
+  test('when enabled, exception should trigger screenshot entry in logs', async ({
+    page,
+    context,
+    extensionId,
+    serverUrl
+  }) => {
     // Enable screenshot on error via background
     await setBackgroundToggle(context, extensionId, 'setScreenshotOnError', true)
     await clearServerLogs(serverUrl)

@@ -12,11 +12,11 @@ last-verified: 2026-01-31
 ## Test Scenarios
 
 ### Scenario 1: Simple Test Lifecycle
-**Setup:**
+#### Setup:
 - Jest with Gasoline adapter installed
 - Simple test: `it('should add 2+2', () => expect(2+2).toBe(4))`
 
-**Steps:**
+#### Steps:
 1. Run Jest
 2. Adapter emits test:started event
 3. Test executes
@@ -24,12 +24,12 @@ last-verified: 2026-01-31
 5. Test completes, adapter emits test:completed
 6. Query `observe({what: 'test-execution', trace_id: 'test-123'})`
 
-**Expected Result:**
+#### Expected Result:
 - All test events captured with correct trace_id
 - Assertion shows: expected=4, actual=4, passed=true
 - Timeline shows setup, test, teardown phases
 
-**Acceptance Criteria:**
+#### Acceptance Criteria:
 - [ ] test:started event has trace_id
 - [ ] assertion event captured with expected/actual
 - [ ] test:completed event has status=passed
@@ -38,17 +38,17 @@ last-verified: 2026-01-31
 ---
 
 ### Scenario 2: Failed Assertion with Details
-**Setup:**
+#### Setup:
 - Jest test that fails: `expect(5).toBe(10)`
 
-**Steps:**
+#### Steps:
 1. Run Jest
 2. Assertion fails
 3. Adapter captures failure with stack trace
 4. Query test execution by trace_id
 5. Verify failure details are complete
 
-**Expected Result:**
+#### Expected Result:
 - Failure captured with:
   - Assertion message: "expect(5).toBe(10)"
   - Expected: 10
@@ -56,7 +56,7 @@ last-verified: 2026-01-31
   - Stack trace with file and line number
 - Status shows failed
 
-**Acceptance Criteria:**
+#### Acceptance Criteria:
 - [ ] assertion:failed event has expected, actual, message
 - [ ] Stack trace includes file and line number
 - [ ] Test status is failed
@@ -65,11 +65,11 @@ last-verified: 2026-01-31
 ---
 
 ### Scenario 3: E2E Test with Network Requests
-**Setup:**
+#### Setup:
 - Playwright test with network activity
 - Test loads page, clicks button, waits for response
 
-**Steps:**
+#### Steps:
 1. Playwright adapter installed
 2. Test starts (trace_id assigned)
 3. page.goto() triggers network requests
@@ -77,13 +77,13 @@ last-verified: 2026-01-31
 5. Test completes
 6. Query test execution including network events
 
-**Expected Result:**
+#### Expected Result:
 - Network requests have same trace_id as test
 - Backend logs have trace_id
 - Timeline shows: page load → network request → backend processing → response
 - All correlated under same trace_id
 
-**Acceptance Criteria:**
+#### Acceptance Criteria:
 - [ ] Network requests have trace_id
 - [ ] Backend logs have trace_id
 - [ ] All events grouped under test's trace_id
@@ -92,22 +92,22 @@ last-verified: 2026-01-31
 ---
 
 ### Scenario 4: Multiple Assertions in Single Test
-**Setup:**
+#### Setup:
 - Jest test with 5 assertions
 
-**Steps:**
+#### Steps:
 1. Test runs with 5 expect() calls
 2. All assertions pass
 3. Query test execution
 4. Verify all 5 assertions captured
 
-**Expected Result:**
+#### Expected Result:
 - 5 assertion events emitted
 - Each shows expected, actual, pass/fail
 - Total duration accounts for all assertions
 - Timeline shows assertion order
 
-**Acceptance Criteria:**
+#### Acceptance Criteria:
 - [ ] All 5 assertions emitted as events
 - [ ] Each assertion event is ordered
 - [ ] Test status is passed (all assertions passed)
@@ -116,11 +116,11 @@ last-verified: 2026-01-31
 ---
 
 ### Scenario 5: Test Retry on Failure
-**Setup:**
+#### Setup:
 - Jest with retry configured
 - Flaky test that fails first, passes on retry
 
-**Steps:**
+#### Steps:
 1. First test run fails
 2. Adapter emits failure event, retry count = 0
 3. Jest retries test
@@ -128,13 +128,13 @@ last-verified: 2026-01-31
 5. Adapter emits success event, retry count = 1
 6. Query both runs by parent trace_id
 
-**Expected Result:**
+#### Expected Result:
 - Both runs captured separately
 - First run shows failure, second shows pass
 - Linked via parent test_id
 - Final status is passed (retry succeeded)
 
-**Acceptance Criteria:**
+#### Acceptance Criteria:
 - [ ] Each retry gets unique trace_id
 - [ ] Both runs are linked to parent test
 - [ ] Retry count incremented on retry
@@ -143,26 +143,26 @@ last-verified: 2026-01-31
 ---
 
 ### Scenario 6: Test with Setup and Teardown
-**Setup:**
+#### Setup:
 - Jest with beforeEach/afterEach hooks
 - Setup connects to test database (200ms)
 - Test runs (100ms)
 - Teardown cleans database (150ms)
 
-**Steps:**
+#### Steps:
 1. Test runs
 2. Adapter captures all phases: setup, test, teardown
 3. Each phase timestamped
 4. Query test execution
 5. Generate flamegraph showing phase breakdown
 
-**Expected Result:**
+#### Expected Result:
 - Setup time: ~200ms captured
 - Test time: ~100ms captured
 - Teardown time: ~150ms captured
 - Flamegraph shows 200ms (setup) + 100ms (test) + 150ms (teardown)
 
-**Acceptance Criteria:**
+#### Acceptance Criteria:
 - [ ] Each phase has separate event
 - [ ] Phase timings are accurate (±10ms)
 - [ ] Flamegraph shows 3 phases with correct proportions
@@ -171,25 +171,25 @@ last-verified: 2026-01-31
 ---
 
 ### Scenario 7: Trace ID Propagation to Backend
-**Setup:**
+#### Setup:
 - Frontend test: Playwright
 - Backend: Node.js with Gasoline SDK
 - Test triggers API request
 
-**Steps:**
+#### Steps:
 1. Playwright test starts with trace_id = "test-abc"
 2. Frontend extension sets header: X-Test-Trace-ID: test-abc
 3. Backend receives request, logs with trace_id
 4. Backend emits custom event with trace_id
 5. Query all events with trace_id = test-abc
 
-**Expected Result:**
+#### Expected Result:
 - Frontend network request has trace_id header
 - Backend logs have trace_id field
 - Backend custom events have trace_id
 - All events grouped in timeline
 
-**Acceptance Criteria:**
+#### Acceptance Criteria:
 - [ ] X-Test-Trace-ID header sent to backend
 - [ ] Backend logs include trace_id
 - [ ] Backend events have trace_id
@@ -198,17 +198,17 @@ last-verified: 2026-01-31
 ---
 
 ### Scenario 8: Report Generation
-**Setup:**
+#### Setup:
 - Test execution completed
 - Multiple events captured (100+ events over 5 second test)
 
-**Steps:**
+#### Steps:
 1. Call `generateTestReport({trace_id: "test-123", format: "html"})`
 2. Gasoline generates HTML report
 3. Open report in browser
 4. Verify all sections present and correct
 
-**Expected Result:**
+#### Expected Result:
 - HTML report generated with:
   - Test name, status, duration
   - Timeline view (events in chronological order)
@@ -218,7 +218,7 @@ last-verified: 2026-01-31
   - Failure details (if any)
 - All sections clickable and interactive
 
-**Acceptance Criteria:**
+#### Acceptance Criteria:
 - [ ] Report generates in <500ms
 - [ ] Timeline view shows all events
 - [ ] Flamegraph is accurate
@@ -228,23 +228,23 @@ last-verified: 2026-01-31
 ---
 
 ### Scenario 9: Multiple Concurrent Tests
-**Setup:**
+#### Setup:
 - Jest running with `--maxWorkers=4` (4 concurrent tests)
 - 4 different test files running simultaneously
 
-**Steps:**
+#### Steps:
 1. Jest runs 4 tests in parallel
 2. Each test has unique trace_id
 3. Adapter for each test emits events independently
 4. Query events for each trace_id separately
 
-**Expected Result:**
+#### Expected Result:
 - Events don't mix between tests
 - Each test's events are correctly isolated
 - No race conditions in event emission
 - Each test's report is independent
 
-**Acceptance Criteria:**
+#### Acceptance Criteria:
 - [ ] Each test has unique trace_id
 - [ ] Events don't leak between tests
 - [ ] Query by trace_id returns only that test's events
@@ -253,22 +253,22 @@ last-verified: 2026-01-31
 ---
 
 ### Scenario 10: Adapter Overhead Measurement
-**Setup:**
+#### Setup:
 - Same test suite run without and with Gasoline adapter
 
-**Steps:**
+#### Steps:
 1. Run test suite 3 times without adapter
 2. Measure average execution time (baseline)
 3. Install Gasoline adapter
 4. Run same test suite 3 times with adapter
 5. Calculate overhead percentage
 
-**Expected Result:**
+#### Expected Result:
 - Overhead <10% (test suite slowdown)
 - Memory footprint <5MB per test session
 - No test failures due to adapter
 
-**Acceptance Criteria:**
+#### Acceptance Criteria:
 - [ ] Adapter overhead <10%
 - [ ] No memory leaks (<5MB per test)
 - [ ] 0 test failures attributable to adapter

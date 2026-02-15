@@ -20,13 +20,8 @@ import (
 // ============================================
 
 func TestIsMCPMode_DetectsEnvironmentVariable(t *testing.T) {
-	t.Parallel()
-	// Setup
-	originalValue := os.Getenv("MCP_MODE")
-	defer os.Setenv("MCP_MODE", originalValue)
-
 	// Test: MCP_MODE=1 should enable MCP mode
-	os.Setenv("MCP_MODE", "1")
+	t.Setenv("MCP_MODE", "1")
 	InitMode()
 
 	if !IsMCPMode() {
@@ -39,13 +34,8 @@ func TestIsMCPMode_DetectsEnvironmentVariable(t *testing.T) {
 }
 
 func TestIsMCPMode_DefaultsToFalse(t *testing.T) {
-	t.Parallel()
-	// Setup
-	originalValue := os.Getenv("MCP_MODE")
-	defer os.Setenv("MCP_MODE", originalValue)
-
 	// Test: No MCP_MODE env var should default to false
-	os.Unsetenv("MCP_MODE")
+	t.Setenv("MCP_MODE", "")
 	InitMode()
 
 	if IsMCPMode() {
@@ -58,12 +48,7 @@ func TestIsMCPMode_DefaultsToFalse(t *testing.T) {
 // ============================================
 
 func TestAddToWhitelist_BlockedInMCPMode(t *testing.T) {
-	t.Parallel()
-	// Setup
-	originalValue := os.Getenv("MCP_MODE")
-	defer os.Setenv("MCP_MODE", originalValue)
-
-	os.Setenv("MCP_MODE", "1")
+	t.Setenv("MCP_MODE", "1")
 	InitMode()
 
 	// Test: MCP mode should block whitelist additions
@@ -79,12 +64,7 @@ func TestAddToWhitelist_BlockedInMCPMode(t *testing.T) {
 }
 
 func TestSetMinSeverity_BlockedInMCPMode(t *testing.T) {
-	t.Parallel()
-	// Setup
-	originalValue := os.Getenv("MCP_MODE")
-	defer os.Setenv("MCP_MODE", originalValue)
-
-	os.Setenv("MCP_MODE", "1")
+	t.Setenv("MCP_MODE", "1")
 	InitMode()
 
 	// Test: MCP mode should block severity threshold changes
@@ -100,12 +80,7 @@ func TestSetMinSeverity_BlockedInMCPMode(t *testing.T) {
 }
 
 func TestClearWhitelist_BlockedInMCPMode(t *testing.T) {
-	t.Parallel()
-	// Setup
-	originalValue := os.Getenv("MCP_MODE")
-	defer os.Setenv("MCP_MODE", originalValue)
-
-	os.Setenv("MCP_MODE", "1")
+	t.Setenv("MCP_MODE", "1")
 	InitMode()
 
 	// Test: MCP mode should block whitelist clearing
@@ -125,7 +100,6 @@ func TestClearWhitelist_BlockedInMCPMode(t *testing.T) {
 // ============================================
 
 func TestSessionOverride_NotPersisted(t *testing.T) {
-	t.Parallel()
 	// Clear audit log before test
 	ClearSecurityAuditEvents()
 
@@ -152,7 +126,6 @@ func TestSessionOverride_NotPersisted(t *testing.T) {
 }
 
 func TestSessionOverride_WarningIncluded(t *testing.T) {
-	t.Parallel()
 	// Clear audit log before test
 	ClearSecurityAuditEvents()
 
@@ -179,7 +152,6 @@ func TestSessionOverride_WarningIncluded(t *testing.T) {
 }
 
 func TestSessionOverride_AuditInfo(t *testing.T) {
-	t.Parallel()
 	// Clear audit log before test
 	ClearSecurityAuditEvents()
 
@@ -210,7 +182,6 @@ func TestSessionOverride_AuditInfo(t *testing.T) {
 // ============================================
 
 func TestMCPCalls_DoNotModifyConfigFile(t *testing.T) {
-	t.Parallel()
 	// Create temporary config file
 	tmpDir := t.TempDir()
 	configPath := tmpDir + "/security.json"
@@ -221,9 +192,7 @@ func TestMCPCalls_DoNotModifyConfigFile(t *testing.T) {
 	}
 
 	// Setup MCP mode
-	originalValue := os.Getenv("MCP_MODE")
-	defer os.Setenv("MCP_MODE", originalValue)
-	os.Setenv("MCP_MODE", "1")
+	t.Setenv("MCP_MODE", "1")
 	InitMode()
 
 	// Override config path
@@ -235,7 +204,7 @@ func TestMCPCalls_DoNotModifyConfigFile(t *testing.T) {
 	_ = AddToWhitelist("https://evil.xyz")
 
 	// Read config file
-	configData, err := os.ReadFile(configPath)
+	configData, err := os.ReadFile(configPath) // nosemgrep: go_filesystem_rule-fileread -- test helper reads fixture/output file
 	if err != nil {
 		t.Fatalf("Failed to read config: %v", err)
 	}
@@ -251,7 +220,6 @@ func TestMCPCalls_DoNotModifyConfigFile(t *testing.T) {
 // ============================================
 
 func TestAuditLog_RecordsSecurityDecisions(t *testing.T) {
-	t.Parallel()
 	// Clear audit log before test
 	ClearSecurityAuditEvents()
 
@@ -301,7 +269,6 @@ func TestAuditLog_RecordsSecurityDecisions(t *testing.T) {
 // ============================================
 
 func TestScan_NetworkCheckDetectsSuspiciousTLD(t *testing.T) {
-	t.Parallel()
 	scanner := NewSecurityScanner()
 
 	input := SecurityScanInput{
@@ -333,7 +300,6 @@ func TestScan_NetworkCheckDetectsSuspiciousTLD(t *testing.T) {
 }
 
 func TestScan_NetworkCheckDetectsTyposquatting(t *testing.T) {
-	t.Parallel()
 	scanner := NewSecurityScanner()
 
 	input := SecurityScanInput{
@@ -358,7 +324,6 @@ func TestScan_NetworkCheckDetectsTyposquatting(t *testing.T) {
 }
 
 func TestScan_NetworkCheckDetectsMixedContent(t *testing.T) {
-	t.Parallel()
 	scanner := NewSecurityScanner()
 
 	input := SecurityScanInput{
@@ -386,7 +351,6 @@ func TestScan_NetworkCheckDetectsMixedContent(t *testing.T) {
 }
 
 func TestScan_NetworkCheckSafeOriginNoFindings(t *testing.T) {
-	t.Parallel()
 	scanner := NewSecurityScanner()
 
 	input := SecurityScanInput{
@@ -407,7 +371,6 @@ func TestScan_NetworkCheckSafeOriginNoFindings(t *testing.T) {
 }
 
 func TestScan_NetworkCheckIncludedByDefault(t *testing.T) {
-	t.Parallel()
 	scanner := NewSecurityScanner()
 
 	// No explicit Checks — should run all including "network"

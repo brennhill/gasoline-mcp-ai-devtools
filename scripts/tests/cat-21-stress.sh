@@ -1,8 +1,10 @@
 #!/bin/bash
 # cat-21-stress.sh — System Stress & Concurrency Tests (5 tests)
 # Tests high load, concurrent operations, resource exhaustion scenarios.
+set -eo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+# shellcheck source=/dev/null
 source "$SCRIPT_DIR/framework.sh"
 
 init_framework "$1" "$2"
@@ -19,17 +21,21 @@ begin_test "21.1" "50 concurrent observe calls from different clients" \
 
 run_test_21_1() {
     local success_count=0
+    local pids=()
 
     # Launch 50 concurrent observe calls
     for i in {1..50}; do
         call_tool "observe" '{"what":"page"}' >/dev/null 2>&1 &
+        pids+=($!)
         if [ $((i % 10)) -eq 0 ]; then
             echo "Queued $i requests..." >&2
         fi
     done
 
-    # Wait for all to complete
-    wait
+    # Wait for all to complete, then kill any stragglers
+    for pid in "${pids[@]}"; do
+        wait "$pid" 2>/dev/null || true
+    done
 
     sleep 0.2
 
@@ -113,6 +119,7 @@ run_test_21_4() {
     rm -rf ".gasoline/noise" 2>/dev/null || true
 
     # 10 parallel rule adds
+    local pids=()
     for i in {1..10}; do
         call_tool "configure" "{
             \"action\":\"noise_rule\",
@@ -123,9 +130,13 @@ run_test_21_4() {
                 \"match_spec\":{\"message_regex\":\"pattern_$i\"}
             }]
         }" >/dev/null 2>&1 &
+        pids+=($!)
     done
 
-    wait
+    # Wait with per-job error tolerance
+    for pid in "${pids[@]}"; do
+        wait "$pid" 2>/dev/null || true
+    done
 
     sleep 0.2
 
@@ -142,7 +153,7 @@ run_test_21_4() {
 
     # Count how many rules exist
     local rule_count
-    rule_count=$(echo "$text" | grep -o "stress_test_" | wc -l)
+    rule_count=$(echo "$text" | { grep -o "stress_test_" || true; } | wc -l)
 
     if [ "$rule_count" -ge 8 ]; then
         pass "Concurrent rule adds: $rule_count/10 persisted (no corruption)"
@@ -191,4 +202,4 @@ run_test_21_5() {
 }
 run_test_21_5
 
-kill_server
+finish_category

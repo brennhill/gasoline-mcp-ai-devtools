@@ -1,0 +1,53 @@
+---
+engines:
+  lizard:
+    exclude_paths:
+      # Test files — inherently verbose, not worth reducing complexity
+      - '**/*_test.go'
+      - 'tests/**'
+      # Generated/bundled outputs — fix the src/ sources instead
+      - 'extension/background/**'
+      - 'extension/content/**'
+      - 'extension/inject/**'
+      - 'extension/lib/**'
+      - 'extension/popup/**'
+      - 'extension/types/**'
+      - 'extension/offscreen/**'
+      - 'extension/*.bundled.js'
+      - 'extension/*.bundled.js.map'
+      # Complex functions with justified complexity (CCN/NLOC above thresholds)
+      # DOM action dispatcher — switch over 12+ action types
+      - 'src/background/dom-primitives.ts'
+      # Service worker bootstrap — handles 17+ message types
+      - 'src/background/index.ts'
+      # UI fade-out with animation, fallback, and cleanup branches
+      - 'src/content/runtime-message-listener.ts'
+      # React fiber traversal — inherently recursive with many node types
+      - 'src/lib/ai-context.ts'
+      # Multi-strategy CSS selector computation — 6 strategies, each with branches
+      - 'src/lib/reproduction.ts'
+      # Install script — cross-platform process cleanup (Windows + Unix + fallbacks)
+      - 'server/scripts/install.js'
+      # Third-party / vendored
+      - 'node_modules/**'
+      - 'dist/**'
+  shellcheck:
+    exclude_paths:
+      # Test harness scripts — not production code
+      - 'scripts/tests/**'
+exclude_paths:
+  # Generated extension output — fix the src/ sources instead
+  - 'extension/**'
+  # Build/dev scripts — not production code, not published
+  - 'scripts/**'
+  # Server install/setup scripts — one-shot install tooling
+  - 'server/scripts/**'
+  # Python bytecode cache
+  - '**/__pycache__/**'
+  # Source maps
+  - '**/*.map'
+  # Test files
+  - 'tests/**'
+  - '**/*_test.go'
+  - '**/*.test.js'
+  - '**/*.test.ts'

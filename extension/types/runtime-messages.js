@@ -2,5 +2,5 @@
  * @fileoverview Runtime Message Types
  * Chrome runtime messages for background, content, and inject script communication
  */
-export {};
+export {}
 //# sourceMappingURL=runtime-messages.js.map

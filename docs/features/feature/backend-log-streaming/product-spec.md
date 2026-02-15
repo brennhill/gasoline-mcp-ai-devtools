@@ -92,14 +92,14 @@ type BackendLogEntry struct {
 ## Examples
 
 ### Example 1: User Clicks "Submit Payment" Button
-**Frontend:**
+#### Frontend:
 ```
 [10:15:23.100] User Action: Click button.pay
 [10:15:23.120] XHR POST /api/payments/process with X-Request-ID: req-12345
 [10:15:23.450] XHR Response: 500 (error)
 ```
 
-**Backend (now visible in Gasoline):**
+#### Backend (now visible in Gasoline):
 ```
 [10:15:23.200] INFO api-server: POST /api/payments/process (req-12345)
 [10:15:23.300] DEBUG api-server: User 987 processing payment

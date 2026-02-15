@@ -59,7 +59,7 @@ The AI receives both the visual (annotated image) and the structured data (annot
 }
 ```
 
-**Parameters:**
+#### Parameters:
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
@@ -91,7 +91,7 @@ When `annotate_screenshot: true`:
 }
 ```
 
-**Annotation object fields:**
+#### Annotation object fields:
 
 | Field | Type | Description |
 |-------|------|-------------|

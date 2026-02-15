@@ -94,14 +94,14 @@ Historical Snapshots:
 ## Examples
 
 ### Example 1: Save Snapshot on Test Failure
-**Developer runs flaky test:**
+#### Developer runs flaky test:
 ```
 [10:15:23] Test starts
 [10:15:30] Test fails (assertion error)
 [10:15:31] Gasoline automatically saves snapshot with tag "test-failure-xyz"
 ```
 
-**Developer investigates later:**
+#### Developer investigates later:
 ```
 observe({what: 'snapshots', tag: 'test-failure-xyz'})
 // → Shows snapshot from 10:15:31

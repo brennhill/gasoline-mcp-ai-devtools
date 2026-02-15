@@ -25,7 +25,7 @@ const (
 	maxPendingBatch           = 100
 )
 
-// Removed mcpStdoutMu - no longer needed with SSE transport
+// Removed mcpStdoutMu - notifications write through a single stream writer.
 
 // ============================================
 // Types
@@ -49,7 +49,7 @@ type StreamState struct {
 	MinuteStart  time.Time
 	PendingBatch []types.Alert
 	mu           sync.Mutex
-	writer io.Writer // defaults to os.Stdout (for testing)
+	writer       io.Writer // defaults to os.Stdout (for testing)
 }
 
 // MCPNotification is the MCP notification format for streaming alerts.
@@ -61,9 +61,9 @@ type MCPNotification struct {
 
 // NotificationParams holds the notification payload.
 type NotificationParams struct {
-	Level  string      `json:"level"`
-	Logger string      `json:"logger"`
-	Data   any `json:"data"`
+	Level  string `json:"level"`
+	Logger string `json:"logger"`
+	Data   any    `json:"data"`
 }
 
 // ============================================
@@ -89,6 +89,42 @@ func NewStreamState() *StreamState {
 // Configuration
 // ============================================
 
+// applyEnableConfig updates the stream config with provided values or defaults.
+// Caller must hold s.mu.
+func (s *StreamState) applyEnableConfig(events []string, throttle int, urlFilter string, severityMin string) {
+	s.Config.Enabled = true
+	s.Config.Events = orDefault(events, []string{"all"})
+	s.Config.ThrottleSeconds = orDefaultInt(throttle, defaultThrottleSeconds)
+	if urlFilter != "" {
+		s.Config.URLFilter = urlFilter
+	}
+	s.Config.SeverityMin = orDefaultStr(severityMin, defaultSeverityMin)
+}
+
+// orDefault returns val if non-empty, otherwise def.
+func orDefault(val []string, def []string) []string {
+	if len(val) > 0 {
+		return val
+	}
+	return def
+}
+
+// orDefaultInt returns val if positive, otherwise def.
+func orDefaultInt(val int, def int) int {
+	if val > 0 {
+		return val
+	}
+	return def
+}
+
+// orDefaultStr returns val if non-empty, otherwise def.
+func orDefaultStr(val string, def string) string {
+	if val != "" {
+		return val
+	}
+	return def
+}
+
 // Configure handles the configure_streaming tool actions.
 // Returns a map suitable for JSON serialization in tool response.
 func (s *StreamState) Configure(action string, events []string, throttle int, urlFilter string, severityMin string) map[string]any {
@@ -97,29 +133,8 @@ func (s *StreamState) Configure(action string, events []string, throttle int, ur
 
 	switch action {
 	case "enable":
-		s.Config.Enabled = true
-		if len(events) > 0 {
-			s.Config.Events = events
-		} else {
-			s.Config.Events = []string{"all"}
-		}
-		if throttle > 0 {
-			s.Config.ThrottleSeconds = throttle
-		} else {
-			s.Config.ThrottleSeconds = defaultThrottleSeconds
-		}
-		if urlFilter != "" {
-			s.Config.URLFilter = urlFilter
-		}
-		if severityMin != "" {
-			s.Config.SeverityMin = severityMin
-		} else {
-			s.Config.SeverityMin = defaultSeverityMin
-		}
-		return map[string]any{
-			"status": "enabled",
-			"config": s.Config,
-		}
+		s.applyEnableConfig(events, throttle, urlFilter, severityMin)
+		return map[string]any{"status": "enabled", "config": s.Config}
 
 	case "disable":
 		s.Config.Enabled = false
@@ -127,10 +142,7 @@ func (s *StreamState) Configure(action string, events []string, throttle int, ur
 		s.PendingBatch = nil
 		s.SeenMessages = make(map[string]time.Time)
 		s.NotifyCount = 0
-		return map[string]any{
-			"status":          "disabled",
-			"pending_cleared": pendingCount,
-		}
+		return map[string]any{"status": "disabled", "pending_cleared": pendingCount}
 
 	case "status":
 		return map[string]any{
@@ -186,27 +198,22 @@ func (s *StreamState) matchesEventFilter(category string) bool {
 	return false
 }
 
+// eventCategoryMap maps streaming event types to the set of matching alert categories.
+var eventCategoryMap = map[string]map[string]bool{
+	"errors":           {"anomaly": true, "threshold": true},
+	"network_errors":   {"anomaly": true},
+	"performance":      {"regression": true},
+	"regression":       {"regression": true},
+	"anomaly":          {"anomaly": true},
+	"ci":               {"ci": true},
+	"security":         {"threshold": true},
+	"user_frustration": {"anomaly": true},
+}
+
 // categoryMatchesEvent maps alert categories to streaming event types.
 func categoryMatchesEvent(category, event string) bool {
-	switch event {
-	case "errors":
-		return category == "anomaly" || category == "threshold"
-	case "network_errors":
-		return category == "anomaly"
-	case "performance":
-		return category == "regression"
-	case "regression":
-		return category == "regression"
-	case "anomaly":
-		return category == "anomaly"
-	case "ci":
-		return category == "ci"
-	case "security":
-		return category == "threshold"
-	case "user_frustration":
-		return category == "anomaly"
-	}
-	return false
+	cats, ok := eventCategoryMap[event]
+	return ok && cats[category]
 }
 
 // ============================================
@@ -316,41 +323,66 @@ func formatMCPNotification(alert types.Alert) MCPNotification {
 // Emission
 // ============================================
 
+// passesFiltersLocked checks enabled, severity, and event filters.
+// Caller must hold s.mu.
+func (s *StreamState) passesFiltersLocked(alert types.Alert) bool {
+	if !s.Config.Enabled {
+		return false
+	}
+	if severityRank(alert.Severity) < severityRank(s.Config.SeverityMin) {
+		return false
+	}
+	return s.matchesEventFilter(alert.Category)
+}
+
+// canEmitAtLocked checks throttle and rate limit constraints.
+// Caller must hold s.mu.
+func (s *StreamState) canEmitAtLocked(now time.Time) bool {
+	if !s.LastNotified.IsZero() {
+		if now.Sub(s.LastNotified) < time.Duration(s.Config.ThrottleSeconds)*time.Second {
+			return false
+		}
+	}
+	s.checkRateResetLocked(now)
+	return s.NotifyCount < maxNotificationsPerMinute
+}
+
+// isDuplicateLocked checks if this alert was recently emitted.
+// Caller must hold s.mu.
+func (s *StreamState) isDuplicateLocked(dedupKey string, now time.Time) bool {
+	if lastSeen, ok := s.SeenMessages[dedupKey]; ok {
+		return now.Sub(lastSeen) < dedupWindow
+	}
+	return false
+}
+
+// recordEmissionLocked updates emission state and prunes stale dedup entries.
+// Caller must hold s.mu.
+func (s *StreamState) recordEmissionLocked(dedupKey string, now time.Time) {
+	s.LastNotified = now
+	s.checkRateResetLocked(now)
+	s.NotifyCount++
+	s.SeenMessages[dedupKey] = now
+
+	for k, t := range s.SeenMessages {
+		if now.Sub(t) > dedupWindow {
+			delete(s.SeenMessages, k)
+		}
+	}
+}
+
 // EmitAlert atomically checks all filters and emits an MCP notification if appropriate.
 // Uses a single lock acquisition to prevent TOCTOU races between filter checks and emission.
 func (s *StreamState) EmitAlert(alert types.Alert) {
 	s.mu.Lock()
 
-	// === Filter checks (inlined from shouldEmit) ===
-	if !s.Config.Enabled {
-		s.mu.Unlock()
-		return
-	}
-	if severityRank(alert.Severity) < severityRank(s.Config.SeverityMin) {
-		s.mu.Unlock()
-		return
-	}
-	if !s.matchesEventFilter(alert.Category) {
+	if !s.passesFiltersLocked(alert) {
 		s.mu.Unlock()
 		return
 	}
 
 	now := time.Now()
-
-	// === Throttle + rate limit check (inlined from canEmitAt) ===
-	canEmit := true
-	if !s.LastNotified.IsZero() {
-		if now.Sub(s.LastNotified) < time.Duration(s.Config.ThrottleSeconds)*time.Second {
-			canEmit = false
-		}
-	}
-	if canEmit {
-		s.checkRateResetLocked(now)
-		if s.NotifyCount >= maxNotificationsPerMinute {
-			canEmit = false
-		}
-	}
-	if !canEmit {
+	if !s.canEmitAtLocked(now) {
 		if len(s.PendingBatch) < maxPendingBatch {
 			s.PendingBatch = append(s.PendingBatch, alert)
 		}
@@ -358,35 +390,17 @@ func (s *StreamState) EmitAlert(alert types.Alert) {
 		return
 	}
 
-	// === Dedup check (inlined from isDuplicate) ===
 	dedupKey := alert.Category + ":" + alert.Title
-	if lastSeen, ok := s.SeenMessages[dedupKey]; ok {
-		if now.Sub(lastSeen) < dedupWindow {
-			s.mu.Unlock()
-			return
-		}
+	if s.isDuplicateLocked(dedupKey, now) {
+		s.mu.Unlock()
+		return
 	}
 
-	// === Record emission state ===
-	s.LastNotified = now
-	s.checkRateResetLocked(now)
-	s.NotifyCount++
-	s.SeenMessages[dedupKey] = now
-
-	// Prune stale dedup entries
-	for k, t := range s.SeenMessages {
-		if now.Sub(t) > dedupWindow {
-			delete(s.SeenMessages, k)
-		}
-	}
-
+	s.recordEmissionLocked(dedupKey, now)
 	w := s.writer
 	s.mu.Unlock()
 
-	// === Emit notification (outside StreamState lock) ===
 	notification := formatMCPNotification(alert)
-
-	// Write to writer (for testing)
 	if w != nil {
 		data, err := json.Marshal(notification)
 		if err == nil {

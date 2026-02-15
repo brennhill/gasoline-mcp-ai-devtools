@@ -16,7 +16,7 @@ to achieve competitive parity with TestSprite, plus unique WebSocket monitoring.
 
 ## What's New
 
-**7 new modes for the `generate` tool:**
+### 7 new modes for the `generate` tool:
 
 1. test_from_context.error — Generate Playwright tests from console errors
 2. test_from_context.interaction — Generate tests from user actions
@@ -27,7 +27,7 @@ to achieve competitive parity with TestSprite, plus unique WebSocket monitoring.
 7. test_classify.failure — Classify test failures by pattern
 8. test_classify.batch — Classify multiple failures at once
 
-**Key capabilities:**
+### Key capabilities:
 
 - Automatic Playwright test generation from captured errors
 - Self-healing tests with confidence-based selector repair
@@ -36,7 +36,7 @@ to achieve competitive parity with TestSprite, plus unique WebSocket monitoring.
 - Security: path validation, selector injection prevention
 - Response format: mcpJSONResponse pattern
 
-**Unique advantage over TestSprite:**
+### Unique advantage over TestSprite:
 
 WebSocket frame monitoring enables test generation for real-time apps
 that TestSprite cannot handle (chat, multiplayer games, collaboration tools).

@@ -126,33 +126,33 @@ Server returns response to AI with tree text, uidMap, metadata
 
 ## Risks & Mitigations
 
-**Risk 1: Large pages overwhelm output**
+### Risk 1: Large pages overwhelm output
 - **Description**: Complex pages with thousands of DOM nodes produce multi-MB output exceeding context window.
 - **Mitigation**: Hard cap at 5,000 nodes processed. Total output capped at 50KB. Tables/lists summarized (first 3 rows, first 5 items). Text truncated at 100 chars. These limits tested on complex pages (e.g., Gmail, Google Sheets) and provide sufficient signal while staying within limits.
 
-**Risk 2: UIDs not stable across snapshots**
+### Risk 2: UIDs not stable across snapshots
 - **Description**: Same page visited twice produces different UIDs for same elements.
 - **Mitigation**: UIDs assigned in deterministic tree traversal order (depth-first, left-to-right). Same DOM structure produces same UIDs. However, if page mutates between snapshots (dynamic content), UIDs may shift. This is acceptable -- UIDs are snapshot-scoped, not session-scoped.
 
-**Risk 3: Generated CSS selectors don't match**
+### Risk 3: Generated CSS selectors don't match
 - **Description**: Selector built for UID'd element doesn't actually select that element (due to dynamic attributes or selector generation bug).
 - **Mitigation**: After generating selector, validate it by querying DOM (`document.querySelector(selector)`) and checking it returns expected element. If validation fails, fall back to positional selector (guaranteed to work but fragile).
 
-**Risk 4: Main thread blocking on large traversals**
+### Risk 4: Main thread blocking on large traversals
 - **Description**: Traversing 5,000 nodes takes > 50ms continuous main thread time, degrading browsing.
 - **Mitigation**: Tree traversal yields control every 500 nodes via `setTimeout(0)` to allow browser to handle pending events. This keeps continuous blocking < 50ms while allowing full traversal to complete.
 
-**Risk 5: Sensitive text exposed in accessible names**
+### Risk 5: Sensitive text exposed in accessible names
 - **Description**: Accessible names may contain user email addresses, phone numbers, or PII displayed on page.
 - **Mitigation**: Data stays on localhost (never leaves machine). Equivalent exposure to existing `query_dom`. For pages with sensitive data, AI can use `scope` parameter to limit tree to non-sensitive regions. No additional redaction beyond existing privacy layer.
 
 ## Dependencies
 
-**Depends on:**
+### Depends on:
 - Existing query dispatch infrastructure (`pending-queries` polling, content.js message bridge, inject.js execution context)
 - `dom-queries.js` module for shared constants and utilities (element visibility check, text truncation limits)
 
-**Depended on by:**
+### Depended on by:
 - AI agents needing to identify interactive elements before issuing `interact` commands
 - The `uidMap` output designed to bridge `observe` and `interact` tools
 

@@ -7,15 +7,16 @@
 
 import { test, describe, mock, beforeEach } from 'node:test'
 import assert from 'node:assert'
+import { MANIFEST_VERSION } from './helpers.js'
 
 // Mock Chrome APIs
 const mockChrome = {
   runtime: {
     sendMessage: mock.fn(() => Promise.resolve()),
     onMessage: {
-      addListener: mock.fn(),
+      addListener: mock.fn()
     },
-    getManifest: () => ({ version: '5.8.0' }),
+    getManifest: () => ({ version: MANIFEST_VERSION })
   },
   storage: {
     sync: {
@@ -24,7 +25,7 @@ const mockChrome = {
       remove: mock.fn((keys, callback) => {
         if (typeof callback === 'function') callback()
         else return Promise.resolve()
-      }),
+      })
     },
     local: {
       get: mock.fn((key, callback) => callback({})),
@@ -32,7 +33,7 @@ const mockChrome = {
       remove: mock.fn((keys, callback) => {
         if (typeof callback === 'function') callback()
         else return Promise.resolve()
-      }),
+      })
     },
     session: {
       get: mock.fn((keys, callback) => callback({})),
@@ -40,21 +41,21 @@ const mockChrome = {
       remove: mock.fn((keys, callback) => {
         if (typeof callback === 'function') callback()
         else return Promise.resolve()
-      }),
+      })
     },
     onChanged: {
-      addListener: mock.fn(),
-    },
+      addListener: mock.fn()
+    }
   },
   tabs: {
     query: mock.fn(() => Promise.resolve([{ id: 1 }])),
     sendMessage: mock.fn(() => Promise.resolve()),
-    onRemoved: { addListener: mock.fn() },
+    onRemoved: { addListener: mock.fn() }
   },
   alarms: {
     create: mock.fn(),
-    onAlarm: { addListener: mock.fn() },
-  },
+    onAlarm: { addListener: mock.fn() }
+  }
 }
 
 globalThis.chrome = mockChrome
@@ -75,7 +76,7 @@ const mockLocalStorage = {
   key: mock.fn((index) => Object.keys(localStorageData)[index] || null),
   get length() {
     return Object.keys(localStorageData).length
-  },
+  }
 }
 
 // Mock sessionStorage
@@ -94,7 +95,7 @@ const mockSessionStorage = {
   key: mock.fn((index) => Object.keys(sessionStorageData)[index] || null),
   get length() {
     return Object.keys(sessionStorageData).length
-  },
+  }
 }
 
 // Mock document
@@ -123,15 +124,17 @@ const mockDocument = {
     }
   },
   readyState: 'complete',
+  querySelector: () => null,
+  querySelectorAll: () => []
 }
 
 // Mock window
 const mockWindow = {
   location: {
-    href: 'http://localhost:3000/test',
+    href: 'http://localhost:3000/test'
   },
   postMessage: mock.fn(),
-  addEventListener: mock.fn(),
+  addEventListener: mock.fn()
 }
 
 globalThis.document = mockDocument
@@ -174,26 +177,36 @@ describe('captureState', () => {
   })
 
   test('should capture sessionStorage values', async () => {
-    sessionStorageData['sessionId'] = 'abc123'
+    sessionStorageData['viewId'] = 'abc123'
     sessionStorageData['cart'] = '["item1","item2"]'
 
     const { captureState } = await import('../../extension/inject.js')
 
     const state = captureState()
 
-    assert.strictEqual(state.sessionStorage['sessionId'], 'abc123')
+    assert.strictEqual(state.sessionStorage['viewId'], 'abc123')
     assert.strictEqual(state.sessionStorage['cart'], '["item1","item2"]')
     assert.strictEqual(Object.keys(state.sessionStorage).length, 2)
   })
 
   test('should capture cookies', async () => {
+    mockCookie = 'lang=en; preference=compact'
+
+    const { captureState } = await import('../../extension/inject.js')
+
+    const state = captureState()
+
+    assert.strictEqual(state.cookies, 'lang=en; preference=compact')
+  })
+
+  test('should redact sensitive cookie values', async () => {
     mockCookie = 'token=xyz789; preference=compact'
 
     const { captureState } = await import('../../extension/inject.js')
 
     const state = captureState()
 
-    assert.strictEqual(state.cookies, 'token=xyz789; preference=compact')
+    assert.strictEqual(state.cookies, 'token=[REDACTED]; preference=compact')
   })
 
   test('should capture all storage types together', async () => {
@@ -225,7 +238,7 @@ describe('restoreState', () => {
       timestamp: Date.now(),
       localStorage: { user: 'john', theme: 'dark' },
       sessionStorage: {},
-      cookies: '',
+      cookies: ''
     }
 
     const { restoreState } = await import('../../extension/inject.js')
@@ -244,7 +257,7 @@ describe('restoreState', () => {
       timestamp: Date.now(),
       localStorage: {},
       sessionStorage: { sessionId: 'abc123', cart: '["item1"]' },
-      cookies: '',
+      cookies: ''
     }
 
     const { restoreState } = await import('../../extension/inject.js')
@@ -263,7 +276,7 @@ describe('restoreState', () => {
       timestamp: Date.now(),
       localStorage: {},
       sessionStorage: {},
-      cookies: 'token=xyz789; preference=compact',
+      cookies: 'token=xyz789; preference=compact'
     }
 
     const { restoreState } = await import('../../extension/inject.js')
@@ -274,7 +287,7 @@ describe('restoreState', () => {
     assert.strictEqual(result.restored.cookies, 2)
   })
 
-  test('should clear existing state before restoring', async () => {
+  test('should preserve existing keys and add snapshot keys on restore', async () => {
     // Set up existing state
     localStorageData['existing'] = 'old_value'
     sessionStorageData['existing_session'] = 'old_session'
@@ -285,16 +298,16 @@ describe('restoreState', () => {
       timestamp: Date.now(),
       localStorage: { new_key: 'new_value' },
       sessionStorage: { new_session: 'new_session_value' },
-      cookies: 'new_cookie=new',
+      cookies: 'new_cookie=new'
     }
 
     const { restoreState } = await import('../../extension/inject.js')
 
     restoreState(state, false)
 
-    // Old values should be gone
-    assert.strictEqual(localStorageData['existing'], undefined)
-    assert.strictEqual(sessionStorageData['existing_session'], undefined)
+    // Existing keys are preserved (restore only overwrites snapshot keys)
+    assert.strictEqual(localStorageData['existing'], 'old_value')
+    assert.strictEqual(sessionStorageData['existing_session'], 'old_session')
 
     // New values should be present
     assert.strictEqual(localStorageData['new_key'], 'new_value')
@@ -309,7 +322,7 @@ describe('restoreState', () => {
       timestamp: Date.now(),
       localStorage: {},
       sessionStorage: {},
-      cookies: '',
+      cookies: ''
     }
 
     const { restoreState } = await import('../../extension/inject.js')
@@ -325,7 +338,7 @@ describe('restoreState', () => {
   test('should handle undefined storage properties', async () => {
     const state = {
       url: 'http://localhost:3000/test',
-      timestamp: Date.now(),
+      timestamp: Date.now()
       // localStorage, sessionStorage, cookies are undefined
     }
 
@@ -415,7 +428,7 @@ describe('Snapshot CRUD in background.js', () => {
       timestamp: Date.now(),
       localStorage: { key: 'value' },
       sessionStorage: {},
-      cookies: '',
+      cookies: ''
     }
 
     const result = await saveStateSnapshot('my-snapshot', state)
@@ -438,7 +451,7 @@ describe('Snapshot CRUD in background.js', () => {
       timestamp: 12345,
       localStorage: { user: 'john' },
       sessionStorage: { session: 'data' },
-      cookies: 'a=b',
+      cookies: 'a=b'
     }
 
     await saveStateSnapshot('test-snapshot', state)
@@ -467,7 +480,7 @@ describe('Snapshot CRUD in background.js', () => {
       timestamp: 1000,
       localStorage: {},
       sessionStorage: {},
-      cookies: '',
+      cookies: ''
     })
 
     await saveStateSnapshot('snap2', {
@@ -475,7 +488,7 @@ describe('Snapshot CRUD in background.js', () => {
       timestamp: 2000,
       localStorage: { key: 'value' },
       sessionStorage: {},
-      cookies: 'cookie=value',
+      cookies: 'cookie=value'
     })
 
     const list = await listStateSnapshots()
@@ -502,7 +515,7 @@ describe('Snapshot CRUD in background.js', () => {
       timestamp: Date.now(),
       localStorage: {},
       sessionStorage: {},
-      cookies: '',
+      cookies: ''
     })
 
     // Verify it exists
@@ -543,7 +556,7 @@ describe('include_url parameter', () => {
       timestamp: Date.now(),
       localStorage: { key: 'value' },
       sessionStorage: {},
-      cookies: '',
+      cookies: ''
     }
 
     const { restoreState } = await import('../../extension/inject.js')
@@ -560,7 +573,7 @@ describe('include_url parameter', () => {
       timestamp: Date.now(),
       localStorage: {},
       sessionStorage: {},
-      cookies: '',
+      cookies: ''
     }
 
     const { restoreState } = await import('../../extension/inject.js')
@@ -581,7 +594,7 @@ describe('include_url parameter', () => {
       timestamp: Date.now(),
       localStorage: { key: 'value' },
       sessionStorage: {},
-      cookies: '',
+      cookies: ''
     }
 
     const { restoreState } = await import('../../extension/inject.js')

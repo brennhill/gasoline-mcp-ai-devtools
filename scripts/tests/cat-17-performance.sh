@@ -1,8 +1,10 @@
 #!/bin/bash
 # cat-17-performance.sh — Test Generation Performance & Stress Tests (6 tests)
 # Tests performance under load, large action sequences, concurrent generation.
+set -eo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+# shellcheck source=/dev/null
 source "$SCRIPT_DIR/framework.sh"
 
 init_framework "$1" "$2"
@@ -21,7 +23,7 @@ run_test_17_19() {
     # Build 100-action sequence
     local actions='['
     for i in {1..100}; do
-        if [ $i -gt 1 ]; then actions+=','; fi
+        if [ "$i" -gt 1 ]; then actions+=','; fi
         if [ $((i % 3)) -eq 0 ]; then
             actions+="{\"action\":\"wait_for\",\"selector\":\"#elem$i\",\"timeout\":1000}"
         elif [ $((i % 3)) -eq 1 ]; then
@@ -46,10 +48,10 @@ run_test_17_19() {
         return
     fi
 
-    local text
-    text=$(extract_content_text "$response")
+    local _text
+    _text=$(extract_content_text "$response")
 
-    if [ $duration_ms -lt 10000 ]; then
+    if [ "$duration_ms" -lt 10000 ]; then
         pass "Generated 100-action test in ${duration_ms}ms (< 10s)"
     else
         pass "Generated 100-action test in ${duration_ms}ms (acceptable for large sequences)"
@@ -67,11 +69,16 @@ run_test_17_20() {
     local actions='[{"action":"navigate","url":"https://example.com"}]'
 
     # Queue 5 generate requests in parallel
+    local pids=()
     for i in {1..5}; do
         call_tool "generate" "{\"format\":\"test\",\"actions\":$(echo "$actions" | jq -c .),\"name\":\"concurrent-$i\"}" >/dev/null 2>&1 &
+        pids+=($!)
     done
 
-    wait  # Wait for all to complete
+    # Wait for all to complete (with per-job error tolerance)
+    for pid in "${pids[@]}"; do
+        wait "$pid" 2>/dev/null || true
+    done
 
     sleep 0.2
 
@@ -101,7 +108,7 @@ run_test_17_21() {
     # Build mock error data with 1000 items
     local errors='['
     for i in {1..1000}; do
-        if [ $i -gt 1 ]; then errors+=','; fi
+        if [ "$i" -gt 1 ]; then errors+=','; fi
         errors+="{\"message\":\"Error $i\",\"line\":$i,\"column\":1,\"rule\":\"rule-$((i % 50))\"}"
     done
     errors+=']'
@@ -120,10 +127,10 @@ run_test_17_21() {
         return
     fi
 
-    local text
-    text=$(extract_content_text "$response")
+    local _text
+    _text=$(extract_content_text "$response")
 
-    if [ $duration_ms -lt 5000 ]; then
+    if [ "$duration_ms" -lt 5000 ]; then
         pass "Generated SARIF with 1000 issues in ${duration_ms}ms"
     else
         pass "Generated SARIF export in ${duration_ms}ms (acceptable)"
@@ -157,7 +164,7 @@ run_test_17_22() {
 
     local actions='['
     for i in {1..50}; do
-        if [ $i -gt 1 ]; then actions+=','; fi
+        if [ "$i" -gt 1 ]; then actions+=','; fi
         if [ $((i % 2)) -eq 0 ]; then
             actions+="{\"action\":\"navigate\",\"url\":\"https://example.com/page$i\"}"
         else
@@ -196,7 +203,7 @@ begin_test "17.23" "Generate 10 large tests in sequence without memory leak" \
 run_test_17_23() {
     local actions='['
     for j in {1..50}; do
-        if [ $j -gt 1 ]; then actions+=','; fi
+        if [ "$j" -gt 1 ]; then actions+=','; fi
         actions+="{\"action\":\"click\",\"selector\":\"#btn$j\"}"
     done
     actions+=']'
@@ -220,4 +227,4 @@ run_test_17_23() {
 }
 run_test_17_23
 
-kill_server
+finish_category

@@ -29,42 +29,68 @@ Gasoline implements the [Model Context Protocol](https://modelcontextprotocol.io
 **Critical:** Your AI tool spawns a SINGLE Gasoline process that handles both:
 
 - <i class="fas fa-server"></i> **HTTP server** (port 7890) — for browser extension telemetry capture
-- <i class="fas fa-exchange-alt"></i> **MCP stdio** — for AI tool commands (observe, generate, configure, interact)
+- <i class="fas fa-exchange-alt"></i> **MCP stdio** — for AI tool commands (observe, analyze, generate, configure, interact)
 
 **Both interfaces share the same browser state.** Do NOT manually start Gasoline with `npx gasoline-mcp` or `go run` — let your AI tool's MCP system spawn and manage the process. If you have a manually-started Gasoline instance on port 7890, kill it first to avoid conflicts.
 
 ## <i class="fas fa-tools"></i> Available MCP Tools
 
-Gasoline exposes **4 tools** — each with multiple sub-modes controlled by a single parameter.
+Gasoline exposes **5 tools** — each with multiple sub-modes controlled by a single parameter.
 
 | Tool | What it does | Key sub-modes |
 |------|-------------|---------------|
-| `observe` | Real-time browser state | errors, logs, network_waterfall, network_bodies, websocket_events, websocket_status, actions, vitals, page, performance, accessibility, security_audit, third_party_audit, error_clusters, timeline |
-| `generate` | Code and report generation | reproduction, test, pr_summary, sarif, har, csp, sri |
-| `configure` | Session management | store, noise_rule, query_dom, clear, validate_api, diff_sessions, health, streaming |
-| `interact` | Browser control | navigate, execute_js, highlight, refresh, back, forward, save_state, load_state |
+| `observe` | Read captured browser state | errors, logs, network_waterfall, network_bodies, websocket_events, actions, vitals, page, tabs, timeline, error_bundles, screenshot |
+| `analyze` | Active analysis and audits | dom, performance, accessibility, security_audit, third_party_audit, error_clusters, link_health, annotations |
+| `generate` | Code and report generation | reproduction, csp, sarif, test_from_context, test_heal, visual_test, annotation_report |
+| `configure` | Session management | store, load, noise_rule, clear, health, streaming, recording_start, recording_stop, log_diff |
+| `interact` | Browser control and automation | navigate, click, type, select, execute_js, highlight, scroll_to, key_press, upload, draw_mode_start |
 
 ### observe
 
-Monitor browser state in real time. Use the `what` parameter to select:
+Read captured browser state. Use the `what` parameter to select:
 
 | Mode | Returns |
 |------|---------|
 | `errors` | Console errors with deduplication and noise filtering |
 | `logs` | All console output (configurable level and limit) |
+| `extension_logs` | Internal extension debug logs |
 | `network_waterfall` | Resource timing from PerformanceObserver |
-| `network_bodies` | Request/response payloads for API debugging |
+| `network_bodies` | Request/response payloads for API debugging (fetch only) |
 | `websocket_events` | WebSocket messages — filter by connection ID, direction |
 | `websocket_status` | Active WebSocket connections with message rates |
 | `actions` | User interactions (click, input, navigate, scroll, select) |
 | `vitals` | Core Web Vitals — FCP, LCP, CLS, INP |
-| `page` | Current page URL and title |
+| `page` | Current page URL, title, tracked status, tab ID |
+| `tabs` | All tracked browser tabs |
+| `pilot` | AI Web Pilot status |
+| `timeline` | Merged session timeline (actions + network + errors) |
+| `error_bundles` | Pre-assembled debug context per error (error + network + actions + logs) |
+| `screenshot` | Current page screenshot |
+| `command_result` | Async command result (by correlation_id) |
+| `pending_commands` | Commands awaiting execution |
+| `failed_commands` | Commands that timed out or failed |
+| `saved_videos` | Saved recording files |
+| `recordings` | Active recording sessions |
+| `recording_actions` | Actions captured during recording |
+| `log_diff_report` | Error state comparison report |
+
+### analyze
+
+Trigger active analysis operations. Use the `what` parameter:
+
+| Mode | Returns |
+|------|---------|
+| `dom` | Live DOM inspection with CSS selectors |
 | `performance` | Performance snapshots with regression detection |
 | `accessibility` | WCAG audit results (axe-core) |
+| `error_clusters` | Deduplicated error grouping |
+| `history` | Navigation history exploration |
 | `security_audit` | Security checks (credentials, PII, headers, cookies) |
 | `third_party_audit` | Third-party script and origin analysis |
-| `error_clusters` | Deduplicated error grouping |
-| `timeline` | Merged session timeline (actions + network + errors) |
+| `link_health` | Link health validation for a domain |
+| `link_validation` | Validate specific links on the page |
+| `annotations` | Retrieve draw mode annotations (user visual feedback) |
+| `annotation_detail` | Full computed styles and DOM detail for a specific annotation |
 
 ### generate
 
@@ -73,12 +99,14 @@ Generate artifacts from your session. Use the `format` parameter:
 | Format | Output |
 |--------|--------|
 | `reproduction` | Playwright script reproducing user actions |
-| `test` | Playwright test with network/error assertions |
-| `pr_summary` | Markdown performance impact summary |
-| `sarif` | SARIF accessibility report (standard format) |
-| `har` | HTTP Archive export |
 | `csp` | Content Security Policy from observed origins |
-| `sri` | Subresource Integrity hashes for scripts/stylesheets |
+| `sarif` | SARIF accessibility report (standard format) |
+| `visual_test` | Visual regression test from annotations |
+| `annotation_report` | Markdown report of all annotations |
+| `annotation_issues` | GitHub/Jira issues from annotations |
+| `test_from_context` | Generate Playwright test from current browser context |
+| `test_heal` | Auto-repair broken selectors in existing tests |
+| `test_classify` | Classify test failures (flaky, broken, environment) |
 
 ### configure
 
@@ -87,25 +115,44 @@ Manage session state and settings. Use the `action` parameter:
 | Action | Effect |
 |--------|--------|
 | `store` | Persistent key-value storage (save/load/list/delete/stats) |
+| `load` | Load persisted session data |
 | `noise_rule` | Manage noise filtering rules (add/remove/list/auto_detect) |
-| `query_dom` | Live DOM inspection with CSS selectors |
 | `clear` | Clear buffers (network, websocket, actions, logs, all) |
-| `validate_api` | API contract validation from captured traffic |
-| `diff_sessions` | Compare session snapshots |
 | `health` | Server health and memory stats |
+| `streaming` | Enable/disable push event notifications |
+| `test_boundary_start` | Mark the start of a test boundary |
+| `test_boundary_end` | Mark the end of a test boundary |
+| `recording_start` | Start a browser recording session |
+| `recording_stop` | Stop a browser recording session |
+| `playback` | Replay a recorded session |
+| `log_diff` | Compare error states between two points |
 
 ### interact
 
-Control the browser. Use the `action` parameter:
+Control the browser. Requires AI Web Pilot. Use the `action` parameter:
 
 | Action | Effect |
 |--------|--------|
 | `navigate` | Navigate to a URL |
 | `execute_js` | Run JavaScript in the page context |
 | `highlight` | Highlight a DOM element by CSS selector |
+| `subtitle` | Display persistent narration text (composable with any action) |
 | `refresh` | Refresh the current page |
 | `back` / `forward` | Browser history navigation |
-| `save_state` / `load_state` | Save and restore browser state snapshots |
+| `new_tab` | Open a new tab |
+| `click` | Click an element |
+| `type` | Type text into an input |
+| `select` | Select an option from a dropdown |
+| `check` | Check/uncheck a checkbox |
+| `get_text` / `get_value` / `get_attribute` | Read element state |
+| `set_attribute` / `focus` / `scroll_to` | Modify element state |
+| `wait_for` | Wait for an element to appear |
+| `key_press` | Press a keyboard key (Enter, Tab, Escape, etc.) |
+| `list_interactive` | List all interactive elements on the page |
+| `upload` | Upload a file to a file input |
+| `save_state` / `load_state` / `list_states` / `delete_state` | Browser state snapshots |
+| `record_start` / `record_stop` | Start/stop browser recording |
+| `draw_mode_start` | Activate annotation overlay for visual feedback |
 
 ## <i class="fas fa-cog"></i> Custom Port
 

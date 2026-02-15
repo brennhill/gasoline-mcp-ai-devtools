@@ -1,13 +1,14 @@
 {
   "name": "@brennhill/gasoline-win32-x64",
-  "version": "6.0.3",
+  "version": "0.7.0",
   "description": "Gasoline binary for Windows x64",
   "license": "AGPL-3.0-only",
   "os": [
     "win32"
   ],
   "cpu": [
-    "x64"
+    "x64",
+    "arm64"
   ],
   "files": [
     "bin/gasoline.exe"

@@ -120,14 +120,14 @@ Example action:
 ### Feature 1: Action Performance Timing
 **What:** Measure and record timing for every user action
 
-**How:**
+#### How:
 - ✅ Start: User initiates action (click, type, navigate)
 - Measure: JavaScript handler execution
 - Measure: DOM mutation observer (when first change detected)
 - Measure: Network requests (if action triggers API calls)
 - ✅ End: All network requests complete + DOM mutations settle (1s timeout)
 
-**Data captured:**
+#### Data captured:
 ```typescript
 interface ActionTiming {
   start_time: number;           // ms timestamp
@@ -144,7 +144,7 @@ interface ActionTiming {
 }
 ```
 
-**Success Criteria:**
+#### Success Criteria:
 - [ ] Timing accurate within ±5ms for interaction latency
 - [ ] Timing accurate within ±10ms for DOM latency
 - [ ] Timing accurate within ±20ms for network latency
@@ -154,12 +154,12 @@ interface ActionTiming {
 ### Feature 2: DOM State Snapshots
 **What:** Capture DOM structure before/after significant actions
 
-**How:**
+#### How:
 - Snapshot before action: Full innerHTML of affected subtree
 - Snapshot after action: Full innerHTML after mutations settle
 - Diff: Compute what changed (element count, attribute changes, text changes)
 
-**Data captured:**
+#### Data captured:
 ```typescript
 interface DOMSnapshot {
   timestamp: number;
@@ -183,7 +183,7 @@ interface DOMSnapshot {
 }
 ```
 
-**Success Criteria:**
+#### Success Criteria:
 - [ ] Snapshot captures full HTML of action target + children
 - [ ] Diff algorithm detects all meaningful changes
 - [ ] Snapshots compressed to < 5KB each (remove whitespace, comments)
@@ -193,12 +193,12 @@ interface DOMSnapshot {
 ### Feature 3: Accessibility Event Capture
 **What:** Record accessibility labels, roles, and state changes
 
-**How:**
+#### How:
 - On every DOM mutation: Extract aria-* attributes, role, label
 - On every action: Record semantic meaning (button clicked, input focused, etc.)
 - Track accessibility violations: WCAG 2.1 AA basic checks
 
-**Data captured:**
+#### Data captured:
 ```typescript
 interface AccessibilityEvent {
   timestamp: number;
@@ -219,7 +219,7 @@ interface AccessibilityEvent {
 }
 ```
 
-**Success Criteria:**
+#### Success Criteria:
 - [ ] aria-label captured for all elements with labels
 - [ ] role attribute extracted and classified
 - [ ] Disabled state tracked
@@ -230,12 +230,12 @@ interface AccessibilityEvent {
 ### Feature 4: Smart Selector Generation
 **What:** Generate maintainable selectors for captured actions
 
-**How:**
+#### How:
 - Prioritize: data-testid > aria-label > visible text > class > nth-child
 - Fallback: Generate semantic selector (e.g., "button with text 'Add to Cart'")
 - Validate: Test selector against current DOM to ensure it matches
 
-**Data captured:**
+#### Data captured:
 ```typescript
 interface SmartSelector {
   primary: string;      // "button[data-testid='add-to-cart']"
@@ -245,7 +245,7 @@ interface SmartSelector {
 }
 ```
 
-**Success Criteria:**
+#### Success Criteria:
 - [ ] Selector syntax valid for Playwright/Puppeteer
 - [ ] Selector works against live DOM
 - [ ] Selector stable across minor CSS changes

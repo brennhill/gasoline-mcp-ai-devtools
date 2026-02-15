@@ -36,18 +36,18 @@ Agent: configure({action: "emulation", network: "Slow 3G"})
 
 ## Implementation Strategy
 
-**Network throttling:**
+### Network throttling:
 - Use CDP Network.emulateNetworkConditions command
 - Pre-defined profiles (Slow 3G: 400 Kbps down, 400 up, 400ms latency; Fast 3G: 1.6 Mbps down, 750 up, 150ms; 4G: 4 Mbps down, 3 up, 20ms)
 - Custom: accept kbps/latency values, convert to CDP format
 - Offline: {offline: true}
 
-**CPU throttling:**
+### CPU throttling:
 - Use CDP Emulation.setCPUThrottlingRate command
 - Rate is slowdown multiplier (4 = 4x slower than native)
 - Affects JS execution, rendering, parsing
 
-**Settings persistence:**
+### Settings persistence:
 - Store current emulation settings in extension storage
 - Re-apply on page reload (listen to webNavigation.onCommitted)
 - Reset: send CDP with default values, clear storage

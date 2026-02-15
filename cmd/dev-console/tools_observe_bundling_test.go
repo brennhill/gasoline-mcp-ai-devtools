@@ -527,6 +527,42 @@ func TestErrorBundles_ViaObserveDispatcher(t *testing.T) {
 }
 
 // ============================================
+// Extension entries use "ts" field
+// ============================================
+
+func TestErrorBundles_TsField(t *testing.T) {
+	env := newBundleTestEnv(t)
+
+	now := time.Now().UTC()
+
+	// Extension-originated entries use "ts" instead of "timestamp"
+	env.addLogEntry(LogEntry{
+		"type":    "console",
+		"level":   "error",
+		"message": "Extension error with ts field",
+		"ts":      now.Format(time.RFC3339),
+	})
+
+	result, ok := env.callErrorBundles(t, `{}`)
+	if !ok {
+		t.Fatal("should return result")
+	}
+
+	bundles := env.parseBundles(t, result)
+	if len(bundles) != 1 {
+		t.Fatalf("expected 1 bundle from ts-field entry, got %d", len(bundles))
+	}
+
+	errObj, ok := bundles[0]["error"].(map[string]any)
+	if !ok {
+		t.Fatal("bundle should have 'error' object")
+	}
+	if msg, _ := errObj["message"].(string); !strings.Contains(msg, "ts field") {
+		t.Errorf("error message mismatch: %s", msg)
+	}
+}
+
+// ============================================
 // No Panic Safety
 // ============================================
 

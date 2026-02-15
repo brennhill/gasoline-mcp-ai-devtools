@@ -1,5 +1,8 @@
 // websocket-types.go — WebSocket event and connection tracking types.
 // WebSocketEvent represents captured WebSocket events with sampling and schema info.
+//
+// JSON CONVENTION: All fields MUST use snake_case. See .claude/refs/api-naming-standards.md
+// Deviations from snake_case MUST be tagged with // SPEC:<spec-name> at the field level.
 package capture
 
 import (

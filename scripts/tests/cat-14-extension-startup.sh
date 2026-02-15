@@ -1,8 +1,10 @@
 #!/bin/bash
 # cat-14-extension-startup.sh — Extension startup sequence contract tests
 # Verifies extension initializes correctly and sends proper API payloads
+set -eo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+# shellcheck source=/dev/null
 source "$SCRIPT_DIR/framework.sh"
 
 PORT="${1:-7901}"

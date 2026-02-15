@@ -68,6 +68,45 @@ func isLikelyText(data []byte) bool {
 	return float64(textBytes)/float64(len(data)) > 0.9
 }
 
+// msgpackMarker defines a MessagePack type marker with its required data length and confidence.
+type msgpackMarker struct {
+	minLen     int     // minimum data length required (0 = no requirement)
+	confidence float64 // detection confidence
+	details    string  // format details
+}
+
+// msgpackMarkers maps byte values to their MessagePack marker info.
+// Entries with minLen=0 need no length check beyond the first byte.
+var msgpackMarkers = map[byte]msgpackMarker{
+	0xc0: {0, 0.9, "nil"},
+	0xc2: {0, 0.9, "false"},
+	0xc3: {0, 0.9, "true"},
+	0xc4: {0, 0.85, "bin"}, 0xc5: {0, 0.85, "bin"}, 0xc6: {0, 0.85, "bin"},
+	0xc7: {0, 0.85, "ext"}, 0xc8: {0, 0.85, "ext"}, 0xc9: {0, 0.85, "ext"},
+	0xca: {5, 0.85, "float32"}, 0xcb: {9, 0.85, "float64"},
+	0xcc: {2, 0.8, "uint8"}, 0xcd: {3, 0.8, "uint16"}, 0xce: {5, 0.8, "uint32"}, 0xcf: {9, 0.8, "uint64"},
+	0xd0: {2, 0.8, "int8"}, 0xd1: {3, 0.8, "int16"}, 0xd2: {5, 0.8, "int32"}, 0xd3: {9, 0.8, "int64"},
+	0xd4: {0, 0.85, "fixext"}, 0xd5: {0, 0.85, "fixext"}, 0xd6: {0, 0.85, "fixext"},
+	0xd7: {0, 0.85, "fixext"}, 0xd8: {0, 0.85, "fixext"},
+	0xd9: {2, 0.8, "str8"}, 0xda: {3, 0.8, "str16"}, 0xdb: {5, 0.8, "str32"},
+	0xdc: {3, 0.85, "array16"}, 0xdd: {5, 0.85, "array32"},
+	0xde: {3, 0.85, "map16"}, 0xdf: {5, 0.85, "map32"},
+}
+
+// detectMessagePackRange checks if the byte falls in a MessagePack fixed-type range.
+func detectMessagePackRange(b byte) *BinaryFormat {
+	switch {
+	case b >= 0x80 && b <= 0x8f:
+		return &BinaryFormat{Name: "messagepack", Confidence: 0.85, Details: "fixmap"}
+	case b >= 0x90 && b <= 0x9f:
+		return &BinaryFormat{Name: "messagepack", Confidence: 0.85, Details: "fixarray"}
+	case b >= 0xa0 && b <= 0xbf:
+		return &BinaryFormat{Name: "messagepack", Confidence: 0.8, Details: "fixstr"}
+	default:
+		return nil
+	}
+}
+
 // detectMessagePack checks for MessagePack format markers
 func detectMessagePack(data []byte) *BinaryFormat {
 	if len(data) == 0 {
@@ -76,106 +115,45 @@ func detectMessagePack(data []byte) *BinaryFormat {
 
 	b := data[0]
 
-	// fixmap: 0x80-0x8f (map with 0-15 elements)
-	if b >= 0x80 && b <= 0x8f {
-		return &BinaryFormat{Name: "messagepack", Confidence: 0.85, Details: "fixmap"}
+	if result := detectMessagePackRange(b); result != nil {
+		return result
 	}
 
-	// fixarray: 0x90-0x9f (array with 0-15 elements)
-	if b >= 0x90 && b <= 0x9f {
-		return &BinaryFormat{Name: "messagepack", Confidence: 0.85, Details: "fixarray"}
+	m, ok := msgpackMarkers[b]
+	if !ok {
+		return nil
 	}
-
-	// fixstr: 0xa0-0xbf (string with 0-31 bytes)
-	if b >= 0xa0 && b <= 0xbf {
-		return &BinaryFormat{Name: "messagepack", Confidence: 0.8, Details: "fixstr"}
+	if m.minLen > 0 && len(data) < m.minLen {
+		return nil
 	}
+	return &BinaryFormat{Name: "messagepack", Confidence: m.confidence, Details: m.details}
+}
 
-	// Specific type markers (high confidence)
-	switch b {
-	case 0xc0: // nil
-		return &BinaryFormat{Name: "messagepack", Confidence: 0.9, Details: "nil"}
-	case 0xc2: // false
-		return &BinaryFormat{Name: "messagepack", Confidence: 0.9, Details: "false"}
-	case 0xc3: // true
-		return &BinaryFormat{Name: "messagepack", Confidence: 0.9, Details: "true"}
-	case 0xc4, 0xc5, 0xc6: // bin8, bin16, bin32
-		return &BinaryFormat{Name: "messagepack", Confidence: 0.85, Details: "bin"}
-	case 0xc7, 0xc8, 0xc9: // ext8, ext16, ext32
-		return &BinaryFormat{Name: "messagepack", Confidence: 0.85, Details: "ext"}
-	case 0xca: // float32
-		if len(data) >= 5 {
-			return &BinaryFormat{Name: "messagepack", Confidence: 0.85, Details: "float32"}
-		}
-	case 0xcb: // float64
-		if len(data) >= 9 {
-			return &BinaryFormat{Name: "messagepack", Confidence: 0.85, Details: "float64"}
-		}
-	case 0xcc: // uint8
-		if len(data) >= 2 {
-			return &BinaryFormat{Name: "messagepack", Confidence: 0.8, Details: "uint8"}
-		}
-	case 0xcd: // uint16
-		if len(data) >= 3 {
-			return &BinaryFormat{Name: "messagepack", Confidence: 0.8, Details: "uint16"}
-		}
-	case 0xce: // uint32
-		if len(data) >= 5 {
-			return &BinaryFormat{Name: "messagepack", Confidence: 0.8, Details: "uint32"}
-		}
-	case 0xcf: // uint64
-		if len(data) >= 9 {
-			return &BinaryFormat{Name: "messagepack", Confidence: 0.8, Details: "uint64"}
-		}
-	case 0xd0: // int8
-		if len(data) >= 2 {
-			return &BinaryFormat{Name: "messagepack", Confidence: 0.8, Details: "int8"}
-		}
-	case 0xd1: // int16
-		if len(data) >= 3 {
-			return &BinaryFormat{Name: "messagepack", Confidence: 0.8, Details: "int16"}
-		}
-	case 0xd2: // int32
-		if len(data) >= 5 {
-			return &BinaryFormat{Name: "messagepack", Confidence: 0.8, Details: "int32"}
-		}
-	case 0xd3: // int64
-		if len(data) >= 9 {
-			return &BinaryFormat{Name: "messagepack", Confidence: 0.8, Details: "int64"}
-		}
-	case 0xd4, 0xd5, 0xd6, 0xd7, 0xd8: // fixext 1,2,4,8,16
-		return &BinaryFormat{Name: "messagepack", Confidence: 0.85, Details: "fixext"}
-	case 0xd9: // str8
-		if len(data) >= 2 {
-			return &BinaryFormat{Name: "messagepack", Confidence: 0.8, Details: "str8"}
-		}
-	case 0xda: // str16
-		if len(data) >= 3 {
-			return &BinaryFormat{Name: "messagepack", Confidence: 0.8, Details: "str16"}
-		}
-	case 0xdb: // str32
-		if len(data) >= 5 {
-			return &BinaryFormat{Name: "messagepack", Confidence: 0.8, Details: "str32"}
-		}
-	case 0xdc: // array16
-		if len(data) >= 3 {
-			return &BinaryFormat{Name: "messagepack", Confidence: 0.85, Details: "array16"}
-		}
-	case 0xdd: // array32
-		if len(data) >= 5 {
-			return &BinaryFormat{Name: "messagepack", Confidence: 0.85, Details: "array32"}
-		}
-	case 0xde: // map16
-		if len(data) >= 3 {
-			return &BinaryFormat{Name: "messagepack", Confidence: 0.85, Details: "map16"}
-		}
-	case 0xdf: // map32
-		if len(data) >= 5 {
-			return &BinaryFormat{Name: "messagepack", Confidence: 0.85, Details: "map32"}
-		}
+// cborSimpleMarkers maps specific byte values in CBOR major type 7 to their format info.
+var cborSimpleMarkers = map[byte]msgpackMarker{
+	0xf4: {0, 0.9, "false"},
+	0xf5: {0, 0.9, "true"},
+	0xf6: {0, 0.9, "null"},
+	0xf7: {0, 0.9, "undefined"},
+	0xf9: {3, 0.85, "float16"},
+	0xfa: {5, 0.85, "float32"},
+	0xfb: {9, 0.85, "float64"},
+	0xff: {0, 0.8, "break"},
+}
+
+// detectCBORMajorType handles CBOR major types 4 (array) and 5 (map).
+func detectCBORMajorType(majorType, additionalInfo byte) *BinaryFormat {
+	if majorType != 4 && majorType != 5 {
+		return nil
 	}
-
-	return nil
+	if additionalInfo > 0x17 && additionalInfo != 0x1f {
+		return nil
+	}
+	details := "array"
+	if majorType == 5 {
+		details = "map"
+	}
+	return &BinaryFormat{Name: "cbor", Confidence: 0.75, Details: details}
 }
 
 // detectCBOR checks for CBOR format markers
@@ -188,47 +166,55 @@ func detectCBOR(data []byte) *BinaryFormat {
 	majorType := b >> 5
 	additionalInfo := b & 0x1f
 
-	switch majorType {
-	case 4: // Array (0x80-0x9f)
-		// Note: overlaps with MessagePack, but MessagePack is checked first
-		if additionalInfo <= 0x17 || additionalInfo == 0x1f { // definite or indefinite
-			return &BinaryFormat{Name: "cbor", Confidence: 0.75, Details: "array"}
-		}
-	case 5: // Map (0xa0-0xbf)
-		// Note: overlaps with MessagePack fixstr
-		if additionalInfo <= 0x17 || additionalInfo == 0x1f {
-			return &BinaryFormat{Name: "cbor", Confidence: 0.75, Details: "map"}
-		}
-	case 6: // Tagged value (0xc0-0xdf)
-		// CBOR tags are distinctive
+	if result := detectCBORMajorType(majorType, additionalInfo); result != nil {
+		return result
+	}
+
+	if majorType == 6 {
 		return &BinaryFormat{Name: "cbor", Confidence: 0.85, Details: "tagged"}
-	case 7: // Simple/float (0xe0-0xff)
-		switch b {
-		case 0xf4: // false
-			return &BinaryFormat{Name: "cbor", Confidence: 0.9, Details: "false"}
-		case 0xf5: // true
-			return &BinaryFormat{Name: "cbor", Confidence: 0.9, Details: "true"}
-		case 0xf6: // null
-			return &BinaryFormat{Name: "cbor", Confidence: 0.9, Details: "null"}
-		case 0xf7: // undefined
-			return &BinaryFormat{Name: "cbor", Confidence: 0.9, Details: "undefined"}
-		case 0xf9: // float16
-			if len(data) >= 3 {
-				return &BinaryFormat{Name: "cbor", Confidence: 0.85, Details: "float16"}
+	}
+
+	if majorType == 7 {
+		if m, ok := cborSimpleMarkers[b]; ok {
+			if m.minLen > 0 && len(data) < m.minLen {
+				return nil
 			}
-		case 0xfa: // float32
-			if len(data) >= 5 {
-				return &BinaryFormat{Name: "cbor", Confidence: 0.85, Details: "float32"}
-			}
-		case 0xfb: // float64
-			if len(data) >= 9 {
-				return &BinaryFormat{Name: "cbor", Confidence: 0.85, Details: "float64"}
-			}
-		case 0xff: // break (for indefinite)
-			return &BinaryFormat{Name: "cbor", Confidence: 0.8, Details: "break"}
+			return &BinaryFormat{Name: "cbor", Confidence: m.confidence, Details: m.details}
 		}
 	}
 
+	return nil
+}
+
+// isValidProtobufWireType returns true if the wire type is valid (0, 1, 2, or 5).
+func isValidProtobufWireType(wireType byte) bool {
+	return wireType == 0 || wireType == 1 || wireType == 2 || wireType == 5
+}
+
+// protobufFieldDetail builds the detail string for a protobuf field.
+func protobufFieldDetail(fieldNumber byte, wireTypeStr string) string {
+	return "field " + string('0'+fieldNumber) + ", " + wireTypeStr
+}
+
+// isValidVarint checks if data starting at offset 1 looks like a valid varint encoding.
+func isValidVarint(data []byte) bool {
+	for i := 1; i < len(data) && i < 10; i++ {
+		if data[i]&0x80 == 0 {
+			return true
+		}
+	}
+	return len(data) < 10
+}
+
+// detectProtobufLengthDelimited checks if data looks like a protobuf length-delimited field.
+func detectProtobufLengthDelimited(data []byte, fieldNumber byte) *BinaryFormat {
+	if data[1]&0x80 != 0 {
+		return &BinaryFormat{Name: "protobuf", Confidence: 0.6, Details: protobufFieldDetail(fieldNumber, "length-delimited")}
+	}
+	length := int(data[1])
+	if length > 0 && len(data) >= 2+length {
+		return &BinaryFormat{Name: "protobuf", Confidence: 0.7, Details: protobufFieldDetail(fieldNumber, "length-delimited")}
+	}
 	return nil
 }
 
@@ -238,140 +224,70 @@ func detectProtobuf(data []byte) *BinaryFormat {
 		return nil
 	}
 
-	// Protobuf messages start with field tags
-	// Field tag = (field_number << 3) | wire_type
-	// Wire types: 0=varint, 1=64-bit, 2=length-delimited, 5=32-bit
+	wireType := data[0] & 0x07
+	fieldNumber := data[0] >> 3
 
-	b := data[0]
-	wireType := b & 0x07
-	fieldNumber := b >> 3
-
-	// Valid wire types are 0, 1, 2, 5 (3 and 4 are deprecated)
-	if wireType == 3 || wireType == 4 || wireType > 5 {
+	if !isValidProtobufWireType(wireType) || fieldNumber == 0 || fieldNumber > 15 {
 		return nil
 	}
 
-	// Field number must be 1-15 for single-byte tag (most common)
-	// Field 0 is reserved
-	if fieldNumber == 0 || fieldNumber > 15 {
-		return nil
-	}
-
-	// Validate based on wire type
 	switch wireType {
 	case 0: // Varint
-		// Next byte should be a valid varint byte
-		if len(data) >= 2 {
-			// Check that subsequent bytes look like valid varints
-			// High bit set means continuation
-			validVarint := true
-			for i := 1; i < len(data) && i < 10; i++ {
-				if data[i]&0x80 == 0 {
-					// End of varint
-					break
-				}
-				if i >= 10 {
-					validVarint = false
-				}
-			}
-			if validVarint {
-				return &BinaryFormat{
-					Name:       "protobuf",
-					Confidence: 0.7,
-					Details:    "field " + string('0'+byte(fieldNumber)) + ", varint",
-				}
-			}
+		if isValidVarint(data) {
+			return &BinaryFormat{Name: "protobuf", Confidence: 0.7, Details: protobufFieldDetail(fieldNumber, "varint")}
 		}
 	case 1: // 64-bit fixed
 		if len(data) >= 9 {
-			return &BinaryFormat{
-				Name:       "protobuf",
-				Confidence: 0.65,
-				Details:    "field " + string('0'+byte(fieldNumber)) + ", fixed64",
-			}
+			return &BinaryFormat{Name: "protobuf", Confidence: 0.65, Details: protobufFieldDetail(fieldNumber, "fixed64")}
 		}
 	case 2: // Length-delimited
-		if len(data) >= 2 {
-			length := int(data[1])
-			if data[1]&0x80 != 0 {
-				// Multi-byte length encoding
-				return &BinaryFormat{
-					Name:       "protobuf",
-					Confidence: 0.6,
-					Details:    "field " + string('0'+byte(fieldNumber)) + ", length-delimited",
-				}
-			}
-			// Check if length is reasonable
-			if length > 0 && len(data) >= 2+length {
-				return &BinaryFormat{
-					Name:       "protobuf",
-					Confidence: 0.7,
-					Details:    "field " + string('0'+byte(fieldNumber)) + ", length-delimited",
-				}
-			}
-		}
+		return detectProtobufLengthDelimited(data, fieldNumber)
 	case 5: // 32-bit fixed
 		if len(data) >= 5 {
-			return &BinaryFormat{
-				Name:       "protobuf",
-				Confidence: 0.65,
-				Details:    "field " + string('0'+byte(fieldNumber)) + ", fixed32",
-			}
+			return &BinaryFormat{Name: "protobuf", Confidence: 0.65, Details: protobufFieldDetail(fieldNumber, "fixed32")}
 		}
 	}
 
 	return nil
 }
 
+// bsonDocLen reads a BSON document length (little-endian int32) from the first 4 bytes.
+func bsonDocLen(data []byte) int {
+	return int(data[0]) | int(data[1])<<8 | int(data[2])<<16 | int(data[3])<<24
+}
+
+// isValidBSONElementType returns true if the byte is a valid BSON element type.
+func isValidBSONElementType(b byte) bool {
+	return b == 0x00 || (b >= 0x01 && b <= 0x13) || b == 0x7f || b == 0xff
+}
+
 // detectBSON checks for BSON document format
 func detectBSON(data []byte) *BinaryFormat {
-	// BSON document: int32 (little-endian) document size + elements + 0x00
-	// Minimum valid BSON is 5 bytes: length(4) + terminator(1)
 	if len(data) < 5 {
 		return nil
 	}
 
-	// Read document length (little-endian int32)
-	docLen := int(data[0]) | int(data[1])<<8 | int(data[2])<<16 | int(data[3])<<24
-
-	// Sanity checks on document length
-	if docLen < 5 {
+	docLen := bsonDocLen(data)
+	if docLen < 5 || docLen > 16*1024*1024 {
 		return nil
 	}
 
-	// If we have the full document, verify null terminator
-	if len(data) >= docLen {
-		if data[docLen-1] != 0x00 {
-			return nil
-		}
-	}
-
-	// Check if length is reasonable (not absurdly large and matches roughly)
-	if docLen > 16*1024*1024 { // 16MB max BSON doc size
+	// Verify null terminator if we have the full document
+	if len(data) >= docLen && data[docLen-1] != 0x00 {
 		return nil
 	}
 
-	// If document length matches data length or data is prefix of full doc
-	if docLen == len(data) || docLen > len(data) {
-		// Additional validation: check first element type if present
-		if len(data) > 4 {
-			elemType := data[4]
-			// Valid BSON element types: 0x01-0x13, 0x7f, 0xff, or 0x00 (terminator)
-			if elemType == 0x00 || (elemType >= 0x01 && elemType <= 0x13) || elemType == 0x7f || elemType == 0xff {
-				return &BinaryFormat{
-					Name:       "bson",
-					Confidence: 0.65,
-					Details:    "document",
-				}
-			}
-		} else {
-			// Just have the length, less confident
-			return &BinaryFormat{
-				Name:       "bson",
-				Confidence: 0.5,
-				Details:    "document (partial)",
-			}
-		}
+	// Document length must encompass or exceed the data
+	if docLen < len(data) {
+		return nil
+	}
+
+	// Validate first element type if present
+	if len(data) > 4 && isValidBSONElementType(data[4]) {
+		return &BinaryFormat{Name: "bson", Confidence: 0.65, Details: "document"}
+	}
+	if len(data) <= 4 {
+		return &BinaryFormat{Name: "bson", Confidence: 0.5, Details: "document (partial)"}
 	}
 
 	return nil

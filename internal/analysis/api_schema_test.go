@@ -492,7 +492,7 @@ func TestNoOldParamNames_InStructTags(t *testing.T) {
 			continue
 		}
 
-		data, err := os.ReadFile(filepath.Join(dir, entry.Name()))
+		data, err := os.ReadFile(filepath.Join(dir, entry.Name())) // nosemgrep: go_filesystem_rule-fileread -- test helper reads fixture/output file
 		if err != nil {
 			t.Fatalf("Failed to read %s: %v", entry.Name(), err)
 		}

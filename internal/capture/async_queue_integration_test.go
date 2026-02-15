@@ -241,7 +241,7 @@ func TestAsyncQueueExpirationIntegration(t *testing.T) {
 		CorrelationID: correlationID,
 	}
 
-	capture.CreatePendingQueryWithTimeout(query, 1*time.Second, "")
+	capture.CreatePendingQueryWithTimeout(query, 120*time.Millisecond, "")
 
 	// Initially pending
 	cmd, found := capture.GetCommandResult(correlationID)
@@ -249,8 +249,15 @@ func TestAsyncQueueExpirationIntegration(t *testing.T) {
 		t.Fatal("Command should be pending initially")
 	}
 
-	// Wait for expiration
-	time.Sleep(2 * time.Second)
+	// Wait for expiration with polling (faster and less flaky than fixed long sleeps)
+	deadline := time.Now().Add(800 * time.Millisecond)
+	for time.Now().Before(deadline) {
+		cmd, found = capture.GetCommandResult(correlationID)
+		if found && cmd.Status == "expired" {
+			break
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
 
 	// Should be expired
 	cmd, found = capture.GetCommandResult(correlationID)

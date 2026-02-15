@@ -12,7 +12,12 @@
 
 import { initTabTracking } from './content/tab-tracking'
 import { initScriptInjection } from './content/script-injection'
-import { initRequestTracking, getPendingRequestStats, clearPendingRequests, cleanupRequestTracking } from './content/request-tracking'
+import {
+  initRequestTracking,
+  getPendingRequestStats,
+  clearPendingRequests,
+  cleanupRequestTracking
+} from './content/request-tracking'
 import { initWindowMessageListener } from './content/window-message-listener'
 import { initRuntimeMessageListener } from './content/runtime-message-listener'
 import { initFaviconReplacer } from './content/favicon-replacer'
