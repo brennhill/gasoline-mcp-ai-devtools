@@ -11,22 +11,27 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"github.com/dev-console/dev-console/internal/util"
 )
 
 // LogEntry represents a single log entry
 type LogEntry map[string]any
 
+// defaultMaxFileSize is the log file size threshold for rotation (50MB).
+const defaultMaxFileSize int64 = 50 * 1024 * 1024
+
 // Server holds the server state
 type Server struct {
-	logFile             string
-	maxEntries          int
-	entries             []LogEntry
-	logAddedAt          []time.Time // parallel slice: when each entry was added
-	mu                  sync.RWMutex
-	logTotalAdded       int64            // monotonic counter of total entries ever added
-	onEntries           func([]LogEntry) // optional callback when entries are added (e.g., for clustering)
-	TTL                 time.Duration    // TTL for read-time filtering (0 means unlimited)
-	redactionConfigPath string           // path to redaction config JSON file (optional)
+	logFile       string
+	maxEntries    int
+	maxFileSize   int64 // max log file size in bytes before rotation (0 = disabled)
+	entries       []LogEntry
+	logAddedAt    []time.Time // parallel slice: when each entry was added
+	mu            sync.RWMutex
+	logTotalAdded int64            // monotonic counter of total entries ever added
+	onEntries     func([]LogEntry) // optional callback when entries are added (e.g., for clustering)
+	TTL           time.Duration    // TTL for read-time filtering (0 means unlimited)
 
 	// Async logging
 	logChan      chan []LogEntry // buffered channel for async log writes
@@ -37,20 +42,21 @@ type Server struct {
 // NewServer creates a new server instance
 func NewServer(logFile string, maxEntries int) (*Server, error) {
 	s := &Server{
-		logFile:    logFile,
-		maxEntries: maxEntries,
-		entries:    make([]LogEntry, 0),
-		logChan:    make(chan []LogEntry, 10000), // 10k buffer for burst traffic
-		logDone:    make(chan struct{}),
+		logFile:     logFile,
+		maxEntries:  maxEntries,
+		maxFileSize: defaultMaxFileSize,
+		entries:     make([]LogEntry, 0),
+		logChan:     make(chan []LogEntry, 10000), // 10k buffer for burst traffic
+		logDone:     make(chan struct{}),
 	}
 
 	// Start async logger goroutine
-	go s.asyncLoggerWorker()
+	util.SafeGo(func() { s.asyncLoggerWorker() })
 
 	// Ensure log directory exists
 	dir := filepath.Dir(logFile)
-	// #nosec G301 -- 0o755 is appropriate for log directory
-	if err := os.MkdirAll(dir, 0o755); err != nil {
+	// #nosec G301 -- log directory: owner rwx, group rx for diagnostics
+	if err := os.MkdirAll(dir, 0o750); err != nil {
 		return nil, fmt.Errorf("failed to create log directory: %w", err)
 	}
 
@@ -63,6 +69,11 @@ func NewServer(logFile string, maxEntries int) (*Server, error) {
 	}
 
 	return s, nil
+}
+
+// Close gracefully shuts down the server, draining the async log writer.
+func (s *Server) Close() {
+	s.shutdownAsyncLogger(2 * time.Second)
 }
 
 // SetOnEntries sets the callback invoked when new log entries are added.
@@ -160,6 +171,7 @@ func (s *Server) saveEntriesCopy(entries []LogEntry) error {
 }
 
 // addEntries adds new entries and rotates if needed
+// #lizard forgives
 func (s *Server) addEntries(newEntries []LogEntry) int {
 	s.mu.Lock()
 
@@ -256,7 +268,37 @@ func (s *Server) appendToFileSync(entries []LogEntry) error {
 			return err
 		}
 	}
+
+	// Check file size and rotate if needed (non-blocking, off the hot path)
+	s.maybeRotateLogFile(f)
+
 	return nil
+}
+
+// maybeRotateLogFile checks the log file size and rotates if it exceeds maxFileSize.
+// Rotation renames the current file to .jsonl.old and lets the next write create a fresh file.
+// Called only from the async logger worker, so no additional locking is needed for file I/O.
+func (s *Server) maybeRotateLogFile(f *os.File) {
+	if s.maxFileSize <= 0 {
+		return
+	}
+
+	fi, err := f.Stat()
+	if err != nil {
+		return
+	}
+	if fi.Size() <= s.maxFileSize {
+		return
+	}
+
+	oldFile := s.logFile + ".old"
+	// Rename overwrites any existing .old file atomically on POSIX systems
+	if err := os.Rename(s.logFile, oldFile); err != nil { // #nosec G703 -- s.logFile is configured by local operator, not remote input
+		fmt.Fprintf(os.Stderr, "[gasoline] Log file rotation failed: %v\n", err)
+		return
+	}
+	fmt.Fprintf(os.Stderr, "[gasoline] Log file rotated: %s -> %s (%d bytes)\n",
+		s.logFile, oldFile, fi.Size())
 }
 
 // appendToFile queues log entries for async writing (never blocks)
@@ -310,6 +352,11 @@ func (s *Server) shutdownAsyncLogger(timeout time.Duration) {
 		// Timeout - worker still draining, but we need to exit
 		fmt.Fprintf(os.Stderr, "[gasoline] Async logger shutdown timeout, %d logs may be lost\n", len(s.logChan))
 	}
+}
+
+// getLogDropCount returns the total number of dropped log entries (thread-safe).
+func (s *Server) getLogDropCount() int64 {
+	return atomic.LoadInt64(&s.logDropCount)
 }
 
 // getEntryCount returns current entry count

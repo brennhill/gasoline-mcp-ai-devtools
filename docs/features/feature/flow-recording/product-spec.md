@@ -10,7 +10,7 @@ version: v6.0
 
 ## Problem Statement
 
-**When bugs are discovered in production, developers spend hours reproducing them, analyzing root causes, and verifying fixes — manually.**
+### When bugs are discovered in production, developers spend hours reproducing them, analyzing root causes, and verifying fixes — manually.
 
 Regression testing today is **slow, manual, and error-prone**:
 
@@ -28,7 +28,7 @@ Regression testing today is **slow, manual, and error-prone**:
 
 **Gasoline Flow Recording & Playback** is the **AI-powered regression testing tool for developers**.
 
-**The workflow:**
+### The workflow:
 1. **QA records** a user's reported flow once (e.g., "checkout fails on coupon code entry")
    - Recording captures: clicks, typing, navigation, network calls, console errors, DOM state
 2. **Developer fixes** the bug in code
@@ -40,7 +40,7 @@ Regression testing today is **slow, manual, and error-prone**:
 5. **LLM analyzes** the diff and tells developer: "Regression is fixed ✓" or "Still broken, here's why"
 6. **Developer verifies** the fix in <5 minutes (not 30 minutes of manual testing)
 
-**Why Gasoline:**
+### Why Gasoline:
 - **Purpose-built for regression testing**, not general test automation
 - **Structured log diffing** — record a flow once, replay later, automatically detect what changed (the core product)
 - **Error detection** — identify 404s, timeouts, missing elements, log changes automatically
@@ -121,25 +121,25 @@ Regression testing today is **slow, manual, and error-prone**:
 
 ### R1: Flow Recording
 
-**What Gets Recorded:**
+#### What Gets Recorded:
 - [ ] **URL changes** (timestamp, new URL)
 - [ ] **Clicks** (x/y coordinates, element selector, timestamp)
 - [ ] **Typing** (field selector, text typed, x/y, timestamp)
 - [ ] **Screenshots** (at key points: page load, after click, after type)
 - [ ] **Page metadata** (viewport width/height, timestamp)
 
-**Storage:**
+#### Storage:
 - [ ] Recordings stored as **JSON action sequence** (for LLM consumption)
 - [ ] Screenshots stored as **JPEG/PNG files on disk**
 - [ ] Metadata: name, creation time, duration, action count
 - [ ] Queryable via MCP: `observe({what: 'recordings'})`
 
-**Naming:**
+#### Naming:
 - [ ] User-provided name (e.g., "shopping-checkout")
 - [ ] OR auto-generated: "{adjective}-{noun}-{adjective}-{ISO8601}" (e.g., "magic-badger-hammer-20260130T143022Z")
 - [ ] Name + timestamp used in file paths/IDs
 
-**Recording Policy:**
+#### Recording Policy:
 - [ ] Full text typed captured (necessary for regression testing with real data, including login flows)
 - [ ] **Sensitive Data Toggle:** User can enable/disable recording of credentials
   - Default: Disabled (safe)
@@ -149,20 +149,20 @@ Regression testing today is **slow, manual, and error-prone**:
 
 ### R2: Recording UI
 
-**Extension Popup:**
+#### Extension Popup:
 - [ ] Button: "Start Recording" (opens dialog for name + URL)
 - [ ] Dialog: name field (optional, auto-generates if empty), URL field (optional)
 - [ ] Button: "Stop Recording" (visible after start)
 - [ ] List: recent recordings with timestamp, action count
 
-**MCP Actions:**
+#### MCP Actions:
 - [ ] `configure({action: 'recording_start', name?: 'shopping-cart', url?: 'https://...'})`
 - [ ] `configure({action: 'recording_stop', recording_id: 'shopping-cart-20260130T...'})` (auto-generates ID if not provided)
 - [ ] Browser auto-navigates to URL if provided on `recording_start`
 
 ### R3: Screenshot Management
 
-**Format & Compression:**
+#### Format & Compression:
 - [ ] Format: JPEG (85% compression)
 - [ ] Max file size: 500KB per screenshot
 - [ ] Storage: Disk (local file system)
@@ -170,7 +170,7 @@ Regression testing today is **slow, manual, and error-prone**:
   - Example: `20260130-shopping-checkout-003-page-load.jpg`
   - Issue types: `page-load` (after navigation), `moved-selector` (element not found), `error` (assertion/timeout/network)
 
-**When Captured:**
+#### When Captured:
 - [ ] On page load (after navigation)
 - [ ] When element selector fails or moves
 - [ ] On error/timeout
@@ -178,26 +178,26 @@ Regression testing today is **slow, manual, and error-prone**:
 
 ### R4: Element Matching & Self-Healing (Robust Selector Recovery)
 
-**For Playback, Match Elements Using (Priority Order):**
+#### For Playback, Match Elements Using (Priority Order):
 1. **data-testid** attribute (most reliable for dynamic content)
 2. **x/y coordinates + context** (if selector fails, search nearby elements)
 3. **Visual recovery** (if above fails, use OCR on screenshots to find element by visible text)
 
-**Self-Healing on Selector Failure:**
+#### Self-Healing on Selector Failure:
 - [ ] Primary: Try exact data-testid match
 - [ ] Secondary: Try recorded CSS selector
 - [ ] Tertiary: Check if element moved (nearby search based on old x/y)
 - [ ] Quaternary: Use OCR on screenshot to find by visible text
 - [ ] Final: Use last-known x/y coordinates with warning
 
-**If Element is Fragile (Moved Multiple Times):**
+#### If Element is Fragile (Moved Multiple Times):
 - [ ] Log warning: "Fragile selector: element moved 3 times across test runs"
 - [ ] Screenshot with issue type: `moved-selector`
 - [ ] Recommend using `data-testid` instead of selectors
 - [ ] Suggest code change: "Add data-testid=product-card-1 to improve test stability"
 - [ ] Report to LLM for debugging
 
-**Competitive Advantage:**
+#### Competitive Advantage:
 - Gasoline has access to real browser context (logs, network, visual state)
 - Can detect selector fragility and suggest fixes proactively
 - Unlike cloud-based tools, we see the actual user environment
@@ -206,26 +206,26 @@ Regression testing today is **slow, manual, and error-prone**:
 
 ### R5: Playback & Sequence Execution
 
-**Execution:**
+#### Execution:
 - [ ] **Sequence mode**: Execute actions in order, ignoring timing (fast-forward)
   - Navigate → click → type → navigate → click
   - Useful for regression testing (speed is priority)
   - Target: 10+ actions/second
 
-**On Page Load During Playback:**
+#### On Page Load During Playback:
 - [ ] Wait for page to load (network idle or timeout: 5 sec)
 - [ ] If selector not found, attempt self-healing (R4)
 - [ ] If self-healing fails, log error and take screenshot
 - [ ] Continue playback (non-blocking)
 
-**Error Handling (Non-Blocking):**
+#### Error Handling (Non-Blocking):
 - [ ] Selector not found (after self-healing) → Log + screenshot, continue
 - [ ] Click outside viewport → Scroll to element, then click
 - [ ] Type in non-input → Log error, continue
 - [ ] Navigation timeout → Log, continue
 - [ ] Network error → Log, continue
 
-**Graceful Degradation:**
+#### Graceful Degradation:
 - Playback completes even if some actions fail (important for regression analysis)
 - All failures logged and visible to LLM for debugging
 
@@ -233,18 +233,18 @@ Regression testing today is **slow, manual, and error-prone**:
 
 ### R6: MCP Integration
 
-**Recording Management:**
+#### Recording Management:
 - [ ] `observe({what: 'recordings'})` → List all recordings
   - Returns: `[{id, name, created_at, duration, action_count, url}]`
 - [ ] `observe({what: 'recording_actions', recording_id: 'shopping-cart'})` → Action sequence
   - Returns: `[{action, selector, text, x, y, timestamp, screenshot_path}]`
 
-**Playback:**
+#### Playback:
 - [ ] `interact({action: 'playback', recording: 'shopping-cart-{id}', test_id: 'replay-shopping-cart'})`
   - Records playback logs under test boundary `replay-shopping-cart`
   - Returns: `{status, actions_executed, errors, duration}`
 
-**Test Boundary Integration:**
+#### Test Boundary Integration:
 - [ ] Playback runs under `test_boundary_id` so logs can be correlated
 - [ ] LLM can query: `observe({what: 'logs', test_boundary: 'replay-shopping-cart'})`
 - [ ] Compare to original logs: `observe({what: 'logs', test_boundary: 'original-shopping-cart'})`
@@ -257,14 +257,14 @@ Regression testing today is **slow, manual, and error-prone**:
 
 **Solution:** Migrate extension from polling to **WebSocket** connection.
 
-**Behavior:**
+#### Behavior:
 - [ ] Extension connects to server via WebSocket on startup
 - [ ] Logs/events streamed in real-time with timestamps
 - [ ] Server buffers with timestamps (last 10 seconds)
 - [ ] If buffer overflows, drop oldest, log warning icon in popup
 - [ ] LLM receives logs with millisecond accuracy for action correlation
 
-**Backward Compatibility:**
+#### Backward Compatibility:
 - [ ] Polling still works (fallback if WebSocket unavailable)
 - [ ] Health check: if WebSocket stale > 3 sec, warn user
 
@@ -272,7 +272,7 @@ Regression testing today is **slow, manual, and error-prone**:
 
 ### R8: Test Generation (LLM Synthesis)
 
-**LLM Capability:**
+#### LLM Capability:
 - [ ] Read recorded action sequence (JSON format)
 - [ ] Understand action parameters (selector, text, coordinates)
 - [ ] Generate variations:
@@ -282,7 +282,7 @@ Regression testing today is **slow, manual, and error-prone**:
   - Different user states (logged in vs guest)
 - [ ] Generate new recordings as JSON (not stored, executed on-the-fly)
 
-**Format:**
+#### Format:
 ```json
 [
   {"action": "navigate", "url": "https://example.com/shop"},
@@ -293,7 +293,7 @@ Regression testing today is **slow, manual, and error-prone**:
 ]
 ```
 
-**Execution:**
+#### Execution:
 - [ ] LLM-generated variations executed same as recorded flows
 - [ ] Logs captured, compared to original
 - [ ] Results reported to LLM
@@ -302,12 +302,12 @@ Regression testing today is **slow, manual, and error-prone**:
 
 ### R9: Recording Storage & Management
 
-**Storage:**
+#### Storage:
 - [ ] **Max storage:** 1GB total on disk (warn at 80%, error at 100%)
 - [ ] **Concurrent:** Only 1 active recording at a time
 - [ ] Storage location: `~/.gasoline/recordings/` (configurable)
 
-**Guidance (Not Hard Limits):**
+#### Guidance (Not Hard Limits):
 - Typical flow: 5-30 minutes, 20-100 actions
 - If recording approaches 1GB, user should manage manually:
   - Delete old recordings
@@ -316,9 +316,9 @@ Regression testing today is **slow, manual, and error-prone**:
 
 ### R10: Log Diffing & Regression Detection
 
-**What Gasoline Provides (Core MVP):**
+#### What Gasoline Provides (Core MVP):
 
-**Log Diffing:**
+#### Log Diffing:
 - [ ] Compare original recording logs vs replay logs (structured diff)
 - [ ] Show what's different:
   - New errors (404, 500, timeout, missing element)
@@ -327,7 +327,7 @@ Regression testing today is **slow, manual, and error-prone**:
   - Timing changes (action took 2x longer, load delayed)
 - [ ] Extract error context: error message, stack trace, affected URL, affected action, timestamp
 
-**Regression Detection:**
+#### Regression Detection:
 - [ ] Categorize: Is this a regression? (present in replay but NOT in original recording)
 - [ ] Alert LLM: "Regression detected: [error type] on [action]"
 - [ ] Take screenshot when error detected (visual evidence)
@@ -336,14 +336,14 @@ Regression testing today is **slow, manual, and error-prone**:
   - Expected (in both original + replay) = Known issue
   - Fixed (was in original, gone in replay) = SUCCESS
 
-**What Claude Does (With Gasoline Data):**
+#### What Claude Does (With Gasoline Data):
 - [ ] Review the log diff from Gasoline
 - [ ] Analyze error patterns: "404 on /api/checkout" → likely cause is "endpoint missing"
 - [ ] Propose code fixes: "Update client to call /api/orders instead"
 - [ ] Rank confidence (HIGH/MEDIUM/LOW) based on error clarity
 - [ ] Never auto-apply; developer reviews and applies fixes
 
-**Phase 2 (Optional):**
+#### Phase 2 (Optional):
 - [ ] Git integration: Find commits that touched affected files
 - [ ] Show commit history for context
 - [ ] Test coverage analytics: Which code paths are untested
@@ -481,14 +481,14 @@ Developer reviews & applies:
 
 ## Metrics & Observability
 
-**What Gets Logged:**
+### What Gets Logged:
 - Recording start/stop (timestamp, name, action count)
 - Playback execution (duration, actions executed, errors)
 - Element matching (selector tried, success/failure, location shift)
 - Screenshots (why, when, issue type)
 - WebSocket events (connected, disconnected, buffer overflow, timestamp)
 
-**LLM Observability:**
+### LLM Observability:
 - `observe({what: 'recordings'})` to list
 - `observe({what: 'recording_actions'})` to read actions
 - `observe({what: 'logs', test_boundary: 'replay-X'})` to compare
@@ -497,10 +497,10 @@ Developer reviews & applies:
 
 ## Claude Skill: Analyze Regression (Gasoline Data → Claude Analysis)
 
-**When to Use:**
+### When to Use:
 When playback detects a regression (replay logs differ from original), use this workflow to analyze the diff and suggest fixes.
 
-**How to Use (Workflow, not API):**
+### How to Use (Workflow, not API):
 ```
 1. LLM reads original recording logs
 2. LLM reads replay logs
@@ -510,21 +510,21 @@ When playback detects a regression (replay logs differ from original), use this 
 6. LLM replays recording to verify
 ```
 
-**What Gasoline Provides:**
+### What Gasoline Provides:
 - `observe({what: 'logs', test_boundary: 'original-checkout'})` → Original logs
 - `observe({what: 'logs', test_boundary: 'replay-checkout'})` → Replay logs with regression
 - `observe({what: 'recording_actions', recording_id: 'checkout'})` → The exact flow that was recorded
 - Screenshots showing errors (visual evidence)
 - Structured error detection: "404 on /api/order", "Missing element: .pay-btn", etc.
 
-**What Claude Does:**
+### What Claude Does:
 - Compares the two log sets
 - Detects what changed: new errors, missing calls, different responses
 - Analyzes patterns: "404 on /api/order → endpoint renamed or removed"
 - Suggests fixes: "Try /api/orders instead"
 - Ranks confidence: HIGH (obvious match), MEDIUM (pattern-based), LOW (speculative)
 
-**Example Flow:**
+### Example Flow:
 
 ```
 Original logs:
@@ -544,7 +544,7 @@ Claude's analysis:
 Developer applies fix and re-runs playback → ✓ Verified
 ```
 
-**Phase 2 (Optional):**
+### Phase 2 (Optional):
 - Git context: Show commits that touched affected files
 - Test coverage: Which code paths are being tested
 - Performance: Detect if regression is also a performance issue

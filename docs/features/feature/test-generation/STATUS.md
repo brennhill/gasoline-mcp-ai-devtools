@@ -10,7 +10,7 @@ date: 2026-01-29
 
 ### Implementation (100%)
 
-**All 7 modes fully implemented with comprehensive tests:**
+#### All 7 modes fully implemented with comprehensive tests:
 
 1. ✅ **test_from_context.error** — Generate tests from console errors
    - [Implementation](../../../cmd/dev-console/testgen.go:461)
@@ -44,7 +44,7 @@ date: 2026-01-29
    - [Implementation](../../../cmd/dev-console/testgen.go:1554)
    - 7 tests passing
 
-**Total: 1,693 lines of implementation + 2,996 lines of tests**
+#### Total: 1,693 lines of implementation + 2,996 lines of tests
 
 ### Test Coverage
 
@@ -76,7 +76,7 @@ ok      github.com/dev-console/dev-console/cmd/dev-console     2.438s
 
 ### Competitive Analysis
 
-**Feature Parity with TestSprite:**
+#### Feature Parity with TestSprite:
 
 | Feature | TestSprite | Gasoline | Status |
 |---------|-----------|----------|--------|
@@ -98,7 +98,7 @@ ok      github.com/dev-console/dev-console/cmd/dev-console     2.438s
 
 ### Implementation vs Real-World Gap
 
-**We have logic, not proof:**
+#### We have logic, not proof:
 
 1. ❌ Never healed a real broken selector in an actual test file
 2. ❌ Never generated a test from a real error and run it
@@ -298,7 +298,7 @@ When you wake up, you have:
 
 **All that remains:** Run the validation and document the results.
 
-**The honest answer to your question:**
+### The honest answer to your question:
 > "Are we sure that this will actually do the same thing as TestSprite?"
 
 **Currently:** We have feature parity on paper with 4 unique advantages (WebSocket, real-time, privacy, cost).

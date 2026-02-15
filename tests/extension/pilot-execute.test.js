@@ -7,6 +7,7 @@
 
 import { test, describe, mock, beforeEach, afterEach } from 'node:test'
 import assert from 'node:assert'
+import { MANIFEST_VERSION } from './helpers.js'
 
 // Mock Chrome APIs
 const createMockChrome = () => ({
@@ -14,16 +15,16 @@ const createMockChrome = () => ({
     onMessage: { addListener: mock.fn() },
     sendMessage: mock.fn(() => Promise.resolve()),
     getURL: mock.fn((path) => `chrome-extension://test-id/${path}`),
-    getManifest: () => ({ version: '5.8.0' }),
+    getManifest: () => ({ version: MANIFEST_VERSION })
   },
   tabs: {
     query: mock.fn(() => Promise.resolve([{ id: 1, windowId: 1, url: 'http://localhost:3000' }])),
     sendMessage: mock.fn(() => Promise.resolve({ success: true, result: 42 })),
-    onRemoved: { addListener: mock.fn() },
+    onRemoved: { addListener: mock.fn() }
   },
   alarms: {
     create: mock.fn(),
-    onAlarm: { addListener: mock.fn() },
+    onAlarm: { addListener: mock.fn() }
   },
   storage: {
     sync: {
@@ -32,7 +33,7 @@ const createMockChrome = () => ({
       remove: mock.fn((keys, callback) => {
         if (typeof callback === 'function') callback()
         else return Promise.resolve()
-      }),
+      })
     },
     local: {
       get: mock.fn((keys, callback) => callback({})),
@@ -40,7 +41,7 @@ const createMockChrome = () => ({
       remove: mock.fn((keys, callback) => {
         if (typeof callback === 'function') callback()
         else return Promise.resolve()
-      }),
+      })
     },
     session: {
       get: mock.fn((keys, callback) => callback({})),
@@ -48,12 +49,12 @@ const createMockChrome = () => ({
       remove: mock.fn((keys, callback) => {
         if (typeof callback === 'function') callback()
         else return Promise.resolve()
-      }),
+      })
     },
     onChanged: {
-      addListener: mock.fn(),
-    },
-  },
+      addListener: mock.fn()
+    }
+  }
 })
 
 const createMockDocument = () => ({
@@ -67,16 +68,16 @@ const createMockDocument = () => ({
     id: '',
     className: '',
     textContent: '',
-    remove: mock.fn(),
+    remove: mock.fn()
   })),
   head: { appendChild: mock.fn() },
-  documentElement: { appendChild: mock.fn() },
+  documentElement: { appendChild: mock.fn() }
 })
 
 const createMockWindow = () => ({
   postMessage: mock.fn(),
   addEventListener: mock.fn(),
-  location: { href: 'http://localhost:3000/test' },
+  location: { href: 'http://localhost:3000/test' }
 })
 
 let mockChrome, mockDocument, mockWindow
@@ -396,7 +397,7 @@ describe('safeSerializeForExecute Function', () => {
     const mockNode = {
       nodeName: 'DIV',
       id: 'test-id',
-      [Symbol.toStringTag]: 'HTMLDivElement',
+      [Symbol.toStringTag]: 'HTMLDivElement'
     }
     // Add Node prototype check
     Object.setPrototypeOf(mockNode, { constructor: { name: 'Node' } })
@@ -455,7 +456,7 @@ describe('Timeout Handling', () => {
     // Use a promise that takes longer than the timeout
     const response = await executeJavaScript(
       'new Promise(r => setTimeout(r, 200))', // Promise takes 200ms
-      50, // 50ms timeout
+      50 // 50ms timeout
     )
 
     assert.strictEqual(response.success, false, 'Should fail')
@@ -538,7 +539,7 @@ describe('Background Script Pilot Command Handler', () => {
 
     await handlePilotCommand('GASOLINE_EXECUTE_JS', {
       script: 'return 1+1',
-      timeout_ms: 5000,
+      timeout_ms: 5000
     })
 
     // Should forward to tab
@@ -558,7 +559,7 @@ describe('Background Script Pilot Command Handler', () => {
     _resetPilotCacheForTesting(false)
 
     const result = await handlePilotCommand('GASOLINE_EXECUTE_JS', {
-      script: 'return 1+1',
+      script: 'return 1+1'
     })
 
     assert.strictEqual(result.error, 'ai_web_pilot_disabled', 'Should return disabled error')

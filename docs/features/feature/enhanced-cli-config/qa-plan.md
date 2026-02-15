@@ -140,10 +140,10 @@ feature: Enhanced CLI Configuration Management
 
 ## Human UAT Walkthrough
 
-**Estimated Total Time: ~1 hour for all scenarios (46 minutes execution + 14 minutes setup/cleanup)**
+### Estimated Total Time: ~1 hour for all scenarios (46 minutes execution + 14 minutes setup/cleanup)
 
 ### Scenario 1: New User Safe Installation
-**Time: ~7 minutes**
+#### Time: ~7 minutes
 
 **Goal**: Verify a user can safely preview before installing.
 
@@ -178,7 +178,7 @@ feature: Enhanced CLI Configuration Management
 ---
 
 ### Scenario 2: Multi-Tool Installation
-**Time: ~8 minutes**
+#### Time: ~8 minutes
 
 **Goal**: Verify user can install to all 4 tools in one command.
 
@@ -210,7 +210,7 @@ feature: Enhanced CLI Configuration Management
 ---
 
 ### Scenario 3: Environment Variables
-**Time: ~6 minutes**
+#### Time: ~6 minutes
 
 **Goal**: Verify env vars properly injected into config.
 
@@ -247,7 +247,7 @@ feature: Enhanced CLI Configuration Management
 ---
 
 ### Scenario 4: Doctor Diagnostics
-**Time: ~10 minutes**
+#### Time: ~10 minutes
 
 **Goal**: Verify --doctor provides useful diagnostics.
 
@@ -292,7 +292,7 @@ feature: Enhanced CLI Configuration Management
 ---
 
 ### Scenario 5: Uninstall
-**Time: ~5 minutes**
+#### Time: ~5 minutes
 
 **Goal**: Verify clean uninstall without losing other MCP servers.
 
@@ -329,7 +329,7 @@ feature: Enhanced CLI Configuration Management
 ---
 
 ### Scenario 6: Error Recovery - Invalid JSON
-**Time: ~7 minutes**
+#### Time: ~7 minutes
 
 **Goal**: Verify helpful error when config has invalid JSON.
 
@@ -367,7 +367,7 @@ feature: Enhanced CLI Configuration Management
 ---
 
 ### Scenario 7: Backward Compatibility
-**Time: ~5 minutes**
+#### Time: ~5 minutes
 
 **Goal**: Verify v5.2 commands still work unchanged.
 
@@ -395,7 +395,7 @@ feature: Enhanced CLI Configuration Management
 
 ### Backward Compatibility (v5.2 → v5.3)
 
-**Critical: Verify all v5.2 CLI commands still work unchanged**
+#### Critical: Verify all v5.2 CLI commands still work unchanged
 
 - [ ] `gasoline-mcp --config`
   - Expected: Shows config template and 4 tool locations (unchanged from v5.2)

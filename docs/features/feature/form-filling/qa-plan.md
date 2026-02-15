@@ -50,7 +50,7 @@ feature: form-filling
 
 ## Human UAT Walkthrough
 
-**Scenario 1: Simple Login Form (Happy Path)**
+### Scenario 1: Simple Login Form (Happy Path)
 1. Setup:
    - Open <https://example.com/login> (or local test page with login form)
    - Start Gasoline, enable AI Web Pilot toggle in extension
@@ -63,7 +63,7 @@ feature: form-filling
 3. Expected Result: Form submits with correct credentials, login succeeds (or shows "invalid credentials" from backend)
 4. Verification: Check network traffic via `observe({what: "network_waterfall"})` to confirm POST to /login endpoint
 
-**Scenario 2: Multi-Step Registration Form with Validation**
+### Scenario 2: Multi-Step Registration Form with Validation
 1. Setup:
    - Open <https://example.com/register> (or local test page with complex form)
    - Form has: first name, last name, email (validated), password (min length), confirm password, country (select), agree to terms (checkbox)
@@ -76,7 +76,7 @@ feature: form-filling
 3. Expected Result: First attempt returns partial status with validation errors. Second attempt succeeds with all fields filled.
 4. Verification: Inspect form in browser, confirm validation messages appeared/disappeared
 
-**Scenario 3: Conditional Field Form**
+### Scenario 3: Conditional Field Form
 1. Setup:
    - Open form with conditional logic (e.g., "I have a referral code" checkbox reveals text input)
    - Default state: referral input is hidden
@@ -87,7 +87,7 @@ feature: form-filling
 3. Expected Result: Checkbox enables conditional field, then code is filled
 4. Verification: Visually confirm referral input is visible and filled
 
-**Scenario 4: AI Web Pilot Toggle OFF (Error Path)**
+### Scenario 4: AI Web Pilot Toggle OFF (Error Path)
 1. Setup:
    - Open any form page
    - Disable AI Web Pilot toggle in extension settings
@@ -97,7 +97,7 @@ feature: form-filling
 3. Expected Result: Returns `{error: "ai_web_pilot_disabled", message: "Interactive features require AI Web Pilot toggle to be enabled"}`
 4. Verification: Confirm form is NOT filled, error message is clear
 
-**Scenario 5: Readonly Field Handling**
+### Scenario 5: Readonly Field Handling
 1. Setup:
    - Open form with readonly field (e.g., pre-filled email from profile)
 2. Steps:
@@ -110,12 +110,12 @@ feature: form-filling
 
 ## Regression Testing
 
-**What existing features might break?**
+### What existing features might break?
 - `interact({action: "execute_js"})` — ensure form filling doesn't interfere with general JS execution
 - Async command architecture — verify correlation_id handling still works correctly
 - AI Web Pilot toggle — confirm toggle still gates all interact actions
 
-**How to verify:**
+### How to verify:
 - Run existing `interact` tool tests
 - Test execute_js with simple alert() to confirm still works
 - Test toggle OFF/ON states for all interact actions
@@ -124,12 +124,12 @@ feature: form-filling
 
 ## Performance/Load Testing
 
-**Performance requirements:**
+### Performance requirements:
 - Simple form (5 fields): < 500ms
 - Complex form (20 fields): < 2s (within decision point)
 - Extremely large form (100 fields): < 10s (within total timeout)
 
-**Load test:**
+### Load test:
 - Fill form with 100 fields
 - Measure time from fill_form call to result posted
 - Verify partial results returned if timeout occurs

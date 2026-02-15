@@ -24,14 +24,14 @@ The server runs as a sidecar process in CI (started before tests, kept alive thr
 
 **Purpose:** Replicate Chrome extension capture without extension APIs.
 
-**What it captures:**
+#### What it captures:
 - Console logs (console.log, console.error, console.warn)
 - Unhandled exceptions (window.onerror, unhandledrejection events)
 - Network requests and responses (fetch/XHR interception)
 - WebSocket connections (WebSocket constructor patching)
 - Performance metrics (PerformanceObserver)
 
-**How it works:**
+#### How it works:
 - Injected into page context via `page.addInitScript()` (Playwright) or `page.evaluateOnNewDocument()` (Puppeteer)
 - Runs before page JavaScript executes (earliest possible interception)
 - Patches global objects (window.fetch, XMLHttpRequest, WebSocket)
@@ -39,13 +39,13 @@ The server runs as a sidecar process in CI (started before tests, kept alive thr
 - Uses same HTTP endpoints as extension (/logs, /network-bodies, /websocket-events)
 - Includes double-initialization guard (window.__GASOLINE_CI_INITIALIZED) to prevent duplicates on page navigation
 
-**Configuration:**
+#### Configuration:
 - Server host/port configurable via window globals (window.__GASOLINE_HOST, window.__GASOLINE_PORT)
 - Defaults to 127.0.0.1:7890 (same as local)
 - Debug mode via window.__GASOLINE_DEBUG (logs batch sends to console)
 - Capture version sent with each batch for compatibility tracking
 
-**Differences from extension:**
+#### Differences from extension:
 - No chrome.runtime APIs (uses fetch/sendBeacon for transport)
 - No background service worker (all logic in page context)
 - No tab ID (CI typically runs single-tab tests)
@@ -58,11 +58,11 @@ The server runs as a sidecar process in CI (started before tests, kept alive thr
 
 **When used:** Called by fixture after test failure or at end of test to grab full context.
 
-**Query parameters:**
+##### Query parameters:
 - `since` (ISO 8601 timestamp) — Return only data after this time
 - `test_id` (string) — Filter to specific test (if test boundaries used)
 
-**Response:**
+##### Response:
 - logs array (all captured console/exception entries)
 - websocket_events array
 - network_bodies array (for failed requests or if body capture enabled)
@@ -80,12 +80,12 @@ The server runs as a sidecar process in CI (started before tests, kept alive thr
 
 **Request body:** None (or optional confirmation flag)
 
-**Response:**
+##### Response:
 - cleared (boolean, always true)
 - entries_removed (integer, total entries purged across all buffers)
 - timestamp (server time when clear occurred)
 
-**What clears:**
+##### What clears:
 - Log entries buffer
 - Extension logs buffer (not relevant for CI but cleared anyway)
 - Network bodies buffer
@@ -101,12 +101,12 @@ The server runs as a sidecar process in CI (started before tests, kept alive thr
 
 **When used:** Called by fixture at beginning of test (action: "start") and end of test (action: "end").
 
-**Request body:**
+##### Request body:
 - test_id (string) — Unique identifier for test (e.g., "login-flow" or full path "tests/e2e/login.spec.ts > should login")
 - action (enum: "start" or "end")
 - timestamp (optional, defaults to server time)
 
-**Response:**
+##### Response:
 - acknowledged (boolean)
 - test_id (echo)
 - action (echo)
@@ -120,14 +120,14 @@ The server runs as a sidecar process in CI (started before tests, kept alive thr
 
 **Purpose:** Automate capture lifecycle in Playwright tests.
 
-**What it provides:**
+#### What it provides:
 - Inject capture script before every page navigation
 - Call /test-boundary at test start and end
 - Capture snapshot on test failure
 - Attach snapshot to Playwright test report (JSON and human-readable text)
 - Call /clear between tests (fixture teardown)
 
-**Usage:**
+#### Usage:
 ```javascript
 // In test file
 import { test } from '@anthropic/gasoline-playwright';
@@ -140,7 +140,7 @@ test('should login', async ({ page }) => {
 });
 ```
 
-**Fixture lifecycle:**
+#### Fixture lifecycle:
 1. Setup: Inject capture script via page.addInitScript()
 2. Test start: POST /test-boundary with action: "start"
 3. Test runs: Page events captured and sent to server
@@ -148,7 +148,7 @@ test('should login', async ({ page }) => {
 5. On failure: GET /snapshot → attach to report
 6. Teardown: POST /clear → reset buffers
 
-**Configuration options:**
+#### Configuration options:
 - gasolineHost (default: "127.0.0.1")
 - gasolinePort (default: 7890)
 - gasolineAttachOnFailure (default: true)
@@ -158,7 +158,7 @@ test('should login', async ({ page }) => {
 
 **Purpose:** Generate CI-compatible artifacts from captured telemetry.
 
-**Artifacts:**
+#### Artifacts:
 
 #### HAR Export
 - Call `generate({format: "har"})` via MCP after tests complete
@@ -178,7 +178,7 @@ test('should login', async ({ page }) => {
 - Post as PR comment or attach to CI report
 - Gives reviewer high-level test health without diving into logs
 
-**GitHub Actions Integration:**
+##### GitHub Actions Integration:
 ```yaml
 - name: Start Gasoline
   run: npx gasoline-mcp &

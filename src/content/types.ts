@@ -13,7 +13,7 @@ import type {
   WebSocketEvent,
   NetworkBodyPayload,
   EnhancedAction,
-  PerformanceSnapshot,
+  PerformanceSnapshot
 } from '../types'
 
 /**

@@ -1,6 +1,9 @@
 // diff.go — Rich Action Results: performance diff computation.
 // Computes before/after metric diffs, resource diffs, and generates
 // human-readable summaries for AI consumption.
+//
+// JSON CONVENTION: All fields MUST use snake_case. See .claude/refs/api-naming-standards.md
+// Deviations from snake_case MUST be tagged with // SPEC:<spec-name> at the field level.
 package performance
 
 import (
@@ -88,78 +91,55 @@ func SnapshotToPageLoadMetrics(s PerformanceSnapshot) PageLoadMetrics {
 // ComputePerfDiff: before/after metric comparison
 // ============================================
 
-// ComputePerfDiff compares two page load snapshots and returns per-metric diffs.
-// Metrics with no baseline (before is zero/nil) are omitted.
-// Metrics where after is nil (didn't fire) are omitted.
-func ComputePerfDiff(before, after PageLoadMetrics) PerfDiff {
-	diff := PerfDiff{
-		Metrics: make(map[string]MetricDiff),
+// buildMetricDiff computes a single metric diff if at least one value is non-zero.
+// Returns the diff and true if the metric is meaningful, false otherwise.
+func buildMetricDiff(name string, beforeVal, afterVal float64) (MetricDiff, bool) {
+	if beforeVal == 0 && afterVal == 0 {
+		return MetricDiff{}, false
 	}
-
-	// Helper: add a metric if at least one value is non-zero
-	addMetric := func(name string, beforeVal, afterVal float64) {
-		if beforeVal == 0 && afterVal == 0 {
-			return // both zero, nothing meaningful
-		}
-		var d float64
-		var pctStr string
-		if beforeVal == 0 {
-			// No baseline (e.g. TTFB=0 on a fast cached page) — include metric but mark pct as n/a
-			d = round1(afterVal)
-			pctStr = "n/a"
-		} else {
-			d = round1(afterVal - beforeVal)
-			pct := (afterVal - beforeVal) / beforeVal * 100
-			pctStr = formatPct(pct)
-		}
-		diff.Metrics[name] = MetricDiff{
-			Before:   round1(beforeVal),
-			After:    round1(afterVal),
-			Delta:    d,
-			Pct:      pctStr,
-			Unit:     unitForMetric(name),
-			Improved: d < 0, // lower is better for timing/size
-			Rating:   rateMetric(name, round1(afterVal)),
-		}
+	var d float64
+	var pctStr string
+	if beforeVal == 0 {
+		d = round1(afterVal)
+		pctStr = "n/a"
+	} else {
+		d = round1(afterVal - beforeVal)
+		pctStr = formatPct((afterVal - beforeVal) / beforeVal * 100)
 	}
+	return MetricDiff{
+		Before:   round1(beforeVal),
+		After:    round1(afterVal),
+		Delta:    d,
+		Pct:      pctStr,
+		Unit:     unitForMetric(name),
+		Improved: d < 0,
+		Rating:   rateMetric(name, round1(afterVal)),
+	}, true
+}
 
-	// TTFB
-	addMetric("ttfb", before.Timing.TTFB, after.Timing.TTFB)
-
-	// FCP (optional)
-	if before.Timing.FCP != nil && after.Timing.FCP != nil {
-		addMetric("fcp", *before.Timing.FCP, *after.Timing.FCP)
+// addMetricIfValid adds a metric diff to the map if both values are meaningful.
+func addMetricIfValid(metrics map[string]MetricDiff, name string, beforeVal, afterVal float64) {
+	if md, ok := buildMetricDiff(name, beforeVal, afterVal); ok {
+		metrics[name] = md
 	}
+}
 
-	// LCP (optional)
-	if before.Timing.LCP != nil && after.Timing.LCP != nil {
-		addMetric("lcp", *before.Timing.LCP, *after.Timing.LCP)
+// ptrPairValues returns the dereferenced values of two optional float64 pointers.
+// Returns 0, 0, false if either is nil.
+func ptrPairValues(a, b *float64) (float64, float64, bool) {
+	if a == nil || b == nil {
+		return 0, 0, false
 	}
+	return *a, *b, true
+}
 
-	// DomContentLoaded
-	addMetric("dom_content_loaded", before.Timing.DomContentLoaded, after.Timing.DomContentLoaded)
-
-	// Load
-	addMetric("load", before.Timing.Load, after.Timing.Load)
-
-	// CLS (lower is better)
-	if before.CLS != nil && after.CLS != nil {
-		addMetric("cls", *before.CLS, *after.CLS)
+// computeVerdict derives the overall verdict from metric deltas.
+func computeVerdict(metrics map[string]MetricDiff) string {
+	if len(metrics) == 0 {
+		return "unchanged"
 	}
-
-	// Transfer size in KB
-	if before.TransferSize > 0 {
-		addMetric("transfer_kb", float64(before.TransferSize)/1024, float64(after.TransferSize)/1024)
-	}
-
-	// Request count
-	if before.RequestCount > 0 {
-		addMetric("requests", float64(before.RequestCount), float64(after.RequestCount))
-	}
-
-	// Compute verdict from metric directions
 	improved, regressed := 0, 0
-	for _, md := range diff.Metrics {
+	for _, md := range metrics {
 		if md.Delta < 0 {
 			improved++
 		} else if md.Delta > 0 {
@@ -167,18 +147,43 @@ func ComputePerfDiff(before, after PageLoadMetrics) PerfDiff {
 		}
 	}
 	switch {
-	case len(diff.Metrics) == 0:
-		diff.Verdict = "unchanged"
 	case improved > 0 && regressed == 0:
-		diff.Verdict = "improved"
+		return "improved"
 	case regressed > 0 && improved == 0:
-		diff.Verdict = "regressed"
+		return "regressed"
 	case improved > 0 && regressed > 0:
-		diff.Verdict = "mixed"
+		return "mixed"
 	default:
-		diff.Verdict = "unchanged"
+		return "unchanged"
+	}
+}
+
+// ComputePerfDiff compares two page load snapshots and returns per-metric diffs.
+// Metrics with no baseline (before is zero/nil) are omitted.
+// Metrics where after is nil (didn't fire) are omitted.
+func ComputePerfDiff(before, after PageLoadMetrics) PerfDiff {
+	diff := PerfDiff{Metrics: make(map[string]MetricDiff)}
+
+	addMetricIfValid(diff.Metrics, "ttfb", before.Timing.TTFB, after.Timing.TTFB)
+	if bv, av, ok := ptrPairValues(before.Timing.FCP, after.Timing.FCP); ok {
+		addMetricIfValid(diff.Metrics, "fcp", bv, av)
+	}
+	if bv, av, ok := ptrPairValues(before.Timing.LCP, after.Timing.LCP); ok {
+		addMetricIfValid(diff.Metrics, "lcp", bv, av)
+	}
+	addMetricIfValid(diff.Metrics, "dom_content_loaded", before.Timing.DomContentLoaded, after.Timing.DomContentLoaded)
+	addMetricIfValid(diff.Metrics, "load", before.Timing.Load, after.Timing.Load)
+	if bv, av, ok := ptrPairValues(before.CLS, after.CLS); ok {
+		addMetricIfValid(diff.Metrics, "cls", bv, av)
+	}
+	if before.TransferSize > 0 {
+		addMetricIfValid(diff.Metrics, "transfer_kb", float64(before.TransferSize)/1024, float64(after.TransferSize)/1024)
+	}
+	if before.RequestCount > 0 {
+		addMetricIfValid(diff.Metrics, "requests", float64(before.RequestCount), float64(after.RequestCount))
 	}
 
+	diff.Verdict = computeVerdict(diff.Metrics)
 	diff.Summary = GeneratePerfSummary(diff)
 	return diff
 }
@@ -187,28 +192,40 @@ func ComputePerfDiff(before, after PageLoadMetrics) PerfDiff {
 // ComputeResourceDiffForNav: added/removed/resized resources
 // ============================================
 
+// buildResourceMap indexes resource entries by URL.
+func buildResourceMap(entries []ResourceEntry) map[string]ResourceEntry {
+	m := make(map[string]ResourceEntry, len(entries))
+	for _, r := range entries {
+		m[r.URL] = r
+	}
+	return m
+}
+
+// isSignificantSizeChange returns true if the size delta is >= 10% OR >= 1KB.
+func isSignificantSizeChange(beforeSize, delta int64) bool {
+	absDelta := delta
+	if absDelta < 0 {
+		absDelta = -absDelta
+	}
+	if beforeSize == 0 {
+		return absDelta >= 1024
+	}
+	pctChange := float64(absDelta) / float64(beforeSize) * 100
+	return pctChange >= 10 || absDelta >= 1024
+}
+
 // ComputeResourceDiffForNav compares resource lists and categorizes changes.
 // Resources are matched by URL. Small changes (<10% AND <1KB) are ignored.
 func ComputeResourceDiffForNav(before, after []ResourceEntry) ResourceDiff {
 	diff := ResourceDiff{}
-
-	beforeMap := make(map[string]ResourceEntry, len(before))
-	for _, r := range before {
-		beforeMap[r.URL] = r
-	}
-
-	afterMap := make(map[string]ResourceEntry, len(after))
-	for _, r := range after {
-		afterMap[r.URL] = r
-	}
+	beforeMap := buildResourceMap(before)
+	afterMap := buildResourceMap(after)
 
 	// Removed: in before but not in after
 	for _, r := range before {
 		if _, exists := afterMap[r.URL]; !exists {
 			diff.Removed = append(diff.Removed, RemovedResource{
-				URL:       r.URL,
-				Type:      r.Type,
-				SizeBytes: r.TransferSize,
+				URL: r.URL, Type: r.Type, SizeBytes: r.TransferSize,
 			})
 		}
 	}
@@ -217,11 +234,8 @@ func ComputeResourceDiffForNav(before, after []ResourceEntry) ResourceDiff {
 	for _, r := range after {
 		if _, exists := beforeMap[r.URL]; !exists {
 			diff.Added = append(diff.Added, AddedResource{
-				URL:            r.URL,
-				Type:           r.Type,
-				SizeBytes:      r.TransferSize,
-				DurationMs:     r.Duration,
-				RenderBlocking: r.RenderBlocking,
+				URL: r.URL, Type: r.Type, SizeBytes: r.TransferSize,
+				DurationMs: r.Duration, RenderBlocking: r.RenderBlocking,
 			})
 		}
 	}
@@ -233,23 +247,12 @@ func ComputeResourceDiffForNav(before, after []ResourceEntry) ResourceDiff {
 			continue
 		}
 		delta := afterR.TransferSize - beforeR.TransferSize
-		if delta == 0 {
-			continue
-		}
-		absDelta := delta
-		if absDelta < 0 {
-			absDelta = -absDelta
-		}
-		// Skip small changes: <10% AND <1KB
-		pctChange := float64(absDelta) / float64(beforeR.TransferSize) * 100
-		if pctChange < 10 && absDelta < 1024 {
+		if delta == 0 || !isSignificantSizeChange(beforeR.TransferSize, delta) {
 			continue
 		}
 		diff.Resized = append(diff.Resized, ResizedResource{
-			URL:           afterR.URL,
-			BaselineBytes: beforeR.TransferSize,
-			CurrentBytes:  afterR.TransferSize,
-			DeltaBytes:    delta,
+			URL: afterR.URL, BaselineBytes: beforeR.TransferSize,
+			CurrentBytes: afterR.TransferSize, DeltaBytes: delta,
 		})
 	}
 
@@ -260,6 +263,62 @@ func ComputeResourceDiffForNav(before, after []ResourceEntry) ResourceDiff {
 // GeneratePerfSummary: human-readable summary
 // ============================================
 
+// metricEntry pairs a metric name with its diff for sorting.
+type metricEntry struct {
+	name string
+	md   MetricDiff
+}
+
+// sortedMetrics returns metrics sorted by absolute percentage change (biggest first).
+func sortedMetrics(metrics map[string]MetricDiff) []metricEntry {
+	sorted := make([]metricEntry, 0, len(metrics))
+	for name, md := range metrics {
+		sorted = append(sorted, metricEntry{name, md})
+	}
+	sort.Slice(sorted, func(i, j int) bool {
+		return parsePctAbs(sorted[i].md) > parsePctAbs(sorted[j].md)
+	})
+	return sorted
+}
+
+// metricDirection returns "improved", "regressed", or "unchanged" for a metric diff.
+func metricDirection(md MetricDiff) string {
+	if md.Delta == 0 {
+		return "unchanged"
+	}
+	if md.Improved {
+		return "improved"
+	}
+	return "regressed"
+}
+
+// formatTopMetric formats the biggest-change metric for the summary lead.
+func formatTopMetric(top metricEntry) string {
+	entry := fmt.Sprintf("%s %s %.0f%%", strings.ToUpper(top.name), metricDirection(top.md), parsePctAbs(top.md))
+	if top.md.Rating != "" {
+		entry += fmt.Sprintf(" (%s)", top.md.Rating)
+	}
+	return entry
+}
+
+// firstRegressionWarning returns a warning string for the first regressed metric, or "".
+func firstRegressionWarning(sorted []metricEntry) string {
+	for _, e := range sorted {
+		if !e.md.Improved && e.md.Delta != 0 {
+			return fmt.Sprintf("warning: %s regressed %.0f%%", strings.ToUpper(e.name), parsePctAbs(e.md))
+		}
+	}
+	return ""
+}
+
+// truncate trims a string to maxLen, appending "..." if truncated.
+func truncate(s string, maxLen int) string {
+	if len(s) > maxLen {
+		return s[:maxLen-3] + "..."
+	}
+	return s
+}
+
 // GeneratePerfSummary generates a concise (<200 char) summary of the diff.
 // Leads with the biggest improvement, mentions resource changes, flags regressions.
 func GeneratePerfSummary(diff PerfDiff) string {
@@ -268,75 +327,25 @@ func GeneratePerfSummary(diff PerfDiff) string {
 		return "No performance changes detected."
 	}
 
+	sorted := sortedMetrics(diff.Metrics)
 	var parts []string
 
-	// Sort metrics by absolute percentage change (biggest first)
-	type metricEntry struct {
-		name string
-		md   MetricDiff
-	}
-	sorted := make([]metricEntry, 0, len(diff.Metrics))
-	for name, md := range diff.Metrics {
-		sorted = append(sorted, metricEntry{name, md})
-	}
-	sort.Slice(sorted, func(i, j int) bool {
-		return parsePctAbs(sorted[i].md) > parsePctAbs(sorted[j].md)
-	})
-
-	// Check for regressions (delta=0 is not a regression)
-	hasRegression := false
-	for _, e := range sorted {
-		if !e.md.Improved && e.md.Delta != 0 {
-			hasRegression = true
-			break
-		}
-	}
-
-	// Lead with biggest change (absolute percentage, no redundant sign)
 	if len(sorted) > 0 {
-		top := sorted[0]
-		label := strings.ToUpper(top.name)
-		absPct := fmt.Sprintf("%.0f%%", parsePctAbs(top.md))
-		direction := "improved"
-		if top.md.Delta == 0 {
-			direction = "unchanged"
-		} else if !top.md.Improved {
-			direction = "regressed"
-		}
-		entry := fmt.Sprintf("%s %s %s", label, direction, absPct)
-		if top.md.Rating != "" {
-			entry += fmt.Sprintf(" (%s)", top.md.Rating)
-		}
-		parts = append(parts, entry)
+		parts = append(parts, formatTopMetric(sorted[0]))
 	}
 
-	// Mention removed resources (most impactful change)
 	if len(diff.Resources.Removed) > 0 {
-		r := diff.Resources.Removed[0]
-		name := lastPathSegment(r.URL)
-		parts = append(parts, fmt.Sprintf("removed %s", name))
+		parts = append(parts, fmt.Sprintf("removed %s", lastPathSegment(diff.Resources.Removed[0].URL)))
 	}
 
-	// Flag regression warning
-	if hasRegression && (len(sorted) == 0 || sorted[0].md.Improved) {
-		// Regression exists but isn't the lead — add warning
-		for _, e := range sorted {
-			if !e.md.Improved {
-				absPct := fmt.Sprintf("%.0f%%", parsePctAbs(e.md))
-				parts = append(parts, fmt.Sprintf("warning: %s regressed %s", strings.ToUpper(e.name), absPct))
-				break
-			}
+	// Flag regression if the lead metric is an improvement (regression is secondary)
+	if warn := firstRegressionWarning(sorted); warn != "" {
+		if len(sorted) == 0 || sorted[0].md.Improved {
+			parts = append(parts, warn)
 		}
 	}
 
-	summary := strings.Join(parts, "; ")
-
-	// Truncate to 200 chars
-	if len(summary) > 200 {
-		summary = summary[:197] + "..."
-	}
-
-	return summary
+	return truncate(strings.Join(parts, "; "), 200)
 }
 
 // ============================================
@@ -377,41 +386,34 @@ func unitForMetric(name string) string {
 	}
 }
 
+// metricThreshold defines Web Vitals thresholds for a metric.
+type metricThreshold struct {
+	good float64 // values below this are "good"
+	ni   float64 // values at or below this are "needs_improvement"; above is "poor"
+}
+
+// webVitalsThresholds maps metric names to their Web Vitals thresholds.
+var webVitalsThresholds = map[string]metricThreshold{
+	"lcp":  {good: 2500, ni: 4000},
+	"fcp":  {good: 1800, ni: 3000},
+	"ttfb": {good: 800, ni: 1800},
+	"cls":  {good: 0.1, ni: 0.25},
+}
+
 // rateMetric returns a Web Vitals rating for the given metric's current value.
 // Returns "" for metrics without standard thresholds.
 func rateMetric(name string, value float64) string {
-	switch name {
-	case "lcp":
-		if value < 2500 {
-			return "good"
-		} else if value <= 4000 {
-			return "needs_improvement"
-		}
-		return "poor"
-	case "fcp":
-		if value < 1800 {
-			return "good"
-		} else if value <= 3000 {
-			return "needs_improvement"
-		}
-		return "poor"
-	case "ttfb":
-		if value < 800 {
-			return "good"
-		} else if value <= 1800 {
-			return "needs_improvement"
-		}
-		return "poor"
-	case "cls":
-		if value < 0.1 {
-			return "good"
-		} else if value <= 0.25 {
-			return "needs_improvement"
-		}
-		return "poor"
-	default:
+	t, ok := webVitalsThresholds[name]
+	if !ok {
 		return ""
 	}
+	if value < t.good {
+		return "good"
+	}
+	if value <= t.ni {
+		return "needs_improvement"
+	}
+	return "poor"
 }
 
 // parsePctAbs extracts the absolute percentage value from a formatted string like "+50%" or "-33%".

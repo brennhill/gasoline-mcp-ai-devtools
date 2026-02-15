@@ -35,7 +35,7 @@ A new `generate` mode (`best_practices_audit`) that aggregates data from Gasolin
 
 The audit composes data that Gasoline already captures. Most checks require no new extension-side collection:
 
-**Already captured (server-side analysis only):**
+### Already captured (server-side analysis only):
 - Console error and warning counts (log buffer)
 - Security headers: CSP, HSTS, X-Frame-Options, X-Content-Type-Options, Referrer-Policy, Permissions-Policy (network bodies with `ResponseHeaders`)
 - HTTPS usage and mixed content (network waterfall + network bodies)
@@ -43,7 +43,7 @@ The audit composes data that Gasoline already captures. Most checks require no n
 - Console noise level (log buffer, all levels)
 - Browser error log analysis (log buffer, level=error)
 
-**Requires new extension-side collection:**
+### Requires new extension-side collection:
 - Deprecated API usage detection (console warnings from the browser that match deprecation patterns)
 - Document metadata completeness (`<title>`, `<meta charset>`, `<meta viewport>`, `<meta description>`, `<html lang>`, `<!DOCTYPE html>`)
 
@@ -76,7 +76,7 @@ For document metadata, the audit leverages the existing `query_dom` async comman
 }
 ```
 
-**Parameters:**
+#### Parameters:
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|

@@ -78,21 +78,4 @@ func (h *ToolHandler) toolAuditThirdParties(req JSONRPCRequest, args json.RawMes
 	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Third-party audit complete", result)}
 }
 
-func (h *ToolHandler) toolDiffSecurity(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-	var params struct {
-		CompareFrom string `json:"compare_from"`
-		CompareTo   string `json:"compare_to"`
-	}
-	if len(args) > 0 {
-		if err := json.Unmarshal(args, &params); err != nil {
-			return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidJSON, "Invalid JSON arguments: "+err.Error(), "Fix JSON syntax and call again")}
-		}
-	}
-
-	responseData := map[string]any{
-		"status":      "ok",
-		"differences": []any{},
-	}
-	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Security diff complete", responseData)}
-}
 

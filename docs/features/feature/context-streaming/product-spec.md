@@ -12,7 +12,7 @@ version: v6.0
 
 Current Gasoline workflow is "polling-based": AI calls `observe()`, waits for response, analyzes stale data.
 
-**Limitations:**
+### Limitations:
 - **Latency:** AI can't react to errors as they happen; must wait for next observation cycle
 - **Token Waste:** Each observation fetches full state; 80% redundant data between calls
 - **Missed Context:** Transient errors (brief network spike, fleeting DOM state) lost between polls
@@ -31,7 +31,7 @@ Context Streaming enables **real-time push notifications** instead of polling:
 4. **Efficiency:** Only new events sent; no redundant state polling
 5. **Interactivity:** AI can react in real-time to events without waiting for next cycle
 
-**Benefits:**
+### Benefits:
 - **3-5x Faster Diagnosis:** AI sees events as they happen, not after polling
 - **90% Less Noise:** Only relevant events streamed; historical data muted
 - **Complete Context:** Transient errors captured; causal chains preserved
@@ -86,7 +86,7 @@ Context Streaming enables **real-time push notifications** instead of polling:
 
 ### Scenario 1: Real-Time Error Detection
 
-**Before (Polling):**
+#### Before (Polling):
 ```
 1. Error occurs: POST /api/cart failed
 2. AI waits (default poll interval 5-10 seconds)
@@ -95,7 +95,7 @@ Context Streaming enables **real-time push notifications** instead of polling:
 5. AI diagnoses (total: 10-15 seconds latency)
 ```
 
-**After (Streaming):**
+#### After (Streaming):
 ```
 1. Error occurs: POST /api/cart failed
 2. Gasoline pushes error event immediately (<100ms)
@@ -105,7 +105,7 @@ Context Streaming enables **real-time push notifications** instead of polling:
 
 ### Scenario 2: Subscription Management
 
-**Subscribe to Specific Channels:**
+#### Subscribe to Specific Channels:
 ```javascript
 await gasoline.configure({
   action: 'streaming',
@@ -118,7 +118,7 @@ await gasoline.configure({
 // Ignores analytics/metrics noise
 ```
 
-**React to Event:**
+#### React to Event:
 ```javascript
 // Gasoline pushes: { type: 'network_error', status: 401, url: '/api/user' }
 // AI immediately diagnoses: "Auth token expired or missing"
@@ -129,13 +129,13 @@ await gasoline.configure({
 
 **Scenario:** API call fails → no response → UI state not updated → test fails
 
-**Without Streaming (Polling):**
+#### Without Streaming (Polling):
 1. Test fails with "Expected 'Success', got 'Loading'"
 2. AI calls observe({what: 'logs'}) → sees log entries from last 5 seconds
 3. AI searches for errors → finds POST /api/save failed
 4. AI diagnoses: "API call failed; state didn't update"
 
-**With Streaming (Real-Time):**
+#### With Streaming (Real-Time):
 1. API call made: network event {type: 'network', url: '/api/save', correlationId: 'xyz'}
 2. API fails: network_error event {type: 'network_error', status: 500, correlationId: 'xyz'}
 3. Error logged: error event {type: 'error', msg: 'Failed to save', correlationId: 'xyz'}
@@ -147,13 +147,13 @@ await gasoline.configure({
 
 - **Self-Healing Tests (#1):** Streams error events for real-time diagnosis
 - **Gasoline CI Infrastructure (#2):** Streams events during CI test runs
-- **MCP Server:** WebSocket or Server-Sent Events (SSE) for push delivery
+- **MCP Server:** WebSocket or polling-driven delivery over existing `/mcp` bridge
 - **LLM:** Receives event stream; reacts to failures in real-time
 
 ## Dependencies
 
 - ✅ **Gasoline Core:** observe(), configure() tools
-- ✅ **WebSocket/SSE Support:** For real-time event delivery
+- ✅ **WebSocket Support:** For real-time event delivery
 - ✅ **Buffer Architecture:** Existing buffers + streaming layer
 - ⏳ **Self-Healing Tests (#1):** Consumes streaming events for diagnosis
 - ⏳ **CI Infrastructure (#2):** Uses streaming for test diagnostics
@@ -179,7 +179,7 @@ await gasoline.configure({
 ## Phase Breakdown
 
 ### Phase 1 (Week 1-2): Core Streaming
-- WebSocket/SSE infrastructure
+- WebSocket + polling infrastructure
 - Event emission for core types (errors, network failures)
 - Subscription API
 - Client-side stream handler
@@ -219,4 +219,3 @@ await gasoline.configure({
 **Tier:** Core enabler for Self-Healing Tests and CI Infrastructure
 **Effort:** 4-6 weeks (parallel with #33, #2)
 **Blocks:** Faster, more efficient autonomous repair loops
-

@@ -14,7 +14,7 @@ import {
   parseStackFrame,
   extractSourceMapUrl,
   parseSourceMapData,
-  findOriginalLocation,
+  findOriginalLocation
 } from './snapshots.js'
 
 describe('decodeVLQ', () => {
@@ -138,7 +138,7 @@ describe('parseSourceMapData', () => {
       sources: ['src/app.ts'],
       names: ['foo', 'bar'],
       mappings: 'AAAA;AACA',
-      sourceRoot: '',
+      sourceRoot: ''
     }
 
     const result = parseSourceMapData(sourceMap)
@@ -164,7 +164,7 @@ describe('findOriginalLocation', () => {
       version: 3,
       sources: ['src/original.ts'],
       names: [],
-      mappings: 'AAAA',
+      mappings: 'AAAA'
     })
 
     const result = findOriginalLocation(sourceMap, 1, 0)
@@ -179,7 +179,7 @@ describe('findOriginalLocation', () => {
     const sourceMap = parseSourceMapData({
       version: 3,
       sources: ['src/app.ts'],
-      mappings: 'AAAA',
+      mappings: 'AAAA'
     })
 
     const result = findOriginalLocation(sourceMap, 100, 0)

@@ -23,7 +23,7 @@ jobs:
     outputs:
       version: ${{ steps.check.outputs.version }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
 
       - name: Verify tag matches VERSION file
         id: check
@@ -55,23 +55,29 @@ jobs:
     needs: verify-tag
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Set up Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@7a3fe6cf4cb3a834922a1244abfce67bcef6a0c5 # v6
         with:
           go-version: '1.23'
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6
         with:
           python-version: '3.12'
 
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238 # v6
         with:
           node-version: '20'
           registry-url: 'https://registry.npmjs.org'
+
+      - name: Set up Rust (for crx tool)
+        uses: dtolnay/rust-toolchain@4be9e76fd7c4901c61fb841f559994984270fce7 # stable
+
+      - name: Install crx tool
+        run: cargo install crx
 
       - name: Install Python dependencies
         run: |
@@ -95,6 +101,14 @@ jobs:
           fi
 
           echo "✅ Binary version verified: $BINARY_VERSION"
+
+      - name: Compile TypeScript
+        run: make compile-ts
+
+      - name: Build CRX extension
+        run: make extension-crx
+        env:
+          VERSION: ${{ steps.get_version.outputs.VERSION }}
 
       - name: Copy binaries to NPM packages
         run: |
@@ -151,7 +165,7 @@ jobs:
           TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
 
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@a06a81a03ee405af7f2048a818ed3f03bbf83c7b # v2
         with:
           files: |
             dist/gasoline-darwin-arm64
@@ -159,6 +173,7 @@ jobs:
             dist/gasoline-linux-arm64
             dist/gasoline-linux-x64
             dist/gasoline-win32-x64.exe
+            dist/gasoline-extension-v${{ steps.get_version.outputs.VERSION }}.crx
           generate_release_notes: true
           draft: false
           prerelease: false

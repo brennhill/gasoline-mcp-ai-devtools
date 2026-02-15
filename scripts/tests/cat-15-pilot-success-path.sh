@@ -2,8 +2,10 @@
 # cat-15-pilot-success-path.sh — Pilot-gated actions SUCCESS path tests
 # Verifies navigate/execute_js/etc. work correctly when pilot IS enabled
 # Uses mock extension responses simulating browser success
+set -eo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+# shellcheck source=/dev/null
 source "$SCRIPT_DIR/framework.sh"
 
 PORT="${1:-7902}"

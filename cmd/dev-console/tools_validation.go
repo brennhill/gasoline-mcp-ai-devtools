@@ -9,46 +9,60 @@ import (
 	"strings"
 )
 
+// logFieldCounts tracks missing field counts for log quality checking.
+type logFieldCounts struct {
+	missingTS     int
+	missingMsg    int
+	missingSource int
+	badEntries    int
+}
+
 // checkLogQuality scans entries for missing expected fields and returns
 // a warning note if anomalies are found. Returns "" if all entries look clean.
 func checkLogQuality(entries []LogEntry) string {
-	var missingTS, missingMsg, missingSource int
-	badEntries := 0
+	counts := countMissingFields(entries)
+	if counts.badEntries == 0 {
+		return ""
+	}
+	return formatQualityWarning(counts, len(entries))
+}
+
+func countMissingFields(entries []LogEntry) logFieldCounts {
+	var c logFieldCounts
 	for _, e := range entries {
 		entryBad := false
 		if _, ok := e["ts"].(string); !ok {
-			missingTS++
+			c.missingTS++
 			entryBad = true
 		}
 		if _, ok := e["message"].(string); !ok {
-			missingMsg++
+			c.missingMsg++
 			entryBad = true
 		}
 		if _, ok := e["source"].(string); !ok {
-			missingSource++
+			c.missingSource++
 			entryBad = true
 		}
 		if entryBad {
-			badEntries++
+			c.badEntries++
 		}
 	}
+	return c
+}
 
-	if badEntries == 0 {
-		return ""
-	}
-
+func formatQualityWarning(c logFieldCounts, total int) string {
 	var parts []string
-	if missingTS > 0 {
-		parts = append(parts, fmt.Sprintf("%d missing 'ts'", missingTS))
+	if c.missingTS > 0 {
+		parts = append(parts, fmt.Sprintf("%d missing 'ts'", c.missingTS))
 	}
-	if missingMsg > 0 {
-		parts = append(parts, fmt.Sprintf("%d missing 'message'", missingMsg))
+	if c.missingMsg > 0 {
+		parts = append(parts, fmt.Sprintf("%d missing 'message'", c.missingMsg))
 	}
-	if missingSource > 0 {
-		parts = append(parts, fmt.Sprintf("%d missing 'source'", missingSource))
+	if c.missingSource > 0 {
+		parts = append(parts, fmt.Sprintf("%d missing 'source'", c.missingSource))
 	}
 	return fmt.Sprintf("WARNING: %d/%d entries have incomplete fields (%s). This may indicate a browser extension issue or version mismatch.",
-		badEntries, len(entries), strings.Join(parts, ", "))
+		c.badEntries, total, strings.Join(parts, ", "))
 }
 
 // getJSONFieldNames uses reflection to extract the set of known JSON field names

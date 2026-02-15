@@ -26,14 +26,14 @@ This is NOT an autonomous loop within Gasoline. The AI agent controls the workfl
 
 ### 1. Test Diagnosis Engine (observe tool, mode: test_diagnosis)
 
-**Inputs:**
+#### Inputs:
 - Failure message (error text from test runner)
 - Optional stack trace
 - Optional test name
 - Optional time window (since timestamp)
 - Optional test file path
 
-**Processing:**
+#### Processing:
 1. Parse failure message to extract failure type (element not found, timeout, assertion failed, etc.)
 2. Query ring buffers for telemetry in the time window (default: last 60 seconds)
 3. Correlate failure against:
@@ -45,7 +45,7 @@ This is NOT an autonomous loop within Gasoline. The AI agent controls the workfl
 5. Compute confidence based on evidence strength
 6. Return structured diagnosis with category, evidence, root cause explanation, recommended action
 
-**Outputs:**
+#### Outputs:
 - Diagnosis object with:
   - category (enum: selector_stale, api_contract_changed, timing_issue, element_removed, network_failure, js_error, true_regression, flaky, unknown)
   - confidence (high, medium, low)
@@ -57,13 +57,13 @@ This is NOT an autonomous loop within Gasoline. The AI agent controls the workfl
 
 ### 2. Test Fix Generator (generate tool, format: test_fix)
 
-**Inputs:**
+#### Inputs:
 - Diagnosis object (from observe test_diagnosis)
 - Optional test file path
 - Optional framework (playwright, cypress, puppeteer, generic)
 - Optional fix strategy override
 
-**Processing:**
+#### Processing:
 1. Read diagnosis category and evidence
 2. Determine fix strategy based on category:
    - selector_stale → selector_update (find candidate, propose replacement)
@@ -81,7 +81,7 @@ This is NOT an autonomous loop within Gasoline. The AI agent controls the workfl
 5. Add confidence level and rationale for each change
 6. Return structured fix proposal
 
-**Outputs:**
+#### Outputs:
 - Fix object with:
   - strategy (enum: selector_update, wait_adjustment, api_mock_update, code_fix_needed, mark_flaky, no_fix_available)
   - description (human-readable summary)
@@ -94,7 +94,7 @@ This is NOT an autonomous loop within Gasoline. The AI agent controls the workfl
 
 **Purpose:** For selector_stale failures, find similar elements in current DOM.
 
-**Processing:**
+#### Processing:
 1. Extract expected selector from failure message or test file
 2. Query DOM for elements matching selector (should return 0 matches)
 3. Use similarity search to find candidates:
@@ -104,7 +104,7 @@ This is NOT an autonomous loop within Gasoline. The AI agent controls the workfl
 4. Rank candidates by similarity score
 5. Return top 3-5 candidates with scores and context (tag, text, attributes, bounding box)
 
-**Integration:**
+#### Integration:
 - Uses existing query_dom infrastructure (configure action)
 - Leverages DOM fingerprinting feature (when available) for structural matching
 - Falls back to string similarity if fingerprinting not available
@@ -113,7 +113,7 @@ This is NOT an autonomous loop within Gasoline. The AI agent controls the workfl
 
 **Purpose:** For api_contract_changed failures, identify what changed in response shape.
 
-**Processing:**
+#### Processing:
 1. Extract API endpoint from failure context or network waterfall
 2. Query network_bodies buffer for recent responses from that endpoint
 3. If historical data available (from previous passing runs), compare old vs new
@@ -125,7 +125,7 @@ This is NOT an autonomous loop within Gasoline. The AI agent controls the workfl
 5. Identify which field the test was trying to access
 6. Return diff with old shape, new shape, and affected field
 
-**Integration:**
+#### Integration:
 - Uses existing network_bodies buffer
 - Leverages causal diffing (when available) to identify "before" state
 - Falls back to single response shape analysis if no historical data

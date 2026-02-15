@@ -22,11 +22,11 @@ Cursor-based pagination was implemented in v5.3 to solve token limit problems. T
 
 ### Core Implementation Details
 
-**Where it lives:**
+#### Where it lives:
 - Go implementation: `cmd/dev-console/tools.go` (paginate utilities and observe handlers)
 - Test file: `cmd/dev-console/composite_tools_test.go`
 
-**Supported data streams:**
+#### Supported data streams:
 - `errors` (logs with pagination)
 - `logs` (console logs with cursor support)
 - `network_waterfall` (HTTP requests)
@@ -68,17 +68,17 @@ type ObserveRequest struct {
 
 ### Pagination Logic
 
-**Forward iteration (after_cursor):**
+#### Forward iteration (after_cursor):
 - Return entries OLDER than cursor
 - Used for "load more" / scroll down
 - Cursor moves backward in time
 
-**Backward iteration (before_cursor):**
+#### Backward iteration (before_cursor):
 - Return entries NEWER than cursor
 - Used for "new updates" / scroll up
 - Cursor moves forward in time
 
-**Snapshot reading (since_cursor):**
+#### Snapshot reading (since_cursor):
 - Return ALL entries since cursor (no limit)
 - Single call to read all new data
 - Convenience method for "show me everything since X"

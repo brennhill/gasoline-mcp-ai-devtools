@@ -42,7 +42,7 @@
     'x-auth-token',
     'x-api-key',
     'x-csrf-token',
-    'proxy-authorization',
+    'proxy-authorization'
   ]
 
   // === Batching Layer ===
@@ -54,6 +54,7 @@
   function scheduleFlush() {
     if (flushTimer) return
     flushTimer = setTimeout(flush, BATCH_INTERVAL_MS)
+    return
   }
 
   function flush() {
@@ -76,6 +77,7 @@
     if (logBatch.length > 0 || wsBatch.length > 0 || networkBatch.length > 0) {
       scheduleFlush()
     }
+    return
   }
 
   function sendToServer(endpoint, data) {
@@ -91,9 +93,12 @@
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body,
-        keepalive: true,
-      }).catch(function () {}) // Swallow errors — never interfere with the app
+        keepalive: true
+      }).catch(function () {
+        /* no-op */
+      }) // Swallow errors — never interfere with the app
     }
+    return
   }
 
   // === Transport Adapter ===
@@ -116,6 +121,7 @@
         break
     }
     scheduleFlush()
+    return
   }
 
   // === safeSerialize (identical to inject.js) ===
@@ -156,8 +162,10 @@
       var keys = Object.keys(value).slice(0, 50)
       for (var i = 0; i < keys.length; i++) {
         try {
+          // eslint-disable-next-line security/detect-object-injection -- bracket access on trusted internal telemetry data
           result[keys[i]] = safeSerialize(value[keys[i]], depth + 1, seen)
         } catch (_e) {
+          // eslint-disable-next-line security/detect-object-injection -- bracket access on trusted internal telemetry data
           result[keys[i]] = '[unserializable]'
         }
       }
@@ -171,30 +179,36 @@
     var levels = ['log', 'warn', 'error', 'info', 'debug']
     var originals = {}
 
-    levels.forEach(function (level) {
+    for (var level of levels) {
+      // eslint-disable-next-line security/detect-object-injection -- bracket access on trusted internal telemetry data
       originals[level] = console[level]
-      console[level] = function () {
-        var args = Array.prototype.slice.call(arguments)
-        originals[level].apply(console, args)
+      // eslint-disable-next-line security/detect-object-injection -- bracket access on trusted internal telemetry data
+      console[level] = (function (capturedLevel) {
+        return function () {
+          var args = Array.prototype.slice.call(arguments)
+          // eslint-disable-next-line security/detect-object-injection -- bracket access on trusted internal telemetry data
+          originals[capturedLevel].apply(console, args)
 
-        emit('GASOLINE_LOG', {
-          level: level,
-          message: args
-            .map(function (a) {
-              if (typeof a === 'string') return a
-              var serialized = safeSerialize(a)
-              return typeof serialized === 'object' ? JSON.stringify(serialized) : String(serialized)
-            })
-            .join(' '),
-          args: args.map(function (a) {
-            return safeSerialize(a)
-          }),
-          timestamp: new Date().toISOString(),
-          url: window.location.href,
-          source: 'console',
-        })
-      }
-    })
+          emit('GASOLINE_LOG', {
+            level: capturedLevel,
+            message: args
+              .map(function (a) {
+                if (typeof a === 'string') return a
+                var serialized = safeSerialize(a)
+                return typeof serialized === 'object' ? JSON.stringify(serialized) : String(serialized)
+              })
+              .join(' '),
+            args: args.map(function (a) {
+              return safeSerialize(a)
+            }),
+            timestamp: new Date().toISOString(),
+            url: window.location.href,
+            source: 'console'
+          })
+        }
+      })(level)
+    }
+    return
   }
 
   // === Exception Capture ===
@@ -210,7 +224,7 @@
         stack: event.error ? event.error.stack : undefined,
         filename: event.filename,
         lineno: event.lineno,
-        colno: event.colno,
+        colno: event.colno
       })
     })
 
@@ -223,9 +237,10 @@
         timestamp: new Date().toISOString(),
         url: window.location.href,
         source: 'unhandledrejection',
-        stack: reason ? reason.stack : undefined,
+        stack: reason ? reason.stack : undefined
       })
     })
+    return
   }
 
   // === Fetch/XHR Capture ===
@@ -272,7 +287,7 @@
                   timestamp: new Date().toISOString(),
                   contentType: response.headers.get('content-type') || '',
                   requestHeaders: filterHeaders(init.headers),
-                  responseHeaders: filterHeaders(Object.fromEntries(response.headers.entries())),
+                  responseHeaders: filterHeaders(Object.fromEntries(response.headers.entries()))
                 })
               })
               .catch(function () {})
@@ -286,7 +301,7 @@
               timestamp: new Date().toISOString(),
               url: window.location.href,
               source: 'network',
-              metadata: { status: response.status, duration: duration },
+              metadata: { status: response.status, duration: duration }
             })
           }
 
@@ -301,13 +316,14 @@
             source: 'network',
             metadata: {
               error: error.message,
-              duration: Date.now() - startTime,
-            },
+              duration: Date.now() - startTime
+            }
           })
           throw error
-        },
+        }
       )
     }
+    return
   }
 
   // === WebSocket Capture ===
@@ -319,13 +335,13 @@
       var id =
         typeof crypto !== 'undefined' && crypto.randomUUID
           ? crypto.randomUUID()
-          : 'ws_' + Date.now() + '_' + Math.random().toString(36).slice(2)
+          : 'ws_' + Date.now() + '_' + Math.random().toString(36).slice(2) // nosemgrep: rules_lgpl_javascript_crypto_rule-node-insecure-random-generator -- non-cryptographic use: generating unique WebSocket connection tracking ID
 
       emit('GASOLINE_WS', {
         event: 'connecting',
         id: id,
         url: url,
-        ts: new Date().toISOString(),
+        ts: new Date().toISOString()
       })
 
       ws.addEventListener('open', function () {
@@ -333,7 +349,7 @@
           event: 'open',
           id: id,
           url: url,
-          ts: new Date().toISOString(),
+          ts: new Date().toISOString()
         })
       })
 
@@ -346,7 +362,7 @@
           direction: 'incoming',
           data: data.slice(0, MAX_STRING_LENGTH),
           size: event.data.length || 0,
-          ts: new Date().toISOString(),
+          ts: new Date().toISOString()
         })
       })
 
@@ -357,7 +373,7 @@
           url: url,
           code: event.code,
           reason: event.reason,
-          ts: new Date().toISOString(),
+          ts: new Date().toISOString()
         })
       })
 
@@ -366,7 +382,7 @@
           event: 'error',
           id: id,
           url: url,
-          ts: new Date().toISOString(),
+          ts: new Date().toISOString()
         })
       })
 
@@ -381,7 +397,7 @@
           direction: 'outgoing',
           data: payload.slice(0, MAX_STRING_LENGTH),
           size: data.length || 0,
-          ts: new Date().toISOString(),
+          ts: new Date().toISOString()
         })
         return originalSend(data)
       }
@@ -395,6 +411,7 @@
     window.WebSocket.CLOSING = OriginalWebSocket.CLOSING
     window.WebSocket.CLOSED = OriginalWebSocket.CLOSED
     window.WebSocket.prototype = OriginalWebSocket.prototype
+    return
   }
 
   // === Helpers ===
@@ -410,11 +427,15 @@
       return {}
     }
     for (var i = 0; i < entries.length; i++) {
+      // eslint-disable-next-line security/detect-object-injection -- bracket access on trusted internal telemetry data
       var key = entries[i][0]
+      // eslint-disable-next-line security/detect-object-injection -- bracket access on trusted internal telemetry data
       var value = entries[i][1]
       if (SENSITIVE_HEADERS.indexOf(key.toLowerCase()) !== -1) {
+        // eslint-disable-next-line security/detect-object-injection -- bracket access on trusted internal telemetry data
         filtered[key] = '[REDACTED]'
       } else {
+        // eslint-disable-next-line security/detect-object-injection -- bracket access on trusted internal telemetry data
         filtered[key] = value
       }
     }
@@ -439,10 +460,10 @@
         source: 'gasoline-ci',
         metadata: {
           testId: window.__GASOLINE_TEST_ID || null,
-          captureVersion: '5.2.0',
-        },
-      },
-    ],
+          captureVersion: '5.2.0'
+        }
+      }
+    ]
   })
 
   // === Install All Captures ===
@@ -450,4 +471,5 @@
   installExceptionCapture()
   installNetworkCapture()
   installWebSocketCapture()
+  return
 })()

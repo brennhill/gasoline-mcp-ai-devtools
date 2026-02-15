@@ -45,7 +45,7 @@ Agent: interact({action: "drag_drop", source: "#elem1", target: "#elem2"})
 
 ## Implementation Strategy
 
-**HTML5 Drag-Drop sequence:**
+### HTML5 Drag-Drop sequence:
 1. Create DataTransfer object (polyfill if needed)
 2. Dispatch dragstart event on source with dataTransfer
 3. Dispatch drag event continuously (simulate dragging motion)
@@ -54,12 +54,12 @@ Agent: interact({action: "drag_drop", source: "#elem1", target: "#elem2"})
 6. Dispatch drop event on target with dataTransfer
 7. Dispatch dragend event on source
 
-**Mouse event fallback sequence:**
+### Mouse event fallback sequence:
 1. Dispatch mousedown event on source at element center
 2. Dispatch multiple mousemove events along path from source to target (simulate dragging motion)
 3. Dispatch mouseup event on target at element center
 
-**Auto-detection strategy:**
+### Auto-detection strategy:
 - Check if target has dragover or drop event listeners (HTML5)
 - Check if source has mousedown listeners (mouse events)
 - If both, try HTML5 first, fallback to mouse if no effect
@@ -77,7 +77,7 @@ Agent: interact({action: "drag_drop", source: "#elem1", target: "#elem2"})
 ## Risks & Mitigations
 
 - **Risk 1**: Framework doesn't recognize synthetic events → **Mitigation**: Dispatch both HTML5 and mouse sequences
-- **Risk 2**: Complex drag logic times out → **Mitigation**: 10s timeout, return partial result
+- **Risk 2**: Complex drag logic times out → **Mitigation**: 60s timeout, return partial result
 - **Risk 3**: DataTransfer not fully polyfilled → **Mitigation**: Create minimal DataTransfer object with required properties
 - **Risk 4**: Coordinate calculation wrong for transformed elements → **Mitigation**: Use getBoundingClientRect() for accurate positioning
 
@@ -91,8 +91,8 @@ Agent: interact({action: "drag_drop", source: "#elem1", target: "#elem2"})
 
 - Simple drag-drop: <100ms (event dispatch is fast)
 - Animated drag (many mousemove events): <500ms
-- Complex drop handlers: may approach 2s decision point
-- Total timeout: 10s
+- Complex drop handlers: may approach async timeout limits
+- Total timeout: 60s
 
 ## Security Considerations
 

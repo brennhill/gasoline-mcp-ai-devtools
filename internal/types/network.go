@@ -1,6 +1,9 @@
 // network.go — Network and browser telemetry types.
 // Contains WebSocket, HTTP, and user action types captured from the browser.
 // Zero dependencies - foundational types used by capture and analysis packages.
+//
+// JSON CONVENTION: All fields MUST use snake_case. See .claude/refs/api-naming-standards.md
+// Deviations from snake_case MUST be tagged with // SPEC:<spec-name> at the field level.
 package types
 
 import "time"
@@ -195,13 +198,13 @@ type EnhancedAction struct {
 	// with string values, but some strategies have nested objects (e.g., aria-label with role)
 	Selectors     map[string]any `json:"selectors,omitempty"`
 	Value         string         `json:"value,omitempty"`
-	InputType     string         `json:"inputType,omitempty"`
+	InputType     string         `json:"input_type,omitempty"`
 	Key           string         `json:"key,omitempty"`
-	FromURL       string         `json:"fromUrl,omitempty"`
-	ToURL         string         `json:"toUrl,omitempty"`
-	SelectedValue string         `json:"selectedValue,omitempty"`
-	SelectedText  string         `json:"selectedText,omitempty"`
-	ScrollY       int            `json:"scrollY,omitempty"`
+	FromURL       string         `json:"from_url,omitempty"`
+	ToURL         string         `json:"to_url,omitempty"`
+	SelectedValue string         `json:"selected_value,omitempty"`
+	SelectedText  string         `json:"selected_text,omitempty"`
+	ScrollY       int            `json:"scroll_y,omitempty"`
 	TabId         int            `json:"tab_id,omitempty"`    // Chrome tab ID that produced this action
 	TestIDs       []string       `json:"test_ids,omitempty"` // Test IDs this action belongs to
 }

@@ -4,11 +4,27 @@
 
 ## Quick Start
 
+### Prerequisites
+
+Install the `crx` Rust tool (recommended):
+
+```bash
+cargo install crx
+```
+
+Then build:
+
 ```bash
 make extension-crx  # Build the signed CRX file
 ```
 
 The CRX file will be created at `dist/gasoline-extension-v[VERSION].crx` with automatic extension ID computation.
+
+**Note:** The build script tries multiple methods in order:
+
+1. **crx tool** (Rust) - Recommended, most reliable
+2. **Chrome native** - If Chrome is installed
+3. **Manual CRX building** - Fallback if neither is available
 
 ## How It Works
 
@@ -75,7 +91,8 @@ Users follow these steps:
 
 ## Release Workflow
 
-### Before Release
+### Local Build (Recommended)
+
 ```bash
 # 1. Ensure extension is compiled
 make compile-ts
@@ -85,14 +102,31 @@ make extension-crx
 
 # 3. Run tests (optional but recommended)
 make test-js
-```
 
-### After Release
-```bash
 # 4. Upload CRX to cookwithgasoline.com
 # 5. Update version in VERSION file for next release
 # 6. Commit and push
 ```
+
+### Automated Build with GitHub Actions
+
+For CI/CD automation, use the Sign Chrome Extension CRX File action:
+
+```yaml
+- uses: cardinalby/webext-buildtools-chrome-crx-action@v2
+  with:
+    zipFilePath: 'build/extension.zip'
+    crxFilePath: 'build/extension.crx'
+    privateKey: ${{ secrets.CHROME_CRX_PRIVATE_KEY }}
+    updateXmlPath: 'build/update.xml'
+    updateXmlCodebaseUrl: 'https://cookwithgasoline.com/downloads/gasoline-extension.crx'
+```
+
+**Setup:**
+
+1. Store your private key in GitHub Secrets as `CHROME_CRX_PRIVATE_KEY`
+2. Add the action to your release workflow
+3. Automatically generates `.crx` and optional `update.xml` for auto-updates
 
 ## Handling Multiple Distributions
 

@@ -3,7 +3,7 @@
 <img src="docs/assets/images/chrome_store/readme-banner.png" alt="Gasoline MCP - Browser Observability for AI Coding Agents" width="100%" />
 
 [![License](https://img.shields.io/badge/license-AGPL--3.0-blue.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/version-6.0.3-green.svg)](https://github.com/brennhill/gasoline-mcp-ai-devtools/releases)
+[![Version](https://img.shields.io/badge/version-0.7.0-green.svg)](https://github.com/brennhill/gasoline-mcp-ai-devtools/releases)
 [![Go](https://img.shields.io/badge/Go-1.21+-00ADD8.svg?logo=go&logoColor=white)](https://go.dev/)
 [![Chrome](https://img.shields.io/badge/Chrome-Manifest%20V3-4285F4.svg?logo=googlechrome&logoColor=white)](https://developer.chrome.com/docs/extensions/mv3/)
 [![macOS](https://img.shields.io/badge/macOS-supported-000000.svg?logo=apple&logoColor=white)](https://github.com/brennhill/gasoline-mcp-ai-devtools)
@@ -30,10 +30,10 @@
 
 ## 📦 Latest Release
 
-Current version: **v6.0.3** — Link health analyzer, browser automation, recording, and performance analysis for AI agents.
+Current version: **v0.7.0** — Link health analyzer, browser automation, recording, and performance analysis for AI agents.
 
 ```bash
-npx gasoline-mcp@6.0.3
+npx gasoline-mcp@0.7.0
 ```
 
 </div>
@@ -67,7 +67,7 @@ Choose one option below based on your setup:
 #### Option A: NPM (recommended)
 
 ```bash
-npx gasoline-mcp@6.0.3
+npx gasoline-mcp@0.7.0
 ```
 
 #### Option B: PyPI
@@ -129,7 +129,7 @@ Choose one option below based on your setup:
 **Verify setup:**
 ```bash
 curl http://localhost:7890/health
-# Should return: {"status":"ok","version":"6.0.3",...}
+# Should return: {"status":"ok","version":"0.7.0",...}
 ```
 
 **How it works:**
@@ -161,7 +161,7 @@ Works with **Claude Code**, **Cursor**, **Windsurf**, **Claude Desktop**, **Zed*
 
 **Single binary, zero runtime.** No Node.js, no Python, no Puppeteer, no package.json. One Go binary that runs anywhere. No supply chain risk. No `node_modules`.
 
-**Captures what others can't.** WebSocket messages, full request/response bodies, user action recording, Web Vitals, automatic regression detection, API schema inference, and Playwright test generation from real browser sessions — features no other MCP browser tool offers.
+**Captures what others can't.** WebSocket messages, full request/response bodies, user action recording, Web Vitals, automatic regression detection, visual annotations, and Playwright test generation from real browser sessions — features no other MCP browser tool offers.
 
 **Works with every MCP tool.** Claude Code, Cursor, Windsurf, Zed, Claude Desktop, VS Code + Continue. Switch AI tools without changing your debugging setup.
 
@@ -176,11 +176,13 @@ Works with **Claude Code**, **Cursor**, **Windsurf**, **Claude Desktop**, **Zed*
 - **Network bodies** — Request/response payloads for API debugging
 - **User actions** — Click, type, navigate, scroll recording with smart selectors
 - **Web Vitals** — LCP, CLS, INP, FCP with regression detection
-- **Live DOM queries** — Query the page with CSS selectors via MCP
+- **DOM inspection** — Query the page with CSS selectors via MCP
 - **Accessibility audits** — WCAG checks with SARIF export
-- **API schema inference** — Auto-discover OpenAPI from captured traffic
-- **Session checkpoints** — Save state, diff changes, detect regressions
-- **Test generation** — Playwright tests and reproduction scripts from actions
+- **Security audits** — Credentials, PII, headers, cookies, third-party analysis
+- **Browser automation** — Click, type, select, upload, navigate with semantic selectors
+- **Visual annotations** — Draw mode for user feedback with computed style extraction
+- **Test generation** — Playwright tests from context, self-healing selectors, failure classification
+- **Reproduction scripts** — Playwright scripts from recorded user actions
 - **Noise filtering** — Auto-detect and dismiss irrelevant errors
 - **Developer API** — `window.__gasoline.annotate()` for custom context
 
@@ -196,7 +198,7 @@ Works with **Claude Code**, **Cursor**, **Windsurf**, **Claude Desktop**, **Zed*
 
 See [latest benchmarks](docs/benchmarks/latest-benchmark.md) for current performance data.
 
-Last benchmarked: 2026-02-09 on darwin/arm64 (v6.0.3)
+Last benchmarked: 2026-02-09 on darwin/arm64 (v0.7.0)
 
 ## Known Issues
 

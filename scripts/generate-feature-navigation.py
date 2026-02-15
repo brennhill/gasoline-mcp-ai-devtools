@@ -1,14 +1,12 @@
 #!/usr/bin/env python3
+# pylint: disable=invalid-name
 """
 Auto-generate FEATURE-NAVIGATION.md from actual folder structure.
 Run this after adding/removing features to keep navigation up-to-date.
 """
 
-import os
-import sys
 from pathlib import Path
 from datetime import datetime
-import re
 
 DOCS_DIR = Path("/Users/brenn/dev/gasoline")
 FEATURES_DIR = DOCS_DIR / "docs/features/feature"
@@ -22,13 +20,13 @@ def detect_status(feature_dir):
         spec_path = feature_dir / spec_file
         if spec_path.exists():
             try:
-                with open(spec_path, 'r') as f:
+                with open(spec_path, 'r', encoding='utf-8') as f:
                     content = f.read(500)
                     if "status: shipped" in content:
                         return "shipped"
-                    elif "status: in-progress" in content:
+                    if "status: in-progress" in content:
                         return "in-progress"
-            except:
+            except (OSError, UnicodeDecodeError):
                 pass
     return "proposed"
 
@@ -39,11 +37,11 @@ def get_feature_purpose(feature_dir):
         spec_path = feature_dir / spec_file
         if spec_path.exists():
             try:
-                with open(spec_path, 'r') as f:
+                with open(spec_path, 'r', encoding='utf-8') as f:
                     for line in f:
                         if line.startswith("# "):
                             return line.replace("# ", "").strip()[:60]
-            except:
+            except (OSError, UnicodeDecodeError):
                 pass
     return "(See folder for details)"
 
@@ -57,41 +55,40 @@ def list_feature_files(feature_dir):
     return ", ".join(files) if files else ""
 
 
-def main():
-    print("🔄 Generating FEATURE-NAVIGATION.md from folder structure...")
-    print(f"📁 Source: {FEATURES_DIR}")
-    print(f"📝 Output: {OUTPUT_FILE}")
+def scan_features():
+    """Scan feature directories and group by status.
 
-    # Group features by status
-    shipped = []
-    in_progress = []
-    proposed = []
+    Returns:
+        dict: {shipped: [...], in-progress: [...], proposed: [...]}
+    """
+    groups = {"shipped": [], "in-progress": [], "proposed": []}
 
-    # Scan all feature directories
     for feature_dir in sorted(FEATURES_DIR.glob("*")):
         if not feature_dir.is_dir() or feature_dir.name.startswith("."):
             continue
 
-        feature_name = feature_dir.name
         status = detect_status(feature_dir)
-        purpose = get_feature_purpose(feature_dir)
-        files = list_feature_files(feature_dir)
-
         entry = {
-            'name': feature_name,
-            'files': files,
-            'purpose': purpose
+            'name': feature_dir.name,
+            'files': list_feature_files(feature_dir),
+            'purpose': get_feature_purpose(feature_dir),
         }
+        groups[status].append(entry)
 
-        if status == "shipped":
-            shipped.append(entry)
-        elif status == "in-progress":
-            in_progress.append(entry)
-        else:
-            proposed.append(entry)
+    return groups
 
-    # Build the navigation document
-    content = f"""---
+
+def _build_table_rows(entries):
+    """Build markdown table rows from feature entries."""
+    return "".join(
+        f"| {e['name']} | `feature/{e['name']}/` | {e['files']} | {e['purpose']} |\n"
+        for e in entries
+    )
+
+
+def build_navigation_content(groups):
+    """Build the full navigation markdown document."""
+    header = f"""---
 status: active
 scope: feature/navigation
 ai-priority: high
@@ -121,54 +118,43 @@ Each entry shows:
 - **Status** — shipped | in-progress | proposed | deprecated
 - **Key files** — What's available in this folder
 
-### Shipped Features (Production)
-
-| Feature | Folder | Files | Purpose |
-|---------|--------|-------|---------|
 """
 
-    for entry in shipped:
-        content += f"| {entry['name']} | `feature/{entry['name']}/` | {entry['files']} | {entry['purpose']} |\n"
+    table_header = "| Feature | Folder | Files | Purpose |\n|---------|--------|-------|---------|"
 
-    content += f"""
-### In-Progress Features
+    sections = [
+        ("### Shipped Features (Production)", groups["shipped"]),
+        ("### In-Progress Features", groups["in-progress"]),
+        ("### Proposed Features", groups["proposed"]),
+    ]
 
-| Feature | Folder | Files | Purpose |
-|---------|--------|-------|---------|
-"""
+    content = header
+    for title, entries in sections:
+        content += f"{title}\n\n{table_header}\n{_build_table_rows(entries)}\n"
 
-    for entry in in_progress:
-        content += f"| {entry['name']} | `feature/{entry['name']}/` | {entry['files']} | {entry['purpose']} |\n"
+    content += NAVIGATION_FOOTER
+    return content
 
-    content += f"""
-### Proposed Features
 
-| Feature | Folder | Files | Purpose |
-|---------|--------|-------|---------|
-"""
-
-    for entry in proposed:
-        content += f"| {entry['name']} | `feature/{entry['name']}/` | {entry['files']} | {entry['purpose']} |\n"
-
-    content += """
+NAVIGATION_FOOTER = """
 ---
 
 ## Navigation by Use Case
 
 ### I need to understand what a feature does
-→ Read the feature folder's **PRODUCT_SPEC.md**
+\u2192 Read the feature folder's **PRODUCT_SPEC.md**
 
 ### I need to implement a feature
-→ Read in order: PRODUCT_SPEC.md → TECH_SPEC.md → QA_PLAN.md
+\u2192 Read in order: PRODUCT_SPEC.md \u2192 TECH_SPEC.md \u2192 QA_PLAN.md
 
 ### I need to test a feature
-→ Read **QA_PLAN.md** for test scenarios, then check if feature-review.md exists for known issues
+\u2192 Read **QA_PLAN.md** for test scenarios, then check if feature-review.md exists for known issues
 
 ### I need to find the codebase implementation
-→ Read TECH_SPEC.md and look for "**Code References**" section or `filename:line_number` format
+\u2192 Read TECH_SPEC.md and look for "**Code References**" section or `filename:line_number` format
 
 ### I need to understand design decisions
-→ Read the feature-review.md or check `docs/adrs/ADR-<feature-name>.md`
+\u2192 Read the feature-review.md or check `docs/adrs/ADR-<feature-name>.md`
 
 ---
 
@@ -178,15 +164,15 @@ Each feature folder should contain:
 
 ```
 feature/<feature-name>/
-├── PRODUCT_SPEC.md         # Requirements & user stories
-├── TECH_SPEC.md            # Implementation details
-├── QA_PLAN.md              # Test scenarios & acceptance criteria
-├── <feature>-review.md     # Optional: Principal engineer review
-└── [Optional files]
-    ├── ADR-<feature>.md    # Links here (actually in /docs/adrs/)
-    ├── IMPLEMENTATION_PLAN.md
-    ├── MIGRATION.md
-    └── [Other docs]
+\u251c\u2500\u2500 PRODUCT_SPEC.md         # Requirements & user stories
+\u251c\u2500\u2500 TECH_SPEC.md            # Implementation details
+\u251c\u2500\u2500 QA_PLAN.md              # Test scenarios & acceptance criteria
+\u251c\u2500\u2500 <feature>-review.md     # Optional: Principal engineer review
+\u2514\u2500\u2500 [Optional files]
+    \u251c\u2500\u2500 ADR-<feature>.md    # Links here (actually in /docs/adrs/)
+    \u251c\u2500\u2500 IMPLEMENTATION_PLAN.md
+    \u251c\u2500\u2500 MIGRATION.md
+    \u2514\u2500\u2500 [Other docs]
 ```
 
 ---
@@ -224,32 +210,50 @@ This script automatically:
 
 ## Related Documents
 
-- **FEATURE-INDEX.md** — Status table of all features
-- **README.md** — Comprehensive features guide for LLMs
-- `docs/core/RELEASE.md` — What version introduced each feature
-- `.claude/refs/architecture.md` — System-wide design patterns
+- **FEATURE-INDEX.md** \u2014 Status table of all features
+- **README.md** \u2014 Comprehensive features guide for LLMs
+- `docs/core/RELEASE.md` \u2014 What version introduced each feature
+- `.claude/refs/architecture.md` \u2014 System-wide design patterns
 
 ---
 
 **Note:** This file is auto-generated. Do not edit it manually. Run `python3 scripts/generate-feature-navigation.py` to update.
 """
 
-    # Write output file
-    with open(OUTPUT_FILE, 'w') as f:
+
+def print_summary(groups):
+    """Print generation summary to stdout."""
+    shipped = len(groups["shipped"])
+    in_progress = len(groups["in-progress"])
+    proposed = len(groups["proposed"])
+    total = shipped + in_progress + proposed
+
+    print("")
+    print("FEATURE-NAVIGATION.md generated successfully!")
+    print("")
+    print("Summary:")
+    print(f"   Shipped:      {shipped} features")
+    print(f"   In-Progress:  {in_progress} features")
+    print(f"   Proposed:     {proposed} features")
+    print(f"   Total:        {total} features")
+    print("")
+    print(f"Output: {OUTPUT_FILE}")
+    print(f"Last generated: {CURRENT_DATE}")
+
+
+def main():
+    """Generate FEATURE-NAVIGATION.md from folder structure."""
+    print("Generating FEATURE-NAVIGATION.md from folder structure...")
+    print(f"Source: {FEATURES_DIR}")
+    print(f"Output: {OUTPUT_FILE}")
+
+    groups = scan_features()
+    content = build_navigation_content(groups)
+
+    with open(OUTPUT_FILE, 'w', encoding='utf-8') as f:
         f.write(content)
 
-    # Print summary
-    print("")
-    print("✅ FEATURE-NAVIGATION.md generated successfully!")
-    print("")
-    print("📊 Summary:")
-    print(f"   Shipped:      {len(shipped)} features")
-    print(f"   In-Progress:  {len(in_progress)} features")
-    print(f"   Proposed:     {len(proposed)} features")
-    print(f"   Total:        {len(shipped) + len(in_progress) + len(proposed)} features")
-    print("")
-    print(f"📝 Output: {OUTPUT_FILE}")
-    print(f"🔄 Last generated: {CURRENT_DATE}")
+    print_summary(groups)
 
 
 if __name__ == "__main__":

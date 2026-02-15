@@ -1,7 +1,9 @@
 #!/bin/bash
 # cat-18-recording.sh — UAT tests for tab recording and audio capture (7 tests).
+set -eo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+# shellcheck source=/dev/null
 source "$SCRIPT_DIR/framework.sh"
 
 init_framework "$1" "$2"

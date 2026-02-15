@@ -6,7 +6,7 @@
  * Initialize the AI Web Pilot toggle.
  * Read the current state from chrome.storage.local.
  */
-export declare function initAiWebPilotToggle(): Promise<void>;
+export declare function initAiWebPilotToggle(): Promise<void>
 /**
  * Handle AI Web Pilot toggle change.
  *
@@ -26,5 +26,5 @@ export declare function initAiWebPilotToggle(): Promise<void>;
  * 4. Pilot commands see correct cache state
  * 5. Everything is consistent
  */
-export declare function handleAiWebPilotToggle(enabled: boolean): Promise<void>;
+export declare function handleAiWebPilotToggle(enabled: boolean): Promise<void>
 //# sourceMappingURL=ai-web-pilot.d.ts.map

@@ -1,23 +1,31 @@
 # Build artifacts
 dist/
 /dev-console
+/gasoline-mcp
 *.test
 *.zip
 
 # Local config
 .mcp.json
 .env
+.npmrc
 
 # Dependencies
 node_modules/
+
+# Python bytecode
+__pycache__/
+*.pyc
 
 # OS files
 .DS_Store
 Thumbs.db
 
-# IDE
+# IDE / AI agents
 .idea/
 .vscode/
+.codex/
+.gemini/
 *.swp
 *.swo
 .clinerules
@@ -38,6 +46,7 @@ tests/e2e/playwright-report/
 # Claude Code sessions (ephemeral, not backed up)
 .claude/sessions/
 coverage.out
+coverage/
 
 # Hugo/Jekyll (no longer used)
 docs/.hugo_build.lock

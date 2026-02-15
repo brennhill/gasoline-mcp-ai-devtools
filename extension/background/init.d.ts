@@ -8,5 +8,5 @@
  * Handles state recovery after service worker restart, loads settings, installs listeners.
  * Uses async/await for readable, linear control flow.
  */
-export declare function initializeExtension(): void;
+export declare function initializeExtension(): void
 //# sourceMappingURL=init.d.ts.map

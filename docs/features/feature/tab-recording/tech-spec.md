@@ -4,7 +4,7 @@
 
 Tab recording captures the active browser tab as a WebM video using `chrome.tabCapture.capture()`. The extension holds the video in memory during recording, then POSTs the final blob to the Go server on stop. The server writes the video file and metadata sidecar to `~/.gasoline/recordings/`.
 
-**Key design decisions:**
+### Key design decisions:
 
 - **Single POST on stop** — no chunk streaming in v6. Extension holds `MediaRecorder` output in memory. Simpler, fewer failure modes.
 - **Server assigns filename on start** — extension receives the final path upfront so both sides agree on naming.
@@ -247,7 +247,7 @@ async function stopRecording(): Promise<RecordingResult> {
 }
 ```
 
-**Key choices:**
+#### Key choices:
 
 - `fps` parameter — clamped to 5–60, default 15. Bitrate scales proportionally (500kbps at 15fps baseline)
 - `recorder.start(1000)` — 1s chunk interval, keeps memory pressure predictable
@@ -284,7 +284,7 @@ New section below existing toggles:
 </div>
 ```
 
-**Popup logic:**
+#### Popup logic:
 
 - On open: read `chrome.storage.local.get("gasoline_recording")` → show correct state
 - Start: send `{type: "record_start", name}` to background
@@ -467,7 +467,7 @@ stateDiagram-v2
     Error --> Idle: error returned to caller, state cleaned up
 ```
 
-**States:**
+### States:
 
 | State | Description | Extension Memory | Popup Shows |
 |-------|-------------|-----------------|-------------|
@@ -477,7 +477,7 @@ stateDiagram-v2
 | **Saving** | Blob assembled, POSTing to server | Full blob in memory | "Saving..." |
 | **Error** | Something failed, cleaning up | Releasing all resources | Error message, back to Start |
 
-**Invariants:**
+### Invariants:
 
 - Only one recording at a time (enforced by `recordingState.active` check)
 - State always returns to Idle after error (no stuck states)
@@ -623,7 +623,7 @@ sequenceDiagram
 
 ### Extension → Server
 
-**POST `/recordings/save`**
+#### POST `/recordings/save`
 
 - **Content-Type:** `multipart/form-data`
 - **Fields:**

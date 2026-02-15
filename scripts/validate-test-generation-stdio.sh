@@ -5,7 +5,7 @@
 #   - Chrome with Gasoline extension open and connected
 #   - Run this script, it will start the MCP server and send commands
 
-set -e
+set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 RESULTS_DIR="$SCRIPT_DIR/../validation-results"
@@ -36,7 +36,7 @@ sleep 3
 
 # Create a temporary file for sending commands
 COMMANDS_FILE=$(mktemp)
-trap "rm -f $COMMANDS_FILE" EXIT
+trap 'rm -f $COMMANDS_FILE' EXIT
 
 # Build the command sequence
 cat > "$COMMANDS_FILE" << 'EOF'
@@ -56,22 +56,23 @@ echo ""
 send_command() {
     local id=$1
     local description=$2
-    local command=$(sed -n "${id}p" "$COMMANDS_FILE")
+    local command
+    command=$(sed -n "${id}p" "$COMMANDS_FILE")
 
     echo "[$id/6] $description"
-    echo "$command" | "$MCP_BIN" > "$RESULTS_DIR/$(printf "%02d" $id)-response.json" 2>&1 &
+    echo "$command" | "$MCP_BIN" > "$RESULTS_DIR/$(printf "%02d" "$id")-response.json" 2>&1 &
     local pid=$!
 
     # Wait a bit for the command to process
     sleep 2
 
     # Check if still running
-    if kill -0 $pid 2>/dev/null; then
-        wait $pid || true
+    if kill -0 "$pid" 2>/dev/null; then
+        wait "$pid" || true
     fi
 
     # Check if we got a response
-    if [ -s "$RESULTS_DIR/$(printf "%02d" $id)-response.json" ]; then
+    if [ -s "$RESULTS_DIR/$(printf "%02d" "$id")-response.json" ]; then
         echo "  ✓ Response received"
     else
         echo "  ⚠ No response (command may still be processing)"
@@ -95,11 +96,10 @@ echo ""
 
 # Extract test from response 5 (error context)
 if [ -f "$RESULTS_DIR/05-response.json" ]; then
-    cat "$RESULTS_DIR/05-response.json" | \
-        python3 -c "import sys, json; data=json.load(sys.stdin); print(data.get('result',{}).get('content',{}).get('test',{}).get('content',''))" \
+    python3 -c "import sys, json; data=json.load(sys.stdin); print(data.get('result',{}).get('content',{}).get('test',{}).get('content',''))" \
+        < "$RESULTS_DIR/05-response.json" \
         > "$RESULTS_DIR/generated-error-test.spec.ts" 2>/dev/null || \
-    cat "$RESULTS_DIR/05-response.json" | \
-        grep -o '"content":".*"' | \
+    grep -o '"content":".*"' < "$RESULTS_DIR/05-response.json" | \
         sed 's/"content":"//;s/"$//' | \
         sed 's/\\n/\n/g' | \
         head -100 > "$RESULTS_DIR/generated-error-test.spec.ts"
@@ -113,11 +113,10 @@ fi
 
 # Extract test from response 6 (interaction context)
 if [ -f "$RESULTS_DIR/06-response.json" ]; then
-    cat "$RESULTS_DIR/06-response.json" | \
-        python3 -c "import sys, json; data=json.load(sys.stdin); print(data.get('result',{}).get('content',{}).get('test',{}).get('content',''))" \
+    python3 -c "import sys, json; data=json.load(sys.stdin); print(data.get('result',{}).get('content',{}).get('test',{}).get('content',''))" \
+        < "$RESULTS_DIR/06-response.json" \
         > "$RESULTS_DIR/generated-interaction-test.spec.ts" 2>/dev/null || \
-    cat "$RESULTS_DIR/06-response.json" | \
-        grep -o '"content":".*"' | \
+    grep -o '"content":".*"' < "$RESULTS_DIR/06-response.json" | \
         sed 's/"content":"//;s/"$//' | \
         sed 's/\\n/\n/g' | \
         head -100 > "$RESULTS_DIR/generated-interaction-test.spec.ts"
@@ -135,6 +134,7 @@ echo ""
 
 # List all output files
 echo "Generated files:"
+# shellcheck disable=SC2012 # ls used for human-readable display
 ls -lh "$RESULTS_DIR"/*.json "$RESULTS_DIR"/*.ts 2>/dev/null | awk '{print "  "$9" ("$5")"}'
 
 echo ""

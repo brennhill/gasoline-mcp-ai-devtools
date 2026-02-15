@@ -76,7 +76,7 @@ MCP Server (stdio)
 
 ### Decision 2: Event Normalization
 
-**All events normalized to common schema:**
+#### All events normalized to common schema:
 
 ```go
 type NormalizedEvent struct {
@@ -92,7 +92,7 @@ type NormalizedEvent struct {
 }
 ```
 
-**Benefits:**
+#### Benefits:
 - Consistent query interface regardless of source
 - Timestamp comes from event source, not daemon (accurate correlation)
 - Metadata bag for source-specific fields (client_skew_ms, SSH host, file path)
@@ -100,7 +100,7 @@ type NormalizedEvent struct {
 
 ### Decision 3: Ring Buffer Capacity
 
-**Ring buffer sizing strategy:**
+#### Ring buffer sizing strategy:
 
 ```
 Existing v5.3 buffer: 1M events (configurable)
@@ -117,7 +117,7 @@ Rationale:
 
 ### Decision 4: Timestamp Source
 
-**Use source timestamp, NOT daemon receive time:**
+#### Use source timestamp, NOT daemon receive time:
 
 - FE events from extension: Contains browser timestamp (set by browser)
 - FE requests with X-Client-Time: Contains user's machine time
@@ -128,7 +128,7 @@ Rationale:
 
 ### Decision 5: Correlation ID Matching
 
-**Correlation strategy (in priority order):**
+#### Correlation strategy (in priority order):
 
 1. **Exact match by correlation_id:**
    - FE sends `X-Trace-ID: 550e8400-e29b-41d4` in request
@@ -156,7 +156,7 @@ Rationale:
 
 ### HTTP Event Ingestion Handler
 
-**Endpoint 1: POST /event (Single)**
+#### Endpoint 1: POST /event (Single)
 
 ```go
 // Handle both extension events and tailer events
@@ -201,7 +201,7 @@ func normalizeEvent(raw map[string]any, defaultSource string) NormalizedEvent {
 }
 ```
 
-**Endpoint 2: POST /events (Batch)**
+#### Endpoint 2: POST /events (Batch)
 
 ```go
 func handleEvents(w http.ResponseWriter, r *http.Request) {
@@ -343,7 +343,7 @@ func extractTraceIDFromMessage(msg string) string {
 
 ### Endpoint: GET /buffers/timeline
 
-**Query parameters (new):**
+#### Query parameters (new):
 
 ```
 ?correlation_id=550e8400-e29b-41d4    // Filter by trace ID
@@ -354,7 +354,7 @@ func extractTraceIDFromMessage(msg string) string {
 ?end_time=1704067260000
 ```
 
-**Response format (backward compatible):**
+#### Response format (backward compatible):
 
 ```json
 {
@@ -383,7 +383,7 @@ func extractTraceIDFromMessage(msg string) string {
 
 ### Endpoint: GET /ingest/stats (New)
 
-**Response:**
+#### Response:
 
 ```json
 {
@@ -482,13 +482,13 @@ func (cst *ClockSkewTracker) GetStats() ClockSkewStats {
 
 ### v5.3 Clients
 
-**Existing queries still work:**
+#### Existing queries still work:
 
 ```
 GET /buffers/timeline              # Returns all events (FE only in v5.3, FE+BE in v5.4)
 ```
 
-**Behavior:**
+#### Behavior:
 - v5.3 client queries, v5.4 daemon: Returns FE + BE merged by timestamp
 - v5.3 client doesn't filter by source, so gets all
 - Timestamp ordering ensures chronological flow
@@ -503,7 +503,7 @@ GET /buffers/timeline              # Returns all events (FE only in v5.3, FE+BE 
 
 ### New Endpoints
 
-**Backward compatible:**
+#### Backward compatible:
 
 ```
 POST /event             # Already exists for extension, now also used by tailers

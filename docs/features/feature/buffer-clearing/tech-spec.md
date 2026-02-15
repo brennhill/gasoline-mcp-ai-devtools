@@ -610,12 +610,12 @@ configure({action: "clear", buffer: "network"})
 
 ## Success Metrics
 
-**Pre-Release:**
+### Pre-Release:
 - All unit tests pass
 - Integration tests pass
 - Manual UAT completes successfully
 
-**Post-Release:**
+### Post-Release:
 - Buffer clearing used in >25% of sessions
 - Reduced "reload extension" workarounds
 
@@ -635,7 +635,7 @@ configure({action: "clear", buffer: "network"})
 **Effort Estimate:** 1-2 hours
 **Target:** v5.3
 
-**Next Steps:**
+### Next Steps:
 1. Implement clear methods in Capture
 2. Write unit tests (TDD)
 3. Update configure tool handler

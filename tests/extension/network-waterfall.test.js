@@ -41,7 +41,7 @@ function createMockResourceTiming(overrides = {}) {
     decodedBodySize: 2048,
     // Cache
     fetchStart: 100,
-    ...overrides,
+    ...overrides
   }
 }
 
@@ -59,7 +59,7 @@ function createMockPerformance() {
     measure: mock.fn(),
     now: mock.fn(() => Date.now()),
     _entries: entries,
-    _addEntry: (entry) => entries.push(entry),
+    _addEntry: (entry) => entries.push(entry)
   }
 }
 
@@ -74,7 +74,7 @@ function createMockWindow() {
     innerWidth: 1920,
     innerHeight: 1080,
     scrollX: 0,
-    scrollY: 0,
+    scrollY: 0
   }
 }
 
@@ -82,6 +82,8 @@ function createMockDocument() {
   return {
     addEventListener: mock.fn(),
     removeEventListener: mock.fn(),
+    querySelector: mock.fn(() => null),
+    querySelectorAll: mock.fn(() => [])
   }
 }
 
@@ -117,7 +119,7 @@ describe('Network Waterfall - parseResourceTiming', () => {
 
     const timing = createMockResourceTiming({
       domainLookupStart: 100,
-      domainLookupEnd: 120,
+      domainLookupEnd: 120
     })
 
     const result = parseResourceTiming(timing)
@@ -130,7 +132,7 @@ describe('Network Waterfall - parseResourceTiming', () => {
 
     const timing = createMockResourceTiming({
       connectStart: 120,
-      connectEnd: 150,
+      connectEnd: 150
     })
 
     const result = parseResourceTiming(timing)
@@ -143,7 +145,7 @@ describe('Network Waterfall - parseResourceTiming', () => {
 
     const timing = createMockResourceTiming({
       secureConnectionStart: 130,
-      connectEnd: 160,
+      connectEnd: 160
     })
 
     const result = parseResourceTiming(timing)
@@ -156,7 +158,7 @@ describe('Network Waterfall - parseResourceTiming', () => {
 
     const timing = createMockResourceTiming({
       requestStart: 160,
-      responseStart: 260,
+      responseStart: 260
     })
 
     const result = parseResourceTiming(timing)
@@ -169,7 +171,7 @@ describe('Network Waterfall - parseResourceTiming', () => {
 
     const timing = createMockResourceTiming({
       responseStart: 260,
-      responseEnd: 360,
+      responseEnd: 360
     })
 
     const result = parseResourceTiming(timing)
@@ -181,7 +183,7 @@ describe('Network Waterfall - parseResourceTiming', () => {
     const { parseResourceTiming } = await import('../../extension/inject.js')
 
     const timing = createMockResourceTiming({
-      duration: 500,
+      duration: 500
     })
 
     const result = parseResourceTiming(timing)
@@ -195,7 +197,7 @@ describe('Network Waterfall - parseResourceTiming', () => {
     const timing = createMockResourceTiming({
       transferSize: 2048,
       encodedBodySize: 1800,
-      decodedBodySize: 4096,
+      decodedBodySize: 4096
     })
 
     const result = parseResourceTiming(timing)
@@ -209,7 +211,7 @@ describe('Network Waterfall - parseResourceTiming', () => {
 
     const timing = createMockResourceTiming({
       transferSize: 0,
-      encodedBodySize: 1000,
+      encodedBodySize: 1000
     })
 
     const result = parseResourceTiming(timing)
@@ -221,7 +223,7 @@ describe('Network Waterfall - parseResourceTiming', () => {
     const { parseResourceTiming } = await import('../../extension/inject.js')
 
     const timing = createMockResourceTiming({
-      initiatorType: 'fetch',
+      initiatorType: 'fetch'
     })
 
     const result = parseResourceTiming(timing)
@@ -235,7 +237,7 @@ describe('Network Waterfall - parseResourceTiming', () => {
     const timing = createMockResourceTiming({
       domainLookupStart: 0,
       domainLookupEnd: 0,
-      secureConnectionStart: 0,
+      secureConnectionStart: 0
     })
 
     const result = parseResourceTiming(timing)
@@ -292,7 +294,7 @@ describe('Network Waterfall - getNetworkWaterfall', () => {
     // Add more entries than the limit
     for (let i = 0; i < 100; i++) {
       globalThis.performance._addEntry(
-        createMockResourceTiming({ name: `http://localhost/api/${i}`, startTime: i * 10 }),
+        createMockResourceTiming({ name: `http://localhost/api/${i}`, startTime: i * 10 })
       )
     }
 
@@ -317,14 +319,14 @@ describe('Network Waterfall - getNetworkWaterfall', () => {
 
     globalThis.performance._addEntry(createMockResourceTiming({ name: 'http://localhost/api', initiatorType: 'fetch' }))
     globalThis.performance._addEntry(
-      createMockResourceTiming({ name: 'http://localhost/style.css', initiatorType: 'link' }),
+      createMockResourceTiming({ name: 'http://localhost/style.css', initiatorType: 'link' })
     )
 
     const waterfall = getNetworkWaterfall({ initiatorTypes: ['fetch', 'xmlhttprequest'] })
 
     assert.strictEqual(waterfall.length, 1)
     assert.ok(
-      waterfall[0].initiatorType === 'fetch' || waterfall[0].initiator === 'fetch' || waterfall[0].type === 'fetch',
+      waterfall[0].initiatorType === 'fetch' || waterfall[0].initiator === 'fetch' || waterfall[0].type === 'fetch'
     )
   })
 
@@ -376,7 +378,7 @@ describe('Network Waterfall - Pending Requests', () => {
     trackPendingRequest({
       url: 'http://localhost/api/slow',
       method: 'POST',
-      startTime: Date.now(),
+      startTime: Date.now()
     })
 
     const pending = getPendingRequests()
@@ -397,7 +399,7 @@ describe('Network Waterfall - Pending Requests', () => {
     const requestId = trackPendingRequest({
       url: 'http://localhost/api/data',
       method: 'GET',
-      startTime: Date.now(),
+      startTime: Date.now()
     })
 
     completePendingRequest(requestId)
@@ -416,13 +418,13 @@ describe('Network Waterfall - Pending Requests', () => {
     trackPendingRequest({
       url: 'http://localhost/api/slow-endpoint',
       method: 'POST',
-      startTime: Date.now() - 1000, // Started 1 second ago
+      startTime: Date.now() - 1000 // Started 1 second ago
     })
 
     const errorEntry = {
       type: 'exception',
       level: 'error',
-      message: 'Network timeout',
+      message: 'Network timeout'
     }
 
     const snapshot = await getNetworkWaterfallForError(errorEntry)
@@ -462,7 +464,7 @@ describe('Network Waterfall - Error Integration', () => {
       type: 'network',
       level: 'error',
       url: 'http://localhost/api/failed',
-      status: 500,
+      status: 500
     }
 
     const snapshot = await getNetworkWaterfallForError(errorEntry)
@@ -480,7 +482,7 @@ describe('Network Waterfall - Error Integration', () => {
 
     const errorEntry = {
       type: 'network',
-      level: 'error',
+      level: 'error'
     }
 
     const snapshot = await getNetworkWaterfallForError(errorEntry)
@@ -503,7 +505,7 @@ describe('Network Waterfall - Error Integration', () => {
     const now = Date.now()
     globalThis.performance.now = () => now
     globalThis.performance._addEntry(
-      createMockResourceTiming({ name: 'http://localhost/recent', startTime: now - 5000 }),
+      createMockResourceTiming({ name: 'http://localhost/recent', startTime: now - 5000 })
     )
 
     const errorEntry = { type: 'exception', level: 'error' }

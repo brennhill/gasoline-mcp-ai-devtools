@@ -139,4 +139,4 @@ run_test "Actions data flows through" test_actions_data_flow || ((FAILED++))
 run_test "WebSocket data flows through" test_websocket_data_flow || ((FAILED++))
 run_test "Network bodies data flows through" test_network_bodies_data_flow || ((FAILED++))
 
-exit $FAILED
+exit "$FAILED"

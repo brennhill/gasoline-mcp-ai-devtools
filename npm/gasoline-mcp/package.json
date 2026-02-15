@@ -1,25 +1,27 @@
 {
   "name": "gasoline-mcp",
-  "version": "6.0.3",
+  "version": "0.7.0",
   "description": "Gasoline MCP is an AI Debugger, Inspector, and Observability toolkit. It acts as Chrome DevTools for AI Agents using the Model Context Protocol (MCP).",
   "license": "AGPL-3.0-only",
   "bin": {
     "gasoline-mcp": "bin/gasoline-mcp"
   },
   "scripts": {
-    "preinstall": "node -e \"const cp = require('child_process'); try { cp.execSync('npm uninstall -g gasoline-mcp', {stdio:'ignore'}); } catch(e) {} try { const cmd = process.platform === 'win32' ? 'taskkill /F /IM gasoline.exe 2>nul || true' : 'pkill -9 gasoline 2>/dev/null || true'; cp.execSync(cmd, {stdio:'ignore', shell:true}); } catch(e) {}\"",
-    "preuninstall": "node -e \"const cp = require('child_process'); try { const cmd = process.platform === 'win32' ? 'taskkill /F /IM gasoline.exe 2>nul || true' : 'pkill -9 gasoline 2>/dev/null || true'; cp.execSync(cmd, {stdio:'ignore', shell:true}); } catch(e) {}\""
+    "preinstall": "node lib/kill-daemon.js",
+    "postinstall": "node lib/postinstall-skills.js",
+    "preuninstall": "node lib/kill-daemon.js"
   },
   "files": [
     "bin",
-    "lib"
+    "lib",
+    "skills"
   ],
   "optionalDependencies": {
-    "@brennhill/gasoline-darwin-arm64": "6.0.3",
-    "@brennhill/gasoline-darwin-x64": "6.0.3",
-    "@brennhill/gasoline-linux-arm64": "6.0.3",
-    "@brennhill/gasoline-linux-x64": "6.0.3",
-    "@brennhill/gasoline-win32-x64": "6.0.3"
+    "@brennhill/gasoline-darwin-arm64": "0.7.0",
+    "@brennhill/gasoline-darwin-x64": "0.7.0",
+    "@brennhill/gasoline-linux-arm64": "0.7.0",
+    "@brennhill/gasoline-linux-x64": "0.7.0",
+    "@brennhill/gasoline-win32-x64": "0.7.0"
   },
   "keywords": [
     "mcp",

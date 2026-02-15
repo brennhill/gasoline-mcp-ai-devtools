@@ -120,7 +120,7 @@ Improve debuggability:
 **Handling:** Response bodies can only be read once. Use `response.clone()` before reading body to avoid breaking the application. If clone fails, skip body capture and log error.
 
 ### Edge Case 4: Streaming Responses
-**Handling:** Streaming responses (Server-Sent Events, chunked transfer) may not have a complete body to capture. Capture what's available at request completion or skip with a note.
+**Handling:** Streaming responses (chunked transfer, incremental HTTP streams) may not have a complete body to capture. Capture what's available at request completion or skip with a note.
 
 ### Edge Case 5: CORS Opaque Responses
 **Handling:** Opaque responses (no-cors mode) don't expose body or headers. Skip body capture for opaque responses; log "opaque response, body not accessible".

@@ -6,9 +6,11 @@ package capture
 import (
 	"encoding/json"
 	"fmt"
+	"os"
 	"time"
 
 	"github.com/dev-console/dev-console/internal/queries"
+	"github.com/dev-console/dev-console/internal/util"
 )
 
 // Constants for query management
@@ -46,6 +48,9 @@ func (qd *QueryDispatcher) CreatePendingQueryWithTimeout(query queries.PendingQu
 
 	// Enforce max pending queries (drop oldest if full)
 	if len(qd.pendingQueries) >= maxPendingQueries {
+		dropped := qd.pendingQueries[0]
+		fmt.Fprintf(os.Stderr, "[gasoline] Query queue overflow: dropping query %s (correlation_id=%s)\n",
+			dropped.query.ID, dropped.query.CorrelationID)
 		qd.pendingQueries = qd.pendingQueries[1:]
 	}
 
@@ -104,7 +109,7 @@ func (qd *QueryDispatcher) cleanExpiredQueries() {
 // ============================================
 
 // GetPendingQueries returns all pending queries for extension to execute.
-// Used by HandlePendingQueries HTTP handler.
+// Used by /sync endpoint to deliver commands to the extension.
 // Cleans expired queries before returning.
 func (qd *QueryDispatcher) GetPendingQueries() []queries.PendingQueryResponse {
 	// First ensure any expired queries are marked as failed
@@ -142,6 +147,83 @@ func (qd *QueryDispatcher) GetPendingQueriesForClient(clientID string) []queries
 		}
 	}
 	return result
+}
+
+// AcknowledgePendingQuery removes delivered queries up to and including queryID.
+// last_command_ack semantics are "last processed command", so older entries are
+// also considered acknowledged and should not be redelivered.
+func (qd *QueryDispatcher) AcknowledgePendingQuery(queryID string) {
+	if queryID == "" {
+		return
+	}
+
+	qd.mu.Lock()
+	defer qd.mu.Unlock()
+
+	ackIndex := -1
+	for i, pq := range qd.pendingQueries {
+		if pq.query.ID == queryID {
+			ackIndex = i
+			break
+		}
+	}
+	if ackIndex < 0 {
+		return
+	}
+
+	remaining := make([]pendingQueryEntry, 0, len(qd.pendingQueries)-ackIndex-1)
+	remaining = append(remaining, qd.pendingQueries[ackIndex+1:]...)
+	qd.pendingQueries = remaining
+}
+
+// ExpireAllPendingQueries expires all pending queries with the given error reason.
+// Used when the extension disconnects to prevent queries from hanging indefinitely.
+// Collects correlation IDs under mu lock, then expires commands under resultsMu.
+func (qd *QueryDispatcher) ExpireAllPendingQueries(reason string) {
+	qd.mu.Lock()
+
+	var correlationIDs []string
+	for _, pq := range qd.pendingQueries {
+		if pq.query.CorrelationID != "" {
+			correlationIDs = append(correlationIDs, pq.query.CorrelationID)
+		}
+	}
+	// Clear all pending queries
+	qd.pendingQueries = qd.pendingQueries[:0]
+
+	qd.mu.Unlock()
+
+	// Mark commands as expired with disconnect reason (outside mu lock)
+	for _, correlationID := range correlationIDs {
+		qd.expireCommandWithReason(correlationID, reason)
+	}
+}
+
+// expireCommandWithReason marks a command as expired with a custom error message.
+// Similar to ExpireCommand but allows specifying the error reason.
+func (qd *QueryDispatcher) expireCommandWithReason(correlationID string, reason string) {
+	if correlationID == "" {
+		return
+	}
+
+	qd.resultsMu.Lock()
+	defer qd.resultsMu.Unlock()
+
+	cmd, exists := qd.completedResults[correlationID]
+	if !exists {
+		return
+	}
+
+	cmd.Status = "expired"
+	cmd.Error = reason
+
+	// Move to failedCommands ring buffer
+	qd.failedCommands = append(qd.failedCommands, cmd)
+	if len(qd.failedCommands) > 100 {
+		qd.failedCommands = qd.failedCommands[1:]
+	}
+
+	delete(qd.completedResults, correlationID)
 }
 
 // ============================================
@@ -253,7 +335,7 @@ func (qd *QueryDispatcher) WaitForResultWithClient(id string, timeout time.Durat
 	// Single wakeup goroutine: broadcasts every 10ms to recheck condition.
 	// Replaces per-iteration goroutine spawn that caused ~3000 goroutines per 30s call.
 	done := make(chan struct{})
-	go func() {
+	util.SafeGo(func() {
 		ticker := time.NewTicker(10 * time.Millisecond)
 		defer ticker.Stop()
 		for {
@@ -264,7 +346,7 @@ func (qd *QueryDispatcher) WaitForResultWithClient(id string, timeout time.Durat
 				return
 			}
 		}
-	}()
+	})
 
 	qd.mu.Lock()
 	defer qd.mu.Unlock()
@@ -299,7 +381,7 @@ func (qd *QueryDispatcher) WaitForResultWithClient(id string, timeout time.Durat
 // Called once during QueryDispatcher initialization; stop func stored in stopCleanup.
 func (qd *QueryDispatcher) startResultCleanup() func() {
 	stop := make(chan struct{})
-	go func() {
+	util.SafeGo(func() {
 		ticker := time.NewTicker(30 * time.Second)
 		defer ticker.Stop()
 		for {
@@ -310,21 +392,53 @@ func (qd *QueryDispatcher) startResultCleanup() func() {
 				return
 			}
 		}
-	}()
+	})
 	return func() { close(stop) }
 }
 
-// cleanExpiredResults removes query results older than queryResultTTL.
+// cleanExpiredResults removes query results older than queryResultTTL,
+// expires orphaned completedResults entries, and expires stale pending queries.
 func (qd *QueryDispatcher) cleanExpiredResults() {
-	qd.mu.Lock()
-	defer qd.mu.Unlock()
-
 	now := time.Now()
+
+	// 1. Clean expired query results (under mu)
+	qd.mu.Lock()
 	for id, entry := range qd.queryResults {
 		if now.Sub(entry.createdAt) > queryResultTTL {
 			delete(qd.queryResults, id)
 		}
 	}
+
+	// 2. Collect orphaned pending queries (expired + grace period)
+	var orphanedCorrelationIDs []string
+	gracePeriod := queries.AsyncCommandTimeout + 10*time.Second
+	remaining := qd.pendingQueries[:0]
+	for _, pq := range qd.pendingQueries {
+		if now.Sub(pq.expires) > gracePeriod {
+			if pq.query.CorrelationID != "" {
+				orphanedCorrelationIDs = append(orphanedCorrelationIDs, pq.query.CorrelationID)
+			}
+			// Drop from pending
+			continue
+		}
+		remaining = append(remaining, pq)
+	}
+	qd.pendingQueries = remaining
+	qd.mu.Unlock()
+
+	// 3. Expire orphaned pending commands (outside mu to respect lock ordering)
+	for _, correlationID := range orphanedCorrelationIDs {
+		qd.ExpireCommand(correlationID)
+	}
+
+	// 4. Clean stale completedResults entries (under resultsMu)
+	qd.resultsMu.Lock()
+	for id, cmd := range qd.completedResults {
+		if now.Sub(cmd.CreatedAt) > queryResultTTL {
+			delete(qd.completedResults, id)
+		}
+	}
+	qd.resultsMu.Unlock()
 }
 
 // ============================================
@@ -367,18 +481,16 @@ func (qd *QueryDispatcher) RegisterCommand(correlationID string, queryID string,
 }
 
 // CompleteCommand updates a command's status to "complete" with result.
-// Called when extension posts result back.
+// Called when extension posts result back. Signals any WaitForCommand waiters.
 func (qd *QueryDispatcher) CompleteCommand(correlationID string, result json.RawMessage, err string) {
 	if correlationID == "" {
 		return
 	}
 
 	qd.resultsMu.Lock()
-	defer qd.resultsMu.Unlock()
-
 	cmd, exists := qd.completedResults[correlationID]
 	if !exists {
-		// Command may have expired and been moved to failedCommands
+		qd.resultsMu.Unlock()
 		return
 	}
 
@@ -386,6 +498,12 @@ func (qd *QueryDispatcher) CompleteCommand(correlationID string, result json.Raw
 	cmd.Result = result
 	cmd.Error = err
 	cmd.CompletedAt = time.Now()
+
+	// Signal waiters: close current channel, create a fresh one
+	ch := qd.commandNotify
+	qd.commandNotify = make(chan struct{})
+	qd.resultsMu.Unlock()
+	close(ch)
 }
 
 // ExpireCommand marks a command as "expired" and moves it to failedCommands.
@@ -403,6 +521,12 @@ func (qd *QueryDispatcher) ExpireCommand(correlationID string) {
 		return
 	}
 
+	// Only expire if still pending — avoids TOCTOU race where CompleteCommand
+	// already processed this command between lock acquisitions
+	if cmd.Status != "pending" {
+		return
+	}
+
 	// Update status
 	cmd.Status = "expired"
 	cmd.Error = "Command expired before extension could execute it"
@@ -415,6 +539,41 @@ func (qd *QueryDispatcher) ExpireCommand(correlationID string) {
 
 	// Remove from active tracking
 	delete(qd.completedResults, correlationID)
+}
+
+// WaitForCommand blocks until the command completes or timeout expires.
+// Returns (CommandResult, found). If still pending after timeout, returns the pending result.
+func (qd *QueryDispatcher) WaitForCommand(correlationID string, timeout time.Duration) (*queries.CommandResult, bool) {
+	// Check immediately
+	cmd, found := qd.GetCommandResult(correlationID)
+	if !found || cmd.Status != "pending" {
+		return cmd, found
+	}
+
+	deadline := time.Now().Add(timeout)
+	for {
+		qd.resultsMu.RLock()
+		ch := qd.commandNotify
+		qd.resultsMu.RUnlock()
+
+		remaining := time.Until(deadline)
+		if remaining <= 0 {
+			return qd.GetCommandResult(correlationID)
+		}
+
+		timer := time.NewTimer(remaining)
+		select {
+		case <-ch:
+			timer.Stop()
+			cmd, found = qd.GetCommandResult(correlationID)
+			if !found || cmd.Status != "pending" {
+				return cmd, found
+			}
+			continue
+		case <-timer.C:
+			return qd.GetCommandResult(correlationID)
+		}
+	}
 }
 
 // GetCommandResult retrieves command status by correlation ID.

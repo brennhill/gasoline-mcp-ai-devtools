@@ -57,13 +57,9 @@ async function startServer(port, logFile) {
     throw new Error(`Server binary not found at ${binaryPath}. Run 'make dev' first.`)
   }
 
-  const serverProcess = spawn(binaryPath, [
-    '--server',
-    '--port', String(port),
-    '--log-file', logFile,
-  ], {
+  const serverProcess = spawn(binaryPath, ['--server', '--port', String(port), '--log-file', logFile], {
     env: process.env,
-    stdio: ['pipe', 'pipe', 'pipe'],
+    stdio: ['pipe', 'pipe', 'pipe']
   })
 
   // Collect stderr for debugging
@@ -136,7 +132,7 @@ export const test = base.extend({
       '--disable-default-apps',
       '--disable-popup-blocking',
       '--disable-translate',
-      '--no-default-browser-check',
+      '--no-default-browser-check'
     ]
     if (!isReview) {
       args.unshift('--headless=new')
@@ -144,7 +140,7 @@ export const test = base.extend({
 
     const context = await chromium.launchPersistentContext(userDataDir, {
       headless: false,
-      args,
+      args
     })
 
     // Set the server URL and notify background service worker
@@ -201,7 +197,7 @@ export const test = base.extend({
    */
   serverUrl: async ({ serverPort }, use) => {
     await use(`http://127.0.0.1:${serverPort}`)
-  },
+  }
 })
 
 /**

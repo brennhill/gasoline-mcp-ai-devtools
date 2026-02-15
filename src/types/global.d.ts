@@ -12,7 +12,7 @@ import type {
   WaterfallEntry,
   PerformanceMark,
   PerformanceMeasure,
-  AiContextData,
+  AiContextData
 } from './messages'
 
 // =============================================================================

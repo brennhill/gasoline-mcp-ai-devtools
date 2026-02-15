@@ -1,8 +1,15 @@
 #!/bin/bash
 # Validate that all version numbers in the project match
-set -e
+set -euo pipefail
 
-VERSION=$(grep "^VERSION :=" Makefile | awk '{print $3}')
+VERSION=$(tr -d '[:space:]' < VERSION)
+CMD_PKG="${GASOLINE_CMD_PKG:-./cmd/dev-console}"
+CMD_DIR="${CMD_PKG#./}"
+
+if ! [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+    echo "❌ VERSION file is not strict semver: $VERSION"
+    exit 1
+fi
 
 echo "Checking all version references match: $VERSION"
 
@@ -12,7 +19,8 @@ ERRORS=0
 check_version() {
     local file=$1
     local pattern=$2
-    local found_version=$(grep -E "$pattern" "$file" | head -1 | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' || echo "NOT_FOUND")
+    local found_version
+    found_version=$(grep -E "$pattern" "$file" | head -1 | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' || echo "NOT_FOUND")
 
     if [ "$found_version" != "$VERSION" ]; then
         echo "❌ $file: Expected $VERSION, found $found_version"
@@ -23,23 +31,52 @@ check_version() {
 }
 
 # Check all locations
-check_version "Makefile" "^VERSION :="
-check_version "cmd/dev-console/main.go" 'var version = "'
+check_version "$CMD_DIR/main.go" 'var version = "'
 check_version "extension/manifest.json" '"version":'
 check_version "extension/package.json" '"version":'
 check_version "server/package.json" '"version":'
-check_version "server/scripts/install.js" "const VERSION ="
 check_version "npm/darwin-arm64/package.json" '"version":'
 check_version "npm/darwin-x64/package.json" '"version":'
 check_version "npm/linux-arm64/package.json" '"version":'
 check_version "npm/linux-x64/package.json" '"version":'
 check_version "npm/win32-x64/package.json" '"version":'
 check_version "README.md" 'version-.*-green'
-check_version "cmd/dev-console/testdata/mcp-initialize.golden.json" '"version":'
 check_version "npm/gasoline-mcp/package.json" '"version":'
 check_version "packages/gasoline-ci/package.json" '"version":'
 check_version "packages/gasoline-playwright/package.json" '"version":'
-check_version "internal/export/export_sarif.go" 'const version = "'
+
+# Makefile version source sanity check.
+if grep -q '^VERSION :=' Makefile; then
+    echo "✅ Makefile VERSION assignment exists"
+else
+    echo "❌ Makefile VERSION assignment missing"
+    ERRORS=$((ERRORS + 1))
+fi
+
+# File-specific version strategy checks (not semver literals in source)
+echo ""
+echo "Checking file-specific version strategies..."
+
+if grep -q "const VERSION = require('../package.json').version" server/scripts/install.js; then
+    echo "✅ server/scripts/install.js uses package.json version source"
+else
+    echo "❌ server/scripts/install.js does not source version from package.json"
+    ERRORS=$((ERRORS + 1))
+fi
+
+if grep -q '"version": "VERSION"' "$CMD_DIR/testdata/mcp-initialize.golden.json"; then
+    echo "✅ $CMD_DIR/testdata/mcp-initialize.golden.json uses VERSION placeholder"
+else
+    echo "❌ $CMD_DIR/testdata/mcp-initialize.golden.json missing VERSION placeholder"
+    ERRORS=$((ERRORS + 1))
+fi
+
+if grep -q 'var version = "dev"' internal/export/export_sarif.go; then
+    echo "✅ internal/export/export_sarif.go uses build-time injected version fallback"
+else
+    echo "❌ internal/export/export_sarif.go missing build-time version fallback (var version = \"dev\")"
+    ERRORS=$((ERRORS + 1))
+fi
 
 # Special check: optionalDependencies in gasoline-mcp
 echo ""

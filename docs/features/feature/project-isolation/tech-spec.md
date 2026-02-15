@@ -54,7 +54,7 @@ Expiration:
 
 ## Implementation Strategy
 
-**ProjectContext structure:**
+### ProjectContext structure:
 - logBuffer: ring buffer (1000 entries)
 - extensionLogBuffer: ring buffer (500 entries)
 - websocketBuffer: ring buffer (500 events)
@@ -64,23 +64,23 @@ Expiration:
 - pendingQueries: async command queue
 - metadata: {created: timestamp, last_activity: timestamp}
 
-**Project registry:**
+### Project registry:
 - Map[string]*ProjectContext
 - Protected by sync.RWMutex
 - GetOrCreate method: if not exists, create new ProjectContext
 - UpdateActivity method: set last_activity = now
 
-**MCP integration:**
+### MCP integration:
 - In initialize handler, extract project_key from params (default "default")
 - Store project_key in session state
 - All subsequent MCP calls use session's project_key to lookup ProjectContext
 
-**HTTP integration:**
+### HTTP integration:
 - Middleware extracts X-Gasoline-Project header (default "default")
 - Route to correct ProjectContext for data storage
 - Return 400 if project_key invalid characters (security: prevent injection)
 
-**Expiration strategy:**
+### Expiration strategy:
 - Background goroutine: ticker every 5 minutes
 - Iterate registry, check each project's last_activity
 - If inactive > threshold (default 1 hour), delete from map

@@ -23,7 +23,7 @@ last-verified: 2026-01-31
 
 Network waterfall and other buffers frequently exceed MCP token limits, preventing AI from analyzing captured data.
 
-**Real-world example:**
+#### Real-world example:
 ```javascript
 observe({what: "network_waterfall"})
 ```
@@ -78,7 +78,7 @@ Apply pagination to these observe() modes:
 | `actions` | 500 | 10-100 entries | 10K-100K chars |
 | `extension_logs` | 500 | 10-50 entries | 5K-50K chars |
 
-**Do NOT apply to:**
+#### Do NOT apply to:
 - `page` - Single object
 - `vitals` - Single snapshot
 - `tabs` - Small array
@@ -296,11 +296,11 @@ observe({what: "network_waterfall", limit: 100}) // New feature
 
 ## Metrics for Success
 
-**Primary:**
+### Primary:
 - Token limit errors decrease to near zero
 - AI successfully analyzes pages with 200+ requests
 
-**Secondary:**
+### Secondary:
 - Average observe() response size < 100K characters
 - Pagination used in >50% of network_waterfall calls
 
@@ -312,7 +312,7 @@ observe({what: "network_waterfall", limit: 100}) // New feature
 
 **Discovered:** 2026-01-30 during spec review
 
-**Scenario:**
+#### Scenario:
 ```javascript
 // T0: Buffer has 100 logs [0-99]
 observe({what: "logs", limit: 100})
@@ -325,7 +325,7 @@ observe({what: "logs", offset: 100, limit: 100})
 // → Returns logs [100-199] = THE SAME LOGS AS BEFORE ❌
 ```
 
-**Impact:**
+#### Impact:
 - Logs: High (constantly appending)
 - WebSocket events: High (constantly appending)
 - Actions: Medium (less frequent)
@@ -333,7 +333,7 @@ observe({what: "logs", offset: 100, limit: 100})
 
 ### The Solution: Cursor-Based Pagination
 
-**Instead of offset (index), use cursor (ID/timestamp):**
+#### Instead of offset (index), use cursor (ID/timestamp):
 
 ```javascript
 // First request
@@ -350,18 +350,18 @@ observe({what: "logs", after_cursor: 500, limit: 100})
 // Returns logs with ID > 500, regardless of new insertions
 ```
 
-**Advantages:**
+#### Advantages:
 - ✅ Stable pagination even with live data
 - ✅ No duplicate results
 - ✅ Works with append-only buffers
 - ✅ Efficient (no re-indexing)
 
-**Implementation:**
+#### Implementation:
 - Use existing monotonic counters: `logTotalAdded`, `wsTotalAdded`, `actionTotalAdded`
 - Add `cursor` and `after_cursor` parameters
 - Keep offset/limit for backward compatibility (static data like network_waterfall)
 
-**Timeline:**
+#### Timeline:
 - v5.3: Ship offset-based pagination for network_waterfall (finite data, acceptable)
 - v5.4: Add cursor-based pagination for logs/websocket_events (required for live data)
 
@@ -398,7 +398,7 @@ observe({what: "logs", after_cursor: 500, limit: 100})
 **Effort:** 2-4 hours
 **Target:** v5.3
 
-**Next Steps:**
+### Next Steps:
 1. Create tech-spec.md with implementation details
 2. Write tests first (TDD)
 3. Implement pagination for all 6 modes

@@ -12,7 +12,7 @@ version: 5.2.0
 
 Users attempting to run accessibility audits via `generate({action: "query_accessibility"})` encounter a runtime error: `runAxeAuditWithTimeout is not defined`. The function is implemented in the codebase but is undefined at runtime when called, causing all accessibility audits to fail.
 
-**Current User Experience:**
+### Current User Experience:
 1. User calls `generate({action: "query_accessibility"})`
 2. Extension attempts to execute the accessibility audit
 3. Runtime error: `ReferenceError: runAxeAuditWithTimeout is not defined`
@@ -25,7 +25,7 @@ Users attempting to run accessibility audits via `generate({action: "query_acces
 
 Fix the import/export chain or scope issue so that `runAxeAuditWithTimeout` is defined and accessible when the accessibility audit executor calls it. Ensure the axe-core library is properly loaded and the audit function can access it.
 
-**Fixed User Experience:**
+### Fixed User Experience:
 1. User calls `generate({action: "query_accessibility"})`
 2. Query is forwarded to the extension
 3. `runAxeAuditWithTimeout` executes successfully with axe-core
@@ -60,13 +60,13 @@ Fix the import/export chain or scope issue so that `runAxeAuditWithTimeout` is d
 
 ## User Workflow
 
-**Before Fix:**
+### Before Fix:
 1. User calls `generate({action: "query_accessibility"})`
 2. Receives runtime error: "runAxeAuditWithTimeout is not defined"
 3. No audit results available
 4. User cannot diagnose accessibility issues
 
-**After Fix:**
+### After Fix:
 1. User calls `generate({action: "query_accessibility"})`
 2. Audit executes in tracked tab's DOM
 3. User receives comprehensive accessibility report
@@ -76,7 +76,7 @@ Fix the import/export chain or scope issue so that `runAxeAuditWithTimeout` is d
 
 ### Example 1: Successful Audit
 
-**Request:**
+#### Request:
 ```json
 {
   "tool": "generate",
@@ -86,14 +86,14 @@ Fix the import/export chain or scope issue so that `runAxeAuditWithTimeout` is d
 }
 ```
 
-**Before Fix Response:**
+#### Before Fix Response:
 ```json
 {
   "error": "Runtime error: runAxeAuditWithTimeout is not defined at line 1234"
 }
 ```
 
-**After Fix Response:**
+#### After Fix Response:
 ```json
 {
   "url": "https://example.com",
@@ -127,7 +127,7 @@ Fix the import/export chain or scope issue so that `runAxeAuditWithTimeout` is d
 
 ### Example 2: No Tracked Tab Error
 
-**Request:**
+#### Request:
 ```json
 {
   "tool": "generate",
@@ -137,7 +137,7 @@ Fix the import/export chain or scope issue so that `runAxeAuditWithTimeout` is d
 }
 ```
 
-**Response (No Tab Tracked):**
+#### Response (No Tab Tracked):
 ```json
 {
   "error": "No tab is currently tracked. Use interact({action: 'track_tab'}) first."
@@ -148,7 +148,7 @@ Fix the import/export chain or scope issue so that `runAxeAuditWithTimeout` is d
 
 **Request:** Same as Example 1
 
-**Response (If axe-core library fails to load):**
+#### Response (If axe-core library fails to load):
 ```json
 {
   "error": "Accessibility audit library (axe-core) not loaded. Ensure axe.min.js is included in the extension."

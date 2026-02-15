@@ -68,11 +68,7 @@ export type ConnectionEvent =
 // STATE CHANGE CALLBACK
 // =============================================================================
 
-export type StateChangeCallback = (
-  oldState: ConnectionState,
-  newState: ConnectionState,
-  event: ConnectionEvent
-) => void
+export type StateChangeCallback = (oldState: ConnectionState, newState: ConnectionState, event: ConnectionEvent) => void
 
 // =============================================================================
 // INVARIANT VIOLATIONS
@@ -111,7 +107,7 @@ export class ConnectionStateMachine {
       commands: 'none',
       lastHealthCheck: 0,
       lastSuccessfulPoll: 0,
-      lastStateChange: Date.now(),
+      lastStateChange: Date.now()
     }
   }
 
@@ -168,7 +164,7 @@ export class ConnectionStateMachine {
     // Update state
     this.state = {
       ...newState,
-      lastStateChange: Date.now(),
+      lastStateChange: Date.now()
     }
 
     // Enforce invariants (may modify state)
@@ -186,112 +182,110 @@ export class ConnectionStateMachine {
     return this.state
   }
 
+  /** Transition table: each handler mutates the state draft */
+  private static readonly transitions: Record<ConnectionEvent['type'], (next: ConnectionState) => void> = {
+    // Server events
+    SERVER_UP: (n) => {
+      n.server = 'up'
+    },
+    SERVER_DOWN: (n) => {
+      n.server = 'down'
+      n.extension = 'disconnected'
+      n.polling = 'stopped'
+    },
+    SERVER_BOOTING: (n) => {
+      n.server = 'booting'
+      n.extension = 'disconnected'
+    },
+    // Health check events
+    HEALTH_OK: (n) => {
+      n.lastHealthCheck = Date.now()
+      if (n.server !== 'up') n.server = 'up'
+      if (n.extension === 'disconnected') n.extension = 'connected'
+    },
+    HEALTH_FAIL: (n) => {
+      n.lastHealthCheck = Date.now()
+      if (n.extension !== 'disconnected') {
+        n.extension = 'disconnected'
+        n.polling = 'stopped'
+      }
+    },
+    // Polling events
+    POLLING_STARTED: (n) => {
+      n.polling = 'running'
+      if (n.extension === 'connected') n.extension = 'active'
+    },
+    POLLING_STOPPED: (n) => {
+      n.polling = 'stopped'
+      if (n.extension === 'active') n.extension = 'connected'
+    },
+    POLL_SUCCESS: (n) => {
+      n.lastSuccessfulPoll = Date.now()
+    },
+    POLL_FAIL: () => {
+      /* Record failure but don't immediately disconnect */
+    },
+    POLL_STALE: (n) => {
+      n.extension = 'connected'
+      n.polling = 'stopped'
+    },
+    // Circuit breaker events
+    CB_OPENED: (n) => {
+      n.circuit = 'open'
+      n.polling = 'stopped'
+    },
+    CB_HALF_OPEN: (n) => {
+      n.circuit = 'half-open'
+    },
+    CB_CLOSED: (n) => {
+      n.circuit = 'closed'
+    },
+    CB_PROBE_SUCCESS: (n) => {
+      n.circuit = 'closed'
+    },
+    CB_PROBE_FAIL: (n) => {
+      n.circuit = 'open'
+    },
+    // User action events
+    USER_RESET: (n) => {
+      n.circuit = 'closed'
+    },
+    PILOT_ENABLED: (n) => {
+      n.pilot = 'enabled'
+      n.circuit = 'closed'
+    },
+    PILOT_DISABLED: (n) => {
+      n.pilot = 'disabled'
+    },
+    TRACKING_ENABLED: (n) => {
+      n.tracking = 'tab_tracked'
+      n.circuit = 'closed'
+    },
+    TRACKING_DISABLED: (n) => {
+      n.tracking = 'none'
+    },
+    // Command events
+    COMMAND_QUEUED: (n) => {
+      if (n.commands === 'none') n.commands = 'queued'
+    },
+    COMMAND_PROCESSING: (n) => {
+      n.commands = 'processing'
+    },
+    COMMAND_COMPLETED: (n) => {
+      n.commands = 'none'
+    },
+    COMMAND_TIMEOUT: (n) => {
+      n.commands = 'none'
+    }
+  }
+
   /**
    * Compute the next state based on current state and event
    */
   private computeNextState(state: ConnectionState, event: ConnectionEvent): ConnectionState {
     const next = { ...state }
-
-    switch (event.type) {
-      // Server events
-      case 'SERVER_UP':
-        next.server = 'up'
-        break
-      case 'SERVER_DOWN':
-        next.server = 'down'
-        next.extension = 'disconnected'
-        next.polling = 'stopped'
-        break
-      case 'SERVER_BOOTING':
-        next.server = 'booting'
-        next.extension = 'disconnected'
-        break
-
-      // Health check events
-      case 'HEALTH_OK':
-        next.lastHealthCheck = Date.now()
-        if (next.server !== 'up') next.server = 'up'
-        if (next.extension === 'disconnected') next.extension = 'connected'
-        break
-      case 'HEALTH_FAIL':
-        next.lastHealthCheck = Date.now()
-        if (next.extension !== 'disconnected') {
-          next.extension = 'disconnected'
-          next.polling = 'stopped'
-        }
-        break
-
-      // Polling events
-      case 'POLLING_STARTED':
-        next.polling = 'running'
-        if (next.extension === 'connected') next.extension = 'active'
-        break
-      case 'POLLING_STOPPED':
-        next.polling = 'stopped'
-        if (next.extension === 'active') next.extension = 'connected'
-        break
-      case 'POLL_SUCCESS':
-        next.lastSuccessfulPoll = Date.now()
-        break
-      case 'POLL_FAIL':
-        // Record failure but don't immediately disconnect
-        break
-      case 'POLL_STALE':
-        // Stale polling detected - force reconnection check
-        next.extension = 'connected' // Downgrade from active
-        next.polling = 'stopped'
-        break
-
-      // Circuit breaker events
-      case 'CB_OPENED':
-        next.circuit = 'open'
-        next.polling = 'stopped'
-        break
-      case 'CB_HALF_OPEN':
-        next.circuit = 'half-open'
-        break
-      case 'CB_CLOSED':
-        next.circuit = 'closed'
-        break
-      case 'CB_PROBE_SUCCESS':
-        next.circuit = 'closed'
-        break
-      case 'CB_PROBE_FAIL':
-        next.circuit = 'open'
-        break
-
-      // User action events - reset circuit breaker
-      case 'USER_RESET':
-        next.circuit = 'closed'
-        break
-      case 'PILOT_ENABLED':
-        next.pilot = 'enabled'
-        next.circuit = 'closed' // Reset CB on user action
-        break
-      case 'PILOT_DISABLED':
-        next.pilot = 'disabled'
-        break
-      case 'TRACKING_ENABLED':
-        next.tracking = 'tab_tracked'
-        next.circuit = 'closed' // Reset CB on user action
-        break
-      case 'TRACKING_DISABLED':
-        next.tracking = 'none'
-        break
-
-      // Command events
-      case 'COMMAND_QUEUED':
-        if (next.commands === 'none') next.commands = 'queued'
-        break
-      case 'COMMAND_PROCESSING':
-        next.commands = 'processing'
-        break
-      case 'COMMAND_COMPLETED':
-      case 'COMMAND_TIMEOUT':
-        next.commands = 'none'
-        break
-    }
-
+    const handler = ConnectionStateMachine.transitions[event.type] // nosemgrep: unsafe-dynamic-method
+    if (handler) handler(next)
     return next
   }
 
@@ -345,7 +339,7 @@ export class ConnectionStateMachine {
       invariant,
       expected,
       actual,
-      timestamp: Date.now(),
+      timestamp: Date.now()
     })
     // Keep only last 20 violations
     if (this.violations.length > 20) {

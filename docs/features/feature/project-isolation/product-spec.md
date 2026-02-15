@@ -52,7 +52,7 @@ Add project isolation via project keys. Each client connects with a unique proje
 
 ## Examples
 
-**MCP connection with project_key:**
+### MCP connection with project_key:
 ```json
 // MCP initialize request
 {
@@ -64,7 +64,7 @@ Add project isolation via project keys. Each client connects with a unique proje
 }
 ```
 
-**Extension HTTP request with project:**
+### Extension HTTP request with project:
 ```http
 POST /logs HTTP/1.1
 X-Gasoline-Project: myapp-staging
@@ -73,7 +73,7 @@ Content-Type: application/json
 {"level": "error", "message": "..."}
 ```
 
-**Observe filtered by project:**
+### Observe filtered by project:
 ```json
 // Agent with project_key="projectA"
 observe({what: "logs"})
@@ -83,7 +83,7 @@ observe({what: "logs"})
 // return server.projects["projectA"].logBuffer
 ```
 
-**Project expiration:**
+### Project expiration:
 ```json
 // After 1 hour of no activity
 // Server: detect last_activity > 1 hour
@@ -91,7 +91,7 @@ observe({what: "logs"})
 // Server: log "Project projectA expired, buffers freed"
 ```
 
-**List active projects (admin):**
+### List active projects (admin):
 ```json
 observe({what: "projects"})
 // Returns:

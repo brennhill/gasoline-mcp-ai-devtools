@@ -189,7 +189,7 @@ test_edge_case_4() {
   for i in {1..10}; do
     # Simulate MCP client: piping a simple request to stdin triggers handleMCPConnection
     echo '{"jsonrpc":"2.0","method":"tools/list","id":1}' | \
-      "$BINARY" --port "$TEST_PORT" > /tmp/gasoline-race-$i.log 2>&1 &
+      "$BINARY" --port "$TEST_PORT" > "/tmp/gasoline-race-${i}.log" 2>&1 &
     pids+=($!)
   done
 
@@ -228,7 +228,7 @@ test_edge_case_4() {
   # Check that all clients got responses
   local response_count=0
   for i in {1..10}; do
-    if grep -q '"tools"' /tmp/gasoline-race-$i.log 2>/dev/null; then
+    if grep -q '"tools"' "/tmp/gasoline-race-$i.log" 2>/dev/null; then
       response_count=$((response_count + 1))
     fi
   done

@@ -20,7 +20,7 @@ function generateLargeJson() {
     items.push({
       id: i,
       name: `Item ${i}`,
-      description: 'x'.repeat(180), // ~200 bytes per item
+      description: 'x'.repeat(180) // ~200 bytes per item
     })
   }
   return JSON.stringify({ data: items })
@@ -99,7 +99,7 @@ function handleRequest(req, res) {
       // ~1MB JSON response
       res.writeHead(200, {
         'Content-Type': 'application/json',
-        'Content-Length': Buffer.byteLength(largeJson),
+        'Content-Length': Buffer.byteLength(largeJson)
       })
       res.end(largeJson)
       break
@@ -108,7 +108,7 @@ function handleRequest(req, res) {
       // ~1MB text response
       res.writeHead(200, {
         'Content-Type': 'text/plain',
-        'Content-Length': Buffer.byteLength(largeText),
+        'Content-Length': Buffer.byteLength(largeText)
       })
       res.end(largeText)
       break
@@ -131,7 +131,7 @@ function handleRequest(req, res) {
       // Binary data (PNG-like)
       res.writeHead(200, {
         'Content-Type': 'image/png',
-        'Content-Length': binaryData.length,
+        'Content-Length': binaryData.length
       })
       res.end(binaryData)
       break
@@ -140,7 +140,7 @@ function handleRequest(req, res) {
       // Chunked transfer encoding
       res.writeHead(200, {
         'Content-Type': 'text/plain',
-        'Transfer-Encoding': 'chunked',
+        'Transfer-Encoding': 'chunked'
       })
       let chunkCount = 0
       const interval = setInterval(() => {

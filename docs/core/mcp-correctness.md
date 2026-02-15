@@ -4,14 +4,14 @@ scope: architecture/mcp
 ai-priority: high
 tags: [mcp, correctness, constraints, reference]
 relates-to: [../../.claude/refs/architecture.md, ../../.claude/refs/async-command-architecture.md]
-last-verified: 2026-01-31
+last-verified: 2026-02-11
 ---
 
 # MCP Correctness
 
 **See Also:** [.claude/refs/architecture.md](../../.claude/refs/architecture.md) (canonical system design)
 
-Gasoline MCP implements the [Model Context Protocol](https://modelcontextprotocol.io/specification/2025-11-25) specification using SSE transport and custom HTTP bridge.
+Gasoline MCP implements [Model Context Protocol](https://modelcontextprotocol.io/specification/2025-11-25) JSON-RPC semantics with a stdio client boundary and a local HTTP bridge.
 
 **Protocol Version:** `2024-11-05` (with version negotiation for `2025-11-25`)
 
@@ -19,7 +19,7 @@ Gasoline MCP implements the [Model Context Protocol](https://modelcontextprotoco
 
 **All MUST constraints:** ✅ PASS
 **Intentional deviations:** 3 (documented below)
-**Transport:** SSE (Server-Sent Events) for MCP spec compliance
+**Transport:** stdio JSON-RPC for MCP clients, local `/mcp` HTTP bridge for shared daemon
 
 ## Violations Summary
 
@@ -31,7 +31,7 @@ Gasoline MCP implements the [Model Context Protocol](https://modelcontextprotoco
 |----|-----------|---------------|
 | L-6, J-6 | Respond to `initialized` notification with `{}` | Some MCP clients (including Claude Code) expect a response. Removing it could break compatibility. Track spec evolution. |
 | — | `_meta` field on tools with `data_counts` | Non-standard but uses `_` prefix convention. Provides AI with buffer state without extra tool call. No spec conflict. |
-| — | `X-Gasoline MCP-Client` header for multi-client | Not part of MCP spec. Internal transport-layer addition for our `/mcp` HTTP bridge. Does not affect SSE transport. |
+| — | `X-Gasoline MCP-Client` header for multi-client | Not part of MCP spec. Internal transport-layer addition for our `/mcp` HTTP bridge. |
 | — | Only `type: "text"` content blocks | MCP allows image/resource content types. All our data is textual. No spec violation — we just don't use all content types. |
 
 ## Key Implementation Details
@@ -49,53 +49,27 @@ Gasoline MCP implements the [Model Context Protocol](https://modelcontextprotoco
 - Server binds `127.0.0.1` only
 - Origin validation with strict localhost/extension allowlist
 - Sensitive data redaction in all tool outputs
-- Cryptographically random session IDs for SSE connections
+- Sensitive fields redacted in bridge diagnostics and debug logs
 
 **Transport:**
-- **Primary (MCP clients):** SSE (Server-Sent Events) at `/mcp/sse` with POST to `/mcp/messages/{session-id}`
-  - Bidirectional communication: SSE for server→client, HTTP POST for client→server
-  - MCP 2024-11-05 compliant SSE transport
-  - Session-based routing with UUID session IDs
-  - Automatic cleanup of stale connections (1 hour timeout)
-- **Secondary (browser extension):** Custom `/mcp` POST endpoint for backward compatibility
-  - HTTP bridge for extension telemetry
-  - Not part of MCP spec, documented intentional deviation
-
-## SSE Transport Details
-
-**Connection Flow:**
-1. Client connects: `GET /mcp/sse`
-2. Server sends `endpoint` event with POST URI: `/mcp/messages/{session-id}`
-3. Client sends requests: `POST /mcp/messages/{session-id}` with JSON-RPC 2.0
-4. Server sends responses/notifications via SSE `message` events
-
-**Event Types:**
-- `endpoint` — Initial event with POST URI for client requests
-- `message` — JSON-RPC responses and MCP notifications
-
-**SSE Headers:**
-```http
-Content-Type: text/event-stream
-Cache-Control: no-cache
-Connection: keep-alive
-X-Accel-Buffering: no
-```
-
-**Session Management:**
-- UUID-based session IDs (cryptographically random)
-- Multi-client isolation via session registry
-- Automatic cleanup of idle connections (1 hour)
-- Context cancellation for graceful disconnect detection
+- **Primary (MCP clients):** stdio JSON-RPC (`npx gasoline-mcp` process per MCP client)
+  - Silent stdio transport contract (no non-protocol stdout/stderr noise)
+  - JSON-RPC 2.0 request/response semantics
+  - Notification handling per MCP/JSON-RPC constraints
+- **Bridge transport (internal):** `POST /mcp` on localhost daemon
+  - Stdio wrapper proxies MCP calls to shared HTTP daemon
+  - Enables one persistent server shared by multiple MCP clients
+  - Browser extension also uses local HTTP endpoints for telemetry and async command exchange
 
 ## Test Coverage
 
 80+ MCP constraints covered by:
-- `main_test.go` — JSON-RPC protocol, lifecycle, tools, resources
-- `redaction_test.go` — Security sanitization
-- `multi_client_test.go` — Concurrent client isolation
-- `sse_test.go` — SSE transport, connection lifecycle, thread safety
+- `mcp_protocol_test.go` — JSON-RPC protocol correctness and invariants
+- `connection_lifecycle_test.go` — startup/retry/recovery lifecycle invariants
+- `multi_client_test.go` — concurrent client isolation behavior
+- `handler_unit_test.go` — HTTP bridge handler behavior and redaction paths
 
 ## References
 
 - [MCP 2024-11-05 Specification](https://spec.modelcontextprotocol.io/specification/2024-11-05/basic/transports/)
-- [SSE Transport Documentation](https://modelcontextprotocol.io/legacy/concepts/transports)
+- [MCP Transport Concepts](https://modelcontextprotocol.io/specification/2025-11-25/basic/transports)

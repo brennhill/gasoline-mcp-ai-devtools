@@ -67,12 +67,13 @@ function createMockResponse(options = {}) {
         statusText: this.statusText,
         headers: this.headers,
         text: () => Promise.resolve(options.body || '{}'),
-        blob: () => Promise.resolve({
-          size: (options.body || '{}').length,
-          type: options.contentType || 'application/json'
-        }),
+        blob: () =>
+          Promise.resolve({
+            size: (options.body || '{}').length,
+            type: options.contentType || 'application/json'
+          })
       }
-    },
+    }
   }
 }
 
@@ -102,7 +103,7 @@ describe('Bug #4 Fix: installFetchCapture uses wrapFetchWithBodies', () => {
         hostname: 'localhost',
         href: 'http://localhost/',
         origin: 'http://localhost'
-      },
+      }
     }
   })
 
@@ -136,12 +137,14 @@ describe('Bug #4 Fix: installFetchCapture uses wrapFetchWithBodies', () => {
     await globalThis.window.fetch('/api/users/1')
 
     // Wait for async body capture
-    await new Promise(r => setTimeout(r, 50))
+    await new Promise((r) => setTimeout(r, 50))
 
     // Verify body was captured (this is the key assertion - will FAIL before fix)
-    assert.ok(capturedBodyEvents.length > 0,
+    assert.ok(
+      capturedBodyEvents.length > 0,
       'Expected network body event to be captured for 200 response. ' +
-      'Bug #4: installFetchCapture uses wrapFetch (error-only) instead of wrapFetchWithBodies.')
+        'Bug #4: installFetchCapture uses wrapFetch (error-only) instead of wrapFetchWithBodies.'
+    )
 
     const event = capturedBodyEvents[0]
     assert.strictEqual(event.status, 200)
@@ -169,7 +172,7 @@ describe('Bug #4 Fix: installFetchCapture uses wrapFetchWithBodies', () => {
       headers: { 'Content-Type': 'application/json' }
     })
 
-    await new Promise(r => setTimeout(r, 50))
+    await new Promise((r) => setTimeout(r, 50))
 
     assert.ok(capturedBodyEvents.length > 0, 'Expected body capture for POST request')
     const event = capturedBodyEvents[0]
@@ -195,7 +198,7 @@ describe('Bug #4 Fix: installFetchCapture uses wrapFetchWithBodies', () => {
 
     await globalThis.window.fetch('/api/items')
 
-    await new Promise(r => setTimeout(r, 50))
+    await new Promise((r) => setTimeout(r, 50))
 
     assert.ok(capturedBodyEvents.length > 0, 'Expected body capture for large response')
     const event = capturedBodyEvents[0]
@@ -222,14 +225,12 @@ describe('Bug #4 Fix: installFetchCapture uses wrapFetchWithBodies', () => {
 
     await globalThis.window.fetch('/image.png')
 
-    await new Promise(r => setTimeout(r, 50))
+    await new Promise((r) => setTimeout(r, 50))
 
     assert.ok(capturedBodyEvents.length > 0, 'Expected body capture for binary response')
     const event = capturedBodyEvents[0]
-    assert.ok(event.responseBody.includes('[Binary:'),
-      'Binary content should be marked as such')
-    assert.ok(event.responseBody.includes('image/png'),
-      'Binary content type should be included')
+    assert.ok(event.responseBody.includes('[Binary:'), 'Binary content should be marked as such')
+    assert.ok(event.responseBody.includes('image/png'), 'Binary content type should be included')
 
     uninstallFetchCapture()
   })
@@ -253,13 +254,12 @@ describe('Bug #4 Fix: installFetchCapture uses wrapFetchWithBodies', () => {
 
     await globalThis.window.fetch('/api/crash')
 
-    await new Promise(r => setTimeout(r, 50))
+    await new Promise((r) => setTimeout(r, 50))
 
     assert.ok(capturedBodyEvents.length > 0, 'Expected body capture for 500 response')
     const event = capturedBodyEvents[0]
     assert.strictEqual(event.status, 500)
-    assert.ok(event.responseBody.includes('Database connection failed'),
-      'Error response body should be captured')
+    assert.ok(event.responseBody.includes('Database connection failed'), 'Error response body should be captured')
 
     uninstallFetchCapture()
   })
@@ -282,13 +282,15 @@ describe('Bug #4 Fix: installFetchCapture uses wrapFetchWithBodies', () => {
       body: hugeRequestBody
     })
 
-    await new Promise(r => setTimeout(r, 50))
+    await new Promise((r) => setTimeout(r, 50))
 
     assert.ok(capturedBodyEvents.length > 0, 'Expected body capture')
     const event = capturedBodyEvents[0]
     // 8KB = 8192 bytes
-    assert.ok(event.requestBody.length <= 8192,
-      `Request body should be truncated at 8KB, got ${event.requestBody.length}`)
+    assert.ok(
+      event.requestBody.length <= 8192,
+      `Request body should be truncated at 8KB, got ${event.requestBody.length}`
+    )
 
     uninstallFetchCapture()
   })
@@ -308,13 +310,15 @@ describe('Bug #4 Fix: installFetchCapture uses wrapFetchWithBodies', () => {
 
     await globalThis.window.fetch('/api/huge')
 
-    await new Promise(r => setTimeout(r, 50))
+    await new Promise((r) => setTimeout(r, 50))
 
     assert.ok(capturedBodyEvents.length > 0, 'Expected body capture')
     const event = capturedBodyEvents[0]
     // 16KB = 16384 bytes
-    assert.ok(event.responseBody.length <= 16384,
-      `Response body should be truncated at 16KB, got ${event.responseBody.length}`)
+    assert.ok(
+      event.responseBody.length <= 16384,
+      `Response body should be truncated at 16KB, got ${event.responseBody.length}`
+    )
 
     uninstallFetchCapture()
   })
@@ -329,7 +333,7 @@ describe('Bug #4 Fix: installFetchCapture uses wrapFetchWithBodies', () => {
     const responses = [
       createMockResponse({ status: 200, body: '{"user":"alice"}' }),
       createMockResponse({ status: 200, body: '{"user":"bob"}' }),
-      createMockResponse({ status: 201, body: '{"created":true}' }),
+      createMockResponse({ status: 201, body: '{"created":true}' })
     ]
 
     let callCount = 0
@@ -342,12 +346,14 @@ describe('Bug #4 Fix: installFetchCapture uses wrapFetchWithBodies', () => {
     await globalThis.window.fetch('/api/users/2')
     await globalThis.window.fetch('/api/users', { method: 'POST', body: '{"name":"carol"}' })
 
-    await new Promise(r => setTimeout(r, 100))
+    await new Promise((r) => setTimeout(r, 100))
 
     // All 3 requests should have captured bodies
-    assert.strictEqual(capturedBodyEvents.length, 3,
-      `Expected 3 body events, got ${capturedBodyEvents.length}. ` +
-      'Bug #4: network_bodies returns empty arrays.')
+    assert.strictEqual(
+      capturedBodyEvents.length,
+      3,
+      `Expected 3 body events, got ${capturedBodyEvents.length}. ` + 'Bug #4: network_bodies returns empty arrays.'
+    )
 
     // Verify each has actual body content
     assert.ok(capturedBodyEvents[0].responseBody.includes('alice'))
@@ -371,11 +377,14 @@ describe('Bug #4 Fix: installFetchCapture uses wrapFetchWithBodies', () => {
 
     await globalThis.window.fetch('/api/private')
 
-    await new Promise(r => setTimeout(r, 50))
+    await new Promise((r) => setTimeout(r, 50))
 
     // Should NOT capture body when disabled
-    assert.strictEqual(capturedBodyEvents.length, 0,
-      'Body should not be captured when networkBodyCaptureEnabled is false')
+    assert.strictEqual(
+      capturedBodyEvents.length,
+      0,
+      'Body should not be captured when networkBodyCaptureEnabled is false'
+    )
 
     uninstallFetchCapture()
   })
@@ -395,10 +404,13 @@ describe('Bug #4 Fix: installFetchCapture uses wrapFetchWithBodies', () => {
     await globalThis.window.fetch('http://localhost:7890/logs')
     await globalThis.window.fetch('http://127.0.0.1:7890/health')
 
-    await new Promise(r => setTimeout(r, 50))
+    await new Promise((r) => setTimeout(r, 50))
 
-    assert.strictEqual(capturedBodyEvents.length, 0,
-      'Gasoline server requests should not be captured to prevent infinite loops')
+    assert.strictEqual(
+      capturedBodyEvents.length,
+      0,
+      'Gasoline server requests should not be captured to prevent infinite loops'
+    )
 
     uninstallFetchCapture()
   })

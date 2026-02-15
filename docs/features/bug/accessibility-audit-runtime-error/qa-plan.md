@@ -43,7 +43,7 @@ feature: accessibility-audit-runtime-error
 - [ ] Audit results do not include sensitive form input values
 - [ ] No axe-core internal state or debug data leaked in results
 
-**Library verification tests:**
+#### Library verification tests:
 - [ ] Axe-core is bundled locally in extension/lib/axe.min.js
 - [ ] No external rule loading or CDN requests during audit
 - [ ] Bundled axe-core version is from official Deque repository
@@ -52,7 +52,7 @@ feature: accessibility-audit-runtime-error
 
 ## Human UAT Walkthrough
 
-**Scenario 1: Basic Audit Works**
+### Scenario 1: Basic Audit Works
 1. Setup:
    - Start Gasoline server: `./dist/gasoline`
    - Load Chrome with extension
@@ -83,7 +83,7 @@ feature: accessibility-audit-runtime-error
    - [ ] url and pageTitle are populated
    - [ ] testEngine shows axe-core
 
-**Scenario 2: Audit Finds Real Violations**
+### Scenario 2: Audit Finds Real Violations
 1. Setup:
    - Create test page with accessibility issues:
      - Missing alt text on image
@@ -101,7 +101,7 @@ feature: accessibility-audit-runtime-error
    - [ ] Each violation includes help text and helpUrl
 4. Verification: Audit identifies real accessibility issues
 
-**Scenario 3: No Runtime Error on Complex Page**
+### Scenario 3: No Runtime Error on Complex Page
 1. Setup: Navigate to complex page (e.g., GitHub.com with 5,000+ DOM elements)
 2. Steps:
    - [ ] Call MCP tool: `generate({action: "query_accessibility"})`
@@ -111,7 +111,7 @@ feature: accessibility-audit-runtime-error
    - [ ] NO "runAxeAuditWithTimeout is not defined" error
 4. Verification: Function is properly defined even on complex pages
 
-**Scenario 4: No Tracked Tab Error**
+### Scenario 4: No Tracked Tab Error
 1. Setup:
    - Start Gasoline server
    - DO NOT track any tab
@@ -121,7 +121,7 @@ feature: accessibility-audit-runtime-error
 3. Expected Result: Error response with clear message
 4. Verification: Error says "No tab is currently tracked" (not undefined function)
 
-**Scenario 5: Audit Timeout Handling**
+### Scenario 5: Audit Timeout Handling
 1. Setup:
    - Navigate to extremely complex page or freeze page via DevTools
    - Track the tab
@@ -131,7 +131,7 @@ feature: accessibility-audit-runtime-error
 3. Expected Result: Timeout error after 10 seconds
 4. Verification: Audit doesn't hang indefinitely
 
-**Scenario 6: Accessible Page Returns Passes**
+### Scenario 6: Accessible Page Returns Passes
 1. Setup: Navigate to well-designed accessible page (e.g., gov.uk)
 2. Steps:
    - [ ] Call MCP tool: `generate({action: "query_accessibility"})`
@@ -166,22 +166,22 @@ feature: accessibility-audit-runtime-error
 
 ## Performance/Load Testing
 
-**Audit execution time:**
+### Audit execution time:
 - [ ] Simple page (< 100 elements): < 1 second
 - [ ] Medium page (100-1000 elements): < 3 seconds
 - [ ] Complex page (1000-5000 elements): < 7 seconds
 - [ ] Very complex page (5000+ elements): < 10 seconds or timeout
 
-**Message passing overhead:**
+### Message passing overhead:
 - [ ] Background → Content → Inject: < 10ms total
 
-**No memory leaks:**
+### No memory leaks:
 - [ ] Run 50 consecutive audits
 - [ ] Check extension memory usage (should not grow unbounded)
 - [ ] Verify no message listeners accumulate
 - [ ] Verify axe-core doesn't accumulate state
 
-**Axe-core library loading:**
+### Axe-core library loading:
 - [ ] Verify axe.min.js loads within 50ms of extension injection
 - [ ] Verify `window.axe` is defined before first audit
 
@@ -189,18 +189,18 @@ feature: accessibility-audit-runtime-error
 
 ## Axe-Core Verification
 
-**Library bundling:**
+### Library bundling:
 - [ ] axe.min.js exists in extension/lib/ directory
 - [ ] File size is ~500KB (compressed)
 - [ ] No external CDN requests during audit
 - [ ] manifest.json includes axe.min.js in content_scripts or web_accessible_resources
 
-**Version verification:**
+### Version verification:
 - [ ] Audit response includes testEngine.version matching bundled axe-core
 - [ ] Version is stable (4.x series)
 - [ ] No version mismatch warnings in console
 
-**Rule set verification:**
+### Rule set verification:
 - [ ] Audit runs standard WCAG 2.1 Level A and AA rules
 - [ ] No custom rule loading from external sources
 - [ ] All rule IDs in violations are from axe-core standard rules

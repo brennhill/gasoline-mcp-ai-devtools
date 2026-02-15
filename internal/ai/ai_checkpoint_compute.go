@@ -8,6 +8,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/dev-console/dev-console/internal/capture"
+	gasTypes "github.com/dev-console/dev-console/internal/types"
 )
 
 // ============================================
@@ -15,248 +16,62 @@ import (
 // ============================================
 
 func (cm *CheckpointManager) computeConsoleDiff(cp *Checkpoint, severity string) *ConsoleDiff {
-	// Get snapshot with proper locking
 	snapshot := cm.server.GetLogSnapshot()
-	currentTotal := snapshot.TotalAdded
-	newCount := int(currentTotal - cp.LogTotal)
-	if newCount <= 0 {
+	newEntries := recentSlice(len(snapshot.Entries), int(snapshot.TotalAdded-cp.LogTotal))
+	if newEntries < 0 {
 		return &ConsoleDiff{}
 	}
-	available := len(snapshot.Entries)
-	toRead := newCount
-	if toRead > available {
-		toRead = available
+	entries := snapshot.Entries[len(snapshot.Entries)-newEntries:]
+
+	classified := classifyLogEntries(entries, severity)
+	return &ConsoleDiff{
+		TotalNew: classified.totalNew,
+		Errors:   buildConsoleEntries(classified.errorMap, classified.errorOrder),
+		Warnings: buildConsoleEntries(classified.warningMap, classified.warningOrder),
 	}
-	// Snapshot already copied the entries, slice them as needed
-	newEntries := snapshot.Entries[available-toRead:]
-
-	// Separate into errors and warnings, deduplicate by fingerprint
-	type fingerprintEntry struct {
-		message string
-		source  string
-		count   int
-	}
-	errorMap := make(map[string]*fingerprintEntry)
-	warningMap := make(map[string]*fingerprintEntry)
-	var errorOrder, warningOrder []string
-
-	totalNew := 0
-	for _, entry := range newEntries {
-		level, _ := entry["level"].(string)
-		msg, _ := entry["msg"].(string)
-		if msg == "" {
-			msg, _ = entry["message"].(string)
-		}
-		source, _ := entry["source"].(string)
-
-		if level == "error" {
-			totalNew++
-			fp := FingerprintMessage(msg)
-			if existing, ok := errorMap[fp]; ok {
-				existing.count++
-			} else {
-				truncMsg := truncateMessage(msg)
-				errorMap[fp] = &fingerprintEntry{message: truncMsg, source: source, count: 1}
-				errorOrder = append(errorOrder, fp)
-			}
-		} else if level == "warn" || level == "warning" {
-			totalNew++
-			if severity == "errors_only" {
-				continue
-			}
-			fp := FingerprintMessage(msg)
-			if existing, ok := warningMap[fp]; ok {
-				existing.count++
-			} else {
-				truncMsg := truncateMessage(msg)
-				warningMap[fp] = &fingerprintEntry{message: truncMsg, source: source, count: 1}
-				warningOrder = append(warningOrder, fp)
-			}
-		} else {
-			totalNew++
-		}
-	}
-
-	diff := &ConsoleDiff{TotalNew: totalNew}
-
-	// Build error entries (capped at max)
-	for i, fp := range errorOrder {
-		if i >= maxDiffEntriesPerCat {
-			break
-		}
-		e := errorMap[fp]
-		diff.Errors = append(diff.Errors, ConsoleEntry{
-			Message: e.message,
-			Source:  e.source,
-			Count:   e.count,
-		})
-	}
-
-	// Build warning entries (capped at max)
-	for i, fp := range warningOrder {
-		if i >= maxDiffEntriesPerCat {
-			break
-		}
-		w := warningMap[fp]
-		diff.Warnings = append(diff.Warnings, ConsoleEntry{
-			Message: w.message,
-			Source:  w.source,
-			Count:   w.count,
-		})
-	}
-
-	return diff
 }
 
 func (cm *CheckpointManager) computeNetworkDiff(cp *Checkpoint) *NetworkDiff {
-	currentTotal := cm.capture.GetNetworkTotalAdded()
-	newCount := int(currentTotal - cp.NetworkTotal)
-	if newCount <= 0 {
+	allBodies := cm.capture.GetNetworkBodies()
+	count := recentSlice(len(allBodies), int(cm.capture.GetNetworkTotalAdded()-cp.NetworkTotal))
+	if count < 0 {
 		return &NetworkDiff{}
 	}
-
-	// Get all network bodies (thread-safe)
-	allBodies := cm.capture.GetNetworkBodies()
-	available := len(allBodies)
-	toRead := newCount
-	if toRead > available {
-		toRead = available
-	}
-	// Slice the already-copied bodies to get the most recent newCount entries
-	newBodies := allBodies[available-toRead:]
+	newBodies := allBodies[len(allBodies)-count:]
 
 	diff := &NetworkDiff{TotalNew: len(newBodies)}
-
-	// Track endpoints seen in new entries
 	for _, body := range newBodies {
-		path := capture.ExtractURLPath(body.URL)
-
-		// Check for failures (4xx/5xx where previously success)
-		if body.Status >= 400 {
-			if prev, known := cp.KnownEndpoints[path]; known && prev.Status < 400 {
-				diff.Failures = append(diff.Failures, NetworkFailure{
-					Path:           path,
-					Status:         body.Status,
-					PreviousStatus: prev.Status,
-				})
-			} else if !known {
-				// New endpoint that immediately fails — count as new endpoint
-				if !containsString(diff.NewEndpoints, path) {
-					diff.NewEndpoints = append(diff.NewEndpoints, path)
-				}
-			}
-		} else {
-			// Check for new endpoints
-			if _, known := cp.KnownEndpoints[path]; !known {
-				if !containsString(diff.NewEndpoints, path) {
-					diff.NewEndpoints = append(diff.NewEndpoints, path)
-				}
-			}
-
-			// Check for degraded latency
-			if body.Duration > 0 {
-				if prev, known := cp.KnownEndpoints[path]; known && prev.Duration > 0 {
-					if body.Duration > prev.Duration*degradedLatencyFactor {
-						diff.Degraded = append(diff.Degraded, NetworkDegraded{
-							Path:     path,
-							Duration: body.Duration,
-							Baseline: prev.Duration,
-						})
-					}
-				}
-			}
-		}
+		classifyNetworkBody(diff, body, cp.KnownEndpoints)
 	}
-
-	// Cap entries
-	if len(diff.Failures) > maxDiffEntriesPerCat {
-		diff.Failures = diff.Failures[:maxDiffEntriesPerCat]
-	}
-	if len(diff.NewEndpoints) > maxDiffEntriesPerCat {
-		diff.NewEndpoints = diff.NewEndpoints[:maxDiffEntriesPerCat]
-	}
-	if len(diff.Degraded) > maxDiffEntriesPerCat {
-		diff.Degraded = diff.Degraded[:maxDiffEntriesPerCat]
-	}
-
+	capNetworkDiff(diff)
 	return diff
 }
 
 func (cm *CheckpointManager) computeWebSocketDiff(cp *Checkpoint, severity string) *WebSocketDiff {
-	currentTotal := cm.capture.GetWebSocketTotalAdded()
-	newCount := int(currentTotal - cp.WSTotal)
-	if newCount <= 0 {
+	allEvents := cm.capture.GetAllWebSocketEvents()
+	count := recentSlice(len(allEvents), int(cm.capture.GetWebSocketTotalAdded()-cp.WSTotal))
+	if count < 0 {
 		return &WebSocketDiff{}
 	}
-
-	// Get all WebSocket events (thread-safe)
-	allEvents := cm.capture.GetAllWebSocketEvents()
-	available := len(allEvents)
-	toRead := newCount
-	if toRead > available {
-		toRead = available
-	}
-	// Slice the already-copied events to get the most recent newCount entries
-	newEvents := allEvents[available-toRead:]
+	newEvents := allEvents[len(allEvents)-count:]
 
 	diff := &WebSocketDiff{TotalNew: len(newEvents)}
-
 	for i := range newEvents {
-		switch newEvents[i].Event {
-		case "close":
-			if severity != "errors_only" {
-				diff.Disconnections = append(diff.Disconnections, WSDisco{
-					URL:         newEvents[i].URL,
-					CloseCode:   newEvents[i].CloseCode,
-					CloseReason: newEvents[i].CloseReason,
-				})
-			}
-		case "open":
-			diff.Connections = append(diff.Connections, WSConn{
-				URL: newEvents[i].URL,
-				ID:  newEvents[i].ID,
-			})
-		case "error":
-			diff.Errors = append(diff.Errors, WSError{
-				URL:     newEvents[i].URL,
-				Message: newEvents[i].Data,
-			})
-		}
+		classifyWSEvent(diff, &newEvents[i], severity)
 	}
-
-	// Cap entries
-	if len(diff.Disconnections) > maxDiffEntriesPerCat {
-		diff.Disconnections = diff.Disconnections[:maxDiffEntriesPerCat]
-	}
-	if len(diff.Connections) > maxDiffEntriesPerCat {
-		diff.Connections = diff.Connections[:maxDiffEntriesPerCat]
-	}
-	if len(diff.Errors) > maxDiffEntriesPerCat {
-		diff.Errors = diff.Errors[:maxDiffEntriesPerCat]
-	}
-
+	capWSDiff(diff)
 	return diff
 }
 
 func (cm *CheckpointManager) computeActionsDiff(cp *Checkpoint) *ActionsDiff {
-	currentTotal := cm.capture.GetActionTotalAdded()
-	newCount := int(currentTotal - cp.ActionTotal)
-	if newCount <= 0 {
+	allActions := cm.capture.GetAllEnhancedActions()
+	count := recentSlice(len(allActions), int(cm.capture.GetActionTotalAdded()-cp.ActionTotal))
+	if count < 0 {
 		return &ActionsDiff{}
 	}
-
-	// Get all enhanced actions (thread-safe)
-	allActions := cm.capture.GetAllEnhancedActions()
-	available := len(allActions)
-	toRead := newCount
-	if toRead > available {
-		toRead = available
-	}
-	// Slice the already-copied actions to get the most recent newCount entries
-	newActions := allActions[available-toRead:]
+	newActions := allActions[len(allActions)-count:]
 
 	diff := &ActionsDiff{TotalNew: len(newActions)}
-
 	for i := range newActions {
 		if i >= maxDiffEntriesPerCat {
 			break
@@ -267,8 +82,173 @@ func (cm *CheckpointManager) computeActionsDiff(cp *Checkpoint) *ActionsDiff {
 			Timestamp: newActions[i].Timestamp,
 		})
 	}
-
 	return diff
+}
+
+// ============================================
+// Console classification helpers
+// ============================================
+
+type fingerprintEntry struct {
+	message string
+	source  string
+	count   int
+}
+
+type classifiedLogs struct {
+	totalNew     int
+	errorMap     map[string]*fingerprintEntry
+	errorOrder   []string
+	warningMap   map[string]*fingerprintEntry
+	warningOrder []string
+}
+
+func classifyLogEntries(entries []gasTypes.LogEntry, severity string) classifiedLogs {
+	cl := classifiedLogs{
+		errorMap:   make(map[string]*fingerprintEntry),
+		warningMap: make(map[string]*fingerprintEntry),
+	}
+	for _, entry := range entries {
+		cl.totalNew++
+		level, _ := entry["level"].(string)
+		msg := extractLogMessage(entry)
+		source, _ := entry["source"].(string)
+
+		switch {
+		case level == "error":
+			addToFingerprintMap(cl.errorMap, &cl.errorOrder, msg, source)
+		case (level == "warn" || level == "warning") && severity != "errors_only":
+			addToFingerprintMap(cl.warningMap, &cl.warningOrder, msg, source)
+		}
+	}
+	return cl
+}
+
+func extractLogMessage(entry gasTypes.LogEntry) string {
+	msg, _ := entry["msg"].(string)
+	if msg == "" {
+		msg, _ = entry["message"].(string)
+	}
+	return msg
+}
+
+func addToFingerprintMap(m map[string]*fingerprintEntry, order *[]string, msg, source string) {
+	fp := FingerprintMessage(msg)
+	if existing, ok := m[fp]; ok {
+		existing.count++
+		return
+	}
+	m[fp] = &fingerprintEntry{message: truncateMessage(msg), source: source, count: 1}
+	*order = append(*order, fp)
+}
+
+func buildConsoleEntries(m map[string]*fingerprintEntry, order []string) []ConsoleEntry {
+	var entries []ConsoleEntry
+	for i, fp := range order {
+		if i >= maxDiffEntriesPerCat {
+			break
+		}
+		e := m[fp]
+		entries = append(entries, ConsoleEntry{
+			Message: e.message,
+			Source:  e.source,
+			Count:   e.count,
+		})
+	}
+	return entries
+}
+
+// ============================================
+// Network classification helpers
+// ============================================
+
+func classifyNetworkBody(diff *NetworkDiff, body capture.NetworkBody, known map[string]endpointState) {
+	path := capture.ExtractURLPath(body.URL)
+
+	if body.Status >= 400 {
+		classifyFailedRequest(diff, path, body.Status, known)
+		return
+	}
+	classifySuccessfulRequest(diff, path, body.Duration, known)
+}
+
+func classifyFailedRequest(diff *NetworkDiff, path string, status int, known map[string]endpointState) {
+	if prev, ok := known[path]; ok && prev.Status < 400 {
+		diff.Failures = append(diff.Failures, NetworkFailure{
+			Path:           path,
+			Status:         status,
+			PreviousStatus: prev.Status,
+		})
+	} else if !ok {
+		appendUniqueEndpoint(diff, path)
+	}
+}
+
+func classifySuccessfulRequest(diff *NetworkDiff, path string, duration int, known map[string]endpointState) {
+	if _, ok := known[path]; !ok {
+		appendUniqueEndpoint(diff, path)
+	}
+	if duration <= 0 {
+		return
+	}
+	if prev, ok := known[path]; ok && prev.Duration > 0 && duration > prev.Duration*degradedLatencyFactor {
+		diff.Degraded = append(diff.Degraded, NetworkDegraded{
+			Path:     path,
+			Duration: duration,
+			Baseline: prev.Duration,
+		})
+	}
+}
+
+func appendUniqueEndpoint(diff *NetworkDiff, path string) {
+	if !containsString(diff.NewEndpoints, path) {
+		diff.NewEndpoints = append(diff.NewEndpoints, path)
+	}
+}
+
+func capNetworkDiff(diff *NetworkDiff) {
+	if len(diff.Failures) > maxDiffEntriesPerCat {
+		diff.Failures = diff.Failures[:maxDiffEntriesPerCat]
+	}
+	if len(diff.NewEndpoints) > maxDiffEntriesPerCat {
+		diff.NewEndpoints = diff.NewEndpoints[:maxDiffEntriesPerCat]
+	}
+	if len(diff.Degraded) > maxDiffEntriesPerCat {
+		diff.Degraded = diff.Degraded[:maxDiffEntriesPerCat]
+	}
+}
+
+// ============================================
+// WebSocket classification helpers
+// ============================================
+
+func classifyWSEvent(diff *WebSocketDiff, evt *capture.WebSocketEvent, severity string) {
+	switch evt.Event {
+	case "close":
+		if severity != "errors_only" {
+			diff.Disconnections = append(diff.Disconnections, WSDisco{
+				URL:         evt.URL,
+				CloseCode:   evt.CloseCode,
+				CloseReason: evt.CloseReason,
+			})
+		}
+	case "open":
+		diff.Connections = append(diff.Connections, WSConn{URL: evt.URL, ID: evt.ID})
+	case "error":
+		diff.Errors = append(diff.Errors, WSError{URL: evt.URL, Message: evt.Data})
+	}
+}
+
+func capWSDiff(diff *WebSocketDiff) {
+	if len(diff.Disconnections) > maxDiffEntriesPerCat {
+		diff.Disconnections = diff.Disconnections[:maxDiffEntriesPerCat]
+	}
+	if len(diff.Connections) > maxDiffEntriesPerCat {
+		diff.Connections = diff.Connections[:maxDiffEntriesPerCat]
+	}
+	if len(diff.Errors) > maxDiffEntriesPerCat {
+		diff.Errors = diff.Errors[:maxDiffEntriesPerCat]
+	}
 }
 
 // ============================================
@@ -276,61 +256,65 @@ func (cm *CheckpointManager) computeActionsDiff(cp *Checkpoint) *ActionsDiff {
 // ============================================
 
 func (cm *CheckpointManager) determineSeverity(resp DiffResponse) string {
-	// Error: console errors or network failures
-	if resp.Console != nil && len(resp.Console.Errors) > 0 {
+	if hasConsoleErrors(resp) || hasNetworkFailures(resp) {
 		return "error"
 	}
-	if resp.Network != nil && len(resp.Network.Failures) > 0 {
-		return "error"
-	}
-
-	// Warning: console warnings or WebSocket disconnections
-	if resp.Console != nil && len(resp.Console.Warnings) > 0 {
+	if hasConsoleWarnings(resp) || hasWSDisconnections(resp) {
 		return "warning"
 	}
-	if resp.WebSocket != nil && len(resp.WebSocket.Disconnections) > 0 {
-		return "warning"
-	}
-
 	return "clean"
+}
+
+func hasConsoleErrors(resp DiffResponse) bool {
+	return resp.Console != nil && len(resp.Console.Errors) > 0
+}
+
+func hasNetworkFailures(resp DiffResponse) bool {
+	return resp.Network != nil && len(resp.Network.Failures) > 0
+}
+
+func hasConsoleWarnings(resp DiffResponse) bool {
+	return resp.Console != nil && len(resp.Console.Warnings) > 0
+}
+
+func hasWSDisconnections(resp DiffResponse) bool {
+	return resp.WebSocket != nil && len(resp.WebSocket.Disconnections) > 0
 }
 
 func (cm *CheckpointManager) buildSummary(resp DiffResponse) string {
 	if resp.Severity == "clean" {
 		return "No significant changes."
 	}
-
-	var parts []string
-
-	if resp.Console != nil && len(resp.Console.Errors) > 0 {
-		count := 0
-		for _, e := range resp.Console.Errors {
-			count += e.Count
-		}
-		parts = append(parts, fmt.Sprintf("%d new console error(s)", count))
-	}
-
-	if resp.Network != nil && len(resp.Network.Failures) > 0 {
-		parts = append(parts, fmt.Sprintf("%d network failure(s)", len(resp.Network.Failures)))
-	}
-
-	if resp.Console != nil && len(resp.Console.Warnings) > 0 {
-		count := 0
-		for _, w := range resp.Console.Warnings {
-			count += w.Count
-		}
-		parts = append(parts, fmt.Sprintf("%d new console warning(s)", count))
-	}
-
-	if resp.WebSocket != nil && len(resp.WebSocket.Disconnections) > 0 {
-		parts = append(parts, fmt.Sprintf("%d websocket disconnection(s)", len(resp.WebSocket.Disconnections)))
-	}
-
+	parts := collectSummaryParts(resp)
 	if len(parts) == 0 {
 		return "No significant changes."
 	}
-
 	return strings.Join(parts, ", ")
+}
+
+func collectSummaryParts(resp DiffResponse) []string {
+	var parts []string
+	if hasConsoleErrors(resp) {
+		parts = append(parts, fmt.Sprintf("%d new console error(s)", sumConsoleCounts(resp.Console.Errors)))
+	}
+	if hasNetworkFailures(resp) {
+		parts = append(parts, fmt.Sprintf("%d network failure(s)", len(resp.Network.Failures)))
+	}
+	if hasConsoleWarnings(resp) {
+		parts = append(parts, fmt.Sprintf("%d new console warning(s)", sumConsoleCounts(resp.Console.Warnings)))
+	}
+	if hasWSDisconnections(resp) {
+		parts = append(parts, fmt.Sprintf("%d websocket disconnection(s)", len(resp.WebSocket.Disconnections)))
+	}
+	return parts
+}
+
+func sumConsoleCounts(entries []ConsoleEntry) int {
+	total := 0
+	for _, e := range entries {
+		total += e.Count
+	}
+	return total
 }
 
 // ============================================
@@ -340,12 +324,10 @@ func (cm *CheckpointManager) buildSummary(resp DiffResponse) string {
 func (cm *CheckpointManager) buildKnownEndpoints(existing map[string]endpointState) map[string]endpointState {
 	result := make(map[string]endpointState)
 
-	// Copy existing
 	for k, v := range existing {
 		result[k] = v
 	}
 
-	// Update with current network bodies (thread-safe)
 	for _, body := range cm.capture.GetNetworkBodies() {
 		path := capture.ExtractURLPath(body.URL)
 		result[path] = endpointState{
@@ -369,11 +351,8 @@ var (
 
 // FingerprintMessage normalizes dynamic content in a message for deduplication
 func FingerprintMessage(msg string) string {
-	// Replace UUIDs
 	result := uuidRegex.ReplaceAllString(msg, "{uuid}")
-	// Replace ISO timestamps (before numbers, since timestamps contain numbers)
 	result = isoTimestampRe.ReplaceAllString(result, "{ts}")
-	// Replace large numbers (4+ digits)
 	result = largeNumberRe.ReplaceAllString(result, "{n}")
 	return result
 }
@@ -382,7 +361,6 @@ func truncateMessage(msg string) string {
 	if len(msg) <= maxMessageLen {
 		return msg
 	}
-	// Truncate at a valid UTF-8 boundary to avoid splitting multi-byte characters
 	truncated := msg[:maxMessageLen]
 	for len(truncated) > 0 && !utf8.ValidString(truncated) {
 		truncated = truncated[:len(truncated)-1]
@@ -397,4 +375,16 @@ func containsString(slice []string, s string) bool {
 		}
 	}
 	return false
+}
+
+// recentSlice computes how many entries to read from the tail of a buffer.
+// Returns -1 when there are no new entries.
+func recentSlice(available, newCount int) int {
+	if newCount <= 0 {
+		return -1
+	}
+	if newCount > available {
+		return available
+	}
+	return newCount
 }

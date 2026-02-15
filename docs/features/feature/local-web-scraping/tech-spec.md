@@ -36,7 +36,7 @@ User logs in manually (session established)
 
 **No new server/extension code required.** This is a documentation and workflow pattern feature.
 
-**Agent workflow for scraping:**
+### Agent workflow for scraping:
 1. Verify authentication: Use observe({what: "page"}) to check for login indicators
 2. Navigate to target: Use interact({action: "navigate"})
 3. Wait for content: Use configure({action: "query_dom", wait: true}) for AJAX-loaded elements
@@ -45,12 +45,12 @@ User logs in manually (session established)
 6. Rate limit: Add delays between requests (agent responsibility)
 7. Export: Use generate({type: "json_export"})
 
-**Session handling:**
+### Session handling:
 - Browser automatically maintains cookies across navigation
 - No special session management needed
 - If session expires, agent detects (login page appears), alerts user
 
-**Dynamic content handling:**
+### Dynamic content handling:
 - Use query_dom with wait=true to detect when elements appear
 - Use execute_js to poll for AJAX completion indicators
 - Set appropriate timeouts (2-10s) for slow-loading content

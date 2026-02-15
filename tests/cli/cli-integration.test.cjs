@@ -3,181 +3,190 @@
  * Tests command routing, argument parsing, and end-to-end workflows
  */
 
-const test = require('node:test');
-const assert = require('node:assert');
-const { execSync } = require('child_process');
-const fs = require('fs');
+const test = require('node:test')
+const assert = require('node:assert')
+const { execSync } = require('child_process')
+const fs = require('fs')
 // These are used in disabled tests, keep for future use
-const _path = require('path');
-const _os = require('os');
+const _path = require('path')
+const _os = require('os')
 
 // Helper to run gasoline-mcp command
 function runCommand(args) {
   try {
-    const cmd = `node npm/gasoline-mcp/bin/gasoline-mcp ${args}`;
-    const output = execSync(cmd, { encoding: 'utf8', stdio: ['pipe', 'pipe', 'pipe'] });
-    return { success: true, output, exitCode: 0 };
+    const cmd = `node npm/gasoline-mcp/bin/gasoline-mcp ${args}`
+    const output = execSync(cmd, { encoding: 'utf8', stdio: ['pipe', 'pipe', 'pipe'] })
+    return { success: true, output, exitCode: 0 }
   } catch (e) {
-    return { success: false, output: e.stdout || '', error: e.stderr || '', exitCode: e.status || 1 };
+    return { success: false, output: e.stdout || '', error: e.stderr || '', exitCode: e.status || 1 }
   }
 }
 
 test('gasoline-mcp --help shows help message', () => {
-  const result = runCommand('--help');
+  const result = runCommand('--help')
 
   // Help should always exit 0
-  assert.strictEqual(result.exitCode, 0, 'Help should exit with 0');
-  assert.ok(result.output.includes('Gasoline MCP Server') || result.output.includes('Usage'), 'Should show help');
-  assert.ok(result.output.includes('--install') || result.output.includes('install'), 'Should mention install command');
-});
+  assert.strictEqual(result.exitCode, 0, 'Help should exit with 0')
+  assert.ok(result.output.includes('Gasoline MCP Server') || result.output.includes('Usage'), 'Should show help')
+  assert.ok(result.output.includes('--install') || result.output.includes('install'), 'Should mention install command')
+})
 
 test('gasoline-mcp -h shows help message', () => {
-  const result = runCommand('-h');
+  const result = runCommand('-h')
 
-  assert.strictEqual(result.exitCode, 0, 'Short help should exit with 0');
-  assert.ok(result.output.length > 0, 'Should show help');
-});
+  assert.strictEqual(result.exitCode, 0, 'Short help should exit with 0')
+  assert.ok(result.output.length > 0, 'Should show help')
+})
 
 test('gasoline-mcp --config shows configuration', () => {
-  const result = runCommand('--config');
+  const result = runCommand('--config')
 
-  assert.strictEqual(result.exitCode, 0, 'Config should exit with 0');
-  assert.ok(result.output.includes('Configuration') || result.output.includes('mcpServers'), 'Should show config info');
-});
+  assert.strictEqual(result.exitCode, 0, 'Config should exit with 0')
+  assert.ok(result.output.includes('Configuration') || result.output.includes('mcpServers'), 'Should show config info')
+})
 
 test('gasoline-mcp -c shows configuration', () => {
-  const result = runCommand('-c');
+  const result = runCommand('-c')
 
-  assert.strictEqual(result.exitCode, 0, 'Short config should exit with 0');
-  assert.ok(result.output.length > 0, 'Should show config');
-});
+  assert.strictEqual(result.exitCode, 0, 'Short config should exit with 0')
+  assert.ok(result.output.length > 0, 'Should show config')
+})
 
 test('gasoline-mcp --doctor runs diagnostics', () => {
-  const result = runCommand('--doctor');
+  const result = runCommand('--doctor')
 
-  assert.strictEqual(result.exitCode, 0, 'Doctor should exit with 0');
-  assert.ok(result.output.includes('Diagnostic') || result.output.includes('tool'), 'Should show diagnostic info');
-});
+  assert.strictEqual(result.exitCode, 0, 'Doctor should exit with 0')
+  assert.ok(result.output.includes('Diagnostic') || result.output.includes('tool'), 'Should show diagnostic info')
+})
 
 test('gasoline-mcp --doctor --verbose runs diagnostics verbosely', () => {
-  const result = runCommand('--doctor --verbose');
+  const result = runCommand('--doctor --verbose')
 
-  assert.strictEqual(result.exitCode, 0, 'Doctor verbose should exit with 0');
-  assert.ok(result.output.length > 0, 'Should show diagnostic info');
-});
+  assert.strictEqual(result.exitCode, 0, 'Doctor verbose should exit with 0')
+  assert.ok(result.output.length > 0, 'Should show diagnostic info')
+})
 
 test('gasoline-mcp --install --dry-run previews without writing', () => {
   // Get initial state
-  const candidates = require('../../npm/gasoline-mcp/lib/config').getConfigCandidates();
-  const initialState = {};
+  const candidates = require('../../npm/gasoline-mcp/lib/config').getConfigCandidates()
+  const initialState = {}
   for (const candidate of candidates) {
     if (fs.existsSync(candidate)) {
-      initialState[candidate] = fs.readFileSync(candidate, 'utf8');
+      initialState[candidate] = fs.readFileSync(candidate, 'utf8')
     }
   }
 
   try {
-    const result = runCommand('--install --dry-run');
+    const result = runCommand('--install --dry-run')
 
-    assert.strictEqual(result.exitCode, 0, 'Dry-run install should exit with 0');
-    assert.ok(result.output.includes('Dry') || result.output.includes('preview') || result.output.length > 0, 'Should mention dry-run');
+    assert.strictEqual(result.exitCode, 0, 'Dry-run install should exit with 0')
+    assert.ok(
+      result.output.includes('Dry') || result.output.includes('preview') || result.output.length > 0,
+      'Should mention dry-run'
+    )
 
     // Verify no files were actually modified
     for (const candidate in initialState) {
       if (fs.existsSync(candidate)) {
-        const currentState = fs.readFileSync(candidate, 'utf8');
-        assert.strictEqual(currentState, initialState[candidate], `File ${candidate} should not be modified in dry-run`);
+        const currentState = fs.readFileSync(candidate, 'utf8')
+        assert.strictEqual(currentState, initialState[candidate], `File ${candidate} should not be modified in dry-run`)
       }
     }
   } catch (_e) {
     // Dry-run might fail if files don't exist, which is OK
   }
-});
+})
 
 test('gasoline-mcp --env without --install shows error', () => {
-  const result = runCommand('--env DEBUG=1');
+  const result = runCommand('--env DEBUG=1')
 
   // Should fail or show error
-  assert.ok(result.output.includes('--env') || result.output.includes('--install') || !result.success, 'Should mention --env needs --install');
-});
+  assert.ok(
+    result.output.includes('--env') || result.output.includes('--install') || !result.success,
+    'Should mention --env needs --install'
+  )
+})
 
 test('gasoline-mcp --for-all without --install shows error', () => {
-  const result = runCommand('--for-all');
+  const result = runCommand('--for-all')
 
   // Should fail or show error
-  assert.ok(result.output.includes('--for-all') || result.output.includes('--install') || !result.success, 'Should mention --for-all needs --install');
-});
+  assert.ok(
+    result.output.includes('--for-all') || result.output.includes('--install') || !result.success,
+    'Should mention --for-all needs --install'
+  )
+})
 
 test('gasoline-mcp with invalid flag shows help or error', () => {
-  const result = runCommand('--invalid-flag');
+  const result = runCommand('--invalid-flag')
 
   // Invalid flag should either show help or run the binary
-  assert.ok(result.output.length > 0 || result.error, 'Should show output or error');
-});
+  assert.ok(result.output.length > 0 || result.error, 'Should show output or error')
+})
 
 test('gasoline-mcp with no args attempts to run binary', () => {
   // No args should attempt to run the binary, which may fail if not in PATH
-  const result = runCommand('');
+  const result = runCommand('')
 
   // This might fail or succeed depending on whether binary is available
   // The important thing is that it doesn't crash
-  assert.ok(typeof result.exitCode === 'number', 'Should return exit code');
-});
+  assert.ok(typeof result.exitCode === 'number', 'Should return exit code')
+})
 
 test('gasoline-mcp --help exits successfully', () => {
-  const result = runCommand('--help');
+  const result = runCommand('--help')
 
-  assert.strictEqual(result.exitCode, 0, 'Help should exit with 0');
-});
+  assert.strictEqual(result.exitCode, 0, 'Help should exit with 0')
+})
 
 test('gasoline-mcp --config exits successfully', () => {
-  const result = runCommand('--config');
+  const result = runCommand('--config')
 
-  assert.strictEqual(result.exitCode, 0, 'Config should exit with 0');
-});
+  assert.strictEqual(result.exitCode, 0, 'Config should exit with 0')
+})
 
 test('gasoline-mcp --doctor exits successfully', () => {
-  const result = runCommand('--doctor');
+  const result = runCommand('--doctor')
 
-  assert.strictEqual(result.exitCode, 0, 'Doctor should exit with 0');
-});
+  assert.strictEqual(result.exitCode, 0, 'Doctor should exit with 0')
+})
 
 test('CLI handles multiple env vars', () => {
-  const result = runCommand('--install --dry-run --env DEBUG=1 --env API_KEY=secret');
+  const result = runCommand('--install --dry-run --env DEBUG=1 --env API_KEY=secret')
 
   // Should succeed (or at least not crash)
-  assert.ok(typeof result.exitCode === 'number', 'Should return exit code');
-});
+  assert.ok(typeof result.exitCode === 'number', 'Should return exit code')
+})
 
 test('CLI with --verbose flag produces more output', () => {
-  const resultNormal = runCommand('--doctor');
-  const resultVerbose = runCommand('--doctor --verbose');
+  const resultNormal = runCommand('--doctor')
+  const resultVerbose = runCommand('--doctor --verbose')
 
   // Both should succeed
-  assert.strictEqual(resultNormal.exitCode, 0, 'Normal should exit with 0');
-  assert.strictEqual(resultVerbose.exitCode, 0, 'Verbose should exit with 0');
+  assert.strictEqual(resultNormal.exitCode, 0, 'Normal should exit with 0')
+  assert.strictEqual(resultVerbose.exitCode, 0, 'Verbose should exit with 0')
 
   // Verbose output might be longer or same (depends on implementation)
-  assert.ok(resultVerbose.output.length > 0, 'Verbose should produce output');
-});
+  assert.ok(resultVerbose.output.length > 0, 'Verbose should produce output')
+})
 
 test('CLI outputs use emoji markers for status', () => {
-  const result = runCommand('--doctor');
+  const result = runCommand('--doctor')
 
-  assert.strictEqual(result.exitCode, 0, 'Doctor should succeed');
+  assert.strictEqual(result.exitCode, 0, 'Doctor should succeed')
   // Output should have status indicators
   assert.ok(
     result.output.includes('✅') || result.output.includes('❌') || result.output.includes('ℹ️'),
     'Output should use emoji markers'
-  );
-});
+  )
+})
 
 test('gasoline-mcp --install --for-all --dry-run processes multiple tools', () => {
-  const result = runCommand('--install --for-all --dry-run');
+  const result = runCommand('--install --for-all --dry-run')
 
-  assert.strictEqual(result.exitCode, 0, 'Dry-run forAll install should exit with 0');
-  assert.ok(result.output.length > 0, 'Should produce output');
-});
+  assert.strictEqual(result.exitCode, 0, 'Dry-run forAll install should exit with 0')
+  assert.ok(result.output.length > 0, 'Should produce output')
+})
 
 test('gasoline-mcp command parser handles flag combinations', () => {
   // These should all parse correctly even if they might fail
@@ -187,28 +196,28 @@ test('gasoline-mcp command parser handles flag combinations', () => {
     '--install --env KEY=VALUE',
     '--doctor --verbose',
     '--help',
-    '--config',
-  ];
+    '--config'
+  ]
 
   for (const args of testCases) {
-    const result = runCommand(args);
-    assert.ok(typeof result.exitCode === 'number', `Should handle "${args}"`);
+    const result = runCommand(args)
+    assert.ok(typeof result.exitCode === 'number', `Should handle "${args}"`)
   }
-});
+})
 
 test('CLI gracefully handles config file errors', () => {
   // Doctor should still complete even if config is invalid
-  const result = runCommand('--doctor');
+  const result = runCommand('--doctor')
 
-  assert.strictEqual(result.exitCode, 0, 'Doctor should handle invalid configs gracefully');
-});
+  assert.strictEqual(result.exitCode, 0, 'Doctor should handle invalid configs gracefully')
+})
 
 test('CLI does not crash with empty arguments', () => {
   try {
-    const result = runCommand('');
-    assert.ok(typeof result.exitCode === 'number', 'Should handle empty args');
+    const result = runCommand('')
+    assert.ok(typeof result.exitCode === 'number', 'Should handle empty args')
   } catch (_e) {
     // Some error is OK - we just don't want a crash
-    assert.ok(true, 'Handled without crashing');
+    assert.ok(true, 'Handled without crashing')
   }
-});
+})

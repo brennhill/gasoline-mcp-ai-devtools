@@ -2,7 +2,7 @@ MANIFEST.in
 README.md
 pyproject.toml
 gasoline_mcp_darwin_x64/__init__.py
-gasoline_mcp_darwin_x64/gasoline-darwin-x64
+gasoline_mcp_darwin_x64/gasoline
 gasoline_mcp_darwin_x64.egg-info/PKG-INFO
 gasoline_mcp_darwin_x64.egg-info/SOURCES.txt
 gasoline_mcp_darwin_x64.egg-info/dependency_links.txt

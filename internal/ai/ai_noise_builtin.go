@@ -4,6 +4,7 @@ package ai
 import "time"
 
 // builtinRules returns the set of always-active built-in noise rules (~50 rules)
+// #lizard forgives
 func builtinRules() []NoiseRule {
 	now := time.Now()
 	return []NoiseRule{

@@ -30,14 +30,14 @@ feature: cpu-network-emulation
 
 ### Security/Compliance Testing
 
-**Permission tests:**
+#### Permission tests:
 - [ ] Test debugger permission required for emulation
 
 ---
 
 ## Human UAT Walkthrough
 
-**Scenario 1: Slow 3G Network Test (Happy Path)**
+### Scenario 1: Slow 3G Network Test (Happy Path)
 1. Setup:
    - Open large page (e.g., news site with many images)
    - Start Gasoline
@@ -50,7 +50,7 @@ feature: cpu-network-emulation
 3. Expected Result: Page load significantly slower, LCP increases 5-10x
 4. Verification: Compare vitals before/after, waterfall shows throttled timing
 
-**Scenario 2: CPU Throttling Test**
+### Scenario 2: CPU Throttling Test
 1. Setup:
    - Open page with heavy JS (e.g., data visualization)
 2. Steps:
@@ -62,7 +62,7 @@ feature: cpu-network-emulation
 3. Expected Result: JS execution 4x slower
 4. Verification: Benchmark time ratio matches throttle rate
 
-**Scenario 3: Offline Mode**
+### Scenario 3: Offline Mode
 1. Setup:
    - Open any page
 2. Steps:
@@ -74,7 +74,7 @@ feature: cpu-network-emulation
 3. Expected Result: Offline blocks navigation, reset restores
 4. Verification: Observe logs/errors for offline indication
 
-**Scenario 4: Custom Network Profile**
+### Scenario 4: Custom Network Profile
 1. Setup:
    - Open page
 2. Steps:
@@ -84,7 +84,7 @@ feature: cpu-network-emulation
 3. Expected Result: Custom throttle applied
 4. Verification: Waterfall timing matches custom profile
 
-**Scenario 5: Reset All Throttling**
+### Scenario 5: Reset All Throttling
 1. Setup:
    - Apply both network and CPU throttling
 2. Steps:

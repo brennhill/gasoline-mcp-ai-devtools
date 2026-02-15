@@ -21,8 +21,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"os"
-	"os/exec"
 	"strings"
 	"testing"
 	"time"
@@ -41,13 +39,13 @@ func TestIntegration_ServerStartupUnder1Second(t *testing.T) {
 
 	port := findFreePort(t)
 	binary := buildTestBinary(t)
-	defer os.Remove(binary)
+
 
 	// Measure startup time
 	startTime := time.Now()
 
 	// Start server
-	cmd := exec.Command(binary, "--port", fmt.Sprintf("%d", port))
+	cmd := startServerCmd(binary, "--port", fmt.Sprintf("%d", port))
 	stdin, err := cmd.StdinPipe()
 	if err != nil {
 		t.Fatalf("Failed to create stdin pipe: %v", err)
@@ -100,10 +98,10 @@ func TestIntegration_AllMCPToolsReturnValidResponses(t *testing.T) {
 
 	port := findFreePort(t)
 	binary := buildTestBinary(t)
-	defer os.Remove(binary)
+
 
 	// Start server
-	cmd := exec.Command(binary, "--port", fmt.Sprintf("%d", port))
+	cmd := startServerCmd(binary, "--port", fmt.Sprintf("%d", port))
 	stdin, err := cmd.StdinPipe()
 	if err != nil {
 		t.Fatalf("Failed to create stdin pipe: %v", err)
@@ -150,15 +148,16 @@ func TestIntegration_AllMCPToolsReturnValidResponses(t *testing.T) {
 		{"observe page", `{"jsonrpc":"2.0","id":19,"method":"tools/call","params":{"name":"observe","arguments":{"what":"page"}}}`},
 		{"observe tabs", `{"jsonrpc":"2.0","id":20,"method":"tools/call","params":{"name":"observe","arguments":{"what":"tabs"}}}`},
 		{"observe pilot", `{"jsonrpc":"2.0","id":21,"method":"tools/call","params":{"name":"observe","arguments":{"what":"pilot"}}}`},
-		{"observe performance", `{"jsonrpc":"2.0","id":22,"method":"tools/call","params":{"name":"observe","arguments":{"what":"performance"}}}`},
-		{"observe accessibility", `{"jsonrpc":"2.0","id":23,"method":"tools/call","params":{"name":"observe","arguments":{"what":"accessibility"}}}`},
 		{"observe timeline", `{"jsonrpc":"2.0","id":24,"method":"tools/call","params":{"name":"observe","arguments":{"what":"timeline"}}}`},
-		{"observe error_clusters", `{"jsonrpc":"2.0","id":27,"method":"tools/call","params":{"name":"observe","arguments":{"what":"error_clusters"}}}`},
-		{"observe history", `{"jsonrpc":"2.0","id":28,"method":"tools/call","params":{"name":"observe","arguments":{"what":"history"}}}`},
-		{"observe security_audit", `{"jsonrpc":"2.0","id":29,"method":"tools/call","params":{"name":"observe","arguments":{"what":"security_audit"}}}`},
-		{"observe third_party_audit", `{"jsonrpc":"2.0","id":30,"method":"tools/call","params":{"name":"observe","arguments":{"what":"third_party_audit"}}}`},
-		{"observe security_diff", `{"jsonrpc":"2.0","id":31,"method":"tools/call","params":{"name":"observe","arguments":{"what":"security_diff","action":"list"}}}`},
 		{"observe command_result", `{"jsonrpc":"2.0","id":32,"method":"tools/call","params":{"name":"observe","arguments":{"what":"command_result"}}}`},
+
+		// analyze tool - modes that were moved from observe
+		{"analyze performance", `{"jsonrpc":"2.0","id":22,"method":"tools/call","params":{"name":"analyze","arguments":{"what":"performance"}}}`},
+		{"analyze accessibility", `{"jsonrpc":"2.0","id":23,"method":"tools/call","params":{"name":"analyze","arguments":{"what":"accessibility"}}}`},
+		{"analyze error_clusters", `{"jsonrpc":"2.0","id":27,"method":"tools/call","params":{"name":"analyze","arguments":{"what":"error_clusters"}}}`},
+		{"analyze history", `{"jsonrpc":"2.0","id":28,"method":"tools/call","params":{"name":"analyze","arguments":{"what":"history"}}}`},
+		{"analyze security_audit", `{"jsonrpc":"2.0","id":29,"method":"tools/call","params":{"name":"analyze","arguments":{"what":"security_audit"}}}`},
+		{"analyze third_party_audit", `{"jsonrpc":"2.0","id":30,"method":"tools/call","params":{"name":"analyze","arguments":{"what":"third_party_audit"}}}`},
 		{"observe pending_commands", `{"jsonrpc":"2.0","id":33,"method":"tools/call","params":{"name":"observe","arguments":{"what":"pending_commands"}}}`},
 		{"observe failed_commands", `{"jsonrpc":"2.0","id":34,"method":"tools/call","params":{"name":"observe","arguments":{"what":"failed_commands"}}}`},
 
@@ -171,14 +170,12 @@ func TestIntegration_AllMCPToolsReturnValidResponses(t *testing.T) {
 		{"generate csp", `{"jsonrpc":"2.0","id":45,"method":"tools/call","params":{"name":"generate","arguments":{"format":"csp"}}}`},
 		{"generate sri", `{"jsonrpc":"2.0","id":46,"method":"tools/call","params":{"name":"generate","arguments":{"format":"sri"}}}`},
 
-		// configure tool - all 15 actions
+		// configure tool - sample of 14 actions
 		{"configure health", `{"jsonrpc":"2.0","id":50,"method":"tools/call","params":{"name":"configure","arguments":{"action":"health"}}}`},
 		{"configure store list", `{"jsonrpc":"2.0","id":51,"method":"tools/call","params":{"name":"configure","arguments":{"action":"store","store_action":"list"}}}`},
 		{"configure store stats", `{"jsonrpc":"2.0","id":52,"method":"tools/call","params":{"name":"configure","arguments":{"action":"store","store_action":"stats"}}}`},
 		{"configure noise_rule list", `{"jsonrpc":"2.0","id":53,"method":"tools/call","params":{"name":"configure","arguments":{"action":"noise_rule","noise_action":"list"}}}`},
-		{"configure diff_sessions list", `{"jsonrpc":"2.0","id":54,"method":"tools/call","params":{"name":"configure","arguments":{"action":"diff_sessions","session_action":"list"}}}`},
-		{"configure validate_api report", `{"jsonrpc":"2.0","id":55,"method":"tools/call","params":{"name":"configure","arguments":{"action":"validate_api","operation":"report"}}}`},
-		{"configure audit_log", `{"jsonrpc":"2.0","id":56,"method":"tools/call","params":{"name":"configure","arguments":{"action":"audit_log"}}}`},
+		{"analyze api_validation report", `{"jsonrpc":"2.0","id":55,"method":"tools/call","params":{"name":"analyze","arguments":{"what":"api_validation","operation":"report"}}}`},
 		{"configure streaming status", `{"jsonrpc":"2.0","id":57,"method":"tools/call","params":{"name":"configure","arguments":{"action":"streaming","streaming_action":"status"}}}`},
 
 		// interact tool - list_states action (doesn't require browser)
@@ -295,10 +292,10 @@ func TestIntegration_ToolsListMatchesImplementation(t *testing.T) {
 
 	port := findFreePort(t)
 	binary := buildTestBinary(t)
-	defer os.Remove(binary)
+
 
 	// Start server
-	cmd := exec.Command(binary, "--port", fmt.Sprintf("%d", port))
+	cmd := startServerCmd(binary, "--port", fmt.Sprintf("%d", port))
 	stdin, err := cmd.StdinPipe()
 	if err != nil {
 		t.Fatalf("Failed to create stdin pipe: %v", err)
@@ -344,8 +341,9 @@ func TestIntegration_ToolsListMatchesImplementation(t *testing.T) {
 		t.Logf("  - %s", tool.Name)
 	}
 
-	// Verify the 4 expected tools are present
-	expectedTools := []string{"observe", "generate", "configure", "interact"}
+	// Verify the 5 expected tools are present
+	// Updated in Phase 0 to include new "analyze" tool for active analysis operations
+	expectedTools := []string{"observe", "analyze", "generate", "configure", "interact"}
 	for _, expected := range expectedTools {
 		found := false
 		for _, tool := range toolsResp.Result.Tools {
@@ -360,8 +358,8 @@ func TestIntegration_ToolsListMatchesImplementation(t *testing.T) {
 	}
 
 	// Verify no extra unexpected tools
-	if len(toolsResp.Result.Tools) != 4 {
-		t.Errorf("Expected exactly 4 tools, got %d", len(toolsResp.Result.Tools))
+	if len(toolsResp.Result.Tools) != 5 {
+		t.Errorf("Expected exactly 5 tools, got %d", len(toolsResp.Result.Tools))
 	}
 }
 

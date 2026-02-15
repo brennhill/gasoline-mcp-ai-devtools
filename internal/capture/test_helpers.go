@@ -67,6 +67,41 @@ func (c *Capture) SetTrackingStatusForTest(tabID int, tabURL string) {
 	c.ext.trackingUpdated = time.Now()
 }
 
+// SetClientRegistryForTest sets the client registry (TEST ONLY)
+func (c *Capture) SetClientRegistryForTest(reg ClientRegistry) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.clientRegistry = reg
+}
+
+// SetWSParallelMismatchForTest sets up mismatched wsEvents/wsAddedAt arrays (TEST ONLY)
+// Adds extraEvents additional wsEvents entries beyond the wsAddedAt length to simulate mismatch.
+func (c *Capture) SetWSParallelMismatchForTest(extraEvents int, extraAddedAt int) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	now := time.Now()
+	// Add extra wsEvents entries (without matching wsAddedAt)
+	for i := 0; i < extraEvents; i++ {
+		c.wsEvents = append(c.wsEvents, WebSocketEvent{
+			Event: "message",
+			Data:  "extra-event",
+			ID:    "ws-extra",
+		})
+	}
+	// Add extra wsAddedAt entries (without matching wsEvents)
+	for i := 0; i < extraAddedAt; i++ {
+		c.wsAddedAt = append(c.wsAddedAt, now)
+	}
+}
+
+// GetWSLengthsForTest returns wsEvents and wsAddedAt lengths (TEST ONLY)
+func (c *Capture) GetWSLengthsForTest() (events int, addedAt int, memoryTotal int64) {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	return len(c.wsEvents), len(c.wsAddedAt), c.wsMemoryTotal
+}
+
 // GetLastPendingQuery returns the most recently created pending query (TEST ONLY)
 // Returns nil if no queries exist.
 func (c *Capture) GetLastPendingQuery() *queries.PendingQuery {

@@ -43,6 +43,7 @@ type QueryDispatcher struct {
 	resultsMu        sync.RWMutex
 	completedResults map[string]*queries.CommandResult
 	failedCommands   []*queries.CommandResult
+	commandNotify    chan struct{} // closed on CompleteCommand, then recreated
 
 	stopCleanup func()
 }
@@ -55,6 +56,7 @@ func NewQueryDispatcher() *QueryDispatcher {
 		queryTimeout:     queries.DefaultQueryTimeout,
 		completedResults: make(map[string]*queries.CommandResult),
 		failedCommands:   make([]*queries.CommandResult, 0, 100),
+		commandNotify:    make(chan struct{}),
 	}
 	qd.queryCond = sync.NewCond(&qd.mu)
 	qd.stopCleanup = qd.startResultCleanup()
@@ -116,6 +118,30 @@ func (c *Capture) GetPendingQueriesForClient(clientID string) []queries.PendingQ
 	return c.qd.GetPendingQueriesForClient(clientID)
 }
 
+// AcknowledgePendingQuery delegates to QueryDispatcher.
+func (c *Capture) AcknowledgePendingQuery(queryID string) {
+	c.qd.AcknowledgePendingQuery(queryID)
+}
+
+// GetPendingQueriesDisconnectAware returns pending queries with disconnect detection.
+// If the extension has not synced within extensionDisconnectThreshold (10s) and has
+// synced at least once, all pending queries are expired with "extension_disconnected".
+// This prevents queries from hanging indefinitely when the extension crashes or disconnects.
+func (c *Capture) GetPendingQueriesDisconnectAware() []queries.PendingQueryResponse {
+	c.mu.RLock()
+	neverSynced := c.ext.lastSyncSeen.IsZero()
+	disconnected := !neverSynced && time.Since(c.ext.lastSyncSeen) >= extensionDisconnectThreshold
+	c.mu.RUnlock()
+
+	// If extension was previously connected but is now stale, expire all pending queries
+	if disconnected {
+		c.qd.ExpireAllPendingQueries("extension_disconnected")
+		return nil
+	}
+
+	return c.qd.GetPendingQueries()
+}
+
 // SetQueryResult delegates to QueryDispatcher.
 func (c *Capture) SetQueryResult(id string, result json.RawMessage) {
 	c.qd.SetQueryResult(id, result)
@@ -169,6 +195,11 @@ func (c *Capture) CompleteCommand(correlationID string, result json.RawMessage, 
 // ExpireCommand delegates to QueryDispatcher.
 func (c *Capture) ExpireCommand(correlationID string) {
 	c.qd.ExpireCommand(correlationID)
+}
+
+// WaitForCommand delegates to QueryDispatcher.
+func (c *Capture) WaitForCommand(correlationID string, timeout time.Duration) (*queries.CommandResult, bool) {
+	return c.qd.WaitForCommand(correlationID, timeout)
 }
 
 // GetCommandResult delegates to QueryDispatcher.

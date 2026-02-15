@@ -21,12 +21,12 @@ last-verified: 2026-01-31
 
 > "Most traffic is noise and we want to make it easier for LLMs"
 
-**The Problem:**
+### The Problem:
 - v5.3 pagination solves **token limits** (can't return 440K characters)
 - But LLMs still waste tokens analyzing **irrelevant requests**
 - 80% of network traffic is often noise: analytics, tracking, static assets
 
-**The Solution:**
+### The Solution:
 - **Pagination** (v5.3) = "Don't send everything at once"
 - **Filtering** (v6.0) = "Don't send irrelevant data at all"
 
@@ -50,7 +50,7 @@ observe({what: "network_bodies", status_min: 400, status_max: 599})
 
 ### What's Missing
 
-**No way to filter out noise domains:**
+#### No way to filter out noise domains:
 ```javascript
 // Can't exclude analytics/tracking
 observe({what: "network_waterfall"})
@@ -58,7 +58,7 @@ observe({what: "network_waterfall"})
 // AI wastes tokens analyzing tracking scripts
 ```
 
-**No content-type filtering:**
+#### No content-type filtering:
 ```javascript
 // Can't exclude images/fonts/css
 observe({what: "network_waterfall"})
@@ -66,7 +66,7 @@ observe({what: "network_waterfall"})
 // AI only cares about API calls
 ```
 
-**No regex patterns:**
+#### No regex patterns:
 ```javascript
 // Can't match patterns like /api/v1/*/details
 observe({what: "network_waterfall", url: "???"})
@@ -81,7 +81,7 @@ observe({what: "network_waterfall", url: "???"})
 
 **Problem:** Analytics and tracking domains pollute results
 
-**Solution:**
+#### Solution:
 ```javascript
 // Allowlist: only show these domains
 observe({
@@ -106,7 +106,7 @@ observe({
 })
 ```
 
-**Built-in Presets:**
+#### Built-in Presets:
 - `"api_only"` - Only JSON/XML API calls (excludes static assets)
 - `"no_tracking"` - Excludes Google Analytics, Facebook Pixel, etc.
 - `"errors_only"` - Only failed requests (4xx, 5xx)
@@ -116,7 +116,7 @@ observe({
 
 **Problem:** Images, fonts, CSS clutter network view
 
-**Solution:**
+#### Solution:
 ```javascript
 // Only show specific content types
 observe({
@@ -135,7 +135,7 @@ observe({
 
 **Problem:** Substring matching too crude
 
-**Solution:**
+#### Solution:
 ```javascript
 // Match URL patterns
 observe({
@@ -157,7 +157,7 @@ observe({
 
 **Problem:** Huge responses (images, videos) waste tokens
 
-**Solution:**
+#### Solution:
 ```javascript
 // Only show requests with response size < 1MB
 observe({
@@ -176,7 +176,7 @@ observe({
 
 **Problem:** Fast requests often not interesting for debugging
 
-**Solution:**
+#### Solution:
 ```javascript
 // Only show slow requests
 observe({
@@ -193,7 +193,7 @@ observe({
 
 ### Combined Filters
 
-**Power of composition:**
+#### Power of composition:
 ```javascript
 // "Show me slow API calls that failed"
 observe({
@@ -225,7 +225,7 @@ observe({
 - Buffer clearing: 1-2 hours
 - **Total:** 3-6 hours → Ship in days
 
-**Filtering is more complex:**
+#### Filtering is more complex:
 - Content-type filtering: Need to parse response headers
 - Regex patterns: Requires regex engine + error handling
 - Presets: Need to research common tracking domains
@@ -258,7 +258,7 @@ Returns 200 requests:
 - ✅ 25 API calls (what AI actually needs)
 - ❌ 50 other noise
 
-**LLM wastes 175/200 of its attention on noise.**
+#### LLM wastes 175/200 of its attention on noise.
 
 ### After Filtering (v6.0)
 
@@ -274,7 +274,7 @@ observe({
 Returns 25 requests:
 - ✅ 25 API calls (100% signal)
 
-**LLM focuses on relevant data only. 7× more efficient.**
+#### LLM focuses on relevant data only. 7× more efficient.
 
 ---
 
@@ -336,7 +336,7 @@ Returns 25 requests:
 
 **User Quote:** "Most traffic is noise and we want to make it easier for LLMs"
 
-**Key Insights:**
+### Key Insights:
 1. Pagination alone isn't enough - LLMs still waste tokens on noise
 2. Filtering is about **semantic relevance**, not just size
 3. Common patterns (analytics, tracking, static assets) should have presets
@@ -390,7 +390,7 @@ Returns 25 requests:
 **Effort:** 10-15 hours
 **Target:** v6.0 (v6.1 - Smart Observation)
 
-**Next Steps:**
+### Next Steps:
 1. Add to v6.0 roadmap ✅ (DONE)
 2. Create detailed product-spec.md (after v5.3 ships)
 3. Create tech-spec.md
@@ -409,19 +409,19 @@ Returns 25 requests:
 
 ## Conclusion
 
-**Why This Matters:**
+### Why This Matters:
 
 Pagination solves "too much data."
 Filtering solves "wrong data."
 
 Together, they enable LLMs to focus on **relevant debugging context** within token limits. This is core to the v6.0 thesis: "AI closes the feedback loop autonomously."
 
-**User Impact:**
+### User Impact:
 - 7× more efficient token usage
 - Faster debugging (less noise to analyze)
 - Better AI suggestions (focused on signal, not noise)
 
-**Strategic Value:**
+### Strategic Value:
 - Differentiates Gasoline from basic MCP tools
 - Aligns with "semantic debugging context" vision
 - Enables enterprise adoption (production traffic is noisy)

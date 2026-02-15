@@ -37,7 +37,7 @@ feature: read-only-mode
 - [ ] Test extension HTTP endpoints respect read-only (no pending queries created)
 - [ ] Test concurrent requests all blocked in read-only
 
-**Audit tests:**
+#### Audit tests:
 - [ ] Test all mutation attempts logged with error
 - [ ] Test read-only status logged at startup
 
@@ -45,7 +45,7 @@ feature: read-only-mode
 
 ## Human UAT Walkthrough
 
-**Scenario 1: Production Observation (Happy Path)**
+### Scenario 1: Production Observation (Happy Path)
 1. Setup:
    - Start Gasoline in read-only mode: `gasoline --read-only`
    - Open production web app in browser with extension
@@ -59,7 +59,7 @@ feature: read-only-mode
 3. Expected Result: All observation and analysis operations work normally
 4. Verification: Agent can analyze production issue without any mutations
 
-**Scenario 2: Mutation Blocked (Error Path)**
+### Scenario 2: Mutation Blocked (Error Path)
 1. Setup:
    - Server running in read-only mode
 2. Steps:
@@ -72,7 +72,7 @@ feature: read-only-mode
 3. Expected Result: All mutation attempts fail with clear error message
 4. Verification: Browser state unchanged, no pending queries created
 
-**Scenario 3: Normal Mode (Mutations Allowed)**
+### Scenario 3: Normal Mode (Mutations Allowed)
 1. Setup:
    - Start Gasoline without --read-only flag: `gasoline`
 2. Steps:
@@ -83,7 +83,7 @@ feature: read-only-mode
 3. Expected Result: All mutations allowed
 4. Verification: Mutations execute normally
 
-**Scenario 4: CLI Flag vs Environment Variable**
+### Scenario 4: CLI Flag vs Environment Variable
 1. Setup:
    - Set env var: `export GASOLINE_READ_ONLY=true`
    - Start with flag: `gasoline --read-only=false`
@@ -93,7 +93,7 @@ feature: read-only-mode
 3. Expected Result: CLI flag takes precedence
 4. Verification: Mutations allowed when CLI flag says false
 
-**Scenario 5: Runtime Toggle Attempt (Immutability)**
+### Scenario 5: Runtime Toggle Attempt (Immutability)
 1. Setup:
    - Server running in read-only mode
 2. Steps:

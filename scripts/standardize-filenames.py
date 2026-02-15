@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# pylint: disable=invalid-name
 """
 Standardize ALL markdown filenames to lowercase-with-hyphens.
 This script:
@@ -9,8 +10,6 @@ This script:
 """
 
 import os
-import re
-from pathlib import Path
 from collections import defaultdict
 
 # Define the conversion rules
@@ -86,36 +85,45 @@ def convert_name(filename):
 
     return filename.lower()
 
+SKIP_DIRS = ['node_modules', '.git', 'pypi', '.next']
+SKIP_FILENAMES = {'README.md', 'CHANGELOG.md'}
+
+
+def _should_skip_dir(dirpath):
+    """Return True if this directory should be skipped."""
+    return any(skip in dirpath for skip in SKIP_DIRS)
+
+
+def _should_skip_file(dirpath, filename):
+    """Return True if this file should not be considered for renaming."""
+    if not filename.endswith('.md'):
+        return True
+    if filename in SKIP_FILENAMES:
+        return True
+    if 'templates' in dirpath and filename.endswith('-TEMPLATE.md'):
+        return True
+    return False
+
+
 def find_all_markdown_files(root_dir):
     """Find all markdown files that need renaming."""
     files_to_rename = []
 
-    for dirpath, dirnames, filenames in os.walk(root_dir):
-        # Skip node_modules, .git, build artifacts
-        if any(skip in dirpath for skip in ['node_modules', '.git', 'pypi', '.next']):
+    for dirpath, _dirnames, filenames in os.walk(root_dir):
+        if _should_skip_dir(dirpath):
             continue
 
         for filename in filenames:
-            if not filename.endswith('.md'):
+            if _should_skip_file(dirpath, filename):
                 continue
 
-            # Skip README.md and CHANGELOG.md (standard)
-            if filename in ['README.md', 'CHANGELOG.md']:
-                continue
-
-            # Skip templates
-            if 'templates' in dirpath and filename.endswith('-TEMPLATE.md'):
-                continue
-
-            # Check if needs renaming
             new_name = convert_name(filename)
             if new_name != filename:
-                full_path = os.path.join(dirpath, filename)
                 files_to_rename.append({
-                    'old_path': full_path,
+                    'old_path': os.path.join(dirpath, filename),
                     'old_name': filename,
                     'new_name': new_name,
-                    'dir': dirpath
+                    'dir': dirpath,
                 })
 
     return files_to_rename
@@ -125,7 +133,7 @@ def update_references_in_file(filepath, old_patterns, new_patterns):
     try:
         with open(filepath, 'r', encoding='utf-8') as f:
             content = f.read()
-    except Exception:
+    except (OSError, UnicodeDecodeError):
         return False
 
     modified = False
@@ -139,44 +147,50 @@ def update_references_in_file(filepath, old_patterns, new_patterns):
             with open(filepath, 'w', encoding='utf-8') as f:
                 f.write(content)
             return True
-        except Exception:
+        except OSError:
             return False
 
     return False
 
+def _build_reference_map(files_to_rename, root_dir):
+    """Build a mapping of old filenames/paths to new ones."""
+    reference_map = {}
+    docs_prefix = root_dir + '/docs/'
+
+    for item in files_to_rename:
+        reference_map[item['old_name']] = item['new_name']
+
+        if '/docs/' in item['dir']:
+            rel_dir = item['dir'].replace(docs_prefix, '')
+            reference_map[rel_dir + '/' + item['old_name']] = rel_dir + '/' + item['new_name']
+
+    return reference_map
+
+
+UPDATABLE_EXTENSIONS = ('.md', '.go', '.ts', '.js', '.json')
+
+
+def _collect_updatable_files(root_dir, renamed_paths):
+    """Collect all source files that may contain references to renamed files."""
+    files = []
+    for dirpath, _dirnames, filenames in os.walk(root_dir):
+        if _should_skip_dir(dirpath):
+            continue
+        for filename in filenames:
+            if not filename.endswith(UPDATABLE_EXTENSIONS):
+                continue
+            filepath = os.path.join(dirpath, filename)
+            if filepath not in renamed_paths:
+                files.append(filepath)
+    return files
+
+
 def update_all_references(files_to_rename, root_dir):
     """Update all references in the codebase."""
-    # Build mapping of old → new names (with full paths)
-    reference_map = {}
-    for item in files_to_rename:
-        old_dir = item['dir']
-        old_name = item['old_name']
-        new_name = item['new_name']
+    reference_map = _build_reference_map(files_to_rename, root_dir)
+    renamed_paths = {item['old_path'] for item in files_to_rename}
+    files_to_update = _collect_updatable_files(root_dir, renamed_paths)
 
-        # Store both just the filename and common path patterns
-        reference_map[old_name] = new_name
-
-        # Also store relative paths from docs/
-        if '/docs/' in old_dir:
-            old_rel = old_dir.replace(root_dir + '/docs/', '') + '/' + old_name
-            new_rel = old_dir.replace(root_dir + '/docs/', '') + '/' + new_name
-            reference_map[old_rel] = new_rel
-
-    # Find all files to update (not renamed files themselves)
-    files_to_update = []
-    for dirpath, dirnames, filenames in os.walk(root_dir):
-        # Skip these directories
-        if any(skip in dirpath for skip in ['node_modules', '.git', 'pypi', '.next']):
-            continue
-
-        for filename in filenames:
-            if filename.endswith(('.md', '.go', '.ts', '.js', '.json')):
-                filepath = os.path.join(dirpath, filename)
-                # Don't update files we're renaming
-                if not any(filepath == item['old_path'] for item in files_to_rename):
-                    files_to_update.append(filepath)
-
-    # Update references in all files
     updates_made = defaultdict(list)
     for filepath in files_to_update:
         for old_name, new_name in reference_map.items():
@@ -186,6 +200,7 @@ def update_all_references(files_to_rename, root_dir):
     return updates_made
 
 def main():
+    """Scan, rename, and update references for markdown files."""
     root_dir = '/Users/brenn/dev/gasoline'
 
     print("🔍 Scanning for files to rename...")
@@ -222,7 +237,7 @@ def main():
             os.rename(old_path, new_path)
             renamed_count += 1
             print(f"  ✓ {item['old_name']} → {item['new_name']}")
-        except Exception as e:
+        except OSError as e:
             print(f"  ✗ Failed to rename {item['old_name']}: {e}")
 
     print(f"\n✅ Renamed {renamed_count} files")
@@ -240,7 +255,10 @@ def main():
     print("\nNext steps:")
     print("1. python3 scripts/lint-documentation.py")
     print("2. python3 scripts/generate-feature-navigation.py")
-    print("3. git add -A && git commit -m 'docs: Standardize all filenames to lowercase-with-hyphens'")
+    print(
+        "3. git add -A && git commit -m"
+        " 'docs: Standardize all filenames to lowercase-with-hyphens'"
+    )
 
 if __name__ == '__main__':
     main()

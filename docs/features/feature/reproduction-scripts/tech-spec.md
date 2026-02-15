@@ -107,7 +107,7 @@ type ReproductionMeta struct {
 }
 ```
 
-**Flow:**
+##### Flow:
 1. Parse `ReproductionParams` from args
 2. Call `h.capture.GetAllEnhancedActions()`
 3. If no actions → return structured error `no_actions_captured`
@@ -124,7 +124,7 @@ Converts actions to numbered human-readable steps.
 func generateGasolineScript(actions []capture.EnhancedAction, opts ReproductionParams) string
 ```
 
-**Algorithm:**
+##### Algorithm:
 1. Write header: `# Reproduction: {description}\n# Captured: {time} | {count} actions | {url}\n`
 2. For each action:
    a. Check timing gap from previous action → insert `[Ns pause]` if > 2s
@@ -146,7 +146,7 @@ Converts multi-strategy selectors into the most readable description possible.
 func describeElement(action capture.EnhancedAction) string
 ```
 
-**Priority chain (first match wins):**
+##### Priority chain (first match wins):
 
 | Priority | Condition | Output | Example |
 |----------|-----------|--------|---------|
@@ -160,7 +160,7 @@ func describeElement(action capture.EnhancedAction) string
 | 8 | `cssPath` | `{cssPath}` | `form > div > input` |
 | 9 | (none) | `(unknown element)` | `(unknown element)` |
 
-**Why this order:**
+##### Why this order:
 - Priorities 1-3 produce the most natural descriptions ("Submit" button reads like English)
 - Priority 4 (testId) is machine-stable but less readable
 - Priorities 5-6 are readable but without role context
@@ -174,7 +174,7 @@ Converts actions to a Playwright test using the best available Playwright locato
 func generateReproPlaywrightScript(actions []capture.EnhancedAction, opts ReproductionParams) string
 ```
 
-**Locator priority (matches Playwright best practices):**
+##### Locator priority (matches Playwright best practices):
 
 | Priority | Selector | Playwright Locator |
 |----------|----------|-------------------|
@@ -185,7 +185,7 @@ func generateReproPlaywrightScript(actions []capture.EnhancedAction, opts Reprod
 | 5 | `id` | `page.locator('#...')` |
 | 6 | `cssPath` | `page.locator('...')` |
 
-**Action mapping:**
+##### Action mapping:
 
 | Action | Playwright Code |
 |--------|----------------|

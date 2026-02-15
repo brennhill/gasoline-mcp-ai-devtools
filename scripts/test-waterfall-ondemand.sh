@@ -2,10 +2,11 @@
 # UAT: Test on-demand waterfall fetching
 # This script verifies that observe(network_waterfall) fetches fresh data from extension
 
-set -e
+set -euo pipefail
 
 PORT=${GASOLINE_PORT:-47152}
 SERVER_URL="http://localhost:$PORT"
+CMD_PKG="${GASOLINE_CMD_PKG:-./cmd/dev-console}"
 
 echo "=== On-Demand Waterfall UAT ==="
 echo ""
@@ -19,7 +20,7 @@ if echo "$HEALTH" | grep -q "extension_connected"; then
     echo "   Extension connected: $EXT_CONNECTED"
 else
     echo "   ❌ Server not running at $SERVER_URL"
-    echo "   Start with: go run ./cmd/dev-console"
+    echo "   Start with: go run $CMD_PKG"
     exit 1
 fi
 

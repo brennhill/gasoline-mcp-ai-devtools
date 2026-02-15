@@ -2,5 +2,5 @@
  * @fileoverview Content Script Internal Types
  * Type definitions for internal content script use
  */
-export {};
+export {}
 //# sourceMappingURL=types.js.map

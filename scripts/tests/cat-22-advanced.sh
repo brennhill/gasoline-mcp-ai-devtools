@@ -1,8 +1,10 @@
 #!/bin/bash
 # cat-22-advanced.sh — Advanced Scenarios & Integration Tests (5 tests)
 # Tests complex workflows, feature interactions, edge cases.
+set -eo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+# shellcheck source=/dev/null
 source "$SCRIPT_DIR/framework.sh"
 
 init_framework "$1" "$2"
@@ -116,8 +118,8 @@ run_test_22_3() {
     response2=$(call_tool "analyze" '{"what":"performance"}')
 
     local id1 id2
-    id1=$(echo "$response1" | jq -r '.result.content[0].text' 2>/dev/null | grep -o 'link_health_[a-z0-9]*' | head -1)
-    id2=$(echo "$response2" | jq -r '.result.content[0].text' 2>/dev/null | grep -o 'performance_[a-z0-9]*' | head -1)
+    id1=$(echo "$response1" | jq -r '.result.content[0].text' 2>/dev/null | grep -o 'link_health_[a-z0-9]*' | head -1 || true)
+    id2=$(echo "$response2" | jq -r '.result.content[0].text' 2>/dev/null | grep -o 'performance_[a-z0-9]*' | head -1 || true)
 
     if [ -n "$id1" ] && [ -n "$id2" ]; then
         pass "Link health and performance analyses queued concurrently"
@@ -196,4 +198,4 @@ run_test_22_5() {
 }
 run_test_22_5
 
-kill_server
+finish_category

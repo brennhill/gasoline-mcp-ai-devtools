@@ -94,7 +94,7 @@ test:assertion
 ## Examples
 
 ### Example 1: Payment Authorization
-**Backend (Go):**
+#### Backend (Go):
 ```go
 gasoline.EmitEvent(ctx, "payment:authorized", map[string]interface{}{
     "payment_id": "pay-999",
@@ -106,7 +106,7 @@ gasoline.EmitEvent(ctx, "payment:authorized", map[string]interface{}{
 })
 ```
 
-**Gasoline View:**
+#### Gasoline View:
 ```
 [10:15:23.100] Frontend: Click "Complete Purchase"
 [10:15:23.120] Frontend: XHR POST /api/payments
@@ -117,7 +117,7 @@ gasoline.EmitEvent(ctx, "payment:authorized", map[string]interface{}{
 ```
 
 ### Example 2: Test Lifecycle
-**Test Runner (Node.js):**
+#### Test Runner (Node.js):
 ```javascript
 gasoline.emit({
     type: "test:started",
@@ -136,7 +136,7 @@ gasoline.emit({
 });
 ```
 
-**Gasoline Timeline:**
+#### Gasoline Timeline:
 ```
 [10:30:00.100] Custom Event: test:started (test_name: auth.spec.js)
 [10:30:00.150] Frontend: Page load
@@ -146,7 +146,7 @@ gasoline.emit({
 ```
 
 ### Example 3: Feature Flag Evaluation
-**Frontend (JavaScript):**
+#### Frontend (JavaScript):
 ```javascript
 const variant = await featureFlags.get("checkout_redesign");
 gasoline.emit({

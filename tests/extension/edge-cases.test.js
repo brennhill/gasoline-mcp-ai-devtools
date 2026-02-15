@@ -115,10 +115,20 @@ describe('Edge Cases: WebSocket Reconnection', () => {
     installWebSocketCapture()
 
     // Create connection but never emit events (simulates timeout)
-    const ws = new globalThis.window.WebSocket('wss://example.com/ws')
+    const _ws = new globalThis.window.WebSocket('wss://example.com/ws')
 
-    // Connection should still be tracked
-    assert.ok(ws, 'WebSocket should be created')
+    // Connection creation should still post a message to track the new connection
+    const calls = globalThis.window.postMessage.mock.calls
+    const _wsEvents = calls.filter((c) => {
+      const msg = c.arguments[0]
+      return msg.type === 'GASOLINE_WS'
+    })
+
+    // Even without open/close events, the WebSocket constructor interception should be tracked
+    // At minimum, no errors should have been thrown during construction
+    assert.strictEqual(typeof _ws.send, 'function', 'WebSocket send method should be available')
+    assert.strictEqual(typeof _ws.close, 'function', 'WebSocket close method should be available')
+    assert.strictEqual(_ws.url, 'wss://example.com/ws', 'WebSocket URL should match')
 
     uninstallWebSocketCapture()
   })
@@ -224,8 +234,21 @@ describe('Edge Cases: Service Worker Restart', () => {
       uninstallWebSocketCapture()
     }
 
-    // Should not throw errors or leave corrupted state
-    assert.ok(true, 'Multiple install/uninstall cycles should complete without errors')
+    // After cycling, capture should still be installable and functional
+    installWebSocketCapture()
+    const ws = new globalThis.window.WebSocket('wss://example.com/ws')
+    ws._emit('open', {})
+
+    const calls = globalThis.window.postMessage.mock.calls
+    const openEvents = calls.filter((c) => {
+      const msg = c.arguments[0]
+      return msg.type === 'GASOLINE_WS' && msg.payload.event === 'open'
+    })
+
+    // 5 opens from the loop + 1 from the final verification
+    assert.strictEqual(openEvents.length, 6, 'WebSocket capture should still work after install/uninstall cycling')
+
+    uninstallWebSocketCapture()
   })
 })
 
@@ -235,6 +258,8 @@ describe('Edge Cases: Concurrent Operations', () => {
     originalCrypto = globalThis.crypto
     globalThis.window = createMockWindow({ withWebSocket: true })
     Object.defineProperty(globalThis, 'crypto', { value: createMockCrypto(), writable: true, configurable: true })
+    const { resetForTesting } = await import('../../extension/inject.js')
+    resetForTesting()
   })
 
   afterEach(() => {
@@ -276,8 +301,10 @@ describe('Edge Cases: Concurrent Operations', () => {
   })
 
   test('should handle rapid message bursts on single connection', async () => {
-    const { installWebSocketCapture, uninstallWebSocketCapture } = await import('../../extension/inject.js')
+    const { installWebSocketCapture, uninstallWebSocketCapture, setWebSocketCaptureMode } =
+      await import('../../extension/inject.js')
     installWebSocketCapture()
+    setWebSocketCaptureMode('all') // Disable sampling for burst test
 
     const ws = new globalThis.window.WebSocket('wss://example.com/ws')
     ws._emit('open', {})
@@ -343,6 +370,8 @@ describe('Edge Cases: Memory Pressure Scenarios', () => {
     originalCrypto = globalThis.crypto
     globalThis.window = createMockWindow({ withWebSocket: true })
     Object.defineProperty(globalThis, 'crypto', { value: createMockCrypto(), writable: true, configurable: true })
+    const { resetForTesting } = await import('../../extension/inject.js')
+    resetForTesting()
   })
 
   afterEach(() => {
@@ -383,8 +412,14 @@ describe('Edge Cases: Memory Pressure Scenarios', () => {
     // Open all connections
     connections.forEach((ws) => ws._emit('open', {}))
 
-    // Should not crash
-    assert.ok(true, 'Should handle many connections under memory pressure')
+    // Verify all 50 connections were tracked via postMessage
+    const calls = globalThis.window.postMessage.mock.calls
+    const openEvents = calls.filter((c) => {
+      const msg = c.arguments[0]
+      return msg.type === 'GASOLINE_WS' && msg.payload.event === 'open'
+    })
+
+    assert.strictEqual(openEvents.length, 50, 'All 50 connections should post open events under memory pressure')
 
     uninstallWebSocketCapture()
   })
@@ -454,7 +489,7 @@ describe('Edge Cases: Message Edge Cases', () => {
     const specialMsg = JSON.stringify({
       text: 'Hello 世界 🌍 \n\t\r',
       emoji: '😀😁😂',
-      unicode: '\u0000\u001F\u007F',
+      unicode: '\u0000\u001F\u007F'
     })
     ws.send(specialMsg)
 

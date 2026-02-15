@@ -6,9 +6,9 @@
 /**
  * Install console capture hooks
  */
-export declare function installConsoleCapture(): void;
+export declare function installConsoleCapture(): void
 /**
  * Uninstall console capture hooks
  */
-export declare function uninstallConsoleCapture(): void;
+export declare function uninstallConsoleCapture(): void
 //# sourceMappingURL=console.d.ts.map

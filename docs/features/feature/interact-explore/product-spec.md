@@ -26,7 +26,7 @@ As an AI assistant, I need to autonomously explore web applications to understan
 
 **When I want to:** Validate that the application behaves as specified
 
-**Then I can:**
+#### Then I can:
 - Batch execute multiple actions (navigate, click, fill, wait, etc.) together
 - Capture comprehensive state (console, network, DOM, screenshots) after each action automatically
 - Observe the results and compare against the spec
@@ -40,7 +40,7 @@ As an AI assistant, I need to autonomously explore web applications to understan
 
 **When I want to:** Reproduce the bug in development environment and understand why it happened
 
-**Then I can:**
+#### Then I can:
 - Replay the recording in development environment
 - Capture state after each action
 - Compare with original production recording
@@ -53,19 +53,19 @@ As an AI assistant, I need to autonomously explore web applications to understan
 
 ## User Persona
 
-**Target Users:**
+### Target Users:
 - Claude (Anthropic) - AI assistant building/fixing web applications
 - GPT-4 - AI assistant debugging web applications
 - Other AI coding assistants
 
-**User Goals:**
+### User Goals:
 - Autonomously explore and understand web applications
 - Efficiently batch actions together
 - Capture complete state without manual steps
 - Compare states to identify differences
 - Iterate and fix bugs automatically
 
-**Pain Points:**
+### Pain Points:
 - Current tools require one-at-a-time action execution
 - No automatic state capture between actions
 - Can't batch explore user flows efficiently
@@ -79,7 +79,7 @@ As an AI assistant, I need to autonomously explore web applications to understan
 
 ### Current Limitations
 
-**Problem 1: No Action Batching**
+#### Problem 1: No Action Batching
 Current Gasoline MCP tools require explicit, sequential action execution. For example, to explore a checkout flow, an AI must:
 1. Call tool to navigate to checkout
 2. Call tool to fill shipping form
@@ -90,7 +90,7 @@ Current Gasoline MCP tools require explicit, sequential action execution. For ex
 
 Each tool call is a separate MCP request with its own latency. This is inefficient for exploring multi-step flows.
 
-**Problem 2: No Automatic State Capture**
+#### Problem 2: No Automatic State Capture
 After each action, the AI must explicitly request state capture. For example:
 1. Click button
 2. Call `observe.capture` to get console logs
@@ -99,7 +99,7 @@ After each action, the AI must explicitly request state capture. For example:
 
 This is manual and error-prone. If the AI forgets to capture state, critical information is lost.
 
-**Problem 3: No Recording and Replay**
+#### Problem 3: No Recording and Replay
 If a user encounters a bug in production, there's no way to:
 1. Record the user's interactions leading to the bug
 2. Save the recording
@@ -108,7 +108,7 @@ If a user encounters a bug in production, there's no way to:
 
 This makes production debugging difficult and requires manual orchestration by the user.
 
-**Problem 4: No State Comparison**
+#### Problem 4: No State Comparison
 To compare two application states (before/after, prod/dev), the AI must:
 1. Capture state 1
 2. Capture state 2
@@ -165,7 +165,7 @@ This is tedious and error-prone. The AI might miss subtle differences.
 
 ### MCP Tool: interact.explore
 
-**Input Parameters:**
+#### Input Parameters:
 
 ```javascript
 {
@@ -186,7 +186,7 @@ This is tedious and error-prone. The AI might miss subtle differences.
 }
 ```
 
-**Action Methods:**
+#### Action Methods:
 
 1. **goto** - Navigate to URL
    ```javascript
@@ -311,7 +311,7 @@ This is tedious and error-prone. The AI might miss subtle differences.
    }
    ```
 
-**Output Response:**
+#### Output Response:
 
 ```javascript
 {
@@ -348,7 +348,7 @@ This is tedious and error-prone. The AI might miss subtle differences.
 
 ### MCP Tool: interact.record
 
-**Input Parameters:**
+#### Input Parameters:
 
 ```javascript
 {
@@ -358,7 +358,7 @@ This is tedious and error-prone. The AI might miss subtle differences.
 }
 ```
 
-**Output Response:**
+#### Output Response:
 
 ```javascript
 {
@@ -372,7 +372,7 @@ This is tedious and error-prone. The AI might miss subtle differences.
 
 ### MCP Tool: interact.record_stop
 
-**Input Parameters:**
+#### Input Parameters:
 
 ```javascript
 {
@@ -381,7 +381,7 @@ This is tedious and error-prone. The AI might miss subtle differences.
 }
 ```
 
-**Output Response:**
+#### Output Response:
 
 ```javascript
 {
@@ -393,7 +393,7 @@ This is tedious and error-prone. The AI might miss subtle differences.
 }
 ```
 
-**Recording Format (.gas file):**
+#### Recording Format (.gas file):
 
 ```json
 {
@@ -427,7 +427,7 @@ This is tedious and error-prone. The AI might miss subtle differences.
 
 ### MCP Tool: interact.replay_load
 
-**Input Parameters:**
+#### Input Parameters:
 
 ```javascript
 {
@@ -436,7 +436,7 @@ This is tedious and error-prone. The AI might miss subtle differences.
 }
 ```
 
-**Output Response:**
+#### Output Response:
 
 ```javascript
 {
@@ -448,7 +448,7 @@ This is tedious and error-prone. The AI might miss subtle differences.
 
 ### MCP Tool: interact.replay
 
-**Input Parameters:**
+#### Input Parameters:
 
 ```javascript
 {
@@ -459,7 +459,7 @@ This is tedious and error-prone. The AI might miss subtle differences.
 }
 ```
 
-**Output Response:**
+#### Output Response:
 
 ```javascript
 {

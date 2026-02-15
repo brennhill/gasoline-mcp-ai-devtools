@@ -25,7 +25,6 @@ import (
 	"io"
 	"net/http"
 	"os"
-	"os/exec"
 	"runtime"
 	"strings"
 	"sync"
@@ -47,9 +46,9 @@ func TestReliability_Stress_ConcurrentConnections(t *testing.T) {
 
 	port := findFreePort(t)
 	binary := buildTestBinary(t)
-	defer os.Remove(binary)
 
-	cmd := exec.Command(binary, "--port", fmt.Sprintf("%d", port)) // #nosec G204 -- binary is from buildTestBinary(t)
+
+	cmd := startServerCmd(binary, "--port", fmt.Sprintf("%d", port))
 	stdin, err := cmd.StdinPipe()
 	if err != nil {
 		t.Fatalf("Failed to create stdin pipe: %v", err)
@@ -160,9 +159,9 @@ func TestReliability_Stress_ExtendedOperation(t *testing.T) {
 
 	port := findFreePort(t)
 	binary := buildTestBinary(t)
-	defer os.Remove(binary)
 
-	cmd := exec.Command(binary, "--port", fmt.Sprintf("%d", port)) // #nosec G204 -- binary is from buildTestBinary(t)
+
+	cmd := startServerCmd(binary, "--port", fmt.Sprintf("%d", port))
 	stdin, err := cmd.StdinPipe()
 	if err != nil {
 		t.Fatalf("Failed to create stdin pipe: %v", err)
@@ -241,9 +240,9 @@ func TestReliability_ResourceLeaks_Goroutines(t *testing.T) {
 
 	port := findFreePort(t)
 	binary := buildTestBinary(t)
-	defer os.Remove(binary)
 
-	cmd := exec.Command(binary, "--port", fmt.Sprintf("%d", port)) // #nosec G204 -- binary is from buildTestBinary(t)
+
+	cmd := startServerCmd(binary, "--port", fmt.Sprintf("%d", port))
 	stdin, err := cmd.StdinPipe()
 	if err != nil {
 		t.Fatalf("Failed to create stdin pipe: %v", err)
@@ -325,9 +324,9 @@ func TestReliability_ResourceLeaks_ConnectionDrain(t *testing.T) {
 
 	port := findFreePort(t)
 	binary := buildTestBinary(t)
-	defer os.Remove(binary)
 
-	cmd := exec.Command(binary, "--port", fmt.Sprintf("%d", port)) // #nosec G204 -- binary is from buildTestBinary(t)
+
+	cmd := startServerCmd(binary, "--port", fmt.Sprintf("%d", port))
 	stdin, err := cmd.StdinPipe()
 	if err != nil {
 		t.Fatalf("Failed to create stdin pipe: %v", err)
@@ -383,9 +382,9 @@ func TestReliability_Recovery_MalformedJSON(t *testing.T) {
 
 	port := findFreePort(t)
 	binary := buildTestBinary(t)
-	defer os.Remove(binary)
 
-	cmd := exec.Command(binary, "--port", fmt.Sprintf("%d", port)) // #nosec G204 -- binary is from buildTestBinary(t)
+
+	cmd := startServerCmd(binary, "--port", fmt.Sprintf("%d", port))
 	stdin, err := cmd.StdinPipe()
 	if err != nil {
 		t.Fatalf("Failed to create stdin pipe: %v", err)
@@ -462,9 +461,9 @@ func TestReliability_Recovery_InvalidToolCalls(t *testing.T) {
 
 	port := findFreePort(t)
 	binary := buildTestBinary(t)
-	defer os.Remove(binary)
 
-	cmd := exec.Command(binary, "--port", fmt.Sprintf("%d", port)) // #nosec G204 -- binary is from buildTestBinary(t)
+
+	cmd := startServerCmd(binary, "--port", fmt.Sprintf("%d", port))
 	stdin, err := cmd.StdinPipe()
 	if err != nil {
 		t.Fatalf("Failed to create stdin pipe: %v", err)

@@ -10,6 +10,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/dev-console/dev-console/internal/util"
 )
 
 const (
@@ -19,16 +21,32 @@ const (
 )
 
 var (
-	availableVersion string
-	lastVersionCheck time.Time
-	versionCheckMu   sync.Mutex
+	availableVersion   string
+	lastVersionCheck   time.Time
+	versionFetchActive bool // prevents duplicate concurrent fetches
+	versionCheckMu     sync.Mutex
 )
 
 var (
-	// githubAPIURL can be overridden via GASOLINE_RELEASES_URL env var for forked repos
+	// githubAPIURL can be overridden via GASOLINE_RELEASES_URL env var for forked repos.
+	// Access must be protected by versionCheckMu (read via getGitHubAPIURL).
 	githubAPIURL = getEnvOrDefault("GASOLINE_RELEASES_URL",
 		"https://api.github.com/repos/brennhill/gasoline-mcp-ai-devtools/releases/latest")
 )
+
+// getGitHubAPIURL returns the current GitHub API URL (thread-safe).
+func getGitHubAPIURL() string {
+	versionCheckMu.Lock()
+	defer versionCheckMu.Unlock()
+	return githubAPIURL
+}
+
+// setGitHubAPIURL sets the GitHub API URL (thread-safe). Used by tests.
+func setGitHubAPIURL(url string) {
+	versionCheckMu.Lock()
+	defer versionCheckMu.Unlock()
+	githubAPIURL = url
+}
 
 // getEnvOrDefault returns the environment variable value or a default if not set
 func getEnvOrDefault(key, defaultValue string) string {
@@ -43,21 +61,32 @@ func getEnvOrDefault(key, defaultValue string) string {
 // Used to determine if a newer version is available to notify users
 func checkGitHubVersion() {
 	versionCheckMu.Lock()
-	// Check if cache is still valid (6 hour TTL)
-	if !lastVersionCheck.IsZero() && time.Since(lastVersionCheck) < versionCheckCacheTTL {
+	// Check if cache is still valid (6 hour TTL) or fetch already in progress
+	if (!lastVersionCheck.IsZero() && time.Since(lastVersionCheck) < versionCheckCacheTTL) || versionFetchActive {
 		versionCheckMu.Unlock()
 		return
 	}
+	// Mark fetch as active to prevent duplicate concurrent fetches
+	versionFetchActive = true
+	fetchURL := githubAPIURL
 	versionCheckMu.Unlock()
+
+	defer func() {
+		versionCheckMu.Lock()
+		versionFetchActive = false
+		versionCheckMu.Unlock()
+	}()
 
 	// Fetch from GitHub (silent on errors - version check is optional/non-critical)
 	client := &http.Client{Timeout: httpClientTimeout}
-	resp, err := client.Get(githubAPIURL) // #nosec G107 -- constant GitHub API URL
+	resp, err := client.Get(fetchURL) // #nosec G107 -- constant GitHub API URL
 	if err != nil {
 		// Silent: network errors are common, version check is non-critical
 		return
 	}
-	defer resp.Body.Close()
+	defer func() {
+		_ = resp.Body.Close()
+	}()
 
 	if resp.StatusCode != http.StatusOK {
 		// Silent: GitHub rate limits (403) and other errors are expected
@@ -73,7 +102,7 @@ func checkGitHubVersion() {
 		return
 	}
 
-	// Extract version from tag (e.g., "v5.2.6" -> "5.2.6")
+	// Extract version from tag (e.g., "v6.0.3" -> "6.0.3")
 	newVersion := strings.TrimPrefix(releaseInfo.TagName, "v")
 	if newVersion == "" {
 		// Silent: invalid tag doesn't affect core functionality
@@ -93,7 +122,7 @@ func checkGitHubVersion() {
 // Checks immediately on startup if no cached value, then periodically
 // The goroutine stops cleanly when ctx is cancelled
 func startVersionCheckLoop(ctx context.Context) {
-	go func() {
+	util.SafeGo(func() {
 		// Check immediately on startup
 		checkGitHubVersion()
 
@@ -110,5 +139,5 @@ func startVersionCheckLoop(ctx context.Context) {
 				return
 			}
 		}
-	}()
+	})
 }

@@ -130,7 +130,7 @@ Workflow:
 ### Feature 1: gasoline-run Wrapper (Local Dev)
 **What:** Wrapper command that intercepts stdout/stderr and streams to daemon
 
-**How:**
+#### How:
 ```bash
 gasoline-run npm run dev           # Node
 gasoline-run python -m flask run   # Python
@@ -138,13 +138,13 @@ gasoline-run go run main.go        # Go
 gasoline-run docker-compose up     # Docker
 ```
 
-**Data captured:**
+#### Data captured:
 - Every line of stdout/stderr
 - Real-time streaming to daemon
 - Pass-through to user's terminal (logs still visible)
 - Auto-correlate by request ID in logs
 
-**Success Criteria:**
+#### Success Criteria:
 - [ ] Works with any child command
 - [ ] Logs appear in daemon within 10ms of writing
 - [ ] Zero performance impact on dev server
@@ -156,7 +156,7 @@ gasoline-run docker-compose up     # Docker
 ### Feature 2: Local File Log Tailer (Production Single-Server)
 **What:** Tail a log file and stream new lines to daemon
 
-**How:**
+#### How:
 ```yaml
 backend:
   logs:
@@ -165,13 +165,13 @@ backend:
       poll_interval_ms: 100
 ```
 
-**Data captured:**
+#### Data captured:
 - New lines added to file
 - Polls every 100ms (configurable)
 - Handles file rotation (if log file disappears, reopen)
 - Extracts: timestamp, level, message, correlation_id
 
-**Success Criteria:**
+#### Success Criteria:
 - [ ] Detects new lines within 100ms of being written
 - [ ] Handles file rotation gracefully
 - [ ] Memory efficient (doesn't buffer entire file)
@@ -183,7 +183,7 @@ backend:
 ### Feature 3: SSH Remote Log Tailer (Production Distributed)
 **What:** SSH into remote server and tail log file
 
-**How:**
+#### How:
 ```yaml
 backend:
   logs:
@@ -194,13 +194,13 @@ backend:
       auth: ~/.ssh/id_rsa
 ```
 
-**Data captured:**
+#### Data captured:
 - SSH connection to remote server
 - Runs `tail -f` on remote server
 - Streams back to local daemon
 - Same log parsing as local file
 
-**Success Criteria:**
+#### Success Criteria:
 - [ ] SSH connection established within 5 seconds
 - [ ] Log lines stream within 500ms (network dependent)
 - [ ] Reconnects on SSH timeout
@@ -212,7 +212,7 @@ backend:
 ### Feature 4: Multi-Log Source Configuration
 **What:** Support multiple log sources simultaneously
 
-**How:**
+#### How:
 ```yaml
 backend:
   logs:
@@ -234,12 +234,12 @@ backend:
       tags: ["service:c"]
 ```
 
-**Data captured:**
+#### Data captured:
 - All sources stream to same daemon
 - Events tagged with source service
 - Query can filter by service or aggregate across all
 
-**Success Criteria:**
+#### Success Criteria:
 - [ ] All sources stream simultaneously
 - [ ] No interference between sources
 - [ ] Query can show "all logs" or "logs from service X"
@@ -251,12 +251,12 @@ backend:
 ### Feature 5: Log Parser (Multi-Format)
 **What:** Parse logs in any format and extract key fields
 
-**Supported formats:**
+#### Supported formats:
 - JSON (auto-detect)
 - Structured plaintext (regex patterns)
 - Simple plaintext (fallback)
 
-**How it works:**
+#### How it works:
 1. **JSON:** Auto-extract standard fields
    ```json
    {
@@ -280,14 +280,14 @@ backend:
    → timestamp: now, level: info (guessed), message: "User logged in"
    ```
 
-**Data captured:**
+#### Data captured:
 - Timestamp (auto-detected format)
 - Log level (normalized: debug, info, warn, error, critical)
 - Message (primary text)
 - Correlation ID (extracted from: req, trace_id, request_id, correlation_id, etc.)
 - Metadata (all other fields preserved)
 
-**Success Criteria:**
+#### Success Criteria:
 - [ ] JSON logs parsed 100% correctly
 - [ ] Structured logs with regex provided parsed correctly
 - [ ] Simple logs never crash (graceful fallback)
@@ -300,14 +300,14 @@ backend:
 ### Feature 6: Correlation & Merging
 **What:** Link FE and BE events by correlation_id (trace ID)
 
-**How:**
+#### How:
 1. **FE generates trace ID:** UUID (e.g., `550e8400-e29b-41d4`)
 2. **FE sends in request:** `X-Trace-ID: 550e8400-e29b-41d4`
 3. **BE logs include trace ID:** `[trace:550e8400-e29b-41d4] Processing`
 4. **Parser extracts:** `correlation_id: "550e8400-e29b-41d4"`
 5. **Query merges:** All events with same `correlation_id`
 
-**Result:**
+#### Result:
 ```
 Timeline (sorted by timestamp):
 1. [FE] Click "Add to Cart" (12:00:00.000)
@@ -317,11 +317,11 @@ Timeline (sorted by timestamp):
 5. [FE] Response 200 (12:00:00.025)
 ```
 
-**Fallback (no trace ID):**
+#### Fallback (no trace ID):
 - Match by timestamp + endpoint (less reliable)
 - Flag as "inferred" (for AI context)
 
-**Success Criteria:**
+#### Success Criteria:
 - [ ] All FE requests include X-Trace-ID
 - [ ] All BE log entries include trace ID
 - [ ] Query by correlation_id returns complete flow
@@ -335,13 +335,13 @@ Timeline (sorted by timestamp):
 
 **What (v6.0+):** Automatically correct detected clock skew
 
-**Why:**
+### Why:
 - Local dev: FE and BE are same machine, should have <10ms skew
 - Production: FE (laptop) and BE (prod server) may differ by seconds
 - Timeline order may be wrong without awareness of skew
 - Correction is complex: requires algorithm refinement, testing
 
-**Approach (v5.4 - Detection Only):**
+### Approach (v5.4 - Detection Only):
 
 1. **FE sends local time:** `X-Client-Time: 1704067200000` in every request
 2. **BE calculates offset:** `server_time - client_time = skew_ms`
@@ -350,7 +350,7 @@ Timeline (sorted by timestamp):
 5. **Daemon accumulates:** Latest 30 skew samples from recent requests
 6. **Reports status:** Via GET /daemon/status endpoint (operator reads, no auto-correction)
 
-**Health Endpoint (v5.4):**
+### Health Endpoint (v5.4):
 
 ```json
 GET /daemon/status
@@ -372,13 +372,13 @@ GET /daemon/status
 }
 ```
 
-**Status Values (v5.4):**
+### Status Values (v5.4):
 
 - `"synchronized"` — Median skew < 10ms AND std_dev < 5ms (same machine, NTP-aligned)
 - `"detected"` — Median skew 10-100ms (acceptable, different machines or transient delays, report to user)
 - `"large_skew"` — Median skew >100ms (warn operator, likely NTP issue or clock misconfiguration)
 
-**Detection Algorithm (v5.4):**
+### Detection Algorithm (v5.4):
 
 1. **Collect samples:** Extract `client_skew_ms` from BE logs for each FE request
 2. **Filter outliers:** Remove samples where |sample - median| > 3 * std_dev
@@ -390,20 +390,20 @@ GET /daemon/status
 4. **Determine status:** Based on median and std_dev values
 5. **Report:** Via `/daemon/status` endpoint with actionable remediation
 
-**Rationale for Algorithm:**
+### Rationale for Algorithm:
 - **Median instead of mean:** Resistant to outliers (e.g., GC pauses, network jitter)
 - **Outlier removal (3σ):** Filters transient network delays that could cause false alerts
 - **Percentiles (p95, p99):** Help operator understand if skew is stable or highly variable
 - **Confidence interval:** Quantifies uncertainty in the skew measurement
 - **30-sample threshold:** Requires ~30 requests before declaring stable state (typical dev session reaches this in <1 minute)
 
-**Auto-Correction (v6.0+, Out of Scope v5.4):**
+### Auto-Correction (v6.0+, Out of Scope v5.4):
 
 - After skew stabilizes (30+ samples, std-dev <5ms)
 - Automatic FE timestamp adjustment by median skew
 - User can disable via config: `clock_skew_auto_correct: false`
 
-**Success Criteria (v5.4):**
+### Success Criteria (v5.4):
 
 - [ ] Skew detected and reported within first 30 requests
 - [ ] Same-machine: Reports <10ms with "synchronized" status
@@ -419,7 +419,7 @@ GET /daemon/status
 
 **Used by:** Browser extension, local file tailer, SSH tailer
 
-**Request:**
+#### Request:
 
 ```json
 POST http://localhost:7890/event
@@ -437,7 +437,7 @@ Content-Type: application/json
 }
 ```
 
-**Response:**
+#### Response:
 
 ```json
 200 OK
@@ -451,7 +451,7 @@ Content-Type: application/json
 
 **Used by:** gasoline-run wrapper (for efficiency)
 
-**Request:**
+#### Request:
 
 ```json
 POST http://localhost:7890/events
@@ -466,7 +466,7 @@ Content-Type: application/json
 }
 ```
 
-**Response:**
+#### Response:
 
 ```json
 200 OK
@@ -477,7 +477,7 @@ Content-Type: application/json
 }
 ```
 
-**Batch Parameters:**
+#### Batch Parameters:
 
 - Batch size: Up to 10K events per batch
 - Timeout: Send every 100ms or when buffer fills

@@ -1,7 +1,9 @@
 #!/bin/bash
 # cat-05-interact.sh — UAT tests for the interact tool (19 tests).
+set -eo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+# shellcheck source=/dev/null
 source "$SCRIPT_DIR/framework.sh"
 
 init_framework "$1" "$2"
@@ -420,12 +422,12 @@ run_test_5_19() {
     # but the error should be about pilot, NOT about an unknown 'subtitle' param
     local text
     text=$(extract_content_text "$RESPONSE")
-    if check_contains "$text" "subtitle.*unknown\|unknown.*subtitle\|invalid.*param.*subtitle\|unrecognized.*subtitle"; then
+    if check_matches "$text" "subtitle.*unknown|unknown.*subtitle|invalid.*param.*subtitle|unrecognized.*subtitle"; then
         fail "Server rejected 'subtitle' as unknown parameter. It should be accepted as optional. Content: $(truncate "$text" 200)"
         return
     fi
     # Expected: pilot error (not connected), OR success if pilot is running
-    if check_contains "$text" "pilot\|Pilot\|queued\|navigat"; then
+    if check_matches "$text" "pilot|Pilot|queued|navigat"; then
         pass "navigate with subtitle param accepted (got expected pilot error or success, not param rejection)."
     else
         pass "navigate with subtitle param did not reject the subtitle field. Content: $(truncate "$text" 200)"

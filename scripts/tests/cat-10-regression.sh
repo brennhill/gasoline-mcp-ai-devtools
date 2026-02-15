@@ -1,16 +1,18 @@
 #!/bin/bash
 # cat-10-regression.sh — Category 10: Regression Guards (3 tests).
 # These tests exist because of specific bugs we've hit before.
+set -eo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=/dev/null
 source "$SCRIPT_DIR/framework.sh"
 
 init_framework "$1" "$2"
 begin_category "10" "Regression Guards" "3"
 
-# ── 10.1 — No stub tools in tools/list ───────────────────
-begin_test "10.1" "No stub tools in tools/list (regression: v5.7.5)" \
-    "Send tools/list via fast-start. Assert 'analyze' is NOT present. Assert exactly 4 tools." \
+# ── 10.1 — Exactly 5 tools in tools/list ─────────────────
+begin_test "10.1" "Exactly 5 tools in tools/list (regression: v5.7.5)" \
+    "Send tools/list via fast-start. Assert exactly 5 tools: observe, generate, configure, interact, analyze." \
     "We shipped stub tools that returned errors. This must never happen again."
 run_test_10_1() {
     local request="{\"jsonrpc\":\"2.0\",\"id\":${MCP_ID},\"method\":\"tools/list\"}"
@@ -32,33 +34,28 @@ run_test_10_1() {
         return
     fi
 
-    # Assert "analyze" is NOT in the tool names
-    if echo "$tool_names" | grep -q "^analyze$"; then
-        fail "Found stub tool 'analyze' in tools/list. Tool names: $tool_names"
-        return
-    fi
-
-    # Count tools — must be exactly 4
+    # Count tools — must be exactly 5
     local tool_count
     tool_count=$(echo "$RESPONSE" | jq '.result.tools | length' 2>/dev/null)
-    if [ "$tool_count" != "4" ]; then
-        fail "Expected exactly 4 tools but got $tool_count. Tool names: $tool_names"
+    if [ "$tool_count" != "5" ]; then
+        fail "Expected exactly 5 tools but got $tool_count. Tool names: $tool_names"
         return
     fi
 
-    # Verify the 4 expected tools are present
-    local has_observe has_generate has_configure has_interact
-    has_observe=$(echo "$tool_names" | grep -c "^observe$")
-    has_generate=$(echo "$tool_names" | grep -c "^generate$")
-    has_configure=$(echo "$tool_names" | grep -c "^configure$")
-    has_interact=$(echo "$tool_names" | grep -c "^interact$")
+    # Verify the 5 expected tools are present
+    local has_observe has_generate has_configure has_interact has_analyze
+    has_observe=$(echo "$tool_names" | grep -c "^observe$" || true)
+    has_generate=$(echo "$tool_names" | grep -c "^generate$" || true)
+    has_configure=$(echo "$tool_names" | grep -c "^configure$" || true)
+    has_interact=$(echo "$tool_names" | grep -c "^interact$" || true)
+    has_analyze=$(echo "$tool_names" | grep -c "^analyze$" || true)
 
-    if [ "$has_observe" != "1" ] || [ "$has_generate" != "1" ] || [ "$has_configure" != "1" ] || [ "$has_interact" != "1" ]; then
-        fail "Missing expected tools. Found: $tool_names. Expected: observe, generate, configure, interact."
+    if [ "$has_observe" != "1" ] || [ "$has_generate" != "1" ] || [ "$has_configure" != "1" ] || [ "$has_interact" != "1" ] || [ "$has_analyze" != "1" ]; then
+        fail "Missing expected tools. Found: $tool_names. Expected: observe, generate, configure, interact, analyze."
         return
     fi
 
-    pass "tools/list returned exactly 4 tools: observe, generate, configure, interact. No stub 'analyze' tool present."
+    pass "tools/list returned exactly 5 tools: observe, generate, configure, interact, analyze."
 }
 run_test_10_1
 
@@ -75,8 +72,7 @@ run_test_10_2() {
         return
     fi
 
-    # All 22 standard observe modes (from the observe tool enum, excluding network_bodies and command_result
-    # which require specific params, plus security_diff which needs compare params)
+    # All standard observe modes (from the observe tool enum)
     local modes=(
         "page"
         "tabs"
@@ -89,18 +85,18 @@ run_test_10_2() {
         "websocket_status"
         "extension_logs"
         "pilot"
-        "performance"
         "timeline"
-        "error_clusters"
-        "history"
-        "accessibility"
-        "security_audit"
-        "third_party_audit"
-        "security_diff"
+        "error_bundles"
         "pending_commands"
         "failed_commands"
         "network_bodies"
         "recordings"
+        "api"
+        "changes"
+        "log_diff_report"
+        "recording_actions"
+        "playback_results"
+        "saved_videos"
     )
 
     local success_count=0
@@ -114,7 +110,7 @@ run_test_10_2() {
         local request="{\"jsonrpc\":\"2.0\",\"id\":${MCP_ID},\"method\":\"tools/call\",\"params\":{\"name\":\"${tool_name}\",\"arguments\":${arguments}}}"
         local stdout_file="$TEMP_DIR/fast_${MCP_ID}_stdout.txt"
         local stderr_file="$TEMP_DIR/fast_${MCP_ID}_stderr.txt"
-        echo "$request" | $TIMEOUT_CMD 8 $WRAPPER --port "$PORT" > "$stdout_file" 2>"$stderr_file"
+        echo "$request" | "$TIMEOUT_CMD" 8 "$WRAPPER" --port "$PORT" > "$stdout_file" 2>"$stderr_file"
         LAST_EXIT_CODE=$?
         LAST_RESPONSE=$(grep -v '^$' "$stdout_file" 2>/dev/null | tail -1)
         MCP_ID=$((MCP_ID + 1))
@@ -161,7 +157,7 @@ run_test_10_3() {
 
     # Source 2: --version flag output
     local version_flag
-    version_flag=$($WRAPPER --version 2>/dev/null)
+    version_flag=$("$WRAPPER" --version 2>/dev/null)
     if [ -z "$version_flag" ]; then
         fail "gasoline-mcp --version returned empty output."
         return
@@ -169,7 +165,7 @@ run_test_10_3() {
     # Extract version number from output like "gasoline v5.7.6"
     # Strip everything except the version number
     local version_from_flag
-    version_from_flag=$(echo "$version_flag" | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1)
+    version_from_flag=$(echo "$version_flag" | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1 || true)
     if [ -z "$version_from_flag" ]; then
         fail "Could not extract version from --version output: '$version_flag'"
         return

@@ -102,7 +102,7 @@ CREATE TABLE screenshot_config (
     └── ...
 ```
 
-**Path components:**
+### Path components:
 - `YYYY/MM/DD/` — Partition by capture date (aids cleanup)
 - `component-{name}/` — Component name (sanitized, no /\)
 - `variant-{name}/` — Variant name (sanitized, no /\)
@@ -235,18 +235,18 @@ Key areas:
 
 ## Phase 1 Deliverables
 
-**Week 2 (Server):**
+### Week 2 (Server):
 - [ ] SQLite schema with indexes
 - [ ] ScreenshotStore implementation
 - [ ] HTTP handlers (POST /screenshots)
 - [ ] Cleanup job
 
-**Week 2-3 (Extension):**
+### Week 2-3 (Extension):
 - [ ] Parallel viewport capture
 - [ ] Batch upload
 - [ ] Integration with observe()
 
-**Week 3 (Testing):**
+### Week 3 (Testing):
 - [ ] Unit tests (storage, cleanup)
 - [ ] Integration tests (capture + upload)
 - [ ] Load tests (10K+ screenshots)

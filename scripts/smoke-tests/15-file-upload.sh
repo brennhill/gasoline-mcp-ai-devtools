@@ -1,0 +1,974 @@
+#!/bin/bash
+# 15-file-upload.sh — 15.0-15.15: File upload automation validation.
+# ALL actions go through MCP commands (interact/observe/execute_js).
+# Browser-based tests (15.0 browser check, 15.10-15.15) require extension+pilot.
+# Parameter validation tests (15.1-15.9) work without extension.
+set -eo pipefail
+
+# Temp directory for all upload tests — must be inside the daemon's default
+# Stage 4 upload-dir (~/gasoline-upload-dir) when bootstrap enables OS upload
+# automation without an explicit --upload-dir flag.
+UPLOAD_TEST_DIR="${HOME}/gasoline-upload-dir/smoke-upload-$$"
+mkdir -p "$UPLOAD_TEST_DIR"
+
+# ── MD5 helper: works on both macOS (md5) and Linux (md5sum) ──
+_compute_md5() {
+    local file="$1"
+    local hash
+    hash=$(md5sum "$file" 2>/dev/null | awk '{print $1}' || md5 -q "$file" 2>/dev/null || true)
+    if [ -z "$hash" ]; then
+        echo "FATAL: neither md5sum nor md5 available" >&2
+        return 1
+    fi
+    echo "$hash"
+}
+
+begin_category "15" "File Upload" "18"
+
+# ── Persistent upload server for the whole category ───────
+UPLOAD_PORT=$((PORT + 200))
+
+# Kill anything already on the upload port
+lsof -ti :"$UPLOAD_PORT" 2>/dev/null | xargs kill -9 2>/dev/null || true
+sleep 0.3
+
+python3 "$(dirname "${BASH_SOURCE[0]}")/upload-server.py" "$UPLOAD_PORT" &
+UPLOAD_SERVER_PID=$!
+sleep 1
+
+# Verify upload server is alive (P0-09: detect silent death)
+if ! kill -0 "$UPLOAD_SERVER_PID" 2>/dev/null; then
+    echo "FATAL: Upload test server (PID $UPLOAD_SERVER_PID) died on startup. Port $UPLOAD_PORT may be in use." >&2
+    UPLOAD_SERVER_PID=""
+fi
+
+_cleanup_upload() {
+    [ -n "$UPLOAD_SERVER_PID" ] && kill "$UPLOAD_SERVER_PID" 2>/dev/null || true
+    lsof -ti :"$UPLOAD_PORT" 2>/dev/null | xargs kill -9 2>/dev/null || true
+    rm -rf "$UPLOAD_TEST_DIR"
+}
+register_cleanup _cleanup_upload
+
+# ── Shared helper: navigate browser to upload form ────────
+# Visits / (sets session cookie) then /upload (loads form with CSRF).
+_navigate_to_upload_form() {
+    interact_and_wait "navigate" "{\"action\":\"navigate\",\"url\":\"http://127.0.0.1:${UPLOAD_PORT}/\",\"reason\":\"Get session cookie\"}"
+    sleep 1
+    interact_and_wait "navigate" "{\"action\":\"navigate\",\"url\":\"http://127.0.0.1:${UPLOAD_PORT}/upload\",\"reason\":\"Load upload form\"}"
+    sleep 2
+}
+
+# ── Shared helper: interact(upload) + poll for completion ─
+# Sets UPLOAD_FINAL_STATUS to "complete", "failed", "error", "pilot_disabled", or "pending".
+_upload_and_poll() {
+    local test_id="$1"
+    local test_file="$2"
+    UPLOAD_FINAL_STATUS="pending"
+    UPLOAD_FINAL_TEXT=""
+
+    local response
+    response=$(call_tool "interact" "{\"action\":\"upload\",\"selector\":\"#file-input\",\"file_path\":\"$test_file\"}")
+    local content_text
+    content_text=$(extract_content_text "$response")
+
+    log_diagnostic "$test_id" "interact upload" "$response" "$content_text"
+
+    local corr_id
+    corr_id=$(echo "$content_text" | grep -oE '"correlation_id":\s*"[^"]+"' | head -1 | sed 's/.*"correlation_id":\s*"//' | sed 's/"//' || true)
+
+    if [ -z "$corr_id" ]; then
+        if echo "$content_text" | grep -qi "error\|isError"; then
+            UPLOAD_FINAL_STATUS="error: $(truncate "$content_text" 200)"
+            UPLOAD_FINAL_TEXT="$content_text"
+        else
+            UPLOAD_FINAL_STATUS="no_corr_id: $(truncate "$content_text" 200)"
+            UPLOAD_FINAL_TEXT="$content_text"
+        fi
+        return
+    fi
+
+    for _ in $(seq 1 20); do
+        sleep 0.5
+        local poll_text
+        poll_text=$(extract_content_text "$(call_tool "observe" "{\"what\":\"command_result\",\"correlation_id\":\"$corr_id\"}")")
+        if echo "$poll_text" | grep -q '"status":"complete"'; then
+            # Check for pilot-disabled error masquerading as "complete"
+            if echo "$poll_text" | grep -q 'ai_web_pilot_disabled'; then
+                UPLOAD_FINAL_STATUS="pilot_disabled"
+                UPLOAD_FINAL_TEXT="$poll_text"
+                log_diagnostic "$test_id" "poll pilot_disabled" "$poll_text" ""
+                return
+            elif echo "$poll_text" | grep -qi 'FAILED —\|\"error\":'; then
+                UPLOAD_FINAL_STATUS="failed"
+                UPLOAD_FINAL_TEXT="$poll_text"
+                log_diagnostic "$test_id" "poll complete-with-error" "$poll_text" ""
+                return
+            fi
+            UPLOAD_FINAL_STATUS="complete"
+            UPLOAD_FINAL_TEXT="$poll_text"
+            log_diagnostic "$test_id" "poll complete" "$poll_text" ""
+            return
+        fi
+        if echo "$poll_text" | grep -q '"status":"failed"'; then
+            UPLOAD_FINAL_STATUS="failed"
+            UPLOAD_FINAL_TEXT="$poll_text"
+            log_diagnostic "$test_id" "poll failed" "$poll_text" ""
+            return
+        fi
+        if echo "$poll_text" | grep -q '"status":"error"'; then
+            UPLOAD_FINAL_STATUS="error"
+            UPLOAD_FINAL_TEXT="$poll_text"
+            log_diagnostic "$test_id" "poll error" "$poll_text" ""
+            return
+        fi
+    done
+}
+
+# ── Shared helper: fetch /api/last-upload via browser (dogfood) ──
+# Uses execute_js + fetch() from the browser page to check the upload server API.
+# Sets LAST_UPLOAD_MD5, LAST_UPLOAD_NAME, LAST_UPLOAD_CSRF_OK, LAST_UPLOAD_COOKIE_OK, LAST_UPLOAD_RAW.
+_fetch_last_upload_via_browser() {
+    LAST_UPLOAD_MD5=""
+    LAST_UPLOAD_NAME=""
+    LAST_UPLOAD_CSRF_OK=""
+    LAST_UPLOAD_COOKIE_OK=""
+    LAST_UPLOAD_RAW=""
+
+    interact_and_wait "execute_js" '{"action":"execute_js","reason":"Fetch last upload from server API","script":"fetch(\"/api/last-upload\").then(r=>r.json()).then(d=>JSON.stringify(d))"}'
+    LAST_UPLOAD_RAW="$INTERACT_RESULT"
+
+    # Extract fields from nested command result JSON:
+    # INTERACT_RESULT = "Command ...: complete\n{...result:{result:\"<inner JSON string>\"...}...}"
+    local parsed
+    parsed=$(echo "$INTERACT_RESULT" | python3 -c "
+import sys, json
+text = sys.stdin.read()
+idx = text.find('{')
+if idx < 0:
+    print('{}')
+    sys.exit(0)
+data = json.loads(text[idx:])
+r = data.get('result', {})
+inner = r.get('result', '') if isinstance(r, dict) else ''
+if isinstance(inner, str) and inner.startswith('{'):
+    print(inner)
+elif isinstance(inner, dict):
+    print(json.dumps(inner))
+else:
+    print('{}')
+" 2>/dev/null || echo "{}")
+
+    LAST_UPLOAD_MD5=$(echo "$parsed" | jq -r '.md5 // empty' 2>/dev/null)
+    LAST_UPLOAD_NAME=$(echo "$parsed" | jq -r '.name // empty' 2>/dev/null)
+    LAST_UPLOAD_CSRF_OK=$(echo "$parsed" | jq -r '.csrf_ok // empty' 2>/dev/null)
+    LAST_UPLOAD_COOKIE_OK=$(echo "$parsed" | jq -r '.cookie_ok // empty' 2>/dev/null)
+}
+
+# ── Test 15.0: Upload server canary ──────────────────────
+begin_test "15.0" "[BROWSER] Upload server canary" \
+    "Navigate browser to upload server, verify landing page and upload form load" \
+    "Tests: test infrastructure — if this fails, all upload tests are invalid"
+
+run_test_15_0() {
+    # Quick infrastructure check — is the process alive?
+    local health_resp
+    health_resp=$(curl -s --max-time 5 --connect-timeout 3 "http://127.0.0.1:${UPLOAD_PORT}/health" 2>/dev/null)
+    if ! echo "$health_resp" | jq -e '.ok == true' >/dev/null 2>&1; then
+        fail "Upload server not responding on port $UPLOAD_PORT (PID $UPLOAD_SERVER_PID)."
+        return
+    fi
+
+    # Browser verification (requires extension)
+    if [ "$EXTENSION_CONNECTED" != "true" ] || [ "$PILOT_ENABLED" != "true" ]; then
+        pass "Upload server healthy on port $UPLOAD_PORT (browser check skipped — no extension)."
+        return
+    fi
+
+    # Navigate to landing page (sets session cookie in browser)
+    interact_and_wait "navigate" "{\"action\":\"navigate\",\"url\":\"http://127.0.0.1:${UPLOAD_PORT}/\",\"reason\":\"Canary — landing page\"}"
+    sleep 1
+
+    # Navigate to upload form
+    interact_and_wait "navigate" "{\"action\":\"navigate\",\"url\":\"http://127.0.0.1:${UPLOAD_PORT}/upload\",\"reason\":\"Canary — upload form\"}"
+    sleep 1
+
+    # Observe the page
+    local response
+    response=$(call_tool "observe" '{"what":"page"}')
+    local content_text
+    content_text=$(extract_content_text "$response")
+
+    log_diagnostic "15.0" "observe upload form" "$response" "$content_text"
+
+    # observe(page) returns {url, title, tracked, metadata} — not HTML content.
+    # Verify the browser navigated to the upload form by checking url or title.
+    if echo "$content_text" | grep -qi "/upload\|Upload"; then
+        pass "Upload server on port $UPLOAD_PORT: browser on upload page (url/title confirmed)."
+    else
+        fail "Upload form not visible in browser. Page: $(truncate "$content_text" 200)"
+    fi
+}
+run_test_15_0
+
+# ── Test 15.1: Schema — upload in interact action enum ───
+begin_test "15.1" "[DAEMON ONLY] Schema: upload in interact action enum" \
+    "Verify tools/list includes upload as a valid interact action" \
+    "Tests: schema registration for file upload"
+
+run_test_15_1() {
+    local tools_resp
+    tools_resp=$(send_mcp "{\"jsonrpc\":\"2.0\",\"id\":${MCP_ID},\"method\":\"tools/list\"}")
+    if echo "$tools_resp" | jq -e '.result.tools[] | select(.name=="interact") | .inputSchema.properties.action.enum[] | select(.=="upload")' >/dev/null 2>&1; then
+        pass "upload in interact action enum."
+    else
+        fail "upload NOT in interact action enum."
+    fi
+}
+run_test_15_1
+
+# ── Test 15.2: Upload works without any flag ─────────────
+begin_test "15.2" "[DAEMON ONLY] Upload works without any flag (queues successfully)" \
+    "Call upload with nonexistent file, verify we get a file error (not disabled error)" \
+    "Tests: basic upload always works without --enable-os-upload-automation"
+
+run_test_15_2() {
+    local response
+    response=$(call_tool "interact" '{"action":"upload","selector":"#file","file_path":"/tmp/nonexistent-gasoline-test.txt"}')
+    local content_text
+    content_text=$(extract_content_text "$response")
+
+    log_diagnostic "15.2" "upload probe" "$response" "$content_text"
+
+    if echo "$content_text" | grep -qi "not found\|File not found\|invalid_param"; then
+        pass "Upload works without flag: got file validation error (not disabled)."
+    elif echo "$content_text" | grep -q '"status":"queued"\|"correlation_id"'; then
+        pass "Upload works without flag: queued successfully."
+    else
+        fail "Unexpected upload response: $(truncate "$content_text" 200)"
+    fi
+}
+run_test_15_2
+
+# ── Test 15.3: Missing file_path ─────────────────────────
+begin_test "15.3" "[DAEMON ONLY] Missing file_path returns clear error" \
+    "Call upload without file_path, verify parameter error" \
+    "Tests: required parameter validation"
+
+run_test_15_3() {
+    local response
+    response=$(call_tool "interact" '{"action":"upload","selector":"#file"}')
+    local content_text
+    content_text=$(extract_content_text "$response")
+
+    log_diagnostic "15.3" "missing file_path" "$response" "$content_text"
+
+    if echo "$content_text" | grep -q "file_path"; then
+        pass "Missing file_path: error mentions file_path parameter."
+    else
+        fail "Missing file_path: no clear error. Got: $(truncate "$content_text" 200)"
+    fi
+}
+run_test_15_3
+
+# ── Test 15.4: Missing selector and api_endpoint ────────
+begin_test "15.4" "[DAEMON ONLY] Missing selector returns clear error" \
+    "Call upload with file_path but no selector or api_endpoint" \
+    "Tests: required selector/api_endpoint parameter validation"
+
+run_test_15_4() {
+    local response
+    response=$(call_tool "interact" '{"action":"upload","file_path":"/tmp/test.txt"}')
+    local content_text
+    content_text=$(extract_content_text "$response")
+
+    log_diagnostic "15.4" "missing selector" "$response" "$content_text"
+
+    if echo "$content_text" | grep -q "selector"; then
+        pass "Missing selector: error mentions selector parameter."
+    else
+        fail "Missing selector: no clear error. Got: $(truncate "$content_text" 200)"
+    fi
+}
+run_test_15_4
+
+# ── Test 15.5: Relative path rejected ───────────────────
+begin_test "15.5" "[DAEMON ONLY] Relative path rejected with security error" \
+    "Call upload with relative file_path, verify rejection" \
+    "Tests: absolute path requirement for security"
+
+run_test_15_5() {
+    local response
+    response=$(call_tool "interact" '{"action":"upload","selector":"#file","file_path":"relative/path/file.txt"}')
+    local content_text
+    content_text=$(extract_content_text "$response")
+
+    log_diagnostic "15.5" "relative path" "$response" "$content_text"
+
+    if echo "$content_text" | grep -qi "absolute\|not allowed\|path_not_allowed"; then
+        pass "Relative path: rejected with security error."
+    else
+        fail "Relative path: not properly rejected. Got: $(truncate "$content_text" 200)"
+    fi
+}
+run_test_15_5
+
+# ── Test 15.6: Nonexistent file rejected ────────────────
+begin_test "15.6" "[DAEMON ONLY] Nonexistent file rejected with clear error" \
+    "Call upload with nonexistent absolute file_path" \
+    "Tests: file existence validation before queuing"
+
+run_test_15_6() {
+    local response
+    response=$(call_tool "interact" '{"action":"upload","selector":"#file","file_path":"/tmp/gasoline-nonexistent-file-12345.txt"}')
+    local content_text
+    content_text=$(extract_content_text "$response")
+
+    log_diagnostic "15.6" "nonexistent file" "$response" "$content_text"
+
+    if echo "$content_text" | grep -qi "not found\|no such file\|does not exist"; then
+        pass "Nonexistent file: rejected with clear error."
+    else
+        fail "Nonexistent file: not properly rejected. Got: $(truncate "$content_text" 200)"
+    fi
+}
+run_test_15_6
+
+# ── Test 15.7: Directory path rejected ──────────────────
+begin_test "15.7" "[DAEMON ONLY] Directory path rejected (not a file)" \
+    "Call upload with path to a directory, verify rejection" \
+    "Tests: file-vs-directory validation"
+
+run_test_15_7() {
+    local response
+    response=$(call_tool "interact" '{"action":"upload","selector":"#file","file_path":"/tmp"}')
+    local content_text
+    content_text=$(extract_content_text "$response")
+
+    log_diagnostic "15.7" "directory path" "$response" "$content_text"
+
+    if echo "$content_text" | grep -qi "directory\|not a file"; then
+        pass "Directory path: rejected with clear error."
+    else
+        fail "Directory path: not properly rejected. Got: $(truncate "$content_text" 200)"
+    fi
+}
+run_test_15_7
+
+# ── Test 15.8: Local queue acceptance (no server delivery) ──
+begin_test "15.8" "[DAEMON ONLY] Local queue acceptance (no server delivery)" \
+    "Create temp file, call upload with valid params, verify queued response" \
+    "Tests: local queue returns status=queued with correlation_id (queue is never drained without extension)"
+
+run_test_15_8() {
+    # Create a temp file for the upload test
+    local test_file="$UPLOAD_TEST_DIR/upload-test.txt"
+    echo "Gasoline upload smoke test content" > "$test_file"
+
+    local response
+    response=$(call_tool "interact" "{\"action\":\"upload\",\"selector\":\"#file-input\",\"file_path\":\"$test_file\"}")
+    local content_text
+    content_text=$(extract_content_text "$response")
+
+    log_diagnostic "15.8" "valid upload" "$response" "$content_text"
+
+    local has_queued has_corr_id
+    has_queued=$(echo "$content_text" | grep -c '"status":"queued"' || true)
+    has_corr_id=$(echo "$content_text" | grep -c '"correlation_id":"upload_' || true)
+
+    if [ "$has_queued" -gt 0 ] && [ "$has_corr_id" -gt 0 ]; then
+        pass "Upload queued: status=queued, correlation_id present."
+    else
+        fail "Upload not properly queued: queued=$has_queued, corr_id=$has_corr_id. Got: $(truncate "$content_text" 300)"
+    fi
+}
+run_test_15_8
+
+# ── Test 15.9: Queue response metadata (local only) ──────
+begin_test "15.9" "[DAEMON ONLY] Queue response includes file metadata" \
+    "Create temp files with known extensions, verify metadata in queue response" \
+    "Tests: file metadata extraction (name, size, mime_type, progress_tier) — local queue only"
+
+run_test_15_9() {
+    # Create a temp file with a recognizable extension
+    local test_file="$UPLOAD_TEST_DIR/upload-test.jpg"
+    echo "fake image content for metadata test" > "$test_file"
+
+    local response
+    response=$(call_tool "interact" "{\"action\":\"upload\",\"selector\":\"input[type=file]\",\"file_path\":\"$test_file\"}")
+    local content_text
+    content_text=$(extract_content_text "$response")
+
+    log_diagnostic "15.9" "file metadata" "$response" "$content_text"
+
+    rm -f "$test_file"
+
+    local metadata_verdict
+    metadata_verdict=$(echo "$content_text" | python3 -c "
+import sys, json
+try:
+    t = sys.stdin.read(); i = t.find('{'); data = json.loads(t[i:]) if i >= 0 else {}
+    has_name = 'file_name' in data and data['file_name'].endswith('.jpg')
+    has_size = 'file_size' in data and isinstance(data['file_size'], (int, float)) and data['file_size'] > 0
+    has_mime = 'mime_type' in data and 'image' in data.get('mime_type', '')
+    has_tier = 'progress_tier' in data
+    if has_name and has_size and has_mime and has_tier:
+        print(f'PASS name={data[\"file_name\"]} size={data[\"file_size\"]} mime={data[\"mime_type\"]} tier={data[\"progress_tier\"]}')
+    else:
+        print(f'FAIL name={has_name} size={has_size} mime={has_mime} tier={has_tier} keys={list(data.keys())[:10]}')
+except Exception as e:
+    print(f'FAIL parse: {e}')
+" 2>/dev/null || echo "FAIL parse_error")
+
+    if echo "$metadata_verdict" | grep -q "^PASS"; then
+        pass "File metadata correct. $metadata_verdict"
+    else
+        fail "File metadata incomplete. $metadata_verdict. Response: $(truncate "$content_text" 300)"
+    fi
+}
+run_test_15_9
+
+# ── Test 15.10: Upload text file E2E via browser ─────────
+begin_test "15.10" "[BROWSER] Upload text file E2E with MD5 verification (requires pilot)" \
+    "Navigate to upload form, interact(upload), submit form via execute_js, verify MD5 on success page" \
+    "Tests: file flows through browser to upload server, MD5 verified on success page"
+
+run_test_15_10() {
+    if [ "$EXTENSION_CONNECTED" != "true" ] || [ "$PILOT_ENABLED" != "true" ]; then
+        skip "Extension or pilot not available."
+        return
+    fi
+
+    # Create test file with known content
+    local test_content="Gasoline upload E2E $(date +%s)"
+    local test_file="$UPLOAD_TEST_DIR/upload-15-10.txt"
+    echo -n "$test_content" > "$test_file"
+    local original_md5
+    original_md5=$(_compute_md5 "$test_file")
+
+    # Navigate browser: / (session) → /upload (form)
+    _navigate_to_upload_form
+
+    # Set file on input via interact(upload), poll for completion
+    _upload_and_poll "15.10" "$test_file"
+
+    case "$UPLOAD_FINAL_STATUS" in
+        complete) ;;
+        pilot_disabled)
+            fail "Upload rejected: AI Web Pilot is disabled in the extension. Enable it and re-run."
+            return ;;
+        pending)
+            fail "Upload timed out — extension did not report a result within 10s. Check: extension reloaded? daemon restarted? pilot enabled?"
+            return ;;
+        failed|error)
+            fail "Extension reported upload failure."
+            return ;;
+        *)
+            fail "Upload failed: $UPLOAD_FINAL_STATUS"
+            return ;;
+    esac
+
+    # Fill in required title field via execute_js
+    interact_and_wait "execute_js" '{"action":"execute_js","reason":"Fill title field","script":"document.querySelector(\"input[name=title]\").value=\"Smoke Test 15.10\"; \"title_set\""}'
+    sleep 0.5
+
+    # Submit form via execute_js
+    interact_and_wait "execute_js" '{"action":"execute_js","reason":"Submit upload form","script":"document.querySelector(\"form\").submit(); \"submitted\""}'
+    sleep 3
+
+    # Observe result page — should be /upload/success after redirect
+    local response
+    response=$(call_tool "observe" '{"what":"page"}')
+    local content_text
+    content_text=$(extract_content_text "$response")
+
+    log_diagnostic "15.10" "observe success page" "$response" "$content_text"
+
+    if ! echo "$content_text" | grep -q '/upload/success'; then
+        fail "Upload did not reach success page. Page metadata: $(truncate "$content_text" 300)"
+        return
+    fi
+
+    # Verify MD5 via server API (dogfood: fetch from browser)
+    _fetch_last_upload_via_browser
+    log_diagnostic "15.10" "last-upload API" "$LAST_UPLOAD_RAW" ""
+
+    if [ "$LAST_UPLOAD_MD5" = "$original_md5" ]; then
+        pass "Upload E2E: file reached server, MD5 match ($original_md5)."
+    else
+        fail "Upload reached server but MD5 mismatch. Expected: $original_md5, got: $LAST_UPLOAD_MD5. Server file='$LAST_UPLOAD_NAME'."
+    fi
+}
+run_test_15_10
+
+# ── Test 15.11: Extension upload pipeline (requires pilot) ──
+begin_test "15.11" "[BROWSER] Extension upload pipeline completion (requires pilot)" \
+    "Navigate to upload form, interact(upload), poll until extension reports complete" \
+    "Tests: extension receives upload command and processes it to completion"
+
+run_test_15_11() {
+    if [ "$EXTENSION_CONNECTED" != "true" ] || [ "$PILOT_ENABLED" != "true" ]; then
+        skip "Extension or pilot not available."
+        return
+    fi
+
+    # Navigate browser: / (session) → /upload (form)
+    _navigate_to_upload_form
+
+    # Create a test file
+    local test_file="$UPLOAD_TEST_DIR/e2e-upload.txt"
+    echo "Gasoline E2E upload content" > "$test_file"
+
+    # Upload and poll for completion
+    _upload_and_poll "15.11" "$test_file"
+
+    case "$UPLOAD_FINAL_STATUS" in
+        complete)
+            pass "E2E upload: extension processed upload to completion."
+            ;;
+        pilot_disabled)
+            fail "Upload rejected: AI Web Pilot is disabled in the extension. Enable it and re-run."
+            ;;
+        failed|error)
+            fail "E2E upload: extension reported failure."
+            ;;
+        pending)
+            fail "E2E upload: timed out polling (upload handler should have responded)."
+            ;;
+        *)
+            fail "E2E upload: $UPLOAD_FINAL_STATUS"
+            ;;
+    esac
+}
+run_test_15_11
+
+# ── Test 15.12: Upload with full server-side verification ──
+begin_test "15.12" "[BROWSER] Upload with full server-side verification (requires pilot)" \
+    "Navigate, upload file, fill fields, submit form, verify CSRF + cookie + MD5 via server API" \
+    "Tests: complete upload pipeline — browser → server, all fields verified server-side"
+
+run_test_15_12() {
+    if [ "$EXTENSION_CONNECTED" != "true" ] || [ "$PILOT_ENABLED" != "true" ]; then
+        skip "Extension or pilot not available."
+        return
+    fi
+
+    local test_content="Gasoline full verification $(date +%s)"
+    local test_file="$UPLOAD_TEST_DIR/upload-15-12.txt"
+    echo -n "$test_content" > "$test_file"
+    local original_md5
+    original_md5=$(_compute_md5 "$test_file")
+
+    # Navigate browser: / (session) → /upload (form)
+    _navigate_to_upload_form
+
+    # Set file on input, poll for completion
+    _upload_and_poll "15.12" "$test_file"
+
+    case "$UPLOAD_FINAL_STATUS" in
+        complete) ;;
+        pilot_disabled)
+            fail "Upload rejected: AI Web Pilot is disabled in the extension. Enable it and re-run."
+            return ;;
+        pending)
+            fail "Upload timed out — extension did not report a result within 10s. Check: extension reloaded? daemon restarted? pilot enabled?"
+            return ;;
+        failed|error)
+            fail "Extension reported upload failure."
+            return ;;
+        *)
+            fail "Upload failed: $UPLOAD_FINAL_STATUS"
+            return ;;
+    esac
+
+    # Fill form fields (title + tags) via execute_js
+    interact_and_wait "execute_js" '{"action":"execute_js","reason":"Fill form fields","script":"document.querySelector(\"input[name=title]\").value=\"Smoke Test Upload\"; document.querySelector(\"input[name=tags]\").value=\"smoke,gasoline\"; \"fields_set\""}'
+    sleep 0.5
+
+    # Submit form
+    interact_and_wait "execute_js" '{"action":"execute_js","reason":"Submit upload form","script":"document.querySelector(\"form\").submit(); \"submitted\""}'
+    sleep 3
+
+    # Observe success page first
+    local response
+    response=$(call_tool "observe" '{"what":"page"}')
+    local content_text
+    content_text=$(extract_content_text "$response")
+
+    log_diagnostic "15.12" "observe success page" "$response" "$content_text"
+
+    if ! echo "$content_text" | grep -q '/upload/success'; then
+        fail "Upload did not reach success page. Page metadata: $(truncate "$content_text" 300)"
+        return
+    fi
+
+    # Server-side verification via browser fetch (dogfood)
+    _fetch_last_upload_via_browser
+    log_diagnostic "15.12" "server verify" "$LAST_UPLOAD_RAW" ""
+
+    if [ "$LAST_UPLOAD_MD5" = "$original_md5" ] && [ "$LAST_UPLOAD_CSRF_OK" = "true" ] && [ "$LAST_UPLOAD_COOKIE_OK" = "true" ]; then
+        pass "Full verification: MD5 match ($LAST_UPLOAD_MD5), CSRF ok, cookie ok."
+    else
+        fail "Server verification: md5=$LAST_UPLOAD_MD5 (expected $original_md5), csrf=$LAST_UPLOAD_CSRF_OK, cookie=$LAST_UPLOAD_COOKIE_OK."
+    fi
+}
+run_test_15_12
+
+# ── Test 15.13: Confirmation page via observe ────────────
+begin_test "15.13" "[BROWSER] Confirmation page visible via observe (requires pilot)" \
+    "After upload tests, observe(page) should show Upload Successful" \
+    "Tests: observe reads confirmation page after browser form submission + redirect"
+
+run_test_15_13() {
+    if [ "$EXTENSION_CONNECTED" != "true" ] || [ "$PILOT_ENABLED" != "true" ]; then
+        skip "Extension or pilot not available."
+        return
+    fi
+
+    # Browser should be on /upload/success from 15.12
+    local response
+    response=$(call_tool "observe" '{"what":"page"}')
+    local content_text
+    content_text=$(extract_content_text "$response")
+
+    log_diagnostic "15.13" "observe page" "$response" "$content_text"
+
+    if echo "$content_text" | grep -q '/upload/success'; then
+        pass "Confirmation page visible via observe(page) — URL contains /upload/success."
+    else
+        fail "Browser not on upload success page after 15.10/15.12. Page metadata: $(truncate "$content_text" 300)"
+    fi
+}
+run_test_15_13
+
+# ── Test 15.14: Auth failure visible in browser ──────────
+begin_test "15.14" "[BROWSER] Auth failure visible in browser (requires pilot)" \
+    "Navigate to /logout to clear session, then /upload to trigger 401 — verify in browser" \
+    "Tests: server auth rejection is visible to the user in the browser"
+
+run_test_15_14() {
+    if [ "$EXTENSION_CONNECTED" != "true" ] || [ "$PILOT_ENABLED" != "true" ]; then
+        skip "Extension or pilot not available."
+        return
+    fi
+
+    # Clear session cookie by navigating to /logout
+    interact_and_wait "navigate" "{\"action\":\"navigate\",\"url\":\"http://127.0.0.1:${UPLOAD_PORT}/logout\",\"reason\":\"Clear session for auth failure test\"}"
+    sleep 1
+
+    # Navigate to /upload — server should reject with 401 (no session)
+    interact_and_wait "navigate" "{\"action\":\"navigate\",\"url\":\"http://127.0.0.1:${UPLOAD_PORT}/upload\",\"reason\":\"Attempt upload form without session\"}"
+    sleep 1
+
+    # Verify 401 is visible in the browser via execute_js (dogfood — use Gasoline, not curl)
+    interact_and_wait "execute_js" '{"action":"execute_js","reason":"Check 401 page content","script":"document.body.innerText"}'
+
+    log_diagnostic "15.14" "401 page content" "$INTERACT_RESULT" ""
+
+    if echo "$INTERACT_RESULT" | grep -qi "401\|Not logged in"; then
+        pass "Auth failure: '401 Not logged in' visible in browser after session cleared."
+    else
+        fail "Expected 401 page after logout. Browser content: $(truncate "$INTERACT_RESULT" 200)"
+    fi
+
+    # Restore session for subsequent tests (navigate to / to get new cookie)
+    interact_and_wait "navigate" "{\"action\":\"navigate\",\"url\":\"http://127.0.0.1:${UPLOAD_PORT}/\",\"reason\":\"Restore session after auth failure test\"}"
+    sleep 1
+}
+run_test_15_14
+
+# ── Test 15.15: Verify file reached input element ─────
+begin_test "15.15" "[BROWSER] Verify upload file reached input element (requires pilot)" \
+    "After interact(upload), execute_js to check files[0]?.name on the input" \
+    "Tests: file actually set on DOM input element (fail if extension connected but file missing)"
+
+run_test_15_15() {
+    if [ "$EXTENSION_CONNECTED" != "true" ] || [ "$PILOT_ENABLED" != "true" ]; then
+        skip "Extension or pilot not available."
+        return
+    fi
+
+    # Navigate browser: / (session) → /upload (form)
+    _navigate_to_upload_form
+
+    # Create test file and attempt upload
+    local test_file="$UPLOAD_TEST_DIR/verify-upload.txt"
+    echo "verify-upload-content" > "$test_file"
+
+    # Upload and poll
+    _upload_and_poll "15.15" "$test_file"
+
+    if [ "$UPLOAD_FINAL_STATUS" != "complete" ]; then
+        fail "Upload did not complete (status: $UPLOAD_FINAL_STATUS). Cannot verify file on input."
+        return
+    fi
+
+    sleep 1
+
+    # Verify: execute_js to check files on the input
+    interact_and_wait "execute_js" '{"action":"execute_js","reason":"Check upload input files","script":"var el = document.getElementById(\"file-input\"); el && el.files && el.files[0] ? el.files[0].name : (el ? \"NO_FILES\" : \"NO_ELEMENT\")"}'
+
+    log_diagnostic "15.15" "file verification" "$INTERACT_RESULT" ""
+
+    # Extract the JS return value from the nested command result JSON
+    local js_result
+    js_result=$(echo "$INTERACT_RESULT" | python3 -c "
+import sys, json
+text = sys.stdin.read()
+idx = text.find('{')
+if idx < 0:
+    print(text.strip())
+else:
+    try:
+        data = json.loads(text[idx:])
+        r = data.get('result', {})
+        if isinstance(r, dict):
+            print(r.get('result', r.get('error', r.get('message', 'UNKNOWN'))))
+        else:
+            print(r)
+    except:
+        print(text.strip())
+" 2>/dev/null || echo "$INTERACT_RESULT")
+
+    echo "  [js_result: $js_result]"
+
+    local expected_name="verify-upload.txt"
+    if [ "$js_result" = "$expected_name" ]; then
+        pass "File reached input: files[0].name = '$expected_name'."
+    elif echo "$js_result" | grep -q "$expected_name"; then
+        pass "File reached input: result contains '$expected_name'."
+    elif [ "$js_result" = "UNKNOWN" ]; then
+        if echo "$UPLOAD_FINAL_TEXT" | grep -q '"stage":1\|"stage": 1' && \
+           echo "$UPLOAD_FINAL_TEXT" | grep -q "\"file_name\":\"$expected_name\""; then
+            pass "execute_js returned no result, but upload completion confirms stage=1 file_name='$expected_name'."
+        else
+            fail "execute_js returned no result and upload completion lacks stage1/file_name evidence. Full: $(truncate "$INTERACT_RESULT" 300)"
+        fi
+    elif [ "$js_result" = "NO_FILES" ]; then
+        fail "File not set on input element (extension connected but files array empty)."
+    elif [ "$js_result" = "NO_ELEMENT" ]; then
+        fail "Input element #file-input not found on page."
+    elif echo "$js_result" | grep -qi "error\|failed\|csp"; then
+        fail "execute_js error: $js_result"
+    else
+        fail "Unexpected result from file check: '$js_result'. Full: $(truncate "$INTERACT_RESULT" 300)"
+    fi
+}
+run_test_15_15
+
+# ── Shared helper: navigate browser to hardened upload form ──
+# Visits / (sets session cookie) then /upload/hardened (loads hardened form with CSRF).
+_navigate_to_hardened_form() {
+    interact_and_wait "navigate" "{\"action\":\"navigate\",\"url\":\"http://127.0.0.1:${UPLOAD_PORT}/\",\"reason\":\"Get session cookie\"}"
+    sleep 1
+    interact_and_wait "navigate" "{\"action\":\"navigate\",\"url\":\"http://127.0.0.1:${UPLOAD_PORT}/upload/hardened\",\"reason\":\"Load hardened upload form\"}"
+    sleep 2
+}
+
+# ── Shared helper: upload and poll for Stage 4 (longer timeout) ──
+# Sets UPLOAD_FINAL_STATUS and UPLOAD_FINAL_TEXT.
+_upload_and_poll_stage4() {
+    local test_id="$1"
+    local test_file="$2"
+    UPLOAD_FINAL_STATUS="pending"
+    UPLOAD_FINAL_TEXT=""
+
+    local response
+    response=$(call_tool "interact" "{\"action\":\"upload\",\"selector\":\"#file-input\",\"file_path\":\"$test_file\"}")
+    local content_text
+    content_text=$(extract_content_text "$response")
+
+    log_diagnostic "$test_id" "interact upload" "$response" "$content_text"
+
+    local corr_id
+    corr_id=$(echo "$content_text" | grep -oE '"correlation_id":\s*"[^"]+"' | head -1 | sed 's/.*"correlation_id":\s*"//' | sed 's/"//' || true)
+
+    if [ -z "$corr_id" ]; then
+        if echo "$content_text" | grep -qi "error\|isError"; then
+            UPLOAD_FINAL_STATUS="error: $(truncate "$content_text" 200)"
+        else
+            UPLOAD_FINAL_STATUS="no_corr_id: $(truncate "$content_text" 200)"
+        fi
+        return
+    fi
+
+    # Stage 4 needs longer timeout: 30 polls x 1s = 30s max
+    for _ in $(seq 1 30); do
+        sleep 1
+        local poll_resp
+        poll_resp=$(call_tool "observe" "{\"what\":\"command_result\",\"correlation_id\":\"$corr_id\"}")
+        local poll_text
+        poll_text=$(extract_content_text "$poll_resp")
+        if echo "$poll_text" | grep -q '"status":"complete"'; then
+            # Check for pilot-disabled error masquerading as "complete"
+            if echo "$poll_text" | grep -q 'ai_web_pilot_disabled'; then
+                UPLOAD_FINAL_STATUS="pilot_disabled"
+                UPLOAD_FINAL_TEXT="$poll_text"
+                log_diagnostic "$test_id" "poll pilot_disabled" "$poll_text" ""
+                return
+            elif echo "$poll_text" | grep -qi 'FAILED —\|\"error\":'; then
+                UPLOAD_FINAL_STATUS="failed"
+                UPLOAD_FINAL_TEXT="$poll_text"
+                log_diagnostic "$test_id" "poll complete-with-error" "$poll_text" ""
+                return
+            fi
+            UPLOAD_FINAL_STATUS="complete"
+            UPLOAD_FINAL_TEXT="$poll_text"
+            log_diagnostic "$test_id" "poll complete" "$poll_text" ""
+            return
+        fi
+        if echo "$poll_text" | grep -q '"status":"failed"\|"status":"error"'; then
+            UPLOAD_FINAL_STATUS="failed"
+            UPLOAD_FINAL_TEXT="$poll_text"
+            log_diagnostic "$test_id" "poll failed" "$poll_text" ""
+            return
+        fi
+    done
+}
+
+# ── Test 15.16: Stage 4 escalation E2E ───────────────────
+begin_test "15.16" "[BROWSER] Stage 4 escalation E2E (hardened form, requires pilot)" \
+    "Navigate to hardened form (isTrusted check), upload via Stage 4 escalation, verify MD5" \
+    "Tests: full Stage 1→4 escalation pipeline through hardened form"
+
+run_test_15_16() {
+    if [ "$EXTENSION_CONNECTED" != "true" ] || [ "$PILOT_ENABLED" != "true" ]; then
+        skip "Extension or pilot not available."
+        return
+    fi
+
+    # Create test file with known content
+    local test_content="Gasoline Stage 4 E2E $(date +%s)"
+    local test_file="$UPLOAD_TEST_DIR/upload-15-16.txt"
+    echo -n "$test_content" > "$test_file"
+    local original_md5
+    original_md5=$(_compute_md5 "$test_file")
+
+    # Navigate browser to hardened form
+    _navigate_to_hardened_form
+
+    # Upload and poll with Stage 4 timeout
+    _upload_and_poll_stage4 "15.16" "$test_file"
+
+    case "$UPLOAD_FINAL_STATUS" in
+        complete)
+            # Check if it was Stage 4 escalation
+            if echo "$UPLOAD_FINAL_TEXT" | grep -q '"stage":4\|"stage": 4'; then
+                # Stage 4 confirmed — now submit the form and verify MD5
+                interact_and_wait "execute_js" '{"action":"execute_js","reason":"Fill title field","script":"document.querySelector(\"input[name=title]\").value=\"Smoke Test 15.16 Stage4\"; \"title_set\""}'
+                sleep 0.5
+                interact_and_wait "execute_js" '{"action":"execute_js","reason":"Submit upload form","script":"document.querySelector(\"form\").submit(); \"submitted\""}'
+                sleep 3
+
+                # Verify browser reached success page
+                local page_resp
+                page_resp=$(call_tool "observe" '{"what":"page"}')
+                local page_text
+                page_text=$(extract_content_text "$page_resp")
+                log_diagnostic "15.16" "post-submit page" "$page_resp" "$page_text"
+
+                if ! echo "$page_text" | grep -q '/upload/success'; then
+                    fail "Stage 4 upload: form submission did not reach success page. Page: $(truncate "$page_text" 300). Possible CSRF or session mismatch."
+                    return
+                fi
+
+                # Verify MD5 via server API (dogfood: fetch from browser)
+                _fetch_last_upload_via_browser
+                log_diagnostic "15.16" "last-upload API" "$LAST_UPLOAD_RAW" ""
+
+                echo "  [server] file='$LAST_UPLOAD_NAME' md5='$LAST_UPLOAD_MD5' expected='$original_md5'"
+
+                if [ "$LAST_UPLOAD_MD5" = "$original_md5" ]; then
+                    pass "Stage 4 escalation: file reached server via OS automation, MD5 match ($original_md5)."
+                elif [ -z "$LAST_UPLOAD_MD5" ]; then
+                    fail "Stage 4: could not extract MD5 from server API. Raw: $(truncate "$LAST_UPLOAD_RAW" 300)"
+                else
+                    fail "Stage 4 file reached server but MD5 mismatch. Expected $original_md5, got $LAST_UPLOAD_MD5. Server file='$LAST_UPLOAD_NAME'. The OS dialog may have selected the wrong file."
+                fi
+            elif echo "$UPLOAD_FINAL_TEXT" | grep -q '"stage":1\|"stage": 1'; then
+                # Stage 1 succeeded on hardened form — unexpected but not a test failure
+                pass "Upload completed via Stage 1 (hardened form did not reject — may not have isTrusted check active)."
+            else
+                pass "Upload completed but stage not identified in response."
+            fi
+            ;;
+        pilot_disabled)
+            fail "Upload rejected: AI Web Pilot is disabled in the extension. Enable it and re-run."
+            ;;
+        pending)
+            fail "Upload timed out — extension did not report a result within 30s. Check: extension reloaded? daemon restarted? pilot enabled? accessibility granted?"
+            ;;
+        failed|error)
+            # Check for known skip conditions
+            if echo "$UPLOAD_FINAL_TEXT" | grep -qi "accessibility\|Accessibility"; then
+                skip "Stage 4 needs macOS Accessibility permission. Fix: System Settings > Privacy & Security > Accessibility. Error: $(truncate "$UPLOAD_FINAL_TEXT" 200)"
+            elif echo "$UPLOAD_FINAL_TEXT" | grep -qi "xdotool"; then
+                skip "Stage 4 needs xdotool. Fix: sudo apt install xdotool. Error: $(truncate "$UPLOAD_FINAL_TEXT" 200)"
+            elif echo "$UPLOAD_FINAL_TEXT" | grep -qi "enable-os-upload-automation"; then
+                fail "Daemon missing --enable-os-upload-automation flag. Error: $(truncate "$UPLOAD_FINAL_TEXT" 200)"
+            elif echo "$UPLOAD_FINAL_TEXT" | grep -qi "Cannot detect Chrome\|chrome.exe"; then
+                fail "Chrome not detected. Is Google Chrome running? Error: $(truncate "$UPLOAD_FINAL_TEXT" 200)"
+            else
+                fail "Stage 4 escalation failed: $(truncate "$UPLOAD_FINAL_TEXT" 200)"
+            fi
+            ;;
+        *)
+            fail "Upload failed: $UPLOAD_FINAL_STATUS"
+            ;;
+    esac
+}
+run_test_15_16
+
+# ── Test 15.17: Escalation reason metadata ────────────────
+begin_test "15.17" "[BROWSER] Escalation reason metadata in result (requires pilot)" \
+    "After Stage 4 upload on hardened form, verify escalation_reason field in result" \
+    "Tests: extension reports escalation_reason when Stage 4 is used"
+
+run_test_15_17() {
+    if [ "$EXTENSION_CONNECTED" != "true" ] || [ "$PILOT_ENABLED" != "true" ]; then
+        skip "Extension or pilot not available."
+        return
+    fi
+
+    # Navigate browser to hardened form
+    _navigate_to_hardened_form
+
+    # Create a test file
+    local test_file="$UPLOAD_TEST_DIR/escalation-reason.txt"
+    echo "escalation reason test" > "$test_file"
+
+    # Upload and poll with Stage 4 timeout
+    _upload_and_poll_stage4 "15.17" "$test_file"
+
+    case "$UPLOAD_FINAL_STATUS" in
+        complete)
+            if echo "$UPLOAD_FINAL_TEXT" | grep -q '"escalation_reason"'; then
+                local reason
+                reason=$(echo "$UPLOAD_FINAL_TEXT" | grep -oE '"escalation_reason":\s*"[^"]+"' | head -1 | sed 's/.*"escalation_reason":\s*"//' | sed 's/"//')
+                pass "Escalation reason present: $reason"
+            elif echo "$UPLOAD_FINAL_TEXT" | grep -q '"stage":1\|"stage": 1'; then
+                skip "Upload completed via Stage 1 (no escalation occurred, hardened form may not be active)."
+            else
+                fail "Upload completed but escalation_reason not in result: $(truncate "$UPLOAD_FINAL_TEXT" 200)"
+            fi
+            ;;
+        pilot_disabled)
+            fail "Upload rejected: AI Web Pilot is disabled in the extension. Enable it and re-run."
+            ;;
+        pending)
+            fail "Upload timed out — extension did not report a result within 30s. Check: extension reloaded? daemon restarted? pilot enabled? accessibility granted?"
+            ;;
+        failed|error)
+            if echo "$UPLOAD_FINAL_TEXT" | grep -qi "accessibility\|Accessibility"; then
+                skip "Stage 4 needs macOS Accessibility permission. Fix: System Settings > Privacy & Security > Accessibility. Error: $(truncate "$UPLOAD_FINAL_TEXT" 200)"
+            elif echo "$UPLOAD_FINAL_TEXT" | grep -qi "xdotool"; then
+                skip "Stage 4 needs xdotool. Fix: sudo apt install xdotool. Error: $(truncate "$UPLOAD_FINAL_TEXT" 200)"
+            else
+                fail "Stage 4 failed: $(truncate "$UPLOAD_FINAL_TEXT" 200)"
+            fi
+            ;;
+        *)
+            fail "Upload failed: $UPLOAD_FINAL_STATUS"
+            ;;
+    esac
+}
+run_test_15_17

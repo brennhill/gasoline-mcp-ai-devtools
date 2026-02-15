@@ -25,6 +25,30 @@ let unhandledrejectionHandler: ((event: PromiseRejectionEvent) => void) | null =
 /**
  * Install exception capture
  */
+function enrichAndPost(entry: ExceptionEntry): void {
+  void (async (): Promise<void> => {
+    try {
+      const enriched = await enrichErrorWithAiContext(entry)
+      postLog(enriched as unknown as BridgePayload)
+    } catch {
+      postLog(entry as unknown as BridgePayload)
+    }
+  })().catch((err: Error) => {
+    console.error('[Gasoline] Exception enrichment error:', err)
+    try {
+      postLog(entry as unknown as BridgePayload)
+    } catch (postErr) {
+      console.error('[Gasoline] Failed to log entry:', postErr)
+    }
+  })
+}
+
+function extractRejectionInfo(reason: unknown): { message: string; stack: string } {
+  if (reason instanceof Error) return { message: reason.message, stack: reason.stack || '' }
+  if (typeof reason === 'string') return { message: reason, stack: '' }
+  return { message: String(reason), stack: '' }
+}
+
 export function installExceptionCapture(): void {
   originalOnerror = window.onerror
 
@@ -33,7 +57,7 @@ export function installExceptionCapture(): void {
     filename?: string,
     lineno?: number,
     colno?: number,
-    error?: Error,
+    error?: Error
   ): boolean | void {
     const messageStr = typeof message === 'string' ? message : (message as Event).type || 'Error'
     const entry: ExceptionEntry = {
@@ -44,72 +68,20 @@ export function installExceptionCapture(): void {
       filename: filename || '',
       lineno: lineno || 0,
       colno: colno || 0,
-      stack: error?.stack || '',
+      stack: error?.stack || ''
     }
-
-    // Enrich with AI context then post (async, fire-and-forget)
-    void (async (): Promise<void> => {
-      try {
-        const enriched = await enrichErrorWithAiContext(entry)
-        postLog(enriched as unknown as BridgePayload)
-      } catch {
-        postLog(entry as unknown as BridgePayload)
-      }
-    })().catch((err: Error) => {
-      console.error('[Gasoline] Exception enrichment error:', err)
-      // Fallback: ensure entry is logged even if something fails
-      try {
-        postLog(entry as unknown as BridgePayload)
-      } catch (postErr) {
-        console.error('[Gasoline] Failed to log entry:', postErr)
-      }
-    })
-
-    // Call original if exists
-    if (originalOnerror) {
-      return originalOnerror(message, filename, lineno, colno, error)
-    }
+    enrichAndPost(entry)
+    if (originalOnerror) return originalOnerror(message, filename, lineno, colno, error)
     return false
   }
 
-  // Unhandled promise rejections
   unhandledrejectionHandler = function (event: PromiseRejectionEvent): void {
-    const error = event.reason
-    let message = ''
-    let stack = ''
-
-    if (error instanceof Error) {
-      message = error.message
-      stack = error.stack || ''
-    } else if (typeof error === 'string') {
-      message = error
-    } else {
-      message = String(error)
-    }
-
-    const entry: ExceptionEntry = {
+    const { message, stack } = extractRejectionInfo(event.reason)
+    enrichAndPost({
       level: 'error',
       type: 'exception',
       message: `Unhandled Promise Rejection: ${message}`,
-      stack,
-    }
-
-    // Enrich with AI context then post (async, fire-and-forget)
-    void (async (): Promise<void> => {
-      try {
-        const enriched = await enrichErrorWithAiContext(entry)
-        postLog(enriched as unknown as BridgePayload)
-      } catch {
-        postLog(entry as unknown as BridgePayload)
-      }
-    })().catch((err: Error) => {
-      console.error('[Gasoline] Exception enrichment error:', err)
-      // Fallback: ensure entry is logged even if something fails
-      try {
-        postLog(entry as unknown as BridgePayload)
-      } catch (postErr) {
-        console.error('[Gasoline] Failed to log entry:', postErr)
-      }
+      stack
     })
   }
 

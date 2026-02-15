@@ -121,14 +121,15 @@ Ask your AI: _"What browser errors do you see?"_
 
 ## <i class="fas fa-tools"></i> Available Tools
 
-Your AI now has 4 tools covering the full debugging lifecycle:
+Your AI now has 5 tools covering the full debugging lifecycle:
 
 | Tool | What it does |
 |------|-------------|
-| `observe` | Browser state — errors, logs, network, WebSocket, actions, Web Vitals, page info, performance, accessibility, security audits |
-| `generate` | Artifacts — Playwright tests, reproduction scripts, PR summaries, SARIF, HAR, CSP, SRI |
-| `configure` | Session — persistent memory, noise filtering, DOM queries, API validation, session diffs |
-| `interact` | Browser control — navigate, execute JS, highlight elements, save/load state |
+| `observe` | Captured state — errors, logs, network, WebSocket, actions, Web Vitals, page, tabs, timeline, error bundles, screenshot |
+| `analyze` | Active analysis — DOM inspection, performance, accessibility, security audits, error clusters, link health, annotations |
+| `generate` | Artifacts — reproduction scripts, CSP, SARIF, test generation (from context, heal, classify), visual tests, annotation reports |
+| `configure` | Session — persistent memory, noise filtering, health, streaming, recording, log diff |
+| `interact` | Browser automation — navigate, click, type, select, execute JS, highlight, upload, draw mode, save/load state |
 
 Each tool has sub-modes. For example, `observe` with `what: "errors"` returns console errors, while `what: "websocket_status"` returns active WebSocket connections.
 

@@ -119,7 +119,7 @@ func TestWaterfallOnDemand_StaleDataCreatesQuery(t *testing.T) {
 							"transfer_size":  1024,
 						},
 					},
-					"pageURL": "https://example.com/page",
+					"page_url": "https://example.com/page",
 				}
 				resultBytes, _ := json.Marshal(result)
 				cap.SetQueryResult(q.ID, resultBytes)
@@ -190,7 +190,7 @@ func TestWaterfallOnDemand_EmptyBufferCreatesQuery(t *testing.T) {
 				// Return empty entries (no network activity)
 				result := map[string]any{
 					"entries": []map[string]any{},
-					"pageURL": "https://example.com",
+					"page_url": "https://example.com",
 				}
 				resultBytes, _ := json.Marshal(result)
 				cap.SetQueryResult(q.ID, resultBytes)
@@ -282,7 +282,7 @@ func TestWaterfallOnDemand_ConcurrentRequests(t *testing.T) {
 						"entries": []map[string]any{
 							{"url": "https://example.com/resource", "duration": 100.0},
 						},
-						"pageURL": "https://example.com",
+						"page_url": "https://example.com",
 					}
 					resultBytes, _ := json.Marshal(result)
 					cap.SetQueryResult(q.ID, resultBytes)
@@ -405,14 +405,13 @@ func TestWaterfallStalenessThreshold(t *testing.T) {
 		pending := cap.GetPendingQueries()
 		for _, q := range pending {
 			if q.Type == "waterfall" {
-				result := map[string]any{"entries": []any{}, "pageURL": "https://example.com"}
+				result := map[string]any{"entries": []any{}, "page_url": "https://example.com"}
 				resultBytes, _ := json.Marshal(result)
 				cap.SetQueryResult(q.ID, resultBytes)
 			}
 		}
 	}()
 
-	pendingBefore = len(cap.GetPendingQueries())
 	_ = th.toolGetNetworkWaterfall(JSONRPCRequest{JSONRPC: "2.0", ID: 1}, json.RawMessage(`{}`))
 
 	t.Log("✅ 1-second staleness threshold verified")

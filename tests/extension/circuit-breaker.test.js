@@ -7,23 +7,24 @@
 
 import { test, describe, mock, beforeEach } from 'node:test'
 import assert from 'node:assert'
+import { MANIFEST_VERSION } from './helpers.js'
 
 // Mock Chrome APIs
 globalThis.chrome = {
   runtime: {
     onMessage: { addListener: mock.fn() },
     sendMessage: mock.fn(() => Promise.resolve()),
-    getManifest: () => ({ version: '5.8.0' }),
+    getManifest: () => ({ version: MANIFEST_VERSION })
   },
   action: { setBadgeText: mock.fn(), setBadgeBackgroundColor: mock.fn() },
   storage: {
     local: { get: mock.fn((k, cb) => cb({})), set: mock.fn() },
     sync: { get: mock.fn((k, cb) => cb({})), set: mock.fn() },
     session: { get: mock.fn((k, cb) => cb({})), set: mock.fn() },
-    onChanged: { addListener: mock.fn() },
+    onChanged: { addListener: mock.fn() }
   },
   alarms: { create: mock.fn(), onAlarm: { addListener: mock.fn() } },
-  tabs: { get: mock.fn(), query: mock.fn(), onRemoved: { addListener: mock.fn() } },
+  tabs: { get: mock.fn(), query: mock.fn(), onRemoved: { addListener: mock.fn() } }
 }
 
 import { createCircuitBreaker } from '../../extension/background.js'
@@ -45,7 +46,7 @@ describe('Circuit Breaker', () => {
       consecutiveFailures: 0,
       totalFailures: 0,
       totalSuccesses: 0,
-      currentBackoff: 0,
+      currentBackoff: 0
     })
   })
 
@@ -62,7 +63,7 @@ describe('Circuit Breaker', () => {
 
   test('should track consecutive failures', async () => {
     const sendFn = mock.fn(() => Promise.reject(new Error('Network error')))
-    const cb = createCircuitBreaker(sendFn, { maxFailures: 5 })
+    const cb = createCircuitBreaker(sendFn, { maxFailures: 5, initialBackoff: 1, maxBackoff: 5 })
 
     // First failure
     await assert.rejects(() => cb.execute(['entry']), { message: 'Network error' })
@@ -81,7 +82,7 @@ describe('Circuit Breaker', () => {
       if (callCount <= 2) return Promise.reject(new Error('fail'))
       return Promise.resolve({ ok: true })
     })
-    const cb = createCircuitBreaker(sendFn, { maxFailures: 5 })
+    const cb = createCircuitBreaker(sendFn, { maxFailures: 5, initialBackoff: 1, maxBackoff: 5 })
 
     // Two failures
     await assert.rejects(() => cb.execute(['entry']))
@@ -97,7 +98,7 @@ describe('Circuit Breaker', () => {
 
   test('should open circuit after maxFailures consecutive failures', async () => {
     const sendFn = mock.fn(() => Promise.reject(new Error('fail')))
-    const cb = createCircuitBreaker(sendFn, { maxFailures: 3 })
+    const cb = createCircuitBreaker(sendFn, { maxFailures: 3, initialBackoff: 1, maxBackoff: 5 })
 
     // Trigger 3 failures
     for (let i = 0; i < 3; i++) {
@@ -109,7 +110,7 @@ describe('Circuit Breaker', () => {
 
   test('should reject immediately when circuit is open', async () => {
     const sendFn = mock.fn(() => Promise.reject(new Error('fail')))
-    const cb = createCircuitBreaker(sendFn, { maxFailures: 2 })
+    const cb = createCircuitBreaker(sendFn, { maxFailures: 2, initialBackoff: 1, maxBackoff: 5 })
 
     // Open the circuit
     await assert.rejects(() => cb.execute(['entry']))
@@ -124,7 +125,7 @@ describe('Circuit Breaker', () => {
 
   test('should transition to half-open after resetTimeout', async () => {
     const sendFn = mock.fn(() => Promise.reject(new Error('fail')))
-    const cb = createCircuitBreaker(sendFn, { maxFailures: 2, resetTimeout: 50 })
+    const cb = createCircuitBreaker(sendFn, { maxFailures: 2, resetTimeout: 5, initialBackoff: 1, maxBackoff: 5 })
 
     // Open the circuit
     await assert.rejects(() => cb.execute(['entry']))
@@ -132,7 +133,7 @@ describe('Circuit Breaker', () => {
     assert.strictEqual(cb.getState(), 'open')
 
     // Wait for reset timeout
-    await new Promise((r) => setTimeout(r, 60))
+    await new Promise((r) => setTimeout(r, 8))
 
     assert.strictEqual(cb.getState(), 'half-open')
   })
@@ -143,14 +144,14 @@ describe('Circuit Breaker', () => {
       if (shouldFail) return Promise.reject(new Error('fail'))
       return Promise.resolve({ ok: true })
     })
-    const cb = createCircuitBreaker(sendFn, { maxFailures: 2, resetTimeout: 50 })
+    const cb = createCircuitBreaker(sendFn, { maxFailures: 2, resetTimeout: 5, initialBackoff: 1, maxBackoff: 5 })
 
     // Open the circuit
     await assert.rejects(() => cb.execute(['entry']))
     await assert.rejects(() => cb.execute(['entry']))
 
     // Wait for half-open
-    await new Promise((r) => setTimeout(r, 60))
+    await new Promise((r) => setTimeout(r, 8))
     assert.strictEqual(cb.getState(), 'half-open')
 
     // Success in half-open closes the circuit
@@ -162,14 +163,14 @@ describe('Circuit Breaker', () => {
 
   test('should re-open circuit on failure in half-open state', async () => {
     const sendFn = mock.fn(() => Promise.reject(new Error('still failing')))
-    const cb = createCircuitBreaker(sendFn, { maxFailures: 2, resetTimeout: 50 })
+    const cb = createCircuitBreaker(sendFn, { maxFailures: 2, resetTimeout: 5, initialBackoff: 1, maxBackoff: 5 })
 
     // Open the circuit
     await assert.rejects(() => cb.execute(['entry']))
     await assert.rejects(() => cb.execute(['entry']))
 
     // Wait for half-open
-    await new Promise((r) => setTimeout(r, 60))
+    await new Promise((r) => setTimeout(r, 8))
     assert.strictEqual(cb.getState(), 'half-open')
 
     // Failure in half-open re-opens
@@ -179,7 +180,7 @@ describe('Circuit Breaker', () => {
 
   test('should allow manual reset', async () => {
     const sendFn = mock.fn(() => Promise.reject(new Error('fail')))
-    const cb = createCircuitBreaker(sendFn, { maxFailures: 2 })
+    const cb = createCircuitBreaker(sendFn, { maxFailures: 2, initialBackoff: 1, maxBackoff: 5 })
 
     // Open the circuit
     await assert.rejects(() => cb.execute(['entry']))
@@ -199,9 +200,9 @@ describe('Circuit Breaker', () => {
       () =>
         new Promise((resolve, reject) => {
           _resolveProbe = reject
-        }),
+        })
     )
-    const _cb = createCircuitBreaker(slowFn, { maxFailures: 2, resetTimeout: 50, initialBackoff: 1 })
+    const _cb = createCircuitBreaker(slowFn, { maxFailures: 2, resetTimeout: 5, initialBackoff: 1 })
 
     // Open circuit with quick failures first
     let _callCount = 0
@@ -210,14 +211,14 @@ describe('Circuit Breaker', () => {
         _callCount++
         return Promise.reject(new Error('fail'))
       },
-      { maxFailures: 2, resetTimeout: 50, initialBackoff: 1 },
+      { maxFailures: 2, resetTimeout: 5, initialBackoff: 1 }
     )
 
     await assert.rejects(() => openCb.execute(['entry']))
     await assert.rejects(() => openCb.execute(['entry']))
 
     // Wait for half-open
-    await new Promise((r) => setTimeout(r, 60))
+    await new Promise((r) => setTimeout(r, 8))
     assert.strictEqual(openCb.getState(), 'half-open')
 
     // First probe starts - hangs because failFn takes time
@@ -236,8 +237,8 @@ describe('Exponential Backoff', () => {
     const sendFn = mock.fn(() => Promise.reject(new Error('fail')))
     const cb = createCircuitBreaker(sendFn, {
       maxFailures: 10,
-      initialBackoff: 50,
-      maxBackoff: 400,
+      initialBackoff: 5,
+      maxBackoff: 40
     })
 
     // First call - no backoff (consecutiveFailures starts at 0)
@@ -246,22 +247,22 @@ describe('Exponential Backoff', () => {
 
     // Second call - still no backoff (backoff starts after 2nd failure)
     await assert.rejects(() => cb.execute(['entry']))
-    assert.strictEqual(cb.getStats().currentBackoff, 50)
+    assert.strictEqual(cb.getStats().currentBackoff, 5)
 
-    // Third call should have had 50ms backoff applied; now backoff doubles to 100ms
+    // Third call should have had 5ms backoff applied; now backoff doubles to 10ms
     const before = Date.now()
     await assert.rejects(() => cb.execute(['entry']))
     const elapsed = Date.now() - before
-    assert.ok(elapsed >= 40, `Expected >= 40ms backoff delay, got ${elapsed}ms`)
-    assert.strictEqual(cb.getStats().currentBackoff, 100)
+    assert.ok(elapsed >= 4, `Expected >= 4ms backoff delay, got ${elapsed}ms`)
+    assert.strictEqual(cb.getStats().currentBackoff, 10)
   })
 
   test('should cap backoff at maxBackoff', async () => {
     const sendFn = mock.fn(() => Promise.reject(new Error('fail')))
     const cb = createCircuitBreaker(sendFn, {
       maxFailures: 20,
-      initialBackoff: 10,
-      maxBackoff: 50,
+      initialBackoff: 1,
+      maxBackoff: 5
     })
 
     // Generate enough failures to exceed maxBackoff
@@ -271,7 +272,7 @@ describe('Exponential Backoff', () => {
 
     // The backoff should not exceed maxBackoff
     const stats = cb.getStats()
-    assert.ok(stats.currentBackoff <= 50, `Backoff ${stats.currentBackoff} exceeds max 50ms`)
+    assert.ok(stats.currentBackoff <= 5, `Backoff ${stats.currentBackoff} exceeds max 5ms`)
   })
 
   test('should reset backoff on success', async () => {
@@ -283,8 +284,8 @@ describe('Exponential Backoff', () => {
     })
     const cb = createCircuitBreaker(sendFn, {
       maxFailures: 10,
-      initialBackoff: 10,
-      maxBackoff: 1000,
+      initialBackoff: 1,
+      maxBackoff: 100
     })
 
     // Generate some failures to build up backoff
@@ -300,13 +301,13 @@ describe('Exponential Backoff', () => {
 
   test('should not apply backoff on first call', async () => {
     const sendFn = mock.fn(() => Promise.reject(new Error('fail')))
-    const cb = createCircuitBreaker(sendFn, { initialBackoff: 5000 })
+    const cb = createCircuitBreaker(sendFn, { initialBackoff: 500 })
 
     const start = Date.now()
     await assert.rejects(() => cb.execute(['entry']))
     const elapsed = Date.now() - start
 
     // First call should have no backoff
-    assert.ok(elapsed < 100, `First call took ${elapsed}ms, expected < 100ms`)
+    assert.ok(elapsed < 50, `First call took ${elapsed}ms, expected < 50ms`)
   })
 })

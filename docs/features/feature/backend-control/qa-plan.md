@@ -14,25 +14,25 @@ last-verified: 2026-01-31
 ### Scenario 1: Reset Database & Verify Clean State
 **Objective:** Verify reset_database operation succeeds and leaves database in expected state
 
-**Setup:**
+#### Setup:
 - Start backend service with /.gasoline/control handler
 - Pre-populate database with 1250 users, 500 orders
 - Gasoline MCP connected and discovered service
 
-**Steps:**
+#### Steps:
 1. Call `interact({action: "backend_control", operation: "reset_database", tables: ["users", "orders"]})`
 2. Verify Gasoline creates BEFORE snapshot
 3. Verify Gasoline creates AFTER snapshot
 4. Query backend state: `observe({what: "backend_state", service: "api-server", keys: ["user_count"]})`
 5. Verify user_count is 0 (or seed data only)
 
-**Expected Result:**
+#### Expected Result:
 - Operation returns `{status: "success", result: {rows_deleted: 1250}, duration_ms: 350}`
 - BEFORE snapshot checksum != AFTER snapshot checksum
 - Backend state reflected in Gasoline observation
 - Audit log shows operation with before/after hashes
 
-**Acceptance Criteria:**
+#### Acceptance Criteria:
 - [ ] Database reset completes in <500ms
 - [ ] Checksums differ, proving state change
 - [ ] Subsequent operations use clean state
@@ -43,24 +43,24 @@ last-verified: 2026-01-31
 ### Scenario 2: Inject Test User & Query State
 **Objective:** Verify data injection and state inspection
 
-**Setup:**
+#### Setup:
 - Backend database is clean (from Scenario 1)
 - AI agent ready to create test user
 
-**Steps:**
+#### Steps:
 1. Call `interact({action: "backend_control", operation: "create_test_user", params: {email: "test@example.com", plan: "pro", credits: 100}})`
 2. Verify operation returns `{user_id: 12345}`
 3. Call `observe({what: "backend_state", service: "api-server", keys: ["user_count"]})`
 4. Verify user_count is 1
 5. Query by email in backend: user exists with plan="pro", credits=100
 
-**Expected Result:**
+#### Expected Result:
 - User created successfully, assigned user_id
 - State observable through Gasoline
 - Data persists through service restart
 - Audit log shows create_test_user operation
 
-**Acceptance Criteria:**
+#### Acceptance Criteria:
 - [ ] Test user created with all fields set correctly
 - [ ] User_id is deterministic for repeated test runs (seeded)
 - [ ] State queries return accurate results
@@ -71,12 +71,12 @@ last-verified: 2026-01-31
 ### Scenario 3: Simulate Payment Timeout & Observe Frontend Response
 **Objective:** Verify failure simulation and full-stack correlation
 
-**Setup:**
+#### Setup:
 - Test user created (from Scenario 2)
 - Frontend loaded on localhost:3000
 - Gasoline has record correlation_id="test-payment-003"
 
-**Steps:**
+#### Steps:
 1. Create BEFORE snapshot: `configure({action: "snapshot", session_action: "create", name: "before_payment"})`
 2. Enable payment timeout simulation: `interact({action: "backend_control", operation: "simulate_payment_timeout", params: {duration_ms: 3000, error_code: "TIMEOUT"}})`
 3. Frontend user clicks "Checkout" button
@@ -84,14 +84,14 @@ last-verified: 2026-01-31
 5. Observe backend timeout: `observe({what: "backend-logs", correlation_id: "test-payment-003", level: "ERROR"})`
 6. Verify correlation_id appears in both frontend and backend logs
 
-**Expected Result:**
+#### Expected Result:
 - Timeout simulation active for 3 seconds
 - Frontend XHR returns 500 or timeout error
 - User sees error message
 - Backend logs show timeout error with same correlation_id
 - Frontend & backend logs correlated in observation output
 
-**Acceptance Criteria:**
+#### Acceptance Criteria:
 - [ ] Frontend error appears within 3.5s (timeout + overhead)
 - [ ] Backend logs contain correlation_id
 - [ ] Frontend and backend events have matching timestamps (±100ms)
@@ -102,25 +102,25 @@ last-verified: 2026-01-31
 ### Scenario 4: Restore State & Retry Test
 **Objective:** Verify state restoration and deterministic test retry
 
-**Setup:**
+#### Setup:
 - BEFORE snapshot taken (from Scenario 3)
 - Database modified by payment test
 - AI agent wants to retry test with clean state
 
-**Steps:**
+#### Steps:
 1. Call `configure({action: "snapshot", session_action: "restore", snapshot_id: "before_payment"})`
 2. Verify `{status: "restored", rows_recovered: 1}`
 3. Verify state matches pre-test: `observe({what: "backend_state", service: "api-server", keys: ["user_count", "order_count"]})`
 4. Re-run payment flow
 5. Verify same error path as first attempt (deterministic)
 
-**Expected Result:**
+#### Expected Result:
 - Restore completes in <1s
 - State matches BEFORE snapshot exactly
 - Second test run identical to first
 - No data loss during restore
 
-**Acceptance Criteria:**
+#### Acceptance Criteria:
 - [ ] State restored completely
 - [ ] Test replay deterministic
 - [ ] No partial restores or corruption
@@ -131,25 +131,25 @@ last-verified: 2026-01-31
 ### Scenario 5: Feature Flag Toggle & Path Verification
 **Objective:** Verify configuration mutation and conditional behavior
 
-**Setup:**
+#### Setup:
 - Backend has feature flag `use_new_checkout` (default: false)
 - Frontend has conditional rendering based on flag
 - Test user ready
 
-**Steps:**
+#### Steps:
 1. Call `interact({action: "backend_control", operation: "set_feature_flag", params: {flag_name: "use_new_checkout", value: true}})`
 2. Frontend reloads: `interact({action: "refresh"})`
 3. Verify new checkout UI appears (old UI should not)
 4. Toggle flag back to false: `interact({action: "backend_control", operation: "set_feature_flag", params: {flag_name: "use_new_checkout", value: false}})`
 5. Refresh and verify old checkout UI appears
 
-**Expected Result:**
+#### Expected Result:
 - Feature flag toggle succeeds
 - Frontend reflects flag change on reload
 - Feature gates work correctly
 - Audit log shows both toggle operations
 
-**Acceptance Criteria:**
+#### Acceptance Criteria:
 - [ ] Flag change reflected immediately in backend
 - [ ] Frontend conditional rendering correct
 - [ ] Flag persists through service restart
@@ -160,24 +160,24 @@ last-verified: 2026-01-31
 ### Scenario 6: Dry Run Mode (No Actual Changes)
 **Objective:** Verify dry-run prevents database modifications
 
-**Setup:**
+#### Setup:
 - Database has 1250 users
 - Dry run mode enabled
 
-**Steps:**
+#### Steps:
 1. Call `interact({action: "backend_control", operation: "reset_database", dry_run: true})`
 2. Verify response includes `{predicted_rows_deleted: 1250}` but no actual deletion
 3. Query user_count: should still be 1250
 4. Run same operation with `dry_run: false`
 5. Verify user_count is now 0
 
-**Expected Result:**
+#### Expected Result:
 - Dry-run predicts result without executing
 - Database unchanged after dry-run
 - Actual execution removes data as expected
 - Both operations logged separately
 
-**Acceptance Criteria:**
+#### Acceptance Criteria:
 - [ ] Dry-run marked as such in audit log
 - [ ] Dry-run result matches actual result
 - [ ] No side effects from dry-run
@@ -187,23 +187,23 @@ last-verified: 2026-01-31
 ### Scenario 7: Shadow Mode (Read-Only Operation)
 **Objective:** Verify shadow_mode prevents writes but allows reads
 
-**Setup:**
+#### Setup:
 - Backend service in shadow_mode support
 - Database state at baseline
 
-**Steps:**
+#### Steps:
 1. Call `observe({what: "backend_state", service: "api-server"})` with implicit shadow_mode=true
 2. Verify data readable without modification
 3. Call `interact({action: "backend_control", operation: "reset_database", shadow_mode: true})`
 4. Verify operation returns predicted result but doesn't execute
 5. Query database: all users still present
 
-**Expected Result:**
+#### Expected Result:
 - Shadow mode read operations work normally
 - Shadow mode write operations return predicted results without execution
 - Database unchanged
 
-**Acceptance Criteria:**
+#### Acceptance Criteria:
 - [ ] Shadow mode clearly marked in operation response
 - [ ] No data modifications in shadow mode
 - [ ] Predictions accurate
@@ -213,11 +213,11 @@ last-verified: 2026-01-31
 ### Scenario 8: Error Handling & Rollback
 **Objective:** Verify error handling and automatic rollback
 
-**Setup:**
+#### Setup:
 - BEFORE snapshot taken
 - Backend ready for failure injection
 
-**Steps:**
+#### Steps:
 1. Inject failure into reset_database: service returns error
 2. Call `interact({action: "backend_control", operation: "reset_database"})`
 3. Verify operation fails: `{status: "error", error: "database_lock_timeout"}`
@@ -225,13 +225,13 @@ last-verified: 2026-01-31
 5. Call rollback: `configure({action: "snapshot", session_action: "restore", snapshot_id: "before_*"})`
 6. Verify state unchanged
 
-**Expected Result:**
+#### Expected Result:
 - Error returned with descriptive message
 - AI/developer offered rollback
 - Rollback succeeds completely
 - Error logged in audit with rollback confirmation
 
-**Acceptance Criteria:**
+#### Acceptance Criteria:
 - [ ] Error messages descriptive and actionable
 - [ ] Automatic rollback available after failure
 - [ ] State integrity maintained
@@ -242,24 +242,24 @@ last-verified: 2026-01-31
 ### Scenario 9: Service Discovery & Operation Enumeration
 **Objective:** Verify Gasoline discovers available control operations
 
-**Setup:**
+#### Setup:
 - Backend service with /.gasoline/control handler
 - Gasoline MCP just started
 
-**Steps:**
+#### Steps:
 1. Gasoline MCP starts, pings /.gasoline/control?discover=true
 2. Backend returns available operations with schemas
 3. Call `observe({what: "backend_state", service: "api-server"})`
 4. Verify operations list includes reset_database, create_test_user, simulate_*, etc.
 5. Call operation with wrong params: should fail with schema validation error
 
-**Expected Result:**
+#### Expected Result:
 - Service discovered automatically
 - All operations enumerated
 - Operations cacheable (TTL 30s)
 - Schema validation enforced
 
-**Acceptance Criteria:**
+#### Acceptance Criteria:
 - [ ] Discovery completes <100ms
 - [ ] All operations schema-validated
 - [ ] Cache prevents excessive discovery calls
@@ -270,12 +270,12 @@ last-verified: 2026-01-31
 ### Scenario 10: Correlation ID Propagation Through Full Stack
 **Objective:** Verify correlation IDs flow through all layers
 
-**Setup:**
+#### Setup:
 - Backend logging with correlation_id support
 - Frontend with session tracking
 - Gasoline MCP with correlation tracing
 
-**Steps:**
+#### Steps:
 1. Generate correlation_id: `req-test-flow-10-001`
 2. Reset database with correlation_id
 3. Create test user with same correlation_id
@@ -285,13 +285,13 @@ last-verified: 2026-01-31
 7. Call `observe({what: "logs", correlation_id: "req-test-flow-10-001"})`
 8. Verify all events appear: reset, create_user, simulate, click, XHR, backend error
 
-**Expected Result:**
+#### Expected Result:
 - All operations tagged with same correlation_id
 - Unified timeline shows causality
 - Correlation_id searchable across all buffers
 - Timeline helps developer trace issue root cause
 
-**Acceptance Criteria:**
+#### Acceptance Criteria:
 - [ ] Correlation ID preserved through all layers
 - [ ] Timeline shows chronological order
 - [ ] All related events accessible via single correlation_id query

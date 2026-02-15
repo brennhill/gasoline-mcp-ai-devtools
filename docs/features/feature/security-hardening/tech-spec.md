@@ -200,7 +200,7 @@ Gasoline maps network requests to CSP directives based on response content-type 
 | WebSocket connections | `connect-src` (wss://) |
 | iframe sources (detected from response headers/DOM) | `frame-src` |
 | Web workers | `worker-src` |
-| EventSource/SSE | `connect-src` |
+| EventSource streams | `connect-src` |
 
 ### Origin Extraction
 
@@ -267,13 +267,13 @@ The developer can also pass `exclude_origins` to manually filter known developme
 
 Generating and immediately enforcing a CSP is risky — missing origins break pages silently. The recommended workflow is:
 
-**Pass 1: Observe and Generate**
+#### Pass 1: Observe and Generate
 1. Browse the app normally (hit all routes, trigger all features)
 2. Call `generate_csp` with `mode: "report_only"`
 3. Deploy the policy as `Content-Security-Policy-Report-Only` header
 4. Browse the app again — violations appear in console (Gasoline captures these)
 
-**Pass 2: Refine and Enforce**
+#### Pass 2: Refine and Enforce
 5. Call `generate_csp` again — violations from pass 1 inform missing origins
 6. Review `origin_details` — any low-confidence origins that caused violations are now promoted to high confidence
 7. Deploy as enforcing `Content-Security-Policy`
@@ -1023,7 +1023,7 @@ Despite being easy to implement (just add an `integrity` attribute), most develo
 3. **Every site loading that resource instantly executes the malicious code** — because the browser fetches the URL, gets JavaScript, and runs it
 4. **Scale is enormous** — a single CDN compromise can affect millions of sites simultaneously (Polyfill.io served 100K+ sites; cdnjs serves 12.5% of all websites)
 
-**Real-world incidents:**
+#### Real-world incidents:
 - **Polyfill.io (2024):** Chinese company acquired the domain, injected malicious redirects into the polyfill script. 100K+ sites affected. Google flagged ads linking to affected sites.
 - **ua-parser-js (2021):** NPM package compromised, cryptocurrency miner and credential stealer injected. 8M weekly downloads.
 - **event-stream (2018):** Maintainer handed off package to attacker who added a targeted cryptocurrency wallet stealer. 2M weekly downloads.
@@ -1185,7 +1185,7 @@ None required. All analysis operates on data the extension already captures and 
 
 ### CSP Generator
 
-**Functional:**
+#### Functional:
 - App loading resources from 5 different origins produces correct per-directive breakdown
 - Inline scripts detected and hashes included in moderate mode
 - data: URIs for images correctly added to img-src
@@ -1195,19 +1195,19 @@ None required. All analysis operates on data the extension already captures and 
 - exclude_origins parameter correctly filters origins
 - report_only mode produces Content-Security-Policy-Report-Only header
 
-**Origin Accumulator:**
+#### Origin Accumulator:
 - Origins persist after network body buffer wraps around (simulate 2000 requests, verify early origins retained)
 - Accumulator bounded: 200 unique origin+type pairs don't exceed 20KB memory
 - Accumulator clears on session reset but NOT on buffer eviction
 - Observation count increments correctly for repeated origins
 
-**Confidence Scoring:**
+#### Confidence Scoring:
 - Origin seen 5+ times across 2+ pages gets "high" confidence and is included
 - Origin seen 2-4 times gets "medium" confidence and is included with advisory
 - Origin seen exactly once gets "low" confidence and is EXCLUDED by default
 - connect-src relaxation: single-observation API endpoint included at medium confidence
 
-**Development Filtering:**
+#### Development Filtering:
 - chrome-extension:// origins automatically filtered
 - moz-extension:// origins automatically filtered
 - ws://localhost:3001 (different port from page) filtered as dev server
@@ -1216,7 +1216,7 @@ None required. All analysis operates on data the extension already captures and 
 - Filtered origins listed in response for transparency
 - First-party localhost origin NOT filtered (that's the app itself)
 
-**Threat Mitigations:**
+#### Threat Mitigations:
 - Single injected request to evil.com does NOT appear in generated CSP (low confidence)
 - Two requests from same origin across different pages reaches medium confidence
 - Warning generated when page origin is localhost (suggest staging re-run)
@@ -1225,7 +1225,7 @@ None required. All analysis operates on data the extension already captures and 
 
 ### Third-Party Audit
 
-**Core Functionality:**
+#### Core Functionality:
 - First-party vs third-party correctly separated
 - Script-loading origins classified as high risk
 - POST requests to third parties flagged as data outbound
@@ -1234,7 +1234,7 @@ None required. All analysis operates on data the extension already captures and 
 - Cookie-setting origins flagged
 - Origin loading scripts AND receiving data classified as critical risk
 
-**Bundled Reputation:**
+#### Bundled Reputation:
 - cdn.jsdelivr.net classified as `known_cdn` from curated list
 - google-analytics.com classified as `known_tracker` from Disconnect.me
 - amazon.com classified as `known_popular` from Tranco top 10K
@@ -1242,7 +1242,7 @@ None required. All analysis operates on data the extension already captures and 
 - Tranco rank included in response when available
 - Disconnect.me category (advertising, analytics, etc.) included when matched
 
-**Domain Heuristics:**
+#### Domain Heuristics:
 - Domain on .xyz TLD flagged with `abuse_tld`
 - Subdomain with entropy > 3.5 bits/char flagged as `dga_pattern`
 - Domain with 4+ subdomain levels flagged as `excessive_depth`
@@ -1251,7 +1251,7 @@ None required. All analysis operates on data the extension already captures and 
 - Known CDN domains skip heuristic checks (even if on unusual TLD)
 - Public suffix extraction works correctly (user.github.io treated as registrable domain, not subdomain of github.io)
 
-**Enterprise Custom Lists:**
+#### Enterprise Custom Lists:
 - Inline `custom_lists.allowed` classifies origin as `enterprise_allowed`
 - Inline `custom_lists.blocked` classifies origin as `enterprise_blocked`
 - Inline `custom_lists.internal` treats origin as first-party (excluded from audit)
@@ -1266,7 +1266,7 @@ None required. All analysis operates on data the extension already captures and 
 - Expired `allowed` entries ignored (falls back to bundled classification)
 - `enterprise_blocked` origins always excluded from CSP regardless of observation count
 
-**External Enrichment:**
+#### External Enrichment:
 - Enrichment disabled by default (no network calls without opt-in)
 - RDAP query returns domain age, registrar
 - Domain registered < 30 days flagged as `recently_registered`
@@ -1281,7 +1281,7 @@ None required. All analysis operates on data the extension already captures and 
 - RDAP failure for one domain doesn't block other enrichments
 - Enrichment data included in response only when enabled
 
-**CSP Generator Integration:**
+#### CSP Generator Integration:
 - `enterprise_allowed` origin always gets high confidence in CSP regardless of observation count
 - `enterprise_blocked` origin always excluded from CSP
 - `known_cdn` origin gets +1 confidence tier (medium → high)
@@ -1316,13 +1316,13 @@ This section honestly evaluates what each tool brings that's genuinely new versu
 
 ### Tool 1: CSP Generator — Verdict: GENUINELY NOVEL
 
-**What already exists:**
+#### What already exists:
 - `report-uri.com` / `csper.io` — CSP management platforms that analyze violation reports from production traffic
 - Google CSP Evaluator — checks if an existing CSP is well-formed
 - Browser DevTools — shows CSP violations in the console
 - Manual authoring — developer reads documentation, enumerates origins by hand
 
-**What none of them do:**
+#### What none of them do:
 - Generate a CSP from development-time observation without requiring deployment
 - Work passively (developer just browses; no configuration, no report endpoint, no production traffic needed)
 - Operate with zero network calls (no data leaves the machine)
@@ -1339,7 +1339,7 @@ This section honestly evaluates what each tool brings that's genuinely new versu
 
 ### Tool 2: Third-Party Risk Audit — Verdict: MIXED (Novel + Consolidation)
 
-**What already exists:**
+#### What already exists:
 - Browser DevTools Network tab — shows all requests, filterable by domain
 - BuiltWith / Wappalyzer — identify technologies and third-party services on a site
 - RequestMap (Simon Hearne) — visual map of third-party requests
@@ -1347,12 +1347,12 @@ This section honestly evaluates what each tool brings that's genuinely new versu
 - OWASP Dependency-Track — SCA for known vulnerable dependencies
 - Blacklight (The Markup) — third-party tracker audit tool
 
-**What's genuinely new:**
+#### What's genuinely new:
 1. **PII detection in outbound request bodies** — no existing dev tool inspects POST body field names to flag when analytics SDKs are exfiltrating PII. Blacklight does this for production sites, but nothing exists during development.
 2. **Enterprise custom lists during development** — no dev tool lets organizations enforce approved/blocked vendor policies before code reaches production.
 3. **Risk classification that combines resource type + data flow + reputation** — existing tools either classify by function (BuiltWith) or by privacy impact (Disconnect.me), but none combine "this origin runs JavaScript in your page AND receives outbound user data AND has suspicious domain characteristics" into a single risk score.
 
-**What's consolidation:**
+#### What's consolidation:
 - Listing all third-party origins (DevTools does this)
 - Categorizing by resource type (DevTools does this)
 - Knowing which domains are trackers (Disconnect.me/Privacy Badger do this)
@@ -1370,7 +1370,7 @@ This section honestly evaluates what each tool brings that's genuinely new versu
 
 ### Tool 3: Security Regression Detection — Verdict: PRIMARILY CONSOLIDATION
 
-**What already exists:**
+#### What already exists:
 - `securityheaders.com` — checks security headers for any URL
 - Mozilla Observatory — grades a site's security configuration
 - OWASP ZAP — automated security scanning (includes header/cookie checks)
@@ -1378,18 +1378,18 @@ This section honestly evaluates what each tool brings that's genuinely new versu
 - CI-based header checks — trivial to add `curl -I | grep` assertions
 - Lighthouse — includes security audits in its reports
 
-**What's marginally new:**
+#### What's marginally new:
 - The diff-based UX: "take snapshot, make changes, compare" — this is a nicer workflow than "run scanner, make changes, run scanner again, manually compare output"
 - Integration with the dev session — results appear in the AI's context immediately, not in a separate tool
 - Auth pattern detection — noticing when an endpoint stops requiring auth headers is harder to do with existing tools (they'd need both "before" and "after" traffic)
 
-**What's consolidation:**
+#### What's consolidation:
 - Checking for security headers (securityheaders.com does this in one click)
 - Checking cookie flags (any HTTP client shows Set-Cookie headers)
 - Checking CORS (DevTools shows CORS errors already)
 - Checking CSP presence/strength (CSP Evaluator exists)
 
-**The honest question: Do developers actually need this?**
+#### The honest question: Do developers actually need this?
 
 The attack scenarios (middleware removal, CORS misconfiguration) are real but relatively rare. They happen during major upgrades or refactors — maybe a few times per year per project. The existing workflow is:
 1. Developer upgrades Express.js
@@ -1408,24 +1408,24 @@ Gasoline makes step 2 happen immediately instead of weeks later. That's valuable
 
 ### Tool 4: SRI Hash Generator — Verdict: LARGELY CONSOLIDATION, SHRINKING USE CASE
 
-**What already exists:**
+#### What already exists:
 - `srihash.org` — paste a URL, get the SRI hash
 - `openssl dgst -sha384 -binary | openssl base64` — one-liner in terminal
 - `webpack-subresource-integrity` plugin — automatic SRI for bundled assets
 - `rollup-plugin-sri` / Vite equivalent — same for Rollup/Vite
 - Chrome DevTools — shows integrity mismatches in console
 
-**What's marginally new:**
+#### What's marginally new:
 - Bulk generation from captured traffic (don't need to manually process each URL)
 - Integration with the third-party audit (shows which resources lack SRI in context)
 - Multiple output formats (HTML, webpack config, vite config)
 
-**What's consolidation:**
+#### What's consolidation:
 - Computing SHA-384 hashes (trivial with any tool)
 - Generating integrity attributes (srihash.org does this)
 - Detecting resources without SRI (any HTML parser can find `<script>` tags without `integrity`)
 
-**The shrinking use case problem:**
+#### The shrinking use case problem:
 
 Modern web applications increasingly use bundlers (Webpack, Vite, esbuild) that either:
 - Bundle third-party code into first-party chunks (no CDN scripts in HTML)

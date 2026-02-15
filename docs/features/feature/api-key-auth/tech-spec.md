@@ -453,7 +453,7 @@ MCP connections over stdio are NOT subject to API key authentication. The stdio 
 - `POST /logs` (extension data ingestion)
 - `POST /ws-events` (WebSocket events)
 - `GET /health` (health check)
-- SSE endpoints
+- `POST /mcp` (HTTP bridge requests)
 
 ---
 

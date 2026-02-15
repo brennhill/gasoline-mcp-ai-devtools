@@ -7,11 +7,12 @@ import type { BrowserStateSnapshot, StateAction, ExecuteJsResult, WebSocketCaptu
 
 import { createDeferredPromise, TimeoutError } from '../lib/timeout-utils'
 import { executeDOMQuery, runAxeAuditWithTimeout, type DOMQueryParams } from '../lib/dom-queries'
+import { checkLinkHealth } from '../lib/link-health'
 import {
   getNetworkWaterfall,
   setNetworkWaterfallEnabled,
   setNetworkBodyCaptureEnabled,
-  setServerUrl,
+  setServerUrl
 } from '../lib/network'
 import { setPerformanceMarksEnabled, installPerformanceCapture, uninstallPerformanceCapture } from '../lib/performance'
 import { setActionCaptureEnabled } from '../lib/actions'
@@ -19,10 +20,19 @@ import {
   setWebSocketCaptureEnabled,
   setWebSocketCaptureMode,
   installWebSocketCapture,
-  uninstallWebSocketCapture,
+  uninstallWebSocketCapture
 } from '../lib/websocket'
 import { setPerformanceSnapshotEnabled } from '../lib/perf-snapshot'
 import { setDeferralEnabled } from './observers'
+
+/** Read the page nonce set by the content script on the inject script element */
+let pageNonce = ''
+if (typeof document !== 'undefined' && typeof document.querySelector === 'function') {
+  const nonceEl = document.querySelector('script[data-gasoline-nonce]')
+  if (nonceEl) {
+    pageNonce = nonceEl.getAttribute('data-gasoline-nonce') || ''
+  }
+}
 
 /**
  * Valid setting names from content script
@@ -36,7 +46,7 @@ const VALID_SETTINGS = new Set([
   'setPerformanceSnapshotEnabled',
   'setDeferralEnabled',
   'setNetworkBodyCaptureEnabled',
-  'setServerUrl',
+  'setServerUrl'
 ])
 
 const VALID_STATE_ACTIONS = new Set<StateAction>(['capture', 'restore'])
@@ -112,6 +122,15 @@ interface GetWaterfallRequestMessageData {
 }
 
 /**
+ * Link health query request message from content script
+ */
+interface LinkHealthQueryRequestMessageData {
+  type: 'GASOLINE_LINK_HEALTH_QUERY'
+  requestId: number | string
+  params?: Record<string, unknown>
+}
+
+/**
  * Union of all page message data types
  */
 type PageMessageData =
@@ -122,74 +141,53 @@ type PageMessageData =
   | DomQueryRequestMessageData
   | HighlightRequestMessageData
   | GetWaterfallRequestMessageData
+  | LinkHealthQueryRequestMessageData
 
 /**
  * Safe serialization for complex objects returned from executeJavaScript.
  */
+// #lizard forgives
+function serializeObject(obj: object, depth: number, seen: WeakSet<object>): unknown {
+  if (seen.has(obj)) return '[Circular]'
+  seen.add(obj)
+
+  if (Array.isArray(obj)) return obj.slice(0, 100).map((v) => safeSerializeForExecute(v, depth + 1, seen))
+  if (obj instanceof Error) return { error: obj.message, stack: obj.stack }
+  if (obj instanceof Date) return obj.toISOString()
+  if (obj instanceof RegExp) return obj.toString()
+  if (typeof Node !== 'undefined' && obj instanceof Node) {
+    const node = obj as Node & { id?: string }
+    return `[${node.nodeName}${node.id ? '#' + node.id : ''}]`
+  }
+
+  const result: Record<string, unknown> = {}
+  const keys = Object.keys(obj).slice(0, 50)
+  for (const key of keys) {
+    try {
+      result[key] = safeSerializeForExecute((obj as Record<string, unknown>)[key], depth + 1, seen)
+    } catch {
+      result[key] = '[unserializable]'
+    }
+  }
+  if (Object.keys(obj).length > 50) {
+    result['...'] = `[${Object.keys(obj).length - 50} more keys]`
+  }
+  return result
+}
+
 export function safeSerializeForExecute(
   value: unknown,
   depth: number = 0,
-  seen: WeakSet<object> = new WeakSet(),
+  seen: WeakSet<object> = new WeakSet()
 ): unknown {
   if (depth > 10) return '[max depth exceeded]'
-  if (value === null) return null
-  if (value === undefined) return undefined
+  if (value === null || value === undefined) return value
 
   const type = typeof value
-  if (type === 'string' || type === 'number' || type === 'boolean') {
-    return value
-  }
-
-  if (type === 'function') {
-    return `[Function: ${(value as (...args: unknown[]) => unknown).name || 'anonymous'}]`
-  }
-
-  if (type === 'symbol') {
-    return (value as symbol).toString()
-  }
-
-  if (type === 'object') {
-    const obj = value as object
-    if (seen.has(obj)) return '[Circular]'
-    seen.add(obj)
-
-    if (Array.isArray(obj)) {
-      return obj.slice(0, 100).map((v) => safeSerializeForExecute(v, depth + 1, seen))
-    }
-
-    if (obj instanceof Error) {
-      return { error: obj.message, stack: obj.stack }
-    }
-
-    if (obj instanceof Date) {
-      return obj.toISOString()
-    }
-
-    if (obj instanceof RegExp) {
-      return obj.toString()
-    }
-
-    // DOM nodes
-    if (typeof Node !== 'undefined' && obj instanceof Node) {
-      const node = obj as Node & { id?: string }
-      return `[${node.nodeName}${node.id ? '#' + node.id : ''}]`
-    }
-
-    // Plain objects
-    const result: Record<string, unknown> = {}
-    const keys = Object.keys(obj).slice(0, 50)
-    for (const key of keys) {
-      try {
-        result[key] = safeSerializeForExecute((obj as Record<string, unknown>)[key], depth + 1, seen)
-      } catch {
-        result[key] = '[unserializable]'
-      }
-    }
-    if (Object.keys(obj).length > 50) {
-      result['...'] = `[${Object.keys(obj).length - 50} more keys]`
-    }
-    return result
-  }
+  if (type === 'string' || type === 'number' || type === 'boolean') return value
+  if (type === 'function') return `[Function: ${(value as (...args: unknown[]) => unknown).name || 'anonymous'}]`
+  if (type === 'symbol') return (value as symbol).toString()
+  if (type === 'object') return serializeObject(value as object, depth, seen)
 
   return String(value)
 }
@@ -200,6 +198,7 @@ export function safeSerializeForExecute(
 export function executeJavaScript(script: string, timeoutMs: number = 5000): Promise<ExecuteJsResult> {
   const deferred = createDeferredPromise<ExecuteJsResult>()
 
+  // #lizard forgives
   const executeWithTimeoutProtection = async (): Promise<void> => {
     const timeoutHandle = setTimeout(() => {
       deferred.resolve({
@@ -211,7 +210,7 @@ export function executeJavaScript(script: string, timeoutMs: number = 5000): Pro
 2. Break the task into smaller pieces (< 2s execution time works best)
 3. Verify the script logic - test with simpler operations first
 
-Tip: Run small test scripts to isolate the issue, then build up complexity.`,
+Tip: Run small test scripts to isolate the issue, then build up complexity.`
       })
     }, timeoutMs)
 
@@ -223,10 +222,10 @@ Tip: Run small test scripts to isolate the issue, then build up complexity.`,
       let fn: () => unknown
       try {
         // eslint-disable-next-line no-new-func
-        fn = new Function(`"use strict"; return (${cleanScript});`) as () => unknown
+        fn = new Function(`"use strict"; return (${cleanScript});`) as () => unknown // nosemgrep: javascript.lang.security.eval.rule-eval-with-expression -- Function() constructor for controlled sandbox execution
       } catch {
         // eslint-disable-next-line no-new-func
-        fn = new Function(`"use strict"; ${cleanScript}`) as () => unknown
+        fn = new Function(`"use strict"; ${cleanScript}`) as () => unknown // nosemgrep: javascript.lang.security.eval.rule-eval-with-expression -- Function() constructor for controlled sandbox execution
       }
 
       const result = fn()
@@ -244,7 +243,7 @@ Tip: Run small test scripts to isolate the issue, then build up complexity.`,
               success: false,
               error: 'promise_rejected',
               message: err.message,
-              stack: err.stack,
+              stack: err.stack
             })
           })
       } else {
@@ -267,14 +266,14 @@ Tip: Run small test scripts to isolate the issue, then build up complexity.`,
           message:
             'This page has a Content Security Policy that blocks script execution in the MAIN world. ' +
             'Use world: "isolated" to bypass CSP (DOM access only, no page JS globals). ' +
-            'With world: "auto" (default), this fallback happens automatically.',
+            'With world: "auto" (default), this fallback happens automatically.'
         })
       } else {
         deferred.resolve({
           success: false,
           error: 'execution_error',
           message: error.message,
-          stack: error.stack,
+          stack: error.stack
         })
       }
     }
@@ -285,7 +284,7 @@ Tip: Run small test scripts to isolate the issue, then build up complexity.`,
     deferred.resolve({
       success: false,
       error: 'execution_error',
-      message: 'Unexpected error during script execution',
+      message: 'Unexpected error during script execution'
     })
   })
 
@@ -293,123 +292,122 @@ Tip: Run small test scripts to isolate the issue, then build up complexity.`,
 }
 
 /**
+ * Handle link health check request from content script
+ */
+export async function handleLinkHealthQuery(data: LinkHealthQueryRequestMessageData): Promise<unknown> {
+  try {
+    const params = data.params || {}
+    const result = await checkLinkHealth(params)
+    return result
+  } catch (err) {
+    return {
+      error: 'link_health_error',
+      message: (err as Error).message || 'Failed to check link health'
+    }
+  }
+}
+
+/**
  * Install message listener for handling content script messages
  */
+function isValidSettingPayload(data: SettingMessageData): boolean {
+  if (!VALID_SETTINGS.has(data.setting)) {
+    console.warn('[Gasoline] Invalid setting:', data.setting)
+    return false
+  }
+  if (data.setting === 'setWebSocketCaptureMode') return typeof data.mode === 'string'
+  if (data.setting === 'setServerUrl') return typeof data.url === 'string'
+  // Boolean settings
+  if (typeof data.enabled !== 'boolean') {
+    console.warn('[Gasoline] Invalid enabled value type')
+    return false
+  }
+  return true
+}
+
+function handleLinkHealthMessage(data: LinkHealthQueryRequestMessageData): void {
+  handleLinkHealthQuery(data)
+    .then((result) => {
+      window.postMessage(
+        { type: 'GASOLINE_LINK_HEALTH_RESPONSE', requestId: data.requestId, result },
+        window.location.origin
+      )
+    })
+    .catch((err: Error) => {
+      window.postMessage(
+        {
+          type: 'GASOLINE_LINK_HEALTH_RESPONSE',
+          requestId: data.requestId,
+          result: { error: 'link_health_error', message: err.message || 'Failed to check link health' }
+        },
+        window.location.origin
+      )
+    })
+}
+
 export function installMessageListener(
   captureStateFn: () => BrowserStateSnapshot,
-  restoreStateFn: (state: BrowserStateSnapshot, includeUrl: boolean) => unknown,
+  restoreStateFn: (state: BrowserStateSnapshot, includeUrl: boolean) => unknown
 ): void {
   if (typeof window === 'undefined') return
 
+  const messageHandlers: Record<string, (data: PageMessageData) => void> = {
+    GASOLINE_SETTING: (data) => {
+      const settingData = data as SettingMessageData
+      if (isValidSettingPayload(settingData)) handleSetting(settingData)
+    },
+    GASOLINE_STATE_COMMAND: (data) =>
+      handleStateCommand(data as StateCommandMessageData, captureStateFn, restoreStateFn),
+    GASOLINE_EXECUTE_JS: (data) => handleExecuteJs(data as ExecuteJsRequestMessageData),
+    GASOLINE_A11Y_QUERY: (data) => handleA11yQuery(data as A11yQueryRequestMessageData),
+    GASOLINE_DOM_QUERY: (data) => handleDomQuery(data as DomQueryRequestMessageData),
+    GASOLINE_GET_WATERFALL: (data) => handleGetWaterfall(data as GetWaterfallRequestMessageData),
+    GASOLINE_LINK_HEALTH_QUERY: (data) => handleLinkHealthMessage(data as LinkHealthQueryRequestMessageData)
+  }
+
   window.addEventListener('message', (event: MessageEvent<PageMessageData>) => {
-    // Only accept messages from this window with correct origin
     if (event.source !== window || event.origin !== window.location.origin) return
+    if (pageNonce && (event.data as unknown as { _nonce?: string })?._nonce !== pageNonce) return
 
-    // Handle settings messages from content script
-    if (event.data?.type === 'GASOLINE_SETTING') {
-      const data = event.data as SettingMessageData
-      // Validate setting name
-      if (!VALID_SETTINGS.has(data.setting)) {
-        console.warn('[Gasoline] Invalid setting:', data.setting)
-        return
-      }
+    const msgType = event.data?.type
+    if (!msgType) return
 
-      // Validate parameter types based on setting
-      if (data.setting === 'setWebSocketCaptureMode') {
-        if (typeof data.mode !== 'string') {
-          console.warn('[Gasoline] Invalid mode type for setWebSocketCaptureMode')
-          return
-        }
-      } else if (data.setting === 'setServerUrl') {
-        if (typeof data.url !== 'string') {
-          console.warn('[Gasoline] Invalid url type for setServerUrl')
-          return
-        }
-      } else {
-        // Boolean settings
-        if (typeof data.enabled !== 'boolean') {
-          console.warn('[Gasoline] Invalid enabled value type')
-          return
-        }
-      }
-
-      handleSetting(data)
-    }
-
-    // Handle state management commands from content script
-    if (event.data?.type === 'GASOLINE_STATE_COMMAND') {
-      const data = event.data as StateCommandMessageData
-      handleStateCommand(data, captureStateFn, restoreStateFn)
-    }
-
-    // Handle GASOLINE_EXECUTE_JS from content script
-    if (event.data?.type === 'GASOLINE_EXECUTE_JS') {
-      handleExecuteJs(event.data as ExecuteJsRequestMessageData)
-    }
-
-    // Handle GASOLINE_A11Y_QUERY from content script
-    if (event.data?.type === 'GASOLINE_A11Y_QUERY') {
-      handleA11yQuery(event.data as A11yQueryRequestMessageData)
-    }
-
-    // Handle GASOLINE_DOM_QUERY from content script
-    if (event.data?.type === 'GASOLINE_DOM_QUERY') {
-      handleDomQuery(event.data as DomQueryRequestMessageData)
-    }
-
-    // Handle GASOLINE_GET_WATERFALL from content script
-    if (event.data?.type === 'GASOLINE_GET_WATERFALL') {
-      handleGetWaterfall(event.data as GetWaterfallRequestMessageData)
-    }
+    const handler = messageHandlers[msgType] // nosemgrep: unsafe-dynamic-method
+    if (handler) handler(event.data)
   })
 }
 
+type SettingHandler = (data: SettingMessageData) => void
+
+const SETTING_HANDLERS: Record<string, SettingHandler> = {
+  setNetworkWaterfallEnabled: (data) => setNetworkWaterfallEnabled(data.enabled!),
+  setPerformanceMarksEnabled: (data) => {
+    setPerformanceMarksEnabled(data.enabled!)
+    if (data.enabled) installPerformanceCapture()
+    else uninstallPerformanceCapture()
+  },
+  setActionReplayEnabled: (data) => setActionCaptureEnabled(data.enabled!),
+  setWebSocketCaptureEnabled: (data) => {
+    setWebSocketCaptureEnabled(data.enabled!)
+    if (data.enabled) installWebSocketCapture()
+    else uninstallWebSocketCapture()
+  },
+  setWebSocketCaptureMode: (data) => setWebSocketCaptureMode((data.mode || 'medium') as WebSocketCaptureMode),
+  setPerformanceSnapshotEnabled: (data) => setPerformanceSnapshotEnabled(data.enabled!),
+  setDeferralEnabled: (data) => setDeferralEnabled(data.enabled!),
+  setNetworkBodyCaptureEnabled: (data) => setNetworkBodyCaptureEnabled(data.enabled!),
+  setServerUrl: (data) => setServerUrl(data.url!)
+}
+
 function handleSetting(data: SettingMessageData): void {
-  switch (data.setting) {
-    case 'setNetworkWaterfallEnabled':
-      setNetworkWaterfallEnabled(data.enabled!)
-      break
-    case 'setPerformanceMarksEnabled':
-      setPerformanceMarksEnabled(data.enabled!)
-      if (data.enabled) {
-        installPerformanceCapture()
-      } else {
-        uninstallPerformanceCapture()
-      }
-      break
-    case 'setActionReplayEnabled':
-      setActionCaptureEnabled(data.enabled!)
-      break
-    case 'setWebSocketCaptureEnabled':
-      setWebSocketCaptureEnabled(data.enabled!)
-      if (data.enabled) {
-        installWebSocketCapture()
-      } else {
-        uninstallWebSocketCapture()
-      }
-      break
-    case 'setWebSocketCaptureMode':
-      setWebSocketCaptureMode((data.mode || 'medium') as WebSocketCaptureMode)
-      break
-    case 'setPerformanceSnapshotEnabled':
-      setPerformanceSnapshotEnabled(data.enabled!)
-      break
-    case 'setDeferralEnabled':
-      setDeferralEnabled(data.enabled!)
-      break
-    case 'setNetworkBodyCaptureEnabled':
-      setNetworkBodyCaptureEnabled(data.enabled!)
-      break
-    case 'setServerUrl':
-      setServerUrl(data.url!)
-      break
-  }
+  const handler = SETTING_HANDLERS[data.setting]
+  if (handler) handler(data)
 }
 
 function handleStateCommand(
   data: StateCommandMessageData,
   captureStateFn: () => BrowserStateSnapshot,
-  restoreStateFn: (state: BrowserStateSnapshot, includeUrl: boolean) => unknown,
+  restoreStateFn: (state: BrowserStateSnapshot, includeUrl: boolean) => unknown
 ): void {
   const { messageId, action, state } = data
 
@@ -420,9 +418,9 @@ function handleStateCommand(
       {
         type: 'GASOLINE_STATE_RESPONSE',
         messageId,
-        result: { error: `Invalid action: ${action}` },
+        result: { error: `Invalid action: ${action}` }
       },
-      window.location.origin,
+      window.location.origin
     )
     return
   }
@@ -434,9 +432,9 @@ function handleStateCommand(
       {
         type: 'GASOLINE_STATE_RESPONSE',
         messageId,
-        result: { error: 'Invalid state object' },
+        result: { error: 'Invalid state object' }
       },
-      window.location.origin,
+      window.location.origin
     )
     return
   }
@@ -461,9 +459,9 @@ function handleStateCommand(
     {
       type: 'GASOLINE_STATE_RESPONSE',
       messageId,
-      result,
+      result
     },
-    window.location.origin,
+    window.location.origin
   )
 }
 
@@ -477,9 +475,9 @@ function handleExecuteJs(data: ExecuteJsRequestMessageData): void {
       {
         type: 'GASOLINE_EXECUTE_JS_RESULT',
         requestId,
-        result: { success: false, error: 'invalid_script', message: 'Script must be a string' },
+        result: { success: false, error: 'invalid_script', message: 'Script must be a string' }
       },
-      window.location.origin,
+      window.location.origin
     )
     return
   }
@@ -495,9 +493,9 @@ function handleExecuteJs(data: ExecuteJsRequestMessageData): void {
         {
           type: 'GASOLINE_EXECUTE_JS_RESULT',
           requestId,
-          result,
+          result
         },
-        window.location.origin,
+        window.location.origin
       )
     })
     .catch((err: Error) => {
@@ -506,9 +504,9 @@ function handleExecuteJs(data: ExecuteJsRequestMessageData): void {
         {
           type: 'GASOLINE_EXECUTE_JS_RESULT',
           requestId,
-          result: { success: false, error: 'execution_failed', message: err.message },
+          result: { success: false, error: 'execution_failed', message: err.message }
         },
-        window.location.origin,
+        window.location.origin
       )
     })
 }
@@ -522,10 +520,10 @@ function handleA11yQuery(data: A11yQueryRequestMessageData): void {
         type: 'GASOLINE_A11Y_QUERY_RESPONSE',
         requestId,
         result: {
-          error: 'runAxeAuditWithTimeout not available - try reloading the extension',
-        },
+          error: 'runAxeAuditWithTimeout not available - try reloading the extension'
+        }
       },
-      window.location.origin,
+      window.location.origin
     )
     return
   }
@@ -537,9 +535,9 @@ function handleA11yQuery(data: A11yQueryRequestMessageData): void {
           {
             type: 'GASOLINE_A11Y_QUERY_RESPONSE',
             requestId,
-            result,
+            result
           },
-          window.location.origin,
+          window.location.origin
         )
       })
       .catch((err: Error) => {
@@ -548,9 +546,9 @@ function handleA11yQuery(data: A11yQueryRequestMessageData): void {
           {
             type: 'GASOLINE_A11Y_QUERY_RESPONSE',
             requestId,
-            result: { error: err.message || 'Accessibility audit failed' },
+            result: { error: err.message || 'Accessibility audit failed' }
           },
-          window.location.origin,
+          window.location.origin
         )
       })
   } catch (err) {
@@ -559,9 +557,9 @@ function handleA11yQuery(data: A11yQueryRequestMessageData): void {
       {
         type: 'GASOLINE_A11Y_QUERY_RESPONSE',
         requestId,
-        result: { error: (err as Error).message || 'Failed to run accessibility audit' },
+        result: { error: (err as Error).message || 'Failed to run accessibility audit' }
       },
-      window.location.origin,
+      window.location.origin
     )
   }
 }
@@ -575,10 +573,10 @@ function handleDomQuery(data: DomQueryRequestMessageData): void {
         type: 'GASOLINE_DOM_QUERY_RESPONSE',
         requestId,
         result: {
-          error: 'executeDOMQuery not available - try reloading the extension',
-        },
+          error: 'executeDOMQuery not available - try reloading the extension'
+        }
       },
-      window.location.origin,
+      window.location.origin
     )
     return
   }
@@ -590,9 +588,9 @@ function handleDomQuery(data: DomQueryRequestMessageData): void {
           {
             type: 'GASOLINE_DOM_QUERY_RESPONSE',
             requestId,
-            result,
+            result
           },
-          window.location.origin,
+          window.location.origin
         )
       })
       .catch((err: Error) => {
@@ -601,9 +599,9 @@ function handleDomQuery(data: DomQueryRequestMessageData): void {
           {
             type: 'GASOLINE_DOM_QUERY_RESPONSE',
             requestId,
-            result: { error: err.message || 'DOM query failed' },
+            result: { error: err.message || 'DOM query failed' }
           },
-          window.location.origin,
+          window.location.origin
         )
       })
   } catch (err) {
@@ -612,9 +610,9 @@ function handleDomQuery(data: DomQueryRequestMessageData): void {
       {
         type: 'GASOLINE_DOM_QUERY_RESPONSE',
         requestId,
-        result: { error: (err as Error).message || 'Failed to run DOM query' },
+        result: { error: (err as Error).message || 'Failed to run DOM query' }
       },
-      window.location.origin,
+      window.location.origin
     )
   }
 }
@@ -634,7 +632,7 @@ function handleGetWaterfall(data: GetWaterfallRequestMessageData): void {
       duration: e.duration,
       transfer_size: e.transferSize,
       encoded_body_size: e.encodedBodySize,
-      decoded_body_size: e.decodedBodySize,
+      decoded_body_size: e.decodedBodySize
     }))
 
     window.postMessage(
@@ -642,9 +640,9 @@ function handleGetWaterfall(data: GetWaterfallRequestMessageData): void {
         type: 'GASOLINE_WATERFALL_RESPONSE',
         requestId,
         entries: snakeEntries,
-        pageURL: window.location.href,
+        page_url: window.location.href
       },
-      window.location.origin,
+      window.location.origin
     )
   } catch (err) {
     console.error('[Gasoline] Failed to get network waterfall:', err)
@@ -652,9 +650,9 @@ function handleGetWaterfall(data: GetWaterfallRequestMessageData): void {
       {
         type: 'GASOLINE_WATERFALL_RESPONSE',
         requestId,
-        entries: [],
+        entries: []
       },
-      window.location.origin,
+      window.location.origin
     )
   }
 }

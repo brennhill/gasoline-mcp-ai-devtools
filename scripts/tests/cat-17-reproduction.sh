@@ -3,8 +3,10 @@
 # Tests the full reproduction script lifecycle:
 # seed actions → export (gasoline + playwright) → write to file → parse → replay.
 # Proves both export formats and recreation pipeline work end-to-end.
+set -eo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=/dev/null
 source "$SCRIPT_DIR/framework.sh"
 
 init_framework "$1" "$2"
@@ -28,7 +30,7 @@ seed_actions() {
             "type": "navigate",
             "timestamp": 1707000000000,
             "url": "about:blank",
-            "toUrl": "https://app.example.com/dashboard",
+            "to_url": "https://app.example.com/dashboard",
             "source": "human"
         },
         {
@@ -63,8 +65,8 @@ seed_actions() {
                 "role": {"role": "combobox", "name": "Format"},
                 "id": "format-select"
             },
-            "selectedValue": "csv",
-            "selectedText": "CSV",
+            "selected_value": "csv",
+            "selected_text": "CSV",
             "source": "human"
         },
         {
@@ -152,7 +154,7 @@ run_test_17_2() {
 
     # Verify numbered steps
     local step_count
-    step_count=$(echo "$script" | grep -cE '^[0-9]+\.')
+    step_count=$(echo "$script" | grep -cE '^[0-9]+\.' || true)
     if [ "$step_count" -ne 5 ]; then
         fail "Expected 5 numbered steps, got $step_count. Script: $(truncate "$script" 500)"
         return
@@ -228,7 +230,7 @@ run_test_17_4() {
 
     # Verify gasoline step count
     local gas_steps
-    gas_steps=$(grep -cE '^[0-9]+\.' "$GASOLINE_FILE")
+    gas_steps=$(grep -cE '^[0-9]+\.' "$GASOLINE_FILE" || true)
     if [ "$gas_steps" -ne 5 ]; then
         fail "Expected 5 numbered steps in gasoline file, got $gas_steps"
         return
@@ -275,28 +277,31 @@ run_test_17_5() {
 
         if echo "$line" | grep -q "Navigate to:"; then
             local url
-            url=$(echo "$line" | sed 's/.*Navigate to: //')
+            url="${line##*Navigate to: }"
             resp=$(call_tool "interact" "{\"action\":\"navigate\",\"url\":\"${url}\"}")
 
         elif echo "$line" | grep -q "Click:"; then
-            # Extract text between first pair of quotes
+            # Extract text between first pair of quotes (capture group requires sed)
             local sel_text
+            # shellcheck disable=SC2001 # capture group extraction requires sed
             sel_text=$(echo "$line" | sed 's/.*Click: "\([^"]*\)".*/\1/')
             resp=$(call_tool "interact" "{\"action\":\"click\",\"selector\":\"text=${sel_text}\"}")
 
         elif echo "$line" | grep -q "^[0-9]*\. Type"; then
             local val
+            # shellcheck disable=SC2001 # capture group extraction requires sed
             val=$(echo "$line" | sed 's/.*Type "\([^"]*\)".*/\1/')
             resp=$(call_tool "interact" "{\"action\":\"type\",\"selector\":\"body\",\"text\":\"${val}\"}")
 
         elif echo "$line" | grep -q "Select "; then
             local val
+            # shellcheck disable=SC2001 # capture group extraction requires sed
             val=$(echo "$line" | sed 's/.*Select "\([^"]*\)".*/\1/')
             resp=$(call_tool "interact" "{\"action\":\"select\",\"selector\":\"body\",\"value\":\"${val}\"}")
 
         elif echo "$line" | grep -q "Press:"; then
             local key
-            key=$(echo "$line" | sed 's/.*Press: //')
+            key="${line##*Press: }"
             resp=$(call_tool "interact" "{\"action\":\"key_press\",\"text\":\"${key}\"}")
         fi
 
@@ -339,7 +344,7 @@ run_test_17_6() {
 
     # Count steps — should be 2 (last 2 of 5)
     local step_count
-    step_count=$(echo "$script" | grep -cE '^[0-9]+\.')
+    step_count=$(echo "$script" | grep -cE '^[0-9]+\.' || true)
     if [ "$step_count" -ne 2 ]; then
         fail "Expected 2 steps with last_n=2, got $step_count. Script: $(truncate "$script" 400)"
         return

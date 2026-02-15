@@ -33,4 +33,9 @@ const (
 	circuitOpenStreakCount = 5               // consecutive seconds over threshold to open circuit
 	circuitCloseSeconds    = 10              // seconds below threshold to close circuit
 	rateWindow             = 5 * time.Second // rolling window for msg/s calculation
+
+	// extensionDisconnectThreshold is how long since last /sync before
+	// the extension is considered disconnected. Pending queries are auto-expired
+	// when the extension exceeds this threshold.
+	extensionDisconnectThreshold = 10 * time.Second
 )

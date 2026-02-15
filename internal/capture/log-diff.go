@@ -13,7 +13,7 @@ import (
 
 // LogDiffResult represents the comparison of two recordings
 type LogDiffResult struct {
-	Status            string           // "match", "regression", "fixed", "changed"
+	Status            string // "match", "regression", "fixed", "changed"
 	OriginalRecording string
 	ReplayRecording   string
 	Summary           string
@@ -25,13 +25,13 @@ type LogDiffResult struct {
 
 // DiffLogEntry represents a single log entry for diff comparison (action or error)
 type DiffLogEntry struct {
-	Type        string // "error", "warning", "info"
-	Severity    string // "critical", "high", "medium", "low"
-	Level       string // log level
-	Message     string
-	Timestamp   int64
-	Selector    string
-	ActionType  string
+	Type       string // "error", "warning", "info"
+	Severity   string // "critical", "high", "medium", "low"
+	Level      string // log level
+	Message    string
+	Timestamp  int64
+	Selector   string
+	ActionType string
 }
 
 // ValueChange represents a field value that changed between recordings
@@ -44,16 +44,16 @@ type ValueChange struct {
 
 // ActionComparison tracks action counts and types between recordings
 type ActionComparison struct {
-	OriginalCount   int
-	ReplayCount     int
-	ErrorsOriginal  int
-	ErrorsReplay    int
-	ClicksOriginal  int
-	ClicksReplay    int
-	TypesOriginal   int
-	TypesReplay     int
+	OriginalCount     int
+	ReplayCount       int
+	ErrorsOriginal    int
+	ErrorsReplay      int
+	ClicksOriginal    int
+	ClicksReplay      int
+	TypesOriginal     int
+	TypesReplay       int
 	NavigatesOriginal int
-	NavigatesReplay  int
+	NavigatesReplay   int
 }
 
 // ============================================================================
@@ -65,12 +65,12 @@ func (r *RecordingManager) DiffRecordings(originalRecordingID, replayRecordingID
 	// Load both recordings
 	original, err := r.GetRecording(originalRecordingID)
 	if err != nil {
-		return nil, fmt.Errorf("logdiff_load_original_failed: Failed to load original recording: %v", err)
+		return nil, fmt.Errorf("logdiff_load_original_failed: Failed to load original recording: %w", err)
 	}
 
 	replay, err := r.GetRecording(replayRecordingID)
 	if err != nil {
-		return nil, fmt.Errorf("logdiff_load_replay_failed: Failed to load replay recording: %v", err)
+		return nil, fmt.Errorf("logdiff_load_replay_failed: Failed to load replay recording: %w", err)
 	}
 
 	result := &LogDiffResult{
@@ -95,41 +95,31 @@ func (r *RecordingManager) DiffRecordings(originalRecordingID, replayRecordingID
 	return result, nil
 }
 
+// countActionTypes returns counts for error, click, type, navigate actions.
+func countActionTypes(actions []RecordingAction) (errors, clicks, types, navigates int) {
+	for _, action := range actions {
+		switch action.Type {
+		case "error":
+			errors++
+		case "click":
+			clicks++
+		case "type":
+			types++
+		case "navigate":
+			navigates++
+		}
+	}
+	return
+}
+
 // compareActions builds action comparison statistics.
 func (r *RecordingManager) compareActions(original, replay *Recording) ActionComparison {
 	stats := ActionComparison{
 		OriginalCount: original.ActionCount,
 		ReplayCount:   replay.ActionCount,
 	}
-
-	// Count action types in original
-	for _, action := range original.Actions {
-		switch action.Type {
-		case "error":
-			stats.ErrorsOriginal++
-		case "click":
-			stats.ClicksOriginal++
-		case "type":
-			stats.TypesOriginal++
-		case "navigate":
-			stats.NavigatesOriginal++
-		}
-	}
-
-	// Count action types in replay
-	for _, action := range replay.Actions {
-		switch action.Type {
-		case "error":
-			stats.ErrorsReplay++
-		case "click":
-			stats.ClicksReplay++
-		case "type":
-			stats.TypesReplay++
-		case "navigate":
-			stats.NavigatesReplay++
-		}
-	}
-
+	stats.ErrorsOriginal, stats.ClicksOriginal, stats.TypesOriginal, stats.NavigatesOriginal = countActionTypes(original.Actions)
+	stats.ErrorsReplay, stats.ClicksReplay, stats.TypesReplay, stats.NavigatesReplay = countActionTypes(replay.Actions)
 	return stats
 }
 
@@ -191,31 +181,35 @@ func (r *RecordingManager) detectFixes(original, replay *Recording, result *LogD
 	}
 }
 
-// detectValueChanges finds changed field values between recordings.
-func (r *RecordingManager) detectValueChanges(original, replay *Recording, result *LogDiffResult) {
-	// Build map of type actions from original by selector
-	originalValues := make(map[string]string)
-	for _, action := range original.Actions {
+// buildTypeValueMap extracts selector->text for "type" actions.
+func buildTypeValueMap(actions []RecordingAction) map[string]string {
+	values := make(map[string]string)
+	for _, action := range actions {
 		if action.Type == "type" && action.Selector != "" {
-			originalValues[action.Selector] = action.Text
+			values[action.Selector] = action.Text
 		}
 	}
+	return values
+}
 
-	// Find changed values in replay
+// detectValueChanges finds changed field values between recordings.
+func (r *RecordingManager) detectValueChanges(original, replay *Recording, result *LogDiffResult) {
+	originalValues := buildTypeValueMap(original.Actions)
+
 	for _, action := range replay.Actions {
-		if action.Type == "type" && action.Selector != "" {
-			if originalValue, exists := originalValues[action.Selector]; exists {
-				if originalValue != action.Text {
-					valueChange := ValueChange{
-						Field:     action.Selector,
-						FromValue: originalValue,
-						ToValue:   action.Text,
-						Timestamp: action.TimestampMs,
-					}
-					result.ChangedValues = append(result.ChangedValues, valueChange)
-				}
-			}
+		if action.Type != "type" || action.Selector == "" {
+			continue
 		}
+		originalValue, exists := originalValues[action.Selector]
+		if !exists || originalValue == action.Text {
+			continue
+		}
+		result.ChangedValues = append(result.ChangedValues, ValueChange{
+			Field:     action.Selector,
+			FromValue: originalValue,
+			ToValue:   action.Text,
+			Timestamp: action.TimestampMs,
+		})
 	}
 }
 
@@ -260,13 +254,13 @@ func (r *RecordingManager) CategorizeActionTypes(recording *Recording) map[strin
 
 // GetRegressionReport generates a human-readable regression report.
 func (result *LogDiffResult) GetRegressionReport() string {
-	report := fmt.Sprintf("Log Diff Report\n")
-	report += fmt.Sprintf("===============\n")
+	report := "Log Diff Report\n"
+	report += "===============\n"
 	report += fmt.Sprintf("Status: %s\n", result.Status)
 	report += fmt.Sprintf("Summary: %s\n\n", result.Summary)
 
 	// Action statistics
-	report += fmt.Sprintf("Action Statistics:\n")
+	report += "Action Statistics:\n"
 	report += fmt.Sprintf("  Original: %d actions\n", result.ActionStats.OriginalCount)
 	report += fmt.Sprintf("    - Errors: %d\n", result.ActionStats.ErrorsOriginal)
 	report += fmt.Sprintf("    - Clicks: %d\n", result.ActionStats.ClicksOriginal)

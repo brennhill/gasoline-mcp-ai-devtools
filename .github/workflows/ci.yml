@@ -9,40 +9,79 @@ on:
     - cron: "0 6 * * *" # Daily at 6 AM UTC
   workflow_dispatch: # Manual trigger
 
+permissions:
+  contents: read
+
 jobs:
   # Version consistency check - BLOCKING
   versions:
     name: Version Consistency
     uses: ./.github/workflows/validate-versions.yml
 
+  upgrade-guards:
+    name: Upgrade Guards (${{ matrix.os }})
+    needs: versions
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+
+      - uses: actions/setup-go@7a3fe6cf4cb3a834922a1244abfce67bcef6a0c5 # v6
+        with:
+          go-version: "1.24"
+
+      - uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238 # v6
+        with:
+          node-version: "20"
+
+      - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6
+        with:
+          python-version: "3.12"
+
+      - name: Go mismatch guard
+        run: go test ./cmd/dev-console -run TestConnectWithRetriesRejectsVersionMismatch -count=1
+
+      - name: npm cleanup tests
+        run: node --test npm/gasoline-mcp/lib/kill-daemon.test.js
+
+      - name: PyPI cleanup tests
+        run: python -m unittest discover -s pypi/gasoline-mcp/tests -p "test_*.py"
+
+      - name: End-to-end upgrade regression
+        run: node scripts/install-upgrade-regression.mjs
+
   go:
     name: Go Checks
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
 
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@7a3fe6cf4cb3a834922a1244abfce67bcef6a0c5 # v6
         with:
-          go-version: "1.21"
+          go-version: "1.24"
 
       - name: Go vet
-        run: go vet ./cmd/dev-console/ || echo "Go vet found issues (non-blocking)"
+        run: go vet ./cmd/dev-console/
+
+      - name: Validate Codex skill frontmatter
+        run: ./scripts/validate-codex-skills.sh
 
       - name: Go tests with race detection
-        run: go test -race -v ./cmd/dev-console/... || echo "Some tests failed (non-blocking during refactoring)"
+        run: go test -race -v ./cmd/dev-console/...
 
       - name: Go test coverage (70% minimum)
         run: |
-          go test -coverprofile=coverage.out ./cmd/dev-console/... || echo "Tests failed, skipping coverage check"
-          if [ -f coverage.out ]; then
-            COVERAGE=$(go tool cover -func=coverage.out | grep total | awk '{print $3}' | sed 's/%//')
-            echo "Coverage: ${COVERAGE}%"
-            if (( $(echo "$COVERAGE < 70" | bc -l) )); then
-              echo "WARNING: Coverage ${COVERAGE}% is below 70% threshold (non-blocking)"
-            else
-              echo "OK: Coverage ${COVERAGE}% meets 70% threshold"
-            fi
+          go test -coverprofile=coverage.out ./cmd/dev-console/...
+          COVERAGE=$(go tool cover -func=coverage.out | grep total | awk '{print $3}' | sed 's/%//')
+          echo "Coverage: ${COVERAGE}%"
+          if (( $(echo "$COVERAGE < 70" | bc -l) )); then
+            echo "FAIL: Coverage ${COVERAGE}% is below 70% threshold"
+            exit 1
           fi
+          echo "OK: Coverage ${COVERAGE}% meets 70% threshold"
 
       - name: Verify zero external dependencies
         run: |
@@ -60,9 +99,9 @@ jobs:
     name: JavaScript Checks
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238 # v6
         with:
           node-version: "20"
           cache: "npm"
@@ -82,19 +121,19 @@ jobs:
 
       - name: Extension tests
         run: |
-          node --test --test-force-exit --test-timeout=20000 --test-concurrency=4 --test-reporter=spec tests/extension/*.test.js || echo "WARNING: Some extension tests failed (non-blocking during refactoring)"
+          node --test --test-force-exit --test-timeout=20000 --test-concurrency=4 --test-reporter=spec tests/extension/*.test.js
 
   security:
     name: Security Scan
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
 
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@7a3fe6cf4cb3a834922a1244abfce67bcef6a0c5 # v6
         with:
-          go-version: "1.21"
+          go-version: "1.24"
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238 # v6
         with:
           node-version: "20"
           cache: "npm"
@@ -107,17 +146,11 @@ jobs:
 
       - name: Go security scan (gosec)
         run: |
-          gosec -exclude=G104,G114,G204,G301,G304,G306 -severity=high ./cmd/dev-console/ || {
-            echo ""
-            echo "WARNING: gosec found security issues (non-blocking during refactoring)"
-          }
+          gosec -exclude=G104,G114,G204,G301,G304,G306 -severity=high ./cmd/dev-console/
 
       - name: JS security lint
         run: |
-          npx eslint extension/ tests/extension/ --max-warnings=50 || {
-            echo ""
-            echo "WARNING: ESLint found security issues (non-blocking)"
-          }
+          npx eslint extension/ tests/extension/ --max-warnings=50
 
       - name: Codacy Security Scan
         if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository
@@ -133,5 +166,3 @@ jobs:
           fi
           # Install Codacy client if needed and run scan
           echo "Codacy scan configured (will run when token is set)"
-
-

@@ -2,8 +2,10 @@
 # cat-01-protocol.sh — MCP JSON-RPC 2.0 protocol compliance tests.
 # Tests the fast-start bridge: initialize, tools/list, ID matching,
 # stdout purity, error codes. No daemon needed for these.
+set -eo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+# shellcheck source=/dev/null
 source "$SCRIPT_DIR/framework.sh"
 
 init_framework "$1" "$2"
@@ -72,21 +74,21 @@ run_test_1_2() {
     # Count tools
     local tool_count
     tool_count=$(echo "$response" | jq -r '.result.tools | length' 2>/dev/null)
-    if [ "$tool_count" != "4" ]; then
-        fail "Expected exactly 4 tools, got $tool_count. Response: $(truncate "$response")"
+    if [ "$tool_count" != "5" ]; then
+        fail "Expected exactly 5 tools, got $tool_count. Response: $(truncate "$response")"
         return
     fi
 
     # Extract sorted tool names
     local tool_names
     tool_names=$(echo "$response" | jq -r '.result.tools[].name' 2>/dev/null | sort | tr '\n' ',' | sed 's/,$//')
-    local expected="configure,generate,interact,observe"
+    local expected="analyze,configure,generate,interact,observe"
     if [ "$tool_names" != "$expected" ]; then
         fail "Expected tools [$expected], got [$tool_names]. Response: $(truncate "$response")"
         return
     fi
 
-    pass "tools/list returned exactly 4 tools: $tool_names."
+    pass "tools/list returned exactly 5 tools: $tool_names."
 }
 run_test_1_2
 
@@ -113,8 +115,8 @@ run_test_1_3() {
         [interact]="action"
     )
 
-    local tools_json
-    tools_json=$(echo "$response" | jq -c '.result.tools[]' 2>/dev/null)
+    local _tools_json
+    _tools_json=$(echo "$response" | jq -c '.result.tools[]' 2>/dev/null)
 
     local verified=0
     local errors=""
@@ -138,9 +140,7 @@ run_test_1_3() {
 
         # Check required field contains expected param
         local req_param="${expected_required[$tool_name]}"
-        local has_required
-        has_required=$(echo "$tool_def" | jq -e ".inputSchema.required | index(\"$req_param\")" 2>/dev/null)
-        if [ $? -ne 0 ]; then
+        if ! echo "$tool_def" | jq -e ".inputSchema.required | index(\"$req_param\")" >/dev/null 2>&1; then
             errors="${errors}$tool_name: required field does not contain '$req_param'. "
             continue
         fi
@@ -217,7 +217,7 @@ run_test_1_5() {
     local stdout_file="$TEMP_DIR/purity_stdout.txt"
     local stderr_file="$TEMP_DIR/purity_stderr.txt"
 
-    echo "$requests" | $TIMEOUT_CMD 20 $WRAPPER --port "$PORT" > "$stdout_file" 2>"$stderr_file"
+    echo "$requests" | "$TIMEOUT_CMD" 20 "$WRAPPER" --port "$PORT" > "$stdout_file" 2>"$stderr_file"
 
     local total_lines=0
     local bad_lines=0

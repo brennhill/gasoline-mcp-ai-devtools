@@ -264,7 +264,7 @@ observe({
 
 ## Code References
 
-**New files to create:**
+### New files to create:
 - `cmd/server/control/router.go` — Control command router
 - `cmd/server/control/snapshot.go` — Snapshot manager
 - `cmd/server/control/audit.go` — Audit logger
@@ -272,7 +272,7 @@ observe({
 - `cmd/server/control/protocol.go` — Control protocol types
 - `extension/src/mcp-tools/backend-control.ts` — Chrome extension MCP tool
 
-**Existing files to modify:**
+### Existing files to modify:
 - `cmd/server/mcp/server.go` — Add control action handler to interact()
 - `cmd/server/mcp/observe.go` — Add audit_log and backend_state modes
 - `cmd/server/mcp/configure.go` — Add snapshot action

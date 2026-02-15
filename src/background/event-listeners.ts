@@ -48,7 +48,7 @@ export const ALARM_NAMES = {
   RECONNECT: 'reconnect',
   ERROR_GROUP_FLUSH: 'errorGroupFlush',
   MEMORY_CHECK: 'memoryCheck',
-  ERROR_GROUP_CLEANUP: 'errorGroupCleanup',
+  ERROR_GROUP_CLEANUP: 'errorGroupCleanup'
 } as const
 
 export type AlarmName = (typeof ALARM_NAMES)[keyof typeof ALARM_NAMES]
@@ -79,20 +79,22 @@ export function setupChromeAlarms(): void {
 }
 
 /**
- * Install Chrome alarm listener
+ * Install Chrome alarm listener.
+ * Handlers may be async — the listener awaits them to keep the SW alive
+ * until the work completes (prevents badge updates from being lost).
  */
 export function installAlarmListener(handlers: {
-  onReconnect: () => void
+  onReconnect: () => void | Promise<void>
   onErrorGroupFlush: () => void
   onMemoryCheck: () => void
   onErrorGroupCleanup: () => void
 }): void {
   if (typeof chrome === 'undefined' || !chrome.alarms) return
 
-  chrome.alarms.onAlarm.addListener((alarm) => {
+  chrome.alarms.onAlarm.addListener(async (alarm) => {
     switch (alarm.name) {
       case ALARM_NAMES.RECONNECT:
-        handlers.onReconnect()
+        await handlers.onReconnect()
         break
       case ALARM_NAMES.ERROR_GROUP_FLUSH:
         handlers.onErrorGroupFlush()
@@ -138,22 +140,33 @@ export function installTabUpdatedListener(onTabUpdated: (tabId: number, newUrl: 
 
 /**
  * Handle tracked tab URL change
- * Updates the stored URL when the tracked tab navigates
+ * Updates the stored URL and title when the tracked tab navigates
  */
 export function handleTrackedTabUrlChange(
   updatedTabId: number,
   newUrl: string,
-  logFn?: (message: string) => void,
+  logFn?: (message: string) => void
 ): void {
   if (typeof chrome === 'undefined' || !chrome.storage) return
 
   chrome.storage.local.get(['trackedTabId'], (result: { trackedTabId?: number }) => {
     if (result.trackedTabId === updatedTabId) {
-      chrome.storage.local.set({ trackedTabUrl: newUrl }, () => {
-        if (logFn) {
-          logFn('[Gasoline] Tracked tab URL updated: ' + newUrl)
-        }
-      })
+      // Update URL immediately, then refresh title from the tab
+      chrome.tabs
+        .get(updatedTabId)
+        .then((tab) => {
+          const updates: Record<string, string> = { trackedTabUrl: newUrl }
+          if (tab?.title) updates.trackedTabTitle = tab.title
+          chrome.storage.local.set(updates, () => {
+            if (logFn) {
+              logFn('[Gasoline] Tracked tab updated: ' + newUrl)
+            }
+          })
+        })
+        .catch(() => {
+          // Tab may have been closed — update URL only
+          chrome.storage.local.set({ trackedTabUrl: newUrl })
+        })
     }
   })
 }
@@ -166,25 +179,12 @@ export function handleTrackedTabUrlChange(
 export function handleTrackedTabClosed(closedTabId: number, logFn?: (message: string, data?: unknown) => void): void {
   if (typeof chrome === 'undefined' || !chrome.storage) return
 
-  // Check both session and local storage for backward compatibility
-  const checkStorageArea = (area: 'local' | 'session'): void => {
-    chrome.storage[area].get(['trackedTabId'], (result: { trackedTabId?: number }) => {
-      if (result.trackedTabId === closedTabId) {
-        if (logFn) logFn('[Gasoline] Tracked tab closed (id:', closedTabId)
-        chrome.storage[area].remove(['trackedTabId', 'trackedTabUrl'])
-      }
-    })
-  }
-
-  // Check local storage (legacy)
-  checkStorageArea('local')
-
-  // Check session storage (modern, Chrome 102+)
-  // Type-safe check: cast to Record to access potential session property
-  const storageWithSession = chrome.storage as unknown as Record<string, unknown>
-  if (storageWithSession.session) {
-    checkStorageArea('session')
-  }
+  chrome.storage.local.get(['trackedTabId'], (result: { trackedTabId?: number }) => {
+    if (result.trackedTabId === closedTabId) {
+      if (logFn) logFn('[Gasoline] Tracked tab closed (id:', closedTabId)
+      chrome.storage.local.remove(['trackedTabId', 'trackedTabUrl', 'trackedTabTitle'])
+    }
+  })
 }
 
 // =============================================================================
@@ -224,9 +224,83 @@ export function installStorageChangeListener(handlers: {
 export function installStartupListener(logFn?: (message: string) => void): void {
   if (typeof chrome === 'undefined' || !chrome.runtime || !chrome.runtime.onStartup) return
 
-  chrome.runtime.onStartup.addListener(() => {
-    if (logFn) logFn('[Gasoline] Browser restarted - clearing tracking state')
-    chrome.storage.local.remove(['trackedTabId', 'trackedTabUrl'])
+  chrome.runtime.onStartup.addListener(async () => {
+    try {
+      const result = await chrome.storage.local.get(['trackedTabId'])
+      const trackedTabId = result.trackedTabId as number | undefined
+      if (trackedTabId) {
+        try {
+          await chrome.tabs.get(trackedTabId)
+          if (logFn) logFn('[Gasoline] Browser restarted - tracked tab still exists, keeping tracking')
+        } catch {
+          if (logFn) logFn('[Gasoline] Browser restarted - tracked tab gone, clearing tracking state')
+          chrome.storage.local.remove(['trackedTabId', 'trackedTabUrl', 'trackedTabTitle'])
+        }
+      }
+    } catch {
+      // Safety fallback: clear if we can't check
+      chrome.storage.local.remove(['trackedTabId', 'trackedTabUrl', 'trackedTabTitle'])
+    }
+  })
+}
+
+// =============================================================================
+// KEYBOARD SHORTCUT LISTENER
+// =============================================================================
+
+/**
+ * Install keyboard shortcut listener for draw mode toggle (Ctrl+Shift+D / Cmd+Shift+D).
+ * Sends GASOLINE_DRAW_MODE_START or GASOLINE_DRAW_MODE_STOP to the active tab's content script.
+ */
+export function installDrawModeCommandListener(logFn?: (message: string) => void): void {
+  if (typeof chrome === 'undefined' || !chrome.commands) return
+
+  chrome.commands.onCommand.addListener(async (command: string) => {
+    if (command !== 'toggle_draw_mode') return
+
+    try {
+      const tabs = await chrome.tabs.query({ active: true, currentWindow: true })
+      const tab = tabs[0]
+      if (!tab?.id) return
+
+      try {
+        const result = (await chrome.tabs.sendMessage(tab.id, {
+          type: 'GASOLINE_GET_ANNOTATIONS'
+        })) as { draw_mode_active?: boolean }
+
+        if (result?.draw_mode_active) {
+          await chrome.tabs.sendMessage(tab.id, { type: 'GASOLINE_DRAW_MODE_STOP' })
+        } else {
+          await chrome.tabs.sendMessage(tab.id, {
+            type: 'GASOLINE_DRAW_MODE_START',
+            started_by: 'user'
+          })
+        }
+      } catch {
+        // Content script not loaded — try activating anyway
+        try {
+          await chrome.tabs.sendMessage(tab.id, {
+            type: 'GASOLINE_DRAW_MODE_START',
+            started_by: 'user'
+          })
+        } catch {
+          if (logFn) logFn('Cannot reach content script for draw mode toggle')
+          try {
+            await chrome.tabs.sendMessage(tab.id, {
+              type: 'GASOLINE_ACTION_TOAST',
+              text: 'Draw mode unavailable',
+              detail: 'Refresh the page and try again',
+              state: 'error',
+              duration_ms: 3000
+            })
+          } catch {
+            // Tab truly unreachable
+          }
+        }
+      }
+    } catch (err) {
+      if (logFn) logFn(`Draw mode keyboard shortcut error: ${(err as Error).message}`)
+    }
   })
 }
 
@@ -242,8 +316,11 @@ export async function pingContentScript(tabId: number, timeoutMs = 500): Promise
     const response = (await Promise.race([
       chrome.tabs.sendMessage(tabId, { type: 'GASOLINE_PING' }),
       new Promise<never>((_, reject) => {
-        setTimeout(() => reject(new Error(`Content script ping timeout after ${timeoutMs}ms on tab ${tabId}`)), timeoutMs)
-      }),
+        setTimeout(
+          () => reject(new Error(`Content script ping timeout after ${timeoutMs}ms on tab ${tabId}`)),
+          timeoutMs
+        )
+      })
     ])) as { status?: string }
     return response?.status === 'alive'
   } catch {
@@ -275,7 +352,7 @@ export async function waitForTabLoad(tabId: number, timeoutMs = 5000): Promise<b
  */
 export function forwardToAllContentScripts(
   message: { type: string; [key: string]: unknown },
-  debugLogFn?: (category: string, message: string, data?: unknown) => void,
+  debugLogFn?: (category: string, message: string, data?: unknown) => void
 ): void {
   if (typeof chrome === 'undefined' || !chrome.tabs) return
 
@@ -290,7 +367,7 @@ export function forwardToAllContentScripts(
             if (debugLogFn) {
               debugLogFn('error', 'Unexpected error forwarding setting to tab', {
                 tabId: tab.id,
-                error: err.message,
+                error: err.message
               })
             }
           }
@@ -314,7 +391,7 @@ export function loadSavedSettings(
     screenshotOnError?: boolean
     sourceMapEnabled?: boolean
     debugMode?: boolean
-  }) => void,
+  }) => void
 ): void {
   if (typeof chrome === 'undefined' || !chrome.storage) {
     callback({})
@@ -336,7 +413,7 @@ export function loadSavedSettings(
         return
       }
       callback(result)
-    },
+    }
   )
 }
 
@@ -397,9 +474,7 @@ export function getTrackedTabInfo(): Promise<TrackedTabInfo>
 // Overload: Callback-based (for backward compatibility)
 export function getTrackedTabInfo(callback: (info: TrackedTabInfo) => void): void
 // Implementation
-export function getTrackedTabInfo(
-  callback?: (info: TrackedTabInfo) => void,
-): void | Promise<TrackedTabInfo> {
+export function getTrackedTabInfo(callback?: (info: TrackedTabInfo) => void): void | Promise<TrackedTabInfo> {
   if (!callback) {
     // Promise-based version
     return new Promise((resolve) => {
@@ -419,9 +494,9 @@ export function getTrackedTabInfo(
       callback({
         trackedTabId: result.trackedTabId || null,
         trackedTabUrl: result.trackedTabUrl || null,
-        trackedTabTitle: result.trackedTabTitle || null,
+        trackedTabTitle: result.trackedTabTitle || null
       })
-    },
+    }
   )
 }
 
@@ -442,7 +517,7 @@ export function getAllConfigSettings(): Promise<Record<string, boolean | string 
 export function getAllConfigSettings(callback: (settings: Record<string, boolean | string | undefined>) => void): void
 // Implementation
 export function getAllConfigSettings(
-  callback?: (settings: Record<string, boolean | string | undefined>) => void,
+  callback?: (settings: Record<string, boolean | string | undefined>) => void
 ): void | Promise<Record<string, boolean | string | undefined>> {
   if (!callback) {
     // Promise-based version
@@ -466,10 +541,10 @@ export function getAllConfigSettings(
       'actionReplayEnabled',
       'screenshotOnError',
       'sourceMapEnabled',
-      'networkBodyCaptureEnabled',
+      'networkBodyCaptureEnabled'
     ],
     (result: Record<string, boolean | string | undefined>) => {
       callback(result)
-    },
+    }
   )
 }

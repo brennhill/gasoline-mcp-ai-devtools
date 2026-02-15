@@ -67,16 +67,16 @@ type GetChangesSinceParams struct {
 
 // DiffResponse is the compressed diff returned by get_changes_since
 type DiffResponse struct {
-	From              time.Time          `json:"from"`
-	To                time.Time          `json:"to"`
-	DurationMs        int64              `json:"duration_ms"`
-	Severity          string             `json:"severity"`
-	Summary           string             `json:"summary"`
-	TokenCount        int                `json:"token_count"`
-	Console           *ConsoleDiff       `json:"console,omitempty"`
-	Network           *NetworkDiff       `json:"network,omitempty"`
-	WebSocket         *WebSocketDiff     `json:"websocket,omitempty"`
-	Actions           *ActionsDiff       `json:"actions,omitempty"`
+	From              time.Time                   `json:"from"`
+	To                time.Time                   `json:"to"`
+	DurationMs        int64                       `json:"duration_ms"`
+	Severity          string                      `json:"severity"`
+	Summary           string                      `json:"summary"`
+	TokenCount        int                         `json:"token_count"`
+	Console           *ConsoleDiff                `json:"console,omitempty"`
+	Network           *NetworkDiff                `json:"network,omitempty"`
+	WebSocket         *WebSocketDiff              `json:"websocket,omitempty"`
+	Actions           *ActionsDiff                `json:"actions,omitempty"`
 	PerformanceAlerts []gasTypes.PerformanceAlert `json:"performance_alerts,omitempty"`
 }
 
@@ -246,98 +246,102 @@ func (cm *CheckpointManager) GetChangesSince(params GetChangesSinceParams, clien
 	defer cm.mu.Unlock()
 
 	now := time.Now()
-	isNamedQuery := false
+	cp, isNamedQuery := cm.resolveCheckpoint(params.Checkpoint, clientID, now)
 
-	// Build the namespaced checkpoint name for lookup
-	namespacedCheckpoint := params.Checkpoint
-	if params.Checkpoint != "" && clientID != "" {
-		namespacedCheckpoint = clientID + ":" + params.Checkpoint
+	resp := cm.computeDiffs(cp, params, now)
+	cm.applySeverityFilter(&resp, params.Severity)
+	cm.pruneEmptyDiffs(&resp)
+	cm.attachAlerts(&resp, cp.AlertDelivery)
+
+	// Calculate token count
+	// Error impossible: result structure contains only serializable types
+	jsonBytes, _ := json.Marshal(resp)
+	resp.TokenCount = len(jsonBytes) / 4
+
+	// Advance auto-checkpoint (only for auto-mode queries)
+	if !isNamedQuery {
+		cm.markAlertsDelivered()
+		cm.autoCheckpoint = cm.snapshotNow()
+		cm.autoCheckpoint.KnownEndpoints = cm.buildKnownEndpoints(cp.KnownEndpoints)
+		cm.autoCheckpoint.AlertDelivery = cm.alertDelivery
 	}
 
-	// Resolve checkpoint
-	var cp *Checkpoint
-	if params.Checkpoint == "" {
-		// Auto-checkpoint mode
-		if cm.autoCheckpoint == nil {
-			// First call: create checkpoint at buffer start
-			cp = &Checkpoint{
-				CreatedAt:      now,
-				LogTotal:       0,
-				NetworkTotal:   0,
-				WSTotal:        0,
-				ActionTotal:    0,
-				KnownEndpoints: make(map[string]endpointState),
-			}
-		} else {
-			cp = cm.autoCheckpoint
-		}
-	} else if named, ok := cm.namedCheckpoints[namespacedCheckpoint]; ok {
-		// Named checkpoint (with client namespace)
-		cp = named
-		isNamedQuery = true
-	} else if named, ok := cm.namedCheckpoints[params.Checkpoint]; ok {
-		// Fall back to global checkpoint (backwards compatibility)
-		cp = named
-		isNamedQuery = true
-	} else {
-		// Try parsing as timestamp
-		cp = cm.resolveTimestampCheckpoint(params.Checkpoint)
-		if cp == nil {
-			// Unknown checkpoint, treat as beginning
-			cp = &Checkpoint{
-				CreatedAt:      now,
-				KnownEndpoints: make(map[string]endpointState),
-			}
-		}
-		isNamedQuery = true // timestamp queries don't advance auto-checkpoint
+	return resp
+}
+
+// resolveCheckpoint resolves a checkpoint reference to a Checkpoint struct.
+// Returns the checkpoint and whether this is a named (non-auto) query.
+func (cm *CheckpointManager) resolveCheckpoint(name, clientID string, now time.Time) (*Checkpoint, bool) {
+	if name == "" {
+		return cm.resolveAutoCheckpoint(now), false
 	}
 
-	// Compute diffs
+	namespacedName := name
+	if clientID != "" {
+		namespacedName = clientID + ":" + name
+	}
+
+	if named, ok := cm.namedCheckpoints[namespacedName]; ok {
+		return named, true
+	}
+	if named, ok := cm.namedCheckpoints[name]; ok {
+		return named, true
+	}
+	if cp := cm.resolveTimestampCheckpoint(name); cp != nil {
+		return cp, true
+	}
+	return &Checkpoint{CreatedAt: now, KnownEndpoints: make(map[string]endpointState)}, true
+}
+
+// resolveAutoCheckpoint returns the auto-checkpoint, or creates one at buffer start.
+func (cm *CheckpointManager) resolveAutoCheckpoint(now time.Time) *Checkpoint {
+	if cm.autoCheckpoint != nil {
+		return cm.autoCheckpoint
+	}
+	return &Checkpoint{
+		CreatedAt:      now,
+		KnownEndpoints: make(map[string]endpointState),
+	}
+}
+
+// computeDiffs computes all category diffs for the given checkpoint and params.
+func (cm *CheckpointManager) computeDiffs(cp *Checkpoint, params GetChangesSinceParams, now time.Time) DiffResponse {
 	resp := DiffResponse{
-		From: cp.CreatedAt,
-		To:   now,
+		From:       cp.CreatedAt,
+		To:         now,
+		DurationMs: now.Sub(cp.CreatedAt).Milliseconds(),
 	}
-	resp.DurationMs = now.Sub(cp.CreatedAt).Milliseconds()
-
-	// Determine which categories to include
-	includeConsole := cm.shouldInclude(params.Include, "console")
-	includeNetwork := cm.shouldInclude(params.Include, "network")
-	includeWS := cm.shouldInclude(params.Include, "websocket")
-	includeActions := cm.shouldInclude(params.Include, "actions")
-
-	// Compute each category's diff
-	if includeConsole {
+	if cm.shouldInclude(params.Include, "console") {
 		resp.Console = cm.computeConsoleDiff(cp, params.Severity)
 	}
-	if includeNetwork {
+	if cm.shouldInclude(params.Include, "network") {
 		resp.Network = cm.computeNetworkDiff(cp)
 	}
-	if includeWS {
+	if cm.shouldInclude(params.Include, "websocket") {
 		resp.WebSocket = cm.computeWebSocketDiff(cp, params.Severity)
 	}
-	if includeActions {
+	if cm.shouldInclude(params.Include, "actions") {
 		resp.Actions = cm.computeActionsDiff(cp)
 	}
+	return resp
+}
 
-	// Apply severity filter to overall response
-	if params.Severity == "errors_only" {
-		// Remove warning-level categories
+// applySeverityFilter applies severity-level filtering and computes summary.
+func (cm *CheckpointManager) applySeverityFilter(resp *DiffResponse, severity string) {
+	if severity == "errors_only" {
 		if resp.Console != nil {
 			resp.Console.Warnings = nil
 		}
-		// WebSocket: only keep if there are actual errors (not just disconnections/connections)
 		if resp.WebSocket != nil && len(resp.WebSocket.Errors) == 0 {
 			resp.WebSocket = nil
 		}
 	}
+	resp.Severity = cm.determineSeverity(*resp)
+	resp.Summary = cm.buildSummary(*resp)
+}
 
-	// Determine overall severity
-	resp.Severity = cm.determineSeverity(resp)
-
-	// Build summary
-	resp.Summary = cm.buildSummary(resp)
-
-	// Nil out empty diffs
+// pruneEmptyDiffs nils out diff categories that contain no data.
+func (cm *CheckpointManager) pruneEmptyDiffs(resp *DiffResponse) {
 	if resp.Console != nil && resp.Console.TotalNew == 0 {
 		resp.Console = nil
 	}
@@ -350,29 +354,14 @@ func (cm *CheckpointManager) GetChangesSince(params GetChangesSinceParams, clien
 	if resp.Actions != nil && resp.Actions.TotalNew == 0 {
 		resp.Actions = nil
 	}
+}
 
-	// Include performance alerts
-	alerts := cm.getPendingAlerts(cp.AlertDelivery)
+// attachAlerts appends pending performance alerts to the response.
+func (cm *CheckpointManager) attachAlerts(resp *DiffResponse, checkpointDelivery int64) {
+	alerts := cm.getPendingAlerts(checkpointDelivery)
 	if len(alerts) > 0 {
 		resp.PerformanceAlerts = alerts
 	}
-
-	// Calculate token count
-	// Error impossible: result structure contains only serializable types
-	jsonBytes, _ := json.Marshal(resp)
-	resp.TokenCount = len(jsonBytes) / 4
-
-	// Advance auto-checkpoint (only for auto-mode queries)
-	if !isNamedQuery {
-		// Mark alerts as delivered so they will not appear on next poll
-		cm.markAlertsDelivered()
-		cm.autoCheckpoint = cm.snapshotNow()
-		// Update known endpoints from current network state
-		cm.autoCheckpoint.KnownEndpoints = cm.buildKnownEndpoints(cp.KnownEndpoints)
-		cm.autoCheckpoint.AlertDelivery = cm.alertDelivery
-	}
-
-	return resp
 }
 
 // ============================================

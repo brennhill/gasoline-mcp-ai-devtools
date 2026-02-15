@@ -24,10 +24,10 @@ func TestBufferCursor_TypeCorrectness(t *testing.T) {
 		}
 
 		// Verify Position is int64 (not any)
-		var _ int64 = cursor.Position
+		var _ = cursor.Position
 
 		// Verify Timestamp is time.Time (not any)
-		var _ time.Time = cursor.Timestamp
+		var _ = cursor.Timestamp
 
 		if cursor.Position != 42 {
 			t.Errorf("Expected Position 42, got %d", cursor.Position)
@@ -62,7 +62,7 @@ func TestRingBuffer_GenericTypeSafety(t *testing.T) {
 		entries := rb.ReadAll()
 		for i, entry := range entries {
 			// entry should be int, not any
-			var _ int = entry
+			var _ = entry
 
 			expected := i + 1
 			if entry != expected {
@@ -79,7 +79,7 @@ func TestRingBuffer_GenericTypeSafety(t *testing.T) {
 		entries := rb.ReadAll()
 		for _, entry := range entries {
 			// entry should be string, not any
-			var _ string = entry
+			var _ = entry
 
 			if entry == "" {
 				t.Error("Entry should not be empty")
@@ -103,7 +103,7 @@ func TestRingBuffer_GenericTypeSafety(t *testing.T) {
 		entries := rb.ReadAll()
 		for i, entry := range entries {
 			// entry should be TestEntry, not any
-			var _ TestEntry = entry
+			var _ = entry
 
 			if entry.ID != i+1 {
 				t.Errorf("Entry %d: expected ID %d, got %d", i, i+1, entry.ID)
@@ -126,10 +126,10 @@ func TestRingBuffer_ReadFromTypeSafety(t *testing.T) {
 		entries, cursor := rb.ReadFrom(BufferCursor{Position: 0})
 
 		// entries should be []int, not []any
-		var _ []int = entries
+		var _ = entries
 
 		// cursor should be BufferCursor
-		var _ BufferCursor = cursor
+		var _ = cursor
 
 		if len(entries) != 3 {
 			t.Errorf("Expected 3 entries, got %d", len(entries))
@@ -148,10 +148,10 @@ func TestRingBuffer_ReadFromTypeSafety(t *testing.T) {
 		entries, cursor := rb.ReadFromWithFilter(BufferCursor{}, even, 0)
 
 		// entries should be []int
-		var _ []int = entries
+		var _ = entries
 
 		// cursor should be BufferCursor
-		var _ BufferCursor = cursor
+		var _ = cursor
 
 		if len(entries) != 2 {
 			t.Errorf("Expected 2 even entries, got %d", len(entries))
@@ -185,7 +185,7 @@ func TestRingBuffer_OperationsAfterRefactoring(t *testing.T) {
 		last2 := rb.ReadLast(2)
 
 		// last2 should be []string
-		var _ []string = last2
+		var _ = last2
 
 		if len(last2) != 2 {
 			t.Errorf("Expected 2 entries, got %d", len(last2))
@@ -203,7 +203,7 @@ func TestRingBuffer_OperationsAfterRefactoring(t *testing.T) {
 		results := rb.ReadAllWithFilter(greaterThan3, 0)
 
 		// results should be []int
-		var _ []int = results
+		var _ = results
 
 		if len(results) != 2 {
 			t.Errorf("Expected 2 results > 3, got %d", len(results))
@@ -228,7 +228,7 @@ func TestRingBuffer_CursorContinuityAfterRefactoring(t *testing.T) {
 		_, cursor := rb.ReadFrom(BufferCursor{Position: 0})
 
 		// cursor.Position should be int64, not any
-		var _ int64 = cursor.Position
+		var _ = cursor.Position
 
 		if cursor.Position != 5 {
 			t.Errorf("Expected cursor position 5, got %d", cursor.Position)
@@ -244,7 +244,7 @@ func TestRingBuffer_CursorContinuityAfterRefactoring(t *testing.T) {
 		entries, cursor := rb.ReadFrom(BufferCursor{Position: 0})
 
 		// entries should be []int
-		var _ []int = entries
+		var _ = entries
 
 		if len(entries) != 3 {
 			t.Errorf("Expected 3 entries, got %d", len(entries))

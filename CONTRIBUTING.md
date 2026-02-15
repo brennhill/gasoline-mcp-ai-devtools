@@ -62,9 +62,46 @@ make test
 - 💬 [GitHub Discussions](https://github.com/brennhill/gasoline-mcp-ai-devtools/discussions)
 - 🐛 [Issues](https://github.com/brennhill/gasoline-mcp-ai-devtools/issues)
 
-## License
+## Developer Certificate of Origin (DCO)
 
-By contributing, you agree your code is licensed under AGPL-3.0.
+All contributions require a DCO sign-off. Every commit in your pull request must
+include a `Signed-off-by` line certifying that you wrote the code (or have the
+right to submit it) and agree to the terms below. This is enforced by CI.
+
+Sign off by adding `-s` to your commits:
+
+```bash
+git commit -s -m "Your commit message"
+```
+
+To fix existing commits:
+
+```bash
+git rebase --signoff HEAD~N    # sign-off the last N commits
+```
+
+The sign-off certifies the [Developer Certificate of Origin (v1.1)](https://developercertificate.org/).
+
+## Intellectual Property and License
+
+By submitting a contribution (including, without limitation, any code, documentation,
+or other materials) to this project, you hereby irrevocably assign to Brenn Hill all
+right, title, and interest worldwide in and to such contribution, including all
+intellectual property rights therein. You acknowledge and agree that Brenn Hill shall
+have the unrestricted right to use, reproduce, modify, distribute, sublicense, and
+otherwise exploit the contribution in any manner and for any purpose, under any license
+terms Brenn Hill may select, at his sole discretion.
+
+You represent and warrant that: (a) you are the sole author of the contribution and
+have the legal right to make the foregoing assignment; (b) the contribution does not
+infringe upon the intellectual property rights of any third party; and (c) if the
+contribution was created in the course of employment, you have obtained any necessary
+permissions from your employer to make this assignment.
+
+The DCO sign-off on each commit constitutes your acceptance of these terms. The project
+is currently distributed under the AGPL-3.0 license. Nothing in this section limits
+Brenn Hill's right to relicense, dual-license, or otherwise change the licensing terms
+of the project or any contribution at any time.
 
 ---
 
