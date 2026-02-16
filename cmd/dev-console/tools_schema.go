@@ -135,6 +135,13 @@ func (h *ToolHandler) ToolsList() []MCPTool {
 							{"type": "number"},
 						},
 					},
+					"pierce_shadow": map[string]any{
+						"description": "Shadow DOM traversal mode for dom queries: true, false, or \"auto\"",
+						"oneOf": []map[string]any{
+							{"type": "boolean"},
+							{"type": "string", "enum": []string{"auto"}},
+						},
+					},
 					"sync": map[string]any{
 						"type":        "boolean",
 						"description": "Wait for result (default: true).",

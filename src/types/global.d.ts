@@ -179,6 +179,9 @@ declare global {
 
     /** Early-patch: buffered WebSocket connections created before inject script loaded */
     __GASOLINE_EARLY_WS__?: EarlyWsConnection[]
+
+    /** Early-patch: captured closed shadow roots (host -> ShadowRoot) */
+    __GASOLINE_CLOSED_SHADOWS__?: WeakMap<Element, ShadowRoot>
   }
 }
 

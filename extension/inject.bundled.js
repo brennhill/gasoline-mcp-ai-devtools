@@ -2288,9 +2288,86 @@ function resetForTesting() {
 }
 
 // extension/lib/dom-queries.js
+function normalizePierceShadowParam(value) {
+  if (value === true)
+    return true;
+  if (value === false)
+    return false;
+  if (typeof value === "string") {
+    const normalized = value.trim().toLowerCase();
+    if (normalized === "true")
+      return true;
+    if (normalized === "false")
+      return false;
+  }
+  return false;
+}
+function getClosedShadowRoot(host) {
+  const closedMap = window.__GASOLINE_CLOSED_SHADOWS__;
+  if (!closedMap)
+    return null;
+  try {
+    return closedMap.get(host) ?? null;
+  } catch {
+    return null;
+  }
+}
+function collectHostElements(root) {
+  const out = [];
+  const stack = Array.from(root.children);
+  while (stack.length > 0) {
+    const el = stack.pop();
+    if (!el)
+      continue;
+    out.push(el);
+    if (el.children.length > 0) {
+      stack.push(...Array.from(el.children));
+    }
+  }
+  return out;
+}
+function querySelectorAllAcrossShadowRoots(selector) {
+  const visitedRoots = /* @__PURE__ */ new Set();
+  const seenMatches = /* @__PURE__ */ new Set();
+  const queue = [document];
+  const matches = [];
+  while (queue.length > 0) {
+    const root = queue.shift();
+    if (!root || visitedRoots.has(root))
+      continue;
+    visitedRoots.add(root);
+    const rootMatches = root.querySelectorAll(selector);
+    for (const el of rootMatches) {
+      if (seenMatches.has(el))
+        continue;
+      seenMatches.add(el);
+      matches.push(el);
+    }
+    const hosts = collectHostElements(root);
+    for (const host of hosts) {
+      const openRoot = host.shadowRoot;
+      if (openRoot && !visitedRoots.has(openRoot)) {
+        queue.push(openRoot);
+      }
+      const closedRoot = getClosedShadowRoot(host);
+      if (closedRoot && !visitedRoots.has(closedRoot)) {
+        queue.push(closedRoot);
+      }
+    }
+  }
+  return matches;
+}
+function selectElements(params) {
+  const selector = params.selector;
+  const pierceShadow = normalizePierceShadowParam(params.pierce_shadow);
+  if (!pierceShadow) {
+    return Array.from(document.querySelectorAll(selector));
+  }
+  return querySelectorAllAcrossShadowRoots(selector);
+}
 async function executeDOMQuery(params) {
-  const { selector, include_styles, properties, include_children, max_depth } = params;
-  const elements = document.querySelectorAll(selector);
+  const { include_styles, properties, include_children, max_depth } = params;
+  const elements = selectElements(params);
   const matchCount = elements.length;
   const cappedDepth = Math.min(max_depth || 3, DOM_QUERY_MAX_DEPTH);
   const matches = [];

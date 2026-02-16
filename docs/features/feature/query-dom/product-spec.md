@@ -6,7 +6,7 @@ tool: configure
 mode: query_dom
 authors: []
 created: 2026-01-28
-updated: 2026-01-28
+updated: 2026-02-16
 ---
 
 # Query DOM
@@ -60,6 +60,19 @@ No new server code is required. No new extension library code is required. The e
 | `action` | string | yes | Must be `"query_dom"` |
 | `selector` | string | yes | CSS selector to query (passed to `querySelectorAll`) |
 | `tab_id` | number | no | Target tab ID. If omitted, uses the currently tracked tab |
+| `pierce_shadow` | boolean \| "auto" | no | Shadow traversal mode: `true`, `false`, or `"auto"` |
+
+### `pierce_shadow` Semantics
+
+- `true`: traverse open and captured closed shadow roots.
+- `false`: light DOM only.
+- `"auto"`: background resolves to boolean using active debug intent heuristic.
+
+Active debug intent requires:
+
+1. AI Web Pilot enabled.
+2. Target tab is the tracked debug tab.
+3. Target tab origin matches tracked tab origin.
 
 ### Response (matches found)
 

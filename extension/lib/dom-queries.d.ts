@@ -9,6 +9,7 @@ export interface DOMQueryParams {
     properties?: string[];
     include_children?: boolean;
     max_depth?: number;
+    pierce_shadow?: boolean | 'auto';
 }
 interface BoundingBox {
     x: number;

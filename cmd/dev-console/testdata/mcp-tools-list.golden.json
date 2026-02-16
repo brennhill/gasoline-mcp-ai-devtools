@@ -229,6 +229,20 @@
           ],
           "type": "string"
         },
+        "pierce_shadow": {
+          "description": "Shadow DOM traversal mode for dom queries: true, false, or \"auto\"",
+          "oneOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "enum": [
+                "auto"
+              ],
+              "type": "string"
+            }
+          ]
+        },
         "scope": {
           "description": "CSS selector scope (accessibility)",
           "type": "string"
