@@ -562,6 +562,58 @@ describe('actions work on shadow DOM elements', () => {
 })
 
 // ===========================================================================
+// Phase 8: Closed shadow root capture via early-patch
+// ===========================================================================
+
+describe('closed shadow root capture', () => {
+  test('getShadowRoot finds element inside closed shadow root via WeakMap', () => {
+    const closedRoots = new WeakMap()
+    globalThis.window = globalThis.window || globalThis
+    globalThis.window.__GASOLINE_CLOSED_SHADOWS__ = closedRoots
+
+    const { comp1, shadow1 } = setupShadowDocument()
+
+    const closedHost = new MockHTMLElement('closed-comp', { id: 'closed-host' })
+    const closedShadow = new MockShadowRoot(closedHost, 'closed')
+    closedHost.shadowRoot = null
+    closedRoots.set(closedHost, closedShadow)
+
+    const closedBtn = new MockHTMLElement('button', { id: 'closed-btn', textContent: 'Closed Button' })
+    addToShadow(closedShadow, closedBtn, ['button', '#closed-btn'])
+
+    const origBody = globalThis.document.body
+    const origChildren = [...origBody.children, closedHost]
+    globalThis.document.body = {
+      ...origBody,
+      children: origChildren,
+      get childElementCount() { return origChildren.length },
+      querySelectorAll: origBody.querySelectorAll
+    }
+    globalThis.document.documentElement = {
+      children: origChildren,
+      get childElementCount() { return origChildren.length }
+    }
+
+    const result = domPrimitive('get_text', '#closed-btn', {})
+    assert.strictEqual(result.success, true, 'Should find element inside closed shadow root')
+    assert.ok(
+      String(result.value).includes('Closed Button'),
+      `Should get closed button text, got: ${result.value}`
+    )
+
+    delete globalThis.window.__GASOLINE_CLOSED_SHADOWS__
+  })
+
+  test('closed root is ignored when WeakMap not present', () => {
+    delete globalThis.window?.__GASOLINE_CLOSED_SHADOWS__
+    setupShadowDocument()
+
+    const result = domPrimitive('get_text', '#closed-btn', {})
+    assert.strictEqual(result.success, false, 'Should not find element without WeakMap')
+  })
+})
+
+// ===========================================================================
 // Regression: existing behavior preserved
 // ===========================================================================
 

@@ -59,8 +59,9 @@ export function domPrimitive(
   // ---------------------------------------------------------------
 
   function getShadowRoot(el: Element): ShadowRoot | null {
-    return el.shadowRoot ?? null
-    // Closed root support: see feat/closed-shadow-capture branch
+    if (el.shadowRoot) return el.shadowRoot
+    const closed = (globalThis as unknown as Window).__GASOLINE_CLOSED_SHADOWS__
+    return closed?.get(el) ?? null
   }
 
   function querySelectorDeep(selector: string, root: ParentNode = document): Element | null {
@@ -461,8 +462,18 @@ export function domPrimitive(
               selection.deleteFromDocument()
             }
           }
-          document.execCommand('insertText', false, text)
-          return { success: true, action, selector, value: el.textContent }
+          // Split on newlines — each \n becomes an insertParagraph command
+          const lines = text.split('\n')
+          for (let i = 0; i < lines.length; i++) {
+            const line = lines[i]!
+            if (line.length > 0) {
+              document.execCommand('insertText', false, line)
+            }
+            if (i < lines.length - 1) {
+              document.execCommand('insertParagraph', false)
+            }
+          }
+          return { success: true, action, selector, value: el.innerText }
         }
 
         if (!(el instanceof HTMLInputElement) && !(el instanceof HTMLTextAreaElement)) {
@@ -530,7 +541,8 @@ export function domPrimitive(
     }
 
     case 'get_text': {
-      return { success: true, action, selector, value: el.textContent }
+      const text = el instanceof HTMLElement ? el.innerText : el.textContent
+      return { success: true, action, selector, value: text }
     }
 
     case 'get_value': {
@@ -554,6 +566,34 @@ export function domPrimitive(
       return withMutationTracking(() => {
         el.setAttribute(options.name || '', options.value || '')
         return { success: true, action, selector, value: el.getAttribute(options.name || '') }
+      })
+    }
+
+    case 'paste': {
+      return withMutationTracking(() => {
+        if (!(el instanceof HTMLElement)) {
+          return {
+            success: false,
+            action,
+            selector,
+            error: 'not_interactive',
+            message: `Element is not an HTMLElement: ${el.tagName}`
+          }
+        }
+        el.focus()
+        if (options.clear) {
+          const selection = document.getSelection()
+          if (selection) {
+            selection.selectAllChildren(el)
+            selection.deleteFromDocument()
+          }
+        }
+        const pasteText = options.text || ''
+        const dt = new DataTransfer()
+        dt.setData('text/plain', pasteText)
+        const event = new ClipboardEvent('paste', { clipboardData: dt, bubbles: true, cancelable: true })
+        el.dispatchEvent(event)
+        return { success: true, action, selector, value: el.innerText }
       })
     }
 
@@ -652,8 +692,9 @@ export function domWaitFor(selector: string, timeoutMs: number): Promise<DOMResu
   // #lizard forgives
 
   function getShadowRoot(el: Element): ShadowRoot | null {
-    return el.shadowRoot ?? null
-    // Closed root support: see feat/closed-shadow-capture branch
+    if (el.shadowRoot) return el.shadowRoot
+    const closed = (globalThis as unknown as Window).__GASOLINE_CLOSED_SHADOWS__
+    return closed?.get(el) ?? null
   }
 
   function querySelectorDeepWalk(sel: string, root: ParentNode, depth = 0): Element | null {
