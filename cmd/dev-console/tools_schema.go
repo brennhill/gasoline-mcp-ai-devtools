@@ -490,7 +490,7 @@ func (h *ToolHandler) ToolsList() []MCPTool {
 							"execute_js", "navigate", "refresh", "back", "forward", "new_tab", "screenshot",
 							"click", "type", "select", "check",
 							"get_text", "get_value", "get_attribute",
-							"set_attribute", "focus", "scroll_to", "wait_for", "key_press",
+							"set_attribute", "focus", "scroll_to", "wait_for", "key_press", "paste",
 							"list_interactive",
 							"record_start", "record_stop",
 							"upload", "draw_mode_start",

@@ -26,6 +26,7 @@ func TestDOMPrimitive_MissingSelector(t *testing.T) {
 	}{
 		{"click", `{"action":"click"}`},
 		{"type", `{"action":"type","text":"hello"}`},
+		{"paste", `{"action":"paste","text":"hello"}`},
 		{"select", `{"action":"select","value":"opt1"}`},
 		{"check", `{"action":"check"}`},
 		{"get_text", `{"action":"get_text"}`},
@@ -157,6 +158,7 @@ func TestDOMPrimitive_AllActions_PilotDisabled(t *testing.T) {
 	}{
 		{"click", `{"action":"click","selector":"#btn"}`},
 		{"type", `{"action":"type","selector":"#input","text":"hello"}`},
+		{"paste", `{"action":"paste","selector":"#editor","text":"hello"}`},
 		{"select", `{"action":"select","selector":"#dropdown","value":"opt1"}`},
 		{"check", `{"action":"check","selector":"#checkbox"}`},
 		{"get_text", `{"action":"get_text","selector":"#el"}`},
@@ -228,6 +230,70 @@ func TestDOMPrimitive_ListInteractive_NoSelectorNeeded(t *testing.T) {
 }
 
 // ============================================
+// Parameter Validation: paste action
+// ============================================
+
+func TestDOMPrimitive_Paste_MissingText(t *testing.T) {
+	env := newInteractTestEnv(t)
+
+	result, ok := env.callInteract(t, `{"action":"paste","selector":"#editor"}`)
+	if !ok {
+		t.Fatal("paste without text should return result")
+	}
+
+	if !result.IsError {
+		t.Error("paste without text MUST return isError:true")
+	}
+
+	if len(result.Content) > 0 {
+		text := strings.ToLower(result.Content[0].Text)
+		if !strings.Contains(text, "text") {
+			t.Errorf("error should mention text parameter\nGot: %s", result.Content[0].Text)
+		}
+	}
+}
+
+func TestDOMPrimitive_Paste_MissingSelector(t *testing.T) {
+	env := newInteractTestEnv(t)
+
+	result, ok := env.callInteract(t, `{"action":"paste","text":"hello"}`)
+	if !ok {
+		t.Fatal("paste without selector should return result")
+	}
+
+	if !result.IsError {
+		t.Error("paste without selector MUST return isError:true")
+	}
+
+	if len(result.Content) > 0 {
+		text := strings.ToLower(result.Content[0].Text)
+		if !strings.Contains(text, "selector") {
+			t.Errorf("error should mention selector\nGot: %s", result.Content[0].Text)
+		}
+	}
+}
+
+func TestDOMPrimitive_Paste_PilotDisabled(t *testing.T) {
+	env := newInteractTestEnv(t)
+
+	result, ok := env.callInteract(t, `{"action":"paste","selector":"#editor","text":"hello"}`)
+	if !ok {
+		t.Fatal("paste should return result")
+	}
+
+	if !result.IsError {
+		t.Error("paste with pilot disabled should return isError:true")
+	}
+
+	if len(result.Content) > 0 {
+		text := strings.ToLower(result.Content[0].Text)
+		if !strings.Contains(text, "pilot") {
+			t.Errorf("paste error should mention pilot\nGot: %s", result.Content[0].Text)
+		}
+	}
+}
+
+// ============================================
 // Safety Net: All DOM actions don't panic
 // ============================================
 
@@ -240,6 +306,7 @@ func TestDOMPrimitive_AllActions_NoPanic(t *testing.T) {
 	}{
 		{"click", `{"action":"click","selector":"#btn"}`},
 		{"type", `{"action":"type","selector":"#input","text":"hello"}`},
+		{"paste", `{"action":"paste","selector":"#editor","text":"hello"}`},
 		{"select", `{"action":"select","selector":"#dropdown","value":"opt1"}`},
 		{"check", `{"action":"check","selector":"#checkbox"}`},
 		{"get_text", `{"action":"get_text","selector":"#el"}`},
