@@ -286,11 +286,12 @@ function render(d) {
   if (cmds.length === 0) {
     document.getElementById('commands').innerHTML = '<div class="empty">No MCP commands yet</div>';
   } else {
-    let html = '<table><tr><th>Time</th><th>Endpoint</th><th>Status</th><th>Duration</th></tr>';
+    let html = '<table><tr><th>Time</th><th>Tool</th><th>Parameters</th><th>Status</th><th>Duration</th></tr>';
     for (const c of cmds) {
       const statusCls = c.status < 400 ? 'status-ok' : 'status-err';
       html += '<tr><td>' + ago(c.timestamp) + '</td>' +
-        '<td class="mono">' + esc(c.method + ' ' + c.endpoint) + '</td>' +
+        '<td class="mono">' + esc(c.tool) + '</td>' +
+        '<td class="mono">' + esc(c.params) + '</td>' +
         '<td class="' + statusCls + '">' + c.status + '</td>' +
         '<td class="mono">' + (c.duration_ms || 0) + 'ms</td></tr>';
     }
