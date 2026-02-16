@@ -89,6 +89,7 @@ type SyncCommand struct {
 	ID            string          `json:"id"`
 	Type          string          `json:"type"`
 	Params        json.RawMessage `json:"params"`
+	TabID         int             `json:"tab_id,omitempty"`
 	CorrelationID string          `json:"correlation_id,omitempty"`
 }
 
@@ -196,6 +197,7 @@ func buildSyncCommands(pending []queries.PendingQueryResponse) []SyncCommand {
 			ID:            q.ID,
 			Type:          q.Type,
 			Params:        q.Params,
+			TabID:         q.TabID,
 			CorrelationID: q.CorrelationID,
 		}
 	}

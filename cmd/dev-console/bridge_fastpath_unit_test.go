@@ -300,6 +300,54 @@ func TestBridgeServerHealthHelpers(t *testing.T) {
 	}
 }
 
+func TestCheckDaemonStatus_HealsReadyFlagFromHealth(t *testing.T) {
+	t.Parallel()
+
+	mux := http.NewServeMux()
+	mux.HandleFunc("/health", func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		_, _ = io.WriteString(w, `{"status":"ok","service-name":"gasoline","version":"1.0.0"}`)
+	})
+
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatalf("net.Listen error = %v", err)
+	}
+	port := ln.Addr().(*net.TCPAddr).Port
+	srv := &http.Server{Handler: mux}
+	go func() { _ = srv.Serve(ln) }()
+	t.Cleanup(func() {
+		_ = srv.Close()
+	})
+
+	state := &daemonState{
+		port:     port,
+		ready:    false,
+		failed:   true,
+		err:      "stale failure",
+		readyCh:  make(chan struct{}),
+		failedCh: make(chan struct{}),
+	}
+	req := JSONRPCRequest{Method: "tools/call"}
+
+	status := checkDaemonStatus(state, req, 7890)
+	if status != "" {
+		t.Fatalf("checkDaemonStatus() = %q, want empty status", status)
+	}
+
+	state.mu.Lock()
+	defer state.mu.Unlock()
+	if !state.ready {
+		t.Fatal("expected state.ready to be healed to true")
+	}
+	if state.failed {
+		t.Fatal("expected state.failed to be cleared")
+	}
+	if state.err != "" {
+		t.Fatalf("expected state.err to be cleared, got %q", state.err)
+	}
+}
+
 func TestRunningServerVersionCompatible(t *testing.T) {
 	t.Parallel()
 

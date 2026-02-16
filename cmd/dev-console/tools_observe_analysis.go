@@ -663,6 +663,16 @@ func (h *ToolHandler) formatCommandResult(req JSONRPCRequest, cmd queries.Comman
 	switch cmd.Status {
 	case "complete":
 		return h.formatCompleteCommand(req, cmd, corrID, responseData)
+	case "error":
+		if cmd.Error == "" {
+			cmd.Error = "Command failed in extension"
+		}
+		responseData["error"] = cmd.Error
+		if len(cmd.Result) > 0 {
+			responseData["result"] = cmd.Result
+		}
+		summary := fmt.Sprintf("FAILED — Command %s error: %s", corrID, cmd.Error)
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONErrorResponse(summary, responseData)}
 	case "expired":
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(
 			ErrExtTimeout,
@@ -688,16 +698,8 @@ func (h *ToolHandler) formatCompleteCommand(req JSONRPCRequest, cmd queries.Comm
 	responseData["completed_at"] = cmd.CompletedAt.Format(time.RFC3339)
 	responseData["timing_ms"] = cmd.CompletedAt.Sub(cmd.CreatedAt).Milliseconds()
 
-	// Surface analyze enrichment fields from extension result to top level
-	if len(cmd.Result) > 0 {
-		var extResult map[string]any
-		if json.Unmarshal(cmd.Result, &extResult) == nil {
-			for _, key := range []string{"timing", "dom_changes", "analysis"} {
-				if v, ok := extResult[key]; ok {
-					responseData[key] = v
-				}
-			}
-		}
+	if embeddedErr, hasEmbeddedErr := enrichCommandResponseData(cmd.Result, responseData); cmd.Error == "" && hasEmbeddedErr {
+		cmd.Error = embeddedErr
 	}
 
 	if beforeSnap, ok := h.capture.GetAndDeleteBeforeSnapshot(corrID); ok {
@@ -716,6 +718,51 @@ func (h *ToolHandler) formatCompleteCommand(req JSONRPCRequest, cmd queries.Comm
 
 	summary := fmt.Sprintf("Command %s: complete", corrID)
 	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse(summary, responseData)}
+}
+
+func enrichCommandResponseData(result json.RawMessage, responseData map[string]any) (embeddedErr string, hasEmbeddedErr bool) {
+	if len(result) == 0 {
+		return "", false
+	}
+
+	var extResult map[string]any
+	if err := json.Unmarshal(result, &extResult); err != nil {
+		return "", false
+	}
+
+	// Surface extension enrichment fields to top-level for easier LLM consumption.
+	for _, key := range []string{"timing", "dom_changes", "analysis", "resolved_tab_id", "resolved_url", "target_context"} {
+		if v, ok := extResult[key]; ok {
+			responseData[key] = v
+		}
+	}
+
+	if success, ok := extResult["success"].(bool); ok && !success {
+		msg := embeddedCommandError(extResult)
+		if msg == "" {
+			msg = "Command reported success=false"
+		}
+		return msg, true
+	}
+
+	if _, ok := extResult["error"]; ok {
+		msg := embeddedCommandError(extResult)
+		if msg != "" {
+			return msg, true
+		}
+	}
+
+	return "", false
+}
+
+func embeddedCommandError(extResult map[string]any) string {
+	if msg, ok := extResult["error"].(string); ok && msg != "" {
+		return msg
+	}
+	if msg, ok := extResult["message"].(string); ok && msg != "" {
+		return msg
+	}
+	return ""
 }
 
 // toolObservePendingCommands lists all pending, completed, and failed async commands.

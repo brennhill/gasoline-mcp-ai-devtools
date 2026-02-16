@@ -122,6 +122,232 @@ function actionToast(
     .catch(() => {})
 }
 
+type QueryParamsObject = Record<string, unknown>
+type TargetResolutionSource = 'explicit_tab' | 'tracked_tab' | 'active_tab'
+
+interface TargetResolution {
+  tabId: number
+  url: string
+  source: TargetResolutionSource
+  requestedTabId?: number
+  trackedTabId?: number | null
+  useActiveTab: boolean
+}
+
+interface TargetResolutionError {
+  payload: Record<string, unknown>
+  message: string
+}
+
+const TARGETED_QUERY_TYPES = new Set<string>([
+  'subtitle',
+  'screenshot',
+  'browser_action',
+  'highlight',
+  'page_info',
+  'waterfall',
+  'dom',
+  'a11y',
+  'dom_action',
+  'upload',
+  'record_start',
+  'execute',
+  'link_health',
+  'draw_mode'
+])
+
+function requiresTargetTab(queryType: string): boolean {
+  return TARGETED_QUERY_TYPES.has(queryType)
+}
+
+function parseQueryParamsObject(params: PendingQuery['params']): QueryParamsObject {
+  if (typeof params === 'string') {
+    try {
+      const parsed = JSON.parse(params)
+      if (parsed && typeof parsed === 'object') {
+        return parsed as QueryParamsObject
+      }
+    } catch {
+      return {}
+    }
+    return {}
+  }
+  if (params && typeof params === 'object') {
+    return params as QueryParamsObject
+  }
+  return {}
+}
+
+function withTargetContext(result: unknown, target: TargetResolution): Record<string, unknown> {
+  const targetContext = {
+    resolved_tab_id: target.tabId,
+    resolved_url: target.url,
+    target_context: {
+      source: target.source,
+      requested_tab_id: target.requestedTabId ?? null,
+      tracked_tab_id: target.trackedTabId ?? null,
+      use_active_tab: target.useActiveTab
+    }
+  }
+
+  if (result && typeof result === 'object' && !Array.isArray(result)) {
+    return {
+      ...(result as Record<string, unknown>),
+      ...targetContext
+    }
+  }
+
+  return {
+    value: result ?? null,
+    ...targetContext
+  }
+}
+
+async function getTabWithRetry(tabId: number, retry = false): Promise<chrome.tabs.Tab | null> {
+  try {
+    return await chrome.tabs.get(tabId)
+  } catch {
+    if (!retry) {
+      return null
+    }
+    await new Promise((r) => setTimeout(r, 300))
+    try {
+      return await chrome.tabs.get(tabId)
+    } catch {
+      return null
+    }
+  }
+}
+
+async function getActiveTab(): Promise<chrome.tabs.Tab | null> {
+  const activeTabs = await chrome.tabs.query({ active: true, currentWindow: true })
+  const tab = activeTabs[0]
+  if (!tab?.id) {
+    return null
+  }
+  return tab
+}
+
+function buildMissingTargetError(queryType: string, useActiveTab: boolean, trackedTabId: number | null): TargetResolutionError {
+  const message =
+    "No target tab resolved. Provide 'tab_id', enable tab tracking, or set 'use_active_tab=true' explicitly."
+  return {
+    message,
+    payload: {
+      success: false,
+      error: 'missing_target',
+      message,
+      query_type: queryType,
+      use_active_tab: useActiveTab,
+      tracked_tab_id: trackedTabId
+    }
+  }
+}
+
+async function resolveTargetTab(query: PendingQuery, paramsObj: QueryParamsObject): Promise<{
+  target?: TargetResolution
+  error?: TargetResolutionError
+}> {
+  const explicitTabId = typeof query.tab_id === 'number' && query.tab_id > 0 ? query.tab_id : undefined
+  const useActiveTab = paramsObj.use_active_tab === true
+
+  if (explicitTabId) {
+    const explicitTab = await getTabWithRetry(explicitTabId)
+    if (!explicitTab?.id) {
+      const message = `Requested tab_id ${explicitTabId} is not available`
+      return {
+        error: {
+          message,
+          payload: {
+            success: false,
+            error: 'target_tab_not_found',
+            message,
+            requested_tab_id: explicitTabId
+          }
+        }
+      }
+    }
+    return {
+      target: {
+        tabId: explicitTab.id,
+        url: explicitTab.url || '',
+        source: 'explicit_tab',
+        requestedTabId: explicitTabId,
+        trackedTabId: null,
+        useActiveTab
+      }
+    }
+  }
+
+  if (useActiveTab) {
+    const activeTab = await getActiveTab()
+    if (!activeTab?.id) {
+      return {
+        error: {
+          message: 'No active tab available',
+          payload: {
+            success: false,
+            error: 'no_active_tab',
+            message: 'No active tab available',
+            use_active_tab: true
+          }
+        }
+      }
+    }
+    return {
+      target: {
+        tabId: activeTab.id,
+        url: activeTab.url || '',
+        source: 'active_tab',
+        trackedTabId: null,
+        useActiveTab
+      }
+    }
+  }
+
+  const storage = await eventListeners.getTrackedTabInfo()
+  const trackedTabId = storage.trackedTabId ?? null
+  if (trackedTabId) {
+    diagnosticLog(`[Diagnostic] Using tracked tab ${trackedTabId} for query ${query.type}`)
+    const trackedTab = await getTabWithRetry(trackedTabId, true)
+    if (trackedTab?.id) {
+      return {
+        target: {
+          tabId: trackedTab.id,
+          url: trackedTab.url || storage.trackedTabUrl || '',
+          source: 'tracked_tab',
+          trackedTabId,
+          useActiveTab
+        }
+      }
+    }
+
+    diagnosticLog(`[Diagnostic] Tracked tab ${trackedTabId} unavailable, clearing tracking state`)
+    eventListeners.clearTrackedTab()
+
+    try {
+      const toastTab = await getActiveTab()
+      if (toastTab?.id) {
+        chrome.tabs
+          .sendMessage(toastTab.id, {
+            type: 'GASOLINE_ACTION_TOAST',
+            text: 'Tracked tab unavailable',
+            detail: "Provide tab_id or use 'use_active_tab=true'",
+            state: 'warning',
+            duration_ms: 5000
+          })
+          .catch(() => {})
+      }
+    } catch {
+      /* best effort */
+    }
+
+    return { error: buildMissingTargetError(query.type, useActiveTab, trackedTabId) }
+  }
+
+  return { error: buildMissingTargetError(query.type, useActiveTab, trackedTabId) }
+}
+
 // =============================================================================
 // PENDING QUERY HANDLING
 // =============================================================================
@@ -136,85 +362,66 @@ export async function handlePendingQuery(query: PendingQuery, syncClient: SyncCl
     correlation_id: query.correlation_id || null,
     hasSyncClient: !!syncClient
   })
+
+  let target: TargetResolution | undefined
+  const wrapResult = (result: unknown): unknown => {
+    if (!target) {
+      return result
+    }
+    return withTargetContext(result, target)
+  }
+  const sendQueryResult = (result: unknown): void => {
+    sendResult(syncClient, query.id, wrapResult(result))
+  }
+  const sendQueryAsyncResult: SendAsyncResultFn = (
+    client,
+    queryId,
+    correlationId,
+    status,
+    result,
+    error
+  ): void => {
+    sendAsyncResult(client, queryId, correlationId, status, wrapResult(result), error)
+  }
+
   try {
     if (query.type.startsWith('state_')) {
       await handleStateQuery(query, syncClient)
       return
     }
 
-    const storage = await eventListeners.getTrackedTabInfo()
-    let tabId: number | undefined
+    const paramsObj = parseQueryParamsObject(query.params)
+    const needsTargetTab = requiresTargetTab(query.type)
 
-    if (storage.trackedTabId) {
-      diagnosticLog(`[Diagnostic] Using tracked tab ${storage.trackedTabId} for query ${query.type}`)
-      try {
-        await chrome.tabs.get(storage.trackedTabId)
-        tabId = storage.trackedTabId
-      } catch {
-        // Retry once after delay — tabs.get can fail transiently during SW wakeup or navigation
-        await new Promise((r) => setTimeout(r, 300))
-        try {
-          await chrome.tabs.get(storage.trackedTabId)
-          tabId = storage.trackedTabId
-          diagnosticLog(`[Diagnostic] Tracked tab ${storage.trackedTabId} recovered on retry`)
-        } catch {
-          diagnosticLog(`[Diagnostic] Tracked tab ${storage.trackedTabId} confirmed gone, clearing tracking`)
-          eventListeners.clearTrackedTab()
-          // Show toast on the active tab so user knows tracking was lost
-          try {
-            const toastTabs = await chrome.tabs.query({ active: true, currentWindow: true })
-            if (toastTabs[0]?.id) {
-              chrome.tabs
-                .sendMessage(toastTabs[0].id, {
-                  type: 'GASOLINE_ACTION_TOAST',
-                  text: 'Tracked tab closed',
-                  detail: 'Re-enable tracking in Gasoline popup',
-                  state: 'warning',
-                  duration_ms: 5000
-                })
-                .catch(() => {})
-            }
-          } catch {
-            /* best effort */
-          }
-          const activeTabs = await chrome.tabs.query({ active: true, currentWindow: true })
-          const firstActiveTab = activeTabs[0]
-          if (!firstActiveTab?.id) {
-            const errMsg = 'No active tab available (tracked tab was closed and no fallback tab found)'
-            if (query.correlation_id) {
-              sendAsyncResult(syncClient, query.id, query.correlation_id, 'error', null, errMsg)
-            } else {
-              sendResult(syncClient, query.id, { error: 'no_active_tab', message: errMsg })
-            }
-            return
-          }
-          tabId = firstActiveTab.id
-        }
-      }
-    } else {
-      const activeTabs = await chrome.tabs.query({ active: true, currentWindow: true })
-      const firstActiveTab = activeTabs[0]
-      if (!firstActiveTab?.id) {
-        const errMsg = 'No active tab available'
+    let tabId: number | undefined
+    if (needsTargetTab) {
+      const resolved = await resolveTargetTab(query, paramsObj)
+      if (resolved.error) {
         if (query.correlation_id) {
-          sendAsyncResult(syncClient, query.id, query.correlation_id, 'error', null, errMsg)
+          sendAsyncResult(syncClient, query.id, query.correlation_id, 'complete', resolved.error.payload, resolved.error.message)
         } else {
-          sendResult(syncClient, query.id, { error: 'no_active_tab', message: errMsg })
+          sendResult(syncClient, query.id, resolved.error.payload)
         }
         return
       }
-      tabId = firstActiveTab.id
+      target = resolved.target
+      tabId = target?.tabId
     }
 
-    if (!tabId) {
-      const errMsg = 'No target tab resolved for query'
+    if (needsTargetTab && !tabId) {
+      const payload = {
+        success: false,
+        error: 'missing_target',
+        message: 'No target tab resolved for query'
+      }
       if (query.correlation_id) {
-        sendAsyncResult(syncClient, query.id, query.correlation_id, 'error', null, errMsg)
+        sendAsyncResult(syncClient, query.id, query.correlation_id, 'complete', payload, payload.message)
       } else {
-        sendResult(syncClient, query.id, { error: 'no_active_tab', message: errMsg })
+        sendResult(syncClient, query.id, payload)
       }
       return
     }
+    const targetTabId = tabId ?? 0
 
     if (query.type === 'subtitle') {
       let params: { text?: string }
@@ -224,32 +431,32 @@ export async function handlePendingQuery(query: PendingQuery, syncClient: SyncCl
         params = {}
       }
       chrome.tabs
-        .sendMessage(tabId, {
+        .sendMessage(targetTabId, {
           type: 'GASOLINE_SUBTITLE',
           text: params.text ?? ''
         })
         .catch(() => {})
-      sendResult(syncClient, query.id, { success: true, subtitle: params.text || 'cleared' })
+      sendQueryResult({ success: true, subtitle: params.text || 'cleared' })
       return
     }
 
     if (query.type === 'screenshot') {
       try {
-        const rateCheck = canTakeScreenshot(tabId)
+        const rateCheck = canTakeScreenshot(targetTabId)
         if (!rateCheck.allowed) {
-          sendResult(syncClient, query.id, {
+          sendQueryResult({
             error: `Rate limited: ${rateCheck.reason}`,
             ...(rateCheck.nextAllowedIn != null ? { next_allowed_in: rateCheck.nextAllowedIn } : {})
           })
           return
         }
 
-        const tab = await chrome.tabs.get(tabId)
+        const tab = await chrome.tabs.get(targetTabId)
         const dataUrl = await chrome.tabs.captureVisibleTab(tab.windowId, {
           format: 'jpeg',
           quality: 80
         })
-        recordScreenshot(tabId)
+        recordScreenshot(targetTabId)
 
         // POST to /screenshots with query_id — server saves file and resolves query directly
         const response = await fetch(`${index.serverUrl}/screenshots`, {
@@ -262,11 +469,11 @@ export async function handlePendingQuery(query: PendingQuery, syncClient: SyncCl
           })
         })
         if (!response.ok) {
-          sendResult(syncClient, query.id, { error: `Server returned ${response.status}` })
+          sendQueryResult({ error: `Server returned ${response.status}` })
         }
         // No sendResult needed — server resolves the query via query_id
       } catch (err) {
-        sendResult(syncClient, query.id, {
+        sendQueryResult({
           error: 'screenshot_failed',
           message: (err as Error).message || 'Failed to capture screenshot'
         })
@@ -279,7 +486,7 @@ export async function handlePendingQuery(query: PendingQuery, syncClient: SyncCl
       try {
         params = typeof query.params === 'string' ? JSON.parse(query.params) : query.params
       } catch {
-        sendResult(syncClient, query.id, {
+        sendQueryResult({
           success: false,
           error: 'invalid_params',
           message: 'Failed to parse browser_action params as JSON'
@@ -287,10 +494,10 @@ export async function handlePendingQuery(query: PendingQuery, syncClient: SyncCl
         return
       }
       if (query.correlation_id) {
-        await handleAsyncBrowserAction(query, tabId, params, syncClient, sendAsyncResult, actionToast)
+        await handleAsyncBrowserAction(query, targetTabId, params, syncClient, sendQueryAsyncResult, actionToast)
       } else {
-        const result = await handleBrowserAction(tabId, params, actionToast)
-        sendResult(syncClient, query.id, result)
+        const result = await handleBrowserAction(targetTabId, params, actionToast)
+        sendQueryResult(result)
       }
       return
     }
@@ -300,7 +507,7 @@ export async function handlePendingQuery(query: PendingQuery, syncClient: SyncCl
       try {
         params = typeof query.params === 'string' ? JSON.parse(query.params) : query.params
       } catch {
-        sendResult(syncClient, query.id, {
+        sendQueryResult({
           error: 'invalid_params',
           message: 'Failed to parse highlight params as JSON'
         })
@@ -310,15 +517,15 @@ export async function handlePendingQuery(query: PendingQuery, syncClient: SyncCl
       if (query.correlation_id) {
         const err =
           result && typeof result === 'object' && 'error' in result ? (result as { error: string }).error : undefined
-        sendAsyncResult(syncClient, query.id, query.correlation_id, 'complete', result, err)
+        sendQueryAsyncResult(syncClient, query.id, query.correlation_id, 'complete', result, err)
       } else {
-        sendResult(syncClient, query.id, result)
+        sendQueryResult(result)
       }
       return
     }
 
     if (query.type === 'page_info') {
-      const tab = await chrome.tabs.get(tabId)
+      const tab = await chrome.tabs.get(targetTabId)
       const result = {
         url: tab.url,
         title: tab.title,
@@ -329,7 +536,7 @@ export async function handlePendingQuery(query: PendingQuery, syncClient: SyncCl
           height: tab.height
         }
       }
-      sendResult(syncClient, query.id, result)
+      sendQueryResult(result)
       return
     }
 
@@ -343,24 +550,24 @@ export async function handlePendingQuery(query: PendingQuery, syncClient: SyncCl
         windowId: tab.windowId,
         index: tab.index
       }))
-      sendResult(syncClient, query.id, { tabs: tabsList })
+      sendQueryResult({ tabs: tabsList })
       return
     }
 
     // Waterfall query - fetch network waterfall data on demand
     if (query.type === 'waterfall') {
-      debugLog(DebugCategory.CAPTURE, 'Handling waterfall query', { queryId: query.id, tabId })
+      debugLog(DebugCategory.CAPTURE, 'Handling waterfall query', { queryId: query.id, tabId: targetTabId })
       try {
-        const tab = await chrome.tabs.get(tabId)
-        debugLog(DebugCategory.CAPTURE, 'Got tab for waterfall', { tabId, url: tab.url })
-        const result = (await chrome.tabs.sendMessage(tabId, {
+        const tab = await chrome.tabs.get(targetTabId)
+        debugLog(DebugCategory.CAPTURE, 'Got tab for waterfall', { tabId: targetTabId, url: tab.url })
+        const result = (await chrome.tabs.sendMessage(targetTabId, {
           type: 'GET_NETWORK_WATERFALL'
         })) as { entries?: unknown[] }
         debugLog(DebugCategory.CAPTURE, 'Waterfall result from content script', {
           entries: result?.entries?.length || 0
         })
 
-        sendResult(syncClient, query.id, {
+        sendQueryResult({
           entries: result?.entries || [],
           page_url: tab.url || '',
           count: result?.entries?.length || 0
@@ -371,7 +578,7 @@ export async function handlePendingQuery(query: PendingQuery, syncClient: SyncCl
           queryId: query.id,
           error: (err as Error).message
         })
-        sendResult(syncClient, query.id, {
+        sendQueryResult({
           error: 'waterfall_query_failed',
           message: (err as Error).message || 'Failed to fetch network waterfall',
           entries: []
@@ -382,18 +589,18 @@ export async function handlePendingQuery(query: PendingQuery, syncClient: SyncCl
 
     if (query.type === 'dom') {
       try {
-        const result = await chrome.tabs.sendMessage(tabId, {
+        const result = await chrome.tabs.sendMessage(targetTabId, {
           type: 'DOM_QUERY',
           params: query.params
         })
         if (query.correlation_id) {
-          sendAsyncResult(syncClient, query.id, query.correlation_id, 'complete', result)
+          sendQueryAsyncResult(syncClient, query.id, query.correlation_id, 'complete', result)
         } else {
-          sendResult(syncClient, query.id, result)
+          sendQueryResult(result)
         }
       } catch (err) {
         if (query.correlation_id) {
-          sendAsyncResult(
+          sendQueryAsyncResult(
             syncClient,
             query.id,
             query.correlation_id,
@@ -402,7 +609,7 @@ export async function handlePendingQuery(query: PendingQuery, syncClient: SyncCl
             (err as Error).message || 'Failed to execute DOM query'
           )
         } else {
-          sendResult(syncClient, query.id, {
+          sendQueryResult({
             error: 'dom_query_failed',
             message: (err as Error).message || 'Failed to execute DOM query'
           })
@@ -413,18 +620,18 @@ export async function handlePendingQuery(query: PendingQuery, syncClient: SyncCl
 
     if (query.type === 'a11y') {
       try {
-        const result = await chrome.tabs.sendMessage(tabId, {
+        const result = await chrome.tabs.sendMessage(targetTabId, {
           type: 'A11Y_QUERY',
           params: query.params
         })
         if (query.correlation_id) {
-          sendAsyncResult(syncClient, query.id, query.correlation_id, 'complete', result)
+          sendQueryAsyncResult(syncClient, query.id, query.correlation_id, 'complete', result)
         } else {
-          sendResult(syncClient, query.id, result)
+          sendQueryResult(result)
         }
       } catch (err) {
         if (query.correlation_id) {
-          sendAsyncResult(
+          sendQueryAsyncResult(
             syncClient,
             query.id,
             query.correlation_id,
@@ -433,7 +640,7 @@ export async function handlePendingQuery(query: PendingQuery, syncClient: SyncCl
             (err as Error).message || 'Failed to execute accessibility audit'
           )
         } else {
-          sendResult(syncClient, query.id, {
+          sendQueryResult({
             error: 'a11y_audit_failed',
             message: (err as Error).message || 'Failed to execute accessibility audit'
           })
@@ -444,25 +651,25 @@ export async function handlePendingQuery(query: PendingQuery, syncClient: SyncCl
 
     if (query.type === 'dom_action') {
       if (!index.__aiWebPilotEnabledCache) {
-        sendAsyncResult(syncClient, query.id, query.correlation_id!, 'complete', null, 'ai_web_pilot_disabled')
+        sendQueryAsyncResult(syncClient, query.id, query.correlation_id!, 'complete', null, 'ai_web_pilot_disabled')
         return
       }
-      await executeDOMAction(query, tabId, syncClient, sendAsyncResult, actionToast)
+      await executeDOMAction(query, targetTabId, syncClient, sendQueryAsyncResult, actionToast)
       return
     }
 
     if (query.type === 'upload') {
       if (!index.__aiWebPilotEnabledCache) {
-        sendAsyncResult(syncClient, query.id, query.correlation_id!, 'complete', null, 'ai_web_pilot_disabled')
+        sendQueryAsyncResult(syncClient, query.id, query.correlation_id!, 'complete', null, 'ai_web_pilot_disabled')
         return
       }
-      await executeUpload(query, tabId, syncClient, sendAsyncResult, actionToast)
+      await executeUpload(query, targetTabId, syncClient, sendQueryAsyncResult, actionToast)
       return
     }
 
     if (query.type === 'record_start') {
       if (!index.__aiWebPilotEnabledCache) {
-        sendAsyncResult(syncClient, query.id, query.correlation_id!, 'complete', undefined, 'ai_web_pilot_disabled')
+        sendQueryAsyncResult(syncClient, query.id, query.correlation_id!, 'complete', undefined, 'ai_web_pilot_disabled')
         return
       }
       let params: { name?: string; fps?: number; audio?: string }
@@ -471,8 +678,6 @@ export async function handlePendingQuery(query: PendingQuery, syncClient: SyncCl
       } catch {
         params = {}
       }
-      const explicitTabId = typeof query.tab_id === 'number' && query.tab_id > 0 ? query.tab_id : undefined
-      const targetTabId = explicitTabId ?? tabId
       const result = await startRecording(
         params.name ?? 'recording',
         params.fps ?? 15,
@@ -481,7 +686,7 @@ export async function handlePendingQuery(query: PendingQuery, syncClient: SyncCl
         false,
         targetTabId
       )
-      sendAsyncResult(syncClient, query.id, query.correlation_id!, 'complete', result, result.error || undefined)
+      sendQueryAsyncResult(syncClient, query.id, query.correlation_id!, 'complete', result, result.error || undefined)
       return
     }
 
@@ -498,9 +703,9 @@ export async function handlePendingQuery(query: PendingQuery, syncClient: SyncCl
     if (query.type === 'execute') {
       if (!index.__aiWebPilotEnabledCache) {
         if (query.correlation_id) {
-          sendAsyncResult(syncClient, query.id, query.correlation_id, 'complete', null, 'ai_web_pilot_disabled')
+          sendQueryAsyncResult(syncClient, query.id, query.correlation_id, 'complete', null, 'ai_web_pilot_disabled')
         } else {
-          sendResult(syncClient, query.id, {
+          sendQueryResult({
             success: false,
             error: 'ai_web_pilot_disabled',
             message: 'AI Web Pilot is not enabled in the extension popup'
@@ -519,13 +724,13 @@ export async function handlePendingQuery(query: PendingQuery, syncClient: SyncCl
       const world = execParams.world || 'auto'
 
       if (query.correlation_id) {
-        await handleAsyncExecuteCommand(query, tabId, world, syncClient, sendAsyncResult, actionToast)
+        await handleAsyncExecuteCommand(query, targetTabId, world, syncClient, sendQueryAsyncResult, actionToast)
       } else {
         try {
-          const result = await executeWithWorldRouting(tabId, query.params, world)
-          sendResult(syncClient, query.id, result)
+          const result = await executeWithWorldRouting(targetTabId, query.params, world)
+          sendQueryResult(result)
         } catch (err) {
-          sendResult(syncClient, query.id, {
+          sendQueryResult({
             success: false,
             error: 'execution_failed',
             message: (err as Error).message || 'Execution failed'
@@ -537,13 +742,13 @@ export async function handlePendingQuery(query: PendingQuery, syncClient: SyncCl
 
     if (query.type === 'link_health') {
       try {
-        const result = await chrome.tabs.sendMessage(tabId, {
+        const result = await chrome.tabs.sendMessage(targetTabId, {
           type: 'LINK_HEALTH_QUERY',
           params: query.params
         })
-        sendResult(syncClient, query.id, result)
+        sendQueryResult(result)
       } catch (err) {
-        sendResult(syncClient, query.id, {
+        sendQueryResult({
           error: 'link_health_failed',
           message: (err as Error).message || 'Link health check failed'
         })
@@ -553,7 +758,7 @@ export async function handlePendingQuery(query: PendingQuery, syncClient: SyncCl
 
     if (query.type === 'draw_mode') {
       if (!index.__aiWebPilotEnabledCache) {
-        sendResult(syncClient, query.id, {
+        sendQueryResult({
           error: 'ai_web_pilot_disabled',
           message: 'AI Web Pilot is not enabled in the extension popup'
         })
@@ -567,20 +772,20 @@ export async function handlePendingQuery(query: PendingQuery, syncClient: SyncCl
       }
       if (params.action === 'start') {
         try {
-          const result = await chrome.tabs.sendMessage(tabId, {
+          const result = await chrome.tabs.sendMessage(targetTabId, {
             type: 'GASOLINE_DRAW_MODE_START',
             started_by: 'llm',
             session_name: params.session || '',
             correlation_id: query.correlation_id || query.id || ''
           })
-          sendResult(syncClient, query.id, {
+          sendQueryResult({
             status: result?.status || 'active',
             message:
               'Draw mode activated. User can now draw annotations on the page. Results will be delivered when user finishes (presses ESC).',
             annotation_count: result?.annotation_count || 0
           })
         } catch (err) {
-          sendResult(syncClient, query.id, {
+          sendQueryResult({
             error: 'draw_mode_failed',
             message:
               (err as Error).message ||
@@ -588,7 +793,7 @@ export async function handlePendingQuery(query: PendingQuery, syncClient: SyncCl
           })
         }
       } else {
-        sendResult(syncClient, query.id, {
+        sendQueryResult({
           error: 'unknown_draw_mode_action',
           message: `Unknown draw mode action: ${params.action}. Use 'start'.`
         })
@@ -603,9 +808,9 @@ export async function handlePendingQuery(query: PendingQuery, syncClient: SyncCl
       error: errMsg
     })
     if (query.correlation_id) {
-      sendAsyncResult(syncClient, query.id, query.correlation_id, 'error', null, errMsg)
+      sendQueryAsyncResult(syncClient, query.id, query.correlation_id, 'error', null, errMsg)
     } else {
-      sendResult(syncClient, query.id, { error: 'query_handler_error', message: errMsg })
+      sendQueryResult({ error: 'query_handler_error', message: errMsg })
     }
   }
 }

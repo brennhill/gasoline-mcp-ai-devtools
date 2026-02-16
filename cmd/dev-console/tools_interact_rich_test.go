@@ -667,6 +667,65 @@ func TestRichAction_NoAnalyzeFieldsWhenAbsent(t *testing.T) {
 	}
 }
 
+func TestRichAction_TargetContextSurfacedTopLevel(t *testing.T) {
+	env := newInteractTestEnv(t)
+	env.capture.SetPilotEnabled(true)
+
+	result, _ := env.callInteract(t, `{"action":"click","selector":"#btn","tab_id":77}`)
+	var resultData map[string]any
+	_ = json.Unmarshal([]byte(extractJSON(result.Content[0].Text)), &resultData)
+	corrID := resultData["correlation_id"].(string)
+
+	extensionResult := json.RawMessage(`{
+		"success": true,
+		"action": "click",
+		"resolved_tab_id": 77,
+		"resolved_url": "https://example.com/form",
+		"target_context": {
+			"source": "explicit_tab",
+			"requested_tab_id": 77,
+			"tracked_tab_id": null,
+			"use_active_tab": false
+		}
+	}`)
+	env.capture.CompleteCommand(corrID, extensionResult, "")
+
+	req := JSONRPCRequest{JSONRPC: "2.0", ID: 2}
+	args := json.RawMessage(`{"correlation_id":"` + corrID + `"}`)
+	resp := env.handler.toolObserveCommandResult(req, args)
+
+	var observeResult MCPToolResult
+	_ = json.Unmarshal(resp.Result, &observeResult)
+
+	var responseData map[string]any
+	if err := json.Unmarshal([]byte(extractJSON(observeResult.Content[0].Text)), &responseData); err != nil {
+		t.Fatalf("Failed to parse response JSON: %v", err)
+	}
+
+	if responseData["resolved_tab_id"] != float64(77) {
+		t.Fatalf("resolved_tab_id = %v, want 77", responseData["resolved_tab_id"])
+	}
+	if responseData["resolved_url"] != "https://example.com/form" {
+		t.Fatalf("resolved_url = %v, want https://example.com/form", responseData["resolved_url"])
+	}
+
+	targetContext, ok := responseData["target_context"].(map[string]any)
+	if !ok {
+		t.Fatal("target_context missing at top level")
+	}
+	if targetContext["source"] != "explicit_tab" {
+		t.Fatalf("target_context.source = %v, want explicit_tab", targetContext["source"])
+	}
+
+	extResult, ok := responseData["result"].(map[string]any)
+	if !ok {
+		t.Fatal("result envelope missing")
+	}
+	if extResult["resolved_tab_id"] != float64(77) {
+		t.Fatalf("result.resolved_tab_id = %v, want 77", extResult["resolved_tab_id"])
+	}
+}
+
 // ============================================
 // Command result passthrough: dom_summary, analyze fields
 // ============================================
@@ -929,6 +988,43 @@ func TestCommandResult_CompleteWithErrorSetsIsError(t *testing.T) {
 	}
 	if !strings.Contains(text, "Element not found") {
 		t.Errorf("Failed command should include error message, got: %s", text)
+	}
+}
+
+func TestCommandResult_EmbeddedFailureSetsIsError(t *testing.T) {
+	env := newInteractTestEnv(t)
+	env.capture.SetPilotEnabled(true)
+
+	result, ok := env.callInteract(t, `{"action":"click","selector":"#btn"}`)
+	if !ok || result.IsError {
+		t.Fatal("click should succeed")
+	}
+
+	pq := env.capture.GetLastPendingQuery()
+	corrID := pq.CorrelationID
+
+	// Extension reported failure inside the result payload without setting command error.
+	env.capture.CompleteCommand(corrID, json.RawMessage(`{"success":false,"error":"selector_not_found","message":"#btn not found"}`), "")
+
+	req := JSONRPCRequest{JSONRPC: "2.0", ID: 2}
+	args := json.RawMessage(`{"correlation_id":"` + corrID + `"}`)
+	resp := env.handler.toolObserveCommandResult(req, args)
+
+	var observeResult MCPToolResult
+	if err := json.Unmarshal(resp.Result, &observeResult); err != nil {
+		t.Fatalf("Failed to parse result: %v", err)
+	}
+
+	if !observeResult.IsError {
+		t.Fatal("Embedded success=false MUST set IsError=true")
+	}
+
+	text := observeResult.Content[0].Text
+	if !strings.Contains(text, "FAILED") {
+		t.Fatalf("Expected FAILED summary, got: %s", text)
+	}
+	if !strings.Contains(text, "selector_not_found") {
+		t.Fatalf("Expected embedded error to surface, got: %s", text)
 	}
 }
 

@@ -169,8 +169,8 @@ func (s *daemonState) respawnIfNeeded() bool {
 		s.ready = true
 		s.mu.Unlock()
 		close(readyCh)
-			stderrf("[gasoline] daemon respawned successfully on port %d\n", s.port)
-			return true
+		stderrf("[gasoline] daemon respawned successfully on port %d\n", s.port)
+		return true
 	}
 
 	s.mu.Lock()
@@ -456,6 +456,20 @@ func checkDaemonStatus(state *daemonState, req JSONRPCRequest, port int) string 
 	isFailed := state.failed
 	failErr := state.err
 	state.mu.Unlock()
+
+	// Heal stale bridge state: daemon is up but local ready flag drifted.
+	// Only run this check when daemon state has a concrete port (state.port > 0)
+	// to avoid test and fast-path false positives from unrelated local daemons.
+	if state.port > 0 && isServerRunning(state.port) {
+		if !isReady || isFailed {
+			state.mu.Lock()
+			state.ready = true
+			state.failed = false
+			state.err = ""
+			state.mu.Unlock()
+		}
+		return ""
+	}
 
 	if isFailed {
 		// Previous spawn failed — try again before giving up.

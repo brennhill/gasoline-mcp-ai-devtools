@@ -265,6 +265,44 @@ func TestHandleSync_AdaptivePoll_FastWhenPendingCommands(t *testing.T) {
 	}
 }
 
+func TestHandleSync_CommandsIncludeTabID(t *testing.T) {
+	t.Parallel()
+	cap := NewCapture()
+
+	cap.CreatePendingQuery(queries.PendingQuery{
+		Type:          "dom_action",
+		Params:        json.RawMessage(`{"action":"click","selector":"#submit"}`),
+		TabID:         42,
+		CorrelationID: "corr-tab-42",
+	})
+
+	req := SyncRequest{SessionID: "test_session"}
+	body, _ := json.Marshal(req)
+	httpReq := httptest.NewRequest("POST", "/sync", bytes.NewReader(body))
+	w := httptest.NewRecorder()
+
+	cap.HandleSync(w, httpReq)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("Expected status 200, got %d", w.Code)
+	}
+
+	var resp SyncResponse
+	if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
+		t.Fatalf("Failed to decode response: %v", err)
+	}
+
+	if len(resp.Commands) != 1 {
+		t.Fatalf("Expected 1 command, got %d", len(resp.Commands))
+	}
+	if resp.Commands[0].TabID != 42 {
+		t.Fatalf("Expected command tab_id 42, got %d", resp.Commands[0].TabID)
+	}
+	if resp.Commands[0].CorrelationID != "corr-tab-42" {
+		t.Fatalf("Expected correlation_id corr-tab-42, got %q", resp.Commands[0].CorrelationID)
+	}
+}
+
 func TestHandleSync_AdaptivePoll_SlowWhenNoCommands(t *testing.T) {
 	t.Parallel()
 	cap := NewCapture()

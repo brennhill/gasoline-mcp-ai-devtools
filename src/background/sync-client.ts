@@ -56,6 +56,7 @@ export interface SyncCommand {
   id: string
   type: string
   params: unknown
+  tab_id?: number
   correlation_id?: string
 }
 

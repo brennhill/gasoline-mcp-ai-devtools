@@ -5,308 +5,263 @@
 // =============================================================================
 // CONSTANTS
 // =============================================================================
-const BASE_POLL_MS = 1000
-const DEFAULT_UPLOAD_COMMAND_TIMEOUT_MS = 8000
+const BASE_POLL_MS = 1000;
 // =============================================================================
 // SYNC CLIENT CLASS
 // =============================================================================
 export class SyncClient {
-  serverUrl
-  sessionId
-  callbacks
-  state
-  intervalId = null
-  running = false
-  syncing = false
-  flushRequested = false
-  pendingResults = []
-  processedCommandKeys = new Set()
-  extensionVersion
-  uploadCommandTimeoutMs = DEFAULT_UPLOAD_COMMAND_TIMEOUT_MS
-  constructor(serverUrl, sessionId, callbacks, extensionVersion = '') {
-    this.serverUrl = serverUrl
-    this.sessionId = sessionId
-    this.callbacks = callbacks
-    this.extensionVersion = extensionVersion
-    const configuredTimeout = Number(callbacks?.uploadCommandTimeoutMs)
-    if (Number.isFinite(configuredTimeout) && configuredTimeout > 0) {
-      this.uploadCommandTimeoutMs = configuredTimeout
+    serverUrl;
+    sessionId;
+    callbacks;
+    state;
+    intervalId = null;
+    running = false;
+    syncing = false;
+    flushRequested = false;
+    pendingResults = [];
+    processedCommandIDs = new Set();
+    extensionVersion;
+    constructor(serverUrl, sessionId, callbacks, extensionVersion = '') {
+        this.serverUrl = serverUrl;
+        this.sessionId = sessionId;
+        this.callbacks = callbacks;
+        this.extensionVersion = extensionVersion;
+        this.state = {
+            connected: false,
+            lastSyncAt: 0,
+            consecutiveFailures: 0,
+            lastCommandAck: null
+        };
     }
-    this.state = {
-      connected: false,
-      lastSyncAt: 0,
-      consecutiveFailures: 0,
-      lastCommandAck: null
+    /** Get current sync state */
+    getState() {
+        return { ...this.state };
     }
-  }
-  /** Get current sync state */
-  getState() {
-    return { ...this.state }
-  }
-  /** Check if connected */
-  isConnected() {
-    return this.state.connected
-  }
-  /** Start the sync loop */
-  start() {
-    if (this.running) return
-    this.running = true
-    this.log('Starting sync client')
-    this.scheduleNextSync(0) // Sync immediately
-  }
-  /** Stop the sync loop */
-  stop() {
-    this.running = false
-    if (this.intervalId) {
-      clearTimeout(this.intervalId)
-      this.intervalId = null
+    /** Check if connected */
+    isConnected() {
+        return this.state.connected;
     }
-    this.log('Stopped sync client')
-  }
-  /** Queue a command result to send on next sync, then flush immediately */
-  queueCommandResult(result) {
-    this.pendingResults.push(result)
-    // Cap queue size to prevent memory leak if server is unreachable
-    const MAX_PENDING_RESULTS = 200
-    if (this.pendingResults.length > MAX_PENDING_RESULTS) {
-      this.pendingResults.splice(0, this.pendingResults.length - MAX_PENDING_RESULTS)
+    /** Start the sync loop */
+    start() {
+        if (this.running)
+            return;
+        this.running = true;
+        this.log('Starting sync client');
+        this.scheduleNextSync(0); // Sync immediately
     }
-    this.flush()
-  }
-  /** Trigger an immediate sync to deliver queued results with minimal latency */
-  flush() {
-    if (!this.running) return
-    if (this.syncing) {
-      // Sync in progress — schedule another immediately after it finishes
-      this.flushRequested = true
-      return
-    }
-    if (this.intervalId) {
-      clearTimeout(this.intervalId)
-    }
-    this.scheduleNextSync(0)
-  }
-  /** Reset connection state (e.g., when user toggles pilot/tracking) */
-  resetConnection() {
-    this.state.consecutiveFailures = 0
-    this.log('Connection state reset')
-    // Trigger immediate sync if running
-    if (this.running && this.intervalId) {
-      clearTimeout(this.intervalId)
-      this.scheduleNextSync(0)
-    }
-  }
-  /** Update server URL */
-  setServerUrl(url) {
-    this.serverUrl = url
-  }
-  getCommandDedupeKey(command) {
-    if (!command?.id) {
-      return null
-    }
-    // Key by (id + correlation_id) when available so daemon restarts that
-    // reuse q-1/q-2 IDs with new correlation IDs are not silently skipped.
-    if (command.correlation_id) {
-      return `${command.id}::${command.correlation_id}`
-    }
-    // Non-correlated commands still dedupe by id.
-    return command.id
-  }
-  executeCommand(command) {
-    // Guard upload dispatch specifically: a hung upload handler can deadlock
-    // the entire sync loop and leave all later commands pending forever.
-    if (command?.type !== 'upload') {
-      return this.callbacks.onCommand(command)
-    }
-    const timeoutMs = this.uploadCommandTimeoutMs
-    return new Promise((resolve, reject) => {
-      let settled = false
-      const timer = setTimeout(() => {
-        if (settled) return
-        settled = true
-        reject(new Error(`upload command dispatch timed out after ${timeoutMs}ms`))
-      }, timeoutMs)
-      Promise.resolve()
-        .then(() => this.callbacks.onCommand(command))
-        .then((value) => {
-          if (settled) return
-          settled = true
-          clearTimeout(timer)
-          resolve(value)
-        })
-        .catch((err) => {
-          if (settled) return
-          settled = true
-          clearTimeout(timer)
-          reject(err)
-        })
-    })
-  }
-  // =============================================================================
-  // PRIVATE METHODS
-  // =============================================================================
-  scheduleNextSync(delayMs) {
-    if (!this.running) return
-    this.intervalId = setTimeout(() => this.doSync(), delayMs)
-  }
-  async doSync() {
-    if (!this.running) return
-    this.syncing = true
-    this.flushRequested = false
-    try {
-      // Build request
-      const settings = await this.callbacks.getSettings()
-      const logs = this.callbacks.getExtensionLogs()
-      const request = {
-        session_id: this.sessionId,
-        extension_version: this.extensionVersion || undefined,
-        settings
-      }
-      // Include logs if any
-      if (logs.length > 0) {
-        request.extension_logs = logs
-      }
-      // Include pending command results
-      if (this.pendingResults.length > 0) {
-        request.command_results = [...this.pendingResults]
-      }
-      // Include last command ack
-      if (this.state.lastCommandAck) {
-        request.last_command_ack = this.state.lastCommandAck
-      }
-      // Make request with timeout to prevent hanging forever
-      const controller = new AbortController()
-      const timeoutId = setTimeout(() => controller.abort(), 3000) // 3s timeout
-      const response = await fetch(`${this.serverUrl}/sync`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Gasoline-Client': `gasoline-extension/${this.extensionVersion}`,
-          'X-Gasoline-Extension-Version': this.extensionVersion
-        },
-        body: JSON.stringify(request),
-        signal: controller.signal
-      })
-      clearTimeout(timeoutId)
-      if (!response.ok) {
-        throw new Error(
-          `Sync request failed: HTTP ${response.status} ${response.statusText} from ${this.serverUrl}/sync`
-        )
-      }
-      const data = await response.json()
-      // Log sync cycle summary
-      this.log('Sync OK', {
-        commands: data.commands?.length || 0,
-        resultsSent: request.command_results?.length || 0,
-        logsSent: request.extension_logs?.length || 0,
-        nextPollMs: data.next_poll_ms
-      })
-      // Success - update state
-      this.onSuccess()
-      // Check for version mismatch (compare major.minor only, ignore patch)
-      if (data.server_version && this.extensionVersion && this.callbacks.onVersionMismatch) {
-        const serverMajorMinor = data.server_version.split('.').slice(0, 2).join('.')
-        const extensionMajorMinor = this.extensionVersion.split('.').slice(0, 2).join('.')
-        if (serverMajorMinor !== extensionMajorMinor) {
-          this.callbacks.onVersionMismatch(this.extensionVersion, data.server_version)
+    /** Stop the sync loop */
+    stop() {
+        this.running = false;
+        if (this.intervalId) {
+            clearTimeout(this.intervalId);
+            this.intervalId = null;
         }
-      }
-      // Clear sent logs and results
-      if (logs.length > 0) {
-        this.callbacks.clearExtensionLogs()
-      }
-      this.pendingResults = []
-      // Process commands
-      if (data.commands && data.commands.length > 0) {
-        this.log('Received commands', { count: data.commands.length, ids: data.commands.map((c) => c.id) })
-        for (const command of data.commands) {
-          const dedupeKey = this.getCommandDedupeKey(command)
-          if (dedupeKey && this.processedCommandKeys.has(dedupeKey)) {
-            this.log('Skipping already processed command', {
-              id: command.id,
-              correlation_id: command.correlation_id
-            })
-            continue
-          }
-          this.log('Dispatching command', {
-            id: command.id,
-            type: command.type,
-            correlation_id: command.correlation_id
-          })
-          try {
-            await this.executeCommand(command)
-            // Track ack only after successful execution
-            this.state.lastCommandAck = command.id
-            this.log('Command dispatched OK', { id: command.id })
-          } catch (err) {
-            this.log('Command dispatch FAILED', { id: command.id, error: err.message })
-            this.queueCommandResult({
-              id: command.id,
-              status: 'error',
-              error: err.message || 'Command dispatch failed'
-            })
-          } finally {
-            if (dedupeKey) {
-              this.processedCommandKeys.add(dedupeKey)
-              const MAX_PROCESSED_COMMANDS = 1000
-              if (this.processedCommandKeys.size > MAX_PROCESSED_COMMANDS) {
-                const oldest = this.processedCommandKeys.values().next().value
-                if (oldest !== undefined) {
-                  this.processedCommandKeys.delete(oldest)
-                }
-              }
+        this.log('Stopped sync client');
+    }
+    /** Queue a command result to send on next sync, then flush immediately */
+    queueCommandResult(result) {
+        this.pendingResults.push(result);
+        // Cap queue size to prevent memory leak if server is unreachable
+        const MAX_PENDING_RESULTS = 200;
+        if (this.pendingResults.length > MAX_PENDING_RESULTS) {
+            this.pendingResults.splice(0, this.pendingResults.length - MAX_PENDING_RESULTS);
+        }
+        this.flush();
+    }
+    /** Trigger an immediate sync to deliver queued results with minimal latency */
+    flush() {
+        if (!this.running)
+            return;
+        if (this.syncing) {
+            // Sync in progress — schedule another immediately after it finishes
+            this.flushRequested = true;
+            return;
+        }
+        if (this.intervalId) {
+            clearTimeout(this.intervalId);
+        }
+        this.scheduleNextSync(0);
+    }
+    /** Reset connection state (e.g., when user toggles pilot/tracking) */
+    resetConnection() {
+        this.state.consecutiveFailures = 0;
+        this.log('Connection state reset');
+        // Trigger immediate sync if running
+        if (this.running && this.intervalId) {
+            clearTimeout(this.intervalId);
+            this.scheduleNextSync(0);
+        }
+    }
+    /** Update server URL */
+    setServerUrl(url) {
+        this.serverUrl = url;
+    }
+    // =============================================================================
+    // PRIVATE METHODS
+    // =============================================================================
+    scheduleNextSync(delayMs) {
+        if (!this.running)
+            return;
+        this.intervalId = setTimeout(() => this.doSync(), delayMs);
+    }
+    async doSync() {
+        if (!this.running)
+            return;
+        this.syncing = true;
+        this.flushRequested = false;
+        try {
+            // Build request
+            const settings = await this.callbacks.getSettings();
+            const logs = this.callbacks.getExtensionLogs();
+            const request = {
+                session_id: this.sessionId,
+                extension_version: this.extensionVersion || undefined,
+                settings
+            };
+            // Include logs if any
+            if (logs.length > 0) {
+                request.extension_logs = logs;
             }
-          }
+            // Include pending command results
+            if (this.pendingResults.length > 0) {
+                request.command_results = [...this.pendingResults];
+            }
+            // Include last command ack
+            if (this.state.lastCommandAck) {
+                request.last_command_ack = this.state.lastCommandAck;
+            }
+            // Make request with timeout to prevent hanging forever
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 3000); // 3s timeout
+            const response = await fetch(`${this.serverUrl}/sync`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Gasoline-Client': `gasoline-extension/${this.extensionVersion}`,
+                    'X-Gasoline-Extension-Version': this.extensionVersion
+                },
+                body: JSON.stringify(request),
+                signal: controller.signal
+            });
+            clearTimeout(timeoutId);
+            if (!response.ok) {
+                throw new Error(`Sync request failed: HTTP ${response.status} ${response.statusText} from ${this.serverUrl}/sync`);
+            }
+            const data = await response.json();
+            // Log sync cycle summary
+            this.log('Sync OK', {
+                commands: data.commands?.length || 0,
+                resultsSent: request.command_results?.length || 0,
+                logsSent: request.extension_logs?.length || 0,
+                nextPollMs: data.next_poll_ms
+            });
+            // Success - update state
+            this.onSuccess();
+            // Check for version mismatch (compare major.minor only, ignore patch)
+            if (data.server_version && this.extensionVersion && this.callbacks.onVersionMismatch) {
+                const serverMajorMinor = data.server_version.split('.').slice(0, 2).join('.');
+                const extensionMajorMinor = this.extensionVersion.split('.').slice(0, 2).join('.');
+                if (serverMajorMinor !== extensionMajorMinor) {
+                    this.callbacks.onVersionMismatch(this.extensionVersion, data.server_version);
+                }
+            }
+            // Clear sent logs and results
+            if (logs.length > 0) {
+                this.callbacks.clearExtensionLogs();
+            }
+            this.pendingResults = [];
+            // Process commands
+            if (data.commands && data.commands.length > 0) {
+                this.log('Received commands', { count: data.commands.length, ids: data.commands.map((c) => c.id) });
+                for (const command of data.commands) {
+                    if (command.id && this.processedCommandIDs.has(command.id)) {
+                        this.log('Skipping already processed command', { id: command.id });
+                        continue;
+                    }
+                    this.log('Dispatching command', {
+                        id: command.id,
+                        type: command.type,
+                        correlation_id: command.correlation_id
+                    });
+                    try {
+                        await this.callbacks.onCommand(command);
+                        // Track ack only after successful execution
+                        this.state.lastCommandAck = command.id;
+                        this.log('Command dispatched OK', { id: command.id });
+                    }
+                    catch (err) {
+                        this.log('Command dispatch FAILED', { id: command.id, error: err.message });
+                        this.queueCommandResult({
+                            id: command.id,
+                            status: 'error',
+                            error: err.message || 'Command dispatch failed'
+                        });
+                    }
+                    finally {
+                        if (command.id) {
+                            this.processedCommandIDs.add(command.id);
+                            const MAX_PROCESSED_COMMANDS = 1000;
+                            if (this.processedCommandIDs.size > MAX_PROCESSED_COMMANDS) {
+                                const oldest = this.processedCommandIDs.values().next().value;
+                                if (oldest !== undefined) {
+                                    this.processedCommandIDs.delete(oldest);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            // Handle capture overrides
+            if (data.capture_overrides && this.callbacks.onCaptureOverrides) {
+                this.callbacks.onCaptureOverrides(data.capture_overrides);
+            }
+            // Schedule next sync — flush immediately if results were queued during this sync
+            this.syncing = false;
+            if (this.flushRequested) {
+                this.flushRequested = false;
+                this.scheduleNextSync(0);
+            }
+            else {
+                const nextPollMs = data.next_poll_ms || BASE_POLL_MS;
+                this.scheduleNextSync(nextPollMs);
+            }
         }
-      }
-      // Handle capture overrides
-      if (data.capture_overrides && this.callbacks.onCaptureOverrides) {
-        this.callbacks.onCaptureOverrides(data.capture_overrides)
-      }
-      // Schedule next sync — flush immediately if results were queued during this sync
-      this.syncing = false
-      if (this.flushRequested) {
-        this.flushRequested = false
-        this.scheduleNextSync(0)
-      } else {
-        const nextPollMs = data.next_poll_ms || BASE_POLL_MS
-        this.scheduleNextSync(nextPollMs)
-      }
-    } catch (err) {
-      // Failure - just retry after 1 second (no exponential backoff needed)
-      this.syncing = false
-      this.flushRequested = false
-      this.onFailure()
-      this.log('Sync failed, retrying', { error: err.message })
-      this.scheduleNextSync(BASE_POLL_MS)
+        catch (err) {
+            // Failure - just retry after 1 second (no exponential backoff needed)
+            this.syncing = false;
+            this.flushRequested = false;
+            this.onFailure();
+            this.log('Sync failed, retrying', { error: err.message });
+            this.scheduleNextSync(BASE_POLL_MS);
+        }
     }
-  }
-  onSuccess() {
-    const wasDisconnected = !this.state.connected
-    this.state.connected = true
-    this.state.lastSyncAt = Date.now()
-    this.state.consecutiveFailures = 0
-    if (wasDisconnected) {
-      this.log('Connected')
-      this.callbacks.onConnectionChange(true)
+    onSuccess() {
+        const wasDisconnected = !this.state.connected;
+        this.state.connected = true;
+        this.state.lastSyncAt = Date.now();
+        this.state.consecutiveFailures = 0;
+        if (wasDisconnected) {
+            this.log('Connected');
+            this.callbacks.onConnectionChange(true);
+        }
     }
-  }
-  onFailure() {
-    const wasConnected = this.state.connected
-    this.state.connected = false
-    this.state.consecutiveFailures++
-    if (wasConnected) {
-      this.log('Disconnected')
-      this.callbacks.onConnectionChange(false)
+    onFailure() {
+        const wasConnected = this.state.connected;
+        this.state.connected = false;
+        this.state.consecutiveFailures++;
+        if (wasConnected) {
+            this.log('Disconnected');
+            this.callbacks.onConnectionChange(false);
+        }
     }
-  }
-  log(message, data) {
-    if (this.callbacks.debugLog) {
-      this.callbacks.debugLog('sync', message, data)
-    } else {
-      console.log(`[SyncClient] ${message}`, data || '') // nosemgrep: javascript.lang.security.audit.unsafe-formatstring.unsafe-formatstring -- console.log with internal sync state, not user-controlled
+    log(message, data) {
+        if (this.callbacks.debugLog) {
+            this.callbacks.debugLog('sync', message, data);
+        }
+        else {
+            console.log(`[SyncClient] ${message}`, data || ''); // nosemgrep: javascript.lang.security.audit.unsafe-formatstring.unsafe-formatstring -- console.log with internal sync state, not user-controlled
+        }
     }
-  }
 }
 // =============================================================================
 // FACTORY FUNCTION
@@ -315,6 +270,6 @@ export class SyncClient {
  * Create a sync client instance
  */
 export function createSyncClient(serverUrl, sessionId, callbacks, extensionVersion = '') {
-  return new SyncClient(serverUrl, sessionId, callbacks, extensionVersion)
+    return new SyncClient(serverUrl, sessionId, callbacks, extensionVersion);
 }
 //# sourceMappingURL=sync-client.js.map
