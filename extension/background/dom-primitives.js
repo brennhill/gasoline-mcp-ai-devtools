@@ -11,8 +11,10 @@ export function domPrimitive(action, selector, options) {
     // Shadow DOM: deep traversal utilities
     // ---------------------------------------------------------------
     function getShadowRoot(el) {
-        return el.shadowRoot ?? null;
-        // Closed root support (future): also check window.__GASOLINE_CLOSED_SHADOWS__
+        if (el.shadowRoot)
+            return el.shadowRoot;
+        const closed = globalThis.__GASOLINE_CLOSED_SHADOWS__;
+        return closed?.get(el) ?? null;
     }
     function querySelectorDeep(selector, root = document) {
         const fast = root.querySelector(selector);
@@ -604,7 +606,10 @@ export function domWaitFor(selector, timeoutMs) {
     // ---------------------------------------------------------------
     // #lizard forgives
     function getShadowRoot(el) {
-        return el.shadowRoot ?? null;
+        if (el.shadowRoot)
+            return el.shadowRoot;
+        const closed = globalThis.__GASOLINE_CLOSED_SHADOWS__;
+        return closed?.get(el) ?? null;
     }
     function querySelectorDeepWalk(sel, root, depth = 0) {
         if (depth > 10)

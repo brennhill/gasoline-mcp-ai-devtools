@@ -562,6 +562,70 @@ describe('actions work on shadow DOM elements', () => {
 })
 
 // ===========================================================================
+// Phase 8: Closed shadow root capture via early-patch
+// ===========================================================================
+
+describe('closed shadow root capture', () => {
+  test('getShadowRoot finds element inside closed shadow root via WeakMap', () => {
+    // Simulate what early-patch does: store closed root in WeakMap on window
+    const closedRoots = new WeakMap()
+    globalThis.window = globalThis.window || globalThis
+    globalThis.window.__GASOLINE_CLOSED_SHADOWS__ = closedRoots
+
+    const { comp1, shadow1 } = setupShadowDocument()
+
+    // Create a component with a CLOSED shadow root
+    const closedHost = new MockHTMLElement('closed-comp', { id: 'closed-host' })
+    const closedShadow = new MockShadowRoot(closedHost, 'closed')
+    // Closed mode: host.shadowRoot is null
+    closedHost.shadowRoot = null
+    // But early-patch saved it in the WeakMap
+    closedRoots.set(closedHost, closedShadow)
+
+    const closedBtn = new MockHTMLElement('button', { id: 'closed-btn', textContent: 'Closed Button' })
+    addToShadow(closedShadow, closedBtn, ['button', '#closed-btn'])
+
+    // Add closed host to the document's top-level children
+    const origBody = globalThis.document.body
+    const origChildren = [...origBody.children, closedHost]
+    globalThis.document.body = {
+      ...origBody,
+      children: origChildren,
+      get childElementCount() { return origChildren.length },
+      querySelectorAll: origBody.querySelectorAll
+    }
+    globalThis.document.documentElement = {
+      children: origChildren,
+      get childElementCount() { return origChildren.length }
+    }
+
+    // querySelectorDeep should find the button inside the closed root
+    const result = domPrimitive('get_text', '#closed-btn', {})
+    assert.strictEqual(result.success, true, 'Should find element inside closed shadow root')
+    assert.ok(
+      String(result.value).includes('Closed Button'),
+      `Should get closed button text, got: ${result.value}`
+    )
+
+    // Clean up
+    delete globalThis.window.__GASOLINE_CLOSED_SHADOWS__
+  })
+
+  test('closed root is ignored when WeakMap not present', () => {
+    // Ensure no WeakMap on window
+    delete globalThis.window?.__GASOLINE_CLOSED_SHADOWS__
+    setupShadowDocument()
+
+    // Element inside a closed root (no WeakMap) should NOT be found
+    const closedHost = new MockHTMLElement('closed-comp', { id: 'closed-host2' })
+    closedHost.shadowRoot = null // closed
+
+    const result = domPrimitive('get_text', '#closed-btn', {})
+    assert.strictEqual(result.success, false, 'Should not find element without WeakMap')
+  })
+})
+
+// ===========================================================================
 // Regression: existing behavior preserved
 // ===========================================================================
 

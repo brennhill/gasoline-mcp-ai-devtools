@@ -59,8 +59,9 @@ export function domPrimitive(
   // ---------------------------------------------------------------
 
   function getShadowRoot(el: Element): ShadowRoot | null {
-    return el.shadowRoot ?? null
-    // Closed root support (future): also check window.__GASOLINE_CLOSED_SHADOWS__
+    if (el.shadowRoot) return el.shadowRoot
+    const closed = (globalThis as unknown as Window).__GASOLINE_CLOSED_SHADOWS__
+    return closed?.get(el) ?? null
   }
 
   function querySelectorDeep(selector: string, root: ParentNode = document): Element | null {
@@ -691,7 +692,9 @@ export function domWaitFor(selector: string, timeoutMs: number): Promise<DOMResu
   // #lizard forgives
 
   function getShadowRoot(el: Element): ShadowRoot | null {
-    return el.shadowRoot ?? null
+    if (el.shadowRoot) return el.shadowRoot
+    const closed = (globalThis as unknown as Window).__GASOLINE_CLOSED_SHADOWS__
+    return closed?.get(el) ?? null
   }
 
   function querySelectorDeepWalk(sel: string, root: ParentNode, depth = 0): Element | null {
