@@ -17,7 +17,7 @@ const EXTENSION_DIR = path.join(__dirname, '../extension')
  * Fix imports in a JavaScript file by adding .js extensions to relative imports.
  */
 function fixImportsInFile(filePath) {
-  // eslint-disable-next-line security/detect-non-literal-fs-filename -- build script paths derived from local directory traversal
+   
   let content = fs.readFileSync(filePath, 'utf8')
   const original = content
 
@@ -49,7 +49,7 @@ function fixImportsInFile(filePath) {
   })
 
   if (content !== original) {
-    // eslint-disable-next-line security/detect-non-literal-fs-filename -- build script paths derived from local directory traversal
+     
     fs.writeFileSync(filePath, content, 'utf8')
     console.log(`Fixed imports in: ${path.relative(process.cwd(), filePath)}`)
   }
@@ -60,12 +60,12 @@ function fixImportsInFile(filePath) {
  * Recursively process all .js files in a directory.
  */
 function processDirectory(dir) {
-  // eslint-disable-next-line security/detect-non-literal-fs-filename -- build script paths derived from local directory traversal
+   
   const files = fs.readdirSync(dir)
 
   for (const file of files) {
     const filePath = path.join(dir, file)
-    // eslint-disable-next-line security/detect-non-literal-fs-filename -- build script paths derived from local directory traversal
+     
     const stat = fs.statSync(filePath)
 
     if (stat.isDirectory()) {

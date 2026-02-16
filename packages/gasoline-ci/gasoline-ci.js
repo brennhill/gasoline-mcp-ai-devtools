@@ -162,10 +162,10 @@
       var keys = Object.keys(value).slice(0, 50)
       for (var i = 0; i < keys.length; i++) {
         try {
-          // eslint-disable-next-line security/detect-object-injection -- bracket access on trusted internal telemetry data
+           
           result[keys[i]] = safeSerialize(value[keys[i]], depth + 1, seen)
         } catch (_e) {
-          // eslint-disable-next-line security/detect-object-injection -- bracket access on trusted internal telemetry data
+           
           result[keys[i]] = '[unserializable]'
         }
       }
@@ -180,13 +180,13 @@
     var originals = {}
 
     for (var level of levels) {
-      // eslint-disable-next-line security/detect-object-injection -- bracket access on trusted internal telemetry data
+       
       originals[level] = console[level]
-      // eslint-disable-next-line security/detect-object-injection -- bracket access on trusted internal telemetry data
+       
       console[level] = (function (capturedLevel) {
         return function () {
           var args = Array.prototype.slice.call(arguments)
-          // eslint-disable-next-line security/detect-object-injection -- bracket access on trusted internal telemetry data
+           
           originals[capturedLevel].apply(console, args)
 
           emit('GASOLINE_LOG', {
@@ -427,15 +427,15 @@
       return {}
     }
     for (var i = 0; i < entries.length; i++) {
-      // eslint-disable-next-line security/detect-object-injection -- bracket access on trusted internal telemetry data
+       
       var key = entries[i][0]
-      // eslint-disable-next-line security/detect-object-injection -- bracket access on trusted internal telemetry data
+       
       var value = entries[i][1]
       if (SENSITIVE_HEADERS.indexOf(key.toLowerCase()) !== -1) {
-        // eslint-disable-next-line security/detect-object-injection -- bracket access on trusted internal telemetry data
+         
         filtered[key] = '[REDACTED]'
       } else {
-        // eslint-disable-next-line security/detect-object-injection -- bracket access on trusted internal telemetry data
+         
         filtered[key] = value
       }
     }

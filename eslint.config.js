@@ -14,6 +14,7 @@ export default [
       'server/',
       'docs/',
       'demo/',
+      '.venv-build/',
       // Compiled TypeScript output (linted at the .ts source level)
       'extension/background/',
       'extension/content/',
