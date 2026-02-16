@@ -22,7 +22,7 @@ const MAX_CONFIG_SIZE = 1024 * 1024; // 1MB
 function getConfigCandidates() {
   const homeDir = os.homedir();
   return [
-    path.join(homeDir, '.claude', 'claude.mcp.json'),
+    path.join(homeDir, '.claude.json'),
     path.join(homeDir, '.vscode', 'claude.mcp.json'),
     path.join(homeDir, '.cursor', 'mcp.json'),
     path.join(homeDir, '.codeium', 'mcp.json'),

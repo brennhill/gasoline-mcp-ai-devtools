@@ -23,15 +23,17 @@ const defaultMaxFileSize int64 = 50 * 1024 * 1024
 
 // Server holds the server state
 type Server struct {
-	logFile       string
-	maxEntries    int
-	maxFileSize   int64 // max log file size in bytes before rotation (0 = disabled)
-	entries       []LogEntry
-	logAddedAt    []time.Time // parallel slice: when each entry was added
-	mu            sync.RWMutex
-	logTotalAdded int64            // monotonic counter of total entries ever added
-	onEntries     func([]LogEntry) // optional callback when entries are added (e.g., for clustering)
-	TTL           time.Duration    // TTL for read-time filtering (0 means unlimited)
+	logFile         string
+	maxEntries      int
+	maxFileSize     int64 // max log file size in bytes before rotation (0 = disabled)
+	entries         []LogEntry
+	logAddedAt      []time.Time // parallel slice: when each entry was added
+	mu              sync.RWMutex
+	logTotalAdded   int64            // monotonic counter of total entries ever added
+	errorTotalAdded int64            // monotonic counter of error-level entries ever added
+	telemetryMode   string           // telemetry summary verbosity: off|auto|full
+	onEntries       func([]LogEntry) // optional callback when entries are added (e.g., for clustering)
+	TTL             time.Duration    // TTL for read-time filtering (0 means unlimited)
 
 	// Async logging
 	logChan      chan []LogEntry // buffered channel for async log writes
@@ -47,13 +49,14 @@ type Server struct {
 // NewServer creates a new server instance
 func NewServer(logFile string, maxEntries int) (*Server, error) {
 	s := &Server{
-		logFile:     logFile,
-		maxEntries:  maxEntries,
-		maxFileSize: defaultMaxFileSize,
-		entries:     make([]LogEntry, 0),
-		logChan:     make(chan []LogEntry, 10000), // 10k buffer for burst traffic
-		logDone:     make(chan struct{}),
-		warningSeen: make(map[string]struct{}),
+		logFile:       logFile,
+		maxEntries:    maxEntries,
+		maxFileSize:   defaultMaxFileSize,
+		entries:       make([]LogEntry, 0),
+		telemetryMode: telemetryModeAuto,
+		logChan:       make(chan []LogEntry, 10000), // 10k buffer for burst traffic
+		logDone:       make(chan struct{}),
+		warningSeen:   make(map[string]struct{}),
 	}
 
 	// Start async logger goroutine
@@ -204,6 +207,12 @@ func (s *Server) addEntries(newEntries []LogEntry) int {
 	s.mu.Lock()
 
 	s.logTotalAdded += int64(len(newEntries))
+	for _, entry := range newEntries {
+		level, ok := entry["level"].(string)
+		if ok && level == "error" {
+			s.errorTotalAdded++
+		}
+	}
 	now := time.Now()
 	for range newEntries {
 		s.logAddedAt = append(s.logAddedAt, now)
@@ -438,6 +447,25 @@ func (s *Server) getEntryCount() int {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	return len(s.entries)
+}
+
+// getErrorTotalAdded returns the total number of error-level log entries ever added.
+func (s *Server) getErrorTotalAdded() int64 {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return s.errorTotalAdded
+}
+
+func (s *Server) getTelemetryMode() string {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return s.telemetryMode
+}
+
+func (s *Server) setTelemetryMode(mode string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.telemetryMode = mode
 }
 
 // getEntries returns a copy of all entries

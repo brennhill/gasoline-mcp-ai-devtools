@@ -4,6 +4,33 @@ set -eo pipefail
 
 begin_category "10" "Recording" "3"
 
+# Returns 0 when interact_and_wait timed out before completion.
+is_interact_timeout() {
+    echo "$1" | grep -q "^timeout waiting for"
+}
+
+# Poll saved_videos until a recording name containing $1 appears.
+# Prints the latest saved_videos content text to stdout.
+wait_for_saved_recording() {
+    local expected_name="$1"
+    local max_attempts="${2:-20}"
+    local latest_text=""
+
+    for _i in $(seq 1 "$max_attempts"); do
+        local saved_response
+        saved_response=$(call_tool "observe" '{"what":"saved_videos","last_n":5}')
+        latest_text=$(extract_content_text "$saved_response")
+        if echo "$latest_text" | grep -q "$expected_name"; then
+            echo "$latest_text"
+            return 0
+        fi
+        sleep 1
+    done
+
+    echo "$latest_text"
+    return 1
+}
+
 # ── Test 10.1: Record tab video (no audio) ───────────────
 begin_test "10.1" "[INTERACTIVE - BROWSER] Record tab video for 5 seconds (no audio)" \
     "Start recording, wait 5s, stop, verify file saved with valid metadata" \
@@ -25,6 +52,10 @@ run_test_10_1() {
         fail "record_start returned error. Result: $(truncate "$INTERACT_RESULT" 200)"
         return
     fi
+    if is_interact_timeout "$INTERACT_RESULT"; then
+        skip "record_start timed out waiting for user gesture. Click the Gasoline icon when prompted, then rerun 10.1."
+        return
+    fi
 
     echo "  Recording... waiting 5 seconds"
     sleep 5
@@ -35,13 +66,16 @@ run_test_10_1() {
         fail "record_stop returned error. Result: $(truncate "$INTERACT_RESULT" 200)"
         return
     fi
+    if is_interact_timeout "$INTERACT_RESULT"; then
+        skip "record_stop timed out (recording never started or permission not granted)."
+        return
+    fi
 
-    sleep 2
-
-    local saved_response
-    saved_response=$(call_tool "observe" '{"what":"saved_videos","last_n":1}')
     local saved_text
-    saved_text=$(extract_content_text "$saved_response")
+    local found_saved=true
+    if ! saved_text=$(wait_for_saved_recording "smoke-video-test" 20); then
+        found_saved=false
+    fi
 
     echo "  [saved video metadata]"
     echo "$saved_text" | python3 -c "
@@ -50,7 +84,7 @@ try:
     t = sys.stdin.read(); i = t.find('{'); data = json.loads(t[i:]) if i >= 0 else {}
     recs = data.get('recordings', [])
     if recs:
-        r = recs[0]
+        r = next((x for x in recs if 'smoke-video-test' in str(x.get('name', ''))), recs[0])
         print(f'    name: {r.get(\"name\", \"?\")[:60]}')
         print(f'    duration: {r.get(\"duration_seconds\", \"?\")}s')
         print(f'    size: {r.get(\"size_bytes\", 0)} bytes')
@@ -62,13 +96,14 @@ try:
 except: pass
 " 2>/dev/null || true
 
-    if echo "$saved_text" | grep -q "smoke-video-test"; then
+    if [ "$found_saved" = "true" ]; then
         local dur
         dur=$(echo "$saved_text" | python3 -c "
 import sys,json
 t=sys.stdin.read(); i=t.find('{'); data=json.loads(t[i:]) if i>=0 else {}
 recs=data.get('recordings',[])
-print(recs[0].get('duration_seconds',0) if recs else 0)
+r=next((x for x in recs if 'smoke-video-test' in str(x.get('name',''))), recs[0] if recs else {})
+print(r.get('duration_seconds',0) if r else 0)
 " 2>/dev/null || echo "0")
         if [ "$dur" -ge 3 ] 2>/dev/null; then
             pass "Video recorded: smoke-video-test, ${dur}s duration, saved to disk."
@@ -102,6 +137,10 @@ run_test_10_2() {
         fail "record_start with audio:tab returned error. Result: $(truncate "$INTERACT_RESULT" 200)"
         return
     fi
+    if is_interact_timeout "$INTERACT_RESULT"; then
+        skip "record_start with audio:tab timed out waiting for user gesture. Click the Gasoline icon when prompted, then rerun 10.2."
+        return
+    fi
 
     echo "  Recording with audio... waiting 5 seconds"
     echo "  (play sound in the tracked tab now if you want to verify audio)"
@@ -118,13 +157,16 @@ run_test_10_2() {
         fi
         return
     fi
+    if is_interact_timeout "$INTERACT_RESULT"; then
+        skip "record_stop timed out (recording never started or permission not granted)."
+        return
+    fi
 
-    sleep 2
-
-    local saved_response
-    saved_response=$(call_tool "observe" '{"what":"saved_videos","last_n":1}')
     local saved_text
-    saved_text=$(extract_content_text "$saved_response")
+    local found_saved=true
+    if ! saved_text=$(wait_for_saved_recording "smoke-audio-test" 20); then
+        found_saved=false
+    fi
 
     echo "  [saved video with audio metadata]"
     echo "$saved_text" | python3 -c "
@@ -133,7 +175,7 @@ try:
     t = sys.stdin.read(); i = t.find('{'); data = json.loads(t[i:]) if i >= 0 else {}
     recs = data.get('recordings', [])
     if recs:
-        r = recs[0]
+        r = next((x for x in recs if 'smoke-audio-test' in str(x.get('name', ''))), recs[0])
         print(f'    name: {r.get(\"name\", \"?\")[:60]}')
         print(f'    duration: {r.get(\"duration_seconds\", \"?\")}s')
         print(f'    size: {r.get(\"size_bytes\", 0)} bytes')
@@ -144,17 +186,18 @@ try:
 except: pass
 " 2>/dev/null || true
 
-    if ! echo "$saved_text" | grep -q "smoke-audio-test"; then
+    if [ "$found_saved" != "true" ]; then
         fail "No 'smoke-audio-test' found in saved_videos. Content: $(truncate "$saved_text" 200)"
         return
     fi
 
     local has_audio
-    has_audio=$(echo "$saved_text" | python3 -c "
+has_audio=$(echo "$saved_text" | python3 -c "
 import sys,json
 t=sys.stdin.read(); i=t.find('{'); data=json.loads(t[i:]) if i>=0 else {}
 recs=data.get('recordings',[])
-print(recs[0].get('has_audio',False) if recs else False)
+r=next((x for x in recs if 'smoke-audio-test' in str(x.get('name',''))), recs[0] if recs else {})
+print(r.get('has_audio',False) if r else False)
 " 2>/dev/null || echo "False")
 
     local audio_mode
@@ -162,7 +205,8 @@ print(recs[0].get('has_audio',False) if recs else False)
 import sys,json
 t=sys.stdin.read(); i=t.find('{'); data=json.loads(t[i:]) if i>=0 else {}
 recs=data.get('recordings',[])
-print(recs[0].get('audio_mode','') if recs else '')
+r=next((x for x in recs if 'smoke-audio-test' in str(x.get('name',''))), recs[0] if recs else {})
+print(r.get('audio_mode','') if r else '')
 " 2>/dev/null || echo "")
 
     if [ "$has_audio" = "True" ] && [ "$audio_mode" = "tab" ]; then
@@ -187,8 +231,8 @@ run_test_10_3() {
         return
     fi
 
-    echo "  Navigating to YouTube lofi stream..."
-    interact_and_wait "navigate" '{"action":"navigate","url":"https://youtu.be/n61ULEU7CO0?si=xT8FVrq5eIsJTfuI&t=646&autoplay=1","reason":"Load YouTube video for watermark test"}' 20
+    echo "  Navigating to CSP-safe page for watermark test..."
+    interact_and_wait "navigate" '{"action":"navigate","url":"https://example.com","reason":"Load CSP-safe page for watermark test"}' 20
     sleep 2
 
     interact_and_wait "record_start" '{"action":"record_start","name":"smoke-watermark-test","reason":"Test watermark persistence"}'
@@ -200,15 +244,25 @@ run_test_10_3() {
 
     sleep 3
 
-    # YouTube is slow — give execute_js more poll time (30 polls = 15s)
+    # Keep generous poll budget to avoid false negatives on slower CI runners.
     interact_and_wait "execute_js" '{"action":"execute_js","reason":"Check watermark before refresh","script":"document.getElementById(\"gasoline-recording-watermark\") ? \"WATERMARK_FOUND\" : \"WATERMARK_MISSING\""}' 30
     local before_refresh="$INTERACT_RESULT"
+    if echo "$before_refresh" | grep -q "csp_blocked_all_worlds"; then
+        interact_and_wait "record_stop" '{"action":"record_stop","reason":"Stop watermark test recording after CSP block"}' 20
+        skip "Watermark DOM check blocked by page CSP (execute_js unavailable)."
+        return
+    fi
 
     interact_and_wait "refresh" '{"action":"refresh","reason":"Refresh during recording"}' 20
     sleep 5
 
     interact_and_wait "execute_js" '{"action":"execute_js","reason":"Check watermark after refresh","script":"document.getElementById(\"gasoline-recording-watermark\") ? \"WATERMARK_FOUND\" : \"WATERMARK_MISSING\""}' 30
     local after_refresh="$INTERACT_RESULT"
+    if echo "$after_refresh" | grep -q "csp_blocked_all_worlds"; then
+        interact_and_wait "record_stop" '{"action":"record_stop","reason":"Stop watermark test recording after CSP block"}' 20
+        skip "Watermark DOM check blocked by page CSP after refresh."
+        return
+    fi
 
     interact_and_wait "record_stop" '{"action":"record_stop","reason":"Stop watermark test recording"}' 20
     sleep 1

@@ -11,6 +11,13 @@ func (c *Capture) GetNetworkTotalAdded() int64 {
 	return c.networkTotalAdded
 }
 
+// GetNetworkErrorTotalAdded returns the monotonic total of error network bodies ever added.
+func (c *Capture) GetNetworkErrorTotalAdded() int64 {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	return c.networkErrorTotalAdded
+}
+
 // GetWebSocketTotalAdded returns the monotonic total of WebSocket events ever added
 func (c *Capture) GetWebSocketTotalAdded() int64 {
 	c.mu.RLock()

@@ -20,6 +20,15 @@ var dashboardHTML []byte
 //go:embed diagnostics.html
 var diagnosticsHTML []byte
 
+//go:embed logs.html
+var logsHTML []byte
+
+//go:embed setup.html
+var setupHTML []byte
+
+//go:embed docs.html
+var docsHTML []byte
+
 // handleDashboard serves the HTML dashboard for browser access.
 // If the client sends Accept: application/json, falls back to the JSON discovery response.
 func (s *Server) handleDashboard(w http.ResponseWriter, r *http.Request) {
@@ -105,16 +114,16 @@ func handleStatusAPI(server *Server, cap *capture.Capture, mcpHandler *MCPHandle
 	}
 }
 
-// handleDiagnosticsHTML serves the diagnostics HTML page.
-func handleDiagnosticsHTML(w http.ResponseWriter, r *http.Request) {
+// serveEmbeddedHTML is a helper that serves an embedded HTML page.
+func serveEmbeddedHTML(w http.ResponseWriter, r *http.Request, content []byte, name string) {
 	if r.Method != "GET" {
 		jsonResponse(w, http.StatusMethodNotAllowed, map[string]string{"error": "Method not allowed"})
 		return
 	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.WriteHeader(http.StatusOK)
-	if _, err := w.Write(diagnosticsHTML); err != nil {
-		fmt.Fprintf(os.Stderr, "[gasoline] failed to write diagnostics HTML response: %v\n", err)
+	if _, err := w.Write(content); err != nil {
+		fmt.Fprintf(os.Stderr, "[gasoline] failed to write %s response: %v\n", name, err)
 	}
 }
 

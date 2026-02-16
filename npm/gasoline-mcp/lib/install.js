@@ -126,7 +126,7 @@ function executeInstall(options = {}) {
     // This would have been handled by the try-catch above
     // But just in case, try the default location
     try {
-      const defaultPath = candidates[0]; // ~/.claude/claude.mcp.json
+      const defaultPath = candidates[0]; // ~/.claude.json
       const merged = mergeGassolineConfig(
         generateDefaultConfig(),
         gassolineEntry,

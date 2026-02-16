@@ -1,22 +1,22 @@
 // upload-handler.ts — Handles upload queries from the server.
 // Fetches file data from Go server's /api/file/read, then injects into DOM <input type="file">.
 // Supports Stage 1 (DataTransfer) with automatic escalation to Stage 4 (OS automation).
-import * as index from './index.js'
-import { DebugCategory } from './debug.js'
-const { debugLog } = index
+import * as index from './index.js';
+import { DebugCategory } from './debug.js';
+const { debugLog } = index;
 // ============================================
 // Timing Constants
 // ============================================
 /** Wait for synchronous onchange to clear file after Stage 1 injection */
-const VERIFY_DELAY_MS = 500
+const VERIFY_DELAY_MS = 500;
 /** Wait for native file dialog to open after el.click() */
-const DIALOG_OPEN_DELAY_MS = 1500
+const DIALOG_OPEN_DELAY_MS = 1500;
 /** Wait for dialog to close and Chrome to process file after OS automation */
-const DIALOG_CLOSE_DELAY_MS = 2000
+const DIALOG_CLOSE_DELAY_MS = 2000;
 /** Timeout for daemon fetch calls */
-const DAEMON_FETCH_TIMEOUT_MS = 15000
+const DAEMON_FETCH_TIMEOUT_MS = 15000;
 /** Number of verification attempts before giving up */
-const VERIFY_MAX_ATTEMPTS = 3
+const VERIFY_MAX_ATTEMPTS = 3;
 // ============================================
 // Injected Functions (run in MAIN world)
 // ============================================
@@ -26,63 +26,68 @@ const VERIFY_MAX_ATTEMPTS = 3
  * MUST NOT reference any module-level variables.
  */
 function injectFileIntoInput(selector, dataBase64, fileName, mimeType) {
-  const el = document.querySelector(selector)
-  if (!el) {
-    return { success: false, error: `element_not_found: ${selector}` }
-  }
-  if (!(el instanceof HTMLInputElement) || el.type !== 'file') {
-    return { success: false, error: `not_file_input: <${el.tagName.toLowerCase()} type="${el.type || 'N/A'}">` }
-  }
-  try {
-    const raw = atob(dataBase64)
-    const bytes = new Uint8Array(raw.length)
-    for (let i = 0; i < raw.length; i++) {
-      bytes[i] = raw.charCodeAt(i)
+    const el = document.querySelector(selector);
+    if (!el) {
+        return { success: false, error: `element_not_found: ${selector}` };
     }
-    const blob = new Blob([bytes], { type: mimeType })
-    const file = new File([blob], fileName, { type: mimeType })
-    const dt = new DataTransfer()
-    dt.items.add(file)
-    el.files = dt.files
-    el.dispatchEvent(new Event('change', { bubbles: true }))
-    el.dispatchEvent(new Event('input', { bubbles: true }))
-    return { success: true, file_name: fileName, file_size: file.size }
-  } catch (err) {
-    return { success: false, error: `inject_failed: ${err.message}` }
-  }
+    if (!(el instanceof HTMLInputElement) || el.type !== 'file') {
+        return {
+            success: false,
+            error: `not_file_input: <${el.tagName.toLowerCase()} type="${el.type || 'N/A'}">`
+        };
+    }
+    try {
+        const raw = atob(dataBase64);
+        const bytes = new Uint8Array(raw.length);
+        for (let i = 0; i < raw.length; i++) {
+            bytes[i] = raw.charCodeAt(i);
+        }
+        const blob = new Blob([bytes], { type: mimeType });
+        const file = new File([blob], fileName, { type: mimeType });
+        const dt = new DataTransfer();
+        dt.items.add(file);
+        el.files = dt.files;
+        el.dispatchEvent(new Event('change', { bubbles: true }));
+        el.dispatchEvent(new Event('input', { bubbles: true }));
+        return { success: true, file_name: fileName, file_size: file.size };
+    }
+    catch (err) {
+        return { success: false, error: `inject_failed: ${err.message}` };
+    }
 }
 /**
  * Injected into MAIN world to check if a file is present on the input element.
  * MUST NOT reference any module-level variables.
  */
 function checkFileOnInput(selector) {
-  const el = document.querySelector(selector)
-  if (!el || !(el instanceof HTMLInputElement)) {
-    return { has_file: false }
-  }
-  if (el.files && el.files.length > 0) {
-    return { has_file: true, file_name: el.files[0]?.name, file_size: el.files[0]?.size }
-  }
-  return { has_file: false }
+    const el = document.querySelector(selector);
+    if (!el || !(el instanceof HTMLInputElement)) {
+        return { has_file: false };
+    }
+    if (el.files && el.files.length > 0) {
+        return { has_file: true, file_name: el.files[0]?.name, file_size: el.files[0]?.size };
+    }
+    return { has_file: false };
 }
 /**
  * Injected into MAIN world to click a file input element to open the native file dialog.
  * MUST NOT reference any module-level variables.
  */
 function clickFileInputElement(selector) {
-  const el = document.querySelector(selector)
-  if (!el) {
-    return { clicked: false, error: `element_not_found: ${selector}` }
-  }
-  if (!(el instanceof HTMLInputElement) || el.type !== 'file') {
-    return { clicked: false, error: 'not_file_input' }
-  }
-  try {
-    el.click()
-    return { clicked: true }
-  } catch (err) {
-    return { clicked: false, error: `click_failed: ${err.message}` }
-  }
+    const el = document.querySelector(selector);
+    if (!el) {
+        return { clicked: false, error: `element_not_found: ${selector}` };
+    }
+    if (!(el instanceof HTMLInputElement) || el.type !== 'file') {
+        return { clicked: false, error: 'not_file_input' };
+    }
+    try {
+        el.click();
+        return { clicked: true };
+    }
+    catch (err) {
+        return { clicked: false, error: `click_failed: ${err.message}` };
+    }
 }
 // ============================================
 // Exported Verification & Escalation Functions
@@ -91,318 +96,320 @@ function clickFileInputElement(selector) {
  * Verify whether a file is present on the input element (single check).
  */
 async function verifyFileOnInputOnce(tabId, selector) {
-  const results = await chrome.scripting.executeScript({
-    target: { tabId, allFrames: true },
-    world: 'MAIN',
-    func: checkFileOnInput,
-    args: [selector]
-  })
-  // Pick first frame that has a file
-  for (const r of results) {
-    const res = r.result
-    if (res?.has_file) return res
-  }
-  return results[0]?.result ?? { has_file: false }
+    const results = await chrome.scripting.executeScript({
+        target: { tabId, allFrames: true },
+        world: 'MAIN',
+        func: checkFileOnInput,
+        args: [selector]
+    });
+    // Pick first frame that has a file
+    for (const r of results) {
+        const res = r.result;
+        if (res?.has_file)
+            return res;
+    }
+    return results[0]?.result ?? { has_file: false };
 }
 /**
  * Verify whether a file is present on the input element after Stage 1 injection.
  * Polls up to VERIFY_MAX_ATTEMPTS times with VERIFY_DELAY_MS between attempts.
  */
 export async function verifyFileOnInput(tabId, selector) {
-  for (let attempt = 0; attempt < VERIFY_MAX_ATTEMPTS; attempt++) {
-    const result = await verifyFileOnInputOnce(tabId, selector)
-    if (result.has_file) return result
-    if (attempt < VERIFY_MAX_ATTEMPTS - 1) {
-      await sleep(VERIFY_DELAY_MS)
+    for (let attempt = 0; attempt < VERIFY_MAX_ATTEMPTS; attempt++) {
+        const result = await verifyFileOnInputOnce(tabId, selector);
+        if (result.has_file)
+            return result;
+        if (attempt < VERIFY_MAX_ATTEMPTS - 1) {
+            await sleep(VERIFY_DELAY_MS);
+        }
     }
-  }
-  return { has_file: false }
+    return { has_file: false };
 }
 /**
  * Click a file input element to open the native file dialog.
  */
 export async function clickFileInput(tabId, selector) {
-  const results = await chrome.scripting.executeScript({
-    target: { tabId, allFrames: true },
-    world: 'MAIN',
-    func: clickFileInputElement,
-    args: [selector]
-  })
-  // Pick first frame that clicked successfully
-  for (const r of results) {
-    const res = r.result
-    if (res?.clicked) return res
-  }
-  return results[0]?.result ?? { clicked: false, error: 'no_result' }
+    const results = await chrome.scripting.executeScript({
+        target: { tabId, allFrames: true },
+        world: 'MAIN',
+        func: clickFileInputElement,
+        args: [selector]
+    });
+    // Pick first frame that clicked successfully
+    for (const r of results) {
+        const res = r.result;
+        if (res?.clicked)
+            return res;
+    }
+    return results[0]?.result ?? { clicked: false, error: 'no_result' };
 }
 /** Module-level mutex to prevent concurrent Stage 4 escalations */
-let escalationInProgress = false
+let escalationInProgress = false;
 /**
  * Attempt to dismiss a dangling file dialog by sending Escape via OS automation.
  * Best-effort — errors are logged but not propagated.
  */
 async function dismissFileDialog(serverUrl) {
-  const controller = new AbortController()
-  const timeoutId = setTimeout(() => controller.abort(), 5000)
-  try {
-    await fetch(`${serverUrl}/api/os-automation/dismiss`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-Gasoline-Client': 'gasoline-extension' },
-      signal: controller.signal
-    })
-  } catch {
-    // Best-effort cleanup — ignore errors
-  } finally {
-    clearTimeout(timeoutId)
-  }
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5000);
+    try {
+        await fetch(`${serverUrl}/api/os-automation/dismiss`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-Gasoline-Client': 'gasoline-extension' },
+            signal: controller.signal
+        });
+    }
+    catch {
+        // Best-effort cleanup — ignore errors
+    }
+    finally {
+        clearTimeout(timeoutId);
+    }
 }
 /**
  * Escalate to Stage 4 OS automation: click file input, call daemon, verify result.
  */
 export async function escalateToStage4(tabId, selector, filePath, serverUrl) {
-  // Prevent concurrent escalations
-  if (escalationInProgress) {
-    return {
-      success: false,
-      stage: 4,
-      error: 'Escalation already in progress. Wait for the current upload to complete.'
+    // Prevent concurrent escalations
+    if (escalationInProgress) {
+        return {
+            success: false,
+            stage: 4,
+            error: 'Escalation already in progress. Wait for the current upload to complete.'
+        };
     }
-  }
-  escalationInProgress = true
-  try {
-    return await escalateToStage4Internal(tabId, selector, filePath, serverUrl)
-  } finally {
-    escalationInProgress = false
-  }
+    escalationInProgress = true;
+    try {
+        return await escalateToStage4Internal(tabId, selector, filePath, serverUrl);
+    }
+    finally {
+        escalationInProgress = false;
+    }
 }
 async function escalateToStage4Internal(tabId, selector, filePath, serverUrl) {
-  // Step 1: Click file input to open native dialog
-  const clickResult = await clickFileInput(tabId, selector)
-  if (!clickResult.clicked) {
-    return {
-      success: false,
-      stage: 4,
-      error: `Escalation failed: could not click file input '${selector}'. Verify the element exists, is visible, and is type='file'.`
-    }
-  }
-  // Step 2: Wait for native file dialog to open
-  await sleep(DIALOG_OPEN_DELAY_MS)
-  // Step 3: Call daemon for OS automation with browser_pid: 0 (auto-detect)
-  let daemonResponse
-  const controller = new AbortController()
-  const timeoutId = setTimeout(() => controller.abort(), DAEMON_FETCH_TIMEOUT_MS)
-  try {
-    const response = await fetch(`${serverUrl}/api/os-automation/inject`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-Gasoline-Client': 'gasoline-extension' },
-      body: JSON.stringify({ file_path: filePath, browser_pid: 0 }),
-      signal: controller.signal
-    })
-    clearTimeout(timeoutId)
-    if (!response.ok) {
-      let errorMsg = `HTTP ${response.status}`
-      try {
-        const body = await response.json()
-        errorMsg = body.error || errorMsg
-      } catch {
-        /* non-JSON body */
-      }
-      if (response.status === 403) {
-        await dismissFileDialog(serverUrl)
+    // Step 1: Click file input to open native dialog
+    const clickResult = await clickFileInput(tabId, selector);
+    if (!clickResult.clicked) {
         return {
-          success: false,
-          stage: 4,
-          error: `Escalation failed: OS automation disabled on daemon. Restart with: gasoline-mcp --daemon --enable-os-upload-automation --upload-dir=/path/to/uploads. Detail: ${errorMsg}`
+            success: false,
+            stage: 4,
+            error: `Escalation failed: could not click file input '${selector}'. Verify the element exists, is visible, and is type='file'.`
+        };
+    }
+    // Step 2: Wait for native file dialog to open
+    await sleep(DIALOG_OPEN_DELAY_MS);
+    // Step 3: Call daemon for OS automation with browser_pid: 0 (auto-detect)
+    let daemonResponse;
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), DAEMON_FETCH_TIMEOUT_MS);
+    try {
+        const response = await fetch(`${serverUrl}/api/os-automation/inject`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-Gasoline-Client': 'gasoline-extension' },
+            body: JSON.stringify({ file_path: filePath, browser_pid: 0 }),
+            signal: controller.signal
+        });
+        clearTimeout(timeoutId);
+        if (!response.ok) {
+            let errorMsg = `HTTP ${response.status}`;
+            try {
+                const body = (await response.json());
+                errorMsg = body.error || errorMsg;
+            }
+            catch {
+                /* non-JSON body */
+            }
+            if (response.status === 403) {
+                await dismissFileDialog(serverUrl);
+                return {
+                    success: false,
+                    stage: 4,
+                    error: `Escalation failed: OS automation disabled on daemon. Restart with: gasoline-mcp --daemon --enable-os-upload-automation --upload-dir=/path/to/uploads. Detail: ${errorMsg}`
+                };
+            }
+            await dismissFileDialog(serverUrl);
+            return {
+                success: false,
+                stage: 4,
+                error: `Stage 4 OS automation failed: ${errorMsg}`
+            };
         }
-      }
-      await dismissFileDialog(serverUrl)
-      return {
-        success: false,
-        stage: 4,
-        error: `Stage 4 OS automation failed: ${errorMsg}`
-      }
+        daemonResponse = (await response.json());
+        if (!daemonResponse.success) {
+            const errorMsg = daemonResponse.error || 'unknown daemon error';
+            await dismissFileDialog(serverUrl);
+            return {
+                success: false,
+                stage: 4,
+                error: `Stage 4 OS automation failed: ${errorMsg}`
+            };
+        }
     }
-    daemonResponse = await response.json()
-    if (!daemonResponse.success) {
-      const errorMsg = daemonResponse.error || 'unknown daemon error'
-      await dismissFileDialog(serverUrl)
-      return {
-        success: false,
-        stage: 4,
-        error: `Stage 4 OS automation failed: ${errorMsg}`
-      }
+    catch (err) {
+        clearTimeout(timeoutId);
+        const msg = err.name === 'AbortError'
+            ? `Escalation timed out after ${DAEMON_FETCH_TIMEOUT_MS}ms waiting for daemon at ${serverUrl}/api/os-automation/inject`
+            : `Escalation failed: cannot reach daemon at ${serverUrl}/api/os-automation/inject. Error: ${err.message}`;
+        await dismissFileDialog(serverUrl);
+        return {
+            success: false,
+            stage: 4,
+            error: msg
+        };
     }
-  } catch (err) {
-    clearTimeout(timeoutId)
-    const msg =
-      err.name === 'AbortError'
-        ? `Escalation timed out after ${DAEMON_FETCH_TIMEOUT_MS}ms waiting for daemon at ${serverUrl}/api/os-automation/inject`
-        : `Escalation failed: cannot reach daemon at ${serverUrl}/api/os-automation/inject. Error: ${err.message}`
-    await dismissFileDialog(serverUrl)
+    // Step 4: Wait for dialog to close and file to appear
+    await sleep(DIALOG_CLOSE_DELAY_MS);
+    // Step 5: Verify file is on input (polls up to VERIFY_MAX_ATTEMPTS times)
+    const verifyResult = await verifyFileOnInput(tabId, selector);
+    if (!verifyResult.has_file) {
+        await dismissFileDialog(serverUrl);
+        return {
+            success: false,
+            stage: 4,
+            escalation_reason: 'stage1_file_cleared',
+            error: `Stage 4 completed but file not found on input '${selector}'. The native file dialog may not have been in focus. Verify file exists: ${filePath}`
+        };
+    }
     return {
-      success: false,
-      stage: 4,
-      error: msg
-    }
-  }
-  // Step 4: Wait for dialog to close and file to appear
-  await sleep(DIALOG_CLOSE_DELAY_MS)
-  // Step 5: Verify file is on input (polls up to VERIFY_MAX_ATTEMPTS times)
-  const verifyResult = await verifyFileOnInput(tabId, selector)
-  if (!verifyResult.has_file) {
-    await dismissFileDialog(serverUrl)
-    return {
-      success: false,
-      stage: 4,
-      escalation_reason: 'stage1_file_cleared',
-      error: `Stage 4 completed but file not found on input '${selector}'. The native file dialog may not have been in focus. Verify file exists: ${filePath}`
-    }
-  }
-  return {
-    success: true,
-    stage: 4,
-    escalation_reason: 'stage1_file_cleared',
-    file_name: verifyResult.file_name
-  }
+        success: true,
+        stage: 4,
+        escalation_reason: 'stage1_file_cleared',
+        file_name: verifyResult.file_name
+    };
 }
 // ============================================
 // Main Upload Handler
 // ============================================
 export async function executeUpload(query, tabId, syncClient, sendAsyncResult, actionToast) {
-  const correlationId = query.correlation_id
-  let params
-  try {
-    params = typeof query.params === 'string' ? JSON.parse(query.params) : query.params
-  } catch {
-    sendAsyncResult(syncClient, query.id, correlationId, 'error', null, 'invalid_params')
-    return
-  }
-  const { selector, file_path, file_name, mime_type } = params
-  if (!selector || !file_path) {
-    sendAsyncResult(syncClient, query.id, correlationId, 'error', null, 'missing_selector_or_file_path')
-    return
-  }
-  actionToast(tabId, 'upload', file_name || 'file', 'trying', 10000)
-  // Stage 1: Fetch file data from Go server
-  let fileData
-  try {
-    const response = await fetch(`${index.serverUrl}/api/file/read`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-Gasoline-Client': 'gasoline-extension' },
-      body: JSON.stringify({ file_path })
-    })
-    if (!response.ok) {
-      sendAsyncResult(syncClient, query.id, correlationId, 'error', null, `file_read_failed: HTTP ${response.status}`)
-      actionToast(tabId, 'upload', `HTTP ${response.status}`, 'error')
-      return
+    const correlationId = query.correlation_id;
+    let params;
+    try {
+        params =
+            typeof query.params === 'string'
+                ? JSON.parse(query.params)
+                : query.params;
     }
-    fileData = await response.json()
-  } catch (err) {
-    sendAsyncResult(syncClient, query.id, correlationId, 'error', null, `file_read_failed: ${err.message}`)
-    actionToast(tabId, 'upload', 'fetch failed', 'error')
-    return
-  }
-  if (!fileData.success || !fileData.data_base64) {
-    sendAsyncResult(
-      syncClient,
-      query.id,
-      correlationId,
-      'error',
-      null,
-      `file_read_failed: ${fileData.error || 'no data'}`
-    )
-    actionToast(tabId, 'upload', fileData.error || 'no data', 'error')
-    return
-  }
-  // Stage 1: Inject file into DOM input element via DataTransfer
-  const fileName = file_name || fileData.file_name || 'file'
-  const mimeType = mime_type || fileData.mime_type || 'application/octet-stream'
-  try {
-    const results = await chrome.scripting.executeScript({
-      target: { tabId, allFrames: true },
-      world: 'MAIN',
-      func: injectFileIntoInput,
-      args: [selector, fileData.data_base64, fileName, mimeType]
-    })
-    let picked = null
-    for (const r of results) {
-      const res = r.result
-      if (res?.success) {
-        picked = res
-        break
-      }
+    catch {
+        sendAsyncResult(syncClient, query.id, correlationId, 'error', null, 'invalid_params');
+        return;
     }
-    if (!picked) {
-      // Fall back to main frame result for error message
-      picked = results[0]?.result || null
+    const { selector, file_path, file_name, mime_type } = params;
+    if (!selector || !file_path) {
+        sendAsyncResult(syncClient, query.id, correlationId, 'error', null, 'missing_selector_or_file_path');
+        return;
     }
-    if (picked?.success) {
-      // Stage 1 injection succeeded — verify file persisted (polls with delay)
-      debugLog(DebugCategory.CONNECTION, 'Upload injected, verifying persistence...', { selector, fileName })
-      const verification = await verifyFileOnInput(tabId, selector)
-      if (verification.has_file) {
-        // Stage 1 success — file persisted
-        debugLog(DebugCategory.CONNECTION, 'Upload Stage 1 verified', {
-          selector,
-          fileName,
-          fileSize: picked.file_size
-        })
-        actionToast(tabId, 'upload', fileName, 'success')
-        sendAsyncResult(syncClient, query.id, correlationId, 'complete', {
-          success: true,
-          stage: 1,
-          file_name: picked.file_name,
-          file_size: picked.file_size,
-          selector
-        })
-      } else {
-        // Stage 1 file was cleared by the form — escalate to Stage 4
-        debugLog(DebugCategory.CONNECTION, 'Upload Stage 1 file cleared, escalating to Stage 4', { selector })
-        actionToast(tabId, 'upload', 'Escalating to OS automation...', 'trying', 30000)
-        const escalation = await escalateToStage4(tabId, selector, file_path, index.serverUrl)
-        if (escalation.success) {
-          debugLog(DebugCategory.CONNECTION, 'Upload Stage 4 succeeded', { selector, fileName: escalation.file_name })
-          actionToast(tabId, 'upload', escalation.file_name || fileName, 'success')
-          sendAsyncResult(syncClient, query.id, correlationId, 'complete', {
-            success: true,
-            stage: 4,
-            escalation_reason: escalation.escalation_reason,
-            file_name: escalation.file_name,
-            selector
-          })
-        } else {
-          debugLog(DebugCategory.CONNECTION, 'Upload Stage 4 failed', { selector, error: escalation.error })
-          actionToast(tabId, 'upload', escalation.error || 'Stage 4 failed', 'error')
-          sendAsyncResult(
-            syncClient,
-            query.id,
-            correlationId,
-            'error',
-            {
-              stage: 4,
-              escalation_reason: escalation.escalation_reason
-            },
-            escalation.error || 'stage4_failed'
-          )
+    actionToast(tabId, 'upload', file_name || 'file', 'trying', 10000);
+    // Stage 1: Fetch file data from Go server
+    let fileData;
+    try {
+        const response = await fetch(`${index.serverUrl}/api/file/read`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-Gasoline-Client': 'gasoline-extension' },
+            body: JSON.stringify({ file_path })
+        });
+        if (!response.ok) {
+            sendAsyncResult(syncClient, query.id, correlationId, 'error', null, `file_read_failed: HTTP ${response.status}`);
+            actionToast(tabId, 'upload', `HTTP ${response.status}`, 'error');
+            return;
         }
-      }
-    } else {
-      const error = picked?.error || 'injection_failed'
-      debugLog(DebugCategory.CONNECTION, 'Upload injection failed', { selector, error })
-      actionToast(tabId, 'upload', error, 'error')
-      sendAsyncResult(syncClient, query.id, correlationId, 'error', null, error)
+        fileData = (await response.json());
     }
-  } catch (err) {
-    const error = err.message || 'script_execution_failed'
-    debugLog(DebugCategory.CONNECTION, 'Upload executeScript failed', { error })
-    actionToast(tabId, 'upload', error, 'error')
-    sendAsyncResult(syncClient, query.id, correlationId, 'error', null, error)
-  }
+    catch (err) {
+        sendAsyncResult(syncClient, query.id, correlationId, 'error', null, `file_read_failed: ${err.message}`);
+        actionToast(tabId, 'upload', 'fetch failed', 'error');
+        return;
+    }
+    if (!fileData.success || !fileData.data_base64) {
+        sendAsyncResult(syncClient, query.id, correlationId, 'error', null, `file_read_failed: ${fileData.error || 'no data'}`);
+        actionToast(tabId, 'upload', fileData.error || 'no data', 'error');
+        return;
+    }
+    // Stage 1: Inject file into DOM input element via DataTransfer
+    const fileName = file_name || fileData.file_name || 'file';
+    const mimeType = mime_type || fileData.mime_type || 'application/octet-stream';
+    try {
+        const results = await chrome.scripting.executeScript({
+            target: { tabId, allFrames: true },
+            world: 'MAIN',
+            func: injectFileIntoInput,
+            args: [selector, fileData.data_base64, fileName, mimeType]
+        });
+        let picked = null;
+        for (const r of results) {
+            const res = r.result;
+            if (res?.success) {
+                picked = res;
+                break;
+            }
+        }
+        if (!picked) {
+            // Fall back to main frame result for error message
+            picked = results[0]?.result || null;
+        }
+        if (picked?.success) {
+            // Stage 1 injection succeeded — verify file persisted (polls with delay)
+            debugLog(DebugCategory.CONNECTION, 'Upload injected, verifying persistence...', { selector, fileName });
+            const verification = await verifyFileOnInput(tabId, selector);
+            if (verification.has_file) {
+                // Stage 1 success — file persisted
+                debugLog(DebugCategory.CONNECTION, 'Upload Stage 1 verified', {
+                    selector,
+                    fileName,
+                    fileSize: picked.file_size
+                });
+                actionToast(tabId, 'upload', fileName, 'success');
+                sendAsyncResult(syncClient, query.id, correlationId, 'complete', {
+                    success: true,
+                    stage: 1,
+                    file_name: picked.file_name,
+                    file_size: picked.file_size,
+                    selector
+                });
+            }
+            else {
+                // Stage 1 file was cleared by the form — escalate to Stage 4
+                debugLog(DebugCategory.CONNECTION, 'Upload Stage 1 file cleared, escalating to Stage 4', { selector });
+                actionToast(tabId, 'upload', 'Escalating to OS automation...', 'trying', 30000);
+                const escalation = await escalateToStage4(tabId, selector, file_path, index.serverUrl);
+                if (escalation.success) {
+                    debugLog(DebugCategory.CONNECTION, 'Upload Stage 4 succeeded', { selector, fileName: escalation.file_name });
+                    actionToast(tabId, 'upload', escalation.file_name || fileName, 'success');
+                    sendAsyncResult(syncClient, query.id, correlationId, 'complete', {
+                        success: true,
+                        stage: 4,
+                        escalation_reason: escalation.escalation_reason,
+                        file_name: escalation.file_name,
+                        selector
+                    });
+                }
+                else {
+                    debugLog(DebugCategory.CONNECTION, 'Upload Stage 4 failed', { selector, error: escalation.error });
+                    actionToast(tabId, 'upload', escalation.error || 'Stage 4 failed', 'error');
+                    sendAsyncResult(syncClient, query.id, correlationId, 'error', {
+                        stage: 4,
+                        escalation_reason: escalation.escalation_reason
+                    }, escalation.error || 'stage4_failed');
+                }
+            }
+        }
+        else {
+            const error = picked?.error || 'injection_failed';
+            debugLog(DebugCategory.CONNECTION, 'Upload injection failed', { selector, error });
+            actionToast(tabId, 'upload', error, 'error');
+            sendAsyncResult(syncClient, query.id, correlationId, 'error', null, error);
+        }
+    }
+    catch (err) {
+        const error = err.message || 'script_execution_failed';
+        debugLog(DebugCategory.CONNECTION, 'Upload executeScript failed', { error });
+        actionToast(tabId, 'upload', error, 'error');
+        sendAsyncResult(syncClient, query.id, correlationId, 'error', null, error);
+    }
 }
 // ============================================
 // Helpers
 // ============================================
 function sleep(ms) {
-  return new Promise((resolve) => setTimeout(resolve, ms))
+    return new Promise((resolve) => setTimeout(resolve, ms));
 }
 //# sourceMappingURL=upload-handler.js.map

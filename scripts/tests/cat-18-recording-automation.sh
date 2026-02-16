@@ -177,7 +177,7 @@ run_test_18_24() {
     sleep 0.1
 
     # Capture screenshot
-    response=$(call_tool "interact" '{"action":"screenshot","name":"after-click"}')
+    response=$(call_tool "observe" '{"what":"screenshot"}')
 
     if ! check_not_error "$response"; then
         pass "Screenshot capture not yet in recording (future feature)"

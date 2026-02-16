@@ -157,6 +157,59 @@ func TestToolsConfigureHealth_ResponseFields(t *testing.T) {
 	assertSnakeCaseFields(t, string(resp.Result))
 }
 
+func TestToolsConfigureTelemetry_DefaultStatus(t *testing.T) {
+	t.Parallel()
+	h, _, _ := makeConfigureToolHandler(t)
+
+	resp := callConfigureRaw(h, `{"action":"telemetry"}`)
+	result := parseToolResult(t, resp)
+	if result.IsError {
+		t.Fatalf("telemetry status should succeed, got: %s", result.Content[0].Text)
+	}
+
+	data := extractResultJSON(t, result)
+	if data["status"] != "ok" {
+		t.Errorf("status = %v, want 'ok'", data["status"])
+	}
+	if mode, _ := data["telemetry_mode"].(string); mode != telemetryModeAuto {
+		t.Errorf("telemetry_mode = %q, want %q", mode, telemetryModeAuto)
+	}
+
+	assertSnakeCaseFields(t, string(resp.Result))
+}
+
+func TestToolsConfigureTelemetry_SetMode(t *testing.T) {
+	t.Parallel()
+	h, _, _ := makeConfigureToolHandler(t)
+
+	resp := callConfigureRaw(h, `{"action":"telemetry","telemetry_mode":"full"}`)
+	result := parseToolResult(t, resp)
+	if result.IsError {
+		t.Fatalf("telemetry set mode should succeed, got: %s", result.Content[0].Text)
+	}
+	data := extractResultJSON(t, result)
+	if mode, _ := data["telemetry_mode"].(string); mode != telemetryModeFull {
+		t.Errorf("telemetry_mode = %q, want %q", mode, telemetryModeFull)
+	}
+}
+
+func TestToolsConfigureTelemetry_InvalidMode(t *testing.T) {
+	t.Parallel()
+	h, _, _ := makeConfigureToolHandler(t)
+
+	resp := callConfigureRaw(h, `{"action":"telemetry","telemetry_mode":"verbose"}`)
+	result := parseToolResult(t, resp)
+	if !result.IsError {
+		t.Fatal("invalid telemetry mode should return isError:true")
+	}
+	if !strings.Contains(result.Content[0].Text, "invalid_param") {
+		t.Errorf("error code should be 'invalid_param', got: %s", result.Content[0].Text)
+	}
+	if !strings.Contains(result.Content[0].Text, "telemetry_mode") {
+		t.Errorf("error should mention telemetry_mode, got: %s", result.Content[0].Text)
+	}
+}
+
 // ============================================
 // configure(action:"clear") — Response Fields & State Changes
 // ============================================
@@ -600,6 +653,7 @@ func TestToolsConfigure_AllActions_ResponseStructure(t *testing.T) {
 		args   string
 	}{
 		{"health", `{"action":"health"}`},
+		{"telemetry", `{"action":"telemetry"}`},
 		{"clear", `{"action":"clear"}`},
 		{"noise_rule", `{"action":"noise_rule","noise_action":"list"}`},
 		{"load", `{"action":"load"}`},

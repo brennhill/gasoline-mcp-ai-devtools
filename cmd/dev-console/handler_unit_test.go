@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/dev-console/dev-console/internal/capture"
 )
@@ -61,6 +62,65 @@ func mustDecodeJSON[T any](t *testing.T, raw json.RawMessage) T {
 		t.Fatalf("json.Unmarshal() error = %v", err)
 	}
 	return out
+}
+
+func mustTelemetryMetadata(t *testing.T, raw json.RawMessage) map[string]any {
+	t.Helper()
+	var result MCPToolResult
+	if err := json.Unmarshal(raw, &result); err != nil {
+		t.Fatalf("json.Unmarshal(MCPToolResult) error = %v", err)
+	}
+	if result.Metadata == nil {
+		t.Fatal("result metadata missing")
+	}
+	return result.Metadata
+}
+
+func mustTelemetrySummary(t *testing.T, raw json.RawMessage) map[string]any {
+	t.Helper()
+	metadata := mustTelemetryMetadata(t, raw)
+	summary, ok := metadata["telemetry_summary"].(map[string]any)
+	if !ok {
+		t.Fatalf("telemetry_summary missing or wrong type: %#v", metadata["telemetry_summary"])
+	}
+	return summary
+}
+
+func telemetrySummaryIfPresent(t *testing.T, raw json.RawMessage) (map[string]any, bool) {
+	t.Helper()
+	metadata := mustTelemetryMetadata(t, raw)
+	summary, ok := metadata["telemetry_summary"].(map[string]any)
+	if !ok {
+		return nil, false
+	}
+	return summary, true
+}
+
+func mustTelemetryInt(t *testing.T, summary map[string]any, key string) int64 {
+	t.Helper()
+	v, ok := summary[key]
+	if !ok {
+		t.Fatalf("telemetry_summary[%q] missing", key)
+	}
+	f, ok := v.(float64)
+	if !ok {
+		t.Fatalf("telemetry_summary[%q] type = %T, want number", key, v)
+	}
+	return int64(f)
+}
+
+func mustTelemetryChanged(t *testing.T, raw json.RawMessage) bool {
+	t.Helper()
+	metadata := mustTelemetryMetadata(t, raw)
+	v, ok := metadata["telemetry_changed"]
+	if !ok {
+		t.Fatal("telemetry_changed missing")
+	}
+	changed, ok := v.(bool)
+	if !ok {
+		t.Fatalf("telemetry_changed type = %T, want bool", v)
+	}
+	return changed
 }
 
 func TestMCPHandlerHandleRequestCorePaths(t *testing.T) {
@@ -348,6 +408,319 @@ func TestMCPHandlerToolRateLimit(t *testing.T) {
 	})
 	if resp == nil || resp.Error == nil || resp.Error.Code != -32603 {
 		t.Fatalf("rate-limited response = %+v, want internal error with rate-limit message", resp)
+	}
+}
+
+func TestMCPHandler_PassiveTelemetrySummaryDeltas(t *testing.T) {
+	t.Parallel()
+
+	logFile := filepath.Join(t.TempDir(), "telemetry.jsonl")
+	srv, err := NewServer(logFile, 100)
+	if err != nil {
+		t.Fatalf("NewServer() error = %v", err)
+	}
+	t.Cleanup(srv.Close)
+	cap := capture.NewCapture()
+	cap.SetTrackingStatusForTest(42, "https://tracked.test")
+
+	// Seed baseline data before first call; first response should still report zero deltas.
+	srv.addEntries([]LogEntry{{"level": "error", "message": "baseline error"}})
+	cap.AddNetworkBodies([]capture.NetworkBody{
+		{Method: "GET", URL: "https://api.test/ok", Status: 200},
+		{Method: "GET", URL: "https://api.test/fail", Status: 500},
+	})
+	cap.AddWebSocketEvents([]capture.WebSocketEvent{{Event: "message", ID: "ws-1"}})
+	cap.AddEnhancedActions([]capture.EnhancedAction{{Type: "click", Timestamp: time.Now().UnixMilli()}})
+
+	h := NewMCPHandler(srv, "v-test")
+	h.SetToolHandler(&fakeToolHandlerForMCP{
+		cap:     cap,
+		limiter: testLimiter{allowed: true},
+		handleFn: func(req JSONRPCRequest, name string, _ json.RawMessage) (JSONRPCResponse, bool) {
+			if name != "observe" {
+				return JSONRPCResponse{}, false
+			}
+			return JSONRPCResponse{
+				JSONRPC: "2.0",
+				ID:      req.ID,
+				Result:  mcpTextResponse("ok"),
+			}, true
+		},
+	})
+
+	req := JSONRPCRequest{
+		JSONRPC:  "2.0",
+		ID:       1,
+		Method:   "tools/call",
+		ClientID: "client-a",
+		Params:   json.RawMessage(`{"name":"observe","arguments":{"what":"logs"}}`),
+	}
+	resp1 := h.HandleRequest(req)
+	if resp1 == nil || resp1.Error != nil {
+		t.Fatalf("first tools/call response = %+v, want success", resp1)
+	}
+	if changed := mustTelemetryChanged(t, resp1.Result); changed {
+		t.Fatal("first call telemetry_changed = true, want false")
+	}
+	if _, ok := telemetrySummaryIfPresent(t, resp1.Result); ok {
+		t.Fatal("first call should omit telemetry_summary in auto mode when nothing changed")
+	}
+
+	// Add new activity between calls; second response should report these deltas.
+	srv.addEntries([]LogEntry{
+		{"level": "error", "message": "TypeError"},
+		{"level": "info", "message": "noise"},
+	})
+	cap.AddNetworkBodies([]capture.NetworkBody{
+		{Method: "GET", URL: "https://api.test/ok2", Status: 204},
+		{Method: "GET", URL: "https://api.test/fail2", Status: 503},
+	})
+	cap.AddWebSocketEvents([]capture.WebSocketEvent{
+		{Event: "message", ID: "ws-2"},
+		{Event: "message", ID: "ws-3"},
+	})
+	cap.AddEnhancedActions([]capture.EnhancedAction{{Type: "type", Timestamp: time.Now().UnixMilli()}})
+
+	req.ID = 2
+	resp2 := h.HandleRequest(req)
+	if resp2 == nil || resp2.Error != nil {
+		t.Fatalf("second tools/call response = %+v, want success", resp2)
+	}
+	if changed := mustTelemetryChanged(t, resp2.Result); !changed {
+		t.Fatal("second call telemetry_changed = false, want true")
+	}
+	summary2 := mustTelemetrySummary(t, resp2.Result)
+	if got := mustTelemetryInt(t, summary2, "new_errors_since_last_call"); got != 1 {
+		t.Fatalf("second call new_errors_since_last_call = %d, want 1", got)
+	}
+	if got := mustTelemetryInt(t, summary2, "new_network_requests_since_last_call"); got != 2 {
+		t.Fatalf("second call new_network_requests_since_last_call = %d, want 2", got)
+	}
+	if got := mustTelemetryInt(t, summary2, "new_network_errors_since_last_call"); got != 1 {
+		t.Fatalf("second call new_network_errors_since_last_call = %d, want 1", got)
+	}
+	if got := mustTelemetryInt(t, summary2, "new_websocket_events_since_last_call"); got != 2 {
+		t.Fatalf("second call new_websocket_events_since_last_call = %d, want 2", got)
+	}
+	if got := mustTelemetryInt(t, summary2, "new_actions_since_last_call"); got != 1 {
+		t.Fatalf("second call new_actions_since_last_call = %d, want 1", got)
+	}
+	if got, _ := summary2["trigger_tool"].(string); got != "observe" {
+		t.Fatalf("trigger_tool = %q, want observe", got)
+	}
+}
+
+func TestMCPHandler_PassiveTelemetryIsPerClient(t *testing.T) {
+	t.Parallel()
+
+	logFile := filepath.Join(t.TempDir(), "telemetry-per-client.jsonl")
+	srv, err := NewServer(logFile, 100)
+	if err != nil {
+		t.Fatalf("NewServer() error = %v", err)
+	}
+	t.Cleanup(srv.Close)
+	cap := capture.NewCapture()
+
+	h := NewMCPHandler(srv, "v-test")
+	h.SetToolHandler(&fakeToolHandlerForMCP{
+		cap:     cap,
+		limiter: testLimiter{allowed: true},
+		handleFn: func(req JSONRPCRequest, name string, _ json.RawMessage) (JSONRPCResponse, bool) {
+			if name != "observe" {
+				return JSONRPCResponse{}, false
+			}
+			return JSONRPCResponse{
+				JSONRPC: "2.0",
+				ID:      req.ID,
+				Result:  mcpTextResponse("ok"),
+			}, true
+		},
+	})
+
+	reqA := JSONRPCRequest{
+		JSONRPC:  "2.0",
+		ID:       1,
+		Method:   "tools/call",
+		ClientID: "client-a",
+		Params:   json.RawMessage(`{"name":"observe","arguments":{"what":"logs"}}`),
+	}
+	respA1 := h.HandleRequest(reqA)
+	if respA1 == nil || respA1.Error != nil {
+		t.Fatalf("client-a first call response = %+v, want success", respA1)
+	}
+	if changed := mustTelemetryChanged(t, respA1.Result); changed {
+		t.Fatal("client-a first call telemetry_changed = true, want false")
+	}
+	if _, ok := telemetrySummaryIfPresent(t, respA1.Result); ok {
+		t.Fatal("client-a first call should omit telemetry_summary in auto mode")
+	}
+
+	srv.addEntries([]LogEntry{{"level": "error", "message": "new error"}})
+
+	reqA.ID = 2
+	respA2 := h.HandleRequest(reqA)
+	if respA2 == nil || respA2.Error != nil {
+		t.Fatalf("client-a second call response = %+v, want success", respA2)
+	}
+	if changed := mustTelemetryChanged(t, respA2.Result); !changed {
+		t.Fatal("client-a second call telemetry_changed = false, want true")
+	}
+	summaryA2 := mustTelemetrySummary(t, respA2.Result)
+	if got := mustTelemetryInt(t, summaryA2, "new_errors_since_last_call"); got != 1 {
+		t.Fatalf("client-a new_errors_since_last_call = %d, want 1", got)
+	}
+
+	reqB := JSONRPCRequest{
+		JSONRPC:  "2.0",
+		ID:       3,
+		Method:   "tools/call",
+		ClientID: "client-b",
+		Params:   json.RawMessage(`{"name":"observe","arguments":{"what":"logs"}}`),
+	}
+	respB1 := h.HandleRequest(reqB)
+	if respB1 == nil || respB1.Error != nil {
+		t.Fatalf("client-b first call response = %+v, want success", respB1)
+	}
+	if changed := mustTelemetryChanged(t, respB1.Result); changed {
+		t.Fatal("client-b first call telemetry_changed = true, want false")
+	}
+	if _, ok := telemetrySummaryIfPresent(t, respB1.Result); ok {
+		t.Fatal("client-b first call should omit telemetry_summary in auto mode")
+	}
+}
+
+func TestMCPHandler_PassiveTelemetryModeFullIncludesSummaryWithoutChanges(t *testing.T) {
+	t.Parallel()
+
+	logFile := filepath.Join(t.TempDir(), "telemetry-full.jsonl")
+	srv, err := NewServer(logFile, 100)
+	if err != nil {
+		t.Fatalf("NewServer() error = %v", err)
+	}
+	t.Cleanup(srv.Close)
+	srv.setTelemetryMode(telemetryModeFull)
+
+	h := NewMCPHandler(srv, "v-test")
+	h.SetToolHandler(&fakeToolHandlerForMCP{
+		cap:     capture.NewCapture(),
+		limiter: testLimiter{allowed: true},
+		handleFn: func(req JSONRPCRequest, name string, _ json.RawMessage) (JSONRPCResponse, bool) {
+			if name != "observe" {
+				return JSONRPCResponse{}, false
+			}
+			return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpTextResponse("ok")}, true
+		},
+	})
+
+	resp := h.HandleRequest(JSONRPCRequest{
+		JSONRPC: "2.0",
+		ID:      1,
+		Method:  "tools/call",
+		Params:  json.RawMessage(`{"name":"observe","arguments":{"what":"logs"}}`),
+	})
+	if resp == nil || resp.Error != nil {
+		t.Fatalf("tools/call response = %+v, want success", resp)
+	}
+	if changed := mustTelemetryChanged(t, resp.Result); changed {
+		t.Fatal("telemetry_changed = true, want false on first call")
+	}
+	summary := mustTelemetrySummary(t, resp.Result)
+	if got := mustTelemetryInt(t, summary, "new_errors_since_last_call"); got != 0 {
+		t.Fatalf("new_errors_since_last_call = %d, want 0", got)
+	}
+}
+
+func TestMCPHandler_PassiveTelemetryModeOffSuppressesTelemetryMetadata(t *testing.T) {
+	t.Parallel()
+
+	logFile := filepath.Join(t.TempDir(), "telemetry-off.jsonl")
+	srv, err := NewServer(logFile, 100)
+	if err != nil {
+		t.Fatalf("NewServer() error = %v", err)
+	}
+	t.Cleanup(srv.Close)
+	srv.setTelemetryMode(telemetryModeOff)
+
+	h := NewMCPHandler(srv, "v-test")
+	h.SetToolHandler(&fakeToolHandlerForMCP{
+		cap:     capture.NewCapture(),
+		limiter: testLimiter{allowed: true},
+		handleFn: func(req JSONRPCRequest, name string, _ json.RawMessage) (JSONRPCResponse, bool) {
+			if name != "observe" {
+				return JSONRPCResponse{}, false
+			}
+			return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpTextResponse("ok")}, true
+		},
+	})
+
+	resp := h.HandleRequest(JSONRPCRequest{
+		JSONRPC: "2.0",
+		ID:      1,
+		Method:  "tools/call",
+		Params:  json.RawMessage(`{"name":"observe","arguments":{"what":"logs"}}`),
+	})
+	if resp == nil || resp.Error != nil {
+		t.Fatalf("tools/call response = %+v, want success", resp)
+	}
+
+	var result MCPToolResult
+	if err := json.Unmarshal(resp.Result, &result); err != nil {
+		t.Fatalf("json.Unmarshal(MCPToolResult) error = %v", err)
+	}
+	if result.Metadata != nil {
+		if _, ok := result.Metadata["telemetry_changed"]; ok {
+			t.Fatal("telemetry_changed should be omitted in off mode")
+		}
+		if _, ok := result.Metadata["telemetry_summary"]; ok {
+			t.Fatal("telemetry_summary should be omitted in off mode")
+		}
+	}
+}
+
+func TestMCPHandler_PassiveTelemetryModePerCallOverride(t *testing.T) {
+	t.Parallel()
+
+	logFile := filepath.Join(t.TempDir(), "telemetry-override.jsonl")
+	srv, err := NewServer(logFile, 100)
+	if err != nil {
+		t.Fatalf("NewServer() error = %v", err)
+	}
+	t.Cleanup(srv.Close)
+	srv.setTelemetryMode(telemetryModeFull)
+
+	h := NewMCPHandler(srv, "v-test")
+	h.SetToolHandler(&fakeToolHandlerForMCP{
+		cap:     capture.NewCapture(),
+		limiter: testLimiter{allowed: true},
+		handleFn: func(req JSONRPCRequest, name string, _ json.RawMessage) (JSONRPCResponse, bool) {
+			if name != "observe" {
+				return JSONRPCResponse{}, false
+			}
+			return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpTextResponse("ok")}, true
+		},
+	})
+
+	resp := h.HandleRequest(JSONRPCRequest{
+		JSONRPC: "2.0",
+		ID:      1,
+		Method:  "tools/call",
+		Params:  json.RawMessage(`{"name":"observe","arguments":{"what":"logs","telemetry_mode":"off"}}`),
+	})
+	if resp == nil || resp.Error != nil {
+		t.Fatalf("tools/call response = %+v, want success", resp)
+	}
+
+	var result MCPToolResult
+	if err := json.Unmarshal(resp.Result, &result); err != nil {
+		t.Fatalf("json.Unmarshal(MCPToolResult) error = %v", err)
+	}
+	if result.Metadata != nil {
+		if _, ok := result.Metadata["telemetry_summary"]; ok {
+			t.Fatal("telemetry_summary should be suppressed by per-call telemetry_mode=off")
+		}
+		if _, ok := result.Metadata["telemetry_changed"]; ok {
+			t.Fatal("telemetry_changed should be suppressed by per-call telemetry_mode=off")
+		}
 	}
 }
 

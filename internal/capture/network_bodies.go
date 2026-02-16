@@ -68,6 +68,11 @@ func (c *Capture) AddNetworkBodies(bodies []NetworkBody) {
 
 	c.repairNBParallelArrays()
 	c.networkTotalAdded += int64(len(bodies))
+	for i := range bodies {
+		if bodies[i].Status >= 400 {
+			c.networkErrorTotalAdded++
+		}
+	}
 	now := time.Now()
 
 	activeTestIDs := make([]string, 0)

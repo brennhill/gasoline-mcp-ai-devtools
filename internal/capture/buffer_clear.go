@@ -41,6 +41,7 @@ func (c *Capture) ClearNetworkBuffers() BufferClearCounts {
 	c.networkBodies = make([]NetworkBody, 0)
 	c.networkAddedAt = make([]time.Time, 0)
 	c.networkTotalAdded = 0
+	c.networkErrorTotalAdded = 0
 	c.nbMemoryTotal = 0
 
 	return counts

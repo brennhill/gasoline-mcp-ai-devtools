@@ -67,7 +67,7 @@ def get_config_candidates():
     """Get list of potential config file paths for different tools."""
     home = str(Path.home())
     return [
-        os.path.join(home, ".claude", "claude.mcp.json"),
+        os.path.join(home, ".claude.json"),
         os.path.join(home, ".vscode", "claude.mcp.json"),
         os.path.join(home, ".cursor", "mcp.json"),
         os.path.join(home, ".codeium", "mcp.json"),

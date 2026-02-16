@@ -7,15 +7,15 @@
  * @returns Object with major, minor, patch components, or null if invalid
  */
 export function parseVersion(version) {
-  const match = version.match(/^(\d+)\.(\d+)\.(\d+)/)
-  if (!match || !match[1] || !match[2] || !match[3]) {
-    return null
-  }
-  return {
-    major: parseInt(match[1], 10),
-    minor: parseInt(match[2], 10),
-    patch: parseInt(match[3], 10)
-  }
+    const match = version.match(/^(\d+)\.(\d+)\.(\d+)/);
+    if (!match || !match[1] || !match[2] || !match[3]) {
+        return null;
+    }
+    return {
+        major: parseInt(match[1], 10),
+        minor: parseInt(match[2], 10),
+        patch: parseInt(match[3], 10)
+    };
 }
 /**
  * Compare two semantic versions
@@ -24,21 +24,21 @@ export function parseVersion(version) {
  * @returns -1 if A < B, 0 if A == B, 1 if A > B, null if either is invalid
  */
 export function compareVersions(versionA, versionB) {
-  const a = parseVersion(versionA)
-  const b = parseVersion(versionB)
-  if (!a || !b) {
-    return null
-  }
-  if (a.major !== b.major) {
-    return a.major < b.major ? -1 : 1
-  }
-  if (a.minor !== b.minor) {
-    return a.minor < b.minor ? -1 : 1
-  }
-  if (a.patch !== b.patch) {
-    return a.patch < b.patch ? -1 : 1
-  }
-  return 0
+    const a = parseVersion(versionA);
+    const b = parseVersion(versionB);
+    if (!a || !b) {
+        return null;
+    }
+    if (a.major !== b.major) {
+        return a.major < b.major ? -1 : 1;
+    }
+    if (a.minor !== b.minor) {
+        return a.minor < b.minor ? -1 : 1;
+    }
+    if (a.patch !== b.patch) {
+        return a.patch < b.patch ? -1 : 1;
+    }
+    return 0;
 }
 /**
  * Check if a version is newer than another
@@ -47,8 +47,8 @@ export function compareVersions(versionA, versionB) {
  * @returns true if newer > older
  */
 export function isVersionNewer(newer, older) {
-  const result = compareVersions(newer, older)
-  return result === 1
+    const result = compareVersions(newer, older);
+    return result === 1;
 }
 /**
  * Check if a version is same or newer than another
@@ -57,13 +57,13 @@ export function isVersionNewer(newer, older) {
  * @returns true if version >= minimum
  */
 export function isVersionSameOrNewer(version, minimum) {
-  const result = compareVersions(version, minimum)
-  return result === 1 || result === 0
+    const result = compareVersions(version, minimum);
+    return result === 1 || result === 0;
 }
 /**
  * Format version for display (e.g., "v5.2.5")
  */
 export function formatVersionDisplay(version) {
-  return `v${version}`
+    return `v${version}`;
 }
 //# sourceMappingURL=version.js.map

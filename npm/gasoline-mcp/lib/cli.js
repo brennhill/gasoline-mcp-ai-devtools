@@ -38,8 +38,8 @@ function showConfigCommand() {
   console.log('Claude Code (VSCode):');
   console.log('  ~/.vscode/claude.mcp.json');
   console.log('');
-  console.log('Claude Desktop App:');
-  console.log(`  ${os.platform() === 'win32' ? '%APPDATA%' : '~'}/.claude/claude.mcp.json`);
+  console.log('Claude:');
+  console.log(`  ${os.platform() === 'win32' ? '%USERPROFILE%' : '~'}/.claude.json`);
   console.log('');
   console.log('Cursor:');
   console.log('  ~/.cursor/mcp.json');

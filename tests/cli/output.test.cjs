@@ -98,7 +98,7 @@ test('output.diagnosticReport formats diagnostic results', () => {
     tools: [
       {
         name: 'Claude Desktop',
-        path: '/path/to/claude.mcp.json',
+        path: '/path/to/.claude.json',
         status: 'ok',
         issues: [],
         suggestions: []

@@ -30,6 +30,21 @@ func TestFindMCPConfigResolution(t *testing.T) {
 	}
 }
 
+func TestFindMCPConfigResolutionClaudePath(t *testing.T) {
+	// Do not run in parallel; uses Setenv.
+	t.Setenv("HOME", t.TempDir())
+	t.Setenv("USERPROFILE", os.Getenv("HOME"))
+
+	home := os.Getenv("HOME")
+	claudePath := filepath.Join(home, ".claude.json")
+	if err := os.WriteFile(claudePath, []byte(`{"mcpServers":{"gasoline":{"command":"gasoline-mcp"}}}`), 0o600); err != nil {
+		t.Fatalf("WriteFile(%q) error = %v", claudePath, err)
+	}
+	if got := findMCPConfig(); got != claudePath {
+		t.Fatalf("findMCPConfig() = %q, want %q", got, claudePath)
+	}
+}
+
 func TestPIDFileLifecycleAndLegacyFallback(t *testing.T) {
 	// Do not run in parallel; uses Setenv.
 	stateRoot := t.TempDir()

@@ -7,147 +7,152 @@
 // CONSTANTS
 // =============================================================================
 /** Error deduplication window in milliseconds */
-const ERROR_DEDUP_WINDOW_MS = 5000
+const ERROR_DEDUP_WINDOW_MS = 5000;
 /** Error group flush interval in milliseconds */
-const ERROR_GROUP_FLUSH_MS = 10000
+const ERROR_GROUP_FLUSH_MS = 10000;
 /** Maximum tracked error groups */
-const MAX_TRACKED_ERRORS = 100
+const MAX_TRACKED_ERRORS = 100;
 /** Error group max age - cleanup after 1 hour */
-export const ERROR_GROUP_MAX_AGE_MS = 3600000
+export const ERROR_GROUP_MAX_AGE_MS = 3600000;
 // =============================================================================
 // STATE
 // =============================================================================
 /** Error grouping state */
-const errorGroups = new Map()
+const errorGroups = new Map();
 const SIGNATURE_EXTRACTORS = {
-  exception: (entry) => {
-    const exEntry = entry
-    const parts = [exEntry.message || '']
-    if (exEntry.stack) {
-      const firstFrame = exEntry.stack.split('\n')[1] || ''
-      parts.push(firstFrame.trim())
+    exception: (entry) => {
+        const exEntry = entry;
+        const parts = [exEntry.message || ''];
+        if (exEntry.stack) {
+            const firstFrame = exEntry.stack.split('\n')[1] || '';
+            parts.push(firstFrame.trim());
+        }
+        return parts;
+    },
+    network: (entry) => {
+        const netEntry = entry;
+        const parts = [netEntry.method || 'GET'];
+        try {
+            const url = new URL(netEntry.url || '', 'http://localhost');
+            parts.push(url.pathname);
+        }
+        catch {
+            parts.push(netEntry.url || '');
+        }
+        parts.push(String(netEntry.status || 0));
+        return parts;
+    },
+    console: (entry) => {
+        const consEntry = entry;
+        if (consEntry.args && consEntry.args.length > 0) {
+            const firstArg = consEntry.args[0];
+            return [typeof firstArg === 'string' ? firstArg.slice(0, 200) : JSON.stringify(firstArg).slice(0, 200)];
+        }
+        return [];
     }
-    return parts
-  },
-  network: (entry) => {
-    const netEntry = entry
-    const parts = [netEntry.method || 'GET']
-    try {
-      const url = new URL(netEntry.url || '', 'http://localhost')
-      parts.push(url.pathname)
-    } catch {
-      parts.push(netEntry.url || '')
-    }
-    parts.push(String(netEntry.status || 0))
-    return parts
-  },
-  console: (entry) => {
-    const consEntry = entry
-    if (consEntry.args && consEntry.args.length > 0) {
-      const firstArg = consEntry.args[0]
-      return [typeof firstArg === 'string' ? firstArg.slice(0, 200) : JSON.stringify(firstArg).slice(0, 200)]
-    }
-    return []
-  }
-}
+};
 export function createErrorSignature(entry) {
-  const entryType = entry.type || 'unknown'
-  const parts = [entryType, entry.level || 'error']
-  const extractor = SIGNATURE_EXTRACTORS[entryType]
-  if (extractor) parts.push(...extractor(entry))
-  return parts.join('|')
+    const entryType = entry.type || 'unknown';
+    const parts = [entryType, entry.level || 'error'];
+    const extractor = SIGNATURE_EXTRACTORS[entryType];
+    if (extractor)
+        parts.push(...extractor(entry));
+    return parts.join('|');
 }
 /**
  * Process an error through the grouping system
  */
 function handleExistingGroup(group, entry, now) {
-  if (now - group.lastSeen < ERROR_DEDUP_WINDOW_MS) {
-    group.count++
-    group.lastSeen = now
-    return { shouldSend: false }
-  }
-  const countToReport = group.count
-  group.count = 1
-  group.lastSeen = now
-  group.firstSeen = now
-  if (countToReport > 1) {
-    return {
-      shouldSend: true,
-      entry: { ...entry, _previousOccurrences: countToReport - 1 }
+    if (now - group.lastSeen < ERROR_DEDUP_WINDOW_MS) {
+        group.count++;
+        group.lastSeen = now;
+        return { shouldSend: false };
     }
-  }
-  return { shouldSend: true, entry }
+    const countToReport = group.count;
+    group.count = 1;
+    group.lastSeen = now;
+    group.firstSeen = now;
+    if (countToReport > 1) {
+        return {
+            shouldSend: true,
+            entry: { ...entry, _previousOccurrences: countToReport - 1 }
+        };
+    }
+    return { shouldSend: true, entry };
 }
 function evictOldestGroup() {
-  if (errorGroups.size < MAX_TRACKED_ERRORS) return
-  let oldestSig = null
-  let oldestTime = Infinity
-  for (const [sig, group] of errorGroups) {
-    if (group.lastSeen < oldestTime) {
-      oldestTime = group.lastSeen
-      oldestSig = sig
+    if (errorGroups.size < MAX_TRACKED_ERRORS)
+        return;
+    let oldestSig = null;
+    let oldestTime = Infinity;
+    for (const [sig, group] of errorGroups) {
+        if (group.lastSeen < oldestTime) {
+            oldestTime = group.lastSeen;
+            oldestSig = sig;
+        }
     }
-  }
-  if (oldestSig) errorGroups.delete(oldestSig)
+    if (oldestSig)
+        errorGroups.delete(oldestSig);
 }
 export function processErrorGroup(entry) {
-  if (entry.level !== 'error' && entry.level !== 'warn') {
-    return { shouldSend: true, entry }
-  }
-  const signature = createErrorSignature(entry)
-  const now = Date.now()
-  const existing = errorGroups.get(signature)
-  if (existing) return handleExistingGroup(existing, entry, now)
-  evictOldestGroup()
-  errorGroups.set(signature, { entry, count: 1, firstSeen: now, lastSeen: now })
-  return { shouldSend: true, entry }
+    if (entry.level !== 'error' && entry.level !== 'warn') {
+        return { shouldSend: true, entry };
+    }
+    const signature = createErrorSignature(entry);
+    const now = Date.now();
+    const existing = errorGroups.get(signature);
+    if (existing)
+        return handleExistingGroup(existing, entry, now);
+    evictOldestGroup();
+    errorGroups.set(signature, { entry, count: 1, firstSeen: now, lastSeen: now });
+    return { shouldSend: true, entry };
 }
 /**
  * Get current state of error groups (for testing)
  */
 export function getErrorGroupsState() {
-  return errorGroups
+    return errorGroups;
 }
 /**
  * Clean up stale error groups older than ERROR_GROUP_MAX_AGE_MS
  */
 export function cleanupStaleErrorGroups(debugLogFn) {
-  const now = Date.now()
-  for (const [signature, group] of errorGroups) {
-    if (now - group.lastSeen > ERROR_GROUP_MAX_AGE_MS) {
-      errorGroups.delete(signature)
-      if (debugLogFn) {
-        debugLogFn('error', 'Cleaned up stale error group', {
-          signature: signature.slice(0, 50) + '...',
-          age: Math.round((now - group.lastSeen) / 60000) + ' min'
-        })
-      }
+    const now = Date.now();
+    for (const [signature, group] of errorGroups) {
+        if (now - group.lastSeen > ERROR_GROUP_MAX_AGE_MS) {
+            errorGroups.delete(signature);
+            if (debugLogFn) {
+                debugLogFn('error', 'Cleaned up stale error group', {
+                    signature: signature.slice(0, 50) + '...',
+                    age: Math.round((now - group.lastSeen) / 60000) + ' min'
+                });
+            }
+        }
     }
-  }
 }
 /**
  * Flush error groups - send any accumulated counts
  */
 export function flushErrorGroups() {
-  const now = Date.now()
-  const entriesToSend = []
-  for (const [signature, group] of errorGroups) {
-    if (group.count > 1) {
-      // Spread the readonly entry and add our mutable properties
-      const processedEntry = {
-        ...group.entry,
-        _aggregatedCount: group.count,
-        _firstSeen: new Date(group.firstSeen).toISOString(),
-        _lastSeen: new Date(group.lastSeen).toISOString()
-      }
-      processedEntry.ts = new Date().toISOString()
-      entriesToSend.push(processedEntry)
-      group.count = 0
+    const now = Date.now();
+    const entriesToSend = [];
+    for (const [signature, group] of errorGroups) {
+        if (group.count > 1) {
+            // Spread the readonly entry and add our mutable properties
+            const processedEntry = {
+                ...group.entry,
+                _aggregatedCount: group.count,
+                _firstSeen: new Date(group.firstSeen).toISOString(),
+                _lastSeen: new Date(group.lastSeen).toISOString()
+            };
+            processedEntry.ts = new Date().toISOString();
+            entriesToSend.push(processedEntry);
+            group.count = 0;
+        }
+        if (now - group.lastSeen > ERROR_GROUP_FLUSH_MS * 2) {
+            errorGroups.delete(signature);
+        }
     }
-    if (now - group.lastSeen > ERROR_GROUP_FLUSH_MS * 2) {
-      errorGroups.delete(signature)
-    }
-  }
-  return entriesToSend
+    return entriesToSend;
 }
 //# sourceMappingURL=error-groups.js.map

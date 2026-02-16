@@ -17,6 +17,7 @@ func TestCaptureAccessorSnapshotsAndCopies(t *testing.T) {
 
 	c.AddNetworkBodies([]NetworkBody{
 		{URL: "https://example.test/a", Status: 200, Duration: 80},
+		{URL: "https://example.test/b", Status: 503, Duration: 120},
 	})
 	c.AddWebSocketEvents([]WebSocketEvent{
 		{Event: "open", URL: "wss://example.test/ws", ID: "ws-1"},
@@ -26,11 +27,14 @@ func TestCaptureAccessorSnapshotsAndCopies(t *testing.T) {
 	})
 
 	snap := c.GetSnapshot()
-	if snap.NetworkTotalAdded != 1 || snap.WebSocketTotalAdded != 1 || snap.ActionTotalAdded != 1 {
-		t.Fatalf("snapshot totals = %+v, want 1/1/1", snap)
+	if snap.NetworkTotalAdded != 2 || snap.WebSocketTotalAdded != 1 || snap.ActionTotalAdded != 1 {
+		t.Fatalf("snapshot totals = %+v, want 2/1/1", snap)
 	}
-	if snap.NetworkCount != 1 || snap.WebSocketCount != 1 || snap.ActionCount != 1 {
-		t.Fatalf("snapshot counts = %+v, want 1/1/1", snap)
+	if snap.NetworkCount != 2 || snap.WebSocketCount != 1 || snap.ActionCount != 1 {
+		t.Fatalf("snapshot counts = %+v, want 2/1/1", snap)
+	}
+	if got := c.GetNetworkErrorTotalAdded(); got != 1 {
+		t.Fatalf("GetNetworkErrorTotalAdded() = %d, want 1", got)
 	}
 
 	nb := c.GetNetworkBodies()
@@ -53,8 +57,8 @@ func TestCaptureAccessorSnapshotsAndCopies(t *testing.T) {
 
 	c.SetTestBoundaryStart("health-test")
 	health := c.GetHealthSnapshot()
-	if health.NetworkBodyCount != 1 || health.WebSocketCount != 1 || health.ActionCount != 1 {
-		t.Fatalf("health counts = %+v, want 1/1/1", health)
+	if health.NetworkBodyCount != 2 || health.WebSocketCount != 1 || health.ActionCount != 1 {
+		t.Fatalf("health counts = %+v, want 2/1/1", health)
 	}
 	if health.ActiveTestIDCount != 1 {
 		t.Fatalf("health ActiveTestIDCount = %d, want 1", health.ActiveTestIDCount)

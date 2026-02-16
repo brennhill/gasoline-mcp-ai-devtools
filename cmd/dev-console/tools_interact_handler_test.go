@@ -91,6 +91,25 @@ func TestToolsInteractDispatch_UnknownAction(t *testing.T) {
 	assertSnakeCaseFields(t, string(resp.Result))
 }
 
+func TestToolsInteractDispatch_ScreenshotAlias(t *testing.T) {
+	t.Parallel()
+	h, _, _ := makeInteractToolHandler(t)
+
+	resp := callInteractRaw(h, `{"action":"screenshot"}`)
+	result := parseToolResult(t, resp)
+	if !result.IsError {
+		t.Fatal("screenshot alias without tracked tab should return isError:true")
+	}
+	text := result.Content[0].Text
+	if strings.Contains(text, "unknown_mode") {
+		t.Fatalf("screenshot alias should not return unknown_mode. Got: %s", text)
+	}
+	if !strings.Contains(text, "no_data") {
+		t.Fatalf("screenshot alias should route to screenshot handler (no_data expected in unit test). Got: %s", text)
+	}
+	assertSnakeCaseFields(t, string(resp.Result))
+}
+
 func TestToolsInteractDispatch_EmptyArgs(t *testing.T) {
 	t.Parallel()
 	h, _, _ := makeInteractToolHandler(t)

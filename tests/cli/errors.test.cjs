@@ -141,7 +141,7 @@ test('All errors format() methods include emoji', () => {
 })
 
 test('Error messages are descriptive and helpful', () => {
-  const err = new PermissionError('/home/user/.claude/claude.mcp.json')
+  const err = new PermissionError('/home/user/.claude.json')
   const formatted = err.format()
 
   assert.ok(formatted.includes('Permission'), 'Should mention permission issue')

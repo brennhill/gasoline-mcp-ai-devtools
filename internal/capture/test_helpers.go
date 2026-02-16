@@ -21,6 +21,9 @@ func (c *Capture) AddNetworkBodiesForTest(bodies []NetworkBody) {
 		c.networkBodies = append(c.networkBodies, body)
 		c.networkAddedAt = append(c.networkAddedAt, now)
 		c.networkTotalAdded++
+		if body.Status >= 400 {
+			c.networkErrorTotalAdded++
+		}
 	}
 }
 

@@ -463,6 +463,7 @@ func TestConfigureAudit_AllActions(t *testing.T) {
 		{"diff_sessions", `{"action":"diff_sessions"}`},
 		{"audit_log", `{"action":"audit_log","operation":"report"}`},
 		{"health", `{"action":"health"}`},
+		{"telemetry", `{"action":"telemetry"}`},
 		{"streaming", `{"action":"streaming"}`},
 		{"test_boundary_start", `{"action":"test_boundary_start","test_name":"unit_test"}`},
 		{"test_boundary_end", `{"action":"test_boundary_end"}`},

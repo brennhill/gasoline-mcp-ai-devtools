@@ -758,7 +758,7 @@ func registerCoreRoutes(mux *http.ServeMux, server *Server, cap *capture.Capture
 	mux.HandleFunc("/diagnostics", corsMiddleware(func(w http.ResponseWriter, r *http.Request) {
 		accept := r.Header.Get("Accept")
 		if strings.Contains(accept, "text/html") && !strings.Contains(accept, "application/json") {
-			handleDiagnosticsHTML(w, r)
+			serveEmbeddedHTML(w, r, diagnosticsHTML, "diagnostics")
 			return
 		}
 		server.handleDiagnostics(w, r, cap)
@@ -771,6 +771,17 @@ func registerCoreRoutes(mux *http.ServeMux, server *Server, cap *capture.Capture
 	mux.HandleFunc("/logs", corsMiddleware(extensionOnly(func(w http.ResponseWriter, r *http.Request) {
 		server.handleLogs(w, r)
 	})))
+
+	// NOT MCP — HTML pages for human navigation
+	mux.HandleFunc("/logs.html", corsMiddleware(func(w http.ResponseWriter, r *http.Request) {
+		serveEmbeddedHTML(w, r, logsHTML, "logs")
+	}))
+	mux.HandleFunc("/setup", corsMiddleware(func(w http.ResponseWriter, r *http.Request) {
+		serveEmbeddedHTML(w, r, setupHTML, "setup")
+	}))
+	mux.HandleFunc("/docs", corsMiddleware(func(w http.ResponseWriter, r *http.Request) {
+		serveEmbeddedHTML(w, r, docsHTML, "docs")
+	}))
 
 	// NOT MCP — Screenshot binary upload from extension (MCP reads via observe(what: "screenshot"))
 	mux.HandleFunc("/screenshots", corsMiddleware(extensionOnly(func(w http.ResponseWriter, r *http.Request) {

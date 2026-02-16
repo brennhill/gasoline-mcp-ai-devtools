@@ -14,9 +14,9 @@
  * @template T The type of the resolved value
  */
 export interface DeferredPromise<T> {
-  promise: Promise<T>
-  resolve: (value: T | PromiseLike<T>) => void
-  reject: (reason?: unknown) => void
+    promise: Promise<T>;
+    resolve: (value: T | PromiseLike<T>) => void;
+    reject: (reason?: unknown) => void;
 }
 /**
  * Create a deferred promise
@@ -28,7 +28,7 @@ export interface DeferredPromise<T> {
  * setTimeout(() => deferred.resolve(42), 100);
  * const result = await deferred.promise; // 42
  */
-export declare function createDeferredPromise<T>(): DeferredPromise<T>
+export declare function createDeferredPromise<T>(): DeferredPromise<T>;
 /**
  * Wrap a promise with a timeout fallback
  * Returns the result of the promise if it resolves before timeout,
@@ -52,13 +52,13 @@ export declare function createDeferredPromise<T>(): DeferredPromise<T>
  *   // Handle timeout
  * }
  */
-export declare function withTimeout<T>(promise: Promise<T>, timeoutMs: number, fallback?: T): Promise<T>
+export declare function withTimeout<T>(promise: Promise<T>, timeoutMs: number, fallback?: T): Promise<T>;
 /**
  * Custom error for timeout operations that optionally carries a fallback value
  */
 export declare class TimeoutError extends Error {
-  fallback?: unknown | undefined
-  constructor(message: string, fallback?: unknown | undefined)
+    fallback?: unknown | undefined;
+    constructor(message: string, fallback?: unknown | undefined);
 }
 /**
  * Wrap a promise with a timeout that rejects on timeout
@@ -78,7 +78,7 @@ export declare class TimeoutError extends Error {
  *   }
  * }
  */
-export declare function promiseWithTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T>
+export declare function promiseWithTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T>;
 /**
  * Message-based async operation with timeout and cleanup
  * Manages request/response correlation using a Map and IDs, with automatic cleanup
@@ -119,11 +119,7 @@ export declare function promiseWithTimeout<T>(promise: Promise<T>, timeoutMs: nu
  *   }
  * );
  */
-export declare function messageWithTimeout<T>(
-  sender: () => Promise<T>,
-  timeoutMs: number,
-  cleanup?: () => void
-): Promise<T>
+export declare function messageWithTimeout<T>(sender: () => Promise<T>, timeoutMs: number, cleanup?: () => void): Promise<T>;
 /**
  * Race a promise against a timeout, calling a cleanup function if timeout wins
  * Used for operations that set up listeners or other resources that need cleanup
@@ -143,12 +139,7 @@ export declare function messageWithTimeout<T>(
  *   () => removeEventListener('message', handler) // cleanup
  * );
  */
-export declare function promiseRaceWithCleanup<T>(
-  promise: Promise<T>,
-  timeoutMs: number,
-  timeoutFallback: T | undefined,
-  cleanup?: () => void
-): Promise<T>
+export declare function promiseRaceWithCleanup<T>(promise: Promise<T>, timeoutMs: number, timeoutFallback: T | undefined, cleanup?: () => void): Promise<T>;
 /**
  * Execute a callback with automatic timeout and fallback
  * The callback should return a promise that resolves with the result
@@ -166,7 +157,7 @@ export declare function promiseRaceWithCleanup<T>(
  *   { ok: false, status: 408 } // fallback
  * );
  */
-export declare function executeWithTimeout<T>(callback: () => Promise<T>, timeoutMs: number, fallback?: T): Promise<T>
+export declare function executeWithTimeout<T>(callback: () => Promise<T>, timeoutMs: number, fallback?: T): Promise<T>;
 /**
  * Create a promise that resolves after a delay
  * Useful for retry logic or deferring operations
@@ -177,7 +168,7 @@ export declare function executeWithTimeout<T>(callback: () => Promise<T>, timeou
  * @example
  * await delay(1000); // Wait 1 second
  */
-export declare function delay(delayMs: number): Promise<void>
+export declare function delay(delayMs: number): Promise<void>;
 /**
  * Retry a promise-returning function with exponential backoff
  * Useful for flaky operations like network requests
@@ -195,11 +186,7 @@ export declare function delay(delayMs: number): Promise<void>
  *   100
  * );
  */
-export declare function retryWithBackoff<T>(
-  fn: () => Promise<T>,
-  maxAttempts?: number,
-  initialDelayMs?: number
-): Promise<T>
+export declare function retryWithBackoff<T>(fn: () => Promise<T>, maxAttempts?: number, initialDelayMs?: number): Promise<T>;
 /**
  * Create a cancellable promise that can be aborted
  * @template T The type of the result
@@ -218,13 +205,10 @@ export declare function retryWithBackoff<T>(
  *   }
  * }
  */
-export declare function makeCancellable<T>(
-  promise: Promise<T>,
-  operationName?: string
-): {
-  promise: Promise<T>
-  cancel: () => void
-}
+export declare function makeCancellable<T>(promise: Promise<T>, operationName?: string): {
+    promise: Promise<T>;
+    cancel: () => void;
+};
 /**
  * Wait for a condition to become true or timeout
  * Polls at regular intervals until condition is true or timeout occurs
@@ -237,7 +221,7 @@ export declare function makeCancellable<T>(
  * @example
  * await waitFor(() => element.classList.contains('visible'), 5000);
  */
-export declare function waitFor(condition: () => boolean, timeoutMs: number, pollIntervalMs?: number): Promise<void>
+export declare function waitFor(condition: () => boolean, timeoutMs: number, pollIntervalMs?: number): Promise<void>;
 /**
  * Race multiple promises and return the result of the first one that settles
  * (resolves or rejects). This differs from Promise.race in that it includes
@@ -253,7 +237,7 @@ export declare function waitFor(condition: () => boolean, timeoutMs: number, pol
  *   delay(5000).then(() => { throw new TimeoutError('Too slow'); })
  * ]);
  */
-export declare function racePromises<T>(promises: Promise<T>[]): Promise<T>
+export declare function racePromises<T>(promises: Promise<T>[]): Promise<T>;
 /**
  * Combine multiple timeout utilities: execute a callback with timeout,
  * automatic cleanup on timeout, and optional fallback
@@ -278,10 +262,5 @@ export declare function racePromises<T>(promises: Promise<T>[]): Promise<T>
  *   () => window.removeEventListener('message', handler)
  * );
  */
-export declare function executeWithTimeoutAndCleanup<T>(
-  callback: () => Promise<T>,
-  timeoutMs: number,
-  fallback?: T,
-  cleanup?: () => void
-): Promise<T>
+export declare function executeWithTimeoutAndCleanup<T>(callback: () => Promise<T>, timeoutMs: number, fallback?: T, cleanup?: () => void): Promise<T>;
 //# sourceMappingURL=timeout-utils.d.ts.map

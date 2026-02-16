@@ -39,7 +39,7 @@ test('config.getConfigCandidates returns 4 paths', () => {
 })
 
 test('config.getToolNameFromPath identifies tool by path', () => {
-  assert.strictEqual(config.getToolNameFromPath('/home/user/.claude/claude.mcp.json'), 'Claude Desktop')
+  assert.strictEqual(config.getToolNameFromPath('/home/user/.claude.json'), 'Claude Desktop')
   assert.strictEqual(config.getToolNameFromPath('/home/user/.vscode/claude.mcp.json'), 'VSCode')
   assert.strictEqual(config.getToolNameFromPath('/home/user/.cursor/mcp.json'), 'Cursor')
   assert.strictEqual(config.getToolNameFromPath('/home/user/.codeium/mcp.json'), 'Codeium')

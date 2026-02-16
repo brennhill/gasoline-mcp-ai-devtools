@@ -4,7 +4,7 @@ scope: feature/index
 ai-priority: high
 tags: [feature-index, status, navigation, canonical]
 relates-to: [../README.md, feature/]
-last-verified: 2026-01-30
+last-verified: 2026-02-16
 canonical: true
 ---
 
@@ -46,6 +46,7 @@ canonical: true
 | Error Clustering | shipped | analyze | error_clusters | 5.0.0 | [feature/error-clustering](feature/error-clustering/) |
 | Gasoline CI | proposed | observe, generate | CI integration | — | [feature/gasoline-ci](feature/gasoline-ci/) |
 | HAR Export | deprecated | — | — | 5.0.0 | [feature/har-export](feature/har-export/) |
+| In-Browser Agent Panel | proposed | observe, analyze, interact, configure | agent_panel, agent_watch (proposed) | — | [feature/in-browser-agent-panel](feature/in-browser-agent-panel/) |
 | Interception Deferral | in-progress | observe, configure | (network buffering) | — | [feature/interception-deferral](feature/interception-deferral/) |
 | MCP Tool Descriptions | shipped | — | (tool schema) | 5.0.0 | [feature/mcp-tool-descriptions](feature/mcp-tool-descriptions/) |
 | Memory Enforcement | shipped | configure | health | 5.0.0 | [feature/memory-enforcement](feature/memory-enforcement/) |
@@ -74,9 +75,9 @@ canonical: true
 |--------|-------|
 | Shipped | 23 |
 | In-Progress | 6 |
-| Proposed | 9 |
+| Proposed | 10 |
 | Deprecated | 4 |
-| **Total** | **42** |
+| **Total** | **43** |
 
 ## MCP Tool Distribution
 
