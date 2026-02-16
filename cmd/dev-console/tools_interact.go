@@ -33,6 +33,7 @@ func (h *ToolHandler) interactDispatch() map[string]interactHandler {
 			"back":             h.handleBrowserActionBack,
 			"forward":          h.handleBrowserActionForward,
 			"new_tab":          h.handleBrowserActionNewTab,
+			"screenshot":       h.handleScreenshotAlias,
 			"subtitle":         h.handleSubtitle,
 			"list_interactive":  h.handleListInteractive,
 			"record_start":     h.handleRecordStart,
@@ -130,6 +131,12 @@ func (h *ToolHandler) dispatchInteractAction(req JSONRPCRequest, args json.RawMe
 	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrUnknownMode, "Unknown interact action: "+action, "Use a valid action from the 'action' enum", withParam("action"))}
 }
 
+// handleScreenshotAlias provides backward compatibility for clients that call
+// interact({action:"screenshot"}). The canonical API remains observe({what:"screenshot"}).
+func (h *ToolHandler) handleScreenshotAlias(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+	return h.toolGetScreenshot(req, args)
+}
+
 // queueComposableSubtitle queues a subtitle command as a side effect of another action.
 func (h *ToolHandler) queueComposableSubtitle(req JSONRPCRequest, text string) {
 	// Error impossible: map contains only string values
@@ -178,11 +185,7 @@ func (h *ToolHandler) handlePilotHighlight(req JSONRPCRequest, args json.RawMess
 	// Record AI action
 	h.recordAIAction("highlight", "", map[string]any{"selector": params.Selector})
 
-	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Highlight queued", map[string]any{
-		"status":         "queued",
-		"correlation_id": correlationID,
-		"message":        "Highlight command queued. Use observe({what: 'command_result', correlation_id: '" + correlationID + "'}) to check status.",
-	})}
+	return h.maybeWaitForCommand(req, correlationID, args, "Highlight queued")
 }
 
 const stateNamespace = "saved_states"
@@ -412,11 +415,7 @@ func (h *ToolHandler) handlePilotExecuteJS(req JSONRPCRequest, args json.RawMess
 
 	h.recordAIAction("execute_js", "", map[string]any{"script_preview": truncateToLen(params.Script, 100)})
 
-	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Command queued", map[string]any{
-		"status":         "queued",
-		"correlation_id": correlationID,
-		"message":        "Command queued for execution. Use observe({what: 'command_result', correlation_id: '" + correlationID + "'}) to get the result.",
-	})}
+	return h.maybeWaitForCommand(req, correlationID, args, "Command queued")
 }
 
 // truncatePreview returns s unchanged if shorter than maxLen, otherwise truncates with "...".
@@ -456,11 +455,7 @@ func (h *ToolHandler) handleBrowserActionNavigate(req JSONRPCRequest, args json.
 
 	h.recordAIAction("navigate", params.URL, map[string]any{"target_url": params.URL})
 
-	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Navigate queued", map[string]any{
-		"status":         "queued",
-		"correlation_id": correlationID,
-		"message":        "Navigation queued. Use observe({what: 'command_result', correlation_id: '" + correlationID + "'}) to get the result.",
-	})}
+	return h.maybeWaitForCommand(req, correlationID, args, "Navigate queued")
 }
 
 func (h *ToolHandler) handleBrowserActionRefresh(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
@@ -489,11 +484,7 @@ func (h *ToolHandler) handleBrowserActionRefresh(req JSONRPCRequest, args json.R
 
 	h.recordAIAction("refresh", "", nil)
 
-	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Refresh queued", map[string]any{
-		"status":         "queued",
-		"correlation_id": correlationID,
-		"message":        "Refresh queued. Use observe({what: 'command_result', correlation_id: '" + correlationID + "'}) to get the result with perf_diff (before/after timing comparison).",
-	})}
+	return h.maybeWaitForCommand(req, correlationID, args, "Refresh queued")
 }
 
 // stashPerfSnapshot saves the current performance snapshot as a "before" baseline
@@ -525,10 +516,7 @@ func (h *ToolHandler) handleBrowserActionBack(req JSONRPCRequest, args json.RawM
 
 	h.recordAIAction("back", "", nil)
 
-	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Back queued", map[string]any{
-		"status":         "queued",
-		"correlation_id": correlationID,
-	})}
+	return h.maybeWaitForCommand(req, correlationID, args, "Back queued")
 }
 
 func (h *ToolHandler) handleBrowserActionForward(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
@@ -547,10 +535,7 @@ func (h *ToolHandler) handleBrowserActionForward(req JSONRPCRequest, args json.R
 
 	h.recordAIAction("forward", "", nil)
 
-	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Forward queued", map[string]any{
-		"status":         "queued",
-		"correlation_id": correlationID,
-	})}
+	return h.maybeWaitForCommand(req, correlationID, args, "Forward queued")
 }
 
 func (h *ToolHandler) handleBrowserActionNewTab(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
@@ -576,10 +561,7 @@ func (h *ToolHandler) handleBrowserActionNewTab(req JSONRPCRequest, args json.Ra
 
 	h.recordAIAction("new_tab", params.URL, map[string]any{"target_url": params.URL})
 
-	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("New tab queued", map[string]any{
-		"status":         "queued",
-		"correlation_id": correlationID,
-	})}
+	return h.maybeWaitForCommand(req, correlationID, args, "New tab queued")
 }
 
 // ============================================
@@ -640,11 +622,7 @@ func (h *ToolHandler) handleDOMPrimitive(req JSONRPCRequest, args json.RawMessag
 
 	h.recordAIAction("dom_"+action, "", map[string]any{"selector": params.Selector})
 
-	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse(action+" queued", map[string]any{
-		"status":         "queued",
-		"correlation_id": correlationID,
-		"message":        "DOM action queued. Use observe({what: 'command_result', correlation_id: '" + correlationID + "'}) to check status.",
-	})}
+	return h.maybeWaitForCommand(req, correlationID, args, action+" queued")
 }
 
 // validateDOMActionParams checks action-specific required parameters.
@@ -690,21 +668,12 @@ func (h *ToolHandler) handleSubtitle(req JSONRPCRequest, args json.RawMessage) J
 	}
 	h.capture.CreatePendingQueryWithTimeout(query, queries.AsyncCommandTimeout, req.ClientID)
 
+	queuedMsg := "Subtitle set"
 	if *params.Text == "" {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Subtitle cleared", map[string]any{
-			"status":         "queued",
-			"correlation_id": correlationID,
-			"subtitle":       "cleared",
-			"message":        "Subtitle cleared. Use observe({what: 'command_result', correlation_id: '" + correlationID + "'}) to confirm.",
-		})}
+		queuedMsg = "Subtitle cleared"
 	}
 
-	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Subtitle set", map[string]any{
-		"status":         "queued",
-		"correlation_id": correlationID,
-		"subtitle":       *params.Text,
-		"message":        "Subtitle queued. Use observe({what: 'command_result', correlation_id: '" + correlationID + "'}) to confirm.",
-	})}
+	return h.maybeWaitForCommand(req, correlationID, args, queuedMsg)
 }
 
 func (h *ToolHandler) handleListInteractive(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
@@ -731,9 +700,5 @@ func (h *ToolHandler) handleListInteractive(req JSONRPCRequest, args json.RawMes
 
 	h.recordAIAction("dom_list_interactive", "", nil)
 
-	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("list_interactive queued", map[string]any{
-		"status":         "queued",
-		"correlation_id": correlationID,
-		"message":        "Discovery queued. Use observe({what: 'command_result', correlation_id: '" + correlationID + "'}) to get interactive elements.",
-	})}
+	return h.maybeWaitForCommand(req, correlationID, args, "list_interactive queued")
 }

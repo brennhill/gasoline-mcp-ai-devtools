@@ -75,6 +75,12 @@ func (qd *QueryDispatcher) CreatePendingQueryWithTimeout(query queries.PendingQu
 	correlationID := query.CorrelationID
 	qd.mu.Unlock()
 
+	// Notify long-pollers that a new query is available
+	select {
+	case qd.queryNotify <- struct{}{}:
+	default:
+	}
+
 	// Register command outside mu lock to respect lock ordering (resultsMu must not be acquired under mu)
 	if correlationID != "" {
 		qd.RegisterCommand(correlationID, id, timeout)
@@ -84,6 +90,22 @@ func (qd *QueryDispatcher) CreatePendingQueryWithTimeout(query queries.PendingQu
 	// This is more efficient than spawning a goroutine per query.
 
 	return id
+}
+
+// WaitForPendingQueries blocks until a pending query is available or timeout.
+// Used by /sync long-polling to deliver commands instantly.
+func (qd *QueryDispatcher) WaitForPendingQueries(timeout time.Duration) {
+	qd.mu.Lock()
+	if len(qd.pendingQueries) > 0 {
+		qd.mu.Unlock()
+		return
+	}
+	qd.mu.Unlock()
+
+	select {
+	case <-qd.queryNotify:
+	case <-time.After(timeout):
+	}
 }
 
 // ============================================

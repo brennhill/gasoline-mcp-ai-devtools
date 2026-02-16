@@ -44,6 +44,7 @@ type QueryDispatcher struct {
 	completedResults map[string]*queries.CommandResult
 	failedCommands   []*queries.CommandResult
 	commandNotify    chan struct{} // closed on CompleteCommand, then recreated
+	queryNotify      chan struct{} // signaled when new pending queries are added
 
 	stopCleanup func()
 }
@@ -57,6 +58,7 @@ func NewQueryDispatcher() *QueryDispatcher {
 		completedResults: make(map[string]*queries.CommandResult),
 		failedCommands:   make([]*queries.CommandResult, 0, 100),
 		commandNotify:    make(chan struct{}),
+		queryNotify:      make(chan struct{}, 1),
 	}
 	qd.queryCond = sync.NewCond(&qd.mu)
 	qd.stopCleanup = qd.startResultCleanup()
@@ -116,6 +118,11 @@ func (c *Capture) GetPendingQueries() []queries.PendingQueryResponse {
 // GetPendingQueriesForClient delegates to QueryDispatcher.
 func (c *Capture) GetPendingQueriesForClient(clientID string) []queries.PendingQueryResponse {
 	return c.qd.GetPendingQueriesForClient(clientID)
+}
+
+// WaitForPendingQueries delegates to QueryDispatcher.
+func (c *Capture) WaitForPendingQueries(timeout time.Duration) {
+	c.qd.WaitForPendingQueries(timeout)
 }
 
 // AcknowledgePendingQuery delegates to QueryDispatcher.

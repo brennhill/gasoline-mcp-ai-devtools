@@ -273,6 +273,62 @@ func NewToolHandler(server *Server, capture *capture.Capture) *MCPHandler {
 	}
 }
 
+// maybeWaitForCommand blocks until an async command completes, or returns a "queued"
+// response if background execution is requested or the safety timeout is reached.
+// This is the core implementation of "Synchronous-by-Default" mode.
+func (h *ToolHandler) maybeWaitForCommand(req JSONRPCRequest, correlationID string, args json.RawMessage, queuedSummary string) JSONRPCResponse {
+	var params struct {
+		Sync       *bool `json:"sync"`
+		Wait       *bool `json:"wait"`
+		Background bool  `json:"background"`
+	}
+	lenientUnmarshal(args, &params)
+
+	// Default to sync unless Background is true or Sync/Wait explicitly set to false
+	isSync := true
+	if params.Background {
+		isSync = false
+	}
+	if params.Sync != nil && !*params.Sync {
+		isSync = false
+	}
+	if params.Wait != nil && !*params.Wait {
+		isSync = false
+	}
+
+	if !isSync {
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse(queuedSummary, map[string]any{
+			"status":         "queued",
+			"correlation_id": correlationID,
+		})}
+	}
+
+	// Check connectivity first to avoid useless waiting
+	if !h.capture.IsExtensionConnected() {
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrNoData, "Extension is not connected", "Ensure the Gasoline extension shows 'Connected' and a tab is tracked.", h.diagnosticHint())}
+	}
+
+	// Wait for result (15s default for "Sync-by-Default" pattern).
+	// Most DOM actions (click, type) take < 500ms over long-polling.
+	// 15s is safe for most navigations while staying well under the 60s IDE timeout.
+	cmd, found := h.capture.WaitForCommand(correlationID, 15*time.Second)
+	if !found {
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInternal, "Command not found after queuing", "Internal error — do not retry")}
+	}
+
+	// If still pending after 15s, return a "still_processing" handle so the agent can poll.
+	if cmd.Status == "pending" {
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Action still processing", map[string]any{
+			"status":         "still_processing",
+			"correlation_id": correlationID,
+			"message":        "Action is taking longer than 15s. Polling is now required. Use observe({what:'command_result', correlation_id:'" + correlationID + "'}) to check the result.",
+		})}
+	}
+
+	// Result received — format using standard command result formatter
+	return h.formatCommandResult(req, *cmd, correlationID)
+}
+
 // handleToolCall dispatches composite tool calls by mode parameter.
 func (h *ToolHandler) HandleToolCall(req JSONRPCRequest, name string, args json.RawMessage) (JSONRPCResponse, bool) {
 	switch name {

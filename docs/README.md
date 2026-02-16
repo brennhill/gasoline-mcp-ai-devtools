@@ -47,6 +47,7 @@ docs/
 ├── archive/                   ← Deprecated/legacy docs
 ├── getting-started.md         ← User onboarding
 ├── roadmap.md                 ← Feature roadmap
+├── gemini-feedback.md         ← Feedback from Gemini agent (2026-02-16)
 ├── privacy.md                 ← Privacy policy
 ├── troubleshooting.md         ← Common issues
 └── pypi-distribution.md       ← PyPI packaging docs

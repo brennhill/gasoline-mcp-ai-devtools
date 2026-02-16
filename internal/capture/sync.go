@@ -253,7 +253,13 @@ func (c *Capture) HandleSync(w http.ResponseWriter, r *http.Request) {
 		})
 	}
 
+	// Long-polling: if no commands, wait for up to 5 seconds
 	pendingQueries := c.GetPendingQueries()
+	if len(pendingQueries) == 0 {
+		c.WaitForPendingQueries(5 * time.Second)
+		pendingQueries = c.GetPendingQueries()
+	}
+
 	c.updateSyncLogs(req, now, state.pilotEnabled, len(pendingQueries))
 
 	commands := buildSyncCommands(pendingQueries)

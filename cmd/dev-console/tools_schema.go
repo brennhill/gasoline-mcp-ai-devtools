@@ -9,7 +9,7 @@ func (h *ToolHandler) ToolsList() []MCPTool {
 	return []MCPTool{
 		{
 			Name:        "observe",
-			Description: "Read captured browser state from extension buffers.\n\nnetwork_bodies captures fetch() only; use network_waterfall for all requests. extension_logs = internal debug logs (use logs for console). error_bundles = pre-assembled debug context per error.\n\nPagination: pass after_cursor/before_cursor/since_cursor from response metadata. restart_on_eviction=true if cursor expired.",
+			Description: "Read captured browser state from extension buffers.\n\nnetwork_bodies captures fetch() only; use network_waterfall for all requests. extension_logs = internal debug logs (use logs for console). error_bundles = pre-assembled debug context per error. Use body_key/body_path to extract JSON subtrees from network_bodies.\n\nPagination: pass after_cursor/before_cursor/since_cursor from response metadata. restart_on_eviction=true if cursor expired.",
 			InputSchema: map[string]any{
 				"type": "object",
 				"properties": map[string]any{
@@ -67,6 +67,14 @@ func (h *ToolHandler) ToolsList() []MCPTool {
 						"type":        "number",
 						"description": "Max HTTP status code",
 					},
+					"body_key": map[string]any{
+						"type":        "string",
+						"description": "Extract values for a JSON key from response_body (network_bodies)",
+					},
+					"body_path": map[string]any{
+						"type":        "string",
+						"description": "Extract JSON value from response_body using path, e.g. data.items[0].id (network_bodies)",
+					},
 					"connection_id": map[string]any{
 						"type":        "string",
 						"description": "WebSocket connection ID filter",
@@ -98,17 +106,29 @@ func (h *ToolHandler) ToolsList() []MCPTool {
 		},
 		{
 			Name:        "analyze",
-			Description: "Trigger active analysis. Creates async queries the extension executes.\n\nDraw Mode: Use annotations to get all annotations from the last draw mode session. Use annotation_detail with correlation_id to get full computed styles and DOM detail for a specific annotation.",
+			Description: "Trigger active analysis. Creates async queries the extension executes.\n\nSynchronous Mode (Default): Tools now block until the extension returns a result (up to 15s). Set background:true to return immediately with a correlation_id.\n\nDraw Mode: Use annotations to get all annotations from the last draw mode session. Use annotation_detail with correlation_id to get full computed styles and DOM detail for a specific annotation.",
 			InputSchema: map[string]any{
 				"type": "object",
 				"properties": map[string]any{
 					"what": map[string]any{
 						"type": "string",
-						"enum": []string{"dom", "performance", "accessibility", "error_clusters", "history", "security_audit", "third_party_audit", "link_health", "link_validation", "annotations", "annotation_detail", "api_validation", "draw_history", "draw_session"},
+						"enum": []string{"dom", "performance", "accessibility", "error_clusters", "history", "security_audit", "third_party_audit", "link_health", "link_validation", "page_summary", "annotations", "annotation_detail", "api_validation", "draw_history", "draw_session"},
 					},
 					"selector": map[string]any{
 						"type":        "string",
 						"description": "CSS selector (dom, accessibility)",
+					},
+					"sync": map[string]any{
+						"type":        "boolean",
+						"description": "Wait for result (default: true).",
+					},
+					"wait": map[string]any{
+						"type":        "boolean",
+						"description": "Wait for result (default: true). For annotations: blocks up to 5 min for user to finish drawing.",
+					},
+					"background": map[string]any{
+						"type":        "boolean",
+						"description": "Run in background and return a correlation_id immediately.",
 					},
 					"operation": map[string]any{
 						"type":        "string",
@@ -139,7 +159,16 @@ func (h *ToolHandler) ToolsList() []MCPTool {
 					},
 					"timeout_ms": map[string]any{
 						"type":        "number",
-						"description": "Timeout ms (link_health, annotations). For annotations with wait=true: default 300000 (5 min), max 600000 (10 min).",
+						"description": "Timeout ms (link_health, page_summary, annotations). For annotations with wait=true: default 300000 (5 min), max 600000 (10 min).",
+					},
+					"world": map[string]any{
+						"type":        "string",
+						"description": "Execution world for page_summary script",
+						"enum":        []string{"auto", "main", "isolated"},
+					},
+					"tab_id": map[string]any{
+						"type":        "number",
+						"description": "Target tab ID (dom, page_summary)",
 					},
 					"max_workers": map[string]any{
 						"type":        "number",
@@ -174,10 +203,6 @@ func (h *ToolHandler) ToolsList() []MCPTool {
 					"correlation_id": map[string]any{
 						"type":        "string",
 						"description": "Correlation ID for fetching annotation detail (applies to annotation_detail)",
-					},
-					"wait": map[string]any{
-						"type":        "boolean",
-						"description": "Wait for annotations (applies to annotations). Returns immediately with a correlation_id. Poll with observe({what: 'command_result', correlation_id: '...'}) to get results when the user finishes drawing.",
 					},
 					"session": map[string]any{
 						"type":        "string",
@@ -427,7 +452,7 @@ func (h *ToolHandler) ToolsList() []MCPTool {
 		},
 		{
 			Name:        "interact",
-			Description: "Browser actions. Requires AI Web Pilot.\n\nSelectors: CSS or semantic (text=Submit, role=button, placeholder=Email, label=Name, aria-label=Close). subtitle param composable with any action. analyze=true captures perf_diff. navigate/refresh auto-include perf_diff.\n\nDraw Mode: draw_mode_start activates annotation overlay — user draws rectangles and types feedback, presses ESC to finish. Use analyze({what:'annotations'}) to retrieve results.",
+			Description: "Browser actions. Requires AI Web Pilot.\n\nSynchronous Mode (Default): Tools now block until the extension returns a result (up to 15s). Set background:true to return immediately with a correlation_id.\n\nSelectors: CSS or semantic (text=Submit, role=button, placeholder=Email, label=Name, aria-label=Close). subtitle param composable with any action. analyze=true captures perf_diff. navigate/refresh auto-include perf_diff.\n\nDraw Mode: draw_mode_start activates annotation overlay — user draws rectangles and types feedback, presses ESC to finish. Use analyze({what:'annotations'}) to retrieve results.\n\nCompatibility: action='screenshot' is a backward-compatible alias for observe({what:'screenshot'}).",
 			InputSchema: map[string]any{
 				"type": "object",
 				"properties": map[string]any{
@@ -435,7 +460,7 @@ func (h *ToolHandler) ToolsList() []MCPTool {
 						"type": "string",
 						"enum": []string{
 							"highlight", "subtitle", "save_state", "load_state", "list_states", "delete_state",
-							"execute_js", "navigate", "refresh", "back", "forward", "new_tab",
+							"execute_js", "navigate", "refresh", "back", "forward", "new_tab", "screenshot",
 							"click", "type", "select", "check",
 							"get_text", "get_value", "get_attribute",
 							"set_attribute", "focus", "scroll_to", "wait_for", "key_press",
@@ -443,6 +468,18 @@ func (h *ToolHandler) ToolsList() []MCPTool {
 							"record_start", "record_stop",
 							"upload", "draw_mode_start",
 						},
+					},
+					"sync": map[string]any{
+						"type":        "boolean",
+						"description": "Wait for result (default: true).",
+					},
+					"wait": map[string]any{
+						"type":        "boolean",
+						"description": "Alias for sync (default: true).",
+					},
+					"background": map[string]any{
+						"type":        "boolean",
+						"description": "Run in background and return a correlation_id immediately.",
 					},
 					"selector": map[string]any{
 						"type":        "string",
