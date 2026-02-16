@@ -32,9 +32,11 @@ Key patterns:
 - Async analysis: analyze dispatches to the extension; poll results with observe(what="command_result", correlation_id=...).
 - Error debugging: start with observe(what="error_bundles") for pre-assembled context per error (error + network + actions + logs).
 - Interactive: interact(action="click"|"type") now defaults to synchronous mode. Use background:true for async.
-- Navigation: interact(action="navigate"|"refresh") auto-includes perf_diff and page summary. Set summary=false to skip.
+- Navigation: interact(action="navigate"|"refresh"|"back"|"forward") auto-includes perf_diff and page summary. Set summary:false to skip.
 - Performance: Use analyze(what="performance") for timing snapshots and regression detection.
-- Page Summary: Use analyze(what="page_summary") for a detailed semantic map of the current page.`
+- Page Summary: Use analyze(what="page_summary") for a detailed semantic map of the current page.
+- Noise filtering: use configure(action="noise_rule", noise_action="auto_detect") to suppress recurring noise.
+- For detailed docs, read gasoline://guide. For quick examples, read gasoline://quickstart.`
 
 // MCPHandler handles MCP protocol messages
 type MCPHandler struct {

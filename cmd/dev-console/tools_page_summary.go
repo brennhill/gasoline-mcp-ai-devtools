@@ -181,13 +181,13 @@ const pageSummaryScript = `(function (mode) {
   var mainText = cleanText(mainNode ? mainNode.innerText || mainNode.textContent || '' : '', 20000);
   var previewLimit = mode === 'compact' ? 300 : 500;
   var preview = mainText.slice(0, previewLimit);
-  
-	var interactiveCandidates = document.querySelectorAll('button, [role="button"], [onclick], a[href]');
-	var interactiveCount = visibleInteractiveCount();
-	var linkCount = document.querySelectorAll('a[href]').length;
-	var paragraphCount = document.querySelectorAll('p').length;
-	var headingCount = headingNodes.length;
-	var pageType = classifyPage(forms, interactiveCount, linkCount, paragraphCount, headingCount, preview);
+
+  var interactiveCandidates = (mainNode || document).querySelectorAll('button, [role="button"], [onclick], a[href]');
+  var interactiveCount = visibleInteractiveCount();
+  var linkCount = document.querySelectorAll('a[href]').length;
+  var paragraphCount = document.querySelectorAll('p').length;
+  var headingCount = headingNodes.length;
+  var pageType = classifyPage(forms, interactiveCount, linkCount, paragraphCount, headingCount, preview);
 
   if (mode === 'compact') {
     return {

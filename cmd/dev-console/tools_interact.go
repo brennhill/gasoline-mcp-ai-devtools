@@ -447,11 +447,13 @@ func (h *ToolHandler) handleBrowserActionNavigate(req JSONRPCRequest, args json.
 
 	correlationID := fmt.Sprintf("nav_%d_%d", time.Now().UnixNano(), randomInt63())
 
-	// Build browser_action params — include summary script if enabled (default: true)
-	navParams := map[string]any{"action": "navigate", "url": params.URL}
-	if params.Reason != "" {
-		navParams["reason"] = params.Reason
+	// Forward all original params and overlay action + summary script
+	var navParams map[string]any
+	_ = json.Unmarshal(args, &navParams)
+	if navParams == nil {
+		navParams = map[string]any{}
 	}
+	navParams["action"] = "navigate"
 	if params.Summary == nil || *params.Summary {
 		navParams["summary_script"] = compactSummaryScript()
 	}
@@ -488,11 +490,13 @@ func (h *ToolHandler) handleBrowserActionRefresh(req JSONRPCRequest, args json.R
 
 	h.stashPerfSnapshot(correlationID)
 
-	// Build refresh params
-	refreshParams := map[string]any{"action": "refresh"}
-	if params.Reason != "" {
-		refreshParams["reason"] = params.Reason
+	// Forward all original params and overlay action + summary script
+	var refreshParams map[string]any
+	_ = json.Unmarshal(args, &refreshParams)
+	if refreshParams == nil {
+		refreshParams = map[string]any{}
 	}
+	refreshParams["action"] = "refresh"
 	if params.Summary == nil || *params.Summary {
 		refreshParams["summary_script"] = compactSummaryScript()
 	}
@@ -537,10 +541,13 @@ func (h *ToolHandler) handleBrowserActionBack(req JSONRPCRequest, args json.RawM
 
 	correlationID := fmt.Sprintf("back_%d_%d", time.Now().UnixNano(), randomInt63())
 
-	backParams := map[string]any{"action": "back"}
-	if params.Reason != "" {
-		backParams["reason"] = params.Reason
+	// Forward all original params and overlay action + summary script
+	var backParams map[string]any
+	_ = json.Unmarshal(args, &backParams)
+	if backParams == nil {
+		backParams = map[string]any{}
 	}
+	backParams["action"] = "back"
 	if params.Summary == nil || *params.Summary {
 		backParams["summary_script"] = compactSummaryScript()
 	}
@@ -571,10 +578,13 @@ func (h *ToolHandler) handleBrowserActionForward(req JSONRPCRequest, args json.R
 
 	correlationID := fmt.Sprintf("forward_%d_%d", time.Now().UnixNano(), randomInt63())
 
-	forwardParams := map[string]any{"action": "forward"}
-	if params.Reason != "" {
-		forwardParams["reason"] = params.Reason
+	// Forward all original params and overlay action + summary script
+	var forwardParams map[string]any
+	_ = json.Unmarshal(args, &forwardParams)
+	if forwardParams == nil {
+		forwardParams = map[string]any{}
 	}
+	forwardParams["action"] = "forward"
 	if params.Summary == nil || *params.Summary {
 		forwardParams["summary_script"] = compactSummaryScript()
 	}

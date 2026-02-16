@@ -596,7 +596,7 @@ func (h *ToolHandler) ToolsList() []MCPTool {
 					},
 					"summary": map[string]any{
 						"type":        "boolean",
-						"description": "Include compact page summary after navigate/refresh/back/forward (default: true).",
+						"description": "Auto-include compact page summary (title, type, headings, primary actions, forms) after navigate/refresh/back/forward. Default: true. Set false to skip for speed.",
 					},
 					"correlation_id": map[string]any{
 						"type":        "string",

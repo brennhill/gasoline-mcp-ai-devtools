@@ -102,15 +102,14 @@ export async function handleBrowserAction(tabId, params, actionToast) {
                 await eventListeners.waitForTabLoad(tabId);
                 actionToast(tabId, reason || 'refresh', undefined, 'success');
                 return { success: true, action: 'refresh', ...(await buildNavigationSummary(tabId, summaryScript)) };
-            case 'navigate':
+            case 'navigate': {
                 if (!url)
                     return { success: false, error: 'missing_url', message: 'URL required for navigate action' };
-                {
-                    const navResult = await handleNavigateAction(tabId, url, actionToast, reason);
-                    if (navResult.success === false)
-                        return navResult;
-                    return { ...navResult, ...(await buildNavigationSummary(tabId, summaryScript)) };
-                }
+                const navResult = await handleNavigateAction(tabId, url, actionToast, reason);
+                if (navResult.success === false)
+                    return navResult;
+                return { ...navResult, ...(await buildNavigationSummary(tabId, summaryScript)) };
+            }
             case 'back': {
                 actionToast(tabId, reason || 'back', reason ? undefined : 'going back', 'trying', 10000);
                 await chrome.tabs.goBack(tabId);
