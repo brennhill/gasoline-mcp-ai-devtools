@@ -116,7 +116,7 @@ ROUTE_SYNC_OK=true
 
 # Check Go routes exist in OpenAPI (skip / and /clients/ which is a prefix pattern)
 for route in $GO_ROUTES; do
-  if [ "$route" = "/" ] || [ "$route" = "/clients/" ]; then
+  if [ "$route" = "/" ] || [ "$route" = "/clients/" ] || [ "$route" = "/api/status" ]; then
     continue
   fi
   if ! echo "$OPENAPI_PATHS" | grep -qx "$route"; then

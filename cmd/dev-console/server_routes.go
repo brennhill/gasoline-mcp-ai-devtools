@@ -741,6 +741,9 @@ func registerCoreRoutes(mux *http.ServeMux, server *Server, cap *capture.Capture
 	mcp := NewToolHandler(server, cap)
 	mux.HandleFunc("/mcp", corsMiddleware(mcp.HandleHTTP))
 
+	// NOT MCP — Dashboard status API (JSON feed for the HTML dashboard)
+	mux.HandleFunc("/api/status", corsMiddleware(handleStatusAPI(server, cap, mcp)))
+
 	// NOT MCP — Health check for extension and monitoring (MCP uses configure(action: "health"))
 	mux.HandleFunc("/health", corsMiddleware(func(w http.ResponseWriter, r *http.Request) {
 		server.handleHealth(w, r, cap)
@@ -771,17 +774,8 @@ func registerCoreRoutes(mux *http.ServeMux, server *Server, cap *capture.Capture
 		server.handleDrawModeComplete(w, r, cap)
 	})))
 
-	// NOT MCP — API discovery root (human/browser navigation)
+	// NOT MCP — HTML dashboard (browser) with JSON fallback (Accept: application/json)
 	mux.HandleFunc("/", corsMiddleware(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path != "/" {
-			jsonResponse(w, http.StatusNotFound, map[string]string{"error": "Not found"})
-			return
-		}
-		jsonResponse(w, http.StatusOK, map[string]string{
-			"name":    "gasoline",
-			"version": version,
-			"health":  "/health",
-			"logs":    "/logs",
-		})
+		server.handleDashboard(w, r)
 	}))
 }

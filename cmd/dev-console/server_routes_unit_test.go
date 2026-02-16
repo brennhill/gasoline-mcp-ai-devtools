@@ -37,7 +37,9 @@ func TestSetupHTTPRoutesBasicEndpoints(t *testing.T) {
 	cap := capture.NewCapture()
 	mux := setupHTTPRoutes(srv, cap)
 
+	// JSON clients get the discovery response via content negotiation
 	rootReq := localRequest(http.MethodGet, "/", nil)
+	rootReq.Header.Set("Accept", "application/json")
 	rootRR := httptest.NewRecorder()
 	mux.ServeHTTP(rootRR, rootReq)
 	if rootRR.Code != http.StatusOK {
@@ -46,6 +48,17 @@ func TestSetupHTTPRoutesBasicEndpoints(t *testing.T) {
 	rootBody := decodeJSONMap(t, rootRR.Body.Bytes())
 	if rootBody["name"] != "gasoline" {
 		t.Fatalf("root name = %v, want gasoline", rootBody["name"])
+	}
+
+	// Browsers (no Accept: application/json) get the HTML dashboard
+	htmlReq := localRequest(http.MethodGet, "/", nil)
+	htmlRR := httptest.NewRecorder()
+	mux.ServeHTTP(htmlRR, htmlReq)
+	if htmlRR.Code != http.StatusOK {
+		t.Fatalf("GET / (html) status = %d, want %d", htmlRR.Code, http.StatusOK)
+	}
+	if ct := htmlRR.Header().Get("Content-Type"); ct != "text/html; charset=utf-8" {
+		t.Fatalf("GET / (html) content-type = %q, want text/html; charset=utf-8", ct)
 	}
 
 	notFoundReq := localRequest(http.MethodGet, "/missing", nil)
