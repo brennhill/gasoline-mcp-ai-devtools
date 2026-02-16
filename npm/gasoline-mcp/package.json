@@ -40,8 +40,5 @@
   },
   "bugs": {
     "url": "https://github.com/brennhill/gasoline-mcp-ai-devtools/issues"
-  },
-  "engines": {
-    "node": ">=16"
   }
 }

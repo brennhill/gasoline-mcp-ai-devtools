@@ -77,6 +77,8 @@ pip install gasoline-mcp
 gasoline-mcp
 ```
 
+> **Note:** npm and PyPI are distribution channels only — they deliver the native Go binary for your platform. The MCP server itself has zero Node.js/Python runtime dependency.
+
 #### Option C: Local development
 
 ```bash
@@ -159,7 +161,7 @@ Works with **Claude Code**, **Cursor**, **Windsurf**, **Claude Desktop**, **Zed*
 
 **No debug port required.** Other tools need Chrome launched with `--remote-debugging-port`, which disables security sandboxing and breaks your normal browser workflow. Gasoline MCP uses a standard extension — your browser stays secure and unmodified.
 
-**Single binary, zero runtime.** No Node.js, no Python, no Puppeteer, no package.json. One Go binary that runs anywhere. No supply chain risk. No `node_modules`.
+**Single binary, zero runtime.** One Go binary that runs anywhere — no runtime dependencies, no Puppeteer, no framework. npm and PyPI are just delivery channels; the MCP server executes natively with no interpreter in the loop.
 
 **Captures what others can't.** WebSocket messages, full request/response bodies, user action recording, Web Vitals, automatic regression detection, visual annotations, and Playwright test generation from real browser sessions — features no other MCP browser tool offers.
 
