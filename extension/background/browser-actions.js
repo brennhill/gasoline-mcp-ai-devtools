@@ -12,6 +12,31 @@ const { debugLog } = index;
 // =============================================================================
 const ASYNC_EXECUTE_TIMEOUT_MS = ASYNC_COMMAND_TIMEOUT_MS;
 const ASYNC_BROWSER_ACTION_TIMEOUT_MS = ASYNC_COMMAND_TIMEOUT_MS;
+async function buildNavigationSummary(tabId, summaryScript) {
+    if (!summaryScript || summaryScript.trim() === '') {
+        return {};
+    }
+    try {
+        const execResult = await executeWithWorldRouting(tabId, {
+            script: summaryScript,
+            timeout_ms: 3000,
+            reason: 'navigation_summary'
+        }, 'isolated');
+        if (execResult.success) {
+            return { summary: execResult.result ?? null };
+        }
+        return {
+            summary: null,
+            summary_error: execResult.error || execResult.message || 'summary_failed'
+        };
+    }
+    catch (err) {
+        return {
+            summary: null,
+            summary_error: err?.message || 'summary_failed'
+        };
+    }
+}
 // =============================================================================
 // NAVIGATION
 // =============================================================================
@@ -65,7 +90,7 @@ export async function handleNavigateAction(tabId, url, actionToast, reason) {
 // BROWSER ACTION DISPATCH
 // =============================================================================
 export async function handleBrowserAction(tabId, params, actionToast) {
-    const { action, url, reason } = params || {};
+    const { action, url, reason, summary_script: summaryScript } = params || {};
     if (!index.__aiWebPilotEnabledCache) {
         return { success: false, error: 'ai_web_pilot_disabled', message: 'AI Web Pilot is not enabled' };
     }
@@ -76,18 +101,23 @@ export async function handleBrowserAction(tabId, params, actionToast) {
                 await chrome.tabs.reload(tabId);
                 await eventListeners.waitForTabLoad(tabId);
                 actionToast(tabId, reason || 'refresh', undefined, 'success');
-                return { success: true, action: 'refresh' };
+                return { success: true, action: 'refresh', ...(await buildNavigationSummary(tabId, summaryScript)) };
             case 'navigate':
                 if (!url)
                     return { success: false, error: 'missing_url', message: 'URL required for navigate action' };
-                return handleNavigateAction(tabId, url, actionToast, reason);
+                {
+                    const navResult = await handleNavigateAction(tabId, url, actionToast, reason);
+                    if (navResult.success === false)
+                        return navResult;
+                    return { ...navResult, ...(await buildNavigationSummary(tabId, summaryScript)) };
+                }
             case 'back': {
                 actionToast(tabId, reason || 'back', reason ? undefined : 'going back', 'trying', 10000);
                 await chrome.tabs.goBack(tabId);
                 await eventListeners.waitForTabLoad(tabId);
                 actionToast(tabId, reason || 'back', undefined, 'success');
                 const backTab = await chrome.tabs.get(tabId);
-                return { success: true, action: 'back', url: backTab.url };
+                return { success: true, action: 'back', url: backTab.url, ...(await buildNavigationSummary(tabId, summaryScript)) };
             }
             case 'forward': {
                 actionToast(tabId, reason || 'forward', reason ? undefined : 'going forward', 'trying', 10000);
@@ -95,7 +125,7 @@ export async function handleBrowserAction(tabId, params, actionToast) {
                 await eventListeners.waitForTabLoad(tabId);
                 actionToast(tabId, reason || 'forward', undefined, 'success');
                 const fwdTab = await chrome.tabs.get(tabId);
-                return { success: true, action: 'forward', url: fwdTab.url };
+                return { success: true, action: 'forward', url: fwdTab.url, ...(await buildNavigationSummary(tabId, summaryScript)) };
             }
             case 'new_tab':
                 if (!url)

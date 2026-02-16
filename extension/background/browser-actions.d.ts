@@ -8,16 +8,17 @@ export type BrowserActionResult = {
     content_script_status?: string;
     message?: string;
     error?: string;
+    summary?: unknown;
+    summary_error?: string;
 };
-export declare function handleNavigateAction(tabId: number, url: string, actionToast: ActionToastFn, reason?: string): Promise<BrowserActionResult>;
-export declare function handleBrowserAction(tabId: number, params: {
+export type BrowserActionParams = {
     action?: string;
     url?: string;
     reason?: string;
-}, actionToast: ActionToastFn): Promise<BrowserActionResult>;
+    summary_script?: string;
+};
+export declare function handleNavigateAction(tabId: number, url: string, actionToast: ActionToastFn, reason?: string): Promise<BrowserActionResult>;
+export declare function handleBrowserAction(tabId: number, params: BrowserActionParams, actionToast: ActionToastFn): Promise<BrowserActionResult>;
 export declare function handleAsyncExecuteCommand(query: PendingQuery, tabId: number, world: string, syncClient: SyncClient, sendAsyncResult: SendAsyncResultFn, actionToast: ActionToastFn): Promise<void>;
-export declare function handleAsyncBrowserAction(query: PendingQuery, tabId: number, params: {
-    action?: string;
-    url?: string;
-}, syncClient: SyncClient, sendAsyncResult: SendAsyncResultFn, actionToast: ActionToastFn): Promise<void>;
+export declare function handleAsyncBrowserAction(query: PendingQuery, tabId: number, params: BrowserActionParams, syncClient: SyncClient, sendAsyncResult: SendAsyncResultFn, actionToast: ActionToastFn): Promise<void>;
 //# sourceMappingURL=browser-actions.d.ts.map

@@ -736,7 +736,7 @@ export async function handlePendingQuery(query: PendingQuery, syncClient: SyncCl
     }
 
     if (query.type === 'browser_action') {
-      let params: { action?: string; url?: string; reason?: string }
+      let params: { action?: string; url?: string; reason?: string; summary_script?: string }
       try {
         params = typeof query.params === 'string' ? JSON.parse(query.params) : query.params
       } catch {

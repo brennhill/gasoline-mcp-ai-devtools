@@ -594,6 +594,10 @@ func (h *ToolHandler) ToolsList() []MCPTool {
 						"type":        "string",
 						"description": "Action reason (shown as toast)",
 					},
+					"summary": map[string]any{
+						"type":        "boolean",
+						"description": "Include compact page summary after navigate/refresh/back/forward (default: true).",
+					},
 					"correlation_id": map[string]any{
 						"type":        "string",
 						"description": "Link to error/investigation",

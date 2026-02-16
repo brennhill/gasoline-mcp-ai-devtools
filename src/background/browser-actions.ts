@@ -31,6 +31,50 @@ export type BrowserActionResult = {
   content_script_status?: string
   message?: string
   error?: string
+  summary?: unknown
+  summary_error?: string
+}
+
+export type BrowserActionParams = {
+  action?: string
+  url?: string
+  reason?: string
+  summary_script?: string
+}
+
+async function buildNavigationSummary(
+  tabId: number,
+  summaryScript?: string
+): Promise<Pick<BrowserActionResult, 'summary' | 'summary_error'>> {
+  if (!summaryScript || summaryScript.trim() === '') {
+    return {}
+  }
+
+  try {
+    const execResult = await executeWithWorldRouting(
+      tabId,
+      {
+        script: summaryScript,
+        timeout_ms: 3000,
+        reason: 'navigation_summary'
+      },
+      'isolated'
+    )
+
+    if (execResult.success) {
+      return { summary: execResult.result ?? null }
+    }
+
+    return {
+      summary: null,
+      summary_error: execResult.error || execResult.message || 'summary_failed'
+    }
+  } catch (err) {
+    return {
+      summary: null,
+      summary_error: (err as Error)?.message || 'summary_failed'
+    }
+  }
 }
 
 // =============================================================================
@@ -101,10 +145,10 @@ export async function handleNavigateAction(
 
 export async function handleBrowserAction(
   tabId: number,
-  params: { action?: string; url?: string; reason?: string },
+  params: BrowserActionParams,
   actionToast: ActionToastFn
 ): Promise<BrowserActionResult> {
-  const { action, url, reason } = params || {}
+  const { action, url, reason, summary_script: summaryScript } = params || {}
 
   if (!index.__aiWebPilotEnabledCache) {
     return { success: false, error: 'ai_web_pilot_disabled', message: 'AI Web Pilot is not enabled' }
@@ -117,17 +161,20 @@ export async function handleBrowserAction(
         await chrome.tabs.reload(tabId)
         await eventListeners.waitForTabLoad(tabId)
         actionToast(tabId, reason || 'refresh', undefined, 'success')
-        return { success: true, action: 'refresh' }
-      case 'navigate':
+        return { success: true, action: 'refresh', ...(await buildNavigationSummary(tabId, summaryScript)) }
+      case 'navigate': {
         if (!url) return { success: false, error: 'missing_url', message: 'URL required for navigate action' }
-        return handleNavigateAction(tabId, url, actionToast, reason)
+        const navResult = await handleNavigateAction(tabId, url, actionToast, reason)
+        if (navResult.success === false) return navResult
+        return { ...navResult, ...(await buildNavigationSummary(tabId, summaryScript)) }
+      }
       case 'back': {
         actionToast(tabId, reason || 'back', reason ? undefined : 'going back', 'trying', 10000)
         await chrome.tabs.goBack(tabId)
         await eventListeners.waitForTabLoad(tabId)
         actionToast(tabId, reason || 'back', undefined, 'success')
         const backTab = await chrome.tabs.get(tabId)
-        return { success: true, action: 'back', url: backTab.url }
+        return { success: true, action: 'back', url: backTab.url, ...(await buildNavigationSummary(tabId, summaryScript)) }
       }
       case 'forward': {
         actionToast(tabId, reason || 'forward', reason ? undefined : 'going forward', 'trying', 10000)
@@ -135,7 +182,7 @@ export async function handleBrowserAction(
         await eventListeners.waitForTabLoad(tabId)
         actionToast(tabId, reason || 'forward', undefined, 'success')
         const fwdTab = await chrome.tabs.get(tabId)
-        return { success: true, action: 'forward', url: fwdTab.url }
+        return { success: true, action: 'forward', url: fwdTab.url, ...(await buildNavigationSummary(tabId, summaryScript)) }
       }
       case 'new_tab':
         if (!url) return { success: false, error: 'missing_url', message: 'URL required for new_tab action' }
@@ -224,7 +271,7 @@ export async function handleAsyncExecuteCommand(
 export async function handleAsyncBrowserAction(
   query: PendingQuery,
   tabId: number,
-  params: { action?: string; url?: string },
+  params: BrowserActionParams,
   syncClient: SyncClient,
   sendAsyncResult: SendAsyncResultFn,
   actionToast: ActionToastFn

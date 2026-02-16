@@ -35,7 +35,7 @@ func (h *ToolHandler) interactDispatch() map[string]interactHandler {
 			"new_tab":          h.handleBrowserActionNewTab,
 			"screenshot":       h.handleScreenshotAlias,
 			"subtitle":         h.handleSubtitle,
-			"list_interactive":  h.handleListInteractive,
+			"list_interactive": h.handleListInteractive,
 			"record_start":     h.handleRecordStart,
 			"record_stop":      h.handleRecordStop,
 			"upload":           h.handleUpload,
@@ -212,10 +212,10 @@ func (h *ToolHandler) handlePilotManageStateSave(req JSONRPCRequest, args json.R
 	tabTitle := h.capture.GetTrackedTabTitle()
 
 	stateData := map[string]any{
-		"url":        tabURL,
-		"title":      tabTitle,
-		"tab_id":     tabID,
-		"saved_at":   time.Now().Format(time.RFC3339),
+		"url":      tabURL,
+		"title":    tabTitle,
+		"tab_id":   tabID,
+		"saved_at": time.Now().Format(time.RFC3339),
 	}
 
 	// Serialize and save
@@ -430,6 +430,7 @@ func (h *ToolHandler) handleBrowserActionNavigate(req JSONRPCRequest, args json.
 	var params struct {
 		URL     string `json:"url"`
 		TabID   int    `json:"tab_id,omitempty"`
+		Reason  string `json:"reason,omitempty"`
 		Summary *bool  `json:"summary,omitempty"`
 	}
 	if err := json.Unmarshal(args, &params); err != nil {
@@ -448,6 +449,9 @@ func (h *ToolHandler) handleBrowserActionNavigate(req JSONRPCRequest, args json.
 
 	// Build browser_action params — include summary script if enabled (default: true)
 	navParams := map[string]any{"action": "navigate", "url": params.URL}
+	if params.Reason != "" {
+		navParams["reason"] = params.Reason
+	}
 	if params.Summary == nil || *params.Summary {
 		navParams["summary_script"] = compactSummaryScript()
 	}
@@ -468,8 +472,9 @@ func (h *ToolHandler) handleBrowserActionNavigate(req JSONRPCRequest, args json.
 
 func (h *ToolHandler) handleBrowserActionRefresh(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	var params struct {
-		TabID   int   `json:"tab_id,omitempty"`
-		Summary *bool `json:"summary,omitempty"`
+		TabID   int    `json:"tab_id,omitempty"`
+		Reason  string `json:"reason,omitempty"`
+		Summary *bool  `json:"summary,omitempty"`
 	}
 	if err := json.Unmarshal(args, &params); err != nil {
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidJSON, "Invalid JSON arguments: "+err.Error(), "Fix JSON syntax and call again")}
@@ -485,6 +490,9 @@ func (h *ToolHandler) handleBrowserActionRefresh(req JSONRPCRequest, args json.R
 
 	// Build refresh params
 	refreshParams := map[string]any{"action": "refresh"}
+	if params.Reason != "" {
+		refreshParams["reason"] = params.Reason
+	}
 	if params.Summary == nil || *params.Summary {
 		refreshParams["summary_script"] = compactSummaryScript()
 	}
@@ -518,7 +526,8 @@ func (h *ToolHandler) stashPerfSnapshot(correlationID string) {
 
 func (h *ToolHandler) handleBrowserActionBack(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	var params struct {
-		Summary *bool `json:"summary,omitempty"`
+		Reason  string `json:"reason,omitempty"`
+		Summary *bool  `json:"summary,omitempty"`
 	}
 	lenientUnmarshal(args, &params)
 
@@ -529,6 +538,9 @@ func (h *ToolHandler) handleBrowserActionBack(req JSONRPCRequest, args json.RawM
 	correlationID := fmt.Sprintf("back_%d_%d", time.Now().UnixNano(), randomInt63())
 
 	backParams := map[string]any{"action": "back"}
+	if params.Reason != "" {
+		backParams["reason"] = params.Reason
+	}
 	if params.Summary == nil || *params.Summary {
 		backParams["summary_script"] = compactSummaryScript()
 	}
@@ -548,7 +560,8 @@ func (h *ToolHandler) handleBrowserActionBack(req JSONRPCRequest, args json.RawM
 
 func (h *ToolHandler) handleBrowserActionForward(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	var params struct {
-		Summary *bool `json:"summary,omitempty"`
+		Reason  string `json:"reason,omitempty"`
+		Summary *bool  `json:"summary,omitempty"`
 	}
 	lenientUnmarshal(args, &params)
 
@@ -559,6 +572,9 @@ func (h *ToolHandler) handleBrowserActionForward(req JSONRPCRequest, args json.R
 	correlationID := fmt.Sprintf("forward_%d_%d", time.Now().UnixNano(), randomInt63())
 
 	forwardParams := map[string]any{"action": "forward"}
+	if params.Reason != "" {
+		forwardParams["reason"] = params.Reason
+	}
 	if params.Summary == nil || *params.Summary {
 		forwardParams["summary_script"] = compactSummaryScript()
 	}
