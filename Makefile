@@ -387,11 +387,15 @@ sync-version:
 	@# Go version fallback
 	@perl -pi -e 's/var version = "[0-9]+\.[0-9]+\.[0-9]+"/var version = "$(VERSION)"/' \
 		$(CMD_DIR)/main.go
+	@# Shell wrapper version
+	@perl -pi -e 's/GASOLINE_VERSION="[0-9]+\.[0-9]+\.[0-9]+"/GASOLINE_VERSION="$(VERSION)"/' \
+		npm/gasoline-mcp/bin/gasoline-mcp
 	@# README badge and benchmark
 	@perl -pi -e 's/version-[0-9]+\.[0-9]+\.[0-9]+-green/version-$(VERSION)-green/' README.md
 	@perl -pi -e 's/\(v[0-9]+\.[0-9]+\.[0-9]+\)/(v$(VERSION))/' README.md
 	@# Docs and benchmarks
 	@perl -pi -e 's/Gasoline v[0-9]+\.[0-9]+\.[0-9]+/Gasoline v$(VERSION)/g' docs/getting-started.md
+	@perl -pi -e 's/\[gasoline\] v[0-9]+\.[0-9]+\.[0-9]+/[gasoline] v$(VERSION)/g' docs/getting-started.md
 	@perl -pi -e 's/"version": "[0-9]+\.[0-9]+\.[0-9]+"/"version": "$(VERSION)"/g' docs/har-export.md
 	@perl -pi -e 's/\*\*Version:\*\* [0-9]+\.[0-9]+\.[0-9]+/**Version:** $(VERSION)/' docs/benchmarks/latest-benchmark.md
 	@echo "All files synced to $(VERSION)"
