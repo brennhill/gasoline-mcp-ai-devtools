@@ -2288,9 +2288,86 @@ function resetForTesting() {
 }
 
 // extension/lib/dom-queries.js
+function normalizePierceShadowParam(value) {
+  if (value === true)
+    return true;
+  if (value === false)
+    return false;
+  if (typeof value === "string") {
+    const normalized = value.trim().toLowerCase();
+    if (normalized === "true")
+      return true;
+    if (normalized === "false")
+      return false;
+  }
+  return false;
+}
+function getClosedShadowRoot(host) {
+  const closedMap = window.__GASOLINE_CLOSED_SHADOWS__;
+  if (!closedMap)
+    return null;
+  try {
+    return closedMap.get(host) ?? null;
+  } catch {
+    return null;
+  }
+}
+function collectHostElements(root) {
+  const out = [];
+  const stack = Array.from(root.children);
+  while (stack.length > 0) {
+    const el = stack.pop();
+    if (!el)
+      continue;
+    out.push(el);
+    if (el.children.length > 0) {
+      stack.push(...Array.from(el.children));
+    }
+  }
+  return out;
+}
+function querySelectorAllAcrossShadowRoots(selector) {
+  const visitedRoots = /* @__PURE__ */ new Set();
+  const seenMatches = /* @__PURE__ */ new Set();
+  const queue = [document];
+  const matches = [];
+  while (queue.length > 0) {
+    const root = queue.shift();
+    if (!root || visitedRoots.has(root))
+      continue;
+    visitedRoots.add(root);
+    const rootMatches = root.querySelectorAll(selector);
+    for (const el of rootMatches) {
+      if (seenMatches.has(el))
+        continue;
+      seenMatches.add(el);
+      matches.push(el);
+    }
+    const hosts = collectHostElements(root);
+    for (const host of hosts) {
+      const openRoot = host.shadowRoot;
+      if (openRoot && !visitedRoots.has(openRoot)) {
+        queue.push(openRoot);
+      }
+      const closedRoot = getClosedShadowRoot(host);
+      if (closedRoot && !visitedRoots.has(closedRoot)) {
+        queue.push(closedRoot);
+      }
+    }
+  }
+  return matches;
+}
+function selectElements(params) {
+  const selector = params.selector;
+  const pierceShadow = normalizePierceShadowParam(params.pierce_shadow);
+  if (!pierceShadow) {
+    return Array.from(document.querySelectorAll(selector));
+  }
+  return querySelectorAllAcrossShadowRoots(selector);
+}
 async function executeDOMQuery(params) {
-  const { selector, include_styles, properties, include_children, max_depth } = params;
-  const elements = document.querySelectorAll(selector);
+  const { include_styles, properties, include_children, max_depth } = params;
+  const elements = selectElements(params);
   const matchCount = elements.length;
   const cappedDepth = Math.min(max_depth || 3, DOM_QUERY_MAX_DEPTH);
   const matches = [];
@@ -3432,6 +3509,43 @@ function handleGetWaterfall(data) {
   }
 }
 
+// extension/inject/early-patch-logs.js
+function normalizeLevel(level) {
+  if (level === "debug" || level === "info" || level === "warn" || level === "error") {
+    return level;
+  }
+  return "warn";
+}
+function flushEarlyPatchLogs() {
+  if (typeof window === "undefined")
+    return 0;
+  const queue = window.__GASOLINE_EARLY_LOGS__;
+  if (!Array.isArray(queue) || queue.length === 0)
+    return 0;
+  const pending = queue.splice(0, queue.length);
+  let forwarded = 0;
+  for (const raw of pending) {
+    if (!raw || typeof raw !== "object")
+      continue;
+    const entry = raw;
+    const message = typeof entry.message === "string" && entry.message.length > 0 ? entry.message : "early-patch event";
+    const source = typeof entry.source === "string" && entry.source.length > 0 ? entry.source : "early-patch";
+    const category = typeof entry.category === "string" && entry.category.length > 0 ? entry.category : "early_patch";
+    const earlyTs = typeof entry.ts === "string" ? entry.ts : void 0;
+    postLog({
+      level: normalizeLevel(entry.level),
+      type: "early_patch",
+      message,
+      source,
+      category,
+      ...entry.data !== void 0 ? { data: entry.data } : {},
+      ...earlyTs ? { early_patch_ts: earlyTs } : {}
+    });
+    forwarded += 1;
+  }
+  return forwarded;
+}
+
 // extension/inject/state.js
 var pageNonce2 = "";
 if (typeof document !== "undefined" && typeof document.querySelector === "function") {
@@ -3657,6 +3771,8 @@ if (typeof window !== "undefined") {
 
 // extension/inject/index.js
 if (typeof window !== "undefined" && typeof document !== "undefined" && typeof globalThis.process === "undefined") {
+  flushEarlyPatchLogs();
+  window.__GASOLINE_INJECT_READY__ = true;
   installPhase1();
   installMessageListener(captureState, restoreState);
   installGasolineAPI();

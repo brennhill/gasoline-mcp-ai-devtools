@@ -2,7 +2,7 @@
 # 04-network-websocket.sh — 4.1-4.2: WebSocket capture, network waterfall.
 set -eo pipefail
 
-begin_category "4" "Network & WebSocket" "2"
+begin_category "4" "Network & WebSocket" "3"
 
 # ── Test 4.1: Real WebSocket traffic ─────────────────────
 begin_test "4.1" "[BROWSER] WebSocket capture on a real WS-heavy page" \
@@ -102,3 +102,46 @@ run_test_4_2() {
     fi
 }
 run_test_4_2
+
+# ── Test 4.3: attachShadow overwrite resilience + server visibility ──
+begin_test "4.3" "[BROWSER] attachShadow overwrite is intercepted and visible in observe(logs)" \
+    "Trigger a page-level attachShadow overwrite, verify closed-root capture still works and telemetry reaches server logs" \
+    "Tests: early-patch shadow hardening > GASOLINE_LOG pipeline > Go /logs ingestion"
+
+run_test_4_3() {
+    if [ "$PILOT_ENABLED" != "true" ]; then
+        skip "Pilot not enabled."
+        return
+    fi
+
+    local marker
+    marker="ATTACH_SHADOW_SMOKE_${SMOKE_MARKER}_$RANDOM"
+
+    local script
+    script="(function(){var marker='${marker}';var original=Element.prototype.attachShadow;var replacement=function(init){return original.call(this,init);};replacement.__gasolineMarker=marker;Element.prototype.attachShadow=replacement;var host=document.createElement('div');host.attachShadow({mode:'closed'});var hasCaptured=!!(window.__GASOLINE_CLOSED_SHADOWS__&&window.__GASOLINE_CLOSED_SHADOWS__.has(host));return {marker:marker,hasCaptured:hasCaptured};})()"
+
+    local script_json
+    script_json=$(printf '%s' "$script" | jq -Rs .)
+
+    local args
+    args=$(printf '{"action":"execute_js","reason":"Trigger attachShadow overwrite interception smoke test","script":%s}' "$script_json")
+
+    interact_and_wait "execute_js" "$args" 20
+
+    if ! echo "$INTERACT_RESULT" | grep -q '"hasCaptured":true'; then
+        fail "Closed-root capture failed after attachShadow overwrite. Result: $(truncate "$INTERACT_RESULT" 220)"
+        return
+    fi
+
+    local response
+    response=$(call_tool "observe" '{"what":"logs","last_n":200,"min_level":"warn"}')
+    local content_text
+    content_text=$(extract_content_text "$response")
+
+    if echo "$content_text" | grep -Fq "attachShadow overwrite intercepted" && echo "$content_text" | grep -Fq "$marker"; then
+        pass "attachShadow overwrite intercepted; marker '$marker' observed in server logs and closed-root capture remained active."
+    else
+        fail "Missing overwrite telemetry marker in observe(logs). Marker='$marker'. Content: $(truncate "$content_text" 260)"
+    fi
+}
+run_test_4_3

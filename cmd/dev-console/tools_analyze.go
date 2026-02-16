@@ -124,8 +124,9 @@ func (h *ToolHandler) toolAnalyze(req JSONRPCRequest, args json.RawMessage) JSON
 
 func (h *ToolHandler) toolQueryDOM(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	var params struct {
-		Selector string `json:"selector"`
-		TabID    int    `json:"tab_id"`
+		Selector     string `json:"selector"`
+		TabID        int    `json:"tab_id"`
+		PierceShadow any    `json:"pierce_shadow"`
 	}
 	if len(args) > 0 {
 		if err := json.Unmarshal(args, &params); err != nil {
@@ -135,6 +136,18 @@ func (h *ToolHandler) toolQueryDOM(req JSONRPCRequest, args json.RawMessage) JSO
 
 	if params.Selector == "" {
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrMissingParam, "Required parameter 'selector' is missing", "Add the 'selector' parameter with a CSS selector and call again", withParam("selector"))}
+	}
+	if params.PierceShadow != nil {
+		switch v := params.PierceShadow.(type) {
+		case bool:
+			// valid
+		case string:
+			if strings.ToLower(strings.TrimSpace(v)) != "auto" {
+				return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidParam, "Invalid 'pierce_shadow' value: "+v, "Use true, false, or \"auto\"", withParam("pierce_shadow"))}
+			}
+		default:
+			return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidParam, "Invalid 'pierce_shadow' type", "Use true, false, or \"auto\"", withParam("pierce_shadow"))}
+		}
 	}
 
 	// Generate correlation ID for tracking

@@ -158,6 +158,61 @@ func TestToolsAnalyzeSchema_HasFrameParam(t *testing.T) {
 	}
 }
 
+func TestToolsAnalyzeSchema_HasPierceShadowParam(t *testing.T) {
+	t.Parallel()
+	h, _, _ := makeAnalyzeToolHandler(t)
+
+	tools := h.ToolsList()
+	var analyzeSchema map[string]any
+	for _, tool := range tools {
+		if tool.Name == "analyze" {
+			analyzeSchema = tool.InputSchema
+			break
+		}
+	}
+	if analyzeSchema == nil {
+		t.Fatal("analyze tool not found in ToolsList()")
+	}
+
+	props, ok := analyzeSchema["properties"].(map[string]any)
+	if !ok {
+		t.Fatal("analyze schema missing properties")
+	}
+	pierceParam, exists := props["pierce_shadow"]
+	if !exists {
+		t.Fatal("analyze schema missing 'pierce_shadow' property")
+	}
+	pierceMap, ok := pierceParam.(map[string]any)
+	if !ok {
+		t.Fatal("pierce_shadow property is not an object")
+	}
+	oneOf, ok := pierceMap["oneOf"].([]map[string]any)
+	if !ok || len(oneOf) != 2 {
+		t.Fatalf("pierce_shadow.oneOf should be [boolean,string], got %#v", pierceMap["oneOf"])
+	}
+
+	hasBoolean := false
+	hasAutoString := false
+	for _, item := range oneOf {
+		typeStr, _ := item["type"].(string)
+		if typeStr == "boolean" {
+			hasBoolean = true
+		}
+		if typeStr == "string" {
+			enumVals, _ := item["enum"].([]string)
+			if len(enumVals) == 1 && enumVals[0] == "auto" {
+				hasAutoString = true
+			}
+		}
+	}
+	if !hasBoolean {
+		t.Fatal("pierce_shadow.oneOf missing boolean variant")
+	}
+	if !hasAutoString {
+		t.Fatal("pierce_shadow.oneOf missing string enum ['auto'] variant")
+	}
+}
+
 func TestToolsAnalyzePageSummary_QueuedAsync(t *testing.T) {
 	t.Parallel()
 	h, _, _ := makeAnalyzeToolHandler(t)
@@ -288,6 +343,117 @@ func TestToolsAnalyzeDOM_FrameIndexForwardedInPendingQuery(t *testing.T) {
 
 	if got, ok := params["frame"].(float64); !ok || got != 0 {
 		t.Fatalf("frame index not forwarded correctly, got %#v", params["frame"])
+	}
+}
+
+func TestToolsAnalyzeDOM_PierceShadowTrueForwardedInPendingQuery(t *testing.T) {
+	t.Parallel()
+	h, _, cap := makeAnalyzeToolHandler(t)
+
+	resp := callAnalyzeRaw(h, `{"what":"dom","selector":"#main","pierce_shadow":true,"sync":false}`)
+	result := parseToolResult(t, resp)
+	if result.IsError {
+		t.Fatalf("dom with pierce_shadow=true should succeed, got: %s", result.Content[0].Text)
+	}
+
+	pq := cap.GetLastPendingQuery()
+	if pq == nil {
+		t.Fatal("expected pending query to be created")
+	}
+
+	var params map[string]any
+	if err := json.Unmarshal(pq.Params, &params); err != nil {
+		t.Fatalf("failed to parse pending query params: %v", err)
+	}
+
+	if got, ok := params["pierce_shadow"].(bool); !ok || !got {
+		t.Fatalf("pierce_shadow=true not forwarded correctly, got %#v", params["pierce_shadow"])
+	}
+}
+
+func TestToolsAnalyzeDOM_PierceShadowFalseForwardedInPendingQuery(t *testing.T) {
+	t.Parallel()
+	h, _, cap := makeAnalyzeToolHandler(t)
+
+	resp := callAnalyzeRaw(h, `{"what":"dom","selector":"#main","pierce_shadow":false,"sync":false}`)
+	result := parseToolResult(t, resp)
+	if result.IsError {
+		t.Fatalf("dom with pierce_shadow=false should succeed, got: %s", result.Content[0].Text)
+	}
+
+	pq := cap.GetLastPendingQuery()
+	if pq == nil {
+		t.Fatal("expected pending query to be created")
+	}
+
+	var params map[string]any
+	if err := json.Unmarshal(pq.Params, &params); err != nil {
+		t.Fatalf("failed to parse pending query params: %v", err)
+	}
+
+	if got, ok := params["pierce_shadow"].(bool); !ok || got {
+		t.Fatalf("pierce_shadow=false not forwarded correctly, got %#v", params["pierce_shadow"])
+	}
+}
+
+func TestToolsAnalyzeDOM_PierceShadowAutoForwardedInPendingQuery(t *testing.T) {
+	t.Parallel()
+	h, _, cap := makeAnalyzeToolHandler(t)
+
+	resp := callAnalyzeRaw(h, `{"what":"dom","selector":"#main","pierce_shadow":"auto","sync":false}`)
+	result := parseToolResult(t, resp)
+	if result.IsError {
+		t.Fatalf("dom with pierce_shadow='auto' should succeed, got: %s", result.Content[0].Text)
+	}
+
+	pq := cap.GetLastPendingQuery()
+	if pq == nil {
+		t.Fatal("expected pending query to be created")
+	}
+
+	var params map[string]any
+	if err := json.Unmarshal(pq.Params, &params); err != nil {
+		t.Fatalf("failed to parse pending query params: %v", err)
+	}
+
+	if got, ok := params["pierce_shadow"].(string); !ok || got != "auto" {
+		t.Fatalf("pierce_shadow='auto' not forwarded correctly, got %#v", params["pierce_shadow"])
+	}
+}
+
+func TestToolsAnalyzeDOM_InvalidPierceShadowStringRejected(t *testing.T) {
+	t.Parallel()
+	h, _, _ := makeAnalyzeToolHandler(t)
+
+	resp := callAnalyzeRaw(h, `{"what":"dom","selector":"#main","pierce_shadow":"sometimes","sync":false}`)
+	result := parseToolResult(t, resp)
+	if !result.IsError {
+		t.Fatal("invalid pierce_shadow value should return isError:true")
+	}
+	text := strings.ToLower(result.Content[0].Text)
+	if !strings.Contains(text, "pierce_shadow") {
+		t.Fatalf("error should mention pierce_shadow, got: %s", result.Content[0].Text)
+	}
+	if !strings.Contains(text, "invalid_param") {
+		t.Fatalf("error should use invalid_param code, got: %s", result.Content[0].Text)
+	}
+}
+
+func TestToolsAnalyzeDOM_InvalidPierceShadowTypeRejected(t *testing.T) {
+	t.Parallel()
+	h, _, _ := makeAnalyzeToolHandler(t)
+
+	resp := callAnalyzeRaw(h, `{"what":"dom","selector":"#main","pierce_shadow":7,"sync":false}`)
+	result := parseToolResult(t, resp)
+	if !result.IsError {
+		t.Fatal("numeric pierce_shadow should return isError:true")
+	}
+	text := strings.ToLower(result.Content[0].Text)
+	if !strings.Contains(text, "pierce_shadow") {
+		t.Fatalf("error should mention pierce_shadow, got: %s", result.Content[0].Text)
+	}
+	if !strings.Contains(text, "invalid_param") {
+		t.Fatalf("error should use invalid_param code, got: %s", result.Content[0].Text)
 	}
 }
 

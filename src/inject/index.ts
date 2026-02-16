@@ -141,6 +141,7 @@ export {
 
 // Export message handlers module
 export { installMessageListener, executeJavaScript, safeSerializeForExecute } from './message-handlers'
+export { flushEarlyPatchLogs } from './early-patch-logs'
 
 // Export state management functions
 export {
@@ -156,6 +157,7 @@ export {
 import { installGasolineAPI } from './api'
 import { installPhase1 } from './observers'
 import { installMessageListener } from './message-handlers'
+import { flushEarlyPatchLogs } from './early-patch-logs'
 import { captureState, restoreState, sendPerformanceSnapshotWrapper } from './state'
 import { sendPerformanceSnapshot } from '../lib/perf-snapshot'
 
@@ -167,6 +169,10 @@ if (
   typeof document !== 'undefined' &&
   typeof (globalThis as Record<string, unknown>).process === 'undefined'
 ) {
+  // Forward early-patch diagnostics (captured before inject script load).
+  flushEarlyPatchLogs()
+  window.__GASOLINE_INJECT_READY__ = true
+
   // Install Phase 1 (lightweight API + observers)
   installPhase1()
 

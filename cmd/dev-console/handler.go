@@ -30,6 +30,7 @@ Workflow:
 Key patterns:
 - Pagination: observe returns after_cursor/before_cursor in metadata. Pass them back for next page. Use restart_on_eviction=true if cursor expired.
 - Async analysis: analyze dispatches to the extension; poll results with observe(what="command_result", correlation_id=...).
+- Shadow DOM: analyze(what="dom", pierce_shadow=true|false|"auto"). "auto" enables deep shadow traversal only during active debug intent (AI Web Pilot enabled + tracked target origin).
 - Error debugging: start with observe(what="error_bundles") for pre-assembled context per error (error + network + actions + logs).
 - Interactive: interact(action="click"|"type") now defaults to synchronous mode. Use background:true for async.
 - Navigation: interact(action="navigate"|"refresh"|"back"|"forward") auto-includes perf_diff and page summary. Set summary:false to skip.
@@ -384,8 +385,8 @@ Use restart_on_eviction=true if a cursor expires.
   // Run accessibility audit (async)
   {"tool":"analyze","arguments":{"what":"accessibility"}}
 
-  // Query DOM elements (async)
-  {"tool":"analyze","arguments":{"what":"dom","selector":".error-message"}}
+  // Query DOM elements (async). pierce_shadow defaults to "auto".
+  {"tool":"analyze","arguments":{"what":"dom","selector":".error-message","pierce_shadow":"auto"}}
 
   // Generate Playwright test from session
   {"tool":"generate","arguments":{"format":"test","test_name":"user_login"}}
@@ -404,6 +405,7 @@ Use restart_on_eviction=true if a cursor expires.
 - Start with configure(action:"health") to verify extension is connected
 - Use observe(what:"error_bundles") instead of raw errors — includes surrounding context
 - Use observe(what:"page") to confirm which URL the browser is on
+- For shadow-root content, use analyze(what:"dom", pierce_shadow:true). Use "auto" for safety-first heuristic mode.
 - interact actions require the AI Web Pilot extension feature to be enabled
 - interact navigate and refresh automatically include performance diff metrics
 - Data comes from the active tracked browser tab
@@ -431,7 +433,7 @@ Use restart_on_eviction=true if a cursor expires.
 {"tool":"observe","arguments":{"what":"command_result","correlation_id":"..."}}
 
 ## 7. DOM Query (Async)
-{"tool":"analyze","arguments":{"what":"dom","selector":".error-message"}}
+{"tool":"analyze","arguments":{"what":"dom","selector":".error-message","pierce_shadow":"auto"}}
 {"tool":"observe","arguments":{"what":"command_result","correlation_id":"..."}}
 
 ## 8. Performance Check

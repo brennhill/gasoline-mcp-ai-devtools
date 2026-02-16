@@ -24,11 +24,13 @@ export { installGasolineAPI, uninstallGasolineAPI } from './api.js';
 export { install, uninstall, wrapFetch, installFetchCapture, uninstallFetchCapture, installPhase1, installPhase2, getDeferralState, setDeferralEnabled, shouldDeferIntercepts, checkMemoryPressure } from './observers.js';
 // Export message handlers module
 export { installMessageListener, executeJavaScript, safeSerializeForExecute } from './message-handlers.js';
+export { flushEarlyPatchLogs } from './early-patch-logs.js';
 // Export state management functions
 export { captureState, restoreState, highlightElement, clearHighlight } from './state.js';
 import { installGasolineAPI } from './api.js';
 import { installPhase1 } from './observers.js';
 import { installMessageListener } from './message-handlers.js';
+import { flushEarlyPatchLogs } from './early-patch-logs.js';
 import { captureState, restoreState } from './state.js';
 import { sendPerformanceSnapshot } from '../lib/perf-snapshot.js';
 /**
@@ -37,6 +39,9 @@ import { sendPerformanceSnapshot } from '../lib/perf-snapshot.js';
 if (typeof window !== 'undefined' &&
     typeof document !== 'undefined' &&
     typeof globalThis.process === 'undefined') {
+    // Forward early-patch diagnostics (captured before inject script load).
+    flushEarlyPatchLogs();
+    window.__GASOLINE_INJECT_READY__ = true;
     // Install Phase 1 (lightweight API + observers)
     installPhase1();
     // Install message listener with state functions

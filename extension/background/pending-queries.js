@@ -206,6 +206,63 @@ function stripFrameParam(params) {
     delete copy.frame;
     return copy;
 }
+function parsePierceShadowInput(value) {
+    if (value === undefined || value === null) {
+        return { value: 'auto' };
+    }
+    if (typeof value === 'boolean') {
+        return { value };
+    }
+    if (typeof value === 'string') {
+        const normalized = value.trim().toLowerCase();
+        if (normalized === 'auto')
+            return { value: 'auto' };
+        if (normalized === 'true')
+            return { value: true };
+        if (normalized === 'false')
+            return { value: false };
+    }
+    return { error: "Invalid 'pierce_shadow' value. Use true, false, or \"auto\"." };
+}
+function parseOrigin(url) {
+    if (!url)
+        return null;
+    try {
+        return new URL(url).origin;
+    }
+    catch {
+        return null;
+    }
+}
+function hasActiveDebugIntent(target) {
+    if (!target)
+        return false;
+    if (index.__aiWebPilotEnabledCache !== true)
+        return false;
+    if (target.source !== 'tracked_tab')
+        return false;
+    if (!target.trackedTabId || target.tabId !== target.trackedTabId)
+        return false;
+    const targetOrigin = parseOrigin(target.url);
+    const trackedOrigin = parseOrigin(target.trackedTabUrl);
+    if (!trackedOrigin) {
+        return targetOrigin !== null;
+    }
+    return targetOrigin !== null && targetOrigin === trackedOrigin;
+}
+function resolveDOMQueryParams(params, target) {
+    const parsed = parsePierceShadowInput(params.pierce_shadow);
+    if (parsed.error) {
+        return { error: parsed.error };
+    }
+    const pierceShadow = parsed.value === 'auto' ? hasActiveDebugIntent(target) : parsed.value;
+    return {
+        params: {
+            ...params,
+            pierce_shadow: pierceShadow
+        }
+    };
+}
 async function sendFrameQueries(tabId, frameIds, message) {
     return Promise.all(frameIds.map(async (frameId) => {
         try {
@@ -409,6 +466,7 @@ async function resolveTargetTab(query, paramsObj) {
                 source: 'explicit_tab',
                 requestedTabId: explicitTabId,
                 trackedTabId: null,
+                trackedTabUrl: null,
                 useActiveTab
             }
         };
@@ -434,6 +492,7 @@ async function resolveTargetTab(query, paramsObj) {
                 url: activeTab.url || '',
                 source: 'active_tab',
                 trackedTabId: null,
+                trackedTabUrl: null,
                 useActiveTab
             }
         };
@@ -450,6 +509,7 @@ async function resolveTargetTab(query, paramsObj) {
                     url: trackedTab.url || storage.trackedTabUrl || '',
                     source: 'tracked_tab',
                     trackedTabId,
+                    trackedTabUrl: storage.trackedTabUrl || null,
                     useActiveTab
                 }
             };
@@ -701,12 +761,28 @@ export async function handlePendingQuery(query, syncClient) {
         }
         if (query.type === 'dom') {
             try {
-                const frameSelection = await resolveAnalyzeFrameSelection(targetTabId, paramsObj.frame);
+                const domQueryParams = resolveDOMQueryParams(paramsObj, target);
+                if (domQueryParams.error) {
+                    const payload = {
+                        error: 'invalid_param',
+                        message: domQueryParams.error,
+                        param: 'pierce_shadow'
+                    };
+                    if (query.correlation_id) {
+                        sendQueryAsyncResult(syncClient, query.id, query.correlation_id, 'complete', payload, payload.message);
+                    }
+                    else {
+                        sendQueryResult(payload);
+                    }
+                    return;
+                }
+                const domParams = domQueryParams.params || paramsObj;
+                const frameSelection = await resolveAnalyzeFrameSelection(targetTabId, domParams.frame);
                 // Fast path: preserve legacy behavior when no frame is specified.
                 if (frameSelection.mode === 'main') {
                     const result = await chrome.tabs.sendMessage(targetTabId, {
                         type: 'DOM_QUERY',
-                        params: query.params
+                        params: domParams
                     });
                     if (query.correlation_id) {
                         sendQueryAsyncResult(syncClient, query.id, query.correlation_id, 'complete', result);
@@ -716,7 +792,7 @@ export async function handlePendingQuery(query, syncClient) {
                     }
                     return;
                 }
-                const frameParams = stripFrameParam(paramsObj);
+                const frameParams = stripFrameParam(domParams);
                 const perFrame = await sendFrameQueries(targetTabId, frameSelection.frameIds, {
                     type: 'DOM_QUERY',
                     params: frameParams

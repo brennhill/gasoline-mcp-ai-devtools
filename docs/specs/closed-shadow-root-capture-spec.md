@@ -16,7 +16,7 @@ Without interception, Gasoline's deep traversal engine (from the open shadow DOM
 
 ## Approach
 
-Monkey-patch `Element.prototype.attachShadow` in `early-patch.ts` to capture closed ShadowRoot references in a WeakMap before page JavaScript runs. This follows the exact same pattern Gasoline already uses for WebSocket capture: early-patch saves originals, inject script adopts them.
+Monkey-patch `Element.prototype.attachShadow` in `early-patch.ts` to capture closed ShadowRoot references in a WeakMap before page JavaScript runs. The patch now uses a trampoline/getter-setter pattern so page-level reassignment (`Element.prototype.attachShadow = ...`) is intercepted without losing capture.
 
 ## Architecture
 
@@ -25,15 +25,17 @@ Timeline (per page load):
 ──────────────────────────────────────────────────────────────
 
 1. early-patch.bundled.js (MAIN world, document_start)
-   └─ Patches Element.prototype.attachShadow
+   └─ Installs attachShadow trampoline + overwrite interceptor
    └─ Stores closed ShadowRoots in WeakMap on window
+   └─ Buffers early diagnostics in __GASOLINE_EARLY_LOGS__
 
 2. Page JavaScript runs
    └─ Calls attachShadow({ mode: 'closed' }) — captured transparently
 
 3. inject.bundled.js loads (MAIN world, programmatic)
-   └─ Adopts WeakMap from window global
-   └─ Cleans up globals
+   └─ Flushes __GASOLINE_EARLY_LOGS__ into GASOLINE_LOG pipeline
+   └─ Sets __GASOLINE_INJECT_READY__ = true
+   └─ Logs reach background -> /logs on Go server
 
 4. dom-primitives.ts executeScript calls (MAIN world, on-demand)
    └─ Reads WeakMap to traverse closed roots
@@ -46,30 +48,36 @@ Timeline (per page load):
 Add the `attachShadow` patch alongside the existing WebSocket patch. Same IIFE, same file, same bundle.
 
 ```typescript
-// --- Closed Shadow Root Capture ---
+// --- Closed Shadow Root Capture (hardened) ---
 
-const OriginalAttachShadow = Element.prototype.attachShadow
-if (OriginalAttachShadow) {
-  const closedRoots = new WeakMap<Element, ShadowRoot>()
-  window.__GASOLINE_CLOSED_SHADOWS__ = closedRoots
-  window.__GASOLINE_ORIGINAL_ATTACH_SHADOW__ = OriginalAttachShadow
+const original = Element.prototype.attachShadow
+const closedRoots = new WeakMap<Element, ShadowRoot>()
+let delegate = original
 
-  Element.prototype.attachShadow = function (
-    this: Element,
-    init: ShadowRootInit
-  ): ShadowRoot {
-    const root = OriginalAttachShadow.call(this, init)
-    if (init.mode === 'closed') {
-      closedRoots.set(this, root)
-    }
-    return root
-  }
+const trampoline = function (this: Element, init: ShadowRootInit): ShadowRoot {
+  const root = delegate.call(this, init)
+  if (init.mode === 'closed') closedRoots.set(this, root)
+  return root
 }
+
+Object.defineProperty(Element.prototype, 'attachShadow', {
+  configurable: true,
+  enumerable: false,
+  get: () => trampoline,
+  set: (next) => {
+    // Keep capture active while preserving page override behavior.
+    if (typeof next !== 'function' || next === trampoline) return
+    delegate = function (this: Element, init: ShadowRootInit): ShadowRoot {
+      return next.call(this, init)
+    }
+    queueEarlyLog('attachShadow overwrite intercepted')
+  }
+})
 ```
 
 **Why this is safe:**
-- `attachShadow` is a method, not a constructor — no prototype chain to preserve
-- The patched function calls through to the original with identical arguments
+- The trampoline still calls the page's replacement function (delegate mode)
+- Closed-root capture stays active even after reassignment
 - Return value is the real ShadowRoot (not a wrapper)
 - WeakMap means captured roots are GC'd when their host element is removed
 - No observable side-effects: `init.mode` is still `'closed'`, `element.shadowRoot` still returns `null`
@@ -89,9 +97,21 @@ __GASOLINE_CLOSED_SHADOWS__?: WeakMap<Element, ShadowRoot>
 
 /** Early-patch: original attachShadow saved before patch */
 __GASOLINE_ORIGINAL_ATTACH_SHADOW__?: typeof Element.prototype.attachShadow
+
+/** Early-patch: buffered diagnostics before inject.js is ready */
+__GASOLINE_EARLY_LOGS__?: EarlyPatchLogEntry[]
+
+/** inject.js readiness flag used to avoid duplicate early-patch log emission */
+__GASOLINE_INJECT_READY__?: boolean
 ```
 
-### 3. Adoption: `src/inject/shadow-registry.ts` (new file)
+### 3. Early Telemetry Flush: `src/inject/early-patch-logs.ts` (new file)
+
+At inject startup, flush any buffered early-patch logs through `postLog()`. This routes events into existing ingestion (`GASOLINE_LOG` -> background -> Go `/logs`) without adding a new API.
+
+This is used for events that happened before `inject.bundled.js` finished loading.
+
+### 4. Adoption: `src/inject/shadow-registry.ts` (optional)
 
 Follows the same adoption pattern as `lib/websocket.ts:586-730`:
 
@@ -130,7 +150,7 @@ export function destroyShadowRegistry(): void {
 }
 ```
 
-### 4. Integration with Deep Traversal (`dom-primitives.ts`)
+### 5. Integration with Deep Traversal (`dom-primitives.ts`)
 
 The deep traversal engine (from the open shadow DOM spec) needs access to closed roots. Since `domPrimitive` runs as a self-contained function via `chrome.scripting.executeScript`, it cannot import modules. The closed root WeakMap must be passed as an argument or accessed via a window global.
 
@@ -162,7 +182,113 @@ export function adoptClosedShadowRoots(): void {
 }
 ```
 
+## DOM Query Control (`pierce_shadow`)
+
+`analyze({ what: "dom" })` now supports `pierce_shadow` with three values:
+
+- `true`: always traverse open + captured closed shadow roots.
+- `false`: stay in light DOM only (default safe behavior in inject execution).
+- `"auto"`: background resolves using active debug intent heuristic, then forwards boolean to inject.
+
+Default is `"auto"` at tool level.
+
+### Auto Heuristic (Active Debug Intent)
+
+`"auto"` resolves to `true` only when all are true:
+
+- AI Web Pilot is enabled.
+- Target tab is the tracked debug tab.
+- Target tab origin matches tracked tab origin.
+
+Otherwise `"auto"` resolves to `false`.
+
+Implementation detail:
+
+- Resolution happens in `pending-queries.ts` (background) before `DOM_QUERY` is sent to content/inject.
+- Inject-side `executeDOMQuery` accepts `true|false|"auto"`, but treats unresolved `"auto"` as `false` for safety.
+
 ## Risks and Mitigations
+
+## User Safety Mode (Default Behavior)
+
+This section defines how Gasoline avoids accidental breakage on normal browsing. Goal: users should not have a bad experience because they forgot Gasoline was enabled.
+
+### Default Mode: `safe`
+
+`safe` is the default operating mode. In `safe` mode:
+
+- No aggressive early monkey-patches on arbitrary browsing.
+- `attachShadow` and early WebSocket interception are enabled only when the user is explicitly in an active debugging flow.
+- Active debugging flow means both:
+  - AI Web Pilot/debugging is enabled by user intent.
+  - Current page origin matches the tracked/debug target origin.
+
+### Scoped Aggressive Hooks
+
+Aggressive instrumentation is scoped to the active debug target only:
+
+- If page origin is not the tracked origin, run passive capture only.
+- If tracking/pilot is disabled, run passive capture only.
+- If user exits debug flow, revert to passive capture.
+
+### Automatic Compatibility Downgrade
+
+When likely challenge/protection friction is detected, Gasoline must auto-downgrade to passive mode for that origin.
+
+Downgrade triggers include (heuristic, any one is sufficient):
+
+- Burst of `403`/`429` responses shortly after hook activation.
+- Known challenge/captcha URL patterns.
+- Access-denied/challenge markers observed in page title/URL/content snippets.
+- Extension-level warnings indicating hook conflict.
+
+On trigger:
+
+- Disable aggressive hooks for that origin immediately.
+- Continue passive telemetry so tools still work (reduced visibility).
+- Emit a compatibility event for server/operator visibility.
+
+### Persistent Per-Origin Compatibility State
+
+Gasoline stores origin compatibility state locally:
+
+- `mode`: `passive` | `standard` | `full`
+- `reason`: short string (e.g., `challenge_detected`, `user_override`, `manual_allow`)
+- `updated_at`, optional `passive_until`
+
+Behavior:
+
+- Origins with recent downgrade load as passive first.
+- Optional TTL (`passive_until`) allows automatic re-evaluation later.
+- User can manually promote/demote per origin.
+
+### User-Facing UX Requirements
+
+When compatibility downgrade happens, user gets clear non-technical feedback:
+
+- Badge/toast: “Gasoline switched to compatibility mode on this site.”
+- Optional inline detail: “Some deep capture features are paused to avoid site interference.”
+
+This prevents confusion and reduces uninstall risk.
+
+### Timeout Failsafe
+
+Aggressive mode auto-expires after a configurable idle window (for example 10-30 minutes):
+
+- If user forgets to turn Gasoline off, session de-escalates to passive automatically.
+- Re-entry into aggressive mode requires active user/debug intent.
+
+### Diagnostics and Observability
+
+All mode transitions are logged and sent through existing server ingestion:
+
+- `from_mode`, `to_mode`
+- `origin`
+- `reason`
+- `trigger_signal` (if auto downgrade)
+- `timestamp`
+
+This enables support/debugging without adding new endpoints.
 
 ### Risk 1: Page detects the patch
 
@@ -186,7 +312,9 @@ export function adoptClosedShadowRoots(): void {
 
 **Likelihood:** Low. Some frameworks (LitElement, Stencil) save a reference to `attachShadow` during module initialization. If their module loads before `early-patch.ts` (impossible in normal operation — `document_start` runs first), they'd bypass the patch. But even if a framework calls `Element.prototype.attachShadow` directly via a cached reference, the patch still works because we patch the prototype method, not instance methods.
 
-**Edge case:** If a framework overwrites `Element.prototype.attachShadow` itself (extremely rare), it would overwrite our patch. We could detect this in inject.ts and log a warning.
+**Edge case:** Some code compares strict function identity of `Element.prototype.attachShadow`. The trampoline changes identity, so those checks can fail.
+
+**Mitigation:** keep delegate behavior so replacement semantics still run; emit warning telemetry to help diagnose identity-sensitive pages.
 
 ### Risk 5: early-patch.ts bundle size increase
 
@@ -207,8 +335,9 @@ export function adoptClosedShadowRoots(): void {
 2. Patched attachShadow captures closed roots in WeakMap
 3. Patched attachShadow does NOT capture open roots (shadowRoot already accessible)
 4. Original attachShadow behavior preserved (return value, mode, delegatesFocus)
-5. Guard prevents double-patching on extension reload
-6. WeakMap entries are per-host (multiple components work independently)
+5. Overwrite interception: page assigns replacement function, capture still works
+6. Non-function overwrite attempt is ignored and logged
+7. WeakMap entries are per-host (multiple components work independently)
 ```
 
 ### Integration Tests: `tests/e2e/shadow-dom-closed.test.ts`
@@ -230,15 +359,24 @@ export function adoptClosedShadowRoots(): void {
 4. Extension unload cleans up globals
 ```
 
+### Smoke Test
+
+`scripts/smoke-tests/04-network-websocket.sh` includes a browser smoke check that:
+1. Reassigns `Element.prototype.attachShadow` from page JS
+2. Creates a closed shadow root and verifies `hasCaptured=true`
+3. Verifies overwrite telemetry appears in `observe(logs)` with the injected marker
+
 ## Files Modified
 
 | File | Change |
 |------|--------|
 | `src/early-patch.ts` | Add attachShadow patch (~15 lines) |
 | `src/types/global.d.ts` | Add Window interface members (2 lines) |
+| `src/inject/early-patch-logs.ts` | New file: flush buffered early-patch logs into GASOLINE_LOG |
 | `src/inject/shadow-registry.ts` | New file: adoption + lookup (~30 lines) |
 | `src/inject/index.ts` | Call `adoptClosedShadowRoots()` in Phase 1 |
 | `src/background/dom-primitives.ts` | Add `getShadowRoot()` helper used by deep traversal |
+| `scripts/smoke-tests/04-network-websocket.sh` | Add overwrite-resilience smoke test with server log assertion |
 
 ## Dependencies
 
@@ -248,5 +386,8 @@ This spec **requires** the open shadow DOM support spec to ship first. The deep 
 
 1. Ship open shadow DOM support (deep traversal for open roots)
 2. Ship this spec (closed root capture via early-patch)
-3. The deep traversal engine picks up closed roots automatically via `getShadowRoot()`
-4. No feature flags needed — the patch is zero-cost on pages without closed roots
+3. Ship `safe` default mode with origin-scoped aggressive hooks
+4. Ship automatic downgrade + persisted per-origin compatibility memory
+5. Add UX messaging for compatibility-mode transitions
+6. Add timeout failsafe for aggressive mode auto-expiry
+7. The deep traversal engine picks up closed roots automatically via `getShadowRoot()` when aggressive mode is active

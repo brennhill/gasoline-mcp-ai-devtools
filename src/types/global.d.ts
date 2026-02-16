@@ -164,6 +164,15 @@ declare global {
     events: Array<{ type: string; ts: number; code?: number; reason?: string }>
   }
 
+  interface EarlyPatchLogEntry {
+    ts: string
+    level: 'debug' | 'info' | 'warn' | 'error'
+    message: string
+    source: string
+    category: string
+    data?: unknown
+  }
+
   interface Window {
     /** Gasoline developer API */
     __gasoline?: GasolineAPI
@@ -185,6 +194,12 @@ declare global {
 
     /** Early-patch: original attachShadow saved before patch */
     __GASOLINE_ORIGINAL_ATTACH_SHADOW__?: typeof Element.prototype.attachShadow
+
+    /** Early-patch: buffered diagnostic events created before inject.js loads */
+    __GASOLINE_EARLY_LOGS__?: EarlyPatchLogEntry[]
+
+    /** inject.js readiness flag for early-patch log delivery */
+    __GASOLINE_INJECT_READY__?: boolean
   }
 }
 
