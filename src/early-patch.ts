@@ -1,12 +1,34 @@
-// early-patch.ts — Lightweight WebSocket constructor patch.
+// early-patch.ts — Lightweight WebSocket + attachShadow patches.
 // Runs in MAIN world at document_start before any page scripts.
 // Saves original WebSocket and buffers connections for handoff to inject.bundled.js.
+// Captures closed shadow roots in a WeakMap for dom-primitives deep traversal.
 // Must be self-contained: no imports, no chrome.* APIs (MAIN world).
 
 ;(function () {
   'use strict'
 
-  if (typeof window === 'undefined' || !window.WebSocket) return
+  if (typeof window === 'undefined') return
+
+  // --- Closed Shadow Root Capture ---
+  const OriginalAttachShadow = Element.prototype.attachShadow
+  if (OriginalAttachShadow && !window.__GASOLINE_CLOSED_SHADOWS__) {
+    const closedRoots = new WeakMap<Element, ShadowRoot>()
+    window.__GASOLINE_CLOSED_SHADOWS__ = closedRoots
+    window.__GASOLINE_ORIGINAL_ATTACH_SHADOW__ = OriginalAttachShadow
+
+    Element.prototype.attachShadow = function (
+      this: Element,
+      init: ShadowRootInit
+    ): ShadowRoot {
+      const root = OriginalAttachShadow.call(this, init)
+      if (init.mode === 'closed') {
+        closedRoots.set(this, root)
+      }
+      return root
+    }
+  }
+
+  if (!window.WebSocket) return
 
   // Guard: only install once (extension reloads, multiple frames)
   if (window.__GASOLINE_ORIGINAL_WS__) return

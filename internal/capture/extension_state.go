@@ -89,7 +89,7 @@ func (c *Capture) GetExtensionStatus() map[string]any {
 }
 
 // GetPilotStatus returns pilot status information.
-// extension_connected is true only if the extension polled within the last 5 seconds.
+// extension_connected uses the same threshold as IsExtensionConnected (10s on lastSyncSeen).
 // extension_last_seen is the RFC3339 timestamp of the last /sync, empty if never synced.
 func (c *Capture) GetPilotStatus() any {
 	c.mu.RLock()
@@ -103,7 +103,7 @@ func (c *Capture) GetPilotStatus() any {
 	return map[string]any{
 		"enabled":              c.ext.pilotEnabled,
 		"source":               "extension_poll",
-		"extension_connected":  !c.ext.lastPollAt.IsZero() && time.Since(c.ext.lastPollAt) < 5*time.Second,
+		"extension_connected":  !c.ext.lastSyncSeen.IsZero() && time.Since(c.ext.lastSyncSeen) < extensionDisconnectThreshold,
 		"extension_last_seen":  lastSeen,
 	}
 }

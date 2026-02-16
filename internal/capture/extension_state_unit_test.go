@@ -20,6 +20,7 @@ func TestExtensionStateGettersAndBoundaries(t *testing.T) {
 	c.ext.trackedTabTitle = "Example"
 	c.ext.pilotEnabled = true
 	c.ext.lastPollAt = now
+	c.ext.lastSyncSeen = now
 	c.ext.extensionVersion = "9.9.9"
 	c.ext.extensionSession = "session-a"
 	c.ext.sessionChangedAt = now
@@ -51,7 +52,7 @@ func TestExtensionStateGettersAndBoundaries(t *testing.T) {
 	}
 
 	c.mu.Lock()
-	c.ext.lastPollAt = time.Now().Add(-6 * time.Second)
+	c.ext.lastSyncSeen = time.Now().Add(-11 * time.Second) // Beyond extensionDisconnectThreshold (10s)
 	c.mu.Unlock()
 	staleStatus := c.GetPilotStatus().(map[string]any)
 	if staleStatus["extension_connected"] != false {

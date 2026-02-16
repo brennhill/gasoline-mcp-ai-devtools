@@ -601,6 +601,10 @@ func (h *ToolHandler) ToolsList() []MCPTool {
 						"type":        "string",
 						"description": "Action reason (shown as toast)",
 					},
+					"summary": map[string]any{
+						"type":        "boolean",
+						"description": "Auto-include compact page summary (title, type, headings, primary actions, forms) after navigate/refresh/back/forward. Default: true. Set false to skip for speed.",
+					},
 					"correlation_id": map[string]any{
 						"type":        "string",
 						"description": "Link to error/investigation",

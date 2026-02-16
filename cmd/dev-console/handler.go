@@ -32,7 +32,10 @@ Key patterns:
 - Async analysis: analyze dispatches to the extension; poll results with observe(what="command_result", correlation_id=...).
 - Shadow DOM: analyze(what="dom", pierce_shadow=true|false|"auto"). "auto" enables deep shadow traversal only during active debug intent (AI Web Pilot enabled + tracked target origin).
 - Error debugging: start with observe(what="error_bundles") for pre-assembled context per error (error + network + actions + logs).
-- Performance: interact(action="navigate"|"refresh") auto-includes perf_diff. Add analyze=true to any interact action for profiling.
+- Interactive: interact(action="click"|"type") now defaults to synchronous mode. Use background:true for async.
+- Navigation: interact(action="navigate"|"refresh"|"back"|"forward") auto-includes perf_diff and page summary. Set summary:false to skip.
+- Performance: interact(action="navigate"|"refresh") auto-includes perf_diff. Add analyze=true to any interact action for profiling. Use analyze(what="performance") for timing snapshots and regression detection.
+- Page Summary: Use analyze(what="page_summary") for a detailed semantic map of the current page.
 - Noise filtering: use configure(action="noise_rule", noise_action="auto_detect") to suppress recurring noise.
 - For detailed docs, read gasoline://guide. For quick examples, read gasoline://quickstart.`
 

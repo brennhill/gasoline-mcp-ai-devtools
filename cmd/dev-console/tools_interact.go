@@ -445,9 +445,21 @@ func (h *ToolHandler) handleBrowserActionNavigate(req JSONRPCRequest, args json.
 
 	correlationID := fmt.Sprintf("nav_%d_%d", time.Now().UnixNano(), randomInt63())
 
+	// Forward all original params and overlay action + summary script
+	var navParams map[string]any
+	_ = json.Unmarshal(args, &navParams)
+	if navParams == nil {
+		navParams = map[string]any{}
+	}
+	navParams["action"] = "navigate"
+	if params.Summary == nil || *params.Summary {
+		navParams["summary_script"] = compactSummaryScript()
+	}
+	navArgs, _ := json.Marshal(navParams)
+
 	query := queries.PendingQuery{
 		Type:          "browser_action",
-		Params:        args,
+		Params:        navArgs,
 		TabID:         params.TabID,
 		CorrelationID: correlationID,
 	}
@@ -474,9 +486,21 @@ func (h *ToolHandler) handleBrowserActionRefresh(req JSONRPCRequest, args json.R
 
 	h.stashPerfSnapshot(correlationID)
 
+	// Forward all original params and overlay action + summary script
+	var refreshParams map[string]any
+	_ = json.Unmarshal(args, &refreshParams)
+	if refreshParams == nil {
+		refreshParams = map[string]any{}
+	}
+	refreshParams["action"] = "refresh"
+	if params.Summary == nil || *params.Summary {
+		refreshParams["summary_script"] = compactSummaryScript()
+	}
+	refreshArgs, _ := json.Marshal(refreshParams)
+
 	query := queries.PendingQuery{
 		Type:          "browser_action",
-		Params:        json.RawMessage(`{"action":"refresh"}`),
+		Params:        refreshArgs,
 		TabID:         params.TabID,
 		CorrelationID: correlationID,
 	}
@@ -507,9 +531,21 @@ func (h *ToolHandler) handleBrowserActionBack(req JSONRPCRequest, args json.RawM
 
 	correlationID := fmt.Sprintf("back_%d_%d", time.Now().UnixNano(), randomInt63())
 
+	// Forward all original params and overlay action + summary script
+	var backParams map[string]any
+	_ = json.Unmarshal(args, &backParams)
+	if backParams == nil {
+		backParams = map[string]any{}
+	}
+	backParams["action"] = "back"
+	if params.Summary == nil || *params.Summary {
+		backParams["summary_script"] = compactSummaryScript()
+	}
+	backArgs, _ := json.Marshal(backParams)
+
 	query := queries.PendingQuery{
 		Type:          "browser_action",
-		Params:        json.RawMessage(`{"action":"back"}`),
+		Params:        backArgs,
 		CorrelationID: correlationID,
 	}
 	h.capture.CreatePendingQueryWithTimeout(query, queries.AsyncCommandTimeout, req.ClientID)
@@ -526,9 +562,21 @@ func (h *ToolHandler) handleBrowserActionForward(req JSONRPCRequest, args json.R
 
 	correlationID := fmt.Sprintf("forward_%d_%d", time.Now().UnixNano(), randomInt63())
 
+	// Forward all original params and overlay action + summary script
+	var forwardParams map[string]any
+	_ = json.Unmarshal(args, &forwardParams)
+	if forwardParams == nil {
+		forwardParams = map[string]any{}
+	}
+	forwardParams["action"] = "forward"
+	if params.Summary == nil || *params.Summary {
+		forwardParams["summary_script"] = compactSummaryScript()
+	}
+	forwardArgs, _ := json.Marshal(forwardParams)
+
 	query := queries.PendingQuery{
 		Type:          "browser_action",
-		Params:        json.RawMessage(`{"action":"forward"}`),
+		Params:        forwardArgs,
 		CorrelationID: correlationID,
 	}
 	h.capture.CreatePendingQueryWithTimeout(query, queries.AsyncCommandTimeout, req.ClientID)

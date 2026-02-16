@@ -32,19 +32,22 @@ function getClosedShadowRoot(host) {
         return null;
     }
 }
-function collectHostElements(root) {
-    const out = [];
-    const stack = Array.from(root.children);
-    while (stack.length > 0) {
-        const el = stack.pop();
-        if (!el)
-            continue;
-        out.push(el);
+function collectShadowRoots(root, visited, queue) {
+    const children = root.children;
+    for (let i = 0; i < children.length; i++) {
+        const el = children[i];
+        const openRoot = el.shadowRoot;
+        if (openRoot && !visited.has(openRoot)) {
+            queue.push(openRoot);
+        }
+        const closedRoot = getClosedShadowRoot(el);
+        if (closedRoot && !visited.has(closedRoot)) {
+            queue.push(closedRoot);
+        }
         if (el.children.length > 0) {
-            stack.push(...Array.from(el.children));
+            collectShadowRoots(el, visited, queue);
         }
     }
-    return out;
 }
 function querySelectorAllAcrossShadowRoots(selector) {
     const visitedRoots = new Set();
@@ -63,17 +66,7 @@ function querySelectorAllAcrossShadowRoots(selector) {
             seenMatches.add(el);
             matches.push(el);
         }
-        const hosts = collectHostElements(root);
-        for (const host of hosts) {
-            const openRoot = host.shadowRoot;
-            if (openRoot && !visitedRoots.has(openRoot)) {
-                queue.push(openRoot);
-            }
-            const closedRoot = getClosedShadowRoot(host);
-            if (closedRoot && !visitedRoots.has(closedRoot)) {
-                queue.push(closedRoot);
-            }
-        }
+        collectShadowRoots(root, visitedRoots, queue);
     }
     return matches;
 }
