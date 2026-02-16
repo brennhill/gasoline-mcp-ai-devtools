@@ -754,8 +754,16 @@ func registerCoreRoutes(mux *http.ServeMux, server *Server, cap *capture.Capture
 		server.handleShutdown(w, r)
 	})))
 
-	// NOT MCP — Debug diagnostics for bug reports (MCP uses configure(action: "health"))
+	// NOT MCP — Debug diagnostics: HTML for browsers, JSON for programmatic access
 	mux.HandleFunc("/diagnostics", corsMiddleware(func(w http.ResponseWriter, r *http.Request) {
+		accept := r.Header.Get("Accept")
+		if strings.Contains(accept, "text/html") && !strings.Contains(accept, "application/json") {
+			handleDiagnosticsHTML(w, r)
+			return
+		}
+		server.handleDiagnostics(w, r, cap)
+	}))
+	mux.HandleFunc("/diagnostics.json", corsMiddleware(func(w http.ResponseWriter, r *http.Request) {
 		server.handleDiagnostics(w, r, cap)
 	}))
 

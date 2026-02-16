@@ -17,6 +17,9 @@ import (
 //go:embed dashboard.html
 var dashboardHTML []byte
 
+//go:embed diagnostics.html
+var diagnosticsHTML []byte
+
 // handleDashboard serves the HTML dashboard for browser access.
 // If the client sends Accept: application/json, falls back to the JSON discovery response.
 func (s *Server) handleDashboard(w http.ResponseWriter, r *http.Request) {
@@ -99,6 +102,19 @@ func handleStatusAPI(server *Server, cap *capture.Capture, mcpHandler *MCPHandle
 		}
 
 		jsonResponse(w, http.StatusOK, resp)
+	}
+}
+
+// handleDiagnosticsHTML serves the diagnostics HTML page.
+func handleDiagnosticsHTML(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "GET" {
+		jsonResponse(w, http.StatusMethodNotAllowed, map[string]string{"error": "Method not allowed"})
+		return
+	}
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.WriteHeader(http.StatusOK)
+	if _, err := w.Write(diagnosticsHTML); err != nil {
+		fmt.Fprintf(os.Stderr, "[gasoline] failed to write diagnostics HTML response: %v\n", err)
 	}
 }
 

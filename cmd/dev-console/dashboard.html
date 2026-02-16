@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Gasoline MCP Server</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMjggMTI4Ij4KICA8ZGVmcz4KICAgIDxsaW5lYXJHcmFkaWVudCBpZD0iZmxhbWUiIHgxPSIwJSIgeTE9IjEwMCUiIHgyPSIwJSIgeTI9IjAlIj4KICAgICAgPHN0b3Agb2Zmc2V0PSIwJSIgc3R5bGU9InN0b3AtY29sb3I6I2Y5NzMxNiIvPgogICAgICA8c3RvcCBvZmZzZXQ9IjUwJSIgc3R5bGU9InN0b3AtY29sb3I6I2ZiOTIzYyIvPgogICAgICA8c3RvcCBvZmZzZXQ9IjEwMCUiIHN0eWxlPSJzdG9wLWNvbG9yOiNmYmJmMjQiLz4KICAgIDwvbGluZWFyR3JhZGllbnQ+CiAgICA8bGluZWFyR3JhZGllbnQgaWQ9ImlubmVyRmxhbWUiIHgxPSIwJSIgeTE9IjEwMCUiIHgyPSIwJSIgeTI9IjAlIj4KICAgICAgPHN0b3Agb2Zmc2V0PSIwJSIgc3R5bGU9InN0b3AtY29sb3I6I2ZiYmYyNCIvPgogICAgICA8c3RvcCBvZmZzZXQ9IjEwMCUiIHN0eWxlPSJzdG9wLWNvbG9yOiNmZWYzYzciLz4KICAgIDwvbGluZWFyR3JhZGllbnQ+CiAgPC9kZWZzPgogIDxjaXJjbGUgY3g9IjY0IiBjeT0iNjQiIHI9IjYwIiBmaWxsPSIjMWExYTFhIi8+CiAgPHBhdGggZD0iTTY0IDE2IEM0MCA0MCwgMjggNjAsIDI4IDgwIEMyOCAxMDAsIDQ0IDExNiwgNjQgMTE2IEM4NCAxMTYsIDEwMCAxMDAsIDEwMCA4MCBDMTAwIDYwLCA4OCA0MCwgNjQgMTYgWiIgZmlsbD0idXJsKCNmbGFtZSkiLz4KICA8cGF0aCBkPSJNNjQgNDggQzUyIDYwLCA0NCA3MiwgNDQgODQgQzQ0IDk2LCA1MiAxMDQsIDY0IDEwNCBDNzYgMTA0LCA4NCA5NiwgODQgODQgQzg0IDcyLCA3NiA2MCwgNjQgNDggWiIgZmlsbD0idXJsKCNpbm5lckZsYW1lKSIvPgo8L3N2Zz4K">
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
 body {
@@ -19,12 +20,13 @@ a { color: #7ab3ff; text-decoration: none; }
 a:hover { text-decoration: underline; }
 header {
   display: flex;
-  align-items: baseline;
-  gap: 16px;
+  align-items: center;
+  gap: 12px;
   margin-bottom: 24px;
   padding-bottom: 16px;
   border-bottom: 1px solid #333;
 }
+header .logo { width: 28px; height: 28px; flex-shrink: 0; }
 header h1 { font-size: 22px; font-weight: 600; color: #fff; }
 header .version { color: #888; font-size: 14px; }
 header .uptime { color: #888; font-size: 14px; margin-left: auto; }
@@ -145,7 +147,20 @@ tr:last-child td { border-bottom: none; }
 </head>
 <body>
 <header>
-  <h1>Gasoline</h1>
+  <svg class="logo" viewBox="0 0 128 128" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <linearGradient id="flame" x1="0%" y1="100%" x2="0%" y2="0%">
+        <stop offset="0%" style="stop-color:#f97316"/><stop offset="50%" style="stop-color:#fb923c"/><stop offset="100%" style="stop-color:#fbbf24"/>
+      </linearGradient>
+      <linearGradient id="innerFlame" x1="0%" y1="100%" x2="0%" y2="0%">
+        <stop offset="0%" style="stop-color:#fbbf24"/><stop offset="100%" style="stop-color:#fef3c7"/>
+      </linearGradient>
+    </defs>
+    <circle cx="64" cy="64" r="60" fill="#1a1a1a"/>
+    <path d="M64 16 C40 40, 28 60, 28 80 C28 100, 44 116, 64 116 C84 116, 100 100, 100 80 C100 60, 88 40, 64 16 Z" fill="url(#flame)"/>
+    <path d="M64 48 C52 60, 44 72, 44 84 C44 96, 52 104, 64 104 C76 104, 84 96, 84 84 C84 72, 76 60, 64 48 Z" fill="url(#innerFlame)"/>
+  </svg>
+  <h1>Gasoline MCP Server</h1>
   <span class="version" id="version"></span>
   <span class="uptime" id="uptime"></span>
 </header>
@@ -232,11 +247,9 @@ function bufferBar(name, entries, capacity) {
 }
 
 function render(d) {
-  // Header
   document.getElementById('version').textContent = 'v' + (d.version || '?');
   document.getElementById('uptime').textContent = 'up ' + fmtUptime(d.uptime_seconds);
 
-  // Extension status
   const extDot = document.getElementById('ext-dot');
   const extStatus = document.getElementById('ext-status');
   if (d.extension_connected) {
@@ -247,7 +260,6 @@ function render(d) {
     extStatus.textContent = 'disconnected';
   }
 
-  // Pilot
   const pilotDot = document.getElementById('pilot-dot');
   const pilotStatus = document.getElementById('pilot-status');
   if (d.pilot_enabled) {
@@ -258,13 +270,9 @@ function render(d) {
     pilotStatus.textContent = 'disabled';
   }
 
-  // Last ping
   document.getElementById('last-ping').textContent = ago(d.last_poll_at);
-
-  // Total calls
   document.getElementById('total-calls').textContent = (d.audit && d.audit.total_calls) || 0;
 
-  // Buffers
   const b = d.buffers || {};
   document.getElementById('buffers').innerHTML =
     bufferBar('Console', b.console_entries || 0, b.console_capacity || 0) +
@@ -272,7 +280,6 @@ function render(d) {
     bufferBar('WebSocket', b.websocket_entries || 0, b.websocket_capacity || 0) +
     bufferBar('Actions', b.action_entries || 0, b.action_capacity || 0);
 
-  // Recent commands
   const cmds = d.recent_commands || [];
   if (cmds.length === 0) {
     document.getElementById('commands').innerHTML = '<div class="empty">No MCP commands yet</div>';
@@ -311,7 +318,6 @@ async function refresh() {
   } catch (e) { /* silent */ }
 }
 
-// Tick uptime counter every second between fetches
 setInterval(function() {
   if (uptimeSec !== null) {
     const elapsed = (Date.now() - lastFetch) / 1000;
