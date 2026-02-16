@@ -133,13 +133,13 @@ if (document.title.match(/404|not found|error|500/i) && wordCount < 100) {
 
 No `getComputedStyle` scoring. Simple heuristic for v1:
 
-1. Collect all visible `button`, `[type="submit"]`, `[role="button"]`, and `a[href]` in `<main>` (or body fallback)
-2. Filter: must have non-empty text, width > 0, height > 0, not `display:none`
-3. Prefer above-the-fold (`getBoundingClientRect().top < window.innerHeight`)
-4. Rank: `[type="submit"]` first, then `button`, then `[role="button"]`, then `a[href]`
-5. Within same rank: DOM order
-6. Deduplicate by normalized label text
-7. Take first 5
+1. Collect all visible `button`, `[type="submit"]`, `[role="button"]`, `a[href]`, and elements with explicit `[onclick]` attributes in `<main>` (or body fallback).
+2. Filter: must have non-empty text (or an `aria-label`/`title`), width > 0, height > 0, not `display:none`.
+3. Prefer above-the-fold (`getBoundingClientRect().top < window.innerHeight`).
+4. Rank: `[type="submit"]` first, then `button`, then `[role="button"]`, then `[onclick]`, then `a[href]`.
+5. Within same rank: DOM order.
+6. Deduplicate by normalized label text.
+7. Take first 5.
 
 Selector generation reuses the pattern from `dom-primitives.ts`: prefer `#id` > `[name]` > `aria-label=` > `text=` > CSS path.
 

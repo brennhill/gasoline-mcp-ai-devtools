@@ -488,7 +488,7 @@ func (h *ToolHandler) ToolsList() []MCPTool {
 						"enum": []string{
 							"highlight", "subtitle", "save_state", "load_state", "list_states", "delete_state",
 							"execute_js", "navigate", "refresh", "back", "forward", "new_tab", "screenshot",
-							"click", "type", "select", "check",
+							"click", "type", "paste", "select", "check",
 							"get_text", "get_value", "get_attribute",
 							"set_attribute", "focus", "scroll_to", "wait_for", "key_press",
 							"list_interactive",

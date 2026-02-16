@@ -64,7 +64,7 @@ func (h *ToolHandler) getValidInteractActions() string {
 
 // domPrimitiveActions is the set of actions routed to handleDOMPrimitive.
 var domPrimitiveActions = map[string]bool{
-	"click": true, "type": true, "select": true, "check": true,
+	"click": true, "type": true, "paste": true, "select": true, "check": true,
 	"get_text": true, "get_value": true, "get_attribute": true,
 	"set_attribute": true, "focus": true, "scroll_to": true,
 	"wait_for": true, "key_press": true,
@@ -428,8 +428,9 @@ func truncateToLen(s string, maxLen int) string {
 
 func (h *ToolHandler) handleBrowserActionNavigate(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	var params struct {
-		URL   string `json:"url"`
-		TabID int    `json:"tab_id,omitempty"`
+		URL     string `json:"url"`
+		TabID   int    `json:"tab_id,omitempty"`
+		Summary *bool  `json:"summary,omitempty"`
 	}
 	if err := json.Unmarshal(args, &params); err != nil {
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidJSON, "Invalid JSON arguments: "+err.Error(), "Fix JSON syntax and call again")}
@@ -445,9 +446,16 @@ func (h *ToolHandler) handleBrowserActionNavigate(req JSONRPCRequest, args json.
 
 	correlationID := fmt.Sprintf("nav_%d_%d", time.Now().UnixNano(), randomInt63())
 
+	// Build browser_action params — include summary script if enabled (default: true)
+	navParams := map[string]any{"action": "navigate", "url": params.URL}
+	if params.Summary == nil || *params.Summary {
+		navParams["summary_script"] = compactSummaryScript()
+	}
+	navArgs, _ := json.Marshal(navParams)
+
 	query := queries.PendingQuery{
 		Type:          "browser_action",
-		Params:        args,
+		Params:        navArgs,
 		TabID:         params.TabID,
 		CorrelationID: correlationID,
 	}
@@ -460,7 +468,8 @@ func (h *ToolHandler) handleBrowserActionNavigate(req JSONRPCRequest, args json.
 
 func (h *ToolHandler) handleBrowserActionRefresh(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	var params struct {
-		TabID int `json:"tab_id,omitempty"`
+		TabID   int   `json:"tab_id,omitempty"`
+		Summary *bool `json:"summary,omitempty"`
 	}
 	if err := json.Unmarshal(args, &params); err != nil {
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidJSON, "Invalid JSON arguments: "+err.Error(), "Fix JSON syntax and call again")}
@@ -474,9 +483,16 @@ func (h *ToolHandler) handleBrowserActionRefresh(req JSONRPCRequest, args json.R
 
 	h.stashPerfSnapshot(correlationID)
 
+	// Build refresh params
+	refreshParams := map[string]any{"action": "refresh"}
+	if params.Summary == nil || *params.Summary {
+		refreshParams["summary_script"] = compactSummaryScript()
+	}
+	refreshArgs, _ := json.Marshal(refreshParams)
+
 	query := queries.PendingQuery{
 		Type:          "browser_action",
-		Params:        json.RawMessage(`{"action":"refresh"}`),
+		Params:        refreshArgs,
 		TabID:         params.TabID,
 		CorrelationID: correlationID,
 	}
@@ -501,15 +517,26 @@ func (h *ToolHandler) stashPerfSnapshot(correlationID string) {
 }
 
 func (h *ToolHandler) handleBrowserActionBack(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+	var params struct {
+		Summary *bool `json:"summary,omitempty"`
+	}
+	lenientUnmarshal(args, &params)
+
 	if !h.capture.IsPilotEnabled() {
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrCodePilotDisabled, "AI Web Pilot is disabled", "Enable AI Web Pilot in the extension popup", h.diagnosticHint())}
 	}
 
 	correlationID := fmt.Sprintf("back_%d_%d", time.Now().UnixNano(), randomInt63())
 
+	backParams := map[string]any{"action": "back"}
+	if params.Summary == nil || *params.Summary {
+		backParams["summary_script"] = compactSummaryScript()
+	}
+	backArgs, _ := json.Marshal(backParams)
+
 	query := queries.PendingQuery{
 		Type:          "browser_action",
-		Params:        json.RawMessage(`{"action":"back"}`),
+		Params:        backArgs,
 		CorrelationID: correlationID,
 	}
 	h.capture.CreatePendingQueryWithTimeout(query, queries.AsyncCommandTimeout, req.ClientID)
@@ -520,15 +547,26 @@ func (h *ToolHandler) handleBrowserActionBack(req JSONRPCRequest, args json.RawM
 }
 
 func (h *ToolHandler) handleBrowserActionForward(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+	var params struct {
+		Summary *bool `json:"summary,omitempty"`
+	}
+	lenientUnmarshal(args, &params)
+
 	if !h.capture.IsPilotEnabled() {
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrCodePilotDisabled, "AI Web Pilot is disabled", "Enable AI Web Pilot in the extension popup", h.diagnosticHint())}
 	}
 
 	correlationID := fmt.Sprintf("forward_%d_%d", time.Now().UnixNano(), randomInt63())
 
+	forwardParams := map[string]any{"action": "forward"}
+	if params.Summary == nil || *params.Summary {
+		forwardParams["summary_script"] = compactSummaryScript()
+	}
+	forwardArgs, _ := json.Marshal(forwardParams)
+
 	query := queries.PendingQuery{
 		Type:          "browser_action",
-		Params:        json.RawMessage(`{"action":"forward"}`),
+		Params:        forwardArgs,
 		CorrelationID: correlationID,
 	}
 	h.capture.CreatePendingQueryWithTimeout(query, queries.AsyncCommandTimeout, req.ClientID)
@@ -577,6 +615,7 @@ var domActionRequiredParams = map[string]struct {
 	retry   string
 }{
 	"type":          {"text", "Required parameter 'text' is missing for type action", "Add the 'text' parameter with the text to type"},
+	"paste":         {"text", "Required parameter 'text' is missing for paste action", "Add the 'text' parameter with the text to paste"},
 	"select":        {"value", "Required parameter 'value' is missing for select action", "Add the 'value' parameter with the option value to select"},
 	"get_attribute": {"name", "Required parameter 'name' is missing for get_attribute action", "Add the 'name' parameter with the attribute name"},
 	"set_attribute": {"name", "Required parameter 'name' is missing for set_attribute action", "Add the 'name' parameter with the attribute name"},
