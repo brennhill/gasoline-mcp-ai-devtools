@@ -125,6 +125,39 @@ func TestToolsAnalyze_GetValidAnalyzeModes(t *testing.T) {
 	}
 }
 
+func TestToolsAnalyzeSchema_HasFrameParam(t *testing.T) {
+	t.Parallel()
+	h, _, _ := makeAnalyzeToolHandler(t)
+
+	tools := h.ToolsList()
+	var analyzeSchema map[string]any
+	for _, tool := range tools {
+		if tool.Name == "analyze" {
+			analyzeSchema = tool.InputSchema
+			break
+		}
+	}
+	if analyzeSchema == nil {
+		t.Fatal("analyze tool not found in ToolsList()")
+	}
+
+	props, ok := analyzeSchema["properties"].(map[string]any)
+	if !ok {
+		t.Fatal("analyze schema missing properties")
+	}
+	frameParam, exists := props["frame"]
+	if !exists {
+		t.Fatal("analyze schema missing 'frame' property")
+	}
+	frameMap, ok := frameParam.(map[string]any)
+	if !ok {
+		t.Fatal("frame property is not an object")
+	}
+	if _, ok := frameMap["oneOf"]; !ok {
+		t.Fatal("frame property should declare oneOf (string | number)")
+	}
+}
+
 func TestToolsAnalyzePageSummary_QueuedAsync(t *testing.T) {
 	t.Parallel()
 	h, _, _ := makeAnalyzeToolHandler(t)
@@ -206,6 +239,56 @@ func TestToolsAnalyzeDOM_Success(t *testing.T) {
 	}
 
 	assertSnakeCaseFields(t, string(resp.Result))
+}
+
+func TestToolsAnalyzeDOM_FrameSelectorForwardedInPendingQuery(t *testing.T) {
+	t.Parallel()
+	h, _, cap := makeAnalyzeToolHandler(t)
+
+	resp := callAnalyzeRaw(h, `{"what":"dom","selector":"#main","frame":"iframe.editor","sync":false}`)
+	result := parseToolResult(t, resp)
+	if result.IsError {
+		t.Fatalf("dom with frame selector should succeed, got: %s", result.Content[0].Text)
+	}
+
+	pq := cap.GetLastPendingQuery()
+	if pq == nil {
+		t.Fatal("expected pending query to be created")
+	}
+
+	var params map[string]any
+	if err := json.Unmarshal(pq.Params, &params); err != nil {
+		t.Fatalf("failed to parse pending query params: %v", err)
+	}
+
+	if got, ok := params["frame"].(string); !ok || got != "iframe.editor" {
+		t.Fatalf("frame selector not forwarded correctly, got %#v", params["frame"])
+	}
+}
+
+func TestToolsAnalyzeDOM_FrameIndexForwardedInPendingQuery(t *testing.T) {
+	t.Parallel()
+	h, _, cap := makeAnalyzeToolHandler(t)
+
+	resp := callAnalyzeRaw(h, `{"what":"dom","selector":"#main","frame":0,"sync":false}`)
+	result := parseToolResult(t, resp)
+	if result.IsError {
+		t.Fatalf("dom with frame index should succeed, got: %s", result.Content[0].Text)
+	}
+
+	pq := cap.GetLastPendingQuery()
+	if pq == nil {
+		t.Fatal("expected pending query to be created")
+	}
+
+	var params map[string]any
+	if err := json.Unmarshal(pq.Params, &params); err != nil {
+		t.Fatalf("failed to parse pending query params: %v", err)
+	}
+
+	if got, ok := params["frame"].(float64); !ok || got != 0 {
+		t.Fatalf("frame index not forwarded correctly, got %#v", params["frame"])
+	}
 }
 
 // ============================================

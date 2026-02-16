@@ -236,6 +236,7 @@ func (h *ToolHandler) toolRunA11yAudit(req JSONRPCRequest, args json.RawMessage)
 		Scope        string   `json:"scope"`
 		Tags         []string `json:"tags"`
 		ForceRefresh bool     `json:"force_refresh"`
+		Frame        any      `json:"frame"`
 	}
 	lenientUnmarshal(args, &params)
 
@@ -244,7 +245,7 @@ func (h *ToolHandler) toolRunA11yAudit(req JSONRPCRequest, args json.RawMessage)
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrNoData, "No tab is being tracked. Open the Gasoline extension popup and click 'Track This Tab' on the page you want to monitor. Check observe with what='pilot' for extension status.", "", h.diagnosticHint())}
 	}
 
-	result, err := h.executeA11yQuery(params.Scope, params.Tags)
+	result, err := h.executeA11yQuery(params.Scope, params.Tags, params.Frame)
 	if err != nil {
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrExtTimeout, "A11y audit timeout: "+err.Error(), "Ensure the extension is connected and the page has loaded. Try refreshing the page, then retry.", h.diagnosticHint())}
 	}
@@ -258,7 +259,7 @@ func (h *ToolHandler) toolRunA11yAudit(req JSONRPCRequest, args json.RawMessage)
 	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("A11y audit", auditResult)}
 }
 
-func (h *ToolHandler) executeA11yQuery(scope string, tags []string) (json.RawMessage, error) {
+func buildA11yQueryParams(scope string, tags []string, frame any) map[string]any {
 	queryParams := map[string]any{}
 	if scope != "" {
 		queryParams["scope"] = scope
@@ -266,6 +267,14 @@ func (h *ToolHandler) executeA11yQuery(scope string, tags []string) (json.RawMes
 	if len(tags) > 0 {
 		queryParams["tags"] = tags
 	}
+	if frame != nil {
+		queryParams["frame"] = frame
+	}
+	return queryParams
+}
+
+func (h *ToolHandler) executeA11yQuery(scope string, tags []string, frame any) (json.RawMessage, error) {
+	queryParams := buildA11yQueryParams(scope, tags, frame)
 	// Error impossible: map contains only primitive types and string slices from input
 	paramsJSON, _ := json.Marshal(queryParams)
 

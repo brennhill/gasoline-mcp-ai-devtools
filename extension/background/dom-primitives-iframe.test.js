@@ -338,3 +338,78 @@ describe('iframe support: mergeListInteractive', () => {
     assert.strictEqual(res.calls[0].result.elements.length, 1, 'should handle empty/null frame results without error')
   })
 })
+
+describe('iframe support: explicit frame targeting', () => {
+  beforeEach(() => {
+    executeScriptCalls = []
+    executeScriptReturn = []
+  })
+
+  test('frame index resolves to frameIds target', async () => {
+    // Probe call: only frameId 2 matches requested index
+    executeScriptReturn.push([
+      { frameId: 0, result: { matches: false } },
+      { frameId: 2, result: { matches: true } }
+    ])
+    // Action call: executes only in matched frame
+    executeScriptReturn.push([{ frameId: 2, result: { success: true, action: 'click', selector: '#btn' } }])
+
+    const res = captureAsyncResult()
+
+    await executeDOMAction(
+      makeQuery({ action: 'click', selector: '#btn', frame: 0 }),
+      1,
+      makeSyncClient(),
+      res.fn,
+      noopToast
+    )
+
+    assert.strictEqual(executeScriptCalls.length, 2, 'should probe frames then execute in matched frame')
+    assert.strictEqual(executeScriptCalls[0].target.allFrames, true, 'probe should run in all frames')
+    assert.deepStrictEqual(executeScriptCalls[1].target.frameIds, [2], 'action should target matched frameId only')
+    assert.strictEqual(res.calls[0].status, 'complete')
+    assert.strictEqual(res.calls[0].result.frame_id, 2, 'result should include selected frame_id')
+  })
+
+  test('frame selector returns frame_not_found when no frame matches', async () => {
+    executeScriptReturn.push([
+      { frameId: 0, result: { matches: false } },
+      { frameId: 1, result: { matches: false } }
+    ])
+
+    const res = captureAsyncResult()
+
+    await executeDOMAction(
+      makeQuery({ action: 'click', selector: '#btn', frame: 'iframe[name="missing"]' }),
+      1,
+      makeSyncClient(),
+      res.fn,
+      noopToast
+    )
+
+    assert.strictEqual(executeScriptCalls.length, 1, 'should stop after probe when no frame matches')
+    assert.strictEqual(res.calls[0].status, 'error')
+    assert.strictEqual(res.calls[0].error, 'frame_not_found')
+  })
+
+  test('frame="all" keeps allFrames execution without probe', async () => {
+    executeScriptReturn.push([
+      { frameId: 0, result: { success: false, action: 'click', selector: '#btn', error: 'element_not_found' } },
+      { frameId: 1, result: { success: true, action: 'click', selector: '#btn' } }
+    ])
+
+    const res = captureAsyncResult()
+
+    await executeDOMAction(
+      makeQuery({ action: 'click', selector: '#btn', frame: 'all' }),
+      1,
+      makeSyncClient(),
+      res.fn,
+      noopToast
+    )
+
+    assert.strictEqual(executeScriptCalls.length, 1, 'should skip probe for frame=all')
+    assert.strictEqual(executeScriptCalls[0].target.allFrames, true)
+    assert.strictEqual(res.calls[0].status, 'complete')
+  })
+})

@@ -17,6 +17,11 @@ func (h *ToolHandler) ToolsList() []MCPTool {
 						"type": "string",
 						"enum": []string{"errors", "logs", "extension_logs", "network_waterfall", "network_bodies", "websocket_events", "websocket_status", "actions", "vitals", "page", "tabs", "pilot", "timeline", "error_bundles", "screenshot", "command_result", "pending_commands", "failed_commands", "saved_videos", "recordings", "recording_actions", "log_diff_report"},
 					},
+					"telemetry_mode": map[string]any{
+						"type":        "string",
+						"description": "Telemetry metadata mode for this call: off, auto, full",
+						"enum":        []string{"off", "auto", "full"},
+					},
 					"limit": map[string]any{
 						"type":        "number",
 						"description": "Max entries to return (default 100, max 1000)",
@@ -114,9 +119,21 @@ func (h *ToolHandler) ToolsList() []MCPTool {
 						"type": "string",
 						"enum": []string{"dom", "performance", "accessibility", "error_clusters", "history", "security_audit", "third_party_audit", "link_health", "link_validation", "page_summary", "annotations", "annotation_detail", "api_validation", "draw_history", "draw_session"},
 					},
+					"telemetry_mode": map[string]any{
+						"type":        "string",
+						"description": "Telemetry metadata mode for this call: off, auto, full",
+						"enum":        []string{"off", "auto", "full"},
+					},
 					"selector": map[string]any{
 						"type":        "string",
 						"description": "CSS selector (dom, accessibility)",
+					},
+					"frame": map[string]any{
+						"description": "Target iframe: CSS selector, 0-based index, or \"all\" (dom, accessibility)",
+						"oneOf": []map[string]any{
+							{"type": "string"},
+							{"type": "number"},
+						},
 					},
 					"sync": map[string]any{
 						"type":        "boolean",
@@ -221,6 +238,11 @@ func (h *ToolHandler) ToolsList() []MCPTool {
 					"format": map[string]any{
 						"type": "string",
 						"enum": []string{"reproduction", "test", "pr_summary", "har", "csp", "sri", "sarif", "visual_test", "annotation_report", "annotation_issues", "test_from_context", "test_heal", "test_classify"},
+					},
+					"telemetry_mode": map[string]any{
+						"type":        "string",
+						"description": "Telemetry metadata mode for this call: off, auto, full",
+						"enum":        []string{"off", "auto", "full"},
 					},
 					"error_message": map[string]any{
 						"type":        "string",
@@ -329,7 +351,12 @@ func (h *ToolHandler) ToolsList() []MCPTool {
 				"properties": map[string]any{
 					"action": map[string]any{
 						"type": "string",
-						"enum": []string{"store", "load", "noise_rule", "clear", "health", "streaming", "test_boundary_start", "test_boundary_end", "recording_start", "recording_stop", "playback", "log_diff"},
+						"enum": []string{"store", "load", "noise_rule", "clear", "health", "streaming", "test_boundary_start", "test_boundary_end", "recording_start", "recording_stop", "playback", "log_diff", "telemetry"},
+					},
+					"telemetry_mode": map[string]any{
+						"type":        "string",
+						"description": "Telemetry metadata mode: off, auto, full. configure(action='telemetry') sets global default. Any tools/call may override per request with telemetry_mode.",
+						"enum":        []string{"off", "auto", "full"},
 					},
 					"store_action": map[string]any{
 						"type": "string",
@@ -469,6 +496,11 @@ func (h *ToolHandler) ToolsList() []MCPTool {
 							"upload", "draw_mode_start",
 						},
 					},
+					"telemetry_mode": map[string]any{
+						"type":        "string",
+						"description": "Telemetry metadata mode for this call: off, auto, full",
+						"enum":        []string{"off", "auto", "full"},
+					},
 					"sync": map[string]any{
 						"type":        "boolean",
 						"description": "Wait for result (default: true).",
@@ -484,6 +516,13 @@ func (h *ToolHandler) ToolsList() []MCPTool {
 					"selector": map[string]any{
 						"type":        "string",
 						"description": "CSS or semantic selector for target element",
+					},
+					"frame": map[string]any{
+						"description": "Target iframe: CSS selector, 0-based index, or \"all\"",
+						"oneOf": []map[string]any{
+							{"type": "string"},
+							{"type": "number"},
+						},
 					},
 					"duration_ms": map[string]any{
 						"type":        "number",

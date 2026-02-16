@@ -616,6 +616,7 @@ interface DOMActionParams {
   timeout_ms?: number
   reason?: string
   analyze?: boolean
+  frame?: string | number
 }
 
 function parseDOMParams(query: PendingQuery): DOMActionParams | null {
@@ -628,6 +629,99 @@ function parseDOMParams(query: PendingQuery): DOMActionParams | null {
 
 function isReadOnlyAction(action: string): boolean {
   return action === 'list_interactive' || action.startsWith('get_')
+}
+
+type DOMExecutionTarget = { tabId: number; allFrames: true } | { tabId: number; frameIds: number[] }
+
+function normalizeFrameTarget(frame: unknown): string | number | undefined | null {
+  if (frame === undefined || frame === null) return undefined
+  if (typeof frame === 'number') {
+    if (!Number.isInteger(frame) || frame < 0) return null
+    return frame
+  }
+  if (typeof frame === 'string') {
+    const trimmed = frame.trim()
+    if (trimmed.length === 0) return null
+    return trimmed
+  }
+  return null
+}
+
+/**
+ * Frame-matching probe executed in page context.
+ * Must stay self-contained for chrome.scripting.executeScript({ func }).
+ */
+export function domFrameProbe(frameTarget: string | number): { matches: boolean } {
+  const isTop = window === window.top
+
+  const getParentFrameIndex = (): number => {
+    if (isTop) return -1
+    try {
+      const parentFrames = window.parent?.frames
+      if (!parentFrames) return -1
+      for (let i = 0; i < parentFrames.length; i++) {
+        if (parentFrames[i] === window) return i
+      }
+    } catch {
+      return -1
+    }
+    return -1
+  }
+
+  if (typeof frameTarget === 'number') {
+    return { matches: getParentFrameIndex() === frameTarget }
+  }
+
+  if (frameTarget === 'all') {
+    return { matches: true }
+  }
+
+  if (isTop) {
+    return { matches: false }
+  }
+
+  try {
+    const frameEl = window.frameElement
+    if (!frameEl || typeof frameEl.matches !== 'function') {
+      return { matches: false }
+    }
+    return { matches: frameEl.matches(frameTarget) }
+  } catch {
+    return { matches: false }
+  }
+}
+
+async function resolveExecutionTarget(tabId: number, frame: unknown): Promise<DOMExecutionTarget> {
+  const normalized = normalizeFrameTarget(frame)
+  if (normalized === null) {
+    throw new Error('invalid_frame')
+  }
+
+  if (normalized === undefined || normalized === 'all') {
+    return { tabId, allFrames: true }
+  }
+
+  const probeResults = await chrome.scripting.executeScript({
+    target: { tabId, allFrames: true },
+    world: 'MAIN',
+    func: domFrameProbe,
+    args: [normalized]
+  })
+
+  const frameIds = Array.from(
+    new Set(
+      probeResults
+        .filter((r) => !!(r.result as { matches?: boolean } | undefined)?.matches)
+        .map((r) => r.frameId)
+        .filter((id): id is number => typeof id === 'number')
+    )
+  )
+
+  if (frameIds.length === 0) {
+    throw new Error('frame_not_found')
+  }
+
+  return { tabId, frameIds }
 }
 
 /** Pick the best result from multi-frame executeScript. Prefers main frame, falls back to first success. */
@@ -657,21 +751,22 @@ function mergeListInteractive(results: chrome.scripting.InjectionResult[]): { su
 }
 
 async function executeWaitFor(
-  tabId: number,
+  target: DOMExecutionTarget,
   params: DOMActionParams
 ): Promise<chrome.scripting.InjectionResult[] | DOMResult> {
   const selector = params.selector || ''
   const quickCheck = await chrome.scripting.executeScript({
-    target: { tabId, allFrames: true },
+    target,
     world: 'MAIN',
     func: domPrimitive,
     args: [params.action!, selector, { timeout_ms: params.timeout_ms }]
   })
-  const quickResult = pickFrameResult(quickCheck)?.result as DOMResult | undefined
+  const quickPicked = pickFrameResult(quickCheck)
+  const quickResult = quickPicked?.result as DOMResult | undefined
   if (quickResult?.success) return quickResult
 
   return chrome.scripting.executeScript({
-    target: { tabId, allFrames: true },
+    target,
     world: 'MAIN',
     func: domWaitFor,
     args: [selector, params.timeout_ms || 5000]
@@ -679,11 +774,11 @@ async function executeWaitFor(
 }
 
 async function executeStandardAction(
-  tabId: number,
+  target: DOMExecutionTarget,
   params: DOMActionParams
 ): Promise<chrome.scripting.InjectionResult[]> {
   return chrome.scripting.executeScript({
-    target: { tabId, allFrames: true },
+    target,
     world: 'MAIN',
     func: domPrimitive,
     args: [
@@ -747,11 +842,14 @@ export async function executeDOMAction(
   const readOnly = isReadOnlyAction(action)
 
   try {
+    const executionTarget = await resolveExecutionTarget(tabId, params.frame)
     const tryingShownAt = Date.now()
     if (!readOnly) actionToast(tabId, toastLabel, toastDetail, 'trying', 10000)
 
     const rawResult =
-      action === 'wait_for' ? await executeWaitFor(tabId, params) : await executeStandardAction(tabId, params)
+      action === 'wait_for'
+        ? await executeWaitFor(executionTarget, params)
+        : await executeStandardAction(executionTarget, params)
 
     // wait_for quick-check can return a DOMResult directly
     if (!Array.isArray(rawResult)) {
@@ -775,15 +873,19 @@ export async function executeDOMAction(
     const picked = pickFrameResult(rawResult)
     const firstResult = picked?.result
     if (firstResult && typeof firstResult === 'object') {
+      const resultPayload =
+        params.frame !== undefined && params.frame !== null && picked
+          ? { ...(firstResult as Record<string, unknown>), frame_id: picked.frameId }
+          : firstResult
       sendToastForResult(
         tabId,
         readOnly,
-        firstResult as { success?: boolean; error?: string },
+        resultPayload as { success?: boolean; error?: string },
         actionToast,
         toastLabel,
         toastDetail
       )
-      sendAsyncResult(syncClient, query.id, query.correlation_id!, 'complete', firstResult)
+      sendAsyncResult(syncClient, query.id, query.correlation_id!, 'complete', resultPayload)
     } else {
       if (!readOnly) actionToast(tabId, toastLabel, 'no result', 'error')
       sendAsyncResult(syncClient, query.id, query.correlation_id!, 'error', null, 'no_result')

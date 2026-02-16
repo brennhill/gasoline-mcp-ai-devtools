@@ -127,6 +127,60 @@ func TestRichAction_AnalyzeOnNavigationAction(t *testing.T) {
 	}
 }
 
+func TestRichAction_FrameSelectorInPendingQueryParams(t *testing.T) {
+	env := newInteractTestEnv(t)
+	env.capture.SetPilotEnabled(true)
+
+	result, ok := env.callInteract(t, `{"action":"click","selector":"#submit","frame":"iframe[name='payment']","sync":false}`)
+	if !ok {
+		t.Fatal("click with frame selector should return result")
+	}
+	if result.IsError {
+		t.Fatalf("click with frame selector should not error, got: %s", result.Content[0].Text)
+	}
+
+	pq := env.capture.GetLastPendingQuery()
+	if pq == nil {
+		t.Fatal("No pending query was created")
+	}
+
+	var params map[string]any
+	if err := json.Unmarshal(pq.Params, &params); err != nil {
+		t.Fatalf("failed to parse pending query params: %v", err)
+	}
+
+	if got, ok := params["frame"].(string); !ok || got != "iframe[name='payment']" {
+		t.Fatalf("frame selector not forwarded correctly, got %#v", params["frame"])
+	}
+}
+
+func TestRichAction_FrameIndexInPendingQueryParams(t *testing.T) {
+	env := newInteractTestEnv(t)
+	env.capture.SetPilotEnabled(true)
+
+	result, ok := env.callInteract(t, `{"action":"click","selector":"#submit","frame":0,"sync":false}`)
+	if !ok {
+		t.Fatal("click with frame index should return result")
+	}
+	if result.IsError {
+		t.Fatalf("click with frame index should not error, got: %s", result.Content[0].Text)
+	}
+
+	pq := env.capture.GetLastPendingQuery()
+	if pq == nil {
+		t.Fatal("No pending query was created")
+	}
+
+	var params map[string]any
+	if err := json.Unmarshal(pq.Params, &params); err != nil {
+		t.Fatalf("failed to parse pending query params: %v", err)
+	}
+
+	if got, ok := params["frame"].(float64); !ok || got != 0 {
+		t.Fatalf("frame index not forwarded correctly, got %#v", params["frame"])
+	}
+}
+
 // ============================================
 // Schema: analyze param in tools/list
 // ============================================
@@ -180,6 +234,39 @@ func TestRichAction_SchemaHasAnalyze(t *testing.T) {
 		!strings.Contains(lower, "timing") &&
 		!strings.Contains(lower, "breakdown") {
 		t.Errorf("analyze description must mention profiling/performance/timing. Got: %q", desc)
+	}
+}
+
+func TestRichAction_SchemaHasFrame(t *testing.T) {
+	env := newInteractTestEnv(t)
+	tools := env.handler.ToolsList()
+
+	var interactSchema map[string]any
+	for _, tool := range tools {
+		if tool.Name == "interact" {
+			interactSchema = tool.InputSchema
+			break
+		}
+	}
+	if interactSchema == nil {
+		t.Fatal("interact tool not found in ToolsList()")
+	}
+
+	props, ok := interactSchema["properties"].(map[string]any)
+	if !ok {
+		t.Fatal("interact schema missing properties")
+	}
+
+	frameParam, exists := props["frame"]
+	if !exists {
+		t.Fatal("interact schema missing 'frame' property")
+	}
+	frameMap, ok := frameParam.(map[string]any)
+	if !ok {
+		t.Fatal("frame property is not an object")
+	}
+	if _, ok := frameMap["oneOf"]; !ok {
+		t.Fatal("frame property should declare oneOf (string | number)")
 	}
 }
 

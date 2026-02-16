@@ -197,3 +197,35 @@ func TestEnsureA11ySummary_NilViolationsKey(t *testing.T) {
 		t.Errorf("expected pass_count 0 for nil passes, got %v", summary["pass_count"])
 	}
 }
+
+func TestBuildA11yQueryParams_IncludesFrameWhenProvided(t *testing.T) {
+	t.Parallel()
+
+	params := buildA11yQueryParams("#app", []string{"wcag2a"}, "iframe.editor")
+
+	if got := params["scope"]; got != "#app" {
+		t.Fatalf("scope = %v, want #app", got)
+	}
+	if _, ok := params["tags"]; !ok {
+		t.Fatal("expected tags in query params")
+	}
+	if got := params["frame"]; got != "iframe.editor" {
+		t.Fatalf("frame = %v, want iframe.editor", got)
+	}
+}
+
+func TestBuildA11yQueryParams_OmitsFrameWhenNil(t *testing.T) {
+	t.Parallel()
+
+	params := buildA11yQueryParams("", nil, nil)
+
+	if _, ok := params["frame"]; ok {
+		t.Fatal("frame should be omitted when nil")
+	}
+	if _, ok := params["scope"]; ok {
+		t.Fatal("scope should be omitted when empty")
+	}
+	if _, ok := params["tags"]; ok {
+		t.Fatal("tags should be omitted when empty")
+	}
+}

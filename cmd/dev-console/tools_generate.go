@@ -19,19 +19,45 @@ type GenerateHandler func(h *ToolHandler, req JSONRPCRequest, args json.RawMessa
 
 // generateHandlers maps generate format names to their handler functions.
 var generateHandlers = map[string]GenerateHandler{
-	"reproduction":     func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse { return h.toolGetReproductionScript(req, args) },
-	"test":             func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse { return h.toolGenerateTest(req, args) },
-	"pr_summary":       func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse { return h.toolGeneratePRSummary(req, args) },
-	"sarif":            func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse { return h.toolExportSARIF(req, args) },
-	"har":              func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse { return h.toolExportHAR(req, args) },
-	"csp":              func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse { return h.toolGenerateCSP(req, args) },
-	"sri":              func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse { return h.toolGenerateSRI(req, args) },
-	"test_from_context": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse { return h.handleGenerateTestFromContext(req, args) },
-	"test_heal":        func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse { return h.handleGenerateTestHeal(req, args) },
-	"test_classify":    func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse { return h.handleGenerateTestClassify(req, args) },
-	"visual_test":      func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse { return h.toolGenerateVisualTest(req, args) },
-	"annotation_report": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse { return h.toolGenerateAnnotationReport(req, args) },
-	"annotation_issues": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse { return h.toolGenerateAnnotationIssues(req, args) },
+	"reproduction": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+		return h.toolGetReproductionScript(req, args)
+	},
+	"test": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+		return h.toolGenerateTest(req, args)
+	},
+	"pr_summary": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+		return h.toolGeneratePRSummary(req, args)
+	},
+	"sarif": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+		return h.toolExportSARIF(req, args)
+	},
+	"har": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+		return h.toolExportHAR(req, args)
+	},
+	"csp": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+		return h.toolGenerateCSP(req, args)
+	},
+	"sri": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+		return h.toolGenerateSRI(req, args)
+	},
+	"test_from_context": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+		return h.handleGenerateTestFromContext(req, args)
+	},
+	"test_heal": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+		return h.handleGenerateTestHeal(req, args)
+	},
+	"test_classify": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+		return h.handleGenerateTestClassify(req, args)
+	},
+	"visual_test": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+		return h.toolGenerateVisualTest(req, args)
+	},
+	"annotation_report": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+		return h.toolGenerateAnnotationReport(req, args)
+	},
+	"annotation_issues": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+		return h.toolGenerateAnnotationIssues(req, args)
+	},
 }
 
 // getValidGenerateFormats returns a sorted, comma-separated list of valid generate formats.
@@ -79,13 +105,13 @@ func (h *ToolHandler) toolGetReproductionScript(req JSONRPCRequest, args json.Ra
 
 // TestGenParams are the parsed arguments for generate({format: "test"}).
 type TestGenParams struct {
-	Format             string `json:"format"`
-	TestName           string `json:"test_name"`
-	LastN              int    `json:"last_n"`
-	BaseURL            string `json:"base_url"`
-	AssertNetwork      bool   `json:"assert_network"`
-	AssertNoErrors     bool   `json:"assert_no_errors"`
-	AssertResponseShape bool  `json:"assert_response_shape"`
+	Format              string `json:"format"`
+	TestName            string `json:"test_name"`
+	LastN               int    `json:"last_n"`
+	BaseURL             string `json:"base_url"`
+	AssertNetwork       bool   `json:"assert_network"`
+	AssertNoErrors      bool   `json:"assert_no_errors"`
+	AssertResponseShape bool   `json:"assert_response_shape"`
 }
 
 func (h *ToolHandler) toolGenerateTest(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
@@ -108,8 +134,8 @@ func (h *ToolHandler) toolGenerateTest(req JSONRPCRequest, args json.RawMessage)
 		"action_count": len(actions),
 		"metadata": map[string]any{
 			"generated_at":      time.Now().Format(time.RFC3339),
-			"actions_available":  len(allActions),
-			"actions_included":   len(actions),
+			"actions_available": len(allActions),
+			"actions_included":  len(actions),
 			"assert_network":    params.AssertNetwork,
 			"assert_no_errors":  params.AssertNoErrors,
 		},
@@ -336,7 +362,7 @@ func (h *ToolHandler) toolExportSARIF(req JSONRPCRequest, args json.RawMessage) 
 	var a11yResult json.RawMessage
 	if h.capture.IsExtensionConnected() {
 		var err error
-		a11yResult, err = h.executeA11yQuery(arguments.Scope, nil)
+		a11yResult, err = h.executeA11yQuery(arguments.Scope, nil, nil)
 		if err != nil {
 			a11yResult = json.RawMessage("{}")
 		}
