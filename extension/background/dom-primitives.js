@@ -274,8 +274,18 @@ export function domPrimitive(action, selector, options) {
                             selection.deleteFromDocument();
                         }
                     }
-                    document.execCommand('insertText', false, text);
-                    return { success: true, action, selector, value: el.textContent };
+                    // Split on newlines — each \n becomes an insertParagraph command
+                    const lines = text.split('\n');
+                    for (let i = 0; i < lines.length; i++) {
+                        const line = lines[i];
+                        if (line.length > 0) {
+                            document.execCommand('insertText', false, line);
+                        }
+                        if (i < lines.length - 1) {
+                            document.execCommand('insertParagraph', false);
+                        }
+                    }
+                    return { success: true, action, selector, value: el.innerText };
                 }
                 if (!(el instanceof HTMLInputElement) && !(el instanceof HTMLTextAreaElement)) {
                     return {
@@ -341,7 +351,8 @@ export function domPrimitive(action, selector, options) {
             });
         }
         case 'get_text': {
-            return { success: true, action, selector, value: el.textContent };
+            const text = el instanceof HTMLElement ? el.innerText : el.textContent;
+            return { success: true, action, selector, value: text };
         }
         case 'get_value': {
             if (!('value' in el)) {
@@ -362,6 +373,33 @@ export function domPrimitive(action, selector, options) {
             return withMutationTracking(() => {
                 el.setAttribute(options.name || '', options.value || '');
                 return { success: true, action, selector, value: el.getAttribute(options.name || '') };
+            });
+        }
+        case 'paste': {
+            return withMutationTracking(() => {
+                if (!(el instanceof HTMLElement)) {
+                    return {
+                        success: false,
+                        action,
+                        selector,
+                        error: 'not_interactive',
+                        message: `Element is not an HTMLElement: ${el.tagName}`
+                    };
+                }
+                el.focus();
+                if (options.clear) {
+                    const selection = document.getSelection();
+                    if (selection) {
+                        selection.selectAllChildren(el);
+                        selection.deleteFromDocument();
+                    }
+                }
+                const pasteText = options.text || '';
+                const dt = new DataTransfer();
+                dt.setData('text/plain', pasteText);
+                const event = new ClipboardEvent('paste', { clipboardData: dt, bubbles: true, cancelable: true });
+                el.dispatchEvent(event);
+                return { success: true, action, selector, value: el.innerText };
             });
         }
         case 'focus': {
