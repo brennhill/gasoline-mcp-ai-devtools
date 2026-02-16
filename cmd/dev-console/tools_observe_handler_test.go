@@ -512,6 +512,128 @@ func TestToolsObserveNetworkBodies_Filters(t *testing.T) {
 	}
 }
 
+func TestToolsObserveNetworkBodies_BodyPathFilter(t *testing.T) {
+	t.Parallel()
+	h, _, cap := makeObserveToolHandler(t)
+
+	ts := time.Now().UTC().Format(time.RFC3339)
+	cap.AddNetworkBodies([]capture.NetworkBody{
+		{
+			URL:          "https://api.example.com/graphql",
+			Method:       "POST",
+			Status:       200,
+			ResponseBody: `{"data":{"viewer":{"id":"u_123","roles":["admin","editor"]}}}`,
+			Timestamp:    ts,
+		},
+		{
+			URL:          "https://api.example.com/other",
+			Method:       "GET",
+			Status:       200,
+			ResponseBody: `{"ok":true}`,
+			Timestamp:    ts,
+		},
+	})
+
+	req := JSONRPCRequest{JSONRPC: "2.0", ID: 1}
+	resp := h.toolObserve(req, json.RawMessage(`{"what":"network_bodies","body_path":"data.viewer.roles[0]"}`))
+	result := parseToolResult(t, resp)
+	if result.IsError {
+		t.Fatalf("network_bodies with body_path should not error, got: %s", result.Content[0].Text)
+	}
+	data := extractResultJSON(t, result)
+
+	count, _ := data["count"].(float64)
+	if count != 1 {
+		t.Fatalf("count = %v, want 1", count)
+	}
+
+	entries, _ := data["entries"].([]any)
+	if len(entries) != 1 {
+		t.Fatalf("entries len = %d, want 1", len(entries))
+	}
+	entry, _ := entries[0].(map[string]any)
+	responseBody, _ := entry["response_body"].(string)
+	var extracted any
+	if err := json.Unmarshal([]byte(responseBody), &extracted); err != nil {
+		t.Fatalf("response_body should be valid JSON, got err: %v", err)
+	}
+	if extracted != "admin" {
+		t.Fatalf("extracted value = %v, want admin", extracted)
+	}
+}
+
+func TestToolsObserveNetworkBodies_BodyKeyFilter(t *testing.T) {
+	t.Parallel()
+	h, _, cap := makeObserveToolHandler(t)
+
+	ts := time.Now().UTC().Format(time.RFC3339)
+	cap.AddNetworkBodies([]capture.NetworkBody{
+		{
+			URL:          "https://api.example.com/data",
+			Method:       "GET",
+			Status:       200,
+			ResponseBody: `{"data":{"items":[{"id":1},{"id":2}]}}`,
+			Timestamp:    ts,
+		},
+	})
+
+	req := JSONRPCRequest{JSONRPC: "2.0", ID: 1}
+	resp := h.toolObserve(req, json.RawMessage(`{"what":"network_bodies","body_key":"id"}`))
+	result := parseToolResult(t, resp)
+	if result.IsError {
+		t.Fatalf("network_bodies with body_key should not error, got: %s", result.Content[0].Text)
+	}
+	data := extractResultJSON(t, result)
+
+	count, _ := data["count"].(float64)
+	if count != 1 {
+		t.Fatalf("count = %v, want 1", count)
+	}
+
+	entries, _ := data["entries"].([]any)
+	entry, _ := entries[0].(map[string]any)
+	responseBody, _ := entry["response_body"].(string)
+
+	var extracted any
+	if err := json.Unmarshal([]byte(responseBody), &extracted); err != nil {
+		t.Fatalf("response_body should be valid JSON, got err: %v", err)
+	}
+
+	values, ok := extracted.([]any)
+	if !ok || len(values) != 2 {
+		t.Fatalf("body_key extraction should return 2 values, got: %v", extracted)
+	}
+}
+
+func TestToolsObserveNetworkBodies_BodyFilterValidation(t *testing.T) {
+	t.Parallel()
+	h, _, cap := makeObserveToolHandler(t)
+
+	ts := time.Now().UTC().Format(time.RFC3339)
+	cap.AddNetworkBodies([]capture.NetworkBody{
+		{
+			URL:          "https://api.example.com/data",
+			Method:       "GET",
+			Status:       200,
+			ResponseBody: `{"data":{"id":1}}`,
+			Timestamp:    ts,
+		},
+	})
+
+	req := JSONRPCRequest{JSONRPC: "2.0", ID: 1}
+	resp := h.toolObserve(req, json.RawMessage(`{"what":"network_bodies","body_key":"id","body_path":"data.id"}`))
+	result := parseToolResult(t, resp)
+	if !result.IsError {
+		t.Fatal("using both body_key and body_path should return isError:true")
+	}
+
+	resp = h.toolObserve(req, json.RawMessage(`{"what":"network_bodies","body_path":"data.items["}`))
+	result = parseToolResult(t, resp)
+	if !result.IsError {
+		t.Fatal("invalid body_path syntax should return isError:true")
+	}
+}
+
 // ============================================
 // observe(what:"websocket_events") — Response Fields
 // ============================================
@@ -693,4 +815,3 @@ func TestToolsObserve_StructuredErrorFields(t *testing.T) {
 	// Verify JSON fields are snake_case
 	assertSnakeCaseFields(t, jsonPart)
 }
-

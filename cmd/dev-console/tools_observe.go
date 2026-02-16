@@ -20,29 +20,75 @@ type ObserveHandler func(h *ToolHandler, req JSONRPCRequest, args json.RawMessag
 
 // observeHandlers maps observe mode names to their handler functions.
 var observeHandlers = map[string]ObserveHandler{
-	"errors":            func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse { return h.toolGetBrowserErrors(req, args) },
-	"logs":              func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse { return h.toolGetBrowserLogs(req, args) },
-	"extension_logs":    func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse { return h.toolGetExtensionLogs(req, args) },
-	"network_waterfall": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse { return h.toolGetNetworkWaterfall(req, args) },
-	"network_bodies":    func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse { return h.toolGetNetworkBodies(req, args) },
-	"websocket_events":  func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse { return h.toolGetWSEvents(req, args) },
-	"websocket_status":  func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse { return h.toolGetWSStatus(req, args) },
-	"actions":           func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse { return h.toolGetEnhancedActions(req, args) },
-	"vitals":            func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse { return h.toolGetWebVitals(req, args) },
-	"page":              func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse { return h.toolGetPageInfo(req, args) },
-	"tabs":              func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse { return h.toolGetTabs(req, args) },
-	"pilot":             func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse { return h.toolObservePilot(req, args) },
-	"timeline":          func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse { return h.toolGetSessionTimeline(req, args) },
-	"error_bundles":     func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse { return h.toolGetErrorBundles(req, args) },
-	"screenshot":        func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse { return h.toolGetScreenshot(req, args) },
-	"command_result":    func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse { return h.toolObserveCommandResult(req, args) },
-	"pending_commands":  func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse { return h.toolObservePendingCommands(req, args) },
-	"failed_commands":   func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse { return h.toolObserveFailedCommands(req, args) },
-	"saved_videos":      func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse { return h.toolObserveSavedVideos(req, args) },
-	"recordings":        func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse { return h.toolGetRecordings(req, args) },
-	"recording_actions": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse { return h.toolGetRecordingActions(req, args) },
-	"playback_results":  func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse { return h.toolGetPlaybackResults(req, args) },
-	"log_diff_report":   func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse { return h.toolGetLogDiffReport(req, args) },
+	"errors": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+		return h.toolGetBrowserErrors(req, args)
+	},
+	"logs": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+		return h.toolGetBrowserLogs(req, args)
+	},
+	"extension_logs": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+		return h.toolGetExtensionLogs(req, args)
+	},
+	"network_waterfall": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+		return h.toolGetNetworkWaterfall(req, args)
+	},
+	"network_bodies": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+		return h.toolGetNetworkBodies(req, args)
+	},
+	"websocket_events": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+		return h.toolGetWSEvents(req, args)
+	},
+	"websocket_status": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+		return h.toolGetWSStatus(req, args)
+	},
+	"actions": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+		return h.toolGetEnhancedActions(req, args)
+	},
+	"vitals": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+		return h.toolGetWebVitals(req, args)
+	},
+	"page": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+		return h.toolGetPageInfo(req, args)
+	},
+	"tabs": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+		return h.toolGetTabs(req, args)
+	},
+	"pilot": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+		return h.toolObservePilot(req, args)
+	},
+	"timeline": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+		return h.toolGetSessionTimeline(req, args)
+	},
+	"error_bundles": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+		return h.toolGetErrorBundles(req, args)
+	},
+	"screenshot": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+		return h.toolGetScreenshot(req, args)
+	},
+	"command_result": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+		return h.toolObserveCommandResult(req, args)
+	},
+	"pending_commands": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+		return h.toolObservePendingCommands(req, args)
+	},
+	"failed_commands": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+		return h.toolObserveFailedCommands(req, args)
+	},
+	"saved_videos": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+		return h.toolObserveSavedVideos(req, args)
+	},
+	"recordings": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+		return h.toolGetRecordings(req, args)
+	},
+	"recording_actions": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+		return h.toolGetRecordingActions(req, args)
+	},
+	"playback_results": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+		return h.toolGetPlaybackResults(req, args)
+	},
+	"log_diff_report": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+		return h.toolGetLogDiffReport(req, args)
+	},
 }
 
 // getValidObserveModes returns a sorted, comma-separated list of valid observe modes.
@@ -390,8 +436,19 @@ func (h *ToolHandler) toolGetNetworkBodies(req JSONRPCRequest, args json.RawMess
 		Method    string `json:"method"`
 		StatusMin int    `json:"status_min"`
 		StatusMax int    `json:"status_max"`
+		BodyKey   string `json:"body_key"`
+		BodyPath  string `json:"body_path"`
 	}
 	lenientUnmarshal(args, &params)
+	if params.BodyKey != "" && params.BodyPath != "" {
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(
+			ErrInvalidParam,
+			"Only one body filter can be used at a time",
+			"Use either 'body_key' or 'body_path', not both",
+			withParam("body_key"),
+			withParam("body_path"),
+		)}
+	}
 	if params.Limit <= 0 {
 		params.Limit = 100
 	}
@@ -415,7 +472,19 @@ func (h *ToolHandler) toolGetNetworkBodies(req JSONRPCRequest, args json.RawMess
 		if params.StatusMax > 0 && b.Status > params.StatusMax {
 			continue
 		}
-		filtered = append(filtered, b)
+		filteredBody, include, err := applyNetworkBodyFilter(b, params.BodyKey, params.BodyPath)
+		if err != nil {
+			return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(
+				ErrInvalidParam,
+				"Invalid network body filter: "+err.Error(),
+				"Use a valid body_path syntax like data.items[0].id",
+				withParam("body_path"),
+			)}
+		}
+		if !include {
+			continue
+		}
+		filtered = append(filtered, filteredBody)
 	}
 	var newestTS time.Time
 	if len(allBodies) > 0 {
@@ -520,4 +589,3 @@ func (h *ToolHandler) toolCheckPerformance(req JSONRPCRequest, args json.RawMess
 		"count":     len(snapshots),
 	})}
 }
-

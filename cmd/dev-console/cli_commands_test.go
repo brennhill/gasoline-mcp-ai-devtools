@@ -29,6 +29,24 @@ func TestParseObserveArgs_StatusMaxAndLastN(t *testing.T) {
 	}
 }
 
+func TestParseObserveArgs_BodyFilters(t *testing.T) {
+	t.Parallel()
+
+	result, err := parseObserveArgs("network_bodies", []string{
+		"--body-key", "id",
+		"--body-path", "data.items[0]",
+	})
+	if err != nil {
+		t.Fatalf("error: %v", err)
+	}
+	if result["body_key"] != "id" {
+		t.Fatalf("body_key = %v, want id", result["body_key"])
+	}
+	if result["body_path"] != "data.items[0]" {
+		t.Fatalf("body_path = %v, want data.items[0]", result["body_path"])
+	}
+}
+
 // ============================================
 // parseGenerateArgs — uncovered flags
 // ============================================

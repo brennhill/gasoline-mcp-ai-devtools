@@ -118,10 +118,44 @@ func TestToolsAnalyze_GetValidAnalyzeModes(t *testing.T) {
 		}
 	}
 
-	for _, required := range []string{"dom", "performance", "accessibility", "api_validation", "link_health"} {
+	for _, required := range []string{"dom", "performance", "accessibility", "api_validation", "link_health", "page_summary"} {
 		if !strings.Contains(modes, required) {
 			t.Errorf("valid modes missing %q: %s", required, modes)
 		}
+	}
+}
+
+func TestToolsAnalyzePageSummary_QueuedAsync(t *testing.T) {
+	t.Parallel()
+	h, _, _ := makeAnalyzeToolHandler(t)
+
+	resp := callAnalyzeRaw(h, `{"what":"page_summary","sync":false}`)
+	result := parseToolResult(t, resp)
+	if result.IsError {
+		t.Fatalf("page_summary with sync=false should queue, got: %s", result.Content[0].Text)
+	}
+
+	data := extractResultJSON(t, result)
+	if data["status"] != "queued" {
+		t.Errorf("status = %v, want 'queued'", data["status"])
+	}
+	corr, _ := data["correlation_id"].(string)
+	if !strings.HasPrefix(corr, "page_summary_") {
+		t.Errorf("correlation_id should start with 'page_summary_', got: %s", corr)
+	}
+}
+
+func TestToolsAnalyzePageSummary_InvalidWorld(t *testing.T) {
+	t.Parallel()
+	h, _, _ := makeAnalyzeToolHandler(t)
+
+	resp := callAnalyzeRaw(h, `{"what":"page_summary","sync":false,"world":"bad_world"}`)
+	result := parseToolResult(t, resp)
+	if !result.IsError {
+		t.Fatal("invalid world should return isError:true")
+	}
+	if !strings.Contains(result.Content[0].Text, "world") {
+		t.Errorf("error should mention 'world', got: %s", result.Content[0].Text)
 	}
 }
 
@@ -382,11 +416,11 @@ func TestToolsAnalyze_ClampInt(t *testing.T) {
 	tests := []struct {
 		v, def, min, max, want int
 	}{
-		{0, 10, 1, 100, 10},     // zero uses default
-		{5, 10, 1, 100, 5},      // in range
-		{-1, 10, 1, 100, 1},     // below min
-		{200, 10, 1, 100, 100},  // above max
-		{50, 10, 1, 100, 50},    // in range
+		{0, 10, 1, 100, 10},    // zero uses default
+		{5, 10, 1, 100, 5},     // in range
+		{-1, 10, 1, 100, 1},    // below min
+		{200, 10, 1, 100, 100}, // above max
+		{50, 10, 1, 100, 50},   // in range
 	}
 
 	for _, tc := range tests {
@@ -466,6 +500,7 @@ func TestToolsAnalyze_AllModes_ResponseStructure(t *testing.T) {
 		{"api_validation", `{"what":"api_validation","operation":"analyze"}`},
 		{"performance", `{"what":"performance"}`},
 		{"link_health", `{"what":"link_health"}`},
+		{"page_summary", `{"what":"page_summary","sync":false}`},
 	}
 
 	for _, tc := range modes {

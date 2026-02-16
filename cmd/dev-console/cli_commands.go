@@ -97,6 +97,8 @@ func parseObserveArgs(mode string, args []string) (map[string]any, error) {
 		{"--scope", "scope"},
 		{"--connection-id", "connection_id"},
 		{"--direction", "direction"},
+		{"--body-key", "body_key"},
+		{"--body-path", "body_path"},
 	})
 	applyIntFlags(args, mcpArgs, []intFlag{
 		{"--limit", "limit"},
