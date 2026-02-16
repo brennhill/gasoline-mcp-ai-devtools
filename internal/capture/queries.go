@@ -223,16 +223,17 @@ func (qd *QueryDispatcher) ExpireAllPendingQueries(reason string) {
 
 // expireCommandWithReason marks a command as expired with a custom error message.
 // Similar to ExpireCommand but allows specifying the error reason.
+// Signals commandNotify to wake any WaitForCommand waiters.
 func (qd *QueryDispatcher) expireCommandWithReason(correlationID string, reason string) {
 	if correlationID == "" {
 		return
 	}
 
 	qd.resultsMu.Lock()
-	defer qd.resultsMu.Unlock()
 
 	cmd, exists := qd.completedResults[correlationID]
 	if !exists {
+		qd.resultsMu.Unlock()
 		return
 	}
 
@@ -246,6 +247,12 @@ func (qd *QueryDispatcher) expireCommandWithReason(correlationID string, reason 
 	}
 
 	delete(qd.completedResults, correlationID)
+
+	// Signal waiters: close current channel, create a fresh one (same as CompleteCommand)
+	ch := qd.commandNotify
+	qd.commandNotify = make(chan struct{})
+	qd.resultsMu.Unlock()
+	close(ch)
 }
 
 // ============================================
@@ -530,22 +537,24 @@ func (qd *QueryDispatcher) CompleteCommand(correlationID string, result json.Raw
 
 // ExpireCommand marks a command as "expired" and moves it to failedCommands.
 // Called by cleanup goroutine when command times out without result.
+// Signals commandNotify to wake any WaitForCommand waiters.
 func (qd *QueryDispatcher) ExpireCommand(correlationID string) {
 	if correlationID == "" {
 		return
 	}
 
 	qd.resultsMu.Lock()
-	defer qd.resultsMu.Unlock()
 
 	cmd, exists := qd.completedResults[correlationID]
 	if !exists {
+		qd.resultsMu.Unlock()
 		return
 	}
 
 	// Only expire if still pending — avoids TOCTOU race where CompleteCommand
 	// already processed this command between lock acquisitions
 	if cmd.Status != "pending" {
+		qd.resultsMu.Unlock()
 		return
 	}
 
@@ -561,6 +570,12 @@ func (qd *QueryDispatcher) ExpireCommand(correlationID string) {
 
 	// Remove from active tracking
 	delete(qd.completedResults, correlationID)
+
+	// Signal waiters: close current channel, create a fresh one (same as CompleteCommand)
+	ch := qd.commandNotify
+	qd.commandNotify = make(chan struct{})
+	qd.resultsMu.Unlock()
+	close(ch)
 }
 
 // WaitForCommand blocks until the command completes or timeout expires.
