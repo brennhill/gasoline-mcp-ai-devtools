@@ -1,456 +1,147 @@
-#!/usr/bin/env node
+#!/bin/sh
+# gasoline-mcp — POSIX shell wrapper for Gasoline MCP server.
+# MCP mode (default): finds the Go binary and exec's it — no Node.js needed.
+# CLI commands (--install, --config, etc.): delegates to Node.js lib/cli.js.
 
-const { execFileSync } = require('child_process');
-const path = require('path');
-const fs = require('fs');
-const os = require('os');
+set -e
 
-// Quiet mode: Log to file instead of stderr for clean MCP experience
-const WRAPPER_LOG_FILE = path.join(os.homedir(), 'gasoline-wrapper.log');
-const MAX_LOG_SIZE = 1024 * 1024; // 1MB max size
+GASOLINE_VERSION="0.7.2"
+WRAPPER_LOG="$HOME/gasoline-wrapper.log"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+LIB_DIR="$SCRIPT_DIR/../lib"
 
-function logToFile(message) {
-  try {
-    const timestamp = new Date().toISOString();
-    const logLine = `[${timestamp}] ${message}\n`;
+# --- Logging ---
 
-    // Check log size and rotate if needed
-    try {
-      const stats = fs.statSync(WRAPPER_LOG_FILE);
-      if (stats.size > MAX_LOG_SIZE) {
-        // Truncate log - keep last 50% of file
-        const content = fs.readFileSync(WRAPPER_LOG_FILE, 'utf8');
-        const lines = content.split('\n');
-        const keepLines = Math.floor(lines.length / 2);
-        fs.writeFileSync(WRAPPER_LOG_FILE, lines.slice(-keepLines).join('\n') + '\n');
-      }
-    } catch (e) {
-      // File doesn't exist yet or can't stat - that's fine
-    }
-
-    fs.appendFileSync(WRAPPER_LOG_FILE, logLine);
-  } catch (e) {
-    // Silently fail if we can't write to log - don't spam stderr
-  }
+log() {
+  printf '[%s] %s\n' "$(date -u '+%Y-%m-%dT%H:%M:%SZ' 2>/dev/null || date '+%Y-%m-%dT%H:%M:%S')" "$1" \
+    >> "$WRAPPER_LOG" 2>/dev/null || true
 }
 
-// Write a JSON-RPC error to stdout so MCP clients get a clean protocol-level error
-// instead of seeing the process vanish with no response.
-function writeMcpError(message) {
-  const errorResponse = JSON.stringify({
-    jsonrpc: '2.0',
-    id: null,
-    error: {
-      code: -32603,
-      message: message,
-      data: { isError: true },
-    },
-  });
-  process.stdout.write(errorResponse + '\n');
+# --- JSON-RPC error to stdout (so MCP clients see a protocol error, not a vanished process) ---
+
+mcp_error() {
+  printf '{"jsonrpc":"2.0","id":null,"error":{"code":-32603,"message":"%s","data":{"isError":true}}}\n' "$1"
 }
 
-// Import lib modules
-const config = require('../lib/config');
-const output = require('../lib/output');
-const install = require('../lib/install');
-const skills = require('../lib/skills');
-const doctor = require('../lib/doctor');
-const uninstall = require('../lib/uninstall');
-const {
-  EnvWithoutInstallError,
-  ForAllWithoutInstallError,
-  InvalidEnvFormatError,
-} = require('../lib/errors');
+# --- Platform detection ---
 
-function getPlatformPackage() {
-  const platform = os.platform();
-  const arch = os.arch();
+detect_platform() {
+  OS="$(uname -s)"
+  ARCH="$(uname -m)"
 
-  const platformMap = {
-    'darwin-arm64': '@brennhill/gasoline-darwin-arm64',
-    'darwin-x64': '@brennhill/gasoline-darwin-x64',
-    'linux-arm64': '@brennhill/gasoline-linux-arm64',
-    'linux-x64': '@brennhill/gasoline-linux-x64',
-    'win32-x64': '@brennhill/gasoline-win32-x64',
-    'win32-arm64': '@brennhill/gasoline-win32-x64', // x64 binary runs via Windows emulation
-  };
+  case "$OS" in
+    Darwin)  PLATFORM="darwin" ;;
+    Linux)   PLATFORM="linux"  ;;
+    MINGW*|MSYS*|CYGWIN*) PLATFORM="win32" ;;
+    *)
+      mcp_error "Unsupported OS: $OS"
+      log "Unsupported OS: $OS"
+      exit 1
+      ;;
+  esac
 
-  const key = `${platform}-${arch}`;
-  const pkg = platformMap[key];
+  case "$ARCH" in
+    x86_64|amd64)  ARCH_LABEL="x64"   ;;
+    arm64|aarch64) ARCH_LABEL="arm64" ;;
+    *)
+      mcp_error "Unsupported architecture: $ARCH"
+      log "Unsupported architecture: $ARCH"
+      exit 1
+      ;;
+  esac
 
-  if (!pkg) {
-    const supported = Object.keys(platformMap).join(', ');
-    const msg = `Unsupported platform: ${platform}-${arch}. Supported: ${supported}. See https://github.com/anthropics/gasoline for alternatives.`;
-    writeMcpError(msg);
-    console.error(`Unsupported platform: ${platform}-${arch}`);
-    console.error(`Supported platforms: ${supported}`);
-    process.exit(1);
-  }
+  if [ "$PLATFORM" = "win32" ]; then
+    BINARY_NAME="gasoline.exe"
+    # Windows x64 binary runs on arm64 via emulation
+    ARCH_LABEL="x64"
+  else
+    BINARY_NAME="gasoline"
+  fi
 
-  return pkg;
+  PLATFORM_KEY="${PLATFORM}-${ARCH_LABEL}"
+  PKG_NAME="@brennhill/gasoline-${PLATFORM_KEY}"
 }
 
-// Check if a binary in PATH has matching version (for instant startup)
-function findGlobalBinary() {
-  const binaryName = os.platform() === 'win32' ? 'gasoline.exe' : 'gasoline';
-  const expectedVersion = require('../package.json').version;
+# --- Binary search ---
 
-  try {
-    // Check if gasoline exists in PATH
-    const whichCmd = os.platform() === 'win32' ? `where ${binaryName}` : `which ${binaryName}`;
-    const which = require('child_process').execSync(whichCmd, {
-      encoding: 'utf8',
-      stdio: ['pipe', 'pipe', 'pipe']
-    }).trim();
+find_binary() {
+  # 1. Global PATH — check version matches
+  GLOBAL_BIN="$(command -v gasoline 2>/dev/null || true)"
+  if [ -n "$GLOBAL_BIN" ]; then
+    GLOBAL_VER="$("$GLOBAL_BIN" --version 2>&1 | grep -o '[0-9]\+\.[0-9]\+\.[0-9]\+' || true)"
+    if [ "$GLOBAL_VER" = "$GASOLINE_VERSION" ]; then
+      log "Using global binary (v${GLOBAL_VER}): $GLOBAL_BIN"
+      BINARY="$GLOBAL_BIN"
+      return 0
+    elif [ -n "$GLOBAL_VER" ]; then
+      log "Global binary version mismatch: $GLOBAL_VER vs expected $GASOLINE_VERSION"
+    fi
+  fi
 
-    if (!which) return null;
+  # 2. Dev build — dist/ directory (for local development)
+  DEV_BIN="$SCRIPT_DIR/../../../dist/gasoline-${PLATFORM_KEY}"
+  if [ "$PLATFORM" = "win32" ]; then
+    DEV_BIN="${DEV_BIN}.exe"
+  fi
+  if [ -x "$DEV_BIN" ]; then
+    log "Using dev build: $DEV_BIN"
+    BINARY="$DEV_BIN"
+    return 0
+  fi
 
-    // Check version matches
-    const versionOutput = require('child_process').execSync(`"${which}" --version`, {
-      encoding: 'utf8',
-      timeout: 2000
-    }).trim();
+  # 3. node_modules candidates (3 depths: local dep, hoisted, global)
+  for CANDIDATE in \
+    "$SCRIPT_DIR/../node_modules/$PKG_NAME/bin/$BINARY_NAME" \
+    "$SCRIPT_DIR/../../$PKG_NAME/bin/$BINARY_NAME" \
+    "$SCRIPT_DIR/../../../$PKG_NAME/bin/$BINARY_NAME" \
+  ; do
+    if [ -f "$CANDIDATE" ]; then
+      log "Using bundled binary: $CANDIDATE"
+      BINARY="$CANDIDATE"
+      return 0
+    fi
+  done
 
-    // Parse version from output like "gasoline v5.7.4"
-    const match = versionOutput.match(/v?(\d+\.\d+\.\d+)/);
-    if (match && match[1] === expectedVersion) {
-      logToFile(`Using global binary (version ${match[1]}): ${which}`);
-      return which;
-    } else if (match) {
-      logToFile(`Global binary version mismatch: ${match[1]} vs expected ${expectedVersion}`);
-    }
-  } catch (e) {
-    // Global binary not found or version check failed - fall through to bundled
-  }
-
-  return null;
+  return 1
 }
 
-function findBinary() {
-  // FAST PATH: Check for global install with matching version first
-  const globalBinary = findGlobalBinary();
-  if (globalBinary) {
-    return globalBinary;
-  }
+# --- CLI flag detection ---
 
-  const pkg = getPlatformPackage();
-  const binaryName = os.platform() === 'win32' ? 'gasoline.exe' : 'gasoline';
-
-  // DEV MODE: Check for local dist/ build first (for testing)
-  const platform = os.platform();
-  const arch = os.arch();
-  const platformKey = `${platform}-${arch}`;
-  const distMap = {
-    'darwin-arm64': 'gasoline-darwin-arm64',
-    'darwin-x64': 'gasoline-darwin-x64',
-    'linux-arm64': 'gasoline-linux-arm64',
-    'linux-x64': 'gasoline-linux-x64',
-    'win32-x64': 'gasoline-win32-x64.exe',
-    'win32-arm64': 'gasoline-win32-x64.exe', // x64 binary runs via Windows emulation
-  };
-
-  const devBinary = path.join(__dirname, '..', '..', '..', 'dist', distMap[platformKey]);
-  if (fs.existsSync(devBinary)) {
-    logToFile(`Using local dev build: ${devBinary}`);
-    return devBinary;
-  }
-
-  // Try to resolve from node_modules
-  const candidates = [
-    // Installed as dependency
-    path.join(__dirname, '..', 'node_modules', pkg, 'bin', binaryName),
-    // Hoisted in monorepo
-    path.join(__dirname, '..', '..', pkg, 'bin', binaryName),
-    // npm global install
-    path.join(__dirname, '..', '..', '..', pkg, 'bin', binaryName),
-  ];
-
-  for (const candidate of candidates) {
-    if (fs.existsSync(candidate)) {
-      return candidate;
-    }
-  }
-
-  // Try require.resolve as fallback
-  try {
-    const pkgPath = require.resolve(`${pkg}/package.json`);
-    const binPath = path.join(path.dirname(pkgPath), 'bin', binaryName);
-    if (fs.existsSync(binPath)) {
-      return binPath;
-    }
-  } catch (e) {
-    // Package not found
-  }
-
-  writeMcpError(`Gasoline binary not found for platform ${platformKey}. Expected package: ${pkg}. Try reinstalling: npm install -g gasoline-mcp@latest`);
-  console.error(`Could not find gasoline binary for your platform.`);
-  console.error(`Expected package: ${pkg}`);
-  console.error(`\nTry reinstalling: npx gasoline-mcp@latest`);
-  console.error(`Or build from source: go build ./cmd/dev-console`);
-  process.exit(1);
+is_cli_command() {
+  for arg in "$@"; do
+    case "$arg" in
+      --config|-c|--install|-i|--doctor|--uninstall|--help|-h|--version|-v)
+        return 0
+        ;;
+    esac
+  done
+  return 1
 }
 
-function showConfigCommand() {
-  const mcp = install.generateDefaultConfig();
-  console.log('📋 Gasoline MCP Configuration\n');
-  console.log('Add this to your Claude settings file:\n');
-  console.log(JSON.stringify(mcp, null, 2));
-  console.log('\n📍 Configuration Locations:');
-  console.log('');
-  console.log('Claude Code (VSCode):');
-  console.log('  ~/.vscode/claude.mcp.json');
-  console.log('');
-  console.log('Claude Desktop App:');
-  console.log(`  ${os.platform() === 'win32' ? '%APPDATA%' : '~'}/.claude/claude.mcp.json`);
-  console.log('');
-  console.log('Cursor:');
-  console.log('  ~/.cursor/mcp.json');
-  console.log('');
-  console.log('Codeium:');
-  console.log('  ~/.codeium/mcp.json');
-  process.exit(0);
-}
+# --- Main ---
 
-async function installCommand(options) {
-  try {
-    const result = install.executeInstall(options);
+detect_platform
 
-    if (result.success) {
-      if (options.dryRun) {
-        console.log(`ℹ️  Dry run: No files will be written\n`);
-      }
-      console.log(
-        output.installResult({
-          updated: result.updated,
-          total: result.total,
-          errors: result.errors,
-          notFound: result.updated.length > 0
-            ? []
-            : config.getConfigCandidates().map(config.getToolNameFromPath),
-        })
-      );
-      if (!options.dryRun) {
-        const skillInstall = await skills.installBundledSkills({
-          verbose: options.verbose,
-          skillsRepo: options.skillsRepo,
-          skillsRef: options.skillsRef,
-          skillsPath: options.skillsPath,
-          skillsManifestPath: options.skillsManifestPath,
-          skillsDir: options.skillsDir,
-          skillsNoFallback: options.skillsNoFallback,
-        });
-        if (!skillInstall.skipped) {
-          const s = skillInstall.summary;
-          console.log(
-            `🧠 Skills installed (${skillInstall.agents.join(', ')} / ${skillInstall.scope}): ` +
-            `source=${skillInstall.source}, created=${s.created}, updated=${s.updated}, unchanged=${s.unchanged}, ` +
-            `skipped=${s.skipped_user_owned}, legacy_removed=${s.legacy_removed}, errors=${s.errors}`
-          );
-          for (const warning of skillInstall.warnings || []) {
-            console.warn(`⚠️  ${warning}`);
-          }
-        }
-        console.log('✨ Gasoline MCP is ready to use!');
-      }
-      process.exit(0);
-    } else {
-      console.error(output.error('Installation failed'));
-      result.errors.forEach(err => {
-        console.error(`  ${err.name}: ${err.message}`);
-        if (err.recovery) {
-          console.error(`  Recovery: ${err.recovery}`);
-        }
-      });
-      process.exit(1);
-    }
-  } catch (err) {
-    console.error(err.format ? err.format() : `Error: ${err.message}`);
-    process.exit(1);
-  }
-}
+# CLI commands → delegate to Node.js
+if is_cli_command "$@"; then
+  NODE="$(command -v node 2>/dev/null || true)"
+  if [ -z "$NODE" ]; then
+    echo "Error: Node.js is required for CLI commands (--install, --config, --doctor, --uninstall, --help)." >&2
+    echo "Install Node.js 16+ from https://nodejs.org" >&2
+    exit 1
+  fi
+  exec "$NODE" "$LIB_DIR/cli.js" "$@"
+fi
 
-function doctorCommand(verbose) {
-  try {
-    const report = doctor.runDiagnostics(verbose);
-    console.log(output.diagnosticReport(report));
-    process.exit(0);
-  } catch (err) {
-    console.error(err.format ? err.format() : `Error: ${err.message}`);
-    process.exit(1);
-  }
-}
+# MCP server mode — find and exec the Go binary
+log "Wrapper starting, passing control to Go binary"
 
-function uninstallCommand(dryRun, verbose) {
-  try {
-    const result = uninstall.executeUninstall({ dryRun, verbose });
-
-    if (dryRun) {
-      console.log(`ℹ️  Dry run: No files will be modified\n`);
-    }
-    console.log(output.uninstallResult(result));
-    process.exit(0);
-  } catch (err) {
-    console.error(err.format ? err.format() : `Error: ${err.message}`);
-    process.exit(1);
-  }
-}
-
-function showHelp() {
-  console.log('Gasoline MCP Server\n');
-  console.log('Usage: gasoline-mcp [command] [options]\n');
-  console.log('Commands:');
-  console.log('  --config, -c          Show MCP configuration and where to put it');
-  console.log('  --install, -i         Auto-install to your AI assistant config');
-  console.log('  --doctor              Run diagnostics on installed configs');
-  console.log('  --uninstall           Remove Gasoline from configs');
-  console.log('  --help, -h            Show this help message\n');
-  console.log('Options (with --install):');
-  console.log('  --dry-run             Preview changes without writing files');
-  console.log('  --for-all             Install to all 4 tools (Claude, VSCode, Cursor, Codeium)');
-  console.log('  --env KEY=VALUE       Add environment variables to config (multiple allowed)');
-  console.log('  --skills-repo VALUE   Skill source repo (owner/repo or GitHub URL)');
-  console.log('  --skills-ref VALUE    Git ref when loading skills from --skills-repo');
-  console.log('  --skills-path VALUE   Repo path containing skill folders (optional)');
-  console.log('  --skills-manifest VALUE Repo path to skills manifest JSON (for example skills/skills.json)');
-  console.log('  --skills-dir PATH     Local skills directory override');
-  console.log('  --skills-no-fallback  Do not fall back to bundled skills if remote fetch fails');
-  console.log('  --verbose             Show detailed operation logs\n');
-  console.log('Options (with --uninstall):');
-  console.log('  --dry-run             Preview changes without writing files');
-  console.log('  --verbose             Show detailed operation logs\n');
-  console.log('Examples:');
-  console.log('  gasoline-mcp --install                # Install to first matching tool');
-  console.log('  gasoline-mcp --install --for-all      # Install to all 4 tools');
-  console.log('  gasoline-mcp --install --dry-run      # Preview without changes');
-  console.log('  gasoline-mcp --install --env DEBUG=1  # Install with env vars');
-  console.log('  gasoline-mcp --install --skills-repo brennhill/gasoline-skills');
-  console.log('  gasoline-mcp --install --skills-repo https://github.com/brennhill/gasoline-skills/tree/main/skills');
-  console.log('  gasoline-mcp --doctor                 # Check config health');
-  console.log('  gasoline-mcp --uninstall              # Remove from all tools\n');
-  process.exit(0);
-}
-
-function parseSingleValueFlag(args, flagName) {
-  const index = args.indexOf(flagName);
-  if (index === -1) return null;
-  const next = args[index + 1];
-  if (!next || next.startsWith('--')) {
-    throw new Error(`Missing value for ${flagName}`);
-  }
-  return next;
-}
-
-function parseSkillInstallOptions(args) {
-  return {
-    skillsRepo: parseSingleValueFlag(args, '--skills-repo'),
-    skillsRef: parseSingleValueFlag(args, '--skills-ref'),
-    skillsPath: parseSingleValueFlag(args, '--skills-path'),
-    skillsManifestPath: parseSingleValueFlag(args, '--skills-manifest'),
-    skillsDir: parseSingleValueFlag(args, '--skills-dir'),
-    skillsNoFallback: args.includes('--skills-no-fallback'),
-  };
-}
-
-async function main() {
-  // Parse CLI arguments
-  const args = process.argv.slice(2);
-  const verbose = args.includes('--verbose');
-  const dryRun = args.includes('--dry-run');
-
-  // Config command
-  if (args.includes('--config') || args.includes('-c')) {
-    showConfigCommand();
-    return;
-  }
-
-  // Install command
-  if (args.includes('--install') || args.includes('-i')) {
-    // Validate flags
-    if (args.includes('--env') && !(args.includes('--install') || args.includes('-i'))) {
-      console.error(output.error('--env only works with --install', 'Usage: gasoline-mcp --install --env KEY=VALUE'));
-      process.exit(1);
-    }
-    if (args.includes('--for-all') && !(args.includes('--install') || args.includes('-i'))) {
-      console.error(output.error('--for-all only works with --install', 'Usage: gasoline-mcp --install --for-all'));
-      process.exit(1);
-    }
-
-    // Parse env vars
-    const envVars = {};
-    for (let i = 0; i < args.length; i++) {
-      if (args[i] === '--env' && i + 1 < args.length) {
-        try {
-          const parsed = config.parseEnvVar(args[i + 1]);
-          envVars[parsed.key] = parsed.value;
-        } catch (err) {
-          console.error(output.error(err.message, err.recovery));
-          process.exit(1);
-        }
-      }
-    }
-
-    let skillOptions = {};
-    try {
-      skillOptions = parseSkillInstallOptions(args);
-    } catch (err) {
-      console.error(output.error(err.message, 'Run gasoline-mcp --help for usage.'));
-      process.exit(1);
-    }
-
-    const options = {
-      dryRun,
-      forAll: args.includes('--for-all'),
-      envVars,
-      verbose,
-      ...skillOptions,
-    };
-    await installCommand(options);
-    return;
-  }
-
-  // Doctor command
-  if (args.includes('--doctor')) {
-    doctorCommand(verbose);
-    return;
-  }
-
-  // Uninstall command
-  if (args.includes('--uninstall')) {
-    uninstallCommand(dryRun, verbose);
-    return;
-  }
-
-  // Help command
-  if (args.includes('--help') || args.includes('-h')) {
-    showHelp();
-    return;
-  }
-
-  // No config command, run the binary
-
-  // Quiet mode: Wrapper is now completely transparent
-  // All connection logic (spawn/connect/retry/recovery) handled by Go binary
-  // The Go binary will detect if a server is already running and connect to it,
-  // or spawn a new one if needed. This keeps the server persistent across connections.
-  logToFile('Wrapper starting, passing control to Go binary');
-
-  const binary = findBinary();
-  logToFile(`Using binary: ${binary}`);
-
-  try {
-    execFileSync(binary, args, {
-      stdio: 'inherit',
-      env: process.env,
-    });
-  } catch (e) {
-    if (e.status !== null) {
-      process.exit(e.status);
-    }
-    throw e;
-  }
-}
-
-main().catch((err) => {
-  console.error(err.format ? err.format() : `Error: ${err.message}`);
-  process.exit(1);
-});
+if find_binary; then
+  log "Using binary: $BINARY"
+  exec "$BINARY" "$@"
+else
+  MSG="Gasoline binary not found for ${PLATFORM_KEY}. Expected package: ${PKG_NAME}. Try reinstalling: npm install -g gasoline-mcp@latest"
+  mcp_error "$MSG"
+  log "$MSG"
+  exit 1
+fi
