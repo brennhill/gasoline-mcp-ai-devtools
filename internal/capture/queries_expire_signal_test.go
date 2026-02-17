@@ -160,3 +160,62 @@ func TestExpireCommand_NoOpOnNonPending(t *testing.T) {
 		t.Errorf("Expected status 'complete', got %q", result.Status)
 	}
 }
+
+// TestExpireAndComplete_ConcurrentRace verifies that concurrent ExpireCommand
+// and CompleteCommand on the same correlation ID do not panic or corrupt state.
+// One must win; the other becomes a no-op.
+func TestExpireAndComplete_ConcurrentRace(t *testing.T) {
+	t.Parallel()
+
+	// Run many iterations to exercise the race window
+	for i := 0; i < 50; i++ {
+		qd := NewQueryDispatcher()
+
+		correlationID := "race-test"
+		qd.RegisterCommand(correlationID, "q-race", 30*time.Second)
+
+		// Start WaitForCommand so there's an active waiter (long timeout — test controls unblock)
+		done := make(chan struct{})
+		go func() {
+			qd.WaitForCommand(correlationID, 10*time.Second)
+			close(done)
+		}()
+
+		// Let waiter reach the select
+		time.Sleep(10 * time.Millisecond)
+
+		// Fire both concurrently — exactly one should win
+		go qd.CompleteCommand(correlationID, json.RawMessage(`{"ok":true}`), "")
+		go qd.ExpireCommand(correlationID)
+
+		// Waiter must unblock well before its 10s timeout
+		select {
+		case <-done:
+		case <-time.After(3 * time.Second):
+			qd.Close()
+			t.Fatal("WaitForCommand did not unblock during concurrent expire/complete")
+		}
+
+		// Result must exist and have a terminal status
+		result, found := qd.GetCommandResult(correlationID)
+		if !found {
+			qd.Close()
+			t.Fatal("Expected to find command after concurrent expire/complete")
+		}
+		if result.Status != "complete" && result.Status != "expired" {
+			t.Errorf("Expected terminal status, got %q", result.Status)
+		}
+
+		qd.Close()
+	}
+}
+
+// TestExpireAllPendingQueries_EmptyQueue verifies no panic on empty queue.
+func TestExpireAllPendingQueries_EmptyQueue(t *testing.T) {
+	t.Parallel()
+	qd := NewQueryDispatcher()
+	defer qd.Close()
+
+	// Should be a no-op, no panic
+	qd.ExpireAllPendingQueries("no pending commands")
+}

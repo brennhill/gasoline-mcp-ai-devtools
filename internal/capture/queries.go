@@ -201,6 +201,7 @@ func (qd *QueryDispatcher) AcknowledgePendingQuery(queryID string) {
 // ExpireAllPendingQueries expires all pending queries with the given error reason.
 // Used when the extension disconnects to prevent queries from hanging indefinitely.
 // Collects correlation IDs under mu lock, then expires commands under resultsMu.
+// Signals commandNotify once after batch expiration to wake all WaitForCommand waiters.
 func (qd *QueryDispatcher) ExpireAllPendingQueries(reason string) {
 	qd.mu.Lock()
 
@@ -215,10 +216,32 @@ func (qd *QueryDispatcher) ExpireAllPendingQueries(reason string) {
 
 	qd.mu.Unlock()
 
-	// Mark commands as expired with disconnect reason (outside mu lock)
-	for _, correlationID := range correlationIDs {
-		qd.expireCommandWithReason(correlationID, reason)
+	if len(correlationIDs) == 0 {
+		return
 	}
+
+	// Mark commands as expired with disconnect reason (outside mu lock).
+	// Expire individually without signaling, then signal once at the end.
+	qd.resultsMu.Lock()
+	for _, correlationID := range correlationIDs {
+		cmd, exists := qd.completedResults[correlationID]
+		if !exists {
+			continue
+		}
+		cmd.Status = "expired"
+		cmd.Error = reason
+		qd.failedCommands = append(qd.failedCommands, cmd)
+		if len(qd.failedCommands) > 100 {
+			qd.failedCommands = qd.failedCommands[1:]
+		}
+		delete(qd.completedResults, correlationID)
+	}
+
+	// Signal waiters once for the entire batch
+	ch := qd.commandNotify
+	qd.commandNotify = make(chan struct{})
+	qd.resultsMu.Unlock()
+	close(ch)
 }
 
 // expireCommandWithReason marks a command as expired with a custom error message.
@@ -614,7 +637,8 @@ func (qd *QueryDispatcher) WaitForCommand(correlationID string, timeout time.Dur
 }
 
 // GetCommandResult retrieves command status by correlation ID.
-// Returns (CommandResult, found). Used by toolObserveCommandResult.
+// Returns a snapshot copy of the CommandResult (safe to read without locks).
+// Used by toolObserveCommandResult and WaitForCommand.
 func (qd *QueryDispatcher) GetCommandResult(correlationID string) (*queries.CommandResult, bool) {
 	// First ensure any expired queries are marked as failed
 	qd.cleanExpiredCommands()
@@ -624,13 +648,15 @@ func (qd *QueryDispatcher) GetCommandResult(correlationID string) (*queries.Comm
 
 	// Check active commands
 	if cmd, exists := qd.completedResults[correlationID]; exists {
-		return cmd, true
+		cp := *cmd
+		return &cp, true
 	}
 
 	// Check failed/expired commands
 	for _, cmd := range qd.failedCommands {
 		if cmd.CorrelationID == correlationID {
-			return cmd, true
+			cp := *cmd
+			return &cp, true
 		}
 	}
 
