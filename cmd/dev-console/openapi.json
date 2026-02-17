@@ -59,22 +59,14 @@
       "get": {
         "tags": ["Control"],
         "summary": "API discovery",
-        "description": "Returns server name, version, and links to key endpoints.",
+        "description": "Returns the server name, version, and links to key endpoints (/health, /logs). Serves as a lightweight discovery mechanism for MCP clients connecting to the server for the first time. Always returns 200 with a static JSON payload.",
         "operationId": "getRoot",
         "responses": {
           "200": {
-            "description": "Server info",
+            "description": "Server info with endpoint links",
             "content": {
               "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "name": { "type": "string", "example": "gasoline" },
-                    "version": { "type": "string", "example": "0.7.2" },
-                    "health": { "type": "string", "example": "/health" },
-                    "logs": { "type": "string", "example": "/logs" }
-                  }
-                }
+                "schema": { "$ref": "#/components/schemas/DiscoveryResponse" }
               }
             }
           }
@@ -85,11 +77,11 @@
       "get": {
         "tags": ["Control"],
         "summary": "Health check",
-        "description": "Returns server status, version, log stats, and capture state.",
+        "description": "Returns server health status including version, log buffer stats, and capture availability. Used by MCP clients and monitoring tools to verify the server is running and the Chrome extension is connected. The capture.available field indicates whether the extension WebSocket is active.",
         "operationId": "getHealth",
         "responses": {
           "200": {
-            "description": "Server health",
+            "description": "Server health with buffer stats and capture state",
             "content": {
               "application/json": {
                 "schema": { "$ref": "#/components/schemas/HealthResponse" }
@@ -103,11 +95,29 @@
       "get": {
         "tags": ["Control"],
         "summary": "Diagnostic report",
-        "description": "Comprehensive diagnostic information for bug reports: system info, buffer counts, extension state, circuit breaker status.",
+        "description": "Returns comprehensive diagnostic information for bug reports and troubleshooting. Includes system info (OS, arch, Go version, goroutine count), buffer counts across all ring buffers, extension connection state, and circuit breaker status. Output is designed to be copy-pasted into GitHub issues.",
         "operationId": "getDiagnostics",
         "responses": {
           "200": {
-            "description": "Diagnostic data",
+            "description": "Full diagnostic data",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/DiagnosticsResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/diagnostics.json": {
+      "get": {
+        "tags": ["Control"],
+        "summary": "JSON diagnostics (alias)",
+        "description": "Alias for /diagnostics that returns identical diagnostic data. Exists for explicit content-type signaling — some HTTP clients and browser URL bars prefer the .json extension to trigger JSON formatting. Handled by the same handler as /diagnostics.",
+        "operationId": "getDiagnosticsJson",
+        "responses": {
+          "200": {
+            "description": "Full diagnostic data",
             "content": {
               "application/json": {
                 "schema": { "$ref": "#/components/schemas/DiagnosticsResponse" }
@@ -121,7 +131,7 @@
       "post": {
         "tags": ["Control"],
         "summary": "Graceful shutdown",
-        "description": "Initiates graceful server shutdown. Sends SIGTERM after response.",
+        "description": "Initiates graceful server shutdown. Sends the JSON response first, then triggers SIGTERM after a short delay to allow the response to flush. Used by the CLI's stop command and the dashboard UI. The server closes all WebSocket connections and flushes pending writes before exiting.",
         "operationId": "postShutdown",
         "responses": {
           "200": {
@@ -131,8 +141,8 @@
                 "schema": {
                   "type": "object",
                   "properties": {
-                    "status": { "type": "string", "example": "shutting_down" },
-                    "message": { "type": "string", "example": "Server shutdown initiated" }
+                    "status": { "type": "string", "example": "shutting_down", "description": "Always 'shutting_down'" },
+                    "message": { "type": "string", "example": "Server shutdown initiated", "description": "Human-readable confirmation" }
                   }
                 }
               }
@@ -145,11 +155,11 @@
       "get": {
         "tags": ["Control"],
         "summary": "OpenAPI specification",
-        "description": "Returns this OpenAPI 3.1.0 specification as JSON.",
+        "description": "Serves this OpenAPI 3.1.0 specification as JSON. The spec is embedded into the Go binary at compile time via go:embed and served as-is. Used by API documentation tools, SDK generators, and the /docs page.",
         "operationId": "getOpenAPI",
         "responses": {
           "200": {
-            "description": "OpenAPI spec",
+            "description": "OpenAPI 3.1.0 specification document",
             "content": {
               "application/json": {
                 "schema": { "type": "object" }
@@ -163,8 +173,11 @@
       "post": {
         "tags": ["Control"],
         "summary": "MCP JSON-RPC bridge",
-        "description": "MCP protocol bridge for HTTP clients. Accepts JSON-RPC 2.0 requests with methods: observe, generate, configure, interact.",
+        "description": "HTTP bridge for the MCP protocol. Accepts JSON-RPC 2.0 requests and routes them to the same tool handlers used by the stdio MCP transport. Supports methods: observe, generate, configure, interact, and analyze. This endpoint enables non-stdio MCP clients (dashboards, web UIs, REST wrappers) to call MCP tools over HTTP.",
         "operationId": "postMcp",
+        "x-docs": {
+          "core": "docs/core/async-tool-pattern.md"
+        },
         "requestBody": {
           "required": true,
           "content": {
@@ -175,7 +188,7 @@
         },
         "responses": {
           "200": {
-            "description": "JSON-RPC response",
+            "description": "JSON-RPC 2.0 response with result or error",
             "content": {
               "application/json": {
                 "schema": { "$ref": "#/components/schemas/JsonRpcResponse" }
@@ -185,12 +198,87 @@
         }
       }
     },
+    "/api/status": {
+      "get": {
+        "tags": ["Control"],
+        "summary": "Dashboard status feed",
+        "description": "Returns aggregated server status for the built-in dashboard UI. Includes version, uptime, PID, platform, extension connection state, pilot toggle, buffer fill levels with capacities, recent command history, and optional audit metrics. Polled by the dashboard at regular intervals to keep the UI current.",
+        "operationId": "getApiStatus",
+        "responses": {
+          "200": {
+            "description": "Aggregated server status",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/DashboardStatus" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/logs.html": {
+      "get": {
+        "tags": ["Control"],
+        "summary": "HTML log viewer",
+        "description": "Serves the embedded HTML log viewer page. Provides a browser-based UI for viewing captured console logs with filtering and search. The HTML is embedded into the Go binary at compile time via go:embed.",
+        "operationId": "getLogsHtml",
+        "responses": {
+          "200": {
+            "description": "HTML log viewer page",
+            "content": {
+              "text/html": {
+                "schema": { "type": "string" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/setup": {
+      "get": {
+        "tags": ["Control"],
+        "summary": "Setup page",
+        "description": "Serves the embedded setup page with installation instructions and configuration guidance. Provides step-by-step instructions for connecting the Chrome extension, configuring MCP clients, and verifying the setup. The HTML is embedded into the Go binary at compile time via go:embed.",
+        "operationId": "getSetup",
+        "responses": {
+          "200": {
+            "description": "HTML setup page",
+            "content": {
+              "text/html": {
+                "schema": { "type": "string" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/docs": {
+      "get": {
+        "tags": ["Control"],
+        "summary": "Documentation page",
+        "description": "Serves the embedded documentation page with API reference and usage guides. Renders the OpenAPI spec in a human-readable format with interactive examples. The HTML is embedded into the Go binary at compile time via go:embed.",
+        "operationId": "getDocs",
+        "responses": {
+          "200": {
+            "description": "HTML documentation page",
+            "content": {
+              "text/html": {
+                "schema": { "type": "string" }
+              }
+            }
+          }
+        }
+      }
+    },
     "/logs": {
       "post": {
         "tags": ["Data Ingest"],
-        "summary": "Add log entries",
-        "description": "Ingest console log entries from the browser extension.",
+        "summary": "Ingest log entries",
+        "description": "Ingests console log entries from the Chrome extension. The extension's content script intercepts console.log/warn/error calls and batches them for periodic submission. Entries are stored in a ring buffer (FIFO eviction) and read by MCP clients via observe(what: 'logs'). Each entry includes level, arguments, timestamp, and source URL.",
         "operationId": "postLogs",
+        "x-docs": {
+          "feature": "docs/features/feature/backend-log-ingestion/"
+        },
         "requestBody": {
           "required": true,
           "content": {
@@ -200,6 +288,7 @@
                 "properties": {
                   "entries": {
                     "type": "array",
+                    "description": "Array of console log entries to ingest",
                     "items": { "$ref": "#/components/schemas/LogEntry" }
                   }
                 },
@@ -210,17 +299,10 @@
         },
         "responses": {
           "200": {
-            "description": "Ingestion result",
+            "description": "Ingestion result with accepted/rejected counts",
             "content": {
               "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "received": { "type": "integer" },
-                    "rejected": { "type": "integer" },
-                    "entries": { "type": "integer" }
-                  }
-                }
+                "schema": { "$ref": "#/components/schemas/LogIngestResponse" }
               }
             }
           }
@@ -228,9 +310,12 @@
       },
       "delete": {
         "tags": ["Data Ingest"],
-        "summary": "Clear logs",
-        "description": "Clear all buffered log entries.",
+        "summary": "Clear log buffer",
+        "description": "Clears all buffered log entries from the ring buffer. Used to reset state between test runs or when the buffer contains stale data. Does not affect the on-disk log file.",
         "operationId": "deleteLogs",
+        "x-docs": {
+          "feature": "docs/features/feature/backend-log-ingestion/"
+        },
         "responses": {
           "200": {
             "description": "Logs cleared",
@@ -239,7 +324,7 @@
                 "schema": {
                   "type": "object",
                   "properties": {
-                    "cleared": { "type": "boolean", "example": true }
+                    "cleared": { "type": "boolean", "example": true, "description": "Always true on success" }
                   }
                 }
               }
@@ -251,10 +336,13 @@
     "/network-waterfall": {
       "post": {
         "tags": ["Data Ingest"],
-        "summary": "Record waterfall entries",
-        "description": "Record network waterfall entries from the browser extension.",
+        "summary": "Ingest waterfall entries",
+        "description": "Ingests network request waterfall entries (URL, status, timing) from the Chrome extension. The extension's network interceptor batches PerformanceResourceTiming entries and POSTs them periodically. Data is stored in a ring buffer (capacity 1000, FIFO eviction) and read by MCP clients via observe(what: 'network_waterfall'). Server-side analysis flags suspicious TLDs, non-standard ports, and mixed content.",
         "operationId": "postNetworkWaterfall",
         "security": [{ "extensionClient": [] }],
+        "x-docs": {
+          "doc": "docs/features/network-capture.md"
+        },
         "requestBody": {
           "required": true,
           "content": {
@@ -262,9 +350,10 @@
               "schema": {
                 "type": "object",
                 "properties": {
-                  "page_url": { "type": "string" },
+                  "page_url": { "type": "string", "description": "URL of the page that generated these network requests" },
                   "entries": {
                     "type": "array",
+                    "description": "Array of network waterfall timing entries",
                     "items": { "$ref": "#/components/schemas/WaterfallEntry" }
                   }
                 }
@@ -274,16 +363,10 @@
         },
         "responses": {
           "200": {
-            "description": "Recorded",
+            "description": "Waterfall entries recorded",
             "content": {
               "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "status": { "type": "string", "example": "ok" },
-                    "count": { "type": "integer" }
-                  }
-                }
+                "schema": { "$ref": "#/components/schemas/IngestResponse" }
               }
             }
           }
@@ -293,10 +376,14 @@
     "/network-bodies": {
       "post": {
         "tags": ["Data Ingest"],
-        "summary": "Record network bodies",
-        "description": "Record network request/response bodies from the browser extension.",
+        "summary": "Ingest network bodies",
+        "description": "Ingests network request and response bodies captured by the Chrome extension's fetch() interceptor. Bodies are stored in a ring buffer and paired with waterfall entries by URL. Binary response bodies are detected and labeled rather than stored. MCP clients read bodies via observe(what: 'network_bodies').",
         "operationId": "postNetworkBodies",
         "security": [{ "extensionClient": [] }],
+        "x-docs": {
+          "doc": "docs/features/network-capture.md",
+          "feature": "docs/features/feature/binary-format-detection/"
+        },
         "requestBody": {
           "required": true,
           "content": {
@@ -306,6 +393,7 @@
                 "properties": {
                   "bodies": {
                     "type": "array",
+                    "description": "Array of captured request/response body pairs",
                     "items": { "$ref": "#/components/schemas/NetworkBody" }
                   }
                 }
@@ -315,16 +403,10 @@
         },
         "responses": {
           "200": {
-            "description": "Recorded",
+            "description": "Bodies recorded",
             "content": {
               "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "status": { "type": "string", "example": "ok" },
-                    "count": { "type": "integer" }
-                  }
-                }
+                "schema": { "$ref": "#/components/schemas/IngestResponse" }
               }
             }
           }
@@ -334,8 +416,8 @@
     "/websocket-events": {
       "post": {
         "tags": ["Data Ingest"],
-        "summary": "Record WebSocket events",
-        "description": "Record WebSocket events from the browser extension.",
+        "summary": "Ingest WebSocket events",
+        "description": "Ingests WebSocket lifecycle and message events from the Chrome extension. Captures open, message (incoming/outgoing), close, and error events with connection IDs for correlation. High-throughput connections are automatically sampled to prevent buffer flooding. Data is read by MCP clients via observe(what: 'websocket_events').",
         "operationId": "postWebSocketEvents",
         "security": [{ "extensionClient": [] }],
         "requestBody": {
@@ -347,6 +429,7 @@
                 "properties": {
                   "events": {
                     "type": "array",
+                    "description": "Array of WebSocket events to record",
                     "items": { "$ref": "#/components/schemas/WebSocketEvent" }
                   }
                 }
@@ -356,7 +439,7 @@
         },
         "responses": {
           "200": {
-            "description": "Recorded"
+            "description": "Events recorded"
           }
         }
       }
@@ -365,7 +448,7 @@
       "get": {
         "tags": ["Data Read"],
         "summary": "Read telemetry buffers",
-        "description": "Unified read endpoint for all telemetry buffers. Replaces individual GET endpoints on /logs, /network-waterfall, /network-bodies, /websocket-events, /enhanced-actions, /performance-snapshots.",
+        "description": "Unified read endpoint for all telemetry buffers. Replaces individual GET endpoints on /logs, /network-waterfall, /network-bodies, /websocket-events, /enhanced-actions, /performance-snapshots. Returns the most recent N entries from the specified buffer type. This is the primary endpoint MCP clients use to read captured telemetry data.",
         "operationId": "getTelemetry",
         "parameters": [
           {
@@ -385,28 +468,21 @@
                 "websocket_status"
               ]
             },
-            "description": "Telemetry buffer to read"
+            "description": "Which telemetry buffer to read. Each maps to a ring buffer maintained by the capture subsystem."
           },
           {
             "name": "limit",
             "in": "query",
             "schema": { "type": "integer", "minimum": 1 },
-            "description": "Maximum entries to return (returns most recent N)"
+            "description": "Maximum entries to return. Returns the most recent N entries. Defaults to the full buffer if omitted."
           }
         ],
         "responses": {
           "200": {
-            "description": "Telemetry data",
+            "description": "Telemetry data from the requested buffer",
             "content": {
               "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "type": { "type": "string" },
-                    "items": { "type": "array" },
-                    "count": { "type": "integer" }
-                  }
-                }
+                "schema": { "$ref": "#/components/schemas/TelemetryResponse" }
               }
             }
           },
@@ -420,12 +496,12 @@
       "get": {
         "tags": ["Data Read"],
         "summary": "Get WebSocket connection status",
-        "description": "Returns active and recently-closed WebSocket connections with message rates and sampling info.",
+        "description": "Returns active and recently-closed WebSocket connections with message rates and sampling info. Used by MCP clients via observe(what: 'websocket_status') to understand which WebSocket connections are active on the page, their throughput, and whether sampling is being applied to high-volume connections.",
         "operationId": "getWebSocketStatus",
         "security": [{ "extensionClient": [] }],
         "responses": {
           "200": {
-            "description": "WebSocket status",
+            "description": "Active and closed WebSocket connections with throughput stats",
             "content": {
               "application/json": {
                 "schema": { "$ref": "#/components/schemas/WebSocketStatusResponse" }
@@ -438,8 +514,8 @@
     "/enhanced-actions": {
       "post": {
         "tags": ["Data Ingest"],
-        "summary": "Record user actions",
-        "description": "Record user actions from the browser extension.",
+        "summary": "Ingest user actions",
+        "description": "Ingests user interaction events (clicks, inputs, navigations, scrolls) from the Chrome extension. The extension's action tracker records DOM interactions with CSS selectors and values, enabling reproduction script generation and action replay. Data is stored in a ring buffer and read by MCP clients via observe(what: 'actions').",
         "operationId": "postEnhancedActions",
         "security": [{ "extensionClient": [] }],
         "requestBody": {
@@ -451,6 +527,7 @@
                 "properties": {
                   "actions": {
                     "type": "array",
+                    "description": "Array of user interaction events to record",
                     "items": { "$ref": "#/components/schemas/EnhancedAction" }
                   }
                 }
@@ -460,16 +537,10 @@
         },
         "responses": {
           "200": {
-            "description": "Recorded",
+            "description": "Actions recorded",
             "content": {
               "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "status": { "type": "string", "example": "ok" },
-                    "count": { "type": "integer" }
-                  }
-                }
+                "schema": { "$ref": "#/components/schemas/IngestResponse" }
               }
             }
           }
@@ -479,10 +550,13 @@
     "/performance-snapshots": {
       "post": {
         "tags": ["Data Ingest"],
-        "summary": "Record performance snapshots",
-        "description": "Record Web Vitals snapshots from the browser extension.",
+        "summary": "Ingest performance snapshots",
+        "description": "Ingests Web Vitals performance snapshots (FCP, LCP, CLS, TTFB) from the Chrome extension. The extension captures Core Web Vitals using the web-vitals library and submits them on page load and navigation events. MCP clients read snapshots via observe(what: 'vitals') and compare them over time to detect performance regressions.",
         "operationId": "postPerformanceSnapshots",
         "security": [{ "extensionClient": [] }],
+        "x-docs": {
+          "feature": "docs/features/feature/web-vitals/"
+        },
         "requestBody": {
           "required": true,
           "content": {
@@ -492,6 +566,7 @@
                 "properties": {
                   "snapshots": {
                     "type": "array",
+                    "description": "Array of Web Vitals snapshots to record",
                     "items": { "$ref": "#/components/schemas/PerformanceSnapshot" }
                   }
                 }
@@ -501,16 +576,10 @@
         },
         "responses": {
           "200": {
-            "description": "Recorded",
+            "description": "Snapshots recorded",
             "content": {
               "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "status": { "type": "string", "example": "ok" },
-                    "count": { "type": "integer" }
-                  }
-                }
+                "schema": { "$ref": "#/components/schemas/IngestResponse" }
               }
             }
           }
@@ -520,10 +589,13 @@
     "/query-result": {
       "post": {
         "tags": ["Data Results"],
-        "summary": "Submit query/command result",
-        "description": "Unified endpoint for extension to submit results of any query or async command. Replaces separate dom-result, a11y-result, state-result, execute-result, highlight-result endpoints.",
+        "summary": "Submit query result",
+        "description": "Unified endpoint for the extension to submit results of any async query or command. Replaces the legacy separate endpoints (dom-result, a11y-result, state-result, execute-result, highlight-result). The MCP server creates a PendingQuery, delivers it to the extension via /sync, and waits for the result to arrive here. The correlation_id links the result back to the original MCP tool call.",
         "operationId": "postQueryResult",
         "security": [{ "extensionClient": [] }],
+        "x-docs": {
+          "core": "docs/core/async-command-api.yaml"
+        },
         "requestBody": {
           "required": true,
           "content": {
@@ -534,7 +606,7 @@
         },
         "responses": {
           "200": {
-            "description": "Accepted",
+            "description": "Result accepted and matched to pending query",
             "content": {
               "application/json": {
                 "schema": { "$ref": "#/components/schemas/StatusOk" }
@@ -548,44 +620,28 @@
       "post": {
         "tags": ["Media"],
         "summary": "Save screenshot",
-        "description": "Save a screenshot JPEG from the browser extension. Rate limited to 1/second per client.",
+        "description": "Saves a screenshot JPEG from the Chrome extension. The extension captures the visible tab using chrome.tabs.captureVisibleTab() and sends the base64 data URL. Screenshots are saved to the gasoline data directory and can be linked to specific MCP tool invocations via correlation_id. Rate limited to 1 screenshot per second per client to prevent disk flooding.",
         "operationId": "postScreenshot",
         "security": [{ "extensionClient": [] }],
         "requestBody": {
           "required": true,
           "content": {
             "application/json": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "data_url": { "type": "string", "description": "Base64 data URL (data:image/jpeg;base64,...)" },
-                  "url": { "type": "string", "description": "Page URL" },
-                  "correlation_id": { "type": "string" },
-                  "query_id": { "type": "string", "description": "Pending query ID for on-demand flow" }
-                },
-                "required": ["data_url"]
-              }
+              "schema": { "$ref": "#/components/schemas/ScreenshotRequest" }
             }
           }
         },
         "responses": {
           "200": {
-            "description": "Screenshot saved",
+            "description": "Screenshot saved to disk",
             "content": {
               "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "filename": { "type": "string" },
-                    "path": { "type": "string" },
-                    "correlation_id": { "type": "string" }
-                  }
-                }
+                "schema": { "$ref": "#/components/schemas/ScreenshotSavedResponse" }
               }
             }
           },
           "429": {
-            "description": "Rate limited"
+            "description": "Rate limited — max 1 screenshot per second per client"
           }
         }
       }
@@ -594,9 +650,12 @@
       "post": {
         "tags": ["Media"],
         "summary": "Save video recording",
-        "description": "Save a tab video recording from the offscreen document. Accepts multipart form with video blob and metadata JSON.",
+        "description": "Saves a tab video recording from the Chrome extension's offscreen document. The extension uses chrome.tabCapture to record the visible tab as WebM video, optionally with audio (tab audio, microphone, or both). Accepts multipart form data with the video blob and a metadata JSON string. Recordings are saved to the gasoline data directory.",
         "operationId": "postRecordingSave",
         "security": [{ "extensionClient": [] }],
+        "x-docs": {
+          "feature": "docs/features/feature/tab-recording/"
+        },
         "requestBody": {
           "required": true,
           "content": {
@@ -604,9 +663,9 @@
               "schema": {
                 "type": "object",
                 "properties": {
-                  "video": { "type": "string", "format": "binary", "description": "WebM video file" },
-                  "metadata": { "type": "string", "description": "JSON string with VideoRecordingMetadata" },
-                  "query_id": { "type": "string", "description": "Pending query ID to resolve" }
+                  "video": { "type": "string", "format": "binary", "description": "WebM video file blob" },
+                  "metadata": { "type": "string", "description": "JSON string conforming to VideoRecordingMetadata schema" },
+                  "query_id": { "type": "string", "description": "Pending query ID to resolve when save completes" }
                 },
                 "required": ["video", "metadata"]
               }
@@ -615,18 +674,10 @@
         },
         "responses": {
           "200": {
-            "description": "Recording saved",
+            "description": "Recording saved to disk",
             "content": {
               "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "status": { "type": "string", "example": "saved" },
-                    "name": { "type": "string" },
-                    "path": { "type": "string" },
-                    "size": { "type": "integer", "format": "int64" }
-                  }
-                }
+                "schema": { "$ref": "#/components/schemas/RecordingSavedResponse" }
               }
             }
           }
@@ -637,12 +688,12 @@
       "get": {
         "tags": ["Management"],
         "summary": "List MCP clients",
-        "description": "List all registered MCP clients.",
+        "description": "Lists all registered MCP clients with their working directories and last activity timestamps. MCP clients register on first connection and are tracked for multi-client coordination. The extension uses this to show connected clients in its popup UI.",
         "operationId": "getClients",
         "security": [{ "extensionClient": [] }],
         "responses": {
           "200": {
-            "description": "Client list",
+            "description": "All registered clients",
             "content": {
               "application/json": {
                 "schema": {
@@ -650,9 +701,10 @@
                   "properties": {
                     "clients": {
                       "type": "array",
+                      "description": "Array of registered client records",
                       "items": { "$ref": "#/components/schemas/ClientRegistration" }
                     },
-                    "count": { "type": "integer" }
+                    "count": { "type": "integer", "description": "Total number of registered clients" }
                   }
                 }
               }
@@ -663,7 +715,7 @@
       "post": {
         "tags": ["Management"],
         "summary": "Register MCP client",
-        "description": "Register a new MCP client with a working directory.",
+        "description": "Registers a new MCP client with its working directory. Returns a client ID that should be included in subsequent requests via the X-Gasoline-Client header. Each client gets its own activity tracking and can be independently managed.",
         "operationId": "postClients",
         "security": [{ "extensionClient": [] }],
         "requestBody": {
@@ -673,7 +725,7 @@
               "schema": {
                 "type": "object",
                 "properties": {
-                  "cwd": { "type": "string", "description": "Client working directory" }
+                  "cwd": { "type": "string", "description": "Absolute path to the client's working directory" }
                 },
                 "required": ["cwd"]
               }
@@ -682,7 +734,7 @@
         },
         "responses": {
           "200": {
-            "description": "Client registered",
+            "description": "Client registered with generated ID",
             "content": {
               "application/json": {
                 "schema": {
@@ -700,8 +752,8 @@
     "/clients/{id}": {
       "get": {
         "tags": ["Management"],
-        "summary": "Get client",
-        "description": "Get a specific MCP client registration.",
+        "summary": "Get client details",
+        "description": "Returns the registration details for a specific MCP client by ID. Includes the client's working directory, creation time, and last activity timestamp.",
         "operationId": "getClient",
         "security": [{ "extensionClient": [] }],
         "parameters": [
@@ -709,12 +761,13 @@
             "name": "id",
             "in": "path",
             "required": true,
-            "schema": { "type": "string" }
+            "schema": { "type": "string" },
+            "description": "Client registration ID"
           }
         ],
         "responses": {
           "200": {
-            "description": "Client info",
+            "description": "Client registration details",
             "content": {
               "application/json": {
                 "schema": { "$ref": "#/components/schemas/ClientRegistration" }
@@ -722,14 +775,14 @@
             }
           },
           "404": {
-            "description": "Client not found"
+            "description": "Client ID not found in registry"
           }
         }
       },
       "delete": {
         "tags": ["Management"],
         "summary": "Unregister client",
-        "description": "Unregister an MCP client.",
+        "description": "Removes an MCP client from the registry. The client's pending queries are cancelled and its activity tracking is deleted. Used when an MCP client session ends cleanly.",
         "operationId": "deleteClient",
         "security": [{ "extensionClient": [] }],
         "parameters": [
@@ -737,7 +790,8 @@
             "name": "id",
             "in": "path",
             "required": true,
-            "schema": { "type": "string" }
+            "schema": { "type": "string" },
+            "description": "Client registration ID to remove"
           }
         ],
         "responses": {
@@ -748,7 +802,7 @@
                 "schema": {
                   "type": "object",
                   "properties": {
-                    "unregistered": { "type": "boolean", "example": true }
+                    "unregistered": { "type": "boolean", "example": true, "description": "Always true on success" }
                   }
                 }
               }
@@ -761,9 +815,12 @@
       "post": {
         "tags": ["Data Sync"],
         "summary": "Extension sync",
-        "description": "Unified bidirectional sync endpoint. Replaces separate polling for pending-queries, settings, extension-logs, and extension-status. The extension sends its state and receives commands in a single round-trip.",
+        "description": "Unified bidirectional sync endpoint between the server and Chrome extension. Replaces separate polling for pending-queries, settings, extension-logs, and extension-status. In a single round-trip, the extension sends its current state (settings, logs, command results) and receives pending commands, capture overrides, and timing for the next poll. This is the primary communication channel between server and extension.",
         "operationId": "postSync",
         "security": [{ "extensionClient": [] }],
+        "x-docs": {
+          "doc": "docs/features/sync-endpoint.md"
+        },
         "requestBody": {
           "required": true,
           "content": {
@@ -774,7 +831,7 @@
         },
         "responses": {
           "200": {
-            "description": "Sync response with commands",
+            "description": "Sync response with pending commands and server state",
             "content": {
               "application/json": {
                 "schema": { "$ref": "#/components/schemas/SyncResponse" }
@@ -788,25 +845,28 @@
       "get": {
         "tags": ["CI"],
         "summary": "Get capture snapshot",
-        "description": "Aggregated snapshot of all capture buffers for CI/testing. Supports filtering by timestamp and test ID.",
+        "description": "Returns an aggregated snapshot of all capture buffers for CI/testing integration. Includes logs, network bodies, WebSocket events, enhanced actions, and computed stats (error counts, warning counts, network failures). Supports filtering by timestamp (since parameter) and tagging with a test_id for correlation with test boundaries.",
         "operationId": "getSnapshot",
+        "x-docs": {
+          "feature": "docs/features/feature/ci-infrastructure/"
+        },
         "parameters": [
           {
             "name": "since",
             "in": "query",
             "schema": { "type": "string", "format": "date-time" },
-            "description": "Only include entries after this RFC3339Nano timestamp"
+            "description": "Only include entries after this RFC3339Nano timestamp. Used to get a delta since the last snapshot."
           },
           {
             "name": "test_id",
             "in": "query",
             "schema": { "type": "string" },
-            "description": "Label for the snapshot"
+            "description": "Label for the snapshot, typically matching an active test boundary."
           }
         ],
         "responses": {
           "200": {
-            "description": "Capture snapshot",
+            "description": "Aggregated capture snapshot with stats",
             "content": {
               "application/json": {
                 "schema": { "$ref": "#/components/schemas/SnapshotResponse" }
@@ -820,18 +880,21 @@
       "post": {
         "tags": ["CI"],
         "summary": "Clear all buffers",
-        "description": "Atomically reset all capture buffers (logs, network, WebSocket, actions).",
+        "description": "Atomically resets all capture buffers (logs, network waterfall, network bodies, WebSocket events, enhanced actions, performance snapshots). Returns the total number of entries removed. Used between test runs in CI pipelines to ensure clean state, and by the MCP configure(action: 'clear') tool.",
         "operationId": "postClear",
+        "x-docs": {
+          "feature": "docs/features/feature/ci-infrastructure/"
+        },
         "responses": {
           "200": {
-            "description": "Buffers cleared",
+            "description": "All buffers cleared",
             "content": {
               "application/json": {
                 "schema": {
                   "type": "object",
                   "properties": {
-                    "cleared": { "type": "boolean", "example": true },
-                    "entries_removed": { "type": "integer" }
+                    "cleared": { "type": "boolean", "example": true, "description": "Always true on success" },
+                    "entries_removed": { "type": "integer", "description": "Total entries removed across all buffers" }
                   }
                 }
               }
@@ -844,36 +907,25 @@
       "post": {
         "tags": ["CI"],
         "summary": "Mark test boundary",
-        "description": "Mark test start/end for correlation. Entries added while a test boundary is active are tagged with the test ID.",
+        "description": "Marks the start or end of a test for correlation. While a test boundary is active, all ingested telemetry entries are tagged with the test_id, enabling per-test filtering in snapshots. Used by CI pipelines and the MCP configure(action: 'test_boundary_start/end') tool to isolate telemetry to individual test cases.",
         "operationId": "postTestBoundary",
+        "x-docs": {
+          "feature": "docs/features/feature/ci-infrastructure/"
+        },
         "requestBody": {
           "required": true,
           "content": {
             "application/json": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "test_id": { "type": "string" },
-                  "action": { "type": "string", "enum": ["start", "end"] }
-                },
-                "required": ["test_id", "action"]
-              }
+              "schema": { "$ref": "#/components/schemas/TestBoundaryRequest" }
             }
           }
         },
         "responses": {
           "200": {
-            "description": "Boundary set",
+            "description": "Boundary set with server timestamp",
             "content": {
               "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "test_id": { "type": "string" },
-                    "action": { "type": "string" },
-                    "timestamp": { "type": "string", "format": "date-time" }
-                  }
-                }
+                "schema": { "$ref": "#/components/schemas/TestBoundaryResponse" }
               }
             }
           }
@@ -884,33 +936,17 @@
       "post": {
         "tags": ["Media"],
         "summary": "Complete draw mode session",
-        "description": "Receives annotation data and screenshot from the extension when the user finishes a draw mode session.",
+        "description": "Receives annotation data and a screenshot from the extension when the user finishes a draw mode session. The user draws rectangles on the page and types feedback, then presses Escape to complete. The extension captures the annotated screenshot, DOM element details for each annotation, and sends them here. Annotations are stored per-session and retrievable via analyze(what: 'annotations').",
         "operationId": "postDrawModeComplete",
         "security": [{ "extensionClient": [] }],
+        "x-docs": {
+          "feature": "docs/features/draw-mode/"
+        },
         "requestBody": {
           "required": true,
           "content": {
             "application/json": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "screenshot_data_url": { "type": "string", "description": "Base64 data URL of the screenshot" },
-                  "annotations": {
-                    "type": "array",
-                    "items": { "type": "object" },
-                    "description": "Annotation objects from the draw session"
-                  },
-                  "element_details": {
-                    "type": "object",
-                    "additionalProperties": { "type": "object" },
-                    "description": "Map of correlation_id to element detail objects"
-                  },
-                  "page_url": { "type": "string" },
-                  "tab_id": { "type": "integer" },
-                  "session_name": { "type": "string" }
-                },
-                "required": ["tab_id"]
-              }
+              "schema": { "$ref": "#/components/schemas/DrawModeCompleteRequest" }
             }
           }
         },
@@ -919,19 +955,7 @@
             "description": "Annotations stored",
             "content": {
               "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "status": { "type": "string", "example": "stored" },
-                    "annotation_count": { "type": "integer" },
-                    "screenshot": { "type": "string", "description": "Path to saved screenshot" },
-                    "warnings": {
-                      "type": "array",
-                      "items": { "type": "string" },
-                      "description": "Parse warnings for malformed annotations"
-                    }
-                  }
-                }
+                "schema": { "$ref": "#/components/schemas/DrawModeCompleteResponse" }
               }
             }
           }
@@ -942,12 +966,15 @@
       "get": {
         "tags": ["Media"],
         "summary": "Get recording storage info",
-        "description": "Returns storage usage information for saved recordings.",
+        "description": "Returns disk usage information for saved video recordings. Lists all recordings with their file sizes, durations, and paths. Used by MCP clients via observe(what: 'saved_videos') and the dashboard to display storage consumption.",
         "operationId": "getRecordingStorage",
         "security": [{ "extensionClient": [] }],
+        "x-docs": {
+          "feature": "docs/features/feature/tab-recording/"
+        },
         "responses": {
           "200": {
-            "description": "Storage info",
+            "description": "Recording storage usage and file list",
             "content": {
               "application/json": {
                 "schema": { "type": "object" }
@@ -959,32 +986,39 @@
       "delete": {
         "tags": ["Media"],
         "summary": "Delete recording",
-        "description": "Delete a specific recording by ID.",
+        "description": "Deletes a specific video recording by ID. Removes the WebM file from disk and updates the storage index. The recording_id corresponds to the name field in VideoRecordingMetadata.",
         "operationId": "deleteRecordingStorage",
         "security": [{ "extensionClient": [] }],
+        "x-docs": {
+          "feature": "docs/features/feature/tab-recording/"
+        },
         "parameters": [
           {
             "name": "recording_id",
             "in": "query",
             "required": true,
-            "schema": { "type": "string" }
+            "schema": { "type": "string" },
+            "description": "Recording name/ID to delete"
           }
         ],
         "responses": {
           "200": {
-            "description": "Recording deleted"
+            "description": "Recording file deleted from disk"
           }
         }
       },
       "post": {
         "tags": ["Media"],
         "summary": "Recalculate recording storage",
-        "description": "Recalculate storage usage for all saved recordings.",
+        "description": "Triggers a full recalculation of storage usage for all saved recordings. Walks the recordings directory, recomputes file sizes, and updates the storage index. Used after manual file operations or to recover from index drift.",
         "operationId": "postRecordingStorage",
         "security": [{ "extensionClient": [] }],
+        "x-docs": {
+          "feature": "docs/features/feature/tab-recording/"
+        },
         "responses": {
           "200": {
-            "description": "Storage recalculated"
+            "description": "Storage index recalculated"
           }
         }
       }
@@ -993,9 +1027,12 @@
       "post": {
         "tags": ["Media"],
         "summary": "Reveal recording in file manager",
-        "description": "Opens the recording file in the system file manager (Finder on macOS, Explorer on Windows).",
+        "description": "Opens the recording file location in the system file manager (Finder on macOS, Explorer on Windows, xdg-open on Linux). Used by MCP clients and the dashboard to let users access recorded video files directly.",
         "operationId": "postRecordingReveal",
         "security": [{ "extensionClient": [] }],
+        "x-docs": {
+          "feature": "docs/features/feature/tab-recording/"
+        },
         "requestBody": {
           "required": true,
           "content": {
@@ -1003,7 +1040,7 @@
               "schema": {
                 "type": "object",
                 "properties": {
-                  "path": { "type": "string", "description": "Path to the recording file" }
+                  "path": { "type": "string", "description": "Absolute path to the recording file to reveal" }
                 },
                 "required": ["path"]
               }
@@ -1012,14 +1049,14 @@
         },
         "responses": {
           "200": {
-            "description": "File revealed",
+            "description": "File revealed in system file manager",
             "content": {
               "application/json": {
                 "schema": {
                   "type": "object",
                   "properties": {
-                    "status": { "type": "string", "example": "revealed" },
-                    "path": { "type": "string" }
+                    "status": { "type": "string", "example": "revealed", "description": "Always 'revealed' on success" },
+                    "path": { "type": "string", "description": "Echo of the file path that was revealed" }
                   }
                 }
               }
@@ -1032,9 +1069,12 @@
       "post": {
         "tags": ["Automation"],
         "summary": "Read file for upload",
-        "description": "Read a local file for upload automation (Stage 1, always available).",
+        "description": "Reads a local file and returns its contents as base64 for upload automation (Stage 1). Always available without the --enable-os-upload-automation flag. Validates file existence, computes MIME type from extension, and enforces size limits. Used by the MCP interact(action: 'upload') tool as the first step in the multi-stage upload pipeline.",
         "operationId": "postFileRead",
         "security": [{ "extensionClient": [] }],
+        "x-docs": {
+          "feature": "docs/features/file-upload/"
+        },
         "requestBody": {
           "required": true,
           "content": {
@@ -1042,7 +1082,7 @@
               "schema": {
                 "type": "object",
                 "properties": {
-                  "file_path": { "type": "string" }
+                  "file_path": { "type": "string", "description": "Absolute path to the file to read" }
                 },
                 "required": ["file_path"]
               }
@@ -1051,20 +1091,10 @@
         },
         "responses": {
           "200": {
-            "description": "File data",
+            "description": "File data with base64 contents",
             "content": {
               "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "success": { "type": "boolean" },
-                    "file_name": { "type": "string" },
-                    "file_size": { "type": "integer", "format": "int64" },
-                    "mime_type": { "type": "string" },
-                    "data_base64": { "type": "string" },
-                    "error": { "type": "string" }
-                  }
-                }
+                "schema": { "$ref": "#/components/schemas/FileReadResponse" }
               }
             }
           }
@@ -1074,10 +1104,13 @@
     "/api/file/dialog/inject": {
       "post": {
         "tags": ["Automation"],
-        "summary": "Inject file dialog",
-        "description": "Inject a file path into a native file dialog (Stage 2, always available).",
+        "summary": "Inject file into dialog",
+        "description": "Injects a file path into a native file dialog using Chrome DevTools Protocol (Stage 2). Always available without the --enable-os-upload-automation flag. Intercepts the file chooser dialog opened by an <input type='file'> element and programmatically sets the file. Requires the browser PID to identify the correct Chrome instance.",
         "operationId": "postFileDialogInject",
         "security": [{ "extensionClient": [] }],
+        "x-docs": {
+          "feature": "docs/features/file-upload/"
+        },
         "requestBody": {
           "required": true,
           "content": {
@@ -1085,8 +1118,8 @@
               "schema": {
                 "type": "object",
                 "properties": {
-                  "file_path": { "type": "string" },
-                  "browser_pid": { "type": "integer" }
+                  "file_path": { "type": "string", "description": "Absolute path to the file to inject" },
+                  "browser_pid": { "type": "integer", "description": "Chrome browser process ID for DevTools connection" }
                 },
                 "required": ["file_path", "browser_pid"]
               }
@@ -1095,7 +1128,7 @@
         },
         "responses": {
           "200": {
-            "description": "Injection result",
+            "description": "File dialog injection result",
             "content": {
               "application/json": {
                 "schema": { "$ref": "#/components/schemas/UploadStageResponse" }
@@ -1109,35 +1142,23 @@
       "post": {
         "tags": ["Automation"],
         "summary": "Submit form with file",
-        "description": "Submit an HTML form with file upload via multipart (Stage 3, always available).",
+        "description": "Submits an HTML form with a file upload via server-side multipart POST (Stage 3). Always available without the --enable-os-upload-automation flag. Constructs a multipart/form-data request with the specified file and form fields, including optional CSRF token and cookies. Used when CDP file dialog injection (Stage 2) is not possible.",
         "operationId": "postFormSubmit",
         "security": [{ "extensionClient": [] }],
+        "x-docs": {
+          "feature": "docs/features/file-upload/"
+        },
         "requestBody": {
           "required": true,
           "content": {
             "application/json": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "form_action": { "type": "string" },
-                  "method": { "type": "string" },
-                  "fields": {
-                    "type": "object",
-                    "additionalProperties": { "type": "string" }
-                  },
-                  "file_input_name": { "type": "string" },
-                  "file_path": { "type": "string" },
-                  "csrf_token": { "type": "string" },
-                  "cookies": { "type": "string" }
-                },
-                "required": ["form_action", "file_input_name", "file_path"]
-              }
+              "schema": { "$ref": "#/components/schemas/FormSubmitRequest" }
             }
           }
         },
         "responses": {
           "200": {
-            "description": "Submission result",
+            "description": "Form submission result",
             "content": {
               "application/json": {
                 "schema": { "$ref": "#/components/schemas/UploadStageResponse" }
@@ -1150,10 +1171,13 @@
     "/api/os-automation/inject": {
       "post": {
         "tags": ["Automation"],
-        "summary": "OS-level file dialog automation",
-        "description": "Use OS automation (AppleScript/xdotool) to inject file path into native dialog. Requires --enable-os-upload-automation flag.",
+        "summary": "OS-level file dialog injection",
+        "description": "Uses OS-level automation (AppleScript on macOS, xdotool on Linux) to inject a file path into a native file dialog (Stage 4). Requires the --enable-os-upload-automation flag. This is the fallback stage when CDP injection (Stage 2) fails, typically for non-standard file dialogs. Supports retry logic for timing-sensitive dialog interactions.",
         "operationId": "postOSAutomationInject",
         "security": [{ "extensionClient": [] }],
+        "x-docs": {
+          "feature": "docs/features/file-upload/"
+        },
         "requestBody": {
           "required": true,
           "content": {
@@ -1161,9 +1185,9 @@
               "schema": {
                 "type": "object",
                 "properties": {
-                  "file_path": { "type": "string" },
-                  "browser_pid": { "type": "integer" },
-                  "retry_count": { "type": "integer" }
+                  "file_path": { "type": "string", "description": "Absolute path to the file to inject" },
+                  "browser_pid": { "type": "integer", "description": "Chrome browser process ID" },
+                  "retry_count": { "type": "integer", "description": "Number of retry attempts for dialog detection (default: 3)" }
                 },
                 "required": ["file_path", "browser_pid"]
               }
@@ -1172,7 +1196,7 @@
         },
         "responses": {
           "200": {
-            "description": "Automation result",
+            "description": "OS automation injection result",
             "content": {
               "application/json": {
                 "schema": { "$ref": "#/components/schemas/UploadStageResponse" }
@@ -1185,10 +1209,13 @@
     "/api/os-automation/dismiss": {
       "post": {
         "tags": ["Automation"],
-        "summary": "Dismiss dangling native file dialog",
-        "description": "Sends Escape key to close a dangling native file dialog after a failed upload automation (Stage 4 cleanup). Requires --enable-os-upload-automation flag.",
+        "summary": "Dismiss native file dialog",
+        "description": "Sends Escape key via OS automation to close a dangling native file dialog after a failed upload automation attempt (Stage 4 cleanup). Requires --enable-os-upload-automation flag. Prevents orphaned dialog windows from blocking the browser after upload failures.",
         "operationId": "postOSAutomationDismiss",
         "security": [{ "extensionClient": [] }],
+        "x-docs": {
+          "feature": "docs/features/file-upload/"
+        },
         "responses": {
           "200": {
             "description": "Dialog dismissed successfully",
@@ -1199,7 +1226,7 @@
             }
           },
           "403": {
-            "description": "OS automation is disabled",
+            "description": "OS automation is disabled (--enable-os-upload-automation flag not set)",
             "content": {
               "application/json": {
                 "schema": { "$ref": "#/components/schemas/UploadStageResponse" }
@@ -1222,191 +1249,430 @@
     "schemas": {
       "StatusOk": {
         "type": "object",
+        "description": "Standard success response returned by endpoints that have no meaningful payload. Contains a single 'ok' status field.",
         "properties": {
-          "status": { "type": "string", "example": "ok" }
+          "status": { "type": "string", "example": "ok", "description": "Always 'ok' on success" }
         }
+      },
+      "IngestResponse": {
+        "type": "object",
+        "description": "Standard response from telemetry ingestion endpoints (network-waterfall, network-bodies, enhanced-actions, performance-snapshots). Confirms the number of entries recorded into the ring buffer.",
+        "properties": {
+          "status": { "type": "string", "example": "ok", "description": "Always 'ok' on success" },
+          "count": { "type": "integer", "description": "Number of entries recorded" }
+        }
+      },
+      "DiscoveryResponse": {
+        "type": "object",
+        "description": "API discovery payload returned by GET /. Provides server identity and links to key endpoints for first-time client bootstrapping.",
+        "properties": {
+          "name": { "type": "string", "example": "gasoline", "description": "Server identifier" },
+          "version": { "type": "string", "example": "0.7.2", "description": "Server version string" },
+          "health": { "type": "string", "example": "/health", "description": "Link to health check endpoint" },
+          "logs": { "type": "string", "example": "/logs", "description": "Link to log ingestion endpoint" }
+        }
+      },
+      "LogIngestResponse": {
+        "type": "object",
+        "description": "Response from POST /logs with counts of received, rejected, and total buffered entries. Rejected entries are malformed or filtered by noise rules.",
+        "properties": {
+          "received": { "type": "integer", "description": "Number of entries received in the request" },
+          "rejected": { "type": "integer", "description": "Number of entries rejected (malformed or filtered)" },
+          "entries": { "type": "integer", "description": "Total entries now in the buffer" }
+        }
+      },
+      "TelemetryResponse": {
+        "type": "object",
+        "description": "Unified telemetry read response from GET /telemetry. Returns entries from the requested buffer type with a count. The items array shape depends on the type parameter.",
+        "properties": {
+          "type": { "type": "string", "description": "Echo of the requested buffer type" },
+          "items": { "type": "array", "description": "Array of telemetry entries (shape depends on type)" },
+          "count": { "type": "integer", "description": "Number of entries returned" }
+        }
+      },
+      "DashboardStatus": {
+        "type": "object",
+        "description": "Aggregated server status for the built-in dashboard UI. Polled at regular intervals to keep the dashboard current with server state, buffer fill levels, and extension connectivity.",
+        "properties": {
+          "version": { "type": "string", "description": "Server version string" },
+          "uptime_seconds": { "type": "integer", "description": "Seconds since server started" },
+          "pid": { "type": "integer", "description": "Server process ID" },
+          "platform": { "type": "string", "description": "OS and architecture (e.g. 'darwin/arm64')" },
+          "extension_connected": { "type": "boolean", "description": "Whether the Chrome extension WebSocket is active" },
+          "pilot_enabled": { "type": "boolean", "description": "Whether AI Web Pilot is enabled in the extension" },
+          "last_poll_at": { "type": "string", "format": "date-time", "description": "RFC3339 timestamp of the extension's last /sync poll" },
+          "buffers": {
+            "type": "object",
+            "description": "Ring buffer fill levels and capacities",
+            "properties": {
+              "console_entries": { "type": "integer", "description": "Current console log buffer entries" },
+              "console_capacity": { "type": "integer", "description": "Console log buffer max capacity" },
+              "network_entries": { "type": "integer", "description": "Current network body buffer entries" },
+              "network_capacity": { "type": "integer", "description": "Network body buffer max capacity" },
+              "websocket_entries": { "type": "integer", "description": "Current WebSocket event buffer entries" },
+              "websocket_capacity": { "type": "integer", "description": "WebSocket event buffer max capacity" },
+              "action_entries": { "type": "integer", "description": "Current user action buffer entries" },
+              "action_capacity": { "type": "integer", "description": "User action buffer max capacity" }
+            }
+          },
+          "recent_commands": {
+            "type": "array",
+            "items": { "type": "object" },
+            "description": "Recent MCP commands from the HTTP debug log"
+          },
+          "audit": {
+            "type": "object",
+            "description": "Tool health metrics and audit info (present when MCP handler is active)"
+          }
+        }
+      },
+      "ScreenshotRequest": {
+        "type": "object",
+        "description": "Screenshot upload request from the Chrome extension. Contains the base64 image data and optional correlation metadata for linking to MCP tool invocations.",
+        "properties": {
+          "data_url": { "type": "string", "description": "Base64 data URL (data:image/jpeg;base64,...)" },
+          "url": { "type": "string", "description": "Page URL where the screenshot was taken" },
+          "correlation_id": { "type": "string", "description": "Links this screenshot to an MCP tool invocation" },
+          "query_id": { "type": "string", "description": "Pending query ID for on-demand screenshot flow" }
+        },
+        "required": ["data_url"]
+      },
+      "ScreenshotSavedResponse": {
+        "type": "object",
+        "description": "Confirmation that a screenshot was saved to disk. Returns the generated filename and absolute path for the MCP client to reference.",
+        "properties": {
+          "filename": { "type": "string", "description": "Generated filename for the saved screenshot" },
+          "path": { "type": "string", "description": "Absolute file path where the screenshot was saved" },
+          "correlation_id": { "type": "string", "description": "Echo of the correlation_id if provided" }
+        }
+      },
+      "RecordingSavedResponse": {
+        "type": "object",
+        "description": "Confirmation that a video recording was saved to disk. Returns the recording name, path, and file size.",
+        "x-docs": {
+          "feature": "docs/features/feature/tab-recording/"
+        },
+        "properties": {
+          "status": { "type": "string", "example": "saved", "description": "Always 'saved' on success" },
+          "name": { "type": "string", "description": "Recording name from metadata" },
+          "path": { "type": "string", "description": "Absolute file path where the recording was saved" },
+          "size": { "type": "integer", "format": "int64", "description": "File size in bytes" }
+        }
+      },
+      "TestBoundaryRequest": {
+        "type": "object",
+        "description": "Request to start or end a test boundary for telemetry correlation. While active, all ingested entries are tagged with the test_id.",
+        "x-docs": {
+          "feature": "docs/features/feature/ci-infrastructure/"
+        },
+        "properties": {
+          "test_id": { "type": "string", "description": "Unique identifier for the test run" },
+          "action": { "type": "string", "enum": ["start", "end"], "description": "Whether to start or end the test boundary" }
+        },
+        "required": ["test_id", "action"]
+      },
+      "TestBoundaryResponse": {
+        "type": "object",
+        "description": "Confirmation that a test boundary was set, with the server timestamp for synchronization.",
+        "x-docs": {
+          "feature": "docs/features/feature/ci-infrastructure/"
+        },
+        "properties": {
+          "test_id": { "type": "string", "description": "Echo of the test_id" },
+          "action": { "type": "string", "description": "Echo of the action (start/end)" },
+          "timestamp": { "type": "string", "format": "date-time", "description": "Server timestamp when the boundary was set" }
+        }
+      },
+      "DrawModeCompleteRequest": {
+        "type": "object",
+        "description": "Annotation data from a completed draw mode session. Contains the annotated screenshot, rectangle annotations with user feedback, and computed DOM element details for each annotated region.",
+        "x-docs": {
+          "feature": "docs/features/draw-mode/"
+        },
+        "properties": {
+          "screenshot_data_url": { "type": "string", "description": "Base64 data URL of the annotated screenshot" },
+          "annotations": {
+            "type": "array",
+            "items": { "type": "object" },
+            "description": "Annotation rectangles with user-typed feedback text"
+          },
+          "element_details": {
+            "type": "object",
+            "additionalProperties": { "type": "object" },
+            "description": "Map of annotation correlation_id to computed DOM element details (tag, classes, styles, dimensions)"
+          },
+          "page_url": { "type": "string", "description": "URL of the page where annotations were drawn" },
+          "tab_id": { "type": "integer", "description": "Chrome tab ID where draw mode was active" },
+          "session_name": { "type": "string", "description": "Named session for multi-page annotation accumulation" }
+        },
+        "required": ["tab_id"]
+      },
+      "DrawModeCompleteResponse": {
+        "type": "object",
+        "description": "Confirmation that draw mode annotations were stored. Includes the screenshot save path and any parse warnings for malformed annotations.",
+        "x-docs": {
+          "feature": "docs/features/draw-mode/"
+        },
+        "properties": {
+          "status": { "type": "string", "example": "stored", "description": "Always 'stored' on success" },
+          "annotation_count": { "type": "integer", "description": "Number of annotations received" },
+          "screenshot": { "type": "string", "description": "File path where the annotated screenshot was saved" },
+          "warnings": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "Parse warnings for malformed or skipped annotations"
+          }
+        }
+      },
+      "FileReadResponse": {
+        "type": "object",
+        "description": "Result of reading a local file for upload automation (Stage 1). Contains the file's base64 contents, detected MIME type, and size. On failure, success is false and error contains the reason.",
+        "x-docs": {
+          "feature": "docs/features/file-upload/"
+        },
+        "properties": {
+          "success": { "type": "boolean", "description": "Whether the file was read successfully" },
+          "file_name": { "type": "string", "description": "Base name of the file" },
+          "file_size": { "type": "integer", "format": "int64", "description": "File size in bytes" },
+          "mime_type": { "type": "string", "description": "Detected MIME type based on file extension" },
+          "data_base64": { "type": "string", "description": "Base64-encoded file contents" },
+          "error": { "type": "string", "description": "Error message if success is false" }
+        }
+      },
+      "FormSubmitRequest": {
+        "type": "object",
+        "description": "Request to submit an HTML form with a file upload via server-side multipart POST (Stage 3). Includes the form action URL, file details, and optional authentication fields.",
+        "x-docs": {
+          "feature": "docs/features/file-upload/"
+        },
+        "properties": {
+          "form_action": { "type": "string", "description": "URL to submit the form to (action attribute)" },
+          "method": { "type": "string", "description": "HTTP method (defaults to POST)" },
+          "fields": {
+            "type": "object",
+            "additionalProperties": { "type": "string" },
+            "description": "Key-value pairs for non-file form fields"
+          },
+          "file_input_name": { "type": "string", "description": "Name attribute of the file input field" },
+          "file_path": { "type": "string", "description": "Absolute path to the file to upload" },
+          "csrf_token": { "type": "string", "description": "CSRF token value to include in the form submission" },
+          "cookies": { "type": "string", "description": "Cookie header string for authenticated submissions" }
+        },
+        "required": ["form_action", "file_input_name", "file_path"]
       },
       "HealthResponse": {
         "type": "object",
+        "description": "Server health status returned by GET /health. Provides version info, log buffer stats, and capture subsystem availability. Used by MCP clients to verify server readiness and extension connectivity.",
         "properties": {
-          "status": { "type": "string", "example": "ok" },
-          "version": { "type": "string" },
-          "available_version": { "type": "string" },
+          "status": { "type": "string", "example": "ok", "description": "Server status ('ok' when healthy)" },
+          "version": { "type": "string", "description": "Server version string" },
+          "available_version": { "type": "string", "description": "Latest available version from npm registry (if version check is enabled)" },
           "logs": {
             "type": "object",
+            "description": "Console log buffer statistics",
             "properties": {
-              "entries": { "type": "integer" },
-              "max_entries": { "type": "integer" },
-              "log_file": { "type": "string" },
-              "log_file_size": { "type": "integer", "format": "int64" },
+              "entries": { "type": "integer", "description": "Current number of log entries in the ring buffer" },
+              "max_entries": { "type": "integer", "description": "Maximum ring buffer capacity" },
+              "log_file": { "type": "string", "description": "Path to the on-disk log file" },
+              "log_file_size": { "type": "integer", "format": "int64", "description": "Size of the on-disk log file in bytes" },
               "dropped_count": {
                 "type": "integer",
                 "format": "int64",
-                "description": "Total log entries dropped due to buffer overflow"
+                "description": "Total log entries dropped due to buffer overflow (FIFO eviction)"
               }
             }
           },
           "capture": {
             "type": "object",
+            "description": "Capture subsystem availability",
             "properties": {
-              "available": { "type": "boolean" },
-              "pilot_enabled": { "type": "boolean" }
+              "available": { "type": "boolean", "description": "Whether the Chrome extension WebSocket connection is active" },
+              "pilot_enabled": { "type": "boolean", "description": "Whether AI Web Pilot is enabled in the extension settings" }
             }
           }
         }
       },
       "DiagnosticsResponse": {
         "type": "object",
+        "description": "Comprehensive diagnostic report for bug reports and troubleshooting. Includes system info, buffer fill levels, and extension state. Designed to be copy-pasted into GitHub issues.",
         "properties": {
-          "generated_at": { "type": "string", "format": "date-time" },
-          "version": { "type": "string" },
-          "uptime_seconds": { "type": "integer" },
+          "generated_at": { "type": "string", "format": "date-time", "description": "Timestamp when this diagnostic report was generated" },
+          "version": { "type": "string", "description": "Server version string" },
+          "uptime_seconds": { "type": "integer", "description": "Seconds since server started" },
           "system": {
             "type": "object",
+            "description": "Host system information",
             "properties": {
-              "os": { "type": "string" },
-              "arch": { "type": "string" },
-              "go_version": { "type": "string" },
-              "goroutines": { "type": "integer" }
+              "os": { "type": "string", "description": "Operating system (e.g. 'darwin', 'linux', 'windows')" },
+              "arch": { "type": "string", "description": "CPU architecture (e.g. 'arm64', 'amd64')" },
+              "go_version": { "type": "string", "description": "Go runtime version used to build the server" },
+              "goroutines": { "type": "integer", "description": "Number of active goroutines" }
             }
           },
           "logs": {
             "type": "object",
+            "description": "Console log buffer status",
             "properties": {
-              "entries": { "type": "integer" },
-              "max_entries": { "type": "integer" },
-              "log_file": { "type": "string" }
+              "entries": { "type": "integer", "description": "Current entries in the log ring buffer" },
+              "max_entries": { "type": "integer", "description": "Maximum log ring buffer capacity" },
+              "log_file": { "type": "string", "description": "Path to the on-disk log file" }
             }
           },
           "buffers": {
             "type": "object",
+            "description": "Fill levels for all capture ring buffers",
             "properties": {
-              "websocket_events": { "type": "integer" },
-              "network_bodies": { "type": "integer" },
-              "actions": { "type": "integer" },
-              "pending_queries": { "type": "integer" },
-              "query_results": { "type": "integer" }
+              "websocket_events": { "type": "integer", "description": "Current WebSocket event buffer entries" },
+              "network_bodies": { "type": "integer", "description": "Current network body buffer entries" },
+              "actions": { "type": "integer", "description": "Current user action buffer entries" },
+              "pending_queries": { "type": "integer", "description": "Number of queries awaiting extension response" },
+              "query_results": { "type": "integer", "description": "Number of undelivered query results" }
             }
           }
         }
       },
       "JsonRpcRequest": {
         "type": "object",
+        "description": "JSON-RPC 2.0 request envelope for the /mcp HTTP bridge. Wraps MCP tool calls (observe, generate, configure, interact, analyze) for HTTP transport.",
         "required": ["jsonrpc", "method"],
         "properties": {
-          "jsonrpc": { "type": "string", "enum": ["2.0"] },
-          "id": { "oneOf": [{ "type": "string" }, { "type": "integer" }] },
-          "method": { "type": "string", "enum": ["observe", "generate", "configure", "interact", "analyze"] },
-          "params": { "type": "object" }
+          "jsonrpc": { "type": "string", "enum": ["2.0"], "description": "JSON-RPC protocol version (must be '2.0')" },
+          "id": { "oneOf": [{ "type": "string" }, { "type": "integer" }], "description": "Request ID for response correlation" },
+          "method": { "type": "string", "enum": ["observe", "generate", "configure", "interact", "analyze"], "description": "MCP tool name to invoke" },
+          "params": { "type": "object", "description": "Tool-specific parameters (same as MCP tool input schema)" }
         }
       },
       "JsonRpcResponse": {
         "type": "object",
+        "description": "JSON-RPC 2.0 response envelope from the /mcp HTTP bridge. Contains either a result object or an error object, never both.",
         "properties": {
-          "jsonrpc": { "type": "string", "enum": ["2.0"] },
-          "id": { "oneOf": [{ "type": "string" }, { "type": "integer" }] },
-          "result": { "type": "object" },
+          "jsonrpc": { "type": "string", "enum": ["2.0"], "description": "JSON-RPC protocol version (always '2.0')" },
+          "id": { "oneOf": [{ "type": "string" }, { "type": "integer" }], "description": "Echo of the request ID" },
+          "result": { "type": "object", "description": "Tool result on success (absent on error)" },
           "error": {
             "type": "object",
+            "description": "Error details on failure (absent on success)",
             "properties": {
-              "code": { "type": "integer" },
-              "message": { "type": "string" }
+              "code": { "type": "integer", "description": "JSON-RPC error code (-32600 to -32603 for protocol errors)" },
+              "message": { "type": "string", "description": "Human-readable error message" }
             }
           }
         }
       },
       "LogEntry": {
         "type": "object",
-        "description": "Console log entry. Arbitrary key-value pairs; level is required.",
+        "description": "Console log entry captured from the browser. Represents a single console.log/warn/error/info/debug call with its arguments and metadata.",
         "properties": {
-          "level": { "type": "string", "enum": ["error", "warn", "info", "debug", "log"] },
-          "args": { "description": "Log arguments" },
-          "ts": { "type": "string", "format": "date-time" },
-          "url": { "type": "string" }
+          "level": { "type": "string", "enum": ["error", "warn", "info", "debug", "log"], "description": "Console log level" },
+          "args": { "description": "Serialized console arguments (strings, objects, arrays)" },
+          "ts": { "type": "string", "format": "date-time", "description": "Timestamp when the log was captured in the browser" },
+          "url": { "type": "string", "description": "Page URL where the console call originated" }
         },
         "required": ["level"]
       },
       "WaterfallEntry": {
         "type": "object",
-        "description": "Network request with PerformanceResourceTiming data.",
+        "description": "Network request timing entry derived from PerformanceResourceTiming. Captures URL, HTTP status, and duration for waterfall visualization and performance analysis.",
+        "x-docs": {
+          "doc": "docs/features/network-capture.md"
+        },
         "properties": {
-          "url": { "type": "string" },
-          "status": { "type": "integer" },
-          "statusText": { "type": "string" },
-          "timing": { "type": "number", "description": "Duration in milliseconds" }
+          "url": { "type": "string", "description": "Request URL" },
+          "status": { "type": "integer", "description": "HTTP response status code" },
+          "statusText": { "type": "string", "description": "HTTP response status text" },
+          "timing": { "type": "number", "description": "Total request duration in milliseconds" }
         }
       },
       "NetworkBody": {
         "type": "object",
+        "description": "Captured request and response body pair from a fetch() call. The extension intercepts fetch requests and clones response bodies for inspection. Binary content is detected and labeled rather than stored in full.",
+        "x-docs": {
+          "doc": "docs/features/network-capture.md",
+          "feature": "docs/features/feature/binary-format-detection/"
+        },
         "properties": {
-          "url": { "type": "string" },
-          "method": { "type": "string" },
-          "status": { "type": "integer" },
-          "request_body": { "type": "string" },
-          "response_body": { "type": "string" }
+          "url": { "type": "string", "description": "Request URL" },
+          "method": { "type": "string", "description": "HTTP method (GET, POST, PUT, etc.)" },
+          "status": { "type": "integer", "description": "HTTP response status code" },
+          "request_body": { "type": "string", "description": "Serialized request body (JSON stringified for objects)" },
+          "response_body": { "type": "string", "description": "Serialized response body (truncated if over size limit, labeled if binary)" }
         }
       },
       "WebSocketEvent": {
         "type": "object",
+        "description": "WebSocket lifecycle or message event. Captures connection open/close, incoming/outgoing messages, and errors. Events are grouped by connection ID for correlation.",
         "properties": {
-          "id": { "type": "string", "description": "Connection ID" },
-          "url": { "type": "string" },
-          "event": { "type": "string", "enum": ["open", "message", "close", "error"] },
-          "direction": { "type": "string", "enum": ["incoming", "outgoing"] },
-          "data": { "type": "string" },
-          "timestamp": { "type": "string", "format": "date-time" },
-          "size": { "type": "integer" }
+          "id": { "type": "string", "description": "Connection ID — stable across all events for a single WebSocket connection" },
+          "url": { "type": "string", "description": "WebSocket URL (ws:// or wss://)" },
+          "event": { "type": "string", "enum": ["open", "message", "close", "error"], "description": "Event type" },
+          "direction": { "type": "string", "enum": ["incoming", "outgoing"], "description": "Message direction (only present for 'message' events)" },
+          "data": { "type": "string", "description": "Message payload (truncated if over size limit)" },
+          "timestamp": { "type": "string", "format": "date-time", "description": "Event timestamp" },
+          "size": { "type": "integer", "description": "Message payload size in bytes" }
         }
       },
       "WebSocketStatusResponse": {
         "type": "object",
+        "description": "Overview of active and recently-closed WebSocket connections. Includes message rates and sampling info for each connection, used to identify high-throughput connections and sampling behavior.",
         "properties": {
           "connections": {
             "type": "array",
+            "description": "Currently active WebSocket connections",
             "items": {
               "type": "object",
               "properties": {
-                "id": { "type": "string" },
-                "url": { "type": "string" },
-                "state": { "type": "string" },
-                "opened_at": { "type": "string", "format": "date-time" },
-                "duration": { "type": "string" },
-                "message_rate": { "type": "object" },
-                "sampling": { "type": "object" }
+                "id": { "type": "string", "description": "Connection ID" },
+                "url": { "type": "string", "description": "WebSocket URL" },
+                "state": { "type": "string", "description": "Connection state (e.g. 'open')" },
+                "opened_at": { "type": "string", "format": "date-time", "description": "When the connection was opened" },
+                "duration": { "type": "string", "description": "Human-readable connection duration" },
+                "message_rate": { "type": "object", "description": "Messages per second statistics" },
+                "sampling": { "type": "object", "description": "Sampling configuration if applied to this connection" }
               }
             }
           },
           "closed": {
             "type": "array",
+            "description": "Recently closed WebSocket connections (kept for short-term history)",
             "items": { "type": "object" }
           }
         }
       },
       "EnhancedAction": {
         "type": "object",
+        "description": "User interaction event captured from the browser. Records clicks, inputs, navigations, and scrolls with CSS selectors for reproduction script generation and action replay.",
         "properties": {
-          "action": { "type": "string" },
-          "selector": { "type": "string" },
-          "value": { "type": "string" },
-          "timestamp": { "type": "string", "format": "date-time" }
+          "action": { "type": "string", "description": "Action type (e.g. 'click', 'input', 'navigate', 'scroll')" },
+          "selector": { "type": "string", "description": "CSS selector for the target DOM element" },
+          "value": { "type": "string", "description": "Value associated with the action (input text, scroll position, URL)" },
+          "timestamp": { "type": "string", "format": "date-time", "description": "When the action occurred" }
         }
       },
       "PerformanceSnapshot": {
         "type": "object",
+        "description": "Core Web Vitals performance snapshot captured from the browser. Contains FCP, LCP, CLS, and TTFB metrics measured by the web-vitals library on page load and navigation events.",
+        "x-docs": {
+          "feature": "docs/features/feature/web-vitals/"
+        },
         "properties": {
-          "timestamp": { "type": "string", "format": "date-time" },
-          "fcp": { "type": "number", "description": "First Contentful Paint (ms)" },
-          "lcp": { "type": "number", "description": "Largest Contentful Paint (ms)" },
-          "cls": { "type": "number", "description": "Cumulative Layout Shift" },
-          "ttfb": { "type": "number", "description": "Time to First Byte (ms)" }
+          "timestamp": { "type": "string", "format": "date-time", "description": "When the snapshot was captured" },
+          "fcp": { "type": "number", "description": "First Contentful Paint in milliseconds" },
+          "lcp": { "type": "number", "description": "Largest Contentful Paint in milliseconds" },
+          "cls": { "type": "number", "description": "Cumulative Layout Shift score (unitless, lower is better)" },
+          "ttfb": { "type": "number", "description": "Time to First Byte in milliseconds" }
         }
       },
       "PendingQuery": {
         "type": "object",
+        "description": "A command queued for execution by the Chrome extension. Created by MCP tool handlers and delivered to the extension via the /sync endpoint. The extension executes the command and returns results via /query-result or the sync response's command_results field.",
+        "x-docs": {
+          "core": "docs/core/async-command-api.yaml"
+        },
         "properties": {
-          "id": { "type": "string" },
+          "id": { "type": "string", "description": "Unique query ID for matching results to requests" },
           "type": {
             "type": "string",
+            "description": "Command type that determines which extension handler processes this query",
             "enum": [
               "dom",
               "a11y",
@@ -1428,71 +1694,86 @@
               "state_delete"
             ]
           },
-          "params": { "type": "object" },
-          "correlation_id": { "type": "string" }
+          "params": { "type": "object", "description": "Command-specific parameters passed to the extension handler" },
+          "correlation_id": { "type": "string", "description": "Links this query to the originating MCP tool call for result routing" }
         }
       },
       "QueryResult": {
         "type": "object",
+        "description": "Legacy query result format. Used internally when processing results from the extension. Newer code uses AsyncCommandResult or SyncCommandResult instead.",
         "properties": {
-          "id": { "type": "string", "description": "Query ID" },
-          "result": { "description": "Query result data" },
-          "client_id": { "type": "string" }
+          "id": { "type": "string", "description": "Query ID matching the original PendingQuery" },
+          "result": { "description": "Query result data (shape depends on query type)" },
+          "client_id": { "type": "string", "description": "ID of the extension client that produced this result" }
         },
         "required": ["id"]
       },
       "AsyncCommandResult": {
         "type": "object",
+        "description": "Result of an async command submitted by the extension via POST /query-result. Contains either a successful result or an error. The id field matches the original PendingQuery, and correlation_id links back to the MCP tool invocation.",
+        "x-docs": {
+          "core": "docs/core/async-command-api.yaml"
+        },
         "properties": {
-          "id": { "type": "string" },
-          "correlation_id": { "type": "string" },
-          "status": { "type": "string", "enum": ["complete", "error", "timeout"] },
-          "result": { "description": "Command result data" },
-          "error": { "type": "string" },
-          "client_id": { "type": "string" }
+          "id": { "type": "string", "description": "Query ID matching the original PendingQuery" },
+          "correlation_id": { "type": "string", "description": "Links back to the originating MCP tool call" },
+          "status": { "type": "string", "enum": ["complete", "error", "timeout"], "description": "Execution outcome" },
+          "result": { "description": "Command result data on success (shape depends on command type)" },
+          "error": { "type": "string", "description": "Error message when status is 'error'" },
+          "client_id": { "type": "string", "description": "ID of the extension client that executed this command" }
         }
       },
       "VideoRecordingMetadata": {
         "type": "object",
+        "description": "Metadata for a saved video recording. Accompanies the WebM video file in the multipart upload to /recordings/save. Describes the recording's source, format, duration, and audio configuration.",
+        "x-docs": {
+          "feature": "docs/features/feature/tab-recording/"
+        },
         "properties": {
-          "name": { "type": "string" },
-          "display_name": { "type": "string" },
-          "created_at": { "type": "string", "format": "date-time" },
-          "duration_seconds": { "type": "integer" },
-          "size_bytes": { "type": "integer", "format": "int64" },
-          "url": { "type": "string" },
-          "tab_id": { "type": "integer" },
-          "resolution": { "type": "string", "example": "1920x1080" },
-          "format": { "type": "string" },
-          "fps": { "type": "integer" },
-          "has_audio": { "type": "boolean" },
-          "audio_mode": { "type": "string", "enum": ["tab", "mic", "both"] },
-          "truncated": { "type": "boolean" }
+          "name": { "type": "string", "description": "Unique recording identifier used as the filename stem" },
+          "display_name": { "type": "string", "description": "Human-readable recording name shown in UI" },
+          "created_at": { "type": "string", "format": "date-time", "description": "When the recording was started" },
+          "duration_seconds": { "type": "integer", "description": "Recording duration in seconds" },
+          "size_bytes": { "type": "integer", "format": "int64", "description": "Video file size in bytes" },
+          "url": { "type": "string", "description": "Page URL that was being recorded" },
+          "tab_id": { "type": "integer", "description": "Chrome tab ID that was recorded" },
+          "resolution": { "type": "string", "example": "1920x1080", "description": "Video resolution as WxH" },
+          "format": { "type": "string", "description": "Video format (e.g. 'webm')" },
+          "fps": { "type": "integer", "description": "Frames per second" },
+          "has_audio": { "type": "boolean", "description": "Whether the recording includes audio" },
+          "audio_mode": { "type": "string", "enum": ["tab", "mic", "both"], "description": "Audio source: tab audio, microphone, or both" },
+          "truncated": { "type": "boolean", "description": "Whether the recording was truncated due to size or duration limits" }
         },
         "required": ["name"]
       },
       "ClientRegistration": {
         "type": "object",
+        "description": "MCP client registration record. Created when an MCP client connects and registers via POST /clients. Tracks the client's working directory and activity for multi-client coordination.",
         "properties": {
-          "id": { "type": "string" },
-          "cwd": { "type": "string" },
-          "created_at": { "type": "string", "format": "date-time" },
-          "last_activity": { "type": "string", "format": "date-time" }
+          "id": { "type": "string", "description": "Auto-generated unique client ID" },
+          "cwd": { "type": "string", "description": "Client's working directory (absolute path)" },
+          "created_at": { "type": "string", "format": "date-time", "description": "When the client was first registered" },
+          "last_activity": { "type": "string", "format": "date-time", "description": "Timestamp of the client's most recent API call" }
         }
       },
       "SyncRequest": {
         "type": "object",
+        "description": "Extension-to-server sync payload. The Chrome extension sends its current state on each poll interval. Contains settings, internal logs, and results from async commands. This is the upstream half of the bidirectional sync protocol.",
+        "x-docs": {
+          "doc": "docs/features/sync-endpoint.md"
+        },
         "properties": {
-          "session_id": { "type": "string" },
-          "extension_version": { "type": "string" },
+          "session_id": { "type": "string", "description": "Extension session identifier for reconnection tracking" },
+          "extension_version": { "type": "string", "description": "Chrome extension version string" },
           "settings": {
             "type": "object",
+            "description": "Current extension settings and tracking state",
             "properties": {
-              "pilot_enabled": { "type": "boolean" },
-              "tracking_enabled": { "type": "boolean" },
-              "tracked_tab_id": { "type": "integer" },
-              "tracked_tab_url": { "type": "string" },
-              "tracked_tab_title": { "type": "string" },
+              "pilot_enabled": { "type": "boolean", "description": "Whether AI Web Pilot is enabled" },
+              "tracking_enabled": { "type": "boolean", "description": "Whether the extension is actively tracking a tab" },
+              "tracked_tab_id": { "type": "integer", "description": "Chrome tab ID being tracked (0 if none)" },
+              "tracked_tab_url": { "type": "string", "description": "URL of the tracked tab" },
+              "tracked_tab_title": { "type": "string", "description": "Title of the tracked tab" },
               "capture_logs": { "type": "boolean", "description": "Whether console log capture is enabled" },
               "capture_network": { "type": "boolean", "description": "Whether network capture is enabled" },
               "capture_websocket": { "type": "boolean", "description": "Whether WebSocket capture is enabled" },
@@ -1501,114 +1782,137 @@
           },
           "last_command_ack": {
             "type": "string",
-            "description": "ID of the last command acknowledged by the extension"
+            "description": "ID of the last command acknowledged by the extension (for delivery tracking)"
           },
           "extension_logs": {
             "type": "array",
+            "description": "Internal extension debug logs for server-side troubleshooting",
             "items": {
               "type": "object",
               "properties": {
-                "timestamp": { "type": "string", "format": "date-time" },
-                "level": { "type": "string" },
-                "message": { "type": "string" },
-                "context": { "type": "string" }
+                "timestamp": { "type": "string", "format": "date-time", "description": "When the log was emitted" },
+                "level": { "type": "string", "description": "Log level (info, warn, error)" },
+                "message": { "type": "string", "description": "Log message text" },
+                "context": { "type": "string", "description": "Source context (e.g. 'background', 'content-script')" }
               }
             }
           },
           "command_results": {
             "type": "array",
             "items": { "$ref": "#/components/schemas/SyncCommandResult" },
-            "description": "Results from async commands the extension has executed"
+            "description": "Results from async commands the extension has executed since last sync"
           }
         }
       },
       "SyncResponse": {
         "type": "object",
+        "description": "Server-to-extension sync response. Delivers pending commands, capture overrides, and timing for the next poll. This is the downstream half of the bidirectional sync protocol.",
+        "x-docs": {
+          "doc": "docs/features/sync-endpoint.md"
+        },
         "properties": {
-          "ack": { "type": "boolean" },
+          "ack": { "type": "boolean", "description": "Acknowledgement that the sync request was processed" },
           "commands": {
             "type": "array",
+            "description": "Pending commands for the extension to execute (DOM queries, screenshots, browser actions)",
             "items": { "$ref": "#/components/schemas/PendingQuery" }
           },
-          "next_poll_ms": { "type": "integer" },
-          "server_time": { "type": "string", "format": "date-time" },
-          "server_version": { "type": "string" },
-          "capture_overrides": { "type": "object" }
+          "next_poll_ms": { "type": "integer", "description": "Suggested delay before next sync poll in milliseconds (adaptive based on activity)" },
+          "server_time": { "type": "string", "format": "date-time", "description": "Server timestamp for clock synchronization" },
+          "server_version": { "type": "string", "description": "Server version string for compatibility checks" },
+          "capture_overrides": { "type": "object", "description": "Server-side overrides for extension capture settings" }
         }
       },
       "SnapshotResponse": {
         "type": "object",
+        "description": "Aggregated capture snapshot for CI/testing integration. Contains all telemetry data across buffers with computed statistics. Used by test frameworks to assert on browser behavior during test runs.",
+        "x-docs": {
+          "feature": "docs/features/feature/ci-infrastructure/"
+        },
         "properties": {
-          "timestamp": { "type": "string", "format": "date-time" },
-          "test_id": { "type": "string" },
+          "timestamp": { "type": "string", "format": "date-time", "description": "When the snapshot was generated" },
+          "test_id": { "type": "string", "description": "Test boundary label if provided in the request" },
           "logs": {
             "type": "array",
+            "description": "Console log entries captured during the snapshot window",
             "items": { "$ref": "#/components/schemas/LogEntry" }
           },
           "websocket_events": {
             "type": "array",
+            "description": "WebSocket events captured during the snapshot window",
             "items": { "$ref": "#/components/schemas/WebSocketEvent" }
           },
           "network_bodies": {
             "type": "array",
+            "description": "Network request/response bodies captured during the snapshot window",
             "items": { "$ref": "#/components/schemas/NetworkBody" }
           },
           "enhanced_actions": {
             "type": "array",
+            "description": "User interaction events captured during the snapshot window",
             "items": { "$ref": "#/components/schemas/EnhancedAction" }
           },
           "stats": {
             "type": "object",
+            "description": "Computed statistics across all captured telemetry",
             "properties": {
-              "total_logs": { "type": "integer" },
-              "error_count": { "type": "integer" },
-              "warning_count": { "type": "integer" },
-              "network_failures": { "type": "integer" },
-              "ws_connections": { "type": "integer" }
+              "total_logs": { "type": "integer", "description": "Total log entries in the snapshot" },
+              "error_count": { "type": "integer", "description": "Number of error-level logs" },
+              "warning_count": { "type": "integer", "description": "Number of warning-level logs" },
+              "network_failures": { "type": "integer", "description": "Number of failed network requests (status >= 400)" },
+              "ws_connections": { "type": "integer", "description": "Number of distinct WebSocket connections" }
             }
           }
         }
       },
       "UploadStageResponse": {
         "type": "object",
+        "description": "Response from file upload automation endpoints (Stages 1-4). Contains success/failure status, the stage that produced the result, and optional progress metrics for large file uploads. On failure, includes escalation_reason and suggestions for the next stage to try.",
+        "x-docs": {
+          "feature": "docs/features/file-upload/"
+        },
         "properties": {
-          "success": { "type": "boolean" },
-          "stage": { "type": "integer" },
-          "status": { "type": "string" },
-          "error": { "type": "string" },
-          "file_name": { "type": "string" },
-          "file_size_bytes": { "type": "integer", "format": "int64" },
-          "duration_ms": { "type": "integer", "format": "int64" },
-          "escalation_reason": { "type": "string" },
-          "suggestions": { "type": "array", "items": { "type": "string" } },
-          "bytes_sent": { "type": "integer", "format": "int64" },
-          "total_bytes": { "type": "integer", "format": "int64" },
-          "percent": { "type": "number" },
-          "eta_seconds": { "type": "integer" },
-          "speed_mbps": { "type": "number" }
+          "success": { "type": "boolean", "description": "Whether the upload stage completed successfully" },
+          "stage": { "type": "integer", "description": "Upload pipeline stage number (1-4)" },
+          "status": { "type": "string", "description": "Human-readable status message" },
+          "error": { "type": "string", "description": "Error message on failure" },
+          "file_name": { "type": "string", "description": "Name of the file being uploaded" },
+          "file_size_bytes": { "type": "integer", "format": "int64", "description": "File size in bytes" },
+          "duration_ms": { "type": "integer", "format": "int64", "description": "Stage execution time in milliseconds" },
+          "escalation_reason": { "type": "string", "description": "Why this stage failed and the next stage should be tried" },
+          "suggestions": { "type": "array", "items": { "type": "string" }, "description": "Suggested next steps or alternative approaches" },
+          "bytes_sent": { "type": "integer", "format": "int64", "description": "Bytes uploaded so far (for progress tracking)" },
+          "total_bytes": { "type": "integer", "format": "int64", "description": "Total bytes to upload" },
+          "percent": { "type": "number", "description": "Upload progress percentage (0-100)" },
+          "eta_seconds": { "type": "integer", "description": "Estimated seconds remaining" },
+          "speed_mbps": { "type": "number", "description": "Current upload speed in megabits per second" }
         }
       },
       "SyncCommandResult": {
         "type": "object",
-        "description": "Result of an async command execution returned by the extension via /sync.",
+        "description": "Result of an async command returned by the extension via the /sync endpoint's command_results field. Structurally identical to AsyncCommandResult but delivered inline with the sync payload instead of via POST /query-result.",
+        "x-docs": {
+          "core": "docs/core/async-command-api.yaml"
+        },
         "properties": {
-          "id": { "type": "string" },
-          "correlation_id": { "type": "string" },
-          "status": { "type": "string", "enum": ["complete", "error", "timeout"] },
-          "result": { "description": "Command result data" },
-          "error": { "type": "string" }
+          "id": { "type": "string", "description": "Query ID matching the original PendingQuery" },
+          "correlation_id": { "type": "string", "description": "Links back to the originating MCP tool call" },
+          "status": { "type": "string", "enum": ["complete", "error", "timeout"], "description": "Execution outcome" },
+          "result": { "description": "Command result data on success" },
+          "error": { "type": "string", "description": "Error message when status is 'error'" }
         },
         "required": ["id", "status"]
       },
       "ExtensionStatus": {
         "type": "object",
+        "description": "Extension connection status snapshot. Represents the Chrome extension's current tracking state as reported in sync payloads. Used internally by the server to track extension connectivity.",
         "properties": {
-          "type": { "type": "string", "example": "status" },
-          "tracking_enabled": { "type": "boolean" },
-          "tracked_tab_id": { "type": "integer" },
-          "tracked_tab_url": { "type": "string" },
-          "extension_connected": { "type": "boolean" },
-          "timestamp": { "type": "string", "format": "date-time" }
+          "type": { "type": "string", "example": "status", "description": "Always 'status' for this message type" },
+          "tracking_enabled": { "type": "boolean", "description": "Whether tab tracking is active" },
+          "tracked_tab_id": { "type": "integer", "description": "Chrome tab ID being tracked" },
+          "tracked_tab_url": { "type": "string", "description": "URL of the tracked tab" },
+          "extension_connected": { "type": "boolean", "description": "Whether the extension WebSocket is connected" },
+          "timestamp": { "type": "string", "format": "date-time", "description": "When this status was captured" }
         }
       }
     }
