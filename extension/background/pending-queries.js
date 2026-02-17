@@ -245,10 +245,10 @@ function hasActiveDebugIntent(target) {
         return false;
     const targetOrigin = parseOrigin(target.url);
     const trackedOrigin = parseOrigin(target.trackedTabUrl);
-    if (!trackedOrigin) {
-        return targetOrigin !== null;
+    if (!trackedOrigin || !targetOrigin) {
+        return false;
     }
-    return targetOrigin !== null && targetOrigin === trackedOrigin;
+    return targetOrigin === trackedOrigin;
 }
 function resolveDOMQueryParams(params, target) {
     const parsed = parsePierceShadowInput(params.pierce_shadow);

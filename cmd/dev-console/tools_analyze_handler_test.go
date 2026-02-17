@@ -186,22 +186,28 @@ func TestToolsAnalyzeSchema_HasPierceShadowParam(t *testing.T) {
 	if !ok {
 		t.Fatal("pierce_shadow property is not an object")
 	}
-	oneOf, ok := pierceMap["oneOf"].([]map[string]any)
+	oneOf, ok := pierceMap["oneOf"].([]any)
 	if !ok || len(oneOf) != 2 {
 		t.Fatalf("pierce_shadow.oneOf should be [boolean,string], got %#v", pierceMap["oneOf"])
 	}
 
 	hasBoolean := false
 	hasAutoString := false
-	for _, item := range oneOf {
+	for _, raw := range oneOf {
+		item, ok := raw.(map[string]any)
+		if !ok {
+			continue
+		}
 		typeStr, _ := item["type"].(string)
 		if typeStr == "boolean" {
 			hasBoolean = true
 		}
 		if typeStr == "string" {
-			enumVals, _ := item["enum"].([]string)
-			if len(enumVals) == 1 && enumVals[0] == "auto" {
-				hasAutoString = true
+			rawEnum, _ := item["enum"].([]any)
+			if len(rawEnum) == 1 {
+				if s, ok := rawEnum[0].(string); ok && s == "auto" {
+					hasAutoString = true
+				}
 			}
 		}
 	}
