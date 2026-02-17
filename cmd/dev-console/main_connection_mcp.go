@@ -197,7 +197,7 @@ func startHTTPServer(server *Server, port int, apiKey string, mux *http.ServeMux
 	httpDone := make(chan struct{})
 	srv := &http.Server{
 		ReadTimeout:  5 * time.Second,
-		WriteTimeout: 10 * time.Second,
+		WriteTimeout: 40 * time.Second, // Must accommodate blocking tool waits (screenshot 20s, interact 35s, annotations 55s)
 		IdleTimeout:  120 * time.Second,
 		Handler:      AuthMiddleware(apiKey)(mux),
 	}
