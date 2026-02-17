@@ -398,7 +398,7 @@ func (qd *QueryDispatcher) WaitForResultWithClient(id string, timeout time.Durat
 // ============================================
 
 // startResultCleanup starts a background goroutine that periodically cleans
-// expired query results (60s TTL).
+// expired query results (queryResultTTL, currently 5m).
 // Returns a stop function that terminates the goroutine.
 // Called once during QueryDispatcher initialization; stop func stored in stopCleanup.
 func (qd *QueryDispatcher) startResultCleanup() func() {

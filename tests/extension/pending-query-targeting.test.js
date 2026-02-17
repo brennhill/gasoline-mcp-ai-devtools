@@ -178,4 +178,32 @@ describe('pending query targeting', () => {
     assert.strictEqual(queued.result.error, 'missing_target')
     assert.ok(String(queued.error).includes('No target tab resolved'))
   })
+
+  test('new_tab includes created tab_id in queued result', async () => {
+    globalThis.chrome.tabs.create = mock.fn(() => Promise.resolve({ id: 222, url: 'https://new.example' }))
+    const mockSyncClient = { queueCommandResult: mock.fn() }
+
+    await bgModule.handlePendingQuery(
+      {
+        id: 'q-new-tab',
+        type: 'browser_action',
+        correlation_id: 'corr-new-tab',
+        tab_id: 99,
+        params: JSON.stringify({ action: 'new_tab', url: 'https://new.example' })
+      },
+      mockSyncClient
+    )
+
+    assert.strictEqual(globalThis.chrome.tabs.create.mock.calls.length, 1)
+    assert.deepStrictEqual(globalThis.chrome.tabs.create.mock.calls[0].arguments[0], {
+      url: 'https://new.example',
+      active: false
+    })
+
+    const queued = mockSyncClient.queueCommandResult.mock.calls[0].arguments[0]
+    assert.strictEqual(queued.status, 'complete')
+    assert.strictEqual(queued.result.action, 'new_tab')
+    assert.strictEqual(queued.result.tab_id, 222)
+    assert.strictEqual(queued.result.resolved_tab_id, 99)
+  })
 })

@@ -78,6 +78,16 @@ func TestGenerateTestFilename(t *testing.T) {
 	if strings.HasPrefix(stem, "-") || strings.HasSuffix(stem, "-") {
 		t.Fatalf("stem should not have leading/trailing dashes, got %q", stem)
 	}
+
+	// Reserved Windows filenames should be rewritten to a safe name
+	reserved := generateTestFilename("CON", "playwright")
+	if strings.TrimSuffix(reserved, ".spec.ts") != "test-con" {
+		t.Fatalf("reserved filename should be rewritten, got %q", reserved)
+	}
+	reserved = generateTestFilename("lpt1", "vitest")
+	if strings.TrimSuffix(reserved, ".test.ts") != "test-lpt1" {
+		t.Fatalf("reserved filename should be rewritten for vitest, got %q", reserved)
+	}
 }
 
 func TestExtractSelectorsFromActions(t *testing.T) {
