@@ -841,6 +841,20 @@ export async function executeDOMAction(
   const toastDetail = reason ? undefined : selector || 'page'
   const readOnly = isReadOnlyAction(action)
 
+  // Enrich successful results with effective tab context (post-execution URL).
+  // Agents compare resolved_url (dispatch time) vs effective_url (execution time) to detect drift.
+  const enrichWithEffectiveContext = async (result: unknown): Promise<unknown> => {
+    try {
+      const tab = await chrome.tabs.get(tabId)
+      if (result && typeof result === 'object' && !Array.isArray(result)) {
+        return { ...(result as Record<string, unknown>), effective_tab_id: tabId, effective_url: tab.url }
+      }
+      return result
+    } catch {
+      return result
+    }
+  }
+
   try {
     const executionTarget = await resolveExecutionTarget(tabId, params.frame)
     const tryingShownAt = Date.now()
@@ -854,7 +868,7 @@ export async function executeDOMAction(
     // wait_for quick-check can return a DOMResult directly
     if (!Array.isArray(rawResult)) {
       if (!readOnly) actionToast(tabId, toastLabel, toastDetail, 'success')
-      sendAsyncResult(syncClient, query.id, query.correlation_id!, 'complete', rawResult)
+      sendAsyncResult(syncClient, query.id, query.correlation_id!, 'complete', await enrichWithEffectiveContext(rawResult))
       return
     }
 
@@ -866,7 +880,7 @@ export async function executeDOMAction(
     // list_interactive: merge elements from all frames
     if (action === 'list_interactive') {
       const merged = mergeListInteractive(rawResult)
-      sendAsyncResult(syncClient, query.id, query.correlation_id!, 'complete', merged)
+      sendAsyncResult(syncClient, query.id, query.correlation_id!, 'complete', await enrichWithEffectiveContext(merged))
       return
     }
 
@@ -885,7 +899,7 @@ export async function executeDOMAction(
         toastLabel,
         toastDetail
       )
-      sendAsyncResult(syncClient, query.id, query.correlation_id!, 'complete', resultPayload)
+      sendAsyncResult(syncClient, query.id, query.correlation_id!, 'complete', await enrichWithEffectiveContext(resultPayload))
     } else {
       if (!readOnly) actionToast(tabId, toastLabel, 'no result', 'error')
       sendAsyncResult(syncClient, query.id, query.correlation_id!, 'error', null, 'no_result')
