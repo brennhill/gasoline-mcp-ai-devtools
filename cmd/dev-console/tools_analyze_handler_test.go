@@ -186,26 +186,35 @@ func TestToolsAnalyzeSchema_HasPierceShadowParam(t *testing.T) {
 	if !ok {
 		t.Fatal("pierce_shadow property is not an object")
 	}
-	oneOf, ok := pierceMap["oneOf"].([]any)
-	if !ok || len(oneOf) != 2 {
-		t.Fatalf("pierce_shadow.oneOf should be [boolean,string], got %#v", pierceMap["oneOf"])
+	// ToolsList() returns native Go types ([]map[string]any), not JSON-unmarshaled ([]any).
+	// Try native type first, then fall back to JSON-unmarshaled type.
+	var items []map[string]any
+	if nativeOneOf, ok := pierceMap["oneOf"].([]map[string]any); ok {
+		items = nativeOneOf
+	} else if jsonOneOf, ok := pierceMap["oneOf"].([]any); ok {
+		for _, raw := range jsonOneOf {
+			if m, ok := raw.(map[string]any); ok {
+				items = append(items, m)
+			}
+		}
+	}
+	if len(items) != 2 {
+		t.Fatalf("pierce_shadow.oneOf should have 2 variants, got %#v", pierceMap["oneOf"])
 	}
 
 	hasBoolean := false
 	hasAutoString := false
-	for _, raw := range oneOf {
-		item, ok := raw.(map[string]any)
-		if !ok {
-			continue
-		}
+	for _, item := range items {
 		typeStr, _ := item["type"].(string)
 		if typeStr == "boolean" {
 			hasBoolean = true
 		}
 		if typeStr == "string" {
-			rawEnum, _ := item["enum"].([]any)
-			if len(rawEnum) == 1 {
-				if s, ok := rawEnum[0].(string); ok && s == "auto" {
+			// enum can be []string (native Go) or []any (JSON-unmarshaled)
+			if nativeEnum, ok := item["enum"].([]string); ok && len(nativeEnum) == 1 && nativeEnum[0] == "auto" {
+				hasAutoString = true
+			} else if jsonEnum, ok := item["enum"].([]any); ok && len(jsonEnum) == 1 {
+				if s, ok := jsonEnum[0].(string); ok && s == "auto" {
 					hasAutoString = true
 				}
 			}

@@ -799,6 +799,10 @@
           "description": "Narration text, composable with any action. Empty clears.",
           "type": "string"
         },
+        "summary": {
+          "description": "Auto-include compact page summary (title, type, headings, primary actions, forms) after navigate/refresh/back/forward. Default: true. Set false to skip for speed.",
+          "type": "boolean"
+        },
         "sync": {
           "description": "Wait for result (default: true).",
           "type": "boolean"

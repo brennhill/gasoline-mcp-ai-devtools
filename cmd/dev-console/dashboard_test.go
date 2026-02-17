@@ -85,7 +85,7 @@ func TestParseMCPCommand_ToolCalls(t *testing.T) {
 			name:       "long url truncated",
 			body:       `{"jsonrpc":"2.0","method":"tools/call","params":{"name":"interact","arguments":{"action":"navigate","url":"https://example.com/very/long/path/that/exceeds/the/forty/character/limit/and/should/be/truncated"}}}`,
 			wantTool:   "interact",
-			wantParams: "action=navigate url=https://example.com/very/long/path/th...",
+			wantParams: "action=navigate url=https://example.com/very/long/path/that/...",
 		},
 	}
 

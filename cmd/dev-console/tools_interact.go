@@ -428,8 +428,9 @@ func truncateToLen(s string, maxLen int) string {
 
 func (h *ToolHandler) handleBrowserActionNavigate(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	var params struct {
-		URL   string `json:"url"`
-		TabID int    `json:"tab_id,omitempty"`
+		URL     string `json:"url"`
+		TabID   int    `json:"tab_id,omitempty"`
+		Summary *bool  `json:"summary,omitempty"`
 	}
 	if err := json.Unmarshal(args, &params); err != nil {
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidJSON, "Invalid JSON arguments: "+err.Error(), "Fix JSON syntax and call again")}
@@ -472,7 +473,8 @@ func (h *ToolHandler) handleBrowserActionNavigate(req JSONRPCRequest, args json.
 
 func (h *ToolHandler) handleBrowserActionRefresh(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	var params struct {
-		TabID int `json:"tab_id,omitempty"`
+		TabID   int   `json:"tab_id,omitempty"`
+		Summary *bool `json:"summary,omitempty"`
 	}
 	if err := json.Unmarshal(args, &params); err != nil {
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidJSON, "Invalid JSON arguments: "+err.Error(), "Fix JSON syntax and call again")}
@@ -525,6 +527,13 @@ func (h *ToolHandler) stashPerfSnapshot(correlationID string) {
 }
 
 func (h *ToolHandler) handleBrowserActionBack(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+	var params struct {
+		Summary *bool `json:"summary,omitempty"`
+	}
+	if len(args) > 0 {
+		_ = json.Unmarshal(args, &params)
+	}
+
 	if !h.capture.IsPilotEnabled() {
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrCodePilotDisabled, "AI Web Pilot is disabled", "Enable AI Web Pilot in the extension popup", h.diagnosticHint())}
 	}
@@ -556,6 +565,13 @@ func (h *ToolHandler) handleBrowserActionBack(req JSONRPCRequest, args json.RawM
 }
 
 func (h *ToolHandler) handleBrowserActionForward(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+	var params struct {
+		Summary *bool `json:"summary,omitempty"`
+	}
+	if len(args) > 0 {
+		_ = json.Unmarshal(args, &params)
+	}
+
 	if !h.capture.IsPilotEnabled() {
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrCodePilotDisabled, "AI Web Pilot is disabled", "Enable AI Web Pilot in the extension popup", h.diagnosticHint())}
 	}

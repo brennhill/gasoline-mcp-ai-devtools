@@ -3,6 +3,7 @@ package main
 
 import (
 	_ "embed"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"os"
@@ -130,10 +131,60 @@ func serveEmbeddedHTML(w http.ResponseWriter, r *http.Request, content []byte, n
 // recentCommand is a simplified view of an HTTP debug entry for the dashboard.
 type recentCommand struct {
 	Timestamp  time.Time `json:"timestamp"`
+	Tool       string    `json:"tool"`
+	Params     string    `json:"params"`
 	Endpoint   string    `json:"endpoint"`
 	Method     string    `json:"method"`
 	Status     int       `json:"status"`
 	DurationMs int64     `json:"duration_ms"`
+}
+
+// parseMCPCommand extracts the tool name and a summary of its arguments from
+// a raw MCP JSON-RPC request body.
+func parseMCPCommand(body string) (tool string, params string) {
+	if body == "" {
+		return "unknown", ""
+	}
+	var msg struct {
+		Method string `json:"method"`
+		Params struct {
+			Name      string         `json:"name"`
+			Arguments map[string]any `json:"arguments"`
+		} `json:"params"`
+	}
+	if err := json.Unmarshal([]byte(body), &msg); err != nil {
+		return "unknown", ""
+	}
+	if msg.Method == "tools/call" {
+		tool = msg.Params.Name
+		if tool == "" {
+			tool = "unknown"
+		}
+	} else if msg.Method != "" {
+		return msg.Method, ""
+	} else {
+		return "unknown", ""
+	}
+
+	if len(msg.Params.Arguments) == 0 {
+		return tool, ""
+	}
+
+	// Build a deterministic key=value summary, sorted by key.
+	keys := make([]string, 0, len(msg.Params.Arguments))
+	for k := range msg.Params.Arguments {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	var parts []string
+	for _, k := range keys {
+		v := fmt.Sprintf("%v", msg.Params.Arguments[k])
+		if len(v) > 40 {
+			v = v[:40] + "..."
+		}
+		parts = append(parts, k+"="+v)
+	}
+	return tool, strings.Join(parts, " ")
 }
 
 // buildRecentCommands filters and sorts HTTP debug entries for the dashboard.
@@ -144,8 +195,11 @@ func buildRecentCommands(entries []capture.HTTPDebugEntry) []recentCommand {
 		if e.Timestamp.IsZero() {
 			continue
 		}
+		tool, params := parseMCPCommand(e.RequestBody)
 		result = append(result, recentCommand{
 			Timestamp:  e.Timestamp,
+			Tool:       tool,
+			Params:     params,
 			Endpoint:   e.Endpoint,
 			Method:     e.Method,
 			Status:     e.ResponseStatus,
