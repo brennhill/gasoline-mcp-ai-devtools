@@ -1,3 +1,6 @@
+// Purpose: Owns api_schema_builder.go runtime behavior and integration logic.
+// Docs: docs/features/feature/observe/index.md
+
 // api_schema_builder.go — Schema building, OpenAPI stub generation, and statistics.
 // Converts accumulated observations into structured API schemas, computes
 // timing statistics, detects auth patterns, and generates OpenAPI 3.0 stubs.

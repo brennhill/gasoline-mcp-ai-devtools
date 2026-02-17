@@ -5,7 +5,35 @@ status: proposed
 feature_type: feature
 owners: []
 last_reviewed: 2026-02-16
-code_paths: []
+code_paths:
+  - cmd/dev-console/tools_analyze_annotations.go
+  - cmd/dev-console/tools_analyze.go
+  - src/background.ts
+  - src/background/batchers.ts
+  - src/background/browser-actions.ts
+  - src/background/cache-limits.ts
+  - src/background/circuit-breaker.ts
+  - src/background/communication.ts
+  - src/background/connection-state.ts
+  - src/background/debug.ts
+  - src/background/dom-primitives.ts
+  - src/background/error-groups.ts
+  - src/background/event-listeners.ts
+  - src/background/index.ts
+  - src/background/init.ts
+  - src/background/message-handlers.ts
+  - src/background/pending-queries.ts
+  - src/background/query-execution.ts
+  - src/background/recording.ts
+  - src/background/server.ts
+  - src/background/snapshots.ts
+  - src/background/state-manager.ts
+  - src/background/storage-utils.ts
+  - src/background/sync-client.ts
+  - src/background/upload-handler.ts
+  - src/background/version-check.ts
+  - src/content.ts
+  - src/inject.ts
 test_paths: []
 ---
 

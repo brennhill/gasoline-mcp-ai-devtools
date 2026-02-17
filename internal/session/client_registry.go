@@ -1,3 +1,7 @@
+// Purpose: Implements session lifecycle, snapshots, and diff state management.
+// Docs: docs/features/feature/observe/index.md
+// Docs: docs/features/feature/pagination/index.md
+
 // client_registry.go — Multi-client session management.
 // Tracks connected MCP clients, their buffer cursors, and per-client state isolation.
 // Supports up to 10 concurrent clients with LRU eviction of idle clients.

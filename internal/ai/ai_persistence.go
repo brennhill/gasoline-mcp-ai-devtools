@@ -1,3 +1,6 @@
+// Purpose: Owns ai_persistence.go runtime behavior and integration logic.
+// Docs: docs/features/feature/observe/index.md
+
 // ai_persistence.go — File-based persistent key-value store for session data.
 // Provides namespace-scoped storage that survives server restarts, enabling AI
 // assistants to save and retrieve structured data across sessions.

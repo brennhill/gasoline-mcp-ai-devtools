@@ -1,3 +1,6 @@
+// Purpose: Implements observe tool queries against captured runtime buffers.
+// Docs: docs/features/feature/observe/index.md
+
 // tools_observe_analysis.go — Observe analysis handlers: waterfall, vitals, tabs, a11y, timeline, errors, history, async commands.
 //
 // JSON CONVENTION: All fields MUST use snake_case. See .claude/refs/api-naming-standards.md

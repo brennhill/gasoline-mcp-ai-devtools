@@ -1,3 +1,6 @@
+// Purpose: Implements performance metric diffing and threshold evaluation.
+// Docs: docs/features/feature/performance-audit/index.md
+
 // types.go — Performance monitoring types
 // Handles performance snapshots, baselines, regression detection, and
 // causal diffing for identifying performance bottlenecks.

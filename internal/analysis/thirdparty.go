@@ -1,3 +1,6 @@
+// Purpose: Owns thirdparty.go runtime behavior and integration logic.
+// Docs: docs/features/feature/observe/index.md
+
 // thirdparty.go — Third-Party Risk Audit (audit_third_parties) MCP tool.
 // Analyzes captured network traffic to map all third-party origins,
 // classify risk levels, detect outbound PII, and apply domain reputation heuristics.

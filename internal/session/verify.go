@@ -1,3 +1,7 @@
+// Purpose: Implements session lifecycle, snapshots, and diff state management.
+// Docs: docs/features/feature/observe/index.md
+// Docs: docs/features/feature/pagination/index.md
+
 // verify.go — Verification Loop (verify_fix) MCP tool.
 // Provides before/after session comparison for fix verification.
 // AI captures state before a fix, applies fix, captures after, compares to verify.

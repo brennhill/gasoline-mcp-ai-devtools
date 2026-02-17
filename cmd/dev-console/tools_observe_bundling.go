@@ -1,3 +1,6 @@
+// Purpose: Implements observe tool queries against captured runtime buffers.
+// Docs: docs/features/feature/observe/index.md
+
 // tools_observe_bundling.go — Error bundling: assembles complete debugging context per error.
 // Each bundle contains: error + recent network requests + recent actions + recent logs.
 // One observe call replaces 3-4 separate calls. Pure Go-side join, no extension changes.

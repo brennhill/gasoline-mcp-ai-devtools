@@ -1,3 +1,6 @@
+// Purpose: Owns recording.go runtime behavior and integration logic.
+// Docs: docs/features/feature/backend-log-streaming/index.md
+
 // recording.go — Recording lifecycle and persistence methods on RecordingManager.
 // Handles start/stop/add-action lifecycle and disk I/O for recordings.
 package capture

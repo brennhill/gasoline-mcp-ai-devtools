@@ -1,3 +1,6 @@
+// Purpose: Owns constants.go runtime behavior and integration logic.
+// Docs: docs/features/feature/backend-log-streaming/index.md
+
 // constants.go — Buffer capacity and configuration constants.
 // All configuration values for capture package.
 package capture

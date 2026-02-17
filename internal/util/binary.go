@@ -1,3 +1,6 @@
+// Purpose: Owns binary.go runtime behavior and integration logic.
+// Docs: docs/features/feature/observe/index.md
+
 // binary.go — Binary format detection via magic bytes.
 // Identifies protobuf, MessagePack, CBOR, BSON in network bodies and
 // WebSocket messages. Detection is heuristic-based using format-specific

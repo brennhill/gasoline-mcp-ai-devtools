@@ -1,4 +1,9 @@
 /**
+ * Purpose: Provides shared runtime utilities used by extension and server workflows.
+ * Docs: docs/features/feature/backend-log-streaming/index.md
+ */
+
+/**
  * @fileoverview Network waterfall and body capture.
  * Provides PerformanceResourceTiming parsing, pending request tracking,
  * fetch body capture with size limits, and sensitive header sanitization.

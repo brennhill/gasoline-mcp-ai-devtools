@@ -1,3 +1,6 @@
+// Purpose: Owns queries.go runtime behavior and integration logic.
+// Docs: docs/features/feature/backend-log-streaming/index.md
+
 // queries.go — Pending query queue management for extension ↔ server RPC.
 // Implements the async queue-and-poll pattern where MCP server queues commands
 // and extension polls to pick them up.

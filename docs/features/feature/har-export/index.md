@@ -5,7 +5,9 @@ status: shipped
 feature_type: feature
 owners: []
 last_reviewed: 2026-02-16
-code_paths: []
+code_paths:
+  - internal/export/export_har.go
+  - internal/export/export_sarif.go
 test_paths: []
 ---
 

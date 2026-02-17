@@ -1,4 +1,9 @@
 /**
+ * Purpose: Owns ui-utils.ts runtime behavior and integration logic.
+ * Docs: docs/features/feature/observe/index.md
+ */
+
+/**
  * @fileoverview Popup UI Utilities
  * Helper functions for UI updates
  */

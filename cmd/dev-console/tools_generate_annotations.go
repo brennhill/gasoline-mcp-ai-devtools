@@ -1,3 +1,6 @@
+// Purpose: Implements generate tool formats and output assembly.
+// Docs: docs/features/feature/test-generation/index.md
+
 // tools_generate_annotations.go — Generate handlers for annotation-derived artifacts.
 // Provides: visual_test (Playwright), annotation_report (Markdown), annotation_issues (JSON).
 package main

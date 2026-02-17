@@ -1,3 +1,6 @@
+// Purpose: Owns bridge.go runtime behavior and integration logic.
+// Docs: docs/features/feature/observe/index.md
+
 // Bridge mode: stdio-to-HTTP transport for MCP
 // Spawns persistent HTTP server daemon if not running,
 // forwards JSON-RPC messages between stdio (MCP client) and HTTP (server).

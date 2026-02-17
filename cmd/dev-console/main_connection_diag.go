@@ -1,3 +1,6 @@
+// Purpose: Owns main_connection_diag.go runtime behavior and integration logic.
+// Docs: docs/features/feature/observe/index.md
+
 // main_connection_diag.go — Connection diagnostics: health checks, port scanning, and failure analysis.
 package main
 

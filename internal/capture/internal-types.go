@@ -1,3 +1,6 @@
+// Purpose: Owns internal-types.go runtime behavior and integration logic.
+// Docs: docs/features/feature/backend-log-streaming/index.md
+
 // internal-types.go — Internal types used by Capture struct.
 // A11yCache, PerformanceStore, and related internal helper types.
 package capture

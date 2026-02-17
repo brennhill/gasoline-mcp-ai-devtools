@@ -5,7 +5,9 @@ status: proposed
 feature_type: feature
 owners: []
 last_reviewed: 2026-02-16
-code_paths: []
+code_paths:
+  - cmd/dev-console/reproduction.go
+  - src/lib/reproduction.ts
 test_paths: []
 ---
 

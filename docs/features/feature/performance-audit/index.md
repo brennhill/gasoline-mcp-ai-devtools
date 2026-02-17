@@ -5,7 +5,11 @@ status: proposed
 feature_type: feature
 owners: []
 last_reviewed: 2026-02-16
-code_paths: []
+code_paths:
+  - internal/performance/diff.go
+  - internal/performance/types.go
+  - src/lib/perf-snapshot.ts
+  - src/lib/performance.ts
 test_paths: []
 ---
 

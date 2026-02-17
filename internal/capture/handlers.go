@@ -1,3 +1,6 @@
+// Purpose: Owns handlers.go runtime behavior and integration logic.
+// Docs: docs/features/feature/backend-log-streaming/index.md
+
 // handlers.go — HTTP handlers for extension ↔ server communication
 // Implements endpoints for pending queries, query results, and extension status.
 // Part of the async queue-and-poll architecture (see internal/capture/queries.go).

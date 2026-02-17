@@ -1,3 +1,6 @@
+// Purpose: Owns main_connection.go runtime behavior and integration logic.
+// Docs: docs/features/feature/observe/index.md
+
 // main_connection.go — MCP client connection lifecycle: spawn, retry, and zombie recovery.
 package main
 

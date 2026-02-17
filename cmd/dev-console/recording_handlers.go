@@ -1,3 +1,6 @@
+// Purpose: Owns recording_handlers.go runtime behavior and integration logic.
+// Docs: docs/features/feature/observe/index.md
+
 // recording_handlers.go — MCP tool handlers for Flow Recording & Playback feature.
 // Handles recording_start, recording_stop, recording_get, and playback actions.
 package main

@@ -5,7 +5,7 @@ status: shipped
 feature_type: feature
 owners: []
 last_reviewed: 2026-02-16
-code_paths: []
+code_paths:
 test_paths: []
 ---
 

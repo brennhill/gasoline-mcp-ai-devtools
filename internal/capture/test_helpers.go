@@ -1,3 +1,6 @@
+// Purpose: Owns test_helpers.go runtime behavior and integration logic.
+// Docs: docs/features/feature/backend-log-streaming/index.md
+
 // test_helpers.go — Test helper methods for setting up test data
 // These methods are ONLY for tests and bypass normal ingestion flow
 //go:build !production

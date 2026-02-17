@@ -1,4 +1,9 @@
 /**
+ * Purpose: Owns network.ts runtime behavior and integration logic.
+ * Docs: docs/features/feature/observe/index.md
+ */
+
+/**
  * @fileoverview Network Types
  * Network waterfall, request tracking, and body capture
  */

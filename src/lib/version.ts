@@ -1,4 +1,9 @@
 /**
+ * Purpose: Provides shared runtime utilities used by extension and server workflows.
+ * Docs: docs/features/feature/observe/index.md
+ */
+
+/**
  * @fileoverview Version - Utilities for semver comparison and version checking
  */
 

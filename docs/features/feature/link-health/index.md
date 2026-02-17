@@ -5,7 +5,8 @@ status: proposed
 feature_type: feature
 owners: []
 last_reviewed: 2026-02-16
-code_paths: []
+code_paths:
+  - src/lib/link-health.ts
 test_paths: []
 ---
 

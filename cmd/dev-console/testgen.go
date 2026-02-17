@@ -1,3 +1,6 @@
+// Purpose: Owns testgen.go runtime behavior and integration logic.
+// Docs: docs/features/feature/test-generation/index.md
+
 // testgen.go — Test generation from captured errors and user interactions.
 // Generates Playwright tests using console errors, user actions, and network data.
 // Design: Reuses existing codegen.go infrastructure for script generation.

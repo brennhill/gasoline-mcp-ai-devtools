@@ -1,3 +1,10 @@
+/**
+ * Purpose: Handles extension background coordination and message routing.
+ * Docs: docs/features/feature/analyze-tool/index.md
+ * Docs: docs/features/feature/interact-explore/index.md
+ * Docs: docs/features/feature/observe/index.md
+ */
+
 // upload-handler.ts — Handles upload queries from the server.
 // Fetches file data from Go server's /api/file/read, then injects into DOM <input type="file">.
 // Supports Stage 1 (DataTransfer) with automatic escalation to Stage 4 (OS automation).

@@ -5,7 +5,12 @@ status: proposed
 feature_type: feature
 owners: []
 last_reviewed: 2026-02-16
-code_paths: []
+code_paths:
+  - cmd/dev-console/testgen_classify.go
+  - cmd/dev-console/testgen_heal.go
+  - cmd/dev-console/testgen.go
+  - cmd/dev-console/tools_generate_annotations.go
+  - cmd/dev-console/tools_generate.go
 test_paths: []
 ---
 

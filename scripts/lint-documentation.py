@@ -15,8 +15,8 @@ from pathlib import Path
 from datetime import datetime, timedelta
 import sys
 
-DOCS_DIR = Path("/Users/brenn/dev/gasoline/docs")
-CODE_DIR = Path("/Users/brenn/dev/gasoline")
+CODE_DIR = Path.cwd()
+DOCS_DIR = CODE_DIR / "docs"
 
 # Historic code/doc path aliases after refactors.
 LEGACY_CODE_PATH_MAP = {

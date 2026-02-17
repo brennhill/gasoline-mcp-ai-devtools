@@ -1,3 +1,6 @@
+// Purpose: Owns extension_state.go runtime behavior and integration logic.
+// Docs: docs/features/feature/backend-log-streaming/index.md
+
 // extension_state.go — Extension communication state and tab tracking.
 // Groups 13 scattered fields from the Capture god object into a coherent sub-struct.
 // Protected by parent Capture.mu (no separate lock — tightly coupled with event buffer writes).

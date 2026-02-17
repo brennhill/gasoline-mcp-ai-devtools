@@ -1,3 +1,6 @@
+// Purpose: Owns ai_noise_builtin.go runtime behavior and integration logic.
+// Docs: docs/features/feature/observe/index.md
+
 // ai_noise_builtin.go — Built-in noise filtering rules for common browser telemetry patterns.
 package ai
 

@@ -5,7 +5,23 @@ status: proposed
 feature_type: feature
 owners: []
 last_reviewed: 2026-02-16
-code_paths: []
+code_paths:
+  - src/content/favicon-replacer.ts
+  - src/content/message-forwarding.ts
+  - src/content/message-handlers.ts
+  - src/content/request-tracking.ts
+  - src/content/runtime-message-listener.ts
+  - src/content/script-injection.ts
+  - src/content/tab-tracking.ts
+  - src/content/timeout-utils.ts
+  - src/content/types.ts
+  - src/content/window-message-listener.ts
+  - src/inject/api.ts
+  - src/inject/index.ts
+  - src/inject/message-handlers.ts
+  - src/inject/observers.ts
+  - src/inject/state.ts
+  - src/lib/dom-queries.ts
 test_paths: []
 ---
 

@@ -1,3 +1,6 @@
+// Purpose: Owns rate_limit.go runtime behavior and integration logic.
+// Docs: docs/features/feature/backend-log-streaming/index.md
+
 // rate_limit.go — Capture delegation methods for rate limiting and circuit breaker.
 // Delegates to CircuitBreaker sub-struct. These methods preserve the existing
 // Capture API so callers (helpers.go, handlers, tests) don't need to change.

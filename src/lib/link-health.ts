@@ -1,4 +1,9 @@
 /**
+ * Purpose: Provides shared runtime utilities used by extension and server workflows.
+ * Docs: docs/features/feature/link-health/index.md
+ */
+
+/**
  * @fileoverview Link Health Checker
  * Extracts all links from the current page and checks their health.
  * Categorizes issues as: ok (2xx), redirect (3xx), requires_auth (401/403),

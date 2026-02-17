@@ -1,3 +1,6 @@
+// Purpose: Owns api_contract.go runtime behavior and integration logic.
+// Docs: docs/features/feature/observe/index.md
+
 // api_contract.go — API contract validation from observed network traffic.
 // Tracks response shapes across requests, detects contract violations when
 // shapes change unexpectedly, fields go missing, types change, or error
