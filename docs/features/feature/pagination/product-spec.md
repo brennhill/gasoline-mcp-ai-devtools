@@ -191,7 +191,7 @@ Returns: All entries (current behavior)
 ### Easy Parts (90% of work)
 
 - Add `offset` and `limit` parameters to JSON schema
-- Update parameter parsing in tools.go
+- Update parameter parsing in tools_core.go
 - Slice arrays before returning
 - Add metadata to responses
 

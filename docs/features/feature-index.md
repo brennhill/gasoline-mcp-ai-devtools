@@ -4,7 +4,7 @@ scope: feature/index
 ai-priority: high
 tags: [feature-index, status, navigation, canonical]
 relates-to: [../README.md, feature/]
-last-verified: 2026-02-16
+last-verified: 2026-02-17
 canonical: true
 ---
 
@@ -83,8 +83,8 @@ canonical: true
 
 | Tool | Shipped Modes | Description |
 |------|--------------|-------------|
-| **observe** | errors, logs, extension_logs, network_waterfall, network_bodies, websocket_events, websocket_status, actions, vitals, page, tabs, pilot, timeline, error_bundles, screenshot, command_result, pending_commands, failed_commands, saved_videos, recordings, recording_actions, log_diff_report | Read captured browser state |
-| **analyze** | dom, performance, accessibility, error_clusters, history, security_audit, third_party_audit, link_health, link_validation, annotations, annotation_detail | Active analysis and audits |
-| **generate** | reproduction, csp, sarif, visual_test, annotation_report, annotation_issues, test_from_context, test_heal, test_classify | Produce artifacts from captured data |
-| **configure** | store, load, noise_rule, clear, health, streaming, test_boundary_start, test_boundary_end, recording_start, recording_stop, playback, log_diff | Session settings and utilities |
-| **interact** | highlight, subtitle, save_state, load_state, list_states, delete_state, execute_js, navigate, refresh, back, forward, new_tab, click, type, select, check, get_text, get_value, get_attribute, set_attribute, focus, scroll_to, wait_for, key_press, list_interactive, record_start, record_stop, upload, draw_mode_start | Browser control and automation |
+| **observe** | errors, logs, extension_logs, network_waterfall, network_bodies, websocket_events, websocket_status, actions, vitals, page, tabs, pilot, timeline, error_bundles, screenshot, command_result, pending_commands, failed_commands, saved_videos, recordings, recording_actions, playback_results, log_diff_report | Read captured browser state |
+| **analyze** | dom, performance, accessibility, error_clusters, history, security_audit, third_party_audit, link_health, link_validation, page_summary, annotations, annotation_detail, api_validation, draw_history, draw_session | Active analysis and audits |
+| **generate** | reproduction, test, pr_summary, har, csp, sri, sarif, visual_test, annotation_report, annotation_issues, test_from_context, test_heal, test_classify | Produce artifacts from captured data |
+| **configure** | store, load, noise_rule, clear, health, streaming, test_boundary_start, test_boundary_end, recording_start, recording_stop, playback, log_diff, telemetry, diff_sessions, audit_log | Session settings and utilities |
+| **interact** | highlight, subtitle, save_state, load_state, list_states, delete_state, execute_js, navigate, refresh, back, forward, new_tab, screenshot, click, type, select, check, get_text, get_value, get_attribute, set_attribute, focus, scroll_to, wait_for, key_press, paste, list_interactive, record_start, record_stop, upload, draw_mode_start | Browser control and automation |

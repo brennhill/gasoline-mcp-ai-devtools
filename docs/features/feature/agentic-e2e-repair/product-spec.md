@@ -77,7 +77,7 @@ Agentic E2E Repair does not introduce new MCP tools or modes. It composes existi
 | Observe network | `observe` | `network_waterfall` | HTTP requests/responses, status codes, timing |
 | Observe API responses | `observe` | `network_bodies` | Actual response payloads for comparison |
 | Observe API schema | `observe` | `api` | Inferred schema from traffic vs. expected contract |
-| Observe DOM | `configure` | `query_dom` | Current DOM state for selector verification |
+| Observe DOM | `analyze` | `dom` | Current DOM state for selector verification |
 | Observe error clusters | `observe` | `error_clusters` | Grouped errors pointing to single root cause |
 | Observe changes | `observe` | `changes` | What changed since last known good state |
 | Validate API contract | `configure` | `validate_api` | Detect shape_change, type_change, new_field, null_field violations |
@@ -108,12 +108,12 @@ configure({ action: "validate_api", operation: "analyze" })
 
 Step 4: Agent queries the DOM to check whether the expected selector exists.
 ```
-configure({ action: "query_dom", selector: ".submit-btn" })
+analyze({what: "dom", selector: ".submit-btn" })
 ```
 
 Step 5: Agent generates a corrected test based on observations.
 ```
-generate({ type: "test", include_fixtures: true })
+generate({format: "test", include_fixtures: true })
 ```
 
 ## Requirements
@@ -122,7 +122,7 @@ generate({ type: "test", include_fixtures: true })
 |---|---|---|
 | R1 | The agent must be able to observe console errors, network traffic, and DOM state during a failing E2E test run via existing Gasoline tools. | must |
 | R2 | The agent must be able to classify the failure into a root cause category: selector drift, API contract drift, timing fragility, mock staleness, or true regression. | must |
-| R3 | The agent must be able to generate a corrected test file using the `generate` tool with `type: "test"`. | must |
+| R3 | The agent must be able to generate a corrected test file using the `generate` tool with `format: "test"`. | must |
 | R4 | The agent must verify the fix by re-running the test and confirming it passes. | must |
 | R5 | The agent must provide a structured explanation of the diagnosis and fix (which root cause category, what changed, why the fix is correct). | must |
 | R6 | The agent must use error clustering to avoid investigating the same root cause multiple times when multiple tests fail from a single change. | should |
@@ -136,7 +136,7 @@ generate({ type: "test", include_fixtures: true })
 ## Non-Goals
 
 - This feature does NOT modify the Gasoline MCP server or extension. It is a workflow pattern using existing tools.
-- This feature does NOT create a new MCP tool. The 4-tool maximum is strictly preserved.
+- This feature does NOT create a new MCP tool. The 5-tool maximum is strictly preserved.
 - This feature does NOT auto-commit fixes without human review. The agent proposes fixes; a human (or a CI approval gate) decides to merge.
 - This feature does NOT handle non-browser tests (unit tests, API tests, integration tests without a browser). It requires Gasoline's browser observation layer.
 - This feature does NOT replace CI infrastructure. It assumes a test runner (Playwright, Cypress, Selenium) already exists and can be invoked by the agent.
@@ -151,8 +151,8 @@ The agent classifies each failure into one of five root cause categories. Each c
 
 #### Diagnostic signals:
 - Test fails with "element not found" or "locator timeout"
-- `query_dom` with the test's selector returns empty
-- `query_dom` with a relaxed selector (text content, role, partial class) finds a matching element
+- `analyze({what: "dom"})` with the test's selector returns empty
+- `analyze({what: "dom"})` with a relaxed selector (text content, role, partial class) finds a matching element
 - `observe({ what: "changes" })` shows DOM structure changed recently
 
 #### Fix strategy:
@@ -211,7 +211,7 @@ The agent classifies each failure into one of five root cause categories. Each c
 #### Fix strategy:
 - Do NOT fix the test. The test is correctly detecting a regression.
 - Report the regression with full diagnostic evidence: error cluster, network diff, DOM state
-- Generate a reproduction script via `generate({ type: "reproduction" })`
+- Generate a reproduction script via `generate({format: "reproduction" })`
 - Escalate to the developer who made the recent change
 
 ## Batch Repair Workflow
@@ -283,7 +283,7 @@ Note: Diagnosis and fix generation times refer to the Gasoline tool calls, not t
 
 - **Multiple root causes in a single test failure.** Expected behavior: The agent addresses root causes in dependency order (API contract first, then selectors, then timing). It generates a single fix that addresses all causes.
 
-- **Test framework not recognized.** Expected behavior: The agent can still observe browser state but generates generic JavaScript fixes rather than framework-specific ones (Playwright vs. Cypress vs. Selenium). The `generate({ type: "test" })` tool handles framework detection.
+- **Test framework not recognized.** Expected behavior: The agent can still observe browser state but generates generic JavaScript fixes rather than framework-specific ones (Playwright vs. Cypress vs. Selenium). The `generate({format: "test" })` tool handles framework detection.
 
 - **Gasoline extension disconnected during test run.** Expected behavior: Observation data is partial or missing. The agent falls back to test runner output only and reports that Gasoline capture was incomplete.
 
@@ -300,7 +300,8 @@ Note: Diagnosis and fix generation times refer to the Gasoline tool calls, not t
 - **Depends on:**
   - `observe` tool (errors, network_waterfall, network_bodies, api, error_clusters, changes) -- shipped
   - `generate` tool (test, reproduction) -- shipped
-  - `configure` tool (query_dom, validate_api, diff_sessions, clear) -- shipped
+  - `analyze` tool (`what:"dom"`) -- shipped
+  - `configure` tool (`diff_sessions`, `clear`) -- shipped
   - `interact` tool (navigate, refresh, execute_js, save_state, load_state) -- shipped
   - Error Clustering feature -- shipped
   - API Schema Inference feature -- shipped

@@ -13,10 +13,10 @@ last_reviewed: 2026-02-16
 
 ## Problem Statement
 
-The MCP schema advertises a `query_dom` action under the `generate` tool, but when users attempt to call it, they receive misleading empty results instead of actual DOM query data. Even universal selectors like `"*"` return 0 matches on pages that clearly contain DOM elements.
+The MCP schema advertises a `analyze({what: "dom"})` action under the `generate` tool, but when users attempt to call it, they receive misleading empty results instead of actual DOM query data. Even universal selectors like `"*"` return 0 matches on pages that clearly contain DOM elements.
 
 ### Current User Experience:
-1. User calls `generate({action: "query_dom", selector: "h1"})`
+1. User calls `analyze({what: "dom", selector: "h1"})`
 2. Receives schema-compliant response: `{totalMatchCount: 0, matches: null, url: "", pageTitle: ""}`
 3. User assumes their selector is wrong or the page has no matching elements
 4. User wastes time debugging selector syntax when the real issue is the feature isn't implemented
@@ -28,7 +28,7 @@ The MCP schema advertises a `query_dom` action under the `generate` tool, but wh
 Complete the message forwarding chain so that DOM queries flow from the MCP tool through the server, to background.js, to content.js, to inject.js, where `executeDOMQuery()` executes and returns real results.
 
 ### Fixed User Experience:
-1. User calls `generate({action: "query_dom", selector: "h1"})`
+1. User calls `analyze({what: "dom", selector: "h1"})`
 2. Query is forwarded to the content script on the tracked tab
 3. `executeDOMQuery()` runs and returns actual DOM elements
 4. User receives real data: `{totalMatchCount: 1, returnedMatchCount: 1, matches: [{tag: "h1", text: "Example Domain", ...}]}`
@@ -52,7 +52,7 @@ Complete the message forwarding chain so that DOM queries flow from the MCP tool
 
 ## Success Criteria
 
-1. `generate({action: "query_dom", selector: "h1"})` returns actual h1 elements from the page
+1. `analyze({what: "dom", selector: "h1"})` returns actual h1 elements from the page
 2. Universal selector `"*"` returns real DOM elements (up to max limit)
 3. Empty results only occur when selector genuinely matches nothing (not due to implementation gap)
 4. `url` and `pageTitle` fields are populated with actual page data
@@ -62,12 +62,12 @@ Complete the message forwarding chain so that DOM queries flow from the MCP tool
 ## User Workflow
 
 ### Before Fix:
-1. User calls `generate({action: "query_dom", selector: "button"})`
+1. User calls `analyze({what: "dom", selector: "button"})`
 2. Receives 0 matches with empty url/pageTitle
 3. User debugs selector, wastes time
 
 ### After Fix:
-1. User calls `generate({action: "query_dom", selector: "button"})`
+1. User calls `analyze({what: "dom", selector: "button"})`
 2. Query executes in tracked tab's DOM
 3. User receives real button elements with their properties
 4. User can immediately analyze the DOM structure
@@ -79,7 +79,7 @@ Complete the message forwarding chain so that DOM queries flow from the MCP tool
 {
   "tool": "generate",
   "arguments": {
-    "action": "query_dom",
+    "what": "dom",
     "selector": "h1, h2, h3"
   }
 }
@@ -120,7 +120,7 @@ Complete the message forwarding chain so that DOM queries flow from the MCP tool
 {
   "tool": "generate",
   "arguments": {
-    "action": "query_dom",
+    "what": "dom",
     "selector": "button"
   }
 }

@@ -109,7 +109,7 @@ Concurrency is enforced via semaphores in the Go server. Excess requests are que
 ```
 ┌─────────────┐     ┌──────────────┐     ┌─────────────┐
 │  MCP Client │────▶│  Go Server   │────▶│  Extension  │
-│  (AI Agent) │     │  tools.go    │     │  (Browser)  │
+│  (AI Agent) │     │  tools_core.go    │     │  (Browser)  │
 └─────────────┘     └──────────────┘     └─────────────┘
        │                   │                    │
        │ generate          │                    │
@@ -143,7 +143,7 @@ cmd/dev-console/
 ├── testgen.go           # New: ALL test generation logic (from_context, heal, classify)
 ├── testgen_test.go      # New: Unit tests
 ├── codegen.go           # Existing: Playwright script generation (reuse)
-└── tools.go             # Extend: Add new generate modes
+└── tools_core.go             # Extend: Add new generate modes
 ```
 
 #### Internal organization of testgen.go:
@@ -193,7 +193,7 @@ extension/lib/
 ```go
 // testgen.go
 
-// TestFromContextRequest represents generate {type: "test_from_context"} parameters
+// TestFromContextRequest represents generate {format: "test_from_context"} parameters
 type TestFromContextRequest struct {
     Context      string `json:"context"`       // "error", "interaction", "regression"
     ErrorID      string `json:"error_id"`      // Optional: specific error to reproduce
@@ -203,7 +203,7 @@ type TestFromContextRequest struct {
     IncludeMocks bool   `json:"include_mocks"`
 }
 
-// TestHealRequest represents generate {type: "test_heal"} parameters
+// TestHealRequest represents generate {format: "test_heal"} parameters
 type TestHealRequest struct {
     Action          string   `json:"action"`           // "analyze", "repair", "batch"
     TestFile        string   `json:"test_file"`
@@ -212,7 +212,7 @@ type TestHealRequest struct {
     AutoApply       bool     `json:"auto_apply"`
 }
 
-// TestClassifyRequest represents generate {type: "test_classify"} parameters
+// TestClassifyRequest represents generate {format: "test_classify"} parameters
 type TestClassifyRequest struct {
     Action     string          `json:"action"` // "failure", "batch"
     Failure    *TestFailure    `json:"failure"`
@@ -378,7 +378,7 @@ func (h *ToolHandler) ClassifyFailure(failure TestFailure) *FailureClassificatio
 
 ## 5. Response Schemas (D1-2 Resolution)
 
-All responses use existing `mcpJSONResponse(summary, data)` pattern from tools.go.
+All responses use existing `mcpJSONResponse(summary, data)` pattern from tools_core.go.
 
 ### test_from_context Response
 
@@ -640,7 +640,7 @@ var secretPatterns = []string{
 
 ## 12. New Error Codes
 
-Add to tools.go:
+Add to tools_core.go:
 
 ```go
 const (

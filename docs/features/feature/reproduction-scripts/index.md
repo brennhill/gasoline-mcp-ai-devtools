@@ -17,7 +17,7 @@ test_paths: []
 
 - Status: proposed
 - Tool: generate
-- Mode/Action: tbd
+- Mode/Action: See feature contract and `docs/core/mcp-command-option-matrix.md` for canonical `what`/`action`/`format` enums.
 - Location: `docs/features/feature/reproduction-scripts`
 
 ## Specs

@@ -941,7 +941,7 @@ func (c *RedactionCache) Invalidate() {
 | `cmd/dev-console/redaction_config.go` | New: Pattern configuration management |
 | `cmd/dev-console/redaction_test.go` | Existing tests (extend) |
 | `cmd/dev-console/redaction_config_test.go` | New: Configuration tests |
-| `cmd/dev-console/tools.go` | Add `configure_redaction` tool registration |
+| `cmd/dev-console/tools_core.go` | Add `configure_redaction` tool registration |
 
 ---
 

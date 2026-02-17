@@ -23,7 +23,7 @@ observe | generate | configure | interact | analyze
 
 ## Rationale
 
-The 4-tool constraint was designed to:
+The 5-tool model was designed to:
 1. Keep LLM decision-making simple (fewer options)
 2. Force intentional design (no kitchen-sink sprawl)
 3. Maintain clear semantic boundaries

@@ -110,7 +110,7 @@ preconditions:
 - `GET /snapshot` — All browser state at failure point (CI endpoint)
 - `observe {what: "errors"}` — Console errors during test
 - `observe {what: "network"}` — API responses
-- `query_dom` — Current DOM state
+- `analyze({what: "dom"})` — Current DOM state
 - `verify_fix` — Before/after comparison to confirm fix worked
 - `analyze {target: "changes"}` — What changed since last passing run
 

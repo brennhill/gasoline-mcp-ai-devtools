@@ -21,7 +21,7 @@ Read-only mode is a server-wide boolean flag set at startup via CLI flag or envi
 - **Environment variable**: Check GASOLINE_READ_ONLY env var
 - **Tool handler guards**: Each mutation operation checks ReadOnlyMode before execution
 - **Error response**: Return standard error format with "read_only_mode_enabled" code
-- **Observe integration**: Include read_only_mode in server_config observe mode
+- **Health integration**: Include read_only_mode in configure health response
 
 ## Data Flows
 
@@ -53,7 +53,7 @@ Agent calls configure({action: "clear"}):
 
 ### Mutation detection:
 - Categorize all tool actions as observation (allowed) or mutation (blocked)
-- Observation: observe (all modes), generate (all types), configure (query_dom, health, streaming status)
+- Observation/non-mutating: observe (all modes), analyze (`what:"dom"` and related read analyses), generate (all formats), configure health/streaming status
 - Mutation: interact (all actions), configure (store, load, clear, dismiss, noise_rule, diff_sessions)
 
 ### Flag enforcement:
@@ -71,9 +71,9 @@ Agent calls configure({action: "clear"}):
 ```
 
 ### Server config exposure:
-Add "server_config" mode to observe tool to expose current configuration:
+Use configure health response to expose current configuration:
 ```json
-observe({what: "server_config"})
+configure({action: "health"})
 // Returns:
 {
   "read_only_mode": true,

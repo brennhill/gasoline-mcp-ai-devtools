@@ -48,14 +48,14 @@ Each audit entry contains:
 - Timestamp (ISO 8601 with millisecond precision)
 - Session ID (see 1.3)
 - Client identity (see 1.2)
-- Tool name (e.g., `observe`, `query_dom`, `generate`)
+- Tool name (e.g., `observe`, `analyze`, `generate`)
 - Parameter summary (tool name and key parameters, not full request body)
 - Response size in bytes
 - Duration in milliseconds
 - Status (success, error, rate-limited, redacted)
 - Redaction count (how many fields were redacted in the response, see 1.4)
 
-The log is queryable via a new MCP tool `get_audit_log` that accepts filters: time range, tool name, session ID, status. The tool returns entries in reverse chronological order with pagination.
+The log is queryable via `configure({action:"audit_log"})` with filters for time range, tool name, session ID, and status. Responses return entries in reverse chronological order with pagination.
 
 #### What the Log Does NOT Store
 
@@ -102,7 +102,7 @@ When an MCP client sends the `initialize` request, Gasoline generates a session 
 The session ID is:
 - Returned in the `initialize` response as a server capability extension
 - Included in every audit log entry for that connection
-- Available via the `get_health` tool for active session listing
+- Available via `configure({action:"health"})` for active session listing
 - Logged on connection close with total tool call count and duration
 
 Sessions end when the stdio pipe closes (MCP client disconnects or process dies). The server detects this via EOF on stdin.
@@ -188,7 +188,7 @@ Named configuration bundles that set multiple enterprise features to sensible de
 **`restricted`** — Limited AI access, aggressive redaction:
 - TTL: 30 minutes
 - Redaction: all built-in patterns enabled
-- Rate limits: `query_dom` limited to 10/min, `get_network_bodies` limited to 10/min
+- Rate limits: `analyze` limited to 10/min, `observe` limited to 10/min
 - Read-only mode: enabled (no mutation tools)
 
 **`paranoid`** — Maximum restriction:
@@ -196,7 +196,7 @@ Named configuration bundles that set multiple enterprise features to sensible de
 - Redaction: all built-in patterns enabled
 - Rate limits: 30 calls/min per tool (global cap)
 - Read-only mode: enabled
-- Tool allowlist: `observe`, `analyze`, `get_health` only
+- Tool allowlist: `observe`, `analyze`, `configure` only
 
 #### How Profiles Work
 
@@ -303,7 +303,7 @@ To rotate the key, restart the server with the new key and update the extension 
 
 ### 3.2 Per-Tool Rate Limits
 
-Configurable rate limits that apply per MCP tool. This prevents a malfunctioning or malicious AI agent from hammering expensive tools (like `query_dom` or `get_network_bodies`) in a tight loop.
+Configurable rate limits that apply per MCP tool. This prevents a malfunctioning or malicious AI agent from hammering expensive paths (like `analyze` calls for DOM analysis or `observe` calls for `network_bodies`) in a tight loop.
 
 #### How It Works
 
@@ -311,7 +311,7 @@ Each tool has a configurable maximum calls per minute. When exceeded, the tool r
 
 Default limits (can be overridden):
 - `observe`: 60/min (high — common read operation)
-- `query_dom`: 20/min (expensive — triggers round-trip to browser)
+- `analyze`: 20/min (expensive — triggers round-trip to browser for extension-backed modes like `what:"dom"`)
 - `generate`: 30/min (moderate — codegen is CPU-bound)
 - `analyze`: 30/min (moderate)
 - `get_audit_log`: 10/min (low — audit queries shouldn't be in hot loops)
@@ -319,7 +319,7 @@ Default limits (can be overridden):
 
 Limits are configured via `--rate-limits` flag or config file:
 ```
---rate-limits="query_dom=10,generate=5,observe=120"
+--rate-limits="analyze=10,generate=5,observe=120"
 ```
 
 #### Rate Limit Response
@@ -329,8 +329,8 @@ When rate-limited, the tool returns a standard MCP error response:
 {
   "error": {
     "code": -32029,
-    "message": "Rate limit exceeded for tool 'query_dom': 20/min. Retry after 45s.",
-    "data": {"tool": "query_dom", "limit": 20, "window": "1m", "retry_after_seconds": 45}
+    "message": "Rate limit exceeded for tool 'analyze': 20/min. Retry after 45s.",
+    "data": {"tool": "analyze", "limit": 20, "window": "1m", "retry_after_seconds": 45}
   }
 }
 ```
@@ -401,7 +401,7 @@ Priority order: CLI flags > environment variables > config file > defaults.
 
 ### 3.4 Health & SLA Metrics
 
-A new MCP tool `get_health` exposes server operational state for monitoring and alerting. This is distinct from the existing `/health` HTTP endpoint (which only returns circuit breaker state) — it provides comprehensive server metrics.
+`configure({action:"health"})` exposes server operational state for monitoring and alerting. This is distinct from the existing `/health` HTTP endpoint (which only returns circuit breaker state) — it provides comprehensive server metrics.
 
 #### What It Reports
 
@@ -494,7 +494,7 @@ Restrict which MCP tools are available to connected clients. Tools not on the al
 An allowlist is configured via `--tools-allow` flag or config file. Only the listed tools are exposed:
 
 ```
---tools-allow="observe,analyze,get_health,get_audit_log"
+--tools-allow="observe,analyze,configure"
 ```
 
 If no allowlist is set, all tools are available (default behavior).
@@ -502,7 +502,7 @@ If no allowlist is set, all tools are available (default behavior).
 There is also a blocklist (`--tools-block`) for the inverse case — allow everything except specific tools:
 
 ```
---tools-block="configure,generate,query_dom"
+--tools-block="configure,generate,analyze"
 ```
 
 If both are specified, the allowlist takes priority (blocklist is ignored).
@@ -625,4 +625,4 @@ All features are additive. No existing behavior changes without explicit opt-in.
 - All tools remain available unless allowlisting is configured
 - The extension works unchanged — new auth header is only sent if configured
 
-The MCP protocol version does not change. New tools (`get_audit_log`, `get_health`, `export_data`) are added; no existing tools change their response format.
+The MCP protocol version does not change. New configure actions and report modes may be added; existing tool response formats remain stable.

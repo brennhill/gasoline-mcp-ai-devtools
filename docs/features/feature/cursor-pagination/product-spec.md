@@ -16,8 +16,8 @@ links:
 ## TL;DR
 
 - Status: shipped
-- Tool: tbd
-- Mode/Action: tbd
+- Tool: See feature contract and `docs/core/mcp-command-option-matrix.md` for canonical tool enums.
+- Mode/Action: See feature contract and `docs/core/mcp-command-option-matrix.md` for canonical `what`/`action`/`format` enums.
 - This document is a generated placeholder and should be completed.
 
 ## Linked Specs

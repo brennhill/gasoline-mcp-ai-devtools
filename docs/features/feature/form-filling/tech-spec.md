@@ -18,7 +18,7 @@ Follows standard async command pattern: MCP returns immediately with correlation
 
 ## Key Components
 
-- **Server (cmd/dev-console/tools.go)**: Add `fill_form` case to interact tool handler, validate field specifications, create pending query with timeout metadata
+- **Server (cmd/dev-console/tools_core.go)**: Add `fill_form` case to interact tool handler, validate field specifications, create pending query with timeout metadata
 - **Extension (inject.js)**: Implement field filling logic with input type detection, event triggering, validation handling
 - **Query executor (background.js)**: Poll `/pending-queries`, dispatch fill_form commands to inject.js via window.postMessage
 - **Result aggregator**: Collect per-field results (success/error), return structured response with validation feedback

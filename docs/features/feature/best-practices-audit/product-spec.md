@@ -50,7 +50,7 @@ The audit composes data that Gasoline already captures. Most checks require no n
 - Deprecated API usage detection (console warnings from the browser that match deprecation patterns)
 - Document metadata completeness (`<title>`, `<meta charset>`, `<meta viewport>`, `<meta description>`, `<html lang>`, `<!DOCTYPE html>`)
 
-For document metadata, the audit leverages the existing `query_dom` async command infrastructure to query the page's `<head>` element on demand. Deprecated API warnings are already captured in the console log buffer -- the server-side audit simply needs to pattern-match against known deprecation message formats from Chrome and Firefox.
+For document metadata, the audit leverages the existing `analyze({what: "dom"})` async command infrastructure to query the page's `<head>` element on demand. Deprecated API warnings are already captured in the console log buffer -- the server-side audit simply needs to pattern-match against known deprecation message formats from Chrome and Firefox.
 
 ## User Stories
 
@@ -128,7 +128,7 @@ For document metadata, the audit leverages the existing `query_dom` async comman
       "verdict": "fail",
       "description": "No Content-Security-Policy header found on HTML responses.",
       "evidence": "0/3 HTML responses include a CSP header",
-      "remediation": "Add a Content-Security-Policy header. Use generate({type: 'csp'}) to generate a policy based on observed traffic."
+      "remediation": "Add a Content-Security-Policy header. Use generate({format: 'csp'}) to generate a policy based on observed traffic."
     },
     {
       "id": "hsts-header",
@@ -250,7 +250,7 @@ For document metadata, the audit leverages the existing `query_dom` async comman
   ],
   "recommendations": [
     "Fix 2 JavaScript errors before they affect users. Use observe({what: 'errors'}) for full stack traces.",
-    "Add a Content-Security-Policy header. Run generate({type: 'csp'}) to auto-generate one from observed traffic.",
+    "Add a Content-Security-Policy header. Run generate({format: 'csp'}) to auto-generate one from observed traffic.",
     "Update 2 HTTP resource URLs to HTTPS to eliminate mixed content."
   ],
   "data_coverage": {
@@ -318,13 +318,13 @@ A key design principle: the best practices audit does NOT run its own data colle
 | HTTPS vs HTTP usage | Network waterfall entries + network bodies | Yes |
 | Mixed content detection | Network waterfall (page URL vs resource URL schemes) | Yes |
 | Page URLs | CSP generator page list + network waterfall | Yes |
-| Document metadata (DOCTYPE, charset, viewport, title, lang) | DOM query via async command | Partially -- uses existing `query_dom` infrastructure but needs a targeted metadata query |
+| Document metadata (DOCTYPE, charset, viewport, title, lang) | DOM query via async command | Partially -- uses existing `analyze({what: "dom"})` infrastructure but needs a targeted metadata query |
 
 ### Document Metadata Collection
 
 Document metadata checks require reading the page's `<head>` content. Two approaches:
 
-**Option A (preferred): Server-side metadata query.** The audit handler issues an internal `query_dom` command targeting `head` and `html[lang]` to retrieve metadata. This reuses the existing async command infrastructure (`/pending-queries` -> extension polls -> executes -> `/dom-result`). The audit waits up to 2 seconds for the result. If the extension is disconnected or times out, metadata checks return `"verdict": "skipped"` with `"evidence": "Extension not connected; metadata checks require an active browser tab."`.
+**Option A (preferred): Server-side metadata query.** The audit handler issues an internal `analyze({what: "dom"})` command targeting `head` and `html[lang]` to retrieve metadata. This reuses the existing async command infrastructure (`/pending-queries` -> extension polls -> executes -> `/dom-result`). The audit waits up to 2 seconds for the result. If the extension is disconnected or times out, metadata checks return `"verdict": "skipped"` with `"evidence": "Extension not connected; metadata checks require an active browser tab."`.
 
 **Option B (fallback): Console log injection.** The extension could inject a small script that logs metadata to the console in a structured format. The audit would then parse it from the log buffer. This is less clean and not preferred.
 
@@ -354,9 +354,9 @@ No new extension-side code is needed for this check.
 | R9 | Generate a prioritized `recommendations` list (top 3-5 actionable items) | must |
 | R10 | Include `data_coverage` section showing how much data was analyzed | must |
 | R11 | Detect deprecated API usage from console warning patterns | should |
-| R12 | Retrieve document metadata via the existing `query_dom` async command infrastructure | should |
+| R12 | Retrieve document metadata via the existing `analyze({what: "dom"})` async command infrastructure | should |
 | R13 | Gracefully degrade metadata checks to "skipped" when extension is disconnected | should |
-| R14 | Cross-reference CSP check with the CSP generator: suggest `generate({type: 'csp'})` in remediation when CSP is missing | should |
+| R14 | Cross-reference CSP check with the CSP generator: suggest `generate({format: 'csp'})` in remediation when CSP is missing | should |
 | R15 | Cross-reference security headers with the security audit: avoid duplicating findings already available via `observe({what: 'security_audit'})` | should |
 | R16 | Include a `data_coverage.metadata_source` field indicating whether metadata came from DOM query or was unavailable | should |
 | R17 | Support returning only failed checks for minimal-token responses | could |
@@ -373,7 +373,7 @@ No new extension-side code is needed for this check.
 
 - Out of scope: accessibility best practices. Accessibility is a separate concern covered by `observe({what: "accessibility"})` which integrates with axe-core. The best practices audit does not include WCAG checks.
 
-- Out of scope: SEO checks (canonical URLs, structured data, Open Graph tags). These are valuable but belong in a separate `generate({type: "seo_audit"})` mode if added later.
+- Out of scope: SEO checks (canonical URLs, structured data, Open Graph tags). These are valuable but belong in a separate `generate({format: "seo_audit"})` mode if added later.
 
 ## Performance SLOs
 
@@ -393,7 +393,7 @@ The audit handler performs in-memory iteration over existing buffers with O(n) c
 
 - **No sensitive data in output.** Evidence strings reference URLs and header values, which are already visible in other Gasoline outputs. No request/response bodies are included in the audit output.
 
-- **DOM query for metadata.** The metadata query reads `<head>` content and the `<html lang>` attribute. This is non-sensitive structural information. The DOM query is executed through the existing `query_dom` infrastructure with the same timeout and security constraints.
+- **DOM query for metadata.** The metadata query reads `<head>` content and the `<html lang>` attribute. This is non-sensitive structural information. The DOM query is executed through the existing `analyze({what: "dom"})` infrastructure with the same timeout and security constraints.
 
 - **Remediation strings are static.** Remediation recommendations are hardcoded in the Go handler, not derived from captured data. An LLM cannot inject content into remediation text via manipulated console logs or headers.
 
@@ -424,7 +424,7 @@ The audit handler performs in-memory iteration over existing buffers with O(n) c
   - Network bodies with ResponseHeaders (shipped) -- Security header evaluation.
   - Network waterfall (shipped) -- HTTPS/mixed content analysis.
   - CSP generator page list (shipped) -- Page URL enumeration.
-  - `query_dom` async command (shipped) -- Document metadata retrieval.
+  - `analyze({what: "dom"})` async command (shipped) -- Document metadata retrieval.
   - Security scanner header checks (shipped) -- Reuses `requiredSecurityHeaders` list and `isHTMLResponse` / `isLocalhostURL` helpers from `security.go`.
 
 - **Depended on by:**
@@ -436,14 +436,14 @@ The audit handler performs in-memory iteration over existing buffers with O(n) c
 - A2: The log buffer contains representative browsing activity. An audit run immediately after server start (empty buffers) produces no meaningful results.
 - A3: Network body capture is enabled for at least HTML document responses, so that ResponseHeaders are available for security header checks.
 - A4: The browser emits deprecation warnings in the console for deprecated API usage (Chrome and Firefox do this; Safari may not).
-- A5: The DOM query infrastructure (`query_dom`) is functional and the extension can execute queries against the page's DOM.
+- A5: The DOM query infrastructure (`analyze({what: "dom"})`) is functional and the extension can execute queries against the page's DOM.
 
 ## Open Items
 
 | # | Item | Status | Notes |
 |---|------|--------|-------|
 | OI-1 | Should the audit cache its results for a configurable TTL to avoid redundant computation on repeated calls? | open | Useful if the AI calls the audit multiple times in quick succession (e.g., before and after a fix). However, caching adds complexity and stale-data risk. The audit is cheap (< 50ms without DOM query), so caching may be premature. |
-| OI-2 | Should metadata checks use a synchronous DOM query (blocking the audit response) or return metadata checks as "pending" and require a follow-up call? | open | Current design uses the async query_dom infrastructure with a 2s wait. An alternative is to make the audit fully synchronous (skip metadata if not immediately available) and suggest the AI run `configure({action: "query_dom"})` separately. |
+| OI-2 | Should metadata checks use a synchronous DOM query (blocking the audit response) or return metadata checks as "pending" and require a follow-up call? | open | Current design uses the async analyze({what: "dom"}) infrastructure with a 2s wait. An alternative is to make the audit fully synchronous (skip metadata if not immediately available) and suggest the AI run `analyze({what: "dom"})` separately. |
 | OI-3 | Should the check thresholds (e.g., console noise: 50 entries = warning, 200 = fail) be configurable via parameters? | open | Configurable thresholds add parameter complexity. Fixed thresholds aligned with industry norms (similar to Lighthouse) are simpler and more consistent across AI agents. |
-| OI-4 | Should the audit integrate with the SARIF exporter so that best practices violations can appear as GitHub Code Scanning annotations? | open | This would allow `generate({type: "sarif"})` to include best practices findings alongside security findings. Requires defining SARIF rule IDs for each check. Natural future extension. |
+| OI-4 | Should the audit integrate with the SARIF exporter so that best practices violations can appear as GitHub Code Scanning annotations? | open | This would allow `generate({format: "sarif"})` to include best practices findings alongside security findings. Requires defining SARIF rule IDs for each check. Natural future extension. |
 | OI-5 | Should the audit support a `format` parameter for output variants (e.g., `"markdown"` for PR comments, `"json"` for programmatic use)? | open | JSON-only is simplest and most LLM-friendly. Markdown formatting can be done by the LLM from JSON data. |

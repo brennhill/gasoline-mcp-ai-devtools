@@ -1,9 +1,9 @@
 ---
 doc_type: tech-spec
 feature_id: feature-query-dom
-status: proposed
+status: shipped
 owners: []
-last_reviewed: 2026-02-16
+last_reviewed: 2026-02-17
 links:
   product: ./product-spec.md
   tech: ./tech-spec.md
@@ -11,27 +11,38 @@ links:
   feature_index: ./index.md
 ---
 
-# Query Dom Tech Spec
+# Query DOM Tech Spec (TARGET)
 
-## TL;DR
+## Server Path
+1. `toolQueryDOM` in `cmd/dev-console/tools_analyze.go` validates `selector`.
+2. Server queues pending query type `dom` with correlation ID.
+3. Wait/queue behavior is governed by `maybeWaitForCommand`.
 
-- Status: proposed
-- Tool: configure
-- Mode/Action: query_dom
-- This document is a generated placeholder and should be completed.
+## Extension Path
+1. `src/background/pending-queries.ts` handles `query.type === 'dom'`.
+2. Background sends `DOM_QUERY` to content script.
+3. Content relays `GASOLINE_DOM_QUERY` to inject script.
+4. Inject executes `executeDOMQuery` from `src/lib/dom-queries.ts`.
+5. Result returns through sync command-results channel.
 
-## Linked Specs
+## Frame Support
+- Frame selection resolves in background before dispatch.
+- `frame` handling supports:
+- default main frame
+- `"all"` aggregation
+- frame index
+- iframe selector matching
+- Aggregation includes per-frame metadata and combined counts.
 
-- Product: [product-spec.md](./product-spec.md)
-- Tech: [tech-spec.md](./tech-spec.md)
-- QA: [qa-plan.md](./qa-plan.md)
+## Failure Modes
+- Invalid JSON args -> structured server error.
+- Missing selector -> structured server error.
+- Invalid frame target -> `invalid_frame` / `frame_not_found` path.
+- Content/inject failure -> structured command error in command result payload.
 
-## Requirement IDs
-
-- FEATURE_QUERY_DOM_001
-- FEATURE_QUERY_DOM_002
-- FEATURE_QUERY_DOM_003
-
-## Notes
-
-Fill this file with feature-specific details and reference code/test paths used by this feature.
+## Code Anchors
+- `cmd/dev-console/tools_analyze.go`
+- `src/background/pending-queries.ts`
+- `src/content/message-handlers.ts`
+- `src/inject/message-handlers.ts`
+- `src/lib/dom-queries.ts`

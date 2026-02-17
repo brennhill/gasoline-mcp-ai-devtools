@@ -57,7 +57,7 @@ last_reviewed: 2026-02-16
 | CL-6 | `maxDepthReached` flag | `true` means the tree was cut short. LLM should request a narrower `scope` or accept partial data. | [ ] |
 | CL-7 | Table and list summarization | `table "Name" (24 rows)` and `list "Name" (N items)` -- LLM should understand these are summaries with only first few items shown. | [ ] |
 | CL-8 | Scope parameter understanding | `rootSelector: "body"` vs `rootSelector: "#main"` -- LLM should understand which subtree was traversed. | [ ] |
-| CL-9 | Token estimate utility | `tokenEstimate.savings: "84%"` -- LLM should use this to justify choosing a11y_tree over query_dom. | [ ] |
+| CL-9 | Token estimate utility | `tokenEstimate.savings: "84%"` -- LLM should use this to justify choosing a11y_tree over analyze({what: "dom"}). | [ ] |
 | CL-10 | `[REDACTED]` meaning | LLM should understand `[REDACTED]` means a value exists but was intentionally hidden for security, not that the field is empty. | [ ] |
 | CL-11 | Error response for scope not found | `error: "scope_not_found"` -- LLM should suggest trying a different selector or `"body"`. | [ ] |
 
@@ -135,8 +135,8 @@ last_reviewed: 2026-02-16
 | IT-3 | `interactive_only` parameter forwarded | Server passes `interactive_only: true` | Only interactive elements in tree | must |
 | IT-4 | Extension timeout handling | Extension disconnected | Timeout error with recovery hint | must |
 | IT-5 | New query type `a11y_tree` dispatched | Server creates `PendingQuery{Type:"a11y_tree"}` | Extension correctly routes to `buildA11yTree` handler | must |
-| IT-6 | Concurrent a11y_tree and query_dom requests | Both in flight simultaneously | Both return correct results with no cross-contamination | should |
-| IT-7 | uidMap CSS selectors are valid | AI uses selector from uidMap in subsequent `query_dom` call | `query_dom` finds the correct element | should |
+| IT-6 | Concurrent a11y_tree and analyze({what: "dom"}) requests | Both in flight simultaneously | Both return correct results with no cross-contamination | should |
+| IT-7 | uidMap CSS selectors are valid | AI uses selector from uidMap in subsequent `analyze({what: "dom"})` call | `analyze({what: "dom"})` finds the correct element | should |
 
 ### 4.3 Performance Tests
 
@@ -148,7 +148,7 @@ last_reviewed: 2026-02-16
 | PT-4 | Response size cap | Complex page | < 50KB | must |
 | PT-5 | Memory during traversal | Transient memory allocation | < 2MB | should |
 | PT-6 | Main thread blocking | Continuous blocking time | < 50ms | must |
-| PT-7 | Token efficiency vs query_dom | Compare token counts for same page | a11y_tree is 8-12x more efficient | should |
+| PT-7 | Token efficiency vs analyze({what: "dom"}) | Compare token counts for same page | a11y_tree is 8-12x more efficient | should |
 
 ### 4.4 Edge Case Tests
 
@@ -190,7 +190,7 @@ last_reviewed: 2026-02-16
 | UAT-5 | `{"tool": "observe", "arguments": {"what": "a11y_tree", "max_depth": 2}}` | Deep page structure | Tree limited to 2 levels of nesting, `maxDepthReached: true` | [ ] |
 | UAT-6 | Verify password field redaction | Password field has value entered | `textbox "[REDACTED]"` or `value="[REDACTED]"` appears, not the actual password | [ ] |
 | UAT-7 | Verify UID assignment | Count interactive elements visually | `interactiveCount` matches the number of `[uid=N]` markers in the tree text | [ ] |
-| UAT-8 | Verify uidMap selector validity -- pick a UID, use its selector | AI uses uidMap selector in `configure({action: "query_dom", selector: "..."})` | `query_dom` finds exactly the element the UID refers to | [ ] |
+| UAT-8 | Verify uidMap selector validity -- pick a UID, use its selector | AI uses uidMap selector in `analyze({what: "dom", selector: "..."})` | `analyze({what: "dom"})` finds exactly the element the UID refers to | [ ] |
 | UAT-9 | Verify table summarization | Page has a table with 24 rows | Tree shows `table "Name" (24 rows)` with first 3 rows shown | [ ] |
 | UAT-10 | Verify list summarization | Page has a list with 20 items | Tree shows `list "Name" (20 items)` with first 5 items shown | [ ] |
 | UAT-11 | Verify aria-hidden exclusion | Section with `aria-hidden="true"` | Section and all its children do NOT appear in tree | [ ] |
@@ -212,7 +212,7 @@ last_reviewed: 2026-02-16
 - [ ] Existing `observe({what: "logs"})` still works
 - [ ] Existing `observe({what: "network"})` still works
 - [ ] Existing `observe({what: "accessibility"})` audit still works (different from a11y_tree)
-- [ ] Existing `configure({action: "query_dom"})` still works
+- [ ] Existing `analyze({what: "dom"})` still works
 - [ ] Extension performance is not degraded by adding the new `a11y-tree.js` module
 
 ---

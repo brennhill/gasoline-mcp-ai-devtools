@@ -31,7 +31,7 @@ Add `offset` and `limit` parameters to existing observe() modes that return arra
 
 ### Phase 1: Schema Updates (30 min)
 
-**File:** `cmd/dev-console/tools.go`
+**File:** `cmd/dev-console/tools_core.go`
 
 Add offset/limit parameters to observe tool schema:
 
@@ -223,7 +223,7 @@ func (h *ToolHandler) toolGetNetworkWaterfall(req JSONRPCRequest, args json.RawM
    - Apply pagination after filtering
    - Add metadata to response
 
-2. **logs** (`cmd/dev-console/tools.go` - toolGetLogs)
+2. **logs** (`cmd/dev-console/tools_core.go` - toolGetLogs)
    - Parse offset/limit from args
    - Apply pagination after filtering
    - Add metadata to response
@@ -238,7 +238,7 @@ func (h *ToolHandler) toolGetNetworkWaterfall(req JSONRPCRequest, args json.RawM
    - Apply pagination after filtering
    - Add metadata to response
 
-5. **extension_logs** (`cmd/dev-console/tools.go` - toolGetExtensionLogs)
+5. **extension_logs** (`cmd/dev-console/tools_core.go` - toolGetExtensionLogs)
    - Parse offset/limit from args
    - Apply pagination after filtering
    - Add metadata to response
@@ -504,7 +504,7 @@ observe({what: "network_waterfall", limit: 50})
 |------|---------------|-------------|
 | `cmd/dev-console/pagination.go` | +150 | NEW: Pagination helper |
 | `cmd/dev-console/pagination_test.go` | +200 | NEW: Unit tests |
-| `cmd/dev-console/tools.go` | +10 | Add offset/limit to schema |
+| `cmd/dev-console/tools_core.go` | +10 | Add offset/limit to schema |
 | `cmd/dev-console/network.go` | +30 | Apply pagination to network_waterfall, network_bodies |
 | `cmd/dev-console/websocket.go` | +20 | Apply pagination to websocket_events |
 | `cmd/dev-console/actions.go` | +20 | Apply pagination to actions |

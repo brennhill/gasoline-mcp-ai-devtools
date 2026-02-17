@@ -22,7 +22,7 @@ Examples of fragile selectors:
 
 When a developer renames a CSS class from `.submit-btn` to `.btn-submit`, the application works but the test fails with "element not found." The test is wrong, not the application. But current E2E test repair (Agentic E2E Repair feature) can only update the selector to the new exact class name -- it cannot make the selector resilient to future changes.
 
-**The gap:** Tests need selectors that survive UI refactors. Current `query_dom` returns current selectors but doesn't score them for stability. The AI has no way to choose between `.submit-btn` (fragile, structural) and `button[aria-label="Submit"]` (stable, semantic).
+**The gap:** Tests need selectors that survive UI refactors. Current `analyze({what: "dom"})` returns current selectors but doesn't score them for stability. The AI has no way to choose between `.submit-btn` (fragile, structural) and `button[aria-label="Submit"]` (stable, semantic).
 
 ## Solution
 
@@ -65,7 +65,7 @@ DOM fingerprinting enables self-healing tests: when a test's selector breaks, th
 
 1. E2E test fails with "element not found" for selector `.submit-btn`
 2. Agentic E2E Repair detects selector drift
-3. AI calls `configure({action: "query_dom", selector: "button", text_content: "Submit"})` to find the button by text
+3. AI calls `analyze({what: "dom", selector: "button", text_content: "Submit"})` to find the button by text
 4. Element found but at different selector (`.btn-submit`)
 5. AI calls `configure({action: "dom_fingerprint", selector: ".btn-submit"})`
 6. Server returns ranked selectors: `button[aria-label="Submit"]` (score: 9), `button[name="submit"]` (score: 7), `.btn-submit` (score: 3)

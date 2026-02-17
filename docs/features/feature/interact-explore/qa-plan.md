@@ -1,9 +1,9 @@
 ---
 doc_type: qa-plan
 feature_id: feature-interact-explore
-status: proposed
+status: shipped
 owners: []
-last_reviewed: 2026-02-16
+last_reviewed: 2026-02-17
 links:
   product: ./product-spec.md
   tech: ./tech-spec.md
@@ -11,27 +11,37 @@ links:
   feature_index: ./index.md
 ---
 
-# Interact Explore QA Plan
+# Interact QA Plan (TARGET)
 
-## TL;DR
+## Automated Coverage
+- `cmd/dev-console/tools_interact_rich_test.go`
+- `cmd/dev-console/tools_interact_upload_test.go`
+- `cmd/dev-console/tools_interact_state_test.go`
+- `cmd/dev-console/tools_interact_draw_test.go`
 
-- Status: proposed
-- Tool: tbd
-- Mode/Action: tbd
-- This document is a generated placeholder and should be completed.
+## Required Scenarios
+1. Action dispatch
+- Every schema action reaches a valid handler path.
 
-## Linked Specs
+2. Pilot dependency
+- Disabled pilot returns structured error for browser-control actions.
 
-- Product: [product-spec.md](./product-spec.md)
-- Tech: [tech-spec.md](./tech-spec.md)
-- QA: [qa-plan.md](./qa-plan.md)
+3. Async/sync control
+- Default sync completion.
+- Background/async queued behavior with correlation IDs.
 
-## Requirement IDs
+4. DOM primitives
+- Required parameter validation (`selector`, `text`, `value`, `name`).
+- Command result contains enrichment fields and error propagation.
 
-- FEATURE_INTERACT_EXPLORE_001
-- FEATURE_INTERACT_EXPLORE_002
-- FEATURE_INTERACT_EXPLORE_003
+5. Special actions
+- Upload queueing and completion.
+- Draw mode start + downstream annotation retrieval.
+- Screenshot alias behavior.
 
-## Notes
-
-Fill this file with feature-specific details and reference code/test paths used by this feature.
+## Manual UAT
+1. `interact(action:"navigate", url:"https://example.com")`
+2. `interact(action:"click", selector:"text=Submit")`
+3. `interact(action:"execute_js", script:"document.title")`
+4. `interact(action:"upload", selector:"input[type=file]", file_path:"<abs path>")`
+5. `interact(action:"draw_mode_start")` then retrieve annotations with analyze.

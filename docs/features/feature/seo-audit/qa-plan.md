@@ -82,14 +82,14 @@ last_reviewed: 2026-02-16
 
 | Workflow | Steps Required | Can Be Simplified? |
 |----------|---------------|-------------------|
-| Run full SEO audit | 1 step: `generate({type: "seo_audit"})` | No -- already minimal |
-| Run specific dimension | 1 step: `generate({type: "seo_audit", scope: "metadata"})` | No -- single call |
+| Run full SEO audit | 1 step: `generate({format: "seo_audit"})` | No -- already minimal |
+| Run specific dimension | 1 step: `generate({format: "seo_audit", scope: "metadata"})` | No -- single call |
 | Fix issues then re-audit | 2 steps: fix code + re-audit | Natural workflow |
 | Audit after navigation | 2 steps: navigate + audit | Could auto-audit on navigate but 2 steps is acceptable |
 | Multi-page audit | N steps: navigate + audit per page | Cannot simplify -- single-page by design |
 
 ### Default Behavior Verification
-- [ ] `generate({type: "seo_audit"})` with no optional params runs full audit (all 6 dimensions)
+- [ ] `generate({format: "seo_audit"})` with no optional params runs full audit (all 6 dimensions)
 - [ ] Default `scope` is `"full"` -- all dimensions audited
 - [ ] Default `url` uses the currently tracked tab's URL
 - [ ] Audit runs against the current rendered DOM (including JS-injected content)
@@ -151,7 +151,7 @@ last_reviewed: 2026-02-16
 | IT-3 | Extension disconnected | Go server timeout | Error: extension not connected, no DOM data available | must |
 | IT-4 | SPA with JS-injected meta tags | Extension reads rendered DOM | JS-injected tags (React Helmet, Next.js Head) correctly detected | should |
 | IT-5 | Page with multiple JSON-LD blocks | Extension DOM collection | All blocks detected, each validated individually | should |
-| IT-6 | Async DOM collection pipeline | Go server async commands + Extension | DOM data collected via existing query_dom infrastructure | must |
+| IT-6 | Async DOM collection pipeline | Go server async commands + Extension | DOM data collected via existing analyze({what: "dom"}) infrastructure | must |
 | IT-7 | Blank/loading page | Extension reads minimal DOM | Appropriate issues flagged (H1 missing, meta missing, etc.) | should |
 | IT-8 | Page with iframes | Extension content script | Only top-level document audited; iframe content not included | should |
 

@@ -77,11 +77,11 @@ last_reviewed: 2026-02-16
 |----------|---------------|-------------------|
 | Default rate limiting | 0 steps: enabled by default at 1000 events/sec | No -- zero-config |
 | Custom global rate limit | 1 step: `--rate-limit=2000` | No -- already minimal |
-| Per-tool rate limits | 1 step: `--rate-limits="query_dom=10,generate=5"` | No -- already minimal |
-| Check circuit breaker state | 1 step: extension polls `/health` OR AI calls `get_health` | No -- already minimal |
+| Per-tool rate limits | 1 step: `--rate-limits="analyze=10,generate=5"` | No -- already minimal |
+| Check circuit breaker state | 1 step: extension polls `/health` OR AI calls `configure({action:"health"})` | No -- already minimal |
 | Recovery from rate limiting | 0 steps: automatic (extension backoff + server window reset) | No -- fully automatic |
 | Recovery from circuit breaker | 0 steps: automatic (wait for conditions to clear) | No -- fully automatic |
-| Diagnose rate limiting issues | 1 step: AI calls `get_health` | No -- already minimal |
+| Diagnose rate limiting issues | 1 step: AI calls `configure({action:"health"})` | No -- already minimal |
 
 ### Default Behavior Verification
 - [ ] Global rate limit is 1000 events/sec by default with zero configuration
@@ -121,11 +121,11 @@ last_reviewed: 2026-02-16
 | UT-18 | Per-tool rate limit: under limit | 19 calls for 20/min limit | All succeed | must |
 | UT-19 | Per-tool rate limit: at limit + 1 | 21 calls for 20/min limit | 21st returns MCP error -32029 | must |
 | UT-20 | Per-tool rate limit: error format | Rate limited MCP call | Error with code, message, tool, limit, window, retry_after_seconds | must |
-| UT-21 | Per-tool rate limit: independent per tool | query_dom at limit, observe not | query_dom fails, observe succeeds | must |
+| UT-21 | Per-tool rate limit: independent per tool | analyze at limit, observe not | analyze fails, observe succeeds | must |
 | UT-22 | Per-tool rate limit: window reset | Hit limit, wait 60s | Calls accepted again | must |
 | UT-23 | Sliding window counter: monotonic time | Counter uses monotonic time | No clock skew issues | must |
 | UT-24 | Custom global threshold | `--rate-limit=500` | Rate limiting at 500 events/sec | must |
-| UT-25 | Custom per-tool limits | `--rate-limits="query_dom=10"` | query_dom limited at 10/min | must |
+| UT-25 | Custom per-tool limits | `--rate-limits="analyze=10"` | analyze limited at 10/min | must |
 
 ### 4.2 Integration Tests (Extension)
 
@@ -244,7 +244,7 @@ last_reviewed: 2026-02-16
 | # | Check | Method | Expected | Pass |
 |---|-------|--------|----------|------|
 | DL-UAT-1 | 429 response has no captured data | Inspect 429 JSON body | Only rate limit metadata fields | [ ] |
-| DL-UAT-2 | Health endpoint has no buffer contents | Call get_health | Memory sizes and counts only | [ ] |
+| DL-UAT-2 | Health endpoint has no buffer contents | Call `configure({action:"health"})` | Memory sizes and counts only | [ ] |
 | DL-UAT-3 | Extension backoff state not in page context | Open browser console on page, type `window.gasoline` | Undefined or no backoff state exposed | [ ] |
 | DL-UAT-4 | Per-tool error does not reveal other tools' limits | Inspect -32029 error | Only the limited tool's info shown | [ ] |
 | DL-UAT-5 | Circuit breaker health has no buffer data | Inspect health response during circuit open | Only circuit state + operational metrics | [ ] |

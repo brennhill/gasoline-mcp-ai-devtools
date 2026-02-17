@@ -126,7 +126,7 @@ last_reviewed: 2026-02-16
 | # | Test Case | Components Involved | Expected Behavior | Priority |
 |---|-----------|--------------------|--------------------|----------|
 | IT-1 | Diagnosis correlates across buffer types | Log buffer, network buffer, DOM query | Diagnosis reads from multiple buffers to build composite evidence | must |
-| IT-2 | Diagnosis uses existing query_dom | MCP handler, DOM query system, extension | Selector candidate search delegates to existing query_dom infrastructure | must |
+| IT-2 | Diagnosis uses existing analyze({what: "dom"}) | MCP handler, DOM query system, extension | Selector candidate search delegates to existing analyze({what: "dom"}) infrastructure | must |
 | IT-3 | Diagnosis uses error_clusters when available | Error clustering system, diagnosis handler | Grouped errors referenced in diagnosis to avoid duplicate investigation | should |
 | IT-4 | Fix integrates with existing test generation | generate handler, test template system | test_fix shares framework-specific template code with `generate({format: "test"})` | should |
 | IT-5 | Full workflow: diagnose then fix | observe handler, generate handler | Diagnosis output is valid input for test_fix; round-trip produces actionable fix | must |
@@ -139,7 +139,7 @@ last_reviewed: 2026-02-16
 | PT-1 | test_diagnosis response time | End-to-end from MCP call to response | < 500ms | must |
 | PT-2 | test_fix response time | End-to-end from MCP call to response | < 200ms | must |
 | PT-3 | Diagnosis memory impact | Transient memory for copying telemetry during analysis | < 2MB | must |
-| PT-4 | DOM candidate search time | Time to find candidates using query_dom | < 100ms | must |
+| PT-4 | DOM candidate search time | Time to find candidates using analyze({what: "dom"}) | < 100ms | must |
 | PT-5 | Diagnosis with full 60-second buffer | 1000+ entries in buffers, 60s window scan | Still under 500ms | should |
 | PT-6 | Diagnosis with minimal data (empty buffers) | Zero entries, fast-path to "unknown" | < 50ms | should |
 
@@ -198,7 +198,7 @@ last_reviewed: 2026-02-16
 ### Regression Checks
 - [ ] Existing `observe({what: "errors"})` still works normally
 - [ ] Existing `generate({format: "test"})` still works normally
-- [ ] `configure({action: "query_dom"})` still works as a standalone action
+- [ ] `analyze({what: "dom"})` still works as a standalone action
 - [ ] `observe({what: "changes"})` still works independently
 - [ ] No new MCP tools created (still exactly 5 tools)
 

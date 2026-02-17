@@ -223,7 +223,7 @@ const executeJS = (req) => {
 
 **Cons:**
 - No access to page variables/functions
-- DOM access limited to pre-compiled queries (see `query_dom`)
+- DOM access limited to pre-compiled queries (see `analyze({what: "dom"})`)
 - Cannot use page APIs that require page context
 
 **DOM Query Alternative:**
@@ -243,15 +243,14 @@ Pre-compiled DOM primitives don't use `new Function()`, so they work everywhere:
 
 ```typescript
 // No CSP issue - uses native DOM APIs
-const result = await observe({
-  what: 'query_dom',
-  selector: 'button',
-  action: 'count'
+const result = await analyze({
+  what: 'dom',
+  selector: 'button'
 })
 ```
 
 **Available without eval:**
-- `query_dom()` - Query elements, get text/values, count elements
+- `analyze({what: "dom"})` - Query elements, get text/values, and count matches
 - `accessibility` - Run axe-core a11y audit
 - `network_waterfall` - Get performance timing data
 
@@ -354,7 +353,7 @@ User calls execute_js with world: "auto"
     ✓ Success → Return result
     ✗ No page context → Return error
       ↓
-3rd attempt: Suggest using query_dom or debugger API
+3rd attempt: Suggest using analyze({what: "dom"}) or debugger API
 ```
 
 ---
@@ -370,11 +369,11 @@ User calls execute_js with world: "auto"
 │  │  │  ├─ ✅ Works → Use ISOLATED (DOM-only)
 │  │  │  ├─ ❌ Still need page context → Use debugger API (last resort)
 │  │
-│  └─ NO → Use query_dom
-│     ✅ DOM queries without eval → Use query_dom()
+│  └─ NO → Use analyze({what: "dom"})
+│     ✅ DOM queries without eval → Use analyze({what: "dom"})
 │
 └─ Is this Gmail/GitHub/Discord (high CSP)?
-   ├─ YES → Try ISOLATED first, query_dom for DOM, debugger for page context
+   ├─ YES → Try ISOLATED first, analyze({what: "dom"}) for DOM, debugger for page context
    └─ NO → Use MAIN, fall back to ISOLATED automatically
 ```
 
@@ -398,7 +397,7 @@ execute_js({
 // Reason: No page context needed, pure computation
 ```
 
-### Example 2: DOM Query (Works with query_dom Workaround)
+### Example 2: DOM Query (Works with analyze({what: "dom"}) workaround)
 
 ```typescript
 // Request - DON'T use execute_js for this
@@ -413,13 +412,10 @@ execute_js({
 // Result (CSP site)
 { success: false, error: 'csp_blocked', message: '...' }
 
-// ✅ Better: Use query_dom instead
-observe({
-  what: 'query_dom',
-  params: {
-    type: 'count',
-    selector: 'button'
-  }
+// ✅ Better: Use analyze({what: "dom"}) instead
+analyze({
+  what: 'dom',
+  selector: 'button'
 })
 // Result: { count: 42 }  // Works everywhere, even Gmail
 ```
@@ -740,7 +736,7 @@ execute_js({ script: "2+2", world: "auto" })
 
 ```bash
 # Works on all sites (Gmail, GitHub, Discord)
-observe({ what: 'query_dom', params: { type: 'count', selector: 'button' } })
+analyze({ what: 'dom', selector: 'button' })
 // { count: 42 }  ✅ Always works
 ```
 
@@ -777,9 +773,9 @@ execute_js({ script: "window.userEmail", world: "auto", force_debugger: true })
 
 | Symptom | Cause | Solution |
 |---------|-------|----------|
-| Script always fails | Page has strict CSP | Try `world: "isolated"` or `query_dom` |
+| Script always fails | Page has strict CSP | Try `world: "isolated"` or `analyze({what: "dom"})` |
 | "CSP_BLOCKED" error | Page blocks unsafe-eval | Use pre-compiled DOM primitives |
 | Code works in console but fails in extension | Running in different world | Use `world: "MAIN"` for page context |
-| Gmail scripts don't work | Trusted Types CSP | Use `query_dom` for DOM, accept limitation for page access |
+| Gmail scripts don't work | Trusted Types CSP | Use `analyze({what: "dom"})` for DOM, accept limitation for page access |
 | Yellow "DevTools" banner appears | Using debugger API | Expected on high-CSP sites; only way to bypass Trusted Types |
 

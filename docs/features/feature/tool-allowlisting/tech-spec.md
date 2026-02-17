@@ -20,7 +20,7 @@ Tool allowlisting uses a configuration file (YAML) parsed at server start. The a
 - **Allowlist matcher**: Match incoming tool.action against allowlist patterns (supports wildcards)
 - **MCP handler guards**: Each handler checks allowlist before execution
 - **Error response**: Return standard error with actionable message and allowed tools list
-- **Config exposure**: Include allowlist in observe({what: "server_config"})
+- **Config exposure**: Include allowlist in configure({action:"health"})
 - **Hot-reload (optional)**: Watch config file, reload on change
 
 ## Data Flows
@@ -43,7 +43,7 @@ Agent calls interact({action: "navigate"}):
   → Match succeeds
   → Execute normally
 
-Agent calls observe({what: "server_config"}):
+Agent calls configure({action:"health"}):
   → Always allowed (observe.* in list)
   → Return config including allowlist
 ```

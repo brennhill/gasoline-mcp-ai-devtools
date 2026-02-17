@@ -87,22 +87,22 @@ Identify and fix the resource leak or queue bottleneck that causes the extension
 ### Example 1: Consecutive DOM Queries (Before Fix)
 
 #### Operations:
-1. `generate({action: "query_dom", selector: "h1"})` → Success (2s)
-2. `generate({action: "query_dom", selector: "button"})` → Success (2s)
-3. `generate({action: "query_dom", selector: "a"})` → Success (2s)
-4. `generate({action: "query_dom", selector: "img"})` → Success (2s)
-5. `generate({action: "query_dom", selector: "div"})` → Success (3s, slower)
-6. `generate({action: "query_dom", selector: "span"})` → Timeout (30s, no response)
+1. `analyze({what: "dom", selector: "h1"})` → Success (2s)
+2. `analyze({what: "dom", selector: "button"})` → Success (2s)
+3. `analyze({what: "dom", selector: "a"})` → Success (2s)
+4. `analyze({what: "dom", selector: "img"})` → Success (2s)
+5. `analyze({what: "dom", selector: "div"})` → Success (3s, slower)
+6. `analyze({what: "dom", selector: "span"})` → Timeout (30s, no response)
 
 ### Example 2: Consecutive DOM Queries (After Fix)
 
 #### Operations:
-1. `generate({action: "query_dom", selector: "h1"})` → Success (2s)
-2. `generate({action: "query_dom", selector: "button"})` → Success (2s)
+1. `analyze({what: "dom", selector: "h1"})` → Success (2s)
+2. `analyze({what: "dom", selector: "button"})` → Success (2s)
 ...
-10. `generate({action: "query_dom", selector: "section"})` → Success (2s)
+10. `analyze({what: "dom", selector: "section"})` → Success (2s)
 ...
-50. `generate({action: "query_dom", selector: "footer"})` → Success (2s)
+50. `analyze({what: "dom", selector: "footer"})` → Success (2s)
 
 All operations complete with consistent latency.
 
@@ -110,7 +110,7 @@ All operations complete with consistent latency.
 
 #### Operations:
 1. `observe({what: "errors"})` → Success
-2. `generate({action: "query_dom"})` → Success
+2. `analyze({what: "dom"})` → Success
 3. `observe({what: "network_bodies"})` → Success
 4. `generate({action: "query_accessibility"})` → Success
 5. `interact({action: "highlight"})` → Success

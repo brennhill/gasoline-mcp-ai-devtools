@@ -24,7 +24,7 @@ last_reviewed: 2026-02-16
 
 **Edge case tests:** Error handling
 - [ ] Test session expiration detection (login page appears)
-- [ ] Test query_dom timeout on missing element
+- [ ] Test interact wait_for timeout on missing element
 - [ ] Test extraction with malformed data
 
 ### Security/Compliance Testing
@@ -47,10 +47,10 @@ last_reviewed: 2026-02-16
 2. Steps:
    - [ ] Verify logged in: `observe({what: "page"})` shows dashboard
    - [ ] Navigate: `interact({action: "navigate", url: "https://testapp.local/dashboard"})`
-   - [ ] Wait for table: `configure({action: "query_dom", selector: "table.data", wait: true})`
+   - [ ] Wait for table: `analyze({what: "dom", selector: "table.data", wait: true})`
    - [ ] Extract data: `interact({action: "execute_js", code: "return Array.from(document.querySelectorAll('table.data tr')).map(r => r.innerText)"})`
    - [ ] Verify data returned (array of rows)
-   - [ ] Export: `generate({type: "json_export", data: extracted})`
+- [ ] Persist extracted data: `configure({action: "store", store_action: "save", namespace: "scraping", key: "extracted", data: {"rows": extracted}})`
 3. Expected Result: Table data extracted and exported as JSON
 4. Verification: Open exported JSON file, verify contains table data
 
@@ -61,7 +61,7 @@ last_reviewed: 2026-02-16
    - [ ] Navigate to results page
    - [ ] Extract page 1 data
    - [ ] Click next: `interact({action: "execute_js", code: "document.querySelector('.next-page').click()"})`
-   - [ ] Wait for page 2 to load: `configure({action: "query_dom", selector: ".page-2", wait: true})`
+- [ ] Wait for page 2 to load: `interact({action: "wait_for", selector: ".page-2", timeout_ms: 5000})`
    - [ ] Extract page 2 data
    - [ ] Repeat for pages 3-5
    - [ ] Aggregate all data
@@ -75,7 +75,7 @@ last_reviewed: 2026-02-16
 2. Steps:
    - [ ] Navigate to page
    - [ ] Attempt immediate extraction (should fail, content not loaded)
-   - [ ] Wait for AJAX: `configure({action: "query_dom", selector: ".ajax-loaded", wait: true, timeout: 5000})`
+- [ ] Wait for AJAX: `interact({action: "wait_for", selector: ".ajax-loaded", timeout_ms: 5000})`
    - [ ] Extract data after wait
 3. Expected Result: Data extracted only after AJAX completes
 4. Verification: Extracted data is complete (not empty)
@@ -107,8 +107,8 @@ last_reviewed: 2026-02-16
 ## Regression Testing
 
 - Test interact navigate/execute_js still work for non-scraping workflows
-- Test configure query_dom still works for standard DOM queries
-- Test generate json_export for non-scraping data
+- Test analyze({what: "dom"}) still works for standard DOM snapshots
+- Test configure store/load still works for non-scraping data
 
 ---
 

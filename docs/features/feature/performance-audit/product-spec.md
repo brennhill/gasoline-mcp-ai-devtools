@@ -312,7 +312,7 @@ The audit synthesizes data from multiple sources, most of which are already capt
 | Image analysis | **New** (async query) | Missing dimensions, format detection, rendered vs intrinsic size |
 | Head element analysis | **New** (async query) | Render-blocking scripts/styles in `<head>` |
 
-The three "new" data points are collected via the existing async command infrastructure (`configure({action: "query_dom"})` internally) -- the extension executes a JavaScript snippet in the page context that queries the DOM and returns structured metrics. This reuses the same async pattern as `interact({action: "execute_js"})` but is scoped to read-only DOM queries.
+The three "new" data points are collected via the existing async command infrastructure (`analyze({what: "dom"})` internally) -- the extension executes a JavaScript snippet in the page context that queries the DOM and returns structured metrics. This reuses the same async pattern as `interact({action: "execute_js"})` but is scoped to read-only DOM queries.
 
 ### Analysis Pipeline
 

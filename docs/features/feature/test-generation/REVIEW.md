@@ -88,7 +88,7 @@ last_reviewed: 2026-02-16
 ### Medium Issues
 
 #### D2-1: TestFromContextRequest.Context enum values inconsistent with implementation
-- Need clarity: Is it `generate({type:"test_from_context", context:"error"})` or `generate({type:"test_from_context.error"})`?
+- Need clarity: Is it `generate({format:"test_from_context", context:"error"})` or `generate({format:"test_from_context.error"})`?
 
 #### D2-2: Generated test output format inconsistent with existing generate.test
 - Existing returns plain script; proposed returns JSON wrapper
@@ -204,7 +204,7 @@ last_reviewed: 2026-02-16
 ## Key Implementation Files
 
 - `cmd/dev-console/codegen.go` — Existing Playwright generation to extend
-- `cmd/dev-console/tools.go` — Tool dispatch and response helpers
+- `cmd/dev-console/tools_core.go` — Tool dispatch and response helpers
 - `cmd/dev-console/queries.go` — Pending query infrastructure
 - `extension/lib/dom-queries.js` — DOM query execution
 - `cmd/dev-console/ai_persistence.go` — Path validation pattern

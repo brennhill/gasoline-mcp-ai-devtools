@@ -1,36 +1,28 @@
 ---
 doc_type: feature_index
 feature_id: feature-link-health
-status: proposed
+status: shipped
 feature_type: feature
 owners: []
-last_reviewed: 2026-02-16
+last_reviewed: 2026-02-17
 code_paths:
+  - cmd/dev-console/tools_analyze.go
   - src/lib/link-health.ts
-test_paths: []
+  - src/background/pending-queries.ts
+  - src/content/message-handlers.ts
+  - src/inject/message-handlers.ts
+test_paths:
+  - cmd/dev-console/tools_analyze_validation_test.go
 ---
 
 # Link Health
 
 ## TL;DR
-
-- Status: proposed
-- Tool: tbd
-- Mode/Action: tbd
-- Location: `docs/features/feature/link-health`
+- Status: shipped
+- Tool: `analyze`
+- Modes: `what:"link_health"` and `what:"link_validation"`
 
 ## Specs
-
-- Product Spec: [product-spec.md](./product-spec.md)
-- Tech Spec: [tech-spec.md](./tech-spec.md)
-- QA Plan: [qa-plan.md](./qa-plan.md)
-
-## Requirement IDs
-
-- FEATURE_LINK_HEALTH_001
-- FEATURE_LINK_HEALTH_002
-- FEATURE_LINK_HEALTH_003
-
-## Code and Tests
-
-Add concrete implementation and test links here as this feature evolves.
+- Product: `product-spec.md`
+- Tech: `tech-spec.md`
+- QA: `qa-plan.md`

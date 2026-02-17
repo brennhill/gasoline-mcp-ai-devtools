@@ -108,7 +108,7 @@ This is NOT an autonomous loop within Gasoline. The AI agent controls the workfl
 5. Return top 3-5 candidates with scores and context (tag, text, attributes, bounding box)
 
 #### Integration:
-- Uses existing query_dom infrastructure (configure action)
+- Uses existing analyze tool infrastructure (`what:"dom"` mode)
 - Leverages DOM fingerprinting feature (when available) for structural matching
 - Falls back to string similarity if fingerprinting not available
 
@@ -146,7 +146,7 @@ Test failure output → AI agent → MCP: observe({what: "test_diagnosis", failu
   - changes (recent DOM/network state changes)
   - error_clusters (known error patterns)
 → Correlate evidence:
-  - If element not found: query_dom for candidates
+  - If element not found: analyze({what: "dom"}) for candidates
   - If API error: check network_bodies for endpoint status
   - If JS error: check console errors for stack traces
 → Classify failure category based on evidence
@@ -174,8 +174,8 @@ AI agent receives diagnosis → MCP: generate({format: "test_fix", diagnosis: {.
 ```
 Failure: "Element not found: [data-testid='submit-btn']"
 → Diagnosis engine extracts selector: "[data-testid='submit-btn']"
-→ Call query_dom with selector (should return 0 matches)
-→ Call query_dom with universal selector "*" (get all elements)
+→ Call analyze({what: "dom"}) with selector (should return 0 matches)
+→ Call analyze({what: "dom"}) with universal selector "*" (get all elements)
 → Filter elements by similarity:
   - Find buttons (tag match)
   - Find elements with data-testid attribute (attribute match)
@@ -198,7 +198,7 @@ Failure: "Element not found: [data-testid='submit-btn']"
 
 ### Phase 2: Selector Candidate Finder
 1. Implement selector extraction from failure message
-2. Implement DOM query for candidates (use existing query_dom)
+2. Implement DOM query for candidates (use existing analyze({what: "dom"}))
 3. Implement string similarity scoring (Levenshtein or similar)
 4. Integrate with DOM fingerprinting (when available) for structural similarity
 5. Return top candidates with scores
@@ -280,7 +280,7 @@ We assume failures occur in the browser (DOM, network, JS errors). Non-browser f
 - **observe({what: "network_bodies"})** — Network response bodies
 - **observe({what: "changes"})** — Recent state changes
 - **observe({what: "error_clusters"})** — Error pattern grouping
-- **configure({action: "query_dom"})** — DOM queries for candidates
+- **analyze({what: "dom"})** — DOM queries for candidates
 - **generate({format: "test"})** — Existing test generation infrastructure (shared templates)
 
 ### Optionally Leverages (In-Progress Features)
@@ -297,7 +297,7 @@ We assume failures occur in the browser (DOM, network, JS errors). Non-browser f
 - Diagnosis response time: < 500ms (in-memory buffer queries)
 - Fix generation response time: < 200ms (operates on diagnosis data, no new queries)
 - Memory impact: < 2MB transient (copies telemetry for analysis, releases after)
-- DOM candidate search: < 100ms (uses existing query_dom infrastructure)
+- DOM candidate search: < 100ms (uses existing analyze({what: "dom"}) infrastructure)
 - Time window scan: default 60s (configurable, max 5 minutes recommended)
 
 ## Security Considerations

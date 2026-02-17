@@ -143,7 +143,7 @@ last_reviewed: 2026-02-16
 | EC-8 | observe errors with mode "errors_only" and no errors | observe({what: "errors"}) returns 0 errors | Screenshot still appended (mode is "errors_only" for the observe type, not conditional on error count) | should |
 | EC-9 | Tab minimized | Tab not visible when capture requested | captureVisibleTab captures whatever Chrome provides (may be blank) | should |
 | EC-10 | Multiple configure calls toggling mode | Toggle on -> off -> on rapidly | Final state is "on"; each configure call takes effect immediately | must |
-| EC-11 | Generate response with screenshot | generate({type: "csp"}) with mode "on" | Screenshot appended to generate response | should |
+| EC-11 | Generate response with screenshot | generate({format: "csp"}) with mode "on" | Screenshot appended to generate response | should |
 
 ---
 

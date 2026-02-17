@@ -14,7 +14,7 @@ last_reviewed: 2026-02-16
 # Technical Specification: Cursor-Based Pagination
 
 **Status:** SHIPPED in v5.3
-**Canonical Reference:** Codebase (cmd/dev-console/tools.go)
+**Canonical Reference:** Codebase (cmd/dev-console/tools_core.go)
 **Last Verified:** 2026-01-30
 
 ---
@@ -26,7 +26,7 @@ Cursor-based pagination was implemented in v5.3 to solve token limit problems. T
 ### Core Implementation Details
 
 #### Where it lives:
-- Go implementation: `cmd/dev-console/tools.go` (paginate utilities and observe handlers)
+- Go implementation: `cmd/dev-console/tools_core.go` (paginate utilities and observe handlers)
 - Test file: `cmd/dev-console/composite_tools_test.go`
 
 #### Supported data streams:

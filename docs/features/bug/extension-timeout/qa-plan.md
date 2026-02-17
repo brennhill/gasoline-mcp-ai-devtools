@@ -70,7 +70,7 @@ last_reviewed: 2026-02-16
    - Navigate to complex page (e.g., GitHub.com)
    - Track the tab
 2. Steps:
-   - [ ] Run script that calls `generate({action: "query_dom", selector: "div"})` 50 times in sequence
+   - [ ] Run script that calls `analyze({what: "dom", selector: "div"})` 50 times in sequence
    - [ ] Monitor Chrome Task Manager for memory usage
    - [ ] Monitor DevTools Console for errors
    - [ ] Record operation latency for operations 1, 10, 25, 50
@@ -143,7 +143,7 @@ last_reviewed: 2026-02-16
 1. Setup: Navigate to page, track tab
 2. Steps:
    - [ ] Freeze page via DevTools (Rendering → Rendering paused)
-   - [ ] Send DOM query: `generate({action: "query_dom"})`
+   - [ ] Send DOM query: `analyze({what: "dom"})`
    - [ ] Wait up to 15 seconds
 3. Expected Result:
    - [ ] Operation times out after ~10 seconds

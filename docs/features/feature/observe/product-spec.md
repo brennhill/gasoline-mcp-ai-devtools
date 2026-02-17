@@ -1,7 +1,7 @@
 ---
 doc_type: product-spec
 feature_id: feature-observe
-status: proposed
+status: shipped
 owners: []
 last_reviewed: 2026-02-17
 links:
@@ -11,27 +11,30 @@ links:
   feature_index: ./index.md
 ---
 
-# Observe Product Spec
+# Observe Product Spec (TARGET)
 
-## TL;DR
+## Purpose
+Provide read-only access to captured runtime state, logs, network artifacts, action history, and command execution status.
 
-- Status: proposed
-- Tool: tbd
-- Mode/Action: tbd
-- This document is a generated placeholder and should be completed.
+## Modes (`what`)
+`errors`, `logs`, `extension_logs`, `network_waterfall`, `network_bodies`, `websocket_events`, `websocket_status`, `actions`, `vitals`, `page`, `tabs`, `pilot`, `timeline`, `error_bundles`, `screenshot`, `command_result`, `pending_commands`, `failed_commands`, `saved_videos`, `recordings`, `recording_actions`, `playback_results`, `log_diff_report`
 
-## Linked Specs
+## User Outcomes
+1. Read passive telemetry without mutating browser state.
+2. Retrieve command completion details for `analyze`/`interact` correlation IDs.
+3. Use cursor pagination for large buffers.
 
-- Product: [product-spec.md](./product-spec.md)
-- Tech: [tech-spec.md](./tech-spec.md)
-- QA: [qa-plan.md](./qa-plan.md)
+## Requirements
+- `OBS_PROD_001`: `what` is required and validated against schema enum.
+- `OBS_PROD_002`: cursor pagination options must work for log-like streams (`after_cursor`, `before_cursor`, `since_cursor`, `restart_on_eviction`).
+- `OBS_PROD_003`: `command_result` must expose terminal and non-terminal states with correlation context.
+- `OBS_PROD_004`: extension-disconnected states must return actionable diagnostics.
+- `OBS_PROD_005`: `screenshot` mode must remain callable directly and via interact alias.
 
-## Requirement IDs
+## Non-Goals
+- No browser mutation.
+- No execution of new page commands outside screenshot capture path.
 
-- FEATURE_OBSERVE_001
-- FEATURE_OBSERVE_002
-- FEATURE_OBSERVE_003
-
-## Notes
-
-Fill this file with feature-specific details and reference code/test paths used by this feature.
+## Related
+- Core contract: `docs/core/product-spec.md`
+- Command matrix: `docs/core/mcp-command-option-matrix.md`

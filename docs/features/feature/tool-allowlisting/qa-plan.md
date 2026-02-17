@@ -49,13 +49,13 @@ last_reviewed: 2026-02-16
 
 ### Scenario 1: Production Profile (Observation-Only) (Happy Path)
 1. Setup:
-   - Create allowlist-production.yaml: `allowed_tools: [observe.*, generate.*, configure.query_dom]`
+   - Create allowlist-production.yaml: `allowed_tools: [observe.*, generate.*, analyze.dom]`
    - Start server: `gasoline --allowlist-config=allowlist-production.yaml`
 2. Steps:
-   - [ ] Check status: `observe({what: "server_config"})` — verify allowlist_enabled: true
+   - [ ] Check status: `configure({action:"health"})` — verify allowlist_enabled: true
    - [ ] Observe logs: `observe({what: "logs"})` — succeeds
-   - [ ] Generate reproduction: `generate({type: "reproduction"})` — succeeds
-   - [ ] Query DOM: `configure({action: "query_dom", selector: ".error"})` — succeeds
+   - [ ] Generate reproduction: `generate({format: "reproduction"})` — succeeds
+   - [ ] Query DOM: `analyze({what: "dom", selector: ".error"})` — succeeds
    - [ ] Attempt execute_js: `interact({action: "execute_js"})` — fails with error
    - [ ] Verify error includes allowed_tools list
 3. Expected Result: Observation works, mutations blocked

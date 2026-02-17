@@ -90,7 +90,7 @@ Server returns response to AI with tree text, uidMap, metadata
 **Server files**:
 - `cmd/dev-console/queries.go`: Add `toolObserveA11yTree()` handler, creates pending query, waits for result
 - `cmd/dev-console/types.go`: Add `A11yTreeResult` struct
-- `cmd/dev-console/tools.go`: Wire up `observe({what: "a11y_tree"})` to `toolObserveA11yTree()`
+- `cmd/dev-console/tools_core.go`: Wire up `observe({what: "a11y_tree"})` to `toolObserveA11yTree()`
 
 **Trade-offs**:
 - Text format vs JSON: Text is 3-5x more token-efficient but harder to parse programmatically. Chosen because token efficiency is core value proposition.
@@ -147,7 +147,7 @@ Server returns response to AI with tree text, uidMap, metadata
 
 ### Risk 5: Sensitive text exposed in accessible names
 - **Description**: Accessible names may contain user email addresses, phone numbers, or PII displayed on page.
-- **Mitigation**: Data stays on localhost (never leaves machine). Equivalent exposure to existing `query_dom`. For pages with sensitive data, AI can use `scope` parameter to limit tree to non-sensitive regions. No additional redaction beyond existing privacy layer.
+- **Mitigation**: Data stays on localhost (never leaves machine). Equivalent exposure to existing `analyze({what: "dom"})`. For pages with sensitive data, AI can use `scope` parameter to limit tree to non-sensitive regions. No additional redaction beyond existing privacy layer.
 
 ## Dependencies
 
@@ -176,7 +176,7 @@ Server returns response to AI with tree text, uidMap, metadata
 
 **Redaction**: Input values for password fields (`type="password"`) and fields with `autocomplete` hints containing "password", "cc-", or "secret" replaced with `[REDACTED]`. Follows existing `SENSITIVE_INPUT_TYPES` constant pattern.
 
-**Privacy implications**: Accessible name may contain user-visible text (email addresses displayed on page). Equivalent to `query_dom` exposure. Data stays on localhost, acceptable.
+**Privacy implications**: Accessible name may contain user-visible text (email addresses displayed on page). Equivalent to `analyze({what: "dom"})` exposure. Data stays on localhost, acceptable.
 
 **Attack surface**: No change. Feature reads DOM (read-only). Does not execute arbitrary code, inject scripts, or modify page state. Traversal runs in inject.js in same security context as existing DOM queries.
 

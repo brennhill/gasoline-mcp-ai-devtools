@@ -49,7 +49,7 @@ The agent uses Gasoline's `observe` tool to inspect what the browser saw:
 observe({what: "errors"})
 observe({what: "network_waterfall"})
 observe({what: "network_bodies", url_filter: "/api/..."})
-configure({action: "query_dom", selector: ".submit-btn"})
+analyze({what: "dom", selector: ".submit-btn"})
 configure({action: "validate_api", operation: "analyze"})
 observe({what: "error_clusters"})
 observe({what: "changes"})
@@ -61,7 +61,7 @@ This provides the evidence needed for diagnosis: actual console errors, actual A
 The agent correlates the test's expected behavior with observed browser state to classify the failure into one of five root cause categories:
 
 #### Category 1: Selector Drift
-- Diagnostic signals: Test fails with "element not found" or "locator timeout." `query_dom` with test's selector returns empty. `query_dom` with relaxed selector (text content, role, partial class) finds a matching element. `observe({what: "changes"})` shows DOM structure changed recently.
+- Diagnostic signals: Test fails with "element not found" or "locator timeout." `analyze({what: "dom"})` with test's selector returns empty. `analyze({what: "dom"})` with relaxed selector (text content, role, partial class) finds a matching element. `observe({what: "changes"})` shows DOM structure changed recently.
 - Decision: The element was renamed or restructured, not removed. Update the selector.
 
 #### Category 2: API Contract Drift
@@ -87,31 +87,31 @@ Based on diagnosis category, the agent uses `generate` tool to produce corrected
 
 **For selector drift**:
 ```
-generate({type: "test", include_fixtures: false})
+generate({format: "test", include_fixtures: false})
 ```
 Agent provides context: "Update selector from `.submit-btn` to `.btn-submit` based on observed DOM."
 
 **For API contract drift**:
 ```
-generate({type: "test", include_fixtures: true})
+generate({format: "test", include_fixtures: true})
 ```
 Agent provides context: "Update assertions to expect `user_name` instead of `userName`. Update mock fixture to return new shape."
 
 **For timing fragility**:
 ```
-generate({type: "test", include_fixtures: false})
+generate({format: "test", include_fixtures: false})
 ```
 Agent provides context: "Add `await page.waitForResponse('/api/data')` before assertion."
 
 **For mock staleness**:
 ```
-generate({type: "test", include_fixtures: true})
+generate({format: "test", include_fixtures: true})
 ```
 Agent provides context: "Update mock fixture to match observed API response shape from `network_bodies`."
 
 **For true regression**:
 ```
-generate({type: "reproduction"})
+generate({format: "reproduction"})
 ```
 Agent generates reproduction script instead of test fix.
 
@@ -161,7 +161,7 @@ Gasoline captures telemetry
 Agent observes browser state
   -> observe({what: "errors"})
   -> observe({what: "network_bodies"})
-  -> configure({action: "query_dom"})
+  -> analyze({what: "dom"})
   -> configure({action: "validate_api"})
   -> observe({what: "error_clusters"})
   |
@@ -171,9 +171,9 @@ Agent diagnoses root cause
   |
   v
 Agent generates fix (or reproduction if regression)
-  -> generate({type: "test", include_fixtures: true/false})
+  -> generate({format: "test", include_fixtures: true/false})
   OR
-  -> generate({type: "reproduction"})
+  -> generate({format: "reproduction"})
   |
   v
 Agent verifies fix
@@ -206,7 +206,7 @@ Trade-off: No server overhead, but requires agent reasoning to classify failures
 
 - **Multiple root causes in single test**: Agent addresses root causes in dependency order (API contract first, then selectors, then timing). Generates single fix addressing all causes.
 
-- **Test framework not recognized**: Agent observes browser state but generates generic JavaScript fixes rather than framework-specific ones. `generate({type: "test"})` handles framework detection.
+- **Test framework not recognized**: Agent observes browser state but generates generic JavaScript fixes rather than framework-specific ones. `generate({format: "test"})` handles framework detection.
 
 - **Extension disconnected during test run**: Observation data partial or missing. Agent falls back to test runner output only and reports Gasoline capture was incomplete.
 
@@ -243,7 +243,7 @@ Trade-off: No server overhead, but requires agent reasoning to classify failures
 
 ### Risk 4: Test framework syntax errors
 - **Description**: Generated test code has syntax errors or uses wrong framework APIs.
-- **Mitigation**: `generate({type: "test"})` produces valid framework-specific code based on detected framework. Agent verifies fix by running test — syntax errors caught immediately.
+- **Mitigation**: `generate({format: "test"})` produces valid framework-specific code based on detected framework. Agent verifies fix by running test — syntax errors caught immediately.
 
 ### Risk 5: Sensitive data in test fixtures
 - **Description**: Agent generates fixtures containing real user data from observed API responses.
@@ -254,7 +254,8 @@ Trade-off: No server overhead, but requires agent reasoning to classify failures
 ### Depends on:
 - `observe` tool: `errors`, `network_waterfall`, `network_bodies`, `api`, `error_clusters`, `changes` modes (shipped)
 - `generate` tool: `test`, `reproduction` types (shipped)
-- `configure` tool: `query_dom`, `validate_api`, `diff_sessions`, `clear` actions (shipped)
+- `analyze` tool: `what:"dom"` mode (shipped)
+- `configure` tool: `diff_sessions`, `clear` actions (shipped)
 - `interact` tool: `navigate`, `refresh`, `execute_js`, `save_state`, `load_state` actions (shipped)
 - Error Clustering feature (shipped)
 - API Schema Inference feature (shipped)

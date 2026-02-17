@@ -77,7 +77,7 @@ last_reviewed: 2026-02-16
 
 | Workflow | Steps Required | Can Be Simplified? |
 |----------|---------------|-------------------|
-| Export all violations as SARIF | 1 step: call `generate` with `type: "sarif"` | No -- already minimal |
+| Export all violations as SARIF | 1 step: call `generate` with `format: "sarif"` | No -- already minimal |
 | Export scoped audit | 1 step: add `scope` parameter | No |
 | Export specific WCAG levels | 1 step: add `tags` parameter | No |
 | Export to file for GitHub upload | 1 step: add `output_path` parameter | No |
@@ -124,7 +124,7 @@ last_reviewed: 2026-02-16
 
 | # | Test Case | Components Involved | Expected Behavior | Priority |
 |---|-----------|--------------------|--------------------|----------|
-| IT-1 | End-to-end SARIF via MCP | MCP client -> `generate(type: "sarif")` -> server -> extension audit -> SARIF | Valid SARIF file with real audit results | must |
+| IT-1 | End-to-end SARIF via MCP | MCP client -> `generate(format: "sarif")` -> server -> extension audit -> SARIF | Valid SARIF file with real audit results | must |
 | IT-2 | Cached audit reuse | Run audit, then export SARIF within 30s | SARIF uses cached results, no re-audit | should |
 | IT-3 | Stale cache triggers re-audit | Run audit, wait >30s, export SARIF | Fresh audit triggered before SARIF generation | should |
 | IT-4 | SARIF schema validation | Export SARIF -> validate against SARIF 2.1.0 JSON schema | No schema validation errors | must |

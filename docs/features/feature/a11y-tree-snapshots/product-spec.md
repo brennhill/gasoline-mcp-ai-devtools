@@ -20,7 +20,7 @@ last_reviewed: 2026-02-16
 
 AI coding agents need to understand what is on a web page to interact with it intelligently. Currently, Gasoline offers two page-reading mechanisms:
 
-1. **`configure {action: "query_dom"}`** -- Returns structural DOM data (tags, attributes, bounding boxes) for elements matching a CSS selector. This is powerful but requires the AI to already know what to look for (a selector), returns structural rather than semantic data, and produces verbose output that consumes many tokens.
+1. **`analyze {what: "dom"}`** -- Returns structural DOM data (tags, attributes, bounding boxes) for elements matching a CSS selector. This is powerful but requires the AI to already know what to look for (a selector), returns structural rather than semantic data, and produces verbose output that consumes many tokens.
 
 2. **`observe {what: "accessibility"}`** -- Runs an axe-core audit to find WCAG violations. This is an audit tool, not a page-reading tool. It answers "what is broken?" not "what is on the page?"
 
@@ -129,7 +129,7 @@ role "name" [uid=N] attr=value
 | R7 | Support `max_depth` parameter (default 8, max 15) to limit tree depth | should |
 | R8 | Summarize tables (row count + first 3 rows) and lists (item count + first 5 items) to avoid token explosion | should |
 | R9 | Truncate text content > 100 characters | should |
-| R10 | Include `tokenEstimate` comparing a11y_tree vs equivalent query_dom output size | could |
+| R10 | Include `tokenEstimate` comparing a11y_tree vs equivalent analyze({what: "dom"}) output size | could |
 | R11 | Cap total output at 50KB to prevent oversized responses on complex pages | must |
 | R12 | UIDs must be deterministic: same page state produces same UIDs | should |
 
@@ -157,7 +157,7 @@ role "name" [uid=N] attr=value
 
 - **Data captured:** Accessible names (text content, labels), ARIA attributes, element roles, and CSS selectors. No raw HTML, no attribute values beyond ARIA-related ones, no computed styles.
 - **Redaction:** Input values for password fields (`type="password"`) and fields with `autocomplete` hints containing "password", "cc-", or "secret" are replaced with `"[REDACTED]"`. This follows the existing pattern in Gasoline's sensitive input type detection (`SENSITIVE_INPUT_TYPES` constant).
-- **Privacy implications:** The accessible name may contain user-visible text (e.g., email addresses displayed on the page). This is equivalent to what `query_dom` already exposes. Since data stays on localhost, this is acceptable.
+- **Privacy implications:** The accessible name may contain user-visible text (e.g., email addresses displayed on the page). This is equivalent to what `analyze({what: "dom"})` already exposes. Since data stays on localhost, this is acceptable.
 - **Attack surface:** No change. This feature reads the DOM (read-only). It does not execute arbitrary code, inject scripts, or modify page state. The traversal runs in inject.js in the same security context as existing DOM queries.
 - **UID stability:** UIDs are derived from DOM structure, not from sensitive content. An attacker cannot learn private data from observing UIDs.
 
@@ -175,7 +175,7 @@ role "name" [uid=N] attr=value
 
 ## Dependencies
 
-- **Depends on:** Existing query dispatch infrastructure (`pending-queries` polling, `content.js` message bridge, `inject.js` execution context). Uses the same request/response pattern as `query_dom` and `a11y` audit.
+- **Depends on:** Existing query dispatch infrastructure (`pending-queries` polling, `content.js` message bridge, `inject.js` execution context). Uses the same request/response pattern as `analyze({what: "dom"})` and `a11y` audit.
 - **Depends on:** `dom-queries.js` module for shared constants and utilities (element visibility check, text truncation limits).
 - **Depended on by:** AI agents that need to identify interactive elements before issuing `interact` commands. The `uidMap` output is designed to bridge `observe` and `interact` tools.
 
@@ -205,7 +205,7 @@ Estimated token costs for a typical dashboard page (~200 DOM nodes, ~30 interact
 
 | Approach | Output size | Est. tokens | Notes |
 |----------|------------|-------------|-------|
-| `query_dom` (selector: `*`) | ~45KB | ~12,000 | Includes all attributes, bounding boxes, styles |
+| `analyze({what: "dom"})` (selector: `*`) | ~45KB | ~12,000 | Includes all attributes, bounding boxes, styles |
 | `a11y_tree` (full) | ~4KB | ~1,000 | Roles + names + UIDs only |
 | `a11y_tree` (interactive_only) | ~1.5KB | ~400 | Just actionable elements |
 

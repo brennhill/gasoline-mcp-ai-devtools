@@ -80,7 +80,7 @@ func (v *Capture) handlePilotCommand(cmd string, params map[string]any) (any, er
 
 ### 4. MCP Tool Stubs
 
-**File:** `cmd/dev-console/tools.go`
+**File:** `cmd/dev-console/tools_core.go`
 
 Add tool schemas (implementation in Phase 2):
 - `highlight_element` — selector (required), duration_ms (default 5000)
@@ -129,6 +129,6 @@ go test -v ./cmd/dev-console/ -run Pilot
 | `extension/popup.js` | Toggle state management |
 | `extension/background.js` | Gate function + command routing |
 | `cmd/dev-console/pilot.go` | New file — feature stubs |
-| `cmd/dev-console/tools.go` | Add tool schemas |
+| `cmd/dev-console/tools_core.go` | Add tool schemas |
 | `extension-tests/pilot-toggle.test.js` | New file |
 | `cmd/dev-console/pilot_test.go` | New file |

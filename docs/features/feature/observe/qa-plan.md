@@ -1,7 +1,7 @@
 ---
 doc_type: qa-plan
 feature_id: feature-observe
-status: proposed
+status: shipped
 owners: []
 last_reviewed: 2026-02-17
 links:
@@ -11,27 +11,33 @@ links:
   feature_index: ./index.md
 ---
 
-# Observe QA Plan
+# Observe QA Plan (TARGET)
 
-## TL;DR
+## Automated Coverage
+- `cmd/dev-console/tools_observe_handler_test.go`
+- `cmd/dev-console/tools_observe_blackbox_test.go`
+- `cmd/dev-console/tools_observe_audit_test.go`
 
-- Status: proposed
-- Tool: tbd
-- Mode/Action: tbd
-- This document is a generated placeholder and should be completed.
+## Required Scenarios
+1. Enum contract
+- Every `what` value from schema dispatches to a handler.
 
-## Linked Specs
+2. Pagination contract
+- Cursor-based navigation works for logs.
+- `restart_on_eviction` behavior is verified.
 
-- Product: [product-spec.md](./product-spec.md)
-- Tech: [tech-spec.md](./tech-spec.md)
-- QA: [qa-plan.md](./qa-plan.md)
+3. Command-result contract
+- Pending, complete, error, expired, timeout states are all surfaced.
+- Correlation lookup failures return structured terminal guidance.
 
-## Requirement IDs
+4. Filtering correctness
+- URL/status/method/level filters affect only intended modes.
 
-- FEATURE_OBSERVE_001
-- FEATURE_OBSERVE_002
-- FEATURE_OBSERVE_003
+5. Screenshot contract
+- `observe(what:"screenshot")` returns capture metadata or structured timeout/error.
 
-## Notes
-
-Fill this file with feature-specific details and reference code/test paths used by this feature.
+## Manual UAT
+1. Call `configure(action:"health")`.
+2. Call `observe(what:"logs")` with and without cursor options.
+3. Queue an async command and verify `observe(what:"command_result", correlation_id)`.
+4. Disconnect extension and verify warning + guidance surfaces.

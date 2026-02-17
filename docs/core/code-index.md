@@ -214,7 +214,7 @@ last_reviewed: 2026-02-16
 **Code:**
 - internal/capture/queries.go (303 lines)
 - internal/capture/handlers.go (polling endpoints)
-- cmd/dev-console/tools.go (MCP handlers)
+- cmd/dev-console/tools_core.go (MCP handlers)
 - internal/queries/types.go (type definitions)
 
 **Docs:**
@@ -231,7 +231,7 @@ last_reviewed: 2026-02-16
 ### Correlation ID Tracking
 **Code:**
 - internal/capture/queries.go (RegisterCommand, CompleteCommand, ExpireCommand)
-- cmd/dev-console/tools.go (toolObserveCommandResult, toolObservePendingCommands)
+- cmd/dev-console/tools_core.go (toolObserveCommandResult, toolObservePendingCommands)
 
 **Docs:**
 - async-queue-correlation-tracking.md
@@ -296,7 +296,7 @@ Each internal package now has `doc.go` with comprehensive package overview:
 ### "I want to add a new MCP tool"
 **Check:**
 1. docs/features/ - See existing tool patterns
-2. cmd/dev-console/tools.go - Add handler
+2. cmd/dev-console/tools_core.go - Add handler
 3. cmd/dev-console/handler.go - Register in tool list
 4. docs/features/feature/{tool-name}/ - Create spec
 
@@ -367,7 +367,7 @@ grep -r "correlation" docs/architecture/
 |-----------------|---------------------|--------------------|
 | queries.go | ADR-001, ADR-002, async-queue-flow.md | TestAsyncQueue*, validate-architecture.sh |
 | handlers.go | async-queue-flow.md | ./scripts/validate-architecture.sh |
-| tools.go | MCP integration docs, feature specs | ./scripts/validate-architecture.sh |
+| tools_core.go | MCP integration docs, feature specs | ./scripts/validate-architecture.sh |
 | favicon-replacer.ts | flame-flicker-visual.md, tab-tracking-ux | npm run test:ext |
 | manifest.json | Extension build docs | make compile-ts |
 | Any internal/capture/* | Architecture diagrams | go test ./internal/capture |

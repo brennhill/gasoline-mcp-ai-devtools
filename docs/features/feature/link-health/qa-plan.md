@@ -1,9 +1,9 @@
 ---
 doc_type: qa-plan
 feature_id: feature-link-health
-status: proposed
+status: shipped
 owners: []
-last_reviewed: 2026-02-16
+last_reviewed: 2026-02-17
 links:
   product: ./product-spec.md
   tech: ./tech-spec.md
@@ -11,27 +11,35 @@ links:
   feature_index: ./index.md
 ---
 
-# Link Health QA Plan
+# Link Health QA Plan (TARGET)
 
-## TL;DR
+## Automated Coverage
+- `cmd/dev-console/tools_analyze_validation_test.go`
+- `cmd/dev-console/tools_analyze_route_test.go`
+- Extension/unit coverage for `src/lib/link-health.ts`
 
-- Status: proposed
-- Tool: tbd
-- Mode/Action: tbd
-- This document is a generated placeholder and should be completed.
+## Required Scenarios
+1. `link_health` classification
+- healthy 2xx links
+- redirects
+- auth-required links (401/403)
+- hard failures (4xx/5xx)
+- timeouts
+- CORS-blocked external links
 
-## Linked Specs
+2. `link_validation` server path
+- empty URL list rejection
+- non-http(s) filtering
+- max URL limit enforcement
+- timeout and worker clamping
+- redirect handling
 
-- Product: [product-spec.md](./product-spec.md)
-- Tech: [tech-spec.md](./tech-spec.md)
-- QA: [qa-plan.md](./qa-plan.md)
+3. End-to-end command path
+- queued command with correlation
+- completion via sync and command tracker
+- retrieval via `observe(command_result)`
 
-## Requirement IDs
-
-- FEATURE_LINK_HEALTH_001
-- FEATURE_LINK_HEALTH_002
-- FEATURE_LINK_HEALTH_003
-
-## Notes
-
-Fill this file with feature-specific details and reference code/test paths used by this feature.
+## Manual UAT
+1. Run `analyze(what:"link_health")` on a page with mixed links.
+2. Extract `needsServerVerification` URLs and run `analyze(what:"link_validation", urls:[...])`.
+3. Compare client vs server classification consistency.

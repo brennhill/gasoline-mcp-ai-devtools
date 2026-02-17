@@ -98,7 +98,7 @@ Clients can verify pilot state via three independent paths:
 **Files Modified:**
 - `cmd/dev-console/pilot.go`: Added `GetPilotStatus()`, `PilotStatusResponse`, `HandlePilotStatus()`, `toolObservePilot()`
 - `cmd/dev-console/health.go`: Added `PilotInfo` type, extended `MCPHealthResponse`
-- `cmd/dev-console/tools.go`: Added `observe {what: "pilot"}` handler
+- `cmd/dev-console/tools_core.go`: Added `observe {what: "pilot"}` handler
 - `cmd/dev-console/main.go`: Registered `/pilot-status` HTTP endpoint
 
 **Key Implementations:**

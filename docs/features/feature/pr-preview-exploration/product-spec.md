@@ -233,7 +233,7 @@ If any bound is reached, the agent stops exploration, captures whatever telemetr
 
 ## Non-Goals
 
-- **This feature does NOT add new MCP tools or modes.** It composes existing primitives. The 4-tool constraint is inviolate.
+- **This feature does NOT add new MCP tools or modes.** It composes existing primitives. The 5-tool model is inviolate.
 - **This feature does NOT implement CI/CD webhook handling.** How the agent gets triggered (webhook, cron, manual) is outside Gasoline's scope. Gasoline provides observation; triggering is the CI system's job.
 - **This feature does NOT implement GitHub PR comment posting.** The agent produces the report content; posting it to GitHub is the agent's responsibility via external tools (e.g., `gh pr comment`).
 - **This feature does NOT implement visual regression testing.** Gasoline captures behavioral telemetry (errors, network, performance), not pixel-level screenshots. Visual diffing is a separate concern.

@@ -229,12 +229,12 @@ Classify test failures to reduce noise and prioritize real bugs.
 
 1. **AI can generate tests from errors**
    - Captures error via `observe`
-   - Generates test via `generate {type: "test_from_context"}`
+   - Generates test via `generate {format: "test_from_context"}`
    - Test reproduces the error when run
 
 2. **Broken tests can be auto-healed**
    - AI identifies broken selector
-   - Runs `generate {type: "test_heal"}`
+   - Runs `generate {format: "test_heal"}`
    - Fixed test passes
 
 3. **Failures are correctly classified**
@@ -249,7 +249,7 @@ Classify test failures to reduce noise and prioritize real bugs.
 ```
 Developer: "This form throws an error when I submit"
 AI: [Uses observe to capture error context]
-AI: [Runs generate({type: "test_from_context", context: "error"})]
+AI: [Runs generate({format: "test_from_context", context: "error"})]
 Result: Playwright test that reproduces the error
 Developer: Runs test, confirms it fails
 Developer: Fixes bug
@@ -260,7 +260,7 @@ Developer: Runs test, confirms it passes
 
 ```
 CI: "5 tests failed after UI refactor"
-AI: [Runs generate({type: "test_heal", test_file: "tests/*.spec.ts"})]
+AI: [Runs generate({format: "test_heal", test_file: "tests/*.spec.ts"})]
 Result: "3 selectors healed with high confidence, 2 need manual review"
 AI: Applies high-confidence fixes
 Developer: Reviews and approves low-confidence fixes
@@ -272,7 +272,7 @@ CI: All tests pass
 ```
 CI: "Test 'checkout flow' failed"
 Developer: "Is this a real bug or flaky test?"
-AI: [Runs generate({type: "test_classify", failure: {...}})]
+AI: [Runs generate({format: "test_classify", failure: {...}})]
 Result: "Classification: timing_flaky (confidence 0.88). Element appears after animation, test doesn't wait."
 AI: Suggests adding explicit wait
 Developer: Applies fix, test becomes stable

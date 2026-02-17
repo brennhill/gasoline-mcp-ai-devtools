@@ -17,7 +17,7 @@ AI agents often need to scrape data from web applications where authentication i
 
 ## Solution
 
-Add scraping capabilities to the `interact` tool as a guided workflow feature. Agent uses existing interact actions (navigate, execute_js, fill_form) combined with observe (query_dom, api mode) to scrape data from authenticated sessions. No new tool required — it's a workflow pattern using existing capabilities.
+Add scraping capabilities as a guided workflow pattern over existing tools. The agent uses `interact` actions (navigate, wait_for, execute_js) with `observe` (page/network state) and `analyze({what:"dom"})` snapshots to scrape data from authenticated sessions. No new MCP tool is required.
 
 ## Requirements
 
@@ -50,10 +50,10 @@ Add scraping capabilities to the `interact` tool as a guided workflow feature. A
 1. User manually logs into web app in Chrome
 2. Agent observes current page: `observe({what: "page"})`
 3. Agent navigates to target page: `interact({action: "navigate", url: "..."})`
-4. Agent waits for content: `configure({action: "query_dom", selector: ".data-table", wait: true})`
+4. Agent waits for content: `analyze({what: "dom", selector: ".data-table", wait: true})`
 5. Agent extracts data: `interact({action: "execute_js", code: "return Array.from(document.querySelectorAll('tr')).map(r => r.innerText)"})`
 6. Agent handles pagination: `interact({action: "execute_js", code: "document.querySelector('.next').click()"})`, repeat extraction
-7. Agent exports data: `generate({type: "json", data: scraped_results})`
+7. Agent persists extracted data with `configure({action: "store", store_action: "save", ...})` or returns structured data inline to the caller.
 
 ## Examples
 
@@ -63,7 +63,7 @@ Add scraping capabilities to the `interact` tool as a guided workflow feature. A
 interact({action: "navigate", url: "https://app.example.com/dashboard"})
 
 // Wait for table to load
-configure({action: "query_dom", selector: "table.data", wait: true, timeout: 5000})
+interact({action: "wait_for", selector: "table.data", timeout_ms: 5000})
 
 // Extract table data
 interact({action: "execute_js", code: `
@@ -88,20 +88,20 @@ for (let page = 1; page <= 10; page++) {
   interact({action: "execute_js", code: "document.querySelector('.next-page').click()"})
   
   // Wait for new content
-  configure({action: "query_dom", selector: ".page-loading", wait: false, timeout: 2000})
+  interact({action: "wait_for", selector: ".page-loading", timeout_ms: 2000})
 }
 ```
 
 ### Export scraped data:
 ```json
-generate({type: "json_export", data: allData, filename: "scraped_data.json"})
+configure({action: "store", store_action: "save", namespace: "scraping", key: "scraped_data", data: {"rows": allData}})
 ```
 
 ---
 
 ## Notes
 
-- Not a new tool — uses existing interact, observe, configure, generate
+- Not a new tool — uses existing interact, observe, analyze, and configure capabilities
 - Leverages user's browser session (cookies, localStorage, auth tokens)
 - Respects same-origin policy and CORS
 - Agent responsible for rate limiting and ethical scraping practices

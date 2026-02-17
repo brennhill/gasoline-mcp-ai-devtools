@@ -235,5 +235,5 @@ Or as standalone tools if the composite pattern doesn't fit the use case.
 | `extension/popup.js` | Handle toggle state |
 | `extension/background.js` | Route new message types |
 | `extension/inject.js` | Implement highlight, state, execute handlers |
-| `cmd/dev-console/tools.go` | Add MCP tool handlers |
+| `cmd/dev-console/tools_core.go` | Add MCP tool handlers |
 | `cmd/dev-console/pilot.go` (new) | AI Web Pilot domain logic |

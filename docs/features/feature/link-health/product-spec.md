@@ -1,9 +1,9 @@
 ---
 doc_type: product-spec
 feature_id: feature-link-health
-status: proposed
+status: shipped
 owners: []
-last_reviewed: 2026-02-16
+last_reviewed: 2026-02-17
 links:
   product: ./product-spec.md
   tech: ./tech-spec.md
@@ -11,27 +11,30 @@ links:
   feature_index: ./index.md
 ---
 
-# Link Health Product Spec
+# Link Health Product Spec (TARGET)
 
-## TL;DR
+## Purpose
+Detect broken, redirected, auth-gated, timed-out, and CORS-blocked links from the current page, then optionally validate unresolved links server-side.
 
-- Status: proposed
-- Tool: tbd
-- Mode/Action: tbd
-- This document is a generated placeholder and should be completed.
+## Canonical APIs
+1. Extension-backed page scan
+```json
+{"tool":"analyze","arguments":{"what":"link_health","domain":"example.com"}}
+```
 
-## Linked Specs
+2. Server-side URL verification
+```json
+{"tool":"analyze","arguments":{"what":"link_validation","urls":["https://..."],"timeout_ms":15000,"max_workers":20}}
+```
 
-- Product: [product-spec.md](./product-spec.md)
-- Tech: [tech-spec.md](./tech-spec.md)
-- QA: [qa-plan.md](./qa-plan.md)
+## Behavior Guarantees
+1. `link_health` classifies outcomes: `ok`, `redirect`, `requires_auth`, `broken`, `timeout`, `cors_blocked`.
+2. `link_validation` verifies explicit URL lists with bounded concurrency and timeout.
+3. Non-http(s) URLs are ignored in server-side validation.
+4. SSRF protection is applied during server-side validation transport.
 
-## Requirement IDs
-
-- FEATURE_LINK_HEALTH_001
-- FEATURE_LINK_HEALTH_002
-- FEATURE_LINK_HEALTH_003
-
-## Notes
-
-Fill this file with feature-specific details and reference code/test paths used by this feature.
+## Requirements
+- `LHEALTH_PROD_001`: `link_health` must run through extension query path with correlation support.
+- `LHEALTH_PROD_002`: `link_validation` requires non-empty `urls` and enforces limits.
+- `LHEALTH_PROD_003`: server-side checker must classify 2xx/3xx/401/403/4xx/5xx deterministically.
+- `LHEALTH_PROD_004`: CORS-blocked client checks must remain distinguishable from confirmed broken links.

@@ -17,7 +17,7 @@ links:
 
 - Status: proposed
 - Tool: generate
-- Mode/Action: tbd
+- Mode/Action: See feature contract and `docs/core/mcp-command-option-matrix.md` for canonical `what`/`action`/`format` enums.
 - This document is a generated placeholder and should be completed.
 
 ## Linked Specs

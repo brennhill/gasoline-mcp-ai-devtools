@@ -540,7 +540,7 @@ All timestamps are **milliseconds since Unix epoch** (consistent with JavaScript
 | Action | Input | Output | Timeout |
 |--------|-------|--------|---------|
 | `execute_js` | script string | return value (any JSON) | 30s |
-| `query_dom` | CSS selector | array of elements + text | 30s |
+| `analyze({what: "dom"})` | CSS selector | array of elements + text | 30s |
 | `execute_a11y_audit` | scope selector | accessibility tree | 60s |
 | `record_start` | recording name | {status: 'recording'} | 5s |
 | `record_stop` | none | {status: 'saved'} | 30s |

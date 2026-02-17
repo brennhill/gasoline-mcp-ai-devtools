@@ -31,7 +31,7 @@ cmd/dev-console/
 
 #### Files to Modify:
 ```
-cmd/dev-console/tools.go  # Add dispatch for new generate modes
+cmd/dev-console/tools_core.go  # Add dispatch for new generate modes
 ```
 
 **Estimated LOC:** ~800-1000
@@ -64,7 +64,7 @@ cmd/dev-console/tools.go  # Add dispatch for new generate modes
 6. Write unit tests
 
 #### Extension Integration:
-- Uses existing `query_dom` via pilot.go
+- Uses existing `analyze({what: "dom"})` via pilot.go
 
 ### Phase 4: test_classify Mode (Priority: MEDIUM)
 
@@ -87,7 +87,7 @@ cmd/dev-console/tools.go  # Add dispatch for new generate modes
 
 ## Code Changes Detail
 
-### tools.go Additions
+### tools_core.go Additions
 
 ```go
 // Add to tool dispatch switch in HandleToolCall

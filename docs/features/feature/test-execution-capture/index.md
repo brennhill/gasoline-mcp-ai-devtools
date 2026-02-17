@@ -14,8 +14,8 @@ test_paths: []
 ## TL;DR
 
 - Status: proposed
-- Tool: tbd
-- Mode/Action: tbd
+- Tool: See feature contract and `docs/core/mcp-command-option-matrix.md` for canonical tool enums.
+- Mode/Action: See feature contract and `docs/core/mcp-command-option-matrix.md` for canonical `what`/`action`/`format` enums.
 - Location: `docs/features/feature/test-execution-capture`
 
 ## Specs

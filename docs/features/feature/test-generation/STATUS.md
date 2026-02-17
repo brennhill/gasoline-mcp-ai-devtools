@@ -276,7 +276,7 @@ Gasoline can generate tests that verify WebSocket behavior automatically — no 
 
 ### Modified Files
 
-1. `cmd/dev-console/tools.go` — Added dispatch for test generation modes
+1. `cmd/dev-console/tools_core.go` — Added dispatch for test generation modes
 
 ### Lines of Code
 

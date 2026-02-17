@@ -151,7 +151,7 @@ last_reviewed: 2026-02-16
 
 ### Must Not Break
 
-- [ ] DOM queries still work (`generate({action: "query_dom"})`)
+- [ ] DOM queries still work (`analyze({what: "dom"})`)
 - [ ] Page info queries still work (`observe({what: "page"})`)
 - [ ] Other extension message types still handled correctly
 - [ ] Tab tracking still works

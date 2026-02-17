@@ -18,7 +18,7 @@ last_reviewed: 2026-02-16
 
 ## Problem
 
-Gasoline already captures rich browser telemetry -- console logs, network request/response bodies, WebSocket events, user actions, and DOM state. The existing `generate({type: "reproduction"})` and `generate({type: "test"})` modes produce Playwright scripts from this data, including basic fixture generation via the `generate_fixtures` option. However, there is a significant gap between these generated scripts and what teams need for CI/CD integration:
+Gasoline already captures rich browser telemetry -- console logs, network request/response bodies, WebSocket events, user actions, and DOM state. The existing `generate({format: "reproduction"})` and `generate({format: "test"})` modes produce Playwright scripts from this data, including basic fixture generation via the `generate_fixtures` option. However, there is a significant gap between these generated scripts and what teams need for CI/CD integration:
 
 1. **No standalone fixture export.** The current `generate_fixtures` option in `reproduction.go` embeds API response fixtures inline with the test script. There is no way to export just the fixture data in a structured format that can be committed to a test suite, versioned independently, and reused across multiple tests.
 
@@ -151,14 +151,14 @@ This mode does NOT implement any CI runtime infrastructure (that is the Gasoline
 
 | # | Requirement | Priority |
 |---|-------------|----------|
-| R1 | `generate({type: "playwright_fixture", artifact: "fixture_data"})` extracts JSON API response fixtures from captured network bodies, including method, status, content type, and parsed response body | must |
+| R1 | `generate({format: "playwright_fixture", artifact: "fixture_data"})` extracts JSON API response fixtures from captured network bodies, including method, status, content type, and parsed response body | must |
 | R2 | Fixture data applies the same sensitive header stripping and redaction rules as the existing network body capture (Authorization, Cookie, tokens replaced with `[REDACTED]`) | must |
 | R3 | Fixture data includes a companion `fixture-loader.js` helper that applies fixtures as `page.route()` handlers in a single function call | must |
-| R4 | `generate({type: "playwright_fixture", artifact: "test_harness"})` produces a complete Playwright test file that imports from `@anthropic/gasoline-playwright` and uses the `gasoline` fixture | must |
+| R4 | `generate({format: "playwright_fixture", artifact: "test_harness"})` produces a complete Playwright test file that imports from `@anthropic/gasoline-playwright` and uses the `gasoline` fixture | must |
 | R5 | Test harness generation reuses the existing `getPlaywrightLocator()` selector priority (testId > role > ariaLabel > text > id > cssPath) from `codegen.go` | must |
 | R6 | Test harness generation reuses the existing `generateEnhancedPlaywrightScript()` action replay logic from `reproduction.go`, adding Gasoline CI fixture integration | must |
-| R7 | `generate({type: "playwright_fixture", artifact: "ci_config"})` produces a valid GitHub Actions workflow YAML for running Gasoline-instrumented Playwright tests | must |
-| R8 | `generate({type: "playwright_fixture", artifact: "failure_snapshot"})` exports the current server state (logs, network bodies, WebSocket events, actions, stats) as a structured JSON fixture | must |
+| R7 | `generate({format: "playwright_fixture", artifact: "ci_config"})` produces a valid GitHub Actions workflow YAML for running Gasoline-instrumented Playwright tests | must |
+| R8 | `generate({format: "playwright_fixture", artifact: "failure_snapshot"})` exports the current server state (logs, network bodies, WebSocket events, actions, stats) as a structured JSON fixture | must |
 | R9 | Failure snapshot reuses the existing `SnapshotResponse` structure and `computeSnapshotStats()` from `ci.go` | must |
 | R10 | The `filter_url` option filters network bodies by URL substring before generating fixtures (consistent with existing `NetworkBodyFilter` patterns) | must |
 | R11 | The `since` option filters all telemetry by timestamp before generating any artifact (consistent with existing `filterLogsSince()` from `ci.go`) | should |
@@ -176,7 +176,7 @@ This mode does NOT implement any CI runtime infrastructure (that is the Gasoline
 
 - **This feature does NOT run tests.** It generates test files, fixture data, and CI configuration. The AI agent or developer is responsible for saving the generated files and executing the test suite.
 
-- **This feature does NOT create a 5th MCP tool.** It adds a new `playwright_fixture` mode to the existing `generate` tool, respecting the 4-tool constraint. The mode dispatches via the existing `type` parameter in `tools.go`.
+- **This feature does NOT create a 5th MCP tool.** It adds a new `playwright_fixture` mode to the existing `generate` tool, respecting the 5-tool model. The mode dispatches via the existing `type` parameter in `tools_core.go`.
 
 - **This feature does NOT implement self-healing or test diagnosis.** The Self-Healing Tests spec covers `observe({what: "test_diagnosis"})` and `generate({format: "test_fix"})`. This spec covers fixture export and CI artifact generation -- distinct concerns that complement self-healing.
 
@@ -229,8 +229,8 @@ This mode does NOT implement any CI runtime infrastructure (that is the Gasoline
 ## Dependencies
 
 - **Depends on:**
-  - **`generate({type: "reproduction"})` (shipped)** -- Reuses `generateEnhancedPlaywrightScript()`, `generateFixtures()`, `getPlaywrightLocator()`, `replaceOrigin()`, `escapeJSString()` from `codegen.go` and `reproduction.go`.
-  - **`generate({type: "test"})` (shipped)** -- Reuses `generateTestScript()` and `TestGenerationOptions` from `codegen.go` for action-to-test conversion.
+  - **`generate({format: "reproduction"})` (shipped)** -- Reuses `generateEnhancedPlaywrightScript()`, `generateFixtures()`, `getPlaywrightLocator()`, `replaceOrigin()`, `escapeJSString()` from `codegen.go` and `reproduction.go`.
+  - **`generate({format: "test"})` (shipped)** -- Reuses `generateTestScript()` and `TestGenerationOptions` from `codegen.go` for action-to-test conversion.
   - **CI endpoints (shipped)** -- Reuses `SnapshotResponse`, `computeSnapshotStats()`, `filterLogsSince()` from `ci.go` for failure snapshot generation.
   - **Network body capture (shipped)** -- Reads from the existing `networkBodies` ring buffer via `GetNetworkBodies()`.
   - **Redaction (shipped)** -- Applies existing header stripping and body redaction from `redaction.go`.
@@ -244,7 +244,7 @@ This mode does NOT implement any CI runtime infrastructure (that is the Gasoline
 
 ### Integration with existing `generate` tool dispatch
 
-The new mode plugs into the existing switch statement in `tools.go` (line ~1309):
+The new mode plugs into the existing switch statement in `tools_core.go` (line ~1309):
 
 ```go
 case "playwright_fixture":
@@ -293,4 +293,4 @@ The implementation should maximize reuse of existing functions:
 | OI-2 | Fixture-loader as separate file vs inline in test | open | The fixture-loader helper could be (a) a separate `.js` file returned as a second content block, (b) inlined in the test harness, or (c) published as part of `@anthropic/gasoline-playwright`. Option (a) is currently specified. Option (c) would reduce generated code but couples fixture loading to the Gasoline CI package. |
 | OI-3 | CI config: minimal vs comprehensive | open | Should `ci_config` generate a minimal workflow (just server + tests + report upload) or a comprehensive one (matrix testing, caching, SARIF upload, Slack notification)? Propose: minimal by default with an `options.comprehensive` flag for the full version. |
 | OI-4 | Fixture data request body capture | open | Current fixture export only captures response bodies. Should request bodies also be exported for POST/PUT/PATCH endpoints? This would enable generating tests that assert the correct request payload is sent. Propose: add `options.include_request_bodies` (default false) for v2. |
-| OI-5 | Relationship to `generate({type: "test"})` | open | There is overlap between `test_harness` and the existing `generate({type: "test"})` mode. The key difference is that `test_harness` adds Gasoline CI fixture integration and uses exported fixtures. Should `test` mode gain an option to include Gasoline CI fixtures, or should they remain separate modes with distinct purposes (standalone test vs CI-integrated test)? Propose: keep separate for clarity -- `test` is a quick standalone script, `playwright_fixture` + `test_harness` is a CI-ready package. |
+| OI-5 | Relationship to `generate({format: "test"})` | open | There is overlap between `test_harness` and the existing `generate({format: "test"})` mode. The key difference is that `test_harness` adds Gasoline CI fixture integration and uses exported fixtures. Should `test` mode gain an option to include Gasoline CI fixtures, or should they remain separate modes with distinct purposes (standalone test vs CI-integrated test)? Propose: keep separate for clarity -- `test` is a quick standalone script, `playwright_fixture` + `test_harness` is a CI-ready package. |

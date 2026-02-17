@@ -606,7 +606,7 @@ New capabilities are additive:
 | `cmd/dev-console/ttl.go` | TTL types, parsing, resolution logic |
 | `cmd/dev-console/ttl_test.go` | TTL tests |
 | `cmd/dev-console/types.go` | TTLConfig struct definition |
-| `cmd/dev-console/tools.go` | MCP tool schema update |
+| `cmd/dev-console/tools_core.go` | MCP tool schema update |
 | `cmd/dev-console/configure.go` | TTL action handler |
 | `cmd/dev-console/health.go` | Health endpoint TTL section |
 | `cmd/dev-console/main.go` | CLI flag parsing |

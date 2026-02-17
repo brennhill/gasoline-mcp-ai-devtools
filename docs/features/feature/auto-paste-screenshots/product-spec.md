@@ -250,7 +250,7 @@ The only new work is handling a `screenshot` query type in the pending-query pol
 - Depends on: Async command pipeline (v6.0.0) for on-demand screenshot capture
 - Depends on: `captureVisibleTab` extension permission (already granted in manifest)
 - Depends on: `configure({action: "capture"})` settings infrastructure (already exists)
-- Depended on by: Future visual regression features (e.g., `generate({type: "visual_diff"})`)
+- Depended on by: Future visual regression features (e.g., `generate({format: "visual_diff"})`)
 
 ## Assumptions
 

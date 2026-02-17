@@ -81,7 +81,7 @@ last_reviewed: 2026-02-16
 
 | Workflow | Steps Required | Can Be Simplified? |
 |----------|---------------|-------------------|
-| Export all captured traffic | 1 step: call `generate` with `type: "har"` | No -- already minimal |
+| Export all captured traffic | 1 step: call `generate` with `format: "har"` | No -- already minimal |
 | Export filtered by URL | 1 step: add `url_filter` parameter | No |
 | Export errors only | 1 step: add `status_filter: { min: 400, max: 599 }` | No |
 | Export to file | 1 step: add `output_path` parameter | No |
@@ -131,7 +131,7 @@ last_reviewed: 2026-02-16
 
 | # | Test Case | Components Involved | Expected Behavior | Priority |
 |---|-----------|--------------------|--------------------|----------|
-| IT-1 | End-to-end export via MCP | MCP client -> `generate(type: "har")` -> server -> file | Valid HAR file written to disk, response has metadata | must |
+| IT-1 | End-to-end export via MCP | MCP client -> `generate(format: "har")` -> server -> file | Valid HAR file written to disk, response has metadata | must |
 | IT-2 | Export after network body capture | Extension captures traffic -> server stores -> export | All captured entries appear in HAR | must |
 | IT-3 | Output path directory creation | `output_path` with non-existent parent dirs | Directories created via MkdirAll, file written | must |
 | IT-4 | Large export warning | >10MB of captured traffic | Response includes size warning | should |

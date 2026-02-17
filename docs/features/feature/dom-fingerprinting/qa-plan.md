@@ -60,7 +60,7 @@ last_reviewed: 2026-02-16
 | CL-9 | Token count estimate | `tokenEstimate` field -- verify LLM can use this to decide whether to request a more/less detailed fingerprint. | [ ] |
 
 ### Common LLM Misinterpretation Risks
-- [ ] LLM confuses `get_dom_fingerprint` with `query_dom` -- test by verifying response formats are clearly different (fingerprint returns structured landmarks/content/state, not raw element arrays)
+- [ ] LLM confuses `get_dom_fingerprint` with `analyze({what: "dom"})` -- test by verifying response formats are clearly different (fingerprint returns structured landmarks/content/state, not raw element arrays)
 - [ ] LLM misreads `severity: "clean"` as "all tests passed" when it means "no structural changes" -- test by creating a page with known bugs that do not change structure
 - [ ] LLM assumes `hash` match means page is correct, when it only means structure is unchanged -- verify with scenario where content changes but structure does not
 - [ ] LLM does not understand `"[has value]"` placeholder means an input has content without revealing what the content is
@@ -132,7 +132,7 @@ last_reviewed: 2026-02-16
 | IT-3 | Depth parameter forwarded | Server passes `depth: "minimal"` through full chain | Only landmarks extracted | must |
 | IT-4 | Comparison with stored baseline | Server stores baseline, then compares new fingerprint | Comparison result included in response | should |
 | IT-5 | Extension timeout handling | Extension disconnected, query sent | 5-second timeout, structured error returned | must |
-| IT-6 | Message flow matches pending query pattern | Query created, extension polls, result posted back | Same pattern as `query_dom` -- validates shared infrastructure | must |
+| IT-6 | Message flow matches pending query pattern | Query created, extension polls, result posted back | Same pattern as `analyze({what: "dom"})` -- validates shared infrastructure | must |
 
 ### 4.3 Performance Tests
 
@@ -203,7 +203,7 @@ last_reviewed: 2026-02-16
 | DL-UAT-4 | All traffic on localhost | Monitor network during fingerprint capture | Only 127.0.0.1:7890 traffic | [ ] |
 
 ### Regression Checks
-- [ ] Existing `query_dom` functionality still works after fingerprinting is enabled
+- [ ] Existing `analyze({what: "dom"})` functionality still works after fingerprinting is enabled
 - [ ] Existing `observe({what: "accessibility"})` audit still functions
 - [ ] Extension performance is not degraded (fingerprint extraction < 30ms on typical page)
 - [ ] Pending query infrastructure handles both `dom` and `dom_fingerprint` query types simultaneously

@@ -32,7 +32,7 @@ Today, discovering these problems requires:
 
 ## Solution
 
-SEO Audit adds a new mode to the `generate` tool: `generate({type: "seo_audit"})`. When invoked, the server instructs the extension to collect on-page SEO signals from the active tab and returns a structured JSON report covering six audit dimensions:
+SEO Audit adds a new mode to the `generate` tool: `generate({format: "seo_audit"})`. When invoked, the server instructs the extension to collect on-page SEO signals from the active tab and returns a structured JSON report covering six audit dimensions:
 
 1. **Metadata** -- title, meta description, canonical URL, Open Graph tags, Twitter Card tags, robots directives
 2. **Heading structure** -- H1-H6 hierarchy, missing H1, multiple H1s, skipped levels
@@ -302,7 +302,7 @@ The output is designed for LLM consumption: flat issue arrays with consistent sc
 
 | # | Requirement | Priority |
 |---|-------------|----------|
-| R1 | `generate({type: "seo_audit"})` returns a structured JSON report covering metadata, headings, links, images, structured data, and technical SEO factors | must |
+| R1 | `generate({format: "seo_audit"})` returns a structured JSON report covering metadata, headings, links, images, structured data, and technical SEO factors | must |
 | R2 | Metadata audit validates: title presence and length (1-60 chars), meta description presence and length (50-160 chars), canonical URL, robots directives | must |
 | R3 | Metadata audit validates Open Graph tags (og:title, og:description, og:image, og:url, og:type) and reports missing core tags | must |
 | R4 | Heading audit extracts the full H1-H6 hierarchy with text content and selectors, reports missing H1, multiple H1s, and skipped heading levels | must |
@@ -330,7 +330,7 @@ The output is designed for LLM consumption: flat issue arrays with consistent sc
 
 - **This feature does NOT replace accessibility audits.** Gasoline already has `observe({what: "accessibility"})` powered by axe-core. The SEO audit touches heading hierarchy and alt text (which overlap with accessibility) but does not duplicate the full WCAG audit. The AI agent should use both tools for comprehensive coverage.
 
-- **This feature does NOT create a new MCP tool.** It adds a new mode (`seo_audit`) to the existing `generate` tool, respecting the 4-tool constraint.
+- **This feature does NOT create a new MCP tool.** It adds a new mode (`seo_audit`) to the existing `generate` tool, respecting the 5-tool model.
 
 - **This feature does NOT modify the page.** It is read-only. The AI agent applies fixes using the `interact` tool or by editing source code. Gasoline reports issues; the agent resolves them.
 
@@ -346,7 +346,7 @@ The output is designed for LLM consumption: flat issue arrays with consistent sc
 
 ## Security Considerations
 
-- **No new data capture mechanisms.** The SEO audit reads from the current DOM state using the same `query_dom` / content script infrastructure that existing features use. It does not introduce new capture channels or expand the attack surface.
+- **No new data capture mechanisms.** The SEO audit reads from the current DOM state using the same `analyze({what: "dom"})` / content script infrastructure that existing features use. It does not introduce new capture channels or expand the attack surface.
 
 - **Page content exposure.** The audit response includes page metadata (title, description, OG tags), heading text, link URLs, image URLs, and JSON-LD content. These are all publicly visible on the rendered page. No authentication tokens, cookies, or server-side data is exposed.
 
@@ -380,7 +380,7 @@ The output is designed for LLM consumption: flat issue arrays with consistent sc
 
 - **Depends on:**
   - **Extension content script DOM access** (shipped) -- Reading meta tags, headings, links, images, and script elements from the current page.
-  - **`configure({action: "query_dom"})`** (shipped) -- DOM query infrastructure for collecting structured data from the page.
+  - **`analyze({what: "dom"})`** (shipped) -- DOM query infrastructure for collecting structured data from the page.
   - **Async command architecture** (shipped) -- The extension collects DOM data asynchronously and posts results back to the server.
 
 - **Optionally composes with:**

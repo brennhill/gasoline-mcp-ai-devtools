@@ -32,9 +32,9 @@ last_reviewed: 2026-02-16
 
 | Test ID | Test Case | Expected Result | Priority |
 |---------|-----------|-----------------|----------|
-| TG-UNIT-001 | `generate` tool accepts `type: "test_from_context"` | Request dispatched to GenerateTestFromContext | P0 |
-| TG-UNIT-002 | `generate` tool accepts `type: "test_heal"` | Request dispatched to HealSelector | P0 |
-| TG-UNIT-003 | `generate` tool accepts `type: "test_classify"` | Request dispatched to ClassifyFailure | P0 |
+| TG-UNIT-001 | `generate` tool accepts `format: "test_from_context"` | Request dispatched to GenerateTestFromContext | P0 |
+| TG-UNIT-002 | `generate` tool accepts `format: "test_heal"` | Request dispatched to HealSelector | P0 |
+| TG-UNIT-003 | `generate` tool accepts `format: "test_classify"` | Request dispatched to ClassifyFailure | P0 |
 | TG-UNIT-004 | Invalid `type` value rejected | Error: "unknown_mode" | P0 |
 | TG-UNIT-005 | Missing `type` parameter rejected | Error: "missing_param" | P0 |
 

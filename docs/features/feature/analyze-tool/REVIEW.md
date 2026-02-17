@@ -89,7 +89,7 @@ last_reviewed: 2026-02-16
 #### D1-1: Response format not fully specified
 - PRODUCT_SPEC shows sample response but doesn't define:
   - Complete schema for each action type
-  - Error response format (should use existing StructuredError pattern from tools.go)
+  - Error response format (should use existing StructuredError pattern from tools_core.go)
   - Partial result format on timeout
 - **Resolution required**: Define JSON schema for all response types, aligned with existing mcpJSONResponse/mcpStructuredError patterns
 
@@ -135,7 +135,7 @@ last_reviewed: 2026-02-16
   - `lighthouse_unavailable`
   - `analysis_timeout`
   - `framework_not_detected`
-- **Suggestion**: Add to tools.go error code constants
+- **Suggestion**: Add to tools_core.go error code constants
 
 ---
 
@@ -220,7 +220,7 @@ The change from 4-tool to 5-tool maximum is **well-reasoned**:
 3. Re-review updated spec
 
 ### Phase 1: Core Infrastructure
-1. Add `analyze` tool registration to `cmd/dev-console/tools.go`
+1. Add `analyze` tool registration to `cmd/dev-console/tools_core.go`
 2. Create `cmd/dev-console/analyze.go`
 3. Create endpoint `/analyze-result` in `main.go`
 4. Write unit tests: `cmd/dev-console/analyze_test.go`
@@ -277,7 +277,7 @@ Once these are addressed in an updated TECH_SPEC, re-submit for final approval.
 
 ## Key Implementation Files
 
-- `cmd/dev-console/tools.go` — Tool registration pattern
+- `cmd/dev-console/tools_core.go` — Tool registration pattern
 - `cmd/dev-console/pilot.go` — Pending query pattern for extension communication
 - `cmd/dev-console/types.go` — PendingQuery struct
 - `extension/content.js` — Message bridge

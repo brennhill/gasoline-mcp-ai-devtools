@@ -236,7 +236,7 @@ last_reviewed: 2026-02-16
 - [ ] Existing `generate({format: "pr_summary"})` works independently
 - [ ] AI Web Pilot toggle still required for execute_js (security gate not bypassed)
 - [ ] Single-tab tracking isolation still functions correctly
-- [ ] 4-tool constraint maintained -- no new tools added
+- [ ] 5-tool model maintained -- no new tools added
 
 ---
 
