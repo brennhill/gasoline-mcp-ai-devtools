@@ -43,6 +43,11 @@ func (h *ToolHandler) interactDispatch() map[string]interactHandler {
 			"record_stop":      h.handleRecordStop,
 			"upload":           h.handleUpload,
 			"draw_mode_start":  h.handleDrawModeStart,
+			"get_readable":            h.handleGetReadable,
+			"get_markdown":            h.handleGetMarkdown,
+			"navigate_and_wait_for":    h.handleNavigateAndWaitFor,
+			"fill_form_and_submit":     h.handleFillFormAndSubmit,
+			"run_a11y_and_export_sarif": h.handleRunA11yAndExportSARIF,
 		}
 	})
 	return h.interactHandlers
@@ -298,8 +303,9 @@ func truncateToLen(s string, maxLen int) string {
 
 func (h *ToolHandler) handleBrowserActionNavigate(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	var params struct {
-		URL   string `json:"url"`
-		TabID int    `json:"tab_id,omitempty"`
+		URL            string `json:"url"`
+		TabID          int    `json:"tab_id,omitempty"`
+		IncludeContent bool   `json:"include_content,omitempty"`
 	}
 	if err := json.Unmarshal(args, &params); err != nil {
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidJSON, "Invalid JSON arguments: "+err.Error(), "Fix JSON syntax and call again")}
@@ -327,8 +333,17 @@ func (h *ToolHandler) handleBrowserActionNavigate(req JSONRPCRequest, args json.
 
 	h.recordAIAction("navigate", params.URL, map[string]any{"target_url": params.URL})
 
-	return h.maybeWaitForCommand(req, correlationID, args, "Navigate queued")
+	resp := h.maybeWaitForCommand(req, correlationID, args, "Navigate queued")
+
+	// If include_content is requested and navigate succeeded, enrich with page content
+	if params.IncludeContent {
+		resp = h.enrichNavigateResponse(resp, req, params.TabID)
+	}
+
+	return resp
 }
+
+// enrichNavigateResponse moved to tools_interact_content.go
 
 func (h *ToolHandler) handleBrowserActionRefresh(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	var params struct {
@@ -458,6 +473,7 @@ var domActionRequiredParams = map[string]struct {
 func (h *ToolHandler) handleDOMPrimitive(req JSONRPCRequest, args json.RawMessage, action string) JSONRPCResponse {
 	var params struct {
 		Selector  string `json:"selector"`
+		Index     *int   `json:"index,omitempty"`
 		Text      string `json:"text,omitempty"`
 		Value     string `json:"value,omitempty"`
 		Clear     bool   `json:"clear,omitempty"`
@@ -471,8 +487,29 @@ func (h *ToolHandler) handleDOMPrimitive(req JSONRPCRequest, args json.RawMessag
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidJSON, "Invalid JSON arguments: "+err.Error(), "Fix JSON syntax and call again")}
 	}
 
+	// Resolve index to selector if index is provided and selector is empty
+	if params.Index != nil && params.Selector == "" {
+		sel, ok := h.resolveIndexToSelector(*params.Index)
+		if !ok {
+			return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(
+				ErrInvalidParam,
+				fmt.Sprintf("Element index %d not found. Call list_interactive first to refresh the element index.", *params.Index),
+				"Call interact with action='list_interactive' first, then use the index from the results.",
+				withParam("index"),
+			)}
+		}
+		params.Selector = sel
+		// Rewrite args to include the resolved selector
+		var rawArgs map[string]json.RawMessage
+		if json.Unmarshal(args, &rawArgs) == nil {
+			selectorJSON, _ := json.Marshal(sel)
+			rawArgs["selector"] = selectorJSON
+			args, _ = json.Marshal(rawArgs)
+		}
+	}
+
 	if params.Selector == "" {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrMissingParam, "Required parameter 'selector' is missing", "Add the 'selector' parameter. Supports CSS selectors or semantic: text=Submit, role=button, placeholder=Email, label=Name, aria-label=Close", withParam("selector"))}
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrMissingParam, "Required parameter 'selector' (or 'index') is missing", "Add the 'selector' parameter. Supports CSS selectors or semantic: text=Submit, role=button, placeholder=Email, label=Name, aria-label=Close. Or use 'index' from list_interactive results.", withParam("selector"))}
 	}
 
 	if errResp, failed := validateDOMActionParams(req, action, params.Text, params.Value, params.Name); failed {
@@ -578,29 +615,4 @@ func (h *ToolHandler) handleSubtitle(req JSONRPCRequest, args json.RawMessage) J
 	return h.maybeWaitForCommand(req, correlationID, args, queuedMsg)
 }
 
-func (h *ToolHandler) handleListInteractive(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-	var params struct {
-		TabID int `json:"tab_id,omitempty"`
-	}
-	if err := json.Unmarshal(args, &params); err != nil {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidJSON, "Invalid JSON arguments: "+err.Error(), "Fix JSON syntax and call again")}
-	}
-
-	if !h.capture.IsPilotEnabled() {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrCodePilotDisabled, "AI Web Pilot is disabled", "Enable AI Web Pilot in the extension popup", h.diagnosticHint())}
-	}
-
-	correlationID := fmt.Sprintf("dom_list_%d_%d", time.Now().UnixNano(), randomInt63())
-
-	query := queries.PendingQuery{
-		Type:          "dom_action",
-		Params:        args,
-		TabID:         params.TabID,
-		CorrelationID: correlationID,
-	}
-	h.capture.CreatePendingQueryWithTimeout(query, queries.AsyncCommandTimeout, req.ClientID)
-
-	h.recordAIAction("dom_list_interactive", "", nil)
-
-	return h.maybeWaitForCommand(req, correlationID, args, "list_interactive queued")
-}
+// Element indexing functions moved to tools_interact_elements.go

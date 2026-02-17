@@ -80,6 +80,9 @@ var configureHandlers = map[string]ConfigureHandler{
 	"telemetry": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 		return h.toolConfigureTelemetry(req, args)
 	},
+	"describe_capabilities": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+		return h.handleDescribeCapabilities(req, args)
+	},
 }
 
 // getValidConfigureActions returns a sorted, comma-separated list of valid configure actions.
@@ -683,4 +686,54 @@ func (h *ToolHandler) toolConfigureTestBoundaryEnd(req JSONRPCRequest, args json
 	}
 
 	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Test boundary ended", responseData)}
+}
+
+// handleDescribeCapabilities returns machine-readable tool metadata derived from ToolsList().
+func (h *ToolHandler) handleDescribeCapabilities(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+	tools := h.ToolsList()
+
+	toolsMap := make(map[string]any, len(tools))
+	for _, tool := range tools {
+		props, _ := tool.InputSchema["properties"].(map[string]any)
+		required, _ := tool.InputSchema["required"].([]string)
+
+		// Extract the dispatch parameter (first required field)
+		dispatchParam := ""
+		if len(required) > 0 {
+			dispatchParam = required[0]
+		}
+
+		// Extract enum values for the dispatch parameter
+		var modes []string
+		if dispatchParam != "" {
+			if dp, ok := props[dispatchParam].(map[string]any); ok {
+				if enumVals, ok := dp["enum"].([]string); ok {
+					modes = enumVals
+				}
+			}
+		}
+
+		// Extract parameter names
+		paramNames := make([]string, 0, len(props))
+		for k := range props {
+			if k != dispatchParam {
+				paramNames = append(paramNames, k)
+			}
+		}
+		sort.Strings(paramNames)
+
+		toolsMap[tool.Name] = map[string]any{
+			"dispatch_param": dispatchParam,
+			"modes":          modes,
+			"params":         paramNames,
+			"description":    tool.Description,
+		}
+	}
+
+	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Capabilities", map[string]any{
+		"version":          version,
+		"protocol_version": "2024-11-05",
+		"tools":            toolsMap,
+		"deprecated":       []string{},
+	})}
 }

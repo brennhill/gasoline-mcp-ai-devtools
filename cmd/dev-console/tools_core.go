@@ -216,6 +216,11 @@ type ToolHandler struct {
 	// Cached interact dispatch map (initialized once via sync.Once)
 	interactOnce     sync.Once
 	interactHandlers map[string]interactHandler
+
+	// Element index store: maps index→selector from last list_interactive call.
+	// Protected by elementIndexMu; refreshed on each list_interactive.
+	elementIndexMu    sync.RWMutex
+	elementIndexStore map[int]string
 }
 
 // GetCapture returns the capture instance

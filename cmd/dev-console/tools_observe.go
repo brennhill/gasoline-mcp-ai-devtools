@@ -196,7 +196,8 @@ func (h *ToolHandler) toolGetBrowserErrors(req JSONRPCRequest, args json.RawMess
 	// Parse optional parameters
 	var params struct {
 		Limit int    `json:"limit"`
-		URL   string `json:"url"` // filter by URL substring
+		URL   string `json:"url"`   // filter by URL substring
+		Scope string `json:"scope"` // current_page (default) or all
 	}
 	lenientUnmarshal(args, &params)
 	if params.Limit <= 0 {
@@ -205,6 +206,12 @@ func (h *ToolHandler) toolGetBrowserErrors(req JSONRPCRequest, args json.RawMess
 	if params.Limit > maxObserveLimit {
 		params.Limit = maxObserveLimit
 	}
+	if params.Scope == "" {
+		params.Scope = "current_page"
+	}
+
+	// Get tracked tab ID for current_page filtering
+	_, trackedTabID, _ := h.capture.GetTrackingStatus()
 
 	// Copy slice reference under lock, iterate outside.
 	// Safe because addEntries creates new slices on rotation.
@@ -218,6 +225,14 @@ func (h *ToolHandler) toolGetBrowserErrors(req JSONRPCRequest, args json.RawMess
 		level, _ := entry["level"].(string)
 		if level != "error" {
 			continue
+		}
+
+		// Filter by current page tab_id if scope=current_page
+		if params.Scope == "current_page" && trackedTabID != 0 {
+			entryTabID, _ := entry["tabId"].(float64)
+			if int(entryTabID) != trackedTabID {
+				continue
+			}
 		}
 
 		// Filter by URL if specified
@@ -249,9 +264,10 @@ func (h *ToolHandler) toolGetBrowserErrors(req JSONRPCRequest, args json.RawMess
 	}
 
 	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Browser errors", map[string]any{
-		"errors":   errors,
-		"count":    len(errors),
+		"errors": errors,
+		"count":  len(errors),
 		"metadata": buildResponseMetadata(h.capture, newestTS),
+		"scope":    params.Scope,
 	})}
 }
 
@@ -266,12 +282,19 @@ func (h *ToolHandler) toolGetBrowserLogs(req JSONRPCRequest, args json.RawMessag
 		MinLevel          string `json:"min_level"`           // minimum level threshold
 		Source            string `json:"source"`              // filter by source
 		URL               string `json:"url"`                 // filter by URL substring
+		Scope             string `json:"scope"`               // current_page (default) or all
 		AfterCursor       string `json:"after_cursor"`        // cursor-based forward pagination
 		BeforeCursor      string `json:"before_cursor"`       // cursor-based backward pagination
 		SinceCursor       string `json:"since_cursor"`        // cursor-based since (inclusive)
 		RestartOnEviction bool   `json:"restart_on_eviction"` // auto-restart on cursor expiration
 	}
 	lenientUnmarshal(args, &params)
+	if params.Scope == "" {
+		params.Scope = "current_page"
+	}
+
+	// Get tracked tab ID for current_page filtering
+	_, trackedTabID, _ := h.capture.GetTrackingStatus()
 	if params.Limit <= 0 {
 		params.Limit = 100
 	}
@@ -303,6 +326,14 @@ func (h *ToolHandler) toolGetBrowserLogs(req JSONRPCRequest, args json.RawMessag
 		entryType, _ := e.Entry["type"].(string)
 		if entryType == "lifecycle" || entryType == "tracking" || entryType == "extension" {
 			continue
+		}
+
+		// Filter by current page tab_id if scope=current_page
+		if params.Scope == "current_page" && trackedTabID != 0 {
+			entryTabID, _ := e.Entry["tabId"].(float64)
+			if int(entryTabID) != trackedTabID {
+				continue
+			}
 		}
 
 		// Filter by exact level if specified
@@ -371,10 +402,13 @@ func (h *ToolHandler) toolGetBrowserLogs(req JSONRPCRequest, args json.RawMessag
 		}
 	}
 
+	meta := buildPaginatedResponseMetadata(h.capture, newestTS, pMeta)
+	meta["scope"] = params.Scope
+
 	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Browser logs", map[string]any{
 		"logs":     logs,
 		"count":    len(logs),
-		"metadata": buildPaginatedResponseMetadata(h.capture, newestTS, pMeta),
+		"metadata": meta,
 	})}
 }
 
