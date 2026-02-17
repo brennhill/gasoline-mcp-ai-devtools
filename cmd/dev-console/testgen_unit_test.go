@@ -24,23 +24,59 @@ func TestGenerateErrorID(t *testing.T) {
 func TestGenerateTestFilename(t *testing.T) {
 	t.Parallel()
 
+	// Basic sanitization: colons, quotes, spaces become dashes
 	name := generateTestFilename(`Login failed: can't "submit"`, "playwright")
 	if !strings.HasSuffix(name, ".spec.ts") {
 		t.Fatalf("playwright filename = %q, want .spec.ts", name)
 	}
-	if strings.ContainsAny(name, `:'" `) {
+	if strings.ContainsAny(name, `:'"/ \<>*?|%%`) {
 		t.Fatalf("filename should be sanitized, got %q", name)
 	}
 
+	// Vitest/jest extension
 	vitest := generateTestFilename("Short message", "vitest")
 	if !strings.HasSuffix(vitest, ".test.ts") {
 		t.Fatalf("vitest filename = %q, want .test.ts", vitest)
 	}
 
+	// Long input capped at ≤50
 	long := strings.Repeat("x", 80)
 	longName := generateTestFilename(long, "playwright")
-	if len(strings.TrimSuffix(longName, ".spec.ts")) != 50 {
-		t.Fatalf("sanitized long filename stem length = %d, want 50", len(strings.TrimSuffix(longName, ".spec.ts")))
+	stem := strings.TrimSuffix(longName, ".spec.ts")
+	if len(stem) > 50 {
+		t.Fatalf("sanitized long filename stem length = %d, want ≤50", len(stem))
+	}
+
+	// URL-like input produces safe slug (issue #96)
+	urlLike := generateTestFilename(`data:text/html,%3C%21doctype%20html`, "playwright")
+	if strings.ContainsAny(urlLike, `/:,%<>`) {
+		t.Fatalf("URL-like input should be fully sanitized, got %q", urlLike)
+	}
+	stem = strings.TrimSuffix(urlLike, ".spec.ts")
+	if stem == "" || stem == "-" {
+		t.Fatalf("URL-like input should not produce empty stem, got %q", stem)
+	}
+
+	// Empty/whitespace input → fallback
+	empty := generateTestFilename("", "playwright")
+	if strings.TrimSuffix(empty, ".spec.ts") != "generated-test" {
+		t.Fatalf("empty input should fallback to 'generated-test', got %q", empty)
+	}
+	whitespace := generateTestFilename("   ", "playwright")
+	if strings.TrimSuffix(whitespace, ".spec.ts") != "generated-test" {
+		t.Fatalf("whitespace input should fallback to 'generated-test', got %q", whitespace)
+	}
+
+	// Consecutive special chars collapsed
+	multi := generateTestFilename("a///b***c", "playwright")
+	stem = strings.TrimSuffix(multi, ".spec.ts")
+	if strings.Contains(stem, "--") {
+		t.Fatalf("consecutive dashes should be collapsed, got %q", stem)
+	}
+
+	// No leading/trailing dashes
+	if strings.HasPrefix(stem, "-") || strings.HasSuffix(stem, "-") {
+		t.Fatalf("stem should not have leading/trailing dashes, got %q", stem)
 	}
 }
 

@@ -10,6 +10,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"regexp"
 	"strings"
 	"time"
 
@@ -28,6 +29,7 @@ type TestFromContextRequest struct {
 	OutputFormat string `json:"output_format"` // "file", "inline"
 	BaseURL      string `json:"base_url"`
 	IncludeMocks bool   `json:"include_mocks"`
+	TestName     string `json:"test_name"` // Optional: override filename base
 }
 
 // GeneratedTest represents the output of test generation
@@ -344,7 +346,11 @@ func (h *ToolHandler) generateTestFromError(req TestFromContextRequest) (*Genera
 
 	script := generatePlaywrightScript(relevantActions, errorMessage, req.BaseURL)
 	assertionCount := strings.Count(script, "expect(") + 1
-	filename := generateTestFilename(errorMessage, req.Framework)
+	filenameBase := errorMessage
+	if req.TestName != "" {
+		filenameBase = req.TestName
+	}
+	filename := generateTestFilename(filenameBase, req.Framework)
 	selectors := extractSelectorsFromActions(relevantActions)
 
 	return &GeneratedTest{
@@ -432,7 +438,11 @@ func (h *ToolHandler) generateTestFromInteraction(req TestFromContextRequest) (*
 		assertionCount += h.countNetworkAssertions()
 	}
 
-	filename := generateTestFilename(deriveInteractionTestName(relevantActions), req.Framework)
+	filenameBase := deriveInteractionTestName(relevantActions)
+	if req.TestName != "" {
+		filenameBase = req.TestName
+	}
+	filename := generateTestFilename(filenameBase, req.Framework)
 	selectors := extractSelectorsFromActions(relevantActions)
 
 	contextUsed := []string{"actions"}
@@ -604,18 +614,26 @@ func generateErrorID(message, stack, url string) string {
 	return fmt.Sprintf("err_%d_%s", timestamp, hash8)
 }
 
-func generateTestFilename(errorMessage, framework string) string {
-	name := strings.ToLower(errorMessage)
-	name = strings.ReplaceAll(name, " ", "-")
-	name = strings.ReplaceAll(name, ":", "")
-	name = strings.ReplaceAll(name, "'", "")
-	name = strings.ReplaceAll(name, "\"", "")
+// filenameAllowlistRe matches any character NOT in the safe set [a-z0-9-].
+var filenameAllowlistRe = regexp.MustCompile(`[^a-z0-9]+`)
+
+func generateTestFilename(input, framework string) string {
+	name := strings.ToLower(strings.TrimSpace(input))
+	name = filenameAllowlistRe.ReplaceAllString(name, "-")
+	name = strings.Trim(name, "-")
 
 	if len(name) > 50 {
 		name = name[:50]
+		// Trim on dash boundary to avoid cutting mid-word
+		if i := strings.LastIndex(name, "-"); i > 0 {
+			name = name[:i]
+		}
 	}
-
 	name = strings.TrimRight(name, "-")
+
+	if name == "" {
+		name = "generated-test"
+	}
 
 	ext := ".spec.ts"
 	if framework == "vitest" || framework == "jest" {

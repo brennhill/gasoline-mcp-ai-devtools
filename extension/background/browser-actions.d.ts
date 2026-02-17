@@ -5,6 +5,7 @@ export type BrowserActionResult = {
     success: boolean;
     action?: string;
     url?: string;
+    tab_id?: number;
     content_script_status?: string;
     message?: string;
     error?: string;

@@ -15,7 +15,7 @@ import (
 
 // Constants for query management
 const (
-	queryResultTTL = 60 * time.Second // How long to keep query results before cleanup
+	queryResultTTL = 5 * time.Minute // How long to keep query results before cleanup
 	// Note: maxPendingQueries is defined in types.go (=5)
 )
 
