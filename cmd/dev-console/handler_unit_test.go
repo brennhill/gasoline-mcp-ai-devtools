@@ -316,6 +316,36 @@ func TestMCPHandlerResourceAndToolMethods(t *testing.T) {
 		t.Fatalf("resources/read security playbook result = %+v, want security playbook content entry", readSecurityPlaybookData)
 	}
 
+	readInvalidPlaybook := h.HandleRequest(JSONRPCRequest{
+		JSONRPC: "2.0",
+		ID:      63,
+		Method:  "resources/read",
+		Params:  json.RawMessage(`{"uri":"gasoline://playbook/nonexistent/quick"}`),
+	})
+	if readInvalidPlaybook == nil || readInvalidPlaybook.Error == nil || readInvalidPlaybook.Error.Code != -32002 {
+		t.Fatalf("resources/read invalid playbook response = %+v, want -32002 error", readInvalidPlaybook)
+	}
+
+	readBareCapability := h.HandleRequest(JSONRPCRequest{
+		JSONRPC: "2.0",
+		ID:      64,
+		Method:  "resources/read",
+		Params:  json.RawMessage(`{"uri":"gasoline://playbook/security"}`),
+	})
+	if readBareCapability == nil || readBareCapability.Error == nil || readBareCapability.Error.Code != -32002 {
+		t.Fatalf("resources/read bare capability response = %+v, want -32002 error (level required)", readBareCapability)
+	}
+
+	readInvalidDemo := h.HandleRequest(JSONRPCRequest{
+		JSONRPC: "2.0",
+		ID:      65,
+		Method:  "resources/read",
+		Params:  json.RawMessage(`{"uri":"gasoline://demo/nonexistent"}`),
+	})
+	if readInvalidDemo == nil || readInvalidDemo.Error == nil || readInvalidDemo.Error.Code != -32002 {
+		t.Fatalf("resources/read invalid demo response = %+v, want -32002 error", readInvalidDemo)
+	}
+
 	templates := h.HandleRequest(JSONRPCRequest{JSONRPC: "2.0", ID: 7, Method: "resources/templates/list"})
 	if templates == nil || templates.Error != nil {
 		t.Fatalf("resources/templates/list response = %+v, want success", templates)

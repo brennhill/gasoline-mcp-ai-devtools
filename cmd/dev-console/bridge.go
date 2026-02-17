@@ -386,6 +386,8 @@ func waitForServer(port int, timeout time.Duration) bool {
 
 // fastPathResponses maps MCP methods to their static JSON result bodies.
 // Methods in this map are handled without waiting for the daemon.
+// TODO: These resource/template lists must stay in sync with handleResourcesList
+// and handleResourcesTemplatesList in handler.go. Consider generating from a shared source.
 var fastPathResponses = map[string]string{
 	"ping":                     `{}`,
 	"prompts/list":             `{"prompts":[]}`,

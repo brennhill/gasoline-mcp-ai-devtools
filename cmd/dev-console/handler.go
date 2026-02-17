@@ -337,11 +337,44 @@ func (h *MCPHandler) handleResourcesRead(req JSONRPCRequest) JSONRPCResponse {
 		}
 	}
 
-	if params.URI != "gasoline://capabilities" &&
-		params.URI != "gasoline://guide" &&
-		params.URI != "gasoline://quickstart" &&
-		!strings.HasPrefix(params.URI, "gasoline://demo/") &&
-		!strings.HasPrefix(params.URI, "gasoline://playbook/") {
+	// Resolve URI to content. Content is defined in playbooks.go as package-level vars.
+	var text string
+	switch {
+	case params.URI == "gasoline://capabilities":
+		text = capabilityIndex
+	case params.URI == "gasoline://guide":
+		text = guideContent
+	case params.URI == "gasoline://quickstart":
+		text = quickstartContent
+	case strings.HasPrefix(params.URI, "gasoline://playbook/"):
+		key := strings.TrimPrefix(params.URI, "gasoline://playbook/")
+		var ok bool
+		text, ok = playbooks[key]
+		if !ok {
+			return JSONRPCResponse{
+				JSONRPC: "2.0",
+				ID:      req.ID,
+				Error: &JSONRPCError{
+					Code:    -32002,
+					Message: "Resource not found: " + params.URI,
+				},
+			}
+		}
+	case strings.HasPrefix(params.URI, "gasoline://demo/"):
+		name := strings.TrimPrefix(params.URI, "gasoline://demo/")
+		var ok bool
+		text, ok = demoScripts[name]
+		if !ok {
+			return JSONRPCResponse{
+				JSONRPC: "2.0",
+				ID:      req.ID,
+				Error: &JSONRPCError{
+					Code:    -32002,
+					Message: "Resource not found: " + params.URI,
+				},
+			}
+		}
+	default:
 		return JSONRPCResponse{
 			JSONRPC: "2.0",
 			ID:      req.ID,
@@ -352,417 +385,9 @@ func (h *MCPHandler) handleResourcesRead(req JSONRPCRequest) JSONRPCResponse {
 		}
 	}
 
-	guide := `# Gasoline MCP Tools
-
-Browser observability for AI coding agents. 5 tools for real-time browser telemetry.
-
-## Quick Reference
-
-| Tool | Purpose | Key Parameters |
-|------|---------|----------------|
-| observe | Read passive browser buffers | what: errors, logs, extension_logs, network_waterfall, network_bodies, websocket_events, websocket_status, actions, vitals, page, tabs, pilot, timeline, error_bundles, screenshot, command_result, pending_commands, failed_commands, saved_videos, recordings, recording_actions, log_diff_report |
-| analyze | Trigger active analysis (async) | what: dom, accessibility, performance, security_audit, third_party_audit, link_health, link_validation, page_summary, error_clusters, history, api_validation, annotations, annotation_detail, draw_history, draw_session |
-| generate | Create artifacts from captured data | format: test, reproduction, pr_summary, sarif, har, csp, sri, visual_test, annotation_report, annotation_issues, test_from_context, test_heal, test_classify |
-| configure | Session settings and utilities | action: health, store, load, noise_rule, clear, streaming, test_boundary_start, test_boundary_end, recording_start, recording_stop, playback, log_diff |
-| interact | Browser automation (needs AI Web Pilot) | action: click, type, select, check, navigate, refresh, execute_js, highlight, subtitle, key_press, scroll_to, wait_for, get_text, get_value, get_attribute, set_attribute, focus, list_interactive, save_state, load_state, list_states, delete_state, record_start, record_stop, upload, draw_mode_start, back, forward, new_tab, screenshot (alias of observe what=screenshot) |
-
-## Key Patterns
-
-### Check Extension Status First
-Always verify the extension is connected before debugging:
-  {"tool":"configure","arguments":{"action":"health"}}
-If extension_connected is false, ask the user to click "Track This Tab" in the extension popup.
-
-### Async Commands (analyze tool)
-analyze dispatches queries to the extension asynchronously. Poll for results:
-  1. {"tool":"analyze","arguments":{"what":"accessibility"}}  -> returns correlation_id
-  2. {"tool":"observe","arguments":{"what":"command_result","correlation_id":"..."}}
-
-### Pagination (observe tool)
-Responses include cursors in metadata. Pass back for next page:
-  {"tool":"observe","arguments":{"what":"logs","after_cursor":"...","limit":50}}
-Use restart_on_eviction=true if a cursor expires.
-
-## Common Workflows
-
-  // See errors with surrounding context (network + actions + logs)
-  {"tool":"observe","arguments":{"what":"error_bundles"}}
-
-  // Check failed network requests
-  {"tool":"observe","arguments":{"what":"network_waterfall","status_min":400}}
-
-  // Run accessibility audit (async)
-  {"tool":"analyze","arguments":{"what":"accessibility"}}
-
-  // Query DOM elements (async)
-  {"tool":"analyze","arguments":{"what":"dom","selector":".error-message"}}
-
-  // Generate Playwright test from session
-  {"tool":"generate","arguments":{"format":"test","test_name":"user_login"}}
-
-  // Check Web Vitals (LCP, CLS, INP, FCP)
-  {"tool":"observe","arguments":{"what":"vitals"}}
-
-  // Navigate and measure performance (auto perf_diff)
-  {"tool":"interact","arguments":{"action":"navigate","url":"https://example.com"}}
-
-  // Suppress noisy console errors
-  {"tool":"configure","arguments":{"action":"noise_rule","noise_action":"auto_detect"}}
-
-## Tips
-
-- Start with configure(action:"health") to verify extension is connected
-- Use observe(what:"error_bundles") instead of raw errors — includes surrounding context
-- Use observe(what:"page") to confirm which URL the browser is on
-- interact actions require the AI Web Pilot extension feature to be enabled
-- interact navigate and refresh automatically include performance diff metrics
-- Data comes from the active tracked browser tab
-`
-
-	quickstart := `# Gasoline MCP Quickstart
-
-## 1. Health Check
-{"tool":"configure","arguments":{"action":"health"}}
-
-## 2. Confirm Tracked Page
-{"tool":"observe","arguments":{"what":"page"}}
-
-## 3. Collect Errors + Context
-{"tool":"observe","arguments":{"what":"error_bundles"}}
-
-## 4. Network Failures
-{"tool":"observe","arguments":{"what":"network_waterfall","status_min":400}}
-
-## 5. WebSocket Status
-{"tool":"observe","arguments":{"what":"websocket_status"}}
-
-## 6. Accessibility Audit (Async)
-{"tool":"analyze","arguments":{"what":"accessibility"}}
-{"tool":"observe","arguments":{"what":"command_result","correlation_id":"..."}}
-
-## 7. DOM Query (Async)
-{"tool":"analyze","arguments":{"what":"dom","selector":".error-message"}}
-{"tool":"observe","arguments":{"what":"command_result","correlation_id":"..."}}
-
-## 8. Performance Check
-{"tool":"interact","arguments":{"action":"navigate","url":"https://example.com"}}
-
-## 9. Start Recording
-{"tool":"configure","arguments":{"action":"recording_start","name":"demo-run"}}
-
-## 10. Stop Recording
-{"tool":"configure","arguments":{"action":"recording_stop","recording_id":"..."}}
-`
-
-	demoScripts := map[string]string{
-		"ws": `# Demo: WebSocket Debugging
-
-Goal: show mismatched message format and where to fix it.
-
-Steps:
-1. {"tool":"observe","arguments":{"what":"websocket_status"}}
-2. {"tool":"observe","arguments":{"what":"websocket_events","limit":20}}
-3. {"tool":"analyze","arguments":{"what":"api_validation","operation":"analyze","ignore_endpoints":["/socket"]}}
-
-Expected:
-- Connection OK, but message schema warnings
-- Identify client-side parsing path for fix
-`,
-		"annotations": `# Demo: Usability Annotations
-
-Goal: highlight a layout issue and collect feedback.
-
-Steps:
-1. {"tool":"interact","arguments":{"action":"draw_mode_start","session":"demo-ux"}}
-2. Ask user to annotate oversized image and desired size.
-3. {"tool":"analyze","arguments":{"what":"annotations","session":"demo-ux","wait":true}}
-
-Expected:
-- Annotation list with coordinates and notes
-`,
-		"recording": `# Demo: Flow Recording
-
-Goal: show record → action → stop workflow.
-
-Steps:
-1. {"tool":"configure","arguments":{"action":"recording_start","name":"demo-flow"}}
-2. {"tool":"interact","arguments":{"action":"navigate","url":"http://localhost:xxxx"}}
-3. {"tool":"configure","arguments":{"action":"recording_stop","recording_id":"..."}}
-
-Expected:
-- Saved recording ID and playback instructions
-`,
-		"dependencies": `# Demo: Dependency Vetting
-
-Goal: identify unexpected third-party origins.
-
-Steps:
-1. {"tool":"analyze","arguments":{"what":"third_party_audit","first_party_origins":["http://localhost:xxxx"]}}
-2. {"tool":"observe","arguments":{"what":"network_waterfall","limit":50}}
-
-Expected:
-- Highlight unexpected origins for review
-`,
-	}
-
-	capabilities := `# Gasoline Capability Index (Token-Efficient)
-
-Use this index for discovery. Load detailed guidance only when task intent matches.
-
-## Routing Rule
-
-1. Identify intent from user request.
-2. If intent matches a capability, read that playbook URI.
-3. Prefer quick playbook first; load full playbook only when needed.
-
-## Capability Map
-
-| Capability | When to Use | Playbook URI |
-|---|---|---|
-| performance_analysis | Regressions, slow pages, bottlenecks, Core Web Vitals | gasoline://playbook/performance/quick |
-| accessibility_audit | WCAG/axe issues, semantic/contrast/navigation checks | gasoline://playbook/accessibility/quick |
-| security_audit | Credential leaks, CSP/cookie/header risks, third-party origin risk | gasoline://playbook/security/quick |
-| api_validation | Contract mismatches, malformed responses, endpoint drift | gasoline://guide (API validation section) |
-
-## Available Playbook Variants
-
-- gasoline://playbook/performance/quick
-- gasoline://playbook/performance/full
-- gasoline://playbook/accessibility/quick
-- gasoline://playbook/accessibility/full
-- gasoline://playbook/security/quick
-- gasoline://playbook/security/full
-
-## Notes
-
-- Keep this index small; do not inline full workflows here.
-- Add future playbooks under gasoline://playbook/{capability}/{quick|full}.
-`
-
-	playbooks := map[string]string{
-		"performance/quick": `# Playbook: Performance Analysis (Quick)
-
-Use when a page feels slow or performance regressed.
-
-## Preconditions
-
-- Extension connected and tracked tab confirmed.
-- Target URL known.
-
-## Steps
-
-1. {"tool":"configure","arguments":{"action":"health"}}
-2. {"tool":"interact","arguments":{"action":"navigate","url":"<target-url>"}}
-3. {"tool":"observe","arguments":{"what":"vitals"}}
-4. {"tool":"observe","arguments":{"what":"network_waterfall","status_min":400}}
-5. {"tool":"observe","arguments":{"what":"actions","last_n":30}}
-
-## Output Format
-
-- Top 3 bottlenecks
-- Evidence (metric/request/action references)
-- Lowest-risk first fixes
-`,
-		"performance/full": `# Playbook: Performance Analysis (Full)
-
-Use for deep profiling and remediation planning.
-
-## When To Use
-
-- Perf regression after a change
-- Slow initial load or interaction lag
-- Need actionable fix plan with evidence
-
-## Preconditions
-
-- Extension connected
-- Correct tracked tab
-- Reproducible URL/workflow
-
-## Steps
-
-1. Baseline health:
-   {"tool":"configure","arguments":{"action":"health"}}
-   {"tool":"observe","arguments":{"what":"page"}}
-2. Capture navigation perf diff:
-   {"tool":"interact","arguments":{"action":"navigate","url":"<target-url>","analyze":true}}
-3. Collect web vitals:
-   {"tool":"observe","arguments":{"what":"vitals"}}
-4. Collect network hotspots:
-   {"tool":"observe","arguments":{"what":"network_waterfall","limit":200}}
-5. Collect runtime signals:
-   {"tool":"observe","arguments":{"what":"actions","last_n":100}}
-   {"tool":"observe","arguments":{"what":"logs","min_level":"warn","last_n":200}}
-6. Optional active analysis:
-   {"tool":"analyze","arguments":{"what":"performance"}}
-   {"tool":"observe","arguments":{"what":"command_result","correlation_id":"<from analyze>"}}
-
-## Failure Modes
-
-- extension_disconnected: reconnect/track tab, rerun
-- no_perf_diff: ensure navigate/refresh or interact with analyze=true
-- sparse_data: increase observe limits and repeat flow
-
-## Output Format
-
-- Summary: regression/no-regression with confidence
-- Bottlenecks: ranked with concrete evidence
-- Fixes: prioritized quick wins then deeper refactors
-- Validation plan: exact checks to verify improvement
-`,
-		"accessibility/quick": `# Playbook: Accessibility Audit (Quick)
-
-Use when you need a fast WCAG issue snapshot.
-
-## Steps
-
-1. {"tool":"configure","arguments":{"action":"health"}}
-2. {"tool":"analyze","arguments":{"what":"accessibility"}}
-3. {"tool":"observe","arguments":{"what":"command_result","correlation_id":"<from analyze>"}}
-
-## Output Format
-
-- Top accessibility blockers
-- WCAG tags impacted
-- Quick remediation suggestions
-`,
-		"accessibility/full": `# Playbook: Accessibility Audit (Full)
-
-Use for triage plus implementation-ready fixes.
-
-## Preconditions
-
-- Extension connected
-- Correct tracked tab
-
-## Steps
-
-1. {"tool":"configure","arguments":{"action":"health"}}
-2. {"tool":"observe","arguments":{"what":"page"}}
-3. {"tool":"analyze","arguments":{"what":"accessibility"}}
-4. {"tool":"observe","arguments":{"what":"command_result","correlation_id":"<from analyze>"}}
-5. {"tool":"analyze","arguments":{"what":"dom","selector":"main, [role='main'], form, nav"}}
-6. {"tool":"observe","arguments":{"what":"command_result","correlation_id":"<from dom analyze>"}}
-
-## Failure Modes
-
-- extension_disconnected: reconnect and retry
-- timeout: retry once, then narrow DOM scope
-
-## Output Format
-
-- Findings by severity
-- Affected selectors/components
-- Concrete code-level fix guidance
-- Validation checklist
-`,
-		"security/quick": `# Playbook: Security Audit (Quick)
-
-Use for fast risk screening.
-
-## Steps
-
-1. {"tool":"configure","arguments":{"action":"health"}}
-2. {"tool":"analyze","arguments":{"what":"security_audit"}}
-3. {"tool":"observe","arguments":{"what":"command_result","correlation_id":"<from analyze>"}}
-
-## Output Format
-
-- High-risk findings first
-- Evidence location (header/URL/request/etc.)
-- Immediate mitigations
-`,
-		"security/full": `# Playbook: Security Audit (Full)
-
-Use for comprehensive browser-surface security review.
-
-## Preconditions
-
-- Extension connected
-- Representative app flow loaded
-
-## Steps
-
-1. {"tool":"configure","arguments":{"action":"health"}}
-2. {"tool":"observe","arguments":{"what":"network_waterfall","limit":200}}
-3. {"tool":"analyze","arguments":{"what":"security_audit","severity_min":"medium"}}
-4. {"tool":"observe","arguments":{"what":"command_result","correlation_id":"<from security audit>"}}
-5. {"tool":"analyze","arguments":{"what":"third_party_audit","first_party_origins":["<origin>"]}}
-6. {"tool":"observe","arguments":{"what":"command_result","correlation_id":"<from third_party_audit>"}}
-
-## Failure Modes
-
-- missing baseline traffic: exercise critical user flow and rerun
-- noisy false positives: tighten first_party_origins
-
-## Output Format
-
-- Risks ranked by severity and exploitability
-- Evidence and affected endpoints/origins
-- Prioritized fix plan
-- Verification steps
-`,
-	}
-
-	result := MCPResourcesReadResult{Contents: []MCPResourceContent{}}
-	if params.URI == "gasoline://capabilities" {
-		result.Contents = append(result.Contents, MCPResourceContent{
-			URI:      "gasoline://capabilities",
-			MimeType: "text/markdown",
-			Text:     capabilities,
-		})
-	} else if params.URI == "gasoline://guide" {
-		result.Contents = append(result.Contents, MCPResourceContent{
-			URI:      "gasoline://guide",
-			MimeType: "text/markdown",
-			Text:     guide,
-		})
-	} else if params.URI == "gasoline://quickstart" {
-		result.Contents = append(result.Contents, MCPResourceContent{
-			URI:      "gasoline://quickstart",
-			MimeType: "text/markdown",
-			Text:     quickstart,
-		})
-	} else if strings.HasPrefix(params.URI, "gasoline://playbook/") {
-		key := strings.TrimPrefix(params.URI, "gasoline://playbook/")
-		if key == "performance" {
-			key = "performance/quick"
-		}
-		script, ok := playbooks[key]
-		if !ok {
-			return JSONRPCResponse{
-				JSONRPC: "2.0",
-				ID:      req.ID,
-				Error: &JSONRPCError{
-					Code:    -32002,
-					Message: "Resource not found: " + params.URI,
-				},
-			}
-		}
-		result.Contents = append(result.Contents, MCPResourceContent{
-			URI:      params.URI,
-			MimeType: "text/markdown",
-			Text:     script,
-		})
-	} else {
-		name := strings.TrimPrefix(params.URI, "gasoline://demo/")
-		script, ok := demoScripts[name]
-		if !ok {
-			return JSONRPCResponse{
-				JSONRPC: "2.0",
-				ID:      req.ID,
-				Error: &JSONRPCError{
-					Code:    -32002,
-					Message: "Resource not found: " + params.URI,
-				},
-			}
-		}
-		result.Contents = append(result.Contents, MCPResourceContent{
-			URI:      params.URI,
-			MimeType: "text/markdown",
-			Text:     script,
-		})
-	}
+	result := MCPResourcesReadResult{Contents: []MCPResourceContent{
+		{URI: params.URI, MimeType: "text/markdown", Text: text},
+	}}
 	// Error impossible: MCPResourceContentResult is a simple struct with no circular refs or unsupported types
 	resultJSON, _ := json.Marshal(result)
 	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: resultJSON}
