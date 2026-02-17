@@ -232,9 +232,20 @@ var mcpStaticResponses = map[string]string{
 // HandleRequest processes an MCP request and returns a response.
 // Returns nil for notifications (which should not receive a response).
 func (h *MCPHandler) HandleRequest(req JSONRPCRequest) *JSONRPCResponse {
-	// JSON-RPC 2.0: "A Notification is a Request object without an 'id' member."
-	// The notifications/ prefix is a naming convention, not a detection rule.
-	if req.ID == nil {
+	if req.hasInvalidID() {
+		resp := JSONRPCResponse{
+			JSONRPC: "2.0",
+			ID:      nil,
+			Error: &JSONRPCError{
+				Code:    -32600,
+				Message: "Invalid Request: id must be string or number when present",
+			},
+		}
+		return &resp
+	}
+
+	// Notifications do not get responses per JSON-RPC 2.0.
+	if !req.hasID() {
 		return nil
 	}
 
@@ -266,27 +277,7 @@ func (h *MCPHandler) HandleRequest(req JSONRPCRequest) *JSONRPCResponse {
 }
 
 func (h *MCPHandler) handleInitialize(req JSONRPCRequest) JSONRPCResponse {
-	const latestVersion = "2025-06-18"
-
-	// Supported protocol versions (newest first).
-	var supportedVersions = map[string]bool{
-		"2025-06-18": true,
-		"2024-11-05": true,
-	}
-
-	// Parse client's requested protocol version (best-effort; missing/empty is fine)
-	var initParams struct {
-		ProtocolVersion string `json:"protocolVersion"` // SPEC:MCP
-	}
-	if len(req.Params) > 0 {
-		_ = json.Unmarshal(req.Params, &initParams)
-	}
-
-	// Negotiate: echo client's version if supported, otherwise respond with our latest
-	negotiatedVersion := latestVersion
-	if supportedVersions[initParams.ProtocolVersion] {
-		negotiatedVersion = initParams.ProtocolVersion
-	}
+	negotiatedVersion := negotiateProtocolVersion(req.Params)
 
 	result := MCPInitializeResult{
 		ProtocolVersion: negotiatedVersion,

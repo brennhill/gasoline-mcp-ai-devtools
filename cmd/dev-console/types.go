@@ -5,21 +5,86 @@
 // Contains the core JSON-RPC 2.0 request/response/error types used for MCP communication.
 package main
 
-import "encoding/json"
+import (
+	"bytes"
+	"encoding/json"
+)
 
 // JSONRPCRequest represents an incoming JSON-RPC 2.0 request
 type JSONRPCRequest struct {
-	JSONRPC string          `json:"jsonrpc"` // camelCase: JSON-RPC 2.0 spec standard
+	JSONRPC string `json:"jsonrpc"` // camelCase: JSON-RPC 2.0 spec standard
 	// any: JSON-RPC 2.0 spec allows ID to be string, number, or null
-	ID       any             `json:"id"`
-	Method   string          `json:"method"`
-	Params   json.RawMessage `json:"params,omitempty"`
-	ClientID string          `json:"-"` // per-request client ID for multi-client isolation (not serialized)
+	ID              any             `json:"id"`
+	Method          string          `json:"method"`
+	Params          json.RawMessage `json:"params,omitempty"`
+	ClientID        string          `json:"-"` // per-request client ID for multi-client isolation (not serialized)
+	idPresent       bool            `json:"-"`
+	idExplicitNull  bool            `json:"-"`
+	idInvalidFormat bool            `json:"-"`
+}
+
+// UnmarshalJSON captures whether id was present and whether it was explicitly null.
+func (r *JSONRPCRequest) UnmarshalJSON(data []byte) error {
+	type rawRequest struct {
+		JSONRPC string          `json:"jsonrpc"`
+		Method  string          `json:"method"`
+		Params  json.RawMessage `json:"params,omitempty"`
+	}
+
+	var raw rawRequest
+	if err := json.Unmarshal(data, &raw); err != nil {
+		return err
+	}
+
+	var object map[string]json.RawMessage
+	if err := json.Unmarshal(data, &object); err != nil {
+		return err
+	}
+
+	r.JSONRPC = raw.JSONRPC
+	r.Method = raw.Method
+	r.Params = raw.Params
+	r.ClientID = ""
+	r.ID = nil
+	_, r.idPresent = object["id"]
+	r.idExplicitNull = false
+	r.idInvalidFormat = false
+
+	rawID, ok := object["id"]
+	if !ok {
+		return nil
+	}
+
+	trimmedID := bytes.TrimSpace(rawID)
+	if bytes.Equal(trimmedID, []byte("null")) {
+		r.idExplicitNull = true
+		return nil
+	}
+
+	var parsedID any
+	if err := json.Unmarshal(trimmedID, &parsedID); err != nil {
+		return err
+	}
+	switch parsedID.(type) {
+	case string, float64:
+		r.ID = parsedID
+	default:
+		r.idInvalidFormat = true
+	}
+	return nil
+}
+
+func (r JSONRPCRequest) hasID() bool {
+	return r.idPresent || r.ID != nil
+}
+
+func (r JSONRPCRequest) hasInvalidID() bool {
+	return r.idExplicitNull || r.idInvalidFormat
 }
 
 // JSONRPCResponse represents an outgoing JSON-RPC 2.0 response
 type JSONRPCResponse struct {
-	JSONRPC string          `json:"jsonrpc"` // camelCase: JSON-RPC 2.0 spec standard
+	JSONRPC string `json:"jsonrpc"` // camelCase: JSON-RPC 2.0 spec standard
 	// any: JSON-RPC 2.0 spec allows ID to be string, number, or null (must match request)
 	ID     any             `json:"id"`
 	Result json.RawMessage `json:"result,omitempty"`

@@ -555,26 +555,20 @@ func sendFastError(id any, code int, message string) {
 // handleFastPath handles MCP methods that don't require the daemon.
 // Returns true if the method was handled.
 func handleFastPath(req JSONRPCRequest, toolsList []MCPTool) bool {
-	// JSON-RPC 2.0: "A Notification is a Request object without an 'id' member."
-	if req.ID == nil {
+	if req.hasInvalidID() {
+		sendBridgeError(nil, -32600, "Invalid Request: id must be string or number when present")
+		return true
+	}
+
+	// JSON-RPC notifications are fire-and-forget; never respond on stdio.
+	if !req.hasID() {
 		return true
 	}
 
 	switch req.Method {
 	case "initialize":
-		// Negotiate protocol version: echo if supported, otherwise use latest.
-		protocolVersion := "2025-06-18"
-		var initParams struct {
-			ProtocolVersion string `json:"protocolVersion"`
-		}
-		if json.Unmarshal(req.Params, &initParams) == nil {
-			switch initParams.ProtocolVersion {
-			case "2024-11-05", "2025-06-18":
-				protocolVersion = initParams.ProtocolVersion
-			}
-		}
 		result := map[string]any{
-			"protocolVersion": protocolVersion,
+			"protocolVersion": negotiateProtocolVersion(req.Params),
 			"serverInfo":      map[string]any{"name": "gasoline", "version": version},
 			"capabilities":    map[string]any{"tools": map[string]any{}, "resources": map[string]any{}},
 			"instructions":    serverInstructions,
@@ -586,7 +580,7 @@ func handleFastPath(req JSONRPCRequest, toolsList []MCPTool) bool {
 		return true
 
 	case "initialized":
-		if req.ID != nil {
+		if req.hasID() {
 			sendFastResponse(req.ID, json.RawMessage(`{}`))
 			recordFastPathEvent(req.Method, true, 0)
 		}
@@ -735,6 +729,11 @@ func bridgeStdioToHTTPFast(endpoint string, state *daemonState, port int) {
 		var req JSONRPCRequest
 		if err := json.Unmarshal(line, &req); err != nil {
 			sendBridgeParseError(line, err)
+			signalResponseSent()
+			continue
+		}
+		if req.hasInvalidID() {
+			sendBridgeError(nil, -32600, "Invalid Request: id must be string or number when present")
 			signalResponseSent()
 			continue
 		}
@@ -966,6 +965,11 @@ func bridgeStdioToHTTP(endpoint string) {
 		var req JSONRPCRequest
 		if err := json.Unmarshal(line, &req); err != nil {
 			sendBridgeParseError(line, err)
+			signalResponseSent()
+			continue
+		}
+		if req.hasInvalidID() {
+			sendBridgeError(nil, -32600, "Invalid Request: id must be string or number when present")
 			signalResponseSent()
 			continue
 		}
