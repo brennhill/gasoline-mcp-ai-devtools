@@ -39,7 +39,7 @@ func newAnalyzeTestEnv(t *testing.T) *analyzeTestEnv {
 func (e *analyzeTestEnv) callAnalyze(t *testing.T, argsJSON string) (MCPToolResult, bool) {
 	t.Helper()
 
-	args := json.RawMessage(argsJSON)
+	args := json.RawMessage(withDefaultAsyncMode(argsJSON))
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: 1}
 	resp := e.handler.toolAnalyze(req, args)
 
@@ -153,7 +153,7 @@ func TestAnalyze_Dispatcher_ValidModes(t *testing.T) {
 func TestAnalyzeLinkHealth_Start_ReturnsCorrelationID(t *testing.T) {
 	env := newAnalyzeTestEnv(t)
 
-	result, ok := env.callAnalyze(t, `{"what":"link_health"}`)
+	result, ok := env.callAnalyze(t, `{"what":"link_health","sync":false}`)
 	if !ok {
 		t.Fatal("link_health should return result")
 	}
@@ -180,7 +180,7 @@ func TestAnalyzeLinkHealth_Start_CreatesWatchableQuery(t *testing.T) {
 	env := newAnalyzeTestEnv(t)
 
 	// Make the call
-	result, ok := env.callAnalyze(t, `{"what":"link_health","timeout_ms":15000}`)
+	result, ok := env.callAnalyze(t, `{"what":"link_health","timeout_ms":15000,"sync":false}`)
 	if !ok {
 		t.Fatal("link_health should return result")
 	}

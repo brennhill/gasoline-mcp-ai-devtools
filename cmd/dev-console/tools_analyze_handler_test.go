@@ -29,7 +29,7 @@ func makeAnalyzeToolHandler(t *testing.T) (*ToolHandler, *Server, *capture.Captu
 
 func callAnalyzeRaw(h *ToolHandler, argsJSON string) JSONRPCResponse {
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: 1}
-	return h.toolAnalyze(req, json.RawMessage(argsJSON))
+	return h.toolAnalyze(req, json.RawMessage(withDefaultAsyncMode(argsJSON)))
 }
 
 // ============================================
@@ -213,7 +213,7 @@ func TestToolsAnalyzeDOM_MissingSelector(t *testing.T) {
 
 func TestToolsAnalyzeDOM_Success(t *testing.T) {
 	t.Parallel()
-	h, _, _ := makeAnalyzeToolHandler(t)
+	h, _, cap := makeAnalyzeToolHandler(t)
 
 	resp := callAnalyzeRaw(h, `{"what":"dom","selector":"#main"}`)
 	result := parseToolResult(t, resp)
@@ -222,7 +222,7 @@ func TestToolsAnalyzeDOM_Success(t *testing.T) {
 	}
 
 	data := extractResultJSON(t, result)
-	for _, field := range []string{"status", "correlation_id", "selector", "hint"} {
+	for _, field := range []string{"status", "correlation_id"} {
 		if _, ok := data[field]; !ok {
 			t.Errorf("dom response missing field %q", field)
 		}
@@ -230,12 +230,21 @@ func TestToolsAnalyzeDOM_Success(t *testing.T) {
 	if data["status"] != "queued" {
 		t.Errorf("status = %v, want 'queued'", data["status"])
 	}
-	if data["selector"] != "#main" {
-		t.Errorf("selector = %v, want '#main'", data["selector"])
-	}
 	corr, _ := data["correlation_id"].(string)
 	if !strings.HasPrefix(corr, "dom_") {
 		t.Errorf("correlation_id should start with 'dom_', got: %s", corr)
+	}
+
+	pq := cap.GetLastPendingQuery()
+	if pq == nil {
+		t.Fatal("dom should create a pending query")
+	}
+	var params map[string]any
+	if err := json.Unmarshal(pq.Params, &params); err != nil {
+		t.Fatalf("failed to parse pending query params: %v", err)
+	}
+	if params["selector"] != "#main" {
+		t.Errorf("pending query selector = %v, want '#main'", params["selector"])
 	}
 
 	assertSnakeCaseFields(t, string(resp.Result))
@@ -441,9 +450,6 @@ func TestToolsAnalyzeLinkHealth_ResponseFields(t *testing.T) {
 	corr, _ := data["correlation_id"].(string)
 	if !strings.HasPrefix(corr, "link_health_") {
 		t.Errorf("correlation_id should start with 'link_health_', got: %s", corr)
-	}
-	if _, ok := data["hint"]; !ok {
-		t.Error("response missing 'hint' field")
 	}
 
 	assertSnakeCaseFields(t, string(resp.Result))

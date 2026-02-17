@@ -52,7 +52,7 @@ func newInteractTestEnv(t *testing.T) *interactTestEnv {
 func (e *interactTestEnv) callInteract(t *testing.T, argsJSON string) (MCPToolResult, bool) {
 	t.Helper()
 
-	args := json.RawMessage(argsJSON)
+	args := json.RawMessage(withDefaultAsyncMode(argsJSON))
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: 1}
 	resp := e.handler.toolInteract(req, args)
 

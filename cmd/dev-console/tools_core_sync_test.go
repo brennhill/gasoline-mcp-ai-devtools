@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/dev-console/dev-console/internal/capture"
+	"github.com/dev-console/dev-console/internal/queries"
 )
 
 func TestMaybeWaitForCommand_SyncByDefault(t *testing.T) {
@@ -17,10 +18,17 @@ func TestMaybeWaitForCommand_SyncByDefault(t *testing.T) {
 	req := JSONRPCRequest{ID: 1, ClientID: "test-client"}
 	correlationID := "test-sync-123"
 
+	// maybeWaitForCommand expects the command to exist in the tracker first.
+	cap.CreatePendingQueryWithTimeout(queries.PendingQuery{
+		Type:          "execute",
+		Params:        json.RawMessage(`{}`),
+		CorrelationID: correlationID,
+	}, queries.AsyncCommandTimeout, req.ClientID)
+
 	// Mock extension connection manually to avoid nil pointer in HandleSync
 	// (Internal knowledge: IsExtensionConnected checks lastSyncSeen)
 	// We'll use the proper way to simulate connection: a Sync request.
-	
+
 	// Create a result after a short delay
 	go func() {
 		time.Sleep(100 * time.Millisecond)
@@ -37,16 +45,20 @@ func TestMaybeWaitForCommand_SyncByDefault(t *testing.T) {
 	resp := handler.maybeWaitForCommand(req, correlationID, json.RawMessage(`{}`), "Queued")
 
 	// Verify
-	var result map[string]any
-	if err := json.Unmarshal(resp.Result, &result); err != nil {
-		t.Fatalf("Failed to parse response: %v", err)
+	var toolResult MCPToolResult
+	if err := json.Unmarshal(resp.Result, &toolResult); err != nil {
+		t.Fatalf("Failed to parse tool response: %v", err)
 	}
+	if toolResult.IsError {
+		t.Fatalf("unexpected error from maybeWaitForCommand: %s", toolResult.Content[0].Text)
+	}
+	data := parseResponseJSON(t, toolResult)
 
-	if result["correlation_id"] != correlationID {
-		t.Errorf("Expected correlation_id %s, got %v", correlationID, result["correlation_id"])
+	if data["correlation_id"] != correlationID {
+		t.Errorf("Expected correlation_id %s, got %v", correlationID, data["correlation_id"])
 	}
-	if result["status"] != "complete" {
-		t.Errorf("Expected status complete (sync), got %v", result["status"])
+	if data["status"] != "complete" {
+		t.Errorf("Expected status complete (sync), got %v", data["status"])
 	}
 }
 
@@ -59,11 +71,17 @@ func TestMaybeWaitForCommand_BackgroundOverride(t *testing.T) {
 	// Call with background: true
 	resp := handler.maybeWaitForCommand(req, correlationID, json.RawMessage(`{"background":true}`), "Queued")
 
-	var result map[string]any
-	_ = json.Unmarshal(resp.Result, &result)
+	var result MCPToolResult
+	if err := json.Unmarshal(resp.Result, &result); err != nil {
+		t.Fatalf("Failed to parse tool response: %v", err)
+	}
+	if result.IsError {
+		t.Fatalf("unexpected error from maybeWaitForCommand: %s", result.Content[0].Text)
+	}
+	data := parseResponseJSON(t, result)
 
-	if result["status"] != "queued" {
-		t.Errorf("Expected status queued (background), got %v", result["status"])
+	if data["status"] != "queued" {
+		t.Errorf("Expected status queued (background), got %v", data["status"])
 	}
 }
 
@@ -73,10 +91,10 @@ func TestMaybeWaitForCommand_TimeoutGracefulFallback(t *testing.T) {
 	req := JSONRPCRequest{ID: 1}
 	correlationID := "test-timeout-123"
 
-	// Note: We'd need to mock the 15s timeout to be shorter for testing, 
+	// Note: We'd need to mock the 15s timeout to be shorter for testing,
 	// or just verify it returns "pending" if we don't complete it.
 	// For this unit test, we'll assume the 15s wait happens.
-	
+
 	// Start a goroutine to check if it's blocking
 	start := time.Now()
 	_ = handler.maybeWaitForCommand(req, correlationID, json.RawMessage(`{"sync":true}`), "Queued")

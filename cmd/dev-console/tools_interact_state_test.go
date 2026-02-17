@@ -211,6 +211,7 @@ func TestLoadState_FormRestore_Queued(t *testing.T) {
 	t.Parallel()
 	env := newInteractHelpersTestEnv(t)
 	env.enablePilot(t)
+	simulateExtensionConnection(t, env)
 	requireSessionStore(t, env)
 
 	// Inject a state WITH form_values
