@@ -60,10 +60,23 @@ const formCaptureScript = `(() => {
     const key = el.id || el.name;
     if (!key) return;
 
-    const rawValue = (el.type === 'checkbox' || el.type === 'radio') ? !!el.checked : String(el.value ?? '');
+    const type = (el.type || '').toLowerCase();
+    const rawValue = (type === 'checkbox' || type === 'radio') ? !!el.checked : String(el.value ?? '');
     if (isSensitive(el, key, rawValue)) return;
 
-    if (el.type === 'checkbox' || el.type === 'radio') {
+    if (type === 'radio') {
+      const groupName = el.name || key;
+      if (el.checked) {
+        forms['radio::' + groupName] = {
+          kind: 'radio',
+          name: groupName,
+          value: String(el.value ?? '')
+        };
+      }
+      return;
+    }
+
+    if (type === 'checkbox') {
       forms[key] = el.checked;
     } else {
       forms[key] = el.value;
@@ -130,8 +143,26 @@ func buildFormRestoreScript(formValues map[string]any, scrollPos map[string]any)
 	return fmt.Sprintf(`(() => {
   const formValues = %s;
   const scrollPos = %s;
+  const escapeCSS = (value) => {
+    if (typeof CSS !== 'undefined' && CSS && typeof CSS.escape === 'function') {
+      return CSS.escape(String(value));
+    }
+    return String(value).replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+  };
+
   Object.entries(formValues).forEach(([key, val]) => {
-    const el = document.getElementById(key) || document.querySelector('[name="' + key + '"]');
+    if (val && typeof val === 'object' && val.kind === 'radio' && val.name) {
+      const escapedName = escapeCSS(val.name);
+      const escapedValue = escapeCSS(val.value ?? '');
+      const radio = document.querySelector('input[type="radio"][name="' + escapedName + '"][value="' + escapedValue + '"]');
+      if (radio) {
+        radio.checked = true;
+      }
+      return;
+    }
+
+    const escapedKey = escapeCSS(key);
+    const el = document.getElementById(key) || document.querySelector('[name="' + escapedKey + '"]');
     if (!el) return;
     if (el.type === 'checkbox' || el.type === 'radio') {
       el.checked = !!val;
@@ -337,7 +368,7 @@ func (h *ToolHandler) handlePilotManageStateLoad(req JSONRPCRequest, args json.R
 // and the state contains a non-empty URL. Mutates stateData to add tracking fields.
 func (h *ToolHandler) queueStateNavigation(req JSONRPCRequest, stateData map[string]any) {
 	savedURL, ok := stateData["url"].(string)
-	if !ok || savedURL == "" || !h.capture.IsPilotEnabled() {
+	if !ok || savedURL == "" || !h.capture.IsPilotEnabled() || !h.capture.IsExtensionConnected() {
 		return
 	}
 	correlationID := fmt.Sprintf("nav_%d_%d", time.Now().UnixNano(), randomInt63())

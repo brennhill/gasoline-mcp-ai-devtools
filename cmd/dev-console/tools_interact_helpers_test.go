@@ -149,6 +149,7 @@ func TestQueueStateNavigation_QueuesBrowserAction(t *testing.T) {
 	t.Parallel()
 	env := newInteractHelpersTestEnv(t)
 	env.enablePilot(t)
+	simulateExtensionConnection(t, env)
 
 	stateData := map[string]any{
 		"url":   "https://example.com/page",
@@ -217,6 +218,7 @@ func TestQueueStateNavigation_SkipsWhenURLEmpty(t *testing.T) {
 	t.Parallel()
 	env := newInteractHelpersTestEnv(t)
 	env.enablePilot(t)
+	simulateExtensionConnection(t, env)
 
 	stateData := map[string]any{
 		"url":   "",
@@ -237,6 +239,7 @@ func TestQueueStateNavigation_SkipsWhenURLMissing(t *testing.T) {
 	t.Parallel()
 	env := newInteractHelpersTestEnv(t)
 	env.enablePilot(t)
+	simulateExtensionConnection(t, env)
 
 	stateData := map[string]any{
 		"title": "No URL key",
@@ -256,6 +259,7 @@ func TestQueueStateNavigation_SkipsWhenURLNotString(t *testing.T) {
 	t.Parallel()
 	env := newInteractHelpersTestEnv(t)
 	env.enablePilot(t)
+	simulateExtensionConnection(t, env)
 
 	stateData := map[string]any{
 		"url": 12345, // not a string
@@ -275,6 +279,7 @@ func TestQueueStateNavigation_CorrelationIDHasNavPrefix(t *testing.T) {
 	t.Parallel()
 	env := newInteractHelpersTestEnv(t)
 	env.enablePilot(t)
+	simulateExtensionConnection(t, env)
 
 	stateData := map[string]any{
 		"url": "https://example.com",
@@ -288,5 +293,31 @@ func TestQueueStateNavigation_CorrelationIDHasNavPrefix(t *testing.T) {
 	}
 	if len(corrID) < 4 || corrID[:4] != "nav_" {
 		t.Errorf("expected correlation_id to start with 'nav_', got %q", corrID)
+	}
+}
+
+func TestQueueStateNavigation_SkipsWhenExtensionDisconnected(t *testing.T) {
+	t.Parallel()
+	env := newInteractHelpersTestEnv(t)
+	env.enablePilot(t)
+	// No sync request: extension remains disconnected.
+
+	stateData := map[string]any{
+		"url": "https://example.com/disconnected",
+	}
+	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`)}
+	env.handler.queueStateNavigation(req, stateData)
+
+	queries := env.capture.GetPendingQueries()
+	for _, q := range queries {
+		if q.Type == "browser_action" {
+			t.Error("should not queue browser_action when extension is disconnected")
+		}
+	}
+	if _, ok := stateData["navigation_queued"]; ok {
+		t.Error("stateData should not have navigation_queued when extension is disconnected")
+	}
+	if _, ok := stateData["correlation_id"]; ok {
+		t.Error("stateData should not have correlation_id when extension is disconnected")
 	}
 }

@@ -348,6 +348,67 @@ func TestLoadState_FormRestore_SkippedExtensionDisconnected(t *testing.T) {
 	}
 }
 
+func TestLoadState_IncludeURL_SkipsNavigationWhenExtensionDisconnected(t *testing.T) {
+	t.Parallel()
+	env := newInteractHelpersTestEnv(t)
+	env.enablePilot(t)
+	requireSessionStore(t, env)
+	// No sync request: extension remains disconnected.
+
+	stateData := map[string]any{
+		"url":      "https://example.com/restore-target",
+		"title":    "Restore Target",
+		"saved_at": time.Now().Format(time.RFC3339),
+	}
+	raw, _ := json.Marshal(stateData)
+	if err := env.handler.sessionStoreImpl.Save("saved_states", "nav_disconnected", raw); err != nil {
+		t.Fatalf("seed state save failed: %v", err)
+	}
+
+	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`)}
+	resp := env.handler.handlePilotManageStateLoad(req, json.RawMessage(`{"snapshot_name":"nav_disconnected","include_url":true}`))
+	data := extractResponseData(t, resp)
+
+	state, _ := data["state"].(map[string]any)
+	if _, ok := state["navigation_queued"]; ok {
+		t.Error("navigation_queued should be absent when extension is disconnected")
+	}
+	if _, ok := state["correlation_id"]; ok {
+		t.Error("correlation_id should be absent when extension is disconnected")
+	}
+}
+
+func TestLoadState_IncludeURL_QueuesNavigationWhenConnected(t *testing.T) {
+	t.Parallel()
+	env := newInteractHelpersTestEnv(t)
+	env.enablePilot(t)
+	simulateExtensionConnection(t, env)
+	requireSessionStore(t, env)
+
+	stateData := map[string]any{
+		"url":      "https://example.com/restore-target",
+		"title":    "Restore Target",
+		"saved_at": time.Now().Format(time.RFC3339),
+	}
+	raw, _ := json.Marshal(stateData)
+	if err := env.handler.sessionStoreImpl.Save("saved_states", "nav_connected", raw); err != nil {
+		t.Fatalf("seed state save failed: %v", err)
+	}
+
+	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`)}
+	resp := env.handler.handlePilotManageStateLoad(req, json.RawMessage(`{"snapshot_name":"nav_connected","include_url":true}`))
+	data := extractResponseData(t, resp)
+
+	state, _ := data["state"].(map[string]any)
+	if state["navigation_queued"] != true {
+		t.Error("navigation_queued should be true when include_url is requested and extension is connected")
+	}
+	corrID, ok := state["correlation_id"].(string)
+	if !ok || !strings.HasPrefix(corrID, "nav_") {
+		t.Errorf("correlation_id = %v, want nav_* string", state["correlation_id"])
+	}
+}
+
 // ============================================
 // buildFormRestoreScript
 // ============================================
@@ -378,5 +439,42 @@ func TestBuildFormRestoreScript_EmptyValues(t *testing.T) {
 	}
 	if !strings.Contains(script, "{}") {
 		t.Error("script should contain empty object for form values")
+	}
+}
+
+func TestBuildFormRestoreScript_HandlesRadioEntriesAndEscaping(t *testing.T) {
+	t.Parallel()
+	formValues := map[string]any{
+		"radio::plan": map[string]any{
+			"kind":  "radio",
+			"name":  `billing.plan`,
+			"value": `pro"monthly`,
+		},
+	}
+
+	script := buildFormRestoreScript(formValues, nil)
+
+	if !strings.Contains(script, "val.kind === 'radio'") {
+		t.Error("script should include the radio restore branch")
+	}
+	if !strings.Contains(script, "CSS.escape") {
+		t.Error("script should use CSS.escape when available")
+	}
+	if !strings.Contains(script, "input[type=\"radio\"][name=\"") {
+		t.Error("script should target radio inputs by name and value")
+	}
+	if !strings.Contains(script, "\"kind\":\"radio\"") {
+		t.Error("script should embed serialized radio metadata")
+	}
+}
+
+func TestFormCaptureScript_CapturesRadioAsStructuredValue(t *testing.T) {
+	t.Parallel()
+
+	if !strings.Contains(formCaptureScript, "forms['radio::' + groupName]") {
+		t.Error("form capture script should store radio values under radio::<group>")
+	}
+	if !strings.Contains(formCaptureScript, "kind: 'radio'") {
+		t.Error("form capture script should persist radio metadata kind")
 	}
 }
