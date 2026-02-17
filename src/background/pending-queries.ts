@@ -17,12 +17,14 @@ import * as eventListeners from './event-listeners'
 import * as index from './index'
 import { DebugCategory } from './debug'
 import { saveStateSnapshot, loadStateSnapshot, listStateSnapshots, deleteStateSnapshot } from './message-handlers'
-import { executeDOMAction } from './dom-primitives'
+import { executeDOMAction } from './dom-dispatch'
 import { executeUpload } from './upload-handler'
 import { canTakeScreenshot, recordScreenshot } from './state-manager'
 import { startRecording, stopRecording } from './recording'
 import { executeWithWorldRouting } from './query-execution'
 import { handleBrowserAction, handleAsyncBrowserAction, handleAsyncExecuteCommand } from './browser-actions'
+import { resolveDOMQueryParams } from './pierce-shadow'
+import type { QueryParamsObject, TargetResolution, TargetResolutionSource } from './pierce-shadow'
 
 // Extract values from index for easier reference (but NOT DebugCategory - imported directly above)
 const { debugLog, diagnosticLog } = index
@@ -122,8 +124,7 @@ function actionToast(
     .catch(() => {})
 }
 
-type QueryParamsObject = Record<string, unknown>
-type TargetResolutionSource = 'explicit_tab' | 'tracked_tab' | 'active_tab'
+// QueryParamsObject, TargetResolutionSource — imported from ./pierce-shadow
 type AnalyzeFrameTarget = string | number | undefined
 
 interface AnalyzeFrameSelection {
@@ -137,15 +138,7 @@ interface FrameQueryResult<T = unknown> {
   error?: string
 }
 
-interface TargetResolution {
-  tabId: number
-  url: string
-  source: TargetResolutionSource
-  requestedTabId?: number
-  trackedTabId?: number | null
-  trackedTabUrl?: string | null
-  useActiveTab: boolean
-}
+// TargetResolution — imported from ./pierce-shadow
 
 interface TargetResolutionError {
   payload: Record<string, unknown>
@@ -297,64 +290,8 @@ function stripFrameParam(params: QueryParamsObject): QueryParamsObject {
   return copy
 }
 
-type PierceShadowInput = boolean | 'auto'
-
-function parsePierceShadowInput(value: unknown): { value?: PierceShadowInput; error?: string } {
-  if (value === undefined || value === null) {
-    return { value: 'auto' }
-  }
-  if (typeof value === 'boolean') {
-    return { value }
-  }
-  if (typeof value === 'string') {
-    const normalized = value.trim().toLowerCase()
-    if (normalized === 'auto') return { value: 'auto' }
-    if (normalized === 'true') return { value: true }
-    if (normalized === 'false') return { value: false }
-  }
-  return { error: "Invalid 'pierce_shadow' value. Use true, false, or \"auto\"." }
-}
-
-function parseOrigin(url: string | null | undefined): string | null {
-  if (!url) return null
-  try {
-    return new URL(url).origin
-  } catch {
-    return null
-  }
-}
-
-function hasActiveDebugIntent(target: TargetResolution | undefined): boolean {
-  if (!target) return false
-  if (index.__aiWebPilotEnabledCache !== true) return false
-  if (target.source !== 'tracked_tab') return false
-  if (!target.trackedTabId || target.tabId !== target.trackedTabId) return false
-
-  const targetOrigin = parseOrigin(target.url)
-  const trackedOrigin = parseOrigin(target.trackedTabUrl)
-  if (!trackedOrigin || !targetOrigin) {
-    return false
-  }
-  return targetOrigin === trackedOrigin
-}
-
-function resolveDOMQueryParams(
-  params: QueryParamsObject,
-  target: TargetResolution | undefined
-): { params?: QueryParamsObject; error?: string } {
-  const parsed = parsePierceShadowInput(params.pierce_shadow)
-  if (parsed.error) {
-    return { error: parsed.error }
-  }
-
-  const pierceShadow = parsed.value === 'auto' ? hasActiveDebugIntent(target) : parsed.value
-  return {
-    params: {
-      ...params,
-      pierce_shadow: pierceShadow
-    }
-  }
-}
+// pierce-shadow functions (parsePierceShadowInput, hasActiveDebugIntent, resolveDOMQueryParams)
+// moved to ./pierce-shadow.ts
 
 async function sendFrameQueries<T>(
   tabId: number,

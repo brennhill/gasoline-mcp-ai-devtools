@@ -14,12 +14,13 @@ import * as eventListeners from './event-listeners.js';
 import * as index from './index.js';
 import { DebugCategory } from './debug.js';
 import { saveStateSnapshot, loadStateSnapshot, listStateSnapshots, deleteStateSnapshot } from './message-handlers.js';
-import { executeDOMAction } from './dom-primitives.js';
+import { executeDOMAction } from './dom-dispatch.js';
 import { executeUpload } from './upload-handler.js';
 import { canTakeScreenshot, recordScreenshot } from './state-manager.js';
 import { startRecording, stopRecording } from './recording.js';
 import { executeWithWorldRouting } from './query-execution.js';
 import { handleBrowserAction, handleAsyncBrowserAction, handleAsyncExecuteCommand } from './browser-actions.js';
+import { resolveDOMQueryParams } from './pierce-shadow.js';
 // Extract values from index for easier reference (but NOT DebugCategory - imported directly above)
 const { debugLog, diagnosticLog } = index;
 // =============================================================================
@@ -206,63 +207,8 @@ function stripFrameParam(params) {
     delete copy.frame;
     return copy;
 }
-function parsePierceShadowInput(value) {
-    if (value === undefined || value === null) {
-        return { value: 'auto' };
-    }
-    if (typeof value === 'boolean') {
-        return { value };
-    }
-    if (typeof value === 'string') {
-        const normalized = value.trim().toLowerCase();
-        if (normalized === 'auto')
-            return { value: 'auto' };
-        if (normalized === 'true')
-            return { value: true };
-        if (normalized === 'false')
-            return { value: false };
-    }
-    return { error: "Invalid 'pierce_shadow' value. Use true, false, or \"auto\"." };
-}
-function parseOrigin(url) {
-    if (!url)
-        return null;
-    try {
-        return new URL(url).origin;
-    }
-    catch {
-        return null;
-    }
-}
-function hasActiveDebugIntent(target) {
-    if (!target)
-        return false;
-    if (index.__aiWebPilotEnabledCache !== true)
-        return false;
-    if (target.source !== 'tracked_tab')
-        return false;
-    if (!target.trackedTabId || target.tabId !== target.trackedTabId)
-        return false;
-    const targetOrigin = parseOrigin(target.url);
-    const trackedOrigin = parseOrigin(target.trackedTabUrl);
-    if (!trackedOrigin || !targetOrigin) {
-        return false;
-    }
-    return targetOrigin === trackedOrigin;
-}
-function resolveDOMQueryParams(params, target) {
-    const parsed = parsePierceShadowInput(params.pierce_shadow);
-    if (parsed.error) {
-        return { error: parsed.error };
-    }
-    const pierceShadow = parsed.value === 'auto' ? hasActiveDebugIntent(target) : parsed.value;
-    return {
-        params: {
-            ...params,
-            pierce_shadow: pierceShadow
-        }
-    };
-}
+// pierce-shadow functions (parsePierceShadowInput, hasActiveDebugIntent, resolveDOMQueryParams)
+// moved to ./pierce-shadow.ts
 async function sendFrameQueries(tabId, frameIds, message) {
     return Promise.all(frameIds.map(async (frameId) => {
         try {

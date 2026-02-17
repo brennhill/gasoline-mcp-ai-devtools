@@ -7,8 +7,10 @@ import "fmt"
 // pageSummaryScript is a self-contained IIFE that analyzes the current page.
 // Accepts a mode parameter: 'compact' (navigate-bundled) or 'full' (standalone).
 const pageSummaryScript = `(function (mode) {
+  if (mode !== 'compact' && mode !== 'full') mode = 'full';
+
   function cleanText(value, maxLen) {
-    var text = (value || '').replace(/\s+/g, ' ').trim();
+    var text = (value || '').replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '').replace(/\s+/g, ' ').trim();
     if (maxLen > 0 && text.length > maxLen) {
       return text.slice(0, maxLen);
     }

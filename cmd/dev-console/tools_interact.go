@@ -426,6 +426,22 @@ func truncateToLen(s string, maxLen int) string {
 	return s[:maxLen] + "..."
 }
 
+// buildBrowserActionArgs merges original args into a params map, sets the action key,
+// and conditionally injects the compact summary script.
+func buildBrowserActionArgs(args json.RawMessage, action string, summary *bool) json.RawMessage {
+	var p map[string]any
+	_ = json.Unmarshal(args, &p)
+	if p == nil {
+		p = map[string]any{}
+	}
+	p["action"] = action
+	if summary == nil || *summary {
+		p["summary_script"] = compactSummaryScript()
+	}
+	result, _ := json.Marshal(p)
+	return result
+}
+
 func (h *ToolHandler) handleBrowserActionNavigate(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	var params struct {
 		URL     string `json:"url"`
@@ -446,21 +462,9 @@ func (h *ToolHandler) handleBrowserActionNavigate(req JSONRPCRequest, args json.
 
 	correlationID := fmt.Sprintf("nav_%d_%d", time.Now().UnixNano(), randomInt63())
 
-	// Forward all original params and overlay action + summary script
-	var navParams map[string]any
-	_ = json.Unmarshal(args, &navParams)
-	if navParams == nil {
-		navParams = map[string]any{}
-	}
-	navParams["action"] = "navigate"
-	if params.Summary == nil || *params.Summary {
-		navParams["summary_script"] = compactSummaryScript()
-	}
-	navArgs, _ := json.Marshal(navParams)
-
 	query := queries.PendingQuery{
 		Type:          "browser_action",
-		Params:        navArgs,
+		Params:        buildBrowserActionArgs(args, "navigate", params.Summary),
 		TabID:         params.TabID,
 		CorrelationID: correlationID,
 	}
@@ -488,21 +492,9 @@ func (h *ToolHandler) handleBrowserActionRefresh(req JSONRPCRequest, args json.R
 
 	h.stashPerfSnapshot(correlationID)
 
-	// Forward all original params and overlay action + summary script
-	var refreshParams map[string]any
-	_ = json.Unmarshal(args, &refreshParams)
-	if refreshParams == nil {
-		refreshParams = map[string]any{}
-	}
-	refreshParams["action"] = "refresh"
-	if params.Summary == nil || *params.Summary {
-		refreshParams["summary_script"] = compactSummaryScript()
-	}
-	refreshArgs, _ := json.Marshal(refreshParams)
-
 	query := queries.PendingQuery{
 		Type:          "browser_action",
-		Params:        refreshArgs,
+		Params:        buildBrowserActionArgs(args, "refresh", params.Summary),
 		TabID:         params.TabID,
 		CorrelationID: correlationID,
 	}
@@ -540,21 +532,9 @@ func (h *ToolHandler) handleBrowserActionBack(req JSONRPCRequest, args json.RawM
 
 	correlationID := fmt.Sprintf("back_%d_%d", time.Now().UnixNano(), randomInt63())
 
-	// Forward all original params and overlay action + summary script
-	var backParams map[string]any
-	_ = json.Unmarshal(args, &backParams)
-	if backParams == nil {
-		backParams = map[string]any{}
-	}
-	backParams["action"] = "back"
-	if params.Summary == nil || *params.Summary {
-		backParams["summary_script"] = compactSummaryScript()
-	}
-	backArgs, _ := json.Marshal(backParams)
-
 	query := queries.PendingQuery{
 		Type:          "browser_action",
-		Params:        backArgs,
+		Params:        buildBrowserActionArgs(args, "back", params.Summary),
 		CorrelationID: correlationID,
 	}
 	h.capture.CreatePendingQueryWithTimeout(query, queries.AsyncCommandTimeout, req.ClientID)
@@ -578,21 +558,9 @@ func (h *ToolHandler) handleBrowserActionForward(req JSONRPCRequest, args json.R
 
 	correlationID := fmt.Sprintf("forward_%d_%d", time.Now().UnixNano(), randomInt63())
 
-	// Forward all original params and overlay action + summary script
-	var forwardParams map[string]any
-	_ = json.Unmarshal(args, &forwardParams)
-	if forwardParams == nil {
-		forwardParams = map[string]any{}
-	}
-	forwardParams["action"] = "forward"
-	if params.Summary == nil || *params.Summary {
-		forwardParams["summary_script"] = compactSummaryScript()
-	}
-	forwardArgs, _ := json.Marshal(forwardParams)
-
 	query := queries.PendingQuery{
 		Type:          "browser_action",
-		Params:        forwardArgs,
+		Params:        buildBrowserActionArgs(args, "forward", params.Summary),
 		CorrelationID: correlationID,
 	}
 	h.capture.CreatePendingQueryWithTimeout(query, queries.AsyncCommandTimeout, req.ClientID)
