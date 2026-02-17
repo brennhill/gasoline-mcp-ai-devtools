@@ -332,17 +332,28 @@ func (h *ToolHandler) maybeWaitForCommand(req JSONRPCRequest, correlationID stri
 
 // handleToolCall dispatches composite tool calls by mode parameter.
 func (h *ToolHandler) HandleToolCall(req JSONRPCRequest, name string, args json.RawMessage) (JSONRPCResponse, bool) {
+	var resp JSONRPCResponse
 	switch name {
 	case "observe":
-		return h.toolObserve(req, args), true
+		resp = h.toolObserve(req, args)
 	case "analyze":
-		return h.toolAnalyze(req, args), true
+		resp = h.toolAnalyze(req, args)
 	case "generate":
-		return h.toolGenerate(req, args), true
+		resp = h.toolGenerate(req, args)
 	case "configure":
-		return h.toolConfigure(req, args), true
+		resp = h.toolConfigure(req, args)
 	case "interact":
-		return h.toolInteract(req, args), true
+		resp = h.toolInteract(req, args)
+	default:
+		return JSONRPCResponse{}, false
 	}
-	return JSONRPCResponse{}, false
+
+	if h.healthMetrics != nil {
+		h.healthMetrics.IncrementRequest(name)
+		if resp.Error != nil {
+			h.healthMetrics.IncrementError(name)
+		}
+	}
+
+	return resp, true
 }
