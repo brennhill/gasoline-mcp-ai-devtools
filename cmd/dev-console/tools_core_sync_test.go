@@ -17,6 +17,7 @@ func TestMaybeWaitForCommand_SyncByDefault(t *testing.T) {
 	handler := &ToolHandler{capture: cap}
 	req := JSONRPCRequest{ID: 1, ClientID: "test-client"}
 	correlationID := "test-sync-123"
+	cap.RegisterCommand(correlationID, "q-sync-123", 15*time.Second)
 
 	// Mock extension connection manually to avoid nil pointer in HandleSync
 	// (Internal knowledge: IsExtensionConnected checks lastSyncSeen)
@@ -38,10 +39,7 @@ func TestMaybeWaitForCommand_SyncByDefault(t *testing.T) {
 	resp := handler.maybeWaitForCommand(req, correlationID, json.RawMessage(`{}`), "Queued")
 
 	// Verify
-	var result map[string]any
-	if err := json.Unmarshal(resp.Result, &result); err != nil {
-		t.Fatalf("Failed to parse response: %v", err)
-	}
+	result := parseMCPResponseData(t, resp.Result)
 
 	if result["correlation_id"] != correlationID {
 		t.Errorf("Expected correlation_id %s, got %v", correlationID, result["correlation_id"])
@@ -60,8 +58,7 @@ func TestMaybeWaitForCommand_BackgroundOverride(t *testing.T) {
 	// Call with background: true
 	resp := handler.maybeWaitForCommand(req, correlationID, json.RawMessage(`{"background":true}`), "Queued")
 
-	var result map[string]any
-	_ = json.Unmarshal(resp.Result, &result)
+	result := parseMCPResponseData(t, resp.Result)
 
 	if result["status"] != "queued" {
 		t.Errorf("Expected status queued (background), got %v", result["status"])
