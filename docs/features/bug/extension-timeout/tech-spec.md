@@ -1,6 +1,9 @@
 ---
 feature: extension-timeout
 status: in-progress
+doc_type: tech-spec
+feature_id: bug-extension-timeout
+last_reviewed: 2026-02-16
 ---
 
 # Tech Spec: Extension Timeout After 5-6 Operations (Bug Fix)

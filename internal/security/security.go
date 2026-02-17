@@ -1,3 +1,6 @@
+// Purpose: Owns security.go runtime behavior and integration logic.
+// Docs: docs/features/feature/observe/index.md
+
 // security.go — Security Scanner (security_audit) MCP tool.
 // Analyzes captured browser data to detect exposed credentials, PII leakage,
 // missing security headers, insecure cookies, insecure transport, and

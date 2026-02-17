@@ -1,6 +1,9 @@
 ---
 feature: analyze-tool
 version: v7.0-rev2
+doc_type: qa-plan
+feature_id: feature-analyze-tool
+last_reviewed: 2026-02-16
 ---
 
 # `analyze` Tool — Comprehensive QA Plan

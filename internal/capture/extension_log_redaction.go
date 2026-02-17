@@ -1,3 +1,6 @@
+// Purpose: Owns extension_log_redaction.go runtime behavior and integration logic.
+// Docs: docs/features/feature/backend-log-streaming/index.md
+
 package capture
 
 import "encoding/json"

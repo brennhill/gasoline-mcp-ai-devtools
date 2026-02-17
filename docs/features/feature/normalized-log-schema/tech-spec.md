@@ -5,6 +5,9 @@ ai-priority: medium
 tags: [v7, logging, standardization]
 relates-to: [product-spec.md, ../backend-log-streaming/tech-spec.md]
 last-verified: 2026-01-31
+doc_type: tech-spec
+feature_id: feature-normalized-log-schema
+last_reviewed: 2026-02-16
 ---
 
 # Normalized Log Schema — Technical Specification

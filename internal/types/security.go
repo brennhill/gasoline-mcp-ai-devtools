@@ -1,3 +1,6 @@
+// Purpose: Owns security.go runtime behavior and integration logic.
+// Docs: docs/features/feature/observe/index.md
+
 // security.go — Security and threat detection types.
 // Contains types for flagging suspicious network activity and security issues.
 // Zero dependencies - foundational types used by capture and security packages.

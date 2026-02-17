@@ -1,3 +1,6 @@
+// Purpose: Owns memory.go runtime behavior and integration logic.
+// Docs: docs/features/feature/backend-log-streaming/index.md
+
 // memory.go — Per-buffer memory tracking and estimation.
 // Each buffer (WS events, network bodies, actions) tracks its own memory
 // independently. Per-buffer limits are enforced at ingest time by each buffer's

@@ -1,3 +1,6 @@
+// Purpose: Owns csp.go runtime behavior and integration logic.
+// Docs: docs/features/feature/observe/index.md
+
 // csp.go — CSP Generator: produces Content-Security-Policy headers from observed traffic.
 // Maintains an append-only origin accumulator that records every unique
 // origin+resourceType+pageURL combination. Independent of the ring buffer,

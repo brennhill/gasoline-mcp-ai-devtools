@@ -1,3 +1,6 @@
+// Purpose: Owns reproduction.go runtime behavior and integration logic.
+// Docs: docs/features/feature/reproduction-scripts/index.md
+
 // reproduction.go — Reproduction script generation from captured actions.
 // Generates Playwright tests or Gasoline natural language scripts from
 // EnhancedAction data captured by the browser extension.

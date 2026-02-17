@@ -1,3 +1,6 @@
+// Purpose: Owns network.go runtime behavior and integration logic.
+// Docs: docs/features/feature/observe/index.md
+
 // network.go — Network and browser telemetry types.
 // Contains WebSocket, HTTP, and user action types captured from the browser.
 // Zero dependencies - foundational types used by capture and analysis packages.

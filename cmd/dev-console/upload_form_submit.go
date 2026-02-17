@@ -1,3 +1,6 @@
+// Purpose: Owns upload_form_submit.go runtime behavior and integration logic.
+// Docs: docs/features/feature/observe/index.md
+
 // upload_form_submit.go — Stage 3 form submission logic with multipart streaming.
 package main
 

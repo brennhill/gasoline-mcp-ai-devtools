@@ -1,3 +1,9 @@
+---
+doc_type: legacy_doc
+status: reference
+last_reviewed: 2026-02-16
+---
+
 # Architecture Decision Records (ADRs) — Core
 
 This file indexes all ADRs that affect the overall architecture or multiple features.

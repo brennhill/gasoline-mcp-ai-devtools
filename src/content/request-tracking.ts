@@ -1,4 +1,10 @@
 /**
+ * Purpose: Handles content-script message relay between background and inject contexts.
+ * Docs: docs/features/feature/interact-explore/index.md
+ * Docs: docs/features/feature/query-dom/index.md
+ */
+
+/**
  * @fileoverview Request Tracking Module
  * Manages pending requests for AI Web Pilot features
  * Includes periodic cleanup timer to handle edge cases where pagehide/beforeunload don't fire.

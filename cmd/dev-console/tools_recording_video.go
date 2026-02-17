@@ -1,3 +1,6 @@
+// Purpose: Owns tools_recording_video.go runtime behavior and integration logic.
+// Docs: docs/features/feature/observe/index.md
+
 // tools_recording_video.go — Tab video recording: save endpoint and observe handler.
 // Handles POST /recordings/save (multipart: video blob + metadata JSON)
 // and observe({what: "saved_videos"}) to list saved recordings.

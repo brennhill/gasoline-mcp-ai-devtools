@@ -1,3 +1,6 @@
+// Purpose: Owns enhanced_actions.go runtime behavior and integration logic.
+// Docs: docs/features/feature/backend-log-streaming/index.md
+
 // enhanced_actions.go — User action (click, input, navigation) buffering.
 // Captures browser user actions with multi-strategy selectors.
 // Design: Ring buffer with memory-based eviction.

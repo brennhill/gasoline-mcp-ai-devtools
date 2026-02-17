@@ -1,6 +1,9 @@
 ---
 feature: config-profiles
 status: proposed
+doc_type: tech-spec
+feature_id: feature-config-profiles
+last_reviewed: 2026-02-16
 ---
 
 # Tech Spec: Configuration Profiles

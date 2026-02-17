@@ -1,3 +1,6 @@
+// Purpose: Owns helpers.go runtime behavior and integration logic.
+// Docs: docs/features/feature/observe/index.md
+
 // helpers.go — Shared test helpers for internal packages.
 // Provides factory functions for creating test instances of core types.
 package testing

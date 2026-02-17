@@ -1,4 +1,9 @@
 /**
+ * Purpose: Owns queries.ts runtime behavior and integration logic.
+ * Docs: docs/features/feature/observe/index.md
+ */
+
+/**
  * @fileoverview Pending Query Types
  * Query types, browser actions, and tabs information
  */

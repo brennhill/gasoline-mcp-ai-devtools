@@ -1,6 +1,9 @@
 ---
 feature: form-filling
 status: proposed
+doc_type: tech-spec
+feature_id: feature-form-filling
+last_reviewed: 2026-02-16
 ---
 
 # Tech Spec: Form Filling

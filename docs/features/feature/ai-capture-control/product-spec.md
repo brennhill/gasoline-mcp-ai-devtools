@@ -4,6 +4,9 @@ status: shipped
 tool: configure
 mode: capture
 version: 5.0.0
+doc_type: product-spec
+feature_id: feature-ai-capture-control
+last_reviewed: 2026-02-16
 ---
 # Product Spec: AI Capture Control
 

@@ -1,3 +1,6 @@
+// Purpose: Owns snapshot.go runtime behavior and integration logic.
+// Docs: docs/features/feature/observe/index.md
+
 // snapshot.go — Snapshot types for representing captured browser state at a point in time.
 // Used by session checkpoints, diff comparisons, and test fixtures.
 package types

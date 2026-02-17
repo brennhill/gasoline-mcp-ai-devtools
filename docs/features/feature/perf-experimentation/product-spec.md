@@ -3,6 +3,9 @@ status: proposed
 scope: feature/perf-experimentation
 ai-priority: high
 tags: [performance, experimentation, vitals, closed-loop]
+doc_type: product-spec
+feature_id: feature-perf-experimentation
+last_reviewed: 2026-02-16
 ---
 
 # Performance Experimentation

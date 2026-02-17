@@ -4,6 +4,9 @@ status: shipped
 tool: configure
 mode: data TTL
 version: 5.0.0
+doc_type: product-spec
+feature_id: feature-ttl-retention
+last_reviewed: 2026-02-16
 ---
 # Product Spec: TTL Retention
 

@@ -7,6 +7,7 @@ mode: mode_name           # The specific mode/action string
 authors: []
 created: YYYY-MM-DD
 updated: YYYY-MM-DD
+last_reviewed: 2026-02-16
 ---
 
 # Feature Name

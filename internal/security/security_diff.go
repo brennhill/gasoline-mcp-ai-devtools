@@ -1,3 +1,6 @@
+// Purpose: Owns security_diff.go runtime behavior and integration logic.
+// Docs: docs/features/feature/observe/index.md
+
 // security_diff.go — Security Regression Detection (diff_security) MCP tool.
 // Takes security posture snapshots and compares them to detect regressions
 // in headers, cookies, auth patterns, and transport security.

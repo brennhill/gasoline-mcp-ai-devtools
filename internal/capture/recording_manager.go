@@ -1,3 +1,6 @@
+// Purpose: Owns recording_manager.go runtime behavior and integration logic.
+// Docs: docs/features/feature/backend-log-streaming/index.md
+
 // recording_manager.go — Recording lifecycle, persistence, and state management.
 // Extracted from the Capture god object. Owns its own sync.Mutex,
 // independent of Capture.mu. Zero cross-cutting dependencies.

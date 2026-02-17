@@ -2,6 +2,7 @@
 status: draft
 scope: v6-v7-architecture
 last-updated: 2026-01-31
+last_reviewed: 2026-02-16
 ---
 
 # Target Architecture: Gasoline v6-v7

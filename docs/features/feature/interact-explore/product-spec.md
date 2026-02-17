@@ -5,6 +5,9 @@ ai-priority: high
 tags: [v6.0, core, ai-native, interaction]
 relates-to: [interact-record.md, interact-replay.md, observe-capture.md]
 last-verified: 2026-01-31
+doc_type: product-spec
+feature_id: feature-interact-explore
+last_reviewed: 2026-02-16
 ---
 
 # Product Spec: interact.explore

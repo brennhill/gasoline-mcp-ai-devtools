@@ -1,3 +1,6 @@
+// Purpose: Owns websocket-types.go runtime behavior and integration logic.
+// Docs: docs/features/feature/backend-log-streaming/index.md
+
 // websocket-types.go — WebSocket event and connection tracking types.
 // WebSocketEvent represents captured WebSocket events with sampling and schema info.
 //

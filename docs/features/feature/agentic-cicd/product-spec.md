@@ -3,6 +3,9 @@ feature: agentic-cicd
 status: proposed
 tool: observe, interact
 mode: multi-mode
+doc_type: product-spec
+feature_id: feature-agentic-cicd
+last_reviewed: 2026-02-16
 ---
 # Product Spec: Agentic CI/CD
 

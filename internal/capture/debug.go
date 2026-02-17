@@ -1,3 +1,6 @@
+// Purpose: Owns debug.go runtime behavior and integration logic.
+// Docs: docs/features/feature/backend-log-streaming/index.md
+
 // debug.go — Capture delegation methods for debug logging.
 // Delegates to DebugLogger sub-struct. These methods exist for backward
 // compatibility with callers that operate under c.mu and call c.logPollingActivity().

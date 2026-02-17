@@ -4,6 +4,7 @@ status: shipped
 tool: configure
 mode: background
 version: v5.2.5
+last_reviewed: 2026-02-16
 ---
 
 # Product Spec: Version Checking & Update Notifications

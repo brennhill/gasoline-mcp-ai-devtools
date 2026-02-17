@@ -1,3 +1,6 @@
+// Purpose: Owns audit_trail.go runtime behavior and integration logic.
+// Docs: docs/features/feature/observe/index.md
+
 // audit_trail.go — Enterprise Audit Trail (Tier 1).
 // Append-only tool invocation log with client identification, session management,
 // parameter redaction, and redaction event logging.

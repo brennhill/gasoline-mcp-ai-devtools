@@ -1,3 +1,6 @@
+// Purpose: Owns observe_network_body_filter.go runtime behavior and integration logic.
+// Docs: docs/features/feature/observe/index.md
+
 // observe_network_body_filter.go — JSON filtering helpers for observe(network_bodies).
 package main
 

@@ -1,3 +1,9 @@
+---
+doc_type: legacy_doc
+status: reference
+last_reviewed: 2026-02-16
+---
+
 # Development Guide
 
 This guide covers local development setup, quality checks, and CI pipeline for Gasoline.

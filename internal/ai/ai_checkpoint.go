@@ -1,3 +1,6 @@
+// Purpose: Owns ai_checkpoint.go runtime behavior and integration logic.
+// Docs: docs/features/feature/observe/index.md
+
 // ai_checkpoint.go — Named checkpoint/diff system for session state comparison.
 // Checkpoints record buffer positions at a point in time. Diffs return only
 // new entries since the checkpoint, deduplicated and severity-filtered.

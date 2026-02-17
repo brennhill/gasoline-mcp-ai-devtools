@@ -1,4 +1,9 @@
 /**
+ * Purpose: Provides shared runtime utilities used by extension and server workflows.
+ * Docs: docs/features/feature/observe/index.md
+ */
+
+/**
  * @fileoverview Timeout and Promise utilities - Reusable patterns for handling timeouts,
  * promise races, and message-based async operations with cleanup.
  *

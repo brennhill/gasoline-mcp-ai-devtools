@@ -1,3 +1,9 @@
+---
+doc_type: legacy_doc
+status: reference
+last_reviewed: 2026-02-16
+---
+
 # Gasoline MCP -- Complete API Reference
 
 > Generated from source code audit on 2026-02-14.

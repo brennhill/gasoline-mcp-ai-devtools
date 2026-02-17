@@ -1,3 +1,10 @@
+/**
+ * Purpose: Handles extension background coordination and message routing.
+ * Docs: docs/features/feature/analyze-tool/index.md
+ * Docs: docs/features/feature/interact-explore/index.md
+ * Docs: docs/features/feature/observe/index.md
+ */
+
 // dom-primitives.ts — Pre-compiled DOM interaction functions for chrome.scripting.executeScript.
 // These bypass CSP restrictions because they use the `func` parameter (no eval/new Function).
 // Each function MUST be self-contained — no closures over external variables.

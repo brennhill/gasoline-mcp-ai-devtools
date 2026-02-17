@@ -1,3 +1,6 @@
+// Purpose: Owns paths.go runtime behavior and integration logic.
+// Docs: docs/features/feature/observe/index.md
+
 // Package state centralizes filesystem locations for Gasoline runtime artifacts.
 package state
 

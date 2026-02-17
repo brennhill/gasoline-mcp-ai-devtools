@@ -1,3 +1,6 @@
+// Purpose: Owns capture-struct.go runtime behavior and integration logic.
+// Docs: docs/features/feature/backend-log-streaming/index.md
+
 // capture-struct.go — Main Capture struct and factory function.
 // Capture manages all buffered browser state: WebSocket events, network bodies,
 // user actions, connections, queries, rate limiting, and performance.

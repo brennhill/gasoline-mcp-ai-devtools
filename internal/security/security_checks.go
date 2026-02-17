@@ -1,3 +1,6 @@
+// Purpose: Owns security_checks.go runtime behavior and integration logic.
+// Docs: docs/features/feature/observe/index.md
+
 // security_checks.go — Security check implementations for PII, headers, cookies, transport, and auth patterns.
 package security
 

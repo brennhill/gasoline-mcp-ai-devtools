@@ -1,3 +1,6 @@
+// Purpose: Owns settings.go runtime behavior and integration logic.
+// Docs: docs/features/feature/backend-log-streaming/index.md
+
 // settings.go — Settings disk persistence for fast daemon restart.
 package capture
 

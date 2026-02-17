@@ -1,3 +1,6 @@
+// Purpose: Owns tools_validation.go runtime behavior and integration logic.
+// Docs: docs/features/feature/observe/index.md
+
 // tools_validation.go — Parameter validation and error checking utilities.
 // Validates log entries, extracts JSON field names, and unmarshals with warnings.
 package main

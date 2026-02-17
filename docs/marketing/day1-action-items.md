@@ -1,3 +1,9 @@
+---
+doc_type: legacy_doc
+status: reference
+last_reviewed: 2026-02-16
+---
+
 # Day 1 Action Items - Updated
 
 **Date:** 2026-02-09 (Monday)  

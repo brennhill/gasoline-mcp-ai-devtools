@@ -1,5 +1,8 @@
 ---
 feature: dynamic-exposure
+doc_type: qa-plan
+feature_id: feature-dynamic-exposure
+last_reviewed: 2026-02-16
 ---
 
 # QA Plan: Dynamic Exposure

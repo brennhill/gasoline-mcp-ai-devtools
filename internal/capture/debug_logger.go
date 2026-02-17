@@ -1,3 +1,6 @@
+// Purpose: Owns debug_logger.go runtime behavior and integration logic.
+// Docs: docs/features/feature/backend-log-streaming/index.md
+
 // debug_logger.go — Circular buffer debug logging for polling and HTTP activity.
 // Extracted from the Capture god object to reduce field count and mutex scope.
 // Thread-safe: uses its own sync.Mutex independent of Capture.mu.

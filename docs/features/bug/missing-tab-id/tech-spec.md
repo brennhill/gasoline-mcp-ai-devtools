@@ -1,6 +1,9 @@
 ---
 feature: missing-tab-id
 status: in-progress
+doc_type: tech-spec
+feature_id: bug-missing-tab-id
+last_reviewed: 2026-02-16
 ---
 
 # Tech Spec: Missing Tab ID in MCP Responses (Bug Fix)

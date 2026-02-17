@@ -3,6 +3,7 @@ adr: ADR-NNN
 feature: feature-name
 status: accepted        # proposed | accepted | superseded | deprecated
 date: YYYY-MM-DD
+last_reviewed: 2026-02-16
 ---
 
 # ADR-NNN: Decision Title

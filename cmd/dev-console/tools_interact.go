@@ -1,3 +1,6 @@
+// Purpose: Implements interact tool handlers and browser action orchestration.
+// Docs: docs/features/feature/interact-explore/index.md
+
 // tools_interact.go — MCP interact tool dispatcher and handlers.
 // Handles all browser interaction actions: navigate, execute_js, highlight, state management, etc.
 package main

@@ -1,3 +1,6 @@
+// Purpose: Owns extension_logs.go runtime behavior and integration logic.
+// Docs: docs/features/feature/backend-log-streaming/index.md
+
 // Extension internal logs endpoint
 // Receives log entries from browser extension contexts (background, content scripts).
 // Enables AI debugging of extension-internal behavior not visible through page-level capture.

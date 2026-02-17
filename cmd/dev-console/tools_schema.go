@@ -1,3 +1,6 @@
+// Purpose: Owns tools_schema.go runtime behavior and integration logic.
+// Docs: docs/features/feature/observe/index.md
+
 // tools_schema.go — MCP tool schema definitions.
 // Descriptions are kept minimal to reduce token usage — detailed docs live in server
 // instructions and the gasoline://guide resource.

@@ -1,3 +1,6 @@
+// Purpose: Owns network_waterfall.go runtime behavior and integration logic.
+// Docs: docs/features/feature/backend-log-streaming/index.md
+
 // network_waterfall.go — Network waterfall (PerformanceResourceTiming) buffering.
 // Captures browser resource timing data for CSP generation and performance analysis.
 // Design: Ring buffer with configurable capacity.

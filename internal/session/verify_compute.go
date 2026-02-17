@@ -1,3 +1,7 @@
+// Purpose: Implements session lifecycle, snapshots, and diff state management.
+// Docs: docs/features/feature/observe/index.md
+// Docs: docs/features/feature/pagination/index.md
+
 // verify_compute.go — Verification computation and MCP tool dispatch.
 // Contains: computeVerification, determineVerdict, HandleTool.
 package session

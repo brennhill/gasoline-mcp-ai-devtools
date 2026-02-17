@@ -1,3 +1,6 @@
+// Purpose: Owns enhanced-actions-types.go runtime behavior and integration logic.
+// Docs: docs/features/feature/backend-log-streaming/index.md
+
 // enhanced-actions-types.go — Enhanced actions types.
 // EnhancedAction represents captured user actions with multi-strategy selectors.
 //

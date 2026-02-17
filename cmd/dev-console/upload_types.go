@@ -1,3 +1,6 @@
+// Purpose: Owns upload_types.go runtime behavior and integration logic.
+// Docs: docs/features/feature/observe/index.md
+
 // upload_types.go — Types and constants for file upload feature.
 // Defines request/response types, escalation states, MIME detection, and progress tracking.
 //

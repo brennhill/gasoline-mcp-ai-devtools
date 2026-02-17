@@ -1,3 +1,9 @@
+---
+doc_type: tech-spec
+feature_id: feature-link-health
+last_reviewed: 2026-02-16
+---
+
 # Link Health Checker Technical Specification
 
 ## Overview

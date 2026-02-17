@@ -1,3 +1,10 @@
+/**
+ * Purpose: Handles extension background coordination and message routing.
+ * Docs: docs/features/feature/analyze-tool/index.md
+ * Docs: docs/features/feature/interact-explore/index.md
+ * Docs: docs/features/feature/observe/index.md
+ */
+
 // recording.ts — Tab video recording pipeline (offscreen architecture).
 // Orchestrates recording via an offscreen document that handles MediaRecorder
 // and uploads. The service worker manages tab capture stream IDs, watermarks,

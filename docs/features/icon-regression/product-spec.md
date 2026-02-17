@@ -1,3 +1,9 @@
+---
+doc_type: product-spec
+feature_id: icon-regression
+last_reviewed: 2026-02-16
+---
+
 # Product Spec: Tab Icon State Indicator
 
 ## Problem

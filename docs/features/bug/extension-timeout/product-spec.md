@@ -4,6 +4,9 @@ status: in-progress
 tool: all
 mode: all
 version: 5.2.0
+doc_type: product-spec
+feature_id: bug-extension-timeout
+last_reviewed: 2026-02-16
 ---
 
 # Product Spec: Extension Timeout After 5-6 Operations (Bug Fix)
