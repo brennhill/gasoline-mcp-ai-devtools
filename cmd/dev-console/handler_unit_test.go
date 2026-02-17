@@ -199,14 +199,31 @@ func TestMCPHandlerResourceAndToolMethods(t *testing.T) {
 		t.Fatalf("resources/list response = %+v, want success", resources)
 	}
 	resourceData := mustDecodeJSON[MCPResourcesListResult](t, resources.Result)
-	if len(resourceData.Resources) != 2 {
-		t.Fatalf("resources/list result = %+v, want 2 resources", resourceData)
+	if len(resourceData.Resources) != 3 {
+		t.Fatalf("resources/list result = %+v, want 3 resources", resourceData)
 	}
-	if resourceData.Resources[0].URI != "gasoline://guide" {
-		t.Fatalf("resources/list first resource = %q, want gasoline://guide", resourceData.Resources[0].URI)
+	if resourceData.Resources[0].URI != "gasoline://capabilities" {
+		t.Fatalf("resources/list first resource = %q, want gasoline://capabilities", resourceData.Resources[0].URI)
 	}
-	if resourceData.Resources[1].URI != "gasoline://quickstart" {
-		t.Fatalf("resources/list second resource = %q, want gasoline://quickstart", resourceData.Resources[1].URI)
+	if resourceData.Resources[1].URI != "gasoline://guide" {
+		t.Fatalf("resources/list second resource = %q, want gasoline://guide", resourceData.Resources[1].URI)
+	}
+	if resourceData.Resources[2].URI != "gasoline://quickstart" {
+		t.Fatalf("resources/list third resource = %q, want gasoline://quickstart", resourceData.Resources[2].URI)
+	}
+
+	readCapabilities := h.HandleRequest(JSONRPCRequest{
+		JSONRPC: "2.0",
+		ID:      40,
+		Method:  "resources/read",
+		Params:  json.RawMessage(`{"uri":"gasoline://capabilities"}`),
+	})
+	if readCapabilities == nil || readCapabilities.Error != nil {
+		t.Fatalf("resources/read capabilities response = %+v, want success", readCapabilities)
+	}
+	readCapabilitiesData := mustDecodeJSON[MCPResourcesReadResult](t, readCapabilities.Result)
+	if len(readCapabilitiesData.Contents) != 1 || readCapabilitiesData.Contents[0].URI != "gasoline://capabilities" {
+		t.Fatalf("resources/read capabilities result = %+v, want one capabilities content entry", readCapabilitiesData)
 	}
 
 	readInvalid := h.HandleRequest(JSONRPCRequest{
@@ -269,6 +286,34 @@ func TestMCPHandlerResourceAndToolMethods(t *testing.T) {
 	readDemoData := mustDecodeJSON[MCPResourcesReadResult](t, readDemo.Result)
 	if len(readDemoData.Contents) != 1 || readDemoData.Contents[0].URI != "gasoline://demo/ws" {
 		t.Fatalf("resources/read demo result = %+v, want demo content entry", readDemoData)
+	}
+
+	readPlaybook := h.HandleRequest(JSONRPCRequest{
+		JSONRPC: "2.0",
+		ID:      61,
+		Method:  "resources/read",
+		Params:  json.RawMessage(`{"uri":"gasoline://playbook/performance/quick"}`),
+	})
+	if readPlaybook == nil || readPlaybook.Error != nil {
+		t.Fatalf("resources/read playbook response = %+v, want success", readPlaybook)
+	}
+	readPlaybookData := mustDecodeJSON[MCPResourcesReadResult](t, readPlaybook.Result)
+	if len(readPlaybookData.Contents) != 1 || readPlaybookData.Contents[0].URI != "gasoline://playbook/performance/quick" {
+		t.Fatalf("resources/read playbook result = %+v, want playbook content entry", readPlaybookData)
+	}
+
+	readSecurityPlaybook := h.HandleRequest(JSONRPCRequest{
+		JSONRPC: "2.0",
+		ID:      62,
+		Method:  "resources/read",
+		Params:  json.RawMessage(`{"uri":"gasoline://playbook/security/full"}`),
+	})
+	if readSecurityPlaybook == nil || readSecurityPlaybook.Error != nil {
+		t.Fatalf("resources/read security playbook response = %+v, want success", readSecurityPlaybook)
+	}
+	readSecurityPlaybookData := mustDecodeJSON[MCPResourcesReadResult](t, readSecurityPlaybook.Result)
+	if len(readSecurityPlaybookData.Contents) != 1 || readSecurityPlaybookData.Contents[0].URI != "gasoline://playbook/security/full" {
+		t.Fatalf("resources/read security playbook result = %+v, want security playbook content entry", readSecurityPlaybookData)
 	}
 
 	templates := h.HandleRequest(JSONRPCRequest{JSONRPC: "2.0", ID: 7, Method: "resources/templates/list"})

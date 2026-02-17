@@ -36,7 +36,7 @@ Key patterns:
 - Error debugging: start with observe(what="error_bundles") for pre-assembled context per error (error + network + actions + logs).
 - Performance: interact(action="navigate"|"refresh") auto-includes perf_diff. Add analyze=true to any interact action for profiling.
 - Noise filtering: use configure(action="noise_rule", noise_action="auto_detect") to suppress recurring noise.
-- For detailed docs, read gasoline://guide. For quick examples, read gasoline://quickstart.`
+- For routing help, read gasoline://capabilities. For detailed docs, read gasoline://guide. For quick examples, read gasoline://quickstart.`
 
 // MCPHandler handles MCP protocol messages
 type MCPHandler struct {
@@ -298,6 +298,12 @@ func (h *MCPHandler) handleInitialize(req JSONRPCRequest) JSONRPCResponse {
 func (h *MCPHandler) handleResourcesList(req JSONRPCRequest) JSONRPCResponse {
 	resources := []MCPResource{
 		{
+			URI:         "gasoline://capabilities",
+			Name:        "Gasoline Capability Index",
+			Description: "Compact capability index with task-to-playbook routing hints",
+			MimeType:    "text/markdown",
+		},
+		{
 			URI:         "gasoline://guide",
 			Name:        "Gasoline Usage Guide",
 			Description: "How to use Gasoline MCP tools for browser debugging",
@@ -331,7 +337,11 @@ func (h *MCPHandler) handleResourcesRead(req JSONRPCRequest) JSONRPCResponse {
 		}
 	}
 
-	if params.URI != "gasoline://guide" && params.URI != "gasoline://quickstart" && !strings.HasPrefix(params.URI, "gasoline://demo/") {
+	if params.URI != "gasoline://capabilities" &&
+		params.URI != "gasoline://guide" &&
+		params.URI != "gasoline://quickstart" &&
+		!strings.HasPrefix(params.URI, "gasoline://demo/") &&
+		!strings.HasPrefix(params.URI, "gasoline://playbook/") {
 		return JSONRPCResponse{
 			JSONRPC: "2.0",
 			ID:      req.ID,
@@ -495,8 +505,213 @@ Expected:
 `,
 	}
 
+	capabilities := `# Gasoline Capability Index (Token-Efficient)
+
+Use this index for discovery. Load detailed guidance only when task intent matches.
+
+## Routing Rule
+
+1. Identify intent from user request.
+2. If intent matches a capability, read that playbook URI.
+3. Prefer quick playbook first; load full playbook only when needed.
+
+## Capability Map
+
+| Capability | When to Use | Playbook URI |
+|---|---|---|
+| performance_analysis | Regressions, slow pages, bottlenecks, Core Web Vitals | gasoline://playbook/performance/quick |
+| accessibility_audit | WCAG/axe issues, semantic/contrast/navigation checks | gasoline://playbook/accessibility/quick |
+| security_audit | Credential leaks, CSP/cookie/header risks, third-party origin risk | gasoline://playbook/security/quick |
+| api_validation | Contract mismatches, malformed responses, endpoint drift | gasoline://guide (API validation section) |
+
+## Available Playbook Variants
+
+- gasoline://playbook/performance/quick
+- gasoline://playbook/performance/full
+- gasoline://playbook/accessibility/quick
+- gasoline://playbook/accessibility/full
+- gasoline://playbook/security/quick
+- gasoline://playbook/security/full
+
+## Notes
+
+- Keep this index small; do not inline full workflows here.
+- Add future playbooks under gasoline://playbook/{capability}/{quick|full}.
+`
+
+	playbooks := map[string]string{
+		"performance/quick": `# Playbook: Performance Analysis (Quick)
+
+Use when a page feels slow or performance regressed.
+
+## Preconditions
+
+- Extension connected and tracked tab confirmed.
+- Target URL known.
+
+## Steps
+
+1. {"tool":"configure","arguments":{"action":"health"}}
+2. {"tool":"interact","arguments":{"action":"navigate","url":"<target-url>"}}
+3. {"tool":"observe","arguments":{"what":"vitals"}}
+4. {"tool":"observe","arguments":{"what":"network_waterfall","status_min":400}}
+5. {"tool":"observe","arguments":{"what":"actions","last_n":30}}
+
+## Output Format
+
+- Top 3 bottlenecks
+- Evidence (metric/request/action references)
+- Lowest-risk first fixes
+`,
+		"performance/full": `# Playbook: Performance Analysis (Full)
+
+Use for deep profiling and remediation planning.
+
+## When To Use
+
+- Perf regression after a change
+- Slow initial load or interaction lag
+- Need actionable fix plan with evidence
+
+## Preconditions
+
+- Extension connected
+- Correct tracked tab
+- Reproducible URL/workflow
+
+## Steps
+
+1. Baseline health:
+   {"tool":"configure","arguments":{"action":"health"}}
+   {"tool":"observe","arguments":{"what":"page"}}
+2. Capture navigation perf diff:
+   {"tool":"interact","arguments":{"action":"navigate","url":"<target-url>","analyze":true}}
+3. Collect web vitals:
+   {"tool":"observe","arguments":{"what":"vitals"}}
+4. Collect network hotspots:
+   {"tool":"observe","arguments":{"what":"network_waterfall","limit":200}}
+5. Collect runtime signals:
+   {"tool":"observe","arguments":{"what":"actions","last_n":100}}
+   {"tool":"observe","arguments":{"what":"logs","min_level":"warn","last_n":200}}
+6. Optional active analysis:
+   {"tool":"analyze","arguments":{"what":"performance"}}
+   {"tool":"observe","arguments":{"what":"command_result","correlation_id":"<from analyze>"}}
+
+## Failure Modes
+
+- extension_disconnected: reconnect/track tab, rerun
+- no_perf_diff: ensure navigate/refresh or interact with analyze=true
+- sparse_data: increase observe limits and repeat flow
+
+## Output Format
+
+- Summary: regression/no-regression with confidence
+- Bottlenecks: ranked with concrete evidence
+- Fixes: prioritized quick wins then deeper refactors
+- Validation plan: exact checks to verify improvement
+`,
+		"accessibility/quick": `# Playbook: Accessibility Audit (Quick)
+
+Use when you need a fast WCAG issue snapshot.
+
+## Steps
+
+1. {"tool":"configure","arguments":{"action":"health"}}
+2. {"tool":"analyze","arguments":{"what":"accessibility"}}
+3. {"tool":"observe","arguments":{"what":"command_result","correlation_id":"<from analyze>"}}
+
+## Output Format
+
+- Top accessibility blockers
+- WCAG tags impacted
+- Quick remediation suggestions
+`,
+		"accessibility/full": `# Playbook: Accessibility Audit (Full)
+
+Use for triage plus implementation-ready fixes.
+
+## Preconditions
+
+- Extension connected
+- Correct tracked tab
+
+## Steps
+
+1. {"tool":"configure","arguments":{"action":"health"}}
+2. {"tool":"observe","arguments":{"what":"page"}}
+3. {"tool":"analyze","arguments":{"what":"accessibility"}}
+4. {"tool":"observe","arguments":{"what":"command_result","correlation_id":"<from analyze>"}}
+5. {"tool":"analyze","arguments":{"what":"dom","selector":"main, [role='main'], form, nav"}}
+6. {"tool":"observe","arguments":{"what":"command_result","correlation_id":"<from dom analyze>"}}
+
+## Failure Modes
+
+- extension_disconnected: reconnect and retry
+- timeout: retry once, then narrow DOM scope
+
+## Output Format
+
+- Findings by severity
+- Affected selectors/components
+- Concrete code-level fix guidance
+- Validation checklist
+`,
+		"security/quick": `# Playbook: Security Audit (Quick)
+
+Use for fast risk screening.
+
+## Steps
+
+1. {"tool":"configure","arguments":{"action":"health"}}
+2. {"tool":"analyze","arguments":{"what":"security_audit"}}
+3. {"tool":"observe","arguments":{"what":"command_result","correlation_id":"<from analyze>"}}
+
+## Output Format
+
+- High-risk findings first
+- Evidence location (header/URL/request/etc.)
+- Immediate mitigations
+`,
+		"security/full": `# Playbook: Security Audit (Full)
+
+Use for comprehensive browser-surface security review.
+
+## Preconditions
+
+- Extension connected
+- Representative app flow loaded
+
+## Steps
+
+1. {"tool":"configure","arguments":{"action":"health"}}
+2. {"tool":"observe","arguments":{"what":"network_waterfall","limit":200}}
+3. {"tool":"analyze","arguments":{"what":"security_audit","severity_min":"medium"}}
+4. {"tool":"observe","arguments":{"what":"command_result","correlation_id":"<from security audit>"}}
+5. {"tool":"analyze","arguments":{"what":"third_party_audit","first_party_origins":["<origin>"]}}
+6. {"tool":"observe","arguments":{"what":"command_result","correlation_id":"<from third_party_audit>"}}
+
+## Failure Modes
+
+- missing baseline traffic: exercise critical user flow and rerun
+- noisy false positives: tighten first_party_origins
+
+## Output Format
+
+- Risks ranked by severity and exploitability
+- Evidence and affected endpoints/origins
+- Prioritized fix plan
+- Verification steps
+`,
+	}
+
 	result := MCPResourcesReadResult{Contents: []MCPResourceContent{}}
-	if params.URI == "gasoline://guide" {
+	if params.URI == "gasoline://capabilities" {
+		result.Contents = append(result.Contents, MCPResourceContent{
+			URI:      "gasoline://capabilities",
+			MimeType: "text/markdown",
+			Text:     capabilities,
+		})
+	} else if params.URI == "gasoline://guide" {
 		result.Contents = append(result.Contents, MCPResourceContent{
 			URI:      "gasoline://guide",
 			MimeType: "text/markdown",
@@ -507,6 +722,27 @@ Expected:
 			URI:      "gasoline://quickstart",
 			MimeType: "text/markdown",
 			Text:     quickstart,
+		})
+	} else if strings.HasPrefix(params.URI, "gasoline://playbook/") {
+		key := strings.TrimPrefix(params.URI, "gasoline://playbook/")
+		if key == "performance" {
+			key = "performance/quick"
+		}
+		script, ok := playbooks[key]
+		if !ok {
+			return JSONRPCResponse{
+				JSONRPC: "2.0",
+				ID:      req.ID,
+				Error: &JSONRPCError{
+					Code:    -32002,
+					Message: "Resource not found: " + params.URI,
+				},
+			}
+		}
+		result.Contents = append(result.Contents, MCPResourceContent{
+			URI:      params.URI,
+			MimeType: "text/markdown",
+			Text:     script,
 		})
 	} else {
 		name := strings.TrimPrefix(params.URI, "gasoline://demo/")
@@ -534,6 +770,12 @@ Expected:
 
 func (h *MCPHandler) handleResourcesTemplatesList(req JSONRPCRequest) JSONRPCResponse {
 	result := MCPResourceTemplatesListResult{ResourceTemplates: []any{
+		map[string]any{
+			"uriTemplate": "gasoline://playbook/{capability}/{level}",
+			"name":        "Gasoline Capability Playbook",
+			"description": "On-demand, token-efficient playbooks. Start with quick; use full for deep workflows.",
+			"mimeType":    "text/markdown",
+		},
 		map[string]any{
 			"uriTemplate": "gasoline://demo/{name}",
 			"name":        "Gasoline Demo Script",
