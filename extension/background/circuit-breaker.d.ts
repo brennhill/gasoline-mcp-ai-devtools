@@ -1,4 +1,10 @@
 /**
+ * Purpose: Handles extension background coordination and message routing.
+ * Docs: docs/features/feature/analyze-tool/index.md
+ * Docs: docs/features/feature/interact-explore/index.md
+ * Docs: docs/features/feature/observe/index.md
+ */
+/**
  * @fileoverview Circuit Breaker - Implements circuit breaker pattern with
  * exponential backoff for protecting server communication.
  */

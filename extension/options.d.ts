@@ -1,11 +1,6 @@
 /**
- * @fileoverview options.ts — Extension settings page for user-configurable options.
- * Manages server URL, domain filters (allowlist/blocklist), screenshot-on-error toggle,
- * source map resolution toggle, and interception deferral toggle.
- * Persists settings via chrome.storage.local and notifies the background worker
- * of changes so they take effect without requiring extension reload.
- * Design: Toggle controls use CSS class 'active' for state. Domain filters are
- * stored as newline-separated strings, parsed to arrays on save.
+ * Purpose: Owns options.ts runtime behavior and integration logic.
+ * Docs: docs/features/feature/observe/index.md
  */
 interface ExportResult {
     success: boolean;

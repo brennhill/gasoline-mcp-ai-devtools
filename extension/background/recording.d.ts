@@ -1,3 +1,9 @@
+/**
+ * Purpose: Handles extension background coordination and message routing.
+ * Docs: docs/features/feature/analyze-tool/index.md
+ * Docs: docs/features/feature/interact-explore/index.md
+ * Docs: docs/features/feature/observe/index.md
+ */
 /** Returns whether a recording is currently active. */
 export declare function isRecording(): boolean;
 /** Returns current recording info for popup sync. */

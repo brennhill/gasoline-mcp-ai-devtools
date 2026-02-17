@@ -1,6 +1,6 @@
 /**
- * @fileoverview Tab Tracking Module for Popup
- * Manages the "Track This Tab" button and tracking status
+ * Purpose: Owns tab-tracking.ts runtime behavior and integration logic.
+ * Docs: docs/features/feature/observe/index.md
  */
 export declare function initTrackPageButton(): Promise<void>;
 /**

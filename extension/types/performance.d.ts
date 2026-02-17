@@ -1,4 +1,8 @@
 /**
+ * Purpose: Owns performance.ts runtime behavior and integration logic.
+ * Docs: docs/features/feature/observe/index.md
+ */
+/**
  * @fileoverview Performance Types
  * Performance marks, measures, long tasks, and web vitals
  */

@@ -1,33 +1,8 @@
 /**
- * @fileoverview Cache Limits and Memory Management
- *
- * Implements rate limiting and DoS protection for Gasoline:
- *
- * RATE LIMITING:
- * - Screenshot rate limit: 1 per 5 seconds per tab
- * - Screenshot session limit: 10 total per minute per tab
- * - Error group deduplication: 5-second window (identical errors grouped)
- * - Max pending requests: 1000 (circuit breaker if exceeded)
- *
- * MEMORY ENFORCEMENT:
- * - Soft limit: 20MB (reduce capacities, disable some captures)
- * - Hard limit: 50MB (disable network body capture completely)
- * - Checks every 30 seconds via alarm
- * - Estimated using average sizes: log entry 500B, WS event 300B, network body 1KB
- *
- * SOURCE MAP CACHING:
- * - Max 50 source maps in cache (LRU eviction when full)
- * - Maps are parsed SourceMap objects (can be large)
- * - Cache is cleared when source map feature is disabled
- *
- * SECURITY PROPERTIES:
- * - Prevents memory exhaustion attacks
- * - Prevents connection storms via backoff
- * - Prevents duplicate error flooding via deduplication
- * - Graceful degradation under memory pressure
- *
- * Manages source map caching with LRU eviction, screenshot rate limiting,
- * and memory pressure monitoring.
+ * Purpose: Handles extension background coordination and message routing.
+ * Docs: docs/features/feature/analyze-tool/index.md
+ * Docs: docs/features/feature/interact-explore/index.md
+ * Docs: docs/features/feature/observe/index.md
  */
 // =============================================================================
 // CONSTANTS

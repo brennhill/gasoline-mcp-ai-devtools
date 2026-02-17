@@ -1,6 +1,7 @@
 /**
- * @fileoverview Tab Tracking Module
- * Manages tracking status for the current tab
+ * Purpose: Handles content-script message relay between background and inject contexts.
+ * Docs: docs/features/feature/interact-explore/index.md
+ * Docs: docs/features/feature/query-dom/index.md
  */
 /**
  * Update tracking status by checking storage and current tab ID.

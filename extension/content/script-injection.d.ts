@@ -1,6 +1,7 @@
 /**
- * @fileoverview Script Injection Module
- * Injects capture script into the page context and syncs stored settings
+ * Purpose: Handles content-script message relay between background and inject contexts.
+ * Docs: docs/features/feature/interact-explore/index.md
+ * Docs: docs/features/feature/query-dom/index.md
  */
 /** Get the page nonce for authenticating postMessages to inject.js */
 export declare function getPageNonce(): string;

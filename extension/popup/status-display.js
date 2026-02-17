@@ -1,6 +1,6 @@
 /**
- * @fileoverview Status Display Module
- * Updates connection status display in popup
+ * Purpose: Owns status-display.ts runtime behavior and integration logic.
+ * Docs: docs/features/feature/observe/index.md
  */
 import { formatFileSize } from './ui-utils.js';
 const DEFAULT_MAX_ENTRIES = 1000;

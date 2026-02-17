@@ -1,4 +1,9 @@
 /**
+ * Purpose: Owns background.ts runtime behavior and integration logic.
+ * Docs: docs/features/feature/interact-explore/index.md
+ * Docs: docs/features/feature/analyze-tool/index.md
+ */
+/**
  * @fileoverview Background Service Worker Facade - Minimal Public API
  *
  * This facade provides a clean, minimal public API for the extension.

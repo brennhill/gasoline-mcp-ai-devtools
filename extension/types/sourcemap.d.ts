@@ -1,4 +1,8 @@
 /**
+ * Purpose: Owns sourcemap.ts runtime behavior and integration logic.
+ * Docs: docs/features/feature/observe/index.md
+ */
+/**
  * @fileoverview Source Map Types
  * Source map parsing and original location resolution
  */

@@ -1,4 +1,9 @@
 /**
+ * Purpose: Executes in-page actions and query handlers within the page context.
+ * Docs: docs/features/feature/interact-explore/index.md
+ * Docs: docs/features/feature/query-dom/index.md
+ */
+/**
  * @fileoverview Message Handlers - Handles messages from content script including
  * settings, state management, JavaScript execution, and DOM/accessibility queries.
  */

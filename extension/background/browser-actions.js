@@ -1,5 +1,9 @@
-// browser-actions.ts — Browser navigation and action handlers.
-// Handles navigate, refresh, back, forward actions with async timeout support.
+/**
+ * Purpose: Handles extension background coordination and message routing.
+ * Docs: docs/features/feature/analyze-tool/index.md
+ * Docs: docs/features/feature/interact-explore/index.md
+ * Docs: docs/features/feature/observe/index.md
+ */
 import * as eventListeners from './event-listeners.js';
 import * as index from './index.js';
 import { DebugCategory } from './debug.js';

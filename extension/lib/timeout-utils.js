@@ -1,12 +1,6 @@
 /**
- * @fileoverview Timeout and Promise utilities - Reusable patterns for handling timeouts,
- * promise races, and message-based async operations with cleanup.
- *
- * These utilities extract common patterns found throughout the Gasoline extension:
- * - Promise.race with timeout fallback
- * - Message-based request/response with timeout and cleanup
- * - Deferred promises for storing resolvers/rejecters
- * - Safe timeout management with resource cleanup
+ * Purpose: Provides shared runtime utilities used by extension and server workflows.
+ * Docs: docs/features/feature/observe/index.md
  */
 /**
  * Create a deferred promise

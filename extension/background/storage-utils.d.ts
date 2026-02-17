@@ -1,4 +1,10 @@
 /**
+ * Purpose: Handles extension background coordination and message routing.
+ * Docs: docs/features/feature/analyze-tool/index.md
+ * Docs: docs/features/feature/interact-explore/index.md
+ * Docs: docs/features/feature/observe/index.md
+ */
+/**
  * @fileoverview Storage Utilities - Wrapper functions for chrome.storage with support for both
  * persistent (local) and ephemeral (session) storage.
  *

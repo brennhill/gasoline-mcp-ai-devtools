@@ -1,16 +1,7 @@
 /**
- * @fileoverview Background Service Worker Facade - Minimal Public API
- *
- * This facade provides a clean, minimal public API for the extension.
- * Direct use of internal modules (communication/, state-manager/, polling/)
- * should go through initialization in init.ts, not through the facade.
- *
- * Main modules:
- * - background/index.ts: Core state and batchers
- * - background/init.ts: Extension startup
- * - background/communication.ts: Server communication (internal)
- * - background/state-manager.ts: State management (internal)
- * - background/polling.ts: Polling loops (internal)
+ * Purpose: Owns background.ts runtime behavior and integration logic.
+ * Docs: docs/features/feature/interact-explore/index.md
+ * Docs: docs/features/feature/analyze-tool/index.md
  */
 export { MEMORY_SOFT_LIMIT, MEMORY_HARD_LIMIT, MEMORY_CHECK_INTERVAL_MS, MEMORY_AVG_LOG_ENTRY_SIZE, MEMORY_AVG_WS_EVENT_SIZE, MEMORY_AVG_NETWORK_BODY_SIZE, MEMORY_AVG_ACTION_SIZE } from './background/state-manager';
 export { RATE_LIMIT_CONFIG } from './background/communication';

@@ -70,7 +70,7 @@ var domPrimitiveActions = map[string]bool{
 	"click": true, "type": true, "select": true, "check": true,
 	"get_text": true, "get_value": true, "get_attribute": true,
 	"set_attribute": true, "focus": true, "scroll_to": true,
-	"wait_for": true, "key_press": true,
+	"wait_for": true, "key_press": true, "paste": true,
 }
 
 // recordAIAction records an AI-driven action to the enhanced actions buffer.
@@ -631,6 +631,7 @@ var domActionRequiredParams = map[string]struct {
 	retry   string
 }{
 	"type":          {"text", "Required parameter 'text' is missing for type action", "Add the 'text' parameter with the text to type"},
+	"paste":         {"text", "Required parameter 'text' is missing for paste action", "Add the 'text' parameter with the text to paste"},
 	"select":        {"value", "Required parameter 'value' is missing for select action", "Add the 'value' parameter with the option value to select"},
 	"get_attribute": {"name", "Required parameter 'name' is missing for get_attribute action", "Add the 'name' parameter with the attribute name"},
 	"set_attribute": {"name", "Required parameter 'name' is missing for set_attribute action", "Add the 'name' parameter with the attribute name"},

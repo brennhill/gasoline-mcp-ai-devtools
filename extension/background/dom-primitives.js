@@ -1,6 +1,9 @@
-// dom-primitives.ts — Pre-compiled DOM interaction functions for chrome.scripting.executeScript.
-// These bypass CSP restrictions because they use the `func` parameter (no eval/new Function).
-// Each function MUST be self-contained — no closures over external variables.
+/**
+ * Purpose: Handles extension background coordination and message routing.
+ * Docs: docs/features/feature/analyze-tool/index.md
+ * Docs: docs/features/feature/interact-explore/index.md
+ * Docs: docs/features/feature/observe/index.md
+ */
 /**
  * Single self-contained function for all DOM primitives.
  * Passed to chrome.scripting.executeScript({ func: domPrimitive, args: [...] }).
@@ -274,8 +277,18 @@ export function domPrimitive(action, selector, options) {
                             selection.deleteFromDocument();
                         }
                     }
-                    document.execCommand('insertText', false, text);
-                    return { success: true, action, selector, value: el.textContent };
+                    // Split on newlines — each \n becomes an insertParagraph command
+                    const lines = text.split('\n');
+                    for (let i = 0; i < lines.length; i++) {
+                        const line = lines[i];
+                        if (i > 0) {
+                            document.execCommand('insertParagraph', false);
+                        }
+                        if (line.length > 0) {
+                            document.execCommand('insertText', false, line);
+                        }
+                    }
+                    return { success: true, action, selector, value: el.innerText };
                 }
                 if (!(el instanceof HTMLInputElement) && !(el instanceof HTMLTextAreaElement)) {
                     return {
@@ -341,7 +354,8 @@ export function domPrimitive(action, selector, options) {
             });
         }
         case 'get_text': {
-            return { success: true, action, selector, value: el.textContent };
+            const text = el instanceof HTMLElement ? el.innerText : el.textContent;
+            return { success: true, action, selector, value: text };
         }
         case 'get_value': {
             if (!('value' in el)) {
@@ -384,6 +398,33 @@ export function domPrimitive(action, selector, options) {
         case 'wait_for': {
             // Already found — return immediately
             return { success: true, action, selector, value: el.tagName.toLowerCase() };
+        }
+        case 'paste': {
+            return withMutationTracking(() => {
+                if (!(el instanceof HTMLElement)) {
+                    return {
+                        success: false,
+                        action,
+                        selector,
+                        error: 'not_interactive',
+                        message: `Element is not an HTMLElement: ${el.tagName}`
+                    };
+                }
+                el.focus();
+                if (options.clear) {
+                    const selection = document.getSelection();
+                    if (selection) {
+                        selection.selectAllChildren(el);
+                        selection.deleteFromDocument();
+                    }
+                }
+                const pasteText = options.text || '';
+                const dt = new DataTransfer();
+                dt.setData('text/plain', pasteText);
+                const event = new ClipboardEvent('paste', { clipboardData: dt, bubbles: true, cancelable: true });
+                el.dispatchEvent(event);
+                return { success: true, action, selector, value: el.innerText };
+            });
         }
         case 'key_press': {
             return withMutationTracking(() => {

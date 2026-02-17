@@ -1,4 +1,10 @@
 /**
+ * Purpose: Handles extension background coordination and message routing.
+ * Docs: docs/features/feature/analyze-tool/index.md
+ * Docs: docs/features/feature/interact-explore/index.md
+ * Docs: docs/features/feature/observe/index.md
+ */
+/**
  * @fileoverview Server Communication - HTTP functions for sending data to
  * the Gasoline server.
  */

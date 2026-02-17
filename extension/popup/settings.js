@@ -1,6 +1,6 @@
 /**
- * @fileoverview Settings Module
- * Handles log level, WebSocket mode, and clear logs functionality
+ * Purpose: Owns settings.ts runtime behavior and integration logic.
+ * Docs: docs/features/feature/observe/index.md
  */
 /**
  * Handle WebSocket mode change
