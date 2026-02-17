@@ -1279,6 +1279,128 @@ func TestCommandResult_EffectiveContextSurfaced(t *testing.T) {
 	}
 }
 
+// ============================================
+// Issue #92 follow-up: queued=false on non-queued responses
+// ============================================
+
+func TestCommandResult_CompleteHasQueuedFalse(t *testing.T) {
+	env := newInteractTestEnv(t)
+	env.capture.SetPilotEnabled(true)
+
+	result, _ := env.callInteract(t, `{"action":"click","selector":"#btn","background":true}`)
+	var resultData map[string]any
+	_ = json.Unmarshal([]byte(extractJSON(result.Content[0].Text)), &resultData)
+	corrID := resultData["correlation_id"].(string)
+
+	env.capture.CompleteCommand(corrID, json.RawMessage(`{"success":true}`), "")
+
+	req := JSONRPCRequest{JSONRPC: "2.0", ID: 2}
+	args := json.RawMessage(`{"correlation_id":"` + corrID + `"}`)
+	resp := env.handler.toolObserveCommandResult(req, args)
+
+	var observeResult MCPToolResult
+	_ = json.Unmarshal(resp.Result, &observeResult)
+
+	var responseData map[string]any
+	if err := json.Unmarshal([]byte(extractJSON(observeResult.Content[0].Text)), &responseData); err != nil {
+		t.Fatalf("Failed to parse response JSON: %v", err)
+	}
+
+	if queued, ok := responseData["queued"].(bool); !ok || queued {
+		t.Fatalf("complete command should have queued=false, got %v", responseData["queued"])
+	}
+}
+
+// ============================================
+// Issue #92 follow-up: final=true on expired/timeout
+// ============================================
+
+func TestCommandResult_ExpiredHasFinalTrue(t *testing.T) {
+	env := newInteractTestEnv(t)
+	env.capture.SetPilotEnabled(true)
+
+	result, _ := env.callInteract(t, `{"action":"click","selector":"#btn","background":true}`)
+	var resultData map[string]any
+	_ = json.Unmarshal([]byte(extractJSON(result.Content[0].Text)), &resultData)
+	corrID := resultData["correlation_id"].(string)
+
+	env.capture.ExpireCommand(corrID)
+
+	req := JSONRPCRequest{JSONRPC: "2.0", ID: 2}
+	args := json.RawMessage(`{"correlation_id":"` + corrID + `"}`)
+	resp := env.handler.toolObserveCommandResult(req, args)
+
+	var observeResult MCPToolResult
+	_ = json.Unmarshal(resp.Result, &observeResult)
+
+	var responseData map[string]any
+	if err := json.Unmarshal([]byte(extractJSON(observeResult.Content[0].Text)), &responseData); err != nil {
+		t.Fatalf("Failed to parse response JSON: %v", err)
+	}
+
+	finalVal, ok := responseData["final"].(bool)
+	if !ok || !finalVal {
+		t.Fatalf("expired command should have final=true, got %v", responseData["final"])
+	}
+	if queued, ok := responseData["queued"].(bool); !ok || queued {
+		t.Fatalf("expired command should have queued=false, got %v", responseData["queued"])
+	}
+}
+
+func TestCommandResult_NotFoundHasFinalTrue(t *testing.T) {
+	env := newInteractTestEnv(t)
+
+	req := JSONRPCRequest{JSONRPC: "2.0", ID: 2}
+	args := json.RawMessage(`{"correlation_id":"missing_corr_123"}`)
+	resp := env.handler.toolObserveCommandResult(req, args)
+
+	var observeResult MCPToolResult
+	if err := json.Unmarshal(resp.Result, &observeResult); err != nil {
+		t.Fatalf("Failed to parse result: %v", err)
+	}
+	if !observeResult.IsError {
+		t.Fatal("missing command should return isError=true")
+	}
+
+	var responseData map[string]any
+	if err := json.Unmarshal([]byte(extractJSON(observeResult.Content[0].Text)), &responseData); err != nil {
+		t.Fatalf("Failed to parse response JSON: %v", err)
+	}
+	if responseData["error"] != "no_data" {
+		t.Fatalf("missing command should return error=no_data, got %v", responseData["error"])
+	}
+	if finalVal, ok := responseData["final"].(bool); !ok || !finalVal {
+		t.Fatalf("missing command should have final=true, got %v", responseData["final"])
+	}
+}
+
+func TestCommandResult_AnnotationNotFoundHasFinalTrue(t *testing.T) {
+	env := newInteractTestEnv(t)
+
+	req := JSONRPCRequest{JSONRPC: "2.0", ID: 2}
+	args := json.RawMessage(`{"correlation_id":"ann_missing_123"}`)
+	resp := env.handler.toolObserveCommandResult(req, args)
+
+	var observeResult MCPToolResult
+	if err := json.Unmarshal(resp.Result, &observeResult); err != nil {
+		t.Fatalf("Failed to parse result: %v", err)
+	}
+	if !observeResult.IsError {
+		t.Fatal("missing annotation command should return isError=true")
+	}
+
+	var responseData map[string]any
+	if err := json.Unmarshal([]byte(extractJSON(observeResult.Content[0].Text)), &responseData); err != nil {
+		t.Fatalf("Failed to parse response JSON: %v", err)
+	}
+	if responseData["error"] != "no_data" {
+		t.Fatalf("missing annotation command should return error=no_data, got %v", responseData["error"])
+	}
+	if finalVal, ok := responseData["final"].(bool); !ok || !finalVal {
+		t.Fatalf("missing annotation command should have final=true, got %v", responseData["final"])
+	}
+}
+
 func TestCommandResult_ExpiredIncludesDiagnosticHint(t *testing.T) {
 	env := newInteractTestEnv(t)
 	env.capture.SetPilotEnabled(true)
