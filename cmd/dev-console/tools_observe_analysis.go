@@ -689,6 +689,7 @@ func (h *ToolHandler) formatCommandResult(req JSONRPCRequest, cmd queries.Comman
 			ErrExtTimeout,
 			fmt.Sprintf("Command %s expired before the extension could execute it. Error: %s", corrID, cmd.Error),
 			"The browser extension may be disconnected or the page is not active. Check observe with what='pilot' to verify extension status, then retry the command.",
+			withFinal(true),
 			h.diagnosticHint(),
 		)}
 	case "timeout":
@@ -696,6 +697,7 @@ func (h *ToolHandler) formatCommandResult(req JSONRPCRequest, cmd queries.Comman
 			ErrExtTimeout,
 			fmt.Sprintf("Command %s timed out waiting for the extension to respond. Error: %s", corrID, cmd.Error),
 			"The command took too long. The page may be unresponsive or the action is stuck. Try refreshing the page with interact action='refresh', then retry.",
+			withFinal(true),
 			h.diagnosticHint(),
 		)}
 	default:

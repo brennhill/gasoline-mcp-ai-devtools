@@ -1233,6 +1233,75 @@ func TestCommandResult_ErrorHasFinalTrue(t *testing.T) {
 	}
 }
 
+func TestCommandResult_ExpiredHasFinalTrue(t *testing.T) {
+	env := newInteractTestEnv(t)
+	env.capture.SetPilotEnabled(true)
+
+	result, _ := env.callInteract(t, `{"action":"click","selector":"#btn","background":true}`)
+	var resultData map[string]any
+	_ = json.Unmarshal([]byte(extractJSON(result.Content[0].Text)), &resultData)
+	corrID := resultData["correlation_id"].(string)
+
+	env.capture.ExpireCommand(corrID)
+
+	req := JSONRPCRequest{JSONRPC: "2.0", ID: 2}
+	args := json.RawMessage(`{"correlation_id":"` + corrID + `"}`)
+	resp := env.handler.toolObserveCommandResult(req, args)
+
+	var observeResult MCPToolResult
+	_ = json.Unmarshal(resp.Result, &observeResult)
+	if !observeResult.IsError {
+		t.Fatal("expired command should return isError=true")
+	}
+
+	var responseData map[string]any
+	if err := json.Unmarshal([]byte(extractJSON(observeResult.Content[0].Text)), &responseData); err != nil {
+		t.Fatalf("Failed to parse response JSON: %v", err)
+	}
+
+	finalVal, ok := responseData["final"].(bool)
+	if !ok || !finalVal {
+		t.Fatalf("expired command should have final=true, got %v", responseData["final"])
+	}
+}
+
+func TestCommandResult_TimeoutHasFinalTrue(t *testing.T) {
+	env := newInteractTestEnv(t)
+	env.capture.SetPilotEnabled(true)
+
+	result, _ := env.callInteract(t, `{"action":"click","selector":"#btn","background":true}`)
+	var resultData map[string]any
+	_ = json.Unmarshal([]byte(extractJSON(result.Content[0].Text)), &resultData)
+	corrID := resultData["correlation_id"].(string)
+
+	cmd, found := env.capture.GetCommandResult(corrID)
+	if !found || cmd == nil {
+		t.Fatal("queued command not found")
+	}
+	cmd.Status = "timeout"
+	cmd.Error = "Command timed out waiting for extension response"
+
+	req := JSONRPCRequest{JSONRPC: "2.0", ID: 2}
+	args := json.RawMessage(`{"correlation_id":"` + corrID + `"}`)
+	resp := env.handler.toolObserveCommandResult(req, args)
+
+	var observeResult MCPToolResult
+	_ = json.Unmarshal(resp.Result, &observeResult)
+	if !observeResult.IsError {
+		t.Fatal("timeout command should return isError=true")
+	}
+
+	var responseData map[string]any
+	if err := json.Unmarshal([]byte(extractJSON(observeResult.Content[0].Text)), &responseData); err != nil {
+		t.Fatalf("Failed to parse response JSON: %v", err)
+	}
+
+	finalVal, ok := responseData["final"].(bool)
+	if !ok || !finalVal {
+		t.Fatalf("timeout command should have final=true, got %v", responseData["final"])
+	}
+}
+
 // ============================================
 // Issue #91: effective_tab_id and effective_url surfaced
 // ============================================

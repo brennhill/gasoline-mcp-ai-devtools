@@ -41,6 +41,7 @@ type StructuredError struct {
 	Error   string `json:"error"`
 	Message string `json:"message"`
 	Retry   string `json:"retry"`
+	Final   bool   `json:"final,omitempty"`
 	Param   string `json:"param,omitempty"`
 	Hint    string `json:"hint,omitempty"`
 }
@@ -76,6 +77,11 @@ func withParam(p string) func(*StructuredError) {
 // withHint is an option function to add hint field to StructuredError.
 func withHint(h string) func(*StructuredError) {
 	return func(se *StructuredError) { se.Hint = h }
+}
+
+// withFinal marks the response as terminal/non-terminal for async command flows.
+func withFinal(final bool) func(*StructuredError) {
+	return func(se *StructuredError) { se.Final = final }
 }
 
 // diagnosticHint returns a snapshot of system state for inclusion in error hints.
