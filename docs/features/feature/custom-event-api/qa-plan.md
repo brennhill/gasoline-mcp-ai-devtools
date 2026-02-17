@@ -5,6 +5,9 @@ ai-priority: high
 tags: [v7, testing]
 relates-to: [product-spec.md, tech-spec.md]
 last-verified: 2026-01-31
+doc_type: qa-plan
+feature_id: feature-custom-event-api
+last_reviewed: 2026-02-16
 ---
 
 # Custom Event API — QA Plan

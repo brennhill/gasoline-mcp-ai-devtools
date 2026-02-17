@@ -1,6 +1,8 @@
 ---
 feature: analyze-tool
 type: review
+status: reference
+last_reviewed: 2026-02-16
 ---
 
 # Spec Review: `analyze` Tool

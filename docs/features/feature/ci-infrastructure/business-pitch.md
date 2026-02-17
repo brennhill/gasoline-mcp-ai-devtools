@@ -2,6 +2,7 @@
 feature: Gasoline CI Infrastructure
 status: proposed
 tier: v6.0 Wave 1 (Core Thesis)
+last_reviewed: 2026-02-16
 ---
 
 # Business Pitch: Gasoline CI Infrastructure

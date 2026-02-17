@@ -1,3 +1,9 @@
+---
+doc_type: legacy_doc
+status: reference
+last_reviewed: 2026-02-16
+---
+
 # Gasoline MCP Roadmap
 
 This document outlines the planned features and architectural improvements for Gasoline MCP.

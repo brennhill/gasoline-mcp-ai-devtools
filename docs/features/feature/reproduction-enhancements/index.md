@@ -1,0 +1,35 @@
+---
+doc_type: feature_index
+feature_id: feature-reproduction-enhancements
+status: shipped
+feature_type: feature
+owners: []
+last_reviewed: 2026-02-16
+code_paths: []
+test_paths: []
+---
+
+# Reproduction Enhancements
+
+## TL;DR
+
+- Status: shipped
+- Tool: generate
+- Mode/Action: reproduction, test
+- Location: `docs/features/feature/reproduction-enhancements`
+
+## Specs
+
+- Product Spec: [product-spec.md](./product-spec.md)
+- Tech Spec: [tech-spec.md](./tech-spec.md)
+- QA Plan: [qa-plan.md](./qa-plan.md)
+
+## Requirement IDs
+
+- FEATURE_REPRODUCTION_ENHANCEMENTS_001
+- FEATURE_REPRODUCTION_ENHANCEMENTS_002
+- FEATURE_REPRODUCTION_ENHANCEMENTS_003
+
+## Code and Tests
+
+Add concrete implementation and test links here as this feature evolves.

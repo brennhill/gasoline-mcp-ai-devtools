@@ -1,3 +1,9 @@
+---
+doc_type: legacy_doc
+status: reference
+last_reviewed: 2026-02-16
+---
+
 # MCP Client Configuration Locations
 
 Quick reference for updating Gasoline MCP configuration across all supported AI coding assistants.

@@ -2,6 +2,8 @@
 feature: test-generation
 type: competitive-analysis
 competitor: TestSprite
+status: reference
+last_reviewed: 2026-02-16
 ---
 
 # Why Gasoline Beats TestSprite

@@ -1,3 +1,9 @@
+---
+doc_type: legacy_doc
+status: reference
+last_reviewed: 2026-02-16
+---
+
 # Tech Spec: Auto-Summarizing Navigation
 
 **Version:** 2.0

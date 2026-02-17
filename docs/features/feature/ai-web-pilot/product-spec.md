@@ -4,6 +4,9 @@ status: shipped
 tool: interact
 mode: navigate, execute_js, highlight
 version: 5.0.0
+doc_type: product-spec
+feature_id: feature-ai-web-pilot
+last_reviewed: 2026-02-16
 ---
 # Product Spec: AI Web Pilot
 

@@ -1,6 +1,9 @@
 ---
 feature: self-healing-tests
 status: proposed
+doc_type: tech-spec
+feature_id: feature-self-healing-tests
+last_reviewed: 2026-02-16
 ---
 
 # Tech Spec: Self-Healing Tests

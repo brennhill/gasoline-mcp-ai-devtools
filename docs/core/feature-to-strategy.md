@@ -1,3 +1,9 @@
+---
+doc_type: legacy_doc
+status: reference
+last_reviewed: 2026-02-16
+---
+
 # Feature-to-Strategy Map
 
 **Quick lookup**: How does each feature align with product strategy and competitive positioning?

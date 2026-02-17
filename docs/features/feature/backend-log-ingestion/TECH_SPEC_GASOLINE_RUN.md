@@ -4,6 +4,7 @@ priority: tier-1
 phase: v5.4-foundation
 relates-to: [PRODUCT_SPEC.md]
 last-updated: 2026-01-31
+last_reviewed: 2026-02-16
 ---
 
 # Backend Log Ingestion: gasoline-run Wrapper — Technical Specification

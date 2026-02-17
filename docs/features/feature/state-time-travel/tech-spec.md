@@ -1,6 +1,9 @@
 ---
 feature: State Time-Travel
 status: proposed
+doc_type: tech-spec
+feature_id: feature-state-time-travel
+last_reviewed: 2026-02-16
 ---
 
 # Tech Spec: State Time-Travel

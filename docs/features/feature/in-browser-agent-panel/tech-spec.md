@@ -5,6 +5,9 @@ ai-priority: high
 tags: [implementation, architecture, redaction, security]
 relates-to: [product-spec.md, runtime-spec-go-orchestrator.md, ../../../architecture/ADR-003-agent-panel-redaction-first.md]
 last-verified: 2026-02-16
+doc_type: tech-spec
+feature_id: feature-in-browser-agent-panel
+last_reviewed: 2026-02-16
 ---
 
 # Technical Spec: In-Browser Agent Panel (Redaction-First)

@@ -1,3 +1,9 @@
+---
+doc_type: product-spec
+feature_id: lifecycle-monitoring
+last_reviewed: 2026-02-16
+---
+
 # Product Spec: Comprehensive Lifecycle Monitoring
 
 ## Problem

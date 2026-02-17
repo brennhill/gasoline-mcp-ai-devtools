@@ -1,6 +1,7 @@
 ---
 feature: test-generation
 status: proposed
+last_reviewed: 2026-02-16
 ---
 
 # Test Generation — Migration Plan

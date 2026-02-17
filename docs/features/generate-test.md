@@ -1,3 +1,9 @@
+---
+doc_type: legacy_doc
+status: reference
+last_reviewed: 2026-02-16
+---
+
 # Generate Test: Turn Browser Sessions into Regression Tests
 
 ## Your AI assistant watched you use the app. Now it writes the test.

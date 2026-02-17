@@ -1,3 +1,9 @@
+---
+doc_type: legacy_doc
+status: reference
+last_reviewed: 2026-02-16
+---
+
 # Gasoline Performance Benchmarks
 
 **Generated:** 2026-02-06T14:00:00Z

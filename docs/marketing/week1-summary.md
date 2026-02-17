@@ -1,3 +1,9 @@
+---
+doc_type: legacy_doc
+status: reference
+last_reviewed: 2026-02-16
+---
+
 # Week 1 Marketing Execution Summary
 
 **Week:** 2026-02-09 to 2026-02-15  

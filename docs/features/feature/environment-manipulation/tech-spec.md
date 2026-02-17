@@ -5,6 +5,9 @@ ai-priority: medium
 tags: [v7, environment-config, infrastructure]
 relates-to: [product-spec.md, ../backend-control/tech-spec.md]
 last-verified: 2026-01-31
+doc_type: tech-spec
+feature_id: feature-environment-manipulation
+last_reviewed: 2026-02-16
 ---
 
 # Environment Manipulation — Technical Specification

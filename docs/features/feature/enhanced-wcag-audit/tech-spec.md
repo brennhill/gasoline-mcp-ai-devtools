@@ -1,6 +1,9 @@
 ---
 feature: enhanced-wcag-audit
 status: proposed
+doc_type: tech-spec
+feature_id: feature-enhanced-wcag-audit
+last_reviewed: 2026-02-16
 ---
 
 # Tech Spec: Enhanced WCAG Audit

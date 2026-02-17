@@ -1,6 +1,9 @@
 ---
 feature: Visual-Semantic Bridge
 status: proposed
+doc_type: tech-spec
+feature_id: feature-visual-semantic-bridge
+last_reviewed: 2026-02-16
 ---
 
 # Tech Spec: Visual-Semantic Bridge

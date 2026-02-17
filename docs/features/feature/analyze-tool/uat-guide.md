@@ -1,5 +1,7 @@
 ---
 feature: analyze-tool
+status: reference
+last_reviewed: 2026-02-16
 ---
 
 # `analyze` Tool — User Acceptance Testing Guide

@@ -1,5 +1,8 @@
 ---
 feature: tool-allowlisting
+doc_type: qa-plan
+feature_id: feature-tool-allowlisting
+last_reviewed: 2026-02-16
 ---
 
 # QA Plan: Tool Allowlisting

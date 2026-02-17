@@ -5,6 +5,9 @@ ai-priority: high
 tags: [v7, analysis, debugging]
 relates-to: [product-spec.md, ../backend-log-streaming/tech-spec.md, ../backend-control/tech-spec.md]
 last-verified: 2026-01-31
+doc_type: tech-spec
+feature_id: feature-timeline-search
+last_reviewed: 2026-02-16
 ---
 
 # Timeline & Search — Technical Specification

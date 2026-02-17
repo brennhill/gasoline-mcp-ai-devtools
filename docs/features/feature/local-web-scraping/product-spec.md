@@ -4,6 +4,9 @@ status: proposed
 tool: interact
 mode: scraping
 version: v6.2
+doc_type: product-spec
+feature_id: feature-local-web-scraping
+last_reviewed: 2026-02-16
 ---
 
 # Product Spec: Local Web Scraping

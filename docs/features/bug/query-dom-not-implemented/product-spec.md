@@ -4,6 +4,9 @@ status: in-progress
 tool: generate
 mode: dom
 version: 5.2.0
+doc_type: product-spec
+feature_id: bug-query-dom-not-implemented
+last_reviewed: 2026-02-16
 ---
 
 # Product Spec: Query DOM Not Implemented (Bug Fix)

@@ -1,3 +1,9 @@
+---
+doc_type: legacy_doc
+status: reference
+last_reviewed: 2026-02-16
+---
+
 # ADR-005: Auto-Summarizing Navigation
 
 - **Status**: Proposed

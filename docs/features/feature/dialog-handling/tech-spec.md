@@ -1,6 +1,9 @@
 ---
 feature: dialog-handling
 status: proposed
+doc_type: tech-spec
+feature_id: feature-dialog-handling
+last_reviewed: 2026-02-16
 ---
 
 # Tech Spec: Dialog Handling

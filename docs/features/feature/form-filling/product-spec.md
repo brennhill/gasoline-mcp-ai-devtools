@@ -4,6 +4,9 @@ status: proposed
 tool: interact
 mode: execute_js
 version: v6.2
+doc_type: product-spec
+feature_id: feature-form-filling
+last_reviewed: 2026-02-16
 ---
 
 # Product Spec: Form Filling

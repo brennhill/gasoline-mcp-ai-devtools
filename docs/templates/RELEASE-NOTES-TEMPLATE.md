@@ -2,6 +2,7 @@
 version: X.Y.Z
 date: YYYY-MM-DD
 status: draft           # draft | published
+last_reviewed: 2026-02-16
 ---
 
 # Release Notes — vX.Y.Z

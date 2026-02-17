@@ -5,6 +5,9 @@ ai-priority: medium
 tags: [testing, qa]
 relates-to: [product-spec.md, tech-spec.md]
 last-verified: 2026-01-31
+doc_type: qa-plan
+feature_id: feature-ai-web-pilot
+last_reviewed: 2026-02-16
 ---
 
 # QA Plan: AI Web Pilot

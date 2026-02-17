@@ -4,6 +4,9 @@ status: proposed
 tool: configure
 mode: dom_fingerprint
 version: v6.1
+doc_type: product-spec
+feature_id: feature-dom-fingerprinting
+last_reviewed: 2026-02-16
 ---
 
 # Product Spec: DOM Fingerprinting

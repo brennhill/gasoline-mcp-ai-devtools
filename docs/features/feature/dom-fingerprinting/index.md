@@ -1,0 +1,35 @@
+---
+doc_type: feature_index
+feature_id: feature-dom-fingerprinting
+status: proposed
+feature_type: feature
+owners: []
+last_reviewed: 2026-02-16
+code_paths: []
+test_paths: []
+---
+
+# Dom Fingerprinting
+
+## TL;DR
+
+- Status: proposed
+- Tool: configure
+- Mode/Action: dom_fingerprint
+- Location: `docs/features/feature/dom-fingerprinting`
+
+## Specs
+
+- Product Spec: [product-spec.md](./product-spec.md)
+- Tech Spec: [tech-spec.md](./tech-spec.md)
+- QA Plan: [qa-plan.md](./qa-plan.md)
+
+## Requirement IDs
+
+- FEATURE_DOM_FINGERPRINTING_001
+- FEATURE_DOM_FINGERPRINTING_002
+- FEATURE_DOM_FINGERPRINTING_003
+
+## Code and Tests
+
+Add concrete implementation and test links here as this feature evolves.

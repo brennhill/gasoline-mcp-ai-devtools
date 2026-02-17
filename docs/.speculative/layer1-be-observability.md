@@ -3,6 +3,7 @@ status: draft
 scope: layer-1-backend-observability
 relates-to: [target-architecture.md, 360-observability-architecture.md]
 last-updated: 2026-01-31
+last_reviewed: 2026-02-16
 ---
 
 # Layer 1: Backend Observability

@@ -5,6 +5,9 @@ ai-priority: medium
 tags: [v7, environment-config, hands, infrastructure]
 relates-to: [../backend-control/product-spec.md, ../code-navigation-modification/product-spec.md]
 last-verified: 2026-01-31
+doc_type: product-spec
+feature_id: feature-environment-manipulation
+last_reviewed: 2026-02-16
 ---
 
 # Environment Manipulation

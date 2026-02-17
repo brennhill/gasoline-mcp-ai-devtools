@@ -7,6 +7,9 @@ mode: multi-mode (orchestration pattern)
 authors: []
 created: 2026-01-28
 updated: 2026-01-28
+doc_type: product-spec
+feature_id: feature-pr-preview-exploration
+last_reviewed: 2026-02-16
 ---
 
 # PR Preview Exploration

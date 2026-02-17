@@ -5,6 +5,9 @@ ai-priority: medium
 tags: [feature]
 relates-to: [tech-spec.md, qa-plan.md]
 last-verified: 2026-01-31
+doc_type: product-spec
+feature_id: feature-pagination
+last_reviewed: 2026-02-16
 ---
 
 # Pagination for Large Datasets - Product Spec
