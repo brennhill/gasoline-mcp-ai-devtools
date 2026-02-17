@@ -1,6 +1,9 @@
 ---
 feature: deployment-watchdog
 status: proposed
+doc_type: tech-spec
+feature_id: feature-deployment-watchdog
+last_reviewed: 2026-02-16
 ---
 
 # Tech Spec: Deployment Watchdog

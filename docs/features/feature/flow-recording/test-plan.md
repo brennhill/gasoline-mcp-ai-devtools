@@ -5,6 +5,7 @@ tool: [interact, observe, configure]
 mode: [record_start, record_stop, playback]
 version: v6.0
 last-updated: 2026-02-09
+last_reviewed: 2026-02-16
 ---
 
 # Flow Recording & Playback — Test Plan

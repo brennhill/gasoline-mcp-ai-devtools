@@ -1,7 +1,8 @@
 /**
- * @fileoverview Source Maps and Stack Trace Resolution
- * Handles source map fetching and caching, stack frame parsing,
- * VLQ decoding, and stack trace resolution for better error messages.
+ * Purpose: Handles extension background coordination and message routing.
+ * Docs: docs/features/feature/analyze-tool/index.md
+ * Docs: docs/features/feature/interact-explore/index.md
+ * Docs: docs/features/feature/observe/index.md
  */
 import type { LogEntry, ParsedSourceMap, ContextWarning } from '../types';
 /** Parsed stack frame */

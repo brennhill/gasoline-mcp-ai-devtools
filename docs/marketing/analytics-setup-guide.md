@@ -1,3 +1,9 @@
+---
+doc_type: legacy_doc
+status: reference
+last_reviewed: 2026-02-16
+---
+
 # Analytics Setup Guide for Gasoline MCP
 
 This guide will help you set up analytics tracking for cookwithgasoline.com to measure marketing effectiveness and user behavior.

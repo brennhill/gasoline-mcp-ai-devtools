@@ -1,3 +1,9 @@
+---
+doc_type: legacy_doc
+status: reference
+last_reviewed: 2026-02-16
+---
+
 # Autonomous Test Repair Mechanics
 
 **Status:** Design Document for v6.0 Wave 1 (Self-Healing Tests feature) — **Minimal MVP**

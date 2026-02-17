@@ -7,6 +7,9 @@ mode: observe(errors, logs, network_waterfall, network_bodies, websocket_events,
 authors: []
 created: 2026-01-28
 updated: 2026-01-28
+doc_type: product-spec
+feature_id: feature-gasoline-ci
+last_reviewed: 2026-02-16
 ---
 
 # Gasoline CI Infrastructure (v6)

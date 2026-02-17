@@ -1,4 +1,11 @@
 /**
+ * Purpose: Handles extension background coordination and message routing.
+ * Docs: docs/features/feature/analyze-tool/index.md
+ * Docs: docs/features/feature/interact-explore/index.md
+ * Docs: docs/features/feature/observe/index.md
+ */
+
+/**
  * @fileoverview Batchers - Batcher creation and circuit breaker integration for
  * debounced batching of server requests.
  */

@@ -1,4 +1,10 @@
 /**
+ * Purpose: Owns inject.ts runtime behavior and integration logic.
+ * Docs: docs/features/feature/interact-explore/index.md
+ * Docs: docs/features/feature/analyze-tool/index.md
+ */
+
+/**
  * @fileoverview inject.ts - Page-level capture script for browser telemetry.
  * Runs in the page context (not extension sandbox) to intercept console methods,
  * fetch/XHR requests, WebSocket connections, errors, and user actions. Posts

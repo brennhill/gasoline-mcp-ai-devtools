@@ -4,6 +4,9 @@ status: shipped
 tool: observe, generate, interact
 mode: test-automation, autonomous-repair
 version: v6.0
+doc_type: product-spec
+feature_id: feature-self-healing-tests
+last_reviewed: 2026-02-16
 ---
 
 # Product Spec: Self-Healing Tests

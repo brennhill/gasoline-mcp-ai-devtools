@@ -1,3 +1,6 @@
+// Purpose: Owns streaming.go runtime behavior and integration logic.
+// Docs: docs/features/feature/observe/index.md
+
 // streaming.go — Active context streaming via MCP notifications.
 // When enabled, significant browser events are pushed as MCP notifications
 // to stdout without requiring explicit tool calls. Provides configure_streaming

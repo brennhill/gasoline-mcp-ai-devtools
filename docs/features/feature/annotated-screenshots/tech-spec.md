@@ -1,6 +1,9 @@
 ---
 feature: annotated-screenshots
 status: proposed
+doc_type: tech-spec
+feature_id: feature-annotated-screenshots
+last_reviewed: 2026-02-16
 ---
 
 # Tech Spec: Annotated Screenshots

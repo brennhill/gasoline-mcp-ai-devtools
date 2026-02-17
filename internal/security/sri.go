@@ -1,3 +1,6 @@
+// Purpose: Owns sri.go runtime behavior and integration logic.
+// Docs: docs/features/feature/observe/index.md
+
 // sri.go — SRI Hash Generator (generate_sri) MCP tool.
 // Generates Subresource Integrity hashes for third-party scripts and stylesheets
 // observed in network traffic. Protects against CDN compromise by computing

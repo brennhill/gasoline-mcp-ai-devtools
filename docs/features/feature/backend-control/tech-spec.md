@@ -5,6 +5,9 @@ ai-priority: high
 tags: [v7, backend-integration, control]
 relates-to: [product-spec.md, ../backend-log-streaming/tech-spec.md, ../../core/architecture.md]
 last-verified: 2026-01-31
+doc_type: tech-spec
+feature_id: feature-backend-control
+last_reviewed: 2026-02-16
 ---
 
 # Backend Control — Technical Specification

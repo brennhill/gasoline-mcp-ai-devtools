@@ -1,3 +1,9 @@
+---
+doc_type: legacy_doc
+status: reference
+last_reviewed: 2026-02-16
+---
+
 # Codacy Issue Analysis - 2026-02-10 09:42:51
 
 ## Executive Summary

@@ -1,4 +1,8 @@
 /**
+ * Purpose: Provides shared runtime utilities used by extension and server workflows.
+ * Docs: docs/features/feature/observe/index.md
+ */
+/**
  * @fileoverview AI-preprocessed error enrichment pipeline.
  * Parses stack traces, resolves source maps, extracts code snippets,
  * detects UI frameworks (React/Vue/Svelte), captures state snapshots,

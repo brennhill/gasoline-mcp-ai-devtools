@@ -1,5 +1,8 @@
 ---
 feature: query-dom-not-implemented
+doc_type: qa-plan
+feature_id: bug-query-dom-not-implemented
+last_reviewed: 2026-02-16
 ---
 
 # QA Plan: Query DOM Not Implemented (Bug Fix)

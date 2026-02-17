@@ -5,6 +5,7 @@ phase: v6.0-sprint-1
 relates-to: [browser-extension-enhancement, normalized-event-schema]
 blocks: [query-service, checkpoint-system]
 last-updated: 2026-01-31
+last_reviewed: 2026-02-16
 ---
 
 # Ring Buffer Implementation — Technical Specification

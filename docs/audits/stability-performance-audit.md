@@ -1,3 +1,9 @@
+---
+doc_type: legacy_doc
+status: reference
+last_reviewed: 2026-02-16
+---
+
 # Gasoline MCP Server -- Stability & Performance Audit
 
 **Date:** 2026-02-14

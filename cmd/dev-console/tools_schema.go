@@ -1,3 +1,6 @@
+// Purpose: Owns tools_schema.go runtime behavior and integration logic.
+// Docs: docs/features/feature/observe/index.md
+
 // tools_schema.go — MCP tool schema definitions.
 // Descriptions are kept minimal to reduce token usage — detailed docs live in server
 // instructions and the gasoline://guide resource.
@@ -104,6 +107,14 @@ func (h *ToolHandler) ToolsList() []MCPTool {
 					"window_seconds": map[string]any{
 						"type":        "number",
 						"description": "error_bundles lookback seconds (default 3, max 10)",
+					},
+					"original_id": map[string]any{
+						"type":        "string",
+						"description": "Original recording ID (log_diff_report)",
+					},
+					"replay_id": map[string]any{
+						"type":        "string",
+						"description": "Replay recording ID (log_diff_report)",
 					},
 				},
 				"required": []string{"what"},
@@ -225,6 +236,15 @@ func (h *ToolHandler) ToolsList() []MCPTool {
 						"type":        "string",
 						"description": "Named session for multi-page annotation review (applies to annotations). Accumulates annotations across pages.",
 					},
+					"urls": map[string]any{
+						"type":        "array",
+						"description": "URLs to validate (link_validation)",
+						"items":       map[string]any{"type": "string"},
+					},
+					"file": map[string]any{
+						"type":        "string",
+						"description": "Session filename from draw_history results (draw_session)",
+					},
 				},
 				"required": []string{"what"},
 			},
@@ -338,6 +358,53 @@ func (h *ToolHandler) ToolsList() []MCPTool {
 					"session": map[string]any{
 						"type":        "string",
 						"description": "Named annotation session (applies to visual_test, annotation_report, annotation_issues)",
+					},
+					"context": map[string]any{
+						"type":        "string",
+						"description": "Test context (test_from_context)",
+						"enum":        []string{"error", "interaction", "regression"},
+					},
+					"action": map[string]any{
+						"type":        "string",
+						"description": "Action type (test_heal: analyze/repair/batch, test_classify: failure/batch)",
+					},
+					"test_file": map[string]any{
+						"type":        "string",
+						"description": "Test file path (test_heal analyze)",
+					},
+					"test_dir": map[string]any{
+						"type":        "string",
+						"description": "Test directory (test_heal batch)",
+					},
+					"broken_selectors": map[string]any{
+						"type":        "array",
+						"description": "Broken selectors (test_heal repair)",
+						"items":       map[string]any{"type": "string"},
+					},
+					"auto_apply": map[string]any{
+						"type":        "boolean",
+						"description": "Auto-apply high-confidence fixes (test_heal repair)",
+					},
+					"failure": map[string]any{
+						"type":        "object",
+						"description": "Single test failure (test_classify failure)",
+					},
+					"failures": map[string]any{
+						"type":        "array",
+						"description": "Multiple test failures (test_classify batch)",
+						"items":       map[string]any{"type": "object"},
+					},
+					"error_id": map[string]any{
+						"type":        "string",
+						"description": "Specific error ID (test_from_context error)",
+					},
+					"include_mocks": map[string]any{
+						"type":        "boolean",
+						"description": "Include network mocks (test_from_context)",
+					},
+					"output_format": map[string]any{
+						"type":        "string",
+						"description": "Output format: file or inline (test_from_context)",
 					},
 				},
 				"required": []string{"format"},
@@ -473,6 +540,14 @@ func (h *ToolHandler) ToolsList() []MCPTool {
 						"type":        "string",
 						"description": "Test boundary label",
 					},
+					"original_id": map[string]any{
+						"type":        "string",
+						"description": "Original recording ID (log_diff)",
+					},
+					"replay_id": map[string]any{
+						"type":        "string",
+						"description": "Replay recording ID (log_diff)",
+					},
 				},
 				"required": []string{"action"},
 			},
@@ -490,7 +565,7 @@ func (h *ToolHandler) ToolsList() []MCPTool {
 							"execute_js", "navigate", "refresh", "back", "forward", "new_tab", "screenshot",
 							"click", "type", "select", "check",
 							"get_text", "get_value", "get_attribute",
-							"set_attribute", "focus", "scroll_to", "wait_for", "key_press",
+							"set_attribute", "focus", "scroll_to", "wait_for", "key_press", "paste",
 							"list_interactive",
 							"record_start", "record_stop",
 							"upload", "draw_mode_start",

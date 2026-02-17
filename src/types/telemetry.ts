@@ -1,4 +1,9 @@
 /**
+ * Purpose: Owns telemetry.ts runtime behavior and integration logic.
+ * Docs: docs/features/feature/observe/index.md
+ */
+
+/**
  * @fileoverview Telemetry Data Types
  * Log entries, console logs, network errors, exceptions, and screenshots
  */

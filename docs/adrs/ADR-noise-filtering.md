@@ -1,3 +1,9 @@
+---
+doc_type: legacy_doc
+status: reference
+last_reviewed: 2026-02-16
+---
+
 # ADRs: Noise Filtering
 
 - [Noise Filtering Design Decisions](../../../ADR-spec-architecture-review-data-contracts.md)

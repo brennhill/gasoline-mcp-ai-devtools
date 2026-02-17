@@ -7,6 +7,9 @@ mode: (cross-cutting) errors, page, + configure screenshot_mode
 authors: []
 created: 2026-01-28
 updated: 2026-01-28
+doc_type: product-spec
+feature_id: feature-auto-paste-screenshots
+last_reviewed: 2026-02-16
 ---
 
 # Auto-Paste Screenshots to IDE

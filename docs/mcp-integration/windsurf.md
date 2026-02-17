@@ -9,6 +9,8 @@ header:
   excerpt: "Fuel Windsurf's AI with live browser data."
 toc: true
 toc_sticky: true
+status: reference
+last_reviewed: 2026-02-16
 ---
 
 ## <i class="fas fa-file-code"></i> Configuration

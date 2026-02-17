@@ -1,6 +1,9 @@
 ---
 feature: agentic-e2e-repair
 status: proposed
+doc_type: tech-spec
+feature_id: feature-agentic-e2e-repair
+last_reviewed: 2026-02-16
 ---
 
 # Tech Spec: Agentic E2E Repair

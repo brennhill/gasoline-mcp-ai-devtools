@@ -1,3 +1,6 @@
+// Purpose: Owns testgen_classify.go runtime behavior and integration logic.
+// Docs: docs/features/feature/test-generation/index.md
+
 // testgen_classify.go — Test failure classification and suggested fixes.
 package main
 

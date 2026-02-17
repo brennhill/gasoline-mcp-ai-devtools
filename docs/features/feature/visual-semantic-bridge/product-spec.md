@@ -4,6 +4,9 @@ status: proposed
 tool: observe
 mode: dom
 version: v6.1
+doc_type: product-spec
+feature_id: feature-visual-semantic-bridge
+last_reviewed: 2026-02-16
 ---
 
 # Product Spec: Visual-Semantic Bridge

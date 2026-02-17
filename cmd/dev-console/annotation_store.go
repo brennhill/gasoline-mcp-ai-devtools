@@ -1,3 +1,6 @@
+// Purpose: Owns annotation_store.go runtime behavior and integration logic.
+// Docs: docs/features/feature/observe/index.md
+
 // annotation_store.go — In-memory store for draw mode annotation sessions.
 // Stores annotation data and element details with TTL-based expiration.
 package main

@@ -1,3 +1,6 @@
+// Purpose: Owns http_debug_redaction.go runtime behavior and integration logic.
+// Docs: docs/features/feature/backend-log-streaming/index.md
+
 // http_debug_redaction.go — Sensitive data redaction for HTTP debug log entries.
 package capture
 

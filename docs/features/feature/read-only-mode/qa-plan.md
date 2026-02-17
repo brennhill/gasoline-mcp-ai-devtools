@@ -1,5 +1,8 @@
 ---
 feature: read-only-mode
+doc_type: qa-plan
+feature_id: feature-read-only-mode
+last_reviewed: 2026-02-16
 ---
 
 # QA Plan: Read-Only Mode

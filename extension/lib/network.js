@@ -1,7 +1,6 @@
 /**
- * @fileoverview Network waterfall and body capture.
- * Provides PerformanceResourceTiming parsing, pending request tracking,
- * fetch body capture with size limits, and sensitive header sanitization.
+ * Purpose: Provides shared runtime utilities used by extension and server workflows.
+ * Docs: docs/features/feature/backend-log-streaming/index.md
  */
 import { MAX_WATERFALL_ENTRIES, WATERFALL_TIME_WINDOW_MS, REQUEST_BODY_MAX, RESPONSE_BODY_MAX, BODY_READ_TIMEOUT_MS, SENSITIVE_HEADER_PATTERNS, BINARY_CONTENT_TYPES } from './constants.js';
 // =============================================================================

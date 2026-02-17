@@ -1,7 +1,6 @@
 /**
- * @fileoverview Utility Types for Gasoline Extension
- *
- * Generic utility types, type guards, and helper types used across the extension.
+ * Purpose: Owns utils.ts runtime behavior and integration logic.
+ * Docs: docs/features/feature/observe/index.md
  */
 // =============================================================================
 // TYPE GUARDS

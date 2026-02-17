@@ -1,7 +1,7 @@
 /**
- * @fileoverview Favicon Replacer - Visual indicator for tracked tabs
- * Replaces the page's favicon with the Gasoline flame icon when tab tracking is enabled.
- * Adds flickering animation when AI Pilot is active.
+ * Purpose: Handles content-script message relay between background and inject contexts.
+ * Docs: docs/features/feature/interact-explore/index.md
+ * Docs: docs/features/feature/query-dom/index.md
  */
 /**
  * Initialize favicon replacement.

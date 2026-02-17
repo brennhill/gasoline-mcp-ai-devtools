@@ -1,6 +1,7 @@
 ---
 feature: Version Checking & Update Notifications
 status: shipped
+last_reviewed: 2026-02-16
 ---
 
 # Tech Spec: Version Checking & Update Notifications

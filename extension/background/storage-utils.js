@@ -1,22 +1,8 @@
 /**
- * @fileoverview Storage Utilities - Wrapper functions for chrome.storage with support for both
- * persistent (local) and ephemeral (session) storage.
- *
- * Usage:
- * - Ephemeral state (resets on service worker restart): use session storage
- *   * trackedTabId, trackedTabUrl
- *   * debugMode (user preference is persistent, but cache resets on restart)
- *   * aiWebPilotEnabled cache
- *
- * - Persistent state (survives browser restart): use local storage
- *   * serverUrl (user setting)
- *   * logLevel (user preference)
- *   * screenshotOnError (user preference)
- *   * sourceMapEnabled (user preference)
- *   * state snapshots
- *
- * Note: chrome.storage.session only available in Chrome 102+
- * This module handles graceful degradation for older versions
+ * Purpose: Handles extension background coordination and message routing.
+ * Docs: docs/features/feature/analyze-tool/index.md
+ * Docs: docs/features/feature/interact-explore/index.md
+ * Docs: docs/features/feature/observe/index.md
  */
 // =============================================================================
 // FEATURE DETECTION

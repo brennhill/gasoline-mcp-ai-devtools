@@ -1,3 +1,6 @@
+// Purpose: Owns upload_security_unix.go runtime behavior and integration logic.
+// Docs: docs/features/feature/observe/index.md
+
 // upload_security_unix.go — Hard link detection for Unix platforms.
 //go:build !windows
 

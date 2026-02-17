@@ -1,3 +1,9 @@
+---
+doc_type: legacy_doc
+status: reference
+last_reviewed: 2026-02-16
+---
+
 # ADRs: Binary Format Detection
 
 Architectural decisions for the Binary Format Detection feature.

@@ -7,6 +7,9 @@ mode: a11y_tree
 authors: []
 created: 2026-01-28
 updated: 2026-01-28
+doc_type: product-spec
+feature_id: feature-a11y-tree-snapshots
+last_reviewed: 2026-02-16
 ---
 
 # A11y Tree Snapshots (Text-Based Page Representation)

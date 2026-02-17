@@ -1,7 +1,6 @@
 /**
- * @fileoverview WebSocket capture.
- * Wraps the WebSocket constructor to intercept lifecycle events and messages,
- * with adaptive sampling, schema detection, and truncation.
+ * Purpose: Provides shared runtime utilities used by extension and server workflows.
+ * Docs: docs/features/feature/backend-log-streaming/index.md
  */
 import type { WebSocketCaptureMode } from '../types/index';
 type WebSocketMessageData = string | ArrayBuffer | Blob;

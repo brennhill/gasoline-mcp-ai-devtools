@@ -1,3 +1,6 @@
+// Purpose: Owns cli_output.go runtime behavior and integration logic.
+// Docs: docs/features/feature/observe/index.md
+
 // cli_output.go — Output formatters for CLI mode: human, json, csv.
 package main
 

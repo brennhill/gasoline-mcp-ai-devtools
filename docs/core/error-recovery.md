@@ -1,3 +1,9 @@
+---
+doc_type: legacy_doc
+status: reference
+last_reviewed: 2026-02-16
+---
+
 # Error Recovery Strategy - Gasoline MCP
 
 **Version:** v5.8+

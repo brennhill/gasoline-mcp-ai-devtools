@@ -7,6 +7,9 @@ mode: playwright_fixture
 authors: []
 created: 2026-01-28
 updated: 2026-01-28
+doc_type: product-spec
+feature_id: feature-e2e-testing-integration
+last_reviewed: 2026-02-16
 ---
 
 # E2E Testing Integration (CI/CD)

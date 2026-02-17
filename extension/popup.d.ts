@@ -1,10 +1,6 @@
 /**
- * @fileoverview popup.ts - Extension popup UI showing connection status and controls.
- * Displays server connection state, entry count, error count, log level selector,
- * and log file path. Polls the background worker for status updates and provides
- * a clear-logs button. Shows troubleshooting hints when disconnected.
- * Design: Pure DOM manipulation, no framework. Communicates with background.js
- * via chrome.runtime.sendMessage for status queries and log-level changes.
+ * Purpose: Owns popup.ts runtime behavior and integration logic.
+ * Docs: docs/features/feature/observe/index.md
  */
 import { updateConnectionStatus } from './popup/status-display';
 import { handleClearLogs, resetClearConfirm } from './popup/settings';

@@ -5,6 +5,7 @@ tool: configure
 mode: noise_rule
 version: v5.8.1+
 last-updated: 2026-02-09
+last_reviewed: 2026-02-16
 ---
 
 # Noise Filtering — Test Plan

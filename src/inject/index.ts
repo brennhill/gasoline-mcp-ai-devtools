@@ -1,4 +1,10 @@
 /**
+ * Purpose: Executes in-page actions and query handlers within the page context.
+ * Docs: docs/features/feature/interact-explore/index.md
+ * Docs: docs/features/feature/query-dom/index.md
+ */
+
+/**
  * @fileoverview inject/index.ts - Main orchestration and barrel exports
  * Combines API, observers, and message handlers for page-level capture.
  */

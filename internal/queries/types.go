@@ -1,3 +1,6 @@
+// Purpose: Owns types.go runtime behavior and integration logic.
+// Docs: docs/features/feature/observe/index.md
+
 // types.go — Query-related types for extension-server RPC
 // PendingQuery, PendingQueryResponse, and CommandResult handle the async
 // query mechanism where MCP server sends queries to the browser extension

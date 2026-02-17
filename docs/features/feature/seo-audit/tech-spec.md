@@ -1,6 +1,9 @@
 ---
 feature: seo-audit
 status: proposed
+doc_type: tech-spec
+feature_id: feature-seo-audit
+last_reviewed: 2026-02-16
 ---
 
 # Tech Spec: SEO Audit

@@ -1,3 +1,9 @@
+---
+doc_type: legacy_doc
+status: reference
+last_reviewed: 2026-02-16
+---
+
 # Gasoline MCP Documentation
 
 > **For LLM agents:** Start here to navigate all project documentation. Each section links to the canonical location for that topic.

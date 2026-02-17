@@ -1,6 +1,6 @@
 /**
- * @fileoverview User Action Types
- * User interactions for action replay and test generation
+ * Purpose: Owns actions.ts runtime behavior and integration logic.
+ * Docs: docs/features/feature/observe/index.md
  */
 export {};
 //# sourceMappingURL=actions.js.map

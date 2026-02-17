@@ -1,6 +1,9 @@
 ---
 feature: tool-allowlisting
 status: proposed
+doc_type: tech-spec
+feature_id: feature-tool-allowlisting
+last_reviewed: 2026-02-16
 ---
 
 # Tech Spec: Tool Allowlisting

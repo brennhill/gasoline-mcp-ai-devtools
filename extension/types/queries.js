@@ -1,6 +1,6 @@
 /**
- * @fileoverview Pending Query Types
- * Query types, browser actions, and tabs information
+ * Purpose: Owns queries.ts runtime behavior and integration logic.
+ * Docs: docs/features/feature/observe/index.md
  */
 export {};
 //# sourceMappingURL=queries.js.map

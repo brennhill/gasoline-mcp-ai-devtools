@@ -7,6 +7,9 @@ mode: performance_audit
 authors: []
 created: 2026-01-28
 updated: 2026-01-28
+doc_type: product-spec
+feature_id: feature-performance-audit
+last_reviewed: 2026-02-16
 ---
 
 # Performance Audit

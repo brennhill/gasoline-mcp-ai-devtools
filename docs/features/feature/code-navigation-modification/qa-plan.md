@@ -5,6 +5,9 @@ ai-priority: high
 tags: [v7, testing, code-repair]
 relates-to: [product-spec.md, tech-spec.md]
 last-verified: 2026-01-31
+doc_type: qa-plan
+feature_id: feature-code-navigation-modification
+last_reviewed: 2026-02-16
 ---
 
 # Code Navigation & Modification — QA Plan

@@ -1,3 +1,6 @@
+// Purpose: Owns connect_mode.go runtime behavior and integration logic.
+// Docs: docs/features/feature/observe/index.md
+
 // connect_mode.go — Connect mode for multi-client MCP support.
 // Enables multiple Claude Code sessions to share a single server.
 package main

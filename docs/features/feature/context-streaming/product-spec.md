@@ -4,6 +4,9 @@ status: proposed
 tool: observe
 mode: real-time, push-notifications
 version: v6.0
+doc_type: product-spec
+feature_id: feature-context-streaming
+last_reviewed: 2026-02-16
 ---
 
 # Product Spec: Context Streaming (#5)

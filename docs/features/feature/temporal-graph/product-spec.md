@@ -4,6 +4,9 @@ status: shipped
 tool: observe, configure
 mode: history, record_event
 version: 5.0.0
+doc_type: product-spec
+feature_id: feature-temporal-graph
+last_reviewed: 2026-02-16
 ---
 # Product Spec: Temporal Graph
 

@@ -1,8 +1,6 @@
 /**
- * @fileoverview AI-preprocessed error enrichment pipeline.
- * Parses stack traces, resolves source maps, extracts code snippets,
- * detects UI frameworks (React/Vue/Svelte), captures state snapshots,
- * and generates AI-friendly error summaries. All within a timeout guard.
+ * Purpose: Provides shared runtime utilities used by extension and server workflows.
+ * Docs: docs/features/feature/observe/index.md
  */
 import { AI_CONTEXT_SNIPPET_LINES, AI_CONTEXT_MAX_LINE_LENGTH, AI_CONTEXT_MAX_SNIPPETS_SIZE, AI_CONTEXT_MAX_ANCESTRY_DEPTH, AI_CONTEXT_MAX_PROP_KEYS, AI_CONTEXT_MAX_STATE_KEYS, AI_CONTEXT_MAX_RELEVANT_SLICE, AI_CONTEXT_MAX_VALUE_LENGTH, AI_CONTEXT_SOURCE_MAP_CACHE_SIZE, AI_CONTEXT_PIPELINE_TIMEOUT_MS } from './constants.js';
 // =============================================================================

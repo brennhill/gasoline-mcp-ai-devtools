@@ -76,6 +76,14 @@
           ],
           "type": "string"
         },
+        "original_id": {
+          "description": "Original recording ID (log_diff_report)",
+          "type": "string"
+        },
+        "replay_id": {
+          "description": "Replay recording ID (log_diff_report)",
+          "type": "string"
+        },
         "restart_on_eviction": {
           "description": "Auto-restart if cursor expired",
           "type": "boolean"
@@ -183,6 +191,10 @@
           "description": "Domain to check (link_health)",
           "type": "string"
         },
+        "file": {
+          "description": "Session filename from draw_history results (draw_session)",
+          "type": "string"
+        },
         "first_party_origins": {
           "description": "First-party origins (third_party_audit)",
           "items": {
@@ -280,6 +292,13 @@
           "description": "Timeout ms (link_health, page_summary, annotations). For annotations with wait=true: default 300000 (5 min), max 600000 (10 min).",
           "type": "number"
         },
+        "urls": {
+          "description": "URLs to validate (link_validation)",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
         "wait": {
           "description": "Wait for result (default: true). For annotations: blocks up to 5 min for user to finish drawing.",
           "type": "boolean"
@@ -325,6 +344,10 @@
     "description": "Generate artifacts from captured data: reproduction (bug script), csp (Content Security Policy), sarif (accessibility report). Test generation: test_from_context, test_heal, test_classify. Annotation formats: visual_test, annotation_report, annotation_issues.",
     "inputSchema": {
       "properties": {
+        "action": {
+          "description": "Action type (test_heal: analyze/repair/batch, test_classify: failure/batch)",
+          "type": "string"
+        },
         "assert_network": {
           "description": "Assert network responses (test)",
           "type": "boolean"
@@ -337,8 +360,32 @@
           "description": "Assert response shape (test)",
           "type": "boolean"
         },
+        "auto_apply": {
+          "description": "Auto-apply high-confidence fixes (test_heal repair)",
+          "type": "boolean"
+        },
         "base_url": {
           "description": "Replace origin in URLs",
+          "type": "string"
+        },
+        "broken_selectors": {
+          "description": "Broken selectors (test_heal repair)",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "context": {
+          "description": "Test context (test_from_context)",
+          "enum": [
+            "error",
+            "interaction",
+            "regression"
+          ],
+          "type": "string"
+        },
+        "error_id": {
+          "description": "Specific error ID (test_from_context error)",
           "type": "string"
         },
         "error_message": {
@@ -349,6 +396,17 @@
           "description": "Origins to exclude (csp)",
           "items": {
             "type": "string"
+          },
+          "type": "array"
+        },
+        "failure": {
+          "description": "Single test failure (test_classify failure)",
+          "type": "object"
+        },
+        "failures": {
+          "description": "Multiple test failures (test_classify batch)",
+          "items": {
+            "type": "object"
           },
           "type": "array"
         },
@@ -372,6 +430,10 @@
         },
         "generate_fixtures": {
           "description": "Generate network fixtures (reproduction)",
+          "type": "boolean"
+        },
+        "include_mocks": {
+          "description": "Include network mocks (test_from_context)",
           "type": "boolean"
         },
         "include_passes": {
@@ -409,6 +471,10 @@
           },
           "type": "array"
         },
+        "output_format": {
+          "description": "Output format: file or inline (test_from_context)",
+          "type": "string"
+        },
         "resource_types": {
           "description": "Resource types: script, stylesheet (sri)",
           "items": {
@@ -443,6 +509,14 @@
             "auto",
             "full"
           ],
+          "type": "string"
+        },
+        "test_dir": {
+          "description": "Test directory (test_heal batch)",
+          "type": "string"
+        },
+        "test_file": {
+          "description": "Test file path (test_heal analyze)",
           "type": "string"
         },
         "test_name": {
@@ -565,6 +639,10 @@
           ],
           "type": "string"
         },
+        "original_id": {
+          "description": "Original recording ID (log_diff)",
+          "type": "string"
+        },
         "pattern": {
           "description": "Regex pattern",
           "type": "string"
@@ -575,6 +653,10 @@
         },
         "recording_id": {
           "description": "Recording ID (recording_stop, playback)",
+          "type": "string"
+        },
+        "replay_id": {
+          "description": "Replay recording ID (log_diff)",
           "type": "string"
         },
         "rule_id": {

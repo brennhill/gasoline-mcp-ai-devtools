@@ -1,3 +1,9 @@
+---
+doc_type: legacy_doc
+status: reference
+last_reviewed: 2026-02-16
+---
+
 # 5-Layer Architectural Protection
 
 ## Defense in Depth
@@ -5,7 +11,7 @@
 ```mermaid
 graph TB
     subgraph "Layer 1: Pre-Commit Hook"
-        L1[.git/hooks/pre-commit<br/>Local, instant feedback]
+        L1[scripts/hooks/pre-commit<br/>Local, instant feedback]
         L1 -->|Checks| L1A[Critical files exist]
         L1 -->|Checks| L1B[Required methods exist]
         L1 -->|Checks| L1C[No stub implementations]
@@ -249,4 +255,4 @@ timeline
 - [ARCHITECTURE-ENFORCEMENT.md](../ARCHITECTURE-ENFORCEMENT.md)
 - [validate-architecture.sh](../../scripts/validate-architecture.sh)
 - [architecture-validation.yml](../../.github/workflows/architecture-validation.yml)
-- [Pre-commit hook](../../.git/hooks/pre-commit)
+- [Pre-commit hook](../../scripts/hooks/pre-commit)

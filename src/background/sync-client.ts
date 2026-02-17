@@ -1,4 +1,11 @@
 /**
+ * Purpose: Handles extension background coordination and message routing.
+ * Docs: docs/features/feature/analyze-tool/index.md
+ * Docs: docs/features/feature/interact-explore/index.md
+ * Docs: docs/features/feature/observe/index.md
+ */
+
+/**
  * @fileoverview Unified Sync Client - Replaces multiple polling loops with single /sync endpoint.
  * Features: Simple exponential backoff, binary connection state, self-healing for MV3.
  */
@@ -237,7 +244,7 @@ export class SyncClient {
 
       // Make request with timeout to prevent hanging forever
       const controller = new AbortController()
-      const timeoutId = setTimeout(() => controller.abort(), 3000) // 3s timeout
+      const timeoutId = setTimeout(() => controller.abort(), 8000) // 8s: server holds up to 5s + margin
 
       const response = await fetch(`${this.serverUrl}/sync`, {
         method: 'POST',
@@ -363,11 +370,12 @@ export class SyncClient {
   }
 
   private onFailure(): void {
-    const wasConnected = this.state.connected
-    this.state.connected = false
     this.state.consecutiveFailures++
 
-    if (wasConnected) {
+    // Require 2+ consecutive failures before marking disconnected
+    // to prevent a single transient timeout from flipping connection state
+    if (this.state.consecutiveFailures >= 2 && this.state.connected) {
+      this.state.connected = false
       this.log('Disconnected')
       this.callbacks.onConnectionChange(false)
     }

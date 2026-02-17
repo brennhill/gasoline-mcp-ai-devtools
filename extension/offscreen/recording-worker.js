@@ -1,7 +1,7 @@
-// recording-worker.ts — Offscreen document recording engine.
-// Receives a tab media stream ID from the service worker, captures video/audio
-// via MediaRecorder, and POSTs the final blob to the Go server on stop.
-// Standalone: imports nothing from src/background/ to avoid circular deps.
+/**
+ * Purpose: Owns recording-worker.ts runtime behavior and integration logic.
+ * Docs: docs/features/feature/observe/index.md
+ */
 /** Maximum recording size in bytes before auto-stop (1GB). */
 const MAX_RECORDING_BYTES = 1024 * 1024 * 1024;
 const defaultState = {

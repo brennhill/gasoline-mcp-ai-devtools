@@ -1,4 +1,9 @@
 /**
+ * Purpose: Provides shared runtime utilities used by extension and server workflows.
+ * Docs: docs/features/feature/observe/index.md
+ */
+
+/**
  * @fileoverview Shared constants for the Gasoline extension capture modules.
  */
 import { scaleTimeout } from './timeouts'

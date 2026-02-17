@@ -1,3 +1,9 @@
+---
+doc_type: tech-spec
+feature_id: cli-interface
+last_reviewed: 2026-02-16
+---
+
 # CLI Interface — Tech Spec
 
 **Feature:** `gasoline-cmd` binary for direct CLI access to all MCP tools, enabling script-based automation, CI/CD integration, and future web client support.

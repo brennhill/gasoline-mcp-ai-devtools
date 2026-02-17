@@ -1,3 +1,6 @@
+// Purpose: Owns ai_checkpoint_compute.go runtime behavior and integration logic.
+// Docs: docs/features/feature/observe/index.md
+
 // ai_checkpoint_compute.go — Diff computation and summary building for checkpoints.
 package ai
 

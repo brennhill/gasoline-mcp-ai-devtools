@@ -1,4 +1,9 @@
 /**
+ * Purpose: Owns content.ts runtime behavior and integration logic.
+ * Docs: docs/features/feature/interact-explore/index.md
+ * Docs: docs/features/feature/analyze-tool/index.md
+ */
+/**
  * @fileoverview content.ts - Message bridge between page and extension contexts.
  * Injects inject.js into the page as a module script, then listens for
  * window.postMessage events (GASOLINE_LOG, GASOLINE_WS, GASOLINE_NETWORK_BODY,

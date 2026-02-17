@@ -1,3 +1,9 @@
+---
+doc_type: legacy_doc
+status: reference
+last_reviewed: 2026-02-16
+---
+
 # ADRs: Spa Route Measurement
 
 Architectural decisions for the Spa Route Measurement feature.

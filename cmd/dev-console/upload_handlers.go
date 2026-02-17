@@ -1,3 +1,6 @@
+// Purpose: Owns upload_handlers.go runtime behavior and integration logic.
+// Docs: docs/features/feature/observe/index.md
+
 // upload_handlers.go — HTTP handlers for file upload stages 1-4.
 // Stage 4 requires --enable-os-upload-automation flag.
 package main

@@ -1,3 +1,6 @@
+// Purpose: Implements performance metric diffing and threshold evaluation.
+// Docs: docs/features/feature/performance-audit/index.md
+
 // diff.go — Rich Action Results: performance diff computation.
 // Computes before/after metric diffs, resource diffs, and generates
 // human-readable summaries for AI consumption.

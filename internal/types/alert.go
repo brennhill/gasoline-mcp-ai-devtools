@@ -1,3 +1,6 @@
+// Purpose: Owns alert.go runtime behavior and integration logic.
+// Docs: docs/features/feature/observe/index.md
+
 // alert.go — Alert types for proactive error notification and performance regression detection.
 // Zero dependencies - foundational types used across ai, session, and observation packages.
 package types

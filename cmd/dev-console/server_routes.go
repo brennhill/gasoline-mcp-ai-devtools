@@ -1,3 +1,6 @@
+// Purpose: Owns server_routes.go runtime behavior and integration logic.
+// Docs: docs/features/feature/observe/index.md
+
 // server_routes.go — HTTP route setup and handlers.
 // Contains setupHTTPRoutes() and all HTTP endpoint handlers.
 package main
