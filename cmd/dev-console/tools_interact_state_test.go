@@ -1,0 +1,297 @@
+// tools_interact_state_test.go — Tests for state management handlers with form capture.
+// Verifies that form_capture and form_restore status fields are always present and unambiguous.
+package main
+
+import (
+	"encoding/json"
+	"net/http/httptest"
+	"strings"
+	"testing"
+	"time"
+)
+
+// extractResponseData parses the JSON payload from an MCPToolResult's text content.
+func extractResponseData(t *testing.T, resp JSONRPCResponse) map[string]any {
+	t.Helper()
+	var result MCPToolResult
+	if err := json.Unmarshal(resp.Result, &result); err != nil {
+		t.Fatalf("unmarshal MCPToolResult: %v", err)
+	}
+	if result.IsError {
+		t.Fatalf("unexpected error response: %s", result.Content[0].Text)
+	}
+	text := result.Content[0].Text
+	idx := strings.Index(text, "{")
+	if idx < 0 {
+		t.Fatalf("no JSON in response text: %s", text)
+	}
+	var data map[string]any
+	if err := json.Unmarshal([]byte(text[idx:]), &data); err != nil {
+		t.Fatalf("parse response JSON: %v\nraw: %s", err, text[idx:])
+	}
+	return data
+}
+
+// simulateExtensionConnection sends a /sync request to mark the extension as connected.
+func simulateExtensionConnection(t *testing.T, env *interactHelpersTestEnv) {
+	t.Helper()
+	httpReq := httptest.NewRequest("POST", "/sync", strings.NewReader(`{"session_id":"test"}`))
+	httpReq.Header.Set("X-Gasoline-Client", "test-client")
+	env.capture.HandleSync(httptest.NewRecorder(), httpReq)
+}
+
+// ============================================
+// captureFormState — explicit status per scenario
+// ============================================
+
+func TestCaptureFormState_Status_PilotDisabled(t *testing.T) {
+	t.Parallel()
+	env := newInteractHelpersTestEnv(t)
+
+	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`)}
+	result := env.handler.captureFormState(req)
+	if result.Status != formCaptureStatusPilotDisabled {
+		t.Errorf("status = %q, want %q", result.Status, formCaptureStatusPilotDisabled)
+	}
+	if result.Data != nil {
+		t.Error("Data should be nil when pilot is disabled")
+	}
+}
+
+func TestCaptureFormState_Status_ExtensionDisconnected(t *testing.T) {
+	t.Parallel()
+	env := newInteractHelpersTestEnv(t)
+	env.enablePilot(t)
+	// No HandleSync → extension disconnected
+
+	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`)}
+	result := env.handler.captureFormState(req)
+	if result.Status != formCaptureStatusExtensionDisconnected {
+		t.Errorf("status = %q, want %q", result.Status, formCaptureStatusExtensionDisconnected)
+	}
+	if result.Data != nil {
+		t.Error("Data should be nil when extension is disconnected")
+	}
+}
+
+// ============================================
+// save_state — form_capture field always present
+// ============================================
+
+func TestSaveState_FormCapture_Captured(t *testing.T) {
+	t.Parallel()
+	env := newInteractHelpersTestEnv(t)
+	env.enablePilot(t)
+	simulateExtensionConnection(t, env)
+
+	// Complete form capture in background
+	go func() {
+		time.Sleep(50 * time.Millisecond)
+		queries := env.capture.GetPendingQueries()
+		for _, q := range queries {
+			if q.Type == "execute" && strings.HasPrefix(q.CorrelationID, "state_capture_") {
+				result, _ := json.Marshal(map[string]any{
+					"form_values":     map[string]any{"username": "john", "remember": true},
+					"scroll_position": map[string]any{"x": 0.0, "y": 150.0},
+				})
+				env.capture.CompleteCommand(q.CorrelationID, result, "")
+				return
+			}
+		}
+	}()
+
+	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`), ClientID: "test-client"}
+	resp := env.handler.handlePilotManageStateSave(req, json.RawMessage(`{"snapshot_name":"form_test"}`))
+	data := extractResponseData(t, resp)
+
+	if data["form_capture"] != "captured" {
+		t.Errorf("form_capture = %v, want \"captured\"", data["form_capture"])
+	}
+	if data["status"] != "saved" {
+		t.Errorf("status = %v, want \"saved\"", data["status"])
+	}
+
+	// Verify form_values actually persisted by loading the state
+	resp2 := env.handler.handlePilotManageStateLoad(req, json.RawMessage(`{"snapshot_name":"form_test"}`))
+	loadData := extractResponseData(t, resp2)
+	state, _ := loadData["state"].(map[string]any)
+	if _, ok := state["form_values"]; !ok {
+		t.Error("form_values should be present in persisted state")
+	}
+	if _, ok := state["scroll_position"]; !ok {
+		t.Error("scroll_position should be present in persisted state")
+	}
+}
+
+func TestSaveState_FormCapture_SkippedPilotDisabled(t *testing.T) {
+	t.Parallel()
+	env := newInteractHelpersTestEnv(t)
+	// Pilot NOT enabled
+
+	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`)}
+	resp := env.handler.handlePilotManageStateSave(req, json.RawMessage(`{"snapshot_name":"no_pilot"}`))
+	data := extractResponseData(t, resp)
+
+	if data["form_capture"] != "skipped_pilot_disabled" {
+		t.Errorf("form_capture = %v, want \"skipped_pilot_disabled\"", data["form_capture"])
+	}
+	if data["status"] != "saved" {
+		t.Errorf("status = %v, want \"saved\"", data["status"])
+	}
+}
+
+func TestSaveState_FormCapture_SkippedExtensionDisconnected(t *testing.T) {
+	t.Parallel()
+	env := newInteractHelpersTestEnv(t)
+	env.enablePilot(t)
+	// Extension NOT connected
+
+	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`)}
+	resp := env.handler.handlePilotManageStateSave(req, json.RawMessage(`{"snapshot_name":"no_ext"}`))
+	data := extractResponseData(t, resp)
+
+	if data["form_capture"] != "skipped_extension_disconnected" {
+		t.Errorf("form_capture = %v, want \"skipped_extension_disconnected\"", data["form_capture"])
+	}
+	if data["status"] != "saved" {
+		t.Errorf("status = %v, want \"saved\"", data["status"])
+	}
+}
+
+// ============================================
+// load_state — form_restore field always present
+// ============================================
+
+func TestLoadState_FormRestore_Queued(t *testing.T) {
+	t.Parallel()
+	env := newInteractHelpersTestEnv(t)
+	env.enablePilot(t)
+
+	// Inject a state WITH form_values
+	stateData := map[string]any{
+		"url": "https://example.com/form", "title": "Form Page",
+		"saved_at":        time.Now().Format(time.RFC3339),
+		"form_values":     map[string]any{"email": "test@test.com"},
+		"scroll_position": map[string]any{"x": 0.0, "y": 100.0},
+	}
+	raw, _ := json.Marshal(stateData)
+	env.handler.sessionStoreImpl.Save("saved_states", "with_forms", raw)
+
+	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`)}
+	resp := env.handler.handlePilotManageStateLoad(req, json.RawMessage(`{"snapshot_name":"with_forms"}`))
+	data := extractResponseData(t, resp)
+
+	if data["form_restore"] != "queued" {
+		t.Errorf("form_restore = %v, want \"queued\"", data["form_restore"])
+	}
+	corrID, ok := data["restore_correlation_id"].(string)
+	if !ok || corrID == "" {
+		t.Error("restore_correlation_id should be present when form_restore=queued")
+	}
+	if !strings.HasPrefix(corrID, "state_restore_") {
+		t.Errorf("restore_correlation_id = %q, want prefix \"state_restore_\"", corrID)
+	}
+
+	// Verify the queued execute command contains the form values
+	pqs := env.capture.GetPendingQueries()
+	found := false
+	for _, q := range pqs {
+		if q.Type == "execute" && q.CorrelationID == corrID {
+			found = true
+			var params map[string]any
+			json.Unmarshal(q.Params, &params)
+			script, _ := params["script"].(string)
+			if !strings.Contains(script, "test@test.com") {
+				t.Error("restore script should contain the form values")
+			}
+			break
+		}
+	}
+	if !found {
+		t.Error("expected execute query with restore_correlation_id")
+	}
+}
+
+func TestLoadState_FormRestore_SkippedNoFormData(t *testing.T) {
+	t.Parallel()
+	env := newInteractHelpersTestEnv(t)
+	env.enablePilot(t)
+
+	// Inject a state WITHOUT form_values
+	stateData := map[string]any{
+		"url": "https://example.com/plain", "title": "Plain Page",
+		"saved_at": time.Now().Format(time.RFC3339),
+	}
+	raw, _ := json.Marshal(stateData)
+	env.handler.sessionStoreImpl.Save("saved_states", "no_forms", raw)
+
+	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`)}
+	resp := env.handler.handlePilotManageStateLoad(req, json.RawMessage(`{"snapshot_name":"no_forms"}`))
+	data := extractResponseData(t, resp)
+
+	if data["form_restore"] != "skipped_no_form_data" {
+		t.Errorf("form_restore = %v, want \"skipped_no_form_data\"", data["form_restore"])
+	}
+	if _, ok := data["restore_correlation_id"]; ok {
+		t.Error("restore_correlation_id should be absent when form_restore != queued")
+	}
+}
+
+func TestLoadState_FormRestore_SkippedPilotDisabled(t *testing.T) {
+	t.Parallel()
+	env := newInteractHelpersTestEnv(t)
+	// Pilot NOT enabled
+
+	// Inject a state WITH form_values
+	stateData := map[string]any{
+		"url": "https://example.com/form", "title": "Form Page",
+		"saved_at":    time.Now().Format(time.RFC3339),
+		"form_values": map[string]any{"email": "test@test.com"},
+	}
+	raw, _ := json.Marshal(stateData)
+	env.handler.sessionStoreImpl.Save("saved_states", "has_forms", raw)
+
+	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`)}
+	resp := env.handler.handlePilotManageStateLoad(req, json.RawMessage(`{"snapshot_name":"has_forms"}`))
+	data := extractResponseData(t, resp)
+
+	if data["form_restore"] != "skipped_pilot_disabled" {
+		t.Errorf("form_restore = %v, want \"skipped_pilot_disabled\"", data["form_restore"])
+	}
+	if _, ok := data["restore_correlation_id"]; ok {
+		t.Error("restore_correlation_id should be absent when pilot is disabled")
+	}
+}
+
+// ============================================
+// buildFormRestoreScript
+// ============================================
+
+func TestBuildFormRestoreScript_ContainsValues(t *testing.T) {
+	t.Parallel()
+	formValues := map[string]any{"email": "a@b.com", "name": "Test"}
+	scrollPos := map[string]any{"x": 10.0, "y": 200.0}
+
+	script := buildFormRestoreScript(formValues, scrollPos)
+
+	if !strings.Contains(script, "a@b.com") {
+		t.Error("script should contain form value 'a@b.com'")
+	}
+	if !strings.Contains(script, "Test") {
+		t.Error("script should contain form value 'Test'")
+	}
+	if !strings.Contains(script, "200") {
+		t.Error("script should contain scroll position")
+	}
+}
+
+func TestBuildFormRestoreScript_EmptyValues(t *testing.T) {
+	t.Parallel()
+	script := buildFormRestoreScript(map[string]any{}, nil)
+	if script == "" {
+		t.Error("should return a valid script even with empty values")
+	}
+	if !strings.Contains(script, "{}") {
+		t.Error("script should contain empty object for form values")
+	}
+}
