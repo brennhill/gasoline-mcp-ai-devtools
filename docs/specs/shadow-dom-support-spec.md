@@ -2,6 +2,7 @@
 feature: Shadow DOM Support (Open Roots)
 status: proposed
 related: closed-shadow-root-capture-spec.md (follow-up for closed roots)
+last_reviewed: 2026-02-16
 ---
 
 # Tech Spec: Shadow DOM Deep Traversal
