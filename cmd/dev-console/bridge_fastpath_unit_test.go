@@ -328,6 +328,52 @@ func TestBridgeFastPathResourcesReadTelemetryPersistsToStateLogs(t *testing.T) {
 	}
 }
 
+func TestBridgeFastPathResourcesReadTelemetry(t *testing.T) {
+	// Do not run in parallel; test redirects process stdio and uses Setenv.
+	t.Setenv(statecfg.StateDirEnv, t.TempDir())
+	resetFastPathCounters()
+
+	state := &daemonState{readyCh: make(chan struct{}), failedCh: make(chan struct{})}
+	input := strings.Join([]string{
+		`{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}`,
+		`{"jsonrpc":"2.0","id":2,"method":"resources/read","params":{"uri":"gasoline://capabilities"}}`,
+		`{"jsonrpc":"2.0","id":3,"method":"resources/read","params":{"uri":"gasoline://playbook/not-a-thing/quick"}}`,
+	}, "\n") + "\n"
+
+	output := captureBridgeIO(t, input, func() {
+		bridgeStdioToHTTPFast("http://127.0.0.1:1/mcp", state, 7890)
+	})
+
+	responses := parseJSONLines(t, output)
+	if len(responses) != 3 {
+		t.Fatalf("response count = %d, want 3", len(responses))
+	}
+	if responses[1].Error != nil {
+		t.Fatalf("resources/read success response has protocol error: %+v", responses[1].Error)
+	}
+	if responses[2].Error == nil || responses[2].Error.Code != -32002 {
+		t.Fatalf("resources/read miss response = %+v, want -32002", responses[2])
+	}
+
+	path, err := fastPathTelemetryLogPath()
+	if err != nil {
+		t.Fatalf("fastPathTelemetryLogPath error = %v", err)
+	}
+	summary := summarizeFastPathTelemetryLog(path, 100)
+	if summary.total < 3 {
+		t.Fatalf("telemetry total = %d, want >= 3", summary.total)
+	}
+	if summary.methods["resources/read"] < 2 {
+		t.Fatalf("resources/read telemetry count = %d, want >= 2", summary.methods["resources/read"])
+	}
+	if summary.failure < 1 {
+		t.Fatalf("failure count = %d, want >= 1", summary.failure)
+	}
+	if summary.errorCodes[-32002] < 1 {
+		t.Fatalf("error code -32002 count = %d, want >= 1", summary.errorCodes[-32002])
+	}
+}
+
 func TestBridgeFastPathFramedInitializeAndToolsList(t *testing.T) {
 	// Do not run in parallel; test redirects process stdio.
 	state := &daemonState{readyCh: make(chan struct{}), failedCh: make(chan struct{})}

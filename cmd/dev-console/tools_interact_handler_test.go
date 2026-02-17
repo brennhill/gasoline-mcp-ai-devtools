@@ -3,7 +3,6 @@
 package main
 
 import (
-	"encoding/json"
 	"strings"
 	"testing"
 
@@ -29,7 +28,7 @@ func makeInteractToolHandler(t *testing.T) (*ToolHandler, *Server, *capture.Capt
 
 func callInteractRaw(h *ToolHandler, argsJSON string) JSONRPCResponse {
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: 1}
-	return h.toolInteract(req, json.RawMessage(argsJSON))
+	return h.toolInteract(req, normalizeInteractArgsForAsync(argsJSON))
 }
 
 // ============================================
@@ -172,7 +171,7 @@ func TestToolsInteractHighlight_Success(t *testing.T) {
 
 	data := extractResultJSON(t, result)
 	// Verify response fields
-	for _, field := range []string{"status", "correlation_id", "message"} {
+	for _, field := range []string{"status", "correlation_id", "queued", "final"} {
 		if _, ok := data[field]; !ok {
 			t.Errorf("highlight response missing field %q", field)
 		}
@@ -285,7 +284,7 @@ func TestToolsInteractExecuteJS_Success(t *testing.T) {
 	}
 
 	data := extractResultJSON(t, result)
-	for _, field := range []string{"status", "correlation_id", "message"} {
+	for _, field := range []string{"status", "correlation_id", "queued", "final"} {
 		if _, ok := data[field]; !ok {
 			t.Errorf("execute_js response missing field %q", field)
 		}
@@ -445,8 +444,11 @@ func TestToolsInteractSubtitle_SetText(t *testing.T) {
 	if data["status"] != "queued" {
 		t.Errorf("status = %v, want 'queued'", data["status"])
 	}
-	if data["subtitle"] != "Hello world" {
-		t.Errorf("subtitle = %v, want 'Hello world'", data["subtitle"])
+	if queued, ok := data["queued"].(bool); !ok || !queued {
+		t.Errorf("queued = %v, want true", data["queued"])
+	}
+	if final, ok := data["final"].(bool); !ok || final {
+		t.Errorf("final = %v, want false", data["final"])
 	}
 	corr, _ := data["correlation_id"].(string)
 	if !strings.HasPrefix(corr, "subtitle_") {
@@ -467,8 +469,11 @@ func TestToolsInteractSubtitle_ClearText(t *testing.T) {
 	}
 
 	data := extractResultJSON(t, result)
-	if data["subtitle"] != "cleared" {
-		t.Errorf("subtitle = %v, want 'cleared'", data["subtitle"])
+	if data["status"] != "queued" {
+		t.Errorf("status = %v, want 'queued'", data["status"])
+	}
+	if queued, ok := data["queued"].(bool); !ok || !queued {
+		t.Errorf("queued = %v, want true", data["queued"])
 	}
 
 	assertSnakeCaseFields(t, string(resp.Result))
@@ -505,9 +510,9 @@ func TestToolsInteractDOMPrimitives_ActionSpecificParams(t *testing.T) {
 
 	// Actions that require specific params beyond selector
 	cases := []struct {
-		action    string
-		args      string
-		missing   string
+		action  string
+		args    string
+		missing string
 	}{
 		{"type", `{"action":"type","selector":"input"}`, "text"},
 		{"select", `{"action":"select","selector":"select"}`, "value"},

@@ -72,16 +72,6 @@ class EnvWithoutInstallError extends GasolineError {
   }
 }
 
-class ForAllWithoutInstallError extends GasolineError {
-  constructor() {
-    super(
-      '--for-all only works with --install',
-      'Usage: gasoline-mcp --install --for-all'
-    );
-    this.name = 'ForAllWithoutInstallError';
-  }
-}
-
 class ConfigValidationError extends GasolineError {
   constructor(errors) {
     super(
@@ -109,7 +99,6 @@ module.exports = {
   BinaryNotFoundError,
   InvalidEnvFormatError,
   EnvWithoutInstallError,
-  ForAllWithoutInstallError,
   ConfigValidationError,
   FileSizeError,
 };

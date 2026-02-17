@@ -1,6 +1,7 @@
 """Install logic for Gasoline MCP CLI."""
 
 import json
+import subprocess
 from . import config
 
 
@@ -16,16 +17,82 @@ def generate_default_config():
     }
 
 
-def _install_candidate(candidate_path, gasoline_entry, env_vars, dry_run, verbose):
-    """Install gasoline config to a single candidate path.
+def build_mcp_entry(env_vars=None):
+    """Build the MCP entry JSON string for CLI-based install."""
+    entry = {"command": "gasoline-mcp", "args": []}
+    if env_vars:
+        entry["env"] = dict(env_vars)
+    return json.dumps(entry)
 
-    Returns:
-        tuple: (update_entry, diff_entry_or_None, is_existing)
-        Raises OSError/ValueError/KeyError on failure.
-    """
-    tool_name = config.get_tool_name_from_path(candidate_path)
-    read_result = config.read_config_file(candidate_path)
 
+def _install_via_cli(definition, options):
+    """Install to a CLI-type client (e.g. Claude Code)."""
+    dry_run = options.get("dryRun", False)
+    env_vars = options.get("envVars", {})
+    entry_json = build_mcp_entry(env_vars)
+    cmd = definition["detectCommand"]
+    args = list(definition["installArgs"])
+
+    if dry_run:
+        return {
+            "success": True,
+            "name": definition["name"],
+            "id": definition["id"],
+            "method": "cli",
+            "message": f"Would run: {cmd} {' '.join(args)} '<json>'",
+        }
+
+    try:
+        import os  # pylint: disable=import-outside-toplevel
+        env = dict(os.environ)
+        env.pop("CLAUDECODE", None)
+
+        subprocess.run(
+            [cmd] + args,
+            input=entry_json,
+            env=env,
+            capture_output=True,
+            text=True,
+            timeout=15,
+            check=True,
+        )
+
+        return {
+            "success": True,
+            "name": definition["name"],
+            "id": definition["id"],
+            "method": "cli",
+            "message": f"Installed via {cmd} CLI",
+        }
+    except (subprocess.SubprocessError, OSError) as err:
+        return {
+            "success": False,
+            "name": definition["name"],
+            "id": definition["id"],
+            "method": "cli",
+            "message": f"CLI install failed: {err}",
+            "error": str(err),
+        }
+
+
+def _install_via_file(definition, options):
+    """Install to a file-type client (config file write)."""
+    dry_run = options.get("dryRun", False)
+    env_vars = options.get("envVars", {})
+    cfg_path = config.get_client_config_path(definition)
+
+    if not cfg_path:
+        return {
+            "success": False,
+            "name": definition["name"],
+            "id": definition["id"],
+            "method": "file",
+            "message": "No config path for this platform",
+        }
+
+    gasoline_entry = {"command": "gasoline-mcp", "args": []}
+
+    read_result = config.read_config_file(cfg_path)
     if read_result["valid"]:
         config_data = read_result["data"]
         is_new = False
@@ -33,134 +100,75 @@ def _install_candidate(candidate_path, gasoline_entry, env_vars, dry_run, verbos
         config_data = generate_default_config()
         is_new = True
 
-    before = json.loads(json.dumps(config_data))
     merged = config.merge_gasoline_config(config_data, gasoline_entry, env_vars)
-    write_result = config.write_config_file(candidate_path, merged, dry_run)
-
-    update_entry = {"name": tool_name, "path": candidate_path, "isNew": is_new}
-
-    diff_entry = None
-    if dry_run and write_result.get("before"):
-        diff_entry = {"path": candidate_path, "before": before, "after": merged}
-
-    if verbose:
-        action = "Created" if is_new else "Updated"
-        print(f"[DEBUG] {action}: {candidate_path}")
-
-    return update_entry, diff_entry, not is_new
-
-
-def _handle_install_error(candidate_path, err, for_all, verbose):
-    """Handle an install error for a candidate path.
-
-    Returns:
-        error_entry or None (None means skip silently).
-    """
-    import os  # pylint: disable=import-outside-toplevel
-    if not os.path.exists(candidate_path) and not for_all:
-        return None
-
-    if verbose:
-        print(f"[DEBUG] Error on {candidate_path}: {str(err)}")
+    config.write_config_file(cfg_path, merged, dry_run)
 
     return {
-        "name": config.get_tool_name_from_path(candidate_path),
-        "message": str(err),
-        "recovery": getattr(err, "recovery", ""),
+        "success": True,
+        "name": definition["name"],
+        "id": definition["id"],
+        "method": "file",
+        "path": cfg_path,
+        "isNew": is_new,
+        "message": f"Would write to {cfg_path}" if dry_run else f"Wrote to {cfg_path}",
     }
 
 
-def _install_default_candidate(candidates, gasoline_entry, env_vars, dry_run):
-    """Fallback: install to the first candidate when none existed.
-
-    Returns:
-        tuple: (update_entry_or_None, error_entry_or_None)
-    """
-    try:
-        default_path = candidates[0]
-        merged = config.merge_gasoline_config(
-            generate_default_config(), gasoline_entry, env_vars
-        )
-        config.write_config_file(default_path, merged, dry_run)
-        return {
-            "name": config.get_tool_name_from_path(default_path),
-            "path": default_path,
-            "isNew": True,
-        }, None
-    except (OSError, ValueError, KeyError) as err:
-        return None, {
-            "name": "Claude Desktop",
-            "message": str(err),
-            "recovery": getattr(err, "recovery", ""),
-        }
-
-
-def _process_candidate(  # pylint: disable=too-many-arguments,too-many-positional-arguments
-    candidate_path, gasoline_entry, env_vars, dry_run, verbose, for_all, result
-):
-    """Process a single candidate path during install.
-
-    Returns:
-        tuple: (found_existing: bool, should_stop: bool)
-    """
-    try:
-        update, diff, is_existing = _install_candidate(
-            candidate_path, gasoline_entry, env_vars, dry_run, verbose
-        )
-        result["updated"].append(update)
-        if diff:
-            result["diffs"].append(diff)
-        should_stop = not for_all and is_existing
-        return is_existing, should_stop
-    except (OSError, ValueError, KeyError) as err:
-        error_entry = _handle_install_error(candidate_path, err, for_all, verbose)
-        if error_entry:
-            result["errors"].append(error_entry)
-            return False, not for_all
-        return False, False
-
-
-def _apply_fallback(candidates, gasoline_entry, env_vars, dry_run, result):
-    """Apply fallback install to first candidate when none existed."""
-    update, error = _install_default_candidate(
-        candidates, gasoline_entry, env_vars, dry_run
-    )
-    if update:
-        result["updated"].append(update)
-    if error:
-        result["errors"].append(error)
+def install_to_client(definition, options):
+    """Install to a single client (dispatches by type)."""
+    if definition["type"] == "cli":
+        return _install_via_cli(definition, options)
+    return _install_via_file(definition, options)
 
 
 def execute_install(options=None):
-    """Execute install operation.
+    """Execute install operation across all detected clients.
 
     Args:
-        options: dict with {dryRun, forAll, envVars, verbose}
+        options: dict with {dryRun, envVars, verbose, _clientOverrides}
 
     Returns:
-        dict: {success, updated, errors, total}
+        dict: {success, installed, errors, total}
     """
     options = options or {}
     dry_run = options.get("dryRun", False)
-    for_all = options.get("forAll", False)
     env_vars = options.get("envVars", {})
     verbose = options.get("verbose", False)
 
-    result = {"success": False, "updated": [], "errors": [], "diffs": [], "total": 4}
-    gasoline_entry = {"command": "gasoline-mcp", "args": []}
-    candidates = config.get_config_candidates()
-    found_existing = False
+    clients = (
+        options["_clientOverrides"]
+        if "_clientOverrides" in options
+        else config.get_detected_clients()
+    )
 
-    for candidate_path in candidates:
-        is_existing, should_stop = _process_candidate(
-            candidate_path, gasoline_entry, env_vars, dry_run, verbose, for_all, result
-        )
-        found_existing = found_existing or is_existing
-        if should_stop:
-            break
+    result = {
+        "success": False,
+        "installed": [],
+        "errors": [],
+        "total": len(config.CLIENT_DEFINITIONS),
+    }
 
-    if not found_existing and not for_all and not result["updated"]:
-        _apply_fallback(candidates, gasoline_entry, env_vars, dry_run, result)
+    for definition in clients:
+        try:
+            install_result = install_to_client(definition, {"dryRun": dry_run, "envVars": env_vars})
 
-    result["success"] = len(result["updated"]) > 0
+            if install_result["success"]:
+                result["installed"].append(install_result)
+            else:
+                result["errors"].append(install_result)
+
+            if verbose:
+                status = "OK" if install_result["success"] else "FAIL"
+                print(f"[DEBUG] {definition['name']}: {status} - {install_result['message']}")
+        except (OSError, ValueError, KeyError) as err:
+            result["errors"].append({
+                "name": definition["name"],
+                "id": definition["id"],
+                "message": str(err),
+                "recovery": getattr(err, "recovery", ""),
+            })
+            if verbose:
+                print(f"[DEBUG] Error on {definition['name']}: {err}")
+
+    result["success"] = len(result["installed"]) > 0
     return result

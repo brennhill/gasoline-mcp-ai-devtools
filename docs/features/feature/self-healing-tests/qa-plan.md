@@ -200,7 +200,7 @@ last_reviewed: 2026-02-16
 - [ ] Existing `generate({format: "test"})` still works normally
 - [ ] `configure({action: "query_dom"})` still works as a standalone action
 - [ ] `observe({what: "changes"})` still works independently
-- [ ] No new MCP tools created (still exactly 4 tools)
+- [ ] No new MCP tools created (still exactly 5 tools)
 
 ---
 

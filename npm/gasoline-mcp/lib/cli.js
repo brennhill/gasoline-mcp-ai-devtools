@@ -8,11 +8,6 @@ const install = require('./install');
 const skills = require('./skills');
 const doctor = require('./doctor');
 const uninstall = require('./uninstall');
-const {
-  EnvWithoutInstallError,
-  ForAllWithoutInstallError,
-  InvalidEnvFormatError,
-} = require('./errors');
 
 // Write a JSON-RPC error to stdout so MCP clients get a clean protocol-level error
 function writeMcpError(message) {
@@ -31,21 +26,29 @@ function writeMcpError(message) {
 function showConfigCommand() {
   const mcp = install.generateDefaultConfig();
   console.log('📋 Gasoline MCP Configuration\n');
-  console.log('Add this to your Claude settings file:\n');
+  console.log('Add this to your AI assistant settings:\n');
   console.log(JSON.stringify(mcp, null, 2));
-  console.log('\n📍 Configuration Locations:');
-  console.log('');
-  console.log('Claude Code (VSCode):');
-  console.log('  ~/.vscode/claude.mcp.json');
-  console.log('');
-  console.log('Claude:');
-  console.log(`  ${os.platform() === 'win32' ? '%USERPROFILE%' : '~'}/.claude.json`);
-  console.log('');
-  console.log('Cursor:');
-  console.log('  ~/.cursor/mcp.json');
-  console.log('');
-  console.log('Codeium:');
-  console.log('  ~/.codeium/mcp.json');
+  console.log('\n📍 Supported Clients:\n');
+
+  for (const def of config.CLIENT_DEFINITIONS) {
+    const detected = config.isClientInstalled(def);
+    const icon = detected ? '✅' : '⚪';
+
+    if (def.type === 'cli') {
+      console.log(`${icon} ${def.name} (via ${def.detectCommand} CLI)`);
+    } else {
+      const cfgPath = config.getClientConfigPath(def);
+      if (cfgPath) {
+        console.log(`${icon} ${def.name}`);
+        console.log(`   ${cfgPath}`);
+      } else {
+        console.log(`⚪ ${def.name} (not available on this platform)`);
+      }
+    }
+    console.log('');
+  }
+
+  console.log('Run: gasoline-mcp --install   (auto-installs to all detected clients)');
   process.exit(0);
 }
 
@@ -57,16 +60,7 @@ async function installCommand(options) {
       if (options.dryRun) {
         console.log(`ℹ️  Dry run: No files will be written\n`);
       }
-      console.log(
-        output.installResult({
-          updated: result.updated,
-          total: result.total,
-          errors: result.errors,
-          notFound: result.updated.length > 0
-            ? []
-            : config.getConfigCandidates().map(config.getToolNameFromPath),
-        })
-      );
+      console.log(output.installResult(result));
       if (!options.dryRun) {
         const skillInstall = await skills.installBundledSkills({
           verbose: options.verbose,
@@ -94,9 +88,13 @@ async function installCommand(options) {
     } else {
       console.error(output.error('Installation failed'));
       result.errors.forEach(err => {
-        console.error(`  ${err.name}: ${err.message}`);
-        if (err.recovery) {
-          console.error(`  Recovery: ${err.recovery}`);
+        if (typeof err === 'string') {
+          console.error(`  ${err}`);
+        } else {
+          console.error(`  ${err.name}: ${err.message}`);
+          if (err.recovery) {
+            console.error(`  Recovery: ${err.recovery}`);
+          }
         }
       });
       process.exit(1);
@@ -137,14 +135,19 @@ function showHelp() {
   console.log('Gasoline MCP Server\n');
   console.log('Usage: gasoline-mcp [command] [options]\n');
   console.log('Commands:');
-  console.log('  --config, -c          Show MCP configuration and where to put it');
-  console.log('  --install, -i         Auto-install to your AI assistant config');
+  console.log('  --config, -c          Show MCP configuration and detected clients');
+  console.log('  --install, -i         Auto-install to all detected AI clients');
   console.log('  --doctor              Run diagnostics on installed configs');
-  console.log('  --uninstall           Remove Gasoline from configs');
+  console.log('  --uninstall           Remove Gasoline from all clients');
   console.log('  --help, -h            Show this help message\n');
+  console.log('Supported clients:');
+  console.log('  Claude Code           via claude CLI (mcp add-json)');
+  console.log('  Claude Desktop        config file');
+  console.log('  Cursor                config file');
+  console.log('  Windsurf              config file');
+  console.log('  VS Code               config file\n');
   console.log('Options (with --install):');
-  console.log('  --dry-run             Preview changes without writing files');
-  console.log('  --for-all             Install to all 4 tools (Claude, VSCode, Cursor, Codeium)');
+  console.log('  --dry-run             Preview changes without writing');
   console.log('  --env KEY=VALUE       Add environment variables to config (multiple allowed)');
   console.log('  --skills-repo VALUE   Skill source repo (owner/repo or GitHub URL)');
   console.log('  --skills-ref VALUE    Git ref when loading skills from --skills-repo');
@@ -154,17 +157,16 @@ function showHelp() {
   console.log('  --skills-no-fallback  Do not fall back to bundled skills if remote fetch fails');
   console.log('  --verbose             Show detailed operation logs\n');
   console.log('Options (with --uninstall):');
-  console.log('  --dry-run             Preview changes without writing files');
+  console.log('  --dry-run             Preview changes without writing');
   console.log('  --verbose             Show detailed operation logs\n');
   console.log('Examples:');
-  console.log('  gasoline-mcp --install                # Install to first matching tool');
-  console.log('  gasoline-mcp --install --for-all      # Install to all 4 tools');
+  console.log('  gasoline-mcp --install                # Install to all detected clients');
   console.log('  gasoline-mcp --install --dry-run      # Preview without changes');
   console.log('  gasoline-mcp --install --env DEBUG=1  # Install with env vars');
   console.log('  gasoline-mcp --install --skills-repo brennhill/gasoline-skills');
-  console.log('  gasoline-mcp --install --skills-repo https://github.com/brennhill/gasoline-skills/tree/main/skills');
+  console.log('  gasoline-mcp --config                 # Show config and detected clients');
   console.log('  gasoline-mcp --doctor                 # Check config health');
-  console.log('  gasoline-mcp --uninstall              # Remove from all tools\n');
+  console.log('  gasoline-mcp --uninstall              # Remove from all clients\n');
   process.exit(0);
 }
 
@@ -202,15 +204,6 @@ async function main() {
 
   // Install command
   if (args.includes('--install') || args.includes('-i')) {
-    if (args.includes('--env') && !(args.includes('--install') || args.includes('-i'))) {
-      console.error(output.error('--env only works with --install', 'Usage: gasoline-mcp --install --env KEY=VALUE'));
-      process.exit(1);
-    }
-    if (args.includes('--for-all') && !(args.includes('--install') || args.includes('-i'))) {
-      console.error(output.error('--for-all only works with --install', 'Usage: gasoline-mcp --install --for-all'));
-      process.exit(1);
-    }
-
     const envVars = {};
     for (let i = 0; i < args.length; i++) {
       if (args[i] === '--env' && i + 1 < args.length) {
@@ -234,7 +227,6 @@ async function main() {
 
     const options = {
       dryRun,
-      forAll: args.includes('--for-all'),
       envVars,
       verbose,
       ...skillOptions,

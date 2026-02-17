@@ -61,18 +61,28 @@ function jsonDiff(before, after) {
  */
 function installResult(result) {
   let output = '';
+  const installed = result.installed || result.updated || [];
+  const total = result.total || 5;
 
-  if (result.updated.length > 0) {
-    output += `✅ ${result.updated.length}/${result.total} tools updated:\n`;
-    result.updated.forEach(tool => {
-      output += `   ✅ ${tool.name} (at ${tool.path})\n`;
+  if (installed.length > 0) {
+    output += `✅ ${installed.length}/${total} clients updated:\n`;
+    installed.forEach(entry => {
+      if (entry.method === 'cli') {
+        output += `   ✅ ${entry.name} (via CLI)\n`;
+      } else {
+        output += `   ✅ ${entry.name} (at ${entry.path})\n`;
+      }
     });
   }
 
   if (result.errors && result.errors.length > 0) {
     output += '\n❌ Errors:\n';
     result.errors.forEach(err => {
-      output += `   ❌ ${err.name}: ${err.message}\n`;
+      if (typeof err === 'string') {
+        output += `   ❌ ${err}\n`;
+      } else {
+        output += `   ❌ ${err.name}: ${err.message}\n`;
+      }
     });
   }
 
@@ -92,10 +102,16 @@ function diagnosticReport(report) {
   report.tools.forEach(tool => {
     if (tool.status === 'ok') {
       output += `✅ ${tool.name}\n`;
-      output += `   ${tool.path} - Configured and ready\n\n`;
+      if (tool.type === 'cli') {
+        output += `   Configured via CLI - Ready\n\n`;
+      } else {
+        output += `   ${tool.path} - Configured and ready\n\n`;
+      }
     } else if (tool.status === 'error') {
       output += `❌ ${tool.name}\n`;
-      output += `   ${tool.path}\n`;
+      if (tool.path) {
+        output += `   ${tool.path}\n`;
+      }
       if (tool.issues && tool.issues.length > 0) {
         tool.issues.forEach(issue => {
           output += `   Issue: ${issue}\n`;
@@ -107,9 +123,19 @@ function diagnosticReport(report) {
         });
       }
       output += '\n';
+    } else if (tool.status === 'info') {
+      output += `⚪ ${tool.name}\n`;
+      if (tool.issues && tool.issues.length > 0) {
+        tool.issues.forEach(issue => {
+          output += `   ${issue}\n`;
+        });
+      }
+      output += '\n';
     } else if (tool.status === 'warning') {
       output += `⚠️  ${tool.name}\n`;
-      output += `   ${tool.path}\n`;
+      if (tool.path) {
+        output += `   ${tool.path}\n`;
+      }
       if (tool.issues && tool.issues.length > 0) {
         tool.issues.forEach(issue => {
           output += `   Issue: ${issue}\n`;
@@ -149,6 +175,15 @@ function diagnosticReport(report) {
     }
   }
 
+  // Legacy path warnings
+  if (report.legacyWarnings && report.legacyWarnings.length > 0) {
+    output += '\n⚠️  Legacy Configs Found:\n';
+    report.legacyWarnings.forEach(w => {
+      output += `   ${w.description}: ${w.path}\n`;
+      output += `   This path is no longer used. You can safely remove the gasoline entry.\n`;
+    });
+  }
+
   output += `\n${report.summary}\n`;
   return output;
 }
@@ -160,12 +195,16 @@ function uninstallResult(result) {
   let output = '';
 
   if (result.removed.length > 0) {
-    output += `✅ Removed from ${result.removed.length} tool${result.removed.length === 1 ? '' : 's'}:\n`;
-    result.removed.forEach(tool => {
-      output += `   ✅ ${tool.name} (removed from ${tool.path})\n`;
+    output += `✅ Removed from ${result.removed.length} client${result.removed.length === 1 ? '' : 's'}:\n`;
+    result.removed.forEach(entry => {
+      if (entry.method === 'cli') {
+        output += `   ✅ ${entry.name} (via CLI)\n`;
+      } else {
+        output += `   ✅ ${entry.name} (removed from ${entry.path})\n`;
+      }
     });
   } else {
-    output += `ℹ️  Gasoline not configured in any tools\n`;
+    output += `ℹ️  Gasoline not configured in any clients\n`;
   }
 
   if (result.notConfigured && result.notConfigured.length > 0) {

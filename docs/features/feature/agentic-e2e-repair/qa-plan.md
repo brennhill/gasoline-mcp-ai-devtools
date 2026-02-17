@@ -232,7 +232,7 @@ Since Agentic E2E Repair is a workflow pattern (not new server code), unit tests
 ### Regression Checks
 - [ ] All individual MCP tools (observe, generate, configure, interact) work normally outside the repair workflow
 - [ ] Extension capture behavior unaffected by the repair workflow
-- [ ] No new MCP tools created (still exactly 4 tools — observe, generate, configure, interact)
+- [ ] No new MCP tools created (still exactly 5 tools — observe, generate, configure, interact, analyze)
 - [ ] Server performance unaffected by the multi-tool orchestration pattern
 - [ ] Existing test generation (`generate({type: "test"})`) still works for non-repair use cases
 

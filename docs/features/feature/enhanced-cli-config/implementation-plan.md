@@ -23,7 +23,7 @@ last-verified: 2026-01-31
 | **Phase 1** | NPM Refactor Existing Code | 1 hour | TODO |
 | **Phase 2** | NPM Implement --dry-run | 2 hours | TODO |
 | **Phase 3** | NPM Implement --doctor | 2 hours | TODO |
-| **Phase 4** | NPM Implement --for-all | 1.5 hours | TODO |
+| **Phase 4** | NPM Client Registry + Multi-Client | 1.5 hours | DONE |
 | **Phase 5** | NPM Implement --env | 1.5 hours | TODO |
 | **Phase 6** | NPM Implement --uninstall | 2 hours | TODO |
 | **Phase 7** | NPM Error Messages + Testing | 2 hours | TODO |
@@ -95,16 +95,14 @@ last-verified: 2026-01-31
    - [ ] Create `validateMCPConfig(data)` function
      - Check `data.mcpServers` is object
      - Return `{valid: bool, errors: [strings]}`
-   - [ ] Create `getConfigCandidates()` function
-     - Return array of candidate paths:
-       ```javascript
-       [
-         path.join(os.homedir(), '.claude', 'claude.mcp.json'),
-         path.join(os.homedir(), '.vscode', 'claude.mcp.json'),
-         path.join(os.homedir(), '.cursor', 'mcp.json'),
-         path.join(os.homedir(), '.codeium', 'mcp.json'),
-       ]
-       ```
+   - [ ] Create `CLIENT_DEFINITIONS` registry with all 5 clients
+     - Each entry: `{id, name, type, configPath|detectCommand, detectDir|installArgs, removeArgs}`
+   - [ ] Create `getDetectedClients()` function
+     - Return array of clients whose config dir or CLI exists
+   - [ ] Create `getClientConfigPath(def)` function
+     - Return platform-specific config path
+   - [ ] Create `isClientInstalled(def)` function
+     - Check dir existence (file-type) or command existence (cli-type)
 
 2. **Extract `lib/install.js`**
    - [ ] Create `mergeGassolineConfig(existing, gassolineEntry, envVars)` function
@@ -126,20 +124,20 @@ last-verified: 2026-01-31
 ### Tests to Write First
 
 ```javascript
-// tests/cli/config.test.js
-- [ ] readConfigFile() with valid JSON
-- [ ] readConfigFile() with non-existent file
-- [ ] readConfigFile() with invalid JSON
-- [ ] writeConfigFile() with dryRun=true doesn't write
-- [ ] writeConfigFile() with dryRun=false writes file
-- [ ] validateMCPConfig() accepts valid config
-- [ ] validateMCPConfig() rejects config without mcpServers
-- [ ] getConfigCandidates() returns 4 paths
+// npm/gasoline-mcp/lib/config.test.js
+- [ ] CLIENT_DEFINITIONS has 5 entries with correct fields
+- [ ] getClientConfigPath() returns correct platform paths
+- [ ] isClientInstalled() detects existing/missing dirs
+- [ ] commandExistsOnPath() finds/misses CLIs
+- [ ] getDetectedClients() returns only installed clients
+- [ ] expandPath() resolves ~ and %APPDATA%
+- [ ] getConfigCandidates() backward compat wrapper
+- [ ] getToolNameFromPath() backward compat wrapper
 ```
 
 ### Deliverables
 
-- `lib/config.js` with 4 functions
+- `lib/config.js` with client registry and detection functions
 - `lib/install.js` with merge function
 - `lib/output.js` with formatters
 - Updated `bin/gasoline-mcp` using new functions
@@ -159,7 +157,7 @@ last-verified: 2026-01-31
 
 2. **Implement in `lib/install.js`**
    - [ ] Create `executeInstall(options)` function
-     - `options = {dryRun: bool, forAll: bool, envVars: {}, verbose: bool}`
+     - `options = {dryRun: bool, envVars: {}, verbose: bool}`
      - Return `{success: bool, updated: [paths], errors: [details], diffs: [beforeAfter]}`
    - [ ] If `dryRun=true`: collect diffs, don't write
    - [ ] Return detailed diff for each candidate
@@ -212,7 +210,7 @@ last-verified: 2026-01-31
        - Validate JSON syntax
        - Verify gasoline entry present
        - Check binary exists and is executable
-     - Return report: `{tools: [{name, path, status, issues, suggestions}], summary: string}`
+     - Return report: `{clients: [{name, type, status, issues, suggestions}], legacyWarnings: [], summary: string}`
 
 3. **Binary testing in `lib/doctor.js`**
    - [ ] Create `testBinary()` function
@@ -256,51 +254,44 @@ last-verified: 2026-01-31
 
 ---
 
-## Phase 4: Implement --for-all (1.5 hours)
+## Phase 4: Implement Client Registry + Multi-Client Install (1.5 hours)
 
-**Goal:** Install to all 4 detected tools, not just first
+**Goal:** Install to all detected clients using client registry
 
 ### Tasks
 
-1. **Update CLI argument parsing**
-   - [ ] Parse `--for-all` flag
-   - [ ] Pass `forAll: true` to install engine
+1. **Implement client registry in `lib/config.js`**
+   - [ ] Create `CLIENT_DEFINITIONS` array with 5 client entries
+   - [ ] Support `type: 'cli'` (Claude Code) and `type: 'file'` (rest)
+   - [ ] Platform-specific paths: `{ darwin, win32, linux, all }`
 
 2. **Update `lib/install.js`**
-   - [ ] Modify `executeInstall()` to support `forAll` option
-     - If `forAll=false`: stop at first success (v5.2 behavior)
-     - If `forAll=true`: continue through all candidates
-   - [ ] Collect results from all updated files
-   - [ ] Return detailed report of all updated tools
+   - [ ] Create `installViaCli()` for CLI-type clients (subprocess)
+   - [ ] Create `installViaFile()` for file-type clients (config write)
+   - [ ] Create `installToClient()` dispatcher
+   - [ ] `executeInstall()` targets all detected clients by default
 
-3. **Add multi-tool formatter in `lib/output.js`**
-   - [ ] Create `formatInstallResults(results)` function
-     - Show count: "4/4 tools updated"
-     - List each tool with path
-     - Show any errors
-     - Next steps suggestion
-
-4. **Update `bin/gasoline-mcp`**
-   - [ ] Handle `--install --for-all`
-   - [ ] Call `executeInstall({forAll: true})`
-   - [ ] Display summary of all updated tools
+3. **Add multi-client formatter in `lib/output.js`**
+   - [ ] Show count: "5/5 clients installed"
+   - [ ] List each client with method (via CLI / at path)
+   - [ ] Show any errors
 
 ### Tests to Write First
 
 ```javascript
-// tests/cli/install.test.js
-- [ ] executeInstall({forAll: false}) stops at first match
-- [ ] executeInstall({forAll: true}) processes all 4 candidates
-- [ ] All successfully updated tools reported
-- [ ] Non-existent configs skipped gracefully
-- [ ] Errors in one config don't stop processing others
-- [ ] Summary shows count: "4/4 updated" or "2/4 updated"
+// npm/gasoline-mcp/lib/install.test.js
+- [ ] installToClient() dispatches file-type correctly
+- [ ] installToClient() creates new config
+- [ ] installToClient() merges into existing config
+- [ ] installToClient() handles dry-run
+- [ ] executeInstall() processes all detected clients
+- [ ] Errors in one client don't stop processing others
 ```
 
 ### Deliverables
 
-- Updated `executeInstall()` with forAll support
-- Multi-tool formatter
+- Client registry in `lib/config.js`
+- Updated `executeInstall()` with multi-client support
 - Phase 4 tests passing
 
 ---
@@ -380,8 +371,8 @@ last-verified: 2026-01-31
 
 3. **Add uninstall formatter in `lib/output.js`**
    - [ ] Create `formatUninstallResults(results)` function
-     - Show count: "Removed from 2/4 tools"
-     - List which tools updated
+     - Show count: "Removed from N clients"
+     - List which clients updated
      - Show any errors
 
 4. **Update `bin/gasoline-mcp`**
@@ -400,7 +391,7 @@ last-verified: 2026-01-31
 - [ ] dryRun=true shows what would be removed
 - [ ] dryRun=false actually removes
 - [ ] Produces valid JSON after removal
-- [ ] Reports count: "Removed from N tools"
+- [ ] Reports count: "Removed from N clients"
 - [ ] Handles non-existent config gracefully
 ```
 
@@ -426,7 +417,6 @@ last-verified: 2026-01-31
    - [ ] File locked
    - [ ] --env without --install
    - [ ] Invalid env format
-   - [ ] --for-all without --install
    - [ ] Invalid flag combinations
    - [ ] File size limit exceeded
    - [ ] Symlink resolution failed
@@ -482,7 +472,7 @@ last-verified: 2026-01-31
 
 2. **Manual UAT (7 scenarios from QA_PLAN)**
    - [ ] Scenario 1: Safe installation (~7 min)
-   - [ ] Scenario 2: Multi-tool install (~8 min)
+   - [ ] Scenario 2: Multi-client install (~8 min)
    - [ ] Scenario 3: Environment variables (~6 min)
    - [ ] Scenario 4: Doctor diagnostics (~10 min)
    - [ ] Scenario 5: Uninstall (~5 min)
@@ -515,20 +505,20 @@ Reference for Phase 7 implementation:
 
 ### Permission Errors
 ```
-❌ Error: Permission denied writing ~/.claude/claude.mcp.json
+❌ Error: Permission denied writing ~/.cursor/mcp.json
    Recovery:
    1. Try: sudo gasoline-mcp --install
-   2. Or: Check permissions with: ls -la ~/.claude/
-   3. Or: Change permissions: chmod 755 ~/.claude
+   2. Or: Check permissions with: ls -la ~/.cursor/
+   3. Or: Change permissions: chmod 755 ~/.cursor
 ```
 
 ### JSON Errors
 ```
-❌ Error: Invalid JSON in ~/.vscode/claude.mcp.json at line 15
+❌ Error: Invalid JSON in ~/.cursor/mcp.json at line 15
    Unexpected token }
 
    Recovery:
-   1. Manually edit: code ~/.vscode/claude.mcp.json
+   1. Manually edit: code ~/.cursor/mcp.json
    2. Or: Restore from backup and try --install again
    3. Or: Run: gasoline-mcp --doctor (for diagnostics)
 ```
@@ -563,12 +553,6 @@ Reference for Phase 7 implementation:
    - --env LOG_LEVEL=info
 ```
 
-### Flag Combination Errors
-```
-❌ Error: --for-all only works with --install
-   Usage: gasoline-mcp --install --for-all
-```
-
 ---
 
 ## Testing Checklist (TDD Approach)
@@ -585,12 +569,13 @@ For each phase:
 
 ### Critical Tests (Must Pass)
 
-- [ ] Backward compatibility: v5.2 CLI commands still work
+- [ ] Multi-client: `--install` targets all detected clients by default
 - [ ] No file corruption: `--dry-run` never writes
 - [ ] Other MCP servers preserved: only gasoline entry modified
 - [ ] Atomic writes: files only written completely, never half-written
 - [ ] Error messages: all errors have actionable recovery suggestions
 - [ ] Security: env vars safely stored, paths safe from traversal
+- [ ] CLI-type clients: subprocess with correct env var handling
 
 ---
 
@@ -602,8 +587,8 @@ For each phase:
 
 1. **Create Python module structure**
    - [ ] Create `pypi/gasoline-mcp/gasoline_mcp/config.py`
-     - Port `readConfigFile()`, `writeConfigFile()`, `validateMCPConfig()`, `getConfigCandidates()`
-     - Use Python `pathlib.Path` and `json` module
+     - Port `CLIENT_DEFINITIONS`, detection, path resolution
+     - Use `shutil.which()` for CLI detection, `os.path.isdir()` for file-type
      - Match Node.js behavior exactly (same defaults, same errors)
 
    - [ ] Create `pypi/gasoline-mcp/gasoline_mcp/doctor.py`
@@ -612,8 +597,8 @@ For each phase:
      - Match Node.js error detection
 
    - [ ] Create `pypi/gasoline-mcp/gasoline_mcp/install.py`
-     - Port `executeInstall()`, `mergeGassolineConfig()`
-     - Handle dryRun, forAll, envVars options identically
+     - Port `executeInstall()`, `installToClient()`, `installViaCli()`, `installViaFile()`
+     - Handle dryRun, envVars options identically
 
    - [ ] Create `pypi/gasoline-mcp/gasoline_mcp/uninstall.py`
      - Port `executeUninstall()`
@@ -645,7 +630,7 @@ For each phase:
    # Python idiomatic
    from pathlib import Path
    home = Path.home()
-   config_path = home / '.claude' / 'claude.mcp.json'
+   config_path = home / '.cursor' / 'mcp.json'
    ```
 
 2. **Use json module**
@@ -730,10 +715,8 @@ For each phase:
      - Error messages identical
 
 2. **Behavior verification**
-   - [ ] `--install` both update first tool (without --for-all)
-     - Verify only one config file modified
-   - [ ] `--install --for-all` both update all 4 tools
-     - Verify all configs modified
+   - [ ] `--install` both update all detected clients
+     - Verify all detected client configs modified
    - [ ] `--dry-run` both preview without writing
      - Verify no files written in both
    - [ ] `--env` parsing identical

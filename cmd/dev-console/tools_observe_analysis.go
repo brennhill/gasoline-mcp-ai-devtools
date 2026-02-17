@@ -702,14 +702,16 @@ func (h *ToolHandler) formatCommandResult(req JSONRPCRequest, cmd queries.Comman
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONErrorResponse(summary, responseData)}
 	case "expired":
 		responseData["final"] = true
-		responseData["error"] = fmt.Sprintf("Command %s expired before the extension could execute it. Error: %s", corrID, cmd.Error)
+		responseData["error"] = ErrExtTimeout
+		responseData["message"] = fmt.Sprintf("Command %s expired before the extension could execute it. Error: %s", corrID, cmd.Error)
 		responseData["retry"] = "The browser extension may be disconnected or the page is not active. Check observe with what='pilot' to verify extension status, then retry the command."
 		responseData["hint"] = h.diagnosticHintString()
 		summary := fmt.Sprintf("FAILED — Command %s expired: %s", corrID, cmd.Error)
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONErrorResponse(summary, responseData)}
 	case "timeout":
 		responseData["final"] = true
-		responseData["error"] = fmt.Sprintf("Command %s timed out waiting for the extension to respond. Error: %s", corrID, cmd.Error)
+		responseData["error"] = ErrExtTimeout
+		responseData["message"] = fmt.Sprintf("Command %s timed out waiting for the extension to respond. Error: %s", corrID, cmd.Error)
 		responseData["retry"] = "The command took too long. The page may be unresponsive or the action is stuck. Try refreshing the page with interact action='refresh', then retry."
 		responseData["hint"] = h.diagnosticHintString()
 		summary := fmt.Sprintf("FAILED — Command %s timed out: %s", corrID, cmd.Error)

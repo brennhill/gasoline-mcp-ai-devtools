@@ -12,7 +12,6 @@ const {
   BinaryNotFoundError,
   InvalidEnvFormatError,
   EnvWithoutInstallError,
-  ForAllWithoutInstallError,
   ConfigValidationError,
   FileSizeError
 } = require('../../npm/gasoline-mcp/lib/errors')
@@ -79,14 +78,6 @@ test('EnvWithoutInstallError has correct properties', () => {
   assert.ok(err.recovery, 'Should have recovery suggestion')
 })
 
-test('ForAllWithoutInstallError has correct properties', () => {
-  const err = new ForAllWithoutInstallError()
-
-  assert.strictEqual(err.name, 'ForAllWithoutInstallError')
-  assert.ok(err.message.includes('--for-all') || err.message.includes('--install'), 'Message should mention flags')
-  assert.ok(err.recovery, 'Should have recovery suggestion')
-})
-
 test('ConfigValidationError has correct properties', () => {
   const err = new ConfigValidationError(['mcpServers missing'])
 
@@ -111,7 +102,6 @@ test('All errors have recovery properties', () => {
     new BinaryNotFoundError('linux-x64'),
     new InvalidEnvFormatError('INVALID'),
     new EnvWithoutInstallError(),
-    new ForAllWithoutInstallError(),
     new ConfigValidationError(['error']),
     new FileSizeError('/path', 5000000)
   ]
@@ -129,7 +119,6 @@ test('All errors format() methods include emoji', () => {
     new BinaryNotFoundError('linux-x64'),
     new InvalidEnvFormatError('INVALID'),
     new EnvWithoutInstallError(),
-    new ForAllWithoutInstallError(),
     new ConfigValidationError(['error']),
     new FileSizeError('/path', 5000000)
   ]

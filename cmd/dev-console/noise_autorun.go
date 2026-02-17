@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/dev-console/dev-console/internal/ai"
+	"github.com/dev-console/dev-console/internal/util"
 )
 
 // noiseAutoDetectInterval is the minimum time between automatic noise detection runs.
@@ -61,7 +62,7 @@ func (r *noiseAutoRunner) schedule() {
 		// Enough time has passed — run immediately in background
 		r.pending = true
 		r.mu.Unlock()
-		go r.run()
+		util.SafeGo(r.run)
 		return
 	}
 
@@ -70,10 +71,10 @@ func (r *noiseAutoRunner) schedule() {
 	delay := r.interval - elapsed
 	r.mu.Unlock()
 
-	go func() {
+	util.SafeGo(func() {
 		time.Sleep(delay)
 		r.run()
-	}()
+	})
 }
 
 // run executes the function and resets the debounce state.

@@ -35,14 +35,14 @@ These tests verify MCP JSON-RPC 2.0 correctness. Failures here mean no MCP clien
 | **Assert** | `response.result.capabilities.tools` exists, `response.result.serverInfo.name == "gasoline-mcp"`, `response.result.serverInfo.version` matches VERSION file |
 | **Trust because** | If capabilities are wrong, Claude/Cursor won't know what tools exist. Version mismatch means wrong binary is installed. |
 
-### 1.2 — tools/list returns exactly 4 tools
+### 1.2 — tools/list returns exactly 5 tools
 
 | Field | Value |
 |-------|-------|
 | **Type** | Contract |
 | **What** | Send `tools/list`, extract tool names |
-| **Assert** | Exactly `["observe", "generate", "configure", "interact"]` — no more, no less. Count == 4. |
-| **Trust because** | We shipped stub tools before (analyze, etc). This catches tool creep. Exact-match means no extras sneak in. |
+| **Assert** | Exactly `["observe", "generate", "configure", "interact", "analyze"]` — no more, no less. Count == 5. |
+| **Trust because** | Exact-match means no extras sneak in and no tools are missing. |
 
 ### 1.3 — tools/list schema shapes are valid
 
@@ -625,7 +625,7 @@ Each mode must return a valid response shape, even with no data.
 |-------|-------|
 | **Type** | Load |
 | **What** | Fork 10 processes, each sends `tools/list` simultaneously |
-| **Assert** | All 10 get valid responses with 4 tools each. Zero failures. |
+| **Assert** | All 10 get valid responses with 5 tools each. Zero failures. |
 | **Trust because** | Real usage has multiple MCP clients (Claude + Cursor + CI). Must handle concurrency. |
 
 ### 7.2 — Rapid sequential tool calls don't crash

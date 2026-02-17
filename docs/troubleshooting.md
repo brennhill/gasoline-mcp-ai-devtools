@@ -39,20 +39,20 @@ last_reviewed: 2026-02-16
 
 **Symptom**: You added `.mcp.json` to your project but Gasoline uses wrong settings (different port, old path, etc.)
 
-**Cause**: Claude Code has two config levels:
-- **User-level**: `~/.claude.json` → `mcpServers` section (applies globally)
+**Cause**: Claude Code has multiple config levels with a precedence order:
+- **User-level**: Managed via `claude mcp add --scope user` (applies globally)
 - **Project-level**: `.mcp.json` in project root (applies to that project)
 
 **User-level config takes precedence.** If both define `"gasoline"`, the user-level wins silently.
 
 **To diagnose**:
 ```bash
-# Check for user-level gasoline config
-grep -A5 '"gasoline"' ~/.claude.json
+# Check if gasoline is installed at user level
+claude mcp list
 ```
 
 **To fix**:
-1. Edit `~/.claude.json` and remove the `gasoline` entry from `mcpServers`
+1. Remove user-level gasoline: `claude mcp remove --scope user gasoline`
 2. Or update the user-level config to match your desired settings
 3. Restart Claude Code to pick up changes
 

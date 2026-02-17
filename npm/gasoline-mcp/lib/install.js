@@ -1,12 +1,13 @@
 /**
  * Install logic for Gasoline MCP CLI
- * Handles installation to config files with support for --dry-run, --for-all, --env flags
+ * Handles installation to all detected AI assistant clients
  */
 
-const fs = require('fs');
+const { execFileSync } = require('child_process');
 const {
-  getConfigCandidates,
-  getToolNameFromPath,
+  CLIENT_DEFINITIONS,
+  getClientConfigPath,
+  getDetectedClients,
   readConfigFile,
   writeConfigFile,
   mergeGassolineConfig,
@@ -28,130 +29,185 @@ function generateDefaultConfig() {
 }
 
 /**
- * Execute install operation
- * @param {Object} options {dryRun: bool, forAll: bool, envVars: {}, verbose: bool}
- * @returns {Object} {success: bool, updated: [{name, path}], errors: [{name, message}], diffs: []}
+ * Build the MCP entry JSON string for CLI-based install
+ * @param {Object} [envVars] Optional env vars
+ * @returns {string} JSON string of the gasoline MCP entry
+ */
+function buildMcpEntry(envVars = {}) {
+  const entry = { command: 'gasoline-mcp', args: [] };
+  if (envVars && Object.keys(envVars).length > 0) {
+    entry.env = envVars;
+  }
+  return JSON.stringify(entry);
+}
+
+/**
+ * Install to a CLI-type client (e.g. Claude Code via `claude mcp add-json`)
+ * @param {Object} def Client definition
+ * @param {Object} options {dryRun, envVars}
+ * @returns {Object} {success, name, method, message}
+ */
+function installViaCli(def, options) {
+  const { dryRun = false, envVars = {} } = options;
+  const entryJson = buildMcpEntry(envVars);
+  const cmd = def.detectCommand;
+  const args = [...def.installArgs];
+
+  if (dryRun) {
+    return {
+      success: true,
+      name: def.name,
+      id: def.id,
+      method: 'cli',
+      message: `Would run: ${cmd} ${args.join(' ')} '<json>'`,
+    };
+  }
+
+  try {
+    // Must unset CLAUDECODE env var to avoid nested-session error
+    const env = { ...process.env };
+    delete env.CLAUDECODE;
+
+    execFileSync(cmd, args, {
+      input: entryJson,
+      env,
+      stdio: ['pipe', 'pipe', 'pipe'],
+      timeout: 15000,
+    });
+
+    return {
+      success: true,
+      name: def.name,
+      id: def.id,
+      method: 'cli',
+      message: `Installed via ${cmd} CLI`,
+    };
+  } catch (err) {
+    return {
+      success: false,
+      name: def.name,
+      id: def.id,
+      method: 'cli',
+      message: `CLI install failed: ${err.message}`,
+      error: err.message,
+    };
+  }
+}
+
+/**
+ * Install to a file-type client (config file write)
+ * @param {Object} def Client definition
+ * @param {Object} options {dryRun, envVars}
+ * @returns {Object} {success, name, method, path, isNew, message}
+ */
+function installViaFile(def, options) {
+  const { dryRun = false, envVars = {} } = options;
+  const cfgPath = getClientConfigPath(def);
+
+  if (!cfgPath) {
+    return {
+      success: false,
+      name: def.name,
+      id: def.id,
+      method: 'file',
+      message: `No config path for this platform`,
+    };
+  }
+
+  const gassolineEntry = { command: 'gasoline-mcp', args: [] };
+  let configData;
+  let isNew = false;
+
+  const readResult = readConfigFile(cfgPath);
+  if (readResult.valid) {
+    configData = readResult.data;
+  } else {
+    configData = generateDefaultConfig();
+    isNew = true;
+  }
+
+  const merged = mergeGassolineConfig(configData, gassolineEntry, envVars);
+  writeConfigFile(cfgPath, merged, dryRun);
+
+  return {
+    success: true,
+    name: def.name,
+    id: def.id,
+    method: 'file',
+    path: cfgPath,
+    isNew,
+    message: dryRun ? `Would write to ${cfgPath}` : `Wrote to ${cfgPath}`,
+  };
+}
+
+/**
+ * Install to a single client (dispatches by type)
+ * @param {Object} def Client definition
+ * @param {Object} options {dryRun, envVars}
+ * @returns {Object} Result with success, name, method, etc.
+ */
+function installToClient(def, options) {
+  if (def.type === 'cli') {
+    return installViaCli(def, options);
+  }
+  return installViaFile(def, options);
+}
+
+/**
+ * Execute install operation across all detected clients
+ * @param {Object} options {dryRun, envVars, verbose, _clientOverrides}
+ * @returns {Object} {success, installed, errors, total}
  */
 function executeInstall(options = {}) {
-  const { dryRun = false, forAll = false, envVars = {}, verbose = false } = options;
+  const { dryRun = false, envVars = {}, verbose = false } = options;
+
+  // Allow test override of client list
+  const clients = options._clientOverrides !== undefined
+    ? options._clientOverrides
+    : getDetectedClients();
 
   const result = {
     success: false,
-    updated: [],
+    installed: [],
     errors: [],
-    diffs: [],
-    total: 4,
+    total: CLIENT_DEFINITIONS.length,
   };
 
-  const candidates = getConfigCandidates();
-  const gassolineEntry = {
-    command: 'gasoline-mcp',
-    args: [],
-  };
-
-  let foundExisting = false;
-
-  for (const candidatePath of candidates) {
-    const toolName = getToolNameFromPath(candidatePath);
-
+  for (const def of clients) {
     try {
-      let configData;
-      let isNew = false;
+      const installResult = installToClient(def, { dryRun, envVars });
 
-      // Try to read existing config
-      const readResult = readConfigFile(candidatePath);
-      if (readResult.valid) {
-        configData = readResult.data;
-        foundExisting = true;
+      if (installResult.success) {
+        result.installed.push(installResult);
       } else {
-        // File doesn't exist, create new config
-        configData = generateDefaultConfig();
-        isNew = true;
-      }
-
-      // Merge gasoline config
-      const before = JSON.parse(JSON.stringify(configData)); // Deep copy for diff
-      const merged = mergeGassolineConfig(configData, gassolineEntry, envVars);
-
-      // Write config
-      const writeResult = writeConfigFile(candidatePath, merged, dryRun);
-
-      result.updated.push({
-        name: toolName,
-        path: candidatePath,
-        isNew,
-      });
-
-      if (dryRun && writeResult.before) {
-        result.diffs.push({
-          path: candidatePath,
-          before,
-          after: merged,
-        });
+        result.errors.push(installResult);
       }
 
       if (verbose) {
-        console.log(`[DEBUG] ${isNew ? 'Created' : 'Updated'}: ${candidatePath}`);
-      }
-
-      // Stop at first match if not --for-all
-      if (!forAll && foundExisting) {
-        break;
+        const status = installResult.success ? 'OK' : 'FAIL';
+        console.log(`[DEBUG] ${def.name}: ${status} - ${installResult.message}`);
       }
     } catch (err) {
-      // If file doesn't exist and we're looking for existing, continue
-      if (!fs.existsSync(candidatePath) && !forAll) {
-        continue;
-      }
-
       result.errors.push({
-        name: toolName,
+        name: def.name,
+        id: def.id,
         message: err.message,
         recovery: err.recovery,
       });
 
       if (verbose) {
-        console.log(`[DEBUG] Error on ${candidatePath}: ${err.message}`);
-      }
-
-      // If --for-all, continue even on error
-      if (!forAll) {
-        break;
+        console.log(`[DEBUG] Error on ${def.name}: ${err.message}`);
       }
     }
   }
 
-  // If no existing config found and --for-all not set, we still create the default
-  if (!foundExisting && !forAll && result.updated.length === 0) {
-    // This would have been handled by the try-catch above
-    // But just in case, try the default location
-    try {
-      const defaultPath = candidates[0]; // ~/.claude.json
-      const merged = mergeGassolineConfig(
-        generateDefaultConfig(),
-        gassolineEntry,
-        envVars
-      );
-      writeConfigFile(defaultPath, merged, dryRun);
-      result.updated.push({
-        name: getToolNameFromPath(defaultPath),
-        path: defaultPath,
-        isNew: true,
-      });
-    } catch (err) {
-      result.errors.push({
-        name: 'Claude Desktop',
-        message: err.message,
-        recovery: err.recovery,
-      });
-    }
-  }
-
-  result.success = result.updated.length > 0;
+  result.success = result.installed.length > 0;
   return result;
 }
 
 module.exports = {
   generateDefaultConfig,
+  buildMcpEntry,
+  installToClient,
   executeInstall,
 };

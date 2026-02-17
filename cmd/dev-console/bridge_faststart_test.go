@@ -7,9 +7,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"os"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/dev-console/dev-console/internal/state"
 )
 
 func readJSONRPCLine(t *testing.T, reader *bufio.Reader, timeout time.Duration) JSONRPCResponse {
@@ -817,4 +820,109 @@ func TestFastStart_VersionInResponse(t *testing.T) {
 	}
 
 	t.Logf("✅ Version in response: %s", responseVersion)
+}
+
+// TestFastStart_ResourceWorkflowSoak repeatedly exercises fast-path startup
+// requests and verifies protocol stability over many iterations.
+func TestFastStart_ResourceWorkflowSoak(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skips server spawn in short mode")
+	}
+
+	binary := buildTestBinary(t)
+	port := findFreePort(t)
+	stateDir := os.Getenv(state.StateDirEnv)
+	if stateDir == "" {
+		stateDir = t.TempDir()
+	}
+
+	cmd := startServerCmd(binary, "--bridge", "--port", fmt.Sprintf("%d", port))
+	if cmd.Env == nil {
+		cmd.Env = os.Environ()
+	}
+	cmd.Env = append(cmd.Env, state.StateDirEnv+"="+stateDir)
+
+	stdin, err := cmd.StdinPipe()
+	if err != nil {
+		t.Fatalf("Failed to get stdin pipe: %v", err)
+	}
+
+	stdout, err := cmd.StdoutPipe()
+	if err != nil {
+		t.Fatalf("Failed to get stdout pipe: %v", err)
+	}
+
+	cmd.Stderr = nil
+
+	if err := cmd.Start(); err != nil {
+		t.Fatalf("Failed to start command: %v", err)
+	}
+
+	defer func() {
+		_ = stdin.Close()
+		_ = cmd.Process.Kill()
+		_ = cmd.Wait()
+	}()
+
+	reader := bufio.NewReader(stdout)
+	initReq := `{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"soak","version":"1.0"}}}`
+	if _, err := stdin.Write([]byte(initReq + "\n")); err != nil {
+		t.Fatalf("Failed to write initialize: %v", err)
+	}
+	line, err := reader.ReadString('\n')
+	if err != nil {
+		t.Fatalf("Failed to read initialize response: %v", err)
+	}
+	var initResp JSONRPCResponse
+	if err := json.Unmarshal([]byte(line), &initResp); err != nil {
+		t.Fatalf("Failed to parse initialize response: %v", err)
+	}
+	if initResp.Error != nil {
+		t.Fatalf("initialize returned protocol error: %+v", initResp.Error)
+	}
+
+	start := time.Now()
+	const iterations = 40
+	nextID := 2
+	for i := 0; i < iterations; i++ {
+		readReq := fmt.Sprintf(`{"jsonrpc":"2.0","id":%d,"method":"resources/read","params":{"uri":"gasoline://capabilities"}}`, nextID)
+		nextID++
+		if _, err := stdin.Write([]byte(readReq + "\n")); err != nil {
+			t.Fatalf("write resources/read iter %d: %v", i, err)
+		}
+		line, err := reader.ReadString('\n')
+		if err != nil {
+			t.Fatalf("read resources/read iter %d: %v", i, err)
+		}
+		var resp JSONRPCResponse
+		if err := json.Unmarshal([]byte(line), &resp); err != nil {
+			t.Fatalf("parse resources/read iter %d: %v", i, err)
+		}
+		if resp.Error != nil {
+			t.Fatalf("resources/read iter %d returned protocol error: %+v", i, resp.Error)
+		}
+
+		if i%10 == 0 {
+			toolsReq := fmt.Sprintf(`{"jsonrpc":"2.0","id":%d,"method":"tools/list","params":{}}`, nextID)
+			nextID++
+			if _, err := stdin.Write([]byte(toolsReq + "\n")); err != nil {
+				t.Fatalf("write tools/list iter %d: %v", i, err)
+			}
+			line, err := reader.ReadString('\n')
+			if err != nil {
+				t.Fatalf("read tools/list iter %d: %v", i, err)
+			}
+			var toolsResp JSONRPCResponse
+			if err := json.Unmarshal([]byte(line), &toolsResp); err != nil {
+				t.Fatalf("parse tools/list iter %d: %v", i, err)
+			}
+			if toolsResp.Error != nil {
+				t.Fatalf("tools/list iter %d returned protocol error: %+v", i, toolsResp.Error)
+			}
+		}
+	}
+
+	if elapsed := time.Since(start); elapsed > 8*time.Second {
+		t.Fatalf("soak workflow took %v, expected <= 8s", elapsed)
+	}
 }

@@ -29,7 +29,7 @@ func makeAnalyzeToolHandler(t *testing.T) (*ToolHandler, *Server, *capture.Captu
 
 func callAnalyzeRaw(h *ToolHandler, argsJSON string) JSONRPCResponse {
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: 1}
-	return h.toolAnalyze(req, json.RawMessage(argsJSON))
+	return h.toolAnalyze(req, normalizeAnalyzeArgsForAsync(argsJSON))
 }
 
 // ============================================
@@ -222,16 +222,13 @@ func TestToolsAnalyzeDOM_Success(t *testing.T) {
 	}
 
 	data := extractResultJSON(t, result)
-	for _, field := range []string{"status", "correlation_id", "selector", "hint"} {
+	for _, field := range []string{"status", "correlation_id", "queued", "final"} {
 		if _, ok := data[field]; !ok {
 			t.Errorf("dom response missing field %q", field)
 		}
 	}
 	if data["status"] != "queued" {
 		t.Errorf("status = %v, want 'queued'", data["status"])
-	}
-	if data["selector"] != "#main" {
-		t.Errorf("selector = %v, want '#main'", data["selector"])
 	}
 	corr, _ := data["correlation_id"].(string)
 	if !strings.HasPrefix(corr, "dom_") {
@@ -442,8 +439,8 @@ func TestToolsAnalyzeLinkHealth_ResponseFields(t *testing.T) {
 	if !strings.HasPrefix(corr, "link_health_") {
 		t.Errorf("correlation_id should start with 'link_health_', got: %s", corr)
 	}
-	if _, ok := data["hint"]; !ok {
-		t.Error("response missing 'hint' field")
+	if queued, ok := data["queued"].(bool); !ok || !queued {
+		t.Errorf("queued = %v, want true", data["queued"])
 	}
 
 	assertSnakeCaseFields(t, string(resp.Result))

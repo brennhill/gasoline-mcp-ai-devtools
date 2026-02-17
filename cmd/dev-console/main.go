@@ -22,6 +22,7 @@ package main
 import (
 	"bufio"
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	"io"
@@ -268,7 +269,9 @@ const (
 // parsedFlags holds the raw parsed flag values before validation.
 type parsedFlags struct {
 	port, maxEntries                                                     *int
+	fastPathMinSamples                                                   *int
 	logFile, apiKey, clientID, stateDir, uploadDir                       *string
+	fastPathMaxFailureRatio                                              *float64
 	showVersion, showHelp, checkSetup, doctorMode, stopMode, connectMode *bool
 	bridgeMode, daemonMode, enableOsUploadAutomation                     *bool
 	forceCleanup                                                         *bool
@@ -282,6 +285,8 @@ func registerFlags() *parsedFlags {
 	f.port = flag.Int("port", defaultPort, "Port to listen on")
 	f.logFile = flag.String("log-file", "", "Path to log file (default: in runtime state dir)")
 	f.maxEntries = flag.Int("max-entries", defaultMaxEntries, "Max log entries before rotation")
+	f.fastPathMinSamples = flag.Int("fastpath-min-samples", 50, "Minimum fast-path telemetry samples required when threshold check is enabled")
+	f.fastPathMaxFailureRatio = flag.Float64("fastpath-max-failure-ratio", -1, "Maximum allowed fast-path failure ratio in --check (set >=0 to enforce)")
 	f.showVersion = flag.Bool("version", false, "Show version")
 	f.showHelp = flag.Bool("help", false, "Show help")
 	f.apiKey = flag.String("api-key", os.Getenv("GASOLINE_API_KEY"), "API key for HTTP authentication (optional, or GASOLINE_API_KEY env)")
@@ -304,6 +309,11 @@ func registerFlags() *parsedFlags {
 	return f
 }
 
+type setupCheckOptions struct {
+	minSamples      int
+	maxFailureRatio float64
+}
+
 // handleEarlyExitModes handles --version, --help, --force, --check/--doctor, --stop, --connect.
 // Calls os.Exit for any matched mode; returns normally if none matched.
 func handleEarlyExitModes(f *parsedFlags) {
@@ -320,7 +330,13 @@ func handleEarlyExitModes(f *parsedFlags) {
 		os.Exit(0)
 	}
 	if *f.checkSetup || *f.doctorMode {
-		runSetupCheck(*f.port)
+		ok := runSetupCheckWithOptions(*f.port, setupCheckOptions{
+			minSamples:      *f.fastPathMinSamples,
+			maxFailureRatio: *f.fastPathMaxFailureRatio,
+		})
+		if !ok {
+			os.Exit(1)
+		}
 		os.Exit(0)
 	}
 	if *f.stopMode {
@@ -666,6 +682,8 @@ Options:
   --client-id <id>       Override client ID (default: derived from CWD)
   --check                Verify setup (check port availability, print status)
   --doctor               Run full diagnostics (alias of --check)
+  --fastpath-min-samples Minimum telemetry samples required for threshold check (default: 50)
+  --fastpath-max-failure-ratio Maximum allowed fast-path failure ratio for --check (disabled by default)
   --persist              Deprecated no-op (kept for backwards compatibility)
   --version              Show version
   --help                 Show this help message
@@ -695,15 +713,11 @@ CLI Mode (direct tool access):
   Env vars: GASOLINE_PORT, GASOLINE_FORMAT, GASOLINE_STATE_DIR
 
 MCP Configuration:
-  Add to your Claude Code settings.json or project .mcp.json:
-  {
-    "mcpServers": {
-      "gasoline": {
-        "command": "npx",
-        "args": ["gasoline-mcp"]
-      }
-    }
-  }
+  gasoline-mcp --install     Auto-install to all detected AI clients
+  gasoline-mcp --config      Show configuration and detected clients
+  gasoline-mcp --doctor      Run diagnostics on installed configs
+
+  Supported clients: Claude Code, Claude Desktop, Cursor, Windsurf, VS Code
 `)
 }
 
@@ -745,16 +759,24 @@ type fastPathTelemetrySummary struct {
 	success    int
 	failure    int
 	errorCodes map[int]int
+	methods    map[string]int
 }
 
 func summarizeFastPathTelemetryLog(path string, maxLines int) fastPathTelemetrySummary {
-	summary := fastPathTelemetrySummary{errorCodes: map[int]int{}}
+	summary := fastPathTelemetrySummary{
+		errorCodes: map[int]int{},
+		methods:    map[string]int{},
+	}
+	if maxLines <= 0 {
+		return summary
+	}
 	// #nosec G304 -- path is deterministic under runtime state dir.
 	f, err := os.Open(path)
 	if err != nil {
 		return summary
 	}
 	defer func() { _ = f.Close() }()
+
 	lines := make([]string, 0, maxLines)
 	scanner := bufio.NewScanner(f)
 	for scanner.Scan() {
@@ -767,12 +789,14 @@ func summarizeFastPathTelemetryLog(path string, maxLines int) fastPathTelemetryS
 			lines = lines[1:]
 		}
 	}
+
 	for _, line := range lines {
 		var entry map[string]any
 		if err := json.Unmarshal([]byte(line), &entry); err != nil {
 			continue
 		}
-		if event, _ := entry["event"].(string); event != "bridge_fastpath_resources_read" {
+		event, _ := entry["event"].(string)
+		if event != "bridge_fastpath_method" {
 			continue
 		}
 		summary.total++
@@ -780,6 +804,9 @@ func summarizeFastPathTelemetryLog(path string, maxLines int) fastPathTelemetryS
 			summary.success++
 		} else {
 			summary.failure++
+		}
+		if method, _ := entry["method"].(string); method != "" {
+			summary.methods[method]++
 		}
 		if code, ok := entry["error_code"].(float64); ok {
 			codeInt := int(code)
@@ -791,48 +818,94 @@ func summarizeFastPathTelemetryLog(path string, maxLines int) fastPathTelemetryS
 	return summary
 }
 
-func printFastPathTelemetryDiagnostics() {
+func evaluateFastPathFailureThreshold(summary fastPathTelemetrySummary, minSamples int, maxFailureRatio float64) error {
+	if maxFailureRatio < 0 {
+		return nil
+	}
+	if maxFailureRatio > 1 {
+		return fmt.Errorf("max failure ratio must be <= 1.0")
+	}
+	if minSamples < 1 {
+		return fmt.Errorf("min samples must be >= 1")
+	}
+	if summary.total < minSamples {
+		return fmt.Errorf("insufficient samples: got %d, need %d", summary.total, minSamples)
+	}
+	ratio := float64(summary.failure) / float64(summary.total)
+	if ratio > maxFailureRatio {
+		return fmt.Errorf("failure ratio %.4f exceeds threshold %.4f (%d/%d failures)", ratio, maxFailureRatio, summary.failure, summary.total)
+	}
+	return nil
+}
+
+func printFastPathTelemetryDiagnostics(maxLines int) (fastPathTelemetrySummary, bool) {
 	fmt.Print("Checking bridge fast-path telemetry... ")
-	path, err := fastPathResourceReadLogPath()
+	path, err := fastPathTelemetryLogPath()
 	if err != nil {
 		fmt.Println("FAILED")
 		fmt.Printf("  Cannot resolve telemetry log path: %v\n", err)
 		fmt.Println()
-		return
+		return fastPathTelemetrySummary{errorCodes: map[int]int{}, methods: map[string]int{}}, false
 	}
-
 	if _, statErr := os.Stat(path); statErr != nil {
-		fmt.Println("OK")
-		fmt.Printf("  Telemetry log: %s\n", path)
-		fmt.Println("  Status: no fast-path resource telemetry recorded yet")
+		if errors.Is(statErr, os.ErrNotExist) {
+			fmt.Println("OK")
+			fmt.Printf("  Telemetry log: %s\n", path)
+			fmt.Println("  Status: no fast-path telemetry recorded yet")
+			fmt.Println()
+			return fastPathTelemetrySummary{errorCodes: map[int]int{}, methods: map[string]int{}}, false
+		}
+		fmt.Println("FAILED")
+		fmt.Printf("  Telemetry log read error: %v\n", statErr)
 		fmt.Println()
-		return
+		return fastPathTelemetrySummary{errorCodes: map[int]int{}, methods: map[string]int{}}, false
 	}
 
-	summary := summarizeFastPathTelemetryLog(path, 200)
+	summary := summarizeFastPathTelemetryLog(path, maxLines)
 	fmt.Println("OK")
 	fmt.Printf("  Telemetry log: %s\n", path)
-	fmt.Printf("  Last 200 reads: total=%d success=%d failure=%d\n", summary.total, summary.success, summary.failure)
-	if len(summary.errorCodes) == 0 {
+	fmt.Printf("  Last %d events: total=%d success=%d failure=%d\n", maxLines, summary.total, summary.success, summary.failure)
+
+	if len(summary.methods) > 0 {
+		methods := make([]string, 0, len(summary.methods))
+		for method := range summary.methods {
+			methods = append(methods, method)
+		}
+		sort.Strings(methods)
+		parts := make([]string, 0, len(methods))
+		for _, method := range methods {
+			parts = append(parts, fmt.Sprintf("%s=%d", method, summary.methods[method]))
+		}
+		fmt.Printf("  Methods: %s\n", strings.Join(parts, ", "))
+	}
+
+	if len(summary.errorCodes) > 0 {
+		codes := make([]int, 0, len(summary.errorCodes))
+		for code := range summary.errorCodes {
+			codes = append(codes, code)
+		}
+		sort.Ints(codes)
+		parts := make([]string, 0, len(codes))
+		for _, code := range codes {
+			parts = append(parts, fmt.Sprintf("%d=%d", code, summary.errorCodes[code]))
+		}
+		fmt.Printf("  Error codes: %s\n", strings.Join(parts, ", "))
+	} else {
 		fmt.Println("  Error codes: none")
-		fmt.Println()
-		return
 	}
-	codes := make([]int, 0, len(summary.errorCodes))
-	for code := range summary.errorCodes {
-		codes = append(codes, code)
-	}
-	sort.Ints(codes)
-	parts := make([]string, 0, len(codes))
-	for _, code := range codes {
-		parts = append(parts, fmt.Sprintf("%d=%d", code, summary.errorCodes[code]))
-	}
-	fmt.Printf("  Error codes: %s\n", strings.Join(parts, ", "))
 	fmt.Println()
+	return summary, true
 }
 
 // runSetupCheck verifies the setup and prints diagnostic information
 func runSetupCheck(port int) {
+	_ = runSetupCheckWithOptions(port, setupCheckOptions{
+		minSamples:      50,
+		maxFailureRatio: -1,
+	})
+}
+
+func runSetupCheckWithOptions(port int, options setupCheckOptions) bool {
 	fmt.Println()
 	fmt.Println("GASOLINE SETUP CHECK")
 	fmt.Println("────────────────────────────────────────────────────────────────")
@@ -843,7 +916,26 @@ func runSetupCheck(port int) {
 
 	checkPortAvailability(port)
 	checkStateDirectory()
-	printFastPathTelemetryDiagnostics()
+	summary, _ := printFastPathTelemetryDiagnostics(200)
+
+	thresholdOK := true
+	if options.maxFailureRatio >= 0 {
+		fmt.Print("Checking fast-path failure threshold... ")
+		if err := evaluateFastPathFailureThreshold(summary, options.minSamples, options.maxFailureRatio); err != nil {
+			fmt.Println("FAILED")
+			fmt.Printf("  %v\n", err)
+			fmt.Println()
+			thresholdOK = false
+		} else {
+			ratio := 0.0
+			if summary.total > 0 {
+				ratio = float64(summary.failure) / float64(summary.total)
+			}
+			fmt.Println("OK")
+			fmt.Printf("  Ratio %.4f within threshold %.4f (samples=%d)\n", ratio, options.maxFailureRatio, summary.total)
+			fmt.Println()
+		}
+	}
 
 	fmt.Println("────────────────────────────────────────────────────────────────")
 	fmt.Println()
@@ -858,4 +950,5 @@ func runSetupCheck(port int) {
 	fmt.Println()
 	fmt.Printf("Verify:  curl http://localhost:%d/health\n", port)
 	fmt.Println()
+	return thresholdOK
 }

@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/dev-console/dev-console/internal/performance"
+	"github.com/dev-console/dev-console/internal/queries"
 )
 
 // ============================================
@@ -24,7 +25,7 @@ func TestRichAction_AnalyzeInPendingQueryParams(t *testing.T) {
 	// Enable pilot so the request gets queued (not rejected at pilot check)
 	env.capture.SetPilotEnabled(true)
 
-	result, ok := env.callInteract(t, `{"action":"click","selector":"#btn","analyze":true}`)
+	result, ok := env.callInteract(t, `{"action":"click","selector":"#btn","analyze":true,"background":true}`)
 	if !ok {
 		t.Fatal("click with analyze:true should return result")
 	}
@@ -57,7 +58,7 @@ func TestRichAction_AnalyzeFalseNotForwarded(t *testing.T) {
 	env := newInteractTestEnv(t)
 	env.capture.SetPilotEnabled(true)
 
-	result, ok := env.callInteract(t, `{"action":"click","selector":"#btn","analyze":false}`)
+	result, ok := env.callInteract(t, `{"action":"click","selector":"#btn","analyze":false,"background":true}`)
 	if !ok {
 		t.Fatal("click with analyze:false should return result")
 	}
@@ -86,7 +87,7 @@ func TestRichAction_AnalyzeOmittedByDefault(t *testing.T) {
 	env := newInteractTestEnv(t)
 	env.capture.SetPilotEnabled(true)
 
-	result, ok := env.callInteract(t, `{"action":"click","selector":"#btn"}`)
+	result, ok := env.callInteract(t, `{"action":"click","selector":"#btn","background":true}`)
 	if !ok {
 		t.Fatal("click without analyze should return result")
 	}
@@ -117,7 +118,7 @@ func TestRichAction_AnalyzeOnNavigationAction(t *testing.T) {
 
 	// refresh doesn't use analyze (it always returns perf_diff)
 	// but should not reject it either
-	result, ok := env.callInteract(t, `{"action":"refresh","analyze":true}`)
+	result, ok := env.callInteract(t, `{"action":"refresh","analyze":true,"background":true}`)
 	if !ok {
 		t.Fatal("refresh with analyze:true should return result")
 	}
@@ -304,7 +305,7 @@ func TestRichAction_CorrelationID_HasAction(t *testing.T) {
 	env := newInteractTestEnv(t)
 	env.capture.SetPilotEnabled(true)
 
-	result, ok := env.callInteract(t, `{"action":"click","selector":"#btn","analyze":true}`)
+	result, ok := env.callInteract(t, `{"action":"click","selector":"#btn","analyze":true,"background":true}`)
 	if !ok || result.IsError {
 		t.Fatal("click should succeed with pilot enabled")
 	}
@@ -350,7 +351,7 @@ func TestRichAction_RefreshStoresBeforeSnapshot(t *testing.T) {
 	}})
 
 	// Call refresh — should stash the before-snapshot
-	result, ok := env.callInteract(t, `{"action":"refresh"}`)
+	result, ok := env.callInteract(t, `{"action":"refresh","background":true}`)
 	if !ok {
 		t.Fatal("refresh should return result")
 	}
@@ -395,7 +396,7 @@ func TestRichAction_CommandResultEnrichedWithPerfDiff(t *testing.T) {
 	}})
 
 	// Call refresh to stash the before-snapshot
-	result, _ := env.callInteract(t, `{"action":"refresh"}`)
+	result, _ := env.callInteract(t, `{"action":"refresh","background":true}`)
 	var resultData map[string]any
 	_ = json.Unmarshal([]byte(extractJSON(result.Content[0].Text)), &resultData)
 	corrID := resultData["correlation_id"].(string)
@@ -472,7 +473,7 @@ func TestRichAction_CommandResultNoPerfDiffWhenNoSnapshots(t *testing.T) {
 	// No tracking status set, no snapshots
 
 	// Call refresh — no before-snapshot available
-	result, _ := env.callInteract(t, `{"action":"refresh"}`)
+	result, _ := env.callInteract(t, `{"action":"refresh","background":true}`)
 	var resultData map[string]any
 	_ = json.Unmarshal([]byte(extractJSON(result.Content[0].Text)), &resultData)
 	corrID := resultData["correlation_id"].(string)
@@ -501,7 +502,7 @@ func TestRichAction_CommandResultIncludesTimingMs(t *testing.T) {
 	env.capture.SetPilotEnabled(true)
 
 	// Click action
-	result, _ := env.callInteract(t, `{"action":"click","selector":"#btn"}`)
+	result, _ := env.callInteract(t, `{"action":"click","selector":"#btn","background":true}`)
 	var resultData map[string]any
 	json.Unmarshal([]byte(extractJSON(result.Content[0].Text)), &resultData)
 	corrID := resultData["correlation_id"].(string)
@@ -547,7 +548,7 @@ func TestRichAction_CompactClickMissingDomSummary_WhenExtensionHangs(t *testing.
 	env.capture.SetPilotEnabled(true)
 
 	// Queue a click command
-	result, ok := env.callInteract(t, `{"action":"click","selector":"#btn"}`)
+	result, ok := env.callInteract(t, `{"action":"click","selector":"#btn","background":true}`)
 	if !ok || result.IsError {
 		t.Fatal("click should succeed with pilot enabled")
 	}
@@ -596,7 +597,7 @@ func TestRichAction_CompactClickHasDomSummary_WhenExtensionResponds(t *testing.T
 	env.capture.SetPilotEnabled(true)
 
 	// Click without analyze:true (compact mode)
-	result, _ := env.callInteract(t, `{"action":"click","selector":"#btn"}`)
+	result, _ := env.callInteract(t, `{"action":"click","selector":"#btn","background":true}`)
 	var resultData map[string]any
 	_ = json.Unmarshal([]byte(extractJSON(result.Content[0].Text)), &resultData)
 	corrID := resultData["correlation_id"].(string)
@@ -652,7 +653,7 @@ func TestRichAction_AnalyzeFieldsSurfacedTopLevel(t *testing.T) {
 	env.capture.SetPilotEnabled(true)
 
 	// Click with analyze:true
-	result, _ := env.callInteract(t, `{"action":"click","selector":"#btn","analyze":true}`)
+	result, _ := env.callInteract(t, `{"action":"click","selector":"#btn","analyze":true,"background":true}`)
 	var resultData map[string]any
 	_ = json.Unmarshal([]byte(extractJSON(result.Content[0].Text)), &resultData)
 	corrID := resultData["correlation_id"].(string)
@@ -721,7 +722,7 @@ func TestRichAction_NoAnalyzeFieldsWhenAbsent(t *testing.T) {
 	env := newInteractTestEnv(t)
 	env.capture.SetPilotEnabled(true)
 
-	result, _ := env.callInteract(t, `{"action":"click","selector":"#btn"}`)
+	result, _ := env.callInteract(t, `{"action":"click","selector":"#btn","background":true}`)
 	var resultData map[string]any
 	_ = json.Unmarshal([]byte(extractJSON(result.Content[0].Text)), &resultData)
 	corrID := resultData["correlation_id"].(string)
@@ -758,7 +759,7 @@ func TestRichAction_TargetContextSurfacedTopLevel(t *testing.T) {
 	env := newInteractTestEnv(t)
 	env.capture.SetPilotEnabled(true)
 
-	result, _ := env.callInteract(t, `{"action":"click","selector":"#btn","tab_id":77}`)
+	result, _ := env.callInteract(t, `{"action":"click","selector":"#btn","tab_id":77,"background":true}`)
 	var resultData map[string]any
 	_ = json.Unmarshal([]byte(extractJSON(result.Content[0].Text)), &resultData)
 	corrID := resultData["correlation_id"].(string)
@@ -822,7 +823,7 @@ func TestRichAction_DomSummaryPassthrough(t *testing.T) {
 	env.capture.SetPilotEnabled(true)
 
 	// Click with analyze:true
-	result, _ := env.callInteract(t, `{"action":"click","selector":"#btn","analyze":true}`)
+	result, _ := env.callInteract(t, `{"action":"click","selector":"#btn","analyze":true,"background":true}`)
 	var resultData map[string]any
 	_ = json.Unmarshal([]byte(extractJSON(result.Content[0].Text)), &resultData)
 	corrID := resultData["correlation_id"].(string)
@@ -907,7 +908,7 @@ func TestRichAction_PerfDiffWithFullWebVitals(t *testing.T) {
 	}})
 
 	// Call refresh to stash before-snapshot
-	result, _ := env.callInteract(t, `{"action":"refresh"}`)
+	result, _ := env.callInteract(t, `{"action":"refresh","background":true}`)
 	var resultData map[string]any
 	_ = json.Unmarshal([]byte(extractJSON(result.Content[0].Text)), &resultData)
 	corrID := resultData["correlation_id"].(string)
@@ -1005,7 +1006,7 @@ func TestCommandResult_ExpiredSetsIsError(t *testing.T) {
 	env.capture.SetPilotEnabled(true)
 
 	// Queue a command
-	result, ok := env.callInteract(t, `{"action":"click","selector":"#btn"}`)
+	result, ok := env.callInteract(t, `{"action":"click","selector":"#btn","background":true}`)
 	if !ok || result.IsError {
 		t.Fatal("click should succeed")
 	}
@@ -1044,7 +1045,7 @@ func TestCommandResult_CompleteWithErrorSetsIsError(t *testing.T) {
 	env.capture.SetPilotEnabled(true)
 
 	// Queue a command
-	result, ok := env.callInteract(t, `{"action":"click","selector":"#btn"}`)
+	result, ok := env.callInteract(t, `{"action":"click","selector":"#btn","background":true}`)
 	if !ok || result.IsError {
 		t.Fatal("click should succeed")
 	}
@@ -1082,7 +1083,7 @@ func TestCommandResult_EmbeddedFailureSetsIsError(t *testing.T) {
 	env := newInteractTestEnv(t)
 	env.capture.SetPilotEnabled(true)
 
-	result, ok := env.callInteract(t, `{"action":"click","selector":"#btn"}`)
+	result, ok := env.callInteract(t, `{"action":"click","selector":"#btn","background":true}`)
 	if !ok || result.IsError {
 		t.Fatal("click should succeed")
 	}
@@ -1120,7 +1121,7 @@ func TestCommandResult_SuccessDoesNotSetIsError(t *testing.T) {
 	env.capture.SetPilotEnabled(true)
 
 	// Queue a command
-	result, ok := env.callInteract(t, `{"action":"click","selector":"#btn"}`)
+	result, ok := env.callInteract(t, `{"action":"click","selector":"#btn","background":true}`)
 	if !ok || result.IsError {
 		t.Fatal("click should succeed")
 	}
@@ -1345,6 +1346,41 @@ func TestCommandResult_ExpiredHasFinalTrue(t *testing.T) {
 	if queued, ok := responseData["queued"].(bool); !ok || queued {
 		t.Fatalf("expired command should have queued=false, got %v", responseData["queued"])
 	}
+	if responseData["error"] != ErrExtTimeout {
+		t.Fatalf("expired command should have error=%s, got %v", ErrExtTimeout, responseData["error"])
+	}
+}
+
+func TestCommandResult_TimeoutHasFinalTrue(t *testing.T) {
+	env := newInteractTestEnv(t)
+
+	req := JSONRPCRequest{JSONRPC: "2.0", ID: 2}
+	cmd := queries.CommandResult{
+		CorrelationID: "timeout_cmd_123",
+		Status:        "timeout",
+		Error:         "extension did not respond",
+		CreatedAt:     time.Now().Add(-2 * time.Second),
+	}
+	resp := env.handler.formatCommandResult(req, cmd, cmd.CorrelationID)
+
+	var observeResult MCPToolResult
+	_ = json.Unmarshal(resp.Result, &observeResult)
+
+	var responseData map[string]any
+	if err := json.Unmarshal([]byte(extractJSON(observeResult.Content[0].Text)), &responseData); err != nil {
+		t.Fatalf("Failed to parse response JSON: %v", err)
+	}
+
+	finalVal, ok := responseData["final"].(bool)
+	if !ok || !finalVal {
+		t.Fatalf("timeout command should have final=true, got %v", responseData["final"])
+	}
+	if queued, ok := responseData["queued"].(bool); !ok || queued {
+		t.Fatalf("timeout command should have queued=false, got %v", responseData["queued"])
+	}
+	if responseData["error"] != ErrExtTimeout {
+		t.Fatalf("timeout command should have error=%s, got %v", ErrExtTimeout, responseData["error"])
+	}
 }
 
 func TestCommandResult_NotFoundHasFinalTrue(t *testing.T) {
@@ -1405,7 +1441,7 @@ func TestCommandResult_ExpiredIncludesDiagnosticHint(t *testing.T) {
 	env := newInteractTestEnv(t)
 	env.capture.SetPilotEnabled(true)
 
-	result, ok := env.callInteract(t, `{"action":"click","selector":"#btn"}`)
+	result, ok := env.callInteract(t, `{"action":"click","selector":"#btn","background":true}`)
 	if !ok || result.IsError {
 		t.Fatal("click should succeed")
 	}
@@ -1524,7 +1560,7 @@ func TestCommandResult_PilotDisabledIncludesDiagnosticHint(t *testing.T) {
 	env := newInteractTestEnv(t)
 	// Pilot is disabled by default in test env
 
-	result, ok := env.callInteract(t, `{"action":"click","selector":"#btn"}`)
+	result, ok := env.callInteract(t, `{"action":"click","selector":"#btn","background":true}`)
 	if !ok {
 		t.Fatal("should return result")
 	}

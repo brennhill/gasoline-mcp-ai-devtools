@@ -153,6 +153,68 @@ func appendFastPathResourceReadTelemetry(uri string, success bool, errorCode int
 	_, _ = f.Write([]byte("\n"))
 }
 
+type bridgeFastPathCounters struct {
+	mu      sync.Mutex
+	success int
+	failure int
+}
+
+var fastPathCounters bridgeFastPathCounters
+
+func resetFastPathCounters() {
+	fastPathCounters.mu.Lock()
+	fastPathCounters.success = 0
+	fastPathCounters.failure = 0
+	fastPathCounters.mu.Unlock()
+}
+
+func fastPathTelemetryLogPath() (string, error) {
+	return statecfg.InRoot("logs", "bridge-fastpath-events.jsonl")
+}
+
+func recordFastPathEvent(method string, success bool, errorCode int) {
+	fastPathCounters.mu.Lock()
+	if success {
+		fastPathCounters.success++
+	} else {
+		fastPathCounters.failure++
+	}
+	successCount := fastPathCounters.success
+	failureCount := fastPathCounters.failure
+	fastPathCounters.mu.Unlock()
+
+	path, err := fastPathTelemetryLogPath()
+	if err != nil {
+		return
+	}
+	// #nosec G301 -- runtime state directory for local diagnostics.
+	if err := os.MkdirAll(filepath.Dir(path), 0o750); err != nil {
+		return
+	}
+	event := map[string]any{
+		"timestamp":     time.Now().UTC().Format(time.RFC3339Nano),
+		"event":         "bridge_fastpath_method",
+		"method":        method,
+		"success":       success,
+		"error_code":    errorCode,
+		"success_count": successCount,
+		"failure_count": failureCount,
+		"pid":           os.Getpid(),
+		"version":       version,
+	}
+	payload, err := json.Marshal(event)
+	if err != nil {
+		return
+	}
+	// #nosec G304 -- deterministic diagnostics path rooted in runtime state directory.
+	f, err := os.OpenFile(path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o600) // nosemgrep: go_filesystem_rule-fileread -- local diagnostics log append
+	if err != nil {
+		return
+	}
+	defer func() { _ = f.Close() }()
+	_, _ = f.Write(append(payload, '\n'))
+}
+
 // daemonState tracks the state of daemon startup for fast-start mode.
 // Supports respawning: if the daemon dies mid-session, the bridge detects
 // connection errors and re-launches the daemon transparently.
@@ -509,11 +571,13 @@ func handleFastPath(req JSONRPCRequest, toolsList []MCPTool) bool {
 		// Error impossible: map contains only primitive types and nested maps
 		resultJSON, _ := json.Marshal(result)
 		sendFastResponse(req.ID, resultJSON)
+		recordFastPathEvent(req.Method, true, 0)
 		return true
 
 	case "initialized":
 		if req.ID != nil {
 			sendFastResponse(req.ID, json.RawMessage(`{}`))
+			recordFastPathEvent(req.Method, true, 0)
 		}
 		return true
 
@@ -522,7 +586,9 @@ func handleFastPath(req JSONRPCRequest, toolsList []MCPTool) bool {
 		// Error impossible: map contains only serializable tool definitions
 		resultJSON, _ := json.Marshal(result)
 		sendFastResponse(req.ID, resultJSON)
+		recordFastPathEvent(req.Method, true, 0)
 		return true
+
 	case "resources/list":
 		result := MCPResourcesListResult{Resources: mcpResources()}
 		resultJSON, _ := json.Marshal(result)
@@ -539,16 +605,19 @@ func handleFastPath(req JSONRPCRequest, toolsList []MCPTool) bool {
 		}
 		if err := json.Unmarshal(req.Params, &params); err != nil {
 			recordFastPathResourceRead("", false, -32602)
+			recordFastPathEvent(req.Method, false, -32602)
 			sendFastError(req.ID, -32602, "Invalid params: "+err.Error())
 			return true
 		}
 		canonicalURI, text, ok := resolveResourceContent(params.URI)
 		if !ok {
 			recordFastPathResourceRead(params.URI, false, -32002)
+			recordFastPathEvent(req.Method, false, -32002)
 			sendFastError(req.ID, -32002, "Resource not found: "+params.URI)
 			return true
 		}
 		recordFastPathResourceRead(params.URI, true, 0)
+		recordFastPathEvent(req.Method, true, 0)
 		result := map[string]any{
 			"contents": []map[string]any{
 				{
@@ -565,6 +634,7 @@ func handleFastPath(req JSONRPCRequest, toolsList []MCPTool) bool {
 
 	if staticResult, ok := fastPathResponses[req.Method]; ok {
 		sendFastResponse(req.ID, json.RawMessage(staticResult))
+		recordFastPathEvent(req.Method, true, 0)
 		return true
 	}
 
