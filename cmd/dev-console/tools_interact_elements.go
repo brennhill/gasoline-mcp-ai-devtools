@@ -95,18 +95,13 @@ func extractElementList(data map[string]any) []any {
 	if elems, ok := data["elements"].([]any); ok {
 		return elems
 	}
-	// Nested in result field
+	// Nested in result field (json.Unmarshal into map[string]any always produces map[string]any)
 	if resultData, ok := data["result"].(map[string]any); ok {
 		if elems, ok := resultData["elements"].([]any); ok {
 			return elems
 		}
-	}
-	// Nested in result.result (command result wrapping)
-	if resultOuter, ok := data["result"].(json.RawMessage); ok {
-		var inner map[string]any
-		if json.Unmarshal(resultOuter, &inner) == nil {
-			return extractElementList(inner)
-		}
+		// Recurse into nested result (command result wrapping)
+		return extractElementList(resultData)
 	}
 	return nil
 }

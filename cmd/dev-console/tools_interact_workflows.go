@@ -209,7 +209,9 @@ func (h *ToolHandler) handleRunA11yAndExportSARIF(req JSONRPCRequest, args json.
 		SaveTo string `json:"save_to,omitempty"`
 		TabID  int    `json:"tab_id,omitempty"`
 	}
-	lenientUnmarshal(args, &params)
+	if err := json.Unmarshal(args, &params); err != nil {
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidJSON, "Invalid JSON arguments: "+err.Error(), "Fix JSON syntax and call again")}
+	}
 
 	trace := make([]WorkflowStep, 0, 2)
 	workflowStart := time.Now()
@@ -271,6 +273,7 @@ func responseStatus(resp JSONRPCResponse) string {
 }
 
 // workflowResult wraps the final step's response with workflow metadata (trace + timing).
+// On failure, the response uses isError=true so the MCP envelope correctly signals an error.
 func workflowResult(req JSONRPCRequest, workflow string, trace []WorkflowStep, lastResp JSONRPCResponse, start time.Time) JSONRPCResponse {
 	totalMs := time.Since(start).Milliseconds()
 
@@ -282,26 +285,48 @@ func workflowResult(req JSONRPCRequest, workflow string, trace []WorkflowStep, l
 		}
 	}
 	allSuccess := successCount == len(trace)
+	failed := isErrorResponse(lastResp)
 
 	status := "success"
-	if !allSuccess {
+	if failed {
+		status = "failed"
+	} else if !allSuccess {
 		status = "partial_failure"
 	}
 
-	summary := fmt.Sprintf("%s completed (%d/%d steps succeeded, %dms)", workflow, successCount, len(trace), totalMs)
-
-	// If the last response was an error, use it as the base but add workflow context
-	if isErrorResponse(lastResp) {
-		status = "failed"
+	var summary string
+	if failed {
 		summary = fmt.Sprintf("%s failed at step %d/%d (%dms)", workflow, len(trace), len(trace), totalMs)
+	} else {
+		summary = fmt.Sprintf("%s completed (%d/%d steps succeeded, %dms)", workflow, successCount, len(trace), totalMs)
 	}
 
-	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse(summary, map[string]any{
+	data := map[string]any{
 		"workflow":   workflow,
 		"status":     status,
 		"trace":      trace,
 		"total_ms":   totalMs,
 		"steps":      len(trace),
 		"successful": successCount,
-	})}
+	}
+
+	// Extract the failing step's error detail for context
+	if failed {
+		var lastResult MCPToolResult
+		if json.Unmarshal(lastResp.Result, &lastResult) == nil && len(lastResult.Content) > 0 {
+			data["error_detail"] = lastResult.Content[0].Text
+		} else if lastResp.Error != nil {
+			data["error_detail"] = lastResp.Error.Message
+		}
+	}
+
+	dataJSON, _ := json.Marshal(data)
+	resultText := summary + "\n" + string(dataJSON)
+
+	result := MCPToolResult{
+		Content: []MCPContentBlock{{Type: "text", Text: resultText}},
+		IsError: failed,
+	}
+	resultJSON, _ := json.Marshal(result)
+	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: json.RawMessage(resultJSON)}
 }

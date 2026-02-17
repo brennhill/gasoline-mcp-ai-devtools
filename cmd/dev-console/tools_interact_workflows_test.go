@@ -140,6 +140,14 @@ func TestFillFormAndSubmit_InvalidJSON(t *testing.T) {
 	assertIsError(t, resp, "JSON")
 }
 
+func TestRunA11yAndExportSARIF_InvalidJSON(t *testing.T) {
+	t.Parallel()
+	h := newTestToolHandler()
+	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`)}
+	resp := h.handleRunA11yAndExportSARIF(req, json.RawMessage(`{bad`))
+	assertIsError(t, resp, "JSON")
+}
+
 // ============================================
 // run_a11y_and_export_sarif tests
 // ============================================
@@ -215,12 +223,47 @@ func TestWorkflowResult_Failure(t *testing.T) {
 	if err := json.Unmarshal(resp.Result, &result); err != nil {
 		t.Fatalf("unmarshal: %v", err)
 	}
+	if !result.IsError {
+		t.Error("expected isError=true for failed workflow")
+	}
 	text := result.Content[0].Text
 	if !strings.Contains(text, `"status":"failed"`) {
 		t.Errorf("expected status=failed, got: %s", text)
 	}
 	if !strings.Contains(text, `"successful":1`) {
 		t.Errorf("expected successful=1, got: %s", text)
+	}
+	if !strings.Contains(text, `"error_detail"`) {
+		t.Errorf("expected error_detail in failed workflow, got: %s", text)
+	}
+}
+
+func TestWorkflowResult_FailureWithMCPError(t *testing.T) {
+	t.Parallel()
+	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`)}
+	trace := []WorkflowStep{
+		{Action: "step1", Status: "error", TimingMs: 5},
+	}
+
+	// MCP-level error (isError in result)
+	mcpErr := MCPToolResult{
+		Content: []MCPContentBlock{{Type: "text", Text: "pilot disabled"}},
+		IsError: true,
+	}
+	raw, _ := json.Marshal(mcpErr)
+	errResp := JSONRPCResponse{JSONRPC: "2.0", Result: raw}
+	resp := workflowResult(req, "test_workflow", trace, errResp, time.Now())
+
+	var result MCPToolResult
+	if err := json.Unmarshal(resp.Result, &result); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	if !result.IsError {
+		t.Error("expected isError=true")
+	}
+	text := result.Content[0].Text
+	if !strings.Contains(text, "pilot disabled") {
+		t.Errorf("expected error detail from MCP error, got: %s", text)
 	}
 }
 

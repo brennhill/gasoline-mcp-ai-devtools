@@ -209,6 +209,9 @@ func (h *ToolHandler) toolGetBrowserErrors(req JSONRPCRequest, args json.RawMess
 	if params.Scope == "" {
 		params.Scope = "current_page"
 	}
+	if params.Scope != "current_page" && params.Scope != "all" {
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidParam, "Invalid scope: "+params.Scope, "Use 'current_page' (default) or 'all'", withParam("scope"))}
+	}
 
 	// Get tracked tab ID for current_page filtering
 	_, trackedTabID, _ := h.capture.GetTrackingStatus()
@@ -291,6 +294,9 @@ func (h *ToolHandler) toolGetBrowserLogs(req JSONRPCRequest, args json.RawMessag
 	lenientUnmarshal(args, &params)
 	if params.Scope == "" {
 		params.Scope = "current_page"
+	}
+	if params.Scope != "current_page" && params.Scope != "all" {
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidParam, "Invalid scope: "+params.Scope, "Use 'current_page' (default) or 'all'", withParam("scope"))}
 	}
 
 	// Get tracked tab ID for current_page filtering

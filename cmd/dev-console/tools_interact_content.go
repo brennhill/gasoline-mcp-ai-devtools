@@ -250,7 +250,7 @@ func (h *ToolHandler) handleGetMarkdown(req JSONRPCRequest, args json.RawMessage
 }
 
 // enrichNavigateResponse appends page content to a successful navigate response.
-// Runs a page_summary script to extract text content, headings, and metadata.
+// Runs a page_summary script (defined in tools_analyze.go) to extract text content, headings, and metadata.
 func (h *ToolHandler) enrichNavigateResponse(resp JSONRPCResponse, req JSONRPCRequest, tabID int) JSONRPCResponse {
 	// Only enrich successful (non-error) responses
 	var result MCPToolResult
