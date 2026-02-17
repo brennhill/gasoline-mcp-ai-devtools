@@ -388,11 +388,29 @@ func (h *ToolHandler) ToolsList() []MCPTool {
 					"failure": map[string]any{
 						"type":        "object",
 						"description": "Single test failure (test_classify failure)",
+						"properties": map[string]any{
+							"test_name":   map[string]any{"type": "string", "description": "Name of the failing test"},
+							"error":       map[string]any{"type": "string", "description": "Error message"},
+							"screenshot":  map[string]any{"type": "string", "description": "Base64-encoded screenshot (optional)"},
+							"trace":       map[string]any{"type": "string", "description": "Stack trace"},
+							"duration_ms": map[string]any{"type": "number", "description": "Test duration in milliseconds"},
+						},
+						"required": []string{"error"},
 					},
 					"failures": map[string]any{
 						"type":        "array",
 						"description": "Multiple test failures (test_classify batch)",
-						"items":       map[string]any{"type": "object"},
+						"items": map[string]any{
+							"type": "object",
+							"properties": map[string]any{
+								"test_name":   map[string]any{"type": "string", "description": "Name of the failing test"},
+								"error":       map[string]any{"type": "string", "description": "Error message"},
+								"screenshot":  map[string]any{"type": "string", "description": "Base64-encoded screenshot (optional)"},
+								"trace":       map[string]any{"type": "string", "description": "Stack trace"},
+								"duration_ms": map[string]any{"type": "number", "description": "Test duration in milliseconds"},
+							},
+							"required": []string{"error"},
+						},
 					},
 					"error_id": map[string]any{
 						"type":        "string",
