@@ -211,6 +211,16 @@ func gasolineStep(action capture.EnhancedAction, opts ReproductionParams) string
 		return "Press: " + action.Key
 	case "scroll":
 		return fmt.Sprintf("Scroll to: y=%d", action.ScrollY)
+	case "refresh":
+		return "Refresh page"
+	case "back":
+		return "Navigate back"
+	case "forward":
+		return "Navigate forward"
+	case "new_tab":
+		return gasolineNewTabStep(action, opts)
+	case "focus":
+		return "Focus: " + describeElement(action)
 	default:
 		return ""
 	}
@@ -225,6 +235,17 @@ func gasolineNavigateStep(action capture.EnhancedAction, opts ReproductionParams
 		toURL = rewriteURL(toURL, opts.BaseURL)
 	}
 	return "Navigate to: " + toURL
+}
+
+func gasolineNewTabStep(action capture.EnhancedAction, opts ReproductionParams) string {
+	targetURL := action.URL
+	if targetURL == "" {
+		return "Open new tab"
+	}
+	if opts.BaseURL != "" {
+		targetURL = rewriteURL(targetURL, opts.BaseURL)
+	}
+	return "Open new tab: " + targetURL
 }
 
 func gasolineInputStep(action capture.EnhancedAction) string {
@@ -309,6 +330,16 @@ func playwrightStep(action capture.EnhancedAction, opts ReproductionParams) stri
 		return fmt.Sprintf("await page.keyboard.press('%s');", escapeJS(action.Key))
 	case "scroll":
 		return fmt.Sprintf("// Scroll to y=%d", action.ScrollY)
+	case "refresh":
+		return "await page.reload();"
+	case "back":
+		return "await page.goBack();"
+	case "forward":
+		return "await page.goForward();"
+	case "new_tab":
+		return pwNewTabStep(action, opts)
+	case "focus":
+		return pwLocatorAction(action, "focus", "focus")
 	default:
 		return ""
 	}
@@ -323,6 +354,17 @@ func pwNavigateStep(action capture.EnhancedAction, opts ReproductionParams) stri
 		toURL = rewriteURL(toURL, opts.BaseURL)
 	}
 	return fmt.Sprintf("await page.goto('%s');", escapeJS(toURL))
+}
+
+func pwNewTabStep(action capture.EnhancedAction, opts ReproductionParams) string {
+	targetURL := action.URL
+	if targetURL == "" {
+		return "// Open new tab"
+	}
+	if opts.BaseURL != "" {
+		targetURL = rewriteURL(targetURL, opts.BaseURL)
+	}
+	return fmt.Sprintf("// Open new tab: %s", escapeJS(targetURL))
 }
 
 func pwLocatorAction(action capture.EnhancedAction, actionName, fallbackLabel string) string {
