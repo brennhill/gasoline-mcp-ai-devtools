@@ -12,6 +12,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	statecfg "github.com/dev-console/dev-console/internal/state"
 )
 
 func contentLengthFrame(payload string) string {
@@ -125,14 +127,16 @@ func parseJSONLines(t *testing.T, output string) []JSONRPCResponse {
 
 func TestBridgeFastPathCoreMethods(t *testing.T) {
 	// Do not run in parallel; test redirects process stdio.
+	resetFastPathResourceReadCounters()
 	state := &daemonState{readyCh: make(chan struct{}), failedCh: make(chan struct{})}
 	input := strings.Join([]string{
 		`{"jsonrpc":"2.0","id":1,`,
 		`{"jsonrpc":"2.0","id":2,"method":"initialize","params":{}}`,
 		`{"jsonrpc":"2.0","id":3,"method":"tools/list","params":{}}`,
 		`{"jsonrpc":"2.0","id":4,"method":"resources/list","params":{}}`,
-		`{"jsonrpc":"2.0","id":5,"method":"unknown/method","params":{}}`,
-		`{"jsonrpc":"2.0","id":6,"method":"tools/call","params":{"name":"observe","arguments":{"what":"errors"}}}`,
+		`{"jsonrpc":"2.0","id":5,"method":"resources/read","params":{"uri":"gasoline://capabilities"}}`,
+		`{"jsonrpc":"2.0","id":6,"method":"unknown/method","params":{}}`,
+		`{"jsonrpc":"2.0","id":7,"method":"tools/call","params":{"name":"observe","arguments":{"what":"errors"}}}`,
 	}, "\n") + "\n"
 
 	output := captureBridgeIO(t, input, func() {
@@ -140,8 +144,8 @@ func TestBridgeFastPathCoreMethods(t *testing.T) {
 	})
 
 	responses := parseJSONLines(t, output)
-	if len(responses) != 6 {
-		t.Fatalf("response count = %d, want 6", len(responses))
+	if len(responses) != 7 {
+		t.Fatalf("response count = %d, want 7", len(responses))
 	}
 
 	// Parse error response.
@@ -170,21 +174,157 @@ func TestBridgeFastPathCoreMethods(t *testing.T) {
 		t.Fatalf("tools/list result missing tools: %v", toolsResult)
 	}
 
+	// resources/read should be served by fast path while daemon is still starting.
+	var resourcesReadResult map[string]any
+	if err := json.Unmarshal(responses[4].Result, &resourcesReadResult); err != nil {
+		t.Fatalf("resources/read result unmarshal error = %v", err)
+	}
+	contents, _ := resourcesReadResult["contents"].([]any)
+	if len(contents) != 1 {
+		t.Fatalf("resources/read contents = %v, want one content item", resourcesReadResult["contents"])
+	}
+
 	// unknown method should return method-not-found protocol error.
-	if responses[4].Error == nil || responses[4].Error.Code != -32601 {
-		t.Fatalf("unknown method response = %+v, want -32601", responses[4])
+	if responses[5].Error == nil || responses[5].Error.Code != -32601 {
+		t.Fatalf("unknown method response = %+v, want -32601", responses[5])
 	}
 
 	// tools/call while not ready should be a soft tool error.
-	if responses[5].Error != nil {
-		t.Fatalf("tools/call startup response should be soft error, got protocol error %+v", responses[5].Error)
+	if responses[6].Error != nil {
+		t.Fatalf("tools/call startup response should be soft error, got protocol error %+v", responses[6].Error)
 	}
 	var startupResult map[string]any
-	if err := json.Unmarshal(responses[5].Result, &startupResult); err != nil {
+	if err := json.Unmarshal(responses[6].Result, &startupResult); err != nil {
 		t.Fatalf("startup result unmarshal error = %v", err)
 	}
 	if startupResult["isError"] != true {
 		t.Fatalf("startup result isError = %v, want true", startupResult["isError"])
+	}
+
+	success, failure := snapshotFastPathResourceReadCounters()
+	if success != 1 || failure != 0 {
+		t.Fatalf("fast-path resources/read counters = (%d,%d), want (1,0)", success, failure)
+	}
+}
+
+func TestBridgeFastPathResourcesReadCanonicalizesPlaybookAliases(t *testing.T) {
+	// Do not run in parallel; test redirects process stdio.
+	resetFastPathResourceReadCounters()
+	state := &daemonState{readyCh: make(chan struct{}), failedCh: make(chan struct{})}
+	input := strings.Join([]string{
+		`{"jsonrpc":"2.0","id":1,"method":"resources/read","params":{"uri":"gasoline://playbook/security"}}`,
+		`{"jsonrpc":"2.0","id":2,"method":"resources/read","params":{"uri":"gasoline://playbook/security_audit/quick"}}`,
+	}, "\n") + "\n"
+
+	output := captureBridgeIO(t, input, func() {
+		bridgeStdioToHTTPFast("http://127.0.0.1:1/mcp", state, 7890)
+	})
+
+	responses := parseJSONLines(t, output)
+	if len(responses) != 2 {
+		t.Fatalf("response count = %d, want 2", len(responses))
+	}
+	for i, resp := range responses {
+		if resp.Error != nil {
+			t.Fatalf("response[%d] error = %+v, want success", i, resp.Error)
+		}
+		var result map[string]any
+		if err := json.Unmarshal(resp.Result, &result); err != nil {
+			t.Fatalf("response[%d] unmarshal error = %v", i, err)
+		}
+		contents, _ := result["contents"].([]any)
+		if len(contents) != 1 {
+			t.Fatalf("response[%d] contents = %v, want one content", i, result["contents"])
+		}
+		content, _ := contents[0].(map[string]any)
+		if content["uri"] != "gasoline://playbook/security/quick" {
+			t.Fatalf("response[%d] content uri = %v, want gasoline://playbook/security/quick", i, content["uri"])
+		}
+	}
+
+	success, failure := snapshotFastPathResourceReadCounters()
+	if success != 2 || failure != 0 {
+		t.Fatalf("fast-path resources/read counters = (%d,%d), want (2,0)", success, failure)
+	}
+}
+
+func TestBridgeFastPathResourcesReadFailureTelemetry(t *testing.T) {
+	// Do not run in parallel; test redirects process stdio.
+	resetFastPathResourceReadCounters()
+	state := &daemonState{readyCh: make(chan struct{}), failedCh: make(chan struct{})}
+	input := strings.Join([]string{
+		`{"jsonrpc":"2.0","id":1,"method":"resources/read","params":{"uri":"gasoline://playbook/nonexistent/quick"}}`,
+		`{"jsonrpc":"2.0","id":2,"method":"resources/read","params":[]}`,
+	}, "\n") + "\n"
+
+	output := captureBridgeIO(t, input, func() {
+		bridgeStdioToHTTPFast("http://127.0.0.1:1/mcp", state, 7890)
+	})
+	responses := parseJSONLines(t, output)
+	if len(responses) != 2 {
+		t.Fatalf("response count = %d, want 2", len(responses))
+	}
+	if responses[0].Error == nil || responses[0].Error.Code != -32002 {
+		t.Fatalf("response[0] error = %+v, want -32002", responses[0].Error)
+	}
+	if responses[1].Error == nil || responses[1].Error.Code != -32602 {
+		t.Fatalf("response[1] error = %+v, want -32602", responses[1].Error)
+	}
+
+	success, failure := snapshotFastPathResourceReadCounters()
+	if success != 0 || failure != 2 {
+		t.Fatalf("fast-path resources/read counters = (%d,%d), want (0,2)", success, failure)
+	}
+}
+
+func TestBridgeFastPathResourcesReadTelemetryPersistsToStateLogs(t *testing.T) {
+	// Do not run in parallel; test redirects process stdio and env.
+	resetFastPathResourceReadCounters()
+	t.Setenv(statecfg.StateDirEnv, t.TempDir())
+
+	state := &daemonState{readyCh: make(chan struct{}), failedCh: make(chan struct{})}
+	input := strings.Join([]string{
+		`{"jsonrpc":"2.0","id":1,"method":"resources/read","params":{"uri":"gasoline://capabilities"}}`,
+		`{"jsonrpc":"2.0","id":2,"method":"resources/read","params":{"uri":"gasoline://playbook/nonexistent/quick"}}`,
+	}, "\n") + "\n"
+
+	_ = captureBridgeIO(t, input, func() {
+		bridgeStdioToHTTPFast("http://127.0.0.1:1/mcp", state, 7890)
+	})
+
+	path, err := fastPathResourceReadLogPath()
+	if err != nil {
+		t.Fatalf("fastPathResourceReadLogPath() error = %v", err)
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("os.ReadFile(%q) error = %v", path, err)
+	}
+	lines := strings.Split(strings.TrimSpace(string(data)), "\n")
+	if len(lines) != 2 {
+		t.Fatalf("telemetry log lines = %d, want 2; log=%q", len(lines), string(data))
+	}
+
+	var first map[string]any
+	if err := json.Unmarshal([]byte(lines[0]), &first); err != nil {
+		t.Fatalf("first telemetry line parse error = %v", err)
+	}
+	if first["event"] != "bridge_fastpath_resources_read" {
+		t.Fatalf("first telemetry event = %v, want bridge_fastpath_resources_read", first["event"])
+	}
+	if first["success"] != true {
+		t.Fatalf("first telemetry success = %v, want true", first["success"])
+	}
+
+	var second map[string]any
+	if err := json.Unmarshal([]byte(lines[1]), &second); err != nil {
+		t.Fatalf("second telemetry line parse error = %v", err)
+	}
+	if second["success"] != false {
+		t.Fatalf("second telemetry success = %v, want false", second["success"])
+	}
+	if code, ok := second["error_code"].(float64); !ok || int(code) != -32002 {
+		t.Fatalf("second telemetry error_code = %v, want -32002", second["error_code"])
 	}
 }
 

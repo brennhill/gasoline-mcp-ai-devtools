@@ -316,14 +316,18 @@ func TestMCPHandlerResourceAndToolMethods(t *testing.T) {
 		t.Fatalf("resources/read security playbook result = %+v, want security playbook content entry", readSecurityPlaybookData)
 	}
 
-	readInvalidPlaybook := h.HandleRequest(JSONRPCRequest{
+	readAliasedPlaybook := h.HandleRequest(JSONRPCRequest{
 		JSONRPC: "2.0",
 		ID:      63,
 		Method:  "resources/read",
-		Params:  json.RawMessage(`{"uri":"gasoline://playbook/nonexistent/quick"}`),
+		Params:  json.RawMessage(`{"uri":"gasoline://playbook/security_audit/quick"}`),
 	})
-	if readInvalidPlaybook == nil || readInvalidPlaybook.Error == nil || readInvalidPlaybook.Error.Code != -32002 {
-		t.Fatalf("resources/read invalid playbook response = %+v, want -32002 error", readInvalidPlaybook)
+	if readAliasedPlaybook == nil || readAliasedPlaybook.Error != nil {
+		t.Fatalf("resources/read aliased playbook response = %+v, want success", readAliasedPlaybook)
+	}
+	readAliasedPlaybookData := mustDecodeJSON[MCPResourcesReadResult](t, readAliasedPlaybook.Result)
+	if len(readAliasedPlaybookData.Contents) != 1 || readAliasedPlaybookData.Contents[0].URI != "gasoline://playbook/security/quick" {
+		t.Fatalf("resources/read aliased playbook result = %+v, want canonical security/quick content entry", readAliasedPlaybookData)
 	}
 
 	readBareCapability := h.HandleRequest(JSONRPCRequest{
@@ -332,13 +336,27 @@ func TestMCPHandlerResourceAndToolMethods(t *testing.T) {
 		Method:  "resources/read",
 		Params:  json.RawMessage(`{"uri":"gasoline://playbook/security"}`),
 	})
-	if readBareCapability == nil || readBareCapability.Error == nil || readBareCapability.Error.Code != -32002 {
-		t.Fatalf("resources/read bare capability response = %+v, want -32002 error (level required)", readBareCapability)
+	if readBareCapability == nil || readBareCapability.Error != nil {
+		t.Fatalf("resources/read bare capability response = %+v, want success defaulting to quick", readBareCapability)
+	}
+	readBareCapabilityData := mustDecodeJSON[MCPResourcesReadResult](t, readBareCapability.Result)
+	if len(readBareCapabilityData.Contents) != 1 || readBareCapabilityData.Contents[0].URI != "gasoline://playbook/security/quick" {
+		t.Fatalf("resources/read bare capability result = %+v, want canonical security/quick content entry", readBareCapabilityData)
+	}
+
+	readInvalidPlaybook := h.HandleRequest(JSONRPCRequest{
+		JSONRPC: "2.0",
+		ID:      65,
+		Method:  "resources/read",
+		Params:  json.RawMessage(`{"uri":"gasoline://playbook/nonexistent/quick"}`),
+	})
+	if readInvalidPlaybook == nil || readInvalidPlaybook.Error == nil || readInvalidPlaybook.Error.Code != -32002 {
+		t.Fatalf("resources/read invalid playbook response = %+v, want -32002 error", readInvalidPlaybook)
 	}
 
 	readInvalidDemo := h.HandleRequest(JSONRPCRequest{
 		JSONRPC: "2.0",
-		ID:      65,
+		ID:      66,
 		Method:  "resources/read",
 		Params:  json.RawMessage(`{"uri":"gasoline://demo/nonexistent"}`),
 	})

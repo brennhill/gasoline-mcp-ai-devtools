@@ -108,3 +108,47 @@ func TestRunSetupCheckPrintsDiagnostics(t *testing.T) {
 		t.Fatalf("runSetupCheck output missing port %d", port)
 	}
 }
+
+func TestRunSetupCheckIncludesFastPathTelemetrySummary(t *testing.T) {
+	// Do not run in parallel; test redirects os.Stdout and uses Setenv.
+	t.Setenv(state.StateDirEnv, t.TempDir())
+	resetFastPathResourceReadCounters()
+	recordFastPathResourceRead("gasoline://capabilities", true, 0)
+	recordFastPathResourceRead("gasoline://playbook/nonexistent/quick", false, -32002)
+
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatalf("net.Listen error = %v", err)
+	}
+	port := ln.Addr().(*net.TCPAddr).Port
+	_ = ln.Close()
+
+	r, w, err := os.Pipe()
+	if err != nil {
+		t.Fatalf("os.Pipe(stdout) error = %v", err)
+	}
+	oldOut := os.Stdout
+	os.Stdout = w
+	runSetupCheck(port)
+	os.Stdout = oldOut
+	_ = w.Close()
+
+	out, err := io.ReadAll(r)
+	_ = r.Close()
+	if err != nil {
+		t.Fatalf("ReadAll(stdout) error = %v", err)
+	}
+	text := string(out)
+	if !strings.Contains(text, "Checking bridge fast-path telemetry...") {
+		t.Fatalf("runSetupCheck output missing fast-path telemetry section:\n%s", text)
+	}
+	if !strings.Contains(text, "bridge-fastpath-resource-read.jsonl") {
+		t.Fatalf("runSetupCheck output missing telemetry log path:\n%s", text)
+	}
+	if !strings.Contains(text, "success=1") || !strings.Contains(text, "failure=1") {
+		t.Fatalf("runSetupCheck output missing telemetry summary counters:\n%s", text)
+	}
+	if !strings.Contains(text, "-32002=1") {
+		t.Fatalf("runSetupCheck output missing error-code summary:\n%s", text)
+	}
+}

@@ -18,6 +18,7 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"sync"
@@ -77,6 +78,75 @@ func toolCallTimeout(req JSONRPCRequest) time.Duration {
 // mcpStdoutMu serializes all writes to stdout so concurrent bridgeForwardRequest
 // goroutines cannot interleave JSON-RPC responses.
 var mcpStdoutMu sync.Mutex
+
+type bridgeFastPathResourceReadCounters struct {
+	mu      sync.Mutex
+	success int64
+	failure int64
+}
+
+var fastPathResourceReadCounters bridgeFastPathResourceReadCounters
+
+func recordFastPathResourceRead(uri string, success bool, errorCode int) {
+	fastPathResourceReadCounters.mu.Lock()
+	defer fastPathResourceReadCounters.mu.Unlock()
+	if success {
+		fastPathResourceReadCounters.success++
+	} else {
+		fastPathResourceReadCounters.failure++
+	}
+	appendFastPathResourceReadTelemetry(uri, success, errorCode, fastPathResourceReadCounters.success, fastPathResourceReadCounters.failure)
+}
+
+func snapshotFastPathResourceReadCounters() (success int64, failure int64) {
+	fastPathResourceReadCounters.mu.Lock()
+	defer fastPathResourceReadCounters.mu.Unlock()
+	return fastPathResourceReadCounters.success, fastPathResourceReadCounters.failure
+}
+
+func resetFastPathResourceReadCounters() {
+	fastPathResourceReadCounters.mu.Lock()
+	defer fastPathResourceReadCounters.mu.Unlock()
+	fastPathResourceReadCounters.success = 0
+	fastPathResourceReadCounters.failure = 0
+}
+
+func fastPathResourceReadLogPath() (string, error) {
+	return statecfg.InRoot("logs", "bridge-fastpath-resource-read.jsonl")
+}
+
+func appendFastPathResourceReadTelemetry(uri string, success bool, errorCode int, successCount int64, failureCount int64) {
+	path, err := fastPathResourceReadLogPath()
+	if err != nil {
+		return
+	}
+	if mkErr := os.MkdirAll(filepath.Dir(path), 0o750); mkErr != nil {
+		return
+	}
+	entry := map[string]any{
+		"timestamp":      time.Now().UTC().Format(time.RFC3339Nano),
+		"event":          "bridge_fastpath_resources_read",
+		"uri":            uri,
+		"success":        success,
+		"error_code":     errorCode,
+		"success_count":  successCount,
+		"failure_count":  failureCount,
+		"pid":            os.Getpid(),
+		"bridge_version": version,
+	}
+	line, marshalErr := json.Marshal(entry)
+	if marshalErr != nil {
+		return
+	}
+	// #nosec G304 -- path is deterministic under state root
+	f, openErr := os.OpenFile(path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o600)
+	if openErr != nil {
+		return
+	}
+	defer func() { _ = f.Close() }()
+	_, _ = f.Write(line)
+	_, _ = f.Write([]byte("\n"))
+}
 
 // daemonState tracks the state of daemon startup for fast-start mode.
 // Supports respawning: if the daemon dies mid-session, the bridge detects
@@ -386,19 +456,28 @@ func waitForServer(port int, timeout time.Duration) bool {
 
 // fastPathResponses maps MCP methods to their static JSON result bodies.
 // Methods in this map are handled without waiting for the daemon.
-// TODO: These resource/template lists must stay in sync with handleResourcesList
-// and handleResourcesTemplatesList in handler.go. Consider generating from a shared source.
 var fastPathResponses = map[string]string{
-	"ping":                     `{}`,
-	"prompts/list":             `{"prompts":[]}`,
-	"resources/list":           `{"resources":[{"uri":"gasoline://capabilities","name":"Gasoline Capability Index","description":"Compact capability index with task-to-playbook routing hints","mimeType":"text/markdown"},{"uri":"gasoline://guide","name":"Gasoline Usage Guide","description":"How to use Gasoline MCP tools for browser debugging","mimeType":"text/markdown"},{"uri":"gasoline://quickstart","name":"Gasoline MCP Quickstart","description":"Short, canonical MCP call examples and workflows","mimeType":"text/markdown"}]}`,
-	"resources/templates/list": `{"resourceTemplates":[{"uriTemplate":"gasoline://playbook/{capability}/{level}","name":"Gasoline Capability Playbook","description":"On-demand, token-efficient playbooks. Start with quick; use full for deep workflows.","mimeType":"text/markdown"},{"uriTemplate":"gasoline://demo/{name}","name":"Gasoline Demo Script","description":"Demo scripts for websockets, annotations, recording, and dependency vetting","mimeType":"text/markdown"}]}`,
+	"ping":         `{}`,
+	"prompts/list": `{"prompts":[]}`,
 }
 
 // sendFastResponse marshals and sends a JSON-RPC response for the fast path.
 func sendFastResponse(id any, result json.RawMessage) {
 	resp := JSONRPCResponse{JSONRPC: "2.0", ID: id, Result: result}
 	// Error impossible: simple struct with no circular refs or unsupported types
+	respJSON, _ := json.Marshal(resp)
+	mcpStdoutMu.Lock()
+	fmt.Println(string(respJSON))
+	flushStdout()
+	mcpStdoutMu.Unlock()
+}
+
+func sendFastError(id any, code int, message string) {
+	resp := JSONRPCResponse{
+		JSONRPC: "2.0",
+		ID:      id,
+		Error:   &JSONRPCError{Code: code, Message: message},
+	}
 	respJSON, _ := json.Marshal(resp)
 	mcpStdoutMu.Lock()
 	fmt.Println(string(respJSON))
@@ -436,6 +515,44 @@ func handleFastPath(req JSONRPCRequest, toolsList []MCPTool) bool {
 	case "tools/list":
 		result := map[string]any{"tools": toolsList}
 		// Error impossible: map contains only serializable tool definitions
+		resultJSON, _ := json.Marshal(result)
+		sendFastResponse(req.ID, resultJSON)
+		return true
+	case "resources/list":
+		result := MCPResourcesListResult{Resources: mcpResources()}
+		resultJSON, _ := json.Marshal(result)
+		sendFastResponse(req.ID, resultJSON)
+		return true
+	case "resources/templates/list":
+		result := MCPResourceTemplatesListResult{ResourceTemplates: mcpResourceTemplates()}
+		resultJSON, _ := json.Marshal(result)
+		sendFastResponse(req.ID, resultJSON)
+		return true
+	case "resources/read":
+		var params struct {
+			URI string `json:"uri"`
+		}
+		if err := json.Unmarshal(req.Params, &params); err != nil {
+			recordFastPathResourceRead("", false, -32602)
+			sendFastError(req.ID, -32602, "Invalid params: "+err.Error())
+			return true
+		}
+		canonicalURI, text, ok := resolveResourceContent(params.URI)
+		if !ok {
+			recordFastPathResourceRead(params.URI, false, -32002)
+			sendFastError(req.ID, -32002, "Resource not found: "+params.URI)
+			return true
+		}
+		recordFastPathResourceRead(params.URI, true, 0)
+		result := map[string]any{
+			"contents": []map[string]any{
+				{
+					"uri":      canonicalURI,
+					"mimeType": "text/markdown",
+					"text":     text,
+				},
+			},
+		}
 		resultJSON, _ := json.Marshal(result)
 		sendFastResponse(req.ID, resultJSON)
 		return true
