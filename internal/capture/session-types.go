@@ -1,3 +1,6 @@
+// Purpose: Owns session-types.go runtime behavior and integration logic.
+// Docs: docs/features/feature/backend-log-streaming/index.md
+
 // session-types.go — Session tracking types.
 // SessionTracker records performance snapshots for delta computation.
 package capture

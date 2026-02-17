@@ -1,3 +1,9 @@
+---
+doc_type: legacy_doc
+status: reference
+last_reviewed: 2026-02-16
+---
+
 # Slack Community Setup Guide for Gasoline MCP
 
 This guide will help you set up a Slack workspace for Gasoline MCP users and contributors.

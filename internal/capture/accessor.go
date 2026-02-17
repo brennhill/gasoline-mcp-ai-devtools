@@ -1,3 +1,6 @@
+// Purpose: Owns accessor.go runtime behavior and integration logic.
+// Docs: docs/features/feature/backend-log-streaming/index.md
+
 // accessor.go — Public accessor methods for Capture buffer state.
 // Provides safe access to monotonic counters and timestamps without exposing the mutex.
 package capture

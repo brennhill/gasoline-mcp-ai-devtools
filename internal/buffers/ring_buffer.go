@@ -1,3 +1,6 @@
+// Purpose: Owns ring_buffer.go runtime behavior and integration logic.
+// Docs: docs/features/feature/observe/index.md
+
 // ring_buffer.go — Generic ring buffer with cursor-based reads.
 // Provides a fixed-capacity circular buffer that tracks timestamps for each entry,
 // enabling clients to read from specific positions or time points.

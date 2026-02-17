@@ -3,6 +3,9 @@ feature: workflow-integration
 status: proposed
 tool: observe, generate
 mode: CI integration
+doc_type: product-spec
+feature_id: feature-workflow-integration
+last_reviewed: 2026-02-16
 ---
 # Product Spec: Workflow Integration
 

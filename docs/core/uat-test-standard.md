@@ -1,3 +1,9 @@
+---
+doc_type: legacy_doc
+status: reference
+last_reviewed: 2026-02-16
+---
+
 # UAT Test Quality Standard
 
 Reference card for writing and reviewing Gasoline MCP UAT tests.

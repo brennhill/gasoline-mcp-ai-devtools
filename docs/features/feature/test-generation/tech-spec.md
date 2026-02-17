@@ -5,6 +5,9 @@ tool: generate
 mode: [test_from_context, test_heal, test_classify]
 version: v1.1
 review: review.md
+doc_type: tech-spec
+feature_id: feature-test-generation
+last_reviewed: 2026-02-16
 ---
 
 # Test Generation — Technical Specification

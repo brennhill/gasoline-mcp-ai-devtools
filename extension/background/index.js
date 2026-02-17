@@ -1,9 +1,8 @@
 /**
- * @fileoverview Main Background Service Worker
- * Manages server communication, batchers, log handling, and pending query processing.
- * Receives captured events from content scripts, batches them with debouncing,
- * and posts to the Go server. Handles error deduplication, connection status,
- * badge updates, and on-demand query polling.
+ * Purpose: Handles extension background coordination and message routing.
+ * Docs: docs/features/feature/analyze-tool/index.md
+ * Docs: docs/features/feature/interact-explore/index.md
+ * Docs: docs/features/feature/observe/index.md
  */
 import * as stateManager from './state-manager.js';
 import * as communication from './communication.js';

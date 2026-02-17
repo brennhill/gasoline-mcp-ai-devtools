@@ -1,3 +1,6 @@
+// Purpose: Owns network_bodies.go runtime behavior and integration logic.
+// Docs: docs/features/feature/backend-log-streaming/index.md
+
 // network_bodies.go — Network body (HTTP request/response) buffering.
 // Captures HTTP request/response bodies with binary format detection.
 // Design: Ring buffer with memory-based eviction.

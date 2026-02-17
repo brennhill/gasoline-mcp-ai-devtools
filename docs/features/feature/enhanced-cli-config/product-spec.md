@@ -4,6 +4,9 @@ status: proposed
 tool: configure
 mode: cli
 version: v5.3
+doc_type: product-spec
+feature_id: feature-enhanced-cli-config
+last_reviewed: 2026-02-16
 ---
 
 # Product Spec: Enhanced CLI Configuration Management

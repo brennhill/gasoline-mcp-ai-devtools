@@ -1,3 +1,6 @@
+// Purpose: Owns tools_security.go runtime behavior and integration logic.
+// Docs: docs/features/feature/observe/index.md
+
 // tools_security.go — MCP security-related tool handlers.
 // Handles security audit, third-party audit, security diff, and verification tools.
 package main

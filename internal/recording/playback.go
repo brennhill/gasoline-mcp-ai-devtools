@@ -1,3 +1,6 @@
+// Purpose: Owns playback.go runtime behavior and integration logic.
+// Docs: docs/features/feature/observe/index.md
+
 // playback.go — Helper methods for RecordingAction playback
 package recording
 

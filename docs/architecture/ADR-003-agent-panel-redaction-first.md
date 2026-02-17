@@ -3,6 +3,7 @@ adr: ADR-003
 feature: in-browser-agent-panel
 status: proposed
 date: 2026-02-16
+last_reviewed: 2026-02-16
 ---
 
 # ADR-003: In-Browser Agent Panel Must Be Redaction-First and Layered

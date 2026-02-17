@@ -1,3 +1,6 @@
+// Purpose: Owns testgen_heal.go runtime behavior and integration logic.
+// Docs: docs/features/feature/test-generation/index.md
+
 // testgen_heal.go — Test healing: selector analysis, repair, and batch processing.
 package main
 

@@ -1,4 +1,8 @@
 /**
+ * Purpose: Owns feature-toggles.ts runtime behavior and integration logic.
+ * Docs: docs/features/feature/observe/index.md
+ */
+/**
  * @fileoverview Feature Toggles Module
  * Manages feature toggle configuration and initialization
  */

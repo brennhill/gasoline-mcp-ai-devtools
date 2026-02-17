@@ -1,6 +1,9 @@
 ---
 feature: best-practices-audit
 status: proposed
+doc_type: tech-spec
+feature_id: feature-best-practices-audit
+last_reviewed: 2026-02-16
 ---
 
 # Tech Spec: Best Practices Audit

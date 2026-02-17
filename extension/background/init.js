@@ -1,4 +1,10 @@
 /**
+ * Purpose: Handles extension background coordination and message routing.
+ * Docs: docs/features/feature/analyze-tool/index.md
+ * Docs: docs/features/feature/interact-explore/index.md
+ * Docs: docs/features/feature/observe/index.md
+ */
+/**
  * @fileoverview Extension Initialization
  * Handles startup logic: loading settings, installing listeners, and initial connection setup.
  * Uses async/await for cleaner control flow (replaces callback nesting).

@@ -1,3 +1,6 @@
+// Purpose: Owns health.go runtime behavior and integration logic.
+// Docs: docs/features/feature/observe/index.md
+
 // health.go — Health & SLA Metrics (Tier 3.4).
 // Exposes server uptime, buffer utilization, memory usage, request counts,
 // and error rates via the get_health MCP tool.

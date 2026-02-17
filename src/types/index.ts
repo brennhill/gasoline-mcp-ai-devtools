@@ -1,4 +1,9 @@
 /**
+ * Purpose: Owns index.ts runtime behavior and integration logic.
+ * Docs: docs/features/feature/observe/index.md
+ */
+
+/**
  * @fileoverview Type Index - Barrel export for all Gasoline Extension types
  *
  * This is the single entry point for importing types in the extension.

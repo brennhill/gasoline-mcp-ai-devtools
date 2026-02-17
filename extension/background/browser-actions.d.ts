@@ -1,3 +1,9 @@
+/**
+ * Purpose: Handles extension background coordination and message routing.
+ * Docs: docs/features/feature/analyze-tool/index.md
+ * Docs: docs/features/feature/interact-explore/index.md
+ * Docs: docs/features/feature/observe/index.md
+ */
 import type { PendingQuery } from '../types';
 import type { SyncClient } from './sync-client';
 import type { SendAsyncResultFn, ActionToastFn } from './pending-queries';
@@ -5,6 +11,7 @@ export type BrowserActionResult = {
     success: boolean;
     action?: string;
     url?: string;
+    tab_id?: number;
     content_script_status?: string;
     message?: string;
     error?: string;

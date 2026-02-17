@@ -1,5 +1,6 @@
 /**
- * @fileoverview Timeout scaling helpers for fast tests.
+ * Purpose: Provides shared runtime utilities used by extension and server workflows.
+ * Docs: docs/features/feature/observe/index.md
  */
 function readTestScale() {
     const globalScale = typeof globalThis !== 'undefined' && typeof globalThis.GASOLINE_TEST_TIMEOUT_SCALE === 'number'

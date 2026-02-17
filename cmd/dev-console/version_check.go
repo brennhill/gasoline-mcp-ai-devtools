@@ -1,3 +1,6 @@
+// Purpose: Owns version_check.go runtime behavior and integration logic.
+// Docs: docs/features/feature/observe/index.md
+
 // version_check.go — GitHub version checking for update notifications.
 // Checks GitHub for new releases and notifies users of available updates.
 package main

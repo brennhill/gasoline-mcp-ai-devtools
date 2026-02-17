@@ -1,3 +1,6 @@
+// Purpose: Owns tools_errors.go runtime behavior and integration logic.
+// Docs: docs/features/feature/observe/index.md
+
 // tools_errors.go — Structured error handling and error codes for MCP tools.
 // Defines error constants, StructuredError type, and error response construction.
 package main

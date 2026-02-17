@@ -4,6 +4,9 @@ status: proposed
 tool: analyze
 mode: [audit, memory, render, bundle, security, regression]
 version: v7.0
+doc_type: product-spec
+feature_id: feature-analyze-tool
+last_reviewed: 2026-02-16
 ---
 
 # The `analyze` Tool

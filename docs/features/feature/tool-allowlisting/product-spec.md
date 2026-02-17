@@ -4,6 +4,9 @@ status: proposed
 tool: configure
 mode: security
 version: v6.3
+doc_type: product-spec
+feature_id: feature-tool-allowlisting
+last_reviewed: 2026-02-16
 ---
 
 # Product Spec: Tool Allowlisting

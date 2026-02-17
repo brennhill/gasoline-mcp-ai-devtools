@@ -1,0 +1,37 @@
+---
+doc_type: tech-spec
+feature_id: npm-preinstall-fix
+status: proposed
+owners: []
+last_reviewed: 2026-02-16
+links:
+  product: ./product-spec.md
+  tech: ./tech-spec.md
+  qa: ./qa-plan.md
+  feature_index: ./index.md
+---
+
+# Npm Preinstall Fix Tech Spec
+
+## TL;DR
+
+- Status: proposed
+- Tool: tbd
+- Mode/Action: tbd
+- This document is a generated placeholder and should be completed.
+
+## Linked Specs
+
+- Product: [product-spec.md](./product-spec.md)
+- Tech: [tech-spec.md](./tech-spec.md)
+- QA: [qa-plan.md](./qa-plan.md)
+
+## Requirement IDs
+
+- NPM_PREINSTALL_FIX_001
+- NPM_PREINSTALL_FIX_002
+- NPM_PREINSTALL_FIX_003
+
+## Notes
+
+Fill this file with feature-specific details and reference code/test paths used by this feature.

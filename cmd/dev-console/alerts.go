@@ -1,3 +1,6 @@
+// Purpose: Owns alerts.go runtime behavior and integration logic.
+// Docs: docs/features/feature/observe/index.md
+
 // alerts.go — Push-based alert system for proactive error notification.
 // Monitors incoming browser events and surfaces new errors, network failures,
 // and performance regressions via the MCP tool response metadata.

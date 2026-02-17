@@ -1,3 +1,6 @@
+// Purpose: Owns type-aliases.go runtime behavior and integration logic.
+// Docs: docs/features/feature/backend-log-streaming/index.md
+
 // type-aliases.go — Type aliases for imported packages.
 // These are real type aliases (= syntax), not forward declarations.
 // They provide convenience by avoiding qualifying imported types everywhere.

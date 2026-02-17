@@ -1,4 +1,8 @@
 /**
+ * Purpose: Owns runtime-messages.ts runtime behavior and integration logic.
+ * Docs: docs/features/feature/observe/index.md
+ */
+/**
  * @fileoverview Runtime Message Types
  * Chrome runtime messages for background, content, and inject script communication
  */

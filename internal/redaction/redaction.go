@@ -1,3 +1,6 @@
+// Purpose: Implements redaction rules for sensitive data in captured telemetry.
+// Docs: docs/features/feature/redaction-patterns/index.md
+
 // redaction.go — Configurable redaction patterns for MCP tool responses.
 // Scrubs sensitive data from tool responses before they reach the AI client.
 // Uses RE2 regex (Go's regexp package) for guaranteed linear-time matching.

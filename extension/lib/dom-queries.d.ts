@@ -1,7 +1,6 @@
 /**
- * @fileoverview On-demand DOM queries.
- * Provides structured DOM querying, page info extraction, and
- * accessibility auditing via axe-core.
+ * Purpose: Provides shared runtime utilities used by extension and server workflows.
+ * Docs: docs/features/feature/query-dom/index.md
  */
 export interface DOMQueryParams {
     selector: string;

@@ -1,3 +1,6 @@
+// Purpose: Owns security-types.go runtime behavior and integration logic.
+// Docs: docs/features/feature/backend-log-streaming/index.md
+
 // security-types.go — Security threat flagging types.
 // SecurityFlag represents detected security issues from network waterfall analysis.
 package capture

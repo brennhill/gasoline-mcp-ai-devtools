@@ -1,3 +1,6 @@
+// Purpose: Owns main_connection_mcp.go runtime behavior and integration logic.
+// Docs: docs/features/feature/observe/index.md
+
 // main_connection_mcp.go — MCP daemon mode: HTTP server startup, PID management, and signal handling.
 package main
 

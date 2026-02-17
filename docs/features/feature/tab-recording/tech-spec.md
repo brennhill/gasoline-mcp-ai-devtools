@@ -1,3 +1,9 @@
+---
+doc_type: tech-spec
+feature_id: feature-tab-recording
+last_reviewed: 2026-02-16
+---
+
 # Tab Recording — Technical Architecture
 
 ## Overview

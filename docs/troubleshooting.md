@@ -9,6 +9,8 @@ header:
   excerpt: "Flame out? Get it burning again."
 toc: true
 toc_sticky: true
+status: reference
+last_reviewed: 2026-02-16
 ---
 
 ## <i class="fas fa-unlink"></i> Extension Not Connecting to Server

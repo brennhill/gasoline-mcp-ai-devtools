@@ -1,7 +1,6 @@
 /**
- * @fileoverview Exception and unhandled rejection capture.
- * Monkey-patches window.onerror and listens for unhandledrejection events,
- * enriching errors with AI context before posting via bridge.
+ * Purpose: Provides shared runtime utilities used by extension and server workflows.
+ * Docs: docs/features/feature/observe/index.md
  */
 export declare function installExceptionCapture(): void;
 /**

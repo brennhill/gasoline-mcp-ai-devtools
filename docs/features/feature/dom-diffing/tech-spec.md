@@ -2,6 +2,9 @@
 status: superseded
 scope: feature/dom-diffing
 superseded-by: feature/perf-experimentation/tech-spec.md
+doc_type: tech-spec
+feature_id: feature-dom-diffing
+last_reviewed: 2026-02-16
 ---
 
 # Tech Spec: DOM Diffing

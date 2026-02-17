@@ -2,6 +2,9 @@
 feature: analyze-tool
 status: proposed
 version: v7.0-rev1
+doc_type: tech-spec
+feature_id: feature-analyze-tool
+last_reviewed: 2026-02-16
 ---
 
 # `analyze` Tool — Technical Specification

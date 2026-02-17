@@ -1,3 +1,6 @@
+// Purpose: Owns tools_response.go runtime behavior and integration logic.
+// Docs: docs/features/feature/observe/index.md
+
 // tools_response.go — Response formatting and JSON serialization helpers.
 // Constructs MCP tool results with proper formatting (text, markdown, JSON).
 package main

@@ -1,0 +1,35 @@
+---
+doc_type: feature_index
+feature_id: bug-extension-timeout
+status: in-progress
+feature_type: bug
+owners: []
+last_reviewed: 2026-02-16
+code_paths: []
+test_paths: []
+---
+
+# Extension Timeout
+
+## TL;DR
+
+- Status: in-progress
+- Tool: all
+- Mode/Action: all
+- Location: `docs/features/bug/extension-timeout`
+
+## Specs
+
+- Product Spec: [product-spec.md](./product-spec.md)
+- Tech Spec: [tech-spec.md](./tech-spec.md)
+- QA Plan: [qa-plan.md](./qa-plan.md)
+
+## Requirement IDs
+
+- BUG_EXTENSION_TIMEOUT_001
+- BUG_EXTENSION_TIMEOUT_002
+- BUG_EXTENSION_TIMEOUT_003
+
+## Code and Tests
+
+Add concrete implementation and test links here as this feature evolves.

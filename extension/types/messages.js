@@ -1,4 +1,8 @@
 /**
+ * Purpose: Owns messages.ts runtime behavior and integration logic.
+ * Docs: docs/features/feature/observe/index.md
+ */
+/**
  * @fileoverview Message Types for Gasoline Extension
  *
  * Comprehensive discriminated unions for all message types used in the extension.

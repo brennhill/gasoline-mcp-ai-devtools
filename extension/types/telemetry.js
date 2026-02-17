@@ -1,6 +1,6 @@
 /**
- * @fileoverview Telemetry Data Types
- * Log entries, console logs, network errors, exceptions, and screenshots
+ * Purpose: Owns telemetry.ts runtime behavior and integration logic.
+ * Docs: docs/features/feature/observe/index.md
  */
 export {};
 //# sourceMappingURL=telemetry.js.map

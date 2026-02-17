@@ -1,3 +1,6 @@
+// Purpose: Owns log_accessor.go runtime behavior and integration logic.
+// Docs: docs/features/feature/observe/index.md
+
 // log_accessor.go — Public accessor methods for Server log data.
 // Provides interfaces and methods to safely access Server state without exposing unexported fields.
 package server

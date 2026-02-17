@@ -1,3 +1,6 @@
+// Purpose: Owns buffer-types.go runtime behavior and integration logic.
+// Docs: docs/features/feature/backend-log-streaming/index.md
+
 // buffer-types.go — Ring buffer types for Capture composition.
 // NetworkWaterfallBuffer, ExtensionLogBuffer, WSConnectionTracker.
 package capture

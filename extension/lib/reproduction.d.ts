@@ -1,7 +1,6 @@
 /**
- * @fileoverview Reproduction script generation and enhanced action recording.
- * Captures user interactions with multi-strategy selectors (testId, role, aria,
- * text, CSS path) and generates Playwright test scripts for reproducing issues.
+ * Purpose: Provides shared runtime utilities used by extension and server workflows.
+ * Docs: docs/features/feature/reproduction-scripts/index.md
  */
 type EnhancedActionType = 'click' | 'input' | 'keypress' | 'navigate' | 'select' | 'scroll';
 interface RoleSelector {

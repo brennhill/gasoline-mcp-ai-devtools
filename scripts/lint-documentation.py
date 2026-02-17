@@ -15,8 +15,15 @@ from pathlib import Path
 from datetime import datetime, timedelta
 import sys
 
-DOCS_DIR = Path("/Users/brenn/dev/gasoline/docs")
-CODE_DIR = Path("/Users/brenn/dev/gasoline")
+CODE_DIR = Path.cwd()
+DOCS_DIR = CODE_DIR / "docs"
+
+# Historic code/doc path aliases after refactors.
+LEGACY_CODE_PATH_MAP = {
+    "cmd/dev-console/tools.go": "cmd/dev-console/tools_schema.go",
+    "cmd/dev-console/codegen.go": "cmd/dev-console/testgen.go",
+    "internal/session/sessions.go": "internal/session/types.go",
+}
 
 class DocumentLinter:
     """Lint markdown documentation files for common issues."""
@@ -43,28 +50,106 @@ class DocumentLinter:
         # Pattern: [text](path) or [text](path#anchor)
         pattern = r'\[([^\]]+)\]\(([^)]+)\)'
         matches = re.findall(pattern, content)
+        code_exts = (".go", ".ts", ".tsx", ".js", ".jsx", ".py", ".sh", ".yaml", ".yml", ".json")
 
         for _text, link in matches:
             # Skip external links
             if link.startswith("http://") or link.startswith("https://"):
                 continue
+            if link.startswith("mailto:") or link.startswith("tel:"):
+                continue
+            if link.startswith("data:image/"):
+                continue
 
-            # Remove anchor
-            file_part = link.split("#")[0]
+            # Remove anchor/query and optional line suffixes.
+            file_part = link.split("#")[0].split("?")[0]
+            file_part = re.sub(r'(:[0-9,\-]+)$', '', file_part)
+
+            # Ignore placeholders in templates.
+            if "<" in file_part or ">" in file_part or file_part in {"ADR-XXX.md", "link"}:
+                continue
+            if "[" in file_part or "]" in file_part:
+                continue
 
             # Skip empty links
             if not file_part:
                 continue
 
-            # Resolve relative path
+            candidates = []
             if file_part.startswith("/"):
-                target = CODE_DIR / file_part.lstrip("/")
+                route = file_part.lstrip("/").rstrip("/")
+                if route == "":
+                    candidates.append(DOCS_DIR / "index.md")
+                else:
+                    candidates.append(DOCS_DIR / route)
+                    candidates.append(DOCS_DIR / f"{route}.md")
+                    candidates.append(DOCS_DIR / route / "index.md")
             else:
                 target = file_path.parent / file_part
+                candidates.append(target)
+                candidates.append(target.with_suffix(".md") if target.suffix == "" else target)
+                candidates.append(target / "index.md")
 
-            # Check if file exists
-            if not target.exists():
-                self.error(f"{file_path.relative_to(DOCS_DIR)}: broken link to {link}")
+                # Docs-root fallback for links written as if rooted at docs/.
+                docs_root_target = (DOCS_DIR / file_part).resolve()
+                candidates.append(docs_root_target)
+                candidates.append(
+                    docs_root_target.with_suffix(".md") if docs_root_target.suffix == "" else docs_root_target
+                )
+                candidates.append(docs_root_target / "index.md")
+
+                # Collapse historically over-prefixed relatives like ../../../core/adrs.md.
+                collapsed = file_part
+                while collapsed.startswith("../"):
+                    collapsed = collapsed[3:]
+                if collapsed and collapsed != file_part:
+                    collapsed_target = (DOCS_DIR / collapsed).resolve()
+                    candidates.append(collapsed_target)
+                    candidates.append(
+                        collapsed_target.with_suffix(".md") if collapsed_target.suffix == "" else collapsed_target
+                    )
+                    candidates.append(collapsed_target / "index.md")
+
+                # Repo-root fallback for code path references.
+                repo_root_target = (CODE_DIR / file_part).resolve()
+                candidates.append(repo_root_target)
+                candidates.append(
+                    repo_root_target.with_suffix(".md") if repo_root_target.suffix == "" else repo_root_target
+                )
+                candidates.append(repo_root_target / "index.md")
+
+                # Repo-root fallback with collapsed relative prefixes.
+                collapsed_repo = file_part
+                while collapsed_repo.startswith("../"):
+                    collapsed_repo = collapsed_repo[3:]
+                if collapsed_repo and collapsed_repo != file_part:
+                    collapsed_repo_target = (CODE_DIR / collapsed_repo).resolve()
+                    candidates.append(collapsed_repo_target)
+                    candidates.append(
+                        collapsed_repo_target.with_suffix(".md")
+                        if collapsed_repo_target.suffix == ""
+                        else collapsed_repo_target
+                    )
+                    candidates.append(collapsed_repo_target / "index.md")
+                else:
+                    collapsed_repo = file_part
+
+                # Refactor aliases for moved code files.
+                alias = LEGACY_CODE_PATH_MAP.get(collapsed_repo)
+                if alias:
+                    alias_target = (CODE_DIR / alias).resolve()
+                    candidates.append(alias_target)
+
+            if not any(candidate.exists() for candidate in candidates):
+                rel = file_path.relative_to(DOCS_DIR)
+                if file_part.startswith("/"):
+                    self.warning(f"{rel}: unresolved absolute route {link}")
+                elif ".claude/" in file_part:
+                    self.warning(f"{rel}: unresolved claude-internal link {link}")
+                elif file_part.lower().endswith(code_exts):
+                    self.warning(f"{rel}: unresolved code reference {link}")
+                else:
+                    self.error(f"{rel}: broken link to {link}")
 
     def check_code_references(self, file_path, content):
         """Check code references (file.go:function)"""
@@ -99,24 +184,30 @@ class DocumentLinter:
             end = content.find("\n---\n", 3) + 4
             frontmatter = content[4:end]
 
-            # Check required fields
-            if "status:" not in frontmatter:
+            # Support both legacy and current field names.
+            has_doc_type = "doc_type:" in frontmatter
+            has_status = "status:" in frontmatter
+            has_last_verified = "last-verified:" in frontmatter
+            has_last_reviewed = "last_reviewed:" in frontmatter
+
+            # Status is required for legacy docs; structured docs can omit it.
+            if not has_status and not has_doc_type:
                 self.warning(f"{file_path.relative_to(DOCS_DIR)}: missing 'status' field")
 
-            if "last-verified:" in frontmatter:
-                # Extract date
-                match = re.search(r'last-verified:\s*(\d{4}-\d{2}-\d{2})', frontmatter)
+            # Accept either last-verified (legacy) or last_reviewed (current).
+            if has_last_verified or has_last_reviewed:
+                match = re.search(r'(?:last-verified|last_reviewed):\s*(\d{4}-\d{2}-\d{2})', frontmatter)
                 if match:
                     date_str = match.group(1)
                     doc_date = datetime.strptime(date_str, "%Y-%m-%d")
                     if datetime.now() - doc_date > timedelta(days=30):
                         rel = file_path.relative_to(DOCS_DIR)
                         self.warning(
-                            f"{rel}: last-verified is stale"
+                            f"{rel}: review date is stale"
                             f" ({date_str})"
                         )
             else:
-                self.warning(f"{file_path.relative_to(DOCS_DIR)}: missing 'last-verified' field")
+                self.warning(f"{file_path.relative_to(DOCS_DIR)}: missing review date field (last-verified or last_reviewed)")
 
         except (ValueError, IndexError) as e:
             self.warning(f"{file_path.relative_to(DOCS_DIR)}: frontmatter parse error: {str(e)}")

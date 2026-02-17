@@ -223,7 +223,7 @@ describe('SyncClient — Connection state transitions', () => {
     assert.strictEqual(callbacks.onConnectionChange.mock.calls[0].arguments[0], true)
   })
 
-  test('should transition from connected to disconnected on fetch failure', async () => {
+  test('should transition from connected to disconnected after 2 consecutive failures', async () => {
     // First call succeeds, subsequent calls fail
     let callCount = 0
     globalThis.fetch = mock.fn(() => {
@@ -240,9 +240,9 @@ describe('SyncClient — Connection state transitions', () => {
     client = new SyncClient('http://localhost:7777', 'sess-1', callbacks)
     client.start()
 
-    // Wait for first success + second poll (failure). The first sync fires at ~0ms,
-    // completes and schedules next at +10ms. Give enough time for both.
-    await tick(200)
+    // Wait for first success + two failures (need 2 consecutive failures for disconnect).
+    // First sync fires at ~0ms (success), retry at ~10ms (fail #1), retry at ~1010ms (fail #2).
+    await tick(1200)
 
     assert.strictEqual(client.isConnected(), false)
 
@@ -265,6 +265,40 @@ describe('SyncClient — Connection state transitions', () => {
     // onConnectionChange(false) should only be called once despite multiple failures
     // (starts disconnected, so zero calls because it was never connected)
     assert.strictEqual(callbacks.onConnectionChange.mock.calls.length, 0)
+  })
+
+  test('should NOT disconnect after a single failure (requires 2 consecutive)', async () => {
+    // First call succeeds, second fails, third succeeds
+    let callCount = 0
+    globalThis.fetch = mock.fn(() => {
+      callCount++
+      if (callCount === 1) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve(makeSyncResponse({ next_poll_ms: 10 }))
+        })
+      }
+      if (callCount === 2) {
+        return Promise.reject(new Error('transient failure'))
+      }
+      return Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve(makeSyncResponse({ next_poll_ms: 60000 }))
+      })
+    })
+
+    client = new SyncClient('http://localhost:7777', 'sess-1', callbacks)
+    client.start()
+
+    // Wait for first success + one failure + recovery
+    await tick(1200)
+
+    assert.strictEqual(client.isConnected(), true)
+
+    // onConnectionChange should only have been called once (connected), never disconnected
+    const changeCalls = callbacks.onConnectionChange.mock.calls
+    const disconnectCalls = changeCalls.filter((c) => c.arguments[0] === false)
+    assert.strictEqual(disconnectCalls.length, 0, 'Should not have disconnected on single failure')
   })
 
   test('should reset consecutiveFailures on success', async () => {
@@ -948,7 +982,7 @@ describe('SyncClient — Error recovery', () => {
   })
 
   test('should handle AbortController timeout gracefully', async () => {
-    // Simulate fetch that hangs beyond the 3s timeout
+    // Simulate fetch that hangs beyond the 8s timeout
     globalThis.fetch = mock.fn((_url, opts) => {
       return new Promise((_resolve, reject) => {
         if (opts.signal) {
@@ -962,8 +996,8 @@ describe('SyncClient — Error recovery', () => {
     client = new SyncClient('http://localhost:7777', 'sess-1', callbacks)
     client.start()
 
-    // Wait for the 3s timeout + a bit
-    await tick(3500)
+    // Wait for the 8s timeout + a bit
+    await tick(8500)
 
     assert.strictEqual(client.isConnected(), false)
     assert.ok(client.getState().consecutiveFailures >= 1)

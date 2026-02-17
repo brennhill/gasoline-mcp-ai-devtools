@@ -9,6 +9,8 @@ header:
   excerpt: "One command. Two minutes. Your AI sees your browser."
 toc: true
 toc_sticky: true
+status: reference
+last_reviewed: 2026-02-16
 ---
 
 ## <i class="fas fa-fire"></i> 1. Ignite the Server

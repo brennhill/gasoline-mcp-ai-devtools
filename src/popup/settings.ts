@@ -1,4 +1,9 @@
 /**
+ * Purpose: Owns settings.ts runtime behavior and integration logic.
+ * Docs: docs/features/feature/observe/index.md
+ */
+
+/**
  * @fileoverview Settings Module
  * Handles log level, WebSocket mode, and clear logs functionality
  */

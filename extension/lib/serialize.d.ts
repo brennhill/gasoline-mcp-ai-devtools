@@ -1,10 +1,6 @@
 /**
- * @fileoverview Serialization utilities for safe value handling.
- * Provides safe serialization with circular reference detection, DOM element
- * selector generation, and sensitive input detection.
- *
- * NOTE: This module has NO mutable state. All functions are pure and stateless.
- * No resetForTesting() function is needed.
+ * Purpose: Provides shared runtime utilities used by extension and server workflows.
+ * Docs: docs/features/feature/observe/index.md
  */
 import type { JsonValue } from '../types/index';
 /**

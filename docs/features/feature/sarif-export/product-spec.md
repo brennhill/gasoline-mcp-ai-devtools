@@ -4,6 +4,9 @@ status: shipped
 tool: generate
 mode: sarif
 version: 5.0.0
+doc_type: product-spec
+feature_id: feature-sarif-export
+last_reviewed: 2026-02-16
 ---
 # Product Spec: Sarif Export
 

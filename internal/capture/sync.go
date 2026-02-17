@@ -1,3 +1,6 @@
+// Purpose: Owns sync.go runtime behavior and integration logic.
+// Docs: docs/features/feature/backend-log-streaming/index.md
+
 // sync.go — Unified sync endpoint consolidating multiple polling loops.
 // POST /sync: Single bidirectional sync for extension ↔ server communication.
 // Replaces: /pending-queries (GET), /settings (POST), /extension-logs (POST),

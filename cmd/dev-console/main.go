@@ -1,3 +1,6 @@
+// Purpose: Owns main.go runtime behavior and integration logic.
+// Docs: docs/features/feature/observe/index.md
+
 // Gasoline - Browser observability for AI coding agents
 // A zero-dependency server that receives logs from the browser extension
 // and streams them to your AI coding agent via MCP.

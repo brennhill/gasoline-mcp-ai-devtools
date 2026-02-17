@@ -1,3 +1,6 @@
+// Purpose: Owns observe_filtering.go runtime behavior and integration logic.
+// Docs: docs/features/feature/observe/index.md
+
 // observe_filtering.go — Filtering helpers for observe operations.
 // Provides log level ranking and other filtering utilities.
 package main

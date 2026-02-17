@@ -1,6 +1,9 @@
 ---
 feature: read-only-mode
 status: proposed
+doc_type: tech-spec
+feature_id: feature-read-only-mode
+last_reviewed: 2026-02-16
 ---
 
 # Tech Spec: Read-Only Mode

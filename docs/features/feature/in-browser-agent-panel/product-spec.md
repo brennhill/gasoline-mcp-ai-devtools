@@ -7,6 +7,9 @@ version: null
 authors: [brenn]
 created: 2026-02-16
 updated: 2026-02-16
+doc_type: product-spec
+feature_id: feature-in-browser-agent-panel
+last_reviewed: 2026-02-16
 ---
 # Product Spec: In-Browser Agent Panel (Redaction-First)
 

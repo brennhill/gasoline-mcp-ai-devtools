@@ -1,3 +1,6 @@
+// Purpose: Owns interfaces.go runtime behavior and integration logic.
+// Docs: docs/features/feature/backend-log-streaming/index.md
+
 // interfaces.go — Abstracted component interfaces.
 // These interfaces are implemented by other packages (analysis, security, session).
 // They define the contracts for components that Capture depends on.

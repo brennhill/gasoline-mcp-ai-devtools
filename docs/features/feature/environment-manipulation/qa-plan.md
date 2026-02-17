@@ -5,6 +5,9 @@ ai-priority: medium
 tags: [v7, testing, environment-config]
 relates-to: [product-spec.md, tech-spec.md]
 last-verified: 2026-01-31
+doc_type: qa-plan
+feature_id: feature-environment-manipulation
+last_reviewed: 2026-02-16
 ---
 
 # Environment Manipulation — QA Plan

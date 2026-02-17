@@ -1,3 +1,6 @@
+// Purpose: Owns upload_security_windows.go runtime behavior and integration logic.
+// Docs: docs/features/feature/observe/index.md
+
 // upload_security_windows.go — Hard link detection stub for Windows.
 //go:build windows
 

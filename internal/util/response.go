@@ -1,3 +1,6 @@
+// Purpose: Owns response.go runtime behavior and integration logic.
+// Docs: docs/features/feature/observe/index.md
+
 // response.go — HTTP response utilities
 package util
 

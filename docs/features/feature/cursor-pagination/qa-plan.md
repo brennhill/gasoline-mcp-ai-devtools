@@ -6,6 +6,9 @@ ai-priority: high
 tags: [qa, testing, cursor-pagination, shipped]
 relates-to: [tech-spec.md, product-spec.md]
 last-verified: 2026-01-30
+doc_type: qa-plan
+feature_id: feature-cursor-pagination
+last_reviewed: 2026-02-16
 ---
 
 # QA Plan: Cursor-Based Pagination

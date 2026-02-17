@@ -1,4 +1,8 @@
 /**
+ * Purpose: Owns actions.ts runtime behavior and integration logic.
+ * Docs: docs/features/feature/observe/index.md
+ */
+/**
  * @fileoverview User Action Types
  * User interactions for action replay and test generation
  */

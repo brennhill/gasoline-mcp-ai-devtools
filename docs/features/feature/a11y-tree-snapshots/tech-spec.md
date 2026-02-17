@@ -1,6 +1,9 @@
 ---
 feature: a11y-tree-snapshots
 status: proposed
+doc_type: tech-spec
+feature_id: feature-a11y-tree-snapshots
+last_reviewed: 2026-02-16
 ---
 
 # Tech Spec: A11y Tree Snapshots

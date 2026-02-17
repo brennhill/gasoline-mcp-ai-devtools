@@ -1,3 +1,6 @@
+// Purpose: Owns log-diff.go runtime behavior and integration logic.
+// Docs: docs/features/feature/backend-log-streaming/index.md
+
 // log-diff.go — Log diffing and regression detection for recordings.
 // Compares original vs replay recordings to detect regressions, fixes, and value changes.
 // Categories: Match (no issues), Regression (new errors), Fixed (errors resolved).

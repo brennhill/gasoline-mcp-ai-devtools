@@ -1,3 +1,6 @@
+// Purpose: Owns status.go runtime behavior and integration logic.
+// Docs: docs/features/feature/backend-log-streaming/index.md
+
 // status.go — Extension tracking status types.
 // Used by /sync for tab tracking state updates.
 package capture

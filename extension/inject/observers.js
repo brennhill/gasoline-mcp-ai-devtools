@@ -1,4 +1,9 @@
 /**
+ * Purpose: Executes in-page actions and query handlers within the page context.
+ * Docs: docs/features/feature/interact-explore/index.md
+ * Docs: docs/features/feature/query-dom/index.md
+ */
+/**
  * @fileoverview Observers - Observer registration and management for DOM, network,
  * performance, and WebSocket events.
  */

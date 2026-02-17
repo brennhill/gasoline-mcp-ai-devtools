@@ -3,6 +3,9 @@ feature: self-testing
 status: in-progress
 tool: interact, generate
 mode: execute_js, test
+doc_type: product-spec
+feature_id: feature-self-testing
+last_reviewed: 2026-02-16
 ---
 # Product Spec: Self Testing
 

@@ -1,3 +1,6 @@
+// Purpose: Owns ai_checkpoint_alerts.go runtime behavior and integration logic.
+// Docs: docs/features/feature/observe/index.md
+
 // ai_checkpoint_alerts.go — Push regression alert detection and delivery.
 package ai
 

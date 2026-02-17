@@ -1,6 +1,7 @@
 /**
- * @fileoverview Gasoline API - Exposes window.__gasoline interface for developers
- * to interact with Gasoline capture capabilities.
+ * Purpose: Executes in-page actions and query handlers within the page context.
+ * Docs: docs/features/feature/interact-explore/index.md
+ * Docs: docs/features/feature/query-dom/index.md
  */
 import { setContextAnnotation, removeContextAnnotation, clearContextAnnotations, getContextAnnotations } from '../lib/context.js';
 import { computeSelectors, recordEnhancedAction, getEnhancedActionBuffer, clearEnhancedActionBuffer, generatePlaywrightScript } from '../lib/reproduction.js';

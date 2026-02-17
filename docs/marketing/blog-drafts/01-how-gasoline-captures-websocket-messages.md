@@ -4,6 +4,8 @@ date: 2026-02-10
 author: Brenn Hill
 tags: [WebSocket, MCP, AI, DevTools, Technical]
 description: A deep dive into how Gasoline MCP captures full WebSocket lifecycle events and makes them available to AI coding agents.
+status: reference
+last_reviewed: 2026-02-16
 ---
 
 # How Gasoline MCP Captures WebSocket Messages

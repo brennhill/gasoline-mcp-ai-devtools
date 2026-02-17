@@ -1,14 +1,8 @@
 /**
- * @fileoverview Pending Query Handlers
- * Handles all query types from the server: DOM, accessibility, browser actions,
- * execute commands, and state management.
- *
- * All results are returned via syncClient.queueCommandResult() which routes them
- * through the unified /sync endpoint. No direct HTTP POSTs to legacy endpoints.
- *
- * Split into modules:
- * - query-execution.ts: JS execution with world-aware routing and CSP fallback
- * - browser-actions.ts: Browser navigation/action handlers with async timeout support
+ * Purpose: Handles extension background coordination and message routing.
+ * Docs: docs/features/feature/analyze-tool/index.md
+ * Docs: docs/features/feature/interact-explore/index.md
+ * Docs: docs/features/feature/observe/index.md
  */
 import * as eventListeners from './event-listeners.js';
 import * as index from './index.js';

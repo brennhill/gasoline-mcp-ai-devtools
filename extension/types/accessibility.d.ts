@@ -1,4 +1,8 @@
 /**
+ * Purpose: Owns accessibility.ts runtime behavior and integration logic.
+ * Docs: docs/features/feature/observe/index.md
+ */
+/**
  * @fileoverview Accessibility Types
  * Accessibility audit results and violations
  */
