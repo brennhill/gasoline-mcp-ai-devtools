@@ -35,11 +35,43 @@ func newAnalyzeTestEnv(t *testing.T) *analyzeTestEnv {
 	return &analyzeTestEnv{handler: handler, server: server, capture: cap}
 }
 
+func normalizeAnalyzeArgsForAsync(argsJSON string) json.RawMessage {
+	raw := json.RawMessage(argsJSON)
+
+	var params map[string]any
+	if err := json.Unmarshal(raw, &params); err != nil {
+		return raw
+	}
+
+	what, _ := params["what"].(string)
+	switch what {
+	case "dom", "page_summary", "link_health":
+	default:
+		return raw
+	}
+
+	if _, hasSync := params["sync"]; hasSync {
+		return raw
+	}
+	if _, hasWait := params["wait"]; hasWait {
+		return raw
+	}
+	if _, hasBackground := params["background"]; hasBackground {
+		return raw
+	}
+
+	params["sync"] = false
+	if normalized, err := json.Marshal(params); err == nil {
+		return json.RawMessage(normalized)
+	}
+	return raw
+}
+
 // callAnalyze invokes the analyze tool and returns parsed result
 func (e *analyzeTestEnv) callAnalyze(t *testing.T, argsJSON string) (MCPToolResult, bool) {
 	t.Helper()
 
-	args := json.RawMessage(argsJSON)
+	args := normalizeAnalyzeArgsForAsync(argsJSON)
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: 1}
 	resp := e.handler.toolAnalyze(req, args)
 

@@ -124,7 +124,7 @@ graph TB
 - **Port:** localhost:7890 (default, configurable)
 - **Components:**
   - **MCP Handler** - JSON-RPC 2.0 request routing
-  - **4 Tools** - observe, generate, interact, configure
+  - **5 Tools** - observe, generate, interact, configure, analyze
   - **Capture Manager** - Telemetry ring buffers, memory enforcement
   - **Session Manager** - Multi-client isolation, token verification
 - **Key Files:**

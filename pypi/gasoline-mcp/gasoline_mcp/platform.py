@@ -59,29 +59,35 @@ def show_help():
 Usage: gasoline-mcp [command] [options]
 
 Commands:
-  --config, -c          Show MCP configuration and where to put it
-  --install, -i         Auto-install to your AI assistant config
+  --config, -c          Show MCP configuration and detected clients
+  --install, -i         Auto-install to all detected AI clients
   --doctor              Run diagnostics on installed configs
-  --uninstall           Remove Gasoline from configs
+  --uninstall           Remove Gasoline from all clients
   --help, -h            Show this help message
 
+Supported clients:
+  Claude Code           via claude CLI (mcp add-json)
+  Claude Desktop        config file
+  Cursor                config file
+  Windsurf              config file
+  VS Code               config file
+
 Options (with --install):
-  --dry-run             Preview changes without writing files
-  --for-all             Install to all 4 tools (Claude, VSCode, Cursor, Codeium)
+  --dry-run             Preview changes without writing
   --env KEY=VALUE       Add environment variables to config (multiple allowed)
   --verbose             Show detailed operation logs
 
 Options (with --uninstall):
-  --dry-run             Preview changes without writing files
+  --dry-run             Preview changes without writing
   --verbose             Show detailed operation logs
 
 Examples:
-  gasoline-mcp --install                # Install to first matching tool
-  gasoline-mcp --install --for-all      # Install to all 4 tools
+  gasoline-mcp --install                # Install to all detected clients
   gasoline-mcp --install --dry-run      # Preview without changes
   gasoline-mcp --install --env DEBUG=1  # Install with env vars
+  gasoline-mcp --config                 # Show config and detected clients
   gasoline-mcp --doctor                 # Check config health
-  gasoline-mcp --uninstall              # Remove from all tools
+  gasoline-mcp --uninstall              # Remove from all clients
 """)
     sys.exit(0)
 
@@ -89,26 +95,32 @@ Examples:
 def show_config():
     """Show configuration information."""
     from . import install  # pylint: disable=import-outside-toplevel
+    from . import config as cfg_mod  # pylint: disable=import-outside-toplevel
     import json  # pylint: disable=import-outside-toplevel
 
-    cfg = install.generate_default_config()
+    mcp = install.generate_default_config()
 
     print("📋 Gasoline MCP Configuration\n")
-    print("Add this to your AI assistant settings file:\n")
-    print(json.dumps(cfg, indent=2))
-    print("\n📍 Configuration Locations:")
-    print("")
-    print("Claude Code (VSCode):")
-    print("  ~/.vscode/claude.mcp.json")
-    print("")
-    print("Claude:")
-    print("  ~/.claude.json")
-    print("")
-    print("Cursor:")
-    print("  ~/.cursor/mcp.json")
-    print("")
-    print("Codeium:")
-    print("  ~/.codeium/mcp.json")
+    print("Add this to your AI assistant settings:\n")
+    print(json.dumps(mcp, indent=2))
+    print("\n📍 Supported Clients:\n")
+
+    for definition in cfg_mod.CLIENT_DEFINITIONS:
+        detected = cfg_mod.is_client_installed(definition)
+        icon = "✅" if detected else "⚪"
+
+        if definition["type"] == "cli":
+            print(f"{icon} {definition['name']} (via {definition['detectCommand']} CLI)")
+        else:
+            cfg_path = cfg_mod.get_client_config_path(definition)
+            if cfg_path:
+                print(f"{icon} {definition['name']}")
+                print(f"   {cfg_path}")
+            else:
+                print(f"⚪ {definition['name']} (not available on this platform)")
+        print("")
+
+    print("Run: gasoline-mcp --install   (auto-installs to all detected clients)")
     sys.exit(0)
 
 
@@ -134,12 +146,7 @@ def _print_install_success(result, dry_run):
 
     if dry_run:
         print("ℹ️  Dry run: No files will be written\n")
-    print(output.install_result({
-        "updated": result["updated"],
-        "total": result["total"],
-        "errors": result["errors"],
-        "notFound": [],
-    }))
+    print(output.install_result(result))
     if not dry_run:
         print("✨ Gasoline MCP is ready to use!")
     sys.exit(0)
@@ -163,7 +170,6 @@ def run_install(args):
 
     options = {
         "dryRun": "--dry-run" in args,
-        "forAll": "--for-all" in args,
         "envVars": _parse_env_args(args),
         "verbose": "--verbose" in args,
     }

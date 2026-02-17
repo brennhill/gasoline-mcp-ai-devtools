@@ -89,16 +89,6 @@ class EnvWithoutInstallError(GasolineError):
         self.name = "EnvWithoutInstallError"
 
 
-class ForAllWithoutInstallError(GasolineError):
-    """Raised when --for-all is used without --install."""
-
-    def __init__(self):
-        msg = "--for-all only works with --install"
-        recovery = "Usage: gasoline-mcp --install --for-all"
-        super().__init__(msg, recovery)
-        self.name = "ForAllWithoutInstallError"
-
-
 class ConfigValidationError(GasolineError):
     """Raised when config validation fails."""
 

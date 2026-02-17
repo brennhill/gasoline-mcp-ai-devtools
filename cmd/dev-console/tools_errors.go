@@ -21,12 +21,12 @@ const (
 	ErrPathNotAllowed = "path_not_allowed"
 
 	// State errors — LLM must change state before retrying
-	ErrNotInitialized    = "not_initialized"
-	ErrNoData            = "no_data"
+	ErrNotInitialized       = "not_initialized"
+	ErrNoData               = "no_data"
 	ErrCodePilotDisabled    = "pilot_disabled" // Named ErrCodePilotDisabled to avoid collision with var ErrCodePilotDisabled in pilot.go
 	ErrOsAutomationDisabled = "os_automation_disabled"
-	ErrRateLimited       = "rate_limited"
-	ErrCursorExpired     = "cursor_expired" // Cursor pagination: buffer overflow evicted cursor position
+	ErrRateLimited          = "rate_limited"
+	ErrCursorExpired        = "cursor_expired" // Cursor pagination: buffer overflow evicted cursor position
 
 	// Communication errors — retry with backoff
 	ErrExtTimeout = "extension_timeout"
@@ -44,6 +44,7 @@ type StructuredError struct {
 	Error   string `json:"error"`
 	Message string `json:"message"`
 	Retry   string `json:"retry"`
+	Final   bool   `json:"final,omitempty"`
 	Param   string `json:"param,omitempty"`
 	Hint    string `json:"hint,omitempty"`
 }
@@ -81,9 +82,14 @@ func withHint(h string) func(*StructuredError) {
 	return func(se *StructuredError) { se.Hint = h }
 }
 
-// diagnosticHint returns a snapshot of system state for inclusion in error hints.
-// Helps LLMs diagnose why a command failed by showing pilot/extension/tracking status.
-func (h *ToolHandler) diagnosticHint() func(*StructuredError) {
+// withFinal marks a structured error as terminal/non-terminal for async command flows.
+func withFinal(final bool) func(*StructuredError) {
+	return func(se *StructuredError) { se.Final = final }
+}
+
+// diagnosticHintString returns a plain-text snapshot of system state.
+// Used by both structured errors and JSON error responses.
+func (h *ToolHandler) diagnosticHintString() string {
 	extConnected := h.capture.IsExtensionConnected()
 	pilotEnabled := h.capture.IsPilotEnabled()
 	enabled, tabID, tabURL := h.capture.GetTrackingStatus()
@@ -109,5 +115,10 @@ func (h *ToolHandler) diagnosticHint() func(*StructuredError) {
 	for _, p := range parts[1:] {
 		hint += ", " + p
 	}
-	return withHint(hint)
+	return hint
+}
+
+// diagnosticHint returns a snapshot of system state for inclusion in structured errors.
+func (h *ToolHandler) diagnosticHint() func(*StructuredError) {
+	return withHint(h.diagnosticHintString())
 }

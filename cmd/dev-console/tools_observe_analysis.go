@@ -652,14 +652,26 @@ func (h *ToolHandler) toolObserveCommandResult(req JSONRPCRequest, args json.Raw
 	if strings.HasPrefix(corrID, "ann_") {
 		cmd, found := h.capture.WaitForCommand(corrID, annotationCommandWaitTimeout)
 		if !found {
-			return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrNoData, "Annotation command not found: "+corrID, "The command may have expired (10 min TTL). Start a new draw mode session.", h.diagnosticHint())}
+			return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(
+				ErrNoData,
+				"Annotation command not found: "+corrID,
+				"The command may have expired (10 min TTL). Start a new draw mode session.",
+				withFinal(true),
+				h.diagnosticHint(),
+			)}
 		}
 		return h.formatCommandResult(req, *cmd, corrID)
 	}
 
 	cmd, found := h.capture.GetCommandResult(corrID)
 	if !found {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrNoData, "Command not found: "+corrID, "The command may have already completed and been cleaned up (60s TTL), or the correlation_id is invalid. Use observe with what='pending_commands' to see active commands.", h.diagnosticHint())}
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(
+			ErrNoData,
+			"Command not found: "+corrID,
+			"The command may have already completed and been cleaned up (60s TTL), or the correlation_id is invalid. Use observe with what='pending_commands' to see active commands.",
+			withFinal(true),
+			h.diagnosticHint(),
+		)}
 	}
 
 	return h.formatCommandResult(req, *cmd, corrID)
@@ -669,6 +681,7 @@ func (h *ToolHandler) formatCommandResult(req JSONRPCRequest, cmd queries.Comman
 	responseData := map[string]any{
 		"correlation_id": cmd.CorrelationID,
 		"status":         cmd.Status,
+		"queued":         false,
 		"created_at":     cmd.CreatedAt.Format(time.RFC3339),
 	}
 
@@ -688,19 +701,21 @@ func (h *ToolHandler) formatCommandResult(req JSONRPCRequest, cmd queries.Comman
 		summary := fmt.Sprintf("FAILED — Command %s error: %s", corrID, cmd.Error)
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONErrorResponse(summary, responseData)}
 	case "expired":
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(
-			ErrExtTimeout,
-			fmt.Sprintf("Command %s expired before the extension could execute it. Error: %s", corrID, cmd.Error),
-			"The browser extension may be disconnected or the page is not active. Check observe with what='pilot' to verify extension status, then retry the command.",
-			h.diagnosticHint(),
-		)}
+		responseData["final"] = true
+		responseData["error"] = ErrExtTimeout
+		responseData["message"] = fmt.Sprintf("Command %s expired before the extension could execute it. Error: %s", corrID, cmd.Error)
+		responseData["retry"] = "The browser extension may be disconnected or the page is not active. Check observe with what='pilot' to verify extension status, then retry the command."
+		responseData["hint"] = h.diagnosticHintString()
+		summary := fmt.Sprintf("FAILED — Command %s expired: %s", corrID, cmd.Error)
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONErrorResponse(summary, responseData)}
 	case "timeout":
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(
-			ErrExtTimeout,
-			fmt.Sprintf("Command %s timed out waiting for the extension to respond. Error: %s", corrID, cmd.Error),
-			"The command took too long. The page may be unresponsive or the action is stuck. Try refreshing the page with interact action='refresh', then retry.",
-			h.diagnosticHint(),
-		)}
+		responseData["final"] = true
+		responseData["error"] = ErrExtTimeout
+		responseData["message"] = fmt.Sprintf("Command %s timed out waiting for the extension to respond. Error: %s", corrID, cmd.Error)
+		responseData["retry"] = "The command took too long. The page may be unresponsive or the action is stuck. Try refreshing the page with interact action='refresh', then retry."
+		responseData["hint"] = h.diagnosticHintString()
+		summary := fmt.Sprintf("FAILED — Command %s timed out: %s", corrID, cmd.Error)
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONErrorResponse(summary, responseData)}
 	default:
 		responseData["final"] = false
 		summary := fmt.Sprintf("Command %s: %s", corrID, cmd.Status)

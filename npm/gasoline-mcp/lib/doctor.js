@@ -6,7 +6,15 @@
 const fs = require('fs');
 const net = require('net');
 const { execSync, execFileSync } = require('child_process');
-const { getConfigCandidates, getToolNameFromPath, readConfigFile } = require('./config');
+const {
+  CLIENT_DEFINITIONS,
+  LEGACY_PATHS,
+  getClientConfigPath,
+  isClientInstalled,
+  commandExistsOnPath,
+  readConfigFile,
+  expandPath,
+} = require('./config');
 
 /**
  * Check if a port is available
@@ -145,60 +153,152 @@ function testBinary() {
 }
 
 /**
- * Run full diagnostics on all config locations
+ * Diagnose a single file-type client
+ * @param {Object} def Client definition
+ * @param {boolean} verbose
+ * @returns {Object} Tool diagnostic
+ */
+function diagnoseFileClient(def, verbose) {
+  const cfgPath = getClientConfigPath(def);
+  const detected = isClientInstalled(def);
+
+  const tool = {
+    name: def.name,
+    id: def.id,
+    type: 'file',
+    path: cfgPath,
+    detected,
+    status: 'error',
+    issues: [],
+    suggestions: [],
+  };
+
+  if (verbose) {
+    console.log(`[DEBUG] Checking ${def.name} at ${cfgPath}`);
+  }
+
+  if (!detected) {
+    tool.status = 'info';
+    tool.issues.push('Not installed on this system');
+    return tool;
+  }
+
+  if (!cfgPath) {
+    tool.status = 'info';
+    tool.issues.push('No config path for this platform');
+    return tool;
+  }
+
+  if (!fs.existsSync(cfgPath)) {
+    tool.status = 'error';
+    tool.issues.push('Config file not found');
+    tool.suggestions.push('Run: gasoline-mcp --install');
+    return tool;
+  }
+
+  const readResult = readConfigFile(cfgPath);
+  if (!readResult.valid) {
+    tool.issues.push('Invalid JSON');
+    tool.suggestions.push('Fix the JSON syntax or run: gasoline-mcp --install');
+    return tool;
+  }
+
+  if (!readResult.data.mcpServers || !readResult.data.mcpServers.gasoline) {
+    tool.issues.push('gasoline entry missing from mcpServers');
+    tool.suggestions.push('Run: gasoline-mcp --install');
+    return tool;
+  }
+
+  tool.status = 'ok';
+  return tool;
+}
+
+/**
+ * Diagnose a CLI-type client
+ * @param {Object} def Client definition
+ * @param {boolean} verbose
+ * @returns {Object} Tool diagnostic
+ */
+function diagnoseCliClient(def, verbose) {
+  const detected = isClientInstalled(def);
+
+  const tool = {
+    name: def.name,
+    id: def.id,
+    type: 'cli',
+    detected,
+    status: 'error',
+    issues: [],
+    suggestions: [],
+  };
+
+  if (verbose) {
+    console.log(`[DEBUG] Checking ${def.name} (CLI: ${def.detectCommand})`);
+  }
+
+  if (!detected) {
+    tool.status = 'info';
+    tool.issues.push(`${def.detectCommand} CLI not found on PATH`);
+    return tool;
+  }
+
+  // Try to check if gasoline is configured via CLI
+  try {
+    execFileSync(def.detectCommand, ['mcp', 'get', 'gasoline'], {
+      stdio: ['pipe', 'pipe', 'pipe'],
+      timeout: 10000,
+      env: { ...process.env, CLAUDECODE: undefined },
+    });
+    tool.status = 'ok';
+  } catch {
+    tool.status = 'error';
+    tool.issues.push('gasoline not configured');
+    tool.suggestions.push('Run: gasoline-mcp --install');
+  }
+
+  return tool;
+}
+
+/**
+ * Check for legacy/orphaned config files at old paths
+ * @returns {Array<Object>} Warnings for legacy paths found
+ */
+function checkLegacyPaths() {
+  const warnings = [];
+  for (const legacy of LEGACY_PATHS) {
+    const expanded = expandPath(legacy.path);
+    if (fs.existsSync(expanded)) {
+      try {
+        const readResult = readConfigFile(expanded);
+        if (readResult.valid && readResult.data.mcpServers && readResult.data.mcpServers.gasoline) {
+          warnings.push({
+            path: expanded,
+            description: legacy.description,
+            message: `Orphaned gasoline config at old path: ${expanded}`,
+          });
+        }
+      } catch {
+        // Ignore read errors on legacy paths
+      }
+    }
+  }
+  return warnings;
+}
+
+/**
+ * Run full diagnostics on all client locations
  * @param {boolean} verbose If true, log debug info
  * @returns {Object} Diagnostic report with tools array and summary
  */
 function runDiagnostics(verbose = false) {
-  const candidates = getConfigCandidates();
   const tools = [];
 
-  // Check each config location
-  for (const candidatePath of candidates) {
-    const toolName = getToolNameFromPath(candidatePath);
-    const tool = {
-      name: toolName,
-      path: candidatePath,
-      status: 'error',
-      issues: [],
-      suggestions: [],
-    };
-
-    if (verbose) {
-      console.log(`[DEBUG] Checking ${toolName} at ${candidatePath}`);
+  for (const def of CLIENT_DEFINITIONS) {
+    if (def.type === 'cli') {
+      tools.push(diagnoseCliClient(def, verbose));
+    } else {
+      tools.push(diagnoseFileClient(def, verbose));
     }
-
-    // Check if file exists
-    if (!fs.existsSync(candidatePath)) {
-      tool.status = 'info';
-      tool.issues.push('Config file not found');
-      tool.suggestions.push('Run: gasoline-mcp --install --for-all');
-      tools.push(tool);
-      continue;
-    }
-
-    // Try to read and validate
-    const readResult = readConfigFile(candidatePath);
-    if (!readResult.valid) {
-      tool.status = 'error';
-      tool.issues.push('Invalid JSON');
-      tool.suggestions.push('Fix the JSON syntax or run: gasoline-mcp --install');
-      tools.push(tool);
-      continue;
-    }
-
-    // Check if gasoline entry exists
-    if (!readResult.data.mcpServers || !readResult.data.mcpServers.gasoline) {
-      tool.status = 'error';
-      tool.issues.push('gasoline entry missing from mcpServers');
-      tool.suggestions.push('Run: gasoline-mcp --install --for-all');
-      tools.push(tool);
-      continue;
-    }
-
-    // All checks passed
-    tool.status = 'ok';
-    tools.push(tool);
   }
 
   // Check binary availability
@@ -208,23 +308,27 @@ function runDiagnostics(verbose = false) {
   const defaultPort = 7890;
   const port = checkPortSync(defaultPort);
 
+  // Check for legacy paths
+  const legacyWarnings = checkLegacyPaths();
+
   // Generate summary
   const okCount = tools.filter(t => t.status === 'ok').length;
   const errorCount = tools.filter(t => t.status === 'error').length;
   const infoCount = tools.filter(t => t.status === 'info').length;
 
-  let summary = `Summary: ${okCount} tool${okCount === 1 ? '' : 's'} ready`;
+  let summary = `Summary: ${okCount} client${okCount === 1 ? '' : 's'} ready`;
   if (errorCount > 0) {
     summary += `, ${errorCount} need${errorCount === 1 ? 's' : ''} repair`;
   }
   if (infoCount > 0) {
-    summary += `, ${infoCount} not configured`;
+    summary += `, ${infoCount} not detected`;
   }
 
   return {
     tools,
     binary,
     port: { port: defaultPort, ...port },
+    legacyWarnings,
     summary,
   };
 }

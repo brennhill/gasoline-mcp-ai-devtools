@@ -46,11 +46,16 @@ def json_diff(before, after):
 def install_result(result):
     """Format install result."""
     output = ""
+    installed = result.get("installed", result.get("updated", []))
+    total = result.get("total", 5)
 
-    if result.get("updated", []):
-        output += f"✅ {len(result['updated'])}/{result['total']} tools updated:\n"
-        for tool in result["updated"]:
-            output += f"   ✅ {tool['name']} (at {tool['path']})\n"
+    if installed:
+        output += f"✅ {len(installed)}/{total} clients updated:\n"
+        for entry in installed:
+            if entry.get("method") == "cli":
+                output += f"   ✅ {entry['name']} (via CLI)\n"
+            else:
+                output += f"   ✅ {entry['name']} (at {entry['path']})\n"
 
     if result.get("errors", []):
         output += "\n❌ Errors:\n"
@@ -68,14 +73,26 @@ def install_result(result):
 
 def _format_tool_ok(tool):
     """Format a tool with 'ok' status."""
+    if tool.get("type") == "cli":
+        return f"✅ {tool['name']}\n   Configured via CLI - Ready\n\n"
     return f"✅ {tool['name']}\n   {tool['path']} - Configured and ready\n\n"
+
+
+def _format_tool_info(tool):
+    """Format a tool with 'info' status (not detected)."""
+    output = f"⚪ {tool['name']}\n"
+    for issue in tool.get("issues", []):
+        output += f"   {issue}\n"
+    return output + "\n"
 
 
 def _format_tool_problem(tool):
     """Format a tool with 'error' or 'warning' status."""
     icon = "❌" if tool["status"] == "error" else "⚠️ "
     fix_label = "Fix" if tool["status"] == "error" else "Suggestion"
-    output = f"{icon} {tool['name']}\n   {tool['path']}\n"
+    output = f"{icon} {tool['name']}\n"
+    if tool.get("path"):
+        output += f"   {tool['path']}\n"
     for issue in tool.get("issues", []):
         output += f"   Issue: {issue}\n"
     for suggestion in tool.get("suggestions", []):
@@ -100,11 +117,20 @@ def diagnostic_report(report):
     for tool in report.get("tools", []):
         if tool["status"] == "ok":
             output += _format_tool_ok(tool)
+        elif tool["status"] == "info":
+            output += _format_tool_info(tool)
         else:
             output += _format_tool_problem(tool)
 
     if report.get("binary"):
         output += _format_binary(report["binary"])
+
+    # Legacy path warnings
+    if report.get("legacyWarnings"):
+        output += "\n⚠️  Legacy Configs Found:\n"
+        for w in report["legacyWarnings"]:
+            output += f"   {w['description']}: {w['path']}\n"
+            output += "   This path is no longer used. You can safely remove the gasoline entry.\n"
 
     if report.get("summary"):
         output += f"\n{report['summary']}\n"
@@ -118,11 +144,14 @@ def uninstall_result(result):
 
     if result.get("removed", []):
         count = len(result["removed"])
-        output += f"✅ Removed from {count} tool{'s' if count != 1 else ''}:\n"
-        for tool in result["removed"]:
-            output += f"   ✅ {tool['name']} (removed from {tool['path']})\n"
+        output += f"✅ Removed from {count} client{'s' if count != 1 else ''}:\n"
+        for entry in result["removed"]:
+            if entry.get("method") == "cli":
+                output += f"   ✅ {entry['name']} (via CLI)\n"
+            else:
+                output += f"   ✅ {entry['name']} (removed from {entry['path']})\n"
     else:
-        output += "ℹ️  Gasoline not configured in any tools\n"
+        output += "ℹ️  Gasoline not configured in any clients\n"
 
     if result.get("notConfigured", []):
         output += f"\nℹ️  Not configured in: {', '.join(result['notConfigured'])}\n"

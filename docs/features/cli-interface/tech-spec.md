@@ -31,7 +31,7 @@ gasoline-cmd (separate binary)
   └─ Returns JSON/human/CSV output
 
 gasoline-mcp (existing MCP server)
-  ├─ 4 tools: observe, generate, configure, interact
+  ├─ 5 tools: observe, generate, configure, interact, analyze
   ├─ Unchanged from MCP perspective
   └─ Serves both extension + CLI clients
 ```
@@ -679,7 +679,7 @@ shell.exec("gasoline-cmd interact upload --selector '#File' --file-path ./video.
 
 ## References
 
-- [CLAUDE.md](../../CLAUDE.md) — Core rules (TDD, no deps, 4 tools only)
+- [CLAUDE.md](../../CLAUDE.md) — Core rules (TDD, no deps, 5 tools only)
 - [upload/tech-spec.md](../file-upload/tech-spec.md) — Upload feature
 - Unix Philosophy: Do one thing, do it well
 - Exit codes: [POSIX Standard](https://en.wikipedia.org/wiki/Exit_status)

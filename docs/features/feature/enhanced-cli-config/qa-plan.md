@@ -15,44 +15,47 @@ last_reviewed: 2026-02-16
 
 #### Unit Tests: Config File Operations
 
+- [ ] `CLIENT_DEFINITIONS` contains all 5 clients with correct fields
+- [ ] `getClientConfigPath()` returns correct platform-specific paths
+- [ ] `isClientInstalled()` detects existing dirs for file-type clients
+- [ ] `isClientInstalled()` detects CLI commands for cli-type clients
+- [ ] `getDetectedClients()` returns only installed clients
+- [ ] `expandPath()` resolves `~` and `%APPDATA%` correctly
 - [ ] `readConfigFile()` returns parsed JSON for valid file
 - [ ] `readConfigFile()` returns error for non-existent file
 - [ ] `readConfigFile()` returns error for invalid JSON with line number
-- [ ] `readConfigFile()` handles empty mcpServers object
-- [ ] `readConfigFile()` preserves other MCP server entries
 - [ ] `writeConfigFile()` with `dryRun=true` doesn't actually write file
 - [ ] `writeConfigFile()` with `dryRun=false` creates file with correct permissions
-- [ ] `writeConfigFile()` overwrites existing gasoline entry only
-- [ ] `writeConfigFile()` preserves formatting of other entries
+- [ ] `writeConfigFile()` preserves other MCP server entries
 - [ ] `validateMCPConfig()` rejects config without mcpServers
 - [ ] `validateMCPConfig()` accepts valid MCP config structure
 
 #### Unit Tests: Install Flow
 
 - [ ] `executeInstall()` with `dryRun=true` returns diff without writing
-- [ ] `executeInstall()` with `forAll=true` processes all candidates
-- [ ] `executeInstall()` with `forAll=false` stops at first success (v5.2 behavior)
+- [ ] `executeInstall()` installs to all detected clients by default
+- [ ] `installToClient()` dispatches file-type to file write, cli-type to subprocess
+- [ ] `installViaCli()` runs correct subprocess with CLAUDECODE env var unset
 - [ ] `executeInstall()` merges env vars into config
 - [ ] `executeInstall()` with empty env vars doesn't add env object
 - [ ] `executeInstall()` with multiple env vars merges all
 - [ ] `executeInstall()` rejects invalid env var format (no = sign)
-- [ ] `executeInstall()` reports success for each updated tool
+- [ ] `executeInstall()` reports success for each installed client
 - [ ] `executeInstall()` reports errors for permission/write failures
-- [ ] `executeInstall()` creates ~/.claude/claude.mcp.json if no configs exist
+- [ ] `executeInstall()` creates config file if it doesn't exist (file-type clients)
 - [ ] `executeInstall()` idempotent: running twice produces same result
 
 #### Unit Tests: Doctor Flow
 
-- [ ] `runDiagnostics()` checks all 4 config locations
+- [ ] `runDiagnostics()` checks all 5 client definitions
 - [ ] `runDiagnostics()` reports "ok" for valid config with gasoline entry
 - [ ] `runDiagnostics()` reports "error" for invalid JSON
 - [ ] `runDiagnostics()` reports "error" for missing gasoline entry
-- [ ] `runDiagnostics()` reports "error" for binary not found
-- [ ] `runDiagnostics()` verifies binary is executable
-- [ ] `runDiagnostics()` tests binary invocation with --version
-- [ ] `runDiagnostics()` skips non-existent config files gracefully
+- [ ] `runDiagnostics()` reports "info" for undetected clients
+- [ ] `runDiagnostics()` handles CLI-type clients via subprocess check
+- [ ] `runDiagnostics()` detects legacy paths and warns about orphaned configs
 - [ ] `runDiagnostics()` provides recovery suggestions for each issue
-- [ ] Doctor output is human-readable with ✅/❌/⚠️ symbols
+- [ ] Doctor output is human-readable with ✅/❌/⚠️/⚪ symbols
 
 #### Unit Tests: Uninstall Flow
 
@@ -60,13 +63,13 @@ last_reviewed: 2026-02-16
 - [ ] `executeUninstall()` removes gasoline entry cleanly
 - [ ] `executeUninstall()` preserves other MCP servers
 - [ ] `executeUninstall()` handles gasoline not being in config gracefully
-- [ ] `executeUninstall()` reports count of tools from which gasoline was removed
+- [ ] `executeUninstall()` reports count of clients from which gasoline was removed
+- [ ] `uninstallViaCli()` runs correct subprocess for CLI-type clients
 - [ ] Uninstall produces valid JSON in remaining config
 
 #### Unit Tests: CLI Argument Parsing
 
 - [ ] `--dry-run` flag recognized for install/uninstall
-- [ ] `--for-all` flag recognized for install
 - [ ] `--env KEY=VALUE` parsed correctly; multiple `--env` supported
 - [ ] `--verbose` flag enables debug logging
 - [ ] Invalid flag combinations rejected with helpful error
@@ -87,8 +90,7 @@ last_reviewed: 2026-02-16
 
 #### Install + Doctor Integration
 
-- [ ] Run `--install` then `--doctor` shows gasoline as configured
-- [ ] Run `--install --for-all` then `--doctor` shows all tools as configured
+- [ ] Run `--install` then `--doctor` shows gasoline as configured for all detected clients
 - [ ] Run `--install --env VAR=val` then read config file shows env object
 
 #### Uninstall + Doctor Integration
@@ -151,64 +153,53 @@ last_reviewed: 2026-02-16
 **Goal**: Verify a user can safely preview before installing.
 
 **Setup**:
-1. Backup any existing ~/.claude/claude.mcp.json
-2. Delete ~/.claude, ~/.vscode, ~/.cursor, ~/.codeium directories (reset state)
-3. Fresh gasoline-mcp install (npm install -g gasoline-mcp@latest)
+1. Backup any existing configs
+2. Fresh gasoline-mcp install (npm install -g gasoline-mcp@latest)
 
 **Steps**:
 - [ ] Run `gasoline-mcp --config`
-  - **Expected**: Shows MCP config template and 4 tool locations
-  - **Verification**: JSON structure valid, all 4 paths shown
+  - **Expected**: Shows all 5 client definitions with detection status
+  - **Verification**: Detected clients marked, correct paths shown
 
 - [ ] Run `gasoline-mcp --install --dry-run`
-  - **Expected**: Shows "Would create: ~/.claude/claude.mcp.json" + JSON diff
-  - **Verification**: No actual file created; output shows exact changes
-
-- [ ] Check file doesn't exist: `ls ~/.claude/claude.mcp.json`
-  - **Expected**: File not found (command returns error)
-  - **Verification**: Dry-run truly didn't write
+  - **Expected**: Shows what would be installed for each detected client
+  - **Verification**: No actual files created or CLI commands run
 
 - [ ] Run `gasoline-mcp --install`
-  - **Expected**: "✅ Created: ~/.claude/claude.mcp.json"
-  - **Verification**: File now exists
+  - **Expected**: Shows success for each detected client
+  - **Verification**: Config files created / CLI commands executed
 
-- [ ] Read created file: `cat ~/.claude/claude.mcp.json`
-  - **Expected**: Valid JSON with gasoline entry
-  - **Verification**: Structure matches --dry-run output
+- [ ] Run `gasoline-mcp --doctor`
+  - **Expected**: All installed clients show as configured
+  - **Verification**: Correct status for each client
 
 **Result**: ✅ PASS (user can preview before committing)
 
 ---
 
-### Scenario 2: Multi-Tool Installation
+### Scenario 2: Multi-Client Installation
 #### Time: ~8 minutes
 
-**Goal**: Verify user can install to all 4 tools in one command.
+**Goal**: Verify `--install` auto-detects and installs to all clients.
 
 **Setup**:
-1. Create dummy config files (or use real ones if available):
-   - `~/.claude/claude.mcp.json` with other MCP servers
-   - `~/.vscode/claude.mcp.json` with other MCP servers
-   - `~/.cursor/mcp.json` empty
-   - `~/.codeium/mcp.json` missing (doesn't exist)
+1. Ensure at least 2 clients are detected (e.g., Cursor dir exists, `claude` CLI on PATH)
+2. Create existing config with other MCP servers for one file-type client
 
 **Steps**:
-- [ ] Run `gasoline-mcp --install --for-all`
-  - **Expected**:
-    ```
-    ✅ Claude Desktop: Updated ~/.claude/claude.mcp.json
-    ✅ VSCode: Updated ~/.vscode/claude.mcp.json
-    ✅ Cursor: Created ~/.cursor/mcp.json
-    ℹ️  Codeium: No config found (run install separately if needed)
-    ```
-  - **Verification**: Each tool's config modified/created as expected
+- [ ] Run `gasoline-mcp --install`
+  - **Expected**: Shows success for each detected client (CLI-type and file-type)
+  - **Verification**: Each client's config modified/created as expected
 
 - [ ] Read each config file and verify:
   - gasoline entry present
   - Other MCP servers preserved
   - Valid JSON syntax
 
-**Result**: ✅ PASS (multi-tool install works)
+- [ ] For CLI-type (Claude Code): verify via `claude mcp list`
+  - **Expected**: gasoline entry present
+
+**Result**: ✅ PASS (multi-client install works)
 
 ---
 
@@ -218,17 +209,17 @@ last_reviewed: 2026-02-16
 **Goal**: Verify env vars properly injected into config.
 
 **Setup**:
-1. Fresh config (delete previous)
+1. Fresh config (uninstall previous)
 
 **Steps**:
 - [ ] Run:
   ```bash
   gasoline-mcp --install --env GASOLINE_SERVER=http://custom:7890 --env DEBUG=1
   ```
-  - **Expected**: "✅ Created: ~/.claude/claude.mcp.json"
-  - **Verification**: File created
+  - **Expected**: Success for all detected clients
+  - **Verification**: Config files contain env vars
 
-- [ ] Read file: `cat ~/.claude/claude.mcp.json | grep -A 3 '"env"'`
+- [ ] Read a file-type client config and verify env section:
   - **Expected**:
     ```json
     "env": {
@@ -255,11 +246,11 @@ last_reviewed: 2026-02-16
 **Goal**: Verify --doctor provides useful diagnostics.
 
 **Setup**:
-1. Create test scenario: some tools configured, some not
-   - `~/.claude/claude.mcp.json` - valid with gasoline
-   - `~/.vscode/claude.mcp.json` - invalid JSON (missing quote)
-   - `~/.cursor/mcp.json` - doesn't exist
-   - `~/.codeium/mcp.json` - valid but no gasoline entry
+1. Create test scenario: some clients configured, some not
+   - Claude Code: `claude` on PATH, gasoline installed via CLI
+   - Cursor: `~/.cursor/mcp.json` - valid with gasoline
+   - Windsurf: `~/.codeium/windsurf/mcp_config.json` - invalid JSON
+   - Claude Desktop / VS Code: not installed
 
 **Steps**:
 - [ ] Run `gasoline-mcp --doctor`
@@ -267,27 +258,28 @@ last_reviewed: 2026-02-16
     ```
     Gasoline MCP Diagnostic Report
 
-    ✅ Claude Desktop
-       ~/.claude/claude.mcp.json - configured and healthy
+    ✅ Claude Code
+       Configured via CLI
 
-    ❌ VSCode
-       ~/.vscode/claude.mcp.json - invalid JSON at line 5
+    ✅ Cursor
+       ~/.cursor/mcp.json - configured and healthy
+
+    ❌ Windsurf
+       ~/.codeium/windsurf/mcp_config.json - invalid JSON
        Suggestion: Fix syntax error or run: gasoline-mcp --install
 
-    ℹ️  Cursor
-       ~/.cursor/mcp.json - not configured
-       Suggestion: Run: gasoline-mcp --install --for-all
+    ⚪ Claude Desktop
+       Not detected
 
-    ⚠️  Codeium
-       ~/.codeium/mcp.json - gasoline entry missing
-       Suggestion: Run: gasoline-mcp --install --for-all
+    ⚪ VS Code
+       Not detected
 
-    Summary: 1 tool healthy, 1 needs repair, 2 not configured
+    Summary: 2 clients healthy, 1 needs repair, 2 not detected
     ```
-  - **Verification**: Correct status for each tool; suggestions are actionable
+  - **Verification**: Correct status for each client; suggestions are actionable
 
-- [ ] Follow one suggestion: fix VSCode JSON and re-run doctor
-  - **Expected**: VSCode status changes to ✅
+- [ ] Follow one suggestion: fix Windsurf JSON and re-run doctor
+  - **Expected**: Windsurf status changes to ✅
   - **Verification**: Doctor properly detects repair
 
 **Result**: ✅ PASS (doctor provides useful diagnostics)
@@ -300,31 +292,23 @@ last_reviewed: 2026-02-16
 **Goal**: Verify clean uninstall without losing other MCP servers.
 
 **Setup**:
-1. Create config with multiple MCP servers:
-   ```json
-   {
-     "mcpServers": {
-       "gasoline": { "command": "gasoline-mcp", "args": [], "env": {} },
-       "other-tool": { "command": "other-tool", "args": [] }
-     }
-   }
-   ```
+1. Install gasoline to at least one file-type client with other MCP servers present
 
 **Steps**:
 - [ ] Run `gasoline-mcp --uninstall --dry-run`
-  - **Expected**: Shows "Would remove: gasoline from ~/.claude/claude.mcp.json"
-  - **Verification**: other-tool entry shown as preserved
+  - **Expected**: Shows which clients gasoline would be removed from
+  - **Verification**: other MCP server entries shown as preserved
 
 - [ ] Run `gasoline-mcp --uninstall`
-  - **Expected**: "✅ Removed from 1 tool"
-  - **Verification**: gasoline entry removed
+  - **Expected**: "Removed from N clients"
+  - **Verification**: gasoline entry removed from all clients
 
-- [ ] Read config file:
-  - **Expected**: other-tool entry still present; gasoline gone
-  - **Verification**: Config valid JSON with only other-tool
+- [ ] Read a file-type config file:
+  - **Expected**: other MCP server entries still present; gasoline gone
+  - **Verification**: Config valid JSON with only other servers
 
 - [ ] Run `gasoline-mcp --doctor`
-  - **Expected**: Shows unconfigured
+  - **Expected**: Shows unconfigured for all clients
   - **Verification**: Doctor confirms removal
 
 **Result**: ✅ PASS (uninstall works cleanly)
@@ -337,32 +321,16 @@ last_reviewed: 2026-02-16
 **Goal**: Verify helpful error when config has invalid JSON.
 
 **Setup**:
-1. Create broken config: `~/.claude/claude.mcp.json` with missing quote:
-   ```json
-   {
-     "mcpServers": {
-       "test": "value  // missing quote
-     }
-   }
-   ```
+1. Create broken config for a file-type client (e.g., `~/.cursor/mcp.json`) with missing quote
 
 **Steps**:
 - [ ] Run `gasoline-mcp --install`
-  - **Expected**: Error message:
-    ```
-    ❌ Error: Invalid JSON in ~/.claude/claude.mcp.json
-    Line 4: Unexpected token '/'
+  - **Expected**: Error for that client, success for other detected clients
+  - **Verification**: Error message clear and actionable, includes recovery suggestions
 
-    Next steps:
-    1. Fix the JSON syntax error
-    2. Run: gasoline-mcp --doctor
-    3. Or: gasoline-mcp --install (will overwrite)
-    ```
-  - **Verification**: Error message clear and actionable
-
-- [ ] Fix the JSON file
+- [ ] Fix the broken JSON file
 - [ ] Run `gasoline-mcp --install` again
-  - **Expected**: Now succeeds
+  - **Expected**: Now succeeds for all clients
   - **Verification**: Error recovery works
 
 **Result**: ✅ PASS (error messages are helpful)
@@ -372,23 +340,23 @@ last_reviewed: 2026-02-16
 ### Scenario 7: Backward Compatibility
 #### Time: ~5 minutes
 
-**Goal**: Verify v5.2 commands still work unchanged.
+**Goal**: Verify existing commands still work.
 
 **Setup**:
 1. Clean state
 
 **Steps**:
 - [ ] Run `gasoline-mcp --config`
-  - **Expected**: Same output as v5.2.0
-  - **Verification**: No changes to existing command
+  - **Expected**: Shows all 5 client definitions with detection status
+  - **Verification**: Command works without errors
 
 - [ ] Run `gasoline-mcp --install`
-  - **Expected**: Same behavior as v5.2.0 (install to first matching config)
-  - **Verification**: Installs to ~/.claude only (not --for-all behavior)
+  - **Expected**: Installs to all detected clients (new default behavior)
+  - **Verification**: All detected clients configured
 
 - [ ] Run `gasoline-mcp --help`
-  - **Expected**: Help shows all commands (old + new)
-  - **Verification**: New commands documented
+  - **Expected**: Help shows all commands including new features
+  - **Verification**: 5 supported clients listed
 
 **Result**: ✅ PASS (backward compatible)
 
@@ -401,17 +369,16 @@ last_reviewed: 2026-02-16
 #### Critical: Verify all v5.2 CLI commands still work unchanged
 
 - [ ] `gasoline-mcp --config`
-  - Expected: Shows config template and 4 tool locations (unchanged from v5.2)
-  - Verification: Compare output with v5.2.0 release
+  - Expected: Shows all 5 client definitions with detection status
+  - Verification: Correct paths, detection status
 
 - [ ] `gasoline-mcp --install` (without flags)
-  - Expected: Installs to FIRST matching config only (not --for-all behavior)
-  - Verification: Confirm only one tool updated (e.g., Claude Desktop only)
-  - Regression: Don't accidentally update all tools when user expects just first
+  - Expected: Installs to ALL detected clients (new default behavior)
+  - Verification: All detected clients configured
 
 - [ ] `gasoline-mcp --help`
   - Expected: Lists all commands (old + new)
-  - Verification: Shows --config, --install, --help, --doctor, --uninstall, --for-all, --env, --dry-run, --verbose
+  - Verification: Shows --config, --install, --help, --doctor, --uninstall, --env, --dry-run, --verbose
 
 - [ ] Binary path resolution
   - Expected: findBinary() still works (unchanged)
@@ -444,38 +411,24 @@ last_reviewed: 2026-02-16
 
 ## Performance/Load Testing
 
-- [ ] Doctor completes in < 1 second (4 files)
-- [ ] Install with --for-all completes in < 1 second (4 writes)
+- [ ] Doctor completes in < 1 second (5 clients)
+- [ ] Install completes in < 1 second (all detected clients)
 - [ ] Doctor with --verbose doesn't add significant time
-- [ ] Uninstall completes in < 1 second (4 files)
+- [ ] Uninstall completes in < 1 second (all detected clients)
 
 ---
 
-## Test Files to Create
+## Test Files
 
-In `tests/extension/`:
+### npm (`npm/gasoline-mcp/lib/`)
+- `config.test.js` — Client registry, detection, path resolution (23 tests)
+- `install.test.js` — Install flow for CLI + file-type clients (11 tests)
+- `uninstall.test.js` — Uninstall flow for CLI + file-type clients (7 tests)
 
-1. **config-file-utils.test.js**
-   - Test readConfigFile, writeConfigFile, validateMCPConfig
-   - Test dryRun mode
+### Python (`pypi/gasoline-mcp/tests/`)
+- `test_config.py` — Client registry, detection, path resolution (23 tests)
+- `test_install.py` — Install flow (9 tests)
+- `test_uninstall.py` — Uninstall flow (6 tests)
 
-2. **install-flow.test.js**
-   - Test executeInstall with all options
-   - Test --env parsing
-   - Test --for-all behavior
-   - Test idempotence
-
-3. **doctor-flow.test.js**
-   - Test runDiagnostics
-   - Test all status types (ok, error, warn)
-   - Test binary invocation check
-
-4. **uninstall-flow.test.js**
-   - Test executeUninstall
-   - Test preservation of other MCP servers
-   - Test dryRun mode
-
-5. **cli-integration.test.js**
-   - Test command parsing
-   - Test argument combinations
-   - Test error scenarios
+### Shared (`tests/cli/`)
+- `errors.test.cjs` — Error classes and formatting

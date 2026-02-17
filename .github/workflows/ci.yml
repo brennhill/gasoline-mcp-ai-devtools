@@ -75,6 +75,13 @@ jobs:
       - name: Go tests with race detection
         run: go test -race -v ./cmd/dev-console/...
 
+      - name: Reliability soak gate (bridge fast-start)
+        run: |
+          STATE_DIR="$(mktemp -d)"
+          echo "Using state dir: ${STATE_DIR}"
+          GASOLINE_STATE_DIR="${STATE_DIR}" go test -race ./cmd/dev-console -run TestFastStart_ResourceWorkflowSoak -count=3 -timeout=12m
+          go run ./cmd/dev-console --check --state-dir "${STATE_DIR}" --fastpath-min-samples 100 --fastpath-max-failure-ratio 0.02
+
       - name: Go test coverage (70% minimum)
         run: |
           go test -coverprofile=coverage.out ./cmd/dev-console/...

@@ -109,12 +109,33 @@ func TestRunSetupCheckPrintsDiagnostics(t *testing.T) {
 	}
 }
 
+func TestEvaluateFastPathFailureThreshold(t *testing.T) {
+	t.Parallel()
+
+	summary := fastPathTelemetrySummary{
+		total:      10,
+		success:    9,
+		failure:    1,
+		errorCodes: map[int]int{-32002: 1},
+		methods:    map[string]int{"resources/read": 10},
+	}
+	if err := evaluateFastPathFailureThreshold(summary, 5, 0.2); err != nil {
+		t.Fatalf("expected threshold pass, got err=%v", err)
+	}
+	if err := evaluateFastPathFailureThreshold(summary, 5, 0.05); err == nil {
+		t.Fatal("expected threshold failure error, got nil")
+	}
+	if err := evaluateFastPathFailureThreshold(summary, 20, 0.2); err == nil {
+		t.Fatal("expected insufficient samples error, got nil")
+	}
+}
+
 func TestRunSetupCheckIncludesFastPathTelemetrySummary(t *testing.T) {
 	// Do not run in parallel; test redirects os.Stdout and uses Setenv.
 	t.Setenv(state.StateDirEnv, t.TempDir())
-	resetFastPathResourceReadCounters()
-	recordFastPathResourceRead("gasoline://capabilities", true, 0)
-	recordFastPathResourceRead("gasoline://playbook/nonexistent/quick", false, -32002)
+	resetFastPathCounters()
+	recordFastPathEvent("resources/read", true, 0)
+	recordFastPathEvent("resources/read", false, -32002)
 
 	ln, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
@@ -129,26 +150,25 @@ func TestRunSetupCheckIncludesFastPathTelemetrySummary(t *testing.T) {
 	}
 	oldOut := os.Stdout
 	os.Stdout = w
-	runSetupCheck(port)
+	ok := runSetupCheckWithOptions(port, setupCheckOptions{
+		minSamples:      2,
+		maxFailureRatio: 0.1,
+	})
 	os.Stdout = oldOut
 	_ = w.Close()
-
 	out, err := io.ReadAll(r)
 	_ = r.Close()
 	if err != nil {
 		t.Fatalf("ReadAll(stdout) error = %v", err)
 	}
+	if ok {
+		t.Fatal("runSetupCheckWithOptions should fail threshold check")
+	}
 	text := string(out)
 	if !strings.Contains(text, "Checking bridge fast-path telemetry...") {
-		t.Fatalf("runSetupCheck output missing fast-path telemetry section:\n%s", text)
+		t.Fatalf("expected fast-path telemetry diagnostics, got:\n%s", text)
 	}
-	if !strings.Contains(text, "bridge-fastpath-resource-read.jsonl") {
-		t.Fatalf("runSetupCheck output missing telemetry log path:\n%s", text)
-	}
-	if !strings.Contains(text, "success=1") || !strings.Contains(text, "failure=1") {
-		t.Fatalf("runSetupCheck output missing telemetry summary counters:\n%s", text)
-	}
-	if !strings.Contains(text, "-32002=1") {
-		t.Fatalf("runSetupCheck output missing error-code summary:\n%s", text)
+	if !strings.Contains(text, "Checking fast-path failure threshold... FAILED") {
+		t.Fatalf("expected threshold failure output, got:\n%s", text)
 	}
 }

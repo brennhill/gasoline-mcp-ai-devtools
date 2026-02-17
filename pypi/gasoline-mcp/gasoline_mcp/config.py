@@ -3,6 +3,9 @@
 
 import json
 import os
+import shutil
+import subprocess
+import sys
 from pathlib import Path
 
 
@@ -63,27 +66,170 @@ class ConfigValidationError(GasolineError):
         self.name = "ConfigValidationError"
 
 
+# Client definitions for all supported AI assistant clients
+CLIENT_DEFINITIONS = [
+    {
+        "id": "claude-code",
+        "name": "Claude Code",
+        "type": "cli",
+        "detectCommand": "claude",
+        "installArgs": ["mcp", "add-json", "--scope", "user", "gasoline"],
+        "removeArgs": ["mcp", "remove", "--scope", "user", "gasoline"],
+    },
+    {
+        "id": "claude-desktop",
+        "name": "Claude Desktop",
+        "type": "file",
+        "configPath": {
+            "darwin": "~/Library/Application Support/Claude/claude_desktop_config.json",
+            "win32": "%APPDATA%/Claude/claude_desktop_config.json",
+        },
+        "detectDir": {
+            "darwin": "~/Library/Application Support/Claude",
+            "win32": "%APPDATA%/Claude",
+        },
+    },
+    {
+        "id": "cursor",
+        "name": "Cursor",
+        "type": "file",
+        "configPath": {"all": "~/.cursor/mcp.json"},
+        "detectDir": {"all": "~/.cursor"},
+    },
+    {
+        "id": "windsurf",
+        "name": "Windsurf",
+        "type": "file",
+        "configPath": {"all": "~/.codeium/windsurf/mcp_config.json"},
+        "detectDir": {"all": "~/.codeium/windsurf"},
+    },
+    {
+        "id": "vscode",
+        "name": "VS Code",
+        "type": "file",
+        "configPath": {
+            "darwin": "~/Library/Application Support/Code/User/mcp.json",
+            "win32": "%APPDATA%/Code/User/mcp.json",
+            "linux": "~/.config/Code/User/mcp.json",
+        },
+        "detectDir": {
+            "darwin": "~/Library/Application Support/Code",
+            "win32": "%APPDATA%/Code",
+            "linux": "~/.config/Code",
+        },
+    },
+]
+
+# Legacy paths that may contain orphaned configs from older versions
+LEGACY_PATHS = [
+    {"path": "~/.codeium/mcp.json", "description": "Old Windsurf/Codeium path"},
+    {"path": "~/.vscode/claude.mcp.json", "description": "Old VS Code path"},
+    {"path": "~/.claude.json", "description": "Old Claude Code path (now uses CLI)"},
+]
+
+
+def _get_platform():
+    """Map sys.platform to our platform key."""
+    if sys.platform == "darwin":
+        return "darwin"
+    if sys.platform.startswith("linux"):
+        return "linux"
+    if sys.platform == "win32":
+        return "win32"
+    return sys.platform
+
+
+def expand_path(p):
+    """Expand ~ and %APPDATA% in a path string."""
+    if not p:
+        return p
+    expanded = os.path.expanduser(p)
+    if sys.platform == "win32" and "%APPDATA%" in expanded:
+        appdata = os.environ.get("APPDATA", "")
+        expanded = expanded.replace("%APPDATA%", appdata)
+    return os.path.normpath(expanded)
+
+
+def get_client_config_path(definition, platform=None):
+    """Get resolved config path for a file-type client definition."""
+    if definition["type"] == "cli":
+        return None
+    plat = platform or _get_platform()
+    config_path = definition["configPath"]
+    raw = config_path.get(plat) or config_path.get("all")
+    return expand_path(raw) if raw else None
+
+
+def get_client_detect_dir(definition, platform=None):
+    """Get resolved detect directory for a file-type client definition."""
+    if definition["type"] == "cli":
+        return None
+    plat = platform or _get_platform()
+    detect_dir = definition["detectDir"]
+    raw = detect_dir.get(plat) or detect_dir.get("all")
+    return expand_path(raw) if raw else None
+
+
+def command_exists_on_path(cmd):
+    """Check if a command exists on PATH."""
+    return shutil.which(cmd) is not None
+
+
+def is_client_installed(definition):
+    """Check if a client is installed/detected on this system."""
+    if definition["type"] == "cli":
+        return command_exists_on_path(definition["detectCommand"])
+    detect_dir = get_client_detect_dir(definition)
+    if not detect_dir:
+        return False
+    return os.path.isdir(detect_dir)
+
+
+def get_detected_clients():
+    """Get all detected (installed) clients."""
+    return [d for d in CLIENT_DEFINITIONS if is_client_installed(d)]
+
+
+def get_client_by_id(client_id):
+    """Find a client definition by ID."""
+    for d in CLIENT_DEFINITIONS:
+        if d["id"] == client_id:
+            return d
+    return None
+
+
 def get_config_candidates():
-    """Get list of potential config file paths for different tools."""
-    home = str(Path.home())
-    return [
-        os.path.join(home, ".claude.json"),
-        os.path.join(home, ".vscode", "claude.mcp.json"),
-        os.path.join(home, ".cursor", "mcp.json"),
-        os.path.join(home, ".codeium", "mcp.json"),
-    ]
+    """Backward-compat: returns config file paths for file-type clients."""
+    paths = []
+    for d in CLIENT_DEFINITIONS:
+        if d["type"] != "file":
+            continue
+        p = get_client_config_path(d)
+        if p:
+            paths.append(p)
+    return paths
 
 
 def get_tool_name_from_path(path):
-    """Map config file path to tool name."""
-    if ".claude" in path:
-        return "Claude Desktop"
-    if ".vscode" in path:
-        return "VSCode"
-    if ".cursor" in path:
+    """Backward-compat: map config file path to tool name."""
+    normalized = os.path.normpath(path)
+    for d in CLIENT_DEFINITIONS:
+        if d["type"] != "file":
+            continue
+        cfg_path = get_client_config_path(d)
+        if cfg_path and normalized == os.path.normpath(cfg_path):
+            return d["name"]
+    # Fallback substring matching for legacy paths
+    if ".cursor" in normalized:
         return "Cursor"
-    if ".codeium" in path:
-        return "Codeium"
+    if os.path.join(".codeium", "windsurf") in normalized:
+        return "Windsurf"
+    if ".codeium" in normalized:
+        return "Windsurf"
+    if "Claude" in normalized:
+        return "Claude Desktop"
+    if "Code" in normalized:
+        return "VS Code"
     return "Unknown"
 
 

@@ -41,7 +41,7 @@ The workflow proceeds in five phases:
 
 ### Architecture: Orchestration, Not a New Tool
 
-This feature strictly follows the Gasoline architecture: **4 tools, no more**. The agent uses existing modes across all four tools:
+This feature strictly follows the Gasoline architecture: **5 tools, no more**. The agent uses existing modes across all five tools:
 
 | Phase | Tool | Mode/Action | Purpose |
 |-------|------|-------------|---------|

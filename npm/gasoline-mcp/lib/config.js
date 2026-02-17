@@ -6,6 +6,7 @@
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
+const { execFileSync } = require('child_process');
 const {
   InvalidJSONError,
   PermissionError,
@@ -16,30 +17,193 @@ const {
 const MAX_CONFIG_SIZE = 1024 * 1024; // 1MB
 
 /**
- * Get list of candidate config file paths (Claude, VSCode, Cursor, Codeium)
- * @returns {Array<string>} Array of config file paths
+ * Client definitions for all supported AI assistant clients.
+ * Each entry describes detection, config path, and install strategy.
  */
-function getConfigCandidates() {
-  const homeDir = os.homedir();
-  return [
-    path.join(homeDir, '.claude.json'),
-    path.join(homeDir, '.vscode', 'claude.mcp.json'),
-    path.join(homeDir, '.cursor', 'mcp.json'),
-    path.join(homeDir, '.codeium', 'mcp.json'),
-  ];
+const CLIENT_DEFINITIONS = [
+  {
+    id: 'claude-code',
+    name: 'Claude Code',
+    type: 'cli',
+    detectCommand: 'claude',
+    installArgs: ['mcp', 'add-json', '--scope', 'user', 'gasoline'],
+    removeArgs: ['mcp', 'remove', '--scope', 'user', 'gasoline'],
+  },
+  {
+    id: 'claude-desktop',
+    name: 'Claude Desktop',
+    type: 'file',
+    configPath: {
+      darwin: '~/Library/Application Support/Claude/claude_desktop_config.json',
+      win32: '%APPDATA%/Claude/claude_desktop_config.json',
+    },
+    detectDir: {
+      darwin: '~/Library/Application Support/Claude',
+      win32: '%APPDATA%/Claude',
+    },
+  },
+  {
+    id: 'cursor',
+    name: 'Cursor',
+    type: 'file',
+    configPath: { all: '~/.cursor/mcp.json' },
+    detectDir: { all: '~/.cursor' },
+  },
+  {
+    id: 'windsurf',
+    name: 'Windsurf',
+    type: 'file',
+    configPath: { all: '~/.codeium/windsurf/mcp_config.json' },
+    detectDir: { all: '~/.codeium/windsurf' },
+  },
+  {
+    id: 'vscode',
+    name: 'VS Code',
+    type: 'file',
+    configPath: {
+      darwin: '~/Library/Application Support/Code/User/mcp.json',
+      win32: '%APPDATA%/Code/User/mcp.json',
+      linux: '~/.config/Code/User/mcp.json',
+    },
+    detectDir: {
+      darwin: '~/Library/Application Support/Code',
+      win32: '%APPDATA%/Code',
+      linux: '~/.config/Code',
+    },
+  },
+];
+
+/**
+ * Legacy paths that may contain orphaned configs from older versions.
+ * Used by doctor to warn users.
+ */
+const LEGACY_PATHS = [
+  { path: '~/.codeium/mcp.json', description: 'Old Windsurf/Codeium path' },
+  { path: '~/.vscode/claude.mcp.json', description: 'Old VS Code path' },
+  { path: '~/.claude.json', description: 'Old Claude Code path (now uses CLI)' },
+];
+
+/**
+ * Expand ~ and %APPDATA% in a path string
+ * @param {string} p Path with ~ or %APPDATA%
+ * @returns {string} Expanded path
+ */
+function expandPath(p) {
+  if (!p) return p;
+  let expanded = p.replace(/^~/, os.homedir());
+  if (process.platform === 'win32' && expanded.includes('%APPDATA%')) {
+    expanded = expanded.replace(/%APPDATA%/g, process.env.APPDATA || '');
+  }
+  return path.normalize(expanded);
 }
 
 /**
- * Get tool name from config path
+ * Get resolved config path for a file-type client definition
+ * @param {Object} def Client definition
+ * @param {string} [platform] Platform override (defaults to os.platform())
+ * @returns {string|null} Resolved path or null if not applicable
+ */
+function getClientConfigPath(def, platform) {
+  if (def.type === 'cli') return null;
+  const plat = platform || os.platform();
+  const raw = def.configPath[plat] || def.configPath.all || null;
+  return raw ? expandPath(raw) : null;
+}
+
+/**
+ * Get resolved detect directory for a file-type client definition
+ * @param {Object} def Client definition
+ * @param {string} [platform] Platform override
+ * @returns {string|null} Resolved path or null
+ */
+function getClientDetectDir(def, platform) {
+  if (def.type === 'cli') return null;
+  const plat = platform || os.platform();
+  const raw = def.detectDir[plat] || def.detectDir.all || null;
+  return raw ? expandPath(raw) : null;
+}
+
+/**
+ * Check if a command exists on PATH
+ * @param {string} cmd Command name
+ * @returns {boolean}
+ */
+function commandExistsOnPath(cmd) {
+  try {
+    const checkCmd = process.platform === 'win32' ? 'where' : 'which';
+    execFileSync(checkCmd, [cmd], { stdio: 'pipe', timeout: 3000 });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Check if a client is installed/detected on this system
+ * @param {Object} def Client definition
+ * @returns {boolean}
+ */
+function isClientInstalled(def) {
+  if (def.type === 'cli') {
+    return commandExistsOnPath(def.detectCommand);
+  }
+  const dir = getClientDetectDir(def);
+  if (!dir) return false;
+  try {
+    return fs.statSync(dir).isDirectory();
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Get all detected (installed) clients
+ * @returns {Array<Object>} Detected client definitions
+ */
+function getDetectedClients() {
+  return CLIENT_DEFINITIONS.filter(def => isClientInstalled(def));
+}
+
+/**
+ * Find a client definition by ID
+ * @param {string} id Client ID
+ * @returns {Object|undefined}
+ */
+function getClientById(id) {
+  return CLIENT_DEFINITIONS.find(def => def.id === id);
+}
+
+/**
+ * Backward-compat: returns config file paths for detected file-type clients.
+ * @returns {Array<string>} Array of config file paths
+ */
+function getConfigCandidates() {
+  return CLIENT_DEFINITIONS
+    .filter(def => def.type === 'file')
+    .map(def => getClientConfigPath(def))
+    .filter(Boolean);
+}
+
+/**
+ * Backward-compat: get tool name from config path
  * @param {string} configPath Path to config file
  * @returns {string} Tool name
  */
 function getToolNameFromPath(configPath) {
   const normalized = path.normalize(configPath);
-  if (normalized.includes('.claude')) return 'Claude Desktop';
-  if (normalized.includes('.vscode')) return 'VSCode';
+  for (const def of CLIENT_DEFINITIONS) {
+    if (def.type !== 'file') continue;
+    const cfgPath = getClientConfigPath(def);
+    if (cfgPath && normalized === path.normalize(cfgPath)) {
+      return def.name;
+    }
+  }
+  // Fallback: substring matching for legacy paths
   if (normalized.includes('.cursor')) return 'Cursor';
-  if (normalized.includes('.codeium')) return 'Codeium';
+  if (normalized.includes(path.join('.codeium', 'windsurf'))) return 'Windsurf';
+  if (normalized.includes('.codeium')) return 'Windsurf';
+  if (normalized.includes('Claude')) return 'Claude Desktop';
+  if (normalized.includes('Code')) return 'VS Code';
   return 'Unknown';
 }
 
@@ -233,6 +397,15 @@ function parseEnvVar(envStr) {
 }
 
 module.exports = {
+  CLIENT_DEFINITIONS,
+  LEGACY_PATHS,
+  expandPath,
+  getClientConfigPath,
+  getClientDetectDir,
+  commandExistsOnPath,
+  isClientInstalled,
+  getDetectedClients,
+  getClientById,
   getConfigCandidates,
   getToolNameFromPath,
   readConfigFile,

@@ -29,8 +29,8 @@ Python CLI entry point. Current structure:
 
 ### New additions (both wrappers)
 - Shared utility functions for config file operations (JSON read/write/validate)
-- Command handlers for: `--dry-run`, `--doctor`, `--uninstall`, `--for-all`, `--env`
-- Refactored install logic to support `--dry-run` and `--for-all`
+- Command handlers for: `--dry-run`, `--doctor`, `--uninstall`, `--env`
+- Refactored install logic to support `--dry-run` and multi-client targeting
 - New error handling with recovery suggestions
 - Verbose logging support
 - **Feature parity**: Both wrappers must behave identically
@@ -60,7 +60,7 @@ Python CLI entry point. Current structure:
 
 ### Feature Parity Requirement
 Both wrappers must:
-- Accept same command flags (`--config`, `--install`, `--doctor`, `--uninstall`, `--dry-run`, `--for-all`, `--env`, `--verbose`, `--help`)
+- Accept same command flags (`--config`, `--install`, `--doctor`, `--uninstall`, `--dry-run`, `--env`, `--verbose`, `--help`)
 - Produce identical output (same messages, same emojis, same error text)
 - Behave identically (same logic, same edge case handling)
 - Use same config file locations (hardcoded paths, not user input)
@@ -69,36 +69,38 @@ Both wrappers must:
 
 ## Key Components
 
-### 1. **Config File Utilities**
-- `getConfigCandidates()`: Returns array of candidate config file paths (Claude, VSCode, Cursor, Codeium)
+### 1. **Client Registry & Config Utilities**
+- `CLIENT_DEFINITIONS`: Structured registry of all 5 supported clients (Claude Code, Claude Desktop, Cursor, Windsurf, VS Code)
+- `getDetectedClients()`: Returns array of clients whose config dir exists or CLI is on PATH
+- `getClientConfigPath(def)`: Returns platform-specific config path for a client
+- `isClientInstalled(def)`: Checks if client is present on the system
 - `readConfigFile(path)`: Safely reads and parses JSON, returns `{valid: bool, data: obj, error: string}`
 - `writeConfigFile(path, data, dryRun)`: Writes JSON to file; if `dryRun=true`, returns what would be written without actually writing
 - `validateMCPConfig(data)`: Ensures config has `mcpServers` object
 - `mergeGassolineConfig(existing, gassolineEntry, envVars)`: Merges new gasoline entry into existing mcpServers
 
 ### 2. **Diagnostic Engine**
-- `runDiagnostics()`: Iterates through all config candidates, tests each one:
-  - File exists and readable
-  - JSON parses without error
-  - gasoline entry present in mcpServers
-  - gasoline command path resolves
-  - Binary is executable
-  - Returns report object with health status for each tool
+- `runDiagnostics()`: Iterates through all client definitions, tests each one:
+  - For file-type clients: config file exists, JSON valid, gasoline entry present
+  - For CLI-type clients: runs `claude mcp get gasoline` to check status
+  - Detects legacy config paths (orphaned configs at old incorrect locations)
+  - Returns report object with health status for each client
 
 ### 3. **Installation Engine (Refactored)**
 - `executeInstall(options)`: Main install logic supporting:
   - `{dryRun: bool}` - Preview mode
-  - `{forAll: bool}` - Install to all detected tools
   - `{envVars: {KEY: VALUE}}` - Environment variables to inject
-  - Returns `{success: bool, updated: [paths], errors: [details], output: [messages]}`
+  - Installs to all detected clients by default (file-type via config write, CLI-type via subprocess)
+  - Claude Code: uses `claude mcp add-json --scope user gasoline` subprocess (unsets `CLAUDECODE` env var)
+  - Returns `{success: bool, installed: [{name, method, path}], errors: [details]}`
 
 ### 4. **Uninstall Engine**
 - `executeUninstall(options)`: Removes gasoline from configs:
   - `{dryRun: bool}` - Preview mode
-  - Iterates all config files
-  - Removes gasoline entry from each mcpServers
-  - Preserves other MCP servers
-  - Returns success report
+  - Iterates all detected clients
+  - For file-type: removes gasoline entry from mcpServers, preserves other servers
+  - For CLI-type: runs `claude mcp remove --scope user gasoline`
+  - Returns `{removed: [{name, method, path}], notConfigured, errors}`
 
 ### 5. **Output Formatters**
 - `formatConfigDiff(before, after)`: Shows JSON before/after for dry-run
@@ -110,35 +112,35 @@ Both wrappers must:
 
 ### Install Flow (with --dry-run support)
 ```
-Parse CLI args (--install, --dry-run, --for-all, --env)
+Parse CLI args (--install, --dry-run, --env)
   ↓
-Build install options object {dryRun, forAll, envVars}
+Build install options object {dryRun, envVars}
   ↓
 Execute install:
-  - Get config candidates
-  - For each candidate:
-    - Read existing config
-    - Merge gasoline entry + env vars
-    - If !dryRun: write file, track success
-    - If dryRun: show what would be written
+  - Get detected clients (CLIENT_DEFINITIONS filtered by isClientInstalled)
+  - For each detected client:
+    - If CLI-type: run subprocess (e.g., claude mcp add-json)
+    - If file-type: read existing config, merge gasoline entry + env vars, write
+    - If dryRun: show what would be written, don't actually execute
   ↓
-Report results (files updated, errors, diffs)
+Report results (clients installed, errors)
 ```
 
 ### Doctor Flow
 ```
 Parse CLI args (--doctor, --verbose)
   ↓
-For each config candidate:
-  - Check file exists
-  - Validate JSON
-  - Verify gasoline entry
-  - Check binary path resolves
-  - Test binary executable
+For each client in CLIENT_DEFINITIONS:
+  - If file-type: check config file exists, validate JSON, verify gasoline entry
+  - If CLI-type: run subprocess to check status (e.g., claude mcp get gasoline)
+  - If not detected: report as "not detected" (info)
+  ↓
+Check legacy paths for orphaned configs
   ↓
 Compile diagnostic report:
-  - Tool name → health status
+  - Client name → health status
   - Issues found → recovery suggestions
+  - Legacy warnings
   ↓
 Format and display report
 ```
@@ -147,15 +149,14 @@ Format and display report
 ```
 Parse CLI args (--uninstall, --dry-run)
   ↓
-If dryRun: show preview, exit
+Execute uninstall:
+  - Get detected clients
+  - For each detected client:
+    - If CLI-type: run remove subprocess
+    - If file-type: read config, remove gasoline entry, write back
+    - If dryRun: show what would be removed
   ↓
-For each config candidate:
-  - Read config
-  - Remove gasoline from mcpServers
-  - Write modified config (if changed)
-  - Track removed count
-  ↓
-Report results
+Report results (clients removed, errors)
 ```
 
 ## Implementation Strategy
@@ -182,11 +183,11 @@ Report results
    - Check binary path exists and is executable
 4. Format output with emojis (✅/❌/⚠️) and recovery suggestions
 
-### Phase 4: Implement --for-all
-1. Refactor `installCommand()` to support `forAll` option
-2. Instead of breaking at first success, continue through all candidates
-3. Collect results from all updated files
-4. Report all successful updates and any errors
+### Phase 4: Implement Client Registry
+1. Replace hardcoded path list with `CLIENT_DEFINITIONS` registry
+2. Support CLI-type (Claude Code via subprocess) and file-type clients
+3. Install to all detected clients by default
+4. Report all successful installs and any errors
 
 ### Phase 5: Implement --env
 1. Parse `--env KEY=VALUE` arguments into array
@@ -214,7 +215,7 @@ Report results
 
 | Edge Case | Handling |
 |-----------|----------|
-| **No config files exist** | `--install` creates ~/.claude/claude.mcp.json; `--doctor` reports "not configured" |
+| **No clients detected** | `--install` reports no clients found; `--doctor` reports all as "not detected" |
 | **Config file has invalid JSON** | `--doctor` reports syntax error; `--install` refuses to write (don't corrupt) |
 | **User lacks file permissions** | Error message with `sudo` suggestion; `--doctor` reports permission issue |
 | **gasoline binary not found** | All commands report binary path issue; suggest reinstall |
@@ -223,13 +224,12 @@ Report results
 | **Other MCP servers in config** | Preserve them; only touch gasoline entry |
 | **Config file deleted during operation** | No-op, file doesn't exist; report in results |
 | **User runs --env without --install** | Show error: "--env only works with --install" |
-| **--for-all with --dry-run** | Show diffs for all files, don't write any |
 
 **Assumptions**:
 - Config files are valid JSON when user didn't edit them
 - User's home directory is writable (or at least one config location is)
 - gasoline binary is installed and on PATH or findable via node_modules
-- AI tools (Claude, VSCode) may not be running when --doctor executes
+- AI clients (Claude Code, VS Code, etc.) may not be running when --doctor executes
 
 ## Risks & Mitigations
 
@@ -252,11 +252,9 @@ Report results
 ## Platform-Specific Behavior
 
 ### Windows Path Handling
-- All config paths use `os.homedir()` which returns correct path on Windows
-- Example: `os.homedir()` returns `C:\Users\YourName` on Windows automatically
+- Client registry uses `expandPath()` which resolves `~` via `os.homedir()` and `%APPDATA%` via `process.env`
 - `path.join()` handles platform-specific separators (\ on Windows, / on Unix)
-- **No special %APPDATA% logic needed** — `os.homedir()` already handles this correctly
-- Config location on Windows: `C:\Users\{username}\.claude\claude.mcp.json`
+- Platform-specific paths defined per client in `CLIENT_DEFINITIONS` (e.g., `darwin`, `win32`, `linux`, or `all`)
 
 ### Symlink Behavior
 - **Policy**: Follow symlinks and update the target file (standard Unix behavior)
@@ -267,8 +265,8 @@ Report results
 ## Performance Considerations
 
 - `readConfigFile()`: O(n) where n = config file size (typically < 10KB); acceptable
-- `runDiagnostics()`: O(m) where m = number of config candidates (4 files); < 100ms
-- `--install --for-all`: O(m) for all files; < 500ms total
+- `runDiagnostics()`: O(m) where m = number of client definitions (5 clients); < 100ms
+- `--install`: O(m) for all detected clients; < 500ms total
 - **Critical**: `--dry-run` must not write any files (test with file system mock)
 - **File I/O**: Single I/O per file; no loops or polling
 
@@ -315,24 +313,32 @@ Report results
 Install Options:
 {
   dryRun: boolean,
-  forAll: boolean,
   envVars: {KEY: VALUE, ...},
   verbose: boolean
 }
 
+Install Result:
+{
+  success: boolean,
+  installed: [{name: "Cursor", method: "file", path: "~/.cursor/mcp.json"}, ...],
+  total: number,
+  errors: [{name: "...", error: "..."}]
+}
+
 Diagnostic Report:
 {
-  tools: [
+  clients: [
     {
-      name: "Claude Desktop",
-      path: "~/.claude/claude.mcp.json",
-      status: "ok" | "error" | "warning",
+      name: "Claude Code",
+      type: "cli",
+      status: "ok" | "error" | "warning" | "info",
       issues: ["gasoline entry missing", ...],
       suggestions: ["Run: gasoline-mcp --install", ...]
     },
     ...
   ],
-  summary: "2 tools configured, 2 not configured"
+  legacyWarnings: ["Found orphaned config at ~/.codeium/mcp.json", ...],
+  summary: "2 clients configured, 1 needs repair, 2 not detected"
 }
 
 Config Structure:
