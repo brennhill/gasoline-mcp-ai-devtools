@@ -315,4 +315,53 @@ describe('link-health: checkLink fallback behavior', () => {
     assert.strictEqual(result.results[0].code, 'cors_blocked')
     assert.strictEqual(result.results[0].needsServerVerification, true)
   })
+
+  test('domain filter limits checks to matching host and subdomains', async () => {
+    const { checkLinkHealth } = await import('../../extension/lib/link-health.js')
+
+    globalThis.document.querySelectorAll = mock.fn(() => [
+      { href: 'https://example.com/home' },
+      { href: 'https://api.example.com/v1' },
+      { href: 'https://other.example.org/' }
+    ])
+
+    fetchMock.mock.mockImplementation((url) =>
+      Promise.resolve({
+        status: 200,
+        ok: true,
+        redirected: false,
+        url,
+        headers: new Map()
+      })
+    )
+
+    const result = await checkLinkHealth({ domain: 'example.com' })
+    assert.strictEqual(result.summary.totalLinks, 2)
+    assert.strictEqual(result.results.length, 2)
+    assert.ok(result.results.every((r) => r.url.includes('example.com')))
+  })
+
+  test('domain filter accepts full URL values', async () => {
+    const { checkLinkHealth } = await import('../../extension/lib/link-health.js')
+
+    globalThis.document.querySelectorAll = mock.fn(() => [
+      { href: 'https://example.com/home' },
+      { href: 'https://blog.example.com/post' },
+      { href: 'https://other.test/path' }
+    ])
+
+    fetchMock.mock.mockImplementation((url) =>
+      Promise.resolve({
+        status: 200,
+        ok: true,
+        redirected: false,
+        url,
+        headers: new Map()
+      })
+    )
+
+    const result = await checkLinkHealth({ domain: 'https://example.com/some/path' })
+    assert.strictEqual(result.summary.totalLinks, 2)
+    assert.strictEqual(result.results.length, 2)
+  })
 })

@@ -23,8 +23,10 @@ import (
 
 	"github.com/dev-console/dev-console/internal/ai"
 	"github.com/dev-console/dev-console/internal/analysis"
+	"github.com/dev-console/dev-console/internal/audit"
 	"github.com/dev-console/dev-console/internal/capture"
 	"github.com/dev-console/dev-console/internal/security"
+	"github.com/dev-console/dev-console/internal/session"
 )
 
 // ============================================
@@ -192,9 +194,20 @@ type ToolHandler struct {
 	sessionStoreImpl      *ai.SessionStore
 	securityScannerImpl   *security.SecurityScanner
 	thirdPartyAuditorImpl *analysis.ThirdPartyAuditor
+	sessionManager        *session.SessionManager
+	auditTrail            *audit.AuditTrail
+
+	// Per-client audit session mapping (client_id -> session_id).
+	auditMu       sync.Mutex
+	auditSessions map[string]string
 
 	// Draw mode annotation store (in-memory, TTL-based)
 	annotationStore *AnnotationStore
+
+	// API contract validation state (incremental over captured network bodies).
+	apiContractMu        sync.Mutex
+	apiContractValidator *analysis.APIContractValidator
+	apiContractOffset    int
 
 	// Upload security config (folder-scoped permissions + denylist)
 	uploadSecurity *UploadSecurity
@@ -265,6 +278,14 @@ func NewToolHandler(server *Server, capture *capture.Capture) *MCPHandler {
 	// Initialize security tools (concrete types - interface signatures differ)
 	handler.securityScannerImpl = security.NewSecurityScanner()
 	handler.thirdPartyAuditorImpl = analysis.NewThirdPartyAuditor()
+	handler.apiContractValidator = analysis.NewAPIContractValidator()
+	handler.sessionManager = session.NewSessionManager(10, newToolCaptureStateReader(handler))
+	handler.auditTrail = audit.NewAuditTrail(audit.AuditConfig{
+		MaxEntries:   10000,
+		Enabled:      true,
+		RedactParams: true,
+	})
+	handler.auditSessions = make(map[string]string)
 
 	// Initialize upload security config from package-level var set by CLI
 	handler.uploadSecurity = uploadSecurityConfig
@@ -342,6 +363,8 @@ func (h *ToolHandler) maybeWaitForCommand(req JSONRPCRequest, correlationID stri
 
 // handleToolCall dispatches composite tool calls by mode parameter.
 func (h *ToolHandler) HandleToolCall(req JSONRPCRequest, name string, args json.RawMessage) (JSONRPCResponse, bool) {
+	start := time.Now()
+
 	var resp JSONRPCResponse
 	switch name {
 	case "observe":
@@ -360,10 +383,23 @@ func (h *ToolHandler) HandleToolCall(req JSONRPCRequest, name string, args json.
 
 	if h.healthMetrics != nil {
 		h.healthMetrics.IncrementRequest(name)
-		if resp.Error != nil {
+		if resp.Error != nil || isToolResultError(resp.Result) {
 			h.healthMetrics.IncrementError(name)
 		}
 	}
 
+	h.recordAuditToolCall(req, name, args, resp, start)
+
 	return resp, true
+}
+
+func isToolResultError(raw json.RawMessage) bool {
+	if len(raw) == 0 {
+		return false
+	}
+	var result MCPToolResult
+	if err := json.Unmarshal(raw, &result); err != nil {
+		return false
+	}
+	return result.IsError
 }

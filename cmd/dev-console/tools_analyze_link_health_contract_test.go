@@ -84,7 +84,7 @@ func TestAnalyzeLinkHealthContract_ErrorResponse(t *testing.T) {
 func TestAnalyzeLinkHealthContract_WithParams(t *testing.T) {
 	env := newAnalyzeTestEnv(t)
 
-	result, ok := env.callAnalyze(t, `{"what":"link_health","timeout_ms":15000,"max_workers":20}`)
+	result, ok := env.callAnalyze(t, `{"what":"link_health","timeout_ms":15000,"max_workers":20,"domain":"example.com"}`)
 	if !ok {
 		t.Fatal("link_health with params: no result")
 	}
@@ -177,4 +177,3 @@ func TestAnalyzeContract_ApiValidationMode(t *testing.T) {
 		t.Fatal("analyze api_validation should return content")
 	}
 }
-

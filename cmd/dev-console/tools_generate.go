@@ -365,7 +365,7 @@ func (h *ToolHandler) toolExportSARIF(req JSONRPCRequest, args json.RawMessage) 
 	var a11yResult json.RawMessage
 	if h.capture.IsExtensionConnected() {
 		var err error
-		a11yResult, err = h.executeA11yQuery(arguments.Scope, nil, nil)
+		a11yResult, err = h.executeA11yQuery(arguments.Scope, nil, nil, false)
 		if err != nil {
 			a11yResult = json.RawMessage("{}")
 		}

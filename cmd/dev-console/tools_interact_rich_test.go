@@ -382,6 +382,48 @@ func TestRichAction_RefreshStoresBeforeSnapshot(t *testing.T) {
 	}
 }
 
+func TestRichAction_NavigateStoresBeforeSnapshot(t *testing.T) {
+	env := newInteractTestEnv(t)
+	env.capture.SetPilotEnabled(true)
+	env.capture.SetTrackingStatusForTest(1, "https://example.com/dashboard")
+
+	// Seed a perf snapshot for the tracked URL's path
+	env.capture.AddPerformanceSnapshots([]performance.PerformanceSnapshot{{
+		URL:       "/dashboard",
+		Timestamp: "2024-01-01T00:00:00Z",
+		Timing:    performance.PerformanceTiming{TimeToFirstByte: 115, DomContentLoaded: 700, Load: 1200},
+	}})
+
+	result, ok := env.callInteract(t, `{"action":"navigate","url":"https://example.com/settings","background":true}`)
+	if !ok {
+		t.Fatal("navigate should return result")
+	}
+	if result.IsError {
+		t.Fatalf("navigate with pilot enabled should not error. Got: %s", result.Content[0].Text)
+	}
+
+	var resultData map[string]any
+	if err := json.Unmarshal([]byte(extractJSON(result.Content[0].Text)), &resultData); err != nil {
+		t.Fatalf("Failed to parse result JSON: %v", err)
+	}
+	corrID, _ := resultData["correlation_id"].(string)
+	if corrID == "" {
+		t.Fatal("No correlation_id in navigate result")
+	}
+
+	// Verify before-snapshot was stored for perf_diff computation.
+	snap, ok := env.capture.GetAndDeleteBeforeSnapshot(corrID)
+	if !ok {
+		t.Fatal("Before-snapshot should have been stored for navigate correlation_id")
+	}
+	if snap.URL != "/dashboard" {
+		t.Errorf("Before-snapshot URL = %q, want /dashboard", snap.URL)
+	}
+	if snap.Timing.TimeToFirstByte != 115 {
+		t.Errorf("Before-snapshot TTFB = %v, want 115", snap.Timing.TimeToFirstByte)
+	}
+}
+
 func TestRichAction_CommandResultEnrichedWithPerfDiff(t *testing.T) {
 	env := newInteractTestEnv(t)
 	env.capture.SetPilotEnabled(true)

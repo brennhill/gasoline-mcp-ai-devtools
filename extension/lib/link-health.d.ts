@@ -16,6 +16,7 @@
 export interface LinkHealthParams {
     readonly timeout_ms?: number;
     readonly max_workers?: number;
+    readonly domain?: string;
 }
 export interface LinkCheckResult {
     readonly url: string;

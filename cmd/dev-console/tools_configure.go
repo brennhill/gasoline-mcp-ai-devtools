@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"github.com/dev-console/dev-console/internal/ai"
+	"github.com/dev-console/dev-console/internal/audit"
 )
 
 // randomInt63 generates a random int64 for correlation IDs using crypto/rand.
@@ -460,8 +461,14 @@ func (h *ToolHandler) toolDiffSessionsWrapper(req JSONRPCRequest, args json.RawM
 	if raw == nil {
 		raw = make(map[string]any)
 	}
-	if sa, ok := raw["session_action"].(string); ok {
+	if sa, ok := raw["session_action"].(string); ok && strings.TrimSpace(sa) != "" {
 		raw["action"] = sa
+	}
+
+	// configure(action:"diff_sessions") is the tool entrypoint; default to list
+	// unless a specific session_action is provided.
+	if action, _ := raw["action"].(string); action == "" || action == "diff_sessions" {
+		raw["action"] = "list"
 	}
 	// Error impossible: raw contains only primitive types and strings from input
 	rewritten, _ := json.Marshal(raw)
@@ -469,24 +476,44 @@ func (h *ToolHandler) toolDiffSessionsWrapper(req JSONRPCRequest, args json.RawM
 }
 
 func (h *ToolHandler) toolDiffSessions(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-	var params struct {
-		SessionAction string `json:"session_action"`
-		Name          string `json:"name"`
-	}
-	if len(args) > 0 {
-		if err := json.Unmarshal(args, &params); err != nil {
-			return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidJSON, "Invalid JSON arguments: "+err.Error(), "Fix JSON syntax and call again")}
+	if h.sessionManager == nil {
+		return JSONRPCResponse{
+			JSONRPC: "2.0",
+			ID:      req.ID,
+			Result:  mcpStructuredError(ErrNotInitialized, "Session manager not initialized", "Internal error — do not retry"),
 		}
 	}
 
-	responseData := map[string]any{
-		"status": "ok",
-		"action": params.SessionAction,
+	result, err := h.sessionManager.HandleTool(args)
+	if err != nil {
+		return JSONRPCResponse{
+			JSONRPC: "2.0",
+			ID:      req.ID,
+			Result:  mcpStructuredError(ErrInvalidParam, err.Error(), "Fix request parameters and retry"),
+		}
 	}
+
+	responseData := map[string]any{"status": "ok"}
+	if m, ok := result.(map[string]any); ok {
+		for k, v := range m {
+			responseData[k] = v
+		}
+	} else {
+		responseData["result"] = result
+	}
+
 	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Session diff", responseData)}
 }
 
 func (h *ToolHandler) toolGetAuditLog(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+	if h.auditTrail == nil {
+		return JSONRPCResponse{
+			JSONRPC: "2.0",
+			ID:      req.ID,
+			Result:  mcpStructuredError(ErrNotInitialized, "Audit trail not initialized", "Internal error — do not retry"),
+		}
+	}
+
 	var params struct {
 		SessionID string `json:"session_id"`
 		ToolName  string `json:"tool_name"`
@@ -499,9 +526,28 @@ func (h *ToolHandler) toolGetAuditLog(req JSONRPCRequest, args json.RawMessage) 
 		}
 	}
 
+	filter := audit.AuditFilter{
+		SessionID: params.SessionID,
+		ToolName:  params.ToolName,
+		Limit:     params.Limit,
+	}
+	if params.Since != "" {
+		since, err := time.Parse(time.RFC3339, params.Since)
+		if err != nil {
+			return JSONRPCResponse{
+				JSONRPC: "2.0",
+				ID:      req.ID,
+				Result:  mcpStructuredError(ErrInvalidParam, "Invalid 'since' timestamp: "+err.Error(), "Use RFC3339 format, for example 2026-02-17T15:04:05Z", withParam("since")),
+			}
+		}
+		filter.Since = &since
+	}
+
+	entries := h.auditTrail.Query(filter)
 	responseData := map[string]any{
 		"status":  "ok",
-		"entries": []any{},
+		"entries": entries,
+		"count":   len(entries),
 	}
 	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Audit log entries", responseData)}
 }

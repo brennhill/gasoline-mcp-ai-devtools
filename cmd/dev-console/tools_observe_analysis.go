@@ -236,19 +236,24 @@ func (h *ToolHandler) toolGetTabs(req JSONRPCRequest, args json.RawMessage) JSON
 
 func (h *ToolHandler) toolRunA11yAudit(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	var params struct {
+		Selector     string   `json:"selector"`
 		Scope        string   `json:"scope"`
 		Tags         []string `json:"tags"`
 		ForceRefresh bool     `json:"force_refresh"`
 		Frame        any      `json:"frame"`
 	}
 	lenientUnmarshal(args, &params)
+	if params.Scope == "" && params.Selector != "" {
+		// Backward-compatible alias: selector is treated as scope for accessibility.
+		params.Scope = params.Selector
+	}
 
 	enabled, _, _ := h.capture.GetTrackingStatus()
 	if !enabled {
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrNoData, "No tab is being tracked. Open the Gasoline extension popup and click 'Track This Tab' on the page you want to monitor. Check observe with what='pilot' for extension status.", "", h.diagnosticHint())}
 	}
 
-	result, err := h.executeA11yQuery(params.Scope, params.Tags, params.Frame)
+	result, err := h.executeA11yQuery(params.Scope, params.Tags, params.Frame, params.ForceRefresh)
 	if err != nil {
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrExtTimeout, "A11y audit timeout: "+err.Error(), "Ensure the extension is connected and the page has loaded. Try refreshing the page, then retry.", h.diagnosticHint())}
 	}
@@ -262,7 +267,7 @@ func (h *ToolHandler) toolRunA11yAudit(req JSONRPCRequest, args json.RawMessage)
 	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("A11y audit", auditResult)}
 }
 
-func buildA11yQueryParams(scope string, tags []string, frame any) map[string]any {
+func buildA11yQueryParams(scope string, tags []string, frame any, forceRefresh bool) map[string]any {
 	queryParams := map[string]any{}
 	if scope != "" {
 		queryParams["scope"] = scope
@@ -270,14 +275,17 @@ func buildA11yQueryParams(scope string, tags []string, frame any) map[string]any
 	if len(tags) > 0 {
 		queryParams["tags"] = tags
 	}
+	if forceRefresh {
+		queryParams["force_refresh"] = true
+	}
 	if frame != nil {
 		queryParams["frame"] = frame
 	}
 	return queryParams
 }
 
-func (h *ToolHandler) executeA11yQuery(scope string, tags []string, frame any) (json.RawMessage, error) {
-	queryParams := buildA11yQueryParams(scope, tags, frame)
+func (h *ToolHandler) executeA11yQuery(scope string, tags []string, frame any, forceRefresh bool) (json.RawMessage, error) {
+	queryParams := buildA11yQueryParams(scope, tags, frame, forceRefresh)
 	// Error impossible: map contains only primitive types and string slices from input
 	paramsJSON, _ := json.Marshal(queryParams)
 

@@ -16,6 +16,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/dev-console/dev-console/internal/analysis"
 	"github.com/dev-console/dev-console/internal/util"
 
 	"github.com/dev-console/dev-console/internal/queries"
@@ -384,39 +385,123 @@ func (h *ToolHandler) toolValidateAPI(req JSONRPCRequest, args json.RawMessage) 
 
 	switch params.Operation {
 	case "analyze":
+		h.processAPIValidationBodies()
+		filter := h.apiValidationFilter(params.URLFilter, params.IgnoreEndpoints)
+		result := h.apiContractAnalyze(filter)
 		responseData := map[string]any{
-			"status":     "ok",
-			"operation":  "analyze",
-			"violations": []any{},
+			"status":                   "ok",
+			"operation":                "analyze",
+			"action":                   result.Action,
+			"analyzed_at":              result.AnalyzedAt,
+			"summary":                  result.Summary,
+			"violations":               result.Violations,
+			"tracked_endpoints":        result.TrackedEndpoints,
+			"total_requests_analyzed":  result.TotalRequestsAnalyzed,
+			"clean_endpoints":          result.CleanEndpoints,
+			"possible_violation_types": result.PossibleViolationTypes,
 		}
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("API validation", responseData)}
+		if result.DataWindowStartedAt != "" {
+			responseData["data_window_started_at"] = result.DataWindowStartedAt
+		}
+		if result.AppliedFilter != nil {
+			responseData["applied_filter"] = result.AppliedFilter
+		}
+		if result.Hint != "" {
+			responseData["hint"] = result.Hint
+		}
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("API validation analyze", responseData)}
 
 	case "report":
+		h.processAPIValidationBodies()
+		filter := h.apiValidationFilter(params.URLFilter, params.IgnoreEndpoints)
+		result := h.apiContractReport(filter)
 		responseData := map[string]any{
-			"status":    "ok",
-			"operation": "report",
-			"endpoints": []any{},
+			"status":             "ok",
+			"operation":          "report",
+			"action":             result.Action,
+			"analyzed_at":        result.AnalyzedAt,
+			"endpoints":          result.Endpoints,
+			"consistency_levels": result.ConsistencyLevels,
 		}
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("API validation", responseData)}
+		if result.AppliedFilter != nil {
+			responseData["applied_filter"] = result.AppliedFilter
+		}
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("API validation report", responseData)}
 
 	case "clear":
+		h.clearAPIValidationState()
 		clearResult := map[string]any{
-			"action": "cleared",
-			"status": "ok",
+			"action":    "cleared",
+			"status":    "ok",
+			"operation": "clear",
 		}
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("API validation", clearResult)}
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("API validation cleared", clearResult)}
 
 	default:
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidParam, "operation parameter must be 'analyze', 'report', or 'clear'", "Use a valid value for 'operation'", withParam("operation"), withHint("analyze, report, or clear"))}
 	}
 }
 
+func (h *ToolHandler) processAPIValidationBodies() {
+	h.apiContractMu.Lock()
+	defer h.apiContractMu.Unlock()
+
+	if h.apiContractValidator == nil {
+		h.apiContractValidator = analysis.NewAPIContractValidator()
+	}
+
+	bodies := h.capture.GetNetworkBodies()
+	if h.apiContractOffset < 0 || h.apiContractOffset > len(bodies) {
+		// Buffer can shrink due ring eviction; clamp to avoid replaying old data.
+		h.apiContractOffset = len(bodies)
+	}
+
+	for _, body := range bodies[h.apiContractOffset:] {
+		h.apiContractValidator.Validate(body)
+	}
+	h.apiContractOffset = len(bodies)
+}
+
+func (h *ToolHandler) apiValidationFilter(urlFilter string, ignore []string) analysis.APIContractFilter {
+	return analysis.APIContractFilter{
+		URLFilter:       urlFilter,
+		IgnoreEndpoints: ignore,
+	}
+}
+
+func (h *ToolHandler) apiContractAnalyze(filter analysis.APIContractFilter) analysis.APIContractAnalyzeResult {
+	h.apiContractMu.Lock()
+	validator := h.apiContractValidator
+	h.apiContractMu.Unlock()
+	if validator == nil {
+		return analysis.APIContractAnalyzeResult{}
+	}
+	return validator.Analyze(filter)
+}
+
+func (h *ToolHandler) apiContractReport(filter analysis.APIContractFilter) analysis.APIContractReportResult {
+	h.apiContractMu.Lock()
+	validator := h.apiContractValidator
+	h.apiContractMu.Unlock()
+	if validator == nil {
+		return analysis.APIContractReportResult{}
+	}
+	return validator.Report(filter)
+}
+
+func (h *ToolHandler) clearAPIValidationState() {
+	h.apiContractMu.Lock()
+	defer h.apiContractMu.Unlock()
+
+	h.apiContractValidator = analysis.NewAPIContractValidator()
+	h.apiContractOffset = len(h.capture.GetNetworkBodies())
+}
+
 // ============================================
-// Link Health (Placeholder)
+// Link Health
 // ============================================
 
 // toolAnalyzeLinkHealth checks all links on the current page for health issues.
-// This is a placeholder that will be fully implemented in Phase 1.
 func (h *ToolHandler) toolAnalyzeLinkHealth(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	// Generate correlation ID for tracking
 	correlationID := fmt.Sprintf("link_health_%d_%d", time.Now().UnixNano(), randomInt63())

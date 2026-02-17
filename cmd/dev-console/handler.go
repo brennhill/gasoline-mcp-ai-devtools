@@ -12,6 +12,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -376,6 +377,8 @@ func (h *MCPHandler) handleToolsCall(req JSONRPCRequest) JSONRPCResponse {
 		}
 	}
 
+	h.warnUnknownToolArguments(params.Name, params.Arguments)
+
 	if err := h.checkToolRateLimit(); err != nil {
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Error: err}
 	}
@@ -401,6 +404,55 @@ func (h *MCPHandler) checkToolRateLimit() *JSONRPCError {
 			Code:    -32603,
 			Message: "Tool call rate limit exceeded (500 calls/minute). Please wait before retrying.",
 		}
+	}
+	return nil
+}
+
+func (h *MCPHandler) warnUnknownToolArguments(toolName string, args json.RawMessage) {
+	if h.server == nil || h.toolHandler == nil || len(args) == 0 {
+		return
+	}
+
+	var raw map[string]json.RawMessage
+	if err := json.Unmarshal(args, &raw); err != nil {
+		return
+	}
+	if len(raw) == 0 {
+		return
+	}
+
+	allowed := h.allowedToolArgumentKeys(toolName)
+	if len(allowed) == 0 {
+		return
+	}
+
+	unknown := make([]string, 0)
+	for k := range raw {
+		if _, ok := allowed[k]; !ok {
+			unknown = append(unknown, k)
+		}
+	}
+	sort.Strings(unknown)
+	for _, k := range unknown {
+		h.server.AddWarning(fmt.Sprintf("unknown parameter '%s' for tool '%s' (ignored)", k, toolName))
+	}
+}
+
+func (h *MCPHandler) allowedToolArgumentKeys(toolName string) map[string]struct{} {
+	tools := h.toolHandler.ToolsList()
+	for _, tool := range tools {
+		if tool.Name != toolName {
+			continue
+		}
+		keys := make(map[string]struct{})
+		props, ok := tool.InputSchema["properties"].(map[string]any)
+		if !ok {
+			return keys
+		}
+		for k := range props {
+			keys[k] = struct{}{}
+		}
+		return keys
 	}
 	return nil
 }

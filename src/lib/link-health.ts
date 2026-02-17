@@ -18,6 +18,7 @@
 export interface LinkHealthParams {
   readonly timeout_ms?: number
   readonly max_workers?: number
+  readonly domain?: string
 }
 
 export interface LinkCheckResult {
@@ -49,12 +50,14 @@ export interface LinkHealthCheckResult {
  * Check all links on the current page for health issues.
  * Extracts links, deduplicates, and checks max 20 concurrently.
  */
-function extractUniqueLinks(): string[] {
+function extractUniqueLinks(domainFilter: string): string[] {
   const linkElements = document.querySelectorAll('a[href]')
   const urls = new Set<string>()
   for (const elem of linkElements) {
     const href = (elem as HTMLAnchorElement).href
-    if (href && !isIgnoredLink(href)) urls.add(href)
+    if (!href || isIgnoredLink(href)) continue
+    if (domainFilter !== '' && !matchesDomain(href, domainFilter)) continue
+    urls.add(href)
   }
   return Array.from(urls)
 }
@@ -89,7 +92,8 @@ function aggregateResults(results: LinkCheckResult[]): LinkHealthCheckResult['su
 export async function checkLinkHealth(params: LinkHealthParams): Promise<LinkHealthCheckResult> {
   const timeout_ms = params.timeout_ms || 15000
   const max_workers = params.max_workers || 20
-  const uniqueLinks = extractUniqueLinks()
+  const domainFilter = normalizeDomainFilter(params.domain)
+  const uniqueLinks = extractUniqueLinks(domainFilter)
 
   const results: LinkCheckResult[] = []
   const chunks = chunkArray(uniqueLinks, max_workers)
@@ -294,6 +298,32 @@ function isIgnoredLink(href: string): boolean {
   if (href.startsWith('#')) return true
   if (href === '') return true
   return false
+}
+
+/**
+ * Normalize a domain filter into a lowercase hostname.
+ */
+function normalizeDomainFilter(domain?: string): string {
+  const raw = (domain || '').trim().toLowerCase()
+  if (raw === '') return ''
+  const candidate = raw.includes('://') ? raw : `https://${raw}`
+  try {
+    return new URL(candidate).hostname.toLowerCase()
+  } catch {
+    return raw
+  }
+}
+
+/**
+ * Returns true when linkURL host matches domainFilter exactly or as subdomain.
+ */
+function matchesDomain(linkURL: string, domainFilter: string): boolean {
+  try {
+    const hostname = new URL(linkURL).hostname.toLowerCase()
+    return hostname === domainFilter || hostname.endsWith(`.${domainFilter}`)
+  } catch {
+    return false
+  }
 }
 
 /**

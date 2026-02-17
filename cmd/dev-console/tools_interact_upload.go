@@ -55,7 +55,7 @@ func validateUploadParams(req JSONRPCRequest, params uploadParams) *JSONRPCRespo
 		return &resp
 	}
 	if params.Selector == "" && params.APIEndpoint == "" {
-		resp := JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrMissingParam, "Required parameter 'selector' is missing. Provide a CSS selector for the file input element, or use 'apiEndpoint' for direct API uploads.", "Add the 'selector' parameter (e.g., '#Filedata') or 'apiEndpoint'", withParam("selector"))}
+		resp := JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrMissingParam, "Required parameter 'selector' is missing. Provide a CSS selector for the file input element, or use 'api_endpoint' for direct API uploads.", "Add the 'selector' parameter (e.g., '#Filedata') or 'api_endpoint'", withParam("selector"))}
 		return &resp
 	}
 	if !filepath.IsAbs(params.FilePath) {

@@ -201,7 +201,7 @@ func TestEnsureA11ySummary_NilViolationsKey(t *testing.T) {
 func TestBuildA11yQueryParams_IncludesFrameWhenProvided(t *testing.T) {
 	t.Parallel()
 
-	params := buildA11yQueryParams("#app", []string{"wcag2a"}, "iframe.editor")
+	params := buildA11yQueryParams("#app", []string{"wcag2a"}, "iframe.editor", false)
 
 	if got := params["scope"]; got != "#app" {
 		t.Fatalf("scope = %v, want #app", got)
@@ -217,7 +217,7 @@ func TestBuildA11yQueryParams_IncludesFrameWhenProvided(t *testing.T) {
 func TestBuildA11yQueryParams_OmitsFrameWhenNil(t *testing.T) {
 	t.Parallel()
 
-	params := buildA11yQueryParams("", nil, nil)
+	params := buildA11yQueryParams("", nil, nil, false)
 
 	if _, ok := params["frame"]; ok {
 		t.Fatal("frame should be omitted when nil")
@@ -227,5 +227,14 @@ func TestBuildA11yQueryParams_OmitsFrameWhenNil(t *testing.T) {
 	}
 	if _, ok := params["tags"]; ok {
 		t.Fatal("tags should be omitted when empty")
+	}
+}
+
+func TestBuildA11yQueryParams_IncludesForceRefreshWhenTrue(t *testing.T) {
+	t.Parallel()
+
+	params := buildA11yQueryParams("#app", nil, nil, true)
+	if got, ok := params["force_refresh"].(bool); !ok || !got {
+		t.Fatalf("force_refresh = %v, want true", params["force_refresh"])
 	}
 }

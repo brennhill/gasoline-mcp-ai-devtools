@@ -80,6 +80,10 @@
           "description": "Original recording ID (log_diff_report)",
           "type": "string"
         },
+        "recording_id": {
+          "description": "Recording ID (recording_actions, playback_results)",
+          "type": "string"
+        },
         "replay_id": {
           "description": "Replay recording ID (log_diff_report)",
           "type": "string"
@@ -140,6 +144,7 @@
             "saved_videos",
             "recordings",
             "recording_actions",
+            "playback_results",
             "log_diff_report"
           ],
           "type": "string"
@@ -607,7 +612,9 @@
             "recording_stop",
             "playback",
             "log_diff",
-            "telemetry"
+            "telemetry",
+            "diff_sessions",
+            "audit_log"
           ],
           "type": "string"
         },
@@ -842,6 +849,10 @@
           "description": "Enable perf profiling (captures perf_diff)",
           "type": "boolean"
         },
+        "api_endpoint": {
+          "description": "API endpoint for direct upload mode",
+          "type": "string"
+        },
         "audio": {
           "description": "Recording audio: tab, mic, both. Omit for video-only.",
           "enum": [
@@ -870,6 +881,14 @@
         "duration_ms": {
           "description": "Highlight duration ms (default 5000)",
           "type": "number"
+        },
+        "escalation_timeout_ms": {
+          "description": "Upload escalation timeout in ms",
+          "type": "number"
+        },
+        "file_path": {
+          "description": "Absolute file path for upload action",
+          "type": "string"
         },
         "fps": {
           "description": "Recording FPS (5-60, default 15)",
@@ -913,6 +932,10 @@
         "snapshot_name": {
           "description": "State snapshot name",
           "type": "string"
+        },
+        "submit": {
+          "description": "Submit form after upload",
+          "type": "boolean"
         },
         "subtitle": {
           "description": "Narration text, composable with any action. Empty clears.",

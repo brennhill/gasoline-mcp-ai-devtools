@@ -201,7 +201,7 @@ export async function handleAsyncBrowserAction(query, tabId, params, syncClient,
 
 1. Check page status: observe({what: 'page'})
 2. Check for console errors: observe({what: 'errors'})
-3. Check network requests: observe({what: 'network', status_min: 400})`;
+3. Check network requests: observe({what: 'network_waterfall', status_min: 400})`;
         sendAsyncResult(syncClient, query.id, query.correlation_id, 'timeout', null, timeoutMessage);
         debugLog(DebugCategory.CONNECTION, 'Async browser action timeout', {
             correlationId: query.correlation_id,

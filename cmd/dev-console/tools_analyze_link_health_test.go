@@ -231,6 +231,33 @@ func TestAnalyzeLinkHealth_Start_CreatesWatchableQuery(t *testing.T) {
 	}
 }
 
+// TestAnalyzeLinkHealth_DomainParamForwarded verifies link_health passes domain through.
+func TestAnalyzeLinkHealth_DomainParamForwarded(t *testing.T) {
+	env := newAnalyzeTestEnv(t)
+
+	result, ok := env.callAnalyze(t, `{"what":"link_health","domain":"example.com","timeout_ms":15000}`)
+	if !ok {
+		t.Fatal("link_health should return result")
+	}
+	if result.IsError {
+		t.Fatalf("link_health with domain should not error: %s", result.Content[0].Text)
+	}
+
+	pq := env.capture.GetLastPendingQuery()
+	if pq == nil {
+		t.Fatal("link_health should create a pending query")
+	}
+
+	var params map[string]any
+	if err := json.Unmarshal(pq.Params, &params); err != nil {
+		t.Fatalf("failed to parse pending query params: %v", err)
+	}
+
+	if got, ok := params["domain"].(string); !ok || got != "example.com" {
+		t.Fatalf("domain not forwarded, got %#v", params["domain"])
+	}
+}
+
 // TestAnalyzeLinkHealth_InvalidJSON returns error
 func TestAnalyzeLinkHealth_InvalidJSON(t *testing.T) {
 	env := newAnalyzeTestEnv(t)

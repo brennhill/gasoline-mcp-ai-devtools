@@ -484,6 +484,117 @@ func TestMCPHandler_AppendsServerWarningsToToolResponse(t *testing.T) {
 	}
 }
 
+func TestMCPHandler_WarnsOnUnknownToolArguments(t *testing.T) {
+	t.Parallel()
+
+	logFile := filepath.Join(t.TempDir(), "unknown-args-warning.jsonl")
+	srv, err := NewServer(logFile, 100)
+	if err != nil {
+		t.Fatalf("NewServer() error = %v", err)
+	}
+	t.Cleanup(srv.Close)
+
+	h := NewMCPHandler(srv, "v-test")
+	h.SetToolHandler(&fakeToolHandlerForMCP{
+		cap:     capture.NewCapture(),
+		limiter: testLimiter{allowed: true},
+		tools: []MCPTool{
+			{
+				Name: "observe",
+				InputSchema: map[string]any{
+					"properties": map[string]any{
+						"what":  map[string]any{"type": "string"},
+						"limit": map[string]any{"type": "number"},
+					},
+				},
+			},
+		},
+		handleFn: func(req JSONRPCRequest, name string, _ json.RawMessage) (JSONRPCResponse, bool) {
+			if name != "observe" {
+				return JSONRPCResponse{}, false
+			}
+			return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpTextResponse("ok")}, true
+		},
+	})
+
+	resp := h.HandleRequest(JSONRPCRequest{
+		JSONRPC: "2.0",
+		ID:      1,
+		Method:  "tools/call",
+		Params:  json.RawMessage(`{"name":"observe","arguments":{"what":"errors","limit":10,"typo_field":true}}`),
+	})
+	if resp == nil || resp.Error != nil {
+		t.Fatalf("tools/call response = %+v, want success", resp)
+	}
+
+	var result MCPToolResult
+	if err := json.Unmarshal(resp.Result, &result); err != nil {
+		t.Fatalf("result unmarshal error = %v", err)
+	}
+	if len(result.Content) < 2 {
+		t.Fatalf("expected warning content block, got %d blocks", len(result.Content))
+	}
+
+	last := result.Content[len(result.Content)-1].Text
+	if !strings.Contains(last, "_warnings:") || !strings.Contains(last, "typo_field") {
+		t.Fatalf("expected unknown-parameter warning, got %q", last)
+	}
+}
+
+func TestMCPHandler_DoesNotWarnOnKnownToolArguments(t *testing.T) {
+	t.Parallel()
+
+	logFile := filepath.Join(t.TempDir(), "known-args-no-warning.jsonl")
+	srv, err := NewServer(logFile, 100)
+	if err != nil {
+		t.Fatalf("NewServer() error = %v", err)
+	}
+	t.Cleanup(srv.Close)
+
+	h := NewMCPHandler(srv, "v-test")
+	h.SetToolHandler(&fakeToolHandlerForMCP{
+		cap:     capture.NewCapture(),
+		limiter: testLimiter{allowed: true},
+		tools: []MCPTool{
+			{
+				Name: "observe",
+				InputSchema: map[string]any{
+					"properties": map[string]any{
+						"what":  map[string]any{"type": "string"},
+						"limit": map[string]any{"type": "number"},
+					},
+				},
+			},
+		},
+		handleFn: func(req JSONRPCRequest, name string, _ json.RawMessage) (JSONRPCResponse, bool) {
+			if name != "observe" {
+				return JSONRPCResponse{}, false
+			}
+			return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpTextResponse("ok")}, true
+		},
+	})
+
+	resp := h.HandleRequest(JSONRPCRequest{
+		JSONRPC: "2.0",
+		ID:      1,
+		Method:  "tools/call",
+		Params:  json.RawMessage(`{"name":"observe","arguments":{"what":"errors","limit":10}}`),
+	})
+	if resp == nil || resp.Error != nil {
+		t.Fatalf("tools/call response = %+v, want success", resp)
+	}
+
+	var result MCPToolResult
+	if err := json.Unmarshal(resp.Result, &result); err != nil {
+		t.Fatalf("result unmarshal error = %v", err)
+	}
+	for _, block := range result.Content {
+		if strings.Contains(block.Text, "_warnings:") {
+			t.Fatalf("did not expect warnings for known args, got %q", block.Text)
+		}
+	}
+}
+
 func TestMCPHandlerToolRateLimit(t *testing.T) {
 	t.Parallel()
 

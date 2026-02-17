@@ -38,7 +38,7 @@ func (h *ToolHandler) interactDispatch() map[string]interactHandler {
 			"new_tab":          h.handleBrowserActionNewTab,
 			"screenshot":       h.handleScreenshotAlias,
 			"subtitle":         h.handleSubtitle,
-			"list_interactive":  h.handleListInteractive,
+			"list_interactive": h.handleListInteractive,
 			"record_start":     h.handleRecordStart,
 			"record_stop":      h.handleRecordStop,
 			"upload":           h.handleUpload,
@@ -100,13 +100,13 @@ func (h *ToolHandler) recordAIEnhancedAction(action capture.EnhancedAction) {
 // domActionToReproType maps interact DOM action names to reproduction-compatible types.
 // Actions not in this map are recorded as-is (with "dom_" prefix for audit trail).
 var domActionToReproType = map[string]string{
-	"click":    "click",
-	"type":     "input",
-	"select":   "select",
-	"check":    "click",
+	"click":     "click",
+	"type":      "input",
+	"select":    "select",
+	"check":     "click",
 	"key_press": "keypress",
 	"scroll_to": "scroll_element",
-	"focus":    "focus",
+	"focus":     "focus",
 }
 
 // parseSelectorForReproduction converts an interact-tool selector string into
@@ -314,6 +314,8 @@ func (h *ToolHandler) handleBrowserActionNavigate(req JSONRPCRequest, args json.
 	}
 
 	correlationID := fmt.Sprintf("nav_%d_%d", time.Now().UnixNano(), randomInt63())
+
+	h.stashPerfSnapshot(correlationID)
 
 	query := queries.PendingQuery{
 		Type:          "browser_action",

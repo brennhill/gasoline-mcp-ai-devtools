@@ -91,13 +91,16 @@ func TestUpload_MissingSelectorAndEndpoint(t *testing.T) {
 	}
 
 	if !result.IsError {
-		t.Error("upload without selector or apiEndpoint MUST return isError:true")
+		t.Error("upload without selector or api_endpoint MUST return isError:true")
 	}
 
 	if len(result.Content) > 0 {
 		text := strings.ToLower(result.Content[0].Text)
 		if !strings.Contains(text, "selector") {
 			t.Errorf("error should mention selector parameter\nGot: %s", result.Content[0].Text)
+		}
+		if !strings.Contains(text, "api_endpoint") {
+			t.Errorf("error should mention api_endpoint parameter\nGot: %s", result.Content[0].Text)
 		}
 	}
 }
