@@ -1,5 +1,8 @@
 ---
 feature: cpu-network-emulation
+doc_type: qa-plan
+feature_id: feature-cpu-network-emulation
+last_reviewed: 2026-02-16
 ---
 
 # QA Plan: CPU/Network Emulation

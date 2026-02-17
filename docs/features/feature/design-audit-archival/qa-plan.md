@@ -7,6 +7,9 @@ tags: [qa, testing, design-audit, archival, placeholder]
 relates-to: [product-spec.md, tech-spec.md, feature-tracking.md]
 last-verified: 2026-01-31
 incomplete: true
+doc_type: qa-plan
+feature_id: feature-design-audit-archival
+last_reviewed: 2026-02-16
 ---
 
 # QA Plan: Design Audit & Archival

@@ -1,5 +1,9 @@
-// browser-actions.ts — Browser navigation and action handlers.
-// Handles navigate, refresh, back, forward actions with async timeout support.
+/**
+ * Purpose: Handles extension background coordination and message routing.
+ * Docs: docs/features/feature/analyze-tool/index.md
+ * Docs: docs/features/feature/interact-explore/index.md
+ * Docs: docs/features/feature/observe/index.md
+ */
 import * as eventListeners from './event-listeners.js';
 import * as index from './index.js';
 import { DebugCategory } from './debug.js';
@@ -97,13 +101,14 @@ export async function handleBrowserAction(tabId, params, actionToast) {
                 const fwdTab = await chrome.tabs.get(tabId);
                 return { success: true, action: 'forward', url: fwdTab.url };
             }
-            case 'new_tab':
+            case 'new_tab': {
                 if (!url)
                     return { success: false, error: 'missing_url', message: 'URL required for new_tab action' };
                 actionToast(tabId, reason || 'new_tab', reason ? undefined : 'opening new tab', 'trying', 5000);
-                await chrome.tabs.create({ url, active: false });
+                const newTab = await chrome.tabs.create({ url, active: false });
                 actionToast(tabId, reason || 'new_tab', undefined, 'success');
-                return { success: true, action: 'new_tab', url };
+                return { success: true, action: 'new_tab', url, tab_id: newTab.id };
+            }
             default:
                 return { success: false, error: 'unknown_action', message: `Unknown action: ${action}` };
         }

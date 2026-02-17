@@ -3,6 +3,7 @@ feature: test-generation
 type: validation
 status: ready_to_execute
 demo_site: ~/dev/gasoline-demos
+last_reviewed: 2026-02-16
 ---
 
 # Test Generation — Hands-On Validation Guide

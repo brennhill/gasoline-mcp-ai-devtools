@@ -1,3 +1,6 @@
+// Purpose: Owns ttl.go runtime behavior and integration logic.
+// Docs: docs/features/feature/backend-log-streaming/index.md
+
 // ttl.go — TTL filtering utilities
 package capture
 

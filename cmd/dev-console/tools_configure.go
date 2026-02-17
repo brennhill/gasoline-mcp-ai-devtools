@@ -1,3 +1,6 @@
+// Purpose: Owns tools_configure.go runtime behavior and integration logic.
+// Docs: docs/features/feature/observe/index.md
+
 // tools_configure.go — MCP configure tool dispatcher and handlers.
 // Handles session settings: store, load, noise_rule, clear, streaming, recordings, etc.
 //

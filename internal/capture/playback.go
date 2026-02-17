@@ -1,3 +1,6 @@
+// Purpose: Owns playback.go runtime behavior and integration logic.
+// Docs: docs/features/feature/backend-log-streaming/index.md
+
 // playback.go — Recording playback and action execution engine.
 // Replays recorded actions with self-healing selectors, timeout handling,
 // and non-blocking error recovery. Detects fragile selectors across multiple runs.

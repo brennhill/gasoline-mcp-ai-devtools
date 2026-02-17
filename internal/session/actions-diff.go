@@ -1,3 +1,7 @@
+// Purpose: Implements session lifecycle, snapshots, and diff state management.
+// Docs: docs/features/feature/observe/index.md
+// Docs: docs/features/feature/pagination/index.md
+
 // actions-diff.go — Actions diff computation.
 // diffErrors function compares errors between two snapshots.
 package session

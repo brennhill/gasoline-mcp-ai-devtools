@@ -1,3 +1,6 @@
+// Purpose: Owns buffer.go runtime behavior and integration logic.
+// Docs: docs/features/feature/observe/index.md
+
 // buffer.go — Buffer management types and cursor tracking.
 // Contains types for ring buffer operations and pagination state.
 // Zero dependencies - foundational types used across capture and query packages.

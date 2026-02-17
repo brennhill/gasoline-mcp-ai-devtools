@@ -1,3 +1,6 @@
+// Purpose: Owns main_handlers.go runtime behavior and integration logic.
+// Docs: docs/features/feature/observe/index.md
+
 // main_handlers.go — Server struct and core HTTP handlers.
 // Contains the Server type (log entry management), entry manipulation methods,
 // and the screenshot endpoint.

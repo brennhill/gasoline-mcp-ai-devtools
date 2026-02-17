@@ -1,3 +1,6 @@
+// Purpose: Owns api_schema.go runtime behavior and integration logic.
+// Docs: docs/features/feature/observe/index.md
+
 // api_schema.go — API schema inference from observed network traffic.
 // Builds endpoint patterns by normalizing dynamic path segments, tracking
 // HTTP methods, status codes, and inferring response shapes from JSON bodies.

@@ -1,3 +1,6 @@
+// Purpose: Owns protocol.go runtime behavior and integration logic.
+// Docs: docs/features/feature/observe/index.md
+
 // protocol.go — MCP JSON-RPC protocol foundation types.
 // Contains the core JSON-RPC 2.0 request/response/error types used for MCP communication.
 // Zero dependencies - foundational layer used by all packages.

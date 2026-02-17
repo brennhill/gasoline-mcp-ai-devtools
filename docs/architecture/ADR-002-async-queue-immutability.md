@@ -1,3 +1,9 @@
+---
+doc_type: legacy_doc
+status: reference
+last_reviewed: 2026-02-16
+---
+
 # ADR-002: Async Queue Architecture is Immutable
 
 **Status**: ACCEPTED (2026-02-02)

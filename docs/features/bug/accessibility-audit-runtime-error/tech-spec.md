@@ -1,6 +1,9 @@
 ---
 feature: accessibility-audit-runtime-error
 status: in-progress
+doc_type: tech-spec
+feature_id: bug-accessibility-audit-runtime-error
+last_reviewed: 2026-02-16
 ---
 
 # Tech Spec: Accessibility Audit Runtime Error (Bug Fix)

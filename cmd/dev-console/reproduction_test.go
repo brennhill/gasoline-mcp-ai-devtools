@@ -587,3 +587,289 @@ func TestReproduction_NavigateNoURL(t *testing.T) {
 		t.Errorf("should skip navigate with no URL, got:\n%s", gasoline)
 	}
 }
+
+// ============================================
+// Browser Action Steps (refresh, back, forward, new_tab, focus)
+// ============================================
+
+func TestPlaywrightStep_Refresh(t *testing.T) {
+	t.Parallel()
+	action := makeTestAction("refresh", 1000, map[string]any{})
+	got := playwrightStep(action, ReproductionParams{})
+	if got != "await page.reload();" {
+		t.Errorf("playwrightStep(refresh) = %q", got)
+	}
+}
+
+func TestPlaywrightStep_Back(t *testing.T) {
+	t.Parallel()
+	action := makeTestAction("back", 1000, map[string]any{})
+	got := playwrightStep(action, ReproductionParams{})
+	if got != "await page.goBack();" {
+		t.Errorf("playwrightStep(back) = %q", got)
+	}
+}
+
+func TestPlaywrightStep_Forward(t *testing.T) {
+	t.Parallel()
+	action := makeTestAction("forward", 1000, map[string]any{})
+	got := playwrightStep(action, ReproductionParams{})
+	if got != "await page.goForward();" {
+		t.Errorf("playwrightStep(forward) = %q", got)
+	}
+}
+
+func TestPlaywrightStep_NewTab(t *testing.T) {
+	t.Parallel()
+	action := capture.EnhancedAction{
+		Type:      "new_tab",
+		Timestamp: 1000,
+		URL:       "https://example.com/page",
+	}
+	got := playwrightStep(action, ReproductionParams{})
+	if got != "// Open new tab: https://example.com/page" {
+		t.Errorf("playwrightStep(new_tab) = %q", got)
+	}
+}
+
+func TestPlaywrightStep_NewTabNoURL(t *testing.T) {
+	t.Parallel()
+	action := capture.EnhancedAction{
+		Type:      "new_tab",
+		Timestamp: 1000,
+		// URL intentionally empty
+	}
+	got := playwrightStep(action, ReproductionParams{})
+	if got != "// Open new tab" {
+		t.Errorf("playwrightStep(new_tab no URL) = %q", got)
+	}
+}
+
+func TestPlaywrightStep_Focus(t *testing.T) {
+	t.Parallel()
+	action := makeTestAction("focus", 1000, map[string]any{
+		"selectors": map[string]any{"id": "email"},
+	})
+	got := playwrightStep(action, ReproductionParams{})
+	if !strings.Contains(got, "focus()") {
+		t.Errorf("playwrightStep(focus) = %q, want focus()", got)
+	}
+}
+
+func TestPlaywrightStep_ScrollElement(t *testing.T) {
+	t.Parallel()
+	action := makeTestAction("scroll_element", 1000, map[string]any{
+		"selectors": map[string]any{"id": "results"},
+	})
+	got := playwrightStep(action, ReproductionParams{})
+	if !strings.Contains(got, "scrollIntoViewIfNeeded()") {
+		t.Errorf("playwrightStep(scroll_element) = %q, want scrollIntoViewIfNeeded()", got)
+	}
+}
+
+func TestGasolineStep_Refresh(t *testing.T) {
+	t.Parallel()
+	action := makeTestAction("refresh", 1000, map[string]any{})
+	got := gasolineStep(action, ReproductionParams{})
+	if got != "Refresh page" {
+		t.Errorf("gasolineStep(refresh) = %q", got)
+	}
+}
+
+func TestGasolineStep_Back(t *testing.T) {
+	t.Parallel()
+	action := makeTestAction("back", 1000, map[string]any{})
+	got := gasolineStep(action, ReproductionParams{})
+	if got != "Navigate back" {
+		t.Errorf("gasolineStep(back) = %q", got)
+	}
+}
+
+func TestGasolineStep_Forward(t *testing.T) {
+	t.Parallel()
+	action := makeTestAction("forward", 1000, map[string]any{})
+	got := gasolineStep(action, ReproductionParams{})
+	if got != "Navigate forward" {
+		t.Errorf("gasolineStep(forward) = %q", got)
+	}
+}
+
+func TestGasolineStep_NewTab(t *testing.T) {
+	t.Parallel()
+	action := capture.EnhancedAction{
+		Type:      "new_tab",
+		Timestamp: 1000,
+		URL:       "https://example.com/new",
+	}
+	got := gasolineStep(action, ReproductionParams{})
+	if got != "Open new tab: https://example.com/new" {
+		t.Errorf("gasolineStep(new_tab) = %q", got)
+	}
+}
+
+func TestGasolineStep_Focus(t *testing.T) {
+	t.Parallel()
+	action := makeTestAction("focus", 1000, map[string]any{
+		"selectors": map[string]any{"id": "email"},
+	})
+	got := gasolineStep(action, ReproductionParams{})
+	if !strings.Contains(got, "Focus:") {
+		t.Errorf("gasolineStep(focus) = %q, want Focus: ...", got)
+	}
+}
+
+func TestGasolineStep_ScrollElement(t *testing.T) {
+	t.Parallel()
+	action := makeTestAction("scroll_element", 1000, map[string]any{
+		"selectors": map[string]any{"id": "results"},
+	})
+	got := gasolineStep(action, ReproductionParams{})
+	if !strings.Contains(got, "Scroll to element:") {
+		t.Errorf("gasolineStep(scroll_element) = %q, want element-targeted scroll step", got)
+	}
+}
+
+// ============================================
+// AI Action Recording (DOM primitives) for Reproduction
+// ============================================
+
+func TestReproduction_AIActionsFromInteract(t *testing.T) {
+	t.Parallel()
+	// Simulate what handleDOMPrimitive records: normalized types with proper fields
+	actions := []capture.EnhancedAction{
+		{
+			Type:      "navigate",
+			Timestamp: 1000,
+			ToURL:     "https://example.com/app",
+			Source:    "ai",
+		},
+		{
+			Type:      "click",
+			Timestamp: 2000,
+			Selectors: map[string]any{"id": "login-btn"},
+			Source:    "ai",
+		},
+		{
+			Type:      "input",
+			Timestamp: 3000,
+			Selectors: map[string]any{"cssPath": "input[name=email]"},
+			Value:     "user@test.com",
+			Source:    "ai",
+		},
+		{
+			Type:      "keypress",
+			Timestamp: 4000,
+			Key:       "Enter",
+			Source:    "ai",
+		},
+	}
+
+	// Gasoline format should include all actions
+	gasoline := generateGasolineScript(actions, ReproductionParams{})
+	if !strings.Contains(gasoline, "Navigate to:") {
+		t.Errorf("gasoline missing navigate, got:\n%s", gasoline)
+	}
+	if !strings.Contains(gasoline, "Click:") {
+		t.Errorf("gasoline missing click, got:\n%s", gasoline)
+	}
+	if !strings.Contains(gasoline, "Type") && !strings.Contains(gasoline, "user@test.com") {
+		t.Errorf("gasoline missing input, got:\n%s", gasoline)
+	}
+	if !strings.Contains(gasoline, "Press: Enter") {
+		t.Errorf("gasoline missing keypress, got:\n%s", gasoline)
+	}
+
+	// Playwright format should include all actions
+	playwright := generateReproPlaywrightScript(actions, ReproductionParams{})
+	if !strings.Contains(playwright, "page.goto(") {
+		t.Errorf("playwright missing navigate, got:\n%s", playwright)
+	}
+	if !strings.Contains(playwright, "click()") {
+		t.Errorf("playwright missing click, got:\n%s", playwright)
+	}
+	if !strings.Contains(playwright, "fill(") {
+		t.Errorf("playwright missing input/fill, got:\n%s", playwright)
+	}
+	if !strings.Contains(playwright, "keyboard.press('Enter')") {
+		t.Errorf("playwright missing keypress, got:\n%s", playwright)
+	}
+}
+
+// ============================================
+// Selector Parsing for Reproduction
+// ============================================
+
+func TestParseSelectorForReproduction(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name     string
+		selector string
+		wantKey  string
+		wantVal  string
+	}{
+		{"CSS ID", "#submit-btn", "id", "submit-btn"},
+		{"CSS path", "form > input", "cssPath", "form > input"},
+		{"text semantic", "text=Submit", "text", "Submit"},
+		{"role semantic", "role=button", "role", ""},   // role is a nested map
+		{"label semantic", "label=Email", "ariaLabel", "Email"},
+		{"aria-label semantic", "aria-label=Close", "ariaLabel", "Close"},
+		{"placeholder semantic", "placeholder=Search", "ariaLabel", "Search"},
+		{"complex CSS", "div.container > button", "cssPath", "div.container > button"},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			result := parseSelectorForReproduction(tc.selector)
+			if tc.wantKey == "role" {
+				// Role is a nested map
+				roleData, ok := result["role"]
+				if !ok {
+					t.Errorf("parseSelectorForReproduction(%q) missing 'role' key", tc.selector)
+				}
+				roleMap, ok := roleData.(map[string]any)
+				if !ok {
+					t.Errorf("parseSelectorForReproduction(%q) role not a map", tc.selector)
+				}
+				if roleMap["role"] != "button" {
+					t.Errorf("parseSelectorForReproduction(%q) role.role = %v, want 'button'", tc.selector, roleMap["role"])
+				}
+			} else {
+				val, ok := result[tc.wantKey].(string)
+				if !ok || val != tc.wantVal {
+					t.Errorf("parseSelectorForReproduction(%q)[%q] = %q, want %q", tc.selector, tc.wantKey, val, tc.wantVal)
+				}
+			}
+		})
+	}
+}
+
+func TestDomActionToReproType(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		domAction string
+		wantType  string
+		wantOK    bool
+	}{
+		{"click", "click", true},
+		{"type", "input", true},
+		{"select", "select", true},
+		{"check", "click", true},
+		{"key_press", "keypress", true},
+		{"scroll_to", "scroll_element", true},
+		{"focus", "focus", true},
+		{"get_text", "", false},
+		{"get_value", "", false},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.domAction, func(t *testing.T) {
+			reproType, ok := domActionToReproType[tc.domAction]
+			if ok != tc.wantOK {
+				t.Errorf("domActionToReproType[%q] ok = %v, want %v", tc.domAction, ok, tc.wantOK)
+			}
+			if ok && reproType != tc.wantType {
+				t.Errorf("domActionToReproType[%q] = %q, want %q", tc.domAction, reproType, tc.wantType)
+			}
+		})
+	}
+}

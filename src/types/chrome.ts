@@ -1,4 +1,9 @@
 /**
+ * Purpose: Owns chrome.ts runtime behavior and integration logic.
+ * Docs: docs/features/feature/observe/index.md
+ */
+
+/**
  * @fileoverview Chrome API Wrapper Types
  * Chrome-specific types for message passing and storage
  */

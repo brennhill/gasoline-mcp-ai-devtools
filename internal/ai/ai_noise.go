@@ -1,3 +1,6 @@
+// Purpose: Owns ai_noise.go runtime behavior and integration logic.
+// Docs: docs/features/feature/observe/index.md
+
 // ai_noise.go — Noise filtering rules and auto-detection for browser telemetry.
 // Provides regex-based match specs that classify console, network, and WebSocket
 // entries as noise (third-party scripts, analytics, browser-generated warnings).

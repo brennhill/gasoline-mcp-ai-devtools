@@ -1,4 +1,9 @@
 /**
+ * Purpose: Handles content-script message relay between background and inject contexts.
+ * Docs: docs/features/feature/interact-explore/index.md
+ * Docs: docs/features/feature/query-dom/index.md
+ */
+/**
  * @fileoverview Message Forwarding Module
  * Forwards messages between page context and background script
  */

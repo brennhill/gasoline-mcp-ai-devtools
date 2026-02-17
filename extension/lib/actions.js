@@ -1,4 +1,8 @@
 /**
+ * Purpose: Provides shared runtime utilities used by extension and server workflows.
+ * Docs: docs/features/feature/observe/index.md
+ */
+/**
  * @fileoverview User action capture and replay buffer.
  * Records click, input, scroll, keydown, and change events with throttling
  * and sensitive data redaction. Also captures navigation events (pushState,

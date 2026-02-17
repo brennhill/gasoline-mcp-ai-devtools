@@ -1,4 +1,9 @@
 /**
+ * Purpose: Owns ai-web-pilot.ts runtime behavior and integration logic.
+ * Docs: docs/features/feature/observe/index.md
+ */
+
+/**
  * @fileoverview AI Web Pilot Toggle Module
  * Manages the AI Web Pilot feature toggle
  */

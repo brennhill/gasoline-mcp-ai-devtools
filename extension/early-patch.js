@@ -1,4 +1,8 @@
 "use strict";
+/**
+ * Purpose: Owns early-patch.ts runtime behavior and integration logic.
+ * Docs: docs/features/feature/observe/index.md
+ */
 // early-patch.ts — Lightweight WebSocket constructor patch.
 // Runs in MAIN world at document_start before any page scripts.
 // Saves original WebSocket and buffers connections for handoff to inject.bundled.js.

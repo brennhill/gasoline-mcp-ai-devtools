@@ -1,4 +1,8 @@
 /**
+ * Purpose: Owns ai-context.ts runtime behavior and integration logic.
+ * Docs: docs/features/feature/observe/index.md
+ */
+/**
  * @fileoverview AI Context Types
  * Stack frames, source snippets, and React component info for error analysis
  */

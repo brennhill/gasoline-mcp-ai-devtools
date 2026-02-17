@@ -4,6 +4,9 @@ status: shipped
 tool: observe
 mode: network_bodies
 version: 5.0.0
+doc_type: product-spec
+feature_id: feature-binary-format-detection
+last_reviewed: 2026-02-16
 ---
 # Product Spec: Binary Format Detection
 

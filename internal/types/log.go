@@ -1,3 +1,6 @@
+// Purpose: Owns log.go runtime behavior and integration logic.
+// Docs: docs/features/feature/observe/index.md
+
 // log.go — Logging types for server and extension instrumentation.
 // Contains canonical definitions for server logs and extension debug logs.
 // Zero dependencies - foundational types used by capture and debugging packages.

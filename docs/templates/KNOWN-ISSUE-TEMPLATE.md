@@ -1,3 +1,9 @@
+---
+doc_type: legacy_doc
+status: reference
+last_reviewed: 2026-02-16
+---
+
 ## Template: Known Issue Entry
 
 Use this format when adding entries to `/known-issues.md`:

@@ -1,4 +1,9 @@
 /**
+ * Purpose: Provides shared runtime utilities used by extension and server workflows.
+ * Docs: docs/features/feature/observe/index.md
+ */
+
+/**
  * @fileoverview Console method capture.
  * Monkey-patches console.log/warn/error/info/debug to capture messages
  * and forward them via postLog, while preserving original behavior.

@@ -1,7 +1,6 @@
 /**
- * @fileoverview Context annotations storage and management.
- * Provides key-value annotations that attach to captured events for
- * richer debugging context (e.g., user flow, feature flag, session info).
+ * Purpose: Provides shared runtime utilities used by extension and server workflows.
+ * Docs: docs/features/feature/observe/index.md
  */
 import type { JsonValue } from '../types/index';
 /**

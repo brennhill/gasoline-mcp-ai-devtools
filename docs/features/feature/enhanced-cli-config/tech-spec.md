@@ -1,6 +1,9 @@
 ---
 feature: Enhanced CLI Configuration Management
 status: proposed
+doc_type: tech-spec
+feature_id: feature-enhanced-cli-config
+last_reviewed: 2026-02-16
 ---
 
 # Tech Spec: Enhanced CLI Configuration Management

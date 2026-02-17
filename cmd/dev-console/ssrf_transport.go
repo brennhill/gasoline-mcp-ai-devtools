@@ -1,3 +1,6 @@
+// Purpose: Owns ssrf_transport.go runtime behavior and integration logic.
+// Docs: docs/features/feature/observe/index.md
+
 // ssrf_transport.go — shared SSRF-safe dialer/transport helpers.
 package main
 

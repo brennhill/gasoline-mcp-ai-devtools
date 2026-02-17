@@ -9,6 +9,8 @@ header:
   excerpt: "One config. Your AI tool fires up Gasoline automatically."
 toc: true
 toc_sticky: true
+status: reference
+last_reviewed: 2026-02-16
 ---
 
 Gasoline implements the [Model Context Protocol](https://modelcontextprotocol.io/) — a standard for connecting AI assistants to external tools. Any MCP-compatible tool can tap into your browser state.

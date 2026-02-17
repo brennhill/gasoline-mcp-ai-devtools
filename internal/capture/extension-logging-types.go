@@ -1,3 +1,6 @@
+// Purpose: Owns extension-logging-types.go runtime behavior and integration logic.
+// Docs: docs/features/feature/backend-log-streaming/index.md
+
 // extension-logging-types.go — Extension logging types.
 // ExtensionLog, PollingLogEntry, and HTTPDebugEntry for extension internal logging.
 //

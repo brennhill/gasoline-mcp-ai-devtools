@@ -1,3 +1,6 @@
+// Purpose: Owns query_dispatcher.go runtime behavior and integration logic.
+// Docs: docs/features/feature/backend-log-streaming/index.md
+
 // query_dispatcher.go — Query lifecycle, result storage, and async command tracking.
 // Extracted from the Capture god object. Owns its own sync.Mutex (for pending queries
 // and condition variable) and sync.RWMutex (for async command results).

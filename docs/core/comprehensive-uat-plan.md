@@ -1,3 +1,9 @@
+---
+doc_type: legacy_doc
+status: reference
+last_reviewed: 2026-02-16
+---
+
 # Comprehensive UAT Test Plan
 
 > Goal: If this script passes, ship with 100% confidence.

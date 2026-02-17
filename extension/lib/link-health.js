@@ -1,8 +1,6 @@
 /**
- * @fileoverview Link Health Checker
- * Extracts all links from the current page and checks their health.
- * Categorizes issues as: ok (2xx), redirect (3xx), requires_auth (401/403),
- * broken (4xx/5xx), or timeout.
+ * Purpose: Provides shared runtime utilities used by extension and server workflows.
+ * Docs: docs/features/feature/link-health/index.md
  */
 /**
  * Check all links on the current page for health issues.
@@ -62,77 +60,168 @@ export async function checkLinkHealth(params) {
     return { summary: aggregateResults(results), results };
 }
 /**
+ * Classify an HTTP status code into a link health category.
+ */
+function classifyStatus(status) {
+    if (status >= 200 && status < 300)
+        return 'ok';
+    if (status >= 300 && status < 400)
+        return 'redirect';
+    if (status === 401 || status === 403)
+        return 'requires_auth';
+    return 'broken';
+}
+/**
+ * Returns true if the status indicates we should retry with GET.
+ * 405 = Method Not Allowed (server rejects HEAD).
+ * 0   = opaque/CORS-blocked response (no readable status).
+ */
+function shouldFallbackToGet(status) {
+    return status === 405 || status === 0;
+}
+/**
+ * Returns true if the error looks like a CORS or network failure (not a timeout).
+ */
+function isCorsOrNetworkError(error) {
+    return error.name === 'TypeError';
+}
+/**
+ * Try a no-cors GET as a last resort to check if the server is reachable.
+ * An opaque response (status 0, type "opaque") proves the server is up,
+ * even though we cannot read the actual status code.
+ */
+async function tryNoCors(url, signal) {
+    try {
+        await fetch(url, { method: 'GET', mode: 'no-cors', signal, redirect: 'follow' });
+        // Any response (even opaque) means the server is reachable
+        return true;
+    }
+    catch {
+        return false;
+    }
+}
+/**
  * Check a single link for health issues.
+ *
+ * Fallback chain:
+ *   1. HEAD — fast, minimal bandwidth
+ *   2. GET  — when HEAD returns 405 or 0, or throws (CORS)
+ *   3. no-cors GET — for cross-origin links, proves reachability
  */
 async function checkLink(url, timeout_ms) {
     const startTime = performance.now();
     const isExternal = new URL(url).origin !== window.location.origin;
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeout_ms);
     try {
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), timeout_ms);
-        try {
-            const response = await fetch(url, {
-                method: 'HEAD',
-                signal: controller.signal,
-                redirect: 'follow'
-            });
+        // === Step 1: HEAD request ===
+        const headResult = await tryFetch(url, 'HEAD', controller.signal);
+        if (headResult.ok) {
+            // HEAD succeeded, but check if we need to fall back
+            if (!shouldFallbackToGet(headResult.response.status)) {
+                clearTimeout(timeoutId);
+                const timeMs = Math.round(performance.now() - startTime);
+                return buildResult(url, headResult.response, timeMs, isExternal);
+            }
+            // 405 or 0 — fall through to GET
+        }
+        // === Step 2: GET request (fallback) ===
+        const getResult = await tryFetch(url, 'GET', controller.signal);
+        if (getResult.ok && getResult.response.status !== 0) {
             clearTimeout(timeoutId);
             const timeMs = Math.round(performance.now() - startTime);
-            // Check if response is CORS-blocked (opaque response with status 0)
-            // CORS-blocked responses have status 0 and unreadable headers
-            if (response.status === 0) {
-                return {
-                    url,
-                    status: null,
-                    code: 'cors_blocked',
-                    timeMs,
-                    isExternal,
-                    error: 'CORS policy blocked the request',
-                    needsServerVerification: isExternal // Only external links need server verification
-                };
-            }
-            // Categorize by status
-            let code;
-            if (response.status >= 200 && response.status < 300) {
-                code = 'ok';
-            }
-            else if (response.status >= 300 && response.status < 400) {
-                code = 'redirect';
-            }
-            else if (response.status === 401 || response.status === 403) {
-                code = 'requires_auth';
-            }
-            else if (response.status >= 400) {
-                code = 'broken';
-            }
-            else {
-                code = 'broken';
-            }
+            return buildResult(url, getResult.response, timeMs, isExternal);
+        }
+        // === Step 3: no-cors fallback for external links ===
+        if (isExternal) {
+            const reachable = await tryNoCors(url, controller.signal);
+            clearTimeout(timeoutId);
+            const timeMs = Math.round(performance.now() - startTime);
             return {
                 url,
-                status: response.status,
-                code,
+                status: null,
+                code: 'cors_blocked',
                 timeMs,
                 isExternal,
-                redirectTo: response.redirected ? response.url : undefined
+                error: reachable
+                    ? 'CORS policy blocked the request (server is reachable)'
+                    : 'CORS policy blocked the request (server may be unreachable)',
+                needsServerVerification: true
             };
         }
-        finally {
-            clearTimeout(timeoutId);
-        }
-    }
-    catch (error) {
+        // Internal link returned status 0 on both HEAD and GET — unusual
+        clearTimeout(timeoutId);
         const timeMs = Math.round(performance.now() - startTime);
-        const isTimeout = error.name === 'AbortError';
         return {
             url,
             status: null,
-            code: isTimeout ? 'timeout' : 'broken',
+            code: 'broken',
             timeMs,
             isExternal,
-            error: isTimeout ? 'timeout' : error.message
+            error: 'Request returned status 0'
         };
     }
+    catch (error) {
+        clearTimeout(timeoutId);
+        const timeMs = Math.round(performance.now() - startTime);
+        const err = error;
+        const isTimeout = err.name === 'AbortError';
+        if (isTimeout) {
+            return { url, status: null, code: 'timeout', timeMs, isExternal, error: 'timeout' };
+        }
+        // CORS/network errors on external links — classify as cors_blocked, not broken
+        if (isExternal && isCorsOrNetworkError(err)) {
+            return {
+                url,
+                status: null,
+                code: 'cors_blocked',
+                timeMs,
+                isExternal,
+                error: 'CORS policy blocked the request',
+                needsServerVerification: true
+            };
+        }
+        return {
+            url,
+            status: null,
+            code: 'broken',
+            timeMs,
+            isExternal,
+            error: err.message
+        };
+    }
+}
+/** Sentinel response for failed fetch attempts. */
+const FAILED_RESPONSE = { status: 0, ok: false, redirected: false, url: '', headers: new Headers() };
+/**
+ * Attempt a fetch and return a normalized result.
+ * Re-throws AbortError (timeout) so the caller can handle it.
+ * All other errors are captured as { ok: false }.
+ */
+async function tryFetch(url, method, signal) {
+    try {
+        const response = await fetch(url, { method, signal, redirect: 'follow' });
+        return { ok: true, response };
+    }
+    catch (error) {
+        // Let AbortError (timeout) propagate to the outer catch
+        if (error.name === 'AbortError')
+            throw error;
+        return { ok: false, response: FAILED_RESPONSE };
+    }
+}
+/**
+ * Build a LinkCheckResult from a successful HTTP response.
+ */
+function buildResult(url, response, timeMs, isExternal) {
+    return {
+        url,
+        status: response.status,
+        code: classifyStatus(response.status),
+        timeMs,
+        isExternal,
+        redirectTo: response.redirected ? response.url : undefined
+    };
 }
 /**
  * Determine if a link should be skipped (javascript:, mailto:, #anchor).

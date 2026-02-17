@@ -1,4 +1,9 @@
 /**
+ * Purpose: Owns popup.ts runtime behavior and integration logic.
+ * Docs: docs/features/feature/observe/index.md
+ */
+
+/**
  * @fileoverview popup.ts - Extension popup UI showing connection status and controls.
  * Displays server connection state, entry count, error count, log level selector,
  * and log file path. Polls the background worker for status updates and provides

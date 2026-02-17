@@ -1,3 +1,6 @@
+// Purpose: Owns api_contract_analysis.go runtime behavior and integration logic.
+// Docs: docs/features/feature/observe/index.md
+
 // api_contract_analysis.go — Contract analysis, reporting, and violation detection.
 // Contains the analysis pipeline that processes tracked endpoints, detects
 // error spikes, compares response shapes, and generates reports.

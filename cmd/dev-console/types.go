@@ -1,3 +1,6 @@
+// Purpose: Owns types.go runtime behavior and integration logic.
+// Docs: docs/features/feature/observe/index.md
+
 // types.go — MCP JSON-RPC protocol types.
 // Contains the core JSON-RPC 2.0 request/response/error types used for MCP communication.
 package main

@@ -4,6 +4,9 @@ status: proposed
 tool: generate
 format: reproduction
 version: v5.9
+doc_type: product-spec
+feature_id: feature-reproduction-scripts
+last_reviewed: 2026-02-16
 ---
 
 # Product Spec: Reproduction Scripts

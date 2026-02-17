@@ -1,5 +1,7 @@
 ---
 feature: test-generation
+status: reference
+last_reviewed: 2026-02-16
 ---
 
 # Test Generation — User Acceptance Testing Guide

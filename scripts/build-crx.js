@@ -21,7 +21,7 @@ const TEMP_ZIP = path.join(BUILD_DIR, `.gasoline-temp-${Date.now()}.zip`)
 async function buildCRX() {
   try {
     // Check for key file
-    // eslint-disable-next-line security/detect-non-literal-fs-filename -- build script paths are hardcoded constants
+     
     if (!fs.existsSync(KEY_FILE)) {
       console.error(`❌ Private key not found at ${KEY_FILE}`)
       // CLI script exits with error status on fatal failure
@@ -47,7 +47,7 @@ async function buildCRX() {
           fs.unlinkSync(nativeCrx)
 
           // Extract and display extension ID
-          // eslint-disable-next-line security/detect-non-literal-fs-filename -- build script paths are hardcoded constants
+           
           const data = fs.readFileSync(OUTPUT_CRX)
           const headerLen = data.readUInt32LE(8)
           const headerProto = data.slice(12, 12 + headerLen)
@@ -55,7 +55,7 @@ async function buildCRX() {
           let length1 = 0
           let shift = 0
           while (offset < headerProto.length) {
-            // eslint-disable-next-line security/detect-object-injection -- bracket access on local config object
+             
             const byte = headerProto[offset]
             length1 |= (byte & 0x7f) << shift
             offset++
@@ -80,9 +80,9 @@ async function buildCRX() {
     try {
       console.log('🔧 Using crx (Rust tool) for packing...')
       await exec(`crx pack "${path.resolve(EXTENSION_DIR)}" -o "${OUTPUT_CRX}" -k "${KEY_FILE}"`)
-      // eslint-disable-next-line security/detect-non-literal-fs-filename -- build script paths are hardcoded constants
+       
       if (fs.existsSync(OUTPUT_CRX)) {
-        // eslint-disable-next-line security/detect-non-literal-fs-filename -- build script reads from hardcoded extension directory
+         
         const data = fs.readFileSync(OUTPUT_CRX)
         const headerLen = data.readUInt32LE(8)
         const headerProto = data.slice(12, 12 + headerLen)
@@ -125,14 +125,14 @@ async function buildCRX() {
       process.exit(1)
     }
 
-    // eslint-disable-next-line security/detect-non-literal-fs-filename -- build script paths are hardcoded constants
+     
     if (!fs.existsSync(TEMP_ZIP)) {
       console.error('❌ Failed to create extension zip')
       process.exit(1)
     }
 
     console.log('🔐 Reading private key...')
-    // eslint-disable-next-line security/detect-non-literal-fs-filename -- build script paths are hardcoded constants
+     
     const keyContent = fs.readFileSync(KEY_FILE, 'utf-8')
 
     // Extract public key and compute extension ID
@@ -152,7 +152,7 @@ async function buildCRX() {
 
     // Read and sign the header (not the zip!)
     console.log('✍️  Signing extension...')
-    // eslint-disable-next-line security/detect-non-literal-fs-filename -- build script paths are hardcoded constants
+     
     const zipData = fs.readFileSync(TEMP_ZIP)
 
     // Create the signed header data first
@@ -177,11 +177,11 @@ async function buildCRX() {
     const crxBuffer = Buffer.concat([magic, version, headerLen, headerProto, zipData])
 
     // Write CRX file
-    // eslint-disable-next-line security/detect-non-literal-fs-filename -- build script paths are hardcoded constants
+     
     fs.writeFileSync(OUTPUT_CRX, crxBuffer)
 
     // Cleanup
-    // eslint-disable-next-line security/detect-non-literal-fs-filename -- build script paths are hardcoded constants
+     
     fs.unlinkSync(TEMP_ZIP)
 
     console.log(`\n✨ CRX file created: ${OUTPUT_CRX}`)
@@ -194,7 +194,7 @@ async function buildCRX() {
     console.log(`📦 Extension ID: ${extensionId}`)
   } catch (err) {
     console.error('❌ Error building CRX:', err.message)
-    // eslint-disable-next-line security/detect-non-literal-fs-filename -- build script paths are hardcoded constants
+     
     if (fs.existsSync(TEMP_ZIP)) fs.unlinkSync(TEMP_ZIP)
     process.exit(1)
   }
@@ -250,7 +250,7 @@ function toBase32(buf) {
   let value = 0
 
   for (let i = 0; i < buf.length; i++) {
-    // eslint-disable-next-line security/detect-object-injection -- bracket access on local config object
+     
     value = (value << 8) | buf[i]
     bits += 8
     while (bits >= 5) {
@@ -295,7 +295,7 @@ function getChromeCommand() {
     try {
       // For macOS paths with spaces, check if file exists directly
       if (cmd.startsWith('/Applications')) {
-        // eslint-disable-next-line security/detect-non-literal-fs-filename -- build script paths are hardcoded constants
+         
         if (fs.existsSync(cmd)) {
           return cmd
         }

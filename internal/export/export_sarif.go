@@ -1,3 +1,7 @@
+// Purpose: Implements export serializers and format-specific output builders.
+// Docs: docs/features/feature/har-export/index.md
+// Docs: docs/features/feature/sarif-export/index.md
+
 // export_sarif.go — SARIF 2.1.0 accessibility report generation.
 // Converts axe-core accessibility audit results into the Static Analysis
 // Results Interchange Format, compatible with GitHub Code Scanning and

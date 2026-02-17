@@ -1,3 +1,6 @@
+// Purpose: Implements observe tool queries against captured runtime buffers.
+// Docs: docs/features/feature/observe/index.md
+
 // tools_observe_analysis.go — Observe analysis handlers: waterfall, vitals, tabs, a11y, timeline, errors, history, async commands.
 //
 // JSON CONVENTION: All fields MUST use snake_case. See .claude/refs/api-naming-standards.md
@@ -671,8 +674,10 @@ func (h *ToolHandler) formatCommandResult(req JSONRPCRequest, cmd queries.Comman
 
 	switch cmd.Status {
 	case "complete":
+		responseData["final"] = true
 		return h.formatCompleteCommand(req, cmd, corrID, responseData)
 	case "error":
+		responseData["final"] = true
 		if cmd.Error == "" {
 			cmd.Error = "Command failed in extension"
 		}
@@ -697,6 +702,7 @@ func (h *ToolHandler) formatCommandResult(req JSONRPCRequest, cmd queries.Comman
 			h.diagnosticHint(),
 		)}
 	default:
+		responseData["final"] = false
 		summary := fmt.Sprintf("Command %s: %s", corrID, cmd.Status)
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse(summary, responseData)}
 	}
@@ -740,7 +746,7 @@ func enrichCommandResponseData(result json.RawMessage, responseData map[string]a
 	}
 
 	// Surface extension enrichment fields to top-level for easier LLM consumption.
-	for _, key := range []string{"timing", "dom_changes", "analysis", "resolved_tab_id", "resolved_url", "target_context"} {
+	for _, key := range []string{"timing", "dom_changes", "analysis", "resolved_tab_id", "resolved_url", "target_context", "effective_tab_id", "effective_url"} {
 		if v, ok := extResult[key]; ok {
 			responseData[key] = v
 		}

@@ -1,3 +1,6 @@
+// Purpose: Owns websocket.go runtime behavior and integration logic.
+// Docs: docs/features/feature/backend-log-streaming/index.md
+
 // websocket.go — WebSocket connection tracking and event buffering.
 // Captures connection lifecycle (open/close/error) and message payloads
 // with adaptive sampling for high-frequency streams.

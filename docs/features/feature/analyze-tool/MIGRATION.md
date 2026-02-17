@@ -1,6 +1,8 @@
 ---
 feature: analyze-tool
 type: migration
+status: reference
+last_reviewed: 2026-02-16
 ---
 
 # Migration: 4-Tool → 5-Tool Architecture

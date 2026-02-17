@@ -9,6 +9,8 @@ header:
   excerpt: "Your fuel stays in your tank — 100% local, zero telemetry."
 toc: true
 toc_sticky: true
+status: reference
+last_reviewed: 2026-02-16
 ---
 
 Gasoline is designed with privacy as a core principle, not an afterthought.

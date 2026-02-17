@@ -1,3 +1,6 @@
+// Purpose: Owns circuit_breaker.go runtime behavior and integration logic.
+// Docs: docs/features/feature/backend-log-streaming/index.md
+
 // circuit_breaker.go — Rate limiting and circuit breaker state machine.
 // Extracted from the Capture god object. Owns its own sync.RWMutex,
 // independent of Capture.mu. Uses rate-based triggering only.

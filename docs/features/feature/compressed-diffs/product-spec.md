@@ -4,6 +4,9 @@ status: shipped
 tool: observe
 mode: changes
 version: 5.0.0
+doc_type: product-spec
+feature_id: feature-compressed-diffs
+last_reviewed: 2026-02-16
 ---
 # Product Spec: Compressed Diffs
 

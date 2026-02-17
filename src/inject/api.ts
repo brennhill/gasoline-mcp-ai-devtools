@@ -1,4 +1,10 @@
 /**
+ * Purpose: Executes in-page actions and query handlers within the page context.
+ * Docs: docs/features/feature/interact-explore/index.md
+ * Docs: docs/features/feature/query-dom/index.md
+ */
+
+/**
  * @fileoverview Gasoline API - Exposes window.__gasoline interface for developers
  * to interact with Gasoline capture capabilities.
  */

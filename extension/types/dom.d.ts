@@ -1,4 +1,8 @@
 /**
+ * Purpose: Owns dom.ts runtime behavior and integration logic.
+ * Docs: docs/features/feature/observe/index.md
+ */
+/**
  * @fileoverview DOM Query Types
  * DOM element queries and page information
  */

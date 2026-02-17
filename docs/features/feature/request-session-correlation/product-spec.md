@@ -5,6 +5,9 @@ ai-priority: high
 tags: [v7, correlation, observability, eyes]
 relates-to: [../backend-log-streaming.md, ../../core/architecture.md]
 last-verified: 2026-01-31
+doc_type: product-spec
+feature_id: feature-request-session-correlation
+last_reviewed: 2026-02-16
 ---
 
 # Request/Session Correlation

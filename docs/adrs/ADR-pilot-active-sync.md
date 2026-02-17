@@ -1,3 +1,9 @@
+---
+doc_type: legacy_doc
+status: reference
+last_reviewed: 2026-02-16
+---
+
 # ADR: AI Pilot Feature Active Sync Architecture
 
 **Status:** Approved

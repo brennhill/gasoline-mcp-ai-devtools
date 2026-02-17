@@ -4,6 +4,8 @@ date: 2026-02-12
 author: Brenn Hill
 tags: [Comparison, BrowserAutomation, Security, Architecture]
 description: A technical comparison of browser extension-based observability vs Puppeteer-style automation, and why extensions are better for AI-assisted development.
+status: reference
+last_reviewed: 2026-02-16
 ---
 
 # Gasoline vs Puppeteer: Why Browser Extensions Win

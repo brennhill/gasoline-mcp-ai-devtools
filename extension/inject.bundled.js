@@ -2945,67 +2945,122 @@ async function checkLinkHealth(params) {
   }
   return { summary: aggregateResults(results), results };
 }
+function classifyStatus(status) {
+  if (status >= 200 && status < 300)
+    return "ok";
+  if (status >= 300 && status < 400)
+    return "redirect";
+  if (status === 401 || status === 403)
+    return "requires_auth";
+  return "broken";
+}
+function shouldFallbackToGet(status) {
+  return status === 405 || status === 0;
+}
+function isCorsOrNetworkError(error) {
+  return error.name === "TypeError";
+}
+async function tryNoCors(url, signal) {
+  try {
+    await fetch(url, { method: "GET", mode: "no-cors", signal, redirect: "follow" });
+    return true;
+  } catch {
+    return false;
+  }
+}
 async function checkLink(url, timeout_ms) {
   const startTime = performance.now();
   const isExternal = new URL(url).origin !== window.location.origin;
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeout_ms);
   try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), timeout_ms);
-    try {
-      const response = await fetch(url, {
-        method: "HEAD",
-        signal: controller.signal,
-        redirect: "follow"
-      });
+    const headResult = await tryFetch(url, "HEAD", controller.signal);
+    if (headResult.ok) {
+      if (!shouldFallbackToGet(headResult.response.status)) {
+        clearTimeout(timeoutId);
+        const timeMs2 = Math.round(performance.now() - startTime);
+        return buildResult(url, headResult.response, timeMs2, isExternal);
+      }
+    }
+    const getResult = await tryFetch(url, "GET", controller.signal);
+    if (getResult.ok && getResult.response.status !== 0) {
       clearTimeout(timeoutId);
-      const timeMs = Math.round(performance.now() - startTime);
-      if (response.status === 0) {
-        return {
-          url,
-          status: null,
-          code: "cors_blocked",
-          timeMs,
-          isExternal,
-          error: "CORS policy blocked the request",
-          needsServerVerification: isExternal
-          // Only external links need server verification
-        };
-      }
-      let code;
-      if (response.status >= 200 && response.status < 300) {
-        code = "ok";
-      } else if (response.status >= 300 && response.status < 400) {
-        code = "redirect";
-      } else if (response.status === 401 || response.status === 403) {
-        code = "requires_auth";
-      } else if (response.status >= 400) {
-        code = "broken";
-      } else {
-        code = "broken";
-      }
+      const timeMs2 = Math.round(performance.now() - startTime);
+      return buildResult(url, getResult.response, timeMs2, isExternal);
+    }
+    if (isExternal) {
+      const reachable = await tryNoCors(url, controller.signal);
+      clearTimeout(timeoutId);
+      const timeMs2 = Math.round(performance.now() - startTime);
       return {
         url,
-        status: response.status,
-        code,
-        timeMs,
+        status: null,
+        code: "cors_blocked",
+        timeMs: timeMs2,
         isExternal,
-        redirectTo: response.redirected ? response.url : void 0
+        error: reachable ? "CORS policy blocked the request (server is reachable)" : "CORS policy blocked the request (server may be unreachable)",
+        needsServerVerification: true
       };
-    } finally {
-      clearTimeout(timeoutId);
     }
-  } catch (error) {
+    clearTimeout(timeoutId);
     const timeMs = Math.round(performance.now() - startTime);
-    const isTimeout = error.name === "AbortError";
     return {
       url,
       status: null,
-      code: isTimeout ? "timeout" : "broken",
+      code: "broken",
       timeMs,
       isExternal,
-      error: isTimeout ? "timeout" : error.message
+      error: "Request returned status 0"
+    };
+  } catch (error) {
+    clearTimeout(timeoutId);
+    const timeMs = Math.round(performance.now() - startTime);
+    const err = error;
+    const isTimeout = err.name === "AbortError";
+    if (isTimeout) {
+      return { url, status: null, code: "timeout", timeMs, isExternal, error: "timeout" };
+    }
+    if (isExternal && isCorsOrNetworkError(err)) {
+      return {
+        url,
+        status: null,
+        code: "cors_blocked",
+        timeMs,
+        isExternal,
+        error: "CORS policy blocked the request",
+        needsServerVerification: true
+      };
+    }
+    return {
+      url,
+      status: null,
+      code: "broken",
+      timeMs,
+      isExternal,
+      error: err.message
     };
   }
+}
+var FAILED_RESPONSE = { status: 0, ok: false, redirected: false, url: "", headers: new Headers() };
+async function tryFetch(url, method, signal) {
+  try {
+    const response = await fetch(url, { method, signal, redirect: "follow" });
+    return { ok: true, response };
+  } catch (error) {
+    if (error.name === "AbortError")
+      throw error;
+    return { ok: false, response: FAILED_RESPONSE };
+  }
+}
+function buildResult(url, response, timeMs, isExternal) {
+  return {
+    url,
+    status: response.status,
+    code: classifyStatus(response.status),
+    timeMs,
+    isExternal,
+    redirectTo: response.redirected ? response.url : void 0
+  };
 }
 function isIgnoredLink(href) {
   if (href.startsWith("javascript:"))

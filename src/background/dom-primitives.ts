@@ -1,3 +1,10 @@
+/**
+ * Purpose: Handles extension background coordination and message routing.
+ * Docs: docs/features/feature/analyze-tool/index.md
+ * Docs: docs/features/feature/interact-explore/index.md
+ * Docs: docs/features/feature/observe/index.md
+ */
+
 // dom-primitives.ts — Pre-compiled DOM interaction functions for chrome.scripting.executeScript.
 // These bypass CSP restrictions because they use the `func` parameter (no eval/new Function).
 // Each function MUST be self-contained — no closures over external variables.
@@ -461,8 +468,18 @@ export function domPrimitive(
               selection.deleteFromDocument()
             }
           }
-          document.execCommand('insertText', false, text)
-          return { success: true, action, selector, value: el.textContent }
+          // Split on newlines — each \n becomes an insertParagraph command
+          const lines = text.split('\n')
+          for (let i = 0; i < lines.length; i++) {
+            const line = lines[i]!
+            if (i > 0) {
+              document.execCommand('insertParagraph', false)
+            }
+            if (line.length > 0) {
+              document.execCommand('insertText', false, line)
+            }
+          }
+          return { success: true, action, selector, value: el.innerText }
         }
 
         if (!(el instanceof HTMLInputElement) && !(el instanceof HTMLTextAreaElement)) {
@@ -530,7 +547,8 @@ export function domPrimitive(
     }
 
     case 'get_text': {
-      return { success: true, action, selector, value: el.textContent }
+      const text = el instanceof HTMLElement ? el.innerText : el.textContent
+      return { success: true, action, selector, value: text }
     }
 
     case 'get_value': {
@@ -579,6 +597,34 @@ export function domPrimitive(
     case 'wait_for': {
       // Already found — return immediately
       return { success: true, action, selector, value: el.tagName.toLowerCase() }
+    }
+
+    case 'paste': {
+      return withMutationTracking(() => {
+        if (!(el instanceof HTMLElement)) {
+          return {
+            success: false,
+            action,
+            selector,
+            error: 'not_interactive',
+            message: `Element is not an HTMLElement: ${el.tagName}`
+          }
+        }
+        el.focus()
+        if (options.clear) {
+          const selection = document.getSelection()
+          if (selection) {
+            selection.selectAllChildren(el)
+            selection.deleteFromDocument()
+          }
+        }
+        const pasteText = options.text || ''
+        const dt = new DataTransfer()
+        dt.setData('text/plain', pasteText)
+        const event = new ClipboardEvent('paste', { clipboardData: dt, bubbles: true, cancelable: true })
+        el.dispatchEvent(event)
+        return { success: true, action, selector, value: el.innerText }
+      })
     }
 
     case 'key_press': {
@@ -1065,6 +1111,20 @@ export async function executeDOMAction(
   const toastDetail = reason ? undefined : selector || 'page'
   const readOnly = isReadOnlyAction(action)
 
+  // Enrich successful results with effective tab context (post-execution URL).
+  // Agents compare resolved_url (dispatch time) vs effective_url (execution time) to detect drift.
+  const enrichWithEffectiveContext = async (result: unknown): Promise<unknown> => {
+    try {
+      const tab = await chrome.tabs.get(tabId)
+      if (result && typeof result === 'object' && !Array.isArray(result)) {
+        return { ...(result as Record<string, unknown>), effective_tab_id: tabId, effective_url: tab.url }
+      }
+      return result
+    } catch {
+      return result
+    }
+  }
+
   try {
     const executionTarget = await resolveExecutionTarget(tabId, params.frame)
     const tryingShownAt = Date.now()
@@ -1078,7 +1138,7 @@ export async function executeDOMAction(
     // wait_for quick-check can return a DOMResult directly
     if (!Array.isArray(rawResult)) {
       if (!readOnly) actionToast(tabId, toastLabel, toastDetail, 'success')
-      sendAsyncResult(syncClient, query.id, query.correlation_id!, 'complete', rawResult)
+      sendAsyncResult(syncClient, query.id, query.correlation_id!, 'complete', await enrichWithEffectiveContext(rawResult))
       return
     }
 
@@ -1090,7 +1150,7 @@ export async function executeDOMAction(
     // list_interactive: merge elements from all frames
     if (action === 'list_interactive') {
       const merged = mergeListInteractive(rawResult)
-      sendAsyncResult(syncClient, query.id, query.correlation_id!, 'complete', merged)
+      sendAsyncResult(syncClient, query.id, query.correlation_id!, 'complete', await enrichWithEffectiveContext(merged))
       return
     }
 
@@ -1109,7 +1169,7 @@ export async function executeDOMAction(
         toastLabel,
         toastDetail
       )
-      sendAsyncResult(syncClient, query.id, query.correlation_id!, 'complete', resultPayload)
+      sendAsyncResult(syncClient, query.id, query.correlation_id!, 'complete', await enrichWithEffectiveContext(resultPayload))
     } else {
       if (!readOnly) actionToast(tabId, toastLabel, 'no result', 'error')
       sendAsyncResult(syncClient, query.id, query.correlation_id!, 'error', null, 'no_result')

@@ -1,3 +1,6 @@
+// Purpose: Owns safego.go runtime behavior and integration logic.
+// Docs: docs/features/feature/observe/index.md
+
 // safego.go — Panic-recovering goroutine launcher.
 package util
 

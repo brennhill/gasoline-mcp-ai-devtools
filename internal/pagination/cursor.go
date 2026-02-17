@@ -1,3 +1,6 @@
+// Purpose: Owns cursor.go runtime behavior and integration logic.
+// Docs: docs/features/feature/observe/index.md
+
 // cursor.go — Cursor-based pagination utilities for stable live data pagination.
 // Implements composite cursors ("timestamp:sequence") to handle timestamp collisions
 // from batched browser events while providing LLM temporal awareness.

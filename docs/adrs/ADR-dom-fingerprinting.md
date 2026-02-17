@@ -1,3 +1,9 @@
+---
+doc_type: legacy_doc
+status: reference
+last_reviewed: 2026-02-16
+---
+
 # ADRs: Dom Fingerprinting
 
 Architectural decisions for the Dom Fingerprinting feature.

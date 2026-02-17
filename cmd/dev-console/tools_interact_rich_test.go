@@ -1151,6 +1151,134 @@ func TestCommandResult_SuccessDoesNotSetIsError(t *testing.T) {
 	}
 }
 
+// ============================================
+// Issue #92: queued/final markers on async responses
+// ============================================
+
+func TestQueuedResponse_HasQueuedAndFinalMarkers(t *testing.T) {
+	env := newInteractTestEnv(t)
+	env.capture.SetPilotEnabled(true)
+
+	result, _ := env.callInteract(t, `{"action":"click","selector":"#btn","background":true}`)
+	var responseData map[string]any
+	_ = json.Unmarshal([]byte(extractJSON(result.Content[0].Text)), &responseData)
+
+	if responseData["status"] != "queued" {
+		t.Fatalf("status = %v, want queued", responseData["status"])
+	}
+	if queued, _ := responseData["queued"].(bool); !queued {
+		t.Fatalf("queued response should have queued=true, got %v", responseData["queued"])
+	}
+	if final, _ := responseData["final"].(bool); final {
+		t.Fatalf("queued response should have final=false, got %v", responseData["final"])
+	}
+}
+
+func TestCommandResult_CompleteHasFinalTrue(t *testing.T) {
+	env := newInteractTestEnv(t)
+	env.capture.SetPilotEnabled(true)
+
+	// Queue async to avoid sync-wait-for-extension
+	result, _ := env.callInteract(t, `{"action":"click","selector":"#btn","background":true}`)
+	var resultData map[string]any
+	_ = json.Unmarshal([]byte(extractJSON(result.Content[0].Text)), &resultData)
+	corrID := resultData["correlation_id"].(string)
+
+	env.capture.CompleteCommand(corrID, json.RawMessage(`{"success":true}`), "")
+
+	req := JSONRPCRequest{JSONRPC: "2.0", ID: 2}
+	args := json.RawMessage(`{"correlation_id":"` + corrID + `"}`)
+	resp := env.handler.toolObserveCommandResult(req, args)
+
+	var observeResult MCPToolResult
+	_ = json.Unmarshal(resp.Result, &observeResult)
+
+	var responseData map[string]any
+	if err := json.Unmarshal([]byte(extractJSON(observeResult.Content[0].Text)), &responseData); err != nil {
+		t.Fatalf("Failed to parse response JSON: %v", err)
+	}
+
+	finalVal, ok := responseData["final"].(bool)
+	if !ok || !finalVal {
+		t.Fatalf("complete command should have final=true, got %v", responseData["final"])
+	}
+}
+
+func TestCommandResult_ErrorHasFinalTrue(t *testing.T) {
+	env := newInteractTestEnv(t)
+	env.capture.SetPilotEnabled(true)
+
+	result, _ := env.callInteract(t, `{"action":"click","selector":"#btn","background":true}`)
+	var resultData map[string]any
+	_ = json.Unmarshal([]byte(extractJSON(result.Content[0].Text)), &resultData)
+	corrID := resultData["correlation_id"].(string)
+
+	env.capture.CompleteCommand(corrID, nil, "element_not_found")
+
+	req := JSONRPCRequest{JSONRPC: "2.0", ID: 2}
+	args := json.RawMessage(`{"correlation_id":"` + corrID + `"}`)
+	resp := env.handler.toolObserveCommandResult(req, args)
+
+	var observeResult MCPToolResult
+	_ = json.Unmarshal(resp.Result, &observeResult)
+
+	var responseData map[string]any
+	if err := json.Unmarshal([]byte(extractJSON(observeResult.Content[0].Text)), &responseData); err != nil {
+		t.Fatalf("Failed to parse response JSON: %v", err)
+	}
+
+	finalVal, ok := responseData["final"].(bool)
+	if !ok || !finalVal {
+		t.Fatalf("error command should have final=true, got %v", responseData["final"])
+	}
+}
+
+// ============================================
+// Issue #91: effective_tab_id and effective_url surfaced
+// ============================================
+
+func TestCommandResult_EffectiveContextSurfaced(t *testing.T) {
+	env := newInteractTestEnv(t)
+	env.capture.SetPilotEnabled(true)
+
+	result, _ := env.callInteract(t, `{"action":"click","selector":"#btn","tab_id":42,"background":true}`)
+	var resultData map[string]any
+	_ = json.Unmarshal([]byte(extractJSON(result.Content[0].Text)), &resultData)
+	corrID := resultData["correlation_id"].(string)
+
+	extensionResult := json.RawMessage(`{
+		"success": true,
+		"action": "click",
+		"resolved_tab_id": 42,
+		"resolved_url": "https://example.com/page1",
+		"effective_tab_id": 42,
+		"effective_url": "https://example.com/page2"
+	}`)
+	env.capture.CompleteCommand(corrID, extensionResult, "")
+
+	req := JSONRPCRequest{JSONRPC: "2.0", ID: 2}
+	args := json.RawMessage(`{"correlation_id":"` + corrID + `"}`)
+	resp := env.handler.toolObserveCommandResult(req, args)
+
+	var observeResult MCPToolResult
+	_ = json.Unmarshal(resp.Result, &observeResult)
+
+	var responseData map[string]any
+	if err := json.Unmarshal([]byte(extractJSON(observeResult.Content[0].Text)), &responseData); err != nil {
+		t.Fatalf("Failed to parse response JSON: %v", err)
+	}
+
+	if responseData["effective_tab_id"] != float64(42) {
+		t.Fatalf("effective_tab_id = %v, want 42", responseData["effective_tab_id"])
+	}
+	if responseData["effective_url"] != "https://example.com/page2" {
+		t.Fatalf("effective_url = %v, want https://example.com/page2", responseData["effective_url"])
+	}
+	if responseData["resolved_url"] != "https://example.com/page1" {
+		t.Fatalf("resolved_url = %v, want https://example.com/page1", responseData["resolved_url"])
+	}
+}
+
 func TestCommandResult_ExpiredIncludesDiagnosticHint(t *testing.T) {
 	env := newInteractTestEnv(t)
 	env.capture.SetPilotEnabled(true)

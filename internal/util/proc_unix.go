@@ -1,3 +1,6 @@
+// Purpose: Owns proc_unix.go runtime behavior and integration logic.
+// Docs: docs/features/feature/observe/index.md
+
 //go:build !windows
 
 package util

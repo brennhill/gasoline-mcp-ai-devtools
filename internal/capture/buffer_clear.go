@@ -1,3 +1,6 @@
+// Purpose: Owns buffer_clear.go runtime behavior and integration logic.
+// Docs: docs/features/feature/backend-log-streaming/index.md
+
 // buffer_clear.go — Capture buffer-specific clearing methods.
 // Provides granular control over clearing different Capture buffers:
 // network (waterfall + bodies), websocket (events + status), actions.

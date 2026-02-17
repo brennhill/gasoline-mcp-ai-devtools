@@ -5,6 +5,9 @@ ai-priority: high
 tags: [v7, testing, test-integration]
 relates-to: [product-spec.md, ../custom-event-api/tech-spec.md]
 last-verified: 2026-01-31
+doc_type: tech-spec
+feature_id: feature-test-execution-capture
+last_reviewed: 2026-02-16
 ---
 
 # Test Execution Capture — Technical Specification

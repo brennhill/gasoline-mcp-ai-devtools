@@ -1,3 +1,6 @@
+// Purpose: Owns types.go runtime behavior and integration logic.
+// Docs: docs/features/feature/observe/index.md
+
 // types.go — Recording types for flow recording and playback
 // Captures user interactions as structured actions that can be replayed
 // as Playwright tests or bug reproduction scripts.

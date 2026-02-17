@@ -1,3 +1,6 @@
+// Purpose: Owns upload_security.go runtime behavior and integration logic.
+// Docs: docs/features/feature/observe/index.md
+
 // upload_security.go — Folder-scoped permissions and sensitive path denylist for file upload.
 // Implements the validation chain: Clean → IsAbs → EvalSymlinks → denylist → upload-dir check.
 package main

@@ -1,3 +1,6 @@
+// Purpose: Owns testhelpers.go runtime behavior and integration logic.
+// Docs: docs/features/feature/backend-log-streaming/index.md
+
 // testhelpers.go — Test helpers for capture package tests.
 // Provides factory functions for creating test instances.
 package capture

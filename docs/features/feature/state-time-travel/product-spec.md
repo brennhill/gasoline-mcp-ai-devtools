@@ -4,6 +4,9 @@ status: proposed
 tool: observe
 mode: history
 version: v6.1
+doc_type: product-spec
+feature_id: feature-state-time-travel
+last_reviewed: 2026-02-16
 ---
 
 # Product Spec: State Time-Travel

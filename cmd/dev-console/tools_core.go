@@ -1,3 +1,6 @@
+// Purpose: Owns tools_core.go runtime behavior and integration logic.
+// Docs: docs/features/feature/observe/index.md
+
 // tools_core.go — Core MCP tool types, constants, and response helpers.
 // This file contains the foundational pieces used by all tool handlers:
 // - MCP typed response structs
@@ -256,6 +259,9 @@ func NewToolHandler(server *Server, capture *capture.Capture) *MCPHandler {
 		})
 	}
 
+	// Wire automatic noise detection after page navigations
+	wireNoiseAutoDetect(handler)
+
 	// Initialize security tools (concrete types - interface signatures differ)
 	handler.securityScannerImpl = security.NewSecurityScanner()
 	handler.thirdPartyAuditorImpl = analysis.NewThirdPartyAuditor()
@@ -301,6 +307,8 @@ func (h *ToolHandler) maybeWaitForCommand(req JSONRPCRequest, correlationID stri
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse(queuedSummary, map[string]any{
 			"status":         "queued",
 			"correlation_id": correlationID,
+			"queued":         true,
+			"final":          false,
 		})}
 	}
 
@@ -322,6 +330,7 @@ func (h *ToolHandler) maybeWaitForCommand(req JSONRPCRequest, correlationID stri
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Action still processing", map[string]any{
 			"status":         "still_processing",
 			"correlation_id": correlationID,
+			"final":          false,
 			"message":        "Action is taking longer than 15s. Polling is now required. Use observe({what:'command_result', correlation_id:'" + correlationID + "'}) to check the result.",
 		})}
 	}
@@ -332,17 +341,28 @@ func (h *ToolHandler) maybeWaitForCommand(req JSONRPCRequest, correlationID stri
 
 // handleToolCall dispatches composite tool calls by mode parameter.
 func (h *ToolHandler) HandleToolCall(req JSONRPCRequest, name string, args json.RawMessage) (JSONRPCResponse, bool) {
+	var resp JSONRPCResponse
 	switch name {
 	case "observe":
-		return h.toolObserve(req, args), true
+		resp = h.toolObserve(req, args)
 	case "analyze":
-		return h.toolAnalyze(req, args), true
+		resp = h.toolAnalyze(req, args)
 	case "generate":
-		return h.toolGenerate(req, args), true
+		resp = h.toolGenerate(req, args)
 	case "configure":
-		return h.toolConfigure(req, args), true
+		resp = h.toolConfigure(req, args)
 	case "interact":
-		return h.toolInteract(req, args), true
+		resp = h.toolInteract(req, args)
+	default:
+		return JSONRPCResponse{}, false
 	}
-	return JSONRPCResponse{}, false
+
+	if h.healthMetrics != nil {
+		h.healthMetrics.IncrementRequest(name)
+		if resp.Error != nil {
+			h.healthMetrics.IncrementError(name)
+		}
+	}
+
+	return resp, true
 }

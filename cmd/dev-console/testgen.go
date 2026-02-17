@@ -1,3 +1,6 @@
+// Purpose: Owns testgen.go runtime behavior and integration logic.
+// Docs: docs/features/feature/test-generation/index.md
+
 // testgen.go — Test generation from captured errors and user interactions.
 // Generates Playwright tests using console errors, user actions, and network data.
 // Design: Reuses existing codegen.go infrastructure for script generation.
@@ -10,6 +13,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"regexp"
 	"strings"
 	"time"
 
@@ -28,6 +32,7 @@ type TestFromContextRequest struct {
 	OutputFormat string `json:"output_format"` // "file", "inline"
 	BaseURL      string `json:"base_url"`
 	IncludeMocks bool   `json:"include_mocks"`
+	TestName     string `json:"test_name"` // Optional: override filename base
 }
 
 // GeneratedTest represents the output of test generation
@@ -344,7 +349,11 @@ func (h *ToolHandler) generateTestFromError(req TestFromContextRequest) (*Genera
 
 	script := generatePlaywrightScript(relevantActions, errorMessage, req.BaseURL)
 	assertionCount := strings.Count(script, "expect(") + 1
-	filename := generateTestFilename(errorMessage, req.Framework)
+	filenameBase := errorMessage
+	if req.TestName != "" {
+		filenameBase = req.TestName
+	}
+	filename := generateTestFilename(filenameBase, req.Framework)
 	selectors := extractSelectorsFromActions(relevantActions)
 
 	return &GeneratedTest{
@@ -432,7 +441,11 @@ func (h *ToolHandler) generateTestFromInteraction(req TestFromContextRequest) (*
 		assertionCount += h.countNetworkAssertions()
 	}
 
-	filename := generateTestFilename(deriveInteractionTestName(relevantActions), req.Framework)
+	filenameBase := deriveInteractionTestName(relevantActions)
+	if req.TestName != "" {
+		filenameBase = req.TestName
+	}
+	filename := generateTestFilename(filenameBase, req.Framework)
 	selectors := extractSelectorsFromActions(relevantActions)
 
 	contextUsed := []string{"actions"}
@@ -604,18 +617,54 @@ func generateErrorID(message, stack, url string) string {
 	return fmt.Sprintf("err_%d_%s", timestamp, hash8)
 }
 
-func generateTestFilename(errorMessage, framework string) string {
-	name := strings.ToLower(errorMessage)
-	name = strings.ReplaceAll(name, " ", "-")
-	name = strings.ReplaceAll(name, ":", "")
-	name = strings.ReplaceAll(name, "'", "")
-	name = strings.ReplaceAll(name, "\"", "")
+// filenameAllowlistRe matches any character NOT in the safe set [a-z0-9-].
+var filenameAllowlistRe = regexp.MustCompile(`[^a-z0-9]+`)
+
+var windowsReservedFilenames = map[string]struct{}{
+	"con":  {},
+	"prn":  {},
+	"aux":  {},
+	"nul":  {},
+	"com1": {},
+	"com2": {},
+	"com3": {},
+	"com4": {},
+	"com5": {},
+	"com6": {},
+	"com7": {},
+	"com8": {},
+	"com9": {},
+	"lpt1": {},
+	"lpt2": {},
+	"lpt3": {},
+	"lpt4": {},
+	"lpt5": {},
+	"lpt6": {},
+	"lpt7": {},
+	"lpt8": {},
+	"lpt9": {},
+}
+
+func generateTestFilename(input, framework string) string {
+	name := strings.ToLower(strings.TrimSpace(input))
+	name = filenameAllowlistRe.ReplaceAllString(name, "-")
+	name = strings.Trim(name, "-")
 
 	if len(name) > 50 {
 		name = name[:50]
+		// Trim on dash boundary to avoid cutting mid-word
+		if i := strings.LastIndex(name, "-"); i > 0 {
+			name = name[:i]
+		}
 	}
-
 	name = strings.TrimRight(name, "-")
+
+	if name == "" {
+		name = "generated-test"
+	}
+	if _, reserved := windowsReservedFilenames[name]; reserved {
+		name = "test-" + name
+	}
 
 	ext := ".spec.ts"
 	if framework == "vitest" || framework == "jest" {

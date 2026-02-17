@@ -1,3 +1,6 @@
+// Purpose: Owns clustering.go runtime behavior and integration logic.
+// Docs: docs/features/feature/observe/index.md
+
 // clustering.go — Error clustering by root cause using 2-of-3 signal matching.
 // Groups related console errors by comparing normalized messages, application-level
 // stack frames (excluding framework code), and temporal proximity (<2s).

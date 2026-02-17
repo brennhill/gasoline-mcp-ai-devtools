@@ -5,6 +5,9 @@ ai-priority: medium
 tags: [v7, analysis]
 relates-to: [product-spec.md, ../request-session-correlation/tech-spec.md]
 last-verified: 2026-01-31
+doc_type: tech-spec
+feature_id: feature-causality-analysis
+last_reviewed: 2026-02-16
 ---
 
 # Causality Analysis — Technical Specification

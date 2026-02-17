@@ -1,4 +1,9 @@
 /**
+ * Purpose: Owns options.ts runtime behavior and integration logic.
+ * Docs: docs/features/feature/observe/index.md
+ */
+
+/**
  * @fileoverview options.ts — Extension settings page for user-configurable options.
  * Manages server URL, domain filters (allowlist/blocklist), screenshot-on-error toggle,
  * source map resolution toggle, and interception deferral toggle.

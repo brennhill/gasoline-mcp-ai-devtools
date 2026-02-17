@@ -1,3 +1,9 @@
+---
+doc_type: legacy_doc
+status: reference
+last_reviewed: 2026-02-16
+---
+
 # Reddit Post: Gasoline MCP Introduction
 
 **Subreddit:** r/LocalLLaMA, r/ProgrammingTools, r/webdev, r/devtools

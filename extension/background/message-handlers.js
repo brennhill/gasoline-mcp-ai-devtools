@@ -1,6 +1,8 @@
 /**
- * @fileoverview Message Handlers - Handles all chrome.runtime.onMessage routing
- * with type-safe message discrimination.
+ * Purpose: Handles extension background coordination and message routing.
+ * Docs: docs/features/feature/analyze-tool/index.md
+ * Docs: docs/features/feature/interact-explore/index.md
+ * Docs: docs/features/feature/observe/index.md
  */
 // =============================================================================
 // MESSAGE HANDLER

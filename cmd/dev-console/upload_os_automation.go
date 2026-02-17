@@ -1,3 +1,6 @@
+// Purpose: Owns upload_os_automation.go runtime behavior and integration logic.
+// Docs: docs/features/feature/observe/index.md
+
 // upload_os_automation.go — Stage 4 OS automation, security validators, and input sanitizers.
 package main
 

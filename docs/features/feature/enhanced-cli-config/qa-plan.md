@@ -1,5 +1,8 @@
 ---
 feature: Enhanced CLI Configuration Management
+doc_type: qa-plan
+feature_id: feature-enhanced-cli-config
+last_reviewed: 2026-02-16
 ---
 
 # QA Plan: Enhanced CLI Configuration Management

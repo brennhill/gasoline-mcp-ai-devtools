@@ -1,3 +1,9 @@
+---
+doc_type: legacy_doc
+status: reference
+last_reviewed: 2026-02-16
+---
+
 # Discord Server Setup Guide for Gasoline MCP
 
 This guide will help you set up a Discord community for Gasoline MCP users and contributors.

@@ -1,3 +1,9 @@
+---
+doc_type: legacy_doc
+status: reference
+last_reviewed: 2026-02-16
+---
+
 # code-index.md
 
 **Quick lookup**: Which features/docs are affected when you modify specific code files?
