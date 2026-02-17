@@ -102,7 +102,7 @@ var domActionToReproType = map[string]string{
 	"select":   "select",
 	"check":    "click",
 	"key_press": "keypress",
-	"scroll_to": "scroll",
+	"scroll_to": "scroll_element",
 	"focus":    "focus",
 }
 
@@ -700,8 +700,6 @@ func (h *ToolHandler) recordDOMPrimitiveAction(action, selector, text, value str
 		ea.Key = text
 	case "select":
 		ea.SelectedValue = value
-	case "scroll_to":
-		ea.ScrollY = 0 // Scroll target not available from interact params
 	}
 
 	h.recordAIEnhancedAction(ea)

@@ -656,6 +656,17 @@ func TestPlaywrightStep_Focus(t *testing.T) {
 	}
 }
 
+func TestPlaywrightStep_ScrollElement(t *testing.T) {
+	t.Parallel()
+	action := makeTestAction("scroll_element", 1000, map[string]any{
+		"selectors": map[string]any{"id": "results"},
+	})
+	got := playwrightStep(action, ReproductionParams{})
+	if !strings.Contains(got, "scrollIntoViewIfNeeded()") {
+		t.Errorf("playwrightStep(scroll_element) = %q, want scrollIntoViewIfNeeded()", got)
+	}
+}
+
 func TestGasolineStep_Refresh(t *testing.T) {
 	t.Parallel()
 	action := makeTestAction("refresh", 1000, map[string]any{})
@@ -704,6 +715,17 @@ func TestGasolineStep_Focus(t *testing.T) {
 	got := gasolineStep(action, ReproductionParams{})
 	if !strings.Contains(got, "Focus:") {
 		t.Errorf("gasolineStep(focus) = %q, want Focus: ...", got)
+	}
+}
+
+func TestGasolineStep_ScrollElement(t *testing.T) {
+	t.Parallel()
+	action := makeTestAction("scroll_element", 1000, map[string]any{
+		"selectors": map[string]any{"id": "results"},
+	})
+	got := gasolineStep(action, ReproductionParams{})
+	if !strings.Contains(got, "Scroll to element:") {
+		t.Errorf("gasolineStep(scroll_element) = %q, want element-targeted scroll step", got)
 	}
 }
 
@@ -833,7 +855,7 @@ func TestDomActionToReproType(t *testing.T) {
 		{"select", "select", true},
 		{"check", "click", true},
 		{"key_press", "keypress", true},
-		{"scroll_to", "scroll", true},
+		{"scroll_to", "scroll_element", true},
 		{"focus", "focus", true},
 		{"get_text", "", false},
 		{"get_value", "", false},

@@ -211,6 +211,8 @@ func gasolineStep(action capture.EnhancedAction, opts ReproductionParams) string
 		return "Press: " + action.Key
 	case "scroll":
 		return fmt.Sprintf("Scroll to: y=%d", action.ScrollY)
+	case "scroll_element":
+		return "Scroll to element: " + describeElement(action)
 	case "refresh":
 		return "Refresh page"
 	case "back":
@@ -330,6 +332,8 @@ func playwrightStep(action capture.EnhancedAction, opts ReproductionParams) stri
 		return fmt.Sprintf("await page.keyboard.press('%s');", escapeJS(action.Key))
 	case "scroll":
 		return fmt.Sprintf("// Scroll to y=%d", action.ScrollY)
+	case "scroll_element":
+		return pwLocatorAction(action, "scrollIntoViewIfNeeded", "scroll element into view")
 	case "refresh":
 		return "await page.reload();"
 	case "back":
