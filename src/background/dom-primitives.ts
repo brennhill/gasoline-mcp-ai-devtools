@@ -189,6 +189,83 @@ export function domPrimitive(
     return fallback
   }
 
+  // Return first visible match from an array, falling back to first match.
+  function firstVisibleArray(els: Element[]): Element | null {
+    let fallback: Element | null = null
+    for (const el of els) {
+      if (!fallback) fallback = el
+      if (isVisible(el)) return el
+    }
+    return fallback
+  }
+
+  function resolveByTextAll(searchText: string): Element[] {
+    const results: Element[] = []
+    const seen = new Set<Element>()
+
+    function walkScope(root: ParentNode): void {
+      const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT)
+      while (walker.nextNode()) {
+        const node = walker.currentNode
+        if (node.textContent && node.textContent.trim().includes(searchText)) {
+          const parent = node.parentElement
+          if (!parent) continue
+          const interactive = parent.closest('a, button, [role="button"], [role="link"], label, summary')
+          const target = interactive || parent
+          if (!seen.has(target)) {
+            seen.add(target)
+            results.push(target)
+          }
+        }
+      }
+      const children = 'children' in root ? (root as Element).children : undefined
+      if (children) {
+        for (let i = 0; i < children.length; i++) {
+          const child = children[i]!
+          const shadow = getShadowRoot(child)
+          if (shadow) walkScope(shadow)
+        }
+      }
+    }
+
+    walkScope(document.body || document.documentElement)
+    return results
+  }
+
+  function resolveByLabelAll(labelText: string): Element[] {
+    const labels = querySelectorAllDeep('label')
+    const results: Element[] = []
+    const seen = new Set<Element>()
+    for (const label of labels) {
+      if (label.textContent && label.textContent.trim().includes(labelText)) {
+        const forAttr = label.getAttribute('for')
+        if (forAttr) {
+          const target = document.getElementById(forAttr)
+          if (target && !seen.has(target)) { seen.add(target); results.push(target) }
+        }
+        const nested = label.querySelector('input, select, textarea')
+        if (nested && !seen.has(nested)) { seen.add(nested); results.push(nested) }
+        if (!seen.has(label)) { seen.add(label); results.push(label) }
+      }
+    }
+    return results
+  }
+
+  function resolveByAriaLabelAll(al: string): Element[] {
+    const results: Element[] = []
+    const seen = new Set<Element>()
+    const exact = querySelectorAllDeep(`[aria-label="${CSS.escape(al)}"]`)
+    for (const el of exact) {
+      if (!seen.has(el)) { seen.add(el); results.push(el) }
+    }
+    const all = querySelectorAllDeep('[aria-label]')
+    for (const el of all) {
+      const label = el.getAttribute('aria-label') || ''
+      if (label.startsWith(al) && !seen.has(el)) { seen.add(el); results.push(el) }
+    }
+    return results
+  }
+
   function resolveByText(searchText: string): Element | null {
     let fallback: Element | null = null
 
@@ -255,6 +332,27 @@ export function domPrimitive(
     return fallback
   }
 
+  // Collection resolvers: return ALL matching elements for a selector (used by list_interactive dedup)
+  const selectorCollectionResolvers: [string, (value: string) => Element[]][] = [
+    ['text=', (v) => resolveByTextAll(v)],
+    ['role=', (v) => querySelectorAllDeep(`[role="${CSS.escape(v)}"]`)],
+    ['placeholder=', (v) => querySelectorAllDeep(`[placeholder="${CSS.escape(v)}"]`)],
+    ['label=', (v) => resolveByLabelAll(v)],
+    ['aria-label=', (v) => resolveByAriaLabelAll(v)]
+  ]
+
+  function resolveElements(sel: string): Element[] {
+    if (!sel) return []
+    for (const [prefix, resolver] of selectorCollectionResolvers) {
+      if (sel.startsWith(prefix)) return resolver(sel.slice(prefix.length))
+    }
+    try {
+      return querySelectorAllDeep(sel)
+    } catch {
+      return []
+    }
+  }
+
   // Semantic selector prefix resolvers
   const selectorResolvers: [string, (value: string) => Element | null][] = [
     ['text=', (v) => resolveByText(v)],
@@ -269,6 +367,16 @@ export function domPrimitive(
 
     // Deep combinator: host >>> inner
     if (sel.includes(' >>> ')) return resolveDeepCombinator(sel)
+
+    // :nth-match(N) — used by list_interactive to disambiguate duplicate selectors
+    const nthMatch = sel.match(/^(.*):nth-match\((\d+)\)$/)
+    if (nthMatch) {
+      const base = nthMatch[1] || ''
+      const n = Number.parseInt(nthMatch[2] || '0', 10)
+      if (!base || Number.isNaN(n) || n < 1) return null
+      const matches = resolveElements(base)
+      return matches[n - 1] || null
+    }
 
     for (const [prefix, resolver] of selectorResolvers) {
       if (sel.startsWith(prefix)) return resolver(sel.slice(prefix.length))
@@ -294,6 +402,26 @@ export function domPrimitive(
   // list_interactive: scan the page for interactive elements
   // ---------------------------------------------------------------
   if (action === 'list_interactive') {
+    // Classify element into a high-level interaction type
+    function classifyElement(el: Element): string {
+      const tag = el.tagName.toLowerCase()
+      if (tag === 'a') return 'link'
+      if (tag === 'button' || el.getAttribute('role') === 'button') return 'button'
+      if (tag === 'input') {
+        const inputType = (el as HTMLInputElement).type || 'text'
+        if (inputType === 'submit' || inputType === 'button' || inputType === 'reset') return 'button'
+        if (inputType === 'checkbox' || inputType === 'radio') return 'checkbox'
+        return 'input'
+      }
+      if (tag === 'select') return 'select'
+      if (tag === 'textarea') return 'textarea'
+      if (el.getAttribute('role') === 'link') return 'link'
+      if (el.getAttribute('role') === 'tab') return 'tab'
+      if (el.getAttribute('role') === 'menuitem') return 'menuitem'
+      if (el.getAttribute('contenteditable') === 'true') return 'textarea'
+      return 'interactive'
+    }
+
     const interactiveSelectors = [
       'a[href]',
       'button',
@@ -310,9 +438,25 @@ export function domPrimitive(
     ]
     const seen = new Set<Element>()
     const elements: {
+      index: number
       tag: string
       type?: string
+      element_type: string
       selector: string
+      label: string
+      role?: string
+      placeholder?: string
+      visible: boolean
+    }[] = []
+
+    // First pass: collect raw entries with their base selectors
+    const rawEntries: {
+      el: Element
+      htmlEl: HTMLElement
+      baseSelector: string
+      tag: string
+      inputType?: string
+      elementType: string
       label: string
       role?: string
       placeholder?: string
@@ -331,7 +475,7 @@ export function domPrimitive(
 
         // Use >>> selector for shadow DOM elements, regular selector otherwise
         const shadowSel = buildShadowSelector(el, htmlEl, cssSelector)
-        const uniqueSelector = shadowSel || buildUniqueSelector(el, htmlEl, cssSelector)
+        const baseSelector = shadowSel || buildUniqueSelector(el, htmlEl, cssSelector)
 
         // Build human-readable label
         const label =
@@ -341,19 +485,52 @@ export function domPrimitive(
           (htmlEl.textContent || '').trim().slice(0, 60) ||
           el.tagName.toLowerCase()
 
-        elements.push({
+        rawEntries.push({
+          el,
+          htmlEl,
+          baseSelector,
           tag: el.tagName.toLowerCase(),
-          type: el instanceof HTMLInputElement ? el.type : undefined,
-          selector: uniqueSelector,
+          inputType: el instanceof HTMLInputElement ? el.type : undefined,
+          elementType: classifyElement(el),
           label,
           role: el.getAttribute('role') || undefined,
           placeholder: el.getAttribute('placeholder') || undefined,
           visible
         })
 
-        if (elements.length >= 100) break // Cap at 100 elements
+        if (rawEntries.length >= 100) break
       }
-      if (elements.length >= 100) break
+      if (rawEntries.length >= 100) break
+    }
+
+    // Second pass: deduplicate selectors by appending :nth-match(N)
+    const selectorCount = new Map<string, number>()
+    for (const entry of rawEntries) {
+      selectorCount.set(entry.baseSelector, (selectorCount.get(entry.baseSelector) || 0) + 1)
+    }
+    const selectorIndex = new Map<string, number>()
+
+    for (let i = 0; i < rawEntries.length; i++) {
+      const entry = rawEntries[i]!
+      let finalSelector = entry.baseSelector
+      const count = selectorCount.get(entry.baseSelector) || 1
+      if (count > 1) {
+        const nth = (selectorIndex.get(entry.baseSelector) || 0) + 1
+        selectorIndex.set(entry.baseSelector, nth)
+        finalSelector = `${entry.baseSelector}:nth-match(${nth})`
+      }
+
+      elements.push({
+        index: i,
+        tag: entry.tag,
+        type: entry.inputType,
+        element_type: entry.elementType,
+        selector: finalSelector,
+        label: entry.label,
+        role: entry.role,
+        placeholder: entry.placeholder,
+        visible: entry.visible
+      })
     }
 
     return { success: true, elements }
@@ -828,6 +1005,27 @@ export function domWaitFor(selector: string, timeoutMs: number): Promise<DOMResu
   function resolveElement(sel: string): Element | null {
     if (!sel) return null
     if (sel.includes(' >>> ')) return resolveDeepCombinator(sel)
+    // :nth-match(N) — resolve against all matches for the base selector
+    const nthMatch = sel.match(/^(.*):nth-match\((\d+)\)$/)
+    if (nthMatch) {
+      const base = nthMatch[1] || ''
+      const n = Number.parseInt(nthMatch[2] || '0', 10)
+      if (!base || Number.isNaN(n) || n < 1) return null
+      // Resolve base via semantic or CSS selectors
+      let matches: Element[] = []
+      for (const [prefix, resolver] of waitResolvers) {
+        if (base.startsWith(prefix)) {
+          // Collect all by calling querySelectorAllDeep for the semantic result
+          const single = resolver(base.slice(prefix.length))
+          matches = single ? [single] : []
+          break
+        }
+      }
+      if (matches.length === 0) {
+        try { matches = Array.from(document.querySelectorAll(base)) } catch { matches = [] }
+      }
+      return matches[n - 1] || null
+    }
     for (const [prefix, resolver] of waitResolvers) {
       if (sel.startsWith(prefix)) return resolver(sel.slice(prefix.length))
     }
