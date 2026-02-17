@@ -131,6 +131,20 @@ function sendToastForResult(tabId, readOnly, result, actionToast, toastLabel, to
         actionToast(tabId, toastLabel, result.error || 'failed', 'error');
     }
 }
+// Enrich results with effective tab context (post-execution URL).
+// Agents compare resolved_url (dispatch time) vs effective_url (execution time) to detect drift.
+async function enrichWithEffectiveContext(tabId, result) {
+    try {
+        const tab = await chrome.tabs.get(tabId);
+        if (result && typeof result === 'object' && !Array.isArray(result)) {
+            return { ...result, effective_tab_id: tabId, effective_url: tab.url };
+        }
+        return result;
+    }
+    catch {
+        return result;
+    }
+}
 // #lizard forgives
 export async function executeDOMAction(query, tabId, syncClient, sendAsyncResult, actionToast) {
     const params = parseDOMParams(query);
@@ -150,20 +164,6 @@ export async function executeDOMAction(query, tabId, syncClient, sendAsyncResult
     const toastLabel = reason || action;
     const toastDetail = reason ? undefined : selector || 'page';
     const readOnly = isReadOnlyAction(action);
-    // Enrich successful results with effective tab context (post-execution URL).
-    // Agents compare resolved_url (dispatch time) vs effective_url (execution time) to detect drift.
-    const enrichWithEffectiveContext = async (result) => {
-        try {
-            const tab = await chrome.tabs.get(tabId);
-            if (result && typeof result === 'object' && !Array.isArray(result)) {
-                return { ...result, effective_tab_id: tabId, effective_url: tab.url };
-            }
-            return result;
-        }
-        catch {
-            return result;
-        }
-    };
     try {
         const executionTarget = await resolveExecutionTarget(tabId, params.frame);
         const tryingShownAt = Date.now();
@@ -176,7 +176,7 @@ export async function executeDOMAction(query, tabId, syncClient, sendAsyncResult
         if (!Array.isArray(rawResult)) {
             if (!readOnly)
                 actionToast(tabId, toastLabel, toastDetail, 'success');
-            sendAsyncResult(syncClient, query.id, query.correlation_id, 'complete', await enrichWithEffectiveContext(rawResult));
+            sendAsyncResult(syncClient, query.id, query.correlation_id, 'complete', await enrichWithEffectiveContext(tabId, rawResult));
             return;
         }
         // Ensure "trying" toast is visible for at least 500ms
@@ -187,7 +187,7 @@ export async function executeDOMAction(query, tabId, syncClient, sendAsyncResult
         // list_interactive: merge elements from all frames
         if (action === 'list_interactive') {
             const merged = mergeListInteractive(rawResult);
-            sendAsyncResult(syncClient, query.id, query.correlation_id, 'complete', await enrichWithEffectiveContext(merged));
+            sendAsyncResult(syncClient, query.id, query.correlation_id, 'complete', await enrichWithEffectiveContext(tabId, merged));
             return;
         }
         const picked = pickFrameResult(rawResult);
@@ -197,7 +197,7 @@ export async function executeDOMAction(query, tabId, syncClient, sendAsyncResult
                 ? { ...firstResult, frame_id: picked.frameId }
                 : firstResult;
             sendToastForResult(tabId, readOnly, resultPayload, actionToast, toastLabel, toastDetail);
-            sendAsyncResult(syncClient, query.id, query.correlation_id, 'complete', await enrichWithEffectiveContext(resultPayload));
+            sendAsyncResult(syncClient, query.id, query.correlation_id, 'complete', await enrichWithEffectiveContext(tabId, resultPayload));
         }
         else {
             if (!readOnly)
