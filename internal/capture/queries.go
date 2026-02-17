@@ -15,7 +15,7 @@ import (
 
 // Constants for query management
 const (
-	queryResultTTL = 60 * time.Second // How long to keep query results before cleanup
+	queryResultTTL = 5 * time.Minute // How long to keep query results before cleanup
 	// Note: maxPendingQueries is defined in types.go (=5)
 )
 
@@ -398,7 +398,7 @@ func (qd *QueryDispatcher) WaitForResultWithClient(id string, timeout time.Durat
 // ============================================
 
 // startResultCleanup starts a background goroutine that periodically cleans
-// expired query results (60s TTL).
+// expired query results (queryResultTTL, currently 5m).
 // Returns a stop function that terminates the goroutine.
 // Called once during QueryDispatcher initialization; stop func stored in stopCleanup.
 func (qd *QueryDispatcher) startResultCleanup() func() {

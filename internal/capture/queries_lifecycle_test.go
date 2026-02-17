@@ -13,6 +13,17 @@ import (
 )
 
 // ============================================
+// queryResultTTL: must be long enough for multi-step agents
+// ============================================
+
+func TestQueryResultTTL_FiveMinutes(t *testing.T) {
+	t.Parallel()
+	if queryResultTTL != 5*time.Minute {
+		t.Fatalf("queryResultTTL = %v, want 5m", queryResultTTL)
+	}
+}
+
+// ============================================
 // startResultCleanup: stop function
 // ============================================
 
