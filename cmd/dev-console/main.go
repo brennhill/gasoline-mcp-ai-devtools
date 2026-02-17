@@ -20,6 +20,7 @@
 package main
 
 import (
+	"bufio"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -30,6 +31,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -265,13 +267,13 @@ const (
 
 // parsedFlags holds the raw parsed flag values before validation.
 type parsedFlags struct {
-	port, maxEntries                                         *int
-	logFile, apiKey, clientID, stateDir, uploadDir           *string
-	showVersion, showHelp, checkSetup, stopMode, connectMode *bool
-	bridgeMode, daemonMode, enableOsUploadAutomation         *bool
-	forceCleanup                                             *bool
-	uploadDenyPatterns                                       multiFlag
-	ssrfAllowedHosts                                         multiFlag
+	port, maxEntries                                                     *int
+	logFile, apiKey, clientID, stateDir, uploadDir                       *string
+	showVersion, showHelp, checkSetup, doctorMode, stopMode, connectMode *bool
+	bridgeMode, daemonMode, enableOsUploadAutomation                     *bool
+	forceCleanup                                                         *bool
+	uploadDenyPatterns                                                   multiFlag
+	ssrfAllowedHosts                                                     multiFlag
 }
 
 // registerFlags defines all CLI flags and returns the parsed values.
@@ -284,6 +286,7 @@ func registerFlags() *parsedFlags {
 	f.showHelp = flag.Bool("help", false, "Show help")
 	f.apiKey = flag.String("api-key", os.Getenv("GASOLINE_API_KEY"), "API key for HTTP authentication (optional, or GASOLINE_API_KEY env)")
 	f.checkSetup = flag.Bool("check", false, "Verify setup: check if port is available and print status")
+	f.doctorMode = flag.Bool("doctor", false, "Run full diagnostics (alias of --check)")
 	f.stopMode = flag.Bool("stop", false, "Stop the running server on the specified port")
 	f.connectMode = flag.Bool("connect", false, "Connect to existing server (multi-client mode)")
 	f.clientID = flag.String("client-id", "", "Override client ID (default: derived from CWD)")
@@ -301,7 +304,7 @@ func registerFlags() *parsedFlags {
 	return f
 }
 
-// handleEarlyExitModes handles --version, --help, --force, --check, --stop, --connect.
+// handleEarlyExitModes handles --version, --help, --force, --check/--doctor, --stop, --connect.
 // Calls os.Exit for any matched mode; returns normally if none matched.
 func handleEarlyExitModes(f *parsedFlags) {
 	if *f.showVersion {
@@ -316,7 +319,7 @@ func handleEarlyExitModes(f *parsedFlags) {
 		runForceCleanup()
 		os.Exit(0)
 	}
-	if *f.checkSetup {
+	if *f.checkSetup || *f.doctorMode {
 		runSetupCheck(*f.port)
 		os.Exit(0)
 	}
@@ -569,9 +572,9 @@ func dispatchMode(server *Server, cfg *serverConfig) {
 	}
 
 	server.logLifecycle("mode_detection", cfg.port, map[string]any{
-		"is_tty":          isTTY,
-		"stdin_mode":      fmt.Sprintf("%v", stdinMode),
-		"has_mcp_config":  mcpConfigPath != "",
+		"is_tty":           isTTY,
+		"stdin_mode":       fmt.Sprintf("%v", stdinMode),
+		"has_mcp_config":   mcpConfigPath != "",
 		"selected_runtime": mode,
 	})
 
@@ -662,6 +665,7 @@ Options:
   --connect              Connect to existing server (multi-client mode)
   --client-id <id>       Override client ID (default: derived from CWD)
   --check                Verify setup (check port availability, print status)
+  --doctor               Run full diagnostics (alias of --check)
   --persist              Deprecated no-op (kept for backwards compatibility)
   --version              Show version
   --help                 Show this help message
@@ -736,6 +740,97 @@ func checkStateDirectory() {
 	fmt.Println()
 }
 
+type fastPathTelemetrySummary struct {
+	total      int
+	success    int
+	failure    int
+	errorCodes map[int]int
+}
+
+func summarizeFastPathTelemetryLog(path string, maxLines int) fastPathTelemetrySummary {
+	summary := fastPathTelemetrySummary{errorCodes: map[int]int{}}
+	// #nosec G304 -- path is deterministic under runtime state dir.
+	f, err := os.Open(path)
+	if err != nil {
+		return summary
+	}
+	defer func() { _ = f.Close() }()
+	lines := make([]string, 0, maxLines)
+	scanner := bufio.NewScanner(f)
+	for scanner.Scan() {
+		line := strings.TrimSpace(scanner.Text())
+		if line == "" {
+			continue
+		}
+		lines = append(lines, line)
+		if len(lines) > maxLines {
+			lines = lines[1:]
+		}
+	}
+	for _, line := range lines {
+		var entry map[string]any
+		if err := json.Unmarshal([]byte(line), &entry); err != nil {
+			continue
+		}
+		if event, _ := entry["event"].(string); event != "bridge_fastpath_resources_read" {
+			continue
+		}
+		summary.total++
+		if ok, _ := entry["success"].(bool); ok {
+			summary.success++
+		} else {
+			summary.failure++
+		}
+		if code, ok := entry["error_code"].(float64); ok {
+			codeInt := int(code)
+			if codeInt != 0 {
+				summary.errorCodes[codeInt]++
+			}
+		}
+	}
+	return summary
+}
+
+func printFastPathTelemetryDiagnostics() {
+	fmt.Print("Checking bridge fast-path telemetry... ")
+	path, err := fastPathResourceReadLogPath()
+	if err != nil {
+		fmt.Println("FAILED")
+		fmt.Printf("  Cannot resolve telemetry log path: %v\n", err)
+		fmt.Println()
+		return
+	}
+
+	if _, statErr := os.Stat(path); statErr != nil {
+		fmt.Println("OK")
+		fmt.Printf("  Telemetry log: %s\n", path)
+		fmt.Println("  Status: no fast-path resource telemetry recorded yet")
+		fmt.Println()
+		return
+	}
+
+	summary := summarizeFastPathTelemetryLog(path, 200)
+	fmt.Println("OK")
+	fmt.Printf("  Telemetry log: %s\n", path)
+	fmt.Printf("  Last 200 reads: total=%d success=%d failure=%d\n", summary.total, summary.success, summary.failure)
+	if len(summary.errorCodes) == 0 {
+		fmt.Println("  Error codes: none")
+		fmt.Println()
+		return
+	}
+	codes := make([]int, 0, len(summary.errorCodes))
+	for code := range summary.errorCodes {
+		codes = append(codes, code)
+	}
+	sort.Ints(codes)
+	parts := make([]string, 0, len(codes))
+	for _, code := range codes {
+		parts = append(parts, fmt.Sprintf("%d=%d", code, summary.errorCodes[code]))
+	}
+	fmt.Printf("  Error codes: %s\n", strings.Join(parts, ", "))
+	fmt.Println()
+}
+
 // runSetupCheck verifies the setup and prints diagnostic information
 func runSetupCheck(port int) {
 	fmt.Println()
@@ -748,6 +843,7 @@ func runSetupCheck(port int) {
 
 	checkPortAvailability(port)
 	checkStateDirectory()
+	printFastPathTelemetryDiagnostics()
 
 	fmt.Println("────────────────────────────────────────────────────────────────")
 	fmt.Println()

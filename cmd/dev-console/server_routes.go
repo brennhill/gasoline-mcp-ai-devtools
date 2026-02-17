@@ -395,6 +395,11 @@ func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request, cap *captu
 			"dropped_count": s.getLogDropCount(),
 		},
 	}
+	successReads, failedReads := snapshotFastPathResourceReadCounters()
+	resp["bridge_fastpath"] = map[string]any{
+		"resources_read_success": successReads,
+		"resources_read_failure": failedReads,
+	}
 	if availVer != "" {
 		resp["available_version"] = availVer
 	}

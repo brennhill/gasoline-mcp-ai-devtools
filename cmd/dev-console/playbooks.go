@@ -1,6 +1,8 @@
 // playbooks.go — MCP resource content: capability index, playbooks, guide, quickstart, and demo scripts.
 package main
 
+import "strings"
+
 // capabilityIndex is the token-efficient capability discovery resource.
 var capabilityIndex = `# Gasoline Capability Index (Token-Efficient)
 
@@ -16,9 +18,9 @@ Use this index for discovery. Load detailed guidance only when task intent match
 
 | Capability | When to Use | Playbook URI |
 |---|---|---|
-| performance_analysis | Regressions, slow pages, bottlenecks, Core Web Vitals | gasoline://playbook/performance/quick |
-| accessibility_audit | WCAG/axe issues, semantic/contrast/navigation checks | gasoline://playbook/accessibility/quick |
-| security_audit | Credential leaks, CSP/cookie/header risks, third-party origin risk | gasoline://playbook/security/quick |
+| performance | Regressions, slow pages, bottlenecks, Core Web Vitals | gasoline://playbook/performance/quick |
+| accessibility | WCAG/axe issues, semantic/contrast/navigation checks | gasoline://playbook/accessibility/quick |
+| security | Credential leaks, CSP/cookie/header risks, third-party origin risk | gasoline://playbook/security/quick |
 | api_validation | Contract mismatches, malformed responses, endpoint drift | See gasoline://guide |
 
 ## Available Playbook Variants
@@ -359,4 +361,72 @@ Steps:
 Expected:
 - Highlight unexpected origins for review
 `,
+}
+
+// canonicalPlaybookCapability normalizes capability aliases to canonical playbook keys.
+func canonicalPlaybookCapability(capability string) string {
+	switch strings.ToLower(strings.TrimSpace(capability)) {
+	case "performance", "performance_analysis":
+		return "performance"
+	case "accessibility", "accessibility_audit":
+		return "accessibility"
+	case "security", "security_audit":
+		return "security"
+	default:
+		return ""
+	}
+}
+
+// resolvePlaybookKey resolves "{capability}/{level}" and bare "{capability}" to canonical keys.
+func resolvePlaybookKey(raw string) string {
+	trimmed := strings.Trim(strings.ToLower(strings.TrimSpace(raw)), "/")
+	if trimmed == "" {
+		return ""
+	}
+	parts := strings.Split(trimmed, "/")
+	switch len(parts) {
+	case 1:
+		capability := canonicalPlaybookCapability(parts[0])
+		if capability == "" {
+			return ""
+		}
+		return capability + "/quick"
+	case 2:
+		capability := canonicalPlaybookCapability(parts[0])
+		level := strings.TrimSpace(parts[1])
+		if capability == "" || level == "" {
+			return ""
+		}
+		return capability + "/" + level
+	default:
+		return ""
+	}
+}
+
+// resolveResourceContent resolves a gasoline resource URI into canonical URI + markdown.
+func resolveResourceContent(uri string) (string, string, bool) {
+	switch {
+	case uri == "gasoline://capabilities":
+		return uri, capabilityIndex, true
+	case uri == "gasoline://guide":
+		return uri, guideContent, true
+	case uri == "gasoline://quickstart":
+		return uri, quickstartContent, true
+	case strings.HasPrefix(uri, "gasoline://playbook/"):
+		key := resolvePlaybookKey(strings.TrimPrefix(uri, "gasoline://playbook/"))
+		text, ok := playbooks[key]
+		if !ok {
+			return "", "", false
+		}
+		return "gasoline://playbook/" + key, text, true
+	case strings.HasPrefix(uri, "gasoline://demo/"):
+		name := strings.TrimPrefix(uri, "gasoline://demo/")
+		text, ok := demoScripts[name]
+		if !ok {
+			return "", "", false
+		}
+		return uri, text, true
+	default:
+		return "", "", false
+	}
 }

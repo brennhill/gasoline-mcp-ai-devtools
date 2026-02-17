@@ -296,27 +296,7 @@ func (h *MCPHandler) handleInitialize(req JSONRPCRequest) JSONRPCResponse {
 }
 
 func (h *MCPHandler) handleResourcesList(req JSONRPCRequest) JSONRPCResponse {
-	resources := []MCPResource{
-		{
-			URI:         "gasoline://capabilities",
-			Name:        "Gasoline Capability Index",
-			Description: "Compact capability index with task-to-playbook routing hints",
-			MimeType:    "text/markdown",
-		},
-		{
-			URI:         "gasoline://guide",
-			Name:        "Gasoline Usage Guide",
-			Description: "How to use Gasoline MCP tools for browser debugging",
-			MimeType:    "text/markdown",
-		},
-		{
-			URI:         "gasoline://quickstart",
-			Name:        "Gasoline MCP Quickstart",
-			Description: "Short, canonical MCP call examples and workflows",
-			MimeType:    "text/markdown",
-		},
-	}
-	result := MCPResourcesListResult{Resources: resources}
+	result := MCPResourcesListResult{Resources: mcpResources()}
 	// Error impossible: MCPResourcesListResult is a simple struct with no circular refs or unsupported types
 	resultJSON, _ := json.Marshal(result)
 	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: resultJSON}
@@ -337,44 +317,8 @@ func (h *MCPHandler) handleResourcesRead(req JSONRPCRequest) JSONRPCResponse {
 		}
 	}
 
-	// Resolve URI to content. Content is defined in playbooks.go as package-level vars.
-	var text string
-	switch {
-	case params.URI == "gasoline://capabilities":
-		text = capabilityIndex
-	case params.URI == "gasoline://guide":
-		text = guideContent
-	case params.URI == "gasoline://quickstart":
-		text = quickstartContent
-	case strings.HasPrefix(params.URI, "gasoline://playbook/"):
-		key := strings.TrimPrefix(params.URI, "gasoline://playbook/")
-		var ok bool
-		text, ok = playbooks[key]
-		if !ok {
-			return JSONRPCResponse{
-				JSONRPC: "2.0",
-				ID:      req.ID,
-				Error: &JSONRPCError{
-					Code:    -32002,
-					Message: "Resource not found: " + params.URI,
-				},
-			}
-		}
-	case strings.HasPrefix(params.URI, "gasoline://demo/"):
-		name := strings.TrimPrefix(params.URI, "gasoline://demo/")
-		var ok bool
-		text, ok = demoScripts[name]
-		if !ok {
-			return JSONRPCResponse{
-				JSONRPC: "2.0",
-				ID:      req.ID,
-				Error: &JSONRPCError{
-					Code:    -32002,
-					Message: "Resource not found: " + params.URI,
-				},
-			}
-		}
-	default:
+	canonicalURI, text, ok := resolveResourceContent(params.URI)
+	if !ok {
 		return JSONRPCResponse{
 			JSONRPC: "2.0",
 			ID:      req.ID,
@@ -386,7 +330,7 @@ func (h *MCPHandler) handleResourcesRead(req JSONRPCRequest) JSONRPCResponse {
 	}
 
 	result := MCPResourcesReadResult{Contents: []MCPResourceContent{
-		{URI: params.URI, MimeType: "text/markdown", Text: text},
+		{URI: canonicalURI, MimeType: "text/markdown", Text: text},
 	}}
 	// Error impossible: MCPResourceContentResult is a simple struct with no circular refs or unsupported types
 	resultJSON, _ := json.Marshal(result)
@@ -394,20 +338,7 @@ func (h *MCPHandler) handleResourcesRead(req JSONRPCRequest) JSONRPCResponse {
 }
 
 func (h *MCPHandler) handleResourcesTemplatesList(req JSONRPCRequest) JSONRPCResponse {
-	result := MCPResourceTemplatesListResult{ResourceTemplates: []any{
-		map[string]any{
-			"uriTemplate": "gasoline://playbook/{capability}/{level}",
-			"name":        "Gasoline Capability Playbook",
-			"description": "On-demand, token-efficient playbooks. Start with quick; use full for deep workflows.",
-			"mimeType":    "text/markdown",
-		},
-		map[string]any{
-			"uriTemplate": "gasoline://demo/{name}",
-			"name":        "Gasoline Demo Script",
-			"description": "Demo scripts for websockets, annotations, recording, and dependency vetting",
-			"mimeType":    "text/markdown",
-		},
-	}}
+	result := MCPResourceTemplatesListResult{ResourceTemplates: mcpResourceTemplates()}
 	// Error impossible: MCPResourceTemplatesListResult is a simple struct with no circular refs or unsupported types
 	resultJSON, _ := json.Marshal(result)
 	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: resultJSON}
