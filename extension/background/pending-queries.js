@@ -8,7 +8,7 @@ import * as eventListeners from './event-listeners.js';
 import * as index from './index.js';
 import { DebugCategory } from './debug.js';
 import { saveStateSnapshot, loadStateSnapshot, listStateSnapshots, deleteStateSnapshot } from './message-handlers.js';
-import { executeDOMAction } from './dom-primitives.js';
+import { executeDOMAction } from './dom-dispatch.js';
 import { executeUpload } from './upload-handler.js';
 import { canTakeScreenshot, recordScreenshot } from './state-manager.js';
 import { startRecording, stopRecording } from './recording.js';

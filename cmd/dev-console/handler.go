@@ -36,7 +36,7 @@ Key patterns:
 - Error debugging: start with observe(what="error_bundles") for pre-assembled context per error (error + network + actions + logs).
 - Performance: interact(action="navigate"|"refresh") auto-includes perf_diff. Add analyze=true to any interact action for profiling.
 - Noise filtering: use configure(action="noise_rule", noise_action="auto_detect") to suppress recurring noise.
-- For detailed docs, read gasoline://guide. For quick examples, read gasoline://quickstart.`
+- For routing help, read gasoline://capabilities. For detailed docs, read gasoline://guide. For quick examples, read gasoline://quickstart.`
 
 // MCPHandler handles MCP protocol messages
 type MCPHandler struct {
@@ -296,21 +296,7 @@ func (h *MCPHandler) handleInitialize(req JSONRPCRequest) JSONRPCResponse {
 }
 
 func (h *MCPHandler) handleResourcesList(req JSONRPCRequest) JSONRPCResponse {
-	resources := []MCPResource{
-		{
-			URI:         "gasoline://guide",
-			Name:        "Gasoline Usage Guide",
-			Description: "How to use Gasoline MCP tools for browser debugging",
-			MimeType:    "text/markdown",
-		},
-		{
-			URI:         "gasoline://quickstart",
-			Name:        "Gasoline MCP Quickstart",
-			Description: "Short, canonical MCP call examples and workflows",
-			MimeType:    "text/markdown",
-		},
-	}
-	result := MCPResourcesListResult{Resources: resources}
+	result := MCPResourcesListResult{Resources: mcpResources()}
 	// Error impossible: MCPResourcesListResult is a simple struct with no circular refs or unsupported types
 	resultJSON, _ := json.Marshal(result)
 	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: resultJSON}
@@ -331,7 +317,8 @@ func (h *MCPHandler) handleResourcesRead(req JSONRPCRequest) JSONRPCResponse {
 		}
 	}
 
-	if params.URI != "gasoline://guide" && params.URI != "gasoline://quickstart" && !strings.HasPrefix(params.URI, "gasoline://demo/") {
+	canonicalURI, text, ok := resolveResourceContent(params.URI)
+	if !ok {
 		return JSONRPCResponse{
 			JSONRPC: "2.0",
 			ID:      req.ID,
@@ -342,205 +329,16 @@ func (h *MCPHandler) handleResourcesRead(req JSONRPCRequest) JSONRPCResponse {
 		}
 	}
 
-	guide := `# Gasoline MCP Tools
-
-Browser observability for AI coding agents. 5 tools for real-time browser telemetry.
-
-## Quick Reference
-
-| Tool | Purpose | Key Parameters |
-|------|---------|----------------|
-| observe | Read passive browser buffers | what: errors, logs, extension_logs, network_waterfall, network_bodies, websocket_events, websocket_status, actions, vitals, page, tabs, pilot, timeline, error_bundles, screenshot, command_result, pending_commands, failed_commands, saved_videos, recordings, recording_actions, log_diff_report |
-| analyze | Trigger active analysis (async) | what: dom, accessibility, performance, security_audit, third_party_audit, link_health, link_validation, page_summary, error_clusters, history, api_validation, annotations, annotation_detail, draw_history, draw_session |
-| generate | Create artifacts from captured data | format: test, reproduction, pr_summary, sarif, har, csp, sri, visual_test, annotation_report, annotation_issues, test_from_context, test_heal, test_classify |
-| configure | Session settings and utilities | action: health, store, load, noise_rule, clear, streaming, test_boundary_start, test_boundary_end, recording_start, recording_stop, playback, log_diff |
-| interact | Browser automation (needs AI Web Pilot) | action: click, type, select, check, navigate, refresh, execute_js, highlight, subtitle, key_press, scroll_to, wait_for, get_text, get_value, get_attribute, set_attribute, focus, list_interactive, save_state, load_state, list_states, delete_state, record_start, record_stop, upload, draw_mode_start, back, forward, new_tab, screenshot (alias of observe what=screenshot) |
-
-## Key Patterns
-
-### Check Extension Status First
-Always verify the extension is connected before debugging:
-  {"tool":"configure","arguments":{"action":"health"}}
-If extension_connected is false, ask the user to click "Track This Tab" in the extension popup.
-
-### Async Commands (analyze tool)
-analyze dispatches queries to the extension asynchronously. Poll for results:
-  1. {"tool":"analyze","arguments":{"what":"accessibility"}}  -> returns correlation_id
-  2. {"tool":"observe","arguments":{"what":"command_result","correlation_id":"..."}}
-
-### Pagination (observe tool)
-Responses include cursors in metadata. Pass back for next page:
-  {"tool":"observe","arguments":{"what":"logs","after_cursor":"...","limit":50}}
-Use restart_on_eviction=true if a cursor expires.
-
-## Common Workflows
-
-  // See errors with surrounding context (network + actions + logs)
-  {"tool":"observe","arguments":{"what":"error_bundles"}}
-
-  // Check failed network requests
-  {"tool":"observe","arguments":{"what":"network_waterfall","status_min":400}}
-
-  // Run accessibility audit (async)
-  {"tool":"analyze","arguments":{"what":"accessibility"}}
-
-  // Query DOM elements (async)
-  {"tool":"analyze","arguments":{"what":"dom","selector":".error-message"}}
-
-  // Generate Playwright test from session
-  {"tool":"generate","arguments":{"format":"test","test_name":"user_login"}}
-
-  // Check Web Vitals (LCP, CLS, INP, FCP)
-  {"tool":"observe","arguments":{"what":"vitals"}}
-
-  // Navigate and measure performance (auto perf_diff)
-  {"tool":"interact","arguments":{"action":"navigate","url":"https://example.com"}}
-
-  // Suppress noisy console errors
-  {"tool":"configure","arguments":{"action":"noise_rule","noise_action":"auto_detect"}}
-
-## Tips
-
-- Start with configure(action:"health") to verify extension is connected
-- Use observe(what:"error_bundles") instead of raw errors — includes surrounding context
-- Use observe(what:"page") to confirm which URL the browser is on
-- interact actions require the AI Web Pilot extension feature to be enabled
-- interact navigate and refresh automatically include performance diff metrics
-- Data comes from the active tracked browser tab
-`
-
-	quickstart := `# Gasoline MCP Quickstart
-
-## 1. Health Check
-{"tool":"configure","arguments":{"action":"health"}}
-
-## 2. Confirm Tracked Page
-{"tool":"observe","arguments":{"what":"page"}}
-
-## 3. Collect Errors + Context
-{"tool":"observe","arguments":{"what":"error_bundles"}}
-
-## 4. Network Failures
-{"tool":"observe","arguments":{"what":"network_waterfall","status_min":400}}
-
-## 5. WebSocket Status
-{"tool":"observe","arguments":{"what":"websocket_status"}}
-
-## 6. Accessibility Audit (Async)
-{"tool":"analyze","arguments":{"what":"accessibility"}}
-{"tool":"observe","arguments":{"what":"command_result","correlation_id":"..."}}
-
-## 7. DOM Query (Async)
-{"tool":"analyze","arguments":{"what":"dom","selector":".error-message"}}
-{"tool":"observe","arguments":{"what":"command_result","correlation_id":"..."}}
-
-## 8. Performance Check
-{"tool":"interact","arguments":{"action":"navigate","url":"https://example.com"}}
-
-## 9. Start Recording
-{"tool":"configure","arguments":{"action":"recording_start","name":"demo-run"}}
-
-## 10. Stop Recording
-{"tool":"configure","arguments":{"action":"recording_stop","recording_id":"..."}}
-`
-
-	demoScripts := map[string]string{
-		"ws": `# Demo: WebSocket Debugging
-
-Goal: show mismatched message format and where to fix it.
-
-Steps:
-1. {"tool":"observe","arguments":{"what":"websocket_status"}}
-2. {"tool":"observe","arguments":{"what":"websocket_events","limit":20}}
-3. {"tool":"analyze","arguments":{"what":"api_validation","operation":"analyze","ignore_endpoints":["/socket"]}}
-
-Expected:
-- Connection OK, but message schema warnings
-- Identify client-side parsing path for fix
-`,
-		"annotations": `# Demo: Usability Annotations
-
-Goal: highlight a layout issue and collect feedback.
-
-Steps:
-1. {"tool":"interact","arguments":{"action":"draw_mode_start","session":"demo-ux"}}
-2. Ask user to annotate oversized image and desired size.
-3. {"tool":"analyze","arguments":{"what":"annotations","session":"demo-ux","wait":true}}
-
-Expected:
-- Annotation list with coordinates and notes
-`,
-		"recording": `# Demo: Flow Recording
-
-Goal: show record → action → stop workflow.
-
-Steps:
-1. {"tool":"configure","arguments":{"action":"recording_start","name":"demo-flow"}}
-2. {"tool":"interact","arguments":{"action":"navigate","url":"http://localhost:xxxx"}}
-3. {"tool":"configure","arguments":{"action":"recording_stop","recording_id":"..."}}
-
-Expected:
-- Saved recording ID and playback instructions
-`,
-		"dependencies": `# Demo: Dependency Vetting
-
-Goal: identify unexpected third-party origins.
-
-Steps:
-1. {"tool":"analyze","arguments":{"what":"third_party_audit","first_party_origins":["http://localhost:xxxx"]}}
-2. {"tool":"observe","arguments":{"what":"network_waterfall","limit":50}}
-
-Expected:
-- Highlight unexpected origins for review
-`,
-	}
-
-	result := MCPResourcesReadResult{Contents: []MCPResourceContent{}}
-	if params.URI == "gasoline://guide" {
-		result.Contents = append(result.Contents, MCPResourceContent{
-			URI:      "gasoline://guide",
-			MimeType: "text/markdown",
-			Text:     guide,
-		})
-	} else if params.URI == "gasoline://quickstart" {
-		result.Contents = append(result.Contents, MCPResourceContent{
-			URI:      "gasoline://quickstart",
-			MimeType: "text/markdown",
-			Text:     quickstart,
-		})
-	} else {
-		name := strings.TrimPrefix(params.URI, "gasoline://demo/")
-		script, ok := demoScripts[name]
-		if !ok {
-			return JSONRPCResponse{
-				JSONRPC: "2.0",
-				ID:      req.ID,
-				Error: &JSONRPCError{
-					Code:    -32002,
-					Message: "Resource not found: " + params.URI,
-				},
-			}
-		}
-		result.Contents = append(result.Contents, MCPResourceContent{
-			URI:      params.URI,
-			MimeType: "text/markdown",
-			Text:     script,
-		})
-	}
+	result := MCPResourcesReadResult{Contents: []MCPResourceContent{
+		{URI: canonicalURI, MimeType: "text/markdown", Text: text},
+	}}
 	// Error impossible: MCPResourceContentResult is a simple struct with no circular refs or unsupported types
 	resultJSON, _ := json.Marshal(result)
 	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: resultJSON}
 }
 
 func (h *MCPHandler) handleResourcesTemplatesList(req JSONRPCRequest) JSONRPCResponse {
-	result := MCPResourceTemplatesListResult{ResourceTemplates: []any{
-		map[string]any{
-			"uriTemplate": "gasoline://demo/{name}",
-			"name":        "Gasoline Demo Script",
-			"description": "Demo scripts for websockets, annotations, recording, and dependency vetting",
-			"mimeType":    "text/markdown",
-		},
-	}}
+	result := MCPResourceTemplatesListResult{ResourceTemplates: mcpResourceTemplates()}
 	// Error impossible: MCPResourceTemplatesListResult is a simple struct with no circular refs or unsupported types
 	resultJSON, _ := json.Marshal(result)
 	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: resultJSON}

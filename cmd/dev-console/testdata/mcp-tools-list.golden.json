@@ -401,11 +401,61 @@
         },
         "failure": {
           "description": "Single test failure (test_classify failure)",
+          "properties": {
+            "duration_ms": {
+              "description": "Test duration in milliseconds",
+              "type": "number"
+            },
+            "error": {
+              "description": "Error message",
+              "type": "string"
+            },
+            "screenshot": {
+              "description": "Base64-encoded screenshot (optional)",
+              "type": "string"
+            },
+            "test_name": {
+              "description": "Name of the failing test",
+              "type": "string"
+            },
+            "trace": {
+              "description": "Stack trace",
+              "type": "string"
+            }
+          },
+          "required": [
+            "error"
+          ],
           "type": "object"
         },
         "failures": {
           "description": "Multiple test failures (test_classify batch)",
           "items": {
+            "properties": {
+              "duration_ms": {
+                "description": "Test duration in milliseconds",
+                "type": "number"
+              },
+              "error": {
+                "description": "Error message",
+                "type": "string"
+              },
+              "screenshot": {
+                "description": "Base64-encoded screenshot (optional)",
+                "type": "string"
+              },
+              "test_name": {
+                "description": "Name of the failing test",
+                "type": "string"
+              },
+              "trace": {
+                "description": "Stack trace",
+                "type": "string"
+              }
+            },
+            "required": [
+              "error"
+            ],
             "type": "object"
           },
           "type": "array"

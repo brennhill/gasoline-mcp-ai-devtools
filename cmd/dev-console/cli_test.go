@@ -33,6 +33,7 @@ func TestIsCLIMode(t *testing.T) {
 		{"flag --stop", []string{"--stop"}, false},
 		{"flag --force", []string{"--force"}, false},
 		{"flag --check", []string{"--check"}, false},
+		{"flag --doctor", []string{"--doctor"}, false},
 		{"flag --connect", []string{"--connect"}, false},
 		{"empty args", []string{}, false},
 		{"unknown word", []string{"foobar"}, false},
@@ -468,13 +469,13 @@ func TestParseCLIArgsDispatch(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		name     string
-		tool     string
-		action   string
-		args     []string
-		wantKey  string
-		wantVal  any
-		wantErr  bool
+		name    string
+		tool    string
+		action  string
+		args    []string
+		wantKey string
+		wantVal any
+		wantErr bool
 	}{
 		{"observe errors", "observe", "errors", nil, "what", "errors", false},
 		{"generate har", "generate", "har", nil, "format", "har", false},

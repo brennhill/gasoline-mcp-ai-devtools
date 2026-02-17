@@ -157,7 +157,7 @@ func (h *ToolHandler) toolQueryDOM(req JSONRPCRequest, args json.RawMessage) JSO
 
 const pageSummaryScript = `(function () {
   function cleanText(value, maxLen) {
-    var text = (value || '').replace(/\s+/g, ' ').trim();
+    var text = (value || '').replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '').replace(/\s+/g, ' ').trim();
     if (maxLen > 0 && text.length > maxLen) {
       return text.slice(0, maxLen);
     }
