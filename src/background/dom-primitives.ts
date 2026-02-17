@@ -62,6 +62,107 @@ export function domPrimitive(
   }
 ): DOMResult | Promise<DOMResult> | { success: boolean; elements: unknown[] } {
   // ---------------------------------------------------------------
+  // Shadow DOM: deep traversal utilities
+  // ---------------------------------------------------------------
+
+  function getShadowRoot(el: Element): ShadowRoot | null {
+    return el.shadowRoot ?? null
+    // Closed root support: see feat/closed-shadow-capture branch
+  }
+
+  function querySelectorDeep(selector: string, root: ParentNode = document): Element | null {
+    const fast = root.querySelector(selector)
+    if (fast) return fast
+    return querySelectorDeepWalk(selector, root)
+  }
+
+  function querySelectorDeepWalk(selector: string, root: ParentNode, depth: number = 0): Element | null {
+    if (depth > 10) return null
+    // Navigate to children: handle Document (has body/documentElement) and Element/ShadowRoot (has children)
+    const children = 'children' in root
+      ? (root as Element).children
+      : (root as Document).body?.children || (root as Document).documentElement?.children
+    if (!children) return null
+    for (let i = 0; i < children.length; i++) {
+      const child = children[i]!
+      const shadow = getShadowRoot(child)
+      if (shadow) {
+        const match = shadow.querySelector(selector)
+        if (match) return match
+        const deep = querySelectorDeepWalk(selector, shadow, depth + 1)
+        if (deep) return deep
+      }
+      if (child.children.length > 0) {
+        const deep = querySelectorDeepWalk(selector, child, depth + 1)
+        if (deep) return deep
+      }
+    }
+    return null
+  }
+
+  function querySelectorAllDeep(
+    selector: string,
+    root: ParentNode = document,
+    results: Element[] = [],
+    depth: number = 0
+  ): Element[] {
+    if (depth > 10) return results
+    results.push(...Array.from(root.querySelectorAll(selector)))
+    const children = 'children' in root
+      ? (root as Element).children
+      : (root as Document).body?.children || (root as Document).documentElement?.children
+    if (!children) return results
+    for (let i = 0; i < children.length; i++) {
+      const child = children[i]!
+      const shadow = getShadowRoot(child)
+      if (shadow) {
+        querySelectorAllDeep(selector, shadow, results, depth + 1)
+      }
+    }
+    return results
+  }
+
+  function resolveDeepCombinator(selector: string): Element | null {
+    const parts = selector.split(' >>> ')
+    if (parts.length <= 1) return null
+
+    let current: ParentNode = document
+    for (let i = 0; i < parts.length; i++) {
+      const part = parts[i]!.trim()
+      if (i < parts.length - 1) {
+        const host = querySelectorDeep(part, current)
+        if (!host) return null
+        const shadow = getShadowRoot(host)
+        if (!shadow) return null
+        current = shadow
+      } else {
+        return querySelectorDeep(part, current)
+      }
+    }
+    return null
+  }
+
+  // Build >>> selector for an element inside a shadow root
+  function buildShadowSelector(el: Element, htmlEl: HTMLElement, fallbackSelector: string): string | null {
+    const rootNode = el.getRootNode()
+    if (!(rootNode instanceof ShadowRoot)) return null
+
+    const parts: string[] = []
+    let node: Element = el
+    let root: Node = rootNode
+    while (root instanceof ShadowRoot) {
+      const inner = buildUniqueSelector(node, node as HTMLElement, node.tagName.toLowerCase())
+      parts.unshift(inner)
+      node = root.host
+      root = node.getRootNode()
+    }
+    // Add the outermost host selector
+    const hostSelector = buildUniqueSelector(node, node as HTMLElement, node.tagName.toLowerCase())
+    parts.unshift(hostSelector)
+    return parts.join(' >>> ')
+  }
+
+  // ---------------------------------------------------------------
   // Selector resolver: CSS or semantic (text=, role=, placeholder=, label=, aria-label=)
   // All semantic selectors prefer visible elements over hidden ones.
   // ---------------------------------------------------------------
@@ -69,14 +170,17 @@ export function domPrimitive(
   // Visibility check: skip display:none, visibility:hidden, zero-size elements
   function isVisible(el: Element): boolean {
     if (!(el instanceof HTMLElement)) return true
-    if (el.offsetParent === null && el.style.position !== 'fixed' && el.style.position !== 'sticky') return false
     const style = getComputedStyle(el)
     if (style.visibility === 'hidden' || style.display === 'none') return false
+    if (el.offsetParent === null && style.position !== 'fixed' && style.position !== 'sticky') {
+      const rect = el.getBoundingClientRect()
+      if (rect.width === 0 && rect.height === 0) return false
+    }
     return true
   }
 
-  // Return first visible match from a NodeList, falling back to first match
-  function firstVisible(els: NodeListOf<Element>): Element | null {
+  // Return first visible match from a list, falling back to first match
+  function firstVisible(els: NodeListOf<Element> | Element[]): Element | null {
     let fallback: Element | null = null
     for (const el of els) {
       if (!fallback) fallback = el
@@ -86,24 +190,41 @@ export function domPrimitive(
   }
 
   function resolveByText(searchText: string): Element | null {
-    const walker = document.createTreeWalker(document.body || document.documentElement, NodeFilter.SHOW_TEXT)
     let fallback: Element | null = null
-    while (walker.nextNode()) {
-      const node = walker.currentNode
-      if (node.textContent && node.textContent.trim().includes(searchText)) {
-        const parent = node.parentElement
-        if (!parent) continue
-        const interactive = parent.closest('a, button, [role="button"], [role="link"], label, summary')
-        const target = interactive || parent
-        if (!fallback) fallback = target
-        if (isVisible(target)) return target
+
+    function walkScope(root: ParentNode): Element | null {
+      const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT)
+      while (walker.nextNode()) {
+        const node = walker.currentNode
+        if (node.textContent && node.textContent.trim().includes(searchText)) {
+          const parent = node.parentElement
+          if (!parent) continue
+          const interactive = parent.closest('a, button, [role="button"], [role="link"], label, summary')
+          const target = interactive || parent
+          if (!fallback) fallback = target
+          if (isVisible(target)) return target
+        }
       }
+      // Recurse into shadow roots
+      const children = 'children' in root ? (root as Element).children : undefined
+      if (children) {
+        for (let i = 0; i < children.length; i++) {
+          const child = children[i]!
+          const shadow = getShadowRoot(child)
+          if (shadow) {
+            const result = walkScope(shadow)
+            if (result) return result
+          }
+        }
+      }
+      return null
     }
-    return fallback
+
+    return walkScope(document.body || document.documentElement) || fallback
   }
 
   function resolveByLabel(labelText: string): Element | null {
-    const labels = document.querySelectorAll('label')
+    const labels = querySelectorAllDeep('label')
     for (const label of labels) {
       if (label.textContent && label.textContent.trim().includes(labelText)) {
         const forAttr = label.getAttribute('for')
@@ -120,9 +241,9 @@ export function domPrimitive(
   }
 
   function resolveByAriaLabel(al: string): Element | null {
-    const exact = document.querySelectorAll(`[aria-label="${CSS.escape(al)}"]`)
+    const exact = querySelectorAllDeep(`[aria-label="${CSS.escape(al)}"]`)
     if (exact.length > 0) return firstVisible(exact)
-    const all = document.querySelectorAll('[aria-label]')
+    const all = querySelectorAllDeep('[aria-label]')
     let fallback: Element | null = null
     for (const el of all) {
       const label = el.getAttribute('aria-label') || ''
@@ -137,8 +258,8 @@ export function domPrimitive(
   // Semantic selector prefix resolvers
   const selectorResolvers: [string, (value: string) => Element | null][] = [
     ['text=', (v) => resolveByText(v)],
-    ['role=', (v) => firstVisible(document.querySelectorAll(`[role="${CSS.escape(v)}"]`))],
-    ['placeholder=', (v) => firstVisible(document.querySelectorAll(`[placeholder="${CSS.escape(v)}"]`))],
+    ['role=', (v) => firstVisible(querySelectorAllDeep(`[role="${CSS.escape(v)}"]`))],
+    ['placeholder=', (v) => firstVisible(querySelectorAllDeep(`[placeholder="${CSS.escape(v)}"]`))],
     ['label=', (v) => resolveByLabel(v)],
     ['aria-label=', (v) => resolveByAriaLabel(v)]
   ]
@@ -146,11 +267,15 @@ export function domPrimitive(
   function resolveElement(sel: string): Element | null {
     if (!sel) return null
 
+    // Deep combinator: host >>> inner
+    if (sel.includes(' >>> ')) return resolveDeepCombinator(sel)
+
     for (const [prefix, resolver] of selectorResolvers) {
       if (sel.startsWith(prefix)) return resolver(sel.slice(prefix.length))
     }
 
-    return document.querySelector(sel)
+    // Fast path, then deep fallback
+    return querySelectorDeep(sel)
   }
 
   function buildUniqueSelector(el: Element, htmlEl: HTMLElement, fallbackSelector: string): string {
@@ -195,7 +320,7 @@ export function domPrimitive(
     }[] = []
 
     for (const cssSelector of interactiveSelectors) {
-      const matches = document.querySelectorAll(cssSelector)
+      const matches = querySelectorAllDeep(cssSelector)
       for (const el of matches) {
         if (seen.has(el)) continue
         seen.add(el)
@@ -204,7 +329,9 @@ export function domPrimitive(
         const rect = htmlEl.getBoundingClientRect()
         const visible = rect.width > 0 && rect.height > 0 && htmlEl.offsetParent !== null
 
-        const uniqueSelector = buildUniqueSelector(el, htmlEl, cssSelector)
+        // Use >>> selector for shadow DOM elements, regular selector otherwise
+        const shadowSel = buildShadowSelector(el, htmlEl, cssSelector)
+        const uniqueSelector = shadowSel || buildUniqueSelector(el, htmlEl, cssSelector)
 
         // Build human-readable label
         const label =
@@ -564,24 +691,120 @@ export function domPrimitive(
 // #lizard forgives
 export function domWaitFor(selector: string, timeoutMs: number): Promise<DOMResult> {
   // ---------------------------------------------------------------
-  // Inline selector resolver (must be self-contained for chrome.scripting)
+  // Inline shadow DOM helpers (duplicated from domPrimitive — required
+  // because chrome.scripting.executeScript serializes each function
+  // independently, no shared closures)
   // ---------------------------------------------------------------
   // #lizard forgives
-  function resolveByTextSimple(searchText: string): Element | null {
-    const walker = document.createTreeWalker(document.body || document.documentElement, NodeFilter.SHOW_TEXT)
-    while (walker.nextNode()) {
-      const node = walker.currentNode
-      if (node.textContent && node.textContent.trim().includes(searchText)) {
-        const parent = node.parentElement
-        if (!parent) continue
-        return parent.closest('a, button, [role="button"], [role="link"], label, summary') || parent
+
+  function getShadowRoot(el: Element): ShadowRoot | null {
+    return el.shadowRoot ?? null
+    // Closed root support: see feat/closed-shadow-capture branch
+  }
+
+  function querySelectorDeepWalk(sel: string, root: ParentNode, depth = 0): Element | null {
+    if (depth > 10) return null
+    const ch = 'children' in root
+      ? (root as Element).children
+      : (root as Document).body?.children || (root as Document).documentElement?.children
+    if (!ch) return null
+    for (let i = 0; i < ch.length; i++) {
+      const child = ch[i]!
+      const shadow = getShadowRoot(child)
+      if (shadow) {
+        const match = shadow.querySelector(sel)
+        if (match) return match
+        const deep = querySelectorDeepWalk(sel, shadow, depth + 1)
+        if (deep) return deep
+      }
+      if (child.children.length > 0) {
+        const deep = querySelectorDeepWalk(sel, child, depth + 1)
+        if (deep) return deep
       }
     }
     return null
   }
 
+  function querySelectorDeep(sel: string, root: ParentNode = document): Element | null {
+    const fast = root.querySelector(sel)
+    if (fast) return fast
+    return querySelectorDeepWalk(sel, root)
+  }
+
+  function querySelectorAllDeep(
+    sel: string,
+    root: ParentNode = document,
+    results: Element[] = [],
+    depth = 0
+  ): Element[] {
+    if (depth > 10) return results
+    results.push(...Array.from(root.querySelectorAll(sel)))
+    const ch = 'children' in root
+      ? (root as Element).children
+      : (root as Document).body?.children || (root as Document).documentElement?.children
+    if (!ch) return results
+    for (let i = 0; i < ch.length; i++) {
+      const child = ch[i]!
+      const shadow = getShadowRoot(child)
+      if (shadow) {
+        querySelectorAllDeep(sel, shadow, results, depth + 1)
+      }
+    }
+    return results
+  }
+
+  function resolveDeepCombinator(sel: string): Element | null {
+    const parts = sel.split(' >>> ')
+    if (parts.length <= 1) return null
+    let current: ParentNode = document
+    for (let i = 0; i < parts.length; i++) {
+      const part = parts[i]!.trim()
+      if (i < parts.length - 1) {
+        const host = querySelectorDeep(part, current)
+        if (!host) return null
+        const shadow = getShadowRoot(host)
+        if (!shadow) return null
+        current = shadow
+      } else {
+        return querySelectorDeep(part, current)
+      }
+    }
+    return null
+  }
+
+  // ---------------------------------------------------------------
+  // Inline selector resolvers (shadow-aware)
+  // ---------------------------------------------------------------
+
+  function resolveByTextSimple(searchText: string): Element | null {
+    function walkScope(root: ParentNode): Element | null {
+      const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT)
+      while (walker.nextNode()) {
+        const node = walker.currentNode
+        if (node.textContent && node.textContent.trim().includes(searchText)) {
+          const parent = node.parentElement
+          if (!parent) continue
+          return parent.closest('a, button, [role="button"], [role="link"], label, summary') || parent
+        }
+      }
+      const ch = 'children' in root ? (root as Element).children : undefined
+      if (ch) {
+        for (let i = 0; i < ch.length; i++) {
+          const child = ch[i]!
+          const shadow = getShadowRoot(child)
+          if (shadow) {
+            const result = walkScope(shadow)
+            if (result) return result
+          }
+        }
+      }
+      return null
+    }
+    return walkScope(document.body || document.documentElement)
+  }
+
   function resolveByLabelSimple(labelText: string): Element | null {
-    for (const label of document.querySelectorAll('label')) {
+    for (const label of querySelectorAllDeep('label')) {
       if (label.textContent && label.textContent.trim().includes(labelText)) {
         const forAttr = label.getAttribute('for')
         if (forAttr) {
@@ -596,18 +819,19 @@ export function domWaitFor(selector: string, timeoutMs: number): Promise<DOMResu
 
   const waitResolvers: [string, (value: string) => Element | null][] = [
     ['text=', (v) => resolveByTextSimple(v)],
-    ['role=', (v) => document.querySelector(`[role="${CSS.escape(v)}"]`)],
-    ['placeholder=', (v) => document.querySelector(`[placeholder="${CSS.escape(v)}"]`)],
-    ['aria-label=', (v) => document.querySelector(`[aria-label="${CSS.escape(v)}"]`)],
+    ['role=', (v) => querySelectorDeep(`[role="${CSS.escape(v)}"]`)],
+    ['placeholder=', (v) => querySelectorDeep(`[placeholder="${CSS.escape(v)}"]`)],
+    ['aria-label=', (v) => querySelectorDeep(`[aria-label="${CSS.escape(v)}"]`)],
     ['label=', (v) => resolveByLabelSimple(v)]
   ]
 
   function resolveElement(sel: string): Element | null {
     if (!sel) return null
+    if (sel.includes(' >>> ')) return resolveDeepCombinator(sel)
     for (const [prefix, resolver] of waitResolvers) {
       if (sel.startsWith(prefix)) return resolver(sel.slice(prefix.length))
     }
-    return document.querySelector(sel)
+    return querySelectorDeep(sel)
   }
 
   return new Promise((resolve) => {
