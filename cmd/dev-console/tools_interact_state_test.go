@@ -40,6 +40,13 @@ func simulateExtensionConnection(t *testing.T, env *interactHelpersTestEnv) {
 	env.capture.HandleSync(httptest.NewRecorder(), httpReq)
 }
 
+func requireSessionStore(t *testing.T, env *interactHelpersTestEnv) {
+	t.Helper()
+	if env.handler.sessionStoreImpl == nil {
+		t.Skip("session store unavailable in this test environment")
+	}
+}
+
 // ============================================
 // captureFormState — explicit status per scenario
 // ============================================
@@ -83,6 +90,7 @@ func TestSaveState_FormCapture_Captured(t *testing.T) {
 	env := newInteractHelpersTestEnv(t)
 	env.enablePilot(t)
 	simulateExtensionConnection(t, env)
+	requireSessionStore(t, env)
 
 	// Complete form capture in background
 	go func() {
@@ -91,8 +99,11 @@ func TestSaveState_FormCapture_Captured(t *testing.T) {
 		for _, q := range queries {
 			if q.Type == "execute" && strings.HasPrefix(q.CorrelationID, "state_capture_") {
 				result, _ := json.Marshal(map[string]any{
-					"form_values":     map[string]any{"username": "john", "remember": true},
-					"scroll_position": map[string]any{"x": 0.0, "y": 150.0},
+					"success": true,
+					"result": map[string]any{
+						"form_values":     map[string]any{"username": "john", "remember": true},
+						"scroll_position": map[string]any{"x": 0.0, "y": 150.0},
+					},
 				})
 				env.capture.CompleteCommand(q.CorrelationID, result, "")
 				return
@@ -127,6 +138,7 @@ func TestSaveState_FormCapture_SkippedPilotDisabled(t *testing.T) {
 	t.Parallel()
 	env := newInteractHelpersTestEnv(t)
 	// Pilot NOT enabled
+	requireSessionStore(t, env)
 
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`)}
 	resp := env.handler.handlePilotManageStateSave(req, json.RawMessage(`{"snapshot_name":"no_pilot"}`))
@@ -145,6 +157,7 @@ func TestSaveState_FormCapture_SkippedExtensionDisconnected(t *testing.T) {
 	env := newInteractHelpersTestEnv(t)
 	env.enablePilot(t)
 	// Extension NOT connected
+	requireSessionStore(t, env)
 
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`)}
 	resp := env.handler.handlePilotManageStateSave(req, json.RawMessage(`{"snapshot_name":"no_ext"}`))
@@ -158,6 +171,38 @@ func TestSaveState_FormCapture_SkippedExtensionDisconnected(t *testing.T) {
 	}
 }
 
+func TestSaveState_FormCapture_SkippedErrorOnExecuteFailure(t *testing.T) {
+	t.Parallel()
+	env := newInteractHelpersTestEnv(t)
+	env.enablePilot(t)
+	simulateExtensionConnection(t, env)
+	requireSessionStore(t, env)
+
+	go func() {
+		time.Sleep(50 * time.Millisecond)
+		queries := env.capture.GetPendingQueries()
+		for _, q := range queries {
+			if q.Type == "execute" && strings.HasPrefix(q.CorrelationID, "state_capture_") {
+				result, _ := json.Marshal(map[string]any{
+					"success": false,
+					"error":   "execution_error",
+					"message": "script failed",
+				})
+				env.capture.CompleteCommand(q.CorrelationID, result, "")
+				return
+			}
+		}
+	}()
+
+	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`), ClientID: "test-client"}
+	resp := env.handler.handlePilotManageStateSave(req, json.RawMessage(`{"snapshot_name":"capture_failure"}`))
+	data := extractResponseData(t, resp)
+
+	if data["form_capture"] != "skipped_error" {
+		t.Errorf("form_capture = %v, want \"skipped_error\"", data["form_capture"])
+	}
+}
+
 // ============================================
 // load_state — form_restore field always present
 // ============================================
@@ -166,6 +211,7 @@ func TestLoadState_FormRestore_Queued(t *testing.T) {
 	t.Parallel()
 	env := newInteractHelpersTestEnv(t)
 	env.enablePilot(t)
+	requireSessionStore(t, env)
 
 	// Inject a state WITH form_values
 	stateData := map[string]any{
@@ -175,7 +221,9 @@ func TestLoadState_FormRestore_Queued(t *testing.T) {
 		"scroll_position": map[string]any{"x": 0.0, "y": 100.0},
 	}
 	raw, _ := json.Marshal(stateData)
-	env.handler.sessionStoreImpl.Save("saved_states", "with_forms", raw)
+	if err := env.handler.sessionStoreImpl.Save("saved_states", "with_forms", raw); err != nil {
+		t.Fatalf("seed state save failed: %v", err)
+	}
 
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`)}
 	resp := env.handler.handlePilotManageStateLoad(req, json.RawMessage(`{"snapshot_name":"with_forms"}`))
@@ -216,6 +264,7 @@ func TestLoadState_FormRestore_SkippedNoFormData(t *testing.T) {
 	t.Parallel()
 	env := newInteractHelpersTestEnv(t)
 	env.enablePilot(t)
+	requireSessionStore(t, env)
 
 	// Inject a state WITHOUT form_values
 	stateData := map[string]any{
@@ -223,7 +272,9 @@ func TestLoadState_FormRestore_SkippedNoFormData(t *testing.T) {
 		"saved_at": time.Now().Format(time.RFC3339),
 	}
 	raw, _ := json.Marshal(stateData)
-	env.handler.sessionStoreImpl.Save("saved_states", "no_forms", raw)
+	if err := env.handler.sessionStoreImpl.Save("saved_states", "no_forms", raw); err != nil {
+		t.Fatalf("seed state save failed: %v", err)
+	}
 
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`)}
 	resp := env.handler.handlePilotManageStateLoad(req, json.RawMessage(`{"snapshot_name":"no_forms"}`))
@@ -241,6 +292,7 @@ func TestLoadState_FormRestore_SkippedPilotDisabled(t *testing.T) {
 	t.Parallel()
 	env := newInteractHelpersTestEnv(t)
 	// Pilot NOT enabled
+	requireSessionStore(t, env)
 
 	// Inject a state WITH form_values
 	stateData := map[string]any{
@@ -249,7 +301,9 @@ func TestLoadState_FormRestore_SkippedPilotDisabled(t *testing.T) {
 		"form_values": map[string]any{"email": "test@test.com"},
 	}
 	raw, _ := json.Marshal(stateData)
-	env.handler.sessionStoreImpl.Save("saved_states", "has_forms", raw)
+	if err := env.handler.sessionStoreImpl.Save("saved_states", "has_forms", raw); err != nil {
+		t.Fatalf("seed state save failed: %v", err)
+	}
 
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`)}
 	resp := env.handler.handlePilotManageStateLoad(req, json.RawMessage(`{"snapshot_name":"has_forms"}`))
@@ -260,6 +314,37 @@ func TestLoadState_FormRestore_SkippedPilotDisabled(t *testing.T) {
 	}
 	if _, ok := data["restore_correlation_id"]; ok {
 		t.Error("restore_correlation_id should be absent when pilot is disabled")
+	}
+}
+
+func TestLoadState_FormRestore_SkippedExtensionDisconnected(t *testing.T) {
+	t.Parallel()
+	env := newInteractHelpersTestEnv(t)
+	env.enablePilot(t)
+	requireSessionStore(t, env)
+	// No sync request: extension remains disconnected.
+
+	stateData := map[string]any{
+		"url":             "https://example.com/form",
+		"title":           "Form Page",
+		"saved_at":        time.Now().Format(time.RFC3339),
+		"form_values":     map[string]any{"email": "test@test.com"},
+		"scroll_position": map[string]any{"x": 0.0, "y": 20.0},
+	}
+	raw, _ := json.Marshal(stateData)
+	if err := env.handler.sessionStoreImpl.Save("saved_states", "has_forms_disconnected", raw); err != nil {
+		t.Fatalf("seed state save failed: %v", err)
+	}
+
+	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`)}
+	resp := env.handler.handlePilotManageStateLoad(req, json.RawMessage(`{"snapshot_name":"has_forms_disconnected"}`))
+	data := extractResponseData(t, resp)
+
+	if data["form_restore"] != "skipped_extension_disconnected" {
+		t.Errorf("form_restore = %v, want \"skipped_extension_disconnected\"", data["form_restore"])
+	}
+	if _, ok := data["restore_correlation_id"]; ok {
+		t.Error("restore_correlation_id should be absent when extension is disconnected")
 	}
 }
 

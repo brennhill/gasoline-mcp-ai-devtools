@@ -6,7 +6,9 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/dev-console/dev-console/internal/queries"
@@ -27,15 +29,40 @@ const (
 const (
 	formRestoreStatusQueued        = "queued"
 	formRestoreStatusPilotDisabled = "skipped_pilot_disabled"
+	formRestoreStatusExtensionDown = "skipped_extension_disconnected"
 	formRestoreStatusNoFormData    = "skipped_no_form_data"
 )
 
 // formCaptureScript is the JS executed in the browser to capture form values and scroll position.
 const formCaptureScript = `(() => {
+  const sensitiveKeyPattern = /(pass(word)?|token|secret|api[_-]?key|auth|cookie|session|bearer|credential|otp|ssn|credit|card|cvv|cvc)/i;
+  const sensitiveAutocompletePattern = /(password|one-time-code|cc-|credit-card|csc|cvv)/i;
+  const sensitiveValuePattern = /^(eyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}|sk-[A-Za-z0-9_-]{16,}|gh[pousr]_[A-Za-z0-9_]{16,}|xox[baprs]-[A-Za-z0-9-]{10,})$/;
+
+  function isSensitive(el, key, value) {
+    const type = (el.type || '').toLowerCase();
+    if (type === 'password' || type === 'hidden' || type === 'file') return true;
+
+    const autocomplete = (el.getAttribute('autocomplete') || '').toLowerCase();
+    if (sensitiveAutocompletePattern.test(autocomplete)) return true;
+
+    const keyProbe = [key, el.name, el.id, el.getAttribute('aria-label'), el.getAttribute('placeholder')]
+      .filter(Boolean)
+      .join(' ');
+    if (sensitiveKeyPattern.test(keyProbe)) return true;
+
+    if (typeof value === 'string' && value.length >= 12 && sensitiveValuePattern.test(value.trim())) return true;
+    return false;
+  }
+
   const forms = {};
   document.querySelectorAll('input, textarea, select').forEach(el => {
     const key = el.id || el.name;
     if (!key) return;
+
+    const rawValue = (el.type === 'checkbox' || el.type === 'radio') ? !!el.checked : String(el.value ?? '');
+    if (isSensitive(el, key, rawValue)) return;
+
     if (el.type === 'checkbox' || el.type === 'radio') {
       forms[key] = el.checked;
     } else {
@@ -52,6 +79,44 @@ const formCaptureScript = `(() => {
 type formCaptureResult struct {
 	Status string         // one of formCaptureStatus* constants
 	Data   map[string]any // non-nil only when Status == "captured"
+}
+
+func parseCapturedFormPayload(raw json.RawMessage) (map[string]any, error) {
+	trimmed := strings.TrimSpace(string(raw))
+	if trimmed == "" || trimmed == "null" {
+		return nil, errors.New("empty form capture payload")
+	}
+
+	var envelope map[string]any
+	if err := json.Unmarshal(raw, &envelope); err != nil {
+		return nil, err
+	}
+
+	if successVal, hasSuccess := envelope["success"]; hasSuccess {
+		success, _ := successVal.(bool)
+		if !success {
+			if msg, ok := envelope["message"].(string); ok && msg != "" {
+				return nil, errors.New(msg)
+			}
+			if code, ok := envelope["error"].(string); ok && code != "" {
+				return nil, errors.New(code)
+			}
+			return nil, errors.New("execute_js failed")
+		}
+
+		if resultObj, ok := envelope["result"].(map[string]any); ok {
+			return resultObj, nil
+		}
+		if _, ok := envelope["form_values"]; ok {
+			return envelope, nil
+		}
+		return nil, errors.New("execute_js result missing payload")
+	}
+
+	if _, ok := envelope["form_values"]; ok {
+		return envelope, nil
+	}
+	return nil, errors.New("form capture payload missing form_values")
 }
 
 // buildFormRestoreScript builds a JS script that restores form values and scroll position.
@@ -111,12 +176,15 @@ func (h *ToolHandler) captureFormState(req JSONRPCRequest) formCaptureResult {
 	if !found || cmd.Status == "pending" {
 		return formCaptureResult{Status: formCaptureStatusTimeout}
 	}
+	if cmd.Error != "" {
+		return formCaptureResult{Status: formCaptureStatusError}
+	}
 	if cmd.Status != "complete" || len(cmd.Result) == 0 {
 		return formCaptureResult{Status: formCaptureStatusError}
 	}
 
-	var captureData map[string]any
-	if err := json.Unmarshal(cmd.Result, &captureData); err != nil {
+	captureData, err := parseCapturedFormPayload(cmd.Result)
+	if err != nil {
 		return formCaptureResult{Status: formCaptureStatusError}
 	}
 
@@ -251,6 +319,8 @@ func (h *ToolHandler) handlePilotManageStateLoad(req JSONRPCRequest, args json.R
 		responseData["form_restore"] = formRestoreStatusNoFormData
 	} else if !h.capture.IsPilotEnabled() {
 		responseData["form_restore"] = formRestoreStatusPilotDisabled
+	} else if !h.capture.IsExtensionConnected() {
+		responseData["form_restore"] = formRestoreStatusExtensionDown
 	} else {
 		scrollPos, _ := stateData["scroll_position"].(map[string]any)
 		restoreCorrelationID := h.queueFormRestore(req, formValues, scrollPos)
