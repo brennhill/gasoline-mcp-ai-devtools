@@ -391,11 +391,13 @@ func waitForServer(port int, timeout time.Duration) bool {
 
 // fastPathResponses maps MCP methods to their static JSON result bodies.
 // Methods in this map are handled without waiting for the daemon.
+// TODO: These resource/template lists must stay in sync with handleResourcesList
+// and handleResourcesTemplatesList in handler.go. Consider generating from a shared source.
 var fastPathResponses = map[string]string{
 	"ping":                     `{}`,
 	"prompts/list":             `{"prompts":[]}`,
-	"resources/list":           `{"resources":[{"uri":"gasoline://guide","name":"Gasoline Usage Guide","description":"How to use Gasoline MCP tools for browser debugging","mimeType":"text/markdown"},{"uri":"gasoline://quickstart","name":"Gasoline MCP Quickstart","description":"Short, canonical MCP call examples and workflows","mimeType":"text/markdown"}]}`,
-	"resources/templates/list": `{"resourceTemplates":[{"uriTemplate":"gasoline://demo/{name}","name":"Gasoline Demo Script","description":"Demo scripts for websockets, annotations, recording, and dependency vetting","mimeType":"text/markdown"}]}`,
+	"resources/list":           `{"resources":[{"uri":"gasoline://capabilities","name":"Gasoline Capability Index","description":"Compact capability index with task-to-playbook routing hints","mimeType":"text/markdown"},{"uri":"gasoline://guide","name":"Gasoline Usage Guide","description":"How to use Gasoline MCP tools for browser debugging","mimeType":"text/markdown"},{"uri":"gasoline://quickstart","name":"Gasoline MCP Quickstart","description":"Short, canonical MCP call examples and workflows","mimeType":"text/markdown"}]}`,
+	"resources/templates/list": `{"resourceTemplates":[{"uriTemplate":"gasoline://playbook/{capability}/{level}","name":"Gasoline Capability Playbook","description":"On-demand, token-efficient playbooks. Start with quick; use full for deep workflows.","mimeType":"text/markdown"},{"uriTemplate":"gasoline://demo/{name}","name":"Gasoline Demo Script","description":"Demo scripts for websockets, annotations, recording, and dependency vetting","mimeType":"text/markdown"}]}`,
 }
 
 // sendFastResponse marshals and sends a JSON-RPC response for the fast path.

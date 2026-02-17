@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/dev-console/dev-console/internal/capture"
+	"github.com/dev-console/dev-console/internal/queries"
 )
 
 func TestMaybeWaitForCommand_SyncByDefault(t *testing.T) {
@@ -16,6 +17,7 @@ func TestMaybeWaitForCommand_SyncByDefault(t *testing.T) {
 	handler := &ToolHandler{capture: cap}
 	req := JSONRPCRequest{ID: 1, ClientID: "test-client"}
 	correlationID := "test-sync-123"
+	cap.RegisterCommand(correlationID, "q-sync-123", 15*time.Second)
 
 	// Mock extension connection manually to avoid nil pointer in HandleSync
 	// (Internal knowledge: IsExtensionConnected checks lastSyncSeen)
@@ -37,10 +39,7 @@ func TestMaybeWaitForCommand_SyncByDefault(t *testing.T) {
 	resp := handler.maybeWaitForCommand(req, correlationID, json.RawMessage(`{}`), "Queued")
 
 	// Verify
-	var result map[string]any
-	if err := json.Unmarshal(resp.Result, &result); err != nil {
-		t.Fatalf("Failed to parse response: %v", err)
-	}
+	result := parseMCPResponseData(t, resp.Result)
 
 	if result["correlation_id"] != correlationID {
 		t.Errorf("Expected correlation_id %s, got %v", correlationID, result["correlation_id"])
@@ -59,8 +58,7 @@ func TestMaybeWaitForCommand_BackgroundOverride(t *testing.T) {
 	// Call with background: true
 	resp := handler.maybeWaitForCommand(req, correlationID, json.RawMessage(`{"background":true}`), "Queued")
 
-	var result map[string]any
-	_ = json.Unmarshal(resp.Result, &result)
+	result := parseMCPResponseData(t, resp.Result)
 
 	if result["status"] != "queued" {
 		t.Errorf("Expected status queued (background), got %v", result["status"])
@@ -73,10 +71,10 @@ func TestMaybeWaitForCommand_TimeoutGracefulFallback(t *testing.T) {
 	req := JSONRPCRequest{ID: 1}
 	correlationID := "test-timeout-123"
 
-	// Note: We'd need to mock the 15s timeout to be shorter for testing, 
+	// Note: We'd need to mock the 15s timeout to be shorter for testing,
 	// or just verify it returns "pending" if we don't complete it.
 	// For this unit test, we'll assume the 15s wait happens.
-	
+
 	// Start a goroutine to check if it's blocking
 	start := time.Now()
 	_ = handler.maybeWaitForCommand(req, correlationID, json.RawMessage(`{"sync":true}`), "Queued")
@@ -87,4 +85,106 @@ func TestMaybeWaitForCommand_TimeoutGracefulFallback(t *testing.T) {
 	if duration > 1*time.Second {
 		t.Errorf("Should have failed fast since extension is not connected, took %v", duration)
 	}
+}
+
+// parseMCPResponseData extracts and parses the JSON data from an MCP tool response.
+// MCPToolResult wraps data as Content[0].Text = "summary\n{json...}".
+func parseMCPResponseData(t *testing.T, rawResult json.RawMessage) map[string]any {
+	t.Helper()
+	var toolResult MCPToolResult
+	if err := json.Unmarshal(rawResult, &toolResult); err != nil {
+		t.Fatalf("Failed to unmarshal MCPToolResult: %v", err)
+	}
+	if len(toolResult.Content) == 0 {
+		t.Fatal("MCPToolResult has no content blocks")
+	}
+	jsonText := extractJSONFromMCPText(toolResult.Content[0].Text)
+	var data map[string]any
+	if err := json.Unmarshal([]byte(jsonText), &data); err != nil {
+		t.Fatalf("Failed to parse JSON from MCP text: %v\nRaw text: %s", err, toolResult.Content[0].Text)
+	}
+	return data
+}
+
+func TestFormatCommandResult_FinalField(t *testing.T) {
+	cap := capture.NewCapture()
+	handler := &ToolHandler{capture: cap}
+	req := JSONRPCRequest{ID: 1}
+	now := time.Now()
+
+	t.Run("complete has final true", func(t *testing.T) {
+		cmd := queries.CommandResult{
+			CorrelationID: "cmd-complete",
+			Status:        "complete",
+			Result:        json.RawMessage(`{"success":true}`),
+			CreatedAt:     now,
+			CompletedAt:   now.Add(100 * time.Millisecond),
+		}
+		resp := handler.formatCommandResult(req, cmd, cmd.CorrelationID)
+		data := parseMCPResponseData(t, resp.Result)
+		if final, ok := data["final"]; !ok || final != true {
+			t.Errorf("Expected final=true for complete, got %v", data["final"])
+		}
+	})
+
+	t.Run("error has final true", func(t *testing.T) {
+		cmd := queries.CommandResult{
+			CorrelationID: "cmd-error",
+			Status:        "error",
+			Error:         "something failed",
+			CreatedAt:     now,
+		}
+		resp := handler.formatCommandResult(req, cmd, cmd.CorrelationID)
+		data := parseMCPResponseData(t, resp.Result)
+		if final, ok := data["final"]; !ok || final != true {
+			t.Errorf("Expected final=true for error, got %v", data["final"])
+		}
+	})
+
+	t.Run("pending has final false", func(t *testing.T) {
+		cmd := queries.CommandResult{
+			CorrelationID: "cmd-pending",
+			Status:        "pending",
+			CreatedAt:     now,
+		}
+		resp := handler.formatCommandResult(req, cmd, cmd.CorrelationID)
+		data := parseMCPResponseData(t, resp.Result)
+		if final, ok := data["final"]; !ok || final != false {
+			t.Errorf("Expected final=false for pending, got %v", data["final"])
+		}
+	})
+
+	t.Run("expired returns isError", func(t *testing.T) {
+		cmd := queries.CommandResult{
+			CorrelationID: "cmd-expired",
+			Status:        "expired",
+			Error:         "timed out",
+			CreatedAt:     now,
+		}
+		resp := handler.formatCommandResult(req, cmd, cmd.CorrelationID)
+		var toolResult MCPToolResult
+		if err := json.Unmarshal(resp.Result, &toolResult); err != nil {
+			t.Fatalf("Failed to unmarshal: %v", err)
+		}
+		if !toolResult.IsError {
+			t.Error("Expected isError=true for expired status")
+		}
+	})
+
+	t.Run("timeout returns isError", func(t *testing.T) {
+		cmd := queries.CommandResult{
+			CorrelationID: "cmd-timeout",
+			Status:        "timeout",
+			Error:         "no response",
+			CreatedAt:     now,
+		}
+		resp := handler.formatCommandResult(req, cmd, cmd.CorrelationID)
+		var toolResult MCPToolResult
+		if err := json.Unmarshal(resp.Result, &toolResult); err != nil {
+			t.Fatalf("Failed to unmarshal: %v", err)
+		}
+		if !toolResult.IsError {
+			t.Error("Expected isError=true for timeout status")
+		}
+	})
 }

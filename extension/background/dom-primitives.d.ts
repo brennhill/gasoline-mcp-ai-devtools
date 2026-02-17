@@ -4,8 +4,6 @@
  * Docs: docs/features/feature/interact-explore/index.md
  * Docs: docs/features/feature/observe/index.md
  */
-import type { PendingQuery } from '../types/queries';
-import type { SyncClient } from './sync-client';
 interface DOMResult {
     success: boolean;
     action: string;
@@ -25,8 +23,6 @@ interface DOMResult {
     };
     analysis?: string;
 }
-type SendAsyncResult = (syncClient: SyncClient, queryId: string, correlationId: string, status: 'complete' | 'error' | 'timeout', result?: unknown, error?: string) => void;
-type ActionToast = (tabId: number, text: string, detail?: string, state?: 'trying' | 'success' | 'warning' | 'error', durationMs?: number) => void;
 /**
  * Single self-contained function for all DOM primitives.
  * Passed to chrome.scripting.executeScript({ func: domPrimitive, args: [...] }).
@@ -56,6 +52,5 @@ export declare function domWaitFor(selector: string, timeoutMs: number): Promise
 export declare function domFrameProbe(frameTarget: string | number): {
     matches: boolean;
 };
-export declare function executeDOMAction(query: PendingQuery, tabId: number, syncClient: SyncClient, sendAsyncResult: SendAsyncResult, actionToast: ActionToast): Promise<void>;
 export {};
 //# sourceMappingURL=dom-primitives.d.ts.map
