@@ -195,6 +195,7 @@ func TestToolCallTimeout(t *testing.T) {
 		{"generate gets fast timeout", "tools/call", `{"name":"generate","arguments":{"format":"reproduction"}}`, 10 * time.Second},
 		{"analyze gets slow timeout", "tools/call", `{"name":"analyze","arguments":{"what":"dom"}}`, 35 * time.Second},
 		{"interact gets slow timeout", "tools/call", `{"name":"interact","arguments":{"action":"click"}}`, 35 * time.Second},
+		{"observe screenshot gets slow timeout", "tools/call", `{"name":"observe","arguments":{"what":"screenshot"}}`, 35 * time.Second},
 		{"observe command_result non-annotation gets fast", "tools/call", `{"name":"observe","arguments":{"what":"command_result","correlation_id":"cmd_123"}}`, 10 * time.Second},
 		{"observe command_result annotation gets blocking poll", "tools/call", `{"name":"observe","arguments":{"what":"command_result","correlation_id":"ann_detail_abc"}}`, 65 * time.Second},
 		{"malformed params gets fast timeout", "tools/call", `{bad json}`, 10 * time.Second},

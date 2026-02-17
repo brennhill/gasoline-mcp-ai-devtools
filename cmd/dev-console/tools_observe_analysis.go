@@ -315,11 +315,11 @@ func (h *ToolHandler) toolGetScreenshot(req JSONRPCRequest, args json.RawMessage
 			Type:   "screenshot",
 			Params: json.RawMessage(`{}`),
 		},
-		15*time.Second,
+		20*time.Second, // Sync poll (up to 5s) + capture (1-3s) + upload (0.5-1s) + margin
 		"",
 	)
 
-	result, err := h.capture.WaitForResult(queryID, 15*time.Second)
+	result, err := h.capture.WaitForResult(queryID, 20*time.Second)
 	if err != nil {
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrExtTimeout, "Screenshot capture timeout: "+err.Error(), "Ensure the extension is connected and the page has loaded. Try refreshing the page, then retry.", h.diagnosticHint())}
 	}
