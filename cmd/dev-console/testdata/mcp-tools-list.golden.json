@@ -779,6 +779,7 @@
             "scroll_to",
             "wait_for",
             "key_press",
+            "paste",
             "list_interactive",
             "record_start",
             "record_stop",
