@@ -123,7 +123,8 @@ type Capture struct {
 	// Lifecycle Event Callbacks
 	// ============================================
 
-	lifecycleCallback func(event string, data map[string]any) // Optional callback for lifecycle events (circuit breaker, extension state, buffer overflow)
+	lifecycleCallback  func(event string, data map[string]any) // Optional callback for lifecycle events (circuit breaker, extension state, buffer overflow)
+	navigationCallback func()                                   // Optional callback fired after a navigation action is ingested (called outside lock)
 
 	// ============================================
 	// Version Information
@@ -186,6 +187,16 @@ func (c *Capture) Close() {
 	if c.qd != nil {
 		c.qd.Close()
 	}
+}
+
+// SetNavigationCallback sets a callback function that fires after a navigation
+// action is ingested. The callback is invoked outside of the Capture lock in a
+// separate goroutine (via util.SafeGo) so it is safe to call Capture methods.
+// Used for automatic noise detection after page navigations.
+func (c *Capture) SetNavigationCallback(cb func()) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.navigationCallback = cb
 }
 
 // SetLifecycleCallback sets a callback function for lifecycle events.
