@@ -77,3 +77,22 @@ func TestNoiseAutoRunner_NilFuncDoesNotPanic(t *testing.T) {
 	runner.schedule() // Should be a no-op
 	time.Sleep(100 * time.Millisecond)
 }
+
+func TestNoiseAutoDetectEnabled_DefaultOff(t *testing.T) {
+	t.Setenv(noiseAutoDetectEnvVar, "")
+
+	if noiseAutoDetectEnabled() {
+		t.Fatal("noise auto-detect should default to off")
+	}
+}
+
+func TestNoiseAutoDetectEnabled_TruthyValues(t *testing.T) {
+	for _, val := range []string{"1", "true", "TRUE", "on", "yes"} {
+		t.Run(val, func(t *testing.T) {
+			t.Setenv(noiseAutoDetectEnvVar, val)
+			if !noiseAutoDetectEnabled() {
+				t.Fatalf("expected %q to enable noise auto-detect", val)
+			}
+		})
+	}
+}

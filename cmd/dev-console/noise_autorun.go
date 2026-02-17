@@ -7,6 +7,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"strings"
 	"sync"
 	"time"
 
@@ -16,6 +17,10 @@ import (
 // noiseAutoDetectInterval is the minimum time between automatic noise detection runs.
 // Navigation events closer together than this are coalesced into a single run.
 const noiseAutoDetectInterval = 30 * time.Second
+
+// noiseAutoDetectEnvVar gates navigation-triggered noise auto-detection.
+// Default is off; set to 1/true/on/yes to enable.
+const noiseAutoDetectEnvVar = "GASOLINE_NOISE_AUTORUN"
 
 // noiseAutoRunner debounces automatic noise detection. Multiple rapid navigation
 // events (e.g., SPA route changes) are coalesced: only one auto-detect runs per
@@ -84,6 +89,9 @@ func (r *noiseAutoRunner) run() {
 // wireNoiseAutoDetect connects automatic noise detection to navigation events.
 // Called once during NewToolHandler initialization.
 func wireNoiseAutoDetect(h *ToolHandler) {
+	if !noiseAutoDetectEnabled() {
+		return
+	}
 	if h.capture == nil || h.noiseConfig == nil {
 		return
 	}
@@ -97,6 +105,11 @@ func wireNoiseAutoDetect(h *ToolHandler) {
 	})
 
 	fmt.Fprintf(os.Stderr, "[gasoline] noise auto-detect enabled (triggers after navigation, debounce=%s)\n", noiseAutoDetectInterval)
+}
+
+func noiseAutoDetectEnabled() bool {
+	val := strings.ToLower(strings.TrimSpace(os.Getenv(noiseAutoDetectEnvVar)))
+	return val == "1" || val == "true" || val == "yes" || val == "on"
 }
 
 // runNoiseAutoDetect collects current buffer data and runs noise auto-detection.
