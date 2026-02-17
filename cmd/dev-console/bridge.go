@@ -58,15 +58,20 @@ func toolCallTimeout(req JSONRPCRequest) time.Duration {
 	case "analyze", "interact":
 		return slow
 	case "observe":
-		// Annotation command_result polling blocks server-side for up to 55s
 		var args struct {
 			What          string `json:"what"`
 			CorrelationID string `json:"correlation_id"`
 		}
-		if json.Unmarshal(params.Arguments, &args) == nil &&
-			args.What == "command_result" &&
-			len(args.CorrelationID) > 4 && args.CorrelationID[:4] == "ann_" {
-			return blockingPoll
+		if json.Unmarshal(params.Arguments, &args) == nil {
+			// Annotation command_result polling blocks server-side for up to 55s
+			if args.What == "command_result" &&
+				len(args.CorrelationID) > 4 && args.CorrelationID[:4] == "ann_" {
+				return blockingPoll
+			}
+			// Screenshot round-trips to extension (sync poll + capture + upload)
+			if args.What == "screenshot" {
+				return slow
+			}
 		}
 		return fast
 	default:
