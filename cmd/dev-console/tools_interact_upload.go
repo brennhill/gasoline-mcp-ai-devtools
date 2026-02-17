@@ -122,6 +122,7 @@ func (h *ToolHandler) queueUpload(req JSONRPCRequest, params uploadParams, info 
 
 	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Upload queued", map[string]any{
 		"status": "queued", "correlation_id": correlationID,
+		"final": false,
 		"file_name": fileName, "file_size": fileSize,
 		"mime_type": mimeType, "progress_tier": string(progressTier),
 		"message": "Upload queued for execution. Use observe({what: 'command_result', correlation_id: '" + correlationID + "'}) to get the result.",

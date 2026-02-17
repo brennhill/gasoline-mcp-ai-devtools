@@ -301,6 +301,7 @@ func (h *ToolHandler) maybeWaitForCommand(req JSONRPCRequest, correlationID stri
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse(queuedSummary, map[string]any{
 			"status":         "queued",
 			"correlation_id": correlationID,
+			"final":          false,
 		})}
 	}
 
@@ -322,6 +323,7 @@ func (h *ToolHandler) maybeWaitForCommand(req JSONRPCRequest, correlationID stri
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Action still processing", map[string]any{
 			"status":         "still_processing",
 			"correlation_id": correlationID,
+			"final":          false,
 			"message":        "Action is taking longer than 15s. Polling is now required. Use observe({what:'command_result', correlation_id:'" + correlationID + "'}) to check the result.",
 		})}
 	}

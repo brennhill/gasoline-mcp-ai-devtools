@@ -671,12 +671,14 @@ func (h *ToolHandler) formatCommandResult(req JSONRPCRequest, cmd queries.Comman
 
 	switch cmd.Status {
 	case "complete":
+		responseData["final"] = true
 		return h.formatCompleteCommand(req, cmd, corrID, responseData)
 	case "error":
 		if cmd.Error == "" {
 			cmd.Error = "Command failed in extension"
 		}
 		responseData["error"] = cmd.Error
+		responseData["final"] = true
 		if len(cmd.Result) > 0 {
 			responseData["result"] = cmd.Result
 		}
@@ -697,6 +699,7 @@ func (h *ToolHandler) formatCommandResult(req JSONRPCRequest, cmd queries.Comman
 			h.diagnosticHint(),
 		)}
 	default:
+		responseData["final"] = false
 		summary := fmt.Sprintf("Command %s: %s", corrID, cmd.Status)
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse(summary, responseData)}
 	}

@@ -175,6 +175,7 @@ func (h *ToolHandler) queueRecordStart(req JSONRPCRequest, fullName, audio, vide
 	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Recording queued", map[string]any{
 		"status":                "queued",
 		"correlation_id":        correlationID,
+		"final":                 false,
 		"name":                  fullName,
 		"fps":                   fps,
 		"audio":                 audio,
@@ -256,6 +257,7 @@ func (h *ToolHandler) handleRecordStop(req JSONRPCRequest, args json.RawMessage)
 	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Recording stop queued", map[string]any{
 		"status":         "queued",
 		"correlation_id": correlationID,
+		"final":          false,
 		"message":        "Recording stop queued. Use observe({what: 'command_result', correlation_id: '" + correlationID + "'}) to get the result.",
 	})}
 }
