@@ -66,15 +66,7 @@
             "description": "Server info with endpoint links",
             "content": {
               "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "name": { "type": "string", "example": "gasoline", "description": "Server identifier" },
-                    "version": { "type": "string", "example": "0.7.2", "description": "Server version string" },
-                    "health": { "type": "string", "example": "/health", "description": "Link to health check endpoint" },
-                    "logs": { "type": "string", "example": "/logs", "description": "Link to log ingestion endpoint" }
-                  }
-                }
+                "schema": { "$ref": "#/components/schemas/DiscoveryResponse" }
               }
             }
           }
@@ -217,41 +209,7 @@
             "description": "Aggregated server status",
             "content": {
               "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "version": { "type": "string", "description": "Server version string" },
-                    "uptime_seconds": { "type": "integer", "description": "Seconds since server started" },
-                    "pid": { "type": "integer", "description": "Server process ID" },
-                    "platform": { "type": "string", "description": "OS and architecture (e.g. 'darwin/arm64')" },
-                    "extension_connected": { "type": "boolean", "description": "Whether the Chrome extension WebSocket is active" },
-                    "pilot_enabled": { "type": "boolean", "description": "Whether AI Web Pilot is enabled in the extension" },
-                    "last_poll_at": { "type": "string", "format": "date-time", "description": "RFC3339 timestamp of the extension's last /sync poll" },
-                    "buffers": {
-                      "type": "object",
-                      "description": "Ring buffer fill levels and capacities",
-                      "properties": {
-                        "console_entries": { "type": "integer", "description": "Current console log buffer entries" },
-                        "console_capacity": { "type": "integer", "description": "Console log buffer max capacity" },
-                        "network_entries": { "type": "integer", "description": "Current network body buffer entries" },
-                        "network_capacity": { "type": "integer", "description": "Network body buffer max capacity" },
-                        "websocket_entries": { "type": "integer", "description": "Current WebSocket event buffer entries" },
-                        "websocket_capacity": { "type": "integer", "description": "WebSocket event buffer max capacity" },
-                        "action_entries": { "type": "integer", "description": "Current user action buffer entries" },
-                        "action_capacity": { "type": "integer", "description": "User action buffer max capacity" }
-                      }
-                    },
-                    "recent_commands": {
-                      "type": "array",
-                      "items": { "type": "object" },
-                      "description": "Recent MCP commands from the HTTP debug log"
-                    },
-                    "audit": {
-                      "type": "object",
-                      "description": "Tool health metrics and audit info (present when MCP handler is active)"
-                    }
-                  }
-                }
+                "schema": { "$ref": "#/components/schemas/DashboardStatus" }
               }
             }
           }
@@ -344,14 +302,7 @@
             "description": "Ingestion result with accepted/rejected counts",
             "content": {
               "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "received": { "type": "integer", "description": "Number of entries received in the request" },
-                    "rejected": { "type": "integer", "description": "Number of entries rejected (malformed or filtered)" },
-                    "entries": { "type": "integer", "description": "Total entries now in the buffer" }
-                  }
-                }
+                "schema": { "$ref": "#/components/schemas/LogIngestResponse" }
               }
             }
           }
@@ -415,13 +366,7 @@
             "description": "Waterfall entries recorded",
             "content": {
               "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "status": { "type": "string", "example": "ok", "description": "Always 'ok' on success" },
-                    "count": { "type": "integer", "description": "Number of entries recorded" }
-                  }
-                }
+                "schema": { "$ref": "#/components/schemas/IngestResponse" }
               }
             }
           }
@@ -461,13 +406,7 @@
             "description": "Bodies recorded",
             "content": {
               "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "status": { "type": "string", "example": "ok", "description": "Always 'ok' on success" },
-                    "count": { "type": "integer", "description": "Number of bodies recorded" }
-                  }
-                }
+                "schema": { "$ref": "#/components/schemas/IngestResponse" }
               }
             }
           }
@@ -543,14 +482,7 @@
             "description": "Telemetry data from the requested buffer",
             "content": {
               "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "type": { "type": "string", "description": "Echo of the requested buffer type" },
-                    "items": { "type": "array", "description": "Array of telemetry entries (shape depends on type)" },
-                    "count": { "type": "integer", "description": "Number of entries returned" }
-                  }
-                }
+                "schema": { "$ref": "#/components/schemas/TelemetryResponse" }
               }
             }
           },
@@ -608,13 +540,7 @@
             "description": "Actions recorded",
             "content": {
               "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "status": { "type": "string", "example": "ok", "description": "Always 'ok' on success" },
-                    "count": { "type": "integer", "description": "Number of actions recorded" }
-                  }
-                }
+                "schema": { "$ref": "#/components/schemas/IngestResponse" }
               }
             }
           }
@@ -653,13 +579,7 @@
             "description": "Snapshots recorded",
             "content": {
               "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "status": { "type": "string", "example": "ok", "description": "Always 'ok' on success" },
-                    "count": { "type": "integer", "description": "Number of snapshots recorded" }
-                  }
-                }
+                "schema": { "$ref": "#/components/schemas/IngestResponse" }
               }
             }
           }
@@ -707,16 +627,7 @@
           "required": true,
           "content": {
             "application/json": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "data_url": { "type": "string", "description": "Base64 data URL (data:image/jpeg;base64,...)" },
-                  "url": { "type": "string", "description": "Page URL where the screenshot was taken" },
-                  "correlation_id": { "type": "string", "description": "Links this screenshot to an MCP tool invocation" },
-                  "query_id": { "type": "string", "description": "Pending query ID for on-demand screenshot flow" }
-                },
-                "required": ["data_url"]
-              }
+              "schema": { "$ref": "#/components/schemas/ScreenshotRequest" }
             }
           }
         },
@@ -725,14 +636,7 @@
             "description": "Screenshot saved to disk",
             "content": {
               "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "filename": { "type": "string", "description": "Generated filename for the saved screenshot" },
-                    "path": { "type": "string", "description": "Absolute file path where the screenshot was saved" },
-                    "correlation_id": { "type": "string", "description": "Echo of the correlation_id if provided" }
-                  }
-                }
+                "schema": { "$ref": "#/components/schemas/ScreenshotSavedResponse" }
               }
             }
           },
@@ -773,15 +677,7 @@
             "description": "Recording saved to disk",
             "content": {
               "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "status": { "type": "string", "example": "saved", "description": "Always 'saved' on success" },
-                    "name": { "type": "string", "description": "Recording name from metadata" },
-                    "path": { "type": "string", "description": "Absolute file path where the recording was saved" },
-                    "size": { "type": "integer", "format": "int64", "description": "File size in bytes" }
-                  }
-                }
+                "schema": { "$ref": "#/components/schemas/RecordingSavedResponse" }
               }
             }
           }
@@ -1020,14 +916,7 @@
           "required": true,
           "content": {
             "application/json": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "test_id": { "type": "string", "description": "Unique identifier for the test run" },
-                  "action": { "type": "string", "enum": ["start", "end"], "description": "Whether to start or end the test boundary" }
-                },
-                "required": ["test_id", "action"]
-              }
+              "schema": { "$ref": "#/components/schemas/TestBoundaryRequest" }
             }
           }
         },
@@ -1036,14 +925,7 @@
             "description": "Boundary set with server timestamp",
             "content": {
               "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "test_id": { "type": "string", "description": "Echo of the test_id" },
-                    "action": { "type": "string", "description": "Echo of the action (start/end)" },
-                    "timestamp": { "type": "string", "format": "date-time", "description": "Server timestamp when the boundary was set" }
-                  }
-                }
+                "schema": { "$ref": "#/components/schemas/TestBoundaryResponse" }
               }
             }
           }
@@ -1064,26 +946,7 @@
           "required": true,
           "content": {
             "application/json": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "screenshot_data_url": { "type": "string", "description": "Base64 data URL of the annotated screenshot" },
-                  "annotations": {
-                    "type": "array",
-                    "items": { "type": "object" },
-                    "description": "Annotation rectangles with user-typed feedback text"
-                  },
-                  "element_details": {
-                    "type": "object",
-                    "additionalProperties": { "type": "object" },
-                    "description": "Map of annotation correlation_id to computed DOM element details (tag, classes, styles, dimensions)"
-                  },
-                  "page_url": { "type": "string", "description": "URL of the page where annotations were drawn" },
-                  "tab_id": { "type": "integer", "description": "Chrome tab ID where draw mode was active" },
-                  "session_name": { "type": "string", "description": "Named session for multi-page annotation accumulation" }
-                },
-                "required": ["tab_id"]
-              }
+              "schema": { "$ref": "#/components/schemas/DrawModeCompleteRequest" }
             }
           }
         },
@@ -1092,19 +955,7 @@
             "description": "Annotations stored",
             "content": {
               "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "status": { "type": "string", "example": "stored", "description": "Always 'stored' on success" },
-                    "annotation_count": { "type": "integer", "description": "Number of annotations received" },
-                    "screenshot": { "type": "string", "description": "File path where the annotated screenshot was saved" },
-                    "warnings": {
-                      "type": "array",
-                      "items": { "type": "string" },
-                      "description": "Parse warnings for malformed or skipped annotations"
-                    }
-                  }
-                }
+                "schema": { "$ref": "#/components/schemas/DrawModeCompleteResponse" }
               }
             }
           }
@@ -1243,17 +1094,7 @@
             "description": "File data with base64 contents",
             "content": {
               "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "success": { "type": "boolean", "description": "Whether the file was read successfully" },
-                    "file_name": { "type": "string", "description": "Base name of the file" },
-                    "file_size": { "type": "integer", "format": "int64", "description": "File size in bytes" },
-                    "mime_type": { "type": "string", "description": "Detected MIME type based on file extension" },
-                    "data_base64": { "type": "string", "description": "Base64-encoded file contents" },
-                    "error": { "type": "string", "description": "Error message if success is false" }
-                  }
-                }
+                "schema": { "$ref": "#/components/schemas/FileReadResponse" }
               }
             }
           }
@@ -1311,23 +1152,7 @@
           "required": true,
           "content": {
             "application/json": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "form_action": { "type": "string", "description": "URL to submit the form to (action attribute)" },
-                  "method": { "type": "string", "description": "HTTP method (defaults to POST)" },
-                  "fields": {
-                    "type": "object",
-                    "additionalProperties": { "type": "string" },
-                    "description": "Key-value pairs for non-file form fields"
-                  },
-                  "file_input_name": { "type": "string", "description": "Name attribute of the file input field" },
-                  "file_path": { "type": "string", "description": "Absolute path to the file to upload" },
-                  "csrf_token": { "type": "string", "description": "CSRF token value to include in the form submission" },
-                  "cookies": { "type": "string", "description": "Cookie header string for authenticated submissions" }
-                },
-                "required": ["form_action", "file_input_name", "file_path"]
-              }
+              "schema": { "$ref": "#/components/schemas/FormSubmitRequest" }
             }
           }
         },
@@ -1428,6 +1253,212 @@
         "properties": {
           "status": { "type": "string", "example": "ok", "description": "Always 'ok' on success" }
         }
+      },
+      "IngestResponse": {
+        "type": "object",
+        "description": "Standard response from telemetry ingestion endpoints (network-waterfall, network-bodies, enhanced-actions, performance-snapshots). Confirms the number of entries recorded into the ring buffer.",
+        "properties": {
+          "status": { "type": "string", "example": "ok", "description": "Always 'ok' on success" },
+          "count": { "type": "integer", "description": "Number of entries recorded" }
+        }
+      },
+      "DiscoveryResponse": {
+        "type": "object",
+        "description": "API discovery payload returned by GET /. Provides server identity and links to key endpoints for first-time client bootstrapping.",
+        "properties": {
+          "name": { "type": "string", "example": "gasoline", "description": "Server identifier" },
+          "version": { "type": "string", "example": "0.7.2", "description": "Server version string" },
+          "health": { "type": "string", "example": "/health", "description": "Link to health check endpoint" },
+          "logs": { "type": "string", "example": "/logs", "description": "Link to log ingestion endpoint" }
+        }
+      },
+      "LogIngestResponse": {
+        "type": "object",
+        "description": "Response from POST /logs with counts of received, rejected, and total buffered entries. Rejected entries are malformed or filtered by noise rules.",
+        "properties": {
+          "received": { "type": "integer", "description": "Number of entries received in the request" },
+          "rejected": { "type": "integer", "description": "Number of entries rejected (malformed or filtered)" },
+          "entries": { "type": "integer", "description": "Total entries now in the buffer" }
+        }
+      },
+      "TelemetryResponse": {
+        "type": "object",
+        "description": "Unified telemetry read response from GET /telemetry. Returns entries from the requested buffer type with a count. The items array shape depends on the type parameter.",
+        "properties": {
+          "type": { "type": "string", "description": "Echo of the requested buffer type" },
+          "items": { "type": "array", "description": "Array of telemetry entries (shape depends on type)" },
+          "count": { "type": "integer", "description": "Number of entries returned" }
+        }
+      },
+      "DashboardStatus": {
+        "type": "object",
+        "description": "Aggregated server status for the built-in dashboard UI. Polled at regular intervals to keep the dashboard current with server state, buffer fill levels, and extension connectivity.",
+        "properties": {
+          "version": { "type": "string", "description": "Server version string" },
+          "uptime_seconds": { "type": "integer", "description": "Seconds since server started" },
+          "pid": { "type": "integer", "description": "Server process ID" },
+          "platform": { "type": "string", "description": "OS and architecture (e.g. 'darwin/arm64')" },
+          "extension_connected": { "type": "boolean", "description": "Whether the Chrome extension WebSocket is active" },
+          "pilot_enabled": { "type": "boolean", "description": "Whether AI Web Pilot is enabled in the extension" },
+          "last_poll_at": { "type": "string", "format": "date-time", "description": "RFC3339 timestamp of the extension's last /sync poll" },
+          "buffers": {
+            "type": "object",
+            "description": "Ring buffer fill levels and capacities",
+            "properties": {
+              "console_entries": { "type": "integer", "description": "Current console log buffer entries" },
+              "console_capacity": { "type": "integer", "description": "Console log buffer max capacity" },
+              "network_entries": { "type": "integer", "description": "Current network body buffer entries" },
+              "network_capacity": { "type": "integer", "description": "Network body buffer max capacity" },
+              "websocket_entries": { "type": "integer", "description": "Current WebSocket event buffer entries" },
+              "websocket_capacity": { "type": "integer", "description": "WebSocket event buffer max capacity" },
+              "action_entries": { "type": "integer", "description": "Current user action buffer entries" },
+              "action_capacity": { "type": "integer", "description": "User action buffer max capacity" }
+            }
+          },
+          "recent_commands": {
+            "type": "array",
+            "items": { "type": "object" },
+            "description": "Recent MCP commands from the HTTP debug log"
+          },
+          "audit": {
+            "type": "object",
+            "description": "Tool health metrics and audit info (present when MCP handler is active)"
+          }
+        }
+      },
+      "ScreenshotRequest": {
+        "type": "object",
+        "description": "Screenshot upload request from the Chrome extension. Contains the base64 image data and optional correlation metadata for linking to MCP tool invocations.",
+        "properties": {
+          "data_url": { "type": "string", "description": "Base64 data URL (data:image/jpeg;base64,...)" },
+          "url": { "type": "string", "description": "Page URL where the screenshot was taken" },
+          "correlation_id": { "type": "string", "description": "Links this screenshot to an MCP tool invocation" },
+          "query_id": { "type": "string", "description": "Pending query ID for on-demand screenshot flow" }
+        },
+        "required": ["data_url"]
+      },
+      "ScreenshotSavedResponse": {
+        "type": "object",
+        "description": "Confirmation that a screenshot was saved to disk. Returns the generated filename and absolute path for the MCP client to reference.",
+        "properties": {
+          "filename": { "type": "string", "description": "Generated filename for the saved screenshot" },
+          "path": { "type": "string", "description": "Absolute file path where the screenshot was saved" },
+          "correlation_id": { "type": "string", "description": "Echo of the correlation_id if provided" }
+        }
+      },
+      "RecordingSavedResponse": {
+        "type": "object",
+        "description": "Confirmation that a video recording was saved to disk. Returns the recording name, path, and file size.",
+        "x-docs": {
+          "feature": "docs/features/feature/tab-recording/"
+        },
+        "properties": {
+          "status": { "type": "string", "example": "saved", "description": "Always 'saved' on success" },
+          "name": { "type": "string", "description": "Recording name from metadata" },
+          "path": { "type": "string", "description": "Absolute file path where the recording was saved" },
+          "size": { "type": "integer", "format": "int64", "description": "File size in bytes" }
+        }
+      },
+      "TestBoundaryRequest": {
+        "type": "object",
+        "description": "Request to start or end a test boundary for telemetry correlation. While active, all ingested entries are tagged with the test_id.",
+        "x-docs": {
+          "feature": "docs/features/feature/ci-infrastructure/"
+        },
+        "properties": {
+          "test_id": { "type": "string", "description": "Unique identifier for the test run" },
+          "action": { "type": "string", "enum": ["start", "end"], "description": "Whether to start or end the test boundary" }
+        },
+        "required": ["test_id", "action"]
+      },
+      "TestBoundaryResponse": {
+        "type": "object",
+        "description": "Confirmation that a test boundary was set, with the server timestamp for synchronization.",
+        "x-docs": {
+          "feature": "docs/features/feature/ci-infrastructure/"
+        },
+        "properties": {
+          "test_id": { "type": "string", "description": "Echo of the test_id" },
+          "action": { "type": "string", "description": "Echo of the action (start/end)" },
+          "timestamp": { "type": "string", "format": "date-time", "description": "Server timestamp when the boundary was set" }
+        }
+      },
+      "DrawModeCompleteRequest": {
+        "type": "object",
+        "description": "Annotation data from a completed draw mode session. Contains the annotated screenshot, rectangle annotations with user feedback, and computed DOM element details for each annotated region.",
+        "x-docs": {
+          "feature": "docs/features/draw-mode/"
+        },
+        "properties": {
+          "screenshot_data_url": { "type": "string", "description": "Base64 data URL of the annotated screenshot" },
+          "annotations": {
+            "type": "array",
+            "items": { "type": "object" },
+            "description": "Annotation rectangles with user-typed feedback text"
+          },
+          "element_details": {
+            "type": "object",
+            "additionalProperties": { "type": "object" },
+            "description": "Map of annotation correlation_id to computed DOM element details (tag, classes, styles, dimensions)"
+          },
+          "page_url": { "type": "string", "description": "URL of the page where annotations were drawn" },
+          "tab_id": { "type": "integer", "description": "Chrome tab ID where draw mode was active" },
+          "session_name": { "type": "string", "description": "Named session for multi-page annotation accumulation" }
+        },
+        "required": ["tab_id"]
+      },
+      "DrawModeCompleteResponse": {
+        "type": "object",
+        "description": "Confirmation that draw mode annotations were stored. Includes the screenshot save path and any parse warnings for malformed annotations.",
+        "x-docs": {
+          "feature": "docs/features/draw-mode/"
+        },
+        "properties": {
+          "status": { "type": "string", "example": "stored", "description": "Always 'stored' on success" },
+          "annotation_count": { "type": "integer", "description": "Number of annotations received" },
+          "screenshot": { "type": "string", "description": "File path where the annotated screenshot was saved" },
+          "warnings": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "Parse warnings for malformed or skipped annotations"
+          }
+        }
+      },
+      "FileReadResponse": {
+        "type": "object",
+        "description": "Result of reading a local file for upload automation (Stage 1). Contains the file's base64 contents, detected MIME type, and size. On failure, success is false and error contains the reason.",
+        "x-docs": {
+          "feature": "docs/features/file-upload/"
+        },
+        "properties": {
+          "success": { "type": "boolean", "description": "Whether the file was read successfully" },
+          "file_name": { "type": "string", "description": "Base name of the file" },
+          "file_size": { "type": "integer", "format": "int64", "description": "File size in bytes" },
+          "mime_type": { "type": "string", "description": "Detected MIME type based on file extension" },
+          "data_base64": { "type": "string", "description": "Base64-encoded file contents" },
+          "error": { "type": "string", "description": "Error message if success is false" }
+        }
+      },
+      "FormSubmitRequest": {
+        "type": "object",
+        "description": "Request to submit an HTML form with a file upload via server-side multipart POST (Stage 3). Includes the form action URL, file details, and optional authentication fields.",
+        "x-docs": {
+          "feature": "docs/features/file-upload/"
+        },
+        "properties": {
+          "form_action": { "type": "string", "description": "URL to submit the form to (action attribute)" },
+          "method": { "type": "string", "description": "HTTP method (defaults to POST)" },
+          "fields": {
+            "type": "object",
+            "additionalProperties": { "type": "string" },
+            "description": "Key-value pairs for non-file form fields"
+          },
+          "file_input_name": { "type": "string", "description": "Name attribute of the file input field" },
+          "file_path": { "type": "string", "description": "Absolute path to the file to upload" },
+          "csrf_token": { "type": "string", "description": "CSRF token value to include in the form submission" },
+          "cookies": { "type": "string", "description": "Cookie header string for authenticated submissions" }
+        },
+        "required": ["form_action", "file_input_name", "file_path"]
       },
       "HealthResponse": {
         "type": "object",
