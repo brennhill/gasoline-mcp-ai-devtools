@@ -256,6 +256,9 @@ func NewToolHandler(server *Server, capture *capture.Capture) *MCPHandler {
 		})
 	}
 
+	// Wire automatic noise detection after page navigations
+	wireNoiseAutoDetect(handler)
+
 	// Initialize security tools (concrete types - interface signatures differ)
 	handler.securityScannerImpl = security.NewSecurityScanner()
 	handler.thirdPartyAuditorImpl = analysis.NewThirdPartyAuditor()
