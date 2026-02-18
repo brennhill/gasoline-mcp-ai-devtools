@@ -44,7 +44,7 @@ func TestGetToolCallLimiter(t *testing.T) {
 	}
 }
 
-func TestGetRedactionEngine_Nil(t *testing.T) {
+func TestGetRedactionEngine_Configured(t *testing.T) {
 	t.Parallel()
 
 	cap := capture.NewCapture()
@@ -55,8 +55,7 @@ func TestGetRedactionEngine_Nil(t *testing.T) {
 	mcpHandler := NewToolHandler(server, cap)
 	h := mcpHandler.toolHandler.(*ToolHandler)
 
-	// By default, no redaction engine is configured
-	if h.GetRedactionEngine() != nil {
-		t.Fatal("GetRedactionEngine should return nil when no engine is set")
+	if h.GetRedactionEngine() == nil {
+		t.Fatal("GetRedactionEngine should return a configured engine")
 	}
 }

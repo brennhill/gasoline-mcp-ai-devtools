@@ -40,12 +40,12 @@ type AuditEntry struct {
 
 // AuditTrail is an append-only, bounded, concurrent-safe audit log.
 type AuditTrail struct {
-	mu              sync.RWMutex
-	entries         []AuditEntry
-	maxSize         int
-	sessions        map[string]*SessionInfo
-	config          AuditConfig
-	redactions      []RedactionEvent
+	mu                sync.RWMutex
+	entries           []AuditEntry
+	maxSize           int
+	sessions          map[string]*SessionInfo
+	config            AuditConfig
+	redactions        []RedactionEvent
 	redactionPatterns []*redactionPattern
 }
 
@@ -119,10 +119,10 @@ func NewAuditTrail(config AuditConfig) *AuditTrail {
 	}
 
 	trail := &AuditTrail{
-		entries:  make([]AuditEntry, 0, config.MaxEntries),
-		maxSize:  config.MaxEntries,
-		sessions: make(map[string]*SessionInfo),
-		config:   config,
+		entries:    make([]AuditEntry, 0, config.MaxEntries),
+		maxSize:    config.MaxEntries,
+		sessions:   make(map[string]*SessionInfo),
+		config:     config,
 		redactions: make([]RedactionEvent, 0),
 	}
 
@@ -225,6 +225,18 @@ func (at *AuditTrail) Query(filter AuditFilter) []AuditEntry {
 	}
 
 	return results
+}
+
+// Clear removes all audit entries and redaction events and returns the number
+// of entries removed.
+func (at *AuditTrail) Clear() int {
+	at.mu.Lock()
+	defer at.mu.Unlock()
+
+	cleared := len(at.entries)
+	at.entries = at.entries[:0]
+	at.redactions = at.redactions[:0]
+	return cleared
 }
 
 // QueryRedactions returns redaction events matching the given filter.

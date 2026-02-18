@@ -515,6 +515,7 @@ func (h *ToolHandler) toolGetAuditLog(req JSONRPCRequest, args json.RawMessage) 
 	}
 
 	var params struct {
+		Operation string `json:"operation"`
 		SessionID string `json:"session_id"`
 		ToolName  string `json:"tool_name"`
 		Limit     int    `json:"limit"`
@@ -524,6 +525,26 @@ func (h *ToolHandler) toolGetAuditLog(req JSONRPCRequest, args json.RawMessage) 
 		if err := json.Unmarshal(args, &params); err != nil {
 			return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidJSON, "Invalid JSON arguments: "+err.Error(), "Fix JSON syntax and call again")}
 		}
+	}
+
+	operation := strings.ToLower(strings.TrimSpace(params.Operation))
+	if operation == "" {
+		operation = "report"
+	}
+	if operation != "analyze" && operation != "report" && operation != "clear" {
+		return JSONRPCResponse{
+			JSONRPC: "2.0",
+			ID:      req.ID,
+			Result:  mcpStructuredError(ErrInvalidParam, "Invalid audit_log operation: "+params.Operation, "Use operation: analyze, report, or clear", withParam("operation")),
+		}
+	}
+	if operation == "clear" {
+		cleared := h.auditTrail.Clear()
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Audit log cleared", map[string]any{
+			"status":    "ok",
+			"operation": "clear",
+			"cleared":   cleared,
+		})}
 	}
 
 	filter := audit.AuditFilter{
@@ -544,12 +565,44 @@ func (h *ToolHandler) toolGetAuditLog(req JSONRPCRequest, args json.RawMessage) 
 	}
 
 	entries := h.auditTrail.Query(filter)
-	responseData := map[string]any{
-		"status":  "ok",
-		"entries": entries,
-		"count":   len(entries),
+	if operation == "analyze" {
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Audit log analysis", map[string]any{
+			"status":    "ok",
+			"operation": "analyze",
+			"summary":   summarizeAuditEntries(entries),
+		})}
 	}
-	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Audit log entries", responseData)}
+
+	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Audit log entries", map[string]any{
+		"status":    "ok",
+		"operation": "report",
+		"entries":   entries,
+		"count":     len(entries),
+	})}
+}
+
+func summarizeAuditEntries(entries []audit.AuditEntry) map[string]any {
+	byTool := make(map[string]int)
+	uniqueSessions := make(map[string]struct{})
+	success := 0
+	failed := 0
+	for _, entry := range entries {
+		byTool[entry.ToolName]++
+		uniqueSessions[entry.SessionID] = struct{}{}
+		if entry.Success {
+			success++
+		} else {
+			failed++
+		}
+	}
+
+	return map[string]any{
+		"total_calls":   len(entries),
+		"success_count": success,
+		"failure_count": failed,
+		"session_count": len(uniqueSessions),
+		"calls_by_tool": byTool,
+	}
 }
 
 // toolConfigureStreamingWrapper repackages streaming_action → action for toolConfigureStreaming.

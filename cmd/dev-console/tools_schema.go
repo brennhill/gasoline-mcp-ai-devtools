@@ -512,9 +512,18 @@ func (h *ToolHandler) ToolsList() []MCPTool {
 						"type":        "string",
 						"description": "Second snapshot to compare",
 					},
+					"url": map[string]any{
+						"type":        "string",
+						"description": "URL filter for snapshot capture (diff_sessions)",
+					},
 					"recording_id": map[string]any{
 						"type":        "string",
 						"description": "Recording ID (recording_stop, playback)",
+					},
+					"operation": map[string]any{
+						"type":        "string",
+						"description": "Audit log operation",
+						"enum":        []string{"analyze", "report", "clear"},
 					},
 					"session_id": map[string]any{
 						"type":        "string",
