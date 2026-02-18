@@ -480,18 +480,33 @@ func validateRevealPath(w http.ResponseWriter, rawPath string) string {
 	return absPath
 }
 
+type revealCommandRunner func(name string, args ...string) error
+
+func defaultRevealCommandRunner(name string, args ...string) error {
+	return exec.Command(name, args...).Run()
+}
+
+func revealCommandForOS(goos, absPath string) (string, []string) {
+	switch goos {
+	case "darwin":
+		return "open", []string{"-R", absPath}
+	case "windows":
+		return "explorer", []string{"/select,", absPath}
+	default:
+		return "xdg-open", []string{filepath.Dir(absPath)}
+	}
+}
+
+// revealInFileManagerWithRunner separates command selection from execution so
+// tests can verify behavior without opening Finder/Explorer on the developer machine.
+func revealInFileManagerWithRunner(goos, absPath string, runner revealCommandRunner) error {
+	name, args := revealCommandForOS(goos, absPath)
+	return runner(name, args...)
+}
+
 // revealInFileManager opens the platform file manager highlighting the given path.
 func revealInFileManager(absPath string) error {
-	var cmd *exec.Cmd
-	switch runtime.GOOS {
-	case "darwin":
-		cmd = exec.Command("open", "-R", absPath)
-	case "windows":
-		cmd = exec.Command("explorer", "/select,", absPath)
-	default:
-		cmd = exec.Command("xdg-open", filepath.Dir(absPath))
-	}
-	return cmd.Run()
+	return revealInFileManagerWithRunner(runtime.GOOS, absPath, defaultRevealCommandRunner)
 }
 
 // handleRevealRecording handles POST /recordings/reveal — opens Finder/Explorer to the file.

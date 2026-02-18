@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"io"
 	"mime/multipart"
 	"net/http"
@@ -421,36 +422,91 @@ func TestToolObserveSavedVideosListsSortsFiltersAndDedupes(t *testing.T) {
 // revealInFileManager
 // ============================================
 //
-// Note: revealInFileManager calls platform executables (open/explorer/xdg-open).
-// We test that it does not panic and returns appropriate errors.
-// CI environments may not have GUI tools, so failures are expected.
+// These tests intentionally avoid executing platform commands because invoking
+// Finder/Explorer during `go test` is disruptive and unnecessary for logic coverage.
 
-func TestRevealInFileManager_NonExistentPath(t *testing.T) {
+func TestRevealCommandForOS(t *testing.T) {
 	t.Parallel()
-	// Should not panic even for non-existent paths
-	err := revealInFileManager("/nonexistent/path/to/file.txt")
-	_ = err // Error behavior is platform-specific
+
+	path := "/tmp/recordings/demo.webm"
+	cases := []struct {
+		name     string
+		goos     string
+		wantCmd  string
+		wantArgs []string
+	}{
+		{
+			name:     "darwin",
+			goos:     "darwin",
+			wantCmd:  "open",
+			wantArgs: []string{"-R", path},
+		},
+		{
+			name:     "windows",
+			goos:     "windows",
+			wantCmd:  "explorer",
+			wantArgs: []string{"/select,", path},
+		},
+		{
+			name:     "linux-default",
+			goos:     "linux",
+			wantCmd:  "xdg-open",
+			wantArgs: []string{filepath.Dir(path)},
+		},
+	}
+
+	for _, tc := range cases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			gotCmd, gotArgs := revealCommandForOS(tc.goos, path)
+			if gotCmd != tc.wantCmd {
+				t.Fatalf("revealCommandForOS(%q) cmd = %q, want %q", tc.goos, gotCmd, tc.wantCmd)
+			}
+			if len(gotArgs) != len(tc.wantArgs) {
+				t.Fatalf("revealCommandForOS(%q) args len = %d, want %d", tc.goos, len(gotArgs), len(tc.wantArgs))
+			}
+			for i := range gotArgs {
+				if gotArgs[i] != tc.wantArgs[i] {
+					t.Fatalf("revealCommandForOS(%q) args[%d] = %q, want %q", tc.goos, i, gotArgs[i], tc.wantArgs[i])
+				}
+			}
+		})
+	}
 }
 
-func TestRevealInFileManager_ExistingFile(t *testing.T) {
+func TestRevealInFileManagerWithRunner_UsesRunner(t *testing.T) {
 	t.Parallel()
-	dir := t.TempDir()
-	path := filepath.Join(dir, "test-reveal.txt")
-	if err := os.WriteFile(path, []byte("test"), 0o644); err != nil {
-		t.Fatalf("failed to create test file: %v", err)
-	}
-	err := revealInFileManager(path)
+
+	path := "/tmp/recordings/demo.webm"
+	var gotCmd string
+	var gotArgs []string
+
+	err := revealInFileManagerWithRunner("darwin", path, func(name string, args ...string) error {
+		gotCmd = name
+		gotArgs = append([]string(nil), args...)
+		return nil
+	})
 	if err != nil {
-		t.Logf("revealInFileManager returned error (expected in CI): %v", err)
+		t.Fatalf("revealInFileManagerWithRunner() error = %v, want nil", err)
+	}
+	if gotCmd != "open" {
+		t.Fatalf("runner cmd = %q, want open", gotCmd)
+	}
+	if len(gotArgs) != 2 || gotArgs[0] != "-R" || gotArgs[1] != path {
+		t.Fatalf("runner args = %#v, want [-R %q]", gotArgs, path)
 	}
 }
 
-func TestRevealInFileManager_EmptyPath(t *testing.T) {
+func TestRevealInFileManagerWithRunner_PropagatesRunnerError(t *testing.T) {
 	t.Parallel()
-	err := revealInFileManager("")
-	// Platform tools will likely fail with empty path
-	if err == nil {
-		t.Log("revealInFileManager with empty path returned nil (platform-dependent)")
+
+	wantErr := errors.New("runner failed")
+	err := revealInFileManagerWithRunner("darwin", "/tmp/recordings/demo.webm", func(_ string, _ ...string) error {
+		return wantErr
+	})
+	if !errors.Is(err, wantErr) {
+		t.Fatalf("revealInFileManagerWithRunner() error = %v, want %v", err, wantErr)
 	}
 }
 
