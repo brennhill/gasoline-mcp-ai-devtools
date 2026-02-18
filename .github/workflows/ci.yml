@@ -51,7 +51,9 @@ jobs:
         run: node --test npm/gasoline-mcp/lib/kill-daemon.test.js
 
       - name: PyPI cleanup tests
-        run: PYTHONPATH=pypi/gasoline-mcp python -m unittest discover -s pypi/gasoline-mcp/tests -p "test_*.py"
+        env:
+          PYTHONPATH: pypi/gasoline-mcp
+        run: python -m unittest discover -s pypi/gasoline-mcp/tests -p "test_*.py"
 
       - name: End-to-end upgrade regression
         run: node scripts/install-upgrade-regression.mjs
