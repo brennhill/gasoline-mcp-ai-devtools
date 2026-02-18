@@ -136,7 +136,7 @@ function showHelp() {
   console.log('Usage: gasoline-mcp [command] [options]\n');
   console.log('Commands:');
   console.log('  --config, -c          Show MCP configuration and detected clients');
-  console.log('  --install, -i         Auto-install to all detected AI clients');
+  console.log('  --install, -i [tool]  Auto-install to detected clients, or a specific tool');
   console.log('  --doctor              Run diagnostics on installed configs');
   console.log('  --uninstall           Remove Gasoline from all clients');
   console.log('  --help, -h            Show this help message\n');
@@ -145,7 +145,14 @@ function showHelp() {
   console.log('  Claude Desktop        config file');
   console.log('  Cursor                config file');
   console.log('  Windsurf              config file');
-  console.log('  VS Code               config file\n');
+  console.log('  VS Code               config file');
+  console.log('  Gemini CLI            config file');
+  console.log('  OpenCode              config file');
+  console.log('  Antigravity           config file');
+  console.log('  Zed                   config file\n');
+  console.log('Tool aliases for --install <tool>:');
+  console.log('  claude, claude-desktop, cursor, windsurf, vscode, gemini, opencode,');
+  console.log('  antigravity, zed\n');
   console.log('Options (with --install):');
   console.log('  --dry-run             Preview changes without writing');
   console.log('  --env KEY=VALUE       Add environment variables to config (multiple allowed)');
@@ -161,6 +168,8 @@ function showHelp() {
   console.log('  --verbose             Show detailed operation logs\n');
   console.log('Examples:');
   console.log('  gasoline-mcp --install                # Install to all detected clients');
+  console.log('  gasoline-mcp --install gemini          # Install to Gemini CLI only');
+  console.log('  gasoline-mcp --install opencode        # Install to OpenCode only');
   console.log('  gasoline-mcp --install --dry-run      # Preview without changes');
   console.log('  gasoline-mcp --install --env DEBUG=1  # Install with env vars');
   console.log('  gasoline-mcp --install --skills-repo brennhill/gasoline-skills');
@@ -204,6 +213,17 @@ async function main() {
 
   // Install command
   if (args.includes('--install') || args.includes('-i')) {
+    const installIdx = args.indexOf('--install') !== -1
+      ? args.indexOf('--install')
+      : args.indexOf('-i');
+
+    // Check for targeted tool name (positional arg after --install)
+    let targetTool = null;
+    const nextArg = args[installIdx + 1];
+    if (nextArg && !nextArg.startsWith('--')) {
+      targetTool = nextArg;
+    }
+
     const envVars = {};
     for (let i = 0; i < args.length; i++) {
       if (args[i] === '--env' && i + 1 < args.length) {
@@ -229,6 +249,7 @@ async function main() {
       dryRun,
       envVars,
       verbose,
+      targetTool,
       ...skillOptions,
     };
     await installCommand(options);

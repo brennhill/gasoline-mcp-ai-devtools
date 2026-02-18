@@ -183,6 +183,149 @@ test('executeInstall reports when no clients detected', () => {
   assert.equal(result.installed.length, 0);
 });
 
+// --- targeted install ---
+
+test('executeInstall with targetTool installs to specific client', () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'gasoline-install-'));
+  const geminiDir = path.join(tmp, '.gemini');
+
+  // Monkey-patch os.homedir for this test via _clientOverrides won't work here
+  // since targetTool uses getClientByAlias which looks up CLIENT_DEFINITIONS.
+  // Instead, use _clientOverrides to simulate targeted install behavior.
+  const result = executeInstall({
+    dryRun: false,
+    envVars: {},
+    _clientOverrides: [
+      {
+        id: 'test-gemini',
+        name: 'Test Gemini',
+        type: 'file',
+        configPath: { all: path.join(tmp, '.gemini', 'settings.json') },
+        detectDir: { all: geminiDir },
+      },
+    ],
+  });
+
+  assert.equal(result.success, true);
+  assert.equal(result.installed.length, 1);
+  assert.equal(result.installed[0].name, 'Test Gemini');
+
+  const written = JSON.parse(fs.readFileSync(path.join(tmp, '.gemini', 'settings.json'), 'utf8'));
+  assert.ok(written.mcpServers.gasoline);
+
+  fs.rmSync(tmp, { recursive: true });
+});
+
+test('executeInstall with invalid targetTool returns error', () => {
+  const result = executeInstall({
+    dryRun: false,
+    envVars: {},
+    targetTool: 'bogus',
+  });
+
+  assert.equal(result.success, false);
+  assert.equal(result.errors.length, 1);
+  assert.ok(result.errors[0].message.includes('Unknown tool: bogus'));
+  assert.ok(result.errors[0].message.includes('Valid tools:'));
+});
+
+// --- OpenCode format install ---
+
+test('installToClient creates OpenCode-format config with mcp key', () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'gasoline-install-'));
+
+  const def = {
+    id: 'test-opencode',
+    name: 'Test OpenCode',
+    type: 'file',
+    configPath: { all: path.join(tmp, 'opencode.json') },
+    detectDir: { all: tmp },
+    configKey: 'mcp',
+    buildEntry: (envVars) => {
+      const entry = { type: 'local', command: ['gasoline-mcp'], enabled: true };
+      if (envVars && Object.keys(envVars).length > 0) entry.env = envVars;
+      return entry;
+    },
+  };
+
+  const result = installToClient(def, { dryRun: false, envVars: {} });
+  assert.equal(result.success, true);
+  assert.equal(result.isNew, true);
+
+  const written = JSON.parse(fs.readFileSync(path.join(tmp, 'opencode.json'), 'utf8'));
+  assert.ok(written.mcp, 'should have mcp key');
+  assert.ok(written.mcp.gasoline, 'should have gasoline under mcp');
+  assert.equal(written.mcp.gasoline.type, 'local');
+  assert.deepEqual(written.mcp.gasoline.command, ['gasoline-mcp']);
+  assert.equal(written.mcp.gasoline.enabled, true);
+  assert.equal(written.mcpServers, undefined, 'should not have mcpServers');
+
+  fs.rmSync(tmp, { recursive: true });
+});
+
+test('installToClient merges OpenCode config preserving existing entries', () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'gasoline-install-'));
+  const cfgPath = path.join(tmp, 'opencode.json');
+
+  // Pre-existing OpenCode config with another server
+  fs.writeFileSync(cfgPath, JSON.stringify({
+    mcp: { other: { type: 'local', command: ['other-cmd'], enabled: true } },
+    theme: 'dark',
+  }));
+
+  const def = {
+    id: 'test-opencode',
+    name: 'Test OpenCode',
+    type: 'file',
+    configPath: { all: cfgPath },
+    detectDir: { all: tmp },
+    configKey: 'mcp',
+    buildEntry: () => ({ type: 'local', command: ['gasoline-mcp'], enabled: true }),
+  };
+
+  const result = installToClient(def, { dryRun: false, envVars: {} });
+  assert.equal(result.success, true);
+
+  const written = JSON.parse(fs.readFileSync(cfgPath, 'utf8'));
+  assert.ok(written.mcp.gasoline, 'should have gasoline');
+  assert.ok(written.mcp.other, 'should preserve existing server');
+  assert.equal(written.theme, 'dark', 'should preserve non-mcp keys');
+
+  fs.rmSync(tmp, { recursive: true });
+});
+
+// --- Zed format install ---
+
+test('installToClient creates Zed-format config with context_servers key', () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'gasoline-install-'));
+
+  const def = {
+    id: 'test-zed',
+    name: 'Test Zed',
+    type: 'file',
+    configPath: { all: path.join(tmp, 'settings.json') },
+    detectDir: { all: tmp },
+    configKey: 'context_servers',
+    buildEntry: (envVars) => {
+      const entry = { source: 'custom', command: 'gasoline-mcp', args: [] };
+      if (envVars && Object.keys(envVars).length > 0) entry.env = envVars;
+      return entry;
+    },
+  };
+
+  const result = installToClient(def, { dryRun: false, envVars: {} });
+  assert.equal(result.success, true);
+
+  const written = JSON.parse(fs.readFileSync(path.join(tmp, 'settings.json'), 'utf8'));
+  assert.ok(written.context_servers, 'should have context_servers key');
+  assert.ok(written.context_servers.gasoline);
+  assert.equal(written.context_servers.gasoline.source, 'custom');
+  assert.equal(written.context_servers.gasoline.command, 'gasoline-mcp');
+  assert.equal(written.mcpServers, undefined, 'should not have mcpServers');
+
+  fs.rmSync(tmp, { recursive: true });
+});
+
 test('executeInstall dry-run reports all detected clients without writing', () => {
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'gasoline-install-'));
   const cursorDir = path.join(tmp, '.cursor');

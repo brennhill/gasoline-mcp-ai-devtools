@@ -203,8 +203,9 @@ function diagnoseFileClient(def, verbose) {
     return tool;
   }
 
-  if (!readResult.data.mcpServers || !readResult.data.mcpServers.gasoline) {
-    tool.issues.push('gasoline entry missing from mcpServers');
+  const configKey = def.configKey || 'mcpServers';
+  if (!readResult.data[configKey] || !readResult.data[configKey].gasoline) {
+    tool.issues.push(`gasoline entry missing from ${configKey}`);
     tool.suggestions.push('Run: gasoline-mcp --install');
     return tool;
   }

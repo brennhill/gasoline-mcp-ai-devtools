@@ -141,20 +141,79 @@ curl http://localhost:7890/health
 - MCP client communicates via stdio
 - Both share the same browser telemetry state
 
-Works with **Claude Code**, **Cursor**, **Windsurf**, **Claude Desktop**, **Zed**, and any MCP-compatible tool.
+Works with **Claude Code**, **Cursor**, **Windsurf**, **Claude Desktop**, **Gemini CLI**, **OpenCode**, **Antigravity**, **Zed**, and any MCP-compatible tool.
 
-**[Full setup guide →](https://cookwithgasoline.com/getting-started/)**
+*Option D: Gemini CLI*
+
+Add to `~/.gemini/settings.json`:
+```json
+{
+  "mcpServers": {
+    "gasoline": {
+      "command": "gasoline-mcp",
+      "args": []
+    }
+  }
+}
+```
+
+*Option E: OpenCode*
+
+Add to `~/.config/opencode/opencode.json`:
+```json
+{
+  "mcp": {
+    "gasoline": {
+      "type": "local",
+      "command": ["gasoline-mcp"],
+      "enabled": true
+    }
+  }
+}
+```
+
+*Option F: Antigravity*
+
+Add to `~/.gemini/antigravity/mcp_config.json`:
+```json
+{
+  "mcpServers": {
+    "gasoline": {
+      "command": "gasoline-mcp",
+      "args": []
+    }
+  }
+}
+```
+
+*Option G: Zed*
+
+Add to `~/.config/zed/settings.json`:
+```json
+{
+  "context_servers": {
+    "gasoline": {
+      "source": "custom",
+      "command": "gasoline-mcp",
+      "args": []
+    }
+  }
+}
+```
+
+**[Full setup guide →](https://cookwithgasoline.com/getting-started/)** | **[Per-tool install guide →](docs/mcp-install-guide.md)**
 
 **CLI options:**
 
 | Flag | Description |
 |------|-------------|
 | `--port <n>` | Port to listen on (default: 7890) |
-| `--server` | HTTP-only mode (no MCP) |
-| `--persist` | Keep running after MCP disconnect |
 | `--api-key <key>` | Require API key for HTTP requests |
 | `--connect` | Connect to existing server (multi-client) |
-| `--check` | Verify setup before running |
+| `--client-id <id>` | Override client ID (default: derived from CWD) |
+| `--check` | Verify setup and print status |
+| `--stop` | Stop the running server on the specified port |
+| `--version` | Show version |
 | `--help` | Show all options |
 
 ## Why You Cook With Gasoline MCP

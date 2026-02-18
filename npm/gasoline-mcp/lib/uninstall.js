@@ -103,7 +103,8 @@ function uninstallViaFile(def, options) {
     };
   }
 
-  if (!readResult.data.mcpServers || !readResult.data.mcpServers.gasoline) {
+  const configKey = def.configKey || 'mcpServers';
+  if (!readResult.data[configKey] || !readResult.data[configKey].gasoline) {
     return { status: 'notConfigured', name: def.name, id: def.id };
   }
 
@@ -121,10 +122,11 @@ function uninstallViaFile(def, options) {
   }
 
   const modified = JSON.parse(JSON.stringify(readResult.data));
-  delete modified.mcpServers.gasoline;
+  delete modified[configKey].gasoline;
 
-  if (Object.keys(modified.mcpServers).length > 0) {
-    writeConfigFile(cfgPath, modified, false);
+  if (Object.keys(modified[configKey]).length > 0) {
+    const skipValidation = configKey !== 'mcpServers';
+    writeConfigFile(cfgPath, modified, false, { skipValidation });
   } else {
     fs.unlinkSync(cfgPath);
   }

@@ -71,6 +71,54 @@ const CLIENT_DEFINITIONS = [
       linux: '~/.config/Code',
     },
   },
+  {
+    id: 'gemini',
+    name: 'Gemini CLI',
+    type: 'file',
+    configPath: { all: '~/.gemini/settings.json' },
+    detectDir: { all: '~/.gemini' },
+  },
+  {
+    id: 'opencode',
+    name: 'OpenCode',
+    type: 'file',
+    configPath: { all: '~/.config/opencode/opencode.json' },
+    detectDir: { all: '~/.config/opencode' },
+    configKey: 'mcp',
+    buildEntry: (envVars) => {
+      const entry = { type: 'local', command: ['gasoline-mcp'], enabled: true };
+      if (envVars && Object.keys(envVars).length > 0) entry.env = envVars;
+      return entry;
+    },
+  },
+  {
+    id: 'antigravity',
+    name: 'Antigravity',
+    type: 'file',
+    configPath: {
+      darwin: '~/.gemini/antigravity/mcp_config.json',
+      win32: '%APPDATA%/.gemini/antigravity/mcp_config.json',
+      linux: '~/.gemini/antigravity/mcp_config.json',
+    },
+    detectDir: {
+      darwin: '~/.gemini/antigravity',
+      win32: '%APPDATA%/.gemini/antigravity',
+      linux: '~/.gemini/antigravity',
+    },
+  },
+  {
+    id: 'zed',
+    name: 'Zed',
+    type: 'file',
+    configPath: { all: '~/.config/zed/settings.json' },
+    detectDir: { all: '~/.config/zed' },
+    configKey: 'context_servers',
+    buildEntry: (envVars) => {
+      const entry = { source: 'custom', command: 'gasoline-mcp', args: [] };
+      if (envVars && Object.keys(envVars).length > 0) entry.env = envVars;
+      return entry;
+    },
+  },
 ];
 
 /**
@@ -174,6 +222,51 @@ function getClientById(id) {
 }
 
 /**
+ * Short-name aliases for targeted install (maps to client IDs)
+ */
+const CLIENT_ALIASES = {
+  'claude': 'claude-code',
+  'claude-code': 'claude-code',
+  'claude-desktop': 'claude-desktop',
+  'desktop': 'claude-desktop',
+  'cursor': 'cursor',
+  'windsurf': 'windsurf',
+  'vscode': 'vscode',
+  'vs-code': 'vscode',
+  'gemini': 'gemini',
+  'opencode': 'opencode',
+  'antigravity': 'antigravity',
+  'zed': 'zed',
+};
+
+/**
+ * Look up a client definition by alias name
+ * @param {string} alias Short name (e.g. 'gemini', 'cursor')
+ * @returns {Object|null} Client definition or null if not found
+ */
+function getClientByAlias(alias) {
+  const id = CLIENT_ALIASES[alias.toLowerCase()];
+  if (!id) return null;
+  return getClientById(id);
+}
+
+/**
+ * Get all valid alias names (for error messages)
+ * @returns {Array<string>} Unique alias names (one per client)
+ */
+function getValidAliases() {
+  const seen = new Set();
+  const aliases = [];
+  for (const [alias, id] of Object.entries(CLIENT_ALIASES)) {
+    if (!seen.has(id)) {
+      seen.add(id);
+      aliases.push(alias);
+    }
+  }
+  return aliases;
+}
+
+/**
  * Backward-compat: returns config file paths for detected file-type clients.
  * @returns {Array<string>} Array of config file paths
  */
@@ -203,6 +296,10 @@ function getToolNameFromPath(configPath) {
   if (normalized.includes(path.join('.codeium', 'windsurf'))) return 'Windsurf';
   if (normalized.includes('.codeium')) return 'Windsurf';
   if (normalized.includes('Claude')) return 'Claude Desktop';
+  if (normalized.includes(path.join('.gemini', 'antigravity'))) return 'Antigravity';
+  if (normalized.includes('.gemini')) return 'Gemini CLI';
+  if (normalized.includes(path.join('.config', 'opencode'))) return 'OpenCode';
+  if (normalized.includes(path.join('.config', 'zed'))) return 'Zed';
   if (normalized.includes('Code')) return 'VS Code';
   return 'Unknown';
 }
@@ -268,12 +365,14 @@ function readConfigFile(filePath) {
  * @param {boolean} dryRun If true, returns what would be written without writing
  * @returns {Object} {success: bool, message: string, path: string, before?: Object, after?: Object}
  */
-function writeConfigFile(filePath, data, dryRun = false) {
+function writeConfigFile(filePath, data, dryRun = false, options = {}) {
   try {
-    // Validate data
-    const errors = validateMCPConfig(data);
-    if (errors.length > 0) {
-      throw new ConfigValidationError(errors);
+    // Validate data (skip for non-standard config formats like OpenCode)
+    if (!options.skipValidation) {
+      const errors = validateMCPConfig(data);
+      if (errors.length > 0) {
+        throw new ConfigValidationError(errors);
+      }
     }
 
     const jsonStr = JSON.stringify(data, null, 2);
@@ -398,6 +497,7 @@ function parseEnvVar(envStr) {
 
 module.exports = {
   CLIENT_DEFINITIONS,
+  CLIENT_ALIASES,
   LEGACY_PATHS,
   expandPath,
   getClientConfigPath,
@@ -406,6 +506,8 @@ module.exports = {
   isClientInstalled,
   getDetectedClients,
   getClientById,
+  getClientByAlias,
+  getValidAliases,
   getConfigCandidates,
   getToolNameFromPath,
   readConfigFile,
