@@ -603,6 +603,14 @@
           "properties": {
             "action": {
               "const": "health"
+            },
+            "telemetry_mode": {
+              "enum": [
+                "off",
+                "auto",
+                "full"
+              ],
+              "type": "string"
             }
           },
           "required": [
@@ -622,6 +630,14 @@
                 "actions",
                 "logs",
                 "all"
+              ],
+              "type": "string"
+            },
+            "telemetry_mode": {
+              "enum": [
+                "off",
+                "auto",
+                "full"
               ],
               "type": "string"
             }
@@ -654,6 +670,14 @@
                 "stats"
               ],
               "type": "string"
+            },
+            "telemetry_mode": {
+              "enum": [
+                "off",
+                "auto",
+                "full"
+              ],
+              "type": "string"
             }
           },
           "required": [
@@ -665,6 +689,14 @@
           "properties": {
             "action": {
               "const": "load"
+            },
+            "telemetry_mode": {
+              "enum": [
+                "off",
+                "auto",
+                "full"
+              ],
+              "type": "string"
             }
           },
           "required": [
@@ -709,6 +741,14 @@
                 "type": "object"
               },
               "type": "array"
+            },
+            "telemetry_mode": {
+              "enum": [
+                "off",
+                "auto",
+                "full"
+              ],
+              "type": "string"
             }
           },
           "required": [
@@ -751,6 +791,14 @@
                 "enable",
                 "disable",
                 "status"
+              ],
+              "type": "string"
+            },
+            "telemetry_mode": {
+              "enum": [
+                "off",
+                "auto",
+                "full"
               ],
               "type": "string"
             },
@@ -811,6 +859,14 @@
               ],
               "type": "string"
             },
+            "telemetry_mode": {
+              "enum": [
+                "off",
+                "auto",
+                "full"
+              ],
+              "type": "string"
+            },
             "url": {
               "type": "string"
             }
@@ -842,6 +898,14 @@
             "since": {
               "type": "string"
             },
+            "telemetry_mode": {
+              "enum": [
+                "off",
+                "auto",
+                "full"
+              ],
+              "type": "string"
+            },
             "tool_name": {
               "type": "string"
             }
@@ -859,6 +923,14 @@
             "label": {
               "type": "string"
             },
+            "telemetry_mode": {
+              "enum": [
+                "off",
+                "auto",
+                "full"
+              ],
+              "type": "string"
+            },
             "test_id": {
               "type": "string"
             }
@@ -873,6 +945,14 @@
           "properties": {
             "action": {
               "const": "test_boundary_end"
+            },
+            "telemetry_mode": {
+              "enum": [
+                "off",
+                "auto",
+                "full"
+              ],
+              "type": "string"
             },
             "test_id": {
               "type": "string"
@@ -895,6 +975,14 @@
             "sensitive_data_enabled": {
               "type": "boolean"
             },
+            "telemetry_mode": {
+              "enum": [
+                "off",
+                "auto",
+                "full"
+              ],
+              "type": "string"
+            },
             "url": {
               "type": "string"
             }
@@ -911,6 +999,14 @@
             },
             "recording_id": {
               "type": "string"
+            },
+            "telemetry_mode": {
+              "enum": [
+                "off",
+                "auto",
+                "full"
+              ],
+              "type": "string"
             }
           },
           "required": [
@@ -924,6 +1020,14 @@
               "const": "playback"
             },
             "recording_id": {
+              "type": "string"
+            },
+            "telemetry_mode": {
+              "enum": [
+                "off",
+                "auto",
+                "full"
+              ],
               "type": "string"
             }
           },
@@ -941,6 +1045,14 @@
               "type": "string"
             },
             "replay_id": {
+              "type": "string"
+            },
+            "telemetry_mode": {
+              "enum": [
+                "off",
+                "auto",
+                "full"
+              ],
               "type": "string"
             }
           },

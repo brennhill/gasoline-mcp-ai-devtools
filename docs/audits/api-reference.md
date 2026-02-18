@@ -615,7 +615,7 @@ Classify test type.
 **Purpose**: Session settings and utilities.
 
 **Required parameter**: `action` (string)
-**Schema model**: `configure` is an action-discriminated union (`oneOf`). Each `action` allows only its action-specific keys.
+**Schema model**: `configure` is an action-discriminated union (`oneOf`). Each `action` allows only its action-specific keys, plus optional cross-cutting `telemetry_mode`.
 
 #### Configure Actions
 

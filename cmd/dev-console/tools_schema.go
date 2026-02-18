@@ -587,6 +587,10 @@ func (h *ToolHandler) ToolsList() []MCPTool {
 					{
 						"properties": map[string]any{
 							"action": map[string]any{"const": "health"},
+							"telemetry_mode": map[string]any{
+								"type": "string",
+								"enum": []string{"off", "auto", "full"},
+							},
 						},
 						"required":             []string{"action"},
 						"additionalProperties": false,
@@ -595,6 +599,10 @@ func (h *ToolHandler) ToolsList() []MCPTool {
 						"properties": map[string]any{
 							"action": map[string]any{"const": "clear"},
 							"buffer": map[string]any{"type": "string", "enum": []string{"network", "websocket", "actions", "logs", "all"}},
+							"telemetry_mode": map[string]any{
+								"type": "string",
+								"enum": []string{"off", "auto", "full"},
+							},
 						},
 						"required":             []string{"action"},
 						"additionalProperties": false,
@@ -606,6 +614,10 @@ func (h *ToolHandler) ToolsList() []MCPTool {
 							"namespace":    map[string]any{"type": "string"},
 							"key":          map[string]any{"type": "string"},
 							"data":         map[string]any{"type": "object"},
+							"telemetry_mode": map[string]any{
+								"type": "string",
+								"enum": []string{"off", "auto", "full"},
+							},
 						},
 						"required":             []string{"action"},
 						"additionalProperties": false,
@@ -613,6 +625,10 @@ func (h *ToolHandler) ToolsList() []MCPTool {
 					{
 						"properties": map[string]any{
 							"action": map[string]any{"const": "load"},
+							"telemetry_mode": map[string]any{
+								"type": "string",
+								"enum": []string{"off", "auto", "full"},
+							},
 						},
 						"required":             []string{"action"},
 						"additionalProperties": false,
@@ -626,6 +642,10 @@ func (h *ToolHandler) ToolsList() []MCPTool {
 							"pattern":      map[string]any{"type": "string"},
 							"category":     map[string]any{"type": "string", "enum": []string{"console", "network", "websocket"}},
 							"reason":       map[string]any{"type": "string"},
+							"telemetry_mode": map[string]any{
+								"type": "string",
+								"enum": []string{"off", "auto", "full"},
+							},
 						},
 						"required":             []string{"action"},
 						"additionalProperties": false,
@@ -644,6 +664,10 @@ func (h *ToolHandler) ToolsList() []MCPTool {
 							"throttle_seconds": map[string]any{"type": "integer", "minimum": 1, "maximum": 60},
 							"severity_min":     map[string]any{"type": "string", "enum": []string{"info", "warning", "error"}},
 							"url":              map[string]any{"type": "string"},
+							"telemetry_mode": map[string]any{
+								"type": "string",
+								"enum": []string{"off", "auto", "full"},
+							},
 						},
 						"required":             []string{"action", "streaming_action"},
 						"additionalProperties": false,
@@ -667,6 +691,10 @@ func (h *ToolHandler) ToolsList() []MCPTool {
 							"compare_a":      map[string]any{"type": "string"},
 							"compare_b":      map[string]any{"type": "string"},
 							"url":            map[string]any{"type": "string"},
+							"telemetry_mode": map[string]any{
+								"type": "string",
+								"enum": []string{"off", "auto", "full"},
+							},
 						},
 						"required":             []string{"action"},
 						"additionalProperties": false,
@@ -679,6 +707,10 @@ func (h *ToolHandler) ToolsList() []MCPTool {
 							"tool_name":  map[string]any{"type": "string"},
 							"since":      map[string]any{"type": "string"},
 							"limit":      map[string]any{"type": "number"},
+							"telemetry_mode": map[string]any{
+								"type": "string",
+								"enum": []string{"off", "auto", "full"},
+							},
 						},
 						"required":             []string{"action"},
 						"additionalProperties": false,
@@ -688,6 +720,10 @@ func (h *ToolHandler) ToolsList() []MCPTool {
 							"action":  map[string]any{"const": "test_boundary_start"},
 							"test_id": map[string]any{"type": "string"},
 							"label":   map[string]any{"type": "string"},
+							"telemetry_mode": map[string]any{
+								"type": "string",
+								"enum": []string{"off", "auto", "full"},
+							},
 						},
 						"required":             []string{"action", "test_id"},
 						"additionalProperties": false,
@@ -696,6 +732,10 @@ func (h *ToolHandler) ToolsList() []MCPTool {
 						"properties": map[string]any{
 							"action":  map[string]any{"const": "test_boundary_end"},
 							"test_id": map[string]any{"type": "string"},
+							"telemetry_mode": map[string]any{
+								"type": "string",
+								"enum": []string{"off", "auto", "full"},
+							},
 						},
 						"required":             []string{"action", "test_id"},
 						"additionalProperties": false,
@@ -708,6 +748,10 @@ func (h *ToolHandler) ToolsList() []MCPTool {
 							"sensitive_data_enabled": map[string]any{
 								"type": "boolean",
 							},
+							"telemetry_mode": map[string]any{
+								"type": "string",
+								"enum": []string{"off", "auto", "full"},
+							},
 						},
 						"required":             []string{"action"},
 						"additionalProperties": false,
@@ -716,6 +760,10 @@ func (h *ToolHandler) ToolsList() []MCPTool {
 						"properties": map[string]any{
 							"action":       map[string]any{"const": "recording_stop"},
 							"recording_id": map[string]any{"type": "string"},
+							"telemetry_mode": map[string]any{
+								"type": "string",
+								"enum": []string{"off", "auto", "full"},
+							},
 						},
 						"required":             []string{"action"},
 						"additionalProperties": false,
@@ -724,6 +772,10 @@ func (h *ToolHandler) ToolsList() []MCPTool {
 						"properties": map[string]any{
 							"action":       map[string]any{"const": "playback"},
 							"recording_id": map[string]any{"type": "string"},
+							"telemetry_mode": map[string]any{
+								"type": "string",
+								"enum": []string{"off", "auto", "full"},
+							},
 						},
 						"required":             []string{"action"},
 						"additionalProperties": false,
@@ -733,6 +785,10 @@ func (h *ToolHandler) ToolsList() []MCPTool {
 							"action":      map[string]any{"const": "log_diff"},
 							"original_id": map[string]any{"type": "string"},
 							"replay_id":   map[string]any{"type": "string"},
+							"telemetry_mode": map[string]any{
+								"type": "string",
+								"enum": []string{"off", "auto", "full"},
+							},
 						},
 						"required":             []string{"action", "original_id", "replay_id"},
 						"additionalProperties": false,
