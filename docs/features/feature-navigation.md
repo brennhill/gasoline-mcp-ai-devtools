@@ -59,6 +59,7 @@ Each entry shows:
 | behavioral-baselines | `feature/behavioral-baselines/` | product-spec.md, qa-plan.md, tech-spec.md | (See folder for details) |
 | best-practices-audit | `feature/best-practices-audit/` | product-spec.md, qa-plan.md, tech-spec.md | (See folder for details) |
 | binary-format-detection | `feature/binary-format-detection/` | product-spec.md, qa-plan.md, tech-spec.md | (See folder for details) |
+| bridge-restart | `feature/bridge-restart/` | product-spec.md, tech-spec.md, test-plan.md | Force-restart daemon when unresponsive via `configure(action="restart")` |
 | browser-extension-enhancement | `feature/browser-extension-enhancement/` | PRODUCT_SPEC.md, QA_PLAN.md, TECH_SPEC.md | Browser Extension Enhancement — Product Specification |
 | budget-thresholds | `feature/budget-thresholds/` | product-spec.md, qa-plan.md, tech-spec.md | (See folder for details) |
 | buffer-clearing | `feature/buffer-clearing/` | product-spec.md, tech-spec.md | (See folder for details) |
