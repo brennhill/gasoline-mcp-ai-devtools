@@ -28,7 +28,7 @@ Workflow:
 - observe: read passive buffers (errors, logs, network, actions, etc.)
 - analyze: trigger active analysis (accessibility, security, performance, DOM queries)
 - generate: create artifacts from captured data (Playwright tests, reproductions, HAR, CSP, SARIF)
-- configure: session settings (noise rules, storage, streaming, clear buffers, health)
+- configure: session settings (noise rules, storage, streaming, clear buffers, health, restart)
 - interact: browser automation (click, type, navigate, execute JS, record) — requires AI Web Pilot extension
 
 Key patterns:
@@ -37,6 +37,7 @@ Key patterns:
 - Error debugging: start with observe(what="error_bundles") for pre-assembled context per error (error + network + actions + logs).
 - Performance: interact(action="navigate"|"refresh") auto-includes perf_diff. Add analyze=true to any interact action for profiling.
 - Noise filtering: use configure(action="noise_rule", noise_action="auto_detect") to suppress recurring noise.
+- Recovery: if tools return repeated connection errors or timeouts, use configure(action="restart") to force-restart the daemon. This works even when the daemon is completely unresponsive.
 - For routing help, read gasoline://capabilities. For detailed docs, read gasoline://guide. For quick examples, read gasoline://quickstart.`
 
 // MCPHandler handles MCP protocol messages

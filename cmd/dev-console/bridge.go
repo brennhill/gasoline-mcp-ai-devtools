@@ -22,6 +22,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"syscall"
 	"time"
 
 	statecfg "github.com/dev-console/dev-console/internal/state"
@@ -1055,6 +1056,28 @@ func extractToolAction(req JSONRPCRequest) (toolName, action string) {
 	return p.Name, a.Action
 }
 
+// forceKillOnPort sends SIGCONT then SIGKILL to any process on the given port.
+// This handles edge cases where the daemon is frozen (SIGSTOP) and can't process
+// SIGTERM from stopServerForUpgrade's normal escalation path.
+func forceKillOnPort(port int) {
+	pids, err := findProcessOnPort(port)
+	if err != nil {
+		return
+	}
+	self := os.Getpid()
+	for _, pid := range pids {
+		if pid == self {
+			continue
+		}
+		p, err := os.FindProcess(pid)
+		if err != nil {
+			continue
+		}
+		// SIGCONT unfreezes a SIGSTOP'd process so subsequent signals are delivered.
+		_ = p.Signal(syscall.SIGCONT)
+	}
+}
+
 // handleBridgeRestart handles configure(action="restart") in the bridge layer.
 // This is a fast path that works even when the daemon is unresponsive.
 // Returns true if the request was handled.
@@ -1066,7 +1089,9 @@ func handleBridgeRestart(req JSONRPCRequest, state *daemonState, port int) bool 
 
 	stderrf("[gasoline] bridge restart requested, stopping daemon on port %d\n", port)
 
-	// Kill the daemon (3-layer: HTTP → PID → lsof)
+	// Kill the daemon (3-layer: HTTP → PID → lsof).
+	// First send SIGCONT to unfreeze any SIGSTOP'd process so signals can be delivered.
+	forceKillOnPort(port)
 	stopped := stopServerForUpgrade(port)
 
 	// Reset bridge state for fresh spawn
