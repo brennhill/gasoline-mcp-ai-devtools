@@ -49,7 +49,7 @@ func TestStdioSilence_NormalConnection(t *testing.T) {
 	}
 
 	// Spawn server like MCP client would
-	cmd := startServerCmd(binary, "--port", strconv.Itoa(port))
+	cmd := startServerCmd(t, binary, "--port", strconv.Itoa(port))
 
 	// Capture stdout and stderr separately
 	var stdout, stderr bytes.Buffer
@@ -186,7 +186,7 @@ func TestStdioSilence_MultiClientSpawn(t *testing.T) {
 			t.Fatalf("Failed to get binary path: %v", err)
 		}
 
-		cmd := startServerCmd(binary, "--port", strconv.Itoa(port))
+		cmd := startServerCmd(t, binary, "--port", strconv.Itoa(port))
 
 		var stderr bytes.Buffer
 		cmd.Stderr = &stderr
@@ -266,7 +266,7 @@ func TestStdioSilence_ConnectionRetry(t *testing.T) {
 	}
 
 	// Start server
-	serverCmd := startServerCmd(binary, "--port", strconv.Itoa(port))
+	serverCmd := startServerCmd(t, binary, "--port", strconv.Itoa(port))
 	serverStdin, _ := serverCmd.StdinPipe()
 	if err := serverCmd.Start(); err != nil {
 		t.Fatalf("Failed to start server: %v", err)
@@ -280,7 +280,7 @@ func TestStdioSilence_ConnectionRetry(t *testing.T) {
 	time.Sleep(1 * time.Second)
 
 	// Now start a client - it will need to retry connection
-	clientCmd := startServerCmd(binary, "--port", strconv.Itoa(port))
+	clientCmd := startServerCmd(t, binary, "--port", strconv.Itoa(port))
 
 	var stderr bytes.Buffer
 	clientCmd.Stderr = &stderr

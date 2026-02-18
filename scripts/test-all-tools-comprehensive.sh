@@ -156,6 +156,9 @@ _uat_cleanup() {
     for _p in $((PORT_GROUP19 + 100)) $((PORT_GROUP19 + 101)) $((PORT_GROUP19 + 102)); do
         lsof -ti :"$_p" 2>/dev/null | xargs kill -9 2>/dev/null || true
     done
+    if [ -f "$SCRIPT_DIR/cleanup-test-daemons.sh" ]; then
+        bash "$SCRIPT_DIR/cleanup-test-daemons.sh" --quiet >/dev/null 2>&1 || true
+    fi
 }
 trap _uat_cleanup EXIT
 

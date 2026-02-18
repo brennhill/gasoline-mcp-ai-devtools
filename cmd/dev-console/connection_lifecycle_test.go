@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -53,7 +54,7 @@ func TestMCPConnectionLifecycle_FreshStart(t *testing.T) {
 	binary := buildTestBinary(t)
 
 	// Start first client (should spawn server)
-	cmd := startServerCmd(binary, "--port", fmt.Sprintf("%d", port))
+	cmd := startServerCmd(t, binary, "--port", fmt.Sprintf("%d", port))
 	stdin, err := cmd.StdinPipe()
 	if err != nil {
 		t.Fatalf("Failed to create stdin pipe: %v", err)
@@ -101,7 +102,7 @@ func TestMCPConnectionLifecycle_MultiClient(t *testing.T) {
 	binary := buildTestBinary(t)
 
 	// Start first client (spawns server)
-	cmd1 := startServerCmd(binary, "--port", fmt.Sprintf("%d", port))
+	cmd1 := startServerCmd(t, binary, "--port", fmt.Sprintf("%d", port))
 	stdin1, err := cmd1.StdinPipe()
 	if err != nil {
 		t.Fatalf("Failed to create stdin1 pipe: %v", err)
@@ -125,7 +126,7 @@ func TestMCPConnectionLifecycle_MultiClient(t *testing.T) {
 	}
 
 	// Start second client (should connect to existing)
-	cmd2 := startServerCmd(binary, "--port", fmt.Sprintf("%d", port))
+	cmd2 := startServerCmd(t, binary, "--port", fmt.Sprintf("%d", port))
 	stdin2, err := cmd2.StdinPipe()
 	if err != nil {
 		t.Fatalf("Failed to create stdin2 pipe: %v", err)
@@ -188,7 +189,7 @@ func TestMCPConnectionLifecycle_RetryLogic(t *testing.T) {
 	binary := buildTestBinary(t)
 
 	// Start a server that will be killed quickly
-	cmd1 := startServerCmd(binary, "--port", fmt.Sprintf("%d", port))
+	cmd1 := startServerCmd(t, binary, "--port", fmt.Sprintf("%d", port))
 	stdin1, err := cmd1.StdinPipe()
 	if err != nil {
 		t.Fatalf("Failed to create stdin1 pipe: %v", err)
@@ -212,7 +213,7 @@ func TestMCPConnectionLifecycle_RetryLogic(t *testing.T) {
 
 	// Start second client - should detect the port is free and start fresh server
 	// (This tests the retry/recovery path)
-	cmd2 := startServerCmd(binary, "--port", fmt.Sprintf("%d", port))
+	cmd2 := startServerCmd(t, binary, "--port", fmt.Sprintf("%d", port))
 	stdin2, err := cmd2.StdinPipe()
 	if err != nil {
 		t.Fatalf("Failed to create stdin2 pipe: %v", err)
@@ -289,7 +290,7 @@ func TestMCPConnectionLifecycle_MassiveConcurrency(t *testing.T) {
 
 	// Start the first server and wait for it to be ready
 	t.Logf("Starting initial server on port %d...", port)
-	serverCmd := startServerCmd(binary, "--port", fmt.Sprintf("%d", port))
+	serverCmd := startServerCmd(t, binary, "--port", fmt.Sprintf("%d", port))
 	serverStdin, err := serverCmd.StdinPipe()
 	if err != nil {
 		t.Fatalf("Failed to create server stdin: %v", err)
@@ -473,7 +474,7 @@ func TestMCPConnectionLifecycle_ColdStartRace(t *testing.T) {
 			defer wg.Done()
 
 			// Start client with piped stdin (MCP mode)
-			cmd := startServerCmd(binary, "--port", fmt.Sprintf("%d", port))
+			cmd := startServerCmd(t, binary, "--port", fmt.Sprintf("%d", port))
 			stdin, _ := cmd.StdinPipe()
 			stderr, _ := cmd.StderrPipe()
 
@@ -651,7 +652,7 @@ func TestMCPConnectionLifecycle_ColdStart(t *testing.T) {
 	t.Logf("Cold start: launching %d MCP clients simultaneously with NO server running...", numClients)
 
 	// Launch first client to spawn server
-	cmd1 := startServerCmd(binary, "--port", fmt.Sprintf("%d", port))
+	cmd1 := startServerCmd(t, binary, "--port", fmt.Sprintf("%d", port))
 	stdin1, _ := cmd1.StdinPipe()
 	if err := cmd1.Start(); err != nil {
 		t.Fatalf("Failed to start first client: %v", err)
@@ -799,14 +800,60 @@ func buildTestBinary(t *testing.T) string {
 }
 
 // startServerCmd creates an exec.Cmd for the test binary with GOCOVERDIR
-// set in the environment when coverage collection is active. Use this instead
-// of exec.Command(binary, ...) for all integration tests that spawn the binary.
-func startServerCmd(binary string, args ...string) *exec.Cmd {
+// set in the environment when coverage collection is active.
+//
+// IMPORTANT: client-mode invocations can spawn a detached daemon process
+// (`--daemon`) on the target port. Register per-test cleanup that always
+// runs `--stop --port` to prevent daemon accumulation between test runs.
+func startServerCmd(t *testing.T, binary string, args ...string) *exec.Cmd {
+	t.Helper()
+
+	if port := parsePortArg(args); port > 0 {
+		t.Cleanup(func() {
+			stopTestServer(binary, port)
+		})
+	}
+
 	cmd := exec.Command(binary, args...) // #nosec G204 -- test-only: binary is from buildTestBinary(t) // nosemgrep: go.lang.security.audit.dangerous-exec-command.dangerous-exec-command, go_subproc_rule-subproc -- test spawns own binary
 	if testCoverDir != "" {
 		cmd.Env = append(os.Environ(), "GOCOVERDIR="+testCoverDir)
 	}
 	return cmd
+}
+
+func parsePortArg(args []string) int {
+	for i := 0; i < len(args); i++ {
+		if args[i] == "--port" && i+1 < len(args) {
+			if port, err := strconv.Atoi(args[i+1]); err == nil && port > 0 {
+				return port
+			}
+			return 0
+		}
+		if strings.HasPrefix(args[i], "--port=") {
+			raw := strings.TrimPrefix(args[i], "--port=")
+			if port, err := strconv.Atoi(raw); err == nil && port > 0 {
+				return port
+			}
+			return 0
+		}
+	}
+	return 0
+}
+
+func stopTestServer(binary string, port int) {
+	stopCmd := exec.Command(binary, "--stop", "--port", strconv.Itoa(port))
+	stopCmd.Stdout = io.Discard
+	stopCmd.Stderr = io.Discard
+	_ = stopCmd.Run()
+
+	// Best-effort fallback if stop mode could not terminate all listeners.
+	pids, err := findProcessOnPort(port)
+	if err == nil {
+		for _, pid := range pids {
+			_ = killProcessByPID(pid)
+		}
+	}
+	removePIDFile(port)
 }
 
 func checkSingleServerProcess(t *testing.T, port int) {

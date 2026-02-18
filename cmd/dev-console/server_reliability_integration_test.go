@@ -41,7 +41,7 @@ func TestReliability_MCPTraffic_RealisticSession(t *testing.T) {
 	port := findFreePort(t)
 	binary := buildTestBinary(t)
 
-	cmd := startServerCmd(binary, "--port", fmt.Sprintf("%d", port))
+	cmd := startServerCmd(t, binary, "--port", fmt.Sprintf("%d", port))
 	stdin, err := cmd.StdinPipe()
 	if err != nil {
 		t.Fatalf("Failed to create stdin pipe: %v", err)
@@ -138,7 +138,7 @@ func TestReliability_MCPTraffic_BurstPattern(t *testing.T) {
 	port := findFreePort(t)
 	binary := buildTestBinary(t)
 
-	cmd := startServerCmd(binary, "--port", fmt.Sprintf("%d", port))
+	cmd := startServerCmd(t, binary, "--port", fmt.Sprintf("%d", port))
 	stdin, err := cmd.StdinPipe()
 	if err != nil {
 		t.Fatalf("Failed to create stdin pipe: %v", err)
@@ -213,7 +213,7 @@ func TestReliability_Upgrade_OldServerKilled(t *testing.T) {
 	binary := buildTestBinary(t)
 
 	// Start "old" server
-	oldCmd := startServerCmd(binary, "--port", fmt.Sprintf("%d", port))
+	oldCmd := startServerCmd(t, binary, "--port", fmt.Sprintf("%d", port))
 	oldStdin, err := oldCmd.StdinPipe()
 	if err != nil {
 		t.Fatalf("Failed to create stdin pipe for old server: %v", err)
@@ -248,7 +248,7 @@ func TestReliability_Upgrade_OldServerKilled(t *testing.T) {
 	time.Sleep(500 * time.Millisecond)
 
 	// Start "new" server on same port
-	newCmd := startServerCmd(binary, "--port", fmt.Sprintf("%d", port))
+	newCmd := startServerCmd(t, binary, "--port", fmt.Sprintf("%d", port))
 	newStdin, err := newCmd.StdinPipe()
 	if err != nil {
 		t.Fatalf("Failed to create stdin pipe for new server: %v", err)
@@ -308,7 +308,7 @@ func TestReliability_Upgrade_PortConflictDetection(t *testing.T) {
 	binary := buildTestBinary(t)
 
 	// Start server on port
-	cmd1 := startServerCmd(binary, "--port", fmt.Sprintf("%d", port))
+	cmd1 := startServerCmd(t, binary, "--port", fmt.Sprintf("%d", port))
 	stdin1, err := cmd1.StdinPipe()
 	if err != nil {
 		t.Fatalf("Failed to create stdin pipe: %v", err)
@@ -329,7 +329,7 @@ func TestReliability_Upgrade_PortConflictDetection(t *testing.T) {
 	t.Logf("First server running on port %d", port)
 
 	// Use --check flag to detect port conflict without starting
-	cmd2 := startServerCmd(binary, "--port", fmt.Sprintf("%d", port), "--check")
+	cmd2 := startServerCmd(t, binary, "--port", fmt.Sprintf("%d", port), "--check")
 	output, _ := cmd2.CombinedOutput()
 
 	// --check should report the port is in use
@@ -362,7 +362,7 @@ func TestReliability_Integration_FullMCPProtocol(t *testing.T) {
 	port := findFreePort(t)
 	binary := buildTestBinary(t)
 
-	cmd := startServerCmd(binary, "--port", fmt.Sprintf("%d", port))
+	cmd := startServerCmd(t, binary, "--port", fmt.Sprintf("%d", port))
 	stdin, err := cmd.StdinPipe()
 	if err != nil {
 		t.Fatalf("Failed to create stdin pipe: %v", err)
@@ -495,7 +495,7 @@ func TestReliability_Integration_LargePayloads(t *testing.T) {
 	port := findFreePort(t)
 	binary := buildTestBinary(t)
 
-	cmd := startServerCmd(binary, "--port", fmt.Sprintf("%d", port))
+	cmd := startServerCmd(t, binary, "--port", fmt.Sprintf("%d", port))
 	stdin, err := cmd.StdinPipe()
 	if err != nil {
 		t.Fatalf("Failed to create stdin pipe: %v", err)

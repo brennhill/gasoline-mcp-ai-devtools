@@ -40,12 +40,11 @@ func TestIntegration_ServerStartupUnder1Second(t *testing.T) {
 	port := findFreePort(t)
 	binary := buildTestBinary(t)
 
-
 	// Measure startup time
 	startTime := time.Now()
 
 	// Start server
-	cmd := startServerCmd(binary, "--port", fmt.Sprintf("%d", port))
+	cmd := startServerCmd(t, binary, "--port", fmt.Sprintf("%d", port))
 	stdin, err := cmd.StdinPipe()
 	if err != nil {
 		t.Fatalf("Failed to create stdin pipe: %v", err)
@@ -99,9 +98,8 @@ func TestIntegration_AllMCPToolsReturnValidResponses(t *testing.T) {
 	port := findFreePort(t)
 	binary := buildTestBinary(t)
 
-
 	// Start server
-	cmd := startServerCmd(binary, "--port", fmt.Sprintf("%d", port))
+	cmd := startServerCmd(t, binary, "--port", fmt.Sprintf("%d", port))
 	stdin, err := cmd.StdinPipe()
 	if err != nil {
 		t.Fatalf("Failed to create stdin pipe: %v", err)
@@ -293,9 +291,8 @@ func TestIntegration_ToolsListMatchesImplementation(t *testing.T) {
 	port := findFreePort(t)
 	binary := buildTestBinary(t)
 
-
 	// Start server
-	cmd := startServerCmd(binary, "--port", fmt.Sprintf("%d", port))
+	cmd := startServerCmd(t, binary, "--port", fmt.Sprintf("%d", port))
 	stdin, err := cmd.StdinPipe()
 	if err != nil {
 		t.Fatalf("Failed to create stdin pipe: %v", err)

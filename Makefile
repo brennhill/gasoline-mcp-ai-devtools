@@ -22,7 +22,7 @@ PLATFORMS := \
 	release-check install-hooks bench-baseline sync-version \
 	pypi-binaries pypi-build pypi-publish pypi-test-publish pypi-clean \
 	security-check pre-commit verify-all npm-binaries validate-semver \
-	test-upgrade-guards release-gate \
+	test-upgrade-guards release-gate clean-test-daemons \
 	$(PLATFORMS)
 
 GO_TEST_SHARDS ?= 4
@@ -80,14 +80,17 @@ test-fast:
 test-all: test test-js
 
 test-go-quick:
-	CGO_ENABLED=0 GOTOOLCHAIN=$(GO_TEST_TOOLCHAIN) GOCACHE=$(GO_TEST_CACHE_DIR) GASOLINE_STATE_DIR=$(GO_TEST_STATE_DIR) go test -short -count=$(GO_TEST_COUNT) -p $(GO_TEST_P) -parallel $(GO_TEST_PARALLEL) ./internal/...
+	@set -e; trap 'bash ./scripts/cleanup-test-daemons.sh --quiet >/dev/null 2>&1 || true' EXIT; \
+	CGO_ENABLED=0 GOTOOLCHAIN=$(GO_TEST_TOOLCHAIN) GOCACHE=$(GO_TEST_CACHE_DIR) GASOLINE_STATE_DIR=$(GO_TEST_STATE_DIR) go test -short -count=$(GO_TEST_COUNT) -p $(GO_TEST_P) -parallel $(GO_TEST_PARALLEL) ./internal/...; \
 	CGO_ENABLED=0 GOTOOLCHAIN=$(GO_TEST_TOOLCHAIN) GOCACHE=$(GO_TEST_CACHE_DIR) GASOLINE_STATE_DIR=$(GO_TEST_STATE_DIR) GO_TEST_SHARDS=$(GO_TEST_SHARDS) GO_TEST_COUNT=$(GO_TEST_COUNT) GASOLINE_CMD_PKG=$(CMD_PKG) ./scripts/test-go-sharded.sh --package $(CMD_PKG) --short -- -parallel $(GO_TEST_PARALLEL)
 
 test-go-long:
-	CGO_ENABLED=0 GOTOOLCHAIN=$(GO_TEST_TOOLCHAIN) GOCACHE=$(GO_TEST_CACHE_DIR) GASOLINE_STATE_DIR=$(GO_TEST_STATE_DIR) go test -count=$(GO_TEST_COUNT) -p $(GO_TEST_P) -parallel $(GO_TEST_PARALLEL) ./internal/...
+	@set -e; trap 'bash ./scripts/cleanup-test-daemons.sh --quiet >/dev/null 2>&1 || true' EXIT; \
+	CGO_ENABLED=0 GOTOOLCHAIN=$(GO_TEST_TOOLCHAIN) GOCACHE=$(GO_TEST_CACHE_DIR) GASOLINE_STATE_DIR=$(GO_TEST_STATE_DIR) go test -count=$(GO_TEST_COUNT) -p $(GO_TEST_P) -parallel $(GO_TEST_PARALLEL) ./internal/...; \
 	CGO_ENABLED=0 GOTOOLCHAIN=$(GO_TEST_TOOLCHAIN) GOCACHE=$(GO_TEST_CACHE_DIR) GASOLINE_STATE_DIR=$(GO_TEST_STATE_DIR) GO_TEST_SHARDS=$(GO_TEST_SHARDS) GO_TEST_COUNT=$(GO_TEST_COUNT) GASOLINE_CMD_PKG=$(CMD_PKG) ./scripts/test-go-sharded.sh --package $(CMD_PKG) -- -parallel $(GO_TEST_PARALLEL)
 
 test-go-sharded:
+	@set -e; trap 'bash ./scripts/cleanup-test-daemons.sh --quiet >/dev/null 2>&1 || true' EXIT; \
 	CGO_ENABLED=0 GOTOOLCHAIN=$(GO_TEST_TOOLCHAIN) GOCACHE=$(GO_TEST_CACHE_DIR) GASOLINE_STATE_DIR=$(GO_TEST_STATE_DIR) GO_TEST_SHARDS=$(GO_TEST_SHARDS) GO_TEST_COUNT=$(GO_TEST_COUNT) GASOLINE_CMD_PKG=$(CMD_PKG) ./scripts/test-go-sharded.sh --package $(CMD_PKG) -- -parallel $(GO_TEST_PARALLEL)
 
 test-race:
@@ -117,6 +120,9 @@ test-bench:
 
 test-fuzz:
 	go test -fuzz=. -fuzztime=10s $(CMD_PKG)/...
+
+clean-test-daemons:
+	bash ./scripts/cleanup-test-daemons.sh
 
 verify-zero-deps:
 	@if grep -q '^require' go.mod; then echo "FAIL: go.mod contains external dependencies"; exit 1; fi

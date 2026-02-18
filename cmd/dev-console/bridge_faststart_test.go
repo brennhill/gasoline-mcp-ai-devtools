@@ -61,7 +61,7 @@ func TestFastStart_InitializeRespondsImmediately(t *testing.T) {
 	port := findFreePort(t)
 
 	// Start bridge mode (which uses fast-start)
-	cmd := startServerCmd(binary, "--bridge", "--port", fmt.Sprintf("%d", port))
+	cmd := startServerCmd(t, binary, "--bridge", "--port", fmt.Sprintf("%d", port))
 
 	stdin, err := cmd.StdinPipe()
 	if err != nil {
@@ -167,7 +167,7 @@ func TestFastStart_ToolsListRespondsImmediately(t *testing.T) {
 	binary := buildTestBinary(t)
 	port := findFreePort(t)
 
-	cmd := startServerCmd(binary, "--bridge", "--port", fmt.Sprintf("%d", port))
+	cmd := startServerCmd(t, binary, "--bridge", "--port", fmt.Sprintf("%d", port))
 
 	stdin, err := cmd.StdinPipe()
 	if err != nil {
@@ -340,7 +340,7 @@ func TestFastStart_OtherMethodsReturnQuickly(t *testing.T) {
 	binary := buildTestBinary(t)
 	port := findFreePort(t)
 
-	cmd := startServerCmd(binary, "--bridge", "--port", fmt.Sprintf("%d", port))
+	cmd := startServerCmd(t, binary, "--bridge", "--port", fmt.Sprintf("%d", port))
 
 	stdin, err := cmd.StdinPipe()
 	if err != nil {
@@ -428,7 +428,7 @@ func TestFastStart_ResourceWorkflowBeforeDaemonReady(t *testing.T) {
 
 	binary := buildTestBinary(t)
 	port := findFreePort(t)
-	cmd := startServerCmd(binary, "--bridge", "--port", fmt.Sprintf("%d", port))
+	cmd := startServerCmd(t, binary, "--bridge", "--port", fmt.Sprintf("%d", port))
 
 	stdin, err := cmd.StdinPipe()
 	if err != nil {
@@ -526,7 +526,7 @@ func TestFastStart_ClientCompatibilityMatrix(t *testing.T) {
 	for _, tc := range clients {
 		t.Run(tc.name, func(t *testing.T) {
 			port := findFreePort(t)
-			cmd := startServerCmd(binary, "--bridge", "--port", fmt.Sprintf("%d", port))
+			cmd := startServerCmd(t, binary, "--bridge", "--port", fmt.Sprintf("%d", port))
 
 			stdin, err := cmd.StdinPipe()
 			if err != nil {
@@ -583,7 +583,7 @@ func TestFastStart_ResourceWorkflowSoak(t *testing.T) {
 
 	binary := buildTestBinary(t)
 	port := findFreePort(t)
-	cmd := startServerCmd(binary, "--bridge", "--port", fmt.Sprintf("%d", port))
+	cmd := startServerCmd(t, binary, "--bridge", "--port", fmt.Sprintf("%d", port))
 
 	stdin, err := cmd.StdinPipe()
 	if err != nil {
@@ -653,7 +653,7 @@ func TestFastStart_ToolsCallReturnsRetryWhenBooting(t *testing.T) {
 	// Use a port that definitely has no server running
 	port := findFreePort(t)
 
-	cmd := startServerCmd(binary, "--bridge", "--port", fmt.Sprintf("%d", port))
+	cmd := startServerCmd(t, binary, "--bridge", "--port", fmt.Sprintf("%d", port))
 
 	stdin, err := cmd.StdinPipe()
 	if err != nil {
@@ -752,7 +752,7 @@ func TestFastStart_VersionInResponse(t *testing.T) {
 	binary := buildTestBinary(t)
 	port := findFreePort(t)
 
-	cmd := startServerCmd(binary, "--bridge", "--port", fmt.Sprintf("%d", port))
+	cmd := startServerCmd(t, binary, "--bridge", "--port", fmt.Sprintf("%d", port))
 
 	stdin, err := cmd.StdinPipe()
 	if err != nil {

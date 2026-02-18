@@ -4,6 +4,9 @@
 # MCP request sending, daemon lifecycle, and structured output.
 set -eo pipefail
 
+FRAMEWORK_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+TEST_DAEMON_CLEANER="$FRAMEWORK_DIR/../cleanup-test-daemons.sh"
+
 # ── Timeout Compatibility ──────────────────────────────────
 # macOS doesn't ship with `timeout`. Use gtimeout from coreutils if available.
 if command -v timeout >/dev/null 2>&1; then
@@ -30,12 +33,33 @@ OUTPUT_FILE=""
 START_TIME=""
 DAEMON_PID=""
 
+# ── Exit Cleanup ───────────────────────────────────────────
+# Always run daemon cleanup on script exit so failed/interrupted tests do not
+# leak persistent daemons.
+framework_cleanup() {
+    # Best effort: kill daemon tracked by this framework and cleanup by port.
+    if [ -n "${PORT:-}" ] && [ -n "${WRAPPER:-}" ]; then
+        kill_server || true
+    elif [ -n "${PORT:-}" ]; then
+        lsof -ti :"$PORT" 2>/dev/null | xargs kill 2>/dev/null || true
+        lsof -ti :"$PORT" 2>/dev/null | xargs kill -9 2>/dev/null || true
+    fi
+
+    # Always clean temporary artifacts.
+    [ -n "${TEMP_DIR:-}" ] && rm -rf "$TEMP_DIR"
+
+    # Global safety net for stale test binaries/daemons.
+    if [ -f "$TEST_DAEMON_CLEANER" ]; then
+        bash "$TEST_DAEMON_CLEANER" --quiet >/dev/null 2>&1 || true
+    fi
+}
+
 # ── Init ───────────────────────────────────────────────────
 init_framework() {
     PORT="${1:-7890}"
     RESULTS_FILE="${2:-/dev/null}"
     TEMP_DIR="$(mktemp -d)"
-    trap 'rm -rf "$TEMP_DIR"' EXIT
+    trap framework_cleanup EXIT INT TERM
     START_TIME="$(date +%s)"
 
     # Resolve binary: local build > PATH

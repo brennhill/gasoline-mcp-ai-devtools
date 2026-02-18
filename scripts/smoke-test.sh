@@ -231,6 +231,9 @@ fi
 # ── Cleanup: kill any orphaned test servers ───────────────
 pkill -f "upload-server.py" 2>/dev/null || true
 kill_server 2>/dev/null || true
+if [ -f "$RUNNER_DIR/cleanup-test-daemons.sh" ]; then
+    bash "$RUNNER_DIR/cleanup-test-daemons.sh" --quiet >/dev/null 2>&1 || true
+fi
 
 # ── Summary ──────────────────────────────────────────────
 ELAPSED=$(( $(date +%s) - START_TIME ))

@@ -52,6 +52,9 @@ _smoke_master_cleanup() {
     # Base cleanup: kill daemon, remove temp dir
     kill_server 2>/dev/null || true
     pkill -f "upload-server.py" 2>/dev/null || true
+    if [ -f "$SMOKE_FRAMEWORK_DIR/../cleanup-test-daemons.sh" ]; then
+        bash "$SMOKE_FRAMEWORK_DIR/../cleanup-test-daemons.sh" --quiet >/dev/null 2>&1 || true
+    fi
     [ -n "$TEMP_DIR" ] && rm -rf "$TEMP_DIR" 2>/dev/null || true
 }
 

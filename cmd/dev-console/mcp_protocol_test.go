@@ -43,9 +43,8 @@ func TestMCPProtocol_ResponseNewlines(t *testing.T) {
 	port := findFreePort(t)
 	binary := buildTestBinary(t)
 
-
 	// Start server
-	serverCmd := startServerCmd(binary, "--port", fmt.Sprintf("%d", port))
+	serverCmd := startServerCmd(t, binary, "--port", fmt.Sprintf("%d", port))
 	serverStdin, _ := serverCmd.StdinPipe()
 	if err := serverCmd.Start(); err != nil {
 		t.Fatalf("Failed to start server: %v", err)
@@ -124,9 +123,8 @@ func TestMCPProtocol_NotificationNoResponse(t *testing.T) {
 	port := findFreePort(t)
 	binary := buildTestBinary(t)
 
-
 	// Start server
-	serverCmd := startServerCmd(binary, "--port", fmt.Sprintf("%d", port))
+	serverCmd := startServerCmd(t, binary, "--port", fmt.Sprintf("%d", port))
 	serverStdin, _ := serverCmd.StdinPipe()
 	if err := serverCmd.Start(); err != nil {
 		t.Fatalf("Failed to start server: %v", err)
@@ -188,9 +186,8 @@ func TestMCPProtocol_JSONRPCStructure(t *testing.T) {
 	port := findFreePort(t)
 	binary := buildTestBinary(t)
 
-
 	// Start server
-	serverCmd := startServerCmd(binary, "--port", fmt.Sprintf("%d", port))
+	serverCmd := startServerCmd(t, binary, "--port", fmt.Sprintf("%d", port))
 	serverStdin, _ := serverCmd.StdinPipe()
 	if err := serverCmd.Start(); err != nil {
 		t.Fatalf("Failed to start server: %v", err)
@@ -286,9 +283,8 @@ func TestMCPProtocol_IDNeverNull(t *testing.T) {
 	port := findFreePort(t)
 	binary := buildTestBinary(t)
 
-
 	// Start server
-	serverCmd := startServerCmd(binary, "--port", fmt.Sprintf("%d", port))
+	serverCmd := startServerCmd(t, binary, "--port", fmt.Sprintf("%d", port))
 	serverStdin, _ := serverCmd.StdinPipe()
 	if err := serverCmd.Start(); err != nil {
 		t.Fatalf("Failed to start server: %v", err)
@@ -368,9 +364,8 @@ func TestMCPProtocol_ErrorCodes(t *testing.T) {
 	port := findFreePort(t)
 	binary := buildTestBinary(t)
 
-
 	// Start server
-	serverCmd := startServerCmd(binary, "--port", fmt.Sprintf("%d", port))
+	serverCmd := startServerCmd(t, binary, "--port", fmt.Sprintf("%d", port))
 	serverStdin, _ := serverCmd.StdinPipe()
 	if err := serverCmd.Start(); err != nil {
 		t.Fatalf("Failed to start server: %v", err)
@@ -454,9 +449,8 @@ func TestMCPProtocol_InitializeResponse(t *testing.T) {
 	port := findFreePort(t)
 	binary := buildTestBinary(t)
 
-
 	// Start server
-	serverCmd := startServerCmd(binary, "--port", fmt.Sprintf("%d", port))
+	serverCmd := startServerCmd(t, binary, "--port", fmt.Sprintf("%d", port))
 	serverStdin, _ := serverCmd.StdinPipe()
 	if err := serverCmd.Start(); err != nil {
 		t.Fatalf("Failed to start server: %v", err)
@@ -525,9 +519,8 @@ func TestMCPProtocol_ToolsListStructure(t *testing.T) {
 	port := findFreePort(t)
 	binary := buildTestBinary(t)
 
-
 	// Start server
-	serverCmd := startServerCmd(binary, "--port", fmt.Sprintf("%d", port))
+	serverCmd := startServerCmd(t, binary, "--port", fmt.Sprintf("%d", port))
 	serverStdin, _ := serverCmd.StdinPipe()
 	if err := serverCmd.Start(); err != nil {
 		t.Fatalf("Failed to start server: %v", err)
