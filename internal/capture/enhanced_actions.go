@@ -42,6 +42,12 @@ func (c *Capture) AddEnhancedActions(actions []EnhancedAction) {
 
 	hasNavigation := false
 	for i := range actions {
+		// CR-40: Server-side defense-in-depth — redact password values
+		// even if the extension already redacted them (belt and suspenders).
+		if actions[i].InputType == "password" && actions[i].Value != "" {
+			actions[i].Value = "[redacted]"
+		}
+
 		// Tag entry with active test IDs
 		actions[i].TestIDs = activeTestIDs
 

@@ -76,6 +76,6 @@ Tests: cold start, tool calls, concurrent clients, stdout purity, persistence, g
 | Feature specs         | `docs/features/<name>/`                          |
 | Test plans            | `docs/features/<name>/{name}-test-plan.md`       |
 | Test plan template    | `docs/features/_template/template-test-plan.md`  |
-| Architecture          | `.claude/refs/architecture.md`                   |
+| Architecture          | `docs/features/mcp-persistent-server/architecture.md` |
 | Known issues          | `docs/core/known-issues.md`                      |
 | All features          | `docs/features/feature-navigation.md`            |

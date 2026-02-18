@@ -57,10 +57,15 @@ At no point does data leave your machine.
 
 ## <i class="fas fa-key"></i> Extension Permissions
 
-The Chrome extension requests only the minimum permissions needed:
+The Chrome extension requests the following permissions:
 
-- **activeTab** — to inject capture scripts into the current tab
+- **activeTab** — to inject capture scripts into the current tab on demand
 - **storage** — to persist extension settings locally
-- **Host permission (localhost)** — to communicate with the local server
+- **tabs** — to read tab URLs and titles for tracking which page is being debugged
+- **scripting** — to programmatically inject content scripts for action capture and DOM queries
+- **alarms** — to schedule periodic service worker wakeups for connection health checks
+- **tabCapture** — to capture tab audio/video streams for screen recordings
+- **offscreen** — to create hidden offscreen documents for MediaRecorder (video encoding)
+- **Host permission (`<all_urls>`)** — content scripts run on all pages to capture console errors, network activity, and user actions. All captured data is sent only to the local server (`127.0.0.1`), never to external services.
 
-No permissions for browsing history, bookmarks, downloads, or cross-origin requests.
+No permissions for browsing history, bookmarks, or downloads.

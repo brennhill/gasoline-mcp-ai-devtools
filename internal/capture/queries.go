@@ -112,9 +112,11 @@ func (qd *QueryDispatcher) WaitForPendingQueries(timeout time.Duration) {
 	}
 	qd.mu.Unlock()
 
+	timer := time.NewTimer(timeout)
+	defer timer.Stop()
 	select {
 	case <-qd.queryNotify:
-	case <-time.After(timeout):
+	case <-timer.C:
 	}
 }
 
@@ -439,35 +441,19 @@ func (qd *QueryDispatcher) WaitForResult(id string, timeout time.Duration) (json
 }
 
 // WaitForResultWithClient waits with client isolation.
-// Uses a single wakeup goroutine (not per-iteration) to avoid goroutine explosion.
+// Uses a shared background broadcaster (startCondBroadcaster) for periodic
+// condition variable wakeups, eliminating per-call goroutine spawning.
 //
 // Flow:
 // 1. Check if result already exists
-// 2. If not, wait on condition variable
-// 3. Recheck periodically (10ms intervals)
+// 2. If not, wait on condition variable (woken by shared broadcaster every 10ms)
+// 3. Recheck on wakeup
 // 4. Return result or timeout error
 func (qd *QueryDispatcher) WaitForResultWithClient(id string, timeout time.Duration, clientID string) (json.RawMessage, error) {
 	deadline := time.Now().Add(timeout)
 
-	// Single wakeup goroutine: broadcasts every 10ms to recheck condition.
-	// Replaces per-iteration goroutine spawn that caused ~3000 goroutines per 30s call.
-	done := make(chan struct{})
-	util.SafeGo(func() {
-		ticker := time.NewTicker(10 * time.Millisecond)
-		defer ticker.Stop()
-		for {
-			select {
-			case <-ticker.C:
-				qd.queryCond.Broadcast()
-			case <-done:
-				return
-			}
-		}
-	})
-
 	qd.mu.Lock()
 	defer qd.mu.Unlock()
-	defer close(done) // Stop wakeup goroutine on return (runs before Unlock per LIFO)
 
 	for {
 		// Check if result exists
@@ -486,6 +472,30 @@ func (qd *QueryDispatcher) WaitForResultWithClient(id string, timeout time.Durat
 
 		qd.queryCond.Wait()
 	}
+}
+
+// ============================================
+// Shared Condition Broadcaster (CR-19)
+// ============================================
+
+// startCondBroadcaster starts a single shared goroutine that periodically
+// broadcasts on queryCond every 10ms. This replaces per-call goroutines in
+// WaitForResultWithClient, eliminating goroutine accumulation under load.
+func (qd *QueryDispatcher) startCondBroadcaster() func() {
+	stop := make(chan struct{})
+	util.SafeGo(func() {
+		ticker := time.NewTicker(10 * time.Millisecond)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ticker.C:
+				qd.queryCond.Broadcast()
+			case <-stop:
+				return
+			}
+		}
+	})
+	return func() { close(stop) }
 }
 
 // ============================================

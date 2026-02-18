@@ -331,6 +331,78 @@ func TestNewGetEnhancedActionCount_AfterAdds(t *testing.T) {
 }
 
 // ============================================
+// CR-40: Server-side password redaction
+// ============================================
+
+func TestCR40_AddEnhancedActions_RedactsPasswordValues(t *testing.T) {
+	t.Parallel()
+
+	c := NewCapture()
+	t.Cleanup(c.Close)
+
+	actions := []EnhancedAction{
+		{Type: "input", Value: "my_secret_password", InputType: "password"},
+		{Type: "input", Value: "hello@example.com", InputType: "email"},
+		{Type: "input", Value: "visible text", InputType: "text"},
+		{Type: "click", Value: "Submit"}, // non-input action, no InputType
+	}
+
+	c.AddEnhancedActions(actions)
+	stored := c.GetAllEnhancedActions()
+
+	if stored[0].Value != "[redacted]" {
+		t.Errorf("password input Value = %q, want [redacted]", stored[0].Value)
+	}
+	if stored[1].Value != "hello@example.com" {
+		t.Errorf("email input Value = %q, want preserved", stored[1].Value)
+	}
+	if stored[2].Value != "visible text" {
+		t.Errorf("text input Value = %q, want preserved", stored[2].Value)
+	}
+	if stored[3].Value != "Submit" {
+		t.Errorf("click Value = %q, want preserved", stored[3].Value)
+	}
+}
+
+func TestCR40_AddEnhancedActions_RedactsAlreadyRedacted(t *testing.T) {
+	t.Parallel()
+
+	c := NewCapture()
+	t.Cleanup(c.Close)
+
+	// Extension already redacted — server should preserve "[redacted]"
+	actions := []EnhancedAction{
+		{Type: "input", Value: "[redacted]", InputType: "password"},
+	}
+
+	c.AddEnhancedActions(actions)
+	stored := c.GetAllEnhancedActions()
+
+	if stored[0].Value != "[redacted]" {
+		t.Errorf("pre-redacted password Value = %q, want [redacted]", stored[0].Value)
+	}
+}
+
+func TestCR40_AddEnhancedActions_RedactsEmptyPassword(t *testing.T) {
+	t.Parallel()
+
+	c := NewCapture()
+	t.Cleanup(c.Close)
+
+	// Empty value on password field — should stay empty (nothing to redact)
+	actions := []EnhancedAction{
+		{Type: "input", Value: "", InputType: "password"},
+	}
+
+	c.AddEnhancedActions(actions)
+	stored := c.GetAllEnhancedActions()
+
+	if stored[0].Value != "" {
+		t.Errorf("empty password Value = %q, want empty", stored[0].Value)
+	}
+}
+
+// ============================================
 // All Action Fields Tests
 // ============================================
 

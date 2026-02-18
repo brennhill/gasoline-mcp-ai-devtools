@@ -49,7 +49,8 @@ type QueryDispatcher struct {
 	commandNotify    chan struct{} // closed on CompleteCommand, then recreated
 	queryNotify      chan struct{} // signaled when new pending queries are added
 
-	stopCleanup func()
+	stopCleanup     func()
+	stopBroadcaster func()
 }
 
 // NewQueryDispatcher creates a QueryDispatcher with initialized state.
@@ -65,11 +66,16 @@ func NewQueryDispatcher() *QueryDispatcher {
 	}
 	qd.queryCond = sync.NewCond(&qd.mu)
 	qd.stopCleanup = qd.startResultCleanup()
+	qd.stopBroadcaster = qd.startCondBroadcaster()
 	return qd
 }
 
 // Close stops background goroutines. Safe to call multiple times.
 func (qd *QueryDispatcher) Close() {
+	if qd.stopBroadcaster != nil {
+		qd.stopBroadcaster()
+		qd.stopBroadcaster = nil
+	}
 	if qd.stopCleanup != nil {
 		qd.stopCleanup()
 		qd.stopCleanup = nil

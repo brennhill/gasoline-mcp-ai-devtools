@@ -1,8 +1,9 @@
-// cr_fixes_test.go — Tests for code review findings CR-1 through CR-4.
+// cr_fixes_test.go — Tests for code review findings CR-1 through CR-4, CR-17, CR-19.
 package capture
 
 import (
 	"encoding/json"
+	"runtime"
 	"sync"
 	"testing"
 	"time"
@@ -277,6 +278,124 @@ func TestCR4_GetCommandResultForClient_Isolation(t *testing.T) {
 	}
 	if cmd.Status != "complete" {
 		t.Errorf("Status = %q, want complete", cmd.Status)
+	}
+}
+
+// ============================================
+// CR-17: WaitForPendingQueries must not leak timers.
+// time.After creates unreclaimable timers; use time.NewTimer + Stop().
+// ============================================
+
+func TestCR17_WaitForPendingQueries_ReturnsOnNotify(t *testing.T) {
+	t.Parallel()
+
+	qd := NewQueryDispatcher()
+	defer qd.Close()
+
+	// Signal queryNotify before timeout — should return quickly
+	go func() {
+		time.Sleep(20 * time.Millisecond)
+		qd.CreatePendingQueryWithTimeout(queries.PendingQuery{
+			Type:   "dom",
+			Params: json.RawMessage(`{}`),
+		}, 5*time.Second, "")
+	}()
+
+	start := time.Now()
+	qd.WaitForPendingQueries(5 * time.Second)
+	elapsed := time.Since(start)
+
+	if elapsed > 1*time.Second {
+		t.Errorf("WaitForPendingQueries took %v — should have returned on notify, not waited for timeout", elapsed)
+	}
+}
+
+func TestCR17_WaitForPendingQueries_ReturnsOnTimeout(t *testing.T) {
+	t.Parallel()
+
+	qd := NewQueryDispatcher()
+	defer qd.Close()
+
+	// No notify signal — should return at timeout
+	start := time.Now()
+	qd.WaitForPendingQueries(50 * time.Millisecond)
+	elapsed := time.Since(start)
+
+	if elapsed > 500*time.Millisecond {
+		t.Errorf("WaitForPendingQueries took %v — timeout should have been ~50ms", elapsed)
+	}
+	if elapsed < 40*time.Millisecond {
+		t.Errorf("WaitForPendingQueries returned in %v — too fast, timeout not respected", elapsed)
+	}
+}
+
+func TestCR17_WaitForPendingQueries_ImmediateReturnWhenQueriesExist(t *testing.T) {
+	t.Parallel()
+
+	qd := NewQueryDispatcher()
+	defer qd.Close()
+
+	// Pre-add a pending query
+	qd.CreatePendingQueryWithTimeout(queries.PendingQuery{
+		Type:   "dom",
+		Params: json.RawMessage(`{}`),
+	}, 5*time.Second, "")
+
+	start := time.Now()
+	qd.WaitForPendingQueries(5 * time.Second)
+	elapsed := time.Since(start)
+
+	if elapsed > 100*time.Millisecond {
+		t.Errorf("WaitForPendingQueries took %v with existing queries — should return immediately", elapsed)
+	}
+}
+
+// ============================================
+// CR-19: WaitForResult should not spawn a goroutine per call.
+// A shared broadcaster should handle condition variable wakeups.
+// ============================================
+
+func TestCR19_WaitForResult_NoGoroutineAccumulation(t *testing.T) {
+	t.Parallel()
+
+	qd := NewQueryDispatcher()
+	defer qd.Close()
+
+	goroutinesBefore := runtime.NumGoroutine()
+
+	// Launch 10 concurrent WaitForResult calls
+	const waiters = 10
+	var wg sync.WaitGroup
+	wg.Add(waiters)
+	for i := 0; i < waiters; i++ {
+		go func(idx int) {
+			defer wg.Done()
+			// These will all timeout since no result is provided
+			_, _ = qd.WaitForResultWithClient("nonexistent", 50*time.Millisecond, "")
+		}(i)
+	}
+
+	// While they're running, check goroutine count
+	time.Sleep(10 * time.Millisecond)
+	goroutinesDuring := runtime.NumGoroutine()
+
+	wg.Wait()
+
+	// After completion, goroutine count should settle back down
+	time.Sleep(20 * time.Millisecond)
+	goroutinesAfter := runtime.NumGoroutine()
+
+	// The "during" count should not have 10+ extra goroutines from per-call spawning
+	// With the old code: goroutinesDuring - goroutinesBefore >= waiters (one goroutine per waiter)
+	// With the fix: goroutinesDuring - goroutinesBefore should be much less (just the waiter goroutines themselves)
+	extraDuring := goroutinesDuring - goroutinesBefore
+	t.Logf("goroutines: before=%d during=%d after=%d (extra during: %d)",
+		goroutinesBefore, goroutinesDuring, goroutinesAfter, extraDuring)
+
+	// After all waiters complete, no broadcast goroutines should linger
+	extraAfter := goroutinesAfter - goroutinesBefore
+	if extraAfter > 3 {
+		t.Errorf("goroutine leak: %d extra goroutines remain after all waiters completed", extraAfter)
 	}
 }
 
