@@ -367,7 +367,7 @@ describe('Draw Mode — Event Handling Basics', () => {
     dm = await importDrawMode()
   })
 
-  test('ESC keydown triggers deactivation and sends messages', () => {
+  test('ESC keydown triggers deactivation and sends messages', async () => {
     dm.activateDrawMode('user')
 
     // Track all sendMessage calls in order
@@ -393,16 +393,25 @@ describe('Draw Mode — Event Handling Basics', () => {
       }
       keydownHandler(event)
 
-      // After ESC, draw mode should be deactivated
+      // Wait for the 300ms fade-out delay before deactivation completes
+      await new Promise((r) => setTimeout(r, 350))
+
+      // After ESC + fade, draw mode should be deactivated
       assert.strictEqual(dm.isDrawModeActive(), false, 'draw mode should be deactivated after ESC')
 
-      // Should have sent messages (capture screenshot + completed, or just completed as fallback)
+      // Should have sent messages (toast + capture screenshot + completed)
       assert.ok(sentMessages.length > 0, 'expected at least one sendMessage call')
 
       // Find the DRAW_MODE_COMPLETED message
       const completed = sentMessages.find((m) => m.type === 'DRAW_MODE_COMPLETED')
       assert.ok(completed, 'expected DRAW_MODE_COMPLETED message')
       assert.ok(Array.isArray(completed.annotations), 'expected annotations array')
+
+      // Verify toast was sent
+      const toast = sentMessages.find((m) => m.type === 'GASOLINE_ACTION_TOAST')
+      assert.ok(toast, 'expected GASOLINE_ACTION_TOAST message')
+      assert.strictEqual(toast.text, 'Annotations submitted')
+      assert.strictEqual(toast.state, 'success')
     }
   })
 
@@ -898,7 +907,7 @@ describe('Draw Mode — deactivateAndSendResults re-entry guard', () => {
     assert.strictEqual(dm.isDrawModeActive(), false)
   })
 
-  test('double call does not throw (re-entry guard)', () => {
+  test('double call does not throw (re-entry guard)', async () => {
     dm.activateDrawMode('user')
 
     // Track sendMessage calls
@@ -915,6 +924,9 @@ describe('Draw Mode — deactivateAndSendResults re-entry guard', () => {
     dm.deactivateAndSendResults()
     // Second call should be a no-op (re-entry guard)
     dm.deactivateAndSendResults()
+
+    // Wait for the 300ms fade-out delay before deactivation completes
+    await new Promise((r) => setTimeout(r, 350))
     assert.strictEqual(dm.isDrawModeActive(), false)
   })
 })

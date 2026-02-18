@@ -133,7 +133,7 @@ function createOverlay() {
     zIndex: String(OVERLAY_Z_INDEX),
     cursor: 'crosshair',
     boxShadow: 'inset 0 0 30px rgba(239, 68, 68, 0.3)',
-    transition: 'box-shadow 0.3s ease-in'
+    transition: 'opacity 0.3s ease-out, box-shadow 0.3s ease-in'
   })
 
   // Canvas for drawing
@@ -1325,32 +1325,54 @@ export function deactivateAndSendResults() {
   const currentCorrelationId = sessionCorrelationId // capture before deactivate clears it
 
   /**
-   * Complete the deactivation: tear down overlay, send results to background,
-   * and clear persisted storage.
+   * Complete the deactivation: fade out overlay, show toast, tear down,
+   * send results to background, and clear persisted storage.
    */
   const finishDeactivation = (screenshotDataUrl) => {
-    const result = deactivateDrawMode()
-    isDeactivating = false
-    // Clear persisted annotations from storage after successful deactivation
-    clearPersistedAnnotations()
+    // Fade out the overlay before tearing it down
+    if (overlay) {
+      overlay.style.opacity = '0'
+    }
+
+    // Show success toast via extension messaging
     try {
       if (typeof chrome !== 'undefined' && chrome.runtime) {
-        const msg = {
-          type: 'DRAW_MODE_COMPLETED',
-          annotations: result.annotations,
-          elementDetails: result.elementDetails,
-          page_url: pageUrl,
-          screenshot_data_url: screenshotDataUrl,
-          correlation_id: currentCorrelationId
-        }
-        if (currentSessionName) {
-          msg.session_name = currentSessionName
-        }
-        chrome.runtime.sendMessage(msg)
+        chrome.runtime.sendMessage({
+          type: 'GASOLINE_ACTION_TOAST',
+          text: 'Annotations submitted',
+          state: 'success',
+          duration_ms: 2000
+        })
       }
     } catch {
       // Extension context may be invalidated
     }
+
+    // Delay teardown to let fade complete
+    setTimeout(() => {
+      const result = deactivateDrawMode()
+      isDeactivating = false
+      // Clear persisted annotations from storage after successful deactivation
+      clearPersistedAnnotations()
+      try {
+        if (typeof chrome !== 'undefined' && chrome.runtime) {
+          const msg = {
+            type: 'DRAW_MODE_COMPLETED',
+            annotations: result.annotations,
+            elementDetails: result.elementDetails,
+            page_url: pageUrl,
+            screenshot_data_url: screenshotDataUrl,
+            correlation_id: currentCorrelationId
+          }
+          if (currentSessionName) {
+            msg.session_name = currentSessionName
+          }
+          chrome.runtime.sendMessage(msg)
+        }
+      } catch {
+        // Extension context may be invalidated
+      }
+    }, 300)
   }
 
   // Re-capture DOM data for all annotations so element details match the screenshot moment.

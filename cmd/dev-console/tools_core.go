@@ -224,6 +224,10 @@ type ToolHandler struct {
 	// tab or client ID if multi-client support is needed.
 	elementIndexMu    sync.RWMutex
 	elementIndexStore map[int]string
+
+	// Playback results store: recording_id → session after playback completes.
+	playbackMu       sync.RWMutex
+	playbackSessions map[string]*capture.PlaybackSession
 }
 
 // GetCapture returns the capture instance
@@ -241,11 +245,18 @@ func (h *ToolHandler) GetRedactionEngine() RedactionEngine {
 	return h.redactionEngine
 }
 
+// newPlaybackSessionsMap returns an initialized playback sessions map.
+// Separated to avoid the parameter name "capture" shadowing the package import.
+func newPlaybackSessionsMap() map[string]*capture.PlaybackSession {
+	return make(map[string]*capture.PlaybackSession)
+}
+
 // NewToolHandler creates an MCP handler with composite tool capabilities
 func NewToolHandler(server *Server, capture *capture.Capture) *MCPHandler {
 	handler := &ToolHandler{
-		MCPHandler: NewMCPHandler(server, version),
-		capture:    capture,
+		MCPHandler:       NewMCPHandler(server, version),
+		capture:          capture,
+		playbackSessions: newPlaybackSessionsMap(),
 	}
 
 	// Initialize health metrics

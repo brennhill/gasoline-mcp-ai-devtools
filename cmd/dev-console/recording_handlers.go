@@ -249,6 +249,11 @@ func (h *ToolHandler) toolConfigurePlayback(req JSONRPCRequest, args json.RawMes
 		)}
 	}
 
+	// Store session for later retrieval via observe(what:"playback_results")
+	h.playbackMu.Lock()
+	h.playbackSessions[params.RecordingID] = session
+	h.playbackMu.Unlock()
+
 	total := session.ActionsExecuted + session.ActionsFailed
 	h.appendServerLog(LogEntry{
 		"timestamp":        time.Now().Format(time.RFC3339Nano),
@@ -278,14 +283,51 @@ func (h *ToolHandler) toolGetPlaybackResults(req JSONRPCRequest, args json.RawMe
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrMissingParam, "Required parameter 'recording_id' is missing", "Provide the recording_id from playback", withParam("recording_id"))}
 	}
 
-	// For now, return a placeholder (would need to store playback sessions)
-	responseData := map[string]any{
-		"recording_id": params.RecordingID,
-		"message":      "Playback results would be stored here for later retrieval",
-		"results":      []any{},
+	// Look up stored playback session
+	h.playbackMu.RLock()
+	session, found := h.playbackSessions[params.RecordingID]
+	h.playbackMu.RUnlock()
+
+	if !found {
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(
+			ErrNoData,
+			fmt.Sprintf("No playback results for recording_id %s", params.RecordingID),
+			"Run configure(action:'playback', recording_id:'...') first",
+		)}
 	}
 
-	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Playback results", responseData)}
+	// Build per-action results
+	actions := make([]map[string]any, 0, len(session.Results))
+	for _, r := range session.Results {
+		action := map[string]any{
+			"status":           r.Status,
+			"action_index":     r.ActionIndex,
+			"action_type":      r.ActionType,
+			"selector_used":    r.SelectorUsed,
+			"duration_ms":      r.DurationMs,
+			"error":            r.Error,
+			"selector_fragile": r.SelectorFragile,
+		}
+		if r.Coordinates != nil {
+			action["coordinates"] = map[string]any{"x": r.Coordinates.X, "y": r.Coordinates.Y}
+		}
+		actions = append(actions, action)
+	}
+
+	total := session.ActionsExecuted + session.ActionsFailed
+	responseData := map[string]any{
+		"recording_id":      params.RecordingID,
+		"status":            "ok",
+		"actions_executed":  session.ActionsExecuted,
+		"actions_failed":    session.ActionsFailed,
+		"actions_total":     total,
+		"duration_ms":       time.Since(session.StartedAt).Milliseconds(),
+		"results":           actions,
+		"selector_failures": session.SelectorFailures,
+	}
+
+	summary := fmt.Sprintf("Playback results: %d/%d actions executed", session.ActionsExecuted, total)
+	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse(summary, responseData)}
 }
 
 // ============================================================================

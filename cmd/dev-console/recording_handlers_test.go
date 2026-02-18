@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"strings"
 	"testing"
+
+	"github.com/dev-console/dev-console/internal/capture"
 )
 
 // ============================================
@@ -317,18 +319,76 @@ func TestGetPlaybackResults_MissingID(t *testing.T) {
 	}
 }
 
-func TestGetPlaybackResults_Success(t *testing.T) {
+func TestGetPlaybackResults_NotFound(t *testing.T) {
 	t.Parallel()
 	env := newRecordingTestEnv(t)
 
 	result := env.callHandler(t, env.handler.toolGetPlaybackResults, `{"recording_id":"test123"}`)
-	if result.IsError {
-		t.Fatalf("playback_results should not error, got: %s", result.Content[0].Text)
+	if !result.IsError {
+		t.Fatal("playback_results for unknown recording_id should return error")
+	}
+	text := result.Content[0].Text
+	if !strings.Contains(text, "test123") {
+		t.Errorf("error should mention recording_id, got: %s", text)
+	}
+}
+
+func TestGetPlaybackResults_RoundTrip(t *testing.T) {
+	t.Parallel()
+	env := newRecordingTestEnv(t)
+
+	// Start a recording
+	startResult := env.callHandler(t, env.handler.toolConfigureRecordingStart, `{"name":"playback test","url":"https://example.com"}`)
+	if startResult.IsError {
+		t.Fatalf("start failed: %s", startResult.Content[0].Text)
+	}
+	startData := parseResponseJSON(t, startResult)
+	recordingID, _ := startData["recording_id"].(string)
+
+	// Add an action so playback has something to execute
+	err := env.handler.capture.AddRecordingAction(capture.RecordingAction{
+		Type:        "click",
+		TimestampMs: 1000,
+		URL:         "https://example.com",
+		Selector:    "button#submit",
+	})
+	if err != nil {
+		t.Fatalf("add action failed: %v", err)
 	}
 
-	data := parseResponseJSON(t, result)
-	if rid, _ := data["recording_id"].(string); rid != "test123" {
-		t.Fatalf("recording_id = %q, want test123", rid)
+	// Stop the recording
+	stopResult := env.callHandler(t, env.handler.toolConfigureRecordingStop, `{"recording_id":"`+recordingID+`"}`)
+	if stopResult.IsError {
+		t.Fatalf("stop failed: %s", stopResult.Content[0].Text)
+	}
+
+	// Execute playback
+	playbackResult := env.callHandler(t, env.handler.toolConfigurePlayback, `{"recording_id":"`+recordingID+`"}`)
+	if playbackResult.IsError {
+		t.Fatalf("playback failed: %s", playbackResult.Content[0].Text)
+	}
+
+	// Retrieve playback results
+	getResult := env.callHandler(t, env.handler.toolGetPlaybackResults, `{"recording_id":"`+recordingID+`"}`)
+	if getResult.IsError {
+		t.Fatalf("get playback results should not error, got: %s", getResult.Content[0].Text)
+	}
+
+	data := parseResponseJSON(t, getResult)
+	if rid, _ := data["recording_id"].(string); rid != recordingID {
+		t.Fatalf("recording_id = %q, want %q", rid, recordingID)
+	}
+	if status, _ := data["status"].(string); status != "ok" {
+		t.Fatalf("status = %q, want ok", status)
+	}
+	if _, ok := data["results"]; !ok {
+		t.Error("response should contain results array")
+	}
+	if _, ok := data["actions_executed"]; !ok {
+		t.Error("response should contain actions_executed")
+	}
+	if _, ok := data["actions_failed"]; !ok {
+		t.Error("response should contain actions_failed")
 	}
 }
 
