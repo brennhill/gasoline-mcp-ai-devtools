@@ -157,6 +157,11 @@ func (c *Capture) SetQueryResult(id string, result json.RawMessage) {
 	c.qd.SetQueryResult(id, result)
 }
 
+// SetQueryResultOnly delegates to QueryDispatcher.
+func (c *Capture) SetQueryResultOnly(id string, result json.RawMessage, clientID string) {
+	c.qd.SetQueryResultOnly(id, result, clientID)
+}
+
 // SetQueryResultWithClient delegates to QueryDispatcher.
 func (c *Capture) SetQueryResultWithClient(id string, result json.RawMessage, clientID string) {
 	c.qd.SetQueryResultWithClient(id, result, clientID)
@@ -197,6 +202,11 @@ func (c *Capture) RegisterCommand(correlationID string, queryID string, timeout 
 	c.qd.RegisterCommand(correlationID, queryID, timeout)
 }
 
+// RegisterCommandForClient delegates to QueryDispatcher.
+func (c *Capture) RegisterCommandForClient(correlationID string, queryID string, timeout time.Duration, clientID string) {
+	c.qd.RegisterCommandForClient(correlationID, queryID, timeout, clientID)
+}
+
 // CompleteCommand delegates to QueryDispatcher.
 func (c *Capture) CompleteCommand(correlationID string, result json.RawMessage, err string) {
 	c.qd.CompleteCommand(correlationID, result, err)
@@ -220,6 +230,11 @@ func (c *Capture) WaitForCommand(correlationID string, timeout time.Duration) (*
 // GetCommandResult delegates to QueryDispatcher.
 func (c *Capture) GetCommandResult(correlationID string) (*queries.CommandResult, bool) {
 	return c.qd.GetCommandResult(correlationID)
+}
+
+// GetCommandResultForClient delegates to QueryDispatcher.
+func (c *Capture) GetCommandResultForClient(correlationID string, clientID string) (*queries.CommandResult, bool) {
+	return c.qd.GetCommandResultForClient(correlationID, clientID)
 }
 
 // GetPendingCommands delegates to QueryDispatcher.

@@ -147,12 +147,21 @@ func (c *Capture) updateSyncConnectionState(req SyncRequest, clientID string, no
 }
 
 // processSyncCommandResults processes command results from the extension.
+// When both ID and CorrelationID are present, SetQueryResultWithClient stores the
+// query result and internally calls CompleteCommand (status="complete"). Then
+// CompleteCommandWithStatus is called with the extension-reported status. The
+// "only if pending" guard in CompleteCommandWithStatus prevents the second call
+// from overwriting — first writer wins.
 func (c *Capture) processSyncCommandResults(results []SyncCommandResult, clientID string) {
 	for _, result := range results {
-		if result.ID != "" {
+		if result.ID != "" && result.CorrelationID != "" {
+			// Both ID and CorrelationID: store query result, then complete command
+			// with the actual extension-reported status (not hardcoded "complete").
+			c.SetQueryResultOnly(result.ID, result.Result, clientID)
+			c.CompleteCommandWithStatus(result.CorrelationID, result.Result, result.Status, result.Error)
+		} else if result.ID != "" {
 			c.SetQueryResultWithClient(result.ID, result.Result, clientID)
-		}
-		if result.CorrelationID != "" {
+		} else if result.CorrelationID != "" {
 			c.CompleteCommandWithStatus(result.CorrelationID, result.Result, result.Status, result.Error)
 		}
 	}

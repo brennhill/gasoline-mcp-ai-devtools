@@ -258,6 +258,31 @@ func TestAnalyzeLinkHealth_DomainParamForwarded(t *testing.T) {
 	}
 }
 
+// ============================================
+// CR-8: link_health must forward tab_id
+// ============================================
+
+func TestCR8_AnalyzeLinkHealth_ForwardsTabID(t *testing.T) {
+	env := newAnalyzeTestEnv(t)
+
+	result, ok := env.callAnalyze(t, `{"what":"link_health","tab_id":42}`)
+	if !ok {
+		t.Fatal("link_health should return result")
+	}
+	if result.IsError {
+		t.Fatalf("link_health with tab_id should not error: %s", result.Content[0].Text)
+	}
+
+	pq := env.capture.GetLastPendingQuery()
+	if pq == nil {
+		t.Fatal("link_health should create a pending query")
+	}
+
+	if pq.TabID != 42 {
+		t.Errorf("pending query TabID = %d, want 42 — tab_id was dropped", pq.TabID)
+	}
+}
+
 // TestAnalyzeLinkHealth_InvalidJSON returns error
 func TestAnalyzeLinkHealth_InvalidJSON(t *testing.T) {
 	env := newAnalyzeTestEnv(t)

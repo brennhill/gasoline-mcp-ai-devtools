@@ -95,3 +95,37 @@ func TestAppendAlertsToResponse(t *testing.T) {
 		}
 	})
 }
+
+// ============================================
+// CR-9: parseTimestampBestEffort handles non-RFC3339 timestamps
+// ============================================
+
+func TestCR9_ParseTimestampBestEffort(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name  string
+		input string
+		ok    bool // expect non-zero time
+	}{
+		{"RFC3339", "2026-02-18T10:00:00Z", true},
+		{"RFC3339 with offset", "2026-02-18T10:00:00+01:00", true},
+		{"RFC3339Nano", "2026-02-18T10:00:00.123456789Z", true},
+		{"RFC3339 millis", "2026-02-18T10:00:00.123Z", true},
+		{"empty string", "", false},
+		{"garbage", "not-a-timestamp", false},
+		{"unix epoch string", "1708252800", false}, // not supported, should return zero
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := parseTimestampBestEffort(tt.input)
+			if tt.ok && result.IsZero() {
+				t.Errorf("parseTimestampBestEffort(%q) = zero, want non-zero", tt.input)
+			}
+			if !tt.ok && !result.IsZero() {
+				t.Errorf("parseTimestampBestEffort(%q) = %v, want zero", tt.input, result)
+			}
+		})
+	}
+}

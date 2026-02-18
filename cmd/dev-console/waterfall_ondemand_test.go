@@ -79,6 +79,7 @@ func TestWaterfallOnDemand_StaleDataCreatesQuery(t *testing.T) {
 		t.Fatalf("Failed to create server: %v", err)
 	}
 	cap := capture.NewCapture()
+	cap.SetExtensionConnectedForTest()
 	handler := NewToolHandler(server, cap)
 	th := handler.toolHandler.(*ToolHandler)
 
@@ -167,6 +168,7 @@ func TestWaterfallOnDemand_EmptyBufferCreatesQuery(t *testing.T) {
 		t.Fatalf("Failed to create server: %v", err)
 	}
 	cap := capture.NewCapture()
+	cap.SetExtensionConnectedForTest()
 	handler := NewToolHandler(server, cap)
 	th := handler.toolHandler.(*ToolHandler)
 
@@ -226,6 +228,7 @@ func TestWaterfallOnDemand_TimeoutHandling(t *testing.T) {
 		t.Fatalf("Failed to create server: %v", err)
 	}
 	cap := capture.NewCapture()
+	cap.SetExtensionConnectedForTest()
 	// Set a very short timeout for this test
 	cap.SetQueryTimeout(100 * time.Millisecond)
 	handler := NewToolHandler(server, cap)
@@ -268,6 +271,7 @@ func TestWaterfallOnDemand_ConcurrentRequests(t *testing.T) {
 		t.Fatalf("Failed to create server: %v", err)
 	}
 	cap := capture.NewCapture()
+	cap.SetExtensionConnectedForTest()
 	handler := NewToolHandler(server, cap)
 	th := handler.toolHandler.(*ToolHandler)
 
@@ -378,6 +382,7 @@ func TestWaterfallStalenessThreshold(t *testing.T) {
 		t.Fatalf("Failed to create server: %v", err)
 	}
 	cap := capture.NewCapture()
+	cap.SetExtensionConnectedForTest()
 	handler := NewToolHandler(server, cap)
 	th := handler.toolHandler.(*ToolHandler)
 
@@ -415,4 +420,47 @@ func TestWaterfallStalenessThreshold(t *testing.T) {
 	_ = th.toolGetNetworkWaterfall(JSONRPCRequest{JSONRPC: "2.0", ID: 1}, json.RawMessage(`{}`))
 
 	t.Log("✅ 1-second staleness threshold verified")
+}
+
+// ============================================
+// CR-6: refreshWaterfallIfStale must not block when extension is disconnected
+// ============================================
+
+func TestCR6_WaterfallStale_DisconnectedReturnsImmediately(t *testing.T) {
+	t.Parallel()
+
+	server, err := NewServer(t.TempDir()+"/test-waterfall-disconnected.jsonl", 1000)
+	if err != nil {
+		t.Fatalf("Failed to create server: %v", err)
+	}
+	cap := capture.NewCapture()
+	handler := NewToolHandler(server, cap)
+	th := handler.toolHandler.(*ToolHandler)
+
+	// Add stale entries
+	entries := []capture.NetworkWaterfallEntry{
+		{URL: "https://example.com/stale", PageURL: "https://example.com"},
+	}
+	cap.AddNetworkWaterfallEntries(entries, "https://example.com")
+
+	// Wait for data to become stale
+	time.Sleep(1100 * time.Millisecond)
+
+	// Extension is NOT connected (never synced) — should return immediately
+	start := time.Now()
+	_ = th.toolGetNetworkWaterfall(JSONRPCRequest{JSONRPC: "2.0", ID: 1}, json.RawMessage(`{}`))
+	elapsed := time.Since(start)
+
+	// Must return in well under 5s (the old blocking timeout)
+	if elapsed > 1*time.Second {
+		t.Errorf("refreshWaterfallIfStale took %v when disconnected — should return immediately, not block for 5s", elapsed)
+	}
+
+	// No pending queries should have been created
+	pending := cap.GetPendingQueries()
+	for _, q := range pending {
+		if q.Type == "waterfall" {
+			t.Error("waterfall query created while extension is disconnected — wasteful")
+		}
+	}
 }

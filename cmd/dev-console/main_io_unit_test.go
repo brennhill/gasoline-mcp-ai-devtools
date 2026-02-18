@@ -21,8 +21,9 @@ func TestSendStartupErrorWritesJSONRPCError(t *testing.T) {
 	if err := json.Unmarshal([]byte(line), &resp); err != nil {
 		t.Fatalf("json.Unmarshal(output) error = %v; output=%q", err, line)
 	}
-	if resp.ID != "startup" {
-		t.Fatalf("resp.ID = %v, want %q", resp.ID, "startup")
+	// CR-10: JSON-RPC 2.0 requires null ID when request ID is unknown
+	if resp.ID != nil {
+		t.Fatalf("resp.ID = %v, want nil (JSON null per JSON-RPC 2.0 spec)", resp.ID)
 	}
 	if resp.Error == nil || resp.Error.Code != -32603 {
 		t.Fatalf("resp.Error = %+v, want code -32603", resp.Error)

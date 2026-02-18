@@ -650,7 +650,7 @@ func main() {
 func sendStartupError(message string) {
 	errResp := JSONRPCResponse{
 		JSONRPC: "2.0",
-		ID:      "startup",
+		ID:      nil, // JSON-RPC 2.0: null ID when request ID is unknown
 		Error: &JSONRPCError{
 			Code:    -32603,
 			Message: message,

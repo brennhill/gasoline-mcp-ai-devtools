@@ -741,7 +741,12 @@ func bridgeStdioToHTTPFast(endpoint string, state *daemonState, port int) {
 
 		// FAST PATH: Handle initialize and tools/list directly (no daemon needed)
 		if handleFastPath(req, toolsList) {
-			signalResponseSent()
+			// Only signal for requests that expect a response (have an ID).
+			// Notifications (no ID) are fire-and-forget — signaling here could
+			// allow bridgeShutdown to proceed before in-flight tool responses complete.
+			if req.hasID() {
+				signalResponseSent()
+			}
 			continue
 		}
 
@@ -786,6 +791,7 @@ func bridgeDoHTTP(ctx context.Context, client *http.Client, endpoint string, lin
 		return nil, err
 	}
 	httpReq.Header.Set("Content-Type", "application/json")
+	httpReq.Header.Set("X-Gasoline-Client", "gasoline-bridge")
 	return client.Do(httpReq) // #nosec G704 -- endpoint is localhost-only serverURL/mcp from runBridgeMode
 }
 
@@ -823,6 +829,7 @@ func bridgeForwardRequest(client *http.Client, endpoint string, req JSONRPCReque
 	}
 
 	if resp.StatusCode == 204 {
+		debugf("HTTP 204 for id=%v (notification acknowledged, no response)", req.ID)
 		signal()
 		return
 	}

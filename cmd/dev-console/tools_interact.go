@@ -363,7 +363,7 @@ func (h *ToolHandler) handleBrowserActionRefresh(req JSONRPCRequest, args json.R
 
 	query := queries.PendingQuery{
 		Type:          "browser_action",
-		Params:        json.RawMessage(`{"action":"refresh"}`),
+		Params:        args,
 		TabID:         params.TabID,
 		CorrelationID: correlationID,
 	}
@@ -396,7 +396,7 @@ func (h *ToolHandler) handleBrowserActionBack(req JSONRPCRequest, args json.RawM
 
 	query := queries.PendingQuery{
 		Type:          "browser_action",
-		Params:        json.RawMessage(`{"action":"back"}`),
+		Params:        args,
 		CorrelationID: correlationID,
 	}
 	h.capture.CreatePendingQueryWithTimeout(query, queries.AsyncCommandTimeout, req.ClientID)
@@ -415,7 +415,7 @@ func (h *ToolHandler) handleBrowserActionForward(req JSONRPCRequest, args json.R
 
 	query := queries.PendingQuery{
 		Type:          "browser_action",
-		Params:        json.RawMessage(`{"action":"forward"}`),
+		Params:        args,
 		CorrelationID: correlationID,
 	}
 	h.capture.CreatePendingQueryWithTimeout(query, queries.AsyncCommandTimeout, req.ClientID)
@@ -489,7 +489,7 @@ func (h *ToolHandler) handleDOMPrimitive(req JSONRPCRequest, args json.RawMessag
 
 	// Resolve index to selector if index is provided and selector is empty
 	if params.Index != nil && params.Selector == "" {
-		sel, ok := h.resolveIndexToSelector(*params.Index)
+		sel, ok := h.resolveIndexToSelector(*params.Index, req.ClientID)
 		if !ok {
 			return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(
 				ErrInvalidParam,

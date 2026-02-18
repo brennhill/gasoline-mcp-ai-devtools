@@ -39,13 +39,14 @@ func (h *ToolHandler) handleListInteractive(req JSONRPCRequest, args json.RawMes
 	resp := h.maybeWaitForCommand(req, correlationID, args, "list_interactive queued")
 
 	// Post-process: extract elements from result and build index→selector store
-	h.buildElementIndexFromResponse(resp)
+	h.buildElementIndexFromResponse(resp, req.ClientID)
 
 	return resp
 }
 
-// buildElementIndexFromResponse parses list_interactive results and populates elementIndexStore.
-func (h *ToolHandler) buildElementIndexFromResponse(resp JSONRPCResponse) {
+// buildElementIndexFromResponse parses list_interactive results and populates elementIndexStore
+// for the given clientID, preventing concurrent clients from overwriting each other's index.
+func (h *ToolHandler) buildElementIndexFromResponse(resp JSONRPCResponse, clientID string) {
 	var result MCPToolResult
 	if err := json.Unmarshal(resp.Result, &result); err != nil || result.IsError {
 		return
@@ -71,8 +72,7 @@ func (h *ToolHandler) buildElementIndexFromResponse(resp JSONRPCResponse) {
 			continue
 		}
 
-		h.elementIndexMu.Lock()
-		h.elementIndexStore = make(map[int]string, len(elements))
+		clientStore := make(map[int]string, len(elements))
 		for _, elem := range elements {
 			elemMap, ok := elem.(map[string]any)
 			if !ok {
@@ -81,9 +81,15 @@ func (h *ToolHandler) buildElementIndexFromResponse(resp JSONRPCResponse) {
 			indexVal, _ := elemMap["index"].(float64)
 			selector, _ := elemMap["selector"].(string)
 			if selector != "" {
-				h.elementIndexStore[int(indexVal)] = selector
+				clientStore[int(indexVal)] = selector
 			}
 		}
+
+		h.elementIndexMu.Lock()
+		if h.elementIndexStore == nil {
+			h.elementIndexStore = make(map[string]map[int]string)
+		}
+		h.elementIndexStore[clientID] = clientStore
 		h.elementIndexMu.Unlock()
 		return
 	}
@@ -106,10 +112,14 @@ func extractElementList(data map[string]any) []any {
 	return nil
 }
 
-// resolveIndexToSelector looks up a selector from the element index store.
-func (h *ToolHandler) resolveIndexToSelector(index int) (string, bool) {
+// resolveIndexToSelector looks up a selector from the element index store for a given client.
+func (h *ToolHandler) resolveIndexToSelector(index int, clientID string) (string, bool) {
 	h.elementIndexMu.RLock()
 	defer h.elementIndexMu.RUnlock()
-	sel, ok := h.elementIndexStore[index]
+	clientStore, ok := h.elementIndexStore[clientID]
+	if !ok {
+		return "", false
+	}
+	sel, ok := clientStore[index]
 	return sel, ok
 }

@@ -130,7 +130,9 @@ func connectForwardRequest(mcpURL, clientID, line string) {
 	}
 	_ = resp.Body.Close() //nolint:errcheck // best-effort cleanup after successful decode
 
-	fmt.Println(string(respData))
+	mcpStdoutMu.Lock()
+	_, _ = os.Stdout.Write(append(respData, '\n'))
+	mcpStdoutMu.Unlock()
 }
 
 // extractRequestID attempts to extract the JSON-RPC ID from a request string.
@@ -174,5 +176,7 @@ func sendMCPError(id any, code int, message string) {
 	}
 	// Error impossible: simple struct with no circular refs or unsupported types
 	respJSON, _ := json.Marshal(resp)
-	fmt.Println(string(respJSON))
+	mcpStdoutMu.Lock()
+	_, _ = os.Stdout.Write(append(respJSON, '\n'))
+	mcpStdoutMu.Unlock()
 }

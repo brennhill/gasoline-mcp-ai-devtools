@@ -122,18 +122,23 @@ func (qd *QueryDispatcher) WaitForPendingQueries(timeout time.Duration) {
 // Query Cleanup
 // ============================================
 
-// cleanExpiredQueries removes expired pending queries.
+// cleanExpiredQueries removes expired pending queries and returns their correlation IDs.
+// The caller MUST call ExpireCommand on each returned ID after releasing mu.
 // MUST be called with qd.mu held (Lock, not RLock).
-func (qd *QueryDispatcher) cleanExpiredQueries() {
+func (qd *QueryDispatcher) cleanExpiredQueries() []string {
 	now := time.Now()
 	remaining := qd.pendingQueries[:0]
+	var expiredCorrelationIDs []string
 
 	for _, pq := range qd.pendingQueries {
 		if pq.expires.After(now) {
 			remaining = append(remaining, pq)
+		} else if pq.query.CorrelationID != "" {
+			expiredCorrelationIDs = append(expiredCorrelationIDs, pq.query.CorrelationID)
 		}
 	}
 	qd.pendingQueries = remaining
+	return expiredCorrelationIDs
 }
 
 // ============================================
@@ -148,15 +153,21 @@ func (qd *QueryDispatcher) GetPendingQueries() []queries.PendingQueryResponse {
 	qd.cleanExpiredCommands()
 
 	qd.mu.Lock()
-	defer qd.mu.Unlock()
 
-	// Clean expired queries from pending queue
-	qd.cleanExpiredQueries()
+	// Clean expired queries from pending queue, collecting correlation IDs
+	expiredIDs := qd.cleanExpiredQueries()
 
 	result := make([]queries.PendingQueryResponse, 0, len(qd.pendingQueries))
 	for _, pq := range qd.pendingQueries {
 		result = append(result, pq.query)
 	}
+	qd.mu.Unlock()
+
+	// Expire commands outside mu lock (respects lock ordering: mu before resultsMu)
+	for _, correlationID := range expiredIDs {
+		qd.ExpireCommand(correlationID)
+	}
+
 	return result
 }
 
@@ -167,10 +178,9 @@ func (qd *QueryDispatcher) GetPendingQueriesForClient(clientID string) []queries
 	qd.cleanExpiredCommands()
 
 	qd.mu.Lock()
-	defer qd.mu.Unlock()
 
-	// Clean expired queries from pending queue
-	qd.cleanExpiredQueries()
+	// Clean expired queries from pending queue, collecting correlation IDs
+	expiredIDs := qd.cleanExpiredQueries()
 
 	result := make([]queries.PendingQueryResponse, 0)
 	for _, pq := range qd.pendingQueries {
@@ -178,6 +188,13 @@ func (qd *QueryDispatcher) GetPendingQueriesForClient(clientID string) []queries
 			result = append(result, pq.query)
 		}
 	}
+	qd.mu.Unlock()
+
+	// Expire commands outside mu lock (respects lock ordering: mu before resultsMu)
+	for _, correlationID := range expiredIDs {
+		qd.ExpireCommand(correlationID)
+	}
+
 	return result
 }
 
@@ -296,6 +313,35 @@ func (qd *QueryDispatcher) expireCommandWithReason(correlationID string, reason 
 // Called when extension posts result back to server.
 func (qd *QueryDispatcher) SetQueryResult(id string, result json.RawMessage) {
 	qd.SetQueryResultWithClient(id, result, "")
+}
+
+// SetQueryResultOnly stores the result and removes from pending WITHOUT completing
+// the associated command. Used by processSyncCommandResults when both ID and
+// CorrelationID are present — the caller handles command completion separately
+// via CompleteCommandWithStatus to preserve the extension-reported status.
+func (qd *QueryDispatcher) SetQueryResultOnly(id string, result json.RawMessage, clientID string) {
+	qd.mu.Lock()
+
+	// Store result
+	qd.queryResults[id] = queryResultEntry{
+		result:    result,
+		clientID:  clientID,
+		createdAt: time.Now(),
+	}
+
+	// Remove from pending
+	remaining := qd.pendingQueries[:0]
+	for _, pq := range qd.pendingQueries {
+		if pq.query.ID != id {
+			remaining = append(remaining, pq)
+		}
+	}
+	qd.pendingQueries = remaining
+
+	qd.mu.Unlock()
+
+	// Wake up WaitForResult waiters
+	qd.queryCond.Broadcast()
 }
 
 // SetQueryResultWithClient stores result with client isolation.
@@ -528,6 +574,12 @@ func (qd *QueryDispatcher) GetQueryTimeout() time.Duration {
 // RegisterCommand creates a "pending" CommandResult for an async command.
 // Called when command is queued. Uses resultsMu (separate from mu).
 func (qd *QueryDispatcher) RegisterCommand(correlationID string, queryID string, timeout time.Duration) {
+	qd.RegisterCommandForClient(correlationID, queryID, timeout, "")
+}
+
+// RegisterCommandForClient creates a "pending" CommandResult for a specific client.
+// The clientID is stored on the CommandResult for isolation checks in GetCommandResultForClient.
+func (qd *QueryDispatcher) RegisterCommandForClient(correlationID string, queryID string, timeout time.Duration, clientID string) {
 	if correlationID == "" {
 		return // No correlation ID = not an async command
 	}
@@ -539,6 +591,7 @@ func (qd *QueryDispatcher) RegisterCommand(correlationID string, queryID string,
 		CorrelationID: correlationID,
 		Status:        "pending",
 		CreatedAt:     time.Now(),
+		ClientID:      clientID,
 	}
 }
 
@@ -559,6 +612,9 @@ func normalizeCommandStatus(status string) string {
 
 // CompleteCommandWithStatus updates a command with an explicit terminal status.
 // Used by sync/query-result handlers to preserve extension-reported status.
+// Only updates if the command is still "pending" — prevents TOCTOU race where
+// SetQueryResultWithClient completes a command, then processSyncCommandResults
+// overwrites it with a different status.
 func (qd *QueryDispatcher) CompleteCommandWithStatus(correlationID string, result json.RawMessage, status string, err string) {
 	if correlationID == "" {
 		return
@@ -567,6 +623,12 @@ func (qd *QueryDispatcher) CompleteCommandWithStatus(correlationID string, resul
 	qd.resultsMu.Lock()
 	cmd, exists := qd.completedResults[correlationID]
 	if !exists {
+		qd.resultsMu.Unlock()
+		return
+	}
+
+	// Only complete if still pending — first writer wins.
+	if cmd.Status != "pending" {
 		qd.resultsMu.Unlock()
 		return
 	}
@@ -659,6 +721,39 @@ func (qd *QueryDispatcher) WaitForCommand(correlationID string, timeout time.Dur
 			return qd.GetCommandResult(correlationID)
 		}
 	}
+}
+
+// GetCommandResultForClient retrieves command status with client isolation.
+// If clientID is non-empty, only returns results that belong to that client
+// or results that have no client (empty ClientID = visible to all).
+func (qd *QueryDispatcher) GetCommandResultForClient(correlationID string, clientID string) (*queries.CommandResult, bool) {
+	// First ensure any expired queries are marked as failed
+	qd.cleanExpiredCommands()
+
+	qd.resultsMu.RLock()
+	defer qd.resultsMu.RUnlock()
+
+	// Check active commands
+	if cmd, exists := qd.completedResults[correlationID]; exists {
+		if clientID != "" && cmd.ClientID != "" && cmd.ClientID != clientID {
+			return nil, false
+		}
+		cp := *cmd
+		return &cp, true
+	}
+
+	// Check failed/expired commands
+	for _, cmd := range qd.failedCommands {
+		if cmd.CorrelationID == correlationID {
+			if clientID != "" && cmd.ClientID != "" && cmd.ClientID != clientID {
+				return nil, false
+			}
+			cp := *cmd
+			return &cp, true
+		}
+	}
+
+	return nil, false
 }
 
 // GetCommandResult retrieves command status by correlation ID.

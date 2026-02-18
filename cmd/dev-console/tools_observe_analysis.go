@@ -54,6 +54,11 @@ func (h *ToolHandler) refreshWaterfallIfStale() []capture.NetworkWaterfallEntry 
 		return allEntries
 	}
 
+	// Don't block on waterfall refresh when extension is disconnected — return stale data immediately
+	if !h.capture.IsExtensionConnected() {
+		return allEntries
+	}
+
 	queryID := h.capture.CreatePendingQueryWithTimeout(
 		queries.PendingQuery{
 			Type:   "waterfall",

@@ -18,6 +18,18 @@ import (
 // maxObserveLimit caps the limit parameter to prevent oversized responses.
 const maxObserveLimit = 1000
 
+// parseTimestampBestEffort tries RFC3339, then RFC3339Nano, then millisecond epoch.
+// Returns zero time only if all formats fail.
+func parseTimestampBestEffort(ts string) time.Time {
+	if t, err := time.Parse(time.RFC3339, ts); err == nil {
+		return t
+	}
+	if t, err := time.Parse(time.RFC3339Nano, ts); err == nil {
+		return t
+	}
+	return time.Time{}
+}
+
 // ObserveHandler is the function signature for observe tool handlers.
 type ObserveHandler func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse
 
@@ -262,7 +274,7 @@ func (h *ToolHandler) toolGetBrowserErrors(req JSONRPCRequest, args json.RawMess
 	var newestTS time.Time
 	if len(errors) > 0 {
 		if ts, ok := errors[0]["timestamp"].(string); ok {
-			newestTS, _ = time.Parse(time.RFC3339, ts)
+			newestTS = parseTimestampBestEffort(ts)
 		}
 	}
 
@@ -404,7 +416,7 @@ func (h *ToolHandler) toolGetBrowserLogs(req JSONRPCRequest, args json.RawMessag
 	if len(paginated) > 0 {
 		last := paginated[len(paginated)-1]
 		if ts, ok := last.Entry["ts"].(string); ok {
-			newestTS, _ = time.Parse(time.RFC3339, ts)
+			newestTS = parseTimestampBestEffort(ts)
 		}
 	}
 
@@ -531,7 +543,7 @@ func (h *ToolHandler) toolGetNetworkBodies(req JSONRPCRequest, args json.RawMess
 	}
 	var newestTS time.Time
 	if len(allBodies) > 0 {
-		newestTS, _ = time.Parse(time.RFC3339, allBodies[len(allBodies)-1].Timestamp)
+		newestTS = parseTimestampBestEffort(allBodies[len(allBodies)-1].Timestamp)
 	}
 
 	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Network bodies", map[string]any{
@@ -573,7 +585,7 @@ func (h *ToolHandler) toolGetWSEvents(req JSONRPCRequest, args json.RawMessage) 
 	}
 	var newestTS time.Time
 	if len(allEvents) > 0 {
-		newestTS, _ = time.Parse(time.RFC3339, allEvents[len(allEvents)-1].Timestamp)
+		newestTS = parseTimestampBestEffort(allEvents[len(allEvents)-1].Timestamp)
 	}
 
 	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("WebSocket events", map[string]any{

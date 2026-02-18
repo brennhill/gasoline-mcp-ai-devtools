@@ -44,6 +44,7 @@ type CommandResult struct {
 	Error         string          `json:"error,omitempty"`
 	CompletedAt   time.Time       `json:"completed_at,omitempty"`
 	CreatedAt     time.Time       `json:"created_at"`
+	ClientID      string          `json:"client_id,omitempty"` // Owning client for multi-client isolation
 }
 
 // ============================================

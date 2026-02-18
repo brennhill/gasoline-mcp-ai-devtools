@@ -2,6 +2,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -174,6 +175,36 @@ func TestBridgeForwardRequest_LargeBodyRead(t *testing.T) {
 	}
 	if len(outputStr) < len(rpcResponse)/2 {
 		t.Fatalf("response body appears truncated: got %d bytes, expected ~%d", len(outputStr), len(rpcResponse))
+	}
+}
+
+// ============================================
+// CR-7: Bridge must set X-Gasoline-Client header
+// ============================================
+
+func TestCR7_BridgeDoHTTP_SetsClientHeader(t *testing.T) {
+	t.Parallel()
+
+	var receivedHeader string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		receivedHeader = r.Header.Get("X-Gasoline-Client")
+		w.WriteHeader(200)
+		_, _ = w.Write([]byte(`{"jsonrpc":"2.0","id":1,"result":{}}`))
+	}))
+	defer srv.Close()
+
+	ctx := context.Background()
+	resp, err := bridgeDoHTTP(ctx, &http.Client{}, srv.URL, []byte(`{"jsonrpc":"2.0","id":1}`))
+	if err != nil {
+		t.Fatalf("bridgeDoHTTP error: %v", err)
+	}
+	_ = resp.Body.Close()
+
+	if receivedHeader == "" {
+		t.Fatal("X-Gasoline-Client header not set — bridge requests are anonymous to daemon")
+	}
+	if receivedHeader != "gasoline-bridge" {
+		t.Errorf("X-Gasoline-Client = %q, want 'gasoline-bridge'", receivedHeader)
 	}
 }
 

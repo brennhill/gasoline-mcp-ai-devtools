@@ -108,6 +108,14 @@ func (c *Capture) GetWSLengthsForTest() (events int, addedAt int, memoryTotal in
 	return len(c.wsEvents), len(c.wsAddedAt), c.wsMemoryTotal
 }
 
+// SetExtensionConnectedForTest marks the extension as recently synced (TEST ONLY)
+func (c *Capture) SetExtensionConnectedForTest() {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.ext.lastSyncSeen = time.Now()
+	c.ext.lastExtensionConnected = true
+}
+
 // GetLastPendingQuery returns the most recently created pending query (TEST ONLY)
 // Returns nil if no queries exist.
 func (c *Capture) GetLastPendingQuery() *queries.PendingQuery {

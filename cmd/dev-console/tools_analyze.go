@@ -503,6 +503,11 @@ func (h *ToolHandler) clearAPIValidationState() {
 
 // toolAnalyzeLinkHealth checks all links on the current page for health issues.
 func (h *ToolHandler) toolAnalyzeLinkHealth(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+	var params struct {
+		TabID int `json:"tab_id,omitempty"`
+	}
+	_ = json.Unmarshal(args, &params) // best-effort: tab_id is optional
+
 	// Generate correlation ID for tracking
 	correlationID := fmt.Sprintf("link_health_%d_%d", time.Now().UnixNano(), randomInt63())
 
@@ -510,6 +515,7 @@ func (h *ToolHandler) toolAnalyzeLinkHealth(req JSONRPCRequest, args json.RawMes
 	query := queries.PendingQuery{
 		Type:          "link_health",
 		Params:        args,
+		TabID:         params.TabID,
 		CorrelationID: correlationID,
 	}
 	h.capture.CreatePendingQueryWithTimeout(query, queries.AsyncCommandTimeout, req.ClientID)
