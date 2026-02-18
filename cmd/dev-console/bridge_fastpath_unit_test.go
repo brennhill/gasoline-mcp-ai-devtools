@@ -161,9 +161,8 @@ func TestBridgeFastPathCoreMethods(t *testing.T) {
 	if err := json.Unmarshal(responses[1].Result, &initResult); err != nil {
 		t.Fatalf("initialize result unmarshal error = %v", err)
 	}
-	pv := initResult["protocolVersion"]
-	if pv != "2024-11-05" && pv != "2025-06-18" {
-		t.Fatalf("protocolVersion = %v, want supported version (2024-11-05 or 2025-06-18)", pv)
+	if initResult["protocolVersion"] != "2025-06-18" {
+		t.Fatalf("protocolVersion = %v, want 2025-06-18", initResult["protocolVersion"])
 	}
 
 	// tools/list fast path.
@@ -404,6 +403,38 @@ func TestBridgeFastPathFramedInitializeAndToolsList(t *testing.T) {
 	}
 	if responses[1].Error != nil {
 		t.Fatalf("tools/list returned protocol error: %+v", responses[1].Error)
+	}
+}
+
+func TestBridgeFastPathNotificationWithoutIDHasNoResponse(t *testing.T) {
+	// Do not run in parallel; test redirects process stdio.
+	state := &daemonState{readyCh: make(chan struct{}), failedCh: make(chan struct{})}
+	output := captureBridgeIO(t, `{"jsonrpc":"2.0","method":"ping","params":{}}`+"\n", func() {
+		bridgeStdioToHTTPFast("http://127.0.0.1:1/mcp", state, 7890)
+	})
+
+	responses := parseJSONLines(t, output)
+	if len(responses) != 0 {
+		t.Fatalf("notification should not emit response, got %d responses: %q", len(responses), output)
+	}
+}
+
+func TestBridgeFastPathNullIDReturnsInvalidRequest(t *testing.T) {
+	// Do not run in parallel; test redirects process stdio.
+	state := &daemonState{readyCh: make(chan struct{}), failedCh: make(chan struct{})}
+	output := captureBridgeIO(t, `{"jsonrpc":"2.0","id":null,"method":"ping","params":{}}`+"\n", func() {
+		bridgeStdioToHTTPFast("http://127.0.0.1:1/mcp", state, 7890)
+	})
+
+	responses := parseJSONLines(t, output)
+	if len(responses) != 1 {
+		t.Fatalf("expected one response, got %d: %q", len(responses), output)
+	}
+	if responses[0].Error == nil || responses[0].Error.Code != -32600 {
+		t.Fatalf("null-id response = %+v, want invalid request -32600", responses[0])
+	}
+	if responses[0].ID != nil {
+		t.Fatalf("null-id response id = %v, want null", responses[0].ID)
 	}
 }
 

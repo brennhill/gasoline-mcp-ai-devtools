@@ -136,10 +136,9 @@ func TestMCPHandlerHandleRequestCorePaths(t *testing.T) {
 	if resp := h.HandleRequest(JSONRPCRequest{JSONRPC: "2.0", Method: "ping"}); resp != nil {
 		t.Fatalf("notification without ID should return nil, got %+v", resp)
 	}
-	// G7: Per JSON-RPC 2.0 spec, a request WITH an ID is not a notification even if
-	// method starts with "notifications/". It should get a response (static handler for "initialized").
-	if resp := h.HandleRequest(JSONRPCRequest{JSONRPC: "2.0", ID: 1, Method: "notifications/initialized"}); resp == nil {
-		t.Fatalf("notifications/* with non-nil ID should get a response per JSON-RPC 2.0 spec")
+	notifyRequest := h.HandleRequest(JSONRPCRequest{JSONRPC: "2.0", ID: 1, Method: "notifications/initialized"})
+	if notifyRequest == nil || notifyRequest.Error == nil || notifyRequest.Error.Code != -32601 {
+		t.Fatalf("notifications/* request with id should return method-not-found, got %+v", notifyRequest)
 	}
 
 	unknown := h.HandleRequest(JSONRPCRequest{JSONRPC: "2.0", ID: 1, Method: "not/method"})
@@ -174,6 +173,17 @@ func TestMCPHandlerHandleRequestCorePaths(t *testing.T) {
 	initFallbackData := mustDecodeJSON[MCPInitializeResult](t, initFallback.Result)
 	if initFallbackData.ProtocolVersion != "2025-06-18" {
 		t.Fatalf("fallback protocol = %q, want latest supported version 2025-06-18", initFallbackData.ProtocolVersion)
+	}
+
+	initLatest := h.HandleRequest(JSONRPCRequest{
+		JSONRPC: "2.0",
+		ID:      4,
+		Method:  "initialize",
+		Params:  json.RawMessage(`{"protocolVersion":"2025-06-18"}`),
+	})
+	initLatestData := mustDecodeJSON[MCPInitializeResult](t, initLatest.Result)
+	if initLatestData.ProtocolVersion != "2025-06-18" {
+		t.Fatalf("latest protocol = %q, want %q", initLatestData.ProtocolVersion, "2025-06-18")
 	}
 }
 
@@ -1149,6 +1159,60 @@ func TestHandleRequest_NotificationDetection(t *testing.T) {
 	resp := h.HandleRequest(JSONRPCRequest{JSONRPC: "2.0", ID: 1, Method: "notifications/initialized"})
 	if resp == nil {
 		t.Fatal("non-nil ID with notifications/ prefix should NOT be treated as notification — should get response")
+	}
+}
+
+func TestMCPHandlerHandleHTTP_ReadErrorUsesNullID(t *testing.T) {
+	t.Parallel()
+
+	h := NewMCPHandler(nil, "v-http")
+	h.SetToolHandler(&fakeToolHandlerForMCP{
+		cap:     capture.NewCapture(),
+		limiter: testLimiter{allowed: true},
+	})
+
+	readErrReq := httptest.NewRequest(http.MethodPost, "/mcp", bytes.NewBuffer(nil))
+	readErrReq.Body = ioNopCloser{Reader: failReader{}}
+	readErrRR := httptest.NewRecorder()
+	h.HandleHTTP(readErrRR, readErrReq)
+
+	var readErrResp JSONRPCResponse
+	if err := json.Unmarshal(readErrRR.Body.Bytes(), &readErrResp); err != nil {
+		t.Fatalf("json.Unmarshal(read error response) error = %v", err)
+	}
+	if readErrResp.Error == nil || readErrResp.Error.Code != -32700 {
+		t.Fatalf("read error response = %+v, want code -32700", readErrResp)
+	}
+	if readErrResp.ID != nil {
+		t.Fatalf("read error response id = %v, want null", readErrResp.ID)
+	}
+}
+
+func TestMCPHandlerHandleHTTP_IDNullIsInvalidRequest(t *testing.T) {
+	t.Parallel()
+
+	h := NewMCPHandler(nil, "v-http")
+	h.SetToolHandler(&fakeToolHandlerForMCP{
+		cap:     capture.NewCapture(),
+		limiter: testLimiter{allowed: true},
+	})
+
+	nullIDReq := httptest.NewRequest(http.MethodPost, "/mcp", bytes.NewBufferString(`{"jsonrpc":"2.0","id":null,"method":"ping","params":{}}`))
+	nullIDRR := httptest.NewRecorder()
+	h.HandleHTTP(nullIDRR, nullIDReq)
+	if nullIDRR.Code != http.StatusOK {
+		t.Fatalf("id:null request status = %d, want %d", nullIDRR.Code, http.StatusOK)
+	}
+
+	var nullIDResp JSONRPCResponse
+	if err := json.Unmarshal(nullIDRR.Body.Bytes(), &nullIDResp); err != nil {
+		t.Fatalf("json.Unmarshal(id:null response) error = %v", err)
+	}
+	if nullIDResp.Error == nil || nullIDResp.Error.Code != -32600 {
+		t.Fatalf("id:null response = %+v, want invalid request -32600", nullIDResp)
+	}
+	if nullIDResp.ID != nil {
+		t.Fatalf("id:null response id = %v, want null", nullIDResp.ID)
 	}
 }
 
