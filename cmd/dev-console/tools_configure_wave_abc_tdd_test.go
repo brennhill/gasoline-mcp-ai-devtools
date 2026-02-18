@@ -113,6 +113,45 @@ func TestWaveB_ConfigureSchema_AuditLogOperationPropertyPresent(t *testing.T) {
 	}
 }
 
+func TestWaveB_ConfigureSchema_AuditLogAllowsTelemetryMode(t *testing.T) {
+	t.Parallel()
+
+	server, err := NewServer(t.TempDir()+"/schema-wave-b-telemetry.jsonl", 10)
+	if err != nil {
+		t.Fatalf("NewServer: %v", err)
+	}
+	t.Cleanup(func() { server.Close() })
+	cap := capture.NewCapture()
+	tools := NewToolHandler(server, cap).toolHandler.ToolsList()
+
+	for _, tool := range tools {
+		if tool.Name != "configure" {
+			continue
+		}
+		oneOf, ok := tool.InputSchema["oneOf"].([]map[string]any)
+		if !ok {
+			t.Fatal("configure schema should include oneOf")
+		}
+		for _, branch := range oneOf {
+			props, ok := branch["properties"].(map[string]any)
+			if !ok {
+				continue
+			}
+			actionSpec, ok := props["action"].(map[string]any)
+			if !ok || actionSpec["const"] != "audit_log" {
+				continue
+			}
+			if _, ok := props["telemetry_mode"]; !ok {
+				t.Fatal("audit_log configure schema branch should allow telemetry_mode override")
+			}
+			return
+		}
+		t.Fatal("configure oneOf missing audit_log branch")
+	}
+
+	t.Fatal("configure tool not found in schema")
+}
+
 func TestWaveB_AuditLogOperationAnalyzeAndClear(t *testing.T) {
 	t.Parallel()
 
@@ -154,6 +193,76 @@ func TestWaveB_AuditLogOperationAnalyzeAndClear(t *testing.T) {
 	}
 	if _, ok := clearData["cleared"]; !ok {
 		t.Fatal("audit_log clear should report cleared count")
+	}
+}
+
+func TestWaveB_AuditLogClear_DoesNotReinsertClearCall(t *testing.T) {
+	t.Parallel()
+
+	server, err := NewServer(t.TempDir()+"/audit-clear-empty.jsonl", 100)
+	if err != nil {
+		t.Fatalf("NewServer: %v", err)
+	}
+	t.Cleanup(func() { server.Close() })
+
+	cap := capture.NewCapture()
+	mcpHandler := NewToolHandler(server, cap)
+	h := mcpHandler.toolHandler.(*ToolHandler)
+	req := JSONRPCRequest{JSONRPC: "2.0", ID: 1, ClientID: "audit-clear-test"}
+
+	// Seed at least one entry.
+	callHandledTool(t, h, req, "configure", `{"action":"health"}`)
+
+	clearResp := callHandledTool(t, h, req, "configure", `{"action":"audit_log","operation":"clear"}`)
+	clearResult := parseToolResult(t, clearResp)
+	if clearResult.IsError {
+		t.Fatalf("audit_log clear should succeed, got: %s", clearResult.Content[0].Text)
+	}
+
+	// Report should be empty. If clear got re-recorded after execution, count would be 1.
+	reportResp := callHandledTool(t, h, req, "configure", `{"action":"audit_log","operation":"report"}`)
+	reportResult := parseToolResult(t, reportResp)
+	if reportResult.IsError {
+		t.Fatalf("audit_log report should succeed, got: %s", reportResult.Content[0].Text)
+	}
+	reportData := extractResultJSON(t, reportResult)
+	if got := int(reportData["count"].(float64)); got != 0 {
+		t.Fatalf("audit_log should remain empty after clear, got count=%d", got)
+	}
+}
+
+func TestWaveB_AuditLogClear_ResetsToolHandlerSessionMap(t *testing.T) {
+	t.Parallel()
+
+	server, err := NewServer(t.TempDir()+"/audit-clear-session-reset.jsonl", 100)
+	if err != nil {
+		t.Fatalf("NewServer: %v", err)
+	}
+	t.Cleanup(func() { server.Close() })
+
+	cap := capture.NewCapture()
+	mcpHandler := NewToolHandler(server, cap)
+	h := mcpHandler.toolHandler.(*ToolHandler)
+	req := JSONRPCRequest{JSONRPC: "2.0", ID: 1, ClientID: "session-reset-client"}
+
+	callHandledTool(t, h, req, "configure", `{"action":"health"}`)
+	oldSessionID := h.auditSessions["session-reset-client"]
+	if oldSessionID == "" {
+		t.Fatal("expected initial audit session id")
+	}
+
+	callHandledTool(t, h, req, "configure", `{"action":"audit_log","operation":"clear"}`)
+	if stale := h.auditSessions["session-reset-client"]; stale != "" {
+		t.Fatalf("audit session map should be reset on clear, found stale id: %s", stale)
+	}
+
+	callHandledTool(t, h, req, "configure", `{"action":"health"}`)
+	newSessionID := h.auditSessions["session-reset-client"]
+	if newSessionID == "" {
+		t.Fatal("expected new audit session id after clear")
+	}
+	if newSessionID == oldSessionID {
+		t.Fatalf("session id should be recreated after clear; old=%s new=%s", oldSessionID, newSessionID)
 	}
 }
 

@@ -169,6 +169,9 @@ func (h *ToolHandler) recordAuditToolCall(
 	if h == nil || h.auditTrail == nil {
 		return
 	}
+	if shouldSkipAuditRecording(toolName, args) {
+		return
+	}
 
 	sessionID := h.auditSessionID(req.ClientID)
 	if sessionID == "" {
@@ -203,7 +206,10 @@ func (h *ToolHandler) auditSessionID(clientID string) string {
 	defer h.auditMu.Unlock()
 
 	if sid, ok := h.auditSessions[client]; ok && sid != "" {
-		return sid
+		if h.auditTrail.GetSession(sid) != nil {
+			return sid
+		}
+		delete(h.auditSessions, client)
 	}
 
 	info := h.auditTrail.CreateSession(audit.ClientIdentifier{Name: client})
@@ -234,4 +240,19 @@ func auditErrorMessage(resp JSONRPCResponse) string {
 		return ""
 	}
 	return result.Content[0].Text
+}
+
+func shouldSkipAuditRecording(toolName string, args json.RawMessage) bool {
+	if toolName != "configure" || len(args) == 0 {
+		return false
+	}
+	var params struct {
+		Action    string `json:"action"`
+		Operation string `json:"operation"`
+	}
+	if err := json.Unmarshal(args, &params); err != nil {
+		return false
+	}
+	return strings.EqualFold(strings.TrimSpace(params.Action), "audit_log") &&
+		strings.EqualFold(strings.TrimSpace(params.Operation), "clear")
 }
