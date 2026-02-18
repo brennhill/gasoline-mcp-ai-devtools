@@ -8,6 +8,8 @@ const {
   CLIENT_DEFINITIONS,
   getClientConfigPath,
   getDetectedClients,
+  getClientByAlias,
+  getValidAliases,
   readConfigFile,
   writeConfigFile,
   mergeGassolineConfig,
@@ -114,7 +116,19 @@ function installViaFile(def, options) {
     };
   }
 
-  const gassolineEntry = { command: 'gasoline-mcp', args: [] };
+  const configKey = def.configKey || 'mcpServers';
+
+  // Build entry in the right format for this client
+  let gasolineEntry;
+  if (def.buildEntry) {
+    gasolineEntry = def.buildEntry(envVars);
+  } else {
+    gasolineEntry = { command: 'gasoline-mcp', args: [] };
+    if (envVars && Object.keys(envVars).length > 0) {
+      gasolineEntry.env = envVars;
+    }
+  }
+
   let configData;
   let isNew = false;
 
@@ -122,12 +136,16 @@ function installViaFile(def, options) {
   if (readResult.valid) {
     configData = readResult.data;
   } else {
-    configData = generateDefaultConfig();
+    configData = {};
     isNew = true;
   }
 
-  const merged = mergeGassolineConfig(configData, gassolineEntry, envVars);
-  writeConfigFile(cfgPath, merged, dryRun);
+  // Merge gasoline entry under the correct key
+  if (!configData[configKey]) configData[configKey] = {};
+  configData[configKey].gasoline = gasolineEntry;
+
+  const skipValidation = configKey !== 'mcpServers';
+  writeConfigFile(cfgPath, configData, dryRun, { skipValidation });
 
   return {
     success: true,
@@ -159,12 +177,27 @@ function installToClient(def, options) {
  * @returns {Object} {success, installed, errors, total}
  */
 function executeInstall(options = {}) {
-  const { dryRun = false, envVars = {}, verbose = false } = options;
+  const { dryRun = false, envVars = {}, verbose = false, targetTool } = options;
 
-  // Allow test override of client list
-  const clients = options._clientOverrides !== undefined
-    ? options._clientOverrides
-    : getDetectedClients();
+  // Targeted install: filter to a single client by alias
+  let clients;
+  if (options._clientOverrides !== undefined) {
+    clients = options._clientOverrides;
+  } else if (targetTool) {
+    const def = getClientByAlias(targetTool);
+    if (!def) {
+      const valid = getValidAliases().join(', ');
+      return {
+        success: false,
+        installed: [],
+        errors: [{ name: targetTool, message: `Unknown tool: ${targetTool}. Valid tools: ${valid}` }],
+        total: CLIENT_DEFINITIONS.length,
+      };
+    }
+    clients = [def];
+  } else {
+    clients = getDetectedClients();
+  }
 
   const result = {
     success: false,

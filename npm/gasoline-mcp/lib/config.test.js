@@ -5,6 +5,7 @@ const path = require('node:path');
 const fs = require('node:fs');
 const {
   CLIENT_DEFINITIONS,
+  CLIENT_ALIASES,
   getClientConfigPath,
   isClientInstalled,
   getDetectedClients,
@@ -12,13 +13,18 @@ const {
   getConfigCandidates,
   getToolNameFromPath,
   getClientById,
+  getClientByAlias,
+  getValidAliases,
 } = require('./config');
 
 // --- CLIENT_DEFINITIONS ---
 
-test('CLIENT_DEFINITIONS contains all 5 clients', () => {
+test('CLIENT_DEFINITIONS contains all 9 clients', () => {
   const ids = CLIENT_DEFINITIONS.map(c => c.id);
-  assert.deepEqual(ids, ['claude-code', 'claude-desktop', 'cursor', 'windsurf', 'vscode']);
+  assert.deepEqual(ids, [
+    'claude-code', 'claude-desktop', 'cursor', 'windsurf', 'vscode',
+    'gemini', 'opencode', 'antigravity', 'zed',
+  ]);
 });
 
 test('each client definition has required fields', () => {
@@ -192,4 +198,104 @@ test('getToolNameFromPath maps windsurf path correctly', () => {
 
 test('getToolNameFromPath returns Unknown for unrecognized path', () => {
   assert.equal(getToolNameFromPath('/some/random/path'), 'Unknown');
+});
+
+// --- Gemini CLI client ---
+
+test('gemini uses correct config path', () => {
+  const gemini = CLIENT_DEFINITIONS.find(c => c.id === 'gemini');
+  assert.equal(gemini.type, 'file');
+  assert.ok(gemini.configPath.all.includes('.gemini/settings.json'));
+});
+
+// --- OpenCode client ---
+
+test('opencode uses correct config path and configKey', () => {
+  const oc = CLIENT_DEFINITIONS.find(c => c.id === 'opencode');
+  assert.equal(oc.type, 'file');
+  assert.ok(oc.configPath.all.includes('.config/opencode/opencode.json'));
+  assert.equal(oc.configKey, 'mcp');
+});
+
+test('opencode buildEntry produces correct format', () => {
+  const oc = CLIENT_DEFINITIONS.find(c => c.id === 'opencode');
+  const entry = oc.buildEntry({});
+  assert.deepEqual(entry, { type: 'local', command: ['gasoline-mcp'], enabled: true });
+});
+
+test('opencode buildEntry includes env vars', () => {
+  const oc = CLIENT_DEFINITIONS.find(c => c.id === 'opencode');
+  const entry = oc.buildEntry({ DEBUG: '1' });
+  assert.equal(entry.env.DEBUG, '1');
+  assert.equal(entry.type, 'local');
+  assert.deepEqual(entry.command, ['gasoline-mcp']);
+});
+
+// --- Antigravity client ---
+
+test('antigravity uses correct config path', () => {
+  const ag = CLIENT_DEFINITIONS.find(c => c.id === 'antigravity');
+  assert.equal(ag.type, 'file');
+  assert.ok(ag.configPath.darwin.includes('.gemini/antigravity/mcp_config.json'));
+});
+
+// --- Zed client ---
+
+test('zed uses correct config path and configKey', () => {
+  const zed = CLIENT_DEFINITIONS.find(c => c.id === 'zed');
+  assert.equal(zed.type, 'file');
+  assert.ok(zed.configPath.all.includes('.config/zed/settings.json'));
+  assert.equal(zed.configKey, 'context_servers');
+});
+
+test('zed buildEntry produces correct format', () => {
+  const zed = CLIENT_DEFINITIONS.find(c => c.id === 'zed');
+  const entry = zed.buildEntry({});
+  assert.deepEqual(entry, { source: 'custom', command: 'gasoline-mcp', args: [] });
+});
+
+// --- getClientByAlias ---
+
+test('getClientByAlias returns client for valid alias', () => {
+  assert.equal(getClientByAlias('gemini').id, 'gemini');
+  assert.equal(getClientByAlias('cursor').id, 'cursor');
+  assert.equal(getClientByAlias('claude').id, 'claude-code');
+  assert.equal(getClientByAlias('opencode').id, 'opencode');
+  assert.equal(getClientByAlias('vscode').id, 'vscode');
+  assert.equal(getClientByAlias('antigravity').id, 'antigravity');
+  assert.equal(getClientByAlias('zed').id, 'zed');
+});
+
+test('getClientByAlias is case-insensitive', () => {
+  assert.equal(getClientByAlias('Gemini').id, 'gemini');
+  assert.equal(getClientByAlias('CURSOR').id, 'cursor');
+});
+
+test('getClientByAlias returns null for unknown alias', () => {
+  assert.equal(getClientByAlias('bogus'), null);
+});
+
+// --- getValidAliases ---
+
+test('getValidAliases returns one alias per client', () => {
+  const aliases = getValidAliases();
+  assert.ok(aliases.includes('gemini'));
+  assert.ok(aliases.includes('opencode'));
+  assert.ok(aliases.includes('claude'));
+  assert.ok(aliases.includes('antigravity'));
+  assert.ok(aliases.includes('zed'));
+  // Should have exactly one per unique client ID
+  assert.equal(aliases.length, CLIENT_DEFINITIONS.length);
+});
+
+// --- getToolNameFromPath fallbacks ---
+
+test('getToolNameFromPath maps gemini path correctly', () => {
+  const homeDir = os.homedir();
+  assert.equal(getToolNameFromPath(path.join(homeDir, '.gemini', 'settings.json')), 'Gemini CLI');
+});
+
+test('getToolNameFromPath maps opencode path correctly', () => {
+  const homeDir = os.homedir();
+  assert.equal(getToolNameFromPath(path.join(homeDir, '.config', 'opencode', 'opencode.json')), 'OpenCode');
 });
