@@ -460,13 +460,13 @@ func (h *ToolHandler) ToolsList() []MCPTool {
 		},
 		{
 			Name:        "configure",
-			Description: "Session settings and utilities.\n\nKey actions: health (check server/extension status), clear (reset buffers), noise_rule (suppress recurring console noise), store/load (persist/retrieve session data), streaming (enable push notifications), recording_start/recording_stop (capture browser sessions), playback (replay recordings), log_diff (compare error states).",
+			Description: "Session settings and utilities.\n\nKey actions: health (check server/extension status), clear (reset buffers), noise_rule (suppress recurring console noise), store/load (persist/retrieve session data), streaming (enable push notifications), recording_start/recording_stop (capture browser sessions), playback (replay recordings), log_diff (compare error states), restart (force-restart daemon when unresponsive).",
 			InputSchema: map[string]any{
 				"type": "object",
 				"properties": map[string]any{
 					"action": map[string]any{
 						"type": "string",
-						"enum": []string{"store", "load", "noise_rule", "clear", "health", "streaming", "test_boundary_start", "test_boundary_end", "recording_start", "recording_stop", "playback", "log_diff", "telemetry", "describe_capabilities", "diff_sessions", "audit_log"},
+						"enum": []string{"store", "load", "noise_rule", "clear", "health", "streaming", "test_boundary_start", "test_boundary_end", "recording_start", "recording_stop", "playback", "log_diff", "telemetry", "describe_capabilities", "diff_sessions", "audit_log", "restart"},
 					},
 					"telemetry_mode": map[string]any{
 						"type":        "string",
@@ -819,6 +819,13 @@ func (h *ToolHandler) ToolsList() []MCPTool {
 						"required":             []string{"action", "original_id", "replay_id"},
 						"additionalProperties": false,
 					},
+				{
+					"properties": map[string]any{
+						"action": map[string]any{"const": "restart"},
+					},
+					"required":             []string{"action"},
+					"additionalProperties": false,
+				},
 				},
 				"required": []string{"action"},
 			},

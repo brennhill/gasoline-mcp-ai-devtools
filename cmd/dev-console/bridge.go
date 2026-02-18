@@ -745,6 +745,12 @@ func bridgeStdioToHTTPFast(endpoint string, state *daemonState, port int) {
 			continue
 		}
 
+		// RESTART FAST PATH: configure(action="restart") handled in bridge, not daemon
+		if handleBridgeRestart(req, state, port) {
+			signalResponseSent()
+			continue
+		}
+
 		// SLOW PATH: Check daemon status for tools/call and other methods
 		if status := checkDaemonStatus(state, req, port); status != "" {
 			handleDaemonNotReady(req, status, signalResponseSent)
@@ -1027,4 +1033,92 @@ func sendToolError(id any, message string) {
 	fmt.Println(string(respJSON))
 	flushStdout()
 	mcpStdoutMu.Unlock()
+}
+
+// extractToolAction extracts the tool name and action parameter from a tools/call request.
+// Returns empty strings for non-tools/call methods or if parsing fails.
+func extractToolAction(req JSONRPCRequest) (toolName, action string) {
+	if req.Method != "tools/call" {
+		return "", ""
+	}
+	var p struct {
+		Name string          `json:"name"`
+		Args json.RawMessage `json:"arguments"`
+	}
+	if json.Unmarshal(req.Params, &p) != nil {
+		return "", ""
+	}
+	var a struct {
+		Action string `json:"action"`
+	}
+	_ = json.Unmarshal(p.Args, &a) // ignore error — action may be absent
+	return p.Name, a.Action
+}
+
+// handleBridgeRestart handles configure(action="restart") in the bridge layer.
+// This is a fast path that works even when the daemon is unresponsive.
+// Returns true if the request was handled.
+func handleBridgeRestart(req JSONRPCRequest, state *daemonState, port int) bool {
+	tool, action := extractToolAction(req)
+	if tool != "configure" || action != "restart" {
+		return false
+	}
+
+	stderrf("[gasoline] bridge restart requested, stopping daemon on port %d\n", port)
+
+	// Kill the daemon (3-layer: HTTP → PID → lsof)
+	stopped := stopServerForUpgrade(port)
+
+	// Reset bridge state for fresh spawn
+	state.mu.Lock()
+	state.ready = false
+	state.failed = false
+	state.err = ""
+	state.readyCh = make(chan struct{})
+	state.failedCh = make(chan struct{})
+	readyCh := state.readyCh
+	failedCh := state.failedCh
+	state.mu.Unlock()
+
+	// Spawn fresh daemon
+	spawnDaemonAsync(state)
+
+	// Wait for daemon to become ready (6s timeout)
+	var status, message string
+	select {
+	case <-readyCh:
+		status = "ok"
+		message = "Daemon restarted successfully"
+		stderrf("[gasoline] daemon restarted successfully on port %d\n", port)
+	case <-failedCh:
+		state.mu.Lock()
+		errMsg := state.err
+		state.mu.Unlock()
+		status = "error"
+		message = "Daemon restart failed: " + errMsg
+		stderrf("[gasoline] daemon restart failed: %s\n", errMsg)
+	case <-time.After(6 * time.Second):
+		status = "error"
+		message = "Daemon restart timed out after 6s"
+		stderrf("[gasoline] daemon restart timed out\n")
+	}
+
+	result := map[string]any{
+		"status":           status,
+		"restarted":        status == "ok",
+		"message":          message,
+		"previous_stopped": stopped,
+	}
+	resultJSON, _ := json.Marshal(result)
+	toolResult := map[string]any{
+		"content": []map[string]any{
+			{"type": "text", "text": string(resultJSON)},
+		},
+	}
+	if status != "ok" {
+		toolResult["isError"] = true
+	}
+	toolResultJSON, _ := json.Marshal(toolResult)
+	sendFastResponse(req.ID, toolResultJSON)
+	return true
 }

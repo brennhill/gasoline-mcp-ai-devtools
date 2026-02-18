@@ -12,12 +12,15 @@ import (
 	"crypto/rand"
 	"encoding/binary"
 	"encoding/json"
+	"os"
 	"sort"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/dev-console/dev-console/internal/ai"
 	"github.com/dev-console/dev-console/internal/audit"
+	"github.com/dev-console/dev-console/internal/util"
 )
 
 // randomInt63 generates a random int64 for correlation IDs using crypto/rand.
@@ -82,6 +85,9 @@ var configureHandlers = map[string]ConfigureHandler{
 	},
 	"describe_capabilities": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 		return h.handleDescribeCapabilities(req, args)
+	},
+	"restart": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+		return h.toolConfigureRestart(req)
 	},
 }
 
@@ -201,6 +207,26 @@ func (h *ToolHandler) toolConfigureTelemetry(req JSONRPCRequest, args json.RawMe
 		"status":         "ok",
 		"telemetry_mode": mode,
 	})}
+}
+
+// toolConfigureRestart handles restart requests that reach the daemon.
+// Sends self-SIGTERM so the bridge auto-respawns a fresh daemon.
+// This covers the case where the daemon is responsive but needs a clean restart.
+func (h *ToolHandler) toolConfigureRestart(req JSONRPCRequest) JSONRPCResponse {
+	resp := JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Daemon restarting", map[string]any{
+		"status":    "ok",
+		"restarted": true,
+		"message":   "Daemon shutting down — bridge will respawn automatically",
+	})}
+
+	// Send SIGTERM to self after a brief delay so the response is sent first.
+	util.SafeGo(func() {
+		time.Sleep(100 * time.Millisecond)
+		p, _ := os.FindProcess(os.Getpid())
+		_ = p.Signal(syscall.SIGTERM)
+	})
+
+	return resp
 }
 
 func (h *ToolHandler) toolLoadSessionContext(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
