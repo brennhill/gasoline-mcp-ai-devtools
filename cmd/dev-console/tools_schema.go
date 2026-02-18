@@ -108,6 +108,11 @@ func (h *ToolHandler) ToolsList() []MCPTool {
 						"type":        "string",
 						"description": "Recording ID (recording_actions, playback_results)",
 					},
+					"scope": map[string]any{
+						"type":        "string",
+						"description": "Filter scope: current_page (default) filters by tracked tab, all returns everything (errors, logs)",
+						"enum":        []string{"current_page", "all"},
+					},
 					"window_seconds": map[string]any{
 						"type":        "number",
 						"description": "error_bundles lookback seconds (default 3, max 10)",
@@ -119,6 +124,27 @@ func (h *ToolHandler) ToolsList() []MCPTool {
 					"replay_id": map[string]any{
 						"type":        "string",
 						"description": "Replay recording ID (log_diff_report)",
+					},
+					"format": map[string]any{
+						"type":        "string",
+						"description": "Screenshot format (screenshot)",
+						"enum":        []string{"png", "jpeg"},
+					},
+					"quality": map[string]any{
+						"type":        "number",
+						"description": "Screenshot JPEG quality 1-100 (screenshot)",
+					},
+					"full_page": map[string]any{
+						"type":        "boolean",
+						"description": "Capture full scrollable page (screenshot)",
+					},
+					"selector": map[string]any{
+						"type":        "string",
+						"description": "Capture specific element by CSS selector (screenshot)",
+					},
+					"wait_for_stable": map[string]any{
+						"type":        "boolean",
+						"description": "Wait for layout to stabilize before capture (screenshot)",
 					},
 				},
 				"required": []string{"what"},
@@ -440,7 +466,7 @@ func (h *ToolHandler) ToolsList() []MCPTool {
 				"properties": map[string]any{
 					"action": map[string]any{
 						"type": "string",
-						"enum": []string{"store", "load", "noise_rule", "clear", "health", "streaming", "test_boundary_start", "test_boundary_end", "recording_start", "recording_stop", "playback", "log_diff", "telemetry", "diff_sessions", "audit_log"},
+						"enum": []string{"store", "load", "noise_rule", "clear", "health", "streaming", "test_boundary_start", "test_boundary_end", "recording_start", "recording_stop", "playback", "log_diff", "telemetry", "describe_capabilities", "diff_sessions", "audit_log"},
 					},
 					"telemetry_mode": map[string]any{
 						"type":        "string",
@@ -812,6 +838,8 @@ func (h *ToolHandler) ToolsList() []MCPTool {
 							"get_text", "get_value", "get_attribute",
 							"set_attribute", "focus", "scroll_to", "wait_for", "key_press", "paste",
 							"list_interactive",
+							"get_readable", "get_markdown",
+							"navigate_and_wait_for", "fill_form_and_submit", "run_a11y_and_export_sarif",
 							"record_start", "record_stop",
 							"upload", "draw_mode_start",
 						},
@@ -836,6 +864,14 @@ func (h *ToolHandler) ToolsList() []MCPTool {
 					"selector": map[string]any{
 						"type":        "string",
 						"description": "CSS or semantic selector for target element",
+					},
+					"index": map[string]any{
+						"type":        "number",
+						"description": "Element index from list_interactive results (alternative to selector)",
+					},
+					"visible_only": map[string]any{
+						"type":        "boolean",
+						"description": "Only return visible elements (list_interactive)",
 					},
 					"frame": map[string]any{
 						"description": "Target iframe: CSS selector, 0-based index, or \"all\"",
@@ -906,6 +942,10 @@ func (h *ToolHandler) ToolsList() []MCPTool {
 						"type":        "string",
 						"description": "URL (navigate, new_tab)",
 					},
+					"include_content": map[string]any{
+						"type":        "boolean",
+						"description": "Return page content with navigate response (url, title, text_content, vitals)",
+					},
 					"tab_id": map[string]any{
 						"type":        "number",
 						"description": "Tab ID (default: active)",
@@ -941,6 +981,35 @@ func (h *ToolHandler) ToolsList() []MCPTool {
 					"escalation_timeout_ms": map[string]any{
 						"type":        "number",
 						"description": "Upload escalation timeout in ms",
+					},
+					"fields": map[string]any{
+						"type":        "array",
+						"description": "Form fields to fill (fill_form_and_submit)",
+						"items": map[string]any{
+							"type": "object",
+							"properties": map[string]any{
+								"selector": map[string]any{"type": "string", "description": "CSS selector for the field"},
+								"value":    map[string]any{"type": "string", "description": "Value to type into the field"},
+								"index":    map[string]any{"type": "number", "description": "Element index from list_interactive (alternative to selector)"},
+							},
+							"required": []string{"value"},
+						},
+					},
+					"submit_selector": map[string]any{
+						"type":        "string",
+						"description": "Submit button selector (fill_form_and_submit)",
+					},
+					"submit_index": map[string]any{
+						"type":        "number",
+						"description": "Submit button index from list_interactive (fill_form_and_submit)",
+					},
+					"wait_for": map[string]any{
+						"type":        "string",
+						"description": "CSS selector to wait for after navigation (navigate_and_wait_for)",
+					},
+					"save_to": map[string]any{
+						"type":        "string",
+						"description": "File path to save output (run_a11y_and_export_sarif)",
 					},
 				},
 				"required": []string{"action"},

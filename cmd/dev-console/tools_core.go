@@ -216,6 +216,14 @@ type ToolHandler struct {
 	// Cached interact dispatch map (initialized once via sync.Once)
 	interactOnce     sync.Once
 	interactHandlers map[string]interactHandler
+
+	// Element index store: maps index→selector from the last list_interactive call.
+	// Protected by elementIndexMu; replaced on each list_interactive response.
+	// NOTE: This is a single shared store — concurrent clients calling list_interactive
+	// will overwrite each other's index. Acceptable for single-agent usage; scope by
+	// tab or client ID if multi-client support is needed.
+	elementIndexMu    sync.RWMutex
+	elementIndexStore map[int]string
 }
 
 // GetCapture returns the capture instance

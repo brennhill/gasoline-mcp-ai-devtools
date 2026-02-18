@@ -318,10 +318,56 @@ func (h *ToolHandler) toolGetScreenshot(req JSONRPCRequest, args json.RawMessage
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrNoData, "No tab is being tracked. Open the Gasoline extension popup and click 'Track This Tab' on the page you want to monitor. Check observe with what='pilot' for extension status.", "", h.diagnosticHint())}
 	}
 
+	// Parse screenshot options
+	var params struct {
+		Format        string `json:"format,omitempty"`
+		Quality       int    `json:"quality,omitempty"`
+		FullPage      bool   `json:"full_page,omitempty"`
+		Selector      string `json:"selector,omitempty"`
+		WaitForStable bool   `json:"wait_for_stable,omitempty"`
+	}
+	lenientUnmarshal(args, &params)
+
+	// Validate format
+	if params.Format != "" && params.Format != "png" && params.Format != "jpeg" {
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(
+			ErrInvalidParam, "Invalid screenshot format: "+params.Format,
+			"Use 'png' or 'jpeg'", withParam("format"),
+		)}
+	}
+
+	// Validate quality
+	if params.Quality != 0 && (params.Quality < 1 || params.Quality > 100) {
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(
+			ErrInvalidParam, fmt.Sprintf("Invalid quality: %d (must be 1-100)", params.Quality),
+			"Use a value between 1 and 100", withParam("quality"),
+		)}
+	}
+
+	// Build screenshot query params to pass to extension
+	screenshotParams := map[string]any{}
+	if params.Format != "" {
+		screenshotParams["format"] = params.Format
+	}
+	if params.Quality > 0 {
+		screenshotParams["quality"] = params.Quality
+	}
+	if params.FullPage {
+		screenshotParams["full_page"] = true
+	}
+	if params.Selector != "" {
+		screenshotParams["selector"] = params.Selector
+	}
+	if params.WaitForStable {
+		screenshotParams["wait_for_stable"] = true
+	}
+
+	queryParams, _ := json.Marshal(screenshotParams)
+
 	queryID := h.capture.CreatePendingQueryWithTimeout(
 		queries.PendingQuery{
 			Type:   "screenshot",
-			Params: json.RawMessage(`{}`),
+			Params: queryParams,
 		},
 		20*time.Second, // Sync poll (up to 5s) + capture (1-3s) + upload (0.5-1s) + margin
 		"",

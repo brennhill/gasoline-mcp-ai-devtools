@@ -20,6 +20,69 @@ import (
 // GenerateHandler is the function signature for generate format handlers.
 type GenerateHandler func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse
 
+// generateValidParams defines the allowed parameter names per generate format.
+// The "format" and "telemetry_mode" params are always allowed.
+var generateValidParams = map[string]map[string]bool{
+	"reproduction":      {"error_message": true, "last_n": true, "base_url": true, "include_screenshots": true, "generate_fixtures": true, "visual_assertions": true, "save_to": true},
+	"test":              {"test_name": true, "last_n": true, "base_url": true, "assert_network": true, "assert_no_errors": true, "assert_response_shape": true, "save_to": true},
+	"pr_summary":        {"save_to": true},
+	"har":               {"url": true, "method": true, "status_min": true, "status_max": true, "save_to": true},
+	"csp":               {"mode": true, "include_report_uri": true, "exclude_origins": true, "save_to": true},
+	"sri":               {"resource_types": true, "origins": true, "save_to": true},
+	"sarif":             {"scope": true, "include_passes": true, "save_to": true},
+	"visual_test":       {"test_name": true, "session": true, "save_to": true},
+	"annotation_report": {"session": true, "save_to": true},
+	"annotation_issues": {"session": true, "save_to": true},
+	"test_from_context":  {"context": true, "error_id": true, "include_mocks": true, "output_format": true, "save_to": true},
+	"test_heal":          {"action": true, "test_file": true, "test_dir": true, "broken_selectors": true, "auto_apply": true, "save_to": true},
+	"test_classify":      {"action": true, "failure": true, "failures": true, "save_to": true},
+}
+
+// alwaysAllowedGenerateParams are params valid for every generate format.
+var alwaysAllowedGenerateParams = map[string]bool{
+	"format":         true,
+	"telemetry_mode": true,
+}
+
+// validateGenerateParams checks for unknown parameters and returns an error response if any are found.
+func validateGenerateParams(req JSONRPCRequest, format string, args json.RawMessage) *JSONRPCResponse {
+	if len(args) == 0 {
+		return nil
+	}
+	var raw map[string]json.RawMessage
+	if err := json.Unmarshal(args, &raw); err != nil {
+		return nil // let handler deal with bad JSON
+	}
+	allowed, ok := generateValidParams[format]
+	if !ok {
+		return nil // unknown format handled elsewhere
+	}
+	var unknown []string
+	for k := range raw {
+		if alwaysAllowedGenerateParams[k] || allowed[k] {
+			continue
+		}
+		unknown = append(unknown, k)
+	}
+	if len(unknown) == 0 {
+		return nil
+	}
+	sort.Strings(unknown)
+	validList := make([]string, 0, len(allowed))
+	for k := range allowed {
+		validList = append(validList, k)
+	}
+	sort.Strings(validList)
+	resp := JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(
+		ErrInvalidParam,
+		fmt.Sprintf("Unknown parameter(s) for format '%s': %s", format, strings.Join(unknown, ", ")),
+		"Remove unknown parameters and call again",
+		withParam(unknown[0]),
+		withHint(fmt.Sprintf("Valid params for '%s': %s", format, strings.Join(validList, ", "))),
+	)}
+	return &resp
+}
+
 // generateHandlers maps generate format names to their handler functions.
 var generateHandlers = map[string]GenerateHandler{
 	"reproduction": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
@@ -95,6 +158,11 @@ func (h *ToolHandler) toolGenerate(req JSONRPCRequest, args json.RawMessage) JSO
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrUnknownMode, "Unknown generate format: "+params.Format, "Use a valid format from the 'format' enum", withParam("format"), withHint("Valid values: "+validFormats))}
 	}
 
+	// Strict parameter validation: reject unknown params for the given format
+	if errResp := validateGenerateParams(req, params.Format, args); errResp != nil {
+		return *errResp
+	}
+
 	return handler(h, req, args)
 }
 
@@ -144,6 +212,11 @@ func (h *ToolHandler) toolGenerateTest(req JSONRPCRequest, args json.RawMessage)
 		},
 	}
 
+	if len(actions) == 0 {
+		result["reason"] = "no_actions_captured"
+		result["hint"] = "Navigate and interact with the browser first, then call generate(test) again."
+	}
+
 	summary := fmt.Sprintf("Playwright test '%s' (%d actions)", params.TestName, len(actions))
 	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse(summary, result)}
 }
@@ -156,6 +229,8 @@ func generateTestScript(actions []capture.EnhancedAction, params TestGenParams) 
 	fmt.Fprintf(&b, "test.describe('%s', () => {\n", escapeJS(params.TestName))
 
 	if len(actions) == 0 {
+		b.WriteString("  // reason: no_actions_captured\n")
+		b.WriteString("  // hint: Navigate and interact with the browser first, then call generate(test) again.\n")
 		b.WriteString("  test('should load page', async ({ page }) => {\n")
 		b.WriteString("    // No actions captured — add test steps here\n")
 		b.WriteString("    await page.goto('/');\n")
@@ -311,6 +386,15 @@ func (h *ToolHandler) toolGeneratePRSummary(req JSONRPCRequest, args json.RawMes
 	if totalActivity == 0 {
 		sb.WriteString("No activity captured during this session.\n\n")
 		sb.WriteString("Navigate to a page or interact with the browser to generate activity.\n")
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("PR summary generated", map[string]any{
+			"summary": sb.String(),
+			"reason":  "no_activity_captured",
+			"hint":    "Navigate to a page or interact with the browser first, then call generate(pr_summary) again.",
+			"stats": map[string]any{
+				"actions": 0, "commands_completed": 0, "commands_failed": 0,
+				"console_errors": 0, "network_errors": 0, "network_captured": 0,
+			},
+		})}
 	} else {
 		if tabURL != "" {
 			sb.WriteString(fmt.Sprintf("- **Page:** %s\n", tabURL))
