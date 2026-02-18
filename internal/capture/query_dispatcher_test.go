@@ -210,6 +210,31 @@ func TestNewQueryDispatcher_CreatePendingQuery_WithCorrelationID(t *testing.T) {
 	}
 }
 
+func TestNewQueryDispatcher_CreatePendingQueryWithClient_RegistersCommandOwnership(t *testing.T) {
+	t.Parallel()
+
+	qd := NewQueryDispatcher()
+	defer qd.Close()
+
+	qd.CreatePendingQueryWithTimeout(queries.PendingQuery{
+		Type:          "execute_js",
+		Params:        json.RawMessage(`{"script":"document.title"}`),
+		CorrelationID: "corr-client-owned",
+	}, 30*time.Second, "client-a")
+
+	cmd, found := qd.GetCommandResultForClient("corr-client-owned", "client-a")
+	if !found {
+		t.Fatal("client-a should be able to read its command")
+	}
+	if cmd.ClientID != "client-a" {
+		t.Fatalf("ClientID = %q, want client-a", cmd.ClientID)
+	}
+
+	if _, found := qd.GetCommandResultForClient("corr-client-owned", "client-b"); found {
+		t.Fatal("client-b should not see command owned by client-a")
+	}
+}
+
 func TestNewQueryDispatcher_CreatePendingQuery_Overflow(t *testing.T) {
 	t.Parallel()
 

@@ -118,6 +118,13 @@ export class SyncClient {
         }
         return DEFAULT_COMMAND_TIMEOUT_MS;
     }
+    getDispatchFailureStatus(err) {
+        const message = err instanceof Error ? err.message : String(err);
+        if (message.includes(' timed out after ')) {
+            return 'timeout';
+        }
+        return 'error';
+    }
     async dispatchCommandWithTimeout(command) {
         const timeoutMs = this.getCommandTimeoutMs(command);
         let timeoutId;
@@ -233,11 +240,14 @@ export class SyncClient {
                         this.log('Command dispatched OK', { id: command.id });
                     }
                     catch (err) {
-                        this.log('Command dispatch FAILED', { id: command.id, error: err.message });
+                        const errorMessage = err instanceof Error ? err.message : String(err);
+                        const status = this.getDispatchFailureStatus(err);
+                        this.log('Command dispatch FAILED', { id: command.id, status, error: errorMessage });
                         this.queueCommandResult({
                             id: command.id,
-                            status: 'error',
-                            error: err.message || 'Command dispatch failed'
+                            correlation_id: command.correlation_id,
+                            status,
+                            error: errorMessage || 'Command dispatch failed'
                         });
                     }
                     finally {

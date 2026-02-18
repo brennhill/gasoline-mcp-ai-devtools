@@ -709,7 +709,7 @@ func (h *ToolHandler) toolObserveCommandResult(req JSONRPCRequest, args json.Raw
 	// This is token-efficient — the LLM makes one call and waits instead of rapid polling.
 	// See docs/core/async-tool-pattern.md for the full pattern.
 	if strings.HasPrefix(corrID, "ann_") {
-		cmd, found := h.capture.WaitForCommand(corrID, annotationCommandWaitTimeout)
+		cmd, found := h.capture.WaitForCommandForClient(corrID, annotationCommandWaitTimeout, req.ClientID)
 		if !found {
 			return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(
 				ErrNoData,
@@ -722,7 +722,7 @@ func (h *ToolHandler) toolObserveCommandResult(req JSONRPCRequest, args json.Raw
 		return h.formatCommandResult(req, *cmd, corrID)
 	}
 
-	cmd, found := h.capture.GetCommandResult(corrID)
+	cmd, found := h.capture.GetCommandResultForClient(corrID, req.ClientID)
 	if !found {
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(
 			ErrNoData,

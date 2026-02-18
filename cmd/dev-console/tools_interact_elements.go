@@ -11,6 +11,8 @@ import (
 	"github.com/dev-console/dev-console/internal/queries"
 )
 
+const maxElementIndexClients = 128
+
 func (h *ToolHandler) handleListInteractive(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	var params struct {
 		TabID       int  `json:"tab_id,omitempty"`
@@ -85,14 +87,59 @@ func (h *ToolHandler) buildElementIndexFromResponse(resp JSONRPCResponse, client
 			}
 		}
 
-		h.elementIndexMu.Lock()
-		if h.elementIndexStore == nil {
-			h.elementIndexStore = make(map[string]map[int]string)
-		}
-		h.elementIndexStore[clientID] = clientStore
-		h.elementIndexMu.Unlock()
+		h.storeElementIndexForClient(clientID, clientStore)
 		return
 	}
+}
+
+func (h *ToolHandler) storeElementIndexForClient(clientID string, clientStore map[int]string) {
+	h.elementIndexMu.Lock()
+	defer h.elementIndexMu.Unlock()
+
+	if h.elementIndexStore == nil {
+		h.elementIndexStore = make(map[string]map[int]string)
+	}
+	if h.elementIndexUpdatedAt == nil {
+		h.elementIndexUpdatedAt = make(map[string]time.Time)
+	}
+
+	// Backfill timestamps for pre-existing entries created in tests/legacy paths.
+	for existingClientID := range h.elementIndexStore {
+		if _, ok := h.elementIndexUpdatedAt[existingClientID]; !ok {
+			h.elementIndexUpdatedAt[existingClientID] = time.Time{}
+		}
+	}
+
+	h.elementIndexStore[clientID] = clientStore
+	h.elementIndexUpdatedAt[clientID] = time.Now()
+
+	if len(h.elementIndexStore) > maxElementIndexClients {
+		h.evictOldestElementIndexClientLocked(clientID)
+	}
+}
+
+func (h *ToolHandler) evictOldestElementIndexClientLocked(preferKeep string) {
+	var oldestClientID string
+	var oldestUpdatedAt time.Time
+
+	for clientID, updatedAt := range h.elementIndexUpdatedAt {
+		if clientID == preferKeep && len(h.elementIndexUpdatedAt) > 1 {
+			continue
+		}
+		if oldestClientID == "" ||
+			updatedAt.Before(oldestUpdatedAt) ||
+			(updatedAt.Equal(oldestUpdatedAt) && clientID < oldestClientID) {
+			oldestClientID = clientID
+			oldestUpdatedAt = updatedAt
+		}
+	}
+
+	if oldestClientID == "" {
+		return
+	}
+
+	delete(h.elementIndexStore, oldestClientID)
+	delete(h.elementIndexUpdatedAt, oldestClientID)
 }
 
 // extractElementList walks nested result JSON to find the elements array.

@@ -273,6 +273,33 @@ func TestNewQueryDispatcher_WaitForCommand_NotFound(t *testing.T) {
 	}
 }
 
+func TestNewQueryDispatcher_WaitForCommandForClient_Isolation(t *testing.T) {
+	t.Parallel()
+
+	qd := NewQueryDispatcher()
+	defer qd.Close()
+
+	qd.RegisterCommandForClient("corr-client-wait", "q-client-wait", 30*time.Second, "client-a")
+
+	cmd, found := qd.WaitForCommandForClient("corr-client-wait", 100*time.Millisecond, "client-b")
+	if found || cmd != nil {
+		t.Fatalf("client-b should not observe client-a command; found=%v cmd=%+v", found, cmd)
+	}
+
+	go func() {
+		time.Sleep(20 * time.Millisecond)
+		qd.CompleteCommand("corr-client-wait", json.RawMessage(`{"ok":true}`), "")
+	}()
+
+	cmd, found = qd.WaitForCommandForClient("corr-client-wait", time.Second, "client-a")
+	if !found {
+		t.Fatal("client-a should observe its command completion")
+	}
+	if cmd.Status != "complete" {
+		t.Fatalf("status = %q, want complete", cmd.Status)
+	}
+}
+
 // ============================================
 // GetPendingCommands / GetCompletedCommands / GetFailedCommands Tests
 // ============================================

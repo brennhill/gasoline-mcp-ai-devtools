@@ -220,8 +220,9 @@ type ToolHandler struct {
 	// Element index store: maps clientID→(index→selector) from the last list_interactive call.
 	// Protected by elementIndexMu; each client's index is replaced on their list_interactive response.
 	// Scoped per clientID to prevent concurrent clients from overwriting each other's index.
-	elementIndexMu    sync.RWMutex
-	elementIndexStore map[string]map[int]string
+	elementIndexMu        sync.RWMutex
+	elementIndexStore     map[string]map[int]string
+	elementIndexUpdatedAt map[string]time.Time
 }
 
 // GetCapture returns the capture instance

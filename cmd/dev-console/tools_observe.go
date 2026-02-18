@@ -18,7 +18,7 @@ import (
 // maxObserveLimit caps the limit parameter to prevent oversized responses.
 const maxObserveLimit = 1000
 
-// parseTimestampBestEffort tries RFC3339, then RFC3339Nano, then millisecond epoch.
+// parseTimestampBestEffort tries RFC3339 and RFC3339Nano.
 // Returns zero time only if all formats fail.
 func parseTimestampBestEffort(ts string) time.Time {
 	if t, err := time.Parse(time.RFC3339, ts); err == nil {
@@ -279,8 +279,8 @@ func (h *ToolHandler) toolGetBrowserErrors(req JSONRPCRequest, args json.RawMess
 	}
 
 	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Browser errors", map[string]any{
-		"errors": errors,
-		"count":  len(errors),
+		"errors":   errors,
+		"count":    len(errors),
 		"metadata": buildResponseMetadata(h.capture, newestTS),
 		"scope":    params.Scope,
 	})}

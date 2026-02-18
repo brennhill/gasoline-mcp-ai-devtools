@@ -552,6 +552,29 @@ describe('SyncClient — Command dispatch', () => {
     assert.strictEqual(client.getState().lastCommandAck, 'cmd-2')
   })
 
+  test('should report correlation_id and timeout status when dispatch times out', async () => {
+    callbacks.onCommand = mock.fn(() => new Promise(() => {}))
+    callbacks.commandTimeoutMs = 10
+
+    const commands = [{ id: 'cmd-timeout', type: 'dom_query', correlation_id: 'corr-timeout-1', params: {} }]
+    const mockFetch = installFetchMock(makeSyncResponse({ commands, next_poll_ms: 60000 }))
+
+    client = new SyncClient('http://localhost:7777', 'sess-1', callbacks)
+    client.start()
+    await tick(150)
+
+    const bodyWithResults = mockFetch.mock.calls
+      .map((c) => JSON.parse(c.arguments[1].body))
+      .find((body) => body.command_results && body.command_results.length > 0)
+
+    assert.ok(bodyWithResults, 'Expected a sync payload with command_results')
+    const reported = bodyWithResults.command_results[0]
+    assert.strictEqual(reported.id, 'cmd-timeout')
+    assert.strictEqual(reported.correlation_id, 'corr-timeout-1')
+    assert.strictEqual(reported.status, 'timeout')
+    assert.match(reported.error, /timed out/i)
+  })
+
   test('should not dispatch commands when response has empty commands array', async () => {
     installFetchMock(makeSyncResponse({ commands: [], next_poll_ms: 60000 }))
 

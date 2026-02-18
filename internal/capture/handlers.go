@@ -90,14 +90,17 @@ func (c *Capture) HandleQueryResult(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Handle correlation_id for async commands (execute_js, browser actions)
-	if body.CorrelationID != "" {
-		c.CompleteCommandWithStatus(body.CorrelationID, body.Result, body.Status, body.Error)
-	}
-
-	// Handle query_id for synchronous query results
 	if body.ID != "" {
-		c.SetQueryResultWithClient(body.ID, body.Result, body.ClientID)
+		mappedCorrelationID := c.SetQueryResultOnly(body.ID, body.Result, body.ClientID)
+		correlationID := body.CorrelationID
+		if correlationID == "" {
+			correlationID = mappedCorrelationID
+		}
+		if correlationID != "" {
+			c.CompleteCommandWithStatus(correlationID, body.Result, body.Status, body.Error)
+		}
+	} else if body.CorrelationID != "" {
+		c.CompleteCommandWithStatus(body.CorrelationID, body.Result, body.Status, body.Error)
 	}
 
 	w.Header().Set("Content-Type", "application/json")

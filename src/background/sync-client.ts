@@ -228,6 +228,14 @@ export class SyncClient {
     return DEFAULT_COMMAND_TIMEOUT_MS
   }
 
+  private getDispatchFailureStatus(err: unknown): SyncCommandResult['status'] {
+    const message = err instanceof Error ? err.message : String(err)
+    if (message.includes(' timed out after ')) {
+      return 'timeout'
+    }
+    return 'error'
+  }
+
   private async dispatchCommandWithTimeout(command: SyncCommand): Promise<void> {
     const timeoutMs = this.getCommandTimeoutMs(command)
     let timeoutId: ReturnType<typeof setTimeout> | undefined
@@ -362,11 +370,14 @@ export class SyncClient {
             this.state.lastCommandAck = command.id
             this.log('Command dispatched OK', { id: command.id })
           } catch (err) {
-            this.log('Command dispatch FAILED', { id: command.id, error: (err as Error).message })
+            const errorMessage = err instanceof Error ? err.message : String(err)
+            const status = this.getDispatchFailureStatus(err)
+            this.log('Command dispatch FAILED', { id: command.id, status, error: errorMessage })
             this.queueCommandResult({
               id: command.id,
-              status: 'error',
-              error: (err as Error).message || 'Command dispatch failed'
+              correlation_id: command.correlation_id,
+              status,
+              error: errorMessage || 'Command dispatch failed'
             })
           } finally {
             if (dedupeKey) {

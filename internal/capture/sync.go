@@ -147,20 +147,20 @@ func (c *Capture) updateSyncConnectionState(req SyncRequest, clientID string, no
 }
 
 // processSyncCommandResults processes command results from the extension.
-// When both ID and CorrelationID are present, SetQueryResultWithClient stores the
-// query result and internally calls CompleteCommand (status="complete"). Then
-// CompleteCommandWithStatus is called with the extension-reported status. The
-// "only if pending" guard in CompleteCommandWithStatus prevents the second call
-// from overwriting — first writer wins.
+// Query results are stored via SetQueryResultOnly, then command completion is
+// applied once with CompleteCommandWithStatus, preferring explicit correlation_id
+// from the extension and falling back to the correlation mapped to query id.
 func (c *Capture) processSyncCommandResults(results []SyncCommandResult, clientID string) {
 	for _, result := range results {
-		if result.ID != "" && result.CorrelationID != "" {
-			// Both ID and CorrelationID: store query result, then complete command
-			// with the actual extension-reported status (not hardcoded "complete").
-			c.SetQueryResultOnly(result.ID, result.Result, clientID)
-			c.CompleteCommandWithStatus(result.CorrelationID, result.Result, result.Status, result.Error)
-		} else if result.ID != "" {
-			c.SetQueryResultWithClient(result.ID, result.Result, clientID)
+		if result.ID != "" {
+			mappedCorrelationID := c.SetQueryResultOnly(result.ID, result.Result, clientID)
+			correlationID := result.CorrelationID
+			if correlationID == "" {
+				correlationID = mappedCorrelationID
+			}
+			if correlationID != "" {
+				c.CompleteCommandWithStatus(correlationID, result.Result, result.Status, result.Error)
+			}
 		} else if result.CorrelationID != "" {
 			c.CompleteCommandWithStatus(result.CorrelationID, result.Result, result.Status, result.Error)
 		}

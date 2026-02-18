@@ -433,6 +433,48 @@ func TestHandleSync_CommandResultStatusPropagation(t *testing.T) {
 	}
 }
 
+func TestHandleSync_CommandResultStatusPropagation_IDOnlyUsesMappedCorrelation(t *testing.T) {
+	t.Parallel()
+	cap := NewCapture()
+
+	queryID := cap.CreatePendingQueryWithTimeout(queries.PendingQuery{
+		Type:          "dom_action",
+		Params:        json.RawMessage(`{"action":"click","selector":"#submit"}`),
+		CorrelationID: "corr-sync-id-only-timeout",
+	}, 30*time.Second, "client-a")
+
+	req := SyncRequest{
+		SessionID: "status-session-id-only",
+		CommandResults: []SyncCommandResult{
+			{
+				ID:     queryID,
+				Status: "timeout",
+				Error:  "dispatch timed out",
+			},
+		},
+	}
+
+	body, _ := json.Marshal(req)
+	httpReq := httptest.NewRequest("POST", "/sync", bytes.NewReader(body))
+	httpReq.Header.Set("X-Gasoline-Client", "client-a")
+	w := httptest.NewRecorder()
+	cap.HandleSync(w, httpReq)
+	if w.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200", w.Code)
+	}
+
+	timeoutCmd, found := cap.GetCommandResult("corr-sync-id-only-timeout")
+	if !found {
+		t.Fatal("corr-sync-id-only-timeout command not found")
+	}
+	if timeoutCmd.Status != "timeout" {
+		t.Fatalf("status = %q, want timeout", timeoutCmd.Status)
+	}
+	if timeoutCmd.Error != "dispatch timed out" {
+		t.Fatalf("error = %q, want dispatch timed out", timeoutCmd.Error)
+	}
+}
+
 // ============================================
 // Waterfall On-Demand Tests via Sync
 // ============================================

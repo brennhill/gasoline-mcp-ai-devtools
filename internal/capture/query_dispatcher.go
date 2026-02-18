@@ -158,8 +158,8 @@ func (c *Capture) SetQueryResult(id string, result json.RawMessage) {
 }
 
 // SetQueryResultOnly delegates to QueryDispatcher.
-func (c *Capture) SetQueryResultOnly(id string, result json.RawMessage, clientID string) {
-	c.qd.SetQueryResultOnly(id, result, clientID)
+func (c *Capture) SetQueryResultOnly(id string, result json.RawMessage, clientID string) string {
+	return c.qd.SetQueryResultOnly(id, result, clientID)
 }
 
 // SetQueryResultWithClient delegates to QueryDispatcher.
@@ -225,6 +225,11 @@ func (c *Capture) ExpireCommand(correlationID string) {
 // WaitForCommand delegates to QueryDispatcher.
 func (c *Capture) WaitForCommand(correlationID string, timeout time.Duration) (*queries.CommandResult, bool) {
 	return c.qd.WaitForCommand(correlationID, timeout)
+}
+
+// WaitForCommandForClient delegates to QueryDispatcher.
+func (c *Capture) WaitForCommandForClient(correlationID string, timeout time.Duration, clientID string) (*queries.CommandResult, bool) {
+	return c.qd.WaitForCommandForClient(correlationID, timeout, clientID)
 }
 
 // GetCommandResult delegates to QueryDispatcher.

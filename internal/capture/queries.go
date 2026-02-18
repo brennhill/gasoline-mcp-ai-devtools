@@ -93,7 +93,7 @@ func (qd *QueryDispatcher) CreatePendingQueryWithTimeout(query queries.PendingQu
 
 	// Register command outside mu lock to respect lock ordering (resultsMu must not be acquired under mu)
 	if correlationID != "" {
-		qd.RegisterCommand(correlationID, id, timeout)
+		qd.RegisterCommandForClient(correlationID, id, timeout, clientID)
 	}
 
 	// Query expires are checked during periodic cleanup cycles, not individual goroutines.
@@ -316,10 +316,9 @@ func (qd *QueryDispatcher) SetQueryResult(id string, result json.RawMessage) {
 }
 
 // SetQueryResultOnly stores the result and removes from pending WITHOUT completing
-// the associated command. Used by processSyncCommandResults when both ID and
-// CorrelationID are present — the caller handles command completion separately
-// via CompleteCommandWithStatus to preserve the extension-reported status.
-func (qd *QueryDispatcher) SetQueryResultOnly(id string, result json.RawMessage, clientID string) {
+// the associated command. Returns the correlation ID (if any) associated with id
+// so callers can complete with explicit status via CompleteCommandWithStatus.
+func (qd *QueryDispatcher) SetQueryResultOnly(id string, result json.RawMessage, clientID string) string {
 	qd.mu.Lock()
 
 	// Store result
@@ -327,6 +326,15 @@ func (qd *QueryDispatcher) SetQueryResultOnly(id string, result json.RawMessage,
 		result:    result,
 		clientID:  clientID,
 		createdAt: time.Now(),
+	}
+
+	// Find correlation ID before removing from pending
+	var correlationID string
+	for _, pq := range qd.pendingQueries {
+		if pq.query.ID == id {
+			correlationID = pq.query.CorrelationID
+			break
+		}
 	}
 
 	// Remove from pending
@@ -342,6 +350,7 @@ func (qd *QueryDispatcher) SetQueryResultOnly(id string, result json.RawMessage,
 
 	// Wake up WaitForResult waiters
 	qd.queryCond.Broadcast()
+	return correlationID
 }
 
 // SetQueryResultWithClient stores result with client isolation.
@@ -691,8 +700,14 @@ func (qd *QueryDispatcher) ExpireCommand(correlationID string) {
 // WaitForCommand blocks until the command completes or timeout expires.
 // Returns (CommandResult, found). If still pending after timeout, returns the pending result.
 func (qd *QueryDispatcher) WaitForCommand(correlationID string, timeout time.Duration) (*queries.CommandResult, bool) {
+	return qd.WaitForCommandForClient(correlationID, timeout, "")
+}
+
+// WaitForCommandForClient blocks until the command completes or timeout expires,
+// enforcing client isolation when clientID is non-empty.
+func (qd *QueryDispatcher) WaitForCommandForClient(correlationID string, timeout time.Duration, clientID string) (*queries.CommandResult, bool) {
 	// Check immediately
-	cmd, found := qd.GetCommandResult(correlationID)
+	cmd, found := qd.GetCommandResultForClient(correlationID, clientID)
 	if !found || cmd.Status != "pending" {
 		return cmd, found
 	}
@@ -705,20 +720,20 @@ func (qd *QueryDispatcher) WaitForCommand(correlationID string, timeout time.Dur
 
 		remaining := time.Until(deadline)
 		if remaining <= 0 {
-			return qd.GetCommandResult(correlationID)
+			return qd.GetCommandResultForClient(correlationID, clientID)
 		}
 
 		timer := time.NewTimer(remaining)
 		select {
 		case <-ch:
 			timer.Stop()
-			cmd, found = qd.GetCommandResult(correlationID)
+			cmd, found = qd.GetCommandResultForClient(correlationID, clientID)
 			if !found || cmd.Status != "pending" {
 				return cmd, found
 			}
 			continue
 		case <-timer.C:
-			return qd.GetCommandResult(correlationID)
+			return qd.GetCommandResultForClient(correlationID, clientID)
 		}
 	}
 }

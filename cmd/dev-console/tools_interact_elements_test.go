@@ -3,6 +3,7 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"testing"
 )
 
@@ -233,5 +234,45 @@ func TestCR3_ResolveIndexToSelector_EmptyClientFallback(t *testing.T) {
 	sel, ok := h.resolveIndexToSelector(0, "")
 	if !ok || sel != "#solo" {
 		t.Errorf("empty client: expected #solo, got %q (ok=%v)", sel, ok)
+	}
+}
+
+func TestElementIndexStore_EvictsOldClients(t *testing.T) {
+	t.Parallel()
+	h := newTestToolHandler()
+
+	totalClients := maxElementIndexClients + 5
+	for i := 0; i < totalClients; i++ {
+		clientID := fmt.Sprintf("client-%03d", i)
+		selector := fmt.Sprintf("#selector-%03d", i)
+		elemData := map[string]any{
+			"elements": []any{
+				map[string]any{"index": float64(0), "selector": selector, "tag": "button"},
+			},
+		}
+		elemJSON, _ := json.Marshal(elemData)
+		result := MCPToolResult{
+			Content: []MCPContentBlock{{Type: "text", Text: "list_interactive results\n" + string(elemJSON)}},
+		}
+		resultJSON, _ := json.Marshal(result)
+		resp := JSONRPCResponse{JSONRPC: "2.0", Result: resultJSON}
+		h.buildElementIndexFromResponse(resp, clientID)
+	}
+
+	h.elementIndexMu.RLock()
+	storeSize := len(h.elementIndexStore)
+	_, oldestStillPresent := h.elementIndexStore["client-000"]
+	latestClientID := fmt.Sprintf("client-%03d", totalClients-1)
+	latestSelector, latestFound := h.elementIndexStore[latestClientID][0]
+	h.elementIndexMu.RUnlock()
+
+	if storeSize > maxElementIndexClients {
+		t.Fatalf("elementIndexStore size = %d, want <= %d", storeSize, maxElementIndexClients)
+	}
+	if oldestStillPresent {
+		t.Fatal("oldest client entry should be evicted when store exceeds capacity")
+	}
+	if !latestFound || latestSelector != fmt.Sprintf("#selector-%03d", totalClients-1) {
+		t.Fatalf("latest client entry missing or incorrect: found=%v selector=%q", latestFound, latestSelector)
 	}
 }
