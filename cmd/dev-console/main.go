@@ -704,6 +704,7 @@ Examples:
 
 CLI Mode (direct tool access):
   gasoline observe errors --limit 50
+  gasoline analyze dom --selector "button"
   gasoline observe logs --min-level warn
   gasoline generate har --save-to out.har
   gasoline configure health

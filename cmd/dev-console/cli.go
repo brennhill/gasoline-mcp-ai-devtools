@@ -24,6 +24,7 @@ import (
 // cliToolNames lists valid tool names for CLI mode detection.
 var cliToolNames = map[string]bool{
 	"observe":   true,
+	"analyze":   true,
 	"generate":  true,
 	"configure": true,
 	"interact":  true,
@@ -50,7 +51,7 @@ func runCLIMode(args []string) int {
 
 	if len(remaining) < 2 {
 		fmt.Fprintf(os.Stderr, "Usage: gasoline <tool> <action> [flags]\n")
-		fmt.Fprintf(os.Stderr, "  Tools: observe, generate, configure, interact\n")
+		fmt.Fprintf(os.Stderr, "  Tools: observe, analyze, generate, configure, interact\n")
 		fmt.Fprintf(os.Stderr, "  Example: gasoline observe errors --limit 50\n")
 		return 2
 	}
@@ -73,10 +74,13 @@ func runCLIMode(args []string) int {
 		return 1
 	}
 
-	// Accessibility audits get extended timeout
+	// Long-running modes get extended timeout
 	timeout := cfg.Timeout
-	if tool == "observe" && normalizeAction(action) == "accessibility" {
+	if tool == "analyze" && normalizeAction(action) == "accessibility" {
 		timeout = 35000
+	}
+	if tool == "observe" && normalizeAction(action) == "command_result" && timeout < 60000 {
+		timeout = 60000
 	}
 
 	// Call the tool
@@ -94,7 +98,7 @@ func resolveCLIConfig(args []string) (cliConfig, []string) {
 	cfg := cliConfig{
 		Port:    defaultPort,
 		Format:  "human",
-		Timeout: 5000,
+		Timeout: 15000,
 	}
 
 	applyCLIEnvOverrides(&cfg)

@@ -47,6 +47,56 @@ func TestParseObserveArgs_BodyFilters(t *testing.T) {
 	}
 }
 
+func TestParseObserveArgs_CommandResultCorrelationID(t *testing.T) {
+	t.Parallel()
+
+	result, err := parseObserveArgs("command_result", []string{"--correlation-id", "corr-123"})
+	if err != nil {
+		t.Fatalf("error: %v", err)
+	}
+	if result["correlation_id"] != "corr-123" {
+		t.Fatalf("correlation_id = %v, want corr-123", result["correlation_id"])
+	}
+}
+
+// ============================================
+// parseAnalyzeArgs — parity coverage
+// ============================================
+
+func TestParseAnalyzeArgs_BasicFlags(t *testing.T) {
+	t.Parallel()
+
+	result, err := parseAnalyzeArgs("accessibility", []string{
+		"--scope", "#app",
+		"--tags", "wcag2a,wcag2aa",
+		"--force-refresh",
+		"--timeout-ms", "25000",
+		"--frame", "all",
+	})
+	if err != nil {
+		t.Fatalf("error: %v", err)
+	}
+	if result["what"] != "accessibility" {
+		t.Fatalf("what = %v, want accessibility", result["what"])
+	}
+	if result["scope"] != "#app" {
+		t.Fatalf("scope = %v, want #app", result["scope"])
+	}
+	tags, _ := result["tags"].([]string)
+	if len(tags) != 2 || tags[0] != "wcag2a" || tags[1] != "wcag2aa" {
+		t.Fatalf("tags = %#v, want [wcag2a wcag2aa]", result["tags"])
+	}
+	if result["force_refresh"] != true {
+		t.Fatal("force_refresh should be true")
+	}
+	if result["timeout_ms"] != 25000 {
+		t.Fatalf("timeout_ms = %v, want 25000", result["timeout_ms"])
+	}
+	if result["frame"] != "all" {
+		t.Fatalf("frame = %v, want all", result["frame"])
+	}
+}
+
 // ============================================
 // parseGenerateArgs — uncovered flags
 // ============================================
@@ -183,6 +233,38 @@ func TestParseInteractArgs_FilePathAbsolute(t *testing.T) {
 	}
 	if result["file_path"] != "/tmp/test.png" {
 		t.Fatalf("file_path = %v, want /tmp/test.png", result["file_path"])
+	}
+}
+
+func TestParseInteractArgs_UploadWithAPIEndpointOnly(t *testing.T) {
+	t.Parallel()
+
+	result, err := parseInteractArgs("upload", []string{
+		"--api-endpoint", "https://example.com/upload",
+		"--file-path", "/tmp/test.png",
+		"--submit",
+		"--escalation-timeout-ms", "12000",
+	})
+	if err != nil {
+		t.Fatalf("error: %v", err)
+	}
+	if result["api_endpoint"] != "https://example.com/upload" {
+		t.Fatalf("api_endpoint = %v, want https://example.com/upload", result["api_endpoint"])
+	}
+	if result["submit"] != true {
+		t.Fatal("submit should be true")
+	}
+	if result["escalation_timeout_ms"] != 12000 {
+		t.Fatalf("escalation_timeout_ms = %v, want 12000", result["escalation_timeout_ms"])
+	}
+}
+
+func TestParseGenerateArgs_UnknownFlag(t *testing.T) {
+	t.Parallel()
+
+	_, err := parseGenerateArgs("har", []string{"--not-a-flag"})
+	if err == nil {
+		t.Fatal("expected unknown flag error")
 	}
 }
 

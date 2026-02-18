@@ -2,7 +2,7 @@
 // Docs: docs/features/feature/observe/index.md
 
 // cli_commands.go — Argument parsers for CLI mode.
-// Maps CLI flags to MCP tool arguments for observe, generate, configure, interact.
+// Maps CLI flags to MCP tool arguments for observe, analyze, generate, configure, interact.
 package main
 
 import (
@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 )
 
@@ -19,6 +20,8 @@ func parseCLIArgs(tool, action string, args []string) (map[string]any, error) {
 	switch tool {
 	case "observe":
 		return parseObserveArgs(action, args)
+	case "analyze":
+		return parseAnalyzeArgs(action, args)
 	case "generate":
 		return parseGenerateArgs(action, args)
 	case "configure":
@@ -35,134 +38,305 @@ func normalizeAction(action string) string {
 	return strings.ReplaceAll(action, "-", "_")
 }
 
-// --- Flag definition types ---
+// --- Generic flag parser ---
 
-type stringFlag struct {
-	cli string // CLI flag name, e.g. "--url"
-	mcp string // MCP arg key, e.g. "url"
+type cliFlagKind int
+
+const (
+	flagString cliFlagKind = iota
+	flagInt
+	flagBool
+	flagStringList
+	flagJSON
+	flagJSONOrString
+	flagIntOrString
+)
+
+type cliFlagSpec struct {
+	mcpKey string
+	kind   cliFlagKind
 }
 
-type intFlag struct {
-	cli string
-	mcp string
-}
-
-type boolFlag struct {
-	cli string
-	mcp string
-}
-
-// applyStringFlags parses all string flags from args into mcpArgs.
-func applyStringFlags(args []string, mcpArgs map[string]any, flags []stringFlag) []string {
-	for _, f := range flags {
-		var val string
-		val, args = cliParseFlag(args, f.cli)
-		if val != "" {
-			mcpArgs[f.mcp] = val
+func parseFlagsBySpec(args []string, specs map[string]cliFlagSpec) (map[string]any, error) {
+	out := make(map[string]any)
+	for i := 0; i < len(args); i++ {
+		flag := args[i]
+		spec, ok := specs[flag]
+		if !ok {
+			return nil, fmt.Errorf("unknown flag: %s", flag)
+		}
+		switch spec.kind {
+		case flagBool:
+			out[spec.mcpKey] = true
+		case flagString:
+			val, next, err := requireFlagValue(args, i)
+			if err != nil {
+				return nil, fmt.Errorf("%s: %w", flag, err)
+			}
+			out[spec.mcpKey] = val
+			i = next
+		case flagInt:
+			val, next, err := requireFlagValue(args, i)
+			if err != nil {
+				return nil, fmt.Errorf("%s: %w", flag, err)
+			}
+			n, err := parseIntValue(val)
+			if err != nil {
+				return nil, fmt.Errorf("%s: %w", flag, err)
+			}
+			out[spec.mcpKey] = n
+			i = next
+		case flagStringList:
+			val, next, err := requireFlagValue(args, i)
+			if err != nil {
+				return nil, fmt.Errorf("%s: %w", flag, err)
+			}
+			out[spec.mcpKey] = parseCSVList(val)
+			i = next
+		case flagJSON:
+			val, next, err := requireFlagValue(args, i)
+			if err != nil {
+				return nil, fmt.Errorf("%s: %w", flag, err)
+			}
+			var parsed any
+			if err := json.Unmarshal([]byte(val), &parsed); err != nil {
+				return nil, fmt.Errorf("%s: invalid JSON: %w", flag, err)
+			}
+			out[spec.mcpKey] = parsed
+			i = next
+		case flagJSONOrString:
+			val, next, err := requireFlagValue(args, i)
+			if err != nil {
+				return nil, fmt.Errorf("%s: %w", flag, err)
+			}
+			out[spec.mcpKey] = parseJSONOrString(val)
+			i = next
+		case flagIntOrString:
+			val, next, err := requireFlagValue(args, i)
+			if err != nil {
+				return nil, fmt.Errorf("%s: %w", flag, err)
+			}
+			if n, err := strconv.Atoi(val); err == nil {
+				out[spec.mcpKey] = n
+			} else {
+				out[spec.mcpKey] = val
+			}
+			i = next
+		default:
+			return nil, fmt.Errorf("unsupported parser kind for %s", flag)
 		}
 	}
-	return args
+	return out, nil
 }
 
-// applyIntFlags parses all integer flags from args into mcpArgs.
-func applyIntFlags(args []string, mcpArgs map[string]any, flags []intFlag) []string {
-	for _, f := range flags {
-		var val int
-		var ok bool
-		val, ok, args = cliParseFlagInt(args, f.cli)
-		if ok {
-			mcpArgs[f.mcp] = val
-		}
+func requireFlagValue(args []string, idx int) (string, int, error) {
+	next := idx + 1
+	if next >= len(args) {
+		return "", idx, fmt.Errorf("missing value")
 	}
-	return args
+	val := args[next]
+	if strings.HasPrefix(val, "--") {
+		return "", idx, fmt.Errorf("missing value")
+	}
+	return val, next, nil
 }
 
-// applyBoolFlags parses all boolean flags from args into mcpArgs.
-func applyBoolFlags(args []string, mcpArgs map[string]any, flags []boolFlag) []string {
-	for _, f := range flags {
-		var val bool
-		val, args = cliParseFlagBool(args, f.cli)
-		if val {
-			mcpArgs[f.mcp] = true
+func parseIntValue(s string) (int, error) {
+	n, err := strconv.Atoi(s)
+	if err != nil {
+		return 0, fmt.Errorf("expected integer, got %q", s)
+	}
+	return n, nil
+}
+
+func parseCSVList(s string) []string {
+	parts := strings.Split(s, ",")
+	out := make([]string, 0, len(parts))
+	for _, p := range parts {
+		v := strings.TrimSpace(p)
+		if v != "" {
+			out = append(out, v)
 		}
 	}
-	return args
+	if len(out) == 0 {
+		return []string{}
+	}
+	return out
 }
 
 // --- Tool parsers ---
 
 func parseObserveArgs(mode string, args []string) (map[string]any, error) {
 	mcpArgs := map[string]any{"what": mode}
-	args = applyStringFlags(args, mcpArgs, []stringFlag{
-		{"--min-level", "min_level"},
-		{"--url", "url"},
-		{"--method", "method"},
-		{"--scope", "scope"},
-		{"--connection-id", "connection_id"},
-		{"--direction", "direction"},
-		{"--body-key", "body_key"},
-		{"--body-path", "body_path"},
+	parsed, err := parseFlagsBySpec(args, map[string]cliFlagSpec{
+		"--telemetry-mode":      {mcpKey: "telemetry_mode", kind: flagString},
+		"--limit":               {mcpKey: "limit", kind: flagInt},
+		"--after-cursor":        {mcpKey: "after_cursor", kind: flagString},
+		"--before-cursor":       {mcpKey: "before_cursor", kind: flagString},
+		"--since-cursor":        {mcpKey: "since_cursor", kind: flagString},
+		"--restart-on-eviction": {mcpKey: "restart_on_eviction", kind: flagBool},
+		"--min-level":           {mcpKey: "min_level", kind: flagString},
+		"--level":               {mcpKey: "level", kind: flagString},
+		"--source":              {mcpKey: "source", kind: flagString},
+		"--url":                 {mcpKey: "url", kind: flagString},
+		"--method":              {mcpKey: "method", kind: flagString},
+		"--scope":               {mcpKey: "scope", kind: flagString},
+		"--status-min":          {mcpKey: "status_min", kind: flagInt},
+		"--status-max":          {mcpKey: "status_max", kind: flagInt},
+		"--body-key":            {mcpKey: "body_key", kind: flagString},
+		"--body-path":           {mcpKey: "body_path", kind: flagString},
+		"--connection-id":       {mcpKey: "connection_id", kind: flagString},
+		"--direction":           {mcpKey: "direction", kind: flagString},
+		"--last-n":              {mcpKey: "last_n", kind: flagInt},
+		"--include":             {mcpKey: "include", kind: flagStringList},
+		"--correlation-id":      {mcpKey: "correlation_id", kind: flagString},
+		"--recording-id":        {mcpKey: "recording_id", kind: flagString},
+		"--window-seconds":      {mcpKey: "window_seconds", kind: flagInt},
+		"--original-id":         {mcpKey: "original_id", kind: flagString},
+		"--replay-id":           {mcpKey: "replay_id", kind: flagString},
 	})
-	applyIntFlags(args, mcpArgs, []intFlag{
-		{"--limit", "limit"},
-		{"--status-min", "status_min"},
-		{"--status-max", "status_max"},
-		{"--last-n", "last_n"},
+	if err != nil {
+		return nil, err
+	}
+	for k, v := range parsed {
+		mcpArgs[k] = v
+	}
+	return mcpArgs, nil
+}
+
+func parseAnalyzeArgs(what string, args []string) (map[string]any, error) {
+	mcpArgs := map[string]any{"what": what}
+	parsed, err := parseFlagsBySpec(args, map[string]cliFlagSpec{
+		"--telemetry-mode":      {mcpKey: "telemetry_mode", kind: flagString},
+		"--selector":            {mcpKey: "selector", kind: flagString},
+		"--frame":               {mcpKey: "frame", kind: flagIntOrString},
+		"--sync":                {mcpKey: "sync", kind: flagBool},
+		"--wait":                {mcpKey: "wait", kind: flagBool},
+		"--background":          {mcpKey: "background", kind: flagBool},
+		"--operation":           {mcpKey: "operation", kind: flagString},
+		"--ignore-endpoints":    {mcpKey: "ignore_endpoints", kind: flagStringList},
+		"--scope":               {mcpKey: "scope", kind: flagString},
+		"--tags":                {mcpKey: "tags", kind: flagStringList},
+		"--force-refresh":       {mcpKey: "force_refresh", kind: flagBool},
+		"--domain":              {mcpKey: "domain", kind: flagString},
+		"--timeout-ms":          {mcpKey: "timeout_ms", kind: flagInt},
+		"--world":               {mcpKey: "world", kind: flagString},
+		"--tab-id":              {mcpKey: "tab_id", kind: flagInt},
+		"--max-workers":         {mcpKey: "max_workers", kind: flagInt},
+		"--checks":              {mcpKey: "checks", kind: flagStringList},
+		"--severity-min":        {mcpKey: "severity_min", kind: flagString},
+		"--first-party-origins": {mcpKey: "first_party_origins", kind: flagStringList},
+		"--include-static":      {mcpKey: "include_static", kind: flagBool},
+		"--custom-lists":        {mcpKey: "custom_lists", kind: flagJSON},
+		"--correlation-id":      {mcpKey: "correlation_id", kind: flagString},
+		"--session":             {mcpKey: "session", kind: flagString},
+		"--urls":                {mcpKey: "urls", kind: flagStringList},
+		"--file":                {mcpKey: "file", kind: flagString},
 	})
+	if err != nil {
+		return nil, err
+	}
+	for k, v := range parsed {
+		mcpArgs[k] = v
+	}
 	return mcpArgs, nil
 }
 
 func parseGenerateArgs(format string, args []string) (map[string]any, error) {
 	mcpArgs := map[string]any{"format": format}
-	args = applyStringFlags(args, mcpArgs, []stringFlag{
-		{"--test-name", "test_name"},
-		{"--error-message", "error_message"},
-		{"--url", "url"},
-		{"--method", "method"},
-		{"--mode", "mode"},
-		{"--save-to", "save_to"},
-		{"--base-url", "base_url"},
+	parsed, err := parseFlagsBySpec(args, map[string]cliFlagSpec{
+		"--telemetry-mode":        {mcpKey: "telemetry_mode", kind: flagString},
+		"--error-message":         {mcpKey: "error_message", kind: flagString},
+		"--last-n":                {mcpKey: "last_n", kind: flagInt},
+		"--base-url":              {mcpKey: "base_url", kind: flagString},
+		"--include-screenshots":   {mcpKey: "include_screenshots", kind: flagBool},
+		"--generate-fixtures":     {mcpKey: "generate_fixtures", kind: flagBool},
+		"--visual-assertions":     {mcpKey: "visual_assertions", kind: flagBool},
+		"--test-name":             {mcpKey: "test_name", kind: flagString},
+		"--assert-network":        {mcpKey: "assert_network", kind: flagBool},
+		"--assert-no-errors":      {mcpKey: "assert_no_errors", kind: flagBool},
+		"--assert-response-shape": {mcpKey: "assert_response_shape", kind: flagBool},
+		"--scope":                 {mcpKey: "scope", kind: flagString},
+		"--include-passes":        {mcpKey: "include_passes", kind: flagBool},
+		"--save-to":               {mcpKey: "save_to", kind: flagString},
+		"--url":                   {mcpKey: "url", kind: flagString},
+		"--method":                {mcpKey: "method", kind: flagString},
+		"--status-min":            {mcpKey: "status_min", kind: flagInt},
+		"--status-max":            {mcpKey: "status_max", kind: flagInt},
+		"--mode":                  {mcpKey: "mode", kind: flagString},
+		"--include-report-uri":    {mcpKey: "include_report_uri", kind: flagBool},
+		"--exclude-origins":       {mcpKey: "exclude_origins", kind: flagStringList},
+		"--resource-types":        {mcpKey: "resource_types", kind: flagStringList},
+		"--origins":               {mcpKey: "origins", kind: flagStringList},
+		"--session":               {mcpKey: "session", kind: flagString},
+		"--context":               {mcpKey: "context", kind: flagString},
+		"--action":                {mcpKey: "action", kind: flagString},
+		"--test-file":             {mcpKey: "test_file", kind: flagString},
+		"--test-dir":              {mcpKey: "test_dir", kind: flagString},
+		"--broken-selectors":      {mcpKey: "broken_selectors", kind: flagStringList},
+		"--auto-apply":            {mcpKey: "auto_apply", kind: flagBool},
+		"--failure":               {mcpKey: "failure", kind: flagJSON},
+		"--failures":              {mcpKey: "failures", kind: flagJSON},
+		"--error-id":              {mcpKey: "error_id", kind: flagString},
+		"--include-mocks":         {mcpKey: "include_mocks", kind: flagBool},
+		"--output-format":         {mcpKey: "output_format", kind: flagString},
 	})
-	args = applyIntFlags(args, mcpArgs, []intFlag{
-		{"--status-min", "status_min"},
-		{"--status-max", "status_max"},
-		{"--last-n", "last_n"},
-	})
-	applyBoolFlags(args, mcpArgs, []boolFlag{
-		{"--assert-network", "assert_network"},
-		{"--assert-no-errors", "assert_no_errors"},
-		{"--include-screenshots", "include_screenshots"},
-	})
+	if err != nil {
+		return nil, err
+	}
+	for k, v := range parsed {
+		mcpArgs[k] = v
+	}
 	return mcpArgs, nil
 }
 
 func parseConfigureArgs(action string, args []string) (map[string]any, error) {
 	mcpArgs := map[string]any{"action": action}
-
-	// --data needs special handling: try JSON parse, fall back to string.
-	var data string
-	data, args = cliParseFlag(args, "--data")
-	if data != "" {
-		mcpArgs["data"] = parseJSONOrString(data)
-	}
-
-	applyStringFlags(args, mcpArgs, []stringFlag{
-		{"--key", "key"},
-		{"--namespace", "namespace"},
-		{"--pattern", "pattern"},
-		{"--reason", "reason"},
-		{"--noise-action", "noise_action"},
-		{"--buffer", "buffer"},
-		{"--rule-id", "rule_id"},
-		{"--store-action", "store_action"},
-		{"--selector", "selector"},
+	parsed, err := parseFlagsBySpec(args, map[string]cliFlagSpec{
+		"--telemetry-mode":   {mcpKey: "telemetry_mode", kind: flagString},
+		"--store-action":     {mcpKey: "store_action", kind: flagString},
+		"--namespace":        {mcpKey: "namespace", kind: flagString},
+		"--key":              {mcpKey: "key", kind: flagString},
+		"--data":             {mcpKey: "data", kind: flagJSONOrString},
+		"--noise-action":     {mcpKey: "noise_action", kind: flagString},
+		"--rules":            {mcpKey: "rules", kind: flagJSON},
+		"--rule-id":          {mcpKey: "rule_id", kind: flagString},
+		"--pattern":          {mcpKey: "pattern", kind: flagString},
+		"--selector":         {mcpKey: "selector", kind: flagString},
+		"--category":         {mcpKey: "category", kind: flagString},
+		"--reason":           {mcpKey: "reason", kind: flagString},
+		"--buffer":           {mcpKey: "buffer", kind: flagString},
+		"--tab-id":           {mcpKey: "tab_id", kind: flagInt},
+		"--session-action":   {mcpKey: "session_action", kind: flagString},
+		"--name":             {mcpKey: "name", kind: flagString},
+		"--compare-a":        {mcpKey: "compare_a", kind: flagString},
+		"--compare-b":        {mcpKey: "compare_b", kind: flagString},
+		"--recording-id":     {mcpKey: "recording_id", kind: flagString},
+		"--session-id":       {mcpKey: "session_id", kind: flagString},
+		"--tool-name":        {mcpKey: "tool_name", kind: flagString},
+		"--since":            {mcpKey: "since", kind: flagString},
+		"--limit":            {mcpKey: "limit", kind: flagInt},
+		"--streaming-action": {mcpKey: "streaming_action", kind: flagString},
+		"--events":           {mcpKey: "events", kind: flagStringList},
+		"--throttle-seconds": {mcpKey: "throttle_seconds", kind: flagInt},
+		"--severity-min":     {mcpKey: "severity_min", kind: flagString},
+		"--test-id":          {mcpKey: "test_id", kind: flagString},
+		"--label":            {mcpKey: "label", kind: flagString},
+		"--original-id":      {mcpKey: "original_id", kind: flagString},
+		"--replay-id":        {mcpKey: "replay_id", kind: flagString},
 	})
+	if err != nil {
+		return nil, err
+	}
+	for k, v := range parsed {
+		mcpArgs[k] = v
+	}
 	return mcpArgs, nil
 }
 
 // parseJSONOrString attempts to parse s as JSON object; returns the raw string on failure.
 func parseJSONOrString(s string) any {
-	var parsed map[string]any
+	var parsed any
 	if err := json.Unmarshal([]byte(s), &parsed); err == nil {
 		return parsed
 	}
@@ -181,49 +355,67 @@ var interactActionsRequiringSelector = map[string]bool{
 	"scroll_to":     true,
 	"focus":         true,
 	"check":         true,
-	"upload":        true,
+	"paste":         true,
 	"highlight":     true,
 }
 
 func parseInteractArgs(action string, args []string) (map[string]any, error) {
 	mcpArgs := map[string]any{"action": action}
-	args = applyStringFlags(args, mcpArgs, []stringFlag{
-		{"--selector", "selector"},
-		{"--text", "text"},
-		{"--url", "url"},
-		{"--name", "name"},
-		{"--value", "value"},
-		{"--script", "script"},
-		{"--reason", "reason"},
-		{"--subtitle", "subtitle"},
+	parsed, err := parseFlagsBySpec(args, map[string]cliFlagSpec{
+		"--telemetry-mode":        {mcpKey: "telemetry_mode", kind: flagString},
+		"--sync":                  {mcpKey: "sync", kind: flagBool},
+		"--wait":                  {mcpKey: "wait", kind: flagBool},
+		"--background":            {mcpKey: "background", kind: flagBool},
+		"--selector":              {mcpKey: "selector", kind: flagString},
+		"--frame":                 {mcpKey: "frame", kind: flagIntOrString},
+		"--duration-ms":           {mcpKey: "duration_ms", kind: flagInt},
+		"--snapshot-name":         {mcpKey: "snapshot_name", kind: flagString},
+		"--include-url":           {mcpKey: "include_url", kind: flagBool},
+		"--script":                {mcpKey: "script", kind: flagString},
+		"--timeout-ms":            {mcpKey: "timeout_ms", kind: flagInt},
+		"--text":                  {mcpKey: "text", kind: flagString},
+		"--subtitle":              {mcpKey: "subtitle", kind: flagString},
+		"--value":                 {mcpKey: "value", kind: flagString},
+		"--clear":                 {mcpKey: "clear", kind: flagBool},
+		"--checked":               {mcpKey: "checked", kind: flagBool},
+		"--name":                  {mcpKey: "name", kind: flagString},
+		"--audio":                 {mcpKey: "audio", kind: flagString},
+		"--fps":                   {mcpKey: "fps", kind: flagInt},
+		"--world":                 {mcpKey: "world", kind: flagString},
+		"--url":                   {mcpKey: "url", kind: flagString},
+		"--tab-id":                {mcpKey: "tab_id", kind: flagInt},
+		"--reason":                {mcpKey: "reason", kind: flagString},
+		"--correlation-id":        {mcpKey: "correlation_id", kind: flagString},
+		"--analyze":               {mcpKey: "analyze", kind: flagBool},
+		"--session":               {mcpKey: "session", kind: flagString},
+		"--file-path":             {mcpKey: "file_path", kind: flagString},
+		"--api-endpoint":          {mcpKey: "api_endpoint", kind: flagString},
+		"--submit":                {mcpKey: "submit", kind: flagBool},
+		"--escalation-timeout-ms": {mcpKey: "escalation_timeout_ms", kind: flagInt},
 	})
-
-	// --file-path needs special handling for relative path resolution.
-	args = parseInteractFilePath(args, mcpArgs)
-
-	args = applyIntFlags(args, mcpArgs, []intFlag{
-		{"--timeout-ms", "timeout_ms"},
-	})
-	applyBoolFlags(args, mcpArgs, []boolFlag{
-		{"--clear", "clear"},
-	})
+	if err != nil {
+		return nil, err
+	}
+	for k, v := range parsed {
+		mcpArgs[k] = v
+	}
+	parseInteractFilePath(mcpArgs)
 
 	return mcpArgs, validateInteractArgs(action, mcpArgs)
 }
 
 // parseInteractFilePath extracts --file-path and resolves relative paths to absolute.
-func parseInteractFilePath(args []string, mcpArgs map[string]any) []string {
-	var filePath string
-	filePath, args = cliParseFlag(args, "--file-path")
-	if filePath != "" {
-		if !filepath.IsAbs(filePath) {
-			if cwd, err := os.Getwd(); err == nil {
-				filePath = filepath.Join(cwd, filePath)
-			}
-		}
-		mcpArgs["file_path"] = filePath
+func parseInteractFilePath(mcpArgs map[string]any) {
+	filePath, _ := mcpArgs["file_path"].(string)
+	if filePath == "" {
+		return
 	}
-	return args
+	if !filepath.IsAbs(filePath) {
+		if cwd, err := os.Getwd(); err == nil {
+			filePath = filepath.Join(cwd, filePath)
+		}
+	}
+	mcpArgs["file_path"] = filePath
 }
 
 // validateInteractArgs checks required fields for specific interact actions.
@@ -231,6 +423,9 @@ func validateInteractArgs(action string, mcpArgs map[string]any) error {
 	selector, _ := mcpArgs["selector"].(string)
 	if interactActionsRequiringSelector[action] && selector == "" {
 		return fmt.Errorf("interact %s: --selector is required", action)
+	}
+	if action == "upload" && selector == "" && mcpArgs["api_endpoint"] == nil {
+		return fmt.Errorf("interact upload: --selector or --api-endpoint is required")
 	}
 	if action == "navigate" && mcpArgs["url"] == nil {
 		return fmt.Errorf("interact navigate: --url is required")

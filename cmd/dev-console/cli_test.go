@@ -22,6 +22,7 @@ func TestIsCLIMode(t *testing.T) {
 		want bool
 	}{
 		{"observe tool", []string{"observe", "errors"}, true},
+		{"analyze tool", []string{"analyze", "dom"}, true},
 		{"generate tool", []string{"generate", "har"}, true},
 		{"configure tool", []string{"configure", "health"}, true},
 		{"interact tool", []string{"interact", "click", "--selector", "#btn"}, true},
@@ -64,8 +65,8 @@ func TestResolveCLIConfigDefaults(t *testing.T) {
 	if cfg.Format != "human" {
 		t.Errorf("expected format 'human', got %q", cfg.Format)
 	}
-	if cfg.Timeout != 5000 {
-		t.Errorf("expected timeout 5000, got %d", cfg.Timeout)
+	if cfg.Timeout != 15000 {
+		t.Errorf("expected timeout 15000, got %d", cfg.Timeout)
 	}
 	if len(remaining) != 2 || remaining[0] != "observe" || remaining[1] != "errors" {
 		t.Errorf("expected remaining [observe errors], got %v", remaining)
@@ -480,6 +481,7 @@ func TestParseCLIArgsDispatch(t *testing.T) {
 		wantErr bool
 	}{
 		{"observe errors", "observe", "errors", nil, "what", "errors", false},
+		{"analyze dom", "analyze", "dom", nil, "what", "dom", false},
 		{"generate har", "generate", "har", nil, "format", "har", false},
 		{"configure health", "configure", "health", nil, "action", "health", false},
 		{"interact click", "interact", "click", []string{"--selector", "#btn"}, "action", "click", false},

@@ -29,20 +29,20 @@ function cleanupTestDir() {
   }
 }
 
-test('config.getConfigCandidates returns 4 paths', () => {
+test('config.getConfigCandidates returns expected file-client paths', () => {
   const candidates = config.getConfigCandidates()
   assert.strictEqual(candidates.length, 4, 'Should return 4 config paths')
-  assert.ok(candidates[0].includes('.claude'), 'First candidate should be Claude Desktop')
-  assert.ok(candidates[1].includes('.vscode'), 'Second should be VSCode')
-  assert.ok(candidates[2].includes('.cursor'), 'Third should be Cursor')
-  assert.ok(candidates[3].includes('.codeium'), 'Fourth should be Codeium')
+  assert.ok(candidates.some((p) => p.includes('Claude')), 'Should include Claude Desktop path')
+  assert.ok(candidates.some((p) => p.includes('.cursor')), 'Should include Cursor path')
+  assert.ok(candidates.some((p) => p.includes('.codeium')), 'Should include Windsurf path')
+  assert.ok(candidates.some((p) => p.includes('Code')), 'Should include VS Code path')
 })
 
 test('config.getToolNameFromPath identifies tool by path', () => {
-  assert.strictEqual(config.getToolNameFromPath('/home/user/.claude.json'), 'Claude Desktop')
-  assert.strictEqual(config.getToolNameFromPath('/home/user/.vscode/claude.mcp.json'), 'VSCode')
+  assert.strictEqual(config.getToolNameFromPath('/home/user/Library/Application Support/Claude/claude_desktop_config.json'), 'Claude Desktop')
+  assert.strictEqual(config.getToolNameFromPath('/home/user/.config/Code/User/mcp.json'), 'VS Code')
   assert.strictEqual(config.getToolNameFromPath('/home/user/.cursor/mcp.json'), 'Cursor')
-  assert.strictEqual(config.getToolNameFromPath('/home/user/.codeium/mcp.json'), 'Codeium')
+  assert.strictEqual(config.getToolNameFromPath('/home/user/.codeium/windsurf/mcp_config.json'), 'Windsurf')
   assert.strictEqual(config.getToolNameFromPath('/home/user/.unknown/mcp.json'), 'Unknown')
 })
 
