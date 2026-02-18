@@ -615,6 +615,7 @@ Classify test type.
 **Purpose**: Session settings and utilities.
 
 **Required parameter**: `action` (string)
+**Schema model**: `configure` is an action-discriminated union (`oneOf`). Each `action` allows only its action-specific keys.
 
 #### Configure Actions
 
@@ -713,16 +714,42 @@ Stop a flow recording.
 
 Replay a recording.
 
+| Parameter | Type | Required | Default | Description |
+|-----------|------|----------|---------|-------------|
+| recording_id | string | no | -- | Recording to replay |
+
 ##### configure({action: "log_diff"})
 
 Compare error states over time.
 
-#### Configure actions registered in handler map but NOT in schema enum
+| Parameter | Type | Required | Default | Description |
+|-----------|------|----------|---------|-------------|
+| original_id | string | yes | -- | Original recording ID |
+| replay_id | string | yes | -- | Replay recording ID |
 
-| Action | Status |
-|--------|--------|
-| `diff_sessions` | Registered in handler, NOT in schema enum |
-| `audit_log` | Registered in handler, NOT in schema enum |
+##### configure({action: "diff_sessions"})
+
+Capture/list/compare/delete session snapshots.
+
+| Parameter | Type | Required | Default | Description |
+|-----------|------|----------|---------|-------------|
+| session_action | string | no | "list" | capture, compare, list, delete |
+| name | string | no | -- | Snapshot name |
+| compare_a | string | no | -- | First snapshot to compare |
+| compare_b | string | no | -- | Second snapshot to compare |
+| url | string | no | -- | URL filter for capture |
+
+##### configure({action: "audit_log"})
+
+Query, summarize, or clear tool invocation history.
+
+| Parameter | Type | Required | Default | Description |
+|-----------|------|----------|---------|-------------|
+| operation | string | no | "report" | analyze, report, clear |
+| session_id | string | no | -- | Filter by session |
+| tool_name | string | no | -- | Filter by tool |
+| since | string | no | -- | RFC3339 lower bound |
+| limit | number | no | 100 | Max entries |
 
 ---
 

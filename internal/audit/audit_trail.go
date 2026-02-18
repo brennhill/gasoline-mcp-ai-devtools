@@ -5,9 +5,9 @@
 // Append-only tool invocation log with client identification, session management,
 // parameter redaction, and redaction event logging.
 // Design: The AuditTrail struct is a standalone, concurrent-safe, bounded buffer
-// that records every MCP tool call. Entries are never modified or deleted — only
-// evicted via FIFO when the buffer is full. The log is queryable with filters
-// for session, tool name, and time range.
+// that records every MCP tool call. Individual entries are immutable — evicted
+// via FIFO when the buffer is full. The entire log can be cleared via Clear().
+// The log is queryable with filters for session, tool name, and time range.
 package audit
 
 import (
@@ -227,8 +227,9 @@ func (at *AuditTrail) Query(filter AuditFilter) []AuditEntry {
 	return results
 }
 
-// Clear removes all audit entries and redaction events and returns the number
-// of entries removed.
+// Clear removes all audit entries, redaction events, and session state,
+// returning the number of entries removed. Session counters are reset to
+// prevent stale ToolCalls values from accumulating across clears.
 func (at *AuditTrail) Clear() int {
 	at.mu.Lock()
 	defer at.mu.Unlock()
@@ -236,6 +237,7 @@ func (at *AuditTrail) Clear() int {
 	cleared := len(at.entries)
 	at.entries = at.entries[:0]
 	at.redactions = at.redactions[:0]
+	at.sessions = make(map[string]*SessionInfo)
 	return cleared
 }
 

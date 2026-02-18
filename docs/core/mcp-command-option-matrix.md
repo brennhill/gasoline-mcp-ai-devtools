@@ -134,7 +134,20 @@ canonical: true
 
 ### `configure` options
 - Dispatch key: `action`
-- Action family keys: `store_action`, `namespace`, `key`, `data`, `noise_action`, `rules`, `rule_id`, `pattern`, `category`, `reason`, `buffer`, `tab_id`, `session_action`, `name`, `compare_a`, `compare_b`, `recording_id`, `session_id`, `tool_name`, `since`, `limit`, `streaming_action`, `events`, `throttle_seconds`, `severity_min`, `test_id`, `label`, `original_id`, `replay_id`
+- Schema shape: discriminated union (`oneOf`) by `action` with action-specific keys only
+- `store`: `store_action`, `namespace`, `key`, `data`
+- `noise_rule`: `noise_action`, `rules`, `rule_id`, `pattern`, `category`, `reason`
+- `clear`: `buffer`
+- `streaming`: `streaming_action`, `events`, `throttle_seconds`, `severity_min`, `url`
+- `telemetry`: `telemetry_mode`
+- `diff_sessions`: `session_action`, `name`, `compare_a`, `compare_b`, `url`
+- `audit_log`: `operation`, `session_id`, `tool_name`, `since`, `limit`
+- `test_boundary_start`: `test_id`, `label`
+- `test_boundary_end`: `test_id`
+- `recording_start`: `name`, `url`, `sensitive_data_enabled`
+- `recording_stop`: `recording_id`
+- `playback`: `recording_id`
+- `log_diff`: `original_id`, `replay_id`
 - Cross-cutting key: `telemetry_mode`
 
 ### `interact` options

@@ -53,20 +53,63 @@ func TestWaveB_ConfigureSchema_AuditLogOperationPropertyPresent(t *testing.T) {
 	t.Parallel()
 
 	props := configureSchemaPropertiesForTest(t)
-	opRaw, ok := props["operation"].(map[string]any)
-	if !ok {
-		t.Fatal("configure schema should include 'operation' for audit_log operation routing")
+	if _, ok := props["operation"]; !ok {
+		t.Fatal("configure schema should expose 'operation' key")
 	}
 
-	enumVals, ok := opRaw["enum"].([]string)
-	if !ok {
-		t.Fatal("configure.operation enum should be []string")
+	server, err := NewServer(t.TempDir()+"/schema-wave-b.jsonl", 10)
+	if err != nil {
+		t.Fatalf("NewServer: %v", err)
 	}
-	got := strings.Join(enumVals, ",")
-	for _, want := range []string{"analyze", "report", "clear"} {
-		if !strings.Contains(got, want) {
-			t.Fatalf("configure.operation enum missing %q: %v", want, enumVals)
+	t.Cleanup(func() { server.Close() })
+	cap := capture.NewCapture()
+	tools := NewToolHandler(server, cap).toolHandler.ToolsList()
+
+	var oneOf []map[string]any
+	for _, tool := range tools {
+		if tool.Name != "configure" {
+			continue
 		}
+		candidates, ok := tool.InputSchema["oneOf"].([]map[string]any)
+		if !ok {
+			t.Fatal("configure schema should include action-discriminated oneOf")
+		}
+		oneOf = candidates
+		break
+	}
+	if len(oneOf) == 0 {
+		t.Fatal("configure oneOf branches not found")
+	}
+
+	foundAuditBranch := false
+	for _, branch := range oneOf {
+		branchProps, ok := branch["properties"].(map[string]any)
+		if !ok {
+			continue
+		}
+		actionSpec, ok := branchProps["action"].(map[string]any)
+		if !ok || actionSpec["const"] != "audit_log" {
+			continue
+		}
+		foundAuditBranch = true
+		opRaw, ok := branchProps["operation"].(map[string]any)
+		if !ok {
+			t.Fatal("audit_log schema branch should include operation enum")
+		}
+		enumVals, ok := opRaw["enum"].([]string)
+		if !ok {
+			t.Fatal("audit_log operation enum should be []string")
+		}
+		got := strings.Join(enumVals, ",")
+		for _, want := range []string{"analyze", "report", "clear"} {
+			if !strings.Contains(got, want) {
+				t.Fatalf("audit_log operation enum missing %q: %v", want, enumVals)
+			}
+		}
+		break
+	}
+	if !foundAuditBranch {
+		t.Fatal("configure oneOf missing audit_log branch")
 	}
 }
 
