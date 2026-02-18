@@ -216,6 +216,56 @@ func (e *RedactionEngine) RedactJSON(input json.RawMessage) json.RawMessage {
 	return json.RawMessage(output)
 }
 
+// sensitiveKeyNames matches key names that indicate sensitive data.
+// Values for these keys are always redacted regardless of content.
+var sensitiveKeyNames = map[string]bool{
+	"password":    true,
+	"passwd":      true,
+	"secret":      true,
+	"token":       true,
+	"ssn":         true,
+	"credit_card": true,
+	"cvv":         true,
+	"cvc":         true,
+	"auth":        true,
+	"credential":  true,
+	"api_key":     true,
+	"apikey":      true,
+}
+
+// RedactMapValues walks a map recursively and redacts sensitive data.
+// String values are run through Redact() for pattern matching.
+// Keys matching sensitiveKeyNames have their values replaced entirely.
+// Nested maps are recursed. Non-string, non-map values pass through unchanged.
+// Returns a new map; the input is not modified.
+func (e *RedactionEngine) RedactMapValues(data map[string]any) map[string]any {
+	out := make(map[string]any, len(data))
+	for k, v := range data {
+		out[k] = e.redactValue(k, v)
+	}
+	return out
+}
+
+func (e *RedactionEngine) redactValue(key string, value any) any {
+	// Check sensitive key name first
+	if sensitiveKeyNames[strings.ToLower(key)] {
+		if _, ok := value.(string); ok {
+			return "[REDACTED:key-" + strings.ToLower(key) + "]"
+		}
+		// Non-string sensitive values (bool, number) — still redact
+		return "[REDACTED:key-" + strings.ToLower(key) + "]"
+	}
+
+	switch v := value.(type) {
+	case string:
+		return e.Redact(v)
+	case map[string]any:
+		return e.RedactMapValues(v)
+	default:
+		return value
+	}
+}
+
 // luhnValid checks if a numeric string passes the Luhn algorithm.
 func luhnValid(number string) bool {
 	// Strip non-digit characters

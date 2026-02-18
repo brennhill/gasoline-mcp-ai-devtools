@@ -49,6 +49,138 @@ func TestRedact_CreditCardLuhnValidation(t *testing.T) {
 	}
 }
 
+func TestRedactMapValues_RedactsSensitiveKeyNames(t *testing.T) {
+	t.Parallel()
+	engine := NewRedactionEngine("")
+
+	input := map[string]any{
+		"username":    "alice",
+		"password":    "s3cret",
+		"token":       "abc123",
+		"secret":      "mysecret",
+		"ssn":         "123-45-6789",
+		"credit_card": "4111111111111111",
+		"cvv":         "123",
+		"auth":        "bearer xyz",
+		"normal_key":  "normal_value",
+	}
+	result := engine.RedactMapValues(input)
+
+	// Sensitive keys should be redacted
+	for _, key := range []string{"password", "token", "secret", "ssn", "credit_card", "cvv", "auth"} {
+		v, ok := result[key].(string)
+		if !ok {
+			t.Fatalf("expected string value for key %q, got %T", key, result[key])
+		}
+		if !strings.Contains(v, "[REDACTED") {
+			t.Errorf("key %q should be redacted, got %q", key, v)
+		}
+	}
+
+	// Non-sensitive keys should pass through
+	if result["username"] != "alice" {
+		t.Errorf("username should be preserved, got %q", result["username"])
+	}
+	if result["normal_key"] != "normal_value" {
+		t.Errorf("normal_key should be preserved, got %q", result["normal_key"])
+	}
+}
+
+func TestRedactMapValues_RedactsPatternMatches(t *testing.T) {
+	t.Parallel()
+	engine := NewRedactionEngine("")
+
+	input := map[string]any{
+		"header":    "Bearer abc123def456",
+		"note":      "Key is AKIAIOSFODNN7EXAMPLE",
+		"safe_data": "nothing special here",
+	}
+	result := engine.RedactMapValues(input)
+
+	if v := result["header"].(string); !strings.Contains(v, "[REDACTED:bearer-token]") {
+		t.Errorf("bearer token pattern should be redacted, got %q", v)
+	}
+	if v := result["note"].(string); !strings.Contains(v, "[REDACTED:aws-key]") {
+		t.Errorf("AWS key pattern should be redacted, got %q", v)
+	}
+	if result["safe_data"] != "nothing special here" {
+		t.Errorf("safe_data should be preserved, got %q", result["safe_data"])
+	}
+}
+
+func TestRedactMapValues_RecursesNestedMaps(t *testing.T) {
+	t.Parallel()
+	engine := NewRedactionEngine("")
+
+	input := map[string]any{
+		"user": map[string]any{
+			"name":     "alice",
+			"password": "s3cret",
+			"prefs": map[string]any{
+				"theme":  "dark",
+				"secret": "hidden",
+			},
+		},
+		"top_level": "safe",
+	}
+	result := engine.RedactMapValues(input)
+
+	user, ok := result["user"].(map[string]any)
+	if !ok {
+		t.Fatal("expected nested map for 'user'")
+	}
+	if user["name"] != "alice" {
+		t.Errorf("nested name should be preserved, got %q", user["name"])
+	}
+	if v := user["password"].(string); !strings.Contains(v, "[REDACTED") {
+		t.Errorf("nested password should be redacted, got %q", v)
+	}
+
+	prefs, ok := user["prefs"].(map[string]any)
+	if !ok {
+		t.Fatal("expected nested map for 'prefs'")
+	}
+	if prefs["theme"] != "dark" {
+		t.Errorf("deeply nested theme should be preserved, got %q", prefs["theme"])
+	}
+	if v := prefs["secret"].(string); !strings.Contains(v, "[REDACTED") {
+		t.Errorf("deeply nested secret should be redacted, got %q", v)
+	}
+}
+
+func TestRedactMapValues_PreservesNonSensitiveData(t *testing.T) {
+	t.Parallel()
+	engine := NewRedactionEngine("")
+
+	input := map[string]any{
+		"url":        "https://example.com",
+		"title":      "My Page",
+		"tab_id":     float64(42),
+		"is_active":  true,
+		"saved_at":   "2024-01-01T00:00:00Z",
+		"nil_value":  nil,
+		"int_value":  float64(100),
+		"bool_value": false,
+	}
+	result := engine.RedactMapValues(input)
+
+	if result["url"] != "https://example.com" {
+		t.Errorf("url should be preserved, got %v", result["url"])
+	}
+	if result["title"] != "My Page" {
+		t.Errorf("title should be preserved, got %v", result["title"])
+	}
+	if result["tab_id"] != float64(42) {
+		t.Errorf("tab_id should be preserved, got %v", result["tab_id"])
+	}
+	if result["is_active"] != true {
+		t.Errorf("is_active should be preserved, got %v", result["is_active"])
+	}
+	if result["nil_value"] != nil {
+		t.Errorf("nil_value should be preserved, got %v", result["nil_value"])
+	}
+}
+
 func TestRedactJSON_StructuredBlocksOnly(t *testing.T) {
 	t.Parallel()
 

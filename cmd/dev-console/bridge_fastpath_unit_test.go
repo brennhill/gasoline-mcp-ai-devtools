@@ -161,8 +161,9 @@ func TestBridgeFastPathCoreMethods(t *testing.T) {
 	if err := json.Unmarshal(responses[1].Result, &initResult); err != nil {
 		t.Fatalf("initialize result unmarshal error = %v", err)
 	}
-	if initResult["protocolVersion"] != "2024-11-05" {
-		t.Fatalf("protocolVersion = %v, want 2024-11-05", initResult["protocolVersion"])
+	pv := initResult["protocolVersion"]
+	if pv != "2024-11-05" && pv != "2025-06-18" {
+		t.Fatalf("protocolVersion = %v, want supported version (2024-11-05 or 2025-06-18)", pv)
 	}
 
 	// tools/list fast path.
