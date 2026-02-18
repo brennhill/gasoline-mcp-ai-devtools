@@ -77,6 +77,66 @@ func TestRedactJSON_StructuredBlocksOnly(t *testing.T) {
 	}
 }
 
+func TestRedactJSON_PreservesMetadataField(t *testing.T) {
+	t.Parallel()
+
+	engine := NewRedactionEngine("")
+	// Input has a metadata field that must survive the RedactJSON round-trip
+	input := json.RawMessage(`{
+		"content": [{"type":"text","text":"no secrets here"}],
+		"isError": false,
+		"metadata": {"telemetry_changed": true, "version": "0.7.3"}
+	}`)
+
+	out := engine.RedactJSON(input)
+
+	// Parse the output and verify metadata survived
+	var raw map[string]json.RawMessage
+	if err := json.Unmarshal(out, &raw); err != nil {
+		t.Fatalf("output should be valid JSON: %v", err)
+	}
+	metaRaw, ok := raw["metadata"]
+	if !ok {
+		t.Fatal("RedactJSON dropped the 'metadata' field during round-trip — B1 bug")
+	}
+	var meta map[string]any
+	if err := json.Unmarshal(metaRaw, &meta); err != nil {
+		t.Fatalf("metadata should be valid JSON: %v", err)
+	}
+	if meta["telemetry_changed"] != true {
+		t.Errorf("metadata.telemetry_changed should be true, got %v", meta["telemetry_changed"])
+	}
+}
+
+func TestRedactJSON_PreservesEmptyTextKey(t *testing.T) {
+	t.Parallel()
+
+	engine := NewRedactionEngine("")
+	// A content block with text:"" must keep the "text" key in output
+	input := json.RawMessage(`{
+		"content": [{"type":"text","text":""}],
+		"isError": false
+	}`)
+
+	out := engine.RedactJSON(input)
+
+	// Parse and check the text key is still present
+	var raw map[string]json.RawMessage
+	if err := json.Unmarshal(out, &raw); err != nil {
+		t.Fatalf("output should be valid JSON: %v", err)
+	}
+	var content []map[string]any
+	if err := json.Unmarshal(raw["content"], &content); err != nil {
+		t.Fatalf("content should be array: %v", err)
+	}
+	if len(content) == 0 {
+		t.Fatal("expected 1 content block")
+	}
+	if _, hasText := content[0]["text"]; !hasText {
+		t.Fatal("RedactJSON dropped empty 'text' key due to omitempty — B2 bug")
+	}
+}
+
 func TestRedactJSON_FallbackForMalformedInput(t *testing.T) {
 	t.Parallel()
 
