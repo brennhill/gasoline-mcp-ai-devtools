@@ -188,3 +188,105 @@ func TestFormatCommandResult_FinalField(t *testing.T) {
 		}
 	})
 }
+
+func TestFormatCommandResult_ElapsedMs(t *testing.T) {
+	cap := capture.NewCapture()
+	handler := &ToolHandler{capture: cap}
+	req := JSONRPCRequest{ID: 1}
+	now := time.Now()
+
+	t.Run("complete has elapsed_ms", func(t *testing.T) {
+		cmd := queries.CommandResult{
+			CorrelationID: "cmd-elapsed",
+			Status:        "complete",
+			Result:        json.RawMessage(`{"ok":true}`),
+			CreatedAt:     now.Add(-500 * time.Millisecond),
+			CompletedAt:   now,
+		}
+		resp := handler.formatCommandResult(req, cmd, cmd.CorrelationID)
+		data := parseMCPResponseData(t, resp.Result)
+
+		elapsedMs, ok := data["elapsed_ms"].(float64)
+		if !ok {
+			t.Fatal("elapsed_ms missing or not a number")
+		}
+		if elapsedMs < 400 || elapsedMs > 600 {
+			t.Errorf("elapsed_ms = %v, want ~500", elapsedMs)
+		}
+	})
+
+	t.Run("pending has elapsed_ms", func(t *testing.T) {
+		cmd := queries.CommandResult{
+			CorrelationID: "cmd-pending-elapsed",
+			Status:        "pending",
+			CreatedAt:     now.Add(-200 * time.Millisecond),
+		}
+		resp := handler.formatCommandResult(req, cmd, cmd.CorrelationID)
+		data := parseMCPResponseData(t, resp.Result)
+
+		elapsedMs, ok := data["elapsed_ms"].(float64)
+		if !ok {
+			t.Fatal("elapsed_ms missing or not a number")
+		}
+		if elapsedMs < 100 {
+			t.Errorf("elapsed_ms = %v, want >= 100 (pending uses time.Now())", elapsedMs)
+		}
+	})
+
+	t.Run("expired has elapsed_ms", func(t *testing.T) {
+		cmd := queries.CommandResult{
+			CorrelationID: "cmd-expired-elapsed",
+			Status:        "expired",
+			Error:         "timed out",
+			CreatedAt:     now.Add(-1 * time.Second),
+		}
+		resp := handler.formatCommandResult(req, cmd, cmd.CorrelationID)
+		data := parseMCPResponseData(t, resp.Result)
+
+		elapsedMs, ok := data["elapsed_ms"].(float64)
+		if !ok {
+			t.Fatal("elapsed_ms missing or not a number")
+		}
+		if elapsedMs < 900 {
+			t.Errorf("elapsed_ms = %v, want >= 900", elapsedMs)
+		}
+	})
+}
+
+func TestQueuePosition_And_QueueDepth(t *testing.T) {
+	cap := capture.NewCapture()
+
+	// Queue 3 commands
+	cap.CreatePendingQuery(queries.PendingQuery{
+		Type:          "dom",
+		Params:        json.RawMessage(`{}`),
+		CorrelationID: "pos-0",
+	})
+	cap.CreatePendingQuery(queries.PendingQuery{
+		Type:          "dom",
+		Params:        json.RawMessage(`{}`),
+		CorrelationID: "pos-1",
+	})
+	cap.CreatePendingQuery(queries.PendingQuery{
+		Type:          "dom",
+		Params:        json.RawMessage(`{}`),
+		CorrelationID: "pos-2",
+	})
+
+	if depth := cap.QueueDepth(); depth != 3 {
+		t.Errorf("QueueDepth = %d, want 3", depth)
+	}
+
+	if pos := cap.QueuePosition("pos-0"); pos != 0 {
+		t.Errorf("QueuePosition(pos-0) = %d, want 0", pos)
+	}
+	if pos := cap.QueuePosition("pos-1"); pos != 1 {
+		t.Errorf("QueuePosition(pos-1) = %d, want 1", pos)
+	}
+	if pos := cap.QueuePosition("pos-2"); pos != 2 {
+		t.Errorf("QueuePosition(pos-2) = %d, want 2", pos)
+	}
+	if pos := cap.QueuePosition("nonexistent"); pos != -1 {
+		t.Errorf("QueuePosition(nonexistent) = %d, want -1", pos)
+	}
+}

@@ -41,12 +41,14 @@ const (
 // StructuredError is embedded in MCP text content. Every field is
 // self-describing so an LLM can act on it without a lookup table.
 type StructuredError struct {
-	Error   string `json:"error"`
-	Message string `json:"message"`
-	Retry   string `json:"retry"`
-	Final   bool   `json:"final,omitempty"`
-	Param   string `json:"param,omitempty"`
-	Hint    string `json:"hint,omitempty"`
+	Error        string `json:"error"`
+	Message      string `json:"message"`
+	Retry        string `json:"retry"`
+	Retryable    bool   `json:"retryable"`
+	RetryAfterMs int    `json:"retry_after_ms,omitempty"`
+	Final        bool   `json:"final,omitempty"`
+	Param        string `json:"param,omitempty"`
+	Hint         string `json:"hint,omitempty"`
 }
 
 // mcpStructuredError constructs an MCP error response. Format:
@@ -57,6 +59,10 @@ type StructuredError struct {
 // The retry string is a plain-English instruction the LLM can follow directly.
 func mcpStructuredError(code, message, retry string, opts ...func(*StructuredError)) json.RawMessage {
 	se := StructuredError{Error: code, Message: message, Retry: retry}
+	// Apply retryable defaults based on error code first, then user opts can override
+	for _, defaultOpt := range retryDefaultsForCode(code) {
+		defaultOpt(&se)
+	}
 	for _, opt := range opts {
 		opt(&se)
 	}
@@ -82,9 +88,37 @@ func withHint(h string) func(*StructuredError) {
 	return func(se *StructuredError) { se.Hint = h }
 }
 
+// withRetryable marks whether the error is retryable by the LLM.
+func withRetryable(retryable bool) func(*StructuredError) {
+	return func(se *StructuredError) { se.Retryable = retryable }
+}
+
+// withRetryAfterMs sets the suggested delay before retrying (milliseconds).
+func withRetryAfterMs(ms int) func(*StructuredError) {
+	return func(se *StructuredError) { se.RetryAfterMs = ms }
+}
+
 // withFinal marks a structured error as terminal/non-terminal for async command flows.
 func withFinal(final bool) func(*StructuredError) {
 	return func(se *StructuredError) { se.Final = final }
+}
+
+// retryDefaultsForCode returns option functions that set retryable and retry_after_ms
+// based on the error code. Retryable errors are transient conditions the LLM can
+// retry after a brief delay; non-retryable errors require the LLM to change its input.
+func retryDefaultsForCode(code string) []func(*StructuredError) {
+	switch code {
+	case ErrExtTimeout:
+		return []func(*StructuredError){withRetryable(true), withRetryAfterMs(1000)}
+	case ErrExtError:
+		return []func(*StructuredError){withRetryable(true), withRetryAfterMs(2000)}
+	case ErrRateLimited:
+		return []func(*StructuredError){withRetryable(true), withRetryAfterMs(1000)}
+	case ErrCursorExpired:
+		return []func(*StructuredError){withRetryable(true), withRetryAfterMs(500)}
+	default:
+		return []func(*StructuredError){withRetryable(false)}
+	}
 }
 
 // diagnosticHintString returns a plain-text snapshot of system state.

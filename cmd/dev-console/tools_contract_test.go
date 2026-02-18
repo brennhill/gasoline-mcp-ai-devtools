@@ -6,6 +6,7 @@ package main
 
 import (
 	"encoding/json"
+	"strings"
 	"testing"
 	"time"
 
@@ -478,6 +479,139 @@ func TestContractBadPath_Observe_CommandResult_NotFound(t *testing.T) {
 		t.Fatal("observe command_result not found: no result")
 	}
 	assertStructuredErrorCode(t, "command_result (not found)", result, "no_data")
+}
+
+// ============================================
+// Contract Enforcement: Retryable Field
+// ============================================
+
+func TestContractEnforcement_ErrorsHaveRetryableField(t *testing.T) {
+	// Verify that all error responses from mcpStructuredError include the retryable field.
+	// This ensures the LLM always knows whether an error is worth retrying.
+	testCases := []struct {
+		code    string
+		message string
+		retry   string
+	}{
+		{ErrInvalidJSON, "bad json", "Fix JSON"},
+		{ErrMissingParam, "missing what", "Add 'what'"},
+		{ErrInvalidParam, "bad param", "Fix param"},
+		{ErrUnknownMode, "unknown mode", "Use valid mode"},
+		{ErrExtTimeout, "timeout", "Retry later"},
+		{ErrExtError, "error", "Retry later"},
+		{ErrInternal, "internal", "Do not retry"},
+		{ErrNoData, "no data", "Check state"},
+		{ErrRateLimited, "rate limited", "Wait"},
+		{ErrNotInitialized, "not init", "Initialize first"},
+		{ErrCursorExpired, "cursor expired", "Restart"},
+		{ErrMarshalFailed, "marshal failed", "Do not retry"},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.code, func(t *testing.T) {
+			raw := mcpStructuredError(tc.code, tc.message, tc.retry)
+			var result MCPToolResult
+			if err := json.Unmarshal(raw, &result); err != nil {
+				t.Fatalf("failed to unmarshal: %v", err)
+			}
+
+			jsonText := extractJSONFromText(result.Content[0].Text)
+			var data map[string]any
+			if err := json.Unmarshal([]byte(jsonText), &data); err != nil {
+				t.Fatalf("failed to parse structured error: %v", err)
+			}
+
+			if _, exists := data["retryable"]; !exists {
+				t.Errorf("error code %q missing 'retryable' field", tc.code)
+			}
+		})
+	}
+}
+
+// ============================================
+// Contract Enforcement: elapsed_ms in command_result
+// ============================================
+
+func TestContractEnforcement_CommandResult_HasElapsedMs(t *testing.T) {
+	s := newScenario(t)
+
+	// Create and complete a command
+	queryID := s.capture.CreatePendingQueryWithTimeout(
+		queries.PendingQuery{
+			Type:          "dom",
+			Params:        json.RawMessage(`{"selector":"body"}`),
+			CorrelationID: "elapsed-test-123",
+		},
+		5*time.Second,
+		"",
+	)
+	time.Sleep(10 * time.Millisecond) // small delay to ensure non-zero elapsed
+	s.capture.SetQueryResult(queryID, json.RawMessage(`{"html":"<body/>"}`)  )
+
+	result, ok := s.callObserveWithArgs(t, `{"what":"command_result","correlation_id":"elapsed-test-123"}`)
+	if !ok {
+		t.Fatal("command_result: no result")
+	}
+
+	data := parseResponseJSON(t, result)
+	if _, exists := data["elapsed_ms"]; !exists {
+		t.Error("command_result response missing 'elapsed_ms' field")
+	}
+	if elapsed, ok := data["elapsed_ms"].(float64); ok && elapsed <= 0 {
+		t.Errorf("elapsed_ms should be > 0, got %v", elapsed)
+	}
+}
+
+// ============================================
+// Contract Enforcement: Unknown Params Produce Warnings
+// ============================================
+
+func TestContractEnforcement_UnknownParams_ProduceWarnings(t *testing.T) {
+	// Test each tool with an unknown parameter via HandleToolCall
+	h, _, _ := makeObserveToolHandler(t)
+
+	tools := []struct {
+		name string
+		args string
+	}{
+		{"observe", `{"what":"errors","totally_fake_param_xyz":true}`},
+		{"configure", `{"action":"health","totally_fake_param_xyz":true}`},
+		{"generate", `{"format":"test","totally_fake_param_xyz":true}`},
+		{"analyze", `{"what":"dom","selector":"body","totally_fake_param_xyz":true}`},
+		{"interact", `{"action":"list_states","totally_fake_param_xyz":true}`},
+	}
+
+	for _, tc := range tools {
+		t.Run(tc.name, func(t *testing.T) {
+			req := JSONRPCRequest{JSONRPC: "2.0", ID: 1}
+			resp, handled := h.HandleToolCall(req, tc.name, json.RawMessage(tc.args))
+			if !handled {
+				t.Fatalf("%s: not handled", tc.name)
+			}
+
+			var result MCPToolResult
+			if err := json.Unmarshal(resp.Result, &result); err != nil {
+				t.Fatalf("%s: failed to unmarshal: %v", tc.name, err)
+			}
+
+			// Skip error responses — they skip validation
+			if result.IsError {
+				t.Skipf("%s: returned error (expected for some tools without extension)", tc.name)
+			}
+
+			// Look for warnings in content blocks
+			foundWarning := false
+			for _, block := range result.Content {
+				if strings.Contains(block.Text, "unknown parameter") && strings.Contains(block.Text, "totally_fake_param_xyz") {
+					foundWarning = true
+					break
+				}
+			}
+			if !foundWarning {
+				t.Errorf("%s: expected warning about unknown parameter 'totally_fake_param_xyz' in response content blocks", tc.name)
+			}
+		})
+	}
 }
 
 // ============================================

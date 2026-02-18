@@ -3,6 +3,7 @@ package capture
 
 import (
 	"encoding/json"
+	"fmt"
 	"strings"
 	"testing"
 	"time"
@@ -226,6 +227,61 @@ func TestNewQueryDispatcher_CreatePendingQuery_Overflow(t *testing.T) {
 	pending := qd.GetPendingQueries()
 	if len(pending) != maxPendingQueries {
 		t.Fatalf("pending len = %d, want %d (max)", len(pending), maxPendingQueries)
+	}
+}
+
+func TestNewQueryDispatcher_CreatePendingQuery_Overflow_ExpiresDroppedCommand(t *testing.T) {
+	t.Parallel()
+
+	qd := NewQueryDispatcher()
+	defer qd.Close()
+
+	// Fill queue to max with correlated commands
+	var firstCorrID string
+	for i := 0; i < maxPendingQueries; i++ {
+		corrID := fmt.Sprintf("corr-%d", i)
+		if i == 0 {
+			firstCorrID = corrID
+		}
+		qd.CreatePendingQuery(queries.PendingQuery{
+			Type:          "dom",
+			Params:        json.RawMessage(`{}`),
+			CorrelationID: corrID,
+		})
+	}
+
+	// Verify the first command is pending
+	cmd, found := qd.GetCommandResult(firstCorrID)
+	if !found {
+		t.Fatal("first command not found before overflow")
+	}
+	if cmd.Status != "pending" {
+		t.Fatalf("first command status = %q, want pending", cmd.Status)
+	}
+
+	// Add one more to trigger overflow (drops oldest = corr-0)
+	qd.CreatePendingQuery(queries.PendingQuery{
+		Type:          "dom",
+		Params:        json.RawMessage(`{}`),
+		CorrelationID: "corr-overflow",
+	})
+
+	// The dropped command (corr-0) should now be expired, not pending
+	cmd, found = qd.GetCommandResult(firstCorrID)
+	if !found {
+		t.Fatal("dropped command result not found after overflow")
+	}
+	if cmd.Status != "expired" {
+		t.Fatalf("dropped command status = %q, want expired", cmd.Status)
+	}
+	if !strings.Contains(cmd.Error, "queue overflow") {
+		t.Errorf("dropped command error = %q, want substring 'queue overflow'", cmd.Error)
+	}
+
+	// Verify queue has exactly maxPendingQueries entries
+	pending := qd.GetPendingQueries()
+	if len(pending) != maxPendingQueries {
+		t.Fatalf("pending len = %d, want %d", len(pending), maxPendingQueries)
 	}
 }
 

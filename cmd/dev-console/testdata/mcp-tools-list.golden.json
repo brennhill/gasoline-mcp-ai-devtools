@@ -627,7 +627,7 @@
   },
   {
     "name": "configure",
-    "description": "Session settings and utilities.\n\nKey actions: health (check server/extension status), clear (reset buffers), noise_rule (suppress recurring console noise), store/load (persist/retrieve session data), streaming (enable push notifications), recording_start/recording_stop (capture browser sessions), playback (replay recordings), log_diff (compare error states).",
+    "description": "Session settings and utilities.\n\nKey actions: health (check server/extension status), clear (reset buffers), noise_rule (suppress recurring console noise), store/load (persist/retrieve session data), streaming (enable push notifications), recording_start/recording_stop (capture browser sessions), playback (replay recordings), log_diff (compare error states), restart (force-restart daemon when unresponsive).",
     "inputSchema": {
       "oneOf": [
         {
@@ -1093,6 +1093,17 @@
             "original_id",
             "replay_id"
           ]
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "action": {
+              "const": "restart"
+            }
+          },
+          "required": [
+            "action"
+          ]
         }
       ],
       "properties": {
@@ -1113,7 +1124,8 @@
             "telemetry",
             "describe_capabilities",
             "diff_sessions",
-            "audit_log"
+            "audit_log",
+            "restart"
           ],
           "type": "string"
         },

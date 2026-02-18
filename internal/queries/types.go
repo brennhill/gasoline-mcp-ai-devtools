@@ -46,6 +46,15 @@ type CommandResult struct {
 	CreatedAt     time.Time       `json:"created_at"`
 }
 
+// ElapsedMs returns milliseconds from creation to completion (or now if still pending).
+func (cr *CommandResult) ElapsedMs() int64 {
+	end := cr.CompletedAt
+	if end.IsZero() {
+		end = time.Now()
+	}
+	return end.Sub(cr.CreatedAt).Milliseconds()
+}
+
 // ============================================
 // Constants
 // ============================================

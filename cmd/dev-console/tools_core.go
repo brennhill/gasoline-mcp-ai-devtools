@@ -359,20 +359,49 @@ func (h *ToolHandler) maybeWaitForCommand(req JSONRPCRequest, correlationID stri
 	// Wait for result (15s default for "Sync-by-Default" pattern).
 	// Most DOM actions (click, type) take < 500ms over long-polling.
 	// 15s is safe for most navigations while staying well under the 60s IDE timeout.
-	cmd, found := h.capture.WaitForCommand(correlationID, 15*time.Second)
+	const initialWait = 15 * time.Second
+	const retryWait = 5 * time.Second
+	attempts := 1
+
+	cmd, found := h.capture.WaitForCommand(correlationID, initialWait)
 	if !found {
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInternal, "Command not found after queuing", "Internal error — do not retry")}
 	}
 
-	// If still pending after 15s, return a "still_processing" handle so the agent can poll.
+	// Single retry: if still pending and extension is connected, wait 5s more.
+	// This catches commands that complete just after the initial timeout.
+	if cmd.Status == "pending" && h.capture.IsExtensionConnected() {
+		attempts = 2
+		cmd, found = h.capture.WaitForCommand(correlationID, retryWait)
+		if !found {
+			return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInternal, "Command not found after retry", "Internal error — do not retry")}
+		}
+	}
+
+	// If still pending after retry, return a "still_processing" handle so the agent can poll.
 	if cmd.Status == "pending" {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Action still processing", map[string]any{
+		totalWaitMs := initialWait.Milliseconds()
+		if attempts > 1 {
+			totalWaitMs += retryWait.Milliseconds()
+		}
+		stillProcessing := map[string]any{
 			"status":         "still_processing",
 			"correlation_id": correlationID,
 			"queued":         false,
 			"final":          false,
-			"message":        "Action is taking longer than 15s. Polling is now required. Use observe({what:'command_result', correlation_id:'" + correlationID + "'}) to check the result.",
-		})}
+			"elapsed_ms":     cmd.ElapsedMs(),
+			"queue_depth":    h.capture.QueueDepth(),
+			"retry_context": map[string]any{
+				"attempts":            attempts,
+				"total_wait_ms":       totalWaitMs,
+				"extension_connected": h.capture.IsExtensionConnected(),
+			},
+			"message": "Action is taking longer than expected. Polling is now required. Use observe({what:'command_result', correlation_id:'" + correlationID + "'}) to check the result.",
+		}
+		if pos := h.capture.QueuePosition(correlationID); pos >= 0 {
+			stillProcessing["queue_position"] = pos
+		}
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Action still processing", stillProcessing)}
 	}
 
 	// Result received — format using standard command result formatter
@@ -399,6 +428,16 @@ func (h *ToolHandler) HandleToolCall(req JSONRPCRequest, name string, args json.
 		return JSONRPCResponse{}, false
 	}
 
+	// Validate params against tool schema and append warnings for unknown fields.
+	// Skip validation for error responses (already failed, warnings would be noise).
+	if !isToolResultError(resp.Result) {
+		if schema := h.getToolSchema(name); schema != nil {
+			if warnings := validateParamsAgainstSchema(args, schema); len(warnings) > 0 {
+				resp = appendWarningsToResponse(resp, warnings)
+			}
+		}
+	}
+
 	if h.healthMetrics != nil {
 		h.healthMetrics.IncrementRequest(name)
 		if resp.Error != nil || isToolResultError(resp.Result) {
@@ -409,6 +448,20 @@ func (h *ToolHandler) HandleToolCall(req JSONRPCRequest, name string, args json.
 	h.recordAuditToolCall(req, name, args, resp, start)
 
 	return resp, true
+}
+
+// toolSchemaCache caches InputSchema by tool name for validation.
+var toolSchemaCache map[string]map[string]any
+
+// getToolSchema returns the InputSchema for a tool by name (cached).
+func (h *ToolHandler) getToolSchema(name string) map[string]any {
+	if toolSchemaCache == nil {
+		toolSchemaCache = make(map[string]map[string]any)
+		for _, tool := range h.ToolsList() {
+			toolSchemaCache[tool.Name] = tool.InputSchema
+		}
+	}
+	return toolSchemaCache[name]
 }
 
 func isToolResultError(raw json.RawMessage) bool {

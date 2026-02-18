@@ -231,3 +231,13 @@ func (c *Capture) GetCompletedCommands() []*queries.CommandResult {
 func (c *Capture) GetFailedCommands() []*queries.CommandResult {
 	return c.qd.GetFailedCommands()
 }
+
+// QueuePosition delegates to QueryDispatcher.
+func (c *Capture) QueuePosition(correlationID string) int {
+	return c.qd.QueuePosition(correlationID)
+}
+
+// QueueDepth delegates to QueryDispatcher.
+func (c *Capture) QueueDepth() int {
+	return c.qd.QueueDepth()
+}

@@ -50,8 +50,10 @@ func (qd *QueryDispatcher) CreatePendingQueryWithTimeout(query queries.PendingQu
 	qd.mu.Lock()
 
 	// Enforce max pending queries (drop oldest if full)
+	var droppedCorrelationID string
 	if len(qd.pendingQueries) >= maxPendingQueries {
 		dropped := qd.pendingQueries[0]
+		droppedCorrelationID = dropped.query.CorrelationID
 		fmt.Fprintf(os.Stderr, "[gasoline] Query queue overflow: dropping query %s (correlation_id=%s)\n",
 			dropped.query.ID, dropped.query.CorrelationID)
 		qd.pendingQueries = qd.pendingQueries[1:]
@@ -77,6 +79,11 @@ func (qd *QueryDispatcher) CreatePendingQueryWithTimeout(query queries.PendingQu
 	qd.pendingQueries = append(qd.pendingQueries, entry)
 	correlationID := query.CorrelationID
 	qd.mu.Unlock()
+
+	// Expire dropped command outside mu lock to respect lock ordering
+	if droppedCorrelationID != "" {
+		qd.expireCommandWithReason(droppedCorrelationID, "Query queue overflow: command was dropped to make room for newer commands")
+	}
 
 	// Notify long-pollers that a new query is available
 	select {
@@ -512,6 +519,27 @@ func (qd *QueryDispatcher) GetQueryTimeout() time.Duration {
 	qd.mu.Lock()
 	defer qd.mu.Unlock()
 	return qd.queryTimeout
+}
+
+// QueuePosition returns the 0-based position of a command in the pending queue
+// by correlation ID, or -1 if not found. Used for progress reporting.
+func (qd *QueryDispatcher) QueuePosition(correlationID string) int {
+	qd.mu.Lock()
+	defer qd.mu.Unlock()
+
+	for i, pq := range qd.pendingQueries {
+		if pq.query.CorrelationID == correlationID {
+			return i
+		}
+	}
+	return -1
+}
+
+// QueueDepth returns the current number of pending queries.
+func (qd *QueryDispatcher) QueueDepth() int {
+	qd.mu.Lock()
+	defer qd.mu.Unlock()
+	return len(qd.pendingQueries)
 }
 
 // ============================================

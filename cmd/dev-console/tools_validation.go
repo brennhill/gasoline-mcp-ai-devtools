@@ -119,3 +119,30 @@ func unmarshalWithWarnings(data json.RawMessage, v any) ([]string, error) {
 	}
 	return warnings, nil
 }
+
+// validateParamsAgainstSchema checks incoming JSON keys against a tool's known
+// property names from its InputSchema. Returns warnings for unknown fields.
+// This validates at the tool level (not handler level), catching typos across
+// all parameters defined in the tool's schema.
+func validateParamsAgainstSchema(data json.RawMessage, schema map[string]any) []string {
+	if len(data) == 0 {
+		return nil
+	}
+	var raw map[string]json.RawMessage
+	if err := json.Unmarshal(data, &raw); err != nil {
+		return nil
+	}
+
+	props, ok := schema["properties"].(map[string]any)
+	if !ok {
+		return nil
+	}
+
+	var warnings []string
+	for k := range raw {
+		if _, known := props[k]; !known {
+			warnings = append(warnings, fmt.Sprintf("unknown parameter '%s' (ignored)", k))
+		}
+	}
+	return warnings
+}

@@ -737,6 +737,7 @@ func (h *ToolHandler) formatCommandResult(req JSONRPCRequest, cmd queries.Comman
 		"status":         cmd.Status,
 		"queued":         false,
 		"created_at":     cmd.CreatedAt.Format(time.RFC3339),
+		"elapsed_ms":     cmd.ElapsedMs(),
 	}
 
 	switch cmd.Status {
