@@ -5,9 +5,9 @@
 // Append-only tool invocation log with client identification, session management,
 // parameter redaction, and redaction event logging.
 // Design: The AuditTrail struct is a standalone, concurrent-safe, bounded buffer
-// that records every MCP tool call. Entries are never modified or deleted — only
-// evicted via FIFO when the buffer is full. The log is queryable with filters
-// for session, tool name, and time range.
+// that records every MCP tool call. Individual entries are immutable — evicted
+// via FIFO when the buffer is full. The entire log can be cleared via Clear().
+// The log is queryable with filters for session, tool name, and time range.
 package audit
 
 import (
@@ -40,12 +40,12 @@ type AuditEntry struct {
 
 // AuditTrail is an append-only, bounded, concurrent-safe audit log.
 type AuditTrail struct {
-	mu              sync.RWMutex
-	entries         []AuditEntry
-	maxSize         int
-	sessions        map[string]*SessionInfo
-	config          AuditConfig
-	redactions      []RedactionEvent
+	mu                sync.RWMutex
+	entries           []AuditEntry
+	maxSize           int
+	sessions          map[string]*SessionInfo
+	config            AuditConfig
+	redactions        []RedactionEvent
 	redactionPatterns []*redactionPattern
 }
 
@@ -119,10 +119,10 @@ func NewAuditTrail(config AuditConfig) *AuditTrail {
 	}
 
 	trail := &AuditTrail{
-		entries:  make([]AuditEntry, 0, config.MaxEntries),
-		maxSize:  config.MaxEntries,
-		sessions: make(map[string]*SessionInfo),
-		config:   config,
+		entries:    make([]AuditEntry, 0, config.MaxEntries),
+		maxSize:    config.MaxEntries,
+		sessions:   make(map[string]*SessionInfo),
+		config:     config,
 		redactions: make([]RedactionEvent, 0),
 	}
 
@@ -225,6 +225,20 @@ func (at *AuditTrail) Query(filter AuditFilter) []AuditEntry {
 	}
 
 	return results
+}
+
+// Clear removes all audit entries, redaction events, and session state,
+// returning the number of entries removed. Session counters are reset to
+// prevent stale ToolCalls values from accumulating across clears.
+func (at *AuditTrail) Clear() int {
+	at.mu.Lock()
+	defer at.mu.Unlock()
+
+	cleared := len(at.entries)
+	at.entries = at.entries[:0]
+	at.redactions = at.redactions[:0]
+	at.sessions = make(map[string]*SessionInfo)
+	return cleared
 }
 
 // QueryRedactions returns redaction events matching the given filter.

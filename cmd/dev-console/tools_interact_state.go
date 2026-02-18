@@ -359,6 +359,11 @@ func (h *ToolHandler) handlePilotManageStateSave(req JSONRPCRequest, args json.R
 		}
 	}
 
+	// Server-side redaction: scrub sensitive values before persisting to disk (#132)
+	if re := h.GetRedactionEngine(); re != nil {
+		stateData = re.RedactMapValues(stateData)
+	}
+
 	data, err := json.Marshal(stateData)
 	if err != nil {
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInternal, "Failed to serialize state: "+err.Error(), "Internal error — do not retry")}

@@ -33,7 +33,7 @@ func TestRunBridgeModeWithExistingServer(t *testing.T) {
 			runBridgeMode(port, "", 0)
 		})
 	})
-	if !strings.Contains(output, `"protocolVersion":"2024-11-05"`) {
-		t.Fatalf("runBridgeMode output missing initialize response: %q", output)
+	if !strings.Contains(output, `"protocolVersion":"2025-06-18"`) && !strings.Contains(output, `"protocolVersion":"2024-11-05"`) {
+		t.Fatalf("runBridgeMode output missing initialize response with supported protocolVersion: %q", output)
 	}
 }

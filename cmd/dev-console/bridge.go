@@ -555,15 +555,26 @@ func sendFastError(id any, code int, message string) {
 // handleFastPath handles MCP methods that don't require the daemon.
 // Returns true if the method was handled.
 func handleFastPath(req JSONRPCRequest, toolsList []MCPTool) bool {
-	// MCP notifications are fire-and-forget; never respond on stdio.
-	if req.ID == nil && strings.HasPrefix(req.Method, "notifications/") {
+	// JSON-RPC 2.0: "A Notification is a Request object without an 'id' member."
+	if req.ID == nil {
 		return true
 	}
 
 	switch req.Method {
 	case "initialize":
+		// Negotiate protocol version: echo if supported, otherwise use latest.
+		protocolVersion := "2025-06-18"
+		var initParams struct {
+			ProtocolVersion string `json:"protocolVersion"`
+		}
+		if json.Unmarshal(req.Params, &initParams) == nil {
+			switch initParams.ProtocolVersion {
+			case "2024-11-05", "2025-06-18":
+				protocolVersion = initParams.ProtocolVersion
+			}
+		}
 		result := map[string]any{
-			"protocolVersion": "2024-11-05",
+			"protocolVersion": protocolVersion,
 			"serverInfo":      map[string]any{"name": "gasoline", "version": version},
 			"capabilities":    map[string]any{"tools": map[string]any{}, "resources": map[string]any{}},
 			"instructions":    serverInstructions,

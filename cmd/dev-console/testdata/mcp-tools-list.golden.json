@@ -597,6 +597,472 @@
     "name": "configure",
     "description": "Session settings and utilities.\n\nKey actions: health (check server/extension status), clear (reset buffers), noise_rule (suppress recurring console noise), store/load (persist/retrieve session data), streaming (enable push notifications), recording_start/recording_stop (capture browser sessions), playback (replay recordings), log_diff (compare error states).",
     "inputSchema": {
+      "oneOf": [
+        {
+          "additionalProperties": false,
+          "properties": {
+            "action": {
+              "const": "health"
+            },
+            "telemetry_mode": {
+              "enum": [
+                "off",
+                "auto",
+                "full"
+              ],
+              "type": "string"
+            }
+          },
+          "required": [
+            "action"
+          ]
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "action": {
+              "const": "clear"
+            },
+            "buffer": {
+              "enum": [
+                "network",
+                "websocket",
+                "actions",
+                "logs",
+                "all"
+              ],
+              "type": "string"
+            },
+            "telemetry_mode": {
+              "enum": [
+                "off",
+                "auto",
+                "full"
+              ],
+              "type": "string"
+            }
+          },
+          "required": [
+            "action"
+          ]
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "action": {
+              "const": "store"
+            },
+            "data": {
+              "type": "object"
+            },
+            "key": {
+              "type": "string"
+            },
+            "namespace": {
+              "type": "string"
+            },
+            "store_action": {
+              "enum": [
+                "save",
+                "load",
+                "list",
+                "delete",
+                "stats"
+              ],
+              "type": "string"
+            },
+            "telemetry_mode": {
+              "enum": [
+                "off",
+                "auto",
+                "full"
+              ],
+              "type": "string"
+            }
+          },
+          "required": [
+            "action"
+          ]
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "action": {
+              "const": "load"
+            },
+            "telemetry_mode": {
+              "enum": [
+                "off",
+                "auto",
+                "full"
+              ],
+              "type": "string"
+            }
+          },
+          "required": [
+            "action"
+          ]
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "action": {
+              "const": "noise_rule"
+            },
+            "category": {
+              "enum": [
+                "console",
+                "network",
+                "websocket"
+              ],
+              "type": "string"
+            },
+            "noise_action": {
+              "enum": [
+                "add",
+                "remove",
+                "list",
+                "reset",
+                "auto_detect"
+              ],
+              "type": "string"
+            },
+            "pattern": {
+              "type": "string"
+            },
+            "reason": {
+              "type": "string"
+            },
+            "rule_id": {
+              "type": "string"
+            },
+            "rules": {
+              "items": {
+                "type": "object"
+              },
+              "type": "array"
+            },
+            "telemetry_mode": {
+              "enum": [
+                "off",
+                "auto",
+                "full"
+              ],
+              "type": "string"
+            }
+          },
+          "required": [
+            "action"
+          ]
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "action": {
+              "const": "streaming"
+            },
+            "events": {
+              "items": {
+                "enum": [
+                  "errors",
+                  "network_errors",
+                  "performance",
+                  "user_frustration",
+                  "security",
+                  "regression",
+                  "anomaly",
+                  "ci",
+                  "all"
+                ],
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "severity_min": {
+              "enum": [
+                "info",
+                "warning",
+                "error"
+              ],
+              "type": "string"
+            },
+            "streaming_action": {
+              "enum": [
+                "enable",
+                "disable",
+                "status"
+              ],
+              "type": "string"
+            },
+            "telemetry_mode": {
+              "enum": [
+                "off",
+                "auto",
+                "full"
+              ],
+              "type": "string"
+            },
+            "throttle_seconds": {
+              "maximum": 60,
+              "minimum": 1,
+              "type": "integer"
+            },
+            "url": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "action",
+            "streaming_action"
+          ]
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "action": {
+              "const": "telemetry"
+            },
+            "telemetry_mode": {
+              "enum": [
+                "off",
+                "auto",
+                "full"
+              ],
+              "type": "string"
+            }
+          },
+          "required": [
+            "action"
+          ]
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "action": {
+              "const": "diff_sessions"
+            },
+            "compare_a": {
+              "type": "string"
+            },
+            "compare_b": {
+              "type": "string"
+            },
+            "name": {
+              "type": "string"
+            },
+            "session_action": {
+              "enum": [
+                "capture",
+                "compare",
+                "list",
+                "delete"
+              ],
+              "type": "string"
+            },
+            "telemetry_mode": {
+              "enum": [
+                "off",
+                "auto",
+                "full"
+              ],
+              "type": "string"
+            },
+            "url": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "action"
+          ]
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "action": {
+              "const": "audit_log"
+            },
+            "limit": {
+              "type": "number"
+            },
+            "operation": {
+              "enum": [
+                "analyze",
+                "report",
+                "clear"
+              ],
+              "type": "string"
+            },
+            "session_id": {
+              "type": "string"
+            },
+            "since": {
+              "type": "string"
+            },
+            "telemetry_mode": {
+              "enum": [
+                "off",
+                "auto",
+                "full"
+              ],
+              "type": "string"
+            },
+            "tool_name": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "action"
+          ]
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "action": {
+              "const": "test_boundary_start"
+            },
+            "label": {
+              "type": "string"
+            },
+            "telemetry_mode": {
+              "enum": [
+                "off",
+                "auto",
+                "full"
+              ],
+              "type": "string"
+            },
+            "test_id": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "action",
+            "test_id"
+          ]
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "action": {
+              "const": "test_boundary_end"
+            },
+            "telemetry_mode": {
+              "enum": [
+                "off",
+                "auto",
+                "full"
+              ],
+              "type": "string"
+            },
+            "test_id": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "action",
+            "test_id"
+          ]
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "action": {
+              "const": "recording_start"
+            },
+            "name": {
+              "type": "string"
+            },
+            "sensitive_data_enabled": {
+              "type": "boolean"
+            },
+            "telemetry_mode": {
+              "enum": [
+                "off",
+                "auto",
+                "full"
+              ],
+              "type": "string"
+            },
+            "url": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "action"
+          ]
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "action": {
+              "const": "recording_stop"
+            },
+            "recording_id": {
+              "type": "string"
+            },
+            "telemetry_mode": {
+              "enum": [
+                "off",
+                "auto",
+                "full"
+              ],
+              "type": "string"
+            }
+          },
+          "required": [
+            "action"
+          ]
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "action": {
+              "const": "playback"
+            },
+            "recording_id": {
+              "type": "string"
+            },
+            "telemetry_mode": {
+              "enum": [
+                "off",
+                "auto",
+                "full"
+              ],
+              "type": "string"
+            }
+          },
+          "required": [
+            "action"
+          ]
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "action": {
+              "const": "log_diff"
+            },
+            "original_id": {
+              "type": "string"
+            },
+            "replay_id": {
+              "type": "string"
+            },
+            "telemetry_mode": {
+              "enum": [
+                "off",
+                "auto",
+                "full"
+              ],
+              "type": "string"
+            }
+          },
+          "required": [
+            "action",
+            "original_id",
+            "replay_id"
+          ]
+        }
+      ],
       "properties": {
         "action": {
           "enum": [
@@ -696,6 +1162,10 @@
           ],
           "type": "string"
         },
+        "operation": {
+          "description": "Action-specific operation key",
+          "type": "string"
+        },
         "original_id": {
           "description": "Original recording ID (log_diff)",
           "type": "string"
@@ -726,6 +1196,10 @@
             "type": "object"
           },
           "type": "array"
+        },
+        "sensitive_data_enabled": {
+          "description": "Include sensitive data in recording capture",
+          "type": "boolean"
         },
         "session_action": {
           "enum": [
@@ -795,6 +1269,10 @@
         },
         "tool_name": {
           "description": "Filter by tool name",
+          "type": "string"
+        },
+        "url": {
+          "description": "URL filter for snapshot capture (diff_sessions)",
           "type": "string"
         }
       },

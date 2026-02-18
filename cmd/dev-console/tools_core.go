@@ -25,6 +25,7 @@ import (
 	"github.com/dev-console/dev-console/internal/analysis"
 	"github.com/dev-console/dev-console/internal/audit"
 	"github.com/dev-console/dev-console/internal/capture"
+	"github.com/dev-console/dev-console/internal/redaction"
 	"github.com/dev-console/dev-console/internal/security"
 	"github.com/dev-console/dev-console/internal/session"
 )
@@ -173,7 +174,7 @@ type ToolHandler struct {
 	healthMetrics *HealthMetrics
 
 	// Redaction engine for scrubbing sensitive data from tool responses
-	redactionEngine *RedactionEngine
+	redactionEngine RedactionEngine
 
 	// Rate limiter for MCP tool calls (sliding window)
 	toolCallLimiter *ToolCallLimiter
@@ -229,10 +230,7 @@ func (h *ToolHandler) GetToolCallLimiter() RateLimiter {
 
 // GetRedactionEngine returns the redaction engine
 func (h *ToolHandler) GetRedactionEngine() RedactionEngine {
-	if h.redactionEngine != nil {
-		return *h.redactionEngine
-	}
-	return nil
+	return h.redactionEngine
 }
 
 // NewToolHandler creates an MCP handler with composite tool capabilities
@@ -261,6 +259,7 @@ func NewToolHandler(server *Server, capture *capture.Capture) *MCPHandler {
 	} else {
 		handler.noiseConfig = ai.NewNoiseConfig()
 	}
+	handler.redactionEngine = redaction.NewRedactionEngine("")
 
 	// Use global annotation store for draw mode
 	handler.annotationStore = globalAnnotationStore

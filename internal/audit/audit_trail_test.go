@@ -1019,3 +1019,66 @@ func TestAuditTrail_RedactSessionCookie(t *testing.T) {
 		t.Error("expected session cookie to be redacted")
 	}
 }
+
+// ============================================
+// Test: Clear() resets all state including sessions
+// ============================================
+
+func TestAuditTrail_Clear_ResetsEntriesAndSessions(t *testing.T) {
+	t.Parallel()
+	trail := NewAuditTrail(AuditConfig{
+		MaxEntries:   1000,
+		Enabled:      true,
+		RedactParams: false,
+	})
+
+	// Create a session and record entries under it
+	sess := trail.CreateSession(ClientIdentifier{Name: "claude-code", Version: "1.0"})
+	trail.Record(AuditEntry{SessionID: sess.ID, ToolName: "observe", Success: true})
+	trail.Record(AuditEntry{SessionID: sess.ID, ToolName: "analyze", Success: true})
+	trail.RecordRedaction(RedactionEvent{SessionID: sess.ID, ToolName: "observe", PatternName: "bearer_token"})
+
+	// Verify pre-state
+	if len(trail.Query(AuditFilter{})) != 2 {
+		t.Fatal("expected 2 entries before clear")
+	}
+	if trail.GetSession(sess.ID) == nil {
+		t.Fatal("session should exist before clear")
+	}
+
+	// Clear
+	cleared := trail.Clear()
+	if cleared != 2 {
+		t.Fatalf("Clear() should return 2, got %d", cleared)
+	}
+
+	// Entries must be empty
+	if entries := trail.Query(AuditFilter{}); len(entries) != 0 {
+		t.Fatalf("expected 0 entries after clear, got %d", len(entries))
+	}
+
+	// Redaction events must be empty
+	if redactions := trail.QueryRedactions(AuditFilter{}); len(redactions) != 0 {
+		t.Fatalf("expected 0 redactions after clear, got %d", len(redactions))
+	}
+
+	// Sessions must be reset — stale ToolCalls counters must not persist (B3)
+	if trail.GetSession(sess.ID) != nil {
+		t.Fatal("sessions should be cleared — stale session with old ToolCalls counter persists (B3 bug)")
+	}
+}
+
+func TestAuditTrail_Clear_EmptyTrail(t *testing.T) {
+	t.Parallel()
+	trail := NewAuditTrail(AuditConfig{
+		MaxEntries:   100,
+		Enabled:      true,
+		RedactParams: false,
+	})
+
+	// Clear on empty trail should return 0, not panic
+	cleared := trail.Clear()
+	if cleared != 0 {
+		t.Fatalf("Clear() on empty trail should return 0, got %d", cleared)
+	}
+}

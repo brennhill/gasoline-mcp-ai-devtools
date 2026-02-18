@@ -66,6 +66,7 @@ type RateLimiter interface {
 // RedactionEngine interface for response redaction
 type RedactionEngine interface {
 	RedactJSON(data json.RawMessage) json.RawMessage
+	RedactMapValues(data map[string]any) map[string]any
 }
 
 // NewMCPHandler creates a new MCP handler
@@ -157,12 +158,18 @@ func (h *MCPHandler) HandleHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Validate Content-Type: must be application/json (or empty for lenient clients)
+	if ct := r.Header.Get("Content-Type"); ct != "" && !strings.Contains(ct, "application/json") {
+		h.writeJSONRPCError(w, nil, -32700, "Unsupported Content-Type: "+ct)
+		return
+	}
+
 	r.Body = http.MaxBytesReader(w, r.Body, maxPostBodySize)
 
 	bodyBytes, err := io.ReadAll(r.Body)
 	if err != nil {
 		h.logDebugEntry(ctx, "", http.StatusBadRequest, "", fmt.Sprintf("Could not read body: %v", err))
-		h.writeJSONRPCError(w, "error", -32700, "Read error: "+err.Error())
+		h.writeJSONRPCError(w, nil, -32700, "Read error: "+err.Error())
 		return
 	}
 
@@ -202,19 +209,6 @@ func (h *MCPHandler) writeJSONRPCError(w http.ResponseWriter, id any, code int, 
 	_ = json.NewEncoder(w).Encode(resp)
 }
 
-// extractJSONRPCID attempts to extract the "id" field from JSON bytes.
-// Returns the extracted ID or "error" as fallback (never null - Cursor rejects it).
-func extractJSONRPCID(bodyBytes []byte) any {
-	var partial map[string]any
-	var errorID any = "error"
-	if json.Unmarshal(bodyBytes, &partial) == nil {
-		if id, ok := partial["id"]; ok && id != nil {
-			errorID = id
-		}
-	}
-	return errorID
-}
-
 // mcpMethodHandler is a function that handles a specific MCP method.
 type mcpMethodHandler func(h *MCPHandler, req JSONRPCRequest) JSONRPCResponse
 
@@ -238,9 +232,19 @@ var mcpStaticResponses = map[string]string{
 // HandleRequest processes an MCP request and returns a response.
 // Returns nil for notifications (which should not receive a response).
 func (h *MCPHandler) HandleRequest(req JSONRPCRequest) *JSONRPCResponse {
-	// CRITICAL: Notifications do NOT get responses per JSON-RPC 2.0 spec
-	if req.ID == nil || strings.HasPrefix(req.Method, "notifications/") {
+	// JSON-RPC 2.0: "A Notification is a Request object without an 'id' member."
+	// The notifications/ prefix is a naming convention, not a detection rule.
+	if req.ID == nil {
 		return nil
+	}
+
+	// JSON-RPC 2.0: All requests must include "jsonrpc": "2.0"
+	if req.JSONRPC != "2.0" {
+		return &JSONRPCResponse{
+			JSONRPC: "2.0",
+			ID:      req.ID,
+			Error:   &JSONRPCError{Code: -32600, Message: `Invalid Request: jsonrpc must be "2.0"`},
+		}
 	}
 
 	if handler, ok := mcpMethodHandlers[req.Method]; ok {
@@ -262,7 +266,13 @@ func (h *MCPHandler) HandleRequest(req JSONRPCRequest) *JSONRPCResponse {
 }
 
 func (h *MCPHandler) handleInitialize(req JSONRPCRequest) JSONRPCResponse {
-	const supportedVersion = "2024-11-05"
+	const latestVersion = "2025-06-18"
+
+	// Supported protocol versions (newest first).
+	var supportedVersions = map[string]bool{
+		"2025-06-18": true,
+		"2024-11-05": true,
+	}
 
 	// Parse client's requested protocol version (best-effort; missing/empty is fine)
 	var initParams struct {
@@ -273,8 +283,8 @@ func (h *MCPHandler) handleInitialize(req JSONRPCRequest) JSONRPCResponse {
 	}
 
 	// Negotiate: echo client's version if supported, otherwise respond with our latest
-	negotiatedVersion := supportedVersion
-	if initParams.ProtocolVersion == supportedVersion {
+	negotiatedVersion := latestVersion
+	if supportedVersions[initParams.ProtocolVersion] {
 		negotiatedVersion = initParams.ProtocolVersion
 	}
 
@@ -421,7 +431,7 @@ func (h *MCPHandler) warnUnknownToolArguments(toolName string, args json.RawMess
 		return
 	}
 
-	allowed := h.allowedToolArgumentKeys(toolName)
+	allowed := h.allowedToolArgumentKeys(toolName, raw)
 	if len(allowed) == 0 {
 		return
 	}
@@ -438,17 +448,68 @@ func (h *MCPHandler) warnUnknownToolArguments(toolName string, args json.RawMess
 	}
 }
 
-func (h *MCPHandler) allowedToolArgumentKeys(toolName string) map[string]struct{} {
+func (h *MCPHandler) allowedToolArgumentKeys(toolName string, rawArgs map[string]json.RawMessage) map[string]struct{} {
 	tools := h.toolHandler.ToolsList()
 	for _, tool := range tools {
 		if tool.Name != toolName {
 			continue
 		}
+
+		if oneOf, ok := tool.InputSchema["oneOf"].([]map[string]any); ok && len(oneOf) > 0 {
+			action := ""
+			if raw, exists := rawArgs["action"]; exists {
+				_ = json.Unmarshal(raw, &action)
+			}
+			if strings.TrimSpace(action) != "" {
+				if keys := schemaKeysForAction(oneOf, action); len(keys) > 0 {
+					return keys
+				}
+			}
+			return schemaKeysFromOneOf(oneOf)
+		}
+
 		keys := make(map[string]struct{})
 		props, ok := tool.InputSchema["properties"].(map[string]any)
 		if !ok {
 			return keys
 		}
+		for k := range props {
+			keys[k] = struct{}{}
+		}
+		return keys
+	}
+	return nil
+}
+
+func schemaKeysFromOneOf(oneOf []map[string]any) map[string]struct{} {
+	keys := make(map[string]struct{})
+	for _, branch := range oneOf {
+		props, ok := branch["properties"].(map[string]any)
+		if !ok {
+			continue
+		}
+		for k := range props {
+			keys[k] = struct{}{}
+		}
+	}
+	return keys
+}
+
+func schemaKeysForAction(oneOf []map[string]any, action string) map[string]struct{} {
+	for _, branch := range oneOf {
+		props, ok := branch["properties"].(map[string]any)
+		if !ok {
+			continue
+		}
+		actionSpec, ok := props["action"].(map[string]any)
+		if !ok {
+			continue
+		}
+		if actionConst, ok := actionSpec["const"].(string); !ok || actionConst != action {
+			continue
+		}
+
+		keys := make(map[string]struct{})
 		for k := range props {
 			keys[k] = struct{}{}
 		}
