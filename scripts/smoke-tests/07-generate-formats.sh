@@ -361,7 +361,7 @@ run_test_7_7() {
     if [ "$PILOT_ENABLED" = "true" ]; then
         interact_and_wait "execute_js" "{\"action\":\"execute_js\",\"reason\":\"Fetch CDN JS for SRI test\",\"script\":\"fetch('${SRI_CDN_URL}').then(r=>r.text()).then(t=>'fetched:'+t.length).catch(e=>'error:'+e.message)\"}"
 
-        # ── Step 2: Poll network_bodies until the CDN URL appears ──
+        # ── Step 2: Poll network_bodies until the CDN URL appears with a real body ──
         local max_polls=10
         for i in $(seq 1 "$max_polls"); do
             sleep 1
@@ -370,14 +370,31 @@ run_test_7_7() {
             local bodies_text
             bodies_text=$(extract_content_text "$bodies_response")
             if echo "$bodies_text" | grep -q "lodash"; then
-                data_seeded="true"
-                echo "  [data confirmed in network_bodies after ${i}s]"
-                break
+                # Verify response_body is real content, not a placeholder
+                local body_check
+                body_check=$(echo "$bodies_text" | python3 -c "
+import sys, json
+t = sys.stdin.read(); i = t.find('{')
+if i < 0: print('NO_JSON'); sys.exit()
+data = json.loads(t[i:])
+entries = data.get('entries', data.get('data', []))
+if not entries: print('NO_ENTRIES'); sys.exit()
+body = entries[0].get('response_body', '')
+if not body: print('EMPTY_BODY')
+elif body.startswith('['): print(f'PLACEHOLDER:{body[:50]}')
+else: print(f'REAL_BODY:len={len(body)}')
+" 2>/dev/null || echo "PARSE_ERROR")
+                echo "  [body check: $body_check after ${i}s]"
+                if echo "$body_check" | grep -q "REAL_BODY"; then
+                    data_seeded="true"
+                    break
+                fi
+                # Keep polling if body is empty or placeholder
             fi
         done
 
         if [ "$data_seeded" != "true" ]; then
-            fail "SRI data seeding failed: CDN JS body not found in network_bodies after ${max_polls}s. Cannot validate SRI generation."
+            fail "SRI data seeding failed: CDN JS body not captured with real content after ${max_polls}s. Cannot validate SRI generation."
             return
         fi
     fi

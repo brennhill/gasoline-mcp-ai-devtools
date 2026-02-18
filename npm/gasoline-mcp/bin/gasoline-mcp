@@ -1,147 +1,114 @@
-#!/bin/sh
-# gasoline-mcp — POSIX shell wrapper for Gasoline MCP server.
-# MCP mode (default): finds the Go binary and exec's it — no Node.js needed.
-# CLI commands (--install, --config, etc.): delegates to Node.js lib/cli.js.
+#!/usr/bin/env node
 
-set -e
+// bin/gasoline-mcp — Cross-platform launcher for the Gasoline MCP server.
+// MCP mode (default): finds the Go binary and spawns it.
+// CLI commands (--install, --config, etc.): delegates to lib/cli.js.
 
-GASOLINE_VERSION="0.7.2"
-WRAPPER_LOG="$HOME/gasoline-wrapper.log"
-SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-LIB_DIR="$SCRIPT_DIR/../lib"
+const { execFileSync } = require('child_process')
+const path = require('path')
+const fs = require('fs')
 
-# --- Logging ---
+const GASOLINE_VERSION = require('../package.json').version
+const SCRIPT_DIR = __dirname
+const LIB_DIR = path.join(SCRIPT_DIR, '..', 'lib')
 
-log() {
-  printf '[%s] %s\n' "$(date -u '+%Y-%m-%dT%H:%M:%SZ' 2>/dev/null || date '+%Y-%m-%dT%H:%M:%S')" "$1" \
-    >> "$WRAPPER_LOG" 2>/dev/null || true
+// --- Platform detection ---
+
+function detectPlatform() {
+  const platformMap = { darwin: 'darwin', linux: 'linux', win32: 'win32' }
+  const archMap = { x64: 'x64', arm64: 'arm64' }
+
+  const platform = platformMap[process.platform]
+  const arch = archMap[process.arch]
+
+  if (!platform || !arch) {
+    return null
+  }
+
+  const ext = process.platform === 'win32' ? '.exe' : ''
+  // Windows x64 binary runs on arm64 via emulation
+  const effectiveArch = (platform === 'win32') ? 'x64' : arch
+  const platformKey = `${platform}-${effectiveArch}`
+  const binaryName = `gasoline${ext}`
+  const pkgName = `@brennhill/gasoline-${platformKey}`
+
+  return { platform, arch: effectiveArch, platformKey, binaryName, pkgName, ext }
 }
 
-# --- JSON-RPC error to stdout (so MCP clients see a protocol error, not a vanished process) ---
+// --- Binary search ---
 
-mcp_error() {
-  printf '{"jsonrpc":"2.0","id":null,"error":{"code":-32603,"message":"%s","data":{"isError":true}}}\n' "$1"
+function findBinary(info) {
+  // 1. Dev build — dist/ directory (for local development)
+  const devBin = path.join(SCRIPT_DIR, '..', '..', '..', 'dist', `gasoline-${info.platformKey}${info.ext}`)
+  if (fs.existsSync(devBin)) return devBin
+
+  // 2. node_modules candidates (3 depths: local dep, hoisted, global)
+  const candidates = [
+    path.join(SCRIPT_DIR, '..', 'node_modules', info.pkgName, 'bin', info.binaryName),
+    path.join(SCRIPT_DIR, '..', '..', info.pkgName, 'bin', info.binaryName),
+    path.join(SCRIPT_DIR, '..', '..', '..', info.pkgName, 'bin', info.binaryName),
+  ]
+  for (const candidate of candidates) {
+    if (fs.existsSync(candidate)) return candidate
+  }
+
+  // 3. Global PATH — check version matches
+  try {
+    const { execSync } = require('child_process')
+    const which = process.platform === 'win32' ? 'where gasoline' : 'command -v gasoline'
+    const globalBin = execSync(which, { encoding: 'utf8', stdio: ['pipe', 'pipe', 'pipe'] }).trim().split('\n')[0]
+    if (globalBin && fs.existsSync(globalBin)) {
+      const verOut = execFileSync(globalBin, ['--version'], { encoding: 'utf8', timeout: 5000, stdio: ['pipe', 'pipe', 'pipe'] })
+      const verMatch = verOut.match(/(\d+\.\d+\.\d+)/)
+      if (verMatch && verMatch[1] === GASOLINE_VERSION) return globalBin
+    }
+  } catch {
+    // Not found in PATH or version mismatch — continue
+  }
+
+  return null
 }
 
-# --- Platform detection ---
+// --- CLI flag detection ---
 
-detect_platform() {
-  OS="$(uname -s)"
-  ARCH="$(uname -m)"
-
-  case "$OS" in
-    Darwin)  PLATFORM="darwin" ;;
-    Linux)   PLATFORM="linux"  ;;
-    MINGW*|MSYS*|CYGWIN*) PLATFORM="win32" ;;
-    *)
-      mcp_error "Unsupported OS: $OS"
-      log "Unsupported OS: $OS"
-      exit 1
-      ;;
-  esac
-
-  case "$ARCH" in
-    x86_64|amd64)  ARCH_LABEL="x64"   ;;
-    arm64|aarch64) ARCH_LABEL="arm64" ;;
-    *)
-      mcp_error "Unsupported architecture: $ARCH"
-      log "Unsupported architecture: $ARCH"
-      exit 1
-      ;;
-  esac
-
-  if [ "$PLATFORM" = "win32" ]; then
-    BINARY_NAME="gasoline.exe"
-    # Windows x64 binary runs on arm64 via emulation
-    ARCH_LABEL="x64"
-  else
-    BINARY_NAME="gasoline"
-  fi
-
-  PLATFORM_KEY="${PLATFORM}-${ARCH_LABEL}"
-  PKG_NAME="@brennhill/gasoline-${PLATFORM_KEY}"
+function isCliCommand(args) {
+  const cliFlags = new Set(['--config', '-c', '--install', '-i', '--doctor', '--uninstall', '--help', '-h', '--version', '-v'])
+  return args.some(arg => cliFlags.has(arg))
 }
 
-# --- Binary search ---
+// --- JSON-RPC error (so MCP clients see a protocol error, not a vanished process) ---
 
-find_binary() {
-  # 1. Global PATH — check version matches
-  GLOBAL_BIN="$(command -v gasoline 2>/dev/null || true)"
-  if [ -n "$GLOBAL_BIN" ]; then
-    GLOBAL_VER="$("$GLOBAL_BIN" --version 2>&1 | grep -o '[0-9]\+\.[0-9]\+\.[0-9]\+' || true)"
-    if [ "$GLOBAL_VER" = "$GASOLINE_VERSION" ]; then
-      log "Using global binary (v${GLOBAL_VER}): $GLOBAL_BIN"
-      BINARY="$GLOBAL_BIN"
-      return 0
-    elif [ -n "$GLOBAL_VER" ]; then
-      log "Global binary version mismatch: $GLOBAL_VER vs expected $GASOLINE_VERSION"
-    fi
-  fi
-
-  # 2. Dev build — dist/ directory (for local development)
-  DEV_BIN="$SCRIPT_DIR/../../../dist/gasoline-${PLATFORM_KEY}"
-  if [ "$PLATFORM" = "win32" ]; then
-    DEV_BIN="${DEV_BIN}.exe"
-  fi
-  if [ -x "$DEV_BIN" ]; then
-    log "Using dev build: $DEV_BIN"
-    BINARY="$DEV_BIN"
-    return 0
-  fi
-
-  # 3. node_modules candidates (3 depths: local dep, hoisted, global)
-  for CANDIDATE in \
-    "$SCRIPT_DIR/../node_modules/$PKG_NAME/bin/$BINARY_NAME" \
-    "$SCRIPT_DIR/../../$PKG_NAME/bin/$BINARY_NAME" \
-    "$SCRIPT_DIR/../../../$PKG_NAME/bin/$BINARY_NAME" \
-  ; do
-    if [ -f "$CANDIDATE" ]; then
-      log "Using bundled binary: $CANDIDATE"
-      BINARY="$CANDIDATE"
-      return 0
-    fi
-  done
-
-  return 1
+function mcpError(message) {
+  const err = { jsonrpc: '2.0', id: null, error: { code: -32603, message, data: { isError: true } } }
+  process.stdout.write(JSON.stringify(err) + '\n')
 }
 
-# --- CLI flag detection ---
+// --- Main ---
 
-is_cli_command() {
-  for arg in "$@"; do
-    case "$arg" in
-      --config|-c|--install|-i|--doctor|--uninstall|--help|-h|--version|-v)
-        return 0
-        ;;
-    esac
-  done
-  return 1
+const info = detectPlatform()
+if (!info) {
+  mcpError(`Unsupported platform: ${process.platform}-${process.arch}`)
+  process.exit(1)
 }
 
-# --- Main ---
+const args = process.argv.slice(2)
 
-detect_platform
+// CLI commands → delegate to Node.js
+if (isCliCommand(args)) {
+  require(path.join(LIB_DIR, 'cli.js'))
+  // cli.js handles process.argv directly
+} else {
+  // MCP server mode — find and exec the Go binary
+  const binary = findBinary(info)
+  if (!binary) {
+    const msg = `Gasoline binary not found for ${info.platformKey}. Expected package: ${info.pkgName}. Try reinstalling: npm install -g gasoline-mcp@latest`
+    mcpError(msg)
+    process.exit(1)
+  }
 
-# CLI commands → delegate to Node.js
-if is_cli_command "$@"; then
-  NODE="$(command -v node 2>/dev/null || true)"
-  if [ -z "$NODE" ]; then
-    echo "Error: Node.js is required for CLI commands (--install, --config, --doctor, --uninstall, --help)." >&2
-    echo "Install Node.js 16+ from https://nodejs.org" >&2
-    exit 1
-  fi
-  exec "$NODE" "$LIB_DIR/cli.js" "$@"
-fi
-
-# MCP server mode — find and exec the Go binary
-log "Wrapper starting, passing control to Go binary"
-
-if find_binary; then
-  log "Using binary: $BINARY"
-  exec "$BINARY" "$@"
-else
-  MSG="Gasoline binary not found for ${PLATFORM_KEY}. Expected package: ${PKG_NAME}. Try reinstalling: npm install -g gasoline-mcp@latest"
-  mcp_error "$MSG"
-  log "$MSG"
-  exit 1
-fi
+  try {
+    execFileSync(binary, args, { stdio: 'inherit', windowsHide: false })
+  } catch (e) {
+    process.exit(e.status ?? 1)
+  }
+}

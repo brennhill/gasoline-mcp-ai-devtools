@@ -133,12 +133,19 @@ func hasVaryUserAgent(headers map[string]string) bool {
 
 // sriBodyOutcome describes the result of evaluating a single network body for SRI.
 type sriBodyOutcome struct {
-	thirdParty bool
-	resType    string // "script", "style", or "" if not applicable
-	skip       bool   // true when filtered out or duplicate
-	truncated  bool
-	varyUA     bool
-	resource   SRIResource
+	thirdParty  bool
+	resType     string // "script", "style", or "" if not applicable
+	skip        bool   // true when filtered out or duplicate
+	truncated   bool
+	placeholder bool // true when body is a capture placeholder, not real content
+	varyUA      bool
+	resource    SRIResource
+}
+
+// isPlaceholderBody returns true if the response body is a capture placeholder
+// rather than actual resource content (e.g., from read timeout or binary detection).
+func isPlaceholderBody(body string) bool {
+	return len(body) > 2 && body[0] == '[' && body[len(body)-1] == ']'
 }
 
 // evaluateBody checks a single network body against filters and, when eligible,
@@ -161,6 +168,10 @@ func (g *SRIGenerator) evaluateBody(body capture.NetworkBody, cfg sriFilterConfi
 	}
 	seenURLs[body.URL] = true
 
+	if isPlaceholderBody(body.ResponseBody) {
+		return sriBodyOutcome{thirdParty: true, resType: resType, placeholder: true}
+	}
+
 	if body.ResponseTruncated {
 		return sriBodyOutcome{thirdParty: true, resType: resType, truncated: true}
 	}
@@ -179,10 +190,13 @@ func (g *SRIGenerator) evaluateBody(body capture.NetworkBody, cfg sriFilterConfi
 }
 
 // buildSRIWarnings converts collected URL lists into human-readable warning strings.
-func buildSRIWarnings(truncated, varyUA []string) []string {
-	warnings := make([]string, 0, len(truncated)+len(varyUA))
+func buildSRIWarnings(truncated, placeholder, varyUA []string) []string {
+	warnings := make([]string, 0, len(truncated)+len(placeholder)+len(varyUA))
 	for _, u := range truncated {
 		warnings = append(warnings, fmt.Sprintf("%s — body was truncated, cannot compute SRI hash. Consider increasing capture limit.", u))
+	}
+	for _, u := range placeholder {
+		warnings = append(warnings, fmt.Sprintf("%s — body was not captured (read timeout or binary). Re-navigate the page and retry.", u))
 	}
 	for _, u := range varyUA {
 		warnings = append(warnings, fmt.Sprintf("%s — responds with Vary: User-Agent header. SRI hash may differ across browsers.", u))
@@ -197,7 +211,7 @@ func (g *SRIGenerator) Generate(bodies []capture.NetworkBody, pageURLs []string,
 	seenURLs := make(map[string]bool)
 
 	var totalThirdParty, scriptsWithoutSRI, stylesWithoutSRI int
-	var truncated, varyUA []string
+	var truncated, placeholder, varyUA []string
 
 	for _, body := range bodies {
 		out := g.evaluateBody(body, cfg, seenURLs)
@@ -209,6 +223,10 @@ func (g *SRIGenerator) Generate(bodies []capture.NetworkBody, pageURLs []string,
 			scriptsWithoutSRI++
 		case "style":
 			stylesWithoutSRI++
+		}
+		if out.placeholder {
+			placeholder = append(placeholder, body.URL)
+			continue
 		}
 		if out.truncated {
 			truncated = append(truncated, body.URL)
@@ -223,7 +241,7 @@ func (g *SRIGenerator) Generate(bodies []capture.NetworkBody, pageURLs []string,
 		result.Resources = append(result.Resources, out.resource)
 	}
 
-	result.Warnings = buildSRIWarnings(truncated, varyUA)
+	result.Warnings = buildSRIWarnings(truncated, placeholder, varyUA)
 	result.Summary = SRISummary{
 		TotalThirdPartyResources: totalThirdParty,
 		ScriptsWithoutSRI:        scriptsWithoutSRI,
