@@ -35,6 +35,18 @@
           ],
           "type": "string"
         },
+        "format": {
+          "description": "Screenshot format (screenshot)",
+          "enum": [
+            "png",
+            "jpeg"
+          ],
+          "type": "string"
+        },
+        "full_page": {
+          "description": "Capture full scrollable page (screenshot)",
+          "type": "boolean"
+        },
         "include": {
           "description": "Categories to include (timeline)",
           "items": {
@@ -80,6 +92,10 @@
           "description": "Original recording ID (log_diff_report)",
           "type": "string"
         },
+        "quality": {
+          "description": "Screenshot JPEG quality 1-100 (screenshot)",
+          "type": "number"
+        },
         "recording_id": {
           "description": "Recording ID (recording_actions, playback_results)",
           "type": "string"
@@ -91,6 +107,18 @@
         "restart_on_eviction": {
           "description": "Auto-restart if cursor expired",
           "type": "boolean"
+        },
+        "scope": {
+          "description": "Filter scope: current_page (default) filters by tracked tab, all returns everything (errors, logs)",
+          "enum": [
+            "current_page",
+            "all"
+          ],
+          "type": "string"
+        },
+        "selector": {
+          "description": "Capture specific element by CSS selector (screenshot)",
+          "type": "string"
         },
         "since_cursor": {
           "description": "Return all entries newer than cursor (no limit)",
@@ -120,6 +148,10 @@
         "url": {
           "description": "Filter by URL substring",
           "type": "string"
+        },
+        "wait_for_stable": {
+          "description": "Wait for layout to stabilize before capture (screenshot)",
+          "type": "boolean"
         },
         "what": {
           "enum": [
@@ -1079,6 +1111,7 @@
             "playback",
             "log_diff",
             "telemetry",
+            "describe_capabilities",
             "diff_sessions",
             "audit_log"
           ],
@@ -1316,6 +1349,11 @@
             "key_press",
             "paste",
             "list_interactive",
+            "get_readable",
+            "get_markdown",
+            "navigate_and_wait_for",
+            "fill_form_and_submit",
+            "run_a11y_and_export_sarif",
             "record_start",
             "record_stop",
             "upload",
@@ -1364,6 +1402,30 @@
           "description": "Upload escalation timeout in ms",
           "type": "number"
         },
+        "fields": {
+          "description": "Form fields to fill (fill_form_and_submit)",
+          "items": {
+            "properties": {
+              "index": {
+                "description": "Element index from list_interactive (alternative to selector)",
+                "type": "number"
+              },
+              "selector": {
+                "description": "CSS selector for the field",
+                "type": "string"
+              },
+              "value": {
+                "description": "Value to type into the field",
+                "type": "string"
+              }
+            },
+            "required": [
+              "value"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        },
         "file_path": {
           "description": "Absolute file path for upload action",
           "type": "string"
@@ -1383,9 +1445,17 @@
             }
           ]
         },
+        "include_content": {
+          "description": "Return page content with navigate response (url, title, text_content, vitals)",
+          "type": "boolean"
+        },
         "include_url": {
           "description": "Restore URL with state",
           "type": "boolean"
+        },
+        "index": {
+          "description": "Element index from list_interactive results (alternative to selector)",
+          "type": "number"
         },
         "name": {
           "description": "Attribute or recording name",
@@ -1393,6 +1463,10 @@
         },
         "reason": {
           "description": "Action reason (shown as toast)",
+          "type": "string"
+        },
+        "save_to": {
+          "description": "File path to save output (run_a11y_and_export_sarif)",
           "type": "string"
         },
         "script": {
@@ -1414,6 +1488,14 @@
         "submit": {
           "description": "Submit form after upload",
           "type": "boolean"
+        },
+        "submit_index": {
+          "description": "Submit button index from list_interactive (fill_form_and_submit)",
+          "type": "number"
+        },
+        "submit_selector": {
+          "description": "Submit button selector (fill_form_and_submit)",
+          "type": "string"
         },
         "subtitle": {
           "description": "Narration text, composable with any action. Empty clears.",
@@ -1452,9 +1534,17 @@
           "description": "Value for select/set_attribute",
           "type": "string"
         },
+        "visible_only": {
+          "description": "Only return visible elements (list_interactive)",
+          "type": "boolean"
+        },
         "wait": {
           "description": "Alias for sync (default: true).",
           "type": "boolean"
+        },
+        "wait_for": {
+          "description": "CSS selector to wait for after navigation (navigate_and_wait_for)",
+          "type": "string"
         },
         "world": {
           "description": "JS world: auto (default), main (page globals), isolated (bypass CSP).",
