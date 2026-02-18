@@ -101,6 +101,48 @@ func TestNewQueryDispatcher_CompleteCommand_WithError(t *testing.T) {
 	}
 }
 
+func TestNewQueryDispatcher_CompleteCommandWithStatus_Error(t *testing.T) {
+	t.Parallel()
+
+	qd := NewQueryDispatcher()
+	defer qd.Close()
+
+	qd.RegisterCommand("corr-status-err", "q-status-err", 30*time.Second)
+	qd.CompleteCommandWithStatus("corr-status-err", json.RawMessage(`{"ok":false}`), "error", "element not found")
+
+	cmd, found := qd.GetCommandResult("corr-status-err")
+	if !found {
+		t.Fatal("GetCommandResult returned false")
+	}
+	if cmd.Status != "error" {
+		t.Errorf("Status = %q, want error", cmd.Status)
+	}
+	if cmd.Error != "element not found" {
+		t.Errorf("Error = %q, want 'element not found'", cmd.Error)
+	}
+}
+
+func TestNewQueryDispatcher_CompleteCommandWithStatus_Timeout(t *testing.T) {
+	t.Parallel()
+
+	qd := NewQueryDispatcher()
+	defer qd.Close()
+
+	qd.RegisterCommand("corr-status-timeout", "q-status-timeout", 30*time.Second)
+	qd.CompleteCommandWithStatus("corr-status-timeout", nil, "timeout", "execution timed out")
+
+	cmd, found := qd.GetCommandResult("corr-status-timeout")
+	if !found {
+		t.Fatal("GetCommandResult returned false")
+	}
+	if cmd.Status != "timeout" {
+		t.Errorf("Status = %q, want timeout", cmd.Status)
+	}
+	if cmd.Error != "execution timed out" {
+		t.Errorf("Error = %q, want 'execution timed out'", cmd.Error)
+	}
+}
+
 func TestNewQueryDispatcher_CompleteCommand_EmptyCorrelationID(t *testing.T) {
 	t.Parallel()
 

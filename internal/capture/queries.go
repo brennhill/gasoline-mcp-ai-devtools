@@ -48,12 +48,14 @@ func (qd *QueryDispatcher) CreatePendingQueryWithClient(query queries.PendingQue
 // 4. Return query ID for extension to use when posting result
 func (qd *QueryDispatcher) CreatePendingQueryWithTimeout(query queries.PendingQuery, timeout time.Duration, clientID string) string {
 	qd.mu.Lock()
+	var droppedCorrelationID string
 
 	// Enforce max pending queries (drop oldest if full)
 	if len(qd.pendingQueries) >= maxPendingQueries {
 		dropped := qd.pendingQueries[0]
 		fmt.Fprintf(os.Stderr, "[gasoline] Query queue overflow: dropping query %s (correlation_id=%s)\n",
 			dropped.query.ID, dropped.query.CorrelationID)
+		droppedCorrelationID = dropped.query.CorrelationID
 		qd.pendingQueries = qd.pendingQueries[1:]
 	}
 
@@ -77,6 +79,11 @@ func (qd *QueryDispatcher) CreatePendingQueryWithTimeout(query queries.PendingQu
 	qd.pendingQueries = append(qd.pendingQueries, entry)
 	correlationID := query.CorrelationID
 	qd.mu.Unlock()
+
+	// Dropped commands must be marked terminal so observe(command_result) doesn't hang.
+	if droppedCorrelationID != "" {
+		qd.expireCommandWithReason(droppedCorrelationID, "command dropped due to queue overflow")
+	}
 
 	// Notify long-pollers that a new query is available
 	select {
@@ -538,6 +545,21 @@ func (qd *QueryDispatcher) RegisterCommand(correlationID string, queryID string,
 // CompleteCommand updates a command's status to "complete" with result.
 // Called when extension posts result back. Signals any WaitForCommand waiters.
 func (qd *QueryDispatcher) CompleteCommand(correlationID string, result json.RawMessage, err string) {
+	qd.CompleteCommandWithStatus(correlationID, result, "complete", err)
+}
+
+func normalizeCommandStatus(status string) string {
+	switch status {
+	case "pending", "complete", "error", "timeout", "expired":
+		return status
+	default:
+		return "complete"
+	}
+}
+
+// CompleteCommandWithStatus updates a command with an explicit terminal status.
+// Used by sync/query-result handlers to preserve extension-reported status.
+func (qd *QueryDispatcher) CompleteCommandWithStatus(correlationID string, result json.RawMessage, status string, err string) {
 	if correlationID == "" {
 		return
 	}
@@ -549,7 +571,7 @@ func (qd *QueryDispatcher) CompleteCommand(correlationID string, result json.Raw
 		return
 	}
 
-	cmd.Status = "complete"
+	cmd.Status = normalizeCommandStatus(status)
 	cmd.Result = result
 	cmd.Error = err
 	cmd.CompletedAt = time.Now()

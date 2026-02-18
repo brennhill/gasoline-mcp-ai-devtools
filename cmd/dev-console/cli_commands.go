@@ -293,37 +293,40 @@ func parseGenerateArgs(format string, args []string) (map[string]any, error) {
 func parseConfigureArgs(action string, args []string) (map[string]any, error) {
 	mcpArgs := map[string]any{"action": action}
 	parsed, err := parseFlagsBySpec(args, map[string]cliFlagSpec{
-		"--telemetry-mode":   {mcpKey: "telemetry_mode", kind: flagString},
-		"--store-action":     {mcpKey: "store_action", kind: flagString},
-		"--namespace":        {mcpKey: "namespace", kind: flagString},
-		"--key":              {mcpKey: "key", kind: flagString},
-		"--data":             {mcpKey: "data", kind: flagJSONOrString},
-		"--noise-action":     {mcpKey: "noise_action", kind: flagString},
-		"--rules":            {mcpKey: "rules", kind: flagJSON},
-		"--rule-id":          {mcpKey: "rule_id", kind: flagString},
-		"--pattern":          {mcpKey: "pattern", kind: flagString},
-		"--selector":         {mcpKey: "selector", kind: flagString},
-		"--category":         {mcpKey: "category", kind: flagString},
-		"--reason":           {mcpKey: "reason", kind: flagString},
-		"--buffer":           {mcpKey: "buffer", kind: flagString},
-		"--tab-id":           {mcpKey: "tab_id", kind: flagInt},
-		"--session-action":   {mcpKey: "session_action", kind: flagString},
-		"--name":             {mcpKey: "name", kind: flagString},
-		"--compare-a":        {mcpKey: "compare_a", kind: flagString},
-		"--compare-b":        {mcpKey: "compare_b", kind: flagString},
-		"--recording-id":     {mcpKey: "recording_id", kind: flagString},
-		"--session-id":       {mcpKey: "session_id", kind: flagString},
-		"--tool-name":        {mcpKey: "tool_name", kind: flagString},
-		"--since":            {mcpKey: "since", kind: flagString},
-		"--limit":            {mcpKey: "limit", kind: flagInt},
-		"--streaming-action": {mcpKey: "streaming_action", kind: flagString},
-		"--events":           {mcpKey: "events", kind: flagStringList},
-		"--throttle-seconds": {mcpKey: "throttle_seconds", kind: flagInt},
-		"--severity-min":     {mcpKey: "severity_min", kind: flagString},
-		"--test-id":          {mcpKey: "test_id", kind: flagString},
-		"--label":            {mcpKey: "label", kind: flagString},
-		"--original-id":      {mcpKey: "original_id", kind: flagString},
-		"--replay-id":        {mcpKey: "replay_id", kind: flagString},
+		"--telemetry-mode":         {mcpKey: "telemetry_mode", kind: flagString},
+		"--store-action":           {mcpKey: "store_action", kind: flagString},
+		"--namespace":              {mcpKey: "namespace", kind: flagString},
+		"--key":                    {mcpKey: "key", kind: flagString},
+		"--data":                   {mcpKey: "data", kind: flagJSONOrString},
+		"--noise-action":           {mcpKey: "noise_action", kind: flagString},
+		"--rules":                  {mcpKey: "rules", kind: flagJSON},
+		"--rule-id":                {mcpKey: "rule_id", kind: flagString},
+		"--pattern":                {mcpKey: "pattern", kind: flagString},
+		"--selector":               {mcpKey: "selector", kind: flagString},
+		"--category":               {mcpKey: "category", kind: flagString},
+		"--reason":                 {mcpKey: "reason", kind: flagString},
+		"--buffer":                 {mcpKey: "buffer", kind: flagString},
+		"--tab-id":                 {mcpKey: "tab_id", kind: flagInt},
+		"--session-action":         {mcpKey: "session_action", kind: flagString},
+		"--name":                   {mcpKey: "name", kind: flagString},
+		"--compare-a":              {mcpKey: "compare_a", kind: flagString},
+		"--compare-b":              {mcpKey: "compare_b", kind: flagString},
+		"--recording-id":           {mcpKey: "recording_id", kind: flagString},
+		"--session-id":             {mcpKey: "session_id", kind: flagString},
+		"--tool-name":              {mcpKey: "tool_name", kind: flagString},
+		"--since":                  {mcpKey: "since", kind: flagString},
+		"--limit":                  {mcpKey: "limit", kind: flagInt},
+		"--url":                    {mcpKey: "url", kind: flagString},
+		"--operation":              {mcpKey: "operation", kind: flagString},
+		"--streaming-action":       {mcpKey: "streaming_action", kind: flagString},
+		"--events":                 {mcpKey: "events", kind: flagStringList},
+		"--throttle-seconds":       {mcpKey: "throttle_seconds", kind: flagInt},
+		"--severity-min":           {mcpKey: "severity_min", kind: flagString},
+		"--test-id":                {mcpKey: "test_id", kind: flagString},
+		"--label":                  {mcpKey: "label", kind: flagString},
+		"--sensitive-data-enabled": {mcpKey: "sensitive_data_enabled", kind: flagBool},
+		"--original-id":            {mcpKey: "original_id", kind: flagString},
+		"--replay-id":              {mcpKey: "replay_id", kind: flagString},
 	})
 	if err != nil {
 		return nil, err
@@ -347,6 +350,8 @@ func parseJSONOrString(s string) any {
 var interactActionsRequiringSelector = map[string]bool{
 	"click":         true,
 	"type":          true,
+	"select":        true,
+	"key_press":     true,
 	"get_text":      true,
 	"get_value":     true,
 	"get_attribute": true,
@@ -359,6 +364,23 @@ var interactActionsRequiringSelector = map[string]bool{
 	"highlight":     true,
 }
 
+// interactActionsAllowingIndex lists selector-required actions where --index can be used instead.
+var interactActionsAllowingIndex = map[string]bool{
+	"click":         true,
+	"type":          true,
+	"select":        true,
+	"check":         true,
+	"get_text":      true,
+	"get_value":     true,
+	"get_attribute": true,
+	"set_attribute": true,
+	"wait_for":      true,
+	"scroll_to":     true,
+	"focus":         true,
+	"key_press":     true,
+	"paste":         true,
+}
+
 func parseInteractArgs(action string, args []string) (map[string]any, error) {
 	mcpArgs := map[string]any{"action": action}
 	parsed, err := parseFlagsBySpec(args, map[string]cliFlagSpec{
@@ -367,10 +389,13 @@ func parseInteractArgs(action string, args []string) (map[string]any, error) {
 		"--wait":                  {mcpKey: "wait", kind: flagBool},
 		"--background":            {mcpKey: "background", kind: flagBool},
 		"--selector":              {mcpKey: "selector", kind: flagString},
+		"--index":                 {mcpKey: "index", kind: flagInt},
+		"--visible-only":          {mcpKey: "visible_only", kind: flagBool},
 		"--frame":                 {mcpKey: "frame", kind: flagIntOrString},
 		"--duration-ms":           {mcpKey: "duration_ms", kind: flagInt},
 		"--snapshot-name":         {mcpKey: "snapshot_name", kind: flagString},
 		"--include-url":           {mcpKey: "include_url", kind: flagBool},
+		"--include-content":       {mcpKey: "include_content", kind: flagBool},
 		"--script":                {mcpKey: "script", kind: flagString},
 		"--timeout-ms":            {mcpKey: "timeout_ms", kind: flagInt},
 		"--text":                  {mcpKey: "text", kind: flagString},
@@ -392,6 +417,11 @@ func parseInteractArgs(action string, args []string) (map[string]any, error) {
 		"--api-endpoint":          {mcpKey: "api_endpoint", kind: flagString},
 		"--submit":                {mcpKey: "submit", kind: flagBool},
 		"--escalation-timeout-ms": {mcpKey: "escalation_timeout_ms", kind: flagInt},
+		"--fields":                {mcpKey: "fields", kind: flagJSON},
+		"--submit-selector":       {mcpKey: "submit_selector", kind: flagString},
+		"--submit-index":          {mcpKey: "submit_index", kind: flagInt},
+		"--wait-for":              {mcpKey: "wait_for", kind: flagString},
+		"--save-to":               {mcpKey: "save_to", kind: flagString},
 	})
 	if err != nil {
 		return nil, err
@@ -421,8 +451,11 @@ func parseInteractFilePath(mcpArgs map[string]any) {
 // validateInteractArgs checks required fields for specific interact actions.
 func validateInteractArgs(action string, mcpArgs map[string]any) error {
 	selector, _ := mcpArgs["selector"].(string)
+	_, hasIndex := mcpArgs["index"]
 	if interactActionsRequiringSelector[action] && selector == "" {
-		return fmt.Errorf("interact %s: --selector is required", action)
+		if !interactActionsAllowingIndex[action] || !hasIndex {
+			return fmt.Errorf("interact %s: --selector is required", action)
+		}
 	}
 	if action == "upload" && selector == "" && mcpArgs["api_endpoint"] == nil {
 		return fmt.Errorf("interact upload: --selector or --api-endpoint is required")

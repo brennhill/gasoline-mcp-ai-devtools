@@ -7,6 +7,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/dev-console/dev-console/internal/queries"
 )
@@ -374,6 +375,61 @@ func TestHandleSync_AdaptivePoll_RevertsAfterResultDelivered(t *testing.T) {
 	// After result delivered, no more pending commands — should revert to 1000ms
 	if resp2.NextPollMs != 1000 {
 		t.Errorf("Second sync (after result): expected NextPollMs 1000, got %d", resp2.NextPollMs)
+	}
+}
+
+func TestHandleSync_CommandResultStatusPropagation(t *testing.T) {
+	t.Parallel()
+	cap := NewCapture()
+
+	cap.RegisterCommand("corr-sync-error", "q-sync-error", 30*time.Second)
+	cap.RegisterCommand("corr-sync-timeout", "q-sync-timeout", 30*time.Second)
+
+	req := SyncRequest{
+		SessionID: "status-session",
+		CommandResults: []SyncCommandResult{
+			{
+				CorrelationID: "corr-sync-error",
+				Status:        "error",
+				Result:        json.RawMessage(`{"ok":false}`),
+				Error:         "dispatch failed",
+			},
+			{
+				CorrelationID: "corr-sync-timeout",
+				Status:        "timeout",
+				Error:         "execution timed out",
+			},
+		},
+	}
+
+	body, _ := json.Marshal(req)
+	httpReq := httptest.NewRequest("POST", "/sync", bytes.NewReader(body))
+	w := httptest.NewRecorder()
+	cap.HandleSync(w, httpReq)
+	if w.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200", w.Code)
+	}
+
+	errCmd, found := cap.GetCommandResult("corr-sync-error")
+	if !found {
+		t.Fatal("corr-sync-error command not found")
+	}
+	if errCmd.Status != "error" {
+		t.Fatalf("corr-sync-error status = %q, want error", errCmd.Status)
+	}
+	if errCmd.Error != "dispatch failed" {
+		t.Fatalf("corr-sync-error error = %q, want dispatch failed", errCmd.Error)
+	}
+
+	timeoutCmd, found := cap.GetCommandResult("corr-sync-timeout")
+	if !found {
+		t.Fatal("corr-sync-timeout command not found")
+	}
+	if timeoutCmd.Status != "timeout" {
+		t.Fatalf("corr-sync-timeout status = %q, want timeout", timeoutCmd.Status)
+	}
+	if timeoutCmd.Error != "execution timed out" {
+		t.Fatalf("corr-sync-timeout error = %q, want execution timed out", timeoutCmd.Error)
 	}
 }
 

@@ -63,7 +63,6 @@ func (c *Capture) HandleNetworkWaterfall(w http.ResponseWriter, r *http.Request)
 	})
 }
 
-
 // HandleQueryResult processes all query/command results from the extension.
 // Unified handler replacing separate dom-result, a11y-result, state-result,
 // execute-result, and highlight-result endpoints.
@@ -93,7 +92,7 @@ func (c *Capture) HandleQueryResult(w http.ResponseWriter, r *http.Request) {
 
 	// Handle correlation_id for async commands (execute_js, browser actions)
 	if body.CorrelationID != "" {
-		c.CompleteCommand(body.CorrelationID, body.Result, body.Error)
+		c.CompleteCommandWithStatus(body.CorrelationID, body.Result, body.Status, body.Error)
 	}
 
 	// Handle query_id for synchronous query results

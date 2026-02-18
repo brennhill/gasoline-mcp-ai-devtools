@@ -121,6 +121,24 @@ func TestToolsInteractDispatch_EmptyArgs(t *testing.T) {
 	}
 }
 
+func TestToolsInteractDispatch_ComposableSubtitleNotQueuedOnPrimaryError(t *testing.T) {
+	t.Parallel()
+	h, _, cap := makeInteractToolHandler(t)
+
+	// Pilot disabled by default, so navigate fails. subtitle side-effect must not queue.
+	resp := callInteractRaw(h, `{"action":"navigate","url":"https://example.com","subtitle":"hello"}`)
+	result := parseToolResult(t, resp)
+	if !result.IsError {
+		t.Fatal("navigate with pilot disabled should return isError:true")
+	}
+
+	for _, q := range cap.GetPendingQueries() {
+		if q.Type == "subtitle" {
+			t.Fatalf("unexpected subtitle side-effect query on primary error: %+v", q)
+		}
+	}
+}
+
 // ============================================
 // interact(action:"highlight") — Response Fields & Validation
 // ============================================

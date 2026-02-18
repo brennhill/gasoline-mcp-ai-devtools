@@ -16,7 +16,7 @@
     "docs:apply:source": "node scripts/docs/apply-source-headers.js",
     "docs:sync:code-paths": "node scripts/docs/sync-feature-code-paths.js",
     "docs:ci": "npm run docs:check:strict && npm run docs:check:source",
-    "test:ext": "GASOLINE_TEST_TIMEOUT_SCALE=0.1 node --test --test-force-exit --test-concurrency=16 tests/extension/*.test.js extension/background/*.test.js",
+    "test:ext": "GASOLINE_TEST_TIMEOUT_SCALE=0.1 node --test --test-force-exit --test-concurrency=16 tests/extension/*.test.js extension/background/*.test.js extension/background/__tests__/*.test.js",
     "test:go": "make test",
     "test": "npm run test:go && npm run test:ext",
     "check": "npm run lint && npm run typecheck && npm run format"

@@ -153,7 +153,7 @@ func (c *Capture) processSyncCommandResults(results []SyncCommandResult, clientI
 			c.SetQueryResultWithClient(result.ID, result.Result, clientID)
 		}
 		if result.CorrelationID != "" {
-			c.CompleteCommand(result.CorrelationID, result.Result, result.Error)
+			c.CompleteCommandWithStatus(result.CorrelationID, result.Result, result.Status, result.Error)
 		}
 	}
 }

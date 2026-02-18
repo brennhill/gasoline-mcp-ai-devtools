@@ -54,6 +54,8 @@ export interface SyncClientCallbacks {
     onConnectionChange: (connected: boolean) => void;
     onCaptureOverrides?: (overrides: Record<string, string>) => void;
     onVersionMismatch?: (extensionVersion: string, serverVersion: string) => void;
+    commandTimeoutMs?: number;
+    uploadCommandTimeoutMs?: number;
     getSettings: () => Promise<SyncSettings>;
     getExtensionLogs: () => SyncExtensionLog[];
     clearExtensionLogs: () => void;
@@ -69,7 +71,7 @@ export declare class SyncClient {
     private syncing;
     private flushRequested;
     private pendingResults;
-    private processedCommandIDs;
+    private processedCommandKeys;
     private extensionVersion;
     constructor(serverUrl: string, sessionId: string, callbacks: SyncClientCallbacks, extensionVersion?: string);
     /** Get current sync state */
@@ -88,6 +90,9 @@ export declare class SyncClient {
     resetConnection(): void;
     /** Update server URL */
     setServerUrl(url: string): void;
+    private getProcessedCommandKey;
+    private getCommandTimeoutMs;
+    private dispatchCommandWithTimeout;
     private scheduleNextSync;
     private doSync;
     private onSuccess;

@@ -268,6 +268,34 @@ func TestHandleQueryResult_WithCorrelationID(t *testing.T) {
 	}
 }
 
+func TestHandleQueryResult_WithCorrelationID_PropagatesStatus(t *testing.T) {
+	t.Parallel()
+
+	c := NewCapture()
+	defer c.Close()
+
+	const corrID = "test-corr-timeout-001"
+	c.RegisterCommand(corrID, "", 30*time.Second)
+
+	payload := `{"correlation_id":"` + corrID + `","status":"timeout","error":"script timed out"}`
+	rr := httptest.NewRecorder()
+	c.HandleQueryResult(rr, httptest.NewRequest(http.MethodPost, "/query-result", strings.NewReader(payload)))
+	if rr.Code != http.StatusOK {
+		t.Errorf("status = %d, want %d", rr.Code, http.StatusOK)
+	}
+
+	cmd, found := c.GetCommandResult(corrID)
+	if !found {
+		t.Fatalf("command %q not found", corrID)
+	}
+	if cmd.Status != "timeout" {
+		t.Fatalf("status = %q, want timeout", cmd.Status)
+	}
+	if cmd.Error != "script timed out" {
+		t.Fatalf("error = %q, want script timed out", cmd.Error)
+	}
+}
+
 func TestHandleQueryResult_WithQueryID(t *testing.T) {
 	t.Parallel()
 

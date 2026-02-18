@@ -169,6 +169,28 @@ func TestParseConfigureArgs_RemainingFlags(t *testing.T) {
 	}
 }
 
+func TestParseConfigureArgs_SchemaParityFlags(t *testing.T) {
+	t.Parallel()
+
+	result, err := parseConfigureArgs("recording_start", []string{
+		"--url", "https://example.com",
+		"--operation", "report",
+		"--sensitive-data-enabled",
+	})
+	if err != nil {
+		t.Fatalf("error: %v", err)
+	}
+	if result["url"] != "https://example.com" {
+		t.Fatalf("url = %v, want https://example.com", result["url"])
+	}
+	if result["operation"] != "report" {
+		t.Fatalf("operation = %v, want report", result["operation"])
+	}
+	if result["sensitive_data_enabled"] != true {
+		t.Fatalf("sensitive_data_enabled = %v, want true", result["sensitive_data_enabled"])
+	}
+}
+
 // ============================================
 // parseInteractArgs — uncovered flags
 // ============================================
@@ -256,6 +278,69 @@ func TestParseInteractArgs_UploadWithAPIEndpointOnly(t *testing.T) {
 	}
 	if result["escalation_timeout_ms"] != 12000 {
 		t.Fatalf("escalation_timeout_ms = %v, want 12000", result["escalation_timeout_ms"])
+	}
+}
+
+func TestParseInteractArgs_ClickWithIndex(t *testing.T) {
+	t.Parallel()
+
+	result, err := parseInteractArgs("click", []string{
+		"--index", "3",
+		"--visible-only",
+	})
+	if err != nil {
+		t.Fatalf("error: %v", err)
+	}
+	if result["index"] != 3 {
+		t.Fatalf("index = %v, want 3", result["index"])
+	}
+	if result["visible_only"] != true {
+		t.Fatalf("visible_only = %v, want true", result["visible_only"])
+	}
+}
+
+func TestParseInteractArgs_SchemaParityFlags(t *testing.T) {
+	t.Parallel()
+
+	result, err := parseInteractArgs("fill_form_and_submit", []string{
+		"--fields", `[{"selector":"#email","value":"a@example.com","index":1}]`,
+		"--submit-selector", "button[type=submit]",
+		"--submit-index", "2",
+		"--include-content",
+		"--wait-for", "#done",
+		"--save-to", "/tmp/out.sarif",
+	})
+	if err != nil {
+		t.Fatalf("error: %v", err)
+	}
+
+	fields, ok := result["fields"].([]any)
+	if !ok || len(fields) != 1 {
+		t.Fatalf("fields = %#v, want single parsed object", result["fields"])
+	}
+	if result["submit_selector"] != "button[type=submit]" {
+		t.Fatalf("submit_selector = %v, want button[type=submit]", result["submit_selector"])
+	}
+	if result["submit_index"] != 2 {
+		t.Fatalf("submit_index = %v, want 2", result["submit_index"])
+	}
+	if result["include_content"] != true {
+		t.Fatalf("include_content = %v, want true", result["include_content"])
+	}
+	if result["wait_for"] != "#done" {
+		t.Fatalf("wait_for = %v, want #done", result["wait_for"])
+	}
+	if result["save_to"] != "/tmp/out.sarif" {
+		t.Fatalf("save_to = %v, want /tmp/out.sarif", result["save_to"])
+	}
+}
+
+func TestParseInteractArgs_SelectRequiresSelectorOrIndex(t *testing.T) {
+	t.Parallel()
+
+	_, err := parseInteractArgs("select", []string{"--value", "option1"})
+	if err == nil {
+		t.Fatal("expected selector/index validation error")
 	}
 }
 

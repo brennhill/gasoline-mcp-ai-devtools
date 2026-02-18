@@ -450,6 +450,18 @@ func TestParseInteractArgsExecuteJSMissingScript(t *testing.T) {
 	}
 }
 
+func TestParseInteractArgsKeyPressMissingSelector(t *testing.T) {
+	t.Parallel()
+
+	_, err := parseInteractArgs("key_press", []string{"--text", "Enter"})
+	if err == nil {
+		t.Fatal("expected error for missing selector")
+	}
+	if !strings.Contains(err.Error(), "selector") {
+		t.Errorf("expected error about missing selector, got: %v", err)
+	}
+}
+
 func TestParseInteractArgsKebabCase(t *testing.T) {
 	t.Parallel()
 

@@ -95,6 +95,24 @@ beforeEach(() => {
 })
 
 describe('analyze frame routing', () => {
+  test('dom query without frame skips probe and uses default tab routing', async () => {
+    const query = {
+      id: 'q-dom-main',
+      type: 'dom',
+      tab_id: 3,
+      params: { selector: '#submit' }
+    }
+
+    await handlePendingQuery(query, makeSyncClient())
+
+    assert.strictEqual(executeScriptCalls.length, 0, 'should not probe frames when frame is omitted')
+    assert.strictEqual(sendMessageCalls.length, 1, 'should send exactly one DOM_QUERY')
+    assert.strictEqual(sendMessageCalls[0].message.type, 'DOM_QUERY')
+    assert.strictEqual(sendMessageCalls[0].options, undefined)
+    assert.strictEqual(queuedResults.length, 1)
+    assert.strictEqual(queuedResults[0].status, 'complete')
+  })
+
   test('dom query routes to a matched frame_id when frame index is provided', async () => {
     executeScriptReturn.push([
       { frameId: 0, result: { matches: false } },

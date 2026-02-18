@@ -39,7 +39,7 @@ type PendingQueryResponse struct {
 // CommandResult represents the result of an async command execution
 type CommandResult struct {
 	CorrelationID string          `json:"correlation_id"`
-	Status        string          `json:"status"` // "pending", "complete", "timeout", "expired"
+	Status        string          `json:"status"` // "pending", "complete", "error", "timeout", "expired"
 	Result        json.RawMessage `json:"result,omitempty"`
 	Error         string          `json:"error,omitempty"`
 	CompletedAt   time.Time       `json:"completed_at,omitempty"`

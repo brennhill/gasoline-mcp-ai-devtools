@@ -174,6 +174,10 @@ async function resolveAnalyzeFrameSelection(tabId, frame) {
     if (normalized === null) {
         throw new Error('invalid_frame');
     }
+    // Fast path: omitted frame means main-frame execution (legacy behavior).
+    if (normalized === undefined) {
+        return { frameIds: [0], mode: 'main' };
+    }
     const probeResults = await chrome.scripting.executeScript({
         target: { tabId, allFrames: true },
         world: 'MAIN',
@@ -186,9 +190,6 @@ async function resolveAnalyzeFrameSelection(tabId, frame) {
         .filter((id) => typeof id === 'number')));
     if (frameIds.length === 0) {
         throw new Error('frame_not_found');
-    }
-    if (normalized === undefined) {
-        return { frameIds, mode: 'main' };
     }
     if (normalized === 'all') {
         return { frameIds, mode: 'all' };

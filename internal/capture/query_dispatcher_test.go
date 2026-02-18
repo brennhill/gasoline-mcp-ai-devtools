@@ -229,6 +229,38 @@ func TestNewQueryDispatcher_CreatePendingQuery_Overflow(t *testing.T) {
 	}
 }
 
+func TestNewQueryDispatcher_CreatePendingQuery_OverflowExpiresDroppedCommand(t *testing.T) {
+	t.Parallel()
+
+	qd := NewQueryDispatcher()
+	defer qd.Close()
+
+	const droppedCorrelationID = "corr-overflow-drop"
+	qd.CreatePendingQuery(queries.PendingQuery{
+		Type:          "dom",
+		Params:        json.RawMessage(`{}`),
+		CorrelationID: droppedCorrelationID,
+	})
+
+	for i := 0; i < maxPendingQueries; i++ {
+		qd.CreatePendingQuery(queries.PendingQuery{
+			Type:   "dom",
+			Params: json.RawMessage(`{}`),
+		})
+	}
+
+	cmd, found := qd.GetCommandResult(droppedCorrelationID)
+	if !found {
+		t.Fatalf("expected dropped command %q to remain observable", droppedCorrelationID)
+	}
+	if cmd.Status != "expired" {
+		t.Fatalf("status = %q, want expired after overflow drop", cmd.Status)
+	}
+	if !strings.Contains(cmd.Error, "queue overflow") {
+		t.Fatalf("error = %q, want queue overflow reason", cmd.Error)
+	}
+}
+
 func TestNewQueryDispatcher_UniqueIDs(t *testing.T) {
 	t.Parallel()
 

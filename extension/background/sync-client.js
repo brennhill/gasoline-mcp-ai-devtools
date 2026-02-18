@@ -8,6 +8,7 @@
 // CONSTANTS
 // =============================================================================
 const BASE_POLL_MS = 1000;
+const DEFAULT_COMMAND_TIMEOUT_MS = 30_000;
 // =============================================================================
 // SYNC CLIENT CLASS
 // =============================================================================
@@ -21,7 +22,7 @@ export class SyncClient {
     syncing = false;
     flushRequested = false;
     pendingResults = [];
-    processedCommandIDs = new Set();
+    processedCommandKeys = new Set();
     extensionVersion;
     constructor(serverUrl, sessionId, callbacks, extensionVersion = '') {
         this.serverUrl = serverUrl;
@@ -101,6 +102,41 @@ export class SyncClient {
     // =============================================================================
     // PRIVATE METHODS
     // =============================================================================
+    getProcessedCommandKey(command) {
+        if (!command.id)
+            return null;
+        return `${command.id}::${command.correlation_id || ''}`;
+    }
+    getCommandTimeoutMs(command) {
+        if (typeof this.callbacks.commandTimeoutMs === 'number' && this.callbacks.commandTimeoutMs > 0) {
+            return this.callbacks.commandTimeoutMs;
+        }
+        if (command.type === 'upload' &&
+            typeof this.callbacks.uploadCommandTimeoutMs === 'number' &&
+            this.callbacks.uploadCommandTimeoutMs > 0) {
+            return this.callbacks.uploadCommandTimeoutMs;
+        }
+        return DEFAULT_COMMAND_TIMEOUT_MS;
+    }
+    async dispatchCommandWithTimeout(command) {
+        const timeoutMs = this.getCommandTimeoutMs(command);
+        let timeoutId;
+        try {
+            await Promise.race([
+                this.callbacks.onCommand(command),
+                new Promise((_, reject) => {
+                    timeoutId = setTimeout(() => {
+                        reject(new Error(`Command ${command.id || '<unknown>'} (${command.type}) timed out after ${timeoutMs}ms`));
+                    }, timeoutMs);
+                })
+            ]);
+        }
+        finally {
+            if (timeoutId) {
+                clearTimeout(timeoutId);
+            }
+        }
+    }
     scheduleNextSync(delayMs) {
         if (!this.running)
             return;
@@ -176,8 +212,13 @@ export class SyncClient {
             if (data.commands && data.commands.length > 0) {
                 this.log('Received commands', { count: data.commands.length, ids: data.commands.map((c) => c.id) });
                 for (const command of data.commands) {
-                    if (command.id && this.processedCommandIDs.has(command.id)) {
-                        this.log('Skipping already processed command', { id: command.id });
+                    const dedupeKey = this.getProcessedCommandKey(command);
+                    if (dedupeKey && this.processedCommandKeys.has(dedupeKey)) {
+                        this.log('Skipping already processed command', {
+                            id: command.id,
+                            correlation_id: command.correlation_id,
+                            dedupe_key: dedupeKey
+                        });
                         continue;
                     }
                     this.log('Dispatching command', {
@@ -186,7 +227,7 @@ export class SyncClient {
                         correlation_id: command.correlation_id
                     });
                     try {
-                        await this.callbacks.onCommand(command);
+                        await this.dispatchCommandWithTimeout(command);
                         // Track ack only after successful execution
                         this.state.lastCommandAck = command.id;
                         this.log('Command dispatched OK', { id: command.id });
@@ -200,13 +241,13 @@ export class SyncClient {
                         });
                     }
                     finally {
-                        if (command.id) {
-                            this.processedCommandIDs.add(command.id);
+                        if (dedupeKey) {
+                            this.processedCommandKeys.add(dedupeKey);
                             const MAX_PROCESSED_COMMANDS = 1000;
-                            if (this.processedCommandIDs.size > MAX_PROCESSED_COMMANDS) {
-                                const oldest = this.processedCommandIDs.values().next().value;
+                            if (this.processedCommandKeys.size > MAX_PROCESSED_COMMANDS) {
+                                const oldest = this.processedCommandKeys.values().next().value;
                                 if (oldest !== undefined) {
-                                    this.processedCommandIDs.delete(oldest);
+                                    this.processedCommandKeys.delete(oldest);
                                 }
                             }
                         }

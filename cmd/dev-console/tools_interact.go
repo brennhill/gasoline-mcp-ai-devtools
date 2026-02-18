@@ -25,28 +25,28 @@ type interactHandler func(req JSONRPCRequest, args json.RawMessage) JSONRPCRespo
 func (h *ToolHandler) interactDispatch() map[string]interactHandler {
 	h.interactOnce.Do(func() {
 		h.interactHandlers = map[string]interactHandler{
-			"highlight":        h.handlePilotHighlight,
-			"save_state":       h.handlePilotManageStateSave,
-			"load_state":       h.handlePilotManageStateLoad,
-			"list_states":      h.handlePilotManageStateList,
-			"delete_state":     h.handlePilotManageStateDelete,
-			"execute_js":       h.handlePilotExecuteJS,
-			"navigate":         h.handleBrowserActionNavigate,
-			"refresh":          h.handleBrowserActionRefresh,
-			"back":             h.handleBrowserActionBack,
-			"forward":          h.handleBrowserActionForward,
-			"new_tab":          h.handleBrowserActionNewTab,
-			"screenshot":       h.handleScreenshotAlias,
-			"subtitle":         h.handleSubtitle,
-			"list_interactive": h.handleListInteractive,
-			"record_start":     h.handleRecordStart,
-			"record_stop":      h.handleRecordStop,
-			"upload":           h.handleUpload,
-			"draw_mode_start":  h.handleDrawModeStart,
-			"get_readable":            h.handleGetReadable,
-			"get_markdown":            h.handleGetMarkdown,
-			"navigate_and_wait_for":    h.handleNavigateAndWaitFor,
-			"fill_form_and_submit":     h.handleFillFormAndSubmit,
+			"highlight":                 h.handlePilotHighlight,
+			"save_state":                h.handlePilotManageStateSave,
+			"load_state":                h.handlePilotManageStateLoad,
+			"list_states":               h.handlePilotManageStateList,
+			"delete_state":              h.handlePilotManageStateDelete,
+			"execute_js":                h.handlePilotExecuteJS,
+			"navigate":                  h.handleBrowserActionNavigate,
+			"refresh":                   h.handleBrowserActionRefresh,
+			"back":                      h.handleBrowserActionBack,
+			"forward":                   h.handleBrowserActionForward,
+			"new_tab":                   h.handleBrowserActionNewTab,
+			"screenshot":                h.handleScreenshotAlias,
+			"subtitle":                  h.handleSubtitle,
+			"list_interactive":          h.handleListInteractive,
+			"record_start":              h.handleRecordStart,
+			"record_stop":               h.handleRecordStop,
+			"upload":                    h.handleUpload,
+			"draw_mode_start":           h.handleDrawModeStart,
+			"get_readable":              h.handleGetReadable,
+			"get_markdown":              h.handleGetMarkdown,
+			"navigate_and_wait_for":     h.handleNavigateAndWaitFor,
+			"fill_form_and_submit":      h.handleFillFormAndSubmit,
 			"run_a11y_and_export_sarif": h.handleRunA11yAndExportSARIF,
 		}
 	})
@@ -171,7 +171,7 @@ func (h *ToolHandler) toolInteract(req JSONRPCRequest, args json.RawMessage) JSO
 
 	// If a composable subtitle was provided on a non-subtitle action, queue it.
 	// Only queue if the primary action didn't fail (avoid subtitle on error).
-	if composableSubtitle.Subtitle != nil && params.Action != "subtitle" && resp.Error == nil {
+	if composableSubtitle.Subtitle != nil && params.Action != "subtitle" && resp.Error == nil && !isToolResultError(resp.Result) {
 		h.queueComposableSubtitle(req, *composableSubtitle.Subtitle)
 	}
 

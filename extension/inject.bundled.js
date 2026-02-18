@@ -2892,13 +2892,16 @@ function createDeferredPromise() {
 }
 
 // extension/lib/link-health.js
-function extractUniqueLinks() {
+function extractUniqueLinks(domainFilter) {
   const linkElements = document.querySelectorAll("a[href]");
   const urls = /* @__PURE__ */ new Set();
   for (const elem of linkElements) {
     const href = elem.href;
-    if (href && !isIgnoredLink(href))
-      urls.add(href);
+    if (!href || isIgnoredLink(href))
+      continue;
+    if (domainFilter !== "" && !matchesDomain(href, domainFilter))
+      continue;
+    urls.add(href);
   }
   return Array.from(urls);
 }
@@ -2933,7 +2936,8 @@ function aggregateResults(results) {
 async function checkLinkHealth(params) {
   const timeout_ms = params.timeout_ms || 15e3;
   const max_workers = params.max_workers || 20;
-  const uniqueLinks = extractUniqueLinks();
+  const domainFilter = normalizeDomainFilter(params.domain);
+  const uniqueLinks = extractUniqueLinks(domainFilter);
   const results = [];
   const chunks = chunkArray(uniqueLinks, max_workers);
   for (const chunk of chunks) {
@@ -3074,6 +3078,25 @@ function isIgnoredLink(href) {
   if (href === "")
     return true;
   return false;
+}
+function normalizeDomainFilter(domain) {
+  const raw = (domain || "").trim().toLowerCase();
+  if (raw === "")
+    return "";
+  const candidate = raw.includes("://") ? raw : `https://${raw}`;
+  try {
+    return new URL(candidate).hostname.toLowerCase();
+  } catch {
+    return raw;
+  }
+}
+function matchesDomain(linkURL, domainFilter) {
+  try {
+    const hostname = new URL(linkURL).hostname.toLowerCase();
+    return hostname === domainFilter || hostname.endsWith(`.${domainFilter}`);
+  } catch {
+    return false;
+  }
 }
 function chunkArray(arr, chunkSize) {
   const chunks = [];

@@ -202,6 +202,11 @@ func (c *Capture) CompleteCommand(correlationID string, result json.RawMessage, 
 	c.qd.CompleteCommand(correlationID, result, err)
 }
 
+// CompleteCommandWithStatus delegates to QueryDispatcher.
+func (c *Capture) CompleteCommandWithStatus(correlationID string, result json.RawMessage, status string, err string) {
+	c.qd.CompleteCommandWithStatus(correlationID, result, status, err)
+}
+
 // ExpireCommand delegates to QueryDispatcher.
 func (c *Capture) ExpireCommand(correlationID string) {
 	c.qd.ExpireCommand(correlationID)
