@@ -56,7 +56,18 @@ function parseSemver(version) {
 // Find all files that contain version references
 function findVersionReferences(oldVersion, searchDir = ROOT) {
   const files = []
-  const ignore = new Set(['node_modules', '.git', 'dist', '.next', 'build', 'coverage', '.claude'])
+  const ignore = new Set([
+    'node_modules',
+    '.git',
+    'dist',
+    '.next',
+    'build',
+    'coverage',
+    '.claude',
+    '.venv-build',
+    '.gasoline',
+    '.worktrees'
+  ])
   const ext = new Set(['.js', '.json', '.go', '.ts', '.md', '.py', '.toml', '.sh', '.yaml', '.yml'])
 
   function walk(dir) {

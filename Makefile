@@ -23,7 +23,7 @@ PLATFORMS := \
 	pypi-binaries pypi-build pypi-publish pypi-test-publish pypi-clean \
 	security-check pre-commit verify-all npm-binaries validate-semver \
 	test-upgrade-guards release-gate clean-test-daemons \
-	generate-wire-types \
+	generate-wire-types generate-dom-primitives \
 	$(PLATFORMS)
 
 GO_TEST_SHARDS ?= 4
@@ -43,8 +43,11 @@ clean:
 generate-wire-types:
 	@node scripts/generate-wire-types.js
 
+generate-dom-primitives:
+	@node scripts/generate-dom-primitives.js
+
 # Compile TypeScript to JavaScript (REQUIRED before tests)
-compile-ts: generate-wire-types
+compile-ts: generate-wire-types generate-dom-primitives
 	@echo "=== Compiling TypeScript ==="
 	@npx tsc
 	@if [ ! -f extension/background/index.js ]; then \
@@ -235,7 +238,7 @@ format-fix:
 typecheck:
 	npx tsc --noEmit
 
-check: lint format typecheck check-invariants
+check: check-file-length lint format typecheck check-invariants
 
 check-wire-drift:
 	@node scripts/generate-wire-types.js --check

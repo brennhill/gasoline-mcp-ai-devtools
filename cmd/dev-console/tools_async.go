@@ -2,17 +2,17 @@
 //
 // Two async dispatch patterns exist in this codebase:
 //
-//   1. MaybeWaitForCommand (sync-by-default) — Used by interact and analyze handlers
-//      that dispatch commands to the browser extension. The handler queues a command,
-//      then blocks up to 20s waiting for completion. If the command finishes in time,
-//      the result is returned inline. If not, a "still_processing" handle is returned
-//      so the LLM can poll via observe(what="command_result").
-//      Use this when: the extension executes an action and returns a result.
+//  1. MaybeWaitForCommand (sync-by-default) — Used by interact and analyze handlers
+//     that dispatch commands to the browser extension. The handler queues a command,
+//     then blocks up to 20s waiting for completion. If the command finishes in time,
+//     the result is returned inline. If not, a "still_processing" handle is returned
+//     so the LLM can poll via observe(what="command_result").
+//     Use this when: the extension executes an action and returns a result.
 //
-//   2. WaitForResult (always-blocking) — Used by internal queries (a11y audits,
-//      screenshots, DOM queries) where the extension must respond before the tool
-//      can return anything useful. There is no "still_processing" fallback.
-//      Use this when: the tool's response IS the query result (no partial answer).
+//  2. WaitForResult (always-blocking) — Used by internal queries (a11y audits,
+//     screenshots, DOM queries) where the extension must respond before the tool
+//     can return anything useful. There is no "still_processing" fallback.
+//     Use this when: the tool's response IS the query result (no partial answer).
 //
 // All correlation IDs are generated via newCorrelationID(prefix) for consistency.
 //
@@ -321,7 +321,7 @@ func enrichCommandResponseData(result json.RawMessage, responseData map[string]a
 	}
 
 	// Surface extension enrichment fields to top-level for easier LLM consumption.
-	for _, key := range []string{"timing", "dom_changes", "dom_summary", "analysis", "content_script_status", "resolved_tab_id", "resolved_url", "target_context", "effective_tab_id", "effective_url"} {
+	for _, key := range []string{"timing", "dom_changes", "dom_summary", "analysis", "content_script_status", "resolved_tab_id", "resolved_url", "target_context", "effective_tab_id", "effective_url", "effective_title", "final_url", "title"} {
 		if v, ok := extResult[key]; ok {
 			responseData[key] = v
 		}

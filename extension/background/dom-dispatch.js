@@ -4,7 +4,8 @@
  * Docs: docs/features/feature/interact-explore/index.md
  * Docs: docs/features/feature/observe/index.md
  */
-import { domPrimitive, domWaitFor, domFrameProbe } from './dom-primitives.js';
+import { domFrameProbe } from './dom-frame-probe.js';
+import { domPrimitive } from './dom-primitives.js';
 function parseDOMParams(query) {
     try {
         return typeof query.params === 'string' ? JSON.parse(query.params) : query.params;
@@ -82,24 +83,65 @@ function mergeListInteractive(results) {
     }
     return { success: true, elements: elements.slice(0, 100) };
 }
+const WAIT_FOR_POLL_INTERVAL_MS = 80;
+function toDOMResult(value) {
+    if (!value || typeof value !== 'object')
+        return null;
+    const candidate = value;
+    if (typeof candidate.success !== 'boolean')
+        return null;
+    if (typeof candidate.action !== 'string' || typeof candidate.selector !== 'string')
+        return null;
+    return candidate;
+}
+function withTimeoutResult(results, selector, timeoutMs) {
+    const timeoutResult = {
+        success: false,
+        action: 'wait_for',
+        selector,
+        error: 'timeout',
+        message: `Element not found within ${timeoutMs}ms: ${selector}`
+    };
+    if (results.length === 0) {
+        return [{ frameId: 0, result: timeoutResult }];
+    }
+    return results.map((result) => ({ ...result, result: timeoutResult }));
+}
+function wait(ms) {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+}
 async function executeWaitFor(target, params) {
     const selector = params.selector || '';
+    const timeoutMs = Math.max(1, params.timeout_ms || 5000);
+    const startedAt = Date.now();
     const quickCheck = await chrome.scripting.executeScript({
         target,
         world: 'MAIN',
         func: domPrimitive,
-        args: [params.action, selector, { timeout_ms: params.timeout_ms }]
+        args: [params.action, selector, { timeout_ms: timeoutMs }]
     });
     const quickPicked = pickFrameResult(quickCheck);
-    const quickResult = quickPicked?.result;
-    if (quickResult?.success)
+    const quickResult = toDOMResult(quickPicked?.result);
+    if (quickResult?.success) {
         return quickResult;
-    return chrome.scripting.executeScript({
-        target,
-        world: 'MAIN',
-        func: domWaitFor,
-        args: [selector, params.timeout_ms || 5000]
-    });
+    }
+    let lastResults = quickCheck;
+    while (Date.now() - startedAt < timeoutMs) {
+        await wait(Math.min(WAIT_FOR_POLL_INTERVAL_MS, timeoutMs));
+        const probeResults = await chrome.scripting.executeScript({
+            target,
+            world: 'MAIN',
+            func: domPrimitive,
+            args: [params.action, selector, { timeout_ms: timeoutMs }]
+        });
+        lastResults = probeResults;
+        const picked = pickFrameResult(probeResults);
+        const result = toDOMResult(picked?.result);
+        if (result?.success) {
+            return probeResults;
+        }
+    }
+    return withTimeoutResult(lastResults, selector, timeoutMs);
 }
 async function executeStandardAction(target, params) {
     return chrome.scripting.executeScript({
@@ -137,7 +179,7 @@ async function enrichWithEffectiveContext(tabId, result) {
     try {
         const tab = await chrome.tabs.get(tabId);
         if (result && typeof result === 'object' && !Array.isArray(result)) {
-            return { ...result, effective_tab_id: tabId, effective_url: tab.url };
+            return { ...result, effective_tab_id: tabId, effective_url: tab.url, effective_title: tab.title };
         }
         return result;
     }

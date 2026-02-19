@@ -7,29 +7,14 @@
 
 // dom-dispatch.ts — DOM action dispatcher and utilities.
 // Extracted from dom-primitives.ts to reduce file size.
-// Script builders (domPrimitive, domWaitFor, domFrameProbe) stay in dom-primitives.ts
-// because they must be self-contained for chrome.scripting.executeScript.
+// Script builders stay self-contained because chrome.scripting.executeScript
+// serializes injected functions independently.
 
 import type { PendingQuery } from '../types/queries'
 import type { SyncClient } from './sync-client'
-import { domPrimitive, domWaitFor, domFrameProbe } from './dom-primitives'
-
-// Result shape returned by domPrimitive (compile-time only — erased at runtime).
-// DUPLICATED in dom-primitives.ts — kept in sync manually because both files
-// need the type but dom-primitives.ts cannot import from other modules
-// (chrome.scripting.executeScript serializes functions independently).
-interface DOMResult {
-  success: boolean
-  action: string
-  selector: string
-  value?: unknown
-  error?: string
-  message?: string
-  dom_summary?: string
-  timing?: { total_ms: number }
-  dom_changes?: { added: number; removed: number; modified: number; summary: string }
-  analysis?: string
-}
+import type { DOMActionParams, DOMResult } from './dom-types'
+import { domFrameProbe } from './dom-frame-probe'
+import { domPrimitive } from './dom-primitives'
 
 type SendAsyncResult = (
   syncClient: SyncClient,
@@ -47,20 +32,6 @@ type ActionToast = (
   state?: 'trying' | 'success' | 'warning' | 'error',
   durationMs?: number
 ) => void
-
-interface DOMActionParams {
-  action?: string
-  selector?: string
-  text?: string
-  value?: string
-  clear?: boolean
-  checked?: boolean
-  name?: string
-  timeout_ms?: number
-  reason?: string
-  analyze?: boolean
-  frame?: string | number
-}
 
 function parseDOMParams(query: PendingQuery): DOMActionParams | null {
   try {
@@ -149,27 +120,78 @@ function mergeListInteractive(results: chrome.scripting.InjectionResult[]): { su
   return { success: true, elements: elements.slice(0, 100) }
 }
 
+const WAIT_FOR_POLL_INTERVAL_MS = 80
+
+function toDOMResult(value: unknown): DOMResult | null {
+  if (!value || typeof value !== 'object') return null
+  const candidate = value as DOMResult
+  if (typeof candidate.success !== 'boolean') return null
+  if (typeof candidate.action !== 'string' || typeof candidate.selector !== 'string') return null
+  return candidate
+}
+
+function withTimeoutResult(
+  results: chrome.scripting.InjectionResult[],
+  selector: string,
+  timeoutMs: number
+): chrome.scripting.InjectionResult[] {
+  const timeoutResult: DOMResult = {
+    success: false,
+    action: 'wait_for',
+    selector,
+    error: 'timeout',
+    message: `Element not found within ${timeoutMs}ms: ${selector}`
+  }
+
+  if (results.length === 0) {
+    return [{ frameId: 0, result: timeoutResult } as chrome.scripting.InjectionResult]
+  }
+  return results.map((result) => ({ ...result, result: timeoutResult }))
+}
+
+function wait(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms))
+}
+
 async function executeWaitFor(
   target: DOMExecutionTarget,
   params: DOMActionParams
 ): Promise<chrome.scripting.InjectionResult[] | DOMResult> {
   const selector = params.selector || ''
+  const timeoutMs = Math.max(1, params.timeout_ms || 5000)
+  const startedAt = Date.now()
   const quickCheck = await chrome.scripting.executeScript({
     target,
     world: 'MAIN',
     func: domPrimitive,
-    args: [params.action!, selector, { timeout_ms: params.timeout_ms }]
+    args: [params.action!, selector, { timeout_ms: timeoutMs }]
   })
   const quickPicked = pickFrameResult(quickCheck)
-  const quickResult = quickPicked?.result as DOMResult | undefined
-  if (quickResult?.success) return quickResult
+  const quickResult = toDOMResult(quickPicked?.result)
+  if (quickResult?.success) {
+    return quickResult
+  }
 
-  return chrome.scripting.executeScript({
-    target,
-    world: 'MAIN',
-    func: domWaitFor,
-    args: [selector, params.timeout_ms || 5000]
-  })
+  let lastResults = quickCheck
+  while (Date.now() - startedAt < timeoutMs) {
+    await wait(Math.min(WAIT_FOR_POLL_INTERVAL_MS, timeoutMs))
+
+    const probeResults = await chrome.scripting.executeScript({
+      target,
+      world: 'MAIN',
+      func: domPrimitive,
+      args: [params.action!, selector, { timeout_ms: timeoutMs }]
+    })
+    lastResults = probeResults
+
+    const picked = pickFrameResult(probeResults)
+    const result = toDOMResult(picked?.result)
+    if (result?.success) {
+      return probeResults
+    }
+  }
+
+  return withTimeoutResult(lastResults, selector, timeoutMs)
 }
 
 async function executeStandardAction(
@@ -218,7 +240,7 @@ async function enrichWithEffectiveContext(tabId: number, result: unknown): Promi
   try {
     const tab = await chrome.tabs.get(tabId)
     if (result && typeof result === 'object' && !Array.isArray(result)) {
-      return { ...(result as Record<string, unknown>), effective_tab_id: tabId, effective_url: tab.url }
+      return { ...(result as Record<string, unknown>), effective_tab_id: tabId, effective_url: tab.url, effective_title: tab.title }
     }
     return result
   } catch {

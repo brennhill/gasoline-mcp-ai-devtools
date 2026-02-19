@@ -15,6 +15,7 @@
     "docs:check:source": "node scripts/docs/check-source-headers.js",
     "docs:apply:source": "node scripts/docs/apply-source-headers.js",
     "docs:sync:code-paths": "node scripts/docs/sync-feature-code-paths.js",
+    "generate:dom-primitives": "node scripts/generate-dom-primitives.js",
     "docs:ci": "npm run docs:check:strict && npm run docs:check:source",
     "test:ext": "GASOLINE_TEST_TIMEOUT_SCALE=0.1 node --experimental-test-module-mocks --test --test-force-exit --test-concurrency=8 tests/extension/*.test.js extension/background/*.test.js",
     "test:go": "make test",
