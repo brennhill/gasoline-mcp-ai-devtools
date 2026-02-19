@@ -857,17 +857,24 @@ run_test_15_16() {
                 interact_and_wait "execute_js" '{"action":"execute_js","reason":"Fill title field","script":"document.querySelector(\"input[name=title]\").value=\"Smoke Test 15.16 Stage4\"; \"title_set\""}'
                 sleep 0.5
                 interact_and_wait "execute_js" '{"action":"execute_js","reason":"Submit upload form","script":"document.querySelector(\"form\").submit(); \"submitted\""}'
-                sleep 3
 
-                # Verify browser reached success page
-                local page_resp
-                page_resp=$(call_tool "observe" '{"what":"page"}')
-                local page_text
-                page_text=$(extract_content_text "$page_resp")
+                # Poll for success page (up to 5s)
+                local page_resp page_text poll_ok=false
+                for _poll_i in $(seq 1 10); do
+                    sleep 0.5
+                    page_resp=$(call_tool "observe" '{"what":"page"}')
+                    page_text=$(extract_content_text "$page_resp")
+                    if echo "$page_text" | grep -q '/upload/success'; then
+                        poll_ok=true
+                        break
+                    fi
+                done
                 log_diagnostic "15.16" "post-submit page" "$page_resp" "$page_text"
 
-                if ! echo "$page_text" | grep -q '/upload/success'; then
-                    fail "Stage 4 upload: form submission did not reach success page. Page: $(truncate "$page_text" 300). Possible CSRF or session mismatch."
+                if [ "$poll_ok" != "true" ]; then
+                    # Capture page content for diagnostics
+                    interact_and_wait "execute_js" '{"action":"execute_js","reason":"Get page content on failure","script":"document.title + \": \" + document.body.innerText.substring(0,200)"}'
+                    fail "Stage 4 upload: form submission did not reach success page. Page: $(truncate "$page_text" 300). Body: $(truncate "$INTERACT_RESULT" 200). Possible CSRF or session mismatch."
                     return
                 fi
 
