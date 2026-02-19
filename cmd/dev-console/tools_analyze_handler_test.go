@@ -463,81 +463,9 @@ func TestToolsAnalyzeLinkValidation_NonHTTPURLs(t *testing.T) {
 }
 
 // ============================================
-// Helper function tests
+// Helper function tests — moved to internal/tools/analyze/link_validation_test.go
+// (ClampInt, FilterHTTPURLs, ClassifyHTTPStatus)
 // ============================================
-
-func TestToolsAnalyze_ClampInt(t *testing.T) {
-	t.Parallel()
-
-	tests := []struct {
-		v, def, min, max, want int
-	}{
-		{0, 10, 1, 100, 10},    // zero uses default
-		{5, 10, 1, 100, 5},     // in range
-		{-1, 10, 1, 100, 1},    // below min
-		{200, 10, 1, 100, 100}, // above max
-		{50, 10, 1, 100, 50},   // in range
-	}
-
-	for _, tc := range tests {
-		got := clampInt(tc.v, tc.def, tc.min, tc.max)
-		if got != tc.want {
-			t.Errorf("clampInt(%d, %d, %d, %d) = %d, want %d",
-				tc.v, tc.def, tc.min, tc.max, got, tc.want)
-		}
-	}
-}
-
-func TestToolsAnalyze_FilterHTTPURLs(t *testing.T) {
-	t.Parallel()
-
-	urls := []string{
-		"https://example.com",
-		"http://example.com",
-		"ftp://example.com",
-		"mailto:test@example.com",
-		"javascript:void(0)",
-		"https://other.com/path",
-	}
-
-	filtered := filterHTTPURLs(urls)
-	if len(filtered) != 3 {
-		t.Errorf("filterHTTPURLs len = %d, want 3", len(filtered))
-	}
-	for _, u := range filtered {
-		if !strings.HasPrefix(u, "http://") && !strings.HasPrefix(u, "https://") {
-			t.Errorf("filtered URL %q should start with http:// or https://", u)
-		}
-	}
-}
-
-func TestToolsAnalyze_ClassifyHTTPStatus(t *testing.T) {
-	t.Parallel()
-
-	tests := []struct {
-		status int
-		want   string
-	}{
-		{200, "ok"},
-		{201, "ok"},
-		{299, "ok"},
-		{301, "redirect"},
-		{302, "redirect"},
-		{399, "redirect"},
-		{401, "requires_auth"},
-		{403, "requires_auth"},
-		{404, "broken"},
-		{500, "broken"},
-		{100, "broken"},
-	}
-
-	for _, tc := range tests {
-		got := classifyHTTPStatus(tc.status)
-		if got != tc.want {
-			t.Errorf("classifyHTTPStatus(%d) = %q, want %q", tc.status, got, tc.want)
-		}
-	}
-}
 
 // ============================================
 // All analyze modes safety net

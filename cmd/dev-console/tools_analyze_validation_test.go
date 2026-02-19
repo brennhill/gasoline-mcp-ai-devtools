@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/dev-console/dev-console/internal/capture"
+	az "github.com/dev-console/dev-console/internal/tools/analyze"
 )
 
 func newAnalyzeValidationHandler(t *testing.T) *ToolHandler {
@@ -129,12 +130,12 @@ func TestToolValidateLinksExecutesAndReturnsResults(t *testing.T) {
 }
 
 func TestValidateLinksServerSideAndSingleLinkPrivateIP(t *testing.T) {
-	h := newAnalyzeValidationHandler(t)
+	_ = newAnalyzeValidationHandler(t) // keep to verify handler creation still works
 
-	results := h.validateLinksServerSide([]string{
+	results := az.ValidateLinksServerSide([]string{
 		"http://127.0.0.1:1",
 		"https://127.0.0.1:1",
-	}, 1000, 1)
+	}, 1000, 1, version)
 	if len(results) != 2 {
 		t.Fatalf("len(results) = %d, want 2", len(results))
 	}
@@ -147,7 +148,7 @@ func TestValidateLinksServerSideAndSingleLinkPrivateIP(t *testing.T) {
 		}
 	}
 
-	single := validateSingleLinkWithClient(newLinkValidationClient(time.Second), "http://127.0.0.1:80")
+	single := az.ValidateSingleLinkWithClient(az.NewLinkValidationClient(time.Second), "http://127.0.0.1:80", version)
 	if single.Code != "broken" || single.Status != 0 {
 		t.Fatalf("single link result = %+v, want broken with status 0", single)
 	}
