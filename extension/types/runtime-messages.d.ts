@@ -176,7 +176,7 @@ export interface DrawModeCompletedMessage {
     readonly type: 'DRAW_MODE_COMPLETED';
     readonly annotations?: readonly unknown[];
     readonly screenshot?: string;
-    readonly sessionId?: string;
+    readonly annotSessionName?: string;
 }
 /**
  * Ping message to check if content script is loaded

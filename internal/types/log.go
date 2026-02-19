@@ -42,7 +42,7 @@ type PollingLogEntry struct {
 	Timestamp    time.Time `json:"timestamp"`
 	Endpoint     string    `json:"endpoint"` // "pending-queries" or "settings"
 	Method       string    `json:"method"`   // "GET" or "POST"
-	SessionID    string    `json:"session_id,omitempty"`
+	ExtSessionID string    `json:"ext_session_id,omitempty"`
 	PilotEnabled *bool     `json:"pilot_enabled,omitempty"` // Only for POST /settings
 	PilotHeader  string    `json:"pilot_header,omitempty"`  // Only for GET with X-Gasoline-Pilot header
 	QueryCount   int       `json:"query_count,omitempty"`   // Number of pending queries returned
@@ -57,7 +57,7 @@ type HTTPDebugEntry struct {
 	Timestamp       time.Time         `json:"timestamp"`
 	Endpoint        string            `json:"endpoint"`        // URL path
 	Method          string            `json:"method"`          // HTTP method
-	SessionID       string            `json:"session_id,omitempty"`
+	ExtSessionID    string            `json:"ext_session_id,omitempty"`
 	ClientID        string            `json:"client_id,omitempty"`
 	Headers         map[string]string `json:"headers,omitempty"`         // Request headers (redacted auth)
 	RequestBody     string            `json:"request_body,omitempty"`    // First 1KB of request body

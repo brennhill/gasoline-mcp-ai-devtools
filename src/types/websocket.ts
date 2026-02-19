@@ -19,16 +19,8 @@ export type WebSocketCaptureMode = 'low' | 'medium' | 'high' | 'all'
 export type WebSocketEventType = 'open' | 'close' | 'error' | 'message'
 
 /**
- * WebSocket event payload
+ * WebSocket event — re-exported from wire type (canonical HTTP payload shape).
+ * The stale interface previously used camelCase fields (connectionId, direction: 'sent'|'received')
+ * that didn't match the actual runtime data or Go server expectations.
  */
-export interface WebSocketEvent {
-  readonly type: WebSocketEventType
-  readonly url: string
-  readonly ts: string
-  readonly connectionId?: string
-  readonly data?: string
-  readonly size?: number
-  readonly direction?: 'sent' | 'received'
-  readonly code?: number
-  readonly reason?: string
-}
+export type { WireWebSocketEvent as WebSocketEvent } from './wire-websocket-event'

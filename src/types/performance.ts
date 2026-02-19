@@ -9,7 +9,7 @@
  */
 
 /**
- * Performance mark entry
+ * Performance mark entry (browser-side only, not a wire type)
  */
 export interface PerformanceMark {
   readonly name: string
@@ -18,7 +18,7 @@ export interface PerformanceMark {
 }
 
 /**
- * Performance measure entry
+ * Performance measure entry (browser-side only, not a wire type)
  */
 export interface PerformanceMeasure {
   readonly name: string
@@ -28,48 +28,8 @@ export interface PerformanceMeasure {
 }
 
 /**
- * Long task metrics
+ * Performance snapshot — re-exported from wire type (canonical HTTP payload shape).
+ * The stale interface previously used camelCase fields (vitals, longTasks, totalSize, etc.)
+ * that didn't match the actual runtime data or Go server expectations.
  */
-export interface LongTaskMetrics {
-  readonly count: number
-  readonly totalDuration: number
-  readonly maxDuration: number
-  readonly tasks: ReadonlyArray<{
-    readonly duration: number
-    readonly startTime: number
-  }>
-}
-
-/**
- * Web Vitals metrics
- */
-export interface WebVitals {
-  readonly fcp?: number
-  readonly lcp?: number
-  readonly cls?: number
-  readonly inp?: number
-}
-
-/**
- * Performance snapshot payload
- */
-export interface PerformanceSnapshot {
-  readonly ts: string
-  readonly url: string
-  readonly vitals: WebVitals
-  readonly longTasks: LongTaskMetrics
-  readonly resources: {
-    readonly count: number
-    readonly totalSize: number
-    readonly byType: Readonly<Record<string, { count: number; size: number }>>
-    readonly slowest: ReadonlyArray<{
-      readonly url: string
-      readonly duration: number
-      readonly size: number
-    }>
-  }
-  readonly memory?: {
-    readonly usedJSHeapSize: number
-    readonly totalJSHeapSize: number
-  }
-}
+export type { WirePerformanceSnapshot as PerformanceSnapshot } from './wire-performance-snapshot'

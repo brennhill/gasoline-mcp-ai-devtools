@@ -9,33 +9,7 @@
  */
 
 /**
- * Network waterfall entry phases
- */
-export interface WaterfallPhases {
-  readonly dns: number
-  readonly connect: number
-  readonly tls: number
-  readonly ttfb: number
-  readonly download: number
-}
-
-/**
- * Parsed network waterfall entry
- */
-export interface WaterfallEntry {
-  readonly url: string
-  readonly initiatorType: string
-  readonly startTime: number
-  readonly duration: number
-  readonly phases: WaterfallPhases
-  readonly transferSize: number
-  readonly encodedBodySize: number
-  readonly decodedBodySize: number
-  readonly cached?: boolean
-}
-
-/**
- * Pending network request tracking
+ * Pending network request tracking (internal to inject script, not a wire type)
  */
 export interface PendingRequest {
   readonly id: string
@@ -45,16 +19,15 @@ export interface PendingRequest {
 }
 
 /**
- * Network body capture payload
+ * Network body payload — re-exported from wire type (canonical HTTP payload shape).
+ * The stale interface previously used camelCase fields (contentType, requestBody, etc.)
+ * that didn't match the Go server expectations.
  */
-export interface NetworkBodyPayload {
-  readonly url: string
-  readonly method: string
-  readonly status: number
-  readonly contentType: string
-  readonly requestBody?: string
-  readonly responseBody?: string
-  readonly responseTruncated?: boolean
-  readonly duration: number
-  readonly tabId?: number // Chrome tab ID that produced this request (v5.3+)
-}
+export type { WireNetworkBody as NetworkBodyPayload } from './wire-network'
+
+/**
+ * Network waterfall entry — re-exported from wire type.
+ * The stale interface previously used camelCase fields and a WaterfallPhases sub-object
+ * that didn't match the actual runtime data.
+ */
+export type { WireNetworkWaterfallEntry as WaterfallEntry } from './wire-network'

@@ -16,6 +16,7 @@ import "time"
 // ============================================
 
 // WebSocketEvent represents a captured WebSocket event (message, open, close, etc.)
+// Wire fields: see WireWebSocketEvent in wire_websocket_event.go
 type WebSocketEvent struct {
 	Timestamp        string        `json:"ts,omitempty"`
 	Type             string        `json:"type,omitempty"`
@@ -27,11 +28,11 @@ type WebSocketEvent struct {
 	Size             int           `json:"size,omitempty"`
 	CloseCode        int           `json:"code,omitempty"`
 	CloseReason      string        `json:"reason,omitempty"`
-	Sampled          *SamplingInfo `json:"sampled,omitempty"`
-	BinaryFormat     string        `json:"binary_format,omitempty"`
-	FormatConfidence float64       `json:"format_confidence,omitempty"`
-	TabId            int           `json:"tab_id,omitempty"` // Chrome tab ID that produced this event
-	TestIDs          []string      `json:"test_ids,omitempty"` // Test IDs this event belongs to
+	Sampled          *SamplingInfo `json:"sampled,omitempty"`          // server-only enrichment
+	BinaryFormat     string        `json:"binary_format,omitempty"`   // server-only enrichment
+	FormatConfidence float64       `json:"format_confidence,omitempty"` // server-only enrichment
+	TabId            int           `json:"tab_id,omitempty"`          // Chrome tab ID that produced this event
+	TestIDs          []string      `json:"test_ids,omitempty"`        // Test IDs this event belongs to
 }
 
 // SamplingInfo describes the sampling state when a message was captured
@@ -135,7 +136,8 @@ type WebSocketSamplingStatus struct {
 // HTTP Network Types
 // ============================================
 
-// NetworkBody represents a captured network request/response
+// NetworkBody represents a captured network request/response.
+// Wire fields: see WireNetworkBody in wire_network.go
 type NetworkBody struct {
 	Timestamp          string            `json:"ts,omitempty"`
 	Method             string            `json:"method"`
@@ -147,10 +149,10 @@ type NetworkBody struct {
 	Duration           int               `json:"duration,omitempty"`
 	RequestTruncated   bool              `json:"request_truncated,omitempty"`
 	ResponseTruncated  bool              `json:"response_truncated,omitempty"`
-	ResponseHeaders    map[string]string `json:"response_headers,omitempty"`
-	HasAuthHeader      bool              `json:"has_auth_header,omitempty"`
-	BinaryFormat       string            `json:"binary_format,omitempty"`
-	FormatConfidence   float64           `json:"format_confidence,omitempty"`
+	ResponseHeaders    map[string]string `json:"response_headers,omitempty"` // server-only enrichment
+	HasAuthHeader      bool              `json:"has_auth_header,omitempty"` // server-only enrichment
+	BinaryFormat       string            `json:"binary_format,omitempty"`   // server-only enrichment
+	FormatConfidence   float64           `json:"format_confidence,omitempty"` // server-only enrichment
 	TabId              int               `json:"tab_id,omitempty"` // Chrome tab ID that produced this request
 	TestIDs            []string          `json:"test_ids,omitempty"` // Test IDs this entry belongs to
 }
@@ -166,23 +168,24 @@ type NetworkBodyFilter struct {
 }
 
 // NetworkWaterfallEntry represents a single network resource timing entry
-// from the browser's PerformanceResourceTiming API
+// from the browser's PerformanceResourceTiming API.
+// Wire fields: see WireNetworkWaterfallEntry in wire_network.go
 type NetworkWaterfallEntry struct {
-	Name            string    `json:"name"`                  // Full URL
-	URL             string    `json:"url"`                   // Same as name
-	InitiatorType   string    `json:"initiator_type"`        // snake_case (from browser PerformanceResourceTiming)
-	Duration        float64   `json:"duration"`              // snake_case (from browser PerformanceResourceTiming)
-	StartTime       float64   `json:"start_time"`            // snake_case (from browser PerformanceResourceTiming)
-	FetchStart      float64   `json:"fetch_start"`           // snake_case (from browser PerformanceResourceTiming)
-	ResponseEnd     float64   `json:"response_end"`          // snake_case (from browser PerformanceResourceTiming)
-	TransferSize    int       `json:"transfer_size"`         // snake_case (from browser PerformanceResourceTiming)
-	DecodedBodySize int       `json:"decoded_body_size"`     // snake_case (from browser PerformanceResourceTiming)
-	EncodedBodySize int       `json:"encoded_body_size"`     // snake_case (from browser PerformanceResourceTiming)
+	Name            string    `json:"name"`
+	URL             string    `json:"url"`
+	InitiatorType   string    `json:"initiator_type"`
+	Duration        float64   `json:"duration"`
+	StartTime       float64   `json:"start_time"`
+	FetchStart      float64   `json:"fetch_start"`
+	ResponseEnd     float64   `json:"response_end"`
+	TransferSize    int       `json:"transfer_size"`
+	DecodedBodySize int       `json:"decoded_body_size"`
+	EncodedBodySize int       `json:"encoded_body_size"`
 	PageURL         string    `json:"page_url,omitempty"`
-	Timestamp       time.Time `json:"timestamp,omitempty"`   // Server-side timestamp
+	Timestamp       time.Time `json:"timestamp,omitempty"` // Server-side timestamp
 }
 
-// NetworkWaterfallPayload is POSTed by the extension
+// NetworkWaterfallPayload is POSTed by the extension.
 type NetworkWaterfallPayload struct {
 	Entries []NetworkWaterfallEntry `json:"entries"`
 	PageURL string                  `json:"page_url"`
@@ -192,7 +195,8 @@ type NetworkWaterfallPayload struct {
 // User Action Types
 // ============================================
 
-// EnhancedAction represents a captured user action with multi-strategy selectors
+// EnhancedAction represents a captured user action with multi-strategy selectors.
+// Wire fields: see WireEnhancedAction in wire_enhanced_action.go
 type EnhancedAction struct {
 	Type      string `json:"type"`
 	Timestamp int64  `json:"timestamp"`

@@ -13,7 +13,8 @@ package performance
 // Performance Budget Types
 // ============================================
 
-// PerformanceSnapshot represents a captured performance snapshot from a page load
+// PerformanceSnapshot represents a captured performance snapshot from a page load.
+// Wire fields: see WirePerformanceSnapshot in wire_performance.go
 type PerformanceSnapshot struct {
 	URL        string            `json:"url"`
 	Timestamp  string            `json:"timestamp"`

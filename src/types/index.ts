@@ -30,7 +30,6 @@ export type {
   WebSocketEvent,
 
   // Network types
-  WaterfallPhases,
   WaterfallEntry,
   PendingRequest,
   NetworkBodyPayload,
@@ -38,8 +37,6 @@ export type {
   // Performance types
   PerformanceMark,
   PerformanceMeasure,
-  LongTaskMetrics,
-  WebVitals,
   PerformanceSnapshot,
 
   // User action types
@@ -143,6 +140,32 @@ export type {
   ChromeSessionStorage,
   ChromeStorageWithSession
 } from './messages'
+
+// Re-export wire types (canonical HTTP payload shapes)
+export type {
+  WireEnhancedAction
+} from './wire-enhanced-action'
+
+export type {
+  WireNetworkBody,
+  WireNetworkWaterfallEntry,
+  WireNetworkWaterfallPayload
+} from './wire-network'
+
+export type {
+  WireWebSocketEvent
+} from './wire-websocket-event'
+
+export type {
+  WirePerformanceTiming,
+  WireTypeSummary,
+  WireSlowRequest,
+  WireNetworkSummary,
+  WireLongTaskMetrics,
+  WireUserTimingEntry,
+  WireUserTimingData,
+  WirePerformanceSnapshot
+} from './wire-performance-snapshot'
 
 // Re-export all utility types
 export type {

@@ -75,3 +75,7 @@ type MCPToolsListResult struct {
 type MCPResourceTemplatesListResult struct {
 	ResourceTemplates []any `json:"resourceTemplates"` // SPEC:MCP
 }
+
+// LogEntry represents a single log entry from the browser console.
+// Keys typically include: ts, level, message, source, url, stack_trace.
+type LogEntry = map[string]any

@@ -1,0 +1,213 @@
+#!/usr/bin/env node
+// check-wire-drift.js — Validates Go and TypeScript wire types stay in sync.
+// Compares json tags in wire_*.go files against interface fields in wire-*.ts files.
+// Exits non-zero if drift is detected.
+//
+// Usage: node scripts/check-wire-drift.js
+
+import fs from 'fs'
+import path from 'path'
+import { fileURLToPath } from 'url'
+
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = path.dirname(__filename)
+
+// ============================================
+// Configuration
+// ============================================
+
+const WIRE_PAIRS = [
+  {
+    go: 'internal/types/wire_enhanced_action.go',
+    ts: 'src/types/wire-enhanced-action.ts',
+    types: [{ go: 'WireEnhancedAction', ts: 'WireEnhancedAction' }]
+  },
+  {
+    go: 'internal/types/wire_network.go',
+    ts: 'src/types/wire-network.ts',
+    types: [
+      { go: 'WireNetworkBody', ts: 'WireNetworkBody' },
+      { go: 'WireNetworkWaterfallEntry', ts: 'WireNetworkWaterfallEntry' },
+      { go: 'WireNetworkWaterfallPayload', ts: 'WireNetworkWaterfallPayload' }
+    ]
+  },
+  {
+    go: 'internal/types/wire_websocket_event.go',
+    ts: 'src/types/wire-websocket-event.ts',
+    types: [{ go: 'WireWebSocketEvent', ts: 'WireWebSocketEvent' }]
+  },
+  {
+    go: 'internal/performance/wire_performance.go',
+    ts: 'src/types/wire-performance-snapshot.ts',
+    types: [
+      { go: 'WirePerformanceTiming', ts: 'WirePerformanceTiming' },
+      { go: 'WireNetworkSummary', ts: 'WireNetworkSummary' },
+      { go: 'WireLongTaskMetrics', ts: 'WireLongTaskMetrics' },
+      { go: 'WirePerformanceSnapshot', ts: 'WirePerformanceSnapshot' },
+      { go: 'WireTypeSummary', ts: 'WireTypeSummary' },
+      { go: 'WireSlowRequest', ts: 'WireSlowRequest' },
+      { go: 'WireUserTimingEntry', ts: 'WireUserTimingEntry' },
+      { go: 'WireUserTimingData', ts: 'WireUserTimingData' }
+    ]
+  }
+]
+
+// ============================================
+// Go Parser
+// ============================================
+
+/**
+ * Extract json field names from a Go struct definition.
+ * Returns a Set of field names (without omitempty).
+ */
+function extractGoFields(content, typeName) {
+  // Match: type TypeName struct { ... }
+  const structRegex = new RegExp(
+    `type\\s+${typeName}\\s+struct\\s*\\{([^}]*)\\}`,
+    's'
+  )
+  const match = content.match(structRegex)
+  if (!match) return null
+
+  const body = match[1]
+  const fields = new Set()
+
+  // Match json tags: `json:"field_name"` or `json:"field_name,omitempty"`
+  const tagRegex = /`json:"([^"]+)"`/g
+  let tagMatch
+  while ((tagMatch = tagRegex.exec(body)) !== null) {
+    const tag = tagMatch[1]
+    // Strip omitempty and other options
+    const fieldName = tag.split(',')[0]
+    if (fieldName && fieldName !== '-') {
+      fields.add(fieldName)
+    }
+  }
+
+  return fields
+}
+
+// ============================================
+// TypeScript Parser
+// ============================================
+
+/**
+ * Extract field names from a TypeScript interface definition.
+ * Returns a Set of field names.
+ */
+function extractTsFields(content, typeName) {
+  // Match: export interface TypeName { ... }
+  // Handle multi-line with nested types
+  const interfaceStart = content.indexOf(`interface ${typeName}`)
+  if (interfaceStart === -1) return null
+
+  // Find the opening brace
+  const braceStart = content.indexOf('{', interfaceStart)
+  if (braceStart === -1) return null
+
+  // Find the matching closing brace
+  let depth = 1
+  let pos = braceStart + 1
+  while (pos < content.length && depth > 0) {
+    if (content[pos] === '{') depth++
+    if (content[pos] === '}') depth--
+    pos++
+  }
+
+  const body = content.slice(braceStart + 1, pos - 1)
+  const fields = new Set()
+
+  // Match field declarations at the top level only (depth 0)
+  // readonly field_name: type or readonly field_name?: type
+  const lines = body.split('\n')
+  let lineDepth = 0
+  for (const line of lines) {
+    // Track brace depth to skip nested objects
+    for (const ch of line) {
+      if (ch === '{') lineDepth++
+      if (ch === '}') lineDepth--
+    }
+
+    if (lineDepth > 0) continue
+
+    // Skip comments
+    const trimmed = line.trim()
+    if (trimmed.startsWith('//') || trimmed.startsWith('*') || trimmed.startsWith('/*')) continue
+    if (!trimmed || trimmed === '}') continue
+
+    // Match: readonly field_name?: type  OR  field_name: type
+    const fieldMatch = trimmed.match(/^\s*(?:readonly\s+)?(\w+)\??\s*:/)
+    if (fieldMatch) {
+      fields.add(fieldMatch[1])
+    }
+  }
+
+  return fields
+}
+
+// ============================================
+// Main
+// ============================================
+
+const rootDir = path.resolve(__dirname, '..')
+let errors = 0
+let checked = 0
+
+for (const pair of WIRE_PAIRS) {
+  const goPath = path.join(rootDir, pair.go)
+  const tsPath = path.join(rootDir, pair.ts)
+
+  if (!fs.existsSync(goPath)) {
+    console.error(`MISSING: ${pair.go}`)
+    errors++
+    continue
+  }
+  if (!fs.existsSync(tsPath)) {
+    console.error(`MISSING: ${pair.ts}`)
+    errors++
+    continue
+  }
+
+  const goContent = fs.readFileSync(goPath, 'utf-8')
+  const tsContent = fs.readFileSync(tsPath, 'utf-8')
+
+  for (const typePair of pair.types) {
+    const goFields = extractGoFields(goContent, typePair.go)
+    const tsFields = extractTsFields(tsContent, typePair.ts)
+
+    if (!goFields) {
+      console.error(`NOT FOUND: Go type ${typePair.go} in ${pair.go}`)
+      errors++
+      continue
+    }
+    if (!tsFields) {
+      console.error(`NOT FOUND: TS type ${typePair.ts} in ${pair.ts}`)
+      errors++
+      continue
+    }
+
+    // Compare fields — Go is the source of truth
+    const goOnly = [...goFields].filter((f) => !tsFields.has(f))
+    const tsOnly = [...tsFields].filter((f) => !goFields.has(f))
+
+    if (goOnly.length > 0 || tsOnly.length > 0) {
+      console.error(`DRIFT: ${typePair.go} ↔ ${typePair.ts}`)
+      if (goOnly.length > 0) {
+        console.error(`  Go-only fields: ${goOnly.join(', ')}`)
+      }
+      if (tsOnly.length > 0) {
+        console.error(`  TS-only fields: ${tsOnly.join(', ')}`)
+      }
+      errors++
+    } else {
+      checked++
+    }
+  }
+}
+
+if (errors > 0) {
+  console.error(`\nFAIL: ${errors} wire type drift(s) detected`)
+  process.exit(1)
+} else {
+  console.log(`OK: ${checked} wire type pairs verified, zero drift`)
+}
