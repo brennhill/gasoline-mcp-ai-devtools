@@ -1,5 +1,5 @@
-// annotation_store_named_test.go — Tests for GetNamedSessionSinceDraw and buildNamedAnnotationResult.
-package main
+// named_test.go — Tests for named annotation sessions.
+package annotation
 
 import (
 	"encoding/json"
@@ -13,13 +13,13 @@ import (
 
 func TestGetNamedSessionSinceDraw_ReturnsSessionUpdatedAfterDraw(t *testing.T) {
 	t.Parallel()
-	store := NewAnnotationStore(10 * time.Minute)
+	store := NewStore(10 * time.Minute)
 	defer store.Close()
 
 	store.MarkDrawStarted()
 	time.Sleep(2 * time.Millisecond)
 
-	store.AppendToNamedSession("review", &AnnotationSession{
+	store.AppendToNamedSession("review", &Session{
 		TabID:       1,
 		PageURL:     "https://example.com",
 		Timestamp:   time.Now().UnixMilli(),
@@ -43,10 +43,10 @@ func TestGetNamedSessionSinceDraw_ReturnsSessionUpdatedAfterDraw(t *testing.T) {
 
 func TestGetNamedSessionSinceDraw_ReturnsNilWhenUpdatedBeforeDraw(t *testing.T) {
 	t.Parallel()
-	store := NewAnnotationStore(10 * time.Minute)
+	store := NewStore(10 * time.Minute)
 	defer store.Close()
 
-	store.AppendToNamedSession("old-review", &AnnotationSession{
+	store.AppendToNamedSession("old-review", &Session{
 		TabID:     1,
 		Timestamp: time.Now().UnixMilli(),
 	})
@@ -62,7 +62,7 @@ func TestGetNamedSessionSinceDraw_ReturnsNilWhenUpdatedBeforeDraw(t *testing.T) 
 
 func TestGetNamedSessionSinceDraw_ReturnsNilForNonexistentSession(t *testing.T) {
 	t.Parallel()
-	store := NewAnnotationStore(10 * time.Minute)
+	store := NewStore(10 * time.Minute)
 	defer store.Close()
 
 	store.MarkDrawStarted()
@@ -75,7 +75,7 @@ func TestGetNamedSessionSinceDraw_ReturnsNilForNonexistentSession(t *testing.T) 
 
 func TestGetNamedSessionSinceDraw_ReturnsNilForExpiredSession(t *testing.T) {
 	t.Parallel()
-	store := NewAnnotationStore(10 * time.Minute)
+	store := NewStore(10 * time.Minute)
 	defer store.Close()
 
 	store.MarkDrawStarted()
@@ -83,9 +83,9 @@ func TestGetNamedSessionSinceDraw_ReturnsNilForExpiredSession(t *testing.T) {
 	// Inject an expired named session with a future UpdatedAt
 	store.mu.Lock()
 	store.named["expired"] = &namedSessionEntry{
-		Session: &NamedAnnotationSession{
+		Session: &NamedSession{
 			Name:      "expired",
-			Pages:     []*AnnotationSession{{TabID: 1}},
+			Pages:     []*Session{{TabID: 1}},
 			UpdatedAt: time.Now().UnixMilli() + 10000,
 		},
 		ExpiresAt: time.Now().Add(-1 * time.Second),
@@ -100,11 +100,11 @@ func TestGetNamedSessionSinceDraw_ReturnsNilForExpiredSession(t *testing.T) {
 
 func TestGetNamedSessionSinceDraw_NoDrawStarted_AnySessionQualifies(t *testing.T) {
 	t.Parallel()
-	store := NewAnnotationStore(10 * time.Minute)
+	store := NewStore(10 * time.Minute)
 	defer store.Close()
 
 	// Without MarkDrawStarted, lastDrawStartedAt is 0 so any session qualifies
-	store.AppendToNamedSession("any", &AnnotationSession{
+	store.AppendToNamedSession("any", &Session{
 		TabID:     1,
 		Timestamp: time.Now().UnixMilli(),
 	})
@@ -120,17 +120,17 @@ func TestGetNamedSessionSinceDraw_NoDrawStarted_AnySessionQualifies(t *testing.T
 
 func TestGetNamedSessionSinceDraw_MultiplePages(t *testing.T) {
 	t.Parallel()
-	store := NewAnnotationStore(10 * time.Minute)
+	store := NewStore(10 * time.Minute)
 	defer store.Close()
 
 	store.MarkDrawStarted()
 	time.Sleep(2 * time.Millisecond)
 
-	store.AppendToNamedSession("multi", &AnnotationSession{
+	store.AppendToNamedSession("multi", &Session{
 		TabID:   1,
 		PageURL: "https://example.com/page1",
 	})
-	store.AppendToNamedSession("multi", &AnnotationSession{
+	store.AppendToNamedSession("multi", &Session{
 		TabID:   2,
 		PageURL: "https://example.com/page2",
 	})
@@ -151,14 +151,14 @@ func TestGetNamedSessionSinceDraw_MultiplePages(t *testing.T) {
 }
 
 // ============================================
-// buildNamedAnnotationResult
+// BuildNamedSessionResult
 // ============================================
 
-func TestBuildNamedAnnotationResult_SinglePage(t *testing.T) {
+func TestBuildNamedSessionResult_SinglePage(t *testing.T) {
 	t.Parallel()
-	ns := &NamedAnnotationSession{
+	ns := &NamedSession{
 		Name: "test-session",
-		Pages: []*AnnotationSession{
+		Pages: []*Session{
 			{
 				Annotations: []Annotation{
 					{ID: "a1", Text: "fix button"},
@@ -171,7 +171,7 @@ func TestBuildNamedAnnotationResult_SinglePage(t *testing.T) {
 		},
 	}
 
-	raw := buildNamedAnnotationResult(ns)
+	raw := BuildNamedSessionResult(ns)
 
 	var result map[string]any
 	if err := json.Unmarshal(raw, &result); err != nil {
@@ -181,8 +181,8 @@ func TestBuildNamedAnnotationResult_SinglePage(t *testing.T) {
 	if result["status"] != "complete" {
 		t.Errorf("expected status 'complete', got %v", result["status"])
 	}
-	if result["session_name"] != "test-session" {
-		t.Errorf("expected session_name 'test-session', got %v", result["session_name"])
+	if result["annot_session_name"] != "test-session" {
+		t.Errorf("expected annot_session_name 'test-session', got %v", result["annot_session_name"])
 	}
 	if result["page_count"] != float64(1) {
 		t.Errorf("expected page_count 1, got %v", result["page_count"])
@@ -214,11 +214,11 @@ func TestBuildNamedAnnotationResult_SinglePage(t *testing.T) {
 	}
 }
 
-func TestBuildNamedAnnotationResult_MultiplePages(t *testing.T) {
+func TestBuildNamedSessionResult_MultiplePages(t *testing.T) {
 	t.Parallel()
-	ns := &NamedAnnotationSession{
+	ns := &NamedSession{
 		Name: "multi-page",
-		Pages: []*AnnotationSession{
+		Pages: []*Session{
 			{
 				Annotations: []Annotation{{ID: "a1", Text: "page1 ann"}},
 				PageURL:     "https://example.com/page1",
@@ -237,7 +237,7 @@ func TestBuildNamedAnnotationResult_MultiplePages(t *testing.T) {
 		},
 	}
 
-	raw := buildNamedAnnotationResult(ns)
+	raw := BuildNamedSessionResult(ns)
 
 	var result map[string]any
 	if err := json.Unmarshal(raw, &result); err != nil {
@@ -272,14 +272,14 @@ func TestBuildNamedAnnotationResult_MultiplePages(t *testing.T) {
 	}
 }
 
-func TestBuildNamedAnnotationResult_EmptyPages(t *testing.T) {
+func TestBuildNamedSessionResult_EmptyPages(t *testing.T) {
 	t.Parallel()
-	ns := &NamedAnnotationSession{
+	ns := &NamedSession{
 		Name:  "empty-session",
-		Pages: []*AnnotationSession{},
+		Pages: []*Session{},
 	}
 
-	raw := buildNamedAnnotationResult(ns)
+	raw := BuildNamedSessionResult(ns)
 
 	var result map[string]any
 	if err := json.Unmarshal(raw, &result); err != nil {
@@ -301,11 +301,11 @@ func TestBuildNamedAnnotationResult_EmptyPages(t *testing.T) {
 	}
 }
 
-func TestBuildNamedAnnotationResult_ZeroAnnotationsPage(t *testing.T) {
+func TestBuildNamedSessionResult_ZeroAnnotationsPage(t *testing.T) {
 	t.Parallel()
-	ns := &NamedAnnotationSession{
+	ns := &NamedSession{
 		Name: "zero-ann",
-		Pages: []*AnnotationSession{
+		Pages: []*Session{
 			{
 				Annotations: []Annotation{},
 				PageURL:     "https://example.com/empty",
@@ -314,7 +314,7 @@ func TestBuildNamedAnnotationResult_ZeroAnnotationsPage(t *testing.T) {
 		},
 	}
 
-	raw := buildNamedAnnotationResult(ns)
+	raw := BuildNamedSessionResult(ns)
 
 	var result map[string]any
 	if err := json.Unmarshal(raw, &result); err != nil {
@@ -335,11 +335,11 @@ func TestBuildNamedAnnotationResult_ZeroAnnotationsPage(t *testing.T) {
 	}
 }
 
-func TestBuildNamedAnnotationResult_SnakeCaseFields(t *testing.T) {
+func TestBuildNamedSessionResult_SnakeCaseFields(t *testing.T) {
 	t.Parallel()
-	ns := &NamedAnnotationSession{
+	ns := &NamedSession{
 		Name: "snake-case-check",
-		Pages: []*AnnotationSession{
+		Pages: []*Session{
 			{
 				Annotations:    []Annotation{{ID: "a1", Text: "test"}},
 				ScreenshotPath: "/tmp/test.png",
@@ -349,7 +349,7 @@ func TestBuildNamedAnnotationResult_SnakeCaseFields(t *testing.T) {
 		},
 	}
 
-	raw := buildNamedAnnotationResult(ns)
+	raw := BuildNamedSessionResult(ns)
 
 	var result map[string]any
 	if err := json.Unmarshal(raw, &result); err != nil {
@@ -357,7 +357,7 @@ func TestBuildNamedAnnotationResult_SnakeCaseFields(t *testing.T) {
 	}
 
 	// Verify all top-level keys are snake_case
-	expectedTopKeys := []string{"status", "session_name", "pages", "page_count", "total_count"}
+	expectedTopKeys := []string{"status", "annot_session_name", "pages", "page_count", "total_count"}
 	for _, key := range expectedTopKeys {
 		if _, ok := result[key]; !ok {
 			t.Errorf("expected top-level key %q to be present", key)
@@ -376,12 +376,12 @@ func TestBuildNamedAnnotationResult_SnakeCaseFields(t *testing.T) {
 }
 
 // ============================================
-// buildAnnotationResult (package-level, also 0% coverage)
+// BuildSessionResult (package-level, also 0% coverage)
 // ============================================
 
-func TestBuildAnnotationResult_WithScreenshot(t *testing.T) {
+func TestBuildSessionResult_WithScreenshot(t *testing.T) {
 	t.Parallel()
-	session := &AnnotationSession{
+	session := &Session{
 		Annotations: []Annotation{
 			{ID: "a1", Text: "fix this", CorrelationID: "d1"},
 		},
@@ -389,7 +389,7 @@ func TestBuildAnnotationResult_WithScreenshot(t *testing.T) {
 		PageURL:        "https://example.com/page",
 	}
 
-	raw := buildAnnotationResult(session)
+	raw := BuildSessionResult(session)
 
 	var result map[string]any
 	if err := json.Unmarshal(raw, &result); err != nil {
@@ -410,9 +410,9 @@ func TestBuildAnnotationResult_WithScreenshot(t *testing.T) {
 	}
 }
 
-func TestBuildAnnotationResult_WithoutScreenshot(t *testing.T) {
+func TestBuildSessionResult_WithoutScreenshot(t *testing.T) {
 	t.Parallel()
-	session := &AnnotationSession{
+	session := &Session{
 		Annotations: []Annotation{
 			{ID: "a1", Text: "ann1"},
 			{ID: "a2", Text: "ann2"},
@@ -420,7 +420,7 @@ func TestBuildAnnotationResult_WithoutScreenshot(t *testing.T) {
 		PageURL: "https://example.com",
 	}
 
-	raw := buildAnnotationResult(session)
+	raw := BuildSessionResult(session)
 
 	var result map[string]any
 	if err := json.Unmarshal(raw, &result); err != nil {
@@ -436,14 +436,14 @@ func TestBuildAnnotationResult_WithoutScreenshot(t *testing.T) {
 	}
 }
 
-func TestBuildAnnotationResult_EmptyAnnotations(t *testing.T) {
+func TestBuildSessionResult_EmptyAnnotations(t *testing.T) {
 	t.Parallel()
-	session := &AnnotationSession{
+	session := &Session{
 		Annotations: []Annotation{},
 		PageURL:     "https://example.com",
 	}
 
-	raw := buildAnnotationResult(session)
+	raw := BuildSessionResult(session)
 
 	var result map[string]any
 	if err := json.Unmarshal(raw, &result); err != nil {

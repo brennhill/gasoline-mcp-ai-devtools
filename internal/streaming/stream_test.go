@@ -1,9 +1,14 @@
-// streaming_test.go — Unit tests for streaming pure functions.
-package main
+// stream_test.go — Unit tests for StreamState: config, filters, throttle, dedup, emission.
+package streaming
 
 import (
+	"bytes"
+	"encoding/json"
+	"strings"
 	"testing"
 	"time"
+
+	"github.com/dev-console/dev-console/internal/types"
 )
 
 func TestCategoryMatchesEvent(t *testing.T) {
@@ -51,9 +56,9 @@ func TestCategoryMatchesEvent(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		got := categoryMatchesEvent(tt.category, tt.event)
+		got := CategoryMatchesEvent(tt.category, tt.event)
 		if got != tt.want {
-			t.Errorf("categoryMatchesEvent(%q, %q) = %v, want %v", tt.category, tt.event, got, tt.want)
+			t.Errorf("CategoryMatchesEvent(%q, %q) = %v, want %v", tt.category, tt.event, got, tt.want)
 		}
 	}
 }
@@ -75,11 +80,11 @@ func TestStreamState_Configure(t *testing.T) {
 		if len(cfg.Events) != 1 || cfg.Events[0] != "all" {
 			t.Fatalf("expected default events=[all], got %v", cfg.Events)
 		}
-		if cfg.ThrottleSeconds != defaultThrottleSeconds {
-			t.Fatalf("expected default throttle=%d, got %d", defaultThrottleSeconds, cfg.ThrottleSeconds)
+		if cfg.ThrottleSeconds != DefaultThrottleSeconds {
+			t.Fatalf("expected default throttle=%d, got %d", DefaultThrottleSeconds, cfg.ThrottleSeconds)
 		}
-		if cfg.SeverityMin != defaultSeverityMin {
-			t.Fatalf("expected default severity=%q, got %q", defaultSeverityMin, cfg.SeverityMin)
+		if cfg.SeverityMin != DefaultSeverityMin {
+			t.Fatalf("expected default severity=%q, got %q", DefaultSeverityMin, cfg.SeverityMin)
 		}
 	})
 
@@ -105,7 +110,7 @@ func TestStreamState_Configure(t *testing.T) {
 	t.Run("disable clears state", func(t *testing.T) {
 		s := NewStreamState()
 		s.Configure("enable", nil, 0, "", "")
-		s.PendingBatch = append(s.PendingBatch, Alert{Title: "pending"})
+		s.PendingBatch = append(s.PendingBatch, types.Alert{Title: "pending"})
 		s.SeenMessages["key"] = time.Now()
 
 		result := s.Configure("disable", nil, 0, "", "")
@@ -131,7 +136,7 @@ func TestStreamState_Configure(t *testing.T) {
 		s := NewStreamState()
 		s.Configure("enable", []string{"ci"}, 0, "", "")
 		s.NotifyCount = 5
-		s.PendingBatch = make([]Alert, 3)
+		s.PendingBatch = make([]types.Alert, 3)
 
 		result := s.Configure("status", nil, 0, "", "")
 
@@ -165,25 +170,25 @@ func TestStreamState_IsDuplicate(t *testing.T) {
 	now := time.Date(2026, 2, 11, 10, 0, 0, 0, time.UTC)
 
 	// First time: not a duplicate
-	if s.isDuplicate("key1", now) {
+	if s.IsDuplicate("key1", now) {
 		t.Fatal("first occurrence should not be duplicate")
 	}
 
 	// Record it
-	s.recordDedupKey("key1", now)
+	s.RecordDedupKey("key1", now)
 
 	// Within window: duplicate
-	if !s.isDuplicate("key1", now.Add(10*time.Second)) {
+	if !s.IsDuplicate("key1", now.Add(10*time.Second)) {
 		t.Fatal("same key within 30s window should be duplicate")
 	}
 
 	// After window: not duplicate
-	if s.isDuplicate("key1", now.Add(31*time.Second)) {
+	if s.IsDuplicate("key1", now.Add(31*time.Second)) {
 		t.Fatal("same key after 30s window should not be duplicate")
 	}
 
 	// Different key: not duplicate
-	if s.isDuplicate("key2", now) {
+	if s.IsDuplicate("key2", now) {
 		t.Fatal("different key should not be duplicate")
 	}
 }
@@ -193,8 +198,8 @@ func TestStreamState_ShouldEmit(t *testing.T) {
 
 	t.Run("disabled returns false", func(t *testing.T) {
 		s := NewStreamState()
-		alert := Alert{Severity: "error", Category: "anomaly"}
-		if s.shouldEmit(alert) {
+		alert := types.Alert{Severity: "error", Category: "anomaly"}
+		if s.ShouldEmit(alert) {
 			t.Fatal("disabled stream should not emit")
 		}
 	})
@@ -203,10 +208,10 @@ func TestStreamState_ShouldEmit(t *testing.T) {
 		s := NewStreamState()
 		s.Configure("enable", nil, 0, "", "error")
 
-		if s.shouldEmit(Alert{Severity: "warning", Category: "anomaly"}) {
+		if s.ShouldEmit(types.Alert{Severity: "warning", Category: "anomaly"}) {
 			t.Fatal("warning should be filtered when min=error")
 		}
-		if !s.shouldEmit(Alert{Severity: "error", Category: "anomaly"}) {
+		if !s.ShouldEmit(types.Alert{Severity: "error", Category: "anomaly"}) {
 			t.Fatal("error should pass when min=error")
 		}
 	})
@@ -215,10 +220,10 @@ func TestStreamState_ShouldEmit(t *testing.T) {
 		s := NewStreamState()
 		s.Configure("enable", []string{"ci"}, 0, "", "info")
 
-		if s.shouldEmit(Alert{Severity: "error", Category: "anomaly"}) {
+		if s.ShouldEmit(types.Alert{Severity: "error", Category: "anomaly"}) {
 			t.Fatal("anomaly should be filtered when events=[ci]")
 		}
-		if !s.shouldEmit(Alert{Severity: "error", Category: "ci"}) {
+		if !s.ShouldEmit(types.Alert{Severity: "error", Category: "ci"}) {
 			t.Fatal("ci should pass when events=[ci]")
 		}
 	})
@@ -227,7 +232,7 @@ func TestStreamState_ShouldEmit(t *testing.T) {
 		s := NewStreamState()
 		s.Configure("enable", []string{"all"}, 0, "", "info")
 
-		if !s.shouldEmit(Alert{Severity: "info", Category: "regression"}) {
+		if !s.ShouldEmit(types.Alert{Severity: "info", Category: "regression"}) {
 			t.Fatal("all wildcard should pass any category")
 		}
 	})
@@ -242,20 +247,20 @@ func TestStreamState_CanEmitAt(t *testing.T) {
 	now := time.Date(2026, 2, 11, 10, 0, 0, 0, time.UTC)
 
 	// First emission: always allowed
-	if !s.canEmitAt(now) {
+	if !s.CanEmitAt(now) {
 		t.Fatal("first emission should be allowed")
 	}
 
 	// Record emission
-	s.recordEmission(now, Alert{})
+	s.RecordEmission(now, types.Alert{})
 
 	// Within throttle window: blocked
-	if s.canEmitAt(now.Add(3 * time.Second)) {
+	if s.CanEmitAt(now.Add(3 * time.Second)) {
 		t.Fatal("should be throttled within 5s window")
 	}
 
 	// After throttle window: allowed
-	if !s.canEmitAt(now.Add(6 * time.Second)) {
+	if !s.CanEmitAt(now.Add(6 * time.Second)) {
 		t.Fatal("should be allowed after throttle window")
 	}
 }
@@ -271,17 +276,17 @@ func TestStreamState_RateLimit(t *testing.T) {
 	s.MinuteStart = now
 
 	// Fill up to rate limit
-	for i := 0; i < maxNotificationsPerMinute; i++ {
-		s.recordEmission(now.Add(time.Duration(i)*time.Millisecond), Alert{})
+	for i := 0; i < MaxNotificationsPerMinute; i++ {
+		s.RecordEmission(now.Add(time.Duration(i)*time.Millisecond), types.Alert{})
 	}
 
 	// Should be blocked by rate limit
-	if s.canEmitAt(now.Add(time.Duration(maxNotificationsPerMinute) * time.Millisecond)) {
+	if s.CanEmitAt(now.Add(time.Duration(MaxNotificationsPerMinute) * time.Millisecond)) {
 		t.Fatal("should be rate limited after max notifications per minute")
 	}
 
 	// After minute reset: allowed again
-	if !s.canEmitAt(now.Add(61 * time.Second)) {
+	if !s.CanEmitAt(now.Add(61 * time.Second)) {
 		t.Fatal("should be allowed after minute reset")
 	}
 }
@@ -289,7 +294,7 @@ func TestStreamState_RateLimit(t *testing.T) {
 func TestFormatMCPNotification(t *testing.T) {
 	t.Parallel()
 
-	alert := Alert{
+	alert := types.Alert{
 		Severity:  "error",
 		Category:  "regression",
 		Title:     "test failure",
@@ -298,7 +303,7 @@ func TestFormatMCPNotification(t *testing.T) {
 		Source:    "test",
 	}
 
-	notif := formatMCPNotification(alert)
+	notif := FormatMCPNotification(alert)
 
 	if notif.JSONRPC != "2.0" {
 		t.Fatalf("expected jsonrpc=2.0, got %q", notif.JSONRPC)
@@ -316,5 +321,207 @@ func TestFormatMCPNotification(t *testing.T) {
 	data := notif.Params.Data.(map[string]any)
 	if data["title"] != "test failure" {
 		t.Fatalf("expected title=test failure, got %v", data["title"])
+	}
+}
+
+// ============================================
+// EmitAlert Tests
+// ============================================
+
+func TestEmitAlert_Disabled(t *testing.T) {
+	t.Parallel()
+
+	var buf bytes.Buffer
+	s := NewStreamState()
+	s.Writer = &buf
+	s.Config.Enabled = false
+
+	s.EmitAlert(types.Alert{Severity: "error", Category: "regression", Title: "test"})
+
+	if buf.Len() != 0 {
+		t.Fatal("EmitAlert should not write when disabled")
+	}
+}
+
+func TestEmitAlert_SeverityFilter(t *testing.T) {
+	t.Parallel()
+
+	var buf bytes.Buffer
+	s := NewStreamState()
+	s.Writer = &buf
+	s.Config.Enabled = true
+	s.Config.SeverityMin = "error"
+	s.Config.Events = []string{"all"}
+
+	// Info alert should be filtered out (below error threshold)
+	s.EmitAlert(types.Alert{Severity: "info", Category: "regression", Title: "low severity"})
+	if buf.Len() != 0 {
+		t.Fatal("info alert should be filtered when severity_min=error")
+	}
+
+	// Error alert should pass
+	s.EmitAlert(types.Alert{Severity: "error", Category: "regression", Title: "high severity"})
+	if buf.Len() == 0 {
+		t.Fatal("error alert should pass when severity_min=error")
+	}
+}
+
+func TestEmitAlert_CategoryFilter(t *testing.T) {
+	t.Parallel()
+
+	var buf bytes.Buffer
+	s := NewStreamState()
+	s.Writer = &buf
+	s.Config.Enabled = true
+	s.Config.SeverityMin = "info"
+	s.Config.Events = []string{"ci"} // Only CI events
+
+	// "regression" category should not match "ci" event filter
+	s.EmitAlert(types.Alert{Severity: "error", Category: "regression", Title: "regression alert"})
+	if buf.Len() != 0 {
+		t.Fatal("regression should not match 'ci' event filter")
+	}
+}
+
+func TestEmitAlert_Dedup(t *testing.T) {
+	t.Parallel()
+
+	var buf bytes.Buffer
+	s := NewStreamState()
+	s.Writer = &buf
+	s.Config.Enabled = true
+	s.Config.SeverityMin = "info"
+	s.Config.Events = []string{"all"}
+
+	alert := types.Alert{Severity: "error", Category: "regression", Title: "dup alert"}
+
+	s.EmitAlert(alert)
+	first := buf.Len()
+	if first == 0 {
+		t.Fatal("first EmitAlert should write")
+	}
+
+	// Same alert again should be deduped
+	s.EmitAlert(alert)
+	if buf.Len() != first {
+		t.Fatal("duplicate alert within dedup window should be suppressed")
+	}
+}
+
+func TestEmitAlert_WritesValidJSON(t *testing.T) {
+	t.Parallel()
+
+	var buf bytes.Buffer
+	s := NewStreamState()
+	s.Writer = &buf
+	s.Config.Enabled = true
+	s.Config.SeverityMin = "info"
+	s.Config.Events = []string{"all"}
+
+	s.EmitAlert(types.Alert{Severity: "warning", Category: "regression", Title: "test alert"})
+
+	var notif MCPNotification
+	if err := json.Unmarshal(buf.Bytes(), &notif); err != nil {
+		t.Fatalf("output is not valid JSON: %v\ngot: %s", err, buf.String())
+	}
+	if notif.JSONRPC != "2.0" {
+		t.Errorf("jsonrpc = %q, want 2.0", notif.JSONRPC)
+	}
+	if notif.Method != "notifications/message" {
+		t.Errorf("method = %q, want notifications/message", notif.Method)
+	}
+}
+
+func TestEmitAlert_Throttle(t *testing.T) {
+	t.Parallel()
+
+	var buf bytes.Buffer
+	s := NewStreamState()
+	s.Writer = &buf
+	s.Config.Enabled = true
+	s.Config.SeverityMin = "info"
+	s.Config.Events = []string{"all"}
+	s.Config.ThrottleSeconds = 60 // very long throttle
+
+	// First alert goes through
+	s.EmitAlert(types.Alert{Severity: "error", Category: "regression", Title: "first"})
+	first := buf.Len()
+	if first == 0 {
+		t.Fatal("first alert should be emitted")
+	}
+
+	// Second alert (different title to avoid dedup) should be throttled
+	s.EmitAlert(types.Alert{Severity: "error", Category: "regression", Title: "second"})
+	if buf.Len() != first {
+		t.Fatal("second alert should be throttled")
+	}
+
+	// Should be in pending batch
+	s.Mu.Lock()
+	pending := len(s.PendingBatch)
+	s.Mu.Unlock()
+	if pending != 1 {
+		t.Fatalf("expected 1 pending alert, got %d", pending)
+	}
+}
+
+func TestEmitAlert_NilWriter(t *testing.T) {
+	t.Parallel()
+
+	s := NewStreamState()
+	s.Writer = nil
+	s.Config.Enabled = true
+	s.Config.SeverityMin = "info"
+	s.Config.Events = []string{"all"}
+
+	// Should not panic with nil writer
+	s.EmitAlert(types.Alert{Severity: "error", Category: "regression", Title: "test"})
+}
+
+func TestCheckRateReset(t *testing.T) {
+	t.Parallel()
+
+	s := NewStreamState()
+	s.MinuteStart = time.Now().Add(-2 * time.Minute)
+	s.NotifyCount = 50
+
+	s.CheckRateReset(time.Now())
+
+	s.Mu.Lock()
+	count := s.NotifyCount
+	s.Mu.Unlock()
+
+	if count != 0 {
+		t.Fatalf("CheckRateReset should reset count after minute boundary, got %d", count)
+	}
+}
+
+func TestEmitAlert_RateLimit(t *testing.T) {
+	t.Parallel()
+
+	var buf bytes.Buffer
+	s := NewStreamState()
+	s.Writer = &buf
+	s.Config.Enabled = true
+	s.Config.SeverityMin = "info"
+	s.Config.Events = []string{"all"}
+	s.Config.ThrottleSeconds = 0 // no throttle
+
+	// Exhaust the rate limit
+	for i := 0; i < MaxNotificationsPerMinute; i++ {
+		// Use unique titles to avoid dedup
+		s.EmitAlert(types.Alert{
+			Severity: "error",
+			Category: "regression",
+			Title:    strings.Repeat("x", i+1),
+		})
+	}
+
+	prevLen := buf.Len()
+
+	// Next one should be rate-limited
+	s.EmitAlert(types.Alert{Severity: "error", Category: "regression", Title: "rate limited"})
+	if buf.Len() != prevLen {
+		t.Fatal("alert beyond rate limit should be suppressed")
 	}
 }

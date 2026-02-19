@@ -20,13 +20,15 @@ import (
 	"strings"
 	"sync"
 	"testing"
+
+	"github.com/dev-console/dev-console/internal/upload"
 )
 
 // allowTestSSRF enables private IP access for tests using httptest.NewServer (127.0.0.1).
 func allowTestSSRF(t *testing.T) {
 	t.Helper()
-	skipSSRFCheck = true
-	t.Cleanup(func() { skipSSRFCheck = false })
+	upload.SkipSSRFCheck = true
+	t.Cleanup(func() { upload.SkipSSRFCheck = false })
 }
 
 // testUploadSecurity returns a permissive UploadSecurity config for tests.
@@ -34,7 +36,7 @@ func allowTestSSRF(t *testing.T) {
 // The denylist is still active (it's hardcoded).
 func testUploadSecurity(t *testing.T) *UploadSecurity {
 	t.Helper()
-	return &UploadSecurity{uploadDir: "/"}
+	return upload.NewSecurity("/", nil)
 }
 
 // testUploadSecurityWithDir returns an UploadSecurity scoped to a specific directory.
@@ -45,13 +47,13 @@ func testUploadSecurityWithDir(t *testing.T, dir string) *UploadSecurity {
 	if err != nil {
 		t.Fatalf("testUploadSecurityWithDir: EvalSymlinks(%s) failed: %v", dir, err)
 	}
-	return &UploadSecurity{uploadDir: resolved}
+	return upload.NewSecurity(resolved, nil)
 }
 
 // testUploadSecurityNoDir returns an UploadSecurity with no upload-dir (Stage 1 only).
 func testUploadSecurityNoDir(t *testing.T) *UploadSecurity {
 	t.Helper()
-	return &UploadSecurity{}
+	return upload.NewSecurity("", nil)
 }
 
 // ============================================

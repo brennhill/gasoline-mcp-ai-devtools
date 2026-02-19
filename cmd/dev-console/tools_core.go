@@ -31,6 +31,7 @@ import (
 	"github.com/dev-console/dev-console/internal/redaction"
 	"github.com/dev-console/dev-console/internal/security"
 	"github.com/dev-console/dev-console/internal/session"
+	"github.com/dev-console/dev-console/internal/streaming"
 )
 
 // ============================================
@@ -136,15 +137,8 @@ type ToolHandler struct {
 	// Rate limiter for MCP tool calls (sliding window)
 	toolCallLimiter *ToolCallLimiter
 
-	// Context streaming: active push notifications via MCP
-	streamState *StreamState
-
-	// Alert buffer state (local management)
-	alertMu   sync.Mutex
-	alerts    []Alert
-	ciResults []CIResult
-	// Anomaly detection: sliding window error counter
-	errorTimes []time.Time
+	// Alert system + context streaming (delegates to internal/streaming)
+	alertBuffer *streaming.AlertBuffer
 
 	// Concrete implementations (interface signatures differ from types package)
 	// These are used directly by tool handlers rather than through the interface fields above.
@@ -157,7 +151,7 @@ type ToolHandler struct {
 
 	// Per-client audit session mapping (client_id -> session_id).
 	auditMu       sync.Mutex
-	auditSessions map[string]string
+	auditSessionMap map[string]string
 
 	// Draw mode annotation store (in-memory, TTL-based)
 	annotationStore *AnnotationStore
@@ -192,6 +186,25 @@ func (h *ToolHandler) GetCapture() *capture.Capture {
 	return h.capture
 }
 
+// GetLogEntries returns a snapshot of the server's log entries and their timestamps.
+// The returned slices are copies — safe to use without holding the server lock.
+func (h *ToolHandler) GetLogEntries() ([]LogEntry, []time.Time) {
+	h.server.mu.RLock()
+	defer h.server.mu.RUnlock()
+	entries := make([]LogEntry, len(h.server.entries))
+	copy(entries, h.server.entries)
+	addedAt := make([]time.Time, len(h.server.logAddedAt))
+	copy(addedAt, h.server.logAddedAt)
+	return entries, addedAt
+}
+
+// GetLogTotalAdded returns the monotonic counter of total log entries ever added.
+func (h *ToolHandler) GetLogTotalAdded() int64 {
+	h.server.mu.RLock()
+	defer h.server.mu.RUnlock()
+	return h.server.logTotalAdded
+}
+
 // GetToolCallLimiter returns the tool call limiter
 func (h *ToolHandler) GetToolCallLimiter() RateLimiter {
 	return h.toolCallLimiter
@@ -219,7 +232,7 @@ func NewToolHandler(server *Server, capture *capture.Capture) *MCPHandler {
 	// Initialize health metrics
 	handler.healthMetrics = NewHealthMetrics()
 	handler.toolCallLimiter = NewToolCallLimiter(500, time.Minute)
-	handler.streamState = NewStreamState()
+	handler.alertBuffer = streaming.NewAlertBuffer()
 
 	// Initialize session store (use current working directory as project path)
 	cwd, err := os.Getwd()
@@ -260,7 +273,7 @@ func NewToolHandler(server *Server, capture *capture.Capture) *MCPHandler {
 		Enabled:      true,
 		RedactParams: true,
 	})
-	handler.auditSessions = make(map[string]string)
+	handler.auditSessionMap = make(map[string]string)
 
 	// Initialize upload security config from package-level var set by CLI
 	handler.uploadSecurity = uploadSecurityConfig

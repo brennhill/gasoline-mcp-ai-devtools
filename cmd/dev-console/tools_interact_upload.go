@@ -11,7 +11,6 @@ package main
 
 import (
 	"encoding/json"
-	"fmt"
 	"os"
 	"path/filepath"
 	"time"
@@ -99,7 +98,7 @@ func (h *ToolHandler) queueUpload(req JSONRPCRequest, params uploadParams, info 
 	mimeType := detectMimeType(fileName)
 	fileSize := info.Size()
 	progressTier := getProgressTier(fileSize)
-	correlationID := fmt.Sprintf("upload_%d_%d", time.Now().UnixNano(), randomInt63())
+	correlationID := newCorrelationID("upload")
 
 	uploadPayload := map[string]any{
 		"action": "upload", "selector": params.Selector,

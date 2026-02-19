@@ -20,6 +20,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/dev-console/dev-console/internal/upload"
 )
 
 // ============================================
@@ -109,8 +111,8 @@ func TestUploadHandler_FileRead_Base64Roundtrip(t *testing.T) {
 // ============================================
 
 func TestUploadHandler_FormSubmit_WithTestServer(t *testing.T) {
-	skipSSRFCheck = true
-	t.Cleanup(func() { skipSSRFCheck = false })
+	upload.SkipSSRFCheck = true
+	t.Cleanup(func() { upload.SkipSSRFCheck = false })
 	testFile := createTestFile(t, "upload.txt", "file content for form submit")
 
 	var (
@@ -211,11 +213,11 @@ func TestUploadHandler_FormSubmit_WithTestServer(t *testing.T) {
 func newUploadHTTPServer(t *testing.T, osAutomationEnabled bool) (*httptest.Server, *Server) {
 	t.Helper()
 	// Allow private IPs in tests (httptest.NewServer uses 127.0.0.1)
-	skipSSRFCheck = true
-	t.Cleanup(func() { skipSSRFCheck = false })
+	upload.SkipSSRFCheck = true
+	t.Cleanup(func() { upload.SkipSSRFCheck = false })
 	// Set permissive upload security for HTTP handler tests
 	prev := uploadSecurityConfig
-	uploadSecurityConfig = &UploadSecurity{uploadDir: "/"}
+	uploadSecurityConfig = upload.NewSecurity("/", nil)
 	t.Cleanup(func() { uploadSecurityConfig = prev })
 
 	server, err := NewServer(filepath.Join(t.TempDir(), "upload-http.jsonl"), 100)
@@ -711,8 +713,8 @@ func TestUploadHandler_FileRead_RelativePathRejected(t *testing.T) {
 // ============================================
 
 func TestUploadHandler_FormSubmit_HTTP401Response(t *testing.T) {
-	skipSSRFCheck = true
-	t.Cleanup(func() { skipSSRFCheck = false })
+	upload.SkipSSRFCheck = true
+	t.Cleanup(func() { upload.SkipSSRFCheck = false })
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(401)
 	}))
@@ -736,8 +738,8 @@ func TestUploadHandler_FormSubmit_HTTP401Response(t *testing.T) {
 }
 
 func TestUploadHandler_FormSubmit_HTTP403Response(t *testing.T) {
-	skipSSRFCheck = true
-	t.Cleanup(func() { skipSSRFCheck = false })
+	upload.SkipSSRFCheck = true
+	t.Cleanup(func() { upload.SkipSSRFCheck = false })
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(403)
 	}))
@@ -761,8 +763,8 @@ func TestUploadHandler_FormSubmit_HTTP403Response(t *testing.T) {
 }
 
 func TestUploadHandler_FormSubmit_HTTP422Response(t *testing.T) {
-	skipSSRFCheck = true
-	t.Cleanup(func() { skipSSRFCheck = false })
+	upload.SkipSSRFCheck = true
+	t.Cleanup(func() { upload.SkipSSRFCheck = false })
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(422)
 	}))

@@ -24,6 +24,7 @@ import (
 	"testing"
 
 	"github.com/dev-console/dev-console/internal/capture"
+	"github.com/dev-console/dev-console/internal/upload"
 )
 
 // ============================================
@@ -647,8 +648,8 @@ type uploadTestEnv struct {
 func newUploadTestEnv(t *testing.T) *uploadTestEnv {
 	t.Helper()
 	// Allow private IPs in tests (httptest.NewServer uses 127.0.0.1)
-	skipSSRFCheck = true
-	t.Cleanup(func() { skipSSRFCheck = false })
+	upload.SkipSSRFCheck = true
+	t.Cleanup(func() { upload.SkipSSRFCheck = false })
 
 	server, err := NewServer(filepath.Join(t.TempDir(), "test-upload.jsonl"), 100)
 	if err != nil {
@@ -659,7 +660,7 @@ func newUploadTestEnv(t *testing.T) *uploadTestEnv {
 	handler := mcpHandler.toolHandler.(*ToolHandler)
 
 	// Permissive upload security config for tests
-	handler.uploadSecurity = &UploadSecurity{uploadDir: "/"}
+	handler.uploadSecurity = upload.NewSecurity("/", nil)
 
 	return &uploadTestEnv{
 		interactTestEnv: &interactTestEnv{handler: handler, server: server, capture: cap},

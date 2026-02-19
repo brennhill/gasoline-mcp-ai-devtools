@@ -1,5 +1,5 @@
-// reproduction_golden_test.go — Golden file validation for Playwright reproduction scripts.
-package main
+// golden_test.go — Golden file validation for Playwright reproduction scripts.
+package reproduction
 
 import (
 	"bytes"
@@ -9,6 +9,8 @@ import (
 
 	"github.com/dev-console/dev-console/internal/capture"
 )
+
+var updateGolden = os.Getenv("UPDATE_GOLDEN") == "1"
 
 func TestGoldenReproductionPlaywright(t *testing.T) {
 	actions := []capture.EnhancedAction{
@@ -38,12 +40,12 @@ func TestGoldenReproductionPlaywright(t *testing.T) {
 		},
 	}
 
-	opts := ReproductionParams{
+	opts := Params{
 		BaseURL:      "https://app.example.com",
 		ErrorMessage: "Login button not responding",
 	}
 
-	script := generateReproPlaywrightScript(actions, opts)
+	script := GeneratePlaywrightScript(actions, opts)
 
 	// Normalize: remove any dynamic timestamps in comments
 	re := regexp.MustCompile(`// Generated at .*`)
