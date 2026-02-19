@@ -1,9 +1,7 @@
-// tools_generate_unit_test.go — Unit tests for generate tool helpers.
-package main
+// csp_test.go — Tests for CSP generation helpers.
+package generate
 
-import (
-	"testing"
-)
+import "testing"
 
 func TestExtractOrigin(t *testing.T) {
 	t.Parallel()
@@ -23,9 +21,9 @@ func TestExtractOrigin(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		got := extractOrigin(tt.url)
+		got := ExtractOrigin(tt.url)
 		if got != tt.want {
-			t.Errorf("extractOrigin(%q) = %q, want %q", tt.url, got, tt.want)
+			t.Errorf("ExtractOrigin(%q) = %q, want %q", tt.url, got, tt.want)
 		}
 	}
 }
@@ -54,29 +52,6 @@ func TestResourceTypeToCSPDirective(t *testing.T) {
 		got := resourceTypeToCSPDirective(tt.contentType)
 		if got != tt.want {
 			t.Errorf("resourceTypeToCSPDirective(%q) = %q, want %q", tt.contentType, got, tt.want)
-		}
-	}
-}
-
-func TestJoinStrings(t *testing.T) {
-	t.Parallel()
-
-	tests := []struct {
-		strs []string
-		sep  string
-		want string
-	}{
-		{nil, " ", ""},
-		{[]string{}, " ", ""},
-		{[]string{"a"}, " ", "a"},
-		{[]string{"a", "b", "c"}, " ", "a b c"},
-		{[]string{"x", "y"}, ", ", "x, y"},
-	}
-
-	for _, tt := range tests {
-		got := joinStrings(tt.strs, tt.sep)
-		if got != tt.want {
-			t.Errorf("joinStrings(%v, %q) = %q, want %q", tt.strs, tt.sep, got, tt.want)
 		}
 	}
 }

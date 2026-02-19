@@ -15,6 +15,7 @@ import (
 	"github.com/dev-console/dev-console/internal/capture"
 	"github.com/dev-console/dev-console/internal/export"
 	"github.com/dev-console/dev-console/internal/security"
+	gen "github.com/dev-console/dev-console/internal/tools/generate"
 )
 
 // GenerateHandler is the function signature for generate format handlers.
@@ -174,19 +175,11 @@ func (h *ToolHandler) toolGetReproductionScript(req JSONRPCRequest, args json.Ra
 	return h.toolGetReproductionScriptImpl(req, args)
 }
 
-// TestGenParams are the parsed arguments for generate({format: "test"}).
-type TestGenParams struct {
-	Format              string `json:"format"`
-	TestName            string `json:"test_name"`
-	LastN               int    `json:"last_n"`
-	BaseURL             string `json:"base_url"`
-	AssertNetwork       bool   `json:"assert_network"`
-	AssertNoErrors      bool   `json:"assert_no_errors"`
-	AssertResponseShape bool   `json:"assert_response_shape"`
-}
+// TestGenParams delegates to internal/tools/generate.
+type TestGenParams = gen.TestGenParams
 
 func (h *ToolHandler) toolGenerateTest(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-	var params TestGenParams
+	var params gen.TestGenParams
 	if len(args) > 0 {
 		_ = json.Unmarshal(args, &params)
 	}
@@ -195,9 +188,8 @@ func (h *ToolHandler) toolGenerateTest(req JSONRPCRequest, args json.RawMessage)
 	}
 
 	allActions := h.capture.GetAllEnhancedActions()
-	actions := filterLastN(allActions, params.LastN)
-
-	script := generateTestScript(actions, params)
+	actions := gen.FilterLastN(allActions, params.LastN)
+	script := gen.GenerateTestScript(actions, params)
 
 	result := map[string]any{
 		"script":       script,
@@ -219,132 +211,6 @@ func (h *ToolHandler) toolGenerateTest(req JSONRPCRequest, args json.RawMessage)
 
 	summary := fmt.Sprintf("Playwright test '%s' (%d actions)", params.TestName, len(actions))
 	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse(summary, result)}
-}
-
-// generateTestScript builds a complete Playwright test file from captured actions.
-func generateTestScript(actions []capture.EnhancedAction, params TestGenParams) string {
-	var b strings.Builder
-
-	b.WriteString("import { test, expect } from '@playwright/test';\n\n")
-	fmt.Fprintf(&b, "test.describe('%s', () => {\n", escapeJS(params.TestName))
-
-	if len(actions) == 0 {
-		b.WriteString("  // reason: no_actions_captured\n")
-		b.WriteString("  // hint: Navigate and interact with the browser first, then call generate(test) again.\n")
-		b.WriteString("  test('should load page', async ({ page }) => {\n")
-		b.WriteString("    // No actions captured — add test steps here\n")
-		b.WriteString("    await page.goto('/');\n")
-		b.WriteString("    await expect(page).toHaveTitle(/.+/);\n")
-		b.WriteString("  });\n")
-	} else {
-		writeTestSteps(&b, actions, params)
-	}
-
-	b.WriteString("});\n")
-	return b.String()
-}
-
-// writeTestSteps groups actions into logical test blocks and writes them.
-func writeTestSteps(b *strings.Builder, actions []capture.EnhancedAction, params TestGenParams) {
-	// Group actions by navigation — each page gets its own test() block.
-	groups := groupActionsByNavigation(actions)
-
-	for i, group := range groups {
-		testLabel := testLabelForGroup(group, i)
-		fmt.Fprintf(b, "  test('%s', async ({ page }) => {\n", escapeJS(testLabel))
-
-		opts := ReproductionParams{BaseURL: params.BaseURL}
-		var prevTs int64
-		for _, action := range group {
-			writePauseComment(b, prevTs, action.Timestamp, "    // [%ds pause]\n")
-			prevTs = action.Timestamp
-			line := playwrightStep(action, opts)
-			if line != "" {
-				b.WriteString("    " + line + "\n")
-			}
-		}
-
-		// Add assertions at the end of each test block.
-		writeTestAssertions(b, group, params)
-
-		b.WriteString("  });\n\n")
-	}
-}
-
-// groupActionsByNavigation splits actions into groups at each navigate action.
-// Each group starts with a navigate (if present) and includes all subsequent
-// actions until the next navigate.
-func groupActionsByNavigation(actions []capture.EnhancedAction) [][]capture.EnhancedAction {
-	if len(actions) == 0 {
-		return nil
-	}
-	var groups [][]capture.EnhancedAction
-	var current []capture.EnhancedAction
-
-	for _, action := range actions {
-		if action.Type == "navigate" && len(current) > 0 {
-			groups = append(groups, current)
-			current = nil
-		}
-		current = append(current, action)
-	}
-	if len(current) > 0 {
-		groups = append(groups, current)
-	}
-	return groups
-}
-
-// testLabelForGroup generates a descriptive test label for a group of actions.
-func testLabelForGroup(group []capture.EnhancedAction, index int) string {
-	if len(group) == 0 {
-		return fmt.Sprintf("step %d", index+1)
-	}
-	first := group[0]
-	if first.Type == "navigate" && first.ToURL != "" {
-		// Extract path from URL for a readable name.
-		path := first.ToURL
-		if idx := strings.Index(path, "://"); idx >= 0 {
-			path = path[idx+3:]
-		}
-		if idx := strings.Index(path, "/"); idx >= 0 {
-			path = path[idx:]
-		}
-		if path == "/" || path == "" {
-			path = "homepage"
-		}
-		return fmt.Sprintf("should work on %s", chopString(path, 60))
-	}
-	return fmt.Sprintf("step %d", index+1)
-}
-
-// writeTestAssertions adds expect() assertions at the end of a test block.
-func writeTestAssertions(b *strings.Builder, group []capture.EnhancedAction, params TestGenParams) {
-	hasNavigate := false
-	for _, a := range group {
-		if a.Type == "navigate" {
-			hasNavigate = true
-			break
-		}
-	}
-
-	if hasNavigate {
-		b.WriteString("    // Verify page loaded successfully\n")
-		b.WriteString("    await expect(page).toHaveTitle(/.+/);\n")
-	}
-
-	if params.AssertNoErrors {
-		b.WriteString("    // Assert no console errors\n")
-		b.WriteString("    const errors = [];\n")
-		b.WriteString("    page.on('console', msg => { if (msg.type() === 'error') errors.push(msg.text()); });\n")
-		b.WriteString("    expect(errors).toHaveLength(0);\n")
-	}
-
-	if params.AssertNetwork {
-		b.WriteString("    // Assert no failed network requests\n")
-		b.WriteString("    const failedRequests = [];\n")
-		b.WriteString("    page.on('requestfailed', req => failedRequests.push(req.url()));\n")
-		b.WriteString("    expect(failedRequests).toHaveLength(0);\n")
-	}
 }
 
 func (h *ToolHandler) toolGeneratePRSummary(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
@@ -555,8 +421,8 @@ func (h *ToolHandler) toolGenerateCSP(req JSONRPCRequest, args json.RawMessage) 
 		})}
 	}
 
-	directives := buildCSPDirectives(networkBodies)
-	policy := buildCSPPolicyString(directives)
+	directives := gen.BuildCSPDirectives(networkBodies)
+	policy := gen.BuildCSPPolicyString(directives)
 
 	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("CSP policy generated", map[string]any{
 		"status": "ok", "mode": mode, "policy": policy,
@@ -564,99 +430,6 @@ func (h *ToolHandler) toolGenerateCSP(req JSONRPCRequest, args json.RawMessage) 
 	})}
 }
 
-// buildCSPDirectives extracts unique origins from network bodies and groups them by CSP directive.
-func buildCSPDirectives(networkBodies []capture.NetworkBody) map[string][]string {
-	originsByType := make(map[string]map[string]bool)
-	for _, body := range networkBodies {
-		origin := extractOrigin(body.URL)
-		if origin == "" {
-			continue
-		}
-		directive := resourceTypeToCSPDirective(body.ContentType)
-		if originsByType[directive] == nil {
-			originsByType[directive] = make(map[string]bool)
-		}
-		originsByType[directive][origin] = true
-	}
-
-	directives := map[string][]string{"default-src": {"'self'"}}
-	for directive, origins := range originsByType {
-		originList := make([]string, 0, len(origins))
-		for origin := range origins {
-			originList = append(originList, origin)
-		}
-		if len(originList) > 0 {
-			directives[directive] = append([]string{"'self'"}, originList...)
-		}
-	}
-	return directives
-}
-
-// buildCSPPolicyString serializes CSP directives into a semicolon-separated policy string.
-func buildCSPPolicyString(directives map[string][]string) string {
-	var policyParts []string
-	for directive, sources := range directives {
-		policyParts = append(policyParts, directive+" "+joinStrings(sources, " "))
-	}
-	return joinStrings(policyParts, "; ")
-}
-
-// extractOrigin extracts the origin (scheme://host:port) from a URL
-func extractOrigin(urlStr string) string {
-	if urlStr == "" {
-		return ""
-	}
-	// Simple extraction - find scheme://host
-	idx := 0
-	if len(urlStr) > 8 && urlStr[:8] == "https://" {
-		idx = 8
-	} else if len(urlStr) > 7 && urlStr[:7] == "http://" {
-		idx = 7
-	} else {
-		return ""
-	}
-	// Find end of host (first / or end of string)
-	endIdx := idx
-	for endIdx < len(urlStr) && urlStr[endIdx] != '/' && urlStr[endIdx] != '?' {
-		endIdx++
-	}
-	return urlStr[:endIdx]
-}
-
-// containsIgnoreCase checks if s contains substr (case-insensitive).
-func containsIgnoreCase(s, substr string) bool {
-	return strings.Contains(strings.ToLower(s), strings.ToLower(substr))
-}
-
-// resourceTypeToCSPDirective maps content-type to CSP directive
-func resourceTypeToCSPDirective(contentType string) string {
-	switch {
-	case containsIgnoreCase(contentType, "javascript"):
-		return "script-src"
-	case containsIgnoreCase(contentType, "css"):
-		return "style-src"
-	case containsIgnoreCase(contentType, "font"):
-		return "font-src"
-	case containsIgnoreCase(contentType, "image"):
-		return "img-src"
-	case containsIgnoreCase(contentType, "video"), containsIgnoreCase(contentType, "audio"):
-		return "media-src"
-	default:
-		return "connect-src"
-	}
-}
-
-// joinStrings joins strings with a separator
-func joinStrings(strs []string, sep string) string {
-	if len(strs) == 0 {
-		return ""
-	}
-	result := strs[0]
-	for i := 1; i < len(strs); i++ {
-		result += sep + strs[i]
-	}
-	return result
-}
 
 // toolGenerateSRI generates Subresource Integrity hashes for third-party scripts/styles.
 func (h *ToolHandler) toolGenerateSRI(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {

@@ -205,6 +205,11 @@ func (h *ToolHandler) GetLogTotalAdded() int64 {
 	return h.server.logTotalAdded
 }
 
+// GetAnnotationStore returns the annotation store for draw mode data.
+func (h *ToolHandler) GetAnnotationStore() *AnnotationStore {
+	return h.annotationStore
+}
+
 // GetToolCallLimiter returns the tool call limiter
 func (h *ToolHandler) GetToolCallLimiter() RateLimiter {
 	return h.toolCallLimiter

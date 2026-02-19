@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/dev-console/dev-console/internal/capture"
+	gen "github.com/dev-console/dev-console/internal/tools/generate"
 )
 
 func TestGoldenCSPModerate(t *testing.T) {
@@ -23,7 +24,7 @@ func TestGoldenCSPModerate(t *testing.T) {
 		{URL: "https://api.example.com/users", ContentType: "application/json"},
 	}
 
-	directives := buildCSPDirectives(networkBodies)
+	directives := gen.BuildCSPDirectives(networkBodies)
 
 	// Sort directive values for deterministic output
 	sortedDirectives := make(map[string][]string)
