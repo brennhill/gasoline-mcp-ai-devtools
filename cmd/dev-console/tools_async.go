@@ -353,7 +353,7 @@ func enrichCommandResponseData(result json.RawMessage, responseData map[string]a
 	}
 
 	// Surface extension enrichment fields to top-level for easier LLM consumption.
-	for _, key := range []string{"timing", "dom_changes", "dom_summary", "analysis", "content_script_status", "resolved_tab_id", "resolved_url", "target_context", "effective_tab_id", "effective_url", "effective_title", "final_url", "title"} {
+	for _, key := range []string{"timing", "dom_changes", "dom_summary", "dom_mutations", "analysis", "content_script_status", "resolved_tab_id", "resolved_url", "target_context", "effective_tab_id", "effective_url", "effective_title", "final_url", "title"} {
 		if v, ok := extResult[key]; ok {
 			responseData[key] = v
 		}

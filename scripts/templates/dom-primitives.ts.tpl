@@ -10,7 +10,7 @@
 // These bypass CSP restrictions because they use the `func` parameter (no eval/new Function).
 // Each function MUST be self-contained — no closures over external variables.
 
-import type { DOMPrimitiveOptions, DOMResult } from './dom-types'
+import type { DOMMutationEntry, DOMPrimitiveOptions, DOMResult } from './dom-types'
 
 /**
  * Single self-contained function for all DOM primitives.
@@ -561,20 +561,20 @@ export function domPrimitive(
 
         if (options.observe_mutations) {
           const maxEntries = 50
-          const entries: Array<{type: string; tag?: string; id?: string; class?: string; text_preview?: string; attribute?: string; old_value?: string; new_value?: string}> = []
+          const entries: DOMMutationEntry[] = []
           for (const m of mutations) {
             if (entries.length >= maxEntries) break
             if (m.type === 'childList') {
               for (let i = 0; i < m.addedNodes.length && entries.length < maxEntries; i++) {
-                const n = m.addedNodes[i]
-                if (n.nodeType === 1) {
+                const n = m.addedNodes[i] as Node | undefined
+                if (n && n.nodeType === 1) {
                   const el = n as Element
                   entries.push({ type: 'added', tag: el.tagName?.toLowerCase(), id: el.id || undefined, class: el.className?.toString()?.slice(0, 80) || undefined, text_preview: el.textContent?.slice(0, 100) || undefined })
                 }
               }
               for (let i = 0; i < m.removedNodes.length && entries.length < maxEntries; i++) {
-                const n = m.removedNodes[i]
-                if (n.nodeType === 1) {
+                const n = m.removedNodes[i] as Node | undefined
+                if (n && n.nodeType === 1) {
                   const el = n as Element
                   entries.push({ type: 'removed', tag: el.tagName?.toLowerCase(), id: el.id || undefined, class: el.className?.toString()?.slice(0, 80) || undefined, text_preview: el.textContent?.slice(0, 100) || undefined })
                 }

@@ -158,7 +158,8 @@ async function executeStandardAction(target, params) {
                 checked: params.checked,
                 name: params.name,
                 timeout_ms: params.timeout_ms,
-                analyze: params.analyze
+                analyze: params.analyze,
+                observe_mutations: params.observe_mutations
             }
         ]
     });

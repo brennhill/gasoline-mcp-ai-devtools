@@ -14,7 +14,7 @@
 // These bypass CSP restrictions because they use the `func` parameter (no eval/new Function).
 // Each function MUST be self-contained — no closures over external variables.
 
-import type { DOMPrimitiveOptions, DOMResult } from './dom-types'
+import type { DOMMutationEntry, DOMPrimitiveOptions, DOMResult } from './dom-types'
 
 /**
  * Single self-contained function for all DOM primitives.
@@ -528,7 +528,8 @@ export function domPrimitive(
     observer.observe(document.body || document.documentElement, {
       childList: true,
       subtree: true,
-      attributes: true
+      attributes: true,
+      attributeOldValue: !!options.observe_mutations
     })
 
     const result = fn()
@@ -560,6 +561,34 @@ export function domPrimitive(
           enriched.timing = { total_ms: totalMs }
           enriched.dom_changes = { added, removed, modified, summary }
           enriched.analysis = `${result.action} completed in ${totalMs}ms. ${summary}.`
+        }
+
+        if (options.observe_mutations) {
+          const maxEntries = 50
+          const entries: DOMMutationEntry[] = []
+          for (const m of mutations) {
+            if (entries.length >= maxEntries) break
+            if (m.type === 'childList') {
+              for (let i = 0; i < m.addedNodes.length && entries.length < maxEntries; i++) {
+                const n = m.addedNodes[i] as Node | undefined
+                if (n && n.nodeType === 1) {
+                  const el = n as Element
+                  entries.push({ type: 'added', tag: el.tagName?.toLowerCase(), id: el.id || undefined, class: el.className?.toString()?.slice(0, 80) || undefined, text_preview: el.textContent?.slice(0, 100) || undefined })
+                }
+              }
+              for (let i = 0; i < m.removedNodes.length && entries.length < maxEntries; i++) {
+                const n = m.removedNodes[i] as Node | undefined
+                if (n && n.nodeType === 1) {
+                  const el = n as Element
+                  entries.push({ type: 'removed', tag: el.tagName?.toLowerCase(), id: el.id || undefined, class: el.className?.toString()?.slice(0, 80) || undefined, text_preview: el.textContent?.slice(0, 100) || undefined })
+                }
+              }
+            } else if (m.type === 'attributes' && m.target.nodeType === 1) {
+              const el = m.target as Element
+              entries.push({ type: 'attribute', tag: el.tagName?.toLowerCase(), id: el.id || undefined, attribute: m.attributeName || undefined, old_value: m.oldValue?.slice(0, 100) || undefined, new_value: el.getAttribute(m.attributeName || '')?.slice(0, 100) || undefined })
+            }
+          }
+          enriched.dom_mutations = entries
         }
 
         resolve(enriched)
