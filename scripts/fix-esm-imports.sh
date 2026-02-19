@@ -12,6 +12,13 @@ find extension -maxdepth 1 -name "*.js" -type f -exec sed -i '' -E \
 find extension/background extension/inject extension/lib extension/popup extension/content -name "*.js" -type f -exec sed -i '' -E \
   "s|from '(\.\.?/[^']+)';|from '\1.js';|g" {} \;
 
+# Add .js to side-effect imports (import './foo' without 'from')
+find extension -maxdepth 1 -name "*.js" -type f -exec sed -i '' -E \
+  "s|^import '(\.\.?/[^']+)';|import '\1.js';|g" {} \;
+
+find extension/background extension/inject extension/lib extension/popup extension/content -name "*.js" -type f -exec sed -i '' -E \
+  "s|^import '(\.\.?/[^']+)';|import '\1.js';|g" {} \;
+
 # Fix double .js.js if any
 find extension -name "*.js" -type f -exec sed -i '' \
   "s|\.js\.js'|.js'|g" {} \;

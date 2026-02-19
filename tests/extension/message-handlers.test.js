@@ -134,7 +134,7 @@ describe('message routing', () => {
     assert.strictEqual(deps.addToEnhancedActionBatcher.mock.calls.length, 1)
   })
 
-  test('network_body routes to body batcher with tabId', () => {
+  test('network_body routes to body batcher with tab_id', () => {
     const { handler, deps } = getInstalledHandler()
     handler({
       type: 'network_body',
@@ -142,7 +142,7 @@ describe('message routing', () => {
       tabId: 42
     }, contentScriptSender, mock.fn())
     assert.strictEqual(deps.addToNetworkBodyBatcher.mock.calls.length, 1)
-    assert.strictEqual(deps.addToNetworkBodyBatcher.mock.calls[0].arguments[0].tabId, 42)
+    assert.strictEqual(deps.addToNetworkBodyBatcher.mock.calls[0].arguments[0].tab_id, 42)
   })
 
   test('network_body dropped when capture disabled', () => {

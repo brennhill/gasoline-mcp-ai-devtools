@@ -327,17 +327,6 @@ func TestRichAction_CorrelationID_HasAction(t *testing.T) {
 // PerfDiff enrichment: refresh command_result
 // ============================================
 
-// extractJSON extracts JSON from an mcpJSONResponse text (strips "Summary\n" prefix)
-func extractJSON(text string) string {
-	if i := strings.Index(text, "\n{"); i >= 0 {
-		return text[i+1:]
-	}
-	if strings.HasPrefix(text, "{") {
-		return text
-	}
-	return text
-}
-
 func TestRichAction_RefreshStoresBeforeSnapshot(t *testing.T) {
 	env := newInteractTestEnv(t)
 	env.capture.SetPilotEnabled(true)
@@ -361,7 +350,7 @@ func TestRichAction_RefreshStoresBeforeSnapshot(t *testing.T) {
 
 	// Extract correlation_id from result
 	var resultData map[string]any
-	if err := json.Unmarshal([]byte(extractJSON(result.Content[0].Text)), &resultData); err != nil {
+	if err := json.Unmarshal([]byte(extractJSONFromText(result.Content[0].Text)), &resultData); err != nil {
 		t.Fatalf("Failed to parse result JSON: %v", err)
 	}
 	corrID, _ := resultData["correlation_id"].(string)
@@ -403,7 +392,7 @@ func TestRichAction_NavigateStoresBeforeSnapshot(t *testing.T) {
 	}
 
 	var resultData map[string]any
-	if err := json.Unmarshal([]byte(extractJSON(result.Content[0].Text)), &resultData); err != nil {
+	if err := json.Unmarshal([]byte(extractJSONFromText(result.Content[0].Text)), &resultData); err != nil {
 		t.Fatalf("Failed to parse result JSON: %v", err)
 	}
 	corrID, _ := resultData["correlation_id"].(string)
@@ -440,7 +429,7 @@ func TestRichAction_CommandResultEnrichedWithPerfDiff(t *testing.T) {
 	// Call refresh to stash the before-snapshot
 	result, _ := env.callInteract(t, `{"action":"refresh","background":true}`)
 	var resultData map[string]any
-	_ = json.Unmarshal([]byte(extractJSON(result.Content[0].Text)), &resultData)
+	_ = json.Unmarshal([]byte(extractJSONFromText(result.Content[0].Text)), &resultData)
 	corrID := resultData["correlation_id"].(string)
 
 	// Simulate extension sending the "after" snapshot (overwrites the old one)
@@ -473,7 +462,7 @@ func TestRichAction_CommandResultEnrichedWithPerfDiff(t *testing.T) {
 
 	// Parse the JSON response to check for perf_diff
 	var responseData map[string]any
-	if err := json.Unmarshal([]byte(extractJSON(observeResult.Content[0].Text)), &responseData); err != nil {
+	if err := json.Unmarshal([]byte(extractJSONFromText(observeResult.Content[0].Text)), &responseData); err != nil {
 		t.Fatalf("Failed to parse response JSON: %v", err)
 	}
 
@@ -517,7 +506,7 @@ func TestRichAction_CommandResultNoPerfDiffWhenNoSnapshots(t *testing.T) {
 	// Call refresh — no before-snapshot available
 	result, _ := env.callInteract(t, `{"action":"refresh","background":true}`)
 	var resultData map[string]any
-	_ = json.Unmarshal([]byte(extractJSON(result.Content[0].Text)), &resultData)
+	_ = json.Unmarshal([]byte(extractJSONFromText(result.Content[0].Text)), &resultData)
 	corrID := resultData["correlation_id"].(string)
 
 	// Complete the command
@@ -532,7 +521,7 @@ func TestRichAction_CommandResultNoPerfDiffWhenNoSnapshots(t *testing.T) {
 	_ = json.Unmarshal(resp.Result, &observeResult)
 
 	var responseData map[string]any
-	_ = json.Unmarshal([]byte(extractJSON(observeResult.Content[0].Text)), &responseData)
+	_ = json.Unmarshal([]byte(extractJSONFromText(observeResult.Content[0].Text)), &responseData)
 
 	if _, exists := responseData["perf_diff"]; exists {
 		t.Error("perf_diff should NOT be present when no before-snapshot exists")
@@ -546,7 +535,7 @@ func TestRichAction_CommandResultIncludesTimingMs(t *testing.T) {
 	// Click action
 	result, _ := env.callInteract(t, `{"action":"click","selector":"#btn","background":true}`)
 	var resultData map[string]any
-	json.Unmarshal([]byte(extractJSON(result.Content[0].Text)), &resultData)
+	json.Unmarshal([]byte(extractJSONFromText(result.Content[0].Text)), &resultData)
 	corrID := resultData["correlation_id"].(string)
 
 	// Simulate extension completing the click after a small delay
@@ -561,7 +550,7 @@ func TestRichAction_CommandResultIncludesTimingMs(t *testing.T) {
 	_ = json.Unmarshal(resp.Result, &observeResult)
 
 	var responseData map[string]any
-	_ = json.Unmarshal([]byte(extractJSON(observeResult.Content[0].Text)), &responseData)
+	_ = json.Unmarshal([]byte(extractJSONFromText(observeResult.Content[0].Text)), &responseData)
 
 	timingMs, exists := responseData["timing_ms"]
 	if !exists {
@@ -641,7 +630,7 @@ func TestRichAction_CompactClickHasDomSummary_WhenExtensionResponds(t *testing.T
 	// Click without analyze:true (compact mode)
 	result, _ := env.callInteract(t, `{"action":"click","selector":"#btn","background":true}`)
 	var resultData map[string]any
-	_ = json.Unmarshal([]byte(extractJSON(result.Content[0].Text)), &resultData)
+	_ = json.Unmarshal([]byte(extractJSONFromText(result.Content[0].Text)), &resultData)
 	corrID := resultData["correlation_id"].(string)
 
 	// Simulate extension responding WITH dom_summary (compact mode, no analyze)
@@ -662,7 +651,7 @@ func TestRichAction_CompactClickHasDomSummary_WhenExtensionResponds(t *testing.T
 	_ = json.Unmarshal(resp.Result, &observeResult)
 
 	var responseData map[string]any
-	if err := json.Unmarshal([]byte(extractJSON(observeResult.Content[0].Text)), &responseData); err != nil {
+	if err := json.Unmarshal([]byte(extractJSONFromText(observeResult.Content[0].Text)), &responseData); err != nil {
 		t.Fatalf("Failed to parse response JSON: %v", err)
 	}
 
@@ -697,7 +686,7 @@ func TestRichAction_AnalyzeFieldsSurfacedTopLevel(t *testing.T) {
 	// Click with analyze:true
 	result, _ := env.callInteract(t, `{"action":"click","selector":"#btn","analyze":true,"background":true}`)
 	var resultData map[string]any
-	_ = json.Unmarshal([]byte(extractJSON(result.Content[0].Text)), &resultData)
+	_ = json.Unmarshal([]byte(extractJSONFromText(result.Content[0].Text)), &resultData)
 	corrID := resultData["correlation_id"].(string)
 
 	// Simulate extension result with analyze enrichment fields
@@ -719,7 +708,7 @@ func TestRichAction_AnalyzeFieldsSurfacedTopLevel(t *testing.T) {
 	_ = json.Unmarshal(resp.Result, &observeResult)
 
 	var responseData map[string]any
-	if err := json.Unmarshal([]byte(extractJSON(observeResult.Content[0].Text)), &responseData); err != nil {
+	if err := json.Unmarshal([]byte(extractJSONFromText(observeResult.Content[0].Text)), &responseData); err != nil {
 		t.Fatalf("Failed to parse response JSON: %v", err)
 	}
 
@@ -766,7 +755,7 @@ func TestRichAction_NoAnalyzeFieldsWhenAbsent(t *testing.T) {
 
 	result, _ := env.callInteract(t, `{"action":"click","selector":"#btn","background":true}`)
 	var resultData map[string]any
-	_ = json.Unmarshal([]byte(extractJSON(result.Content[0].Text)), &resultData)
+	_ = json.Unmarshal([]byte(extractJSONFromText(result.Content[0].Text)), &resultData)
 	corrID := resultData["correlation_id"].(string)
 
 	// Extension result WITHOUT analyze fields (compact mode)
@@ -781,7 +770,7 @@ func TestRichAction_NoAnalyzeFieldsWhenAbsent(t *testing.T) {
 	_ = json.Unmarshal(resp.Result, &observeResult)
 
 	var responseData map[string]any
-	if err := json.Unmarshal([]byte(extractJSON(observeResult.Content[0].Text)), &responseData); err != nil {
+	if err := json.Unmarshal([]byte(extractJSONFromText(observeResult.Content[0].Text)), &responseData); err != nil {
 		t.Fatalf("Failed to parse response JSON: %v", err)
 	}
 
@@ -803,7 +792,7 @@ func TestRichAction_TargetContextSurfacedTopLevel(t *testing.T) {
 
 	result, _ := env.callInteract(t, `{"action":"click","selector":"#btn","tab_id":77,"background":true}`)
 	var resultData map[string]any
-	_ = json.Unmarshal([]byte(extractJSON(result.Content[0].Text)), &resultData)
+	_ = json.Unmarshal([]byte(extractJSONFromText(result.Content[0].Text)), &resultData)
 	corrID := resultData["correlation_id"].(string)
 
 	extensionResult := json.RawMessage(`{
@@ -828,7 +817,7 @@ func TestRichAction_TargetContextSurfacedTopLevel(t *testing.T) {
 	_ = json.Unmarshal(resp.Result, &observeResult)
 
 	var responseData map[string]any
-	if err := json.Unmarshal([]byte(extractJSON(observeResult.Content[0].Text)), &responseData); err != nil {
+	if err := json.Unmarshal([]byte(extractJSONFromText(observeResult.Content[0].Text)), &responseData); err != nil {
 		t.Fatalf("Failed to parse response JSON: %v", err)
 	}
 
@@ -867,7 +856,7 @@ func TestRichAction_DomSummaryPassthrough(t *testing.T) {
 	// Click with analyze:true
 	result, _ := env.callInteract(t, `{"action":"click","selector":"#btn","analyze":true,"background":true}`)
 	var resultData map[string]any
-	_ = json.Unmarshal([]byte(extractJSON(result.Content[0].Text)), &resultData)
+	_ = json.Unmarshal([]byte(extractJSONFromText(result.Content[0].Text)), &resultData)
 	corrID := resultData["correlation_id"].(string)
 
 	// Simulate extension result with dom_summary and analyze fields
@@ -890,7 +879,7 @@ func TestRichAction_DomSummaryPassthrough(t *testing.T) {
 	_ = json.Unmarshal(resp.Result, &observeResult)
 
 	var responseData map[string]any
-	if err := json.Unmarshal([]byte(extractJSON(observeResult.Content[0].Text)), &responseData); err != nil {
+	if err := json.Unmarshal([]byte(extractJSONFromText(observeResult.Content[0].Text)), &responseData); err != nil {
 		t.Fatalf("Failed to parse response JSON: %v", err)
 	}
 
@@ -952,7 +941,7 @@ func TestRichAction_PerfDiffWithFullWebVitals(t *testing.T) {
 	// Call refresh to stash before-snapshot
 	result, _ := env.callInteract(t, `{"action":"refresh","background":true}`)
 	var resultData map[string]any
-	_ = json.Unmarshal([]byte(extractJSON(result.Content[0].Text)), &resultData)
+	_ = json.Unmarshal([]byte(extractJSONFromText(result.Content[0].Text)), &resultData)
 	corrID := resultData["correlation_id"].(string)
 
 	// Simulate improved "after" snapshot with all Web Vitals
@@ -984,7 +973,7 @@ func TestRichAction_PerfDiffWithFullWebVitals(t *testing.T) {
 	_ = json.Unmarshal(resp.Result, &observeResult)
 
 	var responseData map[string]any
-	_ = json.Unmarshal([]byte(extractJSON(observeResult.Content[0].Text)), &responseData)
+	_ = json.Unmarshal([]byte(extractJSONFromText(observeResult.Content[0].Text)), &responseData)
 
 	perfDiff, exists := responseData["perf_diff"]
 	if !exists {
@@ -1204,7 +1193,7 @@ func TestQueuedResponse_HasQueuedAndFinalMarkers(t *testing.T) {
 
 	result, _ := env.callInteract(t, `{"action":"click","selector":"#btn","background":true}`)
 	var responseData map[string]any
-	_ = json.Unmarshal([]byte(extractJSON(result.Content[0].Text)), &responseData)
+	_ = json.Unmarshal([]byte(extractJSONFromText(result.Content[0].Text)), &responseData)
 
 	if responseData["status"] != "queued" {
 		t.Fatalf("status = %v, want queued", responseData["status"])
@@ -1224,7 +1213,7 @@ func TestCommandResult_CompleteHasFinalTrue(t *testing.T) {
 	// Queue async to avoid sync-wait-for-extension
 	result, _ := env.callInteract(t, `{"action":"click","selector":"#btn","background":true}`)
 	var resultData map[string]any
-	_ = json.Unmarshal([]byte(extractJSON(result.Content[0].Text)), &resultData)
+	_ = json.Unmarshal([]byte(extractJSONFromText(result.Content[0].Text)), &resultData)
 	corrID := resultData["correlation_id"].(string)
 
 	env.capture.CompleteCommand(corrID, json.RawMessage(`{"success":true}`), "")
@@ -1237,7 +1226,7 @@ func TestCommandResult_CompleteHasFinalTrue(t *testing.T) {
 	_ = json.Unmarshal(resp.Result, &observeResult)
 
 	var responseData map[string]any
-	if err := json.Unmarshal([]byte(extractJSON(observeResult.Content[0].Text)), &responseData); err != nil {
+	if err := json.Unmarshal([]byte(extractJSONFromText(observeResult.Content[0].Text)), &responseData); err != nil {
 		t.Fatalf("Failed to parse response JSON: %v", err)
 	}
 
@@ -1253,7 +1242,7 @@ func TestCommandResult_ErrorHasFinalTrue(t *testing.T) {
 
 	result, _ := env.callInteract(t, `{"action":"click","selector":"#btn","background":true}`)
 	var resultData map[string]any
-	_ = json.Unmarshal([]byte(extractJSON(result.Content[0].Text)), &resultData)
+	_ = json.Unmarshal([]byte(extractJSONFromText(result.Content[0].Text)), &resultData)
 	corrID := resultData["correlation_id"].(string)
 
 	env.capture.CompleteCommand(corrID, nil, "element_not_found")
@@ -1266,7 +1255,7 @@ func TestCommandResult_ErrorHasFinalTrue(t *testing.T) {
 	_ = json.Unmarshal(resp.Result, &observeResult)
 
 	var responseData map[string]any
-	if err := json.Unmarshal([]byte(extractJSON(observeResult.Content[0].Text)), &responseData); err != nil {
+	if err := json.Unmarshal([]byte(extractJSONFromText(observeResult.Content[0].Text)), &responseData); err != nil {
 		t.Fatalf("Failed to parse response JSON: %v", err)
 	}
 
@@ -1286,7 +1275,7 @@ func TestCommandResult_EffectiveContextSurfaced(t *testing.T) {
 
 	result, _ := env.callInteract(t, `{"action":"click","selector":"#btn","tab_id":42,"background":true}`)
 	var resultData map[string]any
-	_ = json.Unmarshal([]byte(extractJSON(result.Content[0].Text)), &resultData)
+	_ = json.Unmarshal([]byte(extractJSONFromText(result.Content[0].Text)), &resultData)
 	corrID := resultData["correlation_id"].(string)
 
 	extensionResult := json.RawMessage(`{
@@ -1307,7 +1296,7 @@ func TestCommandResult_EffectiveContextSurfaced(t *testing.T) {
 	_ = json.Unmarshal(resp.Result, &observeResult)
 
 	var responseData map[string]any
-	if err := json.Unmarshal([]byte(extractJSON(observeResult.Content[0].Text)), &responseData); err != nil {
+	if err := json.Unmarshal([]byte(extractJSONFromText(observeResult.Content[0].Text)), &responseData); err != nil {
 		t.Fatalf("Failed to parse response JSON: %v", err)
 	}
 
@@ -1332,7 +1321,7 @@ func TestCommandResult_CompleteHasQueuedFalse(t *testing.T) {
 
 	result, _ := env.callInteract(t, `{"action":"click","selector":"#btn","background":true}`)
 	var resultData map[string]any
-	_ = json.Unmarshal([]byte(extractJSON(result.Content[0].Text)), &resultData)
+	_ = json.Unmarshal([]byte(extractJSONFromText(result.Content[0].Text)), &resultData)
 	corrID := resultData["correlation_id"].(string)
 
 	env.capture.CompleteCommand(corrID, json.RawMessage(`{"success":true}`), "")
@@ -1345,7 +1334,7 @@ func TestCommandResult_CompleteHasQueuedFalse(t *testing.T) {
 	_ = json.Unmarshal(resp.Result, &observeResult)
 
 	var responseData map[string]any
-	if err := json.Unmarshal([]byte(extractJSON(observeResult.Content[0].Text)), &responseData); err != nil {
+	if err := json.Unmarshal([]byte(extractJSONFromText(observeResult.Content[0].Text)), &responseData); err != nil {
 		t.Fatalf("Failed to parse response JSON: %v", err)
 	}
 
@@ -1364,7 +1353,7 @@ func TestCommandResult_ExpiredHasFinalTrue(t *testing.T) {
 
 	result, _ := env.callInteract(t, `{"action":"click","selector":"#btn","background":true}`)
 	var resultData map[string]any
-	_ = json.Unmarshal([]byte(extractJSON(result.Content[0].Text)), &resultData)
+	_ = json.Unmarshal([]byte(extractJSONFromText(result.Content[0].Text)), &resultData)
 	corrID := resultData["correlation_id"].(string)
 
 	env.capture.ExpireCommand(corrID)
@@ -1377,7 +1366,7 @@ func TestCommandResult_ExpiredHasFinalTrue(t *testing.T) {
 	_ = json.Unmarshal(resp.Result, &observeResult)
 
 	var responseData map[string]any
-	if err := json.Unmarshal([]byte(extractJSON(observeResult.Content[0].Text)), &responseData); err != nil {
+	if err := json.Unmarshal([]byte(extractJSONFromText(observeResult.Content[0].Text)), &responseData); err != nil {
 		t.Fatalf("Failed to parse response JSON: %v", err)
 	}
 
@@ -1409,7 +1398,7 @@ func TestCommandResult_TimeoutHasFinalTrue(t *testing.T) {
 	_ = json.Unmarshal(resp.Result, &observeResult)
 
 	var responseData map[string]any
-	if err := json.Unmarshal([]byte(extractJSON(observeResult.Content[0].Text)), &responseData); err != nil {
+	if err := json.Unmarshal([]byte(extractJSONFromText(observeResult.Content[0].Text)), &responseData); err != nil {
 		t.Fatalf("Failed to parse response JSON: %v", err)
 	}
 
@@ -1441,7 +1430,7 @@ func TestCommandResult_NotFoundHasFinalTrue(t *testing.T) {
 	}
 
 	var responseData map[string]any
-	if err := json.Unmarshal([]byte(extractJSON(observeResult.Content[0].Text)), &responseData); err != nil {
+	if err := json.Unmarshal([]byte(extractJSONFromText(observeResult.Content[0].Text)), &responseData); err != nil {
 		t.Fatalf("Failed to parse response JSON: %v", err)
 	}
 	if responseData["error"] != "no_data" {
@@ -1468,7 +1457,7 @@ func TestCommandResult_AnnotationNotFoundHasFinalTrue(t *testing.T) {
 	}
 
 	var responseData map[string]any
-	if err := json.Unmarshal([]byte(extractJSON(observeResult.Content[0].Text)), &responseData); err != nil {
+	if err := json.Unmarshal([]byte(extractJSONFromText(observeResult.Content[0].Text)), &responseData); err != nil {
 		t.Fatalf("Failed to parse response JSON: %v", err)
 	}
 	if responseData["error"] != "no_data" {

@@ -64,22 +64,10 @@ export async function sendWSEventsToServer(serverUrl, events, debugLogFn) {
 export async function sendNetworkBodiesToServer(serverUrl, bodies, debugLogFn) {
     if (debugLogFn)
         debugLogFn('connection', `Sending ${bodies.length} network bodies to server`);
-    // Convert camelCase payload keys to snake_case for the Go server API
-    const snakeBodies = bodies.map((b) => ({
-        url: b.url,
-        method: b.method,
-        status: b.status,
-        content_type: b.contentType,
-        request_body: b.requestBody,
-        response_body: b.responseBody,
-        ...(b.responseTruncated ? { response_truncated: true } : {}),
-        duration: b.duration,
-        ...(b.tabId != null ? { tab_id: b.tabId } : {})
-    }));
     const response = await fetch(`${serverUrl}/network-bodies`, {
         method: 'POST',
         headers: getRequestHeaders(),
-        body: JSON.stringify({ bodies: snakeBodies })
+        body: JSON.stringify({ bodies })
     });
     if (!response.ok) {
         const error = `Server error (network bodies): ${response.status} ${response.statusText}`;
@@ -335,14 +323,14 @@ export async function sendStatusPing(serverUrl, statusMessage, diagnosticLogFn) 
 /**
  * Poll server for pending queries
  */
-export async function pollPendingQueries(serverUrl, sessionId, pilotState, diagnosticLogFn, debugLogFn) {
+export async function pollPendingQueries(serverUrl, extSessionId, pilotState, diagnosticLogFn, debugLogFn) {
     try {
         if (diagnosticLogFn) {
             diagnosticLogFn(`[Diagnostic] Poll request: header=${pilotState}`);
         }
         const response = await fetch(`${serverUrl}/pending-queries`, {
             headers: {
-                ...getRequestHeaders({ 'X-Gasoline-Session': sessionId, 'X-Gasoline-Pilot': pilotState })
+                ...getRequestHeaders({ 'X-Gasoline-Ext-Session': extSessionId, 'X-Gasoline-Pilot': pilotState })
             }
         });
         if (!response.ok) {

@@ -18,7 +18,7 @@ import (
 type PersistedSettings struct {
 	AIWebPilotEnabled *bool     `json:"ai_web_pilot_enabled,omitempty"`
 	Timestamp         time.Time `json:"timestamp"`
-	SessionID         string    `json:"session_id"`
+	ExtSessionID      string    `json:"ext_session_id"`
 }
 
 // getSettingsPath returns the path to the settings cache file
@@ -104,7 +104,7 @@ func (c *Capture) SaveSettingsToDisk() error {
 	settings := PersistedSettings{
 		AIWebPilotEnabled: &pilotEnabled,
 		Timestamp:         c.ext.pilotUpdatedAt,
-		SessionID:         c.ext.extensionSession,
+		ExtSessionID:      c.ext.extSessionID,
 	}
 	c.mu.RUnlock()
 

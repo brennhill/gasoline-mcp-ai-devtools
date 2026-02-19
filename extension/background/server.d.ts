@@ -101,7 +101,7 @@ export declare function sendStatusPing(serverUrl: string, statusMessage: {
 /**
  * Poll server for pending queries
  */
-export declare function pollPendingQueries(serverUrl: string, sessionId: string, pilotState: '0' | '1', diagnosticLogFn?: (message: string) => void, debugLogFn?: (category: string, message: string, data?: unknown) => void): Promise<Array<{
+export declare function pollPendingQueries(serverUrl: string, extSessionId: string, pilotState: '0' | '1', diagnosticLogFn?: (message: string) => void, debugLogFn?: (category: string, message: string, data?: unknown) => void): Promise<Array<{
     id: string;
     type: string;
     params: string | Record<string, unknown>;

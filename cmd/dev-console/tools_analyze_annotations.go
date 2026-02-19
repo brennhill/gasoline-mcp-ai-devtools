@@ -9,7 +9,6 @@ package main
 
 import (
 	"encoding/json"
-	"fmt"
 	"os"
 	"path/filepath"
 	"sort"
@@ -28,15 +27,15 @@ const annotationWaitCommandTTL = 10 * time.Minute
 func (h *ToolHandler) toolGetAnnotations(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	var params struct {
 		Wait    bool   `json:"wait"`
-		Session string `json:"session"`
+		AnnotSession string `json:"annot_session"`
 	}
 	if len(args) > 0 {
 		lenientUnmarshal(args, &params)
 	}
 
 	// Named session path — returns multi-page aggregated results
-	if params.Session != "" {
-		return h.getNamedAnnotations(req, params.Session, params.Wait)
+	if params.AnnotSession != "" {
+		return h.getNamedAnnotations(req, params.AnnotSession, params.Wait)
 	}
 
 	// Anonymous session path — returns latest single-page result
@@ -52,7 +51,7 @@ func (h *ToolHandler) getAnonymousAnnotations(req JSONRPCRequest, wait bool) JSO
 
 		// Register a pending command — the annotation store will complete it
 		// when annotations arrive via /draw-mode/complete
-		corrID := fmt.Sprintf("ann_%d_%d", time.Now().UnixNano(), randomInt63()%1000000)
+		corrID := newCorrelationID("ann")
 		h.capture.RegisterCommand(corrID, "", annotationWaitCommandTTL)
 		h.annotationStore.RegisterWaiter(corrID, "")
 
@@ -97,14 +96,14 @@ func (h *ToolHandler) getNamedAnnotations(req JSONRPCRequest, sessionName string
 			return h.formatNamedAnnotationSession(req, ns)
 		}
 
-		corrID := fmt.Sprintf("ann_%d_%d", time.Now().UnixNano(), randomInt63()%1000000)
+		corrID := newCorrelationID("ann")
 		h.capture.RegisterCommand(corrID, "", annotationWaitCommandTTL)
 		h.annotationStore.RegisterWaiter(corrID, sessionName)
 
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Waiting for annotations", map[string]any{
 			"status":         "waiting_for_user",
 			"correlation_id": corrID,
-			"session_name":   sessionName,
+			"annot_session_name":   sessionName,
 			"pages":          []any{},
 			"page_count":     0,
 			"total_count":    0,
@@ -115,11 +114,11 @@ func (h *ToolHandler) getNamedAnnotations(req JSONRPCRequest, sessionName string
 	ns := h.annotationStore.GetNamedSession(sessionName)
 	if ns == nil {
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("No annotations", map[string]any{
-			"session_name": sessionName,
+			"annot_session_name": sessionName,
 			"pages":        []any{},
 			"page_count":   0,
 			"total_count":  0,
-			"message":      "Named session '" + sessionName + "' not found. Use interact({action: 'draw_mode_start', session: '" + sessionName + "'}) to start.",
+			"message":      "Named session '" + sessionName + "' not found. Use interact({action: 'draw_mode_start', annot_session: '" + sessionName + "'}) to start.",
 		})}
 	}
 
@@ -144,7 +143,7 @@ func (h *ToolHandler) formatNamedAnnotationSession(req JSONRPCRequest, ns *Named
 	}
 
 	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Annotations retrieved", map[string]any{
-		"session_name": ns.Name,
+		"annot_session_name": ns.Name,
 		"pages":        pages,
 		"page_count":   len(ns.Pages),
 		"total_count":  totalCount,

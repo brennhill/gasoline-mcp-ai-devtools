@@ -26,7 +26,7 @@ import (
 // SyncRequest is the POST body for /sync
 type SyncRequest struct {
 	// Session identification
-	SessionID string `json:"session_id"`
+	ExtSessionID string `json:"ext_session_id"`
 
 	// Extension version for compatibility checking
 	ExtensionVersion string `json:"extension_version,omitempty"`
@@ -106,7 +106,7 @@ type syncConnectionState struct {
 	isReconnect       bool
 	wasDisconnected   bool
 	timeSinceLastPoll time.Duration
-	sessionID         string
+	extSessionID      string
 	pilotEnabled      bool
 }
 
@@ -127,11 +127,11 @@ func (c *Capture) updateSyncConnectionState(req SyncRequest, clientID string, no
 	c.ext.lastSyncSeen = now
 	c.ext.lastSyncClientID = clientID
 
-	if req.SessionID != "" && req.SessionID != c.ext.extensionSession {
-		c.ext.extensionSession = req.SessionID
-		c.ext.sessionChangedAt = now
+	if req.ExtSessionID != "" && req.ExtSessionID != c.ext.extSessionID {
+		c.ext.extSessionID = req.ExtSessionID
+		c.ext.extSessionChangedAt = now
 	}
-	s.sessionID = c.ext.extensionSession
+	s.extSessionID = c.ext.extSessionID
 
 	if req.Settings != nil {
 		c.ext.pilotEnabled = req.Settings.PilotEnabled
@@ -167,7 +167,7 @@ func (c *Capture) updateSyncLogs(req SyncRequest, now time.Time, pilotEnabled bo
 		Timestamp:    now,
 		Endpoint:     "sync",
 		Method:       "POST",
-		SessionID:    req.SessionID,
+		ExtSessionID: req.ExtSessionID,
 		PilotEnabled: &pilotEnabled,
 		QueryCount:   queryCount,
 	})
@@ -234,7 +234,7 @@ func (c *Capture) HandleSync(w http.ResponseWriter, r *http.Request) {
 	if !state.wasConnected || state.isReconnect {
 		util.SafeGo(func() {
 			c.emitLifecycleEvent("extension_connected", map[string]any{
-				"session_id":         state.sessionID,
+				"ext_session_id":     state.extSessionID,
 				"is_reconnect":       state.isReconnect,
 				"disconnect_seconds": state.timeSinceLastPoll.Seconds(),
 			})
@@ -250,7 +250,7 @@ func (c *Capture) HandleSync(w http.ResponseWriter, r *http.Request) {
 		c.qd.ExpireAllPendingQueries("extension_disconnected")
 		util.SafeGo(func() {
 			c.emitLifecycleEvent("extension_disconnected", map[string]any{
-				"session_id": state.sessionID,
+				"ext_session_id": state.extSessionID,
 				"client_id":  clientID,
 			})
 		})

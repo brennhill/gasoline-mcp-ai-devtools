@@ -22,7 +22,7 @@ func TestHandleSync_LongPolling(t *testing.T) {
 		})
 	}()
 
-	reqBody, _ := json.Marshal(SyncRequest{SessionID: "test"})
+	reqBody, _ := json.Marshal(SyncRequest{ExtSessionID: "test"})
 	req := httptest.NewRequest("POST", "/sync", bytes.NewReader(reqBody))
 	w := httptest.NewRecorder()
 
@@ -47,7 +47,7 @@ func TestHandleSync_LongPolling(t *testing.T) {
 func TestHandleSync_TimeoutIfNoCommand(t *testing.T) {
 	cap := NewCapture()
 	
-	reqBody, _ := json.Marshal(SyncRequest{SessionID: "test"})
+	reqBody, _ := json.Marshal(SyncRequest{ExtSessionID: "test"})
 	req := httptest.NewRequest("POST", "/sync", bytes.NewReader(reqBody))
 	w := httptest.NewRecorder()
 

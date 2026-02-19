@@ -182,7 +182,7 @@ func TestGenerate_VisualTest_NamedSession(t *testing.T) {
 	h.annotationStore.AppendToNamedSession("qa-review", page2)
 
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: float64(1)}
-	args := json.RawMessage(`{"format":"visual_test","session":"qa-review"}`)
+	args := json.RawMessage(`{"format":"visual_test","annot_session":"qa-review"}`)
 
 	resp := h.toolGenerate(req, args)
 	text := unmarshalMCPText(t, resp.Result)

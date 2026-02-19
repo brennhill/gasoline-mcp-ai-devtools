@@ -50,7 +50,7 @@ export interface SyncCommandResult {
 
 /** Request sent to /sync */
 interface SyncRequest {
-  session_id: string
+  ext_session_id: string
   extension_version?: string
   settings?: SyncSettings
   extension_logs?: SyncExtensionLog[]
@@ -109,7 +109,7 @@ const BASE_POLL_MS = 1000
 
 export class SyncClient {
   private serverUrl: string
-  private sessionId: string
+  private extSessionId: string
   private callbacks: SyncClientCallbacks
   private state: SyncState
   private intervalId: ReturnType<typeof setInterval> | null = null
@@ -120,9 +120,9 @@ export class SyncClient {
   private processedCommandIDs: Set<string> = new Set()
   private extensionVersion: string
 
-  constructor(serverUrl: string, sessionId: string, callbacks: SyncClientCallbacks, extensionVersion = '') {
+  constructor(serverUrl: string, extSessionId: string, callbacks: SyncClientCallbacks, extensionVersion = '') {
     this.serverUrl = serverUrl
-    this.sessionId = sessionId
+    this.extSessionId = extSessionId
     this.callbacks = callbacks
     this.extensionVersion = extensionVersion
     this.state = {
@@ -222,7 +222,7 @@ export class SyncClient {
       const logs = this.callbacks.getExtensionLogs()
 
       const request: SyncRequest = {
-        session_id: this.sessionId,
+        ext_session_id: this.extSessionId,
         extension_version: this.extensionVersion || undefined,
         settings
       }
@@ -399,9 +399,9 @@ export class SyncClient {
  */
 export function createSyncClient(
   serverUrl: string,
-  sessionId: string,
+  extSessionId: string,
   callbacks: SyncClientCallbacks,
   extensionVersion = ''
 ): SyncClient {
-  return new SyncClient(serverUrl, sessionId, callbacks, extensionVersion)
+  return new SyncClient(serverUrl, extSessionId, callbacks, extensionVersion)
 }

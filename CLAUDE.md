@@ -14,6 +14,7 @@ Browser extension + MCP server for real-time browser telemetry.
 5. **5 Tools** — observe, generate, configure, interact, analyze
 6. **Performance** — WebSocket < 0.1ms, HTTP < 0.5ms
 7. **Privacy** — All data stays local, no external transmission
+8. **Wire Types** — `wire_*.go` and `wire-*.ts` are the source of truth for HTTP payloads. Changes to either side MUST update the counterpart. Run `make check-wire-drift`
 
 ## Git Workflow
 

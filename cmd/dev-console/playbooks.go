@@ -331,9 +331,9 @@ Expected:
 Goal: highlight a layout issue and collect feedback.
 
 Steps:
-1. {"tool":"interact","arguments":{"action":"draw_mode_start","session":"demo-ux"}}
+1. {"tool":"interact","arguments":{"action":"draw_mode_start","annot_session":"demo-ux"}}
 2. Ask user to annotate oversized image and desired size.
-3. {"tool":"analyze","arguments":{"what":"annotations","session":"demo-ux","wait":true}}
+3. {"tool":"analyze","arguments":{"what":"annotations","annot_session":"demo-ux","wait":true}}
 
 Expected:
 - Annotation list with coordinates and notes

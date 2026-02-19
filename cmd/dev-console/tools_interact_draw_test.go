@@ -44,7 +44,7 @@ func TestHandleDrawModeStart_WithSession(t *testing.T) {
 	h.capture.SetPilotEnabled(true)
 
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: float64(1)}
-	args := json.RawMessage(`{"session":"my-review"}`)
+	args := json.RawMessage(`{"annot_session":"my-review"}`)
 
 	resp := h.handleDrawModeStart(req, args)
 

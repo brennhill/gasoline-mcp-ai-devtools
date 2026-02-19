@@ -14,8 +14,8 @@ import "time"
 type ExtensionState struct {
 	// Connection tracking
 	lastPollAt             time.Time // When extension last polled. Health endpoint uses 3s/5s thresholds.
-	extensionSession       string    // Extension session ID (changes on reload/update).
-	sessionChangedAt       time.Time // When extensionSession last changed.
+	extSessionID       string    // Extension session ID (changes on reload/update).
+	extSessionChangedAt       time.Time // When extSessionID last changed.
 	lastExtensionConnected bool      // Previous connection state for transition detection.
 	extensionVersion       string    // Last reported extension version from sync request.
 
@@ -190,8 +190,8 @@ func (c *Capture) SetTestBoundaryEnd(id string) {
 // ExtensionSnapshot contains a point-in-time view of extension state for health reporting.
 type ExtensionSnapshot struct {
 	LastPollAt        time.Time
-	ExtensionSession  string
-	SessionChangedAt  time.Time
+	ExtSessionID      string
+	ExtSessionChangedAt time.Time
 	PilotEnabled      bool
 	ActiveTestIDCount int
 }
@@ -201,8 +201,8 @@ type ExtensionSnapshot struct {
 func (c *Capture) getExtensionSnapshot() ExtensionSnapshot {
 	return ExtensionSnapshot{
 		LastPollAt:        c.ext.lastPollAt,
-		ExtensionSession:  c.ext.extensionSession,
-		SessionChangedAt:  c.ext.sessionChangedAt,
+		ExtSessionID:      c.ext.extSessionID,
+		ExtSessionChangedAt:  c.ext.extSessionChangedAt,
 		PilotEnabled:      c.ext.pilotEnabled,
 		ActiveTestIDCount: len(c.ext.activeTestIDs),
 	}

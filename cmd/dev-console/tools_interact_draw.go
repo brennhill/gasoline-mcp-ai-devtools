@@ -6,8 +6,6 @@ package main
 
 import (
 	"encoding/json"
-	"fmt"
-	"time"
 
 	"github.com/dev-console/dev-console/internal/queries"
 )
@@ -16,7 +14,7 @@ import (
 func (h *ToolHandler) handleDrawModeStart(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	var params struct {
 		TabID   int    `json:"tab_id,omitempty"`
-		Session string `json:"session,omitempty"`
+		AnnotSession string `json:"annot_session,omitempty"`
 	}
 	if len(args) > 0 {
 		lenientUnmarshal(args, &params)
@@ -26,11 +24,11 @@ func (h *ToolHandler) handleDrawModeStart(req JSONRPCRequest, args json.RawMessa
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrCodePilotDisabled, "AI Web Pilot is disabled", "Enable AI Web Pilot in the extension popup")}
 	}
 
-	correlationID := fmt.Sprintf("draw_%d_%d", time.Now().UnixNano(), randomInt63())
+	correlationID := newCorrelationID("draw")
 
 	queryParams := map[string]string{"action": "start"}
-	if params.Session != "" {
-		queryParams["session"] = params.Session
+	if params.AnnotSession != "" {
+		queryParams["annot_session"] = params.AnnotSession
 	}
 	// Error impossible: map contains only string values
 	queryParamsJSON, _ := json.Marshal(queryParams)

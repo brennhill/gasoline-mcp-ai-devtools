@@ -41,7 +41,7 @@ func TestLoadSettingsFromDiskFallsBackToLegacyPath(t *testing.T) {
 	payload := PersistedSettings{
 		AIWebPilotEnabled: boolPtr(true),
 		Timestamp:         time.Now(),
-		SessionID:         "legacy-session",
+		ExtSessionID:      "legacy-session",
 	}
 	data, err := json.Marshal(payload)
 	if err != nil {
@@ -71,7 +71,7 @@ func TestSaveSettingsToDiskWritesToStateDirectory(t *testing.T) {
 	c.mu.Lock()
 	c.ext.pilotEnabled = true
 	c.ext.pilotUpdatedAt = now
-	c.ext.extensionSession = "session-123"
+	c.ext.extSessionID = "session-123"
 	c.mu.Unlock()
 
 	if err := c.SaveSettingsToDisk(); err != nil {
@@ -96,8 +96,8 @@ func TestSaveSettingsToDiskWritesToStateDirectory(t *testing.T) {
 	if persisted.AIWebPilotEnabled == nil || !*persisted.AIWebPilotEnabled {
 		t.Fatalf("AIWebPilotEnabled = %v, want true", persisted.AIWebPilotEnabled)
 	}
-	if persisted.SessionID != "session-123" {
-		t.Fatalf("SessionID = %q, want %q", persisted.SessionID, "session-123")
+	if persisted.ExtSessionID != "session-123" {
+		t.Fatalf("SessionID = %q, want %q", persisted.ExtSessionID, "session-123")
 	}
 }
 

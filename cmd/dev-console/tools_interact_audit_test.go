@@ -48,33 +48,6 @@ func newInteractTestEnv(t *testing.T) *interactTestEnv {
 	return &interactTestEnv{handler: handler, server: server, capture: cap}
 }
 
-func normalizeInteractArgsForAsync(argsJSON string) json.RawMessage {
-	raw := json.RawMessage(argsJSON)
-
-	var params map[string]any
-	if err := json.Unmarshal(raw, &params); err != nil {
-		return raw
-	}
-	if _, hasAction := params["action"]; !hasAction {
-		return raw
-	}
-	if _, hasBackground := params["background"]; hasBackground {
-		return raw
-	}
-	if _, hasSync := params["sync"]; hasSync {
-		return raw
-	}
-	if _, hasWait := params["wait"]; hasWait {
-		return raw
-	}
-
-	params["background"] = true
-	if normalized, err := json.Marshal(params); err == nil {
-		return json.RawMessage(normalized)
-	}
-	return raw
-}
-
 // callInteract invokes the interact tool and returns parsed result
 func (e *interactTestEnv) callInteract(t *testing.T, argsJSON string) (MCPToolResult, bool) {
 	t.Helper()

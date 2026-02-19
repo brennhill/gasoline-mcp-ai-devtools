@@ -294,7 +294,7 @@ test_edge_case_7() {
   response=$(curl -sf "http://127.0.0.1:$TEST_PORT/sync" \
     -X POST \
     -H "Content-Type: application/json" \
-    -d '{"session_id":"test","extension_version":"99.0.0"}' 2>/dev/null)
+    -d '{"ext_session_id":"test","extension_version":"99.0.0"}' 2>/dev/null)
 
   # Check that server_version is present in response
   if ! echo "$response" | jq -e '.server_version' > /dev/null 2>&1; then
@@ -439,7 +439,7 @@ test_edge_case_13() {
   response=$(curl -sf "http://127.0.0.1:$TEST_PORT/sync" \
     -X POST \
     -H "Content-Type: application/json" \
-    -d '{"session_id":"test"}' 2>/dev/null)
+    -d '{"ext_session_id":"test"}' 2>/dev/null)
 
   if ! echo "$response" | jq -e '.ack' > /dev/null 2>&1; then
     kill "$pid" 2>/dev/null || true

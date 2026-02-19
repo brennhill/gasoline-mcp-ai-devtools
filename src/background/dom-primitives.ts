@@ -9,7 +9,9 @@
 // These bypass CSP restrictions because they use the `func` parameter (no eval/new Function).
 // Each function MUST be self-contained — no closures over external variables.
 
-// Result shape returned by domPrimitive (compile-time only — erased at runtime)
+// Result shape returned by domPrimitive (compile-time only — erased at runtime).
+// DUPLICATED in dom-dispatch.ts — kept in sync manually because this file
+// cannot import from other modules (chrome.scripting serializes functions independently).
 interface DOMResult {
   success: boolean
   action: string

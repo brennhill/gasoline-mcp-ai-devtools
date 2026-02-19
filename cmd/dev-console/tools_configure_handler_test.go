@@ -6,31 +6,7 @@ import (
 	"encoding/json"
 	"strings"
 	"testing"
-
-	"github.com/dev-console/dev-console/internal/capture"
 )
-
-// ============================================
-// Test Helpers
-// ============================================
-
-func makeConfigureToolHandler(t *testing.T) (*ToolHandler, *Server, *capture.Capture) {
-	t.Helper()
-	server, err := NewServer(t.TempDir()+"/test.jsonl", 100)
-	if err != nil {
-		t.Fatalf("NewServer: %v", err)
-	}
-	t.Cleanup(func() { server.Close() })
-	cap := capture.NewCapture()
-	mcpHandler := NewToolHandler(server, cap)
-	handler := mcpHandler.toolHandler.(*ToolHandler)
-	return handler, server, cap
-}
-
-func callConfigureRaw(h *ToolHandler, argsJSON string) JSONRPCResponse {
-	req := JSONRPCRequest{JSONRPC: "2.0", ID: 1}
-	return h.toolConfigure(req, json.RawMessage(argsJSON))
-}
 
 // ============================================
 // Dispatch Tests
@@ -38,7 +14,7 @@ func callConfigureRaw(h *ToolHandler, argsJSON string) JSONRPCResponse {
 
 func TestToolsConfigureDispatch_InvalidJSON(t *testing.T) {
 	t.Parallel()
-	h, _, _ := makeConfigureToolHandler(t)
+	h, _, _ := makeToolHandler(t)
 
 	resp := callConfigureRaw(h, `{bad json`)
 	result := parseToolResult(t, resp)
@@ -53,7 +29,7 @@ func TestToolsConfigureDispatch_InvalidJSON(t *testing.T) {
 
 func TestToolsConfigureDispatch_MissingAction(t *testing.T) {
 	t.Parallel()
-	h, _, _ := makeConfigureToolHandler(t)
+	h, _, _ := makeToolHandler(t)
 
 	resp := callConfigureRaw(h, `{}`)
 	result := parseToolResult(t, resp)
@@ -75,7 +51,7 @@ func TestToolsConfigureDispatch_MissingAction(t *testing.T) {
 
 func TestToolsConfigureDispatch_UnknownAction(t *testing.T) {
 	t.Parallel()
-	h, _, _ := makeConfigureToolHandler(t)
+	h, _, _ := makeToolHandler(t)
 
 	resp := callConfigureRaw(h, `{"action":"nonexistent_action"}`)
 	result := parseToolResult(t, resp)
@@ -93,7 +69,7 @@ func TestToolsConfigureDispatch_UnknownAction(t *testing.T) {
 
 func TestToolsConfigureDispatch_EmptyArgs(t *testing.T) {
 	t.Parallel()
-	h, _, _ := makeConfigureToolHandler(t)
+	h, _, _ := makeToolHandler(t)
 
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: 1}
 	resp := h.toolConfigure(req, nil)
@@ -131,7 +107,7 @@ func TestToolsConfigure_GetValidConfigureActions(t *testing.T) {
 
 func TestToolsConfigureHealth_ResponseFields(t *testing.T) {
 	t.Parallel()
-	h, _, _ := makeConfigureToolHandler(t)
+	h, _, _ := makeToolHandler(t)
 
 	resp := callConfigureRaw(h, `{"action":"health"}`)
 	result := parseToolResult(t, resp)
@@ -159,7 +135,7 @@ func TestToolsConfigureHealth_ResponseFields(t *testing.T) {
 
 func TestToolsConfigureTelemetry_DefaultStatus(t *testing.T) {
 	t.Parallel()
-	h, _, _ := makeConfigureToolHandler(t)
+	h, _, _ := makeToolHandler(t)
 
 	resp := callConfigureRaw(h, `{"action":"telemetry"}`)
 	result := parseToolResult(t, resp)
@@ -180,7 +156,7 @@ func TestToolsConfigureTelemetry_DefaultStatus(t *testing.T) {
 
 func TestToolsConfigureTelemetry_SetMode(t *testing.T) {
 	t.Parallel()
-	h, _, _ := makeConfigureToolHandler(t)
+	h, _, _ := makeToolHandler(t)
 
 	resp := callConfigureRaw(h, `{"action":"telemetry","telemetry_mode":"full"}`)
 	result := parseToolResult(t, resp)
@@ -195,7 +171,7 @@ func TestToolsConfigureTelemetry_SetMode(t *testing.T) {
 
 func TestToolsConfigureTelemetry_InvalidMode(t *testing.T) {
 	t.Parallel()
-	h, _, _ := makeConfigureToolHandler(t)
+	h, _, _ := makeToolHandler(t)
 
 	resp := callConfigureRaw(h, `{"action":"telemetry","telemetry_mode":"verbose"}`)
 	result := parseToolResult(t, resp)
@@ -216,7 +192,7 @@ func TestToolsConfigureTelemetry_InvalidMode(t *testing.T) {
 
 func TestToolsConfigureClear_AllBuffers_ResponseFields(t *testing.T) {
 	t.Parallel()
-	h, _, _ := makeConfigureToolHandler(t)
+	h, _, _ := makeToolHandler(t)
 
 	resp := callConfigureRaw(h, `{"action":"clear","buffer":"all"}`)
 	result := parseToolResult(t, resp)
@@ -240,7 +216,7 @@ func TestToolsConfigureClear_AllBuffers_ResponseFields(t *testing.T) {
 
 func TestToolsConfigureClear_DefaultsToAll(t *testing.T) {
 	t.Parallel()
-	h, _, _ := makeConfigureToolHandler(t)
+	h, _, _ := makeToolHandler(t)
 
 	resp := callConfigureRaw(h, `{"action":"clear"}`)
 	result := parseToolResult(t, resp)
@@ -258,7 +234,7 @@ func TestToolsConfigureClear_DefaultsToAll(t *testing.T) {
 
 func TestToolsConfigureClear_SpecificBuffers(t *testing.T) {
 	t.Parallel()
-	h, _, _ := makeConfigureToolHandler(t)
+	h, _, _ := makeToolHandler(t)
 
 	buffers := []string{"network", "websocket", "actions", "logs"}
 	for _, buffer := range buffers {
@@ -284,7 +260,7 @@ func TestToolsConfigureClear_SpecificBuffers(t *testing.T) {
 
 func TestToolsConfigureClear_UnknownBuffer(t *testing.T) {
 	t.Parallel()
-	h, _, _ := makeConfigureToolHandler(t)
+	h, _, _ := makeToolHandler(t)
 
 	resp := callConfigureRaw(h, `{"action":"clear","buffer":"invalid_buf"}`)
 	result := parseToolResult(t, resp)
@@ -299,7 +275,7 @@ func TestToolsConfigureClear_UnknownBuffer(t *testing.T) {
 
 func TestToolsConfigureClear_InvalidJSON(t *testing.T) {
 	t.Parallel()
-	h, _, _ := makeConfigureToolHandler(t)
+	h, _, _ := makeToolHandler(t)
 
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: 1}
 	resp := h.toolConfigureClear(req, json.RawMessage(`{bad}`))
@@ -316,7 +292,7 @@ func TestToolsConfigureClear_InvalidJSON(t *testing.T) {
 
 func TestToolsConfigureNoiseRule_ListAction(t *testing.T) {
 	t.Parallel()
-	h, _, _ := makeConfigureToolHandler(t)
+	h, _, _ := makeToolHandler(t)
 
 	resp := callConfigureRaw(h, `{"action":"noise_rule","noise_action":"list"}`)
 	result := parseToolResult(t, resp)
@@ -348,7 +324,7 @@ func TestToolsConfigureNoiseRule_ListAction(t *testing.T) {
 
 func TestToolsConfigureNoiseRule_DefaultAction(t *testing.T) {
 	t.Parallel()
-	h, _, _ := makeConfigureToolHandler(t)
+	h, _, _ := makeToolHandler(t)
 
 	// No noise_action should default to "list"
 	resp := callConfigureRaw(h, `{"action":"noise_rule"}`)
@@ -367,7 +343,7 @@ func TestToolsConfigureNoiseRule_DefaultAction(t *testing.T) {
 
 func TestToolsConfigureNoiseRule_ResetAction(t *testing.T) {
 	t.Parallel()
-	h, _, _ := makeConfigureToolHandler(t)
+	h, _, _ := makeToolHandler(t)
 
 	resp := callConfigureRaw(h, `{"action":"noise_rule","noise_action":"reset"}`)
 	result := parseToolResult(t, resp)
@@ -388,7 +364,7 @@ func TestToolsConfigureNoiseRule_ResetAction(t *testing.T) {
 
 func TestToolsConfigureNoiseRule_RemoveMissingRuleID(t *testing.T) {
 	t.Parallel()
-	h, _, _ := makeConfigureToolHandler(t)
+	h, _, _ := makeToolHandler(t)
 
 	resp := callConfigureRaw(h, `{"action":"noise_rule","noise_action":"remove"}`)
 	result := parseToolResult(t, resp)
@@ -403,7 +379,7 @@ func TestToolsConfigureNoiseRule_RemoveMissingRuleID(t *testing.T) {
 
 func TestToolsConfigureNoiseRule_UnknownSubAction(t *testing.T) {
 	t.Parallel()
-	h, _, _ := makeConfigureToolHandler(t)
+	h, _, _ := makeToolHandler(t)
 
 	resp := callConfigureRaw(h, `{"action":"noise_rule","noise_action":"invalid_action"}`)
 	result := parseToolResult(t, resp)
@@ -415,7 +391,7 @@ func TestToolsConfigureNoiseRule_UnknownSubAction(t *testing.T) {
 
 func TestToolsConfigureNoiseRule_AutoDetect(t *testing.T) {
 	t.Parallel()
-	h, _, _ := makeConfigureToolHandler(t)
+	h, _, _ := makeToolHandler(t)
 
 	resp := callConfigureRaw(h, `{"action":"noise_rule","noise_action":"auto_detect"}`)
 	result := parseToolResult(t, resp)
@@ -439,7 +415,7 @@ func TestToolsConfigureNoiseRule_AutoDetect(t *testing.T) {
 
 func TestToolsConfigureStore_ListDefault(t *testing.T) {
 	t.Parallel()
-	h, _, _ := makeConfigureToolHandler(t)
+	h, _, _ := makeToolHandler(t)
 
 	// store with no sub-action defaults to "list"; namespace is required for list
 	resp := callConfigureRaw(h, `{"action":"store","namespace":"test_ns"}`)
@@ -453,7 +429,7 @@ func TestToolsConfigureStore_ListDefault(t *testing.T) {
 
 func TestToolsConfigureStore_InvalidJSON(t *testing.T) {
 	t.Parallel()
-	h, _, _ := makeConfigureToolHandler(t)
+	h, _, _ := makeToolHandler(t)
 
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: 1}
 	resp := h.toolConfigureStore(req, json.RawMessage(`{bad}`))
@@ -470,7 +446,7 @@ func TestToolsConfigureStore_InvalidJSON(t *testing.T) {
 
 func TestToolsConfigureLoad_ResponseFields(t *testing.T) {
 	t.Parallel()
-	h, _, _ := makeConfigureToolHandler(t)
+	h, _, _ := makeToolHandler(t)
 
 	resp := callConfigureRaw(h, `{"action":"load"}`)
 	result := parseToolResult(t, resp)
@@ -492,7 +468,7 @@ func TestToolsConfigureLoad_ResponseFields(t *testing.T) {
 
 func TestToolsConfigureTestBoundaryStart_ResponseFields(t *testing.T) {
 	t.Parallel()
-	h, _, _ := makeConfigureToolHandler(t)
+	h, _, _ := makeToolHandler(t)
 
 	resp := callConfigureRaw(h, `{"action":"test_boundary_start","test_id":"test-123","label":"My Test"}`)
 	result := parseToolResult(t, resp)
@@ -521,7 +497,7 @@ func TestToolsConfigureTestBoundaryStart_ResponseFields(t *testing.T) {
 
 func TestToolsConfigureTestBoundaryStart_MissingTestID(t *testing.T) {
 	t.Parallel()
-	h, _, _ := makeConfigureToolHandler(t)
+	h, _, _ := makeToolHandler(t)
 
 	resp := callConfigureRaw(h, `{"action":"test_boundary_start"}`)
 	result := parseToolResult(t, resp)
@@ -536,7 +512,7 @@ func TestToolsConfigureTestBoundaryStart_MissingTestID(t *testing.T) {
 
 func TestToolsConfigureTestBoundaryStart_DefaultLabel(t *testing.T) {
 	t.Parallel()
-	h, _, _ := makeConfigureToolHandler(t)
+	h, _, _ := makeToolHandler(t)
 
 	resp := callConfigureRaw(h, `{"action":"test_boundary_start","test_id":"abc"}`)
 	result := parseToolResult(t, resp)
@@ -554,7 +530,7 @@ func TestToolsConfigureTestBoundaryStart_DefaultLabel(t *testing.T) {
 
 func TestToolsConfigureTestBoundaryEnd_ResponseFields(t *testing.T) {
 	t.Parallel()
-	h, _, _ := makeConfigureToolHandler(t)
+	h, _, _ := makeToolHandler(t)
 
 	resp := callConfigureRaw(h, `{"action":"test_boundary_end","test_id":"test-123"}`)
 	result := parseToolResult(t, resp)
@@ -580,7 +556,7 @@ func TestToolsConfigureTestBoundaryEnd_ResponseFields(t *testing.T) {
 
 func TestToolsConfigureTestBoundaryEnd_MissingTestID(t *testing.T) {
 	t.Parallel()
-	h, _, _ := makeConfigureToolHandler(t)
+	h, _, _ := makeToolHandler(t)
 
 	resp := callConfigureRaw(h, `{"action":"test_boundary_end"}`)
 	result := parseToolResult(t, resp)
@@ -599,7 +575,7 @@ func TestToolsConfigureTestBoundaryEnd_MissingTestID(t *testing.T) {
 
 func TestToolsConfigureAuditLog_ResponseFields(t *testing.T) {
 	t.Parallel()
-	h, _, _ := makeConfigureToolHandler(t)
+	h, _, _ := makeToolHandler(t)
 
 	resp := callConfigureRaw(h, `{"action":"audit_log"}`)
 	result := parseToolResult(t, resp)
@@ -624,7 +600,7 @@ func TestToolsConfigureAuditLog_ResponseFields(t *testing.T) {
 
 func TestToolsConfigureDiffSessions_ResponseFields(t *testing.T) {
 	t.Parallel()
-	h, _, _ := makeConfigureToolHandler(t)
+	h, _, _ := makeToolHandler(t)
 
 	resp := callConfigureRaw(h, `{"action":"diff_sessions"}`)
 	result := parseToolResult(t, resp)
@@ -646,7 +622,7 @@ func TestToolsConfigureDiffSessions_ResponseFields(t *testing.T) {
 
 func TestToolsConfigure_AllActions_ResponseStructure(t *testing.T) {
 	t.Parallel()
-	h, _, _ := makeConfigureToolHandler(t)
+	h, _, _ := makeToolHandler(t)
 
 	actions := []struct {
 		action string

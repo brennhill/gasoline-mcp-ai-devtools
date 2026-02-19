@@ -373,7 +373,7 @@ export function initRuntimeMessageListener() {
             const m = msg;
             import(/* webpackIgnore: true */ chrome.runtime.getURL('content/draw-mode.js'))
                 .then((mod) => {
-                const result = mod.activateDrawMode(m.started_by || 'user', m.session_name || '', m.correlation_id || '');
+                const result = mod.activateDrawMode(m.started_by || 'user', m.annot_session_name || '', m.correlation_id || '');
                 sr(result);
             })
                 .catch((e) => sr({ error: 'draw_mode_load_failed', message: e.message }));

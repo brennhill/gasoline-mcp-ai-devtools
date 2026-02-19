@@ -662,28 +662,18 @@ var requestIdCounter = 0;
 var networkBodyCaptureEnabled = true;
 var SENSITIVE_URL_PATTERNS = /\/(auth|login|signin|signup|token|oauth|session|api[_-]?key|password|register)\b/i;
 function parseResourceTiming(timing) {
-  const phases = {
-    dns: Math.max(0, timing.domainLookupEnd - timing.domainLookupStart),
-    connect: Math.max(0, timing.connectEnd - timing.connectStart),
-    tls: timing.secureConnectionStart > 0 ? Math.max(0, timing.connectEnd - timing.secureConnectionStart) : 0,
-    ttfb: Math.max(0, timing.responseStart - timing.requestStart),
-    download: Math.max(0, timing.responseEnd - timing.responseStart)
-  };
-  const result = {
+  return {
+    name: timing.name,
     url: timing.name,
-    initiatorType: timing.initiatorType,
-    startTime: timing.startTime,
+    initiator_type: timing.initiatorType,
+    start_time: timing.startTime,
     duration: timing.duration,
-    phases,
-    transferSize: timing.transferSize || 0,
-    encodedBodySize: timing.encodedBodySize || 0,
-    decodedBodySize: timing.decodedBodySize || 0
+    fetch_start: timing.fetchStart || void 0,
+    response_end: timing.responseEnd || void 0,
+    transfer_size: timing.transferSize || 0,
+    encoded_body_size: timing.encodedBodySize || 0,
+    decoded_body_size: timing.decodedBodySize || 0
   };
-  if (timing.transferSize === 0 && timing.encodedBodySize > 0) {
-    ;
-    result.cached = true;
-  }
-  return result;
 }
 function getNetworkWaterfall(options = {}) {
   if (typeof performance === "undefined" || !performance)
@@ -859,10 +849,10 @@ function postNetworkBody(win, url, method, response, contentType, requestBody, d
       url,
       method,
       status: response.status,
-      contentType,
-      requestBody: truncReq || (typeof requestBody === "string" ? requestBody : void 0),
-      responseBody: truncResp,
-      ...responseTruncated ? { responseTruncated: true } : {},
+      content_type: contentType,
+      request_body: truncReq || (typeof requestBody === "string" ? requestBody : void 0),
+      response_body: truncResp,
+      ...responseTruncated ? { response_truncated: true } : {},
       duration
     }
   };
@@ -3484,20 +3474,10 @@ function handleGetWaterfall(data) {
   const { requestId } = data;
   try {
     const entries = getNetworkWaterfall({});
-    const snakeEntries = (entries || []).map((e) => ({
-      url: e.url,
-      name: e.url,
-      initiator_type: e.initiatorType,
-      start_time: e.startTime,
-      duration: e.duration,
-      transfer_size: e.transferSize,
-      encoded_body_size: e.encodedBodySize,
-      decoded_body_size: e.decodedBodySize
-    }));
     window.postMessage({
       type: "GASOLINE_WATERFALL_RESPONSE",
       requestId,
-      entries: snakeEntries,
+      entries: entries || [],
       page_url: window.location.href
     }, window.location.origin);
   } catch (err) {

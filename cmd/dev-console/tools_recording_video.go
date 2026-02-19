@@ -159,7 +159,7 @@ func resolveRecordingPath(dir, name string) (fullName string, videoPath string) 
 
 // queueRecordStart creates the pending query and returns the response for a record_start action.
 func (h *ToolHandler) queueRecordStart(req JSONRPCRequest, fullName, audio, videoPath string, fps, tabID int) JSONRPCResponse {
-	correlationID := fmt.Sprintf("rec_%d", time.Now().UnixNano())
+	correlationID := newCorrelationID("rec")
 
 	extParams := map[string]any{"action": "record_start", "name": fullName, "fps": fps, "audio": audio}
 	// Error impossible: map contains only primitive types from input
@@ -238,7 +238,7 @@ func (h *ToolHandler) handleRecordStop(req JSONRPCRequest, args json.RawMessage)
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrCodePilotDisabled, "AI Web Pilot is disabled", "Enable AI Web Pilot in the extension popup", h.diagnosticHint())}
 	}
 
-	correlationID := fmt.Sprintf("recstop_%d", time.Now().UnixNano())
+	correlationID := newCorrelationID("recstop")
 
 	extParams := map[string]any{
 		"action": "record_stop",

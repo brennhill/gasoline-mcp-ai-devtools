@@ -433,10 +433,10 @@ export function initRuntimeMessageListener(): void {
   type DelegatedHandler = (msg: SyncMsg, sendResponse: (r?: unknown) => void) => boolean | undefined
   const delegatedHandlers: Record<string, DelegatedHandler> = {
     GASOLINE_DRAW_MODE_START: (msg, sr) => {
-      const m = msg as { started_by?: string; session_name?: string; correlation_id?: string }
+      const m = msg as { started_by?: string; annot_session_name?: string; correlation_id?: string }
       import(/* webpackIgnore: true */ chrome.runtime.getURL('content/draw-mode.js'))
         .then((mod) => {
-          const result = mod.activateDrawMode(m.started_by || 'user', m.session_name || '', m.correlation_id || '')
+          const result = mod.activateDrawMode(m.started_by || 'user', m.annot_session_name || '', m.correlation_id || '')
           sr(result)
         })
         .catch((e: Error) => sr({ error: 'draw_mode_load_failed', message: e.message }))

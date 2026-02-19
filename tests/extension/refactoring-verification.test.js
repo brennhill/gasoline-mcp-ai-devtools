@@ -229,7 +229,7 @@ describe('Network Body Capture After Refactoring', () => {
     assert.ok(bodyEvent, 'Should capture network body event')
     const payload = bodyEvent.arguments[0].payload
     assert.strictEqual(payload.method, 'POST', 'Should capture request method')
-    assert.ok(payload.requestBody.includes('Alice'), 'Should capture request body content')
+    assert.ok(payload.request_body.includes('Alice'), 'Should capture request body content')
   })
 
   test('should capture fetch response body', async () => {
@@ -250,7 +250,7 @@ describe('Network Body Capture After Refactoring', () => {
     assert.ok(bodyEvent, 'Should capture network body event')
     const payload = bodyEvent.arguments[0].payload
     assert.strictEqual(payload.status, 201, 'Should capture response status')
-    assert.ok(payload.responseBody.includes('42'), 'Should capture response body content')
+    assert.ok(payload.response_body.includes('42'), 'Should capture response body content')
   })
 
   test('should return properly typed response from wrapper', async () => {

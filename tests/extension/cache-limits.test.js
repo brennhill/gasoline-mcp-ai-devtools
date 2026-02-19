@@ -250,7 +250,7 @@ describe('estimateBufferMemory', () => {
     const reqBody = 'x'.repeat(500)
     const resBody = 'y'.repeat(2000)
     const buffers = createBufferState({
-      networkBodies: [{ requestBody: reqBody, responseBody: resBody }]
+      networkBodies: [{ request_body: reqBody, response_body: resBody }]
     })
     const result = estimateBufferMemory(buffers)
     assert.strictEqual(result, MEMORY_AVG_NETWORK_BODY_SIZE + 500 + 2000)
@@ -258,7 +258,7 @@ describe('estimateBufferMemory', () => {
 
   test('should handle network bodies with only request or only response', () => {
     const buffers = createBufferState({
-      networkBodies: [{ requestBody: 'abc' }, { responseBody: 'defgh' }]
+      networkBodies: [{ request_body: 'abc' }, { response_body: 'defgh' }]
     })
     const result = estimateBufferMemory(buffers)
     assert.strictEqual(result, 2 * MEMORY_AVG_NETWORK_BODY_SIZE + 3 + 5)
@@ -276,7 +276,7 @@ describe('estimateBufferMemory', () => {
     const buffers = createBufferState({
       logEntries: new Array(3).fill({}),
       wsEvents: [{ data: 'hello' }],
-      networkBodies: [{ requestBody: 'req' }],
+      networkBodies: [{ request_body: 'req' }],
       enhancedActions: new Array(2).fill({})
     })
     const expected =
@@ -579,7 +579,7 @@ describe('Edge Cases', () => {
 
   test('estimateBufferMemory with network bodies with empty strings', () => {
     const buffers = createBufferState({
-      networkBodies: [{ requestBody: '', responseBody: '' }]
+      networkBodies: [{ request_body: '', response_body: '' }]
     })
     const result = estimateBufferMemory(buffers)
     assert.strictEqual(result, MEMORY_AVG_NETWORK_BODY_SIZE)

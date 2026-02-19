@@ -568,7 +568,7 @@ func TestContractEnforcement_CommandResult_HasElapsedMs(t *testing.T) {
 
 func TestContractEnforcement_UnknownParams_ProduceWarnings(t *testing.T) {
 	// Test each tool with an unknown parameter via HandleToolCall
-	h, _, _ := makeObserveToolHandler(t)
+	h, _, _ := makeToolHandler(t)
 
 	tools := []struct {
 		name string
@@ -618,29 +618,7 @@ func TestContractEnforcement_UnknownParams_ProduceWarnings(t *testing.T) {
 // Helpers
 // ============================================
 
-// assertNonErrorResponse verifies a result has content and is not an error.
-func assertNonErrorResponse(t *testing.T, label string, result MCPToolResult) {
-	t.Helper()
-	if result.IsError {
-		t.Errorf("%s: unexpected error response: %s", label, firstText(result))
-		return
-	}
-	if len(result.Content) == 0 {
-		t.Errorf("%s: no content blocks", label)
-		return
-	}
-	if result.Content[0].Text == "" {
-		t.Errorf("%s: empty text content", label)
-	}
-}
-
-// firstText extracts the first text block from a result, or "".
-func firstText(result MCPToolResult) string {
-	if len(result.Content) > 0 {
-		return result.Content[0].Text
-	}
-	return ""
-}
+// assertNonErrorResponse and firstText are in tools_test_helpers_test.go.
 
 // callObserveWithArgs is a helper to call observe with custom JSON args.
 func (s *scenario) callObserveWithArgs(t *testing.T, argsJSON string) (MCPToolResult, bool) {

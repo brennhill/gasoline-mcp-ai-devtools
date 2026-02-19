@@ -87,7 +87,7 @@ func (h *MCPHandler) SetToolHandler(th ToolHandlerInterface) {
 // httpRequestContext collects metadata from an HTTP request for debug logging.
 type httpRequestContext struct {
 	startTime time.Time
-	sessionID string
+	extSessionID string
 	clientID  string
 	headers   map[string]string
 }
@@ -96,7 +96,7 @@ type httpRequestContext struct {
 func newHTTPRequestContext(r *http.Request, serverVersion string) httpRequestContext {
 	ctx := httpRequestContext{
 		startTime: time.Now(),
-		sessionID: r.Header.Get("X-Gasoline-Session"),
+		extSessionID: r.Header.Get("X-Gasoline-Ext-Session"),
 		clientID:  r.Header.Get("X-Gasoline-Client"),
 	}
 
@@ -130,7 +130,7 @@ func (h *MCPHandler) logDebugEntry(ctx httpRequestContext, requestBody string, s
 		Timestamp:      ctx.startTime,
 		Endpoint:       "/mcp",
 		Method:         "POST",
-		SessionID:      ctx.sessionID,
+		ExtSessionID:   ctx.extSessionID,
 		ClientID:       ctx.clientID,
 		Headers:        ctx.headers,
 		RequestBody:    requestBody,

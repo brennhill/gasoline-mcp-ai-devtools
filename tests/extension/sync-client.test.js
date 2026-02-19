@@ -403,13 +403,13 @@ describe('SyncClient — Request building', () => {
     client.stop()
   })
 
-  test('should send session_id and extension_version in request body', async () => {
+  test('should send ext_session_id and extension_version in request body', async () => {
     client.start()
     await tick(50)
 
     assert.ok(mockFetch.mock.calls.length >= 1)
     const body = JSON.parse(mockFetch.mock.calls[0].arguments[1].body)
-    assert.strictEqual(body.session_id, 'sess-1')
+    assert.strictEqual(body.ext_session_id, 'sess-1')
     assert.strictEqual(body.extension_version, '6.0.3')
   })
 

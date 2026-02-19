@@ -13,7 +13,7 @@ const BASE_POLL_MS = 1000;
 // =============================================================================
 export class SyncClient {
     serverUrl;
-    sessionId;
+    extSessionId;
     callbacks;
     state;
     intervalId = null;
@@ -23,9 +23,9 @@ export class SyncClient {
     pendingResults = [];
     processedCommandIDs = new Set();
     extensionVersion;
-    constructor(serverUrl, sessionId, callbacks, extensionVersion = '') {
+    constructor(serverUrl, extSessionId, callbacks, extensionVersion = '') {
         this.serverUrl = serverUrl;
-        this.sessionId = sessionId;
+        this.extSessionId = extSessionId;
         this.callbacks = callbacks;
         this.extensionVersion = extensionVersion;
         this.state = {
@@ -116,7 +116,7 @@ export class SyncClient {
             const settings = await this.callbacks.getSettings();
             const logs = this.callbacks.getExtensionLogs();
             const request = {
-                session_id: this.sessionId,
+                ext_session_id: this.extSessionId,
                 extension_version: this.extensionVersion || undefined,
                 settings
             };
@@ -272,7 +272,7 @@ export class SyncClient {
 /**
  * Create a sync client instance
  */
-export function createSyncClient(serverUrl, sessionId, callbacks, extensionVersion = '') {
-    return new SyncClient(serverUrl, sessionId, callbacks, extensionVersion);
+export function createSyncClient(serverUrl, extSessionId, callbacks, extensionVersion = '') {
+    return new SyncClient(serverUrl, extSessionId, callbacks, extensionVersion);
 }
 //# sourceMappingURL=sync-client.js.map

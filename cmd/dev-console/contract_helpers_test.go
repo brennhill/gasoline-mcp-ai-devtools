@@ -155,7 +155,7 @@ func (s *scenario) loadExtensionLogs(t *testing.T) {
 func (s *scenario) loadTrackingState(t *testing.T) {
 	t.Helper()
 	syncReq := httptest.NewRequest("POST", "/sync", bytes.NewReader([]byte(`{
-		"session_id": "test-session",
+		"ext_session_id": "test-session",
 		"settings": {
 			"pilot_enabled": true,
 			"tracking_enabled": true,

@@ -6,31 +6,7 @@ import (
 	"encoding/json"
 	"strings"
 	"testing"
-
-	"github.com/dev-console/dev-console/internal/capture"
 )
-
-// ============================================
-// Test Helpers
-// ============================================
-
-func makeAnalyzeToolHandler(t *testing.T) (*ToolHandler, *Server, *capture.Capture) {
-	t.Helper()
-	server, err := NewServer(t.TempDir()+"/test.jsonl", 100)
-	if err != nil {
-		t.Fatalf("NewServer: %v", err)
-	}
-	t.Cleanup(func() { server.Close() })
-	cap := capture.NewCapture()
-	mcpHandler := NewToolHandler(server, cap)
-	handler := mcpHandler.toolHandler.(*ToolHandler)
-	return handler, server, cap
-}
-
-func callAnalyzeRaw(h *ToolHandler, argsJSON string) JSONRPCResponse {
-	req := JSONRPCRequest{JSONRPC: "2.0", ID: 1}
-	return h.toolAnalyze(req, normalizeAnalyzeArgsForAsync(argsJSON))
-}
 
 // ============================================
 // Dispatch Tests
@@ -38,7 +14,7 @@ func callAnalyzeRaw(h *ToolHandler, argsJSON string) JSONRPCResponse {
 
 func TestToolsAnalyzeDispatch_InvalidJSON(t *testing.T) {
 	t.Parallel()
-	h, _, _ := makeAnalyzeToolHandler(t)
+	h, _, _ := makeToolHandler(t)
 
 	resp := callAnalyzeRaw(h, `{bad json`)
 	result := parseToolResult(t, resp)
@@ -53,7 +29,7 @@ func TestToolsAnalyzeDispatch_InvalidJSON(t *testing.T) {
 
 func TestToolsAnalyzeDispatch_MissingWhat(t *testing.T) {
 	t.Parallel()
-	h, _, _ := makeAnalyzeToolHandler(t)
+	h, _, _ := makeToolHandler(t)
 
 	resp := callAnalyzeRaw(h, `{}`)
 	result := parseToolResult(t, resp)
@@ -75,7 +51,7 @@ func TestToolsAnalyzeDispatch_MissingWhat(t *testing.T) {
 
 func TestToolsAnalyzeDispatch_UnknownMode(t *testing.T) {
 	t.Parallel()
-	h, _, _ := makeAnalyzeToolHandler(t)
+	h, _, _ := makeToolHandler(t)
 
 	resp := callAnalyzeRaw(h, `{"what":"nonexistent_mode"}`)
 	result := parseToolResult(t, resp)
@@ -93,7 +69,7 @@ func TestToolsAnalyzeDispatch_UnknownMode(t *testing.T) {
 
 func TestToolsAnalyzeDispatch_EmptyArgs(t *testing.T) {
 	t.Parallel()
-	h, _, _ := makeAnalyzeToolHandler(t)
+	h, _, _ := makeToolHandler(t)
 
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: 1}
 	resp := h.toolAnalyze(req, nil)
@@ -127,7 +103,7 @@ func TestToolsAnalyze_GetValidAnalyzeModes(t *testing.T) {
 
 func TestToolsAnalyzeSchema_HasFrameParam(t *testing.T) {
 	t.Parallel()
-	h, _, _ := makeAnalyzeToolHandler(t)
+	h, _, _ := makeToolHandler(t)
 
 	tools := h.ToolsList()
 	var analyzeSchema map[string]any
@@ -160,7 +136,7 @@ func TestToolsAnalyzeSchema_HasFrameParam(t *testing.T) {
 
 func TestToolsAnalyzePageSummary_QueuedAsync(t *testing.T) {
 	t.Parallel()
-	h, _, _ := makeAnalyzeToolHandler(t)
+	h, _, _ := makeToolHandler(t)
 
 	resp := callAnalyzeRaw(h, `{"what":"page_summary","sync":false}`)
 	result := parseToolResult(t, resp)
@@ -180,7 +156,7 @@ func TestToolsAnalyzePageSummary_QueuedAsync(t *testing.T) {
 
 func TestToolsAnalyzePageSummary_InvalidWorld(t *testing.T) {
 	t.Parallel()
-	h, _, _ := makeAnalyzeToolHandler(t)
+	h, _, _ := makeToolHandler(t)
 
 	resp := callAnalyzeRaw(h, `{"what":"page_summary","sync":false,"world":"bad_world"}`)
 	result := parseToolResult(t, resp)
@@ -198,7 +174,7 @@ func TestToolsAnalyzePageSummary_InvalidWorld(t *testing.T) {
 
 func TestToolsAnalyzeDOM_MissingSelector(t *testing.T) {
 	t.Parallel()
-	h, _, _ := makeAnalyzeToolHandler(t)
+	h, _, _ := makeToolHandler(t)
 
 	resp := callAnalyzeRaw(h, `{"what":"dom"}`)
 	result := parseToolResult(t, resp)
@@ -213,7 +189,7 @@ func TestToolsAnalyzeDOM_MissingSelector(t *testing.T) {
 
 func TestToolsAnalyzeDOM_Success(t *testing.T) {
 	t.Parallel()
-	h, _, _ := makeAnalyzeToolHandler(t)
+	h, _, _ := makeToolHandler(t)
 
 	resp := callAnalyzeRaw(h, `{"what":"dom","selector":"#main"}`)
 	result := parseToolResult(t, resp)
@@ -240,7 +216,7 @@ func TestToolsAnalyzeDOM_Success(t *testing.T) {
 
 func TestToolsAnalyzeDOM_FrameSelectorForwardedInPendingQuery(t *testing.T) {
 	t.Parallel()
-	h, _, cap := makeAnalyzeToolHandler(t)
+	h, _, cap := makeToolHandler(t)
 
 	resp := callAnalyzeRaw(h, `{"what":"dom","selector":"#main","frame":"iframe.editor","sync":false}`)
 	result := parseToolResult(t, resp)
@@ -265,7 +241,7 @@ func TestToolsAnalyzeDOM_FrameSelectorForwardedInPendingQuery(t *testing.T) {
 
 func TestToolsAnalyzeDOM_FrameIndexForwardedInPendingQuery(t *testing.T) {
 	t.Parallel()
-	h, _, cap := makeAnalyzeToolHandler(t)
+	h, _, cap := makeToolHandler(t)
 
 	resp := callAnalyzeRaw(h, `{"what":"dom","selector":"#main","frame":0,"sync":false}`)
 	result := parseToolResult(t, resp)
@@ -294,7 +270,7 @@ func TestToolsAnalyzeDOM_FrameIndexForwardedInPendingQuery(t *testing.T) {
 
 func TestToolsAnalyzeAPIValidation_Analyze(t *testing.T) {
 	t.Parallel()
-	h, _, _ := makeAnalyzeToolHandler(t)
+	h, _, _ := makeToolHandler(t)
 
 	resp := callAnalyzeRaw(h, `{"what":"api_validation","operation":"analyze"}`)
 	result := parseToolResult(t, resp)
@@ -318,7 +294,7 @@ func TestToolsAnalyzeAPIValidation_Analyze(t *testing.T) {
 
 func TestToolsAnalyzeAPIValidation_Report(t *testing.T) {
 	t.Parallel()
-	h, _, _ := makeAnalyzeToolHandler(t)
+	h, _, _ := makeToolHandler(t)
 
 	resp := callAnalyzeRaw(h, `{"what":"api_validation","operation":"report"}`)
 	result := parseToolResult(t, resp)
@@ -342,7 +318,7 @@ func TestToolsAnalyzeAPIValidation_Report(t *testing.T) {
 
 func TestToolsAnalyzeAPIValidation_Clear(t *testing.T) {
 	t.Parallel()
-	h, _, _ := makeAnalyzeToolHandler(t)
+	h, _, _ := makeToolHandler(t)
 
 	resp := callAnalyzeRaw(h, `{"what":"api_validation","operation":"clear"}`)
 	result := parseToolResult(t, resp)
@@ -363,7 +339,7 @@ func TestToolsAnalyzeAPIValidation_Clear(t *testing.T) {
 
 func TestToolsAnalyzeAPIValidation_InvalidOperation(t *testing.T) {
 	t.Parallel()
-	h, _, _ := makeAnalyzeToolHandler(t)
+	h, _, _ := makeToolHandler(t)
 
 	resp := callAnalyzeRaw(h, `{"what":"api_validation","operation":"invalid_op"}`)
 	result := parseToolResult(t, resp)
@@ -378,7 +354,7 @@ func TestToolsAnalyzeAPIValidation_InvalidOperation(t *testing.T) {
 
 func TestToolsAnalyzeAPIValidation_DefaultOperation(t *testing.T) {
 	t.Parallel()
-	h, _, _ := makeAnalyzeToolHandler(t)
+	h, _, _ := makeToolHandler(t)
 
 	// No operation param defaults to empty string, which is invalid
 	resp := callAnalyzeRaw(h, `{"what":"api_validation"}`)
@@ -395,7 +371,7 @@ func TestToolsAnalyzeAPIValidation_DefaultOperation(t *testing.T) {
 
 func TestToolsAnalyzePerformance_Empty(t *testing.T) {
 	t.Parallel()
-	h, _, _ := makeAnalyzeToolHandler(t)
+	h, _, _ := makeToolHandler(t)
 
 	resp := callAnalyzeRaw(h, `{"what":"performance"}`)
 	result := parseToolResult(t, resp)
@@ -423,7 +399,7 @@ func TestToolsAnalyzePerformance_Empty(t *testing.T) {
 
 func TestToolsAnalyzeLinkHealth_ResponseFields(t *testing.T) {
 	t.Parallel()
-	h, _, _ := makeAnalyzeToolHandler(t)
+	h, _, _ := makeToolHandler(t)
 
 	resp := callAnalyzeRaw(h, `{"what":"link_health"}`)
 	result := parseToolResult(t, resp)
@@ -452,7 +428,7 @@ func TestToolsAnalyzeLinkHealth_ResponseFields(t *testing.T) {
 
 func TestToolsAnalyzeLinkValidation_MissingURLs(t *testing.T) {
 	t.Parallel()
-	h, _, _ := makeAnalyzeToolHandler(t)
+	h, _, _ := makeToolHandler(t)
 
 	resp := callAnalyzeRaw(h, `{"what":"link_validation"}`)
 	result := parseToolResult(t, resp)
@@ -464,7 +440,7 @@ func TestToolsAnalyzeLinkValidation_MissingURLs(t *testing.T) {
 
 func TestToolsAnalyzeLinkValidation_EmptyURLs(t *testing.T) {
 	t.Parallel()
-	h, _, _ := makeAnalyzeToolHandler(t)
+	h, _, _ := makeToolHandler(t)
 
 	resp := callAnalyzeRaw(h, `{"what":"link_validation","urls":[]}`)
 	result := parseToolResult(t, resp)
@@ -476,7 +452,7 @@ func TestToolsAnalyzeLinkValidation_EmptyURLs(t *testing.T) {
 
 func TestToolsAnalyzeLinkValidation_NonHTTPURLs(t *testing.T) {
 	t.Parallel()
-	h, _, _ := makeAnalyzeToolHandler(t)
+	h, _, _ := makeToolHandler(t)
 
 	resp := callAnalyzeRaw(h, `{"what":"link_validation","urls":["ftp://files.example.com","mailto:test@test.com"]}`)
 	result := parseToolResult(t, resp)
@@ -569,7 +545,7 @@ func TestToolsAnalyze_ClassifyHTTPStatus(t *testing.T) {
 
 func TestToolsAnalyze_AllModes_ResponseStructure(t *testing.T) {
 	t.Parallel()
-	h, _, _ := makeAnalyzeToolHandler(t)
+	h, _, _ := makeToolHandler(t)
 
 	// All modes from analyzeHandlers that can run without extension
 	modes := []struct {

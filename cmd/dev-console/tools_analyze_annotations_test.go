@@ -108,16 +108,6 @@ func TestToolGetAnnotationDetail_Found(t *testing.T) {
 	}
 }
 
-// extractJSONFromMCPText extracts the JSON object from mcpJSONResponse text.
-// mcpJSONResponse returns "Summary\n{json data}", so we find the first '{' and parse from there.
-func extractJSONFromMCPText(text string) string {
-	idx := strings.Index(text, "{")
-	if idx < 0 {
-		return text
-	}
-	return text[idx:]
-}
-
 func TestToolGetAnnotations_FullResponseShape(t *testing.T) {
 	h := createTestToolHandler(t)
 
@@ -154,7 +144,7 @@ func TestToolGetAnnotations_FullResponseShape(t *testing.T) {
 
 	resp := h.toolGetAnnotations(req, args)
 	text := unmarshalMCPText(t, resp.Result)
-	jsonText := extractJSONFromMCPText(text)
+	jsonText := extractJSONFromText(text)
 
 	var data map[string]any
 	if err := json.Unmarshal([]byte(jsonText), &data); err != nil {
@@ -222,7 +212,7 @@ func TestToolGetAnnotationDetail_FullResponseShape(t *testing.T) {
 
 	resp := h.toolGetAnnotationDetail(req, args)
 	text := unmarshalMCPText(t, resp.Result)
-	jsonText := extractJSONFromMCPText(text)
+	jsonText := extractJSONFromText(text)
 
 	var data map[string]any
 	if err := json.Unmarshal([]byte(jsonText), &data); err != nil {
@@ -289,7 +279,7 @@ func TestToolGetAnnotations_ZeroAnnotationsFlow(t *testing.T) {
 
 	resp := h.toolGetAnnotations(req, args)
 	text := unmarshalMCPText(t, resp.Result)
-	jsonText := extractJSONFromMCPText(text)
+	jsonText := extractJSONFromText(text)
 
 	var data map[string]any
 	if err := json.Unmarshal([]byte(jsonText), &data); err != nil {
@@ -349,7 +339,7 @@ func TestToolGetAnnotations_WaitTrue_ReturnsCorrelationID(t *testing.T) {
 
 	resp := h.toolGetAnnotations(req, args)
 	text := unmarshalMCPText(t, resp.Result)
-	jsonText := extractJSONFromMCPText(text)
+	jsonText := extractJSONFromText(text)
 
 	var data map[string]any
 	if err := json.Unmarshal([]byte(jsonText), &data); err != nil {
@@ -419,7 +409,7 @@ func TestToolGetAnnotations_WaitTrue_WaiterCompletedOnStore(t *testing.T) {
 	resp := h.toolGetAnnotations(req, args)
 
 	text := unmarshalMCPText(t, resp.Result)
-	jsonText := extractJSONFromMCPText(text)
+	jsonText := extractJSONFromText(text)
 	var data map[string]any
 	_ = json.Unmarshal([]byte(jsonText), &data)
 	corrID := data["correlation_id"].(string)
@@ -477,19 +467,19 @@ func TestToolGetAnnotations_NamedSession(t *testing.T) {
 	})
 
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: float64(1)}
-	args := json.RawMessage(`{"what": "annotations", "session": "qa"}`)
+	args := json.RawMessage(`{"what": "annotations", "annot_session": "qa"}`)
 
 	resp := h.toolGetAnnotations(req, args)
 	text := unmarshalMCPText(t, resp.Result)
-	jsonText := extractJSONFromMCPText(text)
+	jsonText := extractJSONFromText(text)
 
 	var data map[string]any
 	if err := json.Unmarshal([]byte(jsonText), &data); err != nil {
 		t.Fatalf("Failed to parse: %v", err)
 	}
 
-	if data["session_name"] != "qa" {
-		t.Errorf("expected session_name 'qa', got %v", data["session_name"])
+	if data["annot_session_name"] != "qa" {
+		t.Errorf("expected annot_session_name 'qa', got %v", data["annot_session_name"])
 	}
 	if data["page_count"] != float64(2) {
 		t.Errorf("expected page_count 2, got %v", data["page_count"])
@@ -518,7 +508,7 @@ func TestToolGetAnnotations_NamedSession_NotFound(t *testing.T) {
 	defer h.annotationStore.Close()
 
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: float64(1)}
-	args := json.RawMessage(`{"what": "annotations", "session": "nonexistent"}`)
+	args := json.RawMessage(`{"what": "annotations", "annot_session": "nonexistent"}`)
 
 	resp := h.toolGetAnnotations(req, args)
 	text := unmarshalMCPText(t, resp.Result)
@@ -544,7 +534,7 @@ func TestToolGetAnnotationDetail_WithA11yFlags(t *testing.T) {
 
 	resp := h.toolGetAnnotationDetail(req, args)
 	text := unmarshalMCPText(t, resp.Result)
-	jsonText := extractJSONFromMCPText(text)
+	jsonText := extractJSONFromText(text)
 
 	var data map[string]any
 	if err := json.Unmarshal([]byte(jsonText), &data); err != nil {
@@ -579,7 +569,7 @@ func TestToolGetAnnotationDetail_NoA11yFlags(t *testing.T) {
 
 	resp := h.toolGetAnnotationDetail(req, args)
 	text := unmarshalMCPText(t, resp.Result)
-	jsonText := extractJSONFromMCPText(text)
+	jsonText := extractJSONFromText(text)
 
 	var data map[string]any
 	if err := json.Unmarshal([]byte(jsonText), &data); err != nil {
@@ -629,7 +619,7 @@ func TestToolGetAnnotationDetail_EnrichedFields(t *testing.T) {
 
 	resp := h.toolGetAnnotationDetail(req, args)
 	text := unmarshalMCPText(t, resp.Result)
-	jsonText := extractJSONFromMCPText(text)
+	jsonText := extractJSONFromText(text)
 
 	var data map[string]any
 	if err := json.Unmarshal([]byte(jsonText), &data); err != nil {
@@ -696,7 +686,7 @@ func TestToolGetAnnotationDetail_OmitsEmptyEnrichedFields(t *testing.T) {
 
 	resp := h.toolGetAnnotationDetail(req, args)
 	text := unmarshalMCPText(t, resp.Result)
-	jsonText := extractJSONFromMCPText(text)
+	jsonText := extractJSONFromText(text)
 
 	var data map[string]any
 	if err := json.Unmarshal([]byte(jsonText), &data); err != nil {
@@ -718,7 +708,7 @@ func TestToolListDrawHistory_EmptyDir(t *testing.T) {
 
 	resp := h.toolListDrawHistory(req, args)
 	text := unmarshalMCPText(t, resp.Result)
-	jsonText := extractJSONFromMCPText(text)
+	jsonText := extractJSONFromText(text)
 
 	var data map[string]any
 	if err := json.Unmarshal([]byte(jsonText), &data); err != nil {
@@ -750,7 +740,7 @@ func TestToolListDrawHistory_WithSessions(t *testing.T) {
 
 	resp := h.toolListDrawHistory(req, args)
 	text := unmarshalMCPText(t, resp.Result)
-	jsonText := extractJSONFromMCPText(text)
+	jsonText := extractJSONFromText(text)
 
 	var data map[string]any
 	if err := json.Unmarshal([]byte(jsonText), &data); err != nil {

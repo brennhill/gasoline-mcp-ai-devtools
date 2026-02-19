@@ -2,7 +2,7 @@
 // Covers: sumErrorCounts, buildIssueSummary, buildVerifyErrorMap, diffConsoleErrors,
 // formatNetworkEntry, buildNetworkKeyMap, classifyNetworkErrorResolution,
 // diffNetworkErrors, computeLoadTimeDiff, computeVerification, determineVerdict,
-// requireSessionID, HandleTool dispatch.
+// requireVerifSessionID, HandleTool dispatch.
 package session
 
 import (
@@ -312,13 +312,13 @@ func TestClassifyNetworkErrorResolution_Changed(t *testing.T) {
 
 func TestDiffNetworkErrors_ResolvedEndpoint(t *testing.T) {
 	t.Parallel()
-	before := &SessionSnapshot{
+	before := &VerifSnapshot{
 		NetworkErrors: []VerifyNetworkEntry{
 			{Method: "POST", URL: "/api/login", Path: "/api/login", Status: 500},
 		},
 		AllNetworkRequests: []VerifyNetworkEntry{},
 	}
-	after := &SessionSnapshot{
+	after := &VerifSnapshot{
 		NetworkErrors: []VerifyNetworkEntry{},
 		AllNetworkRequests: []VerifyNetworkEntry{
 			{Method: "POST", URL: "/api/login", Path: "/api/login", Status: 200},
@@ -340,13 +340,13 @@ func TestDiffNetworkErrors_ResolvedEndpoint(t *testing.T) {
 
 func TestDiffNetworkErrors_ChangedStatus(t *testing.T) {
 	t.Parallel()
-	before := &SessionSnapshot{
+	before := &VerifSnapshot{
 		NetworkErrors: []VerifyNetworkEntry{
 			{Method: "GET", URL: "/api/data", Path: "/api/data", Status: 500},
 		},
 		AllNetworkRequests: []VerifyNetworkEntry{},
 	}
-	after := &SessionSnapshot{
+	after := &VerifSnapshot{
 		NetworkErrors: []VerifyNetworkEntry{
 			{Method: "GET", URL: "/api/data", Path: "/api/data", Status: 502},
 		},
@@ -368,11 +368,11 @@ func TestDiffNetworkErrors_ChangedStatus(t *testing.T) {
 
 func TestDiffNetworkErrors_NewNetworkError(t *testing.T) {
 	t.Parallel()
-	before := &SessionSnapshot{
+	before := &VerifSnapshot{
 		NetworkErrors:      []VerifyNetworkEntry{},
 		AllNetworkRequests: []VerifyNetworkEntry{},
 	}
-	after := &SessionSnapshot{
+	after := &VerifSnapshot{
 		NetworkErrors: []VerifyNetworkEntry{
 			{Method: "GET", URL: "/api/broken", Path: "/api/broken", Status: 404},
 		},
@@ -399,13 +399,13 @@ func TestDiffNetworkErrors_NewNetworkError(t *testing.T) {
 
 func TestDiffNetworkErrors_EndpointDisappeared(t *testing.T) {
 	t.Parallel()
-	before := &SessionSnapshot{
+	before := &VerifSnapshot{
 		NetworkErrors: []VerifyNetworkEntry{
 			{Method: "GET", URL: "/api/temp", Path: "/api/temp", Status: 500},
 		},
 		AllNetworkRequests: []VerifyNetworkEntry{},
 	}
-	after := &SessionSnapshot{
+	after := &VerifSnapshot{
 		NetworkErrors:      []VerifyNetworkEntry{},
 		AllNetworkRequests: []VerifyNetworkEntry{},
 	}
@@ -429,13 +429,13 @@ func TestDiffNetworkErrors_EndpointDisappeared(t *testing.T) {
 
 func TestDiffNetworkErrors_SameStatus_NoChange(t *testing.T) {
 	t.Parallel()
-	before := &SessionSnapshot{
+	before := &VerifSnapshot{
 		NetworkErrors: []VerifyNetworkEntry{
 			{Method: "GET", URL: "/api/err", Path: "/api/err", Status: 500},
 		},
 		AllNetworkRequests: []VerifyNetworkEntry{},
 	}
-	after := &SessionSnapshot{
+	after := &VerifSnapshot{
 		NetworkErrors: []VerifyNetworkEntry{
 			{Method: "GET", URL: "/api/err", Path: "/api/err", Status: 500},
 		},
@@ -460,8 +460,8 @@ func TestDiffNetworkErrors_SameStatus_NoChange(t *testing.T) {
 func TestComputeLoadTimeDiff_BothNil(t *testing.T) {
 	t.Parallel()
 	result := computeLoadTimeDiff(
-		&SessionSnapshot{Performance: nil},
-		&SessionSnapshot{Performance: nil},
+		&VerifSnapshot{Performance: nil},
+		&VerifSnapshot{Performance: nil},
 	)
 	if result != nil {
 		t.Error("Expected nil when both performances are nil")
@@ -471,8 +471,8 @@ func TestComputeLoadTimeDiff_BothNil(t *testing.T) {
 func TestComputeLoadTimeDiff_BeforeNil(t *testing.T) {
 	t.Parallel()
 	result := computeLoadTimeDiff(
-		&SessionSnapshot{Performance: nil},
-		&SessionSnapshot{Performance: &performance.PerformanceSnapshot{Timing: performance.PerformanceTiming{Load: 1000}}},
+		&VerifSnapshot{Performance: nil},
+		&VerifSnapshot{Performance: &performance.PerformanceSnapshot{Timing: performance.PerformanceTiming{Load: 1000}}},
 	)
 	if result != nil {
 		t.Error("Expected nil when before performance is nil")
@@ -482,8 +482,8 @@ func TestComputeLoadTimeDiff_BeforeNil(t *testing.T) {
 func TestComputeLoadTimeDiff_ValidData(t *testing.T) {
 	t.Parallel()
 	result := computeLoadTimeDiff(
-		&SessionSnapshot{Performance: &performance.PerformanceSnapshot{Timing: performance.PerformanceTiming{Load: 1000}}},
-		&SessionSnapshot{Performance: &performance.PerformanceSnapshot{Timing: performance.PerformanceTiming{Load: 1500}}},
+		&VerifSnapshot{Performance: &performance.PerformanceSnapshot{Timing: performance.PerformanceTiming{Load: 1000}}},
+		&VerifSnapshot{Performance: &performance.PerformanceSnapshot{Timing: performance.PerformanceTiming{Load: 1500}}},
 	)
 	if result == nil {
 		t.Fatal("Expected non-nil result")
@@ -502,8 +502,8 @@ func TestComputeLoadTimeDiff_ValidData(t *testing.T) {
 func TestComputeLoadTimeDiff_ZeroBefore(t *testing.T) {
 	t.Parallel()
 	result := computeLoadTimeDiff(
-		&SessionSnapshot{Performance: &performance.PerformanceSnapshot{Timing: performance.PerformanceTiming{Load: 0}}},
-		&SessionSnapshot{Performance: &performance.PerformanceSnapshot{Timing: performance.PerformanceTiming{Load: 500}}},
+		&VerifSnapshot{Performance: &performance.PerformanceSnapshot{Timing: performance.PerformanceTiming{Load: 0}}},
+		&VerifSnapshot{Performance: &performance.PerformanceSnapshot{Timing: performance.PerformanceTiming{Load: 500}}},
 	)
 	if result == nil {
 		t.Fatal("Expected non-nil result")
@@ -517,8 +517,8 @@ func TestComputeLoadTimeDiff_ZeroBefore(t *testing.T) {
 func TestComputeLoadTimeDiff_Decrease(t *testing.T) {
 	t.Parallel()
 	result := computeLoadTimeDiff(
-		&SessionSnapshot{Performance: &performance.PerformanceSnapshot{Timing: performance.PerformanceTiming{Load: 2000}}},
-		&SessionSnapshot{Performance: &performance.PerformanceSnapshot{Timing: performance.PerformanceTiming{Load: 1000}}},
+		&VerifSnapshot{Performance: &performance.PerformanceSnapshot{Timing: performance.PerformanceTiming{Load: 2000}}},
+		&VerifSnapshot{Performance: &performance.PerformanceSnapshot{Timing: performance.PerformanceTiming{Load: 1000}}},
 	)
 	if result == nil {
 		t.Fatal("Expected non-nil result")
@@ -662,22 +662,22 @@ func TestCountResolvedChanges_Multiple(t *testing.T) {
 }
 
 // ============================================
-// requireSessionID
+// requireVerifSessionID
 // ============================================
 
 func TestRequireSessionID_Empty(t *testing.T) {
 	t.Parallel()
-	err := requireSessionID("", "watch")
+	err := requireVerifSessionID("", "watch")
 	if err == nil {
-		t.Fatal("Expected error for empty session_id")
+		t.Fatal("Expected error for empty verif_session_id")
 	}
 }
 
 func TestRequireSessionID_NonEmpty(t *testing.T) {
 	t.Parallel()
-	err := requireSessionID("verify-123", "watch")
+	err := requireVerifSessionID("verify-123", "watch")
 	if err != nil {
-		t.Errorf("Expected no error for non-empty session_id, got: %v", err)
+		t.Errorf("Expected no error for non-empty verif_session_id, got: %v", err)
 	}
 }
 
@@ -725,7 +725,7 @@ func TestVerifyHandleTool_WatchMissingSessionID(t *testing.T) {
 
 	_, err := vm.HandleTool(json.RawMessage(`{"action":"watch"}`))
 	if err == nil {
-		t.Fatal("Expected error for watch without session_id")
+		t.Fatal("Expected error for watch without verif_session_id")
 	}
 }
 
@@ -736,7 +736,7 @@ func TestVerifyHandleTool_CompareMissingSessionID(t *testing.T) {
 
 	_, err := vm.HandleTool(json.RawMessage(`{"action":"compare"}`))
 	if err == nil {
-		t.Fatal("Expected error for compare without session_id")
+		t.Fatal("Expected error for compare without verif_session_id")
 	}
 }
 
@@ -747,7 +747,7 @@ func TestVerifyHandleTool_StatusMissingSessionID(t *testing.T) {
 
 	_, err := vm.HandleTool(json.RawMessage(`{"action":"status"}`))
 	if err == nil {
-		t.Fatal("Expected error for status without session_id")
+		t.Fatal("Expected error for status without verif_session_id")
 	}
 }
 
@@ -758,7 +758,7 @@ func TestVerifyHandleTool_CancelMissingSessionID(t *testing.T) {
 
 	_, err := vm.HandleTool(json.RawMessage(`{"action":"cancel"}`))
 	if err == nil {
-		t.Fatal("Expected error for cancel without session_id")
+		t.Fatal("Expected error for cancel without verif_session_id")
 	}
 }
 
@@ -782,8 +782,8 @@ func TestVerifyHandleTool_StartReturnsFields(t *testing.T) {
 	if m["label"] != "my-label" {
 		t.Errorf("Expected label 'my-label', got %v", m["label"])
 	}
-	if m["session_id"] == nil || m["session_id"] == "" {
-		t.Error("Expected non-empty session_id")
+	if m["verif_session_id"] == nil || m["verif_session_id"] == "" {
+		t.Error("Expected non-empty verif_session_id")
 	}
 	if m["baseline"] == nil {
 		t.Error("Expected baseline in result")

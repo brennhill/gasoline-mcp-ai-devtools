@@ -95,11 +95,11 @@ export function estimateBufferMemory(buffers) {
     }
     for (const body of buffers.networkBodies) {
         total += MEMORY_AVG_NETWORK_BODY_SIZE;
-        if (body.requestBody && typeof body.requestBody === 'string') {
-            total += body.requestBody.length;
+        if (body.request_body && typeof body.request_body === 'string') {
+            total += body.request_body.length;
         }
-        if (body.responseBody && typeof body.responseBody === 'string') {
-            total += body.responseBody.length;
+        if (body.response_body && typeof body.response_body === 'string') {
+            total += body.response_body.length;
         }
     }
     total += buffers.enhancedActions.length * MEMORY_AVG_ACTION_SIZE;

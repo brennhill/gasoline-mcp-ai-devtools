@@ -41,6 +41,7 @@ import (
 
 	"github.com/dev-console/dev-console/internal/session"
 	"github.com/dev-console/dev-console/internal/state"
+	"github.com/dev-console/dev-console/internal/upload"
 	"github.com/dev-console/dev-console/internal/util"
 )
 
@@ -359,7 +360,7 @@ func parseAndValidateFlags() *serverConfig {
 	f := registerFlags()
 
 	osUploadAutomationFlag = *f.enableOsUploadAutomation
-	ssrfAllowedHostsList = f.ssrfAllowedHosts
+	upload.SSRFAllowedHostsList = f.ssrfAllowedHosts
 	initUploadSecurity(*f.enableOsUploadAutomation, *f.uploadDir, f.uploadDenyPatterns)
 	validatePort(*f.port)
 	normalizeStateDir(f.stateDir)

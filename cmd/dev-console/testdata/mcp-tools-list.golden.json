@@ -197,6 +197,10 @@
     "description": "Trigger active analysis. Creates async queries the extension executes.\n\nSynchronous Mode (Default): Tools now block until the extension returns a result (up to 15s). Set background:true to return immediately with a correlation_id.\n\nDraw Mode: Use annotations to get all annotations from the last draw mode session. Use annotation_detail with correlation_id to get full computed styles and DOM detail for a specific annotation.",
     "inputSchema": {
       "properties": {
+        "annot_session": {
+          "description": "Named session for multi-page annotation review (applies to annotations). Accumulates annotations across pages.",
+          "type": "string"
+        },
         "background": {
           "description": "Run in background and return a correlation_id immediately.",
           "type": "boolean"
@@ -284,10 +288,6 @@
         },
         "selector": {
           "description": "CSS selector (dom, accessibility)",
-          "type": "string"
-        },
-        "session": {
-          "description": "Named session for multi-page annotation review (applies to annotations). Accumulates annotations across pages.",
           "type": "string"
         },
         "severity_min": {
@@ -383,6 +383,10 @@
       "properties": {
         "action": {
           "description": "Action type (test_heal: analyze/repair/batch, test_classify: failure/batch)",
+          "type": "string"
+        },
+        "annot_session": {
+          "description": "Named annotation session (applies to visual_test, annotation_report, annotation_issues)",
           "type": "string"
         },
         "assert_network": {
@@ -575,10 +579,6 @@
         },
         "scope": {
           "description": "CSS selector scope (sarif)",
-          "type": "string"
-        },
-        "session": {
-          "description": "Named annotation session (applies to visual_test, annotation_report, annotation_issues)",
           "type": "string"
         },
         "status_max": {
@@ -882,15 +882,6 @@
             "name": {
               "type": "string"
             },
-            "session_action": {
-              "enum": [
-                "capture",
-                "compare",
-                "list",
-                "delete"
-              ],
-              "type": "string"
-            },
             "telemetry_mode": {
               "enum": [
                 "off",
@@ -900,6 +891,15 @@
               "type": "string"
             },
             "url": {
+              "type": "string"
+            },
+            "verif_session_action": {
+              "enum": [
+                "capture",
+                "compare",
+                "list",
+                "delete"
+              ],
               "type": "string"
             }
           },
@@ -913,6 +913,9 @@
             "action": {
               "const": "audit_log"
             },
+            "audit_session_id": {
+              "type": "string"
+            },
             "limit": {
               "type": "number"
             },
@@ -922,9 +925,6 @@
                 "report",
                 "clear"
               ],
-              "type": "string"
-            },
-            "session_id": {
               "type": "string"
             },
             "since": {
@@ -1129,6 +1129,10 @@
           ],
           "type": "string"
         },
+        "audit_session_id": {
+          "description": "Filter by audit session ID",
+          "type": "string"
+        },
         "buffer": {
           "enum": [
             "network",
@@ -1246,19 +1250,6 @@
           "description": "Include sensitive data in recording capture",
           "type": "boolean"
         },
-        "session_action": {
-          "enum": [
-            "capture",
-            "compare",
-            "list",
-            "delete"
-          ],
-          "type": "string"
-        },
-        "session_id": {
-          "description": "Filter by session ID",
-          "type": "string"
-        },
         "severity_min": {
           "enum": [
             "info",
@@ -1319,6 +1310,15 @@
         "url": {
           "description": "URL filter for snapshot capture (diff_sessions)",
           "type": "string"
+        },
+        "verif_session_action": {
+          "enum": [
+            "capture",
+            "compare",
+            "list",
+            "delete"
+          ],
+          "type": "string"
         }
       },
       "required": [
@@ -1376,6 +1376,10 @@
         "analyze": {
           "description": "Enable perf profiling (captures perf_diff)",
           "type": "boolean"
+        },
+        "annot_session": {
+          "description": "Named session for multi-page annotation review (applies to draw_mode_start). Accumulates annotations across pages under a shared session name.",
+          "type": "string"
         },
         "api_endpoint": {
           "description": "API endpoint for direct upload mode",
@@ -1487,10 +1491,6 @@
         },
         "selector": {
           "description": "CSS or semantic selector for target element",
-          "type": "string"
-        },
-        "session": {
-          "description": "Named session for multi-page annotation review (applies to draw_mode_start). Accumulates annotations across pages under a shared session name.",
           "type": "string"
         },
         "snapshot_name": {

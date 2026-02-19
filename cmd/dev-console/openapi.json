@@ -1403,7 +1403,7 @@
           },
           "page_url": { "type": "string", "description": "URL of the page where annotations were drawn" },
           "tab_id": { "type": "integer", "description": "Chrome tab ID where draw mode was active" },
-          "session_name": { "type": "string", "description": "Named session for multi-page annotation accumulation" }
+          "annot_session_name": { "type": "string", "description": "Named session for multi-page annotation accumulation" }
         },
         "required": ["tab_id"]
       },

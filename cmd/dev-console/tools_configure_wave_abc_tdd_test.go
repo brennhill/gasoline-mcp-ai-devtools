@@ -246,18 +246,18 @@ func TestWaveB_AuditLogClear_ResetsToolHandlerSessionMap(t *testing.T) {
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: 1, ClientID: "session-reset-client"}
 
 	callHandledTool(t, h, req, "configure", `{"action":"health"}`)
-	oldSessionID := h.auditSessions["session-reset-client"]
+	oldSessionID := h.auditSessionMap["session-reset-client"]
 	if oldSessionID == "" {
 		t.Fatal("expected initial audit session id")
 	}
 
 	callHandledTool(t, h, req, "configure", `{"action":"audit_log","operation":"clear"}`)
-	if stale := h.auditSessions["session-reset-client"]; stale != "" {
+	if stale := h.auditSessionMap["session-reset-client"]; stale != "" {
 		t.Fatalf("audit session map should be reset on clear, found stale id: %s", stale)
 	}
 
 	callHandledTool(t, h, req, "configure", `{"action":"health"}`)
-	newSessionID := h.auditSessions["session-reset-client"]
+	newSessionID := h.auditSessionMap["session-reset-client"]
 	if newSessionID == "" {
 		t.Fatal("expected new audit session id after clear")
 	}

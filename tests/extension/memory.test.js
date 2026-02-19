@@ -150,8 +150,8 @@ describe('Memory Enforcement: estimateBufferMemory', () => {
 
   test('should estimate memory for network bodies (count * avg + body lengths)', () => {
     const bodies = [
-      { requestBody: 'req1', responseBody: 'resp1resp1' },
-      { requestBody: 'r2', responseBody: 'response2' }
+      { request_body: 'req1', response_body: 'resp1resp1' },
+      { request_body: 'r2', response_body: 'response2' }
     ]
     const memory = estimateBufferMemory({
       logEntries: [],
@@ -180,7 +180,7 @@ describe('Memory Enforcement: estimateBufferMemory', () => {
   test('should sum all buffer estimates together', () => {
     const logEntries = Array(10).fill({ level: 'error' })
     const wsEvents = [{ event: 'open', data: 'abc' }]
-    const networkBodies = [{ requestBody: 'x', responseBody: 'yy' }]
+    const networkBodies = [{ request_body: 'x', response_body: 'yy' }]
     const enhancedActions = Array(5).fill({ type: 'click' })
 
     const memory = estimateBufferMemory({ logEntries, wsEvents, networkBodies, enhancedActions })
@@ -209,8 +209,8 @@ describe('Memory Enforcement: estimateBufferMemory', () => {
     assert.strictEqual(memory, 2 * MEMORY_AVG_WS_EVENT_SIZE)
   })
 
-  test('should handle network bodies without requestBody or responseBody', () => {
-    const bodies = [{ url: 'http://example.com/api' }, { requestBody: 'data' }]
+  test('should handle network bodies without request_body or response_body', () => {
+    const bodies = [{ url: 'http://example.com/api' }, { request_body: 'data' }]
     const memory = estimateBufferMemory({
       logEntries: [],
       wsEvents: [],

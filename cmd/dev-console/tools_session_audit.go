@@ -173,14 +173,14 @@ func (h *ToolHandler) recordAuditToolCall(
 		return
 	}
 
-	sessionID := h.auditSessionID(req.ClientID)
+	sessionID := h.auditSessionForClient(req.ClientID)
 	if sessionID == "" {
 		return
 	}
 
 	success := resp.Error == nil && !isToolResultError(resp.Result)
 	entry := audit.AuditEntry{
-		SessionID:    sessionID,
+		AuditSessionID: sessionID,
 		ClientID:     normalizeAuditClientID(req.ClientID),
 		ToolName:     toolName,
 		Parameters:   string(args),
@@ -195,7 +195,7 @@ func (h *ToolHandler) recordAuditToolCall(
 	h.auditTrail.Record(entry)
 }
 
-func (h *ToolHandler) auditSessionID(clientID string) string {
+func (h *ToolHandler) auditSessionForClient(clientID string) string {
 	if h == nil || h.auditTrail == nil {
 		return ""
 	}
@@ -205,18 +205,18 @@ func (h *ToolHandler) auditSessionID(clientID string) string {
 	h.auditMu.Lock()
 	defer h.auditMu.Unlock()
 
-	if sid, ok := h.auditSessions[client]; ok && sid != "" {
-		if h.auditTrail.GetSession(sid) != nil {
+	if sid, ok := h.auditSessionMap[client]; ok && sid != "" {
+		if h.auditTrail.GetAuditSession(sid) != nil {
 			return sid
 		}
-		delete(h.auditSessions, client)
+		delete(h.auditSessionMap, client)
 	}
 
-	info := h.auditTrail.CreateSession(audit.ClientIdentifier{Name: client})
+	info := h.auditTrail.CreateAuditSession(audit.ClientIdentifier{Name: client})
 	if info == nil || info.ID == "" {
 		return ""
 	}
-	h.auditSessions[client] = info.ID
+	h.auditSessionMap[client] = info.ID
 	return info.ID
 }
 

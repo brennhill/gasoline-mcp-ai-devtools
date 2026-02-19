@@ -2,7 +2,6 @@
 package main
 
 import (
-	"encoding/json"
 	"testing"
 )
 
@@ -126,40 +125,4 @@ func TestStructuredError_ErrorCodes_RetryableDefaults(t *testing.T) {
 	}
 }
 
-// ============================================
-// Helpers
-// ============================================
-
-// extractStructuredErrorJSON parses the JSON from an MCP error response.
-func extractStructuredErrorJSON(t *testing.T, raw json.RawMessage) map[string]any {
-	t.Helper()
-
-	var result MCPToolResult
-	if err := json.Unmarshal(raw, &result); err != nil {
-		t.Fatalf("failed to parse MCPToolResult: %v", err)
-	}
-	if !result.IsError {
-		t.Fatal("expected isError: true")
-	}
-	if len(result.Content) == 0 {
-		t.Fatal("no content blocks")
-	}
-
-	text := result.Content[0].Text
-	jsonText := extractJSONFromStructuredError(text)
-	var data map[string]any
-	if err := json.Unmarshal([]byte(jsonText), &data); err != nil {
-		t.Fatalf("failed to parse structured error JSON: %v\ntext: %s", err, text)
-	}
-	return data
-}
-
-// extractJSONFromStructuredError finds the JSON object in the structured error text.
-func extractJSONFromStructuredError(text string) string {
-	for i, ch := range text {
-		if ch == '{' {
-			return text[i:]
-		}
-	}
-	return text
-}
+// Helpers: extractStructuredErrorJSON and extractJSONFromText are in tools_test_helpers_test.go.

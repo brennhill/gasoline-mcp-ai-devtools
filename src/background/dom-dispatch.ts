@@ -14,7 +14,10 @@ import type { PendingQuery } from '../types/queries'
 import type { SyncClient } from './sync-client'
 import { domPrimitive, domWaitFor, domFrameProbe } from './dom-primitives'
 
-// Result shape returned by domPrimitive (compile-time only — erased at runtime)
+// Result shape returned by domPrimitive (compile-time only — erased at runtime).
+// DUPLICATED in dom-primitives.ts — kept in sync manually because both files
+// need the type but dom-primitives.ts cannot import from other modules
+// (chrome.scripting.executeScript serializes functions independently).
 interface DOMResult {
   success: boolean
   action: string

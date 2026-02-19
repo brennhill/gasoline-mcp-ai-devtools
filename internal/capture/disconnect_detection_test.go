@@ -154,7 +154,7 @@ func TestHandleSync_UpdatesLastSyncSeen(t *testing.T) {
 	}
 
 	// Send sync request
-	req := SyncRequest{SessionID: "test-session"}
+	req := SyncRequest{ExtSessionID: "test-session"}
 	body, _ := json.Marshal(req)
 	httpReq := httptest.NewRequest("POST", "/sync", bytes.NewReader(body))
 	httpReq.Header.Set("X-Gasoline-Client", "client-123")
@@ -330,7 +330,7 @@ func TestHandleSync_ExpiresPendingOnDisconnect(t *testing.T) {
 
 	// The sync handler calls GetPendingQueries internally via GetPendingQueriesDisconnectAware.
 	// After reconnection (new sync), queries should have been expired before this sync processes.
-	req := SyncRequest{SessionID: "reconnect-session"}
+	req := SyncRequest{ExtSessionID: "reconnect-session"}
 	body, _ := json.Marshal(req)
 	httpReq := httptest.NewRequest("POST", "/sync", bytes.NewReader(body))
 	w := httptest.NewRecorder()

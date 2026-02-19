@@ -17,7 +17,7 @@ PLATFORMS := \
 
 .PHONY: all clean build test test-js test-fast test-all test-go-quick test-go-long test-go-sharded test-race test-cover test-cover-integration test-cover-all test-bench test-fuzz \
 	dev run checksums verify-zero-deps verify-imports verify-size check-file-length \
-	lint lint-go lint-js format format-fix typecheck check ci \
+	lint lint-go lint-js format format-fix typecheck check check-wire-drift ci \
 	ci-local ci-go ci-js ci-security ci-e2e ci-bench ci-fuzz \
 	release-check install-hooks bench-baseline sync-version \
 	pypi-binaries pypi-build pypi-publish pypi-test-publish pypi-clean \
@@ -232,7 +232,10 @@ typecheck:
 
 check: lint format typecheck check-invariants
 
-check-invariants:
+check-wire-drift:
+	@node scripts/check-wire-drift.js
+
+check-invariants: check-wire-drift
 	@./scripts/check-sync-invariants.sh
 	@./scripts/validate-codex-skills.sh
 

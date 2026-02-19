@@ -17,7 +17,7 @@ func TestHandleSync_BasicRequest(t *testing.T) {
 
 	// Create a sync request
 	req := SyncRequest{
-		SessionID: "test_session_123",
+		ExtSessionID: "test_session_123",
 		Settings: &SyncSettings{
 			PilotEnabled:    true,
 			TrackingEnabled: false,
@@ -65,8 +65,8 @@ func TestHandleSync_BasicRequest(t *testing.T) {
 
 	// Verify state was updated
 	cap.mu.RLock()
-	if cap.ext.extensionSession != "test_session_123" {
-		t.Errorf("Expected session to be 'test_session_123', got '%s'", cap.ext.extensionSession)
+	if cap.ext.extSessionID != "test_session_123" {
+		t.Errorf("Expected session to be 'test_session_123', got '%s'", cap.ext.extSessionID)
 	}
 	if !cap.ext.pilotEnabled {
 		t.Error("Expected pilotEnabled to be true")
@@ -111,7 +111,7 @@ func TestHandleSync_WithExtensionLogs(t *testing.T) {
 
 	// Create request with extension logs
 	req := SyncRequest{
-		SessionID: "test_session",
+		ExtSessionID: "test_session",
 		ExtensionLogs: []ExtensionLog{
 			{
 				Level:    "info",
@@ -153,7 +153,7 @@ func TestHandleSync_WithExtensionLogs_RedactsSensitiveData(t *testing.T) {
 	)
 
 	req := SyncRequest{
-		SessionID: "test_session",
+		ExtSessionID: "test_session",
 		ExtensionLogs: []ExtensionLog{
 			{
 				Level:    "debug",
@@ -209,7 +209,7 @@ func TestHandleSync_UpdatesLastPollAt(t *testing.T) {
 	}
 
 	// Send sync request
-	req := SyncRequest{SessionID: "test"}
+	req := SyncRequest{ExtSessionID: "test"}
 	body, _ := json.Marshal(req)
 	httpReq := httptest.NewRequest("POST", "/sync", bytes.NewReader(body))
 	w := httptest.NewRecorder()
@@ -241,7 +241,7 @@ func TestHandleSync_AdaptivePoll_FastWhenPendingCommands(t *testing.T) {
 	})
 
 	// Sync should return fast poll interval (200ms) since commands are pending
-	req := SyncRequest{SessionID: "test_session"}
+	req := SyncRequest{ExtSessionID: "test_session"}
 	body, _ := json.Marshal(req)
 	httpReq := httptest.NewRequest("POST", "/sync", bytes.NewReader(body))
 	w := httptest.NewRecorder()
@@ -276,7 +276,7 @@ func TestHandleSync_CommandsIncludeTabID(t *testing.T) {
 		CorrelationID: "corr-tab-42",
 	})
 
-	req := SyncRequest{SessionID: "test_session"}
+	req := SyncRequest{ExtSessionID: "test_session"}
 	body, _ := json.Marshal(req)
 	httpReq := httptest.NewRequest("POST", "/sync", bytes.NewReader(body))
 	w := httptest.NewRecorder()
@@ -308,7 +308,7 @@ func TestHandleSync_AdaptivePoll_SlowWhenNoCommands(t *testing.T) {
 	cap := NewCapture()
 
 	// No pending queries — should get default 1000ms interval
-	req := SyncRequest{SessionID: "test_session"}
+	req := SyncRequest{ExtSessionID: "test_session"}
 	body, _ := json.Marshal(req)
 	httpReq := httptest.NewRequest("POST", "/sync", bytes.NewReader(body))
 	w := httptest.NewRecorder()
@@ -343,7 +343,7 @@ func TestHandleSync_AdaptivePoll_RevertsAfterResultDelivered(t *testing.T) {
 	})
 
 	// First sync: should be fast (200ms) — commands pending
-	req1 := SyncRequest{SessionID: "test_session"}
+	req1 := SyncRequest{ExtSessionID: "test_session"}
 	body1, _ := json.Marshal(req1)
 	httpReq1 := httptest.NewRequest("POST", "/sync", bytes.NewReader(body1))
 	w1 := httptest.NewRecorder()
@@ -358,7 +358,7 @@ func TestHandleSync_AdaptivePoll_RevertsAfterResultDelivered(t *testing.T) {
 	// Extension delivers result via second sync
 	resultBytes, _ := json.Marshal(map[string]string{"html": "<body>test</body>"})
 	req2 := SyncRequest{
-		SessionID: "test_session",
+		ExtSessionID: "test_session",
 		CommandResults: []SyncCommandResult{
 			{ID: queryID, Status: "complete", Result: resultBytes},
 		},
@@ -397,7 +397,7 @@ func TestHandleSync_WaterfallQueryDelivery(t *testing.T) {
 	}
 
 	// Extension polls /sync and receives the command
-	req := SyncRequest{SessionID: "test_session"}
+	req := SyncRequest{ExtSessionID: "test_session"}
 	body, _ := json.Marshal(req)
 	httpReq := httptest.NewRequest("POST", "/sync", bytes.NewReader(body))
 	w := httptest.NewRecorder()
@@ -453,7 +453,7 @@ func TestHandleSync_WaterfallResultDelivery(t *testing.T) {
 	resultBytes, _ := json.Marshal(waterfallResult)
 
 	req := SyncRequest{
-		SessionID: "test_session",
+		ExtSessionID: "test_session",
 		CommandResults: []SyncCommandResult{
 			{
 				ID:     queryID,
@@ -503,7 +503,7 @@ func TestHandleSync_LastCommandAckPreventsRedelivery(t *testing.T) {
 		t.Fatal("expected query ID")
 	}
 
-	firstReqBody, _ := json.Marshal(SyncRequest{SessionID: "ack-session"})
+	firstReqBody, _ := json.Marshal(SyncRequest{ExtSessionID: "ack-session"})
 	firstReq := httptest.NewRequest("POST", "/sync", bytes.NewReader(firstReqBody))
 	firstResp := httptest.NewRecorder()
 	cap.HandleSync(firstResp, firstReq)
@@ -520,7 +520,7 @@ func TestHandleSync_LastCommandAckPreventsRedelivery(t *testing.T) {
 	}
 
 	ackReqBody, _ := json.Marshal(SyncRequest{
-		SessionID:      "ack-session",
+		ExtSessionID:      "ack-session",
 		LastCommandAck: queryID,
 	})
 	ackReq := httptest.NewRequest("POST", "/sync", bytes.NewReader(ackReqBody))

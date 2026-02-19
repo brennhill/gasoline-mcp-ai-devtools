@@ -9,8 +9,6 @@
 package main
 
 import (
-	"crypto/rand"
-	"encoding/binary"
 	"encoding/json"
 	"os"
 	"sort"
@@ -22,16 +20,6 @@ import (
 	"github.com/dev-console/dev-console/internal/audit"
 	"github.com/dev-console/dev-console/internal/util"
 )
-
-// randomInt63 generates a random int64 for correlation IDs using crypto/rand.
-func randomInt63() int64 {
-	var b [8]byte
-	if _, err := rand.Read(b[:]); err != nil {
-		// Fallback to time-based if rand fails (should never happen)
-		return time.Now().UnixNano()
-	}
-	return int64(binary.BigEndian.Uint64(b[:]) & 0x7FFFFFFFFFFFFFFF)
-}
 
 // ConfigureHandler is the function signature for configure action handlers.
 type ConfigureHandler func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse
@@ -479,7 +467,7 @@ func (h *ToolHandler) clearBuffer(buffer string) (any, bool) {
 	}
 }
 
-// toolDiffSessionsWrapper repackages session_action → action for toolDiffSessions.
+// toolDiffSessionsWrapper repackages verif_session_action → action for toolDiffSessions.
 func (h *ToolHandler) toolDiffSessionsWrapper(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	var raw map[string]any
 	if len(args) > 0 {
@@ -490,12 +478,12 @@ func (h *ToolHandler) toolDiffSessionsWrapper(req JSONRPCRequest, args json.RawM
 	if raw == nil {
 		raw = make(map[string]any)
 	}
-	if sa, ok := raw["session_action"].(string); ok && strings.TrimSpace(sa) != "" {
+	if sa, ok := raw["verif_session_action"].(string); ok && strings.TrimSpace(sa) != "" {
 		raw["action"] = sa
 	}
 
 	// configure(action:"diff_sessions") is the tool entrypoint; default to list
-	// unless a specific session_action is provided.
+	// unless a specific verif_session_action is provided.
 	if action, _ := raw["action"].(string); action == "" || action == "diff_sessions" {
 		raw["action"] = "list"
 	}
@@ -545,7 +533,7 @@ func (h *ToolHandler) toolGetAuditLog(req JSONRPCRequest, args json.RawMessage) 
 
 	var params struct {
 		Operation string `json:"operation"`
-		SessionID string `json:"session_id"`
+		AuditSessionID string `json:"audit_session_id"`
 		ToolName  string `json:"tool_name"`
 		Limit     int    `json:"limit"`
 		Since     string `json:"since"`
@@ -570,7 +558,7 @@ func (h *ToolHandler) toolGetAuditLog(req JSONRPCRequest, args json.RawMessage) 
 	if operation == "clear" {
 		cleared := h.auditTrail.Clear()
 		h.auditMu.Lock()
-		h.auditSessions = make(map[string]string)
+		h.auditSessionMap = make(map[string]string)
 		h.auditMu.Unlock()
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Audit log cleared", map[string]any{
 			"status":    "ok",
@@ -580,7 +568,7 @@ func (h *ToolHandler) toolGetAuditLog(req JSONRPCRequest, args json.RawMessage) 
 	}
 
 	filter := audit.AuditFilter{
-		SessionID: params.SessionID,
+		AuditSessionID: params.AuditSessionID,
 		ToolName:  params.ToolName,
 		Limit:     params.Limit,
 	}
@@ -620,7 +608,7 @@ func summarizeAuditEntries(entries []audit.AuditEntry) map[string]any {
 	failed := 0
 	for _, entry := range entries {
 		byTool[entry.ToolName]++
-		uniqueSessions[entry.SessionID] = struct{}{}
+		uniqueSessions[entry.AuditSessionID] = struct{}{}
 		if entry.Success {
 			success++
 		} else {
@@ -632,7 +620,7 @@ func summarizeAuditEntries(entries []audit.AuditEntry) map[string]any {
 		"total_calls":   len(entries),
 		"success_count": success,
 		"failure_count": failed,
-		"session_count": len(uniqueSessions),
+		"audit_session_count": len(uniqueSessions),
 		"calls_by_tool": byTool,
 	}
 }

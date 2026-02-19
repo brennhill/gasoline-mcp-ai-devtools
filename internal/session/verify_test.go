@@ -93,11 +93,11 @@ func TestVerificationManager_Start(t *testing.T) {
 		t.Fatalf("Start failed: %v", err)
 	}
 
-	if result.SessionID == "" {
+	if result.VerifSessionID == "" {
 		t.Error("Expected non-empty session ID")
 	}
-	if !strings.HasPrefix(result.SessionID, "verify-") {
-		t.Errorf("Session ID should have 'verify-' prefix, got %q", result.SessionID)
+	if !strings.HasPrefix(result.VerifSessionID, "verify-") {
+		t.Errorf("Session ID should have 'verify-' prefix, got %q", result.VerifSessionID)
 	}
 	if result.Status != "baseline_captured" {
 		t.Errorf("Expected status 'baseline_captured', got %q", result.Status)
@@ -174,13 +174,13 @@ func TestVerificationManager_Watch(t *testing.T) {
 	}
 
 	// Watch
-	watchResult, err := vm.Watch(startResult.SessionID)
+	watchResult, err := vm.Watch(startResult.VerifSessionID)
 	if err != nil {
 		t.Fatalf("Watch failed: %v", err)
 	}
 
-	if watchResult.SessionID != startResult.SessionID {
-		t.Errorf("Session IDs should match: %q != %q", watchResult.SessionID, startResult.SessionID)
+	if watchResult.VerifSessionID != startResult.VerifSessionID {
+		t.Errorf("Session IDs should match: %q != %q", watchResult.VerifSessionID, startResult.VerifSessionID)
 	}
 	if watchResult.Status != "watching" {
 		t.Errorf("Expected status 'watching', got %q", watchResult.Status)
@@ -207,13 +207,13 @@ func TestVerificationManager_WatchAlreadyWatching(t *testing.T) {
 	vm := NewVerificationManager(mock)
 
 	startResult, _ := vm.Start("test", "")
-	_, err := vm.Watch(startResult.SessionID)
+	_, err := vm.Watch(startResult.VerifSessionID)
 	if err != nil {
 		t.Fatalf("First watch failed: %v", err)
 	}
 
 	// Calling watch again should still work (idempotent)
-	_, err = vm.Watch(startResult.SessionID)
+	_, err = vm.Watch(startResult.VerifSessionID)
 	if err != nil {
 		t.Errorf("Second watch should be idempotent, got: %v", err)
 	}
@@ -247,10 +247,10 @@ func TestVerificationManager_Compare_Fixed(t *testing.T) {
 	}
 
 	// Watch
-	vm.Watch(startResult.SessionID)
+	vm.Watch(startResult.VerifSessionID)
 
 	// Compare
-	result, err := vm.Compare(startResult.SessionID)
+	result, err := vm.Compare(startResult.VerifSessionID)
 	if err != nil {
 		t.Fatalf("Compare failed: %v", err)
 	}
@@ -299,8 +299,8 @@ func TestVerificationManager_Compare_Improved(t *testing.T) {
 		{Type: "console", Message: "Error B", Count: 1},
 	}
 
-	vm.Watch(startResult.SessionID)
-	result, err := vm.Compare(startResult.SessionID)
+	vm.Watch(startResult.VerifSessionID)
+	result, err := vm.Compare(startResult.VerifSessionID)
 	if err != nil {
 		t.Fatalf("Compare failed: %v", err)
 	}
@@ -323,8 +323,8 @@ func TestVerificationManager_Compare_Unchanged(t *testing.T) {
 	startResult, _ := vm.Start("unchanged-test", "")
 
 	// Same errors persist
-	vm.Watch(startResult.SessionID)
-	result, err := vm.Compare(startResult.SessionID)
+	vm.Watch(startResult.VerifSessionID)
+	result, err := vm.Compare(startResult.VerifSessionID)
 	if err != nil {
 		t.Fatalf("Compare failed: %v", err)
 	}
@@ -351,8 +351,8 @@ func TestVerificationManager_Compare_DifferentIssue(t *testing.T) {
 		{Type: "console", Message: "New different error", Count: 1},
 	}
 
-	vm.Watch(startResult.SessionID)
-	result, err := vm.Compare(startResult.SessionID)
+	vm.Watch(startResult.VerifSessionID)
+	result, err := vm.Compare(startResult.VerifSessionID)
 	if err != nil {
 		t.Fatalf("Compare failed: %v", err)
 	}
@@ -384,8 +384,8 @@ func TestVerificationManager_Compare_Regressed(t *testing.T) {
 		{Type: "console", Message: "Error C", Count: 1},
 	}
 
-	vm.Watch(startResult.SessionID)
-	result, err := vm.Compare(startResult.SessionID)
+	vm.Watch(startResult.VerifSessionID)
+	result, err := vm.Compare(startResult.VerifSessionID)
 	if err != nil {
 		t.Fatalf("Compare failed: %v", err)
 	}
@@ -408,8 +408,8 @@ func TestVerificationManager_Compare_NoIssuesDetected(t *testing.T) {
 	vm := NewVerificationManager(mock)
 	startResult, _ := vm.Start("no-issues-test", "")
 
-	vm.Watch(startResult.SessionID)
-	result, err := vm.Compare(startResult.SessionID)
+	vm.Watch(startResult.VerifSessionID)
+	result, err := vm.Compare(startResult.VerifSessionID)
 	if err != nil {
 		t.Fatalf("Compare failed: %v", err)
 	}
@@ -427,7 +427,7 @@ func TestVerificationManager_CompareWithoutWatch(t *testing.T) {
 	startResult, _ := vm.Start("no-watch-test", "")
 
 	// Compare without watching should fail
-	_, err := vm.Compare(startResult.SessionID)
+	_, err := vm.Compare(startResult.VerifSessionID)
 	if err == nil {
 		t.Error("Expected error when comparing without watch")
 	}
@@ -458,7 +458,7 @@ func TestVerificationManager_Cancel(t *testing.T) {
 
 	startResult, _ := vm.Start("cancel-test", "")
 
-	result, err := vm.Cancel(startResult.SessionID)
+	result, err := vm.Cancel(startResult.VerifSessionID)
 	if err != nil {
 		t.Fatalf("Cancel failed: %v", err)
 	}
@@ -468,7 +468,7 @@ func TestVerificationManager_Cancel(t *testing.T) {
 	}
 
 	// Trying to watch should now fail
-	_, err = vm.Watch(startResult.SessionID)
+	_, err = vm.Watch(startResult.VerifSessionID)
 	if err == nil {
 		t.Error("Expected error watching cancelled session")
 	}
@@ -496,12 +496,12 @@ func TestVerificationManager_Status(t *testing.T) {
 
 	startResult, _ := vm.Start("status-test", "")
 
-	status, err := vm.Status(startResult.SessionID)
+	status, err := vm.Status(startResult.VerifSessionID)
 	if err != nil {
 		t.Fatalf("Status failed: %v", err)
 	}
 
-	if status.SessionID != startResult.SessionID {
+	if status.VerifSessionID != startResult.VerifSessionID {
 		t.Errorf("Session ID mismatch")
 	}
 	if status.Status != "baseline_captured" {
@@ -515,9 +515,9 @@ func TestVerificationManager_StatusAfterWatch(t *testing.T) {
 	vm := NewVerificationManager(mock)
 
 	startResult, _ := vm.Start("status-watch-test", "")
-	vm.Watch(startResult.SessionID)
+	vm.Watch(startResult.VerifSessionID)
 
-	status, err := vm.Status(startResult.SessionID)
+	status, err := vm.Status(startResult.VerifSessionID)
 	if err != nil {
 		t.Fatalf("Status failed: %v", err)
 	}
@@ -611,8 +611,8 @@ func TestVerificationManager_ErrorMatchingNormalized(t *testing.T) {
 		{Type: "console", Message: "Failed to load user a1b2c3d4-e5f6-7890-abcd-ef1234567890", Count: 1},
 	}
 
-	vm.Watch(startResult.SessionID)
-	result, err := vm.Compare(startResult.SessionID)
+	vm.Watch(startResult.VerifSessionID)
+	result, err := vm.Compare(startResult.VerifSessionID)
 	if err != nil {
 		t.Fatalf("Compare failed: %v", err)
 	}
@@ -644,8 +644,8 @@ func TestVerificationManager_NetworkStatusChange(t *testing.T) {
 		{Method: "POST", URL: "/api/login", Status: 200},
 	}
 
-	vm.Watch(startResult.SessionID)
-	result, err := vm.Compare(startResult.SessionID)
+	vm.Watch(startResult.VerifSessionID)
+	result, err := vm.Compare(startResult.VerifSessionID)
 	if err != nil {
 		t.Fatalf("Compare failed: %v", err)
 	}
@@ -695,8 +695,8 @@ func TestVerificationManager_PerformanceDiff(t *testing.T) {
 		},
 	}
 
-	vm.Watch(startResult.SessionID)
-	result, err := vm.Compare(startResult.SessionID)
+	vm.Watch(startResult.VerifSessionID)
+	result, err := vm.Compare(startResult.VerifSessionID)
 	if err != nil {
 		t.Fatalf("Compare failed: %v", err)
 	}
@@ -750,7 +750,7 @@ func TestVerificationManager_SessionTTL(t *testing.T) {
 	time.Sleep(150 * time.Millisecond)
 
 	// Session should be expired
-	_, err := vm.Watch(startResult.SessionID)
+	_, err := vm.Watch(startResult.VerifSessionID)
 	if err == nil {
 		t.Error("Expected error for expired session")
 	}
@@ -804,8 +804,8 @@ func TestVerificationManager_HandleTool_Start(t *testing.T) {
 	if resultMap["status"] != "baseline_captured" {
 		t.Errorf("Expected status 'baseline_captured', got %v", resultMap["status"])
 	}
-	if resultMap["session_id"] == "" {
-		t.Error("Expected session_id in result")
+	if resultMap["verif_session_id"] == "" {
+		t.Error("Expected verif_session_id in result")
 	}
 }
 
@@ -826,20 +826,20 @@ func TestVerificationManager_HandleTool_FullWorkflow(t *testing.T) {
 		t.Fatalf("Start failed: %v", err)
 	}
 	startMap := startResult.(map[string]any)
-	sessionID := startMap["session_id"].(string)
+	sessionID := startMap["verif_session_id"].(string)
 
 	// Simulate fix
 	mock.consoleErrors = nil
 
 	// Watch
-	watchParams, _ := json.Marshal(map[string]string{"action": "watch", "session_id": sessionID})
+	watchParams, _ := json.Marshal(map[string]string{"action": "watch", "verif_session_id": sessionID})
 	_, err = vm.HandleTool(watchParams)
 	if err != nil {
 		t.Fatalf("Watch failed: %v", err)
 	}
 
 	// Compare
-	compareParams, _ := json.Marshal(map[string]string{"action": "compare", "session_id": sessionID})
+	compareParams, _ := json.Marshal(map[string]string{"action": "compare", "verif_session_id": sessionID})
 	compareResult, err := vm.HandleTool(compareParams)
 	if err != nil {
 		t.Fatalf("Compare failed: %v", err)
@@ -861,10 +861,10 @@ func TestVerificationManager_HandleTool_Status(t *testing.T) {
 	params := json.RawMessage(`{"action":"start"}`)
 	startResult, _ := vm.HandleTool(params)
 	startMap := startResult.(map[string]any)
-	sessionID := startMap["session_id"].(string)
+	sessionID := startMap["verif_session_id"].(string)
 
 	// Status
-	statusParams, _ := json.Marshal(map[string]string{"action": "status", "session_id": sessionID})
+	statusParams, _ := json.Marshal(map[string]string{"action": "status", "verif_session_id": sessionID})
 	statusResult, err := vm.HandleTool(statusParams)
 	if err != nil {
 		t.Fatalf("Status failed: %v", err)
@@ -885,10 +885,10 @@ func TestVerificationManager_HandleTool_Cancel(t *testing.T) {
 	params := json.RawMessage(`{"action":"start"}`)
 	startResult, _ := vm.HandleTool(params)
 	startMap := startResult.(map[string]any)
-	sessionID := startMap["session_id"].(string)
+	sessionID := startMap["verif_session_id"].(string)
 
 	// Cancel
-	cancelParams, _ := json.Marshal(map[string]string{"action": "cancel", "session_id": sessionID})
+	cancelParams, _ := json.Marshal(map[string]string{"action": "cancel", "verif_session_id": sessionID})
 	cancelResult, err := vm.HandleTool(cancelParams)
 	if err != nil {
 		t.Fatalf("Cancel failed: %v", err)
@@ -929,11 +929,11 @@ func TestVerificationManager_HandleTool_MissingSessionID(t *testing.T) {
 	mock := &mockVerifyState{pageURL: "http://localhost:3000"}
 	vm := NewVerificationManager(mock)
 
-	// Watch without session_id
+	// Watch without verif_session_id
 	params := json.RawMessage(`{"action":"watch"}`)
 	_, err := vm.HandleTool(params)
 	if err == nil {
-		t.Error("Expected error for missing session_id")
+		t.Error("Expected error for missing verif_session_id")
 	}
 }
 
@@ -975,10 +975,10 @@ func TestVerificationManager_CompareMultipleTimes(t *testing.T) {
 	vm := NewVerificationManager(mock)
 	startResult, _ := vm.Start("multi-compare", "")
 	mock.consoleErrors = nil
-	vm.Watch(startResult.SessionID)
+	vm.Watch(startResult.VerifSessionID)
 
 	// First compare
-	result1, err := vm.Compare(startResult.SessionID)
+	result1, err := vm.Compare(startResult.VerifSessionID)
 	if err != nil {
 		t.Fatalf("First compare failed: %v", err)
 	}
@@ -992,7 +992,7 @@ func TestVerificationManager_CompareMultipleTimes(t *testing.T) {
 	}
 
 	// Second compare should work (re-run scenario)
-	result2, err := vm.Compare(startResult.SessionID)
+	result2, err := vm.Compare(startResult.VerifSessionID)
 	if err != nil {
 		t.Fatalf("Second compare failed: %v", err)
 	}

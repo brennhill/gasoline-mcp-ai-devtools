@@ -629,23 +629,11 @@ function handleGetWaterfall(data: GetWaterfallRequestMessageData): void {
   try {
     const entries = getNetworkWaterfall({})
 
-    // Convert camelCase WaterfallEntry fields to snake_case for Go daemon
-    const snakeEntries = (entries || []).map((e) => ({
-      url: e.url,
-      name: e.url,
-      initiator_type: e.initiatorType,
-      start_time: e.startTime,
-      duration: e.duration,
-      transfer_size: e.transferSize,
-      encoded_body_size: e.encodedBodySize,
-      decoded_body_size: e.decodedBodySize
-    }))
-
     window.postMessage(
       {
         type: 'GASOLINE_WATERFALL_RESPONSE',
         requestId,
-        entries: snakeEntries,
+        entries: entries || [],
         page_url: window.location.href
       },
       window.location.origin

@@ -267,26 +267,3 @@ func TestWorkflowResult_FailureWithMCPError(t *testing.T) {
 	}
 }
 
-// ============================================
-// Test helpers
-// ============================================
-
-func assertIsError(t *testing.T, resp JSONRPCResponse, contains string) {
-	t.Helper()
-	if !isErrorResponse(resp) {
-		var result MCPToolResult
-		if err := json.Unmarshal(resp.Result, &result); err == nil {
-			for _, c := range result.Content {
-				if strings.Contains(c.Text, contains) {
-					return
-				}
-			}
-		}
-		t.Errorf("expected error response containing %q", contains)
-		return
-	}
-	raw, _ := json.Marshal(resp)
-	if !strings.Contains(string(raw), contains) {
-		t.Errorf("error response doesn't contain %q: %s", contains, raw)
-	}
-}

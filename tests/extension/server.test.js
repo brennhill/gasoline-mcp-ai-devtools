@@ -92,7 +92,7 @@ describe('sendLogsToServer', () => {
 // ============================================
 
 describe('sendNetworkBodiesToServer', () => {
-  test('converts camelCase keys to snake_case', async () => {
+  test('sends snake_case keys as-is', async () => {
     mockFetch.mock.mockImplementation(() =>
       Promise.resolve({ ok: true })
     )
@@ -101,11 +101,11 @@ describe('sendNetworkBodiesToServer', () => {
       url: 'https://api.example.com',
       method: 'GET',
       status: 200,
-      contentType: 'application/json',
-      requestBody: '{}',
-      responseBody: '{"ok":true}',
+      content_type: 'application/json',
+      request_body: '{}',
+      response_body: '{"ok":true}',
       duration: 100,
-      tabId: 1
+      tab_id: 1
     }])
 
     const call = mockFetch.mock.calls[0]
@@ -130,7 +130,7 @@ describe('sendNetworkBodiesToServer', () => {
       url: 'https://api.example.com',
       method: 'GET',
       status: 200,
-      contentType: 'application/json'
+      content_type: 'application/json'
     }])
 
     const call = mockFetch.mock.calls[0]
@@ -147,8 +147,8 @@ describe('sendNetworkBodiesToServer', () => {
       url: 'https://api.example.com',
       method: 'GET',
       status: 200,
-      contentType: 'text/html',
-      responseTruncated: true
+      content_type: 'text/html',
+      response_truncated: true
     }])
 
     const call = mockFetch.mock.calls[0]
@@ -310,7 +310,7 @@ describe('pollPendingQueries', () => {
     assert.deepStrictEqual(queries, [])
   })
 
-  test('includes session and pilot headers', async () => {
+  test('includes ext-session and pilot headers', async () => {
     mockFetch.mock.mockImplementation(() =>
       Promise.resolve({
         ok: true,
@@ -321,7 +321,7 @@ describe('pollPendingQueries', () => {
     await pollPendingQueries('http://localhost:9222', 'my-session', 'disabled')
     const call = mockFetch.mock.calls[0]
     const headers = call.arguments[1].headers
-    assert.strictEqual(headers['X-Gasoline-Session'], 'my-session')
+    assert.strictEqual(headers['X-Gasoline-Ext-Session'], 'my-session')
     assert.strictEqual(headers['X-Gasoline-Pilot'], 'disabled')
   })
 })

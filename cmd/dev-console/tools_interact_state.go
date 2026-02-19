@@ -267,7 +267,7 @@ func (h *ToolHandler) captureState(req JSONRPCRequest) stateCaptureResult {
 		return stateCaptureResult{Status: stateCaptureStatusExtensionDisconnected}
 	}
 
-	correlationID := fmt.Sprintf("state_capture_%d_%d", time.Now().UnixNano(), randomInt63())
+	correlationID := newCorrelationID("state_capture")
 
 	scriptArgs, _ := json.Marshal(map[string]any{
 		"action": "execute_js",
@@ -304,7 +304,7 @@ func (h *ToolHandler) captureState(req JSONRPCRequest) stateCaptureResult {
 // queueStateRestore queues a JS execute command to restore form values, scroll position,
 // localStorage, sessionStorage, and cookies. This is fire-and-forget.
 func (h *ToolHandler) queueStateRestore(req JSONRPCRequest, formValues, scrollPos, localStorage, sessionStorage, cookies map[string]any) string {
-	correlationID := fmt.Sprintf("state_restore_%d_%d", time.Now().UnixNano(), randomInt63())
+	correlationID := newCorrelationID("state_restore")
 
 	script := buildStateRestoreScript(formValues, scrollPos, localStorage, sessionStorage, cookies)
 	scriptArgs, _ := json.Marshal(map[string]any{
@@ -455,7 +455,7 @@ func (h *ToolHandler) queueStateNavigation(req JSONRPCRequest, stateData map[str
 	if !ok || savedURL == "" || !h.capture.IsPilotEnabled() || !h.capture.IsExtensionConnected() {
 		return
 	}
-	correlationID := fmt.Sprintf("nav_%d_%d", time.Now().UnixNano(), randomInt63())
+	correlationID := newCorrelationID("nav")
 	// Error impossible: map contains only string values
 	navArgs, _ := json.Marshal(map[string]any{"action": "navigate", "url": savedURL})
 	query := queries.PendingQuery{

@@ -26,7 +26,7 @@ func TestLoadSettingsFromDiskStaleAndMalformedAreIgnored(t *testing.T) {
 	stalePayload := PersistedSettings{
 		AIWebPilotEnabled: boolPtrSettings(true),
 		Timestamp:         time.Now().Add(-1 * time.Minute),
-		SessionID:         "stale",
+		ExtSessionID:      "stale",
 	}
 	staleData, err := json.Marshal(stalePayload)
 	if err != nil {

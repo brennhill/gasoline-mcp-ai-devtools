@@ -174,8 +174,8 @@ type HealthSnapshot struct {
 	ActionCount        int
 	ConnectionCount    int
 	LastPollTime       time.Time
-	ExtensionSession   string
-	SessionChangedTime time.Time
+	ExtSessionID        string
+	ExtSessionChangedTime time.Time
 	PilotEnabled       bool
 	CircuitOpen        bool
 	WindowEventCount   int
@@ -202,8 +202,8 @@ func (c *Capture) GetHealthSnapshot() HealthSnapshot {
 		ActionCount:        len(c.enhancedActions),
 		ConnectionCount:    len(c.ws.connections),
 		LastPollTime:       c.ext.lastPollAt,
-		ExtensionSession:   c.ext.extensionSession,
-		SessionChangedTime: c.ext.sessionChangedAt,
+		ExtSessionID:        c.ext.extSessionID,
+		ExtSessionChangedTime: c.ext.extSessionChangedAt,
 		PilotEnabled:       c.ext.pilotEnabled,
 		CircuitOpen:        circuitOpen,
 		WindowEventCount:   windowEventCount,

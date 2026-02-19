@@ -260,7 +260,7 @@ type drawModeRequest struct {
 	ElementDetails    map[string]json.RawMessage `json:"element_details"`
 	PageURL           string                     `json:"page_url"`
 	TabID             int                        `json:"tab_id"`
-	SessionName       string                     `json:"session_name"`
+	AnnotSessionName  string                     `json:"annot_session_name"`
 	CorrelationID     string                     `json:"correlation_id"`
 }
 
@@ -284,8 +284,8 @@ func persistDrawSession(body *drawModeRequest, screenshotPath string, annotation
 		"timestamp":       ts,
 		"correlation_id":  body.CorrelationID,
 	}
-	if body.SessionName != "" {
-		session["session_name"] = body.SessionName
+	if body.AnnotSessionName != "" {
+		session["annot_session_name"] = body.AnnotSessionName
 	}
 
 	data, err := json.MarshalIndent(session, "", "  ")
@@ -307,8 +307,8 @@ func storeAnnotationSession(body *drawModeRequest, screenshotPath string, annota
 		Timestamp:      time.Now().UnixMilli(),
 	}
 	globalAnnotationStore.StoreSession(body.TabID, session)
-	if body.SessionName != "" {
-		globalAnnotationStore.AppendToNamedSession(body.SessionName, session)
+	if body.AnnotSessionName != "" {
+		globalAnnotationStore.AppendToNamedSession(body.AnnotSessionName, session)
 	}
 }
 
@@ -357,7 +357,8 @@ func (s *Server) handleDrawModeComplete(w http.ResponseWriter, r *http.Request, 
 		result["warnings"] = parseWarnings
 	}
 
-	// Complete the pending command so the LLM can retrieve results via correlation_id
+	// Complete the pending command — unblocks WaitForCommand in tools_async.go
+	// so the LLM can retrieve results via correlation_id.
 	if body.CorrelationID != "" && cap != nil {
 		resultJSON, _ := json.Marshal(result)
 		cap.CompleteCommand(body.CorrelationID, resultJSON, "")
@@ -552,7 +553,7 @@ func appendCaptureDiagnostics(resp map[string]any, cap *capture.Capture) {
 	resp["extension"] = map[string]any{
 		"polling":       !snap.LastPollTime.IsZero(),
 		"last_poll_at":  lastPoll,
-		"session":       snap.ExtensionSession,
+		"ext_session":   snap.ExtSessionID,
 		"pilot_enabled": snap.PilotEnabled,
 	}
 

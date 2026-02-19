@@ -3,7 +3,6 @@
 package main
 
 import (
-	"encoding/json"
 	"strings"
 	"testing"
 	"time"
@@ -12,34 +11,12 @@ import (
 )
 
 // ============================================
-// Test Helpers
-// ============================================
-
-func makeGenerateToolHandler(t *testing.T) (*ToolHandler, *Server, *capture.Capture) {
-	t.Helper()
-	server, err := NewServer(t.TempDir()+"/test.jsonl", 100)
-	if err != nil {
-		t.Fatalf("NewServer: %v", err)
-	}
-	t.Cleanup(func() { server.Close() })
-	cap := capture.NewCapture()
-	mcpHandler := NewToolHandler(server, cap)
-	handler := mcpHandler.toolHandler.(*ToolHandler)
-	return handler, server, cap
-}
-
-func callGenerateRaw(h *ToolHandler, argsJSON string) JSONRPCResponse {
-	req := JSONRPCRequest{JSONRPC: "2.0", ID: 1}
-	return h.toolGenerate(req, json.RawMessage(argsJSON))
-}
-
-// ============================================
 // Dispatch Tests
 // ============================================
 
 func TestToolsGenerateDispatch_InvalidJSON(t *testing.T) {
 	t.Parallel()
-	h, _, _ := makeGenerateToolHandler(t)
+	h, _, _ := makeToolHandler(t)
 
 	resp := callGenerateRaw(h, `{bad json`)
 	result := parseToolResult(t, resp)
@@ -54,7 +31,7 @@ func TestToolsGenerateDispatch_InvalidJSON(t *testing.T) {
 
 func TestToolsGenerateDispatch_MissingFormat(t *testing.T) {
 	t.Parallel()
-	h, _, _ := makeGenerateToolHandler(t)
+	h, _, _ := makeToolHandler(t)
 
 	resp := callGenerateRaw(h, `{}`)
 	result := parseToolResult(t, resp)
@@ -76,7 +53,7 @@ func TestToolsGenerateDispatch_MissingFormat(t *testing.T) {
 
 func TestToolsGenerateDispatch_UnknownFormat(t *testing.T) {
 	t.Parallel()
-	h, _, _ := makeGenerateToolHandler(t)
+	h, _, _ := makeToolHandler(t)
 
 	resp := callGenerateRaw(h, `{"format":"nonexistent_format"}`)
 	result := parseToolResult(t, resp)
@@ -94,7 +71,7 @@ func TestToolsGenerateDispatch_UnknownFormat(t *testing.T) {
 
 func TestToolsGenerateDispatch_EmptyArgs(t *testing.T) {
 	t.Parallel()
-	h, _, _ := makeGenerateToolHandler(t)
+	h, _, _ := makeToolHandler(t)
 
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: 1}
 	resp := h.toolGenerate(req, nil)
@@ -132,7 +109,7 @@ func TestToolsGenerate_GetValidGenerateFormats(t *testing.T) {
 
 func TestToolsGenerateTest_ResponseFields(t *testing.T) {
 	t.Parallel()
-	h, _, _ := makeGenerateToolHandler(t)
+	h, _, _ := makeToolHandler(t)
 
 	resp := callGenerateRaw(h, `{"format":"test","test_name":"smoke"}`)
 	result := parseToolResult(t, resp)
@@ -176,7 +153,7 @@ func TestToolsGenerateTest_ResponseFields(t *testing.T) {
 
 func TestToolsGenerateTest_DefaultTestName(t *testing.T) {
 	t.Parallel()
-	h, _, _ := makeGenerateToolHandler(t)
+	h, _, _ := makeToolHandler(t)
 
 	resp := callGenerateRaw(h, `{"format":"test"}`)
 	result := parseToolResult(t, resp)
@@ -192,7 +169,7 @@ func TestToolsGenerateTest_DefaultTestName(t *testing.T) {
 
 func TestToolsGenerateTest_WithActions(t *testing.T) {
 	t.Parallel()
-	h, _, cap := makeGenerateToolHandler(t)
+	h, _, cap := makeToolHandler(t)
 
 	cap.AddEnhancedActionsForTest([]capture.EnhancedAction{
 		{Type: "navigate", Timestamp: 1000, URL: "https://example.com", ToURL: "https://example.com"},
@@ -223,7 +200,7 @@ func TestToolsGenerateTest_WithActions(t *testing.T) {
 
 func TestToolsGeneratePRSummary_ResponseFields(t *testing.T) {
 	t.Parallel()
-	h, _, _ := makeGenerateToolHandler(t)
+	h, _, _ := makeToolHandler(t)
 
 	resp := callGenerateRaw(h, `{"format":"pr_summary"}`)
 	result := parseToolResult(t, resp)
@@ -260,7 +237,7 @@ func TestToolsGeneratePRSummary_ResponseFields(t *testing.T) {
 
 func TestToolsGeneratePRSummary_WithActivity(t *testing.T) {
 	t.Parallel()
-	h, _, cap := makeGenerateToolHandler(t)
+	h, _, cap := makeToolHandler(t)
 
 	cap.AddEnhancedActionsForTest([]capture.EnhancedAction{
 		{Type: "click", Timestamp: time.Now().UnixMilli(), URL: "https://example.com"},
@@ -285,7 +262,7 @@ func TestToolsGeneratePRSummary_WithActivity(t *testing.T) {
 
 func TestToolsGenerateCSP_EmptyNetwork(t *testing.T) {
 	t.Parallel()
-	h, _, _ := makeGenerateToolHandler(t)
+	h, _, _ := makeToolHandler(t)
 
 	resp := callGenerateRaw(h, `{"format":"csp"}`)
 	result := parseToolResult(t, resp)
@@ -309,7 +286,7 @@ func TestToolsGenerateCSP_EmptyNetwork(t *testing.T) {
 
 func TestToolsGenerateCSP_WithNetworkData(t *testing.T) {
 	t.Parallel()
-	h, _, cap := makeGenerateToolHandler(t)
+	h, _, cap := makeToolHandler(t)
 
 	cap.AddNetworkBodies([]capture.NetworkBody{
 		{URL: "https://cdn.example.com/app.js", ContentType: "application/javascript", Status: 200, Timestamp: time.Now().UTC().Format(time.RFC3339)},
@@ -352,7 +329,7 @@ func TestToolsGenerateCSP_WithNetworkData(t *testing.T) {
 
 func TestToolsGenerateCSP_DefaultMode(t *testing.T) {
 	t.Parallel()
-	h, _, cap := makeGenerateToolHandler(t)
+	h, _, cap := makeToolHandler(t)
 
 	cap.AddNetworkBodies([]capture.NetworkBody{
 		{URL: "https://cdn.example.com/app.js", ContentType: "application/javascript", Status: 200, Timestamp: time.Now().UTC().Format(time.RFC3339)},
@@ -373,7 +350,7 @@ func TestToolsGenerateCSP_DefaultMode(t *testing.T) {
 
 func TestToolsGenerateSRI_EmptyNetwork(t *testing.T) {
 	t.Parallel()
-	h, _, _ := makeGenerateToolHandler(t)
+	h, _, _ := makeToolHandler(t)
 
 	resp := callGenerateRaw(h, `{"format":"sri"}`)
 	result := parseToolResult(t, resp)
@@ -398,7 +375,7 @@ func TestToolsGenerateSRI_EmptyNetwork(t *testing.T) {
 
 func TestToolsGenerateHAR_EmptyNetwork(t *testing.T) {
 	t.Parallel()
-	h, _, _ := makeGenerateToolHandler(t)
+	h, _, _ := makeToolHandler(t)
 
 	resp := callGenerateRaw(h, `{"format":"har"}`)
 	result := parseToolResult(t, resp)
@@ -419,7 +396,7 @@ func TestToolsGenerateHAR_EmptyNetwork(t *testing.T) {
 
 func TestToolsGenerateSARIF_ResponseFields(t *testing.T) {
 	t.Parallel()
-	h, _, _ := makeGenerateToolHandler(t)
+	h, _, _ := makeToolHandler(t)
 
 	resp := callGenerateRaw(h, `{"format":"sarif"}`)
 	result := parseToolResult(t, resp)
@@ -553,7 +530,7 @@ func TestToolsTestLabelForGroup(t *testing.T) {
 
 func TestToolsGenerate_AllFormats_ResponseHasContent(t *testing.T) {
 	t.Parallel()
-	h, _, _ := makeGenerateToolHandler(t)
+	h, _, _ := makeToolHandler(t)
 
 	formats := []struct {
 		format string

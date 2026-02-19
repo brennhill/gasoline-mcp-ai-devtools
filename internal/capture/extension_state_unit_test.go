@@ -22,8 +22,8 @@ func TestExtensionStateGettersAndBoundaries(t *testing.T) {
 	c.ext.lastPollAt = now
 	c.ext.lastSyncSeen = now
 	c.ext.extensionVersion = "9.9.9"
-	c.ext.extensionSession = "session-a"
-	c.ext.sessionChangedAt = now
+	c.ext.extSessionID = "session-a"
+	c.ext.extSessionChangedAt = now
 	c.mu.Unlock()
 
 	enabled, tabID, tabURL := c.GetTrackingStatus()
@@ -74,7 +74,7 @@ func TestExtensionStateGettersAndBoundaries(t *testing.T) {
 	c.mu.RLock()
 	snap := c.getExtensionSnapshot()
 	c.mu.RUnlock()
-	if snap.ExtensionSession != "session-a" || !snap.PilotEnabled || snap.ActiveTestIDCount != 1 {
+	if snap.ExtSessionID != "session-a" || !snap.PilotEnabled || snap.ActiveTestIDCount != 1 {
 		t.Fatalf("extension snapshot = %+v, unexpected values", snap)
 	}
 }

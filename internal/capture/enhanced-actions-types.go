@@ -8,7 +8,8 @@
 // Deviations from snake_case MUST be tagged with // SPEC:<spec-name> at the field level.
 package capture
 
-// EnhancedAction represents a captured user action with multi-strategy selectors
+// EnhancedAction represents a captured user action with multi-strategy selectors.
+// Wire fields: see WireEnhancedAction in internal/types/wire_enhanced_action.go
 type EnhancedAction struct {
 	Type      string `json:"type"`
 	Timestamp int64  `json:"timestamp"`

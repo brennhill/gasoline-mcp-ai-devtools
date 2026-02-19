@@ -183,8 +183,8 @@ function handleMessage(
         deps.debugLog('capture', 'Network body dropped: capture disabled')
         return true
       }
-      // Attach tabId to payload before batching (v5.3+)
-      deps.addToNetworkBodyBatcher({ ...message.payload, tabId: message.tabId })
+      // Attach tab_id from sender before batching (v5.3+)
+      deps.addToNetworkBodyBatcher({ ...message.payload, tab_id: message.payload.tab_id ?? message.tabId })
       return false
 
     case 'performance_snapshot':
@@ -508,8 +508,8 @@ async function handleDrawModeCompletedAsync(
       tab_id: tabId,
       correlation_id: (message.correlation_id as string) || ''
     }
-    if (message.session_name) {
-      body.session_name = message.session_name
+    if (message.annot_session_name) {
+      body.annot_session_name = message.annot_session_name
     }
     const response = await fetch(`${serverUrl}/draw-mode/complete`, {
       method: 'POST',

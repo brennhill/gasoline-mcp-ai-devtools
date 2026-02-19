@@ -1,0 +1,329 @@
+// tools_test_helpers_test.go — Shared test helpers for all tool tests.
+// Consolidates duplicated factories, parsers, JSON extractors, and assertion helpers.
+package main
+
+import (
+	"encoding/json"
+	"regexp"
+	"strings"
+	"testing"
+
+	"github.com/dev-console/dev-console/internal/capture"
+)
+
+// ============================================
+// Factory + Test Environment
+// ============================================
+
+// makeToolHandler creates a ToolHandler with a temp-dir-backed Server and fresh Capture.
+// Replaces: makeObserveToolHandler, makeAnalyzeToolHandler, makeGenerateToolHandler,
+// makeConfigureToolHandler, makeInteractToolHandler (all identical).
+func makeToolHandler(t *testing.T) (*ToolHandler, *Server, *capture.Capture) {
+	t.Helper()
+	server, err := NewServer(t.TempDir()+"/test.jsonl", 100)
+	if err != nil {
+		t.Fatalf("NewServer: %v", err)
+	}
+	t.Cleanup(func() { server.Close() })
+	cap := capture.NewCapture()
+	mcpHandler := NewToolHandler(server, cap)
+	handler := mcpHandler.toolHandler.(*ToolHandler)
+	return handler, server, cap
+}
+
+// toolTestEnv bundles a ToolHandler, Server, and Capture for test convenience.
+// Replaces: observeTestEnv, analyzeTestEnv, generateTestEnv, configureTestEnv,
+// interactTestEnv, bundleTestEnv, videoTestEnv (all same 3 fields).
+type toolTestEnv struct {
+	handler *ToolHandler
+	server  *Server
+	capture *capture.Capture
+}
+
+// newToolTestEnv creates a toolTestEnv with t.TempDir() and t.Cleanup.
+// Fixes: hardcoded /tmp/ paths and missing t.Cleanup in legacy variants.
+func newToolTestEnv(t *testing.T) *toolTestEnv {
+	t.Helper()
+	logFile := t.TempDir() + "/test.jsonl"
+	server, err := NewServer(logFile, 100)
+	if err != nil {
+		t.Fatalf("NewServer: %v", err)
+	}
+	t.Cleanup(func() { server.Close() })
+	cap := capture.NewCapture()
+	mcpHandler := NewToolHandler(server, cap)
+	handler := mcpHandler.toolHandler.(*ToolHandler)
+	return &toolTestEnv{handler: handler, server: server, capture: cap}
+}
+
+// ============================================
+// JSON Extraction
+// ============================================
+
+// extractJSONFromText scans for the first '{' or '[' and returns everything from that point.
+// Canonical version — replaces extractJSONFromMCPText, extractJSON, extractJSONFromStructuredError.
+func extractJSONFromText(text string) string {
+	for i, ch := range text {
+		if ch == '{' || ch == '[' {
+			return text[i:]
+		}
+	}
+	return text
+}
+
+// ============================================
+// Response Parsing
+// ============================================
+
+// parseToolResult unmarshals an MCPToolResult from a JSONRPCResponse.
+func parseToolResult(t *testing.T, resp JSONRPCResponse) MCPToolResult {
+	t.Helper()
+	var result MCPToolResult
+	if err := json.Unmarshal(resp.Result, &result); err != nil {
+		t.Fatalf("parseToolResult: %v; raw=%s", err, string(resp.Result))
+	}
+	return result
+}
+
+// extractResultJSON extracts the JSON body from the first content block of an MCP result.
+func extractResultJSON(t *testing.T, result MCPToolResult) map[string]any {
+	t.Helper()
+	if len(result.Content) == 0 {
+		t.Fatal("extractResultJSON: no content blocks")
+	}
+	text := result.Content[0].Text
+	idx := strings.Index(text, "{")
+	if idx < 0 {
+		t.Fatalf("extractResultJSON: no JSON object found in text: %s", text)
+	}
+	jsonPart := text[idx:]
+	var data map[string]any
+	if err := json.Unmarshal([]byte(jsonPart), &data); err != nil {
+		t.Fatalf("extractResultJSON: failed to parse JSON: %v\nraw: %s", err, jsonPart)
+	}
+	return data
+}
+
+// extractStructuredErrorJSON parses the JSON from an MCP error response.
+func extractStructuredErrorJSON(t *testing.T, raw json.RawMessage) map[string]any {
+	t.Helper()
+	var result MCPToolResult
+	if err := json.Unmarshal(raw, &result); err != nil {
+		t.Fatalf("extractStructuredErrorJSON: failed to parse MCPToolResult: %v", err)
+	}
+	if !result.IsError {
+		t.Fatal("extractStructuredErrorJSON: expected isError: true")
+	}
+	if len(result.Content) == 0 {
+		t.Fatal("extractStructuredErrorJSON: no content blocks")
+	}
+	text := result.Content[0].Text
+	jsonPart := extractJSONFromText(text)
+	var data map[string]any
+	if err := json.Unmarshal([]byte(jsonPart), &data); err != nil {
+		t.Fatalf("extractStructuredErrorJSON: failed to parse JSON: %v\ntext: %s", err, text)
+	}
+	return data
+}
+
+// firstText extracts the first text block from a result, or "".
+func firstText(result MCPToolResult) string {
+	if len(result.Content) > 0 {
+		return result.Content[0].Text
+	}
+	return ""
+}
+
+// ============================================
+// Tool Call Wrappers
+// ============================================
+
+// callToolRaw dispatches through HandleToolCall (goes through validation/audit).
+func callToolRaw(h *ToolHandler, name string, argsJSON string) JSONRPCResponse {
+	req := JSONRPCRequest{JSONRPC: "2.0", ID: 1}
+	resp, _ := h.HandleToolCall(req, name, json.RawMessage(argsJSON))
+	return resp
+}
+
+// callObserveRaw invokes toolObserve directly and returns the raw JSONRPCResponse.
+func callObserveRaw(h *ToolHandler, what string) JSONRPCResponse {
+	req := JSONRPCRequest{JSONRPC: "2.0", ID: 1}
+	args := json.RawMessage(`{"what":"` + what + `"}`)
+	return h.toolObserve(req, args)
+}
+
+// callAnalyzeRaw invokes toolAnalyze with async normalization.
+func callAnalyzeRaw(h *ToolHandler, argsJSON string) JSONRPCResponse {
+	req := JSONRPCRequest{JSONRPC: "2.0", ID: 1}
+	return h.toolAnalyze(req, normalizeAnalyzeArgsForAsync(argsJSON))
+}
+
+// callConfigureRaw invokes toolConfigure directly.
+func callConfigureRaw(h *ToolHandler, argsJSON string) JSONRPCResponse {
+	req := JSONRPCRequest{JSONRPC: "2.0", ID: 1}
+	return h.toolConfigure(req, json.RawMessage(argsJSON))
+}
+
+// callGenerateRaw invokes toolGenerate directly.
+func callGenerateRaw(h *ToolHandler, argsJSON string) JSONRPCResponse {
+	req := JSONRPCRequest{JSONRPC: "2.0", ID: 1}
+	return h.toolGenerate(req, json.RawMessage(argsJSON))
+}
+
+// callInteractRaw invokes toolInteract with async normalization.
+func callInteractRaw(h *ToolHandler, argsJSON string) JSONRPCResponse {
+	req := JSONRPCRequest{JSONRPC: "2.0", ID: 1}
+	return h.toolInteract(req, normalizeInteractArgsForAsync(argsJSON))
+}
+
+// ============================================
+// Async Normalization Helpers
+// ============================================
+
+// normalizeAnalyzeArgsForAsync adds sync=false for async-capable analyze operations
+// (dom, page_summary, link_health) unless sync/wait/background is already specified.
+func normalizeAnalyzeArgsForAsync(argsJSON string) json.RawMessage {
+	raw := json.RawMessage(argsJSON)
+
+	var params map[string]any
+	if err := json.Unmarshal(raw, &params); err != nil {
+		return raw
+	}
+
+	what, _ := params["what"].(string)
+	switch what {
+	case "dom", "page_summary", "link_health":
+	default:
+		return raw
+	}
+
+	if _, hasSync := params["sync"]; hasSync {
+		return raw
+	}
+	if _, hasWait := params["wait"]; hasWait {
+		return raw
+	}
+	if _, hasBackground := params["background"]; hasBackground {
+		return raw
+	}
+
+	params["sync"] = false
+	if normalized, err := json.Marshal(params); err == nil {
+		return json.RawMessage(normalized)
+	}
+	return raw
+}
+
+// normalizeInteractArgsForAsync adds background=true for interact calls with an action
+// unless background/sync/wait is already specified.
+func normalizeInteractArgsForAsync(argsJSON string) json.RawMessage {
+	raw := json.RawMessage(argsJSON)
+
+	var params map[string]any
+	if err := json.Unmarshal(raw, &params); err != nil {
+		return raw
+	}
+	if _, hasAction := params["action"]; !hasAction {
+		return raw
+	}
+	if _, hasBackground := params["background"]; hasBackground {
+		return raw
+	}
+	if _, hasSync := params["sync"]; hasSync {
+		return raw
+	}
+	if _, hasWait := params["wait"]; hasWait {
+		return raw
+	}
+
+	params["background"] = true
+	if normalized, err := json.Marshal(params); err == nil {
+		return json.RawMessage(normalized)
+	}
+	return raw
+}
+
+// ============================================
+// Assertion Helpers
+// ============================================
+
+// snakeCasePattern matches valid snake_case keys: lowercase alpha start, then lowercase alphanum/underscore.
+var snakeCasePattern = regexp.MustCompile(`^[a-z][a-z0-9_]*$`)
+
+// specExceptions lists camelCase fields required by MCP or JSON-RPC specs.
+var specExceptions = map[string]bool{
+	"jsonrpc":           true, // JSON-RPC 2.0 spec
+	"isError":           true, // SPEC:MCP
+	"protocolVersion":   true, // SPEC:MCP
+	"serverInfo":        true, // SPEC:MCP
+	"mimeType":          true, // SPEC:MCP
+	"inputSchema":       true, // SPEC:MCP
+	"resourceTemplates": true, // SPEC:MCP
+}
+
+// assertSnakeCaseFields recursively checks that all JSON field names use snake_case,
+// with exceptions for known MCP protocol fields.
+func assertSnakeCaseFields(t *testing.T, jsonStr string) {
+	t.Helper()
+
+	var raw any
+	if err := json.Unmarshal([]byte(jsonStr), &raw); err != nil {
+		t.Fatalf("assertSnakeCaseFields: invalid JSON: %v", err)
+	}
+	checkSnakeCaseRecursive(t, raw, "")
+}
+
+func checkSnakeCaseRecursive(t *testing.T, v any, path string) {
+	t.Helper()
+	switch val := v.(type) {
+	case map[string]any:
+		for key, child := range val {
+			fullPath := path + "." + key
+			if !specExceptions[key] && !snakeCasePattern.MatchString(key) {
+				t.Errorf("JSON field %q is NOT snake_case (path: %s)", key, fullPath)
+			}
+			checkSnakeCaseRecursive(t, child, fullPath)
+		}
+	case []any:
+		for i, child := range val {
+			checkSnakeCaseRecursive(t, child, path+"["+string(rune('0'+i))+"]")
+		}
+	}
+}
+
+// assertNonErrorResponse verifies a result has content and is not an error.
+func assertNonErrorResponse(t *testing.T, label string, result MCPToolResult) {
+	t.Helper()
+	if result.IsError {
+		t.Errorf("%s: unexpected error response: %s", label, firstText(result))
+		return
+	}
+	if len(result.Content) == 0 {
+		t.Errorf("%s: no content blocks", label)
+		return
+	}
+	if result.Content[0].Text == "" {
+		t.Errorf("%s: empty text content", label)
+	}
+}
+
+// assertIsError verifies the response is an error containing the expected substring.
+func assertIsError(t *testing.T, resp JSONRPCResponse, contains string) {
+	t.Helper()
+	if !isErrorResponse(resp) {
+		var result MCPToolResult
+		if err := json.Unmarshal(resp.Result, &result); err == nil {
+			for _, c := range result.Content {
+				if strings.Contains(c.Text, contains) {
+					return
+				}
+			}
+		}
+		t.Errorf("expected error response containing %q", contains)
+		return
+	}
+	raw, _ := json.Marshal(resp)
+	if !strings.Contains(string(raw), contains) {
+		t.Errorf("error response doesn't contain %q: %s", contains, raw)
+	}
+}

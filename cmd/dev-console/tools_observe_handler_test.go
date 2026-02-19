@@ -4,7 +4,6 @@ package main
 
 import (
 	"encoding/json"
-	"regexp"
 	"strings"
 	"testing"
 	"time"
@@ -13,106 +12,12 @@ import (
 )
 
 // ============================================
-// snake_case JSON assertion helper
-// ============================================
-
-// snakeCasePattern matches valid snake_case keys: lowercase alpha start, then lowercase alphanum/underscore.
-var snakeCasePattern = regexp.MustCompile(`^[a-z][a-z0-9_]*$`)
-
-// MCP spec exceptions: these camelCase fields are required by the MCP or JSON-RPC spec.
-var specExceptions = map[string]bool{
-	"jsonrpc":           true, // JSON-RPC 2.0 spec
-	"isError":           true, // SPEC:MCP
-	"protocolVersion":   true, // SPEC:MCP
-	"serverInfo":        true, // SPEC:MCP
-	"mimeType":          true, // SPEC:MCP
-	"inputSchema":       true, // SPEC:MCP
-	"resourceTemplates": true, // SPEC:MCP
-}
-
-// assertSnakeCaseFields recursively checks that all JSON field names use snake_case,
-// with exceptions for known MCP protocol fields.
-func assertSnakeCaseFields(t *testing.T, jsonStr string) {
-	t.Helper()
-
-	var raw any
-	if err := json.Unmarshal([]byte(jsonStr), &raw); err != nil {
-		t.Fatalf("assertSnakeCaseFields: invalid JSON: %v", err)
-	}
-	checkSnakeCaseRecursive(t, raw, "")
-}
-
-func checkSnakeCaseRecursive(t *testing.T, v any, path string) {
-	t.Helper()
-	switch val := v.(type) {
-	case map[string]any:
-		for key, child := range val {
-			fullPath := path + "." + key
-			if !specExceptions[key] && !snakeCasePattern.MatchString(key) {
-				t.Errorf("JSON field %q is NOT snake_case (path: %s)", key, fullPath)
-			}
-			checkSnakeCaseRecursive(t, child, fullPath)
-		}
-	case []any:
-		for i, child := range val {
-			checkSnakeCaseRecursive(t, child, path+"["+string(rune('0'+i))+"]")
-		}
-	}
-}
-
-// ============================================
-// Test Helpers
-// ============================================
-
-// extractResultJSON extracts the JSON body from the first content block of an MCP response.
-// MCP responses contain a summary line followed by JSON on the next line.
-func extractResultJSON(t *testing.T, result MCPToolResult) map[string]any {
-	t.Helper()
-	if len(result.Content) == 0 {
-		t.Fatal("extractResultJSON: no content blocks")
-	}
-	text := result.Content[0].Text
-	// Find the start of JSON object — look for the first '{' character
-	idx := strings.Index(text, "{")
-	if idx < 0 {
-		t.Fatalf("extractResultJSON: no JSON object found in text: %s", text)
-	}
-	jsonPart := text[idx:]
-
-	var data map[string]any
-	if err := json.Unmarshal([]byte(jsonPart), &data); err != nil {
-		t.Fatalf("extractResultJSON: failed to parse JSON: %v\nraw: %s", err, jsonPart)
-	}
-	return data
-}
-
-func makeObserveToolHandler(t *testing.T) (*ToolHandler, *Server, *capture.Capture) {
-	t.Helper()
-	server, err := NewServer(t.TempDir()+"/test.jsonl", 100)
-	if err != nil {
-		t.Fatalf("NewServer: %v", err)
-	}
-	t.Cleanup(func() { server.Close() })
-	cap := capture.NewCapture()
-	mcpHandler := NewToolHandler(server, cap)
-	handler := mcpHandler.toolHandler.(*ToolHandler)
-	return handler, server, cap
-}
-
-// callObserveRaw invokes toolObserve and returns the raw JSONRPCResponse.
-func callObserveRaw(h *ToolHandler, what string) JSONRPCResponse {
-	req := JSONRPCRequest{JSONRPC: "2.0", ID: 1}
-	args := json.RawMessage(`{"what":"` + what + `"}`)
-	return h.toolObserve(req, args)
-}
-
-// ============================================
 // Dispatch Tests
 // ============================================
 
 func TestToolsObserveDispatch_InvalidJSON(t *testing.T) {
 	t.Parallel()
-	h, _, _ := makeObserveToolHandler(t)
+	h, _, _ := makeToolHandler(t)
 
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: 1}
 	resp := h.toolObserve(req, json.RawMessage(`{bad json`))
@@ -128,7 +33,7 @@ func TestToolsObserveDispatch_InvalidJSON(t *testing.T) {
 
 func TestToolsObserveDispatch_MissingWhat(t *testing.T) {
 	t.Parallel()
-	h, _, _ := makeObserveToolHandler(t)
+	h, _, _ := makeToolHandler(t)
 
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: 1}
 	resp := h.toolObserve(req, json.RawMessage(`{}`))
@@ -148,7 +53,7 @@ func TestToolsObserveDispatch_MissingWhat(t *testing.T) {
 
 func TestToolsObserveDispatch_UnknownMode(t *testing.T) {
 	t.Parallel()
-	h, _, _ := makeObserveToolHandler(t)
+	h, _, _ := makeToolHandler(t)
 
 	resp := callObserveRaw(h, "nonexistent_mode")
 	result := parseToolResult(t, resp)
@@ -165,7 +70,7 @@ func TestToolsObserveDispatch_UnknownMode(t *testing.T) {
 
 func TestToolsObserveDispatch_EmptyArgs(t *testing.T) {
 	t.Parallel()
-	h, _, _ := makeObserveToolHandler(t)
+	h, _, _ := makeToolHandler(t)
 
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: 1}
 	resp := h.toolObserve(req, nil)
@@ -182,7 +87,7 @@ func TestToolsObserveDispatch_EmptyArgs(t *testing.T) {
 
 func TestToolsObserveErrors_ResponseFields(t *testing.T) {
 	t.Parallel()
-	h, server, cap := makeObserveToolHandler(t)
+	h, server, cap := makeToolHandler(t)
 	_ = cap
 
 	ts := time.Now().UTC().Format(time.RFC3339)
@@ -257,7 +162,7 @@ func TestToolsObserveErrors_ResponseFields(t *testing.T) {
 
 func TestToolsObserveErrors_EmptyBuffer(t *testing.T) {
 	t.Parallel()
-	h, _, _ := makeObserveToolHandler(t)
+	h, _, _ := makeToolHandler(t)
 
 	resp := callObserveRaw(h, "errors")
 	result := parseToolResult(t, resp)
@@ -278,7 +183,7 @@ func TestToolsObserveErrors_EmptyBuffer(t *testing.T) {
 
 func TestToolsObserveErrors_URLFilter(t *testing.T) {
 	t.Parallel()
-	h, server, _ := makeObserveToolHandler(t)
+	h, server, _ := makeToolHandler(t)
 
 	ts := time.Now().UTC().Format(time.RFC3339)
 	server.mu.Lock()
@@ -301,7 +206,7 @@ func TestToolsObserveErrors_URLFilter(t *testing.T) {
 
 func TestToolsObserveErrors_LimitParam(t *testing.T) {
 	t.Parallel()
-	h, server, _ := makeObserveToolHandler(t)
+	h, server, _ := makeToolHandler(t)
 
 	ts := time.Now().UTC().Format(time.RFC3339)
 	server.mu.Lock()
@@ -327,7 +232,7 @@ func TestToolsObserveErrors_LimitParam(t *testing.T) {
 
 func TestToolsObserveLogs_ResponseFields(t *testing.T) {
 	t.Parallel()
-	h, server, _ := makeObserveToolHandler(t)
+	h, server, _ := makeToolHandler(t)
 
 	ts := time.Now().UTC().Format(time.RFC3339)
 	server.mu.Lock()
@@ -395,7 +300,7 @@ func TestToolsObserveLogs_ResponseFields(t *testing.T) {
 
 func TestToolsObserveExtensionLogs_ResponseFields(t *testing.T) {
 	t.Parallel()
-	h, _, cap := makeObserveToolHandler(t)
+	h, _, cap := makeToolHandler(t)
 
 	cap.AddExtensionLogs([]capture.ExtensionLog{{
 		Level:     "info",
@@ -439,7 +344,7 @@ func TestToolsObserveExtensionLogs_ResponseFields(t *testing.T) {
 
 func TestToolsObserveNetworkBodies_ResponseFields(t *testing.T) {
 	t.Parallel()
-	h, _, cap := makeObserveToolHandler(t)
+	h, _, cap := makeToolHandler(t)
 
 	cap.AddNetworkBodies([]capture.NetworkBody{
 		{
@@ -474,7 +379,7 @@ func TestToolsObserveNetworkBodies_ResponseFields(t *testing.T) {
 
 func TestToolsObserveNetworkBodies_Filters(t *testing.T) {
 	t.Parallel()
-	h, _, cap := makeObserveToolHandler(t)
+	h, _, cap := makeToolHandler(t)
 
 	ts := time.Now().UTC().Format(time.RFC3339)
 	cap.AddNetworkBodies([]capture.NetworkBody{
@@ -514,7 +419,7 @@ func TestToolsObserveNetworkBodies_Filters(t *testing.T) {
 
 func TestToolsObserveNetworkBodies_BodyPathFilter(t *testing.T) {
 	t.Parallel()
-	h, _, cap := makeObserveToolHandler(t)
+	h, _, cap := makeToolHandler(t)
 
 	ts := time.Now().UTC().Format(time.RFC3339)
 	cap.AddNetworkBodies([]capture.NetworkBody{
@@ -564,7 +469,7 @@ func TestToolsObserveNetworkBodies_BodyPathFilter(t *testing.T) {
 
 func TestToolsObserveNetworkBodies_BodyKeyFilter(t *testing.T) {
 	t.Parallel()
-	h, _, cap := makeObserveToolHandler(t)
+	h, _, cap := makeToolHandler(t)
 
 	ts := time.Now().UTC().Format(time.RFC3339)
 	cap.AddNetworkBodies([]capture.NetworkBody{
@@ -607,7 +512,7 @@ func TestToolsObserveNetworkBodies_BodyKeyFilter(t *testing.T) {
 
 func TestToolsObserveNetworkBodies_BodyFilterValidation(t *testing.T) {
 	t.Parallel()
-	h, _, cap := makeObserveToolHandler(t)
+	h, _, cap := makeToolHandler(t)
 
 	ts := time.Now().UTC().Format(time.RFC3339)
 	cap.AddNetworkBodies([]capture.NetworkBody{
@@ -640,7 +545,7 @@ func TestToolsObserveNetworkBodies_BodyFilterValidation(t *testing.T) {
 
 func TestToolsObserveWSEvents_ResponseFields(t *testing.T) {
 	t.Parallel()
-	h, _, cap := makeObserveToolHandler(t)
+	h, _, cap := makeToolHandler(t)
 
 	cap.AddWebSocketEvents([]capture.WebSocketEvent{
 		{
@@ -674,7 +579,7 @@ func TestToolsObserveWSEvents_ResponseFields(t *testing.T) {
 
 func TestToolsObserveActions_ResponseFields(t *testing.T) {
 	t.Parallel()
-	h, _, cap := makeObserveToolHandler(t)
+	h, _, cap := makeToolHandler(t)
 
 	cap.AddEnhancedActionsForTest([]capture.EnhancedAction{
 		{Type: "click", Timestamp: time.Now().UnixMilli(), URL: "https://example.com"},
@@ -707,7 +612,7 @@ func TestToolsObserveActions_ResponseFields(t *testing.T) {
 
 func TestToolsObservePilot_ResponseFields(t *testing.T) {
 	t.Parallel()
-	h, _, _ := makeObserveToolHandler(t)
+	h, _, _ := makeToolHandler(t)
 
 	resp := callObserveRaw(h, "pilot")
 	result := parseToolResult(t, resp)
@@ -778,7 +683,7 @@ func TestToolsObserve_GetValidObserveModes(t *testing.T) {
 
 func TestToolsObserve_StructuredErrorFields(t *testing.T) {
 	t.Parallel()
-	h, _, _ := makeObserveToolHandler(t)
+	h, _, _ := makeToolHandler(t)
 
 	resp := callObserveRaw(h, "nonexistent")
 	result := parseToolResult(t, resp)

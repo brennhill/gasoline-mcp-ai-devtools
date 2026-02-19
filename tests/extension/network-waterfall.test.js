@@ -103,92 +103,89 @@ describe('Network Waterfall - parseResourceTiming', () => {
     globalThis.document = originalDocument
   })
 
-  test('should parse resource timing into waterfall phases', async () => {
+  test('should parse resource timing into WireNetworkWaterfallEntry', async () => {
     const { parseResourceTiming } = await import('../../extension/inject.js')
 
     const timing = createMockResourceTiming()
     const result = parseResourceTiming(timing)
 
     assert.ok(result)
-    assert.ok(result.phases || result.timing)
-    assert.ok(result.url || result.name)
+    assert.strictEqual(result.url, 'http://localhost:3000/api/data')
+    assert.strictEqual(result.name, 'http://localhost:3000/api/data')
+    assert.strictEqual(result.initiator_type, 'fetch')
+    assert.strictEqual(result.start_time, 100)
+    assert.strictEqual(result.duration, 250)
   })
 
-  test('should calculate DNS lookup time', async () => {
+  test('should include fetch_start from timing', async () => {
+    const { parseResourceTiming } = await import('../../extension/inject.js')
+
+    const timing = createMockResourceTiming({ fetchStart: 100 })
+    const result = parseResourceTiming(timing)
+
+    assert.strictEqual(result.fetch_start, 100)
+  })
+
+  test('should include response_end from timing', async () => {
+    const { parseResourceTiming } = await import('../../extension/inject.js')
+
+    const timing = createMockResourceTiming({ responseEnd: 350 })
+    const result = parseResourceTiming(timing)
+
+    assert.strictEqual(result.response_end, 350)
+  })
+
+  test('should include encoded and decoded body sizes', async () => {
     const { parseResourceTiming } = await import('../../extension/inject.js')
 
     const timing = createMockResourceTiming({
-      domainLookupStart: 100,
-      domainLookupEnd: 120
+      encodedBodySize: 900,
+      decodedBodySize: 2048
     })
 
     const result = parseResourceTiming(timing)
 
-    assert.strictEqual(result.phases?.dns || result.dns, 20)
+    assert.strictEqual(result.encoded_body_size, 900)
+    assert.strictEqual(result.decoded_body_size, 2048)
   })
 
-  test('should calculate TCP connection time', async () => {
+  test('should handle zero transferSize (cache hit)', async () => {
     const { parseResourceTiming } = await import('../../extension/inject.js')
 
     const timing = createMockResourceTiming({
-      connectStart: 120,
-      connectEnd: 150
+      transferSize: 0,
+      encodedBodySize: 1000
     })
 
     const result = parseResourceTiming(timing)
 
-    assert.strictEqual(result.phases?.connect || result.connect || result.tcp, 30)
+    assert.strictEqual(result.transfer_size, 0)
+    assert.strictEqual(result.encoded_body_size, 1000)
   })
 
-  test('should calculate TLS handshake time', async () => {
+  test('should default missing size values to 0', async () => {
     const { parseResourceTiming } = await import('../../extension/inject.js')
 
     const timing = createMockResourceTiming({
-      secureConnectionStart: 130,
-      connectEnd: 160
+      transferSize: 0,
+      encodedBodySize: 0,
+      decodedBodySize: 0
     })
 
     const result = parseResourceTiming(timing)
 
-    assert.strictEqual(result.phases?.tls || result.tls || result.ssl, 30)
-  })
-
-  test('should calculate TTFB (time to first byte)', async () => {
-    const { parseResourceTiming } = await import('../../extension/inject.js')
-
-    const timing = createMockResourceTiming({
-      requestStart: 160,
-      responseStart: 260
-    })
-
-    const result = parseResourceTiming(timing)
-
-    assert.strictEqual(result.phases?.ttfb || result.ttfb, 100)
-  })
-
-  test('should calculate download time', async () => {
-    const { parseResourceTiming } = await import('../../extension/inject.js')
-
-    const timing = createMockResourceTiming({
-      responseStart: 260,
-      responseEnd: 360
-    })
-
-    const result = parseResourceTiming(timing)
-
-    assert.strictEqual(result.phases?.download || result.download || result.content, 100)
+    assert.strictEqual(result.transfer_size, 0)
+    assert.strictEqual(result.encoded_body_size, 0)
+    assert.strictEqual(result.decoded_body_size, 0)
   })
 
   test('should include total duration', async () => {
     const { parseResourceTiming } = await import('../../extension/inject.js')
 
-    const timing = createMockResourceTiming({
-      duration: 500
-    })
-
+    const timing = createMockResourceTiming({ duration: 500 })
     const result = parseResourceTiming(timing)
 
-    assert.strictEqual(result.duration || result.total, 500)
+    assert.strictEqual(result.duration, 500)
   })
 
   test('should include transfer size information', async () => {
@@ -202,49 +199,32 @@ describe('Network Waterfall - parseResourceTiming', () => {
 
     const result = parseResourceTiming(timing)
 
-    assert.ok(result.size || result.transferSize || result.bytes)
-    assert.strictEqual(result.transferSize || result.size?.transfer, 2048)
-  })
-
-  test('should handle cache hit (transferSize = 0)', async () => {
-    const { parseResourceTiming } = await import('../../extension/inject.js')
-
-    const timing = createMockResourceTiming({
-      transferSize: 0,
-      encodedBodySize: 1000
-    })
-
-    const result = parseResourceTiming(timing)
-
-    assert.ok(result.cached === true || result.fromCache === true || result.cacheHit === true)
+    assert.strictEqual(result.transfer_size, 2048)
   })
 
   test('should include initiator type', async () => {
     const { parseResourceTiming } = await import('../../extension/inject.js')
 
-    const timing = createMockResourceTiming({
-      initiatorType: 'fetch'
-    })
-
+    const timing = createMockResourceTiming({ initiatorType: 'fetch' })
     const result = parseResourceTiming(timing)
 
-    assert.strictEqual(result.initiatorType || result.initiator || result.type, 'fetch')
+    assert.strictEqual(result.initiator_type, 'fetch')
   })
 
-  test('should handle missing timing values (0)', async () => {
+  test('should handle missing fetchStart and responseEnd (0)', async () => {
     const { parseResourceTiming } = await import('../../extension/inject.js')
 
     const timing = createMockResourceTiming({
-      domainLookupStart: 0,
-      domainLookupEnd: 0,
-      secureConnectionStart: 0
+      fetchStart: 0,
+      responseEnd: 0
     })
 
     const result = parseResourceTiming(timing)
 
-    // Should not throw and should handle gracefully
     assert.ok(result)
-    assert.strictEqual(result.phases?.dns || result.dns || 0, 0)
+    // 0 is falsy so undefined is expected from `|| undefined` guard
+    assert.strictEqual(result.fetch_start, undefined)
+    assert.strictEqual(result.response_end, undefined)
   })
 })
 
@@ -311,7 +291,7 @@ describe('Network Waterfall - getNetworkWaterfall', () => {
 
     const waterfall = getNetworkWaterfall()
 
-    assert.ok(waterfall[0].startTime <= waterfall[1].startTime)
+    assert.ok(waterfall[0].start_time <= waterfall[1].start_time)
   })
 
   test('should filter by initiator type', async () => {
@@ -326,7 +306,7 @@ describe('Network Waterfall - getNetworkWaterfall', () => {
 
     assert.strictEqual(waterfall.length, 1)
     assert.ok(
-      waterfall[0].initiatorType === 'fetch' || waterfall[0].initiator === 'fetch' || waterfall[0].type === 'fetch'
+      waterfall[0].initiator_type === 'fetch' || waterfall[0].initiator === 'fetch' || waterfall[0].type === 'fetch'
     )
   })
 

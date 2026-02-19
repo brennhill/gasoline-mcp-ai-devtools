@@ -69,28 +69,28 @@ describe('Network Body Capture - Fetch Wrapper', () => {
     assert.ok(bodyEvent, 'Expected network body event')
     const payload = bodyEvent.arguments[0].payload
 
-    // Shape from spec: method, url, status, requestBody, responseBody, contentType, duration
+    // Shape from spec: method, url, status, request_body, response_body, content_type, duration
     assert.ok('method' in payload, 'missing: method')
     assert.ok('url' in payload, 'missing: url')
     assert.ok('status' in payload, 'missing: status')
-    assert.ok('requestBody' in payload, 'missing: requestBody')
-    assert.ok('responseBody' in payload, 'missing: responseBody')
-    assert.ok('contentType' in payload, 'missing: contentType')
+    assert.ok('request_body' in payload, 'missing: request_body')
+    assert.ok('response_body' in payload, 'missing: response_body')
+    assert.ok('content_type' in payload, 'missing: content_type')
     assert.ok('duration' in payload, 'missing: duration')
 
     // Validate types of each field
     assert.strictEqual(typeof payload.method, 'string', 'method should be a string')
     assert.strictEqual(typeof payload.url, 'string', 'url should be a string')
     assert.strictEqual(typeof payload.status, 'number', 'status should be a number')
-    assert.strictEqual(typeof payload.contentType, 'string', 'contentType should be a string')
+    assert.strictEqual(typeof payload.content_type, 'string', 'content_type should be a string')
     assert.strictEqual(typeof payload.duration, 'number', 'duration should be a number')
 
     // Validate actual values
     assert.strictEqual(payload.method, 'POST')
     assert.strictEqual(payload.status, 201)
-    assert.strictEqual(payload.contentType, 'application/json')
-    assert.strictEqual(payload.responseBody, '{"id":1}')
-    assert.strictEqual(payload.requestBody, '{"name":"Alice"}')
+    assert.strictEqual(payload.content_type, 'application/json')
+    assert.strictEqual(payload.response_body, '{"id":1}')
+    assert.strictEqual(payload.request_body, '{"name":"Alice"}')
   })
 
   test('should capture response body for JSON responses', async () => {
@@ -114,10 +114,10 @@ describe('Network Body Capture - Fetch Wrapper', () => {
 
     assert.ok(bodyEvent, 'Expected network body event')
     const payload = bodyEvent.arguments[0].payload
-    assert.strictEqual(payload.responseBody, responseBody)
+    assert.strictEqual(payload.response_body, responseBody)
     assert.strictEqual(payload.status, 200)
     assert.strictEqual(payload.method, 'GET')
-    assert.strictEqual(payload.contentType, 'application/json')
+    assert.strictEqual(payload.content_type, 'application/json')
     assert.ok(payload.url.includes('/api/users/1'), `url should contain '/api/users/1', got: ${payload.url}`)
     assert.strictEqual(typeof payload.duration, 'number')
   })
@@ -143,10 +143,10 @@ describe('Network Body Capture - Fetch Wrapper', () => {
 
     assert.ok(bodyEvent, 'Expected network body event')
     const payload = bodyEvent.arguments[0].payload
-    assert.strictEqual(payload.requestBody, requestBody)
+    assert.strictEqual(payload.request_body, requestBody)
     assert.strictEqual(payload.method, 'POST')
     assert.strictEqual(payload.status, 201)
-    assert.strictEqual(payload.responseBody, '{"id":1}')
+    assert.strictEqual(payload.response_body, '{"id":1}')
     assert.ok(payload.url.includes('/api/users'), `url should contain '/api/users', got: ${payload.url}`)
   })
 
@@ -204,7 +204,7 @@ describe('Network Body Capture - Fetch Wrapper', () => {
     const bodyEvent = calls.find((c) => c.arguments[0].type === 'GASOLINE_NETWORK_BODY')
 
     assert.strictEqual(bodyEvent.arguments[0].type, 'GASOLINE_NETWORK_BODY')
-    assert.strictEqual(bodyEvent.arguments[0].payload.contentType, 'text/html')
+    assert.strictEqual(bodyEvent.arguments[0].payload.content_type, 'text/html')
     assert.strictEqual(typeof bodyEvent.arguments[0].payload.method, 'string')
     assert.strictEqual(typeof bodyEvent.arguments[0].payload.url, 'string')
   })
@@ -282,8 +282,8 @@ describe('Network Body Capture - Fetch Wrapper', () => {
 
       if (bodyEvent) {
         assert.ok(
-          bodyEvent.arguments[0].payload.responseBody.includes('[Binary:'),
-          `Expected binary placeholder for ${type}, got: ${bodyEvent.arguments[0].payload.responseBody}`
+          bodyEvent.arguments[0].payload.response_body.includes('[Binary:'),
+          `Expected binary placeholder for ${type}, got: ${bodyEvent.arguments[0].payload.response_body}`
         )
       }
     }

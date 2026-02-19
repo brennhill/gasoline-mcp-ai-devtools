@@ -15,11 +15,12 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/dev-console/dev-console/internal/mcp"
 	"github.com/dev-console/dev-console/internal/util"
 )
 
-// LogEntry represents a single log entry
-type LogEntry map[string]any
+// LogEntry represents a single log entry (alias to internal/mcp).
+type LogEntry = mcp.LogEntry
 
 // defaultMaxFileSize is the log file size threshold for rotation (50MB).
 const defaultMaxFileSize int64 = 50 * 1024 * 1024

@@ -49,14 +49,7 @@ func decodeMapResponse(t *testing.T, rr *httptest.ResponseRecorder) map[string]a
 	return body
 }
 
-func parseToolResult(t *testing.T, resp JSONRPCResponse) MCPToolResult {
-	t.Helper()
-	var result MCPToolResult
-	if err := json.Unmarshal(resp.Result, &result); err != nil {
-		t.Fatalf("failed to parse MCP tool result: %v", err)
-	}
-	return result
-}
+// parseToolResult is in tools_test_helpers_test.go.
 
 func buildRecordingSaveRequest(t *testing.T, method string, video []byte, metadata string, queryID string) *http.Request {
 	t.Helper()

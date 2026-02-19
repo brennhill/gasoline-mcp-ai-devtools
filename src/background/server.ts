@@ -111,23 +111,10 @@ export async function sendNetworkBodiesToServer(
 ): Promise<void> {
   if (debugLogFn) debugLogFn('connection', `Sending ${bodies.length} network bodies to server`)
 
-  // Convert camelCase payload keys to snake_case for the Go server API
-  const snakeBodies = bodies.map((b) => ({
-    url: b.url,
-    method: b.method,
-    status: b.status,
-    content_type: b.contentType,
-    request_body: b.requestBody,
-    response_body: b.responseBody,
-    ...(b.responseTruncated ? { response_truncated: true } : {}),
-    duration: b.duration,
-    ...(b.tabId != null ? { tab_id: b.tabId } : {})
-  }))
-
   const response = await fetch(`${serverUrl}/network-bodies`, {
     method: 'POST',
     headers: getRequestHeaders(),
-    body: JSON.stringify({ bodies: snakeBodies })
+    body: JSON.stringify({ bodies })
   })
 
   if (!response.ok) {
@@ -446,7 +433,7 @@ export async function sendStatusPing(
  */
 export async function pollPendingQueries(
   serverUrl: string,
-  sessionId: string,
+  extSessionId: string,
   pilotState: '0' | '1',
   diagnosticLogFn?: (message: string) => void,
   debugLogFn?: (category: string, message: string, data?: unknown) => void
@@ -465,7 +452,7 @@ export async function pollPendingQueries(
 
     const response = await fetch(`${serverUrl}/pending-queries`, {
       headers: {
-        ...getRequestHeaders({ 'X-Gasoline-Session': sessionId, 'X-Gasoline-Pilot': pilotState })
+        ...getRequestHeaders({ 'X-Gasoline-Ext-Session': extSessionId, 'X-Gasoline-Pilot': pilotState })
       }
     })
 

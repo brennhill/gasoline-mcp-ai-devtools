@@ -358,7 +358,7 @@ func TestDrawModeComplete_WithSessionName(t *testing.T) {
 		},
 		"page_url":     "https://example.com/home",
 		"tab_id":       200,
-		"session_name": "qa-review",
+		"annot_session_name": "qa-review",
 	}
 	body, _ := json.Marshal(payload)
 

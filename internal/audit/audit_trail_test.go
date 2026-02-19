@@ -25,7 +25,7 @@ func TestAuditTrail_RecordEntry(t *testing.T) {
 	})
 
 	entry := AuditEntry{
-		SessionID:    "sess-001",
+		AuditSessionID:    "sess-001",
 		ClientID:     "claude-code",
 		ToolName:     "observe",
 		Parameters:   `{"mode":"console"}`,
@@ -48,8 +48,8 @@ func TestAuditTrail_RecordEntry(t *testing.T) {
 	if got.Timestamp.IsZero() {
 		t.Error("expected entry to have a timestamp assigned")
 	}
-	if got.SessionID != "sess-001" {
-		t.Errorf("expected session_id 'sess-001', got %q", got.SessionID)
+	if got.AuditSessionID != "sess-001" {
+		t.Errorf("expected session_id 'sess-001', got %q", got.AuditSessionID)
 	}
 	if got.ClientID != "claude-code" {
 		t.Errorf("expected client_id 'claude-code', got %q", got.ClientID)
@@ -87,7 +87,7 @@ func TestAuditTrail_RecordErrorEntry(t *testing.T) {
 	})
 
 	entry := AuditEntry{
-		SessionID:    "sess-002",
+		AuditSessionID:    "sess-002",
 		ClientID:     "cursor",
 		ToolName:     "query_dom",
 		Parameters:   `{"selector":".btn"}`,
@@ -126,7 +126,7 @@ func TestAuditTrail_QueryDefaultLimit(t *testing.T) {
 	// Record 150 entries
 	for i := 0; i < 150; i++ {
 		trail.Record(AuditEntry{
-			SessionID: "sess-default",
+			AuditSessionID: "sess-default",
 			ClientID:  "claude-code",
 			ToolName:  "observe",
 			Success:   true,
@@ -151,18 +151,18 @@ func TestAuditTrail_QueryBySessionID(t *testing.T) {
 		RedactParams: false,
 	})
 
-	trail.Record(AuditEntry{SessionID: "sess-A", ClientID: "claude-code", ToolName: "observe", Success: true})
-	trail.Record(AuditEntry{SessionID: "sess-B", ClientID: "cursor", ToolName: "analyze", Success: true})
-	trail.Record(AuditEntry{SessionID: "sess-A", ClientID: "claude-code", ToolName: "generate", Success: true})
-	trail.Record(AuditEntry{SessionID: "sess-B", ClientID: "cursor", ToolName: "observe", Success: true})
+	trail.Record(AuditEntry{AuditSessionID: "sess-A", ClientID: "claude-code", ToolName: "observe", Success: true})
+	trail.Record(AuditEntry{AuditSessionID: "sess-B", ClientID: "cursor", ToolName: "analyze", Success: true})
+	trail.Record(AuditEntry{AuditSessionID: "sess-A", ClientID: "claude-code", ToolName: "generate", Success: true})
+	trail.Record(AuditEntry{AuditSessionID: "sess-B", ClientID: "cursor", ToolName: "observe", Success: true})
 
-	results := trail.Query(AuditFilter{SessionID: "sess-A"})
+	results := trail.Query(AuditFilter{AuditSessionID: "sess-A"})
 	if len(results) != 2 {
 		t.Fatalf("expected 2 entries for sess-A, got %d", len(results))
 	}
 	for _, r := range results {
-		if r.SessionID != "sess-A" {
-			t.Errorf("expected session_id 'sess-A', got %q", r.SessionID)
+		if r.AuditSessionID != "sess-A" {
+			t.Errorf("expected session_id 'sess-A', got %q", r.AuditSessionID)
 		}
 	}
 }
@@ -179,10 +179,10 @@ func TestAuditTrail_QueryByToolName(t *testing.T) {
 		RedactParams: false,
 	})
 
-	trail.Record(AuditEntry{SessionID: "s1", ToolName: "observe", Success: true})
-	trail.Record(AuditEntry{SessionID: "s1", ToolName: "analyze", Success: true})
-	trail.Record(AuditEntry{SessionID: "s1", ToolName: "observe", Success: true})
-	trail.Record(AuditEntry{SessionID: "s1", ToolName: "generate", Success: true})
+	trail.Record(AuditEntry{AuditSessionID: "s1", ToolName: "observe", Success: true})
+	trail.Record(AuditEntry{AuditSessionID: "s1", ToolName: "analyze", Success: true})
+	trail.Record(AuditEntry{AuditSessionID: "s1", ToolName: "observe", Success: true})
+	trail.Record(AuditEntry{AuditSessionID: "s1", ToolName: "generate", Success: true})
 
 	results := trail.Query(AuditFilter{ToolName: "observe"})
 	if len(results) != 2 {
@@ -208,14 +208,14 @@ func TestAuditTrail_QuerySince(t *testing.T) {
 	})
 
 	// Record entries with slight delays to ensure distinct timestamps
-	trail.Record(AuditEntry{SessionID: "s1", ToolName: "observe", Success: true})
+	trail.Record(AuditEntry{AuditSessionID: "s1", ToolName: "observe", Success: true})
 	time.Sleep(10 * time.Millisecond)
 
 	cutoff := time.Now()
 	time.Sleep(10 * time.Millisecond)
 
-	trail.Record(AuditEntry{SessionID: "s1", ToolName: "analyze", Success: true})
-	trail.Record(AuditEntry{SessionID: "s1", ToolName: "generate", Success: true})
+	trail.Record(AuditEntry{AuditSessionID: "s1", ToolName: "analyze", Success: true})
+	trail.Record(AuditEntry{AuditSessionID: "s1", ToolName: "generate", Success: true})
 
 	results := trail.Query(AuditFilter{Since: &cutoff})
 	if len(results) != 2 {
@@ -236,7 +236,7 @@ func TestAuditTrail_QueryWithLimit(t *testing.T) {
 	})
 
 	for i := 0; i < 50; i++ {
-		trail.Record(AuditEntry{SessionID: "s1", ToolName: "observe", Success: true})
+		trail.Record(AuditEntry{AuditSessionID: "s1", ToolName: "observe", Success: true})
 	}
 
 	results := trail.Query(AuditFilter{Limit: 10})
@@ -260,7 +260,7 @@ func TestAuditTrail_FIFOEviction(t *testing.T) {
 	// Record 8 entries; only last 5 should remain
 	for i := 0; i < 8; i++ {
 		trail.Record(AuditEntry{
-			SessionID: "s1",
+			AuditSessionID: "s1",
 			ToolName:  "tool-" + string(rune('A'+i)),
 			Success:   true,
 		})
@@ -302,7 +302,7 @@ func TestAuditTrail_ConcurrentSafety(t *testing.T) {
 			defer wg.Done()
 			for i := 0; i < entriesPerGoroutine; i++ {
 				trail.Record(AuditEntry{
-					SessionID: "concurrent-sess",
+					AuditSessionID: "concurrent-sess",
 					ClientID:  "test-client",
 					ToolName:  "observe",
 					Success:   true,
@@ -360,7 +360,7 @@ func TestAuditTrail_SessionIDUnique(t *testing.T) {
 
 	seen := make(map[string]bool)
 	for i := 0; i < 100; i++ {
-		sess := trail.CreateSession(ClientIdentifier{Name: "claude-code", Version: "1.0"})
+		sess := trail.CreateAuditSession(ClientIdentifier{Name: "claude-code", Version: "1.0"})
 		if seen[sess.ID] {
 			t.Fatalf("duplicate session ID: %s", sess.ID)
 		}
@@ -375,7 +375,7 @@ func TestAuditTrail_SessionIDUnique(t *testing.T) {
 func TestAuditTrail_SessionIDFormat(t *testing.T) {
 	t.Parallel()
 	trail := NewAuditTrail(AuditConfig{MaxEntries: 100, Enabled: true})
-	sess := trail.CreateSession(ClientIdentifier{Name: "cursor", Version: "1.0"})
+	sess := trail.CreateAuditSession(ClientIdentifier{Name: "cursor", Version: "1.0"})
 
 	if len(sess.ID) != 32 {
 		t.Errorf("expected session ID length 32, got %d: %q", len(sess.ID), sess.ID)
@@ -398,19 +398,19 @@ func TestAuditTrail_SessionCorrelation(t *testing.T) {
 	t.Parallel()
 	trail := NewAuditTrail(AuditConfig{MaxEntries: 1000, Enabled: true, RedactParams: false})
 
-	sess := trail.CreateSession(ClientIdentifier{Name: "claude-code", Version: "1.0"})
+	sess := trail.CreateAuditSession(ClientIdentifier{Name: "claude-code", Version: "1.0"})
 
-	trail.Record(AuditEntry{SessionID: sess.ID, ClientID: "claude-code", ToolName: "observe", Success: true})
-	trail.Record(AuditEntry{SessionID: sess.ID, ClientID: "claude-code", ToolName: "analyze", Success: true})
-	trail.Record(AuditEntry{SessionID: "other-session", ClientID: "cursor", ToolName: "observe", Success: true})
+	trail.Record(AuditEntry{AuditSessionID: sess.ID, ClientID: "claude-code", ToolName: "observe", Success: true})
+	trail.Record(AuditEntry{AuditSessionID: sess.ID, ClientID: "claude-code", ToolName: "analyze", Success: true})
+	trail.Record(AuditEntry{AuditSessionID: "other-session", ClientID: "cursor", ToolName: "observe", Success: true})
 
-	results := trail.Query(AuditFilter{SessionID: sess.ID})
+	results := trail.Query(AuditFilter{AuditSessionID: sess.ID})
 	if len(results) != 2 {
 		t.Fatalf("expected 2 entries for session, got %d", len(results))
 	}
 	for _, r := range results {
-		if r.SessionID != sess.ID {
-			t.Errorf("expected session ID %q, got %q", sess.ID, r.SessionID)
+		if r.AuditSessionID != sess.ID {
+			t.Errorf("expected session ID %q, got %q", sess.ID, r.AuditSessionID)
 		}
 	}
 }
@@ -423,13 +423,13 @@ func TestAuditTrail_SessionToolCallCount(t *testing.T) {
 	t.Parallel()
 	trail := NewAuditTrail(AuditConfig{MaxEntries: 1000, Enabled: true, RedactParams: false})
 
-	sess := trail.CreateSession(ClientIdentifier{Name: "claude-code", Version: "1.0"})
+	sess := trail.CreateAuditSession(ClientIdentifier{Name: "claude-code", Version: "1.0"})
 
-	trail.Record(AuditEntry{SessionID: sess.ID, ClientID: "claude-code", ToolName: "observe", Success: true})
-	trail.Record(AuditEntry{SessionID: sess.ID, ClientID: "claude-code", ToolName: "analyze", Success: true})
-	trail.Record(AuditEntry{SessionID: sess.ID, ClientID: "claude-code", ToolName: "generate", Success: true})
+	trail.Record(AuditEntry{AuditSessionID: sess.ID, ClientID: "claude-code", ToolName: "observe", Success: true})
+	trail.Record(AuditEntry{AuditSessionID: sess.ID, ClientID: "claude-code", ToolName: "analyze", Success: true})
+	trail.Record(AuditEntry{AuditSessionID: sess.ID, ClientID: "claude-code", ToolName: "generate", Success: true})
 
-	info := trail.GetSession(sess.ID)
+	info := trail.GetAuditSession(sess.ID)
 	if info == nil {
 		t.Fatal("expected session to exist")
 	}
@@ -452,7 +452,7 @@ func TestAuditTrail_RedactBearerToken(t *testing.T) {
 
 	params := `{"authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.test"}`
 	entry := AuditEntry{
-		SessionID:  "s1",
+		AuditSessionID:  "s1",
 		ClientID:   "claude-code",
 		ToolName:   "observe",
 		Parameters: params,
@@ -488,7 +488,7 @@ func TestAuditTrail_RedactAPIKey(t *testing.T) {
 
 	params := `{"config": "api_key=sk-abc123xyz456 something"}`
 	entry := AuditEntry{
-		SessionID:  "s1",
+		AuditSessionID:  "s1",
 		ClientID:   "cursor",
 		ToolName:   "configure",
 		Parameters: params,
@@ -520,7 +520,7 @@ func TestAuditTrail_RegularParamsPreserved(t *testing.T) {
 
 	params := `{"mode": "console", "limit": 50, "selector": ".btn-primary"}`
 	entry := AuditEntry{
-		SessionID:  "s1",
+		AuditSessionID:  "s1",
 		ClientID:   "claude-code",
 		ToolName:   "observe",
 		Parameters: params,
@@ -550,7 +550,7 @@ func TestAuditTrail_RedactionEventLogging(t *testing.T) {
 
 	event := RedactionEvent{
 		Timestamp:   time.Now(),
-		SessionID:   "sess-100",
+		AuditSessionID:   "sess-100",
 		ToolName:    "get_network_bodies",
 		FieldPath:   "entries[0].response.headers.authorization",
 		PatternName: "bearer_token",
@@ -558,7 +558,7 @@ func TestAuditTrail_RedactionEventLogging(t *testing.T) {
 
 	trail.RecordRedaction(event)
 
-	events := trail.QueryRedactions(AuditFilter{SessionID: "sess-100"})
+	events := trail.QueryRedactions(AuditFilter{AuditSessionID: "sess-100"})
 	if len(events) != 1 {
 		t.Fatalf("expected 1 redaction event, got %d", len(events))
 	}
@@ -585,7 +585,7 @@ func TestAuditTrail_RedactionNoContent(t *testing.T) {
 
 	event := RedactionEvent{
 		Timestamp:   time.Now(),
-		SessionID:   "sess-200",
+		AuditSessionID:   "sess-200",
 		ToolName:    "observe",
 		FieldPath:   "entries[5].message",
 		PatternName: "credit_card",
@@ -605,7 +605,7 @@ func TestAuditTrail_RedactionNoContent(t *testing.T) {
 	json.Unmarshal(data, &raw)
 
 	allowed := map[string]bool{
-		"timestamp": true, "session_id": true, "tool_name": true,
+		"timestamp": true, "audit_session_id": true, "tool_name": true,
 		"field_path": true, "pattern_name": true,
 	}
 	for key := range raw {
@@ -628,7 +628,7 @@ func TestAuditTrail_DisabledDropsEntries(t *testing.T) {
 	})
 
 	trail.Record(AuditEntry{
-		SessionID: "s1",
+		AuditSessionID: "s1",
 		ClientID:  "claude-code",
 		ToolName:  "observe",
 		Success:   true,
@@ -652,9 +652,9 @@ func TestAuditTrail_EmptyFilterReturnsAll(t *testing.T) {
 		RedactParams: false,
 	})
 
-	trail.Record(AuditEntry{SessionID: "s1", ToolName: "observe", Success: true})
-	trail.Record(AuditEntry{SessionID: "s2", ToolName: "analyze", Success: true})
-	trail.Record(AuditEntry{SessionID: "s3", ToolName: "generate", Success: true})
+	trail.Record(AuditEntry{AuditSessionID: "s1", ToolName: "observe", Success: true})
+	trail.Record(AuditEntry{AuditSessionID: "s2", ToolName: "analyze", Success: true})
+	trail.Record(AuditEntry{AuditSessionID: "s3", ToolName: "generate", Success: true})
 
 	results := trail.Query(AuditFilter{})
 	if len(results) != 3 {
@@ -674,11 +674,11 @@ func TestAuditTrail_ReverseChronologicalOrder(t *testing.T) {
 		RedactParams: false,
 	})
 
-	trail.Record(AuditEntry{SessionID: "s1", ToolName: "first", Success: true})
+	trail.Record(AuditEntry{AuditSessionID: "s1", ToolName: "first", Success: true})
 	time.Sleep(5 * time.Millisecond)
-	trail.Record(AuditEntry{SessionID: "s1", ToolName: "second", Success: true})
+	trail.Record(AuditEntry{AuditSessionID: "s1", ToolName: "second", Success: true})
 	time.Sleep(5 * time.Millisecond)
-	trail.Record(AuditEntry{SessionID: "s1", ToolName: "third", Success: true})
+	trail.Record(AuditEntry{AuditSessionID: "s1", ToolName: "third", Success: true})
 
 	results := trail.Query(AuditFilter{})
 	if len(results) != 3 {
@@ -707,7 +707,7 @@ func TestAuditTrail_DurationCaptured(t *testing.T) {
 	})
 
 	trail.Record(AuditEntry{
-		SessionID: "s1",
+		AuditSessionID: "s1",
 		ToolName:  "observe",
 		Duration:  42,
 		Success:   true,
@@ -732,7 +732,7 @@ func TestAuditTrail_ResponseSizeCaptured(t *testing.T) {
 	})
 
 	trail.Record(AuditEntry{
-		SessionID:    "s1",
+		AuditSessionID:    "s1",
 		ToolName:     "get_network_bodies",
 		ResponseSize: 15360,
 		Success:      true,
@@ -756,8 +756,8 @@ func TestAuditTrail_HandleGetAuditLog(t *testing.T) {
 		RedactParams: false,
 	})
 
-	trail.Record(AuditEntry{SessionID: "s1", ClientID: "claude-code", ToolName: "observe", Success: true})
-	trail.Record(AuditEntry{SessionID: "s1", ClientID: "claude-code", ToolName: "analyze", Success: true})
+	trail.Record(AuditEntry{AuditSessionID: "s1", ClientID: "claude-code", ToolName: "observe", Success: true})
+	trail.Record(AuditEntry{AuditSessionID: "s1", ClientID: "claude-code", ToolName: "analyze", Success: true})
 
 	// Call the MCP handler with empty params
 	params := json.RawMessage(`{}`)
@@ -792,11 +792,11 @@ func TestAuditTrail_HandleGetAuditLogFiltered(t *testing.T) {
 		RedactParams: false,
 	})
 
-	trail.Record(AuditEntry{SessionID: "s1", ToolName: "observe", Success: true})
-	trail.Record(AuditEntry{SessionID: "s2", ToolName: "analyze", Success: true})
-	trail.Record(AuditEntry{SessionID: "s1", ToolName: "generate", Success: true})
+	trail.Record(AuditEntry{AuditSessionID: "s1", ToolName: "observe", Success: true})
+	trail.Record(AuditEntry{AuditSessionID: "s2", ToolName: "analyze", Success: true})
+	trail.Record(AuditEntry{AuditSessionID: "s1", ToolName: "generate", Success: true})
 
-	params := json.RawMessage(`{"session_id": "s1"}`)
+	params := json.RawMessage(`{"audit_session_id": "s1"}`)
 	result, err := trail.HandleGetAuditLog(params)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -824,17 +824,17 @@ func TestAuditTrail_CombinedFilters(t *testing.T) {
 		RedactParams: false,
 	})
 
-	trail.Record(AuditEntry{SessionID: "s1", ToolName: "observe", Success: true})
-	trail.Record(AuditEntry{SessionID: "s1", ToolName: "analyze", Success: true})
-	trail.Record(AuditEntry{SessionID: "s2", ToolName: "observe", Success: true})
-	trail.Record(AuditEntry{SessionID: "s2", ToolName: "analyze", Success: true})
+	trail.Record(AuditEntry{AuditSessionID: "s1", ToolName: "observe", Success: true})
+	trail.Record(AuditEntry{AuditSessionID: "s1", ToolName: "analyze", Success: true})
+	trail.Record(AuditEntry{AuditSessionID: "s2", ToolName: "observe", Success: true})
+	trail.Record(AuditEntry{AuditSessionID: "s2", ToolName: "analyze", Success: true})
 
-	results := trail.Query(AuditFilter{SessionID: "s1", ToolName: "observe"})
+	results := trail.Query(AuditFilter{AuditSessionID: "s1", ToolName: "observe"})
 	if len(results) != 1 {
 		t.Fatalf("expected 1 entry with combined filter, got %d", len(results))
 	}
-	if results[0].SessionID != "s1" || results[0].ToolName != "observe" {
-		t.Errorf("unexpected entry: session=%q tool=%q", results[0].SessionID, results[0].ToolName)
+	if results[0].AuditSessionID != "s1" || results[0].ToolName != "observe" {
+		t.Errorf("unexpected entry: session=%q tool=%q", results[0].AuditSessionID, results[0].ToolName)
 	}
 }
 
@@ -853,7 +853,7 @@ func TestAuditTrail_RedactJWT(t *testing.T) {
 	jwt := "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.dozjgNryP4J3jVmNHl0w5N_XgL0n3I9PlFUP0THsR8U"
 	params := `{"token": "` + jwt + `"}`
 	trail.Record(AuditEntry{
-		SessionID:  "s1",
+		AuditSessionID:  "s1",
 		ToolName:   "observe",
 		Parameters: params,
 		Success:    true,
@@ -882,7 +882,7 @@ func TestAuditTrail_RedactGitHubToken(t *testing.T) {
 
 	params := `{"auth": "Bearer ghp_ABCDEFghijklMNOPQRSTuvwxyz0123456789"}`
 	trail.Record(AuditEntry{
-		SessionID:  "s1",
+		AuditSessionID:  "s1",
 		ToolName:   "observe",
 		Parameters: params,
 		Success:    true,
@@ -902,9 +902,9 @@ func TestAuditTrail_SessionStoresClientIdentity(t *testing.T) {
 	t.Parallel()
 	trail := NewAuditTrail(AuditConfig{MaxEntries: 100, Enabled: true})
 
-	sess := trail.CreateSession(ClientIdentifier{Name: "Windsurf", Version: "2.5.0"})
+	sess := trail.CreateAuditSession(ClientIdentifier{Name: "Windsurf", Version: "2.5.0"})
 
-	info := trail.GetSession(sess.ID)
+	info := trail.GetAuditSession(sess.ID)
 	if info == nil {
 		t.Fatal("expected session to exist")
 	}
@@ -926,7 +926,7 @@ func TestAuditTrail_DefaultConfig(t *testing.T) {
 
 	// Default should be: MaxEntries=10000, Enabled=true, RedactParams=true
 	// Record something to verify it works with defaults
-	trail.Record(AuditEntry{SessionID: "s1", ToolName: "observe", Success: true})
+	trail.Record(AuditEntry{AuditSessionID: "s1", ToolName: "observe", Success: true})
 
 	results := trail.Query(AuditFilter{})
 	if len(results) != 1 {
@@ -949,7 +949,7 @@ func TestAuditTrail_ConcurrentSessionCreation(t *testing.T) {
 		wg.Add(1)
 		go func(idx int) {
 			defer wg.Done()
-			sess := trail.CreateSession(ClientIdentifier{Name: "test", Version: "1.0"})
+			sess := trail.CreateAuditSession(ClientIdentifier{Name: "test", Version: "1.0"})
 			sessions[idx] = sess.ID
 		}(i)
 	}
@@ -981,7 +981,7 @@ func TestAuditTrail_RedactionEventsBounded(t *testing.T) {
 	for i := 0; i < 10; i++ {
 		trail.RecordRedaction(RedactionEvent{
 			Timestamp:   time.Now(),
-			SessionID:   "s1",
+			AuditSessionID:   "s1",
 			ToolName:    "observe",
 			FieldPath:   "field",
 			PatternName: "bearer_token",
@@ -1008,7 +1008,7 @@ func TestAuditTrail_RedactSessionCookie(t *testing.T) {
 
 	params := `{"cookie": "session=ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghij"}`
 	trail.Record(AuditEntry{
-		SessionID:  "s1",
+		AuditSessionID:  "s1",
 		ToolName:   "observe",
 		Parameters: params,
 		Success:    true,
@@ -1033,16 +1033,16 @@ func TestAuditTrail_Clear_ResetsEntriesAndSessions(t *testing.T) {
 	})
 
 	// Create a session and record entries under it
-	sess := trail.CreateSession(ClientIdentifier{Name: "claude-code", Version: "1.0"})
-	trail.Record(AuditEntry{SessionID: sess.ID, ToolName: "observe", Success: true})
-	trail.Record(AuditEntry{SessionID: sess.ID, ToolName: "analyze", Success: true})
-	trail.RecordRedaction(RedactionEvent{SessionID: sess.ID, ToolName: "observe", PatternName: "bearer_token"})
+	sess := trail.CreateAuditSession(ClientIdentifier{Name: "claude-code", Version: "1.0"})
+	trail.Record(AuditEntry{AuditSessionID: sess.ID, ToolName: "observe", Success: true})
+	trail.Record(AuditEntry{AuditSessionID: sess.ID, ToolName: "analyze", Success: true})
+	trail.RecordRedaction(RedactionEvent{AuditSessionID: sess.ID, ToolName: "observe", PatternName: "bearer_token"})
 
 	// Verify pre-state
 	if len(trail.Query(AuditFilter{})) != 2 {
 		t.Fatal("expected 2 entries before clear")
 	}
-	if trail.GetSession(sess.ID) == nil {
+	if trail.GetAuditSession(sess.ID) == nil {
 		t.Fatal("session should exist before clear")
 	}
 
@@ -1063,7 +1063,7 @@ func TestAuditTrail_Clear_ResetsEntriesAndSessions(t *testing.T) {
 	}
 
 	// Sessions must be reset — stale ToolCalls counters must not persist (B3)
-	if trail.GetSession(sess.ID) != nil {
+	if trail.GetAuditSession(sess.ID) != nil {
 		t.Fatal("sessions should be cleared — stale session with old ToolCalls counter persists (B3 bug)")
 	}
 }

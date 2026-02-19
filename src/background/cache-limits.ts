@@ -163,13 +163,13 @@ export function estimateBufferMemory(buffers: BufferState): number {
     }
   }
 
-  for (const body of buffers.networkBodies as Array<{ requestBody?: string; responseBody?: string }>) {
+  for (const body of buffers.networkBodies as Array<{ request_body?: string; response_body?: string }>) {
     total += MEMORY_AVG_NETWORK_BODY_SIZE
-    if (body.requestBody && typeof body.requestBody === 'string') {
-      total += body.requestBody.length
+    if (body.request_body && typeof body.request_body === 'string') {
+      total += body.request_body.length
     }
-    if (body.responseBody && typeof body.responseBody === 'string') {
-      total += body.responseBody.length
+    if (body.response_body && typeof body.response_body === 'string') {
+      total += body.response_body.length
     }
   }
 

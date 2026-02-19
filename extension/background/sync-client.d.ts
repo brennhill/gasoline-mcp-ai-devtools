@@ -61,7 +61,7 @@ export interface SyncClientCallbacks {
 }
 export declare class SyncClient {
     private serverUrl;
-    private sessionId;
+    private extSessionId;
     private callbacks;
     private state;
     private intervalId;
@@ -71,7 +71,7 @@ export declare class SyncClient {
     private pendingResults;
     private processedCommandIDs;
     private extensionVersion;
-    constructor(serverUrl: string, sessionId: string, callbacks: SyncClientCallbacks, extensionVersion?: string);
+    constructor(serverUrl: string, extSessionId: string, callbacks: SyncClientCallbacks, extensionVersion?: string);
     /** Get current sync state */
     getState(): SyncState;
     /** Check if connected */
@@ -97,5 +97,5 @@ export declare class SyncClient {
 /**
  * Create a sync client instance
  */
-export declare function createSyncClient(serverUrl: string, sessionId: string, callbacks: SyncClientCallbacks, extensionVersion?: string): SyncClient;
+export declare function createSyncClient(serverUrl: string, extSessionId: string, callbacks: SyncClientCallbacks, extensionVersion?: string): SyncClient;
 //# sourceMappingURL=sync-client.d.ts.map

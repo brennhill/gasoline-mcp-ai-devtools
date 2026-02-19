@@ -35,7 +35,7 @@ func extractResponseData(t *testing.T, resp JSONRPCResponse) map[string]any {
 // simulateExtensionConnection sends a /sync request to mark the extension as connected.
 func simulateExtensionConnection(t *testing.T, env *interactHelpersTestEnv) {
 	t.Helper()
-	httpReq := httptest.NewRequest("POST", "/sync", strings.NewReader(`{"session_id":"test"}`))
+	httpReq := httptest.NewRequest("POST", "/sync", strings.NewReader(`{"ext_session_id":"test"}`))
 	httpReq.Header.Set("X-Gasoline-Client", "test-client")
 	env.capture.HandleSync(httptest.NewRecorder(), httpReq)
 }

@@ -5,31 +5,7 @@ package main
 import (
 	"strings"
 	"testing"
-
-	"github.com/dev-console/dev-console/internal/capture"
 )
-
-// ============================================
-// Test Helpers
-// ============================================
-
-func makeInteractToolHandler(t *testing.T) (*ToolHandler, *Server, *capture.Capture) {
-	t.Helper()
-	server, err := NewServer(t.TempDir()+"/test.jsonl", 100)
-	if err != nil {
-		t.Fatalf("NewServer: %v", err)
-	}
-	t.Cleanup(func() { server.Close() })
-	cap := capture.NewCapture()
-	mcpHandler := NewToolHandler(server, cap)
-	handler := mcpHandler.toolHandler.(*ToolHandler)
-	return handler, server, cap
-}
-
-func callInteractRaw(h *ToolHandler, argsJSON string) JSONRPCResponse {
-	req := JSONRPCRequest{JSONRPC: "2.0", ID: 1}
-	return h.toolInteract(req, normalizeInteractArgsForAsync(argsJSON))
-}
 
 // ============================================
 // Dispatch Tests
@@ -37,7 +13,7 @@ func callInteractRaw(h *ToolHandler, argsJSON string) JSONRPCResponse {
 
 func TestToolsInteractDispatch_InvalidJSON(t *testing.T) {
 	t.Parallel()
-	h, _, _ := makeInteractToolHandler(t)
+	h, _, _ := makeToolHandler(t)
 
 	resp := callInteractRaw(h, `{bad json`)
 	result := parseToolResult(t, resp)
@@ -52,7 +28,7 @@ func TestToolsInteractDispatch_InvalidJSON(t *testing.T) {
 
 func TestToolsInteractDispatch_MissingAction(t *testing.T) {
 	t.Parallel()
-	h, _, _ := makeInteractToolHandler(t)
+	h, _, _ := makeToolHandler(t)
 
 	resp := callInteractRaw(h, `{}`)
 	result := parseToolResult(t, resp)
@@ -74,7 +50,7 @@ func TestToolsInteractDispatch_MissingAction(t *testing.T) {
 
 func TestToolsInteractDispatch_UnknownAction(t *testing.T) {
 	t.Parallel()
-	h, _, _ := makeInteractToolHandler(t)
+	h, _, _ := makeToolHandler(t)
 
 	resp := callInteractRaw(h, `{"action":"nonexistent_action"}`)
 	result := parseToolResult(t, resp)
@@ -92,7 +68,7 @@ func TestToolsInteractDispatch_UnknownAction(t *testing.T) {
 
 func TestToolsInteractDispatch_ScreenshotAlias(t *testing.T) {
 	t.Parallel()
-	h, _, _ := makeInteractToolHandler(t)
+	h, _, _ := makeToolHandler(t)
 
 	resp := callInteractRaw(h, `{"action":"screenshot"}`)
 	result := parseToolResult(t, resp)
@@ -111,7 +87,7 @@ func TestToolsInteractDispatch_ScreenshotAlias(t *testing.T) {
 
 func TestToolsInteractDispatch_EmptyArgs(t *testing.T) {
 	t.Parallel()
-	h, _, _ := makeInteractToolHandler(t)
+	h, _, _ := makeToolHandler(t)
 
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: 1}
 	resp := h.toolInteract(req, nil)
@@ -127,7 +103,7 @@ func TestToolsInteractDispatch_EmptyArgs(t *testing.T) {
 
 func TestToolsInteractHighlight_MissingSelector(t *testing.T) {
 	t.Parallel()
-	h, _, _ := makeInteractToolHandler(t)
+	h, _, _ := makeToolHandler(t)
 
 	resp := callInteractRaw(h, `{"action":"highlight"}`)
 	result := parseToolResult(t, resp)
@@ -145,7 +121,7 @@ func TestToolsInteractHighlight_MissingSelector(t *testing.T) {
 
 func TestToolsInteractHighlight_PilotDisabled(t *testing.T) {
 	t.Parallel()
-	h, _, _ := makeInteractToolHandler(t)
+	h, _, _ := makeToolHandler(t)
 
 	resp := callInteractRaw(h, `{"action":"highlight","selector":"#main"}`)
 	result := parseToolResult(t, resp)
@@ -160,7 +136,7 @@ func TestToolsInteractHighlight_PilotDisabled(t *testing.T) {
 
 func TestToolsInteractHighlight_Success(t *testing.T) {
 	t.Parallel()
-	h, _, cap := makeInteractToolHandler(t)
+	h, _, cap := makeToolHandler(t)
 	cap.SetPilotEnabled(true)
 
 	resp := callInteractRaw(h, `{"action":"highlight","selector":".btn"}`)
@@ -205,7 +181,7 @@ func TestToolsInteractHighlight_Success(t *testing.T) {
 
 func TestToolsInteractExecuteJS_MissingScript(t *testing.T) {
 	t.Parallel()
-	h, _, _ := makeInteractToolHandler(t)
+	h, _, _ := makeToolHandler(t)
 
 	resp := callInteractRaw(h, `{"action":"execute_js"}`)
 	result := parseToolResult(t, resp)
@@ -220,7 +196,7 @@ func TestToolsInteractExecuteJS_MissingScript(t *testing.T) {
 
 func TestToolsInteractExecuteJS_InvalidWorld(t *testing.T) {
 	t.Parallel()
-	h, _, _ := makeInteractToolHandler(t)
+	h, _, _ := makeToolHandler(t)
 
 	resp := callInteractRaw(h, `{"action":"execute_js","script":"1+1","world":"invalid_world"}`)
 	result := parseToolResult(t, resp)
@@ -238,7 +214,7 @@ func TestToolsInteractExecuteJS_InvalidWorld(t *testing.T) {
 
 func TestToolsInteractExecuteJS_ValidWorlds(t *testing.T) {
 	t.Parallel()
-	h, _, _ := makeInteractToolHandler(t)
+	h, _, _ := makeToolHandler(t)
 
 	// All valid worlds should pass world validation (fail at pilot check, not world check)
 	for _, world := range []string{"auto", "main", "isolated"} {
@@ -258,7 +234,7 @@ func TestToolsInteractExecuteJS_ValidWorlds(t *testing.T) {
 
 func TestToolsInteractExecuteJS_DefaultWorld(t *testing.T) {
 	t.Parallel()
-	h, _, _ := makeInteractToolHandler(t)
+	h, _, _ := makeToolHandler(t)
 
 	// Omitting world should default to "auto" and pass validation
 	resp := callInteractRaw(h, `{"action":"execute_js","script":"1+1"}`)
@@ -274,7 +250,7 @@ func TestToolsInteractExecuteJS_DefaultWorld(t *testing.T) {
 
 func TestToolsInteractExecuteJS_Success(t *testing.T) {
 	t.Parallel()
-	h, _, cap := makeInteractToolHandler(t)
+	h, _, cap := makeToolHandler(t)
 	cap.SetPilotEnabled(true)
 
 	resp := callInteractRaw(h, `{"action":"execute_js","script":"document.title"}`)
@@ -306,7 +282,7 @@ func TestToolsInteractExecuteJS_Success(t *testing.T) {
 
 func TestToolsInteractNavigate_MissingURL(t *testing.T) {
 	t.Parallel()
-	h, _, _ := makeInteractToolHandler(t)
+	h, _, _ := makeToolHandler(t)
 
 	resp := callInteractRaw(h, `{"action":"navigate"}`)
 	result := parseToolResult(t, resp)
@@ -321,7 +297,7 @@ func TestToolsInteractNavigate_MissingURL(t *testing.T) {
 
 func TestToolsInteractNavigate_Success(t *testing.T) {
 	t.Parallel()
-	h, _, cap := makeInteractToolHandler(t)
+	h, _, cap := makeToolHandler(t)
 	cap.SetPilotEnabled(true)
 
 	resp := callInteractRaw(h, `{"action":"navigate","url":"https://example.com"}`)
@@ -348,7 +324,7 @@ func TestToolsInteractNavigate_Success(t *testing.T) {
 
 func TestToolsInteractBrowserActions_PilotRequired(t *testing.T) {
 	t.Parallel()
-	h, _, _ := makeInteractToolHandler(t)
+	h, _, _ := makeToolHandler(t)
 
 	actions := []struct {
 		name string
@@ -376,7 +352,7 @@ func TestToolsInteractBrowserActions_PilotRequired(t *testing.T) {
 
 func TestToolsInteractBrowserActions_SuccessWithPilot(t *testing.T) {
 	t.Parallel()
-	h, _, cap := makeInteractToolHandler(t)
+	h, _, cap := makeToolHandler(t)
 	cap.SetPilotEnabled(true)
 
 	actions := []struct {
@@ -417,7 +393,7 @@ func TestToolsInteractBrowserActions_SuccessWithPilot(t *testing.T) {
 
 func TestToolsInteractSubtitle_MissingText(t *testing.T) {
 	t.Parallel()
-	h, _, _ := makeInteractToolHandler(t)
+	h, _, _ := makeToolHandler(t)
 
 	resp := callInteractRaw(h, `{"action":"subtitle"}`)
 	result := parseToolResult(t, resp)
@@ -432,7 +408,7 @@ func TestToolsInteractSubtitle_MissingText(t *testing.T) {
 
 func TestToolsInteractSubtitle_SetText(t *testing.T) {
 	t.Parallel()
-	h, _, _ := makeInteractToolHandler(t)
+	h, _, _ := makeToolHandler(t)
 
 	resp := callInteractRaw(h, `{"action":"subtitle","text":"Hello world"}`)
 	result := parseToolResult(t, resp)
@@ -460,7 +436,7 @@ func TestToolsInteractSubtitle_SetText(t *testing.T) {
 
 func TestToolsInteractSubtitle_ClearText(t *testing.T) {
 	t.Parallel()
-	h, _, _ := makeInteractToolHandler(t)
+	h, _, _ := makeToolHandler(t)
 
 	resp := callInteractRaw(h, `{"action":"subtitle","text":""}`)
 	result := parseToolResult(t, resp)
@@ -485,7 +461,7 @@ func TestToolsInteractSubtitle_ClearText(t *testing.T) {
 
 func TestToolsInteractDOMPrimitives_MissingSelector(t *testing.T) {
 	t.Parallel()
-	h, _, _ := makeInteractToolHandler(t)
+	h, _, _ := makeToolHandler(t)
 
 	actions := []string{"click", "type", "select", "check", "get_text", "get_value",
 		"get_attribute", "set_attribute", "focus", "scroll_to", "wait_for", "key_press"}
@@ -506,7 +482,7 @@ func TestToolsInteractDOMPrimitives_MissingSelector(t *testing.T) {
 
 func TestToolsInteractDOMPrimitives_ActionSpecificParams(t *testing.T) {
 	t.Parallel()
-	h, _, _ := makeInteractToolHandler(t)
+	h, _, _ := makeToolHandler(t)
 
 	// Actions that require specific params beyond selector
 	cases := []struct {
@@ -536,7 +512,7 @@ func TestToolsInteractDOMPrimitives_ActionSpecificParams(t *testing.T) {
 
 func TestToolsInteractDOMPrimitives_SuccessWithPilot(t *testing.T) {
 	t.Parallel()
-	h, _, cap := makeInteractToolHandler(t)
+	h, _, cap := makeToolHandler(t)
 	cap.SetPilotEnabled(true)
 
 	cases := []struct {
@@ -584,7 +560,7 @@ func TestToolsInteractDOMPrimitives_SuccessWithPilot(t *testing.T) {
 
 func TestToolsInteractSaveState_MissingSnapshotName(t *testing.T) {
 	t.Parallel()
-	h, _, _ := makeInteractToolHandler(t)
+	h, _, _ := makeToolHandler(t)
 
 	resp := callInteractRaw(h, `{"action":"save_state"}`)
 	result := parseToolResult(t, resp)
@@ -599,7 +575,7 @@ func TestToolsInteractSaveState_MissingSnapshotName(t *testing.T) {
 
 func TestToolsInteractSaveState_Success(t *testing.T) {
 	t.Parallel()
-	h, _, _ := makeInteractToolHandler(t)
+	h, _, _ := makeToolHandler(t)
 
 	resp := callInteractRaw(h, `{"action":"save_state","snapshot_name":"test_save"}`)
 	result := parseToolResult(t, resp)
@@ -629,7 +605,7 @@ func TestToolsInteractSaveState_Success(t *testing.T) {
 
 func TestToolsInteractListStates_ResponseFields(t *testing.T) {
 	t.Parallel()
-	h, _, _ := makeInteractToolHandler(t)
+	h, _, _ := makeToolHandler(t)
 
 	resp := callInteractRaw(h, `{"action":"list_states"}`)
 	result := parseToolResult(t, resp)
@@ -653,7 +629,7 @@ func TestToolsInteractListStates_ResponseFields(t *testing.T) {
 
 func TestToolsInteractListInteractive_ResponseFields(t *testing.T) {
 	t.Parallel()
-	h, _, cap := makeInteractToolHandler(t)
+	h, _, cap := makeToolHandler(t)
 	cap.SetPilotEnabled(true)
 
 	resp := callInteractRaw(h, `{"action":"list_interactive"}`)
