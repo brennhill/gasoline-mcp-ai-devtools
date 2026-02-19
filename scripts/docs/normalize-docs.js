@@ -137,7 +137,7 @@ function discoverFeatureDirs() {
   return out.sort((a, b) => a.localeCompare(b))
 }
 
-function makeSpecStub({ type, relDir, featureId, title, status, tool, mode }) {
+function makeSpecStub({ type, relDir: _relDir, featureId, title, status, tool, mode }) {
   const reqPrefix = featureId.replace(/[^a-z0-9]/g, '_').toUpperCase()
   const docTitle = type === 'product-spec.md' ? 'Product Spec' : type === 'tech-spec.md' ? 'Tech Spec' : 'QA Plan'
   return `---
