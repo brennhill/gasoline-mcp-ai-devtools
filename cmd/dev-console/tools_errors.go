@@ -1,124 +1,51 @@
-// Purpose: Owns tools_errors.go runtime behavior and integration logic.
-// Docs: docs/features/feature/observe/index.md
-
-// tools_errors.go — Structured error handling and error codes for MCP tools.
-// Defines error constants, StructuredError type, and error response construction.
+// tools_errors.go — Structured error handling (thin wrappers over internal/mcp).
+// diagnosticHintString/diagnosticHint stay here (ToolHandler methods).
 package main
 
 import (
 	"encoding/json"
 	"fmt"
+
+	"github.com/dev-console/dev-console/internal/mcp"
 )
 
-// Error codes are self-describing snake_case strings.
-// Every code tells the LLM what went wrong.
+// Error code aliases — all callers in package main use these unchanged.
 const (
-	// Input errors — LLM can fix arguments and retry immediately
-	ErrInvalidJSON    = "invalid_json"
-	ErrMissingParam   = "missing_param"
-	ErrInvalidParam   = "invalid_param"
-	ErrUnknownMode    = "unknown_mode"
-	ErrPathNotAllowed = "path_not_allowed"
-
-	// State errors — LLM must change state before retrying
-	ErrNotInitialized       = "not_initialized"
-	ErrNoData               = "no_data"
-	ErrCodePilotDisabled    = "pilot_disabled" // Named ErrCodePilotDisabled to avoid collision with var ErrCodePilotDisabled in pilot.go
-	ErrOsAutomationDisabled = "os_automation_disabled"
-	ErrRateLimited          = "rate_limited"
-	ErrCursorExpired        = "cursor_expired" // Cursor pagination: buffer overflow evicted cursor position
-
-	// Communication errors — retry with backoff
-	ErrExtTimeout = "extension_timeout"
-	ErrExtError   = "extension_error"
-
-	// Internal errors — do not retry
-	ErrInternal      = "internal_error"
-	ErrMarshalFailed = "marshal_failed"
-	ErrExportFailed  = "export_failed"
+	ErrInvalidJSON          = mcp.ErrInvalidJSON
+	ErrMissingParam         = mcp.ErrMissingParam
+	ErrInvalidParam         = mcp.ErrInvalidParam
+	ErrUnknownMode          = mcp.ErrUnknownMode
+	ErrPathNotAllowed       = mcp.ErrPathNotAllowed
+	ErrNotInitialized       = mcp.ErrNotInitialized
+	ErrNoData               = mcp.ErrNoData
+	ErrCodePilotDisabled    = mcp.ErrCodePilotDisabled
+	ErrOsAutomationDisabled = mcp.ErrOsAutomationDisabled
+	ErrRateLimited          = mcp.ErrRateLimited
+	ErrCursorExpired        = mcp.ErrCursorExpired
+	ErrExtTimeout           = mcp.ErrExtTimeout
+	ErrExtError             = mcp.ErrExtError
+	ErrInternal             = mcp.ErrInternal
+	ErrMarshalFailed        = mcp.ErrMarshalFailed
+	ErrExportFailed         = mcp.ErrExportFailed
 )
 
-// StructuredError is embedded in MCP text content. Every field is
-// self-describing so an LLM can act on it without a lookup table.
-type StructuredError struct {
-	Error        string `json:"error"`
-	Message      string `json:"message"`
-	Retry        string `json:"retry"`
-	Retryable    bool   `json:"retryable"`
-	RetryAfterMs int    `json:"retry_after_ms,omitempty"`
-	Final        bool   `json:"final,omitempty"`
-	Param        string `json:"param,omitempty"`
-	Hint         string `json:"hint,omitempty"`
-}
+// StructuredError alias.
+type StructuredError = mcp.StructuredError
 
-// mcpStructuredError constructs an MCP error response. Format:
-//
-//	Error: missing_param — Add the 'what' parameter and call again
-//	{"error":"missing_param","message":"...","retry":"Add the 'what' parameter and call again","hint":"..."}
-//
-// The retry string is a plain-English instruction the LLM can follow directly.
 func mcpStructuredError(code, message, retry string, opts ...func(*StructuredError)) json.RawMessage {
-	se := StructuredError{Error: code, Message: message, Retry: retry}
-	// Apply retryable defaults based on error code first, then user opts can override
-	for _, defaultOpt := range retryDefaultsForCode(code) {
-		defaultOpt(&se)
-	}
-	for _, opt := range opts {
-		opt(&se)
-	}
-
-	// Error impossible: StructuredError is a simple struct with no circular refs or unsupported types
-	seJSON, _ := json.Marshal(se)
-	text := fmt.Sprintf("Error: %s — %s\n%s", code, retry, string(seJSON))
-
-	result := MCPToolResult{
-		Content: []MCPContentBlock{{Type: "text", Text: text}},
-		IsError: true,
-	}
-	return safeMarshal(result, `{"content":[{"type":"text","text":"Internal error: failed to marshal result"}],"isError":true}`)
+	return mcp.StructuredErrorResponse(code, message, retry, opts...)
 }
 
-// withParam is an option function to add param field to StructuredError.
-func withParam(p string) func(*StructuredError) {
-	return func(se *StructuredError) { se.Param = p }
-}
-
-// withHint is an option function to add hint field to StructuredError.
-func withHint(h string) func(*StructuredError) {
-	return func(se *StructuredError) { se.Hint = h }
-}
-
-// withRetryable marks whether the error is retryable by the LLM.
+func withParam(p string) func(*StructuredError) { return mcp.WithParam(p) }
+func withHint(h string) func(*StructuredError)  { return mcp.WithHint(h) }
 func withRetryable(retryable bool) func(*StructuredError) {
-	return func(se *StructuredError) { se.Retryable = retryable }
+	return mcp.WithRetryable(retryable)
 }
+func withRetryAfterMs(ms int) func(*StructuredError) { return mcp.WithRetryAfterMs(ms) }
+func withFinal(final bool) func(*StructuredError) { return mcp.WithFinal(final) }
 
-// withRetryAfterMs sets the suggested delay before retrying (milliseconds).
-func withRetryAfterMs(ms int) func(*StructuredError) {
-	return func(se *StructuredError) { se.RetryAfterMs = ms }
-}
-
-// withFinal marks a structured error as terminal/non-terminal for async command flows.
-func withFinal(final bool) func(*StructuredError) {
-	return func(se *StructuredError) { se.Final = final }
-}
-
-// retryDefaultsForCode returns option functions that set retryable and retry_after_ms
-// based on the error code. Retryable errors are transient conditions the LLM can
-// retry after a brief delay; non-retryable errors require the LLM to change its input.
 func retryDefaultsForCode(code string) []func(*StructuredError) {
-	switch code {
-	case ErrExtTimeout:
-		return []func(*StructuredError){withRetryable(true), withRetryAfterMs(1000)}
-	case ErrExtError:
-		return []func(*StructuredError){withRetryable(true), withRetryAfterMs(2000)}
-	case ErrRateLimited:
-		return []func(*StructuredError){withRetryable(true), withRetryAfterMs(1000)}
-	case ErrCursorExpired:
-		return []func(*StructuredError){withRetryable(true), withRetryAfterMs(500)}
-	default:
-		return []func(*StructuredError){withRetryable(false)}
-	}
+	return mcp.RetryDefaultsForCode(code)
 }
 
 // diagnosticHintString returns a plain-text snapshot of system state.

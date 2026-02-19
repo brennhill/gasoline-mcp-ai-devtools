@@ -16,6 +16,8 @@
 package main
 
 import (
+	"crypto/rand"
+	"encoding/binary"
 	"encoding/json"
 	"os"
 	"sync"
@@ -25,88 +27,43 @@ import (
 	"github.com/dev-console/dev-console/internal/analysis"
 	"github.com/dev-console/dev-console/internal/audit"
 	"github.com/dev-console/dev-console/internal/capture"
+	"github.com/dev-console/dev-console/internal/mcp"
 	"github.com/dev-console/dev-console/internal/redaction"
 	"github.com/dev-console/dev-console/internal/security"
 	"github.com/dev-console/dev-console/internal/session"
 )
 
 // ============================================
-// MCP Typed Response Structs
+// Shared Utilities
 // ============================================
 
-// MCPContentBlock represents a single content block in an MCP tool result.
-type MCPContentBlock struct {
-	Type string `json:"type"`
-	Text string `json:"text"`
+// randomInt63 generates a random int64 for correlation IDs using crypto/rand.
+func randomInt63() int64 {
+	var b [8]byte
+	if _, err := rand.Read(b[:]); err != nil {
+		// Fallback to time-based if rand fails (should never happen)
+		return time.Now().UnixNano()
+	}
+	return int64(binary.BigEndian.Uint64(b[:]) & 0x7FFFFFFFFFFFFFFF)
 }
 
-// MCPToolResult represents the result of an MCP tool call.
-type MCPToolResult struct {
-	Content  []MCPContentBlock `json:"content"`
-	IsError  bool              `json:"isError"` // SPEC:MCP
-	Metadata map[string]any    `json:"metadata,omitempty"`
-}
+// ============================================
+// MCP Typed Response Structs (aliases to internal/mcp)
+// ============================================
 
-// MCPInitializeResult represents the result of an MCP initialize request.
-type MCPInitializeResult struct {
-	ProtocolVersion string          `json:"protocolVersion"` // SPEC:MCP
-	ServerInfo      MCPServerInfo   `json:"serverInfo"`      // SPEC:MCP
-	Capabilities    MCPCapabilities `json:"capabilities"`
-	Instructions    string          `json:"instructions,omitempty"`
-}
-
-// MCPServerInfo identifies the MCP server.
-type MCPServerInfo struct {
-	Name    string `json:"name"`
-	Version string `json:"version"`
-}
-
-// MCPCapabilities declares the server's MCP capabilities.
-type MCPCapabilities struct {
-	Tools     MCPToolsCapability     `json:"tools"`
-	Resources MCPResourcesCapability `json:"resources"`
-}
-
-// MCPToolsCapability declares tool support.
-type MCPToolsCapability struct{}
-
-// MCPResourcesCapability declares resource support.
-type MCPResourcesCapability struct{}
-
-// MCPResource describes an available resource.
-type MCPResource struct {
-	URI         string `json:"uri"`
-	Name        string `json:"name"`
-	Description string `json:"description,omitempty"`
-	MimeType    string `json:"mimeType,omitempty"` // SPEC:MCP
-}
-
-// MCPResourcesListResult represents the result of a resources/list request.
-type MCPResourcesListResult struct {
-	Resources []MCPResource `json:"resources"`
-}
-
-// MCPResourceContent represents the content of a resource.
-type MCPResourceContent struct {
-	URI      string `json:"uri"`
-	MimeType string `json:"mimeType,omitempty"` // SPEC:MCP
-	Text     string `json:"text,omitempty"`
-}
-
-// MCPResourcesReadResult represents the result of a resources/read request.
-type MCPResourcesReadResult struct {
-	Contents []MCPResourceContent `json:"contents"`
-}
-
-// MCPToolsListResult represents the result of a tools/list request.
-type MCPToolsListResult struct {
-	Tools []MCPTool `json:"tools"`
-}
-
-// MCPResourceTemplatesListResult represents the result of a resources/templates/list request.
-type MCPResourceTemplatesListResult struct {
-	ResourceTemplates []any `json:"resourceTemplates"` // SPEC:MCP
-}
+type MCPContentBlock = mcp.MCPContentBlock
+type MCPToolResult = mcp.MCPToolResult
+type MCPInitializeResult = mcp.MCPInitializeResult
+type MCPServerInfo = mcp.MCPServerInfo
+type MCPCapabilities = mcp.MCPCapabilities
+type MCPToolsCapability = mcp.MCPToolsCapability
+type MCPResourcesCapability = mcp.MCPResourcesCapability
+type MCPResource = mcp.MCPResource
+type MCPResourcesListResult = mcp.MCPResourcesListResult
+type MCPResourceContent = mcp.MCPResourceContent
+type MCPResourcesReadResult = mcp.MCPResourcesReadResult
+type MCPToolsListResult = mcp.MCPToolsListResult
+type MCPResourceTemplatesListResult = mcp.MCPResourceTemplatesListResult
 
 // ============================================
 // Tool Call Rate Limiter
@@ -319,94 +276,8 @@ func NewToolHandler(server *Server, capture *capture.Capture) *MCPHandler {
 	}
 }
 
-// maybeWaitForCommand blocks until an async command completes, or returns a "queued"
-// response if background execution is requested or the safety timeout is reached.
-// This is the core implementation of "Synchronous-by-Default" mode.
-func (h *ToolHandler) maybeWaitForCommand(req JSONRPCRequest, correlationID string, args json.RawMessage, queuedSummary string) JSONRPCResponse {
-	var params struct {
-		Sync       *bool `json:"sync"`
-		Wait       *bool `json:"wait"`
-		Background bool  `json:"background"`
-	}
-	lenientUnmarshal(args, &params)
-
-	// Default to sync unless Background is true or Sync/Wait explicitly set to false
-	isSync := true
-	if params.Background {
-		isSync = false
-	}
-	if params.Sync != nil && !*params.Sync {
-		isSync = false
-	}
-	if params.Wait != nil && !*params.Wait {
-		isSync = false
-	}
-
-	if !isSync {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse(queuedSummary, map[string]any{
-			"status":         "queued",
-			"correlation_id": correlationID,
-			"queued":         true,
-			"final":          false,
-		})}
-	}
-
-	// Check connectivity first to avoid useless waiting
-	if !h.capture.IsExtensionConnected() {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrNoData, "Extension is not connected", "Ensure the Gasoline extension shows 'Connected' and a tab is tracked.", h.diagnosticHint())}
-	}
-
-	// Wait for result (15s default for "Sync-by-Default" pattern).
-	// Most DOM actions (click, type) take < 500ms over long-polling.
-	// 15s is safe for most navigations while staying well under the 60s IDE timeout.
-	const initialWait = 15 * time.Second
-	const retryWait = 5 * time.Second
-	attempts := 1
-
-	cmd, found := h.capture.WaitForCommand(correlationID, initialWait)
-	if !found {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInternal, "Command not found after queuing", "Internal error — do not retry")}
-	}
-
-	// Single retry: if still pending and extension is connected, wait 5s more.
-	// This catches commands that complete just after the initial timeout.
-	if cmd.Status == "pending" && h.capture.IsExtensionConnected() {
-		attempts = 2
-		cmd, found = h.capture.WaitForCommand(correlationID, retryWait)
-		if !found {
-			return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInternal, "Command not found after retry", "Internal error — do not retry")}
-		}
-	}
-
-	// If still pending after retry, return a "still_processing" handle so the agent can poll.
-	if cmd.Status == "pending" {
-		totalWaitMs := initialWait.Milliseconds()
-		if attempts > 1 {
-			totalWaitMs += retryWait.Milliseconds()
-		}
-		stillProcessing := map[string]any{
-			"status":         "still_processing",
-			"correlation_id": correlationID,
-			"queued":         false,
-			"final":          false,
-			"elapsed_ms":     cmd.ElapsedMs(),
-			"queue_depth":    h.capture.QueueDepth(),
-			"retry_context": map[string]any{
-				"attempts":            attempts,
-				"total_wait_ms":       totalWaitMs,
-				"extension_connected": h.capture.IsExtensionConnected(),
-			},
-			"message": "Action is taking longer than expected. Polling is now required. Use observe({what:'command_result', correlation_id:'" + correlationID + "'}) to check the result.",
-		}
-		if pos := h.capture.QueuePosition(correlationID); pos >= 0 {
-			stillProcessing["queue_position"] = pos
-		}
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Action still processing", stillProcessing)}
-	}
-
-	// Result received — format using standard command result formatter
-	return h.formatCommandResult(req, *cmd, correlationID)
-}
+// maybeWaitForCommand, formatCommandResult, and related async infrastructure
+// moved to tools_async.go
 
 // handleToolCall dispatches composite tool calls by mode parameter.
 func (h *ToolHandler) HandleToolCall(req JSONRPCRequest, name string, args json.RawMessage) (JSONRPCResponse, bool) {

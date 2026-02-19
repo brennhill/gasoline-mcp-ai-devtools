@@ -556,13 +556,13 @@ func sendFastError(id any, code int, message string) {
 // handleFastPath handles MCP methods that don't require the daemon.
 // Returns true if the method was handled.
 func handleFastPath(req JSONRPCRequest, toolsList []MCPTool) bool {
-	if req.hasInvalidID() {
+	if req.HasInvalidID() {
 		sendBridgeError(nil, -32600, "Invalid Request: id must be string or number when present")
 		return true
 	}
 
 	// JSON-RPC notifications are fire-and-forget; never respond on stdio.
-	if !req.hasID() {
+	if !req.HasID() {
 		return true
 	}
 
@@ -581,7 +581,7 @@ func handleFastPath(req JSONRPCRequest, toolsList []MCPTool) bool {
 		return true
 
 	case "initialized":
-		if req.hasID() {
+		if req.HasID() {
 			sendFastResponse(req.ID, json.RawMessage(`{}`))
 			recordFastPathEvent(req.Method, true, 0)
 		}
@@ -733,7 +733,7 @@ func bridgeStdioToHTTPFast(endpoint string, state *daemonState, port int) {
 			signalResponseSent()
 			continue
 		}
-		if req.hasInvalidID() {
+		if req.HasInvalidID() {
 			sendBridgeError(nil, -32600, "Invalid Request: id must be string or number when present")
 			signalResponseSent()
 			continue
@@ -975,7 +975,7 @@ func bridgeStdioToHTTP(endpoint string) {
 			signalResponseSent()
 			continue
 		}
-		if req.hasInvalidID() {
+		if req.HasInvalidID() {
 			sendBridgeError(nil, -32600, "Invalid Request: id must be string or number when present")
 			signalResponseSent()
 			continue

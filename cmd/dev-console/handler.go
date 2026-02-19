@@ -233,7 +233,7 @@ var mcpStaticResponses = map[string]string{
 // HandleRequest processes an MCP request and returns a response.
 // Returns nil for notifications (which should not receive a response).
 func (h *MCPHandler) HandleRequest(req JSONRPCRequest) *JSONRPCResponse {
-	if req.hasInvalidID() {
+	if req.HasInvalidID() {
 		resp := JSONRPCResponse{
 			JSONRPC: "2.0",
 			ID:      nil,
@@ -246,7 +246,7 @@ func (h *MCPHandler) HandleRequest(req JSONRPCRequest) *JSONRPCResponse {
 	}
 
 	// Notifications do not get responses per JSON-RPC 2.0.
-	if !req.hasID() {
+	if !req.HasID() {
 		return nil
 	}
 
