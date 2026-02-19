@@ -94,7 +94,7 @@ func TestStructuredError_ErrorCodes_RetryableDefaults(t *testing.T) {
 		{ErrMissingParam, false, 0},
 		{ErrInternal, false, 0},
 		{ErrUnknownMode, false, 0},
-		{ErrNoData, false, 0},
+		{ErrNoData, true, 2000},
 	}
 
 	for _, tc := range testCases {

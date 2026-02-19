@@ -113,6 +113,8 @@ func RetryDefaultsForCode(code string) []func(*StructuredError) {
 		return []func(*StructuredError){WithRetryable(true), WithRetryAfterMs(1000)}
 	case ErrCursorExpired:
 		return []func(*StructuredError){WithRetryable(true), WithRetryAfterMs(500)}
+	case ErrNoData:
+		return []func(*StructuredError){WithRetryable(true), WithRetryAfterMs(2000)}
 	default:
 		return []func(*StructuredError){WithRetryable(false)}
 	}
