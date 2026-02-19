@@ -133,7 +133,7 @@ function parseGoStruct(content, typeName) {
 
     // Match: FieldName  GoType  `json:"json_name,omitempty"` // optional comment
     const fieldMatch = trimmed.match(
-      /^(\w+)\s+([\w.*\[\]]+(?:\[[\w.]+\]\w+)?)\s+`json:"([^"]+)"`(?:\s*\/\/\s*(.*))?$/
+      /^(\w+)\s+([\w.*[\]]+(?:[[\w.]+]\w+)?)\s+`json:"([^"]+)"`(?:\s*\/\/\s*(.*))?$/
     )
     if (!fieldMatch) continue
 
@@ -242,7 +242,7 @@ function generateInterface(goStruct, goComment) {
   lines.push(`export interface ${goStruct.name} {`)
 
   for (const field of goStruct.fields) {
-    const { tsType, nullable } = mapGoTypeToTS(field.goType, goStruct.name, field.jsonTag)
+    const { tsType } = mapGoTypeToTS(field.goType, goStruct.name, field.jsonTag)
     const overrideOptional = OPTIONAL_OVERRIDES[`${goStruct.name}.${field.jsonTag}`]
     const isOptional = field.omitempty || overrideOptional || false
 
@@ -288,7 +288,7 @@ function extractStructComment(content, structName) {
 /**
  * Generate the full TS file content for a Go source file.
  */
-function generateTSFile(goContent, goPath, tsPath) {
+function generateTSFile(goContent, goPath, _tsPath) {
   const structs = parseAllGoStructs(goContent)
   if (structs.length === 0) {
     throw new Error(`No structs found in ${goPath}`)
