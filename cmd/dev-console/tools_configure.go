@@ -18,6 +18,7 @@ import (
 
 	"github.com/dev-console/dev-console/internal/ai"
 	"github.com/dev-console/dev-console/internal/audit"
+	cfg "github.com/dev-console/dev-console/internal/tools/configure"
 	"github.com/dev-console/dev-console/internal/util"
 )
 
@@ -245,32 +246,10 @@ func (h *ToolHandler) toolLoadSessionContext(req JSONRPCRequest, args json.RawMe
 }
 
 func (h *ToolHandler) toolConfigureNoiseRule(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-	// Extract the noise_action field as the action for configure_noise
-	var compositeArgs struct {
-		NoiseAction string `json:"noise_action"`
+	rewrittenArgs, err := cfg.RewriteNoiseRuleArgs(args)
+	if err != nil {
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidJSON, "Invalid JSON arguments: "+err.Error(), "Fix JSON syntax and call again")}
 	}
-	if len(args) > 0 {
-		if err := json.Unmarshal(args, &compositeArgs); err != nil {
-			return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidJSON, "Invalid JSON arguments: "+err.Error(), "Fix JSON syntax and call again")}
-		}
-	}
-
-	// Rewrite args to have "action" field that toolConfigureNoise expects
-	var rawMap map[string]any
-	if len(args) > 0 {
-		if err := json.Unmarshal(args, &rawMap); err != nil {
-			return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidJSON, "Invalid JSON arguments: "+err.Error(), "Fix JSON syntax and call again")}
-		}
-	}
-	if rawMap == nil {
-		rawMap = make(map[string]any)
-	}
-	rawMap["action"] = compositeArgs.NoiseAction
-	if rawMap["action"] == "" {
-		rawMap["action"] = "list"
-	}
-	// Error impossible: rawMap contains only primitive types and strings from input
-	rewrittenArgs, _ := json.Marshal(rawMap)
 
 	return h.toolConfigureNoise(req, rewrittenArgs)
 }
@@ -467,28 +446,12 @@ func (h *ToolHandler) clearBuffer(buffer string) (any, bool) {
 	}
 }
 
-// toolDiffSessionsWrapper repackages verif_session_action → action for toolDiffSessions.
+// toolDiffSessionsWrapper repackages verif_session_action -> action for toolDiffSessions.
 func (h *ToolHandler) toolDiffSessionsWrapper(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-	var raw map[string]any
-	if len(args) > 0 {
-		if err := json.Unmarshal(args, &raw); err != nil {
-			return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidJSON, "Invalid JSON arguments: "+err.Error(), "Fix JSON syntax and call again")}
-		}
+	rewritten, err := cfg.RewriteDiffSessionsArgs(args)
+	if err != nil {
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidJSON, "Invalid JSON arguments: "+err.Error(), "Fix JSON syntax and call again")}
 	}
-	if raw == nil {
-		raw = make(map[string]any)
-	}
-	if sa, ok := raw["verif_session_action"].(string); ok && strings.TrimSpace(sa) != "" {
-		raw["action"] = sa
-	}
-
-	// configure(action:"diff_sessions") is the tool entrypoint; default to list
-	// unless a specific verif_session_action is provided.
-	if action, _ := raw["action"].(string); action == "" || action == "diff_sessions" {
-		raw["action"] = "list"
-	}
-	// Error impossible: raw contains only primitive types and strings from input
-	rewritten, _ := json.Marshal(raw)
 	return h.toolDiffSessions(req, rewritten)
 }
 
@@ -589,7 +552,7 @@ func (h *ToolHandler) toolGetAuditLog(req JSONRPCRequest, args json.RawMessage) 
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Audit log analysis", map[string]any{
 			"status":    "ok",
 			"operation": "analyze",
-			"summary":   summarizeAuditEntries(entries),
+			"summary":   cfg.SummarizeAuditEntries(entries),
 		})}
 	}
 
@@ -601,46 +564,12 @@ func (h *ToolHandler) toolGetAuditLog(req JSONRPCRequest, args json.RawMessage) 
 	})}
 }
 
-func summarizeAuditEntries(entries []audit.AuditEntry) map[string]any {
-	byTool := make(map[string]int)
-	uniqueSessions := make(map[string]struct{})
-	success := 0
-	failed := 0
-	for _, entry := range entries {
-		byTool[entry.ToolName]++
-		uniqueSessions[entry.AuditSessionID] = struct{}{}
-		if entry.Success {
-			success++
-		} else {
-			failed++
-		}
-	}
-
-	return map[string]any{
-		"total_calls":   len(entries),
-		"success_count": success,
-		"failure_count": failed,
-		"audit_session_count": len(uniqueSessions),
-		"calls_by_tool": byTool,
-	}
-}
-
-// toolConfigureStreamingWrapper repackages streaming_action → action for toolConfigureStreaming.
+// toolConfigureStreamingWrapper repackages streaming_action -> action for toolConfigureStreaming.
 func (h *ToolHandler) toolConfigureStreamingWrapper(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-	var raw map[string]any
-	if len(args) > 0 {
-		if err := json.Unmarshal(args, &raw); err != nil {
-			return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidJSON, "Invalid JSON arguments: "+err.Error(), "Fix JSON syntax and call again")}
-		}
+	rewritten, err := cfg.RewriteStreamingArgs(args)
+	if err != nil {
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidJSON, "Invalid JSON arguments: "+err.Error(), "Fix JSON syntax and call again")}
 	}
-	if raw == nil {
-		raw = make(map[string]any)
-	}
-	if sa, ok := raw["streaming_action"].(string); ok {
-		raw["action"] = sa
-	}
-	// Error impossible: raw contains only primitive types and strings from input
-	rewritten, _ := json.Marshal(raw)
 	return h.toolConfigureStreaming(req, rewritten)
 }
 
@@ -649,100 +578,25 @@ func (h *ToolHandler) toolConfigureStreamingWrapper(req JSONRPCRequest, args jso
 // ============================================
 
 func (h *ToolHandler) toolConfigureTestBoundaryStart(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-	var params struct {
-		TestID string `json:"test_id"`
-		Label  string `json:"label"`
+	result, errResp := cfg.ParseTestBoundaryStart(req.ID, args)
+	if errResp != nil {
+		return *errResp
 	}
-	if len(args) > 0 {
-		if err := json.Unmarshal(args, &params); err != nil {
-			return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidJSON, "Invalid JSON arguments: "+err.Error(), "Fix JSON syntax and call again")}
-		}
-	}
-
-	if params.TestID == "" {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrMissingParam, "Required parameter 'test_id' is missing", "Add the 'test_id' parameter", withParam("test_id"))}
-	}
-
-	label := params.Label
-	if label == "" {
-		label = "Test: " + params.TestID
-	}
-
-	responseData := map[string]any{
-		"status":  "ok",
-		"test_id": params.TestID,
-		"label":   label,
-		"message": "Test boundary started",
-	}
-
-	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Test boundary started", responseData)}
+	return cfg.BuildTestBoundaryStartResponse(req.ID, result)
 }
 
 func (h *ToolHandler) toolConfigureTestBoundaryEnd(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-	var params struct {
-		TestID string `json:"test_id"`
+	result, errResp := cfg.ParseTestBoundaryEnd(req.ID, args)
+	if errResp != nil {
+		return *errResp
 	}
-	if len(args) > 0 {
-		if err := json.Unmarshal(args, &params); err != nil {
-			return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidJSON, "Invalid JSON arguments: "+err.Error(), "Fix JSON syntax and call again")}
-		}
-	}
-
-	if params.TestID == "" {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrMissingParam, "Required parameter 'test_id' is missing", "Add the 'test_id' parameter", withParam("test_id"))}
-	}
-
-	responseData := map[string]any{
-		"status":     "ok",
-		"test_id":    params.TestID,
-		"was_active": true,
-		"message":    "Test boundary ended",
-	}
-
-	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Test boundary ended", responseData)}
+	return cfg.BuildTestBoundaryEndResponse(req.ID, result)
 }
 
 // handleDescribeCapabilities returns machine-readable tool metadata derived from ToolsList().
 func (h *ToolHandler) handleDescribeCapabilities(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	tools := h.ToolsList()
-
-	toolsMap := make(map[string]any, len(tools))
-	for _, tool := range tools {
-		props, _ := tool.InputSchema["properties"].(map[string]any)
-		required, _ := tool.InputSchema["required"].([]string)
-
-		// Extract the dispatch parameter (first required field)
-		dispatchParam := ""
-		if len(required) > 0 {
-			dispatchParam = required[0]
-		}
-
-		// Extract enum values for the dispatch parameter
-		var modes []string
-		if dispatchParam != "" {
-			if dp, ok := props[dispatchParam].(map[string]any); ok {
-				if enumVals, ok := dp["enum"].([]string); ok {
-					modes = enumVals
-				}
-			}
-		}
-
-		// Extract parameter names
-		paramNames := make([]string, 0, len(props))
-		for k := range props {
-			if k != dispatchParam {
-				paramNames = append(paramNames, k)
-			}
-		}
-		sort.Strings(paramNames)
-
-		toolsMap[tool.Name] = map[string]any{
-			"dispatch_param": dispatchParam,
-			"modes":          modes,
-			"params":         paramNames,
-			"description":    tool.Description,
-		}
-	}
+	toolsMap := cfg.BuildCapabilitiesMap(tools)
 
 	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Capabilities", map[string]any{
 		"version":          version,
