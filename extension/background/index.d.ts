@@ -5,13 +5,12 @@
  * Docs: docs/features/feature/observe/index.md
  */
 /**
- * @fileoverview Main Background Service Worker
- * Manages server communication, batchers, log handling, and pending query processing.
- * Receives captured events from content scripts, batches them with debouncing,
- * and posts to the Go server. Handles error deduplication, connection status,
- * badge updates, and on-demand query polling.
+ * @fileoverview Main Background Service Worker — State container and export hub.
+ * Owns module-level state (serverUrl, connectionStatus, etc.), debug logging,
+ * log handling, and connection management. Delegates batcher instance creation
+ * to batcher-instances.ts and sync client lifecycle to sync-manager.ts.
  */
-import type { LogEntry, WebSocketEvent, NetworkBodyPayload, EnhancedAction, PerformanceSnapshot, ChromeMessageSender } from '../types';
+import type { LogEntry, ChromeMessageSender } from '../types';
 import * as communication from './communication';
 import { saveStateSnapshot, loadStateSnapshot, listStateSnapshots, deleteStateSnapshot } from './message-handlers';
 import { handlePendingQuery as handlePendingQueryImpl, handlePilotCommand as handlePilotCommandImpl } from './pending-queries';
@@ -93,14 +92,14 @@ export declare function setDebugMode(enabled: boolean): void;
 export declare const sharedServerCircuitBreaker: communication.CircuitBreaker;
 export declare const logBatcherWithCB: communication.BatcherWithCircuitBreaker<LogEntry>;
 export declare const logBatcher: communication.Batcher<LogEntry>;
-export declare const wsBatcherWithCB: communication.BatcherWithCircuitBreaker<WebSocketEvent>;
-export declare const wsBatcher: communication.Batcher<WebSocketEvent>;
-export declare const enhancedActionBatcherWithCB: communication.BatcherWithCircuitBreaker<EnhancedAction>;
-export declare const enhancedActionBatcher: communication.Batcher<EnhancedAction>;
-export declare const networkBodyBatcherWithCB: communication.BatcherWithCircuitBreaker<NetworkBodyPayload>;
-export declare const networkBodyBatcher: communication.Batcher<NetworkBodyPayload>;
-export declare const perfBatcherWithCB: communication.BatcherWithCircuitBreaker<PerformanceSnapshot>;
-export declare const perfBatcher: communication.Batcher<PerformanceSnapshot>;
+export declare const wsBatcherWithCB: communication.BatcherWithCircuitBreaker<import("../types").WebSocketEvent>;
+export declare const wsBatcher: communication.Batcher<import("../types").WebSocketEvent>;
+export declare const enhancedActionBatcherWithCB: communication.BatcherWithCircuitBreaker<import("../types").EnhancedAction>;
+export declare const enhancedActionBatcher: communication.Batcher<import("../types").EnhancedAction>;
+export declare const networkBodyBatcherWithCB: communication.BatcherWithCircuitBreaker<import("../types").NetworkBodyPayload>;
+export declare const networkBodyBatcher: communication.Batcher<import("../types").NetworkBodyPayload>;
+export declare const perfBatcherWithCB: communication.BatcherWithCircuitBreaker<import("../types").PerformanceSnapshot>;
+export declare const perfBatcher: communication.Batcher<import("../types").PerformanceSnapshot>;
 export declare function handleLogMessage(payload: LogEntry, sender: ChromeMessageSender, tabId?: number): Promise<void>;
 export declare function handleClearLogs(): Promise<{
     success: boolean;

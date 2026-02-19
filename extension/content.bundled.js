@@ -562,7 +562,7 @@
     return true;
   }
 
-  // extension/content/runtime-message-listener.js
+  // extension/content/ui/toast.js
   var TOAST_THEMES = {
     trying: { bg: "linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)", shadow: "rgba(59, 130, 246, 0.4)" },
     success: { bg: "linear-gradient(135deg, #22c55e 0%, #16a34a 100%)", shadow: "rgba(34, 197, 94, 0.4)" },
@@ -687,8 +687,8 @@
       setTimeout(() => toast.remove(), 300);
     }, durationMs);
   }
-  var actionToastsEnabled = true;
-  var subtitlesEnabled = true;
+
+  // extension/content/ui/subtitle.js
   var subtitleEscapeHandler = null;
   function fadeOutAndRemove(elementId, delayMs) {
     const el = document.getElementById(elementId);
@@ -840,6 +840,10 @@
     void container.offsetHeight;
     container.style.opacity = "1";
   }
+
+  // extension/content/runtime-message-listener.js
+  var actionToastsEnabled = true;
+  var subtitlesEnabled = true;
   function initRuntimeMessageListener() {
     chrome.storage.local.get(["actionToastsEnabled", "subtitlesEnabled"], (result) => {
       if (result.actionToastsEnabled !== void 0)

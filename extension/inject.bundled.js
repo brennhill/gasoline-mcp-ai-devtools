@@ -1371,9 +1371,7 @@ function uninstallConsoleCapture() {
   originalConsole = {};
 }
 
-// extension/lib/ai-context.js
-var aiContextEnabled = true;
-var aiContextStateSnapshotEnabled = false;
+// extension/lib/ai-context-parsing.js
 var aiSourceMapCache = /* @__PURE__ */ new Map();
 var CHROME_FRAME_RE = /^at\s+(?:(.+?)\s+\()?(.+?):(\d+):(\d+)\)?$/;
 var FIREFOX_FRAME_RE = /^(.+?)@(.+?):(\d+):(\d+)$/;
@@ -1480,6 +1478,26 @@ async function extractSourceSnippets(frames, mockSourceMaps) {
   }
   return snippets;
 }
+function setSourceMapCache(url, map) {
+  if (!aiSourceMapCache.has(url) && aiSourceMapCache.size >= AI_CONTEXT_SOURCE_MAP_CACHE_SIZE) {
+    const firstKey = aiSourceMapCache.keys().next().value;
+    if (firstKey) {
+      aiSourceMapCache.delete(firstKey);
+    }
+  }
+  aiSourceMapCache.delete(url);
+  aiSourceMapCache.set(url, map);
+}
+function getSourceMapCache(url) {
+  return aiSourceMapCache.get(url) || null;
+}
+function getSourceMapCacheSize() {
+  return aiSourceMapCache.size;
+}
+
+// extension/lib/ai-context-enrichment.js
+var aiContextEnabled = true;
+var aiContextStateSnapshotEnabled = false;
 function detectFramework(element) {
   if (!element || typeof element !== "object")
     return null;
@@ -1665,22 +1683,6 @@ function setAiContextEnabled(enabled) {
 function setAiContextStateSnapshot(enabled) {
   aiContextStateSnapshotEnabled = enabled;
 }
-function setSourceMapCache(url, map) {
-  if (!aiSourceMapCache.has(url) && aiSourceMapCache.size >= AI_CONTEXT_SOURCE_MAP_CACHE_SIZE) {
-    const firstKey = aiSourceMapCache.keys().next().value;
-    if (firstKey) {
-      aiSourceMapCache.delete(firstKey);
-    }
-  }
-  aiSourceMapCache.delete(url);
-  aiSourceMapCache.set(url, map);
-}
-function getSourceMapCache(url) {
-  return aiSourceMapCache.get(url) || null;
-}
-function getSourceMapCacheSize() {
-  return aiSourceMapCache.size;
-}
 
 // extension/lib/exceptions.js
 var originalOnerror = null;
@@ -1750,11 +1752,18 @@ function uninstallExceptionCapture() {
   }
 }
 
-// extension/lib/websocket.js
+// extension/lib/websocket-tracking.js
 var _textEncoder = typeof TextEncoder !== "undefined" ? new TextEncoder() : null;
-var originalWebSocket = null;
-var webSocketCaptureEnabled = true;
 var webSocketCaptureMode = "medium";
+function setWebSocketCaptureModeInternal(mode) {
+  webSocketCaptureMode = mode;
+}
+function getWebSocketCaptureModeInternal() {
+  return webSocketCaptureMode;
+}
+function resetCaptureModeForTesting() {
+  webSocketCaptureMode = "medium";
+}
 function getSize(data) {
   if (typeof data === "string") {
     return _textEncoder ? _textEncoder.encode(data).length : data.length;
@@ -2022,6 +2031,78 @@ function createConnectionTracker(id, url) {
   };
   return tracker;
 }
+
+// extension/lib/websocket.js
+var originalWebSocket = null;
+var webSocketCaptureEnabled = true;
+function postLifecycleEvent(event, connectionId, urlString, extra) {
+  window.postMessage({
+    type: "GASOLINE_WS",
+    payload: {
+      type: "websocket",
+      event,
+      id: connectionId,
+      url: urlString,
+      ts: extra?.ts || (/* @__PURE__ */ new Date()).toISOString(),
+      ...extra?.code !== void 0 && { code: extra.code },
+      ...extra?.reason !== void 0 && { reason: extra.reason }
+    }
+  }, window.location.origin);
+}
+function postMessageEvent(connectionId, urlString, direction, data) {
+  const size = getSize(data);
+  const formatted = formatPayload(data);
+  const { data: truncatedData, truncated } = truncateWsMessage(formatted);
+  window.postMessage({
+    type: "GASOLINE_WS",
+    payload: {
+      type: "websocket",
+      event: "message",
+      id: connectionId,
+      url: urlString,
+      direction,
+      data: truncatedData,
+      size,
+      truncated: truncated || void 0,
+      ts: (/* @__PURE__ */ new Date()).toISOString()
+    }
+  }, window.location.origin);
+}
+function attachMessageCapture(ws, connectionId, urlString, tracker) {
+  ws.addEventListener("message", (event) => {
+    if (!webSocketCaptureEnabled)
+      return;
+    tracker.recordMessage("incoming", event.data);
+    if (!tracker.shouldSample("incoming"))
+      return;
+    postMessageEvent(connectionId, urlString, "incoming", event.data);
+  });
+  const originalSend = ws.send.bind(ws);
+  ws.send = function(data) {
+    if (webSocketCaptureEnabled) {
+      tracker.recordMessage("outgoing", data);
+    }
+    if (webSocketCaptureEnabled && tracker.shouldSample("outgoing")) {
+      postMessageEvent(connectionId, urlString, "outgoing", data);
+    }
+    return originalSend(data);
+  };
+}
+function attachLifecycleCapture(ws, connectionId, urlString) {
+  ws.addEventListener("close", (event) => {
+    if (!webSocketCaptureEnabled)
+      return;
+    postLifecycleEvent("close", connectionId, urlString, {
+      code: event.code,
+      reason: event.reason
+    });
+  });
+  ws.addEventListener("error", () => {
+    if (!webSocketCaptureEnabled)
+      return;
+    postLifecycleEvent("error", connectionId, urlString);
+  });
+}
 function installWebSocketCapture() {
   if (typeof window === "undefined")
     return;
@@ -2041,92 +2122,10 @@ function installWebSocketCapture() {
     ws.addEventListener("open", () => {
       if (!webSocketCaptureEnabled)
         return;
-      window.postMessage({
-        type: "GASOLINE_WS",
-        payload: { type: "websocket", event: "open", id: connectionId, url: urlString, ts: (/* @__PURE__ */ new Date()).toISOString() }
-      }, window.location.origin);
+      postLifecycleEvent("open", connectionId, urlString);
     });
-    ws.addEventListener("close", (event) => {
-      if (!webSocketCaptureEnabled)
-        return;
-      window.postMessage({
-        type: "GASOLINE_WS",
-        payload: {
-          type: "websocket",
-          event: "close",
-          id: connectionId,
-          url: urlString,
-          code: event.code,
-          reason: event.reason,
-          ts: (/* @__PURE__ */ new Date()).toISOString()
-        }
-      }, window.location.origin);
-    });
-    ws.addEventListener("error", () => {
-      if (!webSocketCaptureEnabled)
-        return;
-      window.postMessage({
-        type: "GASOLINE_WS",
-        payload: {
-          type: "websocket",
-          event: "error",
-          id: connectionId,
-          url: urlString,
-          ts: (/* @__PURE__ */ new Date()).toISOString()
-        }
-      }, window.location.origin);
-    });
-    ws.addEventListener("message", (event) => {
-      if (!webSocketCaptureEnabled)
-        return;
-      tracker.recordMessage("incoming", event.data);
-      if (!tracker.shouldSample("incoming"))
-        return;
-      const data = event.data;
-      const size = getSize(data);
-      const formatted = formatPayload(data);
-      const { data: truncatedData, truncated } = truncateWsMessage(formatted);
-      window.postMessage({
-        type: "GASOLINE_WS",
-        payload: {
-          type: "websocket",
-          event: "message",
-          id: connectionId,
-          url: urlString,
-          direction: "incoming",
-          data: truncatedData,
-          size,
-          truncated: truncated || void 0,
-          ts: (/* @__PURE__ */ new Date()).toISOString()
-        }
-      }, window.location.origin);
-    });
-    const originalSend = ws.send.bind(ws);
-    ws.send = function(data) {
-      if (webSocketCaptureEnabled) {
-        tracker.recordMessage("outgoing", data);
-      }
-      if (webSocketCaptureEnabled && tracker.shouldSample("outgoing")) {
-        const size = getSize(data);
-        const formatted = formatPayload(data);
-        const { data: truncatedData, truncated } = truncateWsMessage(formatted);
-        window.postMessage({
-          type: "GASOLINE_WS",
-          payload: {
-            type: "websocket",
-            event: "message",
-            id: connectionId,
-            url: urlString,
-            direction: "outgoing",
-            data: truncatedData,
-            size,
-            truncated: truncated || void 0,
-            ts: (/* @__PURE__ */ new Date()).toISOString()
-          }
-        }, window.location.origin);
-      }
-      return originalSend(data);
-    };
+    attachLifecycleCapture(ws, connectionId, urlString);
+    attachMessageCapture(ws, connectionId, urlString, tracker);
     return ws;
   }
   GasolineWebSocket.prototype = OriginalWS.prototype;
@@ -2156,92 +2155,12 @@ function adoptEarlyConnections() {
     const hasOpened = conn.events.some((e) => e.type === "open");
     if (hasOpened && webSocketCaptureEnabled) {
       const openEvent = conn.events.find((e) => e.type === "open");
-      window.postMessage({
-        type: "GASOLINE_WS",
-        payload: {
-          type: "websocket",
-          event: "open",
-          id: connectionId,
-          url: urlString,
-          ts: openEvent ? new Date(openEvent.ts).toISOString() : (/* @__PURE__ */ new Date()).toISOString()
-        }
-      }, window.location.origin);
+      postLifecycleEvent("open", connectionId, urlString, {
+        ts: openEvent ? new Date(openEvent.ts).toISOString() : void 0
+      });
     }
-    ws.addEventListener("close", (event) => {
-      if (!webSocketCaptureEnabled)
-        return;
-      window.postMessage({
-        type: "GASOLINE_WS",
-        payload: {
-          type: "websocket",
-          event: "close",
-          id: connectionId,
-          url: urlString,
-          code: event.code,
-          reason: event.reason,
-          ts: (/* @__PURE__ */ new Date()).toISOString()
-        }
-      }, window.location.origin);
-    });
-    ws.addEventListener("error", () => {
-      if (!webSocketCaptureEnabled)
-        return;
-      window.postMessage({
-        type: "GASOLINE_WS",
-        payload: { type: "websocket", event: "error", id: connectionId, url: urlString, ts: (/* @__PURE__ */ new Date()).toISOString() }
-      }, window.location.origin);
-    });
-    ws.addEventListener("message", (event) => {
-      if (!webSocketCaptureEnabled)
-        return;
-      tracker.recordMessage("incoming", event.data);
-      if (!tracker.shouldSample("incoming"))
-        return;
-      const data = event.data;
-      const size = getSize(data);
-      const formatted = formatPayload(data);
-      const { data: truncatedData, truncated } = truncateWsMessage(formatted);
-      window.postMessage({
-        type: "GASOLINE_WS",
-        payload: {
-          type: "websocket",
-          event: "message",
-          id: connectionId,
-          url: urlString,
-          direction: "incoming",
-          data: truncatedData,
-          size,
-          truncated: truncated || void 0,
-          ts: (/* @__PURE__ */ new Date()).toISOString()
-        }
-      }, window.location.origin);
-    });
-    const originalSend = ws.send.bind(ws);
-    ws.send = function(data) {
-      if (webSocketCaptureEnabled) {
-        tracker.recordMessage("outgoing", data);
-      }
-      if (webSocketCaptureEnabled && tracker.shouldSample("outgoing")) {
-        const size = getSize(data);
-        const formatted = formatPayload(data);
-        const { data: truncatedData, truncated } = truncateWsMessage(formatted);
-        window.postMessage({
-          type: "GASOLINE_WS",
-          payload: {
-            type: "websocket",
-            event: "message",
-            id: connectionId,
-            url: urlString,
-            direction: "outgoing",
-            data: truncatedData,
-            size,
-            truncated: truncated || void 0,
-            ts: (/* @__PURE__ */ new Date()).toISOString()
-          }
-        }, window.location.origin);
-      }
-      return originalSend(data);
-    };
+    attachLifecycleCapture(ws, connectionId, urlString);
+    attachMessageCapture(ws, connectionId, urlString, tracker);
   }
   if (adopted > 0) {
     console.log(`[Gasoline] Adopted ${adopted} early WebSocket connection(s)`);
@@ -2250,13 +2169,13 @@ function adoptEarlyConnections() {
   delete window.__GASOLINE_EARLY_WS__;
 }
 function setWebSocketCaptureMode(mode) {
-  webSocketCaptureMode = mode;
+  setWebSocketCaptureModeInternal(mode);
 }
 function setWebSocketCaptureEnabled(enabled) {
   webSocketCaptureEnabled = enabled;
 }
 function getWebSocketCaptureMode() {
-  return webSocketCaptureMode;
+  return getWebSocketCaptureModeInternal();
 }
 function uninstallWebSocketCapture() {
   if (typeof window === "undefined")
@@ -2269,7 +2188,7 @@ function uninstallWebSocketCapture() {
 function resetForTesting() {
   uninstallWebSocketCapture();
   webSocketCaptureEnabled = false;
-  webSocketCaptureMode = "medium";
+  resetCaptureModeForTesting();
   originalWebSocket = null;
   if (typeof window !== "undefined") {
     delete window.__GASOLINE_ORIGINAL_WS__;
@@ -2870,17 +2789,6 @@ function setDeferralEnabled(enabled) {
   deferralEnabled = enabled;
 }
 
-// extension/lib/timeout-utils.js
-function createDeferredPromise() {
-  let resolve;
-  let reject;
-  const promise = new Promise((res, rej) => {
-    resolve = res;
-    reject = rej;
-  });
-  return { promise, resolve, reject };
-}
-
 // extension/lib/link-health.js
 function extractUniqueLinks(domainFilter) {
   const linkElements = document.querySelectorAll("a[href]");
@@ -3096,26 +3004,18 @@ function chunkArray(arr, chunkSize) {
   return chunks;
 }
 
-// extension/inject/message-handlers.js
-var pageNonce = "";
-if (typeof document !== "undefined" && typeof document.querySelector === "function") {
-  const nonceEl = document.querySelector("script[data-gasoline-nonce]");
-  if (nonceEl) {
-    pageNonce = nonceEl.getAttribute("data-gasoline-nonce") || "";
-  }
+// extension/lib/timeout-utils.js
+function createDeferredPromise() {
+  let resolve;
+  let reject;
+  const promise = new Promise((res, rej) => {
+    resolve = res;
+    reject = rej;
+  });
+  return { promise, resolve, reject };
 }
-var VALID_SETTINGS = /* @__PURE__ */ new Set([
-  "setNetworkWaterfallEnabled",
-  "setPerformanceMarksEnabled",
-  "setActionReplayEnabled",
-  "setWebSocketCaptureEnabled",
-  "setWebSocketCaptureMode",
-  "setPerformanceSnapshotEnabled",
-  "setDeferralEnabled",
-  "setNetworkBodyCaptureEnabled",
-  "setServerUrl"
-]);
-var VALID_STATE_ACTIONS = /* @__PURE__ */ new Set(["capture", "restore"]);
+
+// extension/inject/execute-js.js
 function serializeObject2(obj, depth, seen) {
   if (seen.has(obj))
     return "[Circular]";
@@ -3234,18 +3134,20 @@ Tip: Run small test scripts to isolate the issue, then build up complexity.`
   });
   return deferred.promise;
 }
-async function handleLinkHealthQuery(data) {
-  try {
-    const params = data.params || {};
-    const result = await checkLinkHealth(params);
-    return result;
-  } catch (err) {
-    return {
-      error: "link_health_error",
-      message: err.message || "Failed to check link health"
-    };
-  }
-}
+
+// extension/inject/settings.js
+var VALID_SETTINGS = /* @__PURE__ */ new Set([
+  "setNetworkWaterfallEnabled",
+  "setPerformanceMarksEnabled",
+  "setActionReplayEnabled",
+  "setWebSocketCaptureEnabled",
+  "setWebSocketCaptureMode",
+  "setPerformanceSnapshotEnabled",
+  "setDeferralEnabled",
+  "setNetworkBodyCaptureEnabled",
+  "setServerUrl"
+]);
+var VALID_STATE_ACTIONS = /* @__PURE__ */ new Set(["capture", "restore"]);
 function isValidSettingPayload(data) {
   if (!VALID_SETTINGS.has(data.setting)) {
     console.warn("[Gasoline] Invalid setting:", data.setting);
@@ -3260,46 +3162,6 @@ function isValidSettingPayload(data) {
     return false;
   }
   return true;
-}
-function handleLinkHealthMessage(data) {
-  handleLinkHealthQuery(data).then((result) => {
-    window.postMessage({ type: "GASOLINE_LINK_HEALTH_RESPONSE", requestId: data.requestId, result }, window.location.origin);
-  }).catch((err) => {
-    window.postMessage({
-      type: "GASOLINE_LINK_HEALTH_RESPONSE",
-      requestId: data.requestId,
-      result: { error: "link_health_error", message: err.message || "Failed to check link health" }
-    }, window.location.origin);
-  });
-}
-function installMessageListener(captureStateFn, restoreStateFn) {
-  if (typeof window === "undefined")
-    return;
-  const messageHandlers = {
-    GASOLINE_SETTING: (data) => {
-      const settingData = data;
-      if (isValidSettingPayload(settingData))
-        handleSetting(settingData);
-    },
-    GASOLINE_STATE_COMMAND: (data) => handleStateCommand(data, captureStateFn, restoreStateFn),
-    GASOLINE_EXECUTE_JS: (data) => handleExecuteJs(data),
-    GASOLINE_A11Y_QUERY: (data) => handleA11yQuery(data),
-    GASOLINE_DOM_QUERY: (data) => handleDomQuery(data),
-    GASOLINE_GET_WATERFALL: (data) => handleGetWaterfall(data),
-    GASOLINE_LINK_HEALTH_QUERY: (data) => handleLinkHealthMessage(data)
-  };
-  window.addEventListener("message", (event) => {
-    if (event.source !== window || event.origin !== window.location.origin)
-      return;
-    if (pageNonce && event.data?._nonce !== pageNonce)
-      return;
-    const msgType = event.data?.type;
-    if (!msgType)
-      return;
-    const handler = messageHandlers[msgType];
-    if (handler)
-      handler(event.data);
-  });
 }
 var SETTING_HANDLERS = {
   setNetworkWaterfallEnabled: (data) => setNetworkWaterfallEnabled(data.enabled),
@@ -3367,6 +3229,67 @@ function handleStateCommand(data, captureStateFn, restoreStateFn) {
     messageId,
     result
   }, window.location.origin);
+}
+
+// extension/inject/message-handlers.js
+var pageNonce = "";
+if (typeof document !== "undefined" && typeof document.querySelector === "function") {
+  const nonceEl = document.querySelector("script[data-gasoline-nonce]");
+  if (nonceEl) {
+    pageNonce = nonceEl.getAttribute("data-gasoline-nonce") || "";
+  }
+}
+async function handleLinkHealthQuery(data) {
+  try {
+    const params = data.params || {};
+    const result = await checkLinkHealth(params);
+    return result;
+  } catch (err) {
+    return {
+      error: "link_health_error",
+      message: err.message || "Failed to check link health"
+    };
+  }
+}
+function handleLinkHealthMessage(data) {
+  handleLinkHealthQuery(data).then((result) => {
+    window.postMessage({ type: "GASOLINE_LINK_HEALTH_RESPONSE", requestId: data.requestId, result }, window.location.origin);
+  }).catch((err) => {
+    window.postMessage({
+      type: "GASOLINE_LINK_HEALTH_RESPONSE",
+      requestId: data.requestId,
+      result: { error: "link_health_error", message: err.message || "Failed to check link health" }
+    }, window.location.origin);
+  });
+}
+function installMessageListener(captureStateFn, restoreStateFn) {
+  if (typeof window === "undefined")
+    return;
+  const messageHandlers = {
+    GASOLINE_SETTING: (data) => {
+      const settingData = data;
+      if (isValidSettingPayload(settingData))
+        handleSetting(settingData);
+    },
+    GASOLINE_STATE_COMMAND: (data) => handleStateCommand(data, captureStateFn, restoreStateFn),
+    GASOLINE_EXECUTE_JS: (data) => handleExecuteJs(data),
+    GASOLINE_A11Y_QUERY: (data) => handleA11yQuery(data),
+    GASOLINE_DOM_QUERY: (data) => handleDomQuery(data),
+    GASOLINE_GET_WATERFALL: (data) => handleGetWaterfall(data),
+    GASOLINE_LINK_HEALTH_QUERY: (data) => handleLinkHealthMessage(data)
+  };
+  window.addEventListener("message", (event) => {
+    if (event.source !== window || event.origin !== window.location.origin)
+      return;
+    if (pageNonce && event.data?._nonce !== pageNonce)
+      return;
+    const msgType = event.data?.type;
+    if (!msgType)
+      return;
+    const handler = messageHandlers[msgType];
+    if (handler)
+      handler(event.data);
+  });
 }
 function handleExecuteJs(data) {
   const { requestId, script, timeoutMs } = data;

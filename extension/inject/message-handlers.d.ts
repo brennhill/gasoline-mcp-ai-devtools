@@ -1,13 +1,10 @@
 /**
- * Purpose: Executes in-page actions and query handlers within the page context.
- * Docs: docs/features/feature/interact-explore/index.md
- * Docs: docs/features/feature/query-dom/index.md
+ * @fileoverview Message Handlers - Dispatches messages from content script to
+ * specialized modules for settings, state management, JavaScript execution,
+ * and DOM/accessibility queries.
  */
-/**
- * @fileoverview Message Handlers - Handles messages from content script including
- * settings, state management, JavaScript execution, and DOM/accessibility queries.
- */
-import type { BrowserStateSnapshot, ExecuteJsResult } from '../types/index';
+import type { BrowserStateSnapshot } from '../types/index';
+export { executeJavaScript, safeSerializeForExecute } from './execute-js';
 /**
  * Link health query request message from content script
  */
@@ -16,15 +13,9 @@ interface LinkHealthQueryRequestMessageData {
     requestId: number | string;
     params?: Record<string, unknown>;
 }
-export declare function safeSerializeForExecute(value: unknown, depth?: number, seen?: WeakSet<object>): unknown;
-/**
- * Execute arbitrary JavaScript in the page context with timeout handling.
- */
-export declare function executeJavaScript(script: string, timeoutMs?: number): Promise<ExecuteJsResult>;
 /**
  * Handle link health check request from content script
  */
 export declare function handleLinkHealthQuery(data: LinkHealthQueryRequestMessageData): Promise<unknown>;
 export declare function installMessageListener(captureStateFn: () => BrowserStateSnapshot, restoreStateFn: (state: BrowserStateSnapshot, includeUrl: boolean) => unknown): void;
-export {};
 //# sourceMappingURL=message-handlers.d.ts.map
