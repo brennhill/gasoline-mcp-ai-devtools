@@ -117,7 +117,8 @@ func (h *ToolHandler) MaybeWaitForCommand(req JSONRPCRequest, correlationID stri
 				"total_wait_ms":       totalWaitMs,
 				"extension_connected": h.capture.IsExtensionConnected(),
 			},
-			"message": "Action is taking longer than expected. Polling is now required. Use observe({what:'command_result', correlation_id:'" + correlationID + "'}) to check the result.",
+			"suggested_retry_ms": 2000,
+			"message":            "Action is taking longer than expected. Polling is now required. Use observe({what:'command_result', correlation_id:'" + correlationID + "'}) to check the result.",
 		}
 		if pos := h.capture.QueuePosition(correlationID); pos >= 0 {
 			stillProcessing["queue_position"] = pos
