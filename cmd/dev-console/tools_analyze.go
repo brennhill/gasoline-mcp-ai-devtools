@@ -17,9 +17,9 @@ import (
 	"time"
 
 	"github.com/dev-console/dev-console/internal/analysis"
-	"github.com/dev-console/dev-console/internal/util"
-
 	"github.com/dev-console/dev-console/internal/queries"
+	"github.com/dev-console/dev-console/internal/tools/observe"
+	"github.com/dev-console/dev-console/internal/util"
 )
 
 const maxLinkValidationURLs = 1000
@@ -45,18 +45,18 @@ var analyzeHandlers = map[string]AnalyzeHandler{
 		return h.toolAnalyzePageSummary(req, args)
 	},
 
-	// Moved from observe
+	// Delegated to internal/tools/observe
 	"performance": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-		return h.toolCheckPerformance(req, args)
+		return observe.CheckPerformance(h, req, args)
 	},
 	"accessibility": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-		return h.toolRunA11yAudit(req, args)
+		return observe.RunA11yAudit(h, req, args)
 	},
 	"error_clusters": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-		return h.toolAnalyzeErrors(req)
+		return observe.AnalyzeErrors(h, req, args)
 	},
 	"history": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-		return h.toolAnalyzeHistory(req, args)
+		return observe.AnalyzeHistory(h, req, args)
 	},
 	"security_audit": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 		return h.toolSecurityAudit(req, args)

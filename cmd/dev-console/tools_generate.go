@@ -30,9 +30,9 @@ var generateValidParams = map[string]map[string]bool{
 	"csp":               {"mode": true, "include_report_uri": true, "exclude_origins": true, "save_to": true},
 	"sri":               {"resource_types": true, "origins": true, "save_to": true},
 	"sarif":             {"scope": true, "include_passes": true, "save_to": true},
-	"visual_test":       {"test_name": true, "session": true, "save_to": true},
-	"annotation_report": {"session": true, "save_to": true},
-	"annotation_issues": {"session": true, "save_to": true},
+	"visual_test":       {"test_name": true, "annot_session": true, "save_to": true},
+	"annotation_report": {"annot_session": true, "save_to": true},
+	"annotation_issues": {"annot_session": true, "save_to": true},
 	"test_from_context":  {"context": true, "error_id": true, "include_mocks": true, "output_format": true, "save_to": true},
 	"test_heal":          {"action": true, "test_file": true, "test_dir": true, "broken_selectors": true, "auto_apply": true, "save_to": true},
 	"test_classify":      {"action": true, "failure": true, "failures": true, "save_to": true},
@@ -449,7 +449,7 @@ func (h *ToolHandler) toolExportSARIF(req JSONRPCRequest, args json.RawMessage) 
 	var a11yResult json.RawMessage
 	if h.capture.IsExtensionConnected() {
 		var err error
-		a11yResult, err = h.executeA11yQuery(arguments.Scope, nil, nil, false)
+		a11yResult, err = h.ExecuteA11yQuery(arguments.Scope, nil, nil, false)
 		if err != nil {
 			a11yResult = json.RawMessage("{}")
 		}
@@ -621,6 +621,11 @@ func extractOrigin(urlStr string) string {
 		endIdx++
 	}
 	return urlStr[:endIdx]
+}
+
+// containsIgnoreCase checks if s contains substr (case-insensitive).
+func containsIgnoreCase(s, substr string) bool {
+	return strings.Contains(strings.ToLower(s), strings.ToLower(substr))
 }
 
 // resourceTypeToCSPDirective maps content-type to CSP directive

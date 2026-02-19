@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"strings"
 	"testing"
+
+	"github.com/dev-console/dev-console/internal/tools/observe"
 )
 
 func TestGetBrowserErrors_InvalidScope(t *testing.T) {
@@ -12,7 +14,7 @@ func TestGetBrowserErrors_InvalidScope(t *testing.T) {
 	h := newTestToolHandler()
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`)}
 	args, _ := json.Marshal(map[string]any{"scope": "bogus"})
-	resp := h.toolGetBrowserErrors(req, args)
+	resp := observe.GetBrowserErrors(h, req, args)
 
 	var result MCPToolResult
 	if err := json.Unmarshal(resp.Result, &result); err != nil {
@@ -33,7 +35,7 @@ func TestGetBrowserErrors_ValidScopes(t *testing.T) {
 
 	for _, scope := range []string{"current_page", "all", ""} {
 		args, _ := json.Marshal(map[string]any{"scope": scope})
-		resp := h.toolGetBrowserErrors(req, args)
+		resp := observe.GetBrowserErrors(h, req, args)
 		var result MCPToolResult
 		if err := json.Unmarshal(resp.Result, &result); err != nil {
 			t.Fatalf("scope=%q unmarshal: %v", scope, err)
@@ -49,7 +51,7 @@ func TestGetBrowserLogs_InvalidScope(t *testing.T) {
 	h := newTestToolHandler()
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`)}
 	args, _ := json.Marshal(map[string]any{"scope": "invalid"})
-	resp := h.toolGetBrowserLogs(req, args)
+	resp := observe.GetBrowserLogs(h, req, args)
 
 	var result MCPToolResult
 	if err := json.Unmarshal(resp.Result, &result); err != nil {
@@ -67,7 +69,7 @@ func TestGetBrowserLogs_ValidScopes(t *testing.T) {
 
 	for _, scope := range []string{"current_page", "all", ""} {
 		args, _ := json.Marshal(map[string]any{"scope": scope})
-		resp := h.toolGetBrowserLogs(req, args)
+		resp := observe.GetBrowserLogs(h, req, args)
 		var result MCPToolResult
 		if err := json.Unmarshal(resp.Result, &result); err != nil {
 			t.Fatalf("scope=%q unmarshal: %v", scope, err)
@@ -84,7 +86,7 @@ func TestGetBrowserErrors_ScopeInResponse(t *testing.T) {
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`)}
 
 	args, _ := json.Marshal(map[string]any{"scope": "all"})
-	resp := h.toolGetBrowserErrors(req, args)
+	resp := observe.GetBrowserErrors(h, req, args)
 	var result MCPToolResult
 	if err := json.Unmarshal(resp.Result, &result); err != nil {
 		t.Fatalf("unmarshal: %v", err)

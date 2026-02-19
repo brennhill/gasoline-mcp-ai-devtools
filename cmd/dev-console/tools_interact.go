@@ -15,6 +15,7 @@ import (
 
 	"github.com/dev-console/dev-console/internal/capture"
 	"github.com/dev-console/dev-console/internal/queries"
+	"github.com/dev-console/dev-console/internal/tools/observe"
 )
 
 // interactHandler is the function signature for interact action handlers.
@@ -193,7 +194,7 @@ func (h *ToolHandler) dispatchInteractAction(req JSONRPCRequest, args json.RawMe
 // handleScreenshotAlias provides backward compatibility for clients that call
 // interact({action:"screenshot"}). The canonical API remains observe({what:"screenshot"}).
 func (h *ToolHandler) handleScreenshotAlias(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-	return h.toolGetScreenshot(req, args)
+	return observe.GetScreenshot(h, req, args)
 }
 
 // queueComposableSubtitle queues a subtitle command as a side effect of another action.

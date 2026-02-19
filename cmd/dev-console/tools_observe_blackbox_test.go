@@ -13,26 +13,12 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+
+	"github.com/dev-console/dev-console/internal/tools/observe"
 	"time"
 
 	"github.com/dev-console/dev-console/internal/capture"
 )
-
-// ============================================
-// Test Helpers
-// ============================================
-
-// extractJSONFromText extracts the JSON portion from MCP text response.
-// MCP responses have format: "Summary line\n{json}" or just "{json}"
-func extractJSONFromText(text string) string {
-	// Find the first '{' or '[' which starts the JSON
-	for i, ch := range text {
-		if ch == '{' || ch == '[' {
-			return text[i:]
-		}
-	}
-	return text
-}
 
 // ============================================
 // Test Fixtures - Realistic Browser Data
@@ -134,7 +120,7 @@ func TestObserveErrors_EndToEnd(t *testing.T) {
 	}
 
 	th := handler.toolHandler.(*ToolHandler)
-	resp := th.toolGetBrowserErrors(mcpReq, json.RawMessage(`{}`))
+	resp := observe.GetBrowserErrors(th,mcpReq, json.RawMessage(`{}`))
 
 	// Step 3: Verify errors are returned
 	var result map[string]any
@@ -195,7 +181,7 @@ func TestObserveLogs_EndToEnd(t *testing.T) {
 	// Call observe logs
 	mcpReq := JSONRPCRequest{JSONRPC: "2.0", ID: 1}
 	th := handler.toolHandler.(*ToolHandler)
-	resp := th.toolGetBrowserLogs(mcpReq, json.RawMessage(`{}`))
+	resp := observe.GetBrowserLogs(th,mcpReq, json.RawMessage(`{}`))
 
 	var result map[string]any
 	json.Unmarshal(resp.Result, &result)
@@ -230,7 +216,7 @@ func TestObserveLogs_LevelFilter(t *testing.T) {
 
 	// Filter by level=warn
 	th := handler.toolHandler.(*ToolHandler)
-	resp := th.toolGetBrowserLogs(JSONRPCRequest{JSONRPC: "2.0", ID: 1}, json.RawMessage(`{"level":"warn"}`))
+	resp := observe.GetBrowserLogs(th,JSONRPCRequest{JSONRPC: "2.0", ID: 1}, json.RawMessage(`{"level":"warn"}`))
 
 	var result map[string]any
 	json.Unmarshal(resp.Result, &result)
@@ -263,7 +249,7 @@ func TestObserveNetworkWaterfall_EndToEnd(t *testing.T) {
 
 	// Call observe network_waterfall
 	th := handler.toolHandler.(*ToolHandler)
-	resp := th.toolGetNetworkWaterfall(JSONRPCRequest{JSONRPC: "2.0", ID: 1}, json.RawMessage(`{}`))
+	resp := observe.GetNetworkWaterfall(th,JSONRPCRequest{JSONRPC: "2.0", ID: 1}, json.RawMessage(`{}`))
 
 	var result map[string]any
 	json.Unmarshal(resp.Result, &result)
@@ -308,7 +294,7 @@ func TestObserveNetworkWaterfall_URLFilter(t *testing.T) {
 
 	// Filter by "api.example.com"
 	th := handler.toolHandler.(*ToolHandler)
-	resp := th.toolGetNetworkWaterfall(JSONRPCRequest{JSONRPC: "2.0", ID: 1}, json.RawMessage(`{"url":"api.example.com"}`))
+	resp := observe.GetNetworkWaterfall(th,JSONRPCRequest{JSONRPC: "2.0", ID: 1}, json.RawMessage(`{"url":"api.example.com"}`))
 
 	var result map[string]any
 	json.Unmarshal(resp.Result, &result)
@@ -341,7 +327,7 @@ func TestObserveExtensionLogs_EndToEnd(t *testing.T) {
 
 	// Call observe extension_logs
 	th := handler.toolHandler.(*ToolHandler)
-	resp := th.toolGetExtensionLogs(JSONRPCRequest{JSONRPC: "2.0", ID: 1}, json.RawMessage(`{}`))
+	resp := observe.GetExtensionLogs(th,JSONRPCRequest{JSONRPC: "2.0", ID: 1}, json.RawMessage(`{}`))
 
 	var result map[string]any
 	json.Unmarshal(resp.Result, &result)
@@ -381,7 +367,7 @@ func TestObservePage_ExtractsFromWaterfall(t *testing.T) {
 
 	// Call observe page
 	th := handler.toolHandler.(*ToolHandler)
-	resp := th.toolGetPageInfo(JSONRPCRequest{JSONRPC: "2.0", ID: 1}, json.RawMessage(`{}`))
+	resp := observe.GetPageInfo(th,JSONRPCRequest{JSONRPC: "2.0", ID: 1}, json.RawMessage(`{}`))
 
 	var result map[string]any
 	json.Unmarshal(resp.Result, &result)
@@ -418,7 +404,7 @@ func TestObservePage_PrioritizesTrackedURL(t *testing.T) {
 	// Simulate extension sync with FRESH tracked tab URL
 	// This is what the extension sends via /sync endpoint
 	syncReq := httptest.NewRequest("POST", "/sync", bytes.NewReader([]byte(`{
-		"session_id": "test-session",
+		"ext_session_id": "test-session",
 		"settings": {
 			"pilot_enabled": true,
 			"tracking_enabled": true,
@@ -440,7 +426,7 @@ func TestObservePage_PrioritizesTrackedURL(t *testing.T) {
 
 	// Call observe page - should return tracked URL, NOT waterfall URL
 	th := handler.toolHandler.(*ToolHandler)
-	resp := th.toolGetPageInfo(JSONRPCRequest{JSONRPC: "2.0", ID: 1}, json.RawMessage(`{}`))
+	resp := observe.GetPageInfo(th,JSONRPCRequest{JSONRPC: "2.0", ID: 1}, json.RawMessage(`{}`))
 
 	var result map[string]any
 	json.Unmarshal(resp.Result, &result)
@@ -491,7 +477,7 @@ func TestObserveNetworkBodies_EndToEnd(t *testing.T) {
 
 	// Call observe network_bodies
 	th := handler.toolHandler.(*ToolHandler)
-	resp := th.toolGetNetworkBodies(JSONRPCRequest{JSONRPC: "2.0", ID: 1}, json.RawMessage(`{}`))
+	resp := observe.GetNetworkBodies(th,JSONRPCRequest{JSONRPC: "2.0", ID: 1}, json.RawMessage(`{}`))
 
 	var result map[string]any
 	json.Unmarshal(resp.Result, &result)
@@ -541,7 +527,7 @@ func TestObserveWebSocketEvents_EndToEnd(t *testing.T) {
 
 	// Call observe websocket_events
 	th := handler.toolHandler.(*ToolHandler)
-	resp := th.toolGetWSEvents(JSONRPCRequest{JSONRPC: "2.0", ID: 1}, json.RawMessage(`{}`))
+	resp := observe.GetWSEvents(th,JSONRPCRequest{JSONRPC: "2.0", ID: 1}, json.RawMessage(`{}`))
 
 	var result map[string]any
 	json.Unmarshal(resp.Result, &result)

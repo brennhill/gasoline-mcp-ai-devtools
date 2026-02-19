@@ -8,6 +8,7 @@ import (
 
 	"github.com/dev-console/dev-console/internal/capture"
 	"github.com/dev-console/dev-console/internal/performance"
+	"github.com/dev-console/dev-console/internal/tools/observe"
 )
 
 // ============================================
@@ -93,7 +94,7 @@ func TestToolAnalyzeErrors_NoErrors(t *testing.T) {
 	env := newObserveTestEnv(t)
 
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: 1}
-	resp := env.handler.toolAnalyzeErrors(req)
+	resp := observe.AnalyzeErrors(env.handler, req, nil)
 
 	result := parseToolResult(t, resp)
 	data := parseResponseJSON(t, result)
@@ -125,7 +126,7 @@ func TestToolAnalyzeErrors_WithClusters(t *testing.T) {
 	})
 
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: 1}
-	resp := env.handler.toolAnalyzeErrors(req)
+	resp := observe.AnalyzeErrors(env.handler, req, nil)
 
 	result := parseToolResult(t, resp)
 	data := parseResponseJSON(t, result)
@@ -155,7 +156,7 @@ func TestToolAnalyzeHistory_Empty(t *testing.T) {
 
 	args := json.RawMessage(`{"what":"history"}`)
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: 1}
-	resp := env.handler.toolAnalyzeHistory(req, args)
+	resp := observe.AnalyzeHistory(env.handler, req, args)
 
 	result := parseToolResult(t, resp)
 	data := parseResponseJSON(t, result)
@@ -177,7 +178,7 @@ func TestToolAnalyzeHistory_WithNavigations(t *testing.T) {
 
 	args := json.RawMessage(`{"what":"history"}`)
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: 1}
-	resp := env.handler.toolAnalyzeHistory(req, args)
+	resp := observe.AnalyzeHistory(env.handler, req, args)
 
 	result := parseToolResult(t, resp)
 	data := parseResponseJSON(t, result)
@@ -197,7 +198,7 @@ func TestToolGetScreenshot_TrackingDisabled(t *testing.T) {
 
 	args := json.RawMessage(`{"what":"screenshot"}`)
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: 1}
-	resp := env.handler.toolGetScreenshot(req, args)
+	resp := observe.GetScreenshot(env.handler, req, args)
 
 	result := parseToolResult(t, resp)
 	if !result.IsError {
@@ -219,7 +220,7 @@ func TestToolRunA11yAudit_TrackingDisabled(t *testing.T) {
 
 	args := json.RawMessage(`{"what":"accessibility"}`)
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: 1}
-	resp := env.handler.toolRunA11yAudit(req, args)
+	resp := observe.RunA11yAudit(env.handler, req, args)
 
 	result := parseToolResult(t, resp)
 	if !result.IsError {
