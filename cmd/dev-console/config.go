@@ -154,32 +154,36 @@ func parseAndValidateFlags() *serverConfig {
 }
 
 // initUploadSecurity validates upload security configuration from CLI flags.
-// When --enable-os-upload-automation is set without --upload-dir, defaults to ~/gasoline-upload-dir.
+// Always defaults to ~/gasoline-upload-dir when no --upload-dir is specified.
+// When --enable-os-upload-automation is NOT set and the dir can't be created, falls back gracefully.
 func initUploadSecurity(enabled bool, dir string, denyPatterns multiFlag) {
-	if enabled || dir != "" {
-		// Default upload dir when OS automation is enabled but no dir specified
-		if enabled && dir == "" {
-			home, err := os.UserHomeDir()
-			if err != nil {
+	if dir == "" {
+		home, err := os.UserHomeDir()
+		if err != nil {
+			if enabled {
 				fmt.Fprintf(os.Stderr, "[gasoline] Cannot determine home directory for default upload dir: %v\n", err)
 				os.Exit(1)
 			}
-			dir = filepath.Join(home, "gasoline-upload-dir")
-			if err := os.MkdirAll(dir, 0o755); err != nil {
+			uploadSecurityConfig = &UploadSecurity{}
+			return
+		}
+		dir = filepath.Join(home, "gasoline-upload-dir")
+		if err := os.MkdirAll(dir, 0o755); err != nil {
+			if enabled {
 				fmt.Fprintf(os.Stderr, "[gasoline] Cannot create default upload dir %s: %v\n", dir, err)
 				os.Exit(1)
 			}
-			fmt.Fprintf(os.Stderr, "[gasoline] Using default upload dir: %s\n", dir)
+			uploadSecurityConfig = &UploadSecurity{}
+			return
 		}
-		sec, err := ValidateUploadDir(dir, denyPatterns)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "[gasoline] Upload security validation failed: %v\n", err)
-			os.Exit(1)
-		}
-		uploadSecurityConfig = sec
-	} else {
-		uploadSecurityConfig = &UploadSecurity{}
+		fmt.Fprintf(os.Stderr, "[gasoline] Using default upload dir: %s\n", dir)
 	}
+	sec, err := ValidateUploadDir(dir, denyPatterns)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "[gasoline] Upload security validation failed: %v\n", err)
+		os.Exit(1)
+	}
+	uploadSecurityConfig = sec
 }
 
 // validatePort ensures the port is within the valid TCP range.

@@ -284,22 +284,22 @@ document.getElementById('file-input').addEventListener('change', function(event)
         csrf_expected = csrf_tokens.get(session, "")
         csrf_ok = csrf_sent != "" and csrf_sent == csrf_expected
         if not csrf_ok:
-            self._send_html(403, "<h1>403 CSRF token expired</h1><p>CSRF token mismatch.</p>")
+            self._send_html(403, "<!DOCTYPE html><html><head><title>403 CSRF</title></head><body><h1>403 CSRF token expired</h1><p>CSRF token mismatch.</p></body></html>")
             return
 
         # Check file
         file_entry = files.get("Filedata")
         if not file_entry:
-            self._send_html(422, "<h1>422 No file uploaded</h1><p>The Filedata field is required.</p>")
+            self._send_html(422, "<!DOCTYPE html><html><head><title>422 No File</title></head><body><h1>422 No file uploaded</h1><p>The Filedata field is required.</p></body></html>")
             return
         if len(file_entry["data"]) == 0:
-            self._send_html(422, "<h1>422 Empty file</h1><p>File must not be empty.</p>")
+            self._send_html(422, "<!DOCTYPE html><html><head><title>422 Empty File</title></head><body><h1>422 Empty file</h1><p>File must not be empty.</p></body></html>")
             return
 
         # Check required field: title
         title = fields.get("title", "")
         if not title:
-            self._send_html(422, "<h1>422 Missing title</h1><p>The title field is required.</p>")
+            self._send_html(422, "<!DOCTYPE html><html><head><title>422 Missing Title</title></head><body><h1>422 Missing title</h1><p>The title field is required.</p></body></html>")
             return
 
         # Success
