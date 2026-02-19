@@ -57,10 +57,7 @@ func InteractToolSchema() mcp.MCPTool {
 				},
 				"frame": map[string]any{
 					"description": "Target iframe: CSS selector, 0-based index, or \"all\"",
-					"oneOf": []map[string]any{
-						{"type": "string"},
-						{"type": "number"},
-					},
+					"type":        "string",
 				},
 				"duration_ms": map[string]any{
 					"type":        "number",

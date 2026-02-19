@@ -129,8 +129,8 @@ func TestToolsAnalyzeSchema_HasFrameParam(t *testing.T) {
 	if !ok {
 		t.Fatal("frame property is not an object")
 	}
-	if _, ok := frameMap["oneOf"]; !ok {
-		t.Fatal("frame property should declare oneOf (string | number)")
+	if frameMap["type"] != "string" {
+		t.Fatal("frame property should be type string")
 	}
 }
 

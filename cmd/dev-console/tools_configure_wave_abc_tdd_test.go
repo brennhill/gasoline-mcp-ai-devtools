@@ -57,99 +57,29 @@ func TestWaveB_ConfigureSchema_AuditLogOperationPropertyPresent(t *testing.T) {
 		t.Fatal("configure schema should expose 'operation' key")
 	}
 
-	server, err := NewServer(t.TempDir()+"/schema-wave-b.jsonl", 10)
-	if err != nil {
-		t.Fatalf("NewServer: %v", err)
+	opRaw, ok := props["operation"].(map[string]any)
+	if !ok {
+		t.Fatal("configure schema should include operation property")
 	}
-	t.Cleanup(func() { server.Close() })
-	cap := capture.NewCapture()
-	tools := NewToolHandler(server, cap).toolHandler.ToolsList()
-
-	var oneOf []map[string]any
-	for _, tool := range tools {
-		if tool.Name != "configure" {
-			continue
-		}
-		candidates, ok := tool.InputSchema["oneOf"].([]map[string]any)
-		if !ok {
-			t.Fatal("configure schema should include action-discriminated oneOf")
-		}
-		oneOf = candidates
-		break
+	enumVals, ok := opRaw["enum"].([]string)
+	if !ok {
+		t.Fatal("operation enum should be []string")
 	}
-	if len(oneOf) == 0 {
-		t.Fatal("configure oneOf branches not found")
-	}
-
-	foundAuditBranch := false
-	for _, branch := range oneOf {
-		branchProps, ok := branch["properties"].(map[string]any)
-		if !ok {
-			continue
+	got := strings.Join(enumVals, ",")
+	for _, want := range []string{"analyze", "report", "clear"} {
+		if !strings.Contains(got, want) {
+			t.Fatalf("operation enum missing %q: %v", want, enumVals)
 		}
-		actionSpec, ok := branchProps["action"].(map[string]any)
-		if !ok || actionSpec["const"] != "audit_log" {
-			continue
-		}
-		foundAuditBranch = true
-		opRaw, ok := branchProps["operation"].(map[string]any)
-		if !ok {
-			t.Fatal("audit_log schema branch should include operation enum")
-		}
-		enumVals, ok := opRaw["enum"].([]string)
-		if !ok {
-			t.Fatal("audit_log operation enum should be []string")
-		}
-		got := strings.Join(enumVals, ",")
-		for _, want := range []string{"analyze", "report", "clear"} {
-			if !strings.Contains(got, want) {
-				t.Fatalf("audit_log operation enum missing %q: %v", want, enumVals)
-			}
-		}
-		break
-	}
-	if !foundAuditBranch {
-		t.Fatal("configure oneOf missing audit_log branch")
 	}
 }
 
 func TestWaveB_ConfigureSchema_AuditLogAllowsTelemetryMode(t *testing.T) {
 	t.Parallel()
 
-	server, err := NewServer(t.TempDir()+"/schema-wave-b-telemetry.jsonl", 10)
-	if err != nil {
-		t.Fatalf("NewServer: %v", err)
+	props := configureSchemaPropertiesForTest(t)
+	if _, ok := props["telemetry_mode"]; !ok {
+		t.Fatal("configure schema should include telemetry_mode property")
 	}
-	t.Cleanup(func() { server.Close() })
-	cap := capture.NewCapture()
-	tools := NewToolHandler(server, cap).toolHandler.ToolsList()
-
-	for _, tool := range tools {
-		if tool.Name != "configure" {
-			continue
-		}
-		oneOf, ok := tool.InputSchema["oneOf"].([]map[string]any)
-		if !ok {
-			t.Fatal("configure schema should include oneOf")
-		}
-		for _, branch := range oneOf {
-			props, ok := branch["properties"].(map[string]any)
-			if !ok {
-				continue
-			}
-			actionSpec, ok := props["action"].(map[string]any)
-			if !ok || actionSpec["const"] != "audit_log" {
-				continue
-			}
-			if _, ok := props["telemetry_mode"]; !ok {
-				t.Fatal("audit_log configure schema branch should allow telemetry_mode override")
-			}
-			return
-		}
-		t.Fatal("configure oneOf missing audit_log branch")
-	}
-
-	t.Fatal("configure tool not found in schema")
 }
 
 func TestWaveB_AuditLogOperationAnalyzeAndClear(t *testing.T) {

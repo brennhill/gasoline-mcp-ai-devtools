@@ -447,61 +447,11 @@ func (h *MCPHandler) allowedToolArgumentKeys(toolName string, rawArgs map[string
 			continue
 		}
 
-		if oneOf, ok := tool.InputSchema["oneOf"].([]map[string]any); ok && len(oneOf) > 0 {
-			action := ""
-			if raw, exists := rawArgs["action"]; exists {
-				_ = json.Unmarshal(raw, &action)
-			}
-			if strings.TrimSpace(action) != "" {
-				if keys := schemaKeysForAction(oneOf, action); len(keys) > 0 {
-					return keys
-				}
-			}
-			return schemaKeysFromOneOf(oneOf)
-		}
-
 		keys := make(map[string]struct{})
 		props, ok := tool.InputSchema["properties"].(map[string]any)
 		if !ok {
 			return keys
 		}
-		for k := range props {
-			keys[k] = struct{}{}
-		}
-		return keys
-	}
-	return nil
-}
-
-func schemaKeysFromOneOf(oneOf []map[string]any) map[string]struct{} {
-	keys := make(map[string]struct{})
-	for _, branch := range oneOf {
-		props, ok := branch["properties"].(map[string]any)
-		if !ok {
-			continue
-		}
-		for k := range props {
-			keys[k] = struct{}{}
-		}
-	}
-	return keys
-}
-
-func schemaKeysForAction(oneOf []map[string]any, action string) map[string]struct{} {
-	for _, branch := range oneOf {
-		props, ok := branch["properties"].(map[string]any)
-		if !ok {
-			continue
-		}
-		actionSpec, ok := props["action"].(map[string]any)
-		if !ok {
-			continue
-		}
-		if actionConst, ok := actionSpec["const"].(string); !ok || actionConst != action {
-			continue
-		}
-
-		keys := make(map[string]struct{})
 		for k := range props {
 			keys[k] = struct{}{}
 		}
