@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/dev-console/dev-console/internal/queries"
+	act "github.com/dev-console/dev-console/internal/tools/interact"
 )
 
 func (h *ToolHandler) handleListInteractive(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
@@ -87,22 +88,8 @@ func (h *ToolHandler) buildElementIndexFromResponse(resp JSONRPCResponse) {
 	}
 }
 
-// extractElementList walks nested result JSON to find the elements array.
-func extractElementList(data map[string]any) []any {
-	// Direct elements field
-	if elems, ok := data["elements"].([]any); ok {
-		return elems
-	}
-	// Nested in result field (json.Unmarshal into map[string]any always produces map[string]any)
-	if resultData, ok := data["result"].(map[string]any); ok {
-		if elems, ok := resultData["elements"].([]any); ok {
-			return elems
-		}
-		// Recurse into nested result (command result wrapping)
-		return extractElementList(resultData)
-	}
-	return nil
-}
+// extractElementList — delegated to internal/tools/interact package.
+var extractElementList = act.ExtractElementList
 
 // resolveIndexToSelector looks up a selector from the element index store.
 func (h *ToolHandler) resolveIndexToSelector(index int) (string, bool) {

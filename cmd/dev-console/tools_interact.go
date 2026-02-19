@@ -15,6 +15,7 @@ import (
 
 	"github.com/dev-console/dev-console/internal/capture"
 	"github.com/dev-console/dev-console/internal/queries"
+	act "github.com/dev-console/dev-console/internal/tools/interact"
 	"github.com/dev-console/dev-console/internal/tools/observe"
 )
 
@@ -71,13 +72,8 @@ func (h *ToolHandler) getValidInteractActions() string {
 	return strings.Join(sorted, ", ")
 }
 
-// domPrimitiveActions is the set of actions routed to handleDOMPrimitive.
-var domPrimitiveActions = map[string]bool{
-	"click": true, "type": true, "select": true, "check": true,
-	"get_text": true, "get_value": true, "get_attribute": true,
-	"set_attribute": true, "focus": true, "scroll_to": true,
-	"wait_for": true, "key_press": true, "paste": true,
-}
+// domPrimitiveActions delegates to the interact package.
+var domPrimitiveActions = act.DOMPrimitiveActions
 
 // recordAIAction records an AI-driven action to the enhanced actions buffer.
 // This allows distinguishing AI actions from human actions in observe(actions).
@@ -103,48 +99,11 @@ func (h *ToolHandler) recordAIEnhancedAction(action capture.EnhancedAction) {
 	h.capture.AddEnhancedActions([]capture.EnhancedAction{action})
 }
 
-// domActionToReproType maps interact DOM action names to reproduction-compatible types.
-// Actions not in this map are recorded as-is (with "dom_" prefix for audit trail).
-var domActionToReproType = map[string]string{
-	"click":     "click",
-	"type":      "input",
-	"select":    "select",
-	"check":     "click",
-	"key_press": "keypress",
-	"scroll_to": "scroll_element",
-	"focus":     "focus",
-}
+// domActionToReproType delegates to the interact package.
+var domActionToReproType = act.DOMActionToReproType
 
-// parseSelectorForReproduction converts an interact-tool selector string into
-// a selectors map compatible with the reproduction formatter.
-// Handles semantic selectors (text=Submit, role=button) and CSS selectors.
-func parseSelectorForReproduction(selector string) map[string]any {
-	selectors := map[string]any{}
-	if idx := strings.Index(selector, "="); idx > 0 {
-		prefix := selector[:idx]
-		value := selector[idx+1:]
-		switch prefix {
-		case "text":
-			selectors["text"] = value
-		case "role":
-			selectors["role"] = map[string]any{"role": value}
-		case "label", "aria-label":
-			selectors["ariaLabel"] = value
-		case "placeholder":
-			selectors["ariaLabel"] = value
-		default:
-			selectors["cssPath"] = selector
-		}
-	} else {
-		// Plain CSS selector — detect #id vs general CSS
-		if strings.HasPrefix(selector, "#") && !strings.ContainsAny(selector[1:], " >.+~[]:#") {
-			selectors["id"] = selector[1:]
-		} else {
-			selectors["cssPath"] = selector
-		}
-	}
-	return selectors
-}
+// parseSelectorForReproduction delegates to the interact package.
+var parseSelectorForReproduction = act.ParseSelectorForReproduction
 
 // toolInteract dispatches interact requests based on the 'action' parameter.
 func (h *ToolHandler) toolInteract(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
@@ -248,10 +207,8 @@ func (h *ToolHandler) handlePilotHighlight(req JSONRPCRequest, args json.RawMess
 	return h.MaybeWaitForCommand(req, correlationID, args, "Highlight queued")
 }
 
-// validWorldValues is the set of accepted values for the execute_js 'world' parameter.
-var validWorldValues = map[string]bool{
-	"auto": true, "main": true, "isolated": true,
-}
+// validWorldValues delegates to the interact package.
+var validWorldValues = act.ValidWorldValues
 
 func (h *ToolHandler) handlePilotExecuteJS(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	var params struct {
@@ -294,13 +251,8 @@ func (h *ToolHandler) handlePilotExecuteJS(req JSONRPCRequest, args json.RawMess
 	return h.MaybeWaitForCommand(req, correlationID, args, "Command queued")
 }
 
-// truncatePreview returns s unchanged if shorter than maxLen, otherwise truncates with "...".
-func truncateToLen(s string, maxLen int) string {
-	if len(s) <= maxLen {
-		return s
-	}
-	return s[:maxLen] + "..."
-}
+// truncateToLen delegates to the interact package.
+var truncateToLen = act.TruncateToLen
 
 func (h *ToolHandler) handleBrowserActionNavigate(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	var params struct {
@@ -458,18 +410,8 @@ func (h *ToolHandler) handleBrowserActionNewTab(req JSONRPCRequest, args json.Ra
 // to bypass CSP restrictions on pages like Gmail.
 // ============================================
 
-// domActionRequiredParams maps DOM actions to their required parameter name and error guidance.
-var domActionRequiredParams = map[string]struct {
-	field   string
-	message string
-	retry   string
-}{
-	"type":          {"text", "Required parameter 'text' is missing for type action", "Add the 'text' parameter with the text to type"},
-	"paste":         {"text", "Required parameter 'text' is missing for paste action", "Add the 'text' parameter with the text to paste"},
-	"select":        {"value", "Required parameter 'value' is missing for select action", "Add the 'value' parameter with the option value to select"},
-	"get_attribute": {"name", "Required parameter 'name' is missing for get_attribute action", "Add the 'name' parameter with the attribute name"},
-	"set_attribute": {"name", "Required parameter 'name' is missing for set_attribute action", "Add the 'name' parameter with the attribute name"},
-}
+// domActionRequiredParams delegates to the interact package.
+var domActionRequiredParams = act.DOMActionRequiredParams
 
 func (h *ToolHandler) handleDOMPrimitive(req JSONRPCRequest, args json.RawMessage, action string) JSONRPCResponse {
 	var params struct {
@@ -573,7 +515,7 @@ func validateDOMActionParams(req JSONRPCRequest, action, text, value, name strin
 		return JSONRPCResponse{}, false
 	}
 	var paramValue string
-	switch rule.field {
+	switch rule.Field {
 	case "text":
 		paramValue = text
 	case "value":
@@ -582,7 +524,7 @@ func validateDOMActionParams(req JSONRPCRequest, action, text, value, name strin
 		paramValue = name
 	}
 	if paramValue == "" {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrMissingParam, rule.message, rule.retry, withParam(rule.field))}, true
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrMissingParam, rule.Message, rule.Retry, withParam(rule.Field))}, true
 	}
 	return JSONRPCResponse{}, false
 }

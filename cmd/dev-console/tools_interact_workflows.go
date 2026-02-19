@@ -6,16 +6,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"time"
+
+	act "github.com/dev-console/dev-console/internal/tools/interact"
 )
 
-// WorkflowStep records a single step's outcome within a workflow trace.
-type WorkflowStep struct {
-	Action        string `json:"action"`
-	CorrelationID string `json:"correlation_id,omitempty"`
-	Status        string `json:"status"` // "success", "error", "skipped"
-	TimingMs      int64  `json:"timing_ms"`
-	Detail        string `json:"detail,omitempty"`
-}
+// WorkflowStep — type alias delegated to internal/tools/interact package.
+type WorkflowStep = act.WorkflowStep
 
 // handleNavigateAndWaitFor navigates to a URL, waits for a CSS selector to appear,
 // and optionally returns page content — all in one call.
@@ -99,12 +95,8 @@ func (h *ToolHandler) handleNavigateAndWaitFor(req JSONRPCRequest, args json.Raw
 	return workflowResult(req, "navigate_and_wait_for", trace, navResp, workflowStart)
 }
 
-// FormField represents a single field to fill in a form workflow.
-type FormField struct {
-	Selector string `json:"selector"`
-	Value    string `json:"value"`
-	Index    *int   `json:"index,omitempty"`
-}
+// FormField — type alias delegated to internal/tools/interact package.
+type FormField = act.FormField
 
 // handleFillFormAndSubmit fills multiple form fields and clicks a submit button.
 func (h *ToolHandler) handleFillFormAndSubmit(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
@@ -250,83 +242,21 @@ func (h *ToolHandler) handleRunA11yAndExportSARIF(req JSONRPCRequest, args json.
 	return workflowResult(req, "run_a11y_and_export_sarif", trace, sarifResp, workflowStart)
 }
 
-// ---- Workflow helpers ----
+// ---- Workflow helpers — delegated to internal/tools/interact package ----
 
-// isErrorResponse checks if a JSONRPCResponse represents an error.
+// isErrorResponse — delegated to internal/tools/interact package.
+// Note: uses internal/mcp types via act package. The local type aliases (JSONRPCResponse etc.)
+// are compatible since they alias the same underlying mcp types.
 func isErrorResponse(resp JSONRPCResponse) bool {
-	if resp.Error != nil {
-		return true
-	}
-	var result MCPToolResult
-	if err := json.Unmarshal(resp.Result, &result); err == nil {
-		return result.IsError
-	}
-	return false
+	return act.IsErrorResponse(resp)
 }
 
-// responseStatus returns "success" or "error" based on the response.
+// responseStatus — delegated to internal/tools/interact package.
 func responseStatus(resp JSONRPCResponse) string {
-	if isErrorResponse(resp) {
-		return "error"
-	}
-	return "success"
+	return act.ResponseStatus(resp)
 }
 
-// workflowResult wraps the final step's response with workflow metadata (trace + timing).
-// On failure, the response uses isError=true so the MCP envelope correctly signals an error.
+// workflowResult — delegated to internal/tools/interact package.
 func workflowResult(req JSONRPCRequest, workflow string, trace []WorkflowStep, lastResp JSONRPCResponse, start time.Time) JSONRPCResponse {
-	totalMs := time.Since(start).Milliseconds()
-
-	// Count steps by status
-	successCount := 0
-	for _, s := range trace {
-		if s.Status == "success" {
-			successCount++
-		}
-	}
-	allSuccess := successCount == len(trace)
-	failed := isErrorResponse(lastResp)
-
-	status := "success"
-	if failed {
-		status = "failed"
-	} else if !allSuccess {
-		status = "partial_failure"
-	}
-
-	var summary string
-	if failed {
-		summary = fmt.Sprintf("%s failed at step %d/%d (%dms)", workflow, len(trace), len(trace), totalMs)
-	} else {
-		summary = fmt.Sprintf("%s completed (%d/%d steps succeeded, %dms)", workflow, successCount, len(trace), totalMs)
-	}
-
-	data := map[string]any{
-		"workflow":   workflow,
-		"status":     status,
-		"trace":      trace,
-		"total_ms":   totalMs,
-		"steps":      len(trace),
-		"successful": successCount,
-	}
-
-	// Extract the failing step's error detail for context
-	if failed {
-		var lastResult MCPToolResult
-		if json.Unmarshal(lastResp.Result, &lastResult) == nil && len(lastResult.Content) > 0 {
-			data["error_detail"] = lastResult.Content[0].Text
-		} else if lastResp.Error != nil {
-			data["error_detail"] = lastResp.Error.Message
-		}
-	}
-
-	dataJSON, _ := json.Marshal(data)
-	resultText := summary + "\n" + string(dataJSON)
-
-	result := MCPToolResult{
-		Content: []MCPContentBlock{{Type: "text", Text: resultText}},
-		IsError: failed,
-	}
-	resultJSON, _ := json.Marshal(result)
-	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: json.RawMessage(resultJSON)}
+	return act.WorkflowResult(req, workflow, trace, lastResp, start)
 }

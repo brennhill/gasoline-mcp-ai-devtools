@@ -698,20 +698,4 @@ func TestToolsValidateDOMActionParams(t *testing.T) {
 	}
 }
 
-// ============================================
-// truncateToLen Tests
-// ============================================
-
-func TestToolsTruncateToLen(t *testing.T) {
-	t.Parallel()
-
-	if got := truncateToLen("short", 10); got != "short" {
-		t.Errorf("truncateToLen('short', 10) = %q, want 'short'", got)
-	}
-	if got := truncateToLen("longstring", 4); got != "long..." {
-		t.Errorf("truncateToLen('longstring', 4) = %q, want 'long...'", got)
-	}
-	if got := truncateToLen("", 10); got != "" {
-		t.Errorf("truncateToLen('', 10) = %q, want ''", got)
-	}
-}
+// truncateToLen pure function tests live in internal/tools/interact/selector_test.go.
