@@ -2,12 +2,13 @@
  * Purpose: Owns settings.ts runtime behavior and integration logic.
  * Docs: docs/features/feature/observe/index.md
  */
+import { SettingName } from '../lib/constants.js';
 /**
  * Handle WebSocket mode change
  */
 export function handleWebSocketModeChange(mode) {
     chrome.storage.local.set({ webSocketCaptureMode: mode });
-    chrome.runtime.sendMessage({ type: 'setWebSocketCaptureMode', mode });
+    chrome.runtime.sendMessage({ type: SettingName.WEBSOCKET_CAPTURE_MODE, mode });
 }
 /**
  * Initialize the WebSocket mode selector

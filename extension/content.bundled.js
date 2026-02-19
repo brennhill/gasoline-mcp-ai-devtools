@@ -32,6 +32,58 @@
     return ready;
   }
 
+  // extension/lib/timeouts.js
+  function readTestScale() {
+    const globalScale = typeof globalThis !== "undefined" && typeof globalThis.GASOLINE_TEST_TIMEOUT_SCALE === "number" ? globalThis.GASOLINE_TEST_TIMEOUT_SCALE : null;
+    if (globalScale !== null)
+      return globalScale;
+    if (typeof process !== "undefined" && process.env) {
+      const raw = process.env.GASOLINE_TEST_TIMEOUT_SCALE || process.env.GASOLINE_TEST_TIME_SCALE;
+      if (raw) {
+        const parsed = Number(raw);
+        if (Number.isFinite(parsed))
+          return parsed;
+      }
+    }
+    return 1;
+  }
+  function scaleTimeout(ms) {
+    const scale = readTestScale();
+    if (!Number.isFinite(scale) || scale <= 0 || scale === 1) {
+      return ms;
+    }
+    return Math.max(5, Math.round(ms * scale));
+  }
+
+  // extension/lib/constants.js
+  var ASYNC_COMMAND_TIMEOUT_MS = scaleTimeout(6e4);
+  var AI_CONTEXT_PIPELINE_TIMEOUT_MS = scaleTimeout(3e3);
+  var SettingName = {
+    NETWORK_WATERFALL: "setNetworkWaterfallEnabled",
+    PERFORMANCE_MARKS: "setPerformanceMarksEnabled",
+    ACTION_REPLAY: "setActionReplayEnabled",
+    WEBSOCKET_CAPTURE: "setWebSocketCaptureEnabled",
+    WEBSOCKET_CAPTURE_MODE: "setWebSocketCaptureMode",
+    PERFORMANCE_SNAPSHOT: "setPerformanceSnapshotEnabled",
+    DEFERRAL: "setDeferralEnabled",
+    NETWORK_BODY_CAPTURE: "setNetworkBodyCaptureEnabled",
+    ACTION_TOASTS: "setActionToastsEnabled",
+    SUBTITLES: "setSubtitlesEnabled",
+    SERVER_URL: "setServerUrl"
+  };
+  var VALID_SETTING_NAMES = new Set(Object.values(SettingName));
+  var INJECT_FORWARDED_SETTINGS = /* @__PURE__ */ new Set([
+    SettingName.NETWORK_WATERFALL,
+    SettingName.PERFORMANCE_MARKS,
+    SettingName.ACTION_REPLAY,
+    SettingName.WEBSOCKET_CAPTURE,
+    SettingName.WEBSOCKET_CAPTURE_MODE,
+    SettingName.PERFORMANCE_SNAPSHOT,
+    SettingName.DEFERRAL,
+    SettingName.NETWORK_BODY_CAPTURE,
+    SettingName.SERVER_URL
+  ]);
+
   // extension/content/script-injection.js
   var injected = false;
   var pageNonce = crypto.getRandomValues(new Uint8Array(16)).reduce((s, b) => s + b.toString(16).padStart(2, "0"), "");
@@ -42,12 +94,12 @@
     return injected;
   }
   var SYNC_SETTINGS = [
-    { storageKey: "webSocketCaptureEnabled", messageType: "setWebSocketCaptureEnabled" },
-    { storageKey: "webSocketCaptureMode", messageType: "setWebSocketCaptureMode", isMode: true },
-    { storageKey: "networkWaterfallEnabled", messageType: "setNetworkWaterfallEnabled" },
-    { storageKey: "performanceMarksEnabled", messageType: "setPerformanceMarksEnabled" },
-    { storageKey: "actionReplayEnabled", messageType: "setActionReplayEnabled" },
-    { storageKey: "networkBodyCaptureEnabled", messageType: "setNetworkBodyCaptureEnabled" }
+    { storageKey: "webSocketCaptureEnabled", messageType: SettingName.WEBSOCKET_CAPTURE },
+    { storageKey: "webSocketCaptureMode", messageType: SettingName.WEBSOCKET_CAPTURE_MODE, isMode: true },
+    { storageKey: "networkWaterfallEnabled", messageType: SettingName.NETWORK_WATERFALL },
+    { storageKey: "performanceMarksEnabled", messageType: SettingName.PERFORMANCE_MARKS },
+    { storageKey: "actionReplayEnabled", messageType: SettingName.ACTION_REPLAY },
+    { storageKey: "networkBodyCaptureEnabled", messageType: SettingName.NETWORK_BODY_CAPTURE }
   ];
   function syncStoredSettings() {
     const storageKeys = SYNC_SETTINGS.map((s) => s.storageKey);
@@ -307,48 +359,11 @@
     }
   }
 
-  // extension/lib/timeouts.js
-  function readTestScale() {
-    const globalScale = typeof globalThis !== "undefined" && typeof globalThis.GASOLINE_TEST_TIMEOUT_SCALE === "number" ? globalThis.GASOLINE_TEST_TIMEOUT_SCALE : null;
-    if (globalScale !== null)
-      return globalScale;
-    if (typeof process !== "undefined" && process.env) {
-      const raw = process.env.GASOLINE_TEST_TIMEOUT_SCALE || process.env.GASOLINE_TEST_TIME_SCALE;
-      if (raw) {
-        const parsed = Number(raw);
-        if (Number.isFinite(parsed))
-          return parsed;
-      }
-    }
-    return 1;
-  }
-  function scaleTimeout(ms) {
-    const scale = readTestScale();
-    if (!Number.isFinite(scale) || scale <= 0 || scale === 1) {
-      return ms;
-    }
-    return Math.max(5, Math.round(ms * scale));
-  }
-
-  // extension/lib/constants.js
-  var ASYNC_COMMAND_TIMEOUT_MS = scaleTimeout(6e4);
-  var AI_CONTEXT_PIPELINE_TIMEOUT_MS = scaleTimeout(3e3);
-
   // extension/content/message-handlers.js
   function postToInject(data) {
     window.postMessage({ ...data, _nonce: getPageNonce() }, window.location.origin);
   }
-  var TOGGLE_MESSAGES = /* @__PURE__ */ new Set([
-    "setNetworkWaterfallEnabled",
-    "setPerformanceMarksEnabled",
-    "setActionReplayEnabled",
-    "setWebSocketCaptureEnabled",
-    "setWebSocketCaptureMode",
-    "setPerformanceSnapshotEnabled",
-    "setDeferralEnabled",
-    "setNetworkBodyCaptureEnabled",
-    "setServerUrl"
-  ]);
+  var TOGGLE_MESSAGES = INJECT_FORWARDED_SETTINGS;
   function isValidBackgroundSender(sender) {
     return typeof sender.id === "string" && sender.id === chrome.runtime.id;
   }
@@ -408,9 +423,9 @@
     if (!TOGGLE_MESSAGES.has(message.type))
       return;
     const payload = { type: "GASOLINE_SETTING", setting: message.type };
-    if (message.type === "setWebSocketCaptureMode") {
+    if (message.type === SettingName.WEBSOCKET_CAPTURE_MODE) {
       payload.mode = message.mode;
-    } else if (message.type === "setServerUrl") {
+    } else if (message.type === SettingName.SERVER_URL) {
       payload.url = message.url;
     } else {
       payload.enabled = message.enabled;
@@ -872,11 +887,11 @@
         showSubtitle(msg.text ?? "");
         return false;
       },
-      setActionToastsEnabled: (msg) => {
+      [SettingName.ACTION_TOASTS]: (msg) => {
         actionToastsEnabled = msg.enabled;
         return false;
       },
-      setSubtitlesEnabled: (msg) => {
+      [SettingName.SUBTITLES]: (msg) => {
         subtitlesEnabled = msg.enabled;
         return false;
       }

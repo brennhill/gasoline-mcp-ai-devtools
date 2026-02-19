@@ -11,6 +11,7 @@
  * Design: Toggle controls use CSS class 'active' for state. Domain filters are
  * stored as newline-separated strings, parsed to arrays on save.
  */
+import { SettingName } from './lib/constants.js';
 const DEFAULT_SERVER_URL = 'http://localhost:7890';
 /**
  * Load saved options
@@ -79,10 +80,10 @@ export function saveOptions() {
         const message = document.getElementById('saved-message');
         message?.classList.add('show');
         // Notify background of changes so it can update its in-memory state
-        chrome.runtime.sendMessage({ type: 'setServerUrl', url: serverUrl });
+        chrome.runtime.sendMessage({ type: SettingName.SERVER_URL, url: serverUrl });
         chrome.runtime.sendMessage({ type: 'setScreenshotOnError', enabled: screenshotOnError });
         chrome.runtime.sendMessage({ type: 'setSourceMapEnabled', enabled: sourceMapEnabled });
-        chrome.runtime.sendMessage({ type: 'setDeferralEnabled', enabled: deferralEnabled });
+        chrome.runtime.sendMessage({ type: SettingName.DEFERRAL, enabled: deferralEnabled });
         chrome.runtime.sendMessage({ type: 'setDebugMode', enabled: debugMode });
         // Hide message after 2 seconds
         setTimeout(() => {

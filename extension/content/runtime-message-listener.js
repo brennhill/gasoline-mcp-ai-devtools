@@ -1,4 +1,5 @@
 // runtime-message-listener.ts — Message routing between background and content contexts.
+import { SettingName } from '../lib/constants.js';
 import { isValidBackgroundSender, handlePing, handleToggleMessage, forwardHighlightMessage, handleStateCommand, handleExecuteJs, handleExecuteQuery, handleA11yQuery, handleDomQuery, handleGetNetworkWaterfall, handleLinkHealthQuery } from './message-handlers.js';
 import { showActionToast } from './ui/toast.js';
 import { showSubtitle, toggleRecordingWatermark } from './ui/subtitle.js';
@@ -39,11 +40,11 @@ export function initRuntimeMessageListener() {
             showSubtitle(msg.text ?? '');
             return false;
         },
-        setActionToastsEnabled: (msg) => {
+        [SettingName.ACTION_TOASTS]: (msg) => {
             actionToastsEnabled = msg.enabled;
             return false;
         },
-        setSubtitlesEnabled: (msg) => {
+        [SettingName.SUBTITLES]: (msg) => {
             subtitlesEnabled = msg.enabled;
             return false;
         }

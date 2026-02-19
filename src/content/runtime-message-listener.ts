@@ -12,6 +12,7 @@
  */
 
 import type { ContentMessage, WebSocketCaptureMode } from '../types'
+import { SettingName } from '../lib/constants'
 import {
   isValidBackgroundSender,
   handlePing,
@@ -72,11 +73,11 @@ export function initRuntimeMessageListener(): void {
       showSubtitle((msg as { text?: string }).text ?? '')
       return false
     },
-    setActionToastsEnabled: (msg) => {
+    [SettingName.ACTION_TOASTS]: (msg) => {
       actionToastsEnabled = (msg as { enabled: boolean }).enabled
       return false
     },
-    setSubtitlesEnabled: (msg) => {
+    [SettingName.SUBTITLES]: (msg) => {
       subtitlesEnabled = (msg as { enabled: boolean }).enabled
       return false
     }

@@ -3,6 +3,7 @@
  * Docs: docs/features/feature/interact-explore/index.md
  * Docs: docs/features/feature/query-dom/index.md
  */
+import { SettingName } from '../lib/constants.js';
 /** Whether inject.bundled.js has been injected into the page (MAIN world) */
 let injected = false;
 /** Per-page-load nonce for authenticating postMessages to inject.js */
@@ -19,12 +20,12 @@ export function isInjectScriptLoaded() {
 }
 /** Settings that need to be synced to inject script on page load */
 const SYNC_SETTINGS = [
-    { storageKey: 'webSocketCaptureEnabled', messageType: 'setWebSocketCaptureEnabled' },
-    { storageKey: 'webSocketCaptureMode', messageType: 'setWebSocketCaptureMode', isMode: true },
-    { storageKey: 'networkWaterfallEnabled', messageType: 'setNetworkWaterfallEnabled' },
-    { storageKey: 'performanceMarksEnabled', messageType: 'setPerformanceMarksEnabled' },
-    { storageKey: 'actionReplayEnabled', messageType: 'setActionReplayEnabled' },
-    { storageKey: 'networkBodyCaptureEnabled', messageType: 'setNetworkBodyCaptureEnabled' }
+    { storageKey: 'webSocketCaptureEnabled', messageType: SettingName.WEBSOCKET_CAPTURE },
+    { storageKey: 'webSocketCaptureMode', messageType: SettingName.WEBSOCKET_CAPTURE_MODE, isMode: true },
+    { storageKey: 'networkWaterfallEnabled', messageType: SettingName.NETWORK_WATERFALL },
+    { storageKey: 'performanceMarksEnabled', messageType: SettingName.PERFORMANCE_MARKS },
+    { storageKey: 'actionReplayEnabled', messageType: SettingName.ACTION_REPLAY },
+    { storageKey: 'networkBodyCaptureEnabled', messageType: SettingName.NETWORK_BODY_CAPTURE }
 ];
 /**
  * Sync stored settings to the inject script after it loads.

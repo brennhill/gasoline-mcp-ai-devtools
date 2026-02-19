@@ -24,6 +24,7 @@ import type {
   NetworkBodyPayload,
   PerformanceSnapshot
 } from '../types'
+import { SettingName } from '../lib/constants'
 
 // =============================================================================
 // TYPE DEFINITIONS
@@ -536,7 +537,7 @@ function handleSetServerUrl(url: string, sendResponse: SendResponse, deps: Messa
   deps.debugLog('settings', `Server URL changed to: ${deps.getServerUrl()}`)
 
   // Broadcast to all content scripts
-  deps.forwardToAllContentScripts({ type: 'setServerUrl', url: deps.getServerUrl() })
+  deps.forwardToAllContentScripts({ type: SettingName.SERVER_URL, url: deps.getServerUrl() })
 
   // Re-check connection with new URL
   deps.checkConnectionAndUpdate()

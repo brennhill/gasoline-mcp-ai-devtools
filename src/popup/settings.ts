@@ -9,13 +9,14 @@
  */
 
 import type { WebSocketCaptureMode } from '../types'
+import { SettingName } from '../lib/constants'
 
 /**
  * Handle WebSocket mode change
  */
 export function handleWebSocketModeChange(mode: WebSocketCaptureMode): void {
   chrome.storage.local.set({ webSocketCaptureMode: mode })
-  chrome.runtime.sendMessage({ type: 'setWebSocketCaptureMode', mode })
+  chrome.runtime.sendMessage({ type: SettingName.WEBSOCKET_CAPTURE_MODE, mode })
 }
 
 /**

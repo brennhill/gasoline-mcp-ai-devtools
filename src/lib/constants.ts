@@ -101,3 +101,53 @@ export const ACTIONABLE_KEYS: ReadonlySet<string> = new Set([
 export const MAX_LONG_TASKS = 50
 export const MAX_SLOWEST_REQUESTS = 3
 export const MAX_URL_LENGTH = 80
+
+// =============================================================================
+// SETTING NAMES — Single source of truth for all toggle/setting message types.
+// Background, content, inject, and popup layers all import from here.
+// =============================================================================
+
+/**
+ * Setting names used across background, content, and inject contexts.
+ * Single source of truth — all layers import from here.
+ *
+ * Note: These are the RUNTIME string values sent as message `type` fields.
+ * The TYPE-LEVEL literals in runtime-messages.ts (SetBooleanSettingMessage etc.)
+ * are deliberately kept as literal strings for TypeScript discriminated union narrowing.
+ */
+export const SettingName = {
+  NETWORK_WATERFALL: 'setNetworkWaterfallEnabled',
+  PERFORMANCE_MARKS: 'setPerformanceMarksEnabled',
+  ACTION_REPLAY: 'setActionReplayEnabled',
+  WEBSOCKET_CAPTURE: 'setWebSocketCaptureEnabled',
+  WEBSOCKET_CAPTURE_MODE: 'setWebSocketCaptureMode',
+  PERFORMANCE_SNAPSHOT: 'setPerformanceSnapshotEnabled',
+  DEFERRAL: 'setDeferralEnabled',
+  NETWORK_BODY_CAPTURE: 'setNetworkBodyCaptureEnabled',
+  ACTION_TOASTS: 'setActionToastsEnabled',
+  SUBTITLES: 'setSubtitlesEnabled',
+  SERVER_URL: 'setServerUrl',
+} as const
+
+export type SettingNameValue = typeof SettingName[keyof typeof SettingName]
+
+/** All valid setting names as a Set (for runtime validation) */
+export const VALID_SETTING_NAMES: ReadonlySet<string> = new Set<string>(Object.values(SettingName))
+
+/**
+ * Settings forwarded from background -> content -> inject (MAIN world).
+ * These are the settings that the inject script knows how to handle.
+ * Content-only settings (ACTION_TOASTS, SUBTITLES) are NOT in this set —
+ * they are handled directly by the content script runtime-message-listener.
+ */
+export const INJECT_FORWARDED_SETTINGS: ReadonlySet<string> = new Set<string>([
+  SettingName.NETWORK_WATERFALL,
+  SettingName.PERFORMANCE_MARKS,
+  SettingName.ACTION_REPLAY,
+  SettingName.WEBSOCKET_CAPTURE,
+  SettingName.WEBSOCKET_CAPTURE_MODE,
+  SettingName.PERFORMANCE_SNAPSHOT,
+  SettingName.DEFERRAL,
+  SettingName.NETWORK_BODY_CAPTURE,
+  SettingName.SERVER_URL,
+])

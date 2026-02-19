@@ -10,6 +10,7 @@
  */
 
 import type { WebSocketCaptureMode } from '../types'
+import { SettingName } from '../lib/constants'
 
 /** Whether inject.bundled.js has been injected into the page (MAIN world) */
 let injected = false
@@ -35,12 +36,12 @@ const SYNC_SETTINGS: readonly {
   messageType: string
   isMode?: boolean
 }[] = [
-  { storageKey: 'webSocketCaptureEnabled', messageType: 'setWebSocketCaptureEnabled' },
-  { storageKey: 'webSocketCaptureMode', messageType: 'setWebSocketCaptureMode', isMode: true },
-  { storageKey: 'networkWaterfallEnabled', messageType: 'setNetworkWaterfallEnabled' },
-  { storageKey: 'performanceMarksEnabled', messageType: 'setPerformanceMarksEnabled' },
-  { storageKey: 'actionReplayEnabled', messageType: 'setActionReplayEnabled' },
-  { storageKey: 'networkBodyCaptureEnabled', messageType: 'setNetworkBodyCaptureEnabled' }
+  { storageKey: 'webSocketCaptureEnabled', messageType: SettingName.WEBSOCKET_CAPTURE },
+  { storageKey: 'webSocketCaptureMode', messageType: SettingName.WEBSOCKET_CAPTURE_MODE, isMode: true },
+  { storageKey: 'networkWaterfallEnabled', messageType: SettingName.NETWORK_WATERFALL },
+  { storageKey: 'performanceMarksEnabled', messageType: SettingName.PERFORMANCE_MARKS },
+  { storageKey: 'actionReplayEnabled', messageType: SettingName.ACTION_REPLAY },
+  { storageKey: 'networkBodyCaptureEnabled', messageType: SettingName.NETWORK_BODY_CAPTURE }
 ]
 
 /**

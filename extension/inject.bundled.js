@@ -88,6 +88,31 @@ var ACTIONABLE_KEYS = /* @__PURE__ */ new Set([
 var MAX_LONG_TASKS = 50;
 var MAX_SLOWEST_REQUESTS = 3;
 var MAX_URL_LENGTH = 80;
+var SettingName = {
+  NETWORK_WATERFALL: "setNetworkWaterfallEnabled",
+  PERFORMANCE_MARKS: "setPerformanceMarksEnabled",
+  ACTION_REPLAY: "setActionReplayEnabled",
+  WEBSOCKET_CAPTURE: "setWebSocketCaptureEnabled",
+  WEBSOCKET_CAPTURE_MODE: "setWebSocketCaptureMode",
+  PERFORMANCE_SNAPSHOT: "setPerformanceSnapshotEnabled",
+  DEFERRAL: "setDeferralEnabled",
+  NETWORK_BODY_CAPTURE: "setNetworkBodyCaptureEnabled",
+  ACTION_TOASTS: "setActionToastsEnabled",
+  SUBTITLES: "setSubtitlesEnabled",
+  SERVER_URL: "setServerUrl"
+};
+var VALID_SETTING_NAMES = new Set(Object.values(SettingName));
+var INJECT_FORWARDED_SETTINGS = /* @__PURE__ */ new Set([
+  SettingName.NETWORK_WATERFALL,
+  SettingName.PERFORMANCE_MARKS,
+  SettingName.ACTION_REPLAY,
+  SettingName.WEBSOCKET_CAPTURE,
+  SettingName.WEBSOCKET_CAPTURE_MODE,
+  SettingName.PERFORMANCE_SNAPSHOT,
+  SettingName.DEFERRAL,
+  SettingName.NETWORK_BODY_CAPTURE,
+  SettingName.SERVER_URL
+]);
 
 // extension/lib/serialize.js
 function serializePrimitive(value, type) {
@@ -3136,26 +3161,16 @@ Tip: Run small test scripts to isolate the issue, then build up complexity.`
 }
 
 // extension/inject/settings.js
-var VALID_SETTINGS = /* @__PURE__ */ new Set([
-  "setNetworkWaterfallEnabled",
-  "setPerformanceMarksEnabled",
-  "setActionReplayEnabled",
-  "setWebSocketCaptureEnabled",
-  "setWebSocketCaptureMode",
-  "setPerformanceSnapshotEnabled",
-  "setDeferralEnabled",
-  "setNetworkBodyCaptureEnabled",
-  "setServerUrl"
-]);
+var VALID_SETTINGS = INJECT_FORWARDED_SETTINGS;
 var VALID_STATE_ACTIONS = /* @__PURE__ */ new Set(["capture", "restore"]);
 function isValidSettingPayload(data) {
   if (!VALID_SETTINGS.has(data.setting)) {
     console.warn("[Gasoline] Invalid setting:", data.setting);
     return false;
   }
-  if (data.setting === "setWebSocketCaptureMode")
+  if (data.setting === SettingName.WEBSOCKET_CAPTURE_MODE)
     return typeof data.mode === "string";
-  if (data.setting === "setServerUrl")
+  if (data.setting === SettingName.SERVER_URL)
     return typeof data.url === "string";
   if (typeof data.enabled !== "boolean") {
     console.warn("[Gasoline] Invalid enabled value type");
@@ -3164,27 +3179,27 @@ function isValidSettingPayload(data) {
   return true;
 }
 var SETTING_HANDLERS = {
-  setNetworkWaterfallEnabled: (data) => setNetworkWaterfallEnabled(data.enabled),
-  setPerformanceMarksEnabled: (data) => {
+  [SettingName.NETWORK_WATERFALL]: (data) => setNetworkWaterfallEnabled(data.enabled),
+  [SettingName.PERFORMANCE_MARKS]: (data) => {
     setPerformanceMarksEnabled(data.enabled);
     if (data.enabled)
       installPerformanceCapture();
     else
       uninstallPerformanceCapture();
   },
-  setActionReplayEnabled: (data) => setActionCaptureEnabled(data.enabled),
-  setWebSocketCaptureEnabled: (data) => {
+  [SettingName.ACTION_REPLAY]: (data) => setActionCaptureEnabled(data.enabled),
+  [SettingName.WEBSOCKET_CAPTURE]: (data) => {
     setWebSocketCaptureEnabled(data.enabled);
     if (data.enabled)
       installWebSocketCapture();
     else
       uninstallWebSocketCapture();
   },
-  setWebSocketCaptureMode: (data) => setWebSocketCaptureMode(data.mode || "medium"),
-  setPerformanceSnapshotEnabled: (data) => setPerformanceSnapshotEnabled(data.enabled),
-  setDeferralEnabled: (data) => setDeferralEnabled(data.enabled),
-  setNetworkBodyCaptureEnabled: (data) => setNetworkBodyCaptureEnabled(data.enabled),
-  setServerUrl: (data) => setServerUrl(data.url)
+  [SettingName.WEBSOCKET_CAPTURE_MODE]: (data) => setWebSocketCaptureMode(data.mode || "medium"),
+  [SettingName.PERFORMANCE_SNAPSHOT]: (data) => setPerformanceSnapshotEnabled(data.enabled),
+  [SettingName.DEFERRAL]: (data) => setDeferralEnabled(data.enabled),
+  [SettingName.NETWORK_BODY_CAPTURE]: (data) => setNetworkBodyCaptureEnabled(data.enabled),
+  [SettingName.SERVER_URL]: (data) => setServerUrl(data.url)
 };
 function handleSetting(data) {
   const handler = SETTING_HANDLERS[data.setting];

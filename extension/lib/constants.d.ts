@@ -50,4 +50,35 @@ export declare const ACTIONABLE_KEYS: ReadonlySet<string>;
 export declare const MAX_LONG_TASKS = 50;
 export declare const MAX_SLOWEST_REQUESTS = 3;
 export declare const MAX_URL_LENGTH = 80;
+/**
+ * Setting names used across background, content, and inject contexts.
+ * Single source of truth — all layers import from here.
+ *
+ * Note: These are the RUNTIME string values sent as message `type` fields.
+ * The TYPE-LEVEL literals in runtime-messages.ts (SetBooleanSettingMessage etc.)
+ * are deliberately kept as literal strings for TypeScript discriminated union narrowing.
+ */
+export declare const SettingName: {
+    readonly NETWORK_WATERFALL: "setNetworkWaterfallEnabled";
+    readonly PERFORMANCE_MARKS: "setPerformanceMarksEnabled";
+    readonly ACTION_REPLAY: "setActionReplayEnabled";
+    readonly WEBSOCKET_CAPTURE: "setWebSocketCaptureEnabled";
+    readonly WEBSOCKET_CAPTURE_MODE: "setWebSocketCaptureMode";
+    readonly PERFORMANCE_SNAPSHOT: "setPerformanceSnapshotEnabled";
+    readonly DEFERRAL: "setDeferralEnabled";
+    readonly NETWORK_BODY_CAPTURE: "setNetworkBodyCaptureEnabled";
+    readonly ACTION_TOASTS: "setActionToastsEnabled";
+    readonly SUBTITLES: "setSubtitlesEnabled";
+    readonly SERVER_URL: "setServerUrl";
+};
+export type SettingNameValue = typeof SettingName[keyof typeof SettingName];
+/** All valid setting names as a Set (for runtime validation) */
+export declare const VALID_SETTING_NAMES: ReadonlySet<string>;
+/**
+ * Settings forwarded from background -> content -> inject (MAIN world).
+ * These are the settings that the inject script knows how to handle.
+ * Content-only settings (ACTION_TOASTS, SUBTITLES) are NOT in this set —
+ * they are handled directly by the content script runtime-message-listener.
+ */
+export declare const INJECT_FORWARDED_SETTINGS: ReadonlySet<string>;
 //# sourceMappingURL=constants.d.ts.map

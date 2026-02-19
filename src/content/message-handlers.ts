@@ -30,25 +30,15 @@ import {
 } from './request-tracking'
 import { createDeferredPromise, promiseRaceWithCleanup } from './timeout-utils'
 import { isInjectScriptLoaded, getPageNonce } from './script-injection'
-import { ASYNC_COMMAND_TIMEOUT_MS } from '../lib/constants'
+import { ASYNC_COMMAND_TIMEOUT_MS, INJECT_FORWARDED_SETTINGS, SettingName } from '../lib/constants'
 
 /** Send a nonce-authenticated message to inject.js (MAIN world) */
 function postToInject(data: Record<string, unknown>): void {
   window.postMessage({ ...data, _nonce: getPageNonce() }, window.location.origin)
 }
 
-// Feature toggle message types forwarded from background to inject.js
-export const TOGGLE_MESSAGES = new Set([
-  'setNetworkWaterfallEnabled',
-  'setPerformanceMarksEnabled',
-  'setActionReplayEnabled',
-  'setWebSocketCaptureEnabled',
-  'setWebSocketCaptureMode',
-  'setPerformanceSnapshotEnabled',
-  'setDeferralEnabled',
-  'setNetworkBodyCaptureEnabled',
-  'setServerUrl'
-])
+// Feature toggle message types forwarded from background to inject.js — imported from canonical constants.
+export const TOGGLE_MESSAGES = INJECT_FORWARDED_SETTINGS
 
 /**
  * Security: Validate sender is from the extension background script
@@ -168,9 +158,9 @@ export function handleToggleMessage(
   if (!TOGGLE_MESSAGES.has(message.type)) return
 
   const payload: SettingMessage = { type: 'GASOLINE_SETTING', setting: message.type }
-  if (message.type === 'setWebSocketCaptureMode') {
+  if (message.type === SettingName.WEBSOCKET_CAPTURE_MODE) {
     payload.mode = message.mode
-  } else if (message.type === 'setServerUrl') {
+  } else if (message.type === SettingName.SERVER_URL) {
     payload.url = message.url
   } else {
     payload.enabled = message.enabled

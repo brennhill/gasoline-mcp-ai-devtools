@@ -9,6 +9,7 @@
  */
 
 import type { FeatureToggleConfig } from './types'
+import { SettingName } from '../lib/constants'
 
 /**
  * Feature toggle configuration
@@ -17,25 +18,25 @@ export const FEATURE_TOGGLES: readonly FeatureToggleConfig[] = [
   {
     id: 'toggle-websocket',
     storageKey: 'webSocketCaptureEnabled',
-    messageType: 'setWebSocketCaptureEnabled',
+    messageType: SettingName.WEBSOCKET_CAPTURE,
     default: true
   },
   {
     id: 'toggle-network-waterfall',
     storageKey: 'networkWaterfallEnabled',
-    messageType: 'setNetworkWaterfallEnabled',
+    messageType: SettingName.NETWORK_WATERFALL,
     default: true
   },
   {
     id: 'toggle-performance-marks',
     storageKey: 'performanceMarksEnabled',
-    messageType: 'setPerformanceMarksEnabled',
+    messageType: SettingName.PERFORMANCE_MARKS,
     default: true
   },
   {
     id: 'toggle-action-replay',
     storageKey: 'actionReplayEnabled',
-    messageType: 'setActionReplayEnabled',
+    messageType: SettingName.ACTION_REPLAY,
     default: true
   },
   { id: 'toggle-screenshot', storageKey: 'screenshotOnError', messageType: 'setScreenshotOnError', default: true },
@@ -43,19 +44,19 @@ export const FEATURE_TOGGLES: readonly FeatureToggleConfig[] = [
   {
     id: 'toggle-network-body-capture',
     storageKey: 'networkBodyCaptureEnabled',
-    messageType: 'setNetworkBodyCaptureEnabled',
+    messageType: SettingName.NETWORK_BODY_CAPTURE,
     default: true
   },
   {
     id: 'toggle-action-toasts',
     storageKey: 'actionToastsEnabled',
-    messageType: 'setActionToastsEnabled',
+    messageType: SettingName.ACTION_TOASTS,
     default: true
   },
   {
     id: 'toggle-subtitles',
     storageKey: 'subtitlesEnabled',
-    messageType: 'setSubtitlesEnabled',
+    messageType: SettingName.SUBTITLES,
     default: true
   }
 ]
