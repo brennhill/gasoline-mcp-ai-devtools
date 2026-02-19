@@ -177,45 +177,4 @@ func TestBridgeForwardRequest_LargeBodyRead(t *testing.T) {
 	}
 }
 
-// TestToolCallTimeout verifies the per-request timeout branching logic.
-func TestToolCallTimeout(t *testing.T) {
-	t.Parallel()
-
-	tests := []struct {
-		name     string
-		method   string
-		params   string
-		expected time.Duration
-	}{
-		{"ping gets fast timeout", "ping", `{}`, 10 * time.Second},
-		{"resources/read gets fast timeout", "resources/read", `{}`, 10 * time.Second},
-		{"tools/list gets fast timeout", "tools/list", `{}`, 10 * time.Second},
-		{"observe gets fast timeout", "tools/call", `{"name":"observe","arguments":{"what":"logs"}}`, 10 * time.Second},
-		{"configure gets fast timeout", "tools/call", `{"name":"configure","arguments":{"action":"health"}}`, 10 * time.Second},
-		{"generate gets fast timeout", "tools/call", `{"name":"generate","arguments":{"format":"reproduction"}}`, 10 * time.Second},
-		{"analyze gets slow timeout", "tools/call", `{"name":"analyze","arguments":{"what":"dom"}}`, 35 * time.Second},
-		{"interact gets slow timeout", "tools/call", `{"name":"interact","arguments":{"action":"click"}}`, 35 * time.Second},
-		{"observe screenshot gets slow timeout", "tools/call", `{"name":"observe","arguments":{"what":"screenshot"}}`, 35 * time.Second},
-		{"observe command_result non-annotation gets fast", "tools/call", `{"name":"observe","arguments":{"what":"command_result","correlation_id":"cmd_123"}}`, 10 * time.Second},
-		{"observe command_result annotation gets blocking poll", "tools/call", `{"name":"observe","arguments":{"what":"command_result","correlation_id":"ann_detail_abc"}}`, 65 * time.Second},
-		{"malformed params gets fast timeout", "tools/call", `{bad json}`, 10 * time.Second},
-		{"unknown tool gets fast timeout", "tools/call", `{"name":"unknown_tool","arguments":{}}`, 10 * time.Second},
-	}
-
-	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
-			t.Parallel()
-			req := JSONRPCRequest{
-				JSONRPC: "2.0",
-				ID:      json.RawMessage(`1`),
-				Method:  tc.method,
-				Params:  json.RawMessage(tc.params),
-			}
-			got := toolCallTimeout(req)
-			if got != tc.expected {
-				t.Errorf("toolCallTimeout(%s, %s) = %v, want %v", tc.method, tc.params, got, tc.expected)
-			}
-		})
-	}
-}
 

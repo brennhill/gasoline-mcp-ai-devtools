@@ -8,213 +8,33 @@ package main
 
 import (
 	"bufio"
-	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
-	"net"
 	"net/http"
 	"os"
 	"os/exec"
-	"path/filepath"
-	"strconv"
 	"strings"
 	"sync"
 	"syscall"
 	"time"
 
+	"github.com/dev-console/dev-console/internal/bridge"
+	"github.com/dev-console/dev-console/internal/schema"
 	statecfg "github.com/dev-console/dev-console/internal/state"
 	"github.com/dev-console/dev-console/internal/util"
 )
 
-// toolCallTimeout returns the per-request timeout based on the MCP tool name.
-// Fast tools (observe, generate, configure, resources/read) get 10s; slow tools
-// (analyze, interact) that round-trip to the extension get 35s.
-// Annotation observe (observe command_result for ann_*) gets 65s for blocking poll.
+// toolCallTimeout delegates to internal/bridge for per-request timeout logic.
 func toolCallTimeout(req JSONRPCRequest) time.Duration {
-	const (
-		fast         = 10 * time.Second
-		slow         = 35 * time.Second
-		blockingPoll = 65 * time.Second // annotation observe: server blocks up to 55s
-	)
-
-	if req.Method == "resources/read" {
-		return fast
-	}
-	if req.Method != "tools/call" {
-		return fast // non-tool calls (ping, list, etc.)
-	}
-
-	// Extract tool name and arguments without full unmarshal
-	var params struct {
-		Name      string          `json:"name"`
-		Arguments json.RawMessage `json:"arguments"`
-	}
-	if json.Unmarshal(req.Params, &params) != nil {
-		return fast
-	}
-
-	switch params.Name {
-	case "analyze", "interact":
-		return slow
-	case "observe":
-		var args struct {
-			What          string `json:"what"`
-			CorrelationID string `json:"correlation_id"`
-		}
-		if json.Unmarshal(params.Arguments, &args) == nil {
-			// Annotation command_result polling blocks server-side for up to 55s
-			if args.What == "command_result" &&
-				len(args.CorrelationID) > 4 && args.CorrelationID[:4] == "ann_" {
-				return blockingPoll
-			}
-			// Screenshot round-trips to extension (sync poll + capture + upload)
-			if args.What == "screenshot" {
-				return slow
-			}
-		}
-		return fast
-	default:
-		return fast
-	}
+	return bridge.ToolCallTimeout(req.Method, req.Params)
 }
 
 // mcpStdoutMu serializes all writes to stdout so concurrent bridgeForwardRequest
 // goroutines cannot interleave JSON-RPC responses.
 var mcpStdoutMu sync.Mutex
-
-type bridgeFastPathResourceReadCounters struct {
-	mu      sync.Mutex
-	success int64
-	failure int64
-}
-
-var fastPathResourceReadCounters bridgeFastPathResourceReadCounters
-
-func recordFastPathResourceRead(uri string, success bool, errorCode int) {
-	fastPathResourceReadCounters.mu.Lock()
-	defer fastPathResourceReadCounters.mu.Unlock()
-	if success {
-		fastPathResourceReadCounters.success++
-	} else {
-		fastPathResourceReadCounters.failure++
-	}
-	appendFastPathResourceReadTelemetry(uri, success, errorCode, fastPathResourceReadCounters.success, fastPathResourceReadCounters.failure)
-}
-
-func snapshotFastPathResourceReadCounters() (success int64, failure int64) {
-	fastPathResourceReadCounters.mu.Lock()
-	defer fastPathResourceReadCounters.mu.Unlock()
-	return fastPathResourceReadCounters.success, fastPathResourceReadCounters.failure
-}
-
-func resetFastPathResourceReadCounters() {
-	fastPathResourceReadCounters.mu.Lock()
-	defer fastPathResourceReadCounters.mu.Unlock()
-	fastPathResourceReadCounters.success = 0
-	fastPathResourceReadCounters.failure = 0
-}
-
-func fastPathResourceReadLogPath() (string, error) {
-	return statecfg.InRoot("logs", "bridge-fastpath-resource-read.jsonl")
-}
-
-func appendFastPathResourceReadTelemetry(uri string, success bool, errorCode int, successCount int64, failureCount int64) {
-	path, err := fastPathResourceReadLogPath()
-	if err != nil {
-		return
-	}
-	if mkErr := os.MkdirAll(filepath.Dir(path), 0o750); mkErr != nil {
-		return
-	}
-	entry := map[string]any{
-		"timestamp":      time.Now().UTC().Format(time.RFC3339Nano),
-		"event":          "bridge_fastpath_resources_read",
-		"uri":            uri,
-		"success":        success,
-		"error_code":     errorCode,
-		"success_count":  successCount,
-		"failure_count":  failureCount,
-		"pid":            os.Getpid(),
-		"bridge_version": version,
-	}
-	line, marshalErr := json.Marshal(entry)
-	if marshalErr != nil {
-		return
-	}
-	// #nosec G304 -- path is deterministic under state root
-	f, openErr := os.OpenFile(path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o600)
-	if openErr != nil {
-		return
-	}
-	defer func() { _ = f.Close() }()
-	_, _ = f.Write(line)
-	_, _ = f.Write([]byte("\n"))
-}
-
-type bridgeFastPathCounters struct {
-	mu      sync.Mutex
-	success int
-	failure int
-}
-
-var fastPathCounters bridgeFastPathCounters
-
-func resetFastPathCounters() {
-	fastPathCounters.mu.Lock()
-	fastPathCounters.success = 0
-	fastPathCounters.failure = 0
-	fastPathCounters.mu.Unlock()
-}
-
-func fastPathTelemetryLogPath() (string, error) {
-	return statecfg.InRoot("logs", "bridge-fastpath-events.jsonl")
-}
-
-func recordFastPathEvent(method string, success bool, errorCode int) {
-	fastPathCounters.mu.Lock()
-	if success {
-		fastPathCounters.success++
-	} else {
-		fastPathCounters.failure++
-	}
-	successCount := fastPathCounters.success
-	failureCount := fastPathCounters.failure
-	fastPathCounters.mu.Unlock()
-
-	path, err := fastPathTelemetryLogPath()
-	if err != nil {
-		return
-	}
-	// #nosec G301 -- runtime state directory for local diagnostics.
-	if err := os.MkdirAll(filepath.Dir(path), 0o750); err != nil {
-		return
-	}
-	event := map[string]any{
-		"timestamp":     time.Now().UTC().Format(time.RFC3339Nano),
-		"event":         "bridge_fastpath_method",
-		"method":        method,
-		"success":       success,
-		"error_code":    errorCode,
-		"success_count": successCount,
-		"failure_count": failureCount,
-		"pid":           os.Getpid(),
-		"version":       version,
-	}
-	payload, err := json.Marshal(event)
-	if err != nil {
-		return
-	}
-	// #nosec G304 -- deterministic diagnostics path rooted in runtime state directory.
-	f, err := os.OpenFile(path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o600) // nosemgrep: go_filesystem_rule-fileread -- local diagnostics log append
-	if err != nil {
-		return
-	}
-	defer func() { _ = f.Close() }()
-	_, _ = f.Write(append(payload, '\n'))
-}
 
 // daemonState tracks the state of daemon startup for fast-start mode.
 // Supports respawning: if the daemon dies mid-session, the bridge detects
@@ -322,24 +142,9 @@ func (s *daemonState) respawnIfNeeded() bool {
 	return false
 }
 
-// isConnectionError returns true if the error indicates the daemon is unreachable.
+// isConnectionError delegates to internal/bridge for connection error detection.
 func isConnectionError(err error) bool {
-	if err == nil {
-		return false
-	}
-	// Prefer typed error checks over string matching
-	var opErr *net.OpError
-	if errors.As(err, &opErr) {
-		return true
-	}
-	var dnsErr *net.DNSError
-	if errors.As(err, &dnsErr) {
-		return true
-	}
-	// Fallback: string check for wrapped errors that lose type info
-	msg := err.Error()
-	return strings.Contains(msg, "connection refused") ||
-		strings.Contains(msg, "no such host")
+	return bridge.IsConnectionError(err)
 }
 
 // flushStdout syncs stdout and logs any errors (best-effort)
@@ -465,16 +270,9 @@ func spawnDaemonAsync(state *daemonState) {
 	})
 }
 
-// isServerRunning checks if a server is healthy on the given port via HTTP health check.
-// This catches zombie servers that accept TCP connections but don't respond to HTTP.
+// isServerRunning delegates to internal/bridge for health check.
 func isServerRunning(port int) bool {
-	client := &http.Client{Timeout: 500 * time.Millisecond}
-	resp, err := client.Get(fmt.Sprintf("http://127.0.0.1:%d/health", port)) // #nosec G704 -- localhost-only health probe
-	if err != nil {
-		return false
-	}
-	defer func() { _ = resp.Body.Close() }() //nolint:errcheck // best-effort cleanup
-	return resp.StatusCode == http.StatusOK
+	return bridge.IsServerRunning(port)
 }
 
 func runningServerVersionCompatible(port int) (bool, string, string) {
@@ -510,141 +308,9 @@ func runningServerVersionCompatible(port int) (bool, string, string) {
 	return versionsMatch(runningVersion, version), runningVersion, serviceName
 }
 
-// waitForServer waits for the server to start accepting connections
+// waitForServer delegates to internal/bridge for server startup wait.
 func waitForServer(port int, timeout time.Duration) bool {
-	deadline := time.Now().Add(timeout)
-	for time.Now().Before(deadline) {
-		if isServerRunning(port) {
-			return true
-		}
-		time.Sleep(100 * time.Millisecond)
-	}
-	return false
-}
-
-// fastPathResponses maps MCP methods to their static JSON result bodies.
-// Methods in this map are handled without waiting for the daemon.
-var fastPathResponses = map[string]string{
-	"ping":         `{}`,
-	"prompts/list": `{"prompts":[]}`,
-}
-
-// sendFastResponse marshals and sends a JSON-RPC response for the fast path.
-func sendFastResponse(id any, result json.RawMessage) {
-	resp := JSONRPCResponse{JSONRPC: "2.0", ID: id, Result: result}
-	// Error impossible: simple struct with no circular refs or unsupported types
-	respJSON, _ := json.Marshal(resp)
-	mcpStdoutMu.Lock()
-	fmt.Println(string(respJSON))
-	flushStdout()
-	mcpStdoutMu.Unlock()
-}
-
-func sendFastError(id any, code int, message string) {
-	resp := JSONRPCResponse{
-		JSONRPC: "2.0",
-		ID:      id,
-		Error:   &JSONRPCError{Code: code, Message: message},
-	}
-	respJSON, _ := json.Marshal(resp)
-	mcpStdoutMu.Lock()
-	fmt.Println(string(respJSON))
-	flushStdout()
-	mcpStdoutMu.Unlock()
-}
-
-// handleFastPath handles MCP methods that don't require the daemon.
-// Returns true if the method was handled.
-func handleFastPath(req JSONRPCRequest, toolsList []MCPTool) bool {
-	if req.HasInvalidID() {
-		sendBridgeError(nil, -32600, "Invalid Request: id must be string or number when present")
-		return true
-	}
-
-	// JSON-RPC notifications are fire-and-forget; never respond on stdio.
-	if !req.HasID() {
-		return true
-	}
-
-	switch req.Method {
-	case "initialize":
-		result := map[string]any{
-			"protocolVersion": negotiateProtocolVersion(req.Params),
-			"serverInfo":      map[string]any{"name": "gasoline", "version": version},
-			"capabilities":    map[string]any{"tools": map[string]any{}, "resources": map[string]any{}},
-			"instructions":    serverInstructions,
-		}
-		// Error impossible: map contains only primitive types and nested maps
-		resultJSON, _ := json.Marshal(result)
-		sendFastResponse(req.ID, resultJSON)
-		recordFastPathEvent(req.Method, true, 0)
-		return true
-
-	case "initialized":
-		if req.HasID() {
-			sendFastResponse(req.ID, json.RawMessage(`{}`))
-			recordFastPathEvent(req.Method, true, 0)
-		}
-		return true
-
-	case "tools/list":
-		result := map[string]any{"tools": toolsList}
-		// Error impossible: map contains only serializable tool definitions
-		resultJSON, _ := json.Marshal(result)
-		sendFastResponse(req.ID, resultJSON)
-		recordFastPathEvent(req.Method, true, 0)
-		return true
-
-	case "resources/list":
-		result := MCPResourcesListResult{Resources: mcpResources()}
-		resultJSON, _ := json.Marshal(result)
-		sendFastResponse(req.ID, resultJSON)
-		return true
-	case "resources/templates/list":
-		result := MCPResourceTemplatesListResult{ResourceTemplates: mcpResourceTemplates()}
-		resultJSON, _ := json.Marshal(result)
-		sendFastResponse(req.ID, resultJSON)
-		return true
-	case "resources/read":
-		var params struct {
-			URI string `json:"uri"`
-		}
-		if err := json.Unmarshal(req.Params, &params); err != nil {
-			recordFastPathResourceRead("", false, -32602)
-			recordFastPathEvent(req.Method, false, -32602)
-			sendFastError(req.ID, -32602, "Invalid params: "+err.Error())
-			return true
-		}
-		canonicalURI, text, ok := resolveResourceContent(params.URI)
-		if !ok {
-			recordFastPathResourceRead(params.URI, false, -32002)
-			recordFastPathEvent(req.Method, false, -32002)
-			sendFastError(req.ID, -32002, "Resource not found: "+params.URI)
-			return true
-		}
-		recordFastPathResourceRead(params.URI, true, 0)
-		recordFastPathEvent(req.Method, true, 0)
-		result := map[string]any{
-			"contents": []map[string]any{
-				{
-					"uri":      canonicalURI,
-					"mimeType": "text/markdown",
-					"text":     text,
-				},
-			},
-		}
-		resultJSON, _ := json.Marshal(result)
-		sendFastResponse(req.ID, resultJSON)
-		return true
-	}
-
-	if staticResult, ok := fastPathResponses[req.Method]; ok {
-		sendFastResponse(req.ID, json.RawMessage(staticResult))
-		recordFastPathEvent(req.Method, true, 0)
-		return true
-	}
-
-	return false
+	return bridge.WaitForServer(port, timeout)
 }
 
 // checkDaemonStatus returns an error string if the daemon is not ready, or "" if ready.
@@ -709,8 +375,7 @@ func bridgeStdioToHTTPFast(endpoint string, state *daemonState, port int) {
 		responseOnce.Do(func() { responseSent <- true })
 	}
 
-	toolsHandler := &ToolHandler{}
-	toolsList := toolsHandler.ToolsList()
+	toolsList := schema.AllTools()
 
 	var readErr error
 	for {
@@ -784,16 +449,9 @@ func handleDaemonNotReady(req JSONRPCRequest, status string, signal func()) {
 	signal()
 }
 
-// bridgeDoHTTP sends the raw JSON-RPC payload to the daemon and returns the HTTP response.
-// The caller must provide a context that outlives the response body read — creating the
-// context here with defer cancel() would cancel it before the caller reads resp.Body.
+// bridgeDoHTTP delegates to internal/bridge for HTTP forwarding.
 func bridgeDoHTTP(ctx context.Context, client *http.Client, endpoint string, line []byte) (*http.Response, error) {
-	httpReq, err := http.NewRequestWithContext(ctx, "POST", endpoint, bytes.NewReader(line)) // #nosec G704 -- endpoint is localhost-only serverURL/mcp from runBridgeMode // nosemgrep: go_injection_rule-ssrf -- localhost-only bridge forwarding to own server
-	if err != nil {
-		return nil, err
-	}
-	httpReq.Header.Set("Content-Type", "application/json")
-	return client.Do(httpReq) // #nosec G704 -- endpoint is localhost-only serverURL/mcp from runBridgeMode
+	return bridge.DoHTTP(ctx, client, endpoint, line)
 }
 
 // bridgeForwardRequest forwards a JSON-RPC request to the HTTP server and writes the response.
@@ -862,66 +520,9 @@ func sendBridgeParseError(_ []byte, err error) {
 	mcpStdoutMu.Unlock()
 }
 
-// readMCPStdioMessage reads one MCP message from stdin.
-// Supports both line-delimited JSON and Content-Length framed messages.
+// readMCPStdioMessage delegates to internal/bridge for stdio message parsing.
 func readMCPStdioMessage(reader *bufio.Reader) ([]byte, error) {
-	for {
-		firstLineBytes, err := reader.ReadBytes('\n')
-		if err != nil {
-			if errors.Is(err, io.EOF) {
-				trimmed := strings.TrimSpace(string(firstLineBytes))
-				if trimmed == "" {
-					return nil, io.EOF
-				}
-				// Trailing non-empty bytes without newline: treat as final line-delimited message.
-				return []byte(trimmed), nil
-			}
-			return nil, err
-		}
-
-		firstLine := strings.TrimSpace(string(firstLineBytes))
-		if firstLine == "" {
-			continue
-		}
-
-		if !strings.HasPrefix(strings.ToLower(firstLine), "content-length:") {
-			// Line-delimited JSON (or malformed input handled by upstream JSON parse error path).
-			debugf("stdio line message bytes=%d", len(firstLine))
-			return []byte(firstLine), nil
-		}
-
-		parts := strings.SplitN(firstLine, ":", 2)
-		if len(parts) != 2 {
-			return []byte(firstLine), nil
-		}
-		contentLength, convErr := strconv.Atoi(strings.TrimSpace(parts[1]))
-		if convErr != nil || contentLength < 0 || contentLength > maxPostBodySize {
-			debugf("stdio framed header invalid length=%q", strings.TrimSpace(parts[1]))
-			return []byte(firstLine), nil
-		}
-
-		// Consume remaining headers until blank line.
-		for {
-			headerLine, headerErr := reader.ReadBytes('\n')
-			if headerErr != nil {
-				if errors.Is(headerErr, io.EOF) {
-					return nil, io.EOF
-				}
-				return nil, headerErr
-			}
-			if strings.TrimSpace(string(headerLine)) == "" {
-				break
-			}
-		}
-
-		payload := make([]byte, contentLength)
-		if _, readErr := io.ReadFull(reader, payload); readErr != nil {
-			debugf("stdio framed read error: %v", readErr)
-			return nil, readErr
-		}
-		debugf("stdio framed message bytes=%d", len(payload))
-		return bytes.TrimSpace(payload), nil
-	}
+	return bridge.ReadStdioMessage(reader, maxPostBodySize)
 }
 
 // bridgeShutdown waits for in-flight requests and performs clean shutdown.
@@ -1036,24 +637,9 @@ func sendToolError(id any, message string) {
 	mcpStdoutMu.Unlock()
 }
 
-// extractToolAction extracts the tool name and action parameter from a tools/call request.
-// Returns empty strings for non-tools/call methods or if parsing fails.
+// extractToolAction delegates to internal/bridge for tool action extraction.
 func extractToolAction(req JSONRPCRequest) (toolName, action string) {
-	if req.Method != "tools/call" {
-		return "", ""
-	}
-	var p struct {
-		Name string          `json:"name"`
-		Args json.RawMessage `json:"arguments"`
-	}
-	if json.Unmarshal(req.Params, &p) != nil {
-		return "", ""
-	}
-	var a struct {
-		Action string `json:"action"`
-	}
-	_ = json.Unmarshal(p.Args, &a) // ignore error — action may be absent
-	return p.Name, a.Action
+	return bridge.ExtractToolAction(req.Method, req.Params)
 }
 
 // forceKillOnPort sends SIGCONT then SIGKILL to any process on the given port.
