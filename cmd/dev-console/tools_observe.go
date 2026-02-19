@@ -13,6 +13,7 @@ import (
 
 	"github.com/dev-console/dev-console/internal/capture"
 	"github.com/dev-console/dev-console/internal/pagination"
+	"github.com/dev-console/dev-console/internal/tools/observe"
 )
 
 // maxObserveLimit caps the limit parameter to prevent oversized responses.
@@ -22,52 +23,56 @@ const maxObserveLimit = 1000
 type ObserveHandler func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse
 
 // observeHandlers maps observe mode names to their handler functions.
+// Modes handled by internal/tools/observe delegate to the extracted package.
+// Modes that depend on async/recording subsystems remain local.
 var observeHandlers = map[string]ObserveHandler{
+	// Delegated to internal/tools/observe
 	"errors": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-		return h.toolGetBrowserErrors(req, args)
+		return observe.GetBrowserErrors(h, req, args)
 	},
 	"logs": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-		return h.toolGetBrowserLogs(req, args)
+		return observe.GetBrowserLogs(h, req, args)
 	},
 	"extension_logs": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-		return h.toolGetExtensionLogs(req, args)
+		return observe.GetExtensionLogs(h, req, args)
 	},
 	"network_waterfall": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-		return h.toolGetNetworkWaterfall(req, args)
+		return observe.GetNetworkWaterfall(h, req, args)
 	},
 	"network_bodies": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-		return h.toolGetNetworkBodies(req, args)
+		return observe.GetNetworkBodies(h, req, args)
 	},
 	"websocket_events": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-		return h.toolGetWSEvents(req, args)
+		return observe.GetWSEvents(h, req, args)
 	},
 	"websocket_status": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-		return h.toolGetWSStatus(req, args)
+		return observe.GetWSStatus(h, req, args)
 	},
 	"actions": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-		return h.toolGetEnhancedActions(req, args)
+		return observe.GetEnhancedActions(h, req, args)
 	},
 	"vitals": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-		return h.toolGetWebVitals(req, args)
+		return observe.GetWebVitals(h, req, args)
 	},
 	"page": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-		return h.toolGetPageInfo(req, args)
+		return observe.GetPageInfo(h, req, args)
 	},
 	"tabs": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-		return h.toolGetTabs(req, args)
+		return observe.GetTabs(h, req, args)
 	},
 	"pilot": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-		return h.toolObservePilot(req, args)
+		return observe.ObservePilot(h, req, args)
 	},
 	"timeline": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-		return h.toolGetSessionTimeline(req, args)
+		return observe.GetSessionTimeline(h, req, args)
 	},
 	"error_bundles": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-		return h.toolGetErrorBundles(req, args)
+		return observe.GetErrorBundles(h, req, args)
 	},
 	"screenshot": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-		return h.toolGetScreenshot(req, args)
+		return observe.GetScreenshot(h, req, args)
 	},
+	// Local handlers — depend on async/recording subsystems
 	"command_result": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 		return h.toolObserveCommandResult(req, args)
 	},
