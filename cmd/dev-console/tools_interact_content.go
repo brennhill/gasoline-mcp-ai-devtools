@@ -5,7 +5,6 @@ package main
 
 import (
 	"encoding/json"
-	"fmt"
 	"time"
 
 	"github.com/dev-console/dev-console/internal/queries"
@@ -193,7 +192,7 @@ func (h *ToolHandler) handleGetReadable(req JSONRPCRequest, args json.RawMessage
 		params.TimeoutMs = 10_000
 	}
 
-	correlationID := fmt.Sprintf("readable_%d_%d", time.Now().UnixNano(), randomInt63())
+	correlationID := newCorrelationID("readable")
 	execParams, _ := json.Marshal(map[string]any{
 		"script":     getReadableScript,
 		"timeout_ms": params.TimeoutMs,
@@ -209,7 +208,7 @@ func (h *ToolHandler) handleGetReadable(req JSONRPCRequest, args json.RawMessage
 	}
 	h.capture.CreatePendingQueryWithTimeout(query, queries.AsyncCommandTimeout, req.ClientID)
 
-	return h.maybeWaitForCommand(req, correlationID, args, "get_readable queued")
+	return h.MaybeWaitForCommand(req, correlationID, args, "get_readable queued")
 }
 
 func (h *ToolHandler) handleGetMarkdown(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
@@ -230,7 +229,7 @@ func (h *ToolHandler) handleGetMarkdown(req JSONRPCRequest, args json.RawMessage
 		params.TimeoutMs = 10_000
 	}
 
-	correlationID := fmt.Sprintf("markdown_%d_%d", time.Now().UnixNano(), randomInt63())
+	correlationID := newCorrelationID("markdown")
 	execParams, _ := json.Marshal(map[string]any{
 		"script":     getMarkdownScript,
 		"timeout_ms": params.TimeoutMs,
@@ -246,7 +245,7 @@ func (h *ToolHandler) handleGetMarkdown(req JSONRPCRequest, args json.RawMessage
 	}
 	h.capture.CreatePendingQueryWithTimeout(query, queries.AsyncCommandTimeout, req.ClientID)
 
-	return h.maybeWaitForCommand(req, correlationID, args, "get_markdown queued")
+	return h.MaybeWaitForCommand(req, correlationID, args, "get_markdown queued")
 }
 
 // enrichNavigateResponse appends page content to a successful navigate response.
@@ -266,7 +265,7 @@ func (h *ToolHandler) enrichNavigateResponse(resp JSONRPCResponse, req JSONRPCRe
 	vitals := h.capture.GetPerformanceSnapshots()
 
 	// Execute page summary script for text content
-	summaryCorrelationID := fmt.Sprintf("nav_content_%d_%d", time.Now().UnixNano(), randomInt63())
+	summaryCorrelationID := newCorrelationID("nav_content")
 	execParams, _ := json.Marshal(map[string]any{
 		"script":     pageSummaryScript,
 		"timeout_ms": 10000,

@@ -50,7 +50,7 @@ func retryDefaultsForCode(code string) []func(*StructuredError) {
 
 // diagnosticHintString returns a plain-text snapshot of system state.
 // Used by both structured errors and JSON error responses.
-func (h *ToolHandler) diagnosticHintString() string {
+func (h *ToolHandler) DiagnosticHintString() string {
 	extConnected := h.capture.IsExtensionConnected()
 	pilotEnabled := h.capture.IsPilotEnabled()
 	enabled, tabID, tabURL := h.capture.GetTrackingStatus()
@@ -81,5 +81,5 @@ func (h *ToolHandler) diagnosticHintString() string {
 
 // diagnosticHint returns a snapshot of system state for inclusion in structured errors.
 func (h *ToolHandler) diagnosticHint() func(*StructuredError) {
-	return withHint(h.diagnosticHintString())
+	return withHint(h.DiagnosticHintString())
 }

@@ -4,9 +4,7 @@ package main
 
 import (
 	"encoding/json"
-	"fmt"
 	"strings"
-	"time"
 
 	"github.com/dev-console/dev-console/internal/queries"
 )
@@ -24,7 +22,7 @@ func (h *ToolHandler) handleListInteractive(req JSONRPCRequest, args json.RawMes
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrCodePilotDisabled, "AI Web Pilot is disabled", "Enable AI Web Pilot in the extension popup", h.diagnosticHint())}
 	}
 
-	correlationID := fmt.Sprintf("dom_list_%d_%d", time.Now().UnixNano(), randomInt63())
+	correlationID := newCorrelationID("dom_list")
 
 	query := queries.PendingQuery{
 		Type:          "dom_action",
@@ -36,7 +34,7 @@ func (h *ToolHandler) handleListInteractive(req JSONRPCRequest, args json.RawMes
 
 	h.recordAIAction("dom_list_interactive", "", nil)
 
-	resp := h.maybeWaitForCommand(req, correlationID, args, "list_interactive queued")
+	resp := h.MaybeWaitForCommand(req, correlationID, args, "list_interactive queued")
 
 	// Post-process: extract elements from result and build index→selector store
 	h.buildElementIndexFromResponse(resp)

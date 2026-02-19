@@ -203,7 +203,7 @@ func (h *ToolHandler) queueComposableSubtitle(req JSONRPCRequest, text string) {
 	subtitleQuery := queries.PendingQuery{
 		Type:          "subtitle",
 		Params:        subtitleArgs,
-		CorrelationID: fmt.Sprintf("subtitle_%d_%d", time.Now().UnixNano(), randomInt63()),
+		CorrelationID: newCorrelationID("subtitle"),
 	}
 	h.capture.CreatePendingQueryWithTimeout(subtitleQuery, queries.AsyncCommandTimeout, req.ClientID)
 }
@@ -231,7 +231,7 @@ func (h *ToolHandler) handlePilotHighlight(req JSONRPCRequest, args json.RawMess
 	}
 
 	// Queue highlight command for extension
-	correlationID := fmt.Sprintf("highlight_%d_%d", time.Now().UnixNano(), randomInt63())
+	correlationID := newCorrelationID("highlight")
 
 	query := queries.PendingQuery{
 		Type:          "highlight",
@@ -244,7 +244,7 @@ func (h *ToolHandler) handlePilotHighlight(req JSONRPCRequest, args json.RawMess
 	// Record AI action
 	h.recordAIAction("highlight", "", map[string]any{"selector": params.Selector})
 
-	return h.maybeWaitForCommand(req, correlationID, args, "Highlight queued")
+	return h.MaybeWaitForCommand(req, correlationID, args, "Highlight queued")
 }
 
 // validWorldValues is the set of accepted values for the execute_js 'world' parameter.
@@ -278,7 +278,7 @@ func (h *ToolHandler) handlePilotExecuteJS(req JSONRPCRequest, args json.RawMess
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrCodePilotDisabled, "AI Web Pilot is disabled", "Enable AI Web Pilot in the extension popup", h.diagnosticHint())}
 	}
 
-	correlationID := fmt.Sprintf("exec_%d_%d", time.Now().UnixNano(), randomInt63())
+	correlationID := newCorrelationID("exec")
 
 	query := queries.PendingQuery{
 		Type:          "execute",
@@ -290,7 +290,7 @@ func (h *ToolHandler) handlePilotExecuteJS(req JSONRPCRequest, args json.RawMess
 
 	h.recordAIAction("execute_js", "", map[string]any{"script_preview": truncateToLen(params.Script, 100)})
 
-	return h.maybeWaitForCommand(req, correlationID, args, "Command queued")
+	return h.MaybeWaitForCommand(req, correlationID, args, "Command queued")
 }
 
 // truncatePreview returns s unchanged if shorter than maxLen, otherwise truncates with "...".
@@ -319,7 +319,7 @@ func (h *ToolHandler) handleBrowserActionNavigate(req JSONRPCRequest, args json.
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrCodePilotDisabled, "AI Web Pilot is disabled", "Enable AI Web Pilot in the extension popup", h.diagnosticHint())}
 	}
 
-	correlationID := fmt.Sprintf("nav_%d_%d", time.Now().UnixNano(), randomInt63())
+	correlationID := newCorrelationID("nav")
 
 	h.stashPerfSnapshot(correlationID)
 
@@ -333,7 +333,7 @@ func (h *ToolHandler) handleBrowserActionNavigate(req JSONRPCRequest, args json.
 
 	h.recordAIAction("navigate", params.URL, map[string]any{"target_url": params.URL})
 
-	resp := h.maybeWaitForCommand(req, correlationID, args, "Navigate queued")
+	resp := h.MaybeWaitForCommand(req, correlationID, args, "Navigate queued")
 
 	// If include_content is requested and navigate succeeded, enrich with page content
 	if params.IncludeContent {
@@ -357,7 +357,7 @@ func (h *ToolHandler) handleBrowserActionRefresh(req JSONRPCRequest, args json.R
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrCodePilotDisabled, "AI Web Pilot is disabled", "Enable AI Web Pilot in the extension popup", h.diagnosticHint())}
 	}
 
-	correlationID := fmt.Sprintf("refresh_%d_%d", time.Now().UnixNano(), randomInt63())
+	correlationID := newCorrelationID("refresh")
 
 	h.stashPerfSnapshot(correlationID)
 
@@ -371,7 +371,7 @@ func (h *ToolHandler) handleBrowserActionRefresh(req JSONRPCRequest, args json.R
 
 	h.recordAIAction("refresh", "", nil)
 
-	return h.maybeWaitForCommand(req, correlationID, args, "Refresh queued")
+	return h.MaybeWaitForCommand(req, correlationID, args, "Refresh queued")
 }
 
 // stashPerfSnapshot saves the current performance snapshot as a "before" baseline
@@ -392,7 +392,7 @@ func (h *ToolHandler) handleBrowserActionBack(req JSONRPCRequest, args json.RawM
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrCodePilotDisabled, "AI Web Pilot is disabled", "Enable AI Web Pilot in the extension popup", h.diagnosticHint())}
 	}
 
-	correlationID := fmt.Sprintf("back_%d_%d", time.Now().UnixNano(), randomInt63())
+	correlationID := newCorrelationID("back")
 
 	query := queries.PendingQuery{
 		Type:          "browser_action",
@@ -403,7 +403,7 @@ func (h *ToolHandler) handleBrowserActionBack(req JSONRPCRequest, args json.RawM
 
 	h.recordAIAction("back", "", nil)
 
-	return h.maybeWaitForCommand(req, correlationID, args, "Back queued")
+	return h.MaybeWaitForCommand(req, correlationID, args, "Back queued")
 }
 
 func (h *ToolHandler) handleBrowserActionForward(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
@@ -411,7 +411,7 @@ func (h *ToolHandler) handleBrowserActionForward(req JSONRPCRequest, args json.R
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrCodePilotDisabled, "AI Web Pilot is disabled", "Enable AI Web Pilot in the extension popup", h.diagnosticHint())}
 	}
 
-	correlationID := fmt.Sprintf("forward_%d_%d", time.Now().UnixNano(), randomInt63())
+	correlationID := newCorrelationID("forward")
 
 	query := queries.PendingQuery{
 		Type:          "browser_action",
@@ -422,7 +422,7 @@ func (h *ToolHandler) handleBrowserActionForward(req JSONRPCRequest, args json.R
 
 	h.recordAIAction("forward", "", nil)
 
-	return h.maybeWaitForCommand(req, correlationID, args, "Forward queued")
+	return h.MaybeWaitForCommand(req, correlationID, args, "Forward queued")
 }
 
 func (h *ToolHandler) handleBrowserActionNewTab(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
@@ -437,7 +437,7 @@ func (h *ToolHandler) handleBrowserActionNewTab(req JSONRPCRequest, args json.Ra
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrCodePilotDisabled, "AI Web Pilot is disabled", "Enable AI Web Pilot in the extension popup", h.diagnosticHint())}
 	}
 
-	correlationID := fmt.Sprintf("newtab_%d_%d", time.Now().UnixNano(), randomInt63())
+	correlationID := newCorrelationID("newtab")
 
 	query := queries.PendingQuery{
 		Type:          "browser_action",
@@ -448,7 +448,7 @@ func (h *ToolHandler) handleBrowserActionNewTab(req JSONRPCRequest, args json.Ra
 
 	h.recordAIAction("new_tab", params.URL, map[string]any{"target_url": params.URL})
 
-	return h.maybeWaitForCommand(req, correlationID, args, "New tab queued")
+	return h.MaybeWaitForCommand(req, correlationID, args, "New tab queued")
 }
 
 // ============================================
@@ -520,7 +520,7 @@ func (h *ToolHandler) handleDOMPrimitive(req JSONRPCRequest, args json.RawMessag
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrCodePilotDisabled, "AI Web Pilot is disabled", "Enable AI Web Pilot in the extension popup", h.diagnosticHint())}
 	}
 
-	correlationID := fmt.Sprintf("dom_%s_%d_%d", action, time.Now().UnixNano(), randomInt63())
+	correlationID := newCorrelationID("dom_" + action)
 
 	query := queries.PendingQuery{
 		Type:          "dom_action",
@@ -532,7 +532,7 @@ func (h *ToolHandler) handleDOMPrimitive(req JSONRPCRequest, args json.RawMessag
 
 	h.recordDOMPrimitiveAction(action, params.Selector, params.Text, params.Value)
 
-	return h.maybeWaitForCommand(req, correlationID, args, action+" queued")
+	return h.MaybeWaitForCommand(req, correlationID, args, action+" queued")
 }
 
 // recordDOMPrimitiveAction records a DOM primitive action with reproduction-compatible
@@ -598,7 +598,7 @@ func (h *ToolHandler) handleSubtitle(req JSONRPCRequest, args json.RawMessage) J
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrMissingParam, "Required parameter 'text' is missing for subtitle action", "Add the 'text' parameter with subtitle text, or empty string to clear", withParam("text"))}
 	}
 
-	correlationID := fmt.Sprintf("subtitle_%d_%d", time.Now().UnixNano(), randomInt63())
+	correlationID := newCorrelationID("subtitle")
 
 	query := queries.PendingQuery{
 		Type:          "subtitle",
@@ -612,7 +612,7 @@ func (h *ToolHandler) handleSubtitle(req JSONRPCRequest, args json.RawMessage) J
 		queuedMsg = "Subtitle cleared"
 	}
 
-	return h.maybeWaitForCommand(req, correlationID, args, queuedMsg)
+	return h.MaybeWaitForCommand(req, correlationID, args, queuedMsg)
 }
 
 // Element indexing functions moved to tools_interact_elements.go

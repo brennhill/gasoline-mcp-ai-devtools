@@ -142,7 +142,7 @@ func (h *ToolHandler) toolQueryDOM(req JSONRPCRequest, args json.RawMessage) JSO
 	}
 
 	// Generate correlation ID for tracking
-	correlationID := fmt.Sprintf("dom_%d_%d", time.Now().UnixNano(), randomInt63())
+	correlationID := newCorrelationID("dom")
 
 	// Create pending query for DOM query
 	query := queries.PendingQuery{
@@ -153,7 +153,7 @@ func (h *ToolHandler) toolQueryDOM(req JSONRPCRequest, args json.RawMessage) JSO
 	}
 	h.capture.CreatePendingQueryWithTimeout(query, queries.AsyncCommandTimeout, req.ClientID)
 
-	return h.maybeWaitForCommand(req, correlationID, args, "DOM query queued")
+	return h.MaybeWaitForCommand(req, correlationID, args, "DOM query queued")
 }
 
 const pageSummaryScript = `(function () {
@@ -346,7 +346,7 @@ func (h *ToolHandler) toolAnalyzePageSummary(req JSONRPCRequest, args json.RawMe
 		params.TimeoutMs = 30_000
 	}
 
-	correlationID := fmt.Sprintf("page_summary_%d_%d", time.Now().UnixNano(), randomInt63())
+	correlationID := newCorrelationID("page_summary")
 
 	// Error impossible: static map with serializable values.
 	execParams, _ := json.Marshal(map[string]any{
@@ -364,7 +364,7 @@ func (h *ToolHandler) toolAnalyzePageSummary(req JSONRPCRequest, args json.RawMe
 	}
 	h.capture.CreatePendingQueryWithTimeout(query, queries.AsyncCommandTimeout, req.ClientID)
 
-	return h.maybeWaitForCommand(req, correlationID, args, "Page summary queued")
+	return h.MaybeWaitForCommand(req, correlationID, args, "Page summary queued")
 }
 
 // ============================================
@@ -504,7 +504,7 @@ func (h *ToolHandler) clearAPIValidationState() {
 // toolAnalyzeLinkHealth checks all links on the current page for health issues.
 func (h *ToolHandler) toolAnalyzeLinkHealth(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	// Generate correlation ID for tracking
-	correlationID := fmt.Sprintf("link_health_%d_%d", time.Now().UnixNano(), randomInt63())
+	correlationID := newCorrelationID("link_health")
 
 	// Create pending query for link health check
 	query := queries.PendingQuery{
@@ -514,7 +514,7 @@ func (h *ToolHandler) toolAnalyzeLinkHealth(req JSONRPCRequest, args json.RawMes
 	}
 	h.capture.CreatePendingQueryWithTimeout(query, queries.AsyncCommandTimeout, req.ClientID)
 
-	return h.maybeWaitForCommand(req, correlationID, args, "Link health check initiated")
+	return h.MaybeWaitForCommand(req, correlationID, args, "Link health check initiated")
 }
 
 // ============================================

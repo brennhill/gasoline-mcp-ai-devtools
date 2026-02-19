@@ -30,13 +30,13 @@ func TestMaybeWaitForCommand_SyncByDefault(t *testing.T) {
 	}()
 
 	// Simulate extension connection via a Sync call so IsExtensionConnected() returns true
-	reqBody := `{"session_id":"test"}`
+	reqBody := `{"ext_session_id":"test"}`
 	httpReq := httptest.NewRequest("POST", "/sync", strings.NewReader(reqBody))
 	httpReq.Header.Set("X-Gasoline-Client", "test-client")
 	cap.HandleSync(httptest.NewRecorder(), httpReq)
 
 	// Call with no explicit sync param (should default to true)
-	resp := handler.maybeWaitForCommand(req, correlationID, json.RawMessage(`{}`), "Queued")
+	resp := handler.MaybeWaitForCommand(req, correlationID, json.RawMessage(`{}`), "Queued")
 
 	// Verify
 	result := parseMCPResponseData(t, resp.Result)
@@ -56,7 +56,7 @@ func TestMaybeWaitForCommand_BackgroundOverride(t *testing.T) {
 	correlationID := "test-bg-123"
 
 	// Call with background: true
-	resp := handler.maybeWaitForCommand(req, correlationID, json.RawMessage(`{"background":true}`), "Queued")
+	resp := handler.MaybeWaitForCommand(req, correlationID, json.RawMessage(`{"background":true}`), "Queued")
 
 	result := parseMCPResponseData(t, resp.Result)
 
@@ -77,7 +77,7 @@ func TestMaybeWaitForCommand_TimeoutGracefulFallback(t *testing.T) {
 
 	// Start a goroutine to check if it's blocking
 	start := time.Now()
-	_ = handler.maybeWaitForCommand(req, correlationID, json.RawMessage(`{"sync":true}`), "Queued")
+	_ = handler.MaybeWaitForCommand(req, correlationID, json.RawMessage(`{"sync":true}`), "Queued")
 	duration := time.Since(start)
 
 	// Since we didn't mock connection or result, it should fail fast or timeout.
@@ -98,7 +98,7 @@ func parseMCPResponseData(t *testing.T, rawResult json.RawMessage) map[string]an
 	if len(toolResult.Content) == 0 {
 		t.Fatal("MCPToolResult has no content blocks")
 	}
-	jsonText := extractJSONFromMCPText(toolResult.Content[0].Text)
+	jsonText := extractJSONFromText(toolResult.Content[0].Text)
 	var data map[string]any
 	if err := json.Unmarshal([]byte(jsonText), &data); err != nil {
 		t.Fatalf("Failed to parse JSON from MCP text: %v\nRaw text: %s", err, toolResult.Content[0].Text)
