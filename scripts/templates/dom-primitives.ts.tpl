@@ -1,7 +1,3 @@
-// AUTO-GENERATED FILE. DO NOT EDIT DIRECTLY.
-// Source template: scripts/templates/dom-primitives.ts.tpl
-// Generator: scripts/generate-dom-primitives.js
-
 /**
  * Purpose: Handles extension background coordination and message routing.
  * Docs: docs/features/feature/analyze-tool/index.md

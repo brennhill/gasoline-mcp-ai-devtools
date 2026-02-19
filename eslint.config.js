@@ -9,12 +9,18 @@ export default [
     ignores: [
       'node_modules/',
       'dist/',
+      'coverage/',
       'tests/e2e/',
       'npm/',
       'server/',
       'docs/',
       'demo/',
       '.venv-build/',
+      '.gasoline/',
+      '.worktrees/',
+      'pypi/**/build/',
+      'pypi/**/dist/',
+      'pypi/**/*.egg-info/',
       // Compiled TypeScript output (linted at the .ts source level)
       'extension/background/',
       'extension/content/',

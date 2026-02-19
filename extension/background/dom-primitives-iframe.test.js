@@ -151,6 +151,29 @@ describe('iframe support: allFrames flag', () => {
     assert.strictEqual(executeScriptCalls[0].target.allFrames, true, 'quick-check must use allFrames: true')
     assert.strictEqual(executeScriptCalls[1].target.allFrames, true, 'polling fallback must use allFrames: true')
   })
+
+  test('wait_for returns timeout when polling never finds a match', async () => {
+    executeScriptReturn.push([
+      { frameId: 0, result: { success: false, action: 'wait_for', selector: '#missing', error: 'element_not_found' } }
+    ])
+    executeScriptReturn.push([
+      { frameId: 0, result: { success: false, action: 'wait_for', selector: '#missing', error: 'element_not_found' } }
+    ])
+    const res = captureAsyncResult()
+
+    await executeDOMAction(
+      makeQuery({ action: 'wait_for', selector: '#missing', timeout_ms: 60 }),
+      1,
+      makeSyncClient(),
+      res.fn,
+      noopToast
+    )
+
+    assert.ok(executeScriptCalls.length >= 2, 'wait_for should make at least quick-check + one poll call')
+    assert.strictEqual(res.calls[0].status, 'complete')
+    assert.strictEqual(res.calls[0].result.success, false)
+    assert.strictEqual(res.calls[0].result.error, 'timeout')
+  })
 })
 
 describe('iframe support: pickFrameResult', () => {

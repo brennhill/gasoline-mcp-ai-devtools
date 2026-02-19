@@ -1,9 +1,6 @@
-/**
- * Purpose: Handles extension background coordination and message routing.
- * Docs: docs/features/feature/analyze-tool/index.md
- * Docs: docs/features/feature/interact-explore/index.md
- * Docs: docs/features/feature/observe/index.md
- */
+// AUTO-GENERATED FILE. DO NOT EDIT DIRECTLY.
+// Source template: scripts/templates/dom-primitives.ts.tpl
+// Generator: scripts/generate-dom-primitives.js
 /**
  * Single self-contained function for all DOM primitives.
  * Passed to chrome.scripting.executeScript({ func: domPrimitive, args: [...] }).
@@ -553,35 +550,30 @@ export function domPrimitive(action, selector, options) {
             }
         });
     }
-    // ---------------------------------------------------------------
-    // Action dispatch
-    // ---------------------------------------------------------------
-    switch (action) {
-        case 'click': {
-            return withMutationTracking(() => {
-                if (!(el instanceof HTMLElement)) {
+    function buildActionHandlers(node) {
+        return {
+            click: () => withMutationTracking(() => {
+                if (!(node instanceof HTMLElement)) {
                     return {
                         success: false,
                         action,
                         selector,
                         error: 'not_interactive',
-                        message: `Element is not an HTMLElement: ${el.tagName}`
+                        message: `Element is not an HTMLElement: ${node.tagName}`
                     };
                 }
-                el.click();
+                node.click();
                 return { success: true, action, selector };
-            });
-        }
-        case 'type': {
-            return withMutationTracking(() => {
+            }),
+            type: () => withMutationTracking(() => {
                 const text = options.text || '';
                 // Contenteditable elements (Gmail compose body, rich text editors)
-                if (el instanceof HTMLElement && el.isContentEditable) {
-                    el.focus();
+                if (node instanceof HTMLElement && node.isContentEditable) {
+                    node.focus();
                     if (options.clear) {
                         const selection = document.getSelection();
                         if (selection) {
-                            selection.selectAllChildren(el);
+                            selection.selectAllChildren(node);
                             selection.deleteFromDocument();
                         }
                     }
@@ -596,133 +588,120 @@ export function domPrimitive(action, selector, options) {
                             document.execCommand('insertText', false, line);
                         }
                     }
-                    return { success: true, action, selector, value: el.innerText };
+                    return { success: true, action, selector, value: node.innerText };
                 }
-                if (!(el instanceof HTMLInputElement) && !(el instanceof HTMLTextAreaElement)) {
+                if (!(node instanceof HTMLInputElement) && !(node instanceof HTMLTextAreaElement)) {
                     return {
                         success: false,
                         action,
                         selector,
                         error: 'not_typeable',
-                        message: `Element is not an input, textarea, or contenteditable: ${el.tagName}`
+                        message: `Element is not an input, textarea, or contenteditable: ${node.tagName}`
                     };
                 }
-                const proto = el instanceof HTMLTextAreaElement ? HTMLTextAreaElement : HTMLInputElement;
+                const proto = node instanceof HTMLTextAreaElement ? HTMLTextAreaElement : HTMLInputElement;
                 const nativeSetter = Object.getOwnPropertyDescriptor(proto.prototype, 'value')?.set;
                 if (nativeSetter) {
-                    const newValue = options.clear ? text : el.value + text;
-                    nativeSetter.call(el, newValue);
+                    const newValue = options.clear ? text : node.value + text;
+                    nativeSetter.call(node, newValue);
                 }
                 else {
-                    el.value = options.clear ? text : el.value + text;
+                    node.value = options.clear ? text : node.value + text;
                 }
-                el.dispatchEvent(new InputEvent('input', { bubbles: true, data: text, inputType: 'insertText' }));
-                el.dispatchEvent(new Event('change', { bubbles: true }));
-                return { success: true, action, selector, value: el.value };
-            });
-        }
-        case 'select': {
-            return withMutationTracking(() => {
-                if (!(el instanceof HTMLSelectElement)) {
+                node.dispatchEvent(new InputEvent('input', { bubbles: true, data: text, inputType: 'insertText' }));
+                node.dispatchEvent(new Event('change', { bubbles: true }));
+                return { success: true, action, selector, value: node.value };
+            }),
+            select: () => withMutationTracking(() => {
+                if (!(node instanceof HTMLSelectElement)) {
                     return {
                         success: false,
                         action,
                         selector,
                         error: 'not_select',
-                        message: `Element is not a <select>: ${el.tagName}` // nosemgrep: html-in-template-string
+                        message: `Element is not a <select>: ${node.tagName}` // nosemgrep: html-in-template-string
                     };
                 }
                 const nativeSelectSetter = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value')?.set;
                 if (nativeSelectSetter) {
-                    nativeSelectSetter.call(el, options.value || '');
+                    nativeSelectSetter.call(node, options.value || '');
                 }
                 else {
-                    el.value = options.value || '';
+                    node.value = options.value || '';
                 }
-                el.dispatchEvent(new Event('change', { bubbles: true }));
-                return { success: true, action, selector, value: el.value };
-            });
-        }
-        case 'check': {
-            return withMutationTracking(() => {
-                if (!(el instanceof HTMLInputElement) || (el.type !== 'checkbox' && el.type !== 'radio')) {
+                node.dispatchEvent(new Event('change', { bubbles: true }));
+                return { success: true, action, selector, value: node.value };
+            }),
+            check: () => withMutationTracking(() => {
+                if (!(node instanceof HTMLInputElement) || (node.type !== 'checkbox' && node.type !== 'radio')) {
                     return {
                         success: false,
                         action,
                         selector,
                         error: 'not_checkable',
-                        message: `Element is not a checkbox or radio: ${el.tagName} type=${el.type || 'N/A'}`
+                        message: `Element is not a checkbox or radio: ${node.tagName} type=${node.type || 'N/A'}`
                     };
                 }
                 const desired = options.checked !== undefined ? options.checked : true;
-                if (el.checked !== desired) {
-                    el.click();
+                if (node.checked !== desired) {
+                    node.click();
                 }
-                return { success: true, action, selector, value: el.checked };
-            });
-        }
-        case 'get_text': {
-            const text = el instanceof HTMLElement ? el.innerText : el.textContent;
-            return { success: true, action, selector, value: text };
-        }
-        case 'get_value': {
-            if (!('value' in el)) {
-                return {
-                    success: false,
-                    action,
-                    selector,
-                    error: 'no_value_property',
-                    message: `Element has no value property: ${el.tagName}`
-                };
-            }
-            return { success: true, action, selector, value: el.value };
-        }
-        case 'get_attribute': {
-            return { success: true, action, selector, value: el.getAttribute(options.name || '') };
-        }
-        case 'set_attribute': {
-            return withMutationTracking(() => {
-                el.setAttribute(options.name || '', options.value || '');
-                return { success: true, action, selector, value: el.getAttribute(options.name || '') };
-            });
-        }
-        case 'focus': {
-            if (!(el instanceof HTMLElement)) {
-                return {
-                    success: false,
-                    action,
-                    selector,
-                    error: 'not_focusable',
-                    message: `Element is not an HTMLElement: ${el.tagName}`
-                };
-            }
-            el.focus();
-            return { success: true, action, selector };
-        }
-        case 'scroll_to': {
-            el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            return { success: true, action, selector };
-        }
-        case 'wait_for': {
-            // Already found — return immediately
-            return { success: true, action, selector, value: el.tagName.toLowerCase() };
-        }
-        case 'paste': {
-            return withMutationTracking(() => {
-                if (!(el instanceof HTMLElement)) {
+                return { success: true, action, selector, value: node.checked };
+            }),
+            get_text: () => {
+                const text = node instanceof HTMLElement ? node.innerText : node.textContent;
+                return { success: true, action, selector, value: text };
+            },
+            get_value: () => {
+                if (!('value' in node)) {
+                    return {
+                        success: false,
+                        action,
+                        selector,
+                        error: 'no_value_property',
+                        message: `Element has no value property: ${node.tagName}`
+                    };
+                }
+                return { success: true, action, selector, value: node.value };
+            },
+            get_attribute: () => ({ success: true, action, selector, value: node.getAttribute(options.name || '') }),
+            set_attribute: () => withMutationTracking(() => {
+                node.setAttribute(options.name || '', options.value || '');
+                return { success: true, action, selector, value: node.getAttribute(options.name || '') };
+            }),
+            focus: () => {
+                if (!(node instanceof HTMLElement)) {
+                    return {
+                        success: false,
+                        action,
+                        selector,
+                        error: 'not_focusable',
+                        message: `Element is not an HTMLElement: ${node.tagName}`
+                    };
+                }
+                node.focus();
+                return { success: true, action, selector };
+            },
+            scroll_to: () => {
+                node.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                return { success: true, action, selector };
+            },
+            wait_for: () => ({ success: true, action, selector, value: node.tagName.toLowerCase() }),
+            paste: () => withMutationTracking(() => {
+                if (!(node instanceof HTMLElement)) {
                     return {
                         success: false,
                         action,
                         selector,
                         error: 'not_interactive',
-                        message: `Element is not an HTMLElement: ${el.tagName}`
+                        message: `Element is not an HTMLElement: ${node.tagName}`
                     };
                 }
-                el.focus();
+                node.focus();
                 if (options.clear) {
                     const selection = document.getSelection();
                     if (selection) {
-                        selection.selectAllChildren(el);
+                        selection.selectAllChildren(node);
                         selection.deleteFromDocument();
                     }
                 }
@@ -730,26 +709,24 @@ export function domPrimitive(action, selector, options) {
                 const dt = new DataTransfer();
                 dt.setData('text/plain', pasteText);
                 const event = new ClipboardEvent('paste', { clipboardData: dt, bubbles: true, cancelable: true });
-                el.dispatchEvent(event);
-                return { success: true, action, selector, value: el.innerText };
-            });
-        }
-        case 'key_press': {
-            return withMutationTracking(() => {
-                if (!(el instanceof HTMLElement)) {
+                node.dispatchEvent(event);
+                return { success: true, action, selector, value: node.innerText };
+            }),
+            key_press: () => withMutationTracking(() => {
+                if (!(node instanceof HTMLElement)) {
                     return {
                         success: false,
                         action,
                         selector,
                         error: 'not_interactive',
-                        message: `Element is not an HTMLElement: ${el.tagName}`
+                        message: `Element is not an HTMLElement: ${node.tagName}`
                     };
                 }
                 const key = options.text || 'Enter';
                 // Tab/Shift+Tab: manually move focus (dispatchEvent can't trigger native tab traversal)
                 if (key === 'Tab' || key === 'Shift+Tab') {
-                    const focusable = Array.from(el.ownerDocument.querySelectorAll('a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])')).filter((e) => e.offsetParent !== null);
-                    const idx = focusable.indexOf(el);
+                    const focusable = Array.from(node.ownerDocument.querySelectorAll('a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])')).filter((e) => e.offsetParent !== null);
+                    const idx = focusable.indexOf(node);
                     const next = key === 'Shift+Tab' ? focusable[idx - 1] : focusable[idx + 1];
                     if (next) {
                         next.focus();
@@ -767,200 +744,52 @@ export function domPrimitive(action, selector, options) {
                     Space: { key: ' ', code: 'Space', keyCode: 32 }
                 };
                 const mapped = keyMap[key] || { key, code: key, keyCode: 0 };
-                el.dispatchEvent(new KeyboardEvent('keydown', { key: mapped.key, code: mapped.code, keyCode: mapped.keyCode, bubbles: true }));
-                el.dispatchEvent(new KeyboardEvent('keypress', { key: mapped.key, code: mapped.code, keyCode: mapped.keyCode, bubbles: true }));
-                el.dispatchEvent(new KeyboardEvent('keyup', { key: mapped.key, code: mapped.code, keyCode: mapped.keyCode, bubbles: true }));
+                node.dispatchEvent(new KeyboardEvent('keydown', { key: mapped.key, code: mapped.code, keyCode: mapped.keyCode, bubbles: true }));
+                node.dispatchEvent(new KeyboardEvent('keypress', { key: mapped.key, code: mapped.code, keyCode: mapped.keyCode, bubbles: true }));
+                node.dispatchEvent(new KeyboardEvent('keyup', { key: mapped.key, code: mapped.code, keyCode: mapped.keyCode, bubbles: true }));
                 return { success: true, action, selector, value: key };
-            });
-        }
-        default:
-            return { success: false, action, selector, error: 'unknown_action', message: `Unknown DOM action: ${action}` };
+            })
+        };
     }
+    const handlers = buildActionHandlers(el);
+    const handler = handlers[action];
+    if (!handler) {
+        return { success: false, action, selector, error: 'unknown_action', message: `Unknown DOM action: ${action}` };
+    }
+    return handler();
 }
 /**
  * wait_for variant that polls with MutationObserver (used when element not found initially).
- * Separate function because it returns a Promise.
+ * This stays as a local convenience wrapper (tests and direct calls).
+ * Runtime dispatch uses repeated domPrimitive('wait_for', ...) executeScript calls
+ * so injected code only relies on one self-contained selector engine.
  */
-// #lizard forgives
 export function domWaitFor(selector, timeoutMs) {
-    // ---------------------------------------------------------------
-    // Inline shadow DOM helpers (duplicated from domPrimitive — required
-    // because chrome.scripting.executeScript serializes each function
-    // independently, no shared closures)
-    // ---------------------------------------------------------------
-    // #lizard forgives
-    function getShadowRoot(el) {
-        return el.shadowRoot ?? null;
-        // Closed root support: see feat/closed-shadow-capture branch
+    const waitAction = 'wait_for';
+    function isPromise(value) {
+        return !!value && typeof value === 'object' && 'then' in value && typeof value.then === 'function';
     }
-    function querySelectorDeepWalk(sel, root, depth = 0) {
-        if (depth > 10)
+    function toResult(value) {
+        if (!value || typeof value !== 'object')
             return null;
-        const ch = 'children' in root
-            ? root.children
-            : root.body?.children || root.documentElement?.children;
-        if (!ch)
+        const candidate = value;
+        if (typeof candidate.success !== 'boolean')
             return null;
-        for (let i = 0; i < ch.length; i++) {
-            const child = ch[i];
-            const shadow = getShadowRoot(child);
-            if (shadow) {
-                const match = shadow.querySelector(sel);
-                if (match)
-                    return match;
-                const deep = querySelectorDeepWalk(sel, shadow, depth + 1);
-                if (deep)
-                    return deep;
-            }
-            if (child.children.length > 0) {
-                const deep = querySelectorDeepWalk(sel, child, depth + 1);
-                if (deep)
-                    return deep;
-            }
-        }
-        return null;
-    }
-    function querySelectorDeep(sel, root = document) {
-        const fast = root.querySelector(sel);
-        if (fast)
-            return fast;
-        return querySelectorDeepWalk(sel, root);
-    }
-    function querySelectorAllDeep(sel, root = document, results = [], depth = 0) {
-        if (depth > 10)
-            return results;
-        results.push(...Array.from(root.querySelectorAll(sel)));
-        const ch = 'children' in root
-            ? root.children
-            : root.body?.children || root.documentElement?.children;
-        if (!ch)
-            return results;
-        for (let i = 0; i < ch.length; i++) {
-            const child = ch[i];
-            const shadow = getShadowRoot(child);
-            if (shadow) {
-                querySelectorAllDeep(sel, shadow, results, depth + 1);
-            }
-        }
-        return results;
-    }
-    function resolveDeepCombinator(sel) {
-        const parts = sel.split(' >>> ');
-        if (parts.length <= 1)
+        if (typeof candidate.action !== 'string' || typeof candidate.selector !== 'string')
             return null;
-        let current = document;
-        for (let i = 0; i < parts.length; i++) {
-            const part = parts[i].trim();
-            if (i < parts.length - 1) {
-                const host = querySelectorDeep(part, current);
-                if (!host)
-                    return null;
-                const shadow = getShadowRoot(host);
-                if (!shadow)
-                    return null;
-                current = shadow;
-            }
-            else {
-                return querySelectorDeep(part, current);
-            }
-        }
-        return null;
+        return candidate;
     }
-    // ---------------------------------------------------------------
-    // Inline selector resolvers (shadow-aware)
-    // ---------------------------------------------------------------
-    function resolveByTextSimple(searchText) {
-        function walkScope(root) {
-            const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
-            while (walker.nextNode()) {
-                const node = walker.currentNode;
-                if (node.textContent && node.textContent.trim().includes(searchText)) {
-                    const parent = node.parentElement;
-                    if (!parent)
-                        continue;
-                    return parent.closest('a, button, [role="button"], [role="link"], label, summary') || parent;
-                }
-            }
-            const ch = 'children' in root ? root.children : undefined;
-            if (ch) {
-                for (let i = 0; i < ch.length; i++) {
-                    const child = ch[i];
-                    const shadow = getShadowRoot(child);
-                    if (shadow) {
-                        const result = walkScope(shadow);
-                        if (result)
-                            return result;
-                    }
-                }
-            }
+    function currentMatch() {
+        const maybe = domPrimitive(waitAction, selector, { timeout_ms: timeoutMs });
+        if (isPromise(maybe))
             return null;
-        }
-        return walkScope(document.body || document.documentElement);
-    }
-    function resolveByLabelSimple(labelText) {
-        for (const label of querySelectorAllDeep('label')) {
-            if (label.textContent && label.textContent.trim().includes(labelText)) {
-                const forAttr = label.getAttribute('for');
-                if (forAttr) {
-                    const t = document.getElementById(forAttr);
-                    if (t)
-                        return t;
-                }
-                return label.querySelector('input, select, textarea') || label;
-            }
-        }
-        return null;
-    }
-    const waitResolvers = [
-        ['text=', (v) => resolveByTextSimple(v)],
-        ['role=', (v) => querySelectorDeep(`[role="${CSS.escape(v)}"]`)],
-        ['placeholder=', (v) => querySelectorDeep(`[placeholder="${CSS.escape(v)}"]`)],
-        ['aria-label=', (v) => querySelectorDeep(`[aria-label="${CSS.escape(v)}"]`)],
-        ['label=', (v) => resolveByLabelSimple(v)]
-    ];
-    function resolveElement(sel) {
-        if (!sel)
-            return null;
-        if (sel.includes(' >>> '))
-            return resolveDeepCombinator(sel);
-        // :nth-match(N) — resolve against all matches for the base selector
-        const nthMatch = sel.match(/^(.*):nth-match\((\d+)\)$/);
-        if (nthMatch) {
-            const base = nthMatch[1] || '';
-            const n = Number.parseInt(nthMatch[2] || '0', 10);
-            if (!base || Number.isNaN(n) || n < 1)
-                return null;
-            // Resolve base via semantic or CSS selectors
-            let matches = [];
-            for (const [prefix, resolver] of waitResolvers) {
-                if (base.startsWith(prefix)) {
-                    // Collect all by calling querySelectorAllDeep for the semantic result
-                    const single = resolver(base.slice(prefix.length));
-                    matches = single ? [single] : [];
-                    break;
-                }
-            }
-            if (matches.length === 0) {
-                try {
-                    matches = Array.from(document.querySelectorAll(base));
-                }
-                catch {
-                    matches = [];
-                }
-            }
-            return matches[n - 1] || null;
-        }
-        for (const [prefix, resolver] of waitResolvers) {
-            if (sel.startsWith(prefix))
-                return resolver(sel.slice(prefix.length));
-        }
-        return querySelectorDeep(sel);
+        const result = toResult(maybe);
+        return result?.success ? result : null;
     }
     return new Promise((resolve) => {
-        // Check immediately
-        const existing = resolveElement(selector);
+        const existing = currentMatch();
         if (existing) {
-            resolve({ success: true, action: 'wait_for', selector, value: existing.tagName.toLowerCase() });
+            resolve(existing);
             return;
         }
         let resolved = false;
@@ -970,7 +799,7 @@ export function domWaitFor(selector, timeoutMs) {
                 observer.disconnect();
                 resolve({
                     success: false,
-                    action: 'wait_for',
+                    action: waitAction,
                     selector,
                     error: 'timeout',
                     message: `Element not found within ${timeoutMs}ms: ${selector}`
@@ -978,59 +807,16 @@ export function domWaitFor(selector, timeoutMs) {
             }
         }, timeoutMs);
         const observer = new MutationObserver(() => {
-            const el = resolveElement(selector);
-            if (el && !resolved) {
+            const match = currentMatch();
+            if (match && !resolved) {
                 resolved = true;
                 clearTimeout(timer);
                 observer.disconnect();
-                resolve({ success: true, action: 'wait_for', selector, value: el.tagName.toLowerCase() });
+                resolve(match);
             }
         });
         observer.observe(document.documentElement, { childList: true, subtree: true });
     });
 }
 // Dispatcher utilities (parseDOMParams, executeDOMAction, etc.) moved to ./dom-dispatch.ts
-/**
- * Frame-matching probe executed in page context.
- * Must stay self-contained for chrome.scripting.executeScript({ func }).
- */
-export function domFrameProbe(frameTarget) {
-    const isTop = window === window.top;
-    const getParentFrameIndex = () => {
-        if (isTop)
-            return -1;
-        try {
-            const parentFrames = window.parent?.frames;
-            if (!parentFrames)
-                return -1;
-            for (let i = 0; i < parentFrames.length; i++) {
-                if (parentFrames[i] === window)
-                    return i;
-            }
-        }
-        catch {
-            return -1;
-        }
-        return -1;
-    };
-    if (typeof frameTarget === 'number') {
-        return { matches: getParentFrameIndex() === frameTarget };
-    }
-    if (frameTarget === 'all') {
-        return { matches: true };
-    }
-    if (isTop) {
-        return { matches: false };
-    }
-    try {
-        const frameEl = window.frameElement;
-        if (!frameEl || typeof frameEl.matches !== 'function') {
-            return { matches: false };
-        }
-        return { matches: frameEl.matches(frameTarget) };
-    }
-    catch {
-        return { matches: false };
-    }
-}
 //# sourceMappingURL=dom-primitives.js.map
