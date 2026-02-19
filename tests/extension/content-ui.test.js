@@ -228,7 +228,7 @@ describe('showActionToast', () => {
 // ---------------------------------------------------------------------------
 
 describe('showSubtitle', () => {
-  let showSubtitle, clearSubtitle
+  let showSubtitle, clearSubtitle // eslint-disable-line no-unused-vars
 
   beforeEach(async () => {
     mock.reset()
