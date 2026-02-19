@@ -1,3 +1,7 @@
+// THIS FILE IS GENERATED — do not edit by hand.
+// Source: internal/types/wire_websocket_event.go
+// Generator: scripts/generate-wire-types.js
+
 /**
  * @fileoverview Wire type for WebSocket events — matches internal/types/wire_websocket_event.go
  *

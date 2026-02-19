@@ -23,6 +23,7 @@ PLATFORMS := \
 	pypi-binaries pypi-build pypi-publish pypi-test-publish pypi-clean \
 	security-check pre-commit verify-all npm-binaries validate-semver \
 	test-upgrade-guards release-gate clean-test-daemons \
+	generate-wire-types \
 	$(PLATFORMS)
 
 GO_TEST_SHARDS ?= 4
@@ -38,8 +39,12 @@ all: validate-semver clean build
 clean:
 	rm -rf $(BUILD_DIR)
 
+# Generate TypeScript wire types from Go source of truth
+generate-wire-types:
+	@node scripts/generate-wire-types.js
+
 # Compile TypeScript to JavaScript (REQUIRED before tests)
-compile-ts:
+compile-ts: generate-wire-types
 	@echo "=== Compiling TypeScript ==="
 	@npx tsc
 	@if [ ! -f extension/background/index.js ]; then \
@@ -233,7 +238,7 @@ typecheck:
 check: lint format typecheck check-invariants
 
 check-wire-drift:
-	@node scripts/check-wire-drift.js
+	@node scripts/generate-wire-types.js --check
 
 check-invariants: check-wire-drift
 	@./scripts/check-sync-invariants.sh

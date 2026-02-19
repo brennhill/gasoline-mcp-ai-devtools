@@ -1,8 +1,5 @@
-/**
- * @fileoverview Wire types for network telemetry — matches internal/types/wire_network.go
- *
- * Canonical TypeScript definitions for NetworkBody and NetworkWaterfall HTTP payloads.
- * Changes here MUST be mirrored in the Go counterpart. Run `make check-wire-drift`.
- */
+// THIS FILE IS GENERATED — do not edit by hand.
+// Source: internal/types/wire_network.go
+// Generator: scripts/generate-wire-types.js
 export {};
 //# sourceMappingURL=wire-network.js.map

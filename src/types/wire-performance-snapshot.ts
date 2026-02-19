@@ -1,3 +1,7 @@
+// THIS FILE IS GENERATED — do not edit by hand.
+// Source: internal/performance/wire_performance.go
+// Generator: scripts/generate-wire-types.js
+
 /**
  * @fileoverview Wire types for performance snapshots — matches internal/performance/wire_performance.go
  *
