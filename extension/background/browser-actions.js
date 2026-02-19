@@ -28,17 +28,19 @@ export async function handleNavigateAction(tabId, url, actionToast, reason) {
     await chrome.tabs.update(tabId, { url });
     await eventListeners.waitForTabLoad(tabId);
     await new Promise((r) => setTimeout(r, 500));
+    const tab = await chrome.tabs.get(tabId);
     if (await eventListeners.pingContentScript(tabId)) {
         broadcastTrackingState().catch(() => { });
         actionToast(tabId, reason || 'navigate', reason ? undefined : url, 'success');
-        return { success: true, action: 'navigate', url, content_script_status: 'loaded', message: 'Content script ready' };
+        return { success: true, action: 'navigate', url, final_url: tab.url, title: tab.title, content_script_status: 'loaded', message: 'Content script ready' };
     }
-    const tab = await chrome.tabs.get(tabId);
     if (tab.url?.startsWith('file://')) {
         return {
             success: true,
             action: 'navigate',
             url,
+            final_url: tab.url,
+            title: tab.title,
             content_script_status: 'unavailable',
             message: 'Content script cannot load on file:// URLs. Enable "Allow access to file URLs" in extension settings.'
         };
@@ -47,12 +49,15 @@ export async function handleNavigateAction(tabId, url, actionToast, reason) {
     await chrome.tabs.reload(tabId);
     await eventListeners.waitForTabLoad(tabId);
     await new Promise((r) => setTimeout(r, 1000));
+    const reloadedTab = await chrome.tabs.get(tabId);
     if (await eventListeners.pingContentScript(tabId)) {
         broadcastTrackingState().catch(() => { });
         return {
             success: true,
             action: 'navigate',
             url,
+            final_url: reloadedTab.url,
+            title: reloadedTab.title,
             content_script_status: 'refreshed',
             message: 'Page refreshed to load content script'
         };
@@ -61,6 +66,8 @@ export async function handleNavigateAction(tabId, url, actionToast, reason) {
         success: true,
         action: 'navigate',
         url,
+        final_url: reloadedTab.url,
+        title: reloadedTab.title,
         content_script_status: 'failed',
         message: 'Navigation complete but content script could not be loaded. AI Web Pilot tools may not work.'
     };
@@ -75,12 +82,14 @@ export async function handleBrowserAction(tabId, params, actionToast) {
     }
     try {
         switch (action) {
-            case 'refresh':
+            case 'refresh': {
                 actionToast(tabId, reason || 'refresh', reason ? undefined : 'reloading page', 'trying', 10000);
                 await chrome.tabs.reload(tabId);
                 await eventListeners.waitForTabLoad(tabId);
                 actionToast(tabId, reason || 'refresh', undefined, 'success');
-                return { success: true, action: 'refresh' };
+                const refreshedTab = await chrome.tabs.get(tabId);
+                return { success: true, action: 'refresh', url: refreshedTab.url, title: refreshedTab.title };
+            }
             case 'navigate':
                 if (!url)
                     return { success: false, error: 'missing_url', message: 'URL required for navigate action' };
@@ -91,7 +100,7 @@ export async function handleBrowserAction(tabId, params, actionToast) {
                 await eventListeners.waitForTabLoad(tabId);
                 actionToast(tabId, reason || 'back', undefined, 'success');
                 const backTab = await chrome.tabs.get(tabId);
-                return { success: true, action: 'back', url: backTab.url };
+                return { success: true, action: 'back', url: backTab.url, title: backTab.title };
             }
             case 'forward': {
                 actionToast(tabId, reason || 'forward', reason ? undefined : 'going forward', 'trying', 10000);
@@ -99,7 +108,7 @@ export async function handleBrowserAction(tabId, params, actionToast) {
                 await eventListeners.waitForTabLoad(tabId);
                 actionToast(tabId, reason || 'forward', undefined, 'success');
                 const fwdTab = await chrome.tabs.get(tabId);
-                return { success: true, action: 'forward', url: fwdTab.url };
+                return { success: true, action: 'forward', url: fwdTab.url, title: fwdTab.title };
             }
             case 'new_tab': {
                 if (!url)
@@ -107,7 +116,7 @@ export async function handleBrowserAction(tabId, params, actionToast) {
                 actionToast(tabId, reason || 'new_tab', reason ? undefined : 'opening new tab', 'trying', 5000);
                 const newTab = await chrome.tabs.create({ url, active: false });
                 actionToast(tabId, reason || 'new_tab', undefined, 'success');
-                return { success: true, action: 'new_tab', url, tab_id: newTab.id };
+                return { success: true, action: 'new_tab', url, tab_id: newTab.id, title: newTab.title };
             }
             default:
                 return { success: false, error: 'unknown_action', message: `Unknown action: ${action}` };
@@ -141,7 +150,15 @@ export async function handleAsyncExecuteCommand(query, tabId, world, syncClient,
         if (result.success) {
             actionToast(tabId, reason || 'execute_js', undefined, 'success');
         }
-        sendAsyncResult(syncClient, query.id, query.correlation_id, 'complete', result);
+        let enrichedResult = result;
+        try {
+            const tab = await chrome.tabs.get(tabId);
+            enrichedResult = { ...result, effective_tab_id: tabId, effective_url: tab.url, effective_title: tab.title };
+        }
+        catch {
+            /* tab may have closed */
+        }
+        sendAsyncResult(syncClient, query.id, query.correlation_id, 'complete', enrichedResult);
         debugLog(DebugCategory.CONNECTION, 'Completed async command', {
             correlationId: query.correlation_id,
             elapsed: Date.now() - startTime,
