@@ -38,7 +38,7 @@ cd gasoline
 go run ./cmd/dev-console
 ```
 
-You'll see: `[gasoline] v0.7.2 — HTTP on port 7890`
+You'll see: `[gasoline] v0.7.5 — HTTP on port 7890`
 
 npm and PyPI are distribution channels — they deliver the native Go binary for your platform. The MCP server runs natively with no Node.js or Python runtime dependency.
 

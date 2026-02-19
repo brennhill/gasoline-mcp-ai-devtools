@@ -158,7 +158,7 @@ function updateVersionInFile(filePath, oldVersion, newVersion) {
       new RegExp(`version:\\s*"${oldVersion.replace(/\./g, '\\.')}"`, 'g'), // nosemgrep: javascript.lang.security.audit.detect-non-literal-regexp.detect-non-literal-regexp, javascript_dos_rule-non-literal-regexp -- RegExp from trusted local version string
       `version: "${newVersion}"`
     )
-    // __version__ = "0.7.2"
+    // __version__ = "0.7.5"
     updated = updated.replace(
        
       new RegExp(`__version__ = "${oldVersion.replace(/\./g, '\\.')}"`, 'g'), // nosemgrep: javascript.lang.security.audit.detect-non-literal-regexp.detect-non-literal-regexp, javascript_dos_rule-non-literal-regexp -- RegExp from trusted local version string
@@ -169,7 +169,7 @@ function updateVersionInFile(filePath, oldVersion, newVersion) {
       new RegExp(`__version__ = '${oldVersion.replace(/\./g, '\\.')}'`, 'g'), // nosemgrep: javascript.lang.security.audit.detect-non-literal-regexp.detect-non-literal-regexp, javascript_dos_rule-non-literal-regexp -- RegExp from trusted local version string
       `__version__ = '${newVersion}'`
     )
-    // const VERSION = '0.7.2' or const VERSION = "0.7.2"
+    // const VERSION = '0.7.5' or const VERSION = "0.7.5"
     updated = updated.replace(
        
       new RegExp(`const VERSION = '${oldVersion.replace(/\./g, '\\.')}'`, 'g'), // nosemgrep: javascript.lang.security.audit.detect-non-literal-regexp.detect-non-literal-regexp, javascript_dos_rule-non-literal-regexp -- RegExp from trusted local version string
@@ -181,7 +181,7 @@ function updateVersionInFile(filePath, oldVersion, newVersion) {
       `const VERSION = "${newVersion}"`
     )
   } else if (filePath.endsWith('.py')) {
-    // Python: __version__ = "0.7.2"
+    // Python: __version__ = "0.7.5"
     updated = updated.replace(
        
       new RegExp(`__version__ = "${oldVersion.replace(/\./g, '\\.')}"`, 'g'), // nosemgrep: javascript.lang.security.audit.detect-non-literal-regexp.detect-non-literal-regexp, javascript_dos_rule-non-literal-regexp -- RegExp from trusted local version string

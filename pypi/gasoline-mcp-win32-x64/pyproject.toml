@@ -1,6 +1,6 @@
 [project]
 name = "gasoline-mcp-win32-x64"
-version = "0.7.2"
+version = "0.7.5"
 description = "Gasoline MCP binary for win32-x64"
 requires-python = ">=3.8"
 license = "AGPL-3.0-only"
