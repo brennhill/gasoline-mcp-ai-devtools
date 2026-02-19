@@ -11,9 +11,10 @@ import (
 
 // ResponseMetadata provides freshness information for buffer-backed observe responses.
 type ResponseMetadata struct {
-	RetrievedAt string `json:"retrieved_at"`
-	IsStale     bool   `json:"is_stale"`
-	DataAge     string `json:"data_age"`
+	RetrievedAt     string `json:"retrieved_at"`
+	IsStale         bool   `json:"is_stale"`
+	DataAge         string `json:"data_age"`
+	NoiseSuppressed int    `json:"noise_suppressed,omitempty"`
 }
 
 // BuildResponseMetadata constructs freshness metadata for an observe response.

@@ -78,6 +78,9 @@ var configureHandlers = map[string]ConfigureHandler{
 	"restart": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 		return h.toolConfigureRestart(req)
 	},
+	"doctor": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+		return h.toolDoctor(req)
+	},
 }
 
 // getValidConfigureActions returns a sorted, comma-separated list of valid configure actions.

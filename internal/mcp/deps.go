@@ -42,3 +42,9 @@ type LogBufferReader interface {
 type A11yQueryExecutor interface {
 	ExecuteA11yQuery(scope string, tags []string, frame any, forceRefresh bool) (json.RawMessage, error)
 }
+
+// NoiseFilterer checks whether log/network entries match noise suppression rules.
+// Used by observe to filter out repetitive/irrelevant entries.
+type NoiseFilterer interface {
+	IsConsoleNoise(entry LogEntry) bool
+}

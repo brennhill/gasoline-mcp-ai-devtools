@@ -113,6 +113,15 @@ func noiseAutoDetectEnabled() bool {
 	return val == "1" || val == "true" || val == "yes" || val == "on"
 }
 
+// IsConsoleNoise delegates to the noise config to check if a log entry is noise.
+// Satisfies mcp.NoiseFilterer. Returns false if noise config is nil.
+func (h *ToolHandler) IsConsoleNoise(entry map[string]any) bool {
+	if h.noiseConfig == nil {
+		return false
+	}
+	return h.noiseConfig.IsConsoleNoise(entry)
+}
+
 // runNoiseAutoDetect collects current buffer data and runs noise auto-detection.
 // This is the same logic as noiseActionAutoDetect() but designed for background use.
 func (h *ToolHandler) runNoiseAutoDetect() {
@@ -128,12 +137,15 @@ func (h *ToolHandler) runNoiseAutoDetect() {
 
 	proposals := h.noiseConfig.AutoDetect(consoleEntries, networkBodies, wsEvents)
 	if len(proposals) > 0 {
-		applied := 0
+		var toApply []ai.NoiseRule
 		for _, p := range proposals {
 			if p.Confidence >= 0.9 {
-				applied++
+				toApply = append(toApply, p.Rule)
 			}
 		}
-		fmt.Fprintf(os.Stderr, "[gasoline] noise auto-detect: %d proposals, %d auto-applied\n", len(proposals), applied)
+		if len(toApply) > 0 {
+			_ = h.noiseConfig.AddRules(toApply)
+		}
+		fmt.Fprintf(os.Stderr, "[gasoline] noise auto-detect: %d proposals, %d auto-applied\n", len(proposals), len(toApply))
 	}
 }

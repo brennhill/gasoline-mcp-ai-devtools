@@ -406,6 +406,11 @@ func registerCoreRoutes(mux *http.ServeMux, server *Server, cap *capture.Capture
 		server.handleHealth(w, r, cap)
 	}))
 
+	// NOT MCP — Doctor preflight check (aggregated readiness status)
+	mux.HandleFunc("/doctor", corsMiddleware(func(w http.ResponseWriter, r *http.Request) {
+		handleDoctorHTTP(w, cap)
+	}))
+
 	// NOT MCP — Graceful shutdown (use CLI --stop flag, not MCP)
 	mux.HandleFunc("/shutdown", corsMiddleware(extensionOnly(func(w http.ResponseWriter, r *http.Request) {
 		server.handleShutdown(w, r)

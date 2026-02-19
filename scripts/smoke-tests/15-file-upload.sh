@@ -705,7 +705,7 @@ run_test_15_15() {
     sleep 1
 
     # Verify: execute_js to check files on the input
-    interact_and_wait "execute_js" '{"action":"execute_js","reason":"Check upload input files","script":"var el = document.getElementById(\"file-input\"); el && el.files && el.files[0] ? el.files[0].name : (el ? \"NO_FILES\" : \"NO_ELEMENT\")"}'
+    interact_and_wait "execute_js" '{"action":"execute_js","reason":"Check upload input files","script":"(function(){ var el = document.getElementById(\"file-input\"); return el && el.files && el.files[0] ? el.files[0].name : (el ? \"NO_FILES\" : \"NO_ELEMENT\"); })()"}'
 
     log_diagnostic "15.15" "file verification" "$INTERACT_RESULT" ""
 

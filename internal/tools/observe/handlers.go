@@ -68,10 +68,16 @@ func GetBrowserErrors(deps Deps, req mcp.JSONRPCRequest, args json.RawMessage) m
 	entries, _ := deps.GetLogEntries()
 
 	errors := make([]map[string]any, 0)
+	noiseSuppressed := 0
 	for i := len(entries) - 1; i >= 0 && len(errors) < params.Limit; i-- {
 		entry := entries[i]
 		level, _ := entry["level"].(string)
 		if level != "error" {
+			continue
+		}
+
+		if deps.IsConsoleNoise(entry) {
+			noiseSuppressed++
 			continue
 		}
 
@@ -108,10 +114,13 @@ func GetBrowserErrors(deps Deps, req mcp.JSONRPCRequest, args json.RawMessage) m
 		}
 	}
 
+	responseMeta := BuildResponseMetadata(deps.GetCapture(), newestTS)
+	responseMeta.NoiseSuppressed = noiseSuppressed
+
 	return mcp.JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcp.JSONResponse("Browser errors", map[string]any{
 		"errors":   errors,
 		"count":    len(errors),
-		"metadata": BuildResponseMetadata(deps.GetCapture(), newestTS),
+		"metadata": responseMeta,
 		"scope":    params.Scope,
 	})}
 }
@@ -154,9 +163,15 @@ func GetBrowserLogs(deps Deps, req mcp.JSONRPCRequest, args json.RawMessage) mcp
 	enriched := pagination.EnrichLogEntries(allEntries, totalAdded)
 
 	filtered := make([]pagination.LogEntryWithSequence, 0, len(enriched))
+	noiseSuppressed := 0
 	for _, e := range enriched {
 		entryType, _ := e.Entry["type"].(string)
 		if entryType == "lifecycle" || entryType == "tracking" || entryType == "extension" {
+			continue
+		}
+
+		if deps.IsConsoleNoise(e.Entry) {
+			noiseSuppressed++
 			continue
 		}
 
@@ -228,6 +243,9 @@ func GetBrowserLogs(deps Deps, req mcp.JSONRPCRequest, args json.RawMessage) mcp
 
 	meta := BuildPaginatedResponseMetadata(deps.GetCapture(), newestTS, pMeta)
 	meta["scope"] = params.Scope
+	if noiseSuppressed > 0 {
+		meta["noise_suppressed"] = noiseSuppressed
+	}
 
 	return mcp.JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcp.JSONResponse("Browser logs", map[string]any{
 		"logs":     logs,

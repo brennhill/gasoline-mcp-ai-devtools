@@ -10,4 +10,5 @@ type Deps interface {
 	mcp.CaptureProvider
 	mcp.LogBufferReader
 	mcp.A11yQueryExecutor
+	mcp.NoiseFilterer
 }
