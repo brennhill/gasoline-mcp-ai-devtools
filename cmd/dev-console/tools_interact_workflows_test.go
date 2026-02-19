@@ -124,5 +124,3 @@ func TestRunA11yAndExportSARIF_ValidParams(t *testing.T) {
 		t.Fatalf("failed to unmarshal result: %v", err)
 	}
 }
-
-

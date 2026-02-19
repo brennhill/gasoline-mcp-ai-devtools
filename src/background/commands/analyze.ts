@@ -324,7 +324,7 @@ registerCommand('dom', async (ctx) => {
         ctx.syncClient,
         ctx.query.id,
         ctx.query.correlation_id,
-        'complete',
+        'error',
         null,
         isInvalidFrame || isFrameNotFound ? message : 'Failed to execute DOM query'
       )
@@ -393,7 +393,7 @@ registerCommand('a11y', async (ctx) => {
         ctx.syncClient,
         ctx.query.id,
         ctx.query.correlation_id,
-        'complete',
+        'error',
         null,
         isInvalidFrame || isFrameNotFound ? message : 'Failed to execute accessibility audit'
       )

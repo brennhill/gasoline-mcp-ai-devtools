@@ -34,9 +34,9 @@ var generateValidParams = map[string]map[string]bool{
 	"visual_test":       {"test_name": true, "annot_session": true, "save_to": true},
 	"annotation_report": {"annot_session": true, "save_to": true},
 	"annotation_issues": {"annot_session": true, "save_to": true},
-	"test_from_context":  {"context": true, "error_id": true, "include_mocks": true, "output_format": true, "save_to": true},
-	"test_heal":          {"action": true, "test_file": true, "test_dir": true, "broken_selectors": true, "auto_apply": true, "save_to": true},
-	"test_classify":      {"action": true, "failure": true, "failures": true, "save_to": true},
+	"test_from_context": {"context": true, "error_id": true, "include_mocks": true, "output_format": true, "save_to": true},
+	"test_heal":         {"action": true, "test_file": true, "test_dir": true, "broken_selectors": true, "auto_apply": true, "save_to": true},
+	"test_classify":     {"action": true, "failure": true, "failures": true, "save_to": true},
 }
 
 // alwaysAllowedGenerateParams are params valid for every generate format.
@@ -429,7 +429,6 @@ func (h *ToolHandler) toolGenerateCSP(req JSONRPCRequest, args json.RawMessage) 
 		"directives": directives, "origins_observed": len(networkBodies),
 	})}
 }
-
 
 // toolGenerateSRI generates Subresource Integrity hashes for third-party scripts/styles.
 func (h *ToolHandler) toolGenerateSRI(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {

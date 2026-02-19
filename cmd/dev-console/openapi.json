@@ -91,6 +91,56 @@
         }
       }
     },
+    "/doctor": {
+      "get": {
+        "tags": ["Control"],
+        "summary": "Doctor preflight",
+        "description": "Runs aggregated readiness checks for extension connectivity, pilot state, tracked tab, circuit breaker, queue pressure, and recent failure signals. Used by setup and diagnostics to determine whether interact actions are likely to succeed.",
+        "operationId": "getDoctor",
+        "responses": {
+          "200": {
+            "description": "Doctor readiness report",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "enum": ["healthy", "degraded", "unhealthy"],
+                      "description": "Overall readiness status computed from all checks"
+                    },
+                    "ready_for_interaction": {
+                      "type": "boolean",
+                      "description": "True when interact flows are expected to succeed without warnings"
+                    },
+                    "version": {
+                      "type": "string",
+                      "description": "Server version"
+                    },
+                    "checks": {
+                      "type": "array",
+                      "description": "Per-check readiness diagnostics",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "name": { "type": "string", "description": "Check identifier" },
+                          "status": { "type": "string", "enum": ["pass", "warn", "fail"] },
+                          "detail": { "type": "string", "description": "Human-readable check detail" },
+                          "fix": { "type": "string", "description": "Suggested remediation when status is warn/fail" }
+                        },
+                        "required": ["name", "status", "detail"]
+                      }
+                    }
+                  },
+                  "required": ["status", "ready_for_interaction", "version", "checks"]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/diagnostics": {
       "get": {
         "tags": ["Control"],

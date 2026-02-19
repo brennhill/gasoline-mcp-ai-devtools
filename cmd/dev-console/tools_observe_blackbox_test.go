@@ -120,7 +120,7 @@ func TestObserveErrors_EndToEnd(t *testing.T) {
 	}
 
 	th := handler.toolHandler.(*ToolHandler)
-	resp := observe.GetBrowserErrors(th,mcpReq, json.RawMessage(`{}`))
+	resp := observe.GetBrowserErrors(th, mcpReq, json.RawMessage(`{}`))
 
 	// Step 3: Verify errors are returned
 	var result map[string]any
@@ -181,7 +181,7 @@ func TestObserveLogs_EndToEnd(t *testing.T) {
 	// Call observe logs
 	mcpReq := JSONRPCRequest{JSONRPC: "2.0", ID: 1}
 	th := handler.toolHandler.(*ToolHandler)
-	resp := observe.GetBrowserLogs(th,mcpReq, json.RawMessage(`{}`))
+	resp := observe.GetBrowserLogs(th, mcpReq, json.RawMessage(`{}`))
 
 	var result map[string]any
 	json.Unmarshal(resp.Result, &result)
@@ -216,7 +216,7 @@ func TestObserveLogs_LevelFilter(t *testing.T) {
 
 	// Filter by level=warn
 	th := handler.toolHandler.(*ToolHandler)
-	resp := observe.GetBrowserLogs(th,JSONRPCRequest{JSONRPC: "2.0", ID: 1}, json.RawMessage(`{"level":"warn"}`))
+	resp := observe.GetBrowserLogs(th, JSONRPCRequest{JSONRPC: "2.0", ID: 1}, json.RawMessage(`{"level":"warn"}`))
 
 	var result map[string]any
 	json.Unmarshal(resp.Result, &result)
@@ -249,7 +249,7 @@ func TestObserveNetworkWaterfall_EndToEnd(t *testing.T) {
 
 	// Call observe network_waterfall
 	th := handler.toolHandler.(*ToolHandler)
-	resp := observe.GetNetworkWaterfall(th,JSONRPCRequest{JSONRPC: "2.0", ID: 1}, json.RawMessage(`{}`))
+	resp := observe.GetNetworkWaterfall(th, JSONRPCRequest{JSONRPC: "2.0", ID: 1}, json.RawMessage(`{}`))
 
 	var result map[string]any
 	json.Unmarshal(resp.Result, &result)
@@ -294,7 +294,7 @@ func TestObserveNetworkWaterfall_URLFilter(t *testing.T) {
 
 	// Filter by "api.example.com"
 	th := handler.toolHandler.(*ToolHandler)
-	resp := observe.GetNetworkWaterfall(th,JSONRPCRequest{JSONRPC: "2.0", ID: 1}, json.RawMessage(`{"url":"api.example.com"}`))
+	resp := observe.GetNetworkWaterfall(th, JSONRPCRequest{JSONRPC: "2.0", ID: 1}, json.RawMessage(`{"url":"api.example.com"}`))
 
 	var result map[string]any
 	json.Unmarshal(resp.Result, &result)
@@ -327,7 +327,7 @@ func TestObserveExtensionLogs_EndToEnd(t *testing.T) {
 
 	// Call observe extension_logs
 	th := handler.toolHandler.(*ToolHandler)
-	resp := observe.GetExtensionLogs(th,JSONRPCRequest{JSONRPC: "2.0", ID: 1}, json.RawMessage(`{}`))
+	resp := observe.GetExtensionLogs(th, JSONRPCRequest{JSONRPC: "2.0", ID: 1}, json.RawMessage(`{}`))
 
 	var result map[string]any
 	json.Unmarshal(resp.Result, &result)
@@ -367,7 +367,7 @@ func TestObservePage_ExtractsFromWaterfall(t *testing.T) {
 
 	// Call observe page
 	th := handler.toolHandler.(*ToolHandler)
-	resp := observe.GetPageInfo(th,JSONRPCRequest{JSONRPC: "2.0", ID: 1}, json.RawMessage(`{}`))
+	resp := observe.GetPageInfo(th, JSONRPCRequest{JSONRPC: "2.0", ID: 1}, json.RawMessage(`{}`))
 
 	var result map[string]any
 	json.Unmarshal(resp.Result, &result)
@@ -426,7 +426,7 @@ func TestObservePage_PrioritizesTrackedURL(t *testing.T) {
 
 	// Call observe page - should return tracked URL, NOT waterfall URL
 	th := handler.toolHandler.(*ToolHandler)
-	resp := observe.GetPageInfo(th,JSONRPCRequest{JSONRPC: "2.0", ID: 1}, json.RawMessage(`{}`))
+	resp := observe.GetPageInfo(th, JSONRPCRequest{JSONRPC: "2.0", ID: 1}, json.RawMessage(`{}`))
 
 	var result map[string]any
 	json.Unmarshal(resp.Result, &result)
@@ -477,7 +477,7 @@ func TestObserveNetworkBodies_EndToEnd(t *testing.T) {
 
 	// Call observe network_bodies
 	th := handler.toolHandler.(*ToolHandler)
-	resp := observe.GetNetworkBodies(th,JSONRPCRequest{JSONRPC: "2.0", ID: 1}, json.RawMessage(`{}`))
+	resp := observe.GetNetworkBodies(th, JSONRPCRequest{JSONRPC: "2.0", ID: 1}, json.RawMessage(`{}`))
 
 	var result map[string]any
 	json.Unmarshal(resp.Result, &result)
@@ -527,7 +527,7 @@ func TestObserveWebSocketEvents_EndToEnd(t *testing.T) {
 
 	// Call observe websocket_events
 	th := handler.toolHandler.(*ToolHandler)
-	resp := observe.GetWSEvents(th,JSONRPCRequest{JSONRPC: "2.0", ID: 1}, json.RawMessage(`{}`))
+	resp := observe.GetWSEvents(th, JSONRPCRequest{JSONRPC: "2.0", ID: 1}, json.RawMessage(`{}`))
 
 	var result map[string]any
 	json.Unmarshal(resp.Result, &result)

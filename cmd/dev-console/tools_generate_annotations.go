@@ -15,7 +15,7 @@ import (
 // toolGenerateVisualTest generates a Playwright test from annotation session data.
 func (h *ToolHandler) toolGenerateVisualTest(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	var params struct {
-		TestName string `json:"test_name"`
+		TestName     string `json:"test_name"`
 		AnnotSession string `json:"annot_session"`
 	}
 	if len(args) > 0 {

@@ -14,6 +14,10 @@ import { saveStateSnapshot, loadStateSnapshot, listStateSnapshots, deleteStateSn
 import { registerCommand } from './registry'
 import { sendResult, sendAsyncResult } from './helpers'
 
+function statusFromError(error?: string): 'complete' | 'error' {
+  return error ? 'error' : 'complete'
+}
+
 // =============================================================================
 // SUBTITLE
 // =============================================================================
@@ -53,7 +57,7 @@ registerCommand('highlight', async (ctx) => {
   if (ctx.query.correlation_id) {
     const err =
       result && typeof result === 'object' && 'error' in result ? (result as { error: string }).error : undefined
-    ctx.sendAsyncResult(ctx.syncClient, ctx.query.id, ctx.query.correlation_id, 'complete', result, err)
+    ctx.sendAsyncResult(ctx.syncClient, ctx.query.id, ctx.query.correlation_id, statusFromError(err), result, err)
   } else {
     ctx.sendResult(result)
   }
@@ -89,7 +93,7 @@ registerCommand('browser_action', async (ctx) => {
 
 registerCommand('dom_action', async (ctx) => {
   if (!index.__aiWebPilotEnabledCache) {
-    ctx.sendAsyncResult(ctx.syncClient, ctx.query.id, ctx.query.correlation_id!, 'complete', null, 'ai_web_pilot_disabled')
+    ctx.sendAsyncResult(ctx.syncClient, ctx.query.id, ctx.query.correlation_id!, 'error', null, 'ai_web_pilot_disabled')
     return
   }
   await executeDOMAction(ctx.query, ctx.tabId, ctx.syncClient, ctx.sendAsyncResult, ctx.actionToast)
@@ -101,7 +105,7 @@ registerCommand('dom_action', async (ctx) => {
 
 registerCommand('upload', async (ctx) => {
   if (!index.__aiWebPilotEnabledCache) {
-    ctx.sendAsyncResult(ctx.syncClient, ctx.query.id, ctx.query.correlation_id!, 'complete', null, 'ai_web_pilot_disabled')
+    ctx.sendAsyncResult(ctx.syncClient, ctx.query.id, ctx.query.correlation_id!, 'error', null, 'ai_web_pilot_disabled')
     return
   }
   await executeUpload(ctx.query, ctx.tabId, ctx.syncClient, ctx.sendAsyncResult, ctx.actionToast)
@@ -113,7 +117,7 @@ registerCommand('upload', async (ctx) => {
 
 registerCommand('record_start', async (ctx) => {
   if (!index.__aiWebPilotEnabledCache) {
-    ctx.sendAsyncResult(ctx.syncClient, ctx.query.id, ctx.query.correlation_id!, 'complete', undefined, 'ai_web_pilot_disabled')
+    ctx.sendAsyncResult(ctx.syncClient, ctx.query.id, ctx.query.correlation_id!, 'error', undefined, 'ai_web_pilot_disabled')
     return
   }
   let params: { name?: string; fps?: number; audio?: string }
@@ -130,7 +134,8 @@ registerCommand('record_start', async (ctx) => {
     false,
     ctx.tabId
   )
-  ctx.sendAsyncResult(ctx.syncClient, ctx.query.id, ctx.query.correlation_id!, 'complete', result, result.error || undefined)
+  const error = result.error || undefined
+  ctx.sendAsyncResult(ctx.syncClient, ctx.query.id, ctx.query.correlation_id!, statusFromError(error), result, error)
 })
 
 // =============================================================================
@@ -139,11 +144,12 @@ registerCommand('record_start', async (ctx) => {
 
 registerCommand('record_stop', async (ctx) => {
   if (!index.__aiWebPilotEnabledCache) {
-    sendAsyncResult(ctx.syncClient, ctx.query.id, ctx.query.correlation_id!, 'complete', undefined, 'ai_web_pilot_disabled')
+    sendAsyncResult(ctx.syncClient, ctx.query.id, ctx.query.correlation_id!, 'error', undefined, 'ai_web_pilot_disabled')
     return
   }
   const result = await stopRecording()
-  sendAsyncResult(ctx.syncClient, ctx.query.id, ctx.query.correlation_id!, 'complete', result, result.error || undefined)
+  const error = result.error || undefined
+  sendAsyncResult(ctx.syncClient, ctx.query.id, ctx.query.correlation_id!, statusFromError(error), result, error)
 })
 
 // =============================================================================
@@ -261,7 +267,7 @@ registerCommand('state_*', async (ctx) => {
 registerCommand('execute', async (ctx) => {
   if (!index.__aiWebPilotEnabledCache) {
     if (ctx.query.correlation_id) {
-      ctx.sendAsyncResult(ctx.syncClient, ctx.query.id, ctx.query.correlation_id, 'complete', null, 'ai_web_pilot_disabled')
+      ctx.sendAsyncResult(ctx.syncClient, ctx.query.id, ctx.query.correlation_id, 'error', null, 'ai_web_pilot_disabled')
     } else {
       ctx.sendResult({
         success: false,

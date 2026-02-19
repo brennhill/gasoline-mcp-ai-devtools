@@ -10,6 +10,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/dev-console/dev-console/internal/queries"
@@ -21,6 +22,32 @@ const (
 	queryResultTTL = 5 * time.Minute // How long to keep query results before cleanup
 	// Note: maxPendingQueries is defined in types.go (=5)
 )
+
+func normalizeCommandStatus(status string) string {
+	normalized := strings.ToLower(strings.TrimSpace(status))
+	switch normalized {
+	case "", "ok", "success", "succeeded", "done":
+		return "complete"
+	case "pending", "queued", "running", "still_processing":
+		return "pending"
+	case "complete", "error", "timeout", "expired", "cancelled":
+		return normalized
+	case "canceled":
+		return "cancelled"
+	default:
+		// Preserve current behavior for unknown values by treating as complete.
+		return "complete"
+	}
+}
+
+func isFailedCommandStatus(status string) bool {
+	switch status {
+	case "error", "timeout", "expired", "cancelled":
+		return true
+	default:
+		return false
+	}
+}
 
 // ============================================
 // Pending Query Creation
@@ -261,31 +288,7 @@ func (qd *QueryDispatcher) expireCommandWithReason(correlationID string, reason 
 	if correlationID == "" {
 		return
 	}
-
-	qd.resultsMu.Lock()
-
-	cmd, exists := qd.completedResults[correlationID]
-	if !exists {
-		qd.resultsMu.Unlock()
-		return
-	}
-
-	cmd.Status = "expired"
-	cmd.Error = reason
-
-	// Move to failedCommands ring buffer
-	qd.failedCommands = append(qd.failedCommands, cmd)
-	if len(qd.failedCommands) > 100 {
-		qd.failedCommands = qd.failedCommands[1:]
-	}
-
-	delete(qd.completedResults, correlationID)
-
-	// Signal waiters: close current channel, create a fresh one (same as CompleteCommand)
-	ch := qd.commandNotify
-	qd.commandNotify = make(chan struct{})
-	qd.resultsMu.Unlock()
-	close(ch)
+	qd.ApplyCommandResult(correlationID, "expired", nil, reason)
 }
 
 // ============================================
@@ -563,12 +566,14 @@ func (qd *QueryDispatcher) RegisterCommand(correlationID string, queryID string,
 	}
 }
 
-// CompleteCommand updates a command's status to "complete" with result.
-// Called when extension posts result back. Signals any WaitForCommand waiters.
-func (qd *QueryDispatcher) CompleteCommand(correlationID string, result json.RawMessage, err string) {
+// ApplyCommandResult updates command state from extension status values.
+// Normalized statuses: pending, complete, error, timeout, expired, cancelled.
+func (qd *QueryDispatcher) ApplyCommandResult(correlationID string, status string, result json.RawMessage, err string) {
 	if correlationID == "" {
 		return
 	}
+
+	normalizedStatus := normalizeCommandStatus(status)
 
 	qd.resultsMu.Lock()
 	cmd, exists := qd.completedResults[correlationID]
@@ -577,59 +582,46 @@ func (qd *QueryDispatcher) CompleteCommand(correlationID string, result json.Raw
 		return
 	}
 
-	cmd.Status = "complete"
+	// Preserve current race behavior: once no longer pending, do not overwrite.
+	if cmd.Status != "pending" {
+		qd.resultsMu.Unlock()
+		return
+	}
+
+	cmd.Status = normalizedStatus
 	cmd.Result = result
 	cmd.Error = err
-	cmd.CompletedAt = time.Now()
+	if normalizedStatus != "pending" {
+		cmd.CompletedAt = time.Now()
+	}
 
-	// Signal waiters: close current channel, create a fresh one
+	if isFailedCommandStatus(normalizedStatus) {
+		// Move failures to failedCommands ring buffer (observe failed_commands source).
+		qd.failedCommands = append(qd.failedCommands, cmd)
+		if len(qd.failedCommands) > 100 {
+			qd.failedCommands = qd.failedCommands[1:]
+		}
+		delete(qd.completedResults, correlationID)
+	}
+
+	// Signal waiters: close current channel, create a fresh one.
 	ch := qd.commandNotify
 	qd.commandNotify = make(chan struct{})
 	qd.resultsMu.Unlock()
 	close(ch)
 }
 
+// CompleteCommand updates a command's status to "complete" with result.
+// Called when extension posts result back. Signals any WaitForCommand waiters.
+func (qd *QueryDispatcher) CompleteCommand(correlationID string, result json.RawMessage, err string) {
+	qd.ApplyCommandResult(correlationID, "complete", result, err)
+}
+
 // ExpireCommand marks a command as "expired" and moves it to failedCommands.
 // Called by cleanup goroutine when command times out without result.
 // Signals commandNotify to wake any WaitForCommand waiters.
 func (qd *QueryDispatcher) ExpireCommand(correlationID string) {
-	if correlationID == "" {
-		return
-	}
-
-	qd.resultsMu.Lock()
-
-	cmd, exists := qd.completedResults[correlationID]
-	if !exists {
-		qd.resultsMu.Unlock()
-		return
-	}
-
-	// Only expire if still pending — avoids TOCTOU race where CompleteCommand
-	// already processed this command between lock acquisitions
-	if cmd.Status != "pending" {
-		qd.resultsMu.Unlock()
-		return
-	}
-
-	// Update status
-	cmd.Status = "expired"
-	cmd.Error = "Command expired before extension could execute it"
-
-	// Move to failedCommands ring buffer
-	qd.failedCommands = append(qd.failedCommands, cmd)
-	if len(qd.failedCommands) > 100 {
-		qd.failedCommands = qd.failedCommands[1:]
-	}
-
-	// Remove from active tracking
-	delete(qd.completedResults, correlationID)
-
-	// Signal waiters: close current channel, create a fresh one (same as CompleteCommand)
-	ch := qd.commandNotify
-	qd.commandNotify = make(chan struct{})
-	qd.resultsMu.Unlock()
-	close(ch)
+	qd.ApplyCommandResult(correlationID, "expired", nil, "Command expired before extension could execute it")
 }
 
 // WaitForCommand blocks until the command completes or timeout expires.
@@ -760,8 +752,30 @@ func (qd *QueryDispatcher) GetFailedCommands() []*queries.CommandResult {
 	qd.resultsMu.RLock()
 	defer qd.resultsMu.RUnlock()
 
-	// Return copy to avoid concurrent modification
-	result := make([]*queries.CommandResult, len(qd.failedCommands))
-	copy(result, qd.failedCommands)
+	// Return detached copies to avoid concurrent modification and include
+	// non-expired failures that remain in completedResults.
+	result := make([]*queries.CommandResult, 0, len(qd.failedCommands)+len(qd.completedResults))
+	seen := make(map[string]struct{}, len(qd.failedCommands))
+
+	for _, cmd := range qd.failedCommands {
+		if cmd == nil {
+			continue
+		}
+		cp := *cmd
+		result = append(result, &cp)
+		if cp.CorrelationID != "" {
+			seen[cp.CorrelationID] = struct{}{}
+		}
+	}
+	for _, cmd := range qd.completedResults {
+		if cmd == nil || !isFailedCommandStatus(cmd.Status) {
+			continue
+		}
+		if _, exists := seen[cmd.CorrelationID]; exists {
+			continue
+		}
+		cp := *cmd
+		result = append(result, &cp)
+	}
 	return result
 }

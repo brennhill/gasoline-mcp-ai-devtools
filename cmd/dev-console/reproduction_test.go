@@ -21,7 +21,7 @@ func TestParseSelectorForReproduction(t *testing.T) {
 		{"CSS ID", "#submit-btn", "id", "submit-btn"},
 		{"CSS path", "form > input", "cssPath", "form > input"},
 		{"text semantic", "text=Submit", "text", "Submit"},
-		{"role semantic", "role=button", "role", ""},   // role is a nested map
+		{"role semantic", "role=button", "role", ""}, // role is a nested map
 		{"label semantic", "label=Email", "ariaLabel", "Email"},
 		{"aria-label semantic", "aria-label=Close", "ariaLabel", "Close"},
 		{"placeholder semantic", "placeholder=Search", "ariaLabel", "Search"},

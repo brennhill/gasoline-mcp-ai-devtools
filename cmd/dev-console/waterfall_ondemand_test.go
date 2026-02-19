@@ -43,7 +43,7 @@ func TestWaterfallOnDemand_FreshDataNoQuery(t *testing.T) {
 	pendingBefore := len(cap.GetPendingQueries())
 
 	// Call observe network_waterfall - should return cached data without querying
-	resp := observe.GetNetworkWaterfall(th,JSONRPCRequest{JSONRPC: "2.0", ID: 1}, json.RawMessage(`{}`))
+	resp := observe.GetNetworkWaterfall(th, JSONRPCRequest{JSONRPC: "2.0", ID: 1}, json.RawMessage(`{}`))
 
 	// Verify no new query was created (data was fresh)
 	pendingAfter := len(cap.GetPendingQueries())
@@ -130,7 +130,7 @@ func TestWaterfallOnDemand_StaleDataCreatesQuery(t *testing.T) {
 	}()
 
 	// Call observe network_waterfall - should create query and wait
-	resp := observe.GetNetworkWaterfall(th,JSONRPCRequest{JSONRPC: "2.0", ID: 1}, json.RawMessage(`{}`))
+	resp := observe.GetNetworkWaterfall(th, JSONRPCRequest{JSONRPC: "2.0", ID: 1}, json.RawMessage(`{}`))
 
 	// Verify query was created
 	queryMu.Lock()
@@ -190,7 +190,7 @@ func TestWaterfallOnDemand_EmptyBufferCreatesQuery(t *testing.T) {
 
 				// Return empty entries (no network activity)
 				result := map[string]any{
-					"entries": []map[string]any{},
+					"entries":  []map[string]any{},
 					"page_url": "https://example.com",
 				}
 				resultBytes, _ := json.Marshal(result)
@@ -201,7 +201,7 @@ func TestWaterfallOnDemand_EmptyBufferCreatesQuery(t *testing.T) {
 	}()
 
 	// Call observe network_waterfall
-	_ = observe.GetNetworkWaterfall(th,JSONRPCRequest{JSONRPC: "2.0", ID: 1}, json.RawMessage(`{}`))
+	_ = observe.GetNetworkWaterfall(th, JSONRPCRequest{JSONRPC: "2.0", ID: 1}, json.RawMessage(`{}`))
 
 	queryMu.Lock()
 	wasCreated := queryCreated
@@ -234,7 +234,7 @@ func TestWaterfallOnDemand_TimeoutHandling(t *testing.T) {
 
 	// Don't respond to the query - let it timeout
 	start := time.Now()
-	resp := observe.GetNetworkWaterfall(th,JSONRPCRequest{JSONRPC: "2.0", ID: 1}, json.RawMessage(`{}`))
+	resp := observe.GetNetworkWaterfall(th, JSONRPCRequest{JSONRPC: "2.0", ID: 1}, json.RawMessage(`{}`))
 	elapsed := time.Since(start)
 
 	// Should complete within reasonable time (not hang forever)
@@ -301,7 +301,7 @@ func TestWaterfallOnDemand_ConcurrentRequests(t *testing.T) {
 		go func() {
 			defer wg.Done()
 
-			resp := observe.GetNetworkWaterfall(th,JSONRPCRequest{JSONRPC: "2.0", ID: 1}, json.RawMessage(`{}`))
+			resp := observe.GetNetworkWaterfall(th, JSONRPCRequest{JSONRPC: "2.0", ID: 1}, json.RawMessage(`{}`))
 
 			var result map[string]any
 			if err := json.Unmarshal(resp.Result, &result); err != nil {
@@ -390,7 +390,7 @@ func TestWaterfallStalenessThreshold(t *testing.T) {
 
 	// Immediately query - should NOT create new query (data is fresh)
 	pendingBefore := len(cap.GetPendingQueries())
-	_ = observe.GetNetworkWaterfall(th,JSONRPCRequest{JSONRPC: "2.0", ID: 1}, json.RawMessage(`{}`))
+	_ = observe.GetNetworkWaterfall(th, JSONRPCRequest{JSONRPC: "2.0", ID: 1}, json.RawMessage(`{}`))
 	pendingAfter := len(cap.GetPendingQueries())
 
 	if pendingAfter > pendingBefore {
@@ -413,7 +413,7 @@ func TestWaterfallStalenessThreshold(t *testing.T) {
 		}
 	}()
 
-	_ = observe.GetNetworkWaterfall(th,JSONRPCRequest{JSONRPC: "2.0", ID: 1}, json.RawMessage(`{}`))
+	_ = observe.GetNetworkWaterfall(th, JSONRPCRequest{JSONRPC: "2.0", ID: 1}, json.RawMessage(`{}`))
 
 	t.Log("✅ 1-second staleness threshold verified")
 }

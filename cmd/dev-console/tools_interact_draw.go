@@ -13,7 +13,7 @@ import (
 // handleDrawModeStart queues a draw_mode query for the extension to activate draw mode.
 func (h *ToolHandler) handleDrawModeStart(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	var params struct {
-		TabID   int    `json:"tab_id,omitempty"`
+		TabID        int    `json:"tab_id,omitempty"`
 		AnnotSession string `json:"annot_session,omitempty"`
 	}
 	if len(args) > 0 {

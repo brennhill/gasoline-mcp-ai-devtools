@@ -474,7 +474,7 @@ func TestLoadState_StorageOnly_QueuesRestore(t *testing.T) {
 
 	// State with ONLY storage data (no form_values)
 	stateData := map[string]any{
-		"url":           "https://example.com/app", "title": "App",
+		"url": "https://example.com/app", "title": "App",
 		"saved_at":      time.Now().Format(time.RFC3339),
 		"local_storage": map[string]any{"theme": "light"},
 	}

@@ -32,9 +32,9 @@ const (
 // ============================================
 
 var (
-	NewStreamState         = streaming.NewStreamState
-	categoryMatchesEvent   = streaming.CategoryMatchesEvent
-	formatMCPNotification  = streaming.FormatMCPNotification
+	NewStreamState        = streaming.NewStreamState
+	categoryMatchesEvent  = streaming.CategoryMatchesEvent
+	formatMCPNotification = streaming.FormatMCPNotification
 )
 
 // ============================================
@@ -61,4 +61,3 @@ func (h *ToolHandler) toolConfigureStreaming(req JSONRPCRequest, args json.RawMe
 	result := h.alertBuffer.Stream.Configure(params.Action, params.Events, params.ThrottleSeconds, params.URLFilter, params.SeverityMin)
 	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Streaming configuration", result)}
 }
-

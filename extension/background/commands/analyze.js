@@ -268,7 +268,7 @@ registerCommand('dom', async (ctx) => {
         const isFrameNotFound = message === 'frame_not_found';
         const isInvalidFrame = message === 'invalid_frame';
         if (ctx.query.correlation_id) {
-            ctx.sendAsyncResult(ctx.syncClient, ctx.query.id, ctx.query.correlation_id, 'complete', null, isInvalidFrame || isFrameNotFound ? message : 'Failed to execute DOM query');
+            ctx.sendAsyncResult(ctx.syncClient, ctx.query.id, ctx.query.correlation_id, 'error', null, isInvalidFrame || isFrameNotFound ? message : 'Failed to execute DOM query');
         }
         else {
             ctx.sendResult({
@@ -331,7 +331,7 @@ registerCommand('a11y', async (ctx) => {
         const isFrameNotFound = message === 'frame_not_found';
         const isInvalidFrame = message === 'invalid_frame';
         if (ctx.query.correlation_id) {
-            ctx.sendAsyncResult(ctx.syncClient, ctx.query.id, ctx.query.correlation_id, 'complete', null, isInvalidFrame || isFrameNotFound ? message : 'Failed to execute accessibility audit');
+            ctx.sendAsyncResult(ctx.syncClient, ctx.query.id, ctx.query.correlation_id, 'error', null, isInvalidFrame || isFrameNotFound ? message : 'Failed to execute accessibility audit');
         }
         else {
             ctx.sendResult({

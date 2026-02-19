@@ -282,6 +282,34 @@ func TestHandleQueryResult_WithQueryID(t *testing.T) {
 	}
 }
 
+func TestHandleQueryResult_WithCorrelationID_ErrorStatus(t *testing.T) {
+	t.Parallel()
+
+	c := NewCapture()
+	defer c.Close()
+
+	corrID := "test-corr-id-error-001"
+	c.RegisterCommand(corrID, "", 30*time.Second)
+
+	payload := `{"correlation_id":"` + corrID + `","status":"error","error":"boom"}`
+	rr := httptest.NewRecorder()
+	c.HandleQueryResult(rr, httptest.NewRequest(http.MethodPost, "/query-result", strings.NewReader(payload)))
+	if rr.Code != http.StatusOK {
+		t.Errorf("status = %d, want %d", rr.Code, http.StatusOK)
+	}
+
+	cmd, found := c.GetCommandResult(corrID)
+	if !found {
+		t.Fatal("expected command result to be present for correlation_id")
+	}
+	if cmd.Status != "error" {
+		t.Errorf("command status = %q, want error", cmd.Status)
+	}
+	if cmd.Error != "boom" {
+		t.Errorf("command error = %q, want boom", cmd.Error)
+	}
+}
+
 // ============================================
 // DebugLogger — fill beyond buffer size to wrap
 // ============================================

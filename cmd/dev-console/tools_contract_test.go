@@ -386,4 +386,3 @@ func TestContractBadPath_Configure_NoiseRule_UnknownAction(t *testing.T) {
 	}
 	assertStructuredErrorCode(t, "noise_rule (unknown noise_action)", result, "unknown_mode")
 }
-

@@ -65,7 +65,7 @@ const getReadableScript = `(function() {
     word_count: words.length,
     url: window.location.href
   };
-})()`;
+})()`
 
 // getMarkdownScript extracts content and converts to Markdown.
 const getMarkdownScript = `(function() {
@@ -172,7 +172,7 @@ const getMarkdownScript = `(function() {
     word_count: words.length,
     url: window.location.href
   };
-})()`;
+})()`
 
 func (h *ToolHandler) handleGetReadable(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	var params struct {

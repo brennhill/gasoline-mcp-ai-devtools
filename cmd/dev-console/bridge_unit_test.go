@@ -176,5 +176,3 @@ func TestBridgeForwardRequest_LargeBodyRead(t *testing.T) {
 		t.Fatalf("response body appears truncated: got %d bytes, expected ~%d", len(outputStr), len(rpcResponse))
 	}
 }
-
-

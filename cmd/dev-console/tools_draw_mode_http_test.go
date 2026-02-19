@@ -281,10 +281,10 @@ func TestDrawModeComplete_InvalidBase64(t *testing.T) {
 
 	payload := map[string]any{
 		"screenshot_data_url": "data:image/png;base64,!!!not-valid-base64!!!",
-		"annotations":        []any{},
-		"element_details":    map[string]any{},
-		"page_url":           "https://example.com",
-		"tab_id":             77,
+		"annotations":         []any{},
+		"element_details":     map[string]any{},
+		"page_url":            "https://example.com",
+		"tab_id":              77,
 	}
 	body, _ := json.Marshal(payload)
 
@@ -356,8 +356,8 @@ func TestDrawModeComplete_WithSessionName(t *testing.T) {
 				"classes":      []string{"main"},
 			},
 		},
-		"page_url":     "https://example.com/home",
-		"tab_id":       200,
+		"page_url":           "https://example.com/home",
+		"tab_id":             200,
 		"annot_session_name": "qa-review",
 	}
 	body, _ := json.Marshal(payload)

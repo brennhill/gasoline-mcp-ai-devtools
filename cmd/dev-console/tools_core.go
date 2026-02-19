@@ -150,7 +150,7 @@ type ToolHandler struct {
 	auditTrail            *audit.AuditTrail
 
 	// Per-client audit session mapping (client_id -> session_id).
-	auditMu       sync.Mutex
+	auditMu         sync.Mutex
 	auditSessionMap map[string]string
 
 	// Draw mode annotation store (in-memory, TTL-based)
@@ -179,6 +179,9 @@ type ToolHandler struct {
 	// Playback results store: recording_id → session after playback completes.
 	playbackMu       sync.RWMutex
 	playbackSessions map[string]*capture.PlaybackSession
+
+	// Module registry for plugin-style tool dispatch (incremental migration).
+	toolModules *toolModuleRegistry
 }
 
 // GetCapture returns the capture instance
@@ -283,6 +286,9 @@ func NewToolHandler(server *Server, capture *capture.Capture) *MCPHandler {
 	// Initialize upload security config from package-level var set by CLI
 	handler.uploadSecurity = uploadSecurityConfig
 
+	// Wire plugin-style tool modules.
+	handler.toolModules = handler.buildToolModuleRegistry()
+
 	// Wire error clustering: feed error-level log entries into the cluster manager.
 	// Use SetOnEntries for thread-safe assignment (avoids racing with addEntries).
 	// Error clustering disabled for now (not initialized)
@@ -301,19 +307,11 @@ func NewToolHandler(server *Server, capture *capture.Capture) *MCPHandler {
 func (h *ToolHandler) HandleToolCall(req JSONRPCRequest, name string, args json.RawMessage) (JSONRPCResponse, bool) {
 	start := time.Now()
 
-	var resp JSONRPCResponse
-	switch name {
-	case "observe":
-		resp = h.toolObserve(req, args)
-	case "analyze":
-		resp = h.toolAnalyze(req, args)
-	case "generate":
-		resp = h.toolGenerate(req, args)
-	case "configure":
-		resp = h.toolConfigure(req, args)
-	case "interact":
-		resp = h.toolInteract(req, args)
-	default:
+	if h.toolModules == nil {
+		h.toolModules = h.buildToolModuleRegistry()
+	}
+	resp, handled := h.dispatchViaModules(req, name, args)
+	if !handled {
 		return JSONRPCResponse{}, false
 	}
 

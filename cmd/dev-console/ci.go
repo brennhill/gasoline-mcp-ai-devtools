@@ -8,8 +8,8 @@
 package main
 
 import (
-	"github.com/dev-console/dev-console/internal/capture"
 	"encoding/json"
+	"github.com/dev-console/dev-console/internal/capture"
 	"io"
 	"net/http"
 	"time"
@@ -21,13 +21,13 @@ import (
 
 // SnapshotResponse is the aggregated state returned by GET /snapshot.
 type SnapshotResponse struct {
-	Timestamp       string                     `json:"timestamp"`
-	TestID          string                     `json:"test_id,omitempty"`
-	Logs            []LogEntry                 `json:"logs"`
-	WebSocket       []capture.WebSocketEvent   `json:"websocket_events"`
-	NetworkBodies   []capture.NetworkBody      `json:"network_bodies"`
-	EnhancedActions []capture.EnhancedAction   `json:"enhanced_actions,omitempty"`
-	Stats           SnapshotStats              `json:"stats"`
+	Timestamp       string                   `json:"timestamp"`
+	TestID          string                   `json:"test_id,omitempty"`
+	Logs            []LogEntry               `json:"logs"`
+	WebSocket       []capture.WebSocketEvent `json:"websocket_events"`
+	NetworkBodies   []capture.NetworkBody    `json:"network_bodies"`
+	EnhancedActions []capture.EnhancedAction `json:"enhanced_actions,omitempty"`
+	Stats           SnapshotStats            `json:"stats"`
 }
 
 // SnapshotStats summarizes the snapshot contents.
@@ -236,4 +236,3 @@ func computeSnapshotStats(logs []LogEntry, wsEvents []capture.WebSocketEvent, ne
 // ============================================
 // Capture methods for test boundary tracking
 // ============================================
-

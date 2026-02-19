@@ -498,11 +498,11 @@ func (h *ToolHandler) toolGetAuditLog(req JSONRPCRequest, args json.RawMessage) 
 	}
 
 	var params struct {
-		Operation string `json:"operation"`
+		Operation      string `json:"operation"`
 		AuditSessionID string `json:"audit_session_id"`
-		ToolName  string `json:"tool_name"`
-		Limit     int    `json:"limit"`
-		Since     string `json:"since"`
+		ToolName       string `json:"tool_name"`
+		Limit          int    `json:"limit"`
+		Since          string `json:"since"`
 	}
 	if len(args) > 0 {
 		if err := json.Unmarshal(args, &params); err != nil {
@@ -535,8 +535,8 @@ func (h *ToolHandler) toolGetAuditLog(req JSONRPCRequest, args json.RawMessage) 
 
 	filter := audit.AuditFilter{
 		AuditSessionID: params.AuditSessionID,
-		ToolName:  params.ToolName,
-		Limit:     params.Limit,
+		ToolName:       params.ToolName,
+		Limit:          params.Limit,
 	}
 	if params.Since != "" {
 		since, err := time.Parse(time.RFC3339, params.Since)

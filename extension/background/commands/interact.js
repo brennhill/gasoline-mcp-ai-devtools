@@ -10,6 +10,9 @@ import { handleBrowserAction, handleAsyncBrowserAction, handleAsyncExecuteComman
 import { saveStateSnapshot, loadStateSnapshot, listStateSnapshots, deleteStateSnapshot } from '../message-handlers.js';
 import { registerCommand } from './registry.js';
 import { sendResult, sendAsyncResult } from './helpers.js';
+function statusFromError(error) {
+    return error ? 'error' : 'complete';
+}
 // =============================================================================
 // SUBTITLE
 // =============================================================================
@@ -47,7 +50,7 @@ registerCommand('highlight', async (ctx) => {
     const result = await handlePilotCommand('GASOLINE_HIGHLIGHT', params);
     if (ctx.query.correlation_id) {
         const err = result && typeof result === 'object' && 'error' in result ? result.error : undefined;
-        ctx.sendAsyncResult(ctx.syncClient, ctx.query.id, ctx.query.correlation_id, 'complete', result, err);
+        ctx.sendAsyncResult(ctx.syncClient, ctx.query.id, ctx.query.correlation_id, statusFromError(err), result, err);
     }
     else {
         ctx.sendResult(result);
@@ -82,7 +85,7 @@ registerCommand('browser_action', async (ctx) => {
 // =============================================================================
 registerCommand('dom_action', async (ctx) => {
     if (!index.__aiWebPilotEnabledCache) {
-        ctx.sendAsyncResult(ctx.syncClient, ctx.query.id, ctx.query.correlation_id, 'complete', null, 'ai_web_pilot_disabled');
+        ctx.sendAsyncResult(ctx.syncClient, ctx.query.id, ctx.query.correlation_id, 'error', null, 'ai_web_pilot_disabled');
         return;
     }
     await executeDOMAction(ctx.query, ctx.tabId, ctx.syncClient, ctx.sendAsyncResult, ctx.actionToast);
@@ -92,7 +95,7 @@ registerCommand('dom_action', async (ctx) => {
 // =============================================================================
 registerCommand('upload', async (ctx) => {
     if (!index.__aiWebPilotEnabledCache) {
-        ctx.sendAsyncResult(ctx.syncClient, ctx.query.id, ctx.query.correlation_id, 'complete', null, 'ai_web_pilot_disabled');
+        ctx.sendAsyncResult(ctx.syncClient, ctx.query.id, ctx.query.correlation_id, 'error', null, 'ai_web_pilot_disabled');
         return;
     }
     await executeUpload(ctx.query, ctx.tabId, ctx.syncClient, ctx.sendAsyncResult, ctx.actionToast);
@@ -102,7 +105,7 @@ registerCommand('upload', async (ctx) => {
 // =============================================================================
 registerCommand('record_start', async (ctx) => {
     if (!index.__aiWebPilotEnabledCache) {
-        ctx.sendAsyncResult(ctx.syncClient, ctx.query.id, ctx.query.correlation_id, 'complete', undefined, 'ai_web_pilot_disabled');
+        ctx.sendAsyncResult(ctx.syncClient, ctx.query.id, ctx.query.correlation_id, 'error', undefined, 'ai_web_pilot_disabled');
         return;
     }
     let params;
@@ -113,18 +116,20 @@ registerCommand('record_start', async (ctx) => {
         params = {};
     }
     const result = await startRecording(params.name ?? 'recording', params.fps ?? 15, ctx.query.id, params.audio ?? '', false, ctx.tabId);
-    ctx.sendAsyncResult(ctx.syncClient, ctx.query.id, ctx.query.correlation_id, 'complete', result, result.error || undefined);
+    const error = result.error || undefined;
+    ctx.sendAsyncResult(ctx.syncClient, ctx.query.id, ctx.query.correlation_id, statusFromError(error), result, error);
 });
 // =============================================================================
 // RECORD STOP
 // =============================================================================
 registerCommand('record_stop', async (ctx) => {
     if (!index.__aiWebPilotEnabledCache) {
-        sendAsyncResult(ctx.syncClient, ctx.query.id, ctx.query.correlation_id, 'complete', undefined, 'ai_web_pilot_disabled');
+        sendAsyncResult(ctx.syncClient, ctx.query.id, ctx.query.correlation_id, 'error', undefined, 'ai_web_pilot_disabled');
         return;
     }
     const result = await stopRecording();
-    sendAsyncResult(ctx.syncClient, ctx.query.id, ctx.query.correlation_id, 'complete', result, result.error || undefined);
+    const error = result.error || undefined;
+    sendAsyncResult(ctx.syncClient, ctx.query.id, ctx.query.correlation_id, statusFromError(error), result, error);
 });
 // =============================================================================
 // STATE QUERIES (state_capture, state_save, state_load, state_list, state_delete)
@@ -225,7 +230,7 @@ registerCommand('state_*', async (ctx) => {
 registerCommand('execute', async (ctx) => {
     if (!index.__aiWebPilotEnabledCache) {
         if (ctx.query.correlation_id) {
-            ctx.sendAsyncResult(ctx.syncClient, ctx.query.id, ctx.query.correlation_id, 'complete', null, 'ai_web_pilot_disabled');
+            ctx.sendAsyncResult(ctx.syncClient, ctx.query.id, ctx.query.correlation_id, 'error', null, 'ai_web_pilot_disabled');
         }
         else {
             ctx.sendResult({

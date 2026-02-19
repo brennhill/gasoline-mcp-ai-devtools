@@ -91,7 +91,7 @@ export async function dispatch(query: PendingQuery, syncClient: SyncClient): Pro
     const resolved = await resolveTargetTab(query, paramsObj)
     if (resolved.error) {
       if (query.correlation_id) {
-        sendAsyncResult(syncClient, query.id, query.correlation_id, 'complete', resolved.error.payload, resolved.error.message)
+        sendAsyncResult(syncClient, query.id, query.correlation_id, 'error', resolved.error.payload, resolved.error.message)
       } else {
         sendResult(syncClient, query.id, resolved.error.payload)
       }
@@ -108,7 +108,7 @@ export async function dispatch(query: PendingQuery, syncClient: SyncClient): Pro
       message: 'No target tab resolved for query'
     }
     if (query.correlation_id) {
-      sendAsyncResult(syncClient, query.id, query.correlation_id, 'complete', payload, payload.message)
+      sendAsyncResult(syncClient, query.id, query.correlation_id, 'error', payload, payload.message)
     } else {
       sendResult(syncClient, query.id, payload)
     }
