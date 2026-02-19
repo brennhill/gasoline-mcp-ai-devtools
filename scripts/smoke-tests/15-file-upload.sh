@@ -457,13 +457,13 @@ run_test_15_10() {
             fail "Upload rejected: AI Web Pilot is disabled in the extension. Enable it and re-run."
             return ;;
         pending)
-            fail "Upload timed out — extension did not report a result within 10s. Check: extension reloaded? daemon restarted? pilot enabled?"
+            fail "Upload timed out (10s). Extension did not report a result. Possible causes: (1) sync client disconnected during multi-second upload pipeline, (2) extension's __aiWebPilotEnabledCache stale, (3) chrome.scripting.executeScript failed silently on the upload form tab. Last poll: $(truncate "$UPLOAD_FINAL_TEXT" 200)"
             return ;;
         failed|error)
-            fail "Extension reported upload failure."
+            fail "Extension reported upload failure. Status: $UPLOAD_FINAL_STATUS. Detail: $(truncate "$UPLOAD_FINAL_TEXT" 200)"
             return ;;
         *)
-            fail "Upload failed: $UPLOAD_FINAL_STATUS"
+            fail "Upload failed: $UPLOAD_FINAL_STATUS. Detail: $(truncate "$UPLOAD_FINAL_TEXT" 200)"
             return ;;
     esac
 
@@ -529,13 +529,13 @@ run_test_15_11() {
             fail "Upload rejected: AI Web Pilot is disabled in the extension. Enable it and re-run."
             ;;
         failed|error)
-            fail "E2E upload: extension reported failure."
+            fail "E2E upload: extension reported failure. Detail: $(truncate "$UPLOAD_FINAL_TEXT" 200)"
             ;;
         pending)
-            fail "E2E upload: timed out polling (upload handler should have responded)."
+            fail "E2E upload: timed out polling 10s. Extension did not report completion. Possible causes: sync client reset during upload pipeline, pilot cache stale, or chrome.scripting.executeScript failed on upload form. Last poll: $(truncate "$UPLOAD_FINAL_TEXT" 200)"
             ;;
         *)
-            fail "E2E upload: $UPLOAD_FINAL_STATUS"
+            fail "E2E upload: $UPLOAD_FINAL_STATUS. Detail: $(truncate "$UPLOAD_FINAL_TEXT" 200)"
             ;;
     esac
 }
@@ -570,13 +570,13 @@ run_test_15_12() {
             fail "Upload rejected: AI Web Pilot is disabled in the extension. Enable it and re-run."
             return ;;
         pending)
-            fail "Upload timed out — extension did not report a result within 10s. Check: extension reloaded? daemon restarted? pilot enabled?"
+            fail "Upload timed out (10s). Extension did not report a result. Possible causes: sync client disconnected, pilot cache stale, or chrome.scripting.executeScript blocked. Last poll: $(truncate "$UPLOAD_FINAL_TEXT" 200)"
             return ;;
         failed|error)
-            fail "Extension reported upload failure."
+            fail "Extension reported upload failure. Detail: $(truncate "$UPLOAD_FINAL_TEXT" 200)"
             return ;;
         *)
-            fail "Upload failed: $UPLOAD_FINAL_STATUS"
+            fail "Upload failed: $UPLOAD_FINAL_STATUS. Detail: $(truncate "$UPLOAD_FINAL_TEXT" 200)"
             return ;;
     esac
 
@@ -698,7 +698,7 @@ run_test_15_15() {
     _upload_and_poll "15.15" "$test_file"
 
     if [ "$UPLOAD_FINAL_STATUS" != "complete" ]; then
-        fail "Upload did not complete (status: $UPLOAD_FINAL_STATUS). Cannot verify file on input."
+        fail "Upload did not complete (status: $UPLOAD_FINAL_STATUS). Cannot verify file on input. Possible causes: sync client reset, pilot cache stale, or chrome.scripting.executeScript blocked. Last poll: $(truncate "$UPLOAD_FINAL_TEXT" 200)"
         return
     fi
 

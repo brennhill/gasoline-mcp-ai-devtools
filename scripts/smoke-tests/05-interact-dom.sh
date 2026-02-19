@@ -444,15 +444,19 @@ run_test_5_13() {
         return
     fi
 
-    # Fallback: verify via direct DOM query — most reliable, bypasses cached observe(page)
-    interact_and_wait "execute_js" '{"action":"execute_js","reason":"Verify URL after back","script":"window.location.href"}'
-    local current_url="$INTERACT_RESULT"
-    echo "  [after back] $(echo "$current_url" | grep -oE 'https?://[^ \"]+' | head -1 || echo '?')"
+    # Fallback: verify via observe(page) — does NOT require JS execution,
+    # so works on CSP-strict pages where execute_js would fail.
+    local page_resp
+    page_resp=$(call_tool "observe" '{"what":"page"}')
+    local page_text
+    page_text=$(extract_content_text "$page_resp")
+    echo "  [after back] $(echo "$page_text" | grep -oE 'https?://[^ \"]+' | head -1 || echo '?')"
 
-    if echo "$current_url" | grep -qi "/health"; then
-        pass "Back navigation: returned to /health (confirmed via DOM)."
+    if echo "$page_text" | grep -qi "/health"; then
+        pass "Back navigation: returned to /health (confirmed via observe(page))."
     else
-        fail "Back navigation: expected /health. Got: $(truncate "$current_url" 200)"
+        # Include both the back command result and observe(page) in the failure for diagnosis
+        fail "Back navigation: expected /health in URL. back result: $(truncate "$INTERACT_RESULT" 150). observe(page): $(truncate "$page_text" 150)"
     fi
 }
 run_test_5_13
@@ -477,14 +481,16 @@ run_test_5_14() {
         return
     fi
 
-    # Fallback: verify via direct DOM query
-    interact_and_wait "execute_js" '{"action":"execute_js","reason":"Verify URL after forward","script":"window.location.href"}'
-    local current_url="$INTERACT_RESULT"
+    # Fallback: verify via observe(page) — no JS execution needed.
+    local page_resp
+    page_resp=$(call_tool "observe" '{"what":"page"}')
+    local page_text
+    page_text=$(extract_content_text "$page_resp")
 
-    if echo "$current_url" | grep -qi "openapi"; then
-        pass "Forward navigation: returned to /openapi.json (confirmed via DOM)."
+    if echo "$page_text" | grep -qi "openapi"; then
+        pass "Forward navigation: returned to /openapi.json (confirmed via observe(page))."
     else
-        fail "Forward navigation: expected /openapi.json. Got: $(truncate "$current_url" 200)"
+        fail "Forward navigation: expected /openapi.json. forward result: $(truncate "$INTERACT_RESULT" 150). observe(page): $(truncate "$page_text" 150)"
     fi
 }
 run_test_5_14

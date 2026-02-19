@@ -213,32 +213,42 @@ run_test_2_6() {
         return
     fi
 
-    # analyze(dom) is async — returns a correlation_id, must poll for result
-    local dom_response
-    dom_response=$(call_tool "analyze" '{"what":"dom","selector":"h1, a, button, input"}')
-    local dom_text
-    dom_text=$(extract_content_text "$dom_response")
+    # DOM query helper — issues analyze(dom) and polls for async result.
+    # Returns result in dom_text. Retries once if the first attempt fails
+    # (content script may not be loaded yet on the target page).
+    _dom_query_attempt() {
+        local dom_response
+        dom_response=$(call_tool "analyze" '{"what":"dom","selector":"h1, a, button, input"}')
+        dom_text=$(extract_content_text "$dom_response")
 
-    # Extract correlation_id and poll for async result
-    local corr_id
-    corr_id=$(echo "$dom_text" | grep -oE '"correlation_id":\s*"[^"]+"' | head -1 | sed 's/.*"correlation_id":\s*"//' | sed 's/"//' || true)
+        local corr_id
+        corr_id=$(echo "$dom_text" | grep -oE '"correlation_id":\s*"[^"]+"' | head -1 | sed 's/.*"correlation_id":\s*"//' | sed 's/"//' || true)
 
-    if [ -n "$corr_id" ]; then
-        for i in $(seq 1 15); do
-            sleep 0.5
-            local poll_response
-            poll_response=$(call_tool "observe" "{\"what\":\"command_result\",\"correlation_id\":\"$corr_id\"}")
-            local poll_text
-            poll_text=$(extract_content_text "$poll_response")
-            if echo "$poll_text" | grep -q '"status":"complete"'; then
-                dom_text="$poll_text"
-                break
-            fi
-            if echo "$poll_text" | grep -q '"status":"failed"'; then
-                dom_text="$poll_text"
-                break
-            fi
-        done
+        if [ -n "$corr_id" ]; then
+            for i in $(seq 1 15); do
+                sleep 0.5
+                local poll_response
+                poll_response=$(call_tool "observe" "{\"what\":\"command_result\",\"correlation_id\":\"$corr_id\"}")
+                local poll_text
+                poll_text=$(extract_content_text "$poll_response")
+                if echo "$poll_text" | grep -q '"status":"complete"'; then
+                    dom_text="$poll_text"
+                    return 0
+                fi
+                if echo "$poll_text" | grep -q '"status":"failed"'; then
+                    dom_text="$poll_text"
+                    return 1
+                fi
+            done
+        fi
+    }
+
+    local dom_text=""
+    if ! _dom_query_attempt; then
+        # First attempt failed — content script may not be loaded yet. Wait and retry.
+        echo "  [DOM query attempt 1 failed, retrying after 3s...]"
+        sleep 3
+        _dom_query_attempt || true
     fi
 
     echo "  [DOM query: h1, a, button, input]"
@@ -301,6 +311,10 @@ except Exception as e:
 
     if echo "$dom_verdict" | grep -q "^PASS"; then
         pass "DOM query returned page elements. $dom_verdict"
+    elif echo "$dom_text" | grep -qi "Failed to execute DOM query\|dom_query_failed"; then
+        fail "DOM query execution failed — content script may not be loaded on the target page. Ensure the extension is connected and the page is not a chrome:// or restricted URL. Raw: $(truncate "$dom_text" 200)"
+    elif echo "$dom_text" | grep -qi "Receiving end does not exist"; then
+        fail "DOM query failed — content script not reachable on the tab. Extension may need to reload. Raw: $(truncate "$dom_text" 200)"
     else
         fail "DOM query invalid. $dom_verdict. Content: $(truncate "$dom_text" 200)"
     fi

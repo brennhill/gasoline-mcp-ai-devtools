@@ -279,7 +279,21 @@ func (h *ToolHandler) formatCompleteCommand(req JSONRPCRequest, cmd queries.Comm
 	}
 
 	if beforeSnap, ok := h.capture.GetAndDeleteBeforeSnapshot(corrID); ok {
-		if afterSnap, ok := h.capture.GetPerformanceSnapshotByURL(beforeSnap.URL); ok {
+		// The "after" perf snapshot arrives ~2.5s after page load (2s content script
+		// delay + 500ms batcher debounce). Poll briefly for a snapshot newer than
+		// the "before" baseline. Without this wait, we'd compare the same snapshot
+		// to itself (zero diff) or find nothing.
+		afterSnap, found := h.capture.GetPerformanceSnapshotByURL(beforeSnap.URL)
+		if !found || afterSnap.Timestamp == beforeSnap.Timestamp {
+			for retry := 0; retry < 5; retry++ {
+				time.Sleep(500 * time.Millisecond)
+				afterSnap, found = h.capture.GetPerformanceSnapshotByURL(beforeSnap.URL)
+				if found && afterSnap.Timestamp != beforeSnap.Timestamp {
+					break // Found a genuinely new snapshot
+				}
+			}
+		}
+		if found && afterSnap.Timestamp != beforeSnap.Timestamp {
 			before := performance.SnapshotToPageLoadMetrics(beforeSnap)
 			after := performance.SnapshotToPageLoadMetrics(afterSnap)
 			responseData["perf_diff"] = performance.ComputePerfDiff(before, after)

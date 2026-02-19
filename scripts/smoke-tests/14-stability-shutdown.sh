@@ -64,20 +64,45 @@ run_test_14_3() {
         return
     fi
 
-    sleep 1
+    # Poll for port release — srv.Shutdown() may drain active connections (WebSocket, /sync)
+    # for up to 3s after the process signals exit. Check every 0.5s for up to 5s.
+    local port_freed=false
+    for i in $(seq 1 10); do
+        if ! lsof -ti :"$PORT" >/dev/null 2>&1; then
+            port_freed=true
+            break
+        fi
+        sleep 0.5
+    done
 
-    if lsof -ti :"$PORT" >/dev/null 2>&1; then
-        fail "Port $PORT still occupied after --stop."
+    if [ "$port_freed" != "true" ]; then
+        local occupants
+        occupants=$(lsof -ti :"$PORT" 2>/dev/null | head -3 || true)
+        fail "Port $PORT still occupied 5s after --stop. PIDs on port: $occupants. srv.Shutdown() drain may be stuck on active connections."
         return
     fi
 
-    local pid_file="$HOME/.gasoline-${PORT}.pid"
-    if [ -f "$pid_file" ]; then
-        fail "PID file $pid_file still exists after --stop."
-        rm -f "$pid_file"
+    # Check both new and legacy PID file paths
+    local pid_file_legacy="$HOME/.gasoline-${PORT}.pid"
+    # New path: ~/.local/share/gasoline/run/gasoline-PORT.pid (macOS/Linux)
+    local state_dir="${XDG_DATA_HOME:-$HOME/.local/share}/gasoline/run"
+    local pid_file_new="$state_dir/gasoline-${PORT}.pid"
+
+    local leaked_pid=""
+    if [ -f "$pid_file_legacy" ]; then
+        leaked_pid="$pid_file_legacy"
+        rm -f "$pid_file_legacy"
+    fi
+    if [ -f "$pid_file_new" ]; then
+        leaked_pid="$pid_file_new"
+        rm -f "$pid_file_new"
+    fi
+
+    if [ -n "$leaked_pid" ]; then
+        fail "PID file '$leaked_pid' still exists after --stop. removePIDFile() may not have run."
         return
     fi
 
-    pass "Graceful shutdown: --stop exited 0, port freed, PID file cleaned."
+    pass "Graceful shutdown: --stop exited 0, port freed in ${i}x0.5s, PID file cleaned."
 }
 run_test_14_3

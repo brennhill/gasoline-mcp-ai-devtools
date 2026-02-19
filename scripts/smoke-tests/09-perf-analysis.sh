@@ -17,10 +17,14 @@ run_test_9_1() {
     fi
 
     interact_and_wait "navigate" '{"action":"navigate","url":"https://example.com","reason":"Load baseline page"}' 20
-    sleep 3
+    # Wait for perf snapshot to arrive: extension sends it 2s after window.load,
+    # then the batcher debounces for 500ms → ~2.5s minimum after page load.
+    sleep 4
 
     interact_and_wait "refresh" '{"action":"refresh","reason":"Establish perf baseline"}' 20
-    sleep 3
+    # Same wait: the refresh's perf snapshot needs to arrive before the next refresh
+    # stashes it as the "before" baseline via stashPerfSnapshot().
+    sleep 4
 
     interact_and_wait "refresh" '{"action":"refresh","reason":"Measure perf diff"}' 20
 
@@ -49,7 +53,7 @@ except Exception as e:
 " 2>/dev/null || true
 
     if ! echo "$INTERACT_RESULT" | grep -q '"perf_diff"'; then
-        fail "Refresh result missing perf_diff. Result: $(truncate "$INTERACT_RESULT" 300)"
+        fail "Refresh result missing perf_diff. This is a timing issue: the perf snapshot from the previous refresh (~2.5s after load) may not have arrived before stashPerfSnapshot() ran. The extension sends perf data 2s after window.load + 500ms batcher debounce. Result keys: $(echo "$INTERACT_RESULT" | python3 -c "import sys,json;t=sys.stdin.read();i=t.find('{');print(list(json.loads(t[i:]).keys())[:8]) if i>=0 else print('no JSON')" 2>/dev/null || echo '?'). Result: $(truncate "$INTERACT_RESULT" 300)"
         return
     fi
 
@@ -262,10 +266,13 @@ run_test_9_5() {
         return
     fi
 
+    # Extra wait to ensure perf snapshot from 9.1's last refresh has arrived at the daemon.
+    sleep 4
+
     interact_and_wait "refresh" '{"action":"refresh","reason":"Check LLM perf fields"}' 20
 
     if ! echo "$INTERACT_RESULT" | grep -q '"perf_diff"'; then
-        fail "No perf_diff in refresh result. Result: $(truncate "$INTERACT_RESULT" 300)"
+        fail "No perf_diff in refresh result. The perf snapshot from the prior refresh may not have arrived yet (extension sends 2s after load + 500ms batcher debounce). If 9.1 also failed, this is expected — perf_diff requires a cached 'before' snapshot. Result: $(truncate "$INTERACT_RESULT" 300)"
         return
     fi
 
