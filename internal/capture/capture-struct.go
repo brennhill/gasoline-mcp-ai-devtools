@@ -82,7 +82,7 @@ type Capture struct {
 	// Query Dispatch (Own Locks)
 	// ============================================
 
-	qd *QueryDispatcher // Pending queries, results, async command tracking. Has own sync.Mutex + sync.RWMutex — independent of Capture.mu.
+	qd *QueryDispatcher // Pending queries, results, async command tracking — delegates to QueryDispatcher sub-struct (aliased from internal/queries). Has own sync.Mutex + sync.RWMutex — independent of Capture.mu.
 
 	// ============================================
 	// Rate Limiting & Circuit Breaker (Own Lock)

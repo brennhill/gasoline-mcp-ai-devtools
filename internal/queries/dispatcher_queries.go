@@ -1,8 +1,8 @@
-// queries.go — Pending query queue management for extension <-> server RPC.
+// dispatcher_queries.go — Pending query queue management for extension <-> server RPC.
 // Implements the async queue-and-poll pattern where MCP server queues commands
 // and extension polls to pick them up. Uses mu for pending query state.
-// Async command correlation tracking lives in commands.go (uses resultsMu).
-package capture
+// Async command correlation tracking lives in dispatcher_commands.go (uses resultsMu).
+package queries
 
 import (
 	"encoding/json"
@@ -10,14 +10,13 @@ import (
 	"os"
 	"time"
 
-	"github.com/dev-console/dev-console/internal/queries"
 	"github.com/dev-console/dev-console/internal/util"
 )
 
 // Constants for query management
 const (
-	queryResultTTL = 5 * time.Minute // How long to keep query results before cleanup
-	// Note: maxPendingQueries is defined in types.go (=5)
+	QueryResultTTL   = 5 * time.Minute // How long to keep query results before cleanup
+	MaxPendingQueries = 5               // Max pending queries in queue
 )
 
 // ============================================
@@ -26,13 +25,13 @@ const (
 
 // CreatePendingQuery creates a pending query with default timeout and no client ID.
 // Returns the query ID that extension will use to post the result.
-func (qd *QueryDispatcher) CreatePendingQuery(query queries.PendingQuery) string {
+func (qd *QueryDispatcher) CreatePendingQuery(query PendingQuery) string {
 	return qd.CreatePendingQueryWithTimeout(query, qd.queryTimeout, "")
 }
 
 // CreatePendingQueryWithClient creates a pending query for a specific client.
 // Used in multi-client mode to isolate queries between different MCP clients.
-func (qd *QueryDispatcher) CreatePendingQueryWithClient(query queries.PendingQuery, clientID string) string {
+func (qd *QueryDispatcher) CreatePendingQueryWithClient(query PendingQuery, clientID string) string {
 	return qd.CreatePendingQueryWithTimeout(query, qd.queryTimeout, clientID)
 }
 
@@ -44,16 +43,16 @@ func (qd *QueryDispatcher) CreatePendingQueryWithClient(query queries.PendingQue
 // 2. Add to pendingQueries queue (FIFO, max 5)
 // 3. Schedule cleanup goroutine after timeout
 // 4. Return query ID for extension to use when posting result
-func (qd *QueryDispatcher) CreatePendingQueryWithTimeout(query queries.PendingQuery, timeout time.Duration, clientID string) string {
+func (qd *QueryDispatcher) CreatePendingQueryWithTimeout(query PendingQuery, timeout time.Duration, clientID string) string {
 	qd.mu.Lock()
 
 	// Enforce max pending queries (drop oldest if full)
 	var droppedCorrelationID string
-	if len(qd.pendingQueries) >= maxPendingQueries {
+	if len(qd.pendingQueries) >= MaxPendingQueries {
 		dropped := qd.pendingQueries[0]
-		droppedCorrelationID = dropped.query.CorrelationID
+		droppedCorrelationID = dropped.Query.CorrelationID
 		fmt.Fprintf(os.Stderr, "[gasoline] Query queue overflow: dropping query %s (correlation_id=%s)\n",
-			dropped.query.ID, dropped.query.CorrelationID)
+			dropped.Query.ID, dropped.Query.CorrelationID)
 		qd.pendingQueries = qd.pendingQueries[1:]
 	}
 
@@ -62,16 +61,16 @@ func (qd *QueryDispatcher) CreatePendingQueryWithTimeout(query queries.PendingQu
 	id := fmt.Sprintf("q-%d", qd.queryIDCounter)
 
 	// Create query entry
-	entry := pendingQueryEntry{
-		query: queries.PendingQueryResponse{
+	entry := PendingQueryEntry{
+		Query: PendingQueryResponse{
 			ID:            id,
 			Type:          query.Type,
 			Params:        query.Params,
 			TabID:         query.TabID,
 			CorrelationID: query.CorrelationID,
 		},
-		expires:  time.Now().Add(timeout),
-		clientID: clientID,
+		Expires:  time.Now().Add(timeout),
+		ClientID: clientID,
 	}
 
 	qd.pendingQueries = append(qd.pendingQueries, entry)
@@ -127,7 +126,7 @@ func (qd *QueryDispatcher) cleanExpiredQueries() {
 	remaining := qd.pendingQueries[:0]
 
 	for _, pq := range qd.pendingQueries {
-		if pq.expires.After(now) {
+		if pq.Expires.After(now) {
 			remaining = append(remaining, pq)
 		}
 	}
@@ -141,7 +140,7 @@ func (qd *QueryDispatcher) cleanExpiredQueries() {
 // GetPendingQueries returns all pending queries for extension to execute.
 // Used by /sync endpoint to deliver commands to the extension.
 // Cleans expired queries before returning.
-func (qd *QueryDispatcher) GetPendingQueries() []queries.PendingQueryResponse {
+func (qd *QueryDispatcher) GetPendingQueries() []PendingQueryResponse {
 	// First ensure any expired queries are marked as failed
 	qd.cleanExpiredCommands()
 
@@ -151,16 +150,16 @@ func (qd *QueryDispatcher) GetPendingQueries() []queries.PendingQueryResponse {
 	// Clean expired queries from pending queue
 	qd.cleanExpiredQueries()
 
-	result := make([]queries.PendingQueryResponse, 0, len(qd.pendingQueries))
+	result := make([]PendingQueryResponse, 0, len(qd.pendingQueries))
 	for _, pq := range qd.pendingQueries {
-		result = append(result, pq.query)
+		result = append(result, pq.Query)
 	}
 	return result
 }
 
 // GetPendingQueriesForClient returns pending queries for a specific client.
 // Used in multi-client mode.
-func (qd *QueryDispatcher) GetPendingQueriesForClient(clientID string) []queries.PendingQueryResponse {
+func (qd *QueryDispatcher) GetPendingQueriesForClient(clientID string) []PendingQueryResponse {
 	// First ensure any expired queries are marked as failed
 	qd.cleanExpiredCommands()
 
@@ -170,10 +169,10 @@ func (qd *QueryDispatcher) GetPendingQueriesForClient(clientID string) []queries
 	// Clean expired queries from pending queue
 	qd.cleanExpiredQueries()
 
-	result := make([]queries.PendingQueryResponse, 0)
+	result := make([]PendingQueryResponse, 0)
 	for _, pq := range qd.pendingQueries {
-		if pq.clientID == clientID {
-			result = append(result, pq.query)
+		if pq.ClientID == clientID {
+			result = append(result, pq.Query)
 		}
 	}
 	return result
@@ -192,7 +191,7 @@ func (qd *QueryDispatcher) AcknowledgePendingQuery(queryID string) {
 
 	ackIndex := -1
 	for i, pq := range qd.pendingQueries {
-		if pq.query.ID == queryID {
+		if pq.Query.ID == queryID {
 			ackIndex = i
 			break
 		}
@@ -201,7 +200,7 @@ func (qd *QueryDispatcher) AcknowledgePendingQuery(queryID string) {
 		return
 	}
 
-	remaining := make([]pendingQueryEntry, 0, len(qd.pendingQueries)-ackIndex-1)
+	remaining := make([]PendingQueryEntry, 0, len(qd.pendingQueries)-ackIndex-1)
 	remaining = append(remaining, qd.pendingQueries[ackIndex+1:]...)
 	qd.pendingQueries = remaining
 }
@@ -215,8 +214,8 @@ func (qd *QueryDispatcher) ExpireAllPendingQueries(reason string) {
 
 	var correlationIDs []string
 	for _, pq := range qd.pendingQueries {
-		if pq.query.CorrelationID != "" {
-			correlationIDs = append(correlationIDs, pq.query.CorrelationID)
+		if pq.Query.CorrelationID != "" {
+			correlationIDs = append(correlationIDs, pq.Query.CorrelationID)
 		}
 	}
 	// Clear all pending queries
@@ -272,17 +271,17 @@ func (qd *QueryDispatcher) SetQueryResultWithClient(id string, result json.RawMe
 	qd.mu.Lock()
 
 	// Store result
-	qd.queryResults[id] = queryResultEntry{
-		result:    result,
-		clientID:  clientID,
-		createdAt: time.Now(),
+	qd.queryResults[id] = QueryResultEntry{
+		Result:    result,
+		ClientID:  clientID,
+		CreatedAt: time.Now(),
 	}
 
 	// Find correlation ID before removing from pending
 	var correlationID string
 	for _, pq := range qd.pendingQueries {
-		if pq.query.ID == id {
-			correlationID = pq.query.CorrelationID
+		if pq.Query.ID == id {
+			correlationID = pq.Query.CorrelationID
 			break
 		}
 	}
@@ -290,7 +289,7 @@ func (qd *QueryDispatcher) SetQueryResultWithClient(id string, result json.RawMe
 	// Remove from pending
 	remaining := qd.pendingQueries[:0]
 	for _, pq := range qd.pendingQueries {
-		if pq.query.ID != id {
+		if pq.Query.ID != id {
 			remaining = append(remaining, pq)
 		}
 	}
@@ -328,13 +327,13 @@ func (qd *QueryDispatcher) GetQueryResultForClient(id string, clientID string) (
 	}
 
 	// Check client isolation
-	if clientID != "" && entry.clientID != clientID {
+	if clientID != "" && entry.ClientID != clientID {
 		return nil, false
 	}
 
 	// Delete after retrieval (one-time use)
 	delete(qd.queryResults, id)
-	return entry.result, true
+	return entry.Result, true
 }
 
 // ============================================
@@ -382,9 +381,9 @@ func (qd *QueryDispatcher) WaitForResultWithClient(id string, timeout time.Durat
 		// Check if result exists
 		if entry, found := qd.queryResults[id]; found {
 			// Check client isolation
-			if clientID == "" || entry.clientID == clientID {
+			if clientID == "" || entry.ClientID == clientID {
 				delete(qd.queryResults, id)
-				return entry.result, nil
+				return entry.Result, nil
 			}
 		}
 
@@ -402,7 +401,7 @@ func (qd *QueryDispatcher) WaitForResultWithClient(id string, timeout time.Durat
 // ============================================
 
 // startResultCleanup starts a background goroutine that periodically cleans
-// expired query results (queryResultTTL, currently 5m).
+// expired query results (QueryResultTTL, currently 5m).
 // Returns a stop function that terminates the goroutine.
 // Called once during QueryDispatcher initialization; stop func stored in stopCleanup.
 func (qd *QueryDispatcher) startResultCleanup() func() {
@@ -422,7 +421,7 @@ func (qd *QueryDispatcher) startResultCleanup() func() {
 	return func() { close(stop) }
 }
 
-// cleanExpiredResults removes query results older than queryResultTTL,
+// cleanExpiredResults removes query results older than QueryResultTTL,
 // expires orphaned completedResults entries, and expires stale pending queries.
 func (qd *QueryDispatcher) cleanExpiredResults() {
 	now := time.Now()
@@ -430,19 +429,19 @@ func (qd *QueryDispatcher) cleanExpiredResults() {
 	// 1. Clean expired query results (under mu)
 	qd.mu.Lock()
 	for id, entry := range qd.queryResults {
-		if now.Sub(entry.createdAt) > queryResultTTL {
+		if now.Sub(entry.CreatedAt) > QueryResultTTL {
 			delete(qd.queryResults, id)
 		}
 	}
 
 	// 2. Collect orphaned pending queries (expired + grace period)
 	var orphanedCorrelationIDs []string
-	gracePeriod := queries.AsyncCommandTimeout + 10*time.Second
+	gracePeriod := AsyncCommandTimeout + 10*time.Second
 	remaining := qd.pendingQueries[:0]
 	for _, pq := range qd.pendingQueries {
-		if now.Sub(pq.expires) > gracePeriod {
-			if pq.query.CorrelationID != "" {
-				orphanedCorrelationIDs = append(orphanedCorrelationIDs, pq.query.CorrelationID)
+		if now.Sub(pq.Expires) > gracePeriod {
+			if pq.Query.CorrelationID != "" {
+				orphanedCorrelationIDs = append(orphanedCorrelationIDs, pq.Query.CorrelationID)
 			}
 			// Drop from pending
 			continue
@@ -460,7 +459,7 @@ func (qd *QueryDispatcher) cleanExpiredResults() {
 	// 4. Clean stale completedResults entries (under resultsMu)
 	qd.resultsMu.Lock()
 	for id, cmd := range qd.completedResults {
-		if now.Sub(cmd.CreatedAt) > queryResultTTL {
+		if now.Sub(cmd.CreatedAt) > QueryResultTTL {
 			delete(qd.completedResults, id)
 		}
 	}
@@ -492,7 +491,7 @@ func (qd *QueryDispatcher) QueuePosition(correlationID string) int {
 	defer qd.mu.Unlock()
 
 	for i, pq := range qd.pendingQueries {
-		if pq.query.CorrelationID == correlationID {
+		if pq.Query.CorrelationID == correlationID {
 			return i
 		}
 	}

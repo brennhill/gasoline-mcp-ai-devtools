@@ -1,17 +1,16 @@
-// commands.go — Async command correlation tracker for extension command lifecycle.
+// dispatcher_commands.go — Async command correlation tracker for extension command lifecycle.
 // Tracks command registration, completion, expiry, and failure using resultsMu.
-// Separated from queries.go which owns the pending query queue (mu).
-package capture
+// Separated from dispatcher_queries.go which owns the pending query queue (mu).
+package queries
 
 import (
 	"encoding/json"
 	"strings"
 	"time"
-
-	"github.com/dev-console/dev-console/internal/queries"
 )
 
-func normalizeCommandStatus(status string) string {
+// NormalizeCommandStatus normalizes raw extension status strings to canonical values.
+func NormalizeCommandStatus(status string) string {
 	normalized := strings.ToLower(strings.TrimSpace(status))
 	switch normalized {
 	case "", "ok", "success", "succeeded", "done":
@@ -28,7 +27,8 @@ func normalizeCommandStatus(status string) string {
 	}
 }
 
-func isFailedCommandStatus(status string) bool {
+// IsFailedCommandStatus returns true for terminal failure statuses.
+func IsFailedCommandStatus(status string) bool {
 	switch status {
 	case "error", "timeout", "expired", "cancelled":
 		return true
@@ -51,7 +51,7 @@ func (qd *QueryDispatcher) RegisterCommand(correlationID string, queryID string,
 	qd.resultsMu.Lock()
 	defer qd.resultsMu.Unlock()
 
-	qd.completedResults[correlationID] = &queries.CommandResult{
+	qd.completedResults[correlationID] = &CommandResult{
 		CorrelationID: correlationID,
 		Status:        "pending",
 		CreatedAt:     time.Now(),
@@ -65,7 +65,7 @@ func (qd *QueryDispatcher) ApplyCommandResult(correlationID string, status strin
 		return
 	}
 
-	normalizedStatus := normalizeCommandStatus(status)
+	normalizedStatus := NormalizeCommandStatus(status)
 
 	qd.resultsMu.Lock()
 	cmd, exists := qd.completedResults[correlationID]
@@ -87,7 +87,7 @@ func (qd *QueryDispatcher) ApplyCommandResult(correlationID string, status strin
 		cmd.CompletedAt = time.Now()
 	}
 
-	if isFailedCommandStatus(normalizedStatus) {
+	if IsFailedCommandStatus(normalizedStatus) {
 		// Move failures to failedCommands ring buffer (observe failed_commands source).
 		qd.failedCommands = append(qd.failedCommands, cmd)
 		if len(qd.failedCommands) > 100 {
@@ -128,7 +128,7 @@ func (qd *QueryDispatcher) expireCommandWithReason(correlationID string, reason 
 
 // WaitForCommand blocks until the command completes or timeout expires.
 // Returns (CommandResult, found). If still pending after timeout, returns the pending result.
-func (qd *QueryDispatcher) WaitForCommand(correlationID string, timeout time.Duration) (*queries.CommandResult, bool) {
+func (qd *QueryDispatcher) WaitForCommand(correlationID string, timeout time.Duration) (*CommandResult, bool) {
 	// Check immediately
 	cmd, found := qd.GetCommandResult(correlationID)
 	if !found || cmd.Status != "pending" {
@@ -164,7 +164,7 @@ func (qd *QueryDispatcher) WaitForCommand(correlationID string, timeout time.Dur
 // GetCommandResult retrieves command status by correlation ID.
 // Returns a snapshot copy of the CommandResult (safe to read without locks).
 // Used by toolObserveCommandResult and WaitForCommand.
-func (qd *QueryDispatcher) GetCommandResult(correlationID string) (*queries.CommandResult, bool) {
+func (qd *QueryDispatcher) GetCommandResult(correlationID string) (*CommandResult, bool) {
 	// First ensure any expired queries are marked as failed
 	qd.cleanExpiredCommands()
 
@@ -197,8 +197,8 @@ func (qd *QueryDispatcher) cleanExpiredCommands() {
 	var expiredCorrelationIDs []string
 
 	for _, pq := range qd.pendingQueries {
-		if !pq.expires.After(now) && pq.query.CorrelationID != "" {
-			expiredCorrelationIDs = append(expiredCorrelationIDs, pq.query.CorrelationID)
+		if !pq.Expires.After(now) && pq.Query.CorrelationID != "" {
+			expiredCorrelationIDs = append(expiredCorrelationIDs, pq.Query.CorrelationID)
 		}
 	}
 	qd.mu.Unlock()
@@ -211,14 +211,14 @@ func (qd *QueryDispatcher) cleanExpiredCommands() {
 
 // GetPendingCommands returns all commands with status "pending".
 // Used by toolObservePendingCommands.
-func (qd *QueryDispatcher) GetPendingCommands() []*queries.CommandResult {
+func (qd *QueryDispatcher) GetPendingCommands() []*CommandResult {
 	// First ensure any expired queries are marked as failed
 	qd.cleanExpiredCommands()
 
 	qd.resultsMu.RLock()
 	defer qd.resultsMu.RUnlock()
 
-	result := make([]*queries.CommandResult, 0)
+	result := make([]*CommandResult, 0)
 	for _, cmd := range qd.completedResults {
 		if cmd.Status == "pending" {
 			result = append(result, cmd)
@@ -229,14 +229,14 @@ func (qd *QueryDispatcher) GetPendingCommands() []*queries.CommandResult {
 
 // GetCompletedCommands returns all commands with status "complete".
 // Used by toolObservePendingCommands.
-func (qd *QueryDispatcher) GetCompletedCommands() []*queries.CommandResult {
+func (qd *QueryDispatcher) GetCompletedCommands() []*CommandResult {
 	// First ensure any expired queries are marked as failed
 	qd.cleanExpiredCommands()
 
 	qd.resultsMu.RLock()
 	defer qd.resultsMu.RUnlock()
 
-	result := make([]*queries.CommandResult, 0)
+	result := make([]*CommandResult, 0)
 	for _, cmd := range qd.completedResults {
 		if cmd.Status == "complete" {
 			result = append(result, cmd)
@@ -247,7 +247,7 @@ func (qd *QueryDispatcher) GetCompletedCommands() []*queries.CommandResult {
 
 // GetFailedCommands returns recent failed/expired commands.
 // Used by toolObserveFailedCommands.
-func (qd *QueryDispatcher) GetFailedCommands() []*queries.CommandResult {
+func (qd *QueryDispatcher) GetFailedCommands() []*CommandResult {
 	// First ensure any expired queries are marked as failed
 	qd.cleanExpiredCommands()
 
@@ -256,7 +256,7 @@ func (qd *QueryDispatcher) GetFailedCommands() []*queries.CommandResult {
 
 	// Return detached copies to avoid concurrent modification and include
 	// non-expired failures that remain in completedResults.
-	result := make([]*queries.CommandResult, 0, len(qd.failedCommands)+len(qd.completedResults))
+	result := make([]*CommandResult, 0, len(qd.failedCommands)+len(qd.completedResults))
 	seen := make(map[string]struct{}, len(qd.failedCommands))
 
 	for _, cmd := range qd.failedCommands {
@@ -270,7 +270,7 @@ func (qd *QueryDispatcher) GetFailedCommands() []*queries.CommandResult {
 		}
 	}
 	for _, cmd := range qd.completedResults {
-		if cmd == nil || !isFailedCommandStatus(cmd.Status) {
+		if cmd == nil || !IsFailedCommandStatus(cmd.Status) {
 			continue
 		}
 		if _, exists := seen[cmd.CorrelationID]; exists {

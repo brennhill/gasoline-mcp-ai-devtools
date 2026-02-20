@@ -111,16 +111,5 @@ func (c *Capture) GetWSLengthsForTest() (events int, addedAt int, memoryTotal in
 // GetLastPendingQuery returns the most recently created pending query (TEST ONLY)
 // Returns nil if no queries exist.
 func (c *Capture) GetLastPendingQuery() *queries.PendingQuery {
-	c.qd.mu.Lock()
-	defer c.qd.mu.Unlock()
-	if len(c.qd.pendingQueries) == 0 {
-		return nil
-	}
-	last := c.qd.pendingQueries[len(c.qd.pendingQueries)-1]
-	return &queries.PendingQuery{
-		Type:          last.query.Type,
-		Params:        last.query.Params,
-		TabID:         last.query.TabID,
-		CorrelationID: last.query.CorrelationID,
-	}
+	return c.qd.GetLastPendingQuery()
 }

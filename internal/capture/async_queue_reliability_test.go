@@ -134,9 +134,7 @@ func TestAsyncQueueReliability(t *testing.T) {
 			<-pollingDone
 
 			// Check for expired commands
-			capture.qd.mu.Lock()
-			commandsExpired = len(capture.qd.pendingQueries)
-			capture.qd.mu.Unlock()
+			commandsExpired = capture.qd.QueueDepth()
 
 			mu.Lock()
 			sent := commandsSent

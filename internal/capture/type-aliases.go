@@ -27,6 +27,10 @@ type (
 	PendingQuery          = queries.PendingQuery              // Alias for convenience
 	CommandResult         = queries.CommandResult             // Alias for convenience (avoid qualifying as queries.CommandResult everywhere)
 
+	// QueryDispatcher subsystem types — moved to internal/queries package.
+	QueryDispatcher = queries.QueryDispatcher // Query lifecycle, result storage, async command tracking
+	QuerySnapshot   = queries.QuerySnapshot   // Point-in-time view of query state for health reporting
+
 	// Recording subsystem types — moved to internal/recording package.
 	RecordingManager = recording.RecordingManager // Recording lifecycle, playback, and log-diff engine
 	StorageInfo      = recording.StorageInfo      // Recording storage usage info

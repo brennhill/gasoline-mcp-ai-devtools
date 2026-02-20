@@ -1,14 +1,12 @@
-// queries_expire_signal_test.go — Tests for commandNotify signaling on command expiration.
+// expire_signal_test.go — Tests for commandNotify signaling on command expiration.
 // Verifies that ExpireCommand, expireCommandWithReason, and ExpireAllPendingQueries
 // wake blocked WaitForCommand goroutines instead of making them wait the full timeout.
-package capture
+package queries
 
 import (
 	"encoding/json"
 	"testing"
 	"time"
-
-	"github.com/dev-console/dev-console/internal/queries"
 )
 
 // TestExpireCommand_SignalsWaiters verifies that ExpireCommand wakes WaitForCommand.
@@ -23,7 +21,7 @@ func TestExpireCommand_SignalsWaiters(t *testing.T) {
 
 	// Start WaitForCommand in a goroutine with a long timeout
 	done := make(chan struct{})
-	var result *queries.CommandResult
+	var result *CommandResult
 	var found bool
 	go func() {
 		result, found = qd.WaitForCommand(correlationID, 15*time.Second)
@@ -61,7 +59,7 @@ func TestExpireCommandWithReason_SignalsWaiters(t *testing.T) {
 	qd.RegisterCommand(correlationID, "q-2", 30*time.Second)
 
 	done := make(chan struct{})
-	var result *queries.CommandResult
+	var result *CommandResult
 	go func() {
 		result, _ = qd.WaitForCommand(correlationID, 15*time.Second)
 		close(done)
@@ -93,13 +91,13 @@ func TestExpireAllPendingQueries_SignalsWaiters(t *testing.T) {
 	defer qd.Close()
 
 	// Create two pending queries with correlation IDs
-	qd.CreatePendingQueryWithTimeout(queries.PendingQuery{
+	qd.CreatePendingQueryWithTimeout(PendingQuery{
 		Type:          "dom",
 		Params:        json.RawMessage(`{}`),
 		CorrelationID: "corr-a",
 	}, 30*time.Second, "")
 
-	qd.CreatePendingQueryWithTimeout(queries.PendingQuery{
+	qd.CreatePendingQueryWithTimeout(PendingQuery{
 		Type:          "dom",
 		Params:        json.RawMessage(`{}`),
 		CorrelationID: "corr-b",
