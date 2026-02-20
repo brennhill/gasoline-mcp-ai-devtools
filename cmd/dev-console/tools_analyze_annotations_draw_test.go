@@ -4,8 +4,11 @@ package main
 
 import (
 	"encoding/json"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestToolGetAnnotationDetail_EnrichedFields(t *testing.T) {
@@ -215,5 +218,72 @@ func TestToolGetDrawSession_MissingParam(t *testing.T) {
 
 	if !strings.Contains(text, "Required parameter 'file'") {
 		t.Errorf("expected missing 'file' parameter error, got %q", text)
+	}
+}
+
+func TestToolGetDrawSession_HydratesStoreForGenerators(t *testing.T) {
+	h := createTestToolHandler(t)
+	h.annotationStore = NewAnnotationStore(10 * time.Minute)
+	t.Cleanup(func() { h.annotationStore.Close() })
+
+	t.Setenv("GASOLINE_STATE_DIR", t.TempDir())
+	dir, err := screenshotsDir()
+	if err != nil {
+		t.Fatalf("screenshotsDir: %v", err)
+	}
+
+	fileName := "draw-session-77-1700000000000.json"
+	filePath := filepath.Join(dir, fileName)
+	payload := `{
+		"annotations": [{
+			"id": "ann-1",
+			"rect": {"x": 10, "y": 20, "width": 160, "height": 40},
+			"text": "Button contrast is low",
+			"timestamp": 1700000000000,
+			"page_url": "https://example.com/checkout",
+			"element_summary": "Checkout button",
+			"correlation_id": "corr-qa-1"
+		}],
+		"element_details": {
+			"corr-qa-1": {
+				"selector": "button.checkout",
+				"tag": "button",
+				"text_content": "Checkout",
+				"classes": ["checkout"],
+				"computed_styles": {"color": "rgb(120,120,120)"},
+				"parent_selector": "body",
+				"bounding_rect": {"x": 10, "y": 20, "width": 160, "height": 40}
+			}
+		},
+		"page_url": "https://example.com/checkout",
+		"tab_id": 77,
+		"screenshot": "/tmp/test.png",
+		"timestamp": 1700000000000,
+		"annot_session_name": "qa-review"
+	}`
+	if err := os.WriteFile(filePath, []byte(payload), 0o600); err != nil {
+		t.Fatalf("WriteFile: %v", err)
+	}
+
+	req := JSONRPCRequest{JSONRPC: "2.0", ID: float64(1)}
+	loadResp := h.toolGetDrawSession(req, json.RawMessage(`{"file":"`+fileName+`"}`))
+	loadText := unmarshalMCPText(t, loadResp.Result)
+	if !strings.Contains(loadText, `"annot_session":"qa-review"`) {
+		t.Fatalf("draw_session should expose annot_session alias, got: %s", loadText)
+	}
+
+	reportResp := h.toolGenerateAnnotationReport(req, json.RawMessage(`{"annot_session":"qa-review"}`))
+	reportText := unmarshalMCPText(t, reportResp.Result)
+	if !strings.Contains(reportText, "# Annotation Report") {
+		t.Fatalf("annotation_report should render report, got: %s", reportText)
+	}
+	if !strings.Contains(reportText, "Button contrast is low") {
+		t.Fatalf("annotation_report missing loaded annotation text, got: %s", reportText)
+	}
+
+	detailResp := h.toolGetAnnotationDetail(req, json.RawMessage(`{"correlation_id":"corr-qa-1"}`))
+	detailText := unmarshalMCPText(t, detailResp.Result)
+	if !strings.Contains(detailText, `"selector":"button.checkout"`) {
+		t.Fatalf("annotation detail should be hydrated from file, got: %s", detailText)
 	}
 }

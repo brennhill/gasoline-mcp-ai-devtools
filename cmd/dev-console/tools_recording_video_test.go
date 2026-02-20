@@ -531,6 +531,9 @@ func TestHandleRecordStartAndStop(t *testing.T) {
 	if startData["status"] != "queued" {
 		t.Fatalf("record_start status = %v, want queued", startData["status"])
 	}
+	if startData["recording_state"] != recordingStateAwaitingGesture {
+		t.Fatalf("record_start recording_state = %v, want %q", startData["recording_state"], recordingStateAwaitingGesture)
+	}
 	if startData["requires_user_gesture"] != true {
 		t.Fatalf("record_start requires_user_gesture = %v, want true", startData["requires_user_gesture"])
 	}
@@ -566,12 +569,30 @@ func TestHandleRecordStartAndStop(t *testing.T) {
 		t.Fatalf("start query params = %s, want record_start action", string(paramsJSON))
 	}
 
+	stopBeforeReady := env.handler.handleRecordStop(req, json.RawMessage(`{"tab_id":7}`))
+	stopBeforeReadyResult := parseToolResult(t, stopBeforeReady)
+	if !stopBeforeReadyResult.IsError {
+		t.Fatal("record_stop should fail fast while record_start is still awaiting user gesture")
+	}
+	if !strings.Contains(strings.ToLower(stopBeforeReadyResult.Content[0].Text), recordingStateAwaitingGesture) {
+		t.Fatalf("record_stop error should mention %q state, got: %s", recordingStateAwaitingGesture, stopBeforeReadyResult.Content[0].Text)
+	}
+
+	startCorrelationID, _ := startData["correlation_id"].(string)
+	if startCorrelationID == "" {
+		t.Fatal("record_start response missing correlation_id")
+	}
+
+	env.capture.ApplyCommandResult(startCorrelationID, "complete", json.RawMessage(`{"status":"recording","name":"My Video"}`), "")
+
 	stopResp := env.handler.handleRecordStop(req, json.RawMessage(`{"tab_id":7}`))
 	stopResult := parseToolResult(t, stopResp)
 	stopData := parseResponseJSON(t, stopResult)
-
 	if stopData["status"] != "queued" {
 		t.Fatalf("record_stop status = %v, want queued", stopData["status"])
+	}
+	if stopData["recording_state"] != recordingStateStopping {
+		t.Fatalf("record_stop recording_state = %v, want %q", stopData["recording_state"], recordingStateStopping)
 	}
 
 	stopQuery := env.capture.GetLastPendingQuery()

@@ -286,6 +286,75 @@ describe('get_text: innerText for HTMLElement', () => {
     assert.strictEqual(result.success, true)
     assert.strictEqual(result.value, 'svg text', 'Non-HTMLElement should fall back to textContent')
   })
+
+  test('get_text returns reason when resolved text is null', () => {
+    const el = new MockHTMLElement('DIV', { id: 'content' })
+    el.innerText = null
+    el.textContent = null
+    Object.setPrototypeOf(el, MockHTMLElement.prototype)
+
+    globalThis.document = {
+      querySelector: (sel) => (sel === '#content' ? el : null),
+      querySelectorAll: () => [],
+      body: { querySelectorAll: () => [] },
+      documentElement: {},
+      createTreeWalker: () => ({ nextNode: () => null })
+    }
+
+    const result = domPrimitive('get_text', '#content', {})
+
+    assert.strictEqual(result.success, true)
+    assert.strictEqual(result.value, null)
+    assert.strictEqual(result.reason, 'no_text_content')
+    assert.ok(result.message.includes('null'))
+  })
+})
+
+describe('null-value read actions include reason payload', () => {
+  beforeEach(() => {
+    perfNowValue = 0
+  })
+
+  test('get_attribute includes attribute_not_found reason when attribute is missing', () => {
+    const el = new MockHTMLElement('DIV', { id: 'target' })
+    Object.setPrototypeOf(el, MockHTMLElement.prototype)
+
+    globalThis.document = {
+      querySelector: (sel) => (sel === '#target' ? el : null),
+      querySelectorAll: () => [],
+      body: { querySelectorAll: () => [] },
+      documentElement: {},
+      createTreeWalker: () => ({ nextNode: () => null })
+    }
+
+    const result = domPrimitive('get_attribute', '#target', { name: 'aria-label' })
+
+    assert.strictEqual(result.success, true)
+    assert.strictEqual(result.value, null)
+    assert.strictEqual(result.reason, 'attribute_not_found')
+    assert.ok(result.message.includes('aria-label'))
+  })
+
+  test('get_value includes no_value reason when value is null', () => {
+    const input = new globalThis.HTMLInputElement('INPUT', { id: 'field' })
+    input.value = null
+    Object.setPrototypeOf(input, globalThis.HTMLInputElement.prototype)
+
+    globalThis.document = {
+      querySelector: (sel) => (sel === '#field' ? input : null),
+      querySelectorAll: () => [],
+      body: { querySelectorAll: () => [] },
+      documentElement: {},
+      createTreeWalker: () => ({ nextNode: () => null })
+    }
+
+    const result = domPrimitive('get_value', '#field', {})
+
+    assert.strictEqual(result.success, true)
+    assert.strictEqual(result.value, null)
+    assert.strictEqual(result.reason, 'no_value')
+    assert.ok(result.message.includes('null'))
+  })
 })
 
 // ---------------------------------------------------------------------------
