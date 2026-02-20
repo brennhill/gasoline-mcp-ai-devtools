@@ -470,6 +470,7 @@ func (h *MCPHandler) applyToolResponsePostProcessing(resp JSONRPCResponse, clien
 		resp = appendWarningsToResponse(resp, h.server.TakeWarnings())
 	}
 	resp = h.maybeAddVersionWarning(resp)
+	resp = maybeAddUpgradeWarning(resp)
 	return h.maybeAddTelemetrySummary(resp, clientID, toolName, telemetryModeOverride)
 }
 
@@ -499,6 +500,37 @@ func (h *MCPHandler) maybeAddVersionWarning(resp JSONRPCResponse) JSONRPCRespons
 		result.Content[0].Text = warning + result.Content[0].Text
 	} else {
 		// Insert warning as new first content block
+		result.Content = append([]MCPContentBlock{{Type: "text", Text: warning}}, result.Content...)
+	}
+	resultJSON, err := json.Marshal(result)
+	if err != nil {
+		return resp
+	}
+	resp.Result = json.RawMessage(resultJSON)
+	return resp
+}
+
+// maybeAddUpgradeWarning prepends a binary upgrade notice to the tool response
+// when a newer binary has been detected on disk (pending auto-restart).
+func maybeAddUpgradeWarning(resp JSONRPCResponse) JSONRPCResponse {
+	if binaryUpgradeState == nil || resp.Result == nil {
+		return resp
+	}
+	pending, newVer, detectedAt := binaryUpgradeState.UpgradeInfo()
+	if !pending {
+		return resp
+	}
+
+	elapsed := time.Since(detectedAt).Truncate(time.Second)
+	warning := fmt.Sprintf("NOTICE: Gasoline v%s detected on disk (current: v%s, detected %s ago). Auto-restart imminent. Your next tool call will use the new version.\n\n", newVer, version, elapsed)
+
+	var result MCPToolResult
+	if err := json.Unmarshal(resp.Result, &result); err != nil {
+		return resp
+	}
+	if len(result.Content) > 0 && result.Content[0].Type == "text" {
+		result.Content[0].Text = warning + result.Content[0].Text
+	} else {
 		result.Content = append([]MCPContentBlock{{Type: "text", Text: warning}}, result.Content...)
 	}
 	resultJSON, err := json.Marshal(result)

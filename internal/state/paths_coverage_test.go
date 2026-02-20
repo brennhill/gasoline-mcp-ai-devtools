@@ -770,3 +770,34 @@ func TestSecurityConfigFile_ErrorPropagation(t *testing.T) {
 		t.Fatal("SecurityConfigFile() expected error when RootDir fails, got nil")
 	}
 }
+
+// ---------------------------------------------------------------------------
+// UpgradeMarkerFile
+// ---------------------------------------------------------------------------
+
+func TestUpgradeMarkerFilePath(t *testing.T) {
+	root := t.TempDir()
+	t.Setenv(StateDirEnv, root)
+	t.Setenv(xdgStateHomeEnv, "")
+
+	got, err := UpgradeMarkerFile()
+	if err != nil {
+		t.Fatalf("UpgradeMarkerFile() error = %v", err)
+	}
+	want := filepath.Join(root, "run", "last-upgrade.json")
+	if got != want {
+		t.Fatalf("UpgradeMarkerFile() = %q, want %q", got, want)
+	}
+}
+
+func TestUpgradeMarkerFile_ErrorPropagation(t *testing.T) {
+	t.Setenv(StateDirEnv, "")
+	t.Setenv(xdgStateHomeEnv, "")
+	t.Setenv("HOME", "")
+	t.Setenv("USERPROFILE", "")
+
+	_, err := UpgradeMarkerFile()
+	if err == nil {
+		t.Fatal("UpgradeMarkerFile() expected error when RootDir fails, got nil")
+	}
+}

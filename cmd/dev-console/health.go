@@ -113,6 +113,14 @@ type MCPHealthResponse struct {
 	RateLimiting RateLimitingInfo `json:"rate_limiting"`
 	Audit        AuditInfo        `json:"audit"`
 	Pilot        PilotInfo        `json:"pilot"`
+	Upgrade      *UpgradeInfo     `json:"upgrade,omitempty"`
+}
+
+// UpgradeInfo contains binary upgrade detection state.
+type UpgradeInfo struct {
+	Pending    bool   `json:"pending"`
+	NewVersion string `json:"new_version"`
+	DetectedAt string `json:"detected_at"`
 }
 
 // ServerInfo contains server identification and uptime.
@@ -187,13 +195,33 @@ type PilotInfo struct {
 // GetHealth computes and returns the current health metrics.
 // This is called on-demand when the get_health tool is invoked.
 func (hm *HealthMetrics) GetHealth(cap *capture.Capture, server *Server, ver string) MCPHealthResponse {
-	return MCPHealthResponse{
+	resp := MCPHealthResponse{
 		Server:       hm.buildServerInfo(ver),
 		Memory:       buildMemoryInfo(cap),
 		Buffers:      buildBuffersInfo(cap, server),
 		RateLimiting: buildRateLimitInfo(cap),
 		Audit:        hm.buildAuditInfo(),
 		Pilot:        buildPilotInfo(cap),
+	}
+	if info := buildUpgradeInfo(); info != nil {
+		resp.Upgrade = info
+	}
+	return resp
+}
+
+// buildUpgradeInfo returns upgrade detection state, or nil if no upgrade is pending.
+func buildUpgradeInfo() *UpgradeInfo {
+	if binaryUpgradeState == nil {
+		return nil
+	}
+	pending, newVer, detectedAt := binaryUpgradeState.UpgradeInfo()
+	if !pending {
+		return nil
+	}
+	return &UpgradeInfo{
+		Pending:    true,
+		NewVersion: newVer,
+		DetectedAt: detectedAt.UTC().Format(time.RFC3339),
 	}
 }
 

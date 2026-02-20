@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/dev-console/dev-console/internal/capture"
 )
@@ -621,5 +622,63 @@ func TestMCPHandlerToolRateLimit(t *testing.T) {
 	})
 	if resp == nil || resp.Error == nil || resp.Error.Code != -32603 {
 		t.Fatalf("rate-limited response = %+v, want internal error with rate-limit message", resp)
+	}
+}
+
+func TestMaybeAddUpgradeWarning_NoPending(t *testing.T) {
+	t.Parallel()
+
+	// No upgrade state set — response should pass through unchanged.
+	orig := binaryUpgradeState
+	binaryUpgradeState = nil
+	defer func() { binaryUpgradeState = orig }()
+
+	resp := JSONRPCResponse{
+		JSONRPC: "2.0",
+		ID:      1,
+		Result:  mcpTextResponse("hello"),
+	}
+	got := maybeAddUpgradeWarning(resp)
+	var result MCPToolResult
+	if err := json.Unmarshal(got.Result, &result); err != nil {
+		t.Fatal(err)
+	}
+	if len(result.Content) != 1 || result.Content[0].Text != "hello" {
+		t.Fatalf("expected unchanged response, got %+v", result)
+	}
+}
+
+func TestMaybeAddUpgradeWarning_WithPending(t *testing.T) {
+	// Not parallel: modifies package-level binaryUpgradeState
+	orig := binaryUpgradeState
+	defer func() { binaryUpgradeState = orig }()
+
+	state := &BinaryWatcherState{}
+	state.mu.Lock()
+	state.upgradePending = true
+	state.detectedVersion = "0.8.0"
+	state.detectedAt = time.Now()
+	state.mu.Unlock()
+	binaryUpgradeState = state
+
+	resp := JSONRPCResponse{
+		JSONRPC: "2.0",
+		ID:      1,
+		Result:  mcpTextResponse("data here"),
+	}
+	got := maybeAddUpgradeWarning(resp)
+	var result MCPToolResult
+	if err := json.Unmarshal(got.Result, &result); err != nil {
+		t.Fatal(err)
+	}
+	if len(result.Content) < 1 {
+		t.Fatal("expected content")
+	}
+	text := result.Content[0].Text
+	if !strings.Contains(text, "NOTICE:") || !strings.Contains(text, "0.8.0") {
+		t.Fatalf("expected upgrade notice, got %q", text)
+	}
+	if !strings.Contains(text, "data here") {
+		t.Fatalf("expected original content preserved, got %q", text)
 	}
 }

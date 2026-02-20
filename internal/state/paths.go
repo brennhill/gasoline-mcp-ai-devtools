@@ -166,6 +166,11 @@ func LegacySecurityConfigFile() (string, error) {
 	return filepath.Join(root, "security.json"), nil
 }
 
+// UpgradeMarkerFile returns the path for the binary upgrade marker file.
+func UpgradeMarkerFile() (string, error) {
+	return InRoot("run", "last-upgrade.json")
+}
+
 // InRoot returns a path rooted under RootDir with additional path elements.
 func InRoot(parts ...string) (string, error) {
 	root, err := RootDir()
