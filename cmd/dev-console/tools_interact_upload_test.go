@@ -37,7 +37,7 @@ func TestUpload_WorksWithoutFlag(t *testing.T) {
 	// Create a small test file
 	testFile := createTestFile(t, "test.txt", "hello world")
 
-	result, ok := env.callInteract(t, `{"action":"upload","selector":"#Filedata","file_path":"`+testFile+`"}`)
+	result, ok := env.callInteract(t, `{"what":"upload","selector":"#Filedata","file_path":"`+testFile+`"}`)
 	if !ok {
 		t.Fatal("upload should return result")
 	}
@@ -66,7 +66,7 @@ func TestUpload_WorksWithoutFlag(t *testing.T) {
 func TestUpload_MissingFilePath(t *testing.T) {
 	env := newUploadTestEnv(t)
 
-	result, ok := env.callInteract(t, `{"action":"upload","selector":"#Filedata"}`)
+	result, ok := env.callInteract(t, `{"what":"upload","selector":"#Filedata"}`)
 	if !ok {
 		t.Fatal("upload without file_path should return result")
 	}
@@ -86,7 +86,7 @@ func TestUpload_MissingFilePath(t *testing.T) {
 func TestUpload_MissingSelectorAndEndpoint(t *testing.T) {
 	env := newUploadTestEnv(t)
 
-	result, ok := env.callInteract(t, `{"action":"upload","file_path":"/tmp/test.mp4"}`)
+	result, ok := env.callInteract(t, `{"what":"upload","file_path":"/tmp/test.mp4"}`)
 	if !ok {
 		t.Fatal("upload without selector should return result")
 	}
@@ -109,7 +109,7 @@ func TestUpload_MissingSelectorAndEndpoint(t *testing.T) {
 func TestUpload_FileNotFound(t *testing.T) {
 	env := newUploadTestEnv(t)
 
-	result, ok := env.callInteract(t, `{"action":"upload","selector":"#Filedata","file_path":"/nonexistent/path/video.mp4"}`)
+	result, ok := env.callInteract(t, `{"what":"upload","selector":"#Filedata","file_path":"/nonexistent/path/video.mp4"}`)
 	if !ok {
 		t.Fatal("upload with nonexistent file should return result")
 	}
@@ -596,7 +596,7 @@ func TestUpload_InvalidJSON_ReturnsError(t *testing.T) {
 func TestUpload_RelativePath_Rejected(t *testing.T) {
 	env := newUploadTestEnv(t)
 
-	result, ok := env.callInteract(t, `{"action":"upload","selector":"#Filedata","file_path":"../../../etc/passwd"}`)
+	result, ok := env.callInteract(t, `{"what":"upload","selector":"#Filedata","file_path":"../../../etc/passwd"}`)
 	if !ok {
 		t.Fatal("upload with relative path should return result")
 	}
@@ -610,11 +610,11 @@ func TestUpload_NoPanic_AllVariants(t *testing.T) {
 	env := newUploadTestEnv(t)
 
 	variants := []string{
-		`{"action":"upload","selector":"#f","file_path":"/tmp/x"}`,
-		`{"action":"upload","selector":"#f"}`,
-		`{"action":"upload","file_path":"/tmp/x"}`,
-		`{"action":"upload"}`,
-		`{"action":"upload","selector":"#f","file_path":"","submit":true}`,
+		`{"what":"upload","selector":"#f","file_path":"/tmp/x"}`,
+		`{"what":"upload","selector":"#f"}`,
+		`{"what":"upload","file_path":"/tmp/x"}`,
+		`{"what":"upload"}`,
+		`{"what":"upload","selector":"#f","file_path":"","submit":true}`,
 	}
 
 	for i, v := range variants {

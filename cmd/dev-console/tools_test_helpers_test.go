@@ -223,7 +223,9 @@ func normalizeInteractArgsForAsync(argsJSON string) json.RawMessage {
 	if err := json.Unmarshal(raw, &params); err != nil {
 		return raw
 	}
-	if _, hasAction := params["action"]; !hasAction {
+	_, hasWhat := params["what"]
+	_, hasAction := params["action"]
+	if !hasWhat && !hasAction {
 		return raw
 	}
 	if _, hasBackground := params["background"]; hasBackground {

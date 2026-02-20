@@ -22,11 +22,14 @@ export function initFaviconReplacer() {
     chrome.runtime.onMessage.addListener((message, sender, _sendResponse) => {
         // Only accept messages from the extension itself (background script)
         if (sender.id !== chrome.runtime.id)
-            return;
+            return false;
         if (message.type === 'trackingStateChanged') {
             const newState = message.state;
             updateFavicon(newState);
         }
+        // Explicitly return false so Chrome doesn't prematurely resolve
+        // sendMessage promises from other listeners (e.g. DOM_QUERY, A11Y_QUERY).
+        return false;
     });
     // Request initial tracking state
     chrome.runtime.sendMessage({ type: 'getTrackingState' }, (response) => {

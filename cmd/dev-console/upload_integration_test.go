@@ -143,7 +143,7 @@ func TestUploadInteg_PendingQueryPayload(t *testing.T) {
 
 	// Call the upload handler
 	result, ok := env.callInteract(t, fmt.Sprintf(
-		`{"action":"upload","selector":"#VideoUpload","file_path":"%s","submit":true,"escalation_timeout_ms":8000}`,
+		`{"what":"upload","selector":"#VideoUpload","file_path":"%s","submit":true,"escalation_timeout_ms":8000}`,
 		testFile))
 	if !ok {
 		t.Fatal("upload should return result")
@@ -382,7 +382,7 @@ func TestUploadInteg_CorrelationID_Unique(t *testing.T) {
 		go func() {
 			defer wg.Done()
 			result, ok := env.callInteract(t, fmt.Sprintf(
-				`{"action":"upload","selector":"#f","file_path":"%s"}`, testFile))
+				`{"what":"upload","selector":"#f","file_path":"%s"}`, testFile))
 			if !ok || result.IsError {
 				return
 			}

@@ -11,9 +11,14 @@ func ConfigureToolSchema() mcp.MCPTool {
 		InputSchema: map[string]any{
 			"type": "object",
 			"properties": map[string]any{
-				"action": map[string]any{
+				"what": map[string]any{
 					"type": "string",
 					"enum": []string{"store", "load", "noise_rule", "clear", "health", "streaming", "test_boundary_start", "test_boundary_end", "recording_start", "recording_stop", "playback", "log_diff", "telemetry", "describe_capabilities", "diff_sessions", "audit_log", "restart", "save_sequence", "get_sequence", "list_sequences", "delete_sequence", "replay_sequence", "doctor"},
+				},
+				"action": map[string]any{
+					"type":        "string",
+					"description": "Deprecated alias for 'what'",
+					"enum":        []string{"store", "load", "noise_rule", "clear", "health", "streaming", "test_boundary_start", "test_boundary_end", "recording_start", "recording_stop", "playback", "log_diff", "telemetry", "describe_capabilities", "diff_sessions", "audit_log", "restart", "save_sequence", "get_sequence", "list_sequences", "delete_sequence", "replay_sequence", "doctor"},
 				},
 				"telemetry_mode": map[string]any{
 					"type":        "string",
@@ -188,7 +193,7 @@ func ConfigureToolSchema() mcp.MCPTool {
 					"description": "Human-readable description for saved sequence",
 				},
 			},
-			"required": []string{"action"},
+			"required": []string{"what"},
 		},
 	}
 }

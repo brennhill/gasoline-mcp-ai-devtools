@@ -99,6 +99,12 @@ var observeHandlers = map[string]ObserveHandler{
 	},
 }
 
+// observeAliases maps shorthand names to their canonical observe mode names.
+var observeAliases = map[string]string{
+	"network": "network_waterfall",
+	"ws":      "websocket_events",
+}
+
 // getValidObserveModes returns a sorted, comma-separated list of valid observe modes.
 func getValidObserveModes() string {
 	modes := make([]string, 0, len(observeHandlers))
@@ -123,6 +129,10 @@ func (h *ToolHandler) toolObserve(req JSONRPCRequest, args json.RawMessage) JSON
 	if params.What == "" {
 		validModes := getValidObserveModes()
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrMissingParam, "Required parameter 'what' is missing", "Add the 'what' parameter and call again", withParam("what"), withHint("Valid values: "+validModes))}
+	}
+
+	if alias, ok := observeAliases[params.What]; ok {
+		params.What = alias
 	}
 
 	handler, ok := observeHandlers[params.What]

@@ -59,10 +59,10 @@ func TestExtractToolAction(t *testing.T) {
 		}
 	})
 
-	t.Run("tools/call without action", func(t *testing.T) {
+	t.Run("tools/call with what", func(t *testing.T) {
 		name, action := ExtractToolAction("tools/call", json.RawMessage(`{"name":"observe","arguments":{"what":"logs"}}`))
-		if name != "observe" || action != "" {
-			t.Errorf("expected observe/empty, got name=%q action=%q", name, action)
+		if name != "observe" || action != "logs" {
+			t.Errorf("expected observe/logs, got name=%q action=%q", name, action)
 		}
 	})
 

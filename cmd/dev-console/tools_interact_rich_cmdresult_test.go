@@ -23,7 +23,7 @@ func TestCommandResult_ExpiredSetsIsError(t *testing.T) {
 	env.capture.SetPilotEnabled(true)
 
 	// Queue a command
-	result, ok := env.callInteract(t, `{"action":"click","selector":"#btn","background":true}`)
+	result, ok := env.callInteract(t, `{"what":"click","selector":"#btn","background":true}`)
 	if !ok || result.IsError {
 		t.Fatal("click should succeed")
 	}
@@ -62,7 +62,7 @@ func TestCommandResult_CompleteWithErrorSetsIsError(t *testing.T) {
 	env.capture.SetPilotEnabled(true)
 
 	// Queue a command
-	result, ok := env.callInteract(t, `{"action":"click","selector":"#btn","background":true}`)
+	result, ok := env.callInteract(t, `{"what":"click","selector":"#btn","background":true}`)
 	if !ok || result.IsError {
 		t.Fatal("click should succeed")
 	}
@@ -100,7 +100,7 @@ func TestCommandResult_EmbeddedFailureSetsIsError(t *testing.T) {
 	env := newInteractTestEnv(t)
 	env.capture.SetPilotEnabled(true)
 
-	result, ok := env.callInteract(t, `{"action":"click","selector":"#btn","background":true}`)
+	result, ok := env.callInteract(t, `{"what":"click","selector":"#btn","background":true}`)
 	if !ok || result.IsError {
 		t.Fatal("click should succeed")
 	}
@@ -138,7 +138,7 @@ func TestCommandResult_SuccessDoesNotSetIsError(t *testing.T) {
 	env.capture.SetPilotEnabled(true)
 
 	// Queue a command
-	result, ok := env.callInteract(t, `{"action":"click","selector":"#btn","background":true}`)
+	result, ok := env.callInteract(t, `{"what":"click","selector":"#btn","background":true}`)
 	if !ok || result.IsError {
 		t.Fatal("click should succeed")
 	}
@@ -177,7 +177,7 @@ func TestQueuedResponse_HasQueuedAndFinalMarkers(t *testing.T) {
 	env := newInteractTestEnv(t)
 	env.capture.SetPilotEnabled(true)
 
-	result, _ := env.callInteract(t, `{"action":"click","selector":"#btn","background":true}`)
+	result, _ := env.callInteract(t, `{"what":"click","selector":"#btn","background":true}`)
 	var responseData map[string]any
 	_ = json.Unmarshal([]byte(extractJSONFromText(result.Content[0].Text)), &responseData)
 
@@ -197,7 +197,7 @@ func TestCommandResult_CompleteHasFinalTrue(t *testing.T) {
 	env.capture.SetPilotEnabled(true)
 
 	// Queue async to avoid sync-wait-for-extension
-	result, _ := env.callInteract(t, `{"action":"click","selector":"#btn","background":true}`)
+	result, _ := env.callInteract(t, `{"what":"click","selector":"#btn","background":true}`)
 	var resultData map[string]any
 	_ = json.Unmarshal([]byte(extractJSONFromText(result.Content[0].Text)), &resultData)
 	corrID := resultData["correlation_id"].(string)
@@ -226,7 +226,7 @@ func TestCommandResult_ErrorHasFinalTrue(t *testing.T) {
 	env := newInteractTestEnv(t)
 	env.capture.SetPilotEnabled(true)
 
-	result, _ := env.callInteract(t, `{"action":"click","selector":"#btn","background":true}`)
+	result, _ := env.callInteract(t, `{"what":"click","selector":"#btn","background":true}`)
 	var resultData map[string]any
 	_ = json.Unmarshal([]byte(extractJSONFromText(result.Content[0].Text)), &resultData)
 	corrID := resultData["correlation_id"].(string)
@@ -259,7 +259,7 @@ func TestCommandResult_EffectiveContextSurfaced(t *testing.T) {
 	env := newInteractTestEnv(t)
 	env.capture.SetPilotEnabled(true)
 
-	result, _ := env.callInteract(t, `{"action":"click","selector":"#btn","tab_id":42,"background":true}`)
+	result, _ := env.callInteract(t, `{"what":"click","selector":"#btn","tab_id":42,"background":true}`)
 	var resultData map[string]any
 	_ = json.Unmarshal([]byte(extractJSONFromText(result.Content[0].Text)), &resultData)
 	corrID := resultData["correlation_id"].(string)
@@ -305,7 +305,7 @@ func TestCommandResult_CompleteHasQueuedFalse(t *testing.T) {
 	env := newInteractTestEnv(t)
 	env.capture.SetPilotEnabled(true)
 
-	result, _ := env.callInteract(t, `{"action":"click","selector":"#btn","background":true}`)
+	result, _ := env.callInteract(t, `{"what":"click","selector":"#btn","background":true}`)
 	var resultData map[string]any
 	_ = json.Unmarshal([]byte(extractJSONFromText(result.Content[0].Text)), &resultData)
 	corrID := resultData["correlation_id"].(string)
@@ -337,7 +337,7 @@ func TestCommandResult_ExpiredHasFinalTrue(t *testing.T) {
 	env := newInteractTestEnv(t)
 	env.capture.SetPilotEnabled(true)
 
-	result, _ := env.callInteract(t, `{"action":"click","selector":"#btn","background":true}`)
+	result, _ := env.callInteract(t, `{"what":"click","selector":"#btn","background":true}`)
 	var resultData map[string]any
 	_ = json.Unmarshal([]byte(extractJSONFromText(result.Content[0].Text)), &resultData)
 	corrID := resultData["correlation_id"].(string)
@@ -458,7 +458,7 @@ func TestCommandResult_ExpiredIncludesDiagnosticHint(t *testing.T) {
 	env := newInteractTestEnv(t)
 	env.capture.SetPilotEnabled(true)
 
-	result, ok := env.callInteract(t, `{"action":"click","selector":"#btn","background":true}`)
+	result, ok := env.callInteract(t, `{"what":"click","selector":"#btn","background":true}`)
 	if !ok || result.IsError {
 		t.Fatal("click should succeed")
 	}
@@ -499,7 +499,7 @@ func TestSubtitle_SetResponse_HasCorrelationID(t *testing.T) {
 	t.Parallel()
 	env := newInteractTestEnv(t)
 
-	result, ok := env.callInteract(t, `{"action":"subtitle","text":"hello world"}`)
+	result, ok := env.callInteract(t, `{"what":"subtitle","text":"hello world"}`)
 	if !ok {
 		t.Fatal("subtitle set should return a result")
 	}
@@ -526,7 +526,7 @@ func TestSubtitle_ClearResponse_HasCorrelationID(t *testing.T) {
 	t.Parallel()
 	env := newInteractTestEnv(t)
 
-	result, ok := env.callInteract(t, `{"action":"subtitle","text":""}`)
+	result, ok := env.callInteract(t, `{"what":"subtitle","text":""}`)
 	if !ok {
 		t.Fatal("subtitle clear should return a result")
 	}
@@ -550,7 +550,7 @@ func TestSubtitle_CorrelationID_MatchesPendingQuery(t *testing.T) {
 	t.Parallel()
 	env := newInteractTestEnv(t)
 
-	result, ok := env.callInteract(t, `{"action":"subtitle","text":"test"}`)
+	result, ok := env.callInteract(t, `{"what":"subtitle","text":"test"}`)
 	if !ok || result.IsError {
 		t.Fatal("subtitle should succeed")
 	}
@@ -577,7 +577,7 @@ func TestCommandResult_PilotDisabledIncludesDiagnosticHint(t *testing.T) {
 	env := newInteractTestEnv(t)
 	// Pilot is disabled by default in test env
 
-	result, ok := env.callInteract(t, `{"action":"click","selector":"#btn","background":true}`)
+	result, ok := env.callInteract(t, `{"what":"click","selector":"#btn","background":true}`)
 	if !ok {
 		t.Fatal("should return result")
 	}

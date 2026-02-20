@@ -96,6 +96,11 @@ var analyzeHandlers = map[string]AnalyzeHandler{
 	},
 }
 
+// analyzeAliases maps shorthand names to their canonical analyze mode names.
+var analyzeAliases = map[string]string{
+	"a11y": "accessibility",
+}
+
 // getValidAnalyzeModes returns a sorted, comma-separated list of valid analyze modes.
 func getValidAnalyzeModes() string {
 	modes := make([]string, 0, len(analyzeHandlers))
@@ -120,6 +125,10 @@ func (h *ToolHandler) toolAnalyze(req JSONRPCRequest, args json.RawMessage) JSON
 	if params.What == "" {
 		validModes := getValidAnalyzeModes()
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrMissingParam, "Required parameter 'what' is missing", "Add the 'what' parameter and call again", withParam("what"), withHint("Valid values: "+validModes))}
+	}
+
+	if alias, ok := analyzeAliases[params.What]; ok {
+		params.What = alias
 	}
 
 	handler, ok := analyzeHandlers[params.What]

@@ -53,7 +53,7 @@ func TestToolsConfigureDispatch_UnknownAction(t *testing.T) {
 	t.Parallel()
 	h, _, _ := makeToolHandler(t)
 
-	resp := callConfigureRaw(h, `{"action":"nonexistent_action"}`)
+	resp := callConfigureRaw(h, `{"what":"nonexistent_action"}`)
 	result := parseToolResult(t, resp)
 	if !result.IsError {
 		t.Fatal("unknown action should return isError:true")
@@ -109,7 +109,7 @@ func TestToolsConfigureHealth_ResponseFields(t *testing.T) {
 	t.Parallel()
 	h, _, _ := makeToolHandler(t)
 
-	resp := callConfigureRaw(h, `{"action":"health"}`)
+	resp := callConfigureRaw(h, `{"what":"health"}`)
 	result := parseToolResult(t, resp)
 	if result.IsError {
 		t.Fatalf("health should succeed, got: %s", result.Content[0].Text)
@@ -137,7 +137,7 @@ func TestToolsConfigureTelemetry_DefaultStatus(t *testing.T) {
 	t.Parallel()
 	h, _, _ := makeToolHandler(t)
 
-	resp := callConfigureRaw(h, `{"action":"telemetry"}`)
+	resp := callConfigureRaw(h, `{"what":"telemetry"}`)
 	result := parseToolResult(t, resp)
 	if result.IsError {
 		t.Fatalf("telemetry status should succeed, got: %s", result.Content[0].Text)
@@ -158,7 +158,7 @@ func TestToolsConfigureTelemetry_SetMode(t *testing.T) {
 	t.Parallel()
 	h, _, _ := makeToolHandler(t)
 
-	resp := callConfigureRaw(h, `{"action":"telemetry","telemetry_mode":"full"}`)
+	resp := callConfigureRaw(h, `{"what":"telemetry","telemetry_mode":"full"}`)
 	result := parseToolResult(t, resp)
 	if result.IsError {
 		t.Fatalf("telemetry set mode should succeed, got: %s", result.Content[0].Text)
@@ -173,7 +173,7 @@ func TestToolsConfigureTelemetry_InvalidMode(t *testing.T) {
 	t.Parallel()
 	h, _, _ := makeToolHandler(t)
 
-	resp := callConfigureRaw(h, `{"action":"telemetry","telemetry_mode":"verbose"}`)
+	resp := callConfigureRaw(h, `{"what":"telemetry","telemetry_mode":"verbose"}`)
 	result := parseToolResult(t, resp)
 	if !result.IsError {
 		t.Fatal("invalid telemetry mode should return isError:true")
@@ -194,7 +194,7 @@ func TestToolsConfigureClear_AllBuffers_ResponseFields(t *testing.T) {
 	t.Parallel()
 	h, _, _ := makeToolHandler(t)
 
-	resp := callConfigureRaw(h, `{"action":"clear","buffer":"all"}`)
+	resp := callConfigureRaw(h, `{"what":"clear","buffer":"all"}`)
 	result := parseToolResult(t, resp)
 	if result.IsError {
 		t.Fatalf("clear all should succeed, got: %s", result.Content[0].Text)
@@ -218,7 +218,7 @@ func TestToolsConfigureClear_DefaultsToAll(t *testing.T) {
 	t.Parallel()
 	h, _, _ := makeToolHandler(t)
 
-	resp := callConfigureRaw(h, `{"action":"clear"}`)
+	resp := callConfigureRaw(h, `{"what":"clear"}`)
 	result := parseToolResult(t, resp)
 	if result.IsError {
 		t.Fatalf("clear default should succeed, got: %s", result.Content[0].Text)
@@ -239,7 +239,7 @@ func TestToolsConfigureClear_SpecificBuffers(t *testing.T) {
 	buffers := []string{"network", "websocket", "actions", "logs"}
 	for _, buffer := range buffers {
 		t.Run(buffer, func(t *testing.T) {
-			resp := callConfigureRaw(h, `{"action":"clear","buffer":"`+buffer+`"}`)
+			resp := callConfigureRaw(h, `{"what":"clear","buffer":"`+buffer+`"}`)
 			result := parseToolResult(t, resp)
 			if result.IsError {
 				t.Fatalf("clear %s should succeed, got: %s", buffer, result.Content[0].Text)
@@ -262,7 +262,7 @@ func TestToolsConfigureClear_UnknownBuffer(t *testing.T) {
 	t.Parallel()
 	h, _, _ := makeToolHandler(t)
 
-	resp := callConfigureRaw(h, `{"action":"clear","buffer":"invalid_buf"}`)
+	resp := callConfigureRaw(h, `{"what":"clear","buffer":"invalid_buf"}`)
 	result := parseToolResult(t, resp)
 	if !result.IsError {
 		t.Fatal("clear invalid buffer should return isError:true")
@@ -294,7 +294,7 @@ func TestToolsConfigureNoiseRule_ListAction(t *testing.T) {
 	t.Parallel()
 	h, _, _ := makeToolHandler(t)
 
-	resp := callConfigureRaw(h, `{"action":"noise_rule","noise_action":"list"}`)
+	resp := callConfigureRaw(h, `{"what":"noise_rule","noise_action":"list"}`)
 	result := parseToolResult(t, resp)
 	if result.IsError {
 		t.Fatalf("noise_rule list should succeed, got: %s", result.Content[0].Text)
@@ -327,7 +327,7 @@ func TestToolsConfigureNoiseRule_DefaultAction(t *testing.T) {
 	h, _, _ := makeToolHandler(t)
 
 	// No noise_action should default to "list"
-	resp := callConfigureRaw(h, `{"action":"noise_rule"}`)
+	resp := callConfigureRaw(h, `{"what":"noise_rule"}`)
 	result := parseToolResult(t, resp)
 	if result.IsError {
 		t.Fatalf("noise_rule default should succeed, got: %s", result.Content[0].Text)
@@ -345,7 +345,7 @@ func TestToolsConfigureNoiseRule_ResetAction(t *testing.T) {
 	t.Parallel()
 	h, _, _ := makeToolHandler(t)
 
-	resp := callConfigureRaw(h, `{"action":"noise_rule","noise_action":"reset"}`)
+	resp := callConfigureRaw(h, `{"what":"noise_rule","noise_action":"reset"}`)
 	result := parseToolResult(t, resp)
 	if result.IsError {
 		t.Fatalf("noise_rule reset should succeed, got: %s", result.Content[0].Text)
@@ -366,7 +366,7 @@ func TestToolsConfigureNoiseRule_RemoveMissingRuleID(t *testing.T) {
 	t.Parallel()
 	h, _, _ := makeToolHandler(t)
 
-	resp := callConfigureRaw(h, `{"action":"noise_rule","noise_action":"remove"}`)
+	resp := callConfigureRaw(h, `{"what":"noise_rule","noise_action":"remove"}`)
 	result := parseToolResult(t, resp)
 	if !result.IsError {
 		t.Fatal("noise_rule remove without rule_id should return isError:true")
@@ -381,7 +381,7 @@ func TestToolsConfigureNoiseRule_UnknownSubAction(t *testing.T) {
 	t.Parallel()
 	h, _, _ := makeToolHandler(t)
 
-	resp := callConfigureRaw(h, `{"action":"noise_rule","noise_action":"invalid_action"}`)
+	resp := callConfigureRaw(h, `{"what":"noise_rule","noise_action":"invalid_action"}`)
 	result := parseToolResult(t, resp)
 	if !result.IsError {
 		t.Fatal("noise_rule with unknown sub-action should return isError:true")
@@ -393,7 +393,7 @@ func TestToolsConfigureNoiseRule_AutoDetect(t *testing.T) {
 	t.Parallel()
 	h, _, _ := makeToolHandler(t)
 
-	resp := callConfigureRaw(h, `{"action":"noise_rule","noise_action":"auto_detect"}`)
+	resp := callConfigureRaw(h, `{"what":"noise_rule","noise_action":"auto_detect"}`)
 	result := parseToolResult(t, resp)
 	if result.IsError {
 		t.Fatalf("noise_rule auto_detect should succeed, got: %s", result.Content[0].Text)
@@ -418,7 +418,7 @@ func TestToolsConfigureStore_ListDefault(t *testing.T) {
 	h, _, _ := makeToolHandler(t)
 
 	// store with no sub-action defaults to "list"; namespace is required for list
-	resp := callConfigureRaw(h, `{"action":"store","namespace":"test_ns"}`)
+	resp := callConfigureRaw(h, `{"what":"store","namespace":"test_ns"}`)
 	result := parseToolResult(t, resp)
 	if result.IsError {
 		t.Fatalf("store default should succeed, got: %s", result.Content[0].Text)
@@ -448,7 +448,7 @@ func TestToolsConfigureLoad_ResponseFields(t *testing.T) {
 	t.Parallel()
 	h, _, _ := makeToolHandler(t)
 
-	resp := callConfigureRaw(h, `{"action":"load"}`)
+	resp := callConfigureRaw(h, `{"what":"load"}`)
 	result := parseToolResult(t, resp)
 	if result.IsError {
 		t.Fatalf("load should succeed, got: %s", result.Content[0].Text)
@@ -470,7 +470,7 @@ func TestToolsConfigureTestBoundaryStart_ResponseFields(t *testing.T) {
 	t.Parallel()
 	h, _, _ := makeToolHandler(t)
 
-	resp := callConfigureRaw(h, `{"action":"test_boundary_start","test_id":"test-123","label":"My Test"}`)
+	resp := callConfigureRaw(h, `{"what":"test_boundary_start","test_id":"test-123","label":"My Test"}`)
 	result := parseToolResult(t, resp)
 	if result.IsError {
 		t.Fatalf("test_boundary_start should succeed, got: %s", result.Content[0].Text)
@@ -499,7 +499,7 @@ func TestToolsConfigureTestBoundaryStart_MissingTestID(t *testing.T) {
 	t.Parallel()
 	h, _, _ := makeToolHandler(t)
 
-	resp := callConfigureRaw(h, `{"action":"test_boundary_start"}`)
+	resp := callConfigureRaw(h, `{"what":"test_boundary_start"}`)
 	result := parseToolResult(t, resp)
 	if !result.IsError {
 		t.Fatal("test_boundary_start without test_id should return isError:true")
@@ -514,7 +514,7 @@ func TestToolsConfigureTestBoundaryStart_DefaultLabel(t *testing.T) {
 	t.Parallel()
 	h, _, _ := makeToolHandler(t)
 
-	resp := callConfigureRaw(h, `{"action":"test_boundary_start","test_id":"abc"}`)
+	resp := callConfigureRaw(h, `{"what":"test_boundary_start","test_id":"abc"}`)
 	result := parseToolResult(t, resp)
 	data := extractResultJSON(t, result)
 
@@ -532,7 +532,10 @@ func TestToolsConfigureTestBoundaryEnd_ResponseFields(t *testing.T) {
 	t.Parallel()
 	h, _, _ := makeToolHandler(t)
 
-	resp := callConfigureRaw(h, `{"action":"test_boundary_end","test_id":"test-123"}`)
+	// Must start a boundary first so end succeeds.
+	callConfigureRaw(h, `{"what":"test_boundary_start","test_id":"test-123"}`)
+
+	resp := callConfigureRaw(h, `{"what":"test_boundary_end","test_id":"test-123"}`)
 	result := parseToolResult(t, resp)
 	if result.IsError {
 		t.Fatalf("test_boundary_end should succeed, got: %s", result.Content[0].Text)
@@ -558,7 +561,7 @@ func TestToolsConfigureTestBoundaryEnd_MissingTestID(t *testing.T) {
 	t.Parallel()
 	h, _, _ := makeToolHandler(t)
 
-	resp := callConfigureRaw(h, `{"action":"test_boundary_end"}`)
+	resp := callConfigureRaw(h, `{"what":"test_boundary_end"}`)
 	result := parseToolResult(t, resp)
 	if !result.IsError {
 		t.Fatal("test_boundary_end without test_id should return isError:true")
@@ -577,7 +580,7 @@ func TestToolsConfigureAuditLog_ResponseFields(t *testing.T) {
 	t.Parallel()
 	h, _, _ := makeToolHandler(t)
 
-	resp := callConfigureRaw(h, `{"action":"audit_log"}`)
+	resp := callConfigureRaw(h, `{"what":"audit_log"}`)
 	result := parseToolResult(t, resp)
 	if result.IsError {
 		t.Fatalf("audit_log should succeed, got: %s", result.Content[0].Text)
@@ -602,7 +605,7 @@ func TestToolsConfigureDiffSessions_ResponseFields(t *testing.T) {
 	t.Parallel()
 	h, _, _ := makeToolHandler(t)
 
-	resp := callConfigureRaw(h, `{"action":"diff_sessions"}`)
+	resp := callConfigureRaw(h, `{"what":"diff_sessions"}`)
 	result := parseToolResult(t, resp)
 	if result.IsError {
 		t.Fatalf("diff_sessions should succeed, got: %s", result.Content[0].Text)
@@ -628,15 +631,15 @@ func TestToolsConfigure_AllActions_ResponseStructure(t *testing.T) {
 		action string
 		args   string
 	}{
-		{"health", `{"action":"health"}`},
-		{"telemetry", `{"action":"telemetry"}`},
-		{"clear", `{"action":"clear"}`},
-		{"noise_rule", `{"action":"noise_rule","noise_action":"list"}`},
-		{"load", `{"action":"load"}`},
-		{"audit_log", `{"action":"audit_log"}`},
-		{"diff_sessions", `{"action":"diff_sessions"}`},
-		{"test_boundary_start", `{"action":"test_boundary_start","test_id":"test"}`},
-		{"test_boundary_end", `{"action":"test_boundary_end","test_id":"test"}`},
+		{"health", `{"what":"health"}`},
+		{"telemetry", `{"what":"telemetry"}`},
+		{"clear", `{"what":"clear"}`},
+		{"noise_rule", `{"what":"noise_rule","noise_action":"list"}`},
+		{"load", `{"what":"load"}`},
+		{"audit_log", `{"what":"audit_log"}`},
+		{"diff_sessions", `{"what":"diff_sessions"}`},
+		{"test_boundary_start", `{"what":"test_boundary_start","test_id":"test"}`},
+		{"test_boundary_end", `{"what":"test_boundary_end","test_id":"test"}`},
 	}
 
 	for _, tc := range actions {

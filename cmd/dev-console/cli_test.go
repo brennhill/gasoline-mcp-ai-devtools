@@ -242,8 +242,8 @@ func TestParseGenerateArgsHAR(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if mcpArgs["format"] != "har" {
-		t.Errorf("expected format 'har', got %v", mcpArgs["format"])
+	if mcpArgs["what"] != "har" {
+		t.Errorf("expected format 'har', got %v", mcpArgs["what"])
 	}
 	if mcpArgs["save_to"] != "out.har" {
 		t.Errorf("expected save_to 'out.har', got %v", mcpArgs["save_to"])
@@ -304,8 +304,8 @@ func TestParseConfigureArgsHealth(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if mcpArgs["action"] != "health" {
-		t.Errorf("expected action 'health', got %v", mcpArgs["action"])
+	if mcpArgs["what"] != "health" {
+		t.Errorf("expected action 'health', got %v", mcpArgs["what"])
 	}
 }
 
@@ -364,8 +364,8 @@ func TestParseInteractArgsClick(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if mcpArgs["action"] != "click" {
-		t.Errorf("expected action 'click', got %v", mcpArgs["action"])
+	if mcpArgs["what"] != "click" {
+		t.Errorf("expected action 'click', got %v", mcpArgs["what"])
 	}
 	if mcpArgs["selector"] != "#btn" {
 		t.Errorf("expected selector '#btn', got %v", mcpArgs["selector"])
@@ -461,8 +461,8 @@ func TestParseInteractArgsKebabCase(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if mcpArgs["action"] != "get_text" {
-		t.Errorf("expected action 'get_text', got %v", mcpArgs["action"])
+	if mcpArgs["what"] != "get_text" {
+		t.Errorf("expected action 'get_text', got %v", mcpArgs["what"])
 	}
 }
 
@@ -482,9 +482,9 @@ func TestParseCLIArgsDispatch(t *testing.T) {
 	}{
 		{"observe errors", "observe", "errors", nil, "what", "errors", false},
 		{"analyze dom", "analyze", "dom", nil, "what", "dom", false},
-		{"generate har", "generate", "har", nil, "format", "har", false},
-		{"configure health", "configure", "health", nil, "action", "health", false},
-		{"interact click", "interact", "click", []string{"--selector", "#btn"}, "action", "click", false},
+		{"generate har", "generate", "har", nil, "what", "har", false},
+		{"configure health", "configure", "health", nil, "what", "health", false},
+		{"interact click", "interact", "click", []string{"--selector", "#btn"}, "what", "click", false},
 		{"unknown tool", "foobar", "x", nil, "", nil, true},
 	}
 

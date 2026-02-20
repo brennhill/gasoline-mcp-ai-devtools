@@ -173,7 +173,7 @@ export async function executeWithWorldRouting(tabId, queryParams, world) {
         }
         if (message.includes('Receiving end does not exist')) {
             message =
-                'Content script not loaded. REQUIRED ACTION: Refresh the page first using this command:\n\ninteract({action: "refresh"})\n\nThen retry your command.';
+                'Content script not loaded. REQUIRED ACTION: Refresh the page first using this command:\n\ninteract({what: "refresh"})\n\nThen retry your command.';
         }
         return { success: false, error: 'content_script_not_loaded', message };
     }

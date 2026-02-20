@@ -78,7 +78,7 @@ func TestInteractAudit_Highlight_DataFlow(t *testing.T) {
 	t.Skip("Skipped: requires extension connection; covered by shell UAT")
 	env := newInteractTestEnv(t)
 
-	result, ok := env.callInteract(t, `{"action":"highlight","selector":".test-element"}`)
+	result, ok := env.callInteract(t, `{"what":"highlight","selector":".test-element"}`)
 	if !ok {
 		t.Fatal("highlight should return result")
 	}
@@ -105,7 +105,7 @@ func TestInteractAudit_Highlight_DataFlow(t *testing.T) {
 func TestInteractAudit_SaveState_DataFlow(t *testing.T) {
 	env := newInteractTestEnv(t)
 
-	result, ok := env.callInteract(t, `{"action":"save_state","snapshot_name":"test_state_12345"}`)
+	result, ok := env.callInteract(t, `{"what":"save_state","snapshot_name":"test_state_12345"}`)
 	if !ok {
 		t.Fatal("save_state should return result")
 	}
@@ -134,7 +134,7 @@ func TestInteractAudit_LoadState_DataFlow(t *testing.T) {
 	t.Skip("Skipped: test tries to load non-existent state")
 	env := newInteractTestEnv(t)
 
-	result, ok := env.callInteract(t, `{"action":"load_state","snapshot_name":"test_state"}`)
+	result, ok := env.callInteract(t, `{"what":"load_state","snapshot_name":"test_state"}`)
 	if !ok {
 		t.Fatal("load_state should return result")
 	}
@@ -154,7 +154,7 @@ func TestInteractAudit_LoadState_DataFlow(t *testing.T) {
 func TestInteractAudit_ListStates_DataFlow(t *testing.T) {
 	env := newInteractTestEnv(t)
 
-	result, ok := env.callInteract(t, `{"action":"list_states"}`)
+	result, ok := env.callInteract(t, `{"what":"list_states"}`)
 	if !ok {
 		t.Fatal("list_states should return result")
 	}
@@ -182,7 +182,7 @@ func TestInteractAudit_DeleteState_DataFlow(t *testing.T) {
 	t.Skip("Skipped: test tries to delete non-existent state")
 	env := newInteractTestEnv(t)
 
-	result, ok := env.callInteract(t, `{"action":"delete_state","snapshot_name":"test_state"}`)
+	result, ok := env.callInteract(t, `{"what":"delete_state","snapshot_name":"test_state"}`)
 	if !ok {
 		t.Fatal("delete_state should return result")
 	}
@@ -208,7 +208,7 @@ func TestInteractAudit_ExecuteJS_PilotDisabled(t *testing.T) {
 	env := newInteractTestEnv(t)
 
 	// Pilot is disabled by default
-	result, ok := env.callInteract(t, `{"action":"execute_js","script":"console.log('test')"}`)
+	result, ok := env.callInteract(t, `{"what":"execute_js","script":"console.log('test')"}`)
 	if !ok {
 		t.Fatal("execute_js should return result")
 	}
@@ -230,7 +230,7 @@ func TestInteractAudit_ExecuteJS_PilotDisabled(t *testing.T) {
 func TestInteractAudit_Navigate_PilotDisabled(t *testing.T) {
 	env := newInteractTestEnv(t)
 
-	result, ok := env.callInteract(t, `{"action":"navigate","url":"https://example.com"}`)
+	result, ok := env.callInteract(t, `{"what":"navigate","url":"https://example.com"}`)
 	if !ok {
 		t.Fatal("navigate should return result")
 	}
@@ -250,10 +250,10 @@ func TestInteractAudit_BrowserActions_PilotDisabled(t *testing.T) {
 		name string
 		args string
 	}{
-		{"refresh", `{"action":"refresh"}`},
-		{"back", `{"action":"back"}`},
-		{"forward", `{"action":"forward"}`},
-		{"new_tab", `{"action":"new_tab","url":"https://example.com"}`},
+		{"refresh", `{"what":"refresh"}`},
+		{"back", `{"what":"back"}`},
+		{"forward", `{"what":"forward"}`},
+		{"new_tab", `{"what":"new_tab","url":"https://example.com"}`},
 	}
 
 	for _, tc := range actions {
@@ -280,7 +280,7 @@ func TestInteractAudit_BrowserActions_PilotDisabled(t *testing.T) {
 func TestInteractAudit_ExecuteJS_MissingScript(t *testing.T) {
 	env := newInteractTestEnv(t)
 
-	result, ok := env.callInteract(t, `{"action":"execute_js"}`)
+	result, ok := env.callInteract(t, `{"what":"execute_js"}`)
 	if !ok {
 		t.Fatal("execute_js without script should return result")
 	}
@@ -303,7 +303,7 @@ func TestInteractAudit_ExecuteJS_MissingScript(t *testing.T) {
 func TestInteractAudit_Navigate_MissingURL(t *testing.T) {
 	env := newInteractTestEnv(t)
 
-	result, ok := env.callInteract(t, `{"action":"navigate"}`)
+	result, ok := env.callInteract(t, `{"what":"navigate"}`)
 	if !ok {
 		t.Fatal("navigate without url should return result")
 	}
@@ -332,7 +332,7 @@ func TestInteractAudit_Navigate_MissingURL(t *testing.T) {
 func TestInteractAudit_ExecuteJS_InvalidWorld(t *testing.T) {
 	env := newInteractTestEnv(t)
 
-	result, ok := env.callInteract(t, `{"action":"execute_js","script":"1+1","world":"invalid"}`)
+	result, ok := env.callInteract(t, `{"what":"execute_js","script":"1+1","world":"invalid"}`)
 	if !ok {
 		t.Fatal("execute_js with invalid world should return result")
 	}
@@ -365,9 +365,9 @@ func TestInteractAudit_ExecuteJS_ValidWorldValues(t *testing.T) {
 			name = "default"
 		}
 		t.Run(name, func(t *testing.T) {
-			args := `{"action":"execute_js","script":"1+1"}`
+			args := `{"what":"execute_js","script":"1+1"}`
 			if world != "" {
-				args = `{"action":"execute_js","script":"1+1","world":"` + world + `"}`
+				args = `{"what":"execute_js","script":"1+1","world":"` + world + `"}`
 			}
 
 			result, ok := env.callInteract(t, args)
@@ -398,7 +398,7 @@ func TestInteractAudit_ExecuteJS_ValidWorldValues(t *testing.T) {
 func TestInteractAudit_UnknownAction_ReturnsStructuredError(t *testing.T) {
 	env := newInteractTestEnv(t)
 
-	result, ok := env.callInteract(t, `{"action":"completely_invalid_action_xyz"}`)
+	result, ok := env.callInteract(t, `{"what":"completely_invalid_action_xyz"}`)
 	if !ok {
 		t.Fatal("unknown action should return result with isError")
 	}
@@ -471,10 +471,10 @@ func TestInteractAudit_EmptyState_ReturnsEmptyNotError(t *testing.T) {
 		name string
 		args string
 	}{
-		{"save_state", `{"action":"save_state","snapshot_name":"test"}`},
-		{"load_state", `{"action":"load_state","snapshot_name":"test"}`},
-		{"list_states", `{"action":"list_states"}`},
-		{"delete_state", `{"action":"delete_state","snapshot_name":"test"}`},
+		{"save_state", `{"what":"save_state","snapshot_name":"test"}`},
+		{"load_state", `{"what":"load_state","snapshot_name":"test"}`},
+		{"list_states", `{"what":"list_states"}`},
+		{"delete_state", `{"what":"delete_state","snapshot_name":"test"}`},
 	}
 
 	for _, tc := range actions {
@@ -512,17 +512,17 @@ func TestInteractAudit_AllActions_NoPanic(t *testing.T) {
 		action string
 		args   string
 	}{
-		{"highlight", `{"action":"highlight","selector":"div"}`},
-		{"save_state", `{"action":"save_state","snapshot_name":"test"}`},
-		{"load_state", `{"action":"load_state","snapshot_name":"test"}`},
-		{"list_states", `{"action":"list_states"}`},
-		{"delete_state", `{"action":"delete_state","snapshot_name":"test"}`},
-		{"execute_js", `{"action":"execute_js","script":"1+1"}`},
-		{"navigate", `{"action":"navigate","url":"https://example.com"}`},
-		{"refresh", `{"action":"refresh"}`},
-		{"back", `{"action":"back"}`},
-		{"forward", `{"action":"forward"}`},
-		{"new_tab", `{"action":"new_tab","url":"https://example.com"}`},
+		{"highlight", `{"what":"highlight","selector":"div"}`},
+		{"save_state", `{"what":"save_state","snapshot_name":"test"}`},
+		{"load_state", `{"what":"load_state","snapshot_name":"test"}`},
+		{"list_states", `{"what":"list_states"}`},
+		{"delete_state", `{"what":"delete_state","snapshot_name":"test"}`},
+		{"execute_js", `{"what":"execute_js","script":"1+1"}`},
+		{"navigate", `{"what":"navigate","url":"https://example.com"}`},
+		{"refresh", `{"what":"refresh"}`},
+		{"back", `{"what":"back"}`},
+		{"forward", `{"what":"forward"}`},
+		{"new_tab", `{"what":"new_tab","url":"https://example.com"}`},
 	}
 
 	for _, tc := range allActions {

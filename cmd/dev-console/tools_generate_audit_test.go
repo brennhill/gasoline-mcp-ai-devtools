@@ -81,7 +81,7 @@ func TestGenerateAudit_Reproduction_DataFlow(t *testing.T) {
 		{Type: "click", Timestamp: 2000, URL: "https://example.com", Selectors: map[string]any{"text": "Go"}},
 	})
 
-	result, ok := env.callGenerate(t, `{"format":"reproduction"}`)
+	result, ok := env.callGenerate(t, `{"what":"reproduction"}`)
 	if !ok {
 		t.Fatal("reproduction should return result")
 	}
@@ -108,7 +108,7 @@ func TestGenerateAudit_Reproduction_DataFlow(t *testing.T) {
 func TestGenerateAudit_Test_DataFlow(t *testing.T) {
 	env := newGenerateTestEnv(t)
 
-	result, ok := env.callGenerate(t, `{"format":"test"}`)
+	result, ok := env.callGenerate(t, `{"what":"test"}`)
 	if !ok {
 		t.Fatal("test format should return result")
 	}
@@ -128,7 +128,7 @@ func TestGenerateAudit_Test_DataFlow(t *testing.T) {
 func TestGenerateAudit_Test_ScriptContent(t *testing.T) {
 	env := newGenerateTestEnv(t)
 
-	result, ok := env.callGenerate(t, `{"format":"test","test_name":"smoke-test"}`)
+	result, ok := env.callGenerate(t, `{"what":"test","test_name":"smoke-test"}`)
 	if !ok {
 		t.Fatal("test format should return result")
 	}
@@ -170,7 +170,7 @@ func TestGenerateAudit_Test_ScriptContent(t *testing.T) {
 func TestGenerateAudit_PRSummary_DataFlow(t *testing.T) {
 	env := newGenerateTestEnv(t)
 
-	result, ok := env.callGenerate(t, `{"format":"pr_summary"}`)
+	result, ok := env.callGenerate(t, `{"what":"pr_summary"}`)
 	if !ok {
 		t.Fatal("pr_summary should return result")
 	}
@@ -197,7 +197,7 @@ func TestGenerateAudit_PRSummary_DataFlow(t *testing.T) {
 func TestGenerateAudit_SARIF_DataFlow(t *testing.T) {
 	env := newGenerateTestEnv(t)
 
-	result, ok := env.callGenerate(t, `{"format":"sarif","scope":"security"}`)
+	result, ok := env.callGenerate(t, `{"what":"sarif","scope":"security"}`)
 	if !ok {
 		t.Fatal("sarif should return result")
 	}
@@ -223,7 +223,7 @@ func TestGenerateAudit_SARIF_DataFlow(t *testing.T) {
 func TestGenerateAudit_HAR_DataFlow(t *testing.T) {
 	env := newGenerateTestEnv(t)
 
-	result, ok := env.callGenerate(t, `{"format":"har"}`)
+	result, ok := env.callGenerate(t, `{"what":"har"}`)
 	if !ok {
 		t.Fatal("har should return result")
 	}
@@ -249,7 +249,7 @@ func TestGenerateAudit_HAR_DataFlow(t *testing.T) {
 func TestGenerateAudit_CSP_DataFlow(t *testing.T) {
 	env := newGenerateTestEnv(t)
 
-	result, ok := env.callGenerate(t, `{"format":"csp","mode":"strict"}`)
+	result, ok := env.callGenerate(t, `{"what":"csp","mode":"strict"}`)
 	if !ok {
 		t.Fatal("csp should return result")
 	}
@@ -276,7 +276,7 @@ func TestGenerateAudit_CSP_DataFlow(t *testing.T) {
 func TestGenerateAudit_SRI_DataFlow(t *testing.T) {
 	env := newGenerateTestEnv(t)
 
-	result, ok := env.callGenerate(t, `{"format":"sri"}`)
+	result, ok := env.callGenerate(t, `{"what":"sri"}`)
 	if !ok {
 		t.Fatal("sri should return result")
 	}
@@ -308,7 +308,7 @@ func TestGenerateAudit_SRI_DataFlow(t *testing.T) {
 func TestGenerateAudit_UnknownFormat_ReturnsStructuredError(t *testing.T) {
 	env := newGenerateTestEnv(t)
 
-	result, ok := env.callGenerate(t, `{"format":"completely_invalid_format_xyz"}`)
+	result, ok := env.callGenerate(t, `{"what":"completely_invalid_format_xyz"}`)
 	if !ok {
 		t.Fatal("unknown format should return result with isError")
 	}
@@ -381,12 +381,12 @@ func TestGenerateAudit_EmptyState_ReturnsEmptyNotError(t *testing.T) {
 		name string
 		args string
 	}{
-		{"test", `{"format":"test"}`},
-		{"pr_summary", `{"format":"pr_summary"}`},
-		{"sarif", `{"format":"sarif"}`},
-		{"har", `{"format":"har"}`},
-		{"csp", `{"format":"csp"}`},
-		{"sri", `{"format":"sri"}`},
+		{"test", `{"what":"test"}`},
+		{"pr_summary", `{"what":"pr_summary"}`},
+		{"sarif", `{"what":"sarif"}`},
+		{"har", `{"what":"har"}`},
+		{"csp", `{"what":"csp"}`},
+		{"sri", `{"what":"sri"}`},
 	}
 
 	for _, tc := range formats {
@@ -423,16 +423,16 @@ func TestGenerateAudit_AllFormats_NoPanic(t *testing.T) {
 		format string
 		args   string
 	}{
-		{"reproduction", `{"format":"reproduction"}`},
-		{"test", `{"format":"test"}`},
-		{"pr_summary", `{"format":"pr_summary"}`},
-		{"sarif", `{"format":"sarif"}`},
-		{"har", `{"format":"har"}`},
-		{"csp", `{"format":"csp"}`},
-		{"sri", `{"format":"sri"}`},
-		{"test_from_context", `{"format":"test_from_context","context":"error"}`},
-		{"test_heal", `{"format":"test_heal","action":"analyze"}`},
-		{"test_classify", `{"format":"test_classify"}`},
+		{"reproduction", `{"what":"reproduction"}`},
+		{"test", `{"what":"test"}`},
+		{"pr_summary", `{"what":"pr_summary"}`},
+		{"sarif", `{"what":"sarif"}`},
+		{"har", `{"what":"har"}`},
+		{"csp", `{"what":"csp"}`},
+		{"sri", `{"what":"sri"}`},
+		{"test_from_context", `{"what":"test_from_context","context":"error"}`},
+		{"test_heal", `{"what":"test_heal","action":"analyze"}`},
+		{"test_classify", `{"what":"test_classify"}`},
 	}
 
 	for _, tc := range allFormats {

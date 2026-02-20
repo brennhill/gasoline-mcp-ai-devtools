@@ -31,5 +31,10 @@ export declare function resolveTargetTab(query: PendingQuery, paramsObj: QueryPa
     target?: TargetResolution;
     error?: TargetResolutionError;
 }>;
+/**
+ * Check if a URL is restricted — content scripts cannot run on these pages.
+ * Covers internal browser pages and known CSP-restricted origins.
+ */
+export declare function isRestrictedUrl(url: string | undefined): boolean;
 export {};
 //# sourceMappingURL=helpers.d.ts.map

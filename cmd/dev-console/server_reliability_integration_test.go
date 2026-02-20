@@ -78,16 +78,16 @@ func TestReliability_MCPTraffic_RealisticSession(t *testing.T) {
 		{"observe page", `{"jsonrpc":"2.0","id":6,"method":"tools/call","params":{"name":"observe","arguments":{"what":"page"}}}`},
 
 		// Configuration
-		{"configure health", `{"jsonrpc":"2.0","id":7,"method":"tools/call","params":{"name":"configure","arguments":{"action":"health"}}}`},
-		{"configure noise list", `{"jsonrpc":"2.0","id":8,"method":"tools/call","params":{"name":"configure","arguments":{"action":"noise_rule","noise_action":"list"}}}`},
+		{"configure health", `{"jsonrpc":"2.0","id":7,"method":"tools/call","params":{"name":"configure","arguments":{"what":"health"}}}`},
+		{"configure noise list", `{"jsonrpc":"2.0","id":8,"method":"tools/call","params":{"name":"configure","arguments":{"what":"noise_rule","noise_action":"list"}}}`},
 
 		// More observation
 		{"observe vitals", `{"jsonrpc":"2.0","id":9,"method":"tools/call","params":{"name":"observe","arguments":{"what":"vitals"}}}`},
 		{"observe actions", `{"jsonrpc":"2.0","id":10,"method":"tools/call","params":{"name":"observe","arguments":{"what":"actions"}}}`},
 
 		// Generate outputs
-		{"generate test", `{"jsonrpc":"2.0","id":11,"method":"tools/call","params":{"name":"generate","arguments":{"format":"test"}}}`},
-		{"generate reproduction", `{"jsonrpc":"2.0","id":12,"method":"tools/call","params":{"name":"generate","arguments":{"format":"reproduction"}}}`},
+		{"generate test", `{"jsonrpc":"2.0","id":11,"method":"tools/call","params":{"name":"generate","arguments":{"what":"test"}}}`},
+		{"generate reproduction", `{"jsonrpc":"2.0","id":12,"method":"tools/call","params":{"name":"generate","arguments":{"what":"reproduction"}}}`},
 
 		// Final checks
 		{"observe errors again", `{"jsonrpc":"2.0","id":13,"method":"tools/call","params":{"name":"observe","arguments":{"what":"errors"}}}`},
@@ -518,7 +518,7 @@ func TestReliability_Integration_LargePayloads(t *testing.T) {
 
 	// Test with large arguments
 	largeString := strings.Repeat("x", 100000) // 100KB string
-	largeReq := fmt.Sprintf(`{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"configure","arguments":{"action":"store","store_action":"save","key":"large_test","data":{"content":"%s"}}}}`, largeString)
+	largeReq := fmt.Sprintf(`{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"configure","arguments":{"what":"store","store_action":"save","key":"large_test","data":{"content":"%s"}}}}`, largeString)
 
 	resp, err := client.Post(mcpURL, "application/json", bytes.NewReader([]byte(largeReq)))
 	if err != nil {

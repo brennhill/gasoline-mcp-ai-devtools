@@ -33,7 +33,7 @@ func TestUploadHandler_MCPHappyPath_ResponseContract(t *testing.T) {
 	testFile := createTestFile(t, "contract-test.txt", "contract test content")
 
 	result, ok := env.callInteract(t, fmt.Sprintf(
-		`{"action":"upload","selector":"#Filedata","file_path":"%s"}`, testFile))
+		`{"what":"upload","selector":"#Filedata","file_path":"%s"}`, testFile))
 	if !ok {
 		t.Fatal("upload should return result")
 	}

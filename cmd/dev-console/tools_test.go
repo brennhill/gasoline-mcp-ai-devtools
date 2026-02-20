@@ -129,7 +129,7 @@ func TestHandleToolCall_GenerateTool(t *testing.T) {
 		Method:  "tools/call",
 	}
 
-	args := json.RawMessage(`{"format": "reproduction"}`)
+	args := json.RawMessage(`{"what": "reproduction"}`)
 	resp, handled := toolHandler.HandleToolCall(req, "generate", args)
 
 	if !handled {
@@ -163,7 +163,7 @@ func TestHandleToolCall_ConfigureTool(t *testing.T) {
 		Method:  "tools/call",
 	}
 
-	args := json.RawMessage(`{"action": "health"}`)
+	args := json.RawMessage(`{"what": "health"}`)
 	resp, handled := toolHandler.HandleToolCall(req, "configure", args)
 
 	if !handled {
@@ -198,7 +198,7 @@ func TestHandleToolCall_InteractTool(t *testing.T) {
 	}
 
 	// list_states doesn't require pilot to be enabled
-	args := json.RawMessage(`{"action": "list_states"}`)
+	args := json.RawMessage(`{"what": "list_states"}`)
 	resp, handled := toolHandler.HandleToolCall(req, "interact", args)
 
 	if !handled {
@@ -355,7 +355,7 @@ func TestToolGenerate_UnknownFormat(t *testing.T) {
 		ID:      json.RawMessage(`"test-id"`),
 	}
 
-	resp := toolHandler.toolGenerate(req, json.RawMessage(`{"format": "invalid_format"}`))
+	resp := toolHandler.toolGenerate(req, json.RawMessage(`{"what": "invalid_format"}`))
 
 	var result MCPToolResult
 	if err := json.Unmarshal(resp.Result, &result); err != nil {
@@ -414,7 +414,7 @@ func TestToolConfigure_UnknownAction(t *testing.T) {
 		ID:      json.RawMessage(`"test-id"`),
 	}
 
-	resp := toolHandler.toolConfigure(req, json.RawMessage(`{"action": "invalid_action"}`))
+	resp := toolHandler.toolConfigure(req, json.RawMessage(`{"what": "invalid_action"}`))
 
 	var result MCPToolResult
 	if err := json.Unmarshal(resp.Result, &result); err != nil {
@@ -443,7 +443,7 @@ func TestToolConfigure_Health(t *testing.T) {
 		ID:      json.RawMessage(`"test-id"`),
 	}
 
-	resp := toolHandler.toolConfigure(req, json.RawMessage(`{"action": "health"}`))
+	resp := toolHandler.toolConfigure(req, json.RawMessage(`{"what": "health"}`))
 
 	var result MCPToolResult
 	if err := json.Unmarshal(resp.Result, &result); err != nil {
@@ -506,7 +506,7 @@ func TestToolInteract_UnknownAction(t *testing.T) {
 		ID:      json.RawMessage(`"test-id"`),
 	}
 
-	resp := toolHandler.toolInteract(req, json.RawMessage(`{"action": "invalid_action"}`))
+	resp := toolHandler.toolInteract(req, json.RawMessage(`{"what": "invalid_action"}`))
 
 	var result MCPToolResult
 	if err := json.Unmarshal(resp.Result, &result); err != nil {

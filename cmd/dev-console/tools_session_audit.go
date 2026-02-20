@@ -247,12 +247,17 @@ func shouldSkipAuditRecording(toolName string, args json.RawMessage) bool {
 		return false
 	}
 	var params struct {
+		What      string `json:"what"`
 		Action    string `json:"action"`
 		Operation string `json:"operation"`
 	}
 	if err := json.Unmarshal(args, &params); err != nil {
 		return false
 	}
-	return strings.EqualFold(strings.TrimSpace(params.Action), "audit_log") &&
+	dispatch := params.What
+	if dispatch == "" {
+		dispatch = params.Action
+	}
+	return strings.EqualFold(strings.TrimSpace(dispatch), "audit_log") &&
 		strings.EqualFold(strings.TrimSpace(params.Operation), "clear")
 }

@@ -25,8 +25,14 @@ import {
   hasHighlightRequest,
   deleteHighlightRequest,
   registerExecuteRequest,
+  hasExecuteRequest,
+  deleteExecuteRequest,
   registerA11yRequest,
-  registerDomRequest
+  hasA11yRequest,
+  deleteA11yRequest,
+  registerDomRequest,
+  hasDomRequest,
+  deleteDomRequest
 } from './request-tracking'
 import { createDeferredPromise, promiseRaceWithCleanup } from './timeout-utils'
 import { isInjectScriptLoaded, getPageNonce } from './script-injection'
@@ -60,25 +66,6 @@ export function isValidBackgroundSender(sender: chrome.runtime.MessageSender): b
   // Messages from content scripts have tab.id
   // We only want messages from the background service worker
   return typeof sender.id === 'string' && sender.id === chrome.runtime.id
-}
-
-/**
- * Create a timeout handler that cleans up a pending request from a Map
- */
-function createRequestTimeoutCleanup<T extends { error: string }>(
-  requestId: number,
-  pendingMap: Map<number, (result: T) => void>,
-  errorResponse: T
-): () => void {
-  return () => {
-    if (pendingMap.has(requestId)) {
-      const cb = pendingMap.get(requestId)
-      pendingMap.delete(requestId)
-      if (cb) {
-        cb(errorResponse)
-      }
-    }
-  }
 }
 
 /**
@@ -201,14 +188,16 @@ function executeInMainWorld(
   // If inject script responds, its own timeout handles slow scripts.
   // This only fires if inject script never responds at all.
   const safetyTimeoutMs = timeoutMs + 2000
-  setTimeout(
-    createRequestTimeoutCleanup(requestId, new Map([[requestId, sendResponse]]), {
-      success: false,
-      error: 'inject_not_responding',
-      message: `Inject script did not respond within ${safetyTimeoutMs}ms. The tab may not be tracked or the inject script failed to load.`
-    }),
-    safetyTimeoutMs
-  )
+  setTimeout(() => {
+    if (hasExecuteRequest(requestId)) {
+      deleteExecuteRequest(requestId)
+      sendResponse({
+        success: false,
+        error: 'inject_not_responding',
+        message: `Inject script did not respond within ${safetyTimeoutMs}ms. The tab may not be tracked or the inject script failed to load.`
+      })
+    }
+  }, safetyTimeoutMs)
 
   postToInject({
     type: 'GASOLINE_EXECUTE_JS',
@@ -272,13 +261,13 @@ export function handleA11yQuery(
   const parsedParams = parseQueryParams(params)
   const requestId = registerA11yRequest(sendResponse)
 
-  // Timeout fallback: respond with error and cleanup after async command timeout
-  setTimeout(
-    createRequestTimeoutCleanup(requestId, new Map([[requestId, sendResponse]]), {
-      error: 'Accessibility audit timeout'
-    }),
-    ASYNC_COMMAND_TIMEOUT_MS
-  )
+  // Timeout fallback: respond with error and cleanup the real pending map
+  setTimeout(() => {
+    if (hasA11yRequest(requestId)) {
+      deleteA11yRequest(requestId)
+      sendResponse({ error: 'Accessibility audit timeout' })
+    }
+  }, ASYNC_COMMAND_TIMEOUT_MS)
 
   // Forward to inject.js via postMessage
   postToInject({
@@ -300,11 +289,13 @@ export function handleDomQuery(
   const parsedParams = parseQueryParams(params)
   const requestId = registerDomRequest(sendResponse)
 
-  // Timeout fallback: respond with error and cleanup after async command timeout
-  setTimeout(
-    createRequestTimeoutCleanup(requestId, new Map([[requestId, sendResponse]]), { error: 'DOM query timeout' }),
-    ASYNC_COMMAND_TIMEOUT_MS
-  )
+  // Timeout fallback: respond with error and cleanup the real pending map
+  setTimeout(() => {
+    if (hasDomRequest(requestId)) {
+      deleteDomRequest(requestId)
+      sendResponse({ error: 'DOM query timeout' })
+    }
+  }, ASYNC_COMMAND_TIMEOUT_MS)
 
   // Forward to inject.js via postMessage
   postToInject({

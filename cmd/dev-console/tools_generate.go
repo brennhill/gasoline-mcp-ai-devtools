@@ -41,6 +41,7 @@ var generateValidParams = map[string]map[string]bool{
 
 // alwaysAllowedGenerateParams are params valid for every generate format.
 var alwaysAllowedGenerateParams = map[string]bool{
+	"what":           true,
 	"format":         true,
 	"telemetry_mode": true,
 }
@@ -137,9 +138,10 @@ func getValidGenerateFormats() string {
 	return strings.Join(formats, ", ")
 }
 
-// toolGenerate dispatches generate requests based on the 'format' parameter.
+// toolGenerate dispatches generate requests based on the 'what' parameter.
 func (h *ToolHandler) toolGenerate(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	var params struct {
+		What   string `json:"what"`
 		Format string `json:"format"`
 	}
 	if len(args) > 0 {
@@ -148,19 +150,24 @@ func (h *ToolHandler) toolGenerate(req JSONRPCRequest, args json.RawMessage) JSO
 		}
 	}
 
-	if params.Format == "" {
-		validFormats := getValidGenerateFormats()
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrMissingParam, "Required parameter 'format' is missing", "Add the 'format' parameter and call again", withParam("format"), withHint("Valid values: "+validFormats))}
+	what := params.What
+	if what == "" {
+		what = params.Format
 	}
 
-	handler, ok := generateHandlers[params.Format]
+	if what == "" {
+		validFormats := getValidGenerateFormats()
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrMissingParam, "Required parameter 'what' is missing", "Add the 'what' parameter and call again", withParam("what"), withHint("Valid values: "+validFormats))}
+	}
+
+	handler, ok := generateHandlers[what]
 	if !ok {
 		validFormats := getValidGenerateFormats()
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrUnknownMode, "Unknown generate format: "+params.Format, "Use a valid format from the 'format' enum", withParam("format"), withHint("Valid values: "+validFormats))}
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrUnknownMode, "Unknown generate format: "+what, "Use a valid format from the 'what' enum", withParam("what"), withHint("Valid values: "+validFormats))}
 	}
 
 	// Strict parameter validation: reject unknown params for the given format
-	if errResp := validateGenerateParams(req, params.Format, args); errResp != nil {
+	if errResp := validateGenerateParams(req, what, args); errResp != nil {
 		return *errResp
 	}
 

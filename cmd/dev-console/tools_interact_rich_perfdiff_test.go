@@ -31,7 +31,7 @@ func TestRichAction_RefreshStoresBeforeSnapshot(t *testing.T) {
 	}})
 
 	// Call refresh — should stash the before-snapshot
-	result, ok := env.callInteract(t, `{"action":"refresh","background":true}`)
+	result, ok := env.callInteract(t, `{"what":"refresh","background":true}`)
 	if !ok {
 		t.Fatal("refresh should return result")
 	}
@@ -74,7 +74,7 @@ func TestRichAction_NavigateStoresBeforeSnapshot(t *testing.T) {
 		Timing:    performance.PerformanceTiming{TimeToFirstByte: 115, DomContentLoaded: 700, Load: 1200},
 	}})
 
-	result, ok := env.callInteract(t, `{"action":"navigate","url":"https://example.com/settings","background":true}`)
+	result, ok := env.callInteract(t, `{"what":"navigate","url":"https://example.com/settings","background":true}`)
 	if !ok {
 		t.Fatal("navigate should return result")
 	}
@@ -118,7 +118,7 @@ func TestRichAction_CommandResultEnrichedWithPerfDiff(t *testing.T) {
 	}})
 
 	// Call refresh to stash the before-snapshot
-	result, _ := env.callInteract(t, `{"action":"refresh","background":true}`)
+	result, _ := env.callInteract(t, `{"what":"refresh","background":true}`)
 	var resultData map[string]any
 	_ = json.Unmarshal([]byte(extractJSONFromText(result.Content[0].Text)), &resultData)
 	corrID := resultData["correlation_id"].(string)
@@ -195,7 +195,7 @@ func TestRichAction_CommandResultNoPerfDiffWhenNoSnapshots(t *testing.T) {
 	// No tracking status set, no snapshots
 
 	// Call refresh — no before-snapshot available
-	result, _ := env.callInteract(t, `{"action":"refresh","background":true}`)
+	result, _ := env.callInteract(t, `{"what":"refresh","background":true}`)
 	var resultData map[string]any
 	_ = json.Unmarshal([]byte(extractJSONFromText(result.Content[0].Text)), &resultData)
 	corrID := resultData["correlation_id"].(string)
@@ -224,7 +224,7 @@ func TestRichAction_CommandResultIncludesTimingMs(t *testing.T) {
 	env.capture.SetPilotEnabled(true)
 
 	// Click action
-	result, _ := env.callInteract(t, `{"action":"click","selector":"#btn","background":true}`)
+	result, _ := env.callInteract(t, `{"what":"click","selector":"#btn","background":true}`)
 	var resultData map[string]any
 	json.Unmarshal([]byte(extractJSONFromText(result.Content[0].Text)), &resultData)
 	corrID := resultData["correlation_id"].(string)
@@ -281,7 +281,7 @@ func TestRichAction_PerfDiffWithFullWebVitals(t *testing.T) {
 	}})
 
 	// Call refresh to stash before-snapshot
-	result, _ := env.callInteract(t, `{"action":"refresh","background":true}`)
+	result, _ := env.callInteract(t, `{"what":"refresh","background":true}`)
 	var resultData map[string]any
 	_ = json.Unmarshal([]byte(extractJSONFromText(result.Content[0].Text)), &resultData)
 	corrID := resultData["correlation_id"].(string)
@@ -384,7 +384,7 @@ func TestRichAction_CompactClickMissingDomSummary_WhenExtensionHangs(t *testing.
 	env.capture.SetPilotEnabled(true)
 
 	// Queue a click command
-	result, ok := env.callInteract(t, `{"action":"click","selector":"#btn","background":true}`)
+	result, ok := env.callInteract(t, `{"what":"click","selector":"#btn","background":true}`)
 	if !ok || result.IsError {
 		t.Fatal("click should succeed with pilot enabled")
 	}
@@ -433,7 +433,7 @@ func TestRichAction_CompactClickHasDomSummary_WhenExtensionResponds(t *testing.T
 	env.capture.SetPilotEnabled(true)
 
 	// Click without analyze:true (compact mode)
-	result, _ := env.callInteract(t, `{"action":"click","selector":"#btn","background":true}`)
+	result, _ := env.callInteract(t, `{"what":"click","selector":"#btn","background":true}`)
 	var resultData map[string]any
 	_ = json.Unmarshal([]byte(extractJSONFromText(result.Content[0].Text)), &resultData)
 	corrID := resultData["correlation_id"].(string)

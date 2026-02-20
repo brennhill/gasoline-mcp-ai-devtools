@@ -160,24 +160,24 @@ func TestIntegration_AllMCPToolsReturnValidResponses(t *testing.T) {
 		{"observe failed_commands", `{"jsonrpc":"2.0","id":34,"method":"tools/call","params":{"name":"observe","arguments":{"what":"failed_commands"}}}`},
 
 		// generate tool - all 7 formats
-		{"generate reproduction", `{"jsonrpc":"2.0","id":40,"method":"tools/call","params":{"name":"generate","arguments":{"format":"reproduction"}}}`},
-		{"generate test", `{"jsonrpc":"2.0","id":41,"method":"tools/call","params":{"name":"generate","arguments":{"format":"test"}}}`},
-		{"generate pr_summary", `{"jsonrpc":"2.0","id":42,"method":"tools/call","params":{"name":"generate","arguments":{"format":"pr_summary"}}}`},
-		{"generate sarif", `{"jsonrpc":"2.0","id":43,"method":"tools/call","params":{"name":"generate","arguments":{"format":"sarif"}}}`},
-		{"generate har", `{"jsonrpc":"2.0","id":44,"method":"tools/call","params":{"name":"generate","arguments":{"format":"har"}}}`},
-		{"generate csp", `{"jsonrpc":"2.0","id":45,"method":"tools/call","params":{"name":"generate","arguments":{"format":"csp"}}}`},
-		{"generate sri", `{"jsonrpc":"2.0","id":46,"method":"tools/call","params":{"name":"generate","arguments":{"format":"sri"}}}`},
+		{"generate reproduction", `{"jsonrpc":"2.0","id":40,"method":"tools/call","params":{"name":"generate","arguments":{"what":"reproduction"}}}`},
+		{"generate test", `{"jsonrpc":"2.0","id":41,"method":"tools/call","params":{"name":"generate","arguments":{"what":"test"}}}`},
+		{"generate pr_summary", `{"jsonrpc":"2.0","id":42,"method":"tools/call","params":{"name":"generate","arguments":{"what":"pr_summary"}}}`},
+		{"generate sarif", `{"jsonrpc":"2.0","id":43,"method":"tools/call","params":{"name":"generate","arguments":{"what":"sarif"}}}`},
+		{"generate har", `{"jsonrpc":"2.0","id":44,"method":"tools/call","params":{"name":"generate","arguments":{"what":"har"}}}`},
+		{"generate csp", `{"jsonrpc":"2.0","id":45,"method":"tools/call","params":{"name":"generate","arguments":{"what":"csp"}}}`},
+		{"generate sri", `{"jsonrpc":"2.0","id":46,"method":"tools/call","params":{"name":"generate","arguments":{"what":"sri"}}}`},
 
 		// configure tool - sample of 14 actions
-		{"configure health", `{"jsonrpc":"2.0","id":50,"method":"tools/call","params":{"name":"configure","arguments":{"action":"health"}}}`},
-		{"configure store list", `{"jsonrpc":"2.0","id":51,"method":"tools/call","params":{"name":"configure","arguments":{"action":"store","store_action":"list"}}}`},
-		{"configure store stats", `{"jsonrpc":"2.0","id":52,"method":"tools/call","params":{"name":"configure","arguments":{"action":"store","store_action":"stats"}}}`},
-		{"configure noise_rule list", `{"jsonrpc":"2.0","id":53,"method":"tools/call","params":{"name":"configure","arguments":{"action":"noise_rule","noise_action":"list"}}}`},
+		{"configure health", `{"jsonrpc":"2.0","id":50,"method":"tools/call","params":{"name":"configure","arguments":{"what":"health"}}}`},
+		{"configure store list", `{"jsonrpc":"2.0","id":51,"method":"tools/call","params":{"name":"configure","arguments":{"what":"store","store_action":"list"}}}`},
+		{"configure store stats", `{"jsonrpc":"2.0","id":52,"method":"tools/call","params":{"name":"configure","arguments":{"what":"store","store_action":"stats"}}}`},
+		{"configure noise_rule list", `{"jsonrpc":"2.0","id":53,"method":"tools/call","params":{"name":"configure","arguments":{"what":"noise_rule","noise_action":"list"}}}`},
 		{"analyze api_validation report", `{"jsonrpc":"2.0","id":55,"method":"tools/call","params":{"name":"analyze","arguments":{"what":"api_validation","operation":"report"}}}`},
-		{"configure streaming status", `{"jsonrpc":"2.0","id":57,"method":"tools/call","params":{"name":"configure","arguments":{"action":"streaming","streaming_action":"status"}}}`},
+		{"configure streaming status", `{"jsonrpc":"2.0","id":57,"method":"tools/call","params":{"name":"configure","arguments":{"what":"streaming","streaming_action":"status"}}}`},
 
 		// interact tool - list_states action (doesn't require browser)
-		{"interact list_states", `{"jsonrpc":"2.0","id":60,"method":"tools/call","params":{"name":"interact","arguments":{"action":"list_states"}}}`},
+		{"interact list_states", `{"jsonrpc":"2.0","id":60,"method":"tools/call","params":{"name":"interact","arguments":{"what":"list_states"}}}`},
 	}
 
 	var failures []string

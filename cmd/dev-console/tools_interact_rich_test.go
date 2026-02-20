@@ -21,7 +21,7 @@ func TestRichAction_AnalyzeInPendingQueryParams(t *testing.T) {
 	// Enable pilot so the request gets queued (not rejected at pilot check)
 	env.capture.SetPilotEnabled(true)
 
-	result, ok := env.callInteract(t, `{"action":"click","selector":"#btn","analyze":true,"background":true}`)
+	result, ok := env.callInteract(t, `{"what":"click","selector":"#btn","analyze":true,"background":true}`)
 	if !ok {
 		t.Fatal("click with analyze:true should return result")
 	}
@@ -54,7 +54,7 @@ func TestRichAction_AnalyzeFalseNotForwarded(t *testing.T) {
 	env := newInteractTestEnv(t)
 	env.capture.SetPilotEnabled(true)
 
-	result, ok := env.callInteract(t, `{"action":"click","selector":"#btn","analyze":false,"background":true}`)
+	result, ok := env.callInteract(t, `{"what":"click","selector":"#btn","analyze":false,"background":true}`)
 	if !ok {
 		t.Fatal("click with analyze:false should return result")
 	}
@@ -83,7 +83,7 @@ func TestRichAction_AnalyzeOmittedByDefault(t *testing.T) {
 	env := newInteractTestEnv(t)
 	env.capture.SetPilotEnabled(true)
 
-	result, ok := env.callInteract(t, `{"action":"click","selector":"#btn","background":true}`)
+	result, ok := env.callInteract(t, `{"what":"click","selector":"#btn","background":true}`)
 	if !ok {
 		t.Fatal("click without analyze should return result")
 	}
@@ -114,7 +114,7 @@ func TestRichAction_AnalyzeOnNavigationAction(t *testing.T) {
 
 	// refresh doesn't use analyze (it always returns perf_diff)
 	// but should not reject it either
-	result, ok := env.callInteract(t, `{"action":"refresh","analyze":true,"background":true}`)
+	result, ok := env.callInteract(t, `{"what":"refresh","analyze":true,"background":true}`)
 	if !ok {
 		t.Fatal("refresh with analyze:true should return result")
 	}
@@ -128,7 +128,7 @@ func TestRichAction_FrameSelectorInPendingQueryParams(t *testing.T) {
 	env := newInteractTestEnv(t)
 	env.capture.SetPilotEnabled(true)
 
-	result, ok := env.callInteract(t, `{"action":"click","selector":"#submit","frame":"iframe[name='payment']","sync":false}`)
+	result, ok := env.callInteract(t, `{"what":"click","selector":"#submit","frame":"iframe[name='payment']","sync":false}`)
 	if !ok {
 		t.Fatal("click with frame selector should return result")
 	}
@@ -155,7 +155,7 @@ func TestRichAction_FrameIndexInPendingQueryParams(t *testing.T) {
 	env := newInteractTestEnv(t)
 	env.capture.SetPilotEnabled(true)
 
-	result, ok := env.callInteract(t, `{"action":"click","selector":"#submit","frame":0,"sync":false}`)
+	result, ok := env.callInteract(t, `{"what":"click","selector":"#submit","frame":0,"sync":false}`)
 	if !ok {
 		t.Fatal("click with frame index should return result")
 	}
@@ -301,7 +301,7 @@ func TestRichAction_CorrelationID_HasAction(t *testing.T) {
 	env := newInteractTestEnv(t)
 	env.capture.SetPilotEnabled(true)
 
-	result, ok := env.callInteract(t, `{"action":"click","selector":"#btn","analyze":true,"background":true}`)
+	result, ok := env.callInteract(t, `{"what":"click","selector":"#btn","analyze":true,"background":true}`)
 	if !ok || result.IsError {
 		t.Fatal("click should succeed with pilot enabled")
 	}
@@ -328,7 +328,7 @@ func TestRichAction_AnalyzeFieldsSurfacedTopLevel(t *testing.T) {
 	env.capture.SetPilotEnabled(true)
 
 	// Click with analyze:true
-	result, _ := env.callInteract(t, `{"action":"click","selector":"#btn","analyze":true,"background":true}`)
+	result, _ := env.callInteract(t, `{"what":"click","selector":"#btn","analyze":true,"background":true}`)
 	var resultData map[string]any
 	_ = json.Unmarshal([]byte(extractJSONFromText(result.Content[0].Text)), &resultData)
 	corrID := resultData["correlation_id"].(string)
@@ -397,7 +397,7 @@ func TestRichAction_NoAnalyzeFieldsWhenAbsent(t *testing.T) {
 	env := newInteractTestEnv(t)
 	env.capture.SetPilotEnabled(true)
 
-	result, _ := env.callInteract(t, `{"action":"click","selector":"#btn","background":true}`)
+	result, _ := env.callInteract(t, `{"what":"click","selector":"#btn","background":true}`)
 	var resultData map[string]any
 	_ = json.Unmarshal([]byte(extractJSONFromText(result.Content[0].Text)), &resultData)
 	corrID := resultData["correlation_id"].(string)
@@ -434,7 +434,7 @@ func TestRichAction_TargetContextSurfacedTopLevel(t *testing.T) {
 	env := newInteractTestEnv(t)
 	env.capture.SetPilotEnabled(true)
 
-	result, _ := env.callInteract(t, `{"action":"click","selector":"#btn","tab_id":77,"background":true}`)
+	result, _ := env.callInteract(t, `{"what":"click","selector":"#btn","tab_id":77,"background":true}`)
 	var resultData map[string]any
 	_ = json.Unmarshal([]byte(extractJSONFromText(result.Content[0].Text)), &resultData)
 	corrID := resultData["correlation_id"].(string)
@@ -498,7 +498,7 @@ func TestRichAction_DomSummaryPassthrough(t *testing.T) {
 	env.capture.SetPilotEnabled(true)
 
 	// Click with analyze:true
-	result, _ := env.callInteract(t, `{"action":"click","selector":"#btn","analyze":true,"background":true}`)
+	result, _ := env.callInteract(t, `{"what":"click","selector":"#btn","analyze":true,"background":true}`)
 	var resultData map[string]any
 	_ = json.Unmarshal([]byte(extractJSONFromText(result.Content[0].Text)), &resultData)
 	corrID := resultData["correlation_id"].(string)

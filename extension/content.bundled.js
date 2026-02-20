@@ -254,6 +254,12 @@
       resolve(result);
     }
   }
+  function hasExecuteRequest(requestId) {
+    return pendingExecuteRequests.has(requestId);
+  }
+  function deleteExecuteRequest(requestId) {
+    pendingExecuteRequests.delete(requestId);
+  }
   function registerA11yRequest(resolve) {
     const requestId = ++a11yRequestId;
     pendingA11yRequests.set(requestId, resolve);
@@ -266,6 +272,12 @@
       resolve(result);
     }
   }
+  function hasA11yRequest(requestId) {
+    return pendingA11yRequests.has(requestId);
+  }
+  function deleteA11yRequest(requestId) {
+    pendingA11yRequests.delete(requestId);
+  }
   function registerDomRequest(resolve) {
     const requestId = ++domRequestId;
     pendingDomRequests.set(requestId, resolve);
@@ -277,6 +289,12 @@
       pendingDomRequests.delete(requestId);
       resolve(result);
     }
+  }
+  function hasDomRequest(requestId) {
+    return pendingDomRequests.has(requestId);
+  }
+  function deleteDomRequest(requestId) {
+    pendingDomRequests.delete(requestId);
   }
   function cleanupRequestTracking() {
     if (cleanupTimer) {
@@ -404,17 +422,6 @@
   function isValidBackgroundSender(sender) {
     return typeof sender.id === "string" && sender.id === chrome.runtime.id;
   }
-  function createRequestTimeoutCleanup(requestId, pendingMap, errorResponse) {
-    return () => {
-      if (pendingMap.has(requestId)) {
-        const cb = pendingMap.get(requestId);
-        pendingMap.delete(requestId);
-        if (cb) {
-          cb(errorResponse);
-        }
-      }
-    };
-  }
   function forwardHighlightMessage(message) {
     const requestId = registerHighlightRequest((result) => deferred.resolve(result));
     const deferred = createDeferredPromise();
@@ -473,11 +480,16 @@
     const timeoutMs = params.timeout_ms || 5e3;
     const requestId = registerExecuteRequest(sendResponse);
     const safetyTimeoutMs = timeoutMs + 2e3;
-    setTimeout(createRequestTimeoutCleanup(requestId, /* @__PURE__ */ new Map([[requestId, sendResponse]]), {
-      success: false,
-      error: "inject_not_responding",
-      message: `Inject script did not respond within ${safetyTimeoutMs}ms. The tab may not be tracked or the inject script failed to load.`
-    }), safetyTimeoutMs);
+    setTimeout(() => {
+      if (hasExecuteRequest(requestId)) {
+        deleteExecuteRequest(requestId);
+        sendResponse({
+          success: false,
+          error: "inject_not_responding",
+          message: `Inject script did not respond within ${safetyTimeoutMs}ms. The tab may not be tracked or the inject script failed to load.`
+        });
+      }
+    }, safetyTimeoutMs);
     postToInject({
       type: "GASOLINE_EXECUTE_JS",
       requestId,
@@ -513,9 +525,12 @@
   function handleA11yQuery(params, sendResponse) {
     const parsedParams = parseQueryParams(params);
     const requestId = registerA11yRequest(sendResponse);
-    setTimeout(createRequestTimeoutCleanup(requestId, /* @__PURE__ */ new Map([[requestId, sendResponse]]), {
-      error: "Accessibility audit timeout"
-    }), ASYNC_COMMAND_TIMEOUT_MS);
+    setTimeout(() => {
+      if (hasA11yRequest(requestId)) {
+        deleteA11yRequest(requestId);
+        sendResponse({ error: "Accessibility audit timeout" });
+      }
+    }, ASYNC_COMMAND_TIMEOUT_MS);
     postToInject({
       type: "GASOLINE_A11Y_QUERY",
       requestId,
@@ -526,7 +541,12 @@
   function handleDomQuery(params, sendResponse) {
     const parsedParams = parseQueryParams(params);
     const requestId = registerDomRequest(sendResponse);
-    setTimeout(createRequestTimeoutCleanup(requestId, /* @__PURE__ */ new Map([[requestId, sendResponse]]), { error: "DOM query timeout" }), ASYNC_COMMAND_TIMEOUT_MS);
+    setTimeout(() => {
+      if (hasDomRequest(requestId)) {
+        deleteDomRequest(requestId);
+        sendResponse({ error: "DOM query timeout" });
+      }
+    }, ASYNC_COMMAND_TIMEOUT_MS);
     postToInject({
       type: "GASOLINE_DOM_QUERY",
       requestId,
@@ -981,11 +1001,12 @@
   function initFaviconReplacer() {
     chrome.runtime.onMessage.addListener((message, sender, _sendResponse) => {
       if (sender.id !== chrome.runtime.id)
-        return;
+        return false;
       if (message.type === "trackingStateChanged") {
         const newState = message.state;
         updateFavicon(newState);
       }
+      return false;
     });
     chrome.runtime.sendMessage({ type: "getTrackingState" }, (response) => {
       if (response && response.state) {

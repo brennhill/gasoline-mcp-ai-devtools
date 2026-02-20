@@ -26,7 +26,7 @@ func newConfigureContractEnv(t *testing.T) *configureContractEnv {
 
 func TestContractConfigure_Health(t *testing.T) {
 	env := newConfigureContractEnv(t)
-	result, ok := env.callConfigure(t, `{"action":"health"}`)
+	result, ok := env.callConfigure(t, `{"what":"health"}`)
 	if !ok {
 		t.Fatal("configure health: no result")
 	}
@@ -41,7 +41,7 @@ func TestContractConfigure_Health(t *testing.T) {
 
 func TestContractConfigure_Clear(t *testing.T) {
 	env := newConfigureContractEnv(t)
-	result, ok := env.callConfigure(t, `{"action":"clear","buffer":"all"}`)
+	result, ok := env.callConfigure(t, `{"what":"clear","buffer":"all"}`)
 	if !ok {
 		t.Fatal("configure clear: no result")
 	}
@@ -55,7 +55,7 @@ func TestContractConfigure_Clear(t *testing.T) {
 
 func TestContractConfigure_NoiseRule_List(t *testing.T) {
 	env := newConfigureContractEnv(t)
-	result, ok := env.callConfigure(t, `{"action":"noise_rule","noise_action":"list"}`)
+	result, ok := env.callConfigure(t, `{"what":"noise_rule","noise_action":"list"}`)
 	if !ok {
 		t.Fatal("configure noise_rule list: no result")
 	}
@@ -69,7 +69,7 @@ func TestContractConfigure_NoiseRule_List(t *testing.T) {
 
 func TestContractConfigure_Streaming_Status(t *testing.T) {
 	env := newConfigureContractEnv(t)
-	result, ok := env.callConfigure(t, `{"action":"streaming","streaming_action":"status"}`)
+	result, ok := env.callConfigure(t, `{"what":"streaming","streaming_action":"status"}`)
 	if !ok {
 		t.Fatal("configure streaming status: no result")
 	}
@@ -84,7 +84,7 @@ func TestContractConfigure_Streaming_Status(t *testing.T) {
 
 func TestContractConfigure_UnknownAction_Error(t *testing.T) {
 	env := newConfigureContractEnv(t)
-	result, ok := env.callConfigure(t, `{"action":"invalid_action_xyz"}`)
+	result, ok := env.callConfigure(t, `{"what":"invalid_action_xyz"}`)
 	if !ok {
 		t.Fatal("configure unknown action: no result")
 	}
@@ -121,7 +121,7 @@ func TestContractGenerate_Reproduction(t *testing.T) {
 		{Type: "navigate", Timestamp: 1000, URL: "https://example.com", ToURL: "https://example.com"},
 		{Type: "click", Timestamp: 2000, URL: "https://example.com", Selectors: map[string]any{"text": "Go"}},
 	})
-	result, ok := env.callGenerate(t, `{"format":"reproduction"}`)
+	result, ok := env.callGenerate(t, `{"what":"reproduction"}`)
 	if !ok {
 		t.Fatal("generate reproduction: no result")
 	}
@@ -131,7 +131,7 @@ func TestContractGenerate_Reproduction(t *testing.T) {
 
 func TestContractGenerate_Test(t *testing.T) {
 	env := newGenerateContractEnv(t)
-	result, ok := env.callGenerate(t, `{"format":"test"}`)
+	result, ok := env.callGenerate(t, `{"what":"test"}`)
 	if !ok {
 		t.Fatal("generate test: no result")
 	}
@@ -140,7 +140,7 @@ func TestContractGenerate_Test(t *testing.T) {
 
 func TestContractGenerate_PRSummary(t *testing.T) {
 	env := newGenerateContractEnv(t)
-	result, ok := env.callGenerate(t, `{"format":"pr_summary"}`)
+	result, ok := env.callGenerate(t, `{"what":"pr_summary"}`)
 	if !ok {
 		t.Fatal("generate pr_summary: no result")
 	}
@@ -149,7 +149,7 @@ func TestContractGenerate_PRSummary(t *testing.T) {
 
 func TestContractGenerate_HAR(t *testing.T) {
 	env := newGenerateContractEnv(t)
-	result, ok := env.callGenerate(t, `{"format":"har"}`)
+	result, ok := env.callGenerate(t, `{"what":"har"}`)
 	if !ok {
 		t.Fatal("generate har: no result")
 	}
@@ -158,7 +158,7 @@ func TestContractGenerate_HAR(t *testing.T) {
 
 func TestContractGenerate_CSP(t *testing.T) {
 	env := newGenerateContractEnv(t)
-	result, ok := env.callGenerate(t, `{"format":"csp"}`)
+	result, ok := env.callGenerate(t, `{"what":"csp"}`)
 	if !ok {
 		t.Fatal("generate csp: no result")
 	}
@@ -167,7 +167,7 @@ func TestContractGenerate_CSP(t *testing.T) {
 
 func TestContractGenerate_SRI(t *testing.T) {
 	env := newGenerateContractEnv(t)
-	result, ok := env.callGenerate(t, `{"format":"sri"}`)
+	result, ok := env.callGenerate(t, `{"what":"sri"}`)
 	if !ok {
 		t.Fatal("generate sri: no result")
 	}
@@ -176,7 +176,7 @@ func TestContractGenerate_SRI(t *testing.T) {
 
 func TestContractGenerate_SARIF(t *testing.T) {
 	env := newGenerateContractEnv(t)
-	result, ok := env.callGenerate(t, `{"format":"sarif"}`)
+	result, ok := env.callGenerate(t, `{"what":"sarif"}`)
 	if !ok {
 		t.Fatal("generate sarif: no result")
 	}
@@ -185,7 +185,7 @@ func TestContractGenerate_SARIF(t *testing.T) {
 
 func TestContractGenerate_UnknownFormat_Error(t *testing.T) {
 	env := newGenerateContractEnv(t)
-	result, ok := env.callGenerate(t, `{"format":"invalid_format_xyz"}`)
+	result, ok := env.callGenerate(t, `{"what":"invalid_format_xyz"}`)
 	if !ok {
 		t.Fatal("generate unknown format: no result")
 	}
@@ -217,7 +217,7 @@ func newInteractContractEnv(t *testing.T) *interactContractEnv {
 
 func TestContractInteract_ListStates(t *testing.T) {
 	env := newInteractContractEnv(t)
-	result, ok := env.callInteract(t, `{"action":"list_states"}`)
+	result, ok := env.callInteract(t, `{"what":"list_states"}`)
 	if !ok {
 		t.Fatal("interact list_states: no result")
 	}
@@ -231,7 +231,7 @@ func TestContractInteract_ListStates(t *testing.T) {
 
 func TestContractInteract_SaveState_MissingName(t *testing.T) {
 	env := newInteractContractEnv(t)
-	result, ok := env.callInteract(t, `{"action":"save_state"}`)
+	result, ok := env.callInteract(t, `{"what":"save_state"}`)
 	if !ok {
 		t.Fatal("interact save_state: no result")
 	}
@@ -240,7 +240,7 @@ func TestContractInteract_SaveState_MissingName(t *testing.T) {
 
 func TestContractInteract_UnknownAction_Error(t *testing.T) {
 	env := newInteractContractEnv(t)
-	result, ok := env.callInteract(t, `{"action":"invalid_action_xyz"}`)
+	result, ok := env.callInteract(t, `{"what":"invalid_action_xyz"}`)
 	if !ok {
 		t.Fatal("interact unknown action: no result")
 	}
@@ -304,7 +304,7 @@ func TestContractBadPath_Interact_InvalidJSON(t *testing.T) {
 
 func TestContractBadPath_Configure_TestBoundary_MissingTestID(t *testing.T) {
 	env := newConfigureContractEnv(t)
-	result, ok := env.callConfigure(t, `{"action":"test_boundary_start"}`)
+	result, ok := env.callConfigure(t, `{"what":"test_boundary_start"}`)
 	if !ok {
 		t.Fatal("configure test_boundary_start: no result")
 	}
@@ -313,7 +313,7 @@ func TestContractBadPath_Configure_TestBoundary_MissingTestID(t *testing.T) {
 
 func TestContractBadPath_Configure_NoiseRule_Remove_MissingRuleID(t *testing.T) {
 	env := newConfigureContractEnv(t)
-	result, ok := env.callConfigure(t, `{"action":"noise_rule","noise_action":"remove"}`)
+	result, ok := env.callConfigure(t, `{"what":"noise_rule","noise_action":"remove"}`)
 	if !ok {
 		t.Fatal("configure noise_rule remove: no result")
 	}
@@ -322,7 +322,7 @@ func TestContractBadPath_Configure_NoiseRule_Remove_MissingRuleID(t *testing.T) 
 
 func TestContractBadPath_Interact_Highlight_MissingSelector(t *testing.T) {
 	env := newInteractContractEnv(t)
-	result, ok := env.callInteract(t, `{"action":"highlight"}`)
+	result, ok := env.callInteract(t, `{"what":"highlight"}`)
 	if !ok {
 		t.Fatal("interact highlight: no result")
 	}
@@ -331,7 +331,7 @@ func TestContractBadPath_Interact_Highlight_MissingSelector(t *testing.T) {
 
 func TestContractBadPath_Interact_ExecuteJS_MissingScript(t *testing.T) {
 	env := newInteractContractEnv(t)
-	result, ok := env.callInteract(t, `{"action":"execute_js"}`)
+	result, ok := env.callInteract(t, `{"what":"execute_js"}`)
 	if !ok {
 		t.Fatal("interact execute_js: no result")
 	}
@@ -340,7 +340,7 @@ func TestContractBadPath_Interact_ExecuteJS_MissingScript(t *testing.T) {
 
 func TestContractBadPath_Interact_Navigate_MissingURL(t *testing.T) {
 	env := newInteractContractEnv(t)
-	result, ok := env.callInteract(t, `{"action":"navigate"}`)
+	result, ok := env.callInteract(t, `{"what":"navigate"}`)
 	if !ok {
 		t.Fatal("interact navigate: no result")
 	}
@@ -349,7 +349,7 @@ func TestContractBadPath_Interact_Navigate_MissingURL(t *testing.T) {
 
 func TestContractBadPath_Interact_LoadState_MissingName(t *testing.T) {
 	env := newInteractContractEnv(t)
-	result, ok := env.callInteract(t, `{"action":"load_state"}`)
+	result, ok := env.callInteract(t, `{"what":"load_state"}`)
 	if !ok {
 		t.Fatal("interact load_state: no result")
 	}
@@ -358,7 +358,7 @@ func TestContractBadPath_Interact_LoadState_MissingName(t *testing.T) {
 
 func TestContractBadPath_Interact_DeleteState_MissingName(t *testing.T) {
 	env := newInteractContractEnv(t)
-	result, ok := env.callInteract(t, `{"action":"delete_state"}`)
+	result, ok := env.callInteract(t, `{"what":"delete_state"}`)
 	if !ok {
 		t.Fatal("interact delete_state: no result")
 	}
@@ -371,7 +371,7 @@ func TestContractBadPath_Interact_DeleteState_MissingName(t *testing.T) {
 
 func TestContractBadPath_Configure_Clear_InvalidBuffer(t *testing.T) {
 	env := newConfigureContractEnv(t)
-	result, ok := env.callConfigure(t, `{"action":"clear","buffer":"nonexistent_buffer"}`)
+	result, ok := env.callConfigure(t, `{"what":"clear","buffer":"nonexistent_buffer"}`)
 	if !ok {
 		t.Fatal("configure clear invalid buffer: no result")
 	}
@@ -380,7 +380,7 @@ func TestContractBadPath_Configure_Clear_InvalidBuffer(t *testing.T) {
 
 func TestContractBadPath_Configure_NoiseRule_UnknownAction(t *testing.T) {
 	env := newConfigureContractEnv(t)
-	result, ok := env.callConfigure(t, `{"action":"noise_rule","noise_action":"invalid_xyz"}`)
+	result, ok := env.callConfigure(t, `{"what":"noise_rule","noise_action":"invalid_xyz"}`)
 	if !ok {
 		t.Fatal("configure noise_rule unknown action: no result")
 	}

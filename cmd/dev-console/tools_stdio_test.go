@@ -148,10 +148,10 @@ func TestToolHandler_Configure_NoStdout(t *testing.T) {
 		action string
 		args   string
 	}{
-		{"health", "health", `{"action":"health"}`},
-		{"clear", "clear", `{"action":"clear"}`},
-		{"status", "status", `{"action":"status"}`},
-		{"store_invalid", "store", `{"action":"store","key":"test","value":"val"}`},
+		{"health", "health", `{"what":"health"}`},
+		{"clear", "clear", `{"what":"clear"}`},
+		{"status", "status", `{"what":"status"}`},
+		{"store_invalid", "store", `{"what":"store","key":"test","value":"val"}`},
 	}
 
 	for _, tc := range testCases {
@@ -184,11 +184,11 @@ func TestToolHandler_Generate_NoStdout(t *testing.T) {
 		format string
 		args   string
 	}{
-		{"test", "test", `{"format":"test","test_name":"example"}`},
-		{"reproduction", "reproduction", `{"format":"reproduction"}`},
-		{"har", "har", `{"format":"har"}`},
-		{"sarif", "sarif", `{"format":"sarif"}`},
-		{"pr_summary", "pr_summary", `{"format":"pr_summary"}`},
+		{"test", "test", `{"what":"test","test_name":"example"}`},
+		{"reproduction", "reproduction", `{"what":"reproduction"}`},
+		{"har", "har", `{"what":"har"}`},
+		{"sarif", "sarif", `{"what":"sarif"}`},
+		{"pr_summary", "pr_summary", `{"what":"pr_summary"}`},
 	}
 
 	for _, tc := range testCases {
@@ -221,10 +221,10 @@ func TestToolHandler_Interact_NoStdout(t *testing.T) {
 		action string
 		args   string
 	}{
-		{"highlight", "highlight", `{"action":"highlight","selector":".test"}`},
-		{"save_state", "save_state", `{"action":"save_state","name":"test"}`},
-		{"load_state", "load_state", `{"action":"load_state","name":"test"}`},
-		{"list_states", "list_states", `{"action":"list_states"}`},
+		{"highlight", "highlight", `{"what":"highlight","selector":".test"}`},
+		{"save_state", "save_state", `{"what":"save_state","name":"test"}`},
+		{"load_state", "load_state", `{"what":"load_state","name":"test"}`},
+		{"list_states", "list_states", `{"what":"list_states"}`},
 	}
 
 	for _, tc := range testCases {
@@ -258,9 +258,9 @@ func TestToolHandler_HandleToolCall_NoStdout(t *testing.T) {
 		args string
 	}{
 		{"observe_errors", "observe", `{"what":"errors"}`},
-		{"configure_health", "configure", `{"action":"health"}`},
-		{"generate_test", "generate", `{"format":"test","test_name":"x"}`},
-		{"interact_highlight", "interact", `{"action":"highlight","selector":"div"}`},
+		{"configure_health", "configure", `{"what":"health"}`},
+		{"generate_test", "generate", `{"what":"test","test_name":"x"}`},
+		{"interact_highlight", "interact", `{"what":"highlight","selector":"div"}`},
 		{"unknown_tool", "nonexistent", `{}`},
 	}
 

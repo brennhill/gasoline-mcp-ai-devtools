@@ -52,8 +52,8 @@ If you only need a single metric (e.g. LCP), call observe(what:"vitals") directl
 
 ## Steps
 
-1. {"tool":"configure","arguments":{"action":"health"}}
-2. {"tool":"interact","arguments":{"action":"navigate","url":"<target-url>"}}
+1. {"tool":"configure","arguments":{"what":"health"}}
+2. {"tool":"interact","arguments":{"what":"navigate","url":"<target-url>"}}
 3. {"tool":"observe","arguments":{"what":"vitals"}}
 4. {"tool":"observe","arguments":{"what":"network_waterfall","status_min":400}}
 5. {"tool":"observe","arguments":{"what":"actions","last_n":30}}
@@ -83,10 +83,10 @@ Use for deep profiling and remediation planning.
 ## Steps
 
 1. Baseline health:
-   {"tool":"configure","arguments":{"action":"health"}}
+   {"tool":"configure","arguments":{"what":"health"}}
    {"tool":"observe","arguments":{"what":"page"}}
 2. Capture navigation perf diff:
-   {"tool":"interact","arguments":{"action":"navigate","url":"<target-url>","analyze":true}}
+   {"tool":"interact","arguments":{"what":"navigate","url":"<target-url>","analyze":true}}
 3. Collect web vitals:
    {"tool":"observe","arguments":{"what":"vitals"}}
 4. Collect network hotspots:
@@ -118,7 +118,7 @@ For a single element check, call analyze(what:"dom", selector:"...") directly.
 
 ## Steps
 
-1. {"tool":"configure","arguments":{"action":"health"}}
+1. {"tool":"configure","arguments":{"what":"health"}}
 2. {"tool":"analyze","arguments":{"what":"accessibility"}}
 3. {"tool":"observe","arguments":{"what":"command_result","correlation_id":"<from analyze>"}}
 
@@ -139,7 +139,7 @@ Use for triage plus implementation-ready fixes.
 
 ## Steps
 
-1. {"tool":"configure","arguments":{"action":"health"}}
+1. {"tool":"configure","arguments":{"what":"health"}}
 2. {"tool":"observe","arguments":{"what":"page"}}
 3. {"tool":"analyze","arguments":{"what":"accessibility"}}
 4. {"tool":"observe","arguments":{"what":"command_result","correlation_id":"<from analyze>"}}
@@ -165,7 +165,7 @@ For a single header/cookie check, call analyze(what:"security_audit") directly.
 
 ## Steps
 
-1. {"tool":"configure","arguments":{"action":"health"}}
+1. {"tool":"configure","arguments":{"what":"health"}}
 2. {"tool":"analyze","arguments":{"what":"security_audit"}}
 3. {"tool":"observe","arguments":{"what":"command_result","correlation_id":"<from analyze>"}}
 
@@ -186,7 +186,7 @@ Use for comprehensive browser-surface security review.
 
 ## Steps
 
-1. {"tool":"configure","arguments":{"action":"health"}}
+1. {"tool":"configure","arguments":{"what":"health"}}
 2. {"tool":"observe","arguments":{"what":"network_waterfall","limit":200}}
 3. {"tool":"analyze","arguments":{"what":"security_audit","severity_min":"medium"}}
 4. {"tool":"observe","arguments":{"what":"command_result","correlation_id":"<from security audit>"}}
@@ -218,15 +218,15 @@ Browser observability for AI coding agents. 5 tools for real-time browser teleme
 |------|---------|----------------|
 | observe | Read passive browser buffers | what: errors, logs, extension_logs, network_waterfall, network_bodies, websocket_events, websocket_status, actions, vitals, page, tabs, pilot, timeline, error_bundles, screenshot, command_result, pending_commands, failed_commands, saved_videos, recordings, recording_actions, log_diff_report |
 | analyze | Trigger active analysis (async) | what: dom, accessibility, performance, security_audit, third_party_audit, link_health, link_validation, page_summary, error_clusters, history, api_validation, annotations, annotation_detail, draw_history, draw_session |
-| generate | Create artifacts from captured data | format: test, reproduction, pr_summary, sarif, har, csp, sri, visual_test, annotation_report, annotation_issues, test_from_context, test_heal, test_classify |
-| configure | Session settings and utilities | action: health, store, load, noise_rule, clear, streaming, test_boundary_start, test_boundary_end, recording_start, recording_stop, playback, log_diff |
-| interact | Browser automation (needs AI Web Pilot) | action: click, type, select, check, navigate, refresh, execute_js, highlight, subtitle, key_press, scroll_to, wait_for, get_text, get_value, get_attribute, set_attribute, focus, list_interactive, save_state, load_state, list_states, delete_state, record_start, record_stop, upload, draw_mode_start, back, forward, new_tab, screenshot (alias of observe what=screenshot) |
+| generate | Create artifacts from captured data | what: test, reproduction, pr_summary, sarif, har, csp, sri, visual_test, annotation_report, annotation_issues, test_from_context, test_heal, test_classify |
+| configure | Session settings and utilities | what: health, store, load, noise_rule, clear, streaming, test_boundary_start, test_boundary_end, recording_start, recording_stop, playback, log_diff |
+| interact | Browser automation (needs AI Web Pilot) | what: click, type, select, check, navigate, refresh, execute_js, highlight, subtitle, key_press, scroll_to, wait_for, get_text, get_value, get_attribute, set_attribute, focus, list_interactive, save_state, load_state, list_states, delete_state, record_start, record_stop, upload, draw_mode_start, back, forward, new_tab, screenshot (alias of observe what=screenshot) |
 
 ## Key Patterns
 
 ### Check Extension Status First
 Always verify the extension is connected before debugging:
-  {"tool":"configure","arguments":{"action":"health"}}
+  {"tool":"configure","arguments":{"what":"health"}}
 If extension_connected is false, ask the user to click "Track This Tab" in the extension popup.
 
 ### Async Commands (analyze tool)
@@ -254,20 +254,20 @@ Use restart_on_eviction=true if a cursor expires.
   {"tool":"analyze","arguments":{"what":"dom","selector":".error-message"}}
 
   // Generate Playwright test from session
-  {"tool":"generate","arguments":{"format":"test","test_name":"user_login"}}
+  {"tool":"generate","arguments":{"what":"test","test_name":"user_login"}}
 
   // Check Web Vitals (LCP, CLS, INP, FCP)
   {"tool":"observe","arguments":{"what":"vitals"}}
 
   // Navigate and measure performance (auto perf_diff)
-  {"tool":"interact","arguments":{"action":"navigate","url":"https://example.com"}}
+  {"tool":"interact","arguments":{"what":"navigate","url":"https://example.com"}}
 
   // Suppress noisy console errors
-  {"tool":"configure","arguments":{"action":"noise_rule","noise_action":"auto_detect"}}
+  {"tool":"configure","arguments":{"what":"noise_rule","noise_action":"auto_detect"}}
 
 ## Tips
 
-- Start with configure(action:"health") to verify extension is connected
+- Start with configure(what:"health") to verify extension is connected
 - Use observe(what:"error_bundles") instead of raw errors — includes surrounding context
 - Use observe(what:"page") to confirm which URL the browser is on
 - interact actions require the AI Web Pilot extension feature to be enabled
@@ -279,7 +279,7 @@ Use restart_on_eviction=true if a cursor expires.
 var quickstartContent = `# Gasoline MCP Quickstart
 
 ## 1. Health Check
-{"tool":"configure","arguments":{"action":"health"}}
+{"tool":"configure","arguments":{"what":"health"}}
 
 ## 2. Confirm Tracked Page
 {"tool":"observe","arguments":{"what":"page"}}
@@ -302,13 +302,13 @@ var quickstartContent = `# Gasoline MCP Quickstart
 {"tool":"observe","arguments":{"what":"command_result","correlation_id":"..."}}
 
 ## 8. Performance Check
-{"tool":"interact","arguments":{"action":"navigate","url":"https://example.com"}}
+{"tool":"interact","arguments":{"what":"navigate","url":"https://example.com"}}
 
 ## 9. Start Recording
-{"tool":"configure","arguments":{"action":"recording_start","name":"demo-run"}}
+{"tool":"configure","arguments":{"what":"recording_start","name":"demo-run"}}
 
 ## 10. Stop Recording
-{"tool":"configure","arguments":{"action":"recording_stop","recording_id":"..."}}
+{"tool":"configure","arguments":{"what":"recording_stop","recording_id":"..."}}
 `
 
 // demoScripts maps demo names to markdown demo script content.
@@ -331,7 +331,7 @@ Expected:
 Goal: highlight a layout issue and collect feedback.
 
 Steps:
-1. {"tool":"interact","arguments":{"action":"draw_mode_start","annot_session":"demo-ux"}}
+1. {"tool":"interact","arguments":{"what":"draw_mode_start","annot_session":"demo-ux"}}
 2. Ask user to annotate oversized image and desired size.
 3. {"tool":"analyze","arguments":{"what":"annotations","annot_session":"demo-ux","wait":true}}
 
@@ -343,9 +343,9 @@ Expected:
 Goal: show record → action → stop workflow.
 
 Steps:
-1. {"tool":"configure","arguments":{"action":"recording_start","name":"demo-flow"}}
-2. {"tool":"interact","arguments":{"action":"navigate","url":"http://localhost:xxxx"}}
-3. {"tool":"configure","arguments":{"action":"recording_stop","recording_id":"..."}}
+1. {"tool":"configure","arguments":{"what":"recording_start","name":"demo-flow"}}
+2. {"tool":"interact","arguments":{"what":"navigate","url":"http://localhost:xxxx"}}
+3. {"tool":"configure","arguments":{"what":"recording_stop","recording_id":"..."}}
 
 Expected:
 - Saved recording ID and playback instructions

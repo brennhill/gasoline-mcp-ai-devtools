@@ -15,7 +15,7 @@ info:
     │   Client   │                    │  (Go HTTP) │                    │ (Chrome)   │
     └────────────┘                    └────────────┘                    └────────────┘
          │                                   │                                 │
-         │ interact({action: "execute_js"})  │                                 │
+         │ interact({what: "execute_js"})     │                                 │
          ├──────────────────────────────────>│                                 │
          │                                   │                                 │
          │  {status: "queued",               │                                 │
@@ -128,7 +128,7 @@ paths:
                     queries:
                       - id: "q-1706123457"
                         type: "browser_action"
-                        params: '{"action":"navigate","url":"https://example.com"}'
+                        params: '{"what":"navigate","url":"https://example.com"}'
                         correlation_id: "corr-1706123457-def456"
         "401":
           description: Missing or invalid session ID

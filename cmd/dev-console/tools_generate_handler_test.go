@@ -55,7 +55,7 @@ func TestToolsGenerateDispatch_UnknownFormat(t *testing.T) {
 	t.Parallel()
 	h, _, _ := makeToolHandler(t)
 
-	resp := callGenerateRaw(h, `{"format":"nonexistent_format"}`)
+	resp := callGenerateRaw(h, `{"what":"nonexistent_format"}`)
 	result := parseToolResult(t, resp)
 	if !result.IsError {
 		t.Fatal("unknown format should return isError:true")
@@ -111,7 +111,7 @@ func TestToolsGenerateTest_ResponseFields(t *testing.T) {
 	t.Parallel()
 	h, _, _ := makeToolHandler(t)
 
-	resp := callGenerateRaw(h, `{"format":"test","test_name":"smoke"}`)
+	resp := callGenerateRaw(h, `{"what":"test","test_name":"smoke"}`)
 	result := parseToolResult(t, resp)
 	if result.IsError {
 		t.Fatalf("test format should succeed, got: %s", result.Content[0].Text)
@@ -155,7 +155,7 @@ func TestToolsGenerateTest_DefaultTestName(t *testing.T) {
 	t.Parallel()
 	h, _, _ := makeToolHandler(t)
 
-	resp := callGenerateRaw(h, `{"format":"test"}`)
+	resp := callGenerateRaw(h, `{"what":"test"}`)
 	result := parseToolResult(t, resp)
 	if result.IsError {
 		t.Fatalf("test format should succeed, got: %s", result.Content[0].Text)
@@ -176,7 +176,7 @@ func TestToolsGenerateTest_WithActions(t *testing.T) {
 		{Type: "click", Timestamp: 2000, URL: "https://example.com", Selectors: map[string]any{"css": "#btn"}},
 	})
 
-	resp := callGenerateRaw(h, `{"format":"test","test_name":"e2e"}`)
+	resp := callGenerateRaw(h, `{"what":"test","test_name":"e2e"}`)
 	result := parseToolResult(t, resp)
 	data := extractResultJSON(t, result)
 
@@ -202,7 +202,7 @@ func TestToolsGeneratePRSummary_ResponseFields(t *testing.T) {
 	t.Parallel()
 	h, _, _ := makeToolHandler(t)
 
-	resp := callGenerateRaw(h, `{"format":"pr_summary"}`)
+	resp := callGenerateRaw(h, `{"what":"pr_summary"}`)
 	result := parseToolResult(t, resp)
 	if result.IsError {
 		t.Fatalf("pr_summary should succeed, got: %s", result.Content[0].Text)
@@ -243,7 +243,7 @@ func TestToolsGeneratePRSummary_WithActivity(t *testing.T) {
 		{Type: "click", Timestamp: time.Now().UnixMilli(), URL: "https://example.com"},
 	})
 
-	resp := callGenerateRaw(h, `{"format":"pr_summary"}`)
+	resp := callGenerateRaw(h, `{"what":"pr_summary"}`)
 	result := parseToolResult(t, resp)
 	data := extractResultJSON(t, result)
 
@@ -264,7 +264,7 @@ func TestToolsGenerateCSP_EmptyNetwork(t *testing.T) {
 	t.Parallel()
 	h, _, _ := makeToolHandler(t)
 
-	resp := callGenerateRaw(h, `{"format":"csp"}`)
+	resp := callGenerateRaw(h, `{"what":"csp"}`)
 	result := parseToolResult(t, resp)
 	if result.IsError {
 		t.Fatalf("csp empty should succeed, got: %s", result.Content[0].Text)
@@ -293,7 +293,7 @@ func TestToolsGenerateCSP_WithNetworkData(t *testing.T) {
 		{URL: "https://fonts.googleapis.com/css", ContentType: "text/css", Status: 200, Timestamp: time.Now().UTC().Format(time.RFC3339)},
 	})
 
-	resp := callGenerateRaw(h, `{"format":"csp"}`)
+	resp := callGenerateRaw(h, `{"what":"csp"}`)
 	result := parseToolResult(t, resp)
 	if result.IsError {
 		t.Fatalf("csp should succeed, got: %s", result.Content[0].Text)
@@ -336,7 +336,7 @@ func TestToolsGenerateCSP_DefaultMode(t *testing.T) {
 	})
 
 	// No mode param should default to "moderate"
-	resp := callGenerateRaw(h, `{"format":"csp"}`)
+	resp := callGenerateRaw(h, `{"what":"csp"}`)
 	result := parseToolResult(t, resp)
 	data := extractResultJSON(t, result)
 	if data["mode"] != "moderate" {
@@ -352,7 +352,7 @@ func TestToolsGenerateSRI_EmptyNetwork(t *testing.T) {
 	t.Parallel()
 	h, _, _ := makeToolHandler(t)
 
-	resp := callGenerateRaw(h, `{"format":"sri"}`)
+	resp := callGenerateRaw(h, `{"what":"sri"}`)
 	result := parseToolResult(t, resp)
 	if result.IsError {
 		t.Fatalf("sri empty should succeed, got: %s", result.Content[0].Text)
@@ -377,7 +377,7 @@ func TestToolsGenerateHAR_EmptyNetwork(t *testing.T) {
 	t.Parallel()
 	h, _, _ := makeToolHandler(t)
 
-	resp := callGenerateRaw(h, `{"format":"har"}`)
+	resp := callGenerateRaw(h, `{"what":"har"}`)
 	result := parseToolResult(t, resp)
 	if result.IsError {
 		t.Fatalf("har empty should succeed, got: %s", result.Content[0].Text)
@@ -398,7 +398,7 @@ func TestToolsGenerateSARIF_ResponseFields(t *testing.T) {
 	t.Parallel()
 	h, _, _ := makeToolHandler(t)
 
-	resp := callGenerateRaw(h, `{"format":"sarif"}`)
+	resp := callGenerateRaw(h, `{"what":"sarif"}`)
 	result := parseToolResult(t, resp)
 	if result.IsError {
 		t.Fatalf("sarif should succeed, got: %s", result.Content[0].Text)
@@ -425,12 +425,12 @@ func TestToolsGenerate_AllFormats_ResponseHasContent(t *testing.T) {
 		format string
 		args   string
 	}{
-		{"test", `{"format":"test"}`},
-		{"pr_summary", `{"format":"pr_summary"}`},
-		{"csp", `{"format":"csp"}`},
-		{"sri", `{"format":"sri"}`},
-		{"har", `{"format":"har"}`},
-		{"sarif", `{"format":"sarif"}`},
+		{"test", `{"what":"test"}`},
+		{"pr_summary", `{"what":"pr_summary"}`},
+		{"csp", `{"what":"csp"}`},
+		{"sri", `{"what":"sri"}`},
+		{"har", `{"what":"har"}`},
+		{"sarif", `{"what":"sarif"}`},
 	}
 
 	for _, tc := range formats {

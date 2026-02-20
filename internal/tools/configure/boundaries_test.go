@@ -166,7 +166,7 @@ func TestBuildTestBoundaryEndResponse(t *testing.T) {
 	t.Parallel()
 
 	result := &TestBoundaryEndResult{TestID: "test-789"}
-	resp := BuildTestBoundaryEndResponse(1, result)
+	resp := BuildTestBoundaryEndResponse(1, result, true)
 
 	text := parseResultText(t, resp.Result)
 	if !strings.Contains(text, "test-789") {

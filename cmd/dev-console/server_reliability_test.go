@@ -487,9 +487,9 @@ func TestReliability_Recovery_InvalidToolCalls(t *testing.T) {
 		{"null arguments", `{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"observe","arguments":null}}`},
 		{"wrong argument type", `{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"observe","arguments":"not an object"}}`},
 		{"invalid observe mode", `{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"observe","arguments":{"what":"nonexistent_mode"}}}`},
-		{"invalid configure action", `{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"configure","arguments":{"action":"nonexistent_action"}}}`},
-		{"invalid generate format", `{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"generate","arguments":{"format":"nonexistent_format"}}}`},
-		{"invalid interact action", `{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"interact","arguments":{"action":"nonexistent_action"}}}`},
+		{"invalid configure action", `{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"configure","arguments":{"what":"nonexistent_action"}}}`},
+		{"invalid generate format", `{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"generate","arguments":{"what":"nonexistent_format"}}}`},
+		{"invalid interact action", `{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"interact","arguments":{"what":"nonexistent_action"}}}`},
 		{"negative limit", `{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"observe","arguments":{"what":"logs","limit":-100}}}`},
 		{"huge limit", `{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"observe","arguments":{"what":"logs","limit":999999999}}}`},
 	}

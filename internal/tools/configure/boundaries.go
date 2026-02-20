@@ -78,11 +78,11 @@ func ParseTestBoundaryEnd(reqID any, args json.RawMessage) (*TestBoundaryEndResu
 }
 
 // BuildTestBoundaryEndResponse builds the MCP response for a validated test_boundary_end.
-func BuildTestBoundaryEndResponse(reqID any, r *TestBoundaryEndResult) mcp.JSONRPCResponse {
+func BuildTestBoundaryEndResponse(reqID any, r *TestBoundaryEndResult, wasActive bool) mcp.JSONRPCResponse {
 	return mcp.JSONRPCResponse{JSONRPC: "2.0", ID: reqID, Result: mcp.JSONResponse("Test boundary ended", map[string]any{
 		"status":     "ok",
 		"test_id":    r.TestID,
-		"was_active": true,
+		"was_active": wasActive,
 		"message":    "Test boundary ended",
 	})}
 }

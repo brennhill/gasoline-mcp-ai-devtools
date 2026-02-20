@@ -108,9 +108,10 @@ func getValidConfigureActions() string {
 	return strings.Join(actions, ", ")
 }
 
-// toolConfigure dispatches configure requests based on the 'action' parameter.
+// toolConfigure dispatches configure requests based on the 'what' parameter.
 func (h *ToolHandler) toolConfigure(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	var params struct {
+		What   string `json:"what"`
 		Action string `json:"action"`
 	}
 	if len(args) > 0 {
@@ -119,15 +120,20 @@ func (h *ToolHandler) toolConfigure(req JSONRPCRequest, args json.RawMessage) JS
 		}
 	}
 
-	if params.Action == "" {
-		validActions := getValidConfigureActions()
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrMissingParam, "Required parameter 'action' is missing", "Add the 'action' parameter and call again", withParam("action"), withHint("Valid values: "+validActions))}
+	what := params.What
+	if what == "" {
+		what = params.Action
 	}
 
-	handler, ok := configureHandlers[params.Action]
+	if what == "" {
+		validActions := getValidConfigureActions()
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrMissingParam, "Required parameter 'what' is missing", "Add the 'what' parameter and call again", withParam("what"), withHint("Valid values: "+validActions))}
+	}
+
+	handler, ok := configureHandlers[what]
 	if !ok {
 		validActions := getValidConfigureActions()
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrUnknownMode, "Unknown configure action: "+params.Action, "Use a valid action from the 'action' enum", withParam("action"), withHint("Valid values: "+validActions))}
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrUnknownMode, "Unknown configure action: "+what, "Use a valid action from the 'what' enum", withParam("what"), withHint("Valid values: "+validActions))}
 	}
 
 	return handler(h, req, args)
@@ -600,6 +606,15 @@ func (h *ToolHandler) toolConfigureTestBoundaryStart(req JSONRPCRequest, args js
 	if errResp != nil {
 		return *errResp
 	}
+
+	// Track the active boundary
+	h.activeBoundariesMu.Lock()
+	if h.activeBoundaries == nil {
+		h.activeBoundaries = make(map[string]time.Time)
+	}
+	h.activeBoundaries[result.TestID] = time.Now()
+	h.activeBoundariesMu.Unlock()
+
 	return cfg.BuildTestBoundaryStartResponse(req.ID, result)
 }
 
@@ -608,7 +623,25 @@ func (h *ToolHandler) toolConfigureTestBoundaryEnd(req JSONRPCRequest, args json
 	if errResp != nil {
 		return *errResp
 	}
-	return cfg.BuildTestBoundaryEndResponse(req.ID, result)
+
+	// Check if this boundary was actually started
+	h.activeBoundariesMu.Lock()
+	_, wasActive := h.activeBoundaries[result.TestID]
+	if wasActive {
+		delete(h.activeBoundaries, result.TestID)
+	}
+	h.activeBoundariesMu.Unlock()
+
+	if !wasActive {
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(
+			ErrInvalidParam,
+			"No active test boundary for test_id '"+result.TestID+"'",
+			"Call configure({what: 'test_boundary_start', test_id: '"+result.TestID+"'}) first",
+			withParam("test_id"),
+		)}
+	}
+
+	return cfg.BuildTestBoundaryEndResponse(req.ID, result, wasActive)
 }
 
 // handleDescribeCapabilities returns machine-readable tool metadata derived from ToolsList().

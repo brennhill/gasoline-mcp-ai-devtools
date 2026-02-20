@@ -16,7 +16,7 @@ func TestHandleBrowserActionNavigate_Success(t *testing.T) {
 	env := newInteractTestEnv(t)
 	env.capture.SetPilotEnabled(true)
 
-	result, ok := env.callInteract(t, `{"action":"navigate","url":"https://example.com/page"}`)
+	result, ok := env.callInteract(t, `{"what":"navigate","url":"https://example.com/page"}`)
 	if !ok {
 		t.Fatal("navigate should return result")
 	}
@@ -68,7 +68,7 @@ func TestHandlePilotExecuteJS_Success(t *testing.T) {
 	env := newInteractTestEnv(t)
 	env.capture.SetPilotEnabled(true)
 
-	result, ok := env.callInteract(t, `{"action":"execute_js","script":"document.title"}`)
+	result, ok := env.callInteract(t, `{"what":"execute_js","script":"document.title"}`)
 	if !ok {
 		t.Fatal("execute_js should return result")
 	}
