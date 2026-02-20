@@ -1,4 +1,5 @@
-package capture
+// state_path_test.go — Tests for recording storage directory migration and state location.
+package recording
 
 import (
 	"encoding/json"
@@ -7,7 +8,6 @@ import (
 	"testing"
 	"time"
 
-	recordingtypes "github.com/dev-console/dev-console/internal/recording"
 	"github.com/dev-console/dev-console/internal/state"
 )
 
@@ -90,14 +90,14 @@ func writeLegacyRecording(t *testing.T, id string) {
 		t.Fatalf("os.MkdirAll(%q) error = %v", recordingDir, err)
 	}
 
-	meta := recordingtypes.RecordingMetadata{
+	meta := RecordingMetadata{
 		ID:          id,
 		Name:        "legacy",
 		CreatedAt:   time.Now().UTC().Format(time.RFC3339),
 		StartURL:    "https://example.com",
 		Duration:    10,
 		ActionCount: 1,
-		Actions: []recordingtypes.RecordingAction{
+		Actions: []RecordingAction{
 			{Type: "click", Selector: "#btn", TimestampMs: time.Now().UnixMilli()},
 		},
 	}

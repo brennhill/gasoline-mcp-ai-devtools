@@ -1,73 +1,11 @@
-// recording_playback_logdiff_test.go — Tests for playback status, log diff, delegation, and helper functions.
-package capture
+// playback_logdiff_test.go — Tests for playback status, log diff, and helper functions.
+package recording
 
 import (
 	"strings"
 	"testing"
 	"time"
-
-	"github.com/dev-console/dev-console/internal/state"
 )
-
-// ============================================
-// Capture Delegation Tests
-// ============================================
-
-func TestNewCaptureDelegation_RecordingManager(t *testing.T) {
-	stateRoot := t.TempDir()
-	t.Setenv(state.StateDirEnv, stateRoot)
-
-	c := NewCapture()
-	t.Cleanup(c.Close)
-
-	id, err := c.StartRecording("delegate-test", "https://example.com", true)
-	if err != nil {
-		t.Fatalf("StartRecording error = %v", err)
-	}
-	if id == "" {
-		t.Fatal("StartRecording returned empty id")
-	}
-
-	err = c.AddRecordingAction(RecordingAction{Type: "click", Selector: "#btn"})
-	if err != nil {
-		t.Fatalf("AddRecordingAction error = %v", err)
-	}
-
-	actionCount, duration, err := c.StopRecording(id)
-	if err != nil {
-		t.Fatalf("StopRecording error = %v", err)
-	}
-	if actionCount != 1 {
-		t.Errorf("actionCount = %d, want 1", actionCount)
-	}
-	if duration < 0 {
-		t.Errorf("duration = %d, want >= 0", duration)
-	}
-
-	info, err := c.GetStorageInfo()
-	if err != nil {
-		t.Fatalf("GetStorageInfo error = %v", err)
-	}
-	if info.MaxBytes != recordingStorageMax {
-		t.Errorf("MaxBytes = %d, want %d", info.MaxBytes, recordingStorageMax)
-	}
-	if info.WarningBytes != recordingWarningLevel {
-		t.Errorf("WarningBytes = %d, want %d", info.WarningBytes, recordingWarningLevel)
-	}
-
-	err = c.RecalculateStorageUsed()
-	if err != nil {
-		t.Fatalf("RecalculateStorageUsed error = %v", err)
-	}
-
-	rec := &Recording{
-		Actions: []RecordingAction{{Type: "click"}, {Type: "type"}},
-	}
-	counts := c.CategorizeActionTypes(rec)
-	if counts["click"] != 1 || counts["type"] != 1 {
-		t.Errorf("CategorizeActionTypes = %+v, want click=1,type=1", counts)
-	}
-}
 
 // ============================================
 // GetPlaybackStatus Tests
@@ -292,7 +230,7 @@ func TestNewLogDiffResult_FixedReport(t *testing.T) {
 }
 
 // ============================================
-// countActionTypes Tests
+// CountActionTypes Tests
 // ============================================
 
 func TestNewCountActionTypes(t *testing.T) {
@@ -304,7 +242,7 @@ func TestNewCountActionTypes(t *testing.T) {
 		{Type: "navigate"}, {Type: "scroll"},
 	}
 
-	errors, clicks, types, navigates := countActionTypes(actions)
+	errors, clicks, types, navigates := CountActionTypes(actions)
 
 	if errors != 1 {
 		t.Errorf("errors = %d, want 1", errors)
@@ -323,7 +261,7 @@ func TestNewCountActionTypes(t *testing.T) {
 func TestNewCountActionTypes_Empty(t *testing.T) {
 	t.Parallel()
 
-	errors, clicks, types, navigates := countActionTypes([]RecordingAction{})
+	errors, clicks, types, navigates := CountActionTypes([]RecordingAction{})
 
 	if errors != 0 || clicks != 0 || types != 0 || navigates != 0 {
 		t.Errorf("all counts should be 0, got errors=%d, clicks=%d, types=%d, navigates=%d",
@@ -338,7 +276,7 @@ func TestNewCountActionTypes_UnknownTypes(t *testing.T) {
 		{Type: "scroll"}, {Type: "unknown"}, {Type: "custom"},
 	}
 
-	errors, clicks, types, navigates := countActionTypes(actions)
+	errors, clicks, types, navigates := CountActionTypes(actions)
 
 	if errors != 0 || clicks != 0 || types != 0 || navigates != 0 {
 		t.Errorf("unknown types should not be counted, got errors=%d, clicks=%d, types=%d, navigates=%d",
@@ -347,7 +285,7 @@ func TestNewCountActionTypes_UnknownTypes(t *testing.T) {
 }
 
 // ============================================
-// buildTypeValueMap Tests
+// BuildTypeValueMap Tests
 // ============================================
 
 func TestNewBuildTypeValueMap(t *testing.T) {
@@ -360,7 +298,7 @@ func TestNewBuildTypeValueMap(t *testing.T) {
 		{Type: "type", Selector: "", Text: "no-sel"},
 	}
 
-	values := buildTypeValueMap(actions)
+	values := BuildTypeValueMap(actions)
 
 	if values["#email"] != "user@test.com" {
 		t.Errorf("values[#email] = %q, want user@test.com", values["#email"])
@@ -379,7 +317,7 @@ func TestNewBuildTypeValueMap(t *testing.T) {
 func TestNewBuildTypeValueMap_Empty(t *testing.T) {
 	t.Parallel()
 
-	values := buildTypeValueMap([]RecordingAction{})
+	values := BuildTypeValueMap([]RecordingAction{})
 	if len(values) != 0 {
 		t.Errorf("values len = %d, want 0", len(values))
 	}
