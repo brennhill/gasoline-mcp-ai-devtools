@@ -180,6 +180,10 @@ type ToolHandler struct {
 	playbackMu       sync.RWMutex
 	playbackSessions map[string]*capture.PlaybackSession
 
+	// Interact recording state gate (record_start/record_stop sequencing).
+	recordInteractMu sync.Mutex
+	recordInteract   interactRecordingState
+
 	// Module registry for plugin-style tool dispatch (incremental migration).
 	toolModules *toolModuleRegistry
 }

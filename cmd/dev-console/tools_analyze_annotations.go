@@ -291,8 +291,76 @@ func (h *ToolHandler) toolGetDrawSession(req JSONRPCRequest, args json.RawMessag
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidJSON, "Corrupted draw session file: "+err.Error(), "The file may be damaged. Try a different session.")}
 	}
 
+	// Hydrate in-memory annotation stores so generate.annotation_* can consume
+	// sessions loaded from disk by analyze.draw_session.
+	h.hydrateAnnotationStoreFromDrawSession(data)
+
+	if name, ok := session["annot_session_name"].(string); ok && strings.TrimSpace(name) != "" {
+		// Alias for generate tool parameter naming.
+		session["annot_session"] = name
+	}
 	session["_file"] = params.File
 	session["_path"] = path
 
 	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Draw session loaded", session)}
+}
+
+type persistedDrawSession struct {
+	Annotations      []Annotation               `json:"annotations"`
+	ElementDetails   map[string]json.RawMessage `json:"element_details"`
+	PageURL          string                     `json:"page_url"`
+	TabID            int                        `json:"tab_id"`
+	Screenshot       string                     `json:"screenshot"`
+	Timestamp        int64                      `json:"timestamp"`
+	AnnotSessionName string                     `json:"annot_session_name"`
+}
+
+func (h *ToolHandler) hydrateAnnotationStoreFromDrawSession(raw []byte) {
+	var persisted persistedDrawSession
+	if err := json.Unmarshal(raw, &persisted); err != nil {
+		return
+	}
+
+	if persisted.TabID > 0 {
+		session := &AnnotationSession{
+			Annotations:    persisted.Annotations,
+			ScreenshotPath: persisted.Screenshot,
+			PageURL:        persisted.PageURL,
+			TabID:          persisted.TabID,
+			Timestamp:      persisted.Timestamp,
+		}
+		if session.Timestamp == 0 {
+			session.Timestamp = time.Now().UnixMilli()
+		}
+		h.annotationStore.StoreSession(session.TabID, session)
+
+		name := strings.TrimSpace(persisted.AnnotSessionName)
+		if name != "" && !namedSessionHasPage(h.annotationStore, name, session) {
+			h.annotationStore.AppendToNamedSession(name, session)
+		}
+	}
+
+	for correlationID, rawDetail := range persisted.ElementDetails {
+		var detail AnnotationDetail
+		if err := json.Unmarshal(rawDetail, &detail); err != nil {
+			continue
+		}
+		detail.CorrelationID = correlationID
+		h.annotationStore.StoreDetail(correlationID, detail)
+	}
+}
+
+func namedSessionHasPage(store *AnnotationStore, name string, session *AnnotationSession) bool {
+	ns := store.GetNamedSession(name)
+	if ns == nil {
+		return false
+	}
+	for _, page := range ns.Pages {
+		if page.TabID == session.TabID &&
+			page.Timestamp == session.Timestamp &&
+			page.PageURL == session.PageURL {
+			return true
+		}
+	}
+	return false
 }

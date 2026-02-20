@@ -16,8 +16,8 @@ import (
 // Constants
 
 const (
-	sequenceNamespace = "sequences"
-	maxSequenceSteps  = 50
+	sequenceNamespace  = "sequences"
+	maxSequenceSteps   = 50
 	maxSequenceNameLen = 64
 	defaultStepTimeout = 10000 // ms
 )
@@ -47,11 +47,12 @@ type SequenceSummary struct {
 
 // SequenceStepResult captures the outcome of one step during replay.
 type SequenceStepResult struct {
-	StepIndex  int    `json:"step_index"`
-	Action     string `json:"action"`
-	Status     string `json:"status"`
-	DurationMs int64  `json:"duration_ms"`
-	Error      string `json:"error,omitempty"`
+	StepIndex     int    `json:"step_index"`
+	Action        string `json:"action"`
+	Status        string `json:"status"`
+	DurationMs    int64  `json:"duration_ms"`
+	CorrelationID string `json:"correlation_id,omitempty"`
+	Error         string `json:"error,omitempty"`
 }
 
 // Replay mutex prevents concurrent sequence replays.
@@ -258,11 +259,11 @@ func (h *ToolHandler) toolConfigureDeleteSequence(req JSONRPCRequest, args json.
 
 func (h *ToolHandler) toolConfigureReplaySequence(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	var params struct {
-		Name           string            `json:"name"`
-		OverrideSteps  []json.RawMessage `json:"override_steps"`
-		StepTimeoutMs  int               `json:"step_timeout_ms"`
-		ContinueOnErr  *bool             `json:"continue_on_error"`
-		StopAfterStep  int               `json:"stop_after_step"`
+		Name          string            `json:"name"`
+		OverrideSteps []json.RawMessage `json:"override_steps"`
+		StepTimeoutMs int               `json:"step_timeout_ms"`
+		ContinueOnErr *bool             `json:"continue_on_error"`
+		StopAfterStep int               `json:"stop_after_step"`
 	}
 	lenientUnmarshal(args, &params)
 
@@ -303,6 +304,7 @@ func (h *ToolHandler) toolConfigureReplaySequence(req JSONRPCRequest, args json.
 	results := make([]SequenceStepResult, 0, seq.StepCount)
 	stepsExecuted := 0
 	stepsFailed := 0
+	stepsQueued := 0
 	maxSteps := seq.StepCount
 	if params.StopAfterStep > 0 && params.StopAfterStep < maxSteps {
 		maxSteps = params.StopAfterStep
@@ -321,14 +323,43 @@ func (h *ToolHandler) toolConfigureReplaySequence(req JSONRPCRequest, args json.
 		}
 		json.Unmarshal(stepArgs, &stepAction) //nolint:errcheck // best-effort extraction
 
+		replayStepArgs := forceReplayAsyncInteractStep(stepArgs)
 		stepStart := time.Now()
-		stepResp := h.toolInteract(req, stepArgs)
+		stepResp := h.toolInteract(req, replayStepArgs)
 		stepDuration := time.Since(stepStart).Milliseconds()
 
 		stepResult := SequenceStepResult{
 			StepIndex:  i,
 			Action:     stepAction.Action,
 			DurationMs: stepDuration,
+		}
+
+		if corrID := extractCorrelationIDFromToolResponse(stepResp); corrID != "" {
+			stepResult.CorrelationID = corrID
+			timeout := time.Duration(params.StepTimeoutMs) * time.Millisecond
+			if timeout > 0 {
+				cmd, found := h.capture.WaitForCommand(corrID, timeout)
+				if found {
+					switch cmd.Status {
+					case "pending":
+						stepResult.Status = "queued"
+						stepsQueued++
+					case "complete":
+						stepResult.Status = "ok"
+					default:
+						stepResult.Status = "error"
+						if cmd.Error != "" {
+							stepResult.Error = cmd.Error
+						} else {
+							stepResult.Error = "command failed with status " + cmd.Status
+						}
+						stepsFailed++
+					}
+				} else {
+					stepResult.Status = "queued"
+					stepsQueued++
+				}
+			}
 		}
 
 		if isErrorResponse(stepResp) {
@@ -343,7 +374,9 @@ func (h *ToolHandler) toolConfigureReplaySequence(req JSONRPCRequest, args json.
 			continue
 		}
 
-		stepResult.Status = "ok"
+		if stepResult.Status == "" {
+			stepResult.Status = "ok"
+		}
 		stepsExecuted++
 		results = append(results, stepResult)
 	}
@@ -355,6 +388,12 @@ func (h *ToolHandler) toolConfigureReplaySequence(req JSONRPCRequest, args json.
 	if stepsFailed > 0 && stepsExecuted < seq.StepCount {
 		status = "error"
 		message = fmt.Sprintf("Sequence failed at step %d/%d", stepsExecuted, seq.StepCount)
+	} else if stepsQueued > 0 && stepsFailed > 0 {
+		status = "partial"
+		message = fmt.Sprintf("Sequence replay queued with failures: %d queued, %d failed", stepsQueued, stepsFailed)
+	} else if stepsQueued > 0 {
+		status = "queued"
+		message = fmt.Sprintf("Sequence replay queued: %d/%d steps still running", stepsQueued, seq.StepCount)
 	} else if stepsFailed > 0 {
 		status = "partial"
 		message = fmt.Sprintf("Sequence partially replayed: %d/%d steps executed, %d failed", stepsExecuted-stepsFailed, seq.StepCount, stepsFailed)
@@ -367,6 +406,7 @@ func (h *ToolHandler) toolConfigureReplaySequence(req JSONRPCRequest, args json.
 		"name":           params.Name,
 		"steps_executed": stepsExecuted,
 		"steps_failed":   stepsFailed,
+		"steps_queued":   stepsQueued,
 		"steps_total":    seq.StepCount,
 		"duration_ms":    totalDuration,
 		"results":        results,
@@ -374,6 +414,42 @@ func (h *ToolHandler) toolConfigureReplaySequence(req JSONRPCRequest, args json.
 	}
 
 	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Sequence replay", responseData)}
+}
+
+// forceReplayAsyncInteractStep ensures replayed interact steps do not block on
+// extension execution. This keeps replay_sequence deterministic and avoids
+// transport-level timeouts for long-running actions.
+func forceReplayAsyncInteractStep(stepArgs json.RawMessage) json.RawMessage {
+	var argsMap map[string]any
+	if err := json.Unmarshal(stepArgs, &argsMap); err != nil {
+		return stepArgs
+	}
+	argsMap["sync"] = false
+	argsMap["wait"] = false
+	updated, err := json.Marshal(argsMap)
+	if err != nil {
+		return stepArgs
+	}
+	return updated
+}
+
+// extractCorrelationIDFromToolResponse returns correlation_id from JSON tool responses.
+func extractCorrelationIDFromToolResponse(resp JSONRPCResponse) string {
+	var result MCPToolResult
+	if err := json.Unmarshal(resp.Result, &result); err != nil || len(result.Content) == 0 {
+		return ""
+	}
+	text := result.Content[0].Text
+	jsonStart := strings.Index(text, "{")
+	if jsonStart < 0 {
+		return ""
+	}
+	var data map[string]any
+	if err := json.Unmarshal([]byte(text[jsonStart:]), &data); err != nil {
+		return ""
+	}
+	correlationID, _ := data["correlation_id"].(string)
+	return correlationID
 }
 
 // ============================================

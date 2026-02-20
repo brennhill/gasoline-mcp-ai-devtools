@@ -25,6 +25,24 @@ import (
 
 var maxRecordingUploadSizeBytes int64 = 1 << 30 // 1 GiB
 
+const (
+	recordingStateIdle            = "idle"
+	recordingStateAwaitingGesture = "awaiting_user_gesture"
+	recordingStateRecording       = "recording"
+	recordingStateStopping        = "stopping"
+
+	recordStartCommandTimeout = 2 * time.Minute
+	recordStopCommandTimeout  = 90 * time.Second
+)
+
+// interactRecordingState tracks interact(record_start/record_stop) lifecycle.
+type interactRecordingState struct {
+	State              string
+	StartCorrelationID string
+	StopCorrelationID  string
+	UpdatedAt          time.Time
+}
+
 // VideoRecordingMetadata is the sidecar JSON written next to each .webm file.
 type VideoRecordingMetadata struct {
 	Name            string `json:"name"`
@@ -157,6 +175,109 @@ func resolveRecordingPath(dir, name string) (fullName string, videoPath string) 
 	return fullName, videoPath
 }
 
+// extractRecordingLifecycleStatus pulls the extension-reported lifecycle status
+// from command result payloads ("recording", "saved", "error", etc.).
+func extractRecordingLifecycleStatus(result json.RawMessage) string {
+	if len(result) == 0 {
+		return ""
+	}
+	var payload struct {
+		Status string `json:"status"`
+	}
+	if err := json.Unmarshal(result, &payload); err != nil {
+		return ""
+	}
+	return strings.ToLower(strings.TrimSpace(payload.Status))
+}
+
+// resolveInteractRecordingState refreshes state using latest command results.
+func (h *ToolHandler) resolveInteractRecordingState() interactRecordingState {
+	h.recordInteractMu.Lock()
+	defer h.recordInteractMu.Unlock()
+
+	state := h.recordInteract
+	if state.State == "" {
+		state.State = recordingStateIdle
+	}
+
+	if state.StopCorrelationID != "" {
+		if stopCmd, found := h.capture.GetCommandResult(state.StopCorrelationID); found {
+			if stopCmd.Status == "pending" {
+				state.State = recordingStateStopping
+				state.UpdatedAt = time.Now()
+				h.recordInteract = state
+				return state
+			}
+			// Any terminal stop result returns the state machine to idle.
+			state = interactRecordingState{State: recordingStateIdle, UpdatedAt: time.Now()}
+			h.recordInteract = state
+			return state
+		}
+	}
+
+	if state.StartCorrelationID == "" {
+		state.State = recordingStateIdle
+		state.UpdatedAt = time.Now()
+		h.recordInteract = state
+		return state
+	}
+
+	startCmd, found := h.capture.GetCommandResult(state.StartCorrelationID)
+	if !found {
+		// Keep queued state until command result appears.
+		if state.State == "" {
+			state.State = recordingStateAwaitingGesture
+		}
+		state.UpdatedAt = time.Now()
+		h.recordInteract = state
+		return state
+	}
+
+	switch startCmd.Status {
+	case "pending":
+		state.State = recordingStateAwaitingGesture
+	case "complete":
+		switch extractRecordingLifecycleStatus(startCmd.Result) {
+		case recordingStateRecording:
+			state.State = recordingStateRecording
+		case recordingStateAwaitingGesture:
+			state.State = recordingStateAwaitingGesture
+		default:
+			state = interactRecordingState{State: recordingStateIdle}
+		}
+	default:
+		// error/timeout/expired/cancelled and unknown statuses are terminal.
+		state = interactRecordingState{State: recordingStateIdle}
+	}
+
+	state.UpdatedAt = time.Now()
+	h.recordInteract = state
+	return state
+}
+
+func (h *ToolHandler) setInteractRecordingStart(correlationID string) {
+	h.recordInteractMu.Lock()
+	defer h.recordInteractMu.Unlock()
+	h.recordInteract = interactRecordingState{
+		State:              recordingStateAwaitingGesture,
+		StartCorrelationID: correlationID,
+		UpdatedAt:          time.Now(),
+	}
+}
+
+func (h *ToolHandler) setInteractRecordingStopping(correlationID string) {
+	h.recordInteractMu.Lock()
+	defer h.recordInteractMu.Unlock()
+	state := h.recordInteract
+	if state.State == "" {
+		state.State = recordingStateIdle
+	}
+	state.State = recordingStateStopping
+	state.StopCorrelationID = correlationID
+	state.UpdatedAt = time.Now()
+	h.recordInteract = state
+}
+
 // queueRecordStart creates the pending query and returns the response for a record_start action.
 func (h *ToolHandler) queueRecordStart(req JSONRPCRequest, fullName, audio, videoPath string, fps, tabID int) JSONRPCResponse {
 	correlationID := newCorrelationID("rec")
@@ -171,12 +292,14 @@ func (h *ToolHandler) queueRecordStart(req JSONRPCRequest, fullName, audio, vide
 		TabID:         tabID,
 		CorrelationID: correlationID,
 	}
-	h.capture.CreatePendingQueryWithTimeout(query, queries.AsyncCommandTimeout, req.ClientID)
+	h.capture.CreatePendingQueryWithTimeout(query, recordStartCommandTimeout, req.ClientID)
+	h.setInteractRecordingStart(correlationID)
 
 	h.recordAIAction("record_start", "", map[string]any{"name": fullName, "fps": fps, "audio": audio})
 
 	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Recording queued", map[string]any{
 		"status":                "queued",
+		"recording_state":       recordingStateAwaitingGesture,
 		"correlation_id":        correlationID,
 		"name":                  fullName,
 		"fps":                   fps,
@@ -238,6 +361,26 @@ func (h *ToolHandler) handleRecordStop(req JSONRPCRequest, args json.RawMessage)
 		return resp
 	}
 
+	recordingState := h.resolveInteractRecordingState()
+	if recordingState.State != recordingStateRecording {
+		retry := "Run interact(action:'record_start') and wait for observe(what:'command_result') to report status 'recording' before stopping."
+		if recordingState.State == recordingStateAwaitingGesture {
+			retry = "Recording start is still awaiting user gesture. Ask the user to click the Gasoline icon, then retry stop after start reports status 'recording'."
+		}
+		if recordingState.State == recordingStateStopping {
+			retry = "A previous record_stop is still in progress. Poll observe(what:'command_result') for the stop correlation_id and wait for a terminal status."
+		}
+		msg := fmt.Sprintf("Cannot stop recording while state is %q", recordingState.State)
+		if recordingState.StartCorrelationID == "" {
+			msg = "Cannot stop recording: no active interact(record_start) session found"
+		}
+		return JSONRPCResponse{
+			JSONRPC: "2.0",
+			ID:      req.ID,
+			Result:  mcpStructuredError(ErrNoData, msg, retry, h.diagnosticHint()),
+		}
+	}
+
 	correlationID := newCorrelationID("recstop")
 
 	extParams := map[string]any{
@@ -252,14 +395,16 @@ func (h *ToolHandler) handleRecordStop(req JSONRPCRequest, args json.RawMessage)
 		TabID:         params.TabID,
 		CorrelationID: correlationID,
 	}
-	h.capture.CreatePendingQueryWithTimeout(query, queries.AsyncCommandTimeout, req.ClientID)
+	h.capture.CreatePendingQueryWithTimeout(query, recordStopCommandTimeout, req.ClientID)
+	h.setInteractRecordingStopping(correlationID)
 
 	h.recordAIAction("record_stop", "", nil)
 
 	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Recording stop queued", map[string]any{
-		"status":         "queued",
-		"correlation_id": correlationID,
-		"message":        "Recording stop queued. Use observe({what: 'command_result', correlation_id: '" + correlationID + "'}) to get the result.",
+		"status":          "queued",
+		"recording_state": recordingStateStopping,
+		"correlation_id":  correlationID,
+		"message":         "Recording stop queued. Use observe({what: 'command_result', correlation_id: '" + correlationID + "'}) to get the result.",
 	})}
 }
 

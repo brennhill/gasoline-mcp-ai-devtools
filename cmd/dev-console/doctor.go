@@ -281,7 +281,7 @@ func handleDoctorHTTP(w http.ResponseWriter, cap *capture.Capture) {
 
 // runDoctorChecks runs all live diagnostic checks against the capture instance.
 func runDoctorChecks(cap *capture.Capture) []doctorCheck {
-	checks := make([]doctorCheck, 0, 8)
+	checks := make([]doctorCheck, 0, 9)
 	snap := cap.GetHealthSnapshot()
 
 	// 1. Extension connectivity
@@ -362,6 +362,18 @@ func runDoctorChecks(cap *capture.Capture) []doctorCheck {
 			Fix:    "Wait for commands to complete, or check extension connectivity.",
 		})
 	}
+
+	// 6. Command execution reliability
+	cmdExec := buildCommandExecutionInfo(cap)
+	cmdExecCheck := doctorCheck{
+		Name:   "command_execution",
+		Status: cmdExec.Status,
+		Detail: cmdExec.Detail,
+	}
+	if cmdExec.Status != "pass" {
+		cmdExecCheck.Fix = "Inspect observe(what:\"failed_commands\") for recent expiry/timeout/error events and verify extension polling (/sync). If degradation persists, reload the extension or run configure(action:\"restart\")."
+	}
+	checks = append(checks, cmdExecCheck)
 
 	return checks
 }

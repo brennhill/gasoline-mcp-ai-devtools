@@ -304,6 +304,8 @@ func (h *ToolHandler) toolExportSARIF(req JSONRPCRequest, args json.RawMessage) 
 		Scope         string `json:"scope"`
 		IncludePasses bool   `json:"include_passes"`
 		SaveTo        string `json:"save_to"`
+		// Internal-use path for workflows that already executed accessibility.
+		A11yResult json.RawMessage `json:"a11y_result"`
 	}
 	if len(args) > 0 {
 		if err := json.Unmarshal(args, &arguments); err != nil {
@@ -311,16 +313,18 @@ func (h *ToolHandler) toolExportSARIF(req JSONRPCRequest, args json.RawMessage) 
 		}
 	}
 
-	// Run a11y audit to get violations — fall back to empty if no extension connected
-	var a11yResult json.RawMessage
-	if h.capture.IsExtensionConnected() {
-		var err error
-		a11yResult, err = h.ExecuteA11yQuery(arguments.Scope, nil, nil, false)
-		if err != nil {
+	// Use precomputed a11y results when available; otherwise run a11y audit.
+	a11yResult := arguments.A11yResult
+	if len(a11yResult) == 0 {
+		if h.capture.IsExtensionConnected() {
+			var err error
+			a11yResult, err = h.ExecuteA11yQuery(arguments.Scope, nil, nil, false)
+			if err != nil {
+				a11yResult = json.RawMessage("{}")
+			}
+		} else {
 			a11yResult = json.RawMessage("{}")
 		}
-	} else {
-		a11yResult = json.RawMessage("{}")
 	}
 
 	// Convert to SARIF

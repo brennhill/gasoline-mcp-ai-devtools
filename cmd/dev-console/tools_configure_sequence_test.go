@@ -347,6 +347,75 @@ func TestReplaySequence_OverrideStepsLengthMismatch(t *testing.T) {
 	assertIsError(t, resp, "invalid_param")
 }
 
+func TestReplaySequence_QueuesPendingAsyncCommands(t *testing.T) {
+	t.Parallel()
+	env := newSequenceTestEnv(t)
+	env.capture.SetPilotEnabled(true)
+
+	callConfigureRaw(env.handler, `{
+		"action": "save_sequence",
+		"name": "one-exec-step",
+		"steps": [{"action":"execute_js","script":"document.title"}]
+	}`)
+
+	resp := callConfigureRaw(env.handler, `{
+		"action": "replay_sequence",
+		"name": "one-exec-step",
+		"step_timeout_ms": 50
+	}`)
+	result := parseToolResult(t, resp)
+	assertNonErrorResponse(t, "replay_sequence queued", result)
+
+	data := extractResultJSON(t, result)
+	if status, _ := data["status"].(string); status != "queued" && status != "ok" {
+		t.Fatalf("status = %v, want queued|ok", data["status"])
+	}
+
+	stepsQueued, ok := data["steps_queued"].(float64)
+	if !ok {
+		t.Fatalf("steps_queued type = %T, want number", data["steps_queued"])
+	}
+	if stepsQueued < 1 {
+		t.Fatalf("steps_queued = %v, want >= 1", stepsQueued)
+	}
+
+	results, ok := data["results"].([]any)
+	if !ok || len(results) != 1 {
+		t.Fatalf("results = %#v, want exactly one step result", data["results"])
+	}
+
+	step0, ok := results[0].(map[string]any)
+	if !ok {
+		t.Fatalf("results[0] type = %T, want map[string]any", results[0])
+	}
+
+	correlationID, _ := step0["correlation_id"].(string)
+	if correlationID == "" {
+		t.Fatal("step result should include correlation_id for pending async command")
+	}
+	if stepStatus, _ := step0["status"].(string); stepStatus != "queued" && stepStatus != "ok" {
+		t.Fatalf("step status = %v, want queued|ok", step0["status"])
+	}
+}
+
+func TestForceReplayAsyncInteractStep(t *testing.T) {
+	t.Parallel()
+
+	original := json.RawMessage(`{"action":"execute_js","script":"1+1","wait":true,"sync":true}`)
+	mutated := forceReplayAsyncInteractStep(original)
+
+	var data map[string]any
+	if err := json.Unmarshal(mutated, &data); err != nil {
+		t.Fatalf("forceReplayAsyncInteractStep returned invalid JSON: %v", err)
+	}
+	if data["wait"] != false {
+		t.Fatalf("wait = %v, want false", data["wait"])
+	}
+	if data["sync"] != false {
+		t.Fatalf("sync = %v, want false", data["sync"])
+	}
+}
+
 // ============================================
 // Persistence Tests
 // ============================================
