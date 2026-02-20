@@ -470,6 +470,7 @@ func (h *MCPHandler) applyToolResponsePostProcessing(resp JSONRPCResponse, clien
 		resp = appendWarningsToResponse(resp, h.server.TakeWarnings())
 	}
 	resp = h.maybeAddVersionWarning(resp)
+	resp = maybeAddUpdateAvailableWarning(resp)
 	resp = maybeAddUpgradeWarning(resp)
 	return h.maybeAddTelemetrySummary(resp, clientID, toolName, telemetryModeOverride)
 }
@@ -500,6 +501,59 @@ func (h *MCPHandler) maybeAddVersionWarning(resp JSONRPCResponse) JSONRPCRespons
 		result.Content[0].Text = warning + result.Content[0].Text
 	} else {
 		// Insert warning as new first content block
+		result.Content = append([]MCPContentBlock{{Type: "text", Text: warning}}, result.Content...)
+	}
+	resultJSON, err := json.Marshal(result)
+	if err != nil {
+		return resp
+	}
+	resp.Result = json.RawMessage(resultJSON)
+	return resp
+}
+
+// updateNotifyLastShown tracks when the "update available" warning was last shown.
+// Used to enforce a daily cooldown so we don't nag on every tool call.
+var updateNotifyLastShown time.Time
+
+// maybeAddUpdateAvailableWarning prepends an "update available" notice when the
+// GitHub version check has found a newer release than the running daemon.
+// Shows at most once per day (24h cooldown). Skipped when a binary upgrade
+// is already pending (that warning is more actionable).
+func maybeAddUpdateAvailableWarning(resp JSONRPCResponse) JSONRPCResponse {
+	if resp.Result == nil {
+		return resp
+	}
+
+	// Skip if a binary upgrade is already pending — that's more actionable.
+	if binaryUpgradeState != nil {
+		if pending, _, _ := binaryUpgradeState.UpgradeInfo(); pending {
+			return resp
+		}
+	}
+
+	versionCheckMu.Lock()
+	availVer := availableVersion
+	versionCheckMu.Unlock()
+
+	if availVer == "" || !isNewerVersion(availVer, version) {
+		return resp
+	}
+
+	// Daily cooldown: don't nag more than once per 24h.
+	if !updateNotifyLastShown.IsZero() && time.Since(updateNotifyLastShown) < 24*time.Hour {
+		return resp
+	}
+	updateNotifyLastShown = time.Now()
+
+	warning := fmt.Sprintf("UPDATE AVAILABLE: Gasoline v%s is available (current: v%s). Run: npm install -g gasoline-mcp@latest\n\n", availVer, version)
+
+	var result MCPToolResult
+	if err := json.Unmarshal(resp.Result, &result); err != nil {
+		return resp
+	}
+	if len(result.Content) > 0 && result.Content[0].Type == "text" {
+		result.Content[0].Text = warning + result.Content[0].Text
+	} else {
 		result.Content = append([]MCPContentBlock{{Type: "text", Text: warning}}, result.Content...)
 	}
 	resultJSON, err := json.Marshal(result)
