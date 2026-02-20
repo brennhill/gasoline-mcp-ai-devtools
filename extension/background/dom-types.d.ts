@@ -2,6 +2,16 @@
  * Purpose: Shared DOM action contracts used by background dispatch and injected primitives.
  * Docs: docs/features/feature/interact-explore/index.md
  */
+export interface DOMMutationEntry {
+    type: 'added' | 'removed' | 'attribute';
+    tag?: string;
+    id?: string;
+    class?: string;
+    text_preview?: string;
+    attribute?: string;
+    old_value?: string;
+    new_value?: string;
+}
 export interface DOMResult {
     success: boolean;
     action: string;
@@ -19,6 +29,7 @@ export interface DOMResult {
         modified: number;
         summary: string;
     };
+    dom_mutations?: DOMMutationEntry[];
     analysis?: string;
 }
 export interface DOMPrimitiveOptions {
@@ -29,6 +40,7 @@ export interface DOMPrimitiveOptions {
     name?: string;
     timeout_ms?: number;
     analyze?: boolean;
+    observe_mutations?: boolean;
 }
 export interface DOMActionParams extends DOMPrimitiveOptions {
     action?: string;

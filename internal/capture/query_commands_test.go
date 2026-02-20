@@ -101,6 +101,80 @@ func TestNewQueryDispatcher_CompleteCommand_WithError(t *testing.T) {
 	}
 }
 
+func TestNewQueryDispatcher_ApplyCommandResult_ErrorStatus(t *testing.T) {
+	t.Parallel()
+
+	qd := NewQueryDispatcher()
+	defer qd.Close()
+
+	qd.RegisterCommand("corr-err-status", "q-err-status", 30*time.Second)
+	qd.ApplyCommandResult("corr-err-status", "error", nil, "execution failed")
+
+	completed := qd.GetCompletedCommands()
+	for _, cmd := range completed {
+		if cmd.CorrelationID == "corr-err-status" {
+			t.Fatal("error command should not remain in completedResults")
+		}
+	}
+
+	failed := qd.GetFailedCommands()
+	if len(failed) == 0 {
+		t.Fatal("expected failed command entry for error status")
+	}
+	var foundErr bool
+	for _, cmd := range failed {
+		if cmd.CorrelationID != "corr-err-status" {
+			continue
+		}
+		foundErr = true
+		if cmd.Status != "error" {
+			t.Errorf("Status = %q, want error", cmd.Status)
+		}
+		if cmd.Error != "execution failed" {
+			t.Errorf("Error = %q, want execution failed", cmd.Error)
+		}
+	}
+	if !foundErr {
+		t.Fatal("expected failed command with correlation_id corr-err-status")
+	}
+}
+
+func TestNewQueryDispatcher_ApplyCommandResult_TimeoutStatus(t *testing.T) {
+	t.Parallel()
+
+	qd := NewQueryDispatcher()
+	defer qd.Close()
+
+	qd.RegisterCommand("corr-timeout-status", "q-timeout-status", 30*time.Second)
+	qd.ApplyCommandResult("corr-timeout-status", "timeout", nil, "action timed out")
+
+	cmd, found := qd.GetCommandResult("corr-timeout-status")
+	if !found {
+		t.Fatal("GetCommandResult returned false for timeout status")
+	}
+	if cmd.Status != "timeout" {
+		t.Errorf("Status = %q, want timeout", cmd.Status)
+	}
+}
+
+func TestNewQueryDispatcher_ApplyCommandResult_UnknownStatusDefaultsComplete(t *testing.T) {
+	t.Parallel()
+
+	qd := NewQueryDispatcher()
+	defer qd.Close()
+
+	qd.RegisterCommand("corr-unknown-status", "q-unknown-status", 30*time.Second)
+	qd.ApplyCommandResult("corr-unknown-status", "mystery_status", json.RawMessage(`{"ok":true}`), "")
+
+	cmd, found := qd.GetCommandResult("corr-unknown-status")
+	if !found {
+		t.Fatal("GetCommandResult returned false")
+	}
+	if cmd.Status != "complete" {
+		t.Errorf("Status = %q, want complete for unknown normalized status", cmd.Status)
+	}
+}
+
 func TestNewQueryDispatcher_CompleteCommand_EmptyCorrelationID(t *testing.T) {
 	t.Parallel()
 

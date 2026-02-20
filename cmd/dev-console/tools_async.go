@@ -36,6 +36,25 @@ func newCorrelationID(prefix string) string {
 	return fmt.Sprintf("%s_%d_%d", prefix, time.Now().UnixNano(), randomInt63())
 }
 
+func canonicalLifecycleStatus(status string) string {
+	switch strings.ToLower(strings.TrimSpace(status)) {
+	case "queued":
+		return "queued"
+	case "pending", "running", "still_processing":
+		return "running"
+	case "complete":
+		return "complete"
+	case "error":
+		return "error"
+	case "timeout", "expired":
+		return "timeout"
+	case "cancelled", "canceled":
+		return "cancelled"
+	default:
+		return status
+	}
+}
+
 // ============================================
 // Sync-by-Default Command Dispatch
 // ============================================
@@ -65,10 +84,11 @@ func (h *ToolHandler) MaybeWaitForCommand(req JSONRPCRequest, correlationID stri
 
 	if !isSync {
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse(queuedSummary, map[string]any{
-			"status":         "queued",
-			"correlation_id": correlationID,
-			"queued":         true,
-			"final":          false,
+			"status":           "queued",
+			"lifecycle_status": "queued",
+			"correlation_id":   correlationID,
+			"queued":           true,
+			"final":            false,
 		})}
 	}
 
@@ -106,12 +126,13 @@ func (h *ToolHandler) MaybeWaitForCommand(req JSONRPCRequest, correlationID stri
 			totalWaitMs += retryWait.Milliseconds()
 		}
 		stillProcessing := map[string]any{
-			"status":         "still_processing",
-			"correlation_id": correlationID,
-			"queued":         false,
-			"final":          false,
-			"elapsed_ms":     cmd.ElapsedMs(),
-			"queue_depth":    h.capture.QueueDepth(),
+			"status":           "still_processing",
+			"lifecycle_status": "running",
+			"correlation_id":   correlationID,
+			"queued":           false,
+			"final":            false,
+			"elapsed_ms":       cmd.ElapsedMs(),
+			"queue_depth":      h.capture.QueueDepth(),
 			"retry_context": map[string]any{
 				"attempts":            attempts,
 				"total_wait_ms":       totalWaitMs,
@@ -225,11 +246,12 @@ func (h *ToolHandler) toolObserveFailedCommands(req JSONRPCRequest, args json.Ra
 
 func (h *ToolHandler) formatCommandResult(req JSONRPCRequest, cmd queries.CommandResult, corrID string) JSONRPCResponse {
 	responseData := map[string]any{
-		"correlation_id": cmd.CorrelationID,
-		"status":         cmd.Status,
-		"queued":         false,
-		"created_at":     cmd.CreatedAt.Format(time.RFC3339),
-		"elapsed_ms":     cmd.ElapsedMs(),
+		"correlation_id":   cmd.CorrelationID,
+		"status":           cmd.Status,
+		"lifecycle_status": canonicalLifecycleStatus(cmd.Status),
+		"queued":           false,
+		"created_at":       cmd.CreatedAt.Format(time.RFC3339),
+		"elapsed_ms":       cmd.ElapsedMs(),
 	}
 
 	switch cmd.Status {
@@ -262,6 +284,15 @@ func (h *ToolHandler) formatCommandResult(req JSONRPCRequest, cmd queries.Comman
 		responseData["retry"] = "The command took too long. The page may be unresponsive or the action is stuck. Try refreshing the page with interact action='refresh', then retry."
 		responseData["hint"] = h.DiagnosticHintString()
 		summary := fmt.Sprintf("FAILED — Command %s timed out: %s", corrID, cmd.Error)
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONErrorResponse(summary, responseData)}
+	case "cancelled":
+		responseData["final"] = true
+		responseData["error"] = ErrExtError
+		responseData["message"] = fmt.Sprintf("Command %s was cancelled before completion.", corrID)
+		if cmd.Error != "" {
+			responseData["detail"] = cmd.Error
+		}
+		summary := fmt.Sprintf("FAILED — Command %s cancelled", corrID)
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONErrorResponse(summary, responseData)}
 	default:
 		responseData["final"] = false
@@ -322,7 +353,7 @@ func enrichCommandResponseData(result json.RawMessage, responseData map[string]a
 	}
 
 	// Surface extension enrichment fields to top-level for easier LLM consumption.
-	for _, key := range []string{"timing", "dom_changes", "dom_summary", "analysis", "content_script_status", "resolved_tab_id", "resolved_url", "target_context", "effective_tab_id", "effective_url", "effective_title", "final_url", "title"} {
+	for _, key := range []string{"timing", "dom_changes", "dom_summary", "dom_mutations", "analysis", "content_script_status", "resolved_tab_id", "resolved_url", "target_context", "effective_tab_id", "effective_url", "effective_title", "final_url", "title"} {
 		if v, ok := extResult[key]; ok {
 			responseData[key] = v
 		}

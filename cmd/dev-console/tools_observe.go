@@ -66,6 +66,9 @@ var observeHandlers = map[string]ObserveHandler{
 	"screenshot": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 		return observe.GetScreenshot(h, req, args)
 	},
+	"storage": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+		return observe.GetStorage(h, req, args)
+	},
 	// Local handlers — depend on async/recording subsystems
 	"command_result": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 		return h.toolObserveCommandResult(req, args)

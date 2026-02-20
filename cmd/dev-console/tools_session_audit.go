@@ -181,12 +181,12 @@ func (h *ToolHandler) recordAuditToolCall(
 	success := resp.Error == nil && !isToolResultError(resp.Result)
 	entry := audit.AuditEntry{
 		AuditSessionID: sessionID,
-		ClientID:     normalizeAuditClientID(req.ClientID),
-		ToolName:     toolName,
-		Parameters:   string(args),
-		ResponseSize: len(resp.Result),
-		Duration:     time.Since(started).Milliseconds(),
-		Success:      success,
+		ClientID:       normalizeAuditClientID(req.ClientID),
+		ToolName:       toolName,
+		Parameters:     string(args),
+		ResponseSize:   len(resp.Result),
+		Duration:       time.Since(started).Milliseconds(),
+		Success:        success,
 	}
 	if !success {
 		entry.ErrorMessage = auditErrorMessage(resp)

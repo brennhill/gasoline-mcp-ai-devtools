@@ -26,7 +26,7 @@ const annotationWaitCommandTTL = 10 * time.Minute
 // If session is specified, returns the named multi-page session.
 func (h *ToolHandler) toolGetAnnotations(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	var params struct {
-		Wait    bool   `json:"wait"`
+		Wait         bool   `json:"wait"`
 		AnnotSession string `json:"annot_session"`
 	}
 	if len(args) > 0 {
@@ -101,13 +101,13 @@ func (h *ToolHandler) getNamedAnnotations(req JSONRPCRequest, sessionName string
 		h.annotationStore.RegisterWaiter(corrID, sessionName)
 
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Waiting for annotations", map[string]any{
-			"status":         "waiting_for_user",
-			"correlation_id": corrID,
-			"annot_session_name":   sessionName,
-			"pages":          []any{},
-			"page_count":     0,
-			"total_count":    0,
-			"message":        "Draw mode is active. The user is drawing annotations. Poll with observe({what: 'command_result', correlation_id: '" + corrID + "'}) to check for results.",
+			"status":             "waiting_for_user",
+			"correlation_id":     corrID,
+			"annot_session_name": sessionName,
+			"pages":              []any{},
+			"page_count":         0,
+			"total_count":        0,
+			"message":            "Draw mode is active. The user is drawing annotations. Poll with observe({what: 'command_result', correlation_id: '" + corrID + "'}) to check for results.",
 		})}
 	}
 
@@ -115,10 +115,10 @@ func (h *ToolHandler) getNamedAnnotations(req JSONRPCRequest, sessionName string
 	if ns == nil {
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("No annotations", map[string]any{
 			"annot_session_name": sessionName,
-			"pages":        []any{},
-			"page_count":   0,
-			"total_count":  0,
-			"message":      "Named session '" + sessionName + "' not found. Use interact({action: 'draw_mode_start', annot_session: '" + sessionName + "'}) to start.",
+			"pages":              []any{},
+			"page_count":         0,
+			"total_count":        0,
+			"message":            "Named session '" + sessionName + "' not found. Use interact({action: 'draw_mode_start', annot_session: '" + sessionName + "'}) to start.",
 		})}
 	}
 
@@ -144,9 +144,9 @@ func (h *ToolHandler) formatNamedAnnotationSession(req JSONRPCRequest, ns *Named
 
 	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Annotations retrieved", map[string]any{
 		"annot_session_name": ns.Name,
-		"pages":        pages,
-		"page_count":   len(ns.Pages),
-		"total_count":  totalCount,
+		"pages":              pages,
+		"page_count":         len(ns.Pages),
+		"total_count":        totalCount,
 	})}
 }
 
@@ -243,8 +243,8 @@ func (h *ToolHandler) toolListDrawHistory(req JSONRPCRequest, _ json.RawMessage)
 	})
 
 	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Draw session history", map[string]any{
-		"sessions":   sessions,
-		"count":      len(sessions),
+		"sessions":    sessions,
+		"count":       len(sessions),
 		"storage_dir": dir,
 	})}
 }

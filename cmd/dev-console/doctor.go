@@ -274,8 +274,8 @@ func handleDoctorHTTP(w http.ResponseWriter, cap *capture.Capture) {
 	_ = json.NewEncoder(w).Encode(map[string]any{
 		"status":                overallStatus,
 		"ready_for_interaction": readyForInteraction,
-		"version":              version,
-		"checks":               checks,
+		"version":               version,
+		"checks":                checks,
 	})
 }
 
@@ -410,7 +410,7 @@ func (h *ToolHandler) toolDoctor(req JSONRPCRequest) JSONRPCResponse {
 	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Doctor: "+overallStatus, map[string]any{
 		"status":                overallStatus,
 		"ready_for_interaction": readyForInteraction,
-		"checks":               checks,
-		"hint":                 h.DiagnosticHintString(),
+		"checks":                checks,
+		"hint":                  h.DiagnosticHintString(),
 	})}
 }

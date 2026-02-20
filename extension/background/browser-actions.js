@@ -158,7 +158,9 @@ export async function handleAsyncExecuteCommand(query, tabId, world, syncClient,
         catch {
             /* tab may have closed */
         }
-        sendAsyncResult(syncClient, query.id, query.correlation_id, 'complete', enrichedResult);
+        const status = result.success ? 'complete' : 'error';
+        const error = result.success ? undefined : result.error || result.message || 'execution_failed';
+        sendAsyncResult(syncClient, query.id, query.correlation_id, status, enrichedResult, error);
         debugLog(DebugCategory.CONNECTION, 'Completed async command', {
             correlationId: query.correlation_id,
             elapsed: Date.now() - startTime,
@@ -204,7 +206,7 @@ export async function handleAsyncBrowserAction(query, tabId, params, syncClient,
             sendAsyncResult(syncClient, query.id, query.correlation_id, 'complete', execResult);
         }
         else {
-            sendAsyncResult(syncClient, query.id, query.correlation_id, 'complete', null, execResult.error);
+            sendAsyncResult(syncClient, query.id, query.correlation_id, 'error', null, execResult.error);
         }
         debugLog(DebugCategory.CONNECTION, 'Completed async browser action', {
             correlationId: query.correlation_id,

@@ -189,6 +189,56 @@ describe('Bug #5: Async Execute Command Await', () => {
     assert.strictEqual(queuedResult.result.success, true)
   })
 
+  test('execute failures should post async status=error with error details', async () => {
+    const query = {
+      id: 'query-fail-1',
+      type: 'execute',
+      correlation_id: 'corr-fail-1',
+      params: JSON.stringify({ script: 'throw new Error("boom")' })
+    }
+
+    globalThis.chrome.tabs.sendMessage = mock.fn((_tabId, message) => {
+      if (message?.type === 'GASOLINE_EXECUTE_QUERY') {
+        return Promise.resolve({
+          success: false,
+          error: 'execution_failed',
+          message: 'boom'
+        })
+      }
+      return Promise.resolve({ success: true, result: 'ok' })
+    })
+
+    const mockSyncClient = { queueCommandResult: mock.fn() }
+    await bgModule.handlePendingQuery(query, mockSyncClient)
+
+    assert.strictEqual(mockSyncClient.queueCommandResult.mock.calls.length, 1)
+    const queuedResult = mockSyncClient.queueCommandResult.mock.calls[0].arguments[0]
+    assert.strictEqual(queuedResult.correlation_id, query.correlation_id)
+    assert.strictEqual(queuedResult.status, 'error')
+    assert.strictEqual(queuedResult.error, 'execution_failed')
+    assert.strictEqual(queuedResult.result.success, false)
+  })
+
+  test('execute with pilot disabled should post async status=error', async () => {
+    bgModule._resetPilotCacheForTesting(false)
+
+    const query = {
+      id: 'query-disabled-1',
+      type: 'execute',
+      correlation_id: 'corr-disabled-1',
+      params: JSON.stringify({ script: 'return 1' })
+    }
+
+    const mockSyncClient = { queueCommandResult: mock.fn() }
+    await bgModule.handlePendingQuery(query, mockSyncClient)
+
+    assert.strictEqual(mockSyncClient.queueCommandResult.mock.calls.length, 1)
+    const queuedResult = mockSyncClient.queueCommandResult.mock.calls[0].arguments[0]
+    assert.strictEqual(queuedResult.correlation_id, query.correlation_id)
+    assert.strictEqual(queuedResult.status, 'error')
+    assert.strictEqual(queuedResult.error, 'ai_web_pilot_disabled')
+  })
+
   test('consecutive execute queries should queue one result per correlation_id', async () => {
     const mockSyncClient = { queueCommandResult: mock.fn() }
     const operationCount = 6
@@ -278,6 +328,24 @@ describe('Bug #5: Async Browser Action Await (regression test)', () => {
       true,
       'Async browser action result was not posted - await may be missing'
     )
+  })
+
+  test('browser_action failures should post async status=error', async () => {
+    const query = {
+      id: 'browser-action-fail-1',
+      type: 'browser_action',
+      correlation_id: 'browser-corr-fail-1',
+      params: JSON.stringify({ action: 'unknown-action' })
+    }
+
+    const mockSyncClient = { queueCommandResult: mock.fn() }
+    await bgModule.handlePendingQuery(query, mockSyncClient)
+
+    assert.strictEqual(mockSyncClient.queueCommandResult.mock.calls.length, 1)
+    const queuedResult = mockSyncClient.queueCommandResult.mock.calls[0].arguments[0]
+    assert.strictEqual(queuedResult.correlation_id, query.correlation_id)
+    assert.strictEqual(queuedResult.status, 'error')
+    assert.strictEqual(queuedResult.error, 'unknown_action')
   })
 })
 

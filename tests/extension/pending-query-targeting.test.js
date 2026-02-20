@@ -174,7 +174,7 @@ describe('pending query targeting', () => {
     assert.strictEqual(mockSyncClient.queueCommandResult.mock.calls.length, 1)
 
     const queued = mockSyncClient.queueCommandResult.mock.calls[0].arguments[0]
-    assert.strictEqual(queued.status, 'complete')
+    assert.strictEqual(queued.status, 'error')
     assert.strictEqual(queued.result.error, 'missing_target')
     assert.ok(String(queued.error).includes('No target tab resolved'))
   })

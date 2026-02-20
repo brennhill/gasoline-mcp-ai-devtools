@@ -61,7 +61,7 @@ type SyncSettings struct {
 type SyncCommandResult struct {
 	ID            string          `json:"id"`
 	CorrelationID string          `json:"correlation_id,omitempty"`
-	Status        string          `json:"status"` // "complete", "error", "timeout"
+	Status        string          `json:"status"` // "complete", "error", "timeout", "cancelled"
 	Result        json.RawMessage `json:"result,omitempty"`
 	Error         string          `json:"error,omitempty"`
 }
@@ -153,7 +153,7 @@ func (c *Capture) processSyncCommandResults(results []SyncCommandResult, clientI
 			c.SetQueryResultWithClient(result.ID, result.Result, clientID)
 		}
 		if result.CorrelationID != "" {
-			c.CompleteCommand(result.CorrelationID, result.Result, result.Error)
+			c.ApplyCommandResult(result.CorrelationID, result.Status, result.Result, result.Error)
 		}
 	}
 }
@@ -251,7 +251,7 @@ func (c *Capture) HandleSync(w http.ResponseWriter, r *http.Request) {
 		util.SafeGo(func() {
 			c.emitLifecycleEvent("extension_disconnected", map[string]any{
 				"ext_session_id": state.extSessionID,
-				"client_id":  clientID,
+				"client_id":      clientID,
 			})
 		})
 	}

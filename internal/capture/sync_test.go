@@ -377,6 +377,45 @@ func TestHandleSync_AdaptivePoll_RevertsAfterResultDelivered(t *testing.T) {
 	}
 }
 
+func TestHandleSync_CommandResultPropagatesErrorStatus(t *testing.T) {
+	t.Parallel()
+	cap := NewCapture()
+
+	corrID := "sync-corr-error-001"
+	cap.RegisterCommand(corrID, "q-sync-error-001", queries.AsyncCommandTimeout)
+
+	req := SyncRequest{
+		ExtSessionID: "test_session",
+		CommandResults: []SyncCommandResult{
+			{
+				ID:            "q-sync-error-001",
+				CorrelationID: corrID,
+				Status:        "error",
+				Error:         "sync path failure",
+			},
+		},
+	}
+	body, _ := json.Marshal(req)
+	httpReq := httptest.NewRequest("POST", "/sync", bytes.NewReader(body))
+	w := httptest.NewRecorder()
+
+	cap.HandleSync(w, httpReq)
+	if w.Code != http.StatusOK {
+		t.Fatalf("Expected status 200, got %d", w.Code)
+	}
+
+	cmd, found := cap.GetCommandResult(corrID)
+	if !found {
+		t.Fatal("expected command result to be present for correlation_id")
+	}
+	if cmd.Status != "error" {
+		t.Errorf("command status = %q, want error", cmd.Status)
+	}
+	if cmd.Error != "sync path failure" {
+		t.Errorf("command error = %q, want sync path failure", cmd.Error)
+	}
+}
+
 // ============================================
 // Waterfall On-Demand Tests via Sync
 // ============================================
@@ -520,7 +559,7 @@ func TestHandleSync_LastCommandAckPreventsRedelivery(t *testing.T) {
 	}
 
 	ackReqBody, _ := json.Marshal(SyncRequest{
-		ExtSessionID:      "ack-session",
+		ExtSessionID:   "ack-session",
 		LastCommandAck: queryID,
 	})
 	ackReq := httptest.NewRequest("POST", "/sync", bytes.NewReader(ackReqBody))

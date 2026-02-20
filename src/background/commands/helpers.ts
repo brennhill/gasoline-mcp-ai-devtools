@@ -18,7 +18,7 @@ export type SendAsyncResultFn = (
   syncClient: SyncClient,
   queryId: string,
   correlationId: string,
-  status: 'complete' | 'error' | 'timeout',
+  status: 'complete' | 'error' | 'timeout' | 'cancelled',
   result?: unknown,
   error?: string
 ) => void
@@ -64,7 +64,7 @@ export function sendAsyncResult(
   syncClient: SyncClient,
   queryId: string,
   correlationId: string,
-  status: 'complete' | 'error' | 'timeout',
+  status: 'complete' | 'error' | 'timeout' | 'cancelled',
   result?: unknown,
   error?: string
 ): void {

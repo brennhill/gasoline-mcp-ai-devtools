@@ -417,4 +417,3 @@ func TestFastStart_OtherMethodsReturnQuickly(t *testing.T) {
 		})
 	}
 }
-

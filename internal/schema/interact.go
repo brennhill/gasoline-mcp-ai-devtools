@@ -141,6 +141,10 @@ func InteractToolSchema() mcp.MCPTool {
 					"type":        "boolean",
 					"description": "Enable perf profiling (captures perf_diff)",
 				},
+				"observe_mutations": map[string]any{
+					"type":        "boolean",
+					"description": "Track element-level DOM mutations during action execution",
+				},
 				"annot_session": map[string]any{
 					"type":        "string",
 					"description": "Named session for multi-page annotation review (applies to draw_mode_start). Accumulates annotations across pages under a shared session name.",

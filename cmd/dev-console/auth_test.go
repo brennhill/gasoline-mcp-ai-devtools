@@ -252,10 +252,10 @@ func TestAuth_UsesConstantTimeCompare(t *testing.T) {
 	}{
 		{"abc", "abc", 1},
 		{"abc", "abd", 0},
-		{"abc", "ab", 0},  // different lengths
-		{"", "", 1},        // both empty
-		{"abc", "", 0},     // one empty
-		{"", "abc", 0},     // other empty
+		{"abc", "ab", 0}, // different lengths
+		{"", "", 1},      // both empty
+		{"abc", "", 0},   // one empty
+		{"", "abc", 0},   // other empty
 	}
 	for _, p := range pairs {
 		got := subtle.ConstantTimeCompare([]byte(p.a), []byte(p.b))
@@ -276,9 +276,9 @@ func TestAuth_DifferentLengthKeys_Rejected(t *testing.T) {
 	}))
 
 	keys := []string{
-		"exact-length-ke",      // one char shorter
-		"exact-length-key!",    // one char longer
-		"e",                    // much shorter
+		"exact-length-ke",         // one char shorter
+		"exact-length-key!",       // one char longer
+		"e",                       // much shorter
 		strings.Repeat("x", 1000), // much longer
 	}
 
@@ -432,8 +432,8 @@ func TestAuth_SpecialCharacterKeys(t *testing.T) {
 		"key&with&ampersands",
 		"key/with/slashes",
 		"key+with+plus",
-		"a",                                // single char
-		strings.Repeat("k", 4096),          // very long key
+		"a",                       // single char
+		strings.Repeat("k", 4096), // very long key
 	}
 
 	for i, key := range specialKeys {

@@ -101,11 +101,11 @@ type FormField = act.FormField
 // handleFillFormAndSubmit fills multiple form fields and clicks a submit button.
 func (h *ToolHandler) handleFillFormAndSubmit(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	var params struct {
-		Fields          []FormField `json:"fields"`
-		SubmitSelector  string      `json:"submit_selector"`
-		SubmitIndex     *int        `json:"submit_index,omitempty"`
-		TabID           int         `json:"tab_id,omitempty"`
-		TimeoutMs       int         `json:"timeout_ms,omitempty"`
+		Fields         []FormField `json:"fields"`
+		SubmitSelector string      `json:"submit_selector"`
+		SubmitIndex    *int        `json:"submit_index,omitempty"`
+		TabID          int         `json:"tab_id,omitempty"`
+		TimeoutMs      int         `json:"timeout_ms,omitempty"`
 	}
 	if err := json.Unmarshal(args, &params); err != nil {
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidJSON, "Invalid JSON arguments: "+err.Error(), "Fix JSON syntax and call again")}
@@ -141,10 +141,10 @@ func (h *ToolHandler) handleFillFormAndSubmit(req JSONRPCRequest, args json.RawM
 		}
 
 		typeArgs := map[string]any{
-			"action":   "type",
-			"text":     field.Value,
-			"clear":    true,
-			"tab_id":   params.TabID,
+			"action": "type",
+			"text":   field.Value,
+			"clear":  true,
+			"tab_id": params.TabID,
 		}
 		if field.Index != nil {
 			typeArgs["index"] = *field.Index

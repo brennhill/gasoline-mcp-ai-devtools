@@ -29,7 +29,7 @@ export interface SyncExtensionLog {
 export interface SyncCommandResult {
     id: string;
     correlation_id?: string;
-    status: 'complete' | 'error' | 'timeout';
+    status: 'complete' | 'error' | 'timeout' | 'cancelled';
     result?: unknown;
     error?: string;
 }

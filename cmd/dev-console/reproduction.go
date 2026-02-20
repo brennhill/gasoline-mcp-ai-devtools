@@ -16,13 +16,13 @@ type ReproductionMeta = reproduction.Meta
 
 // Function aliases for callers in tools_generate.go and other cmd/dev-console code.
 var (
-	filterLastN     = reproduction.FilterLastN
-	escapeJS        = reproduction.EscapeJS
-	chopString      = reproduction.ChopString
+	filterLastN       = reproduction.FilterLastN
+	escapeJS          = reproduction.EscapeJS
+	chopString        = reproduction.ChopString
 	writePauseComment = reproduction.WritePauseComment
-	playwrightStep  = reproduction.PlaywrightStep
+	playwrightStep    = reproduction.PlaywrightStep
 	playwrightLocator = reproduction.PlaywrightLocator
-	describeElement = reproduction.DescribeElement
+	describeElement   = reproduction.DescribeElement
 )
 
 // toolGetReproductionScriptImpl generates a reproduction script from captured actions.

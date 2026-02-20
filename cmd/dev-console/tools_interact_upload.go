@@ -35,10 +35,6 @@ func (h *ToolHandler) handleUpload(req JSONRPCRequest, args json.RawMessage) JSO
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidJSON, "Invalid JSON arguments: "+err.Error(), "Fix JSON syntax and call again")}
 	}
 
-	if !h.capture.IsPilotEnabled() {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrCodePilotDisabled, "AI Web Pilot is disabled. Upload requires a connected extension with pilot enabled.", "Enable AI Web Pilot in the extension popup", h.diagnosticHint())}
-	}
-
 	if errResp := validateUploadParams(req, params); errResp != nil {
 		return *errResp
 	}

@@ -76,5 +76,3 @@ func (h *ToolHandler) toolAuditThirdParties(req JSONRPCRequest, args json.RawMes
 
 	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Third-party audit complete", result)}
 }
-
-

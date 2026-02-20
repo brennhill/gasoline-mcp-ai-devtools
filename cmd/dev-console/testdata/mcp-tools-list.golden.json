@@ -991,6 +991,10 @@
           "description": "Attribute or recording name",
           "type": "string"
         },
+        "observe_mutations": {
+          "description": "Track element-level DOM mutations during action execution",
+          "type": "boolean"
+        },
         "reason": {
           "description": "Action reason (shown as toast)",
           "type": "string"

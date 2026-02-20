@@ -22,7 +22,7 @@ func TestMaybeWaitForCommand_SyncByDefault(t *testing.T) {
 	// Mock extension connection manually to avoid nil pointer in HandleSync
 	// (Internal knowledge: IsExtensionConnected checks lastSyncSeen)
 	// We'll use the proper way to simulate connection: a Sync request.
-	
+
 	// Create a result after a short delay
 	go func() {
 		time.Sleep(100 * time.Millisecond)
@@ -62,6 +62,9 @@ func TestMaybeWaitForCommand_BackgroundOverride(t *testing.T) {
 
 	if result["status"] != "queued" {
 		t.Errorf("Expected status queued (background), got %v", result["status"])
+	}
+	if result["lifecycle_status"] != "queued" {
+		t.Errorf("Expected lifecycle_status queued (background), got %v", result["lifecycle_status"])
 	}
 }
 
@@ -125,6 +128,9 @@ func TestFormatCommandResult_FinalField(t *testing.T) {
 		if final, ok := data["final"]; !ok || final != true {
 			t.Errorf("Expected final=true for complete, got %v", data["final"])
 		}
+		if data["lifecycle_status"] != "complete" {
+			t.Errorf("Expected lifecycle_status=complete, got %v", data["lifecycle_status"])
+		}
 	})
 
 	t.Run("error has final true", func(t *testing.T) {
@@ -151,6 +157,9 @@ func TestFormatCommandResult_FinalField(t *testing.T) {
 		data := parseMCPResponseData(t, resp.Result)
 		if final, ok := data["final"]; !ok || final != false {
 			t.Errorf("Expected final=false for pending, got %v", data["final"])
+		}
+		if data["lifecycle_status"] != "running" {
+			t.Errorf("Expected lifecycle_status=running for pending, got %v", data["lifecycle_status"])
 		}
 	})
 

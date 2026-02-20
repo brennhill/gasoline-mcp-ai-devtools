@@ -595,4 +595,3 @@ func TestToolGetAnnotationDetail_MissingCorrelationID(t *testing.T) {
 		t.Errorf("expected missing param error, got %q", text)
 	}
 }
-

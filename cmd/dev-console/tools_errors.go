@@ -42,7 +42,7 @@ func withRetryable(retryable bool) func(*StructuredError) {
 	return mcp.WithRetryable(retryable)
 }
 func withRetryAfterMs(ms int) func(*StructuredError) { return mcp.WithRetryAfterMs(ms) }
-func withFinal(final bool) func(*StructuredError) { return mcp.WithFinal(final) }
+func withFinal(final bool) func(*StructuredError)    { return mcp.WithFinal(final) }
 
 func retryDefaultsForCode(code string) []func(*StructuredError) {
 	return mcp.RetryDefaultsForCode(code)
