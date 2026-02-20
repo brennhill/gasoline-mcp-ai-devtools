@@ -43,6 +43,16 @@ func TestSchemaParity_InteractWhatEnumMatchesDispatch(t *testing.T) {
 	assertSameStringSet(t, "interact.what enum vs interact runtime actions", schemaActions, runtimeActions)
 }
 
+func TestSchemaParity_ObserveWhatEnumMatchesHandlers(t *testing.T) {
+	t.Parallel()
+	h, _, _ := makeToolHandler(t)
+
+	schemaModes := mustToolEnumValues(t, h.ToolsList(), "observe", "what")
+	runtimeModes := sortedKeysObserveHandlers()
+
+	assertSameStringSet(t, "observe.what enum vs observeHandlers", schemaModes, runtimeModes)
+}
+
 func sortedKeysGenerateHandlers() []string {
 	keys := make([]string, 0, len(generateHandlers))
 	for format := range generateHandlers {
@@ -64,6 +74,15 @@ func sortedKeysConfigureHandlers() []string {
 func sortedKeysAnalyzeHandlers() []string {
 	keys := make([]string, 0, len(analyzeHandlers))
 	for mode := range analyzeHandlers {
+		keys = append(keys, mode)
+	}
+	sort.Strings(keys)
+	return keys
+}
+
+func sortedKeysObserveHandlers() []string {
+	keys := make([]string, 0, len(observeHandlers))
+	for mode := range observeHandlers {
 		keys = append(keys, mode)
 	}
 	sort.Strings(keys)

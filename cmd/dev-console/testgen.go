@@ -213,6 +213,7 @@ func (h *ToolHandler) handleGenerateTestFromContext(req JSONRPCRequest, args jso
 			Result:  mcpStructuredError(ErrInvalidJSON, "Invalid JSON arguments: "+err.Error(), "Fix JSON syntax and call again"),
 		}
 	}
+	warnings = filterGenerateDispatchWarnings(warnings)
 
 	if errResp, ok := validateTestFromContextParams(req.ID, params); !ok {
 		return errResp

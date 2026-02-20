@@ -24,6 +24,8 @@ func (h *ToolHandler) handleGenerateTestHeal(req JSONRPCRequest, args json.RawMe
 		}
 	}
 
+	warnings = filterGenerateDispatchWarnings(warnings)
+
 	if errResp, ok := validateHealParams(req, params); ok {
 		return errResp
 	}
