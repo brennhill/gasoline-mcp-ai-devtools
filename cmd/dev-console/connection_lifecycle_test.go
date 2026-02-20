@@ -271,7 +271,7 @@ func TestMCPConnectionLifecycle_MassiveConcurrency(t *testing.T) {
 		{"observe page", `{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"observe","arguments":{"what":"page"}}}`},
 		{"observe tabs", `{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"observe","arguments":{"what":"tabs"}}}`},
 		{"observe vitals", `{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"observe","arguments":{"what":"vitals"}}}`},
-		{"configure health", `{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"configure","arguments":{"action":"health"}}}`},
+		{"configure health", `{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"configure","arguments":{"what":"health"}}}`},
 	}
 
 	// Track results

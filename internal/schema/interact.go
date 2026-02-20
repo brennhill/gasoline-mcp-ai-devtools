@@ -11,8 +11,24 @@ func InteractToolSchema() mcp.MCPTool {
 		InputSchema: map[string]any{
 			"type": "object",
 			"properties": map[string]any{
-				"action": map[string]any{
+				"what": map[string]any{
 					"type": "string",
+					"enum": []string{
+						"highlight", "subtitle", "save_state", "load_state", "list_states", "delete_state",
+						"execute_js", "navigate", "refresh", "back", "forward", "new_tab", "screenshot",
+						"click", "type", "select", "check",
+						"get_text", "get_value", "get_attribute",
+						"set_attribute", "focus", "scroll_to", "wait_for", "key_press", "paste",
+						"list_interactive",
+						"get_readable", "get_markdown",
+						"navigate_and_wait_for", "fill_form_and_submit", "fill_form", "run_a11y_and_export_sarif",
+						"record_start", "record_stop",
+						"upload", "draw_mode_start",
+					},
+				},
+				"action": map[string]any{
+					"type":        "string",
+					"description": "Deprecated alias for 'what'",
 					"enum": []string{
 						"highlight", "subtitle", "save_state", "load_state", "list_states", "delete_state",
 						"execute_js", "navigate", "refresh", "back", "forward", "new_tab", "screenshot",
@@ -195,7 +211,7 @@ func InteractToolSchema() mcp.MCPTool {
 					"description": "File path to save output (run_a11y_and_export_sarif)",
 				},
 			},
-			"required": []string{"action"},
+			"required": []string{"what"},
 		},
 	}
 }

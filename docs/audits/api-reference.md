@@ -85,7 +85,7 @@ All MCP tool errors use a structured format:
 | `invalid_json` | Input | Malformed JSON in request |
 | `missing_param` | Input | Required parameter not provided |
 | `invalid_param` | Input | Parameter value out of range or invalid |
-| `unknown_mode` | Input | Unrecognized enum value for `what`/`action`/`format` |
+| `unknown_mode` | Input | Unrecognized enum value for `what` |
 | `path_not_allowed` | Input | File path outside allowed directory |
 | `not_initialized` | State | Required subsystem not ready |
 | `no_data` | State | No data available (buffer empty, command not found) |
@@ -491,11 +491,11 @@ Get full computed styles and DOM detail for a specific annotation.
 
 **Purpose**: Generate artifacts from captured data.
 
-**Required parameter**: `format` (string)
+**Required parameter**: `what` (formerly `format`) (string)
 
 #### Generate Formats
 
-##### generate({format: "reproduction"})
+##### generate({what: "reproduction"})
 
 Generate Playwright reproduction script from captured actions.
 
@@ -508,7 +508,7 @@ Generate Playwright reproduction script from captured actions.
 | generate_fixtures | boolean | no | false | Generate network fixtures |
 | visual_assertions | boolean | no | false | Add visual assertions |
 
-##### generate({format: "test"})
+##### generate({what: "test"})
 
 Generate Playwright test from captured actions.
 
@@ -521,7 +521,7 @@ Generate Playwright test from captured actions.
 | assert_no_errors | boolean | no | false | Assert no console errors |
 | assert_response_shape | boolean | no | false | Assert response shape |
 
-##### generate({format: "csp"})
+##### generate({what: "csp"})
 
 Generate Content Security Policy from observed network traffic.
 
@@ -531,7 +531,7 @@ Generate Content Security Policy from observed network traffic.
 | include_report_uri | boolean | no | false | Include report-uri |
 | exclude_origins | string[] | no | -- | Origins to exclude |
 
-##### generate({format: "sarif"})
+##### generate({what: "sarif"})
 
 Export accessibility results as SARIF.
 
@@ -541,7 +541,7 @@ Export accessibility results as SARIF.
 | include_passes | boolean | no | false | Include passing rules |
 | save_to | string | no | -- | File path to save |
 
-##### generate({format: "har"})
+##### generate({what: "har"})
 
 Export network traffic as HAR.
 
@@ -553,7 +553,7 @@ Export network traffic as HAR.
 | status_max | number | no | -- | Max status code |
 | save_to | string | no | -- | File path to save |
 
-##### generate({format: "sri"})
+##### generate({what: "sri"})
 
 Generate Subresource Integrity hashes.
 
@@ -562,7 +562,7 @@ Generate Subresource Integrity hashes.
 | resource_types | string[] | no | -- | script, stylesheet |
 | origins | string[] | no | -- | Filter origins |
 
-##### generate({format: "visual_test"})
+##### generate({what: "visual_test"})
 
 Generate visual test from annotation session.
 
@@ -571,7 +571,7 @@ Generate visual test from annotation session.
 | test_name | string | no | -- | Test name |
 | session | string | no | -- | Named annotation session |
 
-##### generate({format: "annotation_report"})
+##### generate({what: "annotation_report"})
 
 Generate report from annotation session.
 
@@ -579,7 +579,7 @@ Generate report from annotation session.
 |-----------|------|----------|---------|-------------|
 | session | string | no | -- | Named annotation session |
 
-##### generate({format: "annotation_issues"})
+##### generate({what: "annotation_issues"})
 
 Extract issues from annotation session.
 
@@ -587,15 +587,15 @@ Extract issues from annotation session.
 |-----------|------|----------|---------|-------------|
 | session | string | no | -- | Named annotation session |
 
-##### generate({format: "test_from_context"})
+##### generate({what: "test_from_context"})
 
 Generate test from current browser context.
 
-##### generate({format: "test_heal"})
+##### generate({what: "test_heal"})
 
 Heal/fix a broken test.
 
-##### generate({format: "test_classify"})
+##### generate({what: "test_classify"})
 
 Classify test type.
 
@@ -614,12 +614,12 @@ Classify test type.
 
 **Purpose**: Session settings and utilities.
 
-**Required parameter**: `action` (string)
-**Schema model**: `configure` is an action-discriminated union (`oneOf`). Each `action` allows only its action-specific keys, plus optional cross-cutting `telemetry_mode`.
+**Required parameter**: `what` (formerly `action`) (string)
+**Schema model**: `configure` is a `what`-discriminated union (`oneOf`). Each `what` value allows only its mode-specific keys, plus optional cross-cutting `telemetry_mode`.
 
 #### Configure Actions
 
-##### configure({action: "health"})
+##### configure({what: "health"})
 
 Check server and extension health status.
 
@@ -627,7 +627,7 @@ No additional parameters.
 
 **Success response**: `MCPHealthResponse` with server, memory, buffers, rate_limiting, audit, pilot sections.
 
-##### configure({action: "clear"})
+##### configure({what: "clear"})
 
 Reset capture buffers.
 
@@ -635,7 +635,7 @@ Reset capture buffers.
 |-----------|------|----------|---------|-------------|
 | buffer | string | no | "all" | Buffer to clear: all, network, websocket, actions, logs |
 
-##### configure({action: "store"})
+##### configure({what: "store"})
 
 Persist session data.
 
@@ -646,13 +646,13 @@ Persist session data.
 | key | string | no | -- | Storage key |
 | data | object | no | -- | JSON data to persist |
 
-##### configure({action: "load"})
+##### configure({what: "load"})
 
 Load session context.
 
 No additional parameters.
 
-##### configure({action: "noise_rule"})
+##### configure({what: "noise_rule"})
 
 Manage console noise filtering.
 
@@ -664,7 +664,7 @@ Manage console noise filtering.
 | pattern | string | no | -- | Regex pattern |
 | category | string | no | -- | console, network, websocket |
 
-##### configure({action: "streaming"})
+##### configure({what: "streaming"})
 
 Control push notification streaming.
 
@@ -675,7 +675,7 @@ Control push notification streaming.
 | throttle_seconds | integer | no | 5 | Min seconds between notifications (1-60) |
 | severity_min | string | no | "warning" | Minimum severity: info, warning, error |
 
-##### configure({action: "test_boundary_start"})
+##### configure({what: "test_boundary_start"})
 
 Start a test boundary.
 
@@ -684,7 +684,7 @@ Start a test boundary.
 | test_id | string | yes | -- | Test identifier |
 | label | string | no | "Test: {test_id}" | Test label |
 
-##### configure({action: "test_boundary_end"})
+##### configure({what: "test_boundary_end"})
 
 End a test boundary.
 
@@ -692,7 +692,7 @@ End a test boundary.
 |-----------|------|----------|---------|-------------|
 | test_id | string | yes | -- | Test identifier |
 
-##### configure({action: "recording_start"})
+##### configure({what: "recording_start"})
 
 Start a flow recording.
 
@@ -702,7 +702,7 @@ Start a flow recording.
 | url | string | no | "about:blank" | URL filter |
 | sensitive_data_enabled | boolean | no | false | Include sensitive data |
 
-##### configure({action: "recording_stop"})
+##### configure({what: "recording_stop"})
 
 Stop a flow recording.
 
@@ -710,7 +710,7 @@ Stop a flow recording.
 |-----------|------|----------|---------|-------------|
 | recording_id | string | no | -- | Recording to stop |
 
-##### configure({action: "playback"})
+##### configure({what: "playback"})
 
 Replay a recording.
 
@@ -718,7 +718,7 @@ Replay a recording.
 |-----------|------|----------|---------|-------------|
 | recording_id | string | no | -- | Recording to replay |
 
-##### configure({action: "log_diff"})
+##### configure({what: "log_diff"})
 
 Compare error states over time.
 
@@ -727,7 +727,7 @@ Compare error states over time.
 | original_id | string | yes | -- | Original recording ID |
 | replay_id | string | yes | -- | Replay recording ID |
 
-##### configure({action: "diff_sessions"})
+##### configure({what: "diff_sessions"})
 
 Capture/list/compare/delete session snapshots.
 
@@ -739,7 +739,7 @@ Capture/list/compare/delete session snapshots.
 | compare_b | string | no | -- | Second snapshot to compare |
 | url | string | no | -- | URL filter for capture |
 
-##### configure({action: "audit_log"})
+##### configure({what: "audit_log"})
 
 Query, summarize, or clear tool invocation history.
 
@@ -757,11 +757,11 @@ Query, summarize, or clear tool invocation history.
 
 **Purpose**: Browser automation actions. Requires AI Web Pilot extension.
 
-**Required parameter**: `action` (string)
+**Required parameter**: `what` (formerly `action`) (string)
 
 #### Interact Actions
 
-##### interact({action: "navigate"})
+##### interact({what: "navigate"})
 
 Navigate to a URL.
 
@@ -772,7 +772,7 @@ Navigate to a URL.
 
 Returns `correlation_id`. Auto-includes `perf_diff`.
 
-##### interact({action: "refresh"})
+##### interact({what: "refresh"})
 
 Refresh the current page.
 
@@ -782,19 +782,19 @@ Refresh the current page.
 
 Returns `correlation_id`. Auto-includes `perf_diff`.
 
-##### interact({action: "back"})
+##### interact({what: "back"})
 
 Navigate back.
 
 Requires Pilot enabled.
 
-##### interact({action: "forward"})
+##### interact({what: "forward"})
 
 Navigate forward.
 
 Requires Pilot enabled.
 
-##### interact({action: "new_tab"})
+##### interact({what: "new_tab"})
 
 Open a new tab.
 
@@ -802,7 +802,7 @@ Open a new tab.
 |-----------|------|----------|---------|-------------|
 | url | string | no | -- | URL to open |
 
-##### interact({action: "execute_js"})
+##### interact({what: "execute_js"})
 
 Execute JavaScript in the page.
 
@@ -813,7 +813,7 @@ Execute JavaScript in the page.
 | tab_id | number | no | active tab | -- | Target tab |
 | world | string | no | "auto" | auto, main, isolated | JS execution world |
 
-##### interact({action: "highlight"})
+##### interact({what: "highlight"})
 
 Highlight an element with visual indicator.
 
@@ -823,7 +823,7 @@ Highlight an element with visual indicator.
 | duration_ms | number | no | 5000 | Highlight duration |
 | tab_id | number | no | active tab | Target tab |
 
-##### interact({action: "subtitle"})
+##### interact({what: "subtitle"})
 
 Show subtitle text overlay in the browser.
 
@@ -883,7 +883,7 @@ All DOM actions share these parameters:
 
 **key_press**: Press a key (text param accepts key names: Enter, Tab, Escape, Backspace, ArrowDown, ArrowUp, Space).
 
-##### interact({action: "list_interactive"})
+##### interact({what: "list_interactive"})
 
 Discover interactive elements on the page.
 
@@ -891,7 +891,7 @@ Discover interactive elements on the page.
 |-----------|------|----------|---------|-------------|
 | tab_id | number | no | active tab | Target tab |
 
-##### interact({action: "save_state"})
+##### interact({what: "save_state"})
 
 Save current page state as a named snapshot.
 
@@ -899,7 +899,7 @@ Save current page state as a named snapshot.
 |-----------|------|----------|---------|-------------|
 | snapshot_name | string | yes | -- | State name |
 
-##### interact({action: "load_state"})
+##### interact({what: "load_state"})
 
 Load a previously saved state.
 
@@ -908,13 +908,13 @@ Load a previously saved state.
 | snapshot_name | string | yes | -- | State name |
 | include_url | boolean | no | false | Navigate to saved URL |
 
-##### interact({action: "list_states"})
+##### interact({what: "list_states"})
 
 List all saved states.
 
 No additional parameters.
 
-##### interact({action: "delete_state"})
+##### interact({what: "delete_state"})
 
 Delete a saved state.
 
@@ -922,7 +922,7 @@ Delete a saved state.
 |-----------|------|----------|---------|-------------|
 | snapshot_name | string | yes | -- | State name |
 
-##### interact({action: "record_start"})
+##### interact({what: "record_start"})
 
 Start screen recording.
 
@@ -932,15 +932,15 @@ Start screen recording.
 | audio | string | no | -- | Audio mode: tab, mic, both |
 | fps | number | no | 15 | FPS (5-60) |
 
-##### interact({action: "record_stop"})
+##### interact({what: "record_stop"})
 
 Stop screen recording.
 
-##### interact({action: "upload"})
+##### interact({what: "upload"})
 
 Upload a file to a form input.
 
-##### interact({action: "draw_mode_start"})
+##### interact({what: "draw_mode_start"})
 
 Activate annotation overlay for user drawing.
 

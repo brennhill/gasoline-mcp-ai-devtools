@@ -205,16 +205,16 @@ func parseMCPCommand(body string) (string, string) {
 	case "observe":
 		appendParam(&parts, args, "what")
 	case "interact":
-		appendParam(&parts, args, "action")
+		appendParam(&parts, args, "what")
 		appendParam(&parts, args, "url")
 		appendParam(&parts, args, "selector")
 	case "analyze":
 		appendParam(&parts, args, "what")
 		appendParam(&parts, args, "selector")
 	case "generate":
-		appendParam(&parts, args, "format")
+		appendParam(&parts, args, "what")
 	case "configure":
-		appendParam(&parts, args, "action")
+		appendParam(&parts, args, "what")
 		appendParam(&parts, args, "buffer")
 		appendParam(&parts, args, "noise_action")
 	default:

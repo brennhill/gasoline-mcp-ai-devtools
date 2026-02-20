@@ -519,6 +519,7 @@
           "type": "array"
         },
         "format": {
+          "description": "Deprecated alias for 'what'",
           "enum": [
             "reproduction",
             "test",
@@ -634,10 +635,28 @@
         "visual_assertions": {
           "description": "Add visual assertions (reproduction)",
           "type": "boolean"
+        },
+        "what": {
+          "enum": [
+            "reproduction",
+            "test",
+            "pr_summary",
+            "har",
+            "csp",
+            "sri",
+            "sarif",
+            "visual_test",
+            "annotation_report",
+            "annotation_issues",
+            "test_from_context",
+            "test_heal",
+            "test_classify"
+          ],
+          "type": "string"
         }
       },
       "required": [
-        "format"
+        "what"
       ],
       "type": "object"
     }
@@ -648,6 +667,7 @@
     "inputSchema": {
       "properties": {
         "action": {
+          "description": "Deprecated alias for 'what'",
           "enum": [
             "store",
             "load",
@@ -905,10 +925,38 @@
             "delete"
           ],
           "type": "string"
+        },
+        "what": {
+          "enum": [
+            "store",
+            "load",
+            "noise_rule",
+            "clear",
+            "health",
+            "streaming",
+            "test_boundary_start",
+            "test_boundary_end",
+            "recording_start",
+            "recording_stop",
+            "playback",
+            "log_diff",
+            "telemetry",
+            "describe_capabilities",
+            "diff_sessions",
+            "audit_log",
+            "restart",
+            "save_sequence",
+            "get_sequence",
+            "list_sequences",
+            "delete_sequence",
+            "replay_sequence",
+            "doctor"
+          ],
+          "type": "string"
         }
       },
       "required": [
-        "action"
+        "what"
       ],
       "type": "object"
     }
@@ -919,6 +967,7 @@
     "inputSchema": {
       "properties": {
         "action": {
+          "description": "Deprecated alias for 'what'",
           "enum": [
             "highlight",
             "subtitle",
@@ -1142,6 +1191,48 @@
           "description": "CSS selector to wait for after navigation (navigate_and_wait_for)",
           "type": "string"
         },
+        "what": {
+          "enum": [
+            "highlight",
+            "subtitle",
+            "save_state",
+            "load_state",
+            "list_states",
+            "delete_state",
+            "execute_js",
+            "navigate",
+            "refresh",
+            "back",
+            "forward",
+            "new_tab",
+            "screenshot",
+            "click",
+            "type",
+            "select",
+            "check",
+            "get_text",
+            "get_value",
+            "get_attribute",
+            "set_attribute",
+            "focus",
+            "scroll_to",
+            "wait_for",
+            "key_press",
+            "paste",
+            "list_interactive",
+            "get_readable",
+            "get_markdown",
+            "navigate_and_wait_for",
+            "fill_form_and_submit",
+            "fill_form",
+            "run_a11y_and_export_sarif",
+            "record_start",
+            "record_stop",
+            "upload",
+            "draw_mode_start"
+          ],
+          "type": "string"
+        },
         "world": {
           "description": "JS world: auto (default), main (page globals), isolated (bypass CSP).",
           "enum": [
@@ -1153,7 +1244,7 @@
         }
       },
       "required": [
-        "action"
+        "what"
       ],
       "type": "object"
     }

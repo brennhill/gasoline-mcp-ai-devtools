@@ -13,7 +13,7 @@ import (
 func TestExtractToolAction_ConfigureRestart(t *testing.T) {
 	params, _ := json.Marshal(map[string]any{
 		"name":      "configure",
-		"arguments": map[string]any{"action": "restart"},
+		"arguments": map[string]any{"what": "restart"},
 	})
 	req := JSONRPCRequest{
 		JSONRPC: "2.0",
@@ -33,7 +33,7 @@ func TestExtractToolAction_ConfigureRestart(t *testing.T) {
 func TestExtractToolAction_ConfigureHealth(t *testing.T) {
 	params, _ := json.Marshal(map[string]any{
 		"name":      "configure",
-		"arguments": map[string]any{"action": "health"},
+		"arguments": map[string]any{"what": "health"},
 	})
 	req := JSONRPCRequest{
 		JSONRPC: "2.0",
@@ -77,8 +77,8 @@ func TestExtractToolAction_NonConfigure(t *testing.T) {
 			if tool != tc.tool {
 				t.Errorf("tool = %q, want %q", tool, tc.tool)
 			}
-			if action != "" {
-				t.Errorf("action = %q, want empty (no action field)", action)
+			if action != "errors" {
+				t.Errorf("action = %q, want %q", action, "errors")
 			}
 		})
 	}
@@ -108,7 +108,7 @@ func TestExtractToolAction_MalformedJSON(t *testing.T) {
 		{"nil params", nil},
 		{"empty params", json.RawMessage(`{}`)},
 		{"invalid JSON", json.RawMessage(`{not json}`)},
-		{"missing name", json.RawMessage(`{"arguments":{"action":"restart"}}`)},
+		{"missing name", json.RawMessage(`{"arguments":{"what":"restart"}}`)},
 		{"missing arguments", json.RawMessage(`{"name":"configure"}`)},
 	}
 	for _, tc := range cases {

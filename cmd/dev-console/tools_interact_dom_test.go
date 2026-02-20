@@ -24,19 +24,19 @@ func TestDOMPrimitive_MissingSelector(t *testing.T) {
 		action string
 		args   string
 	}{
-		{"click", `{"action":"click"}`},
-		{"type", `{"action":"type","text":"hello"}`},
-		{"paste", `{"action":"paste","text":"hello"}`},
-		{"select", `{"action":"select","value":"opt1"}`},
-		{"check", `{"action":"check"}`},
-		{"get_text", `{"action":"get_text"}`},
-		{"get_value", `{"action":"get_value"}`},
-		{"get_attribute", `{"action":"get_attribute","name":"href"}`},
-		{"set_attribute", `{"action":"set_attribute","name":"href","value":"#"}`},
-		{"focus", `{"action":"focus"}`},
-		{"scroll_to", `{"action":"scroll_to"}`},
-		{"wait_for", `{"action":"wait_for"}`},
-		{"key_press", `{"action":"key_press","text":"Enter"}`},
+		{"click", `{"what":"click"}`},
+		{"type", `{"what":"type","text":"hello"}`},
+		{"paste", `{"what":"paste","text":"hello"}`},
+		{"select", `{"what":"select","value":"opt1"}`},
+		{"check", `{"what":"check"}`},
+		{"get_text", `{"what":"get_text"}`},
+		{"get_value", `{"what":"get_value"}`},
+		{"get_attribute", `{"what":"get_attribute","name":"href"}`},
+		{"set_attribute", `{"what":"set_attribute","name":"href","value":"#"}`},
+		{"focus", `{"what":"focus"}`},
+		{"scroll_to", `{"what":"scroll_to"}`},
+		{"wait_for", `{"what":"wait_for"}`},
+		{"key_press", `{"what":"key_press","text":"Enter"}`},
 	}
 
 	for _, tc := range actions {
@@ -67,7 +67,7 @@ func TestDOMPrimitive_MissingSelector(t *testing.T) {
 func TestDOMPrimitive_Type_MissingText(t *testing.T) {
 	env := newInteractTestEnv(t)
 
-	result, ok := env.callInteract(t, `{"action":"type","selector":"#input"}`)
+	result, ok := env.callInteract(t, `{"what":"type","selector":"#input"}`)
 	if !ok {
 		t.Fatal("type without text should return result")
 	}
@@ -87,7 +87,7 @@ func TestDOMPrimitive_Type_MissingText(t *testing.T) {
 func TestDOMPrimitive_Select_MissingValue(t *testing.T) {
 	env := newInteractTestEnv(t)
 
-	result, ok := env.callInteract(t, `{"action":"select","selector":"#dropdown"}`)
+	result, ok := env.callInteract(t, `{"what":"select","selector":"#dropdown"}`)
 	if !ok {
 		t.Fatal("select without value should return result")
 	}
@@ -107,7 +107,7 @@ func TestDOMPrimitive_Select_MissingValue(t *testing.T) {
 func TestDOMPrimitive_GetAttribute_MissingName(t *testing.T) {
 	env := newInteractTestEnv(t)
 
-	result, ok := env.callInteract(t, `{"action":"get_attribute","selector":"#link"}`)
+	result, ok := env.callInteract(t, `{"what":"get_attribute","selector":"#link"}`)
 	if !ok {
 		t.Fatal("get_attribute without name should return result")
 	}
@@ -127,7 +127,7 @@ func TestDOMPrimitive_GetAttribute_MissingName(t *testing.T) {
 func TestDOMPrimitive_SetAttribute_MissingName(t *testing.T) {
 	env := newInteractTestEnv(t)
 
-	result, ok := env.callInteract(t, `{"action":"set_attribute","selector":"#link","value":"#"}`)
+	result, ok := env.callInteract(t, `{"what":"set_attribute","selector":"#link","value":"#"}`)
 	if !ok {
 		t.Fatal("set_attribute without name should return result")
 	}
@@ -156,20 +156,20 @@ func TestDOMPrimitive_AllActions_PilotDisabled(t *testing.T) {
 		action string
 		args   string
 	}{
-		{"click", `{"action":"click","selector":"#btn"}`},
-		{"type", `{"action":"type","selector":"#input","text":"hello"}`},
-		{"paste", `{"action":"paste","selector":"#editor","text":"hello"}`},
-		{"select", `{"action":"select","selector":"#dropdown","value":"opt1"}`},
-		{"check", `{"action":"check","selector":"#checkbox"}`},
-		{"get_text", `{"action":"get_text","selector":"#el"}`},
-		{"get_value", `{"action":"get_value","selector":"#input"}`},
-		{"get_attribute", `{"action":"get_attribute","selector":"#link","name":"href"}`},
-		{"set_attribute", `{"action":"set_attribute","selector":"#el","name":"class","value":"active"}`},
-		{"focus", `{"action":"focus","selector":"#input"}`},
-		{"scroll_to", `{"action":"scroll_to","selector":"#section"}`},
-		{"wait_for", `{"action":"wait_for","selector":"#loading"}`},
-		{"key_press", `{"action":"key_press","selector":"#input","text":"Enter"}`},
-		{"list_interactive", `{"action":"list_interactive"}`},
+		{"click", `{"what":"click","selector":"#btn"}`},
+		{"type", `{"what":"type","selector":"#input","text":"hello"}`},
+		{"paste", `{"what":"paste","selector":"#editor","text":"hello"}`},
+		{"select", `{"what":"select","selector":"#dropdown","value":"opt1"}`},
+		{"check", `{"what":"check","selector":"#checkbox"}`},
+		{"get_text", `{"what":"get_text","selector":"#el"}`},
+		{"get_value", `{"what":"get_value","selector":"#input"}`},
+		{"get_attribute", `{"what":"get_attribute","selector":"#link","name":"href"}`},
+		{"set_attribute", `{"what":"set_attribute","selector":"#el","name":"class","value":"active"}`},
+		{"focus", `{"what":"focus","selector":"#input"}`},
+		{"scroll_to", `{"what":"scroll_to","selector":"#section"}`},
+		{"wait_for", `{"what":"wait_for","selector":"#loading"}`},
+		{"key_press", `{"what":"key_press","selector":"#input","text":"Enter"}`},
+		{"list_interactive", `{"what":"list_interactive"}`},
 	}
 
 	for _, tc := range actions {
@@ -216,7 +216,7 @@ func TestDOMPrimitive_ListInteractive_NoSelectorNeeded(t *testing.T) {
 
 	// list_interactive without selector should NOT get a "selector missing" error
 	// It should reach the pilot check instead
-	result, ok := env.callInteract(t, `{"action":"list_interactive"}`)
+	result, ok := env.callInteract(t, `{"what":"list_interactive"}`)
 	if !ok {
 		t.Fatal("list_interactive should return result")
 	}
@@ -236,7 +236,7 @@ func TestDOMPrimitive_ListInteractive_NoSelectorNeeded(t *testing.T) {
 func TestDOMPrimitive_Paste_MissingText(t *testing.T) {
 	env := newInteractTestEnv(t)
 
-	result, ok := env.callInteract(t, `{"action":"paste","selector":"#editor"}`)
+	result, ok := env.callInteract(t, `{"what":"paste","selector":"#editor"}`)
 	if !ok {
 		t.Fatal("paste without text should return result")
 	}
@@ -256,7 +256,7 @@ func TestDOMPrimitive_Paste_MissingText(t *testing.T) {
 func TestDOMPrimitive_Paste_MissingSelector(t *testing.T) {
 	env := newInteractTestEnv(t)
 
-	result, ok := env.callInteract(t, `{"action":"paste","text":"hello"}`)
+	result, ok := env.callInteract(t, `{"what":"paste","text":"hello"}`)
 	if !ok {
 		t.Fatal("paste without selector should return result")
 	}
@@ -276,7 +276,7 @@ func TestDOMPrimitive_Paste_MissingSelector(t *testing.T) {
 func TestDOMPrimitive_Paste_PilotDisabled(t *testing.T) {
 	env := newInteractTestEnv(t)
 
-	result, ok := env.callInteract(t, `{"action":"paste","selector":"#editor","text":"hello"}`)
+	result, ok := env.callInteract(t, `{"what":"paste","selector":"#editor","text":"hello"}`)
 	if !ok {
 		t.Fatal("paste should return result")
 	}
@@ -304,20 +304,20 @@ func TestDOMPrimitive_AllActions_NoPanic(t *testing.T) {
 		action string
 		args   string
 	}{
-		{"click", `{"action":"click","selector":"#btn"}`},
-		{"type", `{"action":"type","selector":"#input","text":"hello"}`},
-		{"paste", `{"action":"paste","selector":"#editor","text":"hello"}`},
-		{"select", `{"action":"select","selector":"#dropdown","value":"opt1"}`},
-		{"check", `{"action":"check","selector":"#checkbox"}`},
-		{"get_text", `{"action":"get_text","selector":"#el"}`},
-		{"get_value", `{"action":"get_value","selector":"#input"}`},
-		{"get_attribute", `{"action":"get_attribute","selector":"#link","name":"href"}`},
-		{"set_attribute", `{"action":"set_attribute","selector":"#el","name":"class","value":"active"}`},
-		{"focus", `{"action":"focus","selector":"#input"}`},
-		{"scroll_to", `{"action":"scroll_to","selector":"#section"}`},
-		{"wait_for", `{"action":"wait_for","selector":"#loading"}`},
-		{"key_press", `{"action":"key_press","selector":"#input","text":"Enter"}`},
-		{"list_interactive", `{"action":"list_interactive"}`},
+		{"click", `{"what":"click","selector":"#btn"}`},
+		{"type", `{"what":"type","selector":"#input","text":"hello"}`},
+		{"paste", `{"what":"paste","selector":"#editor","text":"hello"}`},
+		{"select", `{"what":"select","selector":"#dropdown","value":"opt1"}`},
+		{"check", `{"what":"check","selector":"#checkbox"}`},
+		{"get_text", `{"what":"get_text","selector":"#el"}`},
+		{"get_value", `{"what":"get_value","selector":"#input"}`},
+		{"get_attribute", `{"what":"get_attribute","selector":"#link","name":"href"}`},
+		{"set_attribute", `{"what":"set_attribute","selector":"#el","name":"class","value":"active"}`},
+		{"focus", `{"what":"focus","selector":"#input"}`},
+		{"scroll_to", `{"what":"scroll_to","selector":"#section"}`},
+		{"wait_for", `{"what":"wait_for","selector":"#loading"}`},
+		{"key_press", `{"what":"key_press","selector":"#input","text":"Enter"}`},
+		{"list_interactive", `{"what":"list_interactive"}`},
 	}
 
 	for _, tc := range allActions {

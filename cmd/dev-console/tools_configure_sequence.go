@@ -91,13 +91,14 @@ func (h *ToolHandler) toolConfigureSaveSequence(req JSONRPCRequest, args json.Ra
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidParam, fmt.Sprintf("Steps exceeds maximum of %d", maxSequenceSteps), "Split into smaller sequences", withParam("steps"))}
 	}
 
-	// Validate each step has an action field
+	// Validate each step has a what (or action) field
 	for i, step := range params.Steps {
 		var s struct {
+			What   string `json:"what"`
 			Action string `json:"action"`
 		}
-		if err := json.Unmarshal(step, &s); err != nil || s.Action == "" {
-			return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidParam, fmt.Sprintf("Step[%d] missing required 'action' field", i), "Add an 'action' field to each step", withParam("steps"))}
+		if err := json.Unmarshal(step, &s); err != nil || (s.What == "" && s.Action == "") {
+			return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidParam, fmt.Sprintf("Step[%d] missing required 'what' field", i), "Add a 'what' field to each step", withParam("steps"))}
 		}
 	}
 
@@ -317,9 +318,14 @@ func (h *ToolHandler) toolConfigureReplaySequence(req JSONRPCRequest, args json.
 
 		// Extract action name for result
 		var stepAction struct {
+			What   string `json:"what"`
 			Action string `json:"action"`
 		}
 		json.Unmarshal(stepArgs, &stepAction) //nolint:errcheck // best-effort extraction
+		actionName := stepAction.What
+		if actionName == "" {
+			actionName = stepAction.Action
+		}
 
 		stepStart := time.Now()
 		stepResp := h.toolInteract(req, stepArgs)
@@ -327,7 +333,7 @@ func (h *ToolHandler) toolConfigureReplaySequence(req JSONRPCRequest, args json.
 
 		stepResult := SequenceStepResult{
 			StepIndex:  i,
-			Action:     stepAction.Action,
+			Action:     actionName,
 			DurationMs: stepDuration,
 		}
 

@@ -267,6 +267,10 @@ func (h *ToolHandler) formatCommandResult(req JSONRPCRequest, cmd queries.Comman
 		if len(cmd.Result) > 0 {
 			responseData["result"] = cmd.Result
 		}
+		// Add corrective hints for common out-of-order errors
+		if strings.Contains(cmd.Error, "No active recording") {
+			responseData["retry"] = "No recording is active. Start one first: interact({what: 'record_start', name: 'my-recording'}) or configure({what: 'recording_start', name: 'my-recording'})"
+		}
 		summary := fmt.Sprintf("FAILED — Command %s error: %s", corrID, cmd.Error)
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONErrorResponse(summary, responseData)}
 	case "expired":
@@ -281,7 +285,11 @@ func (h *ToolHandler) formatCommandResult(req JSONRPCRequest, cmd queries.Comman
 		responseData["final"] = true
 		responseData["error"] = ErrExtTimeout
 		responseData["message"] = fmt.Sprintf("Command %s timed out waiting for the extension to respond. Error: %s", corrID, cmd.Error)
-		responseData["retry"] = "The command took too long. The page may be unresponsive or the action is stuck. Try refreshing the page with interact action='refresh', then retry."
+		retryMsg := "Extension connected but page execution timed out. This page may block content scripts (common on Google, Chrome Web Store, etc.). Try navigating to a different page: interact({what: 'navigate', url: 'https://example.com'})"
+		if !h.capture.IsExtensionConnected() {
+			retryMsg = "Extension is disconnected. Ensure the Gasoline extension shows 'Connected' and a tab is tracked, then retry."
+		}
+		responseData["retry"] = retryMsg
 		responseData["hint"] = h.DiagnosticHintString()
 		summary := fmt.Sprintf("FAILED — Command %s timed out: %s", corrID, cmd.Error)
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONErrorResponse(summary, responseData)}

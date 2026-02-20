@@ -143,7 +143,7 @@ func TestBridgeForwardRequest_LargeBodyRead(t *testing.T) {
 	}
 
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`)}
-	line := []byte(`{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"configure","arguments":{"action":"health"}}}`)
+	line := []byte(`{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"configure","arguments":{"what":"health"}}}`)
 
 	go func() {
 		bridgeForwardRequest(&http.Client{}, srv.URL, req, line, 5*time.Second, nil, signal)

@@ -343,3 +343,13 @@ export async function resolveTargetTab(query: PendingQuery, paramsObj: QueryPara
 
   return { error: buildMissingTargetError(query.type, useActiveTab, trackedTabId) }
 }
+
+/**
+ * Check if a URL is restricted — content scripts cannot run on these pages.
+ * Covers internal browser pages and known CSP-restricted origins.
+ */
+export function isRestrictedUrl(url: string | undefined): boolean {
+  if (!url) return true
+  const blocked = ['chrome://', 'chrome-extension://', 'about:', 'edge://', 'brave://', 'devtools://']
+  return blocked.some((p) => url.startsWith(p))
+}

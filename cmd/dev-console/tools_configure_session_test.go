@@ -15,7 +15,7 @@ func TestToolLoadSessionContext_WithStore(t *testing.T) {
 	t.Parallel()
 	env := newConfigureTestEnv(t)
 
-	result, ok := env.callConfigure(t, `{"action":"load"}`)
+	result, ok := env.callConfigure(t, `{"what":"load"}`)
 	if !ok {
 		t.Fatal("load should return result")
 	}
@@ -36,7 +36,7 @@ func TestToolLoadSessionContext_NilStore(t *testing.T) {
 	// Force error path by setting sessionStoreImpl to nil
 	env.handler.sessionStoreImpl = nil
 
-	args := json.RawMessage(`{"action":"load"}`)
+	args := json.RawMessage(`{"what":"load"}`)
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: 1}
 	resp := env.handler.toolLoadSessionContext(req, args)
 
@@ -58,7 +58,16 @@ func TestToolConfigureTestBoundaryEnd_Success(t *testing.T) {
 	t.Parallel()
 	env := newConfigureTestEnv(t)
 
-	result, ok := env.callConfigure(t, `{"action":"test_boundary_end","test_id":"test-123"}`)
+	// Must start a boundary first so end succeeds.
+	startResult, startOK := env.callConfigure(t, `{"what":"test_boundary_start","test_id":"test-123"}`)
+	if !startOK {
+		t.Fatal("test_boundary_start should return result")
+	}
+	if startResult.IsError {
+		t.Fatalf("test_boundary_start should not error, got: %s", startResult.Content[0].Text)
+	}
+
+	result, ok := env.callConfigure(t, `{"what":"test_boundary_end","test_id":"test-123"}`)
 	if !ok {
 		t.Fatal("test_boundary_end should return result")
 	}
@@ -82,7 +91,7 @@ func TestToolConfigureTestBoundaryEnd_MissingTestID(t *testing.T) {
 	t.Parallel()
 	env := newConfigureTestEnv(t)
 
-	result, ok := env.callConfigure(t, `{"action":"test_boundary_end"}`)
+	result, ok := env.callConfigure(t, `{"what":"test_boundary_end"}`)
 	if !ok {
 		t.Fatal("test_boundary_end should return result")
 	}

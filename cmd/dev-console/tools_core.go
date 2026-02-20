@@ -176,6 +176,11 @@ type ToolHandler struct {
 	elementIndexMu    sync.RWMutex
 	elementIndexStore map[int]string
 
+	// Active test boundaries: test_id → start time.
+	// Used to detect out-of-order test_boundary_end calls.
+	activeBoundariesMu sync.Mutex
+	activeBoundaries   map[string]time.Time
+
 	// Playback results store: recording_id → session after playback completes.
 	playbackMu       sync.RWMutex
 	playbackSessions map[string]*capture.PlaybackSession

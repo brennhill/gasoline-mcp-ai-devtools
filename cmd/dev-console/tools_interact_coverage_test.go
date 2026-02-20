@@ -15,7 +15,7 @@ func TestHandleSubtitle_SetText(t *testing.T) {
 	t.Parallel()
 	env := newInteractTestEnv(t)
 
-	result, ok := env.callInteract(t, `{"action":"subtitle","text":"Hello world"}`)
+	result, ok := env.callInteract(t, `{"what":"subtitle","text":"Hello world"}`)
 	if !ok {
 		t.Fatal("subtitle should return result")
 	}
@@ -43,7 +43,7 @@ func TestHandleSubtitle_ClearText(t *testing.T) {
 	t.Parallel()
 	env := newInteractTestEnv(t)
 
-	result, ok := env.callInteract(t, `{"action":"subtitle","text":""}`)
+	result, ok := env.callInteract(t, `{"what":"subtitle","text":""}`)
 	if !ok {
 		t.Fatal("subtitle clear should return result")
 	}
@@ -61,7 +61,7 @@ func TestHandleSubtitle_MissingText(t *testing.T) {
 	t.Parallel()
 	env := newInteractTestEnv(t)
 
-	result, ok := env.callInteract(t, `{"action":"subtitle"}`)
+	result, ok := env.callInteract(t, `{"what":"subtitle"}`)
 	if !ok {
 		t.Fatal("subtitle missing text should return result")
 	}
@@ -100,7 +100,7 @@ func TestHandleListInteractive_PilotEnabled(t *testing.T) {
 	env := newInteractTestEnv(t)
 	env.capture.SetPilotEnabled(true)
 
-	result, ok := env.callInteract(t, `{"action":"list_interactive"}`)
+	result, ok := env.callInteract(t, `{"what":"list_interactive"}`)
 	if !ok {
 		t.Fatal("list_interactive should return result")
 	}
@@ -129,7 +129,7 @@ func TestHandleListInteractive_PilotDisabled(t *testing.T) {
 	env := newInteractTestEnv(t)
 	// Pilot disabled by default
 
-	result, ok := env.callInteract(t, `{"action":"list_interactive"}`)
+	result, ok := env.callInteract(t, `{"what":"list_interactive"}`)
 	if !ok {
 		t.Fatal("list_interactive should return result")
 	}
@@ -147,7 +147,7 @@ func TestHandleListInteractive_WithTabID(t *testing.T) {
 	env := newInteractTestEnv(t)
 	env.capture.SetPilotEnabled(true)
 
-	result, ok := env.callInteract(t, `{"action":"list_interactive","tab_id":42}`)
+	result, ok := env.callInteract(t, `{"what":"list_interactive","tab_id":42}`)
 	if !ok {
 		t.Fatal("list_interactive with tab_id should return result")
 	}
@@ -190,7 +190,7 @@ func TestHandlePilotHighlight_Success(t *testing.T) {
 	env := newInteractTestEnv(t)
 	env.capture.SetPilotEnabled(true)
 
-	result, ok := env.callInteract(t, `{"action":"highlight","selector":"#main"}`)
+	result, ok := env.callInteract(t, `{"what":"highlight","selector":"#main"}`)
 	if !ok {
 		t.Fatal("highlight should return result")
 	}
@@ -211,7 +211,7 @@ func TestHandlePilotHighlight_MissingSelector(t *testing.T) {
 	t.Parallel()
 	env := newInteractTestEnv(t)
 
-	result, ok := env.callInteract(t, `{"action":"highlight"}`)
+	result, ok := env.callInteract(t, `{"what":"highlight"}`)
 	if !ok {
 		t.Fatal("highlight without selector should return result")
 	}
@@ -229,7 +229,7 @@ func TestHandlePilotHighlight_PilotDisabledWithSelector(t *testing.T) {
 	env := newInteractTestEnv(t)
 	// Pilot disabled by default
 
-	result, ok := env.callInteract(t, `{"action":"highlight","selector":"div"}`)
+	result, ok := env.callInteract(t, `{"what":"highlight","selector":"div"}`)
 	if !ok {
 		t.Fatal("highlight should return result")
 	}
@@ -247,7 +247,7 @@ func TestHandlePilotHighlight_WithTabID(t *testing.T) {
 	env := newInteractTestEnv(t)
 	env.capture.SetPilotEnabled(true)
 
-	result, ok := env.callInteract(t, `{"action":"highlight","selector":".btn","tab_id":99}`)
+	result, ok := env.callInteract(t, `{"what":"highlight","selector":".btn","tab_id":99}`)
 	if !ok {
 		t.Fatal("highlight with tab_id should return result")
 	}

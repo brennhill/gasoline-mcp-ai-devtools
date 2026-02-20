@@ -84,7 +84,7 @@ func createConfigureTestHandler(t *testing.T) *ToolHandler {
 func TestConfigureAudit_Health_DataFlow(t *testing.T) {
 	env := newConfigureTestEnv(t)
 
-	result, ok := env.callConfigure(t, `{"action":"health"}`)
+	result, ok := env.callConfigure(t, `{"what":"health"}`)
 	if !ok {
 		t.Fatal("health should return result")
 	}
@@ -114,7 +114,7 @@ func TestConfigureAudit_TestBoundary_DataFlow(t *testing.T) {
 
 	// Start test boundary with unique test_id
 	testID := "unique_test_boundary_12345"
-	result, ok := env.callConfigure(t, `{"action":"test_boundary_start","test_id":"`+testID+`"}`)
+	result, ok := env.callConfigure(t, `{"what":"test_boundary_start","test_id":"`+testID+`"}`)
 	if !ok {
 		t.Fatal("test_boundary_start should return result")
 	}
@@ -141,7 +141,7 @@ func TestConfigureAudit_Recording_DataFlow(t *testing.T) {
 
 	// Start recording with unique name
 	recordingName := "unique_recording_test_12345"
-	result, ok := env.callConfigure(t, `{"action":"recording_start","name":"`+recordingName+`"}`)
+	result, ok := env.callConfigure(t, `{"what":"recording_start","name":"`+recordingName+`"}`)
 	if !ok {
 		t.Fatal("recording_start should return result")
 	}
@@ -165,7 +165,7 @@ func TestConfigureAudit_Recording_DataFlow(t *testing.T) {
 func TestConfigureAudit_Clear_DataFlow(t *testing.T) {
 	env := newConfigureTestEnv(t)
 
-	result, ok := env.callConfigure(t, `{"action":"clear"}`)
+	result, ok := env.callConfigure(t, `{"what":"clear"}`)
 	if !ok {
 		t.Fatal("clear should return result")
 	}
@@ -193,7 +193,7 @@ func TestConfigureAudit_Clear_DataFlow(t *testing.T) {
 func TestConfigureAudit_NoiseRule_List_DataFlow(t *testing.T) {
 	env := newConfigureTestEnv(t)
 
-	result, ok := env.callConfigure(t, `{"action":"noise_rule","noise_action":"list"}`)
+	result, ok := env.callConfigure(t, `{"what":"noise_rule","noise_action":"list"}`)
 	if !ok {
 		t.Fatal("noise_rule list should return result")
 	}
@@ -225,7 +225,7 @@ func TestConfigureAudit_NoiseRule_List_DataFlow(t *testing.T) {
 func TestConfigureAudit_TestBoundaryStart_MissingTestID(t *testing.T) {
 	env := newConfigureTestEnv(t)
 
-	result, ok := env.callConfigure(t, `{"action":"test_boundary_start"}`)
+	result, ok := env.callConfigure(t, `{"what":"test_boundary_start"}`)
 	if !ok {
 		t.Fatal("test_boundary_start without test_id should return result")
 	}
@@ -251,7 +251,7 @@ func TestConfigureAudit_TestBoundaryStart_MissingTestID(t *testing.T) {
 func TestConfigureAudit_TestBoundaryEnd_MissingTestID(t *testing.T) {
 	env := newConfigureTestEnv(t)
 
-	result, ok := env.callConfigure(t, `{"action":"test_boundary_end"}`)
+	result, ok := env.callConfigure(t, `{"what":"test_boundary_end"}`)
 	if !ok {
 		t.Fatal("test_boundary_end without test_id should return result")
 	}
@@ -266,7 +266,7 @@ func TestConfigureAudit_TestBoundaryEnd_MissingTestID(t *testing.T) {
 func TestConfigureAudit_RecordingStop_MissingRecordingID(t *testing.T) {
 	env := newConfigureTestEnv(t)
 
-	result, ok := env.callConfigure(t, `{"action":"recording_stop"}`)
+	result, ok := env.callConfigure(t, `{"what":"recording_stop"}`)
 	if !ok {
 		t.Fatal("recording_stop without recording_id should return result")
 	}
@@ -281,7 +281,7 @@ func TestConfigureAudit_RecordingStop_MissingRecordingID(t *testing.T) {
 func TestConfigureAudit_Playback_MissingRecordingID(t *testing.T) {
 	env := newConfigureTestEnv(t)
 
-	result, ok := env.callConfigure(t, `{"action":"playback"}`)
+	result, ok := env.callConfigure(t, `{"what":"playback"}`)
 	if !ok {
 		t.Fatal("playback without recording_id should return result")
 	}
@@ -296,7 +296,7 @@ func TestConfigureAudit_Playback_MissingRecordingID(t *testing.T) {
 func TestConfigureAudit_LogDiff_MissingIDs(t *testing.T) {
 	env := newConfigureTestEnv(t)
 
-	result, ok := env.callConfigure(t, `{"action":"log_diff"}`)
+	result, ok := env.callConfigure(t, `{"what":"log_diff"}`)
 	if !ok {
 		t.Fatal("log_diff without IDs should return result")
 	}
@@ -316,7 +316,7 @@ func TestConfigureAudit_LogDiff_MissingIDs(t *testing.T) {
 func TestConfigureAudit_UnknownAction_StructuredError(t *testing.T) {
 	env := newConfigureTestEnv(t)
 
-	result, ok := env.callConfigure(t, `{"action":"completely_invalid_action_xyz"}`)
+	result, ok := env.callConfigure(t, `{"what":"completely_invalid_action_xyz"}`)
 	if !ok {
 		t.Fatal("unknown action should return result with isError")
 	}
@@ -391,10 +391,10 @@ func TestConfigureAudit_EmptyState_ReturnsEmptyNotError(t *testing.T) {
 		name string
 		args string
 	}{
-		{"clear", `{"action":"clear"}`},
-		{"health", `{"action":"health"}`},
-		{"noise_rule_list", `{"action":"noise_rule","noise_action":"list"}`},
-		{"audit_log_report", `{"action":"audit_log"}`},
+		{"clear", `{"what":"clear"}`},
+		{"health", `{"what":"health"}`},
+		{"noise_rule_list", `{"what":"noise_rule","noise_action":"list"}`},
+		{"audit_log_report", `{"what":"audit_log"}`},
 	}
 
 	for _, tc := range actions {
@@ -456,21 +456,21 @@ func TestConfigureAudit_AllActions(t *testing.T) {
 		action string
 		args   string
 	}{
-		{"store", `{"action":"store","key":"test_key","value":"test_value"}`},
-		{"load", `{"action":"load","key":"test_key"}`},
-		{"noise_rule", `{"action":"noise_rule","operation":"list"}`},
-		{"clear", `{"action":"clear"}`},
-		{"diff_sessions", `{"action":"diff_sessions"}`},
-		{"audit_log", `{"action":"audit_log","operation":"report"}`},
-		{"health", `{"action":"health"}`},
-		{"telemetry", `{"action":"telemetry"}`},
-		{"streaming", `{"action":"streaming"}`},
-		{"test_boundary_start", `{"action":"test_boundary_start","test_name":"unit_test"}`},
-		{"test_boundary_end", `{"action":"test_boundary_end"}`},
-		{"recording_start", `{"action":"recording_start","name":"test_recording"}`},
-		{"recording_stop", `{"action":"recording_stop"}`},
-		{"playback", `{"action":"playback","name":"test_recording"}`},
-		{"log_diff", `{"action":"log_diff"}`},
+		{"store", `{"what":"store","key":"test_key","value":"test_value"}`},
+		{"load", `{"what":"load","key":"test_key"}`},
+		{"noise_rule", `{"what":"noise_rule","operation":"list"}`},
+		{"clear", `{"what":"clear"}`},
+		{"diff_sessions", `{"what":"diff_sessions"}`},
+		{"audit_log", `{"what":"audit_log","operation":"report"}`},
+		{"health", `{"what":"health"}`},
+		{"telemetry", `{"what":"telemetry"}`},
+		{"streaming", `{"what":"streaming"}`},
+		{"test_boundary_start", `{"what":"test_boundary_start","test_name":"unit_test"}`},
+		{"test_boundary_end", `{"what":"test_boundary_end"}`},
+		{"recording_start", `{"what":"recording_start","name":"test_recording"}`},
+		{"recording_stop", `{"what":"recording_stop"}`},
+		{"playback", `{"what":"playback","name":"test_recording"}`},
+		{"log_diff", `{"what":"log_diff"}`},
 	}
 
 	for _, tc := range actions {
@@ -491,11 +491,11 @@ func TestConfigureAudit_NoiseRule_AllOperations(t *testing.T) {
 		op   string
 		args string
 	}{
-		{"add", `{"action":"noise_rule","operation":"add","pattern":"noise_pattern"}`},
-		{"remove", `{"action":"noise_rule","operation":"remove","pattern":"noise_pattern"}`},
-		{"list", `{"action":"noise_rule","operation":"list"}`},
-		{"reset", `{"action":"noise_rule","operation":"reset"}`},
-		{"auto_detect", `{"action":"noise_rule","operation":"auto_detect"}`},
+		{"add", `{"what":"noise_rule","operation":"add","pattern":"noise_pattern"}`},
+		{"remove", `{"what":"noise_rule","operation":"remove","pattern":"noise_pattern"}`},
+		{"list", `{"what":"noise_rule","operation":"list"}`},
+		{"reset", `{"what":"noise_rule","operation":"reset"}`},
+		{"auto_detect", `{"what":"noise_rule","operation":"auto_detect"}`},
 	}
 
 	for _, tc := range operations {
@@ -516,9 +516,9 @@ func TestConfigureAudit_AuditLog_AllOperations(t *testing.T) {
 		op   string
 		args string
 	}{
-		{"analyze", `{"action":"audit_log","operation":"analyze"}`},
-		{"report", `{"action":"audit_log","operation":"report"}`},
-		{"clear", `{"action":"audit_log","operation":"clear"}`},
+		{"analyze", `{"what":"audit_log","operation":"analyze"}`},
+		{"report", `{"what":"audit_log","operation":"report"}`},
+		{"clear", `{"what":"audit_log","operation":"clear"}`},
 	}
 
 	for _, tc := range operations {
@@ -535,7 +535,7 @@ func TestConfigureAudit_AuditLog_AllOperations(t *testing.T) {
 func TestConfigureAudit_Health_Detailed(t *testing.T) {
 	handler := createConfigureTestHandler(t)
 
-	args := json.RawMessage(`{"action":"health"}`)
+	args := json.RawMessage(`{"what":"health"}`)
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: 1}
 	resp := handler.toolConfigure(req, args)
 
@@ -557,7 +557,7 @@ func TestConfigureAudit_Health_Detailed(t *testing.T) {
 func TestConfigureAudit_UnknownAction(t *testing.T) {
 	handler := createConfigureTestHandler(t)
 
-	args := json.RawMessage(`{"action":"nonexistent_action_xyz"}`)
+	args := json.RawMessage(`{"what":"nonexistent_action_xyz"}`)
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: 1}
 	resp := handler.toolConfigure(req, args)
 

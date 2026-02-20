@@ -106,9 +106,10 @@ var domActionToReproType = act.DOMActionToReproType
 // parseSelectorForReproduction delegates to the interact package.
 var parseSelectorForReproduction = act.ParseSelectorForReproduction
 
-// toolInteract dispatches interact requests based on the 'action' parameter.
+// toolInteract dispatches interact requests based on the 'what' parameter.
 func (h *ToolHandler) toolInteract(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	var params struct {
+		What   string `json:"what"`
 		Action string `json:"action"`
 	}
 	if len(args) > 0 {
@@ -117,9 +118,14 @@ func (h *ToolHandler) toolInteract(req JSONRPCRequest, args json.RawMessage) JSO
 		}
 	}
 
-	if params.Action == "" {
+	what := params.What
+	if what == "" {
+		what = params.Action
+	}
+
+	if what == "" {
 		validActions := h.getValidInteractActions()
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrMissingParam, "Required parameter 'action' is missing", "Add the 'action' parameter and call again", withParam("action"), withHint("Valid values: "+validActions))}
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrMissingParam, "Required parameter 'what' is missing", "Add the 'what' parameter and call again", withParam("what"), withHint("Valid values: "+validActions))}
 	}
 
 	// Extract optional subtitle param (composable: works on any action)
@@ -128,11 +134,11 @@ func (h *ToolHandler) toolInteract(req JSONRPCRequest, args json.RawMessage) JSO
 	}
 	lenientUnmarshal(args, &composableSubtitle)
 
-	resp := h.dispatchInteractAction(req, args, params.Action)
+	resp := h.dispatchInteractAction(req, args, what)
 
 	// If a composable subtitle was provided on a non-subtitle action, queue it.
 	// Only queue if the primary action didn't fail (avoid subtitle on error).
-	if composableSubtitle.Subtitle != nil && params.Action != "subtitle" && resp.Error == nil {
+	if composableSubtitle.Subtitle != nil && what != "subtitle" && resp.Error == nil {
 		h.queueComposableSubtitle(req, *composableSubtitle.Subtitle)
 	}
 
@@ -148,7 +154,7 @@ func (h *ToolHandler) dispatchInteractAction(req JSONRPCRequest, args json.RawMe
 	if domPrimitiveActions[action] {
 		return h.handleDOMPrimitive(req, args, action)
 	}
-	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrUnknownMode, "Unknown interact action: "+action, "Use a valid action from the 'action' enum", withParam("action"))}
+	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrUnknownMode, "Unknown interact action: "+action, "Use a valid action from the 'what' enum", withParam("what"))}
 }
 
 // handleScreenshotAlias provides backward compatibility for clients that call

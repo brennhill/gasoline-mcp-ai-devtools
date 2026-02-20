@@ -20,7 +20,7 @@ import (
 func TestContractBadPath_Interact_Navigate_PilotDisabled(t *testing.T) {
 	env := newInteractContractEnv(t)
 	// Pilot is disabled by default in test env
-	result, ok := env.callInteract(t, `{"action":"navigate","url":"https://example.com"}`)
+	result, ok := env.callInteract(t, `{"what":"navigate","url":"https://example.com"}`)
 	if !ok {
 		t.Fatal("interact navigate pilot disabled: no result")
 	}
@@ -29,7 +29,7 @@ func TestContractBadPath_Interact_Navigate_PilotDisabled(t *testing.T) {
 
 func TestContractBadPath_Interact_ExecuteJS_PilotDisabled(t *testing.T) {
 	env := newInteractContractEnv(t)
-	result, ok := env.callInteract(t, `{"action":"execute_js","script":"1+1"}`)
+	result, ok := env.callInteract(t, `{"what":"execute_js","script":"1+1"}`)
 	if !ok {
 		t.Fatal("interact execute_js pilot disabled: no result")
 	}
@@ -38,7 +38,7 @@ func TestContractBadPath_Interact_ExecuteJS_PilotDisabled(t *testing.T) {
 
 func TestContractBadPath_Interact_Refresh_PilotDisabled(t *testing.T) {
 	env := newInteractContractEnv(t)
-	result, ok := env.callInteract(t, `{"action":"refresh"}`)
+	result, ok := env.callInteract(t, `{"what":"refresh"}`)
 	if !ok {
 		t.Fatal("interact refresh pilot disabled: no result")
 	}
@@ -47,7 +47,7 @@ func TestContractBadPath_Interact_Refresh_PilotDisabled(t *testing.T) {
 
 func TestContractBadPath_Interact_Back_PilotDisabled(t *testing.T) {
 	env := newInteractContractEnv(t)
-	result, ok := env.callInteract(t, `{"action":"back"}`)
+	result, ok := env.callInteract(t, `{"what":"back"}`)
 	if !ok {
 		t.Fatal("interact back pilot disabled: no result")
 	}
@@ -56,7 +56,7 @@ func TestContractBadPath_Interact_Back_PilotDisabled(t *testing.T) {
 
 func TestContractBadPath_Interact_NewTab_PilotDisabled(t *testing.T) {
 	env := newInteractContractEnv(t)
-	result, ok := env.callInteract(t, `{"action":"new_tab","url":"https://example.com"}`)
+	result, ok := env.callInteract(t, `{"what":"new_tab","url":"https://example.com"}`)
 	if !ok {
 		t.Fatal("interact new_tab pilot disabled: no result")
 	}
@@ -65,7 +65,7 @@ func TestContractBadPath_Interact_NewTab_PilotDisabled(t *testing.T) {
 
 func TestContractBadPath_Interact_Forward_PilotDisabled(t *testing.T) {
 	env := newInteractContractEnv(t)
-	result, ok := env.callInteract(t, `{"action":"forward"}`)
+	result, ok := env.callInteract(t, `{"what":"forward"}`)
 	if !ok {
 		t.Fatal("interact forward pilot disabled: no result")
 	}
@@ -74,7 +74,7 @@ func TestContractBadPath_Interact_Forward_PilotDisabled(t *testing.T) {
 
 func TestContractBadPath_Interact_Highlight_PilotDisabled(t *testing.T) {
 	env := newInteractContractEnv(t)
-	result, ok := env.callInteract(t, `{"action":"highlight","selector":"#test"}`)
+	result, ok := env.callInteract(t, `{"what":"highlight","selector":"#test"}`)
 	if !ok {
 		t.Fatal("interact highlight pilot disabled: no result")
 	}
@@ -87,7 +87,7 @@ func TestContractBadPath_Interact_Highlight_PilotDisabled(t *testing.T) {
 
 func TestContractBadPath_Interact_LoadState_NotFound(t *testing.T) {
 	env := newInteractContractEnv(t)
-	result, ok := env.callInteract(t, `{"action":"load_state","snapshot_name":"nonexistent_state_xyz"}`)
+	result, ok := env.callInteract(t, `{"what":"load_state","snapshot_name":"nonexistent_state_xyz"}`)
 	if !ok {
 		t.Fatal("interact load_state not found: no result")
 	}
@@ -197,10 +197,10 @@ func TestContractEnforcement_UnknownParams_ProduceWarnings(t *testing.T) {
 		args string
 	}{
 		{"observe", `{"what":"errors","totally_fake_param_xyz":true}`},
-		{"configure", `{"action":"health","totally_fake_param_xyz":true}`},
-		{"generate", `{"format":"test","totally_fake_param_xyz":true}`},
+		{"configure", `{"what":"health","totally_fake_param_xyz":true}`},
+		{"generate", `{"what":"test","totally_fake_param_xyz":true}`},
 		{"analyze", `{"what":"dom","selector":"body","totally_fake_param_xyz":true}`},
-		{"interact", `{"action":"list_states","totally_fake_param_xyz":true}`},
+		{"interact", `{"what":"list_states","totally_fake_param_xyz":true}`},
 	}
 
 	for _, tc := range tools {

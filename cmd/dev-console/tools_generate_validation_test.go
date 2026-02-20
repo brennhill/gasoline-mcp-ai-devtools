@@ -16,22 +16,22 @@ func TestGenerateRejectsUnknownParams(t *testing.T) {
 		{
 			name:   "reproduction rejects bogus param",
 			format: "reproduction",
-			args:   map[string]any{"format": "reproduction", "bogus": true},
+			args:   map[string]any{"what": "reproduction", "bogus": true},
 		},
 		{
 			name:   "test rejects unknown scope param",
 			format: "test",
-			args:   map[string]any{"format": "test", "scope": "page"},
+			args:   map[string]any{"what": "test", "scope": "page"},
 		},
 		{
 			name:   "har rejects include_passes",
 			format: "har",
-			args:   map[string]any{"format": "har", "include_passes": true},
+			args:   map[string]any{"what": "har", "include_passes": true},
 		},
 		{
 			name:   "csp rejects resource_types",
 			format: "csp",
-			args:   map[string]any{"format": "csp", "resource_types": []string{"script"}},
+			args:   map[string]any{"what": "csp", "resource_types": []string{"script"}},
 		},
 	}
 
@@ -69,17 +69,17 @@ func TestGenerateAcceptsValidParams(t *testing.T) {
 		{
 			name:   "reproduction with valid params",
 			format: "reproduction",
-			args:   map[string]any{"format": "reproduction", "error_message": "404", "last_n": 5},
+			args:   map[string]any{"what": "reproduction", "error_message": "404", "last_n": 5},
 		},
 		{
 			name:   "test with telemetry_mode",
 			format: "test",
-			args:   map[string]any{"format": "test", "test_name": "login", "telemetry_mode": "auto"},
+			args:   map[string]any{"what": "test", "test_name": "login", "telemetry_mode": "auto"},
 		},
 		{
 			name:   "har with filters",
 			format: "har",
-			args:   map[string]any{"format": "har", "url": "/api", "method": "GET"},
+			args:   map[string]any{"what": "har", "url": "/api", "method": "GET"},
 		},
 	}
 
@@ -102,7 +102,7 @@ func TestGenerateEmptyOutputIncludesReason(t *testing.T) {
 	h := newTestToolHandler()
 
 	// Call generate(test) with no actions captured → should include reason
-	args, _ := json.Marshal(map[string]any{"format": "test"})
+	args, _ := json.Marshal(map[string]any{"what": "test"})
 	resp := h.toolGenerate(JSONRPCRequest{ID: 1}, args)
 
 	var result MCPToolResult
@@ -122,7 +122,7 @@ func TestGenerateEmptyOutputIncludesReason(t *testing.T) {
 func TestGeneratePRSummaryEmptyIncludesReason(t *testing.T) {
 	h := newTestToolHandler()
 
-	args, _ := json.Marshal(map[string]any{"format": "pr_summary"})
+	args, _ := json.Marshal(map[string]any{"what": "pr_summary"})
 	resp := h.toolGenerate(JSONRPCRequest{ID: 1}, args)
 
 	var result MCPToolResult

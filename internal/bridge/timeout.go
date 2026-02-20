@@ -73,8 +73,13 @@ func ExtractToolAction(method string, params json.RawMessage) (toolName, action 
 		return "", ""
 	}
 	var a struct {
+		What   string `json:"what"`
 		Action string `json:"action"`
 	}
 	_ = json.Unmarshal(p.Args, &a)
-	return p.Name, a.Action
+	act := a.What
+	if act == "" {
+		act = a.Action
+	}
+	return p.Name, act
 }

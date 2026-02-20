@@ -1,16 +1,16 @@
 #!/bin/bash
-# 14-stability-shutdown.sh — 14.1-14.3: Post-barrage stability and graceful shutdown.
-# MUST BE LAST — 14.3 kills the daemon.
+# 30-stability-shutdown.sh — 30.1-30.3: Post-barrage stability and graceful shutdown.
+# MUST BE LAST — 30.3 kills the daemon.
 set -eo pipefail
 
-begin_category "14" "Stability & Shutdown" "3"
+begin_category "30" "Stability & Shutdown" "3"
 
-# ── Test 14.1: observe(page) still works after all actions ─
-begin_test "14.1" "[BROWSER] Page state survives action barrage" \
+# ── Test 30.1: observe(page) still works after all actions ─
+begin_test "30.1" "[BROWSER] Page state survives action barrage" \
     "After navigate + JS execution + clicks + forms + WS, observe(page) still returns valid data" \
     "Verifies no corruption from heavy interaction"
 
-run_test_14_1() {
+run_test_30_1() {
     if [ "$EXTENSION_CONNECTED" != "true" ]; then
         skip "Extension not connected."
         return
@@ -27,14 +27,14 @@ run_test_14_1() {
         fail "observe(page) broken after actions. Content: $(truncate "$content_text" 200)"
     fi
 }
-run_test_14_1
+run_test_30_1
 
-# ── Test 14.2: Health still OK after everything ──────────
-begin_test "14.2" "[DAEMON ONLY] Health still OK after everything" \
+# ── Test 30.2: Health still OK after everything ──────────
+begin_test "30.2" "[DAEMON ONLY] Health still OK after everything" \
     "Verify daemon is healthy after all the interaction and observation" \
     "Detects memory leaks, crashes, or degraded state"
 
-run_test_14_2() {
+run_test_30_2() {
     local body
     body=$(get_http_body "http://localhost:${PORT}/health")
 
@@ -47,14 +47,14 @@ run_test_14_2() {
 
     pass "Daemon still healthy after full smoke test. status='ok'."
 }
-run_test_14_2
+run_test_30_2
 
-# ── Test 14.3: Graceful shutdown ─────────────────────────
-begin_test "14.3" "[DAEMON ONLY] Graceful shutdown via --stop" \
+# ── Test 30.3: Graceful shutdown ─────────────────────────
+begin_test "30.3" "[DAEMON ONLY] Graceful shutdown via --stop" \
     "Run --stop, verify port is freed and PID file is cleaned up" \
     "Ungraceful shutdown leaves orphan processes and stale PID files"
 
-run_test_14_3() {
+run_test_30_3() {
     local stop_output
     stop_output=$("$WRAPPER" --stop --port "$PORT" 2>&1)
     local stop_exit=$?
@@ -105,4 +105,4 @@ run_test_14_3() {
 
     pass "Graceful shutdown: --stop exited 0, port freed in ${i}x0.5s, PID file cleaned."
 }
-run_test_14_3
+run_test_30_3

@@ -243,7 +243,7 @@ func parseAnalyzeArgs(what string, args []string) (map[string]any, error) {
 }
 
 func parseGenerateArgs(format string, args []string) (map[string]any, error) {
-	mcpArgs := map[string]any{"format": format}
+	mcpArgs := map[string]any{"what": format}
 	parsed, err := parseFlagsBySpec(args, map[string]cliFlagSpec{
 		"--telemetry-mode":        {mcpKey: "telemetry_mode", kind: flagString},
 		"--error-message":         {mcpKey: "error_message", kind: flagString},
@@ -291,7 +291,7 @@ func parseGenerateArgs(format string, args []string) (map[string]any, error) {
 }
 
 func parseConfigureArgs(action string, args []string) (map[string]any, error) {
-	mcpArgs := map[string]any{"action": action}
+	mcpArgs := map[string]any{"what": action}
 	parsed, err := parseFlagsBySpec(args, map[string]cliFlagSpec{
 		"--telemetry-mode":       {mcpKey: "telemetry_mode", kind: flagString},
 		"--store-action":         {mcpKey: "store_action", kind: flagString},
@@ -360,7 +360,7 @@ var interactActionsRequiringSelector = map[string]bool{
 }
 
 func parseInteractArgs(action string, args []string) (map[string]any, error) {
-	mcpArgs := map[string]any{"action": action}
+	mcpArgs := map[string]any{"what": action}
 	parsed, err := parseFlagsBySpec(args, map[string]cliFlagSpec{
 		"--telemetry-mode":        {mcpKey: "telemetry_mode", kind: flagString},
 		"--sync":                  {mcpKey: "sync", kind: flagBool},

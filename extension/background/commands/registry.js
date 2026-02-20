@@ -2,7 +2,7 @@
 // Replaces the monolithic if-chain in pending-queries.ts with a Map-based registry.
 import * as index from '../index.js';
 import { DebugCategory } from '../debug.js';
-import { sendResult, sendAsyncResult, requiresTargetTab, resolveTargetTab, parseQueryParamsObject, withTargetContext, actionToast } from './helpers.js';
+import { sendResult, sendAsyncResult, requiresTargetTab, resolveTargetTab, parseQueryParamsObject, withTargetContext, actionToast, isRestrictedUrl } from './helpers.js';
 const { debugLog } = index;
 // =============================================================================
 // REGISTRY
@@ -60,6 +60,22 @@ export async function dispatch(query, syncClient) {
             success: false,
             error: 'missing_target',
             message: 'No target tab resolved for query'
+        };
+        if (query.correlation_id) {
+            sendAsyncResult(syncClient, query.id, query.correlation_id, 'error', payload, payload.message);
+        }
+        else {
+            sendResult(syncClient, query.id, payload);
+        }
+        return;
+    }
+    // Restricted page detection: content scripts cannot run on internal browser pages
+    if (needsTarget && isRestrictedUrl(target?.url)) {
+        const payload = {
+            success: false,
+            error: 'restricted_page',
+            message: 'Extension connected but this page blocks content scripts (common on Google, Chrome Web Store, internal pages). Navigate to a different page first.',
+            retryable: false
         };
         if (query.correlation_id) {
             sendAsyncResult(syncClient, query.id, query.correlation_id, 'error', payload, payload.message);

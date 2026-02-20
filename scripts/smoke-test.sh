@@ -31,7 +31,10 @@ while [ $# -gt 0 ]; do
             echo "  04-network-websocket, 05-interact-dom, 06-interact-state,"
             echo "  07-generate-formats, 08-configure-features, 09-perf-analysis,"
             echo "  10-recording, 11-subtitle-screenshot, 12-cross-cutting,"
-            echo "  13-draw-mode, 15-file-upload, 14-stability-shutdown"
+            echo "  13-draw-mode, 15-file-upload, 20-inspect-visual,"
+            echo "  21-macro-recording, 22-log-aggregation, 23-doctor-preflight,"
+            echo "  24-retryable-errors, 25-action-enrichment, 26-default-upload-dir,"
+            echo "  27-extension-refactor, 30-stability-shutdown"
             exit 0
             ;;
         --start-from)
@@ -102,9 +105,15 @@ MODULES=(
     "12-cross-cutting.sh"
     "13-draw-mode.sh"
     "15-file-upload.sh"       # 15 runs before 14: upload needs a live daemon
+    "20-inspect-visual.sh"
     "21-macro-recording.sh"
     "22-log-aggregation.sh"
-    "14-stability-shutdown.sh" # 14 must be last: it kills the daemon
+    "23-doctor-preflight.sh"
+    "24-retryable-errors.sh"
+    "25-action-enrichment.sh"
+    "26-default-upload-dir.sh"
+    "27-extension-refactor.sh"
+    "30-stability-shutdown.sh" # 30 must be last: it kills the daemon
 )
 
 # ── Port conflict check ───────────────────────────────────

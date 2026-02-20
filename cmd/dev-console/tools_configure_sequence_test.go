@@ -31,12 +31,12 @@ func TestSaveSequence_Valid(t *testing.T) {
 	t.Parallel()
 	env := newSequenceTestEnv(t)
 	resp := callConfigureRaw(env.handler, `{
-		"action": "save_sequence",
+		"what": "save_sequence",
 		"name": "login-flow",
 		"description": "Login to the app",
 		"steps": [
-			{"action": "navigate", "url": "https://example.com/login"},
-			{"action": "click", "selector": "#submit"}
+			{"what": "navigate", "url": "https://example.com/login"},
+			{"what": "click", "selector": "#submit"}
 		]
 	}`)
 	result := parseToolResult(t, resp)
@@ -58,8 +58,8 @@ func TestSaveSequence_MissingName(t *testing.T) {
 	t.Parallel()
 	env := newSequenceTestEnv(t)
 	resp := callConfigureRaw(env.handler, `{
-		"action": "save_sequence",
-		"steps": [{"action": "click", "selector": "#btn"}]
+		"what": "save_sequence",
+		"steps": [{"what": "click", "selector": "#btn"}]
 	}`)
 	assertIsError(t, resp, "missing_param")
 }
@@ -68,9 +68,9 @@ func TestSaveSequence_InvalidNameFormat(t *testing.T) {
 	t.Parallel()
 	env := newSequenceTestEnv(t)
 	resp := callConfigureRaw(env.handler, `{
-		"action": "save_sequence",
+		"what": "save_sequence",
 		"name": "invalid name with spaces!",
-		"steps": [{"action": "click", "selector": "#btn"}]
+		"steps": [{"what": "click", "selector": "#btn"}]
 	}`)
 	assertIsError(t, resp, "invalid_param")
 }
@@ -79,7 +79,7 @@ func TestSaveSequence_EmptySteps(t *testing.T) {
 	t.Parallel()
 	env := newSequenceTestEnv(t)
 	resp := callConfigureRaw(env.handler, `{
-		"action": "save_sequence",
+		"what": "save_sequence",
 		"name": "empty-seq",
 		"steps": []
 	}`)
@@ -91,10 +91,10 @@ func TestSaveSequence_TooManySteps(t *testing.T) {
 	env := newSequenceTestEnv(t)
 	steps := make([]map[string]any, 51)
 	for i := range steps {
-		steps[i] = map[string]any{"action": "click", "selector": "#btn"}
+		steps[i] = map[string]any{"what": "click", "selector": "#btn"}
 	}
 	argsMap := map[string]any{
-		"action": "save_sequence",
+		"what": "save_sequence",
 		"name":   "big-seq",
 		"steps":  steps,
 	}
@@ -107,7 +107,7 @@ func TestSaveSequence_StepMissingAction(t *testing.T) {
 	t.Parallel()
 	env := newSequenceTestEnv(t)
 	resp := callConfigureRaw(env.handler, `{
-		"action": "save_sequence",
+		"what": "save_sequence",
 		"name": "bad-step",
 		"steps": [{"selector": "#btn"}]
 	}`)
@@ -119,17 +119,17 @@ func TestSaveSequence_Upsert(t *testing.T) {
 	env := newSequenceTestEnv(t)
 	// Save initial
 	callConfigureRaw(env.handler, `{
-		"action": "save_sequence",
+		"what": "save_sequence",
 		"name": "my-seq",
-		"steps": [{"action": "click", "selector": "#a"}]
+		"steps": [{"what": "click", "selector": "#a"}]
 	}`)
 	// Overwrite
 	resp := callConfigureRaw(env.handler, `{
-		"action": "save_sequence",
+		"what": "save_sequence",
 		"name": "my-seq",
 		"steps": [
-			{"action": "click", "selector": "#b"},
-			{"action": "click", "selector": "#c"}
+			{"what": "click", "selector": "#b"},
+			{"what": "click", "selector": "#c"}
 		]
 	}`)
 	result := parseToolResult(t, resp)
@@ -145,10 +145,10 @@ func TestSaveSequence_WithTags(t *testing.T) {
 	t.Parallel()
 	env := newSequenceTestEnv(t)
 	resp := callConfigureRaw(env.handler, `{
-		"action": "save_sequence",
+		"what": "save_sequence",
 		"name": "tagged-seq",
 		"tags": ["auth", "setup"],
-		"steps": [{"action": "navigate", "url": "https://example.com"}]
+		"steps": [{"what": "navigate", "url": "https://example.com"}]
 	}`)
 	result := parseToolResult(t, resp)
 	assertNonErrorResponse(t, "save_sequence with tags", result)
@@ -163,13 +163,13 @@ func TestGetSequence_Valid(t *testing.T) {
 	env := newSequenceTestEnv(t)
 	// Save
 	callConfigureRaw(env.handler, `{
-		"action": "save_sequence",
+		"what": "save_sequence",
 		"name": "get-test",
 		"description": "A test sequence",
-		"steps": [{"action": "navigate", "url": "https://example.com"}]
+		"steps": [{"what": "navigate", "url": "https://example.com"}]
 	}`)
 	// Get
-	resp := callConfigureRaw(env.handler, `{"action": "get_sequence", "name": "get-test"}`)
+	resp := callConfigureRaw(env.handler, `{"what": "get_sequence", "name": "get-test"}`)
 	result := parseToolResult(t, resp)
 	assertNonErrorResponse(t, "get_sequence", result)
 	data := extractResultJSON(t, result)
@@ -188,14 +188,14 @@ func TestGetSequence_Valid(t *testing.T) {
 func TestGetSequence_NotFound(t *testing.T) {
 	t.Parallel()
 	env := newSequenceTestEnv(t)
-	resp := callConfigureRaw(env.handler, `{"action": "get_sequence", "name": "nonexistent"}`)
+	resp := callConfigureRaw(env.handler, `{"what": "get_sequence", "name": "nonexistent"}`)
 	assertIsError(t, resp, "no_data")
 }
 
 func TestGetSequence_MissingName(t *testing.T) {
 	t.Parallel()
 	env := newSequenceTestEnv(t)
-	resp := callConfigureRaw(env.handler, `{"action": "get_sequence"}`)
+	resp := callConfigureRaw(env.handler, `{"what": "get_sequence"}`)
 	assertIsError(t, resp, "missing_param")
 }
 
@@ -206,7 +206,7 @@ func TestGetSequence_MissingName(t *testing.T) {
 func TestListSequences_Empty(t *testing.T) {
 	t.Parallel()
 	env := newSequenceTestEnv(t)
-	resp := callConfigureRaw(env.handler, `{"action": "list_sequences"}`)
+	resp := callConfigureRaw(env.handler, `{"what": "list_sequences"}`)
 	result := parseToolResult(t, resp)
 	assertNonErrorResponse(t, "list_sequences empty", result)
 	data := extractResultJSON(t, result)
@@ -224,14 +224,14 @@ func TestListSequences_Multiple(t *testing.T) {
 	env := newSequenceTestEnv(t)
 	for _, name := range []string{"seq-a", "seq-b"} {
 		argsMap := map[string]any{
-			"action": "save_sequence",
+			"what": "save_sequence",
 			"name":   name,
-			"steps":  []any{map[string]any{"action": "click", "selector": "#btn"}},
+			"steps":  []any{map[string]any{"what": "click", "selector": "#btn"}},
 		}
 		argsJSON, _ := json.Marshal(argsMap)
 		callConfigureRaw(env.handler, string(argsJSON))
 	}
-	resp := callConfigureRaw(env.handler, `{"action": "list_sequences"}`)
+	resp := callConfigureRaw(env.handler, `{"what": "list_sequences"}`)
 	result := parseToolResult(t, resp)
 	assertNonErrorResponse(t, "list_sequences multiple", result)
 	data := extractResultJSON(t, result)
@@ -248,18 +248,18 @@ func TestListSequences_FilterByTags(t *testing.T) {
 	t.Parallel()
 	env := newSequenceTestEnv(t)
 	callConfigureRaw(env.handler, `{
-		"action": "save_sequence",
+		"what": "save_sequence",
 		"name": "auth-seq",
 		"tags": ["auth"],
-		"steps": [{"action": "click", "selector": "#btn"}]
+		"steps": [{"what": "click", "selector": "#btn"}]
 	}`)
 	callConfigureRaw(env.handler, `{
-		"action": "save_sequence",
+		"what": "save_sequence",
 		"name": "other-seq",
 		"tags": ["other"],
-		"steps": [{"action": "click", "selector": "#btn"}]
+		"steps": [{"what": "click", "selector": "#btn"}]
 	}`)
-	resp := callConfigureRaw(env.handler, `{"action": "list_sequences", "tags": ["auth"]}`)
+	resp := callConfigureRaw(env.handler, `{"what": "list_sequences", "tags": ["auth"]}`)
 	result := parseToolResult(t, resp)
 	assertNonErrorResponse(t, "list_sequences filter", result)
 	data := extractResultJSON(t, result)
@@ -280,11 +280,11 @@ func TestDeleteSequence_Valid(t *testing.T) {
 	t.Parallel()
 	env := newSequenceTestEnv(t)
 	callConfigureRaw(env.handler, `{
-		"action": "save_sequence",
+		"what": "save_sequence",
 		"name": "to-delete",
-		"steps": [{"action": "click", "selector": "#btn"}]
+		"steps": [{"what": "click", "selector": "#btn"}]
 	}`)
-	resp := callConfigureRaw(env.handler, `{"action": "delete_sequence", "name": "to-delete"}`)
+	resp := callConfigureRaw(env.handler, `{"what": "delete_sequence", "name": "to-delete"}`)
 	result := parseToolResult(t, resp)
 	assertNonErrorResponse(t, "delete_sequence", result)
 	data := extractResultJSON(t, result)
@@ -292,21 +292,21 @@ func TestDeleteSequence_Valid(t *testing.T) {
 		t.Errorf("expected status=deleted, got %v", data["status"])
 	}
 	// Verify it's gone
-	getResp := callConfigureRaw(env.handler, `{"action": "get_sequence", "name": "to-delete"}`)
+	getResp := callConfigureRaw(env.handler, `{"what": "get_sequence", "name": "to-delete"}`)
 	assertIsError(t, getResp, "no_data")
 }
 
 func TestDeleteSequence_NotFound(t *testing.T) {
 	t.Parallel()
 	env := newSequenceTestEnv(t)
-	resp := callConfigureRaw(env.handler, `{"action": "delete_sequence", "name": "nonexistent"}`)
+	resp := callConfigureRaw(env.handler, `{"what": "delete_sequence", "name": "nonexistent"}`)
 	assertIsError(t, resp, "no_data")
 }
 
 func TestDeleteSequence_MissingName(t *testing.T) {
 	t.Parallel()
 	env := newSequenceTestEnv(t)
-	resp := callConfigureRaw(env.handler, `{"action": "delete_sequence"}`)
+	resp := callConfigureRaw(env.handler, `{"what": "delete_sequence"}`)
 	assertIsError(t, resp, "missing_param")
 }
 
@@ -317,14 +317,14 @@ func TestDeleteSequence_MissingName(t *testing.T) {
 func TestReplaySequence_NotFound(t *testing.T) {
 	t.Parallel()
 	env := newSequenceTestEnv(t)
-	resp := callConfigureRaw(env.handler, `{"action": "replay_sequence", "name": "nonexistent"}`)
+	resp := callConfigureRaw(env.handler, `{"what": "replay_sequence", "name": "nonexistent"}`)
 	assertIsError(t, resp, "no_data")
 }
 
 func TestReplaySequence_MissingName(t *testing.T) {
 	t.Parallel()
 	env := newSequenceTestEnv(t)
-	resp := callConfigureRaw(env.handler, `{"action": "replay_sequence"}`)
+	resp := callConfigureRaw(env.handler, `{"what": "replay_sequence"}`)
 	assertIsError(t, resp, "missing_param")
 }
 
@@ -332,15 +332,15 @@ func TestReplaySequence_OverrideStepsLengthMismatch(t *testing.T) {
 	t.Parallel()
 	env := newSequenceTestEnv(t)
 	callConfigureRaw(env.handler, `{
-		"action": "save_sequence",
+		"what": "save_sequence",
 		"name": "two-step",
 		"steps": [
-			{"action": "click", "selector": "#a"},
-			{"action": "click", "selector": "#b"}
+			{"what": "click", "selector": "#a"},
+			{"what": "click", "selector": "#b"}
 		]
 	}`)
 	resp := callConfigureRaw(env.handler, `{
-		"action": "replay_sequence",
+		"what": "replay_sequence",
 		"name": "two-step",
 		"override_steps": [null, null, null]
 	}`)
@@ -356,12 +356,12 @@ func TestSequence_PersistsAcrossHandlerInstances(t *testing.T) {
 	env := newSequenceTestEnv(t)
 	// Save a sequence
 	callConfigureRaw(env.handler, `{
-		"action": "save_sequence",
+		"what": "save_sequence",
 		"name": "persist-test",
-		"steps": [{"action": "navigate", "url": "https://example.com"}]
+		"steps": [{"what": "navigate", "url": "https://example.com"}]
 	}`)
 	// Get with the same handler (verifies session store persistence)
-	resp := callConfigureRaw(env.handler, `{"action": "get_sequence", "name": "persist-test"}`)
+	resp := callConfigureRaw(env.handler, `{"what": "get_sequence", "name": "persist-test"}`)
 	result := parseToolResult(t, resp)
 	assertNonErrorResponse(t, "persistence", result)
 	data := extractResultJSON(t, result)
@@ -382,9 +382,9 @@ func TestSaveSequence_NameTooLong(t *testing.T) {
 		longName += "a"
 	}
 	argsMap := map[string]any{
-		"action": "save_sequence",
+		"what": "save_sequence",
 		"name":   longName,
-		"steps":  []any{map[string]any{"action": "click", "selector": "#btn"}},
+		"steps":  []any{map[string]any{"what": "click", "selector": "#btn"}},
 	}
 	argsJSON, _ := json.Marshal(argsMap)
 	resp := callConfigureRaw(env.handler, string(argsJSON))
@@ -395,9 +395,9 @@ func TestSaveSequence_ValidNameChars(t *testing.T) {
 	t.Parallel()
 	env := newSequenceTestEnv(t)
 	resp := callConfigureRaw(env.handler, `{
-		"action": "save_sequence",
+		"what": "save_sequence",
 		"name": "valid-name_123",
-		"steps": [{"action": "click", "selector": "#btn"}]
+		"steps": [{"what": "click", "selector": "#btn"}]
 	}`)
 	result := parseToolResult(t, resp)
 	assertNonErrorResponse(t, "valid name chars", result)

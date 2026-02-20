@@ -96,10 +96,10 @@ func TestWaveB_AuditLogOperationAnalyzeAndClear(t *testing.T) {
 	h := mcpHandler.toolHandler.(*ToolHandler)
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: 1, ClientID: "wave-b-test"}
 
-	callHandledTool(t, h, req, "configure", `{"action":"health"}`)
+	callHandledTool(t, h, req, "configure", `{"what":"health"}`)
 	callHandledTool(t, h, req, "observe", `{"what":"logs"}`)
 
-	analyzeResp := callHandledTool(t, h, req, "configure", `{"action":"audit_log","operation":"analyze"}`)
+	analyzeResp := callHandledTool(t, h, req, "configure", `{"what":"audit_log","operation":"analyze"}`)
 	analyzeResult := parseToolResult(t, analyzeResp)
 	if analyzeResult.IsError {
 		t.Fatalf("audit_log analyze should succeed, got: %s", analyzeResult.Content[0].Text)
@@ -112,7 +112,7 @@ func TestWaveB_AuditLogOperationAnalyzeAndClear(t *testing.T) {
 		t.Fatal("audit_log analyze should include summary")
 	}
 
-	clearResp := callHandledTool(t, h, req, "configure", `{"action":"audit_log","operation":"clear"}`)
+	clearResp := callHandledTool(t, h, req, "configure", `{"what":"audit_log","operation":"clear"}`)
 	clearResult := parseToolResult(t, clearResp)
 	if clearResult.IsError {
 		t.Fatalf("audit_log clear should succeed, got: %s", clearResult.Content[0].Text)
@@ -141,16 +141,16 @@ func TestWaveB_AuditLogClear_DoesNotReinsertClearCall(t *testing.T) {
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: 1, ClientID: "audit-clear-test"}
 
 	// Seed at least one entry.
-	callHandledTool(t, h, req, "configure", `{"action":"health"}`)
+	callHandledTool(t, h, req, "configure", `{"what":"health"}`)
 
-	clearResp := callHandledTool(t, h, req, "configure", `{"action":"audit_log","operation":"clear"}`)
+	clearResp := callHandledTool(t, h, req, "configure", `{"what":"audit_log","operation":"clear"}`)
 	clearResult := parseToolResult(t, clearResp)
 	if clearResult.IsError {
 		t.Fatalf("audit_log clear should succeed, got: %s", clearResult.Content[0].Text)
 	}
 
 	// Report should be empty. If clear got re-recorded after execution, count would be 1.
-	reportResp := callHandledTool(t, h, req, "configure", `{"action":"audit_log","operation":"report"}`)
+	reportResp := callHandledTool(t, h, req, "configure", `{"what":"audit_log","operation":"report"}`)
 	reportResult := parseToolResult(t, reportResp)
 	if reportResult.IsError {
 		t.Fatalf("audit_log report should succeed, got: %s", reportResult.Content[0].Text)
@@ -175,18 +175,18 @@ func TestWaveB_AuditLogClear_ResetsToolHandlerSessionMap(t *testing.T) {
 	h := mcpHandler.toolHandler.(*ToolHandler)
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: 1, ClientID: "session-reset-client"}
 
-	callHandledTool(t, h, req, "configure", `{"action":"health"}`)
+	callHandledTool(t, h, req, "configure", `{"what":"health"}`)
 	oldSessionID := h.auditSessionMap["session-reset-client"]
 	if oldSessionID == "" {
 		t.Fatal("expected initial audit session id")
 	}
 
-	callHandledTool(t, h, req, "configure", `{"action":"audit_log","operation":"clear"}`)
+	callHandledTool(t, h, req, "configure", `{"what":"audit_log","operation":"clear"}`)
 	if stale := h.auditSessionMap["session-reset-client"]; stale != "" {
 		t.Fatalf("audit session map should be reset on clear, found stale id: %s", stale)
 	}
 
-	callHandledTool(t, h, req, "configure", `{"action":"health"}`)
+	callHandledTool(t, h, req, "configure", `{"what":"health"}`)
 	newSessionID := h.auditSessionMap["session-reset-client"]
 	if newSessionID == "" {
 		t.Fatal("expected new audit session id after clear")

@@ -17,7 +17,7 @@ func TestHandleBrowserActionBack_Success(t *testing.T) {
 	env := newInteractTestEnv(t)
 	env.capture.SetPilotEnabled(true)
 
-	result, ok := env.callInteract(t, `{"action":"back"}`)
+	result, ok := env.callInteract(t, `{"what":"back"}`)
 	if !ok {
 		t.Fatal("back should return result")
 	}
@@ -56,7 +56,7 @@ func TestHandleBrowserActionForward_Success(t *testing.T) {
 	env := newInteractTestEnv(t)
 	env.capture.SetPilotEnabled(true)
 
-	result, ok := env.callInteract(t, `{"action":"forward"}`)
+	result, ok := env.callInteract(t, `{"what":"forward"}`)
 	if !ok {
 		t.Fatal("forward should return result")
 	}
@@ -90,7 +90,7 @@ func TestHandleBrowserActionNewTab_Success(t *testing.T) {
 	env := newInteractTestEnv(t)
 	env.capture.SetPilotEnabled(true)
 
-	result, ok := env.callInteract(t, `{"action":"new_tab","url":"https://example.com"}`)
+	result, ok := env.callInteract(t, `{"what":"new_tab","url":"https://example.com"}`)
 	if !ok {
 		t.Fatal("new_tab should return result")
 	}
@@ -118,7 +118,7 @@ func TestHandleBrowserActionNewTab_NoURL(t *testing.T) {
 	env.capture.SetPilotEnabled(true)
 
 	// URL is optional for new_tab
-	result, ok := env.callInteract(t, `{"action":"new_tab"}`)
+	result, ok := env.callInteract(t, `{"what":"new_tab"}`)
 	if !ok {
 		t.Fatal("new_tab without url should return result")
 	}

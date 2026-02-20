@@ -23,15 +23,15 @@ func TestParseMCPCommand_ToolCalls(t *testing.T) {
 		},
 		{
 			name:       "interact navigate",
-			body:       `{"jsonrpc":"2.0","method":"tools/call","params":{"name":"interact","arguments":{"action":"navigate","url":"https://example.com"}}}`,
+			body:       `{"jsonrpc":"2.0","method":"tools/call","params":{"name":"interact","arguments":{"what":"navigate","url":"https://example.com"}}}`,
 			wantTool:   "interact",
-			wantParams: "action=navigate url=https://example.com",
+			wantParams: "what=navigate url=https://example.com",
 		},
 		{
 			name:       "interact click",
-			body:       `{"jsonrpc":"2.0","method":"tools/call","params":{"name":"interact","arguments":{"action":"click","selector":"#btn"}}}`,
+			body:       `{"jsonrpc":"2.0","method":"tools/call","params":{"name":"interact","arguments":{"what":"click","selector":"#btn"}}}`,
 			wantTool:   "interact",
-			wantParams: "action=click selector=#btn",
+			wantParams: "what=click selector=#btn",
 		},
 		{
 			name:       "analyze accessibility",
@@ -41,21 +41,21 @@ func TestParseMCPCommand_ToolCalls(t *testing.T) {
 		},
 		{
 			name:       "generate test",
-			body:       `{"jsonrpc":"2.0","method":"tools/call","params":{"name":"generate","arguments":{"format":"test"}}}`,
+			body:       `{"jsonrpc":"2.0","method":"tools/call","params":{"name":"generate","arguments":{"what":"test"}}}`,
 			wantTool:   "generate",
-			wantParams: "format=test",
+			wantParams: "what=test",
 		},
 		{
 			name:       "configure clear",
-			body:       `{"jsonrpc":"2.0","method":"tools/call","params":{"name":"configure","arguments":{"action":"clear","buffer":"all"}}}`,
+			body:       `{"jsonrpc":"2.0","method":"tools/call","params":{"name":"configure","arguments":{"what":"clear","buffer":"all"}}}`,
 			wantTool:   "configure",
-			wantParams: "action=clear buffer=all",
+			wantParams: "what=clear buffer=all",
 		},
 		{
 			name:       "configure noise rule",
-			body:       `{"jsonrpc":"2.0","method":"tools/call","params":{"name":"configure","arguments":{"action":"noise_rule","noise_action":"auto_detect"}}}`,
+			body:       `{"jsonrpc":"2.0","method":"tools/call","params":{"name":"configure","arguments":{"what":"noise_rule","noise_action":"auto_detect"}}}`,
 			wantTool:   "configure",
-			wantParams: "action=noise_rule noise_action=auto_detect",
+			wantParams: "what=noise_rule noise_action=auto_detect",
 		},
 		{
 			name:       "empty body",
@@ -83,9 +83,9 @@ func TestParseMCPCommand_ToolCalls(t *testing.T) {
 		},
 		{
 			name:       "long url truncated",
-			body:       `{"jsonrpc":"2.0","method":"tools/call","params":{"name":"interact","arguments":{"action":"navigate","url":"https://example.com/very/long/path/that/exceeds/the/forty/character/limit/and/should/be/truncated"}}}`,
+			body:       `{"jsonrpc":"2.0","method":"tools/call","params":{"name":"interact","arguments":{"what":"navigate","url":"https://example.com/very/long/path/that/exceeds/the/forty/character/limit/and/should/be/truncated"}}}`,
 			wantTool:   "interact",
-			wantParams: "action=navigate url=https://example.com/very/long/path/th...",
+			wantParams: "what=navigate url=https://example.com/very/long/path/th...",
 		},
 	}
 
@@ -116,7 +116,7 @@ func TestBuildRecentCommands_UsesToolAndParams(t *testing.T) {
 			Timestamp:      time.Now().Add(-time.Second),
 			Endpoint:       "/mcp",
 			Method:         "POST",
-			RequestBody:    `{"jsonrpc":"2.0","method":"tools/call","params":{"name":"interact","arguments":{"action":"click","selector":"#btn"}}}`,
+			RequestBody:    `{"jsonrpc":"2.0","method":"tools/call","params":{"name":"interact","arguments":{"what":"click","selector":"#btn"}}}`,
 			ResponseStatus: 200,
 			DurationMs:     120,
 		},
@@ -137,7 +137,7 @@ func TestBuildRecentCommands_UsesToolAndParams(t *testing.T) {
 	if cmds[1].Tool != "interact" {
 		t.Errorf("cmds[1].Tool = %q, want interact", cmds[1].Tool)
 	}
-	if cmds[1].Params != "action=click selector=#btn" {
-		t.Errorf("cmds[1].Params = %q, want action=click selector=#btn", cmds[1].Params)
+	if cmds[1].Params != "what=click selector=#btn" {
+		t.Errorf("cmds[1].Params = %q, want what=click selector=#btn", cmds[1].Params)
 	}
 }

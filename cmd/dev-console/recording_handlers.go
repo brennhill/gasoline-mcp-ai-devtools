@@ -117,7 +117,7 @@ func (h *ToolHandler) toolConfigureRecordingStop(req JSONRPCRequest, args json.R
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(
 			ErrInternal,
 			fmt.Sprintf("Failed to stop recording: %v", err),
-			"Ensure the recording_id is valid and the recording is active",
+			"No active recording with this ID. Start one first: configure({what: 'recording_start', name: 'my-recording'})",
 		)}
 	}
 

@@ -117,7 +117,7 @@ export class SyncClient {
   private syncing = false
   private flushRequested = false
   private pendingResults: SyncCommandResult[] = []
-  private processedCommandIDs: Set<string> = new Set()
+  private processedCommandSignatures: Set<string> = new Set()
   private extensionVersion: string
 
   constructor(serverUrl: string, extSessionId: string, callbacks: SyncClientCallbacks, extensionVersion = '') {
@@ -297,19 +297,25 @@ export class SyncClient {
       if (data.commands && data.commands.length > 0) {
         this.log('Received commands', { count: data.commands.length, ids: data.commands.map((c) => c.id) })
         for (const command of data.commands) {
-          if (command.id && this.processedCommandIDs.has(command.id)) {
-            this.log('Skipping already processed command', { id: command.id })
+          const signature = this.getCommandSignature(command)
+
+          if (command.id && this.processedCommandSignatures.has(signature)) {
+            this.log('Skipping already processed command', {
+              id: command.id,
+              correlation_id: command.correlation_id,
+              type: command.type
+            })
             continue
           }
 
           // Mark processed and ack on RECEIPT — before dispatch
           if (command.id) {
-            this.processedCommandIDs.add(command.id)
+            this.processedCommandSignatures.add(signature)
             const MAX_PROCESSED_COMMANDS = 1000
-            if (this.processedCommandIDs.size > MAX_PROCESSED_COMMANDS) {
-              const oldest = this.processedCommandIDs.values().next().value
+            if (this.processedCommandSignatures.size > MAX_PROCESSED_COMMANDS) {
+              const oldest = this.processedCommandSignatures.values().next().value
               if (oldest !== undefined) {
-                this.processedCommandIDs.delete(oldest)
+                this.processedCommandSignatures.delete(oldest)
               }
             }
           }
@@ -401,6 +407,15 @@ export class SyncClient {
     } else {
       console.log(`[SyncClient] ${message}`, data || '') // nosemgrep: javascript.lang.security.audit.unsafe-formatstring.unsafe-formatstring -- console.log with internal sync state, not user-controlled
     }
+  }
+
+  private getCommandSignature(command: SyncCommand): string {
+    // Include correlation_id and type so command ID reuse after daemon restart
+    // does not suppress new commands with the same queue ID.
+    const id = command.id || ''
+    const correlationID = command.correlation_id || ''
+    const type = command.type || ''
+    return `${id}::${correlationID}::${type}`
   }
 }
 

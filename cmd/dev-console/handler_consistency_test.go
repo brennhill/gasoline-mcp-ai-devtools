@@ -123,21 +123,21 @@ func TestCorrelationID_AsyncCommands(t *testing.T) {
 		name string
 		args string
 	}{
-		{"highlight", `{"action":"highlight","selector":".test"}`},
-		{"execute_js", `{"action":"execute_js","script":"1+1"}`},
-		{"navigate", `{"action":"navigate","url":"https://example.test"}`},
-		{"refresh", `{"action":"refresh"}`},
-		{"back", `{"action":"back"}`},
-		{"forward", `{"action":"forward"}`},
-		{"new_tab", `{"action":"new_tab","url":"https://example.test"}`},
-		{"subtitle", `{"action":"subtitle","text":"hello"}`},
-		{"list_interactive", `{"action":"list_interactive"}`},
+		{"highlight", `{"what":"highlight","selector":".test"}`},
+		{"execute_js", `{"what":"execute_js","script":"1+1"}`},
+		{"navigate", `{"what":"navigate","url":"https://example.test"}`},
+		{"refresh", `{"what":"refresh"}`},
+		{"back", `{"what":"back"}`},
+		{"forward", `{"what":"forward"}`},
+		{"new_tab", `{"what":"new_tab","url":"https://example.test"}`},
+		{"subtitle", `{"what":"subtitle","text":"hello"}`},
+		{"list_interactive", `{"what":"list_interactive"}`},
 		// DOM primitives
-		{"click", `{"action":"click","selector":".btn"}`},
-		{"type", `{"action":"type","selector":"input","text":"hello"}`},
-		{"get_text", `{"action":"get_text","selector":".el"}`},
-		{"scroll_to", `{"action":"scroll_to","selector":".el"}`},
-		{"focus", `{"action":"focus","selector":".el"}`},
+		{"click", `{"what":"click","selector":".btn"}`},
+		{"type", `{"what":"type","selector":"input","text":"hello"}`},
+		{"get_text", `{"what":"get_text","selector":".el"}`},
+		{"scroll_to", `{"what":"scroll_to","selector":".el"}`},
+		{"focus", `{"what":"focus","selector":".el"}`},
 	}
 
 	for _, tc := range asyncActions {

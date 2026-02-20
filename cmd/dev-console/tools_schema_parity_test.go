@@ -17,14 +17,48 @@ func TestSchemaParity_AnalyzeWhatEnumMatchesHandlers(t *testing.T) {
 	assertSameStringSet(t, "analyze.what enum vs analyzeHandlers", schemaModes, runtimeModes)
 }
 
-func TestSchemaParity_InteractActionEnumMatchesDispatch(t *testing.T) {
+func TestSchemaParity_GenerateWhatEnumMatchesHandlers(t *testing.T) {
+	t.Parallel()
+	h, _, _ := makeToolHandler(t)
+	schemaFormats := mustToolEnumValues(t, h.ToolsList(), "generate", "what")
+	runtimeFormats := sortedKeysGenerateHandlers()
+	assertSameStringSet(t, "generate.what enum vs generateHandlers", schemaFormats, runtimeFormats)
+}
+
+func TestSchemaParity_ConfigureWhatEnumMatchesHandlers(t *testing.T) {
+	t.Parallel()
+	h, _, _ := makeToolHandler(t)
+	schemaActions := mustToolEnumValues(t, h.ToolsList(), "configure", "what")
+	runtimeActions := sortedKeysConfigureHandlers()
+	assertSameStringSet(t, "configure.what enum vs configureHandlers", schemaActions, runtimeActions)
+}
+
+func TestSchemaParity_InteractWhatEnumMatchesDispatch(t *testing.T) {
 	t.Parallel()
 	h, _, _ := makeToolHandler(t)
 
-	schemaActions := mustToolEnumValues(t, h.ToolsList(), "interact", "action")
+	schemaActions := mustToolEnumValues(t, h.ToolsList(), "interact", "what")
 	runtimeActions := sortedInteractRuntimeActions(h)
 
-	assertSameStringSet(t, "interact.action enum vs interact runtime actions", schemaActions, runtimeActions)
+	assertSameStringSet(t, "interact.what enum vs interact runtime actions", schemaActions, runtimeActions)
+}
+
+func sortedKeysGenerateHandlers() []string {
+	keys := make([]string, 0, len(generateHandlers))
+	for format := range generateHandlers {
+		keys = append(keys, format)
+	}
+	sort.Strings(keys)
+	return keys
+}
+
+func sortedKeysConfigureHandlers() []string {
+	keys := make([]string, 0, len(configureHandlers))
+	for action := range configureHandlers {
+		keys = append(keys, action)
+	}
+	sort.Strings(keys)
+	return keys
 }
 
 func sortedKeysAnalyzeHandlers() []string {
