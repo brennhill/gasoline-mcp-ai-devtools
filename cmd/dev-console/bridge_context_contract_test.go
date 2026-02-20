@@ -16,9 +16,9 @@ func TestBridgeForwardRequest_NoCancelReassignment(t *testing.T) {
 	t.Parallel()
 
 	fset := token.NewFileSet()
-	file, err := parser.ParseFile(fset, "bridge.go", nil, 0)
+	file, err := parser.ParseFile(fset, "bridge_forward.go", nil, 0)
 	if err != nil {
-		t.Fatalf("failed to parse bridge.go: %v", err)
+		t.Fatalf("failed to parse bridge_forward.go: %v", err)
 	}
 
 	var fn *ast.FuncDecl
@@ -30,7 +30,7 @@ func TestBridgeForwardRequest_NoCancelReassignment(t *testing.T) {
 		}
 	}
 	if fn == nil {
-		t.Fatal("bridgeForwardRequest not found in bridge.go")
+		t.Fatal("bridgeForwardRequest not found in bridge_forward.go")
 	}
 
 	reassigned := false
@@ -57,9 +57,9 @@ func TestBridgeForwardRequest_NoRetryWithCtxCancelAssignmentPattern(t *testing.T
 	t.Parallel()
 
 	fset := token.NewFileSet()
-	file, err := parser.ParseFile(fset, "bridge.go", nil, 0)
+	file, err := parser.ParseFile(fset, "bridge_forward.go", nil, 0)
 	if err != nil {
-		t.Fatalf("failed to parse bridge.go: %v", err)
+		t.Fatalf("failed to parse bridge_forward.go: %v", err)
 	}
 
 	var fn *ast.FuncDecl
@@ -71,7 +71,7 @@ func TestBridgeForwardRequest_NoRetryWithCtxCancelAssignmentPattern(t *testing.T
 		}
 	}
 	if fn == nil {
-		t.Fatal("bridgeForwardRequest not found in bridge.go")
+		t.Fatal("bridgeForwardRequest not found in bridge_forward.go")
 	}
 
 	for _, stmt := range fn.Body.List {

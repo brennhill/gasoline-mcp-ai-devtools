@@ -64,8 +64,9 @@ async function initializeExtensionAsync() {
         setAiWebPilotCacheInitialized(true);
         console.log('[Gasoline] Storage value:', aiPilotEnabled, '| Cache value:', index.__aiWebPilotEnabledCache);
         // Execute any pending pilot init callback
-        if (index.__pilotInitCallback) {
-            index.__pilotInitCallback();
+        const pilotCb = index.__pilotInitCallback;
+        if (pilotCb) {
+            pilotCb();
             setPilotInitCallback(null);
         }
         // ============= STEP 5: Load saved settings =============

@@ -71,13 +71,13 @@ compile-ts: generate-wire-types generate-dom-primitives
 	fi
 	@echo "✅ TypeScript compilation successful"
 
-test:
+test: check-file-length
 	$(MAKE) test-go-quick
 
 test-long:
 	$(MAKE) test-go-long
 
-test-js:
+test-js: compile-ts
 	./scripts/test-js-sharded.sh
 
 test-fast:

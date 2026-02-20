@@ -4,10 +4,10 @@
  * Docs: docs/features/feature/interact-explore/index.md
  * Docs: docs/features/feature/observe/index.md
  */
+import * as state from './state.js';
 import * as stateManager from './state-manager.js';
 import * as communication from './communication.js';
 import * as eventListeners from './event-listeners.js';
-import { DEFAULT_SERVER_URL } from '../lib/constants.js';
 import { DebugCategory } from './debug.js';
 import { getRequestHeaders } from './server.js';
 import { saveStateSnapshot, loadStateSnapshot, listStateSnapshots, deleteStateSnapshot } from './message-handlers.js';
@@ -15,72 +15,10 @@ import { handlePendingQuery as handlePendingQueryImpl, handlePilotCommand as han
 import { updateVersionFromHealth } from './version-check.js';
 import { createBatcherInstances } from './batcher-instances.js';
 import { startSyncClient as startSyncClientImpl, resetSyncClientConnection as resetSyncClientConnectionImpl } from './sync-manager.js';
+// Re-export all state for backward compatibility (consumers import from index)
+export { EXTENSION_SESSION_ID, serverUrl, debugMode, connectionStatus, currentLogLevel, screenshotOnError, _captureOverrides, aiControlled, _connectionCheckRunning, __aiWebPilotEnabledCache, __aiWebPilotCacheInitialized, __pilotInitCallback, initReady, markInitComplete, extensionLogQueue, setServerUrl, setCurrentLogLevel, setScreenshotOnError, setAiWebPilotEnabledCache, setAiWebPilotCacheInitialized, setPilotInitCallback, applyCaptureOverrides, _resetPilotCacheForTesting, isAiWebPilotEnabled } from './state.js';
 // Re-export for consumers that already import from here
 export { DEFAULT_SERVER_URL } from '../lib/constants.js';
-// =============================================================================
-// MODULE STATE
-// =============================================================================
-/** Session ID for detecting extension reloads */
-export const EXTENSION_SESSION_ID = `ext_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-/** Server URL */
-export let serverUrl = DEFAULT_SERVER_URL;
-/** Debug mode flag */
-export let debugMode = false;
-export let connectionStatus = {
-    connected: false,
-    entries: 0,
-    maxEntries: 1000,
-    errorCount: 0,
-    logFile: ''
-};
-/** Log level filter */
-export let currentLogLevel = 'all';
-/** Screenshot settings */
-export let screenshotOnError = false;
-/** AI capture control state */
-export let _captureOverrides = {};
-export let aiControlled = false;
-/** Connection check mutex */
-export let _connectionCheckRunning = false;
-/** AI Web Pilot state */
-export let __aiWebPilotEnabledCache = true;
-export let __aiWebPilotCacheInitialized = false;
-export let __pilotInitCallback = null;
-/** Init-ready gate: resolves when initialization completes so early commands wait for cache */
-let _initResolve = null;
-export const initReady = new Promise((resolve) => {
-    _initResolve = resolve;
-});
-export function markInitComplete() {
-    if (_initResolve) {
-        _initResolve();
-        _initResolve = null;
-    }
-}
-/** Extension log queue for server posting */
-export const extensionLogQueue = [];
-// =============================================================================
-// STATE SETTERS (for init.ts)
-// =============================================================================
-// Note: setDebugMode is defined later in the file
-export function setServerUrl(url) {
-    serverUrl = url;
-}
-export function setCurrentLogLevel(level) {
-    currentLogLevel = level;
-}
-export function setScreenshotOnError(enabled) {
-    screenshotOnError = enabled;
-}
-export function setAiWebPilotEnabledCache(enabled) {
-    __aiWebPilotEnabledCache = enabled;
-}
-export function setAiWebPilotCacheInitialized(initialized) {
-    __aiWebPilotCacheInitialized = initialized;
-}
-export function setPilotInitCallback(callback) {
-    __pilotInitCallback = callback;
-}
 // =============================================================================
 // DEBUG LOGGING
 // =============================================================================
@@ -90,7 +28,7 @@ export { DebugCategory } from './debug.js';
  * Log a diagnostic message only when debug mode is enabled
  */
 export function diagnosticLog(message) {
-    if (debugMode) {
+    if (state.debugMode) {
         console.log(message);
     }
 }
@@ -107,8 +45,8 @@ export function debugLog(category, message, data = null) {
         ...(data !== null ? { data } : {})
     };
     stateManager.addDebugLogEntry(entry);
-    if (connectionStatus.connected) {
-        extensionLogQueue.push({
+    if (state.connectionStatus.connected) {
+        state.extensionLogQueue.push({
             timestamp,
             level: 'debug',
             message,
@@ -118,11 +56,11 @@ export function debugLog(category, message, data = null) {
         });
         // Cap queue size to prevent memory leak if server is unreachable
         const MAX_EXTENSION_LOGS = 2000;
-        if (extensionLogQueue.length > MAX_EXTENSION_LOGS) {
-            extensionLogQueue.splice(0, extensionLogQueue.length - MAX_EXTENSION_LOGS);
+        if (state.extensionLogQueue.length > MAX_EXTENSION_LOGS) {
+            state.extensionLogQueue.splice(0, state.extensionLogQueue.length - MAX_EXTENSION_LOGS);
         }
     }
-    if (debugMode) {
+    if (state.debugMode) {
         const prefix = `[Gasoline:${category}]`;
         if (data !== null) {
             console.log(prefix, message, data); // nosemgrep: javascript.lang.security.audit.unsafe-formatstring.unsafe-formatstring -- console.log with internal error message, not user-controlled
@@ -151,11 +89,11 @@ export function exportDebugLog() {
     return JSON.stringify({
         exportedAt: new Date().toISOString(),
         version: typeof chrome !== 'undefined' ? chrome.runtime.getManifest().version : 'test',
-        debugMode,
-        connectionStatus,
+        debugMode: state.debugMode,
+        connectionStatus: state.connectionStatus,
         settings: {
-            logLevel: currentLogLevel,
-            screenshotOnError,
+            logLevel: state.currentLogLevel,
+            screenshotOnError: state.screenshotOnError,
             sourceMapEnabled: stateManager.isSourceMapEnabled()
         },
         entries: stateManager.getDebugLog()
@@ -165,7 +103,7 @@ export function exportDebugLog() {
  * Set debug mode enabled/disabled
  */
 export function setDebugMode(enabled) {
-    debugMode = enabled;
+    state._setDebugModeRaw(enabled);
     debugLog(DebugCategory.SETTINGS, `Debug mode ${enabled ? 'enabled' : 'disabled'}`);
 }
 // =============================================================================
@@ -181,10 +119,10 @@ export const sharedServerCircuitBreaker = communication.createCircuitBreaker(() 
 // BATCHERS (delegated to batcher-instances.ts)
 // =============================================================================
 const _batchers = createBatcherInstances({
-    getServerUrl: () => serverUrl,
-    getConnectionStatus: () => connectionStatus,
+    getServerUrl: () => state.serverUrl,
+    getConnectionStatus: () => state.connectionStatus,
     setConnectionStatus: (patch) => {
-        connectionStatus = { ...connectionStatus, ...patch };
+        state.setConnectionStatus(patch);
     },
     debugLog
 }, sharedServerCircuitBreaker);
@@ -227,7 +165,7 @@ async function tryResolveSourceMap(entry) {
     }
 }
 export async function handleLogMessage(payload, sender, tabId) {
-    if (!communication.shouldCaptureLog(payload.level, currentLogLevel, payload.type)) {
+    if (!communication.shouldCaptureLog(payload.level, state.currentLogLevel, payload.type)) {
         debugLog(DebugCategory.CAPTURE, `Log filtered out: level=${payload.level}, type=${payload.type}` // nosemgrep: missing-template-string-indicator
         );
         return;
@@ -257,7 +195,7 @@ export async function handleLogMessage(payload, sender, tabId) {
     }
 }
 async function maybeAutoScreenshot(errorEntry, sender) {
-    if (!screenshotOnError)
+    if (!state.screenshotOnError)
         return;
     if (!sender?.tab?.id)
         return;
@@ -268,17 +206,16 @@ async function maybeAutoScreenshot(errorEntry, sender) {
         return;
     const errorId = `err_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
     errorEntry._errorId = errorId;
-    const result = await communication.captureScreenshot(sender.tab.id, serverUrl, errorId, entryType || null, stateManager.canTakeScreenshot, stateManager.recordScreenshot, debugLog);
+    const result = await communication.captureScreenshot(sender.tab.id, state.serverUrl, errorId, entryType || null, stateManager.canTakeScreenshot, stateManager.recordScreenshot, debugLog);
     if (result.success && result.entry) {
         logBatcher.add(result.entry);
     }
 }
 export async function handleClearLogs() {
     try {
-        await fetch(`${serverUrl}/logs`, { method: 'DELETE', headers: getRequestHeaders() });
-        connectionStatus.entries = 0;
-        connectionStatus.errorCount = 0;
-        communication.updateBadge(connectionStatus);
+        await fetch(`${state.serverUrl}/logs`, { method: 'DELETE', headers: getRequestHeaders() });
+        state.setConnectionStatus({ entries: 0, errorCount: 0 });
+        communication.updateBadge(state.connectionStatus);
         return { success: true };
     }
     catch (error) {
@@ -292,7 +229,7 @@ export async function handleClearLogs() {
  * Check if a connection check is currently running (for testing)
  */
 export function isConnectionCheckRunning() {
-    return _connectionCheckRunning;
+    return state._connectionCheckRunning;
 }
 // #lizard forgives
 function updateVersionFromHealthSafe(health) {
@@ -306,24 +243,28 @@ function updateVersionFromHealthSafe(health) {
 function applyHealthLogs(health) {
     if (!health.logs)
         return;
-    connectionStatus.logFile = health.logs.logFile || connectionStatus.logFile;
-    connectionStatus.logFileSize = health.logs.logFileSize;
-    connectionStatus.entries = health.logs.entries ?? connectionStatus.entries;
-    connectionStatus.maxEntries = health.logs.maxEntries ?? connectionStatus.maxEntries;
+    state.setConnectionStatus({
+        logFile: health.logs.logFile || state.connectionStatus.logFile,
+        logFileSize: health.logs.logFileSize,
+        entries: health.logs.entries ?? state.connectionStatus.entries,
+        maxEntries: health.logs.maxEntries ?? state.connectionStatus.maxEntries
+    });
 }
 function applyVersionMismatchCheck(health) {
     if (!health.connected || !health.version || typeof chrome === 'undefined')
         return;
     const extVersion = chrome.runtime.getManifest().version;
-    connectionStatus.serverVersion = health.version;
-    connectionStatus.extensionVersion = extVersion;
-    connectionStatus.versionMismatch = health.version.split('.')[0] !== extVersion.split('.')[0];
+    state.setConnectionStatus({
+        serverVersion: health.version,
+        extensionVersion: extVersion,
+        versionMismatch: health.version.split('.')[0] !== extVersion.split('.')[0]
+    });
 }
 function logConnectionChange(wasConnected, health) {
     if (wasConnected === health.connected)
         return;
     debugLog(DebugCategory.CONNECTION, health.connected ? 'Connected to server' : 'Disconnected from server', {
-        entries: connectionStatus.entries,
+        entries: state.connectionStatus.entries,
         error: health.error || null,
         serverVersion: health.version || null
     });
@@ -332,43 +273,33 @@ function broadcastStatusUpdate() {
     if (typeof chrome === 'undefined' || !chrome.runtime)
         return;
     chrome.runtime
-        .sendMessage({ type: 'statusUpdate', status: { ...connectionStatus, aiControlled } })
+        .sendMessage({ type: 'statusUpdate', status: { ...state.connectionStatus, aiControlled: state.aiControlled } })
         .catch((err) => console.error('[Gasoline] Error sending status update:', err));
 }
 // eslint-disable-next-line security-node/detect-unhandled-async-errors
 export async function checkConnectionAndUpdate() {
-    if (_connectionCheckRunning) {
+    if (state._connectionCheckRunning) {
         debugLog(DebugCategory.CONNECTION, 'Skipping connection check - already running');
         return;
     }
-    _connectionCheckRunning = true;
+    state.setConnectionCheckRunning(true);
     try {
-        const health = await communication.checkServerHealth(serverUrl);
-        const wasConnected = connectionStatus.connected;
+        const health = await communication.checkServerHealth(state.serverUrl);
+        const wasConnected = state.connectionStatus.connected;
         if (health.connected) {
             updateVersionFromHealthSafe(health);
         }
-        connectionStatus = { ...connectionStatus, ...health, connected: health.connected };
+        state.setConnectionStatus({ ...health, connected: health.connected });
         applyHealthLogs(health);
         applyVersionMismatchCheck(health);
-        communication.updateBadge(connectionStatus);
+        communication.updateBadge(state.connectionStatus);
         logConnectionChange(wasConnected, health);
         // Always start sync client - it handles failures gracefully with 1s retry
         startSyncClientImpl(syncManagerDeps);
         broadcastStatusUpdate();
     }
     finally {
-        _connectionCheckRunning = false;
-    }
-}
-export function applyCaptureOverrides(overrides) {
-    _captureOverrides = overrides;
-    aiControlled = Object.keys(overrides).length > 0;
-    if (overrides.log_level !== undefined) {
-        currentLogLevel = overrides.log_level;
-    }
-    if (overrides.screenshot_on_error !== undefined) {
-        screenshotOnError = overrides.screenshot_on_error === 'true';
+        state.setConnectionCheckRunning(false);
     }
 }
 // =============================================================================
@@ -385,26 +316,26 @@ export async function sendStatusPingWrapper() {
         extension_connected: true,
         timestamp: new Date().toISOString()
     };
-    await communication.sendStatusPing(serverUrl, statusMessage, diagnosticLog);
+    await communication.sendStatusPing(state.serverUrl, statusMessage, diagnosticLog);
 }
 // =============================================================================
 // SYNC CLIENT (delegated to sync-manager.ts)
 // =============================================================================
 /** Shared deps object for sync-manager — created once, closures read live state */
 const syncManagerDeps = {
-    getServerUrl: () => serverUrl,
-    getExtSessionId: () => EXTENSION_SESSION_ID,
-    getConnectionStatus: () => connectionStatus,
+    getServerUrl: () => state.serverUrl,
+    getExtSessionId: () => state.EXTENSION_SESSION_ID,
+    getConnectionStatus: () => state.connectionStatus,
     setConnectionStatus: (patch) => {
-        connectionStatus = { ...connectionStatus, ...patch };
+        state.setConnectionStatus(patch);
     },
-    getAiControlled: () => aiControlled,
-    getAiWebPilotEnabledCache: () => __aiWebPilotEnabledCache,
-    getExtensionLogQueue: () => extensionLogQueue,
+    getAiControlled: () => state.aiControlled,
+    getAiWebPilotEnabledCache: () => state.__aiWebPilotEnabledCache,
+    getExtensionLogQueue: () => state.extensionLogQueue,
     clearExtensionLogQueue: () => {
-        extensionLogQueue.length = 0;
+        state.extensionLogQueue.length = 0;
     },
-    applyCaptureOverrides,
+    applyCaptureOverrides: state.applyCaptureOverrides,
     debugLog
 };
 /**
@@ -412,21 +343,6 @@ const syncManagerDeps = {
  */
 export function resetSyncClientConnection() {
     resetSyncClientConnectionImpl(debugLog);
-}
-// =============================================================================
-// AI WEB PILOT UTILITIES
-// =============================================================================
-/**
- * Reset pilot cache for testing
- */
-export function _resetPilotCacheForTesting(value) {
-    __aiWebPilotEnabledCache = value !== undefined ? value : false;
-}
-/**
- * Check if AI Web Pilot is enabled
- */
-export function isAiWebPilotEnabled() {
-    return __aiWebPilotEnabledCache === true;
 }
 // Re-export statically imported functions (Service Workers don't support dynamic import())
 export const handlePendingQuery = handlePendingQueryImpl;

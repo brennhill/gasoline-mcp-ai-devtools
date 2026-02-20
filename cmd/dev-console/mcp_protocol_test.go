@@ -709,13 +709,13 @@ func TestMCPProtocol_HTTPHandler(t *testing.T) {
 	})
 }
 
-// TestMCPProtocol_BridgeCodeVerification verifies bridge.go uses fmt.Print not fmt.Println.
+// TestMCPProtocol_BridgeCodeVerification verifies bridge forwarding uses fmt.Print not fmt.Println.
 // This is a static code verification - the actual runtime behavior is tested via HTTP.
 func TestMCPProtocol_BridgeCodeVerification(t *testing.T) {
-	// Read the bridge.go source code
-	bridgeSource, err := os.ReadFile("bridge.go")
+	// Read the bridge_forward.go source code (HTTP forwarding lives here)
+	bridgeSource, err := os.ReadFile("bridge_forward.go")
 	if err != nil {
-		t.Skipf("Could not read bridge.go: %v", err)
+		t.Skipf("Could not read bridge_forward.go: %v", err)
 	}
 
 	source := string(bridgeSource)
@@ -726,14 +726,14 @@ func TestMCPProtocol_BridgeCodeVerification(t *testing.T) {
 
 	// Check for the correct pattern: fmt.Print(string(body))
 	if !strings.Contains(source, "fmt.Print(string(body))") {
-		t.Error("CRITICAL: bridge.go should use fmt.Print(string(body)) for HTTP responses")
+		t.Error("CRITICAL: bridge_forward.go should use fmt.Print(string(body)) for HTTP responses")
 		t.Error("Using fmt.Println adds double newlines which cause 'Unexpected end of JSON input' errors")
 	} else {
-		t.Log("✅ bridge.go uses fmt.Print (not Println) for HTTP response forwarding")
+		t.Log("bridge_forward.go uses fmt.Print (not Println) for HTTP response forwarding")
 	}
 
 	// Verify no fmt.Println(string(body)) pattern
 	if strings.Contains(source, "fmt.Println(string(body))") {
-		t.Error("CRITICAL: Found fmt.Println(string(body)) in bridge.go - this causes double newlines!")
+		t.Error("CRITICAL: Found fmt.Println(string(body)) in bridge_forward.go - this causes double newlines!")
 	}
 }

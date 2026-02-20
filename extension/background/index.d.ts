@@ -5,65 +5,18 @@
  * Docs: docs/features/feature/observe/index.md
  */
 /**
- * @fileoverview Main Background Service Worker — State container and export hub.
- * Owns module-level state (serverUrl, connectionStatus, etc.), debug logging,
- * log handling, and connection management. Delegates batcher instance creation
+ * @fileoverview Main Background Service Worker — Business logic and export hub.
+ * Mutable state lives in state.ts; this module owns debug logging, log handling,
+ * connection management, and batcher wiring. Delegates batcher instance creation
  * to batcher-instances.ts and sync client lifecycle to sync-manager.ts.
  */
 import type { LogEntry, ChromeMessageSender } from '../types';
 import * as communication from './communication';
 import { saveStateSnapshot, loadStateSnapshot, listStateSnapshots, deleteStateSnapshot } from './message-handlers';
 import { handlePendingQuery as handlePendingQueryImpl, handlePilotCommand as handlePilotCommandImpl } from './pending-queries';
+export { EXTENSION_SESSION_ID, serverUrl, debugMode, connectionStatus, currentLogLevel, screenshotOnError, _captureOverrides, aiControlled, _connectionCheckRunning, __aiWebPilotEnabledCache, __aiWebPilotCacheInitialized, __pilotInitCallback, initReady, markInitComplete, extensionLogQueue, setServerUrl, setCurrentLogLevel, setScreenshotOnError, setAiWebPilotEnabledCache, setAiWebPilotCacheInitialized, setPilotInitCallback, applyCaptureOverrides, _resetPilotCacheForTesting, isAiWebPilotEnabled } from './state';
+export type { MutableConnectionStatus } from './state';
 export { DEFAULT_SERVER_URL } from '../lib/constants';
-/** Session ID for detecting extension reloads */
-export declare const EXTENSION_SESSION_ID: string;
-/** Server URL */
-export declare let serverUrl: string;
-/** Debug mode flag */
-export declare let debugMode: boolean;
-/** Connection status (mutable internal state) */
-interface MutableConnectionStatus {
-    connected: boolean;
-    entries: number;
-    maxEntries: number;
-    errorCount: number;
-    logFile: string;
-    logFileSize?: number;
-    serverVersion?: string;
-    extensionVersion?: string;
-    versionMismatch?: boolean;
-}
-export declare let connectionStatus: MutableConnectionStatus;
-/** Log level filter */
-export declare let currentLogLevel: string;
-/** Screenshot settings */
-export declare let screenshotOnError: boolean;
-/** AI capture control state */
-export declare let _captureOverrides: Record<string, string>;
-export declare let aiControlled: boolean;
-/** Connection check mutex */
-export declare let _connectionCheckRunning: boolean;
-/** AI Web Pilot state */
-export declare let __aiWebPilotEnabledCache: boolean;
-export declare let __aiWebPilotCacheInitialized: boolean;
-export declare let __pilotInitCallback: (() => void) | null;
-export declare const initReady: Promise<void>;
-export declare function markInitComplete(): void;
-/** Extension log queue for server posting */
-export declare const extensionLogQueue: Array<{
-    timestamp: string;
-    level: string;
-    message: string;
-    source: string;
-    category: string;
-    data?: unknown;
-}>;
-export declare function setServerUrl(url: string): void;
-export declare function setCurrentLogLevel(level: string): void;
-export declare function setScreenshotOnError(enabled: boolean): void;
-export declare function setAiWebPilotEnabledCache(enabled: boolean): void;
-export declare function setAiWebPilotCacheInitialized(initialized: boolean): void;
-export declare function setPilotInitCallback(callback: (() => void) | null): void;
 export { DebugCategory } from './debug';
 /**
  * Log a diagnostic message only when debug mode is enabled
@@ -110,20 +63,11 @@ export declare function handleClearLogs(): Promise<{
  */
 export declare function isConnectionCheckRunning(): boolean;
 export declare function checkConnectionAndUpdate(): Promise<void>;
-export declare function applyCaptureOverrides(overrides: Record<string, string>): void;
 export declare function sendStatusPingWrapper(): Promise<void>;
 /**
  * Reset sync client connection (call when user enables pilot/tracking)
  */
 export declare function resetSyncClientConnection(): void;
-/**
- * Reset pilot cache for testing
- */
-export declare function _resetPilotCacheForTesting(value?: boolean): void;
-/**
- * Check if AI Web Pilot is enabled
- */
-export declare function isAiWebPilotEnabled(): boolean;
 export declare const handlePendingQuery: typeof handlePendingQueryImpl;
 export declare const handlePilotCommand: typeof handlePilotCommandImpl;
 export { saveStateSnapshot, loadStateSnapshot, listStateSnapshots, deleteStateSnapshot };
