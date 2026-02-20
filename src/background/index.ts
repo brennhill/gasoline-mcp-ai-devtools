@@ -91,7 +91,7 @@ export let aiControlled = false
 export let _connectionCheckRunning = false
 
 /** AI Web Pilot state */
-export let __aiWebPilotEnabledCache = false
+export let __aiWebPilotEnabledCache = true
 export let __aiWebPilotCacheInitialized = false
 export let __pilotInitCallback: (() => void) | null = null
 

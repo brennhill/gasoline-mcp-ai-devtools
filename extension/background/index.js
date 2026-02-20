@@ -43,7 +43,7 @@ export let aiControlled = false;
 /** Connection check mutex */
 export let _connectionCheckRunning = false;
 /** AI Web Pilot state */
-export let __aiWebPilotEnabledCache = false;
+export let __aiWebPilotEnabledCache = true;
 export let __aiWebPilotCacheInitialized = false;
 export let __pilotInitCallback = null;
 /** Init-ready gate: resolves when initialization completes so early commands wait for cache */

@@ -10,16 +10,14 @@ const { debugLog } = index;
 // ============================================
 // Timing Constants
 // ============================================
-/** Wait for synchronous onchange to clear file after Stage 1 injection */
-const VERIFY_DELAY_MS = 500;
 /** Wait for native file dialog to open after el.click() */
 const DIALOG_OPEN_DELAY_MS = 1500;
 /** Wait for dialog to close and Chrome to process file after OS automation */
 const DIALOG_CLOSE_DELAY_MS = 2000;
 /** Timeout for daemon fetch calls */
 const DAEMON_FETCH_TIMEOUT_MS = 15000;
-/** Number of verification attempts before giving up */
-const VERIFY_MAX_ATTEMPTS = 3;
+/** Backoff schedule for file verification — sleep BEFORE each check (~4.6s total window) */
+const VERIFY_BACKOFF_MS = [300, 500, 800, 1200, 1800];
 // ============================================
 // Injected Functions (run in MAIN world)
 // ============================================
@@ -114,19 +112,21 @@ async function verifyFileOnInputOnce(tabId, selector) {
     return results[0]?.result ?? { has_file: false };
 }
 /**
- * Verify whether a file is present on the input element after Stage 1 injection.
- * Polls up to VERIFY_MAX_ATTEMPTS times with VERIFY_DELAY_MS between attempts.
+ * Verify whether a file persists on the input element after Stage 1 injection.
+ * Sleeps BEFORE each check so frameworks with async onChange have time to clear.
+ * If the file disappears at any check, returns has_file: false immediately.
+ * If it survives all checks (~4.6s window), Stage 1 is confirmed.
  */
 export async function verifyFileOnInput(tabId, selector) {
-    for (let attempt = 0; attempt < VERIFY_MAX_ATTEMPTS; attempt++) {
+    for (const delayMs of VERIFY_BACKOFF_MS) {
+        await sleep(delayMs);
         const result = await verifyFileOnInputOnce(tabId, selector);
-        if (result.has_file)
-            return result;
-        if (attempt < VERIFY_MAX_ATTEMPTS - 1) {
-            await sleep(VERIFY_DELAY_MS);
-        }
+        if (!result.has_file)
+            return { has_file: false };
     }
-    return { has_file: false };
+    // File persisted through all checks — confirmed
+    const final = await verifyFileOnInputOnce(tabId, selector);
+    return final;
 }
 /**
  * Click a file input element to open the native file dialog.
@@ -304,12 +304,16 @@ export async function executeUpload(query, tabId, syncClient, sendAsyncResult, a
     actionToast(tabId, 'upload', file_name || 'file', 'trying', 10000);
     // Stage 1: Fetch file data from Go server
     let fileData;
+    const fileReadController = new AbortController();
+    const fileReadTimeout = setTimeout(() => fileReadController.abort(), DAEMON_FETCH_TIMEOUT_MS);
     try {
         const response = await fetch(`${index.serverUrl}/api/file/read`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'X-Gasoline-Client': 'gasoline-extension' },
-            body: JSON.stringify({ file_path })
+            body: JSON.stringify({ file_path }),
+            signal: fileReadController.signal
         });
+        clearTimeout(fileReadTimeout);
         if (!response.ok) {
             sendAsyncResult(syncClient, query.id, correlationId, 'error', null, `file_read_failed: HTTP ${response.status}`);
             actionToast(tabId, 'upload', `HTTP ${response.status}`, 'error');
@@ -318,7 +322,11 @@ export async function executeUpload(query, tabId, syncClient, sendAsyncResult, a
         fileData = (await response.json());
     }
     catch (err) {
-        sendAsyncResult(syncClient, query.id, correlationId, 'error', null, `file_read_failed: ${err.message}`);
+        clearTimeout(fileReadTimeout);
+        const msg = err.name === 'AbortError'
+            ? `file_read_timeout: daemon did not respond within ${DAEMON_FETCH_TIMEOUT_MS}ms`
+            : `file_read_failed: ${err.message}`;
+        sendAsyncResult(syncClient, query.id, correlationId, 'error', null, msg);
         actionToast(tabId, 'upload', 'fetch failed', 'error');
         return;
     }

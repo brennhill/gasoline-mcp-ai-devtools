@@ -1,7 +1,6 @@
 // interact.ts — Command handlers for the interact MCP tool.
 // Handles: subtitle, highlight, browser_action, dom_action, upload,
 //          execute, record_start, record_stop, state_*.
-import { StorageKey } from '../../lib/constants.js';
 import * as index from '../index.js';
 import { executeDOMAction } from '../dom-dispatch.js';
 import { executeUpload } from '../upload-handler.js';
@@ -272,19 +271,6 @@ registerCommand('execute', async (ctx) => {
 // PILOT COMMAND (exported for use by index.ts re-export chain)
 // =============================================================================
 export async function handlePilotCommand(command, params) {
-    if (!index.__aiWebPilotEnabledCache) {
-        if (typeof chrome !== 'undefined' && chrome.storage) {
-            const localResult = await new Promise((resolve) => {
-                chrome.storage.local.get([StorageKey.AI_WEB_PILOT_ENABLED], (result) => {
-                    resolve(result);
-                });
-            });
-            if (localResult.aiWebPilotEnabled === true) {
-                // Storage says enabled but cache is stale — update via setter
-                index.setAiWebPilotEnabledCache(true);
-            }
-        }
-    }
     if (!index.__aiWebPilotEnabledCache) {
         return { error: 'ai_web_pilot_disabled' };
     }
