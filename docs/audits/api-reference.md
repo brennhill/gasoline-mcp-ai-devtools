@@ -899,6 +899,12 @@ Save current page state as a named snapshot.
 |-----------|------|----------|---------|-------------|
 | snapshot_name | string | yes | -- | State name |
 
+Security policy for persisted state:
+- Server-side redaction always runs before persistence (defense in depth, independent of extension filtering).
+- Sensitive `form_values` key classes are redacted by key-name policy (for example: password/token/auth/api-key variants).
+- Token-like value patterns are redacted even when keys appear non-sensitive.
+- Legacy or malformed payload shapes (including arrays) are recursively sanitized before write.
+
 ##### interact({what: "load_state"})
 
 Load a previously saved state.

@@ -198,6 +198,136 @@ func TestSaveState_CapturesStorage(t *testing.T) {
 	}
 }
 
+func TestSaveState_ServerRedaction_RedactsSensitiveFormValues(t *testing.T) {
+	t.Parallel()
+	env := newInteractHelpersTestEnv(t)
+	env.enablePilot(t)
+	simulateExtensionConnection(t, env)
+	requireSessionStore(t, env)
+
+	rawPassword := "plain-password-value"
+	rawToken := "short-token-value"
+	rawAPIKey := "dev-api-key"
+	rawTokenLike := "sk-" + "1234567890abcdef1234567890abcdef"
+
+	go func() {
+		time.Sleep(50 * time.Millisecond)
+		queries := env.capture.GetPendingQueries()
+		for _, q := range queries {
+			if q.Type == "execute" && strings.HasPrefix(q.CorrelationID, "state_capture_") {
+				result, _ := json.Marshal(map[string]any{
+					"success": true,
+					"result": map[string]any{
+						"form_values": map[string]any{
+							"user_password": rawPassword,
+							"authToken":     rawToken,
+							"apiKeyInput":   rawAPIKey,
+							"notes":         rawTokenLike,
+							"display_name":  "alice",
+						},
+					},
+				})
+				env.capture.CompleteCommand(q.CorrelationID, result, "")
+				return
+			}
+		}
+	}()
+
+	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`), ClientID: "test-client"}
+	resp := env.handler.handlePilotManageStateSave(req, json.RawMessage(`{"snapshot_name":"redaction_server_side"}`))
+	data := extractResponseData(t, resp)
+	if data["status"] != "saved" {
+		t.Fatalf("status = %v, want \"saved\"", data["status"])
+	}
+
+	savedRaw, err := env.handler.sessionStoreImpl.Load(stateNamespace, "redaction_server_side")
+	if err != nil {
+		t.Fatalf("load persisted state: %v", err)
+	}
+	savedJSON := string(savedRaw)
+	for _, leak := range []string{rawPassword, rawToken, rawAPIKey, rawTokenLike} {
+		if strings.Contains(savedJSON, leak) {
+			t.Fatalf("persisted state leaked sensitive value %q: %s", leak, savedJSON)
+		}
+	}
+
+	var saved map[string]any
+	if err := json.Unmarshal(savedRaw, &saved); err != nil {
+		t.Fatalf("unmarshal persisted state: %v", err)
+	}
+	formValues, ok := saved["form_values"].(map[string]any)
+	if !ok {
+		t.Fatalf("form_values type = %T, want map[string]any", saved["form_values"])
+	}
+	for _, key := range []string{"user_password", "authToken", "apiKeyInput", "notes"} {
+		v, _ := formValues[key].(string)
+		if !strings.Contains(v, "[REDACTED") {
+			t.Errorf("form_values[%q] should be redacted, got %q", key, v)
+		}
+	}
+	if formValues["display_name"] != "alice" {
+		t.Errorf("display_name should be preserved, got %v", formValues["display_name"])
+	}
+}
+
+func TestSaveState_ServerRedaction_RedactsLegacyFormValueShapes(t *testing.T) {
+	t.Parallel()
+	env := newInteractHelpersTestEnv(t)
+	env.enablePilot(t)
+	simulateExtensionConnection(t, env)
+	requireSessionStore(t, env)
+
+	rawLegacySecret := "legacy-raw-secret"
+	rawLegacyToken := "sk-" + "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+
+	go func() {
+		time.Sleep(50 * time.Millisecond)
+		queries := env.capture.GetPendingQueries()
+		for _, q := range queries {
+			if q.Type == "execute" && strings.HasPrefix(q.CorrelationID, "state_capture_") {
+				result, _ := json.Marshal(map[string]any{
+					"success": true,
+					"result": map[string]any{
+						// Legacy/malformed shape: array instead of object.
+						"form_values": []any{
+							map[string]any{"authToken": rawLegacySecret},
+							rawLegacyToken,
+							map[string]any{
+								"nested": []any{
+									map[string]any{"user_password": "deep-legacy-secret"},
+								},
+							},
+						},
+					},
+				})
+				env.capture.CompleteCommand(q.CorrelationID, result, "")
+				return
+			}
+		}
+	}()
+
+	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`), ClientID: "test-client"}
+	resp := env.handler.handlePilotManageStateSave(req, json.RawMessage(`{"snapshot_name":"redaction_legacy_shape"}`))
+	data := extractResponseData(t, resp)
+	if data["status"] != "saved" {
+		t.Fatalf("status = %v, want \"saved\"", data["status"])
+	}
+
+	savedRaw, err := env.handler.sessionStoreImpl.Load(stateNamespace, "redaction_legacy_shape")
+	if err != nil {
+		t.Fatalf("load persisted state: %v", err)
+	}
+	savedJSON := string(savedRaw)
+	for _, leak := range []string{rawLegacySecret, rawLegacyToken, "deep-legacy-secret"} {
+		if strings.Contains(savedJSON, leak) {
+			t.Fatalf("persisted legacy shape leaked value %q: %s", leak, savedJSON)
+		}
+	}
+	if !strings.Contains(savedJSON, "[REDACTED") {
+		t.Fatalf("expected redaction markers in persisted legacy shape, got: %s", savedJSON)
+	}
+}
+
 func TestSaveState_StateCapture_SkippedPilotDisabled(t *testing.T) {
 	t.Parallel()
 	env := newInteractHelpersTestEnv(t)

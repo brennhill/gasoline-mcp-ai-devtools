@@ -86,6 +86,33 @@ func TestRedactMapValues_RedactsSensitiveKeyNames(t *testing.T) {
 	}
 }
 
+func TestRedactMapValues_RedactsSensitiveKeyNamePatterns(t *testing.T) {
+	t.Parallel()
+	engine := NewRedactionEngine("")
+
+	input := map[string]any{
+		"user_password": "plain-password",
+		"authToken":     "short-token",
+		"apiKeyInput":   "dev-key",
+		"display_name":  "alice",
+	}
+	result := engine.RedactMapValues(input)
+
+	for _, key := range []string{"user_password", "authToken", "apiKeyInput"} {
+		v, ok := result[key].(string)
+		if !ok {
+			t.Fatalf("expected string value for key %q, got %T", key, result[key])
+		}
+		if !strings.Contains(v, "[REDACTED") {
+			t.Errorf("key %q should be redacted by key-name pattern, got %q", key, v)
+		}
+	}
+
+	if result["display_name"] != "alice" {
+		t.Errorf("display_name should be preserved, got %q", result["display_name"])
+	}
+}
+
 func TestRedactMapValues_RedactsPatternMatches(t *testing.T) {
 	t.Parallel()
 	engine := NewRedactionEngine("")
@@ -104,6 +131,28 @@ func TestRedactMapValues_RedactsPatternMatches(t *testing.T) {
 		t.Errorf("AWS key pattern should be redacted, got %q", v)
 	}
 	if result["safe_data"] != "nothing special here" {
+		t.Errorf("safe_data should be preserved, got %q", result["safe_data"])
+	}
+}
+
+func TestRedactMapValues_RedactsTokenLikeValues(t *testing.T) {
+	t.Parallel()
+	engine := NewRedactionEngine("")
+
+	input := map[string]any{
+		"notes":     "sk-" + "1234567890abcdef1234567890abcdef",
+		"slack_key": "xoxb-" + "123456789012-123456789012-abcdefghijklmnopqrstuvwx",
+		"safe_data": "hello world",
+	}
+	result := engine.RedactMapValues(input)
+
+	if v := result["notes"].(string); !strings.Contains(v, "[REDACTED") {
+		t.Errorf("expected OpenAI-style token-like value redacted, got %q", v)
+	}
+	if v := result["slack_key"].(string); !strings.Contains(v, "[REDACTED") {
+		t.Errorf("expected Slack-style token-like value redacted, got %q", v)
+	}
+	if result["safe_data"] != "hello world" {
 		t.Errorf("safe_data should be preserved, got %q", result["safe_data"])
 	}
 }
@@ -145,6 +194,57 @@ func TestRedactMapValues_RecursesNestedMaps(t *testing.T) {
 	}
 	if v := prefs["secret"].(string); !strings.Contains(v, "[REDACTED") {
 		t.Errorf("deeply nested secret should be redacted, got %q", v)
+	}
+}
+
+func TestRedactMapValues_RecursesSlicesForLegacyPayloads(t *testing.T) {
+	t.Parallel()
+	engine := NewRedactionEngine("")
+
+	input := map[string]any{
+		"form_values": []any{
+			map[string]any{"authToken": "legacy-secret"},
+			"sk-" + "1234567890abcdef1234567890abcdef",
+			map[string]any{
+				"nested": []any{
+					map[string]any{"user_password": "another-secret"},
+				},
+			},
+		},
+	}
+
+	result := engine.RedactMapValues(input)
+	formValues, ok := result["form_values"].([]any)
+	if !ok {
+		t.Fatalf("form_values type = %T, want []any", result["form_values"])
+	}
+
+	first, ok := formValues[0].(map[string]any)
+	if !ok {
+		t.Fatalf("form_values[0] type = %T, want map[string]any", formValues[0])
+	}
+	if v := first["authToken"].(string); !strings.Contains(v, "[REDACTED") {
+		t.Errorf("legacy authToken should be redacted, got %q", v)
+	}
+
+	if v, ok := formValues[1].(string); !ok || !strings.Contains(v, "[REDACTED") {
+		t.Errorf("form_values[1] should be redacted string, got %T %q", formValues[1], v)
+	}
+
+	nestedMap, ok := formValues[2].(map[string]any)
+	if !ok {
+		t.Fatalf("form_values[2] type = %T, want map[string]any", formValues[2])
+	}
+	nestedSlice, ok := nestedMap["nested"].([]any)
+	if !ok {
+		t.Fatalf("nested type = %T, want []any", nestedMap["nested"])
+	}
+	deepMap, ok := nestedSlice[0].(map[string]any)
+	if !ok {
+		t.Fatalf("nested[0] type = %T, want map[string]any", nestedSlice[0])
+	}
+	if v := deepMap["user_password"].(string); !strings.Contains(v, "[REDACTED") {
+		t.Errorf("deep nested user_password should be redacted, got %q", v)
 	}
 }
 
