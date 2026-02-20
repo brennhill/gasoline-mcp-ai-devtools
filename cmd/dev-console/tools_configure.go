@@ -75,6 +75,12 @@ var configureHandlers = map[string]ConfigureHandler{
 	"doctor": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 		return h.toolDoctor(req)
 	},
+	"tutorial": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+		return h.toolConfigureTutorial(req, args)
+	},
+	"examples": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+		return h.toolConfigureTutorial(req, args)
+	},
 	"save_sequence": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 		return h.toolConfigureSaveSequence(req, args)
 	},

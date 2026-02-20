@@ -7,18 +7,18 @@ import "github.com/dev-console/dev-console/internal/mcp"
 func ConfigureToolSchema() mcp.MCPTool {
 	return mcp.MCPTool{
 		Name:        "configure",
-		Description: "Session settings and utilities.\n\nKey actions: health (check server/extension status), clear (reset buffers), noise_rule (suppress recurring console noise), store/load (persist/retrieve session data), streaming (enable push notifications), recording_start/recording_stop (capture browser sessions), playback (replay recordings), log_diff (compare error states), restart (force-restart daemon when unresponsive).\n\nMacro sequences: save_sequence/replay_sequence/get_sequence/list_sequences/delete_sequence — save named interact action sequences and replay them in a single call.",
+		Description: "Session settings and utilities.\n\nKey actions: health (check server/extension status), clear (reset buffers), noise_rule (suppress recurring console noise), store/load (persist/retrieve session data), tutorial/examples (quick snippets + context-aware guidance), streaming (enable push notifications), recording_start/recording_stop (capture browser sessions), playback (replay recordings), log_diff (compare error states), restart (force-restart daemon when unresponsive).\n\nMacro sequences: save_sequence/replay_sequence/get_sequence/list_sequences/delete_sequence — save named interact action sequences and replay them in a single call.",
 		InputSchema: map[string]any{
 			"type": "object",
 			"properties": map[string]any{
 				"what": map[string]any{
 					"type": "string",
-					"enum": []string{"store", "load", "noise_rule", "clear", "health", "streaming", "test_boundary_start", "test_boundary_end", "recording_start", "recording_stop", "playback", "log_diff", "telemetry", "describe_capabilities", "diff_sessions", "audit_log", "restart", "save_sequence", "get_sequence", "list_sequences", "delete_sequence", "replay_sequence", "doctor"},
+					"enum": []string{"store", "load", "noise_rule", "clear", "health", "tutorial", "examples", "streaming", "test_boundary_start", "test_boundary_end", "recording_start", "recording_stop", "playback", "log_diff", "telemetry", "describe_capabilities", "diff_sessions", "audit_log", "restart", "save_sequence", "get_sequence", "list_sequences", "delete_sequence", "replay_sequence", "doctor"},
 				},
 				"action": map[string]any{
 					"type":        "string",
 					"description": "Deprecated alias for 'what'",
-					"enum":        []string{"store", "load", "noise_rule", "clear", "health", "streaming", "test_boundary_start", "test_boundary_end", "recording_start", "recording_stop", "playback", "log_diff", "telemetry", "describe_capabilities", "diff_sessions", "audit_log", "restart", "save_sequence", "get_sequence", "list_sequences", "delete_sequence", "replay_sequence", "doctor"},
+					"enum":        []string{"store", "load", "noise_rule", "clear", "health", "tutorial", "examples", "streaming", "test_boundary_start", "test_boundary_end", "recording_start", "recording_stop", "playback", "log_diff", "telemetry", "describe_capabilities", "diff_sessions", "audit_log", "restart", "save_sequence", "get_sequence", "list_sequences", "delete_sequence", "replay_sequence", "doctor"},
 				},
 				"telemetry_mode": map[string]any{
 					"type":        "string",
