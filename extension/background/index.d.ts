@@ -14,7 +14,7 @@ import type { LogEntry, ChromeMessageSender } from '../types';
 import * as communication from './communication';
 import { saveStateSnapshot, loadStateSnapshot, listStateSnapshots, deleteStateSnapshot } from './message-handlers';
 import { handlePendingQuery as handlePendingQueryImpl, handlePilotCommand as handlePilotCommandImpl } from './pending-queries';
-export declare const DEFAULT_SERVER_URL = "http://localhost:7890";
+export { DEFAULT_SERVER_URL } from '../lib/constants';
 /** Session ID for detecting extension reloads */
 export declare const EXTENSION_SESSION_ID: string;
 /** Server URL */

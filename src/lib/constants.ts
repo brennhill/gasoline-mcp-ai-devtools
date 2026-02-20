@@ -8,6 +8,9 @@
  */
 import { scaleTimeout } from './timeouts'
 
+// Server defaults
+export const DEFAULT_SERVER_URL = 'http://localhost:7890'
+
 // Serialization limits
 export const MAX_STRING_LENGTH = 10240 // 10KB
 export const MAX_RESPONSE_LENGTH = 5120 // 5KB

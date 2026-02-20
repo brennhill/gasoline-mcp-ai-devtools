@@ -4,7 +4,7 @@
  * Docs: docs/features/feature/interact-explore/index.md
  * Docs: docs/features/feature/observe/index.md
  */
-import { SettingName } from '../lib/constants.js';
+import { SettingName, DEFAULT_SERVER_URL } from '../lib/constants.js';
 // =============================================================================
 // MESSAGE HANDLER
 // =============================================================================
@@ -379,7 +379,7 @@ async function handleDrawModeCompletedAsync(message, sender, deps) {
     }
 }
 function handleSetServerUrl(url, sendResponse, deps) {
-    deps.setServerUrl(url || 'http://localhost:7890');
+    deps.setServerUrl(url || DEFAULT_SERVER_URL);
     deps.saveSetting('serverUrl', deps.getServerUrl());
     deps.debugLog('settings', `Server URL changed to: ${deps.getServerUrl()}`);
     // Broadcast to all content scripts

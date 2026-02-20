@@ -83,3 +83,15 @@ func (h *ToolHandler) DiagnosticHintString() string {
 func (h *ToolHandler) diagnosticHint() func(*StructuredError) {
 	return withHint(h.DiagnosticHintString())
 }
+
+// requirePilot returns (resp, true) if AI Web Pilot is disabled, short-circuiting the caller.
+// Usage: if resp, blocked := h.requirePilot(req); blocked { return resp }
+func (h *ToolHandler) requirePilot(req JSONRPCRequest) (JSONRPCResponse, bool) {
+	if h.capture.IsPilotEnabled() {
+		return JSONRPCResponse{}, false
+	}
+	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(
+		ErrCodePilotDisabled, "AI Web Pilot is disabled",
+		"Enable AI Web Pilot in the extension popup", h.diagnosticHint(),
+	)}, true
+}

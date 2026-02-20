@@ -134,7 +134,7 @@ func (h *ToolHandler) toolObserve(req JSONRPCRequest, args json.RawMessage) JSON
 	resp := handler(h, req, args)
 
 	// Warn when extension is disconnected (except for server-side modes that don't need it)
-	if !h.capture.IsExtensionConnected() && !isServerSideObserveMode(params.What) {
+	if !h.capture.IsExtensionConnected() && !serverSideObserveModes[params.What] {
 		resp = h.prependDisconnectWarning(resp)
 	}
 
@@ -147,15 +147,18 @@ func (h *ToolHandler) toolObserve(req JSONRPCRequest, args json.RawMessage) JSON
 	return resp
 }
 
-// isServerSideObserveMode returns true for observe modes that don't depend on live extension data.
-func isServerSideObserveMode(mode string) bool {
-	switch mode {
-	case "command_result", "pending_commands", "failed_commands",
-		"saved_videos", "recordings", "recording_actions", "playback_results",
-		"log_diff_report", "pilot":
-		return true
-	}
-	return false
+// serverSideObserveModes lists modes that don't depend on live extension data.
+// Kept next to observeHandlers so additions to one are visible near the other.
+var serverSideObserveModes = map[string]bool{
+	"command_result":   true,
+	"pending_commands": true,
+	"failed_commands":  true,
+	"saved_videos":     true,
+	"recordings":       true,
+	"recording_actions": true,
+	"playback_results": true,
+	"log_diff_report":  true,
+	"pilot":            true,
 }
 
 // prependDisconnectWarning adds a warning to the first content block when the extension is disconnected.

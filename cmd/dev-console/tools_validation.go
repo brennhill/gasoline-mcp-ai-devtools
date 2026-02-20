@@ -15,6 +15,18 @@ func getJSONFieldNames(v any) map[string]bool {
 	return mcp.GetJSONFieldNames(v)
 }
 
+// parseArgs unmarshals JSON args into a typed struct, returning a structured error on failure.
+// Usage: params, resp, ok := parseArgs[MyParams](req, args); if !ok { return resp }
+func parseArgs[T any](req JSONRPCRequest, args json.RawMessage) (T, JSONRPCResponse, bool) {
+	var p T
+	if err := json.Unmarshal(args, &p); err != nil {
+		return p, JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(
+			ErrInvalidJSON, "Invalid JSON arguments: "+err.Error(), "Fix JSON syntax and call again",
+		)}, false
+	}
+	return p, JSONRPCResponse{}, true
+}
+
 func unmarshalWithWarnings(data json.RawMessage, v any) ([]string, error) {
 	return mcp.UnmarshalWithWarnings(data, v)
 }

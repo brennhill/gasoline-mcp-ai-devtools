@@ -361,6 +361,16 @@
 
   // extension/content/message-handlers.js
   var nextRequestId = 1;
+  function parseQueryParams(params) {
+    if (typeof params === "string") {
+      try {
+        return JSON.parse(params);
+      } catch {
+        return {};
+      }
+    }
+    return typeof params === "object" ? params : {};
+  }
   function postToInject(data) {
     window.postMessage({ ...data, _nonce: getPageNonce() }, window.location.origin);
   }
@@ -475,16 +485,7 @@
     return handleExecuteJs(parsedParams, sendResponse);
   }
   function handleA11yQuery(params, sendResponse) {
-    let parsedParams = {};
-    if (typeof params === "string") {
-      try {
-        parsedParams = JSON.parse(params);
-      } catch {
-        parsedParams = {};
-      }
-    } else if (typeof params === "object") {
-      parsedParams = params;
-    }
+    const parsedParams = parseQueryParams(params);
     const requestId = registerA11yRequest(sendResponse);
     setTimeout(createRequestTimeoutCleanup(requestId, /* @__PURE__ */ new Map([[requestId, sendResponse]]), {
       error: "Accessibility audit timeout"
@@ -497,16 +498,7 @@
     return true;
   }
   function handleDomQuery(params, sendResponse) {
-    let parsedParams = {};
-    if (typeof params === "string") {
-      try {
-        parsedParams = JSON.parse(params);
-      } catch {
-        parsedParams = {};
-      }
-    } else if (typeof params === "object") {
-      parsedParams = params;
-    }
+    const parsedParams = parseQueryParams(params);
     const requestId = registerDomRequest(sendResponse);
     setTimeout(createRequestTimeoutCleanup(requestId, /* @__PURE__ */ new Map([[requestId, sendResponse]]), { error: "DOM query timeout" }), ASYNC_COMMAND_TIMEOUT_MS);
     postToInject({
@@ -542,16 +534,7 @@
     return true;
   }
   function forwardInjectQuery(queryType, responseType, label, params, sendResponse) {
-    let parsedParams = {};
-    if (typeof params === "string") {
-      try {
-        parsedParams = JSON.parse(params);
-      } catch {
-        parsedParams = {};
-      }
-    } else if (typeof params === "object") {
-      parsedParams = params;
-    }
+    const parsedParams = parseQueryParams(params);
     const requestId = nextRequestId++;
     const deferred = createDeferredPromise();
     const responseHandler = (event) => {
@@ -930,7 +913,7 @@
         return true;
       },
       GASOLINE_HIGHLIGHT: (msg, sr) => {
-        forwardHighlightMessage(msg).then((r) => sr(r)).catch((e) => sr({ success: false, error: e.message }));
+        forwardHighlightMessage({ params: msg.params }).then((r) => sr(r)).catch((e) => sr({ success: false, error: e.message }));
         return true;
       },
       GASOLINE_MANAGE_STATE: (msg, sr) => {

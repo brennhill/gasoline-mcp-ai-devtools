@@ -150,7 +150,7 @@ async function initializeExtensionAsync(): Promise<void> {
 
     // ============= STEP 5: Load saved settings =============
     const settings = await loadSavedSettingsAsync()
-    setServerUrl(settings.serverUrl || 'http://localhost:7890')
+    setServerUrl(settings.serverUrl || index.DEFAULT_SERVER_URL)
     setCurrentLogLevel('all')
     setScreenshotOnError(settings.screenshotOnError !== false)
     stateManager.setSourceMapEnabled(settings.sourceMapEnabled !== false)
@@ -216,7 +216,7 @@ async function initializeExtensionAsync(): Promise<void> {
       isNetworkBodyCaptureDisabled: stateManager.isNetworkBodyCaptureDisabled,
 
       setServerUrl: (url) => {
-        setServerUrl(url || 'http://localhost:7890')
+        setServerUrl(url || index.DEFAULT_SERVER_URL)
       },
       setCurrentLogLevel: (level) => {
         setCurrentLogLevel(level)

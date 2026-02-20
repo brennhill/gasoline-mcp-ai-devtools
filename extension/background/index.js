@@ -7,6 +7,7 @@
 import * as stateManager from './state-manager.js';
 import * as communication from './communication.js';
 import * as eventListeners from './event-listeners.js';
+import { DEFAULT_SERVER_URL } from '../lib/constants.js';
 import { DebugCategory } from './debug.js';
 import { getRequestHeaders } from './server.js';
 import { saveStateSnapshot, loadStateSnapshot, listStateSnapshots, deleteStateSnapshot } from './message-handlers.js';
@@ -14,10 +15,8 @@ import { handlePendingQuery as handlePendingQueryImpl, handlePilotCommand as han
 import { updateVersionFromHealth } from './version-check.js';
 import { createBatcherInstances } from './batcher-instances.js';
 import { startSyncClient as startSyncClientImpl, resetSyncClientConnection as resetSyncClientConnectionImpl } from './sync-manager.js';
-// =============================================================================
-// CONSTANTS
-// =============================================================================
-export const DEFAULT_SERVER_URL = 'http://localhost:7890';
+// Re-export for consumers that already import from here
+export { DEFAULT_SERVER_URL } from '../lib/constants.js';
 // =============================================================================
 // MODULE STATE
 // =============================================================================

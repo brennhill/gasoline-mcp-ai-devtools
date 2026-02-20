@@ -201,8 +201,8 @@ func (h *ToolHandler) handleRecordStart(req JSONRPCRequest, args json.RawMessage
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidJSON, "Invalid JSON arguments: "+err.Error(), "Fix JSON syntax and call again")}
 	}
 
-	if !h.capture.IsPilotEnabled() {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrCodePilotDisabled, "AI Web Pilot is disabled", "Enable AI Web Pilot in the extension popup", h.diagnosticHint())}
+	if resp, blocked := h.requirePilot(req); blocked {
+		return resp
 	}
 
 	fps := clampFPS(params.FPS)
@@ -234,8 +234,8 @@ func (h *ToolHandler) handleRecordStop(req JSONRPCRequest, args json.RawMessage)
 		_ = json.Unmarshal(args, &params)
 	}
 
-	if !h.capture.IsPilotEnabled() {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrCodePilotDisabled, "AI Web Pilot is disabled", "Enable AI Web Pilot in the extension popup", h.diagnosticHint())}
+	if resp, blocked := h.requirePilot(req); blocked {
+		return resp
 	}
 
 	correlationID := newCorrelationID("recstop")

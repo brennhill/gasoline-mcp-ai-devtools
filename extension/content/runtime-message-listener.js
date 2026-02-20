@@ -78,7 +78,7 @@ export function initRuntimeMessageListener() {
             return true;
         },
         GASOLINE_HIGHLIGHT: (msg, sr) => {
-            forwardHighlightMessage(msg)
+            forwardHighlightMessage({ params: msg.params })
                 .then((r) => sr(r))
                 .catch((e) => sr({ success: false, error: e.message }));
             return true;

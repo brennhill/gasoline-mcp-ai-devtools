@@ -116,7 +116,7 @@ export function initRuntimeMessageListener(): void {
       return true
     },
     GASOLINE_HIGHLIGHT: (msg, sr) => {
-      forwardHighlightMessage(msg as unknown as { params: { selector: string; duration_ms?: number } })
+      forwardHighlightMessage({ params: msg.params as { selector: string; duration_ms?: number } })
         .then((r) => sr(r))
         .catch((e: Error) => sr({ success: false, error: e.message }))
       return true

@@ -2,6 +2,7 @@
  * Purpose: Provides shared runtime utilities used by extension and server workflows.
  * Docs: docs/features/feature/observe/index.md
  */
+export declare const DEFAULT_SERVER_URL = "http://localhost:7890";
 export declare const MAX_STRING_LENGTH = 10240;
 export declare const MAX_RESPONSE_LENGTH = 5120;
 export declare const MAX_DEPTH = 10;

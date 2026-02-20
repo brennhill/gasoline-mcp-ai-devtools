@@ -24,7 +24,7 @@ import type {
   NetworkBodyPayload,
   PerformanceSnapshot
 } from '../types'
-import { SettingName } from '../lib/constants'
+import { SettingName, DEFAULT_SERVER_URL } from '../lib/constants'
 
 // =============================================================================
 // TYPE DEFINITIONS
@@ -532,7 +532,7 @@ async function handleDrawModeCompletedAsync(
 }
 
 function handleSetServerUrl(url: string, sendResponse: SendResponse, deps: MessageHandlerDependencies): void {
-  deps.setServerUrl(url || 'http://localhost:7890')
+  deps.setServerUrl(url || DEFAULT_SERVER_URL)
   deps.saveSetting('serverUrl', deps.getServerUrl())
   deps.debugLog('settings', `Server URL changed to: ${deps.getServerUrl()}`)
 

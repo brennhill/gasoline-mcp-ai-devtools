@@ -11,8 +11,7 @@
  * Design: Toggle controls use CSS class 'active' for state. Domain filters are
  * stored as newline-separated strings, parsed to arrays on save.
  */
-import { SettingName } from './lib/constants.js';
-const DEFAULT_SERVER_URL = 'http://localhost:7890';
+import { SettingName, DEFAULT_SERVER_URL } from './lib/constants.js';
 /**
  * Load saved options
  */

@@ -20,8 +20,8 @@ func (h *ToolHandler) handleDrawModeStart(req JSONRPCRequest, args json.RawMessa
 		lenientUnmarshal(args, &params)
 	}
 
-	if !h.capture.IsPilotEnabled() {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrCodePilotDisabled, "AI Web Pilot is disabled", "Enable AI Web Pilot in the extension popup")}
+	if resp, blocked := h.requirePilot(req); blocked {
+		return resp
 	}
 
 	correlationID := newCorrelationID("draw")

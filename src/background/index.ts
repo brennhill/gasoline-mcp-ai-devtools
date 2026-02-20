@@ -20,6 +20,7 @@ import type {
 import * as stateManager from './state-manager'
 import * as communication from './communication'
 import * as eventListeners from './event-listeners'
+import { DEFAULT_SERVER_URL } from '../lib/constants'
 import { DebugCategory } from './debug'
 import { getRequestHeaders } from './server'
 import {
@@ -39,11 +40,8 @@ import {
   resetSyncClientConnection as resetSyncClientConnectionImpl
 } from './sync-manager'
 
-// =============================================================================
-// CONSTANTS
-// =============================================================================
-
-export const DEFAULT_SERVER_URL = 'http://localhost:7890'
+// Re-export for consumers that already import from here
+export { DEFAULT_SERVER_URL } from '../lib/constants'
 
 // =============================================================================
 // MODULE STATE

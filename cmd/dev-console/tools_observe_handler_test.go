@@ -640,15 +640,15 @@ func TestToolsObserve_IsServerSideObserveMode(t *testing.T) {
 		"playback_results", "log_diff_report", "pilot",
 	}
 	for _, mode := range serverSide {
-		if !isServerSideObserveMode(mode) {
-			t.Errorf("isServerSideObserveMode(%q) = false, want true", mode)
+		if !serverSideObserveModes[mode] {
+			t.Errorf("serverSideObserveModes[%q] = false, want true", mode)
 		}
 	}
 
 	clientSide := []string{"errors", "logs", "network_bodies", "actions", "vitals"}
 	for _, mode := range clientSide {
-		if isServerSideObserveMode(mode) {
-			t.Errorf("isServerSideObserveMode(%q) = true, want false", mode)
+		if serverSideObserveModes[mode] {
+			t.Errorf("serverSideObserveModes[%q] = true, want false", mode)
 		}
 	}
 }

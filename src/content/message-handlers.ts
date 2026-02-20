@@ -35,6 +35,14 @@ import { ASYNC_COMMAND_TIMEOUT_MS, INJECT_FORWARDED_SETTINGS, SettingName } from
 /** Auto-incrementing request ID — avoids Date.now() collisions for concurrent queries */
 let nextRequestId = 1
 
+/** Parse query params from string (JSON) or object form into a plain object */
+function parseQueryParams(params: string | Record<string, unknown>): Record<string, unknown> {
+  if (typeof params === 'string') {
+    try { return JSON.parse(params) } catch { return {} }
+  }
+  return typeof params === 'object' ? params : {}
+}
+
 /** Send a nonce-authenticated message to inject.js (MAIN world) */
 function postToInject(data: Record<string, unknown>): void {
   window.postMessage({ ...data, _nonce: getPageNonce() }, window.location.origin)
@@ -261,18 +269,7 @@ export function handleA11yQuery(
   params: string | Record<string, unknown>,
   sendResponse: (result: A11yAuditResult | { error: string }) => void
 ): boolean {
-  // Parse params if it's a string (from JSON)
-  let parsedParams: Record<string, unknown> = {}
-  if (typeof params === 'string') {
-    try {
-      parsedParams = JSON.parse(params)
-    } catch {
-      parsedParams = {}
-    }
-  } else if (typeof params === 'object') {
-    parsedParams = params
-  }
-
+  const parsedParams = parseQueryParams(params)
   const requestId = registerA11yRequest(sendResponse)
 
   // Timeout fallback: respond with error and cleanup after async command timeout
@@ -300,18 +297,7 @@ export function handleDomQuery(
   params: string | Record<string, unknown>,
   sendResponse: (result: { error?: string; matches?: unknown[] }) => void
 ): boolean {
-  // Parse params if it's a string (from JSON)
-  let parsedParams: Record<string, unknown> = {}
-  if (typeof params === 'string') {
-    try {
-      parsedParams = JSON.parse(params)
-    } catch {
-      parsedParams = {}
-    }
-  } else if (typeof params === 'object') {
-    parsedParams = params
-  }
-
+  const parsedParams = parseQueryParams(params)
   const requestId = registerDomRequest(sendResponse)
 
   // Timeout fallback: respond with error and cleanup after async command timeout
@@ -380,17 +366,7 @@ function forwardInjectQuery(
   params: string | Record<string, unknown>,
   sendResponse: (result: unknown) => void
 ): boolean {
-  let parsedParams: Record<string, unknown> = {}
-  if (typeof params === 'string') {
-    try {
-      parsedParams = JSON.parse(params)
-    } catch {
-      parsedParams = {}
-    }
-  } else if (typeof params === 'object') {
-    parsedParams = params
-  }
-
+  const parsedParams = parseQueryParams(params)
   const requestId = nextRequestId++
   const deferred = createDeferredPromise<unknown>()
 

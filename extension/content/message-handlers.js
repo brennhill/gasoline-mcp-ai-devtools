@@ -9,6 +9,18 @@ import { isInjectScriptLoaded, getPageNonce } from './script-injection.js';
 import { ASYNC_COMMAND_TIMEOUT_MS, INJECT_FORWARDED_SETTINGS, SettingName } from '../lib/constants.js';
 /** Auto-incrementing request ID — avoids Date.now() collisions for concurrent queries */
 let nextRequestId = 1;
+/** Parse query params from string (JSON) or object form into a plain object */
+function parseQueryParams(params) {
+    if (typeof params === 'string') {
+        try {
+            return JSON.parse(params);
+        }
+        catch {
+            return {};
+        }
+    }
+    return typeof params === 'object' ? params : {};
+}
 /** Send a nonce-authenticated message to inject.js (MAIN world) */
 function postToInject(data) {
     window.postMessage({ ...data, _nonce: getPageNonce() }, window.location.origin);
@@ -176,19 +188,7 @@ export function handleExecuteQuery(params, sendResponse) {
  * Handle A11Y_QUERY message
  */
 export function handleA11yQuery(params, sendResponse) {
-    // Parse params if it's a string (from JSON)
-    let parsedParams = {};
-    if (typeof params === 'string') {
-        try {
-            parsedParams = JSON.parse(params);
-        }
-        catch {
-            parsedParams = {};
-        }
-    }
-    else if (typeof params === 'object') {
-        parsedParams = params;
-    }
+    const parsedParams = parseQueryParams(params);
     const requestId = registerA11yRequest(sendResponse);
     // Timeout fallback: respond with error and cleanup after async command timeout
     setTimeout(createRequestTimeoutCleanup(requestId, new Map([[requestId, sendResponse]]), {
@@ -206,19 +206,7 @@ export function handleA11yQuery(params, sendResponse) {
  * Handle DOM_QUERY message
  */
 export function handleDomQuery(params, sendResponse) {
-    // Parse params if it's a string (from JSON)
-    let parsedParams = {};
-    if (typeof params === 'string') {
-        try {
-            parsedParams = JSON.parse(params);
-        }
-        catch {
-            parsedParams = {};
-        }
-    }
-    else if (typeof params === 'object') {
-        parsedParams = params;
-    }
+    const parsedParams = parseQueryParams(params);
     const requestId = registerDomRequest(sendResponse);
     // Timeout fallback: respond with error and cleanup after async command timeout
     setTimeout(createRequestTimeoutCleanup(requestId, new Map([[requestId, sendResponse]]), { error: 'DOM query timeout' }), ASYNC_COMMAND_TIMEOUT_MS);
@@ -266,18 +254,7 @@ export function handleGetNetworkWaterfall(sendResponse) {
  * Consolidates the identical pattern used by computed_styles, form_discovery, and link_health.
  */
 function forwardInjectQuery(queryType, responseType, label, params, sendResponse) {
-    let parsedParams = {};
-    if (typeof params === 'string') {
-        try {
-            parsedParams = JSON.parse(params);
-        }
-        catch {
-            parsedParams = {};
-        }
-    }
-    else if (typeof params === 'object') {
-        parsedParams = params;
-    }
+    const parsedParams = parseQueryParams(params);
     const requestId = nextRequestId++;
     const deferred = createDeferredPromise();
     const responseHandler = (event) => {
