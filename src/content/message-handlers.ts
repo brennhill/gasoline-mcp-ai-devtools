@@ -32,6 +32,9 @@ import { createDeferredPromise, promiseRaceWithCleanup } from './timeout-utils'
 import { isInjectScriptLoaded, getPageNonce } from './script-injection'
 import { ASYNC_COMMAND_TIMEOUT_MS, INJECT_FORWARDED_SETTINGS, SettingName } from '../lib/constants'
 
+/** Auto-incrementing request ID — avoids Date.now() collisions for concurrent queries */
+let nextRequestId = 1
+
 /** Send a nonce-authenticated message to inject.js (MAIN world) */
 function postToInject(data: Record<string, unknown>): void {
   window.postMessage({ ...data, _nonce: getPageNonce() }, window.location.origin)
@@ -331,7 +334,7 @@ export function handleDomQuery(
  * Handle GET_NETWORK_WATERFALL message
  */
 export function handleGetNetworkWaterfall(sendResponse: (result: { entries: WaterfallEntry[] }) => void): boolean {
-  const requestId = Date.now()
+  const requestId = nextRequestId++
   const deferred = createDeferredPromise<{ entries: WaterfallEntry[] }>()
 
   // Set up a one-time listener for the response
@@ -367,158 +370,68 @@ export function handleGetNetworkWaterfall(sendResponse: (result: { entries: Wate
 }
 
 /**
- * Handle COMPUTED_STYLES_QUERY message
+ * Generic inject-query forwarder: parse params, post to inject, wait for response with timeout.
+ * Consolidates the identical pattern used by computed_styles, form_discovery, and link_health.
  */
+function forwardInjectQuery(
+  queryType: string,
+  responseType: string,
+  label: string,
+  params: string | Record<string, unknown>,
+  sendResponse: (result: unknown) => void
+): boolean {
+  let parsedParams: Record<string, unknown> = {}
+  if (typeof params === 'string') {
+    try {
+      parsedParams = JSON.parse(params)
+    } catch {
+      parsedParams = {}
+    }
+  } else if (typeof params === 'object') {
+    parsedParams = params
+  }
+
+  const requestId = nextRequestId++
+  const deferred = createDeferredPromise<unknown>()
+
+  const responseHandler = (event: MessageEvent<{ type?: string; result?: unknown }>) => {
+    if (event.source !== window) return
+    if (event.data?.type === responseType) {
+      window.removeEventListener('message', responseHandler)
+      deferred.resolve(event.data.result || { error: `No result from ${label}` })
+    }
+  }
+
+  window.addEventListener('message', responseHandler)
+  postToInject({ type: queryType, requestId, params: parsedParams })
+
+  promiseRaceWithCleanup(deferred.promise, ASYNC_COMMAND_TIMEOUT_MS, { error: `${label} timeout` }, () => {
+    window.removeEventListener('message', responseHandler)
+  }).then(
+    (result) => sendResponse(result),
+    () => sendResponse({ error: `${label} failed` })
+  )
+
+  return true
+}
+
 export function handleComputedStylesQuery(
   params: string | Record<string, unknown>,
   sendResponse: (result: unknown) => void
 ): boolean {
-  let parsedParams: Record<string, unknown> = {}
-  if (typeof params === 'string') {
-    try {
-      parsedParams = JSON.parse(params)
-    } catch {
-      parsedParams = {}
-    }
-  } else if (typeof params === 'object') {
-    parsedParams = params
-  }
-
-  const requestId = Date.now()
-  const deferred = createDeferredPromise<unknown>()
-
-  const responseHandler = (event: MessageEvent<{ type?: string; result?: unknown }>) => {
-    if (event.source !== window) return
-    if (event.data?.type === 'GASOLINE_COMPUTED_STYLES_RESPONSE') {
-      window.removeEventListener('message', responseHandler)
-      deferred.resolve(event.data.result || { error: 'No result from computed styles query' })
-    }
-  }
-
-  window.addEventListener('message', responseHandler)
-
-  postToInject({
-    type: 'GASOLINE_COMPUTED_STYLES_QUERY',
-    requestId,
-    params: parsedParams
-  })
-
-  promiseRaceWithCleanup(deferred.promise, ASYNC_COMMAND_TIMEOUT_MS, { error: 'Computed styles query timeout' }, () => {
-    window.removeEventListener('message', responseHandler)
-  }).then(
-    (result) => {
-      sendResponse(result)
-    },
-    () => {
-      sendResponse({ error: 'Computed styles query failed' })
-    }
-  )
-
-  return true
+  return forwardInjectQuery('GASOLINE_COMPUTED_STYLES_QUERY', 'GASOLINE_COMPUTED_STYLES_RESPONSE', 'Computed styles query', params, sendResponse)
 }
 
-/**
- * Handle FORM_DISCOVERY_QUERY message
- */
 export function handleFormDiscoveryQuery(
   params: string | Record<string, unknown>,
   sendResponse: (result: unknown) => void
 ): boolean {
-  let parsedParams: Record<string, unknown> = {}
-  if (typeof params === 'string') {
-    try {
-      parsedParams = JSON.parse(params)
-    } catch {
-      parsedParams = {}
-    }
-  } else if (typeof params === 'object') {
-    parsedParams = params
-  }
-
-  const requestId = Date.now()
-  const deferred = createDeferredPromise<unknown>()
-
-  const responseHandler = (event: MessageEvent<{ type?: string; result?: unknown }>) => {
-    if (event.source !== window) return
-    if (event.data?.type === 'GASOLINE_FORM_DISCOVERY_RESPONSE') {
-      window.removeEventListener('message', responseHandler)
-      deferred.resolve(event.data.result || { error: 'No result from form discovery' })
-    }
-  }
-
-  window.addEventListener('message', responseHandler)
-
-  postToInject({
-    type: 'GASOLINE_FORM_DISCOVERY_QUERY',
-    requestId,
-    params: parsedParams
-  })
-
-  promiseRaceWithCleanup(deferred.promise, ASYNC_COMMAND_TIMEOUT_MS, { error: 'Form discovery timeout' }, () => {
-    window.removeEventListener('message', responseHandler)
-  }).then(
-    (result) => {
-      sendResponse(result)
-    },
-    () => {
-      sendResponse({ error: 'Form discovery failed' })
-    }
-  )
-
-  return true
+  return forwardInjectQuery('GASOLINE_FORM_DISCOVERY_QUERY', 'GASOLINE_FORM_DISCOVERY_RESPONSE', 'Form discovery', params, sendResponse)
 }
 
-/**
- * Handle LINK_HEALTH_QUERY message
- */
 export function handleLinkHealthQuery(
   params: string | Record<string, unknown>,
   sendResponse: (result: unknown) => void
 ): boolean {
-  // Parse params if it's a string (from JSON)
-  let parsedParams: Record<string, unknown> = {}
-  if (typeof params === 'string') {
-    try {
-      parsedParams = JSON.parse(params)
-    } catch {
-      parsedParams = {}
-    }
-  } else if (typeof params === 'object') {
-    parsedParams = params
-  }
-
-  const requestId = Date.now()
-  const deferred = createDeferredPromise<unknown>()
-
-  // Set up a one-time listener for the response
-  const responseHandler = (event: MessageEvent<{ type?: string; result?: unknown }>) => {
-    if (event.source !== window) return
-    if (event.data?.type === 'GASOLINE_LINK_HEALTH_RESPONSE') {
-      window.removeEventListener('message', responseHandler)
-      deferred.resolve(event.data.result || { error: 'No result from link health check' })
-    }
-  }
-
-  window.addEventListener('message', responseHandler)
-
-  // Forward to inject.js via postMessage
-  postToInject({
-    type: 'GASOLINE_LINK_HEALTH_QUERY',
-    requestId,
-    params: parsedParams
-  })
-
-  // Timeout fallback: respond with error after async command timeout window
-  promiseRaceWithCleanup(deferred.promise, ASYNC_COMMAND_TIMEOUT_MS, { error: 'Link health check timeout' }, () => {
-    window.removeEventListener('message', responseHandler)
-  }).then(
-    (result) => {
-      sendResponse(result)
-    },
-    () => {
-      sendResponse({ error: 'Link health check failed' })
-    }
-  )
-
-  return true
+  return forwardInjectQuery('GASOLINE_LINK_HEALTH_QUERY', 'GASOLINE_LINK_HEALTH_RESPONSE', 'Link health check', params, sendResponse)
 }

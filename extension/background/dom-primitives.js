@@ -7,9 +7,7 @@
  * MUST NOT reference any module-level variables — Chrome serializes the function source only.
  */
 export function domPrimitive(action, selector, options) {
-    // ---------------------------------------------------------------
-    // Shadow DOM: deep traversal utilities
-    // ---------------------------------------------------------------
+    // — Shadow DOM: deep traversal utilities —
     function getShadowRoot(el) {
         return el.shadowRoot ?? null;
         // Closed root support: see feat/closed-shadow-capture branch
@@ -107,10 +105,7 @@ export function domPrimitive(action, selector, options) {
         parts.unshift(hostSelector);
         return parts.join(' >>> ');
     }
-    // ---------------------------------------------------------------
-    // Selector resolver: CSS or semantic (text=, role=, placeholder=, label=, aria-label=)
-    // All semantic selectors prefer visible elements over hidden ones.
-    // ---------------------------------------------------------------
+    // — Selector resolver: CSS or semantic (text=, role=, placeholder=, label=, aria-label=) —
     // Visibility check: skip display:none, visibility:hidden, zero-size elements
     function isVisible(el) {
         if (!(el instanceof HTMLElement))
@@ -127,17 +122,6 @@ export function domPrimitive(action, selector, options) {
     }
     // Return first visible match from a list, falling back to first match
     function firstVisible(els) {
-        let fallback = null;
-        for (const el of els) {
-            if (!fallback)
-                fallback = el;
-            if (isVisible(el))
-                return el;
-        }
-        return fallback;
-    }
-    // Return first visible match from an array, falling back to first match.
-    function firstVisibleArray(els) {
         let fallback = null;
         for (const el of els) {
             if (!fallback)
@@ -365,9 +349,7 @@ export function domPrimitive(action, selector, options) {
             return `text=${text}`;
         return fallbackSelector;
     }
-    // ---------------------------------------------------------------
-    // list_interactive: scan the page for interactive elements
-    // ---------------------------------------------------------------
+    // — list_interactive: scan the page for interactive elements —
     if (action === 'list_interactive') {
         // Classify element into a high-level interaction type
         function classifyElement(el) {
@@ -481,23 +463,14 @@ export function domPrimitive(action, selector, options) {
         }
         return { success: true, elements };
     }
-    // ---------------------------------------------------------------
-    // Resolve element for all other actions
-    // ---------------------------------------------------------------
-    const el = resolveElement(selector);
-    if (!el) {
-        return {
-            success: false,
-            action,
-            selector,
-            error: 'element_not_found',
-            message: `No element matches selector: ${selector}`
-        };
+    // — Resolve element for all other actions —
+    function domError(error, message) {
+        return { success: false, action, selector, error, message };
     }
-    // ---------------------------------------------------------------
-    // Mutation tracking: wraps an action with MutationObserver to capture DOM changes.
-    // Returns a compact dom_summary (always) and detailed dom_changes (when analyze:true).
-    // ---------------------------------------------------------------
+    const el = resolveElement(selector);
+    if (!el)
+        return domError('element_not_found', `No element matches selector: ${selector}`);
+    // — Mutation tracking: MutationObserver wrapper for DOM change capture —
     function withMutationTracking(fn) {
         const t0 = performance.now();
         const mutations = [];
@@ -583,15 +556,8 @@ export function domPrimitive(action, selector, options) {
     function buildActionHandlers(node) {
         return {
             click: () => withMutationTracking(() => {
-                if (!(node instanceof HTMLElement)) {
-                    return {
-                        success: false,
-                        action,
-                        selector,
-                        error: 'not_interactive',
-                        message: `Element is not an HTMLElement: ${node.tagName}`
-                    };
-                }
+                if (!(node instanceof HTMLElement))
+                    return domError('not_interactive', `Element is not an HTMLElement: ${node.tagName}`);
                 node.click();
                 return { success: true, action, selector };
             }),
@@ -621,13 +587,7 @@ export function domPrimitive(action, selector, options) {
                     return { success: true, action, selector, value: node.innerText };
                 }
                 if (!(node instanceof HTMLInputElement) && !(node instanceof HTMLTextAreaElement)) {
-                    return {
-                        success: false,
-                        action,
-                        selector,
-                        error: 'not_typeable',
-                        message: `Element is not an input, textarea, or contenteditable: ${node.tagName}`
-                    };
+                    return domError('not_typeable', `Element is not an input, textarea, or contenteditable: ${node.tagName}`);
                 }
                 const proto = node instanceof HTMLTextAreaElement ? HTMLTextAreaElement : HTMLInputElement;
                 const nativeSetter = Object.getOwnPropertyDescriptor(proto.prototype, 'value')?.set;
@@ -643,15 +603,8 @@ export function domPrimitive(action, selector, options) {
                 return { success: true, action, selector, value: node.value };
             }),
             select: () => withMutationTracking(() => {
-                if (!(node instanceof HTMLSelectElement)) {
-                    return {
-                        success: false,
-                        action,
-                        selector,
-                        error: 'not_select',
-                        message: `Element is not a <select>: ${node.tagName}` // nosemgrep: html-in-template-string
-                    };
-                }
+                if (!(node instanceof HTMLSelectElement))
+                    return domError('not_select', `Element is not a <select>: ${node.tagName}`); // nosemgrep: html-in-template-string
                 const nativeSelectSetter = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value')?.set;
                 if (nativeSelectSetter) {
                     nativeSelectSetter.call(node, options.value || '');
@@ -664,13 +617,7 @@ export function domPrimitive(action, selector, options) {
             }),
             check: () => withMutationTracking(() => {
                 if (!(node instanceof HTMLInputElement) || (node.type !== 'checkbox' && node.type !== 'radio')) {
-                    return {
-                        success: false,
-                        action,
-                        selector,
-                        error: 'not_checkable',
-                        message: `Element is not a checkbox or radio: ${node.tagName} type=${node.type || 'N/A'}`
-                    };
+                    return domError('not_checkable', `Element is not a checkbox or radio: ${node.tagName} type=${node.type || 'N/A'}`);
                 }
                 const desired = options.checked !== undefined ? options.checked : true;
                 if (node.checked !== desired) {
@@ -683,15 +630,8 @@ export function domPrimitive(action, selector, options) {
                 return { success: true, action, selector, value: text };
             },
             get_value: () => {
-                if (!('value' in node)) {
-                    return {
-                        success: false,
-                        action,
-                        selector,
-                        error: 'no_value_property',
-                        message: `Element has no value property: ${node.tagName}`
-                    };
-                }
+                if (!('value' in node))
+                    return domError('no_value_property', `Element has no value property: ${node.tagName}`);
                 return { success: true, action, selector, value: node.value };
             },
             get_attribute: () => ({ success: true, action, selector, value: node.getAttribute(options.name || '') }),
@@ -700,15 +640,8 @@ export function domPrimitive(action, selector, options) {
                 return { success: true, action, selector, value: node.getAttribute(options.name || '') };
             }),
             focus: () => {
-                if (!(node instanceof HTMLElement)) {
-                    return {
-                        success: false,
-                        action,
-                        selector,
-                        error: 'not_focusable',
-                        message: `Element is not an HTMLElement: ${node.tagName}`
-                    };
-                }
+                if (!(node instanceof HTMLElement))
+                    return domError('not_focusable', `Element is not an HTMLElement: ${node.tagName}`);
                 node.focus();
                 return { success: true, action, selector };
             },
@@ -718,15 +651,8 @@ export function domPrimitive(action, selector, options) {
             },
             wait_for: () => ({ success: true, action, selector, value: node.tagName.toLowerCase() }),
             paste: () => withMutationTracking(() => {
-                if (!(node instanceof HTMLElement)) {
-                    return {
-                        success: false,
-                        action,
-                        selector,
-                        error: 'not_interactive',
-                        message: `Element is not an HTMLElement: ${node.tagName}`
-                    };
-                }
+                if (!(node instanceof HTMLElement))
+                    return domError('not_interactive', `Element is not an HTMLElement: ${node.tagName}`);
                 node.focus();
                 if (options.clear) {
                     const selection = document.getSelection();
@@ -743,15 +669,8 @@ export function domPrimitive(action, selector, options) {
                 return { success: true, action, selector, value: node.innerText };
             }),
             key_press: () => withMutationTracking(() => {
-                if (!(node instanceof HTMLElement)) {
-                    return {
-                        success: false,
-                        action,
-                        selector,
-                        error: 'not_interactive',
-                        message: `Element is not an HTMLElement: ${node.tagName}`
-                    };
-                }
+                if (!(node instanceof HTMLElement))
+                    return domError('not_interactive', `Element is not an HTMLElement: ${node.tagName}`);
                 const key = options.text || 'Enter';
                 // Tab/Shift+Tab: manually move focus (dispatchEvent can't trigger native tab traversal)
                 if (key === 'Tab' || key === 'Shift+Tab') {
@@ -784,69 +703,9 @@ export function domPrimitive(action, selector, options) {
     const handlers = buildActionHandlers(el);
     const handler = handlers[action];
     if (!handler) {
-        return { success: false, action, selector, error: 'unknown_action', message: `Unknown DOM action: ${action}` };
+        return domError('unknown_action', `Unknown DOM action: ${action}`);
     }
     return handler();
-}
-/**
- * wait_for variant that polls with MutationObserver (used when element not found initially).
- * This stays as a local convenience wrapper (tests and direct calls).
- * Runtime dispatch uses repeated domPrimitive('wait_for', ...) executeScript calls
- * so injected code only relies on one self-contained selector engine.
- */
-export function domWaitFor(selector, timeoutMs) {
-    const waitAction = 'wait_for';
-    function isPromise(value) {
-        return !!value && typeof value === 'object' && 'then' in value && typeof value.then === 'function';
-    }
-    function toResult(value) {
-        if (!value || typeof value !== 'object')
-            return null;
-        const candidate = value;
-        if (typeof candidate.success !== 'boolean')
-            return null;
-        if (typeof candidate.action !== 'string' || typeof candidate.selector !== 'string')
-            return null;
-        return candidate;
-    }
-    function currentMatch() {
-        const maybe = domPrimitive(waitAction, selector, { timeout_ms: timeoutMs });
-        if (isPromise(maybe))
-            return null;
-        const result = toResult(maybe);
-        return result?.success ? result : null;
-    }
-    return new Promise((resolve) => {
-        const existing = currentMatch();
-        if (existing) {
-            resolve(existing);
-            return;
-        }
-        let resolved = false;
-        const timer = setTimeout(() => {
-            if (!resolved) {
-                resolved = true;
-                observer.disconnect();
-                resolve({
-                    success: false,
-                    action: waitAction,
-                    selector,
-                    error: 'timeout',
-                    message: `Element not found within ${timeoutMs}ms: ${selector}`
-                });
-            }
-        }, timeoutMs);
-        const observer = new MutationObserver(() => {
-            const match = currentMatch();
-            if (match && !resolved) {
-                resolved = true;
-                clearTimeout(timer);
-                observer.disconnect();
-                resolve(match);
-            }
-        });
-        observer.observe(document.documentElement, { childList: true, subtree: true });
-    });
 }
 // Dispatcher utilities (parseDOMParams, executeDOMAction, etc.) moved to ./dom-dispatch.ts
 //# sourceMappingURL=dom-primitives.js.map

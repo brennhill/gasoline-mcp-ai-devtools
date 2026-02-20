@@ -262,6 +262,43 @@ export interface LinkHealthMessage {
     readonly params?: string | Record<string, unknown>;
 }
 /**
+ * Computed styles query message
+ */
+export interface ComputedStylesQueryMessage {
+    readonly type: 'COMPUTED_STYLES_QUERY';
+    readonly params?: string | Record<string, unknown>;
+}
+/**
+ * Form discovery query message
+ */
+export interface FormDiscoveryQueryMessage {
+    readonly type: 'FORM_DISCOVERY_QUERY';
+    readonly params?: string | Record<string, unknown>;
+}
+/**
+ * Draw mode control messages (background to content)
+ */
+export interface DrawModeStartMessage {
+    readonly type: 'GASOLINE_DRAW_MODE_START';
+    readonly started_by?: string;
+    readonly annot_session_name?: string;
+    readonly correlation_id?: string;
+}
+export interface DrawModeStopMessage {
+    readonly type: 'GASOLINE_DRAW_MODE_STOP';
+}
+export interface GetAnnotationsMessage {
+    readonly type: 'GASOLINE_GET_ANNOTATIONS';
+}
+/**
+ * Tracking state change notification (background to content)
+ */
+export interface TrackingStateChangedMessage {
+    readonly type: 'trackingStateChanged';
+    readonly isTracked: boolean;
+    readonly aiPilotEnabled: boolean;
+}
+/**
  * State management message
  */
 export interface ManageStateMessage {
@@ -301,7 +338,7 @@ export interface RecordingWatermarkMessage {
 /**
  * Union of all content-script-bound messages
  */
-export type ContentMessage = ContentPingMessage | HighlightMessage | ExecuteJsMessage | ExecuteQueryMessage | DomQueryMessage | A11yQueryMessage | GetNetworkWaterfallMessage | LinkHealthMessage | ManageStateMessage | ActionToastMessage | SubtitleMessage | RecordingWatermarkMessage | SetBooleanSettingMessage | SetWebSocketCaptureModeMessage | SetServerUrlMessage;
+export type ContentMessage = ContentPingMessage | HighlightMessage | ExecuteJsMessage | ExecuteQueryMessage | DomQueryMessage | A11yQueryMessage | GetNetworkWaterfallMessage | LinkHealthMessage | ComputedStylesQueryMessage | FormDiscoveryQueryMessage | ManageStateMessage | ActionToastMessage | SubtitleMessage | RecordingWatermarkMessage | DrawModeStartMessage | DrawModeStopMessage | GetAnnotationsMessage | TrackingStateChangedMessage | SetBooleanSettingMessage | SetWebSocketCaptureModeMessage | SetServerUrlMessage;
 /**
  * Page to content script messages (postMessage types)
  */

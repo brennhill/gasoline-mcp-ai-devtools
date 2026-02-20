@@ -83,31 +83,47 @@ registerCommand('waterfall', async (ctx) => {
 // PAGE INFO
 // =============================================================================
 registerCommand('page_info', async (ctx) => {
-    const tab = await chrome.tabs.get(ctx.tabId);
-    ctx.sendResult({
-        url: tab.url,
-        title: tab.title,
-        favicon: tab.favIconUrl,
-        status: tab.status,
-        viewport: {
-            width: tab.width,
-            height: tab.height
-        }
-    });
+    try {
+        const tab = await chrome.tabs.get(ctx.tabId);
+        ctx.sendResult({
+            url: tab.url,
+            title: tab.title,
+            favicon: tab.favIconUrl,
+            status: tab.status,
+            viewport: {
+                width: tab.width,
+                height: tab.height
+            }
+        });
+    }
+    catch (err) {
+        ctx.sendResult({
+            error: 'page_info_failed',
+            message: err.message || `Failed to get tab ${ctx.tabId}`
+        });
+    }
 });
 // =============================================================================
 // TABS
 // =============================================================================
 registerCommand('tabs', async (ctx) => {
-    const allTabs = await chrome.tabs.query({});
-    const tabsList = allTabs.map((tab) => ({
-        id: tab.id,
-        url: tab.url,
-        title: tab.title,
-        active: tab.active,
-        windowId: tab.windowId,
-        index: tab.index
-    }));
-    ctx.sendResult({ tabs: tabsList });
+    try {
+        const allTabs = await chrome.tabs.query({});
+        const tabsList = allTabs.map((tab) => ({
+            id: tab.id,
+            url: tab.url,
+            title: tab.title,
+            active: tab.active,
+            windowId: tab.windowId,
+            index: tab.index
+        }));
+        ctx.sendResult({ tabs: tabsList });
+    }
+    catch (err) {
+        ctx.sendResult({
+            error: 'tabs_query_failed',
+            message: err.message || 'Failed to query tabs'
+        });
+    }
 });
 //# sourceMappingURL=observe.js.map

@@ -94,9 +94,9 @@ export function initRuntimeMessageListener() {
         A11Y_QUERY: (msg, sr) => handleA11yQuery((msg.params || {}), sr),
         DOM_QUERY: (msg, sr) => handleDomQuery((msg.params || {}), sr),
         GET_NETWORK_WATERFALL: (_msg, sr) => handleGetNetworkWaterfall(sr),
-        LINK_HEALTH_QUERY: (msg, sr) => handleLinkHealthQuery(msg.params || {}, sr),
-        COMPUTED_STYLES_QUERY: (msg, sr) => handleComputedStylesQuery(msg.params || {}, sr),
-        FORM_DISCOVERY_QUERY: (msg, sr) => handleFormDiscoveryQuery(msg.params || {}, sr)
+        LINK_HEALTH_QUERY: (msg, sr) => handleLinkHealthQuery((msg.params ?? {}), sr),
+        COMPUTED_STYLES_QUERY: (msg, sr) => handleComputedStylesQuery((msg.params ?? {}), sr),
+        FORM_DISCOVERY_QUERY: (msg, sr) => handleFormDiscoveryQuery((msg.params ?? {}), sr)
     };
     chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         if (!isValidBackgroundSender(sender)) {

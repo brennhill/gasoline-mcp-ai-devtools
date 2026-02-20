@@ -360,6 +360,7 @@
   }
 
   // extension/content/message-handlers.js
+  var nextRequestId = 1;
   function postToInject(data) {
     window.postMessage({ ...data, _nonce: getPageNonce() }, window.location.origin);
   }
@@ -516,7 +517,7 @@
     return true;
   }
   function handleGetNetworkWaterfall(sendResponse) {
-    const requestId = Date.now();
+    const requestId = nextRequestId++;
     const deferred = createDeferredPromise();
     const responseHandler = (event) => {
       if (event.source !== window)
@@ -540,7 +541,7 @@
     });
     return true;
   }
-  function handleComputedStylesQuery(params, sendResponse) {
+  function forwardInjectQuery(queryType, responseType, label, params, sendResponse) {
     let parsedParams = {};
     if (typeof params === "string") {
       try {
@@ -551,102 +552,31 @@
     } else if (typeof params === "object") {
       parsedParams = params;
     }
-    const requestId = Date.now();
+    const requestId = nextRequestId++;
     const deferred = createDeferredPromise();
     const responseHandler = (event) => {
       if (event.source !== window)
         return;
-      if (event.data?.type === "GASOLINE_COMPUTED_STYLES_RESPONSE") {
+      if (event.data?.type === responseType) {
         window.removeEventListener("message", responseHandler);
-        deferred.resolve(event.data.result || { error: "No result from computed styles query" });
+        deferred.resolve(event.data.result || { error: `No result from ${label}` });
       }
     };
     window.addEventListener("message", responseHandler);
-    postToInject({
-      type: "GASOLINE_COMPUTED_STYLES_QUERY",
-      requestId,
-      params: parsedParams
-    });
-    promiseRaceWithCleanup(deferred.promise, ASYNC_COMMAND_TIMEOUT_MS, { error: "Computed styles query timeout" }, () => {
+    postToInject({ type: queryType, requestId, params: parsedParams });
+    promiseRaceWithCleanup(deferred.promise, ASYNC_COMMAND_TIMEOUT_MS, { error: `${label} timeout` }, () => {
       window.removeEventListener("message", responseHandler);
-    }).then((result) => {
-      sendResponse(result);
-    }, () => {
-      sendResponse({ error: "Computed styles query failed" });
-    });
+    }).then((result) => sendResponse(result), () => sendResponse({ error: `${label} failed` }));
     return true;
+  }
+  function handleComputedStylesQuery(params, sendResponse) {
+    return forwardInjectQuery("GASOLINE_COMPUTED_STYLES_QUERY", "GASOLINE_COMPUTED_STYLES_RESPONSE", "Computed styles query", params, sendResponse);
   }
   function handleFormDiscoveryQuery(params, sendResponse) {
-    let parsedParams = {};
-    if (typeof params === "string") {
-      try {
-        parsedParams = JSON.parse(params);
-      } catch {
-        parsedParams = {};
-      }
-    } else if (typeof params === "object") {
-      parsedParams = params;
-    }
-    const requestId = Date.now();
-    const deferred = createDeferredPromise();
-    const responseHandler = (event) => {
-      if (event.source !== window)
-        return;
-      if (event.data?.type === "GASOLINE_FORM_DISCOVERY_RESPONSE") {
-        window.removeEventListener("message", responseHandler);
-        deferred.resolve(event.data.result || { error: "No result from form discovery" });
-      }
-    };
-    window.addEventListener("message", responseHandler);
-    postToInject({
-      type: "GASOLINE_FORM_DISCOVERY_QUERY",
-      requestId,
-      params: parsedParams
-    });
-    promiseRaceWithCleanup(deferred.promise, ASYNC_COMMAND_TIMEOUT_MS, { error: "Form discovery timeout" }, () => {
-      window.removeEventListener("message", responseHandler);
-    }).then((result) => {
-      sendResponse(result);
-    }, () => {
-      sendResponse({ error: "Form discovery failed" });
-    });
-    return true;
+    return forwardInjectQuery("GASOLINE_FORM_DISCOVERY_QUERY", "GASOLINE_FORM_DISCOVERY_RESPONSE", "Form discovery", params, sendResponse);
   }
   function handleLinkHealthQuery(params, sendResponse) {
-    let parsedParams = {};
-    if (typeof params === "string") {
-      try {
-        parsedParams = JSON.parse(params);
-      } catch {
-        parsedParams = {};
-      }
-    } else if (typeof params === "object") {
-      parsedParams = params;
-    }
-    const requestId = Date.now();
-    const deferred = createDeferredPromise();
-    const responseHandler = (event) => {
-      if (event.source !== window)
-        return;
-      if (event.data?.type === "GASOLINE_LINK_HEALTH_RESPONSE") {
-        window.removeEventListener("message", responseHandler);
-        deferred.resolve(event.data.result || { error: "No result from link health check" });
-      }
-    };
-    window.addEventListener("message", responseHandler);
-    postToInject({
-      type: "GASOLINE_LINK_HEALTH_QUERY",
-      requestId,
-      params: parsedParams
-    });
-    promiseRaceWithCleanup(deferred.promise, ASYNC_COMMAND_TIMEOUT_MS, { error: "Link health check timeout" }, () => {
-      window.removeEventListener("message", responseHandler);
-    }).then((result) => {
-      sendResponse(result);
-    }, () => {
-      sendResponse({ error: "Link health check failed" });
-    });
-    return true;
+    return forwardInjectQuery("GASOLINE_LINK_HEALTH_QUERY", "GASOLINE_LINK_HEALTH_RESPONSE", "Link health check", params, sendResponse);
   }
 
   // extension/content/ui/toast.js
@@ -1012,9 +942,9 @@
       A11Y_QUERY: (msg, sr) => handleA11yQuery(msg.params || {}, sr),
       DOM_QUERY: (msg, sr) => handleDomQuery(msg.params || {}, sr),
       GET_NETWORK_WATERFALL: (_msg, sr) => handleGetNetworkWaterfall(sr),
-      LINK_HEALTH_QUERY: (msg, sr) => handleLinkHealthQuery(msg.params || {}, sr),
-      COMPUTED_STYLES_QUERY: (msg, sr) => handleComputedStylesQuery(msg.params || {}, sr),
-      FORM_DISCOVERY_QUERY: (msg, sr) => handleFormDiscoveryQuery(msg.params || {}, sr)
+      LINK_HEALTH_QUERY: (msg, sr) => handleLinkHealthQuery(msg.params ?? {}, sr),
+      COMPUTED_STYLES_QUERY: (msg, sr) => handleComputedStylesQuery(msg.params ?? {}, sr),
+      FORM_DISCOVERY_QUERY: (msg, sr) => handleFormDiscoveryQuery(msg.params ?? {}, sr)
     };
     chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       if (!isValidBackgroundSender(sender)) {
