@@ -81,6 +81,21 @@ var configureHandlers = map[string]ConfigureHandler{
 	"doctor": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 		return h.toolDoctor(req)
 	},
+	"save_sequence": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+		return h.toolConfigureSaveSequence(req, args)
+	},
+	"get_sequence": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+		return h.toolConfigureGetSequence(req, args)
+	},
+	"list_sequences": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+		return h.toolConfigureListSequences(req, args)
+	},
+	"delete_sequence": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+		return h.toolConfigureDeleteSequence(req, args)
+	},
+	"replay_sequence": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+		return h.toolConfigureReplaySequence(req, args)
+	},
 }
 
 // getValidConfigureActions returns a sorted, comma-separated list of valid configure actions.

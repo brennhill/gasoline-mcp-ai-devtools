@@ -7,13 +7,13 @@ import "github.com/dev-console/dev-console/internal/mcp"
 func ConfigureToolSchema() mcp.MCPTool {
 	return mcp.MCPTool{
 		Name:        "configure",
-		Description: "Session settings and utilities.\n\nKey actions: health (check server/extension status), clear (reset buffers), noise_rule (suppress recurring console noise), store/load (persist/retrieve session data), streaming (enable push notifications), recording_start/recording_stop (capture browser sessions), playback (replay recordings), log_diff (compare error states), restart (force-restart daemon when unresponsive).",
+		Description: "Session settings and utilities.\n\nKey actions: health (check server/extension status), clear (reset buffers), noise_rule (suppress recurring console noise), store/load (persist/retrieve session data), streaming (enable push notifications), recording_start/recording_stop (capture browser sessions), playback (replay recordings), log_diff (compare error states), restart (force-restart daemon when unresponsive).\n\nMacro sequences: save_sequence/replay_sequence/get_sequence/list_sequences/delete_sequence — save named interact action sequences and replay them in a single call.",
 		InputSchema: map[string]any{
 			"type": "object",
 			"properties": map[string]any{
 				"action": map[string]any{
 					"type": "string",
-					"enum": []string{"store", "load", "noise_rule", "clear", "health", "streaming", "test_boundary_start", "test_boundary_end", "recording_start", "recording_stop", "playback", "log_diff", "telemetry", "describe_capabilities", "diff_sessions", "audit_log", "restart"},
+					"enum": []string{"store", "load", "noise_rule", "clear", "health", "streaming", "test_boundary_start", "test_boundary_end", "recording_start", "recording_stop", "playback", "log_diff", "telemetry", "describe_capabilities", "diff_sessions", "audit_log", "restart", "save_sequence", "get_sequence", "list_sequences", "delete_sequence", "replay_sequence"},
 				},
 				"telemetry_mode": map[string]any{
 					"type":        "string",
@@ -75,7 +75,7 @@ func ConfigureToolSchema() mcp.MCPTool {
 				},
 				"name": map[string]any{
 					"type":        "string",
-					"description": "Snapshot name",
+					"description": "Snapshot name, or sequence name for save_sequence/get_sequence/delete_sequence/replay_sequence",
 				},
 				"compare_a": map[string]any{
 					"type":        "string",
@@ -155,6 +155,37 @@ func ConfigureToolSchema() mcp.MCPTool {
 				"replay_id": map[string]any{
 					"type":        "string",
 					"description": "Replay recording ID (log_diff)",
+				},
+				"steps": map[string]any{
+					"type":        "array",
+					"description": "Ordered list of interact action objects (save_sequence, replay_sequence override)",
+					"items":       map[string]any{"type": "object"},
+				},
+				"tags": map[string]any{
+					"type":        "array",
+					"description": "Labels for sequence categorization",
+					"items":       map[string]any{"type": "string"},
+				},
+				"override_steps": map[string]any{
+					"type":        "array",
+					"description": "Sparse array of step overrides for replay (null = use saved)",
+					"items":       map[string]any{},
+				},
+				"step_timeout_ms": map[string]any{
+					"type":        "number",
+					"description": "Timeout per step during replay (default 10000)",
+				},
+				"continue_on_error": map[string]any{
+					"type":        "boolean",
+					"description": "Continue replay if a step fails (default true)",
+				},
+				"stop_after_step": map[string]any{
+					"type":        "number",
+					"description": "Stop replay after executing this many steps",
+				},
+				"description": map[string]any{
+					"type":        "string",
+					"description": "Human-readable description for saved sequence",
 				},
 			},
 			"required": []string{"action"},

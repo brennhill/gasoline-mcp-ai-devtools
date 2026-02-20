@@ -638,7 +638,7 @@
   },
   {
     "name": "configure",
-    "description": "Session settings and utilities.\n\nKey actions: health (check server/extension status), clear (reset buffers), noise_rule (suppress recurring console noise), store/load (persist/retrieve session data), streaming (enable push notifications), recording_start/recording_stop (capture browser sessions), playback (replay recordings), log_diff (compare error states), restart (force-restart daemon when unresponsive).",
+    "description": "Session settings and utilities.\n\nKey actions: health (check server/extension status), clear (reset buffers), noise_rule (suppress recurring console noise), store/load (persist/retrieve session data), streaming (enable push notifications), recording_start/recording_stop (capture browser sessions), playback (replay recordings), log_diff (compare error states), restart (force-restart daemon when unresponsive).\n\nMacro sequences: save_sequence/replay_sequence/get_sequence/list_sequences/delete_sequence — save named interact action sequences and replay them in a single call.",
     "inputSchema": {
       "properties": {
         "action": {
@@ -659,7 +659,12 @@
             "describe_capabilities",
             "diff_sessions",
             "audit_log",
-            "restart"
+            "restart",
+            "save_sequence",
+            "get_sequence",
+            "list_sequences",
+            "delete_sequence",
+            "replay_sequence"
           ],
           "type": "string"
         },
@@ -693,9 +698,17 @@
           "description": "Second snapshot to compare",
           "type": "string"
         },
+        "continue_on_error": {
+          "description": "Continue replay if a step fails (default true)",
+          "type": "boolean"
+        },
         "data": {
           "description": "JSON data to persist",
           "type": "object"
+        },
+        "description": {
+          "description": "Human-readable description for saved sequence",
+          "type": "string"
         },
         "events": {
           "description": "Event categories to stream",
@@ -728,7 +741,7 @@
           "type": "number"
         },
         "name": {
-          "description": "Snapshot name",
+          "description": "Snapshot name, or sequence name for save_sequence/get_sequence/delete_sequence/replay_sequence",
           "type": "string"
         },
         "namespace": {
@@ -757,6 +770,11 @@
         "original_id": {
           "description": "Original recording ID (log_diff)",
           "type": "string"
+        },
+        "override_steps": {
+          "description": "Sparse array of step overrides for replay (null = use saved)",
+          "items": {},
+          "type": "array"
         },
         "pattern": {
           "description": "Regex pattern",
@@ -801,6 +819,21 @@
           "description": "Entries after ISO 8601 timestamp",
           "type": "string"
         },
+        "step_timeout_ms": {
+          "description": "Timeout per step during replay (default 10000)",
+          "type": "number"
+        },
+        "steps": {
+          "description": "Ordered list of interact action objects (save_sequence, replay_sequence override)",
+          "items": {
+            "type": "object"
+          },
+          "type": "array"
+        },
+        "stop_after_step": {
+          "description": "Stop replay after executing this many steps",
+          "type": "number"
+        },
         "store_action": {
           "enum": [
             "save",
@@ -822,6 +855,13 @@
         "tab_id": {
           "description": "Target tab ID",
           "type": "number"
+        },
+        "tags": {
+          "description": "Labels for sequence categorization",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
         },
         "telemetry_mode": {
           "description": "Telemetry metadata mode: off, auto, full. configure(action='telemetry') sets global default. Any tools/call may override per request with telemetry_mode.",
