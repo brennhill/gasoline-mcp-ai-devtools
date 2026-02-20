@@ -52,6 +52,9 @@ func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request, cap *captu
 	if availVer != "" {
 		resp["available_version"] = availVer
 	}
+	if info := buildUpgradeInfo(); info != nil {
+		resp["upgrade_pending"] = info
+	}
 	if cap != nil {
 		extStatus := cap.GetExtensionStatus()
 		resp["capture"] = map[string]any{
