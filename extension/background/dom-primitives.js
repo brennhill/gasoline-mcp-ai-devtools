@@ -1,6 +1,8 @@
 // AUTO-GENERATED FILE. DO NOT EDIT DIRECTLY.
 // Source template: scripts/templates/dom-primitives.ts.tpl
 // Generator: scripts/generate-dom-primitives.js
+// Re-export list_interactive primitive for backward compatibility
+export { domPrimitiveListInteractive } from './dom-primitives-list-interactive.js';
 /**
  * Single self-contained function for all DOM primitives.
  * Passed to chrome.scripting.executeScript({ func: domPrimitive, args: [...] }).
@@ -85,25 +87,6 @@ export function domPrimitive(action, selector, options) {
             }
         }
         return null;
-    }
-    // Build >>> selector for an element inside a shadow root
-    function buildShadowSelector(el, htmlEl, fallbackSelector) {
-        const rootNode = el.getRootNode();
-        if (!(rootNode instanceof ShadowRoot))
-            return null;
-        const parts = [];
-        let node = el;
-        let root = rootNode;
-        while (root instanceof ShadowRoot) {
-            const inner = buildUniqueSelector(node, node, node.tagName.toLowerCase());
-            parts.unshift(inner);
-            node = root.host;
-            root = node.getRootNode();
-        }
-        // Add the outermost host selector
-        const hostSelector = buildUniqueSelector(node, node, node.tagName.toLowerCase());
-        parts.unshift(hostSelector);
-        return parts.join(' >>> ');
     }
     // — Selector resolver: CSS or semantic (text=, role=, placeholder=, label=, aria-label=) —
     // Visibility check: skip display:none, visibility:hidden, zero-size elements
@@ -333,136 +316,7 @@ export function domPrimitive(action, selector, options) {
         // Fast path, then deep fallback
         return querySelectorDeep(sel);
     }
-    function buildUniqueSelector(el, htmlEl, fallbackSelector) {
-        if (el.id)
-            return `#${el.id}`;
-        if (el instanceof HTMLInputElement && el.name)
-            return `input[name="${el.name}"]`;
-        const ariaLabel = el.getAttribute('aria-label');
-        if (ariaLabel)
-            return `aria-label=${ariaLabel}`;
-        const placeholder = el.getAttribute('placeholder');
-        if (placeholder)
-            return `placeholder=${placeholder}`;
-        const text = (htmlEl.textContent || '').trim().slice(0, 40);
-        if (text)
-            return `text=${text}`;
-        return fallbackSelector;
-    }
-    // — list_interactive: scan the page for interactive elements —
-    if (action === 'list_interactive') {
-        // Classify element into a high-level interaction type
-        function classifyElement(el) {
-            const tag = el.tagName.toLowerCase();
-            if (tag === 'a')
-                return 'link';
-            if (tag === 'button' || el.getAttribute('role') === 'button')
-                return 'button';
-            if (tag === 'input') {
-                const inputType = el.type || 'text';
-                if (inputType === 'submit' || inputType === 'button' || inputType === 'reset')
-                    return 'button';
-                if (inputType === 'checkbox' || inputType === 'radio')
-                    return 'checkbox';
-                return 'input';
-            }
-            if (tag === 'select')
-                return 'select';
-            if (tag === 'textarea')
-                return 'textarea';
-            if (el.getAttribute('role') === 'link')
-                return 'link';
-            if (el.getAttribute('role') === 'tab')
-                return 'tab';
-            if (el.getAttribute('role') === 'menuitem')
-                return 'menuitem';
-            if (el.getAttribute('contenteditable') === 'true')
-                return 'textarea';
-            return 'interactive';
-        }
-        const interactiveSelectors = [
-            'a[href]',
-            'button',
-            'input',
-            'select',
-            'textarea',
-            '[role="button"]',
-            '[role="link"]',
-            '[role="tab"]',
-            '[role="menuitem"]',
-            '[contenteditable="true"]',
-            '[onclick]',
-            '[tabindex]'
-        ];
-        const seen = new Set();
-        const elements = [];
-        // First pass: collect raw entries with their base selectors
-        const rawEntries = [];
-        for (const cssSelector of interactiveSelectors) {
-            const matches = querySelectorAllDeep(cssSelector);
-            for (const el of matches) {
-                if (seen.has(el))
-                    continue;
-                seen.add(el);
-                const htmlEl = el;
-                const rect = htmlEl.getBoundingClientRect();
-                const visible = rect.width > 0 && rect.height > 0 && htmlEl.offsetParent !== null;
-                // Use >>> selector for shadow DOM elements, regular selector otherwise
-                const shadowSel = buildShadowSelector(el, htmlEl, cssSelector);
-                const baseSelector = shadowSel || buildUniqueSelector(el, htmlEl, cssSelector);
-                // Build human-readable label
-                const label = el.getAttribute('aria-label') ||
-                    el.getAttribute('title') ||
-                    el.getAttribute('placeholder') ||
-                    (htmlEl.textContent || '').trim().slice(0, 60) ||
-                    el.tagName.toLowerCase();
-                rawEntries.push({
-                    el,
-                    htmlEl,
-                    baseSelector,
-                    tag: el.tagName.toLowerCase(),
-                    inputType: el instanceof HTMLInputElement ? el.type : undefined,
-                    elementType: classifyElement(el),
-                    label,
-                    role: el.getAttribute('role') || undefined,
-                    placeholder: el.getAttribute('placeholder') || undefined,
-                    visible
-                });
-                if (rawEntries.length >= 100)
-                    break;
-            }
-            if (rawEntries.length >= 100)
-                break;
-        }
-        // Second pass: deduplicate selectors by appending :nth-match(N)
-        const selectorCount = new Map();
-        for (const entry of rawEntries) {
-            selectorCount.set(entry.baseSelector, (selectorCount.get(entry.baseSelector) || 0) + 1);
-        }
-        const selectorIndex = new Map();
-        for (let i = 0; i < rawEntries.length; i++) {
-            const entry = rawEntries[i];
-            let finalSelector = entry.baseSelector;
-            const count = selectorCount.get(entry.baseSelector) || 1;
-            if (count > 1) {
-                const nth = (selectorIndex.get(entry.baseSelector) || 0) + 1;
-                selectorIndex.set(entry.baseSelector, nth);
-                finalSelector = `${entry.baseSelector}:nth-match(${nth})`;
-            }
-            elements.push({
-                index: i,
-                tag: entry.tag,
-                type: entry.inputType,
-                element_type: entry.elementType,
-                selector: finalSelector,
-                label: entry.label,
-                role: entry.role,
-                placeholder: entry.placeholder,
-                visible: entry.visible
-            });
-        }
-        return { success: true, elements };
-    }
+    // list_interactive is handled by domPrimitiveListInteractive (dom-primitives-list-interactive.ts)
     // — Resolve element for all other actions —
     function domError(error, message) {
         return { success: false, action, selector, error, message };
@@ -627,49 +481,14 @@ export function domPrimitive(action, selector, options) {
             }),
             get_text: () => {
                 const text = node instanceof HTMLElement ? node.innerText : node.textContent;
-                if (text == null) {
-                    return {
-                        success: true,
-                        action,
-                        selector,
-                        value: null,
-                        reason: 'no_text_content',
-                        message: `Element text content is null: ${node.tagName}`
-                    };
-                }
                 return { success: true, action, selector, value: text };
             },
             get_value: () => {
                 if (!('value' in node))
                     return domError('no_value_property', `Element has no value property: ${node.tagName}`);
-                const value = node.value;
-                if (value == null) {
-                    return {
-                        success: true,
-                        action,
-                        selector,
-                        value: null,
-                        reason: 'no_value',
-                        message: `Element value is null: ${node.tagName}`
-                    };
-                }
-                return { success: true, action, selector, value };
+                return { success: true, action, selector, value: node.value };
             },
-            get_attribute: () => {
-                const attrName = options.name || '';
-                const value = node.getAttribute(attrName);
-                if (value === null) {
-                    return {
-                        success: true,
-                        action,
-                        selector,
-                        value: null,
-                        reason: 'attribute_not_found',
-                        message: `Attribute '${attrName}' not present on ${node.tagName}`
-                    };
-                }
-                return { success: true, action, selector, value };
-            },
+            get_attribute: () => ({ success: true, action, selector, value: node.getAttribute(options.name || '') }),
             set_attribute: () => withMutationTracking(() => {
                 node.setAttribute(options.name || '', options.value || '');
                 return { success: true, action, selector, value: node.getAttribute(options.name || '') };

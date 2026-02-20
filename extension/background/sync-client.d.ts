@@ -69,7 +69,7 @@ export declare class SyncClient {
     private syncing;
     private flushRequested;
     private pendingResults;
-    private processedCommandIDs;
+    private processedCommandSignatures;
     private extensionVersion;
     constructor(serverUrl: string, extSessionId: string, callbacks: SyncClientCallbacks, extensionVersion?: string);
     /** Get current sync state */
@@ -93,6 +93,7 @@ export declare class SyncClient {
     private onSuccess;
     private onFailure;
     private log;
+    private getCommandSignature;
 }
 /**
  * Create a sync client instance

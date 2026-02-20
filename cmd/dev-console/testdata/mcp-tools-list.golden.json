@@ -28,6 +28,10 @@
           "description": "Async command correlation ID",
           "type": "string"
         },
+        "database": {
+          "description": "IndexedDB database name (indexeddb)",
+          "type": "string"
+        },
         "direction": {
           "enum": [
             "incoming",
@@ -140,6 +144,10 @@
           "description": "Min HTTP status code",
           "type": "number"
         },
+        "store": {
+          "description": "IndexedDB object store name (indexeddb)",
+          "type": "string"
+        },
         "telemetry_mode": {
           "description": "Telemetry metadata mode for this call: off, auto, full",
           "enum": [
@@ -175,6 +183,7 @@
             "error_bundles",
             "screenshot",
             "storage",
+            "indexeddb",
             "command_result",
             "pending_commands",
             "failed_commands",
@@ -975,6 +984,11 @@
             "load_state",
             "list_states",
             "delete_state",
+            "set_storage",
+            "delete_storage",
+            "clear_storage",
+            "set_cookie",
+            "delete_cookie",
             "execute_js",
             "navigate",
             "refresh",
@@ -1046,6 +1060,10 @@
           "description": "Link to error/investigation",
           "type": "string"
         },
+        "domain": {
+          "description": "Cookie domain (set_cookie/delete_cookie)",
+          "type": "string"
+        },
         "duration_ms": {
           "description": "Highlight duration ms (default 5000)",
           "type": "number"
@@ -1102,13 +1120,21 @@
           "description": "Element index from list_interactive results (alternative to selector)",
           "type": "number"
         },
+        "key": {
+          "description": "Storage key for set_storage/delete_storage",
+          "type": "string"
+        },
         "name": {
-          "description": "Attribute or recording name",
+          "description": "Attribute, recording, or cookie name",
           "type": "string"
         },
         "observe_mutations": {
           "description": "Track element-level DOM mutations during action execution",
           "type": "boolean"
+        },
+        "path": {
+          "description": "Cookie path (set_cookie/delete_cookie, default /)",
+          "type": "string"
         },
         "reason": {
           "description": "Action reason (shown as toast)",
@@ -1128,6 +1154,14 @@
         },
         "snapshot_name": {
           "description": "State snapshot name",
+          "type": "string"
+        },
+        "storage_type": {
+          "description": "Storage target for state mutation actions",
+          "enum": [
+            "localStorage",
+            "sessionStorage"
+          ],
           "type": "string"
         },
         "submit": {
@@ -1199,6 +1233,11 @@
             "load_state",
             "list_states",
             "delete_state",
+            "set_storage",
+            "delete_storage",
+            "clear_storage",
+            "set_cookie",
+            "delete_cookie",
             "execute_js",
             "navigate",
             "refresh",

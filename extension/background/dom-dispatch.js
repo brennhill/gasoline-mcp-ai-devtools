@@ -6,6 +6,7 @@
  */
 import { domFrameProbe } from './dom-frame-probe.js';
 import { domPrimitive } from './dom-primitives.js';
+import { domPrimitiveListInteractive } from './dom-primitives-list-interactive.js';
 function parseDOMParams(query) {
     try {
         return typeof query.params === 'string' ? JSON.parse(query.params) : query.params;
@@ -164,6 +165,13 @@ async function executeStandardAction(target, params) {
         ]
     });
 }
+async function executeListInteractive(target) {
+    return chrome.scripting.executeScript({
+        target,
+        world: 'MAIN',
+        func: domPrimitiveListInteractive
+    });
+}
 function sendToastForResult(tabId, readOnly, result, actionToast, toastLabel, toastDetail) {
     if (readOnly)
         return;
@@ -212,9 +220,11 @@ export async function executeDOMAction(query, tabId, syncClient, sendAsyncResult
         const tryingShownAt = Date.now();
         if (!readOnly)
             actionToast(tabId, toastLabel, toastDetail, 'trying', 10000);
-        const rawResult = action === 'wait_for'
-            ? await executeWaitFor(executionTarget, params)
-            : await executeStandardAction(executionTarget, params);
+        const rawResult = action === 'list_interactive'
+            ? await executeListInteractive(executionTarget)
+            : action === 'wait_for'
+                ? await executeWaitFor(executionTarget, params)
+                : await executeStandardAction(executionTarget, params);
         // wait_for quick-check can return a DOMResult directly
         if (!Array.isArray(rawResult)) {
             if (!readOnly)

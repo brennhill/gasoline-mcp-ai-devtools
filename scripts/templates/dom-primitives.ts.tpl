@@ -10,6 +10,9 @@
 
 import type { DOMMutationEntry, DOMPrimitiveOptions, DOMResult } from './dom-types'
 
+// Re-export list_interactive primitive for backward compatibility
+export { domPrimitiveListInteractive } from './dom-primitives-list-interactive'
+
 /**
  * Single self-contained function for all DOM primitives.
  * Passed to chrome.scripting.executeScript({ func: domPrimitive, args: [...] }).
@@ -97,26 +100,6 @@ export function domPrimitive(
       }
     }
     return null
-  }
-
-  // Build >>> selector for an element inside a shadow root
-  function buildShadowSelector(el: Element, htmlEl: HTMLElement, fallbackSelector: string): string | null {
-    const rootNode = el.getRootNode()
-    if (!(rootNode instanceof ShadowRoot)) return null
-
-    const parts: string[] = []
-    let node: Element = el
-    let root: Node = rootNode
-    while (root instanceof ShadowRoot) {
-      const inner = buildUniqueSelector(node, node as HTMLElement, node.tagName.toLowerCase())
-      parts.unshift(inner)
-      node = root.host
-      root = node.getRootNode()
-    }
-    // Add the outermost host selector
-    const hostSelector = buildUniqueSelector(node, node as HTMLElement, node.tagName.toLowerCase())
-    parts.unshift(hostSelector)
-    return parts.join(' >>> ')
   }
 
   // — Selector resolver: CSS or semantic (text=, role=, placeholder=, label=, aria-label=) —
@@ -330,153 +313,7 @@ export function domPrimitive(
     return querySelectorDeep(sel)
   }
 
-  function buildUniqueSelector(el: Element, htmlEl: HTMLElement, fallbackSelector: string): string {
-    if (el.id) return `#${el.id}`
-    if (el instanceof HTMLInputElement && el.name) return `input[name="${el.name}"]`
-    const ariaLabel = el.getAttribute('aria-label')
-    if (ariaLabel) return `aria-label=${ariaLabel}`
-    const placeholder = el.getAttribute('placeholder')
-    if (placeholder) return `placeholder=${placeholder}`
-    const text = (htmlEl.textContent || '').trim().slice(0, 40)
-    if (text) return `text=${text}`
-    return fallbackSelector
-  }
-
-  // — list_interactive: scan the page for interactive elements —
-  if (action === 'list_interactive') {
-    // Classify element into a high-level interaction type
-    function classifyElement(el: Element): string {
-      const tag = el.tagName.toLowerCase()
-      if (tag === 'a') return 'link'
-      if (tag === 'button' || el.getAttribute('role') === 'button') return 'button'
-      if (tag === 'input') {
-        const inputType = (el as HTMLInputElement).type || 'text'
-        if (inputType === 'submit' || inputType === 'button' || inputType === 'reset') return 'button'
-        if (inputType === 'checkbox' || inputType === 'radio') return 'checkbox'
-        return 'input'
-      }
-      if (tag === 'select') return 'select'
-      if (tag === 'textarea') return 'textarea'
-      if (el.getAttribute('role') === 'link') return 'link'
-      if (el.getAttribute('role') === 'tab') return 'tab'
-      if (el.getAttribute('role') === 'menuitem') return 'menuitem'
-      if (el.getAttribute('contenteditable') === 'true') return 'textarea'
-      return 'interactive'
-    }
-
-    const interactiveSelectors = [
-      'a[href]',
-      'button',
-      'input',
-      'select',
-      'textarea',
-      '[role="button"]',
-      '[role="link"]',
-      '[role="tab"]',
-      '[role="menuitem"]',
-      '[contenteditable="true"]',
-      '[onclick]',
-      '[tabindex]'
-    ]
-    const seen = new Set<Element>()
-    const elements: {
-      index: number
-      tag: string
-      type?: string
-      element_type: string
-      selector: string
-      label: string
-      role?: string
-      placeholder?: string
-      visible: boolean
-    }[] = []
-
-    // First pass: collect raw entries with their base selectors
-    const rawEntries: {
-      el: Element
-      htmlEl: HTMLElement
-      baseSelector: string
-      tag: string
-      inputType?: string
-      elementType: string
-      label: string
-      role?: string
-      placeholder?: string
-      visible: boolean
-    }[] = []
-
-    for (const cssSelector of interactiveSelectors) {
-      const matches = querySelectorAllDeep(cssSelector)
-      for (const el of matches) {
-        if (seen.has(el)) continue
-        seen.add(el)
-
-        const htmlEl = el as HTMLElement
-        const rect = htmlEl.getBoundingClientRect()
-        const visible = rect.width > 0 && rect.height > 0 && htmlEl.offsetParent !== null
-
-        // Use >>> selector for shadow DOM elements, regular selector otherwise
-        const shadowSel = buildShadowSelector(el, htmlEl, cssSelector)
-        const baseSelector = shadowSel || buildUniqueSelector(el, htmlEl, cssSelector)
-
-        // Build human-readable label
-        const label =
-          el.getAttribute('aria-label') ||
-          el.getAttribute('title') ||
-          el.getAttribute('placeholder') ||
-          (htmlEl.textContent || '').trim().slice(0, 60) ||
-          el.tagName.toLowerCase()
-
-        rawEntries.push({
-          el,
-          htmlEl,
-          baseSelector,
-          tag: el.tagName.toLowerCase(),
-          inputType: el instanceof HTMLInputElement ? el.type : undefined,
-          elementType: classifyElement(el),
-          label,
-          role: el.getAttribute('role') || undefined,
-          placeholder: el.getAttribute('placeholder') || undefined,
-          visible
-        })
-
-        if (rawEntries.length >= 100) break
-      }
-      if (rawEntries.length >= 100) break
-    }
-
-    // Second pass: deduplicate selectors by appending :nth-match(N)
-    const selectorCount = new Map<string, number>()
-    for (const entry of rawEntries) {
-      selectorCount.set(entry.baseSelector, (selectorCount.get(entry.baseSelector) || 0) + 1)
-    }
-    const selectorIndex = new Map<string, number>()
-
-    for (let i = 0; i < rawEntries.length; i++) {
-      const entry = rawEntries[i]!
-      let finalSelector = entry.baseSelector
-      const count = selectorCount.get(entry.baseSelector) || 1
-      if (count > 1) {
-        const nth = (selectorIndex.get(entry.baseSelector) || 0) + 1
-        selectorIndex.set(entry.baseSelector, nth)
-        finalSelector = `${entry.baseSelector}:nth-match(${nth})`
-      }
-
-      elements.push({
-        index: i,
-        tag: entry.tag,
-        type: entry.inputType,
-        element_type: entry.elementType,
-        selector: finalSelector,
-        label: entry.label,
-        role: entry.role,
-        placeholder: entry.placeholder,
-        visible: entry.visible
-      })
-    }
-
-    return { success: true, elements }
-  }
+  // list_interactive is handled by domPrimitiveListInteractive (dom-primitives-list-interactive.ts)
 
   // — Resolve element for all other actions —
   function domError(error: string, message: string): DOMResult {
