@@ -4,7 +4,6 @@
 
 import type { PendingQuery } from '../../types'
 import type { SyncClient } from '../sync-client'
-import { StorageKey } from '../../lib/constants'
 import * as index from '../index'
 import { executeDOMAction } from '../dom-dispatch'
 import { executeUpload } from '../upload-handler'
@@ -309,20 +308,6 @@ registerCommand('execute', async (ctx) => {
 // =============================================================================
 
 export async function handlePilotCommand(command: string, params: unknown): Promise<unknown> {
-  if (!index.__aiWebPilotEnabledCache) {
-    if (typeof chrome !== 'undefined' && chrome.storage) {
-      const localResult = await new Promise<{ aiWebPilotEnabled?: boolean }>((resolve) => {
-        chrome.storage.local.get([StorageKey.AI_WEB_PILOT_ENABLED], (result: { aiWebPilotEnabled?: boolean }) => {
-          resolve(result)
-        })
-      })
-      if (localResult.aiWebPilotEnabled === true) {
-        // Storage says enabled but cache is stale — update via setter
-        index.setAiWebPilotEnabledCache(true)
-      }
-    }
-  }
-
   if (!index.__aiWebPilotEnabledCache) {
     return { error: 'ai_web_pilot_disabled' }
   }

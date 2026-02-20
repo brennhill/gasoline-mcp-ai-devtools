@@ -172,7 +172,7 @@ export class SyncClient {
                 this.callbacks.clearExtensionLogs();
             }
             this.pendingResults = [];
-            // Process commands
+            // Process commands — fire-and-forget so the sync loop is never blocked
             if (data.commands && data.commands.length > 0) {
                 this.log('Received commands', { count: data.commands.length, ids: data.commands.map((c) => c.id) });
                 for (const command of data.commands) {
@@ -180,36 +180,43 @@ export class SyncClient {
                         this.log('Skipping already processed command', { id: command.id });
                         continue;
                     }
-                    this.log('Dispatching command', {
+                    // Mark processed and ack on RECEIPT — before dispatch
+                    if (command.id) {
+                        this.processedCommandIDs.add(command.id);
+                        const MAX_PROCESSED_COMMANDS = 1000;
+                        if (this.processedCommandIDs.size > MAX_PROCESSED_COMMANDS) {
+                            const oldest = this.processedCommandIDs.values().next().value;
+                            if (oldest !== undefined) {
+                                this.processedCommandIDs.delete(oldest);
+                            }
+                        }
+                    }
+                    this.state.lastCommandAck = command.id;
+                    this.log('Dispatching command (fire-and-forget)', {
                         id: command.id,
                         type: command.type,
                         correlation_id: command.correlation_id
                     });
+                    // Fire-and-forget: don't await — sync loop continues immediately
                     try {
-                        await this.callbacks.onCommand(command);
-                        // Track ack only after successful execution
-                        this.state.lastCommandAck = command.id;
-                        this.log('Command dispatched OK', { id: command.id });
+                        this.callbacks.onCommand(command).then(() => {
+                            this.log('Command completed OK', { id: command.id });
+                        }, (err) => {
+                            this.log('Command execution FAILED', { id: command.id, error: err.message });
+                            this.queueCommandResult({
+                                id: command.id,
+                                status: 'error',
+                                error: err.message || 'Command execution failed'
+                            });
+                        });
                     }
                     catch (err) {
-                        this.log('Command dispatch FAILED', { id: command.id, error: err.message });
+                        this.log('Command dispatch FAILED (sync throw)', { id: command.id, error: err.message });
                         this.queueCommandResult({
                             id: command.id,
                             status: 'error',
                             error: err.message || 'Command dispatch failed'
                         });
-                    }
-                    finally {
-                        if (command.id) {
-                            this.processedCommandIDs.add(command.id);
-                            const MAX_PROCESSED_COMMANDS = 1000;
-                            if (this.processedCommandIDs.size > MAX_PROCESSED_COMMANDS) {
-                                const oldest = this.processedCommandIDs.values().next().value;
-                                if (oldest !== undefined) {
-                                    this.processedCommandIDs.delete(oldest);
-                                }
-                            }
-                        }
                     }
                 }
             }

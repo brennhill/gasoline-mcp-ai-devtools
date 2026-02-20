@@ -24,8 +24,10 @@ interface EscalationResult {
     error?: string;
 }
 /**
- * Verify whether a file is present on the input element after Stage 1 injection.
- * Polls up to VERIFY_MAX_ATTEMPTS times with VERIFY_DELAY_MS between attempts.
+ * Verify whether a file persists on the input element after Stage 1 injection.
+ * Sleeps BEFORE each check so frameworks with async onChange have time to clear.
+ * If the file disappears at any check, returns has_file: false immediately.
+ * If it survives all checks (~4.6s window), Stage 1 is confirmed.
  */
 export declare function verifyFileOnInput(tabId: number, selector: string): Promise<VerifyResult>;
 /**
