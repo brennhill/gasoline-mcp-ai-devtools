@@ -102,6 +102,8 @@ MODULES=(
     "12-cross-cutting.sh"
     "13-draw-mode.sh"
     "15-file-upload.sh"       # 15 runs before 14: upload needs a live daemon
+    "21-macro-recording.sh"
+    "22-log-aggregation.sh"
     "14-stability-shutdown.sh" # 14 must be last: it kills the daemon
 )
 
