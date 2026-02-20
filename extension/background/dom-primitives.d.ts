@@ -5,6 +5,7 @@
  * Docs: docs/features/feature/observe/index.md
  */
 import type { DOMPrimitiveOptions, DOMResult } from './dom-types';
+export { domPrimitiveListInteractive } from './dom-primitives-list-interactive';
 /**
  * Single self-contained function for all DOM primitives.
  * Passed to chrome.scripting.executeScript({ func: domPrimitive, args: [...] }).

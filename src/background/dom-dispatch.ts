@@ -15,6 +15,7 @@ import type { SyncClient } from './sync-client'
 import type { DOMActionParams, DOMResult } from './dom-types'
 import { domFrameProbe } from './dom-frame-probe'
 import { domPrimitive } from './dom-primitives'
+import { domPrimitiveListInteractive } from './dom-primitives-list-interactive'
 
 type SendAsyncResult = (
   syncClient: SyncClient,
@@ -219,6 +220,16 @@ async function executeStandardAction(
   })
 }
 
+async function executeListInteractive(
+  target: DOMExecutionTarget
+): Promise<chrome.scripting.InjectionResult[]> {
+  return chrome.scripting.executeScript({
+    target,
+    world: 'MAIN',
+    func: domPrimitiveListInteractive
+  })
+}
+
 function sendToastForResult(
   tabId: number,
   readOnly: boolean,
@@ -283,9 +294,11 @@ export async function executeDOMAction(
     if (!readOnly) actionToast(tabId, toastLabel, toastDetail, 'trying', 10000)
 
     const rawResult =
-      action === 'wait_for'
-        ? await executeWaitFor(executionTarget, params)
-        : await executeStandardAction(executionTarget, params)
+      action === 'list_interactive'
+        ? await executeListInteractive(executionTarget)
+        : action === 'wait_for'
+          ? await executeWaitFor(executionTarget, params)
+          : await executeStandardAction(executionTarget, params)
 
     // wait_for quick-check can return a DOMResult directly
     if (!Array.isArray(rawResult)) {
