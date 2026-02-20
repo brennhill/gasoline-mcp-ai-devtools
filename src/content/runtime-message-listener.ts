@@ -24,7 +24,9 @@ import {
   handleA11yQuery,
   handleDomQuery,
   handleGetNetworkWaterfall,
-  handleLinkHealthQuery
+  handleLinkHealthQuery,
+  handleComputedStylesQuery,
+  handleFormDiscoveryQuery
 } from './message-handlers'
 import { showActionToast } from './ui/toast'
 import { showSubtitle, toggleRecordingWatermark } from './ui/subtitle'
@@ -131,7 +133,9 @@ export function initRuntimeMessageListener(): void {
     A11Y_QUERY: (msg, sr) => handleA11yQuery((msg.params || {}) as Record<string, unknown>, sr),
     DOM_QUERY: (msg, sr) => handleDomQuery((msg.params || {}) as Record<string, unknown>, sr),
     GET_NETWORK_WATERFALL: (_msg, sr) => handleGetNetworkWaterfall(sr),
-    LINK_HEALTH_QUERY: (msg, sr) => handleLinkHealthQuery((msg as any).params || {}, sr)
+    LINK_HEALTH_QUERY: (msg, sr) => handleLinkHealthQuery((msg as any).params || {}, sr),
+    COMPUTED_STYLES_QUERY: (msg, sr) => handleComputedStylesQuery((msg as any).params || {}, sr),
+    FORM_DISCOVERY_QUERY: (msg, sr) => handleFormDiscoveryQuery((msg as any).params || {}, sr)
   }
 
   chrome.runtime.onMessage.addListener(

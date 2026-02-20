@@ -49,6 +49,7 @@ func (h *ToolHandler) interactDispatch() map[string]interactHandler {
 			"get_markdown":              h.handleGetMarkdown,
 			"navigate_and_wait_for":     h.handleNavigateAndWaitFor,
 			"fill_form_and_submit":      h.handleFillFormAndSubmit,
+			"fill_form":                h.handleFillForm,
 			"run_a11y_and_export_sarif": h.handleRunA11yAndExportSARIF,
 		}
 	})

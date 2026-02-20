@@ -21,7 +21,7 @@ func InteractToolSchema() mcp.MCPTool {
 						"set_attribute", "focus", "scroll_to", "wait_for", "key_press", "paste",
 						"list_interactive",
 						"get_readable", "get_markdown",
-						"navigate_and_wait_for", "fill_form_and_submit", "run_a11y_and_export_sarif",
+						"navigate_and_wait_for", "fill_form_and_submit", "fill_form", "run_a11y_and_export_sarif",
 						"record_start", "record_stop",
 						"upload", "draw_mode_start",
 					},
@@ -167,7 +167,7 @@ func InteractToolSchema() mcp.MCPTool {
 				},
 				"fields": map[string]any{
 					"type":        "array",
-					"description": "Form fields to fill (fill_form_and_submit)",
+					"description": "Form fields to fill (fill_form, fill_form_and_submit)",
 					"items": map[string]any{
 						"type": "object",
 						"properties": map[string]any{

@@ -3029,6 +3029,232 @@ function chunkArray(arr, chunkSize) {
   return chunks;
 }
 
+// extension/inject/computed-styles.js
+var DEFAULT_PROPERTIES = [
+  "color",
+  "background-color",
+  "font-size",
+  "font-family",
+  "font-weight",
+  "line-height",
+  "display",
+  "position",
+  "width",
+  "height",
+  "margin",
+  "padding",
+  "border",
+  "opacity",
+  "visibility",
+  "z-index",
+  "overflow",
+  "text-align",
+  "text-decoration",
+  "box-sizing"
+];
+function relativeLuminance(r, g, b) {
+  const [rs, gs, bs] = [r / 255, g / 255, b / 255].map((c) => c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4));
+  return 0.2126 * rs + 0.7152 * gs + 0.0722 * bs;
+}
+function parseRGBColor(colorStr) {
+  const match = colorStr.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
+  if (!match)
+    return null;
+  return [parseInt(match[1], 10), parseInt(match[2], 10), parseInt(match[3], 10)];
+}
+function computeContrastRatio(fgColor, bgColor) {
+  const fg = parseRGBColor(fgColor);
+  const bg = parseRGBColor(bgColor);
+  if (!fg || !bg)
+    return void 0;
+  const fgLum = relativeLuminance(fg[0], fg[1], fg[2]);
+  const bgLum = relativeLuminance(bg[0], bg[1], bg[2]);
+  const lighter = Math.max(fgLum, bgLum);
+  const darker = Math.min(fgLum, bgLum);
+  return Math.round((lighter + 0.05) / (darker + 0.05) * 100) / 100;
+}
+function buildSelector(el) {
+  if (el.id)
+    return `#${el.id}`;
+  const tag = el.tagName.toLowerCase();
+  const classes = Array.from(el.classList).slice(0, 3).map((c) => `.${c}`).join("");
+  return tag + classes;
+}
+function queryComputedStyles(params) {
+  const elements = document.querySelectorAll(params.selector);
+  const propList = params.properties && params.properties.length > 0 ? params.properties : DEFAULT_PROPERTIES;
+  const results = [];
+  const MAX_ELEMENTS = 50;
+  for (let i = 0; i < elements.length && results.length < MAX_ELEMENTS; i++) {
+    const el = elements[i];
+    const style = window.getComputedStyle(el);
+    const rect = el.getBoundingClientRect();
+    const computedStyles = {};
+    for (const prop of propList) {
+      computedStyles[prop] = style.getPropertyValue(prop);
+    }
+    const result = {
+      selector: buildSelector(el),
+      tag: el.tagName.toLowerCase(),
+      computed_styles: computedStyles,
+      box_model: {
+        x: Math.round(rect.x),
+        y: Math.round(rect.y),
+        width: Math.round(rect.width),
+        height: Math.round(rect.height),
+        top: Math.round(rect.top),
+        right: Math.round(rect.right),
+        bottom: Math.round(rect.bottom),
+        left: Math.round(rect.left)
+      }
+    };
+    const color = style.getPropertyValue("color");
+    const bgColor = style.getPropertyValue("background-color");
+    if (color && bgColor && bgColor !== "rgba(0, 0, 0, 0)") {
+      const ratio = computeContrastRatio(color, bgColor);
+      if (ratio !== void 0) {
+        result.contrast_ratio = ratio;
+      }
+    }
+    results.push(result);
+  }
+  return results;
+}
+
+// extension/inject/form-discovery.js
+function findLabel(el) {
+  const id = el.getAttribute("id");
+  if (id) {
+    const label = document.querySelector(`label[for="${CSS.escape(id)}"]`);
+    if (label)
+      return (label.textContent || "").trim().slice(0, 100);
+  }
+  const parentLabel = el.closest("label");
+  if (parentLabel) {
+    return (parentLabel.textContent || "").trim().slice(0, 100);
+  }
+  const ariaLabel = el.getAttribute("aria-label");
+  if (ariaLabel)
+    return ariaLabel.trim();
+  const placeholder = el.getAttribute("placeholder");
+  if (placeholder)
+    return placeholder.trim();
+  return "";
+}
+function buildFieldSelector(el) {
+  if (el.id)
+    return `#${el.id}`;
+  const name = el.getAttribute("name");
+  if (name)
+    return `${el.tagName.toLowerCase()}[name="${name}"]`;
+  const tag = el.tagName.toLowerCase();
+  const classes = Array.from(el.classList).slice(0, 2).map((c) => `.${c}`).join("");
+  return tag + classes;
+}
+function buildFormSelector(form) {
+  if (form.id)
+    return `form#${form.id}`;
+  const name = form.getAttribute("name");
+  if (name)
+    return `form[name="${name}"]`;
+  const action = form.getAttribute("action");
+  if (action)
+    return `form[action="${action}"]`;
+  return "form";
+}
+function getValidationConstraints(el) {
+  const constraints = {};
+  if (el.required)
+    constraints.required = true;
+  const input = el;
+  if (input.minLength > 0)
+    constraints.min_length = input.minLength;
+  if (input.maxLength > 0 && input.maxLength < 524288)
+    constraints.max_length = input.maxLength;
+  if (input.min)
+    constraints.min = input.min;
+  if (input.max)
+    constraints.max = input.max;
+  if (input.pattern)
+    constraints.pattern = input.pattern;
+  if (input.step)
+    constraints.step = input.step;
+  return constraints;
+}
+function discoverForms(params) {
+  const formSelector = params.selector || "form";
+  const forms = document.querySelectorAll(formSelector);
+  const results = [];
+  const MAX_FORMS = 20;
+  const MAX_FIELDS = 50;
+  for (let i = 0; i < forms.length && results.length < MAX_FORMS; i++) {
+    const form = forms[i];
+    if (form.tagName !== "FORM")
+      continue;
+    const fieldElements = form.querySelectorAll("input, select, textarea");
+    const fields = [];
+    for (let j = 0; j < fieldElements.length && fields.length < MAX_FIELDS; j++) {
+      const field = fieldElements[j];
+      const fieldType = field.getAttribute("type") || field.tagName.toLowerCase();
+      if (fieldType === "hidden")
+        continue;
+      const fieldInfo = {
+        name: field.name || "",
+        type: fieldType,
+        required: field.required,
+        value: field.value || "",
+        label: findLabel(field),
+        selector: buildFieldSelector(field),
+        tag: field.tagName.toLowerCase(),
+        validation_constraints: getValidationConstraints(field)
+      };
+      if (field.tagName === "SELECT") {
+        const select = field;
+        fieldInfo.options = Array.from(select.options).map((opt) => ({
+          value: opt.value,
+          text: opt.text,
+          selected: opt.selected
+        }));
+      }
+      if (params.mode === "validate") {
+        field.checkValidity();
+        if (field.validationMessage) {
+          fieldInfo.validation_message = field.validationMessage;
+        }
+      }
+      fields.push(fieldInfo);
+    }
+    let submitButton = null;
+    const submitEl = form.querySelector('button[type="submit"], input[type="submit"]') || form.querySelector('button:not([type]), button[type="button"]');
+    if (submitEl) {
+      submitButton = {
+        selector: buildFieldSelector(submitEl),
+        text: (submitEl.textContent || submitEl.value || "").trim().slice(0, 100)
+      };
+    }
+    const formInfo = {
+      action: form.action || "",
+      method: (form.method || "GET").toUpperCase(),
+      selector: buildFormSelector(form),
+      id: form.id || "",
+      name: form.name || "",
+      fields,
+      submit_button: submitButton
+    };
+    if (params.mode === "validate") {
+      formInfo.valid = form.checkValidity();
+      if (!formInfo.valid) {
+        formInfo.validation_errors = fields.filter((f) => f.validation_message).map((f) => ({
+          field: f.name || f.selector,
+          message: f.validation_message
+        }));
+      }
+    }
+    results.push(formInfo);
+  }
+  return results;
+}
+
 // extension/lib/timeout-utils.js
 function createDeferredPromise() {
   let resolve;
@@ -3291,7 +3517,9 @@ function installMessageListener(captureStateFn, restoreStateFn) {
     GASOLINE_A11Y_QUERY: (data) => handleA11yQuery(data),
     GASOLINE_DOM_QUERY: (data) => handleDomQuery(data),
     GASOLINE_GET_WATERFALL: (data) => handleGetWaterfall(data),
-    GASOLINE_LINK_HEALTH_QUERY: (data) => handleLinkHealthMessage(data)
+    GASOLINE_LINK_HEALTH_QUERY: (data) => handleLinkHealthMessage(data),
+    GASOLINE_COMPUTED_STYLES_QUERY: (data) => handleComputedStylesMessage(data),
+    GASOLINE_FORM_DISCOVERY_QUERY: (data) => handleFormDiscoveryMessage(data)
   };
   window.addEventListener("message", (event) => {
     if (event.source !== window || event.origin !== window.location.origin)
@@ -3305,6 +3533,46 @@ function installMessageListener(captureStateFn, restoreStateFn) {
     if (handler)
       handler(event.data);
   });
+}
+function handleComputedStylesMessage(data) {
+  try {
+    const params = data.params || {};
+    const result = queryComputedStyles({
+      selector: params.selector || "*",
+      properties: params.properties
+    });
+    window.postMessage({
+      type: "GASOLINE_COMPUTED_STYLES_RESPONSE",
+      requestId: data.requestId,
+      result: { elements: result, count: result.length }
+    }, window.location.origin);
+  } catch (err) {
+    window.postMessage({
+      type: "GASOLINE_COMPUTED_STYLES_RESPONSE",
+      requestId: data.requestId,
+      result: { error: "computed_styles_error", message: err.message || "Failed to query computed styles" }
+    }, window.location.origin);
+  }
+}
+function handleFormDiscoveryMessage(data) {
+  try {
+    const params = data.params || {};
+    const result = discoverForms({
+      selector: params.selector,
+      mode: params.mode === "validate" ? "validate" : "discover"
+    });
+    window.postMessage({
+      type: "GASOLINE_FORM_DISCOVERY_RESPONSE",
+      requestId: data.requestId,
+      result: { forms: result, count: result.length }
+    }, window.location.origin);
+  } catch (err) {
+    window.postMessage({
+      type: "GASOLINE_FORM_DISCOVERY_RESPONSE",
+      requestId: data.requestId,
+      result: { error: "form_discovery_error", message: err.message || "Failed to discover forms" }
+    }, window.location.origin);
+  }
 }
 function handleExecuteJs(data) {
   const { requestId, script, timeoutMs } = data;

@@ -205,6 +205,10 @@
           "description": "Run in background and return a correlation_id immediately.",
           "type": "boolean"
         },
+        "baseline": {
+          "description": "Baseline name to compare against (visual_diff)",
+          "type": "string"
+        },
         "checks": {
           "description": "Checks to run (security_audit)",
           "items": {
@@ -266,6 +270,10 @@
           "description": "Max concurrent workers (link_health)",
           "type": "number"
         },
+        "name": {
+          "description": "Baseline name (visual_baseline, visual_diff)",
+          "type": "string"
+        },
         "operation": {
           "description": "API validation operation",
           "enum": [
@@ -280,7 +288,7 @@
           "type": "string"
         },
         "selector": {
-          "description": "CSS selector (dom, accessibility)",
+          "description": "CSS selector (dom, accessibility, computed_styles, forms)",
           "type": "string"
         },
         "severity_min": {
@@ -318,6 +326,10 @@
           ],
           "type": "string"
         },
+        "threshold": {
+          "description": "Pixel diff threshold 0-255 (visual_diff, default 30)",
+          "type": "number"
+        },
         "timeout_ms": {
           "description": "Timeout ms (link_health, page_summary, annotations). For annotations with wait=true: default 300000 (5 min), max 600000 (10 min).",
           "type": "number"
@@ -349,7 +361,13 @@
             "annotation_detail",
             "api_validation",
             "draw_history",
-            "draw_session"
+            "draw_session",
+            "computed_styles",
+            "forms",
+            "form_validation",
+            "visual_baseline",
+            "visual_diff",
+            "visual_baselines"
           ],
           "type": "string"
         },
@@ -886,6 +904,7 @@
             "get_markdown",
             "navigate_and_wait_for",
             "fill_form_and_submit",
+            "fill_form",
             "run_a11y_and_export_sarif",
             "record_start",
             "record_stop",
@@ -940,7 +959,7 @@
           "type": "number"
         },
         "fields": {
-          "description": "Form fields to fill (fill_form_and_submit)",
+          "description": "Form fields to fill (fill_form, fill_form_and_submit)",
           "items": {
             "properties": {
               "index": {

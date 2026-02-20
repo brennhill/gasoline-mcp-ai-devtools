@@ -74,6 +74,26 @@ var analyzeHandlers = map[string]AnalyzeHandler{
 	"draw_session": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 		return h.toolGetDrawSession(req, args)
 	},
+
+	// Inspect and visual (#79, #81, #82)
+	"computed_styles": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+		return h.toolComputedStyles(req, args)
+	},
+	"forms": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+		return h.toolFormDiscovery(req, args)
+	},
+	"form_validation": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+		return h.toolFormValidation(req, args)
+	},
+	"visual_baseline": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+		return h.toolVisualBaseline(req, args)
+	},
+	"visual_diff": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+		return h.toolVisualDiff(req, args)
+	},
+	"visual_baselines": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+		return h.toolListVisualBaselines(req, args)
+	},
 }
 
 // getValidAnalyzeModes returns a sorted, comma-separated list of valid analyze modes.

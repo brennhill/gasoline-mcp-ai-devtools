@@ -5,6 +5,7 @@ package main
 
 import (
 	"encoding/json"
+	"strings"
 	"testing"
 )
 
@@ -92,6 +93,69 @@ func TestFillFormAndSubmit_InvalidJSON(t *testing.T) {
 	resp := h.handleFillFormAndSubmit(req, json.RawMessage(`{bad`))
 	assertIsError(t, resp, "JSON")
 }
+
+// ============================================
+// fill_form validation tests
+// ============================================
+
+func TestFillForm_EmptyFields(t *testing.T) {
+	t.Parallel()
+	h := newTestToolHandler()
+	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`)}
+	args, _ := json.Marshal(map[string]any{
+		"fields": []any{},
+	})
+	resp := h.handleFillForm(req, args)
+	assertIsError(t, resp, "fields")
+}
+
+func TestFillForm_MissingFieldSelectorAndIndex(t *testing.T) {
+	t.Parallel()
+	h := newTestToolHandler()
+	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`)}
+	args, _ := json.Marshal(map[string]any{
+		"fields": []map[string]string{
+			{"value": "test@example.com"},
+		},
+	})
+	resp := h.handleFillForm(req, args)
+	assertIsError(t, resp, "selector")
+}
+
+func TestFillForm_InvalidJSON(t *testing.T) {
+	t.Parallel()
+	h := newTestToolHandler()
+	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`)}
+	resp := h.handleFillForm(req, json.RawMessage(`{bad`))
+	assertIsError(t, resp, "JSON")
+}
+
+func TestFillForm_NoSubmitRequired(t *testing.T) {
+	t.Parallel()
+	h := newTestToolHandler()
+	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`)}
+	// Valid fields with selector — should not error about submit_selector
+	args, _ := json.Marshal(map[string]any{
+		"fields": []map[string]string{
+			{"selector": "#email", "value": "test@example.com"},
+		},
+	})
+	resp := h.handleFillForm(req, args)
+	// Should not return a "submit_selector" error (no submit needed for fill_form)
+	raw, _ := json.Marshal(resp)
+	rawStr := string(raw)
+	if contains(rawStr, "submit_selector") {
+		t.Error("fill_form should not require submit_selector")
+	}
+}
+
+func contains(s, substr string) bool {
+	return len(s) >= len(substr) && strings.Contains(s, substr)
+}
+
+// ============================================
+// run_a11y_and_export_sarif tests
+// ============================================
 
 func TestRunA11yAndExportSARIF_InvalidJSON(t *testing.T) {
 	t.Parallel()
