@@ -1,6 +1,3 @@
-// Purpose: Owns thirdparty.go runtime behavior and integration logic.
-// Docs: docs/features/feature/observe/index.md
-
 // thirdparty.go — Third-Party Risk Audit (audit_third_parties) MCP tool.
 // Analyzes captured network traffic to map all third-party origins,
 // classify risk levels, detect outbound PII, and apply domain reputation heuristics.
@@ -12,7 +9,6 @@ package analysis
 import (
 	"encoding/json"
 	"fmt"
-	"math"
 	"net/url"
 	"os"
 	"regexp"
@@ -98,42 +94,6 @@ type ThirdPartySummary struct {
 	OriginsReceivingData  int `json:"origins_receiving_data"`
 	OriginsSettingCookies int `json:"origins_setting_cookies"`
 	SuspiciousOrigins     int `json:"suspicious_origins"`
-}
-
-// knownCDNs is a hardcoded set of known CDN hostnames.
-var knownCDNs = map[string]bool{
-	"cdn.jsdelivr.net":           true,
-	"cdnjs.cloudflare.com":       true,
-	"unpkg.com":                  true,
-	"fonts.googleapis.com":       true,
-	"fonts.gstatic.com":          true,
-	"ajax.googleapis.com":        true,
-	"code.jquery.com":            true,
-	"maxcdn.bootstrapcdn.com":    true,
-	"stackpath.bootstrapcdn.com": true,
-	"cdn.cloudflare.com":         true,
-	"raw.githubusercontent.com":  true,
-	"github.githubassets.com":    true,
-	"cdn.tailwindcss.com":        true,
-	"esm.sh":                     true,
-	"deno.land":                  true,
-	"cdn.skypack.dev":            true,
-}
-
-// abuseTLDs is a hardcoded set of TLDs commonly associated with abuse.
-var abuseTLDs = map[string]bool{
-	".xyz":     true,
-	".top":     true,
-	".click":   true,
-	".loan":    true,
-	".work":    true,
-	".tk":      true,
-	".ml":      true,
-	".ga":      true,
-	".cf":      true,
-	".gq":      true,
-	".buzz":    true,
-	".monster": true,
 }
 
 // NewThirdPartyAuditor creates a new ThirdPartyAuditor.
@@ -379,211 +339,6 @@ func classifyRiskLevel(entry *ThirdPartyEntry) {
 	}
 }
 
-// classifyReputation determines the reputation classification for a hostname.
-func classifyReputation(hostname string, customLists *CustomLists) DomainReputation {
-	if rep, ok := checkCustomLists(hostname, customLists); ok {
-		return rep
-	}
-	if knownCDNs[hostname] {
-		return DomainReputation{Classification: "known_cdn", Source: "bundled_list"}
-	}
-	return checkSuspicionHeuristics(hostname)
-}
-
-// checkCustomLists checks if hostname matches enterprise allowed/blocked lists.
-func checkCustomLists(hostname string, customLists *CustomLists) (DomainReputation, bool) {
-	if customLists == nil {
-		return DomainReputation{}, false
-	}
-	if matchesDomainList(hostname, customLists.Allowed) {
-		return DomainReputation{Classification: "enterprise_allowed", Source: "custom_list"}, true
-	}
-	if matchesDomainList(hostname, customLists.Blocked) {
-		return DomainReputation{Classification: "enterprise_blocked", Source: "custom_list"}, true
-	}
-	return DomainReputation{}, false
-}
-
-// matchesDomainList returns true if hostname matches any domain in the list.
-func matchesDomainList(hostname string, domains []string) bool {
-	for _, d := range domains {
-		if hostname == d || strings.HasSuffix(hostname, "."+d) {
-			return true
-		}
-	}
-	return false
-}
-
-// checkSuspicionHeuristics applies abuse-TLD and DGA heuristics.
-func checkSuspicionHeuristics(hostname string) DomainReputation {
-	var flags []string
-	if abuseTLDs[extractTLD(hostname)] {
-		flags = append(flags, "abuse_tld")
-	}
-	subdomain := extractSubdomain(hostname)
-	if subdomain != "" && len(subdomain) > 8 && shannonEntropy(subdomain) > 3.5 {
-		flags = append(flags, "possible_dga")
-	}
-	if len(flags) > 0 {
-		return DomainReputation{Classification: "suspicious", SuspicionFlags: flags, Source: "heuristic"}
-	}
-	return DomainReputation{Classification: "unknown"}
-}
-
-// shannonEntropy computes Shannon entropy in bits per character.
-func shannonEntropy(s string) float64 {
-	freq := make(map[rune]float64)
-	for _, c := range s {
-		freq[c]++
-	}
-	length := float64(len([]rune(s)))
-	entropy := 0.0
-	for _, count := range freq {
-		p := count / length
-		if p > 0 {
-			entropy -= p * math.Log2(p)
-		}
-	}
-	return entropy
-}
-
-// extractHostname extracts the hostname from a URL or origin string.
-func extractHostname(rawURL string) string {
-	parsed, err := url.Parse(rawURL)
-	if err != nil {
-		return ""
-	}
-	return parsed.Hostname()
-}
-
-// extractTLD extracts the TLD with dot prefix from a hostname.
-func extractTLD(hostname string) string {
-	parts := strings.Split(hostname, ".")
-	if len(parts) < 2 {
-		return ""
-	}
-	return "." + parts[len(parts)-1]
-}
-
-// extractSubdomain extracts the first subdomain label from a hostname.
-func extractSubdomain(hostname string) string {
-	parts := strings.Split(hostname, ".")
-	if len(parts) <= 2 {
-		return ""
-	}
-	return parts[0]
-}
-
-// buildThirdPartySummary computes aggregate counts from entries.
-func buildThirdPartySummary(entries []ThirdPartyEntry) ThirdPartySummary {
-	s := ThirdPartySummary{
-		TotalThirdParties: len(entries),
-	}
-	for _, e := range entries {
-		switch e.RiskLevel {
-		case "critical":
-			s.CriticalRisk++
-		case "high":
-			s.HighRisk++
-		case "medium":
-			s.MediumRisk++
-		case "low":
-			s.LowRisk++
-		}
-		if e.Resources.Scripts > 0 {
-			s.ScriptsFromThirdParty++
-		}
-		if e.DataOutbound {
-			s.OriginsReceivingData++
-		}
-		if e.SetsCookies {
-			s.OriginsSettingCookies++
-		}
-		if e.Reputation.Classification == "suspicious" {
-			s.SuspiciousOrigins++
-		}
-	}
-	return s
-}
-
-// buildRecommendations generates actionable recommendation strings.
-func buildRecommendations(entries []ThirdPartyEntry) []string {
-	var recs []string
-	recs = append(recs, suspiciousScriptRecs(entries)...)
-	recs = append(recs, dataReceiverRecs(entries)...)
-	recs = append(recs, piiOutboundRecs(entries)...)
-	recs = append(recs, cookieSetterRecs(entries)...)
-	return recs
-}
-
-// suspiciousScriptRecs returns recommendations for suspicious origins loading scripts.
-func suspiciousScriptRecs(entries []ThirdPartyEntry) []string {
-	var recs []string
-	for _, e := range entries {
-		if e.Reputation.Classification == "suspicious" && e.Resources.Scripts > 0 {
-			recs = append(recs, fmt.Sprintf("CRITICAL: %s loads scripts AND is flagged suspicious — investigate immediately", e.Origin))
-		}
-	}
-	return recs
-}
-
-// dataReceiverRecs returns a recommendation if any origins receive outbound data.
-func dataReceiverRecs(entries []ThirdPartyEntry) []string {
-	count := countEntries(entries, func(e ThirdPartyEntry) bool { return e.DataOutbound })
-	if count == 0 {
-		return nil
-	}
-	return []string{fmt.Sprintf("%d origin(s) receive user data — verify these are intentional", count)}
-}
-
-// piiOutboundRecs returns recommendations for origins receiving PII data.
-func piiOutboundRecs(entries []ThirdPartyEntry) []string {
-	var recs []string
-	for _, e := range entries {
-		if e.OutboundDetails != nil && len(e.OutboundDetails.PIIFields) > 0 {
-			recs = append(recs, fmt.Sprintf("%s receives PII fields (%s) — ensure privacy policy covers this",
-				e.Origin, strings.Join(e.OutboundDetails.PIIFields, ", ")))
-		}
-	}
-	return recs
-}
-
-// cookieSetterRecs returns a recommendation if third parties set cookies.
-func cookieSetterRecs(entries []ThirdPartyEntry) []string {
-	count := countEntries(entries, func(e ThirdPartyEntry) bool { return e.SetsCookies })
-	if count == 0 {
-		return nil
-	}
-	return []string{fmt.Sprintf("%d third-party origin(s) set cookies — review for GDPR/CCPA compliance", count)}
-}
-
-// countEntries counts entries matching a predicate.
-func countEntries(entries []ThirdPartyEntry, pred func(ThirdPartyEntry) bool) int {
-	n := 0
-	for _, e := range entries {
-		if pred(e) {
-			n++
-		}
-	}
-	return n
-}
-
-// riskOrder returns a sort order for risk levels (lower = more severe).
-func riskOrder(level string) int {
-	switch level {
-	case "critical":
-		return 0
-	case "high":
-		return 1
-	case "medium":
-		return 2
-	case "low":
-		return 3
-	default:
-		return 4
-	}
-}
-
 // appendUnique appends a value to a slice if not already present.
 func appendUnique(slice []string, val string) []string {
 	for _, s := range slice {
@@ -619,10 +374,6 @@ func HandleAuditThirdParties(params json.RawMessage, bodies []capture.NetworkBod
 	result := auditor.Audit(bodies, pageURLs, p)
 	return result, nil
 }
-
-// ============================================
-// Helper Functions (duplicated from security package to avoid circular imports)
-// ============================================
 
 // extractOrigin extracts the origin (scheme://host[:port]) from a URL.
 // Returns empty string for data: URLs, blob: URLs (after extracting nested origin), and malformed URLs.
