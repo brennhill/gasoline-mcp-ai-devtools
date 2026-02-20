@@ -719,11 +719,17 @@
           "type": "string"
         },
         "category": {
+          "default": "console",
+          "description": "Noise category (default: console for flattened add)",
           "enum": [
             "console",
             "network",
             "websocket"
           ],
+          "type": "string"
+        },
+        "classification": {
+          "description": "Single-rule flattening helper for noise_action=add",
           "type": "string"
         },
         "compare_a": {
@@ -772,19 +778,34 @@
           "description": "Test boundary label",
           "type": "string"
         },
+        "level": {
+          "description": "Single-rule flattening helper for noise_action=add",
+          "type": "string"
+        },
         "limit": {
           "description": "Max entries to return (default 100, max 1000)",
           "type": "number"
+        },
+        "message_regex": {
+          "description": "Single-rule flattening helper for noise_action=add",
+          "type": "string"
+        },
+        "method": {
+          "description": "Single-rule flattening helper for noise_action=add",
+          "type": "string"
         },
         "name": {
           "description": "Snapshot name, or sequence name for save_sequence/get_sequence/delete_sequence/replay_sequence",
           "type": "string"
         },
         "namespace": {
-          "description": "Store grouping",
+          "default": "session",
+          "description": "Store grouping (default: session)",
           "type": "string"
         },
         "noise_action": {
+          "default": "list",
+          "description": "Noise operation (default: list)",
           "enum": [
             "add",
             "remove",
@@ -813,7 +834,7 @@
           "type": "array"
         },
         "pattern": {
-          "description": "Regex pattern",
+          "description": "Regex pattern (single-rule flattening helper for noise_action=add)",
           "type": "string"
         },
         "reason": {
@@ -855,6 +876,18 @@
           "description": "Entries after ISO 8601 timestamp",
           "type": "string"
         },
+        "source_regex": {
+          "description": "Single-rule flattening helper for noise_action=add",
+          "type": "string"
+        },
+        "status_max": {
+          "description": "Single-rule flattening helper for noise_action=add",
+          "type": "integer"
+        },
+        "status_min": {
+          "description": "Single-rule flattening helper for noise_action=add",
+          "type": "integer"
+        },
         "step_timeout_ms": {
           "description": "Timeout per step during replay (default 10000)",
           "type": "number"
@@ -871,6 +904,8 @@
           "type": "number"
         },
         "store_action": {
+          "default": "list",
+          "description": "Store operation (default: list)",
           "enum": [
             "save",
             "load",
@@ -924,6 +959,14 @@
         },
         "url": {
           "description": "URL filter for snapshot capture (diff_sessions)",
+          "type": "string"
+        },
+        "url_regex": {
+          "description": "Single-rule flattening helper for noise_action=add",
+          "type": "string"
+        },
+        "value": {
+          "description": "Flat value alias for save action; treated as data when provided",
           "type": "string"
         },
         "verif_session_action": {

@@ -129,3 +129,85 @@ func TestBuildCapabilitiesMap_NoRequired(t *testing.T) {
 		t.Errorf("dispatch_param = %v, want empty", simple["dispatch_param"])
 	}
 }
+
+func TestBuildCapabilitiesMap_IncludesModeParamsAndTypeMetadata(t *testing.T) {
+	t.Parallel()
+
+	tools := []mcp.MCPTool{
+		{
+			Name:        "observe",
+			Description: "Observe browser state",
+			InputSchema: map[string]any{
+				"properties": map[string]any{
+					"what": map[string]any{
+						"type": "string",
+						"enum": []string{"errors", "logs"},
+					},
+					"timeout_ms": map[string]any{
+						"type":        "number",
+						"description": "Timeout ms (default 5000)",
+					},
+					"url": map[string]any{
+						"type": "string",
+					},
+				},
+				"required": []string{"what"},
+			},
+		},
+	}
+
+	result := BuildCapabilitiesMap(tools)
+	observeRaw, ok := result["observe"]
+	if !ok {
+		t.Fatal("expected observe tool in result")
+	}
+	observe, ok := observeRaw.(map[string]any)
+	if !ok {
+		t.Fatalf("observe type = %T, want map[string]any", observeRaw)
+	}
+
+	modeParamsRaw, ok := observe["mode_params"]
+	if !ok {
+		t.Fatal("expected mode_params in capabilities")
+	}
+	modeParams, ok := modeParamsRaw.(map[string]any)
+	if !ok {
+		t.Fatalf("mode_params type = %T, want map[string]any", modeParamsRaw)
+	}
+	errorsMode, ok := modeParams["errors"].(map[string]any)
+	if !ok {
+		t.Fatalf("errors mode metadata missing or invalid: %T", modeParams["errors"])
+	}
+
+	required, ok := errorsMode["required"].([]string)
+	if !ok {
+		t.Fatalf("required type = %T, want []string", errorsMode["required"])
+	}
+	if len(required) != 1 || required[0] != "what" {
+		t.Fatalf("required = %v, want [what]", required)
+	}
+
+	paramsRaw, ok := errorsMode["params"]
+	if !ok {
+		t.Fatal("expected params map in mode metadata")
+	}
+	params, ok := paramsRaw.(map[string]any)
+	if !ok {
+		t.Fatalf("params type = %T, want map[string]any", paramsRaw)
+	}
+
+	timeoutMetaRaw, ok := params["timeout_ms"]
+	if !ok {
+		t.Fatal("expected timeout_ms metadata in params")
+	}
+	timeoutMeta, ok := timeoutMetaRaw.(map[string]any)
+	if !ok {
+		t.Fatalf("timeout_ms metadata type = %T, want map[string]any", timeoutMetaRaw)
+	}
+	if timeoutMeta["type"] != "number" {
+		t.Fatalf("timeout_ms type = %v, want number", timeoutMeta["type"])
+	}
+	if timeoutMeta["default"] != "5000" {
+		t.Fatalf("timeout_ms default = %v, want 5000", timeoutMeta["default"])
+	}
+}

@@ -440,6 +440,61 @@ func TestToolsConfigureStore_InvalidJSON(t *testing.T) {
 	assertSnakeCaseFields(t, string(resp.Result))
 }
 
+func TestToolsConfigureStore_DefaultNamespaceForList(t *testing.T) {
+	t.Parallel()
+	h, _, _ := makeToolHandler(t)
+
+	resp := callConfigureRaw(h, `{"what":"store"}`)
+	result := parseToolResult(t, resp)
+	if result.IsError {
+		t.Fatalf("store list with default namespace should succeed, got: %s", result.Content[0].Text)
+	}
+
+	data := extractResultJSON(t, result)
+	if data["namespace"] != "session" {
+		t.Fatalf("namespace = %v, want session", data["namespace"])
+	}
+	if _, ok := data["keys"]; !ok {
+		t.Fatalf("response should contain keys, got: %+v", data)
+	}
+
+	assertSnakeCaseFields(t, string(resp.Result))
+}
+
+func TestToolsConfigureStore_ActionAliasAndFlatValue(t *testing.T) {
+	t.Parallel()
+	h, _, _ := makeToolHandler(t)
+
+	saveResp := callConfigureRaw(h, `{"what":"store","action":"save","key":"flat_key","value":"flat_value"}`)
+	saveResult := parseToolResult(t, saveResp)
+	if saveResult.IsError {
+		t.Fatalf("store save via action alias + flat value should succeed, got: %s", saveResult.Content[0].Text)
+	}
+	saveData := extractResultJSON(t, saveResult)
+	if saveData["status"] != "saved" {
+		t.Fatalf("status = %v, want saved", saveData["status"])
+	}
+	if saveData["namespace"] != "session" {
+		t.Fatalf("namespace = %v, want session", saveData["namespace"])
+	}
+
+	loadResp := callConfigureRaw(h, `{"what":"store","store_action":"load","key":"flat_key"}`)
+	loadResult := parseToolResult(t, loadResp)
+	if loadResult.IsError {
+		t.Fatalf("store load with default namespace should succeed, got: %s", loadResult.Content[0].Text)
+	}
+	loadData := extractResultJSON(t, loadResult)
+	if loadData["namespace"] != "session" {
+		t.Fatalf("namespace = %v, want session", loadData["namespace"])
+	}
+	if loadData["key"] != "flat_key" {
+		t.Fatalf("key = %v, want flat_key", loadData["key"])
+	}
+	if loadData["data"] != "flat_value" {
+		t.Fatalf("data = %v, want flat_value", loadData["data"])
+	}
+}
+
 // ============================================
 // configure(action:"load") — Response Fields
 // ============================================

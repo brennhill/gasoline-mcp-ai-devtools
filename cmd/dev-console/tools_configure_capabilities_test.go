@@ -111,3 +111,46 @@ func TestDescribeCapabilities_ToolsHaveModes(t *testing.T) {
 		t.Error("observe modes should include 'logs'")
 	}
 }
+
+func TestDescribeCapabilities_ConfigureIncludesModeParameterDetails(t *testing.T) {
+	t.Parallel()
+	h := newTestToolHandler()
+	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`)}
+	resp := h.handleDescribeCapabilities(req, json.RawMessage(`{}`))
+
+	var result MCPToolResult
+	if err := json.Unmarshal(resp.Result, &result); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+
+	text := result.Content[0].Text
+	idx := strings.Index(text, "{")
+	if idx < 0 {
+		t.Fatal("no JSON in response")
+	}
+	var data map[string]any
+	if err := json.Unmarshal([]byte(text[idx:]), &data); err != nil {
+		t.Fatalf("parse capabilities JSON: %v", err)
+	}
+
+	tools := data["tools"].(map[string]any)
+	configureTool := tools["configure"].(map[string]any)
+
+	modeParamsRaw, ok := configureTool["mode_params"]
+	if !ok {
+		t.Fatal("configure capabilities should include mode_params")
+	}
+	modeParams := modeParamsRaw.(map[string]any)
+	storeMode := modeParams["store"].(map[string]any)
+
+	params := storeMode["params"].(map[string]any)
+	namespaceMeta := params["namespace"].(map[string]any)
+	if namespaceMeta["type"] != "string" {
+		t.Fatalf("store.namespace type = %v, want string", namespaceMeta["type"])
+	}
+
+	storeActionMeta := params["store_action"].(map[string]any)
+	if storeActionMeta["default"] != "list" {
+		t.Fatalf("store.store_action default = %v, want list", storeActionMeta["default"])
+	}
+}
