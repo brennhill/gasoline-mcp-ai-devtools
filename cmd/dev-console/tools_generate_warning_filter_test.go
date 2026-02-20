@@ -114,6 +114,30 @@ func TestHandleGenerateTestHeal_FiltersOnlyDispatchWarnings(t *testing.T) {
 	}
 }
 
+func TestHandleGenerateTestClassify_FiltersOnlyDispatchWarnings(t *testing.T) {
+	t.Parallel()
+
+	h := newTestToolHandler()
+
+	req := JSONRPCRequest{JSONRPC: "2.0", ID: 1}
+	resp := h.handleGenerateTestClassify(req, json.RawMessage(`{"what":"test_classify","action":"failure","failure":{"test_name":"login test","error":"Timeout waiting for selector \"#login-btn\""},"typo_field":true}`))
+	result := parseToolResult(t, resp)
+	if result.IsError {
+		t.Fatalf("handleGenerateTestClassify should succeed, got error: %s", firstText(result))
+	}
+
+	warningsText, ok := warningsBlock(result)
+	if !ok {
+		t.Fatal("expected warnings block for typo_field")
+	}
+	if !strings.Contains(warningsText, "typo_field") {
+		t.Fatalf("expected warning to include typo_field, got %q", warningsText)
+	}
+	if strings.Contains(warningsText, "what") {
+		t.Fatalf("warning should not include dispatch param 'what', got %q", warningsText)
+	}
+}
+
 func makeProjectTempDir(t *testing.T) string {
 	t.Helper()
 

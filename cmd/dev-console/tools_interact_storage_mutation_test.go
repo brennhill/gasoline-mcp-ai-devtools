@@ -51,6 +51,22 @@ func TestInteractStorageMutation_SetStorage_QueuesExecute(t *testing.T) {
 	}
 }
 
+func TestInteractStorageMutation_SetStorage_ActionAlias_QueuesExecute(t *testing.T) {
+	t.Parallel()
+	env := newInteractHelpersTestEnv(t)
+	env.enablePilot(t)
+
+	result := callInteractStorageAction(t, env, `{"action":"set_storage","storage_type":"localStorage","key":"theme","value":"light"}`)
+	if result.IsError {
+		t.Fatalf("set_storage via action alias should succeed, got error: %s", firstText(result))
+	}
+
+	params := lastPendingQuery(t, env)
+	if params["_type"] != "execute" {
+		t.Fatalf("pending query type = %v, want execute", params["_type"])
+	}
+}
+
 func TestInteractStorageMutation_ClearStorage_QueuesExecute(t *testing.T) {
 	t.Parallel()
 	env := newInteractHelpersTestEnv(t)
@@ -137,6 +153,22 @@ func TestInteractStorageMutation_DeleteCookie_QueuesExecute(t *testing.T) {
 	}
 	if !strings.Contains(script, "domain=.example.com") || !strings.Contains(script, "path=/") {
 		t.Fatalf("script should include domain/path attributes, got: %q", script)
+	}
+}
+
+func TestInteractStorageMutation_DeleteCookie_ActionAlias_QueuesExecute(t *testing.T) {
+	t.Parallel()
+	env := newInteractHelpersTestEnv(t)
+	env.enablePilot(t)
+
+	result := callInteractStorageAction(t, env, `{"action":"delete_cookie","name":"_ga","domain":".example.com","path":"/"}`)
+	if result.IsError {
+		t.Fatalf("delete_cookie via action alias should succeed, got error: %s", firstText(result))
+	}
+
+	params := lastPendingQuery(t, env)
+	if params["_type"] != "execute" {
+		t.Fatalf("pending query type = %v, want execute", params["_type"])
 	}
 }
 
