@@ -23,6 +23,8 @@ func (h *ToolHandler) handleGenerateTestClassify(req JSONRPCRequest, args json.R
 		}
 	}
 
+	warnings = filterGenerateDispatchWarnings(warnings)
+
 	if errResp, ok := validateClassifyParams(req.ID, params); !ok {
 		return errResp
 	}

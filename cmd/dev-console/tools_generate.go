@@ -44,6 +44,47 @@ var alwaysAllowedGenerateParams = map[string]bool{
 	"telemetry_mode": true,
 }
 
+// ignoredGenerateDispatchWarningParams are accepted at generate-dispatch level
+// but not consumed by every sub-handler.
+var ignoredGenerateDispatchWarningParams = map[string]bool{
+	"what":           true,
+	"format":         true,
+	"telemetry_mode": true,
+	"save_to":        true,
+}
+
+func filterGenerateDispatchWarnings(warnings []string) []string {
+	if len(warnings) == 0 {
+		return nil
+	}
+	filtered := make([]string, 0, len(warnings))
+	for _, warning := range warnings {
+		param, ok := parseUnknownParamWarning(warning)
+		if ok && ignoredGenerateDispatchWarningParams[param] {
+			continue
+		}
+		filtered = append(filtered, warning)
+	}
+	if len(filtered) == 0 {
+		return nil
+	}
+	return filtered
+}
+
+func parseUnknownParamWarning(warning string) (string, bool) {
+	const prefix = "unknown parameter '"
+	const suffix = "' (ignored)"
+	if !strings.HasPrefix(warning, prefix) || !strings.HasSuffix(warning, suffix) {
+		return "", false
+	}
+	param := strings.TrimPrefix(warning, prefix)
+	param = strings.TrimSuffix(param, suffix)
+	if param == "" {
+		return "", false
+	}
+	return param, true
+}
+
 // validateGenerateParams checks for unknown parameters and returns an error response if any are found.
 func validateGenerateParams(req JSONRPCRequest, format string, args json.RawMessage) *JSONRPCResponse {
 	if len(args) == 0 {

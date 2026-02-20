@@ -15,6 +15,7 @@ func InteractToolSchema() mcp.MCPTool {
 					"type": "string",
 					"enum": []string{
 						"highlight", "subtitle", "save_state", "load_state", "list_states", "delete_state",
+						"set_storage", "delete_storage", "clear_storage", "set_cookie", "delete_cookie",
 						"execute_js", "navigate", "refresh", "back", "forward", "new_tab", "screenshot",
 						"click", "type", "select", "check",
 						"get_text", "get_value", "get_attribute",
@@ -31,6 +32,7 @@ func InteractToolSchema() mcp.MCPTool {
 					"description": "Deprecated alias for 'what'",
 					"enum": []string{
 						"highlight", "subtitle", "save_state", "load_state", "list_states", "delete_state",
+						"set_storage", "delete_storage", "clear_storage", "set_cookie", "delete_cookie",
 						"execute_js", "navigate", "refresh", "back", "forward", "new_tab", "screenshot",
 						"click", "type", "select", "check",
 						"get_text", "get_value", "get_attribute",
@@ -107,6 +109,15 @@ func InteractToolSchema() mcp.MCPTool {
 					"type":        "string",
 					"description": "Value for select/set_attribute",
 				},
+				"storage_type": map[string]any{
+					"type":        "string",
+					"description": "Storage target for state mutation actions",
+					"enum":        []string{"localStorage", "sessionStorage"},
+				},
+				"key": map[string]any{
+					"type":        "string",
+					"description": "Storage key for set_storage/delete_storage",
+				},
 				"clear": map[string]any{
 					"type":        "boolean",
 					"description": "Clear before typing",
@@ -117,7 +128,15 @@ func InteractToolSchema() mcp.MCPTool {
 				},
 				"name": map[string]any{
 					"type":        "string",
-					"description": "Attribute or recording name",
+					"description": "Attribute, recording, or cookie name",
+				},
+				"domain": map[string]any{
+					"type":        "string",
+					"description": "Cookie domain (set_cookie/delete_cookie)",
+				},
+				"path": map[string]any{
+					"type":        "string",
+					"description": "Cookie path (set_cookie/delete_cookie, default /)",
 				},
 				"audio": map[string]any{
 					"type":        "string",

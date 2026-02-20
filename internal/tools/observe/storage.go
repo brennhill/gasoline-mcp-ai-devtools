@@ -74,5 +74,16 @@ func GetStorage(deps Deps, req mcp.JSONRPCRequest, _ json.RawMessage) mcp.JSONRP
 		response["cookies"] = v
 	}
 
+	// IndexedDB listing is best-effort: return storage data even if this probe fails.
+	if indexeddb, err := getIndexedDBListing(cap); err != nil {
+		response["indexeddb"] = map[string]any{
+			"supported": false,
+			"databases": []any{},
+		}
+		response["indexeddb_error"] = err.Error()
+	} else {
+		response["indexeddb"] = indexeddb
+	}
+
 	return mcp.JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcp.JSONResponse("Browser storage", response)}
 }

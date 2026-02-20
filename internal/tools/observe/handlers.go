@@ -35,6 +35,7 @@ var Handlers = map[string]Handler{
 	"error_bundles":     GetErrorBundles,
 	"screenshot":        GetScreenshot,
 	"storage":           GetStorage,
+	"indexeddb":         GetIndexedDB,
 	"summarized_logs":   GetSummarizedLogs,
 }
 

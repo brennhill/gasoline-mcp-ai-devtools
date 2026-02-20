@@ -30,6 +30,11 @@ func (h *ToolHandler) interactDispatch() map[string]interactHandler {
 			"load_state":                h.handlePilotManageStateLoad,
 			"list_states":               h.handlePilotManageStateList,
 			"delete_state":              h.handlePilotManageStateDelete,
+			"set_storage":               h.handleSetStorage,
+			"delete_storage":            h.handleDeleteStorage,
+			"clear_storage":             h.handleClearStorage,
+			"set_cookie":                h.handleSetCookie,
+			"delete_cookie":             h.handleDeleteCookie,
 			"execute_js":                h.handlePilotExecuteJS,
 			"navigate":                  h.handleBrowserActionNavigate,
 			"refresh":                   h.handleBrowserActionRefresh,
@@ -47,7 +52,7 @@ func (h *ToolHandler) interactDispatch() map[string]interactHandler {
 			"get_markdown":              h.handleGetMarkdown,
 			"navigate_and_wait_for":     h.handleNavigateAndWaitFor,
 			"fill_form_and_submit":      h.handleFillFormAndSubmit,
-			"fill_form":                h.handleFillForm,
+			"fill_form":                 h.handleFillForm,
 			"run_a11y_and_export_sarif": h.handleRunA11yAndExportSARIF,
 		}
 	})

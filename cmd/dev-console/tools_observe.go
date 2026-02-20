@@ -67,6 +67,9 @@ var observeHandlers = map[string]ObserveHandler{
 	"storage": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 		return observe.GetStorage(h, req, args)
 	},
+	"indexeddb": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+		return observe.GetIndexedDB(h, req, args)
+	},
 	"summarized_logs": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 		return observe.GetSummarizedLogs(h, req, args)
 	},
@@ -158,15 +161,15 @@ func (h *ToolHandler) toolObserve(req JSONRPCRequest, args json.RawMessage) JSON
 // serverSideObserveModes lists modes that don't depend on live extension data.
 // Kept next to observeHandlers so additions to one are visible near the other.
 var serverSideObserveModes = map[string]bool{
-	"command_result":   true,
-	"pending_commands": true,
-	"failed_commands":  true,
-	"saved_videos":     true,
-	"recordings":       true,
+	"command_result":    true,
+	"pending_commands":  true,
+	"failed_commands":   true,
+	"saved_videos":      true,
+	"recordings":        true,
 	"recording_actions": true,
-	"playback_results": true,
-	"log_diff_report":  true,
-	"pilot":            true,
+	"playback_results":  true,
+	"log_diff_report":   true,
+	"pilot":             true,
 }
 
 // prependDisconnectWarning adds a warning to the first content block when the extension is disconnected.
