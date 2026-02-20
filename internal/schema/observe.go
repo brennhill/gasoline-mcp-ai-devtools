@@ -13,7 +13,7 @@ func ObserveToolSchema() mcp.MCPTool {
 			"properties": map[string]any{
 				"what": map[string]any{
 					"type": "string",
-					"enum": []string{"errors", "logs", "extension_logs", "network_waterfall", "network_bodies", "websocket_events", "websocket_status", "actions", "vitals", "page", "tabs", "pilot", "timeline", "error_bundles", "screenshot", "command_result", "pending_commands", "failed_commands", "saved_videos", "recordings", "recording_actions", "playback_results", "log_diff_report"},
+					"enum": []string{"errors", "logs", "extension_logs", "network_waterfall", "network_bodies", "websocket_events", "websocket_status", "actions", "vitals", "page", "tabs", "pilot", "timeline", "error_bundles", "screenshot", "command_result", "pending_commands", "failed_commands", "saved_videos", "recordings", "recording_actions", "playback_results", "log_diff_report", "summarized_logs"},
 				},
 				"telemetry_mode": map[string]any{
 					"type":        "string",
@@ -140,6 +140,10 @@ func ObserveToolSchema() mcp.MCPTool {
 				"wait_for_stable": map[string]any{
 					"type":        "boolean",
 					"description": "Wait for layout to stabilize before capture (screenshot)",
+				},
+				"min_group_size": map[string]any{
+					"type":        "number",
+					"description": "Minimum occurrences to form a group (summarized_logs, default 2)",
 				},
 			},
 			"required": []string{"what"},
