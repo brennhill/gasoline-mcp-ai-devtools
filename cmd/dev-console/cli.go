@@ -1,7 +1,5 @@
-// Purpose: Owns cli.go runtime behavior and integration logic.
-// Docs: docs/features/feature/observe/index.md
-
 // cli.go — CLI mode entry point for direct tool invocation.
+// Docs: docs/features/feature/observe/index.md
 // Allows: gasoline observe errors --limit 50
 // Talks to the daemon over HTTP (same /mcp endpoint as the MCP bridge).
 package main

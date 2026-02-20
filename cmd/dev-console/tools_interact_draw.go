@@ -1,7 +1,5 @@
-// Purpose: Implements interact tool handlers and browser action orchestration.
-// Docs: docs/features/feature/interact-explore/index.md
-
 // tools_interact_draw.go — MCP interact handler for draw_mode_start action.
+// Docs: docs/features/feature/interact-explore/index.md
 package main
 
 import (

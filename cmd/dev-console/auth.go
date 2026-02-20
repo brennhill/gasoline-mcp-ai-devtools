@@ -1,7 +1,5 @@
-// Purpose: Owns auth.go runtime behavior and integration logic.
-// Docs: docs/features/feature/observe/index.md
-
 // auth.go — API key authentication middleware for HTTP endpoints.
+// Docs: docs/features/feature/observe/index.md
 // Uses constant-time comparison to prevent timing attacks. When no key
 // is configured, authentication is disabled (pass-through).
 package main

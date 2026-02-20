@@ -1,7 +1,5 @@
-// Purpose: Owns server_middleware.go runtime behavior and integration logic.
-// Docs: docs/features/feature/observe/index.md
-
 // server_middleware.go — HTTP middleware and security helpers.
+// Docs: docs/features/feature/observe/index.md
 // Contains CORS middleware, origin/host validation.
 package main
 

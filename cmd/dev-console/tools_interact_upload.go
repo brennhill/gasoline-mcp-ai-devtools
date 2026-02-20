@@ -1,7 +1,5 @@
-// Purpose: Implements interact tool handlers and browser action orchestration.
-// Docs: docs/features/feature/interact-explore/index.md
-
 // tools_interact_upload.go — MCP interact upload action handler.
+// Docs: docs/features/feature/interact-explore/index.md
 // Implements the "upload" action for the interact tool with 4-stage escalation.
 // Stage 4 (OS automation) requires --enable-os-upload-automation flag.
 //

@@ -1,7 +1,5 @@
-// Purpose: Owns handler.go runtime behavior and integration logic.
-// Docs: docs/features/feature/observe/index.md
-
 // handler.go — MCP protocol handler for JSON-RPC 2.0 requests.
+// Docs: docs/features/feature/observe/index.md
 // Contains MCPHandler type and HTTP/stdio transport handling.
 // Extracted from cmd/gasoline/main.go during Phase 4 refactoring.
 package main

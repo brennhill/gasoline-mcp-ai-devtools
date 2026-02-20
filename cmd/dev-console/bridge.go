@@ -1,7 +1,4 @@
-// Purpose: Owns bridge.go runtime behavior and integration logic.
-// Docs: docs/features/feature/observe/index.md
-
-// Bridge mode: stdio-to-HTTP transport for MCP
+// bridge.go — Bridge mode: stdio-to-HTTP transport for MCP.
 // Spawns persistent HTTP server daemon if not running,
 // forwards JSON-RPC messages between stdio (MCP client) and HTTP (server).
 package main
@@ -51,6 +48,41 @@ type daemonState struct {
 	maxEntries int
 }
 
+// markFailed atomically marks the daemon state as failed and closes failedCh.
+func (s *daemonState) markFailed(errMsg string) {
+	s.mu.Lock()
+	s.failed = true
+	s.err = errMsg
+	s.mu.Unlock()
+	close(s.failedCh)
+}
+
+// buildDaemonCmd resolves the current executable and builds an exec.Cmd for the
+// daemon process with the appropriate flags and detached-process settings.
+func (s *daemonState) buildDaemonCmd() (*exec.Cmd, error) {
+	exe, err := os.Executable()
+	if err != nil {
+		return nil, fmt.Errorf("Cannot find executable: %w", err)
+	}
+
+	args := []string{"--daemon", "--port", fmt.Sprintf("%d", s.port)}
+	if stateDir := os.Getenv(statecfg.StateDirEnv); stateDir != "" {
+		args = append(args, "--state-dir", stateDir)
+	}
+	if s.logFile != "" {
+		args = append(args, "--log-file", s.logFile)
+	}
+	if s.maxEntries > 0 {
+		args = append(args, "--max-entries", fmt.Sprintf("%d", s.maxEntries))
+	}
+	cmd := exec.Command(exe, args...) // #nosec G702 -- exe is our own binary path from os.Executable with fixed flags // nosemgrep: go.lang.security.audit.dangerous-exec-command.dangerous-exec-command, go_subproc_rule-subproc -- bridge spawns own daemon
+	cmd.Stdout = io.Discard
+	cmd.Stderr = io.Discard
+	cmd.Stdin = nil
+	util.SetDetachedProcess(cmd)
+	return cmd, nil
+}
+
 // respawnIfNeeded re-launches the daemon if it's not responding.
 // Safe to call from multiple goroutines — only one respawn runs at a time.
 // Returns true if the daemon is ready after the respawn attempt.
@@ -84,42 +116,17 @@ func (s *daemonState) respawnIfNeeded() bool {
 	s.readyCh = make(chan struct{})
 	s.failedCh = make(chan struct{})
 	readyCh := s.readyCh
-	failedCh := s.failedCh
 	s.mu.Unlock()
 
 	stderrf("[gasoline] daemon not responding, respawning on port %d\n", s.port)
 
-	exe, err := os.Executable()
+	cmd, err := s.buildDaemonCmd()
 	if err != nil {
-		s.mu.Lock()
-		s.failed = true
-		s.err = "Cannot find executable: " + err.Error()
-		s.mu.Unlock()
-		close(failedCh)
+		s.markFailed(err.Error())
 		return false
 	}
-
-	args := []string{"--daemon", "--port", fmt.Sprintf("%d", s.port)}
-	if stateDir := os.Getenv(statecfg.StateDirEnv); stateDir != "" {
-		args = append(args, "--state-dir", stateDir)
-	}
-	if s.logFile != "" {
-		args = append(args, "--log-file", s.logFile)
-	}
-	if s.maxEntries > 0 {
-		args = append(args, "--max-entries", fmt.Sprintf("%d", s.maxEntries))
-	}
-	cmd := exec.Command(exe, args...) // #nosec G702 -- exe is our own binary path from os.Executable with fixed flags // nosemgrep: go.lang.security.audit.dangerous-exec-command.dangerous-exec-command, go_subproc_rule-subproc -- bridge respawns own daemon
-	cmd.Stdout = io.Discard
-	cmd.Stderr = io.Discard
-	cmd.Stdin = nil
-	util.SetDetachedProcess(cmd)
 	if err := cmd.Start(); err != nil {
-		s.mu.Lock()
-		s.failed = true
-		s.err = "Failed to start daemon: " + err.Error()
-		s.mu.Unlock()
-		close(failedCh)
+		s.markFailed("Failed to start daemon: " + err.Error())
 		return false
 	}
 
@@ -132,11 +139,7 @@ func (s *daemonState) respawnIfNeeded() bool {
 		return true
 	}
 
-	s.mu.Lock()
-	s.failed = true
-	s.err = fmt.Sprintf("Daemon respawned but not responding on port %d after 4s", s.port)
-	s.mu.Unlock()
-	close(failedCh)
+	s.markFailed(fmt.Sprintf("Daemon respawned but not responding on port %d after 4s", s.port))
 	return false
 }
 
@@ -190,18 +193,14 @@ func runBridgeMode(port int, logFile string, maxEntries int) {
 		} else {
 			if strings.EqualFold(serviceName, "gasoline") {
 				if !stopServerForUpgrade(port) {
-					state.failed = true
-					state.err = fmt.Sprintf("found running daemon version %s but could not recycle it", runningVersion)
-					close(state.failedCh)
+					state.markFailed(fmt.Sprintf("found running daemon version %s but could not recycle it", runningVersion))
 					shouldSpawn = false
 				}
 			} else {
 				if serviceName == "" {
 					serviceName = "unknown"
 				}
-				state.failed = true
-				state.err = fmt.Sprintf("port %d is occupied by non-gasoline service %q", port, serviceName)
-				close(state.failedCh)
+				state.markFailed(fmt.Sprintf("port %d is occupied by non-gasoline service %q", port, serviceName))
 				shouldSpawn = false
 			}
 		}
@@ -218,37 +217,13 @@ func runBridgeMode(port int, logFile string, maxEntries int) {
 func spawnDaemonAsync(state *daemonState) {
 	// Spawn daemon in background (don't block on it)
 	util.SafeGo(func() {
-		exe, err := os.Executable()
+		cmd, err := state.buildDaemonCmd()
 		if err != nil {
-			state.mu.Lock()
-			state.failed = true
-			state.err = "Cannot find executable: " + err.Error()
-			state.mu.Unlock()
-			close(state.failedCh)
+			state.markFailed(err.Error())
 			return
 		}
-
-		args := []string{"--daemon", "--port", fmt.Sprintf("%d", state.port)}
-		if stateDir := os.Getenv(statecfg.StateDirEnv); stateDir != "" {
-			args = append(args, "--state-dir", stateDir)
-		}
-		if state.logFile != "" {
-			args = append(args, "--log-file", state.logFile)
-		}
-		if state.maxEntries > 0 {
-			args = append(args, "--max-entries", fmt.Sprintf("%d", state.maxEntries))
-		}
-		cmd := exec.Command(exe, args...) // #nosec G702 -- exe is our own binary path from os.Executable with fixed flags // nosemgrep: go.lang.security.audit.dangerous-exec-command.dangerous-exec-command, go_subproc_rule-subproc -- CLI bridge mode launches user-specified editor
-		cmd.Stdout = io.Discard
-		cmd.Stderr = io.Discard
-		cmd.Stdin = nil
-		util.SetDetachedProcess(cmd)
 		if err := cmd.Start(); err != nil {
-			state.mu.Lock()
-			state.failed = true
-			state.err = "Failed to start daemon: " + err.Error()
-			state.mu.Unlock()
-			close(state.failedCh)
+			state.markFailed("Failed to start daemon: " + err.Error())
 			return
 		}
 
@@ -259,11 +234,7 @@ func spawnDaemonAsync(state *daemonState) {
 			state.mu.Unlock()
 			close(state.readyCh)
 		} else {
-			state.mu.Lock()
-			state.failed = true
-			state.err = fmt.Sprintf("Daemon started but not responding on port %d after 4s", state.port)
-			state.mu.Unlock()
-			close(state.failedCh)
+			state.markFailed(fmt.Sprintf("Daemon started but not responding on port %d after 4s", state.port))
 		}
 	})
 }

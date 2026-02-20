@@ -1,7 +1,5 @@
-// Purpose: Owns openapi.go runtime behavior and integration logic.
-// Docs: docs/features/feature/observe/index.md
-
 // openapi.go — Serves the embedded OpenAPI 3.1.0 specification at GET /openapi.json.
+// Docs: docs/features/feature/observe/index.md
 package main
 
 import (

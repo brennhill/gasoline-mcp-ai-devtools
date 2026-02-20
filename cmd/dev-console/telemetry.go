@@ -1,7 +1,5 @@
-// Purpose: Owns telemetry.go runtime behavior and integration logic.
-// Docs: docs/features/feature/observe/index.md
-
 // telemetry.go — Unified GET /telemetry endpoint with basic pagination.
+// Docs: docs/features/feature/observe/index.md
 // Replaces 6 separate GET endpoints for reading telemetry buffers.
 // Supports: logs, network_waterfall, network_bodies, websocket_events,
 // actions, performance_snapshots, extension_logs, websocket_status.

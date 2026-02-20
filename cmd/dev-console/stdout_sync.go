@@ -1,6 +1,5 @@
-// Purpose: Owns stdout_sync.go runtime behavior and integration logic.
+// stdout_sync.go — Stdout synchronization and integration logic.
 // Docs: docs/features/feature/observe/index.md
-
 package main
 
 import (

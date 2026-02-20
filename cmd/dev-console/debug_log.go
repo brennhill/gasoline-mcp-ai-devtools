@@ -1,6 +1,5 @@
-// Purpose: Owns debug_log.go runtime behavior and integration logic.
+// debug_log.go — Debug logging runtime behavior and integration logic.
 // Docs: docs/features/feature/observe/index.md
-
 package main
 
 import (

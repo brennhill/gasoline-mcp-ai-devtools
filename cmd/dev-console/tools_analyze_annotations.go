@@ -1,7 +1,5 @@
-// Purpose: Implements analyze tool handlers and response shaping.
-// Docs: docs/features/feature/analyze-tool/index.md
-
 // tools_analyze_annotations.go — Analyze handlers for draw mode annotations.
+// Docs: docs/features/feature/analyze-tool/index.md
 // Provides analyze({what: "annotations"}), analyze({what: "annotation_detail"}),
 // analyze({what: "draw_history"}), and analyze({what: "draw_session"}).
 // JSON CONVENTION: All fields MUST use snake_case. See .claude/refs/api-naming-standards.md
