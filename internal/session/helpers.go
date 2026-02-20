@@ -8,7 +8,8 @@ package session
 
 import (
 	"fmt"
-	"strings"
+
+	"github.com/dev-console/dev-console/internal/util"
 )
 
 // validateName checks snapshot name constraints.
@@ -38,10 +39,7 @@ func (sm *SessionManager) removeFromOrder(name string) {
 	}
 }
 
-// extractPath returns just the path component of a URL, stripping query params.
-func ExtractURLPath(url string) string {
-	if idx := strings.Index(url, "?"); idx >= 0 {
-		return url[:idx]
-	}
-	return url
+// ExtractURLPath delegates to util.ExtractURLPath for URL path extraction.
+func ExtractURLPath(rawURL string) string {
+	return util.ExtractURLPath(rawURL)
 }

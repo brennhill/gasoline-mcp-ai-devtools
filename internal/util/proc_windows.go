@@ -1,5 +1,4 @@
-// Purpose: Owns proc_windows.go runtime behavior and integration logic.
-// Docs: docs/features/feature/observe/index.md
+// proc_windows.go — Windows-specific detached process configuration.
 
 //go:build windows
 

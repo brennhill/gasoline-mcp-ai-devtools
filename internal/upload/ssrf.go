@@ -106,7 +106,7 @@ func ResolvePublicIP(ctx context.Context, host string) (net.IP, error) {
 func SSRFSafeDialContext(ctx context.Context, network, addr string, allowPrivate bool) (net.Conn, error) {
 	host, port, err := net.SplitHostPort(addr)
 	if err != nil {
-		return nil, fmt.Errorf("ssrf_blocked: invalid address %s", addr)
+		return nil, fmt.Errorf("ssrf_blocked: invalid address %s: %w", addr, err)
 	}
 
 	// Check --ssrf-allow-host flag (test use: allows localhost test servers)

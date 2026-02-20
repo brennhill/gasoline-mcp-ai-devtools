@@ -1,3 +1,5 @@
+// doc.go — Package documentation for cursor-based ring buffer pagination.
+
 // Package pagination provides cursor-based pagination for ring buffers.
 //
 // Implements RFC-compliant cursor pagination for:

@@ -3,11 +3,9 @@
 
 import type { PendingQuery } from '../../types'
 import type { SyncClient } from '../sync-client'
-import * as eventListeners from '../event-listeners'
-import * as index from '../index'
+import { getTrackedTabInfo, clearTrackedTab } from '../event-listeners'
+import { debugLog, diagnosticLog } from '../index'
 import { DebugCategory } from '../debug'
-
-const { debugLog, diagnosticLog } = index
 
 // =============================================================================
 // EXPORTED TYPE ALIASES (used by browser-actions.ts, dom-dispatch.ts, etc.)
@@ -301,7 +299,7 @@ export async function resolveTargetTab(query: PendingQuery, paramsObj: QueryPara
     }
   }
 
-  const storage = await eventListeners.getTrackedTabInfo()
+  const storage = await getTrackedTabInfo()
   const trackedTabId = storage.trackedTabId ?? null
   if (trackedTabId) {
     diagnosticLog(`[Diagnostic] Using tracked tab ${trackedTabId} for query ${query.type}`)
@@ -319,7 +317,7 @@ export async function resolveTargetTab(query: PendingQuery, paramsObj: QueryPara
     }
 
     diagnosticLog(`[Diagnostic] Tracked tab ${trackedTabId} unavailable, clearing tracking state`)
-    eventListeners.clearTrackedTab()
+    clearTrackedTab()
 
     try {
       const toastTab = await getActiveTab()

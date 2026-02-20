@@ -4,7 +4,7 @@
 
 import type { PendingQuery } from '../../types'
 import type { SyncClient } from '../sync-client'
-import * as index from '../index'
+import { __aiWebPilotEnabledCache } from '../state'
 import { executeDOMAction } from '../dom-dispatch'
 import { executeUpload } from '../upload-handler'
 import { startRecording, stopRecording } from '../recording'
@@ -92,7 +92,7 @@ registerCommand('browser_action', async (ctx) => {
 // =============================================================================
 
 registerCommand('dom_action', async (ctx) => {
-  if (!index.__aiWebPilotEnabledCache) {
+  if (!__aiWebPilotEnabledCache) {
     ctx.sendAsyncResult(ctx.syncClient, ctx.query.id, ctx.query.correlation_id!, 'error', null, 'ai_web_pilot_disabled')
     return
   }
@@ -104,7 +104,7 @@ registerCommand('dom_action', async (ctx) => {
 // =============================================================================
 
 registerCommand('upload', async (ctx) => {
-  if (!index.__aiWebPilotEnabledCache) {
+  if (!__aiWebPilotEnabledCache) {
     ctx.sendAsyncResult(ctx.syncClient, ctx.query.id, ctx.query.correlation_id!, 'error', null, 'ai_web_pilot_disabled')
     return
   }
@@ -116,7 +116,7 @@ registerCommand('upload', async (ctx) => {
 // =============================================================================
 
 registerCommand('record_start', async (ctx) => {
-  if (!index.__aiWebPilotEnabledCache) {
+  if (!__aiWebPilotEnabledCache) {
     ctx.sendAsyncResult(ctx.syncClient, ctx.query.id, ctx.query.correlation_id!, 'error', undefined, 'ai_web_pilot_disabled')
     return
   }
@@ -143,7 +143,7 @@ registerCommand('record_start', async (ctx) => {
 // =============================================================================
 
 registerCommand('record_stop', async (ctx) => {
-  if (!index.__aiWebPilotEnabledCache) {
+  if (!__aiWebPilotEnabledCache) {
     sendAsyncResult(ctx.syncClient, ctx.query.id, ctx.query.correlation_id!, 'error', undefined, 'ai_web_pilot_disabled')
     return
   }
@@ -157,7 +157,7 @@ registerCommand('record_stop', async (ctx) => {
 // =============================================================================
 
 registerCommand('state_*', async (ctx) => {
-  if (!index.__aiWebPilotEnabledCache) {
+  if (!__aiWebPilotEnabledCache) {
     sendResult(ctx.syncClient, ctx.query.id, { error: 'ai_web_pilot_disabled' })
     return
   }
@@ -265,7 +265,7 @@ registerCommand('state_*', async (ctx) => {
 // =============================================================================
 
 registerCommand('execute', async (ctx) => {
-  if (!index.__aiWebPilotEnabledCache) {
+  if (!__aiWebPilotEnabledCache) {
     if (ctx.query.correlation_id) {
       ctx.sendAsyncResult(ctx.syncClient, ctx.query.id, ctx.query.correlation_id, 'error', null, 'ai_web_pilot_disabled')
     } else {
@@ -308,7 +308,7 @@ registerCommand('execute', async (ctx) => {
 // =============================================================================
 
 export async function handlePilotCommand(command: string, params: unknown): Promise<unknown> {
-  if (!index.__aiWebPilotEnabledCache) {
+  if (!__aiWebPilotEnabledCache) {
     return { error: 'ai_web_pilot_disabled' }
   }
 

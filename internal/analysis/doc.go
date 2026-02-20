@@ -1,3 +1,5 @@
+// doc.go — Package documentation for browser telemetry analysis.
+
 // Package analysis provides intelligent analysis of captured browser telemetry.
 //
 // Features:

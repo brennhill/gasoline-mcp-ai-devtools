@@ -62,7 +62,7 @@ func resolveAndValidateDir(rawDir string) (string, error) {
 
 	info, err := os.Stat(rawDir)
 	if err != nil {
-		return "", fmt.Errorf("--upload-dir does not exist: %s", rawDir)
+		return "", fmt.Errorf("--upload-dir does not exist: %s: %w", rawDir, err)
 	}
 	if !info.IsDir() {
 		return "", fmt.Errorf("--upload-dir is not a directory: %s", rawDir)
@@ -155,7 +155,7 @@ func resolveCleanPath(rawPath string) (string, error) {
 	resolved, err := filepath.EvalSymlinks(cleaned)
 	if err != nil {
 		if os.IsNotExist(err) {
-			return "", fmt.Errorf("file not found: %s", rawPath)
+			return "", fmt.Errorf("file not found: %s: %w", rawPath, err)
 		}
 		return "", fmt.Errorf("failed to resolve path: %w", err)
 	}

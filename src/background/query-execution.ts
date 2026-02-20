@@ -8,11 +8,9 @@
 // query-execution.ts — JavaScript execution with world-aware routing and CSP fallback.
 // Handles execute_js queries via content script (MAIN world) or chrome.scripting API (ISOLATED).
 
-import * as index from './index'
+import { debugLog } from './index'
 import { DebugCategory } from './debug'
 import { scaleTimeout } from '../lib/timeouts'
-
-const { debugLog } = index
 
 // =============================================================================
 // ISOLATED WORLD EXECUTION (chrome.scripting API)

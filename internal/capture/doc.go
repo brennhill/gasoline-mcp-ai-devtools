@@ -1,3 +1,5 @@
+// doc.go — Package documentation for browser telemetry capture and buffering.
+
 // Package capture provides real-time browser telemetry capture and buffering.
 //
 // Core functionality includes:

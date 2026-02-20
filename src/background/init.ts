@@ -11,30 +11,78 @@
  * Uses async/await for cleaner control flow (replaces callback nesting).
  */
 
-import * as index from './index'
 import {
+  debugLog,
+  DebugCategory,
+  diagnosticLog,
   setDebugMode,
+  resetSyncClientConnection,
+  sharedServerCircuitBreaker,
+  logBatcher,
+  wsBatcher,
+  enhancedActionBatcher,
+  networkBodyBatcher,
+  perfBatcher,
+  handleLogMessage,
+  handleClearLogs,
+  checkConnectionAndUpdate,
+  exportDebugLog,
+  clearDebugLog,
+  sendStatusPingWrapper,
+  DEFAULT_SERVER_URL
+} from './index'
+import {
+  serverUrl,
+  connectionStatus,
+  debugMode,
+  screenshotOnError,
+  currentLogLevel,
+  __aiWebPilotEnabledCache,
+  __aiWebPilotCacheInitialized,
+  __pilotInitCallback,
+  markInitComplete,
   setServerUrl,
   setCurrentLogLevel,
   setScreenshotOnError,
   setAiWebPilotEnabledCache,
   setAiWebPilotCacheInitialized,
-  setPilotInitCallback,
-  resetSyncClientConnection,
-  markInitComplete
-} from './index'
-import * as stateManager from './state-manager'
-import * as eventListeners from './event-listeners'
+  setPilotInitCallback
+} from './state'
+import {
+  isSourceMapEnabled,
+  setSourceMapEnabled,
+  canTakeScreenshot,
+  recordScreenshot,
+  clearSourceMapCache,
+  getContextWarning,
+  getMemoryPressureState,
+  isNetworkBodyCaptureDisabled,
+  flushErrorGroups,
+  cleanupStaleErrorGroups,
+  clearScreenshotTimestamps
+} from './state-manager'
+import {
+  loadDebugModeState,
+  installStartupListener,
+  loadAiWebPilotState,
+  loadSavedSettings,
+  installStorageChangeListener,
+  setupChromeAlarms,
+  installAlarmListener,
+  installTabRemovedListener,
+  installTabUpdatedListener,
+  installDrawModeCommandListener,
+  saveSetting,
+  forwardToAllContentScripts,
+  getTrackedTabInfo,
+  handleTrackedTabClosed,
+  handleTrackedTabUrlChange
+} from './event-listeners'
 import { handlePendingQuery } from './pending-queries'
 import type { MessageHandlerDependencies } from './message-handlers'
 import { installMessageListener, broadcastTrackingState } from './message-handlers'
-import * as communication from './communication'
-import * as storageUtils from './storage-utils'
-
-// =============================================================================
-// STATE SETTERS (imported from index.ts)
-// =============================================================================
-// These are now exported from index.ts to properly mutate module state
+import { captureScreenshot, updateBadge } from './communication'
+import { wasServiceWorkerRestarted, markStateVersion } from './storage-utils'
 
 /**
  * Initialize the extension on startup
@@ -60,50 +108,50 @@ export function initializeExtension(): void {
 async function initializeExtensionAsync(): Promise<void> {
   try {
     // ============= STEP 1: Check service worker restart =============
-    const wasRestarted = await storageUtils.wasServiceWorkerRestarted()
+    const wasRestarted = await wasServiceWorkerRestarted()
     if (wasRestarted) {
       console.warn(
         '[Gasoline] Service worker restarted - ephemeral state cleared. ' +
           'User preferences restored from persistent storage.'
       )
-      index.debugLog(index.DebugCategory.LIFECYCLE, 'Service worker restarted, ephemeral state recovered')
+      debugLog(DebugCategory.LIFECYCLE, 'Service worker restarted, ephemeral state recovered')
     }
     // Mark the current state version
-    await storageUtils.markStateVersion()
+    await markStateVersion()
 
     // ============= STEP 2: Load debug mode =============
-    const debugEnabled = await eventListeners.loadDebugModeState()
+    const debugEnabled = await loadDebugModeState()
     setDebugMode(debugEnabled)
     if (debugEnabled) {
       console.log('[Gasoline] Debug mode enabled on startup')
     }
 
     // ============= STEP 3: Install startup listener =============
-    eventListeners.installStartupListener((msg) => console.log(msg))
+    installStartupListener((msg) => console.log(msg))
 
     // ============= STEP 4: Load AI Web Pilot state =============
-    const aiPilotEnabled = await eventListeners.loadAiWebPilotState()
+    const aiPilotEnabled = await loadAiWebPilotState()
     setAiWebPilotEnabledCache(aiPilotEnabled)
     setAiWebPilotCacheInitialized(true)
-    console.log('[Gasoline] Storage value:', aiPilotEnabled, '| Cache value:', index.__aiWebPilotEnabledCache)
+    console.log('[Gasoline] Storage value:', aiPilotEnabled, '| Cache value:', __aiWebPilotEnabledCache)
 
     // Execute any pending pilot init callback
-    const pilotCb = index.__pilotInitCallback
+    const pilotCb = __pilotInitCallback
     if (pilotCb) {
       pilotCb()
       setPilotInitCallback(null)
     }
 
     // ============= STEP 5: Load saved settings =============
-    const settings = await eventListeners.loadSavedSettings()
-    setServerUrl(settings.serverUrl || index.DEFAULT_SERVER_URL)
+    const settings = await loadSavedSettings()
+    setServerUrl(settings.serverUrl || DEFAULT_SERVER_URL)
     setCurrentLogLevel('all')
     setScreenshotOnError(settings.screenshotOnError !== false)
-    stateManager.setSourceMapEnabled(settings.sourceMapEnabled !== false)
+    setSourceMapEnabled(settings.sourceMapEnabled !== false)
     setDebugMode(settings.debugMode || false)
 
     // ============= STEP 6: Install storage change listener =============
-    eventListeners.installStorageChangeListener({
+    installStorageChangeListener({
       onAiWebPilotChanged: (newValue) => {
         setAiWebPilotEnabledCache(newValue)
         console.log('[Gasoline] AI Web Pilot cache updated from storage:', newValue)
@@ -116,7 +164,7 @@ async function initializeExtensionAsync(): Promise<void> {
         broadcastTrackingState().catch((err) => console.error('[Gasoline] Error broadcasting tracking state:', err))
       },
       onTrackedTabChanged: (newTabId, oldTabId) => {
-        index.sendStatusPingWrapper()
+        sendStatusPingWrapper()
         if (newTabId !== null) {
           resetSyncClientConnection()
           console.log('[Gasoline] Sync client reset due to tracking enabled')
@@ -149,20 +197,20 @@ async function initializeExtensionAsync(): Promise<void> {
     // ============= STEP 7: Install message handler =============
     // #lizard forgives
     const deps: MessageHandlerDependencies = {
-      getServerUrl: () => index.serverUrl,
-      getConnectionStatus: () => index.connectionStatus,
-      getDebugMode: () => index.debugMode,
-      getScreenshotOnError: () => index.screenshotOnError,
-      getSourceMapEnabled: () => stateManager.isSourceMapEnabled(),
-      getCurrentLogLevel: () => index.currentLogLevel,
-      getContextWarning: stateManager.getContextWarning,
-      getCircuitBreakerState: () => index.sharedServerCircuitBreaker.getState(),
-      getMemoryPressureState: stateManager.getMemoryPressureState,
-      getAiWebPilotEnabled: () => index.__aiWebPilotEnabledCache,
-      isNetworkBodyCaptureDisabled: stateManager.isNetworkBodyCaptureDisabled,
+      getServerUrl: () => serverUrl,
+      getConnectionStatus: () => connectionStatus,
+      getDebugMode: () => debugMode,
+      getScreenshotOnError: () => screenshotOnError,
+      getSourceMapEnabled: () => isSourceMapEnabled(),
+      getCurrentLogLevel: () => currentLogLevel,
+      getContextWarning,
+      getCircuitBreakerState: () => sharedServerCircuitBreaker.getState(),
+      getMemoryPressureState,
+      getAiWebPilotEnabled: () => __aiWebPilotEnabledCache,
+      isNetworkBodyCaptureDisabled,
 
       setServerUrl: (url) => {
-        setServerUrl(url || index.DEFAULT_SERVER_URL)
+        setServerUrl(url || DEFAULT_SERVER_URL)
       },
       setCurrentLogLevel: (level) => {
         setCurrentLogLevel(level)
@@ -171,7 +219,7 @@ async function initializeExtensionAsync(): Promise<void> {
         setScreenshotOnError(enabled)
       },
       setSourceMapEnabled: (enabled) => {
-        stateManager.setSourceMapEnabled(enabled)
+        setSourceMapEnabled(enabled)
       },
       setDebugMode: (enabled) => {
         setDebugMode(enabled)
@@ -188,93 +236,93 @@ async function initializeExtensionAsync(): Promise<void> {
         })
       },
 
-      addToLogBatcher: (entry) => index.logBatcher.add(entry),
-      addToWsBatcher: (event) => index.wsBatcher.add(event),
-      addToEnhancedActionBatcher: (action) => index.enhancedActionBatcher.add(action),
-      addToNetworkBodyBatcher: (body) => index.networkBodyBatcher.add(body),
-      addToPerfBatcher: (snapshot) => index.perfBatcher.add(snapshot),
+      addToLogBatcher: (entry) => logBatcher.add(entry),
+      addToWsBatcher: (event) => wsBatcher.add(event),
+      addToEnhancedActionBatcher: (action) => enhancedActionBatcher.add(action),
+      addToNetworkBodyBatcher: (body) => networkBodyBatcher.add(body),
+      addToPerfBatcher: (snapshot) => perfBatcher.add(snapshot),
 
-      handleLogMessage: index.handleLogMessage,
-      handleClearLogs: index.handleClearLogs,
+      handleLogMessage,
+      handleClearLogs,
       captureScreenshot: (tabId, relatedErrorId) =>
-        communication.captureScreenshot(
+        captureScreenshot(
           tabId,
-          index.serverUrl,
+          serverUrl,
           relatedErrorId,
           null,
-          stateManager.canTakeScreenshot,
-          stateManager.recordScreenshot,
-          index.debugLog
+          canTakeScreenshot,
+          recordScreenshot,
+          debugLog
         ),
-      checkConnectionAndUpdate: index.checkConnectionAndUpdate,
-      clearSourceMapCache: stateManager.clearSourceMapCache,
+      checkConnectionAndUpdate,
+      clearSourceMapCache,
 
-      debugLog: index.debugLog,
-      exportDebugLog: index.exportDebugLog,
-      clearDebugLog: index.clearDebugLog,
+      debugLog,
+      exportDebugLog,
+      clearDebugLog,
 
-      saveSetting: eventListeners.saveSetting,
-      forwardToAllContentScripts: (msg) => eventListeners.forwardToAllContentScripts(msg, index.debugLog)
+      saveSetting,
+      forwardToAllContentScripts: (msg) => forwardToAllContentScripts(msg, debugLog)
     }
 
     installMessageListener(deps)
 
     // ============= STEP 8: Setup Chrome alarms =============
-    eventListeners.setupChromeAlarms()
-    eventListeners.installAlarmListener({
-      onReconnect: index.checkConnectionAndUpdate,
+    setupChromeAlarms()
+    installAlarmListener({
+      onReconnect: checkConnectionAndUpdate,
       onErrorGroupFlush: () => {
-        const aggregatedEntries = stateManager.flushErrorGroups()
+        const aggregatedEntries = flushErrorGroups()
         if (aggregatedEntries.length > 0) {
-          aggregatedEntries.forEach((entry) => index.logBatcher.add(entry))
+          aggregatedEntries.forEach((entry) => logBatcher.add(entry))
         }
       },
       onMemoryCheck: () => {
-        index.debugLog(index.DebugCategory.LIFECYCLE, 'Memory check alarm fired')
+        debugLog(DebugCategory.LIFECYCLE, 'Memory check alarm fired')
       },
-      onErrorGroupCleanup: () => stateManager.cleanupStaleErrorGroups(index.debugLog)
+      onErrorGroupCleanup: () => cleanupStaleErrorGroups(debugLog)
     })
 
     // ============= STEP 9: Install tab removed listener =============
-    eventListeners.installTabRemovedListener((tabId) => {
-      stateManager.clearScreenshotTimestamps(tabId)
-      eventListeners.handleTrackedTabClosed(tabId, (msg) => console.log(msg))
+    installTabRemovedListener((tabId) => {
+      clearScreenshotTimestamps(tabId)
+      handleTrackedTabClosed(tabId, (msg) => console.log(msg))
     })
 
     // ============= STEP 9.5: Install tab updated listener =============
-    eventListeners.installTabUpdatedListener((tabId, newUrl) => {
-      eventListeners.handleTrackedTabUrlChange(tabId, newUrl, (msg) => console.log(msg))
+    installTabUpdatedListener((tabId, newUrl) => {
+      handleTrackedTabUrlChange(tabId, newUrl, (msg) => console.log(msg))
     })
 
     // ============= STEP 9.6: Install draw mode keyboard shortcut listener =============
-    eventListeners.installDrawModeCommandListener((msg) => console.log(`[Gasoline] ${msg}`))
+    installDrawModeCommandListener((msg) => console.log(`[Gasoline] ${msg}`))
 
     // ============= STEP 10: Set disconnected badge immediately =============
     // Badge must reflect disconnected state BEFORE the async health check.
     // Without this, a stale "connected" badge persists from a previous SW session
     // until the health check completes (could be seconds if server is slow to refuse).
-    communication.updateBadge(index.connectionStatus)
+    updateBadge(connectionStatus)
 
     // ============= STEP 11: Initial connection check =============
     // Await the connection check to keep the SW alive until the badge is updated.
     // Without await, Chrome may suspend the SW before the fetch completes.
-    if (index.__aiWebPilotCacheInitialized) {
-      await index.checkConnectionAndUpdate()
+    if (__aiWebPilotCacheInitialized) {
+      await checkConnectionAndUpdate()
     } else {
-      setPilotInitCallback(index.checkConnectionAndUpdate)
+      setPilotInitCallback(checkConnectionAndUpdate)
     }
 
     // ============= INITIALIZATION COMPLETE =============
     markInitComplete()
-    index.debugLog(index.DebugCategory.LIFECYCLE, 'Extension initialized', {
-      serverUrl: index.serverUrl,
-      logLevel: index.currentLogLevel,
-      screenshotOnError: index.screenshotOnError,
-      sourceMapEnabled: stateManager.isSourceMapEnabled(),
-      debugMode: index.debugMode
+    debugLog(DebugCategory.LIFECYCLE, 'Extension initialized', {
+      serverUrl,
+      logLevel: currentLogLevel,
+      screenshotOnError,
+      sourceMapEnabled: isSourceMapEnabled(),
+      debugMode
     })
   } catch (error) {
     console.error('[Gasoline] Error during extension initialization:', error)
-    index.debugLog(index.DebugCategory.LIFECYCLE, 'Extension initialization failed', { error: String(error) })
+    debugLog(DebugCategory.LIFECYCLE, 'Extension initialization failed', { error: String(error) })
   }
 }

@@ -1,3 +1,5 @@
+// doc.go — Package documentation for security analysis and policy generation.
+
 // Package security provides security analysis and policy generation for web applications.
 //
 // Features:

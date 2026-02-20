@@ -168,7 +168,10 @@ func parseJSONPath(path string) ([]jsonPathToken, error) {
 				tokens = append(tokens, jsonPathToken{key: key})
 			} else {
 				index, err := strconv.Atoi(inner)
-				if err != nil || index < 0 {
+				if err != nil {
+					return nil, fmt.Errorf("invalid array index %q: %w", inner, err)
+				}
+				if index < 0 {
 					return nil, fmt.Errorf("invalid array index %q", inner)
 				}
 				tokens = append(tokens, jsonPathToken{index: index, isIndex: true})

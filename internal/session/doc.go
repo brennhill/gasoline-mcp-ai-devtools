@@ -1,3 +1,5 @@
+// doc.go — Package documentation for multi-client session management.
+
 // Package session provides multi-client session management for the Gasoline MCP server.
 //
 // Features:

@@ -10,15 +10,14 @@
 
 import type { PendingQuery } from '../types'
 import type { SyncClient } from './sync-client'
-import * as eventListeners from './event-listeners'
-import * as index from './index'
+import { waitForTabLoad, pingContentScript } from './event-listeners'
+import { debugLog } from './index'
+import { __aiWebPilotEnabledCache } from './state'
 import { DebugCategory } from './debug'
 import { broadcastTrackingState } from './message-handlers'
 import { executeWithWorldRouting } from './query-execution'
 import { ASYNC_COMMAND_TIMEOUT_MS } from '../lib/constants'
 import type { SendAsyncResultFn, ActionToastFn } from './pending-queries'
-
-const { debugLog } = index
 
 // =============================================================================
 // TIMEOUT CONFIGURATION
@@ -60,12 +59,12 @@ export async function handleNavigateAction(
 
   actionToast(tabId, reason || 'navigate', reason ? undefined : url, 'trying', 10000)
   await chrome.tabs.update(tabId, { url })
-  await eventListeners.waitForTabLoad(tabId)
+  await waitForTabLoad(tabId)
   await new Promise((r) => setTimeout(r, 500))
 
   const tab = await chrome.tabs.get(tabId)
 
-  if (await eventListeners.pingContentScript(tabId)) {
+  if (await pingContentScript(tabId)) {
     broadcastTrackingState().catch(() => {})
     actionToast(tabId, reason || 'navigate', reason ? undefined : url, 'success')
     return { success: true, action: 'navigate', url, final_url: tab.url, title: tab.title, content_script_status: 'loaded', message: 'Content script ready' }
@@ -85,12 +84,12 @@ export async function handleNavigateAction(
 
   debugLog(DebugCategory.CAPTURE, 'Content script not loaded after navigate, refreshing', { tabId, url })
   await chrome.tabs.reload(tabId)
-  await eventListeners.waitForTabLoad(tabId)
+  await waitForTabLoad(tabId)
   await new Promise((r) => setTimeout(r, 1000))
 
   const reloadedTab = await chrome.tabs.get(tabId)
 
-  if (await eventListeners.pingContentScript(tabId)) {
+  if (await pingContentScript(tabId)) {
     broadcastTrackingState().catch(() => {})
     return {
       success: true,
@@ -125,7 +124,7 @@ export async function handleBrowserAction(
 ): Promise<BrowserActionResult> {
   const { action, url, reason } = params || {}
 
-  if (!index.__aiWebPilotEnabledCache) {
+  if (!__aiWebPilotEnabledCache) {
     return { success: false, error: 'ai_web_pilot_disabled', message: 'AI Web Pilot is not enabled' }
   }
 
@@ -134,7 +133,7 @@ export async function handleBrowserAction(
       case 'refresh': {
         actionToast(tabId, reason || 'refresh', reason ? undefined : 'reloading page', 'trying', 10000)
         await chrome.tabs.reload(tabId)
-        await eventListeners.waitForTabLoad(tabId)
+        await waitForTabLoad(tabId)
         actionToast(tabId, reason || 'refresh', undefined, 'success')
         const refreshedTab = await chrome.tabs.get(tabId)
         return { success: true, action: 'refresh', url: refreshedTab.url, title: refreshedTab.title }
@@ -145,7 +144,7 @@ export async function handleBrowserAction(
       case 'back': {
         actionToast(tabId, reason || 'back', reason ? undefined : 'going back', 'trying', 10000)
         await chrome.tabs.goBack(tabId)
-        await eventListeners.waitForTabLoad(tabId)
+        await waitForTabLoad(tabId)
         actionToast(tabId, reason || 'back', undefined, 'success')
         const backTab = await chrome.tabs.get(tabId)
         return { success: true, action: 'back', url: backTab.url, title: backTab.title }
@@ -153,7 +152,7 @@ export async function handleBrowserAction(
       case 'forward': {
         actionToast(tabId, reason || 'forward', reason ? undefined : 'going forward', 'trying', 10000)
         await chrome.tabs.goForward(tabId)
-        await eventListeners.waitForTabLoad(tabId)
+        await waitForTabLoad(tabId)
         actionToast(tabId, reason || 'forward', undefined, 'success')
         const fwdTab = await chrome.tabs.get(tabId)
         return { success: true, action: 'forward', url: fwdTab.url, title: fwdTab.title }

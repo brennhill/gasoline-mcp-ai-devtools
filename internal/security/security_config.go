@@ -1,9 +1,5 @@
-// Purpose: Owns security_config.go runtime behavior and integration logic.
-// Docs: docs/features/feature/observe/index.md
+// security_config.go — LLM trust boundary for persistent configuration changes.
 
-// Security boundary: LLM trust model for config persistence
-// Implements security boundary between untrusted LLM tool calls and trusted persistent configuration.
-// See: docs/specs/security-boundary-llm-trust.md
 package security
 
 import (

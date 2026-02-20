@@ -1,10 +1,10 @@
 // observe.ts — Command handlers for the observe MCP tool.
 // Handles: screenshot, waterfall, page_info, tabs.
-import * as index from '../index.js';
+import { debugLog } from '../index.js';
+import { serverUrl } from '../state.js';
 import { DebugCategory } from '../debug.js';
 import { canTakeScreenshot, recordScreenshot } from '../state-manager.js';
 import { registerCommand } from './registry.js';
-const { debugLog } = index;
 // =============================================================================
 // SCREENSHOT
 // =============================================================================
@@ -25,7 +25,7 @@ registerCommand('screenshot', async (ctx) => {
         });
         recordScreenshot(ctx.tabId);
         // POST to /screenshots with query_id — server saves file and resolves query directly
-        const response = await fetch(`${index.serverUrl}/screenshots`, {
+        const response = await fetch(`${serverUrl}/screenshots`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'X-Gasoline-Client': 'gasoline-extension' },
             body: JSON.stringify({
