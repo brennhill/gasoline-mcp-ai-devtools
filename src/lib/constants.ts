@@ -154,3 +154,38 @@ export const INJECT_FORWARDED_SETTINGS: ReadonlySet<string> = new Set<string>([
   SettingName.NETWORK_BODY_CAPTURE,
   SettingName.SERVER_URL,
 ])
+
+// =============================================================================
+// STORAGE KEYS — Single source of truth for chrome.storage key strings.
+// =============================================================================
+
+/**
+ * Chrome storage key strings used in chrome.storage.local.get/set/remove calls.
+ * Single source of truth — all layers import from here.
+ */
+export const StorageKey = {
+  TRACKED_TAB_ID: 'trackedTabId',
+  TRACKED_TAB_URL: 'trackedTabUrl',
+  TRACKED_TAB_TITLE: 'trackedTabTitle',
+  AI_WEB_PILOT_ENABLED: 'aiWebPilotEnabled',
+  DEBUG_MODE: 'debugMode',
+  SERVER_URL: 'serverUrl',
+  SCREENSHOT_ON_ERROR: 'screenshotOnError',
+  SOURCE_MAP_ENABLED: 'sourceMapEnabled',
+  LOG_LEVEL: 'logLevel',
+  THEME: 'theme',
+  DEFERRAL_ENABLED: 'deferralEnabled',
+  WEBSOCKET_CAPTURE_ENABLED: 'webSocketCaptureEnabled',
+  WEBSOCKET_CAPTURE_MODE: 'webSocketCaptureMode',
+  NETWORK_WATERFALL_ENABLED: 'networkWaterfallEnabled',
+  PERFORMANCE_MARKS_ENABLED: 'performanceMarksEnabled',
+  ACTION_REPLAY_ENABLED: 'actionReplayEnabled',
+  NETWORK_BODY_CAPTURE_ENABLED: 'networkBodyCaptureEnabled',
+  ACTION_TOASTS_ENABLED: 'actionToastsEnabled',
+  SUBTITLES_ENABLED: 'subtitlesEnabled',
+  RECORDING: 'gasoline_recording',
+  PENDING_RECORDING: 'gasoline_pending_recording',
+  PENDING_MIC_RECORDING: 'gasoline_pending_mic_recording',
+  MIC_GRANTED: 'gasoline_mic_granted',
+  RECORD_AUDIO_PREF: 'gasoline_record_audio_pref',
+} as const

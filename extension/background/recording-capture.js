@@ -1,6 +1,7 @@
 // recording-capture.ts — Tab capture stream acquisition, offscreen document management, and user gesture flow.
 // Extracted from recording.ts to separate media plumbing from recording lifecycle.
 import { scaleTimeout } from '../lib/timeouts.js';
+import { StorageKey } from '../lib/constants.js';
 const LOG = '[Gasoline REC]';
 /** Ensure the offscreen document exists for recording. */
 export async function ensureOffscreenDocument() {
@@ -71,9 +72,9 @@ export async function requestRecordingGesture(tab, name, fps, audio, mediaType) 
         duration_ms: scaleTimeout(30000)
     })
         .catch(() => { });
-    await chrome.storage.local.set({ gasoline_pending_recording: { name, fps, audio, tabId: tab.id, url: tab.url } });
+    await chrome.storage.local.set({ [StorageKey.PENDING_RECORDING]: { name, fps, audio, tabId: tab.id, url: tab.url } });
     const gestureGranted = await waitForRecordingGesture(scaleTimeout(30000));
-    await chrome.storage.local.remove('gasoline_pending_recording');
+    await chrome.storage.local.remove(StorageKey.PENDING_RECORDING);
     if (!gestureGranted) {
         console.log(LOG, 'GESTURE_TIMEOUT: User did not click the Gasoline icon within 30s');
         chrome.tabs

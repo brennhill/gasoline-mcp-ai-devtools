@@ -82,4 +82,34 @@ export declare const VALID_SETTING_NAMES: ReadonlySet<string>;
  * they are handled directly by the content script runtime-message-listener.
  */
 export declare const INJECT_FORWARDED_SETTINGS: ReadonlySet<string>;
+/**
+ * Chrome storage key strings used in chrome.storage.local.get/set/remove calls.
+ * Single source of truth — all layers import from here.
+ */
+export declare const StorageKey: {
+    readonly TRACKED_TAB_ID: "trackedTabId";
+    readonly TRACKED_TAB_URL: "trackedTabUrl";
+    readonly TRACKED_TAB_TITLE: "trackedTabTitle";
+    readonly AI_WEB_PILOT_ENABLED: "aiWebPilotEnabled";
+    readonly DEBUG_MODE: "debugMode";
+    readonly SERVER_URL: "serverUrl";
+    readonly SCREENSHOT_ON_ERROR: "screenshotOnError";
+    readonly SOURCE_MAP_ENABLED: "sourceMapEnabled";
+    readonly LOG_LEVEL: "logLevel";
+    readonly THEME: "theme";
+    readonly DEFERRAL_ENABLED: "deferralEnabled";
+    readonly WEBSOCKET_CAPTURE_ENABLED: "webSocketCaptureEnabled";
+    readonly WEBSOCKET_CAPTURE_MODE: "webSocketCaptureMode";
+    readonly NETWORK_WATERFALL_ENABLED: "networkWaterfallEnabled";
+    readonly PERFORMANCE_MARKS_ENABLED: "performanceMarksEnabled";
+    readonly ACTION_REPLAY_ENABLED: "actionReplayEnabled";
+    readonly NETWORK_BODY_CAPTURE_ENABLED: "networkBodyCaptureEnabled";
+    readonly ACTION_TOASTS_ENABLED: "actionToastsEnabled";
+    readonly SUBTITLES_ENABLED: "subtitlesEnabled";
+    readonly RECORDING: "gasoline_recording";
+    readonly PENDING_RECORDING: "gasoline_pending_recording";
+    readonly PENDING_MIC_RECORDING: "gasoline_pending_mic_recording";
+    readonly MIC_GRANTED: "gasoline_mic_granted";
+    readonly RECORD_AUDIO_PREF: "gasoline_record_audio_pref";
+};
 //# sourceMappingURL=constants.d.ts.map

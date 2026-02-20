@@ -210,22 +210,25 @@ const STATE_VERSION_KEY = 'gasoline_state_version';
 const CURRENT_STATE_VERSION = '1.0.0';
 /**
  * Check if service worker was restarted (state version mismatch)
- * Returns true if state was lost/cleared (callback-based)
+ * Returns true if state was lost/cleared
  */
-export function wasServiceWorkerRestarted(callback) {
-    if (!isSessionStorageAvailable()) {
+export async function wasServiceWorkerRestarted() {
+    const storage = getStorageWithSession();
+    if (!storage || !storage.session) {
         // Can't detect restart without session storage
-        callback(false);
-        return;
+        return false;
     }
-    getSessionValue(STATE_VERSION_KEY, (storedVersion) => {
-        callback(storedVersion !== CURRENT_STATE_VERSION);
-    });
+    const result = await storage.session.get([STATE_VERSION_KEY]);
+    return result[STATE_VERSION_KEY] !== CURRENT_STATE_VERSION;
 }
 /**
- * Mark the current state version (call on init) - callback-based
+ * Mark the current state version (call on init)
  */
-export function markStateVersion(callback) {
-    setSessionValue(STATE_VERSION_KEY, CURRENT_STATE_VERSION, callback);
+export async function markStateVersion() {
+    const storage = getStorageWithSession();
+    if (!storage || !storage.session) {
+        return;
+    }
+    await storage.session.set({ [STATE_VERSION_KEY]: CURRENT_STATE_VERSION });
 }
 //# sourceMappingURL=storage-utils.js.map

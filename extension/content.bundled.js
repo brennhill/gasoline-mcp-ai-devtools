@@ -1,37 +1,5 @@
 "use strict";
 (() => {
-  // extension/content/tab-tracking.js
-  var isTrackedTab = false;
-  var currentTabId = null;
-  async function updateTrackingStatus() {
-    try {
-      const storage = await chrome.storage.local.get(["trackedTabId"]);
-      const response = await chrome.runtime.sendMessage({ type: "GET_TAB_ID" });
-      currentTabId = response?.tabId ?? null;
-      isTrackedTab = currentTabId !== null && currentTabId !== void 0 && currentTabId === storage.trackedTabId;
-    } catch {
-      isTrackedTab = false;
-    }
-  }
-  function getIsTrackedTab() {
-    return isTrackedTab;
-  }
-  function getCurrentTabId() {
-    return currentTabId;
-  }
-  function initTabTracking(onChange) {
-    const ready = updateTrackingStatus().then(() => {
-      onChange?.(isTrackedTab);
-    });
-    chrome.storage.onChanged.addListener(async (changes) => {
-      if (changes.trackedTabId) {
-        await updateTrackingStatus();
-        onChange?.(isTrackedTab);
-      }
-    });
-    return ready;
-  }
-
   // extension/lib/timeouts.js
   function readTestScale() {
     const globalScale = typeof globalThis !== "undefined" && typeof globalThis.GASOLINE_TEST_TIMEOUT_SCALE === "number" ? globalThis.GASOLINE_TEST_TIMEOUT_SCALE : null;
@@ -83,6 +51,64 @@
     SettingName.NETWORK_BODY_CAPTURE,
     SettingName.SERVER_URL
   ]);
+  var StorageKey = {
+    TRACKED_TAB_ID: "trackedTabId",
+    TRACKED_TAB_URL: "trackedTabUrl",
+    TRACKED_TAB_TITLE: "trackedTabTitle",
+    AI_WEB_PILOT_ENABLED: "aiWebPilotEnabled",
+    DEBUG_MODE: "debugMode",
+    SERVER_URL: "serverUrl",
+    SCREENSHOT_ON_ERROR: "screenshotOnError",
+    SOURCE_MAP_ENABLED: "sourceMapEnabled",
+    LOG_LEVEL: "logLevel",
+    THEME: "theme",
+    DEFERRAL_ENABLED: "deferralEnabled",
+    WEBSOCKET_CAPTURE_ENABLED: "webSocketCaptureEnabled",
+    WEBSOCKET_CAPTURE_MODE: "webSocketCaptureMode",
+    NETWORK_WATERFALL_ENABLED: "networkWaterfallEnabled",
+    PERFORMANCE_MARKS_ENABLED: "performanceMarksEnabled",
+    ACTION_REPLAY_ENABLED: "actionReplayEnabled",
+    NETWORK_BODY_CAPTURE_ENABLED: "networkBodyCaptureEnabled",
+    ACTION_TOASTS_ENABLED: "actionToastsEnabled",
+    SUBTITLES_ENABLED: "subtitlesEnabled",
+    RECORDING: "gasoline_recording",
+    PENDING_RECORDING: "gasoline_pending_recording",
+    PENDING_MIC_RECORDING: "gasoline_pending_mic_recording",
+    MIC_GRANTED: "gasoline_mic_granted",
+    RECORD_AUDIO_PREF: "gasoline_record_audio_pref"
+  };
+
+  // extension/content/tab-tracking.js
+  var isTrackedTab = false;
+  var currentTabId = null;
+  async function updateTrackingStatus() {
+    try {
+      const storage = await chrome.storage.local.get([StorageKey.TRACKED_TAB_ID]);
+      const response = await chrome.runtime.sendMessage({ type: "GET_TAB_ID" });
+      currentTabId = response?.tabId ?? null;
+      isTrackedTab = currentTabId !== null && currentTabId !== void 0 && currentTabId === storage.trackedTabId;
+    } catch {
+      isTrackedTab = false;
+    }
+  }
+  function getIsTrackedTab() {
+    return isTrackedTab;
+  }
+  function getCurrentTabId() {
+    return currentTabId;
+  }
+  function initTabTracking(onChange) {
+    const ready = updateTrackingStatus().then(() => {
+      onChange?.(isTrackedTab);
+    });
+    chrome.storage.onChanged.addListener(async (changes) => {
+      if (changes[StorageKey.TRACKED_TAB_ID]) {
+        await updateTrackingStatus();
+        onChange?.(isTrackedTab);
+      }
+    });
+    return ready;
+  }
 
   // extension/content/script-injection.js
   var injected = false;

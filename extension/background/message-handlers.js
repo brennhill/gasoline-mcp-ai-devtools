@@ -4,7 +4,7 @@
  * Docs: docs/features/feature/interact-explore/index.md
  * Docs: docs/features/feature/observe/index.md
  */
-import { SettingName, DEFAULT_SERVER_URL } from '../lib/constants.js';
+import { SettingName, StorageKey, DEFAULT_SERVER_URL } from '../lib/constants.js';
 // =============================================================================
 // MESSAGE HANDLER
 // =============================================================================
@@ -110,11 +110,11 @@ function handleMessage(message, sender, sendResponse, deps) {
             return true;
         case 'setLogLevel':
             deps.setCurrentLogLevel(message.level);
-            deps.saveSetting('logLevel', message.level);
+            deps.saveSetting(StorageKey.LOG_LEVEL, message.level);
             return false;
         case 'setScreenshotOnError':
             deps.setScreenshotOnError(message.enabled);
-            deps.saveSetting('screenshotOnError', message.enabled);
+            deps.saveSetting(StorageKey.SCREENSHOT_ON_ERROR, message.enabled);
             sendResponse({ success: true });
             return false;
         case 'setAiWebPilotEnabled':
@@ -134,7 +134,7 @@ function handleMessage(message, sender, sendResponse, deps) {
             return true;
         case 'setSourceMapEnabled':
             deps.setSourceMapEnabled(message.enabled);
-            deps.saveSetting('sourceMapEnabled', message.enabled);
+            deps.saveSetting(StorageKey.SOURCE_MAP_ENABLED, message.enabled);
             if (!message.enabled) {
                 deps.clearSourceMapCache();
             }
@@ -154,7 +154,7 @@ function handleMessage(message, sender, sendResponse, deps) {
             return false;
         case 'setDebugMode':
             deps.setDebugMode(message.enabled);
-            deps.saveSetting('debugMode', message.enabled);
+            deps.saveSetting(StorageKey.DEBUG_MODE, message.enabled);
             sendResponse({ success: true });
             return false;
         case 'getDebugLog':
@@ -221,8 +221,8 @@ function handleSetAiWebPilotEnabled(enabled, sendResponse, deps) {
  */
 async function handleGetTrackingState(sendResponse, deps, senderTabId) {
     try {
-        const result = await chrome.storage.local.get(['trackedTabId']);
-        const trackedTabId = result.trackedTabId;
+        const result = await chrome.storage.local.get([StorageKey.TRACKED_TAB_ID]);
+        const trackedTabId = result[StorageKey.TRACKED_TAB_ID];
         const aiPilotEnabled = deps.getAiWebPilotEnabled();
         sendResponse({
             state: {
@@ -244,9 +244,9 @@ async function handleGetTrackingState(sendResponse, deps, senderTabId) {
  */
 export async function broadcastTrackingState(untrackedTabId) {
     try {
-        const result = await chrome.storage.local.get(['trackedTabId', 'aiWebPilotEnabled']);
-        const trackedTabId = result.trackedTabId;
-        const aiPilotEnabled = result.aiWebPilotEnabled === true;
+        const result = await chrome.storage.local.get([StorageKey.TRACKED_TAB_ID, StorageKey.AI_WEB_PILOT_ENABLED]);
+        const trackedTabId = result[StorageKey.TRACKED_TAB_ID];
+        const aiPilotEnabled = result[StorageKey.AI_WEB_PILOT_ENABLED] === true;
         // Notify the currently tracked tab it's being tracked
         if (trackedTabId) {
             chrome.tabs
@@ -289,7 +289,7 @@ function handleGetDiagnosticState(sendResponse, deps) {
         });
         return;
     }
-    chrome.storage.local.get(['aiWebPilotEnabled'], (result) => {
+    chrome.storage.local.get([StorageKey.AI_WEB_PILOT_ENABLED], (result) => {
         sendResponse({
             cache: deps.getAiWebPilotEnabled(),
             storage: result.aiWebPilotEnabled,
@@ -380,7 +380,7 @@ async function handleDrawModeCompletedAsync(message, sender, deps) {
 }
 function handleSetServerUrl(url, sendResponse, deps) {
     deps.setServerUrl(url || DEFAULT_SERVER_URL);
-    deps.saveSetting('serverUrl', deps.getServerUrl());
+    deps.saveSetting(StorageKey.SERVER_URL, deps.getServerUrl());
     deps.debugLog('settings', `Server URL changed to: ${deps.getServerUrl()}`);
     // Broadcast to all content scripts
     deps.forwardToAllContentScripts({ type: SettingName.SERVER_URL, url: deps.getServerUrl() });

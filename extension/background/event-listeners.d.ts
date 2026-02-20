@@ -47,13 +47,13 @@ export declare function installTabUpdatedListener(onTabUpdated: (tabId: number, 
  * Handle tracked tab URL change
  * Updates the stored URL and title when the tracked tab navigates
  */
-export declare function handleTrackedTabUrlChange(updatedTabId: number, newUrl: string, logFn?: (message: string) => void): void;
+export declare function handleTrackedTabUrlChange(updatedTabId: number, newUrl: string, logFn?: (message: string) => void): Promise<void>;
 /**
  * Handle tracked tab being closed
  * SECURITY: Clears ephemeral tracking state when tab closes
  * Uses session storage for ephemeral tab tracking data
  */
-export declare function handleTrackedTabClosed(closedTabId: number, logFn?: (message: string, data?: unknown) => void): void;
+export declare function handleTrackedTabClosed(closedTabId: number, logFn?: (message: string, data?: unknown) => void): Promise<void>;
 /**
  * Install storage change listener
  */
@@ -84,25 +84,27 @@ export declare function waitForTabLoad(tabId: number, timeoutMs?: number): Promi
 export declare function forwardToAllContentScripts(message: {
     type: string;
     [key: string]: unknown;
-}, debugLogFn?: (category: string, message: string, data?: unknown) => void): void;
-/**
- * Load saved settings from chrome.storage.local
- */
-export declare function loadSavedSettings(callback: (settings: {
+}, debugLogFn?: (category: string, message: string, data?: unknown) => void): Promise<void>;
+/** Settings returned by loadSavedSettings */
+export interface SavedSettings {
     serverUrl?: string;
     logLevel?: string;
     screenshotOnError?: boolean;
     sourceMapEnabled?: boolean;
     debugMode?: boolean;
-}) => void): void;
+}
+/**
+ * Load saved settings from chrome.storage.local
+ */
+export declare function loadSavedSettings(): Promise<SavedSettings>;
 /**
  * Load AI Web Pilot enabled state from storage
  */
-export declare function loadAiWebPilotState(callback: (enabled: boolean) => void, logFn?: (message: string) => void): void;
+export declare function loadAiWebPilotState(logFn?: (message: string) => void): Promise<boolean>;
 /**
  * Load debug mode state from storage
  */
-export declare function loadDebugModeState(callback: (enabled: boolean) => void): void;
+export declare function loadDebugModeState(): Promise<boolean>;
 /**
  * Save setting to chrome.storage.local
  */

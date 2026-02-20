@@ -5,6 +5,7 @@
  * Docs: docs/features/feature/observe/index.md
  */
 import { scaleTimeout } from '../lib/timeouts.js';
+import { StorageKey } from '../lib/constants.js';
 // =============================================================================
 // CONSTANTS - Rate Limiting & DoS Protection
 // =============================================================================
@@ -122,46 +123,42 @@ export function installTabUpdatedListener(onTabUpdated) {
  * Handle tracked tab URL change
  * Updates the stored URL and title when the tracked tab navigates
  */
-export function handleTrackedTabUrlChange(updatedTabId, newUrl, logFn) {
+export async function handleTrackedTabUrlChange(updatedTabId, newUrl, logFn) {
     if (typeof chrome === 'undefined' || !chrome.storage)
         return;
-    chrome.storage.local.get(['trackedTabId'], (result) => {
-        if (result.trackedTabId === updatedTabId) {
-            // Update URL immediately, then refresh title from the tab
-            chrome.tabs
-                .get(updatedTabId)
-                .then((tab) => {
-                const updates = { trackedTabUrl: newUrl };
-                if (tab?.title)
-                    updates.trackedTabTitle = tab.title;
-                chrome.storage.local.set(updates, () => {
-                    if (logFn) {
-                        logFn('[Gasoline] Tracked tab updated: ' + newUrl);
-                    }
-                });
-            })
-                .catch(() => {
-                // Tab may have been closed — update URL only
-                chrome.storage.local.set({ trackedTabUrl: newUrl });
-            });
+    const result = (await chrome.storage.local.get([StorageKey.TRACKED_TAB_ID]));
+    if (result.trackedTabId === updatedTabId) {
+        // Update URL immediately, then refresh title from the tab
+        try {
+            const tab = await chrome.tabs.get(updatedTabId);
+            const updates = { [StorageKey.TRACKED_TAB_URL]: newUrl };
+            if (tab?.title)
+                updates[StorageKey.TRACKED_TAB_TITLE] = tab.title;
+            await chrome.storage.local.set(updates);
+            if (logFn) {
+                logFn('[Gasoline] Tracked tab updated: ' + newUrl);
+            }
         }
-    });
+        catch {
+            // Tab may have been closed — update URL only
+            chrome.storage.local.set({ [StorageKey.TRACKED_TAB_URL]: newUrl });
+        }
+    }
 }
 /**
  * Handle tracked tab being closed
  * SECURITY: Clears ephemeral tracking state when tab closes
  * Uses session storage for ephemeral tab tracking data
  */
-export function handleTrackedTabClosed(closedTabId, logFn) {
+export async function handleTrackedTabClosed(closedTabId, logFn) {
     if (typeof chrome === 'undefined' || !chrome.storage)
         return;
-    chrome.storage.local.get(['trackedTabId'], (result) => {
-        if (result.trackedTabId === closedTabId) {
-            if (logFn)
-                logFn('[Gasoline] Tracked tab closed (id:', closedTabId);
-            chrome.storage.local.remove(['trackedTabId', 'trackedTabUrl', 'trackedTabTitle']);
-        }
-    });
+    const result = (await chrome.storage.local.get([StorageKey.TRACKED_TAB_ID]));
+    if (result.trackedTabId === closedTabId) {
+        if (logFn)
+            logFn('[Gasoline] Tracked tab closed (id:', closedTabId);
+        chrome.storage.local.remove([StorageKey.TRACKED_TAB_ID, StorageKey.TRACKED_TAB_URL, StorageKey.TRACKED_TAB_TITLE]);
+    }
 }
 // =============================================================================
 // STORAGE LISTENERS
@@ -174,12 +171,12 @@ export function installStorageChangeListener(handlers) {
         return;
     chrome.storage.onChanged.addListener((changes, areaName) => {
         if (areaName === 'local') {
-            if (changes.aiWebPilotEnabled && handlers.onAiWebPilotChanged) {
-                handlers.onAiWebPilotChanged(changes.aiWebPilotEnabled.newValue === true);
+            if (changes[StorageKey.AI_WEB_PILOT_ENABLED] && handlers.onAiWebPilotChanged) {
+                handlers.onAiWebPilotChanged(changes[StorageKey.AI_WEB_PILOT_ENABLED].newValue === true);
             }
-            if (changes.trackedTabId && handlers.onTrackedTabChanged) {
-                const newTabId = changes.trackedTabId.newValue ?? null;
-                const oldTabId = changes.trackedTabId.oldValue ?? null;
+            if (changes[StorageKey.TRACKED_TAB_ID] && handlers.onTrackedTabChanged) {
+                const newTabId = changes[StorageKey.TRACKED_TAB_ID].newValue ?? null;
+                const oldTabId = changes[StorageKey.TRACKED_TAB_ID].oldValue ?? null;
                 handlers.onTrackedTabChanged(newTabId, oldTabId);
             }
         }
@@ -196,8 +193,8 @@ export function installStartupListener(logFn) {
         return;
     chrome.runtime.onStartup.addListener(async () => {
         try {
-            const result = await chrome.storage.local.get(['trackedTabId']);
-            const trackedTabId = result.trackedTabId;
+            const result = await chrome.storage.local.get([StorageKey.TRACKED_TAB_ID]);
+            const trackedTabId = result[StorageKey.TRACKED_TAB_ID];
             if (trackedTabId) {
                 try {
                     await chrome.tabs.get(trackedTabId);
@@ -207,13 +204,13 @@ export function installStartupListener(logFn) {
                 catch {
                     if (logFn)
                         logFn('[Gasoline] Browser restarted - tracked tab gone, clearing tracking state');
-                    chrome.storage.local.remove(['trackedTabId', 'trackedTabUrl', 'trackedTabTitle']);
+                    chrome.storage.local.remove([StorageKey.TRACKED_TAB_ID, StorageKey.TRACKED_TAB_URL, StorageKey.TRACKED_TAB_TITLE]);
                 }
             }
         }
         catch {
             // Safety fallback: clear if we can't check
-            chrome.storage.local.remove(['trackedTabId', 'trackedTabUrl', 'trackedTabTitle']);
+            chrome.storage.local.remove([StorageKey.TRACKED_TAB_ID, StorageKey.TRACKED_TAB_URL, StorageKey.TRACKED_TAB_TITLE]);
         }
     });
 }
@@ -324,76 +321,73 @@ export async function waitForTabLoad(tabId, timeoutMs = scaleTimeout(5000)) {
 /**
  * Forward a message to all content scripts
  */
-export function forwardToAllContentScripts(message, debugLogFn) {
+export async function forwardToAllContentScripts(message, debugLogFn) {
     if (typeof chrome === 'undefined' || !chrome.tabs)
         return;
-    chrome.tabs.query({}, (tabs) => {
-        for (const tab of tabs) {
-            if (tab.id) {
-                chrome.tabs.sendMessage(tab.id, message).catch((err) => {
-                    if (!err.message?.includes('Receiving end does not exist') &&
-                        !err.message?.includes('Could not establish connection')) {
-                        if (debugLogFn) {
-                            debugLogFn('error', 'Unexpected error forwarding setting to tab', {
-                                tabId: tab.id,
-                                error: err.message
-                            });
-                        }
+    const tabs = await chrome.tabs.query({});
+    for (const tab of tabs) {
+        if (tab.id) {
+            chrome.tabs.sendMessage(tab.id, message).catch((err) => {
+                if (!err.message?.includes('Receiving end does not exist') &&
+                    !err.message?.includes('Could not establish connection')) {
+                    if (debugLogFn) {
+                        debugLogFn('error', 'Unexpected error forwarding setting to tab', {
+                            tabId: tab.id,
+                            error: err.message
+                        });
                     }
-                });
-            }
+                }
+            });
         }
-    });
+    }
 }
-// =============================================================================
-// SETTINGS LOADING
-// =============================================================================
 /**
  * Load saved settings from chrome.storage.local
  */
-export function loadSavedSettings(callback) {
+export async function loadSavedSettings() {
     if (typeof chrome === 'undefined' || !chrome.storage) {
-        callback({});
-        return;
+        return {};
     }
-    chrome.storage.local.get(['serverUrl', 'logLevel', 'screenshotOnError', 'sourceMapEnabled', 'debugMode'], (result) => {
-        if (chrome.runtime.lastError) {
-            console.warn('[Gasoline] Could not load saved settings:', chrome.runtime.lastError.message, '- using defaults');
-            callback({});
-            return;
-        }
-        callback(result);
-    });
+    try {
+        const result = (await chrome.storage.local.get([
+            StorageKey.SERVER_URL,
+            StorageKey.LOG_LEVEL,
+            StorageKey.SCREENSHOT_ON_ERROR,
+            StorageKey.SOURCE_MAP_ENABLED,
+            StorageKey.DEBUG_MODE
+        ]));
+        return result;
+    }
+    catch {
+        console.warn('[Gasoline] Could not load saved settings - using defaults');
+        return {};
+    }
 }
 /**
  * Load AI Web Pilot enabled state from storage
  */
-export function loadAiWebPilotState(callback, logFn) {
+export async function loadAiWebPilotState(logFn) {
     if (typeof chrome === 'undefined' || !chrome.storage) {
-        callback(false);
-        return;
+        return false;
     }
     const startTime = performance.now();
-    chrome.storage.local.get(['aiWebPilotEnabled'], (result) => {
-        const wasLoaded = result.aiWebPilotEnabled !== false;
-        const loadTime = performance.now() - startTime;
-        if (logFn) {
-            logFn(`[Gasoline] AI Web Pilot loaded on startup: ${wasLoaded} (took ${loadTime.toFixed(1)}ms)`);
-        }
-        callback(wasLoaded);
-    });
+    const result = (await chrome.storage.local.get([StorageKey.AI_WEB_PILOT_ENABLED]));
+    const wasLoaded = result.aiWebPilotEnabled !== false;
+    const loadTime = performance.now() - startTime;
+    if (logFn) {
+        logFn(`[Gasoline] AI Web Pilot loaded on startup: ${wasLoaded} (took ${loadTime.toFixed(1)}ms)`);
+    }
+    return wasLoaded;
 }
 /**
  * Load debug mode state from storage
  */
-export function loadDebugModeState(callback) {
+export async function loadDebugModeState() {
     if (typeof chrome === 'undefined' || !chrome.storage) {
-        callback(false);
-        return;
+        return false;
     }
-    chrome.storage.local.get(['debugMode'], (result) => {
-        callback(result.debugMode === true);
-    });
+    const result = (await chrome.storage.local.get([StorageKey.DEBUG_MODE]));
+    return result.debugMode === true;
 }
 /**
  * Save setting to chrome.storage.local
@@ -416,7 +410,7 @@ export function getTrackedTabInfo(callback) {
         callback({ trackedTabId: null, trackedTabUrl: null, trackedTabTitle: null });
         return;
     }
-    chrome.storage.local.get(['trackedTabId', 'trackedTabUrl', 'trackedTabTitle'], (result) => {
+    chrome.storage.local.get([StorageKey.TRACKED_TAB_ID, StorageKey.TRACKED_TAB_URL, StorageKey.TRACKED_TAB_TITLE], (result) => {
         callback({
             trackedTabId: result.trackedTabId || null,
             trackedTabUrl: result.trackedTabUrl || null,
@@ -430,7 +424,7 @@ export function getTrackedTabInfo(callback) {
 export function clearTrackedTab() {
     if (typeof chrome === 'undefined' || !chrome.storage)
         return;
-    chrome.storage.local.remove(['trackedTabId', 'trackedTabUrl', 'trackedTabTitle']);
+    chrome.storage.local.remove([StorageKey.TRACKED_TAB_ID, StorageKey.TRACKED_TAB_URL, StorageKey.TRACKED_TAB_TITLE]);
 }
 // Implementation
 export function getAllConfigSettings(callback) {
@@ -446,14 +440,14 @@ export function getAllConfigSettings(callback) {
         return;
     }
     chrome.storage.local.get([
-        'aiWebPilotEnabled',
-        'webSocketCaptureEnabled',
-        'networkWaterfallEnabled',
-        'performanceMarksEnabled',
-        'actionReplayEnabled',
-        'screenshotOnError',
-        'sourceMapEnabled',
-        'networkBodyCaptureEnabled'
+        StorageKey.AI_WEB_PILOT_ENABLED,
+        StorageKey.WEBSOCKET_CAPTURE_ENABLED,
+        StorageKey.NETWORK_WATERFALL_ENABLED,
+        StorageKey.PERFORMANCE_MARKS_ENABLED,
+        StorageKey.ACTION_REPLAY_ENABLED,
+        StorageKey.SCREENSHOT_ON_ERROR,
+        StorageKey.SOURCE_MAP_ENABLED,
+        StorageKey.NETWORK_BODY_CAPTURE_ENABLED
     ], (result) => {
         callback(result);
     });
