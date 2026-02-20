@@ -9,6 +9,7 @@
  */
 
 import { isInternalUrl } from './ui-utils'
+import { StorageKey } from '../lib/constants'
 
 /**
  * Initialize the Track This Tab button.
@@ -81,11 +82,11 @@ function showIdleState(btn: HTMLButtonElement): void {
  * Handle stop tracking from the compact tracking bar stop button.
  */
 function handleStopTracking(): void {
-  chrome.storage.local.get(['trackedTabId'], (result: { trackedTabId?: number }) => {
+  chrome.storage.local.get([StorageKey.TRACKED_TAB_ID], (result: { trackedTabId?: number }) => {
     const prevTabId = result.trackedTabId
     if (!prevTabId) return
 
-    chrome.storage.local.remove(['trackedTabId', 'trackedTabUrl'], () => {
+    chrome.storage.local.remove([StorageKey.TRACKED_TAB_ID, StorageKey.TRACKED_TAB_URL], () => {
       const btn = document.getElementById('track-page-btn') as HTMLButtonElement | null
       if (btn) showIdleState(btn)
 
@@ -115,7 +116,7 @@ export async function initTrackPageButton(): Promise<void> {
 
   return new Promise((resolve) => {
     chrome.storage.local.get(
-      ['trackedTabId', 'trackedTabUrl'],
+      [StorageKey.TRACKED_TAB_ID, StorageKey.TRACKED_TAB_URL],
       async (result: { trackedTabId?: number; trackedTabUrl?: string }) => {
         chrome.tabs.query({ active: true, currentWindow: true }, (tabs: chrome.tabs.Tab[]) => {
           const currentUrl = tabs?.[0]?.url
@@ -158,7 +159,7 @@ export async function handleUrlClick(tabId: number | undefined): Promise<void> {
   } catch (err) {
     console.error('[Gasoline] Failed to switch to tracked tab:', err)
     // Tab might have been closed - clear tracking
-    chrome.storage.local.remove(['trackedTabId', 'trackedTabUrl'])
+    chrome.storage.local.remove([StorageKey.TRACKED_TAB_ID, StorageKey.TRACKED_TAB_URL])
   }
 }
 
@@ -172,7 +173,7 @@ export async function handleTrackPageClick(): Promise<void> {
   const btn = document.getElementById('track-page-btn') as HTMLButtonElement | null
 
   // Check if we're currently tracking
-  chrome.storage.local.get(['trackedTabId'], async (result: { trackedTabId?: number }) => {
+  chrome.storage.local.get([StorageKey.TRACKED_TAB_ID], async (result: { trackedTabId?: number }) => {
     if (result.trackedTabId) {
       // Untrack — delegate to the shared stop handler
       handleStopTracking()

@@ -238,22 +238,25 @@ const CURRENT_STATE_VERSION = '1.0.0'
 
 /**
  * Check if service worker was restarted (state version mismatch)
- * Returns true if state was lost/cleared (callback-based)
+ * Returns true if state was lost/cleared
  */
-export function wasServiceWorkerRestarted(callback: (wasRestarted: boolean) => void): void {
-  if (!isSessionStorageAvailable()) {
+export async function wasServiceWorkerRestarted(): Promise<boolean> {
+  const storage = getStorageWithSession()
+  if (!storage || !storage.session) {
     // Can't detect restart without session storage
-    callback(false)
-    return
+    return false
   }
-  getSessionValue(STATE_VERSION_KEY, (storedVersion) => {
-    callback(storedVersion !== CURRENT_STATE_VERSION)
-  })
+  const result = await storage.session.get([STATE_VERSION_KEY])
+  return result[STATE_VERSION_KEY] !== CURRENT_STATE_VERSION
 }
 
 /**
- * Mark the current state version (call on init) - callback-based
+ * Mark the current state version (call on init)
  */
-export function markStateVersion(callback?: () => void): void {
-  setSessionValue(STATE_VERSION_KEY, CURRENT_STATE_VERSION, callback)
+export async function markStateVersion(): Promise<void> {
+  const storage = getStorageWithSession()
+  if (!storage || !storage.session) {
+    return
+  }
+  await storage.session.set({ [STATE_VERSION_KEY]: CURRENT_STATE_VERSION })
 }

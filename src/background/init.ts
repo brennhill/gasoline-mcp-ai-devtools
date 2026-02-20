@@ -32,61 +32,6 @@ import * as communication from './communication'
 import * as storageUtils from './storage-utils'
 
 // =============================================================================
-// PROMISE WRAPPERS FOR CHROME STORAGE APIs
-// =============================================================================
-
-/**
- * Promisified version of loadSavedSettings
- */
-function loadSavedSettingsAsync(): Promise<{
-  serverUrl?: string
-  logLevel?: string
-  screenshotOnError?: boolean
-  sourceMapEnabled?: boolean
-  debugMode?: boolean
-}> {
-  return new Promise((resolve) => {
-    eventListeners.loadSavedSettings((settings) => resolve(settings))
-  })
-}
-
-/**
- * Promisified version of loadAiWebPilotState
- */
-function loadAiWebPilotStateAsync(): Promise<boolean> {
-  return new Promise((resolve) => {
-    eventListeners.loadAiWebPilotState((enabled) => resolve(enabled))
-  })
-}
-
-/**
- * Promisified version of loadDebugModeState
- */
-function loadDebugModeStateAsync(): Promise<boolean> {
-  return new Promise((resolve) => {
-    eventListeners.loadDebugModeState((enabled) => resolve(enabled))
-  })
-}
-
-/**
- * Promisified version of wasServiceWorkerRestarted
- */
-function wasServiceWorkerRestartedAsync(): Promise<boolean> {
-  return new Promise((resolve) => {
-    storageUtils.wasServiceWorkerRestarted((wasRestarted) => resolve(wasRestarted))
-  })
-}
-
-/**
- * Promisified version of markStateVersion
- */
-function markStateVersionAsync(): Promise<void> {
-  return new Promise((resolve) => {
-    storageUtils.markStateVersion(() => resolve())
-  })
-}
-
-// =============================================================================
 // STATE SETTERS (imported from index.ts)
 // =============================================================================
 // These are now exported from index.ts to properly mutate module state
@@ -115,7 +60,7 @@ export function initializeExtension(): void {
 async function initializeExtensionAsync(): Promise<void> {
   try {
     // ============= STEP 1: Check service worker restart =============
-    const wasRestarted = await wasServiceWorkerRestartedAsync()
+    const wasRestarted = await storageUtils.wasServiceWorkerRestarted()
     if (wasRestarted) {
       console.warn(
         '[Gasoline] Service worker restarted - ephemeral state cleared. ' +
@@ -124,10 +69,10 @@ async function initializeExtensionAsync(): Promise<void> {
       index.debugLog(index.DebugCategory.LIFECYCLE, 'Service worker restarted, ephemeral state recovered')
     }
     // Mark the current state version
-    await markStateVersionAsync()
+    await storageUtils.markStateVersion()
 
     // ============= STEP 2: Load debug mode =============
-    const debugEnabled = await loadDebugModeStateAsync()
+    const debugEnabled = await eventListeners.loadDebugModeState()
     setDebugMode(debugEnabled)
     if (debugEnabled) {
       console.log('[Gasoline] Debug mode enabled on startup')
@@ -137,7 +82,7 @@ async function initializeExtensionAsync(): Promise<void> {
     eventListeners.installStartupListener((msg) => console.log(msg))
 
     // ============= STEP 4: Load AI Web Pilot state =============
-    const aiPilotEnabled = await loadAiWebPilotStateAsync()
+    const aiPilotEnabled = await eventListeners.loadAiWebPilotState()
     setAiWebPilotEnabledCache(aiPilotEnabled)
     setAiWebPilotCacheInitialized(true)
     console.log('[Gasoline] Storage value:', aiPilotEnabled, '| Cache value:', index.__aiWebPilotEnabledCache)
@@ -149,7 +94,7 @@ async function initializeExtensionAsync(): Promise<void> {
     }
 
     // ============= STEP 5: Load saved settings =============
-    const settings = await loadSavedSettingsAsync()
+    const settings = await eventListeners.loadSavedSettings()
     setServerUrl(settings.serverUrl || index.DEFAULT_SERVER_URL)
     setCurrentLogLevel('all')
     setScreenshotOnError(settings.screenshotOnError !== false)

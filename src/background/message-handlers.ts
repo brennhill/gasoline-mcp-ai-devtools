@@ -24,7 +24,7 @@ import type {
   NetworkBodyPayload,
   PerformanceSnapshot
 } from '../types'
-import { SettingName, DEFAULT_SERVER_URL } from '../lib/constants'
+import { SettingName, StorageKey, DEFAULT_SERVER_URL } from '../lib/constants'
 
 // =============================================================================
 // TYPE DEFINITIONS
@@ -215,12 +215,12 @@ function handleMessage(
 
     case 'setLogLevel':
       deps.setCurrentLogLevel(message.level)
-      deps.saveSetting('logLevel', message.level)
+      deps.saveSetting(StorageKey.LOG_LEVEL, message.level)
       return false
 
     case 'setScreenshotOnError':
       deps.setScreenshotOnError(message.enabled)
-      deps.saveSetting('screenshotOnError', message.enabled)
+      deps.saveSetting(StorageKey.SCREENSHOT_ON_ERROR, message.enabled)
       sendResponse({ success: true })
       return false
 
@@ -246,7 +246,7 @@ function handleMessage(
 
     case 'setSourceMapEnabled':
       deps.setSourceMapEnabled(message.enabled)
-      deps.saveSetting('sourceMapEnabled', message.enabled)
+      deps.saveSetting(StorageKey.SOURCE_MAP_ENABLED, message.enabled)
       if (!message.enabled) {
         deps.clearSourceMapCache()
       }
@@ -268,7 +268,7 @@ function handleMessage(
 
     case 'setDebugMode':
       deps.setDebugMode(message.enabled)
-      deps.saveSetting('debugMode', message.enabled)
+      deps.saveSetting(StorageKey.DEBUG_MODE, message.enabled)
       sendResponse({ success: true })
       return false
 
@@ -358,8 +358,8 @@ async function handleGetTrackingState(
   senderTabId?: number
 ): Promise<void> {
   try {
-    const result = await chrome.storage.local.get(['trackedTabId'])
-    const trackedTabId = result.trackedTabId as number | undefined
+    const result = await chrome.storage.local.get([StorageKey.TRACKED_TAB_ID])
+    const trackedTabId = result[StorageKey.TRACKED_TAB_ID] as number | undefined
     const aiPilotEnabled = deps.getAiWebPilotEnabled()
 
     sendResponse({
@@ -382,9 +382,9 @@ async function handleGetTrackingState(
  */
 export async function broadcastTrackingState(untrackedTabId?: number | null): Promise<void> {
   try {
-    const result = await chrome.storage.local.get(['trackedTabId', 'aiWebPilotEnabled'])
-    const trackedTabId = result.trackedTabId as number | undefined
-    const aiPilotEnabled = result.aiWebPilotEnabled === true
+    const result = await chrome.storage.local.get([StorageKey.TRACKED_TAB_ID, StorageKey.AI_WEB_PILOT_ENABLED])
+    const trackedTabId = result[StorageKey.TRACKED_TAB_ID] as number | undefined
+    const aiPilotEnabled = result[StorageKey.AI_WEB_PILOT_ENABLED] === true
 
     // Notify the currently tracked tab it's being tracked
     if (trackedTabId) {
@@ -430,7 +430,7 @@ function handleGetDiagnosticState(sendResponse: SendResponse, deps: MessageHandl
     return
   }
 
-  chrome.storage.local.get(['aiWebPilotEnabled'], (result: { aiWebPilotEnabled?: boolean }) => {
+  chrome.storage.local.get([StorageKey.AI_WEB_PILOT_ENABLED], (result: { aiWebPilotEnabled?: boolean }) => {
     sendResponse({
       cache: deps.getAiWebPilotEnabled(),
       storage: result.aiWebPilotEnabled,
@@ -533,7 +533,7 @@ async function handleDrawModeCompletedAsync(
 
 function handleSetServerUrl(url: string, sendResponse: SendResponse, deps: MessageHandlerDependencies): void {
   deps.setServerUrl(url || DEFAULT_SERVER_URL)
-  deps.saveSetting('serverUrl', deps.getServerUrl())
+  deps.saveSetting(StorageKey.SERVER_URL, deps.getServerUrl())
   deps.debugLog('settings', `Server URL changed to: ${deps.getServerUrl()}`)
 
   // Broadcast to all content scripts

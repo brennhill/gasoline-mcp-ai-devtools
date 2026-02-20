@@ -3,6 +3,7 @@
 // mic permission grant flow, and file reveal requests.
 // Deps are injected to avoid circular imports with recording.ts.
 import { scaleTimeout } from '../lib/timeouts.js';
+import { StorageKey } from '../lib/constants.js';
 const LOG = '[Gasoline REC]';
 /**
  * Install all chrome.runtime.onMessage listeners for recording.
@@ -105,9 +106,9 @@ export function installRecordingListeners(deps) {
             return false;
         console.log(LOG, 'MIC_GRANTED_CLOSE_TAB received from tab', sender.tab?.id);
         // Read the stored return tab before closing the permission tab
-        chrome.storage.local.get('gasoline_pending_mic_recording', (result) => {
-            const returnTabId = result.gasoline_pending_mic_recording?.returnTabId;
-            console.log(LOG, 'Pending mic recording intent:', result.gasoline_pending_mic_recording, 'returnTabId:', returnTabId);
+        chrome.storage.local.get(StorageKey.PENDING_MIC_RECORDING, (result) => {
+            const returnTabId = result[StorageKey.PENDING_MIC_RECORDING]?.returnTabId;
+            console.log(LOG, 'Pending mic recording intent:', result[StorageKey.PENDING_MIC_RECORDING], 'returnTabId:', returnTabId);
             // Close the permission tab
             if (sender.tab?.id) {
                 console.log(LOG, 'Closing permission tab', sender.tab.id);

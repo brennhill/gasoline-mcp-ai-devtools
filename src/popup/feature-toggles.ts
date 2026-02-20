@@ -9,7 +9,7 @@
  */
 
 import type { FeatureToggleConfig } from './types'
-import { SettingName } from '../lib/constants'
+import { SettingName, StorageKey } from '../lib/constants'
 
 /**
  * Feature toggle configuration
@@ -17,45 +17,45 @@ import { SettingName } from '../lib/constants'
 export const FEATURE_TOGGLES: readonly FeatureToggleConfig[] = [
   {
     id: 'toggle-websocket',
-    storageKey: 'webSocketCaptureEnabled',
+    storageKey: StorageKey.WEBSOCKET_CAPTURE_ENABLED,
     messageType: SettingName.WEBSOCKET_CAPTURE,
     default: true
   },
   {
     id: 'toggle-network-waterfall',
-    storageKey: 'networkWaterfallEnabled',
+    storageKey: StorageKey.NETWORK_WATERFALL_ENABLED,
     messageType: SettingName.NETWORK_WATERFALL,
     default: true
   },
   {
     id: 'toggle-performance-marks',
-    storageKey: 'performanceMarksEnabled',
+    storageKey: StorageKey.PERFORMANCE_MARKS_ENABLED,
     messageType: SettingName.PERFORMANCE_MARKS,
     default: true
   },
   {
     id: 'toggle-action-replay',
-    storageKey: 'actionReplayEnabled',
+    storageKey: StorageKey.ACTION_REPLAY_ENABLED,
     messageType: SettingName.ACTION_REPLAY,
     default: true
   },
-  { id: 'toggle-screenshot', storageKey: 'screenshotOnError', messageType: 'setScreenshotOnError', default: true },
-  { id: 'toggle-source-maps', storageKey: 'sourceMapEnabled', messageType: 'setSourceMapEnabled', default: true },
+  { id: 'toggle-screenshot', storageKey: StorageKey.SCREENSHOT_ON_ERROR, messageType: 'setScreenshotOnError', default: true },
+  { id: 'toggle-source-maps', storageKey: StorageKey.SOURCE_MAP_ENABLED, messageType: 'setSourceMapEnabled', default: true },
   {
     id: 'toggle-network-body-capture',
-    storageKey: 'networkBodyCaptureEnabled',
+    storageKey: StorageKey.NETWORK_BODY_CAPTURE_ENABLED,
     messageType: SettingName.NETWORK_BODY_CAPTURE,
     default: true
   },
   {
     id: 'toggle-action-toasts',
-    storageKey: 'actionToastsEnabled',
+    storageKey: StorageKey.ACTION_TOASTS_ENABLED,
     messageType: SettingName.ACTION_TOASTS,
     default: true
   },
   {
     id: 'toggle-subtitles',
-    storageKey: 'subtitlesEnabled',
+    storageKey: StorageKey.SUBTITLES_ENABLED,
     messageType: SettingName.SUBTITLES,
     default: true
   }

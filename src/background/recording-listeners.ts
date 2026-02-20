@@ -4,6 +4,7 @@
 // Deps are injected to avoid circular imports with recording.ts.
 
 import { scaleTimeout } from '../lib/timeouts'
+import { StorageKey } from '../lib/constants'
 import type { OffscreenRecordingStoppedMessage } from '../types/runtime-messages'
 
 const LOG = '[Gasoline REC]'
@@ -141,13 +142,13 @@ export function installRecordingListeners(deps: RecordingListenerDeps): void {
 
     // Read the stored return tab before closing the permission tab
     chrome.storage.local.get(
-      'gasoline_pending_mic_recording',
+      StorageKey.PENDING_MIC_RECORDING,
       (result: Record<string, { returnTabId?: number } | undefined>) => {
-        const returnTabId = result.gasoline_pending_mic_recording?.returnTabId
+        const returnTabId = result[StorageKey.PENDING_MIC_RECORDING]?.returnTabId
         console.log(
           LOG,
           'Pending mic recording intent:',
-          result.gasoline_pending_mic_recording,
+          result[StorageKey.PENDING_MIC_RECORDING],
           'returnTabId:',
           returnTabId
         )

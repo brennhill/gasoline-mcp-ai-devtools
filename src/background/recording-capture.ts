@@ -2,6 +2,7 @@
 // Extracted from recording.ts to separate media plumbing from recording lifecycle.
 
 import { scaleTimeout } from '../lib/timeouts'
+import { StorageKey } from '../lib/constants'
 
 const LOG = '[Gasoline REC]'
 
@@ -81,9 +82,9 @@ export async function requestRecordingGesture(
     })
     .catch(() => {})
 
-  await chrome.storage.local.set({ gasoline_pending_recording: { name, fps, audio, tabId: tab.id, url: tab.url } })
+  await chrome.storage.local.set({ [StorageKey.PENDING_RECORDING]: { name, fps, audio, tabId: tab.id, url: tab.url } })
   const gestureGranted = await waitForRecordingGesture(scaleTimeout(30000))
-  await chrome.storage.local.remove('gasoline_pending_recording')
+  await chrome.storage.local.remove(StorageKey.PENDING_RECORDING)
 
   if (!gestureGranted) {
     console.log(LOG, 'GESTURE_TIMEOUT: User did not click the Gasoline icon within 30s')

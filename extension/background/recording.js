@@ -10,6 +10,7 @@
 import * as index from './index.js';
 import { pingContentScript, waitForTabLoad } from './event-listeners.js';
 import { scaleTimeout } from '../lib/timeouts.js';
+import { StorageKey } from '../lib/constants.js';
 import { ensureOffscreenDocument, getStreamIdWithRecovery, requestRecordingGesture } from './recording-capture.js';
 import { installRecordingListeners } from './recording-listeners.js';
 const defaultState = {
@@ -29,7 +30,7 @@ let tabUpdateListener = null;
 // Clear stale recording state from previous session (e.g., browser crash during recording)
 if (typeof chrome !== 'undefined' && chrome.storage?.local?.remove) {
     console.log(LOG, 'Module loaded, clearing stale gasoline_recording from storage');
-    chrome.storage.local.remove('gasoline_recording').catch(() => { });
+    chrome.storage.local.remove(StorageKey.RECORDING).catch(() => { });
 }
 // =============================================================================
 // STATE QUERIES
@@ -55,7 +56,7 @@ async function clearRecordingState() {
         chrome.tabs.onUpdated.removeListener(tabUpdateListener);
         tabUpdateListener = null;
     }
-    await chrome.storage.local.remove('gasoline_recording');
+    await chrome.storage.local.remove(StorageKey.RECORDING);
 }
 // =============================================================================
 // LIFECYCLE — START
@@ -117,13 +118,13 @@ export async function startRecording(name, fps = 15, queryId = '', audio = '', f
             return { status: 'error', name: '', error: 'RECORD_START: No active tab found.' };
         }
         // Auto-enable tab tracking if not already tracked
-        const storage = await chrome.storage.local.get('trackedTabId');
-        console.log(LOG, 'Tracked tab:', { trackedTabId: storage.trackedTabId, willAutoTrack: !storage.trackedTabId });
-        if (!storage.trackedTabId) {
+        const storage = await chrome.storage.local.get(StorageKey.TRACKED_TAB_ID);
+        console.log(LOG, 'Tracked tab:', { trackedTabId: storage[StorageKey.TRACKED_TAB_ID], willAutoTrack: !storage[StorageKey.TRACKED_TAB_ID] });
+        if (!storage[StorageKey.TRACKED_TAB_ID]) {
             await chrome.storage.local.set({
-                trackedTabId: tab.id,
-                trackedTabUrl: tab.url ?? '',
-                trackedTabTitle: tab.title ?? ''
+                [StorageKey.TRACKED_TAB_ID]: tab.id,
+                [StorageKey.TRACKED_TAB_URL]: tab.url ?? '',
+                [StorageKey.TRACKED_TAB_TITLE]: tab.title ?? ''
             });
         }
         // Ensure content script is responsive (needed for toasts + watermark).
@@ -237,7 +238,7 @@ export async function startRecording(name, fps = 15, queryId = '', audio = '', f
         /* eslint-enable require-atomic-updates */
         // Persist state flag for popup sync
         await chrome.storage.local.set({
-            gasoline_recording: { active: true, name, startTime: Date.now() }
+            [StorageKey.RECORDING]: { active: true, name, startTime: Date.now() }
         });
         // Show "Recording started" toast (fades after 2s)
         chrome.tabs
@@ -290,7 +291,7 @@ export async function stopRecording(truncated = false) {
     if (!recordingState.active) {
         // Clean up stale storage in case of zombie recording state (e.g., service worker restarted)
         console.warn(LOG, 'STOP: No active recording in memory — cleaning up zombie storage');
-        chrome.storage.local.remove('gasoline_recording').catch(() => { });
+        chrome.storage.local.remove(StorageKey.RECORDING).catch(() => { });
         return { status: 'error', name: '', error: 'RECORD_STOP: No active recording.' };
     }
     const { tabId } = recordingState;

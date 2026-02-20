@@ -3,10 +3,6 @@
  * Docs: docs/features/feature/observe/index.md
  */
 /**
- * @fileoverview AI Web Pilot Toggle Module
- * Manages the AI Web Pilot feature toggle
- */
-/**
  * Initialize the AI Web Pilot toggle.
  * Read the current state from chrome.storage.local.
  */

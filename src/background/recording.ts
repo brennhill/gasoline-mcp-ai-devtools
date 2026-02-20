@@ -12,6 +12,7 @@
 import * as index from './index'
 import { pingContentScript, waitForTabLoad } from './event-listeners'
 import { scaleTimeout } from '../lib/timeouts'
+import { StorageKey } from '../lib/constants'
 import type { OffscreenRecordingStartedMessage, OffscreenRecordingStoppedMessage } from '../types/runtime-messages'
 import { ensureOffscreenDocument, getStreamIdWithRecovery, requestRecordingGesture } from './recording-capture'
 import { installRecordingListeners } from './recording-listeners'
@@ -52,7 +53,7 @@ let tabUpdateListener: ((tabId: number, changeInfo: { status?: string }) => void
 // Clear stale recording state from previous session (e.g., browser crash during recording)
 if (typeof chrome !== 'undefined' && chrome.storage?.local?.remove) {
   console.log(LOG, 'Module loaded, clearing stale gasoline_recording from storage')
-  chrome.storage.local.remove('gasoline_recording').catch(() => {})
+  chrome.storage.local.remove(StorageKey.RECORDING).catch(() => {})
 }
 
 // =============================================================================
@@ -83,7 +84,7 @@ async function clearRecordingState(): Promise<void> {
     chrome.tabs.onUpdated.removeListener(tabUpdateListener)
     tabUpdateListener = null
   }
-  await chrome.storage.local.remove('gasoline_recording')
+  await chrome.storage.local.remove(StorageKey.RECORDING)
 }
 
 // =============================================================================
@@ -157,13 +158,13 @@ export async function startRecording(
     }
 
     // Auto-enable tab tracking if not already tracked
-    const storage = await chrome.storage.local.get('trackedTabId')
-    console.log(LOG, 'Tracked tab:', { trackedTabId: storage.trackedTabId, willAutoTrack: !storage.trackedTabId })
-    if (!storage.trackedTabId) {
+    const storage = await chrome.storage.local.get(StorageKey.TRACKED_TAB_ID)
+    console.log(LOG, 'Tracked tab:', { trackedTabId: storage[StorageKey.TRACKED_TAB_ID], willAutoTrack: !storage[StorageKey.TRACKED_TAB_ID] })
+    if (!storage[StorageKey.TRACKED_TAB_ID]) {
       await chrome.storage.local.set({
-        trackedTabId: tab.id,
-        trackedTabUrl: tab.url ?? '',
-        trackedTabTitle: tab.title ?? ''
+        [StorageKey.TRACKED_TAB_ID]: tab.id,
+        [StorageKey.TRACKED_TAB_URL]: tab.url ?? '',
+        [StorageKey.TRACKED_TAB_TITLE]: tab.title ?? ''
       })
     }
 
@@ -286,7 +287,7 @@ export async function startRecording(
 
     // Persist state flag for popup sync
     await chrome.storage.local.set({
-      gasoline_recording: { active: true, name, startTime: Date.now() }
+      [StorageKey.RECORDING]: { active: true, name, startTime: Date.now() }
     })
 
     // Show "Recording started" toast (fades after 2s)
@@ -352,7 +353,7 @@ export async function stopRecording(truncated: boolean = false): Promise<{
   if (!recordingState.active) {
     // Clean up stale storage in case of zombie recording state (e.g., service worker restarted)
     console.warn(LOG, 'STOP: No active recording in memory — cleaning up zombie storage')
-    chrome.storage.local.remove('gasoline_recording').catch(() => {})
+    chrome.storage.local.remove(StorageKey.RECORDING).catch(() => {})
     return { status: 'error', name: '', error: 'RECORD_STOP: No active recording.' }
   }
 

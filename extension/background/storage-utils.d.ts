@@ -79,11 +79,11 @@ export declare function getStorageDiagnostics(): {
 };
 /**
  * Check if service worker was restarted (state version mismatch)
- * Returns true if state was lost/cleared (callback-based)
+ * Returns true if state was lost/cleared
  */
-export declare function wasServiceWorkerRestarted(callback: (wasRestarted: boolean) => void): void;
+export declare function wasServiceWorkerRestarted(): Promise<boolean>;
 /**
- * Mark the current state version (call on init) - callback-based
+ * Mark the current state version (call on init)
  */
-export declare function markStateVersion(callback?: () => void): void;
+export declare function markStateVersion(): Promise<void>;
 //# sourceMappingURL=storage-utils.d.ts.map

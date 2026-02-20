@@ -17,49 +17,6 @@ import { installMessageListener, broadcastTrackingState } from './message-handle
 import * as communication from './communication.js';
 import * as storageUtils from './storage-utils.js';
 // =============================================================================
-// PROMISE WRAPPERS FOR CHROME STORAGE APIs
-// =============================================================================
-/**
- * Promisified version of loadSavedSettings
- */
-function loadSavedSettingsAsync() {
-    return new Promise((resolve) => {
-        eventListeners.loadSavedSettings((settings) => resolve(settings));
-    });
-}
-/**
- * Promisified version of loadAiWebPilotState
- */
-function loadAiWebPilotStateAsync() {
-    return new Promise((resolve) => {
-        eventListeners.loadAiWebPilotState((enabled) => resolve(enabled));
-    });
-}
-/**
- * Promisified version of loadDebugModeState
- */
-function loadDebugModeStateAsync() {
-    return new Promise((resolve) => {
-        eventListeners.loadDebugModeState((enabled) => resolve(enabled));
-    });
-}
-/**
- * Promisified version of wasServiceWorkerRestarted
- */
-function wasServiceWorkerRestartedAsync() {
-    return new Promise((resolve) => {
-        storageUtils.wasServiceWorkerRestarted((wasRestarted) => resolve(wasRestarted));
-    });
-}
-/**
- * Promisified version of markStateVersion
- */
-function markStateVersionAsync() {
-    return new Promise((resolve) => {
-        storageUtils.markStateVersion(() => resolve());
-    });
-}
-// =============================================================================
 // STATE SETTERS (imported from index.ts)
 // =============================================================================
 // These are now exported from index.ts to properly mutate module state
@@ -85,16 +42,16 @@ export function initializeExtension() {
 async function initializeExtensionAsync() {
     try {
         // ============= STEP 1: Check service worker restart =============
-        const wasRestarted = await wasServiceWorkerRestartedAsync();
+        const wasRestarted = await storageUtils.wasServiceWorkerRestarted();
         if (wasRestarted) {
             console.warn('[Gasoline] Service worker restarted - ephemeral state cleared. ' +
                 'User preferences restored from persistent storage.');
             index.debugLog(index.DebugCategory.LIFECYCLE, 'Service worker restarted, ephemeral state recovered');
         }
         // Mark the current state version
-        await markStateVersionAsync();
+        await storageUtils.markStateVersion();
         // ============= STEP 2: Load debug mode =============
-        const debugEnabled = await loadDebugModeStateAsync();
+        const debugEnabled = await eventListeners.loadDebugModeState();
         setDebugMode(debugEnabled);
         if (debugEnabled) {
             console.log('[Gasoline] Debug mode enabled on startup');
@@ -102,7 +59,7 @@ async function initializeExtensionAsync() {
         // ============= STEP 3: Install startup listener =============
         eventListeners.installStartupListener((msg) => console.log(msg));
         // ============= STEP 4: Load AI Web Pilot state =============
-        const aiPilotEnabled = await loadAiWebPilotStateAsync();
+        const aiPilotEnabled = await eventListeners.loadAiWebPilotState();
         setAiWebPilotEnabledCache(aiPilotEnabled);
         setAiWebPilotCacheInitialized(true);
         console.log('[Gasoline] Storage value:', aiPilotEnabled, '| Cache value:', index.__aiWebPilotEnabledCache);
@@ -112,7 +69,7 @@ async function initializeExtensionAsync() {
             setPilotInitCallback(null);
         }
         // ============= STEP 5: Load saved settings =============
-        const settings = await loadSavedSettingsAsync();
+        const settings = await eventListeners.loadSavedSettings();
         setServerUrl(settings.serverUrl || index.DEFAULT_SERVER_URL);
         setCurrentLogLevel('all');
         setScreenshotOnError(settings.screenshotOnError !== false);

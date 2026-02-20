@@ -3,6 +3,7 @@
  * Docs: docs/features/feature/interact-explore/index.md
  * Docs: docs/features/feature/query-dom/index.md
  */
+import { StorageKey } from '../lib/constants.js';
 // Whether this content script's tab is the currently tracked tab
 let isTrackedTab = false;
 // The tab ID of this content script's tab
@@ -13,7 +14,7 @@ let currentTabId = null;
  */
 export async function updateTrackingStatus() {
     try {
-        const storage = await chrome.storage.local.get(['trackedTabId']);
+        const storage = await chrome.storage.local.get([StorageKey.TRACKED_TAB_ID]);
         // Request tab ID from background script (content scripts can't access chrome.tabs)
         const response = (await chrome.runtime.sendMessage({ type: 'GET_TAB_ID' }));
         currentTabId = response?.tabId ?? null;
@@ -46,7 +47,7 @@ export function initTabTracking(onChange) {
         onChange?.(isTrackedTab);
     });
     chrome.storage.onChanged.addListener(async (changes) => {
-        if (changes.trackedTabId) {
+        if (changes[StorageKey.TRACKED_TAB_ID]) {
             await updateTrackingStatus();
             onChange?.(isTrackedTab);
         }
