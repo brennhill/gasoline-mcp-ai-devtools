@@ -5,6 +5,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"strings"
 	"time"
 
 	act "github.com/dev-console/dev-console/internal/tools/interact"
@@ -300,14 +301,18 @@ func (h *ToolHandler) handleRunA11yAndExportSARIF(req JSONRPCRequest, args json.
 		return workflowResult(req, "run_a11y_and_export_sarif", trace, a11yResp, workflowStart)
 	}
 
-	// Step 2: Export as SARIF
-	sarifArgs, _ := json.Marshal(map[string]any{
-		"format":  "sarif",
+	// Step 2: Export as SARIF, reusing the successful a11y result to avoid
+	// a second blocking accessibility query inside generate(sarif).
+	sarifParams := map[string]any{
 		"scope":   params.Scope,
 		"save_to": params.SaveTo,
-	})
+	}
+	if a11yResult := extractMCPResponseJSONPayload(a11yResp); len(a11yResult) > 0 {
+		sarifParams["a11y_result"] = a11yResult
+	}
+	sarifArgs, _ := json.Marshal(sarifParams)
 	stepStart = time.Now()
-	sarifResp := h.toolGenerate(req, sarifArgs)
+	sarifResp := h.toolExportSARIF(req, sarifArgs)
 	trace = append(trace, WorkflowStep{
 		Action:   "generate_sarif",
 		Status:   responseStatus(sarifResp),
@@ -315,6 +320,26 @@ func (h *ToolHandler) handleRunA11yAndExportSARIF(req JSONRPCRequest, args json.
 	})
 
 	return workflowResult(req, "run_a11y_and_export_sarif", trace, sarifResp, workflowStart)
+}
+
+// extractMCPResponseJSONPayload extracts the JSON payload from the first content
+// block of an MCP tool response.
+func extractMCPResponseJSONPayload(resp JSONRPCResponse) json.RawMessage {
+	var result MCPToolResult
+	if err := json.Unmarshal(resp.Result, &result); err != nil || len(result.Content) == 0 {
+		return nil
+	}
+
+	text := strings.TrimSpace(result.Content[0].Text)
+	jsonStart := strings.IndexAny(text, "{[")
+	if jsonStart < 0 {
+		return nil
+	}
+	payload := strings.TrimSpace(text[jsonStart:])
+	if !json.Valid([]byte(payload)) {
+		return nil
+	}
+	return json.RawMessage(payload)
 }
 
 // ---- Workflow helpers — delegated to internal/tools/interact package ----

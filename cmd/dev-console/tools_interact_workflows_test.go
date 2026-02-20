@@ -5,8 +5,13 @@ package main
 
 import (
 	"encoding/json"
+	"net/http/httptest"
 	"strings"
+	"sync/atomic"
 	"testing"
+	"time"
+
+	"github.com/dev-console/dev-console/internal/capture"
 )
 
 // ============================================
@@ -186,5 +191,73 @@ func TestRunA11yAndExportSARIF_ValidParams(t *testing.T) {
 	var result map[string]any
 	if err := json.Unmarshal(resp.Result, &result); err != nil {
 		t.Fatalf("failed to unmarshal result: %v", err)
+	}
+}
+
+func TestRunA11yAndExportSARIF_ReusesAnalyzePayload(t *testing.T) {
+	t.Parallel()
+	h, _, cap := makeToolHandler(t)
+	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`)}
+
+	cap.UpdateExtensionStatus(capture.ExtensionStatus{
+		TrackingEnabled: true,
+		TrackedTabID:    42,
+		TrackedTabURL:   "https://example.com",
+	})
+
+	syncReq := httptest.NewRequest("POST", "/sync", strings.NewReader(`{"ext_session_id":"test"}`))
+	syncReq.Header.Set("X-Gasoline-Client", "test-client")
+	cap.HandleSync(httptest.NewRecorder(), syncReq)
+
+	var a11yQueryCount int32
+	stop := make(chan struct{})
+	t.Cleanup(func() { close(stop) })
+
+	go func() {
+		ticker := time.NewTicker(5 * time.Millisecond)
+		defer ticker.Stop()
+
+		result := json.RawMessage(`{
+			"violations": [{
+				"id": "color-contrast",
+				"impact": "serious",
+				"description": "contrast issue",
+				"help": "fix contrast",
+				"helpUrl": "https://example.com/rule",
+				"nodes": [{"target": ["body"]}]
+			}],
+			"passes": [],
+			"incomplete": [],
+			"inapplicable": []
+		}`)
+
+		for {
+			select {
+			case <-stop:
+				return
+			case <-ticker.C:
+				for _, q := range cap.GetPendingQueries() {
+					if q.Type != "a11y" {
+						continue
+					}
+					atomic.AddInt32(&a11yQueryCount, 1)
+					cap.SetQueryResult(q.ID, result)
+				}
+			}
+		}
+	}()
+
+	args, _ := json.Marshal(map[string]any{
+		"scope": "body",
+	})
+
+	resp := h.handleRunA11yAndExportSARIF(req, args)
+	toolResult := parseToolResult(t, resp)
+	if toolResult.IsError {
+		t.Fatalf("workflow should succeed, got error: %s", toolResult.Content[0].Text)
+	}
+
+	if got := atomic.LoadInt32(&a11yQueryCount); got != 1 {
+		t.Fatalf("expected exactly 1 a11y query, got %d", got)
 	}
 }

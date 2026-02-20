@@ -627,14 +627,49 @@ export function domPrimitive(action, selector, options) {
             }),
             get_text: () => {
                 const text = node instanceof HTMLElement ? node.innerText : node.textContent;
+                if (text == null) {
+                    return {
+                        success: true,
+                        action,
+                        selector,
+                        value: null,
+                        reason: 'no_text_content',
+                        message: `Element text content is null: ${node.tagName}`
+                    };
+                }
                 return { success: true, action, selector, value: text };
             },
             get_value: () => {
                 if (!('value' in node))
                     return domError('no_value_property', `Element has no value property: ${node.tagName}`);
-                return { success: true, action, selector, value: node.value };
+                const value = node.value;
+                if (value == null) {
+                    return {
+                        success: true,
+                        action,
+                        selector,
+                        value: null,
+                        reason: 'no_value',
+                        message: `Element value is null: ${node.tagName}`
+                    };
+                }
+                return { success: true, action, selector, value };
             },
-            get_attribute: () => ({ success: true, action, selector, value: node.getAttribute(options.name || '') }),
+            get_attribute: () => {
+                const attrName = options.name || '';
+                const value = node.getAttribute(attrName);
+                if (value === null) {
+                    return {
+                        success: true,
+                        action,
+                        selector,
+                        value: null,
+                        reason: 'attribute_not_found',
+                        message: `Attribute '${attrName}' not present on ${node.tagName}`
+                    };
+                }
+                return { success: true, action, selector, value };
+            },
             set_attribute: () => withMutationTracking(() => {
                 node.setAttribute(options.name || '', options.value || '');
                 return { success: true, action, selector, value: node.getAttribute(options.name || '') };

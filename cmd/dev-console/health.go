@@ -107,13 +107,14 @@ func (hm *HealthMetrics) GetUptime() time.Duration {
 // MCPHealthResponse is the response structure for the get_health MCP tool.
 // Named to distinguish from the simpler HealthResponse used by /health HTTP endpoint.
 type MCPHealthResponse struct {
-	Server       ServerInfo       `json:"server"`
-	Memory       MemoryInfo       `json:"memory"`
-	Buffers      BuffersInfo      `json:"buffers"`
-	RateLimiting RateLimitingInfo `json:"rate_limiting"`
-	Audit        AuditInfo        `json:"audit"`
-	Pilot        PilotInfo        `json:"pilot"`
-	Upgrade      *UpgradeInfo     `json:"upgrade,omitempty"`
+	Server           ServerInfo           `json:"server"`
+	Memory           MemoryInfo           `json:"memory"`
+	Buffers          BuffersInfo          `json:"buffers"`
+	RateLimiting     RateLimitingInfo     `json:"rate_limiting"`
+	Audit            AuditInfo            `json:"audit"`
+	Pilot            PilotInfo            `json:"pilot"`
+	CommandExecution CommandExecutionInfo `json:"command_execution"`
+	Upgrade          *UpgradeInfo         `json:"upgrade,omitempty"`
 }
 
 // UpgradeInfo contains binary upgrade detection state.
@@ -196,12 +197,13 @@ type PilotInfo struct {
 // This is called on-demand when the get_health tool is invoked.
 func (hm *HealthMetrics) GetHealth(cap *capture.Capture, server *Server, ver string) MCPHealthResponse {
 	resp := MCPHealthResponse{
-		Server:       hm.buildServerInfo(ver),
-		Memory:       buildMemoryInfo(cap),
-		Buffers:      buildBuffersInfo(cap, server),
-		RateLimiting: buildRateLimitInfo(cap),
-		Audit:        hm.buildAuditInfo(),
-		Pilot:        buildPilotInfo(cap),
+		Server:           hm.buildServerInfo(ver),
+		Memory:           buildMemoryInfo(cap),
+		Buffers:          buildBuffersInfo(cap, server),
+		RateLimiting:     buildRateLimitInfo(cap),
+		Audit:            hm.buildAuditInfo(),
+		Pilot:            buildPilotInfo(cap),
+		CommandExecution: buildCommandExecutionInfo(cap),
 	}
 	if info := buildUpgradeInfo(); info != nil {
 		resp.Upgrade = info
