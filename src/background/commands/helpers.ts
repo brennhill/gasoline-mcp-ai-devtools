@@ -190,7 +190,9 @@ const TARGETED_QUERY_TYPES = new Set<string>([
   'record_start',
   'execute',
   'link_health',
-  'draw_mode'
+  'draw_mode',
+  'computed_styles',
+  'form_discovery'
 ])
 
 export function requiresTargetTab(queryType: string): boolean {

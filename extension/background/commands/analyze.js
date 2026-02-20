@@ -360,6 +360,42 @@ registerCommand('link_health', async (ctx) => {
     }
 });
 // =============================================================================
+// COMPUTED STYLES
+// =============================================================================
+registerCommand('computed_styles', async (ctx) => {
+    try {
+        const result = await chrome.tabs.sendMessage(ctx.tabId, {
+            type: 'COMPUTED_STYLES_QUERY',
+            params: ctx.query.params
+        });
+        ctx.sendResult(result);
+    }
+    catch (err) {
+        ctx.sendResult({
+            error: 'computed_styles_failed',
+            message: err.message || 'Computed styles query failed'
+        });
+    }
+});
+// =============================================================================
+// FORM DISCOVERY
+// =============================================================================
+registerCommand('form_discovery', async (ctx) => {
+    try {
+        const result = await chrome.tabs.sendMessage(ctx.tabId, {
+            type: 'FORM_DISCOVERY_QUERY',
+            params: ctx.query.params
+        });
+        ctx.sendResult(result);
+    }
+    catch (err) {
+        ctx.sendResult({
+            error: 'form_discovery_failed',
+            message: err.message || 'Form discovery failed'
+        });
+    }
+});
+// =============================================================================
 // DRAW MODE
 // =============================================================================
 registerCommand('draw_mode', async (ctx) => {

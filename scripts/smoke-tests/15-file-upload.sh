@@ -121,6 +121,7 @@ _upload_and_poll() {
             log_diagnostic "$test_id" "poll error" "$poll_text" ""
             return
         fi
+        UPLOAD_FINAL_TEXT="$poll_text"
     done
 }
 
@@ -134,7 +135,7 @@ _fetch_last_upload_via_browser() {
     LAST_UPLOAD_COOKIE_OK=""
     LAST_UPLOAD_RAW=""
 
-    interact_and_wait "execute_js" '{"action":"execute_js","reason":"Fetch last upload from server API","script":"fetch(\"/api/last-upload\").then(r=>r.json()).then(d=>JSON.stringify(d))"}'
+    interact_and_wait "execute_js" '{"action":"execute_js","reason":"Fetch last upload from server API","script":"fetch(\"/api/last-upload\").then(r=>r.json()).then(d=>JSON.stringify(d)).catch(e=>JSON.stringify({error:e.message}))"}'
     LAST_UPLOAD_RAW="$INTERACT_RESULT"
 
     # Extract fields from nested command result JSON:
@@ -816,12 +817,19 @@ _upload_and_poll_stage4() {
             log_diagnostic "$test_id" "poll complete" "$poll_text" ""
             return
         fi
-        if echo "$poll_text" | grep -q '"status":"failed"\|"status":"error"'; then
+        if echo "$poll_text" | grep -q '"status":"failed"'; then
             UPLOAD_FINAL_STATUS="failed"
             UPLOAD_FINAL_TEXT="$poll_text"
             log_diagnostic "$test_id" "poll failed" "$poll_text" ""
             return
         fi
+        if echo "$poll_text" | grep -q '"status":"error"'; then
+            UPLOAD_FINAL_STATUS="error"
+            UPLOAD_FINAL_TEXT="$poll_text"
+            log_diagnostic "$test_id" "poll error" "$poll_text" ""
+            return
+        fi
+        UPLOAD_FINAL_TEXT="$poll_text"
     done
 }
 

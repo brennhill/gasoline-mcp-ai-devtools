@@ -10,6 +10,8 @@ import type { BrowserStateSnapshot } from '../types/index'
 
 import { executeDOMQuery, runAxeAuditWithTimeout, type DOMQueryParams } from '../lib/dom-queries'
 import { checkLinkHealth } from '../lib/link-health'
+import { queryComputedStyles } from './computed-styles'
+import { discoverForms } from './form-discovery'
 import { getNetworkWaterfall } from '../lib/network'
 
 import { executeJavaScript } from './execute-js'
@@ -91,6 +93,24 @@ interface LinkHealthQueryRequestMessageData {
 }
 
 /**
+ * Computed styles query request message from content script
+ */
+interface ComputedStylesQueryRequestMessageData {
+  type: 'GASOLINE_COMPUTED_STYLES_QUERY'
+  requestId: number | string
+  params?: Record<string, unknown>
+}
+
+/**
+ * Form discovery query request message from content script
+ */
+interface FormDiscoveryQueryRequestMessageData {
+  type: 'GASOLINE_FORM_DISCOVERY_QUERY'
+  requestId: number | string
+  params?: Record<string, unknown>
+}
+
+/**
  * Union of all page message data types
  */
 type PageMessageData =
@@ -102,6 +122,8 @@ type PageMessageData =
   | HighlightRequestMessageData
   | GetWaterfallRequestMessageData
   | LinkHealthQueryRequestMessageData
+  | ComputedStylesQueryRequestMessageData
+  | FormDiscoveryQueryRequestMessageData
 
 /**
  * Handle link health check request from content script
@@ -159,7 +181,9 @@ export function installMessageListener(
     GASOLINE_A11Y_QUERY: (data) => handleA11yQuery(data as A11yQueryRequestMessageData),
     GASOLINE_DOM_QUERY: (data) => handleDomQuery(data as DomQueryRequestMessageData),
     GASOLINE_GET_WATERFALL: (data) => handleGetWaterfall(data as GetWaterfallRequestMessageData),
-    GASOLINE_LINK_HEALTH_QUERY: (data) => handleLinkHealthMessage(data as LinkHealthQueryRequestMessageData)
+    GASOLINE_LINK_HEALTH_QUERY: (data) => handleLinkHealthMessage(data as LinkHealthQueryRequestMessageData),
+    GASOLINE_COMPUTED_STYLES_QUERY: (data) => handleComputedStylesMessage(data as ComputedStylesQueryRequestMessageData),
+    GASOLINE_FORM_DISCOVERY_QUERY: (data) => handleFormDiscoveryMessage(data as FormDiscoveryQueryRequestMessageData)
   }
 
   window.addEventListener('message', (event: MessageEvent<PageMessageData>) => {
@@ -172,6 +196,60 @@ export function installMessageListener(
     const handler = messageHandlers[msgType] // nosemgrep: unsafe-dynamic-method
     if (handler) handler(event.data)
   })
+}
+
+function handleComputedStylesMessage(data: ComputedStylesQueryRequestMessageData): void {
+  try {
+    const params = (data.params || {}) as { selector?: string; properties?: string[] }
+    const result = queryComputedStyles({
+      selector: params.selector || '*',
+      properties: params.properties
+    })
+    window.postMessage(
+      {
+        type: 'GASOLINE_COMPUTED_STYLES_RESPONSE',
+        requestId: data.requestId,
+        result: { elements: result, count: result.length }
+      },
+      window.location.origin
+    )
+  } catch (err) {
+    window.postMessage(
+      {
+        type: 'GASOLINE_COMPUTED_STYLES_RESPONSE',
+        requestId: data.requestId,
+        result: { error: 'computed_styles_error', message: (err as Error).message || 'Failed to query computed styles' }
+      },
+      window.location.origin
+    )
+  }
+}
+
+function handleFormDiscoveryMessage(data: FormDiscoveryQueryRequestMessageData): void {
+  try {
+    const params = (data.params || {}) as { selector?: string; mode?: string }
+    const result = discoverForms({
+      selector: params.selector,
+      mode: params.mode === 'validate' ? 'validate' : 'discover'
+    })
+    window.postMessage(
+      {
+        type: 'GASOLINE_FORM_DISCOVERY_RESPONSE',
+        requestId: data.requestId,
+        result: { forms: result, count: result.length }
+      },
+      window.location.origin
+    )
+  } catch (err) {
+    window.postMessage(
+      {
+        type: 'GASOLINE_FORM_DISCOVERY_RESPONSE',
+        requestId: data.requestId,
+        result: { error: 'form_discovery_error', message: (err as Error).message || 'Failed to discover forms' }
+      },
+      window.location.origin
+    )
+  }
 }
 
 function handleExecuteJs(data: ExecuteJsRequestMessageData): void {

@@ -139,7 +139,7 @@ class UploadHandler(http.server.BaseHTTPRequestHandler):
         if path == "/upload":
             session = self._get_session()
             if not session:
-                self._send_html(401, "<h1>401 Not logged in</h1><p>Visit / first to get a session cookie.</p>")
+                self._send_html(401, "<!DOCTYPE html><html><head><title>401 Not Logged In</title></head><body><h1>401 Not logged in</h1><p>Visit / first to get a session cookie.</p></body></html>")
                 return
 
             # Generate CSRF token for this session
@@ -173,7 +173,7 @@ class UploadHandler(http.server.BaseHTTPRequestHandler):
         if path == "/upload/hardened":
             session = self._get_session()
             if not session:
-                self._send_html(401, "<h1>401 Not logged in</h1><p>Visit / first to get a session cookie.</p>")
+                self._send_html(401, "<!DOCTYPE html><html><head><title>401 Not Logged In</title></head><body><h1>401 Not logged in</h1><p>Visit / first to get a session cookie.</p></body></html>")
                 return
 
             # Generate CSRF token for this session (same as standard form)
@@ -201,7 +201,7 @@ class UploadHandler(http.server.BaseHTTPRequestHandler):
         if path == "/upload/hardened-addeventlistener":
             session = self._get_session()
             if not session:
-                self._send_html(401, "<h1>401 Not logged in</h1><p>Visit / first to get a session cookie.</p>")
+                self._send_html(401, "<!DOCTYPE html><html><head><title>401 Not Logged In</title></head><body><h1>401 Not logged in</h1><p>Visit / first to get a session cookie.</p></body></html>")
                 return
 
             token = hashlib.sha256(f"{session}-{time.time()}".encode()).hexdigest()[:32]
@@ -254,21 +254,21 @@ document.getElementById('file-input').addEventListener('change', function(event)
             self._send_json(200, last_upload if last_upload else {"error": "no uploads yet"})
             return
 
-        self._send_html(404, "<h1>404 Not Found</h1>")
+        self._send_html(404, "<!DOCTYPE html><html><head><title>404 Not Found</title></head><body><h1>404 Not Found</h1></body></html>")
 
     def do_POST(self):
         global last_upload, upload_counter
 
         parsed = urllib.parse.urlparse(self.path)
         if parsed.path != "/upload":
-            self._send_html(404, "<h1>404 Not Found</h1>")
+            self._send_html(404, "<!DOCTYPE html><html><head><title>404 Not Found</title></head><body><h1>404 Not Found</h1></body></html>")
             return
 
         # Check session cookie
         session = self._get_session()
         cookie_ok = session is not None
         if not cookie_ok:
-            self._send_html(401, "<h1>401 Not logged in</h1><p>Session cookie required.</p>")
+            self._send_html(401, "<!DOCTYPE html><html><head><title>401 Not Logged In</title></head><body><h1>401 Not logged in</h1><p>Session cookie required.</p></body></html>")
             return
 
         # Read body

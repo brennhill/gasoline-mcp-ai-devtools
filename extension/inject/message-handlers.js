@@ -1,6 +1,8 @@
 // message-handlers.ts — Message dispatch from content script to inject-context handlers.
 import { executeDOMQuery, runAxeAuditWithTimeout } from '../lib/dom-queries.js';
 import { checkLinkHealth } from '../lib/link-health.js';
+import { queryComputedStyles } from './computed-styles.js';
+import { discoverForms } from './form-discovery.js';
 import { getNetworkWaterfall } from '../lib/network.js';
 import { executeJavaScript } from './execute-js.js';
 import { isValidSettingPayload, handleSetting, handleStateCommand } from './settings.js';
@@ -60,7 +62,9 @@ export function installMessageListener(captureStateFn, restoreStateFn) {
         GASOLINE_A11Y_QUERY: (data) => handleA11yQuery(data),
         GASOLINE_DOM_QUERY: (data) => handleDomQuery(data),
         GASOLINE_GET_WATERFALL: (data) => handleGetWaterfall(data),
-        GASOLINE_LINK_HEALTH_QUERY: (data) => handleLinkHealthMessage(data)
+        GASOLINE_LINK_HEALTH_QUERY: (data) => handleLinkHealthMessage(data),
+        GASOLINE_COMPUTED_STYLES_QUERY: (data) => handleComputedStylesMessage(data),
+        GASOLINE_FORM_DISCOVERY_QUERY: (data) => handleFormDiscoveryMessage(data)
     };
     window.addEventListener('message', (event) => {
         if (event.source !== window || event.origin !== window.location.origin)
@@ -74,6 +78,48 @@ export function installMessageListener(captureStateFn, restoreStateFn) {
         if (handler)
             handler(event.data);
     });
+}
+function handleComputedStylesMessage(data) {
+    try {
+        const params = (data.params || {});
+        const result = queryComputedStyles({
+            selector: params.selector || '*',
+            properties: params.properties
+        });
+        window.postMessage({
+            type: 'GASOLINE_COMPUTED_STYLES_RESPONSE',
+            requestId: data.requestId,
+            result: { elements: result, count: result.length }
+        }, window.location.origin);
+    }
+    catch (err) {
+        window.postMessage({
+            type: 'GASOLINE_COMPUTED_STYLES_RESPONSE',
+            requestId: data.requestId,
+            result: { error: 'computed_styles_error', message: err.message || 'Failed to query computed styles' }
+        }, window.location.origin);
+    }
+}
+function handleFormDiscoveryMessage(data) {
+    try {
+        const params = (data.params || {});
+        const result = discoverForms({
+            selector: params.selector,
+            mode: params.mode === 'validate' ? 'validate' : 'discover'
+        });
+        window.postMessage({
+            type: 'GASOLINE_FORM_DISCOVERY_RESPONSE',
+            requestId: data.requestId,
+            result: { forms: result, count: result.length }
+        }, window.location.origin);
+    }
+    catch (err) {
+        window.postMessage({
+            type: 'GASOLINE_FORM_DISCOVERY_RESPONSE',
+            requestId: data.requestId,
+            result: { error: 'form_discovery_error', message: err.message || 'Failed to discover forms' }
+        }, window.location.origin);
+    }
 }
 function handleExecuteJs(data) {
     const { requestId, script, timeoutMs } = data;

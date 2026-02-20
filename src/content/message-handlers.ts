@@ -367,6 +367,108 @@ export function handleGetNetworkWaterfall(sendResponse: (result: { entries: Wate
 }
 
 /**
+ * Handle COMPUTED_STYLES_QUERY message
+ */
+export function handleComputedStylesQuery(
+  params: string | Record<string, unknown>,
+  sendResponse: (result: unknown) => void
+): boolean {
+  let parsedParams: Record<string, unknown> = {}
+  if (typeof params === 'string') {
+    try {
+      parsedParams = JSON.parse(params)
+    } catch {
+      parsedParams = {}
+    }
+  } else if (typeof params === 'object') {
+    parsedParams = params
+  }
+
+  const requestId = Date.now()
+  const deferred = createDeferredPromise<unknown>()
+
+  const responseHandler = (event: MessageEvent<{ type?: string; result?: unknown }>) => {
+    if (event.source !== window) return
+    if (event.data?.type === 'GASOLINE_COMPUTED_STYLES_RESPONSE') {
+      window.removeEventListener('message', responseHandler)
+      deferred.resolve(event.data.result || { error: 'No result from computed styles query' })
+    }
+  }
+
+  window.addEventListener('message', responseHandler)
+
+  postToInject({
+    type: 'GASOLINE_COMPUTED_STYLES_QUERY',
+    requestId,
+    params: parsedParams
+  })
+
+  promiseRaceWithCleanup(deferred.promise, ASYNC_COMMAND_TIMEOUT_MS, { error: 'Computed styles query timeout' }, () => {
+    window.removeEventListener('message', responseHandler)
+  }).then(
+    (result) => {
+      sendResponse(result)
+    },
+    () => {
+      sendResponse({ error: 'Computed styles query failed' })
+    }
+  )
+
+  return true
+}
+
+/**
+ * Handle FORM_DISCOVERY_QUERY message
+ */
+export function handleFormDiscoveryQuery(
+  params: string | Record<string, unknown>,
+  sendResponse: (result: unknown) => void
+): boolean {
+  let parsedParams: Record<string, unknown> = {}
+  if (typeof params === 'string') {
+    try {
+      parsedParams = JSON.parse(params)
+    } catch {
+      parsedParams = {}
+    }
+  } else if (typeof params === 'object') {
+    parsedParams = params
+  }
+
+  const requestId = Date.now()
+  const deferred = createDeferredPromise<unknown>()
+
+  const responseHandler = (event: MessageEvent<{ type?: string; result?: unknown }>) => {
+    if (event.source !== window) return
+    if (event.data?.type === 'GASOLINE_FORM_DISCOVERY_RESPONSE') {
+      window.removeEventListener('message', responseHandler)
+      deferred.resolve(event.data.result || { error: 'No result from form discovery' })
+    }
+  }
+
+  window.addEventListener('message', responseHandler)
+
+  postToInject({
+    type: 'GASOLINE_FORM_DISCOVERY_QUERY',
+    requestId,
+    params: parsedParams
+  })
+
+  promiseRaceWithCleanup(deferred.promise, ASYNC_COMMAND_TIMEOUT_MS, { error: 'Form discovery timeout' }, () => {
+    window.removeEventListener('message', responseHandler)
+  }).then(
+    (result) => {
+      sendResponse(result)
+    },
+    () => {
+      sendResponse({ error: 'Form discovery failed' })
+    }
+  )
+
+  return true
+}
+
+/**
  * Handle LINK_HEALTH_QUERY message
  */
 export function handleLinkHealthQuery(

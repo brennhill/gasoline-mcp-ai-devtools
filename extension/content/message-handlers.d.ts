@@ -88,6 +88,14 @@ export declare function handleGetNetworkWaterfall(sendResponse: (result: {
     entries: WaterfallEntry[];
 }) => void): boolean;
 /**
+ * Handle COMPUTED_STYLES_QUERY message
+ */
+export declare function handleComputedStylesQuery(params: string | Record<string, unknown>, sendResponse: (result: unknown) => void): boolean;
+/**
+ * Handle FORM_DISCOVERY_QUERY message
+ */
+export declare function handleFormDiscoveryQuery(params: string | Record<string, unknown>, sendResponse: (result: unknown) => void): boolean;
+/**
  * Handle LINK_HEALTH_QUERY message
  */
 export declare function handleLinkHealthQuery(params: string | Record<string, unknown>, sendResponse: (result: unknown) => void): boolean;

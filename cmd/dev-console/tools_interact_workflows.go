@@ -194,6 +194,81 @@ func (h *ToolHandler) handleFillFormAndSubmit(req JSONRPCRequest, args json.RawM
 	return workflowResult(req, "fill_form_and_submit", trace, clickResp, workflowStart)
 }
 
+// handleFillForm fills multiple form fields without submitting.
+func (h *ToolHandler) handleFillForm(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+	var params struct {
+		Fields    []FormField `json:"fields"`
+		TabID     int         `json:"tab_id,omitempty"`
+		TimeoutMs int         `json:"timeout_ms,omitempty"`
+	}
+	if err := json.Unmarshal(args, &params); err != nil {
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidJSON, "Invalid JSON arguments: "+err.Error(), "Fix JSON syntax and call again")}
+	}
+	if len(params.Fields) == 0 {
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrMissingParam, "Required parameter 'fields' is empty", "Provide at least one {selector, value} field entry", withParam("fields"))}
+	}
+	if params.TimeoutMs <= 0 {
+		params.TimeoutMs = 15_000
+	}
+
+	trace := make([]WorkflowStep, 0, len(params.Fields))
+	workflowStart := time.Now()
+
+	// Fill each field
+	for i, field := range params.Fields {
+		if field.Selector == "" && field.Index == nil {
+			trace = append(trace, WorkflowStep{
+				Action: fmt.Sprintf("type[%d]", i),
+				Status: "error",
+				Detail: "Missing selector and index",
+			})
+			return workflowResult(req, "fill_form", trace,
+				JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(
+					ErrMissingParam,
+					fmt.Sprintf("Field %d missing 'selector' or 'index'", i),
+					"Each field needs a 'selector' or 'index'",
+					withParam("fields"),
+				)}, workflowStart)
+		}
+
+		typeArgs := map[string]any{
+			"action": "type",
+			"text":   field.Value,
+			"clear":  true,
+			"tab_id": params.TabID,
+		}
+		if field.Index != nil {
+			typeArgs["index"] = *field.Index
+		} else {
+			typeArgs["selector"] = field.Selector
+		}
+		argsJSON, _ := json.Marshal(typeArgs)
+
+		stepStart := time.Now()
+		typeResp := h.handleDOMPrimitive(req, argsJSON, "type")
+		selectorLabel := field.Selector
+		if field.Index != nil {
+			selectorLabel = fmt.Sprintf("index:%d", *field.Index)
+		}
+		trace = append(trace, WorkflowStep{
+			Action:   fmt.Sprintf("type[%d]", i),
+			Status:   responseStatus(typeResp),
+			TimingMs: time.Since(stepStart).Milliseconds(),
+			Detail:   selectorLabel,
+		})
+		if isErrorResponse(typeResp) {
+			return workflowResult(req, "fill_form", trace, typeResp, workflowStart)
+		}
+	}
+
+	// Return the last type response (no submit step)
+	lastResp := JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Form filled", map[string]any{
+		"status":       "filled",
+		"fields_count": len(params.Fields),
+	})}
+	return workflowResult(req, "fill_form", trace, lastResp, workflowStart)
+}
+
 // handleRunA11yAndExportSARIF runs accessibility audit then exports SARIF in one call.
 func (h *ToolHandler) handleRunA11yAndExportSARIF(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	var params struct {
