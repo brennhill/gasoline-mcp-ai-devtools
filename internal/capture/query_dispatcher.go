@@ -1,98 +1,18 @@
-// Purpose: Owns query_dispatcher.go runtime behavior and integration logic.
-// Docs: docs/features/feature/backend-log-streaming/index.md
-
-// query_dispatcher.go — Query lifecycle, result storage, and async command tracking.
-// Extracted from the Capture god object. Owns its own sync.Mutex (for pending queries
-// and condition variable) and sync.RWMutex (for async command results).
-// Zero cross-cutting dependencies.
+// query_dispatcher.go — Capture delegation methods for QueryDispatcher.
+// All query lifecycle, result storage, and async command tracking logic lives
+// in internal/queries/. This file provides thin delegation from (c *Capture)
+// methods to c.qd.* for backward compatibility.
 package capture
 
 import (
 	"encoding/json"
-	"sync"
 	"time"
 
 	"github.com/dev-console/dev-console/internal/queries"
 )
 
-// pendingQueryEntry tracks a pending query with timeout
-type pendingQueryEntry struct {
-	query    queries.PendingQueryResponse
-	expires  time.Time
-	clientID string // owning client for multi-client isolation
-}
-
-// queryResultEntry stores a query result with client ownership
-type queryResultEntry struct {
-	result    json.RawMessage
-	clientID  string // owning client for multi-client isolation
-	createdAt time.Time
-}
-
-// QueryDispatcher manages pending query queues, result storage, and async command tracking.
-// Owns two locks:
-//   - mu (sync.Mutex): protects pendingQueries, queryResults, queryCond, queryIDCounter, queryTimeout
-//   - resultsMu (sync.RWMutex): protects completedResults, failedCommands
-//
-// Lock ordering: mu released BEFORE resultsMu acquired (never reverse).
-type QueryDispatcher struct {
-	mu             sync.Mutex
-	pendingQueries []pendingQueryEntry
-	queryResults   map[string]queryResultEntry
-	queryCond      *sync.Cond
-	queryIDCounter int
-	queryTimeout   time.Duration
-
-	resultsMu        sync.RWMutex
-	completedResults map[string]*queries.CommandResult
-	failedCommands   []*queries.CommandResult
-	commandNotify    chan struct{} // closed on CompleteCommand, then recreated
-	queryNotify      chan struct{} // signaled when new pending queries are added
-
-	stopCleanup func()
-}
-
-// NewQueryDispatcher creates a QueryDispatcher with initialized state.
-func NewQueryDispatcher() *QueryDispatcher {
-	qd := &QueryDispatcher{
-		pendingQueries:   make([]pendingQueryEntry, 0),
-		queryResults:     make(map[string]queryResultEntry),
-		queryTimeout:     queries.DefaultQueryTimeout,
-		completedResults: make(map[string]*queries.CommandResult),
-		failedCommands:   make([]*queries.CommandResult, 0, 100),
-		commandNotify:    make(chan struct{}),
-		queryNotify:      make(chan struct{}, 1),
-	}
-	qd.queryCond = sync.NewCond(&qd.mu)
-	qd.stopCleanup = qd.startResultCleanup()
-	return qd
-}
-
-// Close stops background goroutines. Safe to call multiple times.
-func (qd *QueryDispatcher) Close() {
-	if qd.stopCleanup != nil {
-		qd.stopCleanup()
-		qd.stopCleanup = nil
-	}
-}
-
-// QuerySnapshot contains a point-in-time view of query state for health reporting.
-type QuerySnapshot struct {
-	PendingQueryCount int
-	QueryResultCount  int
-	QueryTimeout      time.Duration
-}
-
-// GetSnapshot returns a thread-safe snapshot of query state.
-func (qd *QueryDispatcher) GetSnapshot() QuerySnapshot {
-	qd.mu.Lock()
-	defer qd.mu.Unlock()
-	return QuerySnapshot{
-		PendingQueryCount: len(qd.pendingQueries),
-		QueryResultCount:  len(qd.queryResults),
-		QueryTimeout:      qd.queryTimeout,
-	}
-}
+// NewQueryDispatcher re-exports queries.NewQueryDispatcher for backward compatibility.
+var NewQueryDispatcher = queries.NewQueryDispatcher
 
 // ============================================================================
 // Capture delegation methods — preserve external API.

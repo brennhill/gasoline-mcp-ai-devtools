@@ -17,9 +17,8 @@ const (
 	MaxEnhancedActions = 1000
 	RateLimitThreshold = 1000
 
-	maxActiveConns    = 20
-	maxClosedConns    = 10
-	maxPendingQueries = 5
+	maxActiveConns = 20
+	maxClosedConns = 10
 
 	// Network waterfall capacity configuration
 	DefaultNetworkWaterfallCapacity = 1000
