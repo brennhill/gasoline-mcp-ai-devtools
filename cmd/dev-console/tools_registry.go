@@ -1,7 +1,5 @@
-// Purpose: Owns tools_registry.go runtime behavior and integration logic.
-// Docs: docs/core/arch_improvements.md
-//
 // tools_registry.go — Tool module interface and central module registry wiring.
+// Docs: docs/core/arch_improvements.md
 // This scaffolds plugin-style tool modules behind a shared contract while preserving
 // existing handler behavior during incremental migration.
 package main

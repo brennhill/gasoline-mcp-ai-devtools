@@ -1,7 +1,5 @@
-// Purpose: Owns cli_commands.go runtime behavior and integration logic.
-// Docs: docs/features/feature/observe/index.md
-
 // cli_commands.go — Argument parsers for CLI mode.
+// Docs: docs/features/feature/observe/index.md
 // Maps CLI flags to MCP tool arguments for observe, analyze, generate, configure, interact.
 package main
 

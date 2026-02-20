@@ -1,7 +1,5 @@
-// Purpose: Owns main_connection_stop.go runtime behavior and integration logic.
-// Docs: docs/features/feature/observe/index.md
-
 // main_connection_stop.go — Server stop and force cleanup operations.
+// Docs: docs/features/feature/observe/index.md
 package main
 
 import (

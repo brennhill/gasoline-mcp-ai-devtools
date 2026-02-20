@@ -7,8 +7,10 @@ import (
 	"testing"
 )
 
-// TestBridgeSpawnPathsSetDetachedProcess enforces that bridge daemon spawn paths
-// always detach child processes from the caller session.
+// TestBridgeSpawnPathsSetDetachedProcess enforces that the daemon command builder
+// always detaches child processes from the caller session.
+// Both spawnDaemonAsync and respawnIfNeeded delegate to buildDaemonCmd,
+// so we verify that buildDaemonCmd calls util.SetDetachedProcess.
 func TestBridgeSpawnPathsSetDetachedProcess(t *testing.T) {
 	t.Parallel()
 
@@ -18,44 +20,40 @@ func TestBridgeSpawnPathsSetDetachedProcess(t *testing.T) {
 		t.Fatalf("failed to parse bridge.go: %v", err)
 	}
 
-	required := map[string]bool{
-		"spawnDaemonAsync": false,
-		"respawnIfNeeded":  false,
-	}
-
+	var fn *ast.FuncDecl
 	for _, decl := range file.Decls {
-		fn, ok := decl.(*ast.FuncDecl)
-		if !ok {
-			continue
+		d, ok := decl.(*ast.FuncDecl)
+		if ok && d.Name.Name == "buildDaemonCmd" {
+			fn = d
+			break
 		}
-		if _, tracked := required[fn.Name.Name]; !tracked {
-			continue
-		}
-
-		ast.Inspect(fn.Body, func(n ast.Node) bool {
-			call, ok := n.(*ast.CallExpr)
-			if !ok {
-				return true
-			}
-			sel, ok := call.Fun.(*ast.SelectorExpr)
-			if !ok {
-				return true
-			}
-			pkgIdent, ok := sel.X.(*ast.Ident)
-			if !ok {
-				return true
-			}
-			if pkgIdent.Name == "util" && sel.Sel.Name == "SetDetachedProcess" {
-				required[fn.Name.Name] = true
-				return false
-			}
-			return true
-		})
+	}
+	if fn == nil {
+		t.Fatal("buildDaemonCmd not found in bridge.go")
 	}
 
-	for fnName, found := range required {
-		if !found {
-			t.Fatalf("%s must call util.SetDetachedProcess(cmd) before cmd.Start()", fnName)
+	found := false
+	ast.Inspect(fn.Body, func(n ast.Node) bool {
+		call, ok := n.(*ast.CallExpr)
+		if !ok {
+			return true
 		}
+		sel, ok := call.Fun.(*ast.SelectorExpr)
+		if !ok {
+			return true
+		}
+		pkgIdent, ok := sel.X.(*ast.Ident)
+		if !ok {
+			return true
+		}
+		if pkgIdent.Name == "util" && sel.Sel.Name == "SetDetachedProcess" {
+			found = true
+			return false
+		}
+		return true
+	})
+
+	if !found {
+		t.Fatal("buildDaemonCmd must call util.SetDetachedProcess(cmd) before returning")
 	}
 }

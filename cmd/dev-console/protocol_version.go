@@ -1,3 +1,4 @@
+// protocol_version.go — MCP protocol version negotiation and backward compatibility.
 package main
 
 import "encoding/json"

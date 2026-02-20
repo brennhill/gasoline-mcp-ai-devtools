@@ -1,7 +1,5 @@
-// Purpose: Owns dashboard.go runtime behavior and integration logic.
-// Docs: docs/features/feature/observe/index.md
-
 // dashboard.go — Serves the embedded HTML dashboard at GET / and the status API.
+// Docs: docs/features/feature/observe/index.md
 package main
 
 import (

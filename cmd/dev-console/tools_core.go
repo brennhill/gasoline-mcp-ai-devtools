@@ -1,7 +1,5 @@
-// Purpose: Owns tools_core.go runtime behavior and integration logic.
-// Docs: docs/features/feature/observe/index.md
-
 // tools_core.go — Core MCP tool types, constants, and response helpers.
+// Docs: docs/features/feature/observe/index.md
 // This file contains the foundational pieces used by all tool handlers:
 // - MCP typed response structs
 // - Tool call rate limiter

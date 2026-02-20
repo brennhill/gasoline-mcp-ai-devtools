@@ -1,6 +1,5 @@
-// Purpose: Owns stderr.go runtime behavior and integration logic.
+// stderr.go — Stderr output handling and integration logic.
 // Docs: docs/features/feature/observe/index.md
-
 package main
 
 import (

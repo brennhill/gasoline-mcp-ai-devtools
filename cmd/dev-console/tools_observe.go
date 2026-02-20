@@ -1,7 +1,5 @@
-// Purpose: Implements observe tool queries against captured runtime buffers.
-// Docs: docs/features/feature/observe/index.md
-
 // tools_observe.go — MCP observe tool dispatcher and handlers.
+// Docs: docs/features/feature/observe/index.md
 // Handles all observe modes: errors, logs, network, websocket, actions, etc.
 package main
 

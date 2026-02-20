@@ -1,7 +1,5 @@
-// Purpose: Owns ci.go runtime behavior and integration logic.
-// Docs: docs/features/feature/observe/index.md
-
 // ci.go — Gasoline CI Infrastructure endpoints.
+// Docs: docs/features/feature/observe/index.md
 // Provides /snapshot (aggregated state), /clear (buffer reset), and
 // /test-boundary (test correlation) for CI/CD pipeline integration.
 // These endpoints enable headless browser capture during automated testing.

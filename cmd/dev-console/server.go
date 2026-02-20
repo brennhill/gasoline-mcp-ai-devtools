@@ -1,7 +1,5 @@
-// Purpose: Owns server.go runtime behavior and integration logic.
-// Docs: docs/features/feature/observe/index.md
-
 // server.go — Server struct and core data management methods.
+// Docs: docs/features/feature/observe/index.md
 // Handles log entry storage, rotation, and file persistence.
 package main
 

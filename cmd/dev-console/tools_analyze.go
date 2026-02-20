@@ -1,7 +1,5 @@
-// Purpose: Implements analyze tool handlers and response shaping.
-// Docs: docs/features/feature/analyze-tool/index.md
-
 // tools_analyze.go — MCP analyze tool dispatcher and handlers.
+// Docs: docs/features/feature/analyze-tool/index.md
 // Handles active analysis operations: dom queries, API validation, link health checks,
 // performance analysis, accessibility audits, security checks, error analysis, and history analysis.
 package main
