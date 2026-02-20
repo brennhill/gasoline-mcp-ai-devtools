@@ -10,7 +10,6 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
-	"time"
 )
 
 // ============================================
@@ -319,21 +318,8 @@ func TestRedactExtensionLog_WithRedactor(t *testing.T) {
 }
 
 // ============================================
-// Circuit breaker
+// Circuit breaker (delegation tests — struct tests live in internal/circuit)
 // ============================================
-
-func TestCircuitBreaker_RecordEventsWindowReset(t *testing.T) {
-	t.Parallel()
-	cb := NewCircuitBreaker(func(string, map[string]any) {})
-	cb.SetWindowState(time.Now().Add(-2*time.Second), 50)
-	cb.RecordEvents(10)
-	cb.mu.RLock()
-	count := cb.windowEventCount
-	cb.mu.RUnlock()
-	if count != 10 {
-		t.Errorf("windowEventCount = %d, want 10 after reset", count)
-	}
-}
 
 func TestCircuitBreaker_GetHealthStatus_Open(t *testing.T) {
 	t.Parallel()
