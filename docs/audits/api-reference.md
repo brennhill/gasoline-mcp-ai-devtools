@@ -642,9 +642,10 @@ Persist session data.
 | Parameter | Type | Required | Default | Description |
 |-----------|------|----------|---------|-------------|
 | store_action | string | no | "list" | save, load, list, delete, stats |
-| namespace | string | no | -- | Storage grouping |
+| namespace | string | no | "session" | Storage grouping |
 | key | string | no | -- | Storage key |
 | data | object | no | -- | JSON data to persist |
+| value | string | no | -- | Flat value alias for save action |
 
 ##### configure({what: "load"})
 
@@ -662,7 +663,21 @@ Manage console noise filtering.
 | rules | object[] | no | -- | Noise rules to add (with match_spec) |
 | rule_id | string | no | -- | Rule ID to remove |
 | pattern | string | no | -- | Regex pattern |
-| category | string | no | -- | console, network, websocket |
+| category | string | no | "console" (flattened add) | console, network, websocket |
+
+`noise_action="add"` accepts either a `rules` array or flattened single-rule fields such as `pattern`, `message_regex`, `source_regex`, `url_regex`, `method`, `status_min`, `status_max`, `level`, and `classification`.
+
+##### configure({what: "tutorial"})
+
+Return quickstart snippets and context-aware setup guidance.
+
+No additional parameters.
+
+##### configure({what: "examples"})
+
+Alias of `tutorial`; returns the same snippet catalog and context guidance.
+
+No additional parameters.
 
 ##### configure({what: "streaming"})
 

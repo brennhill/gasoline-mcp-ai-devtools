@@ -33,7 +33,9 @@ var configureModeSpecs = map[string]modeParamSpec{
 	"clear": {
 		Optional: []string{"buffer"},
 	},
-	"health": {},
+	"health":   {},
+	"tutorial": {},
+	"examples": {},
 	"streaming": {
 		Optional: []string{"streaming_action", "events", "throttle_seconds", "severity_min"},
 	},

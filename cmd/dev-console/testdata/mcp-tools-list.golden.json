@@ -672,7 +672,7 @@
   },
   {
     "name": "configure",
-    "description": "Session settings and utilities.\n\nKey actions: health (check server/extension status), clear (reset buffers), noise_rule (suppress recurring console noise), store/load (persist/retrieve session data), streaming (enable push notifications), recording_start/recording_stop (capture browser sessions), playback (replay recordings), log_diff (compare error states), restart (force-restart daemon when unresponsive).\n\nMacro sequences: save_sequence/replay_sequence/get_sequence/list_sequences/delete_sequence — save named interact action sequences and replay them in a single call.",
+    "description": "Session settings and utilities.\n\nKey actions: health (check server/extension status), clear (reset buffers), noise_rule (suppress recurring console noise), store/load (persist/retrieve session data), tutorial/examples (quick snippets + context-aware guidance), streaming (enable push notifications), recording_start/recording_stop (capture browser sessions), playback (replay recordings), log_diff (compare error states), restart (force-restart daemon when unresponsive).\n\nMacro sequences: save_sequence/replay_sequence/get_sequence/list_sequences/delete_sequence — save named interact action sequences and replay them in a single call.",
     "inputSchema": {
       "properties": {
         "action": {
@@ -683,6 +683,8 @@
             "noise_rule",
             "clear",
             "health",
+            "tutorial",
+            "examples",
             "streaming",
             "test_boundary_start",
             "test_boundary_end",
@@ -985,6 +987,8 @@
             "noise_rule",
             "clear",
             "health",
+            "tutorial",
+            "examples",
             "streaming",
             "test_boundary_start",
             "test_boundary_end",
