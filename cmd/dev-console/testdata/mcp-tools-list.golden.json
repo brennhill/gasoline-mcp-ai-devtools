@@ -77,6 +77,10 @@
           "description": "HTTP method filter",
           "type": "string"
         },
+        "min_group_size": {
+          "description": "Minimum occurrences to form a group (summarized_logs, default 2)",
+          "type": "number"
+        },
         "min_level": {
           "description": "Min log level (logs)",
           "enum": [
@@ -177,7 +181,8 @@
             "recordings",
             "recording_actions",
             "playback_results",
-            "log_diff_report"
+            "log_diff_report",
+            "summarized_logs"
           ],
           "type": "string"
         },

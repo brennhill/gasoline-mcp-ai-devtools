@@ -35,6 +35,7 @@ var Handlers = map[string]Handler{
 	"error_bundles":     GetErrorBundles,
 	"screenshot":        GetScreenshot,
 	"storage":           GetStorage,
+	"summarized_logs":   GetSummarizedLogs,
 }
 
 // clampLimit applies default and max bounds to a limit parameter.
