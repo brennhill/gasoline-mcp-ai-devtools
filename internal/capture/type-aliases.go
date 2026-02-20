@@ -7,6 +7,7 @@
 package capture
 
 import (
+	"github.com/dev-console/dev-console/internal/circuit"
 	"github.com/dev-console/dev-console/internal/performance"
 	"github.com/dev-console/dev-console/internal/queries"
 	"github.com/dev-console/dev-console/internal/recording"
@@ -31,6 +32,11 @@ type (
 	QueryDispatcher = queries.QueryDispatcher // Query lifecycle, result storage, async command tracking
 	QuerySnapshot   = queries.QuerySnapshot   // Point-in-time view of query state for health reporting
 
+	// Circuit breaker subsystem types — moved to internal/circuit package.
+	CircuitBreaker    = circuit.CircuitBreaker    // Rate limiting + circuit breaker state machine
+	HealthResponse    = circuit.HealthResponse    // GET /health response
+	RateLimitResponse = circuit.RateLimitResponse // 429 response body
+
 	// Recording subsystem types — moved to internal/recording package.
 	RecordingManager = recording.RecordingManager // Recording lifecycle, playback, and log-diff engine
 	StorageInfo      = recording.StorageInfo      // Recording storage usage info
@@ -42,3 +48,6 @@ type (
 	ValueChange      = recording.ValueChange      // Field value change between recordings
 	ActionComparison = recording.ActionComparison // Action counts and types between recordings
 )
+
+// NewCircuitBreaker is re-exported from internal/circuit for backward compatibility.
+var NewCircuitBreaker = circuit.NewCircuitBreaker

@@ -88,7 +88,7 @@ type Capture struct {
 	// Rate Limiting & Circuit Breaker (Own Lock)
 	// ============================================
 
-	circuit *CircuitBreaker // Rate limiting + circuit breaker state machine. Has own sync.RWMutex — independent of Capture.mu.
+	circuit *CircuitBreaker // Rate limiting + circuit breaker state machine — delegates to internal/circuit. Has own sync.RWMutex — independent of Capture.mu.
 
 	// ============================================
 	// Extension State (Protected by parent mu)

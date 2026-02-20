@@ -1,10 +1,7 @@
-// Purpose: Owns circuit_breaker.go runtime behavior and integration logic.
-// Docs: docs/features/feature/backend-log-streaming/index.md
-
-// circuit_breaker.go — Rate limiting and circuit breaker state machine.
-// Extracted from the Capture god object. Owns its own sync.RWMutex,
-// independent of Capture.mu. Uses rate-based triggering only.
-package capture
+// breaker.go — Rate limiting and circuit breaker state machine.
+// Owns its own sync.RWMutex, independent of any parent lock.
+// Uses rate-based triggering only.
+package circuit
 
 import (
 	"encoding/json"
@@ -14,6 +11,36 @@ import (
 
 	"github.com/dev-console/dev-console/internal/util"
 )
+
+// Constants for circuit breaker behavior.
+const (
+	// RateLimitThreshold is the maximum events/second before rate limiting kicks in.
+	RateLimitThreshold = 1000
+
+	// CircuitOpenStreakCount is consecutive seconds over threshold to open circuit.
+	CircuitOpenStreakCount = 5
+
+	// CircuitCloseSeconds is seconds below threshold to close circuit.
+	CircuitCloseSeconds = 10
+)
+
+// HealthResponse is returned by GET /health endpoint.
+type HealthResponse struct {
+	CircuitOpen bool   `json:"circuit_open"`
+	OpenedAt    string `json:"opened_at,omitempty"`
+	CurrentRate int    `json:"current_rate"`
+	Reason      string `json:"reason,omitempty"`
+}
+
+// RateLimitResponse is the 429 response body.
+type RateLimitResponse struct {
+	Error        string `json:"error"`
+	Message      string `json:"message"`
+	RetryAfterMs int    `json:"retry_after_ms"`
+	CircuitOpen  bool   `json:"circuit_open"`
+	CurrentRate  int    `json:"current_rate"`
+	Threshold    int    `json:"threshold"`
+}
 
 // CircuitBreaker implements a rate limiter with circuit breaker pattern.
 // Uses a 1-second sliding window for event counting and a streak-based
@@ -114,12 +141,12 @@ func (cb *CircuitBreaker) tickRateWindow() {
 }
 
 // evaluateCircuit implements the circuit breaker FSM.
-// CLOSED→OPEN: streak>=5. OPEN→CLOSED: streak=0 AND below for 10s.
+// CLOSED->OPEN: streak>=5. OPEN->CLOSED: streak=0 AND below for 10s.
 // Caller must hold lock.
 func (cb *CircuitBreaker) evaluateCircuit() {
 	if !cb.circuitOpen {
 		// Rate-based opening
-		if cb.rateLimitStreak >= circuitOpenStreakCount {
+		if cb.rateLimitStreak >= CircuitOpenStreakCount {
 			cb.circuitOpen = true
 			cb.circuitOpenedAt = time.Now()
 			cb.circuitReason = "rate_exceeded"
@@ -147,11 +174,11 @@ func (cb *CircuitBreaker) evaluateCircuit() {
 	if cb.lastBelowThresholdAt.IsZero() {
 		return
 	}
-	if time.Since(cb.lastBelowThresholdAt) < time.Duration(circuitCloseSeconds)*time.Second {
+	if time.Since(cb.lastBelowThresholdAt) < time.Duration(CircuitCloseSeconds)*time.Second {
 		return
 	}
 
-	// All conditions met — close
+	// All conditions met -- close
 	openDuration := time.Since(cb.circuitOpenedAt)
 	prevReason := cb.circuitReason
 	cb.circuitOpen = false

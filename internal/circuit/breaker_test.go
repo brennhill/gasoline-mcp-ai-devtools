@@ -1,6 +1,6 @@
-// circuit_breaker_test.go — Tests for the CircuitBreaker sub-struct.
+// breaker_test.go — Tests for the CircuitBreaker state machine.
 // Verifies state machine transitions, streak counting, and concurrent RecordEvents safety.
-package capture
+package circuit
 
 import (
 	"sync"
@@ -71,7 +71,7 @@ func TestCircuitBreaker_StreakOpensCircuit(t *testing.T) {
 	cb := newTestCircuitBreaker()
 
 	// Simulate 5 consecutive seconds over threshold
-	for i := 0; i < circuitOpenStreakCount; i++ {
+	for i := 0; i < CircuitOpenStreakCount; i++ {
 		cb.mu.Lock()
 		cb.windowEventCount = RateLimitThreshold + 1
 		cb.tickRateWindow()
@@ -138,7 +138,7 @@ func TestCircuitBreaker_ConcurrentRecordEvents(t *testing.T) {
 	}
 
 	wg.Wait()
-	// Should not panic — verifies concurrent safety
+	// Should not panic -- verifies concurrent safety
 }
 
 func TestCircuitBreaker_LifecycleCallback(t *testing.T) {
@@ -156,7 +156,7 @@ func TestCircuitBreaker_LifecycleCallback(t *testing.T) {
 
 	// Force open circuit to trigger callback
 	cb.mu.Lock()
-	for i := 0; i < circuitOpenStreakCount; i++ {
+	for i := 0; i < CircuitOpenStreakCount; i++ {
 		cb.windowEventCount = RateLimitThreshold + 1
 		cb.tickRateWindow()
 		cb.windowEventCount = 0
@@ -173,5 +173,18 @@ func TestCircuitBreaker_LifecycleCallback(t *testing.T) {
 	}
 	if events[0] != "circuit_opened" {
 		t.Fatalf("Expected circuit_opened event, got %s", events[0])
+	}
+}
+
+func TestCircuitBreaker_RecordEventsWindowReset(t *testing.T) {
+	t.Parallel()
+	cb := NewCircuitBreaker(func(string, map[string]any) {})
+	cb.SetWindowState(time.Now().Add(-2*time.Second), 50)
+	cb.RecordEvents(10)
+	cb.mu.RLock()
+	count := cb.windowEventCount
+	cb.mu.RUnlock()
+	if count != 10 {
+		t.Errorf("windowEventCount = %d, want 10 after reset", count)
 	}
 }
