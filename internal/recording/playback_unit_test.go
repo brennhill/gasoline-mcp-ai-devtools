@@ -1,4 +1,5 @@
-package capture
+// playback_unit_test.go — Unit tests for playback engine internals.
+package recording
 
 import (
 	"strings"

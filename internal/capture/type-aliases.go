@@ -26,4 +26,15 @@ type (
 	PendingQueryResponse  = queries.PendingQueryResponse      // Alias for convenience (avoid qualifying as queries.PendingQueryResponse everywhere)
 	PendingQuery          = queries.PendingQuery              // Alias for convenience
 	CommandResult         = queries.CommandResult             // Alias for convenience (avoid qualifying as queries.CommandResult everywhere)
+
+	// Recording subsystem types — moved to internal/recording package.
+	RecordingManager = recording.RecordingManager // Recording lifecycle, playback, and log-diff engine
+	StorageInfo      = recording.StorageInfo      // Recording storage usage info
+	PlaybackSession  = recording.PlaybackSession  // Active playback session state
+	PlaybackResult   = recording.PlaybackResult   // Result of executing a single recorded action
+	Coordinates      = recording.Coordinates      // X/Y position on the page
+	LogDiffResult    = recording.LogDiffResult    // Comparison of two recordings
+	DiffLogEntry     = recording.DiffLogEntry     // Single log entry for diff comparison
+	ValueChange      = recording.ValueChange      // Field value change between recordings
+	ActionComparison = recording.ActionComparison // Action counts and types between recordings
 )

@@ -35,7 +35,7 @@ func TestRecordingWebSocketConnectionEstablished(t *testing.T) {
 	}
 
 	// Recording should exist and be ready to receive WebSocket events
-	recording := capture.rec.recordings[recordingID]
+	recording := capture.rec.GetInMemoryRecording(recordingID)
 	if recording == nil {
 		t.Errorf("Expected recording to be created for WS integration")
 	}
@@ -85,7 +85,7 @@ func TestRecordingWebSocketRealTimeStreaming(t *testing.T) {
 	}
 
 	// Verify all events captured
-	recording := capture.rec.recordings[recordingID]
+	recording := capture.rec.GetInMemoryRecording(recordingID)
 	if len(recording.Actions) != 5 {
 		t.Errorf("Expected 5 actions, got %d", len(recording.Actions))
 	}
@@ -141,7 +141,7 @@ func TestRecordingWebSocketBufferOverflow(t *testing.T) {
 	}
 
 	// Verify all 101 actions are stored (recording stores in memory, no ring buffer limits yet)
-	recording := capture.rec.recordings[recordingID]
+	recording := capture.rec.GetInMemoryRecording(recordingID)
 	if len(recording.Actions) != 101 {
 		t.Errorf("Expected 101 actions, got %d (ring buffer behavior will limit to 10,000 at WS level)", len(recording.Actions))
 	}
@@ -196,7 +196,7 @@ func TestRecordingWebSocketConnectionDropFallback(t *testing.T) {
 	}
 
 	// Verify all events captured through fallback
-	recording := capture.rec.recordings[recordingID]
+	recording := capture.rec.GetInMemoryRecording(recordingID)
 	if len(recording.Actions) != 6 {
 		t.Errorf("Expected 6 actions (3 pre-drop + 3 post-fallback), got %d", len(recording.Actions))
 	}
@@ -269,7 +269,7 @@ func TestRecordingWebSocketReconnectBackoff(t *testing.T) {
 	}
 
 	// Verify all events captured across reconnect cycles
-	recording := capture.rec.recordings[recordingID]
+	recording := capture.rec.GetInMemoryRecording(recordingID)
 	if len(recording.Actions) != 6 {
 		t.Errorf("Expected 6 actions across 3 cycles, got %d", len(recording.Actions))
 	}
@@ -335,8 +335,8 @@ func TestRecordingCreateMetadata(t *testing.T) {
 	}
 
 	// Verify recording exists in memory
-	recording, exists := capture.rec.recordings[recordingID]
-	if !exists {
+	recording := capture.rec.GetInMemoryRecording(recordingID)
+	if recording == nil {
 		t.Errorf("Expected recording to exist in memory")
 	}
 
@@ -393,7 +393,7 @@ func TestRecordingAddActions(t *testing.T) {
 	}
 
 	// Verify all actions added
-	recording := capture.rec.recordings[recordingID]
+	recording := capture.rec.GetInMemoryRecording(recordingID)
 	if len(recording.Actions) != 5 {
 		t.Errorf("Expected 5 actions, got: %d", len(recording.Actions))
 	}
@@ -502,7 +502,7 @@ func TestRecordingSensitiveDataRedaction(t *testing.T) {
 	}
 
 	// Verify text was redacted
-	recording := capture.rec.recordings[recordingID]
+	recording := capture.rec.GetInMemoryRecording(recordingID)
 	if len(recording.Actions) != 1 {
 		t.Fatalf("Expected 1 action, got: %d", len(recording.Actions))
 	}
@@ -530,7 +530,7 @@ func TestRecordingSensitiveDataOptIn(t *testing.T) {
 	}
 
 	// Verify flag is set
-	recording := capture.rec.recordings[recordingID]
+	recording := capture.rec.GetInMemoryRecording(recordingID)
 	if !recording.SensitiveDataEnabled {
 		t.Errorf("Expected sensitive_data_enabled=true")
 	}
@@ -580,7 +580,7 @@ func TestRecordingStorageQuotaEnforcement(t *testing.T) {
 
 	// Simulate storage being at max capacity
 	// Set recordingStorageUsed to 1GB (recording.go constant: recordingStorageMax = 1GB)
-	capture.rec.recordingStorageUsed = 1024 * 1024 * 1024 // 1GB
+	capture.rec.SetRecordingStorageUsed(1024 * 1024 * 1024) // 1GB
 
 	// Try to start a new recording when storage is full
 	recordingID, err := capture.StartRecording("over-quota", "https://example.com", false)
@@ -601,7 +601,7 @@ func TestRecordingStorageQuotaEnforcement(t *testing.T) {
 	}
 
 	// Verify activeRecordingID is empty (no recording started)
-	if capture.rec.activeRecordingID != "" {
+	if capture.rec.GetActiveRecordingID() != "" {
 		t.Errorf("Expected activeRecordingID to be empty when over quota")
 	}
 }
@@ -618,7 +618,7 @@ func TestRecordingStorageWarning(t *testing.T) {
 
 	// Simulate storage at 80% capacity (warning threshold)
 	// recording.go constant: recordingWarningLevel = 800MB
-	capture.rec.recordingStorageUsed = 800 * 1024 * 1024 // 800MB (80% of 1GB)
+	capture.rec.SetRecordingStorageUsed(800 * 1024 * 1024) // 800MB (80% of 1GB)
 
 	// Try to start a recording when at warning level
 	// The operation should proceed (non-blocking) but a warning should be logged
@@ -635,7 +635,7 @@ func TestRecordingStorageWarning(t *testing.T) {
 	}
 
 	// Verify recording is active
-	if capture.rec.activeRecordingID != recordingID {
+	if capture.rec.GetActiveRecordingID() != recordingID {
 		t.Errorf("Expected active recording to be set")
 	}
 
@@ -1415,17 +1415,17 @@ func TestExtensionStartRecording(t *testing.T) {
 	}
 
 	// Verify recording created in memory and ready for action capture
-	if capture.rec.activeRecordingID == "" {
+	if capture.rec.GetActiveRecordingID() == "" {
 		t.Errorf("Expected active recording ID to be set")
 	}
 
-	if capture.rec.activeRecordingID != recordingID {
-		t.Errorf("Expected active recording to be %s, got: %s", recordingID, capture.rec.activeRecordingID)
+	if capture.rec.GetActiveRecordingID() != recordingID {
+		t.Errorf("Expected active recording to be %s, got: %s", recordingID, capture.rec.GetActiveRecordingID())
 	}
 
 	// Verify recording state is initialized
-	recording, exists := capture.rec.recordings[recordingID]
-	if !exists {
+	recording := capture.rec.GetInMemoryRecording(recordingID)
+	if recording == nil {
 		t.Errorf("Expected recording to exist in memory")
 	}
 
@@ -1489,7 +1489,7 @@ func TestExtensionStopRecording(t *testing.T) {
 	}
 
 	// Verify recording is no longer active
-	if capture.rec.activeRecordingID != "" {
+	if capture.rec.GetActiveRecordingID() != "" {
 		t.Errorf("Expected active recording to be cleared after stop")
 	}
 

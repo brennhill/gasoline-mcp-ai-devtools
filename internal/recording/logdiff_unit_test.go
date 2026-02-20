@@ -1,4 +1,5 @@
-package capture
+// logdiff_unit_test.go — Unit tests for log diff internals.
+package recording
 
 import (
 	"strings"

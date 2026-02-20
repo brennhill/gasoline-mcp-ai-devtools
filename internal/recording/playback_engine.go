@@ -1,10 +1,7 @@
-// Purpose: Owns playback.go runtime behavior and integration logic.
-// Docs: docs/features/feature/backend-log-streaming/index.md
-
-// playback.go — Recording playback and action execution engine.
+// playback_engine.go — Recording playback and action execution engine.
 // Replays recorded actions with self-healing selectors, timeout handling,
 // and non-blocking error recovery. Detects fragile selectors across multiple runs.
-package capture
+package recording
 
 import (
 	"fmt"
@@ -18,15 +15,15 @@ import (
 
 // PlaybackResult represents the result of executing a single action
 type PlaybackResult struct {
-	Status        string // "ok", "error", "partial"
-	ActionIndex   int
-	ActionType    string
-	SelectorUsed  string      // Which selector strategy succeeded
-	ExecutedAt    time.Time
-	DurationMs    int64
-	Error         string
-	Coordinates   *Coordinates // Where the action was executed
-	SelectorFragile bool        // Flag if selector detected as fragile
+	Status          string // "ok", "error", "partial"
+	ActionIndex     int
+	ActionType      string
+	SelectorUsed    string      // Which selector strategy succeeded
+	ExecutedAt      time.Time
+	DurationMs      int64
+	Error           string
+	Coordinates     *Coordinates // Where the action was executed
+	SelectorFragile bool         // Flag if selector detected as fragile
 }
 
 // Coordinates represent x/y position on the page

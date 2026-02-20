@@ -1,9 +1,7 @@
-// Purpose: Owns recording.go runtime behavior and integration logic.
-// Docs: docs/features/feature/backend-log-streaming/index.md
-
-// recording.go — Recording lifecycle and persistence methods on RecordingManager.
-// Handles start/stop/add-action lifecycle and disk I/O for recordings.
-package capture
+// manager.go — RecordingManager: recording lifecycle, persistence, and storage tracking.
+// Extracted from internal/capture. Owns its own sync.Mutex,
+// independent of Capture.mu. Zero cross-cutting dependencies.
+package recording
 
 import (
 	"encoding/json"
@@ -12,34 +10,19 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"sync"
 	"time"
 
-	recordingtypes "github.com/dev-console/dev-console/internal/recording"
 	"github.com/dev-console/dev-console/internal/state"
 )
-
-// validateRecordingID rejects IDs containing path traversal sequences.
-func validateRecordingID(id string) error {
-	if id == "" {
-		return fmt.Errorf("recording_id_empty: Recording ID must not be empty")
-	}
-	if strings.Contains(id, "..") || strings.ContainsAny(id, `/\`) {
-		return fmt.Errorf("recording_id_invalid: Recording ID contains illegal characters")
-	}
-	// After cleaning, the ID must be a single path component
-	if filepath.Base(id) != id {
-		return fmt.Errorf("recording_id_invalid: Recording ID must be a single directory name")
-	}
-	return nil
-}
 
 // ============================================================================
 // Constants
 // ============================================================================
 
 const (
-	recordingStorageMax   = 1024 * 1024 * 1024 // 1GB max storage
-	recordingWarningLevel = 800 * 1024 * 1024  // 800MB warning threshold (80%)
+	RecordingStorageMax   = 1024 * 1024 * 1024 // 1GB max storage
+	RecordingWarningLevel = 800 * 1024 * 1024  // 800MB warning threshold (80%)
 	recordingMetadataFile = "metadata.json"
 )
 
@@ -58,6 +41,45 @@ type StorageInfo struct {
 }
 
 // ============================================================================
+// RecordingManager
+// ============================================================================
+
+// RecordingManager manages recording lifecycle, persistence, and storage tracking.
+// Owns its own sync.Mutex — independent of Capture.mu.
+type RecordingManager struct {
+	mu                   sync.Mutex
+	activeRecordingID    string
+	recordings           map[string]*Recording
+	recordingStorageUsed int64
+}
+
+// NewRecordingManager creates a RecordingManager with initialized state.
+func NewRecordingManager() *RecordingManager {
+	return &RecordingManager{
+		recordings: make(map[string]*Recording),
+	}
+}
+
+// ============================================================================
+// Validation
+// ============================================================================
+
+// ValidateRecordingID rejects IDs containing path traversal sequences.
+func ValidateRecordingID(id string) error {
+	if id == "" {
+		return fmt.Errorf("recording_id_empty: Recording ID must not be empty")
+	}
+	if strings.Contains(id, "..") || strings.ContainsAny(id, `/\`) {
+		return fmt.Errorf("recording_id_invalid: Recording ID contains illegal characters")
+	}
+	// After cleaning, the ID must be a single path component
+	if filepath.Base(id) != id {
+		return fmt.Errorf("recording_id_invalid: Recording ID must be a single directory name")
+	}
+	return nil
+}
+
+// ============================================================================
 // Recording Lifecycle Methods
 // ============================================================================
 
@@ -73,14 +95,14 @@ func (r *RecordingManager) StartRecording(name string, pageURL string, sensitive
 	}
 
 	// Check storage quota
-	if r.recordingStorageUsed >= recordingStorageMax {
+	if r.recordingStorageUsed >= RecordingStorageMax {
 		return "", fmt.Errorf("recording_storage_full: Recording storage at capacity (1GB). Please delete old recordings")
 	}
 
 	// Warn if approaching limit (80%) - goes to stderr, not stdout (MCP stdio silence)
-	if r.recordingStorageUsed >= recordingWarningLevel {
+	if r.recordingStorageUsed >= RecordingWarningLevel {
 		fmt.Fprintf(os.Stderr, "[WARNING] recording_storage_warning: Recording storage at 80%% (%d bytes / %d bytes)\n",
-			r.recordingStorageUsed, recordingStorageMax)
+			r.recordingStorageUsed, RecordingStorageMax)
 	}
 
 	// Generate recording ID: name-YYYYMMDDTHHMMSS-nnnnnnnnnZ (nanosecond precision prevents collisions)
@@ -107,7 +129,7 @@ func (r *RecordingManager) StartRecording(name string, pageURL string, sensitive
 
 	// Try to get viewport from the last EnhancedAction (hack but works for now)
 	// In reality, this would come from the extension
-	recording.Viewport = recordingtypes.ViewportInfo{Width: 1920, Height: 1080}
+	recording.Viewport = ViewportInfo{Width: 1920, Height: 1080}
 
 	// Store in memory
 	r.recordings[recordingID] = recording
@@ -144,7 +166,7 @@ func (r *RecordingManager) StopRecording(recordingID string) (int, int64, error)
 	}
 
 	// Update storage used
-	r.recordingStorageUsed += calculateRecordingSize(recording)
+	r.recordingStorageUsed += CalculateRecordingSize(recording)
 
 	// Clear active recording
 	if r.activeRecordingID == recordingID {
@@ -233,7 +255,7 @@ func (r *RecordingManager) persistRecordingToDisk(recording *Recording) error {
 	}
 
 	// Create metadata
-	metadata := &recordingtypes.RecordingMetadata{
+	metadata := &RecordingMetadata{
 		ID:                   recording.ID,
 		Name:                 recording.Name,
 		CreatedAt:            recording.CreatedAt,
@@ -321,7 +343,7 @@ func (r *RecordingManager) ListRecordings(limit int) ([]Recording, error) {
 
 // GetRecording loads a specific recording by ID.
 func (r *RecordingManager) GetRecording(recordingID string) (*Recording, error) {
-	if err := validateRecordingID(recordingID); err != nil {
+	if err := ValidateRecordingID(recordingID); err != nil {
 		return nil, err
 	}
 	return r.loadRecordingFromDisk(recordingID)
@@ -349,7 +371,7 @@ func (r *RecordingManager) loadRecordingFromDisk(recordingID string) (*Recording
 		}
 
 		// Unmarshal metadata
-		metadata := &recordingtypes.RecordingMetadata{}
+		metadata := &RecordingMetadata{}
 		err = json.Unmarshal(data, metadata)
 		if err != nil {
 			lastErr = fmt.Errorf("json_unmarshal_failed: %w", err)
@@ -383,8 +405,8 @@ func (r *RecordingManager) loadRecordingFromDisk(recordingID string) (*Recording
 // Helpers
 // ============================================================================
 
-// calculateRecordingSize estimates the size of a recording in bytes
-func calculateRecordingSize(recording *Recording) int64 {
+// CalculateRecordingSize estimates the size of a recording in bytes.
+func CalculateRecordingSize(recording *Recording) int64 {
 	// Rough estimate: metadata (JSON overhead) + actions
 	// Each action: ~200 bytes (type, timestamps, selectors, text)
 	size := int64(len(recording.Name) + len(recording.StartURL) + len(recording.TestID) + 500)
@@ -410,14 +432,14 @@ func (r *RecordingManager) GetStorageInfo() (StorageInfo, error) {
 	// Update in-memory tracking
 	r.recordingStorageUsed = usedBytes
 
-	usedPercent := float64(usedBytes) / float64(recordingStorageMax) * 100
+	usedPercent := float64(usedBytes) / float64(RecordingStorageMax) * 100
 
 	return StorageInfo{
 		UsedBytes:      usedBytes,
-		MaxBytes:       recordingStorageMax,
-		WarningBytes:   recordingWarningLevel,
+		MaxBytes:       RecordingStorageMax,
+		WarningBytes:   RecordingWarningLevel,
 		UsedPercent:    usedPercent,
-		WarningLevel:   usedBytes >= recordingWarningLevel,
+		WarningLevel:   usedBytes >= RecordingWarningLevel,
 		RecordingCount: recordingCount,
 	}, nil
 }
@@ -444,7 +466,7 @@ func (r *RecordingManager) deleteRecordingFromRoot(root, recordingID string) (in
 
 // DeleteRecording deletes a recording from disk and updates storage tracking.
 func (r *RecordingManager) DeleteRecording(recordingID string) error {
-	if err := validateRecordingID(recordingID); err != nil {
+	if err := ValidateRecordingID(recordingID); err != nil {
 		return err
 	}
 

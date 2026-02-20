@@ -1,5 +1,5 @@
-// recording_manager_test.go — Tests for RecordingManager lifecycle, validation, and actions.
-package capture
+// manager_test.go — Tests for RecordingManager lifecycle, validation, and actions.
+package recording
 
 import (
 	"fmt"
@@ -34,7 +34,7 @@ func TestNewNewRecordingManager_Initialization(t *testing.T) {
 }
 
 // ============================================
-// validateRecordingID Tests
+// ValidateRecordingID Tests
 // ============================================
 
 func TestNewValidateRecordingID_ValidID(t *testing.T) {
@@ -49,8 +49,8 @@ func TestNewValidateRecordingID_ValidID(t *testing.T) {
 	}
 
 	for _, id := range validIDs {
-		if err := validateRecordingID(id); err != nil {
-			t.Errorf("validateRecordingID(%q) = %v, want nil", id, err)
+		if err := ValidateRecordingID(id); err != nil {
+			t.Errorf("ValidateRecordingID(%q) = %v, want nil", id, err)
 		}
 	}
 }
@@ -58,9 +58,9 @@ func TestNewValidateRecordingID_ValidID(t *testing.T) {
 func TestNewValidateRecordingID_EmptyID(t *testing.T) {
 	t.Parallel()
 
-	err := validateRecordingID("")
+	err := ValidateRecordingID("")
 	if err == nil {
-		t.Fatal("validateRecordingID('') should return error")
+		t.Fatal("ValidateRecordingID('') should return error")
 	}
 	if !strings.Contains(err.Error(), "recording_id_empty") {
 		t.Errorf("error = %q, want recording_id_empty prefix", err.Error())
@@ -79,13 +79,13 @@ func TestNewValidateRecordingID_PathTraversal(t *testing.T) {
 	}
 
 	for _, id := range dangerous {
-		err := validateRecordingID(id)
+		err := ValidateRecordingID(id)
 		if err == nil {
-			t.Errorf("validateRecordingID(%q) should return error for path traversal", id)
+			t.Errorf("ValidateRecordingID(%q) should return error for path traversal", id)
 			continue
 		}
 		if !strings.Contains(err.Error(), "recording_id_invalid") {
-			t.Errorf("validateRecordingID(%q) error = %q, want recording_id_invalid", id, err.Error())
+			t.Errorf("ValidateRecordingID(%q) error = %q, want recording_id_invalid", id, err.Error())
 		}
 	}
 }
@@ -194,7 +194,7 @@ func TestNewStartRecording_StorageFull(t *testing.T) {
 	t.Parallel()
 
 	mgr := NewRecordingManager()
-	mgr.recordingStorageUsed = recordingStorageMax
+	mgr.recordingStorageUsed = RecordingStorageMax
 
 	_, err := mgr.StartRecording("test", "https://example.com", false)
 	if err == nil {
@@ -405,7 +405,7 @@ func TestNewAddRecordingAction_NonTypeActionNotRedacted(t *testing.T) {
 }
 
 // ============================================
-// calculateRecordingSize Tests
+// CalculateRecordingSize Tests
 // ============================================
 
 func TestNewCalculateRecordingSize_EmptyRecording(t *testing.T) {
@@ -413,7 +413,7 @@ func TestNewCalculateRecordingSize_EmptyRecording(t *testing.T) {
 
 	rec := &Recording{Name: "", Actions: []RecordingAction{}}
 
-	size := calculateRecordingSize(rec)
+	size := CalculateRecordingSize(rec)
 	if size < 500 {
 		t.Errorf("size = %d, want >= 500 (base overhead)", size)
 	}
@@ -429,7 +429,7 @@ func TestNewCalculateRecordingSize_WithActions(t *testing.T) {
 		Actions:  []RecordingAction{{Type: "click"}, {Type: "type"}, {Type: "navigate"}},
 	}
 
-	size := calculateRecordingSize(rec)
+	size := CalculateRecordingSize(rec)
 	expectedMin := int64(len(rec.Name) + len(rec.StartURL) + len(rec.TestID) + 500 + 3*200)
 	if size != expectedMin {
 		t.Errorf("size = %d, want %d", size, expectedMin)
@@ -446,7 +446,7 @@ func TestNewCalculateRecordingSize_LargeRecording(t *testing.T) {
 
 	rec := &Recording{Name: "large-test", StartURL: "https://example.com", Actions: actions}
 
-	size := calculateRecordingSize(rec)
+	size := CalculateRecordingSize(rec)
 	if size < 20000 {
 		t.Errorf("size = %d, want >= 20000 for 100 actions", size)
 	}

@@ -1,10 +1,7 @@
-// Purpose: Owns log-diff.go runtime behavior and integration logic.
-// Docs: docs/features/feature/backend-log-streaming/index.md
-
-// log-diff.go — Log diffing and regression detection for recordings.
+// logdiff.go — Log diffing and regression detection for recordings.
 // Compares original vs replay recordings to detect regressions, fixes, and value changes.
 // Categories: Match (no issues), Regression (new errors), Fixed (errors resolved).
-package capture
+package recording
 
 import (
 	"fmt"
@@ -98,8 +95,8 @@ func (r *RecordingManager) DiffRecordings(originalRecordingID, replayRecordingID
 	return result, nil
 }
 
-// countActionTypes returns counts for error, click, type, navigate actions.
-func countActionTypes(actions []RecordingAction) (errors, clicks, types, navigates int) {
+// CountActionTypes returns counts for error, click, type, navigate actions.
+func CountActionTypes(actions []RecordingAction) (errors, clicks, types, navigates int) {
 	for _, action := range actions {
 		switch action.Type {
 		case "error":
@@ -121,8 +118,8 @@ func (r *RecordingManager) compareActions(original, replay *Recording) ActionCom
 		OriginalCount: original.ActionCount,
 		ReplayCount:   replay.ActionCount,
 	}
-	stats.ErrorsOriginal, stats.ClicksOriginal, stats.TypesOriginal, stats.NavigatesOriginal = countActionTypes(original.Actions)
-	stats.ErrorsReplay, stats.ClicksReplay, stats.TypesReplay, stats.NavigatesReplay = countActionTypes(replay.Actions)
+	stats.ErrorsOriginal, stats.ClicksOriginal, stats.TypesOriginal, stats.NavigatesOriginal = CountActionTypes(original.Actions)
+	stats.ErrorsReplay, stats.ClicksReplay, stats.TypesReplay, stats.NavigatesReplay = CountActionTypes(replay.Actions)
 	return stats
 }
 
@@ -184,8 +181,8 @@ func (r *RecordingManager) detectFixes(original, replay *Recording, result *LogD
 	}
 }
 
-// buildTypeValueMap extracts selector->text for "type" actions.
-func buildTypeValueMap(actions []RecordingAction) map[string]string {
+// BuildTypeValueMap extracts selector->text for "type" actions.
+func BuildTypeValueMap(actions []RecordingAction) map[string]string {
 	values := make(map[string]string)
 	for _, action := range actions {
 		if action.Type == "type" && action.Selector != "" {
@@ -197,7 +194,7 @@ func buildTypeValueMap(actions []RecordingAction) map[string]string {
 
 // detectValueChanges finds changed field values between recordings.
 func (r *RecordingManager) detectValueChanges(original, replay *Recording, result *LogDiffResult) {
-	originalValues := buildTypeValueMap(original.Actions)
+	originalValues := BuildTypeValueMap(original.Actions)
 
 	for _, action := range replay.Actions {
 		if action.Type != "type" || action.Selector == "" {
