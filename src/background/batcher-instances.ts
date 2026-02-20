@@ -10,8 +10,19 @@ import type {
   PerformanceSnapshot
 } from '../types'
 
-import * as communication from './communication'
-import * as stateManager from './state-manager'
+import {
+  updateBadge,
+  createBatcherWithCircuitBreaker,
+  sendLogsToServer,
+  sendWSEventsToServer,
+  sendEnhancedActionsToServer,
+  sendNetworkBodiesToServer,
+  sendPerformanceSnapshotsToServer,
+  type CircuitBreaker,
+  type BatcherWithCircuitBreaker,
+  type Batcher
+} from './communication'
+import { checkContextAnnotations } from './state-manager'
 
 // =============================================================================
 // TYPES
@@ -54,11 +65,11 @@ function withConnectionStatus<T>(
       const result = await sendFn(entries)
       deps.setConnectionStatus({ connected: true })
       if (onSuccess) onSuccess(entries, result)
-      communication.updateBadge(deps.getConnectionStatus())
+      updateBadge(deps.getConnectionStatus())
       return result
     } catch (err) {
       deps.setConnectionStatus({ connected: false })
-      communication.updateBadge(deps.getConnectionStatus())
+      updateBadge(deps.getConnectionStatus())
       throw err
     }
   }
@@ -69,16 +80,16 @@ function withConnectionStatus<T>(
 // =============================================================================
 
 export interface BatcherInstances {
-  logBatcherWithCB: communication.BatcherWithCircuitBreaker<LogEntry>
-  logBatcher: communication.Batcher<LogEntry>
-  wsBatcherWithCB: communication.BatcherWithCircuitBreaker<WebSocketEvent>
-  wsBatcher: communication.Batcher<WebSocketEvent>
-  enhancedActionBatcherWithCB: communication.BatcherWithCircuitBreaker<EnhancedAction>
-  enhancedActionBatcher: communication.Batcher<EnhancedAction>
-  networkBodyBatcherWithCB: communication.BatcherWithCircuitBreaker<NetworkBodyPayload>
-  networkBodyBatcher: communication.Batcher<NetworkBodyPayload>
-  perfBatcherWithCB: communication.BatcherWithCircuitBreaker<PerformanceSnapshot>
-  perfBatcher: communication.Batcher<PerformanceSnapshot>
+  logBatcherWithCB: BatcherWithCircuitBreaker<LogEntry>
+  logBatcher: Batcher<LogEntry>
+  wsBatcherWithCB: BatcherWithCircuitBreaker<WebSocketEvent>
+  wsBatcher: Batcher<WebSocketEvent>
+  enhancedActionBatcherWithCB: BatcherWithCircuitBreaker<EnhancedAction>
+  enhancedActionBatcher: Batcher<EnhancedAction>
+  networkBodyBatcherWithCB: BatcherWithCircuitBreaker<NetworkBodyPayload>
+  networkBodyBatcher: Batcher<NetworkBodyPayload>
+  perfBatcherWithCB: BatcherWithCircuitBreaker<PerformanceSnapshot>
+  perfBatcher: Batcher<PerformanceSnapshot>
 }
 
 /**
@@ -87,14 +98,14 @@ export interface BatcherInstances {
  */
 export function createBatcherInstances(
   deps: BatcherDeps,
-  sharedCircuitBreaker: communication.CircuitBreaker
+  sharedCircuitBreaker: CircuitBreaker
 ): BatcherInstances {
-  const logBatcherWithCB = communication.createBatcherWithCircuitBreaker<LogEntry>(
+  const logBatcherWithCB = createBatcherWithCircuitBreaker<LogEntry>(
     withConnectionStatus(
       deps,
       (entries) => {
-        stateManager.checkContextAnnotations(entries)
-        return communication.sendLogsToServer(deps.getServerUrl(), entries, deps.debugLog)
+        checkContextAnnotations(entries)
+        return sendLogsToServer(deps.getServerUrl(), entries, deps.debugLog)
       },
       (entries, result) => {
         const typedResult = result as { entries?: number }
@@ -108,30 +119,30 @@ export function createBatcherInstances(
     { sharedCircuitBreaker }
   )
 
-  const wsBatcherWithCB = communication.createBatcherWithCircuitBreaker<WebSocketEvent>(
+  const wsBatcherWithCB = createBatcherWithCircuitBreaker<WebSocketEvent>(
     withConnectionStatus(deps, (events) =>
-      communication.sendWSEventsToServer(deps.getServerUrl(), events, deps.debugLog)
+      sendWSEventsToServer(deps.getServerUrl(), events, deps.debugLog)
     ),
     { debounceMs: 200, maxBatchSize: 100, sharedCircuitBreaker }
   )
 
-  const enhancedActionBatcherWithCB = communication.createBatcherWithCircuitBreaker<EnhancedAction>(
+  const enhancedActionBatcherWithCB = createBatcherWithCircuitBreaker<EnhancedAction>(
     withConnectionStatus(deps, (actions) =>
-      communication.sendEnhancedActionsToServer(deps.getServerUrl(), actions, deps.debugLog)
+      sendEnhancedActionsToServer(deps.getServerUrl(), actions, deps.debugLog)
     ),
     { debounceMs: 200, maxBatchSize: 50, sharedCircuitBreaker }
   )
 
-  const networkBodyBatcherWithCB = communication.createBatcherWithCircuitBreaker<NetworkBodyPayload>(
+  const networkBodyBatcherWithCB = createBatcherWithCircuitBreaker<NetworkBodyPayload>(
     withConnectionStatus(deps, (bodies) =>
-      communication.sendNetworkBodiesToServer(deps.getServerUrl(), bodies, deps.debugLog)
+      sendNetworkBodiesToServer(deps.getServerUrl(), bodies, deps.debugLog)
     ),
     { debounceMs: 200, maxBatchSize: 50, sharedCircuitBreaker }
   )
 
-  const perfBatcherWithCB = communication.createBatcherWithCircuitBreaker<PerformanceSnapshot>(
+  const perfBatcherWithCB = createBatcherWithCircuitBreaker<PerformanceSnapshot>(
     withConnectionStatus(deps, (snapshots) =>
-      communication.sendPerformanceSnapshotsToServer(deps.getServerUrl(), snapshots, deps.debugLog)
+      sendPerformanceSnapshotsToServer(deps.getServerUrl(), snapshots, deps.debugLog)
     ),
     { debounceMs: 500, maxBatchSize: 10, sharedCircuitBreaker }
   )

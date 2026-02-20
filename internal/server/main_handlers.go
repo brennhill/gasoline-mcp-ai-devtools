@@ -185,16 +185,16 @@ func buildScreenshotFilename(pageURL, correlationID string) string {
 func saveScreenshotFile(filename string, imageData []byte) (string, error) {
 	dir, err := state.ScreenshotsDir()
 	if err != nil {
-		return "", fmt.Errorf("failed to resolve screenshots directory")
+		return "", fmt.Errorf("failed to resolve screenshots directory: %w", err)
 	}
 	// #nosec G301 -- 0o755 is appropriate for screenshots directory
 	if err := os.MkdirAll(dir, 0o755); err != nil {
-		return "", fmt.Errorf("failed to create screenshots directory")
+		return "", fmt.Errorf("failed to create screenshots directory: %w", err)
 	}
 	savePath := filepath.Join(dir, filename)
 	// #nosec G306 -- screenshots are intentionally world-readable
 	if err := os.WriteFile(savePath, imageData, 0o644); err != nil {
-		return "", fmt.Errorf("failed to save screenshot")
+		return "", fmt.Errorf("failed to save screenshot: %w", err)
 	}
 	return savePath, nil
 }

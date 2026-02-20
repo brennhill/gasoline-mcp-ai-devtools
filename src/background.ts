@@ -20,7 +20,7 @@
  */
 
 import { initializeExtension } from './background/init'
-import { EXTENSION_SESSION_ID } from './background/index'
+import { EXTENSION_SESSION_ID } from './background/state'
 
 // =============================================================================
 // === PUBLIC API: CONSTANTS (Test & Init)
@@ -51,9 +51,10 @@ export {
   connectionStatus,
   currentLogLevel,
   screenshotOnError,
-  extensionLogQueue,
-  DebugCategory
-} from './background/index'
+  extensionLogQueue
+} from './background/state'
+
+export { DebugCategory } from './background/index'
 
 // =============================================================================
 // === PUBLIC API: DEBUG LOGGING
@@ -82,9 +83,10 @@ export {
   handleLogMessage,
   handleClearLogs,
   isConnectionCheckRunning,
-  checkConnectionAndUpdate,
-  applyCaptureOverrides
+  checkConnectionAndUpdate
 } from './background/index'
+
+export { applyCaptureOverrides } from './background/state'
 
 // =============================================================================
 // === PUBLIC API: POLLING WRAPPERS
@@ -110,7 +112,8 @@ export {
 // === PUBLIC API: PENDING QUERIES & PILOT
 // =============================================================================
 
-export { handlePendingQuery, handlePilotCommand, isAiWebPilotEnabled, markInitComplete } from './background/index'
+export { handlePendingQuery, handlePilotCommand } from './background/index'
+export { isAiWebPilotEnabled, markInitComplete } from './background/state'
 
 // =============================================================================
 // === PUBLIC API: STATE MANAGEMENT (Tests, Initialization)
@@ -191,7 +194,7 @@ export {
   __aiWebPilotCacheInitialized,
   __pilotInitCallback,
   _resetPilotCacheForTesting
-} from './background/index'
+} from './background/state'
 
 // =============================================================================
 // INITIALIZATION — Only in Chrome extension context, not in Node.js test environment

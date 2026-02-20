@@ -265,13 +265,9 @@ func (c *Capture) trackConnMessage(event WebSocketEvent) {
 	}
 }
 
-// parseTimestamp parses an RFC3339 timestamp string, returns zero time on failure
+// parseTimestamp delegates to util.ParseTimestamp for RFC3339/RFC3339Nano parsing.
 func parseTimestamp(ts string) time.Time {
-	t, err := time.Parse(time.RFC3339Nano, ts)
-	if err != nil {
-		t, _ = time.Parse(time.RFC3339, ts)
-	}
-	return t
+	return util.ParseTimestamp(ts)
 }
 
 // appendAndPrune adds a timestamp to the slice and removes entries older than rateWindow

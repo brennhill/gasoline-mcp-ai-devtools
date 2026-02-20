@@ -9,6 +9,7 @@ import (
 
 	"github.com/dev-console/dev-console/internal/capture"
 	"github.com/dev-console/dev-console/internal/mcp"
+	"github.com/dev-console/dev-console/internal/util"
 )
 
 // timedEntry pairs a log entry with its parsed timestamp.
@@ -102,21 +103,14 @@ func collectErrorsAndLogs(deps Deps, limit int, urlFilter string) ([]timedEntry,
 	return errors, logs
 }
 
-// parseEntryTimestamp parses the timestamp from a log entry, trying RFC3339 then RFC3339Nano.
+// parseEntryTimestamp parses the timestamp from a log entry using util.ParseTimestamp.
 // Checks both "timestamp" (daemon-generated entries) and "ts" (extension-generated entries).
 func parseEntryTimestamp(entry map[string]any) time.Time {
 	tsStr, _ := entry["timestamp"].(string)
 	if tsStr == "" {
 		tsStr, _ = entry["ts"].(string)
 	}
-	ts, err := time.Parse(time.RFC3339, tsStr)
-	if err != nil {
-		ts, err = time.Parse(time.RFC3339Nano, tsStr)
-		if err != nil {
-			return time.Time{}
-		}
-	}
-	return ts
+	return util.ParseTimestamp(tsStr)
 }
 
 // buildBundles creates a debugging bundle for each error by window-joining related data.
@@ -214,11 +208,7 @@ func matchLogs(logs []timedEntry, start, end time.Time) []map[string]any {
 	return matched
 }
 
-// parseTimestampString tries RFC3339 then RFC3339Nano, returning zero time on failure.
+// parseTimestampString delegates to util.ParseTimestamp for RFC3339/RFC3339Nano parsing.
 func parseTimestampString(s string) time.Time {
-	ts, err := time.Parse(time.RFC3339, s)
-	if err != nil {
-		ts, _ = time.Parse(time.RFC3339Nano, s)
-	}
-	return ts
+	return util.ParseTimestamp(s)
 }

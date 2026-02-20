@@ -9,13 +9,13 @@ package analysis
 import (
 	"encoding/json"
 	"fmt"
-	"net/url"
 	"os"
 	"regexp"
 	"sort"
 	"strings"
 
 	"github.com/dev-console/dev-console/internal/capture"
+	"github.com/dev-console/dev-console/internal/util"
 )
 
 // ThirdPartyAuditor performs third-party domain analysis.
@@ -375,31 +375,9 @@ func HandleAuditThirdParties(params json.RawMessage, bodies []capture.NetworkBod
 	return result, nil
 }
 
-// extractOrigin extracts the origin (scheme://host[:port]) from a URL.
-// Returns empty string for data: URLs, blob: URLs (after extracting nested origin), and malformed URLs.
+// extractOrigin delegates to util.ExtractOrigin for origin extraction.
 func extractOrigin(rawURL string) string {
-	// Handle data: URLs
-	if strings.HasPrefix(rawURL, "data:") {
-		return ""
-	}
-
-	// Handle blob: URLs - extract the nested origin
-	// blob:https://example.com/uuid -> https://example.com
-	rawURL = strings.TrimPrefix(rawURL, "blob:")
-
-	// Parse URL
-	parsed, err := url.Parse(rawURL)
-	if err != nil {
-		return ""
-	}
-
-	// URL must have a scheme and host
-	if parsed.Scheme == "" || parsed.Host == "" {
-		return ""
-	}
-
-	// Reconstruct origin: scheme://host[:port]
-	return parsed.Scheme + "://" + parsed.Host
+	return util.ExtractOrigin(rawURL)
 }
 
 // contentTypeToResourceType maps content-type to a resource category.

@@ -4,9 +4,9 @@
  * Docs: docs/features/feature/interact-explore/index.md
  * Docs: docs/features/feature/observe/index.md
  */
-import * as index from './index.js';
+import { debugLog } from './index.js';
+import { serverUrl } from './state.js';
 import { DebugCategory } from './debug.js';
-const { debugLog } = index;
 // ============================================
 // Timing Constants
 // ============================================
@@ -307,7 +307,7 @@ export async function executeUpload(query, tabId, syncClient, sendAsyncResult, a
     const fileReadController = new AbortController();
     const fileReadTimeout = setTimeout(() => fileReadController.abort(), DAEMON_FETCH_TIMEOUT_MS);
     try {
-        const response = await fetch(`${index.serverUrl}/api/file/read`, {
+        const response = await fetch(`${serverUrl}/api/file/read`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'X-Gasoline-Client': 'gasoline-extension' },
             body: JSON.stringify({ file_path }),
@@ -381,7 +381,7 @@ export async function executeUpload(query, tabId, syncClient, sendAsyncResult, a
                 // Stage 1 file was cleared by the form — escalate to Stage 4
                 debugLog(DebugCategory.CONNECTION, 'Upload Stage 1 file cleared, escalating to Stage 4', { selector });
                 actionToast(tabId, 'upload', 'Escalating to OS automation...', 'trying', 30000);
-                const escalation = await escalateToStage4(tabId, selector, file_path, index.serverUrl);
+                const escalation = await escalateToStage4(tabId, selector, file_path, serverUrl);
                 if (escalation.success) {
                     debugLog(DebugCategory.CONNECTION, 'Upload Stage 4 succeeded', { selector, fileName: escalation.file_name });
                     actionToast(tabId, 'upload', escalation.file_name || fileName, 'success');

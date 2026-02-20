@@ -1,7 +1,5 @@
-// Purpose: Owns paths.go runtime behavior and integration logic.
-// Docs: docs/features/feature/observe/index.md
+// paths.go — Filesystem path resolution for Gasoline runtime artifacts.
 
-// Package state centralizes filesystem locations for Gasoline runtime artifacts.
 package state
 
 import (

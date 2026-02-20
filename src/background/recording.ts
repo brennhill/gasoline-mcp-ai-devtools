@@ -9,7 +9,7 @@
 // Delegates tab capture / offscreen plumbing to recording-capture.ts and
 // chrome runtime listener registration to recording-listeners.ts.
 
-import * as index from './index'
+import { serverUrl } from './state'
 import { pingContentScript, waitForTabLoad } from './event-listeners'
 import { scaleTimeout } from '../lib/timeouts'
 import { StorageKey } from '../lib/constants'
@@ -251,7 +251,7 @@ export async function startRecording(
         target: 'offscreen',
         type: 'OFFSCREEN_START_RECORDING',
         streamId,
-        serverUrl: index.serverUrl,
+        serverUrl: serverUrl,
         name,
         fps,
         audioMode: audio,
@@ -456,6 +456,6 @@ if (typeof chrome !== 'undefined' && chrome.runtime?.onMessage) {
       recordingState.active = false
     },
     clearRecordingState,
-    getServerUrl: () => index.serverUrl
+    getServerUrl: () => serverUrl
   })
 }

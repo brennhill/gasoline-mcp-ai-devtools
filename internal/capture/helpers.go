@@ -9,27 +9,18 @@ package capture
 import (
 	"io"
 	"net/http"
-	"net/url"
+
+	"github.com/dev-console/dev-console/internal/util"
 )
 
-// extractURLPath extracts the path portion from a URL string, stripping query parameters.
-// Returns "/" if the URL has no path component.
-// Returns the input unchanged if it cannot be parsed.
+// extractURLPath delegates to util.ExtractURLPath for URL path extraction.
 func extractURLPath(rawURL string) string {
-	parsed, err := url.Parse(rawURL)
-	if err != nil {
-		return rawURL
-	}
-	path := parsed.Path
-	if path == "" {
-		return "/"
-	}
-	return path
+	return util.ExtractURLPath(rawURL)
 }
 
-// ExtractURLPath is the exported version of extractURLPath for use in tests.
+// ExtractURLPath is the exported version for cross-package callers.
 func ExtractURLPath(rawURL string) string {
-	return extractURLPath(rawURL)
+	return util.ExtractURLPath(rawURL)
 }
 
 // reverseSlice reverses a slice in place.

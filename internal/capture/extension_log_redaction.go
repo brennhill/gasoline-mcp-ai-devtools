@@ -1,5 +1,4 @@
-// Purpose: Owns extension_log_redaction.go runtime behavior and integration logic.
-// Docs: docs/features/feature/backend-log-streaming/index.md
+// extension_log_redaction.go — Scrubs sensitive data from extension log fields.
 
 package capture
 

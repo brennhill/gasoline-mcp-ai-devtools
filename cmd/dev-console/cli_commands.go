@@ -142,7 +142,7 @@ func requireFlagValue(args []string, idx int) (string, int, error) {
 func parseIntValue(s string) (int, error) {
 	n, err := strconv.Atoi(s)
 	if err != nil {
-		return 0, fmt.Errorf("expected integer, got %q", s)
+		return 0, fmt.Errorf("expected integer, got %q: %w", s, err)
 	}
 	return n, nil
 }

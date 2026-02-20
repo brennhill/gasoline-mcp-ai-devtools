@@ -6,6 +6,8 @@ import (
 	"net/url"
 	"sort"
 	"strings"
+
+	"github.com/dev-console/dev-console/internal/util"
 )
 
 // computeConfidence determines the confidence level for an origin entry.
@@ -198,13 +200,9 @@ func countLowConfidenceExclusions(details []OriginDetail) int {
 	return count
 }
 
-// extractOriginFromURL extracts scheme://host[:port] from a URL string.
+// extractOriginFromURL delegates to util.ExtractOrigin for origin extraction.
 func extractOriginFromURL(rawURL string) string {
-	parsed, err := url.Parse(rawURL)
-	if err != nil || parsed.Host == "" {
-		return ""
-	}
-	return parsed.Scheme + "://" + parsed.Host
+	return util.ExtractOrigin(rawURL)
 }
 
 // exactContentTypeMap maps exact Content-Type values to CSP resource categories.

@@ -1,8 +1,8 @@
 // batcher-instances.ts — Concrete batcher instances for each data type.
 // Creates log, WebSocket, enhanced-action, network-body, and performance batchers,
 // each wired to the shared circuit breaker and connection-status tracking.
-import * as communication from './communication.js';
-import * as stateManager from './state-manager.js';
+import { updateBadge, createBatcherWithCircuitBreaker, sendLogsToServer, sendWSEventsToServer, sendEnhancedActionsToServer, sendNetworkBodiesToServer, sendPerformanceSnapshotsToServer } from './communication.js';
+import { checkContextAnnotations } from './state-manager.js';
 // =============================================================================
 // CONNECTION STATUS WRAPPER
 // =============================================================================
@@ -13,12 +13,12 @@ function withConnectionStatus(deps, sendFn, onSuccess) {
             deps.setConnectionStatus({ connected: true });
             if (onSuccess)
                 onSuccess(entries, result);
-            communication.updateBadge(deps.getConnectionStatus());
+            updateBadge(deps.getConnectionStatus());
             return result;
         }
         catch (err) {
             deps.setConnectionStatus({ connected: false });
-            communication.updateBadge(deps.getConnectionStatus());
+            updateBadge(deps.getConnectionStatus());
             throw err;
         }
     };
@@ -28,9 +28,9 @@ function withConnectionStatus(deps, sendFn, onSuccess) {
  * Called once from index.ts during module initialization.
  */
 export function createBatcherInstances(deps, sharedCircuitBreaker) {
-    const logBatcherWithCB = communication.createBatcherWithCircuitBreaker(withConnectionStatus(deps, (entries) => {
-        stateManager.checkContextAnnotations(entries);
-        return communication.sendLogsToServer(deps.getServerUrl(), entries, deps.debugLog);
+    const logBatcherWithCB = createBatcherWithCircuitBreaker(withConnectionStatus(deps, (entries) => {
+        checkContextAnnotations(entries);
+        return sendLogsToServer(deps.getServerUrl(), entries, deps.debugLog);
     }, (entries, result) => {
         const typedResult = result;
         const status = deps.getConnectionStatus();
@@ -39,10 +39,10 @@ export function createBatcherInstances(deps, sharedCircuitBreaker) {
             errorCount: status.errorCount + entries.filter((e) => e.level === 'error').length
         });
     }), { sharedCircuitBreaker });
-    const wsBatcherWithCB = communication.createBatcherWithCircuitBreaker(withConnectionStatus(deps, (events) => communication.sendWSEventsToServer(deps.getServerUrl(), events, deps.debugLog)), { debounceMs: 200, maxBatchSize: 100, sharedCircuitBreaker });
-    const enhancedActionBatcherWithCB = communication.createBatcherWithCircuitBreaker(withConnectionStatus(deps, (actions) => communication.sendEnhancedActionsToServer(deps.getServerUrl(), actions, deps.debugLog)), { debounceMs: 200, maxBatchSize: 50, sharedCircuitBreaker });
-    const networkBodyBatcherWithCB = communication.createBatcherWithCircuitBreaker(withConnectionStatus(deps, (bodies) => communication.sendNetworkBodiesToServer(deps.getServerUrl(), bodies, deps.debugLog)), { debounceMs: 200, maxBatchSize: 50, sharedCircuitBreaker });
-    const perfBatcherWithCB = communication.createBatcherWithCircuitBreaker(withConnectionStatus(deps, (snapshots) => communication.sendPerformanceSnapshotsToServer(deps.getServerUrl(), snapshots, deps.debugLog)), { debounceMs: 500, maxBatchSize: 10, sharedCircuitBreaker });
+    const wsBatcherWithCB = createBatcherWithCircuitBreaker(withConnectionStatus(deps, (events) => sendWSEventsToServer(deps.getServerUrl(), events, deps.debugLog)), { debounceMs: 200, maxBatchSize: 100, sharedCircuitBreaker });
+    const enhancedActionBatcherWithCB = createBatcherWithCircuitBreaker(withConnectionStatus(deps, (actions) => sendEnhancedActionsToServer(deps.getServerUrl(), actions, deps.debugLog)), { debounceMs: 200, maxBatchSize: 50, sharedCircuitBreaker });
+    const networkBodyBatcherWithCB = createBatcherWithCircuitBreaker(withConnectionStatus(deps, (bodies) => sendNetworkBodiesToServer(deps.getServerUrl(), bodies, deps.debugLog)), { debounceMs: 200, maxBatchSize: 50, sharedCircuitBreaker });
+    const perfBatcherWithCB = createBatcherWithCircuitBreaker(withConnectionStatus(deps, (snapshots) => sendPerformanceSnapshotsToServer(deps.getServerUrl(), snapshots, deps.debugLog)), { debounceMs: 500, maxBatchSize: 10, sharedCircuitBreaker });
     return {
         logBatcherWithCB,
         logBatcher: logBatcherWithCB.batcher,

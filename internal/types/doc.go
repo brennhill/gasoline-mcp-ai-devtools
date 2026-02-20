@@ -1,3 +1,5 @@
+// doc.go — Package documentation for foundational cross-cutting types.
+
 // Package types provides the foundational, zero-dependency types for Gasoline.
 //
 // This package contains all cross-cutting type definitions needed by multiple packages:

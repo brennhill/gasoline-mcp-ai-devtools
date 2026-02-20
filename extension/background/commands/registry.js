@@ -1,9 +1,9 @@
 // registry.ts — Command registry and dispatch loop.
 // Replaces the monolithic if-chain in pending-queries.ts with a Map-based registry.
-import * as index from '../index.js';
+import { debugLog } from '../index.js';
+import { initReady } from '../state.js';
 import { DebugCategory } from '../debug.js';
 import { sendResult, sendAsyncResult, requiresTargetTab, resolveTargetTab, parseQueryParamsObject, withTargetContext, actionToast, isRestrictedUrl } from './helpers.js';
-const { debugLog } = index;
 // =============================================================================
 // REGISTRY
 // =============================================================================
@@ -16,7 +16,7 @@ export function registerCommand(type, handler) {
 // =============================================================================
 export async function dispatch(query, syncClient) {
     // Wait for initialization to complete (max 2s) so pilot cache is populated
-    await Promise.race([index.initReady, new Promise((r) => setTimeout(r, 2000))]);
+    await Promise.race([initReady, new Promise((r) => setTimeout(r, 2000))]);
     debugLog(DebugCategory.CONNECTION, 'handlePendingQuery ENTER', {
         id: query.id,
         type: query.type,

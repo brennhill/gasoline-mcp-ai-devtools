@@ -3,9 +3,9 @@
 // Dependencies are injected to avoid circular imports with index.ts.
 import { createSyncClient } from './sync-client.js';
 import { DebugCategory } from './debug.js';
-import * as communication from './communication.js';
-import * as stateManager from './state-manager.js';
-import * as eventListeners from './event-listeners.js';
+import { updateBadge } from './communication.js';
+import { isQueryProcessing, addProcessingQuery, removeProcessingQuery } from './state-manager.js';
+import { getTrackedTabInfo } from './event-listeners.js';
 import { handlePendingQuery as handlePendingQueryImpl } from './pending-queries.js';
 // =============================================================================
 // MODULE STATE
@@ -42,11 +42,11 @@ export function startSyncClient(deps) {
         // #lizard forgives
         onCommand: async (command) => {
             deps.debugLog(DebugCategory.CONNECTION, 'Processing sync command', { type: command.type, id: command.id });
-            if (stateManager.isQueryProcessing(command.id)) {
+            if (isQueryProcessing(command.id)) {
                 deps.debugLog(DebugCategory.CONNECTION, 'Skipping already processing command', { id: command.id });
                 return;
             }
-            stateManager.addProcessingQuery(command.id);
+            addProcessingQuery(command.id);
             try {
                 await handlePendingQueryImpl(command, syncClient);
             }
@@ -57,13 +57,13 @@ export function startSyncClient(deps) {
                 });
             }
             finally {
-                stateManager.removeProcessingQuery(command.id);
+                removeProcessingQuery(command.id);
             }
         },
         // Handle connection state changes
         onConnectionChange: (connected) => {
             deps.setConnectionStatus({ connected });
-            communication.updateBadge(deps.getConnectionStatus());
+            updateBadge(deps.getConnectionStatus());
             deps.debugLog(DebugCategory.CONNECTION, connected ? 'Sync connected' : 'Sync disconnected');
             // Notify popup
             if (typeof chrome !== 'undefined' && chrome.runtime) {
@@ -105,7 +105,7 @@ export function startSyncClient(deps) {
         },
         // Get current settings to send to server
         getSettings: async () => {
-            const trackingInfo = await eventListeners.getTrackedTabInfo();
+            const trackingInfo = await getTrackedTabInfo();
             return {
                 pilot_enabled: deps.getAiWebPilotEnabledCache(),
                 tracking_enabled: !!trackingInfo.trackedTabId,

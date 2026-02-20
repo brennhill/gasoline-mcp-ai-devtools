@@ -90,15 +90,15 @@ func OpenAndValidateFile(resolvedPath, displayPath string) (*os.File, os.FileInf
 	file, err := os.Open(resolvedPath)
 	if err != nil {
 		if os.IsNotExist(err) {
-			return nil, nil, fmt.Errorf("file not found: %s", displayPath)
+			return nil, nil, fmt.Errorf("file not found: %s: %w", displayPath, err)
 		}
-		return nil, nil, fmt.Errorf("failed to open file: %s", displayPath)
+		return nil, nil, fmt.Errorf("failed to open file: %s: %w", displayPath, err)
 	}
 
 	info, err := file.Stat()
 	if err != nil {
 		file.Close() //nolint:errcheck // closing on error path
-		return nil, nil, fmt.Errorf("failed to stat file: %s", displayPath)
+		return nil, nil, fmt.Errorf("failed to stat file: %s: %w", displayPath, err)
 	}
 
 	if err := CheckHardlink(info); err != nil {

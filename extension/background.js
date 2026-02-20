@@ -18,7 +18,7 @@
  * - background/polling.ts: Polling loops (internal)
  */
 import { initializeExtension } from './background/init.js';
-import { EXTENSION_SESSION_ID } from './background/index.js';
+import { EXTENSION_SESSION_ID } from './background/state.js';
 // =============================================================================
 // === PUBLIC API: CONSTANTS (Test & Init)
 // =============================================================================
@@ -29,7 +29,8 @@ export { RATE_LIMIT_CONFIG } from './background/communication.js';
 // =============================================================================
 // === PUBLIC API: CORE STATE
 // =============================================================================
-export { EXTENSION_SESSION_ID, serverUrl, debugMode, connectionStatus, currentLogLevel, screenshotOnError, extensionLogQueue, DebugCategory } from './background/index.js';
+export { EXTENSION_SESSION_ID, serverUrl, debugMode, connectionStatus, currentLogLevel, screenshotOnError, extensionLogQueue } from './background/state.js';
+export { DebugCategory } from './background/index.js';
 // =============================================================================
 // === PUBLIC API: DEBUG LOGGING
 // =============================================================================
@@ -41,7 +42,8 @@ export { sharedServerCircuitBreaker, logBatcher, wsBatcher, enhancedActionBatche
 // =============================================================================
 // === PUBLIC API: CORE HANDLERS
 // =============================================================================
-export { handleLogMessage, handleClearLogs, isConnectionCheckRunning, checkConnectionAndUpdate, applyCaptureOverrides } from './background/index.js';
+export { handleLogMessage, handleClearLogs, isConnectionCheckRunning, checkConnectionAndUpdate } from './background/index.js';
+export { applyCaptureOverrides } from './background/state.js';
 // =============================================================================
 // === PUBLIC API: POLLING WRAPPERS
 // =============================================================================
@@ -53,7 +55,8 @@ export { getExtensionVersion, isNewVersionAvailable, getAvailableVersion, update
 // =============================================================================
 // === PUBLIC API: PENDING QUERIES & PILOT
 // =============================================================================
-export { handlePendingQuery, handlePilotCommand, isAiWebPilotEnabled, markInitComplete } from './background/index.js';
+export { handlePendingQuery, handlePilotCommand } from './background/index.js';
+export { isAiWebPilotEnabled, markInitComplete } from './background/state.js';
 // =============================================================================
 // === PUBLIC API: STATE MANAGEMENT (Tests, Initialization)
 // =============================================================================
@@ -77,7 +80,7 @@ export { saveStateSnapshot, loadStateSnapshot, listStateSnapshots, deleteStateSn
 // =============================================================================
 // === INTERNAL USE (Underscore Prefix)
 // =============================================================================
-export { _captureOverrides, _connectionCheckRunning, __aiWebPilotEnabledCache, __aiWebPilotCacheInitialized, __pilotInitCallback, _resetPilotCacheForTesting } from './background/index.js';
+export { _captureOverrides, _connectionCheckRunning, __aiWebPilotEnabledCache, __aiWebPilotCacheInitialized, __pilotInitCallback, _resetPilotCacheForTesting } from './background/state.js';
 // =============================================================================
 // INITIALIZATION — Only in Chrome extension context, not in Node.js test environment
 // =============================================================================

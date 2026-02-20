@@ -3,7 +3,8 @@
 
 import type { PendingQuery } from '../../types'
 import type { SyncClient } from '../sync-client'
-import * as index from '../index'
+import { debugLog } from '../index'
+import { initReady } from '../state'
 import { DebugCategory } from '../debug'
 import type { SendAsyncResultFn, QueryParamsObject, TargetResolution } from './helpers'
 import {
@@ -16,8 +17,6 @@ import {
   actionToast,
   isRestrictedUrl
 } from './helpers'
-
-const { debugLog } = index
 
 // =============================================================================
 // COMMAND CONTEXT
@@ -58,7 +57,7 @@ export function registerCommand(type: string, handler: CommandHandler): void {
 
 export async function dispatch(query: PendingQuery, syncClient: SyncClient): Promise<void> {
   // Wait for initialization to complete (max 2s) so pilot cache is populated
-  await Promise.race([index.initReady, new Promise((r) => setTimeout(r, 2000))])
+  await Promise.race([initReady, new Promise((r) => setTimeout(r, 2000))])
 
   debugLog(DebugCategory.CONNECTION, 'handlePendingQuery ENTER', {
     id: query.id,

@@ -12,10 +12,9 @@
 import type { PendingQuery } from '../types/queries'
 import type { SyncClient } from './sync-client'
 import type { SendAsyncResultFn, ActionToastFn } from './pending-queries'
-import * as index from './index'
+import { debugLog } from './index'
+import { serverUrl } from './state'
 import { DebugCategory } from './debug'
-
-const { debugLog } = index
 
 // ============================================
 // Timing Constants
@@ -407,7 +406,7 @@ export async function executeUpload(
   const fileReadController = new AbortController()
   const fileReadTimeout = setTimeout(() => fileReadController.abort(), DAEMON_FETCH_TIMEOUT_MS)
   try {
-    const response = await fetch(`${index.serverUrl}/api/file/read`, {
+    const response = await fetch(`${serverUrl}/api/file/read`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'X-Gasoline-Client': 'gasoline-extension' },
       body: JSON.stringify({ file_path }),
@@ -496,7 +495,7 @@ export async function executeUpload(
         debugLog(DebugCategory.CONNECTION, 'Upload Stage 1 file cleared, escalating to Stage 4', { selector })
         actionToast(tabId, 'upload', 'Escalating to OS automation...', 'trying', 30000)
 
-        const escalation = await escalateToStage4(tabId, selector, file_path, index.serverUrl)
+        const escalation = await escalateToStage4(tabId, selector, file_path, serverUrl)
         if (escalation.success) {
           debugLog(DebugCategory.CONNECTION, 'Upload Stage 4 succeeded', { selector, fileName: escalation.file_name })
           actionToast(tabId, 'upload', escalation.file_name || fileName, 'success')

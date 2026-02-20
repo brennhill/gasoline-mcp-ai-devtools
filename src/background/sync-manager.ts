@@ -5,9 +5,9 @@
 import type { PendingQuery } from '../types'
 import { createSyncClient, type SyncClient, type SyncCommand, type SyncSettings } from './sync-client'
 import { DebugCategory } from './debug'
-import * as communication from './communication'
-import * as stateManager from './state-manager'
-import * as eventListeners from './event-listeners'
+import { updateBadge } from './communication'
+import { isQueryProcessing, addProcessingQuery, removeProcessingQuery } from './state-manager'
+import { getTrackedTabInfo } from './event-listeners'
 import { handlePendingQuery as handlePendingQueryImpl } from './pending-queries'
 
 // =============================================================================
@@ -97,11 +97,11 @@ export function startSyncClient(deps: SyncManagerDeps): void {
       // #lizard forgives
       onCommand: async (command: SyncCommand) => {
         deps.debugLog(DebugCategory.CONNECTION, 'Processing sync command', { type: command.type, id: command.id })
-        if (stateManager.isQueryProcessing(command.id)) {
+        if (isQueryProcessing(command.id)) {
           deps.debugLog(DebugCategory.CONNECTION, 'Skipping already processing command', { id: command.id })
           return
         }
-        stateManager.addProcessingQuery(command.id)
+        addProcessingQuery(command.id)
         try {
           await handlePendingQueryImpl(command as unknown as PendingQuery, syncClient!)
         } catch (err) {
@@ -110,14 +110,14 @@ export function startSyncClient(deps: SyncManagerDeps): void {
             error: (err as Error).message
           })
         } finally {
-          stateManager.removeProcessingQuery(command.id)
+          removeProcessingQuery(command.id)
         }
       },
 
       // Handle connection state changes
       onConnectionChange: (connected: boolean) => {
         deps.setConnectionStatus({ connected })
-        communication.updateBadge(deps.getConnectionStatus())
+        updateBadge(deps.getConnectionStatus())
         deps.debugLog(DebugCategory.CONNECTION, connected ? 'Sync connected' : 'Sync disconnected')
 
         // Notify popup
@@ -163,7 +163,7 @@ export function startSyncClient(deps: SyncManagerDeps): void {
 
       // Get current settings to send to server
       getSettings: async (): Promise<SyncSettings> => {
-        const trackingInfo = await eventListeners.getTrackedTabInfo()
+        const trackingInfo = await getTrackedTabInfo()
         return {
           pilot_enabled: deps.getAiWebPilotEnabledCache(),
           tracking_enabled: !!trackingInfo.trackedTabId,

@@ -1,5 +1,4 @@
-// Purpose: Owns proc_unix.go runtime behavior and integration logic.
-// Docs: docs/features/feature/observe/index.md
+// proc_unix.go — Unix-specific detached process configuration.
 
 //go:build !windows
 

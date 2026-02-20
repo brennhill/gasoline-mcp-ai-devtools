@@ -1,9 +1,8 @@
 // helpers.ts — Shared infrastructure for command dispatch.
 // Types, result helpers, target resolution, action toast, and constants.
-import * as eventListeners from '../event-listeners.js';
-import * as index from '../index.js';
+import { getTrackedTabInfo, clearTrackedTab } from '../event-listeners.js';
+import { debugLog, diagnosticLog } from '../index.js';
 import { DebugCategory } from '../debug.js';
-const { debugLog, diagnosticLog } = index;
 // =============================================================================
 // RESULT HELPERS
 // =============================================================================
@@ -222,7 +221,7 @@ export async function resolveTargetTab(query, paramsObj) {
             }
         };
     }
-    const storage = await eventListeners.getTrackedTabInfo();
+    const storage = await getTrackedTabInfo();
     const trackedTabId = storage.trackedTabId ?? null;
     if (trackedTabId) {
         diagnosticLog(`[Diagnostic] Using tracked tab ${trackedTabId} for query ${query.type}`);
@@ -239,7 +238,7 @@ export async function resolveTargetTab(query, paramsObj) {
             };
         }
         diagnosticLog(`[Diagnostic] Tracked tab ${trackedTabId} unavailable, clearing tracking state`);
-        eventListeners.clearTrackedTab();
+        clearTrackedTab();
         try {
             const toastTab = await getActiveTab();
             if (toastTab?.id) {
