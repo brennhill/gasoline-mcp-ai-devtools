@@ -26,12 +26,15 @@ func ConfigureToolSchema() mcp.MCPTool {
 					"enum":        []string{"off", "auto", "full"},
 				},
 				"store_action": map[string]any{
-					"type": "string",
-					"enum": []string{"save", "load", "list", "delete", "stats"},
+					"type":        "string",
+					"description": "Store operation (default: list)",
+					"enum":        []string{"save", "load", "list", "delete", "stats"},
+					"default":     "list",
 				},
 				"namespace": map[string]any{
 					"type":        "string",
-					"description": "Store grouping",
+					"description": "Store grouping (default: session)",
+					"default":     "session",
 				},
 				"key": map[string]any{
 					"type":        "string",
@@ -41,14 +44,52 @@ func ConfigureToolSchema() mcp.MCPTool {
 					"type":        "object",
 					"description": "JSON data to persist",
 				},
+				"value": map[string]any{
+					"type":        "string",
+					"description": "Flat value alias for save action; treated as data when provided",
+				},
 				"noise_action": map[string]any{
-					"type": "string",
-					"enum": []string{"add", "remove", "list", "reset", "auto_detect"},
+					"type":        "string",
+					"description": "Noise operation (default: list)",
+					"enum":        []string{"add", "remove", "list", "reset", "auto_detect"},
+					"default":     "list",
 				},
 				"rules": map[string]any{
 					"type":        "array",
 					"description": "Noise rules to add",
 					"items":       map[string]any{"type": "object"},
+				},
+				"classification": map[string]any{
+					"type":        "string",
+					"description": "Single-rule flattening helper for noise_action=add",
+				},
+				"message_regex": map[string]any{
+					"type":        "string",
+					"description": "Single-rule flattening helper for noise_action=add",
+				},
+				"source_regex": map[string]any{
+					"type":        "string",
+					"description": "Single-rule flattening helper for noise_action=add",
+				},
+				"url_regex": map[string]any{
+					"type":        "string",
+					"description": "Single-rule flattening helper for noise_action=add",
+				},
+				"method": map[string]any{
+					"type":        "string",
+					"description": "Single-rule flattening helper for noise_action=add",
+				},
+				"status_min": map[string]any{
+					"type":        "integer",
+					"description": "Single-rule flattening helper for noise_action=add",
+				},
+				"status_max": map[string]any{
+					"type":        "integer",
+					"description": "Single-rule flattening helper for noise_action=add",
+				},
+				"level": map[string]any{
+					"type":        "string",
+					"description": "Single-rule flattening helper for noise_action=add",
 				},
 				"rule_id": map[string]any{
 					"type":        "string",
@@ -56,11 +97,13 @@ func ConfigureToolSchema() mcp.MCPTool {
 				},
 				"pattern": map[string]any{
 					"type":        "string",
-					"description": "Regex pattern",
+					"description": "Regex pattern (single-rule flattening helper for noise_action=add)",
 				},
 				"category": map[string]any{
-					"type": "string",
-					"enum": []string{"console", "network", "websocket"},
+					"type":        "string",
+					"description": "Noise category (default: console for flattened add)",
+					"enum":        []string{"console", "network", "websocket"},
+					"default":     "console",
 				},
 				"reason": map[string]any{
 					"type":        "string",

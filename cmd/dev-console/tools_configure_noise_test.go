@@ -69,6 +69,58 @@ func TestToolConfigureNoise_AddRule(t *testing.T) {
 	}
 }
 
+func TestToolConfigureNoise_AddRule_FlatParams(t *testing.T) {
+	t.Parallel()
+	env := newConfigureTestEnv(t)
+
+	result, ok := env.callConfigure(t, `{"what":"noise_rule","noise_action":"add","pattern":"flat-single-noise"}`)
+	if !ok {
+		t.Fatal("noise add flat params should return result")
+	}
+	if result.IsError {
+		t.Fatalf("noise add flat params should not error, got: %s", result.Content[0].Text)
+	}
+
+	data := parseResponseJSON(t, result)
+	rulesAdded, _ := data["rules_added"].(float64)
+	if rulesAdded != 1 {
+		t.Fatalf("rules_added = %v, want 1", rulesAdded)
+	}
+
+	listResult, ok := env.callConfigure(t, `{"what":"noise_rule","noise_action":"list"}`)
+	if !ok {
+		t.Fatal("noise list should return result")
+	}
+	if listResult.IsError {
+		t.Fatalf("noise list should not error, got: %s", listResult.Content[0].Text)
+	}
+	listData := parseResponseJSON(t, listResult)
+	rules, ok := listData["rules"].([]any)
+	if !ok {
+		t.Fatalf("rules type = %T, want []any", listData["rules"])
+	}
+	found := false
+	for _, r := range rules {
+		rule, ok := r.(map[string]any)
+		if !ok {
+			continue
+		}
+		ms, _ := rule["match_spec"].(map[string]any)
+		if ms == nil {
+			continue
+		}
+		if ms["message_regex"] == "flat-single-noise" {
+			found = true
+			if rule["category"] != "console" {
+				t.Fatalf("flat rule category = %v, want console", rule["category"])
+			}
+		}
+	}
+	if !found {
+		t.Fatal("flat single noise rule was not added")
+	}
+}
+
 func TestToolConfigureNoise_RemoveMissingRuleID(t *testing.T) {
 	t.Parallel()
 	env := newConfigureTestEnv(t)

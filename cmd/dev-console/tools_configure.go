@@ -17,6 +17,8 @@ import (
 // ConfigureHandler is the function signature for configure action handlers.
 type ConfigureHandler func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse
 
+const defaultStoreNamespace = "session"
+
 // configureHandlers maps configure action names to their handler functions.
 var configureHandlers = map[string]ConfigureHandler{
 	"store": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
@@ -134,9 +136,11 @@ func (h *ToolHandler) toolConfigure(req JSONRPCRequest, args json.RawMessage) JS
 func (h *ToolHandler) toolConfigureStore(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	var compositeArgs struct {
 		StoreAction string          `json:"store_action"`
+		Action      string          `json:"action"`
 		Namespace   string          `json:"namespace"`
 		Key         string          `json:"key"`
 		Data        json.RawMessage `json:"data"`
+		Value       json.RawMessage `json:"value"`
 	}
 	if len(args) > 0 {
 		if err := json.Unmarshal(args, &compositeArgs); err != nil {
@@ -145,8 +149,21 @@ func (h *ToolHandler) toolConfigureStore(req JSONRPCRequest, args json.RawMessag
 	}
 
 	action := compositeArgs.StoreAction
+	if action == "" && isStoreAction(compositeArgs.Action) {
+		action = compositeArgs.Action
+	}
 	if action == "" {
 		action = "list"
+	}
+
+	namespace := compositeArgs.Namespace
+	if namespace == "" {
+		namespace = defaultStoreNamespace
+	}
+
+	data := compositeArgs.Data
+	if len(data) == 0 && len(compositeArgs.Value) > 0 {
+		data = compositeArgs.Value
 	}
 
 	// Ensure session store is initialized
@@ -157,9 +174,9 @@ func (h *ToolHandler) toolConfigureStore(req JSONRPCRequest, args json.RawMessag
 	// Convert to SessionStoreArgs
 	storeArgs := ai.SessionStoreArgs{
 		Action:    action,
-		Namespace: compositeArgs.Namespace,
+		Namespace: namespace,
 		Key:       compositeArgs.Key,
-		Data:      compositeArgs.Data,
+		Data:      data,
 	}
 
 	result, err := h.sessionStoreImpl.HandleSessionStore(storeArgs)
@@ -174,6 +191,15 @@ func (h *ToolHandler) toolConfigureStore(req JSONRPCRequest, args json.RawMessag
 	}
 
 	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Store operation complete", responseData)}
+}
+
+func isStoreAction(action string) bool {
+	switch action {
+	case "save", "load", "list", "delete", "stats":
+		return true
+	default:
+		return false
+	}
 }
 
 func (h *ToolHandler) toolConfigureTelemetry(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {

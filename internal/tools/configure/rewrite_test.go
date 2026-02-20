@@ -69,6 +69,64 @@ func TestRewriteNoiseRuleArgs_InvalidJSON(t *testing.T) {
 	}
 }
 
+func TestRewriteNoiseRuleArgs_FlattensSingleRule_DefaultCategory(t *testing.T) {
+	t.Parallel()
+
+	rewritten, err := RewriteNoiseRuleArgs(json.RawMessage(`{"noise_action":"add","pattern":"test.*noise"}`))
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	var raw map[string]any
+	if err := json.Unmarshal(rewritten, &raw); err != nil {
+		t.Fatalf("unmarshal rewritten: %v", err)
+	}
+	if raw["action"] != "add" {
+		t.Fatalf("action = %v, want add", raw["action"])
+	}
+
+	rules, ok := raw["rules"].([]any)
+	if !ok || len(rules) != 1 {
+		t.Fatalf("rules = %v, want single rule", raw["rules"])
+	}
+	rule, ok := rules[0].(map[string]any)
+	if !ok {
+		t.Fatalf("rules[0] type = %T, want map[string]any", rules[0])
+	}
+	if rule["category"] != "console" {
+		t.Fatalf("category = %v, want console", rule["category"])
+	}
+	matchSpec, ok := rule["match_spec"].(map[string]any)
+	if !ok {
+		t.Fatalf("match_spec type = %T, want map[string]any", rule["match_spec"])
+	}
+	if matchSpec["message_regex"] != "test.*noise" {
+		t.Fatalf("message_regex = %v, want test.*noise", matchSpec["message_regex"])
+	}
+}
+
+func TestRewriteNoiseRuleArgs_FlattenPreservesExplicitCategory(t *testing.T) {
+	t.Parallel()
+
+	rewritten, err := RewriteNoiseRuleArgs(json.RawMessage(`{"noise_action":"add","pattern":"api-noise","category":"network"}`))
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	var raw map[string]any
+	if err := json.Unmarshal(rewritten, &raw); err != nil {
+		t.Fatalf("unmarshal rewritten: %v", err)
+	}
+	rules, ok := raw["rules"].([]any)
+	if !ok || len(rules) != 1 {
+		t.Fatalf("rules = %v, want single rule", raw["rules"])
+	}
+	rule, _ := rules[0].(map[string]any)
+	if rule["category"] != "network" {
+		t.Fatalf("category = %v, want network", rule["category"])
+	}
+}
+
 // ============================================
 // RewriteStreamingArgs tests
 // ============================================
