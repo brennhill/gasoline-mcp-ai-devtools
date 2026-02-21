@@ -486,4 +486,25 @@ describe('world routing: auto/main/isolated for DOM actions', () => {
     assert.strictEqual(executeScriptCalls[0].world, 'MAIN')
     assert.strictEqual(res.calls[0].status, 'error')
   })
+
+  test('auto world returns explicit ERROR fallback summary when both worlds fail', async () => {
+    executeScriptReturn.push(new Error('MAIN world blocked by CSP'))
+    executeScriptReturn.push(new Error('ISOLATED world blocked by CSP'))
+    const res = captureAsyncResult()
+
+    await executeDOMAction(makeQuery({ action: 'click', selector: '#btn' }), 1, makeSyncClient(), res.fn, noopToast)
+
+    assert.strictEqual(executeScriptCalls.length, 2)
+    assert.strictEqual(executeScriptCalls[0].world, 'MAIN')
+    assert.strictEqual(executeScriptCalls[1].world, 'ISOLATED')
+    assert.strictEqual(res.calls[0].status, 'error')
+    assert.strictEqual(res.calls[0].error, 'Error: MAIN world execution FAILED. Fallback in ISOLATED is ERROR.')
+    assert.strictEqual(res.calls[0].result.success, false)
+    assert.strictEqual(res.calls[0].result.main_world_status, 'error')
+    assert.strictEqual(res.calls[0].result.isolated_world_status, 'error')
+    assert.strictEqual(
+      res.calls[0].result.fallback_summary,
+      'Error: MAIN world execution FAILED. Fallback in ISOLATED is ERROR.'
+    )
+  })
 })
