@@ -6,6 +6,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"net/url"
 	"sort"
 	"strings"
 	"time"
@@ -235,6 +236,9 @@ func (h *ToolHandler) toolGenerateTest(req JSONRPCRequest, args json.RawMessage)
 
 	allActions := h.capture.GetAllEnhancedActions()
 	actions := gen.FilterLastN(allActions, params.LastN)
+	params.CapturedTitle = strings.TrimSpace(h.capture.GetTrackedTabTitle())
+	params.CapturedErrorCount, params.CapturedErrorSamples = collectCapturedErrorPatterns(h)
+	params.CapturedNetworkChecks = collectCapturedNetworkChecks(h.capture.GetNetworkBodies())
 	script := gen.GenerateTestScript(actions, params)
 
 	result := map[string]any{
@@ -242,12 +246,17 @@ func (h *ToolHandler) toolGenerateTest(req JSONRPCRequest, args json.RawMessage)
 		"test_name":    params.TestName,
 		"action_count": len(actions),
 		"metadata": map[string]any{
-			"generated_at":      time.Now().Format(time.RFC3339),
-			"actions_available": len(allActions),
-			"actions_included":  len(actions),
-			"assert_network":    params.AssertNetwork,
-			"assert_no_errors":  params.AssertNoErrors,
+			"generated_at":            time.Now().Format(time.RFC3339),
+			"actions_available":       len(allActions),
+			"actions_included":        len(actions),
+			"assert_network":          params.AssertNetwork,
+			"assert_no_errors":        params.AssertNoErrors,
+			"captured_error_count":    params.CapturedErrorCount,
+			"captured_network_checks": len(params.CapturedNetworkChecks),
 		},
+	}
+	if params.CapturedTitle != "" {
+		result["metadata"].(map[string]any)["captured_title"] = params.CapturedTitle
 	}
 
 	if len(actions) == 0 {
@@ -257,6 +266,97 @@ func (h *ToolHandler) toolGenerateTest(req JSONRPCRequest, args json.RawMessage)
 
 	summary := fmt.Sprintf("Playwright test '%s' (%d actions)", params.TestName, len(actions))
 	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse(summary, result)}
+}
+
+func collectCapturedErrorPatterns(h *ToolHandler) (int, []string) {
+	entries, _ := h.GetLogEntries()
+	if len(entries) == 0 {
+		return 0, nil
+	}
+
+	const maxPatterns = 3
+	allErrorCount := 0
+	patterns := make([]string, 0, maxPatterns)
+	seen := map[string]bool{}
+
+	for i := len(entries) - 1; i >= 0; i-- {
+		entry := entries[i]
+		level, _ := entry["level"].(string)
+		if level != "error" {
+			continue
+		}
+		if h.IsConsoleNoise(entry) {
+			continue
+		}
+		allErrorCount++
+
+		msg, _ := entry["message"].(string)
+		msg = strings.TrimSpace(msg)
+		if msg == "" || seen[msg] {
+			continue
+		}
+		seen[msg] = true
+		patterns = append(patterns, msg)
+		if len(patterns) >= maxPatterns {
+			break
+		}
+	}
+	return allErrorCount, patterns
+}
+
+func collectCapturedNetworkChecks(bodies []capture.NetworkBody) []gen.CapturedNetworkCheck {
+	if len(bodies) == 0 {
+		return nil
+	}
+
+	const maxChecks = 3
+	checks := make([]gen.CapturedNetworkCheck, 0, maxChecks)
+	seen := map[string]bool{}
+
+	for i := len(bodies) - 1; i >= 0; i-- {
+		body := bodies[i]
+		if strings.TrimSpace(body.URL) == "" {
+			continue
+		}
+		pattern := networkAssertionPattern(body.URL)
+		if pattern == "" {
+			continue
+		}
+
+		key := body.Method + "|" + pattern + "|" + fmt.Sprintf("%d", body.Status)
+		if seen[key] {
+			continue
+		}
+		seen[key] = true
+
+		checks = append(checks, gen.CapturedNetworkCheck{
+			Pattern: pattern,
+			Status:  body.Status,
+			Method:  strings.ToUpper(strings.TrimSpace(body.Method)),
+		})
+		if len(checks) >= maxChecks {
+			break
+		}
+	}
+	return checks
+}
+
+func networkAssertionPattern(rawURL string) string {
+	trimmed := strings.TrimSpace(rawURL)
+	if trimmed == "" {
+		return ""
+	}
+	parsed, err := url.Parse(trimmed)
+	if err != nil {
+		return trimmed
+	}
+	if parsed.Path != "" && parsed.Path != "/" {
+		return parsed.Path
+	}
+	if parsed.Host != "" {
+		return parsed.Host
+	}
+	return trimmed
 }
 
 func (h *ToolHandler) toolGeneratePRSummary(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
