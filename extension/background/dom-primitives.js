@@ -316,7 +316,150 @@ export function domPrimitive(action, selector, options) {
         // Fast path, then deep fallback
         return querySelectorDeep(sel);
     }
-    // list_interactive is handled by domPrimitiveListInteractive (dom-primitives-list-interactive.ts)
+    // list_interactive is handled by domPrimitiveListInteractive in production dispatch,
+    // but remains available here for backward compatibility and direct tests.
+    function buildUniqueSelector(el, htmlEl, fallbackSelector) {
+        if (el.id)
+            return `#${el.id}`;
+        if (el instanceof HTMLInputElement && el.name)
+            return `input[name="${el.name}"]`;
+        const ariaLabel = el.getAttribute('aria-label');
+        if (ariaLabel)
+            return `aria-label=${ariaLabel}`;
+        const placeholder = el.getAttribute('placeholder');
+        if (placeholder)
+            return `placeholder=${placeholder}`;
+        const text = (htmlEl.textContent || '').trim().slice(0, 40);
+        if (text)
+            return `text=${text}`;
+        return fallbackSelector;
+    }
+    function buildShadowSelector(el) {
+        const rootNode = el.getRootNode();
+        if (!(rootNode instanceof ShadowRoot))
+            return null;
+        const parts = [];
+        let node = el;
+        let root = rootNode;
+        while (root instanceof ShadowRoot) {
+            const inner = buildUniqueSelector(node, node, node.tagName.toLowerCase());
+            parts.unshift(inner);
+            node = root.host;
+            root = node.getRootNode();
+        }
+        const hostSelector = buildUniqueSelector(node, node, node.tagName.toLowerCase());
+        parts.unshift(hostSelector);
+        return parts.join(' >>> ');
+    }
+    function classifyElement(el) {
+        const tag = el.tagName.toLowerCase();
+        if (tag === 'a')
+            return 'link';
+        if (tag === 'button' || el.getAttribute('role') === 'button')
+            return 'button';
+        if (tag === 'input') {
+            const inputType = el.type || 'text';
+            if (inputType === 'submit' || inputType === 'button' || inputType === 'reset')
+                return 'button';
+            if (inputType === 'checkbox' || inputType === 'radio')
+                return 'checkbox';
+            return 'input';
+        }
+        if (tag === 'select')
+            return 'select';
+        if (tag === 'textarea')
+            return 'textarea';
+        if (el.getAttribute('role') === 'link')
+            return 'link';
+        if (el.getAttribute('role') === 'tab')
+            return 'tab';
+        if (el.getAttribute('role') === 'menuitem')
+            return 'menuitem';
+        if (el.getAttribute('contenteditable') === 'true')
+            return 'textarea';
+        return 'interactive';
+    }
+    function listInteractiveCompatibility() {
+        const interactiveSelectors = [
+            'a[href]',
+            'button',
+            'input',
+            'select',
+            'textarea',
+            '[role="button"]',
+            '[role="link"]',
+            '[role="tab"]',
+            '[role="menuitem"]',
+            '[contenteditable="true"]',
+            '[onclick]',
+            '[tabindex]'
+        ];
+        const seen = new Set();
+        const rawEntries = [];
+        for (const cssSelector of interactiveSelectors) {
+            const matches = querySelectorAllDeep(cssSelector);
+            for (const el of matches) {
+                if (seen.has(el))
+                    continue;
+                seen.add(el);
+                const htmlEl = el;
+                const rect = typeof htmlEl.getBoundingClientRect === 'function'
+                    ? htmlEl.getBoundingClientRect()
+                    : { width: 0, height: 0 };
+                const visible = rect.width > 0 && rect.height > 0 && htmlEl.offsetParent !== null;
+                const shadowSelector = buildShadowSelector(el);
+                const baseSelector = shadowSelector || buildUniqueSelector(el, htmlEl, cssSelector);
+                const label = el.getAttribute('aria-label') ||
+                    el.getAttribute('title') ||
+                    el.getAttribute('placeholder') ||
+                    (htmlEl.textContent || '').trim().slice(0, 60) ||
+                    el.tagName.toLowerCase();
+                rawEntries.push({
+                    baseSelector,
+                    tag: el.tagName.toLowerCase(),
+                    inputType: el instanceof HTMLInputElement ? el.type : undefined,
+                    elementType: classifyElement(el),
+                    label,
+                    role: el.getAttribute('role') || undefined,
+                    placeholder: el.getAttribute('placeholder') || undefined,
+                    visible
+                });
+                if (rawEntries.length >= 100)
+                    break;
+            }
+            if (rawEntries.length >= 100)
+                break;
+        }
+        const selectorCount = new Map();
+        for (const entry of rawEntries) {
+            selectorCount.set(entry.baseSelector, (selectorCount.get(entry.baseSelector) || 0) + 1);
+        }
+        const selectorIndex = new Map();
+        const elements = rawEntries.map((entry, index) => {
+            let selector = entry.baseSelector;
+            const count = selectorCount.get(entry.baseSelector) || 1;
+            if (count > 1) {
+                const nth = (selectorIndex.get(entry.baseSelector) || 0) + 1;
+                selectorIndex.set(entry.baseSelector, nth);
+                selector = `${entry.baseSelector}:nth-match(${nth})`;
+            }
+            return {
+                index,
+                tag: entry.tag,
+                type: entry.inputType,
+                element_type: entry.elementType,
+                selector,
+                label: entry.label,
+                role: entry.role,
+                placeholder: entry.placeholder,
+                visible: entry.visible
+            };
+        });
+        return { success: true, elements };
+    }
+    if (action === 'list_interactive') {
+        return listInteractiveCompatibility();
+    }
     // — Resolve element for all other actions —
     function domError(error, message) {
         return { success: false, action, selector, error, message };
@@ -481,14 +624,49 @@ export function domPrimitive(action, selector, options) {
             }),
             get_text: () => {
                 const text = node instanceof HTMLElement ? node.innerText : node.textContent;
+                if (text === null || text === undefined) {
+                    return {
+                        success: true,
+                        action,
+                        selector,
+                        value: text,
+                        reason: 'no_text_content',
+                        message: 'Resolved text content is null'
+                    };
+                }
                 return { success: true, action, selector, value: text };
             },
             get_value: () => {
                 if (!('value' in node))
                     return domError('no_value_property', `Element has no value property: ${node.tagName}`);
-                return { success: true, action, selector, value: node.value };
+                const value = node.value;
+                if (value === null || value === undefined) {
+                    return {
+                        success: true,
+                        action,
+                        selector,
+                        value,
+                        reason: 'no_value',
+                        message: 'Element value is null'
+                    };
+                }
+                return { success: true, action, selector, value };
             },
-            get_attribute: () => ({ success: true, action, selector, value: node.getAttribute(options.name || '') }),
+            get_attribute: () => {
+                const attrName = options.name || '';
+                const value = node.getAttribute(attrName);
+                if (value === null) {
+                    return {
+                        success: true,
+                        action,
+                        selector,
+                        value,
+                        reason: 'attribute_not_found',
+                        message: `Attribute "${attrName}" not found`
+                    };
+                }
+                return { success: true, action, selector, value };
+            },
             set_attribute: () => withMutationTracking(() => {
                 node.setAttribute(options.name || '', options.value || '');
                 return { success: true, action, selector, value: node.getAttribute(options.name || '') };
@@ -560,6 +738,67 @@ export function domPrimitive(action, selector, options) {
         return domError('unknown_action', `Unknown DOM action: ${action}`);
     }
     return handler();
+}
+export function domWaitFor(selector, timeoutMs = 5000) {
+    const timeout = Math.max(1, timeoutMs);
+    return new Promise((resolve) => {
+        let resolved = false;
+        let pollTimer = null;
+        let timeoutTimer = null;
+        let observer = null;
+        const timeoutResult = {
+            success: false,
+            action: 'wait_for',
+            selector,
+            error: 'timeout',
+            message: `Element not found within ${timeout}ms: ${selector}`
+        };
+        function cleanup() {
+            if (pollTimer)
+                clearInterval(pollTimer);
+            if (timeoutTimer)
+                clearTimeout(timeoutTimer);
+            if (observer)
+                observer.disconnect();
+        }
+        function finish(result) {
+            if (resolved)
+                return;
+            resolved = true;
+            cleanup();
+            resolve(result);
+        }
+        function checkNow() {
+            const result = domPrimitive('wait_for', selector, { timeout_ms: timeout });
+            if (result && typeof result.then === 'function') {
+                void result
+                    .then((resolvedResult) => {
+                    if (resolvedResult.success)
+                        finish(resolvedResult);
+                })
+                    .catch(() => { });
+                return;
+            }
+            if (result.success) {
+                finish(result);
+            }
+        }
+        checkNow();
+        if (resolved)
+            return;
+        if (typeof MutationObserver === 'function') {
+            observer = new MutationObserver(() => {
+                checkNow();
+            });
+            observer.observe(document.body || document.documentElement, {
+                childList: true,
+                subtree: true,
+                attributes: true
+            });
+        }
+        pollTimer = setInterval(checkNow, Math.min(80, timeout));
+        timeoutTimer = setTimeout(() => finish(timeoutResult), timeout);
+    });
 }
 // Dispatcher utilities (parseDOMParams, executeDOMAction, etc.) moved to ./dom-dispatch.ts
 //# sourceMappingURL=dom-primitives.js.map

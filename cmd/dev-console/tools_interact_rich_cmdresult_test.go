@@ -133,6 +133,85 @@ func TestCommandResult_EmbeddedFailureSetsIsError(t *testing.T) {
 	}
 }
 
+func TestCommandResult_EmbeddedCSPFailureAddsCSPMarkers(t *testing.T) {
+	env := newInteractTestEnv(t)
+	env.capture.SetPilotEnabled(true)
+
+	result, ok := env.callInteract(t, `{"what":"execute_js","script":"(() => 1)()","background":true}`)
+	if !ok || result.IsError {
+		t.Fatal("execute_js should queue successfully")
+	}
+
+	pq := env.capture.GetLastPendingQuery()
+	corrID := pq.CorrelationID
+
+	env.capture.CompleteCommand(corrID, json.RawMessage(`{"success":false,"error":"csp_blocked_all_worlds","message":"Page CSP blocks dynamic script execution"}`), "")
+
+	req := JSONRPCRequest{JSONRPC: "2.0", ID: 2}
+	args := json.RawMessage(`{"correlation_id":"` + corrID + `"}`)
+	resp := env.handler.toolObserveCommandResult(req, args)
+
+	var observeResult MCPToolResult
+	if err := json.Unmarshal(resp.Result, &observeResult); err != nil {
+		t.Fatalf("Failed to parse result: %v", err)
+	}
+	if !observeResult.IsError {
+		t.Fatal("CSP failure must set IsError=true")
+	}
+
+	var responseData map[string]any
+	if err := json.Unmarshal([]byte(extractJSONFromText(observeResult.Content[0].Text)), &responseData); err != nil {
+		t.Fatalf("Failed to parse response JSON: %v", err)
+	}
+	if blocked, _ := responseData["csp_blocked"].(bool); !blocked {
+		t.Fatalf("csp_blocked = %v, want true", responseData["csp_blocked"])
+	}
+	if responseData["failure_cause"] != "csp" {
+		t.Fatalf("failure_cause = %v, want csp", responseData["failure_cause"])
+	}
+}
+
+func TestCommandResult_ErrorStatusCSPFailureIncludesRetryHint(t *testing.T) {
+	env := newInteractTestEnv(t)
+	env.capture.SetPilotEnabled(true)
+
+	result, ok := env.callInteract(t, `{"what":"navigate","url":"https://example.com","background":true}`)
+	if !ok || result.IsError {
+		t.Fatal("navigate should queue successfully")
+	}
+
+	pq := env.capture.GetLastPendingQuery()
+	corrID := pq.CorrelationID
+	env.capture.ApplyCommandResult(corrID, "error", json.RawMessage(`{"success":false,"error":"csp_blocked_page","message":"This page blocks extension script execution.","csp_blocked":true,"failure_cause":"csp"}`), "csp_blocked_page")
+
+	req := JSONRPCRequest{JSONRPC: "2.0", ID: 2}
+	args := json.RawMessage(`{"correlation_id":"` + corrID + `"}`)
+	resp := env.handler.toolObserveCommandResult(req, args)
+
+	var observeResult MCPToolResult
+	if err := json.Unmarshal(resp.Result, &observeResult); err != nil {
+		t.Fatalf("Failed to parse result: %v", err)
+	}
+	if !observeResult.IsError {
+		t.Fatal("CSP error status must set IsError=true")
+	}
+
+	var responseData map[string]any
+	if err := json.Unmarshal([]byte(extractJSONFromText(observeResult.Content[0].Text)), &responseData); err != nil {
+		t.Fatalf("Failed to parse response JSON: %v", err)
+	}
+	if blocked, _ := responseData["csp_blocked"].(bool); !blocked {
+		t.Fatalf("csp_blocked = %v, want true", responseData["csp_blocked"])
+	}
+	if responseData["failure_cause"] != "csp" {
+		t.Fatalf("failure_cause = %v, want csp", responseData["failure_cause"])
+	}
+	retry, _ := responseData["retry"].(string)
+	if !strings.Contains(strings.ToLower(retry), "navigate") {
+		t.Fatalf("retry hint should include navigation guidance, got: %q", retry)
+	}
+}
+
 func TestCommandResult_SuccessDoesNotSetIsError(t *testing.T) {
 	env := newInteractTestEnv(t)
 	env.capture.SetPilotEnabled(true)

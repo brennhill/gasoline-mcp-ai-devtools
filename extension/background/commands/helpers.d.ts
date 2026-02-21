@@ -5,7 +5,7 @@ export type SendAsyncResultFn = (syncClient: SyncClient, queryId: string, correl
 /** Callback signature for showing visual action toasts */
 export type ActionToastFn = (tabId: number, text: string, detail?: string, state?: 'trying' | 'success' | 'warning' | 'error', durationMs?: number) => void;
 export type QueryParamsObject = Record<string, unknown>;
-type TargetResolutionSource = 'explicit_tab' | 'tracked_tab' | 'active_tab';
+type TargetResolutionSource = 'explicit_tab' | 'tracked_tab' | 'active_tab' | 'active_tab_fallback';
 export interface TargetResolution {
     tabId: number;
     url: string;
@@ -27,6 +27,7 @@ export declare function actionToast(tabId: number, action: string, detail?: stri
 export declare function parseQueryParamsObject(params: PendingQuery['params']): QueryParamsObject;
 export declare function withTargetContext(result: unknown, target: TargetResolution): Record<string, unknown>;
 export declare function requiresTargetTab(queryType: string): boolean;
+export declare function isBrowserEscapeAction(queryType: string, paramsObj: QueryParamsObject): boolean;
 export declare function resolveTargetTab(query: PendingQuery, paramsObj: QueryParamsObject): Promise<{
     target?: TargetResolution;
     error?: TargetResolutionError;

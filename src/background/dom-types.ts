@@ -19,6 +19,7 @@ export interface DOMResult {
   action: string
   selector: string
   value?: unknown
+  reason?: string
   error?: string
   message?: string
   dom_summary?: string

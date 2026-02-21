@@ -15,7 +15,8 @@ import {
   parseQueryParamsObject,
   withTargetContext,
   actionToast,
-  isRestrictedUrl
+  isRestrictedUrl,
+  isBrowserEscapeAction
 } from './helpers'
 
 // =============================================================================
@@ -54,6 +55,10 @@ export function registerCommand(type: string, handler: CommandHandler): void {
 // =============================================================================
 // DISPATCH
 // =============================================================================
+
+function canRunOnRestrictedPage(queryType: string, paramsObj: QueryParamsObject): boolean {
+  return isBrowserEscapeAction(queryType, paramsObj)
+}
 
 export async function dispatch(query: PendingQuery, syncClient: SyncClient): Promise<void> {
   // Wait for initialization to complete (max 2s) so pilot cache is populated
@@ -116,15 +121,17 @@ export async function dispatch(query: PendingQuery, syncClient: SyncClient): Pro
   }
 
   // Restricted page detection: content scripts cannot run on internal browser pages
-  if (needsTarget && isRestrictedUrl(target?.url)) {
+  if (needsTarget && isRestrictedUrl(target?.url) && !canRunOnRestrictedPage(query.type, paramsObj)) {
     const payload = {
       success: false,
-      error: 'restricted_page',
+      error: 'csp_blocked_page',
+      csp_blocked: true,
+      failure_cause: 'csp',
       message: 'Extension connected but this page blocks content scripts (common on Google, Chrome Web Store, internal pages). Navigate to a different page first.',
       retryable: false
     }
     if (query.correlation_id) {
-      sendAsyncResult(syncClient, query.id, query.correlation_id, 'error', payload, payload.message)
+      sendAsyncResult(syncClient, query.id, query.correlation_id, 'error', payload, payload.error)
     } else {
       sendResult(syncClient, query.id, payload)
     }

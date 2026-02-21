@@ -266,7 +266,9 @@ func (h *ToolHandler) formatCommandResult(req JSONRPCRequest, cmd queries.Comman
 		responseData["error"] = cmd.Error
 		if len(cmd.Result) > 0 {
 			responseData["result"] = cmd.Result
+			_, _ = enrichCommandResponseData(cmd.Result, responseData)
 		}
+		annotateCSPFailure(responseData, cmd.Error, cmd.Result)
 		// Add corrective hints for common out-of-order errors
 		if strings.Contains(cmd.Error, "No active recording") {
 			responseData["retry"] = "No recording is active. Start one first: interact({what: 'record_start', name: 'my-recording'}) or configure({what: 'recording_start', name: 'my-recording'})"
@@ -342,6 +344,7 @@ func (h *ToolHandler) formatCompleteCommand(req JSONRPCRequest, cmd queries.Comm
 
 	if cmd.Error != "" {
 		responseData["error"] = cmd.Error
+		annotateCSPFailure(responseData, cmd.Error, cmd.Result)
 		summary := fmt.Sprintf("FAILED — Command %s completed with error: %s", corrID, cmd.Error)
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONErrorResponse(summary, responseData)}
 	}
@@ -361,7 +364,12 @@ func enrichCommandResponseData(result json.RawMessage, responseData map[string]a
 	}
 
 	// Surface extension enrichment fields to top-level for easier LLM consumption.
-	for _, key := range []string{"timing", "dom_changes", "dom_summary", "dom_mutations", "analysis", "content_script_status", "resolved_tab_id", "resolved_url", "target_context", "effective_tab_id", "effective_url", "effective_title", "final_url", "title"} {
+	for _, key := range []string{
+		"timing", "dom_changes", "dom_summary", "dom_mutations", "analysis",
+		"content_script_status", "resolved_tab_id", "resolved_url", "target_context",
+		"effective_tab_id", "effective_url", "effective_title", "final_url", "title",
+		"message", "hint", "retry", "retryable", "csp_blocked", "failure_cause", "error_code",
+	} {
 		if v, ok := extResult[key]; ok {
 			responseData[key] = v
 		}
@@ -393,4 +401,77 @@ func embeddedCommandError(extResult map[string]any) string {
 		return msg
 	}
 	return ""
+}
+
+func annotateCSPFailure(responseData map[string]any, cmdError string, result json.RawMessage) {
+	cspBlocked, errorCode, message := detectCSPFailure(cmdError, result)
+	if !cspBlocked {
+		return
+	}
+
+	responseData["csp_blocked"] = true
+	responseData["failure_cause"] = "csp"
+
+	if errorCode != "" {
+		responseData["error_code"] = errorCode
+	}
+	if message != "" {
+		if _, exists := responseData["message"]; !exists {
+			responseData["message"] = message
+		}
+	}
+	if _, exists := responseData["retry"]; !exists {
+		responseData["retry"] = "This page blocks script execution (CSP/restricted context). Use interact navigate/refresh/back/forward/new_tab to move to another page."
+	}
+}
+
+func detectCSPFailure(cmdError string, result json.RawMessage) (bool, string, string) {
+	errorCode := ""
+	message := ""
+
+	if len(result) > 0 {
+		var extResult map[string]any
+		if err := json.Unmarshal(result, &extResult); err == nil {
+			if v, ok := extResult["error"].(string); ok {
+				errorCode = strings.TrimSpace(v)
+			}
+			if v, ok := extResult["message"].(string); ok {
+				message = strings.TrimSpace(v)
+			}
+			if v, ok := extResult["csp_blocked"].(bool); ok && v {
+				return true, errorCode, message
+			}
+			if v, ok := extResult["failure_cause"].(string); ok && strings.EqualFold(strings.TrimSpace(v), "csp") {
+				return true, errorCode, message
+			}
+			for _, key := range []string{"error", "message", "hint"} {
+				if v, ok := extResult[key].(string); ok && looksLikeCSP(v) {
+					return true, errorCode, message
+				}
+			}
+		}
+	}
+
+	if looksLikeCSP(cmdError) {
+		if errorCode == "" {
+			errorCode = strings.TrimSpace(cmdError)
+		}
+		return true, errorCode, message
+	}
+
+	return false, errorCode, message
+}
+
+func looksLikeCSP(value string) bool {
+	v := strings.ToLower(strings.TrimSpace(value))
+	if v == "" {
+		return false
+	}
+	return strings.Contains(v, "csp") ||
+		strings.Contains(v, "content security policy") ||
+		strings.Contains(v, "trusted type") ||
+		strings.Contains(v, "unsafe-eval") ||
+		strings.Contains(v, "blocks content scripts") ||
+		strings.Contains(v, "blocked content scripts") ||
+		strings.Contains(v, "restricted_page")
 }

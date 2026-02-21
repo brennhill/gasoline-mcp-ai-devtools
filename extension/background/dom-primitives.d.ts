@@ -5,7 +5,7 @@
  * Docs: docs/features/feature/observe/index.md
  */
 import type { DOMPrimitiveOptions, DOMResult } from './dom-types';
-export { domPrimitiveListInteractive } from './dom-primitives-list-interactive';
+export { domPrimitiveListInteractive } from './dom-primitives-list-interactive.js';
 /**
  * Single self-contained function for all DOM primitives.
  * Passed to chrome.scripting.executeScript({ func: domPrimitive, args: [...] }).
@@ -15,4 +15,5 @@ export declare function domPrimitive(action: string, selector: string, options: 
     success: boolean;
     elements: unknown[];
 };
+export declare function domWaitFor(selector: string, timeoutMs?: number): Promise<DOMResult>;
 //# sourceMappingURL=dom-primitives.d.ts.map
