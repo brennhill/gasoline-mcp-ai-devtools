@@ -322,9 +322,12 @@ func (h *ToolHandler) HandleToolCall(req JSONRPCRequest, name string, args json.
 		return JSONRPCResponse{}, false
 	}
 
-	// Validate params against tool schema and append warnings for unknown fields.
-	// Skip validation for error responses (already failed, warnings would be noise).
-	if !isToolResultError(resp.Result) {
+	// Structured validation errors should include inline valid-parameter guidance.
+	if isToolResultError(resp.Result) {
+		resp = h.appendValidParamsHintOnError(resp, name, args)
+	} else {
+		// Validate params against tool schema and append warnings for unknown fields.
+		// Skip validation for error responses (already failed, warnings would be noise).
 		if schema := h.getToolSchema(name); schema != nil {
 			if warnings := validateParamsAgainstSchema(args, schema); len(warnings) > 0 {
 				resp = appendWarningsToResponse(resp, warnings)
@@ -344,18 +347,14 @@ func (h *ToolHandler) HandleToolCall(req JSONRPCRequest, name string, args json.
 	return resp, true
 }
 
-// toolSchemaCache caches InputSchema by tool name for validation.
-var toolSchemaCache map[string]map[string]any
-
-// getToolSchema returns the InputSchema for a tool by name (cached).
+// getToolSchema returns the InputSchema for a tool by name.
 func (h *ToolHandler) getToolSchema(name string) map[string]any {
-	if toolSchemaCache == nil {
-		toolSchemaCache = make(map[string]map[string]any)
-		for _, tool := range h.ToolsList() {
-			toolSchemaCache[tool.Name] = tool.InputSchema
+	for _, tool := range h.ToolsList() {
+		if tool.Name == name {
+			return tool.InputSchema
 		}
 	}
-	return toolSchemaCache[name]
+	return nil
 }
 
 func isToolResultError(raw json.RawMessage) bool {
