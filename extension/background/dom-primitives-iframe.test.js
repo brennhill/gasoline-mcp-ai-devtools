@@ -143,6 +143,37 @@ describe('iframe support: allFrames flag', () => {
     assert.strictEqual(res.calls[0].status, 'complete')
   })
 
+  test('executeStandardAction forwards scope_rect into injected options', async () => {
+    executeScriptReturn.push([
+      {
+        frameId: 0,
+        result: {
+          success: true,
+          action: 'click',
+          selector: '.btn',
+          matched: { tag: 'button', selector: '.btn' }
+        }
+      }
+    ])
+    const res = captureAsyncResult()
+
+    await executeDOMAction(
+      makeQuery({
+        action: 'click',
+        selector: '.btn',
+        scope_rect: { x: 120, y: 240, width: 300, height: 200 }
+      }),
+      1,
+      makeSyncClient(),
+      res.fn,
+      noopToast
+    )
+
+    assert.strictEqual(executeScriptCalls.length, 1)
+    assert.deepStrictEqual(executeScriptCalls[0].args[2].scope_rect, { x: 120, y: 240, width: 300, height: 200 })
+    assert.strictEqual(res.calls[0].status, 'complete')
+  })
+
   test('wait_for passes allFrames: true to both quick-check and polling calls', async () => {
     // Quick-check returns not found (main frame)
     executeScriptReturn.push([
@@ -441,6 +472,30 @@ describe('iframe support: mergeListInteractive', () => {
       executeScriptCalls[0].args,
       ['[role="dialog"]'],
       'list_interactive should pass selector as scope argument to injected primitive'
+    )
+  })
+
+  test('forwards scope_rect argument for list_interactive execution', async () => {
+    executeScriptReturn.push([{ frameId: 0, result: { success: true, elements: [] } }])
+    const res = captureAsyncResult()
+
+    await executeDOMAction(
+      makeQuery({
+        action: 'list_interactive',
+        selector: '[role="dialog"]',
+        scope_rect: { x: 300, y: 200, width: 400, height: 280 }
+      }),
+      1,
+      makeSyncClient(),
+      res.fn,
+      noopToast
+    )
+
+    assert.strictEqual(executeScriptCalls.length, 1)
+    assert.deepStrictEqual(
+      executeScriptCalls[0].args,
+      ['[role="dialog"]', { scope_rect: { x: 300, y: 200, width: 400, height: 280 } }],
+      'list_interactive should pass selector + scope_rect to injected primitive'
     )
   })
 

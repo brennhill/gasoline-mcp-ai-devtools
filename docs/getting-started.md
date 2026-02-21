@@ -138,6 +138,32 @@ Each tool has sub-modes. For example, `observe` with `what: "errors"` returns co
 
 See [MCP Integration](/mcp-integration/) for full tool documentation.
 
+## <i class="fas fa-crosshairs"></i> Region-Scoped Automation (Screenshot → Rect → Action)
+
+When a page has many similar controls, constrain automation to a visual region:
+
+```json
+// 1) Capture screenshot and choose a target rectangle (x, y, width, height)
+{"tool":"observe","what":"screenshot"}
+
+// 2) List controls only inside that region
+{
+  "tool":"interact",
+  "what":"list_interactive",
+  "scope_rect":{"x":300,"y":220,"width":520,"height":420}
+}
+
+// 3) Act only within that same region
+{
+  "tool":"interact",
+  "what":"click",
+  "selector":"button",
+  "scope_rect":{"x":300,"y":220,"width":520,"height":420}
+}
+```
+
+If multiple matching controls are inside the region, Gasoline returns `ambiguous_target` instead of guessing.
+
 ## <i class="fas fa-file-alt"></i> No MCP? No Problem.
 
 Run standalone — Gasoline writes to `~/gasoline-logs.jsonl`. Point your AI at the file.

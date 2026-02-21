@@ -140,14 +140,31 @@ function pickFrameResult(results: chrome.scripting.InjectionResult[]): { result:
 /** Merge list_interactive results from all frames (up to 100 elements). */
 function mergeListInteractive(
   results: chrome.scripting.InjectionResult[]
-): { success: boolean; elements: unknown[]; error?: string; message?: string } {
+): {
+  success: boolean
+  elements: unknown[]
+  candidate_count?: number
+  scope_rect_used?: unknown
+  error?: string
+  message?: string
+} {
   const elements: unknown[] = []
   let firstError: { error?: string; message?: string } | null = null
+  let firstScopeRectUsed: unknown
   for (const r of results) {
-    const res = r.result as { success?: boolean; elements?: unknown[]; error?: string; message?: string } | null
+    const res = r.result as {
+      success?: boolean
+      elements?: unknown[]
+      scope_rect_used?: unknown
+      error?: string
+      message?: string
+    } | null
     if (res?.success === false) {
       if (!firstError) firstError = { error: res.error, message: res.message }
       continue
+    }
+    if (firstScopeRectUsed === undefined && res?.scope_rect_used !== undefined) {
+      firstScopeRectUsed = res.scope_rect_used
     }
     if (res?.elements) elements.push(...res.elements)
     if (elements.length >= 100) break
@@ -155,7 +172,21 @@ function mergeListInteractive(
   if (elements.length === 0 && firstError?.error) {
     return { success: false, elements: [], error: firstError.error, message: firstError.message }
   }
-  return { success: true, elements: elements.slice(0, 100) }
+  const cappedElements = elements.slice(0, 100)
+  const merged: {
+    success: boolean
+    elements: unknown[]
+    candidate_count?: number
+    scope_rect_used?: unknown
+  } = {
+    success: true,
+    elements: cappedElements,
+    candidate_count: cappedElements.length
+  }
+  if (firstScopeRectUsed !== undefined) {
+    merged.scope_rect_used = firstScopeRectUsed
+  }
+  return merged
 }
 
 const WAIT_FOR_POLL_INTERVAL_MS = 80
@@ -253,7 +284,8 @@ async function executeStandardAction(
         analyze: params.analyze,
         observe_mutations: params.observe_mutations,
         element_id: params.element_id,
-        scope_selector: params.scope_selector
+        scope_selector: params.scope_selector,
+        scope_rect: params.scope_rect
       }
     ]
   })
@@ -263,11 +295,14 @@ async function executeListInteractive(
   target: DOMExecutionTarget,
   params: DOMActionParams
 ): Promise<chrome.scripting.InjectionResult[]> {
+  const args: [string] | [string, { scope_rect: DOMActionParams['scope_rect'] }] = params.scope_rect
+    ? [params.selector || '', { scope_rect: params.scope_rect }]
+    : [params.selector || '']
   return chrome.scripting.executeScript({
     target,
     world: 'MAIN',
     func: domPrimitiveListInteractive,
-    args: [params.selector || '']
+    args
   })
 }
 

@@ -12,11 +12,19 @@ export interface DOMMutationEntry {
     old_value?: string;
     new_value?: string;
 }
+export interface ScopeRect {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+}
 export interface DOMResult {
     success: boolean;
     action: string;
     selector: string;
     value?: unknown;
+    candidate_count?: number;
+    scope_rect_used?: ScopeRect;
     match_count?: number;
     match_strategy?: string;
     matched?: {
@@ -27,6 +35,7 @@ export interface DOMResult {
         selector?: string;
         element_id?: string;
         scope_selector_used?: string;
+        scope_rect_used?: ScopeRect;
         frame_id?: number;
     };
     candidates?: Array<{
@@ -65,6 +74,7 @@ export interface DOMPrimitiveOptions {
     observe_mutations?: boolean;
     element_id?: string;
     scope_selector?: string;
+    scope_rect?: ScopeRect;
 }
 export interface DOMActionParams extends DOMPrimitiveOptions {
     action?: string;

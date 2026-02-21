@@ -129,6 +129,52 @@ export function domPrimitive(action, selector, options) {
         }
     }
     const scopeRoot = resolveScopeRoot(options.scope_selector);
+    function parseScopeRect(raw) {
+        if (!raw || typeof raw !== 'object')
+            return null;
+        const rect = raw;
+        const x = Number(rect.x);
+        const y = Number(rect.y);
+        const width = Number(rect.width);
+        const height = Number(rect.height);
+        if (![x, y, width, height].every((v) => Number.isFinite(v)))
+            return null;
+        if (width <= 0 || height <= 0)
+            return null;
+        return { x, y, width, height };
+    }
+    const scopeRect = parseScopeRect(options.scope_rect);
+    if (options.scope_rect !== undefined && !scopeRect) {
+        return {
+            success: false,
+            action,
+            selector,
+            error: 'invalid_scope_rect',
+            message: 'scope_rect must include finite x, y, width, and height > 0'
+        };
+    }
+    function intersectsScopeRect(el) {
+        if (!scopeRect)
+            return true;
+        const htmlEl = el;
+        if (!htmlEl || typeof htmlEl.getBoundingClientRect !== 'function')
+            return false;
+        const rect = htmlEl.getBoundingClientRect();
+        const left = typeof rect.left === 'number' ? rect.left : (typeof rect.x === 'number' ? rect.x : 0);
+        const top = typeof rect.top === 'number' ? rect.top : (typeof rect.y === 'number' ? rect.y : 0);
+        const right = typeof rect.right === 'number' ? rect.right : left + rect.width;
+        const bottom = typeof rect.bottom === 'number' ? rect.bottom : top + rect.height;
+        const scopeRight = scopeRect.x + scopeRect.width;
+        const scopeBottom = scopeRect.y + scopeRect.height;
+        const overlapX = left < scopeRight && right > scopeRect.x;
+        const overlapY = top < scopeBottom && bottom > scopeRect.y;
+        return overlapX && overlapY;
+    }
+    function filterByScopeRect(elements) {
+        if (!scopeRect)
+            return elements;
+        return elements.filter((el) => intersectsScopeRect(el));
+    }
     function getElementHandleStore() {
         const root = globalThis;
         if (root.__gasolineElementHandles) {
@@ -539,6 +585,8 @@ export function domPrimitive(action, selector, options) {
                 const rect = typeof htmlEl.getBoundingClientRect === 'function'
                     ? htmlEl.getBoundingClientRect()
                     : { width: 0, height: 0 };
+                if (!intersectsScopeRect(el))
+                    continue;
                 const visible = rect.width > 0 && rect.height > 0 && htmlEl.offsetParent !== null;
                 const shadowSelector = buildShadowSelector(el);
                 const baseSelector = shadowSelector || buildUniqueSelector(el, htmlEl, cssSelector);
@@ -590,7 +638,12 @@ export function domPrimitive(action, selector, options) {
                 visible: entry.visible
             };
         });
-        return { success: true, elements };
+        return {
+            success: true,
+            elements,
+            candidate_count: elements.length,
+            ...(scopeRect ? { scope_rect_used: scopeRect } : {})
+        };
     }
     if (action === 'list_interactive') {
         return listInteractiveCompatibility();
@@ -609,7 +662,8 @@ export function domPrimitive(action, selector, options) {
             text_preview: textPreview || undefined,
             selector,
             element_id: getOrCreateElementID(node),
-            scope_selector_used: resolvedScopeSelector
+            scope_selector_used: resolvedScopeSelector,
+            ...(scopeRect ? { scope_rect_used: scopeRect } : {})
         };
     }
     function isActionableVisible(el) {
@@ -672,7 +726,7 @@ export function domPrimitive(action, selector, options) {
     }
     function pickBestIntentTarget(ranked, matchStrategy, notFoundError, notFoundMessage) {
         const viable = ranked
-            .filter((entry) => entry.score > 0 && isActionableVisible(entry.element))
+            .filter((entry) => entry.score > 0 && isActionableVisible(entry.element) && intersectsScopeRect(entry.element))
             .sort((a, b) => b.score - a.score);
         if (viable.length === 0) {
             return { error: domError(notFoundError, notFoundMessage) };
@@ -686,9 +740,10 @@ export function domPrimitive(action, selector, options) {
                     action,
                     selector,
                     error: 'ambiguous_target',
-                    message: `Multiple candidates tie for ${action}. Use scope_selector or list_interactive element_id.`,
+                    message: `Multiple candidates tie for ${action}. Use scope_selector/scope_rect or list_interactive element_id.`,
                     match_count: tiedTop.length,
                     match_strategy: matchStrategy,
+                    ...(scopeRect ? { scope_rect_used: scopeRect } : {}),
                     candidates: summarizeCandidates(tiedTop.map((entry) => entry.element))
                 }
             };
@@ -856,6 +911,7 @@ export function domPrimitive(action, selector, options) {
         }
         const activeScope = scopeRoot || document;
         const scopeSelectorUsed = requestedScope || undefined;
+        const scopeRectUsed = scopeRect || undefined;
         if (intentActions.has(action)) {
             return resolveIntentTarget(requestedScope, activeScope);
         }
@@ -875,6 +931,11 @@ export function domPrimitive(action, selector, options) {
                     };
                 }
             }
+            if (scopeRect && !intersectsScopeRect(resolvedByID)) {
+                return {
+                    error: domError('element_id_scope_mismatch', `Element handle does not intersect scope_rect (${scopeRect.x}, ${scopeRect.y}, ${scopeRect.width}, ${scopeRect.height}).`)
+                };
+            }
             return {
                 element: resolvedByID,
                 match_count: 1,
@@ -887,13 +948,30 @@ export function domPrimitive(action, selector, options) {
             'paste', 'key_press', 'focus', 'scroll_to'
         ]);
         if (!ambiguitySensitiveActions.has(action)) {
-            const found = resolveElement(selector, activeScope);
+            const direct = resolveElement(selector, activeScope);
+            if (direct && intersectsScopeRect(direct)) {
+                return {
+                    element: direct,
+                    match_count: 1,
+                    match_strategy: selector.includes(':nth-match(')
+                        ? 'nth_match_selector'
+                        : (scopeRect ? 'rect_selector' : (requestedScope ? 'scoped_selector' : 'selector')),
+                    scope_selector_used: scopeSelectorUsed
+                };
+            }
+            const scopedMatches = filterByScopeRect(uniqueElements(resolveElements(selector, activeScope)));
+            const found = (() => {
+                if (scopedMatches.length === 0)
+                    return null;
+                const visible = scopedMatches.filter(isActionableVisible);
+                return visible[0] || scopedMatches[0] || null;
+            })();
             if (!found)
                 return { error: domError('element_not_found', `No element matches selector: ${selector}`) };
             return {
                 element: found,
                 match_count: 1,
-                match_strategy: requestedScope ? 'scoped_selector' : 'selector',
+                match_strategy: scopeRect ? 'rect_selector' : (requestedScope ? 'scoped_selector' : 'selector'),
                 scope_selector_used: scopeSelectorUsed
             };
         }
@@ -906,11 +984,12 @@ export function domPrimitive(action, selector, options) {
             seen.add(match);
             uniqueMatches.push(match);
         }
+        const rectScopedMatches = filterByScopeRect(uniqueMatches);
         const viableMatches = (() => {
-            if (uniqueMatches.length === 0)
-                return uniqueMatches;
-            const visible = uniqueMatches.filter(isActionableVisible);
-            return visible.length > 0 ? visible : uniqueMatches;
+            if (rectScopedMatches.length === 0)
+                return rectScopedMatches;
+            const visible = rectScopedMatches.filter(isActionableVisible);
+            return visible.length > 0 ? visible : rectScopedMatches;
         })();
         if (viableMatches.length > 1) {
             return {
@@ -919,19 +998,22 @@ export function domPrimitive(action, selector, options) {
                     action,
                     selector,
                     error: 'ambiguous_target',
-                    message: `Selector matches multiple viable elements: ${selector}. Add scope, or use list_interactive element_id/index.`,
+                    message: `Selector matches multiple viable elements: ${selector}. Add scope/scope_rect, or use list_interactive element_id/index.`,
                     match_count: viableMatches.length,
                     match_strategy: 'ambiguous_selector',
+                    ...(scopeRect ? { scope_rect_used: scopeRect } : {}),
                     candidates: summarizeCandidates(viableMatches)
                 }
             };
         }
-        const found = viableMatches[0] || resolveElement(selector, activeScope);
+        const found = viableMatches[0] || null;
         if (!found)
             return { error: domError('element_not_found', `No element matches selector: ${selector}`) };
         const strategy = (() => {
             if (selector.includes(':nth-match('))
                 return 'nth_match_selector';
+            if (scopeRectUsed)
+                return 'rect_selector';
             if (requestedScope)
                 return 'scoped_selector';
             return 'selector';
@@ -955,6 +1037,7 @@ export function domPrimitive(action, selector, options) {
             success: true,
             action,
             selector,
+            ...(scopeRect ? { scope_rect_used: scopeRect } : {}),
             ...(extra || {}),
             matched: matchedTarget(node),
             match_count: resolvedMatchCount,
