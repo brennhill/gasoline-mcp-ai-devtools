@@ -194,6 +194,46 @@ func TestToolsGenerateTest_WithActions(t *testing.T) {
 	assertSnakeCaseFields(t, string(resp.Result))
 }
 
+func TestToolsGenerateTest_UsesCapturedAssertions(t *testing.T) {
+	t.Parallel()
+	h, server, cap := makeToolHandler(t)
+
+	cap.AddEnhancedActionsForTest([]capture.EnhancedAction{
+		{Type: "navigate", Timestamp: 1000, URL: "https://news.google.com/home", ToURL: "https://news.google.com/home"},
+		{Type: "click", Timestamp: 2000, URL: "https://news.google.com/home", Selectors: map[string]any{"css": "a[href*='topstories']"}},
+	})
+	cap.AddNetworkBodiesForTest([]capture.NetworkBody{
+		{Method: "POST", URL: "https://news.google.com/DotsSplashUi/data/batchexecute", Status: 200},
+	})
+	server.addEntries([]LogEntry{
+		{"level": "error", "message": "ReferenceError: widget is not defined", "ts": time.Now().UTC().Format(time.RFC3339)},
+	})
+
+	resp := callGenerateRaw(h, `{"what":"test","test_name":"google_news_load","assert_no_errors":true,"assert_network":true}`)
+	result := parseToolResult(t, resp)
+	if result.IsError {
+		t.Fatalf("test format should succeed, got: %s", result.Content[0].Text)
+	}
+
+	data := extractResultJSON(t, result)
+	script, _ := data["script"].(string)
+
+	if !strings.Contains(script, "await expect(page).toHaveURL('https://news.google.com/home');") {
+		t.Fatalf("script should assert concrete captured URL\nGot:\n%s", script)
+	}
+	if !strings.Contains(script, "DotsSplashUi/data/batchexecute") {
+		t.Fatalf("script should assert captured network request pattern\nGot:\n%s", script)
+	}
+	if !strings.Contains(script, "ReferenceError") {
+		t.Fatalf("script should include captured error pattern context\nGot:\n%s", script)
+	}
+	if strings.Contains(script, "toHaveTitle(/.+/)") {
+		t.Fatalf("script should not include generic placeholder title assertion\nGot:\n%s", script)
+	}
+
+	assertSnakeCaseFields(t, string(resp.Result))
+}
+
 // ============================================
 // generate(format:"pr_summary") — Response Fields
 // ============================================

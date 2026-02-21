@@ -41,11 +41,86 @@ func TestGenerateTestScript_WithActions(t *testing.T) {
 	if !strings.Contains(script, "test.describe('e2e test'") {
 		t.Error("script should contain test name")
 	}
-	if !strings.Contains(script, "expect(page).toHaveTitle") {
-		t.Error("script should contain title assertion for navigate action")
+	if !strings.Contains(script, "expect(page).toHaveURL('https://example.com/page')") {
+		t.Error("script should contain concrete URL assertion for navigate action")
 	}
-	if !strings.Contains(script, "Assert no console errors") {
-		t.Error("script should contain error assertion when AssertNoErrors=true")
+	if strings.Contains(script, "toHaveTitle(/.+/)") {
+		t.Error("script should not contain generic placeholder title assertion")
+	}
+	if !strings.Contains(script, "expect(pageErrors).toHaveLength(0);") {
+		t.Error("script should contain concrete page error assertion when AssertNoErrors=true")
+	}
+}
+
+func TestGenerateTestScript_UsesCapturedTitleHint(t *testing.T) {
+	t.Parallel()
+
+	actions := []capture.EnhancedAction{
+		{Type: "navigate", Timestamp: 1000, ToURL: "https://news.google.com/home"},
+	}
+	params := TestGenParams{
+		TestName:      "title hint",
+		CapturedTitle: "Google News",
+	}
+	script := GenerateTestScript(actions, params)
+
+	if !strings.Contains(script, "await expect(page).toHaveTitle(/Google News/);") {
+		t.Fatalf("script should include concrete title assertion\nGot:\n%s", script)
+	}
+}
+
+func TestGenerateTestScript_AssertNetworkUsesCapturedChecks(t *testing.T) {
+	t.Parallel()
+
+	actions := []capture.EnhancedAction{
+		{Type: "navigate", Timestamp: 1000, ToURL: "https://example.com"},
+		{Type: "click", Timestamp: 2000, Selectors: map[string]any{"css": "#run"}},
+	}
+	params := TestGenParams{
+		TestName:      "network checks",
+		AssertNetwork: true,
+		CapturedNetworkChecks: []CapturedNetworkCheck{
+			{Pattern: "/DotsSplashUi/data/batchexecute", Status: 200},
+		},
+	}
+	script := GenerateTestScript(actions, params)
+
+	if !strings.Contains(script, "const observedResponses = [];") {
+		t.Fatalf("script should capture responses when assert_network=true\nGot:\n%s", script)
+	}
+	if !strings.Contains(script, "DotsSplashUi/data/batchexecute") {
+		t.Fatalf("script should include captured network pattern\nGot:\n%s", script)
+	}
+	if !strings.Contains(script, "expect(match0.status).toBe(200);") {
+		t.Fatalf("script should assert captured response status\nGot:\n%s", script)
+	}
+	if strings.Contains(script, "requestfailed") {
+		t.Fatalf("script should use captured checks, not generic requestfailed fallback\nGot:\n%s", script)
+	}
+}
+
+func TestGenerateTestScript_AssertNoErrorsIncludesCapturedPatterns(t *testing.T) {
+	t.Parallel()
+
+	actions := []capture.EnhancedAction{
+		{Type: "navigate", Timestamp: 1000, ToURL: "https://example.com"},
+	}
+	params := TestGenParams{
+		TestName:             "error checks",
+		AssertNoErrors:       true,
+		CapturedErrorCount:   3,
+		CapturedErrorSamples: []string{"ReferenceError", "TypeError"},
+	}
+	script := GenerateTestScript(actions, params)
+
+	if !strings.Contains(script, "Verify no console/page errors (3 errors captured during session)") {
+		t.Fatalf("script should include captured error count context\nGot:\n%s", script)
+	}
+	if !strings.Contains(script, "const expectedErrorPatterns = [\"ReferenceError\", \"TypeError\"];") {
+		t.Fatalf("script should include captured error patterns\nGot:\n%s", script)
+	}
+	if !strings.Contains(script, "expect(pageErrors).toHaveLength(0);") {
+		t.Fatalf("script should assert no page errors\nGot:\n%s", script)
 	}
 }
 
