@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/dev-console/dev-console/internal/mcp"
+	"github.com/dev-console/dev-console/internal/schema"
 )
 
 func TestBuildCapabilitiesMap_Empty(t *testing.T) {
@@ -209,5 +210,64 @@ func TestBuildCapabilitiesMap_IncludesModeParamsAndTypeMetadata(t *testing.T) {
 	}
 	if timeoutMeta["default"] != "5000" {
 		t.Fatalf("timeout_ms default = %v, want 5000", timeoutMeta["default"])
+	}
+}
+
+func TestBuildCapabilitiesMap_ModeSpecificRequiredParams(t *testing.T) {
+	t.Parallel()
+
+	caps := BuildCapabilitiesMap(schema.AllTools())
+
+	assertModeRequiredContains(t, caps, "observe", "command_result", []string{"what", "correlation_id"})
+	assertModeRequiredContains(t, caps, "analyze", "dom", []string{"what", "selector"})
+	assertModeRequiredContains(t, caps, "interact", "execute_js", []string{"what", "script"})
+	assertModeRequiredContains(t, caps, "configure", "get_sequence", []string{"what", "name"})
+}
+
+func assertModeRequiredContains(
+	t *testing.T,
+	caps map[string]any,
+	toolName string,
+	mode string,
+	requiredParams []string,
+) {
+	t.Helper()
+
+	toolRaw, ok := caps[toolName]
+	if !ok {
+		t.Fatalf("tool %q missing from capabilities", toolName)
+	}
+	toolMap, ok := toolRaw.(map[string]any)
+	if !ok {
+		t.Fatalf("tool %q type = %T, want map[string]any", toolName, toolRaw)
+	}
+
+	modeParamsRaw, ok := toolMap["mode_params"]
+	if !ok {
+		t.Fatalf("tool %q missing mode_params", toolName)
+	}
+	modeParams, ok := modeParamsRaw.(map[string]any)
+	if !ok {
+		t.Fatalf("tool %q mode_params type = %T, want map[string]any", toolName, modeParamsRaw)
+	}
+
+	modeRaw, ok := modeParams[mode]
+	if !ok {
+		t.Fatalf("tool %q mode %q missing from mode_params", toolName, mode)
+	}
+	modeMap, ok := modeRaw.(map[string]any)
+	if !ok {
+		t.Fatalf("tool %q mode %q type = %T, want map[string]any", toolName, mode, modeRaw)
+	}
+
+	required := toStringSlice(modeMap["required"])
+	requiredSet := make(map[string]bool, len(required))
+	for _, p := range required {
+		requiredSet[p] = true
+	}
+	for _, want := range requiredParams {
+		if !requiredSet[want] {
+			t.Fatalf("tool %q mode %q required missing %q (got %v)", toolName, mode, want, required)
+		}
 	}
 }

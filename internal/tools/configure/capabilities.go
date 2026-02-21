@@ -70,19 +70,117 @@ var configureModeSpecs = map[string]modeParamSpec{
 	},
 	"restart": {},
 	"save_sequence": {
-		Optional: []string{"name", "description", "steps", "tags"},
+		Required: []string{"name"},
+		Optional: []string{"description", "steps", "tags"},
 	},
 	"get_sequence": {
-		Optional: []string{"name"},
+		Required: []string{"name"},
 	},
 	"list_sequences": {},
 	"delete_sequence": {
-		Optional: []string{"name"},
+		Required: []string{"name"},
 	},
 	"replay_sequence": {
+		Required: []string{"name"},
 		Optional: []string{"name", "override_steps", "step_timeout_ms", "continue_on_error", "stop_after_step"},
 	},
 	"doctor": {},
+}
+
+var observeModeSpecs = map[string]modeParamSpec{
+	"command_result": {
+		Required: []string{"correlation_id"},
+	},
+	"recording_actions": {
+		Required: []string{"recording_id"},
+	},
+	"playback_results": {
+		Required: []string{"recording_id"},
+	},
+	"log_diff_report": {
+		Required: []string{"original_id", "replay_id"},
+	},
+}
+
+var analyzeModeSpecs = map[string]modeParamSpec{
+	"dom": {
+		Required: []string{"selector"},
+	},
+	"annotation_detail": {
+		Required: []string{"correlation_id"},
+	},
+	"draw_session": {
+		Required: []string{"file"},
+	},
+	"computed_styles": {
+		Required: []string{"selector"},
+	},
+	"link_validation": {
+		Required: []string{"urls"},
+	},
+	"visual_baseline": {
+		Required: []string{"name"},
+	},
+	"visual_diff": {
+		Required: []string{"baseline"},
+	},
+}
+
+var interactModeSpecs = map[string]modeParamSpec{
+	"highlight": {
+		Required: []string{"selector"},
+	},
+	"execute_js": {
+		Required: []string{"script"},
+	},
+	"navigate": {
+		Required: []string{"url"},
+	},
+	"new_tab": {
+		Required: []string{"url"},
+	},
+	"subtitle": {
+		Required: []string{"text"},
+	},
+	"save_state": {
+		Required: []string{"snapshot_name"},
+	},
+	"load_state": {
+		Required: []string{"snapshot_name"},
+	},
+	"delete_state": {
+		Required: []string{"snapshot_name"},
+	},
+	"set_storage": {
+		Required: []string{"key", "value"},
+	},
+	"delete_storage": {
+		Required: []string{"key"},
+	},
+	"set_cookie": {
+		Required: []string{"name", "value"},
+	},
+	"delete_cookie": {
+		Required: []string{"name"},
+	},
+	"upload": {
+		Required: []string{"file_path"},
+	},
+	"navigate_and_wait_for": {
+		Required: []string{"url", "wait_for"},
+	},
+	"fill_form_and_submit": {
+		Required: []string{"fields"},
+	},
+	"fill_form": {
+		Required: []string{"fields"},
+	},
+}
+
+var toolModeSpecs = map[string]map[string]modeParamSpec{
+	"observe":  observeModeSpecs,
+	"analyze":  analyzeModeSpecs,
+	"interact": interactModeSpecs,
 }
 
 // BuildCapabilitiesMap transforms tool schemas into machine-readable capability metadata.
@@ -228,6 +326,13 @@ func buildModeParams(
 				}
 				if dispatchParam != "" && !containsString(spec.Required, dispatchParam) {
 					spec.Required = append([]string{dispatchParam}, spec.Required...)
+				}
+			}
+		} else if modeSpecs, ok := toolModeSpecs[toolName]; ok {
+			if modeSpec, ok := modeSpecs[mode]; ok {
+				spec.Required = append(spec.Required, modeSpec.Required...)
+				if modeSpec.Optional != nil {
+					spec.Optional = append([]string{}, modeSpec.Optional...)
 				}
 			}
 		}
