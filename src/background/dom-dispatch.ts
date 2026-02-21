@@ -34,6 +34,33 @@ type ActionToast = (
   durationMs?: number
 ) => void
 
+type DOMWorldMode = 'auto' | 'main' | 'isolated'
+type ScriptWorld = 'MAIN' | 'ISOLATED'
+
+type WorldExecutionMeta = Pick<
+  DOMResult,
+  | 'execution_world'
+  | 'fallback_attempted'
+  | 'main_world_status'
+  | 'isolated_world_status'
+  | 'fallback_summary'
+  | 'main_world_error'
+  | 'isolated_world_error'
+>
+
+const FALLBACK_SUCCESS_SUMMARY = 'Error: MAIN world execution FAILED. Fallback in ISOLATED is SUCCESS.'
+const FALLBACK_ERROR_SUMMARY = 'Error: MAIN world execution FAILED. Fallback in ISOLATED is ERROR.'
+
+class WorldExecutionError extends Error {
+  payload: DOMResult
+
+  constructor(payload: DOMResult, message: string) {
+    super(message)
+    this.payload = payload
+    this.name = 'WorldExecutionError'
+  }
+}
+
 function parseDOMParams(query: PendingQuery): DOMActionParams | null {
   try {
     return typeof query.params === 'string' ? JSON.parse(query.params) : (query.params as DOMActionParams)
@@ -44,6 +71,13 @@ function parseDOMParams(query: PendingQuery): DOMActionParams | null {
 
 function isReadOnlyAction(action: string): boolean {
   return action === 'list_interactive' || action.startsWith('get_')
+}
+
+function normalizeWorldMode(world: unknown): DOMWorldMode {
+  if (world === 'main' || world === 'isolated' || world === 'auto') {
+    return world
+  }
+  return 'auto'
 }
 
 type DOMExecutionTarget = { tabId: number; allFrames: true } | { tabId: number; frameIds: number[] }
@@ -156,14 +190,15 @@ function wait(ms: number): Promise<void> {
 
 async function executeWaitFor(
   target: DOMExecutionTarget,
-  params: DOMActionParams
+  params: DOMActionParams,
+  world: ScriptWorld
 ): Promise<chrome.scripting.InjectionResult[] | DOMResult> {
   const selector = params.selector || ''
   const timeoutMs = Math.max(1, params.timeout_ms || 5000)
   const startedAt = Date.now()
   const quickCheck = await chrome.scripting.executeScript({
     target,
-    world: 'MAIN',
+    world,
     func: domPrimitive,
     args: [params.action!, selector, { timeout_ms: timeoutMs }]
   })
@@ -179,7 +214,7 @@ async function executeWaitFor(
 
     const probeResults = await chrome.scripting.executeScript({
       target,
-      world: 'MAIN',
+      world,
       func: domPrimitive,
       args: [params.action!, selector, { timeout_ms: timeoutMs }]
     })
@@ -197,11 +232,12 @@ async function executeWaitFor(
 
 async function executeStandardAction(
   target: DOMExecutionTarget,
-  params: DOMActionParams
+  params: DOMActionParams,
+  world: ScriptWorld
 ): Promise<chrome.scripting.InjectionResult[]> {
   return chrome.scripting.executeScript({
     target,
-    world: 'MAIN',
+    world,
     func: domPrimitive,
     args: [
       params.action!,
@@ -221,13 +257,154 @@ async function executeStandardAction(
 }
 
 async function executeListInteractive(
-  target: DOMExecutionTarget
+  target: DOMExecutionTarget,
+  world: ScriptWorld
 ): Promise<chrome.scripting.InjectionResult[]> {
   return chrome.scripting.executeScript({
     target,
-    world: 'MAIN',
+    world,
     func: domPrimitiveListInteractive
   })
+}
+
+function baseWorldMeta(mode: DOMWorldMode): WorldExecutionMeta {
+  if (mode === 'main') {
+    return {
+      execution_world: 'main',
+      fallback_attempted: false,
+      main_world_status: 'not_attempted',
+      isolated_world_status: 'not_attempted',
+      fallback_summary: 'MAIN world execution mode selected.'
+    }
+  }
+  if (mode === 'isolated') {
+    return {
+      execution_world: 'isolated',
+      fallback_attempted: false,
+      main_world_status: 'not_attempted',
+      isolated_world_status: 'not_attempted',
+      fallback_summary: 'ISOLATED world execution mode selected.'
+    }
+  }
+  return {
+    execution_world: 'main',
+    fallback_attempted: false,
+    main_world_status: 'not_attempted',
+    isolated_world_status: 'not_attempted',
+    fallback_summary: 'AUTO world execution mode selected.'
+  }
+}
+
+function attachWorldMeta(result: unknown, meta: WorldExecutionMeta): unknown {
+  if (result && typeof result === 'object' && !Array.isArray(result)) {
+    return { ...(result as Record<string, unknown>), ...meta }
+  }
+  return { value: result ?? null, ...meta }
+}
+
+async function executeByWorld(
+  target: DOMExecutionTarget,
+  params: DOMActionParams,
+  world: ScriptWorld
+): Promise<chrome.scripting.InjectionResult[] | DOMResult> {
+  if (params.action === 'list_interactive') {
+    return executeListInteractive(target, world)
+  }
+  if (params.action === 'wait_for') {
+    return executeWaitFor(target, params, world)
+  }
+  return executeStandardAction(target, params, world)
+}
+
+async function executeWithWorldMode(
+  target: DOMExecutionTarget,
+  params: DOMActionParams,
+  mode: DOMWorldMode
+): Promise<{ rawResult: chrome.scripting.InjectionResult[] | DOMResult; meta: WorldExecutionMeta }> {
+  const meta = baseWorldMeta(mode)
+
+  const run = async (world: ScriptWorld) => executeByWorld(target, params, world)
+
+  if (mode === 'main') {
+    try {
+      const rawResult = await run('MAIN')
+      meta.main_world_status = 'success'
+      meta.execution_world = 'main'
+      return { rawResult, meta }
+    } catch (err) {
+      meta.main_world_status = 'error'
+      meta.main_world_error = (err as Error)?.message || 'main_world_execution_failed'
+      throw new WorldExecutionError(
+        {
+          success: false,
+          action: params.action || 'unknown',
+          selector: params.selector || '',
+          error: 'main_world_execution_failed',
+          message: meta.main_world_error,
+          ...meta
+        },
+        meta.main_world_error
+      )
+    }
+  }
+
+  if (mode === 'isolated') {
+    try {
+      const rawResult = await run('ISOLATED')
+      meta.isolated_world_status = 'success'
+      meta.execution_world = 'isolated'
+      return { rawResult, meta }
+    } catch (err) {
+      meta.isolated_world_status = 'error'
+      meta.isolated_world_error = (err as Error)?.message || 'isolated_world_execution_failed'
+      throw new WorldExecutionError(
+        {
+          success: false,
+          action: params.action || 'unknown',
+          selector: params.selector || '',
+          error: 'isolated_world_execution_failed',
+          message: meta.isolated_world_error,
+          ...meta
+        },
+        meta.isolated_world_error
+      )
+    }
+  }
+
+  try {
+    const rawResult = await run('MAIN')
+    meta.main_world_status = 'success'
+    meta.execution_world = 'main'
+    meta.fallback_summary = 'MAIN world execution succeeded. Fallback not attempted.'
+    return { rawResult, meta }
+  } catch (mainErr) {
+    meta.fallback_attempted = true
+    meta.main_world_status = 'error'
+    meta.main_world_error = (mainErr as Error)?.message || 'main_world_execution_failed'
+    try {
+      const rawResult = await run('ISOLATED')
+      meta.isolated_world_status = 'success'
+      meta.execution_world = 'isolated'
+      meta.fallback_summary = FALLBACK_SUCCESS_SUMMARY
+      return { rawResult, meta }
+    } catch (isolatedErr) {
+      meta.isolated_world_status = 'error'
+      meta.isolated_world_error = (isolatedErr as Error)?.message || 'isolated_world_execution_failed'
+      meta.execution_world = 'isolated'
+      meta.fallback_summary = FALLBACK_ERROR_SUMMARY
+      throw new WorldExecutionError(
+        {
+          success: false,
+          action: params.action || 'unknown',
+          selector: params.selector || '',
+          error: 'dom_world_fallback_failed',
+          message: FALLBACK_ERROR_SUMMARY,
+          ...meta
+        },
+        FALLBACK_ERROR_SUMMARY
+      )
+    }
+  }
 }
 
 function sendToastForResult(
@@ -287,23 +464,25 @@ export async function executeDOMAction(
   const toastLabel = reason || action
   const toastDetail = reason ? undefined : selector || 'page'
   const readOnly = isReadOnlyAction(action)
+  const worldMode = normalizeWorldMode(params.world)
 
   try {
     const executionTarget = await resolveExecutionTarget(tabId, params.frame)
     const tryingShownAt = Date.now()
     if (!readOnly) actionToast(tabId, toastLabel, toastDetail, 'trying', 10000)
 
-    const rawResult =
-      action === 'list_interactive'
-        ? await executeListInteractive(executionTarget)
-        : action === 'wait_for'
-          ? await executeWaitFor(executionTarget, params)
-          : await executeStandardAction(executionTarget, params)
+    const { rawResult, meta } = await executeWithWorldMode(executionTarget, params, worldMode)
 
     // wait_for quick-check can return a DOMResult directly
     if (!Array.isArray(rawResult)) {
       if (!readOnly) actionToast(tabId, toastLabel, toastDetail, 'success')
-      sendAsyncResult(syncClient, query.id, query.correlation_id!, 'complete', await enrichWithEffectiveContext(tabId, rawResult))
+      sendAsyncResult(
+        syncClient,
+        query.id,
+        query.correlation_id!,
+        'complete',
+        await enrichWithEffectiveContext(tabId, attachWorldMeta(rawResult, meta))
+      )
       return
     }
 
@@ -314,7 +493,7 @@ export async function executeDOMAction(
 
     // list_interactive: merge elements from all frames
     if (action === 'list_interactive') {
-      const merged = mergeListInteractive(rawResult)
+      const merged = attachWorldMeta(mergeListInteractive(rawResult), meta)
       sendAsyncResult(syncClient, query.id, query.correlation_id!, 'complete', await enrichWithEffectiveContext(tabId, merged))
       return
     }
@@ -326,20 +505,32 @@ export async function executeDOMAction(
         params.frame !== undefined && params.frame !== null && picked
           ? { ...(firstResult as Record<string, unknown>), frame_id: picked.frameId }
           : firstResult
+      const resultWithWorldMeta = attachWorldMeta(resultPayload, meta)
       sendToastForResult(
         tabId,
         readOnly,
-        resultPayload as { success?: boolean; error?: string },
+        resultWithWorldMeta as { success?: boolean; error?: string },
         actionToast,
         toastLabel,
         toastDetail
       )
-      sendAsyncResult(syncClient, query.id, query.correlation_id!, 'complete', await enrichWithEffectiveContext(tabId, resultPayload))
+      sendAsyncResult(
+        syncClient,
+        query.id,
+        query.correlation_id!,
+        'complete',
+        await enrichWithEffectiveContext(tabId, resultWithWorldMeta)
+      )
     } else {
       if (!readOnly) actionToast(tabId, toastLabel, 'no result', 'error')
       sendAsyncResult(syncClient, query.id, query.correlation_id!, 'error', null, 'no_result')
     }
   } catch (err) {
+    if (err instanceof WorldExecutionError) {
+      actionToast(tabId, action, err.message, 'error')
+      sendAsyncResult(syncClient, query.id, query.correlation_id!, 'error', await enrichWithEffectiveContext(tabId, err.payload), err.message)
+      return
+    }
     actionToast(tabId, action, (err as Error).message, 'error')
     sendAsyncResult(syncClient, query.id, query.correlation_id!, 'error', null, (err as Error).message)
   }

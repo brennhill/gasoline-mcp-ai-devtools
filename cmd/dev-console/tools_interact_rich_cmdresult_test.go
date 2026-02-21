@@ -376,6 +376,52 @@ func TestCommandResult_EffectiveContextSurfaced(t *testing.T) {
 	}
 }
 
+func TestCommandResult_WorldFallbackMetadataSurfaced(t *testing.T) {
+	env := newInteractTestEnv(t)
+	env.capture.SetPilotEnabled(true)
+
+	result, _ := env.callInteract(t, `{"what":"click","selector":"#btn","background":true}`)
+	var resultData map[string]any
+	_ = json.Unmarshal([]byte(extractJSONFromText(result.Content[0].Text)), &resultData)
+	corrID := resultData["correlation_id"].(string)
+
+	extensionResult := json.RawMessage(`{
+		"success": true,
+		"action": "click",
+		"execution_world": "isolated",
+		"fallback_attempted": true,
+		"main_world_status": "error",
+		"isolated_world_status": "success",
+		"fallback_summary": "Error: MAIN world execution FAILED. Fallback in ISOLATED is SUCCESS."
+	}`)
+	env.capture.CompleteCommand(corrID, extensionResult, "")
+
+	req := JSONRPCRequest{JSONRPC: "2.0", ID: 2}
+	args := json.RawMessage(`{"correlation_id":"` + corrID + `"}`)
+	resp := env.handler.toolObserveCommandResult(req, args)
+
+	var observeResult MCPToolResult
+	_ = json.Unmarshal(resp.Result, &observeResult)
+
+	var responseData map[string]any
+	if err := json.Unmarshal([]byte(extractJSONFromText(observeResult.Content[0].Text)), &responseData); err != nil {
+		t.Fatalf("Failed to parse response JSON: %v", err)
+	}
+
+	if responseData["execution_world"] != "isolated" {
+		t.Fatalf("execution_world = %v, want isolated", responseData["execution_world"])
+	}
+	if attempted, _ := responseData["fallback_attempted"].(bool); !attempted {
+		t.Fatalf("fallback_attempted = %v, want true", responseData["fallback_attempted"])
+	}
+	if responseData["main_world_status"] != "error" {
+		t.Fatalf("main_world_status = %v, want error", responseData["main_world_status"])
+	}
+	if responseData["isolated_world_status"] != "success" {
+		t.Fatalf("isolated_world_status = %v, want success", responseData["isolated_world_status"])
+	}
+}
+
 // ============================================
 // Issue #92 follow-up: queued=false on non-queued responses
 // ============================================

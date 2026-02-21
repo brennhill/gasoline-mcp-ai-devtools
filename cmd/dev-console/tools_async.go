@@ -369,6 +369,8 @@ func enrichCommandResponseData(result json.RawMessage, responseData map[string]a
 		"content_script_status", "resolved_tab_id", "resolved_url", "target_context",
 		"effective_tab_id", "effective_url", "effective_title", "final_url", "title",
 		"message", "hint", "retry", "retryable", "csp_blocked", "failure_cause", "error_code",
+		"execution_world", "fallback_attempted", "main_world_status", "isolated_world_status",
+		"fallback_summary", "main_world_error", "isolated_world_error",
 	} {
 		if v, ok := extResult[key]; ok {
 			responseData[key] = v
