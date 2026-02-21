@@ -111,7 +111,12 @@ func checkGitHubVersion() {
 	}
 
 	versionCheckMu.Lock()
-	availableVersion = newVersion
+	if isNewerVersion(newVersion, version) {
+		availableVersion = newVersion
+	} else {
+		// Do not advertise older/equal releases as available updates.
+		availableVersion = ""
+	}
 	lastVersionCheck = time.Now()
 	versionCheckMu.Unlock()
 

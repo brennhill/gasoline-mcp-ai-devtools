@@ -8,9 +8,12 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/dev-console/dev-console/internal/bridge"
 )
 
 // ⚠️ CRITICAL MCP PROTOCOL COMPLIANCE TESTS - DO NOT MODIFY WITHOUT PRINCIPAL REVIEW
@@ -709,8 +712,9 @@ func TestMCPProtocol_HTTPHandler(t *testing.T) {
 	})
 }
 
-// TestMCPProtocol_BridgeCodeVerification verifies bridge forwarding uses fmt.Print not fmt.Println.
-// This is a static code verification - the actual runtime behavior is tested via HTTP.
+// TestMCPProtocol_BridgeCodeVerification verifies bridge forwarding routes response
+// bodies through writeMCPPayload (single writer, framing-aware) and never uses
+// fmt.Println for raw response body forwarding.
 func TestMCPProtocol_BridgeCodeVerification(t *testing.T) {
 	// Read the bridge_forward.go source code (HTTP forwarding lives here)
 	bridgeSource, err := os.ReadFile("bridge_forward.go")
@@ -720,20 +724,93 @@ func TestMCPProtocol_BridgeCodeVerification(t *testing.T) {
 
 	source := string(bridgeSource)
 
-	// CRITICAL: The line that forwards HTTP responses must use fmt.Print, not fmt.Println
-	// The HTTP response body from json.Encoder.Encode() already has a trailing newline
-	// Using fmt.Println would add a SECOND newline, causing "Unexpected end of JSON input"
-
-	// Check for the correct pattern: fmt.Print(string(body))
-	if !strings.Contains(source, "fmt.Print(string(body))") {
-		t.Error("CRITICAL: bridge_forward.go should use fmt.Print(string(body)) for HTTP responses")
-		t.Error("Using fmt.Println adds double newlines which cause 'Unexpected end of JSON input' errors")
+	// CRITICAL: forwarding must go through writeMCPPayload so stdout framing stays
+	// consistent (line-delimited vs Content-Length) and writes remain serialized.
+	if !strings.Contains(source, "writeMCPPayload(body, framing)") {
+		t.Error("CRITICAL: bridge_forward.go should forward HTTP bodies via writeMCPPayload(body, framing)")
 	} else {
-		t.Log("bridge_forward.go uses fmt.Print (not Println) for HTTP response forwarding")
+		t.Log("bridge_forward.go forwards HTTP bodies via writeMCPPayload")
 	}
 
 	// Verify no fmt.Println(string(body)) pattern
 	if strings.Contains(source, "fmt.Println(string(body))") {
 		t.Error("CRITICAL: Found fmt.Println(string(body)) in bridge_forward.go - this causes double newlines!")
+	}
+}
+
+func TestMCPProtocol_WriteMCPPayload_LineFramingNormalizesTrailingNewline(t *testing.T) {
+	rawPayload := []byte(" \n\t" + `{"jsonrpc":"2.0","id":1,"result":{"ok":true}}` + "\n\n ")
+	output := captureStdout(t, func() {
+		writeMCPPayload(rawPayload, bridge.StdioFramingLine)
+	})
+
+	if !strings.HasSuffix(output, "\n") {
+		t.Fatalf("output must end with newline: %q", output)
+	}
+	if strings.HasSuffix(output, "\n\n") {
+		t.Fatalf("output has double trailing newline: %q", output)
+	}
+
+	trimmed := strings.TrimSuffix(output, "\n")
+	if !json.Valid([]byte(trimmed)) {
+		t.Fatalf("output is not valid JSON after trimming newline: %q", output)
+	}
+	if strings.HasPrefix(trimmed, " ") || strings.HasSuffix(trimmed, " ") {
+		t.Fatalf("output should not keep outer whitespace: %q", output)
+	}
+}
+
+func TestMCPProtocol_WriteMCPPayload_ContentLengthUsesTrimmedPayload(t *testing.T) {
+	rawPayload := []byte(" \n\t" + `{"jsonrpc":"2.0","id":9,"result":{"ok":true}}` + "\n\n ")
+	output := captureStdout(t, func() {
+		writeMCPPayload(rawPayload, bridge.StdioFramingContentLength)
+	})
+
+	parts := strings.SplitN(output, "\r\n\r\n", 2)
+	if len(parts) != 2 {
+		t.Fatalf("expected content-length framed output, got: %q", output)
+	}
+	header := parts[0]
+	body := parts[1]
+
+	if !strings.HasPrefix(header, "Content-Length: ") {
+		t.Fatalf("missing Content-Length header: %q", header)
+	}
+	lengthPart := strings.TrimPrefix(strings.SplitN(header, "\r\n", 2)[0], "Content-Length: ")
+	reportedLen, err := strconv.Atoi(strings.TrimSpace(lengthPart))
+	if err != nil {
+		t.Fatalf("invalid Content-Length header %q: %v", header, err)
+	}
+	if reportedLen != len(body) {
+		t.Fatalf("Content-Length mismatch: header=%d body=%d", reportedLen, len(body))
+	}
+	if strings.HasPrefix(body, " ") || strings.HasSuffix(body, " ") {
+		t.Fatalf("body should not keep outer whitespace: %q", body)
+	}
+	if !json.Valid([]byte(body)) {
+		t.Fatalf("body is not valid JSON: %q", body)
+	}
+}
+
+func TestMCPProtocol_WriteMCPPayload_InvalidJSONFallsBackToJSONRPCError(t *testing.T) {
+	output := captureStdout(t, func() {
+		writeMCPPayload([]byte("not-json"), bridge.StdioFramingLine)
+	})
+
+	trimmed := strings.TrimSuffix(output, "\n")
+	if !json.Valid([]byte(trimmed)) {
+		t.Fatalf("fallback output is not valid JSON: %q", output)
+	}
+
+	var decoded map[string]any
+	if err := json.Unmarshal([]byte(trimmed), &decoded); err != nil {
+		t.Fatalf("unmarshal fallback output: %v", err)
+	}
+	if decoded["jsonrpc"] != "2.0" {
+		t.Fatalf("expected jsonrpc=2.0, got: %#v", decoded["jsonrpc"])
+	}
+	errObj, ok := decoded["error"].(map[string]any)
+	if !ok || errObj["message"] == nil {
+		t.Fatalf("expected JSON-RPC error object, got: %#v", decoded["error"])
 	}
 }

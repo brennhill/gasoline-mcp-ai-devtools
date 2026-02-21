@@ -250,6 +250,10 @@ func startHTTPServer(server *Server, port int, apiKey string, mux *http.ServeMux
 		httpReady <- nil
 		// #nosec G114 -- localhost-only MCP background server
 		if err := srv.Serve(ln); err != nil && err != http.ErrServerClosed {
+			_ = appendExitDiagnostic("http_listener_error", map[string]any{
+				"port":  port,
+				"error": err.Error(),
+			})
 			fmt.Fprintf(os.Stderr, "[gasoline] HTTP server error: %v\n", err)
 		}
 	})
@@ -289,6 +293,15 @@ func awaitShutdownSignal(server *Server, srv *http.Server, port int, httpDone <-
 		"shutdown_source": shutdownSource,
 		"uptime_seconds":  time.Since(startTime).Seconds(),
 	})
+	if diagPath := appendExitDiagnostic("daemon_shutdown", map[string]any{
+		"port":            port,
+		"signal":          s.String(),
+		"shutdown_source": shutdownSource,
+		"uptime_seconds":  time.Since(startTime).Seconds(),
+		"unexpected":      shutdownSource == "http_listener_died",
+	}); diagPath != "" && shutdownSource == "http_listener_died" {
+		fmt.Fprintf(os.Stderr, "[gasoline] Shutdown diagnostics written to: %s\n", diagPath)
+	}
 
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()

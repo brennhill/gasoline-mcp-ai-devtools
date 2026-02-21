@@ -21,6 +21,8 @@ func TestToolCallTimeout(t *testing.T) {
 		{"tools/list gets fast timeout", "tools/list", `{}`, FastTimeout},
 		{"observe gets fast timeout", "tools/call", `{"name":"observe","arguments":{"what":"logs"}}`, FastTimeout},
 		{"configure gets fast timeout", "tools/call", `{"name":"configure","arguments":{"action":"health"}}`, FastTimeout},
+		{"configure replay_sequence gets slow timeout", "tools/call", `{"name":"configure","arguments":{"action":"replay_sequence"}}`, SlowTimeout},
+		{"configure playback gets slow timeout", "tools/call", `{"name":"configure","arguments":{"action":"playback"}}`, SlowTimeout},
 		{"generate gets fast timeout", "tools/call", `{"name":"generate","arguments":{"format":"reproduction"}}`, FastTimeout},
 		{"analyze gets slow timeout", "tools/call", `{"name":"analyze","arguments":{"what":"dom"}}`, SlowTimeout},
 		{"interact gets slow timeout", "tools/call", `{"name":"interact","arguments":{"action":"click"}}`, SlowTimeout},

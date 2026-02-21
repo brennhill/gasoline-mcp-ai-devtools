@@ -3,12 +3,12 @@ package main
 
 import (
 	"encoding/json"
-	"fmt"
 	"os"
 	"path/filepath"
 	"sync"
 	"time"
 
+	"github.com/dev-console/dev-console/internal/bridge"
 	statecfg "github.com/dev-console/dev-console/internal/state"
 )
 
@@ -151,34 +151,28 @@ var fastPathResponses = map[string]string{
 }
 
 // sendFastResponse marshals and sends a JSON-RPC response for the fast path.
-func sendFastResponse(id any, result json.RawMessage) {
+func sendFastResponse(id any, result json.RawMessage, framing bridge.StdioFraming) {
 	resp := JSONRPCResponse{JSONRPC: "2.0", ID: id, Result: result}
 	// Error impossible: simple struct with no circular refs or unsupported types
 	respJSON, _ := json.Marshal(resp)
-	mcpStdoutMu.Lock()
-	fmt.Println(string(respJSON))
-	flushStdout()
-	mcpStdoutMu.Unlock()
+	writeMCPPayload(respJSON, framing)
 }
 
-func sendFastError(id any, code int, message string) {
+func sendFastError(id any, code int, message string, framing bridge.StdioFraming) {
 	resp := JSONRPCResponse{
 		JSONRPC: "2.0",
 		ID:      id,
 		Error:   &JSONRPCError{Code: code, Message: message},
 	}
 	respJSON, _ := json.Marshal(resp)
-	mcpStdoutMu.Lock()
-	fmt.Println(string(respJSON))
-	flushStdout()
-	mcpStdoutMu.Unlock()
+	writeMCPPayload(respJSON, framing)
 }
 
 // handleFastPath handles MCP methods that don't require the daemon.
 // Returns true if the method was handled.
-func handleFastPath(req JSONRPCRequest, toolsList []MCPTool) bool {
+func handleFastPath(req JSONRPCRequest, toolsList []MCPTool, framing bridge.StdioFraming) bool {
 	if req.HasInvalidID() {
-		sendBridgeError(nil, -32600, "Invalid Request: id must be string or number when present")
+		sendBridgeError(nil, -32600, "Invalid Request: id must be string or number when present", framing)
 		return true
 	}
 
@@ -197,13 +191,13 @@ func handleFastPath(req JSONRPCRequest, toolsList []MCPTool) bool {
 		}
 		// Error impossible: map contains only primitive types and nested maps
 		resultJSON, _ := json.Marshal(result)
-		sendFastResponse(req.ID, resultJSON)
+		sendFastResponse(req.ID, resultJSON, framing)
 		recordFastPathEvent(req.Method, true, 0)
 		return true
 
 	case "initialized":
 		if req.HasID() {
-			sendFastResponse(req.ID, json.RawMessage(`{}`))
+			sendFastResponse(req.ID, json.RawMessage(`{}`), framing)
 			recordFastPathEvent(req.Method, true, 0)
 		}
 		return true
@@ -212,19 +206,19 @@ func handleFastPath(req JSONRPCRequest, toolsList []MCPTool) bool {
 		result := map[string]any{"tools": toolsList}
 		// Error impossible: map contains only serializable tool definitions
 		resultJSON, _ := json.Marshal(result)
-		sendFastResponse(req.ID, resultJSON)
+		sendFastResponse(req.ID, resultJSON, framing)
 		recordFastPathEvent(req.Method, true, 0)
 		return true
 
 	case "resources/list":
 		result := MCPResourcesListResult{Resources: mcpResources()}
 		resultJSON, _ := json.Marshal(result)
-		sendFastResponse(req.ID, resultJSON)
+		sendFastResponse(req.ID, resultJSON, framing)
 		return true
 	case "resources/templates/list":
 		result := MCPResourceTemplatesListResult{ResourceTemplates: mcpResourceTemplates()}
 		resultJSON, _ := json.Marshal(result)
-		sendFastResponse(req.ID, resultJSON)
+		sendFastResponse(req.ID, resultJSON, framing)
 		return true
 	case "resources/read":
 		var params struct {
@@ -233,14 +227,14 @@ func handleFastPath(req JSONRPCRequest, toolsList []MCPTool) bool {
 		if err := json.Unmarshal(req.Params, &params); err != nil {
 			recordFastPathResourceRead("", false, -32602)
 			recordFastPathEvent(req.Method, false, -32602)
-			sendFastError(req.ID, -32602, "Invalid params: "+err.Error())
+			sendFastError(req.ID, -32602, "Invalid params: "+err.Error(), framing)
 			return true
 		}
 		canonicalURI, text, ok := resolveResourceContent(params.URI)
 		if !ok {
 			recordFastPathResourceRead(params.URI, false, -32002)
 			recordFastPathEvent(req.Method, false, -32002)
-			sendFastError(req.ID, -32002, "Resource not found: "+params.URI)
+			sendFastError(req.ID, -32002, "Resource not found: "+params.URI, framing)
 			return true
 		}
 		recordFastPathResourceRead(params.URI, true, 0)
@@ -255,12 +249,12 @@ func handleFastPath(req JSONRPCRequest, toolsList []MCPTool) bool {
 			},
 		}
 		resultJSON, _ := json.Marshal(result)
-		sendFastResponse(req.ID, resultJSON)
+		sendFastResponse(req.ID, resultJSON, framing)
 		return true
 	}
 
 	if staticResult, ok := fastPathResponses[req.Method]; ok {
-		sendFastResponse(req.ID, json.RawMessage(staticResult))
+		sendFastResponse(req.ID, json.RawMessage(staticResult), framing)
 		recordFastPathEvent(req.Method, true, 0)
 		return true
 	}

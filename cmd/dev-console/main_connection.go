@@ -231,6 +231,7 @@ func spawnDaemonCmd(port int, apiKey string) (*exec.Cmd, error) {
 	}
 
 	cmd := exec.Command(exe, args...) // #nosec G204,G702 -- exe is our own binary path from os.Executable with fixed flags // nosemgrep: go.lang.security.audit.dangerous-exec-command.dangerous-exec-command, go_subproc_rule-subproc -- CLI opens browser with known URL
+	cmd.Args[0] = daemonProcessArgv0(exe)
 	cmd.Stdout = nil
 	cmd.Stderr = nil
 	if apiKey != "" {
@@ -473,6 +474,7 @@ func respawnDaemon(server *Server, port int, apiKey string, mcpEndpoint string) 
 	}
 
 	cmd := exec.Command(exe, args...) // #nosec G204,G702 -- exe is our own binary path from os.Executable with fixed flags
+	cmd.Args[0] = daemonProcessArgv0(exe)
 	cmd.Stdout = nil
 	cmd.Stderr = nil
 	util.SetDetachedProcess(cmd)

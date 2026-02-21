@@ -11,7 +11,7 @@ import (
 // syncStdoutBestEffort flushes stdout and only logs actionable sync failures.
 // Sync on pipes/ptys can return EINVAL/EBADF even when output is already delivered.
 func syncStdoutBestEffort() {
-	if err := os.Stdout.Sync(); err != nil && !isIgnorableStdoutSyncError(err) {
+	if err := activeMCPTransportWriter().Sync(); err != nil && !isIgnorableStdoutSyncError(err) {
 		stderrf("[gasoline] warning: stdout.Sync failed: %v\n", err)
 	}
 }

@@ -245,7 +245,11 @@ check-wire-drift:
 
 check-invariants: check-wire-drift
 	@./scripts/check-sync-invariants.sh
+	@./scripts/check-bridge-stdout-invariant.sh
 	@./scripts/validate-codex-skills.sh
+
+smoke-mcp-transport:
+	@./scripts/smoke-mcp-transport.sh
 
 ci: check test test-js validate-deps-versions
 
@@ -272,7 +276,7 @@ extension-zip:
 extension-crx:
 	@node scripts/build-crx.js
 
-release-check: ci-local ci-e2e
+release-check: ci-local ci-e2e smoke-mcp-transport
 	@echo "All release checks passed (CI + E2E)"
 
 ci-go:

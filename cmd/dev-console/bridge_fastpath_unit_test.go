@@ -20,6 +20,10 @@ func contentLengthFrame(payload string) string {
 	return fmt.Sprintf("Content-Length: %d\r\nContent-Type: application/json\r\n\r\n%s", len(payload), payload)
 }
 
+func contentTypeFirstFrame(payload string) string {
+	return fmt.Sprintf("Content-Type: application/json\r\nContent-Length: %d\r\n\r\n%s", len(payload), payload)
+}
+
 func captureBridgeIO(t *testing.T, input string, fn func()) string {
 	t.Helper()
 
@@ -125,6 +129,79 @@ func parseJSONLines(t *testing.T, output string) []JSONRPCResponse {
 	return responses
 }
 
+func parseFramedJSONResponses(t *testing.T, output string) []JSONRPCResponse {
+	t.Helper()
+	remaining := output
+	responses := make([]JSONRPCResponse, 0, 4)
+
+	for strings.TrimSpace(remaining) != "" {
+		parts := strings.SplitN(remaining, "\r\n\r\n", 2)
+		if len(parts) != 2 {
+			t.Fatalf("output missing Content-Length framing boundary: %q", remaining)
+		}
+		headers := strings.Split(parts[0], "\r\n")
+		contentLength := -1
+		for _, header := range headers {
+			h := strings.TrimSpace(header)
+			if strings.HasPrefix(strings.ToLower(h), "content-length:") {
+				p := strings.SplitN(h, ":", 2)
+				if len(p) != 2 {
+					t.Fatalf("invalid Content-Length header format: %q", h)
+				}
+				n, err := strconv.Atoi(strings.TrimSpace(p[1]))
+				if err != nil || n < 0 {
+					t.Fatalf("invalid Content-Length header %q: %v", h, err)
+				}
+				contentLength = n
+				break
+			}
+		}
+		if contentLength < 0 {
+			t.Fatalf("framed output missing Content-Length header: %q", parts[0])
+		}
+
+		bodyAndRest := parts[1]
+		if len(bodyAndRest) < contentLength {
+			t.Fatalf("framed output body shorter than Content-Length (%d): %q", contentLength, bodyAndRest)
+		}
+		body := bodyAndRest[:contentLength]
+		remaining = bodyAndRest[contentLength:]
+
+		var resp JSONRPCResponse
+		if err := json.Unmarshal([]byte(strings.TrimSpace(body)), &resp); err != nil {
+			t.Fatalf("invalid framed JSON response body %q: %v", body, err)
+		}
+		responses = append(responses, resp)
+	}
+
+	return responses
+}
+
+func parseMCPResponses(t *testing.T, output string) []JSONRPCResponse {
+	t.Helper()
+	trimmed := strings.TrimSpace(output)
+	if strings.HasPrefix(strings.ToLower(trimmed), "content-length:") {
+		return parseFramedJSONResponses(t, output)
+	}
+	return parseJSONLines(t, output)
+}
+
+func parseFramedJSONResponse(t *testing.T, output string) JSONRPCResponse {
+	t.Helper()
+	parts := strings.SplitN(output, "\r\n\r\n", 2)
+	if len(parts) != 2 {
+		t.Fatalf("output missing Content-Length framing: %q", output)
+	}
+	if !strings.HasPrefix(strings.ToLower(parts[0]), "content-length:") {
+		t.Fatalf("framed output missing Content-Length header: %q", parts[0])
+	}
+	var resp JSONRPCResponse
+	if err := json.Unmarshal([]byte(strings.TrimSpace(parts[1])), &resp); err != nil {
+		t.Fatalf("invalid framed JSON response: %v", err)
+	}
+	return resp
+}
+
 func TestBridgeFastPathCoreMethods(t *testing.T) {
 	// Do not run in parallel; test redirects process stdio.
 	resetFastPathResourceReadCounters()
@@ -204,6 +281,28 @@ func TestBridgeFastPathCoreMethods(t *testing.T) {
 	success, failure := snapshotFastPathResourceReadCounters()
 	if success != 1 || failure != 0 {
 		t.Fatalf("fast-path resources/read counters = (%d,%d), want (1,0)", success, failure)
+	}
+}
+
+func TestBridgeFastPath_ContentLengthInputProducesContentLengthOutput(t *testing.T) {
+	// Do not run in parallel; test redirects process stdio.
+	state := &daemonState{readyCh: make(chan struct{}), failedCh: make(chan struct{})}
+	input := contentLengthFrame(`{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}`)
+
+	output := captureBridgeIO(t, input, func() {
+		bridgeStdioToHTTPFast("http://127.0.0.1:1/mcp", state, 7890)
+	})
+
+	resp := parseFramedJSONResponse(t, output)
+	if resp.Error != nil {
+		t.Fatalf("initialize response has error: %+v", resp.Error)
+	}
+	var initResult map[string]any
+	if err := json.Unmarshal(resp.Result, &initResult); err != nil {
+		t.Fatalf("initialize result unmarshal error = %v", err)
+	}
+	if initResult["protocolVersion"] != "2025-06-18" {
+		t.Fatalf("protocolVersion = %v, want 2025-06-18", initResult["protocolVersion"])
 	}
 }
 
@@ -394,7 +493,39 @@ func TestBridgeFastPathFramedInitializeAndToolsList(t *testing.T) {
 		t.Fatalf("framed startup emitted parse error: %q", stdout)
 	}
 
-	responses := parseJSONLines(t, stdout)
+	responses := parseMCPResponses(t, stdout)
+	if len(responses) != 2 {
+		t.Fatalf("response count = %d, want 2", len(responses))
+	}
+	if responses[0].Error != nil {
+		t.Fatalf("initialize returned protocol error: %+v", responses[0].Error)
+	}
+	if responses[1].Error != nil {
+		t.Fatalf("tools/list returned protocol error: %+v", responses[1].Error)
+	}
+}
+
+func TestBridgeFastPathFramedInitializeAndToolsList_ContentTypeFirstHeaders(t *testing.T) {
+	// Do not run in parallel; test redirects process stdio.
+	state := &daemonState{readyCh: make(chan struct{}), failedCh: make(chan struct{})}
+	initReq := `{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"codex","version":"1"}}}`
+	toolsReq := `{"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}`
+	input := contentTypeFirstFrame(initReq) + contentTypeFirstFrame(toolsReq)
+
+	setStderrSink(io.Discard)
+	stdout, stderr := captureBridgeIOWithStderr(t, input, func() {
+		bridgeStdioToHTTPFast("http://127.0.0.1:1/mcp", state, 7890)
+	})
+	setStderrSink(os.Stderr)
+
+	if strings.TrimSpace(stderr) != "" {
+		t.Fatalf("framed startup emitted stderr output: %q", stderr)
+	}
+	if strings.Contains(stdout, `"code":-32700`) {
+		t.Fatalf("framed startup emitted parse error: %q", stdout)
+	}
+
+	responses := parseMCPResponses(t, stdout)
 	if len(responses) != 2 {
 		t.Fatalf("response count = %d, want 2", len(responses))
 	}

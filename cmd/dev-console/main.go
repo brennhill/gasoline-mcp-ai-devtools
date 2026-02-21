@@ -22,7 +22,6 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"io"
 	"net"
 	"net/http"
 	"os"
@@ -41,7 +40,7 @@ import (
 
 // version is set at build time via -ldflags "-X main.version=..."
 // Fallback used for `go run` and `make dev` (no ldflags).
-var version = "0.7.5"
+var version = "0.7.7"
 
 // startTime tracks when the server started for uptime calculation
 var startTime = time.Now()
@@ -210,14 +209,12 @@ func handlePanicRecovery(r any) {
 		}
 	}
 
-	crashFile := resolveCrashFile()
-	crashContent := fmt.Sprintf("GASOLINE CRASH at %s\nPanic: %v\nStack:\n%s\n",
-		time.Now().Format(time.RFC3339), r, stack)
-	// #nosec G301 -- runtime state directory: owner rwx, group rx for diagnostics
-	_ = os.MkdirAll(filepath.Dir(crashFile), 0o750)
-	_ = os.WriteFile(crashFile, []byte(crashContent), 0600) // #nosec G104 -- best-effort crash logging; owner-only for privacy
-
-	fmt.Fprintf(os.Stderr, "[gasoline] Crash details written to: %s\n", crashFile)
+	if diagPath := appendExitDiagnostic("panic", map[string]any{
+		"reason": fmt.Sprintf("%v", r),
+		"stack":  string(stack),
+	}); diagPath != "" {
+		fmt.Fprintf(os.Stderr, "[gasoline] Crash details written to: %s\n", diagPath)
+	}
 	os.Exit(1)
 }
 
@@ -280,6 +277,7 @@ func spawnBackgroundDaemon(server *Server, cfg *serverConfig) *exec.Cmd {
 	}
 
 	cmd := exec.Command(exe, args...) // #nosec G204,G702 -- exe is our own binary path from os.Executable with fixed flags // nosemgrep: go.lang.security.audit.dangerous-exec-command.dangerous-exec-command, go_subproc_rule-subproc -- CLI opens browser with known URL
+	cmd.Args[0] = daemonProcessArgv0(exe)
 	cmd.Stdout = nil
 	cmd.Stderr = nil
 	_, err = cmd.StdinPipe()
@@ -367,9 +365,7 @@ func dispatchMode(server *Server, cfg *serverConfig) {
 	isTTY, stdinMode := detectStdinMode()
 	mcpConfigPath := findMCPConfig()
 	mode := selectRuntimeMode(cfg, isTTY)
-	if mode == modeBridge {
-		setStderrSink(io.Discard)
-	} else {
+	if mode == modeDaemon {
 		setStderrSink(os.Stderr)
 	}
 
@@ -384,18 +380,35 @@ func dispatchMode(server *Server, cfg *serverConfig) {
 	case modeDaemon:
 		server.logLifecycle("daemon_mode_start", cfg.port, nil)
 		if err := runMCPMode(server, cfg.port, cfg.apiKey); err != nil {
+			diagPath := appendExitDiagnostic("daemon_start_failed", map[string]any{
+				"port":  cfg.port,
+				"error": err.Error(),
+			})
+			if diagPath != "" {
+				stderrf("[gasoline] Startup diagnostics written to: %s\n", diagPath)
+			}
 			stderrf("[gasoline] Daemon error: %v\n", err)
 			os.Exit(1)
 		}
 		return
 	case modeBridge:
-		server.logLifecycle("bridge_mode_start", cfg.port, nil)
+		if err := ensureBridgeIOIsolation(cfg.logFile); err != nil {
+			sendStartupError("Bridge stdio isolation failed: " + err.Error())
+			os.Exit(1)
+		}
+		server.logLifecycle("bridge_mode_start", cfg.port, bridgeLaunchFingerprint())
 		if cfg.bridgeMode {
 			stderrf("[gasoline] Starting in bridge mode (stdio -> HTTP)\n")
 		} else if isTTY && mcpConfigPath != "" {
 			stderrf("[gasoline] MCP config detected at %s; running in bridge mode for tool compatibility.\n", mcpConfigPath)
 		} else if isTTY {
 			stderrf("[gasoline] Running in bridge mode by default. Use --daemon for server-only mode.\n")
+		}
+		if os.Getenv("GASOLINE_TEST_BRIDGE_NOISE") == "1" {
+			// Test-only probe: verifies transport isolation prevents accidental
+			// stdout/stderr writes from corrupting MCP responses.
+			fmt.Fprintln(os.Stdout, "GASOLINE_TEST_NOISE_STDOUT")
+			fmt.Fprintln(os.Stderr, "GASOLINE_TEST_NOISE_STDERR")
 		}
 		runBridgeMode(cfg.port, cfg.logFile, cfg.maxEntries)
 		return
@@ -429,24 +442,6 @@ func main() {
 	}
 
 	dispatchMode(server, cfg)
-}
-
-// sendStartupError sends a JSON-RPC error response before exiting.
-// This ensures the parent process (IDE) receives a proper error instead of empty response.
-func sendStartupError(message string) {
-	errResp := JSONRPCResponse{
-		JSONRPC: "2.0",
-		ID:      "startup",
-		Error: &JSONRPCError{
-			Code:    -32603,
-			Message: message,
-		},
-	}
-	// Error impossible: simple struct with no circular refs or unsupported types
-	respJSON, _ := json.Marshal(errResp)
-	fmt.Println(string(respJSON))
-	syncStdoutBestEffort()
-	time.Sleep(100 * time.Millisecond) // Allow OS to flush pipe to parent
 }
 
 // #lizard forgives

@@ -55,6 +55,51 @@ func TestCheckGitHubVersionSuccessAndCache(t *testing.T) {
 	}
 }
 
+func TestCheckGitHubVersionIgnoresOlderOrEqualRelease(t *testing.T) {
+	resetVersionCheckState(t)
+	oldURL := getGitHubAPIURL()
+	defer setGitHubAPIURL(oldURL)
+
+	origVersion := version
+	version = "0.7.7"
+	defer func() { version = origVersion }()
+
+	tests := []struct {
+		name string
+		tag  string
+	}{
+		{name: "older release", tag: "v0.7.2"},
+		{name: "equal release", tag: "v0.7.7"},
+	}
+
+	for _, tc := range tests {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			resetVersionCheckState(t)
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+				w.Header().Set("Content-Type", "application/json")
+				_, _ = w.Write([]byte(`{"tag_name":"` + tc.tag + `"}`))
+			}))
+			defer srv.Close()
+			setGitHubAPIURL(srv.URL)
+
+			checkGitHubVersion()
+
+			versionCheckMu.Lock()
+			gotVersion := availableVersion
+			gotLast := lastVersionCheck
+			versionCheckMu.Unlock()
+
+			if gotVersion != "" {
+				t.Fatalf("availableVersion = %q, want empty for tag %q", gotVersion, tc.tag)
+			}
+			if gotLast.IsZero() {
+				t.Fatalf("lastVersionCheck should be set for tag %q", tc.tag)
+			}
+		})
+	}
+}
+
 func TestCheckGitHubVersionErrorPaths(t *testing.T) {
 	resetVersionCheckState(t)
 	oldURL := getGitHubAPIURL()

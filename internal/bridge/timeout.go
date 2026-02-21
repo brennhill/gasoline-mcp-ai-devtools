@@ -8,14 +8,14 @@ import (
 
 // Timeout constants for different tool categories.
 const (
-	FastTimeout    = 10 * time.Second
-	SlowTimeout    = 35 * time.Second
-	BlockingPoll   = 65 * time.Second
+	FastTimeout  = 10 * time.Second
+	SlowTimeout  = 35 * time.Second
+	BlockingPoll = 65 * time.Second
 )
 
 // ToolCallTimeout returns the per-request timeout based on the MCP method and tool name.
-// Fast tools (observe, generate, configure, resources/read) get 10s; slow tools
-// (analyze, interact) that round-trip to the extension get 35s.
+// Fast tools (observe, generate, most configure actions, resources/read) get 10s;
+// slow tools (analyze, interact, long-running configure actions) get 35s.
 // Annotation observe (observe command_result for ann_*) gets 65s for blocking poll.
 //
 // method is the JSON-RPC method (e.g. "tools/call", "resources/read").
@@ -39,6 +39,22 @@ func ToolCallTimeout(method string, params json.RawMessage) time.Duration {
 	switch p.Name {
 	case "analyze", "interact":
 		return SlowTimeout
+	case "configure":
+		var args struct {
+			Action string `json:"action"`
+			What   string `json:"what"`
+		}
+		if json.Unmarshal(p.Arguments, &args) == nil {
+			action := args.Action
+			if action == "" {
+				action = args.What
+			}
+			switch action {
+			case "replay_sequence", "playback":
+				return SlowTimeout
+			}
+		}
+		return FastTimeout
 	case "observe":
 		var args struct {
 			What          string `json:"what"`

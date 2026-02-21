@@ -176,7 +176,6 @@ func initUploadSecurity(enabled bool, dir string, denyPatterns multiFlag) {
 			uploadSecurityConfig = &UploadSecurity{}
 			return
 		}
-		fmt.Fprintf(os.Stderr, "[gasoline] Using default upload dir: %s\n", dir)
 	}
 	sec, err := ValidateUploadDir(dir, denyPatterns)
 	if err != nil {
