@@ -3,6 +3,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"strings"
 	"testing"
@@ -605,6 +606,40 @@ func TestToolsInteractDOMPrimitives_SuccessWithPilot(t *testing.T) {
 			}
 			assertSnakeCaseFields(t, string(resp.Result))
 		})
+	}
+}
+
+func TestToolsInteractDOMPrimitive_AnnotationRectAliasMapsToScopeRect(t *testing.T) {
+	t.Parallel()
+	h, _, cap := makeToolHandler(t)
+	cap.SetPilotEnabled(true)
+
+	resp := callInteractRaw(h, `{"what":"click","selector":".compose","annotation_rect":{"x":120,"y":240,"width":300,"height":180}}`)
+	result := parseToolResult(t, resp)
+	if result.IsError {
+		t.Fatalf("click with annotation_rect should queue, got error: %s", result.Content[0].Text)
+	}
+
+	pq := cap.GetLastPendingQuery()
+	if pq == nil {
+		t.Fatal("expected pending query for click")
+	}
+
+	var payload map[string]any
+	if err := json.Unmarshal(pq.Params, &payload); err != nil {
+		t.Fatalf("failed to parse pending query params: %v", err)
+	}
+	if got, _ := payload["action"].(string); got != "click" {
+		t.Fatalf("pending action = %v, want click", payload["action"])
+	}
+	scopeRect, ok := payload["scope_rect"].(map[string]any)
+	if !ok {
+		t.Fatalf("scope_rect missing from normalized payload: %s", string(pq.Params))
+	}
+	for _, k := range []string{"x", "y", "width", "height"} {
+		if _, exists := scopeRect[k]; !exists {
+			t.Fatalf("scope_rect missing key %q in payload: %s", k, string(pq.Params))
+		}
 	}
 }
 

@@ -98,12 +98,16 @@ function pickFrameResult(results) {
 function mergeListInteractive(results) {
     const elements = [];
     let firstError = null;
+    let firstScopeRectUsed;
     for (const r of results) {
         const res = r.result;
         if (res?.success === false) {
             if (!firstError)
                 firstError = { error: res.error, message: res.message };
             continue;
+        }
+        if (firstScopeRectUsed === undefined && res?.scope_rect_used !== undefined) {
+            firstScopeRectUsed = res.scope_rect_used;
         }
         if (res?.elements)
             elements.push(...res.elements);
@@ -113,7 +117,16 @@ function mergeListInteractive(results) {
     if (elements.length === 0 && firstError?.error) {
         return { success: false, elements: [], error: firstError.error, message: firstError.message };
     }
-    return { success: true, elements: elements.slice(0, 100) };
+    const cappedElements = elements.slice(0, 100);
+    const merged = {
+        success: true,
+        elements: cappedElements,
+        candidate_count: cappedElements.length
+    };
+    if (firstScopeRectUsed !== undefined) {
+        merged.scope_rect_used = firstScopeRectUsed;
+    }
+    return merged;
 }
 const WAIT_FOR_POLL_INTERVAL_MS = 80;
 function toDOMResult(value) {
@@ -193,17 +206,21 @@ async function executeStandardAction(target, params) {
                 analyze: params.analyze,
                 observe_mutations: params.observe_mutations,
                 element_id: params.element_id,
-                scope_selector: params.scope_selector
+                scope_selector: params.scope_selector,
+                scope_rect: params.scope_rect
             }
         ]
     });
 }
 async function executeListInteractive(target, params) {
+    const args = params.scope_rect
+        ? [params.selector || '', { scope_rect: params.scope_rect }]
+        : [params.selector || ''];
     return chrome.scripting.executeScript({
         target,
         world: 'MAIN',
         func: domPrimitiveListInteractive,
-        args: [params.selector || '']
+        args
     });
 }
 function sendToastForResult(tabId, readOnly, result, actionToast, toastLabel, toastDetail) {

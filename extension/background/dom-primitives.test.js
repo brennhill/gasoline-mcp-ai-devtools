@@ -485,6 +485,69 @@ describe('list_interactive returns index, element_type, and deduplicates selecto
     assert.strictEqual(result.error, 'scope_not_found')
   })
 
+  test('list_interactive scopes results to scope_rect when provided', () => {
+    const outsideBtn = new MockHTMLElement('BUTTON', { id: 'outside-btn', textContent: 'Outside Action' })
+    Object.setPrototypeOf(outsideBtn, MockHTMLElement.prototype)
+    outsideBtn.getBoundingClientRect = () => ({
+      x: 10,
+      y: 20,
+      left: 10,
+      top: 20,
+      width: 100,
+      height: 30,
+      right: 110,
+      bottom: 50
+    })
+    outsideBtn.getRootNode = () => globalThis.document
+    outsideBtn.getAttribute = () => null
+
+    const insideBtn = new MockHTMLElement('BUTTON', { id: 'inside-btn', textContent: 'Inside Action' })
+    Object.setPrototypeOf(insideBtn, MockHTMLElement.prototype)
+    insideBtn.getBoundingClientRect = () => ({
+      x: 430,
+      y: 340,
+      left: 430,
+      top: 340,
+      width: 120,
+      height: 36,
+      right: 550,
+      bottom: 376
+    })
+    insideBtn.getRootNode = () => globalThis.document
+    insideBtn.getAttribute = () => null
+
+    globalThis.document = {
+      querySelector: () => null,
+      querySelectorAll: (sel) => {
+        if (sel === 'button') return [outsideBtn, insideBtn]
+        return []
+      },
+      getElementById: () => null,
+      body: {
+        querySelectorAll: (sel) => {
+          if (sel === 'button') return [outsideBtn, insideBtn]
+          return []
+        },
+        appendChild: () => {},
+        children: { length: 0 }
+      },
+      documentElement: { children: { length: 0 } },
+      createTreeWalker: () => ({ nextNode: () => null }),
+      getSelection: () => null,
+      execCommand: () => {}
+    }
+
+    const result = domPrimitive('list_interactive', '', {
+      scope_rect: { x: 400, y: 300, width: 220, height: 180 }
+    })
+    assert.strictEqual(result.success, true)
+    const labels = result.elements.map((e) => e.label)
+    assert.ok(labels.includes('Inside Action'), 'rect-scoped list should include in-rect control')
+    assert.ok(!labels.includes('Outside Action'), 'rect-scoped list should exclude out-of-rect control')
+    assert.strictEqual(result.candidate_count, 1)
+    assert.deepStrictEqual(result.scope_rect_used, { x: 400, y: 300, width: 220, height: 180 })
+  })
+
   test('list_interactive auto-selects composer-like dialog when scope matches multiple dialogs', () => {
     const notifBtn = new MockHTMLElement('BUTTON', { id: 'notif-mark-read', textContent: 'Mark as read' })
     Object.setPrototypeOf(notifBtn, MockHTMLElement.prototype)
@@ -799,6 +862,92 @@ describe('ambiguity-safe mutating actions', () => {
     const result = domPrimitive('get_text', '#test-btn', { scope_selector: '#missing-scope' })
     assert.strictEqual(result.success, false)
     assert.strictEqual(result.error, 'scope_not_found')
+  })
+
+  test('click with scope_rect returns ambiguous_target when multiple candidates are in-region', async () => {
+    let clickCount = 0
+    const btn1 = new MockHTMLElement('BUTTON', { textContent: 'Post 1' })
+    Object.setPrototypeOf(btn1, MockHTMLElement.prototype)
+    btn1.getBoundingClientRect = () => ({
+      x: 410, y: 320, left: 410, top: 320, width: 110, height: 32, right: 520, bottom: 352
+    })
+    btn1.getRootNode = () => globalThis.document
+    btn1.getAttribute = () => null
+    btn1.click = () => { clickCount++ }
+
+    const btn2 = new MockHTMLElement('BUTTON', { textContent: 'Post 2' })
+    Object.setPrototypeOf(btn2, MockHTMLElement.prototype)
+    btn2.getBoundingClientRect = () => ({
+      x: 430, y: 360, left: 430, top: 360, width: 110, height: 32, right: 540, bottom: 392
+    })
+    btn2.getRootNode = () => globalThis.document
+    btn2.getAttribute = () => null
+    btn2.click = () => { clickCount++ }
+
+    globalThis.document = {
+      querySelector: (sel) => (sel === '.dup-post' ? btn1 : null),
+      querySelectorAll: (sel) => (sel === '.dup-post' ? [btn1, btn2] : []),
+      getElementById: () => null,
+      body: { querySelectorAll: () => [], appendChild: () => {}, children: { length: 0 } },
+      documentElement: { children: { length: 0 } },
+      createTreeWalker: () => ({ nextNode: () => null }),
+      getSelection: () => null,
+      execCommand: () => {}
+    }
+
+    const raw = domPrimitive('click', '.dup-post', {
+      scope_rect: { x: 400, y: 300, width: 220, height: 180 }
+    })
+    const result = raw instanceof Promise ? await raw : raw
+
+    assert.strictEqual(result.success, false)
+    assert.strictEqual(result.error, 'ambiguous_target')
+    assert.strictEqual(result.match_count, 2)
+    assert.strictEqual(clickCount, 0, 'no click should be executed on ambiguous in-rect targets')
+  })
+
+  test('click with scope_rect ignores out-of-region duplicates and targets in-region element', async () => {
+    let outsideClicks = 0
+    let insideClicks = 0
+
+    const outside = new MockHTMLElement('BUTTON', { textContent: 'Outside' })
+    Object.setPrototypeOf(outside, MockHTMLElement.prototype)
+    outside.getBoundingClientRect = () => ({
+      x: 40, y: 50, left: 40, top: 50, width: 100, height: 30, right: 140, bottom: 80
+    })
+    outside.getRootNode = () => globalThis.document
+    outside.getAttribute = () => null
+    outside.click = () => { outsideClicks++ }
+
+    const inside = new MockHTMLElement('BUTTON', { textContent: 'Inside' })
+    Object.setPrototypeOf(inside, MockHTMLElement.prototype)
+    inside.getBoundingClientRect = () => ({
+      x: 430, y: 340, left: 430, top: 340, width: 120, height: 36, right: 550, bottom: 376
+    })
+    inside.getRootNode = () => globalThis.document
+    inside.getAttribute = () => null
+    inside.click = () => { insideClicks++ }
+
+    globalThis.document = {
+      querySelector: (sel) => (sel === '.dup-post' ? outside : null),
+      querySelectorAll: (sel) => (sel === '.dup-post' ? [outside, inside] : []),
+      getElementById: () => null,
+      body: { querySelectorAll: () => [], appendChild: () => {}, children: { length: 0 } },
+      documentElement: { children: { length: 0 } },
+      createTreeWalker: () => ({ nextNode: () => null }),
+      getSelection: () => null,
+      execCommand: () => {}
+    }
+
+    const raw = domPrimitive('click', '.dup-post', {
+      scope_rect: { x: 400, y: 300, width: 220, height: 180 }
+    })
+    const result = raw instanceof Promise ? await raw : raw
+
+    assert.strictEqual(result.success, true)
+    assert.strictEqual(insideClicks, 1, 'in-rect element should be clicked exactly once')
+    assert.strictEqual(outsideClicks, 0, 'out-of-rect duplicate should not be clicked')
+    assert.strictEqual(result.match_count, 1)
   })
 })
 

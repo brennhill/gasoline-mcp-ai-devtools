@@ -14,6 +14,15 @@ export { domPrimitiveListInteractive } from './dom-primitives-list-interactive.j
 export declare function domPrimitive(action: string, selector: string, options: DOMPrimitiveOptions): DOMResult | Promise<DOMResult> | {
     success: boolean;
     elements: unknown[];
+    candidate_count?: number;
+    scope_rect_used?: {
+        x: number;
+        y: number;
+        width: number;
+        height: number;
+    };
+    error?: string;
+    message?: string;
 };
 export declare function domWaitFor(selector: string, timeoutMs?: number): Promise<DOMResult>;
 //# sourceMappingURL=dom-primitives.d.ts.map

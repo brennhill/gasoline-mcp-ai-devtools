@@ -450,6 +450,11 @@ func normalizeDOMActionArgs(args json.RawMessage, action string) json.RawMessage
 		payload = map[string]any{}
 	}
 	payload["action"] = action
+	if _, hasScopeRect := payload["scope_rect"]; !hasScopeRect {
+		if annotationRect, hasAnnotationRect := payload["annotation_rect"]; hasAnnotationRect {
+			payload["scope_rect"] = annotationRect
+		}
+	}
 	normalized, err := json.Marshal(payload)
 	if err != nil {
 		return args

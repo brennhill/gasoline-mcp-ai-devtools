@@ -8,8 +8,17 @@
  * MUST NOT reference any module-level variables.
  */
 export function domPrimitiveListInteractive(
-  scopeSelector?: string
-): { success: boolean; elements: unknown[]; error?: string; message?: string } {
+  scopeSelector?: string,
+  options?: { scope_rect?: { x?: unknown; y?: unknown; width?: unknown; height?: unknown } }
+): {
+  success: boolean
+  elements: unknown[]
+  candidate_count?: number
+  scope_rect_used?: { x: number; y: number; width: number; height: number }
+  error?: string
+  message?: string
+} {
+  type ScopeRect = { x: number; y: number; width: number; height: number }
   type ElementHandleStore = {
     byElement: WeakMap<Element, string>
     byID: Map<string, Element>
@@ -142,6 +151,44 @@ export function domPrimitiveListInteractive(
     )
   }
 
+  function parseScopeRect(raw: unknown): ScopeRect | null {
+    if (!raw || typeof raw !== 'object') return null
+    const rect = raw as { x?: unknown; y?: unknown; width?: unknown; height?: unknown }
+    const x = Number(rect.x)
+    const y = Number(rect.y)
+    const width = Number(rect.width)
+    const height = Number(rect.height)
+    if (![x, y, width, height].every((v) => Number.isFinite(v))) return null
+    if (width <= 0 || height <= 0) return null
+    return { x, y, width, height }
+  }
+
+  const scopeRect = parseScopeRect(options?.scope_rect)
+  if (options?.scope_rect !== undefined && !scopeRect) {
+    return {
+      success: false,
+      elements: [],
+      error: 'invalid_scope_rect',
+      message: 'scope_rect must include finite x, y, width, and height > 0'
+    }
+  }
+
+  function intersectsScopeRect(el: Element): boolean {
+    if (!scopeRect) return true
+    const htmlEl = el as HTMLElement
+    if (!htmlEl || typeof htmlEl.getBoundingClientRect !== 'function') return false
+    const rect = htmlEl.getBoundingClientRect()
+    const left = typeof rect.left === 'number' ? rect.left : (typeof rect.x === 'number' ? rect.x : 0)
+    const top = typeof rect.top === 'number' ? rect.top : (typeof rect.y === 'number' ? rect.y : 0)
+    const right = typeof rect.right === 'number' ? rect.right : left + rect.width
+    const bottom = typeof rect.bottom === 'number' ? rect.bottom : top + rect.height
+    const scopeRight = scopeRect.x + scopeRect.width
+    const scopeBottom = scopeRect.y + scopeRect.height
+    const overlapX = left < scopeRight && right > scopeRect.x
+    const overlapY = top < scopeBottom && bottom > scopeRect.y
+    return overlapX && overlapY
+  }
+
   function chooseBestScopeMatch(matches: Element[]): Element {
     if (matches.length === 1) return matches[0]!
 
@@ -272,6 +319,7 @@ export function domPrimitiveListInteractive(
       const htmlEl = el as HTMLElement
       const rect = htmlEl.getBoundingClientRect()
       const visible = rect.width > 0 && rect.height > 0 && htmlEl.offsetParent !== null
+      if (!intersectsScopeRect(el)) continue
 
       // Use >>> selector for shadow DOM elements, regular selector otherwise
       const shadowSel = buildShadowSelector(el)
@@ -334,5 +382,10 @@ export function domPrimitiveListInteractive(
     })
   }
 
-  return { success: true, elements }
+  return {
+    success: true,
+    elements,
+    candidate_count: elements.length,
+    ...(scopeRect ? { scope_rect_used: scopeRect } : {})
+  }
 }
