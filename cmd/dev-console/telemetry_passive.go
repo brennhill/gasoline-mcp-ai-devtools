@@ -4,6 +4,8 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
+	"strings"
 	"time"
 )
 
@@ -49,6 +51,7 @@ func (h *MCPHandler) maybeAddTelemetrySummary(resp JSONRPCResponse, clientID, to
 	if mode == telemetryModeFull || (mode == telemetryModeAuto && changed) {
 		result.Metadata["telemetry_summary"] = summary
 	}
+	h.addInteractDiagnosticWarning(toolName, &result)
 
 	resultJSON, err := json.Marshal(result)
 	if err != nil {
@@ -75,6 +78,7 @@ func (h *MCPHandler) buildTelemetrySummary(clientID, toolName string) (map[strin
 		"new_actions_since_last_call":          deltas.actionTotal,
 		"trigger_tool":                         toolName,
 		"retrieved_at":                         time.Now().UTC().Format(time.RFC3339),
+		"ready_for_interaction":                false,
 	}
 
 	cap := h.toolHandler.GetCapture()
@@ -88,6 +92,9 @@ func (h *MCPHandler) buildTelemetrySummary(clientID, toolName string) (map[strin
 		if tabURL != "" {
 			summary["tracked_tab_url"] = tabURL
 		}
+		commandExec := buildCommandExecutionInfo(cap)
+		summary["ready_for_interaction"] = commandExec.Ready
+		summary["command_execution_status"] = commandExec.Status
 	}
 	if clientID != "" {
 		summary["client_id"] = clientID
@@ -147,6 +154,101 @@ func clampDelta(current, previous int64) int64 {
 		return 0
 	}
 	return current - previous
+}
+
+func (h *MCPHandler) addInteractDiagnosticWarning(toolName string, result *MCPToolResult) {
+	if toolName != "interact" || result == nil || len(result.Content) == 0 {
+		return
+	}
+
+	payload, ok := parseJSONPayloadFromContent(result.Content[0].Text)
+	if !ok {
+		return
+	}
+
+	correlationID := strings.TrimSpace(toString(payload["correlation_id"]))
+	if correlationID == "" {
+		return
+	}
+
+	status := strings.ToLower(strings.TrimSpace(toString(payload["status"])))
+	final, _ := payload["final"].(bool)
+	elapsedMs := toInt64(payload["elapsed_ms"])
+
+	suspiciousFast := final && status == "complete" && elapsedMs >= 0 && elapsedMs < 10 && isSuspiciousInteractCorrelationID(correlationID)
+	failed := isInteractFailureResult(result, status)
+	if !suspiciousFast && !failed {
+		return
+	}
+
+	commandExec := buildCommandExecutionInfo(h.toolHandler.GetCapture())
+	if suspiciousFast {
+		result.Metadata["diagnostic_warning"] = fmt.Sprintf(
+			"Command completed in %dms (unusually fast). Doctor status: ready_for_interaction=%t (%s). Run configure(what:'doctor') for details.",
+			elapsedMs,
+			commandExec.Ready,
+			commandExec.Status,
+		)
+		return
+	}
+
+	if status == "" {
+		status = "failed"
+	}
+	result.Metadata["diagnostic_warning"] = fmt.Sprintf(
+		"Interact command failed (status=%s). Doctor status: ready_for_interaction=%t (%s). Run configure(what:'doctor') for details.",
+		status,
+		commandExec.Ready,
+		commandExec.Status,
+	)
+}
+
+func parseJSONPayloadFromContent(text string) (map[string]any, bool) {
+	start := strings.Index(text, "{")
+	if start < 0 {
+		return nil, false
+	}
+	raw := text[start:]
+
+	var payload map[string]any
+	if err := json.Unmarshal([]byte(raw), &payload); err != nil {
+		return nil, false
+	}
+	return payload, true
+}
+
+func isSuspiciousInteractCorrelationID(correlationID string) bool {
+	return strings.HasPrefix(correlationID, "nav_") ||
+		strings.HasPrefix(correlationID, "dom_click_") ||
+		strings.HasPrefix(correlationID, "dom_type_")
+}
+
+func isInteractFailureResult(result *MCPToolResult, status string) bool {
+	switch status {
+	case "error", "timeout", "expired", "cancelled":
+		return true
+	}
+	return result != nil && result.IsError
+}
+
+func toString(v any) string {
+	if s, ok := v.(string); ok {
+		return s
+	}
+	return ""
+}
+
+func toInt64(v any) int64 {
+	switch n := v.(type) {
+	case float64:
+		return int64(n)
+	case int:
+		return int64(n)
+	case int64:
+		return n
+	default:
+		return -1
+	}
 }
 
 func parseTelemetryModeOverride(args json.RawMessage) string {
