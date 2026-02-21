@@ -281,3 +281,88 @@ func (qd *QueryDispatcher) GetFailedCommands() []*CommandResult {
 	}
 	return result
 }
+
+// HasRecentCSPRestriction returns true when recent command history indicates
+// the tracked page is likely blocking script execution due to CSP/restricted context.
+func (qd *QueryDispatcher) HasRecentCSPRestriction() bool {
+	qd.cleanExpiredCommands()
+
+	qd.resultsMu.RLock()
+	defer qd.resultsMu.RUnlock()
+
+	latest := time.Time{}
+	for _, cmd := range qd.failedCommands {
+		latest = newestCSPTimestamp(latest, cmd)
+	}
+	for _, cmd := range qd.completedResults {
+		latest = newestCSPTimestamp(latest, cmd)
+	}
+	if latest.IsZero() {
+		return false
+	}
+	return time.Since(latest) <= QueryResultTTL
+}
+
+func newestCSPTimestamp(current time.Time, cmd *CommandResult) time.Time {
+	if cmd == nil || !commandLooksLikeCSP(cmd) {
+		return current
+	}
+
+	ts := cmd.CompletedAt
+	if ts.IsZero() {
+		ts = cmd.CreatedAt
+	}
+	if ts.After(current) {
+		return ts
+	}
+	return current
+}
+
+func commandLooksLikeCSP(cmd *CommandResult) bool {
+	if cmd == nil {
+		return false
+	}
+
+	if looksLikeCSPString(cmd.Error) {
+		return true
+	}
+
+	if len(cmd.Result) == 0 {
+		return false
+	}
+
+	var payload map[string]any
+	if err := json.Unmarshal(cmd.Result, &payload); err != nil {
+		return false
+	}
+
+	if v, ok := payload["csp_blocked"].(bool); ok && v {
+		return true
+	}
+	if v, ok := payload["failure_cause"].(string); ok && strings.EqualFold(strings.TrimSpace(v), "csp") {
+		return true
+	}
+	for _, key := range []string{"error", "message", "hint"} {
+		if v, ok := payload[key].(string); ok && looksLikeCSPString(v) {
+			return true
+		}
+	}
+
+	return false
+}
+
+func looksLikeCSPString(value string) bool {
+	v := strings.ToLower(strings.TrimSpace(value))
+	if v == "" {
+		return false
+	}
+
+	return strings.Contains(v, "csp") ||
+		strings.Contains(v, "content security policy") ||
+		strings.Contains(v, "trusted type") ||
+		strings.Contains(v, "unsafe-eval") ||
+		strings.Contains(v, "blocks content scripts") ||
+		strings.Contains(v, "blocked content scripts") ||
+		strings.Contains(v, "blocks script execution") ||
+		strings.Contains(v, "restricted_page")
+}
