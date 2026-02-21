@@ -157,6 +157,12 @@ func (c *Capture) GetFailedCommands() []*queries.CommandResult {
 	return c.qd.GetFailedCommands()
 }
 
+// HasRecentCSPRestriction returns true when recent command history indicates
+// the tracked page is likely in a CSP/restricted execution context.
+func (c *Capture) HasRecentCSPRestriction() bool {
+	return c.qd.HasRecentCSPRestriction()
+}
+
 // QueuePosition delegates to QueryDispatcher.
 func (c *Capture) QueuePosition(correlationID string) int {
 	return c.qd.QueuePosition(correlationID)

@@ -143,6 +143,7 @@ func (h *ToolHandler) toolObserve(req JSONRPCRequest, args json.RawMessage) JSON
 	}
 
 	resp := handler(h, req, args)
+	resp = h.annotateCSPRestrictionMetadata(resp)
 
 	// Warn when extension is disconnected (except for server-side modes that don't need it)
 	if !h.capture.IsExtensionConnected() && !serverSideObserveModes[params.What] {

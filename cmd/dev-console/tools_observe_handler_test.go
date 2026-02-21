@@ -81,6 +81,45 @@ func TestToolsObserveDispatch_EmptyArgs(t *testing.T) {
 	}
 }
 
+func TestToolsObserve_ResponseMetadataIncludesCSPRestrictionHint(t *testing.T) {
+	t.Parallel()
+	h, _, cap := makeToolHandler(t)
+
+	corrID := "csp_meta_observe_1"
+	cap.RegisterCommand(corrID, "q-csp-observe", 30*time.Second)
+	cap.ApplyCommandResult(corrID, "error", json.RawMessage(`{
+		"success": false,
+		"error": "csp_blocked_all_worlds",
+		"message": "Page CSP blocks dynamic script execution",
+		"csp_blocked": true,
+		"failure_cause": "csp"
+	}`), "csp_blocked_all_worlds")
+
+	resp := callObserveRaw(h, "logs")
+	result := parseToolResult(t, resp)
+	if result.IsError {
+		t.Fatalf("observe logs should not return isError, got: %s", result.Content[0].Text)
+	}
+
+	data := extractResultJSON(t, result)
+	meta, _ := data["metadata"].(map[string]any)
+	if meta == nil {
+		t.Fatal("metadata should be a map")
+	}
+
+	if restricted, _ := meta["csp_restricted"].(bool); !restricted {
+		t.Fatalf("metadata.csp_restricted = %v, want true", meta["csp_restricted"])
+	}
+
+	hint, _ := meta["csp_hint"].(string)
+	if hint == "" {
+		t.Fatal("metadata.csp_hint should be present")
+	}
+	if !strings.Contains(strings.ToLower(hint), "blocks script execution") {
+		t.Fatalf("metadata.csp_hint should explain script execution restriction, got: %q", hint)
+	}
+}
+
 // ============================================
 // observe(what:"errors") — Response Field Tests
 // ============================================
