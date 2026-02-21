@@ -7,7 +7,7 @@ import { test, describe, beforeEach } from 'node:test'
 import assert from 'node:assert'
 
 const { handlePendingQuery } = await import('./pending-queries.js')
-const index = await import('./index.js')
+const { markInitComplete } = await import('./state.js')
 
 let executeScriptCalls = []
 let executeScriptReturn = []
@@ -91,7 +91,7 @@ beforeEach(() => {
   }
 
   // Skip initReady delay in handlePendingQuery.
-  index.markInitComplete()
+  markInitComplete()
 })
 
 describe('analyze frame routing', () => {

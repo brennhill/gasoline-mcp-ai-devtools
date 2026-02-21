@@ -17,6 +17,8 @@ export type BrowserActionResult = {
     content_script_status?: string;
     message?: string;
     error?: string;
+    csp_blocked?: boolean;
+    failure_cause?: string;
 };
 export declare function handleNavigateAction(tabId: number, url: string, actionToast: ActionToastFn, reason?: string): Promise<BrowserActionResult>;
 export declare function handleBrowserAction(tabId: number, params: {
