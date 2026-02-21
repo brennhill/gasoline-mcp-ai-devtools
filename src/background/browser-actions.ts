@@ -40,6 +40,8 @@ export type BrowserActionResult = {
   content_script_status?: string
   message?: string
   error?: string
+  csp_blocked?: boolean
+  failure_cause?: string
 }
 
 // =============================================================================
@@ -252,6 +254,29 @@ export async function handleAsyncExecuteCommand(
 // ASYNC BROWSER ACTION
 // =============================================================================
 
+function isCSPFailure(errorCode?: string, message?: string): boolean {
+  const haystack = `${errorCode || ''} ${message || ''}`.toLowerCase()
+  if (!haystack) return false
+  return (
+    haystack.includes('csp') ||
+    haystack.includes('content script') ||
+    haystack.includes('blocked') ||
+    haystack.includes('chrome://') ||
+    haystack.includes('extension://')
+  )
+}
+
+function enrichCSPFailure(result: BrowserActionResult): BrowserActionResult {
+  if (!isCSPFailure(result.error, result.message)) {
+    return result
+  }
+  return {
+    ...result,
+    csp_blocked: true,
+    failure_cause: 'csp'
+  }
+}
+
 export async function handleAsyncBrowserAction(
   query: PendingQuery,
   tabId: number,
@@ -292,7 +317,15 @@ export async function handleAsyncBrowserAction(
     if (execResult.success !== false) {
       sendAsyncResult(syncClient, query.id, query.correlation_id!, 'complete', execResult)
     } else {
-      sendAsyncResult(syncClient, query.id, query.correlation_id!, 'error', null, execResult.error)
+      const enrichedFailure = enrichCSPFailure(execResult)
+      sendAsyncResult(
+        syncClient,
+        query.id,
+        query.correlation_id!,
+        'error',
+        enrichedFailure,
+        enrichedFailure.error || 'browser_action_failed'
+      )
     }
 
     debugLog(DebugCategory.CONNECTION, 'Completed async browser action', {

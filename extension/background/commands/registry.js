@@ -3,7 +3,7 @@
 import { debugLog } from '../index.js';
 import { initReady } from '../state.js';
 import { DebugCategory } from '../debug.js';
-import { sendResult, sendAsyncResult, requiresTargetTab, resolveTargetTab, parseQueryParamsObject, withTargetContext, actionToast, isRestrictedUrl } from './helpers.js';
+import { sendResult, sendAsyncResult, requiresTargetTab, resolveTargetTab, parseQueryParamsObject, withTargetContext, actionToast, isRestrictedUrl, isBrowserEscapeAction } from './helpers.js';
 // =============================================================================
 // REGISTRY
 // =============================================================================
@@ -14,6 +14,9 @@ export function registerCommand(type, handler) {
 // =============================================================================
 // DISPATCH
 // =============================================================================
+function canRunOnRestrictedPage(queryType, paramsObj) {
+    return isBrowserEscapeAction(queryType, paramsObj);
+}
 export async function dispatch(query, syncClient) {
     // Wait for initialization to complete (max 2s) so pilot cache is populated
     await Promise.race([initReady, new Promise((r) => setTimeout(r, 2000))]);
@@ -70,15 +73,17 @@ export async function dispatch(query, syncClient) {
         return;
     }
     // Restricted page detection: content scripts cannot run on internal browser pages
-    if (needsTarget && isRestrictedUrl(target?.url)) {
+    if (needsTarget && isRestrictedUrl(target?.url) && !canRunOnRestrictedPage(query.type, paramsObj)) {
         const payload = {
             success: false,
-            error: 'restricted_page',
+            error: 'csp_blocked_page',
+            csp_blocked: true,
+            failure_cause: 'csp',
             message: 'Extension connected but this page blocks content scripts (common on Google, Chrome Web Store, internal pages). Navigate to a different page first.',
             retryable: false
         };
         if (query.correlation_id) {
-            sendAsyncResult(syncClient, query.id, query.correlation_id, 'error', payload, payload.message);
+            sendAsyncResult(syncClient, query.id, query.correlation_id, 'error', payload, payload.error);
         }
         else {
             sendResult(syncClient, query.id, payload);

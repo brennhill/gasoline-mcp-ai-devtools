@@ -15,7 +15,7 @@
 import type { DOMMutationEntry, DOMPrimitiveOptions, DOMResult } from './dom-types'
 
 // Re-export list_interactive primitive for backward compatibility
-export { domPrimitiveListInteractive } from './dom-primitives-list-interactive'
+export { domPrimitiveListInteractive } from './dom-primitives-list-interactive.js'
 
 /**
  * Single self-contained function for all DOM primitives.
@@ -317,7 +317,154 @@ export function domPrimitive(
     return querySelectorDeep(sel)
   }
 
-  // list_interactive is handled by domPrimitiveListInteractive (dom-primitives-list-interactive.ts)
+  // list_interactive is handled by domPrimitiveListInteractive in production dispatch,
+  // but remains available here for backward compatibility and direct tests.
+  function buildUniqueSelector(el: Element, htmlEl: HTMLElement, fallbackSelector: string): string {
+    if (el.id) return `#${el.id}`
+    if (el instanceof HTMLInputElement && el.name) return `input[name="${el.name}"]`
+    const ariaLabel = el.getAttribute('aria-label')
+    if (ariaLabel) return `aria-label=${ariaLabel}`
+    const placeholder = el.getAttribute('placeholder')
+    if (placeholder) return `placeholder=${placeholder}`
+    const text = (htmlEl.textContent || '').trim().slice(0, 40)
+    if (text) return `text=${text}`
+    return fallbackSelector
+  }
+
+  function buildShadowSelector(el: Element): string | null {
+    const rootNode = el.getRootNode()
+    if (!(rootNode instanceof ShadowRoot)) return null
+
+    const parts: string[] = []
+    let node: Element = el
+    let root: Node = rootNode
+    while (root instanceof ShadowRoot) {
+      const inner = buildUniqueSelector(node, node as HTMLElement, node.tagName.toLowerCase())
+      parts.unshift(inner)
+      node = root.host
+      root = node.getRootNode()
+    }
+    const hostSelector = buildUniqueSelector(node, node as HTMLElement, node.tagName.toLowerCase())
+    parts.unshift(hostSelector)
+    return parts.join(' >>> ')
+  }
+
+  function classifyElement(el: Element): string {
+    const tag = el.tagName.toLowerCase()
+    if (tag === 'a') return 'link'
+    if (tag === 'button' || el.getAttribute('role') === 'button') return 'button'
+    if (tag === 'input') {
+      const inputType = (el as HTMLInputElement).type || 'text'
+      if (inputType === 'submit' || inputType === 'button' || inputType === 'reset') return 'button'
+      if (inputType === 'checkbox' || inputType === 'radio') return 'checkbox'
+      return 'input'
+    }
+    if (tag === 'select') return 'select'
+    if (tag === 'textarea') return 'textarea'
+    if (el.getAttribute('role') === 'link') return 'link'
+    if (el.getAttribute('role') === 'tab') return 'tab'
+    if (el.getAttribute('role') === 'menuitem') return 'menuitem'
+    if (el.getAttribute('contenteditable') === 'true') return 'textarea'
+    return 'interactive'
+  }
+
+  function listInteractiveCompatibility(): { success: boolean; elements: unknown[] } {
+    const interactiveSelectors = [
+      'a[href]',
+      'button',
+      'input',
+      'select',
+      'textarea',
+      '[role="button"]',
+      '[role="link"]',
+      '[role="tab"]',
+      '[role="menuitem"]',
+      '[contenteditable="true"]',
+      '[onclick]',
+      '[tabindex]'
+    ]
+
+    const seen = new Set<Element>()
+    const rawEntries: {
+      baseSelector: string
+      tag: string
+      inputType?: string
+      elementType: string
+      label: string
+      role?: string
+      placeholder?: string
+      visible: boolean
+    }[] = []
+
+    for (const cssSelector of interactiveSelectors) {
+      const matches = querySelectorAllDeep(cssSelector)
+      for (const el of matches) {
+        if (seen.has(el)) continue
+        seen.add(el)
+
+        const htmlEl = el as HTMLElement
+        const rect = typeof htmlEl.getBoundingClientRect === 'function'
+          ? htmlEl.getBoundingClientRect()
+          : ({ width: 0, height: 0 } as DOMRect)
+        const visible = rect.width > 0 && rect.height > 0 && htmlEl.offsetParent !== null
+        const shadowSelector = buildShadowSelector(el)
+        const baseSelector = shadowSelector || buildUniqueSelector(el, htmlEl, cssSelector)
+        const label =
+          el.getAttribute('aria-label') ||
+          el.getAttribute('title') ||
+          el.getAttribute('placeholder') ||
+          (htmlEl.textContent || '').trim().slice(0, 60) ||
+          el.tagName.toLowerCase()
+
+        rawEntries.push({
+          baseSelector,
+          tag: el.tagName.toLowerCase(),
+          inputType: el instanceof HTMLInputElement ? el.type : undefined,
+          elementType: classifyElement(el),
+          label,
+          role: el.getAttribute('role') || undefined,
+          placeholder: el.getAttribute('placeholder') || undefined,
+          visible
+        })
+
+        if (rawEntries.length >= 100) break
+      }
+      if (rawEntries.length >= 100) break
+    }
+
+    const selectorCount = new Map<string, number>()
+    for (const entry of rawEntries) {
+      selectorCount.set(entry.baseSelector, (selectorCount.get(entry.baseSelector) || 0) + 1)
+    }
+    const selectorIndex = new Map<string, number>()
+
+    const elements = rawEntries.map((entry, index) => {
+      let selector = entry.baseSelector
+      const count = selectorCount.get(entry.baseSelector) || 1
+      if (count > 1) {
+        const nth = (selectorIndex.get(entry.baseSelector) || 0) + 1
+        selectorIndex.set(entry.baseSelector, nth)
+        selector = `${entry.baseSelector}:nth-match(${nth})`
+      }
+      return {
+        index,
+        tag: entry.tag,
+        type: entry.inputType,
+        element_type: entry.elementType,
+        selector,
+        label: entry.label,
+        role: entry.role,
+        placeholder: entry.placeholder,
+        visible: entry.visible
+      }
+    })
+
+    return { success: true, elements }
+  }
+
+  if (action === 'list_interactive') {
+    return listInteractiveCompatibility()
+  }
 
   // — Resolve element for all other actions —
   function domError(error: string, message: string): DOMResult {
@@ -496,15 +643,50 @@ export function domPrimitive(
 
       get_text: () => {
         const text = node instanceof HTMLElement ? node.innerText : node.textContent
+        if (text === null || text === undefined) {
+          return {
+            success: true,
+            action,
+            selector,
+            value: text,
+            reason: 'no_text_content',
+            message: 'Resolved text content is null'
+          }
+        }
         return { success: true, action, selector, value: text }
       },
 
       get_value: () => {
         if (!('value' in node)) return domError('no_value_property', `Element has no value property: ${node.tagName}`)
-        return { success: true, action, selector, value: (node as HTMLInputElement).value }
+        const value = (node as HTMLInputElement).value
+        if (value === null || value === undefined) {
+          return {
+            success: true,
+            action,
+            selector,
+            value,
+            reason: 'no_value',
+            message: 'Element value is null'
+          }
+        }
+        return { success: true, action, selector, value }
       },
 
-      get_attribute: () => ({ success: true, action, selector, value: node.getAttribute(options.name || '') }),
+      get_attribute: () => {
+        const attrName = options.name || ''
+        const value = node.getAttribute(attrName)
+        if (value === null) {
+          return {
+            success: true,
+            action,
+            selector,
+            value,
+            reason: 'attribute_not_found',
+            message: `Attribute "${attrName}" not found`
+          }
+        }
+        return { success: true, action, selector, value }
+      },
 
       set_attribute: () =>
         withMutationTracking(() => {
@@ -595,6 +777,70 @@ export function domPrimitive(
     return domError('unknown_action', `Unknown DOM action: ${action}`)
   }
   return handler()
+}
+
+export function domWaitFor(selector: string, timeoutMs: number = 5000): Promise<DOMResult> {
+  const timeout = Math.max(1, timeoutMs)
+
+  return new Promise((resolve) => {
+    let resolved = false
+    let pollTimer: ReturnType<typeof setInterval> | null = null
+    let timeoutTimer: ReturnType<typeof setTimeout> | null = null
+    let observer: MutationObserver | null = null
+
+    const timeoutResult: DOMResult = {
+      success: false,
+      action: 'wait_for',
+      selector,
+      error: 'timeout',
+      message: `Element not found within ${timeout}ms: ${selector}`
+    }
+
+    function cleanup(): void {
+      if (pollTimer) clearInterval(pollTimer)
+      if (timeoutTimer) clearTimeout(timeoutTimer)
+      if (observer) observer.disconnect()
+    }
+
+    function finish(result: DOMResult): void {
+      if (resolved) return
+      resolved = true
+      cleanup()
+      resolve(result)
+    }
+
+    function checkNow(): void {
+      const result = domPrimitive('wait_for', selector, { timeout_ms: timeout }) as DOMResult | Promise<DOMResult>
+      if (result && typeof (result as Promise<DOMResult>).then === 'function') {
+        void (result as Promise<DOMResult>)
+          .then((resolvedResult) => {
+            if (resolvedResult.success) finish(resolvedResult)
+          })
+          .catch(() => {})
+        return
+      }
+      if ((result as DOMResult).success) {
+        finish(result as DOMResult)
+      }
+    }
+
+    checkNow()
+    if (resolved) return
+
+    if (typeof MutationObserver === 'function') {
+      observer = new MutationObserver(() => {
+        checkNow()
+      })
+      observer.observe(document.body || document.documentElement, {
+        childList: true,
+        subtree: true,
+        attributes: true
+      })
+    }
+
+    pollTimer = setInterval(checkNow, Math.min(80, timeout))
+    timeoutTimer = setTimeout(() => finish(timeoutResult), timeout)
+  })
 }
 
 // Dispatcher utilities (parseDOMParams, executeDOMAction, etc.) moved to ./dom-dispatch.ts

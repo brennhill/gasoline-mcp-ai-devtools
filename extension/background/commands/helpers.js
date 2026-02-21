@@ -127,6 +127,12 @@ const TARGETED_QUERY_TYPES = new Set([
 export function requiresTargetTab(queryType) {
     return TARGETED_QUERY_TYPES.has(queryType);
 }
+export function isBrowserEscapeAction(queryType, paramsObj) {
+    if (queryType !== 'browser_action')
+        return false;
+    const action = typeof paramsObj.action === 'string' ? paramsObj.action : '';
+    return action === 'navigate' || action === 'refresh' || action === 'back' || action === 'forward' || action === 'new_tab';
+}
 async function getTabWithRetry(tabId, retry = false) {
     try {
         return await chrome.tabs.get(tabId);
@@ -256,7 +262,37 @@ export async function resolveTargetTab(query, paramsObj) {
         catch {
             /* best effort */
         }
+        if (isBrowserEscapeAction(query.type, paramsObj)) {
+            const activeTab = await getActiveTab();
+            if (activeTab?.id) {
+                diagnosticLog(`[Diagnostic] Falling back to active tab ${activeTab.id} for escape action ${query.type}`);
+                return {
+                    target: {
+                        tabId: activeTab.id,
+                        url: activeTab.url || '',
+                        source: 'active_tab_fallback',
+                        trackedTabId,
+                        useActiveTab: true
+                    }
+                };
+            }
+        }
         return { error: buildMissingTargetError(query.type, useActiveTab, trackedTabId) };
+    }
+    if (isBrowserEscapeAction(query.type, paramsObj)) {
+        const activeTab = await getActiveTab();
+        if (activeTab?.id) {
+            diagnosticLog(`[Diagnostic] Using active tab fallback ${activeTab.id} for escape action ${query.type}`);
+            return {
+                target: {
+                    tabId: activeTab.id,
+                    url: activeTab.url || '',
+                    source: 'active_tab_fallback',
+                    trackedTabId: null,
+                    useActiveTab: true
+                }
+            };
+        }
     }
     return { error: buildMissingTargetError(query.type, useActiveTab, trackedTabId) };
 }

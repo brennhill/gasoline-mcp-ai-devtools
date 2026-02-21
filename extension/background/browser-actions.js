@@ -183,6 +183,26 @@ export async function handleAsyncExecuteCommand(query, tabId, world, syncClient,
 // =============================================================================
 // ASYNC BROWSER ACTION
 // =============================================================================
+function isCSPFailure(errorCode, message) {
+    const haystack = `${errorCode || ''} ${message || ''}`.toLowerCase();
+    if (!haystack)
+        return false;
+    return (haystack.includes('csp') ||
+        haystack.includes('content script') ||
+        haystack.includes('blocked') ||
+        haystack.includes('chrome://') ||
+        haystack.includes('extension://'));
+}
+function enrichCSPFailure(result) {
+    if (!isCSPFailure(result.error, result.message)) {
+        return result;
+    }
+    return {
+        ...result,
+        csp_blocked: true,
+        failure_cause: 'csp'
+    };
+}
 export async function handleAsyncBrowserAction(query, tabId, params, syncClient, sendAsyncResult, actionToast) {
     const startTime = Date.now();
     const executionPromise = handleBrowserAction(tabId, params, actionToast)
@@ -206,7 +226,8 @@ export async function handleAsyncBrowserAction(query, tabId, params, syncClient,
             sendAsyncResult(syncClient, query.id, query.correlation_id, 'complete', execResult);
         }
         else {
-            sendAsyncResult(syncClient, query.id, query.correlation_id, 'error', null, execResult.error);
+            const enrichedFailure = enrichCSPFailure(execResult);
+            sendAsyncResult(syncClient, query.id, query.correlation_id, 'error', enrichedFailure, enrichedFailure.error || 'browser_action_failed');
         }
         debugLog(DebugCategory.CONNECTION, 'Completed async browser action', {
             correlationId: query.correlation_id,
