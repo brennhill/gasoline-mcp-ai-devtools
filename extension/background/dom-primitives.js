@@ -66,11 +66,11 @@ export function domPrimitive(action, selector, options) {
         }
         return results;
     }
-    function resolveDeepCombinator(selector) {
+    function resolveDeepCombinator(selector, root = document) {
         const parts = selector.split(' >>> ');
         if (parts.length <= 1)
             return null;
-        let current = document;
+        let current = root;
         for (let i = 0; i < parts.length; i++) {
             const part = parts[i].trim();
             if (i < parts.length - 1) {
@@ -114,7 +114,61 @@ export function domPrimitive(action, selector, options) {
         }
         return fallback;
     }
-    function resolveByTextAll(searchText) {
+    function resolveScopeRoot(rawScope) {
+        const scope = (rawScope || '').trim();
+        if (!scope)
+            return document;
+        try {
+            const matches = querySelectorAllDeep(scope);
+            if (matches.length === 0)
+                return null;
+            return firstVisible(matches) || matches[0] || null;
+        }
+        catch {
+            return null;
+        }
+    }
+    const scopeRoot = resolveScopeRoot(options.scope_selector);
+    function getElementHandleStore() {
+        const root = globalThis;
+        if (root.__gasolineElementHandles) {
+            return root.__gasolineElementHandles;
+        }
+        const created = {
+            byElement: new WeakMap(),
+            byID: new Map(),
+            nextID: 1
+        };
+        root.__gasolineElementHandles = created;
+        return created;
+    }
+    function getOrCreateElementID(el) {
+        const store = getElementHandleStore();
+        const existing = store.byElement.get(el);
+        if (existing) {
+            store.byID.set(existing, el);
+            return existing;
+        }
+        const elementID = `el_${(store.nextID++).toString(36)}`;
+        store.byElement.set(el, elementID);
+        store.byID.set(elementID, el);
+        return elementID;
+    }
+    function resolveElementByID(rawElementID) {
+        const elementID = (rawElementID || '').trim();
+        if (!elementID)
+            return null;
+        const store = getElementHandleStore();
+        const node = store.byID.get(elementID);
+        if (!node)
+            return null;
+        if (node.isConnected === false) {
+            store.byID.delete(elementID);
+            return null;
+        }
+        return node;
+    }
+    function resolveByTextAll(searchText, scope = document) {
         const results = [];
         const seen = new Set();
         function walkScope(root) {
@@ -133,7 +187,9 @@ export function domPrimitive(action, selector, options) {
                     }
                 }
             }
-            const children = 'children' in root ? root.children : undefined;
+            const children = 'children' in root
+                ? root.children
+                : root.body?.children || root.documentElement?.children;
             if (children) {
                 for (let i = 0; i < children.length; i++) {
                     const child = children[i];
@@ -143,18 +199,20 @@ export function domPrimitive(action, selector, options) {
                 }
             }
         }
-        walkScope(document.body || document.documentElement);
+        walkScope(scope);
         return results;
     }
-    function resolveByLabelAll(labelText) {
-        const labels = querySelectorAllDeep('label');
+    function resolveByLabelAll(labelText, scope = document) {
+        const labels = querySelectorAllDeep('label', scope);
         const results = [];
         const seen = new Set();
+        const allowGlobalIdLookup = scope === document || scope === document.body || scope === document.documentElement;
         for (const label of labels) {
             if (label.textContent && label.textContent.trim().includes(labelText)) {
                 const forAttr = label.getAttribute('for');
                 if (forAttr) {
-                    const target = document.getElementById(forAttr);
+                    const local = querySelectorAllDeep(`#${CSS.escape(forAttr)}`, scope)[0];
+                    const target = local || (allowGlobalIdLookup ? document.getElementById(forAttr) : null);
                     if (target && !seen.has(target)) {
                         seen.add(target);
                         results.push(target);
@@ -173,17 +231,17 @@ export function domPrimitive(action, selector, options) {
         }
         return results;
     }
-    function resolveByAriaLabelAll(al) {
+    function resolveByAriaLabelAll(al, scope = document) {
         const results = [];
         const seen = new Set();
-        const exact = querySelectorAllDeep(`[aria-label="${CSS.escape(al)}"]`);
+        const exact = querySelectorAllDeep(`[aria-label="${CSS.escape(al)}"]`, scope);
         for (const el of exact) {
             if (!seen.has(el)) {
                 seen.add(el);
                 results.push(el);
             }
         }
-        const all = querySelectorAllDeep('[aria-label]');
+        const all = querySelectorAllDeep('[aria-label]', scope);
         for (const el of all) {
             const label = el.getAttribute('aria-label') || '';
             if (label.startsWith(al) && !seen.has(el)) {
@@ -193,7 +251,7 @@ export function domPrimitive(action, selector, options) {
         }
         return results;
     }
-    function resolveByText(searchText) {
+    function resolveByText(searchText, scope = document) {
         let fallback = null;
         function walkScope(root) {
             const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
@@ -211,8 +269,9 @@ export function domPrimitive(action, selector, options) {
                         return target;
                 }
             }
-            // Recurse into shadow roots
-            const children = 'children' in root ? root.children : undefined;
+            const children = 'children' in root
+                ? root.children
+                : root.body?.children || root.documentElement?.children;
             if (children) {
                 for (let i = 0; i < children.length; i++) {
                     const child = children[i];
@@ -226,15 +285,19 @@ export function domPrimitive(action, selector, options) {
             }
             return null;
         }
-        return walkScope(document.body || document.documentElement) || fallback;
+        return walkScope(scope) || fallback;
     }
-    function resolveByLabel(labelText) {
-        const labels = querySelectorAllDeep('label');
+    function resolveByLabel(labelText, scope = document) {
+        const labels = querySelectorAllDeep('label', scope);
+        const allowGlobalIdLookup = scope === document || scope === document.body || scope === document.documentElement;
         for (const label of labels) {
             if (label.textContent && label.textContent.trim().includes(labelText)) {
                 const forAttr = label.getAttribute('for');
                 if (forAttr) {
-                    const target = document.getElementById(forAttr);
+                    const local = querySelectorAllDeep(`#${CSS.escape(forAttr)}`, scope)[0];
+                    if (local)
+                        return local;
+                    const target = allowGlobalIdLookup ? document.getElementById(forAttr) : null;
                     if (target)
                         return target;
                 }
@@ -246,11 +309,11 @@ export function domPrimitive(action, selector, options) {
         }
         return null;
     }
-    function resolveByAriaLabel(al) {
-        const exact = querySelectorAllDeep(`[aria-label="${CSS.escape(al)}"]`);
+    function resolveByAriaLabel(al, scope = document) {
+        const exact = querySelectorAllDeep(`[aria-label="${CSS.escape(al)}"]`, scope);
         if (exact.length > 0)
             return firstVisible(exact);
-        const all = querySelectorAllDeep('[aria-label]');
+        const all = querySelectorAllDeep('[aria-label]', scope);
         let fallback = null;
         for (const el of all) {
             const label = el.getAttribute('aria-label') || '';
@@ -263,58 +326,51 @@ export function domPrimitive(action, selector, options) {
         }
         return fallback;
     }
-    // Collection resolvers: return ALL matching elements for a selector (used by list_interactive dedup)
-    const selectorCollectionResolvers = [
-        ['text=', (v) => resolveByTextAll(v)],
-        ['role=', (v) => querySelectorAllDeep(`[role="${CSS.escape(v)}"]`)],
-        ['placeholder=', (v) => querySelectorAllDeep(`[placeholder="${CSS.escape(v)}"]`)],
-        ['label=', (v) => resolveByLabelAll(v)],
-        ['aria-label=', (v) => resolveByAriaLabelAll(v)]
-    ];
-    function resolveElements(sel) {
+    function resolveElements(sel, scope = document) {
         if (!sel)
             return [];
-        for (const [prefix, resolver] of selectorCollectionResolvers) {
-            if (sel.startsWith(prefix))
-                return resolver(sel.slice(prefix.length));
-        }
+        if (sel.startsWith('text='))
+            return resolveByTextAll(sel.slice('text='.length), scope);
+        if (sel.startsWith('role='))
+            return querySelectorAllDeep(`[role="${CSS.escape(sel.slice('role='.length))}"]`, scope);
+        if (sel.startsWith('placeholder='))
+            return querySelectorAllDeep(`[placeholder="${CSS.escape(sel.slice('placeholder='.length))}"]`, scope);
+        if (sel.startsWith('label='))
+            return resolveByLabelAll(sel.slice('label='.length), scope);
+        if (sel.startsWith('aria-label='))
+            return resolveByAriaLabelAll(sel.slice('aria-label='.length), scope);
         try {
-            return querySelectorAllDeep(sel);
+            return querySelectorAllDeep(sel, scope);
         }
         catch {
             return [];
         }
     }
-    // Semantic selector prefix resolvers
-    const selectorResolvers = [
-        ['text=', (v) => resolveByText(v)],
-        ['role=', (v) => firstVisible(querySelectorAllDeep(`[role="${CSS.escape(v)}"]`))],
-        ['placeholder=', (v) => firstVisible(querySelectorAllDeep(`[placeholder="${CSS.escape(v)}"]`))],
-        ['label=', (v) => resolveByLabel(v)],
-        ['aria-label=', (v) => resolveByAriaLabel(v)]
-    ];
-    function resolveElement(sel) {
+    function resolveElement(sel, scope = document) {
         if (!sel)
             return null;
-        // Deep combinator: host >>> inner
         if (sel.includes(' >>> '))
-            return resolveDeepCombinator(sel);
-        // :nth-match(N) — used by list_interactive to disambiguate duplicate selectors
+            return resolveDeepCombinator(sel, scope);
         const nthMatch = sel.match(/^(.*):nth-match\((\d+)\)$/);
         if (nthMatch) {
             const base = nthMatch[1] || '';
             const n = Number.parseInt(nthMatch[2] || '0', 10);
             if (!base || Number.isNaN(n) || n < 1)
                 return null;
-            const matches = resolveElements(base);
+            const matches = resolveElements(base, scope);
             return matches[n - 1] || null;
         }
-        for (const [prefix, resolver] of selectorResolvers) {
-            if (sel.startsWith(prefix))
-                return resolver(sel.slice(prefix.length));
-        }
-        // Fast path, then deep fallback
-        return querySelectorDeep(sel);
+        if (sel.startsWith('text='))
+            return resolveByText(sel.slice('text='.length), scope);
+        if (sel.startsWith('role='))
+            return firstVisible(querySelectorAllDeep(`[role="${CSS.escape(sel.slice('role='.length))}"]`, scope));
+        if (sel.startsWith('placeholder='))
+            return firstVisible(querySelectorAllDeep(`[placeholder="${CSS.escape(sel.slice('placeholder='.length))}"]`, scope));
+        if (sel.startsWith('label='))
+            return resolveByLabel(sel.slice('label='.length), scope);
+        if (sel.startsWith('aria-label='))
+            return resolveByAriaLabel(sel.slice('aria-label='.length), scope);
+        return querySelectorDeep(sel, scope);
     }
     // list_interactive is handled by domPrimitiveListInteractive in production dispatch,
     // but remains available here for backward compatibility and direct tests.
@@ -379,6 +435,61 @@ export function domPrimitive(action, selector, options) {
             return 'textarea';
         return 'interactive';
     }
+    function isVisibleElement(el) {
+        const htmlEl = el;
+        if (!htmlEl || typeof htmlEl.getBoundingClientRect !== 'function')
+            return true;
+        const rect = htmlEl.getBoundingClientRect();
+        return rect.width > 0 && rect.height > 0 && htmlEl.offsetParent !== null;
+    }
+    function extractElementLabel(el) {
+        const htmlEl = el;
+        return (el.getAttribute('aria-label') ||
+            el.getAttribute('title') ||
+            el.getAttribute('placeholder') ||
+            (htmlEl?.textContent || '').trim().slice(0, 80) ||
+            el.tagName.toLowerCase());
+    }
+    function chooseBestScopeMatch(matches) {
+        if (matches.length === 1)
+            return matches[0];
+        const submitVerb = /(post|share|publish|send|submit|save|done|continue|next|create|apply)/i;
+        let best = matches[0];
+        let bestScore = -1;
+        for (const candidate of matches) {
+            const textboxes = querySelectorAllDeep('[role="textbox"], textarea, [contenteditable="true"]', candidate);
+            const visibleTextboxes = textboxes.filter(isVisibleElement).length;
+            const buttonCandidates = querySelectorAllDeep('button, [role="button"], input[type="submit"]', candidate);
+            let visibleButtons = 0;
+            let submitLikeButtons = 0;
+            for (const btn of buttonCandidates) {
+                if (!isVisibleElement(btn))
+                    continue;
+                visibleButtons++;
+                if (submitVerb.test(extractElementLabel(btn))) {
+                    submitLikeButtons++;
+                }
+            }
+            const interactiveCandidates = querySelectorAllDeep('a[href], button, input, select, textarea, [role="button"], [role="link"], [role="tab"], [role="menuitem"], [contenteditable="true"]', candidate);
+            const visibleInteractive = interactiveCandidates.filter(isVisibleElement).length;
+            const hiddenInteractive = Math.max(0, interactiveCandidates.length - visibleInteractive);
+            const rect = candidate.getBoundingClientRect?.();
+            const areaScore = rect && rect.width > 0 && rect.height > 0
+                ? Math.min(20, Math.round((rect.width * rect.height) / 50000))
+                : 0;
+            const score = visibleTextboxes * 1000 +
+                submitLikeButtons * 250 +
+                visibleButtons * 10 +
+                visibleInteractive -
+                hiddenInteractive +
+                areaScore;
+            if (score > bestScore) {
+                bestScore = score;
+                best = candidate;
+            }
+        }
+        return best;
+    }
     function listInteractiveCompatibility() {
         const interactiveSelectors = [
             'a[href]',
@@ -396,8 +507,30 @@ export function domPrimitive(action, selector, options) {
         ];
         const seen = new Set();
         const rawEntries = [];
+        const scope = (selector || '').trim();
+        const scopeRoot = (() => {
+            if (!scope)
+                return document;
+            try {
+                const matches = querySelectorAllDeep(scope);
+                if (matches.length === 0)
+                    return null;
+                return chooseBestScopeMatch(matches);
+            }
+            catch {
+                return null;
+            }
+        })();
+        if (!scopeRoot) {
+            return {
+                success: false,
+                elements: [],
+                error: 'scope_not_found',
+                message: `No scope element matches selector: ${scope}`
+            };
+        }
         for (const cssSelector of interactiveSelectors) {
-            const matches = querySelectorAllDeep(cssSelector);
+            const matches = querySelectorAllDeep(cssSelector, scopeRoot);
             for (const el of matches) {
                 if (seen.has(el))
                     continue;
@@ -415,6 +548,7 @@ export function domPrimitive(action, selector, options) {
                     (htmlEl.textContent || '').trim().slice(0, 60) ||
                     el.tagName.toLowerCase();
                 rawEntries.push({
+                    element: el,
                     baseSelector,
                     tag: el.tagName.toLowerCase(),
                     inputType: el instanceof HTMLInputElement ? el.type : undefined,
@@ -449,6 +583,7 @@ export function domPrimitive(action, selector, options) {
                 type: entry.inputType,
                 element_type: entry.elementType,
                 selector,
+                element_id: getOrCreateElementID(entry.element),
                 label: entry.label,
                 role: entry.role,
                 placeholder: entry.placeholder,
@@ -464,9 +599,114 @@ export function domPrimitive(action, selector, options) {
     function domError(error, message) {
         return { success: false, action, selector, error, message };
     }
-    const el = resolveElement(selector);
-    if (!el)
-        return domError('element_not_found', `No element matches selector: ${selector}`);
+    function matchedTarget(node) {
+        const htmlEl = node;
+        const textPreview = (htmlEl.textContent || '').trim().slice(0, 80);
+        return {
+            tag: node.tagName.toLowerCase(),
+            role: node.getAttribute('role') || undefined,
+            aria_label: node.getAttribute('aria-label') || undefined,
+            text_preview: textPreview || undefined,
+            selector,
+            element_id: getOrCreateElementID(node)
+        };
+    }
+    function isActionableVisible(el) {
+        if (!(el instanceof HTMLElement))
+            return true;
+        const rect = typeof el.getBoundingClientRect === 'function'
+            ? el.getBoundingClientRect()
+            : { width: 0, height: 0 };
+        return rect.width > 0 && rect.height > 0 && el.offsetParent !== null;
+    }
+    function summarizeCandidates(matches) {
+        return matches.slice(0, 8).map((candidate) => {
+            const htmlEl = candidate;
+            const fallback = candidate.tagName.toLowerCase();
+            return {
+                tag: fallback,
+                role: candidate.getAttribute('role') || undefined,
+                aria_label: candidate.getAttribute('aria-label') || undefined,
+                text_preview: (htmlEl.textContent || '').trim().slice(0, 80) || undefined,
+                selector: buildUniqueSelector(candidate, htmlEl, fallback),
+                element_id: getOrCreateElementID(candidate),
+                visible: isActionableVisible(candidate)
+            };
+        });
+    }
+    function resolveActionTarget() {
+        const requestedScope = (options.scope_selector || '').trim();
+        if (requestedScope && !scopeRoot) {
+            return {
+                error: domError('scope_not_found', `No scope element matches selector: ${requestedScope}`)
+            };
+        }
+        const activeScope = scopeRoot || document;
+        const requestedElementID = (options.element_id || '').trim();
+        if (requestedElementID) {
+            const resolvedByID = resolveElementByID(requestedElementID);
+            if (!resolvedByID) {
+                return {
+                    error: domError('stale_element_id', `Element handle is stale or unknown: ${requestedElementID}. Call list_interactive again.`)
+                };
+            }
+            if (activeScope !== document && typeof activeScope.contains === 'function') {
+                const contains = activeScope.contains(resolvedByID);
+                if (!contains) {
+                    return {
+                        error: domError('element_id_scope_mismatch', `Element handle does not belong to scope: ${requestedScope || '<none>'}`)
+                    };
+                }
+            }
+            return { element: resolvedByID };
+        }
+        const ambiguitySensitiveActions = new Set([
+            'click', 'type', 'select', 'check', 'set_attribute',
+            'paste', 'key_press', 'focus', 'scroll_to'
+        ]);
+        if (!ambiguitySensitiveActions.has(action)) {
+            const found = resolveElement(selector, activeScope);
+            if (!found)
+                return { error: domError('element_not_found', `No element matches selector: ${selector}`) };
+            return { element: found };
+        }
+        const rawMatches = resolveElements(selector, activeScope);
+        const uniqueMatches = [];
+        const seen = new Set();
+        for (const match of rawMatches) {
+            if (seen.has(match))
+                continue;
+            seen.add(match);
+            uniqueMatches.push(match);
+        }
+        const viableMatches = (() => {
+            if (uniqueMatches.length === 0)
+                return uniqueMatches;
+            const visible = uniqueMatches.filter(isActionableVisible);
+            return visible.length > 0 ? visible : uniqueMatches;
+        })();
+        if (viableMatches.length > 1) {
+            return {
+                error: {
+                    success: false,
+                    action,
+                    selector,
+                    error: 'ambiguous_target',
+                    message: `Selector matches multiple viable elements: ${selector}. Add scope or use list_interactive index.`,
+                    match_count: viableMatches.length,
+                    candidates: summarizeCandidates(viableMatches)
+                }
+            };
+        }
+        const found = viableMatches[0] || resolveElement(selector, activeScope);
+        if (!found)
+            return { error: domError('element_not_found', `No element matches selector: ${selector}`) };
+        return { element: found };
+    }
+    const resolved = resolveActionTarget();
+    if (resolved.error)
+        return resolved.error;
+    const el = resolved.element;
     // — Mutation tracking: MutationObserver wrapper for DOM change capture —
     function withMutationTracking(fn) {
         const t0 = performance.now();
@@ -556,7 +796,7 @@ export function domPrimitive(action, selector, options) {
                 if (!(node instanceof HTMLElement))
                     return domError('not_interactive', `Element is not an HTMLElement: ${node.tagName}`);
                 node.click();
-                return { success: true, action, selector };
+                return { success: true, action, selector, matched: matchedTarget(node) };
             }),
             type: () => withMutationTracking(() => {
                 const text = options.text || '';
@@ -581,7 +821,7 @@ export function domPrimitive(action, selector, options) {
                             document.execCommand('insertText', false, line);
                         }
                     }
-                    return { success: true, action, selector, value: node.innerText };
+                    return { success: true, action, selector, value: node.innerText, matched: matchedTarget(node) };
                 }
                 if (!(node instanceof HTMLInputElement) && !(node instanceof HTMLTextAreaElement)) {
                     return domError('not_typeable', `Element is not an input, textarea, or contenteditable: ${node.tagName}`);
@@ -597,7 +837,7 @@ export function domPrimitive(action, selector, options) {
                 }
                 node.dispatchEvent(new InputEvent('input', { bubbles: true, data: text, inputType: 'insertText' }));
                 node.dispatchEvent(new Event('change', { bubbles: true }));
-                return { success: true, action, selector, value: node.value };
+                return { success: true, action, selector, value: node.value, matched: matchedTarget(node) };
             }),
             select: () => withMutationTracking(() => {
                 if (!(node instanceof HTMLSelectElement))
@@ -610,7 +850,7 @@ export function domPrimitive(action, selector, options) {
                     node.value = options.value || '';
                 }
                 node.dispatchEvent(new Event('change', { bubbles: true }));
-                return { success: true, action, selector, value: node.value };
+                return { success: true, action, selector, value: node.value, matched: matchedTarget(node) };
             }),
             check: () => withMutationTracking(() => {
                 if (!(node instanceof HTMLInputElement) || (node.type !== 'checkbox' && node.type !== 'radio')) {
@@ -620,7 +860,7 @@ export function domPrimitive(action, selector, options) {
                 if (node.checked !== desired) {
                     node.click();
                 }
-                return { success: true, action, selector, value: node.checked };
+                return { success: true, action, selector, value: node.checked, matched: matchedTarget(node) };
             }),
             get_text: () => {
                 const text = node instanceof HTMLElement ? node.innerText : node.textContent;
@@ -669,17 +909,17 @@ export function domPrimitive(action, selector, options) {
             },
             set_attribute: () => withMutationTracking(() => {
                 node.setAttribute(options.name || '', options.value || '');
-                return { success: true, action, selector, value: node.getAttribute(options.name || '') };
+                return { success: true, action, selector, value: node.getAttribute(options.name || ''), matched: matchedTarget(node) };
             }),
             focus: () => {
                 if (!(node instanceof HTMLElement))
                     return domError('not_focusable', `Element is not an HTMLElement: ${node.tagName}`);
                 node.focus();
-                return { success: true, action, selector };
+                return { success: true, action, selector, matched: matchedTarget(node) };
             },
             scroll_to: () => {
                 node.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                return { success: true, action, selector };
+                return { success: true, action, selector, matched: matchedTarget(node) };
             },
             wait_for: () => ({ success: true, action, selector, value: node.tagName.toLowerCase() }),
             paste: () => withMutationTracking(() => {
@@ -698,7 +938,7 @@ export function domPrimitive(action, selector, options) {
                 dt.setData('text/plain', pasteText);
                 const event = new ClipboardEvent('paste', { clipboardData: dt, bubbles: true, cancelable: true });
                 node.dispatchEvent(event);
-                return { success: true, action, selector, value: node.innerText };
+                return { success: true, action, selector, value: node.innerText, matched: matchedTarget(node) };
             }),
             key_press: () => withMutationTracking(() => {
                 if (!(node instanceof HTMLElement))
@@ -711,9 +951,9 @@ export function domPrimitive(action, selector, options) {
                     const next = key === 'Shift+Tab' ? focusable[idx - 1] : focusable[idx + 1];
                     if (next) {
                         next.focus();
-                        return { success: true, action, selector, value: key };
+                        return { success: true, action, selector, value: key, matched: matchedTarget(node) };
                     }
-                    return { success: true, action, selector, value: key, message: 'No next focusable element' };
+                    return { success: true, action, selector, value: key, message: 'No next focusable element', matched: matchedTarget(node) };
                 }
                 const keyMap = {
                     Enter: { key: 'Enter', code: 'Enter', keyCode: 13 },
@@ -728,7 +968,7 @@ export function domPrimitive(action, selector, options) {
                 node.dispatchEvent(new KeyboardEvent('keydown', { key: mapped.key, code: mapped.code, keyCode: mapped.keyCode, bubbles: true }));
                 node.dispatchEvent(new KeyboardEvent('keypress', { key: mapped.key, code: mapped.code, keyCode: mapped.keyCode, bubbles: true }));
                 node.dispatchEvent(new KeyboardEvent('keyup', { key: mapped.key, code: mapped.code, keyCode: mapped.keyCode, bubbles: true }));
-                return { success: true, action, selector, value: key };
+                return { success: true, action, selector, value: key, matched: matchedTarget(node) };
             })
         };
     }

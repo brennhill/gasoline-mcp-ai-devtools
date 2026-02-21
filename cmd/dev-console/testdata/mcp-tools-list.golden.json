@@ -1115,6 +1115,10 @@
           "description": "Highlight duration ms (default 5000)",
           "type": "number"
         },
+        "element_id": {
+          "description": "Stable element handle from list_interactive (preferred for deterministic follow-up actions)",
+          "type": "string"
+        },
         "escalation_timeout_ms": {
           "description": "Upload escalation timeout in ms",
           "type": "number"
@@ -1164,7 +1168,7 @@
           "type": "boolean"
         },
         "index": {
-          "description": "Element index from list_interactive results (alternative to selector)",
+          "description": "Element index from list_interactive results (legacy alternative to selector/element_id)",
           "type": "number"
         },
         "key": {
@@ -1189,6 +1193,10 @@
         },
         "save_to": {
           "description": "File path to save output (run_a11y_and_export_sarif)",
+          "type": "string"
+        },
+        "scope_selector": {
+          "description": "Optional container selector to constrain DOM actions to a specific region",
           "type": "string"
         },
         "script": {

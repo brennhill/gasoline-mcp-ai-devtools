@@ -86,11 +86,11 @@ export function domPrimitive(
     return results
   }
 
-  function resolveDeepCombinator(selector: string): Element | null {
+  function resolveDeepCombinator(selector: string, root: ParentNode = document): Element | null {
     const parts = selector.split(' >>> ')
     if (parts.length <= 1) return null
 
-    let current: ParentNode = document
+    let current: ParentNode = root
     for (let i = 0; i < parts.length; i++) {
       const part = parts[i]!.trim()
       if (i < parts.length - 1) {
@@ -130,7 +130,67 @@ export function domPrimitive(
     return fallback
   }
 
-  function resolveByTextAll(searchText: string): Element[] {
+  function resolveScopeRoot(rawScope?: string): ParentNode | null {
+    const scope = (rawScope || '').trim()
+    if (!scope) return document
+    try {
+      const matches = querySelectorAllDeep(scope)
+      if (matches.length === 0) return null
+      return firstVisible(matches) || matches[0] || null
+    } catch {
+      return null
+    }
+  }
+
+  const scopeRoot = resolveScopeRoot(options.scope_selector)
+
+  type ElementHandleStore = {
+    byElement: WeakMap<Element, string>
+    byID: Map<string, Element>
+    nextID: number
+  }
+
+  function getElementHandleStore(): ElementHandleStore {
+    const root = globalThis as typeof globalThis & { __gasolineElementHandles?: ElementHandleStore }
+    if (root.__gasolineElementHandles) {
+      return root.__gasolineElementHandles
+    }
+    const created: ElementHandleStore = {
+      byElement: new WeakMap<Element, string>(),
+      byID: new Map<string, Element>(),
+      nextID: 1
+    }
+    root.__gasolineElementHandles = created
+    return created
+  }
+
+  function getOrCreateElementID(el: Element): string {
+    const store = getElementHandleStore()
+    const existing = store.byElement.get(el)
+    if (existing) {
+      store.byID.set(existing, el)
+      return existing
+    }
+    const elementID = `el_${(store.nextID++).toString(36)}`
+    store.byElement.set(el, elementID)
+    store.byID.set(elementID, el)
+    return elementID
+  }
+
+  function resolveElementByID(rawElementID?: string): Element | null {
+    const elementID = (rawElementID || '').trim()
+    if (!elementID) return null
+    const store = getElementHandleStore()
+    const node = store.byID.get(elementID)
+    if (!node) return null
+    if ((node as Node).isConnected === false) {
+      store.byID.delete(elementID)
+      return null
+    }
+    return node
+  }
+
+  function resolveByTextAll(searchText: string, scope: ParentNode = document): Element[] {
     const results: Element[] = []
     const seen = new Set<Element>()
 
@@ -149,7 +209,9 @@ export function domPrimitive(
           }
         }
       }
-      const children = 'children' in root ? (root as Element).children : undefined
+      const children = 'children' in root
+        ? (root as Element).children
+        : (root as Document).body?.children || (root as Document).documentElement?.children
       if (children) {
         for (let i = 0; i < children.length; i++) {
           const child = children[i]!
@@ -159,19 +221,22 @@ export function domPrimitive(
       }
     }
 
-    walkScope(document.body || document.documentElement)
+    walkScope(scope)
     return results
   }
 
-  function resolveByLabelAll(labelText: string): Element[] {
-    const labels = querySelectorAllDeep('label')
+  function resolveByLabelAll(labelText: string, scope: ParentNode = document): Element[] {
+    const labels = querySelectorAllDeep('label', scope)
     const results: Element[] = []
     const seen = new Set<Element>()
+    const allowGlobalIdLookup =
+      scope === document || scope === document.body || scope === document.documentElement
     for (const label of labels) {
       if (label.textContent && label.textContent.trim().includes(labelText)) {
         const forAttr = label.getAttribute('for')
         if (forAttr) {
-          const target = document.getElementById(forAttr)
+          const local = querySelectorAllDeep(`#${CSS.escape(forAttr)}`, scope)[0]
+          const target = local || (allowGlobalIdLookup ? document.getElementById(forAttr) : null)
           if (target && !seen.has(target)) { seen.add(target); results.push(target) }
         }
         const nested = label.querySelector('input, select, textarea')
@@ -182,14 +247,14 @@ export function domPrimitive(
     return results
   }
 
-  function resolveByAriaLabelAll(al: string): Element[] {
+  function resolveByAriaLabelAll(al: string, scope: ParentNode = document): Element[] {
     const results: Element[] = []
     const seen = new Set<Element>()
-    const exact = querySelectorAllDeep(`[aria-label="${CSS.escape(al)}"]`)
+    const exact = querySelectorAllDeep(`[aria-label="${CSS.escape(al)}"]`, scope)
     for (const el of exact) {
       if (!seen.has(el)) { seen.add(el); results.push(el) }
     }
-    const all = querySelectorAllDeep('[aria-label]')
+    const all = querySelectorAllDeep('[aria-label]', scope)
     for (const el of all) {
       const label = el.getAttribute('aria-label') || ''
       if (label.startsWith(al) && !seen.has(el)) { seen.add(el); results.push(el) }
@@ -197,7 +262,7 @@ export function domPrimitive(
     return results
   }
 
-  function resolveByText(searchText: string): Element | null {
+  function resolveByText(searchText: string, scope: ParentNode = document): Element | null {
     let fallback: Element | null = null
 
     function walkScope(root: ParentNode): Element | null {
@@ -213,8 +278,9 @@ export function domPrimitive(
           if (isVisible(target)) return target
         }
       }
-      // Recurse into shadow roots
-      const children = 'children' in root ? (root as Element).children : undefined
+      const children = 'children' in root
+        ? (root as Element).children
+        : (root as Document).body?.children || (root as Document).documentElement?.children
       if (children) {
         for (let i = 0; i < children.length; i++) {
           const child = children[i]!
@@ -228,16 +294,20 @@ export function domPrimitive(
       return null
     }
 
-    return walkScope(document.body || document.documentElement) || fallback
+    return walkScope(scope) || fallback
   }
 
-  function resolveByLabel(labelText: string): Element | null {
-    const labels = querySelectorAllDeep('label')
+  function resolveByLabel(labelText: string, scope: ParentNode = document): Element | null {
+    const labels = querySelectorAllDeep('label', scope)
+    const allowGlobalIdLookup =
+      scope === document || scope === document.body || scope === document.documentElement
     for (const label of labels) {
       if (label.textContent && label.textContent.trim().includes(labelText)) {
         const forAttr = label.getAttribute('for')
         if (forAttr) {
-          const target = document.getElementById(forAttr)
+          const local = querySelectorAllDeep(`#${CSS.escape(forAttr)}`, scope)[0]
+          if (local) return local
+          const target = allowGlobalIdLookup ? document.getElementById(forAttr) : null
           if (target) return target
         }
         const nested = label.querySelector('input, select, textarea')
@@ -248,10 +318,10 @@ export function domPrimitive(
     return null
   }
 
-  function resolveByAriaLabel(al: string): Element | null {
-    const exact = querySelectorAllDeep(`[aria-label="${CSS.escape(al)}"]`)
+  function resolveByAriaLabel(al: string, scope: ParentNode = document): Element | null {
+    const exact = querySelectorAllDeep(`[aria-label="${CSS.escape(al)}"]`, scope)
     if (exact.length > 0) return firstVisible(exact)
-    const all = querySelectorAllDeep('[aria-label]')
+    const all = querySelectorAllDeep('[aria-label]', scope)
     let fallback: Element | null = null
     for (const el of all) {
       const label = el.getAttribute('aria-label') || ''
@@ -263,58 +333,40 @@ export function domPrimitive(
     return fallback
   }
 
-  // Collection resolvers: return ALL matching elements for a selector (used by list_interactive dedup)
-  const selectorCollectionResolvers: [string, (value: string) => Element[]][] = [
-    ['text=', (v) => resolveByTextAll(v)],
-    ['role=', (v) => querySelectorAllDeep(`[role="${CSS.escape(v)}"]`)],
-    ['placeholder=', (v) => querySelectorAllDeep(`[placeholder="${CSS.escape(v)}"]`)],
-    ['label=', (v) => resolveByLabelAll(v)],
-    ['aria-label=', (v) => resolveByAriaLabelAll(v)]
-  ]
-
-  function resolveElements(sel: string): Element[] {
+  function resolveElements(sel: string, scope: ParentNode = document): Element[] {
     if (!sel) return []
-    for (const [prefix, resolver] of selectorCollectionResolvers) {
-      if (sel.startsWith(prefix)) return resolver(sel.slice(prefix.length))
-    }
+    if (sel.startsWith('text=')) return resolveByTextAll(sel.slice('text='.length), scope)
+    if (sel.startsWith('role=')) return querySelectorAllDeep(`[role="${CSS.escape(sel.slice('role='.length))}"]`, scope)
+    if (sel.startsWith('placeholder=')) return querySelectorAllDeep(`[placeholder="${CSS.escape(sel.slice('placeholder='.length))}"]`, scope)
+    if (sel.startsWith('label=')) return resolveByLabelAll(sel.slice('label='.length), scope)
+    if (sel.startsWith('aria-label=')) return resolveByAriaLabelAll(sel.slice('aria-label='.length), scope)
     try {
-      return querySelectorAllDeep(sel)
+      return querySelectorAllDeep(sel, scope)
     } catch {
       return []
     }
   }
 
-  // Semantic selector prefix resolvers
-  const selectorResolvers: [string, (value: string) => Element | null][] = [
-    ['text=', (v) => resolveByText(v)],
-    ['role=', (v) => firstVisible(querySelectorAllDeep(`[role="${CSS.escape(v)}"]`))],
-    ['placeholder=', (v) => firstVisible(querySelectorAllDeep(`[placeholder="${CSS.escape(v)}"]`))],
-    ['label=', (v) => resolveByLabel(v)],
-    ['aria-label=', (v) => resolveByAriaLabel(v)]
-  ]
-
-  function resolveElement(sel: string): Element | null {
+  function resolveElement(sel: string, scope: ParentNode = document): Element | null {
     if (!sel) return null
+    if (sel.includes(' >>> ')) return resolveDeepCombinator(sel, scope)
 
-    // Deep combinator: host >>> inner
-    if (sel.includes(' >>> ')) return resolveDeepCombinator(sel)
-
-    // :nth-match(N) — used by list_interactive to disambiguate duplicate selectors
     const nthMatch = sel.match(/^(.*):nth-match\((\d+)\)$/)
     if (nthMatch) {
       const base = nthMatch[1] || ''
       const n = Number.parseInt(nthMatch[2] || '0', 10)
       if (!base || Number.isNaN(n) || n < 1) return null
-      const matches = resolveElements(base)
+      const matches = resolveElements(base, scope)
       return matches[n - 1] || null
     }
 
-    for (const [prefix, resolver] of selectorResolvers) {
-      if (sel.startsWith(prefix)) return resolver(sel.slice(prefix.length))
-    }
+    if (sel.startsWith('text=')) return resolveByText(sel.slice('text='.length), scope)
+    if (sel.startsWith('role=')) return firstVisible(querySelectorAllDeep(`[role="${CSS.escape(sel.slice('role='.length))}"]`, scope))
+    if (sel.startsWith('placeholder=')) return firstVisible(querySelectorAllDeep(`[placeholder="${CSS.escape(sel.slice('placeholder='.length))}"]`, scope))
+    if (sel.startsWith('label=')) return resolveByLabel(sel.slice('label='.length), scope)
+    if (sel.startsWith('aria-label=')) return resolveByAriaLabel(sel.slice('aria-label='.length), scope)
 
-    // Fast path, then deep fallback
-    return querySelectorDeep(sel)
+    return querySelectorDeep(sel, scope)
   }
 
   // list_interactive is handled by domPrimitiveListInteractive in production dispatch,
@@ -368,7 +420,76 @@ export function domPrimitive(
     return 'interactive'
   }
 
-  function listInteractiveCompatibility(): { success: boolean; elements: unknown[] } {
+  function isVisibleElement(el: Element): boolean {
+    const htmlEl = el as HTMLElement
+    if (!htmlEl || typeof htmlEl.getBoundingClientRect !== 'function') return true
+    const rect = htmlEl.getBoundingClientRect()
+    return rect.width > 0 && rect.height > 0 && htmlEl.offsetParent !== null
+  }
+
+  function extractElementLabel(el: Element): string {
+    const htmlEl = el as HTMLElement
+    return (
+      el.getAttribute('aria-label') ||
+      el.getAttribute('title') ||
+      el.getAttribute('placeholder') ||
+      (htmlEl?.textContent || '').trim().slice(0, 80) ||
+      el.tagName.toLowerCase()
+    )
+  }
+
+  function chooseBestScopeMatch(matches: Element[]): Element {
+    if (matches.length === 1) return matches[0]!
+
+    const submitVerb = /(post|share|publish|send|submit|save|done|continue|next|create|apply)/i
+    let best = matches[0]!
+    let bestScore = -1
+
+    for (const candidate of matches) {
+      const textboxes = querySelectorAllDeep('[role="textbox"], textarea, [contenteditable="true"]', candidate)
+      const visibleTextboxes = textboxes.filter(isVisibleElement).length
+
+      const buttonCandidates = querySelectorAllDeep('button, [role="button"], input[type="submit"]', candidate)
+      let visibleButtons = 0
+      let submitLikeButtons = 0
+      for (const btn of buttonCandidates) {
+        if (!isVisibleElement(btn)) continue
+        visibleButtons++
+        if (submitVerb.test(extractElementLabel(btn))) {
+          submitLikeButtons++
+        }
+      }
+
+      const interactiveCandidates = querySelectorAllDeep(
+        'a[href], button, input, select, textarea, [role="button"], [role="link"], [role="tab"], [role="menuitem"], [contenteditable="true"]',
+        candidate
+      )
+      const visibleInteractive = interactiveCandidates.filter(isVisibleElement).length
+      const hiddenInteractive = Math.max(0, interactiveCandidates.length - visibleInteractive)
+
+      const rect = (candidate as HTMLElement).getBoundingClientRect?.()
+      const areaScore = rect && rect.width > 0 && rect.height > 0
+        ? Math.min(20, Math.round((rect.width * rect.height) / 50000))
+        : 0
+
+      const score =
+        visibleTextboxes*1000 +
+        submitLikeButtons*250 +
+        visibleButtons*10 +
+        visibleInteractive -
+        hiddenInteractive +
+        areaScore
+
+      if (score > bestScore) {
+        bestScore = score
+        best = candidate
+      }
+    }
+
+    return best
+  }
+
+  function listInteractiveCompatibility(): { success: boolean; elements: unknown[]; error?: string; message?: string } {
     const interactiveSelectors = [
       'a[href]',
       'button',
@@ -386,6 +507,7 @@ export function domPrimitive(
 
     const seen = new Set<Element>()
     const rawEntries: {
+      element: Element
       baseSelector: string
       tag: string
       inputType?: string
@@ -396,8 +518,28 @@ export function domPrimitive(
       visible: boolean
     }[] = []
 
+    const scope = (selector || '').trim()
+    const scopeRoot = (() => {
+      if (!scope) return document as ParentNode
+      try {
+        const matches = querySelectorAllDeep(scope)
+        if (matches.length === 0) return null
+        return chooseBestScopeMatch(matches) as ParentNode
+      } catch {
+        return null
+      }
+    })()
+    if (!scopeRoot) {
+      return {
+        success: false,
+        elements: [],
+        error: 'scope_not_found',
+        message: `No scope element matches selector: ${scope}`
+      }
+    }
+
     for (const cssSelector of interactiveSelectors) {
-      const matches = querySelectorAllDeep(cssSelector)
+      const matches = querySelectorAllDeep(cssSelector, scopeRoot)
       for (const el of matches) {
         if (seen.has(el)) continue
         seen.add(el)
@@ -417,6 +559,7 @@ export function domPrimitive(
           el.tagName.toLowerCase()
 
         rawEntries.push({
+          element: el,
           baseSelector,
           tag: el.tagName.toLowerCase(),
           inputType: el instanceof HTMLInputElement ? el.type : undefined,
@@ -452,6 +595,7 @@ export function domPrimitive(
         type: entry.inputType,
         element_type: entry.elementType,
         selector,
+        element_id: getOrCreateElementID(entry.element),
         label: entry.label,
         role: entry.role,
         placeholder: entry.placeholder,
@@ -471,8 +615,124 @@ export function domPrimitive(
     return { success: false, action, selector, error, message }
   }
 
-  const el = resolveElement(selector)
-  if (!el) return domError('element_not_found', `No element matches selector: ${selector}`)
+  function matchedTarget(node: Element): NonNullable<DOMResult['matched']> {
+    const htmlEl = node as HTMLElement
+    const textPreview = (htmlEl.textContent || '').trim().slice(0, 80)
+    return {
+      tag: node.tagName.toLowerCase(),
+      role: node.getAttribute('role') || undefined,
+      aria_label: node.getAttribute('aria-label') || undefined,
+      text_preview: textPreview || undefined,
+      selector,
+      element_id: getOrCreateElementID(node)
+    }
+  }
+
+  function isActionableVisible(el: Element): boolean {
+    if (!(el instanceof HTMLElement)) return true
+    const rect = typeof el.getBoundingClientRect === 'function'
+      ? el.getBoundingClientRect()
+      : ({ width: 0, height: 0 } as DOMRect)
+    return rect.width > 0 && rect.height > 0 && el.offsetParent !== null
+  }
+
+  function summarizeCandidates(matches: Element[]): NonNullable<DOMResult['candidates']> {
+    return matches.slice(0, 8).map((candidate) => {
+      const htmlEl = candidate as HTMLElement
+      const fallback = candidate.tagName.toLowerCase()
+      return {
+        tag: fallback,
+        role: candidate.getAttribute('role') || undefined,
+        aria_label: candidate.getAttribute('aria-label') || undefined,
+        text_preview: (htmlEl.textContent || '').trim().slice(0, 80) || undefined,
+        selector: buildUniqueSelector(candidate, htmlEl, fallback),
+        element_id: getOrCreateElementID(candidate),
+        visible: isActionableVisible(candidate)
+      }
+    })
+  }
+
+  function resolveActionTarget(): { element?: Element; error?: DOMResult } {
+    const requestedScope = (options.scope_selector || '').trim()
+    if (requestedScope && !scopeRoot) {
+      return {
+        error: domError('scope_not_found', `No scope element matches selector: ${requestedScope}`)
+      }
+    }
+    const activeScope = scopeRoot || document
+    const requestedElementID = (options.element_id || '').trim()
+    if (requestedElementID) {
+      const resolvedByID = resolveElementByID(requestedElementID)
+      if (!resolvedByID) {
+        return {
+          error: domError(
+            'stale_element_id',
+            `Element handle is stale or unknown: ${requestedElementID}. Call list_interactive again.`
+          )
+        }
+      }
+      if (activeScope !== document && typeof (activeScope as Element).contains === 'function') {
+        const contains = (activeScope as Element).contains(resolvedByID)
+        if (!contains) {
+          return {
+            error: domError(
+              'element_id_scope_mismatch',
+              `Element handle does not belong to scope: ${requestedScope || '<none>'}`
+            )
+          }
+        }
+      }
+      return { element: resolvedByID }
+    }
+
+    const ambiguitySensitiveActions = new Set([
+      'click', 'type', 'select', 'check', 'set_attribute',
+      'paste', 'key_press', 'focus', 'scroll_to'
+    ])
+
+    if (!ambiguitySensitiveActions.has(action)) {
+      const found = resolveElement(selector, activeScope)
+      if (!found) return { error: domError('element_not_found', `No element matches selector: ${selector}`) }
+      return { element: found }
+    }
+
+    const rawMatches = resolveElements(selector, activeScope)
+    const uniqueMatches: Element[] = []
+    const seen = new Set<Element>()
+    for (const match of rawMatches) {
+      if (seen.has(match)) continue
+      seen.add(match)
+      uniqueMatches.push(match)
+    }
+
+    const viableMatches = (() => {
+      if (uniqueMatches.length === 0) return uniqueMatches
+      const visible = uniqueMatches.filter(isActionableVisible)
+      return visible.length > 0 ? visible : uniqueMatches
+    })()
+
+    if (viableMatches.length > 1) {
+      return {
+        error: {
+          success: false,
+          action,
+          selector,
+          error: 'ambiguous_target',
+          message: `Selector matches multiple viable elements: ${selector}. Add scope or use list_interactive index.`,
+          match_count: viableMatches.length,
+          candidates: summarizeCandidates(viableMatches)
+        }
+      }
+    }
+
+    const found = viableMatches[0] || resolveElement(selector, activeScope)
+    if (!found) return { error: domError('element_not_found', `No element matches selector: ${selector}`) }
+    return { element: found }
+  }
+
+  const resolved = resolveActionTarget()
+  if (resolved.error) return resolved.error
+  const el = resolved.element!
 
   // — Mutation tracking: MutationObserver wrapper for DOM change capture —
   function withMutationTracking(fn: () => DOMResult): Promise<DOMResult> {
@@ -569,7 +829,7 @@ export function domPrimitive(
         withMutationTracking(() => {
           if (!(node instanceof HTMLElement)) return domError('not_interactive', `Element is not an HTMLElement: ${node.tagName}`)
           node.click()
-          return { success: true, action, selector }
+          return { success: true, action, selector, matched: matchedTarget(node) }
         }),
 
       type: () =>
@@ -597,7 +857,7 @@ export function domPrimitive(
                 document.execCommand('insertText', false, line)
               }
             }
-            return { success: true, action, selector, value: node.innerText }
+            return { success: true, action, selector, value: node.innerText, matched: matchedTarget(node) }
           }
 
           if (!(node instanceof HTMLInputElement) && !(node instanceof HTMLTextAreaElement)) {
@@ -613,7 +873,7 @@ export function domPrimitive(
           }
           node.dispatchEvent(new InputEvent('input', { bubbles: true, data: text, inputType: 'insertText' }))
           node.dispatchEvent(new Event('change', { bubbles: true }))
-          return { success: true, action, selector, value: node.value }
+          return { success: true, action, selector, value: node.value, matched: matchedTarget(node) }
         }),
 
       select: () =>
@@ -626,7 +886,7 @@ export function domPrimitive(
             node.value = options.value || ''
           }
           node.dispatchEvent(new Event('change', { bubbles: true }))
-          return { success: true, action, selector, value: node.value }
+          return { success: true, action, selector, value: node.value, matched: matchedTarget(node) }
         }),
 
       check: () =>
@@ -638,7 +898,7 @@ export function domPrimitive(
           if (node.checked !== desired) {
             node.click()
           }
-          return { success: true, action, selector, value: node.checked }
+          return { success: true, action, selector, value: node.checked, matched: matchedTarget(node) }
         }),
 
       get_text: () => {
@@ -691,18 +951,18 @@ export function domPrimitive(
       set_attribute: () =>
         withMutationTracking(() => {
           node.setAttribute(options.name || '', options.value || '')
-          return { success: true, action, selector, value: node.getAttribute(options.name || '') }
+          return { success: true, action, selector, value: node.getAttribute(options.name || ''), matched: matchedTarget(node) }
         }),
 
       focus: () => {
         if (!(node instanceof HTMLElement)) return domError('not_focusable', `Element is not an HTMLElement: ${node.tagName}`)
         node.focus()
-        return { success: true, action, selector }
+        return { success: true, action, selector, matched: matchedTarget(node) }
       },
 
       scroll_to: () => {
         node.scrollIntoView({ behavior: 'smooth', block: 'center' })
-        return { success: true, action, selector }
+        return { success: true, action, selector, matched: matchedTarget(node) }
       },
 
       wait_for: () => ({ success: true, action, selector, value: node.tagName.toLowerCase() }),
@@ -723,7 +983,7 @@ export function domPrimitive(
           dt.setData('text/plain', pasteText)
           const event = new ClipboardEvent('paste', { clipboardData: dt, bubbles: true, cancelable: true })
           node.dispatchEvent(event)
-          return { success: true, action, selector, value: node.innerText }
+          return { success: true, action, selector, value: node.innerText, matched: matchedTarget(node) }
         }),
 
       key_press: () =>
@@ -742,9 +1002,9 @@ export function domPrimitive(
             const next = key === 'Shift+Tab' ? focusable[idx - 1] : focusable[idx + 1]
             if (next) {
               next.focus()
-              return { success: true, action, selector, value: key }
+              return { success: true, action, selector, value: key, matched: matchedTarget(node) }
             }
-            return { success: true, action, selector, value: key, message: 'No next focusable element' }
+            return { success: true, action, selector, value: key, message: 'No next focusable element', matched: matchedTarget(node) }
           }
 
           const keyMap: Record<string, { key: string; code: string; keyCode: number }> = {
@@ -766,7 +1026,7 @@ export function domPrimitive(
           node.dispatchEvent(
             new KeyboardEvent('keyup', { key: mapped.key, code: mapped.code, keyCode: mapped.keyCode, bubbles: true })
           )
-          return { success: true, action, selector, value: key }
+          return { success: true, action, selector, value: key, matched: matchedTarget(node) }
         })
     }
   }

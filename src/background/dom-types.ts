@@ -19,6 +19,25 @@ export interface DOMResult {
   action: string
   selector: string
   value?: unknown
+  match_count?: number
+  matched?: {
+    tag?: string
+    role?: string
+    aria_label?: string
+    text_preview?: string
+    selector?: string
+    element_id?: string
+    frame_id?: number
+  }
+  candidates?: Array<{
+    tag?: string
+    role?: string
+    aria_label?: string
+    text_preview?: string
+    selector?: string
+    element_id?: string
+    visible?: boolean
+  }>
   reason?: string
   error?: string
   message?: string
@@ -38,6 +57,8 @@ export interface DOMPrimitiveOptions {
   timeout_ms?: number
   analyze?: boolean
   observe_mutations?: boolean
+  element_id?: string
+  scope_selector?: string
 }
 
 export interface DOMActionParams extends DOMPrimitiveOptions {

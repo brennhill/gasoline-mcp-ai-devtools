@@ -27,9 +27,13 @@ func (h *ToolHandler) interactDispatch() map[string]interactHandler {
 		h.interactHandlers = map[string]interactHandler{
 			"highlight":                 h.handlePilotHighlight,
 			"save_state":                h.handlePilotManageStateSave,
+			"state_save":                h.handlePilotManageStateSave, // backward-compatible alias
 			"load_state":                h.handlePilotManageStateLoad,
+			"state_load":                h.handlePilotManageStateLoad, // backward-compatible alias
 			"list_states":               h.handlePilotManageStateList,
+			"state_list":                h.handlePilotManageStateList, // backward-compatible alias
 			"delete_state":              h.handlePilotManageStateDelete,
+			"state_delete":              h.handlePilotManageStateDelete, // backward-compatible alias
 			"set_storage":               h.handleSetStorage,
 			"delete_storage":            h.handleDeleteStorage,
 			"clear_storage":             h.handleClearStorage,
@@ -286,9 +290,16 @@ func (h *ToolHandler) handleBrowserActionNavigate(req JSONRPCRequest, args json.
 
 	h.stashPerfSnapshot(correlationID)
 
+	actionParams := make(map[string]any)
+	_ = json.Unmarshal(args, &actionParams)
+	actionParams["action"] = "navigate"
+	// Ensure required URL is present even if caller used alias forms.
+	actionParams["url"] = params.URL
+	actionPayload, _ := json.Marshal(actionParams)
+
 	query := queries.PendingQuery{
 		Type:          "browser_action",
-		Params:        args,
+		Params:        actionPayload,
 		TabID:         params.TabID,
 		CorrelationID: correlationID,
 	}
@@ -402,9 +413,17 @@ func (h *ToolHandler) handleBrowserActionNewTab(req JSONRPCRequest, args json.Ra
 
 	correlationID := newCorrelationID("newtab")
 
+	actionParams := make(map[string]any)
+	_ = json.Unmarshal(args, &actionParams)
+	actionParams["action"] = "new_tab"
+	if params.URL != "" {
+		actionParams["url"] = params.URL
+	}
+	actionPayload, _ := json.Marshal(actionParams)
+
 	query := queries.PendingQuery{
 		Type:          "browser_action",
-		Params:        args,
+		Params:        actionPayload,
 		CorrelationID: correlationID,
 	}
 	h.capture.CreatePendingQueryWithTimeout(query, queries.AsyncCommandTimeout, req.ClientID)
@@ -423,25 +442,42 @@ func (h *ToolHandler) handleBrowserActionNewTab(req JSONRPCRequest, args json.Ra
 // domActionRequiredParams delegates to the interact package.
 var domActionRequiredParams = act.DOMActionRequiredParams
 
+// normalizeDOMActionArgs rewrites interact args so extension-facing dom_action
+// payloads always carry canonical "action", while preserving user-facing "what".
+func normalizeDOMActionArgs(args json.RawMessage, action string) json.RawMessage {
+	var payload map[string]any
+	if err := json.Unmarshal(args, &payload); err != nil || payload == nil {
+		payload = map[string]any{}
+	}
+	payload["action"] = action
+	normalized, err := json.Marshal(payload)
+	if err != nil {
+		return args
+	}
+	return normalized
+}
+
 func (h *ToolHandler) handleDOMPrimitive(req JSONRPCRequest, args json.RawMessage, action string) JSONRPCResponse {
 	var params struct {
-		Selector  string `json:"selector"`
-		Index     *int   `json:"index,omitempty"`
-		Text      string `json:"text,omitempty"`
-		Value     string `json:"value,omitempty"`
-		Clear     bool   `json:"clear,omitempty"`
-		Checked   *bool  `json:"checked,omitempty"`
-		Name      string `json:"name,omitempty"`
-		TimeoutMs int    `json:"timeout_ms,omitempty"`
-		TabID     int    `json:"tab_id,omitempty"`
-		Analyze   bool   `json:"analyze,omitempty"`
+		Selector      string `json:"selector"`
+		ScopeSelector string `json:"scope_selector,omitempty"`
+		ElementID     string `json:"element_id,omitempty"`
+		Index         *int   `json:"index,omitempty"`
+		Text          string `json:"text,omitempty"`
+		Value         string `json:"value,omitempty"`
+		Clear         bool   `json:"clear,omitempty"`
+		Checked       *bool  `json:"checked,omitempty"`
+		Name          string `json:"name,omitempty"`
+		TimeoutMs     int    `json:"timeout_ms,omitempty"`
+		TabID         int    `json:"tab_id,omitempty"`
+		Analyze       bool   `json:"analyze,omitempty"`
 	}
 	if err := json.Unmarshal(args, &params); err != nil {
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidJSON, "Invalid JSON arguments: "+err.Error(), "Fix JSON syntax and call again")}
 	}
 
 	// Resolve index to selector if index is provided and selector is empty
-	if params.Index != nil && params.Selector == "" {
+	if params.Index != nil && params.Selector == "" && params.ElementID == "" {
 		sel, ok := h.resolveIndexToSelector(*params.Index)
 		if !ok {
 			return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(
@@ -461,8 +497,13 @@ func (h *ToolHandler) handleDOMPrimitive(req JSONRPCRequest, args json.RawMessag
 		}
 	}
 
-	if params.Selector == "" {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrMissingParam, "Required parameter 'selector' (or 'index') is missing", "Add the 'selector' parameter. Supports CSS selectors or semantic: text=Submit, role=button, placeholder=Email, label=Name, aria-label=Close. Or use 'index' from list_interactive results.", withParam("selector"))}
+	if params.Selector == "" && params.ElementID == "" {
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(
+			ErrMissingParam,
+			"Required parameter 'selector', 'element_id', or 'index' is missing",
+			"Add 'selector' (CSS or semantic selector), or use 'element_id'/'index' from list_interactive results.",
+			withParam("selector"),
+		)}
 	}
 
 	if errResp, failed := validateDOMActionParams(req, action, params.Text, params.Value, params.Name); failed {
@@ -472,6 +513,8 @@ func (h *ToolHandler) handleDOMPrimitive(req JSONRPCRequest, args json.RawMessag
 	if resp, blocked := h.requirePilot(req); blocked {
 		return resp
 	}
+
+	args = normalizeDOMActionArgs(args, action)
 
 	correlationID := newCorrelationID("dom_" + action)
 
