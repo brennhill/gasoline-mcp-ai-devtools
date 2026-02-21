@@ -258,11 +258,34 @@ func (h *ToolHandler) enrichNavigateResponse(resp JSONRPCResponse, req JSONRPCRe
 	}
 
 	// Get current page info from tracking state
-	_, _, tabURL := h.capture.GetTrackingStatus()
+	trackingEnabled, trackedTabID, tabURL := h.capture.GetTrackingStatus()
+	if tabID <= 0 {
+		tabID = trackedTabID
+	}
 	tabTitle := h.capture.GetTrackedTabTitle()
 
-	// Get performance vitals
-	vitals := h.capture.GetPerformanceSnapshots()
+	// Get latest performance vitals for the page.
+	vitalSnapshots := h.capture.GetPerformanceSnapshots()
+	vitals := map[string]any{"has_data": false}
+	if len(vitalSnapshots) > 0 {
+		latest := vitalSnapshots[len(vitalSnapshots)-1]
+		vitals = map[string]any{
+			"has_data":           true,
+			"url":                latest.URL,
+			"timestamp":          latest.Timestamp,
+			"dom_content_loaded": latest.Timing.DomContentLoaded,
+			"load":               latest.Timing.Load,
+		}
+		if latest.Timing.FirstContentfulPaint != nil {
+			vitals["fcp"] = *latest.Timing.FirstContentfulPaint
+		}
+		if latest.Timing.LargestContentfulPaint != nil {
+			vitals["lcp"] = *latest.Timing.LargestContentfulPaint
+		}
+		if latest.CLS != nil {
+			vitals["cls"] = *latest.CLS
+		}
+	}
 
 	// Execute page summary script for text content
 	summaryCorrelationID := newCorrelationID("nav_content")
@@ -294,13 +317,23 @@ func (h *ToolHandler) enrichNavigateResponse(resp JSONRPCResponse, req JSONRPCRe
 
 	// Parse existing result text and append enrichment data
 	if len(result.Content) > 0 {
+		navigation := map[string]any{
+			"tracked": trackingEnabled,
+			"tab_id":  tabID,
+			"url":     tabURL,
+			"title":   tabTitle,
+		}
+		if load, ok := vitals["load"]; ok {
+			navigation["load_time_ms"] = load
+		}
+
 		enrichment := map[string]any{
+			"navigation":   navigation,
+			"vitals":       vitals,
+			"errors":       h.recentNavigateErrors(tabID, 5),
 			"url":          tabURL,
 			"title":        tabTitle,
 			"text_content": textContent,
-		}
-		if len(vitals) > 0 {
-			enrichment["vitals"] = vitals[len(vitals)-1]
 		}
 		enrichJSON, _ := json.Marshal(enrichment)
 		result.Content = append(result.Content, MCPContentBlock{
@@ -312,4 +345,50 @@ func (h *ToolHandler) enrichNavigateResponse(resp JSONRPCResponse, req JSONRPCRe
 	resultJSON, _ := json.Marshal(result)
 	resp.Result = json.RawMessage(resultJSON)
 	return resp
+}
+
+func (h *ToolHandler) recentNavigateErrors(tabID, limit int) []map[string]any {
+	if limit <= 0 {
+		limit = 5
+	}
+
+	entries, _ := h.GetLogEntries()
+	errors := make([]map[string]any, 0, limit)
+	for i := len(entries) - 1; i >= 0 && len(errors) < limit; i-- {
+		entry := entries[i]
+		level, _ := entry["level"].(string)
+		if level != "error" {
+			continue
+		}
+		if tabID > 0 && extractTabID(entry["tabId"]) != tabID {
+			continue
+		}
+
+		errors = append(errors, map[string]any{
+			"message":   entry["message"],
+			"source":    entry["source"],
+			"url":       entry["url"],
+			"line":      entry["line"],
+			"column":    entry["column"],
+			"stack":     entry["stack"],
+			"timestamp": entry["ts"],
+			"tab_id":    entry["tabId"],
+		})
+	}
+	return errors
+}
+
+func extractTabID(v any) int {
+	switch x := v.(type) {
+	case int:
+		return x
+	case int32:
+		return int(x)
+	case int64:
+		return int(x)
+	case float64:
+		return int(x)
+	default:
+		return 0
+	}
 }
