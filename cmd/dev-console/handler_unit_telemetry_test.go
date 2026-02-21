@@ -345,6 +345,161 @@ func TestMCPHandler_PassiveTelemetryModePerCallOverride(t *testing.T) {
 	}
 }
 
+func TestMCPHandler_PassiveTelemetrySummaryIncludesReadyForInteraction(t *testing.T) {
+	t.Parallel()
+
+	logFile := filepath.Join(t.TempDir(), "telemetry-ready-flag.jsonl")
+	srv, err := NewServer(logFile, 100)
+	if err != nil {
+		t.Fatalf("NewServer() error = %v", err)
+	}
+	t.Cleanup(srv.Close)
+	srv.setTelemetryMode(telemetryModeFull)
+	cap := capture.NewCapture()
+
+	h := NewMCPHandler(srv, "v-test")
+	h.SetToolHandler(&fakeToolHandlerForMCP{
+		cap:     cap,
+		limiter: testLimiter{allowed: true},
+		handleFn: func(req JSONRPCRequest, name string, _ json.RawMessage) (JSONRPCResponse, bool) {
+			if name != "observe" {
+				return JSONRPCResponse{}, false
+			}
+			return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpTextResponse("ok")}, true
+		},
+	})
+
+	resp := h.HandleRequest(JSONRPCRequest{
+		JSONRPC: "2.0",
+		ID:      1,
+		Method:  "tools/call",
+		Params:  json.RawMessage(`{"name":"observe","arguments":{"what":"logs"}}`),
+	})
+	if resp == nil || resp.Error != nil {
+		t.Fatalf("tools/call response = %+v, want success", resp)
+	}
+
+	summary := mustTelemetrySummary(t, resp.Result)
+	if _, ok := summary["ready_for_interaction"].(bool); !ok {
+		t.Fatalf("ready_for_interaction missing or wrong type: %#v", summary["ready_for_interaction"])
+	}
+}
+
+func TestMCPHandler_InteractSuspiciousFastAddsDiagnosticWarning(t *testing.T) {
+	t.Parallel()
+
+	logFile := filepath.Join(t.TempDir(), "interact-suspicious-warning.jsonl")
+	srv, err := NewServer(logFile, 100)
+	if err != nil {
+		t.Fatalf("NewServer() error = %v", err)
+	}
+	t.Cleanup(srv.Close)
+	cap := capture.NewCapture()
+	addCommandResultForTest(cap, "fail-expired", "expired")
+
+	h := NewMCPHandler(srv, "v-test")
+	h.SetToolHandler(&fakeToolHandlerForMCP{
+		cap:     cap,
+		limiter: testLimiter{allowed: true},
+		handleFn: func(req JSONRPCRequest, name string, _ json.RawMessage) (JSONRPCResponse, bool) {
+			if name != "interact" {
+				return JSONRPCResponse{}, false
+			}
+			return JSONRPCResponse{
+				JSONRPC: "2.0",
+				ID:      req.ID,
+				Result: mcpJSONResponse("Command dom_click complete", map[string]any{
+					"correlation_id":   "dom_click_123_456",
+					"status":           "complete",
+					"lifecycle_status": "complete",
+					"final":            true,
+					"elapsed_ms":       5,
+				}),
+			}, true
+		},
+	})
+
+	resp := h.HandleRequest(JSONRPCRequest{
+		JSONRPC: "2.0",
+		ID:      1,
+		Method:  "tools/call",
+		Params:  json.RawMessage(`{"name":"interact","arguments":{"what":"click","selector":"#btn"}}`),
+	})
+	if resp == nil || resp.Error != nil {
+		t.Fatalf("tools/call response = %+v, want success", resp)
+	}
+
+	meta := mustTelemetryMetadata(t, resp.Result)
+	warning, _ := meta["diagnostic_warning"].(string)
+	if warning == "" {
+		t.Fatal("diagnostic_warning should be present for suspicious fast interact completion")
+	}
+	if !strings.Contains(strings.ToLower(warning), "unusually fast") {
+		t.Fatalf("diagnostic_warning should mention suspicious speed, got: %q", warning)
+	}
+	if !strings.Contains(warning, "ready_for_interaction=false") {
+		t.Fatalf("diagnostic_warning should include doctor readiness flag, got: %q", warning)
+	}
+}
+
+func TestMCPHandler_InteractFailedCommandAddsDiagnosticWarning(t *testing.T) {
+	t.Parallel()
+
+	logFile := filepath.Join(t.TempDir(), "interact-failure-warning.jsonl")
+	srv, err := NewServer(logFile, 100)
+	if err != nil {
+		t.Fatalf("NewServer() error = %v", err)
+	}
+	t.Cleanup(srv.Close)
+	cap := capture.NewCapture()
+	addCommandResultForTest(cap, "fail-timeout", "timeout")
+
+	h := NewMCPHandler(srv, "v-test")
+	h.SetToolHandler(&fakeToolHandlerForMCP{
+		cap:     cap,
+		limiter: testLimiter{allowed: true},
+		handleFn: func(req JSONRPCRequest, name string, _ json.RawMessage) (JSONRPCResponse, bool) {
+			if name != "interact" {
+				return JSONRPCResponse{}, false
+			}
+			return JSONRPCResponse{
+				JSONRPC: "2.0",
+				ID:      req.ID,
+				Result: mcpJSONErrorResponse("FAILED — Command dom_click error", map[string]any{
+					"correlation_id":   "dom_click_789_012",
+					"status":           "error",
+					"lifecycle_status": "error",
+					"final":            true,
+					"elapsed_ms":       120,
+					"error":            "element_not_found",
+				}),
+			}, true
+		},
+	})
+
+	resp := h.HandleRequest(JSONRPCRequest{
+		JSONRPC: "2.0",
+		ID:      1,
+		Method:  "tools/call",
+		Params:  json.RawMessage(`{"name":"interact","arguments":{"what":"click","selector":"#btn"}}`),
+	})
+	if resp == nil || resp.Error != nil {
+		t.Fatalf("tools/call response = %+v, want success", resp)
+	}
+
+	meta := mustTelemetryMetadata(t, resp.Result)
+	warning, _ := meta["diagnostic_warning"].(string)
+	if warning == "" {
+		t.Fatal("diagnostic_warning should be present for failed interact command")
+	}
+	if !strings.Contains(strings.ToLower(warning), "failed") {
+		t.Fatalf("diagnostic_warning should mention failure, got: %q", warning)
+	}
+	if !strings.Contains(warning, "ready_for_interaction=false") {
+		t.Fatalf("diagnostic_warning should include doctor readiness flag, got: %q", warning)
+	}
+}
+
 func TestMCPHandlerHandleHTTP(t *testing.T) {
 	t.Parallel()
 
