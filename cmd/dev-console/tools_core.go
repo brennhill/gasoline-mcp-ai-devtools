@@ -141,6 +141,8 @@ type ToolHandler struct {
 	// Concrete implementations (interface signatures differ from types package)
 	// These are used directly by tool handlers rather than through the interface fields above.
 	noiseConfig           *ai.NoiseConfig
+	noiseInitTriggered    uint32
+	noiseAutoInitRuns     uint32
 	sessionStoreImpl      *ai.SessionStore
 	securityScannerImpl   *security.SecurityScanner
 	thirdPartyAuditorImpl *analysis.ThirdPartyAuditor

@@ -3,6 +3,8 @@ package observe
 
 import (
 	"encoding/json"
+	"fmt"
+	"strings"
 	"time"
 
 	"github.com/dev-console/dev-console/internal/capture"
@@ -249,12 +251,47 @@ func GetBrowserLogs(deps Deps, req mcp.JSONRPCRequest, args json.RawMessage) mcp
 	if noiseSuppressed > 0 {
 		meta["noise_suppressed"] = noiseSuppressed
 	}
+	if hint := repetitiveNoiseHint(logs); hint != "" {
+		meta["noise_hint"] = hint
+	}
 
 	return mcp.JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcp.JSONResponse("Browser logs", map[string]any{
 		"logs":     logs,
 		"count":    len(logs),
 		"metadata": meta,
 	})}
+}
+
+func repetitiveNoiseHint(logs []map[string]any) string {
+	if len(logs) < 6 {
+		return ""
+	}
+
+	counts := make(map[string]int, len(logs))
+	for _, entry := range logs {
+		message, _ := entry["message"].(string)
+		source, _ := entry["source"].(string)
+		key := strings.TrimSpace(source) + "|" + strings.TrimSpace(message)
+		if key == "|" {
+			continue
+		}
+		counts[key]++
+	}
+
+	repetitive := 0
+	for _, count := range counts {
+		if count > 1 {
+			repetitive += count
+		}
+	}
+
+	total := len(logs)
+	if repetitive*2 <= total {
+		return ""
+	}
+
+	percent := int((float64(repetitive) / float64(total) * 100) + 0.5)
+	return fmt.Sprintf("%d%% of log entries match repetitive patterns. Run configure(what:'noise_rule', noise_action:'auto_detect') to suppress.", percent)
 }
 
 // GetExtensionLogs returns internal extension debug logs.
