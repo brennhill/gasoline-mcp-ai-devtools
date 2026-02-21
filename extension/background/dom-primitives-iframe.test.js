@@ -75,7 +75,11 @@ globalThis.chrome = {
   scripting: {
     executeScript: async (opts) => {
       executeScriptCalls.push(opts)
-      return executeScriptReturn.shift() || []
+      const next = executeScriptReturn.shift()
+      if (next instanceof Error) {
+        throw next
+      }
+      return next || []
     }
   }
 }
@@ -434,5 +438,73 @@ describe('iframe support: explicit frame targeting', () => {
     assert.strictEqual(executeScriptCalls.length, 1, 'should skip probe for frame=all')
     assert.strictEqual(executeScriptCalls[0].target.allFrames, true)
     assert.strictEqual(res.calls[0].status, 'complete')
+  })
+})
+
+describe('world routing: auto/main/isolated for DOM actions', () => {
+  beforeEach(() => {
+    executeScriptCalls = []
+    executeScriptReturn = []
+  })
+
+  test('auto world falls back from MAIN failure to ISOLATED success with explicit metadata', async () => {
+    executeScriptReturn.push(new Error('MAIN world blocked by CSP'))
+    executeScriptReturn.push([{ frameId: 0, result: { success: true, action: 'click', selector: '#btn' } }])
+    const res = captureAsyncResult()
+
+    await executeDOMAction(makeQuery({ action: 'click', selector: '#btn' }), 1, makeSyncClient(), res.fn, noopToast)
+
+    assert.strictEqual(executeScriptCalls.length, 2)
+    assert.strictEqual(executeScriptCalls[0].world, 'MAIN')
+    assert.strictEqual(executeScriptCalls[1].world, 'ISOLATED')
+
+    assert.strictEqual(res.calls[0].status, 'complete')
+    assert.strictEqual(res.calls[0].result.success, true)
+    assert.strictEqual(res.calls[0].result.execution_world, 'isolated')
+    assert.strictEqual(res.calls[0].result.fallback_attempted, true)
+    assert.strictEqual(res.calls[0].result.main_world_status, 'error')
+    assert.strictEqual(res.calls[0].result.isolated_world_status, 'success')
+    assert.ok(
+      String(res.calls[0].result.fallback_summary).includes('MAIN world execution FAILED'),
+      `unexpected fallback_summary: ${res.calls[0].result.fallback_summary}`
+    )
+  })
+
+  test('main world mode does not fallback to isolated', async () => {
+    executeScriptReturn.push(new Error('MAIN world blocked by CSP'))
+    const res = captureAsyncResult()
+
+    await executeDOMAction(
+      makeQuery({ action: 'click', selector: '#btn', world: 'main' }),
+      1,
+      makeSyncClient(),
+      res.fn,
+      noopToast
+    )
+
+    assert.strictEqual(executeScriptCalls.length, 1)
+    assert.strictEqual(executeScriptCalls[0].world, 'MAIN')
+    assert.strictEqual(res.calls[0].status, 'error')
+  })
+
+  test('auto world returns explicit ERROR fallback summary when both worlds fail', async () => {
+    executeScriptReturn.push(new Error('MAIN world blocked by CSP'))
+    executeScriptReturn.push(new Error('ISOLATED world blocked by CSP'))
+    const res = captureAsyncResult()
+
+    await executeDOMAction(makeQuery({ action: 'click', selector: '#btn' }), 1, makeSyncClient(), res.fn, noopToast)
+
+    assert.strictEqual(executeScriptCalls.length, 2)
+    assert.strictEqual(executeScriptCalls[0].world, 'MAIN')
+    assert.strictEqual(executeScriptCalls[1].world, 'ISOLATED')
+    assert.strictEqual(res.calls[0].status, 'error')
+    assert.strictEqual(res.calls[0].error, 'Error: MAIN world execution FAILED. Fallback in ISOLATED is ERROR.')
+    assert.strictEqual(res.calls[0].result.success, false)
+    assert.strictEqual(res.calls[0].result.main_world_status, 'error')
+    assert.strictEqual(res.calls[0].result.isolated_world_status, 'error')
+    assert.strictEqual(
+      res.calls[0].result.fallback_summary,
+      'Error: MAIN world execution FAILED. Fallback in ISOLATED is ERROR.'
+    )
   })
 })

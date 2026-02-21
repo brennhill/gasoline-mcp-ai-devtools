@@ -432,6 +432,7 @@ func (h *ToolHandler) handleDOMPrimitive(req JSONRPCRequest, args json.RawMessag
 		Clear     bool   `json:"clear,omitempty"`
 		Checked   *bool  `json:"checked,omitempty"`
 		Name      string `json:"name,omitempty"`
+		World     string `json:"world,omitempty"`
 		TimeoutMs int    `json:"timeout_ms,omitempty"`
 		TabID     int    `json:"tab_id,omitempty"`
 		Analyze   bool   `json:"analyze,omitempty"`
@@ -463,6 +464,12 @@ func (h *ToolHandler) handleDOMPrimitive(req JSONRPCRequest, args json.RawMessag
 
 	if params.Selector == "" {
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrMissingParam, "Required parameter 'selector' (or 'index') is missing", "Add the 'selector' parameter. Supports CSS selectors or semantic: text=Submit, role=button, placeholder=Email, label=Name, aria-label=Close. Or use 'index' from list_interactive results.", withParam("selector"))}
+	}
+	if params.World == "" {
+		params.World = "auto"
+	}
+	if !validWorldValues[params.World] {
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidParam, "Invalid 'world' value: "+params.World, "Use 'auto' (default, tries main then isolated), 'main', or 'isolated'", withParam("world"))}
 	}
 
 	if errResp, failed := validateDOMActionParams(req, action, params.Text, params.Value, params.Name); failed {

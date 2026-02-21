@@ -1320,7 +1320,7 @@
           "type": "string"
         },
         "world": {
-          "description": "JS world: auto (default), main (page globals), isolated (bypass CSP).",
+          "description": "Execution world for execute_js and DOM primitives: auto (default, MAIN then ISOLATED fallback), main (page globals), isolated (CSP-tolerant DOM).",
           "enum": [
             "auto",
             "main",

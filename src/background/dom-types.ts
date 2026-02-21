@@ -27,6 +27,13 @@ export interface DOMResult {
   dom_changes?: { added: number; removed: number; modified: number; summary: string }
   dom_mutations?: DOMMutationEntry[]
   analysis?: string
+  execution_world?: 'main' | 'isolated'
+  fallback_attempted?: boolean
+  main_world_status?: 'success' | 'error' | 'not_attempted'
+  isolated_world_status?: 'success' | 'error' | 'not_attempted'
+  fallback_summary?: string
+  main_world_error?: string
+  isolated_world_error?: string
 }
 
 export interface DOMPrimitiveOptions {
@@ -45,4 +52,5 @@ export interface DOMActionParams extends DOMPrimitiveOptions {
   selector?: string
   reason?: string
   frame?: string | number
+  world?: 'auto' | 'main' | 'isolated'
 }

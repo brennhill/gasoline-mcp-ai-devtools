@@ -248,6 +248,41 @@ func TestToolsInteractExecuteJS_DefaultWorld(t *testing.T) {
 	}
 }
 
+func TestToolsInteractDOMPrimitive_InvalidWorld(t *testing.T) {
+	t.Parallel()
+	h, _, _ := makeToolHandler(t)
+
+	resp := callInteractRaw(h, `{"what":"click","selector":"#btn","world":"invalid_world"}`)
+	result := parseToolResult(t, resp)
+	if !result.IsError {
+		t.Fatal("invalid world should return isError:true")
+	}
+	if !strings.Contains(result.Content[0].Text, "invalid_param") {
+		t.Errorf("error code should be 'invalid_param', got: %s", result.Content[0].Text)
+	}
+	if !strings.Contains(result.Content[0].Text, "world") {
+		t.Error("error should mention 'world' parameter")
+	}
+}
+
+func TestToolsInteractDOMPrimitive_ValidWorlds(t *testing.T) {
+	t.Parallel()
+	h, _, _ := makeToolHandler(t)
+
+	for _, world := range []string{"auto", "main", "isolated"} {
+		t.Run(world, func(t *testing.T) {
+			resp := callInteractRaw(h, `{"what":"click","selector":"#btn","world":"`+world+`"}`)
+			result := parseToolResult(t, resp)
+			if !result.IsError {
+				t.Fatal("should return error (pilot disabled)")
+			}
+			if strings.Contains(result.Content[0].Text, "Invalid 'world'") {
+				t.Errorf("world=%q should pass validation, but got world error: %s", world, result.Content[0].Text)
+			}
+		})
+	}
+}
+
 func TestToolsInteractExecuteJS_Success(t *testing.T) {
 	t.Parallel()
 	h, _, cap := makeToolHandler(t)

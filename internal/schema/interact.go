@@ -149,7 +149,7 @@ func InteractToolSchema() mcp.MCPTool {
 				},
 				"world": map[string]any{
 					"type":        "string",
-					"description": "JS world: auto (default), main (page globals), isolated (bypass CSP).",
+					"description": "Execution world for execute_js and DOM primitives: auto (default, MAIN then ISOLATED fallback), main (page globals), isolated (CSP-tolerant DOM).",
 					"enum":        []string{"auto", "main", "isolated"},
 				},
 				"url": map[string]any{
