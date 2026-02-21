@@ -154,3 +154,86 @@ func TestToolsConfigureTutorial_ContextAware_NoTrackedTab(t *testing.T) {
 		t.Fatalf("expected no_tracked_tab issue, got: %+v", issues)
 	}
 }
+
+func TestToolsConfigureHelp_ResponseShape(t *testing.T) {
+	t.Parallel()
+	env := newConfigureTestEnv(t)
+
+	result, ok := env.callConfigure(t, `{"what":"help"}`)
+	if !ok {
+		t.Fatal("help should return result")
+	}
+	if result.IsError {
+		t.Fatalf("help should not error, got: %s", result.Content[0].Text)
+	}
+
+	data := parseResponseJSON(t, result)
+	if data["status"] != "ok" {
+		t.Fatalf("status = %v, want ok", data["status"])
+	}
+	if data["mode"] != "help" {
+		t.Fatalf("mode = %v, want help", data["mode"])
+	}
+	tools, ok := data["tools"].([]any)
+	if !ok || len(tools) == 0 {
+		t.Fatalf("tools should be non-empty []any, got: %#v", data["tools"])
+	}
+	text, _ := data["text"].(string)
+	if !strings.Contains(text, "analyze - Active analysis") {
+		t.Fatalf("help text should include analyze summary, got: %q", text)
+	}
+}
+
+func TestToolsConfigureCheatsheet_AliasAndDrilldown(t *testing.T) {
+	t.Parallel()
+	env := newConfigureTestEnv(t)
+
+	result, ok := env.callConfigure(t, `{"what":"cheatsheet","tool":"analyze","mode":"accessibility"}`)
+	if !ok {
+		t.Fatal("cheatsheet should return result")
+	}
+	if result.IsError {
+		t.Fatalf("cheatsheet should not error, got: %s", result.Content[0].Text)
+	}
+
+	data := parseResponseJSON(t, result)
+	if data["tool"] != "analyze" {
+		t.Fatalf("tool = %v, want analyze", data["tool"])
+	}
+	if data["focus_mode"] != "accessibility" {
+		t.Fatalf("focus_mode = %v, want accessibility", data["focus_mode"])
+	}
+	tools := data["tools"].([]any)
+	if len(tools) != 1 {
+		t.Fatalf("expected exactly one tool in filtered cheatsheet, got %d", len(tools))
+	}
+	toolMap := tools[0].(map[string]any)
+	modes := toolMap["Modes"]
+	if modes != nil {
+		t.Fatalf("tool payload should use json field names (lowercase), got unexpected key 'Modes': %#v", toolMap)
+	}
+	modeList := toolMap["modes"].([]any)
+	if len(modeList) != 1 {
+		t.Fatalf("expected exactly one mode in drilldown response, got %d", len(modeList))
+	}
+	modeMap := modeList[0].(map[string]any)
+	if modeMap["name"] != "accessibility" {
+		t.Fatalf("mode.name = %v, want accessibility", modeMap["name"])
+	}
+}
+
+func TestToolsConfigureHelp_InvalidToolReturnsError(t *testing.T) {
+	t.Parallel()
+	env := newConfigureTestEnv(t)
+
+	result, ok := env.callConfigure(t, `{"what":"help","tool":"not_a_tool"}`)
+	if !ok {
+		t.Fatal("help should return result")
+	}
+	if !result.IsError {
+		t.Fatalf("help with invalid tool should return error, got: %s", result.Content[0].Text)
+	}
+	if !strings.Contains(result.Content[0].Text, "invalid_param") {
+		t.Fatalf("expected invalid_param error, got: %s", result.Content[0].Text)
+	}
+}
