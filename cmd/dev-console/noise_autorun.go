@@ -9,6 +9,7 @@ import (
 	"os"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/dev-console/dev-console/internal/ai"
@@ -106,6 +107,21 @@ func wireNoiseAutoDetect(h *ToolHandler) {
 	})
 
 	fmt.Fprintf(os.Stderr, "[gasoline] noise auto-detect enabled (triggers after navigation, debounce=%s)\n", noiseAutoDetectInterval)
+}
+
+// runNoiseAutoDetectOnFirstConnection schedules exactly one noise auto-detect run
+// for the process lifetime after the first MCP initialize call.
+func (h *ToolHandler) runNoiseAutoDetectOnFirstConnection() {
+	if h == nil || h.capture == nil || h.noiseConfig == nil {
+		return
+	}
+	if !atomic.CompareAndSwapUint32(&h.noiseInitTriggered, 0, 1) {
+		return
+	}
+	atomic.AddUint32(&h.noiseAutoInitRuns, 1)
+	util.SafeGo(func() {
+		h.runNoiseAutoDetect()
+	})
 }
 
 func noiseAutoDetectEnabled() bool {

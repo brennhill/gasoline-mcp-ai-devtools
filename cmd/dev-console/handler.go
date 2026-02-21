@@ -276,6 +276,10 @@ func (h *MCPHandler) HandleRequest(req JSONRPCRequest) *JSONRPCResponse {
 }
 
 func (h *MCPHandler) handleInitialize(req JSONRPCRequest) JSONRPCResponse {
+	if toolHandler, ok := h.toolHandler.(*ToolHandler); ok {
+		toolHandler.runNoiseAutoDetectOnFirstConnection()
+	}
+
 	negotiatedVersion := negotiateProtocolVersion(req.Params)
 
 	result := MCPInitializeResult{

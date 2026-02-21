@@ -333,6 +333,76 @@ func TestToolsObserveLogs_ResponseFields(t *testing.T) {
 	assertSnakeCaseFields(t, string(resp.Result))
 }
 
+func TestToolsObserveLogs_AddsNoiseHintForRepetitivePatterns(t *testing.T) {
+	t.Parallel()
+	h, server, _ := makeToolHandler(t)
+
+	ts := time.Now().UTC().Format(time.RFC3339)
+	server.mu.Lock()
+	for i := 0; i < 4; i++ {
+		server.entries = append(server.entries, LogEntry{
+			"type":    "console",
+			"level":   "info",
+			"message": "REPEATABLE_NOISE_SIGNATURE",
+			"source":  "https://example.com/repeat.js",
+			"url":     "https://example.com/repeat.js",
+			"line":    float64(1),
+			"column":  float64(1),
+			"ts":      ts,
+			"tabId":   float64(2),
+		})
+		server.logTotalAdded++
+	}
+	server.entries = append(server.entries,
+		LogEntry{
+			"type":    "console",
+			"level":   "info",
+			"message": "unique-message-1",
+			"source":  "https://example.com/u1.js",
+			"url":     "https://example.com/u1.js",
+			"line":    float64(2),
+			"column":  float64(1),
+			"ts":      ts,
+			"tabId":   float64(2),
+		},
+		LogEntry{
+			"type":    "console",
+			"level":   "info",
+			"message": "unique-message-2",
+			"source":  "https://example.com/u2.js",
+			"url":     "https://example.com/u2.js",
+			"line":    float64(3),
+			"column":  float64(1),
+			"ts":      ts,
+			"tabId":   float64(2),
+		},
+	)
+	server.logTotalAdded += 2
+	server.mu.Unlock()
+
+	resp := callObserveRaw(h, "logs")
+	result := parseToolResult(t, resp)
+	if result.IsError {
+		t.Fatalf("logs should not return isError, got: %s", result.Content[0].Text)
+	}
+	data := extractResultJSON(t, result)
+
+	meta, _ := data["metadata"].(map[string]any)
+	if meta == nil {
+		t.Fatal("metadata should be a map")
+	}
+	hint, _ := meta["noise_hint"].(string)
+	if hint == "" {
+		t.Fatalf("metadata.noise_hint should be present for repetitive logs, metadata=%v", meta)
+	}
+	if !strings.Contains(hint, "67%") {
+		t.Fatalf("noise_hint should include repetitive ratio percentage, got: %q", hint)
+	}
+	if !strings.Contains(hint, "noise_rule") || !strings.Contains(hint, "auto_detect") {
+		t.Fatalf("noise_hint should include configure auto_detect guidance, got: %q", hint)
+	}
+}
+
 // ============================================
 // observe(what:"extension_logs") — Response Fields
 // ============================================
