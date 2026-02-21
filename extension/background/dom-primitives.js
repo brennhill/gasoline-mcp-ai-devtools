@@ -608,7 +608,8 @@ export function domPrimitive(action, selector, options) {
             aria_label: node.getAttribute('aria-label') || undefined,
             text_preview: textPreview || undefined,
             selector,
-            element_id: getOrCreateElementID(node)
+            element_id: getOrCreateElementID(node),
+            scope_selector_used: resolvedScopeSelector
         };
     }
     function isActionableVisible(el) {
@@ -642,6 +643,7 @@ export function domPrimitive(action, selector, options) {
             };
         }
         const activeScope = scopeRoot || document;
+        const scopeSelectorUsed = requestedScope || undefined;
         const requestedElementID = (options.element_id || '').trim();
         if (requestedElementID) {
             const resolvedByID = resolveElementByID(requestedElementID);
@@ -658,7 +660,12 @@ export function domPrimitive(action, selector, options) {
                     };
                 }
             }
-            return { element: resolvedByID };
+            return {
+                element: resolvedByID,
+                match_count: 1,
+                match_strategy: 'element_id',
+                scope_selector_used: scopeSelectorUsed
+            };
         }
         const ambiguitySensitiveActions = new Set([
             'click', 'type', 'select', 'check', 'set_attribute',
@@ -668,7 +675,12 @@ export function domPrimitive(action, selector, options) {
             const found = resolveElement(selector, activeScope);
             if (!found)
                 return { error: domError('element_not_found', `No element matches selector: ${selector}`) };
-            return { element: found };
+            return {
+                element: found,
+                match_count: 1,
+                match_strategy: requestedScope ? 'scoped_selector' : 'selector',
+                scope_selector_used: scopeSelectorUsed
+            };
         }
         const rawMatches = resolveElements(selector, activeScope);
         const uniqueMatches = [];
@@ -692,8 +704,9 @@ export function domPrimitive(action, selector, options) {
                     action,
                     selector,
                     error: 'ambiguous_target',
-                    message: `Selector matches multiple viable elements: ${selector}. Add scope or use list_interactive index.`,
+                    message: `Selector matches multiple viable elements: ${selector}. Add scope, or use list_interactive element_id/index.`,
                     match_count: viableMatches.length,
+                    match_strategy: 'ambiguous_selector',
                     candidates: summarizeCandidates(viableMatches)
                 }
             };
@@ -701,12 +714,38 @@ export function domPrimitive(action, selector, options) {
         const found = viableMatches[0] || resolveElement(selector, activeScope);
         if (!found)
             return { error: domError('element_not_found', `No element matches selector: ${selector}`) };
-        return { element: found };
+        const strategy = (() => {
+            if (selector.includes(':nth-match('))
+                return 'nth_match_selector';
+            if (requestedScope)
+                return 'scoped_selector';
+            return 'selector';
+        })();
+        return {
+            element: found,
+            match_count: 1,
+            match_strategy: strategy,
+            scope_selector_used: scopeSelectorUsed
+        };
     }
     const resolved = resolveActionTarget();
     if (resolved.error)
         return resolved.error;
     const el = resolved.element;
+    const resolvedMatchCount = resolved.match_count || 1;
+    const resolvedMatchStrategy = resolved.match_strategy || 'selector';
+    const resolvedScopeSelector = resolved.scope_selector_used;
+    function mutatingSuccess(node, extra) {
+        return {
+            success: true,
+            action,
+            selector,
+            ...(extra || {}),
+            matched: matchedTarget(node),
+            match_count: resolvedMatchCount,
+            match_strategy: resolvedMatchStrategy
+        };
+    }
     // — Mutation tracking: MutationObserver wrapper for DOM change capture —
     function withMutationTracking(fn) {
         const t0 = performance.now();
@@ -796,7 +835,7 @@ export function domPrimitive(action, selector, options) {
                 if (!(node instanceof HTMLElement))
                     return domError('not_interactive', `Element is not an HTMLElement: ${node.tagName}`);
                 node.click();
-                return { success: true, action, selector, matched: matchedTarget(node) };
+                return mutatingSuccess(node);
             }),
             type: () => withMutationTracking(() => {
                 const text = options.text || '';
@@ -821,7 +860,7 @@ export function domPrimitive(action, selector, options) {
                             document.execCommand('insertText', false, line);
                         }
                     }
-                    return { success: true, action, selector, value: node.innerText, matched: matchedTarget(node) };
+                    return mutatingSuccess(node, { value: node.innerText });
                 }
                 if (!(node instanceof HTMLInputElement) && !(node instanceof HTMLTextAreaElement)) {
                     return domError('not_typeable', `Element is not an input, textarea, or contenteditable: ${node.tagName}`);
@@ -837,7 +876,7 @@ export function domPrimitive(action, selector, options) {
                 }
                 node.dispatchEvent(new InputEvent('input', { bubbles: true, data: text, inputType: 'insertText' }));
                 node.dispatchEvent(new Event('change', { bubbles: true }));
-                return { success: true, action, selector, value: node.value, matched: matchedTarget(node) };
+                return mutatingSuccess(node, { value: node.value });
             }),
             select: () => withMutationTracking(() => {
                 if (!(node instanceof HTMLSelectElement))
@@ -850,7 +889,7 @@ export function domPrimitive(action, selector, options) {
                     node.value = options.value || '';
                 }
                 node.dispatchEvent(new Event('change', { bubbles: true }));
-                return { success: true, action, selector, value: node.value, matched: matchedTarget(node) };
+                return mutatingSuccess(node, { value: node.value });
             }),
             check: () => withMutationTracking(() => {
                 if (!(node instanceof HTMLInputElement) || (node.type !== 'checkbox' && node.type !== 'radio')) {
@@ -860,7 +899,7 @@ export function domPrimitive(action, selector, options) {
                 if (node.checked !== desired) {
                     node.click();
                 }
-                return { success: true, action, selector, value: node.checked, matched: matchedTarget(node) };
+                return mutatingSuccess(node, { value: node.checked });
             }),
             get_text: () => {
                 const text = node instanceof HTMLElement ? node.innerText : node.textContent;
@@ -909,17 +948,17 @@ export function domPrimitive(action, selector, options) {
             },
             set_attribute: () => withMutationTracking(() => {
                 node.setAttribute(options.name || '', options.value || '');
-                return { success: true, action, selector, value: node.getAttribute(options.name || ''), matched: matchedTarget(node) };
+                return mutatingSuccess(node, { value: node.getAttribute(options.name || '') });
             }),
             focus: () => {
                 if (!(node instanceof HTMLElement))
                     return domError('not_focusable', `Element is not an HTMLElement: ${node.tagName}`);
                 node.focus();
-                return { success: true, action, selector, matched: matchedTarget(node) };
+                return mutatingSuccess(node);
             },
             scroll_to: () => {
                 node.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                return { success: true, action, selector, matched: matchedTarget(node) };
+                return mutatingSuccess(node);
             },
             wait_for: () => ({ success: true, action, selector, value: node.tagName.toLowerCase() }),
             paste: () => withMutationTracking(() => {
@@ -938,7 +977,7 @@ export function domPrimitive(action, selector, options) {
                 dt.setData('text/plain', pasteText);
                 const event = new ClipboardEvent('paste', { clipboardData: dt, bubbles: true, cancelable: true });
                 node.dispatchEvent(event);
-                return { success: true, action, selector, value: node.innerText, matched: matchedTarget(node) };
+                return mutatingSuccess(node, { value: node.innerText });
             }),
             key_press: () => withMutationTracking(() => {
                 if (!(node instanceof HTMLElement))
@@ -951,9 +990,9 @@ export function domPrimitive(action, selector, options) {
                     const next = key === 'Shift+Tab' ? focusable[idx - 1] : focusable[idx + 1];
                     if (next) {
                         next.focus();
-                        return { success: true, action, selector, value: key, matched: matchedTarget(node) };
+                        return mutatingSuccess(node, { value: key });
                     }
-                    return { success: true, action, selector, value: key, message: 'No next focusable element', matched: matchedTarget(node) };
+                    return mutatingSuccess(node, { value: key, message: 'No next focusable element' });
                 }
                 const keyMap = {
                     Enter: { key: 'Enter', code: 'Enter', keyCode: 13 },
@@ -968,7 +1007,7 @@ export function domPrimitive(action, selector, options) {
                 node.dispatchEvent(new KeyboardEvent('keydown', { key: mapped.key, code: mapped.code, keyCode: mapped.keyCode, bubbles: true }));
                 node.dispatchEvent(new KeyboardEvent('keypress', { key: mapped.key, code: mapped.code, keyCode: mapped.keyCode, bubbles: true }));
                 node.dispatchEvent(new KeyboardEvent('keyup', { key: mapped.key, code: mapped.code, keyCode: mapped.keyCode, bubbles: true }));
-                return { success: true, action, selector, value: key, matched: matchedTarget(node) };
+                return mutatingSuccess(node, { value: key });
             })
         };
     }

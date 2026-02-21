@@ -35,6 +35,7 @@ function hasMatchedTargetEvidence(result) {
         return false;
     return (typeof matched.selector === 'string' ||
         typeof matched.tag === 'string' ||
+        typeof matched.element_id === 'string' ||
         typeof matched.aria_label === 'string' ||
         typeof matched.role === 'string' ||
         typeof matched.text_preview === 'string');
@@ -348,7 +349,7 @@ export async function executeDOMAction(query, tabId, syncClient, sendAsyncResult
         const firstResult = picked?.result;
         if (firstResult && typeof firstResult === 'object') {
             let resultPayload;
-            if (params.frame !== undefined && params.frame !== null && picked) {
+            if (picked) {
                 const base = { ...firstResult, frame_id: picked.frameId };
                 const matched = base["matched"];
                 if (matched && typeof matched === 'object' && !Array.isArray(matched)) {
