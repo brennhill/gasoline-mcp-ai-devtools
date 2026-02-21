@@ -20,6 +20,7 @@ export interface DOMResult {
   selector: string
   value?: unknown
   match_count?: number
+  match_strategy?: string
   matched?: {
     tag?: string
     role?: string
@@ -27,6 +28,7 @@ export interface DOMResult {
     text_preview?: string
     selector?: string
     element_id?: string
+    scope_selector_used?: string
     frame_id?: number
   }
   candidates?: Array<{

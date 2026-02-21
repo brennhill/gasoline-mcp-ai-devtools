@@ -222,6 +222,8 @@ describe('iframe support: pickFrameResult', () => {
 
     assert.strictEqual(res.calls[0].status, 'complete')
     assert.strictEqual(res.calls[0].result.success, true, 'should use successful iframe result when main frame fails')
+    assert.strictEqual(res.calls[0].result.frame_id, 2, 'auto frame selection should include frame_id evidence')
+    assert.strictEqual(res.calls[0].result.matched.frame_id, 2, 'matched evidence should include selected frame_id')
   })
 
   test('returns main frame error when all frames fail', async () => {

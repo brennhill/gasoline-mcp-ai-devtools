@@ -66,6 +66,7 @@ function hasMatchedTargetEvidence(result: DOMResult): boolean {
   return (
     typeof matched.selector === 'string' ||
     typeof matched.tag === 'string' ||
+    typeof matched.element_id === 'string' ||
     typeof matched.aria_label === 'string' ||
     typeof matched.role === 'string' ||
     typeof matched.text_preview === 'string'
@@ -462,7 +463,7 @@ export async function executeDOMAction(
     const firstResult = picked?.result
     if (firstResult && typeof firstResult === 'object') {
       let resultPayload: unknown
-      if (params.frame !== undefined && params.frame !== null && picked) {
+      if (picked) {
         const base: Record<string, unknown> = { ...(firstResult as Record<string, unknown>), frame_id: picked.frameId }
         const matched = base["matched"]
         if (matched && typeof matched === 'object' && !Array.isArray(matched)) {

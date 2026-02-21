@@ -651,8 +651,13 @@ describe('ambiguity-safe mutating actions', () => {
     assert.strictEqual(result.success, false)
     assert.strictEqual(result.error, 'ambiguous_target')
     assert.strictEqual(result.match_count, 2)
+    assert.strictEqual(result.match_strategy, 'ambiguous_selector')
     assert.ok(Array.isArray(result.candidates), 'candidates should be provided for disambiguation')
     assert.ok(result.candidates.length >= 2, 'expected at least two candidates')
+    assert.ok(
+      (result.message || '').includes('element_id'),
+      'ambiguous hint should include element_id recovery guidance'
+    )
     assert.strictEqual(clickCount, 0, 'no click should be executed on ambiguous target')
   })
 
@@ -737,6 +742,9 @@ describe('ambiguity-safe mutating actions', () => {
     assert.strictEqual(result.success, true)
     assert.strictEqual(outsideClicks, 0, 'outside element should not be clicked when scope is provided')
     assert.strictEqual(scopedClicks, 1, 'scoped element should be clicked exactly once')
+    assert.strictEqual(result.match_count, 1)
+    assert.strictEqual(result.match_strategy, 'scoped_selector')
+    assert.strictEqual(result.matched.scope_selector_used, '#composer')
   })
 
   test('scope_selector applies to read-only actions', () => {
@@ -895,6 +903,8 @@ describe('element handles', () => {
     assert.strictEqual(result.success, true)
     assert.strictEqual(clickCount, 1)
     assert.strictEqual(result.matched.element_id, elementID)
+    assert.strictEqual(result.match_count, 1)
+    assert.strictEqual(result.match_strategy, 'element_id')
   })
 
   test('returns stale_element_id when element handle is unknown', () => {

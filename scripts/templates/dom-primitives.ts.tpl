@@ -620,7 +620,8 @@ export function domPrimitive(
       aria_label: node.getAttribute('aria-label') || undefined,
       text_preview: textPreview || undefined,
       selector,
-      element_id: getOrCreateElementID(node)
+      element_id: getOrCreateElementID(node),
+      scope_selector_used: resolvedScopeSelector
     }
   }
 
@@ -648,7 +649,13 @@ export function domPrimitive(
     })
   }
 
-  function resolveActionTarget(): { element?: Element; error?: DOMResult } {
+  function resolveActionTarget(): {
+    element?: Element
+    error?: DOMResult
+    match_count?: number
+    match_strategy?: string
+    scope_selector_used?: string
+  } {
     const requestedScope = (options.scope_selector || '').trim()
     if (requestedScope && !scopeRoot) {
       return {
@@ -656,6 +663,7 @@ export function domPrimitive(
       }
     }
     const activeScope = scopeRoot || document
+    const scopeSelectorUsed = requestedScope || undefined
     const requestedElementID = (options.element_id || '').trim()
     if (requestedElementID) {
       const resolvedByID = resolveElementByID(requestedElementID)
@@ -678,7 +686,12 @@ export function domPrimitive(
           }
         }
       }
-      return { element: resolvedByID }
+      return {
+        element: resolvedByID,
+        match_count: 1,
+        match_strategy: 'element_id',
+        scope_selector_used: scopeSelectorUsed
+      }
     }
 
     const ambiguitySensitiveActions = new Set([
@@ -689,7 +702,12 @@ export function domPrimitive(
     if (!ambiguitySensitiveActions.has(action)) {
       const found = resolveElement(selector, activeScope)
       if (!found) return { error: domError('element_not_found', `No element matches selector: ${selector}`) }
-      return { element: found }
+      return {
+        element: found,
+        match_count: 1,
+        match_strategy: requestedScope ? 'scoped_selector' : 'selector',
+        scope_selector_used: scopeSelectorUsed
+      }
     }
 
     const rawMatches = resolveElements(selector, activeScope)
@@ -714,8 +732,9 @@ export function domPrimitive(
           action,
           selector,
           error: 'ambiguous_target',
-          message: `Selector matches multiple viable elements: ${selector}. Add scope or use list_interactive index.`,
+          message: `Selector matches multiple viable elements: ${selector}. Add scope, or use list_interactive element_id/index.`,
           match_count: viableMatches.length,
+          match_strategy: 'ambiguous_selector',
           candidates: summarizeCandidates(viableMatches)
         }
       }
@@ -723,12 +742,40 @@ export function domPrimitive(
 
     const found = viableMatches[0] || resolveElement(selector, activeScope)
     if (!found) return { error: domError('element_not_found', `No element matches selector: ${selector}`) }
-    return { element: found }
+    const strategy = (() => {
+      if (selector.includes(':nth-match(')) return 'nth_match_selector'
+      if (requestedScope) return 'scoped_selector'
+      return 'selector'
+    })()
+    return {
+      element: found,
+      match_count: 1,
+      match_strategy: strategy,
+      scope_selector_used: scopeSelectorUsed
+    }
   }
 
   const resolved = resolveActionTarget()
   if (resolved.error) return resolved.error
   const el = resolved.element!
+  const resolvedMatchCount = resolved.match_count || 1
+  const resolvedMatchStrategy = resolved.match_strategy || 'selector'
+  const resolvedScopeSelector = resolved.scope_selector_used
+
+  function mutatingSuccess(
+    node: Element,
+    extra?: Omit<Partial<DOMResult>, 'success' | 'action' | 'selector' | 'matched' | 'match_count' | 'match_strategy'>
+  ): DOMResult {
+    return {
+      success: true,
+      action,
+      selector,
+      ...(extra || {}),
+      matched: matchedTarget(node),
+      match_count: resolvedMatchCount,
+      match_strategy: resolvedMatchStrategy
+    }
+  }
 
   // — Mutation tracking: MutationObserver wrapper for DOM change capture —
   function withMutationTracking(fn: () => DOMResult): Promise<DOMResult> {
@@ -825,7 +872,7 @@ export function domPrimitive(
         withMutationTracking(() => {
           if (!(node instanceof HTMLElement)) return domError('not_interactive', `Element is not an HTMLElement: ${node.tagName}`)
           node.click()
-          return { success: true, action, selector, matched: matchedTarget(node) }
+          return mutatingSuccess(node)
         }),
 
       type: () =>
@@ -853,7 +900,7 @@ export function domPrimitive(
                 document.execCommand('insertText', false, line)
               }
             }
-            return { success: true, action, selector, value: node.innerText, matched: matchedTarget(node) }
+            return mutatingSuccess(node, { value: node.innerText })
           }
 
           if (!(node instanceof HTMLInputElement) && !(node instanceof HTMLTextAreaElement)) {
@@ -869,7 +916,7 @@ export function domPrimitive(
           }
           node.dispatchEvent(new InputEvent('input', { bubbles: true, data: text, inputType: 'insertText' }))
           node.dispatchEvent(new Event('change', { bubbles: true }))
-          return { success: true, action, selector, value: node.value, matched: matchedTarget(node) }
+          return mutatingSuccess(node, { value: node.value })
         }),
 
       select: () =>
@@ -882,7 +929,7 @@ export function domPrimitive(
             node.value = options.value || ''
           }
           node.dispatchEvent(new Event('change', { bubbles: true }))
-          return { success: true, action, selector, value: node.value, matched: matchedTarget(node) }
+          return mutatingSuccess(node, { value: node.value })
         }),
 
       check: () =>
@@ -894,7 +941,7 @@ export function domPrimitive(
           if (node.checked !== desired) {
             node.click()
           }
-          return { success: true, action, selector, value: node.checked, matched: matchedTarget(node) }
+          return mutatingSuccess(node, { value: node.checked })
         }),
 
       get_text: () => {
@@ -947,18 +994,18 @@ export function domPrimitive(
       set_attribute: () =>
         withMutationTracking(() => {
           node.setAttribute(options.name || '', options.value || '')
-          return { success: true, action, selector, value: node.getAttribute(options.name || ''), matched: matchedTarget(node) }
+          return mutatingSuccess(node, { value: node.getAttribute(options.name || '') })
         }),
 
       focus: () => {
         if (!(node instanceof HTMLElement)) return domError('not_focusable', `Element is not an HTMLElement: ${node.tagName}`)
         node.focus()
-        return { success: true, action, selector, matched: matchedTarget(node) }
+        return mutatingSuccess(node)
       },
 
       scroll_to: () => {
         node.scrollIntoView({ behavior: 'smooth', block: 'center' })
-        return { success: true, action, selector, matched: matchedTarget(node) }
+        return mutatingSuccess(node)
       },
 
       wait_for: () => ({ success: true, action, selector, value: node.tagName.toLowerCase() }),
@@ -979,7 +1026,7 @@ export function domPrimitive(
           dt.setData('text/plain', pasteText)
           const event = new ClipboardEvent('paste', { clipboardData: dt, bubbles: true, cancelable: true })
           node.dispatchEvent(event)
-          return { success: true, action, selector, value: node.innerText, matched: matchedTarget(node) }
+          return mutatingSuccess(node, { value: node.innerText })
         }),
 
       key_press: () =>
@@ -998,9 +1045,9 @@ export function domPrimitive(
             const next = key === 'Shift+Tab' ? focusable[idx - 1] : focusable[idx + 1]
             if (next) {
               next.focus()
-              return { success: true, action, selector, value: key, matched: matchedTarget(node) }
+              return mutatingSuccess(node, { value: key })
             }
-            return { success: true, action, selector, value: key, message: 'No next focusable element', matched: matchedTarget(node) }
+            return mutatingSuccess(node, { value: key, message: 'No next focusable element' })
           }
 
           const keyMap: Record<string, { key: string; code: string; keyCode: number }> = {
@@ -1022,7 +1069,7 @@ export function domPrimitive(
           node.dispatchEvent(
             new KeyboardEvent('keyup', { key: mapped.key, code: mapped.code, keyCode: mapped.keyCode, bubbles: true })
           )
-          return { success: true, action, selector, value: key, matched: matchedTarget(node) }
+          return mutatingSuccess(node, { value: key })
         })
     }
   }
