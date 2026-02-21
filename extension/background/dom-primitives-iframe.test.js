@@ -114,7 +114,9 @@ describe('iframe support: allFrames flag', () => {
   })
 
   test('executeStandardAction passes allFrames: true to chrome.scripting.executeScript', async () => {
-    executeScriptReturn.push([{ frameId: 0, result: { success: true, action: 'click', selector: '#btn' } }])
+    executeScriptReturn.push([
+      { frameId: 0, result: { success: true, action: 'click', selector: '#btn', matched: { tag: 'button', selector: '#btn' } } }
+    ])
     const res = captureAsyncResult()
 
     await executeDOMAction(makeQuery({ action: 'click', selector: '#btn' }), 1, makeSyncClient(), res.fn, noopToast)
@@ -126,6 +128,19 @@ describe('iframe support: allFrames flag', () => {
       'executeScript target must include allFrames: true'
     )
     assert.strictEqual(executeScriptCalls[0].target.tabId, 1)
+  })
+
+  test('executeStandardAction forwards element_id into injected options', async () => {
+    executeScriptReturn.push([
+      { frameId: 0, result: { success: true, action: 'click', selector: '', matched: { tag: 'button', selector: '', element_id: 'el_1' } } }
+    ])
+    const res = captureAsyncResult()
+
+    await executeDOMAction(makeQuery({ action: 'click', element_id: 'el_1' }), 1, makeSyncClient(), res.fn, noopToast)
+
+    assert.strictEqual(executeScriptCalls.length, 1)
+    assert.strictEqual(executeScriptCalls[0].args[2].element_id, 'el_1')
+    assert.strictEqual(res.calls[0].status, 'complete')
   })
 
   test('wait_for passes allFrames: true to both quick-check and polling calls', async () => {
@@ -170,7 +185,7 @@ describe('iframe support: allFrames flag', () => {
     )
 
     assert.ok(executeScriptCalls.length >= 2, 'wait_for should make at least quick-check + one poll call')
-    assert.strictEqual(res.calls[0].status, 'complete')
+    assert.strictEqual(res.calls[0].status, 'error')
     assert.strictEqual(res.calls[0].result.success, false)
     assert.strictEqual(res.calls[0].result.error, 'timeout')
   })
@@ -199,7 +214,7 @@ describe('iframe support: pickFrameResult', () => {
   test('falls back to iframe success when main frame fails', async () => {
     executeScriptReturn.push([
       { frameId: 0, result: { success: false, action: 'click', selector: '#btn', error: 'element_not_found' } },
-      { frameId: 2, result: { success: true, action: 'click', selector: '#btn' } }
+      { frameId: 2, result: { success: true, action: 'click', selector: '#btn', matched: { tag: 'button', selector: '#btn' } } }
     ])
     const res = captureAsyncResult()
 
@@ -218,7 +233,7 @@ describe('iframe support: pickFrameResult', () => {
 
     await executeDOMAction(makeQuery({ action: 'click', selector: '#btn' }), 1, makeSyncClient(), res.fn, noopToast)
 
-    assert.strictEqual(res.calls[0].status, 'complete')
+    assert.strictEqual(res.calls[0].status, 'error')
     assert.strictEqual(res.calls[0].result.success, false)
     assert.strictEqual(
       res.calls[0].result.error,
@@ -228,7 +243,9 @@ describe('iframe support: pickFrameResult', () => {
   })
 
   test('handles single frame result (no iframes on page)', async () => {
-    executeScriptReturn.push([{ frameId: 0, result: { success: true, action: 'focus', selector: '#input' } }])
+    executeScriptReturn.push([
+      { frameId: 0, result: { success: true, action: 'focus', selector: '#input', matched: { tag: 'input', selector: '#input' } } }
+    ])
     const res = captureAsyncResult()
 
     await executeDOMAction(makeQuery({ action: 'focus', selector: '#input' }), 1, makeSyncClient(), res.fn, noopToast)
@@ -260,6 +277,50 @@ describe('iframe support: pickFrameResult', () => {
       'should not fall through to polling when quick-check found element in iframe'
     )
     assert.strictEqual(res.calls[0].result.success, true)
+  })
+})
+
+describe('iframe support: no-silent-success invariants', () => {
+  beforeEach(() => {
+    executeScriptCalls = []
+    executeScriptReturn = []
+  })
+
+  test('coerces mutating success without matched evidence into error', async () => {
+    executeScriptReturn.push([
+      { frameId: 0, result: { success: true, action: 'click', selector: '#btn' } }
+    ])
+    const res = captureAsyncResult()
+
+    await executeDOMAction(makeQuery({ action: 'click', selector: '#btn' }), 1, makeSyncClient(), res.fn, noopToast)
+
+    assert.strictEqual(res.calls[0].status, 'error')
+    assert.strictEqual(res.calls[0].error, 'missing_match_evidence')
+    assert.strictEqual(res.calls[0].result.success, false)
+    assert.strictEqual(res.calls[0].result.error, 'missing_match_evidence')
+  })
+
+  test('coerces success payload with embedded error into status_mismatch', async () => {
+    executeScriptReturn.push([
+      {
+        frameId: 0,
+        result: {
+          success: true,
+          action: 'click',
+          selector: '#btn',
+          matched: { tag: 'button', selector: '#btn' },
+          error: 'element_not_found'
+        }
+      }
+    ])
+    const res = captureAsyncResult()
+
+    await executeDOMAction(makeQuery({ action: 'click', selector: '#btn' }), 1, makeSyncClient(), res.fn, noopToast)
+
+    assert.strictEqual(res.calls[0].status, 'error')
+    assert.strictEqual(res.calls[0].error, 'status_mismatch')
+    assert.strictEqual(res.calls[0].result.success, false)
+    assert.strictEqual(res.calls[0].result.error, 'status_mismatch')
   })
 })
 
@@ -360,6 +421,46 @@ describe('iframe support: mergeListInteractive', () => {
 
     assert.strictEqual(res.calls[0].result.elements.length, 1, 'should handle empty/null frame results without error')
   })
+
+  test('forwards selector as scope argument for list_interactive execution', async () => {
+    executeScriptReturn.push([{ frameId: 0, result: { success: true, elements: [] } }])
+    const res = captureAsyncResult()
+
+    await executeDOMAction(
+      makeQuery({ action: 'list_interactive', selector: '[role="dialog"]' }),
+      1,
+      makeSyncClient(),
+      res.fn,
+      noopToast
+    )
+
+    assert.strictEqual(executeScriptCalls.length, 1)
+    assert.deepStrictEqual(
+      executeScriptCalls[0].args,
+      ['[role="dialog"]'],
+      'list_interactive should pass selector as scope argument to injected primitive'
+    )
+  })
+
+  test('returns error status when scoped list_interactive fails in all frames', async () => {
+    executeScriptReturn.push([
+      { frameId: 0, result: { success: false, error: 'scope_not_found', message: 'missing scope', elements: [] } },
+      { frameId: 1, result: { success: false, error: 'scope_not_found', message: 'missing scope', elements: [] } }
+    ])
+    const res = captureAsyncResult()
+
+    await executeDOMAction(
+      makeQuery({ action: 'list_interactive', selector: '[role="dialog"]' }),
+      1,
+      makeSyncClient(),
+      res.fn,
+      noopToast
+    )
+
+    assert.strictEqual(res.calls[0].status, 'error')
+    assert.strictEqual(res.calls[0].error, 'scope_not_found')
+    assert.strictEqual(res.calls[0].result.success, false)
+  })
 })
 
 describe('iframe support: explicit frame targeting', () => {
@@ -375,7 +476,10 @@ describe('iframe support: explicit frame targeting', () => {
       { frameId: 2, result: { matches: true } }
     ])
     // Action call: executes only in matched frame
-    executeScriptReturn.push([{ frameId: 2, result: { success: true, action: 'click', selector: '#btn' } }])
+    executeScriptReturn.push([{
+      frameId: 2,
+      result: { success: true, action: 'click', selector: '#btn', matched: { tag: 'button', selector: '#btn' } }
+    }])
 
     const res = captureAsyncResult()
 
@@ -392,6 +496,7 @@ describe('iframe support: explicit frame targeting', () => {
     assert.deepStrictEqual(executeScriptCalls[1].target.frameIds, [2], 'action should target matched frameId only')
     assert.strictEqual(res.calls[0].status, 'complete')
     assert.strictEqual(res.calls[0].result.frame_id, 2, 'result should include selected frame_id')
+    assert.strictEqual(res.calls[0].result.matched.frame_id, 2, 'matched evidence should include selected frame_id')
   })
 
   test('frame selector returns frame_not_found when no frame matches', async () => {
@@ -418,7 +523,7 @@ describe('iframe support: explicit frame targeting', () => {
   test('frame="all" keeps allFrames execution without probe', async () => {
     executeScriptReturn.push([
       { frameId: 0, result: { success: false, action: 'click', selector: '#btn', error: 'element_not_found' } },
-      { frameId: 1, result: { success: true, action: 'click', selector: '#btn' } }
+      { frameId: 1, result: { success: true, action: 'click', selector: '#btn', matched: { tag: 'button', selector: '#btn' } } }
     ])
 
     const res = captureAsyncResult()

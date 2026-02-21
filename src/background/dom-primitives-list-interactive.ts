@@ -7,7 +7,42 @@
  * Passed to chrome.scripting.executeScript({ func: domPrimitiveListInteractive }).
  * MUST NOT reference any module-level variables.
  */
-export function domPrimitiveListInteractive(): { success: boolean; elements: unknown[] } {
+export function domPrimitiveListInteractive(
+  scopeSelector?: string
+): { success: boolean; elements: unknown[]; error?: string; message?: string } {
+  type ElementHandleStore = {
+    byElement: WeakMap<Element, string>
+    byID: Map<string, Element>
+    nextID: number
+  }
+
+  function getElementHandleStore(): ElementHandleStore {
+    const root = globalThis as typeof globalThis & { __gasolineElementHandles?: ElementHandleStore }
+    if (root.__gasolineElementHandles) {
+      return root.__gasolineElementHandles
+    }
+    const created: ElementHandleStore = {
+      byElement: new WeakMap<Element, string>(),
+      byID: new Map<string, Element>(),
+      nextID: 1
+    }
+    root.__gasolineElementHandles = created
+    return created
+  }
+
+  function getOrCreateElementID(el: Element): string {
+    const store = getElementHandleStore()
+    const existing = store.byElement.get(el)
+    if (existing) {
+      store.byID.set(existing, el)
+      return existing
+    }
+    const elementID = `el_${(store.nextID++).toString(36)}`
+    store.byElement.set(el, elementID)
+    store.byID.set(elementID, el)
+    return elementID
+  }
+
   // — Shadow DOM: deep traversal utilities (duplicated from dom-primitives.ts, required for self-containment) —
 
   function getShadowRoot(el: Element): ShadowRoot | null {
@@ -89,6 +124,91 @@ export function domPrimitiveListInteractive(): { success: boolean; elements: unk
     return 'interactive'
   }
 
+  function isVisibleElement(el: Element): boolean {
+    const htmlEl = el as HTMLElement
+    if (!htmlEl || typeof htmlEl.getBoundingClientRect !== 'function') return true
+    const rect = htmlEl.getBoundingClientRect()
+    return rect.width > 0 && rect.height > 0 && htmlEl.offsetParent !== null
+  }
+
+  function extractLabel(el: Element): string {
+    const htmlEl = el as HTMLElement
+    return (
+      el.getAttribute('aria-label') ||
+      el.getAttribute('title') ||
+      el.getAttribute('placeholder') ||
+      (htmlEl?.textContent || '').trim().slice(0, 80) ||
+      el.tagName.toLowerCase()
+    )
+  }
+
+  function chooseBestScopeMatch(matches: Element[]): Element {
+    if (matches.length === 1) return matches[0]!
+
+    const submitVerb = /(post|share|publish|send|submit|save|done|continue|next|create|apply)/i
+    let best = matches[0]!
+    let bestScore = -1
+
+    for (const candidate of matches) {
+      const textboxes = querySelectorAllDeep('[role="textbox"], textarea, [contenteditable="true"]', candidate)
+      const visibleTextboxes = textboxes.filter(isVisibleElement).length
+
+      const buttonCandidates = querySelectorAllDeep('button, [role="button"], input[type="submit"]', candidate)
+      let visibleButtons = 0
+      let submitLikeButtons = 0
+      for (const btn of buttonCandidates) {
+        if (!isVisibleElement(btn)) continue
+        visibleButtons++
+        if (submitVerb.test(extractLabel(btn))) {
+          submitLikeButtons++
+        }
+      }
+
+      const interactiveCandidates = querySelectorAllDeep(
+        'a[href], button, input, select, textarea, [role="button"], [role="link"], [role="tab"], [role="menuitem"], [contenteditable="true"]',
+        candidate
+      )
+      const visibleInteractive = interactiveCandidates.filter(isVisibleElement).length
+      const hiddenInteractive = Math.max(0, interactiveCandidates.length - visibleInteractive)
+
+      const rect = (candidate as HTMLElement).getBoundingClientRect?.()
+      const areaScore = rect && rect.width > 0 && rect.height > 0
+        ? Math.min(20, Math.round((rect.width * rect.height) / 50000))
+        : 0
+
+      // Heuristic weighting:
+      // - Visible textbox strongly indicates active editor/dialog.
+      // - Submit-like visible controls indicate actionable composer.
+      // - Prefer visible-rich over hidden-heavy containers.
+      const score =
+        visibleTextboxes*1000 +
+        submitLikeButtons*250 +
+        visibleButtons*10 +
+        visibleInteractive -
+        hiddenInteractive +
+        areaScore
+
+      if (score > bestScore) {
+        bestScore = score
+        best = candidate
+      }
+    }
+
+    return best
+  }
+
+  function resolveScopeRoot(rawScope?: string): ParentNode | null {
+    const scope = (rawScope || '').trim()
+    if (!scope) return document
+    try {
+      const matches = querySelectorAllDeep(scope)
+      if (matches.length === 0) return null
+      return chooseBestScopeMatch(matches)
+    } catch {
+      return null
+    }
+  }
+
   // — Main scan logic —
 
   const interactiveSelectors = [
@@ -112,6 +232,7 @@ export function domPrimitiveListInteractive(): { success: boolean; elements: unk
     type?: string
     element_type: string
     selector: string
+    element_id: string
     label: string
     role?: string
     placeholder?: string
@@ -132,8 +253,18 @@ export function domPrimitiveListInteractive(): { success: boolean; elements: unk
     visible: boolean
   }[] = []
 
+  const scopeRoot = resolveScopeRoot(scopeSelector)
+  if (!scopeRoot) {
+    return {
+      success: false,
+      elements: [],
+      error: 'scope_not_found',
+      message: `No scope element matches selector: ${scopeSelector || ''}`
+    }
+  }
+
   for (const cssSelector of interactiveSelectors) {
-    const matches = querySelectorAllDeep(cssSelector)
+    const matches = querySelectorAllDeep(cssSelector, scopeRoot)
     for (const el of matches) {
       if (seen.has(el)) continue
       seen.add(el)
@@ -195,6 +326,7 @@ export function domPrimitiveListInteractive(): { success: boolean; elements: unk
       type: entry.inputType,
       element_type: entry.elementType,
       selector: finalSelector,
+      element_id: getOrCreateElementID(entry.el),
       label: entry.label,
       role: entry.role,
       placeholder: entry.placeholder,

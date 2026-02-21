@@ -65,9 +65,17 @@ func InteractToolSchema() mcp.MCPTool {
 					"type":        "string",
 					"description": "CSS or semantic selector for target element",
 				},
+				"scope_selector": map[string]any{
+					"type":        "string",
+					"description": "Optional container selector to constrain DOM actions to a specific region",
+				},
+				"element_id": map[string]any{
+					"type":        "string",
+					"description": "Stable element handle from list_interactive (preferred for deterministic follow-up actions)",
+				},
 				"index": map[string]any{
 					"type":        "number",
-					"description": "Element index from list_interactive results (alternative to selector)",
+					"description": "Element index from list_interactive results (legacy alternative to selector/element_id)",
 				},
 				"visible_only": map[string]any{
 					"type":        "boolean",
