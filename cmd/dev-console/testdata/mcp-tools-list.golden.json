@@ -590,7 +590,13 @@
           "type": "array"
         },
         "output_format": {
-          "description": "Output format: file or inline (test_from_context)",
+          "description": "Output format: playwright|gasoline (reproduction), file|inline (test_from_context)",
+          "enum": [
+            "playwright",
+            "gasoline",
+            "file",
+            "inline"
+          ],
           "type": "string"
         },
         "resource_types": {

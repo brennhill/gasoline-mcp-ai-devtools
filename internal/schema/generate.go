@@ -183,7 +183,8 @@ func GenerateToolSchema() mcp.MCPTool {
 				},
 				"output_format": map[string]any{
 					"type":        "string",
-					"description": "Output format: file or inline (test_from_context)",
+					"description": "Output format: playwright|gasoline (reproduction), file|inline (test_from_context)",
+					"enum":        []string{"playwright", "gasoline", "file", "inline"},
 				},
 			},
 			"required": []string{"what"},

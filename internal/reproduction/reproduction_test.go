@@ -466,14 +466,9 @@ func TestReproduction_LastN(t *testing.T) {
 
 func TestReproduction_DefaultFormat(t *testing.T) {
 	t.Parallel()
-	// When output_format is empty, should default to "gasoline"
-	params := Params{}
-	format := params.OutputFormat
-	if format == "" {
-		format = "gasoline" // default
-	}
-	if format != "gasoline" {
-		t.Errorf("expected default format 'gasoline', got %q", format)
+	params := ParseParams(nil)
+	if params.OutputFormat != "playwright" {
+		t.Errorf("expected default format 'playwright', got %q", params.OutputFormat)
 	}
 }
 

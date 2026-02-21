@@ -59,7 +59,7 @@ func ParseParams(args json.RawMessage) Params {
 		_ = json.Unmarshal(args, &params)
 	}
 	if params.OutputFormat == "" {
-		params.OutputFormat = "gasoline"
+		params.OutputFormat = "playwright"
 	}
 	return params
 }

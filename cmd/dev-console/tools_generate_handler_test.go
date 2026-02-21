@@ -103,6 +103,79 @@ func TestToolsGenerate_GetValidGenerateFormats(t *testing.T) {
 	}
 }
 
+func TestToolsGenerateReproduction_DefaultsToPlaywright(t *testing.T) {
+	t.Parallel()
+	h, _, cap := makeToolHandler(t)
+
+	cap.AddEnhancedActionsForTest([]capture.EnhancedAction{
+		{Type: "navigate", Timestamp: 1000, URL: "https://example.com", ToURL: "https://example.com"},
+		{Type: "click", Timestamp: 2000, URL: "https://example.com", Selectors: map[string]any{"text": "Go"}},
+	})
+
+	resp := callGenerateRaw(h, `{"what":"reproduction"}`)
+	result := parseToolResult(t, resp)
+	if result.IsError {
+		t.Fatalf("reproduction should succeed, got: %s", result.Content[0].Text)
+	}
+
+	data := extractResultJSON(t, result)
+	if data["format"] != "playwright" {
+		t.Fatalf("default reproduction format = %v, want playwright", data["format"])
+	}
+	script, _ := data["script"].(string)
+	if !strings.Contains(script, "import { test, expect } from '@playwright/test';") {
+		t.Fatalf("default reproduction script should be runnable Playwright, got:\n%s", script)
+	}
+	if !strings.Contains(script, "await page.goto('https://example.com');") {
+		t.Fatalf("default reproduction script should include navigate action, got:\n%s", script)
+	}
+	assertSnakeCaseFields(t, string(resp.Result))
+}
+
+func TestToolsGenerateReproduction_AcceptsOutputFormatGasoline(t *testing.T) {
+	t.Parallel()
+	h, _, cap := makeToolHandler(t)
+
+	cap.AddEnhancedActionsForTest([]capture.EnhancedAction{
+		{Type: "navigate", Timestamp: 1000, URL: "https://example.com", ToURL: "https://example.com"},
+		{Type: "click", Timestamp: 2000, URL: "https://example.com", Selectors: map[string]any{"text": "Go"}},
+	})
+
+	resp := callGenerateRaw(h, `{"what":"reproduction","output_format":"gasoline"}`)
+	result := parseToolResult(t, resp)
+	if result.IsError {
+		t.Fatalf("reproduction output_format=gasoline should succeed, got: %s", result.Content[0].Text)
+	}
+
+	data := extractResultJSON(t, result)
+	if data["format"] != "gasoline" {
+		t.Fatalf("reproduction format = %v, want gasoline", data["format"])
+	}
+	script, _ := data["script"].(string)
+	if !strings.Contains(script, "# Reproduction:") {
+		t.Fatalf("gasoline reproduction script should be natural-language style, got:\n%s", script)
+	}
+	assertSnakeCaseFields(t, string(resp.Result))
+}
+
+func TestToolsGenerateReproduction_InvalidOutputFormatReturnsStructuredError(t *testing.T) {
+	t.Parallel()
+	h, _, _ := makeToolHandler(t)
+
+	resp := callGenerateRaw(h, `{"what":"reproduction","output_format":"invalid"}`)
+	result := parseToolResult(t, resp)
+	if !result.IsError {
+		t.Fatalf("reproduction with invalid output_format should error, got: %s", result.Content[0].Text)
+	}
+	if !strings.Contains(result.Content[0].Text, "invalid_param") {
+		t.Fatalf("expected invalid_param for invalid output_format, got: %s", result.Content[0].Text)
+	}
+	if !strings.Contains(result.Content[0].Text, "output_format") {
+		t.Fatalf("error should reference output_format, got: %s", result.Content[0].Text)
+	}
+	assertSnakeCaseFields(t, string(resp.Result))
+}
+
 // ============================================
 // generate(format:"test") — Response Fields
 // ============================================

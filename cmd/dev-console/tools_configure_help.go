@@ -69,7 +69,7 @@ var helpSpecs = map[string]helpToolSpec{
 		Summary:      "Generate artifacts from captured data",
 		CommonParams: []string{"save_to"},
 		Modes: []helpModeSpec{
-			{Name: "reproduction", Summary: "Generate reproduction script", Params: []string{"error_message", "last_n", "base_url", "include_screenshots", "generate_fixtures"}},
+			{Name: "reproduction", Summary: "Generate reproduction script", Params: []string{"error_message", "last_n", "base_url", "include_screenshots", "generate_fixtures", "output_format"}},
 			{Name: "test", Summary: "Generate Playwright test", Params: []string{"test_name", "last_n", "base_url", "assert_network", "assert_no_errors"}},
 			{Name: "sarif", Summary: "Export SARIF report", Params: []string{"scope", "include_passes", "save_to"}},
 			{Name: "csp", Summary: "Generate CSP policy", Params: []string{"mode", "include_report_uri", "exclude_origins"}},
