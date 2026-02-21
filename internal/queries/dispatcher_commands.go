@@ -27,6 +27,17 @@ func NormalizeCommandStatus(status string) string {
 	}
 }
 
+// normalizeCommandOutcome enforces lifecycle semantics for status/error payloads.
+// If an error message is present, the command is treated as "error" regardless of
+// ambiguous success-like statuses such as "", "ok", or "complete".
+func normalizeCommandOutcome(status string, err string) string {
+	normalizedStatus := NormalizeCommandStatus(status)
+	if strings.TrimSpace(err) != "" && (normalizedStatus == "complete" || normalizedStatus == "pending") {
+		return "error"
+	}
+	return normalizedStatus
+}
+
 // IsFailedCommandStatus returns true for terminal failure statuses.
 func IsFailedCommandStatus(status string) bool {
 	switch status {
@@ -48,13 +59,20 @@ func (qd *QueryDispatcher) RegisterCommand(correlationID string, queryID string,
 		return // No correlation ID = not an async command
 	}
 
+	now := time.Now()
+	expiresAt := now.Add(timeout)
+	if timeout <= 0 {
+		expiresAt = now.Add(AsyncCommandTimeout)
+	}
+
 	qd.resultsMu.Lock()
 	defer qd.resultsMu.Unlock()
 
 	qd.completedResults[correlationID] = &CommandResult{
 		CorrelationID: correlationID,
 		Status:        "pending",
-		CreatedAt:     time.Now(),
+		CreatedAt:     now,
+		ExpiresAt:     expiresAt,
 	}
 }
 
@@ -65,7 +83,7 @@ func (qd *QueryDispatcher) ApplyCommandResult(correlationID string, status strin
 		return
 	}
 
-	normalizedStatus := NormalizeCommandStatus(status)
+	normalizedStatus := normalizeCommandOutcome(status, err)
 
 	qd.resultsMu.Lock()
 	cmd, exists := qd.completedResults[correlationID]
@@ -194,18 +212,42 @@ func (qd *QueryDispatcher) GetCommandResult(correlationID string) (*CommandResul
 func (qd *QueryDispatcher) cleanExpiredCommands() {
 	qd.mu.Lock()
 	now := time.Now()
+	expiredSet := make(map[string]struct{})
 	var expiredCorrelationIDs []string
 
 	for _, pq := range qd.pendingQueries {
 		if !pq.Expires.After(now) && pq.Query.CorrelationID != "" {
-			expiredCorrelationIDs = append(expiredCorrelationIDs, pq.Query.CorrelationID)
+			if _, seen := expiredSet[pq.Query.CorrelationID]; !seen {
+				expiredSet[pq.Query.CorrelationID] = struct{}{}
+				expiredCorrelationIDs = append(expiredCorrelationIDs, pq.Query.CorrelationID)
+			}
 		}
 	}
 	qd.mu.Unlock()
 
-	// Mark expired commands
+	// Also expire any command results that were already dequeued to the extension
+	// but never received a completion callback.
+	qd.resultsMu.RLock()
+	for corrID, cmd := range qd.completedResults {
+		if cmd.Status != "pending" {
+			continue
+		}
+		expiresAt := cmd.ExpiresAt
+		if expiresAt.IsZero() {
+			expiresAt = cmd.CreatedAt.Add(AsyncCommandTimeout)
+		}
+		if !expiresAt.After(now) {
+			if _, seen := expiredSet[corrID]; !seen {
+				expiredSet[corrID] = struct{}{}
+				expiredCorrelationIDs = append(expiredCorrelationIDs, corrID)
+			}
+		}
+	}
+	qd.resultsMu.RUnlock()
+
+	// Mark expired commands (idempotent due cmd.Status != "pending" guard).
 	for _, correlationID := range expiredCorrelationIDs {
-		qd.ExpireCommand(correlationID)
+		qd.expireCommandWithReason(correlationID, "Command expired waiting for extension result")
 	}
 }
 

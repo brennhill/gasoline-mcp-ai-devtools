@@ -17,14 +17,44 @@ run_test_2_1() {
         return
     fi
 
+    # Precondition: ensure we are on a CSP-safe page where execute_js can run.
+    # Without this, a restricted tracked tab can cause false "logs missing" failures.
+    local page_before page_before_text
+    page_before=$(call_tool "observe" '{"what":"page"}')
+    page_before_text=$(extract_content_text "$page_before")
+    if ! echo "$page_before_text" | grep -qi "example.com"; then
+        interact_and_wait "navigate" '{"action":"navigate","url":"https://example.com","reason":"Core telemetry 2.1 precondition: CSP-safe page"}'
+        sleep 1
+    fi
+
     interact_and_wait "execute_js" "{\"action\":\"execute_js\",\"reason\":\"Trigger console.log\",\"script\":\"console.log('${SMOKE_MARKER}_LOG')\"}"
+    local log_exec_result
+    log_exec_result="$INTERACT_RESULT"
+    if ! echo "$log_exec_result" | grep -q '"success":true'; then
+        fail "execute_js(console.log) failed before log assertion. Result: $(truncate "$log_exec_result" 220)"
+        return
+    fi
+
     interact_and_wait "execute_js" "{\"action\":\"execute_js\",\"reason\":\"Trigger console.error\",\"script\":\"console.error('${SMOKE_MARKER}_ERROR')\"}"
+    local err_exec_result
+    err_exec_result="$INTERACT_RESULT"
+    if ! echo "$err_exec_result" | grep -q '"success":true'; then
+        fail "execute_js(console.error) failed before error assertion. Result: $(truncate "$err_exec_result" 220)"
+        return
+    fi
+
     interact_and_wait "execute_js" "{\"action\":\"execute_js\",\"reason\":\"Trigger thrown error\",\"script\":\"try { throw new Error('${SMOKE_MARKER}_THROWN') } catch(e) { console.error(e.message, e.stack) }\"}"
+    local thrown_exec_result
+    thrown_exec_result="$INTERACT_RESULT"
+    if ! echo "$thrown_exec_result" | grep -q '"success":true'; then
+        fail "execute_js(thrown error) failed before assertion. Result: $(truncate "$thrown_exec_result" 220)"
+        return
+    fi
 
     sleep 2
 
     local log_response
-    log_response=$(call_tool "observe" '{"what":"logs"}')
+    log_response=$(call_tool "observe" '{"what":"logs","scope":"all","limit":200}')
     local log_text
     log_text=$(extract_content_text "$log_response")
 
@@ -34,7 +64,7 @@ run_test_2_1() {
     fi
 
     local err_response
-    err_response=$(call_tool "observe" '{"what":"errors"}')
+    err_response=$(call_tool "observe" '{"what":"errors","scope":"all","limit":200}')
     local err_text
     err_text=$(extract_content_text "$err_response")
 

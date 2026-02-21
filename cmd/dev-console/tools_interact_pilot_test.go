@@ -31,6 +31,13 @@ func TestHandleBrowserActionNavigate_Success(t *testing.T) {
 	if pq.Type != "browser_action" {
 		t.Fatalf("pending query type = %q, want browser_action", pq.Type)
 	}
+	var params map[string]any
+	if err := json.Unmarshal(pq.Params, &params); err != nil {
+		t.Fatalf("unmarshal pending query params: %v", err)
+	}
+	if action, _ := params["action"].(string); action != "navigate" {
+		t.Fatalf("navigate action = %q, want navigate", action)
+	}
 
 	data := parseResponseJSON(t, result)
 	if status, _ := data["status"].(string); status != "queued" {

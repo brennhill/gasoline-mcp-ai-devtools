@@ -116,6 +116,13 @@ func TestHandleListInteractive_PilotEnabled(t *testing.T) {
 	if pq.Type != "dom_action" {
 		t.Fatalf("pending query type = %q, want dom_action", pq.Type)
 	}
+	var params map[string]any
+	if err := json.Unmarshal(pq.Params, &params); err != nil {
+		t.Fatalf("failed to parse pending query params: %v", err)
+	}
+	if got, _ := params["action"].(string); got != "list_interactive" {
+		t.Fatalf("pending query action = %#v, want list_interactive", params["action"])
+	}
 
 	// Verify response mentions queued
 	text := result.Content[0].Text

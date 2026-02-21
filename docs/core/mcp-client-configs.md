@@ -82,7 +82,7 @@ All clients should use the same configuration pattern for consistency:
 Update all configs to a new version:
 
 ```bash
-VERSION="0.7.5"
+VERSION="0.7.7"
 
 # Claude Desktop
 sed -i '' "s/gasoline-mcp@[0-9.]*\"/gasoline-mcp@$VERSION\"/g" \

@@ -121,10 +121,16 @@ export async function handleNavigateAction(
 
 export async function handleBrowserAction(
   tabId: number,
-  params: { action?: string; url?: string; reason?: string },
+  params: { action?: string; what?: string; url?: string; reason?: string },
   actionToast: ActionToastFn
 ): Promise<BrowserActionResult> {
-  const { action, url, reason } = params || {}
+  const { url, reason } = params || {}
+  const action =
+    typeof params?.action === 'string' && params.action.trim() !== ''
+      ? params.action
+      : typeof params?.what === 'string'
+      ? params.what
+      : undefined
 
   if (!__aiWebPilotEnabledCache) {
     return { success: false, error: 'ai_web_pilot_disabled', message: 'AI Web Pilot is not enabled' }
@@ -280,7 +286,7 @@ function enrichCSPFailure(result: BrowserActionResult): BrowserActionResult {
 export async function handleAsyncBrowserAction(
   query: PendingQuery,
   tabId: number,
-  params: { action?: string; url?: string },
+  params: { action?: string; what?: string; url?: string },
   syncClient: SyncClient,
   sendAsyncResult: SendAsyncResultFn,
   actionToast: ActionToastFn

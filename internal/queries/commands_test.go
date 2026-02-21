@@ -33,6 +33,12 @@ func TestNewQueryDispatcher_RegisterCommand(t *testing.T) {
 	if cmd.CreatedAt.IsZero() {
 		t.Error("CreatedAt should be set")
 	}
+	if cmd.ExpiresAt.IsZero() {
+		t.Error("ExpiresAt should be set")
+	}
+	if !cmd.ExpiresAt.After(cmd.CreatedAt) {
+		t.Errorf("ExpiresAt (%v) should be after CreatedAt (%v)", cmd.ExpiresAt, cmd.CreatedAt)
+	}
 }
 
 func TestNewQueryDispatcher_RegisterCommand_EmptyCorrelationID(t *testing.T) {
@@ -173,6 +179,45 @@ func TestNewQueryDispatcher_ApplyCommandResult_UnknownStatusDefaultsComplete(t *
 	}
 }
 
+func TestNewQueryDispatcher_ApplyCommandResult_ErrorFieldForcesErrorStatus(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		name   string
+		status string
+	}{
+		{name: "empty status", status: ""},
+		{name: "complete status", status: "complete"},
+		{name: "ok status", status: "ok"},
+		{name: "pending status", status: "pending"},
+	}
+
+	for _, tc := range cases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			qd := NewQueryDispatcher()
+			defer qd.Close()
+
+			corrID := "corr-error-field-" + strings.ReplaceAll(tc.name, " ", "-")
+			qd.RegisterCommand(corrID, "q-"+corrID, 30*time.Second)
+			qd.ApplyCommandResult(corrID, tc.status, json.RawMessage(`{"ok":false}`), "forced failure")
+
+			cmd, found := qd.GetCommandResult(corrID)
+			if !found {
+				t.Fatal("GetCommandResult returned false")
+			}
+			if cmd.Status != "error" {
+				t.Errorf("Status = %q, want error (status=%q, error present)", cmd.Status, tc.status)
+			}
+			if cmd.Error != "forced failure" {
+				t.Errorf("Error = %q, want forced failure", cmd.Error)
+			}
+		})
+	}
+}
+
 func TestNewQueryDispatcher_CompleteCommand_EmptyCorrelationID(t *testing.T) {
 	t.Parallel()
 
@@ -244,6 +289,37 @@ func TestNewQueryDispatcher_ExpireCommand_AlreadyCompleted(t *testing.T) {
 	}
 	if cmd.Status != "complete" {
 		t.Errorf("Status = %q, want complete (should not be overwritten to expired)", cmd.Status)
+	}
+}
+
+func TestNewQueryDispatcher_ExpireCommandResultAfterDispatchTimeout(t *testing.T) {
+	t.Parallel()
+
+	qd := NewQueryDispatcher()
+	defer qd.Close()
+
+	// Create async query with short timeout, then acknowledge delivery so it is
+	// no longer in pendingQueries (simulates extension dequeued but never replied).
+	queryID := qd.CreatePendingQueryWithTimeout(PendingQuery{
+		Type:          "browser_action",
+		CorrelationID: "corr-dispatched-timeout",
+	}, 30*time.Millisecond, "test-client")
+	if queryID == "" {
+		t.Fatal("CreatePendingQueryWithTimeout returned empty query ID")
+	}
+
+	qd.AcknowledgePendingQuery(queryID)
+	time.Sleep(50 * time.Millisecond)
+
+	cmd, found := qd.GetCommandResult("corr-dispatched-timeout")
+	if !found {
+		t.Fatal("expected expired command result to be present")
+	}
+	if cmd.Status != "expired" {
+		t.Fatalf("status = %q, want expired", cmd.Status)
+	}
+	if !strings.Contains(cmd.Error, "waiting for extension result") {
+		t.Fatalf("error = %q, want waiting-for-extension-result message", cmd.Error)
 	}
 }
 

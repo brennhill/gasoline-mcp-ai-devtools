@@ -9,6 +9,14 @@ PROJECT_ROOT="$SCRIPT_DIR/.."
 cd "$PROJECT_ROOT"
 CMD_PKG="${GASOLINE_CMD_PKG:-./cmd/dev-console}"
 CMD_DIR="${CMD_PKG#./}"
+VERSION_RAW="$(tr -d '[:space:]' < "$PROJECT_ROOT/VERSION" 2>/dev/null || true)"
+VERSION_TAG="$(echo "$VERSION_RAW" | tr -cd '0-9')"
+if [ -z "$VERSION_TAG" ]; then
+    VERSION_TAG="dev"
+fi
+VERSIONED_BIN_NAME="gasoline-mcp-$VERSION_TAG"
+VERSIONED_LOCAL_PATH="$PROJECT_ROOT/$VERSIONED_BIN_NAME"
+VERSIONED_INSTALL_PATH="/usr/local/bin/$VERSIONED_BIN_NAME"
 
 # Colors (if TTY)
 if [ -t 1 ] && [ -z "${NO_COLOR:-}" ]; then
@@ -62,11 +70,25 @@ if [ -f "./gasoline-mcp" ]; then
     ok "Removed ./gasoline-mcp"
 fi
 
+# Local versioned binary
+if [ -f "$VERSIONED_LOCAL_PATH" ]; then
+    rm -f "$VERSIONED_LOCAL_PATH"
+    ok "Removed $VERSIONED_LOCAL_PATH"
+fi
+
 # System binary
 if [ -f "/usr/local/bin/gasoline-mcp" ]; then
     rm -f "/usr/local/bin/gasoline-mcp"
     ok "Removed /usr/local/bin/gasoline-mcp"
 fi
+
+# Remove stale system versioned binaries
+for stale_bin in /usr/local/bin/gasoline-mcp-[0-9]* /usr/local/bin/gasoline-mcp-dev; do
+    if [ -e "$stale_bin" ]; then
+        rm -f "$stale_bin"
+        ok "Removed $stale_bin"
+    fi
+done
 
 # ── Step 3: Rebuild from source ──────────────────────────
 step "Building from source..."
@@ -75,6 +97,9 @@ if ! go build -o gasoline-mcp "$CMD_PKG"; then
     exit 1
 fi
 
+cp ./gasoline-mcp "$VERSIONED_LOCAL_PATH"
+ok "Created ./$VERSIONED_BIN_NAME"
+
 # Verify the binary runs
 build_version=$(./gasoline-mcp --version 2>&1 || true)
 ok "Built ./gasoline-mcp — ${build_version}"
@@ -82,8 +107,10 @@ ok "Built ./gasoline-mcp — ${build_version}"
 # ── Step 4: Install to PATH ─────────────────────────────
 if [ "$INSTALL" = "true" ]; then
     step "Installing to /usr/local/bin..."
-    cp ./gasoline-mcp /usr/local/bin/gasoline-mcp
-    ok "Installed to /usr/local/bin/gasoline-mcp"
+    cp "./$VERSIONED_BIN_NAME" "$VERSIONED_INSTALL_PATH"
+    ln -sfn "$VERSIONED_INSTALL_PATH" /usr/local/bin/gasoline-mcp
+    ok "Installed to $VERSIONED_INSTALL_PATH"
+    ok "Symlinked /usr/local/bin/gasoline-mcp -> $VERSIONED_INSTALL_PATH"
 fi
 
 # ── Step 5: Verify single binary ────────────────────────
@@ -100,6 +127,10 @@ else
     ok "Single binary: $(which gasoline-mcp 2>/dev/null || echo './gasoline-mcp')"
 fi
 
+if [ "$INSTALL" = "true" ] && command -v "$VERSIONED_BIN_NAME" >/dev/null 2>&1; then
+    ok "Versioned command: $(which "$VERSIONED_BIN_NAME")"
+fi
+
 # Source vs binary timestamp check
 src_newest=$(find "$CMD_DIR" -name '*.go' -newer ./gasoline-mcp 2>/dev/null | head -1)
 if [ -n "$src_newest" ]; then
@@ -111,3 +142,7 @@ fi
 echo ""
 echo -e "${G}Done.${X} Binary ready. Run smoke tests with:"
 echo "  ./scripts/smoke-tests/framework-smoke.sh"
+if [ "$INSTALL" = "true" ]; then
+    echo "Versioned command available: $VERSIONED_INSTALL_PATH"
+    echo "Use this in MCP config if you want explicit process names in Activity Monitor."
+fi

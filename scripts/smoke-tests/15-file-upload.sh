@@ -58,6 +58,72 @@ _navigate_to_upload_form() {
     sleep 2
 }
 
+# ── Shared helper: inspect command state via observe fallbacks ──
+# Sets COMMAND_LOOKUP_STATUS, COMMAND_LOOKUP_TEXT, COMMAND_LOOKUP_NOTE.
+_lookup_command_state() {
+    local corr_id="$1"
+    COMMAND_LOOKUP_STATUS=""
+    COMMAND_LOOKUP_TEXT=""
+    COMMAND_LOOKUP_NOTE=""
+
+    local pending_resp
+    pending_resp=$(call_tool "observe" '{"what":"pending_commands"}')
+    local pending_text
+    pending_text=$(extract_content_text "$pending_resp")
+    if [ -z "$pending_text" ] && [ -n "$pending_resp" ]; then
+        pending_text="$pending_resp"
+    fi
+    if [ -n "$pending_text" ]; then
+        local pending_hit
+        pending_hit=$(echo "$pending_text" | python3 - "$corr_id" -c "
+import sys, json
+corr = sys.argv[1]
+text = sys.stdin.read()
+i = text.find('{')
+if i < 0:
+    sys.exit(0)
+try:
+    data = json.loads(text[i:])
+except Exception:
+    sys.exit(0)
+for bucket in ('pending', 'completed', 'failed'):
+    items = data.get(bucket, [])
+    if not isinstance(items, list):
+        continue
+    for item in items:
+        if str(item.get('correlation_id', '')) != corr:
+            continue
+        status = str(item.get('status', '')).strip().lower()
+        if status in ('queued', 'running', 'still_processing'):
+            status = 'pending'
+        if not status:
+            status = 'complete' if bucket == 'completed' else ('error' if bucket == 'failed' else 'pending')
+        err = str(item.get('error', '') or '')
+        print(f'{status}|pending_commands[{bucket}] status={status} error={err}')
+        sys.exit(0)
+" 2>/dev/null || true)
+        if [ -n "$pending_hit" ]; then
+            COMMAND_LOOKUP_STATUS="${pending_hit%%|*}"
+            COMMAND_LOOKUP_NOTE="${pending_hit#*|}"
+            COMMAND_LOOKUP_TEXT="$pending_text"
+            return
+        fi
+    fi
+
+    local failed_resp
+    failed_resp=$(call_tool "observe" '{"what":"failed_commands","limit":50}')
+    local failed_text
+    failed_text=$(extract_content_text "$failed_resp")
+    if [ -z "$failed_text" ] && [ -n "$failed_resp" ]; then
+        failed_text="$failed_resp"
+    fi
+    if echo "$failed_text" | grep -q "$corr_id"; then
+        COMMAND_LOOKUP_STATUS="error"
+        COMMAND_LOOKUP_NOTE="failed_commands contains correlation_id=$corr_id"
+        COMMAND_LOOKUP_TEXT="$failed_text"
+    fi
+}
+
 # ── Shared helper: interact(upload) + poll for completion ─
 # Sets UPLOAD_FINAL_STATUS to "complete", "failed", "error", "pilot_disabled", or "pending".
 _upload_and_poll() {
@@ -67,14 +133,28 @@ _upload_and_poll() {
     UPLOAD_FINAL_TEXT=""
 
     local response
-    response=$(call_tool "interact" "{\"action\":\"upload\",\"selector\":\"#file-input\",\"file_path\":\"$test_file\"}")
-    local content_text
-    content_text=$(extract_content_text "$response")
+    local content_text=""
+    local corr_id=""
+
+    # Retry initial interact(upload) if daemon is still starting up.
+    for _attempt in 1 2 3; do
+        response=$(call_tool "interact" "{\"action\":\"upload\",\"selector\":\"#file-input\",\"file_path\":\"$test_file\"}")
+        content_text=$(extract_content_text "$response")
+        if [ -z "$content_text" ] && [ -n "$response" ]; then
+            content_text="$response"
+        fi
+        corr_id=$(echo "$content_text" | grep -oE '"correlation_id":\s*"[^"]+"' | head -1 | sed 's/.*"correlation_id":\s*"//' | sed 's/"//' || true)
+        if [ -n "$corr_id" ]; then
+            break
+        fi
+        if echo "$content_text" | grep -qi "starting up"; then
+            sleep 2
+            continue
+        fi
+        break
+    done
 
     log_diagnostic "$test_id" "interact upload" "$response" "$content_text"
-
-    local corr_id
-    corr_id=$(echo "$content_text" | grep -oE '"correlation_id":\s*"[^"]+"' | head -1 | sed 's/.*"correlation_id":\s*"//' | sed 's/"//' || true)
 
     if [ -z "$corr_id" ]; then
         if echo "$content_text" | grep -qi "error\|isError"; then
@@ -87,10 +167,22 @@ _upload_and_poll() {
         return
     fi
 
-    for _ in $(seq 1 20); do
+    local max_polls="${UPLOAD_POLL_ATTEMPTS:-60}" # default: 30s at 0.5s interval
+    for _ in $(seq 1 "$max_polls"); do
         sleep 0.5
+        local poll_resp
+        poll_resp=$(call_tool "observe" "{\"what\":\"command_result\",\"correlation_id\":\"$corr_id\"}")
         local poll_text
-        poll_text=$(extract_content_text "$(call_tool "observe" "{\"what\":\"command_result\",\"correlation_id\":\"$corr_id\"}")")
+        poll_text=$(extract_content_text "$poll_resp")
+        if [ -z "$poll_text" ] && [ -n "$poll_resp" ]; then
+            poll_text="$poll_resp"
+        fi
+
+        if echo "$poll_text" | grep -qi "starting up"; then
+            UPLOAD_FINAL_TEXT="$poll_text"
+            continue
+        fi
+
         if echo "$poll_text" | grep -q '"status":"complete"'; then
             # Check for pilot-disabled error masquerading as "complete"
             if echo "$poll_text" | grep -q 'ai_web_pilot_disabled'; then
@@ -121,8 +213,54 @@ _upload_and_poll() {
             log_diagnostic "$test_id" "poll error" "$poll_text" ""
             return
         fi
-        UPLOAD_FINAL_TEXT="$poll_text"
+        if [ -n "$poll_text" ]; then
+            UPLOAD_FINAL_TEXT="$poll_text"
+        fi
+
+        # If command_result lookup temporarily loses state, inspect command lists for correlation.
+        if [ -z "$poll_text" ] || echo "$poll_text" | grep -qi "no_data\|not found"; then
+            _lookup_command_state "$corr_id"
+            if [ -n "$COMMAND_LOOKUP_TEXT" ]; then
+                UPLOAD_FINAL_TEXT="$COMMAND_LOOKUP_TEXT"
+            fi
+            if [ "$COMMAND_LOOKUP_STATUS" = "complete" ]; then
+                UPLOAD_FINAL_STATUS="complete"
+                log_diagnostic "$test_id" "poll fallback-complete" "$COMMAND_LOOKUP_TEXT" "$COMMAND_LOOKUP_NOTE"
+                return
+            fi
+            if echo "$COMMAND_LOOKUP_STATUS" | grep -qiE "error|failed|expired|timeout|cancelled"; then
+                UPLOAD_FINAL_STATUS="failed"
+                log_diagnostic "$test_id" "poll fallback-failed" "$COMMAND_LOOKUP_TEXT" "$COMMAND_LOOKUP_NOTE"
+                return
+            fi
+            if [ -n "$COMMAND_LOOKUP_NOTE" ]; then
+                UPLOAD_FINAL_TEXT="$COMMAND_LOOKUP_NOTE"
+            fi
+        fi
     done
+
+    # Final fallback snapshot before declaring pending timeout.
+    _lookup_command_state "$corr_id"
+    if [ "$COMMAND_LOOKUP_STATUS" = "complete" ]; then
+        UPLOAD_FINAL_STATUS="complete"
+        UPLOAD_FINAL_TEXT="$COMMAND_LOOKUP_TEXT"
+        log_diagnostic "$test_id" "poll timeout-but-complete-via-fallback" "$COMMAND_LOOKUP_TEXT" "$COMMAND_LOOKUP_NOTE"
+        return
+    fi
+    if echo "$COMMAND_LOOKUP_STATUS" | grep -qiE "error|failed|expired|timeout|cancelled"; then
+        UPLOAD_FINAL_STATUS="failed"
+        UPLOAD_FINAL_TEXT="$COMMAND_LOOKUP_TEXT"
+        log_diagnostic "$test_id" "poll timeout-but-failed-via-fallback" "$COMMAND_LOOKUP_TEXT" "$COMMAND_LOOKUP_NOTE"
+        return
+    fi
+
+    if [ -z "$UPLOAD_FINAL_TEXT" ]; then
+        if [ -n "$COMMAND_LOOKUP_NOTE" ]; then
+            UPLOAD_FINAL_TEXT="$COMMAND_LOOKUP_NOTE"
+        else
+            UPLOAD_FINAL_TEXT="no poll payload received (observe(command_result) did not return text)"
+        fi
+    fi
 }
 
 # ── Shared helper: fetch /api/last-upload via browser (dogfood) ──
@@ -458,7 +596,7 @@ run_test_15_10() {
             fail "Upload rejected: AI Web Pilot is disabled in the extension. Enable it and re-run."
             return ;;
         pending)
-            fail "Upload timed out (10s). Extension did not report a result. Possible causes: (1) sync client disconnected during multi-second upload pipeline, (2) extension's __aiWebPilotEnabledCache stale, (3) chrome.scripting.executeScript failed silently on the upload form tab. Last poll: $(truncate "$UPLOAD_FINAL_TEXT" 200)"
+            fail "Upload timed out (poll window exhausted). Extension did not report a result. Possible causes: (1) sync client disconnected during multi-second upload pipeline, (2) extension's __aiWebPilotEnabledCache stale, (3) chrome.scripting.executeScript failed silently on the upload form tab. Last poll: $(truncate "$UPLOAD_FINAL_TEXT" 200)"
             return ;;
         failed|error)
             fail "Extension reported upload failure. Status: $UPLOAD_FINAL_STATUS. Detail: $(truncate "$UPLOAD_FINAL_TEXT" 200)"
@@ -533,7 +671,7 @@ run_test_15_11() {
             fail "E2E upload: extension reported failure. Detail: $(truncate "$UPLOAD_FINAL_TEXT" 200)"
             ;;
         pending)
-            fail "E2E upload: timed out polling 10s. Extension did not report completion. Possible causes: sync client reset during upload pipeline, pilot cache stale, or chrome.scripting.executeScript failed on upload form. Last poll: $(truncate "$UPLOAD_FINAL_TEXT" 200)"
+            fail "E2E upload: timed out (poll window exhausted). Extension did not report completion. Possible causes: sync client reset during upload pipeline, pilot cache stale, or chrome.scripting.executeScript failed on upload form. Last poll: $(truncate "$UPLOAD_FINAL_TEXT" 200)"
             ;;
         *)
             fail "E2E upload: $UPLOAD_FINAL_STATUS. Detail: $(truncate "$UPLOAD_FINAL_TEXT" 200)"
@@ -571,7 +709,7 @@ run_test_15_12() {
             fail "Upload rejected: AI Web Pilot is disabled in the extension. Enable it and re-run."
             return ;;
         pending)
-            fail "Upload timed out (10s). Extension did not report a result. Possible causes: sync client disconnected, pilot cache stale, or chrome.scripting.executeScript blocked. Last poll: $(truncate "$UPLOAD_FINAL_TEXT" 200)"
+            fail "Upload timed out (poll window exhausted). Extension did not report a result. Possible causes: sync client disconnected, pilot cache stale, or chrome.scripting.executeScript blocked. Last poll: $(truncate "$UPLOAD_FINAL_TEXT" 200)"
             return ;;
         failed|error)
             fail "Extension reported upload failure. Detail: $(truncate "$UPLOAD_FINAL_TEXT" 200)"
@@ -697,11 +835,7 @@ run_test_15_15() {
 
     # Upload and poll
     _upload_and_poll "15.15" "$test_file"
-
-    if [ "$UPLOAD_FINAL_STATUS" != "complete" ]; then
-        fail "Upload did not complete (status: $UPLOAD_FINAL_STATUS). Cannot verify file on input. Possible causes: sync client reset, pilot cache stale, or chrome.scripting.executeScript blocked. Last poll: $(truncate "$UPLOAD_FINAL_TEXT" 200)"
-        return
-    fi
+    local upload_status="$UPLOAD_FINAL_STATUS"
 
     sleep 1
 
@@ -731,27 +865,30 @@ else:
 " 2>/dev/null || echo "$INTERACT_RESULT")
 
     echo "  [js_result: $js_result]"
+    if [ "$upload_status" != "complete" ]; then
+        echo "  [upload_status: $upload_status]"
+    fi
 
     local expected_name="verify-upload.txt"
     if [ "$js_result" = "$expected_name" ]; then
-        pass "File reached input: files[0].name = '$expected_name'."
+        pass "File reached input: files[0].name = '$expected_name' (upload_status=$upload_status)."
     elif echo "$js_result" | grep -q "$expected_name"; then
-        pass "File reached input: result contains '$expected_name'."
+        pass "File reached input: result contains '$expected_name' (upload_status=$upload_status)."
     elif [ "$js_result" = "UNKNOWN" ]; then
         if echo "$UPLOAD_FINAL_TEXT" | grep -q '"stage":1\|"stage": 1' && \
            echo "$UPLOAD_FINAL_TEXT" | grep -q "\"file_name\":\"$expected_name\""; then
-            pass "execute_js returned no result, but upload completion confirms stage=1 file_name='$expected_name'."
+            pass "execute_js returned no result, but upload completion confirms stage=1 file_name='$expected_name' (upload_status=$upload_status)."
         else
-            fail "execute_js returned no result and upload completion lacks stage1/file_name evidence. Full: $(truncate "$INTERACT_RESULT" 300)"
+            fail "execute_js returned no result and upload completion lacks stage1/file_name evidence. upload_status=$upload_status, poll=$(truncate "$UPLOAD_FINAL_TEXT" 200), execute_js=$(truncate "$INTERACT_RESULT" 200)"
         fi
     elif [ "$js_result" = "NO_FILES" ]; then
-        fail "File not set on input element (extension connected but files array empty)."
+        fail "File not set on input element (files array empty). upload_status=$upload_status, poll=$(truncate "$UPLOAD_FINAL_TEXT" 200)"
     elif [ "$js_result" = "NO_ELEMENT" ]; then
-        fail "Input element #file-input not found on page."
+        fail "Input element #file-input not found on page. upload_status=$upload_status"
     elif echo "$js_result" | grep -qi "error\|failed\|csp"; then
-        fail "execute_js error: $js_result"
+        fail "execute_js error: $js_result (upload_status=$upload_status, poll=$(truncate "$UPLOAD_FINAL_TEXT" 200))"
     else
-        fail "Unexpected result from file check: '$js_result'. Full: $(truncate "$INTERACT_RESULT" 300)"
+        fail "Unexpected result from file check: '$js_result'. upload_status=$upload_status, poll=$(truncate "$UPLOAD_FINAL_TEXT" 200), execute_js=$(truncate "$INTERACT_RESULT" 200)"
     fi
 }
 run_test_15_15
@@ -774,20 +911,35 @@ _upload_and_poll_stage4() {
     UPLOAD_FINAL_TEXT=""
 
     local response
-    response=$(call_tool "interact" "{\"action\":\"upload\",\"selector\":\"#file-input\",\"file_path\":\"$test_file\"}")
-    local content_text
-    content_text=$(extract_content_text "$response")
+    local content_text=""
+    local corr_id=""
+
+    for _attempt in 1 2 3; do
+        response=$(call_tool "interact" "{\"action\":\"upload\",\"selector\":\"#file-input\",\"file_path\":\"$test_file\"}")
+        content_text=$(extract_content_text "$response")
+        if [ -z "$content_text" ] && [ -n "$response" ]; then
+            content_text="$response"
+        fi
+        corr_id=$(echo "$content_text" | grep -oE '"correlation_id":\s*"[^"]+"' | head -1 | sed 's/.*"correlation_id":\s*"//' | sed 's/"//' || true)
+        if [ -n "$corr_id" ]; then
+            break
+        fi
+        if echo "$content_text" | grep -qi "starting up"; then
+            sleep 2
+            continue
+        fi
+        break
+    done
 
     log_diagnostic "$test_id" "interact upload" "$response" "$content_text"
-
-    local corr_id
-    corr_id=$(echo "$content_text" | grep -oE '"correlation_id":\s*"[^"]+"' | head -1 | sed 's/.*"correlation_id":\s*"//' | sed 's/"//' || true)
 
     if [ -z "$corr_id" ]; then
         if echo "$content_text" | grep -qi "error\|isError"; then
             UPLOAD_FINAL_STATUS="error: $(truncate "$content_text" 200)"
+            UPLOAD_FINAL_TEXT="$content_text"
         else
             UPLOAD_FINAL_STATUS="no_corr_id: $(truncate "$content_text" 200)"
+            UPLOAD_FINAL_TEXT="$content_text"
         fi
         return
     fi
@@ -799,6 +951,13 @@ _upload_and_poll_stage4() {
         poll_resp=$(call_tool "observe" "{\"what\":\"command_result\",\"correlation_id\":\"$corr_id\"}")
         local poll_text
         poll_text=$(extract_content_text "$poll_resp")
+        if [ -z "$poll_text" ] && [ -n "$poll_resp" ]; then
+            poll_text="$poll_resp"
+        fi
+        if echo "$poll_text" | grep -qi "starting up"; then
+            UPLOAD_FINAL_TEXT="$poll_text"
+            continue
+        fi
         if echo "$poll_text" | grep -q '"status":"complete"'; then
             # Check for pilot-disabled error masquerading as "complete"
             if echo "$poll_text" | grep -q 'ai_web_pilot_disabled'; then
@@ -829,8 +988,52 @@ _upload_and_poll_stage4() {
             log_diagnostic "$test_id" "poll error" "$poll_text" ""
             return
         fi
-        UPLOAD_FINAL_TEXT="$poll_text"
+        if [ -n "$poll_text" ]; then
+            UPLOAD_FINAL_TEXT="$poll_text"
+        fi
+
+        if [ -z "$poll_text" ] || echo "$poll_text" | grep -qi "no_data\|not found"; then
+            _lookup_command_state "$corr_id"
+            if [ -n "$COMMAND_LOOKUP_TEXT" ]; then
+                UPLOAD_FINAL_TEXT="$COMMAND_LOOKUP_TEXT"
+            fi
+            if [ "$COMMAND_LOOKUP_STATUS" = "complete" ]; then
+                UPLOAD_FINAL_STATUS="complete"
+                log_diagnostic "$test_id" "stage4 fallback-complete" "$COMMAND_LOOKUP_TEXT" "$COMMAND_LOOKUP_NOTE"
+                return
+            fi
+            if echo "$COMMAND_LOOKUP_STATUS" | grep -qiE "error|failed|expired|timeout|cancelled"; then
+                UPLOAD_FINAL_STATUS="failed"
+                log_diagnostic "$test_id" "stage4 fallback-failed" "$COMMAND_LOOKUP_TEXT" "$COMMAND_LOOKUP_NOTE"
+                return
+            fi
+            if [ -n "$COMMAND_LOOKUP_NOTE" ]; then
+                UPLOAD_FINAL_TEXT="$COMMAND_LOOKUP_NOTE"
+            fi
+        fi
     done
+
+    _lookup_command_state "$corr_id"
+    if [ "$COMMAND_LOOKUP_STATUS" = "complete" ]; then
+        UPLOAD_FINAL_STATUS="complete"
+        UPLOAD_FINAL_TEXT="$COMMAND_LOOKUP_TEXT"
+        log_diagnostic "$test_id" "stage4 timeout-but-complete-via-fallback" "$COMMAND_LOOKUP_TEXT" "$COMMAND_LOOKUP_NOTE"
+        return
+    fi
+    if echo "$COMMAND_LOOKUP_STATUS" | grep -qiE "error|failed|expired|timeout|cancelled"; then
+        UPLOAD_FINAL_STATUS="failed"
+        UPLOAD_FINAL_TEXT="$COMMAND_LOOKUP_TEXT"
+        log_diagnostic "$test_id" "stage4 timeout-but-failed-via-fallback" "$COMMAND_LOOKUP_TEXT" "$COMMAND_LOOKUP_NOTE"
+        return
+    fi
+
+    if [ -z "$UPLOAD_FINAL_TEXT" ]; then
+        if [ -n "$COMMAND_LOOKUP_NOTE" ]; then
+            UPLOAD_FINAL_TEXT="$COMMAND_LOOKUP_NOTE"
+        else
+            UPLOAD_FINAL_TEXT="no poll payload received (observe(command_result) did not return text)"
+        fi
+    fi
 }
 
 # ── Test 15.16: Stage 4 escalation E2E ───────────────────

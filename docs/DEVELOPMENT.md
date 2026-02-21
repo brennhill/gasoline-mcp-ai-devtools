@@ -112,7 +112,7 @@ Runs automatically before each push:
 ## CI Pipeline
 
 The GitHub Actions CI workflow (`.github/workflows/ci.yml`) runs on:
-- Push to `main` or `next` branches
+- Push to `main` or `UNSTABLE` branches
 - Pull requests to `main`
 - Nightly schedule (6 AM UTC)
 - Manual workflow dispatch

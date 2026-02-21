@@ -119,8 +119,10 @@ func (c *Capture) updateSyncConnectionState(req SyncRequest, clientID string, no
 		wasConnected:      c.ext.lastExtensionConnected,
 		timeSinceLastPoll: now.Sub(c.ext.lastPollAt),
 	}
-	s.isReconnect = !c.ext.lastPollAt.IsZero() && s.timeSinceLastPoll > 3*time.Second
 	s.wasDisconnected = !c.ext.lastSyncSeen.IsZero() && now.Sub(c.ext.lastSyncSeen) >= extensionDisconnectThreshold
+	// A reconnect should mean we actually crossed the disconnect threshold,
+	// not merely that polls are slower than a short interval.
+	s.isReconnect = s.wasDisconnected
 
 	c.ext.lastPollAt = now
 	c.ext.lastExtensionConnected = true
@@ -150,7 +152,13 @@ func (c *Capture) updateSyncConnectionState(req SyncRequest, clientID string, no
 func (c *Capture) processSyncCommandResults(results []SyncCommandResult, clientID string) {
 	for _, result := range results {
 		if result.ID != "" {
-			c.SetQueryResultWithClient(result.ID, result.Result, clientID)
+			if result.CorrelationID != "" {
+				// Correlated async commands carry explicit lifecycle status below.
+				// Do not force "complete" from query-id bookkeeping.
+				c.SetQueryResultWithClientNoCommandComplete(result.ID, result.Result, clientID)
+			} else {
+				c.SetQueryResultWithClient(result.ID, result.Result, clientID)
+			}
 		}
 		if result.CorrelationID != "" {
 			c.ApplyCommandResult(result.CorrelationID, result.Status, result.Result, result.Error)

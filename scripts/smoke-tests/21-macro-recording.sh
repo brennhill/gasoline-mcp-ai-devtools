@@ -125,19 +125,27 @@ run_test_21_4() {
     response=$(call_tool "configure" '{"action":"replay_sequence","name":"smoke-macro"}')
     local text
     text=$(extract_content_text "$response")
+    if [ -z "$text" ] && [ -n "$response" ]; then
+        text="$response"
+    fi
 
     # Replay should return step results
     local verdict
     verdict=$(echo "$text" | python3 -c "
 import sys, json
 try:
-    t = sys.stdin.read(); i = t.find('{'); data = json.loads(t[i:]) if i >= 0 else {}
+    t = sys.stdin.read().strip()
+    if t.startswith('{') and '\"jsonrpc\"' in t:
+        outer = json.loads(t)
+        t = (((outer.get('result') or {}).get('content') or [{}])[0].get('text') or t)
+    i = t.find('{')
+    data = json.loads(t[i:]) if i >= 0 else {}
     results = data.get('step_results', data.get('results', []))
-    total = data.get('total_steps', 0)
+    total = data.get('total_steps', data.get('steps_total', 0))
     if isinstance(results, list) and len(results) > 0:
         print(f'PASS steps_executed={len(results)} total={total}')
     else:
-        print(f'FAIL no step_results. keys={list(data.keys())[:8]}')
+        print(f'FAIL no step_results. keys={list(data.keys())[:8]} status={data.get(\"status\", \"\")}')
 except Exception as e:
     print(f'FAIL parse: {e}')
 " 2>/dev/null || echo "FAIL parse_error")

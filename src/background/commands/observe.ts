@@ -4,7 +4,7 @@
 import { debugLog } from '../index'
 import { serverUrl } from '../state'
 import { DebugCategory } from '../debug'
-import { canTakeScreenshot, recordScreenshot } from '../state-manager'
+import { recordScreenshot } from '../state-manager'
 import { registerCommand } from './registry'
 
 // =============================================================================
@@ -13,15 +13,6 @@ import { registerCommand } from './registry'
 
 registerCommand('screenshot', async (ctx) => {
   try {
-    const rateCheck = canTakeScreenshot(ctx.tabId)
-    if (!rateCheck.allowed) {
-      ctx.sendResult({
-        error: `Rate limited: ${rateCheck.reason}`,
-        ...(rateCheck.nextAllowedIn != null ? { next_allowed_in: rateCheck.nextAllowedIn } : {})
-      })
-      return
-    }
-
     const tab = await chrome.tabs.get(ctx.tabId)
     const dataUrl = await chrome.tabs.captureVisibleTab(tab.windowId, {
       format: 'jpeg',

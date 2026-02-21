@@ -268,6 +268,17 @@ func (qd *QueryDispatcher) SetQueryResult(id string, result json.RawMessage) {
 // 2. Remove from pendingQueries
 // 3. Broadcast to wake up any WaitForResult callers
 func (qd *QueryDispatcher) SetQueryResultWithClient(id string, result json.RawMessage, clientID string) {
+	qd.setQueryResultWithClient(id, result, clientID, true)
+}
+
+// SetQueryResultWithClientNoCommandComplete stores result with client isolation
+// but does NOT force a correlated command into "complete".
+// Use this when command lifecycle status is supplied separately via ApplyCommandResult.
+func (qd *QueryDispatcher) SetQueryResultWithClientNoCommandComplete(id string, result json.RawMessage, clientID string) {
+	qd.setQueryResultWithClient(id, result, clientID, false)
+}
+
+func (qd *QueryDispatcher) setQueryResultWithClient(id string, result json.RawMessage, clientID string, markComplete bool) {
 	qd.mu.Lock()
 
 	// Store result
@@ -301,7 +312,7 @@ func (qd *QueryDispatcher) SetQueryResultWithClient(id string, result json.RawMe
 	qd.queryCond.Broadcast()
 
 	// Mark command as complete if it has a correlation ID
-	if correlationID != "" {
+	if markComplete && correlationID != "" {
 		qd.CompleteCommand(correlationID, result, "")
 	}
 }

@@ -206,4 +206,25 @@ describe('pending query targeting', () => {
     assert.strictEqual(queued.result.tab_id, 222)
     assert.strictEqual(queued.result.resolved_tab_id, 99)
   })
+
+  test('browser_action accepts what alias for action', async () => {
+    const mockSyncClient = { queueCommandResult: mock.fn() }
+
+    await bgModule.handlePendingQuery(
+      {
+        id: 'q-what-alias',
+        type: 'browser_action',
+        correlation_id: 'corr-what-alias',
+        params: JSON.stringify({ what: 'back' })
+      },
+      mockSyncClient
+    )
+
+    assert.strictEqual(globalThis.chrome.tabs.goBack.mock.calls.length, 1)
+    assert.strictEqual(globalThis.chrome.tabs.goBack.mock.calls[0].arguments[0], 1)
+
+    const queued = mockSyncClient.queueCommandResult.mock.calls[0].arguments[0]
+    assert.strictEqual(queued.status, 'complete')
+    assert.strictEqual(queued.result.action, 'back')
+  })
 })

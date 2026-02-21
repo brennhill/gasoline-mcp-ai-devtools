@@ -12,7 +12,7 @@
  *
  * RATE LIMITING:
  * - Screenshot rate limit: 1 per 5 seconds per tab
- * - Screenshot session limit: 10 total per minute per tab
+ * - Screenshot session limit: 30 total per minute per tab
  * - Error group deduplication: 5-second window (identical errors grouped)
  * - Max pending requests: 1000 (circuit breaker if exceeded)
  *
@@ -47,7 +47,7 @@ import type { BufferState, MemoryPressureLevel, MemoryPressureState, ParsedSourc
 const SCREENSHOT_RATE_LIMIT_MS = 5000
 
 /** Maximum screenshots per session */
-const SCREENSHOT_MAX_PER_SESSION = 10
+const SCREENSHOT_MAX_PER_SESSION = 30
 
 /** Source map cache size limit */
 export const SOURCE_MAP_CACHE_SIZE = 50

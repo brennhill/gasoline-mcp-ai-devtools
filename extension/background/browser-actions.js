@@ -76,7 +76,12 @@ export async function handleNavigateAction(tabId, url, actionToast, reason) {
 // BROWSER ACTION DISPATCH
 // =============================================================================
 export async function handleBrowserAction(tabId, params, actionToast) {
-    const { action, url, reason } = params || {};
+    const { url, reason } = params || {};
+    const action = typeof params?.action === 'string' && params.action.trim() !== ''
+        ? params.action
+        : typeof params?.what === 'string'
+            ? params.what
+            : undefined;
     if (!__aiWebPilotEnabledCache) {
         return { success: false, error: 'ai_web_pilot_disabled', message: 'AI Web Pilot is not enabled' };
     }

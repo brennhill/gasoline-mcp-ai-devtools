@@ -146,6 +146,34 @@ describe('Restricted/CSP page handling', () => {
     assert.strictEqual(queuedResults[0].result.target_context.source, 'tracked_tab')
   })
 
+  test('browser_action what=navigate bypasses restricted-page gate to escape', async () => {
+    const trackedTab = { id: 8, url: 'chrome://extensions', status: 'complete', title: 'Extensions' }
+    tabsByID.set(8, trackedTab)
+    activeTabs = [trackedTab]
+    storageState = {
+      trackedTabId: 8,
+      trackedTabUrl: trackedTab.url,
+      trackedTabTitle: trackedTab.title
+    }
+
+    await handlePendingQuery(
+      {
+        id: 'q-nav-what',
+        type: 'browser_action',
+        correlation_id: 'corr-nav-what',
+        params: { what: 'navigate', url: 'https://example.com' }
+      },
+      makeSyncClient()
+    )
+
+    assert.strictEqual(updateCalls.length, 1, 'navigate should call tabs.update')
+    assert.strictEqual(updateCalls[0].tabId, 8)
+    assert.strictEqual(queuedResults.length, 1)
+    assert.strictEqual(queuedResults[0].status, 'complete')
+    assert.strictEqual(queuedResults[0].result.success, true)
+    assert.strictEqual(queuedResults[0].result.target_context.source, 'tracked_tab')
+  })
+
   test('non-browser actions on restricted pages return explicit CSP error', async () => {
     const trackedTab = { id: 9, url: 'chrome://extensions', status: 'complete', title: 'Extensions' }
     tabsByID.set(9, trackedTab)

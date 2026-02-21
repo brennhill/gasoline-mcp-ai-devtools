@@ -32,6 +32,10 @@ RESULTS_FILE=""
 OUTPUT_FILE=""
 START_TIME=""
 DAEMON_PID=""
+MCP_TIMEOUT_SECONDS="${MCP_TIMEOUT_SECONDS:-35}"
+MCP_MULTI_TIMEOUT_SECONDS="${MCP_MULTI_TIMEOUT_SECONDS:-40}"
+MCP_STARTUP_RETRIES="${MCP_STARTUP_RETRIES:-5}"
+MCP_STARTUP_RETRY_SLEEP_SECONDS="${MCP_STARTUP_RETRY_SLEEP_SECONDS:-2}"
 
 # ── Exit Cleanup ───────────────────────────────────────────
 # Always run daemon cleanup on script exit so failed/interrupted tests do not
@@ -153,29 +157,44 @@ skip() {
 send_mcp() {
     local request="$1"
     local prefix="${2:-mcp}"
-    local max_retries=2
+    local max_retries="$MCP_STARTUP_RETRIES"
 
     for attempt in $(seq 0 "$max_retries"); do
         local stdout_file="$TEMP_DIR/${prefix}_${MCP_ID}_stdout.txt"
         local stderr_file="$TEMP_DIR/${prefix}_${MCP_ID}_stderr.txt"
+        local stderr_text=""
 
         # Use || true to prevent set -eo pipefail from killing the script on timeout (exit 124)
-        echo "$request" | "$TIMEOUT_CMD" 8 "$WRAPPER" --port "$PORT" > "$stdout_file" 2>"$stderr_file" || true
+        echo "$request" | "$TIMEOUT_CMD" "$MCP_TIMEOUT_SECONDS" "$WRAPPER" --port "$PORT" > "$stdout_file" 2>"$stderr_file" || true
         # shellcheck disable=SC2034 # LAST_EXIT_CODE used by sourcing scripts
         LAST_EXIT_CODE="${PIPESTATUS[1]:-$?}"
 
         # Get last non-empty line (the JSON-RPC response)
         LAST_RESPONSE="$(grep -v '^$' "$stdout_file" 2>/dev/null | tail -1 || true)"
+        stderr_text="$(cat "$stderr_file" 2>/dev/null || true)"
         # shellcheck disable=SC2034 # LAST_STDOUT_FILE used by sourcing scripts
         LAST_STDOUT_FILE="$stdout_file"
         # shellcheck disable=SC2034 # LAST_STDERR_FILE used by sourcing scripts
         LAST_STDERR_FILE="$stderr_file"
 
         # Retry on "starting up" — daemon needs more time to initialize
-        if echo "$LAST_RESPONSE" | grep -q "starting up" 2>/dev/null && [ "$attempt" -lt "$max_retries" ]; then
-            echo "  [retry] Daemon starting up, waiting 2s... (attempt $((attempt + 1))/$max_retries)" >&2
-            sleep 2
+        if { echo "$LAST_RESPONSE" | grep -q "starting up" 2>/dev/null || echo "$stderr_text" | grep -qi "starting up" 2>/dev/null; } && [ "$attempt" -lt "$max_retries" ]; then
+            echo "  [retry] Daemon starting up, waiting ${MCP_STARTUP_RETRY_SLEEP_SECONDS}s... (attempt $((attempt + 1))/$max_retries)" >&2
+            sleep "$MCP_STARTUP_RETRY_SLEEP_SECONDS"
             continue
+        fi
+
+        # Never allow a silent empty response: synthesize a structured transport error.
+        if [ -z "$LAST_RESPONSE" ]; then
+            local stderr_tail
+            local reason
+            stderr_tail="$(tail -n 5 "$stderr_file" 2>/dev/null | tr '\n' ' ' | sed 's/"/\\"/g' | sed 's/[[:space:]]\+/ /g')"
+            if [ "$LAST_EXIT_CODE" = "124" ]; then
+                reason="timeout after ${MCP_TIMEOUT_SECONDS}s waiting for wrapper response"
+            else
+                reason="wrapper returned no stdout payload"
+            fi
+            LAST_RESPONSE="{\"jsonrpc\":\"2.0\",\"id\":${MCP_ID},\"result\":{\"content\":[{\"type\":\"text\",\"text\":\"Error: transport_no_response — ${reason}. exit_code=${LAST_EXIT_CODE}. stderr=${stderr_tail}\"}],\"isError\":true}}"
         fi
         break
     done
@@ -191,7 +210,7 @@ send_mcp_multi() {
     local stdout_file="$TEMP_DIR/${prefix}_${MCP_ID}_stdout.txt"
     local stderr_file="$TEMP_DIR/${prefix}_${MCP_ID}_stderr.txt"
 
-    echo "$requests" | "$TIMEOUT_CMD" 12 "$WRAPPER" --port "$PORT" > "$stdout_file" 2>"$stderr_file" || true
+    echo "$requests" | "$TIMEOUT_CMD" "$MCP_MULTI_TIMEOUT_SECONDS" "$WRAPPER" --port "$PORT" > "$stdout_file" 2>"$stderr_file" || true
     # shellcheck disable=SC2034 # LAST_EXIT_CODE used by sourcing scripts
     LAST_EXIT_CODE="${PIPESTATUS[1]:-$?}"
     # shellcheck disable=SC2034 # LAST_STDOUT_FILE used by sourcing scripts

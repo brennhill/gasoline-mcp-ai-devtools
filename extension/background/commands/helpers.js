@@ -130,7 +130,11 @@ export function requiresTargetTab(queryType) {
 export function isBrowserEscapeAction(queryType, paramsObj) {
     if (queryType !== 'browser_action')
         return false;
-    const action = typeof paramsObj.action === 'string' ? paramsObj.action : '';
+    const action = typeof paramsObj.action === 'string'
+        ? paramsObj.action
+        : typeof paramsObj.what === 'string'
+            ? paramsObj.what
+            : '';
     return action === 'navigate' || action === 'refresh' || action === 'back' || action === 'forward' || action === 'new_tab';
 }
 async function getTabWithRetry(tabId, retry = false) {

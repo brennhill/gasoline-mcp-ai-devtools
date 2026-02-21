@@ -16,18 +16,25 @@ run_test_25_1() {
         return
     fi
 
-    interact_and_wait "navigate" '{"action":"navigate","url":"https://example.com","reason":"Smoke test enrichment"}'
-    local result="$INTERACT_RESULT"
+    local result=""
+    local verdict=""
+    local attempt
+    local final_attempt=1
 
-    if [ -z "$result" ]; then
-        fail "No result from navigate."
-        return
-    fi
+    for attempt in 1 2; do
+        interact_and_wait "navigate" '{"action":"navigate","url":"https://example.com","reason":"Smoke test enrichment"}'
+        result="$INTERACT_RESULT"
 
-    log_diagnostic "25.1" "navigate-enrichment" "$result"
+        if [ -z "$result" ]; then
+            if [ "$attempt" -eq 1 ]; then
+                sleep 1
+                continue
+            fi
+            fail "No result from navigate."
+            return
+        fi
 
-    local verdict
-    verdict=$(echo "$result" | python3 -c "
+        verdict=$(echo "$result" | python3 -c "
 import sys, json
 try:
     t = sys.stdin.read()
@@ -48,8 +55,24 @@ except Exception as e:
     print(f'FAIL parse: {e}')
 " 2>/dev/null || echo "FAIL parse_error")
 
+        if echo "$verdict" | grep -q "^PASS"; then
+            final_attempt="$attempt"
+            break
+        fi
+
+        # Retry once when navigate appears transiently stuck/pending.
+        if [ "$attempt" -eq 1 ] && echo "$result" | grep -qi "pending\|timeout\|expired\|transport_no_response\|still_processing"; then
+            sleep 1
+            continue
+        fi
+        final_attempt="$attempt"
+        break
+    done
+
+    log_diagnostic "25.1" "navigate-enrichment" "$result"
+
     if echo "$verdict" | grep -q "^PASS"; then
-        pass "Navigate result enriched. $verdict"
+        pass "Navigate result enriched (attempt $final_attempt). $verdict"
     else
         fail "Navigate missing enrichment fields. $verdict. Content: $(truncate "$result" 300)"
     fi

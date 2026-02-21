@@ -90,14 +90,20 @@ func (c *Capture) HandleQueryResult(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Handle query_id for synchronous query results
+	if body.ID != "" {
+		if body.CorrelationID != "" {
+			// Correlated async commands carry explicit lifecycle status below.
+			// Do not force "complete" from query-id bookkeeping.
+			c.SetQueryResultWithClientNoCommandComplete(body.ID, body.Result, body.ClientID)
+		} else {
+			c.SetQueryResultWithClient(body.ID, body.Result, body.ClientID)
+		}
+	}
+
 	// Handle correlation_id for async commands (execute_js, browser actions)
 	if body.CorrelationID != "" {
 		c.ApplyCommandResult(body.CorrelationID, body.Status, body.Result, body.Error)
-	}
-
-	// Handle query_id for synchronous query results
-	if body.ID != "" {
-		c.SetQueryResultWithClient(body.ID, body.Result, body.ClientID)
 	}
 
 	w.Header().Set("Content-Type", "application/json")

@@ -172,7 +172,7 @@ go test -v ./internal/capture -run TestAsyncQueueIntegration
 - Warns if critical files modified
 - **Blocks PR merge** if validation fails
 
-**When it runs**: Every PR/push to main/next/develop
+**When it runs**: Every PR/push to main/UNSTABLE/develop
 
 **Can be bypassed**: No (required status check)
 

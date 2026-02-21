@@ -76,7 +76,7 @@ We've built **defense-in-depth** protection for the async queue-and-poll archite
 ### 4. GitHub Actions (CI Enforcement) 📋
 
 **File**: `.github/workflows/architecture-validation.yml`
-**Triggers**: Every PR/push to main/next/develop
+**Triggers**: Every PR/push to main/UNSTABLE/develop
 
 **What it does**:
 - Runs validation script

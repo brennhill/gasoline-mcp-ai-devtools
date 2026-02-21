@@ -10,7 +10,7 @@ canonical: true
 
 # Release Process
 
-Gasoline MCP uses a `next` → `main` branching model with strict quality gates. Every release goes through automated and manual verification before reaching users.
+Gasoline MCP uses a `UNSTABLE` → `main` branching model with strict quality gates. Every release goes through automated and manual verification before reaching users.
 
 ## Branch Model
 
@@ -19,7 +19,7 @@ main    ─●───────────────────●──
           │                   ↑
           │             merge + tag
           ↓                   │
-next    ─●──●──●──●──●──●──●─● ──── (integration)
+UNSTABLE ─●──●──●──●──●──●──●─● ──── (integration)
              ↑  ↑        ↑
 feature/a ───●  │        │
 feature/b ──────●        │
@@ -27,12 +27,12 @@ feature/c ───────────────●
 ```
 
 - **`main`** — Published releases. What's on npm and the Chrome Web Store.
-- **`next`** — Integration branch. All features merge here first.
-- **Feature branches** — Branch from `next`, merge back to `next`.
+- **`UNSTABLE`** — Integration branch. All features merge here first.
+- **Feature branches** — Branch from `UNSTABLE`, merge back to `UNSTABLE`.
 
 ## Quality Gates
 
-Every feature must pass all gates before merging to `next`. All gates must be green before `next` merges to `main`.
+Every feature must pass all gates before merging to `UNSTABLE`. All gates must be green before `UNSTABLE` merges to `main`.
 
 ### Gate 1: Tests Pass
 
@@ -94,10 +94,10 @@ Coverage must not decrease between commits.
 
 ### Gate 7: Squash & Tag
 
-Before pushing to `next`, all feature work is squashed into a single commit:
+Before pushing to `UNSTABLE`, all feature work is squashed into a single commit:
 
 ```bash
-# Squash all commits since branching from next
+# Squash all commits since branching from UNSTABLE
 /squash
 
 # Tag for pre-UAT
@@ -190,9 +190,9 @@ go test ./cmd/dev-console -run "Test.*Audit" -v
 
 ## Release Checklist
 
-When `next` is stable and ready for release:
+When `UNSTABLE` is stable and ready for release:
 
-### 1. Final Verification on `next`
+### 1. Final Verification on `UNSTABLE`
 
 ```bash
 # Full test suite
@@ -254,7 +254,7 @@ All locations updated by bump-version:
 
 ```bash
 git checkout main
-git merge next
+git merge UNSTABLE
 ```
 
 ### 4. Tag the Release
@@ -295,12 +295,12 @@ See `docs/pypi-distribution.md` for detailed PyPI publishing instructions.
 # Upload extension/ directory via Chrome Developer Dashboard
 ```
 
-### 6. Sync `next`
+### 6. Sync `UNSTABLE`
 
 ```bash
-git checkout next
+git checkout UNSTABLE
 git merge main
-git push origin next
+git push origin UNSTABLE
 ```
 
 ### 7. Update Marketing Site
@@ -321,8 +321,8 @@ git tag v{version}
 git push origin main --follow-tags
 
 # Sync back
-git checkout next && git merge hotfix/fix-name
-git push origin next
+git checkout UNSTABLE && git merge hotfix/fix-name
+git push origin UNSTABLE
 git branch -d hotfix/fix-name
 ```
 

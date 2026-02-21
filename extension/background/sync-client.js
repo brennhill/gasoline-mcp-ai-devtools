@@ -8,6 +8,7 @@
 // CONSTANTS
 // =============================================================================
 const BASE_POLL_MS = 1000;
+const DEFAULT_COMMAND_TIMEOUT_MS = 65000;
 // =============================================================================
 // SYNC CLIENT CLASS
 // =============================================================================
@@ -125,8 +126,9 @@ export class SyncClient {
                 request.extension_logs = logs;
             }
             // Include pending command results
-            if (this.pendingResults.length > 0) {
-                request.command_results = [...this.pendingResults];
+            const resultsSentCount = this.pendingResults.length;
+            if (resultsSentCount > 0) {
+                request.command_results = this.pendingResults.slice(0, resultsSentCount);
             }
             // Include last command ack
             if (this.state.lastCommandAck) {
@@ -171,8 +173,11 @@ export class SyncClient {
             if (logs.length > 0) {
                 this.callbacks.clearExtensionLogs();
             }
-            this.pendingResults = [];
-            // Process commands — fire-and-forget so the sync loop is never blocked
+            if (resultsSentCount > 0) {
+                this.pendingResults.splice(0, resultsSentCount);
+            }
+            // Process commands sequentially so the service worker stays alive while
+            // a command is actively executing. A per-command timeout prevents deadlocks.
             if (data.commands && data.commands.length > 0) {
                 this.log('Received commands', { count: data.commands.length, ids: data.commands.map((c) => c.id) });
                 for (const command of data.commands) {
@@ -197,32 +202,12 @@ export class SyncClient {
                         }
                     }
                     this.state.lastCommandAck = command.id;
-                    this.log('Dispatching command (fire-and-forget)', {
+                    this.log('Dispatching command', {
                         id: command.id,
                         type: command.type,
                         correlation_id: command.correlation_id
                     });
-                    // Fire-and-forget: don't await — sync loop continues immediately
-                    try {
-                        this.callbacks.onCommand(command).then(() => {
-                            this.log('Command completed OK', { id: command.id });
-                        }, (err) => {
-                            this.log('Command execution FAILED', { id: command.id, error: err.message });
-                            this.queueCommandResult({
-                                id: command.id,
-                                status: 'error',
-                                error: err.message || 'Command execution failed'
-                            });
-                        });
-                    }
-                    catch (err) {
-                        this.log('Command dispatch FAILED (sync throw)', { id: command.id, error: err.message });
-                        this.queueCommandResult({
-                            id: command.id,
-                            status: 'error',
-                            error: err.message || 'Command dispatch failed'
-                        });
-                    }
+                    await this.dispatchCommand(command);
                 }
             }
             // Handle capture overrides
@@ -284,6 +269,42 @@ export class SyncClient {
         const correlationID = command.correlation_id || '';
         const type = command.type || '';
         return `${id}::${correlationID}::${type}`;
+    }
+    commandTimeoutFor(command) {
+        if (command.type === 'upload' && typeof this.callbacks.uploadCommandTimeoutMs === 'number') {
+            return Math.max(1, this.callbacks.uploadCommandTimeoutMs);
+        }
+        if (typeof this.callbacks.commandTimeoutMs === 'number') {
+            return Math.max(1, this.callbacks.commandTimeoutMs);
+        }
+        return DEFAULT_COMMAND_TIMEOUT_MS;
+    }
+    async dispatchCommand(command) {
+        const timeoutMs = this.commandTimeoutFor(command);
+        let timeoutHandle = null;
+        try {
+            await Promise.race([
+                Promise.resolve(this.callbacks.onCommand(command)),
+                new Promise((_, reject) => {
+                    timeoutHandle = setTimeout(() => reject(new Error(`Command ${command.id || '(unknown)'} (${command.type || 'unknown'}) timed out after ${timeoutMs}ms`)), timeoutMs);
+                })
+            ]);
+            this.log('Command completed OK', { id: command.id });
+        }
+        catch (err) {
+            const message = err.message || 'Command execution failed';
+            this.log('Command execution FAILED', { id: command.id, error: message });
+            this.queueCommandResult({
+                id: command.id,
+                status: 'error',
+                error: message
+            });
+        }
+        finally {
+            if (timeoutHandle) {
+                clearTimeout(timeoutHandle);
+            }
+        }
     }
 }
 // =============================================================================

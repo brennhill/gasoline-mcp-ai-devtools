@@ -145,14 +145,14 @@ describe('Screenshot Rate Limiting', () => {
     assert.strictEqual(result2.allowed, true)
   })
 
-  test('should enforce session limit of 10 screenshots per minute', () => {
+  test('should enforce session limit of 30 screenshots per minute', () => {
     const tabId = 99
-    // Record 10 screenshots with enough time between them to avoid rate limit
+    // Record 30 screenshots with enough time between them to avoid rate limit
     // We need to manipulate timestamps directly -- use recordScreenshot 10 times
     // but the rate limit check also looks at the 5-second window, so we need a workaround
     // Since recordScreenshot pushes Date.now(), and canTakeScreenshot filters by 60s window,
-    // we can just push 10 entries and check session limit
-    for (let i = 0; i < 10; i++) {
+    // we can just push 30 entries and check session limit
+    for (let i = 0; i < 30; i++) {
       recordScreenshot(tabId)
     }
 

@@ -596,6 +596,98 @@ describe('SyncClient — Command dispatch', () => {
 
     assert.strictEqual(callbacks.onCommand.mock.calls.length, 1)
   })
+
+  test('should await async command handlers before scheduling the next sync cycle', async () => {
+    let fetchCalls = 0
+    globalThis.fetch = mock.fn(() => {
+      fetchCalls++
+      if (fetchCalls === 1) {
+        return Promise.resolve({
+          ok: true,
+          json: () =>
+            Promise.resolve(
+              makeSyncResponse({
+                commands: [{ id: 'cmd-slow', type: 'browser_action', params: {} }],
+                next_poll_ms: 10
+              })
+            )
+        })
+      }
+      return Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve(makeSyncResponse({ commands: [], next_poll_ms: 10 }))
+      })
+    })
+
+    callbacks.onCommand = mock.fn(
+      () =>
+        new Promise((resolve) => {
+          setTimeout(resolve, 80)
+        })
+    )
+
+    client = new SyncClient('http://localhost:7777', 'sess-1', callbacks)
+    client.start()
+
+    await tick(40)
+    assert.strictEqual(fetchCalls, 1, 'next sync should wait for command dispatch completion')
+
+    await tick(120)
+    assert.strictEqual(callbacks.onCommand.mock.calls.length, 1)
+    assert.ok(fetchCalls >= 2, `expected at least 2 sync cycles, got ${fetchCalls}`)
+  })
+
+  test('should timeout hanging command handlers and continue syncing', async () => {
+    let fetchCalls = 0
+    globalThis.fetch = mock.fn(() => {
+      fetchCalls++
+      if (fetchCalls === 1) {
+        return Promise.resolve({
+          ok: true,
+          json: () =>
+            Promise.resolve(
+              makeSyncResponse({
+                commands: [{ id: 'cmd-hang', type: 'browser_action', params: {} }],
+                next_poll_ms: 10
+              })
+            )
+        })
+      }
+      return Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve(makeSyncResponse({ commands: [], next_poll_ms: 10 }))
+      })
+    })
+
+    callbacks.onCommand = mock.fn(async () => {
+      await new Promise(() => {})
+    })
+    callbacks.commandTimeoutMs = 50
+
+    client = new SyncClient('http://localhost:7777', 'sess-1', callbacks)
+    const queued = []
+    const originalQueue = client.queueCommandResult.bind(client)
+    client.queueCommandResult = (result) => {
+      queued.push(result)
+      originalQueue(result)
+    }
+    client.start()
+
+    for (let i = 0; i < 40 && queued.length === 0; i++) {
+      // eslint-disable-next-line no-await-in-loop
+      await tick(10)
+    }
+
+    assert.ok(queued.length > 0, 'expected a timeout error result to be queued')
+    assert.strictEqual(queued[0].id, 'cmd-hang')
+    assert.strictEqual(queued[0].status, 'error')
+    assert.ok(String(queued[0].error).includes('timed out'))
+    for (let i = 0; i < 20 && fetchCalls < 2; i++) {
+      // eslint-disable-next-line no-await-in-loop
+      await tick(10)
+    }
+    assert.ok(fetchCalls >= 2, `expected sync loop to continue after timeout, got ${fetchCalls} fetch call(s)`)
+  })
 })
 
 describe('SyncClient — Command result queuing', () => {

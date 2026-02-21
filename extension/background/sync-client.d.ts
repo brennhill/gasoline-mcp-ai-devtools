@@ -54,6 +54,8 @@ export interface SyncClientCallbacks {
     onConnectionChange: (connected: boolean) => void;
     onCaptureOverrides?: (overrides: Record<string, string>) => void;
     onVersionMismatch?: (extensionVersion: string, serverVersion: string) => void;
+    commandTimeoutMs?: number;
+    uploadCommandTimeoutMs?: number;
     getSettings: () => Promise<SyncSettings>;
     getExtensionLogs: () => SyncExtensionLog[];
     clearExtensionLogs: () => void;
@@ -94,6 +96,8 @@ export declare class SyncClient {
     private onFailure;
     private log;
     private getCommandSignature;
+    private commandTimeoutFor;
+    private dispatchCommand;
 }
 /**
  * Create a sync client instance

@@ -603,7 +603,7 @@ configure({action: "clear", buffer: "network"})
 
 ## Deployment Plan
 
-1. **Merge to `next` branch**
+1. **Merge to `UNSTABLE` branch**
 2. **Run full test suite**
 3. **Manual UAT testing**
 4. **Update documentation**

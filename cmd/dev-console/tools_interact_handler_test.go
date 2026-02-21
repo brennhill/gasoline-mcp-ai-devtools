@@ -3,6 +3,7 @@
 package main
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 )
@@ -83,6 +84,22 @@ func TestToolsInteractDispatch_ScreenshotAlias(t *testing.T) {
 		t.Fatalf("screenshot alias should route to screenshot handler (no_data expected in unit test). Got: %s", text)
 	}
 	assertSnakeCaseFields(t, string(resp.Result))
+}
+
+func TestToolsInteractDispatch_StateActionAliases(t *testing.T) {
+	t.Parallel()
+	h, _, _ := makeToolHandler(t)
+
+	for _, action := range []string{"state_save", "state_load", "state_list", "state_delete"} {
+		t.Run(action, func(t *testing.T) {
+			resp := callInteractRaw(h, fmt.Sprintf(`{"what":"%s"}`, action))
+			result := parseToolResult(t, resp)
+			text := result.Content[0].Text
+			if strings.Contains(text, "unknown_mode") {
+				t.Fatalf("%s should be recognized alias, got unknown_mode: %s", action, text)
+			}
+		})
+	}
 }
 
 func TestToolsInteractDispatch_EmptyArgs(t *testing.T) {
@@ -578,6 +595,14 @@ func TestToolsInteractDOMPrimitives_SuccessWithPilot(t *testing.T) {
 			if !strings.HasPrefix(corr, "dom_") {
 				t.Errorf("correlation_id should start with 'dom_', got: %s", corr)
 			}
+
+			pq := cap.GetLastPendingQuery()
+			if pq == nil {
+				t.Fatalf("expected pending query for %s", tc.action)
+			}
+			if !strings.Contains(string(pq.Params), `"action":"`+tc.action+`"`) {
+				t.Errorf("pending query params should include canonical action=%q, got: %s", tc.action, string(pq.Params))
+			}
 			assertSnakeCaseFields(t, string(resp.Result))
 		})
 	}
@@ -674,6 +699,14 @@ func TestToolsInteractListInteractive_ResponseFields(t *testing.T) {
 	corr, _ := data["correlation_id"].(string)
 	if !strings.HasPrefix(corr, "dom_list_") {
 		t.Errorf("correlation_id should start with 'dom_list_', got: %s", corr)
+	}
+
+	pq := cap.GetLastPendingQuery()
+	if pq == nil {
+		t.Fatal("expected pending query for list_interactive")
+	}
+	if !strings.Contains(string(pq.Params), `"action":"list_interactive"`) {
+		t.Errorf("pending query params should include canonical action=list_interactive, got: %s", string(pq.Params))
 	}
 
 	assertSnakeCaseFields(t, string(resp.Result))

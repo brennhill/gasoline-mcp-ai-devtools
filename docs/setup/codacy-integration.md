@@ -18,7 +18,7 @@ To enable Codacy scanning in CI/CD, add the following secret to your GitHub repo
    - **Value:** `lHYOvUqzdGUcjC9p7wru`
 
 Once added, the Codacy security scan will run automatically on:
-- Push to `main` and `next` branches
+- Push to `main` and `UNSTABLE` branches
 - Pull requests to `main`
 - Daily scheduled runs (6 AM UTC)
 
@@ -70,4 +70,4 @@ If scans aren't running:
 1. Verify the secret was added to GitHub Settings
 2. Check that the workflow has access to the secret
 3. Review GitHub Actions logs for errors
-4. Ensure branch is `main` or `next` (or triggering event is `workflow_dispatch`)
+4. Ensure branch is `main` or `UNSTABLE` (or triggering event is `workflow_dispatch`)

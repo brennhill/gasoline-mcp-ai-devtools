@@ -199,7 +199,12 @@ export function requiresTargetTab(queryType: string): boolean {
 
 export function isBrowserEscapeAction(queryType: string, paramsObj: QueryParamsObject): boolean {
   if (queryType !== 'browser_action') return false
-  const action = typeof paramsObj.action === 'string' ? paramsObj.action : ''
+  const action =
+    typeof paramsObj.action === 'string'
+      ? paramsObj.action
+      : typeof paramsObj.what === 'string'
+      ? paramsObj.what
+      : ''
   return action === 'navigate' || action === 'refresh' || action === 'back' || action === 'forward' || action === 'new_tab'
 }
 

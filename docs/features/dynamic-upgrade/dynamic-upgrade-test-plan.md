@@ -9,7 +9,7 @@
 ### Valid State Tests
 
 - **Test:** Daemon detects a newer binary on disk
-  - **Given:** Daemon running v0.7.5
+  - **Given:** Daemon running v0.7.7
   - **When:** Binary is replaced with v0.8.0
   - **Then:** Watcher detects file change, verifies version, sets upgrade_pending
 
@@ -36,13 +36,13 @@
 ### Edge Case Tests (Negative)
 
 - **Test:** Binary replaced with older version
-  - **Given:** Daemon running v0.7.5
+  - **Given:** Daemon running v0.7.7
   - **When:** Binary is replaced with v0.7.4
   - **Then:** No upgrade triggered
 
 - **Test:** Binary replaced with same version
-  - **Given:** Daemon running v0.7.5
-  - **When:** Binary is replaced with v0.7.5 (same content or rebuilt)
+  - **Given:** Daemon running v0.7.7
+  - **When:** Binary is replaced with v0.7.7 (same content or rebuilt)
   - **Then:** No upgrade triggered
 
 - **Test:** Binary deleted

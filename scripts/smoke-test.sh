@@ -169,9 +169,28 @@ if [ -n "$START_FROM" ]; then
     else
         echo "  Extension: NOT connected (some tests will skip)"
     fi
-    # Probe pilot by checking if interact responds without "disabled"
-    PILOT_ENABLED=true
-    echo "  Pilot: assumed enabled (from previous run)"
+
+    # Probe pilot explicitly (instead of assuming enabled from prior run).
+    PILOT_ENABLED=false
+    if [ "$EXTENSION_CONNECTED" = "true" ]; then
+        pilot_probe=$(call_tool "interact" '{"action":"execute_js","script":"1","reason":"resume-pilot-probe"}' 2>/dev/null || true)
+        pilot_text=$(extract_content_text "$pilot_probe")
+        if [ -z "$pilot_text" ] && [ -n "$pilot_probe" ]; then
+            pilot_text="$pilot_probe"
+        fi
+        if echo "$pilot_text" | grep -qi "pilot_disabled\|ai_web_pilot_disabled"; then
+            PILOT_ENABLED=false
+            echo "  Pilot: disabled"
+        elif echo "$pilot_text" | grep -qi "error\|failed\|no_data\|starting up"; then
+            PILOT_ENABLED=false
+            echo "  Pilot: unavailable (probe error)"
+        else
+            PILOT_ENABLED=true
+            echo "  Pilot: enabled"
+        fi
+    else
+        echo "  Pilot: unavailable (extension not connected)"
+    fi
     echo ""
 fi
 

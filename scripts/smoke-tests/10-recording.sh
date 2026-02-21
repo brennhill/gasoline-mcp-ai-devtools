@@ -31,6 +31,29 @@ wait_for_saved_recording() {
     return 1
 }
 
+# Best-effort preflight: ensure no stale active recording from previous tests/runs.
+preflight_stop_recording_if_needed() {
+    interact_and_wait "record_stop" '{"action":"record_stop","reason":"Preflight cleanup: ensure no active recording"}' 20
+
+    if is_interact_timeout "$INTERACT_RESULT"; then
+        return 0
+    fi
+
+    # Treat "nothing to stop" style responses as success.
+    if echo "$INTERACT_RESULT" | grep -qiE "no recording|not recording|already stopped|nothing to stop"; then
+        return 0
+    fi
+
+    # If an active recording existed, this call should succeed and clear it.
+    if echo "$INTERACT_RESULT" | grep -qiE "\"status\":\"complete\"|\"success\":true"; then
+        return 0
+    fi
+
+    # Best effort only: do not fail the test here, but emit diagnostic context.
+    echo "  [preflight] record_stop returned: $(truncate "$INTERACT_RESULT" 180)"
+    return 0
+}
+
 # ── Test 10.1: Record tab video (no audio) ───────────────
 begin_test "10.1" "[INTERACTIVE - BROWSER] Record tab video for 5 seconds (no audio)" \
     "Start recording, wait 5s, stop, verify file saved with valid metadata" \
@@ -45,6 +68,8 @@ run_test_10_1() {
     echo "  Navigating to YouTube lofi stream..."
     interact_and_wait "navigate" '{"action":"navigate","url":"https://youtu.be/n61ULEU7CO0?si=xT8FVrq5eIsJTfuI&t=646&autoplay=1","reason":"Load YouTube video for recording"}' 20
     sleep 3
+
+    preflight_stop_recording_if_needed
 
     interact_and_wait "record_start" '{"action":"record_start","name":"smoke-video-test","reason":"Record tab video"}'
 
@@ -130,6 +155,8 @@ run_test_10_2() {
     echo "  Navigating to YouTube lofi stream..."
     interact_and_wait "navigate" '{"action":"navigate","url":"https://youtu.be/n61ULEU7CO0?si=xT8FVrq5eIsJTfuI&t=646&autoplay=1","reason":"Load YouTube video with audio for recording"}' 20
     sleep 3
+
+    preflight_stop_recording_if_needed
 
     interact_and_wait "record_start" '{"action":"record_start","name":"smoke-audio-test","audio":"tab","reason":"Record tab with audio"}'
 
@@ -234,6 +261,8 @@ run_test_10_3() {
     echo "  Navigating to CSP-safe page for watermark test..."
     interact_and_wait "navigate" '{"action":"navigate","url":"https://example.com","reason":"Load CSP-safe page for watermark test"}' 20
     sleep 2
+
+    preflight_stop_recording_if_needed
 
     interact_and_wait "record_start" '{"action":"record_start","name":"smoke-watermark-test","reason":"Test watermark persistence"}'
 

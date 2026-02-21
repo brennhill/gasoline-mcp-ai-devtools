@@ -47,6 +47,67 @@ func requireSessionStore(t *testing.T, env *interactHelpersTestEnv) {
 	}
 }
 
+func TestSaveState_LegacyNameParamSupported(t *testing.T) {
+	t.Parallel()
+	env := newInteractHelpersTestEnv(t)
+	requireSessionStore(t, env)
+
+	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`), ClientID: "test-client"}
+	resp := env.handler.handlePilotManageStateSave(req, json.RawMessage(`{"name":"legacy_name_save"}`))
+	data := extractResponseData(t, resp)
+
+	if data["status"] != "saved" {
+		t.Fatalf("status = %v, want \"saved\"", data["status"])
+	}
+	if data["snapshot_name"] != "legacy_name_save" {
+		t.Fatalf("snapshot_name = %v, want \"legacy_name_save\"", data["snapshot_name"])
+	}
+}
+
+func TestLoadState_LegacyNameParamSupported(t *testing.T) {
+	t.Parallel()
+	env := newInteractHelpersTestEnv(t)
+	requireSessionStore(t, env)
+
+	stateData, _ := json.Marshal(map[string]any{"url": "https://example.com", "saved_at": time.Now().Format(time.RFC3339)})
+	if err := env.handler.sessionStoreImpl.Save(stateNamespace, "legacy_name_load", stateData); err != nil {
+		t.Fatalf("seed state: %v", err)
+	}
+
+	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`), ClientID: "test-client"}
+	resp := env.handler.handlePilotManageStateLoad(req, json.RawMessage(`{"name":"legacy_name_load"}`))
+	data := extractResponseData(t, resp)
+
+	if data["status"] != "loaded" {
+		t.Fatalf("status = %v, want \"loaded\"", data["status"])
+	}
+	if data["snapshot_name"] != "legacy_name_load" {
+		t.Fatalf("snapshot_name = %v, want \"legacy_name_load\"", data["snapshot_name"])
+	}
+}
+
+func TestDeleteState_LegacyNameParamSupported(t *testing.T) {
+	t.Parallel()
+	env := newInteractHelpersTestEnv(t)
+	requireSessionStore(t, env)
+
+	stateData, _ := json.Marshal(map[string]any{"url": "https://example.com"})
+	if err := env.handler.sessionStoreImpl.Save(stateNamespace, "legacy_name_delete", stateData); err != nil {
+		t.Fatalf("seed state: %v", err)
+	}
+
+	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`), ClientID: "test-client"}
+	resp := env.handler.handlePilotManageStateDelete(req, json.RawMessage(`{"name":"legacy_name_delete"}`))
+	data := extractResponseData(t, resp)
+
+	if data["status"] != "deleted" {
+		t.Fatalf("status = %v, want \"deleted\"", data["status"])
+	}
+	if data["snapshot_name"] != "legacy_name_delete" {
+		t.Fatalf("snapshot_name = %v, want \"legacy_name_delete\"", data["snapshot_name"])
+	}
+}
+
 // ============================================
 // captureState — explicit status per scenario
 // ============================================

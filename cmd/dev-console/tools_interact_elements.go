@@ -23,6 +23,8 @@ func (h *ToolHandler) handleListInteractive(req JSONRPCRequest, args json.RawMes
 		return resp
 	}
 
+	args = normalizeDOMActionArgs(args, "list_interactive")
+
 	correlationID := newCorrelationID("dom_list")
 
 	query := queries.PendingQuery{

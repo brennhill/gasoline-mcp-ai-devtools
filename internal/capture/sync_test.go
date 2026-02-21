@@ -7,6 +7,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/dev-console/dev-console/internal/queries"
 )
@@ -226,6 +227,58 @@ func TestHandleSync_UpdatesLastPollAt(t *testing.T) {
 	}
 }
 
+func TestUpdateSyncConnectionState_NoReconnectForShortPollGap(t *testing.T) {
+	t.Parallel()
+	cap := NewCapture()
+	defer cap.Close()
+
+	now := time.Now()
+	cap.mu.Lock()
+	cap.ext.lastPollAt = now.Add(-6 * time.Second)
+	cap.ext.lastSyncSeen = now.Add(-6 * time.Second)
+	cap.ext.lastExtensionConnected = true
+	cap.mu.Unlock()
+
+	state := cap.updateSyncConnectionState(
+		SyncRequest{ExtSessionID: "session-short-gap"},
+		"client-short-gap",
+		now,
+	)
+
+	if state.isReconnect {
+		t.Fatal("expected isReconnect=false for 6s gap (< disconnect threshold)")
+	}
+	if state.wasDisconnected {
+		t.Fatal("expected wasDisconnected=false for 6s gap (< disconnect threshold)")
+	}
+}
+
+func TestUpdateSyncConnectionState_ReconnectAfterDisconnectThreshold(t *testing.T) {
+	t.Parallel()
+	cap := NewCapture()
+	defer cap.Close()
+
+	now := time.Now()
+	cap.mu.Lock()
+	cap.ext.lastPollAt = now.Add(-12 * time.Second)
+	cap.ext.lastSyncSeen = now.Add(-12 * time.Second)
+	cap.ext.lastExtensionConnected = true
+	cap.mu.Unlock()
+
+	state := cap.updateSyncConnectionState(
+		SyncRequest{ExtSessionID: "session-long-gap"},
+		"client-long-gap",
+		now,
+	)
+
+	if !state.wasDisconnected {
+		t.Fatal("expected wasDisconnected=true after 12s gap")
+	}
+	if !state.isReconnect {
+		t.Fatal("expected isReconnect=true after disconnect threshold is crossed")
+	}
+}
+
 // ============================================
 // Adaptive Polling Interval Tests
 // ============================================
@@ -413,6 +466,183 @@ func TestHandleSync_CommandResultPropagatesErrorStatus(t *testing.T) {
 	}
 	if cmd.Error != "sync path failure" {
 		t.Errorf("command error = %q, want sync path failure", cmd.Error)
+	}
+}
+
+func TestHandleSync_CommandResultWithIDAndCorrelationPreservesErrorStatus(t *testing.T) {
+	t.Parallel()
+	cap := NewCapture()
+
+	corrID := "sync-corr-with-id-error-001"
+	queryID := cap.CreatePendingQueryWithTimeout(queries.PendingQuery{
+		Type:          "dom_action",
+		Params:        json.RawMessage(`{"action":"click","selector":"#publish"}`),
+		CorrelationID: corrID,
+	}, queries.AsyncCommandTimeout, "")
+	if queryID == "" {
+		t.Fatal("expected queryID to be created")
+	}
+
+	req := SyncRequest{
+		ExtSessionID: "test_session",
+		CommandResults: []SyncCommandResult{
+			{
+				ID:            queryID,
+				CorrelationID: corrID,
+				Status:        "error",
+				Result:        json.RawMessage(`{"success":false}`),
+				Error:         "dom_action_failed",
+			},
+		},
+	}
+	body, _ := json.Marshal(req)
+	httpReq := httptest.NewRequest("POST", "/sync", bytes.NewReader(body))
+	w := httptest.NewRecorder()
+
+	cap.HandleSync(w, httpReq)
+	if w.Code != http.StatusOK {
+		t.Fatalf("Expected status 200, got %d", w.Code)
+	}
+
+	cmd, found := cap.GetCommandResult(corrID)
+	if !found {
+		t.Fatal("expected command result to be present for correlation_id")
+	}
+	if cmd.Status != "error" {
+		t.Errorf("command status = %q, want error", cmd.Status)
+	}
+	if cmd.Error != "dom_action_failed" {
+		t.Errorf("command error = %q, want dom_action_failed", cmd.Error)
+	}
+}
+
+func TestHandleSync_CommandResultLifecycleMatrix(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		name           string
+		hasID          bool
+		hasCorrelation bool
+		status         string
+		err            string
+		expectStatus   string
+		expectError    string
+	}{
+		{
+			name:           "id+correlation explicit error",
+			hasID:          true,
+			hasCorrelation: true,
+			status:         "error",
+			err:            "hard failure",
+			expectStatus:   "error",
+			expectError:    "hard failure",
+		},
+		{
+			name:           "id+correlation complete with error coerces to error",
+			hasID:          true,
+			hasCorrelation: true,
+			status:         "complete",
+			err:            "masked failure",
+			expectStatus:   "error",
+			expectError:    "masked failure",
+		},
+		{
+			name:           "id+correlation timeout remains timeout",
+			hasID:          true,
+			hasCorrelation: true,
+			status:         "timeout",
+			err:            "timed out",
+			expectStatus:   "timeout",
+			expectError:    "timed out",
+		},
+		{
+			name:           "correlation only error",
+			hasID:          false,
+			hasCorrelation: true,
+			status:         "error",
+			err:            "corr-only failure",
+			expectStatus:   "error",
+			expectError:    "corr-only failure",
+		},
+		{
+			name:           "id only stores query result",
+			hasID:          true,
+			hasCorrelation: false,
+			status:         "complete",
+			err:            "",
+		},
+	}
+
+	for _, tc := range cases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			cap := NewCapture()
+
+			corrID := ""
+			if tc.hasCorrelation {
+				corrID = "sync-matrix-" + strings.ReplaceAll(tc.name, " ", "-")
+			}
+
+			queryID := ""
+			if tc.hasID {
+				queryID = cap.CreatePendingQueryWithTimeout(queries.PendingQuery{
+					Type:          "dom_action",
+					Params:        json.RawMessage(`{"action":"click","selector":"#publish"}`),
+					CorrelationID: corrID,
+				}, queries.AsyncCommandTimeout, "")
+				if queryID == "" {
+					t.Fatal("expected queryID to be created")
+				}
+			} else if tc.hasCorrelation {
+				cap.RegisterCommand(corrID, "q-"+corrID, queries.AsyncCommandTimeout)
+			}
+
+			result := SyncCommandResult{
+				Status: tc.status,
+				Result: json.RawMessage(`{"ok":false}`),
+				Error:  tc.err,
+			}
+			if tc.hasID {
+				result.ID = queryID
+			}
+			if tc.hasCorrelation {
+				result.CorrelationID = corrID
+			}
+
+			req := SyncRequest{
+				ExtSessionID:    "test_session",
+				CommandResults: []SyncCommandResult{result},
+			}
+			body, _ := json.Marshal(req)
+			httpReq := httptest.NewRequest("POST", "/sync", bytes.NewReader(body))
+			w := httptest.NewRecorder()
+			cap.HandleSync(w, httpReq)
+			if w.Code != http.StatusOK {
+				t.Fatalf("Expected status 200, got %d", w.Code)
+			}
+
+			if tc.hasCorrelation {
+				cmd, found := cap.GetCommandResult(corrID)
+				if !found {
+					t.Fatal("expected command result to be present for correlation_id")
+				}
+				if cmd.Status != tc.expectStatus {
+					t.Errorf("command status = %q, want %q", cmd.Status, tc.expectStatus)
+				}
+				if cmd.Error != tc.expectError {
+					t.Errorf("command error = %q, want %q", cmd.Error, tc.expectError)
+				}
+				return
+			}
+
+			if tc.hasID {
+				if _, found := cap.GetQueryResult(queryID); !found {
+					t.Fatal("expected query result to be stored for id-only command result")
+				}
+			}
+		})
 	}
 }
 

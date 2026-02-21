@@ -52,19 +52,48 @@ except Exception as e:
     print(f'    (parse: {e})')
 " 2>/dev/null || true
 
-    if ! echo "$INTERACT_RESULT" | grep -q '"perf_diff"'; then
-        fail "Refresh result missing perf_diff. This is a timing issue: the perf snapshot from the previous refresh (~2.5s after load) may not have arrived before stashPerfSnapshot() ran. The extension sends perf data 2s after window.load + 500ms batcher debounce. Result keys: $(echo "$INTERACT_RESULT" | python3 -c "import sys,json;t=sys.stdin.read();i=t.find('{');print(list(json.loads(t[i:]).keys())[:8]) if i>=0 else print('no JSON')" 2>/dev/null || echo '?'). Result: $(truncate "$INTERACT_RESULT" 300)"
-        return
-    fi
+    local validation
+    validation=$(echo "$INTERACT_RESULT" | python3 -c "
+import sys, json
+t = sys.stdin.read(); i = t.find('{')
+if i < 0:
+    print('VERDICT:NO_JSON')
+    sys.exit(0)
+try:
+    data = json.loads(t[i:])
+except Exception:
+    print('VERDICT:BAD_JSON')
+    sys.exit(0)
+if isinstance(data.get('result'), dict):
+    payload = data['result']
+else:
+    payload = data
+pd = payload.get('perf_diff')
+if not isinstance(pd, dict):
+    print('VERDICT:NO_PERF_DIFF')
+    sys.exit(0)
+metrics = pd.get('metrics')
+summary = pd.get('summary')
+if not isinstance(metrics, dict) or len(metrics) == 0:
+    print('VERDICT:NO_METRICS')
+    sys.exit(0)
+valid_metric_count = 0
+for _, v in metrics.items():
+    if isinstance(v, dict) and ('before' in v) and ('after' in v):
+        valid_metric_count += 1
+has_summary = isinstance(summary, str) and len(summary.strip()) > 0
+if valid_metric_count == 0:
+    print('VERDICT:METRICS_MALFORMED')
+elif not has_summary:
+    print('VERDICT:NO_SUMMARY')
+else:
+    print(f'VERDICT:PASS metrics={valid_metric_count} summary_len={len(summary)}')
+" 2>/dev/null || echo "VERDICT:PARSE_ERROR")
 
-    local has_metrics has_summary
-    has_metrics=$(echo "$INTERACT_RESULT" | grep -c '"metrics"' || true)
-    has_summary=$(echo "$INTERACT_RESULT" | grep -c '"summary"' || true)
-
-    if [ "$has_metrics" -gt 0 ] && [ "$has_summary" -gt 0 ]; then
-        pass "Refresh returns perf_diff with metrics and summary."
+    if echo "$validation" | grep -q "VERDICT:PASS"; then
+        pass "Refresh returns perf_diff with structured metrics + summary. $(echo "$validation" | head -1)"
     else
-        fail "perf_diff present but incomplete: metrics=$has_metrics, summary=$has_summary. Result: $(truncate "$INTERACT_RESULT" 300)"
+        fail "Refresh perf_diff validation failed. $(echo "$validation" | head -1). Result: $(truncate "$INTERACT_RESULT" 300)"
     fi
 }
 run_test_9_1
@@ -158,36 +187,57 @@ run_test_9_3() {
 import sys, json
 try:
     t = sys.stdin.read(); i = t.find('{'); data = json.loads(t[i:]) if i >= 0 else {}
-    if 'timing' in data:
-        t = data['timing']
+    payload = data.get('result', data) if isinstance(data, dict) else {}
+    if 'timing' in payload:
+        t = payload['timing']
         print(f'    timing.total_ms: {t.get(\"total_ms\", \"?\")}')
         print(f'    timing.js_blocking_ms: {t.get(\"js_blocking_ms\", \"?\")}')
         print(f'    timing.render_ms: {t.get(\"render_ms\", \"?\")}')
-    elif 'timing_ms' in data:
-        print(f'    timing_ms: {data[\"timing_ms\"]} (compact, not full breakdown)')
-    if 'dom_changes' in data:
-        dc = data['dom_changes']
+    elif 'timing_ms' in payload:
+        print(f'    timing_ms: {payload[\"timing_ms\"]} (compact, not full breakdown)')
+    if 'dom_changes' in payload:
+        dc = payload['dom_changes']
         print(f'    dom_changes.summary: {dc.get(\"summary\", \"?\")}')
         added = dc.get('added', [])
         print(f'    dom_changes.added: {len(added)} entries')
-    elif 'dom_summary' in data:
-        print(f'    dom_summary: {data[\"dom_summary\"]} (compact)')
-    if 'analysis' in data:
-        print(f'    analysis: {data[\"analysis\"][:120]}')
-    print(f'    all keys: {list(data.keys())}')
+    elif 'dom_summary' in payload:
+        print(f'    dom_summary: {payload[\"dom_summary\"]} (compact)')
+    if 'analysis' in payload:
+        print(f'    analysis: {payload[\"analysis\"][:120]}')
+    print(f'    all keys: {list(payload.keys())}')
 except Exception as e:
     print(f'    (parse: {e})')
 " 2>/dev/null || true
 
-    local has_timing_breakdown has_dom_changes has_analysis
-    has_timing_breakdown=$(echo "$INTERACT_RESULT" | grep -c '"total_ms"\|"js_blocking_ms"\|"render_ms"' || true)
-    has_dom_changes=$(echo "$INTERACT_RESULT" | grep -c '"dom_changes"' || true)
-    has_analysis=$(echo "$INTERACT_RESULT" | grep -c '"analysis"' || true)
+    local validation
+    validation=$(echo "$INTERACT_RESULT" | python3 -c "
+import sys, json
+t = sys.stdin.read(); i = t.find('{')
+if i < 0:
+    print('VERDICT:NO_JSON')
+    sys.exit(0)
+try:
+    data = json.loads(t[i:])
+except Exception:
+    print('VERDICT:BAD_JSON')
+    sys.exit(0)
+payload = data.get('result', data) if isinstance(data, dict) else {}
+timing = payload.get('timing')
+dom_changes = payload.get('dom_changes')
+analysis = payload.get('analysis')
+has_timing = isinstance(timing, dict) and all(k in timing for k in ('total_ms', 'js_blocking_ms', 'render_ms'))
+has_dom = isinstance(dom_changes, dict)
+has_analysis = isinstance(analysis, str) and len(analysis.strip()) > 0
+if has_timing and has_dom and has_analysis:
+    print('VERDICT:PASS')
+else:
+    print(f'VERDICT:FAIL timing={int(has_timing)} dom_changes={int(has_dom)} analysis={int(has_analysis)} keys={list(payload.keys())[:10]}')
+" 2>/dev/null || echo "VERDICT:PARSE_ERROR")
 
-    if [ "$has_timing_breakdown" -gt 0 ] && [ "$has_dom_changes" -gt 0 ] && [ "$has_analysis" -gt 0 ]; then
+    if echo "$validation" | grep -q "VERDICT:PASS"; then
         pass "analyze:true returns full breakdown: timing, dom_changes, and analysis."
     else
-        fail "analyze:true missing required fields: timing_breakdown=$has_timing_breakdown, dom_changes=$has_dom_changes, analysis=$has_analysis. Result: $(truncate "$INTERACT_RESULT" 300)"
+        fail "analyze:true missing required fields. $(echo "$validation" | head -1). Result: $(truncate "$INTERACT_RESULT" 300)"
     fi
 }
 run_test_9_3
@@ -266,15 +316,14 @@ run_test_9_5() {
         return
     fi
 
-    # Extra wait to ensure perf snapshot from 9.1's last refresh has arrived at the daemon.
+    # Make this test self-contained: establish its own baseline/warm cycle.
+    interact_and_wait "navigate" '{"action":"navigate","url":"https://example.com","reason":"9.5 baseline page"}' 20
+    sleep 4
+
+    interact_and_wait "refresh" '{"action":"refresh","reason":"9.5 baseline refresh"}' 20
     sleep 4
 
     interact_and_wait "refresh" '{"action":"refresh","reason":"Check LLM perf fields"}' 20
-
-    if ! echo "$INTERACT_RESULT" | grep -q '"perf_diff"'; then
-        fail "No perf_diff in refresh result. The perf snapshot from the prior refresh may not have arrived yet (extension sends 2s after load + 500ms batcher debounce). If 9.1 also failed, this is expected — perf_diff requires a cached 'before' snapshot. Result: $(truncate "$INTERACT_RESULT" 300)"
-        return
-    fi
 
     echo "  [LLM optimization fields]"
     echo "$INTERACT_RESULT" | python3 -c "
@@ -284,7 +333,8 @@ try:
     idx = text.find('{')
     if idx < 0: raise ValueError('no JSON')
     data = json.loads(text[idx:])
-    pd = data.get('perf_diff', {})
+    payload = data.get('result', data) if isinstance(data, dict) else {}
+    pd = payload.get('perf_diff', {})
     print(f'    verdict: {pd.get(\"verdict\", \"MISSING\")}')
     summary = pd.get('summary', 'MISSING')
     print(f'    summary: {summary[:120]}')
@@ -298,46 +348,53 @@ except Exception as e:
     print(f'    (parse: {e})')
 " 2>/dev/null || true
 
-    local checks_passed=0
-    local checks_total=4
+    local validation
+    validation=$(echo "$INTERACT_RESULT" | python3 -c "
+import sys, json
+t = sys.stdin.read(); i = t.find('{')
+if i < 0:
+    print('VERDICT:NO_JSON')
+    sys.exit(0)
+try:
+    data = json.loads(t[i:])
+except Exception:
+    print('VERDICT:BAD_JSON')
+    sys.exit(0)
+payload = data.get('result', data) if isinstance(data, dict) else {}
+pd = payload.get('perf_diff')
+if not isinstance(pd, dict):
+    print('VERDICT:NO_PERF_DIFF')
+    sys.exit(0)
 
-    if echo "$INTERACT_RESULT" | grep -qE '"verdict":\s*"(improved|regressed|mixed|unchanged)"'; then
-        checks_passed=$((checks_passed + 1))
-    else
-        echo "  MISSING: verdict field"
-    fi
+verdict = pd.get('verdict')
+summary = pd.get('summary', '')
+metrics = pd.get('metrics', {}) if isinstance(pd.get('metrics'), dict) else {}
 
-    if echo "$INTERACT_RESULT" | grep -q '"unit":"ms"'; then
-        checks_passed=$((checks_passed + 1))
-    else
-        echo "  MISSING: unit field (expected 'ms' on timing metrics)"
-    fi
+has_verdict = verdict in ('improved', 'regressed', 'mixed', 'unchanged')
+has_clean_summary = isinstance(summary, str) and len(summary.strip()) > 0 and ('improved -' not in summary and 'regressed +' not in summary)
+has_unit = False
+has_rating = False
 
-    if echo "$INTERACT_RESULT" | grep -qE '"rating":"(good|needs_improvement|poor)"'; then
-        checks_passed=$((checks_passed + 1))
-    else
-        echo "  MISSING: rating field (expected on LCP/FCP/TTFB/CLS)"
-    fi
+for m in metrics.values():
+    if not isinstance(m, dict):
+        continue
+    unit = m.get('unit')
+    rating = m.get('rating')
+    if unit in ('ms', 'KB', 'count'):
+        has_unit = True
+    if rating in ('good', 'needs_improvement', 'poor'):
+        has_rating = True
 
-    local summary
-    summary=$(echo "$INTERACT_RESULT" | python3 -c "
-import sys,json
-text = sys.stdin.read()
-idx = text.find('{')
-if idx >= 0:
-    data = json.loads(text[idx:])
-    print(data.get('perf_diff',{}).get('summary',''))
-" 2>/dev/null || echo "")
-    if [ -n "$summary" ] && ! echo "$summary" | grep -qE "improved -|regressed \+"; then
-        checks_passed=$((checks_passed + 1))
-    else
-        echo "  MISSING: summary has redundant sign ('improved -' or 'regressed +')"
-    fi
+if has_verdict and has_unit and has_rating and has_clean_summary:
+    print('VERDICT:PASS')
+else:
+    print(f'VERDICT:FAIL verdict={int(has_verdict)} unit={int(has_unit)} rating={int(has_rating)} clean_summary={int(has_clean_summary)} metric_keys={list(metrics.keys())[:8]}')
+" 2>/dev/null || echo "VERDICT:PARSE_ERROR")
 
-    if [ "$checks_passed" -eq "$checks_total" ]; then
-        pass "perf_diff has all LLM fields: verdict, unit, rating, clean summary ($checks_passed/$checks_total)."
+    if echo "$validation" | grep -q "VERDICT:PASS"; then
+        pass "perf_diff has LLM fields: verdict, unit, rating, clean summary."
     else
-        fail "perf_diff missing LLM fields: $checks_passed/$checks_total. Result: $(truncate "$INTERACT_RESULT" 300)"
+        fail "perf_diff LLM-field validation failed. $(echo "$validation" | head -1). Result: $(truncate "$INTERACT_RESULT" 300)"
     fi
 }
 run_test_9_5

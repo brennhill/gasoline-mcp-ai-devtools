@@ -288,7 +288,7 @@ Each of the 88 feature tech specs should now include:
 
 ## Commit Information
 
-**Branch:** next
+**Branch:** UNSTABLE
 **Type:** docs: Add comprehensive core system diagrams
 **Files Changed:** 11 new + 1 updated
 **Impact:** Documentation only, no code changes

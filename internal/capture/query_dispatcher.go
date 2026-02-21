@@ -82,6 +82,12 @@ func (c *Capture) SetQueryResultWithClient(id string, result json.RawMessage, cl
 	c.qd.SetQueryResultWithClient(id, result, clientID)
 }
 
+// SetQueryResultWithClientNoCommandComplete delegates to QueryDispatcher while
+// preserving command lifecycle status (no implicit "complete" transition).
+func (c *Capture) SetQueryResultWithClientNoCommandComplete(id string, result json.RawMessage, clientID string) {
+	c.qd.SetQueryResultWithClientNoCommandComplete(id, result, clientID)
+}
+
 // GetQueryResult delegates to QueryDispatcher.
 func (c *Capture) GetQueryResult(id string) (json.RawMessage, bool) {
 	return c.qd.GetQueryResult(id)

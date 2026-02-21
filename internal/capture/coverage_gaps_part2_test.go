@@ -10,6 +10,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/dev-console/dev-console/internal/queries"
 )
 
 // ============================================
@@ -292,6 +294,41 @@ func TestHandleQueryResult_WithCorrelationID_ErrorStatus(t *testing.T) {
 	c.RegisterCommand(corrID, "", 30*time.Second)
 
 	payload := `{"correlation_id":"` + corrID + `","status":"error","error":"boom"}`
+	rr := httptest.NewRecorder()
+	c.HandleQueryResult(rr, httptest.NewRequest(http.MethodPost, "/query-result", strings.NewReader(payload)))
+	if rr.Code != http.StatusOK {
+		t.Errorf("status = %d, want %d", rr.Code, http.StatusOK)
+	}
+
+	cmd, found := c.GetCommandResult(corrID)
+	if !found {
+		t.Fatal("expected command result to be present for correlation_id")
+	}
+	if cmd.Status != "error" {
+		t.Errorf("command status = %q, want error", cmd.Status)
+	}
+	if cmd.Error != "boom" {
+		t.Errorf("command error = %q, want boom", cmd.Error)
+	}
+}
+
+func TestHandleQueryResult_WithIDAndCorrelationID_PreservesErrorStatus(t *testing.T) {
+	t.Parallel()
+
+	c := NewCapture()
+	defer c.Close()
+
+	corrID := "test-corr-id-error-with-id-001"
+	queryID := c.CreatePendingQueryWithTimeout(queries.PendingQuery{
+		Type:          "dom_action",
+		Params:        json.RawMessage(`{"action":"click","selector":"#publish"}`),
+		CorrelationID: corrID,
+	}, 30*time.Second, "")
+	if queryID == "" {
+		t.Fatal("expected query ID from CreatePendingQueryWithTimeout")
+	}
+
+	payload := `{"id":"` + queryID + `","correlation_id":"` + corrID + `","status":"error","error":"boom","result":{"success":false}}`
 	rr := httptest.NewRecorder()
 	c.HandleQueryResult(rr, httptest.NewRequest(http.MethodPost, "/query-result", strings.NewReader(payload)))
 	if rr.Code != http.StatusOK {

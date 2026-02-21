@@ -11,7 +11,7 @@
  *
  * RATE LIMITING:
  * - Screenshot rate limit: 1 per 5 seconds per tab
- * - Screenshot session limit: 10 total per minute per tab
+ * - Screenshot session limit: 30 total per minute per tab
  * - Error group deduplication: 5-second window (identical errors grouped)
  * - Max pending requests: 1000 (circuit breaker if exceeded)
  *

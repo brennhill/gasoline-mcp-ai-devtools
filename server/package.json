@@ -1,6 +1,6 @@
 {
   "name": "gasoline-mcp",
-  "version": "0.7.5",
+  "version": "0.7.7",
   "description": "Browser observability for AI coding agents - autonomously debug and fix issues in real time. Streams console logs, network errors, and exceptions to Claude Code, Copilot, Cursor, or any MCP-compatible assistant. Enterprise ready.",
   "keywords": [
     "browser",

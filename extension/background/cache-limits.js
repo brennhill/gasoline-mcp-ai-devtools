@@ -10,7 +10,7 @@
 /** Screenshot rate limit in milliseconds */
 const SCREENSHOT_RATE_LIMIT_MS = 5000;
 /** Maximum screenshots per session */
-const SCREENSHOT_MAX_PER_SESSION = 10;
+const SCREENSHOT_MAX_PER_SESSION = 30;
 /** Source map cache size limit */
 export const SOURCE_MAP_CACHE_SIZE = 50;
 /** Memory limits */

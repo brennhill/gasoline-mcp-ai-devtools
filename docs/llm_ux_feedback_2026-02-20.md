@@ -2,7 +2,7 @@
 
 Date: 2026-02-20
 Evaluator: Codex (GPT-5)
-Version tested: Gasoline v0.7.5
+Version tested: Gasoline v0.7.7
 
 ## Summary
 

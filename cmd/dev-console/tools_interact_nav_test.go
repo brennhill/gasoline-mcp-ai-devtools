@@ -105,6 +105,16 @@ func TestHandleBrowserActionNewTab_Success(t *testing.T) {
 	if pq.Type != "browser_action" {
 		t.Fatalf("pending query type = %q, want browser_action", pq.Type)
 	}
+	var params map[string]any
+	if err := json.Unmarshal(pq.Params, &params); err != nil {
+		t.Fatalf("unmarshal params: %v", err)
+	}
+	if action, _ := params["action"].(string); action != "new_tab" {
+		t.Fatalf("params action = %q, want new_tab", action)
+	}
+	if url, _ := params["url"].(string); url != "https://example.com" {
+		t.Fatalf("params url = %q, want https://example.com", url)
+	}
 
 	text := result.Content[0].Text
 	if !strings.Contains(strings.ToLower(text), "queued") {
@@ -124,6 +134,18 @@ func TestHandleBrowserActionNewTab_NoURL(t *testing.T) {
 	}
 	if result.IsError {
 		t.Fatalf("new_tab without url should not error, got: %s", result.Content[0].Text)
+	}
+
+	pq := env.capture.GetLastPendingQuery()
+	if pq == nil {
+		t.Fatal("new_tab without url should create a pending query")
+	}
+	var params map[string]any
+	if err := json.Unmarshal(pq.Params, &params); err != nil {
+		t.Fatalf("unmarshal params: %v", err)
+	}
+	if action, _ := params["action"].(string); action != "new_tab" {
+		t.Fatalf("params action = %q, want new_tab", action)
 	}
 }
 

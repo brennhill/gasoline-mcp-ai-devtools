@@ -347,7 +347,8 @@ begin_test "7.7" "[BROWSER] Generate Subresource Integrity hashes" \
     "generate(sri) returns SRI hashes for seeded third-party JS via fetch()" \
     "Tests: SRI hash generation with verified network body capture"
 
-SRI_CDN_URL="https://cdnjs.cloudflare.com/ajax/libs/lodash.js/4.17.21/lodash.min.js"
+# Keep resource under 16KB capture limit so SRI hash can be computed from full body.
+SRI_CDN_URL="https://cdnjs.cloudflare.com/ajax/libs/dayjs/1.11.10/dayjs.min.js"
 
 run_test_7_7() {
     if [ "$EXTENSION_CONNECTED" != "true" ]; then
@@ -380,8 +381,10 @@ data = json.loads(t[i:])
 entries = data.get('entries', data.get('data', []))
 if not entries: print('NO_ENTRIES'); sys.exit()
 body = entries[0].get('response_body', '')
+truncated = bool(entries[0].get('response_truncated', False))
 if not body: print('EMPTY_BODY')
 elif body.startswith('['): print(f'PLACEHOLDER:{body[:50]}')
+elif truncated: print(f'TRUNCATED_BODY:len={len(body)}')
 else: print(f'REAL_BODY:len={len(body)}')
 " 2>/dev/null || echo "PARSE_ERROR")
                 echo "  [body check: $body_check after ${i}s]"

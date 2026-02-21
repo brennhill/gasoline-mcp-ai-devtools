@@ -3,7 +3,7 @@
   "info": {
     "title": "Gasoline MCP Server",
     "description": "Browser observability for AI agents. Streams console logs, network errors, and user actions from Chrome to Claude Code, Cursor, and Copilot via MCP protocol.",
-    "version": "0.7.5",
+    "version": "0.7.7",
     "license": {
       "name": "MIT"
     }
@@ -1317,7 +1317,7 @@
         "description": "API discovery payload returned by GET /. Provides server identity and links to key endpoints for first-time client bootstrapping.",
         "properties": {
           "name": { "type": "string", "example": "gasoline", "description": "Server identifier" },
-          "version": { "type": "string", "example": "0.7.5", "description": "Server version string" },
+          "version": { "type": "string", "example": "0.7.7", "description": "Server version string" },
           "health": { "type": "string", "example": "/health", "description": "Link to health check endpoint" },
           "logs": { "type": "string", "example": "/logs", "description": "Link to log ingestion endpoint" }
         }

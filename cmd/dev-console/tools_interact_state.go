@@ -116,13 +116,18 @@ func (h *ToolHandler) queueStateRestore(req JSONRPCRequest, formValues, scrollPo
 func (h *ToolHandler) handlePilotManageStateSave(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	var params struct {
 		SnapshotName string `json:"snapshot_name"`
+		Name         string `json:"name"` // backward-compatible alias
 	}
 	if err := json.Unmarshal(args, &params); err != nil {
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidJSON, "Invalid JSON arguments: "+err.Error(), "Fix JSON syntax and call again")}
 	}
 
-	if params.SnapshotName == "" {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrMissingParam, "Required parameter 'snapshot_name' is missing", "Add the 'snapshot_name' parameter", withParam("snapshot_name"))}
+	snapshotName := params.SnapshotName
+	if snapshotName == "" {
+		snapshotName = params.Name
+	}
+	if snapshotName == "" {
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrMissingParam, "Required parameter 'snapshot_name' is missing", "Add the 'snapshot_name' parameter (legacy alias: 'name')", withParam("snapshot_name"))}
 	}
 
 	if h.sessionStoreImpl == nil {
@@ -159,15 +164,15 @@ func (h *ToolHandler) handlePilotManageStateSave(req JSONRPCRequest, args json.R
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInternal, "Failed to serialize state: "+err.Error(), "Internal error — do not retry")}
 	}
 
-	if err := h.sessionStoreImpl.Save(stateNamespace, params.SnapshotName, data); err != nil {
+	if err := h.sessionStoreImpl.Save(stateNamespace, snapshotName, data); err != nil {
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInternal, "Failed to save state: "+err.Error(), "Internal error — check storage")}
 	}
 
-	h.recordAIAction("save_state", tabURL, map[string]any{"snapshot_name": params.SnapshotName})
+	h.recordAIAction("save_state", tabURL, map[string]any{"snapshot_name": snapshotName})
 
 	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("State saved", map[string]any{
 		"status":        "saved",
-		"snapshot_name": params.SnapshotName,
+		"snapshot_name": snapshotName,
 		"state_capture": capture.Status,
 		"state": map[string]any{
 			"url":   tabURL,
@@ -179,23 +184,28 @@ func (h *ToolHandler) handlePilotManageStateSave(req JSONRPCRequest, args json.R
 func (h *ToolHandler) handlePilotManageStateLoad(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	var params struct {
 		SnapshotName string `json:"snapshot_name"`
+		Name         string `json:"name"` // backward-compatible alias
 		IncludeURL   bool   `json:"include_url,omitempty"`
 	}
 	if err := json.Unmarshal(args, &params); err != nil {
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidJSON, "Invalid JSON arguments: "+err.Error(), "Fix JSON syntax and call again")}
 	}
 
-	if params.SnapshotName == "" {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrMissingParam, "Required parameter 'snapshot_name' is missing", "Add the 'snapshot_name' parameter", withParam("snapshot_name"))}
+	snapshotName := params.SnapshotName
+	if snapshotName == "" {
+		snapshotName = params.Name
+	}
+	if snapshotName == "" {
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrMissingParam, "Required parameter 'snapshot_name' is missing", "Add the 'snapshot_name' parameter (legacy alias: 'name')", withParam("snapshot_name"))}
 	}
 
 	if h.sessionStoreImpl == nil {
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrNotInitialized, "Session store not initialized", "Internal error — do not retry")}
 	}
 
-	data, err := h.sessionStoreImpl.Load(stateNamespace, params.SnapshotName)
+	data, err := h.sessionStoreImpl.Load(stateNamespace, snapshotName)
 	if err != nil {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrNoData, "State not found: "+params.SnapshotName, "Use interact with action='list_states' to see available snapshots", h.diagnosticHint())}
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrNoData, "State not found: "+snapshotName, "Use interact with action='list_states' to see available snapshots", h.diagnosticHint())}
 	}
 
 	var stateData map[string]any
@@ -209,7 +219,7 @@ func (h *ToolHandler) handlePilotManageStateLoad(req JSONRPCRequest, args json.R
 
 	responseData := map[string]any{
 		"status":        "loaded",
-		"snapshot_name": params.SnapshotName,
+		"snapshot_name": snapshotName,
 		"state":         stateData,
 	}
 
@@ -233,7 +243,7 @@ func (h *ToolHandler) handlePilotManageStateLoad(req JSONRPCRequest, args json.R
 		responseData["restore_correlation_id"] = restoreCorrelationID
 	}
 
-	h.recordAIAction("load_state", "", map[string]any{"snapshot_name": params.SnapshotName})
+	h.recordAIAction("load_state", "", map[string]any{"snapshot_name": snapshotName})
 
 	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("State loaded", responseData)}
 }
@@ -301,27 +311,32 @@ func (h *ToolHandler) buildStateEntry(key string) map[string]any {
 func (h *ToolHandler) handlePilotManageStateDelete(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	var params struct {
 		SnapshotName string `json:"snapshot_name"`
+		Name         string `json:"name"` // backward-compatible alias
 	}
 	if err := json.Unmarshal(args, &params); err != nil {
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidJSON, "Invalid JSON arguments: "+err.Error(), "Fix JSON syntax and call again")}
 	}
 
-	if params.SnapshotName == "" {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrMissingParam, "Required parameter 'snapshot_name' is missing", "Add the 'snapshot_name' parameter", withParam("snapshot_name"))}
+	snapshotName := params.SnapshotName
+	if snapshotName == "" {
+		snapshotName = params.Name
+	}
+	if snapshotName == "" {
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrMissingParam, "Required parameter 'snapshot_name' is missing", "Add the 'snapshot_name' parameter (legacy alias: 'name')", withParam("snapshot_name"))}
 	}
 
 	if h.sessionStoreImpl == nil {
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrNotInitialized, "Session store not initialized", "Internal error — do not retry")}
 	}
 
-	if err := h.sessionStoreImpl.Delete(stateNamespace, params.SnapshotName); err != nil {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrNoData, "State not found: "+params.SnapshotName, "Use interact with action='list_states' to see available snapshots", h.diagnosticHint())}
+	if err := h.sessionStoreImpl.Delete(stateNamespace, snapshotName); err != nil {
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrNoData, "State not found: "+snapshotName, "Use interact with action='list_states' to see available snapshots", h.diagnosticHint())}
 	}
 
-	h.recordAIAction("delete_state", "", map[string]any{"snapshot_name": params.SnapshotName})
+	h.recordAIAction("delete_state", "", map[string]any{"snapshot_name": snapshotName})
 
 	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("State deleted", map[string]any{
 		"status":        "deleted",
-		"snapshot_name": params.SnapshotName,
+		"snapshot_name": snapshotName,
 	})}
 }

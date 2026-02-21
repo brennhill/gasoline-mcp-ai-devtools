@@ -44,6 +44,7 @@ type CommandResult struct {
 	Error         string          `json:"error,omitempty"`
 	CompletedAt   time.Time       `json:"completed_at,omitempty"`
 	CreatedAt     time.Time       `json:"created_at"`
+	ExpiresAt     time.Time       `json:"expires_at,omitempty"` // hard deadline to avoid stuck-pending commands
 }
 
 // ElapsedMs returns milliseconds from creation to completion (or now if still pending).

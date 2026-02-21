@@ -17,7 +17,7 @@ last_reviewed: 2026-02-16
 
 On 2026-02-02, we experienced a critical production incident where the async queue-and-poll implementation was **deleted** during Phase 4b refactoring (commit 12c6a02). This caused:
 
-- **100% failure rate** on the "next" branch
+- **100% failure rate** on the "UNSTABLE" branch
 - All `interact()` commands timing out
 - No mechanism for AI to control the browser
 - Complete loss of correlation ID tracking

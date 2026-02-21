@@ -362,8 +362,8 @@ describe('canTakeScreenshot', () => {
   test('should enforce session limit', () => {
     const tabId = 1001
 
-    // Record 10 screenshots (max per session)
-    for (let i = 0; i < 10; i++) {
+    // Record 30 screenshots (max per session)
+    for (let i = 0; i < 30; i++) {
       recordScreenshot(tabId)
     }
 
