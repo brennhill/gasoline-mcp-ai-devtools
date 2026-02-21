@@ -62,6 +62,41 @@ func TestToolsConfigureExamples_Alias(t *testing.T) {
 	}
 }
 
+func TestToolsConfigureExamples_DiffersFromTutorialWithTaskWorkflows(t *testing.T) {
+	t.Parallel()
+	env := newConfigureTestEnv(t)
+
+	tutorialResult, ok := env.callConfigure(t, `{"what":"tutorial"}`)
+	if !ok {
+		t.Fatal("tutorial should return result")
+	}
+	if tutorialResult.IsError {
+		t.Fatalf("tutorial should not error, got: %s", tutorialResult.Content[0].Text)
+	}
+	tutorialData := parseResponseJSON(t, tutorialResult)
+
+	examplesResult, ok := env.callConfigure(t, `{"what":"examples"}`)
+	if !ok {
+		t.Fatal("examples should return result")
+	}
+	if examplesResult.IsError {
+		t.Fatalf("examples should not error, got: %s", examplesResult.Content[0].Text)
+	}
+	examplesData := parseResponseJSON(t, examplesResult)
+
+	if examplesData["message"] == tutorialData["message"] {
+		t.Fatal("examples message should be task-oriented and differ from tutorial")
+	}
+
+	if _, hasWorkflows := tutorialData["workflows"]; hasWorkflows {
+		t.Fatal("tutorial should not include task workflows")
+	}
+	workflows, ok := examplesData["workflows"].([]any)
+	if !ok || len(workflows) == 0 {
+		t.Fatalf("examples should include non-empty task workflows, got: %#v", examplesData["workflows"])
+	}
+}
+
 func TestToolsConfigureTutorial_ContextAware_PilotDisabled(t *testing.T) {
 	t.Parallel()
 	env := newConfigureTestEnv(t)
