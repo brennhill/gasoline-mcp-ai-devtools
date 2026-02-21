@@ -169,6 +169,10 @@ func TestDOMPrimitive_AllActions_PilotDisabled(t *testing.T) {
 		{"scroll_to", `{"what":"scroll_to","selector":"#section"}`},
 		{"wait_for", `{"what":"wait_for","selector":"#loading"}`},
 		{"key_press", `{"what":"key_press","selector":"#input","text":"Enter"}`},
+		{"open_composer", `{"what":"open_composer"}`},
+		{"submit_active_composer", `{"what":"submit_active_composer"}`},
+		{"confirm_top_dialog", `{"what":"confirm_top_dialog"}`},
+		{"dismiss_top_overlay", `{"what":"dismiss_top_overlay"}`},
 		{"list_interactive", `{"what":"list_interactive"}`},
 	}
 
@@ -226,6 +230,33 @@ func TestDOMPrimitive_ListInteractive_NoSelectorNeeded(t *testing.T) {
 		if strings.Contains(text, "selector") {
 			t.Errorf("list_interactive should NOT require selector\nGot: %s", result.Content[0].Text)
 		}
+	}
+}
+
+func TestDOMPrimitive_IntentActions_NoSelectorNeeded(t *testing.T) {
+	env := newInteractTestEnv(t)
+
+	actions := []string{
+		"open_composer",
+		"submit_active_composer",
+		"confirm_top_dialog",
+		"dismiss_top_overlay",
+	}
+
+	for _, action := range actions {
+		t.Run(action, func(t *testing.T) {
+			result, ok := env.callInteract(t, `{"what":"`+action+`"}`)
+			if !ok {
+				t.Fatalf("%s should return result", action)
+			}
+
+			if len(result.Content) > 0 {
+				text := strings.ToLower(result.Content[0].Text)
+				if strings.Contains(text, "selector") {
+					t.Errorf("%s should NOT require selector\nGot: %s", action, result.Content[0].Text)
+				}
+			}
+		})
 	}
 }
 
@@ -317,6 +348,10 @@ func TestDOMPrimitive_AllActions_NoPanic(t *testing.T) {
 		{"scroll_to", `{"what":"scroll_to","selector":"#section"}`},
 		{"wait_for", `{"what":"wait_for","selector":"#loading"}`},
 		{"key_press", `{"what":"key_press","selector":"#input","text":"Enter"}`},
+		{"open_composer", `{"what":"open_composer"}`},
+		{"submit_active_composer", `{"what":"submit_active_composer"}`},
+		{"confirm_top_dialog", `{"what":"confirm_top_dialog"}`},
+		{"dismiss_top_overlay", `{"what":"dismiss_top_overlay"}`},
 		{"list_interactive", `{"what":"list_interactive"}`},
 	}
 

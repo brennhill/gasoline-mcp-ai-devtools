@@ -963,3 +963,352 @@ describe('element handles', () => {
     assert.strictEqual(result.error, 'element_id_scope_mismatch')
   })
 })
+
+describe('intent-level composer and dialog primitives', () => {
+  beforeEach(() => {
+    perfNowValue = 0
+    globalThis.MutationObserver = MockMutationObserver
+    globalThis.requestAnimationFrame = (cb) => cb()
+    globalThis.getComputedStyle = (el) => ({
+      visibility: 'visible',
+      display: 'block',
+      position: (el && el.style && el.style.position) || '',
+      zIndex: (el && el.style && el.style.zIndex) || '0'
+    })
+  })
+
+  test('open_composer selects and clicks the best composer trigger', async () => {
+    let startPostClicks = 0
+    let otherClicks = 0
+
+    const startPost = new MockHTMLElement('BUTTON', { textContent: 'Start a post' })
+    Object.setPrototypeOf(startPost, MockHTMLElement.prototype)
+    startPost.getBoundingClientRect = () => ({ width: 180, height: 40 })
+    startPost.getRootNode = () => globalThis.document
+    startPost.getAttribute = () => null
+    startPost.click = () => {
+      startPostClicks++
+    }
+
+    const other = new MockHTMLElement('BUTTON', { textContent: 'View insights' })
+    Object.setPrototypeOf(other, MockHTMLElement.prototype)
+    other.getBoundingClientRect = () => ({ width: 140, height: 36 })
+    other.getRootNode = () => globalThis.document
+    other.getAttribute = () => null
+    other.click = () => {
+      otherClicks++
+    }
+
+    globalThis.document = {
+      querySelector: () => null,
+      querySelectorAll: (sel) => {
+        if (sel === 'button') return [other, startPost]
+        return []
+      },
+      getElementById: () => null,
+      body: { querySelectorAll: () => [], appendChild: () => {}, children: { length: 0 } },
+      documentElement: { children: { length: 0 } },
+      createTreeWalker: () => ({ nextNode: () => null }),
+      getSelection: () => null,
+      execCommand: () => {}
+    }
+
+    const raw = domPrimitive('open_composer', '', {})
+    const result = raw instanceof Promise ? await raw : raw
+
+    assert.strictEqual(result.success, true)
+    assert.strictEqual(startPostClicks, 1)
+    assert.strictEqual(otherClicks, 0)
+    assert.strictEqual(result.match_strategy, 'intent_open_composer')
+    assert.strictEqual(result.match_count, 1)
+    assert.ok(result.matched && result.matched.element_id, 'matched evidence should include element_id')
+  })
+
+  test('submit_active_composer prefers submit action within active composer scope', async () => {
+    let postClicks = 0
+    let cancelClicks = 0
+
+    const textbox = new MockHTMLElement('DIV', { textContent: 'Draft content' })
+    Object.setPrototypeOf(textbox, MockHTMLElement.prototype)
+    textbox.getBoundingClientRect = () => ({ width: 420, height: 180 })
+    textbox.getRootNode = () => globalThis.document
+    textbox.getAttribute = (name) => {
+      if (name === 'role') return 'textbox'
+      if (name === 'contenteditable') return 'true'
+      return null
+    }
+
+    const postBtn = new MockHTMLElement('BUTTON', { textContent: 'Post' })
+    Object.setPrototypeOf(postBtn, MockHTMLElement.prototype)
+    postBtn.getBoundingClientRect = () => ({ width: 100, height: 32 })
+    postBtn.getRootNode = () => globalThis.document
+    postBtn.getAttribute = () => null
+    postBtn.click = () => {
+      postClicks++
+    }
+
+    const cancelBtn = new MockHTMLElement('BUTTON', { textContent: 'Cancel' })
+    Object.setPrototypeOf(cancelBtn, MockHTMLElement.prototype)
+    cancelBtn.getBoundingClientRect = () => ({ width: 100, height: 32 })
+    cancelBtn.getRootNode = () => globalThis.document
+    cancelBtn.getAttribute = () => null
+    cancelBtn.click = () => {
+      cancelClicks++
+    }
+
+    const composerDialog = new MockHTMLElement('DIV', { id: 'composer-dialog' })
+    Object.setPrototypeOf(composerDialog, MockHTMLElement.prototype)
+    composerDialog.style.zIndex = '200'
+    composerDialog.getBoundingClientRect = () => ({ width: 640, height: 520 })
+    composerDialog.getRootNode = () => globalThis.document
+    composerDialog.getAttribute = (name) => (name === 'role' ? 'dialog' : null)
+    composerDialog.querySelectorAll = (sel) => {
+      if (sel === '[role="textbox"], textarea, [contenteditable="true"]') return [textbox]
+      if (sel === 'button, [role="button"], input[type="submit"]') return [cancelBtn, postBtn]
+      if (sel === 'button') return [cancelBtn, postBtn]
+      return []
+    }
+    composerDialog.children = { length: 0 }
+
+    globalThis.document = {
+      querySelector: () => null,
+      querySelectorAll: (sel) => {
+        if (sel === '[role="dialog"]') return [composerDialog]
+        return []
+      },
+      getElementById: () => null,
+      body: {
+        querySelectorAll: (sel) => {
+          if (sel === '[role="dialog"]') return [composerDialog]
+          return []
+        },
+        appendChild: () => {},
+        children: { length: 0 }
+      },
+      documentElement: { children: { length: 0 } },
+      createTreeWalker: () => ({ nextNode: () => null }),
+      getSelection: () => null,
+      execCommand: () => {}
+    }
+
+    const raw = domPrimitive('submit_active_composer', '', {})
+    const result = raw instanceof Promise ? await raw : raw
+
+    assert.strictEqual(result.success, true)
+    assert.strictEqual(postClicks, 1)
+    assert.strictEqual(cancelClicks, 0)
+    assert.strictEqual(result.match_strategy, 'intent_submit_active_composer')
+    assert.ok(result.matched && result.matched.element_id, 'matched evidence should include element_id')
+  })
+
+  test('confirm_top_dialog targets the top-most dialog confirm action', async () => {
+    let topClicks = 0
+    let lowerClicks = 0
+
+    const lowerConfirm = new MockHTMLElement('BUTTON', { textContent: 'Confirm' })
+    Object.setPrototypeOf(lowerConfirm, MockHTMLElement.prototype)
+    lowerConfirm.getBoundingClientRect = () => ({ width: 110, height: 30 })
+    lowerConfirm.getRootNode = () => globalThis.document
+    lowerConfirm.getAttribute = () => null
+    lowerConfirm.click = () => {
+      lowerClicks++
+    }
+
+    const topConfirm = new MockHTMLElement('BUTTON', { textContent: 'Confirm' })
+    Object.setPrototypeOf(topConfirm, MockHTMLElement.prototype)
+    topConfirm.getBoundingClientRect = () => ({ width: 110, height: 30 })
+    topConfirm.getRootNode = () => globalThis.document
+    topConfirm.getAttribute = () => null
+    topConfirm.click = () => {
+      topClicks++
+    }
+
+    const lowerDialog = new MockHTMLElement('DIV', { id: 'lower' })
+    Object.setPrototypeOf(lowerDialog, MockHTMLElement.prototype)
+    lowerDialog.style.zIndex = '10'
+    lowerDialog.getBoundingClientRect = () => ({ width: 400, height: 300 })
+    lowerDialog.getRootNode = () => globalThis.document
+    lowerDialog.getAttribute = (name) => (name === 'role' ? 'dialog' : null)
+    lowerDialog.querySelectorAll = (sel) => (sel.includes('button') ? [lowerConfirm] : [])
+    lowerDialog.children = { length: 0 }
+
+    const topDialog = new MockHTMLElement('DIV', { id: 'top' })
+    Object.setPrototypeOf(topDialog, MockHTMLElement.prototype)
+    topDialog.style.zIndex = '300'
+    topDialog.getBoundingClientRect = () => ({ width: 400, height: 300 })
+    topDialog.getRootNode = () => globalThis.document
+    topDialog.getAttribute = (name) => (name === 'role' ? 'dialog' : null)
+    topDialog.querySelectorAll = (sel) => (sel.includes('button') ? [topConfirm] : [])
+    topDialog.children = { length: 0 }
+
+    globalThis.document = {
+      querySelector: () => null,
+      querySelectorAll: (sel) => {
+        if (sel === '[role="dialog"]') return [lowerDialog, topDialog]
+        return []
+      },
+      getElementById: () => null,
+      body: {
+        querySelectorAll: (sel) => {
+          if (sel === '[role="dialog"]') return [lowerDialog, topDialog]
+          return []
+        },
+        appendChild: () => {},
+        children: { length: 0 }
+      },
+      documentElement: { children: { length: 0 } },
+      createTreeWalker: () => ({ nextNode: () => null }),
+      getSelection: () => null,
+      execCommand: () => {}
+    }
+
+    const raw = domPrimitive('confirm_top_dialog', '', {})
+    const result = raw instanceof Promise ? await raw : raw
+
+    assert.strictEqual(result.success, true)
+    assert.strictEqual(topClicks, 1)
+    assert.strictEqual(lowerClicks, 0)
+    assert.strictEqual(result.match_strategy, 'intent_confirm_top_dialog')
+  })
+
+  test('dismiss_top_overlay targets close controls in top-most overlay', async () => {
+    let topCloseClicks = 0
+    let lowCloseClicks = 0
+
+    const lowClose = new MockHTMLElement('BUTTON', { textContent: 'Close' })
+    Object.setPrototypeOf(lowClose, MockHTMLElement.prototype)
+    lowClose.getBoundingClientRect = () => ({ width: 96, height: 30 })
+    lowClose.getRootNode = () => globalThis.document
+    lowClose.getAttribute = (name) => (name === 'aria-label' ? 'Close' : null)
+    lowClose.click = () => {
+      lowCloseClicks++
+    }
+
+    const topClose = new MockHTMLElement('BUTTON', { textContent: 'Close' })
+    Object.setPrototypeOf(topClose, MockHTMLElement.prototype)
+    topClose.getBoundingClientRect = () => ({ width: 96, height: 30 })
+    topClose.getRootNode = () => globalThis.document
+    topClose.getAttribute = (name) => (name === 'aria-label' ? 'Close' : null)
+    topClose.click = () => {
+      topCloseClicks++
+    }
+
+    const lowDialog = new MockHTMLElement('DIV', { id: 'low-overlay' })
+    Object.setPrototypeOf(lowDialog, MockHTMLElement.prototype)
+    lowDialog.style.zIndex = '20'
+    lowDialog.getBoundingClientRect = () => ({ width: 320, height: 220 })
+    lowDialog.getRootNode = () => globalThis.document
+    lowDialog.getAttribute = (name) => (name === 'role' ? 'dialog' : null)
+    lowDialog.querySelectorAll = (sel) => {
+      if (sel === 'button, [role="button"], [aria-label], [data-testid], [title]') return [lowClose]
+      return []
+    }
+    lowDialog.children = { length: 0 }
+
+    const topDialog = new MockHTMLElement('DIV', { id: 'top-overlay' })
+    Object.setPrototypeOf(topDialog, MockHTMLElement.prototype)
+    topDialog.style.zIndex = '900'
+    topDialog.getBoundingClientRect = () => ({ width: 420, height: 280 })
+    topDialog.getRootNode = () => globalThis.document
+    topDialog.getAttribute = (name) => (name === 'role' ? 'dialog' : null)
+    topDialog.querySelectorAll = (sel) => {
+      if (sel === 'button, [role="button"], [aria-label], [data-testid], [title]') return [topClose]
+      return []
+    }
+    topDialog.children = { length: 0 }
+
+    globalThis.document = {
+      querySelector: () => null,
+      querySelectorAll: (sel) => {
+        if (sel === '[role="dialog"]') return [lowDialog, topDialog]
+        return []
+      },
+      getElementById: () => null,
+      body: {
+        querySelectorAll: (sel) => {
+          if (sel === '[role="dialog"]') return [lowDialog, topDialog]
+          return []
+        },
+        appendChild: () => {},
+        children: { length: 0 }
+      },
+      documentElement: { children: { length: 0 } },
+      createTreeWalker: () => ({ nextNode: () => null }),
+      getSelection: () => null,
+      execCommand: () => {}
+    }
+
+    const raw = domPrimitive('dismiss_top_overlay', '', {})
+    const result = raw instanceof Promise ? await raw : raw
+
+    assert.strictEqual(result.success, true)
+    assert.strictEqual(topCloseClicks, 1)
+    assert.strictEqual(lowCloseClicks, 0)
+    assert.strictEqual(result.match_strategy, 'intent_dismiss_top_overlay')
+  })
+
+  test('submit_active_composer returns ambiguous_target with candidate summary when tied', () => {
+    const postA = new MockHTMLElement('BUTTON', { textContent: 'Post' })
+    Object.setPrototypeOf(postA, MockHTMLElement.prototype)
+    postA.getBoundingClientRect = () => ({ width: 100, height: 30 })
+    postA.getRootNode = () => globalThis.document
+    postA.getAttribute = () => null
+
+    const postB = new MockHTMLElement('BUTTON', { textContent: 'Post' })
+    Object.setPrototypeOf(postB, MockHTMLElement.prototype)
+    postB.getBoundingClientRect = () => ({ width: 100, height: 30 })
+    postB.getRootNode = () => globalThis.document
+    postB.getAttribute = () => null
+
+    const textbox = new MockHTMLElement('DIV', { textContent: 'Draft content' })
+    Object.setPrototypeOf(textbox, MockHTMLElement.prototype)
+    textbox.getBoundingClientRect = () => ({ width: 420, height: 180 })
+    textbox.getRootNode = () => globalThis.document
+    textbox.getAttribute = (name) => {
+      if (name === 'role') return 'textbox'
+      if (name === 'contenteditable') return 'true'
+      return null
+    }
+
+    const dialog = new MockHTMLElement('DIV', { id: 'composer-ambiguous' })
+    Object.setPrototypeOf(dialog, MockHTMLElement.prototype)
+    dialog.style.zIndex = '220'
+    dialog.getBoundingClientRect = () => ({ width: 620, height: 520 })
+    dialog.getRootNode = () => globalThis.document
+    dialog.getAttribute = (name) => (name === 'role' ? 'dialog' : null)
+    dialog.querySelectorAll = (sel) => {
+      if (sel === '[role="textbox"], textarea, [contenteditable="true"]') return [textbox]
+      if (sel === 'button, [role="button"], input[type="submit"]') return [postA, postB]
+      return []
+    }
+    dialog.children = { length: 0 }
+
+    globalThis.document = {
+      querySelector: () => null,
+      querySelectorAll: (sel) => {
+        if (sel === '[role="dialog"]') return [dialog]
+        return []
+      },
+      getElementById: () => null,
+      body: {
+        querySelectorAll: (sel) => {
+          if (sel === '[role="dialog"]') return [dialog]
+          return []
+        },
+        appendChild: () => {},
+        children: { length: 0 }
+      },
+      documentElement: { children: { length: 0 } },
+      createTreeWalker: () => ({ nextNode: () => null }),
+      getSelection: () => null,
+      execCommand: () => {}
+    }
+
+    const result = domPrimitive('submit_active_composer', '', {})
+    assert.strictEqual(result.success, false)
+    assert.strictEqual(result.error, 'ambiguous_target')
+    assert.strictEqual(result.match_strategy, 'intent_submit_active_composer')
+    assert.ok(Array.isArray(result.candidates), 'ambiguous response should include candidates')
+    assert.ok(result.candidates.length >= 2, 'expected candidate summary for ambiguity')
+  })
+})

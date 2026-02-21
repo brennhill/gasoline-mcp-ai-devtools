@@ -480,6 +480,31 @@ func TestToolsInteractDOMPrimitives_MissingSelector(t *testing.T) {
 	}
 }
 
+func TestToolsInteractDOMPrimitives_IntentActions_NoSelector(t *testing.T) {
+	t.Parallel()
+	h, _, _ := makeToolHandler(t)
+
+	actions := []string{
+		"open_composer",
+		"submit_active_composer",
+		"confirm_top_dialog",
+		"dismiss_top_overlay",
+	}
+
+	for _, action := range actions {
+		t.Run(action, func(t *testing.T) {
+			resp := callInteractRaw(h, `{"what":"`+action+`"}`)
+			result := parseToolResult(t, resp)
+			if !result.IsError {
+				t.Fatalf("%s without selector should still error while pilot is disabled", action)
+			}
+			if strings.Contains(strings.ToLower(result.Content[0].Text), "selector") {
+				t.Errorf("%s should not fail with selector-missing guidance: %s", action, result.Content[0].Text)
+			}
+		})
+	}
+}
+
 func TestToolsInteractDOMPrimitives_ActionSpecificParams(t *testing.T) {
 	t.Parallel()
 	h, _, _ := makeToolHandler(t)
@@ -531,6 +556,10 @@ func TestToolsInteractDOMPrimitives_SuccessWithPilot(t *testing.T) {
 		{"scroll_to", `{"what":"scroll_to","selector":"#footer"}`},
 		{"wait_for", `{"what":"wait_for","selector":"#spinner"}`},
 		{"key_press", `{"what":"key_press","selector":"input","text":"Enter"}`},
+		{"open_composer", `{"what":"open_composer"}`},
+		{"submit_active_composer", `{"what":"submit_active_composer"}`},
+		{"confirm_top_dialog", `{"what":"confirm_top_dialog"}`},
+		{"dismiss_top_overlay", `{"what":"dismiss_top_overlay"}`},
 	}
 
 	for _, tc := range cases {

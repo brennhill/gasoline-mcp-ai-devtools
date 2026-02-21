@@ -156,7 +156,8 @@ func TestExtractElementList_NoElements(t *testing.T) {
 func TestDOMPrimitiveActions_Contains(t *testing.T) {
 	t.Parallel()
 	expected := []string{"click", "type", "select", "check", "get_text", "get_value",
-		"get_attribute", "set_attribute", "focus", "scroll_to", "wait_for", "key_press", "paste"}
+		"get_attribute", "set_attribute", "focus", "scroll_to", "wait_for", "key_press", "paste",
+		"open_composer", "submit_active_composer", "confirm_top_dialog", "dismiss_top_overlay"}
 	for _, action := range expected {
 		if !DOMPrimitiveActions[action] {
 			t.Errorf("DOMPrimitiveActions missing %q", action)

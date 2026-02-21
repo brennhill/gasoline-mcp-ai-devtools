@@ -497,7 +497,13 @@ func (h *ToolHandler) handleDOMPrimitive(req JSONRPCRequest, args json.RawMessag
 		}
 	}
 
-	if params.Selector == "" && params.ElementID == "" {
+	selectorOptionalActions := map[string]bool{
+		"open_composer":          true,
+		"submit_active_composer": true,
+		"confirm_top_dialog":     true,
+		"dismiss_top_overlay":    true,
+	}
+	if params.Selector == "" && params.ElementID == "" && !selectorOptionalActions[action] {
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(
 			ErrMissingParam,
 			"Required parameter 'selector', 'element_id', or 'index' is missing",

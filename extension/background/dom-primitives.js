@@ -635,6 +635,218 @@ export function domPrimitive(action, selector, options) {
             };
         });
     }
+    const intentActions = new Set([
+        'open_composer',
+        'submit_active_composer',
+        'confirm_top_dialog',
+        'dismiss_top_overlay'
+    ]);
+    function uniqueElements(elements) {
+        const out = [];
+        const seen = new Set();
+        for (const element of elements) {
+            if (seen.has(element))
+                continue;
+            seen.add(element);
+            out.push(element);
+        }
+        return out;
+    }
+    function elementZIndexScore(el) {
+        if (!(el instanceof HTMLElement))
+            return 0;
+        const style = getComputedStyle(el);
+        const raw = style.zIndex || '';
+        const parsed = Number.parseInt(raw, 10);
+        if (Number.isNaN(parsed))
+            return 0;
+        return parsed;
+    }
+    function areaScore(el, max) {
+        if (!(el instanceof HTMLElement) || typeof el.getBoundingClientRect !== 'function')
+            return 0;
+        const rect = el.getBoundingClientRect();
+        if (rect.width <= 0 || rect.height <= 0)
+            return 0;
+        return Math.min(max, Math.round((rect.width * rect.height) / 10000));
+    }
+    function pickBestIntentTarget(ranked, matchStrategy, notFoundError, notFoundMessage) {
+        const viable = ranked
+            .filter((entry) => entry.score > 0 && isActionableVisible(entry.element))
+            .sort((a, b) => b.score - a.score);
+        if (viable.length === 0) {
+            return { error: domError(notFoundError, notFoundMessage) };
+        }
+        const topScore = viable[0].score;
+        const tiedTop = viable.filter((entry) => entry.score === topScore);
+        if (tiedTop.length > 1) {
+            return {
+                error: {
+                    success: false,
+                    action,
+                    selector,
+                    error: 'ambiguous_target',
+                    message: `Multiple candidates tie for ${action}. Use scope_selector or list_interactive element_id.`,
+                    match_count: tiedTop.length,
+                    match_strategy: matchStrategy,
+                    candidates: summarizeCandidates(tiedTop.map((entry) => entry.element))
+                }
+            };
+        }
+        return {
+            element: viable[0].element,
+            match_count: 1,
+            match_strategy: matchStrategy
+        };
+    }
+    function collectDialogs() {
+        const selectors = ['[role="dialog"]', '[aria-modal="true"]', 'dialog[open]'];
+        const dialogs = [];
+        for (const dialogSelector of selectors) {
+            dialogs.push(...querySelectorAllDeep(dialogSelector));
+        }
+        return uniqueElements(dialogs).filter(isActionableVisible);
+    }
+    function pickTopDialog(dialogs) {
+        if (dialogs.length === 0)
+            return null;
+        const ranked = dialogs
+            .map((dialog, index) => ({
+            element: dialog,
+            score: elementZIndexScore(dialog) * 1000 + areaScore(dialog, 200) + index
+        }))
+            .sort((a, b) => b.score - a.score);
+        return ranked[0]?.element || null;
+    }
+    function resolveIntentTarget(requestedScope, activeScope) {
+        const submitVerb = /(post|share|publish|send|submit|save|done|continue|next|create|apply|confirm|yes|allow|accept)/i;
+        const dismissVerb = /(close|dismiss|cancel|not now|no thanks|skip|x|×|hide|back)/i;
+        const composerVerb = /(start( a)? post|create post|write (a )?post|what'?s on your mind|share( an)? update|compose|new post)/i;
+        if (action === 'open_composer') {
+            const selectors = [
+                'button',
+                '[role="button"]',
+                'a[href]',
+                '[role="link"]',
+                '[contenteditable="true"]',
+                '[role="textbox"]',
+                'textarea',
+                'input[type="text"]',
+                'input:not([type])'
+            ];
+            const candidates = [];
+            for (const candidateSelector of selectors) {
+                candidates.push(...querySelectorAllDeep(candidateSelector, activeScope));
+            }
+            const ranked = uniqueElements(candidates).map((candidate) => {
+                const label = extractElementLabel(candidate).toLowerCase();
+                const tag = candidate.tagName.toLowerCase();
+                const role = candidate.getAttribute('role') || '';
+                const contentEditable = candidate.getAttribute('contenteditable') === 'true';
+                let score = 0;
+                if (composerVerb.test(label))
+                    score += 700;
+                if (/\b(post|share|publish|compose|write|update)\b/i.test(label))
+                    score += 280;
+                if (contentEditable || role === 'textbox' || tag === 'textarea' || tag === 'input')
+                    score += 220;
+                if (tag === 'button' || role === 'button')
+                    score += 80;
+                score += areaScore(candidate, 50);
+                score += elementZIndexScore(candidate);
+                return { element: candidate, score };
+            });
+            const best = pickBestIntentTarget(ranked, 'intent_open_composer', 'composer_not_found', 'No composer trigger was found. Try a tighter scope_selector.');
+            return { ...best, scope_selector_used: requestedScope || undefined };
+        }
+        if (action === 'submit_active_composer') {
+            let scopeRoot = activeScope;
+            let scopeUsed = requestedScope || undefined;
+            if (!requestedScope) {
+                const dialogs = collectDialogs();
+                const rankedDialogs = dialogs
+                    .map((dialog) => {
+                    const textboxes = querySelectorAllDeep('[role="textbox"], textarea, [contenteditable="true"]', dialog).filter(isActionableVisible).length;
+                    const buttons = querySelectorAllDeep('button, [role="button"], input[type="submit"]', dialog);
+                    const submitLikeButtons = buttons.filter((button) => isActionableVisible(button) && submitVerb.test(extractElementLabel(button))).length;
+                    return {
+                        element: dialog,
+                        score: textboxes * 1200 + submitLikeButtons * 300 + elementZIndexScore(dialog) * 2 + areaScore(dialog, 80)
+                    };
+                })
+                    .sort((a, b) => b.score - a.score);
+                if ((rankedDialogs[0]?.score || 0) > 0) {
+                    scopeRoot = rankedDialogs[0].element;
+                    scopeUsed = 'intent:auto_composer_scope';
+                }
+            }
+            const candidates = querySelectorAllDeep('button, [role="button"], input[type="submit"]', scopeRoot);
+            const ranked = uniqueElements(candidates).map((candidate) => {
+                const label = extractElementLabel(candidate);
+                let score = 0;
+                if (submitVerb.test(label))
+                    score += 700;
+                if (dismissVerb.test(label))
+                    score -= 500;
+                score += areaScore(candidate, 30);
+                score += elementZIndexScore(candidate);
+                return { element: candidate, score };
+            });
+            const best = pickBestIntentTarget(ranked, 'intent_submit_active_composer', 'composer_submit_not_found', 'No submit control found in active composer scope.');
+            return { ...best, scope_selector_used: scopeUsed };
+        }
+        if (action === 'confirm_top_dialog') {
+            const scopeRoot = requestedScope ? activeScope : pickTopDialog(collectDialogs());
+            if (!scopeRoot) {
+                return {
+                    error: domError('dialog_not_found', 'No visible dialog/overlay found to confirm.')
+                };
+            }
+            const candidates = querySelectorAllDeep('button, [role="button"], input[type="submit"]', scopeRoot);
+            const ranked = uniqueElements(candidates).map((candidate) => {
+                const label = extractElementLabel(candidate);
+                let score = 0;
+                if (submitVerb.test(label))
+                    score += 700;
+                if (dismissVerb.test(label))
+                    score -= 500;
+                score += areaScore(candidate, 30);
+                score += elementZIndexScore(candidate);
+                return { element: candidate, score };
+            });
+            const best = pickBestIntentTarget(ranked, 'intent_confirm_top_dialog', 'confirm_action_not_found', 'No confirm control found in the top dialog.');
+            return {
+                ...best,
+                scope_selector_used: requestedScope || 'intent:auto_top_dialog'
+            };
+        }
+        if (action === 'dismiss_top_overlay') {
+            const scopeRoot = requestedScope ? activeScope : pickTopDialog(collectDialogs());
+            if (!scopeRoot) {
+                return {
+                    error: domError('overlay_not_found', 'No visible dialog/overlay found to dismiss.')
+                };
+            }
+            const candidates = querySelectorAllDeep('button, [role="button"], [aria-label], [data-testid], [title]', scopeRoot);
+            const ranked = uniqueElements(candidates).map((candidate) => {
+                const label = extractElementLabel(candidate);
+                let score = 0;
+                if (dismissVerb.test(label))
+                    score += 800;
+                if (submitVerb.test(label))
+                    score -= 550;
+                score += areaScore(candidate, 30);
+                score += elementZIndexScore(candidate);
+                return { element: candidate, score };
+            });
+            const best = pickBestIntentTarget(ranked, 'intent_dismiss_top_overlay', 'dismiss_action_not_found', 'No dismiss control found in the top overlay.');
+            return {
+                ...best,
+                scope_selector_used: requestedScope || 'intent:auto_top_dialog'
+            };
+        }
+        return { error: domError('unknown_action', `Unknown DOM action: ${action}`) };
+    }
     function resolveActionTarget() {
         const requestedScope = (options.scope_selector || '').trim();
         if (requestedScope && !scopeRoot) {
@@ -644,6 +856,9 @@ export function domPrimitive(action, selector, options) {
         }
         const activeScope = scopeRoot || document;
         const scopeSelectorUsed = requestedScope || undefined;
+        if (intentActions.has(action)) {
+            return resolveIntentTarget(requestedScope, activeScope);
+        }
         const requestedElementID = (options.element_id || '').trim();
         if (requestedElementID) {
             const resolvedByID = resolveElementByID(requestedElementID);
@@ -1008,6 +1223,39 @@ export function domPrimitive(action, selector, options) {
                 node.dispatchEvent(new KeyboardEvent('keypress', { key: mapped.key, code: mapped.code, keyCode: mapped.keyCode, bubbles: true }));
                 node.dispatchEvent(new KeyboardEvent('keyup', { key: mapped.key, code: mapped.code, keyCode: mapped.keyCode, bubbles: true }));
                 return mutatingSuccess(node, { value: key });
+            }),
+            open_composer: () => withMutationTracking(() => {
+                if (!(node instanceof HTMLElement))
+                    return domError('not_interactive', `Element is not an HTMLElement: ${node.tagName}`);
+                const tag = node.tagName.toLowerCase();
+                const isInputLike = node.isContentEditable ||
+                    node.getAttribute('role') === 'textbox' ||
+                    tag === 'textarea' ||
+                    tag === 'input';
+                if (isInputLike) {
+                    node.focus();
+                    return mutatingSuccess(node, { reason: 'composer_ready' });
+                }
+                node.click();
+                return mutatingSuccess(node);
+            }),
+            submit_active_composer: () => withMutationTracking(() => {
+                if (!(node instanceof HTMLElement))
+                    return domError('not_interactive', `Element is not an HTMLElement: ${node.tagName}`);
+                node.click();
+                return mutatingSuccess(node);
+            }),
+            confirm_top_dialog: () => withMutationTracking(() => {
+                if (!(node instanceof HTMLElement))
+                    return domError('not_interactive', `Element is not an HTMLElement: ${node.tagName}`);
+                node.click();
+                return mutatingSuccess(node);
+            }),
+            dismiss_top_overlay: () => withMutationTracking(() => {
+                if (!(node instanceof HTMLElement))
+                    return domError('not_interactive', `Element is not an HTMLElement: ${node.tagName}`);
+                node.click();
+                return mutatingSuccess(node);
             })
         };
     }

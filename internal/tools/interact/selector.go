@@ -48,6 +48,8 @@ var DOMPrimitiveActions = map[string]bool{
 	"get_text": true, "get_value": true, "get_attribute": true,
 	"set_attribute": true, "focus": true, "scroll_to": true,
 	"wait_for": true, "key_press": true, "paste": true,
+	"open_composer": true, "submit_active_composer": true,
+	"confirm_top_dialog": true, "dismiss_top_overlay": true,
 }
 
 // DOMActionToReproType maps interact DOM action names to reproduction-compatible types.
