@@ -192,6 +192,10 @@ type ToolHandler struct {
 	evidenceMu        sync.Mutex
 	evidenceByCommand map[string]*commandEvidenceState
 
+	// Deterministic retry contract metadata keyed by correlation_id.
+	retryContractMu sync.Mutex
+	retryByCommand  map[string]*commandRetryState
+
 	// Module registry for plugin-style tool dispatch (incremental migration).
 	toolModules *toolModuleRegistry
 }
@@ -248,6 +252,7 @@ func NewToolHandler(server *Server, capture *capture.Capture) *MCPHandler {
 		capture:           capture,
 		playbackSessions:  newPlaybackSessionsMap(),
 		evidenceByCommand: make(map[string]*commandEvidenceState),
+		retryByCommand:    make(map[string]*commandRetryState),
 	}
 
 	// Initialize health metrics

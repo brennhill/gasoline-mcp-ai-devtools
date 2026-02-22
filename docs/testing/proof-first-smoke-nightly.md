@@ -11,6 +11,7 @@ The proof-first module checks:
 3. Optional LinkedIn composer flow: open, type, submit, verify close cue.
 4. Optional Facebook composer flow: open, type, submit, verify close cue.
 5. Evidence mode flow: mutating action with `evidence:"always"` returns `evidence.before` and `evidence.after` artifact paths.
+6. Retry contract flow: chained second failure (`correlation_id`) returns `retry_context.terminal_stop=true` and terminal evidence summary.
 
 Each test captures reproducible evidence:
 
