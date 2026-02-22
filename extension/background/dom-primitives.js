@@ -1146,6 +1146,45 @@ export function domPrimitive(action, selector, options) {
             click: () => withMutationTracking(() => {
                 if (!(node instanceof HTMLElement))
                     return domError('not_interactive', `Element is not an HTMLElement: ${node.tagName}`);
+                if (options.new_tab) {
+                    const linkNode = (() => {
+                        const tag = node.tagName.toLowerCase();
+                        if (tag === 'a')
+                            return node;
+                        if (typeof node.closest === 'function') {
+                            return node.closest('a[href]');
+                        }
+                        return null;
+                    })();
+                    const href = linkNode
+                        ? (linkNode.getAttribute('href') || linkNode.href || '')
+                        : '';
+                    if (!href) {
+                        return domError('new_tab_requires_link', 'new_tab=true requires a link target with href');
+                    }
+                    let opened = false;
+                    try {
+                        if (typeof window !== 'undefined' && typeof window.open === 'function') {
+                            window.open(href, '_blank', 'noopener,noreferrer');
+                            opened = true;
+                        }
+                    }
+                    catch {
+                        // Fall through to target=_blank click fallback.
+                    }
+                    if (!opened && linkNode instanceof Element) {
+                        const previousTarget = linkNode.getAttribute('target');
+                        linkNode.setAttribute('target', '_blank');
+                        linkNode.click();
+                        if (previousTarget == null) {
+                            linkNode.removeAttribute('target');
+                        }
+                        else {
+                            linkNode.setAttribute('target', previousTarget);
+                        }
+                    }
+                    return mutatingSuccess(node, { value: href, reason: 'opened_new_tab' });
+                }
                 node.click();
                 return mutatingSuccess(node);
             }),

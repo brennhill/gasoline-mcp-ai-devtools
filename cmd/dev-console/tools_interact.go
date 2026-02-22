@@ -45,6 +45,8 @@ func (h *ToolHandler) interactDispatch() map[string]interactHandler {
 			"back":                      h.handleBrowserActionBack,
 			"forward":                   h.handleBrowserActionForward,
 			"new_tab":                   h.handleBrowserActionNewTab,
+			"switch_tab":                h.handleBrowserActionSwitchTab,
+			"close_tab":                 h.handleBrowserActionCloseTab,
 			"screenshot":                h.handleScreenshotAlias,
 			"subtitle":                  h.handleSubtitle,
 			"list_interactive":          h.handleListInteractive,
@@ -475,6 +477,95 @@ func (h *ToolHandler) handleBrowserActionNewTab(req JSONRPCRequest, args json.Ra
 	})
 
 	return h.MaybeWaitForCommand(req, correlationID, args, "New tab queued")
+}
+
+func (h *ToolHandler) handleBrowserActionSwitchTab(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+	var params struct {
+		TabID    int  `json:"tab_id,omitempty"`
+		TabIndex *int `json:"tab_index,omitempty"`
+	}
+	if err := json.Unmarshal(args, &params); err != nil {
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidJSON, "Invalid JSON arguments: "+err.Error(), "Fix JSON syntax and call again")}
+	}
+	if params.TabID <= 0 && params.TabIndex == nil {
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(
+			ErrMissingParam,
+			"switch_tab requires tab_id or tab_index",
+			"Provide tab_id from observe(what='tabs') or tab_index from your tab list ordering.",
+			withParam("tab_id"),
+			withHint("Alternative: provide tab_index"),
+		)}
+	}
+	if params.TabIndex != nil && *params.TabIndex < 0 {
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(
+			ErrInvalidParam,
+			"tab_index must be >= 0",
+			"Provide a non-negative tab_index (0-based).",
+			withParam("tab_index"),
+		)}
+	}
+
+	if resp, blocked := h.requirePilot(req); blocked {
+		return resp
+	}
+
+	correlationID := newCorrelationID("switchtab")
+	h.armEvidenceForCommand(correlationID, "switch_tab", args, req.ClientID)
+
+	actionParams := make(map[string]any)
+	_ = json.Unmarshal(args, &actionParams)
+	actionParams["action"] = "switch_tab"
+	actionPayload, _ := json.Marshal(actionParams)
+
+	query := queries.PendingQuery{
+		Type:          "browser_action",
+		Params:        actionPayload,
+		TabID:         params.TabID,
+		CorrelationID: correlationID,
+	}
+	h.capture.CreatePendingQueryWithTimeout(query, queries.AsyncCommandTimeout, req.ClientID)
+
+	h.recordAIAction("switch_tab", "", map[string]any{
+		"tab_id":    params.TabID,
+		"tab_index": params.TabIndex,
+	})
+
+	return h.MaybeWaitForCommand(req, correlationID, args, "Switch tab queued")
+}
+
+func (h *ToolHandler) handleBrowserActionCloseTab(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+	var params struct {
+		TabID int `json:"tab_id,omitempty"`
+	}
+	if err := json.Unmarshal(args, &params); err != nil {
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidJSON, "Invalid JSON arguments: "+err.Error(), "Fix JSON syntax and call again")}
+	}
+
+	if resp, blocked := h.requirePilot(req); blocked {
+		return resp
+	}
+
+	correlationID := newCorrelationID("closetab")
+	h.armEvidenceForCommand(correlationID, "close_tab", args, req.ClientID)
+
+	actionParams := make(map[string]any)
+	_ = json.Unmarshal(args, &actionParams)
+	actionParams["action"] = "close_tab"
+	actionPayload, _ := json.Marshal(actionParams)
+
+	query := queries.PendingQuery{
+		Type:          "browser_action",
+		Params:        actionPayload,
+		TabID:         params.TabID,
+		CorrelationID: correlationID,
+	}
+	h.capture.CreatePendingQueryWithTimeout(query, queries.AsyncCommandTimeout, req.ClientID)
+
+	h.recordAIAction("close_tab", "", map[string]any{
+		"tab_id": params.TabID,
+	})
+
+	return h.MaybeWaitForCommand(req, correlationID, args, "Close tab queued")
 }
 
 func (h *ToolHandler) resolveNavigateURL(rawURL string) (string, error) {

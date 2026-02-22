@@ -37,6 +37,7 @@ function createMockChrome(trackedTabId = 1, activeTabId = 1) {
       reload: mock.fn(() => Promise.resolve()),
       update: mock.fn(() => Promise.resolve()),
       create: mock.fn(() => Promise.resolve({ id: 2 })),
+      remove: mock.fn(() => Promise.resolve()),
       onRemoved: { addListener: mock.fn() }
     },
     storage: {
@@ -319,6 +320,141 @@ describe('pending query targeting', () => {
     assert.strictEqual(queued.result.action, 'new_tab')
     assert.strictEqual(queued.result.tab_id, 222)
     assert.strictEqual(queued.result.resolved_tab_id, 99)
+  })
+
+  test('navigate with new_tab=true opens a background tab and preserves context tab', async () => {
+    globalThis.chrome.tabs.create = mock.fn(() =>
+      Promise.resolve({ id: 333, url: 'https://docs.example.com', title: 'Docs' })
+    )
+    globalThis.chrome.tabs.update = mock.fn(() => Promise.resolve())
+    const mockSyncClient = { queueCommandResult: mock.fn() }
+
+    await bgModule.handlePendingQuery(
+      {
+        id: 'q-nav-new-tab',
+        type: 'browser_action',
+        correlation_id: 'corr-nav-new-tab',
+        tab_id: 12,
+        params: JSON.stringify({ action: 'navigate', url: 'https://docs.example.com', new_tab: true })
+      },
+      mockSyncClient
+    )
+
+    assert.strictEqual(globalThis.chrome.tabs.create.mock.calls.length, 1)
+    assert.deepStrictEqual(globalThis.chrome.tabs.create.mock.calls[0].arguments[0], {
+      url: 'https://docs.example.com',
+      active: false
+    })
+    assert.strictEqual(globalThis.chrome.tabs.update.mock.calls.length, 0, 'navigate should not reuse current tab when new_tab=true')
+
+    const queued = mockSyncClient.queueCommandResult.mock.calls[0].arguments[0]
+    assert.strictEqual(queued.status, 'complete')
+    assert.strictEqual(queued.result.action, 'new_tab')
+    assert.strictEqual(queued.result.tab_id, 333)
+    assert.strictEqual(queued.result.resolved_tab_id, 12)
+  })
+
+  test('switch_tab with tab_id activates the requested tab', async () => {
+    globalThis.chrome.tabs.get = mock.fn((tabId) =>
+      Promise.resolve({
+        id: tabId,
+        windowId: 1,
+        url: `https://tab/${tabId}`,
+        title: `Tab ${tabId}`,
+        index: 4,
+        status: 'complete'
+      })
+    )
+    globalThis.chrome.tabs.update = mock.fn((tabId, updates) =>
+      Promise.resolve({
+        id: tabId,
+        windowId: 1,
+        url: `https://tab/${tabId}`,
+        title: `Tab ${tabId}`,
+        index: 4,
+        active: !!updates?.active
+      })
+    )
+    const mockSyncClient = { queueCommandResult: mock.fn() }
+
+    await bgModule.handlePendingQuery(
+      {
+        id: 'q-switch-tab-id',
+        type: 'browser_action',
+        correlation_id: 'corr-switch-tab-id',
+        tab_id: 9,
+        params: JSON.stringify({ action: 'switch_tab', tab_id: 44 })
+      },
+      mockSyncClient
+    )
+
+    assert.strictEqual(globalThis.chrome.tabs.update.mock.calls.length, 1)
+    assert.deepStrictEqual(globalThis.chrome.tabs.update.mock.calls[0].arguments, [44, { active: true }])
+    const queued = mockSyncClient.queueCommandResult.mock.calls[0].arguments[0]
+    assert.strictEqual(queued.status, 'complete')
+    assert.strictEqual(queued.result.action, 'switch_tab')
+    assert.strictEqual(queued.result.tab_id, 44)
+  })
+
+  test('switch_tab with tab_index activates the indexed tab in current window', async () => {
+    globalThis.chrome.tabs.query = mock.fn((query, callback) => {
+      const allTabs = [
+        { id: 11, windowId: 1, url: 'https://a.example', title: 'A', index: 0 },
+        { id: 22, windowId: 1, url: 'https://b.example', title: 'B', index: 1 }
+      ]
+      const result = query?.active ? [allTabs[0]] : allTabs
+      if (callback) callback(result)
+      return Promise.resolve(result)
+    })
+    globalThis.chrome.tabs.update = mock.fn((tabId, updates) =>
+      Promise.resolve({ id: tabId, windowId: 1, url: 'https://b.example', title: 'B', index: 1, active: !!updates?.active })
+    )
+    const mockSyncClient = { queueCommandResult: mock.fn() }
+
+    await bgModule.handlePendingQuery(
+      {
+        id: 'q-switch-tab-index',
+        type: 'browser_action',
+        correlation_id: 'corr-switch-tab-index',
+        params: JSON.stringify({ action: 'switch_tab', tab_index: 1 })
+      },
+      mockSyncClient
+    )
+
+    assert.strictEqual(globalThis.chrome.tabs.update.mock.calls.length, 1)
+    assert.deepStrictEqual(globalThis.chrome.tabs.update.mock.calls[0].arguments, [22, { active: true }])
+    const queued = mockSyncClient.queueCommandResult.mock.calls[0].arguments[0]
+    assert.strictEqual(queued.status, 'complete')
+    assert.strictEqual(queued.result.action, 'switch_tab')
+    assert.strictEqual(queued.result.tab_id, 22)
+  })
+
+  test('close_tab removes the requested tab and reports closed tab_id', async () => {
+    globalThis.chrome.tabs.remove = mock.fn(() => Promise.resolve())
+    globalThis.chrome.tabs.query = mock.fn((query, callback) => {
+      const result = query?.active ? [{ id: 5, windowId: 1, url: 'https://active/5', title: 'Active 5' }] : []
+      if (callback) callback(result)
+      return Promise.resolve(result)
+    })
+    const mockSyncClient = { queueCommandResult: mock.fn() }
+
+    await bgModule.handlePendingQuery(
+      {
+        id: 'q-close-tab',
+        type: 'browser_action',
+        correlation_id: 'corr-close-tab',
+        tab_id: 5,
+        params: JSON.stringify({ action: 'close_tab', tab_id: 77 })
+      },
+      mockSyncClient
+    )
+
+    assert.strictEqual(globalThis.chrome.tabs.remove.mock.calls.length, 1)
+    assert.strictEqual(globalThis.chrome.tabs.remove.mock.calls[0].arguments[0], 77)
+    const queued = mockSyncClient.queueCommandResult.mock.calls[0].arguments[0]
+    assert.strictEqual(queued.status, 'complete')
+    assert.strictEqual(queued.result.action, 'close_tab')
+    assert.strictEqual(queued.result.closed_tab_id, 77)
   })
 
   test('browser_action accepts what alias for action', async () => {

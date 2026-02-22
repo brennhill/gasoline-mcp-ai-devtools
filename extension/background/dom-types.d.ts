@@ -83,6 +83,7 @@ export interface DOMPrimitiveOptions {
     element_id?: string;
     scope_selector?: string;
     scope_rect?: ScopeRect;
+    new_tab?: boolean;
 }
 export interface DOMActionParams extends DOMPrimitiveOptions {
     action?: string;

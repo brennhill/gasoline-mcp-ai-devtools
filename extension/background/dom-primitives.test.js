@@ -50,6 +50,7 @@ globalThis.HTMLElement = MockHTMLElement
 globalThis.HTMLInputElement = class extends MockHTMLElement {}
 globalThis.HTMLTextAreaElement = class extends MockHTMLElement {}
 globalThis.HTMLSelectElement = class extends MockHTMLElement {}
+globalThis.HTMLAnchorElement = class extends MockHTMLElement {}
 globalThis.CSS = { escape: (s) => s }
 globalThis.NodeFilter = { SHOW_TEXT: 4 }
 globalThis.ShadowRoot = class ShadowRoot {}
@@ -307,6 +308,36 @@ describe('compact click feedback contract (when rAF works)', () => {
     assert.strictEqual(typeof analyzeResult.timing.total_ms, 'number')
     assert.ok(analyzeResult.dom_changes, 'analyze:true should include dom_changes')
     assert.ok(analyzeResult.analysis, 'analyze:true should include analysis string')
+  })
+
+  test('click with new_tab=true opens anchor href in new tab', async () => {
+    const link = new globalThis.HTMLAnchorElement('A', { id: 'docs-link', textContent: 'Docs' })
+    Object.setPrototypeOf(link, MockHTMLElement.prototype)
+    link.href = 'https://example.com/docs'
+    link.getAttribute = (name) => {
+      if (name === 'href') return 'https://example.com/docs'
+      return null
+    }
+    link.getBoundingClientRect = () => ({ width: 120, height: 24, top: 0, left: 0 })
+    link.getRootNode = () => globalThis.document
+    link.click = () => {}
+
+    globalThis.window = { open: mock.fn(() => ({})) }
+    globalThis.document = {
+      querySelector: (sel) => (sel === '#docs-link' ? link : null),
+      querySelectorAll: (sel) => (sel === '#docs-link' ? [link] : []),
+      getElementById: () => null,
+      body: { querySelectorAll: () => [], appendChild: () => {}, children: { length: 0 } },
+      documentElement: { children: { length: 0 } },
+      createTreeWalker: () => ({ nextNode: () => null }),
+      getSelection: () => null,
+      execCommand: () => {}
+    }
+
+    const result = await domPrimitive('click', '#docs-link', { new_tab: true })
+    assert.strictEqual(result.success, true)
+    assert.strictEqual(result.value, 'https://example.com/docs')
+    assert.strictEqual(globalThis.window.open.mock.calls.length, 1, 'window.open should be called once')
   })
 })
 

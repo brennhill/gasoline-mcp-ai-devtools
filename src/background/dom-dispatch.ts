@@ -285,7 +285,8 @@ async function executeStandardAction(
         observe_mutations: params.observe_mutations,
         element_id: params.element_id,
         scope_selector: params.scope_selector,
-        scope_rect: params.scope_rect
+        scope_rect: params.scope_rect,
+        new_tab: params.new_tab
       }
     ]
   })

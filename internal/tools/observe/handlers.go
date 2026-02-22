@@ -30,6 +30,7 @@ var Handlers = map[string]Handler{
 	"vitals":            GetWebVitals,
 	"page":              GetPageInfo,
 	"tabs":              GetTabs,
+	"history":           AnalyzeHistory,
 	"pilot":             ObservePilot,
 	"timeline":          GetSessionTimeline,
 	"error_bundles":     GetErrorBundles,

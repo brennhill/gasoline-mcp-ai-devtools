@@ -68,7 +68,15 @@ registerCommand('highlight', async (ctx) => {
 // =============================================================================
 
 registerCommand('browser_action', async (ctx) => {
-  let params: { action?: string; what?: string; url?: string; reason?: string }
+  let params: {
+    action?: string
+    what?: string
+    url?: string
+    reason?: string
+    tab_id?: number
+    tab_index?: number
+    new_tab?: boolean
+  }
   try {
     params = typeof ctx.query.params === 'string' ? JSON.parse(ctx.query.params) : ctx.query.params
   } catch {
