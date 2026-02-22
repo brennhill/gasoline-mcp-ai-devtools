@@ -13,6 +13,7 @@ let storageState = {}
 let tabsByID = new Map()
 let activeTabs = []
 let createCalls = []
+let createShouldFail = false
 
 function resetHarness() {
   queuedResults = []
@@ -22,6 +23,7 @@ function resetHarness() {
   tabsByID = new Map()
   activeTabs = []
   createCalls = []
+  createShouldFail = false
 }
 
 function makeSyncClient() {
@@ -53,6 +55,7 @@ globalThis.chrome = {
         return Promise.resolve({ ...storageState })
       },
       set: (_data, callback) => {
+        storageState = { ...storageState, ..._data }
         if (callback) {
           callback()
           return
@@ -83,7 +86,12 @@ globalThis.chrome = {
       }
       return { ...tab }
     },
-    query: async () => activeTabs.map((tab) => ({ ...tab })),
+    query: async (queryInfo) => {
+      if (queryInfo && queryInfo.active) {
+        return activeTabs.map((tab) => ({ ...tab }))
+      }
+      return Array.from(tabsByID.values()).map((tab) => ({ ...tab }))
+    },
     update: async (tabId, props) => {
       updateCalls.push({ tabId, props })
       const current = tabsByID.get(tabId) || { id: tabId, status: 'complete', title: '' }
@@ -92,6 +100,9 @@ globalThis.chrome = {
       return { ...next }
     },
     create: async ({ url, active }) => {
+      if (createShouldFail) {
+        throw new Error('create failed')
+      }
       const id = 900 + createCalls.length
       createCalls.push({ url, active, id })
       const tab = { id, url, status: 'complete', title: 'Example' }
@@ -235,5 +246,83 @@ describe('Restricted/CSP page handling', () => {
     assert.strictEqual(queuedResults[0].status, 'complete')
     assert.strictEqual(queuedResults[0].result.success, true)
     assert.strictEqual(queuedResults[0].result.target_context.source, 'auto_tracked_new_tab')
+  })
+
+  test('missing tracking + active non-internal tab auto-tracks active tab', async () => {
+    const activeTab = { id: 21, url: 'https://news.ycombinator.com', status: 'complete', title: 'HN' }
+    tabsByID.set(activeTab.id, activeTab)
+    activeTabs = [activeTab]
+    storageState = {}
+
+    await handlePendingQuery(
+      {
+        id: 'q-nav-active-track',
+        type: 'browser_action',
+        correlation_id: 'corr-nav-active-track',
+        params: { action: 'navigate', url: 'https://example.com/path' }
+      },
+      makeSyncClient()
+    )
+
+    assert.strictEqual(createCalls.length, 0, 'active non-internal tab should not require creating a new tab')
+    assert.strictEqual(updateCalls.length, 1, 'navigate should execute directly on the active tab')
+    assert.strictEqual(updateCalls[0].tabId, 21)
+    assert.strictEqual(queuedResults.length, 1)
+    assert.strictEqual(queuedResults[0].status, 'complete')
+    assert.strictEqual(queuedResults[0].result.target_context.source, 'auto_tracked_active_tab')
+    assert.strictEqual(storageState.trackedTabId, 21)
+  })
+
+  test('missing tracking + active internal tab switches to random non-internal tab', async () => {
+    const internalTab = { id: 31, url: 'chrome://settings', status: 'complete', title: 'Settings' }
+    const normalTab = { id: 32, url: 'https://example.org/workspace', status: 'complete', title: 'Workspace' }
+    tabsByID.set(internalTab.id, internalTab)
+    tabsByID.set(normalTab.id, normalTab)
+    activeTabs = [internalTab]
+    storageState = {}
+
+    await handlePendingQuery(
+      {
+        id: 'q-nav-random-track',
+        type: 'browser_action',
+        correlation_id: 'corr-nav-random-track',
+        params: { action: 'navigate', url: 'https://example.com/path' }
+      },
+      makeSyncClient()
+    )
+
+    assert.strictEqual(createCalls.length, 0, 'should reuse an existing non-internal tab instead of opening a new tab')
+    assert.strictEqual(updateCalls.length, 2, 'should activate candidate tab, then navigate on it')
+    assert.strictEqual(updateCalls[0].tabId, 32)
+    assert.deepStrictEqual(updateCalls[0].props, { active: true })
+    assert.strictEqual(updateCalls[1].tabId, 32)
+    assert.strictEqual(queuedResults.length, 1)
+    assert.strictEqual(queuedResults[0].status, 'complete')
+    assert.strictEqual(queuedResults[0].result.target_context.source, 'auto_tracked_random_tab')
+    assert.strictEqual(storageState.trackedTabId, 32)
+  })
+
+  test('missing tracking + no recoverable tabs returns explicit no_trackable_tab error', async () => {
+    activeTabs = []
+    tabsByID = new Map()
+    storageState = {}
+    createShouldFail = true
+
+    await handlePendingQuery(
+      {
+        id: 'q-exec-no-trackable',
+        type: 'execute',
+        correlation_id: 'corr-exec-no-trackable',
+        params: { script: '1+1' }
+      },
+      makeSyncClient()
+    )
+
+    assert.strictEqual(queuedResults.length, 1)
+    assert.strictEqual(queuedResults[0].status, 'error')
+    assert.strictEqual(queuedResults[0].error, 'no_trackable_tab')
+    assert.strictEqual(queuedResults[0].result.error, 'no_trackable_tab')
+    assert.ok(Array.isArray(queuedResults[0].result.attempted_recovery))
+    assert.ok(queuedResults[0].result.attempted_recovery.length >= 3)
   })
 })

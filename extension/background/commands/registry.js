@@ -45,7 +45,31 @@ export async function dispatch(query, syncClient) {
     const paramsObj = parseQueryParamsObject(query.params);
     const needsTarget = requiresTargetTab(query.type);
     if (needsTarget) {
-        const resolved = await resolveTargetTab(query, paramsObj);
+        let resolved;
+        try {
+            resolved = await resolveTargetTab(query, paramsObj);
+        }
+        catch (err) {
+            const errMsg = err?.message || 'target resolution failed';
+            debugLog(DebugCategory.CONNECTION, 'Target resolution threw', {
+                type: query.type,
+                id: query.id,
+                error: errMsg
+            });
+            const payload = {
+                success: false,
+                error: 'target_resolution_error',
+                message: `Target resolution failed: ${errMsg}`,
+                query_type: query.type
+            };
+            if (query.correlation_id) {
+                sendAsyncResult(syncClient, query.id, query.correlation_id, 'error', payload, payload.error);
+            }
+            else {
+                sendResult(syncClient, query.id, payload);
+            }
+            return;
+        }
         if (resolved.error) {
             if (query.correlation_id) {
                 sendAsyncResult(syncClient, query.id, query.correlation_id, 'error', resolved.error.payload, resolved.error.message);
