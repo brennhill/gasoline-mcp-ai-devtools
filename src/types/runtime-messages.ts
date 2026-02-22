@@ -235,13 +235,17 @@ export interface DrawModeCaptureScreenshotMessage {
 }
 
 /**
- * Draw mode: content script sends completed annotation results
+ * Draw mode: content script sends completed annotation results.
+ * Fields match the wire format sent by extension/content/draw-mode.js.
  */
 export interface DrawModeCompletedMessage {
   readonly type: 'DRAW_MODE_COMPLETED'
   readonly annotations?: readonly unknown[]
-  readonly screenshot?: string
-  readonly annotSessionName?: string
+  readonly screenshot_data_url?: string
+  readonly elementDetails?: Readonly<Record<string, unknown>>
+  readonly page_url?: string
+  readonly correlation_id?: string
+  readonly annot_session_name?: string
 }
 
 // =============================================================================

@@ -4,9 +4,7 @@ package main
 
 import (
 	_ "embed"
-	"fmt"
 	"net/http"
-	"os"
 )
 
 //go:embed openapi.json
@@ -21,6 +19,6 @@ func handleOpenAPI(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	if _, err := w.Write(openapiJSON); err != nil {
-		fmt.Fprintf(os.Stderr, "[gasoline] failed to write /openapi.json response: %v\n", err)
+		stderrf("[gasoline] failed to write /openapi.json response: %v\n", err)
 	}
 }

@@ -233,7 +233,7 @@ func storeElementDetails(details map[string]json.RawMessage) {
 				if len(rawStr) > 200 {
 					rawStr = rawStr[:200] + "..."
 				}
-				fmt.Fprintf(os.Stderr, "[gasoline] draw detail %s: empty (raw=%s)\n", correlationID, rawStr)
+				stderrf("[gasoline] draw detail %s: empty (raw=%s)\n", correlationID, rawStr)
 			}
 			detail.CorrelationID = correlationID
 			globalAnnotationStore.StoreDetail(correlationID, detail)
@@ -242,7 +242,7 @@ func storeElementDetails(details map[string]json.RawMessage) {
 			if len(rawStr) > 200 {
 				rawStr = rawStr[:200] + "..."
 			}
-			fmt.Fprintf(os.Stderr, "[gasoline] draw detail %s: unmarshal error: %v (raw=%s)\n", correlationID, err, rawStr)
+			stderrf("[gasoline] draw detail %s: unmarshal error: %v (raw=%s)\n", correlationID, err, rawStr)
 		}
 	}
 }

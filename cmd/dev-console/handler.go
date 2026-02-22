@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"os"
 	"sort"
 	"strings"
 	"sync"
@@ -109,7 +108,7 @@ func newHTTPRequestContext(r *http.Request, serverVersion string) httpRequestCon
 	}
 
 	if extVer := r.Header.Get("X-Gasoline-Extension-Version"); extVer != "" && extVer != serverVersion {
-		fmt.Fprintf(os.Stderr, "[gasoline] Version mismatch: server=%s extension=%s\n", serverVersion, extVer)
+		stderrf("[gasoline] Version mismatch: server=%s extension=%s\n", serverVersion, extVer)
 	}
 
 	return ctx
@@ -640,6 +639,6 @@ func jsonResponse(w http.ResponseWriter, status int, data any) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
 	if err := json.NewEncoder(w).Encode(data); err != nil {
-		fmt.Fprintf(os.Stderr, "[gasoline] Error encoding JSON response: %v\n", err)
+		stderrf("[gasoline] Error encoding JSON response: %v\n", err)
 	}
 }

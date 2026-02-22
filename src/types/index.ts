@@ -88,6 +88,7 @@ export type {
   ClearDebugLogMessage,
   SetServerUrlMessage,
   StatusUpdateMessage,
+  DrawModeCompletedMessage,
   BackgroundMessage,
 
   // Content script message types
