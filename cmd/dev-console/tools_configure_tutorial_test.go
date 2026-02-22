@@ -274,3 +274,46 @@ func TestToolsConfigureTutorial_SnippetsAvoidAmbiguousGlobalSubmit(t *testing.T)
 		}
 	}
 }
+
+func TestToolsConfigureTutorial_IncludesFailureRecoveryPlaybooks(t *testing.T) {
+	t.Parallel()
+	env := newConfigureTestEnv(t)
+	env.capture.SetPilotEnabled(true)
+	seedSyncSettings(t, env, `{"pilot_enabled":true,"tracking_enabled":true,"tracked_tab_id":19,"tracked_tab_url":"https://example.com","tracked_tab_title":"Example"}`)
+
+	result, ok := env.callConfigure(t, `{"what":"tutorial"}`)
+	if !ok {
+		t.Fatal("tutorial should return result")
+	}
+	if result.IsError {
+		t.Fatalf("tutorial should not error, got: %s", result.Content[0].Text)
+	}
+
+	data := parseResponseJSON(t, result)
+	playbooks, ok := data["failure_recovery_playbooks"].(map[string]any)
+	if !ok {
+		t.Fatalf("failure_recovery_playbooks type = %T, want map[string]any", data["failure_recovery_playbooks"])
+	}
+
+	required := []string{"element_not_found", "ambiguous_target", "stale_element_id", "scope_not_found"}
+	for _, code := range required {
+		raw, ok := playbooks[code]
+		if !ok {
+			t.Fatalf("missing playbook for %s: %#v", code, playbooks)
+		}
+		entry, ok := raw.(map[string]any)
+		if !ok {
+			t.Fatalf("playbook[%s] type = %T, want map[string]any", code, raw)
+		}
+		if detect, _ := entry["detection_signal"].(string); detect == "" {
+			t.Fatalf("playbook[%s].detection_signal is empty", code)
+		}
+		steps, ok := entry["ordered_recovery_steps"].([]any)
+		if !ok || len(steps) < 2 {
+			t.Fatalf("playbook[%s].ordered_recovery_steps = %#v, want >=2 steps", code, entry["ordered_recovery_steps"])
+		}
+		if stop, _ := entry["stop_and_report_condition"].(string); stop == "" {
+			t.Fatalf("playbook[%s].stop_and_report_condition is empty", code)
+		}
+	}
+}

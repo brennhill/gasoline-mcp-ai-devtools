@@ -25,15 +25,16 @@ func (h *ToolHandler) toolConfigureTutorial(req JSONRPCRequest, args json.RawMes
 
 	context := h.tutorialContext()
 	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Tutorial", map[string]any{
-		"status":                "ok",
-		"mode":                  mode,
-		"message":               "Quickstart snippets and context-aware guidance",
-		"context":               context,
-		"issues":                tutorialIssues(context),
-		"next_steps":            tutorialNextSteps(context),
-		"snippets":              tutorialSnippets(),
-		"safe_automation_loop":  tutorialSafeAutomationLoop(),
-		"csp_fallback_playbook": tutorialCSPFallbackPlaybook(),
+		"status":                     "ok",
+		"mode":                       mode,
+		"message":                    "Quickstart snippets and context-aware guidance",
+		"context":                    context,
+		"issues":                     tutorialIssues(context),
+		"next_steps":                 tutorialNextSteps(context),
+		"snippets":                   tutorialSnippets(),
+		"safe_automation_loop":       tutorialSafeAutomationLoop(),
+		"csp_fallback_playbook":      tutorialCSPFallbackPlaybook(),
+		"failure_recovery_playbooks": tutorialFailureRecoveryPlaybooks(),
 		"best_practices": []string{
 			"Start with observe to gather evidence before automating actions",
 			"Use configure tutorial/examples and describe_capabilities when argument shape is unclear",

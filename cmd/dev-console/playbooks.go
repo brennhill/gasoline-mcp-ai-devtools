@@ -309,6 +309,22 @@ var quickstartContent = `# Gasoline MCP Quickstart
 
 ## 10. Stop Recording
 {"tool":"configure","arguments":{"what":"recording_stop","recording_id":"..."}}
+
+## 11. Interact Failure Recovery (Quick)
+
+- element_not_found
+  - Run interact({what:"list_interactive", scope_selector:"<container>"}) and retry with element_id/index.
+- ambiguous_target
+  - Add scope_selector/scope_rect, refresh list_interactive, then retry with element_id/index.
+- stale_element_id
+  - Refresh list_interactive in same scope, reacquire element_id, retry once.
+- scope_not_found
+  - Fallback from scope_selector to scope_rect/frame, then rerun list_interactive.
+
+Stop and report evidence when recovery does not converge after one scoped retry cycle:
+- observe({what:"command_result", correlation_id:"..."})
+- observe({what:"screenshot"})
+- interact({what:"list_interactive", scope_selector:"<best-known-scope>"})
 `
 
 // demoScripts maps demo names to markdown demo script content.

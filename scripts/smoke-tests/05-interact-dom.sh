@@ -1,10 +1,11 @@
 #!/bin/bash
-# 05-interact-dom.sh — 5.1-5.15: DOM primitive smoke tests.
+# 05-interact-dom.sh — 5.1-5.19: DOM primitive smoke tests.
 # type, select, check, get_text/value/attribute, set_attribute,
-# scroll_to, wait_for, key_press, list_interactive, focus, back/forward, new_tab
+# scroll_to, wait_for, key_press, list_interactive, focus, back/forward, new_tab,
+# and interact failure recovery playbooks
 set -eo pipefail
 
-begin_category "5" "Interact DOM Primitives" "15"
+begin_category "5" "Interact DOM Primitives" "19"
 
 # ── Inject rich test form on example.com ─────────────────
 _inject_smoke_form() {
@@ -504,3 +505,155 @@ run_test_5_15() {
     skip "new_tab creates an untracked tab — no way to verify from Gasoline. Feature exists for future multi-tab support (e.g. login flows)."
 }
 run_test_5_15
+
+# ── Test 5.16: element_not_found recovery ───────────────
+begin_test "5.16" "[BROWSER] element_not_found recovery flow" \
+    "Trigger element_not_found, confirm retry guidance, recover via scoped list_interactive + valid click" \
+    "Tests: recovery playbook alignment for element_not_found"
+
+run_test_5_16() {
+    if [ "$PILOT_ENABLED" != "true" ]; then
+        skip "Pilot not enabled."
+        return
+    fi
+
+    interact_and_wait "click" '{"action":"click","selector":"#missing-target","reason":"Trigger element_not_found"}'
+    if ! echo "$INTERACT_RESULT" | grep -qi "element_not_found"; then
+        fail "Expected element_not_found error. Result: $(truncate "$INTERACT_RESULT" 200)"
+        return
+    fi
+    if ! echo "$INTERACT_RESULT" | grep -qi "list_interactive\|scope"; then
+        fail "element_not_found retry guidance missing list/scope hints. Result: $(truncate "$INTERACT_RESULT" 220)"
+        return
+    fi
+
+    interact_and_wait "list_interactive" '{"action":"list_interactive","selector":"#smoke-form-dom","reason":"Recover candidates in form scope"}'
+    interact_and_wait "click" '{"action":"click","selector":"#sf-btn","scope_selector":"#smoke-form-dom","reason":"Recover from element_not_found"}'
+
+    if echo "$INTERACT_RESULT" | grep -qi "error\|failed"; then
+        fail "Recovery click failed after element_not_found. Result: $(truncate "$INTERACT_RESULT" 200)"
+    else
+        pass "element_not_found recovery succeeded via scoped list_interactive + click."
+    fi
+}
+run_test_5_16
+
+# ── Test 5.17: ambiguous_target recovery ────────────────
+begin_test "5.17" "[BROWSER] ambiguous_target recovery flow" \
+    "Create duplicate targets, trigger ambiguous_target, recover with scope_selector" \
+    "Tests: recovery playbook alignment for ambiguous_target"
+
+run_test_5_17() {
+    if [ "$PILOT_ENABLED" != "true" ]; then
+        skip "Pilot not enabled."
+        return
+    fi
+
+    interact_and_wait "execute_js" '{"action":"execute_js","reason":"Inject duplicate targets for ambiguous test","script":"(function(){var old=document.getElementById(\"smoke-ambiguous\"); if(old) old.remove(); var root=document.createElement(\"div\"); root.id=\"smoke-ambiguous\"; root.innerHTML=\"<div id=\\\"dup-a\\\"><button class=\\\"dup-target\\\" type=\\\"button\\\">Post</button></div><div id=\\\"dup-b\\\"><button class=\\\"dup-target\\\" type=\\\"button\\\">Post</button></div>\"; document.body.appendChild(root); return \"ambiguous-ready\";})()"}'
+
+    interact_and_wait "click" '{"action":"click","selector":".dup-target","reason":"Trigger ambiguous_target"}'
+    if ! echo "$INTERACT_RESULT" | grep -qi "ambiguous_target"; then
+        fail "Expected ambiguous_target error. Result: $(truncate "$INTERACT_RESULT" 220)"
+        return
+    fi
+    if ! echo "$INTERACT_RESULT" | grep -qi "scope_selector\|element_id"; then
+        fail "ambiguous_target retry guidance missing scope_selector/element_id hints. Result: $(truncate "$INTERACT_RESULT" 240)"
+        return
+    fi
+
+    interact_and_wait "click" '{"action":"click","selector":".dup-target","scope_selector":"#dup-a","reason":"Recover from ambiguous_target using scope"}'
+    if echo "$INTERACT_RESULT" | grep -qi "error\|failed"; then
+        fail "Recovery click failed after ambiguous_target. Result: $(truncate "$INTERACT_RESULT" 220)"
+    else
+        pass "ambiguous_target recovery succeeded with scope_selector."
+    fi
+}
+run_test_5_17
+
+# ── Test 5.18: stale_element_id recovery ────────────────
+begin_test "5.18" "[BROWSER] stale_element_id recovery flow" \
+    "Trigger stale_element_id via invalid handle, recover by refreshing list_interactive and using new handle" \
+    "Tests: recovery playbook alignment for stale_element_id"
+
+run_test_5_18() {
+    if [ "$PILOT_ENABLED" != "true" ]; then
+        skip "Pilot not enabled."
+        return
+    fi
+
+    interact_and_wait "click" '{"action":"click","selector":"#sf-btn","element_id":"el_missing","reason":"Trigger stale_element_id"}'
+    if ! echo "$INTERACT_RESULT" | grep -qi "stale_element_id"; then
+        fail "Expected stale_element_id error. Result: $(truncate "$INTERACT_RESULT" 220)"
+        return
+    fi
+    if ! echo "$INTERACT_RESULT" | grep -qi "list_interactive\|element_id"; then
+        fail "stale_element_id retry guidance missing list_interactive/element_id hints. Result: $(truncate "$INTERACT_RESULT" 240)"
+        return
+    fi
+
+    interact_and_wait "list_interactive" '{"action":"list_interactive","selector":"#smoke-form-dom","reason":"Refresh handles for stale recovery"}'
+    local sf_btn_element_id
+    sf_btn_element_id=$(echo "$INTERACT_RESULT" | python3 -c '
+import json, sys
+text = sys.stdin.read()
+i = text.find("{")
+if i < 0:
+    sys.exit(0)
+try:
+    data = json.loads(text[i:])
+except Exception:
+    sys.exit(0)
+elems = data.get("elements", [])
+for e in elems:
+    selector = str(e.get("selector", ""))
+    label = str(e.get("label", ""))
+    textv = str(e.get("text", "")) or str(e.get("text_content", ""))
+    if "#sf-btn" in selector or "submit" in label.lower() or "submit" in textv.lower():
+        eid = str(e.get("element_id", "")).strip()
+        if eid:
+            print(eid)
+            break
+')
+    if [ -z "$sf_btn_element_id" ]; then
+        fail "Could not extract refreshed element_id for #sf-btn from list_interactive result."
+        return
+    fi
+
+    interact_and_wait "click" "{\"action\":\"click\",\"selector\":\"#sf-btn\",\"element_id\":\"$sf_btn_element_id\",\"reason\":\"Recover from stale_element_id with refreshed handle\"}"
+    if echo "$INTERACT_RESULT" | grep -qi "error\|failed"; then
+        fail "Recovery click with refreshed element_id failed. Result: $(truncate "$INTERACT_RESULT" 220)"
+    else
+        pass "stale_element_id recovery succeeded with refreshed list_interactive handle."
+    fi
+}
+run_test_5_18
+
+# ── Test 5.19: scope_not_found recovery ──────────────────
+begin_test "5.19" "[BROWSER] scope_not_found recovery flow" \
+    "Trigger scope_not_found, confirm fallback guidance, recover with valid scope_selector" \
+    "Tests: recovery playbook alignment for scope_not_found"
+
+run_test_5_19() {
+    if [ "$PILOT_ENABLED" != "true" ]; then
+        skip "Pilot not enabled."
+        return
+    fi
+
+    interact_and_wait "click" '{"action":"click","selector":"#sf-btn","scope_selector":"#missing-scope","reason":"Trigger scope_not_found"}'
+    if ! echo "$INTERACT_RESULT" | grep -qi "scope_not_found"; then
+        fail "Expected scope_not_found error. Result: $(truncate "$INTERACT_RESULT" 220)"
+        return
+    fi
+    if ! echo "$INTERACT_RESULT" | grep -qi "scope_selector\|scope_rect\|frame"; then
+        fail "scope_not_found retry guidance missing scope fallback hints. Result: $(truncate "$INTERACT_RESULT" 260)"
+        return
+    fi
+
+    interact_and_wait "click" '{"action":"click","selector":"#sf-btn","scope_selector":"#smoke-form-dom","reason":"Recover from scope_not_found"}'
+    if echo "$INTERACT_RESULT" | grep -qi "error\|failed"; then
+        fail "Recovery click failed after scope_not_found. Result: $(truncate "$INTERACT_RESULT" 220)"
+    else
+        pass "scope_not_found recovery succeeded using valid fallback scope_selector."
+    fi
+}
+run_test_5_19
