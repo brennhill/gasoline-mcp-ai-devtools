@@ -155,9 +155,10 @@ func NewCapture() *Capture {
 			connOrder:   make([]string, 0),
 		},
 		ext: ExtensionState{
-			activeTestIDs: make(map[string]bool),
-			pilotSource:   PilotSourceAssumedStartup,
-			securityMode:  SecurityModeNormal,
+			activeTestIDs:           make(map[string]bool),
+			missingInProgressByCorr: make(map[string]int),
+			pilotSource:             PilotSourceAssumedStartup,
+			securityMode:            SecurityModeNormal,
 		},
 		perf: PerformanceStore{
 			snapshots:       make(map[string]performance.PerformanceSnapshot),

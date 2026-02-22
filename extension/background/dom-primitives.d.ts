@@ -24,5 +24,4 @@ export declare function domPrimitive(action: string, selector: string, options: 
     error?: string;
     message?: string;
 };
-export declare function domWaitFor(selector: string, timeoutMs?: number): Promise<DOMResult>;
 //# sourceMappingURL=dom-primitives.d.ts.map

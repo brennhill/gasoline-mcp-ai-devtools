@@ -227,6 +227,123 @@ func TestHandleSync_UpdatesLastPollAt(t *testing.T) {
 	}
 }
 
+func TestHandleSync_StoresInProgressHeartbeat(t *testing.T) {
+	t.Parallel()
+	cap := NewCapture()
+
+	progress := 42.5
+	req := SyncRequest{
+		ExtSessionID: "test-session",
+		InProgress: []SyncInProgress{
+			{
+				ID:            "q-123",
+				CorrelationID: "corr-123",
+				Type:          "browser_action",
+				Status:        "running",
+				ProgressPct:   &progress,
+				StartedAt:     time.Now().Add(-2 * time.Second).UTC().Format(time.RFC3339),
+				UpdatedAt:     time.Now().UTC().Format(time.RFC3339),
+			},
+		},
+	}
+
+	body, _ := json.Marshal(req)
+	httpReq := httptest.NewRequest("POST", "/sync", bytes.NewReader(body))
+	w := httptest.NewRecorder()
+	cap.HandleSync(w, httpReq)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("Expected status 200, got %d", w.Code)
+	}
+
+	pilot, ok := cap.GetPilotStatus().(map[string]any)
+	if !ok {
+		t.Fatal("expected pilot status to be a map")
+	}
+	if pilot["in_progress_count"] != 1 {
+		t.Fatalf("in_progress_count = %v, want 1", pilot["in_progress_count"])
+	}
+
+	inProgress, ok := pilot["in_progress"].([]SyncInProgress)
+	if !ok {
+		t.Fatalf("in_progress type = %T, want []SyncInProgress", pilot["in_progress"])
+	}
+	if len(inProgress) != 1 {
+		t.Fatalf("len(in_progress) = %d, want 1", len(inProgress))
+	}
+	if inProgress[0].CorrelationID != "corr-123" {
+		t.Fatalf("in_progress[0].correlation_id = %q, want corr-123", inProgress[0].CorrelationID)
+	}
+}
+
+func TestHandleSync_MissingInProgressHeartbeatFailsStartedCommand(t *testing.T) {
+	t.Parallel()
+	cap := NewCapture()
+
+	corrID := "corr-missing-heartbeat"
+	queryID := cap.CreatePendingQueryWithTimeout(queries.PendingQuery{
+		Type:          "browser_action",
+		Params:        json.RawMessage(`{"action":"navigate","url":"https://example.com"}`),
+		CorrelationID: corrID,
+	}, queries.AsyncCommandTimeout, "")
+	if queryID == "" {
+		t.Fatal("expected queryID")
+	}
+
+	// First sync dispatches the command to extension.
+	firstReqBody := []byte(`{"ext_session_id":"session-1","in_progress":[]}`)
+	firstReq := httptest.NewRequest("POST", "/sync", bytes.NewReader(firstReqBody))
+	firstResp := httptest.NewRecorder()
+	cap.HandleSync(firstResp, firstReq)
+	if firstResp.Code != http.StatusOK {
+		t.Fatalf("first sync status = %d, want 200", firstResp.Code)
+	}
+
+	// Second sync ACKs receipt but still reports no in_progress entries.
+	secondReqBody, _ := json.Marshal(map[string]any{
+		"ext_session_id":   "session-1",
+		"last_command_ack": queryID,
+		"in_progress":      []any{},
+	})
+	secondReq := httptest.NewRequest("POST", "/sync", bytes.NewReader(secondReqBody))
+	secondResp := httptest.NewRecorder()
+	cap.HandleSync(secondResp, secondReq)
+	if secondResp.Code != http.StatusOK {
+		t.Fatalf("second sync status = %d, want 200", secondResp.Code)
+	}
+
+	cmd, found := cap.GetCommandResult(corrID)
+	if !found {
+		t.Fatal("expected command result after second sync")
+	}
+	if cmd.Status != "pending" {
+		t.Fatalf("command status after first miss = %q, want pending", cmd.Status)
+	}
+
+	// Third sync still has no in_progress entry -> command should fail fast.
+	thirdReqBody, _ := json.Marshal(map[string]any{
+		"ext_session_id": "session-1",
+		"in_progress":    []any{},
+	})
+	thirdReq := httptest.NewRequest("POST", "/sync", bytes.NewReader(thirdReqBody))
+	thirdResp := httptest.NewRecorder()
+	cap.HandleSync(thirdResp, thirdReq)
+	if thirdResp.Code != http.StatusOK {
+		t.Fatalf("third sync status = %d, want 200", thirdResp.Code)
+	}
+
+	cmd, found = cap.GetCommandResult(corrID)
+	if !found {
+		t.Fatal("expected command result after desync reconciliation")
+	}
+	if cmd.Status != "error" {
+		t.Fatalf("command status after second miss = %q, want error", cmd.Status)
+	}
+	if !strings.Contains(cmd.Error, "extension_lost_command") {
+		t.Fatalf("command error = %q, want extension_lost_command", cmd.Error)
+	}
+}
+
 func TestUpdateSyncConnectionState_NoReconnectForShortPollGap(t *testing.T) {
 	t.Parallel()
 	cap := NewCapture()

@@ -35,6 +35,9 @@ const (
 	nbBufferMemoryLimit  = 8 * 1024 * 1024 // 8MB
 	rateWindow           = 5 * time.Second // rolling window for msg/s calculation
 
+)
+
+var (
 	// extensionDisconnectThreshold is how long since last /sync before
 	// the extension is considered disconnected. Pending queries are auto-expired
 	// when the extension exceeds this threshold.

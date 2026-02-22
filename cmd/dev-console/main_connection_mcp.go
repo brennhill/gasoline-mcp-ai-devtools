@@ -123,7 +123,7 @@ func initCapture(server *Server, port int) *capture.Capture {
 		for k, v := range data {
 			entry[k] = v
 		}
-		_ = server.appendToFile([]LogEntry{entry})
+		server.addEntries([]LogEntry{entry})
 	})
 
 	server.logLifecycle("loading_settings", port, nil)

@@ -56,6 +56,54 @@ func canonicalLifecycleStatus(status string) string {
 	}
 }
 
+var (
+	asyncInitialWait  = 15 * time.Second
+	asyncRetryWait    = 5 * time.Second
+	asyncPollInterval = 500 * time.Millisecond
+)
+
+func (h *ToolHandler) waitForCommandWithConnectivity(correlationID string, timeout time.Duration) (*queries.CommandResult, bool, bool, int64) {
+	deadline := time.Now().Add(timeout)
+	waited := int64(0)
+	for {
+		remaining := time.Until(deadline)
+		if remaining <= 0 {
+			cmd, found := h.capture.GetCommandResult(correlationID)
+			disconnected := found && cmd != nil && cmd.Status == "pending" && !h.capture.IsExtensionConnected()
+			return cmd, found, disconnected, waited
+		}
+		waitStep := asyncPollInterval
+		if waitStep <= 0 || waitStep > remaining {
+			waitStep = remaining
+		}
+		cmd, found := h.capture.WaitForCommand(correlationID, waitStep)
+		waited += waitStep.Milliseconds()
+		if !found {
+			return nil, false, false, waited
+		}
+		if cmd.Status != "pending" {
+			return cmd, true, false, waited
+		}
+		if !h.capture.IsExtensionConnected() {
+			return cmd, true, true, waited
+		}
+	}
+}
+
+func (h *ToolHandler) finalizePendingDisconnect(req JSONRPCRequest, correlationID string) JSONRPCResponse {
+	h.capture.ApplyCommandResult(correlationID, "error", nil, "extension_disconnected")
+	if cmd, found := h.capture.GetCommandResult(correlationID); found && cmd != nil {
+		return h.formatCommandResult(req, *cmd, correlationID)
+	}
+	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(
+		ErrNoData,
+		"Extension disconnected while command was pending",
+		"Ensure the extension is connected, then retry the action.",
+		h.diagnosticHint(),
+		withFinal(true),
+	)}
+}
+
 // ============================================
 // Sync-by-Default Command Dispatch
 // ============================================
@@ -102,30 +150,36 @@ func (h *ToolHandler) MaybeWaitForCommand(req JSONRPCRequest, correlationID stri
 	// Wait for result (15s default for "Sync-by-Default" pattern).
 	// Most DOM actions (click, type) take < 500ms over long-polling.
 	// 15s is safe for most navigations while staying well under the 60s IDE timeout.
-	const initialWait = 15 * time.Second
-	const retryWait = 5 * time.Second
 	attempts := 1
+	totalWaitMs := int64(0)
 
-	cmd, found := h.capture.WaitForCommand(correlationID, initialWait)
+	cmd, found, disconnected, waitedMs := h.waitForCommandWithConnectivity(correlationID, asyncInitialWait)
+	totalWaitMs += waitedMs
 	if !found {
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInternal, "Command not found after queuing", "Internal error — do not retry")}
+	}
+	if disconnected {
+		return h.finalizePendingDisconnect(req, correlationID)
 	}
 
 	// Single retry: if still pending and extension is connected, wait 5s more.
 	// This catches commands that complete just after the initial timeout.
 	if cmd.Status == "pending" && h.capture.IsExtensionConnected() {
 		attempts = 2
-		cmd, found = h.capture.WaitForCommand(correlationID, retryWait)
+		cmd, found, disconnected, waitedMs = h.waitForCommandWithConnectivity(correlationID, asyncRetryWait)
+		totalWaitMs += waitedMs
 		if !found {
 			return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInternal, "Command not found after retry", "Internal error — do not retry")}
+		}
+		if disconnected {
+			return h.finalizePendingDisconnect(req, correlationID)
 		}
 	}
 
 	// If still pending after retry, return a "still_processing" handle so the agent can poll.
 	if cmd.Status == "pending" {
-		totalWaitMs := initialWait.Milliseconds()
-		if attempts > 1 {
-			totalWaitMs += retryWait.Milliseconds()
+		if !h.capture.IsExtensionConnected() {
+			return h.finalizePendingDisconnect(req, correlationID)
 		}
 		stillProcessing := map[string]any{
 			"status":           "still_processing",
@@ -214,14 +268,23 @@ func (h *ToolHandler) toolObservePendingCommands(req JSONRPCRequest, args json.R
 	pending := h.capture.GetPendingCommands()
 	completed := h.capture.GetCompletedCommands()
 	failed := h.capture.GetFailedCommands()
+	inProgress := h.capture.GetInProgressCommands()
 
 	responseData := map[string]any{
-		"pending":   pending,
-		"completed": completed,
-		"failed":    failed,
+		"pending":                     pending,
+		"completed":                   completed,
+		"failed":                      failed,
+		"extension_in_progress":       inProgress,
+		"extension_in_progress_count": len(inProgress),
 	}
 
-	summary := fmt.Sprintf("Pending: %d, Completed: %d, Failed: %d", len(pending), len(completed), len(failed))
+	summary := fmt.Sprintf(
+		"Pending: %d, Completed: %d, Failed: %d, Extension in-progress: %d",
+		len(pending),
+		len(completed),
+		len(failed),
+		len(inProgress),
+	)
 	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse(summary, responseData)}
 }
 

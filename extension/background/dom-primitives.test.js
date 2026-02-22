@@ -768,6 +768,57 @@ describe('ambiguity-safe mutating actions', () => {
     assert.strictEqual(clickCount, 0, 'no click should be executed on ambiguous target')
   })
 
+  test('click text selector ignores Gasoline-owned overlays', async () => {
+    let clickCount = 0
+    const pageLink = new MockHTMLElement('A', { id: 'page-link', textContent: 'Learn more' })
+    Object.setPrototypeOf(pageLink, MockHTMLElement.prototype)
+    pageLink.getBoundingClientRect = () => ({ x: 100, y: 200, width: 80, height: 20 })
+    pageLink.getRootNode = () => globalThis.document
+    pageLink.getAttribute = () => null
+    pageLink.click = () => {
+      clickCount++
+    }
+
+    const overlaySpan = new MockHTMLElement('SPAN', { id: 'gasoline-subtitle', textContent: 'text=Learn more' })
+    Object.setPrototypeOf(overlaySpan, MockHTMLElement.prototype)
+    overlaySpan.getBoundingClientRect = () => ({ x: 600, y: 20, width: 120, height: 18 })
+    overlaySpan.getRootNode = () => globalThis.document
+    overlaySpan.getAttribute = (name) => (name === 'id' ? 'gasoline-subtitle' : null)
+
+    const textNodes = [
+      { textContent: 'Learn more', parentElement: pageLink },
+      { textContent: 'text=Learn more', parentElement: overlaySpan }
+    ]
+
+    globalThis.document = {
+      querySelector: () => null,
+      querySelectorAll: () => [],
+      getElementById: () => null,
+      body: { querySelectorAll: () => [], appendChild: () => {}, children: { length: 0 } },
+      documentElement: { children: { length: 0 } },
+      createTreeWalker: () => {
+        let idx = -1
+        return {
+          currentNode: null,
+          nextNode() {
+            idx += 1
+            if (idx >= textNodes.length) return null
+            this.currentNode = textNodes[idx]
+            return this.currentNode
+          }
+        }
+      },
+      getSelection: () => null,
+      execCommand: () => {}
+    }
+
+    const raw = domPrimitive('click', 'text=Learn more', {})
+    const result = raw instanceof Promise ? await raw : raw
+    assert.strictEqual(result.success, true)
+    assert.strictEqual(result.error, undefined)
+    assert.strictEqual(clickCount, 1, 'expected page element click, not overlay match')
+  })
+
   test('read-only actions remain backward-compatible on duplicate matches', () => {
     const first = new MockHTMLElement('DIV', { textContent: 'alpha' })
     first.innerText = 'alpha'

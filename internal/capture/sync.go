@@ -43,6 +43,10 @@ type SyncRequest struct {
 
 	// Command results batch (replaces multiple result POST endpoints)
 	CommandResults []SyncCommandResult `json:"command_results,omitempty"`
+
+	// Active commands currently executing in the extension.
+	// Used to reconcile server/extension state and detect silent command loss.
+	InProgress []SyncInProgress `json:"in_progress,omitempty"`
 }
 
 // SyncSettings contains extension settings from the sync request
@@ -65,6 +69,17 @@ type SyncCommandResult struct {
 	Status        string          `json:"status"` // "complete", "error", "timeout", "cancelled"
 	Result        json.RawMessage `json:"result,omitempty"`
 	Error         string          `json:"error,omitempty"`
+}
+
+// SyncInProgress represents extension-reported active command execution state.
+type SyncInProgress struct {
+	ID            string   `json:"id"`
+	CorrelationID string   `json:"correlation_id,omitempty"`
+	Type          string   `json:"type,omitempty"`
+	Status        string   `json:"status,omitempty"` // running | pending
+	ProgressPct   *float64 `json:"progress_pct,omitempty"`
+	StartedAt     string   `json:"started_at,omitempty"`
+	UpdatedAt     string   `json:"updated_at,omitempty"`
 }
 
 // SyncResponse is the response body for /sync
@@ -110,6 +125,7 @@ type syncConnectionState struct {
 	timeSinceLastPoll time.Duration
 	extSessionID      string
 	pilotEnabled      bool
+	inProgressCount   int
 }
 
 // updateSyncConnectionState updates connection state under lock and returns captured state.
@@ -148,7 +164,12 @@ func (c *Capture) updateSyncConnectionState(req SyncRequest, clientID string, no
 		c.ext.trackedTabTitle = req.Settings.TrackedTabTitle
 		c.ext.trackingUpdated = now
 	}
+	if req.InProgress != nil {
+		c.ext.inProgress = normalizeInProgressList(req.InProgress)
+		c.ext.inProgressUpdated = now
+	}
 	s.pilotEnabled = c.ext.pilotEnabled
+	s.inProgressCount = len(c.ext.inProgress)
 	return s
 }
 
@@ -220,6 +241,143 @@ func buildSyncCommands(pending []queries.PendingQueryResponse) []SyncCommand {
 	return commands
 }
 
+func shouldEmitSyncSnapshot(req SyncRequest, state syncConnectionState, commandsOut int) bool {
+	if state.isReconnect || state.wasDisconnected || !state.wasConnected {
+		return true
+	}
+	if len(req.CommandResults) > 0 || commandsOut > 0 {
+		return true
+	}
+	if req.LastCommandAck != "" {
+		return true
+	}
+	return false
+}
+
+func normalizeInProgressList(in []SyncInProgress) []SyncInProgress {
+	if in == nil {
+		return nil
+	}
+	if len(in) == 0 {
+		return []SyncInProgress{}
+	}
+	const maxInProgress = 100
+	limit := len(in)
+	if limit > maxInProgress {
+		limit = maxInProgress
+	}
+	out := make([]SyncInProgress, 0, limit)
+	for i := 0; i < limit; i++ {
+		entry := in[i]
+		entry.ID = strings.TrimSpace(entry.ID)
+		entry.CorrelationID = strings.TrimSpace(entry.CorrelationID)
+		entry.Type = strings.TrimSpace(entry.Type)
+		entry.Status = strings.TrimSpace(strings.ToLower(entry.Status))
+		if entry.Status == "" {
+			entry.Status = "running"
+		}
+		if entry.ProgressPct != nil {
+			p := *entry.ProgressPct
+			if p < 0 {
+				p = 0
+			}
+			if p > 100 {
+				p = 100
+			}
+			entry.ProgressPct = &p
+		}
+		if entry.ID == "" && entry.CorrelationID == "" {
+			continue
+		}
+		out = append(out, entry)
+	}
+	return out
+}
+
+func commandHasStarted(cmd *queries.CommandResult) bool {
+	if cmd == nil {
+		return false
+	}
+	for _, evt := range cmd.TraceEvents {
+		if evt.Stage == "started" || evt.Stage == "resolved" || evt.Stage == "errored" || evt.Stage == "timed_out" {
+			return true
+		}
+	}
+	return strings.Contains(cmd.TraceTimeline, "started")
+}
+
+func (c *Capture) reconcileInProgressCommandState(inProgress []SyncInProgress) {
+	if inProgress == nil {
+		// Older extension/client that doesn't report in_progress yet.
+		return
+	}
+
+	active := make(map[string]struct{}, len(inProgress))
+	for _, entry := range inProgress {
+		if entry.CorrelationID != "" {
+			active[entry.CorrelationID] = struct{}{}
+		}
+	}
+
+	pending := c.GetPendingCommands()
+	pendingCorr := make(map[string]struct{}, len(pending))
+	toFail := make([]string, 0)
+	toFailIDs := make([]string, 0)
+
+	c.mu.Lock()
+	if c.ext.missingInProgressByCorr == nil {
+		c.ext.missingInProgressByCorr = make(map[string]int)
+	}
+	for _, cmd := range pending {
+		if cmd == nil || cmd.CorrelationID == "" {
+			continue
+		}
+		corr := cmd.CorrelationID
+		pendingCorr[corr] = struct{}{}
+
+		if _, ok := active[corr]; ok {
+			delete(c.ext.missingInProgressByCorr, corr)
+			continue
+		}
+		if !commandHasStarted(cmd) {
+			continue
+		}
+		c.ext.missingInProgressByCorr[corr]++
+		if c.ext.missingInProgressByCorr[corr] >= 2 {
+			toFail = append(toFail, corr)
+			toFailIDs = append(toFailIDs, cmd.QueryID)
+			delete(c.ext.missingInProgressByCorr, corr)
+		}
+	}
+
+	for corr := range c.ext.missingInProgressByCorr {
+		if _, stillPending := pendingCorr[corr]; !stillPending {
+			delete(c.ext.missingInProgressByCorr, corr)
+		}
+	}
+	c.mu.Unlock()
+
+	for i, corr := range toFail {
+		queryID := ""
+		if i < len(toFailIDs) {
+			queryID = toFailIDs[i]
+		}
+		c.ApplyCommandResult(
+			corr,
+			"error",
+			nil,
+			"extension_lost_command: command acknowledged by extension but missing from in_progress heartbeats",
+		)
+		util.SafeGo(func() {
+			c.emitLifecycleEvent("command_state_desync", map[string]any{
+				"correlation_id": corr,
+				"query_id":       queryID,
+				"reason":         "missing_in_progress_heartbeat",
+			})
+		})
+	}
+}
+
 // HandleSync processes the unified sync endpoint.
 // POST: Receives settings, logs, command results; returns pending commands.
 func (c *Capture) HandleSync(w http.ResponseWriter, r *http.Request) {
@@ -269,6 +427,11 @@ func (c *Capture) HandleSync(w http.ResponseWriter, r *http.Request) {
 		})
 	}
 
+	// Reconcile started commands against extension heartbeat state.
+	// If a command disappears from heartbeat in_progress without a terminal result,
+	// fail it fast instead of waiting for eventual timeout.
+	c.reconcileInProgressCommandState(req.InProgress)
+
 	// Long-polling: if no commands, wait for up to 5 seconds
 	pendingQueries := c.GetPendingQueries()
 	if len(pendingQueries) == 0 {
@@ -283,6 +446,20 @@ func (c *Capture) HandleSync(w http.ResponseWriter, r *http.Request) {
 	nextPollMs := 1000
 	if len(commands) > 0 {
 		nextPollMs = 200
+	}
+	if shouldEmitSyncSnapshot(req, state, len(commands)) {
+		util.SafeGo(func() {
+			c.emitLifecycleEvent("sync_snapshot", map[string]any{
+				"ext_session_id":       state.extSessionID,
+				"client_id":            clientID,
+				"pilot_enabled":        state.pilotEnabled,
+				"in_progress_count":    state.inProgressCount,
+				"pending_commands_out": len(commands),
+				"command_results_in":   len(req.CommandResults),
+				"last_command_ack":     req.LastCommandAck,
+				"next_poll_ms":         nextPollMs,
+			})
+		})
 	}
 
 	resp := SyncResponse{

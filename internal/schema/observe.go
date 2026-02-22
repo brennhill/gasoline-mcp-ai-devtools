@@ -54,6 +54,18 @@ func ObserveToolSchema() mcp.MCPTool {
 					"type":        "string",
 					"description": "Exact source filter (logs)",
 				},
+				"include_internal": map[string]any{
+					"type":        "boolean",
+					"description": "Include daemon lifecycle/transport diagnostics in logs output (logs)",
+				},
+				"include_extension_logs": map[string]any{
+					"type":        "boolean",
+					"description": "Include extension debug logs alongside logs output (logs)",
+				},
+				"extension_limit": map[string]any{
+					"type":        "number",
+					"description": "Max extension logs when include_extension_logs=true (logs)",
+				},
 				"url": map[string]any{
 					"type":        "string",
 					"description": "Filter by URL substring",
