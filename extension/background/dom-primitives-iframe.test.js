@@ -409,6 +409,55 @@ describe('iframe support: mergeListInteractive', () => {
     assert.strictEqual(result.elements[3].label, 'Iframe2 Button')
   })
 
+  test('preserves bbox metadata when merging list_interactive across frames', async () => {
+    executeScriptReturn.push([
+      {
+        frameId: 0,
+        result: {
+          success: true,
+          elements: [
+            {
+              tag: 'button',
+              selector: '#main-btn',
+              label: 'Main Button',
+              visible: true,
+              bbox: { x: 10, y: 20, width: 100, height: 30 }
+            }
+          ]
+        }
+      },
+      {
+        frameId: 1,
+        result: {
+          success: true,
+          elements: [
+            {
+              tag: 'input',
+              selector: '#frame-input',
+              label: 'Iframe Input',
+              visible: true,
+              bbox: { x: 320, y: 180, width: 220, height: 36 }
+            }
+          ]
+        }
+      }
+    ])
+    const res = captureAsyncResult()
+
+    await executeDOMAction(
+      makeQuery({ action: 'list_interactive', selector: '' }),
+      1,
+      makeSyncClient(),
+      res.fn,
+      noopToast
+    )
+
+    assert.strictEqual(res.calls[0].status, 'complete')
+    const result = res.calls[0].result
+    assert.deepStrictEqual(result.elements[0].bbox, { x: 10, y: 20, width: 100, height: 30 })
+    assert.deepStrictEqual(result.elements[1].bbox, { x: 320, y: 180, width: 220, height: 36 })
+  })
+
   test('caps merged elements at 100', async () => {
     const manyElements = Array.from({ length: 60 }, (_, i) => ({
       tag: 'button',

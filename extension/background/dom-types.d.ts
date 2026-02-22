@@ -18,6 +18,12 @@ export interface ScopeRect {
     width: number;
     height: number;
 }
+export interface BoundingBox {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+}
 export interface DOMResult {
     success: boolean;
     action: string;
@@ -34,6 +40,7 @@ export interface DOMResult {
         text_preview?: string;
         selector?: string;
         element_id?: string;
+        bbox?: BoundingBox;
         scope_selector_used?: string;
         scope_rect_used?: ScopeRect;
         frame_id?: number;
@@ -45,6 +52,7 @@ export interface DOMResult {
         text_preview?: string;
         selector?: string;
         element_id?: string;
+        bbox?: BoundingBox;
         visible?: boolean;
     }>;
     reason?: string;

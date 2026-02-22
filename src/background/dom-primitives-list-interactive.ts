@@ -140,6 +140,19 @@ export function domPrimitiveListInteractive(
     return rect.width > 0 && rect.height > 0 && htmlEl.offsetParent !== null
   }
 
+  function extractBoundingBox(el: Element): { x: number; y: number; width: number; height: number } {
+    const htmlEl = el as HTMLElement
+    if (!htmlEl || typeof htmlEl.getBoundingClientRect !== 'function') {
+      return { x: 0, y: 0, width: 0, height: 0 }
+    }
+    const rect = htmlEl.getBoundingClientRect()
+    const x = typeof rect.left === 'number' ? rect.left : (typeof rect.x === 'number' ? rect.x : 0)
+    const y = typeof rect.top === 'number' ? rect.top : (typeof rect.y === 'number' ? rect.y : 0)
+    const width = Number.isFinite(rect.width) ? rect.width : 0
+    const height = Number.isFinite(rect.height) ? rect.height : 0
+    return { x, y, width, height }
+  }
+
   function extractLabel(el: Element): string {
     const htmlEl = el as HTMLElement
     return (
@@ -283,6 +296,7 @@ export function domPrimitiveListInteractive(
     label: string
     role?: string
     placeholder?: string
+    bbox: { x: number; y: number; width: number; height: number }
     visible: boolean
   }[] = []
 
@@ -297,6 +311,7 @@ export function domPrimitiveListInteractive(
     label: string
     role?: string
     placeholder?: string
+    bbox: { x: number; y: number; width: number; height: number }
     visible: boolean
   }[] = []
 
@@ -320,6 +335,7 @@ export function domPrimitiveListInteractive(
       const rect = htmlEl.getBoundingClientRect()
       const visible = rect.width > 0 && rect.height > 0 && htmlEl.offsetParent !== null
       if (!intersectsScopeRect(el)) continue
+      const bbox = extractBoundingBox(el)
 
       // Use >>> selector for shadow DOM elements, regular selector otherwise
       const shadowSel = buildShadowSelector(el)
@@ -343,6 +359,7 @@ export function domPrimitiveListInteractive(
         label,
         role: el.getAttribute('role') || undefined,
         placeholder: el.getAttribute('placeholder') || undefined,
+        bbox,
         visible
       })
 
@@ -378,6 +395,7 @@ export function domPrimitiveListInteractive(
       label: entry.label,
       role: entry.role,
       placeholder: entry.placeholder,
+      bbox: entry.bbox,
       visible: entry.visible
     })
   }

@@ -289,6 +289,10 @@ describe('compact click feedback contract (when rAF works)', () => {
     assert.ok(result.matched, 'mutating action should include matched target evidence')
     assert.strictEqual(result.matched.tag, 'button')
     assert.strictEqual(result.matched.selector, '#test-btn')
+    assert.ok(result.matched.bbox, 'matched target should include bbox for visual grounding')
+    for (const key of ['x', 'y', 'width', 'height']) {
+      assert.strictEqual(typeof result.matched.bbox[key], 'number', `matched.bbox.${key} should be numeric`)
+    }
   })
 
   test('compact mode omits timing; analyze:true includes full breakdown', async () => {
@@ -362,6 +366,11 @@ describe('list_interactive returns index, element_type, and deduplicates selecto
     // Check element_type field
     assert.strictEqual(result.elements[0].element_type, 'button', 'button should have element_type "button"')
     assert.strictEqual(result.elements[1].element_type, 'button', 'button should have element_type "button"')
+
+    assert.ok(result.elements[0].bbox, 'list_interactive element should include bbox for visual grounding')
+    for (const key of ['x', 'y', 'width', 'height']) {
+      assert.strictEqual(typeof result.elements[0].bbox[key], 'number', `elements[0].bbox.${key} should be numeric`)
+    }
   })
 
   test('list_interactive deduplicates selectors with :nth-match(N)', () => {
@@ -721,6 +730,10 @@ describe('ambiguity-safe mutating actions', () => {
       (result.message || '').includes('element_id'),
       'ambiguous hint should include element_id recovery guidance'
     )
+    assert.ok(result.candidates[0].bbox, 'candidate summary should include bbox for visual grounding')
+    for (const key of ['x', 'y', 'width', 'height']) {
+      assert.strictEqual(typeof result.candidates[0].bbox[key], 'number', `candidates[0].bbox.${key} should be numeric`)
+    }
     assert.strictEqual(clickCount, 0, 'no click should be executed on ambiguous target')
   })
 
