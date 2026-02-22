@@ -262,6 +262,76 @@ func TestFormatCommandResult_ElapsedMs(t *testing.T) {
 	})
 }
 
+func TestFormatCommandResult_ListInteractivePayloadHardening(t *testing.T) {
+	cap := capture.NewCapture()
+	handler := &ToolHandler{capture: cap}
+	req := JSONRPCRequest{ID: 1}
+	now := time.Now()
+
+	t.Run("null payload is surfaced as explicit error", func(t *testing.T) {
+		cmd := queries.CommandResult{
+			CorrelationID: "dom_list_123",
+			Status:        "complete",
+			Result:        json.RawMessage(`{"value":null,"resolved_tab_id":42}`),
+			CreatedAt:     now,
+			CompletedAt:   now.Add(100 * time.Millisecond),
+		}
+
+		resp := handler.formatCommandResult(req, cmd, cmd.CorrelationID)
+
+		var toolResult MCPToolResult
+		if err := json.Unmarshal(resp.Result, &toolResult); err != nil {
+			t.Fatalf("json.Unmarshal(resp.Result) error = %v", err)
+		}
+		if !toolResult.IsError {
+			t.Fatal("expected isError=true when dom_list payload is null")
+		}
+
+		data := parseMCPResponseData(t, resp.Result)
+		if got, _ := data["error"].(string); got != "list_interactive_missing_payload" {
+			t.Fatalf("error = %q, want list_interactive_missing_payload", got)
+		}
+		resultMap, _ := data["result"].(map[string]any)
+		elements, ok := resultMap["elements"].([]any)
+		if !ok {
+			t.Fatalf("result.elements missing or wrong type: %#v", resultMap["elements"])
+		}
+		if len(elements) != 0 {
+			t.Fatalf("result.elements length = %d, want 0", len(elements))
+		}
+	})
+
+	t.Run("nil elements are normalized to empty array", func(t *testing.T) {
+		cmd := queries.CommandResult{
+			CorrelationID: "dom_list_456",
+			Status:        "complete",
+			Result:        json.RawMessage(`{"success":true,"elements":null}`),
+			CreatedAt:     now,
+			CompletedAt:   now.Add(100 * time.Millisecond),
+		}
+
+		resp := handler.formatCommandResult(req, cmd, cmd.CorrelationID)
+
+		var toolResult MCPToolResult
+		if err := json.Unmarshal(resp.Result, &toolResult); err != nil {
+			t.Fatalf("json.Unmarshal(resp.Result) error = %v", err)
+		}
+		if toolResult.IsError {
+			t.Fatalf("expected isError=false after normalization, got true: %+v", toolResult)
+		}
+
+		data := parseMCPResponseData(t, resp.Result)
+		resultMap, _ := data["result"].(map[string]any)
+		elements, ok := resultMap["elements"].([]any)
+		if !ok {
+			t.Fatalf("result.elements missing or wrong type: %#v", resultMap["elements"])
+		}
+		if len(elements) != 0 {
+			t.Fatalf("result.elements length = %d, want 0", len(elements))
+		}
+	})
+}
+
 func TestQueuePosition_And_QueueDepth(t *testing.T) {
 	cap := capture.NewCapture()
 
