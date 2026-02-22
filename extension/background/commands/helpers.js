@@ -388,12 +388,18 @@ export async function resolveTargetTab(query, paramsObj) {
                 }
             };
         }
+        let latchedTrackedTabId = null;
+        if (isTrackableTab(activeTab)) {
+            await persistTrackedTab(activeTab);
+            latchedTrackedTabId = activeTab.id;
+            diagnosticLog(`[Diagnostic] use_active_tab latched tracking to tab ${activeTab.id} for query ${query.type}`);
+        }
         return {
             target: {
                 tabId: activeTab.id,
                 url: activeTab.url || '',
                 source: 'active_tab',
-                trackedTabId: null,
+                trackedTabId: latchedTrackedTabId,
                 useActiveTab
             }
         };

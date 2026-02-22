@@ -8,12 +8,16 @@
  */
 import { isInternalUrl } from './ui-utils.js';
 import { StorageKey } from '../lib/constants.js';
+let trackingStorageSyncInstalled = false;
 /**
  * Initialize the Track This Tab button.
  * Shows current tracking status and handles track/untrack.
  * Disables the button on internal Chrome pages where tracking is impossible.
  */
 function showInternalPageState(btn) {
+    const trackingBar = document.getElementById('tracking-bar');
+    if (trackingBar)
+        trackingBar.style.display = 'none';
     btn.disabled = true;
     btn.textContent = 'Cannot Track Internal Pages';
     btn.title = 'Chrome blocks extensions on internal pages like chrome:// and about:';
@@ -35,13 +39,15 @@ function showTrackingState(btn, trackedTabUrl, trackedTabId) {
         trackingBar.style.display = 'flex';
     if (trackingBarUrl && trackedTabUrl) {
         trackingBarUrl.textContent = trackedTabUrl;
-        trackingBarUrl.addEventListener('click', () => handleUrlClick(trackedTabId));
+        trackingBarUrl.onclick = () => {
+            void handleUrlClick(trackedTabId);
+        };
     }
     if (trackingBarStop) {
-        trackingBarStop.addEventListener('click', (e) => {
+        trackingBarStop.onclick = (e) => {
             e.stopPropagation();
             handleStopTracking();
-        });
+        };
     }
 }
 function showIdleState(btn) {
@@ -70,6 +76,34 @@ function showIdleState(btn) {
     const noTrackEl = document.getElementById('no-tracking-warning');
     if (noTrackEl)
         noTrackEl.style.display = 'block';
+}
+function syncTrackButtonState(btn) {
+    chrome.storage.local.get([StorageKey.TRACKED_TAB_ID, StorageKey.TRACKED_TAB_URL], (result) => {
+        chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+            const currentUrl = tabs?.[0]?.url;
+            if (result.trackedTabId) {
+                showTrackingState(btn, result.trackedTabUrl, result.trackedTabId);
+            }
+            else if (isInternalUrl(currentUrl)) {
+                showInternalPageState(btn);
+            }
+            else {
+                showIdleState(btn);
+            }
+        });
+    });
+}
+function installTrackingStorageSync(btn) {
+    if (trackingStorageSyncInstalled)
+        return;
+    trackingStorageSyncInstalled = true;
+    chrome.storage.onChanged.addListener((changes, areaName) => {
+        if (areaName !== 'local')
+            return;
+        if (!changes[StorageKey.TRACKED_TAB_ID] && !changes[StorageKey.TRACKED_TAB_URL])
+            return;
+        syncTrackButtonState(btn);
+    });
 }
 /**
  * Handle stop tracking from the compact tracking bar stop button.
@@ -106,28 +140,9 @@ export async function initTrackPageButton() {
     const btn = document.getElementById('track-page-btn');
     if (!btn)
         return;
-    return new Promise((resolve) => {
-        chrome.storage.local.get([StorageKey.TRACKED_TAB_ID, StorageKey.TRACKED_TAB_URL], async (result) => {
-            chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-                const currentUrl = tabs?.[0]?.url;
-                if (result.trackedTabId) {
-                    // Already tracking — show tracking bar even on internal pages
-                    showTrackingState(btn, result.trackedTabUrl, result.trackedTabId);
-                }
-                else if (isInternalUrl(currentUrl)) {
-                    showInternalPageState(btn);
-                }
-                else {
-                    showIdleState(btn);
-                }
-                // Always register the click handler so it works after stop-tracking
-                if (!isInternalUrl(currentUrl) || result.trackedTabId) {
-                    btn.addEventListener('click', handleTrackPageClick);
-                }
-                resolve();
-            });
-        });
-    });
+    syncTrackButtonState(btn);
+    installTrackingStorageSync(btn);
+    btn.addEventListener('click', handleTrackPageClick);
 }
 /**
  * Handle clicking on the tracked URL.
