@@ -2,8 +2,13 @@
 /**
  * generate-dom-primitives.js
  *
- * Generates src/background/dom-primitives.ts from a single template source:
- * scripts/templates/dom-primitives.ts.tpl
+ * Generates src/background/dom-primitives.ts from the main template plus partials:
+ *   scripts/templates/dom-primitives.ts.tpl
+ *   scripts/templates/partials/_dom-selectors.tpl
+ *   scripts/templates/partials/_dom-intent.tpl
+ *
+ * The main template may contain `// @include <filename>` directives.
+ * Each directive is replaced with the contents of scripts/templates/partials/<filename>.
  *
  * Usage:
  *   node scripts/generate-dom-primitives.js         # write/update generated file
@@ -18,11 +23,12 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const ROOT = path.join(__dirname, '..')
 
 const TEMPLATE_PATH = path.join(ROOT, 'scripts', 'templates', 'dom-primitives.ts.tpl')
+const PARTIALS_DIR = path.join(ROOT, 'scripts', 'templates', 'partials')
 const OUTPUT_PATH = path.join(ROOT, 'src', 'background', 'dom-primitives.ts')
 const CHECK_ONLY = process.argv.includes('--check')
 
 const GENERATED_BANNER = `// AUTO-GENERATED FILE. DO NOT EDIT DIRECTLY.
-// Source template: scripts/templates/dom-primitives.ts.tpl
+// Source: scripts/templates/dom-primitives.ts.tpl + partials/_dom-selectors.tpl, _dom-intent.tpl
 // Generator: scripts/generate-dom-primitives.js
 
 `
@@ -31,8 +37,21 @@ function normalize(content) {
   return content.replace(/\r\n/g, '\n').trimEnd() + '\n'
 }
 
+function resolveIncludes(templateContent) {
+  const includePattern = /^[^\S\n]*\/\/ @include (\S+)[^\S\n]*$/gm
+  return templateContent.replace(includePattern, (_match, filename) => {
+    const partialPath = path.join(PARTIALS_DIR, filename)
+    if (!fs.existsSync(partialPath)) {
+      console.error(`Partial not found: ${partialPath}`)
+      process.exit(1)
+    }
+    return fs.readFileSync(partialPath, 'utf8').trimEnd()
+  })
+}
+
 function buildOutput(templateContent) {
-  return GENERATED_BANNER + normalize(templateContent)
+  const resolved = resolveIncludes(templateContent)
+  return GENERATED_BANNER + normalize(resolved)
 }
 
 function main() {

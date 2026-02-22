@@ -23,13 +23,13 @@ func runConnectMode(port int, clientID string, cwd string) {
 	connectCheckHealth(serverURL, port)
 	connectRegisterClient(serverURL, clientID, cwd)
 
-	fmt.Fprintf(os.Stderr, "[gasoline] Connected to %s (client: %s)\n", serverURL, clientID)
+	stderrf("[gasoline] Connected to %s (client: %s)\n", serverURL, clientID)
 
 	connectForwardLoop(serverURL+"/mcp", clientID)
 
 	connectUnregisterClient(serverURL, clientID)
 
-	fmt.Fprintf(os.Stderr, "[gasoline] Disconnected from %s\n", serverURL)
+	stderrf("[gasoline] Disconnected from %s\n", serverURL)
 }
 
 // connectCheckHealth verifies the server is running. Exits on failure.
@@ -39,20 +39,20 @@ func connectCheckHealth(serverURL string, port int) {
 
 	req, err := http.NewRequestWithContext(ctx, "GET", serverURL+"/health", nil)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "[gasoline] Failed to create health check request: %v\n", err)
+		stderrf("[gasoline] Failed to create health check request: %v\n", err)
 		os.Exit(1)
 	}
 
 	resp, err := http.DefaultClient.Do(req) // #nosec G107,G704 -- localhost URL constructed from trusted port flag
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "[gasoline] Cannot connect to server at %s: %v\n", serverURL, err)
-		fmt.Fprintf(os.Stderr, "[gasoline] Start a server first: gasoline --server --port %d\n", port)
+		stderrf("[gasoline] Cannot connect to server at %s: %v\n", serverURL, err)
+		stderrf("[gasoline] Start a server first: gasoline --server --port %d\n", port)
 		os.Exit(1)
 	}
 	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
-		fmt.Fprintf(os.Stderr, "[gasoline] Server health check failed: %d\n", resp.StatusCode)
+		stderrf("[gasoline] Server health check failed: %d\n", resp.StatusCode)
 		os.Exit(1)
 	}
 }
@@ -67,7 +67,7 @@ func connectRegisterClient(serverURL, clientID, cwd string) {
 
 	req, err := http.NewRequestWithContext(ctx, "POST", serverURL+"/clients", strings.NewReader(string(regBody)))
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "[gasoline] Warning: could not create registration request: %v\n", err)
+		stderrf("[gasoline] Warning: could not create registration request: %v\n", err)
 		return
 	}
 	req.Header.Set("Content-Type", "application/json")
@@ -75,7 +75,7 @@ func connectRegisterClient(serverURL, clientID, cwd string) {
 
 	resp, err := http.DefaultClient.Do(req) // #nosec G704 -- request targets localhost-only serverURL
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "[gasoline] Warning: could not register client: %v\n", err)
+		stderrf("[gasoline] Warning: could not register client: %v\n", err)
 		return
 	}
 	_ = resp.Body.Close() //nolint:errcheck // best-effort cleanup after client registration
@@ -128,7 +128,11 @@ func connectForwardRequest(mcpURL, clientID, line string) {
 	}
 	_ = resp.Body.Close() //nolint:errcheck // best-effort cleanup after successful decode
 
-	fmt.Println(string(respData))
+	// Write MCP response with exactly one trailing newline.
+	// Do NOT use fmt.Println — it adds \n via fmt internals which is not
+	// guaranteed to be atomic and bypasses any future stdout serialization.
+	_, _ = os.Stdout.Write(respData)
+	_, _ = os.Stdout.Write([]byte("\n"))
 }
 
 // extractRequestID attempts to extract the JSON-RPC ID from a request string.
@@ -172,5 +176,6 @@ func sendMCPError(id any, code int, message string) {
 	}
 	// Error impossible: simple struct with no circular refs or unsupported types
 	respJSON, _ := json.Marshal(resp)
-	fmt.Println(string(respJSON))
+	_, _ = os.Stdout.Write(respJSON)
+	_, _ = os.Stdout.Write([]byte("\n"))
 }
