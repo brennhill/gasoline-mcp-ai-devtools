@@ -212,6 +212,97 @@ func TestCommandResult_ErrorStatusCSPFailureIncludesRetryHint(t *testing.T) {
 	}
 }
 
+func TestCommandResult_InteractFailureCodesIncludeRecoveryRetryGuidance(t *testing.T) {
+	cases := []struct {
+		name          string
+		errorCode     string
+		resultJSON    string
+		retryMustHave []string
+	}{
+		{
+			name:       "element_not_found",
+			errorCode:  "element_not_found",
+			resultJSON: `{"success":false,"error":"element_not_found","message":"No element matches selector: text=Submit"}`,
+			retryMustHave: []string{
+				"list_interactive",
+				"scope",
+			},
+		},
+		{
+			name:       "ambiguous_target",
+			errorCode:  "ambiguous_target",
+			resultJSON: `{"success":false,"error":"ambiguous_target","message":"Selector matches multiple viable elements"}`,
+			retryMustHave: []string{
+				"scope_selector",
+				"element_id",
+			},
+		},
+		{
+			name:       "stale_element_id",
+			errorCode:  "stale_element_id",
+			resultJSON: `{"success":false,"error":"stale_element_id","message":"Element handle is stale or unknown"}`,
+			retryMustHave: []string{
+				"list_interactive",
+				"element_id",
+			},
+		},
+		{
+			name:       "scope_not_found",
+			errorCode:  "scope_not_found",
+			resultJSON: `{"success":false,"error":"scope_not_found","message":"No scope element matches selector: #missing"}`,
+			retryMustHave: []string{
+				"scope_selector",
+				"scope_rect",
+				"frame",
+			},
+		},
+	}
+
+	for _, tc := range cases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			env := newInteractTestEnv(t)
+			env.capture.SetPilotEnabled(true)
+
+			result, ok := env.callInteract(t, `{"what":"click","selector":"#btn","background":true}`)
+			if !ok || result.IsError {
+				t.Fatal("click should queue successfully")
+			}
+
+			pq := env.capture.GetLastPendingQuery()
+			corrID := pq.CorrelationID
+			env.capture.ApplyCommandResult(corrID, "error", json.RawMessage(tc.resultJSON), tc.errorCode)
+
+			req := JSONRPCRequest{JSONRPC: "2.0", ID: 2}
+			args := json.RawMessage(`{"correlation_id":"` + corrID + `"}`)
+			resp := env.handler.toolObserveCommandResult(req, args)
+
+			var observeResult MCPToolResult
+			if err := json.Unmarshal(resp.Result, &observeResult); err != nil {
+				t.Fatalf("Failed to parse result: %v", err)
+			}
+			if !observeResult.IsError {
+				t.Fatal("interact failure should set IsError=true")
+			}
+
+			var responseData map[string]any
+			if err := json.Unmarshal([]byte(extractJSONFromText(observeResult.Content[0].Text)), &responseData); err != nil {
+				t.Fatalf("Failed to parse response JSON: %v", err)
+			}
+			retry, _ := responseData["retry"].(string)
+			if retry == "" {
+				t.Fatalf("retry guidance is missing for %s", tc.errorCode)
+			}
+			retryLower := strings.ToLower(retry)
+			for _, required := range tc.retryMustHave {
+				if !strings.Contains(retryLower, strings.ToLower(required)) {
+					t.Fatalf("retry guidance %q missing token %q for %s", retry, required, tc.errorCode)
+				}
+			}
+		})
+	}
+}
+
 func TestCommandResult_SuccessDoesNotSetIsError(t *testing.T) {
 	env := newInteractTestEnv(t)
 	env.capture.SetPilotEnabled(true)

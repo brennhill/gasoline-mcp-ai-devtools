@@ -270,6 +270,7 @@ func (h *ToolHandler) formatCommandResult(req JSONRPCRequest, cmd queries.Comman
 			_, _ = enrichCommandResponseData(cmd.Result, responseData)
 		}
 		annotateCSPFailure(responseData, cmd.Error, cmd.Result)
+		annotateInteractFailureRecovery(responseData, cmd.Error, cmd.Result)
 		// Add corrective hints for common out-of-order errors
 		if strings.Contains(cmd.Error, "No active recording") {
 			responseData["retry"] = "No recording is active. Start one first: interact({what: 'record_start', name: 'my-recording'}) or configure({what: 'recording_start', name: 'my-recording'})"
@@ -351,6 +352,7 @@ func (h *ToolHandler) formatCompleteCommand(req JSONRPCRequest, cmd queries.Comm
 	if cmd.Error != "" {
 		responseData["error"] = cmd.Error
 		annotateCSPFailure(responseData, cmd.Error, normalizedResult)
+		annotateInteractFailureRecovery(responseData, cmd.Error, normalizedResult)
 		summary := fmt.Sprintf("FAILED — Command %s completed with error: %s", corrID, cmd.Error)
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONErrorResponse(summary, responseData)}
 	}
@@ -499,6 +501,59 @@ func annotateCSPFailure(responseData map[string]any, cmdError string, result jso
 	if _, exists := responseData["retry"]; !exists {
 		responseData["retry"] = cspRetryNavigationGuidance
 	}
+}
+
+func annotateInteractFailureRecovery(responseData map[string]any, cmdError string, result json.RawMessage) {
+	code := detectInteractFailureCode(responseData, cmdError, result)
+	canonical, playbook, ok := lookupInteractFailurePlaybook(code)
+	if !ok {
+		return
+	}
+	if _, exists := responseData["error_code"]; !exists {
+		responseData["error_code"] = canonical
+	}
+	if _, exists := responseData["retry"]; !exists {
+		responseData["retry"] = playbook.RetrySuggestion
+	}
+	if _, exists := responseData["hint"]; !exists {
+		responseData["hint"] = "Recovery playbook available for " + canonical + " in configure tutorial."
+	}
+	if _, exists := responseData["retryable"]; !exists {
+		responseData["retryable"] = true
+	}
+}
+
+func detectInteractFailureCode(responseData map[string]any, cmdError string, result json.RawMessage) string {
+	candidates := make([]string, 0, 4)
+	if v, ok := responseData["error_code"].(string); ok && strings.TrimSpace(v) != "" {
+		candidates = append(candidates, v)
+	}
+	if v, ok := responseData["error"].(string); ok && strings.TrimSpace(v) != "" {
+		candidates = append(candidates, v)
+	}
+
+	if len(result) > 0 {
+		var extResult map[string]any
+		if err := json.Unmarshal(result, &extResult); err == nil {
+			if v, ok := extResult["error"].(string); ok && strings.TrimSpace(v) != "" {
+				candidates = append(candidates, v)
+			}
+			if v, ok := extResult["error_code"].(string); ok && strings.TrimSpace(v) != "" {
+				candidates = append(candidates, v)
+			}
+		}
+	}
+
+	if strings.TrimSpace(cmdError) != "" {
+		candidates = append(candidates, cmdError)
+	}
+
+	for _, candidate := range candidates {
+		if normalized := normalizeInteractFailureCode(candidate); normalized != "" {
+			return normalized
+		}
+	}
+	return ""
 }
 
 func detectCSPFailure(cmdError string, result json.RawMessage) (bool, string, string) {
