@@ -187,6 +187,11 @@ type ToolHandler struct {
 	recordInteractMu sync.Mutex
 	recordInteract   interactRecordingState
 
+	// Optional evidence capture state keyed by correlation_id.
+	// Tracks before/after screenshots for interact actions when evidence mode is enabled.
+	evidenceMu        sync.Mutex
+	evidenceByCommand map[string]*commandEvidenceState
+
 	// Module registry for plugin-style tool dispatch (incremental migration).
 	toolModules *toolModuleRegistry
 }
@@ -239,9 +244,10 @@ func newPlaybackSessionsMap() map[string]*capture.PlaybackSession {
 // NewToolHandler creates an MCP handler with composite tool capabilities
 func NewToolHandler(server *Server, capture *capture.Capture) *MCPHandler {
 	handler := &ToolHandler{
-		MCPHandler:       NewMCPHandler(server, version),
-		capture:          capture,
-		playbackSessions: newPlaybackSessionsMap(),
+		MCPHandler:        NewMCPHandler(server, version),
+		capture:           capture,
+		playbackSessions:  newPlaybackSessionsMap(),
+		evidenceByCommand: make(map[string]*commandEvidenceState),
 	}
 
 	// Initialize health metrics

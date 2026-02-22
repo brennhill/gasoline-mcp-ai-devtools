@@ -275,6 +275,7 @@ func (h *ToolHandler) formatCommandResult(req JSONRPCRequest, cmd queries.Comman
 		if strings.Contains(cmd.Error, "No active recording") {
 			responseData["retry"] = "No recording is active. Start one first: interact({what: 'record_start', name: 'my-recording'}) or configure({what: 'recording_start', name: 'my-recording'})"
 		}
+		h.attachEvidencePayload(corrID, responseData)
 		summary := fmt.Sprintf("FAILED — Command %s error: %s", corrID, cmd.Error)
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONErrorResponse(summary, responseData)}
 	case "expired":
@@ -283,6 +284,7 @@ func (h *ToolHandler) formatCommandResult(req JSONRPCRequest, cmd queries.Comman
 		responseData["message"] = fmt.Sprintf("Command %s expired before the extension could execute it. Error: %s", corrID, cmd.Error)
 		responseData["retry"] = "The browser extension may be disconnected or the page is not active. Check observe with what='pilot' to verify extension status, then retry the command."
 		responseData["hint"] = h.DiagnosticHintString()
+		h.attachEvidencePayload(corrID, responseData)
 		summary := fmt.Sprintf("FAILED — Command %s expired: %s", corrID, cmd.Error)
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONErrorResponse(summary, responseData)}
 	case "timeout":
@@ -295,6 +297,7 @@ func (h *ToolHandler) formatCommandResult(req JSONRPCRequest, cmd queries.Comman
 		}
 		responseData["retry"] = retryMsg
 		responseData["hint"] = h.DiagnosticHintString()
+		h.attachEvidencePayload(corrID, responseData)
 		summary := fmt.Sprintf("FAILED — Command %s timed out: %s", corrID, cmd.Error)
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONErrorResponse(summary, responseData)}
 	case "cancelled":
@@ -304,6 +307,7 @@ func (h *ToolHandler) formatCommandResult(req JSONRPCRequest, cmd queries.Comman
 		if cmd.Error != "" {
 			responseData["detail"] = cmd.Error
 		}
+		h.attachEvidencePayload(corrID, responseData)
 		summary := fmt.Sprintf("FAILED — Command %s cancelled", corrID)
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONErrorResponse(summary, responseData)}
 	default:
@@ -353,10 +357,12 @@ func (h *ToolHandler) formatCompleteCommand(req JSONRPCRequest, cmd queries.Comm
 		responseData["error"] = cmd.Error
 		annotateCSPFailure(responseData, cmd.Error, normalizedResult)
 		annotateInteractFailureRecovery(responseData, cmd.Error, normalizedResult)
+		h.attachEvidencePayload(corrID, responseData)
 		summary := fmt.Sprintf("FAILED — Command %s completed with error: %s", corrID, cmd.Error)
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONErrorResponse(summary, responseData)}
 	}
 
+	h.attachEvidencePayload(corrID, responseData)
 	summary := fmt.Sprintf("Command %s: complete", corrID)
 	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse(summary, responseData)}
 }

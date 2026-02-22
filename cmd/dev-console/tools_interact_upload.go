@@ -42,7 +42,7 @@ func (h *ToolHandler) handleUpload(req JSONRPCRequest, args json.RawMessage) JSO
 		return *errResp
 	}
 
-	return h.queueUpload(req, params, info)
+	return h.queueUpload(req, args, params, info)
 }
 
 // validateUploadParams checks required parameters for the upload action.
@@ -87,7 +87,7 @@ func uploadFileStatError(req JSONRPCRequest, filePath string, err error) JSONRPC
 }
 
 // queueUpload builds the upload payload and queues it for the extension.
-func (h *ToolHandler) queueUpload(req JSONRPCRequest, params uploadParams, info os.FileInfo) JSONRPCResponse {
+func (h *ToolHandler) queueUpload(req JSONRPCRequest, args json.RawMessage, params uploadParams, info os.FileInfo) JSONRPCResponse {
 	if params.EscalationTimeoutMs <= 0 {
 		params.EscalationTimeoutMs = defaultEscalationTimeoutMs
 	}
@@ -97,6 +97,7 @@ func (h *ToolHandler) queueUpload(req JSONRPCRequest, params uploadParams, info 
 	fileSize := info.Size()
 	progressTier := getProgressTier(fileSize)
 	correlationID := newCorrelationID("upload")
+	h.armEvidenceForCommand(correlationID, "upload", args, req.ClientID)
 
 	uploadPayload := map[string]any{
 		"action": "upload", "selector": params.Selector,

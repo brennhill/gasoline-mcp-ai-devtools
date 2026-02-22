@@ -234,6 +234,51 @@ func TestRichAction_SchemaHasAnalyze(t *testing.T) {
 	}
 }
 
+func TestRichAction_SchemaHasEvidence(t *testing.T) {
+	env := newInteractTestEnv(t)
+	tools := env.handler.ToolsList()
+
+	var interactSchema map[string]any
+	for _, tool := range tools {
+		if tool.Name == "interact" {
+			interactSchema = tool.InputSchema
+			break
+		}
+	}
+	if interactSchema == nil {
+		t.Fatal("interact tool not found in ToolsList()")
+	}
+
+	props, ok := interactSchema["properties"].(map[string]any)
+	if !ok {
+		t.Fatal("interact schema missing properties")
+	}
+
+	evidenceParam, exists := props["evidence"]
+	if !exists {
+		t.Fatal("interact schema missing 'evidence' property")
+	}
+	evidenceMap, ok := evidenceParam.(map[string]any)
+	if !ok {
+		t.Fatal("evidence property is not an object")
+	}
+	if evidenceMap["type"] != "string" {
+		t.Fatalf("evidence.type = %v, want 'string'", evidenceMap["type"])
+	}
+
+	enumValues, ok := evidenceMap["enum"].([]string)
+	if !ok {
+		t.Fatalf("evidence.enum missing or wrong type: %T", evidenceMap["enum"])
+	}
+	want := map[string]bool{"off": true, "on_mutation": true, "always": true}
+	for _, v := range enumValues {
+		delete(want, v)
+	}
+	if len(want) != 0 {
+		t.Fatalf("evidence enum missing values: %v", want)
+	}
+}
+
 func TestRichAction_SchemaHasFrame(t *testing.T) {
 	env := newInteractTestEnv(t)
 	tools := env.handler.ToolsList()
