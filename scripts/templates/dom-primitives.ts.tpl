@@ -656,6 +656,7 @@ export function domPrimitive(
         label: entry.label,
         role: entry.role,
         placeholder: entry.placeholder,
+        bbox: extractBoundingBox(entry.element),
         visible: entry.visible
       }
     })
@@ -687,6 +688,7 @@ export function domPrimitive(
       text_preview: textPreview || undefined,
       selector,
       element_id: getOrCreateElementID(node),
+      bbox: extractBoundingBox(node),
       scope_selector_used: resolvedScopeSelector,
       ...(scopeRect ? { scope_rect_used: scopeRect } : {})
     }
@@ -700,6 +702,18 @@ export function domPrimitive(
     return rect.width > 0 && rect.height > 0 && el.offsetParent !== null
   }
 
+  function extractBoundingBox(el: Element): { x: number; y: number; width: number; height: number } {
+    if (!(el instanceof HTMLElement) || typeof el.getBoundingClientRect !== 'function') {
+      return { x: 0, y: 0, width: 0, height: 0 }
+    }
+    const rect = el.getBoundingClientRect()
+    const x = typeof rect.left === 'number' ? rect.left : (typeof rect.x === 'number' ? rect.x : 0)
+    const y = typeof rect.top === 'number' ? rect.top : (typeof rect.y === 'number' ? rect.y : 0)
+    const width = Number.isFinite(rect.width) ? rect.width : 0
+    const height = Number.isFinite(rect.height) ? rect.height : 0
+    return { x, y, width, height }
+  }
+
   function summarizeCandidates(matches: Element[]): NonNullable<DOMResult['candidates']> {
     return matches.slice(0, 8).map((candidate) => {
       const htmlEl = candidate as HTMLElement
@@ -711,6 +725,7 @@ export function domPrimitive(
         text_preview: (htmlEl.textContent || '').trim().slice(0, 80) || undefined,
         selector: buildUniqueSelector(candidate, htmlEl, fallback),
         element_id: getOrCreateElementID(candidate),
+        bbox: extractBoundingBox(candidate),
         visible: isActionableVisible(candidate)
       }
     })

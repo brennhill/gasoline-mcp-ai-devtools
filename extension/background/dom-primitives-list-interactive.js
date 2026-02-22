@@ -125,6 +125,18 @@ export function domPrimitiveListInteractive(scopeSelector, options) {
         const rect = htmlEl.getBoundingClientRect();
         return rect.width > 0 && rect.height > 0 && htmlEl.offsetParent !== null;
     }
+    function extractBoundingBox(el) {
+        const htmlEl = el;
+        if (!htmlEl || typeof htmlEl.getBoundingClientRect !== 'function') {
+            return { x: 0, y: 0, width: 0, height: 0 };
+        }
+        const rect = htmlEl.getBoundingClientRect();
+        const x = typeof rect.left === 'number' ? rect.left : (typeof rect.x === 'number' ? rect.x : 0);
+        const y = typeof rect.top === 'number' ? rect.top : (typeof rect.y === 'number' ? rect.y : 0);
+        const width = Number.isFinite(rect.width) ? rect.width : 0;
+        const height = Number.isFinite(rect.height) ? rect.height : 0;
+        return { x, y, width, height };
+    }
     function extractLabel(el) {
         const htmlEl = el;
         return (el.getAttribute('aria-label') ||
@@ -270,6 +282,7 @@ export function domPrimitiveListInteractive(scopeSelector, options) {
             const visible = rect.width > 0 && rect.height > 0 && htmlEl.offsetParent !== null;
             if (!intersectsScopeRect(el))
                 continue;
+            const bbox = extractBoundingBox(el);
             // Use >>> selector for shadow DOM elements, regular selector otherwise
             const shadowSel = buildShadowSelector(el);
             const baseSelector = shadowSel || buildUniqueSelector(el, htmlEl, cssSelector);
@@ -289,6 +302,7 @@ export function domPrimitiveListInteractive(scopeSelector, options) {
                 label,
                 role: el.getAttribute('role') || undefined,
                 placeholder: el.getAttribute('placeholder') || undefined,
+                bbox,
                 visible
             });
             if (rawEntries.length >= 100)
@@ -322,6 +336,7 @@ export function domPrimitiveListInteractive(scopeSelector, options) {
             label: entry.label,
             role: entry.role,
             placeholder: entry.placeholder,
+            bbox: entry.bbox,
             visible: entry.visible
         });
     }
