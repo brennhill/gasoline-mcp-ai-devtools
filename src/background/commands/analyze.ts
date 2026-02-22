@@ -268,6 +268,129 @@ function aggregateA11yFrameResults(results: FrameQueryResult<Record<string, unkn
   }
 }
 
+function isContentScriptUnreachableError(err: unknown): boolean {
+  const message = (err as Error)?.message || ''
+  return message.includes('Receiving end does not exist') || message.includes('Could not establish connection')
+}
+
+/**
+ * Fallback DOM query implementation executed via chrome.scripting in ISOLATED world.
+ * This keeps analyze(dom) working when content-script messaging is temporarily unavailable.
+ */
+function executeDOMQueryInIsolatedWorld(params: Record<string, unknown>): Record<string, unknown> {
+  const selector = typeof params.selector === 'string' && params.selector.trim().length > 0 ? params.selector : '*'
+  const includeStyles = params.include_styles === true
+  const includeChildren = params.include_children === true
+  const styleProps = (Array.isArray(params.properties) ? params.properties : []).filter(
+    (prop): prop is string => typeof prop === 'string' && prop.length > 0
+  )
+  const rawDepth = typeof params.max_depth === 'number' ? params.max_depth : 3
+  const maxDepth = Math.max(0, Math.min(5, Math.floor(rawDepth)))
+
+  const MAX_ELEMENTS = 50
+  const MAX_TEXT = 500
+
+  const collectAttributes = (el: Element): Record<string, string> | undefined => {
+    if (!el.attributes || el.attributes.length === 0) return undefined
+    const attrs: Record<string, string> = {}
+    for (const attr of Array.from(el.attributes)) {
+      attrs[attr.name] = attr.value
+    }
+    return attrs
+  }
+
+  const serializeElement = (el: Element, depth: number): Record<string, unknown> => {
+    const rect = el.getBoundingClientRect?.()
+    const out: Record<string, unknown> = {
+      tag: el.tagName?.toLowerCase() || '',
+      text: (el.textContent || '').slice(0, MAX_TEXT),
+      visible:
+        (el as HTMLElement).offsetParent !== null ||
+        (typeof rect?.width === 'number' && rect.width > 0) ||
+        (typeof rect?.height === 'number' && rect.height > 0)
+    }
+
+    const attrs = collectAttributes(el)
+    if (attrs) out.attributes = attrs
+
+    if (rect) {
+      out.boundingBox = {
+        x: rect.x,
+        y: rect.y,
+        width: rect.width,
+        height: rect.height
+      }
+    }
+
+    if (includeStyles && typeof window.getComputedStyle === 'function') {
+      const computed = window.getComputedStyle(el)
+      if (styleProps.length > 0) {
+        const styles: Record<string, string> = {}
+        for (const prop of styleProps) {
+          styles[prop] = computed.getPropertyValue(prop)
+        }
+        out.styles = styles
+      } else {
+        out.styles = {
+          display: computed.display,
+          color: computed.color,
+          position: computed.position
+        }
+      }
+    }
+
+    if (includeChildren && depth < maxDepth && el.children.length > 0) {
+      const children: Record<string, unknown>[] = []
+      const childLimit = Math.min(el.children.length, MAX_ELEMENTS)
+      for (let i = 0; i < childLimit; i++) {
+        const child = el.children[i]
+        if (child) children.push(serializeElement(child, depth + 1))
+      }
+      out.children = children
+    }
+
+    return out
+  }
+
+  try {
+    const allMatches = Array.from(document.querySelectorAll(selector))
+    const matches = allMatches.slice(0, MAX_ELEMENTS).map((el) => serializeElement(el, 0))
+    return {
+      url: window.location.href,
+      title: document.title,
+      matchCount: allMatches.length,
+      returnedCount: matches.length,
+      matches
+    }
+  } catch (err) {
+    return {
+      error: 'dom_query_failed',
+      message: (err as Error)?.message || 'Failed to execute DOM query'
+    }
+  }
+}
+
+async function executeDOMQueryFallbackViaScripting(
+  tabId: number,
+  params: Record<string, unknown>,
+  fallbackReason: string
+): Promise<Record<string, unknown>> {
+  const execution = await chrome.scripting.executeScript({
+    target: { tabId },
+    world: 'ISOLATED',
+    func: executeDOMQueryInIsolatedWorld,
+    args: [params]
+  })
+
+  const first = execution?.[0]?.result
+  const payload = first && typeof first === 'object' ? (first as Record<string, unknown>) : {}
+  return {
+    ...payload,
+    execution_world: 'ISOLATED',
+    fallback_reason: fallbackReason
+  }
+}
+
 // =============================================================================
 // DOM
 // =============================================================================
@@ -278,10 +401,22 @@ registerCommand('dom', async (ctx) => {
 
     // Fast path: preserve legacy behavior when no frame is specified.
     if (frameSelection.mode === 'main') {
-      const result = await chrome.tabs.sendMessage(ctx.tabId, {
-        type: 'DOM_QUERY',
-        params: ctx.query.params
-      })
+      let result: Record<string, unknown>
+      try {
+        result = (await chrome.tabs.sendMessage(ctx.tabId, {
+          type: 'DOM_QUERY',
+          params: ctx.query.params
+        })) as Record<string, unknown>
+      } catch (err) {
+        const fallbackReason = isContentScriptUnreachableError(err)
+          ? 'content_script_unreachable'
+          : 'content_script_send_failed'
+        try {
+          result = await executeDOMQueryFallbackViaScripting(ctx.tabId, stripFrameParam(ctx.params), fallbackReason)
+        } catch {
+          throw err
+        }
+      }
       if (ctx.query.correlation_id) {
         ctx.sendAsyncResult(ctx.syncClient, ctx.query.id, ctx.query.correlation_id, 'complete', result)
       } else {

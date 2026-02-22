@@ -152,4 +152,95 @@ describe('analyze frame routing', () => {
     assert.strictEqual(cmd.result.frames.length, 2)
     assert.strictEqual(cmd.result.resolved_tab_id, 9)
   })
+
+  test('dom query falls back to scripting when content script is unreachable in main frame mode', async () => {
+    globalThis.chrome.tabs.sendMessage = async (tabId, message, options) => {
+      sendMessageCalls.push({ tabId, message, options })
+      if (message.type === 'DOM_QUERY') {
+        throw new Error('Could not establish connection. Receiving end does not exist.')
+      }
+      return {}
+    }
+
+    // Frame probe for resolveAnalyzeFrameSelection(mode=main)
+    executeScriptReturn.push([{ frameId: 0, result: { matches: true } }])
+    // DOM fallback execution result
+    executeScriptReturn.push([
+      {
+        frameId: 0,
+        result: {
+          url: 'https://example.com/',
+          title: 'Example Domain',
+          matchCount: 1,
+          returnedCount: 1,
+          matches: [{ tag: 'h1', text: 'Example Domain', visible: true }]
+        }
+      }
+    ])
+
+    const query = {
+      id: 'q-dom-fallback',
+      type: 'dom',
+      tab_id: 7,
+      params: { selector: 'h1' }
+    }
+
+    await handlePendingQuery(query, makeSyncClient())
+
+    assert.strictEqual(sendMessageCalls.length, 1, 'should try DOM_QUERY once via content script')
+    assert.strictEqual(executeScriptCalls.length, 2, 'should probe frames, then fallback via chrome.scripting')
+
+    assert.strictEqual(queuedResults.length, 1)
+    const cmd = queuedResults[0]
+    assert.strictEqual(cmd.status, 'complete')
+    assert.strictEqual(cmd.result.matchCount, 1)
+    assert.strictEqual(cmd.result.returnedCount, 1)
+    assert.strictEqual(cmd.result.execution_world, 'ISOLATED')
+    assert.strictEqual(cmd.result.fallback_reason, 'content_script_unreachable')
+    assert.strictEqual(cmd.result.resolved_tab_id, 7)
+  })
+
+  test('highlight uses resolved target tab and falls back to scripting when content script is unreachable', async () => {
+    globalThis.chrome.tabs.sendMessage = async (tabId, message, options) => {
+      sendMessageCalls.push({ tabId, message, options })
+      if (message.type === 'GASOLINE_HIGHLIGHT') {
+        throw new Error('Could not establish connection. Receiving end does not exist.')
+      }
+      return {}
+    }
+
+    executeScriptReturn.push([
+      {
+        frameId: 0,
+        result: {
+          success: true,
+          selector: 'body',
+          bounds: { x: 0, y: 0, width: 1024, height: 768 }
+        }
+      }
+    ])
+
+    const query = {
+      id: 'q-highlight-fallback',
+      type: 'highlight',
+      tab_id: 7,
+      params: { selector: 'body', duration_ms: 1200 }
+    }
+
+    await handlePendingQuery(query, makeSyncClient())
+
+    assert.strictEqual(sendMessageCalls.length, 1, 'should try highlight once via content script')
+    assert.strictEqual(sendMessageCalls[0].tabId, 7, 'should target resolved tab, not active tab')
+    assert.strictEqual(executeScriptCalls.length, 1, 'should fallback via chrome.scripting once')
+    assert.strictEqual(executeScriptCalls[0].target.tabId, 7, 'fallback should run on resolved tab')
+    assert.strictEqual(executeScriptCalls[0].world, 'ISOLATED', 'fallback should execute in isolated world')
+
+    assert.strictEqual(queuedResults.length, 1)
+    const cmd = queuedResults[0]
+    assert.strictEqual(cmd.status, 'complete')
+    assert.strictEqual(cmd.result.success, true)
+    assert.strictEqual(cmd.result.execution_world, 'ISOLATED')
+    assert.strictEqual(cmd.result.fallback_reason, 'content_script_unreachable')
+    assert.strictEqual(cmd.result.resolved_tab_id, 7)
+  })
 })
