@@ -3,6 +3,11 @@ package main
 
 import "encoding/json"
 
+const (
+	cspRetryNavigationGuidance = "This page blocks script execution (CSP/restricted context). Use interact navigate/refresh/back/forward/new_tab to move to another page."
+	cspFallbackStatusPattern   = "Error: MAIN world execution FAILED. Fallback in ISOLATED is SUCCESS|ERROR"
+)
+
 func (h *ToolHandler) toolConfigureTutorial(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	var params struct {
 		What string `json:"what"`
@@ -20,14 +25,15 @@ func (h *ToolHandler) toolConfigureTutorial(req JSONRPCRequest, args json.RawMes
 
 	context := h.tutorialContext()
 	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Tutorial", map[string]any{
-		"status":               "ok",
-		"mode":                 mode,
-		"message":              "Quickstart snippets and context-aware guidance",
-		"context":              context,
-		"issues":               tutorialIssues(context),
-		"next_steps":           tutorialNextSteps(context),
-		"snippets":             tutorialSnippets(),
-		"safe_automation_loop": tutorialSafeAutomationLoop(),
+		"status":                "ok",
+		"mode":                  mode,
+		"message":               "Quickstart snippets and context-aware guidance",
+		"context":               context,
+		"issues":                tutorialIssues(context),
+		"next_steps":            tutorialNextSteps(context),
+		"snippets":              tutorialSnippets(),
+		"safe_automation_loop":  tutorialSafeAutomationLoop(),
+		"csp_fallback_playbook": tutorialCSPFallbackPlaybook(),
 		"best_practices": []string{
 			"Start with observe to gather evidence before automating actions",
 			"Use configure tutorial/examples and describe_capabilities when argument shape is unclear",
@@ -213,6 +219,48 @@ func tutorialSafeAutomationLoop() map[string]any {
 				"name":        "Iframe-scoped interaction flow",
 				"description": "When controls are inside an iframe, set frame first, then list/verify/click in that frame.",
 				"snippet":     `interact({what:"list_interactive", frame:"iframe.editor", scope_selector:"form"}) -> interact({what:"click", frame:"iframe.editor", index:1})`,
+			},
+			{
+				"id":          "csp_restricted_page",
+				"name":        "CSP-restricted execute_js fallback flow",
+				"description": "If execute_js reports CSP failure, switch to DOM primitives + scope + screenshot verification instead of retrying arbitrary JS.",
+				"snippet":     `interact({what:"execute_js", script:"document.title", world:"main", background:true}) -> observe({what:"command_result", correlation_id:"<corr>"}) -> interact({what:"list_interactive", scope_selector:"main"}) -> interact({what:"click", index:1}) -> observe({what:"screenshot"})`,
+			},
+		},
+	}
+}
+
+func tutorialCSPFallbackPlaybook() map[string]any {
+	return map[string]any{
+		"title":                   "CSP-safe automation playbook (execute_js fallback)",
+		"detect_signals":          []string{"error=csp_blocked_all_worlds", "failure_cause=csp", "csp_blocked=true"},
+		"fallback_status_pattern": cspFallbackStatusPattern,
+		"exact_retry_guidance":    cspRetryNavigationGuidance,
+		"what_is_possible": []string{
+			"Pre-compiled DOM primitives (click/type/select/check/focus/list_interactive/highlight)",
+			"DOM inspection and screenshot checkpoints",
+			"Navigation escape actions (navigate/refresh/back/forward/new_tab)",
+		},
+		"what_is_not_possible": []string{
+			"Arbitrary page-context JS eval when CSP/Trusted Types blocks dynamic script execution",
+			"Assuming MAIN world and ISOLATED world have identical capabilities on every page",
+		},
+		"fallback_sequence": []map[string]any{
+			{"step": 1, "instruction": `Detect CSP in observe(command_result): error=csp_blocked_all_worlds or failure_cause=csp.`},
+			{"step": 2, "instruction": `Stop retrying execute_js on the same page context. Switch to list_interactive + scoped DOM primitives.`},
+			{"step": 3, "instruction": `Run the action with scope/frame constraints and verify the intended target before clicking.`},
+			{"step": 4, "instruction": `Capture screenshot evidence after action to prove post-condition.`},
+		},
+		"command_examples": []map[string]any{
+			{
+				"goal":     "Detect CSP failure and capture retry guidance",
+				"snippet":  `observe({what:"command_result", correlation_id:"<corr>"})`,
+				"expected": `error=csp_blocked_all_worlds | failure_cause=csp | retry=` + cspRetryNavigationGuidance,
+			},
+			{
+				"goal":     "Run CSP-safe fallback flow",
+				"snippet":  `interact({what:"list_interactive", scope_selector:"main"}) -> interact({what:"click", index:1}) -> observe({what:"screenshot"})`,
+				"expected": "Deterministic target selection and visual checkpoint without arbitrary JS eval",
 			},
 		},
 	}
