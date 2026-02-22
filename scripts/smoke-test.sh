@@ -34,7 +34,7 @@ while [ $# -gt 0 ]; do
             echo "  13-draw-mode, 15-file-upload, 20-inspect-visual,"
             echo "  21-macro-recording, 22-log-aggregation, 23-doctor-preflight,"
             echo "  24-retryable-errors, 25-action-enrichment, 26-default-upload-dir,"
-            echo "  27-extension-refactor, 30-stability-shutdown"
+            echo "  27-extension-refactor, 28-proof-first, 30-stability-shutdown"
             exit 0
             ;;
         --start-from)
@@ -113,6 +113,7 @@ MODULES=(
     "25-action-enrichment.sh"
     "26-default-upload-dir.sh"
     "27-extension-refactor.sh"
+    "28-proof-first.sh"
     "30-stability-shutdown.sh" # 30 must be last: it kills the daemon
 )
 
