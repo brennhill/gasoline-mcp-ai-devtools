@@ -379,7 +379,7 @@ func dispatchMode(server *Server, cfg *serverConfig) {
 	switch mode {
 	case modeDaemon:
 		server.logLifecycle("daemon_mode_start", cfg.port, nil)
-		if err := runMCPMode(server, cfg.port, cfg.apiKey); err != nil {
+		if err := runMCPMode(server, cfg.port, cfg.apiKey, daemonLaunchOptions{Parallel: cfg.parallelMode}); err != nil {
 			diagPath := appendExitDiagnostic("daemon_start_failed", map[string]any{
 				"port":  cfg.port,
 				"error": err.Error(),
@@ -455,6 +455,7 @@ Options:
   --port <number>        Port to listen on (default: 7890)
   --log-file <path>      Path to log file (default: in runtime state dir)
   --state-dir <path>     Directory for runtime state (default: OS app state dir)
+  --parallel             Opt-in parallel mode (isolated state dir, no takeover)
   --max-entries <number> Max log entries before rotation (default: 1000)
   --stop                 Stop the running server on the specified port
   --force                Force kill ALL running gasoline daemons (used during install)

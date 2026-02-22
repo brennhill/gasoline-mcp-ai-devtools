@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/dev-console/dev-console/internal/session"
 	"github.com/dev-console/dev-console/internal/state"
@@ -24,14 +25,15 @@ func (f *multiFlag) Set(value string) error {
 
 // serverConfig holds the parsed command-line flags for the server.
 type serverConfig struct {
-	port       int
-	logFile    string
-	maxEntries int
-	apiKey     string
-	stateDir   string
-	clientID   string
-	bridgeMode bool
-	daemonMode bool
+	port         int
+	logFile      string
+	maxEntries   int
+	apiKey       string
+	stateDir     string
+	clientID     string
+	bridgeMode   bool
+	daemonMode   bool
+	parallelMode bool
 }
 
 type runtimeMode string
@@ -49,6 +51,7 @@ type parsedFlags struct {
 	fastPathMaxFailureRatio                                              *float64
 	showVersion, showHelp, checkSetup, doctorMode, stopMode, connectMode *bool
 	bridgeMode, daemonMode, enableOsUploadAutomation                     *bool
+	parallelMode                                                         *bool
 	forceCleanup                                                         *bool
 	uploadDenyPatterns                                                   multiFlag
 	ssrfAllowedHosts                                                     multiFlag
@@ -72,6 +75,7 @@ func registerFlags() *parsedFlags {
 	f.clientID = flag.String("client-id", "", "Override client ID (default: derived from CWD)")
 	f.bridgeMode = flag.Bool("bridge", false, "Run as stdio-to-HTTP bridge (spawns daemon if needed)")
 	f.daemonMode = flag.Bool("daemon", false, "Run as background server daemon (internal use)")
+	f.parallelMode = flag.Bool("parallel", false, "Enable isolated parallel daemon mode (skip takeover; requires unique port/state-dir)")
 	f.stateDir = flag.String("state-dir", "", "Directory for runtime state (default: OS app state directory)")
 	f.enableOsUploadAutomation = flag.Bool("enable-os-upload-automation", false, "Enable OS-level file upload automation (Stage 4: AppleScript/xdotool)")
 	f.uploadDir = flag.String("upload-dir", "", "Directory from which file uploads are allowed (required for Stages 2-4)")
@@ -138,18 +142,23 @@ func parseAndValidateFlags() *serverConfig {
 	initUploadSecurity(*f.enableOsUploadAutomation, *f.uploadDir, f.uploadDenyPatterns)
 	validatePort(*f.port)
 	normalizeStateDir(f.stateDir)
+	if err := applyParallelModeStateDir(*f.parallelMode, f.stateDir); err != nil {
+		fmt.Fprintf(os.Stderr, "[gasoline] Invalid --parallel setup: %v\n", err)
+		os.Exit(1)
+	}
 	handleEarlyExitModes(f)
 	resolveDefaultLogFile(f.logFile)
 
 	return &serverConfig{
-		port:       *f.port,
-		logFile:    *f.logFile,
-		maxEntries: *f.maxEntries,
-		apiKey:     *f.apiKey,
-		stateDir:   *f.stateDir,
-		clientID:   *f.clientID,
-		bridgeMode: *f.bridgeMode,
-		daemonMode: *f.daemonMode,
+		port:         *f.port,
+		logFile:      *f.logFile,
+		maxEntries:   *f.maxEntries,
+		apiKey:       *f.apiKey,
+		stateDir:     *f.stateDir,
+		clientID:     *f.clientID,
+		bridgeMode:   *f.bridgeMode,
+		daemonMode:   *f.daemonMode,
+		parallelMode: *f.parallelMode,
 	}
 }
 
@@ -208,6 +217,32 @@ func normalizeStateDir(stateDir *string) {
 		fmt.Fprintf(os.Stderr, "[gasoline] Failed to set %s: %v\n", state.StateDirEnv, err)
 		os.Exit(1)
 	}
+}
+
+// applyParallelModeStateDir auto-isolates runtime state when --parallel is enabled
+// and no explicit --state-dir is provided.
+func applyParallelModeStateDir(parallel bool, stateDir *string) error {
+	if !parallel {
+		return nil
+	}
+	if strings.TrimSpace(*stateDir) != "" {
+		return nil
+	}
+
+	root, err := state.RootDir()
+	if err != nil {
+		return fmt.Errorf("cannot resolve runtime state root: %w", err)
+	}
+	generated := filepath.Join(root, "parallel", fmt.Sprintf("run-%d-%d", time.Now().UnixNano(), os.Getpid()))
+	if err := os.MkdirAll(generated, 0o750); err != nil {
+		return fmt.Errorf("cannot create parallel state dir %q: %w", generated, err)
+	}
+	*stateDir = filepath.Clean(generated)
+	if err := os.Setenv(state.StateDirEnv, *stateDir); err != nil {
+		return fmt.Errorf("failed to set %s: %w", state.StateDirEnv, err)
+	}
+	startupWarnings = append(startupWarnings, fmt.Sprintf("parallel_mode_state_dir_auto: %s", *stateDir))
+	return nil
 }
 
 // resolveDefaultLogFile sets the log file to the runtime state directory default if empty.
