@@ -163,6 +163,11 @@ func (c *Capture) GetFailedCommands() []*queries.CommandResult {
 	return c.qd.GetFailedCommands()
 }
 
+// GetRecentCommandTraces returns the latest command traces for diagnostics.
+func (c *Capture) GetRecentCommandTraces(limit int) []*queries.CommandResult {
+	return c.qd.GetRecentCommandTraces(limit)
+}
+
 // QueuePosition delegates to QueryDispatcher.
 func (c *Capture) QueuePosition(correlationID string) int {
 	return c.qd.QueuePosition(correlationID)

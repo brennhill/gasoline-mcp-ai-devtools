@@ -15,7 +15,7 @@ import (
 
 // Constants for query management
 const (
-	QueryResultTTL   = 5 * time.Minute // How long to keep query results before cleanup
+	QueryResultTTL    = 5 * time.Minute // How long to keep query results before cleanup
 	MaxPendingQueries = 5               // Max pending queries in queue
 )
 
@@ -68,6 +68,7 @@ func (qd *QueryDispatcher) CreatePendingQueryWithTimeout(query PendingQuery, tim
 			Params:        query.Params,
 			TabID:         query.TabID,
 			CorrelationID: query.CorrelationID,
+			TraceID:       deriveTraceID(query.TraceID, query.CorrelationID, id),
 		},
 		Expires:  time.Now().Add(timeout),
 		ClientID: clientID,
@@ -145,14 +146,22 @@ func (qd *QueryDispatcher) GetPendingQueries() []PendingQueryResponse {
 	qd.cleanExpiredCommands()
 
 	qd.mu.Lock()
-	defer qd.mu.Unlock()
 
 	// Clean expired queries from pending queue
 	qd.cleanExpiredQueries()
 
 	result := make([]PendingQueryResponse, 0, len(qd.pendingQueries))
+	sentCorrelationIDs := make([]string, 0, len(qd.pendingQueries))
 	for _, pq := range qd.pendingQueries {
 		result = append(result, pq.Query)
+		if pq.Query.CorrelationID != "" {
+			sentCorrelationIDs = append(sentCorrelationIDs, pq.Query.CorrelationID)
+		}
+	}
+	qd.mu.Unlock()
+
+	for _, correlationID := range sentCorrelationIDs {
+		qd.recordTraceEvent(correlationID, traceStageSent, "sync", "pending", "", time.Now())
 	}
 	return result
 }
@@ -164,16 +173,24 @@ func (qd *QueryDispatcher) GetPendingQueriesForClient(clientID string) []Pending
 	qd.cleanExpiredCommands()
 
 	qd.mu.Lock()
-	defer qd.mu.Unlock()
 
 	// Clean expired queries from pending queue
 	qd.cleanExpiredQueries()
 
 	result := make([]PendingQueryResponse, 0)
+	sentCorrelationIDs := make([]string, 0, len(qd.pendingQueries))
 	for _, pq := range qd.pendingQueries {
 		if pq.ClientID == clientID {
 			result = append(result, pq.Query)
+			if pq.Query.CorrelationID != "" {
+				sentCorrelationIDs = append(sentCorrelationIDs, pq.Query.CorrelationID)
+			}
 		}
+	}
+	qd.mu.Unlock()
+
+	for _, correlationID := range sentCorrelationIDs {
+		qd.recordTraceEvent(correlationID, traceStageSent, "sync", "pending", "", time.Now())
 	}
 	return result
 }
@@ -187,7 +204,6 @@ func (qd *QueryDispatcher) AcknowledgePendingQuery(queryID string) {
 	}
 
 	qd.mu.Lock()
-	defer qd.mu.Unlock()
 
 	ackIndex := -1
 	for i, pq := range qd.pendingQueries {
@@ -197,12 +213,25 @@ func (qd *QueryDispatcher) AcknowledgePendingQuery(queryID string) {
 		}
 	}
 	if ackIndex < 0 {
+		qd.mu.Unlock()
 		return
+	}
+
+	startedCorrelationIDs := make([]string, 0, ackIndex+1)
+	for _, pq := range qd.pendingQueries[:ackIndex+1] {
+		if pq.Query.CorrelationID != "" {
+			startedCorrelationIDs = append(startedCorrelationIDs, pq.Query.CorrelationID)
+		}
 	}
 
 	remaining := make([]PendingQueryEntry, 0, len(qd.pendingQueries)-ackIndex-1)
 	remaining = append(remaining, qd.pendingQueries[ackIndex+1:]...)
 	qd.pendingQueries = remaining
+
+	qd.mu.Unlock()
+	for _, correlationID := range startedCorrelationIDs {
+		qd.recordTraceEvent(correlationID, traceStageStarted, "sync", "pending", "", time.Now())
+	}
 }
 
 // ExpireAllPendingQueries expires all pending queries with the given error reason.
@@ -237,6 +266,9 @@ func (qd *QueryDispatcher) ExpireAllPendingQueries(reason string) {
 		}
 		cmd.Status = "expired"
 		cmd.Error = reason
+		now := time.Now()
+		qd.appendTraceEventLocked(cmd, traceStageTimedOut, "timeout", "expired", reason, now)
+		cmd.CompletedAt = now
 		qd.failedCommands = append(qd.failedCommands, cmd)
 		if len(qd.failedCommands) > 100 {
 			qd.failedCommands = qd.failedCommands[1:]

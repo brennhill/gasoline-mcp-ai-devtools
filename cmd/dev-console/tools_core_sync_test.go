@@ -66,6 +66,58 @@ func TestMaybeWaitForCommand_BackgroundOverride(t *testing.T) {
 	if result["lifecycle_status"] != "queued" {
 		t.Errorf("Expected lifecycle_status queued (background), got %v", result["lifecycle_status"])
 	}
+	if result["trace_id"] != correlationID {
+		t.Errorf("Expected trace_id %s, got %v", correlationID, result["trace_id"])
+	}
+}
+
+func TestToolObserveCommandResult_IncludesTraceTimeline(t *testing.T) {
+	cap := capture.NewCapture()
+	handler := &ToolHandler{capture: cap}
+	req := JSONRPCRequest{JSONRPC: "2.0", ID: 1}
+	correlationID := "test-trace-obs-123"
+
+	queryID := cap.CreatePendingQueryWithTimeout(queries.PendingQuery{
+		Type:          "browser_action",
+		Params:        json.RawMessage(`{"what":"click","selector":"button"}`),
+		CorrelationID: correlationID,
+	}, 30*time.Second, "test-client")
+	if queryID == "" {
+		t.Fatal("CreatePendingQueryWithTimeout returned empty query ID")
+	}
+
+	_ = cap.GetPendingQueries() // marks "sent"
+	cap.AcknowledgePendingQuery(queryID)
+	cap.CompleteCommand(correlationID, json.RawMessage(`{"success":true}`), "")
+
+	resp := handler.toolObserveCommandResult(req, json.RawMessage(`{"correlation_id":"test-trace-obs-123"}`))
+	data := parseMCPResponseData(t, resp.Result)
+
+	trace, ok := data["trace"].(map[string]any)
+	if !ok {
+		t.Fatalf("trace field missing or invalid: %v", data["trace"])
+	}
+	if trace["trace_id"] != correlationID {
+		t.Fatalf("trace.trace_id = %v, want %s", trace["trace_id"], correlationID)
+	}
+	if trace["query_id"] != queryID {
+		t.Fatalf("trace.query_id = %v, want %s", trace["query_id"], queryID)
+	}
+
+	timeline, _ := trace["timeline"].(string)
+	if timeline == "" {
+		t.Fatal("trace.timeline should not be empty")
+	}
+	for _, stage := range []string{"queued", "sent", "started", "resolved"} {
+		if !strings.Contains(timeline, stage) {
+			t.Fatalf("trace.timeline=%q missing stage %q", timeline, stage)
+		}
+	}
+
+	events, ok := trace["events"].([]any)
+	if !ok || len(events) < 4 {
+		t.Fatalf("trace.events = %v, want at least 4 events", trace["events"])
+	}
 }
 
 func TestMaybeWaitForCommand_TimeoutGracefulFallback(t *testing.T) {

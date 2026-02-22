@@ -25,6 +25,7 @@ type PendingQuery struct {
 	Params        json.RawMessage `json:"params"`
 	TabID         int             `json:"tab_id,omitempty"`         // Target tab ID (0 = active tab)
 	CorrelationID string          `json:"correlation_id,omitempty"` // LLM-facing tracking ID for async commands
+	TraceID       string          `json:"trace_id,omitempty"`       // End-to-end trace ID for async command lifecycle
 }
 
 // PendingQueryResponse is the response format for pending queries
@@ -34,17 +35,32 @@ type PendingQueryResponse struct {
 	Params        json.RawMessage `json:"params"`
 	TabID         int             `json:"tab_id,omitempty"`         // Target tab ID (0 = active tab)
 	CorrelationID string          `json:"correlation_id,omitempty"` // LLM-facing tracking ID for async commands
+	TraceID       string          `json:"trace_id,omitempty"`       // End-to-end trace ID for async command lifecycle
+}
+
+// CommandTraceEvent records one command lifecycle transition.
+type CommandTraceEvent struct {
+	Stage   string    `json:"stage"` // queued, sent, started, resolved, timed_out, errored
+	At      time.Time `json:"at"`
+	Source  string    `json:"source,omitempty"` // queue, sync, extension, timeout
+	Status  string    `json:"status,omitempty"`
+	Message string    `json:"message,omitempty"`
 }
 
 // CommandResult represents the result of an async command execution
 type CommandResult struct {
-	CorrelationID string          `json:"correlation_id"`
-	Status        string          `json:"status"` // "pending", "complete", "error", "timeout", "expired", "cancelled"
-	Result        json.RawMessage `json:"result,omitempty"`
-	Error         string          `json:"error,omitempty"`
-	CompletedAt   time.Time       `json:"completed_at,omitempty"`
-	CreatedAt     time.Time       `json:"created_at"`
-	ExpiresAt     time.Time       `json:"expires_at,omitempty"` // hard deadline to avoid stuck-pending commands
+	CorrelationID string              `json:"correlation_id"`
+	TraceID       string              `json:"trace_id,omitempty"`
+	QueryID       string              `json:"query_id,omitempty"`
+	Status        string              `json:"status"` // "pending", "complete", "error", "timeout", "expired", "cancelled"
+	Result        json.RawMessage     `json:"result,omitempty"`
+	Error         string              `json:"error,omitempty"`
+	CompletedAt   time.Time           `json:"completed_at,omitempty"`
+	CreatedAt     time.Time           `json:"created_at"`
+	ExpiresAt     time.Time           `json:"expires_at,omitempty"` // hard deadline to avoid stuck-pending commands
+	UpdatedAt     time.Time           `json:"updated_at,omitempty"`
+	TraceEvents   []CommandTraceEvent `json:"trace_events,omitempty"`
+	TraceTimeline string              `json:"trace_timeline,omitempty"`
 }
 
 // ElapsedMs returns milliseconds from creation to completion (or now if still pending).

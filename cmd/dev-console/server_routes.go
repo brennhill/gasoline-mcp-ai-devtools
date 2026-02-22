@@ -200,6 +200,34 @@ func appendCaptureDiagnostics(resp map[string]any, cap *capture.Capture) {
 		"query_timeout": snap.QueryTimeout.String(),
 	}
 
+	const defaultTraceLimit = 25
+	traces := cap.GetRecentCommandTraces(defaultTraceLimit)
+	traceEntries := make([]map[string]any, 0, len(traces))
+	for _, trace := range traces {
+		if trace == nil {
+			continue
+		}
+		traceID := trace.TraceID
+		if traceID == "" {
+			traceID = trace.CorrelationID
+		}
+		traceEntries = append(traceEntries, map[string]any{
+			"trace_id":       traceID,
+			"correlation_id": trace.CorrelationID,
+			"query_id":       trace.QueryID,
+			"status":         trace.Status,
+			"timeline":       trace.TraceTimeline,
+			"events":         trace.TraceEvents,
+			"created_at":     trace.CreatedAt.Format(time.RFC3339),
+			"updated_at":     trace.UpdatedAt.Format(time.RFC3339),
+		})
+	}
+	resp["command_traces"] = map[string]any{
+		"count":   len(traceEntries),
+		"limit":   defaultTraceLimit,
+		"entries": traceEntries,
+	}
+
 	lastPoll := any(nil)
 	if !snap.LastPollTime.IsZero() {
 		lastPoll = snap.LastPollTime.Format(time.RFC3339)

@@ -97,8 +97,8 @@ func TestNewQueryDispatcher_CompleteCommand_WithError(t *testing.T) {
 	if !found {
 		t.Fatal("GetCommandResult returned false")
 	}
-	if cmd.Status != "complete" {
-		t.Errorf("Status = %q, want complete", cmd.Status)
+	if cmd.Status != "error" {
+		t.Errorf("Status = %q, want error", cmd.Status)
 	}
 	if cmd.Error != "element not found" {
 		t.Errorf("Error = %q, want 'element not found'", cmd.Error)
