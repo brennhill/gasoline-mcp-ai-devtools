@@ -88,6 +88,7 @@ func (h *ToolHandler) MaybeWaitForCommand(req JSONRPCRequest, correlationID stri
 			"status":           "queued",
 			"lifecycle_status": "queued",
 			"correlation_id":   correlationID,
+			"trace_id":         correlationID,
 			"queued":           true,
 			"final":            false,
 		})}
@@ -130,6 +131,7 @@ func (h *ToolHandler) MaybeWaitForCommand(req JSONRPCRequest, correlationID stri
 			"status":           "still_processing",
 			"lifecycle_status": "running",
 			"correlation_id":   correlationID,
+			"trace_id":         correlationID,
 			"queued":           false,
 			"final":            false,
 			"elapsed_ms":       cmd.ElapsedMs(),
@@ -246,14 +248,20 @@ func (h *ToolHandler) toolObserveFailedCommands(req JSONRPCRequest, args json.Ra
 // ============================================
 
 func (h *ToolHandler) formatCommandResult(req JSONRPCRequest, cmd queries.CommandResult, corrID string) JSONRPCResponse {
+	traceID := cmd.TraceID
+	if traceID == "" {
+		traceID = cmd.CorrelationID
+	}
 	responseData := map[string]any{
 		"correlation_id":   cmd.CorrelationID,
+		"trace_id":         traceID,
 		"status":           cmd.Status,
 		"lifecycle_status": canonicalLifecycleStatus(cmd.Status),
 		"queued":           false,
 		"created_at":       cmd.CreatedAt.Format(time.RFC3339),
 		"elapsed_ms":       cmd.ElapsedMs(),
 	}
+	attachTraceSummary(responseData, cmd)
 
 	switch cmd.Status {
 	case "complete":
@@ -319,6 +327,29 @@ func (h *ToolHandler) formatCommandResult(req JSONRPCRequest, cmd queries.Comman
 		summary := fmt.Sprintf("Command %s: %s", corrID, cmd.Status)
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse(summary, responseData)}
 	}
+}
+
+func attachTraceSummary(responseData map[string]any, cmd queries.CommandResult) {
+	traceID := cmd.TraceID
+	if traceID == "" {
+		traceID = cmd.CorrelationID
+	}
+	if traceID == "" && len(cmd.TraceEvents) == 0 {
+		return
+	}
+
+	trace := map[string]any{
+		"trace_id": traceID,
+		"timeline": cmd.TraceTimeline,
+		"events":   cmd.TraceEvents,
+	}
+	if cmd.QueryID != "" {
+		trace["query_id"] = cmd.QueryID
+	}
+	if len(cmd.TraceEvents) > 0 {
+		trace["last_stage"] = cmd.TraceEvents[len(cmd.TraceEvents)-1].Stage
+	}
+	responseData["trace"] = trace
 }
 
 func (h *ToolHandler) formatCompleteCommand(req JSONRPCRequest, cmd queries.CommandResult, corrID string, responseData map[string]any) JSONRPCResponse {

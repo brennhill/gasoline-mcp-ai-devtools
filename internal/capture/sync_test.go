@@ -354,6 +354,9 @@ func TestHandleSync_CommandsIncludeTabID(t *testing.T) {
 	if resp.Commands[0].CorrelationID != "corr-tab-42" {
 		t.Fatalf("Expected correlation_id corr-tab-42, got %q", resp.Commands[0].CorrelationID)
 	}
+	if resp.Commands[0].TraceID != "corr-tab-42" {
+		t.Fatalf("Expected trace_id corr-tab-42, got %q", resp.Commands[0].TraceID)
+	}
 }
 
 func TestHandleSync_AdaptivePoll_SlowWhenNoCommands(t *testing.T) {
@@ -612,7 +615,7 @@ func TestHandleSync_CommandResultLifecycleMatrix(t *testing.T) {
 			}
 
 			req := SyncRequest{
-				ExtSessionID:    "test_session",
+				ExtSessionID:   "test_session",
 				CommandResults: []SyncCommandResult{result},
 			}
 			body, _ := json.Marshal(req)

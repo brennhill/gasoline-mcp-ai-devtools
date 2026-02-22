@@ -94,6 +94,7 @@ type SyncCommand struct {
 	Params        json.RawMessage `json:"params"`
 	TabID         int             `json:"tab_id,omitempty"`
 	CorrelationID string          `json:"correlation_id,omitempty"`
+	TraceID       string          `json:"trace_id,omitempty"`
 }
 
 // =============================================================================
@@ -212,6 +213,7 @@ func buildSyncCommands(pending []queries.PendingQueryResponse) []SyncCommand {
 			Params:        q.Params,
 			TabID:         q.TabID,
 			CorrelationID: q.CorrelationID,
+			TraceID:       q.TraceID,
 		}
 	}
 	return commands

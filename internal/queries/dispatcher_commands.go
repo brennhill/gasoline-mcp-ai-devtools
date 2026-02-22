@@ -68,12 +68,17 @@ func (qd *QueryDispatcher) RegisterCommand(correlationID string, queryID string,
 	qd.resultsMu.Lock()
 	defer qd.resultsMu.Unlock()
 
-	qd.completedResults[correlationID] = &CommandResult{
+	cmd := &CommandResult{
 		CorrelationID: correlationID,
+		TraceID:       deriveTraceID("", correlationID, queryID),
+		QueryID:       queryID,
 		Status:        "pending",
 		CreatedAt:     now,
 		ExpiresAt:     expiresAt,
+		UpdatedAt:     now,
 	}
+	qd.appendTraceEventLocked(cmd, traceStageQueued, "queue", "pending", "", now)
+	qd.completedResults[correlationID] = cmd
 }
 
 // ApplyCommandResult updates command state from extension status values.
@@ -101,8 +106,14 @@ func (qd *QueryDispatcher) ApplyCommandResult(correlationID string, status strin
 	cmd.Status = normalizedStatus
 	cmd.Result = result
 	cmd.Error = err
+	eventAt := time.Now()
+	stage := traceStageFromStatus(normalizedStatus)
+	if (stage == traceStageResolved || stage == traceStageErrored || stage == traceStageTimedOut) && !qd.hasTraceStageLocked(cmd, traceStageStarted) {
+		qd.appendTraceEventLocked(cmd, traceStageStarted, "extension", "pending", "", eventAt)
+	}
+	qd.appendTraceEventLocked(cmd, stage, "extension", normalizedStatus, err, eventAt)
 	if normalizedStatus != "pending" {
-		cmd.CompletedAt = time.Now()
+		cmd.CompletedAt = eventAt
 	}
 
 	if IsFailedCommandStatus(normalizedStatus) {
@@ -191,15 +202,13 @@ func (qd *QueryDispatcher) GetCommandResult(correlationID string) (*CommandResul
 
 	// Check active commands
 	if cmd, exists := qd.completedResults[correlationID]; exists {
-		cp := *cmd
-		return &cp, true
+		return copyCommandResultWithTrace(cmd), true
 	}
 
 	// Check failed/expired commands
 	for _, cmd := range qd.failedCommands {
 		if cmd.CorrelationID == correlationID {
-			cp := *cmd
-			return &cp, true
+			return copyCommandResultWithTrace(cmd), true
 		}
 	}
 
@@ -263,7 +272,7 @@ func (qd *QueryDispatcher) GetPendingCommands() []*CommandResult {
 	result := make([]*CommandResult, 0)
 	for _, cmd := range qd.completedResults {
 		if cmd.Status == "pending" {
-			result = append(result, cmd)
+			result = append(result, copyCommandResultWithTrace(cmd))
 		}
 	}
 	return result
@@ -281,7 +290,7 @@ func (qd *QueryDispatcher) GetCompletedCommands() []*CommandResult {
 	result := make([]*CommandResult, 0)
 	for _, cmd := range qd.completedResults {
 		if cmd.Status == "complete" {
-			result = append(result, cmd)
+			result = append(result, copyCommandResultWithTrace(cmd))
 		}
 	}
 	return result
@@ -305,8 +314,8 @@ func (qd *QueryDispatcher) GetFailedCommands() []*CommandResult {
 		if cmd == nil {
 			continue
 		}
-		cp := *cmd
-		result = append(result, &cp)
+		cp := copyCommandResultWithTrace(cmd)
+		result = append(result, cp)
 		if cp.CorrelationID != "" {
 			seen[cp.CorrelationID] = struct{}{}
 		}
@@ -318,8 +327,7 @@ func (qd *QueryDispatcher) GetFailedCommands() []*CommandResult {
 		if _, exists := seen[cmd.CorrelationID]; exists {
 			continue
 		}
-		cp := *cmd
-		result = append(result, &cp)
+		result = append(result, copyCommandResultWithTrace(cmd))
 	}
 	return result
 }

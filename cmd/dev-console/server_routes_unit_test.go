@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/dev-console/dev-console/internal/capture"
+	"github.com/dev-console/dev-console/internal/queries"
 )
 
 func decodeJSONMap(t *testing.T, body []byte) map[string]any {
@@ -136,6 +137,43 @@ func TestSetupHTTPRoutesBasicEndpoints(t *testing.T) {
 	}
 	if !redactedFound {
 		t.Fatal("diagnostics did not include redacted http debug request body")
+	}
+
+	traceQueryID := cap.CreatePendingQueryWithTimeout(queries.PendingQuery{
+		Type:          "browser_action",
+		CorrelationID: "diag-trace-corr",
+	}, 30*time.Second, "test-client")
+	_ = cap.GetPendingQueries()
+	cap.AcknowledgePendingQuery(traceQueryID)
+	cap.CompleteCommand("diag-trace-corr", json.RawMessage(`{"ok":true}`), "")
+
+	diagWithTraceRR := httptest.NewRecorder()
+	mux.ServeHTTP(diagWithTraceRR, localRequest(http.MethodGet, "/diagnostics", nil))
+	if diagWithTraceRR.Code != http.StatusOK {
+		t.Fatalf("GET /diagnostics (trace) status = %d, want %d", diagWithTraceRR.Code, http.StatusOK)
+	}
+	diagWithTrace := decodeJSONMap(t, diagWithTraceRR.Body.Bytes())
+	tracePayload, ok := diagWithTrace["command_traces"].(map[string]any)
+	if !ok {
+		t.Fatalf("diagnostics missing command_traces payload: %v", diagWithTrace)
+	}
+	traceCount, _ := tracePayload["count"].(float64)
+	if traceCount < 1 {
+		t.Fatalf("diagnostics command_traces.count = %v, want >=1", traceCount)
+	}
+	traceEntries, ok := tracePayload["entries"].([]any)
+	if !ok || len(traceEntries) == 0 {
+		t.Fatalf("diagnostics command_traces.entries missing: %v", tracePayload["entries"])
+	}
+	firstTrace, ok := traceEntries[0].(map[string]any)
+	if !ok {
+		t.Fatalf("first trace entry is not object: %T", traceEntries[0])
+	}
+	if firstTrace["trace_id"] == "" {
+		t.Fatalf("trace_id missing in diagnostics trace entry: %v", firstTrace)
+	}
+	if firstTrace["timeline"] == "" {
+		t.Fatalf("timeline missing in diagnostics trace entry: %v", firstTrace)
 	}
 
 	diagBadReq := localRequest(http.MethodPost, "/diagnostics", nil)
