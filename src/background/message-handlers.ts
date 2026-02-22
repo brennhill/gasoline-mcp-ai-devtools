@@ -13,6 +13,7 @@
 import type {
   LogEntry,
   BackgroundMessage,
+  DrawModeCompletedMessage,
   ChromeMessageSender,
   BrowserStateSnapshot,
   ConnectionStatus,
@@ -293,7 +294,7 @@ function handleMessage(
 
     case 'DRAW_MODE_COMPLETED':
       // Fire-and-forget: content script sends draw mode results
-      handleDrawModeCompletedAsync(message as unknown as Record<string, unknown>, sender, deps)
+      handleDrawModeCompletedAsync(message, sender, deps)
       return false
 
     default:
@@ -493,7 +494,7 @@ async function handleDrawModeCaptureScreenshot(sender: ChromeMessageSender, send
  * Uses screenshot already captured by content script (before overlay removal).
  */
 async function handleDrawModeCompletedAsync(
-  message: Record<string, unknown>,
+  message: DrawModeCompletedMessage,
   sender: ChromeMessageSender,
   deps: MessageHandlerDependencies
 ): Promise<void> {
@@ -502,12 +503,12 @@ async function handleDrawModeCompletedAsync(
   try {
     const serverUrl = deps.getServerUrl()
     const body: Record<string, unknown> = {
-      screenshot_data_url: (message.screenshot_data_url as string) || '',
-      annotations: (message.annotations as unknown[]) || [],
-      element_details: (message.elementDetails as Record<string, unknown>) || {},
-      page_url: (message.page_url as string) || '',
+      screenshot_data_url: message.screenshot_data_url || '',
+      annotations: message.annotations || [],
+      element_details: message.elementDetails || {},
+      page_url: message.page_url || '',
       tab_id: tabId,
-      correlation_id: (message.correlation_id as string) || ''
+      correlation_id: message.correlation_id || ''
     }
     if (message.annot_session_name) {
       body.annot_session_name = message.annot_session_name
@@ -523,7 +524,7 @@ async function handleDrawModeCompletedAsync(
     } else {
       deps.debugLog(
         'draw',
-        `Draw mode results delivered (${(message.annotations as unknown[])?.length || 0} annotations)`
+        `Draw mode results delivered (${message.annotations?.length || 0} annotations)`
       )
     }
   } catch (err) {

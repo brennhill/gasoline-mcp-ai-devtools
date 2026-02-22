@@ -6,7 +6,7 @@
  */
 import { waitForTabLoad, pingContentScript } from './event-listeners.js';
 import { debugLog } from './index.js';
-import { __aiWebPilotEnabledCache } from './state.js';
+import { isAiWebPilotEnabled } from './state.js';
 import { DebugCategory } from './debug.js';
 import { broadcastTrackingState } from './message-handlers.js';
 import { executeWithWorldRouting } from './query-execution.js';
@@ -102,7 +102,7 @@ export async function handleBrowserAction(tabId, params, actionToast) {
         : typeof params?.what === 'string'
             ? params.what
             : undefined;
-    if (!__aiWebPilotEnabledCache) {
+    if (!isAiWebPilotEnabled()) {
         return { success: false, error: 'ai_web_pilot_disabled', message: 'AI Web Pilot is not enabled' };
     }
     try {

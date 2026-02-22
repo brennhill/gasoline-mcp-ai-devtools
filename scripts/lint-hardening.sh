@@ -414,6 +414,74 @@ else
 fi
 
 # ─────────────────────────────────────────────
+# 14. MCP stdout invariant: no direct stdout writes in production code
+# ─────────────────────────────────────────────
+bold "14. Checking for forbidden stdout writes in production code..."
+
+# Files that are ALLOWED to write to stdout (transport layer only):
+#   mcp_stdout.go      — centralized writeMCPPayload()
+#   connect_mode.go    — MCP forwarding (uses os.Stdout.Write)
+#   bridge_io_isolation*.go — FD duplication setup
+#   cli.go / cli_output.go — CLI mode (not MCP)
+#   main.go            — startup / background spawn
+#   main_connection.go — MCP pipe writes
+STDOUT_ALLOWLIST="mcp_stdout.go|connect_mode.go|bridge_io_isolation|cli\.go|cli_output\.go|config\.go|main\.go|main_connection\.go|main_connection_stop\.go|main_helpers\.go|doctor\.go"
+
+# Pattern: fmt.Print/Println/Printf (writes to stdout), or direct os.Stdout usage
+# Excludes: fmt.Fprintf(os.Stderr, ...) which is safe, and fmt.Sprintf which returns a string
+STDOUT_VIOLATIONS=$(grep -rn -E 'fmt\.(Print|Println|Printf)\(' cmd/dev-console/ \
+  --include='*.go' \
+  | grep -v '_test.go' \
+  | grep -v "// lint:stdout-ok" \
+  | grep -vE "$STDOUT_ALLOWLIST" \
+  || true)
+
+if [ -n "$STDOUT_VIOLATIONS" ]; then
+  fail "Direct stdout writes via fmt.Print*/Println/Printf (use stderrf for logging, writeMCPPayload for MCP):"
+  echo "$STDOUT_VIOLATIONS" | while IFS= read -r line; do echo "    $line"; done
+else
+  pass "No forbidden fmt.Print*/Println/Printf in production code"
+fi
+
+# ─────────────────────────────────────────────
+# 15. Daemon-mode stderr: must use stderrf() not fmt.Fprintf(os.Stderr)
+# ─────────────────────────────────────────────
+bold "15. Checking daemon-mode files use stderrf() for stderr..."
+
+# Daemon/server files that MUST use stderrf() instead of fmt.Fprintf(os.Stderr)
+DAEMON_FILES=(
+  "handler.go"
+  "server.go"
+  "server_routes.go"
+  "server_routes_media.go"
+  "openapi.go"
+  "dashboard.go"
+  "noise_autorun.go"
+  "connect_mode.go"
+)
+
+STDERR_VIOLATIONS=""
+for fname in "${DAEMON_FILES[@]}"; do
+  fpath="cmd/dev-console/$fname"
+  if [ ! -f "$fpath" ]; then continue; fi
+  HITS=$(grep -n 'fmt\.Fprintf(os\.Stderr' "$fpath" \
+    | grep -v '// lint:stderr-ok' \
+    || true)
+  if [ -n "$HITS" ]; then
+    while IFS= read -r line; do
+      STDERR_VIOLATIONS="${STDERR_VIOLATIONS}    ${fpath}:${line}\n"
+    done <<< "$HITS"
+  fi
+done
+
+if [ -n "$STDERR_VIOLATIONS" ]; then
+  fail "Daemon-mode files using fmt.Fprintf(os.Stderr) instead of stderrf():"
+  printf "%b" "$STDERR_VIOLATIONS"
+else
+  pass "All daemon-mode files use stderrf() for stderr output"
+fi
+
+# ─────────────────────────────────────────────
 # Summary
 # ─────────────────────────────────────────────
 echo ""

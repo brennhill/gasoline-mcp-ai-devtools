@@ -41,7 +41,7 @@ mock.module('../../extension/background/index.js', {
 
 mock.module('../../extension/background/state.js', {
   namedExports: {
-    serverUrl: 'http://localhost:7890'
+    getServerUrl: () => 'http://localhost:7890'
   }
 })
 

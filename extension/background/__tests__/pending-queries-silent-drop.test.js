@@ -60,6 +60,7 @@ globalThis.fetch = mock.fn(() => Promise.resolve({ ok: true, json: () => Promise
 // ============================================
 
 const { handlePendingQuery } = await import('../pending-queries.js')
+const { markInitComplete } = await import('../state.js')
 
 // ============================================
 // Mock SyncClient
@@ -84,6 +85,7 @@ function createMockSyncClient() {
 
 describe('handlePendingQuery — silent drop prevention', () => {
   beforeEach(() => {
+    markInitComplete()
     mockTabsGet.mock.resetCalls()
     mockTabsQuery.mock.resetCalls()
     mockStorageLocalGet.mock.resetCalls()
@@ -92,9 +94,7 @@ describe('handlePendingQuery — silent drop prevention', () => {
 
   test('sends error result when no tracked tab and no active tab (sync query)', async () => {
     // No tracked tab
-    mockStorageLocalGet.mock.mockImplementation((_keys, cb) => {
-      cb({})
-    })
+    mockStorageLocalGet.mock.mockImplementation(() => Promise.resolve({}))
     // No active tab
     mockTabsQuery.mock.mockImplementation(() => Promise.resolve([]))
 
@@ -118,9 +118,7 @@ describe('handlePendingQuery — silent drop prevention', () => {
 
   test('sends error result when no tracked tab and no active tab (async query with correlation_id)', async () => {
     // No tracked tab
-    mockStorageLocalGet.mock.mockImplementation((_keys, cb) => {
-      cb({})
-    })
+    mockStorageLocalGet.mock.mockImplementation(() => Promise.resolve({}))
     // No active tab
     mockTabsQuery.mock.mockImplementation(() => Promise.resolve([]))
 
@@ -143,9 +141,7 @@ describe('handlePendingQuery — silent drop prevention', () => {
 
   test('sends error result when tracked tab is gone and no active fallback tab', async () => {
     // Tracked tab exists in storage
-    mockStorageLocalGet.mock.mockImplementation((_keys, cb) => {
-      cb({ trackedTabId: 999 })
-    })
+    mockStorageLocalGet.mock.mockImplementation(() => Promise.resolve({ trackedTabId: 999 }))
     // tabs.get(999) always fails (tab gone)
     mockTabsGet.mock.mockImplementation(() => Promise.reject(new Error('No tab with id 999')))
     // No active tab fallback

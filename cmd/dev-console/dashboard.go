@@ -5,7 +5,6 @@ package main
 import (
 	_ "embed"
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"os"
 	"runtime"
@@ -58,7 +57,7 @@ func (s *Server) handleDashboard(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.WriteHeader(http.StatusOK)
 	if _, err := w.Write(dashboardHTML); err != nil {
-		fmt.Fprintf(os.Stderr, "[gasoline] failed to write dashboard response: %v\n", err)
+		stderrf("[gasoline] failed to write dashboard response: %v\n", err)
 	}
 }
 
@@ -125,7 +124,7 @@ func serveEmbeddedHTML(w http.ResponseWriter, r *http.Request, content []byte, n
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.WriteHeader(http.StatusOK)
 	if _, err := w.Write(content); err != nil {
-		fmt.Fprintf(os.Stderr, "[gasoline] failed to write %s response: %v\n", name, err)
+		stderrf("[gasoline] failed to write %s response: %v\n", name, err)
 	}
 }
 

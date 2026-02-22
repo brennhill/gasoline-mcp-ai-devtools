@@ -5,7 +5,6 @@
 package main
 
 import (
-	"fmt"
 	"os"
 	"strings"
 	"sync"
@@ -105,7 +104,7 @@ func wireNoiseAutoDetect(h *ToolHandler) {
 		runner.schedule()
 	})
 
-	fmt.Fprintf(os.Stderr, "[gasoline] noise auto-detect enabled (triggers after navigation, debounce=%s)\n", noiseAutoDetectInterval)
+	stderrf("[gasoline] noise auto-detect enabled (triggers after navigation, debounce=%s)\n", noiseAutoDetectInterval)
 }
 
 func noiseAutoDetectEnabled() bool {
@@ -146,6 +145,6 @@ func (h *ToolHandler) runNoiseAutoDetect() {
 		if len(toApply) > 0 {
 			_ = h.noiseConfig.AddRules(toApply)
 		}
-		fmt.Fprintf(os.Stderr, "[gasoline] noise auto-detect: %d proposals, %d auto-applied\n", len(proposals), len(toApply))
+		stderrf("[gasoline] noise auto-detect: %d proposals, %d auto-applied\n", len(proposals), len(toApply))
 	}
 }

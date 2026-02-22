@@ -262,7 +262,7 @@ func startHTTPServer(server *Server, port int, apiKey string, mux *http.ServeMux
 				"port":  port,
 				"error": err.Error(),
 			})
-			fmt.Fprintf(os.Stderr, "[gasoline] HTTP server error: %v\n", err)
+			stderrf("[gasoline] HTTP server error: %v\n", err)
 		}
 	})
 
@@ -293,7 +293,7 @@ func awaitShutdownSignal(server *Server, srv *http.Server, port int, httpDone <-
 		// HTTP listener died unexpectedly — exit instead of hanging forever
 		shutdownSource = "http_listener_died"
 		s = syscall.SIGTERM // synthetic, for logging
-		fmt.Fprintf(os.Stderr, "[gasoline] HTTP listener exited unexpectedly, shutting down to avoid zombie process\n")
+		stderrf("[gasoline] HTTP listener exited unexpectedly, shutting down to avoid zombie process\n")
 	}
 
 	server.logLifecycle("shutdown", port, map[string]any{
@@ -308,7 +308,7 @@ func awaitShutdownSignal(server *Server, srv *http.Server, port int, httpDone <-
 		"uptime_seconds":  time.Since(startTime).Seconds(),
 		"unexpected":      shutdownSource == "http_listener_died",
 	}); diagPath != "" && shutdownSource == "http_listener_died" {
-		fmt.Fprintf(os.Stderr, "[gasoline] Shutdown diagnostics written to: %s\n", diagPath)
+		stderrf("[gasoline] Shutdown diagnostics written to: %s\n", diagPath)
 	}
 
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 3*time.Second)

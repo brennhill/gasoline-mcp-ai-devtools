@@ -237,7 +237,7 @@ func TestToolsConfigureTutorial_IncludesCSPFallbackPlaybook(t *testing.T) {
 	}
 
 	retryGuidance, _ := playbook["exact_retry_guidance"].(string)
-	expectedRetry := "This page blocks script execution (CSP/restricted context). Use interact navigate/refresh/back/forward/new_tab to move to another page."
+	expectedRetry := "This page blocks script execution (CSP/restricted context). Use interact navigate/refresh/back/forward/new_tab/switch_tab/close_tab to move to another page."
 	if retryGuidance != expectedRetry {
 		t.Fatalf("exact_retry_guidance = %q, want %q", retryGuidance, expectedRetry)
 	}

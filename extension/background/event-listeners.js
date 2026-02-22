@@ -397,26 +397,23 @@ export function saveSetting(key, value) {
         return;
     chrome.storage.local.set({ [key]: value });
 }
-// Implementation
-export function getTrackedTabInfo(callback) {
-    if (!callback) {
-        // Promise-based version
-        return new Promise((resolve) => {
-            getTrackedTabInfo((info) => resolve(info));
-        });
-    }
-    // Callback-based version
+/**
+ * Get tracked tab information.
+ */
+export async function getTrackedTabInfo() {
     if (typeof chrome === 'undefined' || !chrome.storage) {
-        callback({ trackedTabId: null, trackedTabUrl: null, trackedTabTitle: null });
-        return;
+        return { trackedTabId: null, trackedTabUrl: null, trackedTabTitle: null };
     }
-    chrome.storage.local.get([StorageKey.TRACKED_TAB_ID, StorageKey.TRACKED_TAB_URL, StorageKey.TRACKED_TAB_TITLE], (result) => {
-        callback({
-            trackedTabId: result.trackedTabId || null,
-            trackedTabUrl: result.trackedTabUrl || null,
-            trackedTabTitle: result.trackedTabTitle || null
-        });
-    });
+    const result = (await chrome.storage.local.get([
+        StorageKey.TRACKED_TAB_ID,
+        StorageKey.TRACKED_TAB_URL,
+        StorageKey.TRACKED_TAB_TITLE
+    ]));
+    return {
+        trackedTabId: result.trackedTabId || null,
+        trackedTabUrl: result.trackedTabUrl || null,
+        trackedTabTitle: result.trackedTabTitle || null
+    };
 }
 /**
  * Clear tracked tab state
@@ -426,20 +423,14 @@ export function clearTrackedTab() {
         return;
     chrome.storage.local.remove([StorageKey.TRACKED_TAB_ID, StorageKey.TRACKED_TAB_URL, StorageKey.TRACKED_TAB_TITLE]);
 }
-// Implementation
-export function getAllConfigSettings(callback) {
-    if (!callback) {
-        // Promise-based version
-        return new Promise((resolve) => {
-            getAllConfigSettings((settings) => resolve(settings));
-        });
-    }
-    // Callback-based version
+/**
+ * Get all extension config settings.
+ */
+export async function getAllConfigSettings() {
     if (typeof chrome === 'undefined' || !chrome.storage) {
-        callback({});
-        return;
+        return {};
     }
-    chrome.storage.local.get([
+    const result = (await chrome.storage.local.get([
         StorageKey.AI_WEB_PILOT_ENABLED,
         StorageKey.WEBSOCKET_CAPTURE_ENABLED,
         StorageKey.NETWORK_WATERFALL_ENABLED,
@@ -448,8 +439,7 @@ export function getAllConfigSettings(callback) {
         StorageKey.SCREENSHOT_ON_ERROR,
         StorageKey.SOURCE_MAP_ENABLED,
         StorageKey.NETWORK_BODY_CAPTURE_ENABLED
-    ], (result) => {
-        callback(result);
-    });
+    ]));
+    return result;
 }
 //# sourceMappingURL=event-listeners.js.map

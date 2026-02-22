@@ -4,9 +4,8 @@
 import type { PendingQuery } from '../../types'
 import type { SyncClient } from '../sync-client'
 import { getTrackedTabInfo, clearTrackedTab } from '../event-listeners'
-import { debugLog, diagnosticLog } from '../index'
 import { DebugCategory } from '../debug'
-import { __aiWebPilotEnabledCache } from '../state'
+import { isAiWebPilotEnabled } from '../state'
 
 // =============================================================================
 // EXPORTED TYPE ALIASES (used by browser-actions.ts, dom-dispatch.ts, etc.)
@@ -59,6 +58,21 @@ interface RecoveryAttempt {
   step: string
   status: 'success' | 'failed' | 'skipped'
   detail: string
+}
+
+function debugLog(category: string, message: string, data: unknown = null): void {
+  // Keep helpers independent from index.ts to avoid circular imports during registry boot.
+  const debugEnabled = (globalThis as { __GASOLINE_REGISTRY_DEBUG__?: boolean }).__GASOLINE_REGISTRY_DEBUG__ === true
+  if (!debugEnabled) return
+  if (data === null) {
+    console.debug(`[Gasoline:${category}] ${message}`)
+    return
+  }
+  console.debug(`[Gasoline:${category}] ${message}`, data)
+}
+
+function diagnosticLog(message: string): void {
+  debugLog(DebugCategory.CONNECTION, message)
 }
 
 // =============================================================================
@@ -534,7 +548,7 @@ export async function resolveTargetTab(query: PendingQuery, paramsObj: QueryPara
       /* best effort */
     }
 
-    if (__aiWebPilotEnabledCache) {
+    if (isAiWebPilotEnabled()) {
       const recovered = await tryAutoTrackFallback(query.type, useActiveTab, trackedTabId)
       if (recovered.target || recovered.error) {
         return recovered
@@ -560,7 +574,7 @@ export async function resolveTargetTab(query: PendingQuery, paramsObj: QueryPara
     return { error: buildMissingTargetError(query.type, useActiveTab, trackedTabId) }
   }
 
-  if (__aiWebPilotEnabledCache) {
+  if (isAiWebPilotEnabled()) {
     const recovered = await tryAutoTrackFallback(query.type, useActiveTab, trackedTabId)
     if (recovered.target || recovered.error) {
       return recovered

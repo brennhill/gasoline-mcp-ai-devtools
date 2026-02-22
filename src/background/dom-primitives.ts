@@ -1,5 +1,5 @@
 // AUTO-GENERATED FILE. DO NOT EDIT DIRECTLY.
-// Source template: scripts/templates/dom-primitives.ts.tpl
+// Source: scripts/templates/dom-primitives.ts.tpl + partials/_dom-selectors.tpl, _dom-intent.tpl
 // Generator: scripts/generate-dom-primitives.js
 
 /**
@@ -34,6 +34,7 @@ export function domPrimitive(
   error?: string
   message?: string
 } {
+  // --- PARTIAL: DOM Selector Resolution ---
   // — Shadow DOM: deep traversal utilities —
 
   function getShadowRoot(el: Element): ShadowRoot | null {
@@ -388,6 +389,10 @@ export function domPrimitive(
 
   function resolveElements(sel: string, scope: ParentNode = document): Element[] {
     if (!sel) return []
+    if (sel.includes(' >>> ')) {
+      const resolved = resolveDeepCombinator(sel, scope)
+      return resolved ? [resolved] : []
+    }
     if (sel.startsWith('text=')) return resolveByTextAll(sel.slice('text='.length), scope)
     if (sel.startsWith('role=')) return querySelectorAllDeep(`[role="${CSS.escape(sel.slice('role='.length))}"]`, scope)
     if (sel.startsWith('placeholder=')) return querySelectorAllDeep(`[placeholder="${CSS.escape(sel.slice('placeholder='.length))}"]`, scope)
@@ -542,6 +547,7 @@ export function domPrimitive(
     return best
   }
 
+  // --- PARTIAL: Intent Resolution & List Interactive ---
   function listInteractiveCompatibility(): {
     success: boolean
     elements: unknown[]
@@ -1526,70 +1532,6 @@ export function domPrimitive(
     return domError('unknown_action', `Unknown DOM action: ${action}`)
   }
   return handler()
-}
-
-export function domWaitFor(selector: string, timeoutMs: number = 5000): Promise<DOMResult> {
-  const timeout = Math.max(1, timeoutMs)
-
-  return new Promise((resolve) => {
-    let resolved = false
-    let pollTimer: ReturnType<typeof setInterval> | null = null
-    let timeoutTimer: ReturnType<typeof setTimeout> | null = null
-    let observer: MutationObserver | null = null
-
-    const timeoutResult: DOMResult = {
-      success: false,
-      action: 'wait_for',
-      selector,
-      error: 'timeout',
-      message: `Element not found within ${timeout}ms: ${selector}`
-    }
-
-    function cleanup(): void {
-      if (pollTimer) clearInterval(pollTimer)
-      if (timeoutTimer) clearTimeout(timeoutTimer)
-      if (observer) observer.disconnect()
-    }
-
-    function finish(result: DOMResult): void {
-      if (resolved) return
-      resolved = true
-      cleanup()
-      resolve(result)
-    }
-
-    function checkNow(): void {
-      const result = domPrimitive('wait_for', selector, { timeout_ms: timeout }) as DOMResult | Promise<DOMResult>
-      if (result && typeof (result as Promise<DOMResult>).then === 'function') {
-        void (result as Promise<DOMResult>)
-          .then((resolvedResult) => {
-            if (resolvedResult.success) finish(resolvedResult)
-          })
-          .catch(() => {})
-        return
-      }
-      if ((result as DOMResult).success) {
-        finish(result as DOMResult)
-      }
-    }
-
-    checkNow()
-    if (resolved) return
-
-    if (typeof MutationObserver === 'function') {
-      observer = new MutationObserver(() => {
-        checkNow()
-      })
-      observer.observe(document.body || document.documentElement, {
-        childList: true,
-        subtree: true,
-        attributes: true
-      })
-    }
-
-    pollTimer = setInterval(checkNow, Math.min(80, timeout))
-    timeoutTimer = setTimeout(() => finish(timeoutResult), timeout)
-  })
 }
 
 // Dispatcher utilities (parseDOMParams, executeDOMAction, etc.) moved to ./dom-dispatch.ts

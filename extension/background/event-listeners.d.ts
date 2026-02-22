@@ -116,17 +116,15 @@ export interface TrackedTabInfo {
     trackedTabTitle: string | null;
 }
 /**
- * Get tracked tab information (callback-based for compatibility with pre-async event listeners)
+ * Get tracked tab information.
  */
 export declare function getTrackedTabInfo(): Promise<TrackedTabInfo>;
-export declare function getTrackedTabInfo(callback: (info: TrackedTabInfo) => void): void;
 /**
  * Clear tracked tab state
  */
 export declare function clearTrackedTab(): void;
 /**
- * Get all extension config settings
+ * Get all extension config settings.
  */
 export declare function getAllConfigSettings(): Promise<Record<string, boolean | string | undefined>>;
-export declare function getAllConfigSettings(callback: (settings: Record<string, boolean | string | undefined>) => void): void;
 //# sourceMappingURL=event-listeners.d.ts.map
