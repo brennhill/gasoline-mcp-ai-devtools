@@ -129,6 +129,7 @@ func TestNormalizeAction(t *testing.T) {
 		{"network-bodies", "network_bodies"},
 		{"noise-rule", "noise_rule"},
 		{"execute-js", "execute_js"},
+		{"new-tab", "new_tab"},
 		{"key-press", "key_press"},
 		{"scroll-to", "scroll_to"},
 		{"wait-for", "wait_for"},
@@ -394,6 +395,9 @@ func TestParseInteractArgsNavigate(t *testing.T) {
 	if mcpArgs["url"] != "https://example.com" {
 		t.Errorf("expected url 'https://example.com', got %v", mcpArgs["url"])
 	}
+	if mcpArgs["what"] != "navigate" {
+		t.Errorf("expected what 'navigate', got %v", mcpArgs["what"])
+	}
 }
 
 func TestParseInteractArgsNavigateMissingURL(t *testing.T) {
@@ -485,6 +489,7 @@ func TestParseCLIArgsDispatch(t *testing.T) {
 		{"generate har", "generate", "har", nil, "what", "har", false},
 		{"configure health", "configure", "health", nil, "what", "health", false},
 		{"interact click", "interact", "click", []string{"--selector", "#btn"}, "what", "click", false},
+		{"interact new-tab kebab", "interact", "new-tab", []string{"--url", "https://example.com"}, "what", "new_tab", false},
 		{"unknown tool", "foobar", "x", nil, "", nil, true},
 	}
 
