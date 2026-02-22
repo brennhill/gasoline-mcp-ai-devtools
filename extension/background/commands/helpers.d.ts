@@ -5,7 +5,7 @@ export type SendAsyncResultFn = (syncClient: SyncClient, queryId: string, correl
 /** Callback signature for showing visual action toasts */
 export type ActionToastFn = (tabId: number, text: string, detail?: string, state?: 'trying' | 'success' | 'warning' | 'error', durationMs?: number) => void;
 export type QueryParamsObject = Record<string, unknown>;
-type TargetResolutionSource = 'explicit_tab' | 'tracked_tab' | 'active_tab' | 'active_tab_fallback';
+type TargetResolutionSource = 'explicit_tab' | 'tracked_tab' | 'active_tab' | 'active_tab_fallback' | 'auto_tracked_active_tab' | 'auto_tracked_random_tab' | 'auto_tracked_new_tab';
 export interface TargetResolution {
     tabId: number;
     url: string;

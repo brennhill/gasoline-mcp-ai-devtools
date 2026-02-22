@@ -3,6 +3,7 @@
 import { getTrackedTabInfo, clearTrackedTab } from '../event-listeners.js';
 import { debugLog, diagnosticLog } from '../index.js';
 import { DebugCategory } from '../debug.js';
+import { __aiWebPilotEnabledCache } from '../state.js';
 // =============================================================================
 // RESULT HELPERS
 // =============================================================================
@@ -176,6 +177,153 @@ function buildMissingTargetError(queryType, useActiveTab, trackedTabId) {
         }
     };
 }
+async function persistTrackedTab(tab) {
+    if (!tab.id)
+        return;
+    await chrome.storage.local.set({
+        trackedTabId: tab.id,
+        trackedTabUrl: tab.url || '',
+        trackedTabTitle: tab.title || ''
+    });
+}
+function isTrackableTab(tab) {
+    return !!tab?.id && typeof tab.url === 'string' && !isRestrictedUrl(tab.url);
+}
+function pickRandom(items) {
+    if (items.length === 0)
+        return null;
+    const idx = Math.floor(Math.random() * items.length);
+    return items[idx] || null;
+}
+function buildNoTrackableTabError(queryType, useActiveTab, trackedTabId, attempts) {
+    return {
+        message: 'no_trackable_tab',
+        payload: {
+            success: false,
+            error: 'no_trackable_tab',
+            message: 'Unable to resolve a trackable tab for this command. Recovery attempts exhausted: active tab, non-internal tab switch, and opening a new tab.',
+            query_type: queryType,
+            use_active_tab: useActiveTab,
+            tracked_tab_id: trackedTabId,
+            attempted_recovery: attempts,
+            retry: 'Open any normal web page tab (http/https), keep AI Web Pilot enabled, then retry the command.',
+            retryable: false
+        }
+    };
+}
+async function tryAutoTrackFallback(queryType, useActiveTab, trackedTabId) {
+    const attempts = [];
+    const activeTab = await getActiveTab();
+    if (isTrackableTab(activeTab)) {
+        await persistTrackedTab(activeTab);
+        attempts.push({
+            step: 'track_active_tab',
+            status: 'success',
+            detail: `Tracked active tab ${activeTab.id} (${activeTab.url})`
+        });
+        diagnosticLog(`[Diagnostic] Auto-tracked active tab ${activeTab.id} for query ${queryType}`);
+        return {
+            target: {
+                tabId: activeTab.id,
+                url: activeTab.url,
+                source: 'auto_tracked_active_tab',
+                trackedTabId: activeTab.id,
+                useActiveTab
+            }
+        };
+    }
+    if (!activeTab?.id) {
+        attempts.push({
+            step: 'track_active_tab',
+            status: 'failed',
+            detail: 'No active tab available'
+        });
+    }
+    else {
+        attempts.push({
+            step: 'track_active_tab',
+            status: 'failed',
+            detail: `Active tab ${activeTab.id} is not trackable (${activeTab.url || 'unknown URL'})`
+        });
+    }
+    try {
+        const allTabs = await chrome.tabs.query({});
+        const nonInternalTabs = allTabs.filter(isTrackableTab);
+        const candidate = pickRandom(nonInternalTabs);
+        if (candidate?.id) {
+            const focused = await chrome.tabs.update(candidate.id, { active: true });
+            const resolved = isTrackableTab(focused) ? focused : candidate;
+            await persistTrackedTab(resolved);
+            attempts.push({
+                step: 'switch_to_non_internal_tab',
+                status: 'success',
+                detail: `Switched to trackable tab ${resolved.id} (${resolved.url})`
+            });
+            diagnosticLog(`[Diagnostic] Auto-tracked non-internal tab ${resolved.id} for query ${queryType}`);
+            return {
+                target: {
+                    tabId: resolved.id,
+                    url: resolved.url,
+                    source: 'auto_tracked_random_tab',
+                    trackedTabId: resolved.id,
+                    useActiveTab: true
+                }
+            };
+        }
+        attempts.push({
+            step: 'switch_to_non_internal_tab',
+            status: 'failed',
+            detail: 'No existing non-internal tabs available'
+        });
+    }
+    catch (err) {
+        attempts.push({
+            step: 'switch_to_non_internal_tab',
+            status: 'failed',
+            detail: `Failed to enumerate/switch tabs: ${err.message}`
+        });
+    }
+    try {
+        const createdTab = await chrome.tabs.create({
+            url: 'https://example.com',
+            active: true
+        });
+        const hydratedTab = createdTab?.id ? await getTabWithRetry(createdTab.id, true) : createdTab;
+        if (isTrackableTab(hydratedTab)) {
+            await persistTrackedTab(hydratedTab);
+            attempts.push({
+                step: 'open_new_tab_and_track',
+                status: 'success',
+                detail: `Opened and tracked tab ${hydratedTab.id} (${hydratedTab.url})`
+            });
+            diagnosticLog(`[Diagnostic] Auto-opened and tracked tab ${hydratedTab.id} for query ${queryType}`);
+            return {
+                target: {
+                    tabId: hydratedTab.id,
+                    url: hydratedTab.url,
+                    source: 'auto_tracked_new_tab',
+                    trackedTabId: hydratedTab.id,
+                    useActiveTab: true
+                }
+            };
+        }
+        attempts.push({
+            step: 'open_new_tab_and_track',
+            status: 'failed',
+            detail: `Opened tab is not trackable (${hydratedTab?.url || 'unknown URL'})`
+        });
+    }
+    catch (err) {
+        attempts.push({
+            step: 'open_new_tab_and_track',
+            status: 'failed',
+            detail: `Failed to open tab: ${err.message}`
+        });
+    }
+    return {
+        error: buildNoTrackableTabError(queryType, useActiveTab, trackedTabId, attempts)
+    };
+}
 export async function resolveTargetTab(query, paramsObj) {
     const explicitTabId = typeof query.tab_id === 'number' && query.tab_id > 0 ? query.tab_id : undefined;
     const useActiveTab = paramsObj.use_active_tab === true;
@@ -266,6 +414,12 @@ export async function resolveTargetTab(query, paramsObj) {
         catch {
             /* best effort */
         }
+        if (__aiWebPilotEnabledCache) {
+            const recovered = await tryAutoTrackFallback(query.type, useActiveTab, trackedTabId);
+            if (recovered.target || recovered.error) {
+                return recovered;
+            }
+        }
         if (isBrowserEscapeAction(query.type, paramsObj)) {
             const activeTab = await getActiveTab();
             if (activeTab?.id) {
@@ -282,6 +436,12 @@ export async function resolveTargetTab(query, paramsObj) {
             }
         }
         return { error: buildMissingTargetError(query.type, useActiveTab, trackedTabId) };
+    }
+    if (__aiWebPilotEnabledCache) {
+        const recovered = await tryAutoTrackFallback(query.type, useActiveTab, trackedTabId);
+        if (recovered.target || recovered.error) {
+            return recovered;
+        }
     }
     if (isBrowserEscapeAction(query.type, paramsObj)) {
         const activeTab = await getActiveTab();

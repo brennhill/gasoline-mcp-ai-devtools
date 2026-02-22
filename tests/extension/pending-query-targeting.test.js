@@ -157,6 +157,9 @@ describe('pending query targeting', () => {
       if (callback) callback(result)
       return Promise.resolve(result)
     })
+    globalThis.chrome.tabs.create = mock.fn(() =>
+      Promise.resolve({ id: 33, windowId: 1, url: 'https://example.com', title: 'Example' })
+    )
 
     const mockSyncClient = { queueCommandResult: mock.fn() }
 
@@ -170,13 +173,124 @@ describe('pending query targeting', () => {
       mockSyncClient
     )
 
-    assert.strictEqual(globalThis.chrome.tabs.goBack.mock.calls.length, 0)
+    assert.strictEqual(globalThis.chrome.tabs.create.mock.calls.length, 1)
+    assert.strictEqual(globalThis.chrome.tabs.goBack.mock.calls.length, 1)
+    assert.strictEqual(globalThis.chrome.tabs.goBack.mock.calls[0].arguments[0], 33)
     assert.strictEqual(mockSyncClient.queueCommandResult.mock.calls.length, 1)
 
     const queued = mockSyncClient.queueCommandResult.mock.calls[0].arguments[0]
+    assert.strictEqual(queued.status, 'complete')
+    assert.strictEqual(queued.result.success, true)
+    assert.strictEqual(queued.result.target_context.source, 'auto_tracked_new_tab')
+    assert.strictEqual(queued.result.target_context.tracked_tab_id, 33)
+  })
+
+  test('auto-tracks active non-internal tab when tracking is missing', async () => {
+    globalThis.chrome = createMockChrome(null, 17)
+    globalThis.chrome.tabs.query = mock.fn((query, callback) => {
+      const result = query?.active
+        ? [{ id: 17, windowId: 1, url: 'https://app.example.com/home', title: 'Home' }]
+        : [{ id: 17, windowId: 1, url: 'https://app.example.com/home', title: 'Home' }]
+      if (callback) callback(result)
+      return Promise.resolve(result)
+    })
+
+    const mockSyncClient = { queueCommandResult: mock.fn() }
+
+    await bgModule.handlePendingQuery(
+      {
+        id: 'q-auto-track-active',
+        type: 'browser_action',
+        correlation_id: 'corr-auto-track-active',
+        params: JSON.stringify({ action: 'back' })
+      },
+      mockSyncClient
+    )
+
+    assert.strictEqual(globalThis.chrome.tabs.goBack.mock.calls.length, 1)
+    assert.strictEqual(globalThis.chrome.tabs.goBack.mock.calls[0].arguments[0], 17)
+    const queued = mockSyncClient.queueCommandResult.mock.calls[0].arguments[0]
+    assert.strictEqual(queued.status, 'complete')
+    assert.strictEqual(queued.result.target_context.source, 'auto_tracked_active_tab')
+  })
+
+  test('when active tab is internal, switches to random non-internal tab and tracks it', async () => {
+    globalThis.chrome = createMockChrome(null, 55)
+    globalThis.chrome.tabs.query = mock.fn((query, callback) => {
+      const allTabs = [
+        { id: 55, windowId: 1, url: 'chrome://extensions', title: 'Extensions' },
+        { id: 88, windowId: 1, url: 'https://docs.example.com', title: 'Docs' }
+      ]
+      const result = query?.active ? [allTabs[0]] : allTabs
+      if (callback) callback(result)
+      return Promise.resolve(result)
+    })
+    globalThis.chrome.tabs.update = mock.fn((tabId, updates) =>
+      Promise.resolve({
+        id: tabId,
+        windowId: 1,
+        url: tabId === 88 ? 'https://docs.example.com' : 'chrome://extensions',
+        title: tabId === 88 ? 'Docs' : 'Extensions',
+        status: 'complete',
+        active: !!updates?.active
+      })
+    )
+    const priorRandom = Math.random
+    Math.random = () => 0 // deterministic random selection
+
+    const mockSyncClient = { queueCommandResult: mock.fn() }
+    try {
+      await bgModule.handlePendingQuery(
+        {
+          id: 'q-auto-track-random',
+          type: 'browser_action',
+          correlation_id: 'corr-auto-track-random',
+          params: JSON.stringify({ action: 'back' })
+        },
+        mockSyncClient
+      )
+    } finally {
+      Math.random = priorRandom
+    }
+
+    assert.strictEqual(globalThis.chrome.tabs.update.mock.calls.length >= 1, true)
+    assert.strictEqual(globalThis.chrome.tabs.goBack.mock.calls.length, 1)
+    assert.strictEqual(globalThis.chrome.tabs.goBack.mock.calls[0].arguments[0], 88)
+    const queued = mockSyncClient.queueCommandResult.mock.calls[0].arguments[0]
+    assert.strictEqual(queued.status, 'complete')
+    assert.strictEqual(queued.result.target_context.source, 'auto_tracked_random_tab')
+    assert.strictEqual(queued.result.target_context.tracked_tab_id, 88)
+  })
+
+  test('returns no_trackable_tab with recovery attempts when all fallback stages fail', async () => {
+    globalThis.chrome = createMockChrome(null, 77)
+    globalThis.chrome.tabs.query = mock.fn((query, callback) => {
+      const allTabs = [{ id: 77, windowId: 1, url: 'chrome://settings', title: 'Settings' }]
+      const result = query?.active ? allTabs : allTabs
+      if (callback) callback(result)
+      return Promise.resolve(result)
+    })
+    globalThis.chrome.tabs.create = mock.fn(() => Promise.reject(new Error('tabs.create blocked')))
+
+    const mockSyncClient = { queueCommandResult: mock.fn() }
+
+    await bgModule.handlePendingQuery(
+      {
+        id: 'q-no-trackable',
+        type: 'browser_action',
+        correlation_id: 'corr-no-trackable',
+        params: JSON.stringify({ action: 'back' })
+      },
+      mockSyncClient
+    )
+
+    assert.strictEqual(globalThis.chrome.tabs.goBack.mock.calls.length, 0)
+    const queued = mockSyncClient.queueCommandResult.mock.calls[0].arguments[0]
     assert.strictEqual(queued.status, 'error')
-    assert.strictEqual(queued.result.error, 'missing_target')
-    assert.ok(String(queued.error).includes('No target tab resolved'))
+    assert.strictEqual(queued.result.error, 'no_trackable_tab')
+    assert.ok(Array.isArray(queued.result.attempted_recovery))
+    assert.ok(queued.result.attempted_recovery.length >= 3)
+    assert.strictEqual(queued.error, 'no_trackable_tab')
   })
 
   test('new_tab includes created tab_id in queued result', async () => {
