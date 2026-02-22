@@ -57,9 +57,12 @@ func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request, cap *captu
 	}
 	if cap != nil {
 		extStatus := cap.GetExtensionStatus()
+		pilotStatus, _ := cap.GetPilotStatus().(map[string]any)
+		pilotState, _ := pilotStatus["state"].(string)
 		resp["capture"] = map[string]any{
 			"available":           true,
-			"pilot_enabled":       cap.IsPilotEnabled(),
+			"pilot_enabled":       cap.IsPilotActionAllowed(),
+			"pilot_state":         pilotState,
 			"extension_connected": cap.IsExtensionConnected(),
 			"extension_last_seen": extStatus["last_seen"],
 			"extension_client_id": extStatus["client_id"],

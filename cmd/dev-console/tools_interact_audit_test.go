@@ -43,6 +43,7 @@ func newInteractTestEnv(t *testing.T) *interactTestEnv {
 		t.Fatalf("NewServer failed: %v", err)
 	}
 	cap := capture.NewCapture()
+	cap.SetPilotEnabled(false) // explicit default for legacy pilot-disabled tests
 	mcpHandler := NewToolHandler(server, cap)
 	handler := mcpHandler.toolHandler.(*ToolHandler)
 	return &interactTestEnv{handler: handler, server: server, capture: cap}

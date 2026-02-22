@@ -80,6 +80,7 @@ func createTestToolHandler(t *testing.T) *ToolHandler {
 	}
 
 	cap := capture.NewCapture()
+	cap.SetPilotEnabled(false) // explicit default for legacy pilot-disabled expectations
 
 	// Create handler using proper constructor
 	mcpHandler := NewToolHandler(server, cap)

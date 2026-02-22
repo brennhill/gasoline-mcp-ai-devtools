@@ -50,7 +50,7 @@ var buildStateRestoreScript = act.BuildStateRestoreScript
 // captureState attempts to capture form values, scroll position, and web storage from the browser.
 // Always returns a stateCaptureResult with an explicit Status the caller can surface to the LLM.
 func (h *ToolHandler) captureState(req JSONRPCRequest) stateCaptureResult {
-	if !h.capture.IsPilotEnabled() {
+	if !h.capture.IsPilotActionAllowed() {
 		return stateCaptureResult{Status: stateCaptureStatusPilotDisabled}
 	}
 	if !h.capture.IsExtensionConnected() {
@@ -233,7 +233,7 @@ func (h *ToolHandler) handlePilotManageStateLoad(req JSONRPCRequest, args json.R
 
 	if !hasData {
 		responseData["state_restore"] = stateRestoreStatusNoData
-	} else if !h.capture.IsPilotEnabled() {
+	} else if !h.capture.IsPilotActionAllowed() {
 		responseData["state_restore"] = stateRestoreStatusPilotDisabled
 	} else if !h.capture.IsExtensionConnected() {
 		responseData["state_restore"] = stateRestoreStatusExtensionDown
@@ -252,7 +252,7 @@ func (h *ToolHandler) handlePilotManageStateLoad(req JSONRPCRequest, args json.R
 // and the state contains a non-empty URL. Mutates stateData to add tracking fields.
 func (h *ToolHandler) queueStateNavigation(req JSONRPCRequest, stateData map[string]any) {
 	savedURL, ok := stateData["url"].(string)
-	if !ok || savedURL == "" || !h.capture.IsPilotEnabled() || !h.capture.IsExtensionConnected() {
+	if !ok || savedURL == "" || !h.capture.IsPilotActionAllowed() || !h.capture.IsExtensionConnected() {
 		return
 	}
 	correlationID := newCorrelationID("nav")

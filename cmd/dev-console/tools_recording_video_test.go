@@ -32,6 +32,7 @@ func newVideoTestEnv(t *testing.T) *videoTestEnv {
 		t.Fatalf("NewServer() error = %v", err)
 	}
 	cap := capture.NewCapture()
+	cap.SetPilotEnabled(false) // explicit default for pilot-disabled recording tests
 	mcp := NewToolHandler(srv, cap)
 	handler, ok := mcp.toolHandler.(*ToolHandler)
 	if !ok {

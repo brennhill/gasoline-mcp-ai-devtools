@@ -8,14 +8,25 @@ package capture
 
 import "time"
 
+const (
+	PilotStateAssumedEnabled    = "assumed_enabled"
+	PilotStateEnabled           = "enabled"
+	PilotStateExplicitlyDisable = "explicitly_disabled"
+
+	PilotSourceAssumedStartup = "assumed_startup"
+	PilotSourceExtensionSync  = "extension_sync"
+	PilotSourceSettingsCache  = "settings_cache"
+	PilotSourceTestHelper     = "test_helper"
+)
+
 // ExtensionState tracks all extension-related state: connection, pilot, tracking, and test boundaries.
 // Protected by parent Capture.mu (no separate lock) because activeTestIDs is read
 // during hot-path event ingestion (AddWebSocketEvents, AddNetworkBodies, AddEnhancedActions).
 type ExtensionState struct {
 	// Connection tracking
 	lastPollAt             time.Time // When extension last polled. Health endpoint uses 3s/5s thresholds.
-	extSessionID       string    // Extension session ID (changes on reload/update).
-	extSessionChangedAt       time.Time // When extSessionID last changed.
+	extSessionID           string    // Extension session ID (changes on reload/update).
+	extSessionChangedAt    time.Time // When extSessionID last changed.
 	lastExtensionConnected bool      // Previous connection state for transition detection.
 	extensionVersion       string    // Last reported extension version from sync request.
 
@@ -24,8 +35,10 @@ type ExtensionState struct {
 	lastSyncClientID string    // Client ID from most recent /sync request.
 
 	// AI Web Pilot
-	pilotEnabled   bool      // Pilot toggle from POST /settings or sync. Check before dispatching actions.
-	pilotUpdatedAt time.Time // When pilotEnabled was last updated. Staleness threshold: 10s.
+	pilotEnabled     bool      // Last known pilot toggle from sync/settings cache.
+	pilotStatusKnown bool      // False until authoritative pilot status is observed.
+	pilotUpdatedAt   time.Time // When pilotEnabled was last updated.
+	pilotSource      string    // Source of last authoritative pilot signal (sync/cache/test helper).
 
 	// Tab tracking
 	trackingEnabled bool      // Single-tab mode active. true=specific tab, false=all tabs.
@@ -63,6 +76,23 @@ func (c *Capture) IsPilotEnabled() bool {
 	return c.ext.pilotEnabled
 }
 
+// IsPilotActionAllowed returns whether pilot-gated actions should be allowed.
+// Startup/reconnect uncertainty defaults to allowed until explicit disable arrives.
+func (c *Capture) IsPilotActionAllowed() bool {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	snap := pilotStatusSnapshotFromExtensionState(c.ext)
+	return snap.EffectiveEnabled
+}
+
+// IsPilotExplicitlyDisabled reports whether pilot is authoritatively disabled.
+func (c *Capture) IsPilotExplicitlyDisabled() bool {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	snap := pilotStatusSnapshotFromExtensionState(c.ext)
+	return snap.State == PilotStateExplicitlyDisable
+}
+
 // IsExtensionConnected returns true if the extension has synced within the
 // disconnect threshold (10s). Returns false if never synced or stale.
 func (c *Capture) IsExtensionConnected() bool {
@@ -97,6 +127,7 @@ func (c *Capture) GetExtensionStatus() map[string]any {
 func (c *Capture) GetPilotStatus() any {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
+	snap := pilotStatusSnapshotFromExtensionState(c.ext)
 
 	lastSeen := ""
 	if !c.ext.lastSyncSeen.IsZero() {
@@ -104,10 +135,13 @@ func (c *Capture) GetPilotStatus() any {
 	}
 
 	return map[string]any{
-		"enabled":              c.ext.pilotEnabled,
-		"source":               "extension_poll",
-		"extension_connected":  !c.ext.lastSyncSeen.IsZero() && time.Since(c.ext.lastSyncSeen) < extensionDisconnectThreshold,
-		"extension_last_seen":  lastSeen,
+		"enabled":             snap.EffectiveEnabled,
+		"configured_enabled":  snap.ConfiguredEnabled,
+		"authoritative":       snap.Authoritative,
+		"state":               snap.State,
+		"source":              snap.Source,
+		"extension_connected": !c.ext.lastSyncSeen.IsZero() && time.Since(c.ext.lastSyncSeen) < extensionDisconnectThreshold,
+		"extension_last_seen": lastSeen,
 	}
 }
 
@@ -189,21 +223,59 @@ func (c *Capture) SetTestBoundaryEnd(id string) {
 
 // ExtensionSnapshot contains a point-in-time view of extension state for health reporting.
 type ExtensionSnapshot struct {
-	LastPollAt        time.Time
-	ExtSessionID      string
+	LastPollAt          time.Time
+	ExtSessionID        string
 	ExtSessionChangedAt time.Time
-	PilotEnabled      bool
-	ActiveTestIDCount int
+	PilotEnabled        bool
+	ActiveTestIDCount   int
 }
 
 // getExtensionSnapshot returns a snapshot of extension state.
 // MUST be called with c.mu held (RLock or Lock).
 func (c *Capture) getExtensionSnapshot() ExtensionSnapshot {
 	return ExtensionSnapshot{
-		LastPollAt:        c.ext.lastPollAt,
-		ExtSessionID:      c.ext.extSessionID,
-		ExtSessionChangedAt:  c.ext.extSessionChangedAt,
-		PilotEnabled:      c.ext.pilotEnabled,
-		ActiveTestIDCount: len(c.ext.activeTestIDs),
+		LastPollAt:          c.ext.lastPollAt,
+		ExtSessionID:        c.ext.extSessionID,
+		ExtSessionChangedAt: c.ext.extSessionChangedAt,
+		PilotEnabled:        c.ext.pilotEnabled,
+		ActiveTestIDCount:   len(c.ext.activeTestIDs),
 	}
+}
+
+type pilotStatusSnapshot struct {
+	ConfiguredEnabled bool
+	EffectiveEnabled  bool
+	Authoritative     bool
+	State             string
+	Source            string
+}
+
+func pilotStatusSnapshotFromExtensionState(ext ExtensionState) pilotStatusSnapshot {
+	snap := pilotStatusSnapshot{
+		ConfiguredEnabled: ext.pilotEnabled,
+		Authoritative:     ext.pilotStatusKnown,
+	}
+
+	if !ext.pilotStatusKnown {
+		snap.EffectiveEnabled = true
+		snap.State = PilotStateAssumedEnabled
+		snap.Source = PilotSourceAssumedStartup
+		return snap
+	}
+
+	if ext.pilotEnabled {
+		snap.EffectiveEnabled = true
+		snap.State = PilotStateEnabled
+		if ext.pilotSource != "" {
+			snap.Source = ext.pilotSource
+		} else {
+			snap.Source = PilotSourceExtensionSync
+		}
+		return snap
+	}
+
+	snap.EffectiveEnabled = false
+	snap.State = PilotStateExplicitlyDisable
+	snap.Source = PilotStateExplicitlyDisable
+	return snap
 }

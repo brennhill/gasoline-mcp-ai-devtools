@@ -313,6 +313,23 @@ func TestToolsInteractNavigate_MissingURL(t *testing.T) {
 	assertSnakeCaseFields(t, string(resp.Result))
 }
 
+func TestToolsInteractNavigate_AssumedEnabledWhenPilotStatusUncertain(t *testing.T) {
+	t.Parallel()
+	h, _, cap := makeToolHandler(t)
+	cap.SetPilotUnknownForTest()
+
+	resp := callInteractRaw(h, `{"what":"navigate","url":"https://example.com"}`)
+	result := parseToolResult(t, resp)
+	if result.IsError {
+		t.Fatalf("navigate should not fail with pilot_disabled during startup uncertainty, got: %s", result.Content[0].Text)
+	}
+
+	data := extractResultJSON(t, result)
+	if data["status"] != "queued" {
+		t.Fatalf("status = %v, want queued", data["status"])
+	}
+}
+
 func TestToolsInteractNavigate_Success(t *testing.T) {
 	t.Parallel()
 	h, _, cap := makeToolHandler(t)

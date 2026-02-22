@@ -53,6 +53,15 @@ func retryDefaultsForCode(code string) []func(*StructuredError) {
 func (h *ToolHandler) DiagnosticHintString() string {
 	extConnected := h.capture.IsExtensionConnected()
 	pilotEnabled := h.capture.IsPilotEnabled()
+	pilotState := ""
+	if status, ok := h.capture.GetPilotStatus().(map[string]any); ok {
+		if state, ok := status["state"].(string); ok {
+			pilotState = state
+		}
+		if effective, ok := status["enabled"].(bool); ok {
+			pilotEnabled = effective
+		}
+	}
 	enabled, tabID, tabURL := h.capture.GetTrackingStatus()
 
 	var parts []string
@@ -61,11 +70,20 @@ func (h *ToolHandler) DiagnosticHintString() string {
 	} else {
 		parts = append(parts, "extension=DISCONNECTED")
 	}
-	if pilotEnabled {
-		parts = append(parts, "pilot=enabled")
-	} else {
-		parts = append(parts, "pilot=DISABLED")
+	pilotToken := "pilot=DISABLED"
+	switch pilotState {
+	case "assumed_enabled":
+		pilotToken = "pilot=ASSUMED_ENABLED(startup)"
+	case "explicitly_disabled":
+		pilotToken = "pilot=DISABLED(explicit)"
+	case "enabled":
+		pilotToken = "pilot=enabled"
+	default:
+		if pilotEnabled {
+			pilotToken = "pilot=enabled"
+		}
 	}
+	parts = append(parts, pilotToken)
 	if enabled && tabURL != "" {
 		parts = append(parts, fmt.Sprintf("tracked_tab=%q (id=%d)", tabURL, tabID))
 	} else {
@@ -87,11 +105,11 @@ func (h *ToolHandler) diagnosticHint() func(*StructuredError) {
 // requirePilot returns (resp, true) if AI Web Pilot is disabled, short-circuiting the caller.
 // Usage: if resp, blocked := h.requirePilot(req); blocked { return resp }
 func (h *ToolHandler) requirePilot(req JSONRPCRequest) (JSONRPCResponse, bool) {
-	if h.capture.IsPilotEnabled() {
+	if h.capture.IsPilotActionAllowed() {
 		return JSONRPCResponse{}, false
 	}
 	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(
-		ErrCodePilotDisabled, "AI Web Pilot is disabled",
+		ErrCodePilotDisabled, "AI Web Pilot is explicitly disabled",
 		"Enable AI Web Pilot in the extension popup", h.diagnosticHint(),
 	)}, true
 }

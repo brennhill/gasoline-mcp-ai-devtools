@@ -61,6 +61,19 @@ func (c *Capture) SetPilotEnabled(enabled bool) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	c.ext.pilotEnabled = enabled
+	c.ext.pilotStatusKnown = true
+	c.ext.pilotUpdatedAt = time.Now()
+	c.ext.pilotSource = PilotSourceTestHelper
+}
+
+// SetPilotUnknownForTest resets pilot to startup-uncertain state (TEST ONLY).
+func (c *Capture) SetPilotUnknownForTest() {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.ext.pilotEnabled = false
+	c.ext.pilotStatusKnown = false
+	c.ext.pilotUpdatedAt = time.Time{}
+	c.ext.pilotSource = PilotSourceAssumedStartup
 }
 
 // SetTrackingStatusForTest sets the tracked tab URL and ID (TEST ONLY)

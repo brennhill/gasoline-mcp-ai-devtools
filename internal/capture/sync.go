@@ -137,7 +137,9 @@ func (c *Capture) updateSyncConnectionState(req SyncRequest, clientID string, no
 
 	if req.Settings != nil {
 		c.ext.pilotEnabled = req.Settings.PilotEnabled
+		c.ext.pilotStatusKnown = true
 		c.ext.pilotUpdatedAt = now
+		c.ext.pilotSource = PilotSourceExtensionSync
 		c.ext.trackingEnabled = req.Settings.TrackingEnabled
 		c.ext.trackedTabID = req.Settings.TrackedTabID
 		c.ext.trackedTabURL = req.Settings.TrackedTabURL

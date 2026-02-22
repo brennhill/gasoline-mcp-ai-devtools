@@ -88,6 +88,32 @@ func TestToolsConfigureTutorial_ContextAware_PilotDisabled(t *testing.T) {
 	}
 }
 
+func TestToolsConfigureTutorial_ContextAware_AssumedPilotDoesNotReportPilotDisabled(t *testing.T) {
+	t.Parallel()
+	env := newConfigureTestEnv(t)
+	env.capture.SetPilotUnknownForTest()
+
+	result, ok := env.callConfigure(t, `{"what":"tutorial"}`)
+	if !ok {
+		t.Fatal("tutorial should return result")
+	}
+	if result.IsError {
+		t.Fatalf("tutorial should not error, got: %s", result.Content[0].Text)
+	}
+	data := parseResponseJSON(t, result)
+
+	issues, ok := data["issues"].([]any)
+	if !ok {
+		t.Fatalf("issues type = %T, want []any", data["issues"])
+	}
+	for _, issueRaw := range issues {
+		issue, _ := issueRaw.(map[string]any)
+		if issue["code"] == "pilot_disabled" {
+			t.Fatalf("unexpected pilot_disabled issue while pilot state is only assumed at startup: %+v", issue)
+		}
+	}
+}
+
 func TestToolsConfigureTutorial_ContextAware_NoTrackedTab(t *testing.T) {
 	t.Parallel()
 	env := newConfigureTestEnv(t)

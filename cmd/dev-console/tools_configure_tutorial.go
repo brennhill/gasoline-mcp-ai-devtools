@@ -37,7 +37,9 @@ func (h *ToolHandler) toolConfigureTutorial(req JSONRPCRequest, args json.RawMes
 
 func (h *ToolHandler) tutorialContext() map[string]any {
 	ctx := map[string]any{
-		"pilot_enabled":       false,
+		"pilot_enabled":       true,
+		"pilot_state":         "assumed_enabled",
+		"pilot_authoritative": false,
 		"extension_connected": false,
 		"tracking_enabled":    false,
 		"tracked_tab_id":      0,
@@ -48,7 +50,17 @@ func (h *ToolHandler) tutorialContext() map[string]any {
 	}
 
 	trackingEnabled, tabID, tabURL := h.capture.GetTrackingStatus()
-	ctx["pilot_enabled"] = h.capture.IsPilotEnabled()
+	if status, ok := h.capture.GetPilotStatus().(map[string]any); ok {
+		if v, ok := status["enabled"].(bool); ok {
+			ctx["pilot_enabled"] = v
+		}
+		if v, ok := status["state"].(string); ok && v != "" {
+			ctx["pilot_state"] = v
+		}
+		if v, ok := status["authoritative"].(bool); ok {
+			ctx["pilot_authoritative"] = v
+		}
+	}
 	ctx["extension_connected"] = h.capture.IsExtensionConnected()
 	ctx["tracking_enabled"] = trackingEnabled
 	ctx["tracked_tab_id"] = tabID
@@ -58,17 +70,18 @@ func (h *ToolHandler) tutorialContext() map[string]any {
 
 func tutorialIssues(context map[string]any) []map[string]any {
 	pilotEnabled, _ := context["pilot_enabled"].(bool)
+	pilotState, _ := context["pilot_state"].(string)
 	extensionConnected, _ := context["extension_connected"].(bool)
 	trackingEnabled, _ := context["tracking_enabled"].(bool)
 	tabID, _ := context["tracked_tab_id"].(int)
 	tabURL, _ := context["tracked_tab_url"].(string)
 
 	issues := make([]map[string]any, 0, 3)
-	if !pilotEnabled {
+	if pilotState == "explicitly_disabled" || (!pilotEnabled && pilotState == "") {
 		issues = append(issues, map[string]any{
 			"code":     "pilot_disabled",
 			"severity": "warning",
-			"message":  "AI Web Pilot is disabled; interact actions that require extension control will be skipped.",
+			"message":  "AI Web Pilot is explicitly disabled; interact actions that require extension control will be skipped.",
 			"fix":      "Enable AI Web Pilot in the extension popup, then run configure tutorial again.",
 			"example":  `configure({what:"doctor"})`,
 		})

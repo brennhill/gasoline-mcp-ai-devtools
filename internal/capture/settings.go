@@ -87,7 +87,9 @@ func (c *Capture) LoadSettingsFromDisk() {
 	}
 	if settings.AIWebPilotEnabled != nil {
 		c.ext.pilotEnabled = *settings.AIWebPilotEnabled
+		c.ext.pilotStatusKnown = true
 		c.ext.pilotUpdatedAt = settings.Timestamp
+		c.ext.pilotSource = PilotSourceSettingsCache
 	}
 }
 
@@ -99,10 +101,13 @@ func (c *Capture) SaveSettingsToDisk() error {
 	}
 
 	c.mu.RLock()
-	// Copy bool by value — &c.ext.pilotEnabled would escape the lock scope
-	pilotEnabled := c.ext.pilotEnabled
+	var pilotEnabled *bool
+	if c.ext.pilotStatusKnown {
+		v := c.ext.pilotEnabled
+		pilotEnabled = &v
+	}
 	settings := PersistedSettings{
-		AIWebPilotEnabled: &pilotEnabled,
+		AIWebPilotEnabled: pilotEnabled,
 		Timestamp:         c.ext.pilotUpdatedAt,
 		ExtSessionID:      c.ext.extSessionID,
 	}
