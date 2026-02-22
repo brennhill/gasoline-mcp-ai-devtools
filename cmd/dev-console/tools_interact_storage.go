@@ -176,6 +176,7 @@ func (h *ToolHandler) queueExecuteScript(
 	}
 
 	correlationID := newCorrelationID(correlationPrefix)
+	h.armEvidenceForCommand(correlationID, reason, waitArgs, req.ClientID)
 	execParams, _ := json.Marshal(map[string]any{
 		"script":     script,
 		"timeout_ms": timeoutMs,

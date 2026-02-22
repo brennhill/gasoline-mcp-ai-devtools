@@ -135,6 +135,15 @@ func (h *ToolHandler) toolInteract(req JSONRPCRequest, args json.RawMessage) JSO
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrMissingParam, "Required parameter 'what' is missing", "Add the 'what' parameter and call again", withParam("what"), withHint("Valid values: "+validActions))}
 	}
 
+	if _, err := parseEvidenceMode(args); err != nil {
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(
+			ErrInvalidParam,
+			"Invalid 'evidence' value",
+			"Use evidence='off' (default), 'on_mutation', or 'always'",
+			withParam("evidence"),
+		)}
+	}
+
 	// Extract optional subtitle param (composable: works on any action)
 	var composableSubtitle struct {
 		Subtitle *string `json:"subtitle"`
@@ -206,6 +215,7 @@ func (h *ToolHandler) handlePilotHighlight(req JSONRPCRequest, args json.RawMess
 
 	// Queue highlight command for extension
 	correlationID := newCorrelationID("highlight")
+	h.armEvidenceForCommand(correlationID, "highlight", args, req.ClientID)
 
 	query := queries.PendingQuery{
 		Type:          "highlight",
@@ -251,6 +261,7 @@ func (h *ToolHandler) handlePilotExecuteJS(req JSONRPCRequest, args json.RawMess
 	}
 
 	correlationID := newCorrelationID("exec")
+	h.armEvidenceForCommand(correlationID, "execute_js", args, req.ClientID)
 
 	query := queries.PendingQuery{
 		Type:          "execute",
@@ -287,6 +298,7 @@ func (h *ToolHandler) handleBrowserActionNavigate(req JSONRPCRequest, args json.
 	}
 
 	correlationID := newCorrelationID("nav")
+	h.armEvidenceForCommand(correlationID, "navigate", args, req.ClientID)
 
 	h.stashPerfSnapshot(correlationID)
 
@@ -332,6 +344,7 @@ func (h *ToolHandler) handleBrowserActionRefresh(req JSONRPCRequest, args json.R
 	}
 
 	correlationID := newCorrelationID("refresh")
+	h.armEvidenceForCommand(correlationID, "refresh", args, req.ClientID)
 
 	h.stashPerfSnapshot(correlationID)
 
@@ -367,6 +380,7 @@ func (h *ToolHandler) handleBrowserActionBack(req JSONRPCRequest, args json.RawM
 	}
 
 	correlationID := newCorrelationID("back")
+	h.armEvidenceForCommand(correlationID, "back", args, req.ClientID)
 
 	query := queries.PendingQuery{
 		Type:          "browser_action",
@@ -386,6 +400,7 @@ func (h *ToolHandler) handleBrowserActionForward(req JSONRPCRequest, args json.R
 	}
 
 	correlationID := newCorrelationID("forward")
+	h.armEvidenceForCommand(correlationID, "forward", args, req.ClientID)
 
 	query := queries.PendingQuery{
 		Type:          "browser_action",
@@ -412,6 +427,7 @@ func (h *ToolHandler) handleBrowserActionNewTab(req JSONRPCRequest, args json.Ra
 	}
 
 	correlationID := newCorrelationID("newtab")
+	h.armEvidenceForCommand(correlationID, "new_tab", args, req.ClientID)
 
 	actionParams := make(map[string]any)
 	_ = json.Unmarshal(args, &actionParams)
@@ -528,6 +544,7 @@ func (h *ToolHandler) handleDOMPrimitive(req JSONRPCRequest, args json.RawMessag
 	args = normalizeDOMActionArgs(args, action)
 
 	correlationID := newCorrelationID("dom_" + action)
+	h.armEvidenceForCommand(correlationID, action, args, req.ClientID)
 
 	query := queries.PendingQuery{
 		Type:          "dom_action",
@@ -606,6 +623,7 @@ func (h *ToolHandler) handleSubtitle(req JSONRPCRequest, args json.RawMessage) J
 	}
 
 	correlationID := newCorrelationID("subtitle")
+	h.armEvidenceForCommand(correlationID, "subtitle", args, req.ClientID)
 
 	query := queries.PendingQuery{
 		Type:          "subtitle",

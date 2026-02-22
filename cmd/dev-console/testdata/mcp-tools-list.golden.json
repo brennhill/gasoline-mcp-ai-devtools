@@ -1131,6 +1131,15 @@
           "description": "Upload escalation timeout in ms",
           "type": "number"
         },
+        "evidence": {
+          "description": "Optional visual evidence capture mode: off (default), on_mutation, always.",
+          "enum": [
+            "off",
+            "on_mutation",
+            "always"
+          ],
+          "type": "string"
+        },
         "fields": {
           "description": "Form fields to fill (fill_form, fill_form_and_submit)",
           "items": {

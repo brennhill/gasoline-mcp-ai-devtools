@@ -193,6 +193,7 @@ func (h *ToolHandler) handleGetReadable(req JSONRPCRequest, args json.RawMessage
 	}
 
 	correlationID := newCorrelationID("readable")
+	h.armEvidenceForCommand(correlationID, "get_readable", args, req.ClientID)
 	execParams, _ := json.Marshal(map[string]any{
 		"script":     getReadableScript,
 		"timeout_ms": params.TimeoutMs,
@@ -230,6 +231,7 @@ func (h *ToolHandler) handleGetMarkdown(req JSONRPCRequest, args json.RawMessage
 	}
 
 	correlationID := newCorrelationID("markdown")
+	h.armEvidenceForCommand(correlationID, "get_markdown", args, req.ClientID)
 	execParams, _ := json.Marshal(map[string]any{
 		"script":     getMarkdownScript,
 		"timeout_ms": params.TimeoutMs,

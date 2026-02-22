@@ -10,6 +10,7 @@ The proof-first module checks:
 2. CSP flow: `execute_js` fails on CSP-restricted page, DOM primitive fallback succeeds.
 3. Optional LinkedIn composer flow: open, type, submit, verify close cue.
 4. Optional Facebook composer flow: open, type, submit, verify close cue.
+5. Evidence mode flow: mutating action with `evidence:"always"` returns `evidence.before` and `evidence.after` artifact paths.
 
 Each test captures reproducible evidence:
 

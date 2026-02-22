@@ -186,6 +186,11 @@ func InteractToolSchema() mcp.MCPTool {
 					"type":        "boolean",
 					"description": "Enable perf profiling (captures perf_diff)",
 				},
+				"evidence": map[string]any{
+					"type":        "string",
+					"description": "Optional visual evidence capture mode: off (default), on_mutation, always.",
+					"enum":        []string{"off", "on_mutation", "always"},
+				},
 				"observe_mutations": map[string]any{
 					"type":        "boolean",
 					"description": "Track element-level DOM mutations during action execution",

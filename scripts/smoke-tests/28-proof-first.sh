@@ -15,7 +15,7 @@
 #   ~/.gasoline/smoke-results/proof-first-artifacts.log
 set -eo pipefail
 
-begin_category "28" "Proof-First Real-World Flows" "4"
+begin_category "28" "Proof-First Real-World Flows" "5"
 
 PROOF_FIRST_ENABLED="${SMOKE_PROOF_FIRST:-0}"
 PROOF_SOCIAL_ENABLED="${SMOKE_SOCIAL:-0}"
@@ -276,5 +276,77 @@ run_test_28_4() {
     fi
 }
 run_test_28_4
+
+# ── Test 28.5: Evidence mode returns before/after artifact paths ─────────────
+begin_test "28.5" "[BROWSER] Evidence mode captures before/after artifacts" \
+    "Run a mutating action with evidence:'always' and verify evidence.before/evidence.after are returned as screenshot paths" \
+    "Tests: interact evidence mode state machine and artifact surfacing"
+
+run_test_28_5() {
+    module_enabled_or_skip || return
+
+    interact_and_wait "navigate" '{"action":"navigate","url":"https://example.com","reason":"Evidence mode baseline"}' 20
+    record_last_corr_id
+
+    interact_and_wait "execute_js" '{"action":"execute_js","reason":"Inject evidence target button","script":"(function(){var old=document.getElementById(\"pf-evidence-btn\"); if(old) old.remove(); var btn=document.createElement(\"button\"); btn.id=\"pf-evidence-btn\"; btn.type=\"button\"; btn.textContent=\"Evidence Target\"; btn.onclick=function(){document.body.setAttribute(\"data-evidence-clicked\",\"1\")}; document.body.appendChild(btn); return \"evidence-ready\";})()"}'
+    record_last_corr_id
+
+    interact_and_wait "click" '{"action":"click","selector":"#pf-evidence-btn","evidence":"always","reason":"Evidence mode validation click"}' 30
+    record_last_corr_id
+
+    local parsed
+    parsed=$(echo "$INTERACT_RESULT" | python3 -c '
+import json,sys
+t = sys.stdin.read()
+i = t.find("{")
+if i < 0:
+    print("NO_JSON|||")
+    raise SystemExit(0)
+try:
+    data = json.loads(t[i:])
+except Exception:
+    print("NO_JSON|||")
+    raise SystemExit(0)
+e = data.get("evidence")
+if not isinstance(e, dict):
+    print("NO_EVIDENCE|||")
+    raise SystemExit(0)
+before = e.get("before", "") or ""
+after = e.get("after", "") or ""
+if before and after:
+    print("OK|%s|%s|" % (before, after))
+else:
+    errors = e.get("errors", {})
+    if isinstance(errors, dict):
+        err = ";".join("%s=%s" % (k, errors[k]) for k in sorted(errors.keys()))
+    else:
+        err = ""
+    print("MISSING|%s|%s|%s" % (before, after, err))
+')
+
+    local status before_path after_path err_summary
+    IFS='|' read -r status before_path after_path err_summary <<< "$parsed"
+
+    if [ "$status" != "OK" ]; then
+        fail "Evidence payload missing before/after paths. status=$status before=$before_path after=$after_path errors=$err_summary result=$(truncate "$INTERACT_RESULT" 260)"
+        return
+    fi
+
+    record_proof_artifact "evidence_before" "$before_path"
+    record_proof_artifact "evidence_after" "$after_path"
+
+    local before_exists after_exists
+    before_exists="false"
+    after_exists="false"
+    if [ -f "$before_path" ]; then
+        before_exists="true"
+    fi
+    if [ -f "$after_path" ]; then
+        after_exists="true"
+    fi
+
+    pass "Evidence mode returned before/after paths (before_exists=$before_exists, after_exists=$after_exists)."
+}
+run_test_28_5
 
 echo "  Proof-first artifacts file: $PROOF_ARTIFACT_FILE"

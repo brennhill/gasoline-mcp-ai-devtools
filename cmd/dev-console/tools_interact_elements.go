@@ -26,6 +26,7 @@ func (h *ToolHandler) handleListInteractive(req JSONRPCRequest, args json.RawMes
 	args = normalizeDOMActionArgs(args, "list_interactive")
 
 	correlationID := newCorrelationID("dom_list")
+	h.armEvidenceForCommand(correlationID, "list_interactive", args, req.ClientID)
 
 	query := queries.PendingQuery{
 		Type:          "dom_action",
