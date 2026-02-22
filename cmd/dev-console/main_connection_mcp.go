@@ -30,7 +30,7 @@ var binaryUpgradeState *BinaryWatcherState
 // If stdin closes (EOF), the HTTP server keeps running until killed.
 // Returns error if port binding fails (race condition with another client).
 // Never returns on success (blocks forever serving MCP protocol).
-func runMCPMode(server *Server, port int, apiKey string) error {
+func runMCPMode(server *Server, port int, apiKey string, opts daemonLaunchOptions) error {
 	cap := initCapture(server, port)
 	mux := setupHTTPRoutes(server, cap)
 
@@ -72,6 +72,10 @@ func runMCPMode(server *Server, port int, apiKey string) error {
 		}
 	}
 
+	if err := enforceDaemonStartupPolicy(server, port, opts); err != nil {
+		return err
+	}
+
 	if err := cleanupStalePIDFile(server, port); err != nil {
 		return err
 	}
@@ -86,6 +90,9 @@ func runMCPMode(server *Server, port int, apiKey string) error {
 
 	if err := writePIDFile(port); err != nil {
 		server.logLifecycle("pid_file_error", port, map[string]any{"error": err.Error()})
+	}
+	if err := persistCurrentDaemonLock(port); err != nil {
+		server.logLifecycle("daemon_lock_write_failed", port, map[string]any{"error": err.Error()})
 	}
 
 	server.logLifecycle("startup", port, map[string]any{
@@ -312,6 +319,7 @@ func awaitShutdownSignal(server *Server, srv *http.Server, port int, httpDone <-
 	server.shutdownAsyncLogger(2 * time.Second)
 	globalAnnotationStore.Close()
 	removePIDFile(port)
+	removeDaemonLockIfOwned(os.Getpid())
 }
 
 // mapSignalSource returns a human-readable description for a termination signal.
