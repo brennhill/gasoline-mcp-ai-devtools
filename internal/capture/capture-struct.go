@@ -127,7 +127,7 @@ type Capture struct {
 	// ============================================
 
 	lifecycleCallback  func(event string, data map[string]any) // Optional callback for lifecycle events (circuit breaker, extension state, buffer overflow)
-	navigationCallback func()                                   // Optional callback fired after a navigation action is ingested (called outside lock)
+	navigationCallback func()                                  // Optional callback fired after a navigation action is ingested (called outside lock)
 
 	// ============================================
 	// Version Information
@@ -156,6 +156,7 @@ func NewCapture() *Capture {
 		},
 		ext: ExtensionState{
 			activeTestIDs: make(map[string]bool),
+			pilotSource:   PilotSourceAssumedStartup,
 		},
 		perf: PerformanceStore{
 			snapshots:       make(map[string]performance.PerformanceSnapshot),

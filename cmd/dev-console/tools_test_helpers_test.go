@@ -26,6 +26,7 @@ func makeToolHandler(t *testing.T) (*ToolHandler, *Server, *capture.Capture) {
 	}
 	t.Cleanup(func() { server.Close() })
 	cap := capture.NewCapture()
+	cap.SetPilotEnabled(false) // keep legacy test default: explicitly disabled unless test opts in
 	mcpHandler := NewToolHandler(server, cap)
 	handler := mcpHandler.toolHandler.(*ToolHandler)
 	return handler, server, cap
@@ -51,6 +52,7 @@ func newToolTestEnv(t *testing.T) *toolTestEnv {
 	}
 	t.Cleanup(func() { server.Close() })
 	cap := capture.NewCapture()
+	cap.SetPilotEnabled(false) // keep legacy test default: explicitly disabled unless test opts in
 	mcpHandler := NewToolHandler(server, cap)
 	handler := mcpHandler.toolHandler.(*ToolHandler)
 	return &toolTestEnv{handler: handler, server: server, capture: cap}

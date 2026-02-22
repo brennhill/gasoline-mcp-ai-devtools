@@ -302,18 +302,37 @@ func runDoctorChecks(cap *capture.Capture) []doctorCheck {
 		})
 	}
 
-	// 2. Pilot enabled
-	if cap.IsPilotEnabled() {
-		checks = append(checks, doctorCheck{
-			Name: "pilot_enabled", Status: "pass",
-			Detail: "AI Web Pilot is enabled",
-		})
-	} else {
+	// 2. Pilot enabled/assumed/disabled
+	pilotState := ""
+	if status, ok := cap.GetPilotStatus().(map[string]any); ok {
+		pilotState, _ = status["state"].(string)
+	}
+	switch pilotState {
+	case "explicitly_disabled":
 		checks = append(checks, doctorCheck{
 			Name: "pilot_enabled", Status: "warn",
-			Detail: "AI Web Pilot is disabled — interact actions will fail",
+			Detail: "AI Web Pilot is explicitly disabled — interact actions will fail",
 			Fix:    "Enable AI Web Pilot in the extension popup",
 		})
+	case "assumed_enabled":
+		checks = append(checks, doctorCheck{
+			Name: "pilot_enabled", Status: "warn",
+			Detail: "AI Web Pilot status not yet confirmed; assuming enabled until first sync",
+			Fix:    "Open the extension once to confirm pilot settings, then rerun doctor",
+		})
+	default:
+		if cap.IsPilotActionAllowed() {
+			checks = append(checks, doctorCheck{
+				Name: "pilot_enabled", Status: "pass",
+				Detail: "AI Web Pilot is enabled",
+			})
+		} else {
+			checks = append(checks, doctorCheck{
+				Name: "pilot_enabled", Status: "warn",
+				Detail: "AI Web Pilot is disabled — interact actions will fail",
+				Fix:    "Enable AI Web Pilot in the extension popup",
+			})
+		}
 	}
 
 	// 3. Tracked tab

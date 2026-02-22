@@ -28,6 +28,7 @@ func newInteractHelpersTestEnv(t *testing.T) *interactHelpersTestEnv {
 	}
 	t.Cleanup(func() { server.Close() })
 	cap := capture.NewCapture()
+	cap.SetPilotEnabled(false) // explicit default for state/pilot-disabled test branches
 	mcpHandler := NewToolHandler(server, cap)
 	handler := mcpHandler.toolHandler.(*ToolHandler)
 	return &interactHelpersTestEnv{handler: handler, server: server, capture: cap}

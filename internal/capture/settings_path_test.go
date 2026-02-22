@@ -70,6 +70,7 @@ func TestSaveSettingsToDiskWritesToStateDirectory(t *testing.T) {
 
 	c.mu.Lock()
 	c.ext.pilotEnabled = true
+	c.ext.pilotStatusKnown = true
 	c.ext.pilotUpdatedAt = now
 	c.ext.extSessionID = "session-123"
 	c.mu.Unlock()
@@ -103,4 +104,35 @@ func TestSaveSettingsToDiskWritesToStateDirectory(t *testing.T) {
 
 func boolPtr(v bool) *bool {
 	return &v
+}
+
+func TestSaveSettingsToDiskOmitsUnknownPilotState(t *testing.T) {
+	stateRoot := t.TempDir()
+	t.Setenv(state.StateDirEnv, stateRoot)
+
+	c := NewCapture()
+	c.mu.Lock()
+	c.ext.extSessionID = "session-unknown"
+	c.mu.Unlock()
+
+	if err := c.SaveSettingsToDisk(); err != nil {
+		t.Fatalf("SaveSettingsToDisk() error = %v", err)
+	}
+
+	path, err := getSettingsPath()
+	if err != nil {
+		t.Fatalf("getSettingsPath() error = %v", err)
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("os.ReadFile(%q) error = %v", path, err)
+	}
+
+	var persisted PersistedSettings
+	if err := json.Unmarshal(data, &persisted); err != nil {
+		t.Fatalf("json.Unmarshal() error = %v", err)
+	}
+	if persisted.AIWebPilotEnabled != nil {
+		t.Fatalf("AIWebPilotEnabled = %v, want nil when pilot state is unknown", persisted.AIWebPilotEnabled)
+	}
 }
