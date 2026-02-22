@@ -12,6 +12,7 @@ let sendMessageCalls = []
 let storageState = {}
 let tabsByID = new Map()
 let activeTabs = []
+let createCalls = []
 
 function resetHarness() {
   queuedResults = []
@@ -20,6 +21,7 @@ function resetHarness() {
   storageState = {}
   tabsByID = new Map()
   activeTabs = []
+  createCalls = []
 }
 
 function makeSyncClient() {
@@ -88,6 +90,14 @@ globalThis.chrome = {
       const next = { ...current, url: props.url || current.url, status: 'complete' }
       tabsByID.set(tabId, next)
       return { ...next }
+    },
+    create: async ({ url, active }) => {
+      const id = 900 + createCalls.length
+      createCalls.push({ url, active, id })
+      const tab = { id, url, status: 'complete', title: 'Example' }
+      tabsByID.set(id, tab)
+      activeTabs = [tab]
+      return { ...tab }
     },
     reload: async (_tabId) => {},
     goBack: async () => {},
@@ -218,11 +228,12 @@ describe('Restricted/CSP page handling', () => {
       makeSyncClient()
     )
 
-    assert.strictEqual(updateCalls.length, 1, 'navigate should call tabs.update using active-tab fallback')
-    assert.strictEqual(updateCalls[0].tabId, 11)
+    assert.strictEqual(createCalls.length, 1, 'fallback should open a trackable tab when only internal pages exist')
+    assert.strictEqual(updateCalls.length, 1, 'navigate should run on the newly opened trackable tab')
+    assert.strictEqual(updateCalls[0].tabId, createCalls[0].id)
     assert.strictEqual(queuedResults.length, 1)
     assert.strictEqual(queuedResults[0].status, 'complete')
     assert.strictEqual(queuedResults[0].result.success, true)
-    assert.strictEqual(queuedResults[0].result.target_context.source, 'active_tab_fallback')
+    assert.strictEqual(queuedResults[0].result.target_context.source, 'auto_tracked_new_tab')
   })
 })
