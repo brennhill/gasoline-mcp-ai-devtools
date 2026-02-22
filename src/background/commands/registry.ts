@@ -3,7 +3,6 @@
 
 import type { PendingQuery } from '../../types'
 import type { SyncClient } from '../sync-client'
-import { debugLog } from '../index'
 import { initReady } from '../state'
 import { DebugCategory } from '../debug'
 import type { SendAsyncResultFn, QueryParamsObject, TargetResolution } from './helpers'
@@ -18,6 +17,17 @@ import {
   isRestrictedUrl,
   isBrowserEscapeAction
 } from './helpers'
+
+function debugLog(category: string, message: string, data: unknown = null): void {
+  // Keep registry independent from index.ts to avoid circular imports during command registration.
+  const debugEnabled = (globalThis as { __GASOLINE_REGISTRY_DEBUG__?: boolean }).__GASOLINE_REGISTRY_DEBUG__ === true
+  if (!debugEnabled) return
+  if (data === null) {
+    console.debug(`[Gasoline:${category}] ${message}`)
+    return
+  }
+  console.debug(`[Gasoline:${category}] ${message}`, data)
+}
 
 // =============================================================================
 // COMMAND CONTEXT
@@ -60,6 +70,100 @@ function canRunOnRestrictedPage(queryType: string, paramsObj: QueryParamsObject)
   return isBrowserEscapeAction(queryType, paramsObj)
 }
 
+interface DispatchLifecycle {
+  sendResult: (result: unknown) => void
+  sendAsyncResult: SendAsyncResultFn
+  sendError: (payload: unknown, errorHint?: string) => void
+  sent: () => boolean
+}
+
+function pickErrorHint(payload: unknown, fallback = 'command_failed'): string {
+  if (payload && typeof payload === 'object') {
+    const errValue = (payload as { error?: unknown }).error
+    if (typeof errValue === 'string' && errValue.length > 0) return errValue
+    const msgValue = (payload as { message?: unknown }).message
+    if (typeof msgValue === 'string' && msgValue.length > 0) return msgValue
+  }
+  return fallback
+}
+
+function createDispatchLifecycle(
+  query: PendingQuery,
+  syncClient: SyncClient,
+  wrapResult: (result: unknown) => unknown
+): DispatchLifecycle {
+  let terminalSent = false
+
+  const sendOnce = (fn: () => void, metadata: Record<string, unknown>): void => {
+    if (terminalSent) {
+      debugLog(DebugCategory.CONNECTION, 'Ignoring duplicate terminal command response', {
+        query_id: query.id,
+        query_type: query.type,
+        correlation_id: query.correlation_id || null,
+        ...metadata
+      })
+      return
+    }
+    terminalSent = true
+    fn()
+  }
+
+  const sendResultNormalized = (result: unknown): void => {
+    sendOnce(() => {
+      const wrapped = wrapResult(result)
+      if (query.correlation_id) {
+        sendAsyncResult(syncClient, query.id, query.correlation_id, 'complete', wrapped)
+      } else {
+        sendResult(syncClient, query.id, wrapped)
+      }
+    }, { via: 'sendResult' })
+  }
+
+  const sendAsyncResultNormalized: SendAsyncResultFn = (
+    _client,
+    _queryId,
+    correlationId,
+    status,
+    result,
+    error
+  ): void => {
+    sendOnce(() => {
+      const wrapped = wrapResult(result)
+      if (query.correlation_id) {
+        const effectiveCorrelationId = query.correlation_id || correlationId
+        sendAsyncResult(syncClient, query.id, effectiveCorrelationId, status, wrapped, error)
+        return
+      }
+      if (status === 'complete') {
+        sendResult(syncClient, query.id, wrapped)
+        return
+      }
+      sendResult(syncClient, query.id, {
+        success: false,
+        status,
+        error: error || pickErrorHint(wrapped, 'command_failed'),
+        message: error || pickErrorHint(wrapped, 'command_failed'),
+        result: wrapped ?? null
+      })
+    }, { via: 'sendAsyncResult', status })
+  }
+
+  const sendError = (payload: unknown, errorHint?: string): void => {
+    if (query.correlation_id) {
+      sendAsyncResultNormalized(syncClient, query.id, query.correlation_id, 'error', payload, errorHint || pickErrorHint(payload))
+      return
+    }
+    sendResultNormalized(payload)
+  }
+
+  return {
+    sendResult: sendResultNormalized,
+    sendAsyncResult: sendAsyncResultNormalized,
+    sendError,
+    sent: () => terminalSent
+  }
+}
+
 export async function dispatch(query: PendingQuery, syncClient: SyncClient): Promise<void> {
   // Wait for initialization to complete (max 2s) so pilot cache is populated
   await Promise.race([initReady, new Promise((r) => setTimeout(r, 2000))])
@@ -77,32 +181,46 @@ export async function dispatch(query: PendingQuery, syncClient: SyncClient): Pro
     queryType = 'state_*'
   }
 
-  const handler = handlers.get(queryType)
-  if (!handler) {
-    debugLog(DebugCategory.CONNECTION, 'Unknown query type', { type: query.type })
-    sendResult(syncClient, query.id, {
-      error: 'unknown_query_type',
-      message: `Unknown query type: ${query.type}`
-    })
-    return
-  }
-
   // Target resolution
   let target: TargetResolution | undefined
   const paramsObj = parseQueryParamsObject(query.params)
   const needsTarget = requiresTargetTab(query.type)
+  const wrapResult = (result: unknown): unknown => {
+    if (!target) return result
+    return withTargetContext(result, target)
+  }
+  const lifecycle = createDispatchLifecycle(query, syncClient, wrapResult)
+
+  const handler = handlers.get(queryType)
+  if (!handler) {
+    debugLog(DebugCategory.CONNECTION, 'Unknown query type', { type: query.type })
+    lifecycle.sendError({
+      error: 'unknown_query_type',
+      message: `Unknown query type: ${query.type}`
+    }, 'unknown_query_type')
+    return
+  }
 
   if (needsTarget) {
-    const resolved = await resolveTargetTab(query, paramsObj)
-    if (resolved.error) {
-      if (query.correlation_id) {
-        sendAsyncResult(syncClient, query.id, query.correlation_id, 'error', resolved.error.payload, resolved.error.message)
-      } else {
-        sendResult(syncClient, query.id, resolved.error.payload)
+    try {
+      const resolved = await resolveTargetTab(query, paramsObj)
+      if (resolved.error) {
+        lifecycle.sendError(resolved.error.payload, resolved.error.message)
+        return
       }
+      target = resolved.target
+    } catch (err) {
+      const targetErr = (err as Error).message || 'target_resolution_failed'
+      lifecycle.sendError(
+        {
+          success: false,
+          error: 'target_resolution_failed',
+          message: targetErr
+        },
+        targetErr
+      )
       return
     }
-    target = resolved.target
   }
 
   const tabId = target?.tabId ?? 0
@@ -112,11 +230,7 @@ export async function dispatch(query: PendingQuery, syncClient: SyncClient): Pro
       error: 'missing_target',
       message: 'No target tab resolved for query'
     }
-    if (query.correlation_id) {
-      sendAsyncResult(syncClient, query.id, query.correlation_id, 'error', payload, payload.message)
-    } else {
-      sendResult(syncClient, query.id, payload)
-    }
+    lifecycle.sendError(payload, payload.message)
     return
   }
 
@@ -130,28 +244,8 @@ export async function dispatch(query: PendingQuery, syncClient: SyncClient): Pro
       message: 'Extension connected but this page blocks content scripts (common on Google, Chrome Web Store, internal pages). Navigate to a different page first.',
       retryable: false
     }
-    if (query.correlation_id) {
-      sendAsyncResult(syncClient, query.id, query.correlation_id, 'error', payload, payload.error)
-    } else {
-      sendResult(syncClient, query.id, payload)
-    }
+    lifecycle.sendError(payload, payload.error)
     return
-  }
-
-  // Build result wrappers that include target context
-  const wrapResult = (result: unknown): unknown => {
-    if (!target) return result
-    return withTargetContext(result, target)
-  }
-
-  const wrappedSendResult = (result: unknown): void => {
-    sendResult(syncClient, query.id, wrapResult(result))
-  }
-
-  const wrappedSendAsyncResult: SendAsyncResultFn = (
-    client, queryId, correlationId, status, result, error
-  ): void => {
-    sendAsyncResult(client, queryId, correlationId, status, wrapResult(result), error)
   }
 
   const ctx: CommandContext = {
@@ -160,13 +254,22 @@ export async function dispatch(query: PendingQuery, syncClient: SyncClient): Pro
     tabId,
     params: paramsObj,
     target,
-    sendResult: wrappedSendResult,
-    sendAsyncResult: wrappedSendAsyncResult,
+    sendResult: lifecycle.sendResult,
+    sendAsyncResult: lifecycle.sendAsyncResult,
     actionToast
   }
 
   try {
     await handler(ctx)
+    if (!lifecycle.sent()) {
+      lifecycle.sendError(
+        {
+          error: 'no_result',
+          message: `Command handler for '${query.type}' completed without sending a terminal result`
+        },
+        'no_result'
+      )
+    }
   } catch (err) {
     const errMsg = (err as Error).message || 'Unexpected error handling query'
     debugLog(DebugCategory.CONNECTION, 'Error handling pending query', {
@@ -174,10 +277,8 @@ export async function dispatch(query: PendingQuery, syncClient: SyncClient): Pro
       id: query.id,
       error: errMsg
     })
-    if (query.correlation_id) {
-      wrappedSendAsyncResult(syncClient, query.id, query.correlation_id, 'error', null, errMsg)
-    } else {
-      wrappedSendResult({ error: 'query_handler_error', message: errMsg })
+    if (!lifecycle.sent()) {
+      lifecycle.sendError({ error: 'query_handler_error', message: errMsg }, errMsg)
     }
   }
 }

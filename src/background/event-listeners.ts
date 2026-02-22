@@ -465,37 +465,24 @@ export interface TrackedTabInfo {
 }
 
 /**
- * Get tracked tab information (callback-based for compatibility with pre-async event listeners)
+ * Get tracked tab information.
  */
-// Overload: Promise-based (for await usage)
-export function getTrackedTabInfo(): Promise<TrackedTabInfo>
-// Overload: Callback-based (for backward compatibility)
-export function getTrackedTabInfo(callback: (info: TrackedTabInfo) => void): void
-// Implementation
-export function getTrackedTabInfo(callback?: (info: TrackedTabInfo) => void): void | Promise<TrackedTabInfo> {
-  if (!callback) {
-    // Promise-based version
-    return new Promise((resolve) => {
-      getTrackedTabInfo((info) => resolve(info))
-    })
-  }
-
-  // Callback-based version
+export async function getTrackedTabInfo(): Promise<TrackedTabInfo> {
   if (typeof chrome === 'undefined' || !chrome.storage) {
-    callback({ trackedTabId: null, trackedTabUrl: null, trackedTabTitle: null })
-    return
+    return { trackedTabId: null, trackedTabUrl: null, trackedTabTitle: null }
   }
 
-  chrome.storage.local.get(
-    [StorageKey.TRACKED_TAB_ID, StorageKey.TRACKED_TAB_URL, StorageKey.TRACKED_TAB_TITLE],
-    (result: { trackedTabId?: number; trackedTabUrl?: string; trackedTabTitle?: string }) => {
-      callback({
-        trackedTabId: result.trackedTabId || null,
-        trackedTabUrl: result.trackedTabUrl || null,
-        trackedTabTitle: result.trackedTabTitle || null
-      })
-    }
-  )
+  const result = (await chrome.storage.local.get([
+    StorageKey.TRACKED_TAB_ID,
+    StorageKey.TRACKED_TAB_URL,
+    StorageKey.TRACKED_TAB_TITLE
+  ])) as { trackedTabId?: number; trackedTabUrl?: string; trackedTabTitle?: string }
+
+  return {
+    trackedTabId: result.trackedTabId || null,
+    trackedTabUrl: result.trackedTabUrl || null,
+    trackedTabTitle: result.trackedTabTitle || null
+  }
 }
 
 /**
@@ -507,42 +494,23 @@ export function clearTrackedTab(): void {
 }
 
 /**
- * Get all extension config settings
+ * Get all extension config settings.
  */
-// Overload: Promise-based (for await usage)
-export function getAllConfigSettings(): Promise<Record<string, boolean | string | undefined>>
-// Overload: Callback-based (for backward compatibility)
-export function getAllConfigSettings(callback: (settings: Record<string, boolean | string | undefined>) => void): void
-// Implementation
-export function getAllConfigSettings(
-  callback?: (settings: Record<string, boolean | string | undefined>) => void
-): void | Promise<Record<string, boolean | string | undefined>> {
-  if (!callback) {
-    // Promise-based version
-    return new Promise((resolve) => {
-      getAllConfigSettings((settings) => resolve(settings))
-    })
-  }
-
-  // Callback-based version
+export async function getAllConfigSettings(): Promise<Record<string, boolean | string | undefined>> {
   if (typeof chrome === 'undefined' || !chrome.storage) {
-    callback({})
-    return
+    return {}
   }
 
-  chrome.storage.local.get(
-    [
-      StorageKey.AI_WEB_PILOT_ENABLED,
-      StorageKey.WEBSOCKET_CAPTURE_ENABLED,
-      StorageKey.NETWORK_WATERFALL_ENABLED,
-      StorageKey.PERFORMANCE_MARKS_ENABLED,
-      StorageKey.ACTION_REPLAY_ENABLED,
-      StorageKey.SCREENSHOT_ON_ERROR,
-      StorageKey.SOURCE_MAP_ENABLED,
-      StorageKey.NETWORK_BODY_CAPTURE_ENABLED
-    ],
-    (result: Record<string, boolean | string | undefined>) => {
-      callback(result)
-    }
-  )
+  const result = (await chrome.storage.local.get([
+    StorageKey.AI_WEB_PILOT_ENABLED,
+    StorageKey.WEBSOCKET_CAPTURE_ENABLED,
+    StorageKey.NETWORK_WATERFALL_ENABLED,
+    StorageKey.PERFORMANCE_MARKS_ENABLED,
+    StorageKey.ACTION_REPLAY_ENABLED,
+    StorageKey.SCREENSHOT_ON_ERROR,
+    StorageKey.SOURCE_MAP_ENABLED,
+    StorageKey.NETWORK_BODY_CAPTURE_ENABLED
+  ])) as Record<string, boolean | string | undefined>
+
+  return result
 }

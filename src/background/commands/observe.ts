@@ -2,7 +2,7 @@
 // Handles: screenshot, waterfall, page_info, tabs.
 
 import { debugLog } from '../index'
-import { serverUrl } from '../state'
+import { getServerUrl } from '../state'
 import { DebugCategory } from '../debug'
 import { recordScreenshot } from '../state-manager'
 import { registerCommand } from './registry'
@@ -21,7 +21,7 @@ registerCommand('screenshot', async (ctx) => {
     recordScreenshot(ctx.tabId)
 
     // POST to /screenshots with query_id — server saves file and resolves query directly
-    const response = await fetch(`${serverUrl}/screenshots`, {
+    const response = await fetch(`${getServerUrl()}/screenshots`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'X-Gasoline-Client': 'gasoline-extension' },
       body: JSON.stringify({

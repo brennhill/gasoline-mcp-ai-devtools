@@ -17,7 +17,7 @@
     "docs:sync:code-paths": "node scripts/docs/sync-feature-code-paths.js",
     "generate:dom-primitives": "node scripts/generate-dom-primitives.js",
     "docs:ci": "npm run docs:check:strict && npm run docs:check:source",
-    "test:ext": "GASOLINE_TEST_TIMEOUT_SCALE=0.1 node --experimental-test-module-mocks --test --test-force-exit --test-concurrency=8 tests/extension/*.test.js extension/background/*.test.js",
+    "test:ext": "JS_TEST_SHARDS=4 JS_TEST_TIMEOUT=60000 JS_TEST_CONCURRENCY=6 ./scripts/test-js-sharded.sh",
     "test:go": "make test",
     "test": "npm run test:go && npm run test:ext",
     "check": "npm run lint && npm run typecheck && npm run format"

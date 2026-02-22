@@ -26,7 +26,8 @@ class MockHTMLElement {
   }
   click() {}
   focus() {}
-  getAttribute() {
+  getAttribute(name) {
+    if (name === 'contenteditable' && this.isContentEditable) return 'true'
     return null
   }
   closest() {
@@ -35,10 +36,17 @@ class MockHTMLElement {
   querySelector() {
     return null
   }
+  querySelectorAll(sel) {
+    if (sel === '*') return [this]
+    return []
+  }
   scrollIntoView() {}
   setAttribute() {}
   dispatchEvent() {
     return true
+  }
+  getBoundingClientRect() {
+    return { width: 100, height: 20, top: 0, left: 0, right: 100, bottom: 20 }
   }
 }
 
@@ -107,9 +115,9 @@ function setupContentEditable(id = '#editor') {
   const commands = []
   globalThis.document = {
     querySelector: (sel) => (sel === id ? el : null),
-    querySelectorAll: () => [],
+    querySelectorAll: (sel) => (sel === id || sel === '*' ? [el] : []),
     body: {
-      querySelectorAll: () => [],
+      querySelectorAll: (sel) => (sel === id || sel === '*' ? [el] : []),
       appendChild: () => {}
     },
     documentElement: {},
@@ -246,8 +254,8 @@ describe('get_text: innerText for HTMLElement', () => {
 
     globalThis.document = {
       querySelector: (sel) => (sel === '#content' ? el : null),
-      querySelectorAll: () => [],
-      body: { querySelectorAll: () => [] },
+      querySelectorAll: (sel) => (sel === '#content' || sel === '*' ? [el] : []),
+      body: { querySelectorAll: (sel) => (sel === '#content' || sel === '*' ? [el] : []) },
       documentElement: {},
       createTreeWalker: () => ({ nextNode: () => null })
     }
@@ -275,8 +283,8 @@ describe('get_text: innerText for HTMLElement', () => {
 
     globalThis.document = {
       querySelector: (sel) => (sel === '#svg' ? el : null),
-      querySelectorAll: () => [],
-      body: { querySelectorAll: () => [] },
+      querySelectorAll: (sel) => (sel === '#svg' || sel === '*' ? [el] : []),
+      body: { querySelectorAll: (sel) => (sel === '#svg' || sel === '*' ? [el] : []) },
       documentElement: {},
       createTreeWalker: () => ({ nextNode: () => null })
     }
@@ -295,8 +303,8 @@ describe('get_text: innerText for HTMLElement', () => {
 
     globalThis.document = {
       querySelector: (sel) => (sel === '#content' ? el : null),
-      querySelectorAll: () => [],
-      body: { querySelectorAll: () => [] },
+      querySelectorAll: (sel) => (sel === '#content' || sel === '*' ? [el] : []),
+      body: { querySelectorAll: (sel) => (sel === '#content' || sel === '*' ? [el] : []) },
       documentElement: {},
       createTreeWalker: () => ({ nextNode: () => null })
     }
@@ -321,8 +329,8 @@ describe('null-value read actions include reason payload', () => {
 
     globalThis.document = {
       querySelector: (sel) => (sel === '#target' ? el : null),
-      querySelectorAll: () => [],
-      body: { querySelectorAll: () => [] },
+      querySelectorAll: (sel) => (sel === '#target' || sel === '*' ? [el] : []),
+      body: { querySelectorAll: (sel) => (sel === '#target' || sel === '*' ? [el] : []) },
       documentElement: {},
       createTreeWalker: () => ({ nextNode: () => null })
     }
@@ -342,8 +350,8 @@ describe('null-value read actions include reason payload', () => {
 
     globalThis.document = {
       querySelector: (sel) => (sel === '#field' ? input : null),
-      querySelectorAll: () => [],
-      body: { querySelectorAll: () => [] },
+      querySelectorAll: (sel) => (sel === '#field' || sel === '*' ? [input] : []),
+      body: { querySelectorAll: (sel) => (sel === '#field' || sel === '*' ? [input] : []) },
       documentElement: {},
       createTreeWalker: () => ({ nextNode: () => null })
     }
@@ -381,8 +389,8 @@ describe('paste action: synthetic ClipboardEvent', () => {
 
     globalThis.document = {
       querySelector: (sel) => (sel === '#editor' ? el : null),
-      querySelectorAll: () => [],
-      body: { querySelectorAll: () => [], appendChild: () => {} },
+      querySelectorAll: (sel) => (sel === '#editor' || sel === '*' ? [el] : []),
+      body: { querySelectorAll: (sel) => (sel === '#editor' || sel === '*' ? [el] : []), appendChild: () => {} },
       documentElement: {},
       createTreeWalker: () => ({ nextNode: () => null }),
       getSelection: () => ({
@@ -415,8 +423,8 @@ describe('paste action: synthetic ClipboardEvent', () => {
 
     globalThis.document = {
       querySelector: (sel) => (sel === '#editor' ? el : null),
-      querySelectorAll: () => [],
-      body: { querySelectorAll: () => [], appendChild: () => {} },
+      querySelectorAll: (sel) => (sel === '#editor' || sel === '*' ? [el] : []),
+      body: { querySelectorAll: (sel) => (sel === '#editor' || sel === '*' ? [el] : []), appendChild: () => {} },
       documentElement: {},
       createTreeWalker: () => ({ nextNode: () => null }),
       getSelection: () => ({
@@ -447,8 +455,8 @@ describe('paste action: synthetic ClipboardEvent', () => {
 
     globalThis.document = {
       querySelector: (sel) => (sel === '#svg' ? el : null),
-      querySelectorAll: () => [],
-      body: { querySelectorAll: () => [], appendChild: () => {} },
+      querySelectorAll: (sel) => (sel === '#svg' || sel === '*' ? [el] : []),
+      body: { querySelectorAll: (sel) => (sel === '#svg' || sel === '*' ? [el] : []), appendChild: () => {} },
       documentElement: {},
       createTreeWalker: () => ({ nextNode: () => null })
     }
@@ -467,8 +475,8 @@ describe('paste action: synthetic ClipboardEvent', () => {
 
     globalThis.document = {
       querySelector: (sel) => (sel === '#editor' ? el : null),
-      querySelectorAll: () => [],
-      body: { querySelectorAll: () => [], appendChild: () => {} },
+      querySelectorAll: (sel) => (sel === '#editor' || sel === '*' ? [el] : []),
+      body: { querySelectorAll: (sel) => (sel === '#editor' || sel === '*' ? [el] : []), appendChild: () => {} },
       documentElement: {},
       createTreeWalker: () => ({ nextNode: () => null }),
       getSelection: () => null

@@ -388,6 +388,10 @@ export function domPrimitive(
 
   function resolveElements(sel: string, scope: ParentNode = document): Element[] {
     if (!sel) return []
+    if (sel.includes(' >>> ')) {
+      const resolved = resolveDeepCombinator(sel, scope)
+      return resolved ? [resolved] : []
+    }
     if (sel.startsWith('text=')) return resolveByTextAll(sel.slice('text='.length), scope)
     if (sel.startsWith('role=')) return querySelectorAllDeep(`[role="${CSS.escape(sel.slice('role='.length))}"]`, scope)
     if (sel.startsWith('placeholder=')) return querySelectorAllDeep(`[placeholder="${CSS.escape(sel.slice('placeholder='.length))}"]`, scope)

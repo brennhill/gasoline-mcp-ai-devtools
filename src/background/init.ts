@@ -32,14 +32,14 @@ import {
   DEFAULT_SERVER_URL
 } from './index'
 import {
-  serverUrl,
-  connectionStatus,
-  debugMode,
-  screenshotOnError,
-  currentLogLevel,
-  __aiWebPilotEnabledCache,
-  __aiWebPilotCacheInitialized,
-  __pilotInitCallback,
+  getServerUrl,
+  getConnectionStatus,
+  isDebugMode,
+  isScreenshotOnError,
+  getCurrentLogLevel,
+  isAiWebPilotEnabled,
+  isAiWebPilotCacheInitialized,
+  getPilotInitCallback,
   markInitComplete,
   setServerUrl,
   setCurrentLogLevel,
@@ -133,10 +133,10 @@ async function initializeExtensionAsync(): Promise<void> {
     const aiPilotEnabled = await loadAiWebPilotState()
     setAiWebPilotEnabledCache(aiPilotEnabled)
     setAiWebPilotCacheInitialized(true)
-    console.log('[Gasoline] Storage value:', aiPilotEnabled, '| Cache value:', __aiWebPilotEnabledCache)
+    console.log('[Gasoline] Storage value:', aiPilotEnabled, '| Cache value:', isAiWebPilotEnabled())
 
     // Execute any pending pilot init callback
-    const pilotCb = __pilotInitCallback
+    const pilotCb = getPilotInitCallback()
     if (pilotCb) {
       pilotCb()
       setPilotInitCallback(null)
@@ -197,16 +197,16 @@ async function initializeExtensionAsync(): Promise<void> {
     // ============= STEP 7: Install message handler =============
     // #lizard forgives
     const deps: MessageHandlerDependencies = {
-      getServerUrl: () => serverUrl,
-      getConnectionStatus: () => connectionStatus,
-      getDebugMode: () => debugMode,
-      getScreenshotOnError: () => screenshotOnError,
+      getServerUrl: () => getServerUrl(),
+      getConnectionStatus: () => getConnectionStatus(),
+      getDebugMode: () => isDebugMode(),
+      getScreenshotOnError: () => isScreenshotOnError(),
       getSourceMapEnabled: () => isSourceMapEnabled(),
-      getCurrentLogLevel: () => currentLogLevel,
+      getCurrentLogLevel: () => getCurrentLogLevel(),
       getContextWarning,
       getCircuitBreakerState: () => sharedServerCircuitBreaker.getState(),
       getMemoryPressureState,
-      getAiWebPilotEnabled: () => __aiWebPilotEnabledCache,
+      getAiWebPilotEnabled: () => isAiWebPilotEnabled(),
       isNetworkBodyCaptureDisabled,
 
       setServerUrl: (url) => {
@@ -247,7 +247,7 @@ async function initializeExtensionAsync(): Promise<void> {
       captureScreenshot: (tabId, relatedErrorId) =>
         captureScreenshot(
           tabId,
-          serverUrl,
+          getServerUrl(),
           relatedErrorId,
           null,
           canTakeScreenshot,
@@ -301,12 +301,12 @@ async function initializeExtensionAsync(): Promise<void> {
     // Badge must reflect disconnected state BEFORE the async health check.
     // Without this, a stale "connected" badge persists from a previous SW session
     // until the health check completes (could be seconds if server is slow to refuse).
-    updateBadge(connectionStatus)
+    updateBadge(getConnectionStatus())
 
     // ============= STEP 11: Initial connection check =============
     // Await the connection check to keep the SW alive until the badge is updated.
     // Without await, Chrome may suspend the SW before the fetch completes.
-    if (__aiWebPilotCacheInitialized) {
+    if (isAiWebPilotCacheInitialized()) {
       await checkConnectionAndUpdate()
     } else {
       setPilotInitCallback(checkConnectionAndUpdate)
@@ -315,11 +315,11 @@ async function initializeExtensionAsync(): Promise<void> {
     // ============= INITIALIZATION COMPLETE =============
     markInitComplete()
     debugLog(DebugCategory.LIFECYCLE, 'Extension initialized', {
-      serverUrl,
-      logLevel: currentLogLevel,
-      screenshotOnError,
+      serverUrl: getServerUrl(),
+      logLevel: getCurrentLogLevel(),
+      screenshotOnError: isScreenshotOnError(),
       sourceMapEnabled: isSourceMapEnabled(),
-      debugMode
+      debugMode: isDebugMode()
     })
   } catch (error) {
     console.error('[Gasoline] Error during extension initialization:', error)

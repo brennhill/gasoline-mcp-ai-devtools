@@ -1,9 +1,19 @@
 // registry.ts — Command registry and dispatch loop.
 // Replaces the monolithic if-chain in pending-queries.ts with a Map-based registry.
-import { debugLog } from '../index.js';
 import { initReady } from '../state.js';
 import { DebugCategory } from '../debug.js';
 import { sendResult, sendAsyncResult, requiresTargetTab, resolveTargetTab, parseQueryParamsObject, withTargetContext, actionToast, isRestrictedUrl, isBrowserEscapeAction } from './helpers.js';
+function debugLog(category, message, data = null) {
+    // Keep registry independent from index.ts to avoid circular imports during command registration.
+    const debugEnabled = globalThis.__GASOLINE_REGISTRY_DEBUG__ === true;
+    if (!debugEnabled)
+        return;
+    if (data === null) {
+        console.debug(`[Gasoline:${category}] ${message}`);
+        return;
+    }
+    console.debug(`[Gasoline:${category}] ${message}`, data);
+}
 // =============================================================================
 // REGISTRY
 // =============================================================================
@@ -16,6 +26,78 @@ export function registerCommand(type, handler) {
 // =============================================================================
 function canRunOnRestrictedPage(queryType, paramsObj) {
     return isBrowserEscapeAction(queryType, paramsObj);
+}
+function pickErrorHint(payload, fallback = 'command_failed') {
+    if (payload && typeof payload === 'object') {
+        const errValue = payload.error;
+        if (typeof errValue === 'string' && errValue.length > 0)
+            return errValue;
+        const msgValue = payload.message;
+        if (typeof msgValue === 'string' && msgValue.length > 0)
+            return msgValue;
+    }
+    return fallback;
+}
+function createDispatchLifecycle(query, syncClient, wrapResult) {
+    let terminalSent = false;
+    const sendOnce = (fn, metadata) => {
+        if (terminalSent) {
+            debugLog(DebugCategory.CONNECTION, 'Ignoring duplicate terminal command response', {
+                query_id: query.id,
+                query_type: query.type,
+                correlation_id: query.correlation_id || null,
+                ...metadata
+            });
+            return;
+        }
+        terminalSent = true;
+        fn();
+    };
+    const sendResultNormalized = (result) => {
+        sendOnce(() => {
+            const wrapped = wrapResult(result);
+            if (query.correlation_id) {
+                sendAsyncResult(syncClient, query.id, query.correlation_id, 'complete', wrapped);
+            }
+            else {
+                sendResult(syncClient, query.id, wrapped);
+            }
+        }, { via: 'sendResult' });
+    };
+    const sendAsyncResultNormalized = (_client, _queryId, correlationId, status, result, error) => {
+        sendOnce(() => {
+            const wrapped = wrapResult(result);
+            if (query.correlation_id) {
+                const effectiveCorrelationId = query.correlation_id || correlationId;
+                sendAsyncResult(syncClient, query.id, effectiveCorrelationId, status, wrapped, error);
+                return;
+            }
+            if (status === 'complete') {
+                sendResult(syncClient, query.id, wrapped);
+                return;
+            }
+            sendResult(syncClient, query.id, {
+                success: false,
+                status,
+                error: error || pickErrorHint(wrapped, 'command_failed'),
+                message: error || pickErrorHint(wrapped, 'command_failed'),
+                result: wrapped ?? null
+            });
+        }, { via: 'sendAsyncResult', status });
+    };
+    const sendError = (payload, errorHint) => {
+        if (query.correlation_id) {
+            sendAsyncResultNormalized(syncClient, query.id, query.correlation_id, 'error', payload, errorHint || pickErrorHint(payload));
+            return;
+        }
+        sendResultNormalized(payload);
+    };
+    return {
+        sendResult: sendResultNormalized,
+        sendAsyncResult: sendAsyncResultNormalized,
+        sendError,
+        sent: () => terminalSent
+    };
 }
 export async function dispatch(query, syncClient) {
     // Wait for initialization to complete (max 2s) so pilot cache is populated
@@ -31,31 +113,43 @@ export async function dispatch(query, syncClient) {
     if (queryType.startsWith('state_')) {
         queryType = 'state_*';
     }
-    const handler = handlers.get(queryType);
-    if (!handler) {
-        debugLog(DebugCategory.CONNECTION, 'Unknown query type', { type: query.type });
-        sendResult(syncClient, query.id, {
-            error: 'unknown_query_type',
-            message: `Unknown query type: ${query.type}`
-        });
-        return;
-    }
     // Target resolution
     let target;
     const paramsObj = parseQueryParamsObject(query.params);
     const needsTarget = requiresTargetTab(query.type);
+    const wrapResult = (result) => {
+        if (!target)
+            return result;
+        return withTargetContext(result, target);
+    };
+    const lifecycle = createDispatchLifecycle(query, syncClient, wrapResult);
+    const handler = handlers.get(queryType);
+    if (!handler) {
+        debugLog(DebugCategory.CONNECTION, 'Unknown query type', { type: query.type });
+        lifecycle.sendError({
+            error: 'unknown_query_type',
+            message: `Unknown query type: ${query.type}`
+        }, 'unknown_query_type');
+        return;
+    }
     if (needsTarget) {
-        const resolved = await resolveTargetTab(query, paramsObj);
-        if (resolved.error) {
-            if (query.correlation_id) {
-                sendAsyncResult(syncClient, query.id, query.correlation_id, 'error', resolved.error.payload, resolved.error.message);
+        try {
+            const resolved = await resolveTargetTab(query, paramsObj);
+            if (resolved.error) {
+                lifecycle.sendError(resolved.error.payload, resolved.error.message);
+                return;
             }
-            else {
-                sendResult(syncClient, query.id, resolved.error.payload);
-            }
+            target = resolved.target;
+        }
+        catch (err) {
+            const targetErr = err.message || 'target_resolution_failed';
+            lifecycle.sendError({
+                success: false,
+                error: 'target_resolution_failed',
+                message: targetErr
+            }, targetErr);
             return;
         }
-        target = resolved.target;
     }
     const tabId = target?.tabId ?? 0;
     if (needsTarget && !tabId) {
@@ -64,12 +158,7 @@ export async function dispatch(query, syncClient) {
             error: 'missing_target',
             message: 'No target tab resolved for query'
         };
-        if (query.correlation_id) {
-            sendAsyncResult(syncClient, query.id, query.correlation_id, 'error', payload, payload.message);
-        }
-        else {
-            sendResult(syncClient, query.id, payload);
-        }
+        lifecycle.sendError(payload, payload.message);
         return;
     }
     // Restricted page detection: content scripts cannot run on internal browser pages
@@ -82,38 +171,27 @@ export async function dispatch(query, syncClient) {
             message: 'Extension connected but this page blocks content scripts (common on Google, Chrome Web Store, internal pages). Navigate to a different page first.',
             retryable: false
         };
-        if (query.correlation_id) {
-            sendAsyncResult(syncClient, query.id, query.correlation_id, 'error', payload, payload.error);
-        }
-        else {
-            sendResult(syncClient, query.id, payload);
-        }
+        lifecycle.sendError(payload, payload.error);
         return;
     }
-    // Build result wrappers that include target context
-    const wrapResult = (result) => {
-        if (!target)
-            return result;
-        return withTargetContext(result, target);
-    };
-    const wrappedSendResult = (result) => {
-        sendResult(syncClient, query.id, wrapResult(result));
-    };
-    const wrappedSendAsyncResult = (client, queryId, correlationId, status, result, error) => {
-        sendAsyncResult(client, queryId, correlationId, status, wrapResult(result), error);
-    };
     const ctx = {
         query,
         syncClient,
         tabId,
         params: paramsObj,
         target,
-        sendResult: wrappedSendResult,
-        sendAsyncResult: wrappedSendAsyncResult,
+        sendResult: lifecycle.sendResult,
+        sendAsyncResult: lifecycle.sendAsyncResult,
         actionToast
     };
     try {
         await handler(ctx);
+        if (!lifecycle.sent()) {
+            lifecycle.sendError({
+                error: 'no_result',
+                message: `Command handler for '${query.type}' completed without sending a terminal result`
+            }, 'no_result');
+        }
     }
     catch (err) {
         const errMsg = err.message || 'Unexpected error handling query';
@@ -122,11 +200,8 @@ export async function dispatch(query, syncClient) {
             id: query.id,
             error: errMsg
         });
-        if (query.correlation_id) {
-            wrappedSendAsyncResult(syncClient, query.id, query.correlation_id, 'error', null, errMsg);
-        }
-        else {
-            wrappedSendResult({ error: 'query_handler_error', message: errMsg });
+        if (!lifecycle.sent()) {
+            lifecycle.sendError({ error: 'query_handler_error', message: errMsg }, errMsg);
         }
     }
 }

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# test-js-sharded.sh — Run JS extension tests split across N parallel Node processes.
+# test-js-sharded.sh — Run all extension JS tests split across N parallel Node processes.
 #
 # Why: Running 40 test files in a single Node process takes ~30 minutes due to
 # serial execution of tests with real setTimeout waits. Splitting across processes
@@ -9,7 +9,7 @@ set -euo pipefail
 
 SHARDS="${JS_TEST_SHARDS:-4}"
 TIMEOUT="${JS_TEST_TIMEOUT:-15000}"
-TEST_DIR="tests/extension"
+CONCURRENCY="${JS_TEST_CONCURRENCY:-4}"
 
 usage() {
   cat <<'EOF'
@@ -36,12 +36,16 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-# Collect test files
-mapfile -t FILES < <(ls "$TEST_DIR"/*.test.js 2>/dev/null | sort)
+# Collect test files from both extension test roots.
+if command -v rg >/dev/null 2>&1; then
+  mapfile -t FILES < <(rg --files tests/extension extension/background -g '*.test.js' | sort)
+else
+  mapfile -t FILES < <(find tests/extension extension/background -name '*.test.js' -type f | sort)
+fi
 TOTAL=${#FILES[@]}
 
 if [[ $TOTAL -eq 0 ]]; then
-  echo "No test files found in $TEST_DIR" >&2
+  echo "No extension test files found in tests/extension or extension/background" >&2
   exit 1
 fi
 
@@ -50,7 +54,7 @@ if [[ $SHARDS -gt $TOTAL ]]; then
   SHARDS=$TOTAL
 fi
 
-echo "Sharding $TEST_DIR: $TOTAL test files across $SHARDS process(es)"
+echo "Sharding extension JS tests: $TOTAL files across $SHARDS process(es)"
 
 # Distribute files round-robin into shard arrays
 declare -a SHARD_FILES
@@ -75,7 +79,7 @@ for i in $(seq 0 $((SHARDS - 1))); do
   OUTPUTS+=("$outfile")
 
   # shellcheck disable=SC2086
-  node --test --test-force-exit --test-timeout="$TIMEOUT" --test-concurrency=4 $files > "$outfile" 2>&1 &
+  node --experimental-test-module-mocks --test --test-force-exit --test-timeout="$TIMEOUT" --test-concurrency="$CONCURRENCY" $files > "$outfile" 2>&1 &
   PIDS+=($!)
 done
 

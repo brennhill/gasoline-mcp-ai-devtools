@@ -12,7 +12,7 @@ import type { PendingQuery } from '../types'
 import type { SyncClient } from './sync-client'
 import { waitForTabLoad, pingContentScript } from './event-listeners'
 import { debugLog } from './index'
-import { __aiWebPilotEnabledCache } from './state'
+import { isAiWebPilotEnabled } from './state'
 import { DebugCategory } from './debug'
 import { broadcastTrackingState } from './message-handlers'
 import { executeWithWorldRouting } from './query-execution'
@@ -162,7 +162,7 @@ export async function handleBrowserAction(
       ? params.what
       : undefined
 
-  if (!__aiWebPilotEnabledCache) {
+  if (!isAiWebPilotEnabled()) {
     return { success: false, error: 'ai_web_pilot_disabled', message: 'AI Web Pilot is not enabled' }
   }
 

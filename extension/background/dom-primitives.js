@@ -375,6 +375,10 @@ export function domPrimitive(action, selector, options) {
     function resolveElements(sel, scope = document) {
         if (!sel)
             return [];
+        if (sel.includes(' >>> ')) {
+            const resolved = resolveDeepCombinator(sel, scope);
+            return resolved ? [resolved] : [];
+        }
         if (sel.startsWith('text='))
             return resolveByTextAll(sel.slice('text='.length), scope);
         if (sel.startsWith('role='))

@@ -1,9 +1,22 @@
 // helpers.ts — Shared infrastructure for command dispatch.
 // Types, result helpers, target resolution, action toast, and constants.
 import { getTrackedTabInfo, clearTrackedTab } from '../event-listeners.js';
-import { debugLog, diagnosticLog } from '../index.js';
 import { DebugCategory } from '../debug.js';
-import { __aiWebPilotEnabledCache } from '../state.js';
+import { isAiWebPilotEnabled } from '../state.js';
+function debugLog(category, message, data = null) {
+    // Keep helpers independent from index.ts to avoid circular imports during registry boot.
+    const debugEnabled = globalThis.__GASOLINE_REGISTRY_DEBUG__ === true;
+    if (!debugEnabled)
+        return;
+    if (data === null) {
+        console.debug(`[Gasoline:${category}] ${message}`);
+        return;
+    }
+    console.debug(`[Gasoline:${category}] ${message}`, data);
+}
+function diagnosticLog(message) {
+    debugLog(DebugCategory.CONNECTION, message);
+}
 // =============================================================================
 // RESULT HELPERS
 // =============================================================================
@@ -420,7 +433,7 @@ export async function resolveTargetTab(query, paramsObj) {
         catch {
             /* best effort */
         }
-        if (__aiWebPilotEnabledCache) {
+        if (isAiWebPilotEnabled()) {
             const recovered = await tryAutoTrackFallback(query.type, useActiveTab, trackedTabId);
             if (recovered.target || recovered.error) {
                 return recovered;
@@ -443,7 +456,7 @@ export async function resolveTargetTab(query, paramsObj) {
         }
         return { error: buildMissingTargetError(query.type, useActiveTab, trackedTabId) };
     }
-    if (__aiWebPilotEnabledCache) {
+    if (isAiWebPilotEnabled()) {
         const recovered = await tryAutoTrackFallback(query.type, useActiveTab, trackedTabId);
         if (recovered.target || recovered.error) {
             return recovered;

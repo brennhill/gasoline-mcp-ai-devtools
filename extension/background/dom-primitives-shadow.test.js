@@ -331,6 +331,8 @@ function setupShadowDocument() {
   const allTopLevel = [lightDiv, comp1, comp2]
 
   globalThis.document = {
+    children: allTopLevel,
+    get childElementCount() { return allTopLevel.length },
     querySelector(sel) {
       // Only finds light DOM elements (simulates real browser behavior)
       if (sel === '#light-button') return lightBtn

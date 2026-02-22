@@ -10,7 +10,7 @@
  * Uses async/await for cleaner control flow (replaces callback nesting).
  */
 import { debugLog, DebugCategory, setDebugMode, resetSyncClientConnection, sharedServerCircuitBreaker, logBatcher, wsBatcher, enhancedActionBatcher, networkBodyBatcher, perfBatcher, handleLogMessage, handleClearLogs, checkConnectionAndUpdate, exportDebugLog, clearDebugLog, sendStatusPingWrapper, DEFAULT_SERVER_URL } from './index.js';
-import { serverUrl, connectionStatus, debugMode, screenshotOnError, currentLogLevel, __aiWebPilotEnabledCache, __aiWebPilotCacheInitialized, __pilotInitCallback, markInitComplete, setServerUrl, setCurrentLogLevel, setScreenshotOnError, setAiWebPilotEnabledCache, setAiWebPilotCacheInitialized, setPilotInitCallback } from './state.js';
+import { getServerUrl, getConnectionStatus, isDebugMode, isScreenshotOnError, getCurrentLogLevel, isAiWebPilotEnabled, isAiWebPilotCacheInitialized, getPilotInitCallback, markInitComplete, setServerUrl, setCurrentLogLevel, setScreenshotOnError, setAiWebPilotEnabledCache, setAiWebPilotCacheInitialized, setPilotInitCallback } from './state.js';
 import { isSourceMapEnabled, setSourceMapEnabled, canTakeScreenshot, recordScreenshot, clearSourceMapCache, getContextWarning, getMemoryPressureState, isNetworkBodyCaptureDisabled, flushErrorGroups, cleanupStaleErrorGroups, clearScreenshotTimestamps } from './state-manager.js';
 import { loadDebugModeState, installStartupListener, loadAiWebPilotState, loadSavedSettings, installStorageChangeListener, setupChromeAlarms, installAlarmListener, installTabRemovedListener, installTabUpdatedListener, installDrawModeCommandListener, saveSetting, forwardToAllContentScripts, handleTrackedTabClosed, handleTrackedTabUrlChange } from './event-listeners.js';
 import { installMessageListener, broadcastTrackingState } from './message-handlers.js';
@@ -58,9 +58,9 @@ async function initializeExtensionAsync() {
         const aiPilotEnabled = await loadAiWebPilotState();
         setAiWebPilotEnabledCache(aiPilotEnabled);
         setAiWebPilotCacheInitialized(true);
-        console.log('[Gasoline] Storage value:', aiPilotEnabled, '| Cache value:', __aiWebPilotEnabledCache);
+        console.log('[Gasoline] Storage value:', aiPilotEnabled, '| Cache value:', isAiWebPilotEnabled());
         // Execute any pending pilot init callback
-        const pilotCb = __pilotInitCallback;
+        const pilotCb = getPilotInitCallback();
         if (pilotCb) {
             pilotCb();
             setPilotInitCallback(null);
@@ -117,16 +117,16 @@ async function initializeExtensionAsync() {
         // ============= STEP 7: Install message handler =============
         // #lizard forgives
         const deps = {
-            getServerUrl: () => serverUrl,
-            getConnectionStatus: () => connectionStatus,
-            getDebugMode: () => debugMode,
-            getScreenshotOnError: () => screenshotOnError,
+            getServerUrl: () => getServerUrl(),
+            getConnectionStatus: () => getConnectionStatus(),
+            getDebugMode: () => isDebugMode(),
+            getScreenshotOnError: () => isScreenshotOnError(),
             getSourceMapEnabled: () => isSourceMapEnabled(),
-            getCurrentLogLevel: () => currentLogLevel,
+            getCurrentLogLevel: () => getCurrentLogLevel(),
             getContextWarning,
             getCircuitBreakerState: () => sharedServerCircuitBreaker.getState(),
             getMemoryPressureState,
-            getAiWebPilotEnabled: () => __aiWebPilotEnabledCache,
+            getAiWebPilotEnabled: () => isAiWebPilotEnabled(),
             isNetworkBodyCaptureDisabled,
             setServerUrl: (url) => {
                 setServerUrl(url || DEFAULT_SERVER_URL);
@@ -162,7 +162,7 @@ async function initializeExtensionAsync() {
             addToPerfBatcher: (snapshot) => perfBatcher.add(snapshot),
             handleLogMessage,
             handleClearLogs,
-            captureScreenshot: (tabId, relatedErrorId) => captureScreenshot(tabId, serverUrl, relatedErrorId, null, canTakeScreenshot, recordScreenshot, debugLog),
+            captureScreenshot: (tabId, relatedErrorId) => captureScreenshot(tabId, getServerUrl(), relatedErrorId, null, canTakeScreenshot, recordScreenshot, debugLog),
             checkConnectionAndUpdate,
             clearSourceMapCache,
             debugLog,
@@ -202,11 +202,11 @@ async function initializeExtensionAsync() {
         // Badge must reflect disconnected state BEFORE the async health check.
         // Without this, a stale "connected" badge persists from a previous SW session
         // until the health check completes (could be seconds if server is slow to refuse).
-        updateBadge(connectionStatus);
+        updateBadge(getConnectionStatus());
         // ============= STEP 11: Initial connection check =============
         // Await the connection check to keep the SW alive until the badge is updated.
         // Without await, Chrome may suspend the SW before the fetch completes.
-        if (__aiWebPilotCacheInitialized) {
+        if (isAiWebPilotCacheInitialized()) {
             await checkConnectionAndUpdate();
         }
         else {
@@ -215,11 +215,11 @@ async function initializeExtensionAsync() {
         // ============= INITIALIZATION COMPLETE =============
         markInitComplete();
         debugLog(DebugCategory.LIFECYCLE, 'Extension initialized', {
-            serverUrl,
-            logLevel: currentLogLevel,
-            screenshotOnError,
+            serverUrl: getServerUrl(),
+            logLevel: getCurrentLogLevel(),
+            screenshotOnError: isScreenshotOnError(),
             sourceMapEnabled: isSourceMapEnabled(),
-            debugMode
+            debugMode: isDebugMode()
         });
     }
     catch (error) {

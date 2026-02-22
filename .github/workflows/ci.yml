@@ -133,7 +133,7 @@ jobs:
 
       - name: Extension tests
         run: |
-          node --test --test-force-exit --test-timeout=60000 --test-concurrency=4 --test-reporter=spec tests/extension/*.test.js
+          npm run test:ext
 
   security:
     name: Security Scan
