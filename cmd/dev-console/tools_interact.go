@@ -292,6 +292,15 @@ func (h *ToolHandler) handleBrowserActionNavigate(req JSONRPCRequest, args json.
 	if params.URL == "" {
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrMissingParam, "Required parameter 'url' is missing", "Add the 'url' parameter and call again", withParam("url"))}
 	}
+	resolvedURL, err := h.resolveNavigateURL(params.URL)
+	if err != nil {
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(
+			ErrInvalidParam,
+			err.Error(),
+			"Enable configure(what='security_mode', mode='insecure_proxy', confirm=true), or use a standard http(s) URL.",
+			withParam("url"),
+		)}
+	}
 
 	if resp, blocked := h.requirePilot(req); blocked {
 		return resp
@@ -306,7 +315,7 @@ func (h *ToolHandler) handleBrowserActionNavigate(req JSONRPCRequest, args json.
 	_ = json.Unmarshal(args, &actionParams)
 	actionParams["action"] = "navigate"
 	// Ensure required URL is present even if caller used alias forms.
-	actionParams["url"] = params.URL
+	actionParams["url"] = resolvedURL
 	actionPayload, _ := json.Marshal(actionParams)
 
 	query := queries.PendingQuery{
@@ -317,7 +326,10 @@ func (h *ToolHandler) handleBrowserActionNavigate(req JSONRPCRequest, args json.
 	}
 	h.capture.CreatePendingQueryWithTimeout(query, queries.AsyncCommandTimeout, req.ClientID)
 
-	h.recordAIAction("navigate", params.URL, map[string]any{"target_url": params.URL})
+	h.recordAIAction("navigate", resolvedURL, map[string]any{
+		"target_url":    resolvedURL,
+		"requested_url": params.URL,
+	})
 
 	resp := h.MaybeWaitForCommand(req, correlationID, args, "Navigate queued")
 
@@ -425,6 +437,19 @@ func (h *ToolHandler) handleBrowserActionNewTab(req JSONRPCRequest, args json.Ra
 	if resp, blocked := h.requirePilot(req); blocked {
 		return resp
 	}
+	resolvedURL := params.URL
+	if params.URL != "" {
+		rewriteURL, err := h.resolveNavigateURL(params.URL)
+		if err != nil {
+			return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(
+				ErrInvalidParam,
+				err.Error(),
+				"Enable configure(what='security_mode', mode='insecure_proxy', confirm=true), or use a standard http(s) URL.",
+				withParam("url"),
+			)}
+		}
+		resolvedURL = rewriteURL
+	}
 
 	correlationID := newCorrelationID("newtab")
 	h.armEvidenceForCommand(correlationID, "new_tab", args, req.ClientID)
@@ -432,8 +457,8 @@ func (h *ToolHandler) handleBrowserActionNewTab(req JSONRPCRequest, args json.Ra
 	actionParams := make(map[string]any)
 	_ = json.Unmarshal(args, &actionParams)
 	actionParams["action"] = "new_tab"
-	if params.URL != "" {
-		actionParams["url"] = params.URL
+	if resolvedURL != "" {
+		actionParams["url"] = resolvedURL
 	}
 	actionPayload, _ := json.Marshal(actionParams)
 
@@ -444,9 +469,49 @@ func (h *ToolHandler) handleBrowserActionNewTab(req JSONRPCRequest, args json.Ra
 	}
 	h.capture.CreatePendingQueryWithTimeout(query, queries.AsyncCommandTimeout, req.ClientID)
 
-	h.recordAIAction("new_tab", params.URL, map[string]any{"target_url": params.URL})
+	h.recordAIAction("new_tab", resolvedURL, map[string]any{
+		"target_url":    resolvedURL,
+		"requested_url": params.URL,
+	})
 
 	return h.MaybeWaitForCommand(req, correlationID, args, "New tab queued")
+}
+
+func (h *ToolHandler) resolveNavigateURL(rawURL string) (string, error) {
+	trimmed := strings.TrimSpace(rawURL)
+	const insecurePrefix = "gasoline-insecure://"
+	if !strings.HasPrefix(strings.ToLower(trimmed), insecurePrefix) {
+		return trimmed, nil
+	}
+	if h.capture == nil {
+		return "", fmt.Errorf("gasoline-insecure URL is unavailable because capture is not initialized")
+	}
+
+	mode, _, _ := h.capture.GetSecurityMode()
+	if mode != capture.SecurityModeInsecureProxy {
+		return "", fmt.Errorf("gasoline-insecure URL requires security_mode=insecure_proxy")
+	}
+
+	target := strings.TrimSpace(trimmed[len(insecurePrefix):])
+	if target == "" {
+		return "", fmt.Errorf("gasoline-insecure URL is missing target URL")
+	}
+	parsed, err := url.Parse(target)
+	if err != nil {
+		return "", fmt.Errorf("invalid gasoline-insecure target URL: %v", err)
+	}
+	if parsed.Scheme != "http" && parsed.Scheme != "https" {
+		return "", fmt.Errorf("gasoline-insecure target URL must use http or https")
+	}
+	if parsed.Host == "" {
+		return "", fmt.Errorf("gasoline-insecure target URL must include host")
+	}
+
+	port := defaultPort
+	if h.server != nil {
+		port = h.server.getListenPort()
+	}
+	return fmt.Sprintf("http://127.0.0.1:%d/insecure-proxy?target=%s", port, url.QueryEscape(target)), nil
 }
 
 // ============================================

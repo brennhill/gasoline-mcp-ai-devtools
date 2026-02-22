@@ -67,6 +67,9 @@ export interface ConnectionStatus {
     readonly serverVersion?: string;
     readonly extensionVersion?: string;
     readonly versionMismatch?: boolean;
+    readonly securityMode?: 'normal' | 'insecure_proxy';
+    readonly productionParity?: boolean;
+    readonly insecureRewritesApplied?: readonly string[];
 }
 /**
  * Context annotation warning

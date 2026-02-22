@@ -30,6 +30,9 @@ export interface MutableConnectionStatus {
   serverVersion?: string
   extensionVersion?: string
   versionMismatch?: boolean
+  securityMode?: 'normal' | 'insecure_proxy'
+  productionParity?: boolean
+  insecureRewritesApplied?: string[]
 }
 
 export let connectionStatus: MutableConnectionStatus = {
@@ -37,7 +40,10 @@ export let connectionStatus: MutableConnectionStatus = {
   entries: 0,
   maxEntries: 1000,
   errorCount: 0,
-  logFile: ''
+  logFile: '',
+  securityMode: 'normal',
+  productionParity: true,
+  insecureRewritesApplied: []
 }
 
 /** Log level filter */
@@ -130,6 +136,21 @@ export function applyCaptureOverrides(overrides: Record<string, string>): void {
   }
   if (overrides.screenshot_on_error !== undefined) {
     screenshotOnError = overrides.screenshot_on_error === 'true'
+  }
+
+  const securityMode = overrides.security_mode === 'insecure_proxy' ? 'insecure_proxy' : 'normal'
+  const productionParity = overrides.production_parity !== 'false'
+  const rewritesRaw = overrides.insecure_rewrites_applied || ''
+  const rewrites = rewritesRaw
+    .split(',')
+    .map((v) => v.trim())
+    .filter((v) => v.length > 0)
+
+  connectionStatus = {
+    ...connectionStatus,
+    securityMode,
+    productionParity,
+    insecureRewritesApplied: rewrites
   }
 }
 

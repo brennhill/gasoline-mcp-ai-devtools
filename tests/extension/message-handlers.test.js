@@ -171,6 +171,23 @@ describe('message routing', () => {
     assert.strictEqual(resp.serverUrl, 'http://localhost:9222')
   })
 
+  test('getStatus includes security mode fields when present', () => {
+    const { handler } = getInstalledHandler({
+      getConnectionStatus: mock.fn(() => ({
+        connected: true,
+        securityMode: 'insecure_proxy',
+        productionParity: false,
+        insecureRewritesApplied: ['csp_headers']
+      }))
+    })
+    const sendResponse = mock.fn()
+    handler({ type: 'getStatus' }, extensionSender, sendResponse)
+    const resp = sendResponse.mock.calls[0].arguments[0]
+    assert.strictEqual(resp.securityMode, 'insecure_proxy')
+    assert.strictEqual(resp.productionParity, false)
+    assert.deepStrictEqual(resp.insecureRewritesApplied, ['csp_headers'])
+  })
+
   test('clearLogs calls handler and responds', async () => {
     const { handler } = getInstalledHandler({
       handleClearLogs: mock.fn(() => Promise.resolve({ cleared: 50 }))

@@ -80,6 +80,16 @@ export function startSyncClient(deps) {
         // Handle capture overrides from server
         onCaptureOverrides: (overrides) => {
             deps.applyCaptureOverrides(overrides);
+            if (typeof chrome !== 'undefined' && chrome.runtime) {
+                chrome.runtime
+                    .sendMessage({
+                    type: 'statusUpdate',
+                    status: { ...deps.getConnectionStatus(), aiControlled: deps.getAiControlled() }
+                })
+                    .catch(() => {
+                    /* popup may not be open */
+                });
+            }
         },
         // Handle version mismatch between extension and server
         onVersionMismatch: (extensionVersion, serverVersion) => {

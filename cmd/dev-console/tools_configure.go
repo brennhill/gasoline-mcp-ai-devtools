@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/dev-console/dev-console/internal/ai"
+	"github.com/dev-console/dev-console/internal/capture"
 	cfg "github.com/dev-console/dev-console/internal/tools/configure"
 	"github.com/dev-console/dev-console/internal/util"
 )
@@ -95,6 +96,9 @@ var configureHandlers = map[string]ConfigureHandler{
 	},
 	"replay_sequence": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 		return h.toolConfigureReplaySequence(req, args)
+	},
+	"security_mode": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+		return h.toolConfigureSecurityMode(req, args)
 	},
 }
 
@@ -240,6 +244,70 @@ func (h *ToolHandler) toolConfigureTelemetry(req JSONRPCRequest, args json.RawMe
 		"status":         "ok",
 		"telemetry_mode": mode,
 	})}
+}
+
+func (h *ToolHandler) toolConfigureSecurityMode(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+	if h.capture == nil {
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(
+			ErrNotInitialized,
+			"Capture subsystem not initialized",
+			"Internal error — do not retry",
+		)}
+	}
+
+	var params struct {
+		Mode    string `json:"mode"`
+		Confirm bool   `json:"confirm"`
+	}
+	lenientUnmarshal(args, &params)
+
+	mode := strings.ToLower(strings.TrimSpace(params.Mode))
+	if mode == "" {
+		current, productionParity, rewrites := h.capture.GetSecurityMode()
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Security mode", map[string]any{
+			"status":                    "ok",
+			"security_mode":             current,
+			"production_parity":         productionParity,
+			"insecure_rewrites_applied": rewrites,
+			"requires_confirmation_for_insecure_mode": true,
+		})}
+	}
+
+	switch mode {
+	case capture.SecurityModeNormal:
+		h.capture.SetSecurityMode(capture.SecurityModeNormal, nil)
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Security mode updated", map[string]any{
+			"status":                    "ok",
+			"security_mode":             capture.SecurityModeNormal,
+			"production_parity":         true,
+			"insecure_rewrites_applied": []string{},
+		})}
+	case capture.SecurityModeInsecureProxy:
+		if !params.Confirm {
+			return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(
+				ErrInvalidParam,
+				"security_mode=insecure_proxy requires explicit confirmation",
+				"Retry with confirm=true to acknowledge altered-environment debugging mode",
+				withParam("confirm"),
+			)}
+		}
+		rewrites := []string{"csp_headers"}
+		h.capture.SetSecurityMode(capture.SecurityModeInsecureProxy, rewrites)
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Security mode updated", map[string]any{
+			"status":                    "ok",
+			"security_mode":             capture.SecurityModeInsecureProxy,
+			"production_parity":         false,
+			"insecure_rewrites_applied": rewrites,
+			"warning":                   "Altered environment active. Findings are not production-parity evidence.",
+		})}
+	default:
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(
+			ErrInvalidParam,
+			"Invalid security mode: "+params.Mode,
+			"Use mode: normal or insecure_proxy",
+			withParam("mode"),
+		)}
+	}
 }
 
 // toolConfigureRestart handles restart requests that reach the daemon.

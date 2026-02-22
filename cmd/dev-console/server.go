@@ -28,6 +28,7 @@ type Server struct {
 	logFile         string
 	maxEntries      int
 	maxFileSize     int64 // max log file size in bytes before rotation (0 = disabled)
+	listenPort      int
 	entries         []LogEntry
 	logAddedAt      []time.Time // parallel slice: when each entry was added
 	mu              sync.RWMutex
@@ -54,6 +55,7 @@ func NewServer(logFile string, maxEntries int) (*Server, error) {
 		logFile:       logFile,
 		maxEntries:    maxEntries,
 		maxFileSize:   defaultMaxFileSize,
+		listenPort:    defaultPort,
 		entries:       make([]LogEntry, 0),
 		telemetryMode: telemetryModeAuto,
 		logChan:       make(chan []LogEntry, 10000), // 10k buffer for burst traffic
@@ -99,6 +101,25 @@ func NewServer(logFile string, maxEntries int) (*Server, error) {
 	}
 
 	return s, nil
+}
+
+// setListenPort stores the active HTTP listener port for URL rewriting helpers.
+func (s *Server) setListenPort(port int) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if port > 0 {
+		s.listenPort = port
+	}
+}
+
+// getListenPort returns the active HTTP listener port.
+func (s *Server) getListenPort() int {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	if s.listenPort <= 0 {
+		return defaultPort
+	}
+	return s.listenPort
 }
 
 // Close gracefully shuts down the server, draining the async log writer.

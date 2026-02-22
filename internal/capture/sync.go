@@ -13,6 +13,7 @@ package capture
 import (
 	"encoding/json"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/dev-console/dev-console/internal/queries"
@@ -290,9 +291,28 @@ func (c *Capture) HandleSync(w http.ResponseWriter, r *http.Request) {
 		NextPollMs:       nextPollMs,
 		ServerTime:       now.Format(time.RFC3339),
 		ServerVersion:    c.GetServerVersion(),
-		CaptureOverrides: map[string]string{},
+		CaptureOverrides: c.buildCaptureOverrides(),
 	}
 
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(resp)
+}
+
+func (c *Capture) buildCaptureOverrides() map[string]string {
+	mode, productionParity, rewrites := c.GetSecurityMode()
+	if mode == SecurityModeNormal {
+		return map[string]string{}
+	}
+
+	overrides := map[string]string{
+		"security_mode":     mode,
+		"production_parity": "false",
+	}
+	if productionParity {
+		overrides["production_parity"] = "true"
+	}
+	if len(rewrites) > 0 {
+		overrides["insecure_rewrites_applied"] = strings.Join(rewrites, ",")
+	}
+	return overrides
 }

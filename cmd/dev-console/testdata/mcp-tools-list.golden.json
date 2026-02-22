@@ -672,7 +672,7 @@
   },
   {
     "name": "configure",
-    "description": "Session settings and utilities.\n\nKey actions: health (check server/extension status), clear (reset buffers), noise_rule (suppress recurring console noise), store/load (persist/retrieve session data), tutorial/examples (quick snippets + context-aware guidance), streaming (enable push notifications), recording_start/recording_stop (capture browser sessions), playback (replay recordings), log_diff (compare error states), restart (force-restart daemon when unresponsive).\n\nMacro sequences: save_sequence/replay_sequence/get_sequence/list_sequences/delete_sequence — save named interact action sequences and replay them in a single call.",
+    "description": "Session settings and utilities.\n\nKey actions: health (check server/extension status), clear (reset buffers), noise_rule (suppress recurring console noise), store/load (persist/retrieve session data), tutorial/examples (quick snippets + context-aware guidance), streaming (enable push notifications), recording_start/recording_stop (capture browser sessions), playback (replay recordings), log_diff (compare error states), security_mode (opt-in altered-environment debug mode), restart (force-restart daemon when unresponsive).\n\nMacro sequences: save_sequence/replay_sequence/get_sequence/list_sequences/delete_sequence — save named interact action sequences and replay them in a single call.",
     "inputSchema": {
       "properties": {
         "action": {
@@ -702,7 +702,8 @@
             "list_sequences",
             "delete_sequence",
             "replay_sequence",
-            "doctor"
+            "doctor",
+            "security_mode"
           ],
           "type": "string"
         },
@@ -741,6 +742,10 @@
         "compare_b": {
           "description": "Second snapshot to compare",
           "type": "string"
+        },
+        "confirm": {
+          "description": "Required true when enabling insecure_proxy mode.",
+          "type": "boolean"
         },
         "continue_on_error": {
           "description": "Continue replay if a step fails (default true)",
@@ -794,6 +799,14 @@
         },
         "method": {
           "description": "Single-rule flattening helper for noise_action=add",
+          "type": "string"
+        },
+        "mode": {
+          "description": "Security mode target for configure(what='security_mode'). Omit to read current mode.",
+          "enum": [
+            "normal",
+            "insecure_proxy"
+          ],
           "type": "string"
         },
         "name": {
@@ -1006,7 +1019,8 @@
             "list_sequences",
             "delete_sequence",
             "replay_sequence",
-            "doctor"
+            "doctor",
+            "security_mode"
           ],
           "type": "string"
         }

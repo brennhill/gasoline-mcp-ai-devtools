@@ -31,6 +31,7 @@ var binaryUpgradeState *BinaryWatcherState
 // Returns error if port binding fails (race condition with another client).
 // Never returns on success (blocks forever serving MCP protocol).
 func runMCPMode(server *Server, port int, apiKey string, opts daemonLaunchOptions) error {
+	server.setListenPort(port)
 	cap := initCapture(server, port)
 	mux := setupHTTPRoutes(server, cap)
 
