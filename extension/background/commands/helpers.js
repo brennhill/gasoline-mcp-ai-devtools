@@ -136,7 +136,13 @@ export function isBrowserEscapeAction(queryType, paramsObj) {
         : typeof paramsObj.what === 'string'
             ? paramsObj.what
             : '';
-    return action === 'navigate' || action === 'refresh' || action === 'back' || action === 'forward' || action === 'new_tab';
+    return (action === 'navigate' ||
+        action === 'refresh' ||
+        action === 'back' ||
+        action === 'forward' ||
+        action === 'new_tab' ||
+        action === 'switch_tab' ||
+        action === 'close_tab');
 }
 async function getTabWithRetry(tabId, retry = false) {
     try {

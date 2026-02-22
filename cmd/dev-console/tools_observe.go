@@ -52,6 +52,9 @@ var observeHandlers = map[string]ObserveHandler{
 	"tabs": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 		return observe.GetTabs(h, req, args)
 	},
+	"history": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+		return observe.AnalyzeHistory(h, req, args)
+	},
 	"pilot": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 		return observe.ObservePilot(h, req, args)
 	},
@@ -170,6 +173,7 @@ var serverSideObserveModes = map[string]bool{
 	"playback_results":  true,
 	"log_diff_report":   true,
 	"pilot":             true,
+	"history":           true,
 }
 
 // prependDisconnectWarning adds a warning to the first content block when the extension is disconnected.

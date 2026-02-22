@@ -178,6 +178,7 @@
             "vitals",
             "page",
             "tabs",
+            "history",
             "pilot",
             "timeline",
             "error_bundles",
@@ -1060,6 +1061,8 @@
             "back",
             "forward",
             "new_tab",
+            "switch_tab",
+            "close_tab",
             "screenshot",
             "click",
             "type",
@@ -1210,6 +1213,10 @@
           "description": "Attribute, recording, or cookie name",
           "type": "string"
         },
+        "new_tab": {
+          "description": "Open navigation URL in a background tab instead of replacing current tab (navigate)",
+          "type": "boolean"
+        },
         "observe_mutations": {
           "description": "Track element-level DOM mutations during action execution",
           "type": "boolean"
@@ -1274,6 +1281,10 @@
           "description": "Tab ID (default: active)",
           "type": "number"
         },
+        "tab_index": {
+          "description": "Tab index in current window ordering (switch_tab)",
+          "type": "number"
+        },
         "telemetry_mode": {
           "description": "Telemetry metadata mode for this call: off, auto, full",
           "enum": [
@@ -1334,6 +1345,8 @@
             "back",
             "forward",
             "new_tab",
+            "switch_tab",
+            "close_tab",
             "screenshot",
             "click",
             "type",

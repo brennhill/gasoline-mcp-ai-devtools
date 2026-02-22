@@ -16,7 +16,7 @@ func InteractToolSchema() mcp.MCPTool {
 					"enum": []string{
 						"highlight", "subtitle", "save_state", "state_save", "load_state", "state_load", "list_states", "state_list", "delete_state", "state_delete",
 						"set_storage", "delete_storage", "clear_storage", "set_cookie", "delete_cookie",
-						"execute_js", "navigate", "refresh", "back", "forward", "new_tab", "screenshot",
+						"execute_js", "navigate", "refresh", "back", "forward", "new_tab", "switch_tab", "close_tab", "screenshot",
 						"click", "type", "select", "check",
 						"get_text", "get_value", "get_attribute",
 						"set_attribute", "focus", "scroll_to", "wait_for", "key_press", "paste",
@@ -34,7 +34,7 @@ func InteractToolSchema() mcp.MCPTool {
 					"enum": []string{
 						"highlight", "subtitle", "save_state", "state_save", "load_state", "state_load", "list_states", "state_list", "delete_state", "state_delete",
 						"set_storage", "delete_storage", "clear_storage", "set_cookie", "delete_cookie",
-						"execute_js", "navigate", "refresh", "back", "forward", "new_tab", "screenshot",
+						"execute_js", "navigate", "refresh", "back", "forward", "new_tab", "switch_tab", "close_tab", "screenshot",
 						"click", "type", "select", "check",
 						"get_text", "get_value", "get_attribute",
 						"set_attribute", "focus", "scroll_to", "wait_for", "key_press", "paste",
@@ -173,6 +173,14 @@ func InteractToolSchema() mcp.MCPTool {
 				"tab_id": map[string]any{
 					"type":        "number",
 					"description": "Tab ID (default: active)",
+				},
+				"tab_index": map[string]any{
+					"type":        "number",
+					"description": "Tab index in current window ordering (switch_tab)",
+				},
+				"new_tab": map[string]any{
+					"type":        "boolean",
+					"description": "Open navigation URL in a background tab instead of replacing current tab (navigate)",
 				},
 				"reason": map[string]any{
 					"type":        "string",

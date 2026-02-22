@@ -37,6 +37,8 @@ export type BrowserActionResult = {
   final_url?: string
   title?: string
   tab_id?: number
+  tab_index?: number
+  closed_tab_id?: number
   content_script_status?: string
   message?: string
   error?: string
@@ -115,13 +117,41 @@ export async function handleNavigateAction(
   }
 }
 
+async function handleNewTabAction(tabId: number, url: string, actionToast: ActionToastFn, reason?: string): Promise<BrowserActionResult> {
+  if (!url) return { success: false, error: 'missing_url', message: 'URL required for new_tab action' }
+  actionToast(tabId, reason || 'new_tab', reason ? undefined : 'opening new tab', 'trying', 5000)
+  const newTab = await chrome.tabs.create({ url, active: false })
+  actionToast(tabId, reason || 'new_tab', undefined, 'success')
+  return {
+    success: true,
+    action: 'new_tab',
+    url,
+    tab_id: newTab.id,
+    tab_index: typeof newTab.index === 'number' ? newTab.index : undefined,
+    title: newTab.title
+  }
+}
+
+function coerceNonNegativeInt(value: unknown): number | null {
+  if (typeof value !== 'number' || !Number.isInteger(value) || value < 0) return null
+  return value
+}
+
 // =============================================================================
 // BROWSER ACTION DISPATCH
 // =============================================================================
 
 export async function handleBrowserAction(
   tabId: number,
-  params: { action?: string; what?: string; url?: string; reason?: string },
+  params: {
+    action?: string
+    what?: string
+    url?: string
+    reason?: string
+    tab_id?: number
+    tab_index?: number
+    new_tab?: boolean
+  },
   actionToast: ActionToastFn
 ): Promise<BrowserActionResult> {
   const { url, reason } = params || {}
@@ -148,6 +178,9 @@ export async function handleBrowserAction(
       }
       case 'navigate':
         if (!url) return { success: false, error: 'missing_url', message: 'URL required for navigate action' }
+        if (params?.new_tab) {
+          return handleNewTabAction(tabId, url, actionToast, reason || 'navigate')
+        }
         return handleNavigateAction(tabId, url, actionToast, reason)
       case 'back': {
         actionToast(tabId, reason || 'back', reason ? undefined : 'going back', 'trying', 10000)
@@ -166,11 +199,70 @@ export async function handleBrowserAction(
         return { success: true, action: 'forward', url: fwdTab.url, title: fwdTab.title }
       }
       case 'new_tab': {
-        if (!url) return { success: false, error: 'missing_url', message: 'URL required for new_tab action' }
-        actionToast(tabId, reason || 'new_tab', reason ? undefined : 'opening new tab', 'trying', 5000)
-        const newTab = await chrome.tabs.create({ url, active: false })
-        actionToast(tabId, reason || 'new_tab', undefined, 'success')
-        return { success: true, action: 'new_tab', url, tab_id: newTab.id, title: newTab.title }
+        return handleNewTabAction(tabId, url || '', actionToast, reason)
+      }
+      case 'switch_tab': {
+        const requestedTabID = coerceNonNegativeInt(params?.tab_id)
+        const requestedTabIndex = coerceNonNegativeInt(params?.tab_index)
+        if (requestedTabID === null && requestedTabIndex === null) {
+          return {
+            success: false,
+            error: 'missing_tab_target',
+            message: "switch_tab requires 'tab_id' or 'tab_index'"
+          }
+        }
+
+        let targetTab: chrome.tabs.Tab | null = null
+        if (requestedTabID !== null) {
+          targetTab = await chrome.tabs.get(requestedTabID)
+        } else {
+          const tabs = await chrome.tabs.query({ currentWindow: true })
+          const sortable = tabs.filter((tab) => typeof tab.id === 'number')
+          sortable.sort((a, b) => (a.index ?? 0) - (b.index ?? 0))
+          targetTab = sortable[requestedTabIndex!] || null
+        }
+
+        if (!targetTab?.id) {
+          return {
+            success: false,
+            error: 'tab_not_found',
+            message: 'No matching tab found for switch_tab request'
+          }
+        }
+
+        const updated = await chrome.tabs.update(targetTab.id, { active: true })
+        const activeTab = updated || targetTab
+        return {
+          success: true,
+          action: 'switch_tab',
+          tab_id: activeTab.id || targetTab.id,
+          tab_index: typeof activeTab.index === 'number' ? activeTab.index : targetTab.index,
+          url: activeTab.url || targetTab.url,
+          title: activeTab.title || targetTab.title
+        }
+      }
+      case 'close_tab': {
+        const requestedTabID = coerceNonNegativeInt(params?.tab_id)
+        const targetTabID = requestedTabID !== null ? requestedTabID : tabId
+        if (!targetTabID || targetTabID < 0) {
+          return {
+            success: false,
+            error: 'missing_tab_target',
+            message: "close_tab requires a valid 'tab_id' or resolved tab context"
+          }
+        }
+
+        await chrome.tabs.remove(targetTabID)
+        const activeTabs = await chrome.tabs.query({ active: true, currentWindow: true })
+        const activeTab = activeTabs[0]
+        return {
+          success: true,
+          action: 'close_tab',
+          closed_tab_id: targetTabID,
+          tab_id: activeTab?.id,
+          url: activeTab?.url,
+          title: activeTab?.title
+        }
       }
       default:
         return { success: false, error: 'unknown_action', message: `Unknown action: ${action}` }
@@ -286,7 +378,14 @@ function enrichCSPFailure(result: BrowserActionResult): BrowserActionResult {
 export async function handleAsyncBrowserAction(
   query: PendingQuery,
   tabId: number,
-  params: { action?: string; what?: string; url?: string },
+  params: {
+    action?: string
+    what?: string
+    url?: string
+    tab_id?: number
+    tab_index?: number
+    new_tab?: boolean
+  },
   syncClient: SyncClient,
   sendAsyncResult: SendAsyncResultFn,
   actionToast: ActionToastFn

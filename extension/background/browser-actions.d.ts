@@ -14,6 +14,8 @@ export type BrowserActionResult = {
     final_url?: string;
     title?: string;
     tab_id?: number;
+    tab_index?: number;
+    closed_tab_id?: number;
     content_script_status?: string;
     message?: string;
     error?: string;
@@ -26,11 +28,17 @@ export declare function handleBrowserAction(tabId: number, params: {
     what?: string;
     url?: string;
     reason?: string;
+    tab_id?: number;
+    tab_index?: number;
+    new_tab?: boolean;
 }, actionToast: ActionToastFn): Promise<BrowserActionResult>;
 export declare function handleAsyncExecuteCommand(query: PendingQuery, tabId: number, world: string, syncClient: SyncClient, sendAsyncResult: SendAsyncResultFn, actionToast: ActionToastFn): Promise<void>;
 export declare function handleAsyncBrowserAction(query: PendingQuery, tabId: number, params: {
     action?: string;
     what?: string;
     url?: string;
+    tab_id?: number;
+    tab_index?: number;
+    new_tab?: boolean;
 }, syncClient: SyncClient, sendAsyncResult: SendAsyncResultFn, actionToast: ActionToastFn): Promise<void>;
 //# sourceMappingURL=browser-actions.d.ts.map

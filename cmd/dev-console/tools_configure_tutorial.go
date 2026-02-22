@@ -4,7 +4,7 @@ package main
 import "encoding/json"
 
 const (
-	cspRetryNavigationGuidance = "This page blocks script execution (CSP/restricted context). Use interact navigate/refresh/back/forward/new_tab to move to another page."
+	cspRetryNavigationGuidance = "This page blocks script execution (CSP/restricted context). Use interact navigate/refresh/back/forward/new_tab/switch_tab/close_tab to move to another page."
 	cspFallbackStatusPattern   = "Error: MAIN world execution FAILED. Fallback in ISOLATED is SUCCESS|ERROR"
 )
 
@@ -240,7 +240,7 @@ func tutorialCSPFallbackPlaybook() map[string]any {
 		"what_is_possible": []string{
 			"Pre-compiled DOM primitives (click/type/select/check/focus/list_interactive/highlight)",
 			"DOM inspection and screenshot checkpoints",
-			"Navigation escape actions (navigate/refresh/back/forward/new_tab)",
+			"Navigation escape actions (navigate/refresh/back/forward/new_tab/switch_tab/close_tab)",
 		},
 		"what_is_not_possible": []string{
 			"Arbitrary page-context JS eval when CSP/Trusted Types blocks dynamic script execution",
