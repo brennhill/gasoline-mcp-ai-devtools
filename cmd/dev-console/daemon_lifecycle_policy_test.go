@@ -74,17 +74,20 @@ func TestEnforceDaemonStartupPolicy_DefaultTakeover(t *testing.T) {
 	}
 
 	oldIsAlive := daemonIsProcessAlive
+	oldIsServerRunning := daemonIsServerRunning
 	oldTryShutdown := daemonTryShutdown
 	oldWaitRelease := daemonWaitForPortRelease
 	oldTerminate := daemonTerminatePID
 	defer func() {
 		daemonIsProcessAlive = oldIsAlive
+		daemonIsServerRunning = oldIsServerRunning
 		daemonTryShutdown = oldTryShutdown
 		daemonWaitForPortRelease = oldWaitRelease
 		daemonTerminatePID = oldTerminate
 	}()
 
 	daemonIsProcessAlive = func(pid int) bool { return pid == existingPID }
+	daemonIsServerRunning = func(port int) bool { return port == existingPort }
 	daemonTryShutdown = func(port int) bool { return port == existingPort }
 	waitCalls := 0
 	daemonWaitForPortRelease = func(port int, _ time.Duration) bool {
@@ -174,12 +177,15 @@ func TestEnforceDaemonStartupPolicy_SafetyGuardRejectsPIDMismatch(t *testing.T) 
 	defer server.shutdownAsyncLogger(2 * time.Second)
 
 	oldIsAlive := daemonIsProcessAlive
+	oldIsServerRunning := daemonIsServerRunning
 	oldTerminate := daemonTerminatePID
 	defer func() {
 		daemonIsProcessAlive = oldIsAlive
+		daemonIsServerRunning = oldIsServerRunning
 		daemonTerminatePID = oldTerminate
 	}()
 	daemonIsProcessAlive = func(pid int) bool { return pid == existingPID }
+	daemonIsServerRunning = func(port int) bool { return port == existingPort }
 	terminated := false
 	daemonTerminatePID = func(_ int, _ bool) { terminated = true }
 
@@ -241,5 +247,74 @@ func TestEnforceDaemonStartupPolicy_ParallelRequiresIsolatedStateDir(t *testing.
 	}
 	if terminated || shutdownCalled {
 		t.Fatalf("parallel mode should not takeover/kill existing daemon; terminated=%v shutdownCalled=%v", terminated, shutdownCalled)
+	}
+}
+
+func TestEnforceDaemonStartupPolicy_ReclaimsStaleLockOnPIDMismatchWhenPortIdle(t *testing.T) {
+	stateRoot := t.TempDir()
+	t.Setenv(state.StateDirEnv, stateRoot)
+
+	const existingPID = 61616
+	const existingPort = 7930
+
+	if err := writeDaemonLockFile(daemonLockRecord{
+		PID:      existingPID,
+		Port:     existingPort,
+		StateDir: stateRoot,
+		Version:  "0.7.7",
+	}); err != nil {
+		t.Fatalf("writeDaemonLockFile() error = %v", err)
+	}
+
+	// PID mismatch: port pid file does not match lock owner.
+	writeDaemonPIDFileForTest(t, existingPort, existingPID+1)
+
+	logFile := filepath.Join(t.TempDir(), "daemon-policy-reclaim.log")
+	server, err := NewServer(logFile, 200)
+	if err != nil {
+		t.Fatalf("NewServer() error = %v", err)
+	}
+
+	oldIsAlive := daemonIsProcessAlive
+	oldIsServerRunning := daemonIsServerRunning
+	oldTerminate := daemonTerminatePID
+	defer func() {
+		daemonIsProcessAlive = oldIsAlive
+		daemonIsServerRunning = oldIsServerRunning
+		daemonTerminatePID = oldTerminate
+	}()
+	daemonIsProcessAlive = func(pid int) bool { return pid == existingPID }
+	daemonIsServerRunning = func(port int) bool { return false }
+	terminated := false
+	daemonTerminatePID = func(_ int, _ bool) { terminated = true }
+
+	if err := enforceDaemonStartupPolicy(server, 7931, daemonLaunchOptions{}); err != nil {
+		t.Fatalf("enforceDaemonStartupPolicy() error = %v, want stale lock reclaimed", err)
+	}
+	if terminated {
+		t.Fatal("stale lock reclaim should not terminate any process")
+	}
+	lockAfter, err := readDaemonLockFile()
+	if err != nil {
+		t.Fatalf("readDaemonLockFile() error = %v", err)
+	}
+	if lockAfter != nil {
+		t.Fatalf("daemon lock should be removed after stale reclaim, got %+v", *lockAfter)
+	}
+	if _, err := os.Stat(pidFilePath(existingPort)); !os.IsNotExist(err) {
+		t.Fatalf("pid file for stale lock port should be removed, stat err = %v", err)
+	}
+
+	server.shutdownAsyncLogger(2 * time.Second)
+	events := readLifecycleEventsFromLogFile(t, logFile)
+	found := false
+	for _, evt := range events {
+		if evtName, _ := evt["event"].(string); evtName == "daemon_lock_reclaimed_stale_mismatch" {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Fatal("expected daemon_lock_reclaimed_stale_mismatch lifecycle event")
 	}
 }
