@@ -17,6 +17,9 @@ const (
 	PilotSourceExtensionSync  = "extension_sync"
 	PilotSourceSettingsCache  = "settings_cache"
 	PilotSourceTestHelper     = "test_helper"
+
+	SecurityModeNormal        = "normal"
+	SecurityModeInsecureProxy = "insecure_proxy"
 )
 
 // ExtensionState tracks all extension-related state: connection, pilot, tracking, and test boundaries.
@@ -46,6 +49,10 @@ type ExtensionState struct {
 	trackedTabURL   string    // Tracked tab URL (informational, may be stale).
 	trackedTabTitle string    // Tracked tab title (informational, may be stale).
 	trackingUpdated time.Time // When tracking status last refreshed.
+
+	// Last-resort altered-environment debug mode.
+	securityMode     string   // "normal" (default) or "insecure_proxy".
+	insecureRewrites []string // Rewrite set active in insecure mode (for transparent reporting).
 
 	// Test boundaries
 	activeTestIDs map[string]bool // Active test boundary IDs. Used to tag events during ingestion.
@@ -278,4 +285,35 @@ func pilotStatusSnapshotFromExtensionState(ext ExtensionState) pilotStatusSnapsh
 	snap.State = PilotStateExplicitlyDisable
 	snap.Source = PilotStateExplicitlyDisable
 	return snap
+}
+
+// SetSecurityMode updates altered-environment security mode for debugging.
+// mode values: normal (default), insecure_proxy.
+func (c *Capture) SetSecurityMode(mode string, rewrites []string) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	switch mode {
+	case SecurityModeInsecureProxy:
+		c.ext.securityMode = SecurityModeInsecureProxy
+		c.ext.insecureRewrites = append([]string(nil), rewrites...)
+	default:
+		c.ext.securityMode = SecurityModeNormal
+		c.ext.insecureRewrites = nil
+	}
+}
+
+// GetSecurityMode returns current altered-environment mode and rewrite set.
+// production_parity is true only in normal mode.
+func (c *Capture) GetSecurityMode() (mode string, productionParity bool, rewrites []string) {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+
+	mode = c.ext.securityMode
+	if mode == "" {
+		mode = SecurityModeNormal
+	}
+	productionParity = mode == SecurityModeNormal
+	rewrites = append([]string(nil), c.ext.insecureRewrites...)
+	return mode, productionParity, rewrites
 }

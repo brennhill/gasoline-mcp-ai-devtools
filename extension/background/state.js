@@ -18,7 +18,10 @@ export let connectionStatus = {
     entries: 0,
     maxEntries: 1000,
     errorCount: 0,
-    logFile: ''
+    logFile: '',
+    securityMode: 'normal',
+    productionParity: true,
+    insecureRewritesApplied: []
 };
 /** Log level filter */
 export let currentLogLevel = 'all';
@@ -86,6 +89,19 @@ export function applyCaptureOverrides(overrides) {
     if (overrides.screenshot_on_error !== undefined) {
         screenshotOnError = overrides.screenshot_on_error === 'true';
     }
+    const securityMode = overrides.security_mode === 'insecure_proxy' ? 'insecure_proxy' : 'normal';
+    const productionParity = overrides.production_parity !== 'false';
+    const rewritesRaw = overrides.insecure_rewrites_applied || '';
+    const rewrites = rewritesRaw
+        .split(',')
+        .map((v) => v.trim())
+        .filter((v) => v.length > 0);
+    connectionStatus = {
+        ...connectionStatus,
+        securityMode,
+        productionParity,
+        insecureRewritesApplied: rewrites
+    };
 }
 /**
  * Reset pilot cache for testing

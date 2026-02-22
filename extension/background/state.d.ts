@@ -20,6 +20,9 @@ export interface MutableConnectionStatus {
     serverVersion?: string;
     extensionVersion?: string;
     versionMismatch?: boolean;
+    securityMode?: 'normal' | 'insecure_proxy';
+    productionParity?: boolean;
+    insecureRewritesApplied?: string[];
 }
 export declare let connectionStatus: MutableConnectionStatus;
 /** Log level filter */

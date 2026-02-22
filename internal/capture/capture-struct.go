@@ -157,6 +157,7 @@ func NewCapture() *Capture {
 		ext: ExtensionState{
 			activeTestIDs: make(map[string]bool),
 			pilotSource:   PilotSourceAssumedStartup,
+			securityMode:  SecurityModeNormal,
 		},
 		perf: PerformanceStore{
 			snapshots:       make(map[string]performance.PerformanceSnapshot),

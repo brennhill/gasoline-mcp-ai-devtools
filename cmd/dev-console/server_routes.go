@@ -59,6 +59,7 @@ func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request, cap *captu
 		extStatus := cap.GetExtensionStatus()
 		pilotStatus, _ := cap.GetPilotStatus().(map[string]any)
 		pilotState, _ := pilotStatus["state"].(string)
+		securityMode, productionParity, rewrites := cap.GetSecurityMode()
 		resp["capture"] = map[string]any{
 			"available":           true,
 			"pilot_enabled":       cap.IsPilotActionAllowed(),
@@ -66,6 +67,9 @@ func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request, cap *captu
 			"extension_connected": cap.IsExtensionConnected(),
 			"extension_last_seen": extStatus["last_seen"],
 			"extension_client_id": extStatus["client_id"],
+			"security_mode":       securityMode,
+			"production_parity":   productionParity,
+			"insecure_rewrites":   rewrites,
 		}
 	}
 	jsonResponse(w, http.StatusOK, resp)
@@ -438,6 +442,11 @@ func registerCoreRoutes(mux *http.ServeMux, server *Server, cap *capture.Capture
 	// NOT MCP — Health check for extension and monitoring (MCP uses configure(action: "health"))
 	mux.HandleFunc("/health", corsMiddleware(func(w http.ResponseWriter, r *http.Request) {
 		server.handleHealth(w, r, cap)
+	}))
+
+	// NOT MCP — Last-resort altered-environment proxy for CSP-locked debugging sessions.
+	mux.HandleFunc("/insecure-proxy", corsMiddleware(func(w http.ResponseWriter, r *http.Request) {
+		server.handleInsecureProxy(w, r, cap)
 	}))
 
 	// NOT MCP — Doctor preflight check (aggregated readiness status)

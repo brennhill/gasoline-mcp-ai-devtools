@@ -131,6 +131,23 @@ describe('Popup State Display', () => {
     assert.ok(errorEl.textContent.includes('Connection refused'))
   })
 
+  test('should show insecure debug warning when security mode is insecure_proxy', async () => {
+    const { updateConnectionStatus } = await import('../../extension/popup.js')
+
+    updateConnectionStatus({
+      connected: true,
+      securityMode: 'insecure_proxy',
+      productionParity: false,
+      insecureRewritesApplied: ['csp_headers']
+    })
+
+    const warningEl = mockDocument.getElementById('security-mode-warning')
+    const detailEl = mockDocument.getElementById('security-mode-detail')
+    assert.strictEqual(warningEl.style.display, 'block')
+    assert.ok(detailEl.textContent.includes('INSECURE DEBUG MODE'))
+    assert.ok(detailEl.textContent.includes('production_parity=false'))
+  })
+
   test('should request status on popup open', async () => {
     const { initPopup } = await import('../../extension/popup.js')
 

@@ -467,10 +467,52 @@ func (h *MCPHandler) applyToolResponsePostProcessing(resp JSONRPCResponse, clien
 	if h.server != nil {
 		resp = appendWarningsToResponse(resp, h.server.TakeWarnings())
 	}
+	resp = h.maybeAddSecurityModeWarning(resp)
 	resp = h.maybeAddVersionWarning(resp)
 	resp = maybeAddUpdateAvailableWarning(resp)
 	resp = maybeAddUpgradeWarning(resp)
 	return h.maybeAddTelemetrySummary(resp, clientID, toolName, telemetryModeOverride)
+}
+
+func (h *MCPHandler) maybeAddSecurityModeWarning(resp JSONRPCResponse) JSONRPCResponse {
+	if h.toolHandler == nil || resp.Result == nil {
+		return resp
+	}
+	cap := h.toolHandler.GetCapture()
+	if cap == nil {
+		return resp
+	}
+
+	mode, productionParity, rewrites := cap.GetSecurityMode()
+	if mode == capture.SecurityModeNormal {
+		return resp
+	}
+
+	var result MCPToolResult
+	if err := json.Unmarshal(resp.Result, &result); err != nil {
+		return resp
+	}
+
+	warning := "[ALTERED ENVIRONMENT] security_mode=insecure_proxy; production_parity=false. CSP headers are rewritten for debugging.\n\n"
+	if len(result.Content) > 0 && result.Content[0].Type == "text" {
+		result.Content[0].Text = warning + result.Content[0].Text
+	} else {
+		result.Content = append([]MCPContentBlock{{Type: "text", Text: warning}}, result.Content...)
+	}
+
+	if result.Metadata == nil {
+		result.Metadata = make(map[string]any)
+	}
+	result.Metadata["security_mode"] = mode
+	result.Metadata["production_parity"] = productionParity
+	result.Metadata["insecure_rewrites_applied"] = rewrites
+
+	resultJSON, err := json.Marshal(result)
+	if err != nil {
+		return resp
+	}
+	resp.Result = json.RawMessage(resultJSON)
+	return resp
 }
 
 // maybeAddVersionWarning prepends a version mismatch warning to the tool response
