@@ -189,6 +189,64 @@ func TestToolsConfigureTutorial_IncludesSafeAutomationLoop(t *testing.T) {
 	if !ids["iframe"] {
 		t.Fatalf("safe_automation_loop missing iframe scenario: %#v", scenarios)
 	}
+	if !ids["csp_restricted_page"] {
+		t.Fatalf("safe_automation_loop missing csp_restricted_page scenario: %#v", scenarios)
+	}
+}
+
+func TestToolsConfigureTutorial_IncludesCSPFallbackPlaybook(t *testing.T) {
+	t.Parallel()
+	env := newConfigureTestEnv(t)
+	env.capture.SetPilotEnabled(true)
+	seedSyncSettings(t, env, `{"pilot_enabled":true,"tracking_enabled":true,"tracked_tab_id":17,"tracked_tab_url":"https://example.com","tracked_tab_title":"Example"}`)
+
+	result, ok := env.callConfigure(t, `{"what":"tutorial"}`)
+	if !ok {
+		t.Fatal("tutorial should return result")
+	}
+	if result.IsError {
+		t.Fatalf("tutorial should not error, got: %s", result.Content[0].Text)
+	}
+
+	data := parseResponseJSON(t, result)
+	playbook, ok := data["csp_fallback_playbook"].(map[string]any)
+	if !ok {
+		t.Fatalf("csp_fallback_playbook type = %T, want map[string]any", data["csp_fallback_playbook"])
+	}
+
+	detectSignals, ok := playbook["detect_signals"].([]any)
+	if !ok || len(detectSignals) == 0 {
+		t.Fatalf("csp_fallback_playbook.detect_signals = %#v, want non-empty []any", playbook["detect_signals"])
+	}
+	hasCSPBlockedAllWorlds := false
+	hasFailureCause := false
+	for _, raw := range detectSignals {
+		signal, _ := raw.(string)
+		if signal == "error=csp_blocked_all_worlds" {
+			hasCSPBlockedAllWorlds = true
+		}
+		if signal == "failure_cause=csp" {
+			hasFailureCause = true
+		}
+	}
+	if !hasCSPBlockedAllWorlds {
+		t.Fatalf("detect_signals missing error=csp_blocked_all_worlds: %#v", detectSignals)
+	}
+	if !hasFailureCause {
+		t.Fatalf("detect_signals missing failure_cause=csp: %#v", detectSignals)
+	}
+
+	retryGuidance, _ := playbook["exact_retry_guidance"].(string)
+	expectedRetry := "This page blocks script execution (CSP/restricted context). Use interact navigate/refresh/back/forward/new_tab to move to another page."
+	if retryGuidance != expectedRetry {
+		t.Fatalf("exact_retry_guidance = %q, want %q", retryGuidance, expectedRetry)
+	}
+
+	errorPattern, _ := playbook["fallback_status_pattern"].(string)
+	expectedPattern := "Error: MAIN world execution FAILED. Fallback in ISOLATED is SUCCESS|ERROR"
+	if errorPattern != expectedPattern {
+		t.Fatalf("fallback_status_pattern = %q, want %q", errorPattern, expectedPattern)
+	}
 }
 
 func TestToolsConfigureTutorial_SnippetsAvoidAmbiguousGlobalSubmit(t *testing.T) {

@@ -497,7 +497,7 @@ func annotateCSPFailure(responseData map[string]any, cmdError string, result jso
 		}
 	}
 	if _, exists := responseData["retry"]; !exists {
-		responseData["retry"] = "This page blocks script execution (CSP/restricted context). Use interact navigate/refresh/back/forward/new_tab to move to another page."
+		responseData["retry"] = cspRetryNavigationGuidance
 	}
 }
 
