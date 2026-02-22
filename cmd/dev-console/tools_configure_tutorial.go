@@ -20,17 +20,19 @@ func (h *ToolHandler) toolConfigureTutorial(req JSONRPCRequest, args json.RawMes
 
 	context := h.tutorialContext()
 	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Tutorial", map[string]any{
-		"status":     "ok",
-		"mode":       mode,
-		"message":    "Quickstart snippets and context-aware guidance",
-		"context":    context,
-		"issues":     tutorialIssues(context),
-		"next_steps": tutorialNextSteps(context),
-		"snippets":   tutorialSnippets(),
+		"status":               "ok",
+		"mode":                 mode,
+		"message":              "Quickstart snippets and context-aware guidance",
+		"context":              context,
+		"issues":               tutorialIssues(context),
+		"next_steps":           tutorialNextSteps(context),
+		"snippets":             tutorialSnippets(),
+		"safe_automation_loop": tutorialSafeAutomationLoop(),
 		"best_practices": []string{
 			"Start with observe to gather evidence before automating actions",
 			"Use configure tutorial/examples and describe_capabilities when argument shape is unclear",
 			"When debugging, capture correlation_id from interact/analyze and inspect with observe command_result",
+			"Use scope + list_interactive + post-action verification to avoid wrong-target clicks",
 		},
 	})}
 }
@@ -150,9 +152,9 @@ func tutorialSnippets() []map[string]any {
 		},
 		{
 			"tool":      "interact",
-			"goal":      "Click a button with semantic selector",
-			"snippet":   `interact({what:"click", selector:"text=Submit"})`,
-			"arguments": map[string]any{"what": "click", "selector": "text=Submit"},
+			"goal":      "Click a button with scoped selector (deterministic)",
+			"snippet":   `interact({what:"click", selector:"role=button[name='Submit']", scope_selector:"form[aria-label='Checkout']"})`,
+			"arguments": map[string]any{"what": "click", "selector": "role=button[name='Submit']", "scope_selector": "form[aria-label='Checkout']"},
 		},
 		{
 			"tool":      "analyze",
@@ -177,6 +179,41 @@ func tutorialSnippets() []map[string]any {
 			"goal":      "Inspect tool/mode metadata at runtime",
 			"snippet":   `configure({what:"describe_capabilities"})`,
 			"arguments": map[string]any{"what": "describe_capabilities"},
+		},
+	}
+}
+
+func tutorialSafeAutomationLoop() map[string]any {
+	return map[string]any{
+		"title": "Deterministic safe automation loop",
+		"steps": []map[string]any{
+			{"step": 1, "name": "scope_selection", "instruction": `Pick a scope first (scope_selector or frame) before targeting controls.`},
+			{"step": 2, "name": "list_interactive_in_scope", "instruction": `Run interact({what:"list_interactive", ...scope...}) and capture candidate indices/labels.`},
+			{"step": 3, "name": "candidate_verification", "instruction": `Verify candidate role/name/label matches intent before acting.`},
+			{"step": 4, "name": "action_execution", "instruction": `Execute action using element_id/index when available; avoid broad global selectors.`},
+			{"step": 5, "name": "post_action_verification", "instruction": `Verify state changed (DOM/text/url) and optionally capture screenshot evidence.`},
+		},
+		"bad_vs_good": []map[string]any{
+			{
+				"action": "submit_post",
+				"bad":    `interact({what:"click", selector:"text=Post"})`,
+				"good":   `interact({what:"list_interactive", scope_selector:"[role='dialog'][aria-label*='Create post']"}) -> verify candidate -> interact({what:"click", index:2}) -> observe({what:"screenshot", selector:"[data-test='feed-post']"})`,
+				"reason": "Global text selectors are ambiguous on complex pages with multiple dialogs/buttons.",
+			},
+		},
+		"scenarios": []map[string]any{
+			{
+				"id":          "multi_dialog",
+				"name":        "Multi-dialog composer flow",
+				"description": "When two dialogs are present, always scope to the active composer container before selecting a button.",
+				"snippet":     `interact({what:"list_interactive", scope_selector:"[role='dialog'][aria-modal='true']"})`,
+			},
+			{
+				"id":          "iframe",
+				"name":        "Iframe-scoped interaction flow",
+				"description": "When controls are inside an iframe, set frame first, then list/verify/click in that frame.",
+				"snippet":     `interact({what:"list_interactive", frame:"iframe.editor", scope_selector:"form"}) -> interact({what:"click", frame:"iframe.editor", index:1})`,
+			},
 		},
 	}
 }

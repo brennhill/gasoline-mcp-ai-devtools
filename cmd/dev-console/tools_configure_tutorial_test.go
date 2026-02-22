@@ -145,3 +145,74 @@ func TestToolsConfigureTutorial_ContextAware_NoTrackedTab(t *testing.T) {
 		t.Fatalf("expected no_tracked_tab issue, got: %+v", issues)
 	}
 }
+
+func TestToolsConfigureTutorial_IncludesSafeAutomationLoop(t *testing.T) {
+	t.Parallel()
+	env := newConfigureTestEnv(t)
+	env.capture.SetPilotEnabled(true)
+	seedSyncSettings(t, env, `{"pilot_enabled":true,"tracking_enabled":true,"tracked_tab_id":11,"tracked_tab_url":"https://example.com","tracked_tab_title":"Example"}`)
+
+	result, ok := env.callConfigure(t, `{"what":"tutorial"}`)
+	if !ok {
+		t.Fatal("tutorial should return result")
+	}
+	if result.IsError {
+		t.Fatalf("tutorial should not error, got: %s", result.Content[0].Text)
+	}
+
+	data := parseResponseJSON(t, result)
+	loop, ok := data["safe_automation_loop"].(map[string]any)
+	if !ok {
+		t.Fatalf("safe_automation_loop type = %T, want map[string]any", data["safe_automation_loop"])
+	}
+	steps, ok := loop["steps"].([]any)
+	if !ok || len(steps) < 5 {
+		t.Fatalf("safe_automation_loop.steps = %#v, want >=5 steps", loop["steps"])
+	}
+	badVsGood, ok := loop["bad_vs_good"].([]any)
+	if !ok || len(badVsGood) == 0 {
+		t.Fatalf("safe_automation_loop.bad_vs_good = %#v, want non-empty", loop["bad_vs_good"])
+	}
+	scenarios, ok := loop["scenarios"].([]any)
+	if !ok || len(scenarios) < 2 {
+		t.Fatalf("safe_automation_loop.scenarios = %#v, want at least 2", loop["scenarios"])
+	}
+	ids := make(map[string]bool, len(scenarios))
+	for _, raw := range scenarios {
+		entry, _ := raw.(map[string]any)
+		id, _ := entry["id"].(string)
+		ids[id] = true
+	}
+	if !ids["multi_dialog"] {
+		t.Fatalf("safe_automation_loop missing multi_dialog scenario: %#v", scenarios)
+	}
+	if !ids["iframe"] {
+		t.Fatalf("safe_automation_loop missing iframe scenario: %#v", scenarios)
+	}
+}
+
+func TestToolsConfigureTutorial_SnippetsAvoidAmbiguousGlobalSubmit(t *testing.T) {
+	t.Parallel()
+	env := newConfigureTestEnv(t)
+
+	result, ok := env.callConfigure(t, `{"what":"examples"}`)
+	if !ok {
+		t.Fatal("examples should return result")
+	}
+	if result.IsError {
+		t.Fatalf("examples should not error, got: %s", result.Content[0].Text)
+	}
+
+	data := parseResponseJSON(t, result)
+	snippets, ok := data["snippets"].([]any)
+	if !ok {
+		t.Fatalf("snippets type = %T, want []any", data["snippets"])
+	}
+	for _, raw := range snippets {
+		entry, _ := raw.(map[string]any)
+		snippet, _ := entry["snippet"].(string)
+		if strings.Contains(snippet, `selector:"text=Submit"`) {
+			t.Fatalf("found ambiguous global submit snippet: %s", snippet)
+		}
+	}
+}
