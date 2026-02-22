@@ -21,6 +21,7 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"strings"
@@ -312,11 +313,16 @@ func (h *ToolHandler) formatCommandResult(req JSONRPCRequest, cmd queries.Comman
 }
 
 func (h *ToolHandler) formatCompleteCommand(req JSONRPCRequest, cmd queries.CommandResult, corrID string, responseData map[string]any) JSONRPCResponse {
-	responseData["result"] = cmd.Result
+	normalizedResult, normalizedErr := normalizeCompleteCommandResult(corrID, cmd.Result)
+	responseData["result"] = normalizedResult
 	responseData["completed_at"] = cmd.CompletedAt.Format(time.RFC3339)
 	responseData["timing_ms"] = cmd.CompletedAt.Sub(cmd.CreatedAt).Milliseconds()
 
-	if embeddedErr, hasEmbeddedErr := enrichCommandResponseData(cmd.Result, responseData); cmd.Error == "" && hasEmbeddedErr {
+	if cmd.Error == "" && normalizedErr != "" {
+		cmd.Error = normalizedErr
+	}
+
+	if embeddedErr, hasEmbeddedErr := enrichCommandResponseData(normalizedResult, responseData); cmd.Error == "" && hasEmbeddedErr {
 		cmd.Error = embeddedErr
 	}
 
@@ -344,13 +350,83 @@ func (h *ToolHandler) formatCompleteCommand(req JSONRPCRequest, cmd queries.Comm
 
 	if cmd.Error != "" {
 		responseData["error"] = cmd.Error
-		annotateCSPFailure(responseData, cmd.Error, cmd.Result)
+		annotateCSPFailure(responseData, cmd.Error, normalizedResult)
 		summary := fmt.Sprintf("FAILED — Command %s completed with error: %s", corrID, cmd.Error)
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONErrorResponse(summary, responseData)}
 	}
 
 	summary := fmt.Sprintf("Command %s: complete", corrID)
 	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse(summary, responseData)}
+}
+
+func normalizeCompleteCommandResult(corrID string, result json.RawMessage) (json.RawMessage, string) {
+	if strings.HasPrefix(corrID, "dom_list_") {
+		return normalizeListInteractiveResult(result)
+	}
+	return result, ""
+}
+
+func normalizeListInteractiveResult(result json.RawMessage) (json.RawMessage, string) {
+	trimmed := bytes.TrimSpace(result)
+	if len(trimmed) == 0 || bytes.Equal(trimmed, []byte("null")) {
+		payload := buildListInteractiveMissingPayload(nil, "list_interactive returned empty payload")
+		return safeMarshal(payload, `{"success":false,"error":"list_interactive_missing_payload","elements":[]}`), "list_interactive_missing_payload"
+	}
+
+	var parsed any
+	if err := json.Unmarshal(trimmed, &parsed); err != nil {
+		return result, ""
+	}
+
+	m, ok := parsed.(map[string]any)
+	if !ok {
+		payload := buildListInteractiveMissingPayload(nil, "list_interactive returned non-object payload")
+		return safeMarshal(payload, `{"success":false,"error":"list_interactive_missing_payload","elements":[]}`), "list_interactive_missing_payload"
+	}
+
+	if elems, exists := m["elements"]; exists {
+		if elems == nil {
+			m["elements"] = []any{}
+			return safeMarshal(m, string(trimmed)), ""
+		}
+		if _, isArray := elems.([]any); isArray {
+			return result, ""
+		}
+		payload := buildListInteractiveMissingPayload(m, "list_interactive returned invalid elements payload")
+		return safeMarshal(payload, `{"success":false,"error":"list_interactive_missing_payload","elements":[]}`), "list_interactive_missing_payload"
+	}
+
+	if value, hasValue := m["value"]; hasValue && value == nil {
+		payload := buildListInteractiveMissingPayload(m, "list_interactive returned value:null without elements")
+		return safeMarshal(payload, `{"success":false,"error":"list_interactive_missing_payload","elements":[]}`), "list_interactive_missing_payload"
+	}
+
+	payload := buildListInteractiveMissingPayload(m, "list_interactive response missing elements")
+	return safeMarshal(payload, `{"success":false,"error":"list_interactive_missing_payload","elements":[]}`), "list_interactive_missing_payload"
+}
+
+func buildListInteractiveMissingPayload(existing map[string]any, message string) map[string]any {
+	payload := map[string]any{
+		"success":  false,
+		"error":    "list_interactive_missing_payload",
+		"message":  message,
+		"elements": []any{},
+	}
+	for _, key := range []string{
+		"resolved_tab_id",
+		"resolved_url",
+		"target_context",
+		"effective_tab_id",
+		"effective_url",
+		"effective_title",
+	} {
+		if existing != nil {
+			if v, ok := existing[key]; ok {
+				payload[key] = v
+			}
+		}
+	}
+	return payload
 }
 
 func enrichCommandResponseData(result json.RawMessage, responseData map[string]any) (embeddedErr string, hasEmbeddedErr bool) {
