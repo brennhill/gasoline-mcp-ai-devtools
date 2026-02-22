@@ -210,6 +210,8 @@ func (h *ToolHandler) armEvidenceForCommand(correlationID, action string, args j
 		return
 	}
 
+	h.armRetryContract(correlationID, action, args)
+
 	mode, err := parseEvidenceMode(args)
 	if err != nil {
 		return

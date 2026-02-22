@@ -15,7 +15,7 @@
 #   ~/.gasoline/smoke-results/proof-first-artifacts.log
 set -eo pipefail
 
-begin_category "28" "Proof-First Real-World Flows" "5"
+begin_category "28" "Proof-First Real-World Flows" "6"
 
 PROOF_FIRST_ENABLED="${SMOKE_PROOF_FIRST:-0}"
 PROOF_SOCIAL_ENABLED="${SMOKE_SOCIAL:-0}"
@@ -348,5 +348,87 @@ else:
     pass "Evidence mode returned before/after paths (before_exists=$before_exists, after_exists=$after_exists)."
 }
 run_test_28_5
+
+# ── Test 28.6: Deterministic retry contract terminal stop ───────────────────
+begin_test "28.6" "[BROWSER] Retry contract stops after two attempts" \
+    "First failure should be retryable with retry_context.attempt=1; second failure chained via correlation_id should return terminal_stop=true" \
+    "Tests: deterministic retry contract + terminal evidence summary"
+
+run_test_28_6() {
+    module_enabled_or_skip || return
+
+    interact_and_wait "navigate" '{"action":"navigate","url":"https://example.com","reason":"Retry contract baseline"}' 20
+    record_last_corr_id
+
+    interact_and_wait "execute_js" '{"action":"execute_js","reason":"Inject duplicate retry buttons","script":"(function(){var old=document.getElementById(\"pf-retry-root\"); if(old) old.remove(); var root=document.createElement(\"div\"); root.id=\"pf-retry-root\"; root.innerHTML=\"<div id=\\\"pf-retry-a\\\"><button class=\\\"pf-retry-btn\\\" type=\\\"button\\\">Retry Target</button></div><div id=\\\"pf-retry-b\\\"><button class=\\\"pf-retry-btn\\\" type=\\\"button\\\">Retry Target</button></div>\"; document.body.appendChild(root); return \"retry-ready\";})()"}'
+    record_last_corr_id
+
+    interact_and_wait "click" '{"action":"click","selector":".pf-retry-btn","reason":"Retry contract first failure"}'
+    record_last_corr_id
+
+    local first_eval
+    first_eval=$(echo "$INTERACT_RESULT" | python3 -c '
+import json,sys
+t = sys.stdin.read()
+i = t.find("{")
+if i < 0:
+    print("NO_JSON|")
+    raise SystemExit(0)
+try:
+    d = json.loads(t[i:])
+except Exception:
+    print("NO_JSON|")
+    raise SystemExit(0)
+corr = d.get("correlation_id","")
+ctx = d.get("retry_context",{}) if isinstance(d.get("retry_context",{}), dict) else {}
+attempt = ctx.get("attempt")
+terminal = ctx.get("terminal_stop")
+print(f"{corr}|{attempt}|{terminal}")
+')
+
+    local first_corr first_attempt first_terminal
+    IFS='|' read -r first_corr first_attempt first_terminal <<< "$first_eval"
+
+    if [ -z "$first_corr" ] || [ "$first_attempt" != "1" ] || [ "$first_terminal" != "False" ]; then
+        fail "First attempt did not return expected retry_context (corr=$first_corr attempt=$first_attempt terminal=$first_terminal). Result: $(truncate "$INTERACT_RESULT" 260)"
+        return
+    fi
+
+    interact_and_wait "click" "{\"action\":\"click\",\"selector\":\".pf-retry-btn\",\"correlation_id\":\"$first_corr\",\"reason\":\"Retry contract second failure\"}"
+    record_last_corr_id
+
+    local second_eval
+    second_eval=$(echo "$INTERACT_RESULT" | python3 -c '
+import json,sys
+t = sys.stdin.read()
+i = t.find("{")
+if i < 0:
+    print("NO_JSON|")
+    raise SystemExit(0)
+try:
+    d = json.loads(t[i:])
+except Exception:
+    print("NO_JSON|")
+    raise SystemExit(0)
+ctx = d.get("retry_context",{}) if isinstance(d.get("retry_context",{}), dict) else {}
+attempt = ctx.get("attempt")
+terminal_stop = ctx.get("terminal_stop")
+retryable = d.get("retryable")
+terminal = d.get("terminal")
+has_summary = isinstance(d.get("evidence_summary"), dict)
+print(f"{attempt}|{terminal_stop}|{retryable}|{terminal}|{has_summary}")
+')
+
+    local second_attempt second_terminal_stop second_retryable second_terminal has_summary
+    IFS='|' read -r second_attempt second_terminal_stop second_retryable second_terminal has_summary <<< "$second_eval"
+
+    if [ "$second_attempt" != "2" ] || [ "$second_terminal_stop" != "True" ] || [ "$second_retryable" != "False" ] || [ "$second_terminal" != "True" ] || [ "$has_summary" != "True" ]; then
+        fail "Second attempt terminal contract not met (attempt=$second_attempt terminal_stop=$second_terminal_stop retryable=$second_retryable terminal=$second_terminal evidence_summary=$has_summary). Result: $(truncate "$INTERACT_RESULT" 280)"
+        return
+    fi
+
+    pass "Retry contract verified: attempt 1 retryable, attempt 2 terminal with evidence summary."
+}
+run_test_28_6
 
 echo "  Proof-first artifacts file: $PROOF_ARTIFACT_FILE"
