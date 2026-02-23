@@ -370,7 +370,7 @@ def _best_effort_remove(path):
         return False
     except PermissionError:
         try:
-            os.chmod(path, 0o666)
+            os.chmod(path, 0o644)  # noqa: S103 — owner rw + group/other read-only; just need write to delete
             os.remove(path)
             return True
         except OSError:
