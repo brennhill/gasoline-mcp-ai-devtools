@@ -1,15 +1,18 @@
-// Purpose: Owns status.go runtime behavior and integration logic.
+// Purpose: Defines /sync request-response envelopes and sync command reconciliation payload contracts.
+// Why: Keeps extension-daemon synchronization protocol explicit and versionable in one location.
 // Docs: docs/features/feature/backend-log-streaming/index.md
+// Docs: docs/features/feature/query-service/index.md
 
-// status.go — Extension tracking status types.
-// Used by /sync for tab tracking state updates.
 package capture
 
 import (
 	"time"
 )
 
-// ExtensionStatus represents a status ping from the browser extension
+// ExtensionStatus is a legacy status envelope for non-/sync update paths.
+//
+// Invariants:
+// - Tracking fields are merged directly into ExtensionState under c.mu.
 type ExtensionStatus struct {
 	Type               string `json:"type"`
 	TrackingEnabled    bool   `json:"tracking_enabled"`
@@ -20,8 +23,10 @@ type ExtensionStatus struct {
 	Timestamp          string `json:"timestamp"`
 }
 
-// UpdateExtensionStatus updates the capture state with extension tracking info.
-// Used by the /sync endpoint.
+// UpdateExtensionStatus applies legacy extension tracking updates.
+//
+// Failure semantics:
+// - Timestamp parsing/validation is not enforced here; caller-provided fields are trusted.
 func (c *Capture) UpdateExtensionStatus(status ExtensionStatus) {
 	c.mu.Lock()
 	c.ext.trackingEnabled = status.TrackingEnabled

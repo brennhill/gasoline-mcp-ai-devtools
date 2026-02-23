@@ -1,7 +1,7 @@
-// query_dispatcher.go — Capture delegation methods for QueryDispatcher.
-// All query lifecycle, result storage, and async command tracking logic lives
-// in internal/queries/. This file provides thin delegation from (c *Capture)
-// methods to c.qd.* for backward compatibility.
+// Purpose: Re-exports query-dispatcher constructors and delegates capture query lifecycle methods.
+// Why: Preserves capture package API compatibility while query logic lives in internal/queries.
+// Docs: docs/features/feature/query-service/index.md
+
 package capture
 
 import (
@@ -53,10 +53,14 @@ func (c *Capture) AcknowledgePendingQuery(queryID string) {
 	c.qd.AcknowledgePendingQuery(queryID)
 }
 
-// GetPendingQueriesDisconnectAware returns pending queries with disconnect detection.
+// GetPendingQueriesDisconnectAware returns pending queries with disconnect reconciliation.
 // If the extension has not synced within extensionDisconnectThreshold (10s) and has
 // synced at least once, all pending queries are expired with "extension_disconnected".
 // This prevents queries from hanging indefinitely when the extension crashes or disconnects.
+//
+// Failure semantics:
+// - On detected disconnect, pending commands are force-expired and nil is returned.
+// - On healthy connection, behavior matches GetPendingQueries.
 func (c *Capture) GetPendingQueriesDisconnectAware() []queries.PendingQueryResponse {
 	c.mu.RLock()
 	neverSynced := c.ext.lastSyncSeen.IsZero()

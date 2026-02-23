@@ -1,6 +1,7 @@
-// dispatcher.go — QueryDispatcher struct, factory, and snapshot.
-// Manages pending query queues, result storage, and async command tracking.
-// Owns its own sync.Mutex and sync.RWMutex — independent of Capture.mu.
+// Purpose: Implements async command/query dispatch and correlation state tracking.
+// Why: Coordinates async command flow so extension/server state stays coherent under concurrency.
+// Docs: docs/features/feature/query-service/index.md
+
 package queries
 
 import (
@@ -9,14 +10,24 @@ import (
 	"time"
 )
 
-// PendingQueryEntry tracks a pending query with timeout.
+// PendingQueryEntry tracks a queued extension command.
+//
+// Invariants:
+// - Query.ID is unique within this process and remains stable until acknowledged/expired.
+// - Expires is an absolute deadline; once passed, queue cleanup treats the entry as non-deliverable.
+// - ClientID is empty for single-client mode, non-empty for multi-client isolation.
 type PendingQueryEntry struct {
 	Query    PendingQueryResponse
 	Expires  time.Time
 	ClientID string // owning client for multi-client isolation
 }
 
-// QueryResultEntry stores a query result with client ownership.
+// QueryResultEntry stores a one-time consumable extension result.
+//
+// Invariants:
+// - Result is deleted on successful GetQueryResult* read to avoid stale replay.
+// - ClientID must match the originating request in multi-client mode.
+// - CreatedAt drives TTL-based cleanup and must reflect first insertion time.
 type QueryResultEntry struct {
 	Result    json.RawMessage
 	ClientID  string // owning client for multi-client isolation
@@ -29,6 +40,16 @@ type QueryResultEntry struct {
 //   - resultsMu (sync.RWMutex): protects completedResults, failedCommands
 //
 // Lock ordering: mu released BEFORE resultsMu acquired (never reverse).
+//
+// Invariants:
+// - pendingQueries is FIFO and bounded by MaxPendingQueries.
+// - commandNotify is always non-nil; writers close-and-rotate it under resultsMu to signal waiters.
+// - failedCommands is an append-only ring (max 100) for terminal failure history.
+//
+// Failure semantics:
+// - Queue saturation rejects new work with ErrQueueFull instead of dropping existing entries.
+// - Terminal command states are monotonic; once non-pending, updates are ignored.
+// - Cleanup can expire orphaned commands/results, favoring bounded memory over indefinite retention.
 type QueryDispatcher struct {
 	mu             sync.Mutex
 	pendingQueries []PendingQueryEntry
@@ -46,7 +67,11 @@ type QueryDispatcher struct {
 	stopCleanup func()
 }
 
-// NewQueryDispatcher creates a QueryDispatcher with initialized state.
+// NewQueryDispatcher creates a dispatcher with active cleanup lifecycle.
+//
+// Failure semantics:
+// - If callers never invoke Close, periodic cleanup goroutine continues for process lifetime.
+// - Constructor never returns a partially initialized dispatcher.
 func NewQueryDispatcher() *QueryDispatcher {
 	qd := &QueryDispatcher{
 		pendingQueries:   make([]PendingQueryEntry, 0),
@@ -62,7 +87,14 @@ func NewQueryDispatcher() *QueryDispatcher {
 	return qd
 }
 
-// Close stops background goroutines. Safe to call multiple times.
+// Close stops cleanup background work.
+//
+// Invariants:
+// - Idempotent: repeated calls after the first are no-ops.
+//
+// Failure semantics:
+// - Does not clear in-memory queues/results; it only ends cleanup lifecycle.
+// - Waiters continue using timeout semantics after close.
 func (qd *QueryDispatcher) Close() {
 	if qd.stopCleanup != nil {
 		qd.stopCleanup()

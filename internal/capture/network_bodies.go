@@ -1,9 +1,7 @@
-// Purpose: Owns network_bodies.go runtime behavior and integration logic.
+// Purpose: Implements network body ingestion, repair, enrichment, and buffer filtering operations.
+// Why: Preserves request/response payload evidence while maintaining bounded memory and schema consistency.
 // Docs: docs/features/feature/backend-log-streaming/index.md
 
-// network_bodies.go — Network body (HTTP request/response) buffering.
-// Captures HTTP request/response bodies with binary format detection.
-// Design: Ring buffer with memory-based eviction.
 package capture
 
 import (
@@ -14,7 +12,14 @@ import (
 	"github.com/dev-console/dev-console/internal/util"
 )
 
-// repairNBParallelArrays truncates network body parallel arrays to equal length if mismatched.
+// repairNBParallelArrays repairs ring-buffer parallel-slice corruption in-place.
+//
+// Invariants:
+// - networkBodies and networkAddedAt must have identical length.
+//
+// Failure semantics:
+// - On mismatch, keeps the common prefix and drops tail data to restore index alignment.
+// - Emits warning to stderr because truncated entries imply prior mutation bug.
 func (c *Capture) repairNBParallelArrays() {
 	if len(c.networkBodies) == len(c.networkAddedAt) {
 		return
@@ -26,7 +31,10 @@ func (c *Capture) repairNBParallelArrays() {
 	c.networkAddedAt = c.networkAddedAt[:minLen]
 }
 
-// detectAndSetBinaryFormat detects binary format from request or response body.
+// detectAndSetBinaryFormat infers payload format only when not already set.
+//
+// Failure semantics:
+// - Detection is best-effort; unknown formats leave fields empty without erroring ingestion.
 func detectAndSetBinaryFormat(body *NetworkBody) {
 	if body.BinaryFormat != "" {
 		return
@@ -46,7 +54,13 @@ func detectAndSetBinaryFormat(body *NetworkBody) {
 	}
 }
 
-// evictNBByCount trims network bodies to MaxNetworkBodies, updating memory accounting.
+// evictNBByCount enforces count-based cap while preserving newest entries.
+//
+// Invariants:
+// - c.nbMemoryTotal remains consistent with surviving entries after eviction.
+//
+// Failure semantics:
+// - Oldest entries are dropped first (FIFO eviction).
 func (c *Capture) evictNBByCount() {
 	if len(c.networkBodies) <= MaxNetworkBodies {
 		return
@@ -63,8 +77,15 @@ func (c *Capture) evictNBByCount() {
 	c.networkAddedAt = newAddedAt
 }
 
-// AddNetworkBodies adds network bodies to the buffer.
-// Enforces memory limits and updates running totals.
+// AddNetworkBodies ingests a batch into the network evidence ring buffer.
+//
+// Invariants:
+// - networkBodies/networkAddedAt are updated in lockstep.
+// - Totals are monotonic (`networkTotalAdded`, `networkErrorTotalAdded`) and never decremented.
+// - Active test IDs are snapshotted once per batch for consistent event tagging.
+//
+// Failure semantics:
+// - Batch ingestion never partially fails; over-capacity data is deterministically evicted.
 func (c *Capture) AddNetworkBodies(bodies []NetworkBody) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -95,8 +116,13 @@ func (c *Capture) AddNetworkBodies(bodies []NetworkBody) {
 	c.evictNBForMemory()
 }
 
-// evictNBForMemory removes oldest bodies if memory exceeds limit.
-// Calculates how many entries to drop in a single pass.
+// evictNBForMemory enforces memory cap using oldest-first eviction.
+//
+// Invariants:
+// - c.nbMemoryTotal is decremented by exact removed-entry estimates.
+//
+// Failure semantics:
+// - Drops enough leading entries to get under cap in one pass; may remove multiple recent appends.
 func (c *Capture) evictNBForMemory() {
 	excess := c.nbMemoryTotal - nbBufferMemoryLimit
 	if excess <= 0 {

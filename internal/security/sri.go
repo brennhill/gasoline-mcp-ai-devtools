@@ -1,13 +1,7 @@
-// Purpose: Owns sri.go runtime behavior and integration logic.
-// Docs: docs/features/feature/observe/index.md
+// Purpose: Generates Subresource Integrity hashes and related metadata from observed script/style resources.
+// Why: Enables integrity pinning workflows that reduce third-party tampering and supply-chain risk.
+// Docs: docs/features/feature/security-hardening/index.md
 
-// sri.go — SRI Hash Generator (generate_sri) MCP tool.
-// Generates Subresource Integrity hashes for third-party scripts and stylesheets
-// observed in network traffic. Protects against CDN compromise by computing
-// SHA-384 hashes that browsers verify before executing resources.
-// Design: Stateless analyzer operating on capture.NetworkBody data. Filters for JS/CSS
-// content types from third-party origins, computes SHA-384 hashes, and generates
-// ready-to-use HTML tag templates.
 package security
 
 import (
@@ -27,7 +21,10 @@ import (
 // SRIGenerator generates Subresource Integrity hashes for third-party resources.
 type SRIGenerator struct{}
 
-// SRIParams defines input parameters for the generate_sri tool.
+// SRIParams defines filter/output options for generate_sri tool.
+//
+// Invariants:
+// - ResourceTypes accepts scripts/styles; unknown values are ignored.
 type SRIParams struct {
 	ResourceTypes []string `json:"resource_types"` // "scripts", "styles" - default: both
 	Origins       []string `json:"origins"`        // Filter to specific origins
@@ -74,7 +71,10 @@ func NewSRIGenerator() *SRIGenerator {
 // Main Generation Logic
 // ============================================
 
-// sriFilterConfig holds pre-computed filter state for SRI generation.
+// sriFilterConfig holds pre-computed include/exclude decisions for one run.
+//
+// Invariants:
+// - firstPartyOrigins is derived from pageURLs and treated as trust boundary for third-party detection.
 type sriFilterConfig struct {
 	firstPartyOrigins map[string]bool
 	originFilter      map[string]bool
@@ -82,7 +82,10 @@ type sriFilterConfig struct {
 	includeStyles     bool
 }
 
-// newSRIFilterConfig builds the filter config from params and page URLs.
+// newSRIFilterConfig derives normalized filter state from params/page context.
+//
+// Failure semantics:
+// - Invalid page URLs simply do not contribute first-party origins.
 func newSRIFilterConfig(pageURLs []string, params SRIParams) sriFilterConfig {
 	cfg := sriFilterConfig{
 		firstPartyOrigins: make(map[string]bool),
@@ -113,7 +116,7 @@ func newSRIFilterConfig(pageURLs []string, params SRIParams) sriFilterConfig {
 	return cfg
 }
 
-// shouldIncludeResourceType returns true if this resource type passes the filter.
+// shouldIncludeResourceType returns whether resource type passes requested filters.
 func (cfg sriFilterConfig) shouldIncludeResourceType(resType string) bool {
 	return (resType == "script" && cfg.includeScripts) || (resType == "style" && cfg.includeStyles)
 }
@@ -148,8 +151,13 @@ func isPlaceholderBody(body string) bool {
 	return len(body) > 2 && body[0] == '[' && body[len(body)-1] == ']'
 }
 
-// evaluateBody checks a single network body against filters and, when eligible,
-// computes its SRI hash. The seenURLs map is updated for deduplication.
+// evaluateBody applies eligibility checks and computes one SRI resource when possible.
+//
+// Invariants:
+// - seenURLs de-duplicates by full resource URL per generation run.
+//
+// Failure semantics:
+// - Placeholder/truncated bodies are surfaced as warnings and skipped from hash output.
 func (g *SRIGenerator) evaluateBody(body capture.NetworkBody, cfg sriFilterConfig, seenURLs map[string]bool) sriBodyOutcome {
 	if body.ResponseBody == "" {
 		return sriBodyOutcome{skip: true}
@@ -189,7 +197,7 @@ func (g *SRIGenerator) evaluateBody(body capture.NetworkBody, cfg sriFilterConfi
 	}
 }
 
-// buildSRIWarnings converts collected URL lists into human-readable warning strings.
+// buildSRIWarnings converts skip diagnostics into user-facing warning messages.
 func buildSRIWarnings(truncated, placeholder, varyUA []string) []string {
 	warnings := make([]string, 0, len(truncated)+len(placeholder)+len(varyUA))
 	for _, u := range truncated {
@@ -204,7 +212,13 @@ func buildSRIWarnings(truncated, placeholder, varyUA []string) []string {
 	return warnings
 }
 
-// Generate analyzes network bodies and produces SRI hashes for third-party scripts/styles.
+// Generate analyzes captured bodies and emits hashable third-party script/style resources.
+//
+// Invariants:
+// - Summary counters include filtered/skipped third-party resources for auditability.
+//
+// Failure semantics:
+// - Non-hashable resources are excluded with warnings instead of aborting the run.
 func (g *SRIGenerator) Generate(bodies []capture.NetworkBody, pageURLs []string, params SRIParams) SRIResult {
 	cfg := newSRIFilterConfig(pageURLs, params)
 	result := SRIResult{Resources: []SRIResource{}, Warnings: []string{}}
@@ -255,7 +269,10 @@ func (g *SRIGenerator) Generate(bodies []capture.NetworkBody, pageURLs []string,
 // MCP Tool Handler
 // ============================================
 
-// HandleGenerateSRI processes MCP tool call parameters and generates SRI hashes.
+// HandleGenerateSRI parses params and returns SRI generation output.
+//
+// Failure semantics:
+// - Invalid JSON params return an explicit error and no partial output.
 func HandleGenerateSRI(params json.RawMessage, bodies []capture.NetworkBody, pageURLs []string) (any, error) {
 	var toolParams SRIParams
 	if len(params) > 0 {

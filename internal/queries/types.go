@@ -1,13 +1,7 @@
-// Purpose: Owns types.go runtime behavior and integration logic.
-// Docs: docs/features/feature/observe/index.md
+// Purpose: Implements async command/query dispatch and correlation state tracking.
+// Why: Coordinates async command flow so extension/server state stays coherent under concurrency.
+// Docs: docs/features/feature/query-service/index.md
 
-// types.go — Query-related types for extension-server RPC
-// PendingQuery, PendingQueryResponse, and CommandResult handle the async
-// query mechanism where MCP server sends queries to the browser extension
-// and waits for responses.
-//
-// JSON CONVENTION: All fields MUST use snake_case. See .claude/refs/api-naming-standards.md
-// Deviations from snake_case MUST be tagged with // SPEC:<spec-name> at the field level.
 package queries
 
 import (
@@ -19,7 +13,11 @@ import (
 // Query Types
 // ============================================
 
-// PendingQuery represents a query waiting for extension response
+// PendingQuery represents one command request queued for extension execution.
+//
+// Invariants:
+// - CorrelationID is optional but required for async lifecycle tracking.
+// - Params must remain JSON-serializable through extension transport.
 type PendingQuery struct {
 	Type          string          `json:"type"`
 	Params        json.RawMessage `json:"params"`
@@ -28,7 +26,11 @@ type PendingQuery struct {
 	TraceID       string          `json:"trace_id,omitempty"`       // End-to-end trace ID for async command lifecycle
 }
 
-// PendingQueryResponse is the response format for pending queries
+// PendingQueryResponse is the transport envelope delivered to the extension.
+//
+// Invariants:
+// - ID is daemon-generated and unique for this process lifetime.
+// - TraceID should remain stable across queue, extension, and observe surfaces.
 type PendingQueryResponse struct {
 	ID            string          `json:"id"`
 	Type          string          `json:"type"`
@@ -38,7 +40,11 @@ type PendingQueryResponse struct {
 	TraceID       string          `json:"trace_id,omitempty"`       // End-to-end trace ID for async command lifecycle
 }
 
-// CommandTraceEvent records one command lifecycle transition.
+// CommandTraceEvent records one lifecycle transition for async command diagnostics.
+//
+// Invariants:
+// - Stage values are canonical (queued, sent, started, resolved, timed_out, errored).
+// - At timestamps are append-ordered per command, producing a stable TraceTimeline.
 type CommandTraceEvent struct {
 	Stage   string    `json:"stage"` // queued, sent, started, resolved, timed_out, errored
 	At      time.Time `json:"at"`
@@ -47,7 +53,16 @@ type CommandTraceEvent struct {
 	Message string    `json:"message,omitempty"`
 }
 
-// CommandResult represents the result of an async command execution
+// CommandResult is the authoritative lifecycle record for one correlation ID.
+//
+// Invariants:
+// - Status transitions are monotonic: pending -> terminal (complete/error/timeout/expired/cancelled).
+// - CreatedAt is immutable; UpdatedAt tracks latest transition mutation.
+// - ExpiresAt is a hard deadline used to reconcile lost extension callbacks.
+//
+// Failure semantics:
+// - Error may be set even when a result payload exists; consumers should trust Status first.
+// - Terminal failures may move from active storage into failed-history ring.
 type CommandResult struct {
 	CorrelationID string              `json:"correlation_id"`
 	TraceID       string              `json:"trace_id,omitempty"`
@@ -63,7 +78,10 @@ type CommandResult struct {
 	TraceTimeline string              `json:"trace_timeline,omitempty"`
 }
 
-// ElapsedMs returns milliseconds from creation to completion (or now if still pending).
+// ElapsedMs returns lifecycle elapsed time.
+//
+// Failure semantics:
+// - For pending commands, uses time.Now() to provide a moving duration snapshot.
 func (cr *CommandResult) ElapsedMs() int64 {
 	end := cr.CompletedAt
 	if end.IsZero() {

@@ -1,3 +1,7 @@
+// Purpose: Implements async command/query dispatch and correlation state tracking.
+// Why: Coordinates async command flow so extension/server state stays coherent under concurrency.
+// Docs: docs/features/feature/query-service/index.md
+
 package queries
 
 import (
@@ -28,6 +32,11 @@ func deriveTraceID(explicit string, correlationID string, queryID string) string
 	return ""
 }
 
+// buildTraceTimeline produces a stable human-readable stage chain.
+//
+// Invariants:
+// - Event order is preserved; no re-sorting is performed here.
+// - Empty stages are skipped to avoid polluting timeline output.
 func buildTraceTimeline(events []CommandTraceEvent) string {
 	if len(events) == 0 {
 		return ""
@@ -42,6 +51,10 @@ func buildTraceTimeline(events []CommandTraceEvent) string {
 	return strings.Join(stages, " -> ")
 }
 
+// traceStageFromStatus maps canonical command status into trace stage vocabulary.
+//
+// Failure semantics:
+// - Unknown statuses yield empty stage and are intentionally ignored by appendTraceEventLocked.
 func traceStageFromStatus(status string) string {
 	switch NormalizeCommandStatus(status) {
 	case "pending":
@@ -57,6 +70,11 @@ func traceStageFromStatus(status string) string {
 	}
 }
 
+// ensureTraceContextLocked hydrates identifiers/timestamps before trace mutation.
+//
+// Invariants:
+// - Caller must hold resultsMu.
+// - Existing non-empty identity fields are preserved.
 func (qd *QueryDispatcher) ensureTraceContextLocked(cmd *CommandResult, correlationID string, queryID string, traceID string, now time.Time) {
 	if cmd == nil {
 		return
@@ -75,6 +93,10 @@ func (qd *QueryDispatcher) ensureTraceContextLocked(cmd *CommandResult, correlat
 	}
 }
 
+// hasTraceStageLocked checks whether a stage already exists in the trace.
+//
+// Invariants:
+// - Caller must hold resultsMu.
 func (qd *QueryDispatcher) hasTraceStageLocked(cmd *CommandResult, stage string) bool {
 	if cmd == nil || stage == "" {
 		return false
@@ -87,6 +109,14 @@ func (qd *QueryDispatcher) hasTraceStageLocked(cmd *CommandResult, stage string)
 	return false
 }
 
+// appendTraceEventLocked appends a stage exactly once and updates trace metadata.
+//
+// Invariants:
+// - Caller must hold resultsMu.
+// - Each stage is de-duplicated; repeated stage writes only advance UpdatedAt.
+//
+// Failure semantics:
+// - Empty stage or nil command are ignored to keep lifecycle ingestion non-fatal.
 func (qd *QueryDispatcher) appendTraceEventLocked(cmd *CommandResult, stage string, source string, status string, message string, at time.Time) {
 	if cmd == nil || stage == "" {
 		return
@@ -109,6 +139,10 @@ func (qd *QueryDispatcher) appendTraceEventLocked(cmd *CommandResult, stage stri
 	cmd.UpdatedAt = at
 }
 
+// recordTraceEvent records a stage for either active or failed command history.
+//
+// Failure semantics:
+// - Missing correlation IDs or absent command records are ignored (best-effort diagnostics path).
 func (qd *QueryDispatcher) recordTraceEvent(correlationID string, stage string, source string, status string, message string, at time.Time) {
 	if correlationID == "" || stage == "" {
 		return
@@ -132,6 +166,10 @@ func (qd *QueryDispatcher) recordTraceEvent(correlationID string, stage string, 
 	}
 }
 
+// copyCommandResultWithTrace deep-copies trace slices for lock-free callers.
+//
+// Invariants:
+// - Returned pointer never aliases internal trace slice memory.
 func copyCommandResultWithTrace(src *CommandResult) *CommandResult {
 	if src == nil {
 		return nil

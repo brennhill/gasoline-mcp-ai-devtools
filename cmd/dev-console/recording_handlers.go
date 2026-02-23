@@ -1,6 +1,7 @@
-// recording_handlers.go — MCP tool handlers for Flow Recording and Playback feature.
-// Docs: docs/features/feature/observe/index.md
-// Handles recording_start, recording_stop, recording_get, and playback actions.
+// Purpose: Implements recording and playback command handlers for captured browser sessions.
+// Why: Supports deterministic replay and comparison of browser behavior across runs.
+// Docs: docs/features/feature/playback-engine/index.md
+
 package main
 
 import (
@@ -11,7 +12,10 @@ import (
 	"github.com/dev-console/dev-console/internal/capture"
 )
 
-// buildPlaybackResult constructs the JSON-RPC response for a completed playback.
+// buildPlaybackResult constructs canonical playback completion payload.
+//
+// Failure semantics:
+// - Session timing is computed from session.StartedAt; clock skew only affects duration text.
 func (h *ToolHandler) buildPlaybackResult(req JSONRPCRequest, recordingID string, session *capture.PlaybackSession) JSONRPCResponse {
 	status := "ok"
 	if session.ActionsFailed > 0 {
@@ -32,7 +36,13 @@ func (h *ToolHandler) buildPlaybackResult(req JSONRPCRequest, recordingID string
 	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse(message, responseData)}
 }
 
-// appendServerLog adds a single log entry to the server's in-memory log buffer.
+// appendServerLog appends one entry to bounded in-memory daemon logs.
+//
+// Invariants:
+// - h.server.entries is always size-limited to h.server.maxEntries under h.server.mu.
+//
+// Failure semantics:
+// - Oldest entries are evicted first when capacity is exceeded.
 func (h *ToolHandler) appendServerLog(entry LogEntry) {
 	h.server.mu.Lock()
 	h.server.entries = append(h.server.entries, entry)
@@ -222,7 +232,13 @@ func (h *ToolHandler) toolGetRecordingActions(req JSONRPCRequest, args json.RawM
 // Playback Handlers
 // ============================================================================
 
-// toolConfigurePlayback handles configure(action: "playback", recording_id: "...")
+// toolConfigurePlayback executes playback and stores session for later observe retrieval.
+//
+// Invariants:
+// - playbackSessions map is written only under playbackMu.
+//
+// Failure semantics:
+// - Invalid/missing recording IDs return explicit structured errors.
 func (h *ToolHandler) toolConfigurePlayback(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	var params struct {
 		RecordingID string `json:"recording_id"`
@@ -266,7 +282,13 @@ func (h *ToolHandler) toolConfigurePlayback(req JSONRPCRequest, args json.RawMes
 	return h.buildPlaybackResult(req, params.RecordingID, session)
 }
 
-// toolGetPlaybackResults handles observe(what: "playback_results", recording_id: "...")
+// toolGetPlaybackResults reads stored playback session snapshots by recording ID.
+//
+// Invariants:
+// - playbackSessions map is read under playbackMu and transformed into detached response maps.
+//
+// Failure semantics:
+// - Missing session returns ErrNoData without attempting replay.
 func (h *ToolHandler) toolGetPlaybackResults(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	var params struct {
 		RecordingID string `json:"recording_id"`
@@ -332,7 +354,10 @@ func (h *ToolHandler) toolGetPlaybackResults(req JSONRPCRequest, args json.RawMe
 // Log Diffing Handlers
 // ============================================================================
 
-// toolConfigureLogDiff handles configure(action: "log_diff", original_id: "...", replay_id: "...")
+// toolConfigureLogDiff compares two recordings and returns summary delta counts.
+//
+// Failure semantics:
+// - Comparison errors are surfaced directly; no partial diff payload is returned.
 func (h *ToolHandler) toolConfigureLogDiff(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	var params struct {
 		OriginalID string `json:"original_id"`
@@ -382,7 +407,10 @@ func (h *ToolHandler) toolConfigureLogDiff(req JSONRPCRequest, args json.RawMess
 	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse(result.Summary, responseData)}
 }
 
-// toolGetLogDiffReport handles observe(what: "log_diff_report", original_id: "...", replay_id: "...")
+// toolGetLogDiffReport returns human-readable regression report text for two recordings.
+//
+// Failure semantics:
+// - Underlying diff errors short-circuit response with structured internal error.
 func (h *ToolHandler) toolGetLogDiffReport(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	var params struct {
 		OriginalID string `json:"original_id"`

@@ -1,7 +1,7 @@
-// Purpose: Owns settings.go runtime behavior and integration logic.
+// Purpose: Defines extension status payloads and applies status updates into capture extension-tracking state.
+// Why: Keeps extension tracking metadata synchronized for health and routing decisions.
 // Docs: docs/features/feature/backend-log-streaming/index.md
 
-// settings.go — Settings disk persistence for fast daemon restart.
 package capture
 
 import (
@@ -14,7 +14,10 @@ import (
 	"github.com/dev-console/dev-console/internal/state"
 )
 
-// PersistedSettings is the disk format for extension-settings.json.
+// PersistedSettings is the on-disk cache schema for extension pilot status.
+//
+// Invariants:
+// - Timestamp is used as freshness guard; stale cache is ignored.
 type PersistedSettings struct {
 	AIWebPilotEnabled *bool     `json:"ai_web_pilot_enabled,omitempty"`
 	Timestamp         time.Time `json:"timestamp"`
@@ -30,7 +33,10 @@ func getLegacySettingsPath() (string, error) {
 	return state.LegacySettingsFile()
 }
 
-// readSettingsData reads settings from the primary path, falling back to legacy.
+// readSettingsData reads settings from primary path with legacy fallback.
+//
+// Failure semantics:
+// - Missing files return (nil,nil) to indicate "no cache" without hard failure.
 func readSettingsData() ([]byte, error) {
 	path, err := getSettingsPath()
 	if err != nil {
@@ -62,7 +68,13 @@ func readSettingsData() ([]byte, error) {
 	return legacyData, nil
 }
 
-// LoadSettingsFromDisk loads cached settings from runtime state storage.
+// LoadSettingsFromDisk hydrates pilot state from recent persisted cache.
+//
+// Invariants:
+// - Cache older than 5s is intentionally ignored to avoid stale startup state overriding live sync.
+//
+// Failure semantics:
+// - Read/parse failures are logged and ignored; capture remains operational.
 func (c *Capture) LoadSettingsFromDisk() {
 	data, err := readSettingsData()
 	if err != nil {
@@ -93,7 +105,13 @@ func (c *Capture) LoadSettingsFromDisk() {
 	}
 }
 
-// SaveSettingsToDisk persists current settings to runtime state storage.
+// SaveSettingsToDisk persists authoritative pilot status snapshot.
+//
+// Invariants:
+// - Snapshot fields are read under c.mu and written atomically via temp-file rename.
+//
+// Failure semantics:
+// - Any filesystem error aborts write and returns error; previous settings file remains intact.
 func (c *Capture) SaveSettingsToDisk() error {
 	path, err := getSettingsPath()
 	if err != nil {

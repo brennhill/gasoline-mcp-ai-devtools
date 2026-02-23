@@ -1,10 +1,7 @@
-// csp.go — CSP Generator: produces Content-Security-Policy headers from observed traffic.
-// Maintains an append-only origin accumulator that records every unique
-// origin+resourceType+pageURL combination. Independent of the ring buffer,
-// so origins are never lost to eviction.
-// Design: Confidence scoring prevents observation poisoning (single injected
-// requests are excluded). Development pollution filtering removes extensions,
-// HMR, and dev-only origins automatically.
+// Purpose: Implements CSP origin accumulation and policy generation from observed runtime resource usage.
+// Why: Produces enforceable security policies grounded in real traffic instead of static guesswork.
+// Docs: docs/features/feature/security-hardening/index.md
+
 package security
 
 import (
@@ -15,7 +12,11 @@ import (
 	"time"
 )
 
-// OriginEntry records observations of a specific origin+resourceType pair.
+// OriginEntry records aggregated observations for one origin/resource-type pair.
+//
+// Invariants:
+// - Count is monotonic for a live entry.
+// - Pages behaves as a bounded set (max 1000 page keys per entry).
 type OriginEntry struct {
 	Origin       string          `json:"origin"`
 	ResourceType string          `json:"resource_type"`
@@ -26,6 +27,14 @@ type OriginEntry struct {
 }
 
 // CSPGenerator maintains the origin accumulator and generates CSP policies.
+//
+// Invariants:
+// - origins/pages maps are mutated only under mu.
+// - origins map is bounded by eviction (max ~10k keys).
+// - Generated policies are pure reads over accumulated state.
+//
+// Failure semantics:
+// - Invalid/unknown resource types are excluded rather than causing generation failure.
 type CSPGenerator struct {
 	mu      sync.RWMutex
 	origins map[string]*OriginEntry // key: "origin|resourceType"
@@ -106,7 +115,7 @@ type originProcessingResult struct {
 	originsFiltered int
 }
 
-// NewCSPGenerator creates a new CSP generator with an empty origin accumulator.
+// NewCSPGenerator creates a fresh accumulator for one daemon session.
 func NewCSPGenerator() *CSPGenerator {
 	return &CSPGenerator{
 		origins: make(map[string]*OriginEntry),
@@ -114,7 +123,14 @@ func NewCSPGenerator() *CSPGenerator {
 	}
 }
 
-// RecordOrigin adds an observation of an origin+resourceType from a specific page.
+// RecordOrigin ingests one resource observation into bounded origin/page sets.
+//
+// Invariants:
+// - Entry keys are stable "origin|resourceType" tuples.
+// - FirstSeen is immutable per entry; LastSeen updates per observation.
+//
+// Failure semantics:
+// - Capacity pressure evicts oldest origin entries; ingestion remains non-blocking.
 func (g *CSPGenerator) RecordOrigin(origin, resourceType, pageURL string) {
 	g.mu.Lock()
 	defer g.mu.Unlock()
@@ -149,7 +165,10 @@ func (g *CSPGenerator) RecordOrigin(origin, resourceType, pageURL string) {
 	}
 }
 
-// evictOldestOrigin removes the origin entry with the earliest FirstSeen timestamp.
+// evictOldestOrigin removes the earliest-observed entry to enforce map bounds.
+//
+// Failure semantics:
+// - If map is empty, operation is a no-op.
 func (g *CSPGenerator) evictOldestOrigin() {
 	var oldestKey string
 	var oldestTime time.Time
@@ -164,7 +183,10 @@ func (g *CSPGenerator) evictOldestOrigin() {
 	}
 }
 
-// Reset clears the origin accumulator (called on session reset).
+// Reset clears accumulated observations.
+//
+// Invariants:
+// - Both origins and pages maps are replaced atomically under lock.
 func (g *CSPGenerator) Reset() {
 	g.mu.Lock()
 	defer g.mu.Unlock()
@@ -173,7 +195,10 @@ func (g *CSPGenerator) Reset() {
 	g.pages = make(map[string]bool)
 }
 
-// GetPages returns a copy of all observed page URLs.
+// GetPages returns a detached list of observed page URLs.
+//
+// Failure semantics:
+// - Ordering is map-iteration order (non-deterministic); callers must sort if needed.
 func (g *CSPGenerator) GetPages() []string {
 	g.mu.RLock()
 	defer g.mu.RUnlock()
@@ -185,7 +210,14 @@ func (g *CSPGenerator) GetPages() []string {
 	return pages
 }
 
-// GenerateCSP produces a CSP policy from accumulated origin observations.
+// GenerateCSP derives policy directives from accumulated observations.
+//
+// Invariants:
+// - Read lock protects consistent view of origins/pages during generation.
+//
+// Failure semantics:
+// - Empty/default mode normalizes to "moderate".
+// - Low-confidence or explicitly excluded origins are omitted rather than failing generation.
 func (g *CSPGenerator) GenerateCSP(params CSPParams) CSPResponse {
 	g.mu.RLock()
 	defer g.mu.RUnlock()
@@ -233,8 +265,13 @@ func (g *CSPGenerator) GenerateCSP(params CSPParams) CSPResponse {
 	return response
 }
 
-// processOriginEntries iterates all accumulated origins and classifies each as
-// included, filtered (dev pollution), or excluded (manual/low confidence).
+// processOriginEntries classifies each accumulated origin for policy inclusion.
+//
+// Invariants:
+// - default-src always starts with 'self'.
+//
+// Failure semantics:
+// - Entries flagged as dev pollution/explicitly excluded are tracked as filtered and skipped.
 func (g *CSPGenerator) processOriginEntries(excludeSet map[string]bool) originProcessingResult {
 	pageOrigins := g.extractPageOrigins()
 	directives := map[string]map[string]bool{
@@ -273,7 +310,10 @@ func (g *CSPGenerator) processOriginEntries(excludeSet map[string]bool) originPr
 	return r
 }
 
-// buildOriginDetail creates an OriginDetail for a single entry with confidence scoring.
+// buildOriginDetail computes confidence metadata for one origin entry.
+//
+// Failure semantics:
+// - Low-confidence entries remain documented in output but are excluded from directives.
 func (g *CSPGenerator) buildOriginDetail(entry *OriginEntry, directive string) OriginDetail {
 	confidence := g.computeConfidence(entry)
 	included := confidence != "low"
@@ -295,7 +335,10 @@ func (g *CSPGenerator) buildOriginDetail(entry *OriginEntry, directive string) O
 	return detail
 }
 
-// applyWhitelistOverrides applies session-only whitelist origins and logs security events.
+// applyWhitelistOverrides appends session-scoped manual overrides to default-src.
+//
+// Failure semantics:
+// - Overrides affect generated output only; no persistent config is mutated.
 func (g *CSPGenerator) applyWhitelistOverrides(response *CSPResponse, overrides []string) {
 	if response.Directives["default-src"] == nil {
 		response.Directives["default-src"] = []string{"'self'"}

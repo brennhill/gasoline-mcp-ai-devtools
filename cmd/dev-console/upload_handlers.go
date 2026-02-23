@@ -1,5 +1,7 @@
-// upload_handlers.go — HTTP handlers for file upload stages 1-4.
-// Stage 4 requires --enable-os-upload-automation flag.
+// Purpose: Implements upload command handling, validation, and OS automation wiring.
+// Why: Reduces upload flake by centralizing validation and secure browser-to-OS handoff behavior.
+// Docs: docs/features/feature/file-upload/index.md
+
 package main
 
 import (
@@ -20,7 +22,11 @@ var handleDialogInjectInternal = upload.HandleDialogInject
 // Stage 1: File Read (POST /api/file/read)
 // ============================================
 
-// handleFileRead is the HTTP handler for POST /api/file/read
+// handleFileRead serves stage-1 file metadata reads for upload workflows.
+//
+// Failure semantics:
+// - Invalid JSON/body size violations return 400.
+// - File-not-found maps to 404; permission errors map to 403; other validation errors map to 400.
 func (s *Server) handleFileRead(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "POST" {
 		jsonResponse(w, http.StatusMethodNotAllowed, map[string]string{"error": "Method not allowed"})
@@ -51,7 +57,7 @@ func (s *Server) handleFileRead(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// handleFileReadInternalMethod is the ToolHandler method wrapper for testing
+// handleFileReadInternalMethod adapts ToolHandler security config into shared stage-1 implementation.
 func (h *ToolHandler) handleFileReadInternal(req FileReadRequest) FileReadResponse {
 	return handleFileReadInternal(req, h.uploadSecurity, false)
 }
@@ -60,7 +66,10 @@ func (h *ToolHandler) handleFileReadInternal(req FileReadRequest) FileReadRespon
 // Stage 2: File Dialog Injection (POST /api/file/dialog/inject)
 // ============================================
 
-// handleFileDialogInject is the HTTP handler for POST /api/file/dialog/inject
+// handleFileDialogInject serves stage-2 dialog injection preparation.
+//
+// Failure semantics:
+// - Invalid payloads return 400; stage implementation errors are returned as validation failures.
 func (s *Server) handleFileDialogInject(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "POST" {
 		jsonResponse(w, http.StatusMethodNotAllowed, map[string]string{"error": "Method not allowed"})
@@ -85,7 +94,7 @@ func (s *Server) handleFileDialogInject(w http.ResponseWriter, r *http.Request) 
 	}
 }
 
-// handleDialogInjectInternalMethod is the ToolHandler method wrapper for testing
+// handleDialogInjectInternalMethod adapts ToolHandler security config into shared stage-2 implementation.
 func (h *ToolHandler) handleDialogInjectInternal(req FileDialogInjectRequest) UploadStageResponse {
 	return handleDialogInjectInternal(req, h.uploadSecurity)
 }
@@ -94,7 +103,10 @@ func (h *ToolHandler) handleDialogInjectInternal(req FileDialogInjectRequest) Up
 // Stage 3: Form Submission (POST /api/form/submit)
 // ============================================
 
-// handleFormSubmit is the HTTP handler for POST /api/form/submit
+// handleFormSubmit serves stage-3 submit orchestration for upload flows.
+//
+// Failure semantics:
+// - Request decode errors return 400; internal stage failures are returned as 400 to keep client retry semantics explicit.
 func (s *Server) handleFormSubmit(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "POST" {
 		jsonResponse(w, http.StatusMethodNotAllowed, map[string]string{"error": "Method not allowed"})
@@ -123,7 +135,13 @@ func (s *Server) handleFormSubmit(w http.ResponseWriter, r *http.Request) {
 // Stage 4: OS Automation (POST /api/os-automation/inject)
 // ============================================
 
-// handleOSAutomation is the HTTP handler for POST /api/os-automation/inject
+// handleOSAutomation serves stage-4 OS automation bridge.
+//
+// Invariants:
+// - Execution is gated by explicit osAutomationEnabled runtime flag.
+//
+// Failure semantics:
+// - Disabled mode returns 403 and does not attempt automation primitives.
 func (s *Server) handleOSAutomation(w http.ResponseWriter, r *http.Request, osAutomationEnabled bool) {
 	if r.Method != "POST" {
 		w.Header().Set("Allow", "POST")
@@ -159,7 +177,11 @@ func (s *Server) handleOSAutomation(w http.ResponseWriter, r *http.Request, osAu
 	}
 }
 
-// handleOSAutomationDismiss sends Escape to close a dangling native file dialog.
+// handleOSAutomationDismiss sends Escape to close an orphaned native file dialog.
+//
+// Failure semantics:
+// - Disabled mode returns 403.
+// - Automation transport failures return 500 because the request passed validation but could not complete.
 func (s *Server) handleOSAutomationDismiss(w http.ResponseWriter, r *http.Request, osAutomationEnabled bool) {
 	if r.Method != "POST" {
 		w.Header().Set("Allow", "POST")

@@ -1,7 +1,3 @@
-// handler.go — MCP protocol handler for JSON-RPC 2.0 requests.
-// Docs: docs/features/feature/observe/index.md
-// Contains MCPHandler type and HTTP/stdio transport handling.
-// Extracted from cmd/gasoline/main.go during Phase 4 refactoring.
 package main
 
 import (
@@ -38,7 +34,15 @@ Key patterns:
 - Recovery: if tools return repeated connection errors or timeouts, use configure(action="restart") to force-restart the daemon. This works even when the daemon is completely unresponsive.
 - For routing help, read gasoline://capabilities. For detailed docs, read gasoline://guide. For quick examples, read gasoline://quickstart.`
 
-// MCPHandler handles MCP protocol messages
+// MCPHandler owns JSON-RPC request routing and response post-processing for MCP.
+//
+// Invariants:
+// - toolHandler is expected to be set once during bootstrap before serving requests.
+// - telemetryCursors is guarded by telemetryMu.
+//
+// Failure semantics:
+// - Unknown methods/tools return JSON-RPC method-not-found errors.
+// - Notification requests (no id) intentionally produce no response.
 type MCPHandler struct {
 	server      *Server
 	toolHandler ToolHandlerInterface
@@ -77,7 +81,10 @@ func NewMCPHandler(server *Server, version string) *MCPHandler {
 	}
 }
 
-// SetToolHandler sets the tool handler (called after construction)
+// SetToolHandler injects the tool execution backend.
+//
+// Invariants:
+// - Intended for one-time startup wiring; runtime swapping is unsupported.
 func (h *MCPHandler) SetToolHandler(th ToolHandlerInterface) {
 	h.toolHandler = th
 }
@@ -148,7 +155,11 @@ func truncatePreview(s string) string {
 	return s
 }
 
-// HandleHTTP handles MCP requests over HTTP (POST /mcp)
+// HandleHTTP serves MCP-over-HTTP with bounded body size and debug logging.
+//
+// Failure semantics:
+// - Non-POST or malformed JSON requests return protocol errors without invoking tool handlers.
+// - Notification requests are acknowledged with HTTP 204 and no JSON-RPC body.
 func (h *MCPHandler) HandleHTTP(w http.ResponseWriter, r *http.Request) {
 	ctx := newHTTPRequestContext(r, h.version)
 
@@ -228,8 +239,15 @@ var mcpStaticResponses = map[string]string{
 	"prompts/list": `{"prompts":[]}`,
 }
 
-// HandleRequest processes an MCP request and returns a response.
-// Returns nil for notifications (which should not receive a response).
+// HandleRequest routes one JSON-RPC request to the corresponding MCP method.
+//
+// Invariants:
+// - id validation and JSON-RPC version checks run before method dispatch.
+//
+// Failure semantics:
+// - Invalid request shape yields JSON-RPC -32600.
+// - Unknown method yields JSON-RPC -32601.
+// - Notifications return nil by design.
 func (h *MCPHandler) HandleRequest(req JSONRPCRequest) *JSONRPCResponse {
 	if req.HasInvalidID() {
 		resp := JSONRPCResponse{
@@ -360,6 +378,11 @@ func (h *MCPHandler) handleToolsList(req JSONRPCRequest) JSONRPCResponse {
 	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: resultJSON}
 }
 
+// handleToolsCall validates tool call payload, executes tool, then applies response guards.
+//
+// Failure semantics:
+// - Invalid JSON args, missing tool handler, unknown tool, and rate-limit breaches are explicit errors.
+// - Tool post-processing (redaction/warnings/telemetry) is best-effort and never blocks success path.
 func (h *MCPHandler) handleToolsCall(req JSONRPCRequest) JSONRPCResponse {
 	var params struct {
 		Name      string          `json:"name"`
@@ -399,7 +422,10 @@ func (h *MCPHandler) handleToolsCall(req JSONRPCRequest) JSONRPCResponse {
 	return resp
 }
 
-// checkToolRateLimit returns a JSON-RPC error if the rate limit is exceeded.
+// checkToolRateLimit enforces per-process tool call throttling.
+//
+// Failure semantics:
+// - Nil limiter means unlimited mode.
 func (h *MCPHandler) checkToolRateLimit() *JSONRPCError {
 	limiter := h.toolHandler.GetToolCallLimiter()
 	if limiter != nil && !limiter.Allow() {
@@ -461,7 +487,13 @@ func (h *MCPHandler) allowedToolArgumentKeys(toolName string, rawArgs map[string
 	return nil
 }
 
-// applyToolResponsePostProcessing applies redaction and version warnings to a tool response.
+// applyToolResponsePostProcessing applies redaction and operator warnings to tool output.
+//
+// Invariants:
+// - Redaction runs before warnings/telemetry so downstream additions do not leak redacted inputs.
+//
+// Failure semantics:
+// - If redaction/warning parsing fails, original response is returned.
 func (h *MCPHandler) applyToolResponsePostProcessing(resp JSONRPCResponse, clientID, toolName, telemetryModeOverride string) JSONRPCResponse {
 	redactor := h.toolHandler.GetRedactionEngine()
 	if redactor != nil && resp.Result != nil {

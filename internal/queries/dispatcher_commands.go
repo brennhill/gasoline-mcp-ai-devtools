@@ -1,6 +1,7 @@
-// dispatcher_commands.go — Async command correlation tracker for extension command lifecycle.
-// Tracks command registration, completion, expiry, and failure using resultsMu.
-// Separated from dispatcher_queries.go which owns the pending query queue (mu).
+// Purpose: Implements async command/query dispatch and correlation state tracking.
+// Why: Coordinates async command flow so extension/server state stays coherent under concurrency.
+// Docs: docs/features/feature/query-service/index.md
+
 package queries
 
 import (
@@ -9,7 +10,11 @@ import (
 	"time"
 )
 
-// NormalizeCommandStatus normalizes raw extension status strings to canonical values.
+// NormalizeCommandStatus maps extension-provided status text into canonical lifecycle states.
+//
+// Failure semantics:
+// - Unknown/non-empty status values are coerced to "error" so protocol drift is visible.
+// - Empty/success-like statuses normalize to "complete" for backward compatibility.
 func NormalizeCommandStatus(status string) string {
 	normalized := strings.ToLower(strings.TrimSpace(status))
 	switch normalized {
@@ -27,9 +32,13 @@ func NormalizeCommandStatus(status string) string {
 	}
 }
 
-// normalizeCommandOutcome enforces lifecycle semantics for status/error payloads.
-// If an error message is present, the command is treated as "error" regardless of
-// ambiguous success-like statuses such as "", "ok", or "complete".
+// normalizeCommandOutcome reconciles status + error into a single lifecycle outcome.
+//
+// Invariants:
+// - Any non-empty err field takes precedence over success-like statuses.
+//
+// Failure semantics:
+// - Ambiguous payloads (e.g. status=complete + err set) are treated as "error".
 func normalizeCommandOutcome(status string, err string) string {
 	normalizedStatus := NormalizeCommandStatus(status)
 	if strings.TrimSpace(err) != "" && (normalizedStatus == "complete" || normalizedStatus == "pending") {
@@ -52,8 +61,15 @@ func IsFailedCommandStatus(status string) bool {
 // Correlation ID Tracking (Async Commands)
 // ============================================
 
-// RegisterCommand creates a "pending" CommandResult for an async command.
-// Called when command is queued. Uses resultsMu (separate from mu).
+// RegisterCommand creates the initial "pending" lifecycle record for an async command.
+//
+// Invariants:
+// - correlationID is the primary key across pending/completed/failed views.
+// - ExpiresAt is always set to an absolute deadline (provided timeout or AsyncCommandTimeout).
+//
+// Failure semantics:
+// - Empty correlation IDs are ignored (non-async command path).
+// - Existing entries are overwritten intentionally to keep latest queue registration authoritative.
 func (qd *QueryDispatcher) RegisterCommand(correlationID string, queryID string, timeout time.Duration) {
 	if correlationID == "" {
 		return // No correlation ID = not an async command
@@ -81,8 +97,15 @@ func (qd *QueryDispatcher) RegisterCommand(correlationID string, queryID string,
 	qd.completedResults[correlationID] = cmd
 }
 
-// ApplyCommandResult updates command state from extension status values.
-// Normalized statuses: pending, complete, error, timeout, expired, cancelled.
+// ApplyCommandResult applies one extension lifecycle update to a command record.
+//
+// Invariants:
+// - State transitions are monotonic: once status != pending, subsequent updates are ignored.
+// - Signaling is edge-triggered by closing commandNotify then replacing it under resultsMu.
+//
+// Failure semantics:
+// - Unknown correlation IDs are ignored (idempotent for late/duplicate extension callbacks).
+// - Failed terminal states are moved to failedCommands and evicted from completedResults.
 func (qd *QueryDispatcher) ApplyCommandResult(correlationID string, status string, result json.RawMessage, err string) {
 	if correlationID == "" {
 		return
@@ -132,22 +155,27 @@ func (qd *QueryDispatcher) ApplyCommandResult(correlationID string, status strin
 	close(ch)
 }
 
-// CompleteCommand updates a command's status to "complete" with result.
-// Called when extension posts result back. Signals any WaitForCommand waiters.
+// CompleteCommand is compatibility sugar for ApplyCommandResult(..., "complete", ...).
+//
+// Failure semantics:
+// - If err is non-empty, normalizeCommandOutcome downgrades to "error".
 func (qd *QueryDispatcher) CompleteCommand(correlationID string, result json.RawMessage, err string) {
 	qd.ApplyCommandResult(correlationID, "complete", result, err)
 }
 
-// ExpireCommand marks a command as "expired" and moves it to failedCommands.
-// Called by cleanup goroutine when command times out without result.
-// Signals commandNotify to wake any WaitForCommand waiters.
+// ExpireCommand marks a pending command as expired due to timeout/dequeue loss.
+//
+// Failure semantics:
+// - No-op for unknown/already-terminal commands.
+// - Emits terminal "expired" result so waiters unblock with deterministic outcome.
 func (qd *QueryDispatcher) ExpireCommand(correlationID string) {
 	qd.ApplyCommandResult(correlationID, "expired", nil, "Command expired before extension could execute it")
 }
 
-// expireCommandWithReason marks a command as expired with a custom error message.
-// Similar to ExpireCommand but allows specifying the error reason.
-// Signals commandNotify to wake any WaitForCommand waiters.
+// expireCommandWithReason is ExpireCommand with an explicit diagnostic reason.
+//
+// Failure semantics:
+// - Empty correlation IDs are ignored.
 func (qd *QueryDispatcher) expireCommandWithReason(correlationID string, reason string) {
 	if correlationID == "" {
 		return
@@ -155,8 +183,14 @@ func (qd *QueryDispatcher) expireCommandWithReason(correlationID string, reason 
 	qd.ApplyCommandResult(correlationID, "expired", nil, reason)
 }
 
-// WaitForCommand blocks until the command completes or timeout expires.
-// Returns (CommandResult, found). If still pending after timeout, returns the pending result.
+// WaitForCommand blocks for lifecycle transition or timeout.
+//
+// Invariants:
+// - Returns immutable snapshots from GetCommandResult; callers must not rely on pointer identity.
+//
+// Failure semantics:
+// - On timeout, returns latest observed state (possibly still pending).
+// - If command was never registered, returns (nil,false) immediately.
 func (qd *QueryDispatcher) WaitForCommand(correlationID string, timeout time.Duration) (*CommandResult, bool) {
 	// Check immediately
 	cmd, found := qd.GetCommandResult(correlationID)
@@ -190,9 +224,13 @@ func (qd *QueryDispatcher) WaitForCommand(correlationID string, timeout time.Dur
 	}
 }
 
-// GetCommandResult retrieves command status by correlation ID.
-// Returns a snapshot copy of the CommandResult (safe to read without locks).
-// Used by toolObserveCommandResult and WaitForCommand.
+// GetCommandResult returns the latest lifecycle snapshot for one correlation ID.
+//
+// Invariants:
+// - Returned value is a detached copy; internal slices/maps stay lock-owned.
+//
+// Failure semantics:
+// - May trigger lazy expiration before lookup to avoid returning stale pending entries.
 func (qd *QueryDispatcher) GetCommandResult(correlationID string) (*CommandResult, bool) {
 	// First ensure any expired queries are marked as failed
 	qd.cleanExpiredCommands()
@@ -215,9 +253,13 @@ func (qd *QueryDispatcher) GetCommandResult(correlationID string) (*CommandResul
 	return nil, false
 }
 
-// cleanExpiredCommands marks any pending commands with expired queries as expired.
-// Called by command getter methods to ensure consistency.
-// MUST NOT hold any locks when called (may acquire resultsMu).
+// cleanExpiredCommands reconciles pending/queued deadlines into terminal expired states.
+//
+// Invariants:
+// - Must run lock-free at entry; acquires mu/resultsMu internally in ordered phases.
+//
+// Failure semantics:
+// - Safe under races with extension completion: ApplyCommandResult's pending guard prevents double-terminal transitions.
 func (qd *QueryDispatcher) cleanExpiredCommands() {
 	qd.mu.Lock()
 	now := time.Now()

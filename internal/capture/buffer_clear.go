@@ -1,16 +1,17 @@
-// Purpose: Owns buffer_clear.go runtime behavior and integration logic.
+// Purpose: Implements buffer clear/reset operations across capture telemetry stores.
+// Why: Supports controlled memory recovery and explicit operator reset workflows.
 // Docs: docs/features/feature/backend-log-streaming/index.md
 
-// buffer_clear.go — Capture buffer-specific clearing methods.
-// Provides granular control over clearing different Capture buffers:
-// network (waterfall + bodies), websocket (events + status), actions.
 package capture
 
 import (
 	"time"
 )
 
-// BufferClearCounts holds counts of cleared items from each buffer.
+// BufferClearCounts reports per-buffer clear impact.
+//
+// Invariants:
+// - Counts reflect pre-clear item totals from one critical section.
 type BufferClearCounts struct {
 	NetworkWaterfall int `json:"network_waterfall,omitempty"`
 	NetworkBodies    int `json:"network_bodies,omitempty"`
@@ -27,7 +28,10 @@ func (c *BufferClearCounts) Total() int {
 		c.WebSocketStatus + c.Actions + c.Logs + c.ExtensionLogs
 }
 
-// ClearNetworkBuffers clears network_waterfall and network_bodies buffers.
+// ClearNetworkBuffers resets network telemetry buffers and related counters.
+//
+// Invariants:
+// - network buffers and their monotonic counters are reset together under c.mu.
 func (c *Capture) ClearNetworkBuffers() BufferClearCounts {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -50,7 +54,10 @@ func (c *Capture) ClearNetworkBuffers() BufferClearCounts {
 	return counts
 }
 
-// ClearWebSocketBuffers clears websocket_events and websocket_status buffers.
+// ClearWebSocketBuffers resets websocket events and live-connection tracking.
+//
+// Invariants:
+// - wsEvents/wsAddedAt/wsMemoryTotal/wsTotalAdded are reset atomically.
 func (c *Capture) ClearWebSocketBuffers() BufferClearCounts {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -73,7 +80,7 @@ func (c *Capture) ClearWebSocketBuffers() BufferClearCounts {
 	return counts
 }
 
-// ClearActionBuffer clears enhancedActions buffer.
+// ClearActionBuffer resets action telemetry ring and counters.
 func (c *Capture) ClearActionBuffer() BufferClearCounts {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -92,6 +99,9 @@ func (c *Capture) ClearActionBuffer() BufferClearCounts {
 
 // ClearExtensionLogs clears the extension logs buffer.
 // This is a public accessor for clearing extension logs from outside the capture package.
+//
+// Failure semantics:
+// - Returns number of entries removed; 0 when already empty.
 func (c *Capture) ClearExtensionLogs() int {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -102,8 +112,10 @@ func (c *Capture) ClearExtensionLogs() int {
 	return count
 }
 
-// ClearAll resets all capture buffers atomically.
-// Used for test boundary reset and CI/CD pipeline cleanup.
+// ClearAll resets all capture-owned in-memory telemetry state.
+//
+// Invariants:
+// - Runs under one c.mu critical section to avoid partially-cleared mixed state.
 func (c *Capture) ClearAll() {
 	c.mu.Lock()
 	defer c.mu.Unlock()

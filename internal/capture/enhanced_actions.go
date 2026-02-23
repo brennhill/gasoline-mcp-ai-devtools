@@ -1,9 +1,7 @@
-// Purpose: Owns enhanced_actions.go runtime behavior and integration logic.
+// Purpose: Implements ingestion and buffering of enhanced action telemetry with navigation callback integration.
+// Why: Preserves action history needed for replay/test-generation while enforcing capture memory constraints.
 // Docs: docs/features/feature/backend-log-streaming/index.md
 
-// enhanced_actions.go — User action (click, input, navigation) buffering.
-// Captures browser user actions with multi-strategy selectors.
-// Design: Ring buffer with memory-based eviction.
 package capture
 
 import (
@@ -14,9 +12,16 @@ import (
 	"github.com/dev-console/dev-console/internal/util"
 )
 
-// AddEnhancedActions adds enhanced actions to the buffer.
-// Enforces memory limits and updates running totals.
-// If any action is a navigation, fires the navigation callback (outside lock).
+// AddEnhancedActions ingests action telemetry and optionally triggers navigation callback.
+//
+// Invariants:
+// - enhancedActions/actionAddedAt remain index-aligned.
+// - actionTotalAdded is monotonic and never decremented outside explicit clear operations.
+// - navigationCallback is captured under lock and invoked after unlock.
+//
+// Failure semantics:
+// - Parallel-array mismatch is repaired by truncation to common prefix.
+// - Oversized action batches are accepted and oldest entries are evicted.
 func (c *Capture) AddEnhancedActions(actions []EnhancedAction) {
 	var navCb func()
 

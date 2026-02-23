@@ -1,9 +1,7 @@
-// Purpose: Owns capture-struct.go runtime behavior and integration logic.
+// Purpose: Defines the core Capture state container and its concurrency-protected ring-buffer subsystem layout.
+// Why: Centralizes all in-memory telemetry state so ingestion/query paths share one coherent source of truth.
 // Docs: docs/features/feature/backend-log-streaming/index.md
 
-// capture-struct.go — Main Capture struct and factory function.
-// Capture manages all buffered browser state: WebSocket events, network bodies,
-// user actions, connections, queries, rate limiting, and performance.
 package capture
 
 import (
@@ -136,7 +134,11 @@ type Capture struct {
 	serverVersion string // Server version (e.g., "5.7.0"), set via SetServerVersion()
 }
 
-// NewCapture creates a new Capture instance with initialized buffers
+// NewCapture creates a fully initialized Capture with all subcomponents wired.
+//
+// Invariants:
+// - qd/circuit/debug/rec are non-nil in returned instance.
+// - ext.activeTestIDs and ext.missingInProgressByCorr start as initialized maps.
 func NewCapture() *Capture {
 	c := &Capture{
 		wsEvents:        make([]WebSocketEvent, 0, MaxWSEvents),
@@ -188,7 +190,11 @@ func NewCapture() *Capture {
 	return c
 }
 
-// Close stops background goroutines. Safe to call multiple times.
+// Close shuts down capture-owned background goroutines.
+//
+// Failure semantics:
+// - Idempotent for query cleanup lifecycle; no panic on repeated calls.
+// - Does not clear in-memory buffers.
 func (c *Capture) Close() {
 	if c.qd != nil {
 		c.qd.Close()
@@ -215,8 +221,13 @@ func (c *Capture) SetLifecycleCallback(cb func(event string, data map[string]any
 	c.lifecycleCallback = cb
 }
 
-// emitLifecycleEvent calls the lifecycle callback if set.
-// Caller must NOT hold lock (callback may do I/O).
+// emitLifecycleEvent dispatches lifecycle callbacks outside lock-heavy paths.
+//
+// Invariants:
+// - Callback pointer is captured under c.mu and invoked after unlock.
+//
+// Failure semantics:
+// - Missing callback is a silent no-op.
 func (c *Capture) emitLifecycleEvent(event string, data map[string]any) {
 	c.mu.RLock()
 	cb := c.lifecycleCallback

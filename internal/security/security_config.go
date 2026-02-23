@@ -1,4 +1,6 @@
-// security_config.go — LLM trust boundary for persistent configuration changes.
+// Purpose: Handles security scanner configuration loading, defaults, and policy persistence boundaries.
+// Why: Ensures scanners run with explicit, auditable config rather than scattered implicit constants.
+// Docs: docs/features/feature/security-hardening/index.md
 
 package security
 
@@ -29,7 +31,11 @@ var (
 	modeMu        sync.RWMutex
 )
 
-// InitMode detects whether we're running as MCP server or interactive CLI
+// InitMode sets runtime trust-mode flags used to gate config mutation APIs.
+//
+// Invariants:
+// - modeMu protects isMCPMode/isInteractive as a paired state.
+// - MCP mode and interactive mode are mutually exclusive in current model.
 func InitMode() {
 	modeMu.Lock()
 	defer modeMu.Unlock()
@@ -47,14 +53,14 @@ func InitMode() {
 	isInteractive = true
 }
 
-// IsMCPMode returns true if running as MCP server
+// IsMCPMode returns whether runtime is operating in MCP server mode.
 func IsMCPMode() bool {
 	modeMu.RLock()
 	defer modeMu.RUnlock()
 	return isMCPMode
 }
 
-// IsInteractiveTerminal returns true if running in interactive CLI mode
+// IsInteractiveTerminal returns whether runtime is operating in local interactive mode.
 func IsInteractiveTerminal() bool {
 	modeMu.RLock()
 	defer modeMu.RUnlock()
@@ -65,7 +71,10 @@ func IsInteractiveTerminal() bool {
 // Security Config Types
 // ============================================
 
-// SecurityConfig represents persistent security configuration
+// SecurityConfig models persisted human-approved security policy knobs.
+//
+// Invariants:
+// - Values are trusted only when loaded from operator-controlled filesystem config.
 type SecurityConfig struct {
 	Version             string            `json:"version"`
 	WhitelistedOrigins  []string          `json:"whitelisted_origins"`
@@ -73,7 +82,10 @@ type SecurityConfig struct {
 	Notes               map[string]string `json:"notes,omitempty"`
 }
 
-// SecurityAuditEvent represents a security decision for audit logging
+// SecurityAuditEvent captures one policy-impacting security decision.
+//
+// Invariants:
+// - Events are append-only and timestamped at insertion when missing.
 type SecurityAuditEvent struct {
 	Timestamp    time.Time `json:"timestamp"`
 	Action       string    `json:"action"`           // "csp_generated", "flag_suppressed", "whitelist_override"
@@ -94,6 +106,10 @@ var (
 // Security Config Path Management
 // ============================================
 
+// getSecurityConfigPath resolves primary config path with legacy fallback.
+//
+// Failure semantics:
+// - Returns empty string when no path can be resolved; callers must emit manual guidance.
 func getSecurityConfigPath() string {
 	if securityConfigPath != "" {
 		return securityConfigPath
@@ -110,6 +126,7 @@ func getSecurityConfigPath() string {
 	return path
 }
 
+// setSecurityConfigPath overrides config location (primarily for tests).
 func setSecurityConfigPath(path string) {
 	securityConfigPath = path
 }
@@ -126,8 +143,11 @@ func securityConfigEditInstruction() string {
 // Security Config Modification Guards
 // ============================================
 
-// AddToWhitelist adds an origin to the persistent whitelist
-// BLOCKED in MCP mode - requires human review
+// AddToWhitelist is a guarded mutation entrypoint for persistent origin allowlisting.
+//
+// Failure semantics:
+// - Always rejected in MCP mode or non-interactive contexts to preserve trust boundary.
+// - Currently returns not-implemented error even in interactive mode.
 func AddToWhitelist(origin string) error {
 	if IsMCPMode() {
 		return errors.New("security config updates require human review - " + securityConfigEditInstruction())
@@ -142,8 +162,11 @@ func AddToWhitelist(origin string) error {
 	return fmt.Errorf("AddToWhitelist not yet fully implemented for origin: %s", origin)
 }
 
-// SetMinSeverity sets the minimum severity threshold for security flagging
-// BLOCKED in MCP mode - requires human review
+// SetMinSeverity is a guarded mutation entrypoint for persistent severity policy.
+//
+// Failure semantics:
+// - Always rejected in MCP mode or non-interactive contexts.
+// - Currently returns not-implemented error even in interactive mode.
 func SetMinSeverity(severity string) error {
 	if IsMCPMode() {
 		return errors.New("security config updates require human review - " + securityConfigEditInstruction())
@@ -158,8 +181,11 @@ func SetMinSeverity(severity string) error {
 	return fmt.Errorf("SetMinSeverity not yet fully implemented for severity: %s", severity)
 }
 
-// ClearWhitelist clears all whitelist entries
-// BLOCKED in MCP mode - requires human review
+// ClearWhitelist is a guarded destructive mutation for persistent allowlist state.
+//
+// Failure semantics:
+// - Always rejected in MCP mode or non-interactive contexts.
+// - Currently returns not-implemented error in interactive mode.
 func ClearWhitelist() error {
 	if IsMCPMode() {
 		return errors.New("security config updates require human review - " + securityConfigEditInstruction())
@@ -178,7 +204,13 @@ func ClearWhitelist() error {
 // Audit Logging
 // ============================================
 
-// LogSecurityEvent appends a security audit event
+// LogSecurityEvent appends one in-memory audit event.
+//
+// Invariants:
+// - securityAuditLog is mutated only under securityAuditMu.
+//
+// Failure semantics:
+// - If timestamp missing, current time is assigned to preserve ordering semantics.
 func LogSecurityEvent(event SecurityAuditEvent) {
 	securityAuditMu.Lock()
 	defer securityAuditMu.Unlock()
@@ -193,7 +225,10 @@ func LogSecurityEvent(event SecurityAuditEvent) {
 	// Currently, audit log is in-memory only and cleared on restart
 }
 
-// GetSecurityAuditEvents returns all security audit events
+// GetSecurityAuditEvents returns a detached copy of audit history.
+//
+// Invariants:
+// - Caller cannot mutate internal audit log state via returned slice.
 func GetSecurityAuditEvents() []SecurityAuditEvent {
 	securityAuditMu.Lock()
 	defer securityAuditMu.Unlock()
@@ -204,7 +239,10 @@ func GetSecurityAuditEvents() []SecurityAuditEvent {
 	return events
 }
 
-// ClearSecurityAuditEvents clears all audit events (for testing)
+// ClearSecurityAuditEvents resets in-memory audit history.
+//
+// Failure semantics:
+// - Safe to call when log is already empty.
 func ClearSecurityAuditEvents() {
 	securityAuditMu.Lock()
 	defer securityAuditMu.Unlock()

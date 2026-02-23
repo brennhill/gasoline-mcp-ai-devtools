@@ -1,9 +1,7 @@
-// security.go — Security Scanner (security_audit) MCP tool.
-// Analyzes captured browser data to detect exposed credentials, PII leakage,
-// missing security headers, insecure cookies, insecure transport, and
-// missing authentication patterns.
-// Design: SecurityScanner is a standalone struct with no external dependencies.
-// All analysis operates on data already captured by Gasoline buffers.
+// Purpose: Implements aggregate security scanning across captured network/log evidence.
+// Why: Centralizes security checks so risk findings are produced with one coherent severity model.
+// Docs: docs/features/feature/security-hardening/index.md
+
 package security
 
 import (
@@ -29,7 +27,11 @@ type SecurityFinding struct {
 // LogEntry represents a console log entry as a map of string to any
 type LogEntry map[string]any
 
-// SecurityScanInput contains the data to scan.
+// SecurityScanInput contains captured evidence and filter options for one scan.
+//
+// Invariants:
+// - Empty Checks means "run defaultSecurityChecks".
+// - URLFilter scopes network bodies only; other signals remain unfiltered.
 type SecurityScanInput struct {
 	NetworkBodies    []capture.NetworkBody
 	WaterfallEntries []capture.NetworkWaterfallEntry
@@ -40,7 +42,10 @@ type SecurityScanInput struct {
 	SeverityMin      string   // Minimum severity to report
 }
 
-// SecurityScanResult contains all findings from a scan.
+// SecurityScanResult is a deterministic snapshot of findings at scan time.
+//
+// Invariants:
+// - Summary counts are derived from Findings and filtered body set used in that run.
 type SecurityScanResult struct {
 	Findings  []SecurityFinding `json:"findings"`
 	Summary   ScanSummary       `json:"summary"`
@@ -55,7 +60,10 @@ type ScanSummary struct {
 	URLsScanned   int            `json:"urls_scanned"`
 }
 
-// SecurityScanner performs security analysis on captured browser data.
+// SecurityScanner performs aggregate security analysis over captured telemetry.
+//
+// Invariants:
+// - mu provides scanner-level read lock so shared scanner instances stay race-safe.
 type SecurityScanner struct {
 	mu sync.RWMutex
 }
@@ -64,7 +72,7 @@ type SecurityScanner struct {
 // via a wrapper since we can't modify types.go without broader impact.
 // The test uses the extended fields directly on capture.NetworkBody.
 
-// NewSecurityScanner creates a new SecurityScanner instance.
+// NewSecurityScanner creates a scanner with no mutable heuristic state.
 func NewSecurityScanner() *SecurityScanner {
 	return &SecurityScanner{}
 }
@@ -72,7 +80,10 @@ func NewSecurityScanner() *SecurityScanner {
 // defaultSecurityChecks is the full list of checks when none are specified.
 var defaultSecurityChecks = []string{"credentials", "pii", "headers", "cookies", "transport", "auth", "network"}
 
-// runSecurityChecks dispatches each enabled check and collects findings.
+// runSecurityChecks dispatches enabled checks and concatenates findings.
+//
+// Failure semantics:
+// - Individual checks are expected to be non-throwing; empty findings are treated as "no signal".
 func (s *SecurityScanner) runSecurityChecks(checkSet map[string]bool, bodies []capture.NetworkBody, input SecurityScanInput) []SecurityFinding {
 	type checkEntry struct {
 		name string
@@ -97,7 +108,13 @@ func (s *SecurityScanner) runSecurityChecks(checkSet map[string]bool, bodies []c
 	return findings
 }
 
-// Scan analyzes the input data and returns security findings.
+// Scan executes a full security audit pass over provided evidence.
+//
+// Invariants:
+// - check selection and severity filtering are applied in that order.
+//
+// Failure semantics:
+// - Unknown severity_min values disable severity filtering (return all findings).
 func (s *SecurityScanner) Scan(input SecurityScanInput) SecurityScanResult {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
@@ -125,8 +142,10 @@ func (s *SecurityScanner) Scan(input SecurityScanInput) SecurityScanResult {
 	}
 }
 
-// checkNetworkSecurity analyzes waterfall entries for suspicious origins, typosquatting,
-// mixed content, non-standard ports, and IP address origins.
+// checkNetworkSecurity converts low-level network flags into scanner findings.
+//
+// Failure semantics:
+// - Invalid page URL context degrades to per-entry analysis without page-coupled checks.
 func (s *SecurityScanner) checkNetworkSecurity(entries []capture.NetworkWaterfallEntry, pageURLs []string) []SecurityFinding {
 	var findings []SecurityFinding
 	pageURL := ""
@@ -185,7 +204,10 @@ func networkFlagRemediation(flagType string) string {
 	}
 }
 
-// HandleSecurityAudit processes MCP tool call parameters and runs the scan.
+// HandleSecurityAudit parses MCP params and executes Scan.
+//
+// Failure semantics:
+// - Param decode errors are intentionally ignored for backward compatibility; defaults still run.
 func (s *SecurityScanner) HandleSecurityAudit(params json.RawMessage, bodies []capture.NetworkBody, entries []LogEntry, pageURLs []string, waterfallEntries []capture.NetworkWaterfallEntry) (any, error) {
 	var toolParams struct {
 		Checks      []string `json:"checks"`

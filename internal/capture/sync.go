@@ -1,13 +1,8 @@
-// Purpose: Owns sync.go runtime behavior and integration logic.
+// Purpose: Implements /sync transport flow for settings, logs, command results, and pending command delivery.
+// Why: Consolidates extension-daemon synchronization into a single resilient protocol surface.
 // Docs: docs/features/feature/backend-log-streaming/index.md
+// Docs: docs/features/feature/query-service/index.md
 
-// sync.go — Unified sync endpoint consolidating multiple polling loops.
-// POST /sync: Single bidirectional sync for extension ↔ server communication.
-// Replaces: /pending-queries (GET), /settings (POST), /extension-logs (POST),
-// /api/extension-status (POST).
-//
-// JSON CONVENTION: All fields MUST use snake_case. See .claude/refs/api-naming-standards.md
-// Deviations from snake_case MUST be tagged with // SPEC:<spec-name> at the field level.
 package capture
 
 import (
@@ -24,7 +19,14 @@ import (
 // Request/Response Types
 // =============================================================================
 
-// SyncRequest is the POST body for /sync
+// SyncRequest is the authoritative extension heartbeat payload for /sync.
+//
+// Invariants:
+// - ExtSessionID is stable per extension runtime and changes on reload/update.
+// - CommandResults and InProgress are best-effort snapshots; server must tolerate partial batches.
+//
+// Failure semantics:
+// - Missing optional fields are treated as "no update" rather than protocol errors.
 type SyncRequest struct {
 	// Session identification
 	ExtSessionID string `json:"ext_session_id"`
@@ -60,6 +62,8 @@ type SyncSettings struct {
 	CaptureNetwork   bool   `json:"capture_network"`
 	CaptureWebSocket bool   `json:"capture_websocket"`
 	CaptureActions   bool   `json:"capture_actions"`
+	CspRestricted    bool   `json:"csp_restricted"`
+	CspLevel         string `json:"csp_level"`
 }
 
 // SyncCommandResult is a command result from the extension
@@ -72,6 +76,10 @@ type SyncCommandResult struct {
 }
 
 // SyncInProgress represents extension-reported active command execution state.
+//
+// Invariants:
+// - Either ID or CorrelationID must be present after normalization.
+// - Status is normalized to lower-case running/pending vocabulary.
 type SyncInProgress struct {
 	ID            string   `json:"id"`
 	CorrelationID string   `json:"correlation_id,omitempty"`
@@ -117,7 +125,11 @@ type SyncCommand struct {
 // Handler
 // =============================================================================
 
-// syncConnectionState holds the state captured during the connection update lock scope.
+// syncConnectionState is an immutable lock-scope snapshot used after releasing c.mu.
+//
+// Invariants:
+// - Values are derived from one atomic read/update cycle in updateSyncConnectionState.
+// - Safe for use in async callbacks because it does not reference mutable capture internals.
 type syncConnectionState struct {
 	wasConnected      bool
 	isReconnect       bool
@@ -128,7 +140,14 @@ type syncConnectionState struct {
 	inProgressCount   int
 }
 
-// updateSyncConnectionState updates connection state under lock and returns captured state.
+// updateSyncConnectionState applies heartbeat state transitions under c.mu.
+//
+// Invariants:
+// - Caller receives a detached snapshot for post-lock lifecycle emission.
+// - req.Settings/in_progress updates overwrite prior extension view atomically.
+//
+// Failure semantics:
+// - Absent settings/in_progress leaves previous values intact.
 func (c *Capture) updateSyncConnectionState(req SyncRequest, clientID string, now time.Time) syncConnectionState {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -163,6 +182,8 @@ func (c *Capture) updateSyncConnectionState(req SyncRequest, clientID string, no
 		c.ext.trackedTabURL = req.Settings.TrackedTabURL
 		c.ext.trackedTabTitle = req.Settings.TrackedTabTitle
 		c.ext.trackingUpdated = now
+		c.ext.cspRestricted = req.Settings.CspRestricted
+		c.ext.cspLevel = req.Settings.CspLevel
 	}
 	if req.InProgress != nil {
 		c.ext.inProgress = normalizeInProgressList(req.InProgress)
@@ -173,7 +194,14 @@ func (c *Capture) updateSyncConnectionState(req SyncRequest, clientID string, no
 	return s
 }
 
-// processSyncCommandResults processes command results from the extension.
+// processSyncCommandResults applies extension result/status updates.
+//
+// Invariants:
+// - Correlated commands use status from ApplyCommandResult as source of truth.
+//
+// Failure semantics:
+// - Unknown query/command IDs are ignored to keep sync idempotent.
+// - Query results can be stored even if lifecycle completion arrives separately.
 func (c *Capture) processSyncCommandResults(results []SyncCommandResult, clientID string) {
 	for _, result := range results {
 		if result.ID != "" {
@@ -191,7 +219,14 @@ func (c *Capture) processSyncCommandResults(results []SyncCommandResult, clientI
 	}
 }
 
-// updateSyncLogs processes extension logs and version under lock.
+// updateSyncLogs ingests extension logs and metadata under c.mu.
+//
+// Invariants:
+// - Extension log buffer uses amortized compaction (at 1.5x capacity) to avoid per-entry copying.
+// - Redaction is applied before logs enter persistent in-memory buffers.
+//
+// Failure semantics:
+// - Invalid/missing timestamps are normalized to server receive time.
 func (c *Capture) updateSyncLogs(req SyncRequest, now time.Time, pilotEnabled bool, queryCount int) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -254,6 +289,14 @@ func shouldEmitSyncSnapshot(req SyncRequest, state syncConnectionState, commands
 	return false
 }
 
+// normalizeInProgressList sanitizes extension heartbeat command state for reconciliation.
+//
+// Invariants:
+// - Returns nil only when caller supplied nil (distinguishes "unsupported" vs "empty list").
+// - Output is capped to maxInProgress to bound memory and CPU cost per heartbeat.
+//
+// Failure semantics:
+// - Malformed/empty entries are dropped rather than failing the whole sync request.
 func normalizeInProgressList(in []SyncInProgress) []SyncInProgress {
 	if in == nil {
 		return nil
@@ -294,6 +337,10 @@ func normalizeInProgressList(in []SyncInProgress) []SyncInProgress {
 	return out
 }
 
+// commandHasStarted returns true once trace evidence indicates extension execution began.
+//
+// Failure semantics:
+// - Missing trace context returns false, which delays desync failure until stronger evidence exists.
 func commandHasStarted(cmd *queries.CommandResult) bool {
 	if cmd == nil {
 		return false
@@ -306,6 +353,15 @@ func commandHasStarted(cmd *queries.CommandResult) bool {
 	return strings.Contains(cmd.TraceTimeline, "started")
 }
 
+// reconcileInProgressCommandState detects commands lost after extension acknowledgement.
+//
+// Invariants:
+// - A command is failed only after two consecutive missed heartbeats once "started" is observed.
+// - missingInProgressByCorr map is pruned for no-longer-pending commands each cycle.
+//
+// Failure semantics:
+// - nil inProgress means "client does not support heartbeat reporting" and reconciliation is skipped.
+// - Desync failures emit terminal command errors so callers do not wait for full timeout.
 func (c *Capture) reconcileInProgressCommandState(inProgress []SyncInProgress) {
 	if inProgress == nil {
 		// Older extension/client that doesn't report in_progress yet.
@@ -378,8 +434,16 @@ func (c *Capture) reconcileInProgressCommandState(inProgress []SyncInProgress) {
 	}
 }
 
-// HandleSync processes the unified sync endpoint.
-// POST: Receives settings, logs, command results; returns pending commands.
+// HandleSync processes extension heartbeats and command transport in one endpoint.
+//
+// Invariants:
+// - Connection state is updated before command/result reconciliation.
+// - Lifecycle callbacks are emitted out-of-lock via util.SafeGo.
+//
+// Failure semantics:
+// - Invalid JSON returns 400 and does not mutate capture state.
+// - Extension disconnect transitions expire pending queries to avoid indefinite LLM waits.
+// - Long-poll returns within bounded timeout even when no commands are queued.
 func (c *Capture) HandleSync(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "POST" {
 		w.Header().Set("Content-Type", "application/json")

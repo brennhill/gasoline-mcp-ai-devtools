@@ -1,7 +1,7 @@
-// dispatcher_queries.go — Pending query queue management for extension <-> server RPC.
-// Implements the async queue-and-poll pattern where MCP server queues commands
-// and extension polls to pick them up. Uses mu for pending query state.
-// Async command correlation tracking lives in dispatcher_commands.go (uses resultsMu).
+// Purpose: Implements async command/query dispatch and correlation state tracking.
+// Why: Coordinates async command flow so extension/server state stays coherent under concurrency.
+// Docs: docs/features/feature/query-service/index.md
+
 package queries
 
 import (
@@ -40,12 +40,21 @@ func (qd *QueryDispatcher) CreatePendingQueryWithClient(query PendingQuery, clie
 	return qd.CreatePendingQueryWithTimeout(query, qd.queryTimeout, clientID)
 }
 
-// CreatePendingQueryWithTimeout creates a pending query with custom timeout.
+// CreatePendingQueryWithTimeout enqueues one command for extension pickup.
 // This is the core implementation that all other CreatePending* methods call.
 //
 // Returns ErrQueueFull if the queue is at capacity. When rejected, the command
 // is registered and immediately failed so callers using MaybeWaitForCommand
 // get an instant "queue_full" error without waiting.
+//
+// Invariants:
+// - Queue is strict FIFO and capped at MaxPendingQueries.
+// - queryIDCounter is monotonic within process lifetime.
+// - resultsMu is never acquired while mu is held.
+//
+// Failure semantics:
+// - Queue saturation rejects new command; existing pending queue is never truncated.
+// - Rejected correlated commands still produce terminal error lifecycle events.
 //
 // Flow:
 // 1. Check queue capacity — reject if full (never drop existing commands)
@@ -113,8 +122,13 @@ func (qd *QueryDispatcher) CreatePendingQueryWithTimeout(query PendingQuery, tim
 	return id, nil
 }
 
-// WaitForPendingQueries blocks until a pending query is available or timeout.
-// Used by /sync long-polling to deliver commands instantly.
+// WaitForPendingQueries blocks until queue is non-empty or timeout elapses.
+//
+// Invariants:
+// - queryNotify is edge-triggered/best-effort; callers must re-check queue after wakeup.
+//
+// Failure semantics:
+// - Spurious wakeups are expected; method provides no guarantee a command is available on return.
 func (qd *QueryDispatcher) WaitForPendingQueries(timeout time.Duration) {
 	qd.mu.Lock()
 	if len(qd.pendingQueries) > 0 {
@@ -133,8 +147,14 @@ func (qd *QueryDispatcher) WaitForPendingQueries(timeout time.Duration) {
 // Query Cleanup
 // ============================================
 
-// cleanExpiredQueries removes expired pending queries.
-// MUST be called with qd.mu held (Lock, not RLock).
+// cleanExpiredQueries removes past-deadline queue entries in-place.
+//
+// Invariants:
+// - Caller must hold qd.mu (Lock, not RLock).
+// - Surviving slice preserves original order.
+//
+// Failure semantics:
+// - Only trims pending queue; command lifecycle expiration is handled separately.
 func (qd *QueryDispatcher) cleanExpiredQueries() {
 	now := time.Now()
 	remaining := qd.pendingQueries[:0]
@@ -151,9 +171,14 @@ func (qd *QueryDispatcher) cleanExpiredQueries() {
 // Query Retrieval (Extension Polling)
 // ============================================
 
-// GetPendingQueries returns all pending queries for extension to execute.
-// Used by /sync endpoint to deliver commands to the extension.
-// Cleans expired queries before returning.
+// GetPendingQueries snapshots all currently deliverable queued commands.
+//
+// Invariants:
+// - Snapshot order matches FIFO queue order.
+// - Trace "sent" events are recorded after lock release to avoid lock inversion with resultsMu.
+//
+// Failure semantics:
+// - Expired commands are cleaned before snapshot; callers never receive already-dead entries.
 func (qd *QueryDispatcher) GetPendingQueries() []PendingQueryResponse {
 	// First ensure any expired queries are marked as failed
 	qd.cleanExpiredCommands()
@@ -179,8 +204,13 @@ func (qd *QueryDispatcher) GetPendingQueries() []PendingQueryResponse {
 	return result
 }
 
-// GetPendingQueriesForClient returns pending queries for a specific client.
-// Used in multi-client mode.
+// GetPendingQueriesForClient snapshots queued commands scoped to one client.
+//
+// Invariants:
+// - Cross-client entries are excluded even if pending globally.
+//
+// Failure semantics:
+// - If client has no queued entries, returns empty slice (not nil).
 func (qd *QueryDispatcher) GetPendingQueriesForClient(clientID string) []PendingQueryResponse {
 	// First ensure any expired queries are marked as failed
 	qd.cleanExpiredCommands()
@@ -208,9 +238,13 @@ func (qd *QueryDispatcher) GetPendingQueriesForClient(clientID string) []Pending
 	return result
 }
 
-// AcknowledgePendingQuery removes delivered queries up to and including queryID.
-// last_command_ack semantics are "last processed command", so older entries are
-// also considered acknowledged and should not be redelivered.
+// AcknowledgePendingQuery advances queue head through queryID (inclusive).
+//
+// Invariants:
+// - Ack semantics are cumulative; all earlier commands become non-deliverable.
+//
+// Failure semantics:
+// - Unknown queryID is ignored to remain idempotent for delayed/duplicate acks.
 func (qd *QueryDispatcher) AcknowledgePendingQuery(queryID string) {
 	if queryID == "" {
 		return
@@ -247,10 +281,15 @@ func (qd *QueryDispatcher) AcknowledgePendingQuery(queryID string) {
 	}
 }
 
-// ExpireAllPendingQueries expires all pending queries with the given error reason.
-// Used when the extension disconnects to prevent queries from hanging indefinitely.
-// Collects correlation IDs under mu lock, then expires commands under resultsMu.
-// Signals commandNotify once after batch expiration to wake all WaitForCommand waiters.
+// ExpireAllPendingQueries fails every queued command with a shared reason.
+//
+// Invariants:
+// - Queue is atomically cleared under mu before terminal updates are emitted.
+// - Waiters are signaled once per batch via commandNotify rotation.
+//
+// Failure semantics:
+// - Commands missing from completedResults are skipped (already terminal or never registered).
+// - Batch expiration never partially leaves pending queue entries.
 func (qd *QueryDispatcher) ExpireAllPendingQueries(reason string) {
 	qd.mu.Lock()
 
@@ -306,7 +345,7 @@ func (qd *QueryDispatcher) SetQueryResult(id string, result json.RawMessage) {
 	qd.SetQueryResultWithClient(id, result, "")
 }
 
-// SetQueryResultWithClient stores result with client isolation.
+// SetQueryResultWithClient stores a result and marks correlated command complete.
 //
 // Flow:
 // 1. Store result in queryResults map
@@ -316,13 +355,25 @@ func (qd *QueryDispatcher) SetQueryResultWithClient(id string, result json.RawMe
 	qd.setQueryResultWithClient(id, result, clientID, true)
 }
 
-// SetQueryResultWithClientNoCommandComplete stores result with client isolation
-// but does NOT force a correlated command into "complete".
-// Use this when command lifecycle status is supplied separately via ApplyCommandResult.
+// SetQueryResultWithClientNoCommandComplete stores result without lifecycle transition.
+//
+// Invariants:
+// - Used when extension reports command status through ApplyCommandResult separately.
+//
+// Failure semantics:
+// - Prevents accidental status downgrade/upgrade caused by out-of-order query/result transport.
 func (qd *QueryDispatcher) SetQueryResultWithClientNoCommandComplete(id string, result json.RawMessage, clientID string) {
 	qd.setQueryResultWithClient(id, result, clientID, false)
 }
 
+// setQueryResultWithClient performs result insertion + pending queue cleanup.
+//
+// Invariants:
+// - queryCond.Broadcast is emitted after map/slice mutation so waiters observe committed state.
+//
+// Failure semantics:
+// - Missing pending entry is tolerated; result is still stored for one-time retrieval.
+// - markComplete=false leaves command lifecycle unchanged by design.
 func (qd *QueryDispatcher) setQueryResultWithClient(id string, result json.RawMessage, clientID string, markComplete bool) {
 	qd.mu.Lock()
 
@@ -372,7 +423,13 @@ func (qd *QueryDispatcher) GetQueryResult(id string) (json.RawMessage, bool) {
 	return qd.GetQueryResultForClient(id, "")
 }
 
-// GetQueryResultForClient retrieves result with client isolation.
+// GetQueryResultForClient retrieves and consumes a result scoped to one client.
+//
+// Invariants:
+// - Successful reads are destructive (single-consumer semantics).
+//
+// Failure semantics:
+// - Client mismatch returns (nil,false) without consuming the stored result.
 func (qd *QueryDispatcher) GetQueryResultForClient(id string, clientID string) (json.RawMessage, bool) {
 	qd.mu.Lock()
 	defer qd.mu.Unlock()
@@ -402,7 +459,7 @@ func (qd *QueryDispatcher) WaitForResult(id string, timeout time.Duration) (json
 	return qd.WaitForResultWithClient(id, timeout, "")
 }
 
-// WaitForResultWithClient waits with client isolation.
+// WaitForResultWithClient waits for one result under client-isolated view.
 // Uses a single wakeup goroutine (not per-iteration) to avoid goroutine explosion.
 //
 // Flow:
@@ -410,6 +467,14 @@ func (qd *QueryDispatcher) WaitForResult(id string, timeout time.Duration) (json
 // 2. If not, wait on condition variable
 // 3. Recheck periodically (10ms intervals)
 // 4. Return result or timeout error
+//
+// Invariants:
+// - done channel is always closed before Unlock (defer LIFO) to stop ticker goroutine.
+// - qd.queryCond.Wait is called only with qd.mu held.
+//
+// Failure semantics:
+// - Timeout returns deterministic error; caller decides retry/abort policy.
+// - Missing result after wakeups is expected (spurious or unrelated broadcasts).
 func (qd *QueryDispatcher) WaitForResultWithClient(id string, timeout time.Duration, clientID string) (json.RawMessage, error) {
 	deadline := time.Now().Add(timeout)
 
@@ -456,10 +521,13 @@ func (qd *QueryDispatcher) WaitForResultWithClient(id string, timeout time.Durat
 // Result Cleanup (Background Goroutine)
 // ============================================
 
-// startResultCleanup starts a background goroutine that periodically cleans
-// expired query results (QueryResultTTL, currently 5m).
-// Returns a stop function that terminates the goroutine.
-// Called once during QueryDispatcher initialization; stop func stored in stopCleanup.
+// startResultCleanup starts periodic TTL/lifecycle reconciliation.
+//
+// Invariants:
+// - Returned stop func is single-use and owned by QueryDispatcher.Close.
+//
+// Failure semantics:
+// - Cleanup failures are contained (no panic path); next ticker cycle retries.
 func (qd *QueryDispatcher) startResultCleanup() func() {
 	stop := make(chan struct{})
 	util.SafeGo(func() {
@@ -477,8 +545,13 @@ func (qd *QueryDispatcher) startResultCleanup() func() {
 	return func() { close(stop) }
 }
 
-// cleanExpiredResults removes query results older than QueryResultTTL,
-// expires orphaned completedResults entries, and expires stale pending queries.
+// cleanExpiredResults prunes stale query results and reconciles orphaned commands.
+//
+// Invariants:
+// - Runs in three lock phases: mu-only collection, out-of-lock expiration, resultsMu cleanup.
+//
+// Failure semantics:
+// - Orphaned correlations are expired rather than silently dropped to preserve LLM-visible outcomes.
 func (qd *QueryDispatcher) cleanExpiredResults() {
 	now := time.Now()
 

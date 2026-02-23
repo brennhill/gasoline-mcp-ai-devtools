@@ -1,8 +1,7 @@
-// Purpose: Owns accessor.go runtime behavior and integration logic.
+// Purpose: Exposes thread-safe accessor methods for capture buffer counters, timestamps, and snapshots.
+// Why: Provides read-only observability APIs without leaking mutable capture internals.
 // Docs: docs/features/feature/backend-log-streaming/index.md
 
-// accessor.go — Public accessor methods for Capture buffer state.
-// Provides safe access to monotonic counters and timestamps without exposing the mutex.
 package capture
 
 import "time"
@@ -83,7 +82,10 @@ func (c *Capture) GetActionTimestamps() []time.Time {
 	return copy
 }
 
-// GetCaptureSnapshot returns a snapshot of buffer state with proper locking
+// CaptureSnapshot is an immutable point-in-time view of core ring-buffer counters.
+//
+// Invariants:
+// - Counts and totals in one snapshot come from the same c.mu critical section.
 type CaptureSnapshot struct {
 	NetworkTotalAdded   int64
 	WebSocketTotalAdded int64
@@ -93,7 +95,10 @@ type CaptureSnapshot struct {
 	ActionCount         int
 }
 
-// GetSnapshot returns a thread-safe snapshot of the capture buffer state
+// GetSnapshot returns a thread-safe capture counter snapshot.
+//
+// Failure semantics:
+// - Snapshot can be stale immediately after return; callers should treat it as diagnostic-only.
 func (c *Capture) GetSnapshot() CaptureSnapshot {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
@@ -167,7 +172,10 @@ func (c *Capture) GetClientRegistry() ClientRegistry {
 	return c.clientRegistry
 }
 
-// HealthSnapshot contains health information about capture state
+// HealthSnapshot aggregates capture + dispatcher + circuit health state.
+//
+// Invariants:
+// - Subsystem snapshots (circuit/queries) are sampled before c.mu to avoid lock inversion.
 type HealthSnapshot struct {
 	WebSocketCount     int
 	NetworkBodyCount   int
@@ -187,7 +195,10 @@ type HealthSnapshot struct {
 	QueryTimeout       time.Duration
 }
 
-// GetHealthSnapshot returns a snapshot of capture health state for /health endpoint
+// GetHealthSnapshot returns a lock-safe aggregate health view.
+//
+// Invariants:
+// - Reads c.circuit/c.qd first, then c.mu, preserving declared lock hierarchy.
 func (c *Capture) GetHealthSnapshot() HealthSnapshot {
 	// Get sub-struct state (own locks) before acquiring c.mu
 	circuitOpen, circuitReason, circuitOpenedAt, windowEventCount := c.circuit.GetState()

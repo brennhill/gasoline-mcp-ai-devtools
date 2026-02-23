@@ -1,11 +1,7 @@
-// Purpose: Owns security_diff.go runtime behavior and integration logic.
-// Docs: docs/features/feature/observe/index.md
+// Purpose: Computes before/after security finding diffs between snapshots and sessions.
+// Why: Makes security regression detection actionable by highlighting net-new and resolved risks.
+// Docs: docs/features/feature/security-hardening/index.md
 
-// security_diff.go — Security Regression Detection (diff_security) MCP tool.
-// Takes security posture snapshots and compares them to detect regressions
-// in headers, cookies, auth patterns, and transport security.
-// Design: Named snapshots stored in-memory with 4-hour TTL and max 5 slots.
-// Comparison produces severity-rated regressions and improvements.
 package security
 
 import (
@@ -22,6 +18,14 @@ import (
 // ============================================
 
 // SecurityDiffManager stores and compares security posture snapshots.
+//
+// Invariants:
+// - snapshots map and order slice are mutated only under mu.
+// - order is insertion-ordered and used for deterministic oldest-first eviction.
+// - maxSnaps and ttl define bounded in-memory retention.
+//
+// Failure semantics:
+// - Invalid snapshot names/actions are rejected with explicit errors.
 type SecurityDiffManager struct {
 	mu        sync.RWMutex
 	snapshots map[string]*SecuritySnapshot
@@ -30,7 +34,10 @@ type SecurityDiffManager struct {
 	ttl       time.Duration
 }
 
-// SecuritySnapshot captures the security posture at a point in time.
+// SecuritySnapshot captures normalized security posture at one instant.
+//
+// Invariants:
+// - Header/cookie/auth/transport maps are keyed by normalized origin or endpoint strings.
 type SecuritySnapshot struct {
 	Name      string                       `json:"name"`
 	TakenAt   time.Time                    `json:"taken_at"`
@@ -113,7 +120,10 @@ var headerRemovedRecommendations = map[string]string{
 // Constructor
 // ============================================
 
-// NewSecurityDiffManager creates a new SecurityDiffManager with defaults.
+// NewSecurityDiffManager creates a bounded snapshot store.
+//
+// Invariants:
+// - Defaults favor short-lived regression checks (maxSnaps=5, ttl=4h).
 func NewSecurityDiffManager() *SecurityDiffManager {
 	return &SecurityDiffManager{
 		snapshots: make(map[string]*SecuritySnapshot),
@@ -127,7 +137,13 @@ func NewSecurityDiffManager() *SecurityDiffManager {
 // Snapshot Management
 // ============================================
 
-// TakeSnapshot captures the current security posture from network bodies.
+// TakeSnapshot captures and stores a named snapshot.
+//
+// Invariants:
+// - Existing snapshot names are replaced atomically while preserving LRU order semantics.
+//
+// Failure semantics:
+// - Name validation failure returns error and leaves store unchanged.
 func (m *SecurityDiffManager) TakeSnapshot(name string, bodies []capture.NetworkBody) (*SecuritySnapshot, error) {
 	if err := validateSnapshotName(name); err != nil {
 		return nil, err
@@ -150,7 +166,10 @@ func (m *SecurityDiffManager) TakeSnapshot(name string, bodies []capture.Network
 	return snap, nil
 }
 
-// Compare compares two snapshots and returns regressions and improvements.
+// Compare computes regressions/improvements between two snapshots.
+//
+// Failure semantics:
+// - Missing/expired snapshot references return errors rather than partial comparisons.
 func (m *SecurityDiffManager) Compare(fromName, toName string, currentBodies []capture.NetworkBody) (*SecurityDiffResult, error) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
@@ -177,7 +196,10 @@ func (m *SecurityDiffManager) Compare(fromName, toName string, currentBodies []c
 	}, nil
 }
 
-// ListSnapshots returns a summary of all stored snapshots.
+// ListSnapshots returns a read-only summary view in insertion/LRU order.
+//
+// Failure semantics:
+// - Expired entries are reported with Expired=true; they are not auto-deleted here.
 func (m *SecurityDiffManager) ListSnapshots() []SecuritySnapshotListEntry {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
@@ -202,7 +224,10 @@ func (m *SecurityDiffManager) ListSnapshots() []SecuritySnapshotListEntry {
 // MCP Tool Handler
 // ============================================
 
-// HandleDiffSecurity processes MCP tool call parameters and dispatches to the appropriate action.
+// HandleDiffSecurity dispatches MCP diff tool actions.
+//
+// Failure semantics:
+// - Invalid JSON/action returns explicit error and performs no mutation.
 func (m *SecurityDiffManager) HandleDiffSecurity(params json.RawMessage, bodies []capture.NetworkBody) (any, error) {
 	var toolParams struct {
 		Action      string `json:"action"`
@@ -490,4 +515,3 @@ func determineVerdict(regressions, improvements []SecurityChange) string {
 }
 
 // Diff comparison helpers (diffHeadersForOrigin, diffCookieFlags, etc.) moved to security_diff_helpers.go
-

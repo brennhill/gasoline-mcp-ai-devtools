@@ -1,9 +1,7 @@
-// Purpose: Owns extension_state.go runtime behavior and integration logic.
+// Purpose: Defines extension connection/tracking/pilot/security state and related capture delegation methods.
+// Why: Centralizes extension lifecycle state used for routing, health checks, and command reconciliation.
 // Docs: docs/features/feature/backend-log-streaming/index.md
 
-// extension_state.go — Extension communication state and tab tracking.
-// Groups 13 scattered fields from the Capture god object into a coherent sub-struct.
-// Protected by parent Capture.mu (no separate lock — tightly coupled with event buffer writes).
 package capture
 
 import "time"
@@ -25,6 +23,15 @@ const (
 // ExtensionState tracks all extension-related state: connection, pilot, tracking, and test boundaries.
 // Protected by parent Capture.mu (no separate lock) because activeTestIDs is read
 // during hot-path event ingestion (AddWebSocketEvents, AddNetworkBodies, AddEnhancedActions).
+//
+// Invariants:
+// - trackingEnabled implies trackedTabID > 0 for authoritative single-tab mode.
+// - lastSyncSeen.IsZero() means extension has never synced in this process lifecycle.
+// - missingInProgressByCorr tracks only commands currently pending in QueryDispatcher.
+//
+// Failure semantics:
+// - pilotStatusKnown=false intentionally defaults effective pilot access to enabled
+//   until an authoritative sync/settings signal arrives.
 type ExtensionState struct {
 	// Connection tracking
 	lastPollAt             time.Time // When extension last polled. Health endpoint uses 3s/5s thresholds.
@@ -54,6 +61,10 @@ type ExtensionState struct {
 	inProgress              []SyncInProgress // Last heartbeat snapshot of active commands.
 	inProgressUpdated       time.Time        // When inProgress was last refreshed.
 	missingInProgressByCorr map[string]int   // Consecutive missed heartbeats for started commands.
+
+	// CSP detection: probed after each navigation to surface restrictions proactively.
+	cspRestricted bool   // true if page CSP blocks execute_js (new Function).
+	cspLevel      string // "none", "script_exec", or "page_blocked".
 
 	// Last-resort altered-environment debug mode.
 	securityMode     string   // "normal" (default) or "insecure_proxy".
@@ -113,8 +124,11 @@ func (c *Capture) IsExtensionConnected() bool {
 	return !c.ext.lastSyncSeen.IsZero() && time.Since(c.ext.lastSyncSeen) < extensionDisconnectThreshold
 }
 
-// GetExtensionStatus returns a snapshot of extension connection state.
+// GetExtensionStatus returns a detached connection snapshot.
 // Fields: connected (bool), last_seen (RFC3339 string), client_id (string).
+//
+// Failure semantics:
+// - If extension has never synced, last_seen is empty and connected=false.
 func (c *Capture) GetExtensionStatus() map[string]any {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
@@ -133,9 +147,12 @@ func (c *Capture) GetExtensionStatus() map[string]any {
 	}
 }
 
-// GetPilotStatus returns pilot status information.
+// GetPilotStatus returns pilot and heartbeat command status.
 // extension_connected uses the same threshold as IsExtensionConnected (10s on lastSyncSeen).
 // extension_last_seen is the RFC3339 timestamp of the last /sync, empty if never synced.
+//
+// Invariants:
+// - Returned in_progress slice is copied to prevent external mutation.
 func (c *Capture) GetPilotStatus() any {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
@@ -167,13 +184,23 @@ func (c *Capture) GetPilotStatus() any {
 	}
 }
 
-// GetInProgressCommands returns the latest extension heartbeat view of active commands.
+// GetInProgressCommands returns a copy of latest extension-reported active commands.
+//
+// Failure semantics:
+// - Returns empty slice when no heartbeat data is available.
 func (c *Capture) GetInProgressCommands() []SyncInProgress {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 	out := make([]SyncInProgress, len(c.ext.inProgress))
 	copy(out, c.ext.inProgress)
 	return out
+}
+
+// GetCSPStatus returns the last reported CSP restriction level for the tracked page.
+func (c *Capture) GetCSPStatus() (restricted bool, level string) {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	return c.ext.cspRestricted, c.ext.cspLevel
 }
 
 // GetExtensionVersion returns the last reported extension version.
@@ -238,14 +265,20 @@ func (c *Capture) GetActiveTestIDs() []string {
 	return result
 }
 
-// SetTestBoundaryStart adds a test ID to the active set for correlating entries.
+// SetTestBoundaryStart marks a test boundary as active for future event tagging.
+//
+// Invariants:
+// - activeTestIDs behaves as a set (idempotent insert).
 func (c *Capture) SetTestBoundaryStart(id string) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	c.ext.activeTestIDs[id] = true
 }
 
-// SetTestBoundaryEnd removes a test ID from the active set.
+// SetTestBoundaryEnd clears a test boundary marker.
+//
+// Failure semantics:
+// - Deleting unknown IDs is a no-op.
 func (c *Capture) SetTestBoundaryEnd(id string) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -281,6 +314,10 @@ type pilotStatusSnapshot struct {
 	Source            string
 }
 
+// pilotStatusSnapshotFromExtensionState converts raw extension state to API-level pilot semantics.
+//
+// Failure semantics:
+// - Unknown/unset source fields fall back to conservative defaults.
 func pilotStatusSnapshotFromExtensionState(ext ExtensionState) pilotStatusSnapshot {
 	snap := pilotStatusSnapshot{
 		ConfiguredEnabled: ext.pilotEnabled,
@@ -311,8 +348,12 @@ func pilotStatusSnapshotFromExtensionState(ext ExtensionState) pilotStatusSnapsh
 	return snap
 }
 
-// SetSecurityMode updates altered-environment security mode for debugging.
+// SetSecurityMode updates altered-environment mode reported to callers.
 // mode values: normal (default), insecure_proxy.
+//
+// Invariants:
+// - Any non-insecure mode value normalizes to SecurityModeNormal.
+// - Rewrite slice is copied on write to avoid external aliasing.
 func (c *Capture) SetSecurityMode(mode string, rewrites []string) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -329,6 +370,9 @@ func (c *Capture) SetSecurityMode(mode string, rewrites []string) {
 
 // GetSecurityMode returns current altered-environment mode and rewrite set.
 // production_parity is true only in normal mode.
+//
+// Invariants:
+// - Returned rewrite slice is copied and safe for caller mutation.
 func (c *Capture) GetSecurityMode() (mode string, productionParity bool, rewrites []string) {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
