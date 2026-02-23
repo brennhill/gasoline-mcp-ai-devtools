@@ -46,6 +46,8 @@ exclude_paths:
   - '**/__pycache__/**'
   # Source maps
   - '**/*.map'
+  # Linter config — Semgrep duplicate-id rule false positive (not GitHub Actions)
+  - '.golangci.yml'
   # Bundled CI package — single-file build output, not source
   - 'packages/gasoline-ci/gasoline-ci.js'
   # Test files
