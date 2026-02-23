@@ -15,6 +15,7 @@ let requestIdCounter = 0;
 // Network body capture state
 let networkBodyCaptureEnabled = true; // Default: capture request/response bodies
 /** URL patterns for auth endpoints whose response bodies should be redacted */
+// nosemgrep: javascript.lang.security.audit.detect-non-literal-regexp.detect-non-literal-regexp -- static literal regex, no ReDoS risk (linear alternation of fixed strings)
 const SENSITIVE_URL_PATTERNS = /\/(auth|login|signin|signup|token|oauth|session|api[_-]?key|password|register)\b/i;
 // =============================================================================
 // NETWORK WATERFALL

@@ -97,7 +97,7 @@ func verifyBinaryVersion(path string) (string, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), versionVerifyTimeout)
 	defer cancel()
 
-	cmd := exec.CommandContext(ctx, path, "--version")
+	cmd := exec.CommandContext(ctx, path, "--version") // #nosec G204 -- path is a verified binary from resolveCanonicalBinary
 	cmd.Env = append(os.Environ(), "GASOLINE_VERSION_CHECK=1")
 	out, err := cmd.Output()
 	if err != nil {

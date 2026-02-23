@@ -7,7 +7,6 @@ import unittest
 from gasoline_mcp.config import (
     CLIENT_DEFINITIONS,
     get_client_config_path,
-    get_client_detect_dir,
     is_client_installed,
     get_detected_clients,
     command_exists_on_path,

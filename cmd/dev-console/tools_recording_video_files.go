@@ -234,7 +234,7 @@ func validateRevealPath(w http.ResponseWriter, rawPath string) string {
 type revealCommandRunner func(name string, args ...string) error
 
 func defaultRevealCommandRunner(name string, args ...string) error {
-	return exec.Command(name, args...).Run()
+	return exec.Command(name, args...).Run() // #nosec G204 -- name is from revealCommandForOS (hardcoded "open"/"explorer"/"xdg-open")
 }
 
 func revealCommandForOS(goos, absPath string) (string, []string) {
