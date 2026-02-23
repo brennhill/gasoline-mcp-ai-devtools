@@ -67,6 +67,7 @@ export interface DOMResult {
   dom_changes?: { added: number; removed: number; modified: number; summary: string }
   dom_mutations?: DOMMutationEntry[]
   analysis?: string
+  insertion_strategy?: string
 }
 
 export interface DOMPrimitiveOptions {

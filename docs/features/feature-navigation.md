@@ -89,6 +89,7 @@ Each entry shows:
 | error-clustering | `feature/error-clustering/` | product-spec.md, qa-plan.md, tech-spec.md | (See folder for details) |
 | flow-recording | `feature/flow-recording/` | product-spec.md, qa-plan.md, recording-scenarios.md, tech-spec.md | (See folder for details) |
 | form-filling | `feature/form-filling/` | product-spec.md, qa-plan.md, tech-spec.md | (See folder for details) |
+| multiline-rich-editor | `feature/multiline-rich-editor/` | product-spec.md, qa-plan.md, tech-spec.md | Robust multiline text insertion for rich editors (Quill, ProseMirror, Draft.js) via native DOM + keyboard simulation fallback |
 | gasoline-ci | `feature/gasoline-ci/` | product-spec.md, qa-plan.md, tech-spec.md | (See folder for details) |
 | git-event-tracking | `feature/git-event-tracking/` | product-spec.md, qa-plan.md, tech-spec.md | (See folder for details) |
 | har-export | `feature/har-export/` | product-spec.md, qa-plan.md, tech-spec.md | (See folder for details) |
