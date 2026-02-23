@@ -112,6 +112,11 @@
 
   // extension/content/script-injection.js
   var injected = false;
+  var bridgeReady = false;
+  var injectionPromise = null;
+  var bridgeProbePromise = null;
+  var bridgeProbeCounter = 0;
+  var NONCE_ATTR = "data-gasoline-nonce";
   var pageNonce = crypto.getRandomValues(new Uint8Array(16)).reduce((s, b) => s + b.toString(16).padStart(2, "0"), "");
   function getPageNonce() {
     return pageNonce;
@@ -148,33 +153,134 @@
     });
   }
   function injectAxeCore() {
+    if (document.getElementById("gasoline-axe-loader"))
+      return;
     const script = document.createElement("script");
+    script.id = "gasoline-axe-loader";
     script.src = chrome.runtime.getURL("lib/axe.min.js");
     script.onload = () => script.remove();
     (document.head || document.documentElement).appendChild(script);
   }
   function injectScript() {
+    document.querySelectorAll(`script[${NONCE_ATTR}]`).forEach((el) => {
+      if (typeof el.remove === "function")
+        el.remove();
+    });
+    document.documentElement?.setAttribute?.(NONCE_ATTR, pageNonce);
     const script = document.createElement("script");
     script.src = chrome.runtime.getURL("inject.bundled.js");
     script.type = "module";
     script.dataset.gasolineNonce = pageNonce;
-    script.onload = () => {
-      script.remove();
-      injected = true;
-      setTimeout(syncStoredSettings, 50);
-    };
-    (document.head || document.documentElement).appendChild(script);
+    return new Promise((resolve) => {
+      script.onload = () => {
+        script.remove();
+        injected = true;
+        bridgeReady = false;
+        setTimeout(syncStoredSettings, 50);
+        resolve(true);
+      };
+      script.onerror = () => {
+        script.remove();
+        injected = false;
+        bridgeReady = false;
+        resolve(false);
+      };
+      (document.head || document.documentElement).appendChild(script);
+    });
   }
-  function initScriptInjection() {
-    if (document.readyState === "loading") {
-      document.addEventListener("DOMContentLoaded", () => {
-        injectAxeCore();
-        injectScript();
-      }, { once: true });
-    } else {
-      injectAxeCore();
-      injectScript();
+  function beginInjection(force = false) {
+    if (!force) {
+      if (injected)
+        return Promise.resolve(true);
+      if (injectionPromise)
+        return injectionPromise;
+    } else if (injectionPromise) {
+      return injectionPromise;
     }
+    injectionPromise = new Promise((resolve) => {
+      const runInjection = () => {
+        injectAxeCore();
+        injectScript().then((ok) => resolve(ok)).finally(() => {
+          injectionPromise = null;
+        });
+      };
+      if (document.readyState === "loading") {
+        document.addEventListener("DOMContentLoaded", runInjection, { once: true });
+        return;
+      }
+      runInjection();
+    });
+    return injectionPromise;
+  }
+  async function ensureInjectScriptReady(timeoutMs = 2e3, force = false) {
+    if (!force && injected)
+      return true;
+    const injection = beginInjection(force);
+    if (timeoutMs <= 0)
+      return injection;
+    return Promise.race([
+      injection,
+      new Promise((resolve) => {
+        setTimeout(() => resolve(injected), timeoutMs);
+      })
+    ]);
+  }
+  async function ensureInjectBridgeReady(timeoutMs = 350) {
+    if (bridgeReady)
+      return true;
+    const injectReady = await ensureInjectScriptReady(timeoutMs);
+    if (!injectReady)
+      return false;
+    if (bridgeReady)
+      return true;
+    if (bridgeProbePromise)
+      return bridgeProbePromise;
+    bridgeProbePromise = new Promise((resolve) => {
+      const requestId = `inject_bridge_${Date.now()}_${++bridgeProbeCounter}`;
+      let settled = false;
+      let timer;
+      const cleanup = () => {
+        if (timer)
+          clearTimeout(timer);
+        window.removeEventListener("message", onMessage);
+        bridgeProbePromise = null;
+      };
+      const finish = (ok) => {
+        if (settled)
+          return;
+        settled = true;
+        if (ok)
+          bridgeReady = true;
+        cleanup();
+        resolve(ok);
+      };
+      const onMessage = (event) => {
+        if (event.source !== window || event.origin !== window.location.origin)
+          return;
+        if (event.data?.type !== "GASOLINE_INJECT_BRIDGE_PONG")
+          return;
+        if (event.data?.requestId !== requestId)
+          return;
+        if (event.data?._nonce && event.data._nonce !== pageNonce)
+          return;
+        finish(true);
+      };
+      window.addEventListener("message", onMessage);
+      timer = setTimeout(() => finish(false), Math.max(25, timeoutMs));
+      try {
+        window.postMessage({
+          type: "GASOLINE_INJECT_BRIDGE_PING",
+          requestId,
+          _nonce: pageNonce
+        }, window.location.origin);
+      } catch {
+        finish(false);
+      }
+    });
+    return bridgeProbePromise;
+  }
+  function initScriptInjection(force = false) {
+    void beginInjection(force);
   }
 
   // extension/content/request-tracking.js
@@ -423,17 +529,25 @@
     return typeof sender.id === "string" && sender.id === chrome.runtime.id;
   }
   function forwardHighlightMessage(message) {
-    const requestId = registerHighlightRequest((result) => deferred.resolve(result));
-    const deferred = createDeferredPromise();
-    postToInject({
-      type: "GASOLINE_HIGHLIGHT_REQUEST",
-      requestId,
-      params: message.params
-    });
-    return promiseRaceWithCleanup(deferred.promise, 3e4, { success: false, error: "timeout" }, () => {
-      if (hasHighlightRequest(requestId)) {
-        deleteHighlightRequest(requestId);
+    return ensureInjectBridgeReady(1500).then((ready) => {
+      if (!ready) {
+        return {
+          success: false,
+          error: isInjectScriptLoaded() ? "inject_not_responding" : "inject_not_loaded"
+        };
       }
+      const requestId = registerHighlightRequest((result) => deferred.resolve(result));
+      const deferred = createDeferredPromise();
+      postToInject({
+        type: "GASOLINE_HIGHLIGHT_REQUEST",
+        requestId,
+        params: message.params
+      });
+      return promiseRaceWithCleanup(deferred.promise, 3e4, { success: false, error: "timeout" }, () => {
+        if (hasHighlightRequest(requestId)) {
+          deleteHighlightRequest(requestId);
+        }
+      });
     });
   }
   async function handleStateCommand(params) {
@@ -498,15 +612,19 @@
     });
   }
   function handleExecuteJs(params, sendResponse) {
-    if (!isInjectScriptLoaded()) {
-      sendResponse({
-        success: false,
-        error: "inject_not_loaded",
-        message: "Inject script not loaded in page context. Tab may not be tracked."
-      });
-      return true;
-    }
-    executeInMainWorld(params, sendResponse);
+    const injectReadyWaitMs = Math.max(750, Math.min(3e3, (params.timeout_ms || 5e3) + 500));
+    void ensureInjectBridgeReady(injectReadyWaitMs).then((ready) => {
+      if (!ready) {
+        const fallbackError = isInjectScriptLoaded() ? "inject_not_responding" : "inject_not_loaded";
+        sendResponse({
+          success: false,
+          error: fallbackError,
+          message: fallbackError === "inject_not_loaded" ? "Inject script not loaded in page context. Tab may not be tracked." : `Inject script did not respond within ${injectReadyWaitMs}ms. The tab may not be tracked or the inject script failed to load.`
+        });
+        return;
+      }
+      executeInMainWorld(params, sendResponse);
+    });
     return true;
   }
   function handleExecuteQuery(params, sendResponse) {

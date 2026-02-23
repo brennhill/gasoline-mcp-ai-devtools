@@ -154,7 +154,9 @@ export async function executeWithWorldRouting(tabId, queryParams, world) {
         if (world === 'auto' &&
             result &&
             !result.success &&
-            (result.error === 'csp_blocked' || result.error === 'inject_not_loaded')) {
+            (result.error === 'csp_blocked' ||
+                result.error === 'inject_not_loaded' ||
+                result.error === 'inject_not_responding')) {
             debugLog(DebugCategory.CONNECTION, 'Auto-fallback to chrome.scripting API', {
                 error: result.error,
                 tabId

@@ -37,7 +37,7 @@ export interface PendingRequestStats {
  */
 export interface PageMessageEventData {
   type?: PageMessageType
-  requestId?: number
+  requestId?: number | string
   result?: unknown
   payload?: unknown
 }

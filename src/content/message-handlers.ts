@@ -35,7 +35,7 @@ import {
   deleteDomRequest
 } from './request-tracking'
 import { createDeferredPromise, promiseRaceWithCleanup } from './timeout-utils'
-import { isInjectScriptLoaded, getPageNonce } from './script-injection'
+import { isInjectScriptLoaded, getPageNonce, ensureInjectBridgeReady } from './script-injection'
 import { ASYNC_COMMAND_TIMEOUT_MS, INJECT_FORWARDED_SETTINGS, SettingName } from '../lib/constants'
 
 /** Auto-incrementing request ID — avoids Date.now() collisions for concurrent queries */
@@ -74,21 +74,30 @@ export function isValidBackgroundSender(sender: chrome.runtime.MessageSender): b
 export function forwardHighlightMessage(message: {
   params: { selector: string; duration_ms?: number }
 }): Promise<HighlightResponse> {
-  const requestId = registerHighlightRequest((result) => deferred.resolve(result))
-  const deferred = createDeferredPromise<HighlightResponse>()
-
-  // Post message to page context (inject.js)
-  postToInject({
-    type: 'GASOLINE_HIGHLIGHT_REQUEST',
-    requestId,
-    params: message.params
-  })
-
-  // Timeout fallback + cleanup stale entries after 30 seconds
-  return promiseRaceWithCleanup(deferred.promise, 30000, { success: false, error: 'timeout' }, () => {
-    if (hasHighlightRequest(requestId)) {
-      deleteHighlightRequest(requestId)
+  return ensureInjectBridgeReady(1500).then((ready) => {
+    if (!ready) {
+      return {
+        success: false,
+        error: isInjectScriptLoaded() ? 'inject_not_responding' : 'inject_not_loaded'
+      }
     }
+
+    const requestId = registerHighlightRequest((result) => deferred.resolve(result))
+    const deferred = createDeferredPromise<HighlightResponse>()
+
+    // Post message to page context (inject.js)
+    postToInject({
+      type: 'GASOLINE_HIGHLIGHT_REQUEST',
+      requestId,
+      params: message.params
+    })
+
+    // Timeout fallback + cleanup stale entries after 30 seconds
+    return promiseRaceWithCleanup(deferred.promise, 30000, { success: false, error: 'timeout' }, () => {
+      if (hasHighlightRequest(requestId)) {
+        deleteHighlightRequest(requestId)
+      }
+    })
   })
 }
 
@@ -217,16 +226,23 @@ export function handleExecuteJs(
   params: { script?: string; timeout_ms?: number },
   sendResponse: (result: ExecuteJsResponse) => void
 ): boolean {
-  if (!isInjectScriptLoaded()) {
-    sendResponse({
-      success: false,
-      error: 'inject_not_loaded',
-      message: 'Inject script not loaded in page context. Tab may not be tracked.'
-    })
-    return true
-  }
+  const injectReadyWaitMs = Math.max(750, Math.min(3000, (params.timeout_ms || 5000) + 500))
+  void ensureInjectBridgeReady(injectReadyWaitMs).then((ready) => {
+    if (!ready) {
+      const fallbackError = isInjectScriptLoaded() ? 'inject_not_responding' : 'inject_not_loaded'
+      sendResponse({
+        success: false,
+        error: fallbackError,
+        message:
+          fallbackError === 'inject_not_loaded'
+            ? 'Inject script not loaded in page context. Tab may not be tracked.'
+            : `Inject script did not respond within ${injectReadyWaitMs}ms. The tab may not be tracked or the inject script failed to load.`
+      })
+      return
+    }
 
-  executeInMainWorld(params, sendResponse)
+    executeInMainWorld(params, sendResponse)
+  })
   return true
 }
 
