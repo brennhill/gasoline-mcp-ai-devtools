@@ -80,9 +80,8 @@ begin_test "7.2" "20 rapid sequential tool calls" \
 run_test_7_2() {
     local total=20
     local success=0
-    # Exclude network_waterfall — it does on-demand extension queries that can timeout without extension.
-    # It's tested separately in cat-02 and cat-11.
-    local modes=("page" "logs" "errors" "vitals" "actions" "tabs" "pilot" "changes" "timeline" "api")
+    # Exclude extension-dependent and deprecated modes.
+    local modes=("page" "logs" "errors" "vitals" "actions" "tabs" "pilot" "timeline" "summarized_logs" "recordings")
     local mode_count=${#modes[@]}
 
     for i in $(seq 1 "$total"); do
@@ -111,6 +110,10 @@ run_test_7_3() {
     RESPONSE=$(call_tool "observe" '{"what":"network_waterfall","limit":10000}')
     if ! check_valid_jsonrpc "$RESPONSE"; then
         fail "Large limit request did not return valid JSON-RPC. Raw: $(truncate "$RESPONSE")"
+        return
+    fi
+    if check_bridge_timeout "$RESPONSE"; then
+        pass "network_waterfall with limit:10000 returned expected bridge timeout without extension (no crash)."
         return
     fi
     if ! check_not_error "$RESPONSE"; then

@@ -370,12 +370,12 @@ run_test_2_13() {
 }
 run_test_2_13
 
-# ── 2.14 — observe(changes) ──────────────────────────────
-begin_test "2.14" "observe(changes) returns valid response" \
-    "Call observe with what:changes. Verify response is valid, not error." \
-    "Changes mode tracks state mutations."
+# ── 2.14 — observe(summarized_logs) ──────────────────────
+begin_test "2.14" "observe(summarized_logs) returns valid response" \
+    "Call observe with what:summarized_logs. Verify response is valid, not error." \
+    "Summarized logs mode groups repeated noise into compact buckets."
 run_test_2_14() {
-    RESPONSE=$(call_tool "observe" '{"what":"changes"}')
+    RESPONSE=$(call_tool "observe" '{"what":"summarized_logs"}')
     if ! check_not_error "$RESPONSE"; then
         fail "Expected success but got isError. Content: $(truncate "$(extract_content_text "$RESPONSE")")"
         return
@@ -386,7 +386,7 @@ run_test_2_14() {
         fail "Response had no content text. Full response: $(truncate "$RESPONSE")"
         return
     fi
-    pass "Sent observe(changes), got valid non-error response. Content: ${#text} chars."
+    pass "Sent observe(summarized_logs), got valid non-error response. Content: ${#text} chars."
 }
 run_test_2_14
 
@@ -465,23 +465,27 @@ run_test_2_17() {
 }
 run_test_2_17
 
-# ── 2.18 — observe(api) ──────────────────────────────────
-begin_test "2.18" "observe(api) returns valid response" \
-    "Call observe with what:api. Verify valid JSON-RPC response." \
-    "API mode shows captured API request/response pairs."
+# ── 2.18 — observe(command_result) missing correlation_id ─
+begin_test "2.18" "observe(command_result) without correlation_id returns error" \
+    "Call observe with what:command_result but omit correlation_id. Verify structured missing_param error." \
+    "This validates mode routing and required-parameter validation for async result lookup."
 run_test_2_18() {
-    RESPONSE=$(call_tool "observe" '{"what":"api"}')
-    if ! check_not_error "$RESPONSE"; then
-        fail "Expected success but got isError. Content: $(truncate "$(extract_content_text "$RESPONSE")")"
+    RESPONSE=$(call_tool "observe" '{"what":"command_result"}')
+    if ! check_is_error "$RESPONSE"; then
+        fail "Expected isError:true when correlation_id is missing. Content: $(truncate "$(extract_content_text "$RESPONSE")")"
         return
     fi
     local text
     text=$(extract_content_text "$RESPONSE")
     if [ -z "$text" ]; then
-        fail "Response had no content text. Full response: $(truncate "$RESPONSE")"
+        fail "isError was true but no content text. Full response: $(truncate "$RESPONSE")"
         return
     fi
-    pass "Sent observe(api), got valid non-error response. Content: ${#text} chars."
+    if ! check_contains "$text" "correlation_id" && ! check_contains "$text" "missing_param"; then
+        fail "Expected missing correlation_id guidance. Content: $(truncate "$text")"
+        return
+    fi
+    pass "Sent observe(command_result) without correlation_id, got expected structured error. Content: $(truncate "$text" 200)"
 }
 run_test_2_18
 

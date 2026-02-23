@@ -16,8 +16,6 @@ import (
 	"sync"
 	"time"
 
-	"syscall"
-
 	"github.com/dev-console/dev-console/internal/bridge"
 	"github.com/dev-console/dev-console/internal/util"
 )
@@ -467,8 +465,8 @@ func forceKillOnPort(port int) {
 		if err != nil {
 			continue
 		}
-		// SIGCONT unfreezes a SIGSTOP'd process so subsequent signals are delivered.
-		_ = p.Signal(syscall.SIGCONT)
+		// On Unix this sends SIGCONT; on Windows this is a no-op.
+		signalResumeProcess(p)
 	}
 }
 

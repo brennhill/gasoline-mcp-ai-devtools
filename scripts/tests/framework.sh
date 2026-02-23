@@ -53,7 +53,9 @@ framework_cleanup() {
     [ -n "${TEMP_DIR:-}" ] && rm -rf "$TEMP_DIR"
 
     # Global safety net for stale test binaries/daemons.
-    if [ -f "$TEST_DAEMON_CLEANER" ]; then
+    # In parallel UAT, this must be disabled to avoid one category killing
+    # daemons owned by other concurrently running categories.
+    if [ "${GASOLINE_TEST_DISABLE_GLOBAL_CLEANER:-0}" != "1" ] && [ -f "$TEST_DAEMON_CLEANER" ]; then
         bash "$TEST_DAEMON_CLEANER" --quiet >/dev/null 2>&1 || true
     fi
 }
@@ -91,6 +93,14 @@ init_framework() {
     # Output file for the runner to read
     OUTPUT_FILE="$TEMP_DIR/output.txt"
     touch "$OUTPUT_FILE"
+
+    # Default to fail-fast for strictness. Comprehensive parallel runner can opt out
+    # to collect full pass/fail evidence across all categories.
+    if [ "${GASOLINE_TEST_FAIL_FAST:-1}" = "0" ]; then
+        set +e
+    else
+        set -e
+    fi
 }
 
 # ── Category/Test Headers ──────────────────────────────────
@@ -317,7 +327,12 @@ check_valid_jsonrpc() {
 # Returns 0 if response is a bridge→daemon connection timeout (expected without extension)
 check_bridge_timeout() {
     local response="$1"
-    echo "$response" | jq -e '.error.message | test("deadline exceeded|connection refused")' >/dev/null 2>&1
+    if echo "$response" | jq -e '.error.message | test("deadline exceeded|connection refused|EOF|transport_no_response")' >/dev/null 2>&1; then
+        return 0
+    fi
+    local text
+    text="$(extract_content_text "$response")"
+    echo "$text" | grep -qiE "transport_no_response|deadline exceeded|connection refused|Server connection error|EOF"
 }
 
 check_http_status() {

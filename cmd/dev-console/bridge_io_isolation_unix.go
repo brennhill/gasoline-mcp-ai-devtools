@@ -25,10 +25,10 @@ func duplicateStdoutForTransport(stdout *os.File) (*os.File, error) {
 }
 
 func redirectProcessStdStreams(target *os.File) error {
-	if err := syscall.Dup2(int(target.Fd()), int(os.Stdout.Fd())); err != nil {
+	if err := dup2Compat(int(target.Fd()), int(os.Stdout.Fd())); err != nil {
 		return err
 	}
-	if err := syscall.Dup2(int(target.Fd()), int(os.Stderr.Fd())); err != nil {
+	if err := dup2Compat(int(target.Fd()), int(os.Stderr.Fd())); err != nil {
 		return err
 	}
 	return nil

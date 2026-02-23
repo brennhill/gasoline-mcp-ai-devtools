@@ -27,6 +27,13 @@ check_deps() {
 
 check_deps
 
+# Disable per-category global cleanup while running categories in parallel.
+# Each category still cleans up its own daemon by port.
+export GASOLINE_TEST_DISABLE_GLOBAL_CLEANER=1
+# Comprehensive run should collect all test outcomes, not abort category scripts
+# on first non-zero helper command.
+export GASOLINE_TEST_FAIL_FAST=0
+
 # ── Timeout Compatibility ─────────────────────────────────
 if command -v timeout >/dev/null 2>&1; then
     TIMEOUT_CMD="timeout"
@@ -37,10 +44,43 @@ else
     exit 1
 fi
 
-# ── Resolve Binary ────────────────────────────────────────
-SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
-TESTS_DIR="$SCRIPT_DIR/tests"
+# ── Resolve Paths ─────────────────────────────────────────
+SCRIPT_PATH="${BASH_SOURCE[0]:-$0}"
+SCRIPT_DIR="$(cd "$(dirname "$SCRIPT_PATH")" && pwd -P)"
+
+resolve_project_root() {
+    if [ -n "${GASOLINE_PROJECT_ROOT:-}" ] && [ -d "${GASOLINE_PROJECT_ROOT:-}" ]; then
+        (cd "$GASOLINE_PROJECT_ROOT" && pwd -P)
+        return 0
+    fi
+
+    # Standard in-repo layout: scripts/test-all-tools-comprehensive.sh
+    if [ -d "$SCRIPT_DIR/tests" ] && [ -f "$SCRIPT_DIR/../go.mod" ]; then
+        (cd "$SCRIPT_DIR/.." && pwd -P)
+        return 0
+    fi
+
+    # Fallback for copied runners: infer from current git worktree.
+    if command -v git >/dev/null 2>&1; then
+        local repo_root=""
+        repo_root="$(git -C "$SCRIPT_DIR" rev-parse --show-toplevel 2>/dev/null || true)"
+        if [ -z "$repo_root" ]; then
+            repo_root="$(git rev-parse --show-toplevel 2>/dev/null || true)"
+        fi
+        if [ -n "$repo_root" ] && [ -d "$repo_root/scripts/tests" ]; then
+            (cd "$repo_root" && pwd -P)
+            return 0
+        fi
+    fi
+
+    return 1
+}
+
+PROJECT_ROOT="$(resolve_project_root)" || {
+    echo "FATAL: Could not resolve project root. Set GASOLINE_PROJECT_ROOT=/path/to/repo" >&2
+    exit 1
+}
+TESTS_DIR="$PROJECT_ROOT/scripts/tests"
 
 if [ -x "$PROJECT_ROOT/gasoline-mcp" ]; then
     WRAPPER="$PROJECT_ROOT/gasoline-mcp"
@@ -452,7 +492,7 @@ for cat_id in $CAT_IDS; do
 done
 
 TOTAL_ALL="$((TOTAL_PASS + TOTAL_FAIL))"
-OVERALL_ELAPSED="$(( "$(date +%s)" - OVERALL_START ))"
+OVERALL_ELAPSED="$(( $(date +%s) - OVERALL_START ))"
 
 echo "------------------------------------------------------------"
 printf "%-28s | %4d | %4d | %5d | %3ss\n" \
@@ -475,7 +515,11 @@ for port in $ALL_UAT_PORTS 7906; do
     lsof -ti :"$port" 2>/dev/null | xargs kill -9 2>/dev/null || true
 done
 
-rm -rf "$RESULTS_DIR"
+if [ "${GASOLINE_KEEP_RESULTS:-0}" = "1" ]; then
+    echo "Results kept at: $RESULTS_DIR"
+else
+    rm -rf "$RESULTS_DIR"
+fi
 
 # Exit code
 if [ "$TOTAL_FAIL" -gt 0 ]; then
