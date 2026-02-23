@@ -7,9 +7,34 @@
       "description": "Root-cause web failures using Gasoline observability evidence."
     },
     {
+      "id": "debug-triage",
+      "version": 1,
+      "description": "Triage broken behavior with evidence-first debugging across logs, network, DOM state, and command results."
+    },
+    {
       "id": "performance",
       "version": 1,
       "description": "Measure and compare performance regressions with repeatable scenarios."
+    },
+    {
+      "id": "regression-test",
+      "version": 1,
+      "description": "Convert real failures into deterministic regression tests that fail before the fix and pass after."
+    },
+    {
+      "id": "api-validation",
+      "version": 1,
+      "description": "Validate API behavior against expected contracts using captured requests, responses, and schema checks."
+    },
+    {
+      "id": "ux-audit",
+      "version": 1,
+      "description": "Audit UX clarity and accessibility using screenshots, a11y checks, and information hierarchy review."
+    },
+    {
+      "id": "site-audit",
+      "version": 1,
+      "description": "Map a site and produce an issue inventory by combining crawl coverage with logs, network failures, and UX evidence."
     },
     {
       "id": "demo",
@@ -48,4 +73,3 @@
     }
   ]
 }
-

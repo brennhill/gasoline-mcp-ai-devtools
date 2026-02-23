@@ -222,6 +222,12 @@ gasoline-mcp [options]
 
 ### External Skills Catalog (Optional)
 
+Gasoline ships with bundled skills (including `debug-triage`, `performance`, `regression-test`, `api-validation`, `ux-audit`, and `site-audit`).
+
+- `gasoline-mcp --install` installs bundled skills into detected agent skill directories.
+- npm package install also runs the bundled skill installer via postinstall.
+- Set `GASOLINE_SKIP_SKILL_INSTALL=1` to disable automatic skill installation.
+
 `gasoline-mcp --install` can install managed skills from a separate GitHub repo (for example `brennhill/gasoline-skills`) instead of only the bundled package copy.
 
 Examples:
