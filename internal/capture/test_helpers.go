@@ -1,9 +1,6 @@
-// Purpose: Owns test_helpers.go runtime behavior and integration logic.
-// Docs: docs/features/feature/backend-log-streaming/index.md
-
-// test_helpers.go — Test helper methods for setting up test data
-// These methods are ONLY for tests and bypass normal ingestion flow
-//go:build !production
+// Purpose: Provides test-only capture mutation helpers for deterministic unit/integration setup.
+// Why: Enables focused tests without exposing unsafe mutation primitives in production APIs.
+// Docs: docs/features/feature/self-testing/index.md
 
 package capture
 
@@ -119,6 +116,22 @@ func (c *Capture) GetWSLengthsForTest() (events int, addedAt int, memoryTotal in
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 	return len(c.wsEvents), len(c.wsAddedAt), c.wsMemoryTotal
+}
+
+// SimulateExtensionDisconnectForTest marks the extension as disconnected by
+// setting lastSyncSeen far in the past. Thread-safe (operates on the instance, not a global).
+func (c *Capture) SimulateExtensionDisconnectForTest() {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.ext.lastSyncSeen = time.Now().Add(-1 * time.Hour)
+}
+
+// SetCSPStatusForTest sets the CSP restriction state (TEST ONLY)
+func (c *Capture) SetCSPStatusForTest(restricted bool, level string) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.ext.cspRestricted = restricted
+	c.ext.cspLevel = level
 }
 
 // GetLastPendingQuery returns the most recently created pending query (TEST ONLY)

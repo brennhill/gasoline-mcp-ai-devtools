@@ -1,5 +1,3 @@
-// tools_errors.go — Structured error handling (thin wrappers over internal/mcp).
-// diagnosticHintString/diagnosticHint stay here (ToolHandler methods).
 package main
 
 import (
@@ -90,6 +88,13 @@ func (h *ToolHandler) DiagnosticHintString() string {
 		parts = append(parts, "tracked_tab=NONE")
 	}
 
+	cspRestricted, cspLevel := h.capture.GetCSPStatus()
+	if cspRestricted {
+		parts = append(parts, fmt.Sprintf("csp=RESTRICTED(%s)", cspLevel))
+	} else {
+		parts = append(parts, "csp=clear")
+	}
+
 	hint := "Current state: " + parts[0]
 	for _, p := range parts[1:] {
 		hint += ", " + p
@@ -111,5 +116,36 @@ func (h *ToolHandler) requirePilot(req JSONRPCRequest) (JSONRPCResponse, bool) {
 	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(
 		ErrCodePilotDisabled, "AI Web Pilot is explicitly disabled",
 		"Enable AI Web Pilot in the extension popup", h.diagnosticHint(),
+	)}, true
+}
+
+// requireExtension returns (resp, true) if the browser extension is not connected,
+// short-circuiting the caller with an immediate structured error (~5ms) instead of
+// queuing a command that would time out after 15s.
+// Usage: if resp, blocked := h.requireExtension(req); blocked { return resp }
+func (h *ToolHandler) requireExtension(req JSONRPCRequest) (JSONRPCResponse, bool) {
+	if h.capture.IsExtensionConnected() {
+		return JSONRPCResponse{}, false
+	}
+	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(
+		ErrNoData, "Extension not connected. Commands cannot be dispatched.",
+		"Check that the Gasoline browser extension is installed and the page is open.",
+		h.diagnosticHint(), withRetryable(true), withRetryAfterMs(3000),
+	)}, true
+}
+
+// requireCSPClear returns (resp, true) if the page's Content Security Policy blocks
+// script execution (execute_js, storage mutations). Only checks when cspRestricted is true.
+// Usage: if resp, blocked := h.requireCSPClear(req); blocked { return resp }
+func (h *ToolHandler) requireCSPClear(req JSONRPCRequest) (JSONRPCResponse, bool) {
+	restricted, level := h.capture.GetCSPStatus()
+	if !restricted {
+		return JSONRPCResponse{}, false
+	}
+	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(
+		ErrExtError,
+		fmt.Sprintf("Page CSP blocks script execution (level: %s). Use world='isolated' or navigate to a less restrictive page.", level),
+		"Try execute_js with world='isolated', or use DOM primitives (click, type) which bypass CSP.",
+		h.diagnosticHint(),
 	)}, true
 }

@@ -1,3 +1,7 @@
+// Purpose: Implements interact tool handlers and browser action orchestration.
+// Why: Preserves deterministic browser action execution across agent workflows.
+// Docs: docs/features/feature/interact-explore/index.md
+
 // tools_interact.go — MCP interact tool dispatcher and handlers.
 // Docs: docs/features/feature/interact-explore/index.md
 // Handles all browser interaction actions: navigate, execute_js, highlight, state management, etc.
@@ -214,6 +218,9 @@ func (h *ToolHandler) handlePilotHighlight(req JSONRPCRequest, args json.RawMess
 	if resp, blocked := h.requirePilot(req); blocked {
 		return resp
 	}
+	if resp, blocked := h.requireExtension(req); blocked {
+		return resp
+	}
 
 	// Queue highlight command for extension
 	correlationID := newCorrelationID("highlight")
@@ -261,6 +268,12 @@ func (h *ToolHandler) handlePilotExecuteJS(req JSONRPCRequest, args json.RawMess
 	if resp, blocked := h.requirePilot(req); blocked {
 		return resp
 	}
+	if resp, blocked := h.requireExtension(req); blocked {
+		return resp
+	}
+	if resp, blocked := h.requireCSPClear(req); blocked {
+		return resp
+	}
 
 	correlationID := newCorrelationID("exec")
 	h.armEvidenceForCommand(correlationID, "execute_js", args, req.ClientID)
@@ -305,6 +318,9 @@ func (h *ToolHandler) handleBrowserActionNavigate(req JSONRPCRequest, args json.
 	}
 
 	if resp, blocked := h.requirePilot(req); blocked {
+		return resp
+	}
+	if resp, blocked := h.requireExtension(req); blocked {
 		return resp
 	}
 
@@ -356,6 +372,9 @@ func (h *ToolHandler) handleBrowserActionRefresh(req JSONRPCRequest, args json.R
 	if resp, blocked := h.requirePilot(req); blocked {
 		return resp
 	}
+	if resp, blocked := h.requireExtension(req); blocked {
+		return resp
+	}
 
 	correlationID := newCorrelationID("refresh")
 	h.armEvidenceForCommand(correlationID, "refresh", args, req.ClientID)
@@ -392,6 +411,9 @@ func (h *ToolHandler) handleBrowserActionBack(req JSONRPCRequest, args json.RawM
 	if resp, blocked := h.requirePilot(req); blocked {
 		return resp
 	}
+	if resp, blocked := h.requireExtension(req); blocked {
+		return resp
+	}
 
 	correlationID := newCorrelationID("back")
 	h.armEvidenceForCommand(correlationID, "back", args, req.ClientID)
@@ -410,6 +432,9 @@ func (h *ToolHandler) handleBrowserActionBack(req JSONRPCRequest, args json.RawM
 
 func (h *ToolHandler) handleBrowserActionForward(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	if resp, blocked := h.requirePilot(req); blocked {
+		return resp
+	}
+	if resp, blocked := h.requireExtension(req); blocked {
 		return resp
 	}
 
@@ -437,6 +462,9 @@ func (h *ToolHandler) handleBrowserActionNewTab(req JSONRPCRequest, args json.Ra
 	}
 
 	if resp, blocked := h.requirePilot(req); blocked {
+		return resp
+	}
+	if resp, blocked := h.requireExtension(req); blocked {
 		return resp
 	}
 	resolvedURL := params.URL
@@ -508,6 +536,9 @@ func (h *ToolHandler) handleBrowserActionSwitchTab(req JSONRPCRequest, args json
 	if resp, blocked := h.requirePilot(req); blocked {
 		return resp
 	}
+	if resp, blocked := h.requireExtension(req); blocked {
+		return resp
+	}
 
 	correlationID := newCorrelationID("switchtab")
 	h.armEvidenceForCommand(correlationID, "switch_tab", args, req.ClientID)
@@ -542,6 +573,9 @@ func (h *ToolHandler) handleBrowserActionCloseTab(req JSONRPCRequest, args json.
 	}
 
 	if resp, blocked := h.requirePilot(req); blocked {
+		return resp
+	}
+	if resp, blocked := h.requireExtension(req); blocked {
 		return resp
 	}
 
@@ -694,6 +728,9 @@ func (h *ToolHandler) handleDOMPrimitive(req JSONRPCRequest, args json.RawMessag
 	}
 
 	if resp, blocked := h.requirePilot(req); blocked {
+		return resp
+	}
+	if resp, blocked := h.requireExtension(req); blocked {
 		return resp
 	}
 

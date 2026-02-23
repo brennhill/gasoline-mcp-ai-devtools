@@ -1,3 +1,7 @@
+// Purpose: Validate tools_interact_audit_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
+// Docs: docs/features/feature/interact-explore/index.md
+
 // tools_interact_audit_test.go — Behavioral tests for interact tool
 //
 // ⚠️ ARCHITECTURAL INVARIANT - ALL INTERACT ACTIONS MUST WORK
@@ -20,6 +24,7 @@ package main
 
 import (
 	"encoding/json"
+	"net/http/httptest"
 	"strings"
 	"testing"
 
@@ -46,6 +51,12 @@ func newInteractTestEnv(t *testing.T) *interactTestEnv {
 	cap.SetPilotEnabled(false) // explicit default for legacy pilot-disabled tests
 	mcpHandler := NewToolHandler(server, cap)
 	handler := mcpHandler.toolHandler.(*ToolHandler)
+
+	// Simulate extension connection so tests that enable pilot don't hit the extension gate.
+	httpReq := httptest.NewRequest("POST", "/sync", strings.NewReader(`{"ext_session_id":"test"}`))
+	httpReq.Header.Set("X-Gasoline-Client", "test-client")
+	cap.HandleSync(httptest.NewRecorder(), httpReq)
+
 	return &interactTestEnv{handler: handler, server: server, capture: cap}
 }
 

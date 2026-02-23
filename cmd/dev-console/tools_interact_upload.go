@@ -1,3 +1,7 @@
+// Purpose: Implements interact tool handlers and browser action orchestration.
+// Why: Preserves deterministic browser action execution across agent workflows.
+// Docs: docs/features/feature/interact-explore/index.md
+
 // tools_interact_upload.go — MCP interact upload action handler.
 // Docs: docs/features/feature/interact-explore/index.md
 // Implements the "upload" action for the interact tool with 4-stage escalation.
@@ -35,6 +39,13 @@ func (h *ToolHandler) handleUpload(req JSONRPCRequest, args json.RawMessage) JSO
 
 	if errResp := validateUploadParams(req, params); errResp != nil {
 		return *errResp
+	}
+
+	if resp, blocked := h.requirePilot(req); blocked {
+		return resp
+	}
+	if resp, blocked := h.requireExtension(req); blocked {
+		return resp
 	}
 
 	info, errResp := validateUploadFile(req, params.FilePath)

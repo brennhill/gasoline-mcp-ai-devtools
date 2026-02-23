@@ -1,3 +1,7 @@
+// Purpose: Validate tools_interact_state_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
+// Docs: docs/features/feature/interact-explore/index.md
+
 // tools_interact_state_test.go — Tests for state management handlers with form, storage, and cookie capture.
 // Verifies that state_capture and state_restore status fields are always present and unambiguous.
 package main
@@ -411,6 +415,8 @@ func TestSaveState_StateCapture_SkippedExtensionDisconnected(t *testing.T) {
 	env := newInteractHelpersTestEnv(t)
 	env.enablePilot(t)
 	requireSessionStore(t, env)
+	// Force extension to appear disconnected despite test env default connection.
+	env.capture.SimulateExtensionDisconnectForTest()
 
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`)}
 	resp := env.handler.handlePilotManageStateSave(req, json.RawMessage(`{"snapshot_name":"no_ext"}`))
@@ -634,6 +640,8 @@ func TestLoadState_StateRestore_SkippedExtensionDisconnected(t *testing.T) {
 	env := newInteractHelpersTestEnv(t)
 	env.enablePilot(t)
 	requireSessionStore(t, env)
+	// Force extension to appear disconnected despite test env default connection.
+	env.capture.SimulateExtensionDisconnectForTest()
 
 	stateData := map[string]any{
 		"url":             "https://example.com/form",
@@ -688,6 +696,8 @@ func TestLoadState_IncludeURL_SkipsNavigationWhenExtensionDisconnected(t *testin
 	env := newInteractHelpersTestEnv(t)
 	env.enablePilot(t)
 	requireSessionStore(t, env)
+	// Force extension to appear disconnected despite test env default connection.
+	env.capture.SimulateExtensionDisconnectForTest()
 
 	stateData := map[string]any{
 		"url":      "https://example.com/restore-target",

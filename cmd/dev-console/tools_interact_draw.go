@@ -1,3 +1,7 @@
+// Purpose: Implements interact tool handlers and browser action orchestration.
+// Why: Preserves deterministic browser action execution across agent workflows.
+// Docs: docs/features/feature/interact-explore/index.md
+
 // tools_interact_draw.go — MCP interact handler for draw_mode_start action.
 // Docs: docs/features/feature/interact-explore/index.md
 package main
@@ -19,6 +23,9 @@ func (h *ToolHandler) handleDrawModeStart(req JSONRPCRequest, args json.RawMessa
 	}
 
 	if resp, blocked := h.requirePilot(req); blocked {
+		return resp
+	}
+	if resp, blocked := h.requireExtension(req); blocked {
 		return resp
 	}
 

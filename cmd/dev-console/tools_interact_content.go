@@ -1,3 +1,7 @@
+// Purpose: Implements interact tool handlers and browser action orchestration.
+// Why: Preserves deterministic browser action execution across agent workflows.
+// Docs: docs/features/feature/interact-explore/index.md
+
 // tools_interact_content.go — Content extraction handlers for interact tool.
 // Implements get_readable and get_markdown actions using embedded JS scripts
 // executed via the "execute" query type (no TypeScript changes needed).
@@ -182,6 +186,13 @@ func (h *ToolHandler) handleGetReadable(req JSONRPCRequest, args json.RawMessage
 	}
 	lenientUnmarshal(args, &params)
 
+	if resp, blocked := h.requirePilot(req); blocked {
+		return resp
+	}
+	if resp, blocked := h.requireExtension(req); blocked {
+		return resp
+	}
+
 	if params.World == "" {
 		params.World = "isolated"
 	}
@@ -219,6 +230,13 @@ func (h *ToolHandler) handleGetMarkdown(req JSONRPCRequest, args json.RawMessage
 		World     string `json:"world,omitempty"`
 	}
 	lenientUnmarshal(args, &params)
+
+	if resp, blocked := h.requirePilot(req); blocked {
+		return resp
+	}
+	if resp, blocked := h.requireExtension(req); blocked {
+		return resp
+	}
 
 	if params.World == "" {
 		params.World = "isolated"

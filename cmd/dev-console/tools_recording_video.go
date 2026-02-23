@@ -1,4 +1,7 @@
-// tools_recording_video.go — Recording state machine: types, helpers, and interact handlers (record_start/record_stop).
+// Purpose: Implements recording and playback command handlers for captured browser sessions.
+// Why: Supports deterministic replay and comparison of browser behavior across runs.
+// Docs: docs/features/feature/playback-engine/index.md
+
 package main
 
 import (
@@ -317,6 +320,9 @@ func (h *ToolHandler) handleRecordStart(req JSONRPCRequest, args json.RawMessage
 	if resp, blocked := h.requirePilot(req); blocked {
 		return resp
 	}
+	if resp, blocked := h.requireExtension(req); blocked {
+		return resp
+	}
 
 	fps := clampFPS(params.FPS)
 
@@ -348,6 +354,9 @@ func (h *ToolHandler) handleRecordStop(req JSONRPCRequest, args json.RawMessage)
 	}
 
 	if resp, blocked := h.requirePilot(req); blocked {
+		return resp
+	}
+	if resp, blocked := h.requireExtension(req); blocked {
 		return resp
 	}
 

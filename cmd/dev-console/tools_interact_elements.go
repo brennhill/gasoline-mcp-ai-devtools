@@ -1,3 +1,7 @@
+// Purpose: Implements interact tool handlers and browser action orchestration.
+// Why: Preserves deterministic browser action execution across agent workflows.
+// Docs: docs/features/feature/interact-explore/index.md
+
 // tools_interact_elements.go — Element indexing for interact tool.
 // Implements list_interactive with indexed element store and index→selector resolution.
 package main
@@ -20,6 +24,9 @@ func (h *ToolHandler) handleListInteractive(req JSONRPCRequest, args json.RawMes
 	}
 
 	if resp, blocked := h.requirePilot(req); blocked {
+		return resp
+	}
+	if resp, blocked := h.requireExtension(req); blocked {
 		return resp
 	}
 

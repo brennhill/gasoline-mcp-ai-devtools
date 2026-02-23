@@ -1,3 +1,7 @@
+// Purpose: Implements interact tool handlers and browser action orchestration.
+// Why: Preserves deterministic browser action execution across agent workflows.
+// Docs: docs/features/feature/interact-explore/index.md
+
 // tools_interact_storage.go — Granular storage/cookie mutation handlers for interact tool.
 package main
 
@@ -162,6 +166,12 @@ func (h *ToolHandler) queueExecuteScript(
 	world, script, reason, queuedMsg string,
 ) JSONRPCResponse {
 	if resp, blocked := h.requirePilot(req); blocked {
+		return resp
+	}
+	if resp, blocked := h.requireExtension(req); blocked {
+		return resp
+	}
+	if resp, blocked := h.requireCSPClear(req); blocked {
 		return resp
 	}
 
