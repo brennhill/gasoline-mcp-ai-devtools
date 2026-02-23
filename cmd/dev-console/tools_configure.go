@@ -462,9 +462,22 @@ func (h *ToolHandler) toolConfigureTestBoundaryEnd(req JSONRPCRequest, args json
 }
 
 // handleDescribeCapabilities returns machine-readable tool metadata derived from ToolsList().
+// When summary=true, returns only tool name → { description, dispatch_param, modes },
+// reducing output from ~757K to ~10K.
 func (h *ToolHandler) handleDescribeCapabilities(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+	var params struct {
+		Summary bool `json:"summary"`
+	}
+	lenientUnmarshal(args, &params)
+
 	tools := h.ToolsList()
-	toolsMap := cfg.BuildCapabilitiesMap(tools)
+
+	var toolsMap map[string]any
+	if params.Summary {
+		toolsMap = cfg.BuildCapabilitiesSummary(tools)
+	} else {
+		toolsMap = cfg.BuildCapabilitiesMap(tools)
+	}
 
 	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Capabilities", map[string]any{
 		"version":          version,

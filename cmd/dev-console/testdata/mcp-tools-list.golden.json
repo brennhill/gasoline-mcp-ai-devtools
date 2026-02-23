@@ -39,6 +39,10 @@
           ],
           "type": "string"
         },
+        "extension_limit": {
+          "description": "Max extension logs when include_extension_logs=true (logs)",
+          "type": "number"
+        },
         "format": {
           "description": "Screenshot format (screenshot)",
           "enum": [
@@ -57,6 +61,14 @@
             "type": "string"
           },
           "type": "array"
+        },
+        "include_extension_logs": {
+          "description": "Include extension debug logs alongside logs output (logs)",
+          "type": "boolean"
+        },
+        "include_internal": {
+          "description": "Include daemon lifecycle/transport diagnostics in logs output (logs)",
+          "type": "boolean"
         },
         "last_n": {
           "description": "Return last N items only",

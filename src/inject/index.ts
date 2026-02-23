@@ -61,7 +61,9 @@ export {
   truncateResponseBody,
   readResponseBody,
   readResponseBodyWithTimeout,
-  wrapFetchWithBodies
+  wrapFetchWithBodies,
+  wrapXHRWithBodies,
+  unwrapXHR
 } from '../lib/network'
 export {
   getPerformanceMarks,
@@ -136,6 +138,8 @@ export {
   wrapFetch,
   installFetchCapture,
   uninstallFetchCapture,
+  installXHRCapture,
+  uninstallXHRCapture,
   installPhase1,
   installPhase2,
   getDeferralState,

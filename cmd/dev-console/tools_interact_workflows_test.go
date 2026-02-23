@@ -159,6 +159,76 @@ func contains(s, substr string) bool {
 }
 
 // ============================================
+// isNotTypeableError unit tests
+// ============================================
+
+func TestIsNotTypeableError_TrueForNotTypeable(t *testing.T) {
+	t.Parallel()
+	// Simulate a response like the extension returns for <select> elements
+	resp := JSONRPCResponse{
+		JSONRPC: "2.0",
+		ID:      json.RawMessage(`1`),
+		Result: mcpJSONErrorResponse("FAILED", map[string]any{
+			"status": "complete",
+			"result": map[string]any{
+				"success": false,
+				"error":   "not_typeable",
+				"message": "Element is not an input, textarea, or contenteditable: SELECT",
+			},
+		}),
+	}
+	if !isNotTypeableError(resp) {
+		t.Error("expected isNotTypeableError to return true for not_typeable error")
+	}
+}
+
+func TestIsNotTypeableError_FalseForOtherErrors(t *testing.T) {
+	t.Parallel()
+	resp := JSONRPCResponse{
+		JSONRPC: "2.0",
+		ID:      json.RawMessage(`1`),
+		Result: mcpJSONErrorResponse("FAILED", map[string]any{
+			"status": "complete",
+			"result": map[string]any{
+				"success": false,
+				"error":   "element_not_found",
+				"message": "No element found",
+			},
+		}),
+	}
+	if isNotTypeableError(resp) {
+		t.Error("expected isNotTypeableError to return false for non-not_typeable errors")
+	}
+}
+
+func TestIsNotTypeableError_FalseForSuccess(t *testing.T) {
+	t.Parallel()
+	resp := JSONRPCResponse{
+		JSONRPC: "2.0",
+		ID:      json.RawMessage(`1`),
+		Result: mcpJSONResponse("OK", map[string]any{
+			"status": "complete",
+			"result": map[string]any{"success": true},
+		}),
+	}
+	if isNotTypeableError(resp) {
+		t.Error("expected isNotTypeableError to return false for success response")
+	}
+}
+
+func TestIsNotTypeableError_FalseForJSONRPCError(t *testing.T) {
+	t.Parallel()
+	resp := JSONRPCResponse{
+		JSONRPC: "2.0",
+		ID:      json.RawMessage(`1`),
+		Error:   &JSONRPCError{Code: -32600, Message: "not_typeable in error"},
+	}
+	if isNotTypeableError(resp) {
+		t.Error("expected isNotTypeableError to return false for JSON-RPC errors")
+	}
+}
+
+// ============================================
 // run_a11y_and_export_sarif tests
 // ============================================
 

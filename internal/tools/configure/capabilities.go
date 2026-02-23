@@ -61,7 +61,9 @@ var configureModeSpecs = map[string]modeParamSpec{
 	"telemetry": {
 		Optional: []string{"telemetry_mode"},
 	},
-	"describe_capabilities": {},
+	"describe_capabilities": {
+		Optional: []string{"summary"},
+	},
 	"diff_sessions": {
 		Optional: []string{"verif_session_action", "name", "compare_a", "compare_b", "url"},
 	},
@@ -83,6 +85,30 @@ var configureModeSpecs = map[string]modeParamSpec{
 		Optional: []string{"name", "override_steps", "step_timeout_ms", "continue_on_error", "stop_after_step"},
 	},
 	"doctor": {},
+}
+
+// BuildCapabilitiesSummary returns a compact summary: tool name → { description, dispatch_param, modes }.
+// Omits full parameter schemas, reducing output from ~757K to ~10K.
+func BuildCapabilitiesSummary(tools []mcp.MCPTool) map[string]any {
+	toolsMap := make(map[string]any, len(tools))
+	for _, tool := range tools {
+		props, _ := tool.InputSchema["properties"].(map[string]any)
+		required := toStringSlice(tool.InputSchema["required"])
+
+		dispatchParam := ""
+		if len(required) > 0 {
+			dispatchParam = required[0]
+		}
+
+		modes := extractModes(dispatchParam, props)
+
+		toolsMap[tool.Name] = map[string]any{
+			"description":    tool.Description,
+			"dispatch_param": dispatchParam,
+			"modes":          modes,
+		}
+	}
+	return toolsMap
 }
 
 // BuildCapabilitiesMap transforms tool schemas into machine-readable capability metadata.
