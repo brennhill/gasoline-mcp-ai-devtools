@@ -345,7 +345,7 @@ export class SyncClient {
             continue
           }
 
-          // Mark processed and ack on RECEIPT — before dispatch
+          // Dedup on RECEIPT — prevents re-execution if server re-sends before ack
           if (command.id) {
             this.processedCommandSignatures.add(signature)
             const MAX_PROCESSED_COMMANDS = 1000
@@ -356,7 +356,6 @@ export class SyncClient {
               }
             }
           }
-          this.state.lastCommandAck = command.id
 
           this.log('Dispatching command', {
             id: command.id,
@@ -475,6 +474,10 @@ export class SyncClient {
         clearTimeout(timeoutHandle)
       }
       this.clearInProgressById(command.id)
+      // Ack after dispatch completes (success or failure) — not on bare receipt
+      if (command.id) {
+        this.state.lastCommandAck = command.id
+      }
     }
   }
 

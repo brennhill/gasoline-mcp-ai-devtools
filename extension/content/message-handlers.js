@@ -237,11 +237,16 @@ export function handleDomQuery(params, sendResponse) {
 export function handleGetNetworkWaterfall(sendResponse) {
     const requestId = nextRequestId++;
     const deferred = createDeferredPromise();
-    // Set up a one-time listener for the response
+    // Set up a one-time listener for the response — match requestId to prevent cross-wiring
     const responseHandler = (event) => {
         if (event.source !== window)
             return;
-        if (event.data?.type === 'GASOLINE_WATERFALL_RESPONSE') {
+        // Validate nonce on response messages (spoofing prevention).
+        // Accept responses with no nonce for backwards compat during migration.
+        const nonce = event.data?._nonce;
+        if (nonce && nonce !== getPageNonce())
+            return;
+        if (event.data?.type === 'GASOLINE_WATERFALL_RESPONSE' && event.data?.requestId === requestId) {
             window.removeEventListener('message', responseHandler);
             deferred.resolve({ entries: event.data.entries || [] });
         }
@@ -273,7 +278,12 @@ function forwardInjectQuery(queryType, responseType, label, params, sendResponse
     const responseHandler = (event) => {
         if (event.source !== window)
             return;
-        if (event.data?.type === responseType) {
+        // Validate nonce on response messages (spoofing prevention).
+        // Accept responses with no nonce for backwards compat during migration.
+        const nonce = event.data?._nonce;
+        if (nonce && nonce !== getPageNonce())
+            return;
+        if (event.data?.type === responseType && event.data?.requestId === requestId) {
             window.removeEventListener('message', responseHandler);
             deferred.resolve(event.data.result || { error: `No result from ${label}` });
         }

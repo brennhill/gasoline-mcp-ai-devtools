@@ -458,7 +458,7 @@ describe('SyncClient — Request building', () => {
   })
 
   test('should include last_command_ack when set', async () => {
-    // First sync to get connected, with a command that sets lastCommandAck
+    // First sync to get connected, with a command that sets lastCommandAck after dispatch
     const response = makeSyncResponse({
       commands: [{ id: 'cmd-1', type: 'dom_query', params: {} }],
       next_poll_ms: 10
@@ -466,7 +466,7 @@ describe('SyncClient — Request building', () => {
     mockFetch = installFetchMock(response)
 
     client.start()
-    await tick(50)
+    await tick(50) // wait for dispatch to complete (ack set in finally block)
 
     // Second sync should include last_command_ack
     await tick(50)
@@ -532,7 +532,7 @@ describe('SyncClient — Command dispatch', () => {
 
     client = new SyncClient('http://localhost:7777', 'sess-1', callbacks)
     client.start()
-    await tick(50)
+    await tick(50) // wait for async dispatch to complete (ack set in finally block)
 
     assert.strictEqual(client.getState().lastCommandAck, 'cmd-2')
   })
@@ -553,12 +553,39 @@ describe('SyncClient — Command dispatch', () => {
 
     client = new SyncClient('http://localhost:7777', 'sess-1', callbacks)
     client.start()
-    await tick(50)
+    await tick(50) // wait for async dispatch to complete (ack set in finally block)
 
     // Both commands attempted
     assert.strictEqual(callbacks.onCommand.mock.calls.length, 2)
-    // lastCommandAck should be the second (successful) command
+    // lastCommandAck should be the second command — ack advances through failed dispatches too
     assert.strictEqual(client.getState().lastCommandAck, 'cmd-2')
+  })
+
+  test('should not ack commands before dispatch completes', async () => {
+    let resolveSlowHandler
+    callbacks.onCommand = mock.fn(
+      () =>
+        new Promise((resolve) => {
+          resolveSlowHandler = resolve
+        })
+    )
+
+    const commands = [{ id: 'cmd-slow', type: 'browser_action', params: {} }]
+    installFetchMock(makeSyncResponse({ commands, next_poll_ms: 60000 }))
+
+    client = new SyncClient('http://localhost:7777', 'sess-1', callbacks)
+    client.start()
+    await tick(30) // sync fires, command dispatched but handler not resolved yet
+
+    // Ack should NOT be set while dispatch is still in progress
+    assert.strictEqual(client.getState().lastCommandAck, null, 'should not ack before dispatch completes')
+
+    // Now resolve the handler
+    resolveSlowHandler()
+    await tick(30)
+
+    // Ack should now be set
+    assert.strictEqual(client.getState().lastCommandAck, 'cmd-slow', 'should ack after dispatch completes')
   })
 
   test('should report running commands in in_progress heartbeat payload', async () => {

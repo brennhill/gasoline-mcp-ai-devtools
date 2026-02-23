@@ -451,6 +451,9 @@
       const { type: messageType, requestId, result, payload } = event.data || {};
       const responseHandler = messageType ? RESPONSE_HANDLERS[messageType] : void 0;
       if (responseHandler) {
+        const nonce = event.data?._nonce;
+        if (nonce && nonce !== getPageNonce())
+          return;
         if (requestId !== void 0)
           responseHandler(requestId, result);
         return;
@@ -678,7 +681,10 @@
     const responseHandler = (event) => {
       if (event.source !== window)
         return;
-      if (event.data?.type === "GASOLINE_WATERFALL_RESPONSE") {
+      const nonce = event.data?._nonce;
+      if (nonce && nonce !== getPageNonce())
+        return;
+      if (event.data?.type === "GASOLINE_WATERFALL_RESPONSE" && event.data?.requestId === requestId) {
         window.removeEventListener("message", responseHandler);
         deferred.resolve({ entries: event.data.entries || [] });
       }
@@ -704,7 +710,10 @@
     const responseHandler = (event) => {
       if (event.source !== window)
         return;
-      if (event.data?.type === responseType) {
+      const nonce = event.data?._nonce;
+      if (nonce && nonce !== getPageNonce())
+        return;
+      if (event.data?.type === responseType && event.data?.requestId === requestId) {
         window.removeEventListener("message", responseHandler);
         deferred.resolve(event.data.result || { error: `No result from ${label}` });
       }

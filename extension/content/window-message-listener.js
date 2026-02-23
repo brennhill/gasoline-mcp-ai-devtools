@@ -6,6 +6,7 @@
 import { resolveHighlightRequest, resolveExecuteRequest, resolveA11yRequest, resolveDomRequest } from './request-tracking.js';
 import { MESSAGE_MAP, safeSendMessage } from './message-forwarding.js';
 import { getIsTrackedTab, getCurrentTabId } from './tab-tracking.js';
+import { getPageNonce } from './script-injection.js';
 const RESPONSE_HANDLERS = {
     GASOLINE_HIGHLIGHT_RESPONSE: (id, result) => resolveHighlightRequest(id, result),
     GASOLINE_EXECUTE_JS_RESULT: (id, result) => resolveExecuteRequest(id, result),
@@ -19,6 +20,11 @@ export function initWindowMessageListener() {
         const { type: messageType, requestId, result, payload } = event.data || {};
         const responseHandler = messageType ? RESPONSE_HANDLERS[messageType] : undefined;
         if (responseHandler) {
+            // Validate nonce on response messages (spoofing prevention).
+            // Accept responses with no nonce for backwards compat during migration.
+            const nonce = event.data?._nonce;
+            if (nonce && nonce !== getPageNonce())
+                return;
             if (requestId !== undefined)
                 responseHandler(requestId, result);
             return;

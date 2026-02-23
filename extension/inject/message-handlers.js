@@ -16,6 +16,10 @@ if (typeof document !== 'undefined' && typeof document.querySelector === 'functi
         pageNonce = nonceEl.getAttribute('data-gasoline-nonce') || '';
     }
 }
+/** Send a nonce-authenticated response back to the content script */
+function postResponse(data) {
+    window.postMessage({ ...data, _nonce: pageNonce }, window.location.origin);
+}
 /**
  * Handle link health check request from content script
  */
@@ -38,14 +42,14 @@ export async function handleLinkHealthQuery(data) {
 function handleLinkHealthMessage(data) {
     handleLinkHealthQuery(data)
         .then((result) => {
-        window.postMessage({ type: 'GASOLINE_LINK_HEALTH_RESPONSE', requestId: data.requestId, result }, window.location.origin);
+        postResponse({ type: 'GASOLINE_LINK_HEALTH_RESPONSE', requestId: data.requestId, result });
     })
         .catch((err) => {
-        window.postMessage({
+        postResponse({
             type: 'GASOLINE_LINK_HEALTH_RESPONSE',
             requestId: data.requestId,
             result: { error: 'link_health_error', message: err.message || 'Failed to check link health' }
-        }, window.location.origin);
+        });
     });
 }
 export function installMessageListener(captureStateFn, restoreStateFn) {
@@ -81,11 +85,10 @@ export function installMessageListener(captureStateFn, restoreStateFn) {
     });
 }
 function handleBridgePingMessage(data) {
-    window.postMessage({
+    postResponse({
         type: 'GASOLINE_INJECT_BRIDGE_PONG',
-        requestId: data.requestId,
-        _nonce: pageNonce
-    }, window.location.origin);
+        requestId: data.requestId
+    });
 }
 function handleComputedStylesMessage(data) {
     try {
@@ -94,18 +97,18 @@ function handleComputedStylesMessage(data) {
             selector: params.selector || '*',
             properties: params.properties
         });
-        window.postMessage({
+        postResponse({
             type: 'GASOLINE_COMPUTED_STYLES_RESPONSE',
             requestId: data.requestId,
             result: { elements: result, count: result.length }
-        }, window.location.origin);
+        });
     }
     catch (err) {
-        window.postMessage({
+        postResponse({
             type: 'GASOLINE_COMPUTED_STYLES_RESPONSE',
             requestId: data.requestId,
             result: { error: 'computed_styles_error', message: err.message || 'Failed to query computed styles' }
-        }, window.location.origin);
+        });
     }
 }
 function handleFormDiscoveryMessage(data) {
@@ -115,18 +118,18 @@ function handleFormDiscoveryMessage(data) {
             selector: params.selector,
             mode: params.mode === 'validate' ? 'validate' : 'discover'
         });
-        window.postMessage({
+        postResponse({
             type: 'GASOLINE_FORM_DISCOVERY_RESPONSE',
             requestId: data.requestId,
             result: { forms: result, count: result.length }
-        }, window.location.origin);
+        });
     }
     catch (err) {
-        window.postMessage({
+        postResponse({
             type: 'GASOLINE_FORM_DISCOVERY_RESPONSE',
             requestId: data.requestId,
             result: { error: 'form_discovery_error', message: err.message || 'Failed to discover forms' }
-        }, window.location.origin);
+        });
     }
 }
 function handleExecuteJs(data) {
@@ -134,11 +137,11 @@ function handleExecuteJs(data) {
     // Validate parameters
     if (typeof script !== 'string') {
         console.warn('[Gasoline] Script must be a string');
-        window.postMessage({
+        postResponse({
             type: 'GASOLINE_EXECUTE_JS_RESULT',
             requestId,
             result: { success: false, error: 'invalid_script', message: 'Script must be a string' }
-        }, window.location.origin);
+        });
         return;
     }
     if (typeof requestId !== 'number' && typeof requestId !== 'string') {
@@ -147,117 +150,117 @@ function handleExecuteJs(data) {
     }
     executeJavaScript(script, timeoutMs)
         .then((result) => {
-        window.postMessage({
+        postResponse({
             type: 'GASOLINE_EXECUTE_JS_RESULT',
             requestId,
             result
-        }, window.location.origin);
+        });
     })
         .catch((err) => {
         console.error('[Gasoline] Failed to execute JS:', err);
-        window.postMessage({
+        postResponse({
             type: 'GASOLINE_EXECUTE_JS_RESULT',
             requestId,
             result: { success: false, error: 'execution_failed', message: err.message }
-        }, window.location.origin);
+        });
     });
 }
 function handleA11yQuery(data) {
     const { requestId, params } = data;
     if (typeof runAxeAuditWithTimeout !== 'function') {
-        window.postMessage({
+        postResponse({
             type: 'GASOLINE_A11Y_QUERY_RESPONSE',
             requestId,
             result: {
                 error: 'runAxeAuditWithTimeout not available - try reloading the extension'
             }
-        }, window.location.origin);
+        });
         return;
     }
     try {
         runAxeAuditWithTimeout(params || {})
             .then((result) => {
-            window.postMessage({
+            postResponse({
                 type: 'GASOLINE_A11Y_QUERY_RESPONSE',
                 requestId,
                 result
-            }, window.location.origin);
+            });
         })
             .catch((err) => {
             console.error('[Gasoline] Accessibility audit error:', err);
-            window.postMessage({
+            postResponse({
                 type: 'GASOLINE_A11Y_QUERY_RESPONSE',
                 requestId,
                 result: { error: err.message || 'Accessibility audit failed' }
-            }, window.location.origin);
+            });
         });
     }
     catch (err) {
         console.error('[Gasoline] Failed to run accessibility audit:', err);
-        window.postMessage({
+        postResponse({
             type: 'GASOLINE_A11Y_QUERY_RESPONSE',
             requestId,
             result: { error: err.message || 'Failed to run accessibility audit' }
-        }, window.location.origin);
+        });
     }
 }
 function handleDomQuery(data) {
     const { requestId, params } = data;
     if (typeof executeDOMQuery !== 'function') {
-        window.postMessage({
+        postResponse({
             type: 'GASOLINE_DOM_QUERY_RESPONSE',
             requestId,
             result: {
                 error: 'executeDOMQuery not available - try reloading the extension'
             }
-        }, window.location.origin);
+        });
         return;
     }
     try {
         executeDOMQuery((params || {}))
             .then((result) => {
-            window.postMessage({
+            postResponse({
                 type: 'GASOLINE_DOM_QUERY_RESPONSE',
                 requestId,
                 result
-            }, window.location.origin);
+            });
         })
             .catch((err) => {
             console.error('[Gasoline] DOM query error:', err);
-            window.postMessage({
+            postResponse({
                 type: 'GASOLINE_DOM_QUERY_RESPONSE',
                 requestId,
                 result: { error: err.message || 'DOM query failed' }
-            }, window.location.origin);
+            });
         });
     }
     catch (err) {
         console.error('[Gasoline] Failed to run DOM query:', err);
-        window.postMessage({
+        postResponse({
             type: 'GASOLINE_DOM_QUERY_RESPONSE',
             requestId,
             result: { error: err.message || 'Failed to run DOM query' }
-        }, window.location.origin);
+        });
     }
 }
 function handleGetWaterfall(data) {
     const { requestId } = data;
     try {
         const entries = getNetworkWaterfall({});
-        window.postMessage({
+        postResponse({
             type: 'GASOLINE_WATERFALL_RESPONSE',
             requestId,
             entries: entries || [],
             page_url: window.location.href
-        }, window.location.origin);
+        });
     }
     catch (err) {
         console.error('[Gasoline] Failed to get network waterfall:', err);
-        window.postMessage({
+        postResponse({
             type: 'GASOLINE_WATERFALL_RESPONSE',
             requestId,
             entries: []
-        }, window.location.origin);
+        });
     }
 }
 //# sourceMappingURL=message-handlers.js.map
