@@ -136,7 +136,10 @@ const TARGETED_QUERY_TYPES = new Set([
     'link_health',
     'draw_mode',
     'computed_styles',
-    'form_discovery'
+    'form_discovery',
+    'state_capture',
+    'state_save',
+    'state_load'
 ]);
 export function requiresTargetTab(queryType) {
     return TARGETED_QUERY_TYPES.has(queryType);

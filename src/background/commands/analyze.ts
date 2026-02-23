@@ -97,6 +97,12 @@ async function resolveAnalyzeFrameSelection(tabId: number, frame: unknown): Prom
     throw new Error('invalid_frame')
   }
 
+  // No frame targeting requested — skip the probe entirely and target the main frame.
+  if (normalized === undefined) {
+    return { frameIds: [0], mode: 'main' }
+  }
+
+  // Pass null instead of undefined to satisfy chrome.scripting.executeScript serialization.
   const probeResults = await chrome.scripting.executeScript({
     target: { tabId, allFrames: true },
     world: 'MAIN',
@@ -117,9 +123,6 @@ async function resolveAnalyzeFrameSelection(tabId: number, frame: unknown): Prom
     throw new Error('frame_not_found')
   }
 
-  if (normalized === undefined) {
-    return { frameIds, mode: 'main' }
-  }
   if (normalized === 'all') {
     return { frameIds, mode: 'all' }
   }
@@ -452,6 +455,7 @@ registerCommand('dom', async (ctx) => {
     }
   } catch (err) {
     const message = (err as Error).message || 'Failed to execute DOM query'
+    console.error('[Gasoline][DOM] Command failed:', message, (err as Error).stack || err)
     const isFrameNotFound = message === 'frame_not_found'
     const isInvalidFrame = message === 'invalid_frame'
     if (ctx.query.correlation_id) {
@@ -461,12 +465,12 @@ registerCommand('dom', async (ctx) => {
         ctx.query.correlation_id,
         'error',
         null,
-        isInvalidFrame || isFrameNotFound ? message : 'Failed to execute DOM query'
+        isInvalidFrame || isFrameNotFound ? message : `Failed to execute DOM query: ${message}`
       )
     } else {
       ctx.sendResult({
         error: isInvalidFrame || isFrameNotFound ? message : 'dom_query_failed',
-        message: isInvalidFrame || isFrameNotFound ? message : 'Failed to execute DOM query'
+        message: isInvalidFrame || isFrameNotFound ? message : `Failed to execute DOM query: ${message}`
       })
     }
   }
@@ -521,6 +525,7 @@ registerCommand('a11y', async (ctx) => {
     }
   } catch (err) {
     const message = (err as Error).message || 'Failed to execute accessibility audit'
+    console.error('[Gasoline][A11Y] Command failed:', message, (err as Error).stack || err)
     const isFrameNotFound = message === 'frame_not_found'
     const isInvalidFrame = message === 'invalid_frame'
     if (ctx.query.correlation_id) {
@@ -530,12 +535,12 @@ registerCommand('a11y', async (ctx) => {
         ctx.query.correlation_id,
         'error',
         null,
-        isInvalidFrame || isFrameNotFound ? message : 'Failed to execute accessibility audit'
+        isInvalidFrame || isFrameNotFound ? message : `Failed to execute accessibility audit: ${message}`
       )
     } else {
       ctx.sendResult({
         error: isInvalidFrame || isFrameNotFound ? message : 'a11y_audit_failed',
-        message: isInvalidFrame || isFrameNotFound ? message : 'Failed to execute accessibility audit'
+        message: isInvalidFrame || isFrameNotFound ? message : `Failed to execute accessibility audit: ${message}`
       })
     }
   }

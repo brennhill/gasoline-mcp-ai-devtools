@@ -9,7 +9,7 @@ import { executeWithWorldRouting } from '../query-execution.js';
 import { handleBrowserAction, handleAsyncBrowserAction, handleAsyncExecuteCommand } from '../browser-actions.js';
 import { saveStateSnapshot, loadStateSnapshot, listStateSnapshots, deleteStateSnapshot } from '../message-handlers.js';
 import { registerCommand } from './registry.js';
-import { sendResult, sendAsyncResult } from './helpers.js';
+import { sendAsyncResult } from './helpers.js';
 function statusFromError(error) {
     return error ? 'error' : 'complete';
 }
@@ -136,7 +136,7 @@ registerCommand('record_stop', async (ctx) => {
 // =============================================================================
 registerCommand('state_*', async (ctx) => {
     if (!isAiWebPilotEnabled()) {
-        sendResult(ctx.syncClient, ctx.query.id, { error: 'ai_web_pilot_disabled' });
+        ctx.sendResult({ error: 'ai_web_pilot_disabled' });
         return;
     }
     let params;
@@ -144,42 +144,37 @@ registerCommand('state_*', async (ctx) => {
         params = typeof ctx.query.params === 'string' ? JSON.parse(ctx.query.params) : ctx.query.params;
     }
     catch {
-        sendResult(ctx.syncClient, ctx.query.id, {
+        ctx.sendResult({
             error: 'invalid_params',
             message: 'Failed to parse state query params as JSON'
         });
         return;
     }
     const action = params.action;
+    // Use the tracked tab from the command context instead of querying for active tab.
+    // chrome.tabs.query({ active: true, currentWindow: true }) is unreliable from a service worker.
+    const tabId = ctx.tabId;
+    if (!tabId) {
+        ctx.sendResult({ error: 'no_tracked_tab', message: 'No tracked tab available for state command' });
+        return;
+    }
     try {
         let result;
         switch (action) {
             case 'capture': {
-                const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
-                const firstTab = tabs[0];
-                if (!firstTab?.id) {
-                    sendResult(ctx.syncClient, ctx.query.id, { error: 'no_active_tab' });
-                    return;
-                }
-                result = await chrome.tabs.sendMessage(firstTab.id, {
+                result = await chrome.tabs.sendMessage(tabId, {
                     type: 'GASOLINE_MANAGE_STATE',
                     params: { action: 'capture' }
                 });
                 break;
             }
             case 'save': {
-                const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
-                const firstTab = tabs[0];
-                if (!firstTab?.id) {
-                    sendResult(ctx.syncClient, ctx.query.id, { error: 'no_active_tab' });
-                    return;
-                }
-                const captureResult = (await chrome.tabs.sendMessage(firstTab.id, {
+                const captureResult = (await chrome.tabs.sendMessage(tabId, {
                     type: 'GASOLINE_MANAGE_STATE',
                     params: { action: 'capture' }
                 }));
                 if (captureResult.error) {
-                    sendResult(ctx.syncClient, ctx.query.id, { error: captureResult.error });
+                    ctx.sendResult({ error: captureResult.error });
                     return;
                 }
                 result = await saveStateSnapshot(params.name, captureResult);
@@ -188,18 +183,12 @@ registerCommand('state_*', async (ctx) => {
             case 'load': {
                 const snapshot = await loadStateSnapshot(params.name);
                 if (!snapshot) {
-                    sendResult(ctx.syncClient, ctx.query.id, {
+                    ctx.sendResult({
                         error: `Snapshot '${params.name}' not found`
                     });
                     return;
                 }
-                const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
-                const firstTab = tabs[0];
-                if (!firstTab?.id) {
-                    sendResult(ctx.syncClient, ctx.query.id, { error: 'no_active_tab' });
-                    return;
-                }
-                result = await chrome.tabs.sendMessage(firstTab.id, {
+                result = await chrome.tabs.sendMessage(tabId, {
                     type: 'GASOLINE_MANAGE_STATE',
                     params: {
                         action: 'restore',
@@ -218,10 +207,10 @@ registerCommand('state_*', async (ctx) => {
             default:
                 result = { error: `Unknown action: ${action}` };
         }
-        sendResult(ctx.syncClient, ctx.query.id, result);
+        ctx.sendResult(result);
     }
     catch (err) {
-        sendResult(ctx.syncClient, ctx.query.id, { error: err.message });
+        ctx.sendResult({ error: err.message });
     }
 });
 // =============================================================================
