@@ -330,10 +330,14 @@ export function handleGetNetworkWaterfall(sendResponse: (result: { entries: Wate
   const requestId = nextRequestId++
   const deferred = createDeferredPromise<{ entries: WaterfallEntry[] }>()
 
-  // Set up a one-time listener for the response
-  const responseHandler = (event: MessageEvent<{ type?: string; entries?: WaterfallEntry[] }>) => {
+  // Set up a one-time listener for the response — match requestId to prevent cross-wiring
+  const responseHandler = (event: MessageEvent<{ type?: string; requestId?: number; entries?: WaterfallEntry[]; _nonce?: string }>) => {
     if (event.source !== window) return
-    if (event.data?.type === 'GASOLINE_WATERFALL_RESPONSE') {
+    // Validate nonce on response messages (spoofing prevention).
+    // Accept responses with no nonce for backwards compat during migration.
+    const nonce = event.data?._nonce
+    if (nonce && nonce !== getPageNonce()) return
+    if (event.data?.type === 'GASOLINE_WATERFALL_RESPONSE' && event.data?.requestId === requestId) {
       window.removeEventListener('message', responseHandler)
       deferred.resolve({ entries: event.data.entries || [] })
     }
@@ -377,9 +381,13 @@ function forwardInjectQuery(
   const requestId = nextRequestId++
   const deferred = createDeferredPromise<unknown>()
 
-  const responseHandler = (event: MessageEvent<{ type?: string; result?: unknown }>) => {
+  const responseHandler = (event: MessageEvent<{ type?: string; requestId?: number; result?: unknown; _nonce?: string }>) => {
     if (event.source !== window) return
-    if (event.data?.type === responseType) {
+    // Validate nonce on response messages (spoofing prevention).
+    // Accept responses with no nonce for backwards compat during migration.
+    const nonce = event.data?._nonce
+    if (nonce && nonce !== getPageNonce()) return
+    if (event.data?.type === responseType && event.data?.requestId === requestId) {
       window.removeEventListener('message', responseHandler)
       deferred.resolve(event.data.result || { error: `No result from ${label}` })
     }

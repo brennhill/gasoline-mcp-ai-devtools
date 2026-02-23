@@ -22,8 +22,8 @@ func NormalizeCommandStatus(status string) string {
 	case "canceled":
 		return "cancelled"
 	default:
-		// Preserve current behavior for unknown values by treating as complete.
-		return "complete"
+		// Unknown status values are treated as errors to surface protocol drift.
+		return "error"
 	}
 }
 

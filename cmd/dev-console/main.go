@@ -40,7 +40,7 @@ import (
 
 // version is set at build time via -ldflags "-X main.version=..."
 // Fallback used for `go run` and `make dev` (no ldflags).
-var version = "0.7.7"
+var version = "7.8.0"
 
 // startTime tracks when the server started for uptime calculation
 var startTime = time.Now()

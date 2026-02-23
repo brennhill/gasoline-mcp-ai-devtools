@@ -161,7 +161,7 @@ func TestNewQueryDispatcher_ApplyCommandResult_TimeoutStatus(t *testing.T) {
 	}
 }
 
-func TestNewQueryDispatcher_ApplyCommandResult_UnknownStatusDefaultsComplete(t *testing.T) {
+func TestNewQueryDispatcher_ApplyCommandResult_UnknownStatusDefaultsError(t *testing.T) {
 	t.Parallel()
 
 	qd := NewQueryDispatcher()
@@ -170,12 +170,46 @@ func TestNewQueryDispatcher_ApplyCommandResult_UnknownStatusDefaultsComplete(t *
 	qd.RegisterCommand("corr-unknown-status", "q-unknown-status", 30*time.Second)
 	qd.ApplyCommandResult("corr-unknown-status", "mystery_status", json.RawMessage(`{"ok":true}`), "")
 
+	// Unknown status should be treated as error to surface protocol drift
 	cmd, found := qd.GetCommandResult("corr-unknown-status")
 	if !found {
 		t.Fatal("GetCommandResult returned false")
 	}
-	if cmd.Status != "complete" {
-		t.Errorf("Status = %q, want complete for unknown normalized status", cmd.Status)
+	if cmd.Status != "error" {
+		t.Errorf("Status = %q, want error for unknown normalized status", cmd.Status)
+	}
+
+	// Should appear in failed commands
+	failed := qd.GetFailedCommands()
+	foundInFailed := false
+	for _, f := range failed {
+		if f.CorrelationID == "corr-unknown-status" {
+			foundInFailed = true
+		}
+	}
+	if !foundInFailed {
+		t.Error("unknown status command should appear in GetFailedCommands()")
+	}
+}
+
+func TestNewQueryDispatcher_ApplyCommandResult_UnknownStatusWithErrorField(t *testing.T) {
+	t.Parallel()
+
+	qd := NewQueryDispatcher()
+	defer qd.Close()
+
+	qd.RegisterCommand("corr-unknown-err", "q-unknown-err", 30*time.Second)
+	qd.ApplyCommandResult("corr-unknown-err", "mystery_status", nil, "something went wrong")
+
+	cmd, found := qd.GetCommandResult("corr-unknown-err")
+	if !found {
+		t.Fatal("GetCommandResult returned false")
+	}
+	if cmd.Status != "error" {
+		t.Errorf("Status = %q, want error", cmd.Status)
+	}
+	if cmd.Error != "something went wrong" {
+		t.Errorf("Error = %q, want 'something went wrong'", cmd.Error)
 	}
 }
 
