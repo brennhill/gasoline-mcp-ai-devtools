@@ -121,7 +121,7 @@ function uninstallViaFile(def, options) {
     };
   }
 
-  const modified = JSON.parse(JSON.stringify(readResult.data));
+  const modified = structuredClone(readResult.data);
   delete modified[configKey].gasoline;
 
   if (Object.keys(modified[configKey]).length > 0) {
