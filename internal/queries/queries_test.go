@@ -20,7 +20,7 @@ func TestV4PendingQueryCreation(t *testing.T) {
 	t.Parallel()
 	capture := setupTestCapture(t)
 
-	id := capture.CreatePendingQuery(PendingQuery{
+	id, _ := capture.CreatePendingQuery(PendingQuery{
 		Type:   "dom",
 		Params: json.RawMessage(`{"selector":".user-list"}`),
 	})
@@ -80,7 +80,7 @@ func TestV4PendingQueryResult(t *testing.T) {
 	t.Parallel()
 	capture := setupTestCapture(t)
 
-	id := capture.CreatePendingQuery(PendingQuery{
+	id, _ := capture.CreatePendingQuery(PendingQuery{
 		Type:   "dom",
 		Params: json.RawMessage(`{"selector":".user-list"}`),
 	})
@@ -144,7 +144,7 @@ func TestV4DOMQueryWaitsForResult(t *testing.T) {
 	capture := setupTestCapture(t)
 
 	// Create query and immediately provide result in a goroutine
-	id := capture.CreatePendingQuery(PendingQuery{
+	id, _ := capture.CreatePendingQuery(PendingQuery{
 		Type:   "dom",
 		Params: json.RawMessage(`{"selector":"h1"}`),
 	})
@@ -169,7 +169,7 @@ func TestV4DOMQueryWaitTimeout(t *testing.T) {
 	t.Parallel()
 	capture := setupTestCapture(t)
 
-	id := capture.CreatePendingQuery(PendingQuery{
+	id, _ := capture.CreatePendingQuery(PendingQuery{
 		Type:   "dom",
 		Params: json.RawMessage(`{"selector":"h1"}`),
 	})
@@ -236,7 +236,7 @@ func TestV4PostDOMResultEndpoint(t *testing.T) {
 	t.Parallel()
 	capture := setupTestCapture(t)
 
-	id := capture.CreatePendingQuery(PendingQuery{
+	id, _ := capture.CreatePendingQuery(PendingQuery{
 		Type:   "dom",
 		Params: json.RawMessage(`{"selector":"h1"}`),
 	})
@@ -282,7 +282,7 @@ func TestV4PostA11yResultEndpoint(t *testing.T) {
 	t.Parallel()
 	capture := setupTestCapture(t)
 
-	id := capture.CreatePendingQuery(PendingQuery{
+	id, _ := capture.CreatePendingQuery(PendingQuery{
 		Type:   "a11y",
 		Params: json.RawMessage(`{"scope":null}`),
 	})
@@ -511,7 +511,7 @@ func TestV4QueryResultDeletedAfterRetrieval(t *testing.T) {
 	t.Parallel()
 	capture := setupTestCapture(t)
 
-	id := capture.CreatePendingQuery(PendingQuery{
+	id, _ := capture.CreatePendingQuery(PendingQuery{
 		Type:   "dom",
 		Params: json.RawMessage(`{"selector":"h1"}`),
 	})
@@ -538,7 +538,7 @@ func TestV4QueryResultDeletedAfterWaitForResult(t *testing.T) {
 	t.Parallel()
 	capture := setupTestCapture(t)
 
-	id := capture.CreatePendingQuery(PendingQuery{
+	id, _ := capture.CreatePendingQuery(PendingQuery{
 		Type:   "dom",
 		Params: json.RawMessage(`{"selector":"h1"}`),
 	})
@@ -571,7 +571,7 @@ func TestV4QueryResultMapDoesNotGrowUnbounded(t *testing.T) {
 
 	// Create and resolve 20 queries
 	for i := 0; i < 20; i++ {
-		id := capture.CreatePendingQuery(PendingQuery{
+		id, _ := capture.CreatePendingQuery(PendingQuery{
 			Type:   "dom",
 			Params: json.RawMessage(`{"selector":"h1"}`),
 		})
@@ -1198,7 +1198,7 @@ func TestHandleQueryResultTimeout(t *testing.T) {
 	capture := setupTestCapture(t)
 
 	// Create a query with a very short timeout
-	id := capture.CreatePendingQueryWithTimeout(PendingQuery{
+	id, _ := capture.CreatePendingQueryWithTimeout(PendingQuery{
 		Type:   "dom",
 		Params: json.RawMessage(`{"selector":".test"}`),
 	}, 50*time.Millisecond)
@@ -1256,7 +1256,7 @@ func TestHandleQueryResultSuccess(t *testing.T) {
 	t.Parallel()
 	capture := setupTestCapture(t)
 
-	id := capture.CreatePendingQuery(PendingQuery{
+	id, _ := capture.CreatePendingQuery(PendingQuery{
 		Type:   "dom",
 		Params: json.RawMessage(`{"selector":".user-list"}`),
 	})
@@ -1287,7 +1287,7 @@ func TestHandleQueryResultNotifiesWaiters(t *testing.T) {
 	t.Parallel()
 	capture := setupTestCapture(t)
 
-	id := capture.CreatePendingQuery(PendingQuery{
+	id, _ := capture.CreatePendingQuery(PendingQuery{
 		Type:   "dom",
 		Params: json.RawMessage(`{"selector":".item"}`),
 	})
@@ -1406,7 +1406,7 @@ func TestHandleA11yResultSameAsDOM(t *testing.T) {
 	t.Parallel()
 	capture := setupTestCapture(t)
 
-	id := capture.CreatePendingQuery(PendingQuery{
+	id, _ := capture.CreatePendingQuery(PendingQuery{
 		Type:   "a11y",
 		Params: json.RawMessage(`{"scope":"main"}`),
 	})
@@ -1436,7 +1436,7 @@ func TestHandleQueryResultBodyTooLarge(t *testing.T) {
 	t.Parallel()
 	capture := setupTestCapture(t)
 
-	id := capture.CreatePendingQuery(PendingQuery{
+	id, _ := capture.CreatePendingQuery(PendingQuery{
 		Type:   "dom",
 		Params: json.RawMessage(`{"selector":"*"}`),
 	})
@@ -1963,7 +1963,7 @@ func TestSetQueryResult_ConcurrentSetAndWait(t *testing.T) {
 
 	// Create a pending query with a short timeout
 	capture.SetQueryTimeout(2 * time.Second)
-	id := capture.CreatePendingQuery(PendingQuery{
+	id, _ := capture.CreatePendingQuery(PendingQuery{
 		Type:   "dom",
 		Params: json.RawMessage(`{"selector":"#app"}`),
 	})

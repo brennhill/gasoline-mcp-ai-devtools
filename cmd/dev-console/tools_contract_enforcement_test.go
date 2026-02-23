@@ -158,7 +158,7 @@ func TestContractEnforcement_CommandResult_HasElapsedMs(t *testing.T) {
 	s := newScenario(t)
 
 	// Create and complete a command
-	queryID := s.capture.CreatePendingQueryWithTimeout(
+	queryID, _ := s.capture.CreatePendingQueryWithTimeout(
 		queries.PendingQuery{
 			Type:          "dom",
 			Params:        json.RawMessage(`{"selector":"body"}`),
@@ -268,7 +268,7 @@ func TestContractPendingQuery_Timeout(t *testing.T) {
 	s := newScenario(t)
 
 	// Create a pending query with a very short timeout
-	queryID := s.capture.CreatePendingQueryWithTimeout(
+	queryID, _ := s.capture.CreatePendingQueryWithTimeout(
 		queries.PendingQuery{
 			Type:   "test_query",
 			Params: json.RawMessage(`{"test": true}`),
@@ -303,7 +303,7 @@ func TestContractAsyncBridge_RoundTrip(t *testing.T) {
 	s := newScenario(t)
 
 	// 1. Create a pending query
-	queryID := s.capture.CreatePendingQueryWithTimeout(
+	queryID, _ := s.capture.CreatePendingQueryWithTimeout(
 		queries.PendingQuery{
 			Type:          "dom",
 			Params:        json.RawMessage(`{"selector": "#test"}`),
@@ -381,7 +381,7 @@ func TestContractAsyncBridge_RoundTrip(t *testing.T) {
 func TestContractAsyncBridge_ConcurrentDelivery(t *testing.T) {
 	s := newScenario(t)
 
-	queryID := s.capture.CreatePendingQueryWithTimeout(
+	queryID, _ := s.capture.CreatePendingQueryWithTimeout(
 		queries.PendingQuery{
 			Type:   "execute",
 			Params: json.RawMessage(`{"script": "1+1"}`),

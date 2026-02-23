@@ -300,7 +300,7 @@ func TestNewQueryDispatcher_ExpireCommandResultAfterDispatchTimeout(t *testing.T
 
 	// Create async query with short timeout, then acknowledge delivery so it is
 	// no longer in pendingQueries (simulates extension dequeued but never replied).
-	queryID := qd.CreatePendingQueryWithTimeout(PendingQuery{
+	queryID, _ := qd.CreatePendingQueryWithTimeout(PendingQuery{
 		Type:          "browser_action",
 		CorrelationID: "corr-dispatched-timeout",
 	}, 30*time.Millisecond, "test-client")

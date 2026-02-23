@@ -34,7 +34,7 @@ func (h *ToolHandler) ExecuteA11yQuery(scope string, tags []string, frame any, f
 	// Error impossible: map contains only primitive types and string slices from input
 	paramsJSON, _ := json.Marshal(queryParams)
 
-	queryID := h.capture.CreatePendingQueryWithTimeout(
+	queryID, qerr := h.capture.CreatePendingQueryWithTimeout(
 		queries.PendingQuery{
 			Type:   "a11y",
 			Params: paramsJSON,
@@ -42,6 +42,9 @@ func (h *ToolHandler) ExecuteA11yQuery(scope string, tags []string, frame any, f
 		30*time.Second,
 		"",
 	)
+	if qerr != nil {
+		return nil, qerr
+	}
 	return h.capture.WaitForResult(queryID, 30*time.Second)
 }
 

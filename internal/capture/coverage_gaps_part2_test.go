@@ -319,7 +319,7 @@ func TestHandleQueryResult_WithIDAndCorrelationID_PreservesErrorStatus(t *testin
 	defer c.Close()
 
 	corrID := "test-corr-id-error-with-id-001"
-	queryID := c.CreatePendingQueryWithTimeout(queries.PendingQuery{
+	queryID, _ := c.CreatePendingQueryWithTimeout(queries.PendingQuery{
 		Type:          "dom_action",
 		Params:        json.RawMessage(`{"action":"click","selector":"#publish"}`),
 		CorrelationID: corrID,

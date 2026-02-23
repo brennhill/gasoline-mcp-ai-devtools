@@ -25,7 +25,7 @@ func TestWaitForResult_NoGoroutineLeakOnTimeout(t *testing.T) {
 	capture := setupTestCapture(t)
 
 	// Create a pending query that will never get a result
-	id := capture.CreatePendingQuery(PendingQuery{
+	id, _ := capture.CreatePendingQuery(PendingQuery{
 		Type:   "dom",
 		Params: json.RawMessage(`{"selector":"#leak-test"}`),
 	})
@@ -68,7 +68,7 @@ func TestWaitForResult_MultipleTimeoutsNoLeak(t *testing.T) {
 
 	// Run multiple WaitForResult calls that all timeout
 	for i := 0; i < 10; i++ {
-		id := capture.CreatePendingQuery(PendingQuery{
+		id, _ := capture.CreatePendingQuery(PendingQuery{
 			Type:   "dom",
 			Params: json.RawMessage(`{"selector":"#leak-test"}`),
 		})

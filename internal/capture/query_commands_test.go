@@ -19,7 +19,7 @@ func TestNewCaptureDelegation_QueryDispatcher(t *testing.T) {
 	c := NewCapture()
 	t.Cleanup(c.Close)
 
-	id := c.CreatePendingQuery(queries.PendingQuery{Type: "dom", Params: json.RawMessage(`{}`)})
+	id, _ := c.CreatePendingQuery(queries.PendingQuery{Type: "dom", Params: json.RawMessage(`{}`)})
 	if id == "" {
 		t.Fatal("CreatePendingQuery returned empty id")
 	}

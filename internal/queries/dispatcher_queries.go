@@ -6,6 +6,7 @@ package queries
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"time"
@@ -13,10 +14,14 @@ import (
 	"github.com/dev-console/dev-console/internal/util"
 )
 
+// ErrQueueFull is returned when a new command is rejected because the queue is at capacity.
+// Callers should return an immediate error to the LLM so it knows the command was not accepted.
+var ErrQueueFull = errors.New("queue_full")
+
 // Constants for query management
 const (
 	QueryResultTTL    = 5 * time.Minute // How long to keep query results before cleanup
-	MaxPendingQueries = 5               // Max pending queries in queue
+	MaxPendingQueries = 15              // Max pending queries in queue
 )
 
 // ============================================
@@ -24,36 +29,49 @@ const (
 // ============================================
 
 // CreatePendingQuery creates a pending query with default timeout and no client ID.
-// Returns the query ID that extension will use to post the result.
-func (qd *QueryDispatcher) CreatePendingQuery(query PendingQuery) string {
+// Returns the query ID that extension will use to post the result, or ErrQueueFull.
+func (qd *QueryDispatcher) CreatePendingQuery(query PendingQuery) (string, error) {
 	return qd.CreatePendingQueryWithTimeout(query, qd.queryTimeout, "")
 }
 
 // CreatePendingQueryWithClient creates a pending query for a specific client.
 // Used in multi-client mode to isolate queries between different MCP clients.
-func (qd *QueryDispatcher) CreatePendingQueryWithClient(query PendingQuery, clientID string) string {
+func (qd *QueryDispatcher) CreatePendingQueryWithClient(query PendingQuery, clientID string) (string, error) {
 	return qd.CreatePendingQueryWithTimeout(query, qd.queryTimeout, clientID)
 }
 
 // CreatePendingQueryWithTimeout creates a pending query with custom timeout.
 // This is the core implementation that all other CreatePending* methods call.
 //
+// Returns ErrQueueFull if the queue is at capacity. When rejected, the command
+// is registered and immediately failed so callers using MaybeWaitForCommand
+// get an instant "queue_full" error without waiting.
+//
 // Flow:
-// 1. Generate unique query ID (q-1, q-2, etc.)
-// 2. Add to pendingQueries queue (FIFO, max 5)
-// 3. Schedule cleanup goroutine after timeout
+// 1. Check queue capacity — reject if full (never drop existing commands)
+// 2. Generate unique query ID (q-1, q-2, etc.)
+// 3. Add to pendingQueries queue (FIFO, max 15)
 // 4. Return query ID for extension to use when posting result
-func (qd *QueryDispatcher) CreatePendingQueryWithTimeout(query PendingQuery, timeout time.Duration, clientID string) string {
+func (qd *QueryDispatcher) CreatePendingQueryWithTimeout(query PendingQuery, timeout time.Duration, clientID string) (string, error) {
 	qd.mu.Lock()
 
-	// Enforce max pending queries (drop oldest if full)
-	var droppedCorrelationID string
+	// Reject new commands when queue is full — never drop existing commands.
+	// Silent drops corrupt LLM state because the caller believes the command is queued.
 	if len(qd.pendingQueries) >= MaxPendingQueries {
-		dropped := qd.pendingQueries[0]
-		droppedCorrelationID = dropped.Query.CorrelationID
-		fmt.Fprintf(os.Stderr, "[gasoline] Query queue overflow: dropping query %s (correlation_id=%s)\n",
-			dropped.Query.ID, dropped.Query.CorrelationID)
-		qd.pendingQueries = qd.pendingQueries[1:]
+		correlationID := query.CorrelationID
+		qd.mu.Unlock()
+
+		fmt.Fprintf(os.Stderr, "[gasoline] Queue full (%d/%d): rejecting command type=%s correlation_id=%s\n",
+			MaxPendingQueries, MaxPendingQueries, query.Type, correlationID)
+
+		// Register and immediately fail the command so MaybeWaitForCommand returns instantly.
+		if correlationID != "" {
+			qd.RegisterCommand(correlationID, "", timeout)
+			qd.ApplyCommandResult(correlationID, "error", nil,
+				fmt.Sprintf("Queue full: %d commands pending. Wait for in-flight commands to complete.", MaxPendingQueries))
+		}
+
+		return "", ErrQueueFull
 	}
 
 	// Generate unique query ID
@@ -78,11 +96,6 @@ func (qd *QueryDispatcher) CreatePendingQueryWithTimeout(query PendingQuery, tim
 	correlationID := query.CorrelationID
 	qd.mu.Unlock()
 
-	// Expire dropped command outside mu lock to respect lock ordering
-	if droppedCorrelationID != "" {
-		qd.expireCommandWithReason(droppedCorrelationID, "Query queue overflow: command was dropped to make room for newer commands")
-	}
-
 	// Notify long-pollers that a new query is available
 	select {
 	case qd.queryNotify <- struct{}{}:
@@ -97,7 +110,7 @@ func (qd *QueryDispatcher) CreatePendingQueryWithTimeout(query PendingQuery, tim
 	// Query expires are checked during periodic cleanup cycles, not individual goroutines.
 	// This is more efficient than spawning a goroutine per query.
 
-	return id
+	return id, nil
 }
 
 // WaitForPendingQueries blocks until a pending query is available or timeout.

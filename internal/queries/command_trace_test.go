@@ -40,7 +40,7 @@ func TestCommandTraceLifecycle_CompleteFlow(t *testing.T) {
 	qd := NewQueryDispatcher()
 	defer qd.Close()
 
-	queryID := qd.CreatePendingQueryWithTimeout(PendingQuery{
+	queryID, _ := qd.CreatePendingQueryWithTimeout(PendingQuery{
 		Type:          "browser_action",
 		CorrelationID: "corr-trace-flow",
 	}, 30*time.Second, "test-client")

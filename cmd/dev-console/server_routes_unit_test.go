@@ -139,7 +139,7 @@ func TestSetupHTTPRoutesBasicEndpoints(t *testing.T) {
 		t.Fatal("diagnostics did not include redacted http debug request body")
 	}
 
-	traceQueryID := cap.CreatePendingQueryWithTimeout(queries.PendingQuery{
+	traceQueryID, _ := cap.CreatePendingQueryWithTimeout(queries.PendingQuery{
 		Type:          "browser_action",
 		CorrelationID: "diag-trace-corr",
 	}, 30*time.Second, "test-client")

@@ -28,6 +28,7 @@ const (
 	// Communication errors — retry with backoff
 	ErrExtTimeout = "extension_timeout"
 	ErrExtError   = "extension_error"
+	ErrQueueFull  = "queue_full"
 
 	// Internal errors — do not retry
 	ErrInternal      = "internal_error"

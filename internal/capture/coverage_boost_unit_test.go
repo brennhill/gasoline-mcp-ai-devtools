@@ -217,7 +217,7 @@ func TestCoverageBoost_NetworkWaterfallGetters(t *testing.T) {
 func TestCoverageBoost_ResultHandlersAndPendingQueries(t *testing.T) {
 	c := newCoverageCapture(t)
 
-	queryID := c.CreatePendingQueryWithClient(queries.PendingQuery{
+	queryID, _ := c.CreatePendingQueryWithClient(queries.PendingQuery{
 		Type:   "dom",
 		Params: json.RawMessage(`{"selector":"body"}`),
 	}, "client-1")

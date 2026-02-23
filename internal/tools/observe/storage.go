@@ -23,7 +23,7 @@ func GetStorage(deps Deps, req mcp.JSONRPCRequest, _ json.RawMessage) mcp.JSONRP
 		)}
 	}
 
-	queryID := cap.CreatePendingQueryWithTimeout(
+	queryID, qerr := cap.CreatePendingQueryWithTimeout(
 		queries.PendingQuery{
 			Type:   "state_capture",
 			Params: json.RawMessage(`{"action":"capture"}`),
@@ -31,6 +31,13 @@ func GetStorage(deps Deps, req mcp.JSONRPCRequest, _ json.RawMessage) mcp.JSONRP
 		10*time.Second,
 		"",
 	)
+	if qerr != nil {
+		return mcp.JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcp.StructuredErrorResponse(
+			mcp.ErrQueueFull,
+			"Command queue full: "+qerr.Error(),
+			"Wait for in-flight commands to complete, then retry.",
+		)}
+	}
 
 	result, err := cap.WaitForResult(queryID, 10*time.Second)
 	if err != nil {

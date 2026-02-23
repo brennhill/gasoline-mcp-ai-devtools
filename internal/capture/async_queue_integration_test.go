@@ -35,7 +35,7 @@ func TestAsyncQueueIntegration(t *testing.T) {
 		TabID:         0,
 	}
 
-	queryID := capture.CreatePendingQueryWithTimeout(query, queries.AsyncCommandTimeout, "")
+	queryID, _ := capture.CreatePendingQueryWithTimeout(query, queries.AsyncCommandTimeout, "")
 	if queryID == "" {
 		t.Fatal("CreatePendingQueryWithTimeout returned empty query ID")
 	}
@@ -113,7 +113,7 @@ func TestAsyncQueueArchitectureInvariants(t *testing.T) {
 
 	// Verify CreatePendingQueryWithTimeout exists and works
 	query := queries.PendingQuery{Type: "test", Params: json.RawMessage(`{}`)}
-	id := capture.CreatePendingQueryWithTimeout(query, 1*time.Second, "")
+	id, _ := capture.CreatePendingQueryWithTimeout(query, 1*time.Second, "")
 	if id == "" {
 		t.Error("CreatePendingQueryWithTimeout is broken or missing")
 	}
@@ -177,7 +177,7 @@ func TestAsyncQueueMultiClientIntegration(t *testing.T) {
 		CorrelationID: "client_a_integration",
 		TabID:         1,
 	}
-	idA := capture.CreatePendingQueryWithTimeout(queryA, queries.AsyncCommandTimeout, "client_a")
+	idA, _ := capture.CreatePendingQueryWithTimeout(queryA, queries.AsyncCommandTimeout, "client_a")
 
 	// Client B creates command
 	queryB := queries.PendingQuery{
@@ -186,7 +186,7 @@ func TestAsyncQueueMultiClientIntegration(t *testing.T) {
 		CorrelationID: "client_b_integration",
 		TabID:         2,
 	}
-	idB := capture.CreatePendingQueryWithTimeout(queryB, queries.AsyncCommandTimeout, "client_b")
+	idB, _ := capture.CreatePendingQueryWithTimeout(queryB, queries.AsyncCommandTimeout, "client_b")
 
 	// Client A polls - should only see their query
 	pendingA := capture.GetPendingQueriesForClient("client_a")

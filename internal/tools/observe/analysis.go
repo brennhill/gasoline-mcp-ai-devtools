@@ -46,7 +46,7 @@ func refreshWaterfallIfStale(deps Deps) []capture.NetworkWaterfallEntry {
 		return allEntries
 	}
 
-	queryID := cap.CreatePendingQueryWithTimeout(
+	queryID, qerr := cap.CreatePendingQueryWithTimeout(
 		queries.PendingQuery{
 			Type:   "waterfall",
 			Params: json.RawMessage(`{}`),
@@ -54,6 +54,9 @@ func refreshWaterfallIfStale(deps Deps) []capture.NetworkWaterfallEntry {
 		5*time.Second,
 		"",
 	)
+	if qerr != nil {
+		return allEntries
+	}
 
 	result, err := cap.WaitForResult(queryID, 5*time.Second)
 	if err != nil || result == nil {
@@ -321,7 +324,7 @@ func GetScreenshot(deps Deps, req mcp.JSONRPCRequest, args json.RawMessage) mcp.
 
 	queryParams, _ := json.Marshal(screenshotParams)
 
-	queryID := cap.CreatePendingQueryWithTimeout(
+	queryID, qerr := cap.CreatePendingQueryWithTimeout(
 		queries.PendingQuery{
 			Type:   "screenshot",
 			Params: queryParams,
@@ -329,6 +332,9 @@ func GetScreenshot(deps Deps, req mcp.JSONRPCRequest, args json.RawMessage) mcp.
 		20*time.Second,
 		"",
 	)
+	if qerr != nil {
+		return mcp.JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcp.StructuredErrorResponse(mcp.ErrQueueFull, "Command queue full: "+qerr.Error(), "Wait for in-flight commands to complete, then retry.")}
+	}
 
 	result, err := cap.WaitForResult(queryID, 20*time.Second)
 	if err != nil {

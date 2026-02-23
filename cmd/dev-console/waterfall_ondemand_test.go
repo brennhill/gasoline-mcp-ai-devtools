@@ -340,7 +340,7 @@ func TestWaterfallQueryType_ExistsInPendingQueries(t *testing.T) {
 	cap := capture.NewCapture()
 
 	// Create a waterfall query
-	queryID := cap.CreatePendingQuery(queries.PendingQuery{
+	queryID, _ := cap.CreatePendingQuery(queries.PendingQuery{
 		Type:   "waterfall",
 		Params: json.RawMessage(`{}`),
 	})

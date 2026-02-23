@@ -155,7 +155,7 @@ func TestPendingQueryWithTabID(t *testing.T) {
 	capture := setupTestCapture(t)
 
 	// Create query targeting a specific tab
-	id := capture.CreatePendingQuery(PendingQuery{
+	id, _ := capture.CreatePendingQuery(PendingQuery{
 		Type:   "dom",
 		Params: json.RawMessage(`{"selector":".test"}`),
 		TabID:  42,
@@ -180,7 +180,7 @@ func TestPendingQueryWithoutTabID(t *testing.T) {
 	capture := setupTestCapture(t)
 
 	// Create query without tab_id (falls back to active tab)
-	id := capture.CreatePendingQuery(PendingQuery{
+	id, _ := capture.CreatePendingQuery(PendingQuery{
 		Type:   "dom",
 		Params: json.RawMessage(`{"selector":".test"}`),
 	})

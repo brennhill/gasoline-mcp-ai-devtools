@@ -281,7 +281,7 @@ func TestHandleSync_MissingInProgressHeartbeatFailsStartedCommand(t *testing.T) 
 	cap := NewCapture()
 
 	corrID := "corr-missing-heartbeat"
-	queryID := cap.CreatePendingQueryWithTimeout(queries.PendingQuery{
+	queryID, _ := cap.CreatePendingQueryWithTimeout(queries.PendingQuery{
 		Type:          "browser_action",
 		Params:        json.RawMessage(`{"action":"navigate","url":"https://example.com"}`),
 		CorrelationID: corrID,
@@ -510,7 +510,7 @@ func TestHandleSync_AdaptivePoll_RevertsAfterResultDelivered(t *testing.T) {
 	cap := NewCapture()
 
 	// Create a pending query
-	queryID := cap.CreatePendingQuery(queries.PendingQuery{
+	queryID, _ := cap.CreatePendingQuery(queries.PendingQuery{
 		Type:   "dom",
 		Params: json.RawMessage(`{"selector":"body"}`),
 	})
@@ -594,7 +594,7 @@ func TestHandleSync_CommandResultWithIDAndCorrelationPreservesErrorStatus(t *tes
 	cap := NewCapture()
 
 	corrID := "sync-corr-with-id-error-001"
-	queryID := cap.CreatePendingQueryWithTimeout(queries.PendingQuery{
+	queryID, _ := cap.CreatePendingQueryWithTimeout(queries.PendingQuery{
 		Type:          "dom_action",
 		Params:        json.RawMessage(`{"action":"click","selector":"#publish"}`),
 		CorrelationID: corrID,
@@ -707,7 +707,7 @@ func TestHandleSync_CommandResultLifecycleMatrix(t *testing.T) {
 
 			queryID := ""
 			if tc.hasID {
-				queryID = cap.CreatePendingQueryWithTimeout(queries.PendingQuery{
+				queryID, _ = cap.CreatePendingQueryWithTimeout(queries.PendingQuery{
 					Type:          "dom_action",
 					Params:        json.RawMessage(`{"action":"click","selector":"#publish"}`),
 					CorrelationID: corrID,
@@ -777,7 +777,7 @@ func TestHandleSync_WaterfallQueryDelivery(t *testing.T) {
 	cap := NewCapture()
 
 	// Create a waterfall query (simulating MCP requesting fresh data)
-	queryID := cap.CreatePendingQuery(queries.PendingQuery{
+	queryID, _ := cap.CreatePendingQuery(queries.PendingQuery{
 		Type:   "waterfall",
 		Params: json.RawMessage(`{}`),
 	})
@@ -827,7 +827,7 @@ func TestHandleSync_WaterfallResultDelivery(t *testing.T) {
 	cap := NewCapture()
 
 	// Create a waterfall query
-	queryID := cap.CreatePendingQuery(queries.PendingQuery{
+	queryID, _ := cap.CreatePendingQuery(queries.PendingQuery{
 		Type:   "waterfall",
 		Params: json.RawMessage(`{}`),
 	})
@@ -884,7 +884,7 @@ func TestHandleSync_LastCommandAckPreventsRedelivery(t *testing.T) {
 	t.Parallel()
 	cap := NewCapture()
 
-	queryID := cap.CreatePendingQuery(queries.PendingQuery{
+	queryID, _ := cap.CreatePendingQuery(queries.PendingQuery{
 		Type:   "dom",
 		Params: json.RawMessage(`{"selector":"body"}`),
 	})

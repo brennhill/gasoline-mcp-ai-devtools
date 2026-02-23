@@ -77,7 +77,7 @@ func TestToolObserveCommandResult_IncludesTraceTimeline(t *testing.T) {
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: 1}
 	correlationID := "test-trace-obs-123"
 
-	queryID := cap.CreatePendingQueryWithTimeout(queries.PendingQuery{
+	queryID, _ := cap.CreatePendingQueryWithTimeout(queries.PendingQuery{
 		Type:          "browser_action",
 		Params:        json.RawMessage(`{"what":"click","selector":"button"}`),
 		CorrelationID: correlationID,

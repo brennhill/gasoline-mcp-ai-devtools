@@ -23,7 +23,7 @@ func TestCorrelationIDTracking(t *testing.T) {
 		CorrelationID: correlationID,
 	}
 
-	queryID := capture.CreatePendingQueryWithTimeout(query, 5*time.Second, "")
+	queryID, _ := capture.CreatePendingQueryWithTimeout(query, 5*time.Second, "")
 
 	// Command should be "pending"
 	cmd, found := capture.GetCommandResult(correlationID)
@@ -124,7 +124,7 @@ func TestCorrelationIDListCommands(t *testing.T) {
 		Params:        json.RawMessage(`{"script":"test"}`),
 		CorrelationID: "completed_1",
 	}
-	id1 := capture.CreatePendingQueryWithTimeout(query1, 10*time.Second, "")
+	id1, _ := capture.CreatePendingQueryWithTimeout(query1, 10*time.Second, "")
 	capture.SetQueryResult(id1, json.RawMessage(`{"ok":true}`))
 
 	query2 := queries.PendingQuery{
@@ -132,7 +132,7 @@ func TestCorrelationIDListCommands(t *testing.T) {
 		Params:        json.RawMessage(`{"script":"test"}`),
 		CorrelationID: "completed_2",
 	}
-	id2 := capture.CreatePendingQueryWithTimeout(query2, 10*time.Second, "")
+	id2, _ := capture.CreatePendingQueryWithTimeout(query2, 10*time.Second, "")
 	capture.SetQueryResult(id2, json.RawMessage(`{"ok":true}`))
 
 	// Create 1 expired command
@@ -207,7 +207,7 @@ func TestCorrelationIDMultiClient(t *testing.T) {
 		Params:        json.RawMessage(`{"script":"test"}`),
 		CorrelationID: "client_a_cmd",
 	}
-	idA := capture.CreatePendingQueryWithTimeout(queryA, 10*time.Second, "client_a")
+	idA, _ := capture.CreatePendingQueryWithTimeout(queryA, 10*time.Second, "client_a")
 
 	// Client B creates command
 	queryB := queries.PendingQuery{
@@ -215,7 +215,7 @@ func TestCorrelationIDMultiClient(t *testing.T) {
 		Params:        json.RawMessage(`{"script":"test"}`),
 		CorrelationID: "client_b_cmd",
 	}
-	idB := capture.CreatePendingQueryWithTimeout(queryB, 10*time.Second, "client_b")
+	idB, _ := capture.CreatePendingQueryWithTimeout(queryB, 10*time.Second, "client_b")
 
 	// Both should be pending
 	pending := capture.GetPendingCommands()

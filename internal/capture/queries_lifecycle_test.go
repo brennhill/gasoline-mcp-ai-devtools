@@ -92,7 +92,7 @@ func TestWaitForResult_NoGoroutineLeakOnTimeout(t *testing.T) {
 	c := NewCapture()
 	defer c.Close()
 
-	id := c.CreatePendingQuery(queries.PendingQuery{
+	id, _ := c.CreatePendingQuery(queries.PendingQuery{
 		Type:   "dom",
 		Params: json.RawMessage(`{"selector":"#leak-test"}`),
 	})
@@ -131,7 +131,7 @@ func TestWaitForResult_MultipleTimeoutsNoLeak(t *testing.T) {
 	before := runtime.NumGoroutine()
 
 	for i := 0; i < 6; i++ {
-		id := c.CreatePendingQuery(queries.PendingQuery{
+		id, _ := c.CreatePendingQuery(queries.PendingQuery{
 			Type:   "dom",
 			Params: json.RawMessage(`{"selector":"#leak-test"}`),
 		})
@@ -156,7 +156,7 @@ func TestWaitForResult_ReturnsResultWhenAvailable(t *testing.T) {
 	c := NewCapture()
 	defer c.Close()
 
-	id := c.CreatePendingQuery(queries.PendingQuery{
+	id, _ := c.CreatePendingQuery(queries.PendingQuery{
 		Type:   "dom",
 		Params: json.RawMessage(`{"selector":"#test"}`),
 	})

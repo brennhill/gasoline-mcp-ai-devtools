@@ -171,7 +171,7 @@ func TestAsyncQueueTimeout(t *testing.T) {
 		CorrelationID: "timeout_test",
 	}
 
-	id := capture.CreatePendingQueryWithTimeout(query, 250*time.Millisecond, "")
+	id, _ := capture.CreatePendingQueryWithTimeout(query, 250*time.Millisecond, "")
 
 	// Wait slightly less than timeout
 	time.Sleep(120 * time.Millisecond)

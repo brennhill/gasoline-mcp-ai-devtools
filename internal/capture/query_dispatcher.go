@@ -19,17 +19,17 @@ var NewQueryDispatcher = queries.NewQueryDispatcher
 // ============================================================================
 
 // CreatePendingQuery delegates to QueryDispatcher.
-func (c *Capture) CreatePendingQuery(query queries.PendingQuery) string {
+func (c *Capture) CreatePendingQuery(query queries.PendingQuery) (string, error) {
 	return c.qd.CreatePendingQuery(query)
 }
 
 // CreatePendingQueryWithClient delegates to QueryDispatcher.
-func (c *Capture) CreatePendingQueryWithClient(query queries.PendingQuery, clientID string) string {
+func (c *Capture) CreatePendingQueryWithClient(query queries.PendingQuery, clientID string) (string, error) {
 	return c.qd.CreatePendingQueryWithClient(query, clientID)
 }
 
 // CreatePendingQueryWithTimeout delegates to QueryDispatcher.
-func (c *Capture) CreatePendingQueryWithTimeout(query queries.PendingQuery, timeout time.Duration, clientID string) string {
+func (c *Capture) CreatePendingQueryWithTimeout(query queries.PendingQuery, timeout time.Duration, clientID string) (string, error) {
 	return c.qd.CreatePendingQueryWithTimeout(query, timeout, clientID)
 }
 

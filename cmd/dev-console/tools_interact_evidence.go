@@ -110,7 +110,7 @@ func defaultEvidenceCapture(h *ToolHandler, clientID string) evidenceShot {
 		return evidenceShot{Error: "no_tracked_tab"}
 	}
 
-	queryID := h.capture.CreatePendingQueryWithTimeout(
+	queryID, qerr := h.capture.CreatePendingQueryWithTimeout(
 		queries.PendingQuery{
 			Type:   "screenshot",
 			Params: json.RawMessage(`{}`),
@@ -118,6 +118,9 @@ func defaultEvidenceCapture(h *ToolHandler, clientID string) evidenceShot {
 		12*time.Second,
 		clientID,
 	)
+	if qerr != nil {
+		return evidenceShot{Error: "queue_full: " + qerr.Error()}
+	}
 
 	raw, err := h.capture.WaitForResult(queryID, 12*time.Second)
 	if err != nil {
