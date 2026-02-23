@@ -70,6 +70,7 @@ export interface DOMResult {
     };
     dom_mutations?: DOMMutationEntry[];
     analysis?: string;
+    insertion_strategy?: string;
 }
 export interface DOMPrimitiveOptions {
     text?: string;

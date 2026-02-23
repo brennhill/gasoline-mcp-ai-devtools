@@ -284,6 +284,75 @@ export function domPrimitive(
     })
   }
 
+  // — Rich editor detection: walk up from target to find known editor containers —
+  function detectRichEditor(node: Node): { type: string; target: HTMLElement } | null {
+    const el = node instanceof HTMLElement ? node : (node.parentElement || null)
+    if (!el) return null
+    const checks: Array<{ selector: string; type: string }> = [
+      { selector: '.ql-editor', type: 'quill' },
+      { selector: '.ProseMirror', type: 'prosemirror' },
+      { selector: '[data-contents="true"]', type: 'draftjs' },
+      { selector: '[data-editor]', type: 'draftjs' },
+      { selector: '.mce-content-body', type: 'tinymce' },
+      { selector: '#tinymce', type: 'tinymce' },
+      { selector: '.ck-editor__editable', type: 'ckeditor' },
+    ]
+    for (const check of checks) {
+      if (typeof el.matches === 'function' && el.matches(check.selector)) {
+        return { type: check.type, target: el }
+      }
+      if (typeof el.closest === 'function') {
+        const ancestor = el.closest(check.selector)
+        if (ancestor instanceof HTMLElement) {
+          return { type: check.type, target: ancestor }
+        }
+      }
+    }
+    return null
+  }
+
+  // — Native DOM insertion for detected rich editors (Quill, ProseMirror, etc.) —
+  function insertViaRichEditor(
+    _editorType: string,
+    target: HTMLElement,
+    text: string,
+    clear: boolean
+  ): { success: boolean } {
+    const lines = text.split('\n')
+    const htmlParts: string[] = []
+    for (const line of lines) {
+      if (line.length > 0) {
+        htmlParts.push('<p>' + line.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</p>')
+      } else {
+        htmlParts.push('<p><br></p>')
+      }
+    }
+    const html = htmlParts.join('')
+    if (clear) {
+      target.innerHTML = html
+    } else {
+      target.insertAdjacentHTML('beforeend', html)
+    }
+    target.dispatchEvent(new Event('input', { bubbles: true }))
+    return { success: true }
+  }
+
+  // — Keyboard simulation fallback for generic contenteditable (no framework detected) —
+  function insertViaKeyboardSim(node: HTMLElement, text: string): { success: boolean } {
+    const lines = text.split('\n')
+    for (let i = 0; i < lines.length; i++) {
+      if (i > 0) {
+        node.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', code: 'Enter', keyCode: 13, bubbles: true }))
+        node.dispatchEvent(new KeyboardEvent('keyup', { key: 'Enter', code: 'Enter', keyCode: 13, bubbles: true }))
+      }
+      const line = lines[i]!
+      if (line.length > 0) {
+        document.execCommand('insertText', false, line)
+      }
+    }
+    return { success: true }
+  }
+
   type ActionHandler = () => DOMResult | Promise<DOMResult>
 
   function buildActionHandlers(node: Element): Record<string, ActionHandler> {
@@ -337,7 +406,8 @@ export function domPrimitive(
 
       type: () =>
         withMutationTracking(() => {
-          const text = options.text || ''
+          // Normalize literal \n sequences to actual newlines (MCP parameter encoding)
+          const text = (options.text || '').replace(/\\n/g, '\n')
 
           // Contenteditable elements (Gmail compose body, rich text editors)
           if (node instanceof HTMLElement && node.isContentEditable) {
@@ -349,18 +419,26 @@ export function domPrimitive(
                 selection.deleteFromDocument()
               }
             }
-            // Split on newlines — each \n becomes an insertParagraph command
-            const lines = text.split('\n')
-            for (let i = 0; i < lines.length; i++) {
-              const line = lines[i]!
-              if (i > 0) {
-                document.execCommand('insertParagraph', false)
-              }
-              if (line.length > 0) {
-                document.execCommand('insertText', false, line)
-              }
+
+            // Detect rich editor framework
+            const editor = detectRichEditor(node)
+            let strategy: string
+
+            if (editor) {
+              // Native DOM insertion — bypasses CSP, works with Quill/ProseMirror/etc
+              insertViaRichEditor(editor.type, editor.target, text, !!options.clear)
+              strategy = editor.type + '_native'
+            } else if (text.includes('\n')) {
+              // Keyboard simulation fallback for generic contenteditable
+              insertViaKeyboardSim(node, text)
+              strategy = 'keyboard_simulation'
+            } else {
+              // Single-line: keep execCommand (still works everywhere for single lines)
+              document.execCommand('insertText', false, text)
+              strategy = 'exec_command'
             }
-            return mutatingSuccess(node, { value: node.innerText })
+
+            return mutatingSuccess(node, { value: node.innerText, insertion_strategy: strategy })
           }
 
           if (!(node instanceof HTMLInputElement) && !(node instanceof HTMLTextAreaElement)) {
@@ -376,7 +454,7 @@ export function domPrimitive(
           }
           node.dispatchEvent(new InputEvent('input', { bubbles: true, data: text, inputType: 'insertText' }))
           node.dispatchEvent(new Event('change', { bubbles: true }))
-          return mutatingSuccess(node, { value: node.value })
+          return mutatingSuccess(node, { value: node.value, insertion_strategy: 'native_setter' })
         }),
 
       select: () =>
@@ -481,12 +559,25 @@ export function domPrimitive(
               selection.deleteFromDocument()
             }
           }
-          const pasteText = options.text || ''
-          const dt = new DataTransfer()
-          dt.setData('text/plain', pasteText)
-          const event = new ClipboardEvent('paste', { clipboardData: dt, bubbles: true, cancelable: true })
-          node.dispatchEvent(event)
-          return mutatingSuccess(node, { value: node.innerText })
+          // Normalize literal \n sequences to actual newlines (MCP parameter encoding)
+          const pasteText = (options.text || '').replace(/\\n/g, '\n')
+          let strategy: string
+
+          // Try rich editor native insertion first
+          const editor = detectRichEditor(node)
+          if (editor && node.isContentEditable) {
+            insertViaRichEditor(editor.type, editor.target, pasteText, !!options.clear)
+            strategy = editor.type + '_native'
+          } else {
+            // Fallback: synthetic ClipboardEvent (existing behavior)
+            const dt = new DataTransfer()
+            dt.setData('text/plain', pasteText)
+            const event = new ClipboardEvent('paste', { clipboardData: dt, bubbles: true, cancelable: true })
+            node.dispatchEvent(event)
+            strategy = 'clipboard_event'
+          }
+
+          return mutatingSuccess(node, { value: node.innerText, insertion_strategy: strategy })
         }),
 
       key_press: () =>
