@@ -1,6 +1,7 @@
-// playback_engine.go — Recording playback and action execution engine.
-// Replays recorded actions with self-healing selectors, timeout handling,
-// and non-blocking error recovery. Detects fragile selectors across multiple runs.
+// Purpose: Implements recording storage, replay engine execution, and diffing helpers.
+// Why: Preserves traceability by storing replayable execution history and comparable outcomes.
+// Docs: docs/features/feature/playback-engine/index.md
+
 package recording
 
 import (

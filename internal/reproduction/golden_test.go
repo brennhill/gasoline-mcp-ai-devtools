@@ -1,3 +1,7 @@
+// Purpose: Validate golden_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
+// Docs: docs/features/feature/reproduction-scripts/index.md
+
 // golden_test.go — Golden file validation for Playwright reproduction scripts.
 package reproduction
 

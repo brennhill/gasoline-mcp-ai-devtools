@@ -1,3 +1,7 @@
+// Purpose: Validate api_schema_builder_unit_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
+// Docs: docs/features/feature/observe/index.md
+
 package analysis
 
 import (

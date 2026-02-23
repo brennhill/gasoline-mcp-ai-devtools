@@ -1,7 +1,25 @@
+/**
+ * Purpose: Handles content-script message relay between background and inject contexts.
+ * Why: Keeps content-script bridging predictable between extension and page contexts.
+ * Docs: docs/features/feature/interact-explore/index.md
+ * Docs: docs/features/feature/query-dom/index.md
+ */
+
 // subtitle.ts — Subtitle overlay, recording watermark, and shared DOM helpers for content UI.
 
 /** Active Escape key listener reference for subtitle dismiss */
 let subtitleEscapeHandler: ((e: KeyboardEvent) => void) | null = null
+
+/** Auto-clear timer: subtitles auto-dismiss after 60 seconds to prevent stale overlays */
+const SUBTITLE_AUTO_TIMEOUT_MS = 60_000
+let subtitleAutoTimer: ReturnType<typeof setTimeout> | null = null
+
+function clearAutoTimer(): void {
+  if (subtitleAutoTimer) {
+    clearTimeout(subtitleAutoTimer)
+    subtitleAutoTimer = null
+  }
+}
 
 /** Fade out a DOM element and remove it after transition completes */
 // #lizard forgives
@@ -23,6 +41,7 @@ function detachEscapeListener(): void {
  * Remove the subtitle element, clean up Escape listener.
  */
 export function clearSubtitle(): void {
+  clearAutoTimer()
   fadeOutAndRemove('gasoline-subtitle', 200)
   detachEscapeListener()
 }
@@ -140,6 +159,10 @@ export function showSubtitle(text: string): void {
   // background tabs) and setTimeout (throttled to 1s in background tabs).
   void bar.offsetHeight
   bar.style.opacity = '1'
+
+  // Auto-clear after 60s to prevent stale overlays from persisting indefinitely
+  clearAutoTimer()
+  subtitleAutoTimer = setTimeout(() => { clearSubtitle() }, SUBTITLE_AUTO_TIMEOUT_MS)
 }
 
 /**

@@ -1,5 +1,7 @@
-// storage.go — Handler for observe(what="storage") to read browser storage.
-// Reads localStorage, sessionStorage, and cookies from the tracked tab via the extension.
+// Purpose: Provides observe tool implementation helpers for filtering and storage queries.
+// Why: Centralizes observe query behavior so evidence filtering stays predictable.
+// Docs: docs/features/feature/observe/index.md
+
 package observe
 
 import (

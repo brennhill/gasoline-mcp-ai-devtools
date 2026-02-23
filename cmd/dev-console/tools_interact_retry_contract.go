@@ -1,3 +1,7 @@
+// Purpose: Implements interact tool handlers and browser action orchestration.
+// Why: Preserves deterministic browser action execution across agent workflows.
+// Docs: docs/features/feature/interact-explore/index.md
+
 // tools_interact_retry_contract.go — Deterministic retry contract for interact actions.
 //
 // Contract goals:

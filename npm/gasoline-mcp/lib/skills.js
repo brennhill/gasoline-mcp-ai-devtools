@@ -1,4 +1,8 @@
 /**
+ * Purpose: Install and manage bundled Gasoline skills for supported agent targets.
+ * Why: Ensures consistent managed skill availability from npm installs and wrapper --install flows.
+ * Docs: docs/features/feature/enhanced-cli-config/index.md
+ *
  * Skill installer for Gasoline MCP.
  * Supports local bundled skills and optional GitHub subrepo sources.
  * Targets Claude, Codex, and Gemini skill directory layouts.

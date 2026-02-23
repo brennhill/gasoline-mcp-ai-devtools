@@ -1,5 +1,3 @@
-// tools_response.go — Response formatting helpers (thin wrappers over internal/mcp).
-// Capture-dependent helpers (buildResponseMetadata, buildPaginatedResponseMetadata) stay here.
 package main
 
 import (

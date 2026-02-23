@@ -1,5 +1,7 @@
-// errors.go — Structured error handling and error codes for MCP tools.
-// Defines error constants, StructuredError type, and error response construction.
+// Purpose: Defines MCP protocol types, validation, and structured error response helpers.
+// Why: Gives all tools consistent protocol validation and machine-readable error semantics.
+// Docs: docs/features/feature/query-service/index.md
+
 package mcp
 
 import (

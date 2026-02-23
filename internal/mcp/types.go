@@ -1,5 +1,7 @@
-// types.go — MCP typed response structs and resource types.
-// Contains content blocks, tool results, initialize results, and resource types.
+// Purpose: Defines MCP protocol types, validation, and structured error response helpers.
+// Why: Gives all tools consistent protocol validation and machine-readable error semantics.
+// Docs: docs/features/feature/query-service/index.md
+
 package mcp
 
 // MCPContentBlock represents a single content block in an MCP tool result.

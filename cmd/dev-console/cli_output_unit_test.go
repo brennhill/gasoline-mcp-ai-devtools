@@ -1,3 +1,7 @@
+// Purpose: Validate cli_output_unit_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
+// Docs: docs/features/feature/observe/index.md
+
 // cli_output_unit_test.go — Unit tests for CLI output formatters.
 package main
 

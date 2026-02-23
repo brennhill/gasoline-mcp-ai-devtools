@@ -1,4 +1,3 @@
-// exit_diagnostics.go — Best-effort crash/shutdown diagnostics persisted to disk.
 package main
 
 import (

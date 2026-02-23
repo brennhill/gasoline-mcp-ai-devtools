@@ -1,50 +1,7 @@
-// clustering.go — Error clustering by root cause using 2-of-3 signal matching.
-// Groups related console errors by comparing normalized messages, application-level
-// stack frames (excluding framework code), and temporal proximity (<2s).
-// Design: Clusters form when 2+ signals match between errors. Capped at 50 clusters
-// with 20 instances each. Clusters expire after 5 minutes of inactivity. Alerts fire
-// at 3 instances. Message normalization replaces UUIDs, URLs, timestamps, and numeric
-// IDs with placeholders for stable comparison across dynamic error content.
-//
-// 2-OF-3 SIGNAL MATCHING ALGORITHM:
-// =================================
-//
-// Three Signals (each independently verifiable):
-//  1. Message Similarity: Normalized messages match (UUIDs/URLs/timestamps replaced)
-//  2. Stack Frame Similarity: 2+ shared application-level frames (framework frames excluded)
-//  3. Temporal Proximity: Errors within 2 seconds of each other
-//
-// Clustering Rules (in AddError):
-//  1. If existing cluster matches 2+ signals: add to cluster
-//  2. If error hasn't matched any cluster: create new cluster with next similar error
-//  3. When new cluster formed: compare signals with that error only (not all existing clusters)
-//
-// Why Framework Frames Excluded:
-//   - Framework frames are identical across different user errors (e.g., React render, Vue update)
-//   - Including them would cause false clustering ("all React errors are similar")
-//   - Application frames (user code) are the real root cause signals
-//   - Exception: if NO app frames found, use framework frames (better than nothing)
-//
-// Message Normalization (normalizeErrorMessage):
-//   - UUIDs (any 32-char hex): → "{uuid}"
-//   - URLs (http/https): → "{url}"
-//   - Timestamps (ISO 8601, UNIX seconds): → "{timestamp}"
-//   - Base64 strings (48+ chars): → "{base64}"
-//   - Numeric IDs (5+ digit numbers): → "{id}"
-//   - Purpose: "TypeError: Cannot read null (id: 12345)" and "TypeError: Cannot read null (id: 67890)"
-//     are now both "TypeError: Cannot read null (id: {id})" → same cluster
-//
-// Lifecycle:
-//   - maxClusters = 50: Stop clustering if 50 clusters exist
-//   - maxClusterSize = 20: Stop adding to cluster at 20 instances
-//   - Cleanup: Clusters inactive for 5 minutes are removed
-//   - Alert: Cluster fires alert when 3+ instances (drainAlert retrieves pending)
-//
-// Performance Considerations:
-//   - Worst-case: N^2 if every error compares to every existing cluster (linear search)
-//   - Mitigated by: maxClusters=50 cap, maxClusterSize=20 (stop adding early)
-//   - Message normalization is O(message length), executed for every error
-//   - Stack frame parsing is O(lines in stack), happens once per error
+// Purpose: Implements clustering of recurring error instances into root-cause groups and summaries.
+// Why: Reduces noisy error streams into actionable clusters for faster debugging triage.
+// Docs: docs/features/feature/error-clustering/index.md
+
 package analysis
 
 import (

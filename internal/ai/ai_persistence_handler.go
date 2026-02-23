@@ -1,4 +1,7 @@
-// ai_persistence_handler.go — MCP tool handler for session store actions (save, load, list, delete, stats).
+// Purpose: Implements persistence command handlers for save/load/list AI context operations.
+// Why: Exposes persistent-memory workflows through stable tool-facing handler entrypoints.
+// Docs: docs/features/feature/persistent-memory/index.md
+
 package ai
 
 import (

@@ -1,3 +1,7 @@
+// Purpose: Implement uninstall.js behavior for npm wrapper command flows.
+// Why: Keeps distribution-channel behavior consistent and supportable.
+// Docs: docs/features/feature/enhanced-cli-config/index.md
+
 /**
  * Uninstall logic for Gasoline MCP CLI
  * Removes gasoline from all detected AI assistant clients

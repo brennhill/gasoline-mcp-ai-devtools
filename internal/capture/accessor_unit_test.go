@@ -1,3 +1,7 @@
+// Purpose: Validate accessor_unit_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
+// Docs: docs/features/feature/backend-log-streaming/index.md
+
 package capture
 
 import (

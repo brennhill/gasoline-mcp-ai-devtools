@@ -1,6 +1,3 @@
-// tools_validation.go — Parameter validation and error checking utilities.
-// General-purpose validation delegates to internal/mcp.
-// Log quality checking is observe-specific and stays here.
 package main
 
 import (

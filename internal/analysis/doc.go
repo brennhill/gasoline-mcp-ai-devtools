@@ -1,3 +1,7 @@
+// Purpose: Implement doc.go internal behavior used by MCP runtime features.
+// Why: Maintains stable server behavior across tool and transport paths.
+// Docs: docs/features/feature/observe/index.md
+
 // doc.go — Package documentation for browser telemetry analysis.
 
 // Package analysis provides intelligent analysis of captured browser telemetry.

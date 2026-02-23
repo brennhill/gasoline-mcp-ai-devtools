@@ -1,4 +1,7 @@
-// conn.go — Connection helpers: error classification, health checks, HTTP transport.
+// Purpose: Implements framed stdio transport, timeouts, and bridge connection lifecycle.
+// Why: Protects MCP request reliability by isolating framing, timeout, and reconnect concerns.
+// Docs: docs/features/feature/bridge-restart/index.md
+
 package bridge
 
 import (

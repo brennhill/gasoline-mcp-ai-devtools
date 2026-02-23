@@ -1,3 +1,7 @@
+// Purpose: Validate tools_interact_coverage_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
+// Docs: docs/features/feature/interact-explore/index.md
+
 // tools_interact_coverage_test.go — Coverage tests for interact sub-handlers.
 package main
 

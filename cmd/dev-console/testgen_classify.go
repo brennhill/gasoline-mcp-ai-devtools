@@ -1,5 +1,7 @@
-// testgen_classify.go — MCP glue layer for test failure classification.
-// Pure logic lives in internal/testgen; this file owns the MCP dispatch.
+// Purpose: Implements test generation, classification, and healing command handlers.
+// Why: Makes failure investigation reproducible through generated and self-healed test artifacts.
+// Docs: docs/features/feature/test-generation/index.md
+
 package main
 
 import (

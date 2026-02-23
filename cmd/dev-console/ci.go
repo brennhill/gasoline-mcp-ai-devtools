@@ -1,8 +1,7 @@
-// ci.go — Gasoline CI Infrastructure endpoints.
-// Docs: docs/features/feature/observe/index.md
-// Provides /snapshot (aggregated state), /clear (buffer reset), and
-// /test-boundary (test correlation) for CI/CD pipeline integration.
-// These endpoints enable headless browser capture during automated testing.
+// Purpose: Implements snapshot/test-boundary and CI webhook endpoints for capture-driven verification workflows.
+// Why: Bridges CI signals and runtime snapshots into a single API surface for regression tooling.
+// Docs: docs/features/feature/ci-infrastructure/index.md
+
 package main
 
 import (

@@ -1,13 +1,7 @@
-// Purpose: Owns api_contract.go runtime behavior and integration logic.
-// Docs: docs/features/feature/observe/index.md
+// Purpose: Implements API contract tracking and violation detection over observed endpoint behavior.
+// Why: Detects breaking backend response changes early by comparing live traffic against learned shapes.
+// Docs: docs/features/feature/api-schema/index.md
 
-// api_contract.go — API contract validation from observed network traffic.
-// Tracks response shapes across requests, detects contract violations when
-// shapes change unexpectedly, fields go missing, types change, or error
-// responses replace success responses.
-// Design: Learns schemas incrementally by merging new fields. Tracks field
-// presence counts to distinguish required vs optional fields. Violations
-// only flagged after minimum observations establish baseline shape.
 package analysis
 
 import (

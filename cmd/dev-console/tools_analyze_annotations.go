@@ -1,3 +1,7 @@
+// Purpose: Implements analyze tool handlers and response shaping.
+// Why: Keeps analyze tool behavior aligned with diagnostic and schema contracts.
+// Docs: docs/features/feature/analyze-tool/index.md
+
 // tools_analyze_annotations.go — Analyze handlers for draw mode annotations.
 // Docs: docs/features/feature/analyze-tool/index.md
 // Provides analyze({what: "annotations"}), analyze({what: "annotation_detail"}),

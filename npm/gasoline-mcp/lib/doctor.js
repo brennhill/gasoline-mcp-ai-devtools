@@ -1,3 +1,7 @@
+// Purpose: Implement doctor.js behavior for npm wrapper command flows.
+// Why: Keeps distribution-channel behavior consistent and supportable.
+// Docs: docs/features/feature/enhanced-cli-config/index.md
+
 /**
  * Doctor diagnostics for Gasoline MCP CLI
  * Checks config validity, binary availability, and provides repair suggestions

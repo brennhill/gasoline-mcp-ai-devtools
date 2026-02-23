@@ -1,3 +1,7 @@
+// Purpose: Validate install flow behavior for file/CLI clients in the npm wrapper.
+// Why: Ensures --install remains deterministic and safe across dry-run and merge paths.
+// Docs: docs/features/feature/enhanced-cli-config/index.md
+
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const os = require('node:os');

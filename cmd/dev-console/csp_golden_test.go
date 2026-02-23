@@ -1,3 +1,7 @@
+// Purpose: Validate csp_golden_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
+// Docs: docs/features/feature/observe/index.md
+
 // csp_golden_test.go — Golden file validation for CSP directive generation.
 package main
 

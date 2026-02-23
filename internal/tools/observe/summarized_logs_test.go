@@ -1,3 +1,7 @@
+// Purpose: Validate summarized_logs_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
+// Docs: docs/features/feature/observe/index.md
+
 // summarized_logs_test.go — Tests for log aggregation fingerprinting and grouping.
 package observe
 

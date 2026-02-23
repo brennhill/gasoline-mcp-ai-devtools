@@ -1,3 +1,7 @@
+// Purpose: Validate tools_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
+// Docs: docs/features/feature/observe/index.md
+
 // tools_test.go — Tests for MCP tool handlers.
 // Covers core functionality: tool dispatch, error handling, and response formatting.
 package main

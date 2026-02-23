@@ -1,5 +1,7 @@
-// annotation_store.go — Type aliases bridging internal/annotation into package main.
-// The annotation store implementation lives in internal/annotation.
+// Purpose: Re-exports annotation store aliases into cmd package for draw-mode integration compatibility.
+// Why: Avoids widespread refactors while annotation internals live in a dedicated package.
+// Docs: docs/features/feature/annotated-screenshots/index.md
+
 package main
 
 import (

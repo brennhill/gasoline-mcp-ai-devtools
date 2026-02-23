@@ -1,3 +1,7 @@
+// Purpose: Validate tools_interact_draw_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
+// Docs: docs/features/feature/interact-explore/index.md
+
 // tools_interact_draw_test.go — Tests for draw_mode_start interact handler.
 package main
 

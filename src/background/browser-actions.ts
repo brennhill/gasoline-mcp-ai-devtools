@@ -1,5 +1,6 @@
 /**
  * Purpose: Handles extension background coordination and message routing.
+ * Why: Centralizes extension coordination to reduce race conditions and split-brain state.
  * Docs: docs/features/feature/analyze-tool/index.md
  * Docs: docs/features/feature/interact-explore/index.md
  * Docs: docs/features/feature/observe/index.md
@@ -15,7 +16,7 @@ import { debugLog } from './index'
 import { isAiWebPilotEnabled } from './state'
 import { DebugCategory } from './debug'
 import { broadcastTrackingState } from './message-handlers'
-import { executeWithWorldRouting } from './query-execution'
+import { executeWithWorldRouting, probeCSPStatus, type CSPProbeResult } from './query-execution'
 import { ASYNC_COMMAND_TIMEOUT_MS } from '../lib/constants'
 import type { SendAsyncResultFn, ActionToastFn } from './pending-queries'
 
@@ -43,12 +44,33 @@ export type BrowserActionResult = {
   message?: string
   error?: string
   csp_blocked?: boolean
+  csp_restricted?: boolean
+  csp_level?: string
   failure_cause?: string
+}
+
+/** Cached CSP status from the most recent navigation */
+let lastCSPStatus: CSPProbeResult = { csp_restricted: false, csp_level: 'none' }
+
+/** Get the CSP status from the most recent navigation (for sync layer) */
+export function getLastCSPStatus(): CSPProbeResult {
+  return lastCSPStatus
 }
 
 // =============================================================================
 // NAVIGATION
 // =============================================================================
+
+/** Probe CSP status and enrich a BrowserActionResult with csp_restricted/csp_level */
+async function enrichWithCSP(tabId: number, result: BrowserActionResult): Promise<BrowserActionResult> {
+  try {
+    const csp = await probeCSPStatus(tabId)
+    lastCSPStatus = csp
+    return { ...result, csp_restricted: csp.csp_restricted, csp_level: csp.csp_level }
+  } catch {
+    return result
+  }
+}
 
 // #lizard forgives
 export async function handleNavigateAction(
@@ -71,7 +93,7 @@ export async function handleNavigateAction(
   if (await pingContentScript(tabId)) {
     broadcastTrackingState().catch(() => {})
     actionToast(tabId, reason || 'navigate', reason ? undefined : url, 'success')
-    return { success: true, action: 'navigate', url, final_url: tab.url, title: tab.title, content_script_status: 'loaded', message: 'Content script ready' }
+    return enrichWithCSP(tabId, { success: true, action: 'navigate', url, final_url: tab.url, title: tab.title, content_script_status: 'loaded', message: 'Content script ready' })
   }
 
   if (tab.url?.startsWith('file://')) {
@@ -95,7 +117,7 @@ export async function handleNavigateAction(
 
   if (await pingContentScript(tabId)) {
     broadcastTrackingState().catch(() => {})
-    return {
+    return enrichWithCSP(tabId, {
       success: true,
       action: 'navigate',
       url,
@@ -103,10 +125,10 @@ export async function handleNavigateAction(
       title: reloadedTab.title,
       content_script_status: 'refreshed',
       message: 'Page refreshed to load content script'
-    }
+    })
   }
 
-  return {
+  return enrichWithCSP(tabId, {
     success: true,
     action: 'navigate',
     url,
@@ -114,7 +136,7 @@ export async function handleNavigateAction(
     title: reloadedTab.title,
     content_script_status: 'failed',
     message: 'Navigation complete but content script could not be loaded. AI Web Pilot tools may not work.'
-  }
+  })
 }
 
 async function handleNewTabAction(tabId: number, url: string, actionToast: ActionToastFn, reason?: string): Promise<BrowserActionResult> {
@@ -174,7 +196,7 @@ export async function handleBrowserAction(
         await waitForTabLoad(tabId)
         actionToast(tabId, reason || 'refresh', undefined, 'success')
         const refreshedTab = await chrome.tabs.get(tabId)
-        return { success: true, action: 'refresh', url: refreshedTab.url, title: refreshedTab.title }
+        return enrichWithCSP(tabId, { success: true, action: 'refresh', url: refreshedTab.url, title: refreshedTab.title })
       }
       case 'navigate':
         if (!url) return { success: false, error: 'missing_url', message: 'URL required for navigate action' }

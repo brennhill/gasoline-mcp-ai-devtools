@@ -1,7 +1,7 @@
-// Purpose: Owns ai_noise_detect.go runtime behavior and integration logic.
-// Docs: docs/features/feature/observe/index.md
+// Purpose: Implements automatic noise-rule proposal and confidence-based auto-application logic.
+// Why: Continuously identifies repetitive low-value events to keep debugging streams focused.
+// Docs: docs/features/feature/noise-filtering/index.md
 
-// ai_noise_detect.go — Auto-detection of noise patterns from browser telemetry buffers.
 package ai
 
 import (

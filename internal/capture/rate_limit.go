@@ -1,6 +1,7 @@
-// rate_limit.go — Capture delegation methods for rate limiting and circuit breaker.
-// Delegates to CircuitBreaker sub-struct (aliased from internal/circuit).
-// These methods preserve the existing Capture API so callers don't need to change.
+// Purpose: Delegates capture rate-limiting and health endpoint behavior to the circuit-breaker subsystem.
+// Why: Keeps ingest throttling logic centralized while retaining capture package API stability.
+// Docs: docs/features/feature/rate-limiting/index.md
+
 package capture
 
 import (

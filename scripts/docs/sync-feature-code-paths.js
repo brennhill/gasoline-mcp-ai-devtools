@@ -1,4 +1,8 @@
 #!/usr/bin/env node
+// Purpose: Automate sync-feature-code-paths.js workflow behavior for repository tooling.
+// Why: Keeps repetitive maintenance and verification steps deterministic.
+// Docs: docs/DEVELOPMENT.md
+
 import fs from 'node:fs'
 import path from 'node:path'
 

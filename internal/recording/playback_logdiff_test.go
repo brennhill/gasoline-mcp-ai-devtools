@@ -1,3 +1,7 @@
+// Purpose: Validate playback_logdiff_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
+// Docs: docs/features/feature/observe/index.md
+
 // playback_logdiff_test.go — Tests for playback status, log diff, and helper functions.
 package recording
 

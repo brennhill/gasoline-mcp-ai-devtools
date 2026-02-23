@@ -1,7 +1,7 @@
-// Purpose: Owns ai_noise_builtin.go runtime behavior and integration logic.
-// Docs: docs/features/feature/observe/index.md
+// Purpose: Defines built-in baseline noise rules shipped with AI noise filtering.
+// Why: Provides sensible default suppression coverage before user-defined rules are added.
+// Docs: docs/features/feature/noise-filtering/index.md
 
-// ai_noise_builtin.go — Built-in noise filtering rules for common browser telemetry patterns.
 package ai
 
 import "time"

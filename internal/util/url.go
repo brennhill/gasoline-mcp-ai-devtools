@@ -1,4 +1,7 @@
-// url.go — URL parsing utilities: path extraction and origin extraction.
+// Purpose: Provides shared URL normalization helpers for path/origin extraction logic.
+// Why: Ensures consistent URL parsing behavior across capture, analysis, and security components.
+// Docs: docs/features/feature/backend-log-streaming/index.md
+
 package util
 
 import (

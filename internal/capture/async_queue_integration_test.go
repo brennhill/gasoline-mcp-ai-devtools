@@ -1,3 +1,7 @@
+// Purpose: Validate async_queue_integration_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
+// Docs: docs/features/feature/backend-log-streaming/index.md
+
 // async_queue_integration_test.go — Integration test for full async queue-and-poll flow
 // This test MUST pass. If it fails, the async queue architecture is broken.
 // If you're seeing this test fail after a refactor, DO NOT disable it - restore the missing components.

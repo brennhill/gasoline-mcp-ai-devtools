@@ -1,3 +1,7 @@
+// Purpose: Validate query_commands_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
+// Docs: docs/features/feature/backend-log-streaming/index.md
+
 // query_commands_test.go — Tests for Capture delegation of command methods and disconnect detection.
 package capture
 

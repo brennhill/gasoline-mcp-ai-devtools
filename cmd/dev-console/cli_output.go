@@ -1,5 +1,3 @@
-// cli_output.go — Output formatters for CLI mode: human, json, csv.
-// Docs: docs/features/feature/observe/index.md
 package main
 
 import (

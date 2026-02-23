@@ -1,8 +1,7 @@
-// Purpose: Owns pagination.go runtime behavior and integration logic.
-// Docs: docs/features/feature/observe/index.md
+// Purpose: Implements cursor pagination over captured telemetry collections.
+// Why: Makes large evidence sets queryable without losing ordering or cursor consistency.
+// Docs: docs/features/feature/pagination/index.md
 
-// pagination.go — Cursor-based pagination helpers for observe() responses.
-// Uses generic ApplyCursorPagination to eliminate duplication across log, action, and websocket types.
 package pagination
 
 import (

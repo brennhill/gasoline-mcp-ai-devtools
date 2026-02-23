@@ -1,3 +1,7 @@
+// Purpose: Validate paths_coverage_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
+// Docs: docs/features/feature/observe/index.md
+
 // paths_coverage_test.go — Additional tests targeting uncovered branches in paths.go.
 // Covers InRoot error propagation, ProjectDir error paths, Legacy* function
 // success and error paths, RootDir XDG normalization errors, and normalizePath

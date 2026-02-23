@@ -1,3 +1,7 @@
+// Purpose: Validate bridge_faststart_extended_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
+// Docs: docs/features/feature/observe/index.md
+
 // bridge_faststart_extended_test.go — Extended fast-start tests for MCP bridge mode.
 // Covers: client compatibility matrix, resource workflow soak, retry-when-booting,
 // and version verification.

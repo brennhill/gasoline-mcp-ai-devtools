@@ -1,3 +1,7 @@
+// Purpose: Validate noise_autorun_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
+// Docs: docs/features/feature/observe/index.md
+
 // noise_autorun_test.go — Tests for automatic noise detection after navigation.
 package main
 

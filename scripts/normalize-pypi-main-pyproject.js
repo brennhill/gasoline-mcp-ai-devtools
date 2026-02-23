@@ -1,4 +1,8 @@
 #!/usr/bin/env node
+// Purpose: Automate normalize-pypi-main-pyproject.js workflow behavior for repository tooling.
+// Why: Keeps repetitive maintenance and verification steps deterministic.
+// Docs: docs/features/npm-preinstall-fix/tech-spec.md
+
 /**
  * Normalize pypi/gasoline-mcp/pyproject.toml so dependency metadata is under
  * [project] (PEP 621) and never nested under [project.scripts].

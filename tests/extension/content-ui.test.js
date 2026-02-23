@@ -330,6 +330,136 @@ describe('clearSubtitle', () => {
   })
 })
 
+describe('subtitle auto-timeout', () => {
+  let showSubtitle, clearSubtitle
+
+  beforeEach(async () => {
+    mock.reset()
+    resetMocks()
+    ;({ showSubtitle, clearSubtitle } = await import('../../extension/content/ui/subtitle.js'))
+  })
+
+  test('showSubtitle starts auto-clear timer with 60000ms', () => {
+    const origSetTimeout = globalThis.setTimeout
+    const origClearTimeout = globalThis.clearTimeout
+    const timeoutCalls = []
+    globalThis.setTimeout = mock.fn((cb, ms) => {
+      timeoutCalls.push({ cb, ms })
+      return 42
+    })
+    globalThis.clearTimeout = mock.fn()
+
+    try {
+      showSubtitle('Auto-clear test')
+
+      const autoTimeout = timeoutCalls.find((t) => t.ms === 60000)
+      assert.ok(autoTimeout, 'should schedule auto-clear at 60000ms')
+    } finally {
+      globalThis.setTimeout = origSetTimeout
+      globalThis.clearTimeout = origClearTimeout
+    }
+  })
+
+  test('auto-clear timer fires and removes subtitle', () => {
+    const origSetTimeout = globalThis.setTimeout
+    const origClearTimeout = globalThis.clearTimeout
+    let timerCallback = null
+    globalThis.setTimeout = mock.fn((cb, ms) => {
+      if (ms === 60000) timerCallback = cb
+      return 42
+    })
+    globalThis.clearTimeout = mock.fn()
+
+    try {
+      showSubtitle('Will auto-clear')
+
+      // Set up the subtitle element so clearSubtitle can find it
+      const bar = appendedToBody.find((el) => el.id === 'gasoline-subtitle')
+      assert.ok(bar, 'subtitle should exist')
+      elements['gasoline-subtitle'] = bar
+
+      assert.ok(timerCallback, 'auto-clear timer should have been registered')
+      timerCallback()
+
+      assert.strictEqual(bar.style.opacity, '0', 'subtitle should be faded out after timer fires')
+    } finally {
+      globalThis.setTimeout = origSetTimeout
+      globalThis.clearTimeout = origClearTimeout
+    }
+  })
+
+  test('new showSubtitle resets the auto-clear timer', () => {
+    const origSetTimeout = globalThis.setTimeout
+    const origClearTimeout = globalThis.clearTimeout
+    let lastTimerId = 0
+    globalThis.setTimeout = mock.fn((cb, ms) => {
+      lastTimerId++
+      return lastTimerId
+    })
+    globalThis.clearTimeout = mock.fn()
+
+    try {
+      showSubtitle('First')
+
+      const bar = appendedToBody.find((el) => el.id === 'gasoline-subtitle')
+      elements['gasoline-subtitle'] = bar
+
+      showSubtitle('Second')
+
+      // clearTimeout should have been called to reset the previous timer
+      const clearCalls = globalThis.clearTimeout.mock.calls
+      assert.ok(clearCalls.length > 0, 'should clear previous auto-timer when showing new subtitle')
+    } finally {
+      globalThis.setTimeout = origSetTimeout
+      globalThis.clearTimeout = origClearTimeout
+    }
+  })
+
+  test('clearSubtitle clears the auto-clear timer', () => {
+    const origSetTimeout = globalThis.setTimeout
+    const origClearTimeout = globalThis.clearTimeout
+    globalThis.setTimeout = mock.fn(() => 99)
+    globalThis.clearTimeout = mock.fn()
+
+    try {
+      showSubtitle('To be cleared')
+
+      const bar = appendedToBody.find((el) => el.id === 'gasoline-subtitle')
+      elements['gasoline-subtitle'] = bar
+
+      clearSubtitle()
+
+      const clearCalls = globalThis.clearTimeout.mock.calls
+      assert.ok(clearCalls.length > 0, 'clearSubtitle should clear the auto-timer')
+    } finally {
+      globalThis.setTimeout = origSetTimeout
+      globalThis.clearTimeout = origClearTimeout
+    }
+  })
+
+  test('empty string showSubtitle clears the auto-timer', () => {
+    const origSetTimeout = globalThis.setTimeout
+    const origClearTimeout = globalThis.clearTimeout
+    globalThis.setTimeout = mock.fn(() => 77)
+    globalThis.clearTimeout = mock.fn()
+
+    try {
+      showSubtitle('Has timer')
+
+      const bar = appendedToBody.find((el) => el.id === 'gasoline-subtitle')
+      if (bar) elements['gasoline-subtitle'] = bar
+
+      showSubtitle('')
+
+      const clearCalls = globalThis.clearTimeout.mock.calls
+      assert.ok(clearCalls.length > 0, 'empty text should clear the auto-timer via clearSubtitle path')
+    } finally {
+      globalThis.setTimeout = origSetTimeout
+      globalThis.clearTimeout = origClearTimeout
+    }
+  })
+})
+
 describe('toggleRecordingWatermark', () => {
   let toggleRecordingWatermark
 

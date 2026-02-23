@@ -1,3 +1,7 @@
+// Purpose: Validate pagination_websocket_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
+// Docs: docs/features/feature/pagination/index.md
+
 // pagination_websocket_test.go — Unit tests for websocket event cursor-based pagination
 package pagination
 

@@ -1,6 +1,3 @@
-// server_middleware.go — HTTP middleware and security helpers.
-// Docs: docs/features/feature/observe/index.md
-// Contains CORS middleware, origin/host validation.
 package main
 
 import (

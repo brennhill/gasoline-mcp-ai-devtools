@@ -1,4 +1,3 @@
-// doctor.go — Setup check and diagnostic commands (--check, --doctor, configure(doctor)).
 package main
 
 import (

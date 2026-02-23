@@ -1,3 +1,7 @@
+// Purpose: Validate expire_signal_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
+// Docs: docs/features/feature/observe/index.md
+
 // expire_signal_test.go — Tests for commandNotify signaling on command expiration.
 // Verifies that ExpireCommand, expireCommandWithReason, and ExpireAllPendingQueries
 // wake blocked WaitForCommand goroutines instead of making them wait the full timeout.

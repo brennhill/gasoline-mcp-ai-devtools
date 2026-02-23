@@ -1,3 +1,11 @@
+/**
+ * Purpose: Handles extension background coordination and message routing.
+ * Why: Centralizes extension coordination to reduce race conditions and split-brain state.
+ * Docs: docs/features/feature/analyze-tool/index.md
+ * Docs: docs/features/feature/interact-explore/index.md
+ * Docs: docs/features/feature/observe/index.md
+ */
+
 // dom-primitives-list-interactive.ts — Self-contained list_interactive DOM primitive for chrome.scripting.executeScript.
 // Extracted from dom-primitives.ts to keep file sizes under the 800 LOC limit.
 // This function MUST remain self-contained — Chrome serializes the function source only (no closures).

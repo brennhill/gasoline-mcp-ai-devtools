@@ -1,3 +1,7 @@
+// Purpose: Validate ssrf_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
+// Docs: docs/features/feature/observe/index.md
+
 // ssrf_test.go — Tests for SSRF-safe transport and dialer helpers.
 package upload
 

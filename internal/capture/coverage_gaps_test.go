@@ -1,3 +1,7 @@
+// Purpose: Validate coverage_gaps_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
+// Docs: docs/features/feature/backend-log-streaming/index.md
+
 // coverage_gaps_test.go — Targeted tests for uncovered capture paths (part 1).
 // Covers: SetLifecycleCallback, emitLifecycleEvent, SetServerVersion,
 // GetVersionMismatch, majorMinor, PrintHTTPDebug, detectAndSetBinaryFormat,

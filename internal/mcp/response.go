@@ -1,5 +1,7 @@
-// response.go — Response formatting and JSON serialization helpers.
-// Constructs MCP tool results with proper formatting (text, markdown, JSON).
+// Purpose: Defines MCP protocol types, validation, and structured error response helpers.
+// Why: Gives all tools consistent protocol validation and machine-readable error semantics.
+// Docs: docs/features/feature/query-service/index.md
+
 package mcp
 
 import (

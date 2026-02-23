@@ -1,3 +1,7 @@
+// Purpose: Validate upload_integration_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
+// Docs: docs/features/feature/observe/index.md
+
 // upload_integration_test.go — Integration and edge case tests for upload feature.
 // Covers: concurrency, middleware integration, pending query payload, Content-Disposition
 // safety, writeErr propagation, MaxBytesReader enforcement, correlation ID uniqueness,

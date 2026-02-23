@@ -1,4 +1,8 @@
 #!/usr/bin/env node
+// Purpose: Enforce required source headers across core Go/TypeScript runtime files.
+// Why: Prevents drift where code ownership/intent links disappear from active development paths.
+// Docs: docs/DEVELOPMENT.md
+
 import fs from 'node:fs'
 import path from 'node:path'
 
@@ -28,7 +32,15 @@ function isTarget(file) {
 
 function hasHeader(content) {
   const head = content.split('\n').slice(0, 40).join('\n')
-  return /Purpose:\s*\S/.test(head) && /Docs:\s*docs\/features\/feature\/[a-z0-9-]+\/index\.md/.test(head)
+  const hasGenericPurpose = /Purpose:\s*Owns .* runtime behavior and integration logic\./.test(head)
+  const hasGenericWhy = /Why:\s*Documents why this unit exists so maintenance decisions remain grounded in intent\./.test(head)
+  return (
+    /Purpose:\s*\S/.test(head) &&
+    /Why:\s*\S/.test(head) &&
+    /Docs:\s*docs\/features\/feature\/[a-z0-9-]+\/index\.md/.test(head) &&
+    !hasGenericPurpose &&
+    !hasGenericWhy
+  )
 }
 
 function main() {
@@ -46,7 +58,7 @@ function main() {
   }
 
   if (missing.length > 0) {
-    console.error(`source header check failed: ${missing.length} file(s) missing Purpose/Docs header`)
+    console.error(`source header check failed: ${missing.length} file(s) missing Purpose/Why/Docs header`)
     for (const m of missing.slice(0, 200)) console.error(`- ${m}`)
     if (missing.length > 200) console.error(`... and ${missing.length - 200} more`)
     process.exit(1)

@@ -1,3 +1,7 @@
+// Purpose: Validate conn_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
+// Docs: docs/features/feature/observe/index.md
+
 // conn_test.go — Tests for IsConnectionError helper function.
 package bridge
 

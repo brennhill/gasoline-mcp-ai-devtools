@@ -1,6 +1,7 @@
-// testing_helpers.go — Exported accessors for cross-package test access.
-// These methods expose internal state that tests in other packages (e.g., capture)
-// need to verify recording behavior. Not intended for production use.
+// Purpose: Implements recording storage, replay engine execution, and diffing helpers.
+// Why: Preserves traceability by storing replayable execution history and comparable outcomes.
+// Docs: docs/features/feature/playback-engine/index.md
+
 package recording
 
 // GetInMemoryRecording returns a recording from the in-memory map by ID.

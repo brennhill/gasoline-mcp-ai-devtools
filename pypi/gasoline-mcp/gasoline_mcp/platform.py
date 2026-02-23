@@ -1,5 +1,10 @@
 # pylint: disable=duplicate-code
-"""Platform detection and binary execution for Gasoline MCP."""
+"""Platform detection and binary execution for the PyPI wrapper.
+
+Purpose: Route top-level wrapper commands and binary execution per platform.
+Why: Ensures install/config lifecycle and runtime invocation behave consistently on all OS targets.
+Docs: docs/features/feature/enhanced-cli-config/index.md
+"""
 
 import sys
 import platform

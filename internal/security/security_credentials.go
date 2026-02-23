@@ -1,4 +1,8 @@
-// security_credentials.go — Credential detection, URL/body/console scanning, and shared helpers.
+// Purpose: Detects credential and secret exposure patterns across URLs, payloads, and console output.
+// Why: Reduces high-impact key/token leakage risk by flagging dangerous exposure paths early.
+// Docs: docs/features/feature/redaction-patterns/index.md
+// Docs: docs/features/feature/security-hardening/index.md
+
 package security
 
 import (

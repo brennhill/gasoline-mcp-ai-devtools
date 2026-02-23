@@ -1,8 +1,7 @@
-// Purpose: Owns helpers.go runtime behavior and integration logic.
-// Docs: docs/features/feature/observe/index.md
+// Purpose: Provides shared internal test bootstrap helpers for server and capture instances.
+// Why: Reduces duplicated test setup logic and keeps fixture initialization behavior consistent.
+// Docs: docs/features/feature/self-testing/index.md
 
-// helpers.go — Shared test helpers for internal packages.
-// Provides factory functions for creating test instances of core types.
 package testing
 
 import (

@@ -1,3 +1,7 @@
+// Purpose: Implement errors.js behavior for npm wrapper command flows.
+// Why: Keeps distribution-channel behavior consistent and supportable.
+// Docs: docs/features/feature/enhanced-cli-config/index.md
+
 /**
  * Error classes and message catalog for Gasoline MCP CLI
  */

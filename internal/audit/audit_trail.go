@@ -1,13 +1,7 @@
-// Purpose: Owns audit_trail.go runtime behavior and integration logic.
-// Docs: docs/features/feature/observe/index.md
+// Purpose: Implements bounded concurrent audit-trail storage with parameter redaction and session metadata.
+// Why: Provides compliance-grade traceability for tool calls while minimizing sensitive-data exposure.
+// Docs: docs/features/feature/enterprise-audit/index.md
 
-// audit_trail.go — Enterprise Audit Trail (Tier 1).
-// Append-only tool invocation log with client identification, session management,
-// parameter redaction, and redaction event logging.
-// Design: The AuditTrail struct is a standalone, concurrent-safe, bounded buffer
-// that records every MCP tool call. Individual entries are immutable — evicted
-// via FIFO when the buffer is full. The entire log can be cleared via Clear().
-// The log is queryable with filters for session, tool name, and time range.
 package audit
 
 import (

@@ -1,5 +1,6 @@
-// upload_security_unix.go — Hard link detection delegate for Unix platforms.
-//go:build !windows
+// Purpose: Implements upload command handling, validation, and OS automation wiring.
+// Why: Reduces upload flake by centralizing validation and secure browser-to-OS handoff behavior.
+// Docs: docs/features/feature/file-upload/index.md
 
 package main
 

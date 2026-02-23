@@ -1,5 +1,3 @@
-// platform_errors.go — Platform-aware error messages and process utilities.
-// Docs: docs/features/feature/observe/index.md
 package main
 
 import (

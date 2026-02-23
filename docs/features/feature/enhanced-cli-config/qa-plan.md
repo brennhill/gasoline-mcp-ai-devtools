@@ -44,6 +44,16 @@ last_reviewed: 2026-02-16
 - [ ] `executeInstall()` reports errors for permission/write failures
 - [ ] `executeInstall()` creates config file if it doesn't exist (file-type clients)
 - [ ] `executeInstall()` idempotent: running twice produces same result
+- [ ] npm `--install` reports bundled skill install summary (created/updated/unchanged/skipped/errors)
+- [ ] PyPI `--install` reports bundled skill install summary with same semantics
+- [ ] `GASOLINE_SKIP_SKILL_INSTALL=1` skips skill installation in both wrappers
+
+#### Unit Tests: Bundled Skills
+
+- [ ] PyPI `install_bundled_skills()` writes managed skills to codex/claude/gemini roots
+- [ ] Existing user-owned skill files are not overwritten
+- [ ] Legacy managed `gasoline-*` skill IDs are removed on successful install
+- [ ] Packaged `skills.json` and `skills/*/SKILL.md` are present in wheel/sdist
 
 #### Unit Tests: Doctor Flow
 
@@ -102,6 +112,13 @@ last_reviewed: 2026-02-16
 
 - [ ] `--install --dry-run` followed by `--install` without dry-run produces same result
 - [ ] `--uninstall --dry-run` shows same entries that actual `--uninstall` removes
+- [ ] `--install --dry-run` does not mutate skill directories
+
+#### Manual/Local Build Verification
+
+- [ ] `./scripts/install-bundled-skills.sh` installs managed skills from source tree
+- [ ] Script respects `GASOLINE_SKILL_SCOPE` (`global`, `project`, `all`)
+- [ ] Script respects target overrides (`GASOLINE_SKILL_TARGETS`, `GASOLINE_CODEX_SKILLS_DIR`, etc.)
 
 #### File System Scenarios
 

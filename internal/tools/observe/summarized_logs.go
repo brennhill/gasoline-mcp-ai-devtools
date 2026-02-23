@@ -1,6 +1,7 @@
-// summarized_logs.go — Log aggregation handler for observe(what="summarized_logs").
-// Groups console log entries by normalized message fingerprint. Returns collapsed
-// groups (with counts) and anomalies (rare entries likely to be actionable signal).
+// Purpose: Provides observe tool implementation helpers for filtering and storage queries.
+// Why: Centralizes observe query behavior so evidence filtering stays predictable.
+// Docs: docs/features/feature/observe/index.md
+
 package observe
 
 import (

@@ -1,5 +1,3 @@
-// streaming.go — Type aliases and MCP tool handler for context streaming.
-// Pure logic lives in internal/streaming; this file owns the MCP dispatch.
 package main
 
 import (

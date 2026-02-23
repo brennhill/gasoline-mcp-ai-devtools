@@ -1,3 +1,7 @@
+// Purpose: Validate tools_interact_rich_perfdiff_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
+// Docs: docs/features/feature/interact-explore/index.md
+
 // tools_interact_rich_perfdiff_test.go — TDD tests for Rich Action perf_diff enrichment.
 // Tests the daemon-side contract for perf_diff computation on command_result,
 // including before-snapshot stashing, Web Vitals, and timing.

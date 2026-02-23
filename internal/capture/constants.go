@@ -1,5 +1,7 @@
-// constants.go — Buffer capacity and configuration constants.
-// All configuration values for capture package.
+// Purpose: Declares capture buffer capacities, rate limits, and memory safety thresholds.
+// Why: Keeps runtime capture limits explicit so ingestion behavior is predictable and tunable.
+// Docs: docs/features/feature/backend-log-streaming/index.md
+
 package capture
 
 import (

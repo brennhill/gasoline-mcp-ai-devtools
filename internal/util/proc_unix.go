@@ -1,6 +1,6 @@
-// proc_unix.go — Unix-specific detached process configuration.
-
-//go:build !windows
+// Purpose: Configures detached-process spawn attributes for Unix daemon child processes.
+// Why: Enables daemonized subprocess lifecycle behavior without inheriting parent process groups.
+// Docs: docs/features/feature/mcp-persistent-server/index.md
 
 package util
 

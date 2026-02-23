@@ -1,11 +1,7 @@
-// Purpose: Owns extension-logging-types.go runtime behavior and integration logic.
+// Purpose: Defines extension-origin log/debug entry payload structures used by sync ingestion paths.
+// Why: Keeps extension diagnostic event shapes consistent for buffering, filtering, and display.
 // Docs: docs/features/feature/backend-log-streaming/index.md
 
-// extension-logging-types.go — Extension logging types.
-// ExtensionLog, PollingLogEntry, and HTTPDebugEntry for extension internal logging.
-//
-// JSON CONVENTION: All fields MUST use snake_case. See .claude/refs/api-naming-standards.md
-// Deviations from snake_case MUST be tagged with // SPEC:<spec-name> at the field level.
 package capture
 
 import (

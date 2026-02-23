@@ -1,3 +1,7 @@
+// Purpose: Validate tools_interact_upload_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
+// Docs: docs/features/feature/interact-explore/index.md
+
 // tools_interact_upload_test.go — Tests for file upload feature (4-stage escalation).
 //
 // WARNING: DO NOT use t.Parallel() — tests share global state (skipSSRFCheck, uploadSecurityConfig).

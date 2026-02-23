@@ -1,7 +1,7 @@
-// Purpose: Owns http_debug_redaction.go runtime behavior and integration logic.
-// Docs: docs/features/feature/backend-log-streaming/index.md
+// Purpose: Implements redaction of HTTP debug entry fields before persistence/output.
+// Why: Prevents sensitive request/response values from leaking through debug diagnostics.
+// Docs: docs/features/feature/redaction-patterns/index.md
 
-// http_debug_redaction.go — Sensitive data redaction for HTTP debug log entries.
 package capture
 
 // redactHTTPDebugEntry scrubs sensitive data from HTTP debug entry fields before storage.

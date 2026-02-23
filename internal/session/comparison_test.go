@@ -1,3 +1,7 @@
+// Purpose: Validate comparison_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
+// Docs: docs/features/feature/pagination/index.md
+
 // comparison_test.go — Tests for comparison.go Compare function.
 // Covers: snapshot lookup errors, "current" reserved name, full diff result fields.
 package session

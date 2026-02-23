@@ -1,3 +1,7 @@
+// Purpose: Validate debug_logger_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
+// Docs: docs/features/feature/backend-log-streaming/index.md
+
 // debug_logger_test.go — Tests for the DebugLogger sub-struct.
 // Verifies circular buffer behavior, concurrent safety, and snapshot isolation.
 package capture

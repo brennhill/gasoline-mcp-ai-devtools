@@ -1,4 +1,7 @@
-// filtering.go — Filtering helpers for observe operations.
+// Purpose: Provides observe tool implementation helpers for filtering and storage queries.
+// Why: Centralizes observe query behavior so evidence filtering stays predictable.
+// Docs: docs/features/feature/observe/index.md
+
 package observe
 
 import (

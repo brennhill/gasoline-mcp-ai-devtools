@@ -1,8 +1,7 @@
-// Purpose: Owns alert.go runtime behavior and integration logic.
-// Docs: docs/features/feature/observe/index.md
+// Purpose: Defines canonical alert and CI-result payload types emitted by server-side monitoring features.
+// Why: Standardizes alert payload structure so observe/analyze consumers can process alerts consistently.
+// Docs: docs/features/feature/push-alerts/index.md
 
-// alert.go — Alert types for proactive error notification and performance regression detection.
-// Zero dependencies - foundational types used across ai, session, and observation packages.
 package types
 
 import "time"

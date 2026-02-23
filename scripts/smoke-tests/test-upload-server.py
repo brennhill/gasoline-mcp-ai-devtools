@@ -1,4 +1,8 @@
 #!/usr/bin/env python3
+# Purpose: Automate test-upload-server.py workflow behavior for repository tooling.
+# Why: Keeps repetitive maintenance and verification steps deterministic.
+# Docs: docs/DEVELOPMENT.md
+
 """test-upload-server.py — Unit tests for the upload server hardened form endpoint.
 
 Tests that GET /upload/hardened returns a form with isTrusted validation.

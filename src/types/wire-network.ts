@@ -1,3 +1,9 @@
+/**
+ * Purpose: Declares generated canonical TypeScript wire contracts for network body and waterfall payloads.
+ * Why: Guarantees extension/server parity for network telemetry serialization across releases.
+ * Docs: docs/features/feature/normalized-event-schema/index.md
+ */
+
 // THIS FILE IS GENERATED — do not edit by hand.
 // Source: internal/types/wire_network.go
 // Generator: scripts/generate-wire-types.js

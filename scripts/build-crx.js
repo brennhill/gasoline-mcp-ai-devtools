@@ -1,4 +1,8 @@
 #!/usr/bin/env node
+// Purpose: Automate build-crx.js workflow behavior for repository tooling.
+// Why: Keeps repetitive maintenance and verification steps deterministic.
+// Docs: docs/DEVELOPMENT.md
+
 
 import fs from 'fs'
 import path from 'path'

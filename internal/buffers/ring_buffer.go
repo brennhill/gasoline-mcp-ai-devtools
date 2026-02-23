@@ -1,10 +1,7 @@
-// Purpose: Owns ring_buffer.go runtime behavior and integration logic.
-// Docs: docs/features/feature/observe/index.md
+// Purpose: Implements ring buffer storage primitives and cursor-safe access patterns.
+// Why: Prevents unbounded memory growth while preserving recent evidence for debugging.
+// Docs: docs/features/feature/ring-buffer/index.md
 
-// ring_buffer.go — Generic ring buffer with cursor-based reads.
-// Provides a fixed-capacity circular buffer that tracks timestamps for each entry,
-// enabling clients to read from specific positions or time points.
-// Thread-safe: all access guarded by RWMutex (see LOCKING.md for ordering).
 package buffers
 
 import (

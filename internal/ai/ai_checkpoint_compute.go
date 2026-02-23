@@ -1,7 +1,7 @@
-// Purpose: Owns ai_checkpoint_compute.go runtime behavior and integration logic.
-// Docs: docs/features/feature/observe/index.md
+// Purpose: Implements checkpoint diff computation over console, network, websocket, and action buffers.
+// Why: Produces compact change sets optimized for AI context windows and incident triage.
+// Docs: docs/features/feature/push-alerts/index.md
 
-// ai_checkpoint_compute.go — Diff computation and summary building for checkpoints.
 package ai
 
 import (

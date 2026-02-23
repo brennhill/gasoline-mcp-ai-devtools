@@ -1,3 +1,7 @@
+// Purpose: Validate computed_styles_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
+// Docs: docs/features/feature/observe/index.md
+
 // computed_styles_test.go — Tests for computed styles handler argument parsing.
 package analyze
 

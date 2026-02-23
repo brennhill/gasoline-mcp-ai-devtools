@@ -1,3 +1,7 @@
+// Purpose: Validate tools_observe_handler_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
+// Docs: docs/features/feature/observe/index.md
+
 // tools_observe_handler_test.go — Comprehensive unit tests for observe tool dispatch and response fields.
 // Validates all response fields, snake_case JSON convention, and dispatch logic.
 package main

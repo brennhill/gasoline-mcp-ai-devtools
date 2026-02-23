@@ -1,4 +1,9 @@
-"""Output formatters for Gasoline MCP CLI."""
+"""Output formatters for the PyPI wrapper.
+
+Purpose: Render consistent human-readable success/error/report text for CLI commands.
+Why: Keeps user experience stable across install/doctor/uninstall command paths.
+Docs: docs/features/feature/enhanced-cli-config/index.md
+"""
 
 
 def success(message, details=""):

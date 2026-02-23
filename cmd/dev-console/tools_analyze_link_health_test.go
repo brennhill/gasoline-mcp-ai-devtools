@@ -1,3 +1,7 @@
+// Purpose: Validate tools_analyze_link_health_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
+// Docs: docs/features/feature/analyze-tool/index.md
+
 // tools_analyze_link_health_test.go — Unit tests for analyze tool link_health mode.
 // Tests verify that link health checks create proper pending queries and return
 // expected correlation IDs for async tracking.

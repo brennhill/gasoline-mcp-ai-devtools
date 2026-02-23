@@ -1,4 +1,7 @@
-// form_submit.go — Stage 3 form submission logic with multipart streaming.
+// Purpose: Implements upload validation, security checks, and automation support paths.
+// Why: Enforces upload safety boundaries against path traversal and SSRF-style abuse.
+// Docs: docs/features/feature/file-upload/index.md
+
 package upload
 
 import (

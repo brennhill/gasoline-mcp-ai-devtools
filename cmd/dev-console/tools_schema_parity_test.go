@@ -1,3 +1,7 @@
+// Purpose: Validate tools_schema_parity_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
+// Docs: docs/features/feature/observe/index.md
+
 // tools_schema_parity_test.go — Enforces parity between tool schema enums and runtime dispatch handlers.
 package main
 

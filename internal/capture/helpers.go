@@ -1,9 +1,7 @@
-// Purpose: Owns helpers.go runtime behavior and integration logic.
+// Purpose: Provides shared capture helper utilities for URL handling, slice operations, and ingest body processing.
+// Why: Prevents repeated low-level helper logic across capture handlers and ingestion code paths.
 // Docs: docs/features/feature/backend-log-streaming/index.md
 
-// helpers.go — Shared utility functions used across the server.
-// Currently provides URL path extraction (stripping query params and fragments)
-// used by the network and performance subsystems for path-based grouping.
 package capture
 
 import (

@@ -1,3 +1,7 @@
+// Purpose: Validate cursor_fuzz_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
+// Docs: docs/features/feature/pagination/index.md
+
 // cursor_fuzz_test.go — Fuzz tests for cursor parsing.
 package pagination
 

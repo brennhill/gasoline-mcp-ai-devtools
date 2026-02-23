@@ -1,7 +1,7 @@
-// reproduction.go — Reproduction script generation from captured actions.
-// Generates Playwright tests or Gasoline natural language scripts from
-// EnhancedAction data captured by the browser extension.
-// Design: Two output formats, shared selector extraction, single-pass generation.
+// Purpose: Implements reproduction script generation from captured enhanced-action timelines.
+// Why: Turns observed failures into repeatable scripts for debugging and regression validation.
+// Docs: docs/features/feature/reproduction-scripts/index.md
+
 package reproduction
 
 import (

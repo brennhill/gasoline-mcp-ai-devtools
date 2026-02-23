@@ -1,4 +1,3 @@
-// types.go — MCP JSON-RPC protocol types (aliases to internal/mcp).
 package main
 
 import (

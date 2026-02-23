@@ -1,6 +1,7 @@
 /**
- * Purpose: Owns dom.ts runtime behavior and integration logic.
- * Docs: docs/features/feature/observe/index.md
+ * Purpose: Defines DOM query result and page metadata contracts returned by extension query handlers.
+ * Why: Keeps DOM inspection responses deterministic for tool consumers and serialization boundaries.
+ * Docs: docs/features/feature/query-dom/index.md
  */
 
 /**

@@ -15,6 +15,8 @@ export interface SyncSettings {
     capture_network: boolean;
     capture_websocket: boolean;
     capture_actions: boolean;
+    csp_restricted: boolean;
+    csp_level: string;
 }
 /** Extension log entry */
 export interface SyncExtensionLog {

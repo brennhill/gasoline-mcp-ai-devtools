@@ -1,3 +1,7 @@
+// Purpose: Validate redaction_coverage_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
+// Docs: docs/features/feature/redaction-patterns/index.md
+
 // redaction_coverage_test.go — Targeted tests for uncovered branches in redaction package.
 package redaction
 

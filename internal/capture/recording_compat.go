@@ -1,6 +1,8 @@
-// recording_compat.go — Unexported re-exports for backward compatibility.
-// These thin wrappers let existing capture-package tests keep using the
-// unexported names after the logic moved to internal/recording.
+// Purpose: Re-exports recording constants/helpers for capture-package backward compatibility.
+// Why: Preserves existing capture test and call-site behavior after recording subsystem extraction.
+// Docs: docs/features/feature/playback-engine/index.md
+// Docs: docs/features/feature/tab-recording/index.md
+
 package capture
 
 import "github.com/dev-console/dev-console/internal/recording"

@@ -1,3 +1,7 @@
+// Purpose: Validate tools_observe_bundling_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
+// Docs: docs/features/feature/observe/index.md
+
 // tools_observe_bundling_test.go — Tests for error bundling observe mode.
 //
 // Error bundles assemble complete debugging context in a single call:

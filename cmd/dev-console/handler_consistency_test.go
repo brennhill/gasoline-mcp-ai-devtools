@@ -1,3 +1,7 @@
+// Purpose: Validate handler_consistency_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
+// Docs: docs/features/feature/observe/index.md
+
 // handler_consistency_test.go — Verifies consistent HTTP error responses across all endpoints.
 // Every error response MUST: have Content-Type: application/json, contain parseable JSON with "error" key.
 // Every POST-only endpoint MUST: return 405 on GET.

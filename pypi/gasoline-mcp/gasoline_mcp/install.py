@@ -1,4 +1,9 @@
-"""Install logic for Gasoline MCP CLI."""
+"""Install logic for the PyPI wrapper.
+
+Purpose: Apply MCP client configuration updates for detected tools.
+Why: Centralizes install behavior so dry-run, env merge, and multi-client paths stay consistent.
+Docs: docs/features/feature/enhanced-cli-config/index.md
+"""
 
 import json
 import subprocess

@@ -4,6 +4,19 @@
  * Docs: docs/features/feature/interact-explore/index.md
  * Docs: docs/features/feature/observe/index.md
  */
+/** Result of probing a tab's Content Security Policy restrictions */
+export interface CSPProbeResult {
+    csp_restricted: boolean;
+    csp_level: 'none' | 'script_exec' | 'page_blocked';
+}
+/**
+ * Probe whether a tab's CSP blocks dynamic script execution (new Function).
+ * Returns one of three levels:
+ * - "none": No CSP restrictions — execute_js is safe
+ * - "script_exec": new Function() blocked — use dom/get_readable instead
+ * - "page_blocked": Privileged URL (chrome://, devtools://) — no extension access
+ */
+export declare function probeCSPStatus(tabId: number): Promise<CSPProbeResult>;
 /** Result shape from JS execution */
 export interface ExecutionResult {
     success: boolean;

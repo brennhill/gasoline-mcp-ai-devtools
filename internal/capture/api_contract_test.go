@@ -1,3 +1,7 @@
+// Purpose: Validate api_contract_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
+// Docs: docs/features/feature/backend-log-streaming/index.md
+
 // api_contract_test.go — API contract tests for Extension ↔ Server communication.
 // These tests verify that HTTP endpoints accept the correct methods and payloads.
 //

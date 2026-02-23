@@ -1,3 +1,7 @@
+// Purpose: Implement config.js behavior for npm wrapper command flows.
+// Why: Keeps distribution-channel behavior consistent and supportable.
+// Docs: docs/features/feature/enhanced-cli-config/index.md
+
 /**
  * Config file utilities for Gasoline MCP CLI
  * Handles reading, writing, validating, and merging MCP configurations

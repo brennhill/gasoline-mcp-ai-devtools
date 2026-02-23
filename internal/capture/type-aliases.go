@@ -1,9 +1,7 @@
-// Purpose: Owns type-aliases.go runtime behavior and integration logic.
+// Purpose: Re-exports subsystem type aliases so capture can compose extracted packages without churn.
+// Why: Preserves capture package API/readability during modularization into circuit/queries/recording packages.
 // Docs: docs/features/feature/backend-log-streaming/index.md
 
-// type-aliases.go — Type aliases for imported packages.
-// These are real type aliases (= syntax), not forward declarations.
-// They provide convenience by avoiding qualifying imported types everywhere.
 package capture
 
 import (

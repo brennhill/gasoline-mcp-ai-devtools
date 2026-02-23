@@ -1,3 +1,7 @@
+// Purpose: Validate state_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
+// Docs: docs/features/feature/observe/index.md
+
 // state_test.go — Tests for state management pure functions.
 package interact
 

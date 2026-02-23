@@ -1,3 +1,7 @@
+// Purpose: Validate image_diff_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
+// Docs: docs/features/feature/observe/index.md
+
 // image_diff_test.go — Tests for pure Go pixel-diff comparison.
 package analyze
 

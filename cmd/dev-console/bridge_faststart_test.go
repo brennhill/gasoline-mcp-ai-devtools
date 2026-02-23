@@ -1,3 +1,7 @@
+// Purpose: Validate bridge_faststart_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
+// Docs: docs/features/feature/observe/index.md
+
 // bridge_faststart_test.go — Tests for MCP fast-start behavior.
 // Verifies that initialize and tools/list respond immediately without waiting for daemon.
 package main

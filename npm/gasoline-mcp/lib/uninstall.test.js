@@ -1,3 +1,7 @@
+// Purpose: Validate uninstall behavior for npm wrapper-managed MCP config entries.
+// Why: Ensures cleanup removes only gasoline entries while preserving user config state.
+// Docs: docs/features/feature/enhanced-cli-config/index.md
+
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const os = require('node:os');

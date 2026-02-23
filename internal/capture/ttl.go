@@ -1,7 +1,7 @@
-// Purpose: Owns ttl.go runtime behavior and integration logic.
-// Docs: docs/features/feature/backend-log-streaming/index.md
+// Purpose: Implements TTL expiration checks for captured-entry filtering.
+// Why: Ensures query results reflect current session context rather than stale buffered events.
+// Docs: docs/features/feature/ttl-retention/index.md
 
-// ttl.go — TTL filtering utilities
 package capture
 
 import "time"

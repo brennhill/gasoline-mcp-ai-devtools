@@ -1,3 +1,7 @@
+// Purpose: Implement output.js behavior for npm wrapper command flows.
+// Why: Keeps distribution-channel behavior consistent and supportable.
+// Docs: docs/features/feature/enhanced-cli-config/index.md
+
 /**
  * Output formatters for Gasoline MCP CLI
  */

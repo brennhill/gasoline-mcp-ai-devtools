@@ -1,4 +1,6 @@
-// clustering_helpers.go — Stack frame parsing, message normalization, and signal matching for error clustering.
+// Purpose: Provides stack/message normalization and similarity helpers used by error clustering logic.
+// Why: Keeps clustering matches stable by centralizing fuzzy-match signal extraction rules.
+// Docs: docs/features/feature/error-clustering/index.md
 
 package analysis
 

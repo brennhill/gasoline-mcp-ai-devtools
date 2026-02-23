@@ -1,7 +1,7 @@
-// Purpose: Owns safego.go runtime behavior and integration logic.
-// Docs: docs/features/feature/observe/index.md
+// Purpose: Provides panic-recovering goroutine launcher for background asynchronous tasks.
+// Why: Prevents single background task panics from crashing the daemon process.
+// Docs: docs/features/feature/backend-log-streaming/index.md
 
-// safego.go — Panic-recovering goroutine launcher.
 package util
 
 import (

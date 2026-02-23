@@ -1,3 +1,7 @@
+// Purpose: Validate security_coverage_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
+// Docs: docs/features/feature/observe/index.md
+
 // security_coverage_test.go — Targeted coverage tests for uncovered security paths (part 1).
 // Covers: formatDuration, redactSecret, networkFlagDescription, networkFlagRemediation,
 // extractOrigin, isThirdPartyURL, isLocalhostURL, scanForCreditCard, scanForSSN,

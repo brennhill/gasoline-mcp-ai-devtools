@@ -1,5 +1,6 @@
-// security_unix.go — Hard link detection for Unix platforms.
-//go:build !windows
+// Purpose: Implements upload validation, security checks, and automation support paths.
+// Why: Enforces upload safety boundaries against path traversal and SSRF-style abuse.
+// Docs: docs/features/feature/file-upload/index.md
 
 package upload
 

@@ -1,5 +1,7 @@
-// protocol.go — MCP JSON-RPC 2.0 protocol types.
-// Contains the core JSON-RPC request/response/error types used for MCP communication.
+// Purpose: Defines MCP protocol types, validation, and structured error response helpers.
+// Why: Gives all tools consistent protocol validation and machine-readable error semantics.
+// Docs: docs/features/feature/query-service/index.md
+
 package mcp
 
 import (

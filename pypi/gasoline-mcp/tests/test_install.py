@@ -1,3 +1,7 @@
+# Purpose: Validate test_install.py behavior and guard against regressions.
+# Why: Prevents silent regressions in critical behavior paths.
+# Docs: docs/features/feature/enhanced-cli-config/index.md
+
 """Tests for install module."""
 
 import json

@@ -1,3 +1,7 @@
+// Purpose: Defines test hook overrides for extension disconnect thresholds.
+// Why: Allows deterministic testing of timeout/disconnect behavior without changing production constants.
+// Docs: docs/features/feature/self-testing/index.md
+
 package capture
 
 import "time"

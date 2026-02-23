@@ -1,5 +1,7 @@
-// alerts.go — Alert system integration: type aliases, ToolHandler delegation, HTTP handlers.
-// Pure logic lives in internal/streaming; this file owns the HTTP/MCP glue.
+// Purpose: Adapts streaming alert/CI primitives into ToolHandler-facing alert management methods.
+// Why: Keeps alert buffering/dedup logic centralized in streaming while preserving legacy cmd package call sites.
+// Docs: docs/features/feature/push-alerts/index.md
+
 package main
 
 import (

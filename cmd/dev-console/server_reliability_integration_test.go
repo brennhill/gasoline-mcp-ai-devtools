@@ -1,3 +1,7 @@
+// Purpose: Validate server_reliability_integration_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
+// Docs: docs/features/feature/observe/index.md
+
 // server_reliability_integration_test.go — MCP traffic, upgrade, and integration tests.
 //
 // ⚠️ RELEASE GATE TESTS - MANDATORY BEFORE EVERY RELEASE

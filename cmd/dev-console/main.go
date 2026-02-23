@@ -1,22 +1,3 @@
-// main.go — Entry point, mode dispatch, process management, and panic recovery.
-// Docs: docs/features/feature/observe/index.md
-
-// Gasoline - Browser observability for AI coding agents
-// A zero-dependency server that receives logs from the browser extension
-// and streams them to your AI coding agent via MCP.
-//
-// Error Handling Strategy:
-//  1. HTTP handlers: Return HTTP status codes (400/404/405/500), log to stderr
-//  2. MCP JSON-RPC: Return JSON-RPC error responses with code/message
-//  3. Background operations: Log to stderr and continue (e.g., file close errors)
-//  4. Fatal startup errors: Log to stderr and os.Exit(1)
-//  5. Context timeouts: Handled gracefully with error messages
-//
-// Logging Strategy (zero-dependency policy means no logging library):
-//  1. User-facing messages: fmt.Printf() to stdout
-//  2. Errors and warnings: fmt.Fprintf(os.Stderr, "[gasoline] ...") to stderr
-//  3. Lifecycle events: Written to log file via server.appendToFile()
-//  4. Debug output: Only when explicitly enabled
 package main
 
 import (

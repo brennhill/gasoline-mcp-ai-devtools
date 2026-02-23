@@ -4,9 +4,18 @@ feature_id: feature-enhanced-cli-config
 status: proposed
 feature_type: feature
 owners: []
-last_reviewed: 2026-02-16
+last_reviewed: 2026-02-23
 code_paths:
-test_paths: []
+  - npm/gasoline-mcp/lib/cli.js
+  - npm/gasoline-mcp/lib/skills.js
+  - npm/gasoline-mcp/lib/postinstall-skills.js
+  - pypi/gasoline-mcp/gasoline_mcp/platform.py
+  - pypi/gasoline-mcp/gasoline_mcp/skills.py
+  - scripts/install-bundled-skills.sh
+test_paths:
+  - pypi/gasoline-mcp/tests/test_install.py
+  - pypi/gasoline-mcp/tests/test_skills.py
+  - tests/cli/cli-integration.test.cjs
 ---
 
 # Enhanced Cli Config

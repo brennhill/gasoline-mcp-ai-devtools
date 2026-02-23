@@ -1,4 +1,3 @@
-// tools_shared_queries.go — Cross-tool query helpers used by multiple MCP tools.
 package main
 
 import (

@@ -1,3 +1,9 @@
+/**
+ * Purpose: Declares generated canonical TypeScript wire contracts for performance snapshot payloads.
+ * Why: Guarantees extension/server parity for performance telemetry serialization across releases.
+ * Docs: docs/features/feature/performance-audit/index.md
+ */
+
 // THIS FILE IS GENERATED — do not edit by hand.
 // Source: internal/performance/wire_performance.go
 // Generator: scripts/generate-wire-types.js

@@ -1,3 +1,7 @@
+// Purpose: Validate coverage_gaps_part2_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
+// Docs: docs/features/feature/backend-log-streaming/index.md
+
 // coverage_gaps_part2_test.go — Targeted tests for uncovered capture paths (part 2).
 // Covers: AddExtensionLogs eviction, GetAll* empty branches, HandleRecordingStorage,
 // HandleQueryResult correlation_id path, and accessor empty-slice branches.

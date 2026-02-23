@@ -1,8 +1,7 @@
-// Purpose: Owns snapshot.go runtime behavior and integration logic.
-// Docs: docs/features/feature/observe/index.md
+// Purpose: Defines named-snapshot structures for persisted point-in-time browser state comparisons.
+// Why: Enables deterministic before/after diagnostics by preserving structured snapshot evidence.
+// Docs: docs/features/feature/historical-snapshots/index.md
 
-// snapshot.go — Snapshot types for representing captured browser state at a point in time.
-// Used by session checkpoints, diff comparisons, and test fixtures.
 package types
 
 import "time"

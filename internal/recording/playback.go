@@ -1,7 +1,7 @@
-// Purpose: Owns playback.go runtime behavior and integration logic.
-// Docs: docs/features/feature/observe/index.md
+// Purpose: Implements recording storage, replay engine execution, and diffing helpers.
+// Why: Preserves traceability by storing replayable execution history and comparable outcomes.
+// Docs: docs/features/feature/playback-engine/index.md
 
-// playback.go — Helper methods for RecordingAction playback
 package recording
 
 import "fmt"

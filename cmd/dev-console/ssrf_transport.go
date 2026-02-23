@@ -1,4 +1,3 @@
-// ssrf_transport.go — SSRF protection aliases delegating to internal/upload.
 package main
 
 import "github.com/dev-console/dev-console/internal/upload"

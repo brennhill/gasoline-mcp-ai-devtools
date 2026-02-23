@@ -1,4 +1,8 @@
 #!/usr/bin/env node
+// Purpose: Automate fix-imports.js workflow behavior for repository tooling.
+// Why: Keeps repetitive maintenance and verification steps deterministic.
+// Docs: docs/DEVELOPMENT.md
+
 
 /**
  * Post-process compiled JavaScript files to add .js extensions to relative imports.

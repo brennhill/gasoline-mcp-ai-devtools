@@ -1,3 +1,7 @@
+// Purpose: Implements interact tool handlers and browser action orchestration.
+// Why: Preserves deterministic browser action execution across agent workflows.
+// Docs: docs/features/feature/interact-explore/index.md
+
 // tools_interact_evidence.go — Evidence capture state machine for interact actions.
 //
 // Evidence mode is opt-in per interact call via:

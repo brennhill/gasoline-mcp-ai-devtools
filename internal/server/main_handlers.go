@@ -1,10 +1,7 @@
-// Purpose: Owns main_handlers.go runtime behavior and integration logic.
-// Docs: docs/features/feature/observe/index.md
+// Purpose: Implements core server log storage/handler state and file-backed log lifecycle operations.
+// Why: Centralizes server-side log persistence and handler behavior behind one synchronized runtime.
+// Docs: docs/features/feature/backend-log-streaming/index.md
 
-// main_handlers.go — Server struct and core HTTP handlers.
-// Contains the Server type (log entry management), entry manipulation methods,
-// and the screenshot endpoint.
-// Extracted from cmd/gasoline/main.go during Phase 4 refactoring.
 package server
 
 import (

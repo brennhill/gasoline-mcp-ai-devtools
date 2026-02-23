@@ -1,3 +1,7 @@
+// Purpose: Validate export_coverage_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
+// Docs: docs/features/feature/har-export/index.md
+
 // export_coverage_test.go — Targeted coverage tests for uncovered export paths.
 // Covers: ExportHARMergedToFile, httpStatusText branches, computeWaterfallTimings edge cases,
 // matchesWaterfallFilter, matchesHARFilter, and SARIF path validation.

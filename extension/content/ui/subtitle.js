@@ -1,6 +1,15 @@
 // subtitle.ts — Subtitle overlay, recording watermark, and shared DOM helpers for content UI.
 /** Active Escape key listener reference for subtitle dismiss */
 let subtitleEscapeHandler = null;
+/** Auto-clear timer: subtitles auto-dismiss after 60 seconds to prevent stale overlays */
+const SUBTITLE_AUTO_TIMEOUT_MS = 60_000;
+let subtitleAutoTimer = null;
+function clearAutoTimer() {
+    if (subtitleAutoTimer) {
+        clearTimeout(subtitleAutoTimer);
+        subtitleAutoTimer = null;
+    }
+}
 /** Fade out a DOM element and remove it after transition completes */
 // #lizard forgives
 function fadeOutAndRemove(elementId, delayMs) {
@@ -21,6 +30,7 @@ function detachEscapeListener() {
  * Remove the subtitle element, clean up Escape listener.
  */
 export function clearSubtitle() {
+    clearAutoTimer();
     fadeOutAndRemove('gasoline-subtitle', 200);
     detachEscapeListener();
 }
@@ -132,6 +142,9 @@ export function showSubtitle(text) {
     // background tabs) and setTimeout (throttled to 1s in background tabs).
     void bar.offsetHeight;
     bar.style.opacity = '1';
+    // Auto-clear after 60s to prevent stale overlays from persisting indefinitely
+    clearAutoTimer();
+    subtitleAutoTimer = setTimeout(() => { clearSubtitle(); }, SUBTITLE_AUTO_TIMEOUT_MS);
 }
 /**
  * Show or hide a recording watermark (Gasoline flame icon) in the bottom-right corner.

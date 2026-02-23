@@ -1,3 +1,7 @@
+// Purpose: Validate alerts_unit_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
+// Docs: docs/features/feature/observe/index.md
+
 // alerts_unit_test.go — Integration tests for CI webhook HTTP handlers.
 // Pure alert logic tests live in internal/streaming/alerts_test.go.
 package main

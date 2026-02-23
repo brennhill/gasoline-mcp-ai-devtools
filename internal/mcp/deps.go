@@ -1,6 +1,7 @@
-// deps.go — Composable dependency interfaces for MCP tool packages.
-// Each tool package defines its own Deps interface by embedding these sub-interfaces.
-// *ToolHandler satisfies all of them with zero code changes.
+// Purpose: Defines MCP protocol types, validation, and structured error response helpers.
+// Why: Gives all tools consistent protocol validation and machine-readable error semantics.
+// Docs: docs/features/feature/query-service/index.md
+
 package mcp
 
 import (

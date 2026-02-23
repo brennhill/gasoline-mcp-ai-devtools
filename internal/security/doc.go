@@ -1,3 +1,7 @@
+// Purpose: Implement doc.go internal behavior used by MCP runtime features.
+// Why: Maintains stable server behavior across tool and transport paths.
+// Docs: docs/features/feature/observe/index.md
+
 // doc.go — Package documentation for security analysis and policy generation.
 
 // Package security provides security analysis and policy generation for web applications.

@@ -1,4 +1,6 @@
-// security_flagging.go — Detects suspicious origins and supply-chain threats in network data.
+// Purpose: Flags suspicious origins, ports, and supply-chain indicators from captured network activity.
+// Why: Surfaces high-signal threat indicators that are otherwise easy to miss in raw telemetry.
+// Docs: docs/features/feature/security-hardening/index.md
 
 package security
 

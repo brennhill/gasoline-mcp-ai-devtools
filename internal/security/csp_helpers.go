@@ -1,4 +1,7 @@
-// csp_helpers.go — CSP helper functions: dev pollution filtering, confidence scoring, header building, and content type mapping.
+// Purpose: Provides CSP helper logic for directive shaping, filtering, and policy assembly.
+// Why: Keeps CSP generation behavior consistent and testable across strict/moderate/reporting modes.
+// Docs: docs/features/feature/security-hardening/index.md
+
 package security
 
 import (

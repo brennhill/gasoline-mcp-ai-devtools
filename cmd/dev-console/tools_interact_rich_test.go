@@ -1,3 +1,7 @@
+// Purpose: Validate tools_interact_rich_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
+// Docs: docs/features/feature/interact-explore/index.md
+
 // tools_interact_rich_test.go — TDD tests for Rich Action Results.
 // Tests the daemon-side contract: analyze param parsing, forwarding to
 // pending query, schema presence, and top-level field surfacing.

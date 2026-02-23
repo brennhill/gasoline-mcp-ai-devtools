@@ -1,3 +1,7 @@
+// Purpose: Validate network_diff_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
+// Docs: docs/features/feature/pagination/index.md
+
 // network_diff_test.go — Tests for network-diff.go.
 // Covers: buildEndpointMap, formatDurationChange, diffNetwork with all change types.
 package session

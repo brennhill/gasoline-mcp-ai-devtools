@@ -1,6 +1,7 @@
-// testing_helpers.go — Exported accessors for cross-package test access.
-// These methods expose internal state that tests in other packages (e.g., capture)
-// need to verify query behavior. Not intended for production use.
+// Purpose: Implements async command/query dispatch and correlation state tracking.
+// Why: Coordinates async command flow so extension/server state stays coherent under concurrency.
+// Docs: docs/features/feature/query-service/index.md
+
 package queries
 
 // GetLastPendingQuery returns the most recently created pending query.

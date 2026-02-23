@@ -1,16 +1,3 @@
-// tools_core.go — Core MCP tool types, constants, and response helpers.
-// Docs: docs/features/feature/observe/index.md
-// This file contains the foundational pieces used by all tool handlers:
-// - MCP typed response structs
-// - Tool call rate limiter
-// - Response helpers (mcpTextResponse, mcpJSONResponse, mcpStructuredError)
-// - Error codes and StructuredError type
-// - Unknown parameter warning helpers
-// - ToolHandler struct definition and constructor
-//
-// JSON CONVENTION: All fields MUST use snake_case. See .claude/refs/api-naming-standards.md
-// Deviations from snake_case MUST be tagged with // SPEC:<spec-name> at the field level.
-// SPEC:MCP — Fields in this file use camelCase where required by the MCP protocol spec.
 package main
 
 import (

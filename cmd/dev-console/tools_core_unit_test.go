@@ -1,3 +1,7 @@
+// Purpose: Validate tools_core_unit_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
+// Docs: docs/features/feature/observe/index.md
+
 // tools_core_unit_test.go — Unit tests for ToolHandler getters.
 package main
 

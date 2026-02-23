@@ -1,9 +1,18 @@
+/**
+ * Purpose: Handles extension background coordination and message routing.
+ * Why: Centralizes extension coordination to reduce race conditions and split-brain state.
+ * Docs: docs/features/feature/analyze-tool/index.md
+ * Docs: docs/features/feature/interact-explore/index.md
+ * Docs: docs/features/feature/observe/index.md
+ */
+
 // sync-manager.ts — Sync client lifecycle management.
 // Owns the sync client instance and provides start/stop/reset operations.
 // Dependencies are injected to avoid circular imports with index.ts.
 
 import type { PendingQuery } from '../types'
 import { createSyncClient, type SyncClient, type SyncCommand, type SyncSettings } from './sync-client'
+import { getLastCSPStatus } from './browser-actions'
 import { DebugCategory } from './debug'
 import { updateBadge } from './communication'
 import { isQueryProcessing, addProcessingQuery, removeProcessingQuery } from './state-manager'
@@ -174,6 +183,7 @@ export function startSyncClient(deps: SyncManagerDeps): void {
       // Get current settings to send to server
       getSettings: async (): Promise<SyncSettings> => {
         const trackingInfo = await getTrackedTabInfo()
+        const csp = getLastCSPStatus()
         return {
           pilot_enabled: deps.getAiWebPilotEnabledCache(),
           tracking_enabled: !!trackingInfo.trackedTabId,
@@ -183,7 +193,9 @@ export function startSyncClient(deps: SyncManagerDeps): void {
           capture_logs: true,
           capture_network: true,
           capture_websocket: true,
-          capture_actions: true
+          capture_actions: true,
+          csp_restricted: csp.csp_restricted,
+          csp_level: csp.csp_level
         }
       },
 

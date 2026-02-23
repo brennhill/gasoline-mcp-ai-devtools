@@ -1,5 +1,3 @@
-// main_connection_mcp.go — MCP daemon mode: HTTP server startup, PID management, and signal handling.
-// Docs: docs/features/feature/observe/index.md
 package main
 
 import (

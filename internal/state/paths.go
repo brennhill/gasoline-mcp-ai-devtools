@@ -1,4 +1,6 @@
-// paths.go — Filesystem path resolution for Gasoline runtime artifacts.
+// Purpose: Resolves runtime state, logs, pid, and recording filesystem paths for Gasoline.
+// Why: Ensures all runtime artifacts use a consistent, configurable directory policy.
+// Docs: docs/features/feature/project-isolation/index.md
 
 package state
 

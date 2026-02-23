@@ -1,6 +1,7 @@
-// queries_compat.go — Unexported re-exports for backward compatibility.
-// Provides capture-package-level access to constants and functions that moved
-// to internal/queries but are referenced by tests remaining in this package.
+// Purpose: Re-exports query lifecycle constants needed for capture-package compatibility tests.
+// Why: Preserves legacy package-level references while query logic is owned by internal/queries.
+// Docs: docs/features/feature/query-service/index.md
+
 package capture
 
 import "github.com/dev-console/dev-console/internal/queries"

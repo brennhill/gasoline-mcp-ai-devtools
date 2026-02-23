@@ -1,4 +1,7 @@
-// image_diff.go — Pure Go pixel-diff comparison using stdlib only.
+// Purpose: Provides analyze tool implementation helpers shared by command handlers.
+// Why: Centralizes analyze logic to keep handler behavior consistent across command paths.
+// Docs: docs/features/feature/analyze-tool/index.md
+
 package analyze
 
 import (

@@ -1,3 +1,7 @@
+// Purpose: Validate cli_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
+// Docs: docs/features/feature/observe/index.md
+
 // cli_test.go — Tests for CLI mode: argument parsing, output formatting, and end-to-end flow.
 package main
 

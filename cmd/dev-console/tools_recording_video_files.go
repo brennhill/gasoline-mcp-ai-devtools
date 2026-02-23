@@ -1,4 +1,7 @@
-// tools_recording_video_files.go — Video file I/O: upload parsing, save endpoint, reveal, and observe listing.
+// Purpose: Implements recording and playback command handlers for captured browser sessions.
+// Why: Supports deterministic replay and comparison of browser behavior across runs.
+// Docs: docs/features/feature/playback-engine/index.md
+
 package main
 
 import (

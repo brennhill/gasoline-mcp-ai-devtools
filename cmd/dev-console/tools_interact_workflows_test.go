@@ -1,3 +1,7 @@
+// Purpose: Validate tools_interact_workflows_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
+// Docs: docs/features/feature/interact-explore/index.md
+
 // tools_interact_workflows_test.go — Tests for high-level workflow primitives.
 // Pure function tests (isErrorResponse, responseStatus, workflowResult) live in
 // internal/tools/interact/workflow_test.go.

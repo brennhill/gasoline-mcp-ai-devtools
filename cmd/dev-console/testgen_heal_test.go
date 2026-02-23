@@ -1,3 +1,7 @@
+// Purpose: Validate testgen_heal_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
+// Docs: docs/features/feature/test-generation/index.md
+
 // testgen_heal_test.go — Tests for testgen_heal.go functions at 0% coverage.
 // Covers: mapAnalyzeError, handleHealRepair, handleHealBatch, mapBatchError, formatHealSummary.
 package main

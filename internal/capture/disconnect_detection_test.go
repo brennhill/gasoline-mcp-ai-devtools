@@ -1,3 +1,7 @@
+// Purpose: Validate disconnect_detection_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
+// Docs: docs/features/feature/backend-log-streaming/index.md
+
 // disconnect_detection_test.go — Tests for extension disconnect detection.
 // Covers: IsExtensionConnected, GetExtensionStatus, auto-expiry of pending
 // queries when extension disconnects, and pilot status enrichment.

@@ -1,9 +1,7 @@
-// thirdparty.go — Third-Party Risk Audit (audit_third_parties) MCP tool.
-// Analyzes captured network traffic to map all third-party origins,
-// classify risk levels, detect outbound PII, and apply domain reputation heuristics.
-// Design: Stateless analyzer operating on capture.NetworkBody data. Risk classification
-// uses resource type + data flow direction. Reputation uses bundled heuristics
-// (known CDNs, abuse TLDs, DGA detection) with no network calls.
+// Purpose: Implements third-party origin auditing over captured network traffic and request metadata.
+// Why: Surfaces supply-chain and data-exfiltration risks introduced by non-first-party dependencies.
+// Docs: docs/features/feature/enterprise-audit/index.md
+
 package analysis
 
 import (

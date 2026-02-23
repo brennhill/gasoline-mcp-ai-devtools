@@ -1,3 +1,7 @@
+// Purpose: Validate audit_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
+// Docs: docs/features/feature/observe/index.md
+
 // audit_test.go — Tests for audit log summarization.
 package configure
 

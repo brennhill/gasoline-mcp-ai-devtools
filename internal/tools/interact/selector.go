@@ -1,4 +1,7 @@
-// selector.go — Selector parsing and DOM action utilities for the interact tool.
+// Purpose: Provides interact tool implementation helpers for selectors and workflows.
+// Why: Centralizes selector/workflow logic so browser actions remain repeatable and debuggable.
+// Docs: docs/features/feature/interact-explore/index.md
+
 package interact
 
 import "strings"

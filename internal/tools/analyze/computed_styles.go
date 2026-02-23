@@ -1,4 +1,7 @@
-// computed_styles.go — Computed styles argument parsing for the analyze tool.
+// Purpose: Provides analyze tool implementation helpers shared by command handlers.
+// Why: Centralizes analyze logic to keep handler behavior consistent across command paths.
+// Docs: docs/features/feature/analyze-tool/index.md
+
 package analyze
 
 import (

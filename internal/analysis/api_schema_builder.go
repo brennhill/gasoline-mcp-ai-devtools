@@ -1,9 +1,7 @@
-// Purpose: Owns api_schema_builder.go runtime behavior and integration logic.
-// Docs: docs/features/feature/observe/index.md
+// Purpose: Implements API schema shape-building and normalization helpers for observed payload trees.
+// Why: Keeps inferred-schema generation deterministic and reusable across contract analysis code paths.
+// Docs: docs/features/feature/api-schema/index.md
 
-// api_schema_builder.go — Schema building, OpenAPI stub generation, and statistics.
-// Converts accumulated observations into structured API schemas, computes
-// timing statistics, detects auth patterns, and generates OpenAPI 3.0 stubs.
 package analysis
 
 import (

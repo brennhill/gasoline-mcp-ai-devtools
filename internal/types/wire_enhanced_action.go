@@ -1,8 +1,7 @@
-// wire_enhanced_action.go — Wire type for enhanced actions over HTTP.
-// WireEnhancedAction defines the JSON fields sent by the extension.
-// Changes here MUST be mirrored in src/types/wire-enhanced-action.ts.
-//
-// JSON CONVENTION: All fields MUST use snake_case. See .claude/refs/api-naming-standards.md
+// Purpose: Defines canonical wire schema for enhanced user-action payload transport.
+// Why: Keeps extension-to-daemon action serialization stable and versionable.
+// Docs: docs/features/feature/normalized-event-schema/index.md
+
 package types
 
 // WireEnhancedAction is the canonical wire format for enhanced actions.

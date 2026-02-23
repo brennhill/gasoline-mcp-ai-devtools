@@ -1,12 +1,7 @@
-// Purpose: Owns network.go runtime behavior and integration logic.
-// Docs: docs/features/feature/observe/index.md
+// Purpose: Defines canonical websocket/network telemetry structures shared across capture and transport layers.
+// Why: Prevents telemetry shape drift between extension producers and server-side consumers.
+// Docs: docs/features/feature/normalized-event-schema/index.md
 
-// network.go — Network and browser telemetry types.
-// Contains WebSocket, HTTP, and user action types captured from the browser.
-// Zero dependencies - foundational types used by capture and analysis packages.
-//
-// JSON CONVENTION: All fields MUST use snake_case. See .claude/refs/api-naming-standards.md
-// Deviations from snake_case MUST be tagged with // SPEC:<spec-name> at the field level.
 package types
 
 import "time"

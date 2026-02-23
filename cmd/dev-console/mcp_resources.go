@@ -1,4 +1,3 @@
-// mcp_resources.go — Shared MCP resource and template catalogs for handler and bridge fast path.
 package main
 
 func mcpResources() []MCPResource {

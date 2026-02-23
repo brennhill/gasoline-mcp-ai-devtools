@@ -1,4 +1,7 @@
-// tools_configure_tutorial.go — Tutorial/examples helpers for configure tool UX.
+// Purpose: Implements configure tool handlers for policy, profiles, and session controls.
+// Why: Keeps runtime/session configuration changes explicit and auditable from a single tool surface.
+// Docs: docs/features/feature/config-profiles/index.md
+
 package main
 
 import "encoding/json"

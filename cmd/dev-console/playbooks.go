@@ -1,4 +1,3 @@
-// playbooks.go — MCP resource content: capability index, playbooks, guide, quickstart, and demo scripts.
 package main
 
 import "strings"

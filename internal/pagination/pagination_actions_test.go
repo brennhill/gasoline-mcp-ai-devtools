@@ -1,3 +1,7 @@
+// Purpose: Validate pagination_actions_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
+// Docs: docs/features/feature/pagination/index.md
+
 // pagination_actions_test.go — Unit tests for action cursor-based pagination
 package pagination
 

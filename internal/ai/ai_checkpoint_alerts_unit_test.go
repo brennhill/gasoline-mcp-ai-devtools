@@ -1,3 +1,7 @@
+// Purpose: Validate ai_checkpoint_alerts_unit_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
+// Docs: docs/features/feature/observe/index.md
+
 package ai
 
 import (

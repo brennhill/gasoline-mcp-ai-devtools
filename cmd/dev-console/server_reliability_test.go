@@ -1,3 +1,7 @@
+// Purpose: Validate server_reliability_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
+// Docs: docs/features/feature/observe/index.md
+
 // server_reliability_test.go — Stress, resource leak, and recovery tests.
 //
 // ⚠️ RELEASE GATE TESTS - MANDATORY BEFORE EVERY RELEASE

@@ -1,4 +1,7 @@
-// types.go — Types, constants, and constructors for the streaming package.
+// Purpose: Defines streaming and alert-buffer state/config model types.
+// Why: Keeps push-alert streaming contracts explicit across configuration and emission paths.
+// Docs: docs/features/feature/push-alerts/index.md
+
 package streaming
 
 import (

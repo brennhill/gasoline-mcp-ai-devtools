@@ -1,4 +1,7 @@
-// ai_persistence_helpers.go — Stats, session context, dirty-data flush, and error-history helpers for SessionStore.
+// Purpose: Provides helper routines for persistence path handling, validation, and serialization support.
+// Why: Centralizes persistence utility logic to keep handler and manager code concise and consistent.
+// Docs: docs/features/feature/persistent-memory/index.md
+
 package ai
 
 import (

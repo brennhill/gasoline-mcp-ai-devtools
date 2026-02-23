@@ -1,3 +1,7 @@
+// Purpose: Validate tools_test_helpers_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
+// Docs: docs/features/feature/observe/index.md
+
 // tools_test_helpers_test.go — Shared test helpers for all tool tests.
 // Consolidates duplicated factories, parsers, JSON extractors, and assertion helpers.
 package main

@@ -1,3 +1,7 @@
+// Purpose: Validate tools_analyze_handler_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
+// Docs: docs/features/feature/analyze-tool/index.md
+
 // tools_analyze_handler_test.go — Comprehensive unit tests for analyze tool dispatch and response fields.
 // Validates all response fields, snake_case JSON convention, and dispatch logic.
 package main

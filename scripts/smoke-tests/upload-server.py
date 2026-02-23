@@ -1,4 +1,8 @@
 #!/usr/bin/env python3
+# Purpose: Automate upload-server.py workflow behavior for repository tooling.
+# Why: Keeps repetitive maintenance and verification steps deterministic.
+# Docs: docs/DEVELOPMENT.md
+
 """upload-server.py — Zero-dependency test upload server mimicking Rumble-style uploads.
 
 Endpoints:

@@ -1,3 +1,7 @@
+// Purpose: Validate tools_interact_handler_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
+// Docs: docs/features/feature/interact-explore/index.md
+
 // tools_interact_handler_test.go — Comprehensive unit tests for interact tool dispatch and response fields.
 // Validates all response fields, snake_case JSON convention, parameter validation, and error handling.
 package main

@@ -1,3 +1,7 @@
+// Purpose: Validate timeout_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
+// Docs: docs/features/feature/observe/index.md
+
 // timeout_test.go — Tests for ToolCallTimeout and ExtractToolAction.
 package bridge
 

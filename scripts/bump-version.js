@@ -1,4 +1,8 @@
 #!/usr/bin/env node
+// Purpose: Automate bump-version.js workflow behavior for repository tooling.
+// Why: Keeps repetitive maintenance and verification steps deterministic.
+// Docs: docs/DEVELOPMENT.md
+
 /**
  * Comprehensive version bump script for Gasoline MCP
  *

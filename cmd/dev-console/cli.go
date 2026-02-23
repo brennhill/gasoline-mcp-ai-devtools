@@ -1,7 +1,7 @@
-// cli.go — CLI mode entry point for direct tool invocation.
-// Docs: docs/features/feature/observe/index.md
-// Allows: gasoline observe errors --limit 50
-// Talks to the daemon over HTTP (same /mcp endpoint as the MCP bridge).
+// Purpose: Implements standalone CLI mode execution flow, daemon bootstrap, and tool call dispatch.
+// Why: Enables scriptable local usage without requiring direct MCP client integration.
+// Docs: docs/features/feature/enhanced-cli-config/index.md
+
 package main
 
 import (

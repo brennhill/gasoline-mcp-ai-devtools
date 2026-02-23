@@ -1,9 +1,7 @@
-// Purpose: Owns log.go runtime behavior and integration logic.
-// Docs: docs/features/feature/observe/index.md
+// Purpose: Defines canonical server and extension log entry structures used across ingestion and diagnostics.
+// Why: Normalizes logging payloads so filtering, redaction, and export logic can rely on stable fields.
+// Docs: docs/features/feature/normalized-log-schema/index.md
 
-// log.go — Logging types for server and extension instrumentation.
-// Contains canonical definitions for server logs and extension debug logs.
-// Zero dependencies - foundational types used by capture and debugging packages.
 package types
 
 import "time"

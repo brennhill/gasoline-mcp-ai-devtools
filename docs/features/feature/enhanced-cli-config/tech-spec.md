@@ -35,6 +35,18 @@ Python CLI entry point. Current structure:
 - Verbose logging support
 - **Feature parity**: Both wrappers must behave identically
 
+### Bundled Skill Installation Paths
+
+- **npm**:
+  - `npm/gasoline-mcp/lib/postinstall-skills.js` installs bundled skills on package install.
+  - `npm/gasoline-mcp/lib/cli.js` invokes `installBundledSkills()` during `--install`.
+- **PyPI**:
+  - `pypi/gasoline-mcp/gasoline_mcp/platform.py` invokes `install_bundled_skills()` during `--install`.
+  - `pypi/gasoline-mcp/gasoline_mcp/skills.py` implements managed write/update/legacy cleanup behavior.
+  - `pypi/gasoline-mcp/pyproject.toml` includes bundled skill files as package data.
+- **Manual/local source build**:
+  - `scripts/install-bundled-skills.sh` installs bundled skills from `npm/gasoline-mcp/skills` into target agent directories.
+
 ## Implementation: NPM vs. Python
 
 ### NPM (Node.js)
@@ -64,6 +76,7 @@ Both wrappers must:
 - Produce identical output (same messages, same emojis, same error text)
 - Behave identically (same logic, same edge case handling)
 - Use same config file locations (hardcoded paths, not user input)
+- Apply equivalent bundled skill installation semantics during `--install`
 
 ---
 

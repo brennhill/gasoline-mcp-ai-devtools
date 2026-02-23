@@ -1,5 +1,3 @@
-// main_connection_stop.go — Server stop and force cleanup operations.
-// Docs: docs/features/feature/observe/index.md
 package main
 
 import (

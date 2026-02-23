@@ -1,4 +1,3 @@
-// mcp_stdout.go — centralized stdout emitters for MCP/JSON-RPC wrapper paths.
 package main
 
 import (

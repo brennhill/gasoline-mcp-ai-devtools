@@ -1,5 +1,7 @@
-// link_validation.go — Pure functions for server-side link validation.
-// Extracted from cmd/dev-console/tools_analyze.go.
+// Purpose: Provides analyze tool implementation helpers shared by command handlers.
+// Why: Centralizes analyze logic to keep handler behavior consistent across command paths.
+// Docs: docs/features/feature/analyze-tool/index.md
+
 package analyze
 
 import (

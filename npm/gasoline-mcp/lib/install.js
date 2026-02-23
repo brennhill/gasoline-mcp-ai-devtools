@@ -1,3 +1,7 @@
+// Purpose: Implement install.js behavior for npm wrapper command flows.
+// Why: Keeps distribution-channel behavior consistent and supportable.
+// Docs: docs/features/feature/enhanced-cli-config/index.md
+
 /**
  * Install logic for Gasoline MCP CLI
  * Handles installation to all detected AI assistant clients

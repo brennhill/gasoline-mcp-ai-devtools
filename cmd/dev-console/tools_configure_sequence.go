@@ -1,7 +1,7 @@
-// tools_configure_sequence.go — Macro sequence CRUD and replay handlers.
-// Implements save_sequence, get_sequence, list_sequences, delete_sequence, replay_sequence
-// for the configure tool. Sequences are named lists of interact actions persisted
-// via the session store and replayed through the existing interact handler.
+// Purpose: Implements configure tool handlers for policy, profiles, and session controls.
+// Why: Keeps runtime/session configuration changes explicit and auditable from a single tool surface.
+// Docs: docs/features/feature/config-profiles/index.md
+
 package main
 
 import (

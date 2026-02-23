@@ -1,6 +1,3 @@
-// cli_commands.go — Argument parsers for CLI mode.
-// Docs: docs/features/feature/observe/index.md
-// Maps CLI flags to MCP tool arguments for observe, analyze, generate, configure, interact.
 package main
 
 import (

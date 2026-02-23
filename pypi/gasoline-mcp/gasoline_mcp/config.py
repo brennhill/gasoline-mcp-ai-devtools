@@ -1,5 +1,10 @@
 # pylint: disable=duplicate-code
-"""Configuration file utilities for Gasoline MCP CLI."""
+"""Configuration file utilities for the PyPI wrapper.
+
+Purpose: Resolve client config paths and read/write MCP JSON safely.
+Why: Prevents config corruption while supporting multi-client install flows.
+Docs: docs/features/feature/enhanced-cli-config/index.md
+"""
 
 import json
 import os

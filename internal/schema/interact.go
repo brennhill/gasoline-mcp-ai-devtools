@@ -1,4 +1,7 @@
-// interact.go — MCP schema definition for the interact tool.
+// Purpose: Defines JSON schema contracts for tool arguments and responses.
+// Why: Keeps tool interfaces strict and synchronized across server, extension, and clients.
+// Docs: docs/features/feature/interact-explore/index.md
+
 package schema
 
 import "github.com/dev-console/dev-console/internal/mcp"

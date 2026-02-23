@@ -1,4 +1,7 @@
-// upload_os_automation.go — Stage 4 OS automation and validators delegating to internal/upload.
+// Purpose: Implements upload command handling, validation, and OS automation wiring.
+// Why: Reduces upload flake by centralizing validation and secure browser-to-OS handoff behavior.
+// Docs: docs/features/feature/file-upload/index.md
+
 package main
 
 import "github.com/dev-console/dev-console/internal/upload"

@@ -1,3 +1,7 @@
+// Purpose: Implement doc.go internal behavior used by MCP runtime features.
+// Why: Maintains stable server behavior across tool and transport paths.
+// Docs: docs/features/feature/observe/index.md
+
 // doc.go — Package documentation for foundational cross-cutting types.
 
 // Package types provides the foundational, zero-dependency types for Gasoline.

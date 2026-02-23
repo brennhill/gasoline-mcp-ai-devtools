@@ -1,7 +1,7 @@
-// analysis.go — Observe analysis handlers: waterfall, vitals, tabs, a11y, timeline, errors, history.
-//
-// JSON CONVENTION: All fields MUST use snake_case. See .claude/refs/api-naming-standards.md
-// Deviations from snake_case MUST be tagged with // SPEC:<spec-name> at the field level.
+// Purpose: Provides observe tool implementation helpers for filtering and storage queries.
+// Why: Centralizes observe query behavior so evidence filtering stays predictable.
+// Docs: docs/features/feature/observe/index.md
+
 package observe
 
 import (
@@ -170,11 +170,15 @@ func GetPageInfo(deps Deps, req mcp.JSONRPCRequest, _ json.RawMessage) mcp.JSONR
 	pageURL := resolvePageURL(cap, trackedURL)
 	pageTitle := resolvePageTitle(deps, trackedTitle)
 
+	cspRestricted, cspLevel := cap.GetCSPStatus()
+
 	result := map[string]any{
-		"url":      pageURL,
-		"title":    pageTitle,
-		"tracked":  enabled,
-		"metadata": BuildResponseMetadata(cap, time.Now()),
+		"url":            pageURL,
+		"title":          pageTitle,
+		"tracked":        enabled,
+		"csp_restricted": cspRestricted,
+		"csp_level":      cspLevel,
+		"metadata":       BuildResponseMetadata(cap, time.Now()),
 	}
 	if tabID > 0 {
 		result["tab_id"] = tabID

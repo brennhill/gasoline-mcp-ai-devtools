@@ -1,7 +1,7 @@
-// Purpose: Owns ai_checkpoint_alerts.go runtime behavior and integration logic.
-// Docs: docs/features/feature/observe/index.md
+// Purpose: Implements checkpoint-derived alert generation and alert delivery bookkeeping.
+// Why: Surfaces high-signal regression events instead of forcing users to manually inspect raw diffs.
+// Docs: docs/features/feature/push-alerts/index.md
 
-// ai_checkpoint_alerts.go — Push regression alert detection and delivery.
 package ai
 
 import (

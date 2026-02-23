@@ -1,3 +1,7 @@
+// Purpose: Validate export_har_golden_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
+// Docs: docs/features/feature/har-export/index.md
+
 // export_har_golden_test.go — Golden file validation for HAR export output.
 package export
 

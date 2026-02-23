@@ -1,13 +1,7 @@
-// Purpose: Owns protocol.go runtime behavior and integration logic.
-// Docs: docs/features/feature/observe/index.md
+// Purpose: Defines JSON-RPC/MCP protocol request-response structures shared by tool handlers.
+// Why: Centralizes protocol contracts so daemon and bridge layers serialize/validate consistently.
+// Docs: docs/features/feature/query-service/index.md
 
-// protocol.go — MCP JSON-RPC protocol foundation types.
-// Contains the core JSON-RPC 2.0 request/response/error types used for MCP communication.
-// Zero dependencies - foundational layer used by all packages.
-//
-// JSON CONVENTION: All fields MUST use snake_case. See .claude/refs/api-naming-standards.md
-// Deviations from snake_case MUST be tagged with // SPEC:<spec-name> at the field level.
-// SPEC:MCP — Fields in this file use camelCase where required by the MCP protocol spec.
 package types
 
 import "encoding/json"

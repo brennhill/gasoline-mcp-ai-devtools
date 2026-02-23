@@ -1,9 +1,7 @@
-// ai_persistence.go — File-based persistent key-value store for session data.
-// Provides namespace-scoped storage that survives server restarts, enabling AI
-// assistants to save and retrieve structured data across sessions.
-// Design: Each namespace maps to a JSON file on disk. Individual values are capped
-// at 1MB, total storage per project at 10MB. Operations are mutex-guarded for
-// concurrent safety. Supports save, load, list, delete, and stats actions.
+// Purpose: Implements persistence manager lifecycle for storing and restoring AI session context.
+// Why: Preserves investigative context across daemon restarts and multi-session workflows.
+// Docs: docs/features/feature/persistent-memory/index.md
+
 package ai
 
 import (

@@ -1,5 +1,7 @@
-// store.go — In-memory store for draw mode annotation sessions.
-// Stores annotation data and element details with TTL-based expiration.
+// Purpose: Implements in-memory storage and TTL management for draw-mode annotation sessions/details.
+// Why: Preserves annotation evidence for follow-up queries without persisting sensitive DOM detail indefinitely.
+// Docs: docs/features/feature/annotated-screenshots/index.md
+
 package annotation
 
 import (

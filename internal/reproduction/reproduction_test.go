@@ -1,3 +1,7 @@
+// Purpose: Validate reproduction_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
+// Docs: docs/features/feature/reproduction-scripts/index.md
+
 // reproduction_test.go — Tests for reproduction script generation.
 // Verifies Gasoline (natural language) and Playwright output formats,
 // selector priority, timing pauses, URL rewriting, and edge cases.

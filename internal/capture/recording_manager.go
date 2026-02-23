@@ -1,9 +1,8 @@
-// Purpose: Owns recording_manager.go runtime behavior and integration logic.
-// Docs: docs/features/feature/backend-log-streaming/index.md
+// Purpose: Re-exports recording-manager constructors and delegates recording lifecycle methods.
+// Why: Preserves capture package API compatibility while recording logic lives in internal/recording.
+// Docs: docs/features/feature/playback-engine/index.md
+// Docs: docs/features/feature/tab-recording/index.md
 
-// recording_manager.go — Capture delegation methods for recording subsystem.
-// All recording logic lives in internal/recording. These thin methods preserve
-// the external Capture API by delegating to c.rec.
 package capture
 
 import (

@@ -1,4 +1,8 @@
 #!/usr/bin/env node
+// Purpose: Automate generate-wire-types.js workflow behavior for repository tooling.
+// Why: Keeps repetitive maintenance and verification steps deterministic.
+// Docs: docs/DEVELOPMENT.md
+
 // generate-wire-types.js — Generates TypeScript wire type interfaces from Go wire type structs.
 // Go structs are the source of truth; this script produces matching TS interfaces.
 //

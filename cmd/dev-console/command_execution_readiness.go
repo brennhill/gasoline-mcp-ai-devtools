@@ -1,4 +1,3 @@
-// command_execution_readiness.go — Shared command execution readiness model for doctor/health.
 package main
 
 import (

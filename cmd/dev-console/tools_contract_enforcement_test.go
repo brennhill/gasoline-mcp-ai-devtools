@@ -1,3 +1,7 @@
+// Purpose: Validate tools_contract_enforcement_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
+// Docs: docs/features/feature/observe/index.md
+
 // tools_contract_enforcement_test.go — Contract enforcement tests, async bridge round-trip,
 // pilot-disabled bad paths, and shared observe helpers.
 //

@@ -1,4 +1,3 @@
-// tools_session_audit.go — Session snapshot adapter and audit-trail recording helpers for MCP tools.
 package main
 
 import (

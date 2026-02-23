@@ -1,3 +1,7 @@
+// Purpose: Validate tools_errors_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
+// Docs: docs/features/feature/observe/index.md
+
 // tools_errors_test.go — Tests for structured error retryable field and retry_after_ms.
 package main
 

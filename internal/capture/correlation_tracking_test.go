@@ -1,3 +1,7 @@
+// Purpose: Validate correlation_tracking_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
+// Docs: docs/features/feature/backend-log-streaming/index.md
+
 // correlation_tracking_test.go — Test correlation ID tracking for async commands
 // Ensures AI always knows command status: pending, complete, expired
 package capture

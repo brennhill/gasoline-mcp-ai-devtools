@@ -1,3 +1,7 @@
+// Purpose: Implements performance metric diffing and threshold evaluation.
+// Why: Makes regressions measurable and comparable across baseline runs.
+// Docs: docs/features/feature/performance-audit/index.md
+
 // wire_performance.go — Wire types for performance snapshots over HTTP.
 // Defines the JSON fields sent by the extension for performance data.
 // Changes here MUST be mirrored in src/types/wire-performance-snapshot.ts.

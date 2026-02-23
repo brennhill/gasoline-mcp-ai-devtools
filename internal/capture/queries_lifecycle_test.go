@@ -1,3 +1,7 @@
+// Purpose: Validate queries_lifecycle_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
+// Docs: docs/features/feature/backend-log-streaming/index.md
+
 // queries_lifecycle_test.go — Tests for query goroutine lifecycle fixes.
 // Covers: startResultCleanup stop mechanism, WaitForResult goroutine control,
 // and Close() method for Capture cleanup.

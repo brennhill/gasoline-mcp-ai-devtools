@@ -1,6 +1,3 @@
-// version_check.go — GitHub version checking for update notifications.
-// Docs: docs/features/feature/observe/index.md
-// Checks GitHub for new releases and notifies users of available updates.
 package main
 
 import (

@@ -1,4 +1,7 @@
-// boundaries.go — Pure functions for test boundary start/end response building.
+// Purpose: Provides configure tool implementation helpers for policy and rewrite flows.
+// Why: Centralizes configure logic so policy/rewrite behavior remains deterministic and testable.
+// Docs: docs/features/feature/config-profiles/index.md
+
 package configure
 
 import (

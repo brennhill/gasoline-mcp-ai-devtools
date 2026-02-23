@@ -1,6 +1,7 @@
-// bundling.go — Error bundling: assembles complete debugging context per error.
-// Each bundle contains: error + recent network requests + recent actions + recent logs.
-// One observe call replaces 3-4 separate calls. Pure Go-side join, no extension changes.
+// Purpose: Provides observe tool implementation helpers for filtering and storage queries.
+// Why: Centralizes observe query behavior so evidence filtering stays predictable.
+// Docs: docs/features/feature/observe/index.md
+
 package observe
 
 import (

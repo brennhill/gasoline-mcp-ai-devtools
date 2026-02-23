@@ -1,6 +1,7 @@
-// breaker.go — Rate limiting and circuit breaker state machine.
-// Owns its own sync.RWMutex, independent of any parent lock.
-// Uses rate-based triggering only.
+// Purpose: Implements the capture ingest circuit breaker and rate-limiting state machine.
+// Why: Protects daemon stability by throttling abusive event rates and exposing health state.
+// Docs: docs/features/feature/rate-limiting/index.md
+
 package circuit
 
 import (

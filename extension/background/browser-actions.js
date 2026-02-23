@@ -9,16 +9,33 @@ import { debugLog } from './index.js';
 import { isAiWebPilotEnabled } from './state.js';
 import { DebugCategory } from './debug.js';
 import { broadcastTrackingState } from './message-handlers.js';
-import { executeWithWorldRouting } from './query-execution.js';
+import { executeWithWorldRouting, probeCSPStatus } from './query-execution.js';
 import { ASYNC_COMMAND_TIMEOUT_MS } from '../lib/constants.js';
 // =============================================================================
 // TIMEOUT CONFIGURATION
 // =============================================================================
 const ASYNC_EXECUTE_TIMEOUT_MS = ASYNC_COMMAND_TIMEOUT_MS;
 const ASYNC_BROWSER_ACTION_TIMEOUT_MS = ASYNC_COMMAND_TIMEOUT_MS;
+/** Cached CSP status from the most recent navigation */
+let lastCSPStatus = { csp_restricted: false, csp_level: 'none' };
+/** Get the CSP status from the most recent navigation (for sync layer) */
+export function getLastCSPStatus() {
+    return lastCSPStatus;
+}
 // =============================================================================
 // NAVIGATION
 // =============================================================================
+/** Probe CSP status and enrich a BrowserActionResult with csp_restricted/csp_level */
+async function enrichWithCSP(tabId, result) {
+    try {
+        const csp = await probeCSPStatus(tabId);
+        lastCSPStatus = csp;
+        return { ...result, csp_restricted: csp.csp_restricted, csp_level: csp.csp_level };
+    }
+    catch {
+        return result;
+    }
+}
 // #lizard forgives
 export async function handleNavigateAction(tabId, url, actionToast, reason) {
     if (url.startsWith('chrome://') || url.startsWith('chrome-extension://')) {
@@ -32,7 +49,7 @@ export async function handleNavigateAction(tabId, url, actionToast, reason) {
     if (await pingContentScript(tabId)) {
         broadcastTrackingState().catch(() => { });
         actionToast(tabId, reason || 'navigate', reason ? undefined : url, 'success');
-        return { success: true, action: 'navigate', url, final_url: tab.url, title: tab.title, content_script_status: 'loaded', message: 'Content script ready' };
+        return enrichWithCSP(tabId, { success: true, action: 'navigate', url, final_url: tab.url, title: tab.title, content_script_status: 'loaded', message: 'Content script ready' });
     }
     if (tab.url?.startsWith('file://')) {
         return {
@@ -52,7 +69,7 @@ export async function handleNavigateAction(tabId, url, actionToast, reason) {
     const reloadedTab = await chrome.tabs.get(tabId);
     if (await pingContentScript(tabId)) {
         broadcastTrackingState().catch(() => { });
-        return {
+        return enrichWithCSP(tabId, {
             success: true,
             action: 'navigate',
             url,
@@ -60,9 +77,9 @@ export async function handleNavigateAction(tabId, url, actionToast, reason) {
             title: reloadedTab.title,
             content_script_status: 'refreshed',
             message: 'Page refreshed to load content script'
-        };
+        });
     }
-    return {
+    return enrichWithCSP(tabId, {
         success: true,
         action: 'navigate',
         url,
@@ -70,7 +87,7 @@ export async function handleNavigateAction(tabId, url, actionToast, reason) {
         title: reloadedTab.title,
         content_script_status: 'failed',
         message: 'Navigation complete but content script could not be loaded. AI Web Pilot tools may not work.'
-    };
+    });
 }
 async function handleNewTabAction(tabId, url, actionToast, reason) {
     if (!url)
@@ -113,7 +130,7 @@ export async function handleBrowserAction(tabId, params, actionToast) {
                 await waitForTabLoad(tabId);
                 actionToast(tabId, reason || 'refresh', undefined, 'success');
                 const refreshedTab = await chrome.tabs.get(tabId);
-                return { success: true, action: 'refresh', url: refreshedTab.url, title: refreshedTab.title };
+                return enrichWithCSP(tabId, { success: true, action: 'refresh', url: refreshedTab.url, title: refreshedTab.title });
             }
             case 'navigate':
                 if (!url)

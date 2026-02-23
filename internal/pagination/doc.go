@@ -1,3 +1,7 @@
+// Purpose: Implement doc.go internal behavior used by MCP runtime features.
+// Why: Maintains stable server behavior across tool and transport paths.
+// Docs: docs/features/feature/pagination/index.md
+
 // doc.go — Package documentation for cursor-based ring buffer pagination.
 
 // Package pagination provides cursor-based pagination for ring buffers.

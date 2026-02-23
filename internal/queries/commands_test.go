@@ -1,3 +1,7 @@
+// Purpose: Validate commands_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
+// Docs: docs/features/feature/observe/index.md
+
 // commands_test.go — Tests for command lifecycle, expiration, and status normalization.
 package queries
 

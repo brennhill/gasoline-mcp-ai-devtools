@@ -1,4 +1,7 @@
-// thirdparty_summary.go — Aggregate summary and recommendation generation for third-party audits.
+// Purpose: Builds aggregate third-party risk summaries and remediation recommendations.
+// Why: Converts detailed third-party findings into prioritized, actionable guidance.
+// Docs: docs/features/feature/enterprise-audit/index.md
+
 package analysis
 
 import (

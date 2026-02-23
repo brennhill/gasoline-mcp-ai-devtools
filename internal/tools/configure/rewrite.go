@@ -1,5 +1,7 @@
-// rewrite.go — Pure argument rewriting functions for configure sub-handlers.
-// These functions normalize composite tool parameters before dispatch.
+// Purpose: Provides configure tool implementation helpers for policy and rewrite flows.
+// Why: Centralizes configure logic so policy/rewrite behavior remains deterministic and testable.
+// Docs: docs/features/feature/config-profiles/index.md
+
 package configure
 
 import "encoding/json"

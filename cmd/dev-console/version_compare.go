@@ -1,4 +1,3 @@
-// version_compare.go — Semantic version comparison for binary upgrade detection.
 package main
 
 import (

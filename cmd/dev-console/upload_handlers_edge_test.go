@@ -1,3 +1,7 @@
+// Purpose: Validate upload_handlers_edge_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
+// Docs: docs/features/feature/observe/index.md
+
 // upload_handlers_edge_test.go — Security, sanitization, MIME, and edge-case tests for file upload.
 //
 // WARNING: DO NOT use t.Parallel() — tests share global state (skipSSRFCheck, uploadSecurityConfig).

@@ -27,6 +27,7 @@ The current implementation (`--config`, `--install`) is functional but incomplet
 - **No verification**: No way to confirm the config is actually working
 - **No environment variables**: Can't inject custom env vars (e.g., API keys, server URLs) into MCP config
 - **Limited error recovery**: Confusing error messages when JSON is malformed or permissions denied
+- **Skill install mismatch**: Bundled skill installation behavior differs across npm, PyPI, and manual source builds
 
 ## Solution
 
@@ -65,6 +66,12 @@ Remove Gasoline from AI assistant configs:
 - Confirm removal before writing
 - Report which clients were cleaned up
 
+### 5. **Bundled Skill Installation Parity**
+Ensure bundled managed skills are installed consistently across all distribution channels:
+- npm install: postinstall installs bundled skills
+- `gasoline-mcp --install` (npm + PyPI): installs MCP config and bundled skills
+- manual/local source builds: supported via `scripts/install-bundled-skills.sh`
+
 ## Requirements
 
 1. **Usability**: All commands must have helpful output and clear error messages
@@ -75,6 +82,7 @@ Remove Gasoline from AI assistant configs:
 6. **Verbose**: `--verbose` flag shows detailed operation logs
 7. **Recovery**: Commands provide next-step suggestions on failure
 8. **Multi-client**: `--install` targets all detected clients by default
+9. **Channel parity**: npm, PyPI, and manual/local install paths provide equivalent bundled-skill behavior
 
 ## Out of Scope
 
@@ -95,6 +103,7 @@ Remove Gasoline from AI assistant configs:
 7. ✅ 100% backward compatibility with v5.2.0 CLI behavior
 8. ✅ All commands covered by automated tests (unit + integration)
 9. ✅ Help text and examples available for each command
+10. ✅ Skill install parity verified for npm, PyPI, and manual/local installer script
 
 ## User Workflows
 

@@ -1,3 +1,9 @@
+/**
+ * Purpose: Provides shared runtime utilities used by extension and server workflows.
+ * Why: Avoids duplicated logic across runtime layers and keeps behavior consistent.
+ * Docs: docs/features/feature/backend-log-streaming/index.md
+ */
+
 // websocket-tracking.ts — WebSocket connection tracking, adaptive sampling, and schema detection.
 
 /**

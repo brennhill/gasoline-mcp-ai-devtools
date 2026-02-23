@@ -1,5 +1,7 @@
-// handlers.go — Pure handler logic for upload stages 1-2.
-// Stage 1 (File Read) and Stage 2 (Dialog Inject) are HTTP-free, testable functions.
+// Purpose: Implements upload validation, security checks, and automation support paths.
+// Why: Enforces upload safety boundaries against path traversal and SSRF-style abuse.
+// Docs: docs/features/feature/file-upload/index.md
+
 package upload
 
 import (

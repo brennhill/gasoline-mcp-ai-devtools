@@ -1,9 +1,7 @@
-// Purpose: Owns buffer.go runtime behavior and integration logic.
-// Docs: docs/features/feature/observe/index.md
+// Purpose: Defines shared buffer cursor and clear-count contracts used by ring-buffer lifecycle operations.
+// Why: Keeps pagination/clear semantics aligned across capture, observe, and health reporting paths.
+// Docs: docs/features/feature/ring-buffer/index.md
 
-// buffer.go — Buffer management types and cursor tracking.
-// Contains types for ring buffer operations and pagination state.
-// Zero dependencies - foundational types used across capture and query packages.
 package types
 
 // ============================================

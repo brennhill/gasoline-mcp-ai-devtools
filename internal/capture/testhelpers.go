@@ -1,8 +1,7 @@
-// Purpose: Owns testhelpers.go runtime behavior and integration logic.
-// Docs: docs/features/feature/backend-log-streaming/index.md
+// Purpose: Provides test fixture constructors shared by capture package tests.
+// Why: Reduces duplicated test bootstrapping code and keeps test setup behavior consistent.
+// Docs: docs/features/feature/self-testing/index.md
 
-// testhelpers.go — Test helpers for capture package tests.
-// Provides factory functions for creating test instances.
 package capture
 
 import (

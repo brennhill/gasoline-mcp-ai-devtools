@@ -1,4 +1,9 @@
-"""Bundled skill installer for PyPI Gasoline MCP wrapper."""
+"""Bundled skill installer for the PyPI wrapper.
+
+Purpose: Install/update managed bundled skills into supported agent skill directories.
+Why: Brings PyPI `--install` behavior to parity with npm skill management semantics.
+Docs: docs/features/feature/enhanced-cli-config/index.md
+"""
 
 import json
 import os

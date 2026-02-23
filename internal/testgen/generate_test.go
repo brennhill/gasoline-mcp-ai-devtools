@@ -1,3 +1,7 @@
+// Purpose: Validate generate_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
+// Docs: docs/features/feature/test-generation/index.md
+
 // generate_test.go — Tests for test generation functions using mock DataProvider.
 package testgen
 

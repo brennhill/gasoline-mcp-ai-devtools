@@ -1,3 +1,7 @@
+// Purpose: Validate tools_generate_validation_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
+// Docs: docs/features/feature/test-generation/index.md
+
 // tools_generate_validation_test.go — Tests for generate API strict parameter validation (#57).
 package main
 

@@ -2,6 +2,7 @@
 // Owns the sync client instance and provides start/stop/reset operations.
 // Dependencies are injected to avoid circular imports with index.ts.
 import { createSyncClient } from './sync-client.js';
+import { getLastCSPStatus } from './browser-actions.js';
 import { DebugCategory } from './debug.js';
 import { updateBadge } from './communication.js';
 import { isQueryProcessing, addProcessingQuery, removeProcessingQuery } from './state-manager.js';
@@ -116,6 +117,7 @@ export function startSyncClient(deps) {
         // Get current settings to send to server
         getSettings: async () => {
             const trackingInfo = await getTrackedTabInfo();
+            const csp = getLastCSPStatus();
             return {
                 pilot_enabled: deps.getAiWebPilotEnabledCache(),
                 tracking_enabled: !!trackingInfo.trackedTabId,
@@ -125,7 +127,9 @@ export function startSyncClient(deps) {
                 capture_logs: true,
                 capture_network: true,
                 capture_websocket: true,
-                capture_actions: true
+                capture_actions: true,
+                csp_restricted: csp.csp_restricted,
+                csp_level: csp.csp_level
             };
         },
         // Get pending extension logs

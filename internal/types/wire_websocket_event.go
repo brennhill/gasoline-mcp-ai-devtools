@@ -1,8 +1,7 @@
-// wire_websocket_event.go — Wire type for WebSocket events over HTTP.
-// Defines the JSON fields sent by the extension for WebSocket events.
-// Changes here MUST be mirrored in src/types/wire-websocket-event.ts.
-//
-// JSON CONVENTION: All fields MUST use snake_case. See .claude/refs/api-naming-standards.md
+// Purpose: Defines canonical wire schema for websocket event telemetry payload transport.
+// Why: Prevents websocket event shape drift across extension producers and daemon consumers.
+// Docs: docs/features/feature/normalized-event-schema/index.md
+
 package types
 
 // WireWebSocketEvent is the canonical wire format for captured WebSocket events.

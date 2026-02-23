@@ -1,3 +1,7 @@
+// Purpose: Validate client registry and config-path behaviors in the npm wrapper.
+// Why: Prevents install/doctor regressions across supported MCP client targets.
+// Docs: docs/features/feature/enhanced-cli-config/index.md
+
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const os = require('node:os');

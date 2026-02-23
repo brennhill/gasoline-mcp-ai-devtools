@@ -1,4 +1,12 @@
 /**
+ * Purpose: Handles extension background coordination and message routing.
+ * Why: Centralizes extension coordination to reduce race conditions and split-brain state.
+ * Docs: docs/features/feature/analyze-tool/index.md
+ * Docs: docs/features/feature/interact-explore/index.md
+ * Docs: docs/features/feature/observe/index.md
+ */
+
+/**
  * @fileoverview Mutable module-level state for the background service worker.
  * Owns all `let` variables and their setter functions so that state ownership
  * is explicit and separated from business logic in index.ts.

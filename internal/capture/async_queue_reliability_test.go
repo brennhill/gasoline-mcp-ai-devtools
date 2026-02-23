@@ -1,3 +1,7 @@
+// Purpose: Validate async_queue_reliability_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
+// Docs: docs/features/feature/backend-log-streaming/index.md
+
 // async_queue_reliability_test.go — Test async queue under various timing conditions
 // Ensures commands don't expire before extension can poll them.
 package capture

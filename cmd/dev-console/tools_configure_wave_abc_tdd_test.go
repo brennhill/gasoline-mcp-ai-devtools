@@ -1,3 +1,7 @@
+// Purpose: Validate tools_configure_wave_abc_tdd_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
+// Docs: docs/features/feature/observe/index.md
+
 package main
 
 import (

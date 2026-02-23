@@ -1,6 +1,7 @@
-// logdiff.go — Log diffing and regression detection for recordings.
-// Compares original vs replay recordings to detect regressions, fixes, and value changes.
-// Categories: Match (no issues), Regression (new errors), Fixed (errors resolved).
+// Purpose: Implements recording storage, replay engine execution, and diffing helpers.
+// Why: Preserves traceability by storing replayable execution history and comparable outcomes.
+// Docs: docs/features/feature/playback-engine/index.md
+
 package recording
 
 import (

@@ -1,4 +1,8 @@
 #!/usr/bin/env python3
+# Purpose: Automate lint-documentation.py workflow behavior for repository tooling.
+# Why: Keeps repetitive maintenance and verification steps deterministic.
+# Docs: docs/DEVELOPMENT.md
+
 # pylint: disable=invalid-name
 """
 Lint documentation for broken links and metadata issues.

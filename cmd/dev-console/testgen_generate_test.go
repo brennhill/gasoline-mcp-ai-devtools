@@ -1,3 +1,7 @@
+// Purpose: Validate testgen_generate_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
+// Docs: docs/features/feature/test-generation/index.md
+
 // testgen_generate_test.go — Tests for testgen.go pure/helper functions at 0% coverage.
 // Covers: getActionsInTimeWindow, deriveInteractionTestName, countNetworkAssertions,
 // collectErrorMessages, buildRegressionAssertions, insertAssertionsBeforeClose.

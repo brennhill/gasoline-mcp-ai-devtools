@@ -1,4 +1,7 @@
-// binary_watcher.go — Watches the daemon binary on disk for upgrades and triggers auto-restart.
+// Purpose: Implements running-binary change detection and upgrade-pending state tracking.
+// Why: Detects on-disk binary upgrades so long-lived daemons can surface restart guidance safely.
+// Docs: docs/features/feature/deployment-watchdog/index.md
+
 package main
 
 import (

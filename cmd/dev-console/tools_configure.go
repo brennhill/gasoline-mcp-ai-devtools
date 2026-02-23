@@ -1,4 +1,7 @@
-// tools_configure.go — MCP configure tool dispatcher, core handlers, and buffer management.
+// Purpose: Implements configure tool handlers for policy, profiles, and session controls.
+// Why: Keeps runtime/session configuration changes explicit and auditable from a single tool surface.
+// Docs: docs/features/feature/config-profiles/index.md
+
 package main
 
 import (

@@ -1,6 +1,7 @@
 /**
- * Purpose: Owns options.ts runtime behavior and integration logic.
- * Docs: docs/features/feature/observe/index.md
+ * Purpose: Implements the extension options page state, persistence, and background synchronization handlers.
+ * Why: Keeps operator-facing runtime settings explicit and immediately applied without extension restarts.
+ * Docs: docs/features/feature/browser-extension-enhancement/index.md
  */
 
 /**

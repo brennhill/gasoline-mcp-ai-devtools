@@ -1,5 +1,10 @@
 # pylint: disable=duplicate-code
-"""Custom error classes for Gasoline MCP CLI."""
+"""Custom error classes for the PyPI wrapper.
+
+Purpose: Standardize user-facing error and recovery output across commands.
+Why: Keeps diagnostics and install failures understandable and fixable.
+Docs: docs/features/feature/enhanced-cli-config/index.md
+"""
 
 import os
 

@@ -1,9 +1,8 @@
-// Purpose: Owns handlers.go runtime behavior and integration logic.
+// Purpose: Implements HTTP ingest handlers for network, query, and telemetry capture endpoints.
+// Why: Provides the daemon-side ingress boundary that validates and routes extension event batches.
 // Docs: docs/features/feature/backend-log-streaming/index.md
+// Docs: docs/features/feature/query-service/index.md
 
-// handlers.go — HTTP handlers for extension ↔ server communication
-// Implements endpoints for pending queries, query results, and extension status.
-// Part of the async queue-and-poll architecture (see internal/capture/queries.go).
 package capture
 
 import (

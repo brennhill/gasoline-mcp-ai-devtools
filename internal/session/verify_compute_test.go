@@ -1,3 +1,7 @@
+// Purpose: Validate verify_compute_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
+// Docs: docs/features/feature/pagination/index.md
+
 // verify_compute_test.go — Tests for verify_compute.go.
 // Covers: sumErrorCounts, buildIssueSummary, buildVerifyErrorMap, diffConsoleErrors,
 // formatNetworkEntry, buildNetworkKeyMap, classifyNetworkErrorResolution,

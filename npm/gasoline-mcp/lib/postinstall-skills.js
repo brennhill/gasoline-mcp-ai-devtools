@@ -1,5 +1,9 @@
 #!/usr/bin/env node
 /**
+ * Purpose: Trigger bundled skill installation during npm package postinstall.
+ * Why: Makes fresh npm installs immediately usable in supported agent environments.
+ * Docs: docs/features/feature/enhanced-cli-config/index.md
+ *
  * Postinstall hook for bundled Gasoline skills.
  * Never fails package installation.
  */

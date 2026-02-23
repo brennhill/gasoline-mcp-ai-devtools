@@ -1,5 +1,3 @@
-// reproduction.go — Type aliases bridging internal/reproduction into package main.
-// The reproduction logic lives in internal/reproduction.
 package main
 
 import (

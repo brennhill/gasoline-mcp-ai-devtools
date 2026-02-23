@@ -1,8 +1,7 @@
-// wire_network.go — Wire types for network telemetry over HTTP.
-// Defines the JSON fields sent by the extension for network bodies and waterfall.
-// Changes here MUST be mirrored in src/types/wire-network.ts.
-//
-// JSON CONVENTION: All fields MUST use snake_case. See .claude/refs/api-naming-standards.md
+// Purpose: Defines canonical wire schema for network body and waterfall telemetry payloads.
+// Why: Keeps network telemetry transport contracts aligned between browser capture and daemon ingestion.
+// Docs: docs/features/feature/normalized-event-schema/index.md
+
 package types
 
 // WireNetworkBody is the canonical wire format for captured network request/response bodies.

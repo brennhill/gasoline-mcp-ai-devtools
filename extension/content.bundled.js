@@ -863,6 +863,14 @@
 
   // extension/content/ui/subtitle.js
   var subtitleEscapeHandler = null;
+  var SUBTITLE_AUTO_TIMEOUT_MS = 6e4;
+  var subtitleAutoTimer = null;
+  function clearAutoTimer() {
+    if (subtitleAutoTimer) {
+      clearTimeout(subtitleAutoTimer);
+      subtitleAutoTimer = null;
+    }
+  }
   function fadeOutAndRemove(elementId, delayMs) {
     const el = document.getElementById(elementId);
     if (!el)
@@ -877,6 +885,7 @@
     subtitleEscapeHandler = null;
   }
   function clearSubtitle() {
+    clearAutoTimer();
     fadeOutAndRemove("gasoline-subtitle", 200);
     detachEscapeListener();
   }
@@ -976,6 +985,10 @@
     document.addEventListener("keydown", subtitleEscapeHandler);
     void bar.offsetHeight;
     bar.style.opacity = "1";
+    clearAutoTimer();
+    subtitleAutoTimer = setTimeout(() => {
+      clearSubtitle();
+    }, SUBTITLE_AUTO_TIMEOUT_MS);
   }
   function toggleRecordingWatermark(visible) {
     const ELEMENT_ID = "gasoline-recording-watermark";

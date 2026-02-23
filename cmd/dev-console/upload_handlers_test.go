@@ -1,3 +1,7 @@
+// Purpose: Validate upload_handlers_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
+// Docs: docs/features/feature/observe/index.md
+
 // upload_handlers_test.go — HTTP endpoint and happy-path tests for file upload.
 // Tests the HTTP layer (status codes, content types, disabled/enabled gating)
 // and verifies MCP handler response contracts that the unit tests miss.

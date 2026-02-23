@@ -1,3 +1,7 @@
+// Purpose: Validate tools_interact_rich_cmdresult_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
+// Docs: docs/features/feature/interact-explore/index.md
+
 // tools_interact_rich_cmdresult_test.go — TDD tests for Rich Action command result handling.
 // Tests failed command visibility (IsError signaling), queued/final markers,
 // effective context surfacing, subtitle correlation IDs, and diagnostic hints.

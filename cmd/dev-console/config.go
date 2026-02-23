@@ -1,4 +1,3 @@
-// config.go — CLI flag definitions, parsing, validation, and server configuration.
 package main
 
 import (

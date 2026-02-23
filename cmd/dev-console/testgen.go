@@ -1,6 +1,7 @@
-// testgen.go — Test generation MCP glue layer.
-// Pure logic lives in internal/testgen; this file provides type aliases,
-// the ToolHandler-to-DataProvider adapter, and MCP entry points.
+// Purpose: Implements test generation, classification, and healing command handlers.
+// Why: Makes failure investigation reproducible through generated and self-healed test artifacts.
+// Docs: docs/features/feature/test-generation/index.md
+
 package main
 
 import (

@@ -6,6 +6,7 @@
  */
 import type { PendingQuery } from '../types';
 import type { SyncClient } from './sync-client';
+import { type CSPProbeResult } from './query-execution';
 import type { SendAsyncResultFn, ActionToastFn } from './pending-queries';
 export type BrowserActionResult = {
     success: boolean;
@@ -20,8 +21,12 @@ export type BrowserActionResult = {
     message?: string;
     error?: string;
     csp_blocked?: boolean;
+    csp_restricted?: boolean;
+    csp_level?: string;
     failure_cause?: string;
 };
+/** Get the CSP status from the most recent navigation (for sync layer) */
+export declare function getLastCSPStatus(): CSPProbeResult;
 export declare function handleNavigateAction(tabId: number, url: string, actionToast: ActionToastFn, reason?: string): Promise<BrowserActionResult>;
 export declare function handleBrowserAction(tabId: number, params: {
     action?: string;

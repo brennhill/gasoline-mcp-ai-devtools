@@ -1,4 +1,7 @@
-// alerts.go — AlertBuffer methods and pure alert processing functions.
+// Purpose: Implements alert buffering, deduplication, correlation, and CI alert materialization logic.
+// Why: Enables push-style alert delivery without flooding consumers with duplicate low-signal events.
+// Docs: docs/features/feature/push-alerts/index.md
+
 package streaming
 
 import (

@@ -1,3 +1,7 @@
+// Purpose: Validate tools_observe_blackbox_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
+// Docs: docs/features/feature/observe/index.md
+
 // tools_observe_blackbox_test.go — Black box tests for observe tool data flow.
 // These tests simulate the full browser extension → server → MCP tool flow.
 // They verify that data POSTed via HTTP endpoints is correctly returned by MCP tools.

@@ -1,3 +1,7 @@
+// Purpose: Validate tools_generate_handler_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
+// Docs: docs/features/feature/test-generation/index.md
+
 // tools_generate_handler_test.go — Comprehensive unit tests for generate tool dispatch and response fields.
 // Validates all response fields, snake_case JSON convention, and output structure.
 package main

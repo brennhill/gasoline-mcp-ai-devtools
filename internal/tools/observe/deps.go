@@ -1,4 +1,7 @@
-// deps.go — Dependency interface for the observe tool package.
+// Purpose: Provides observe tool implementation helpers for filtering and storage queries.
+// Why: Centralizes observe query behavior so evidence filtering stays predictable.
+// Docs: docs/features/feature/observe/index.md
+
 package observe
 
 import "github.com/dev-console/dev-console/internal/mcp"

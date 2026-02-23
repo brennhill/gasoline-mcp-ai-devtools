@@ -1,7 +1,7 @@
-// Purpose: Owns security_checks.go runtime behavior and integration logic.
-// Docs: docs/features/feature/observe/index.md
+// Purpose: Defines individual security check implementations and shared finding normalization logic.
+// Why: Isolates check-specific heuristics from orchestration so new checks can be added safely.
+// Docs: docs/features/feature/security-hardening/index.md
 
-// security_checks.go — Security check implementations for PII, headers, cookies, transport, and auth patterns.
 package security
 
 import (

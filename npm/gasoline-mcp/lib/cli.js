@@ -1,3 +1,6 @@
+// Purpose: Route gasoline-mcp wrapper commands to install/config/doctor/uninstall flows.
+// Why: Keeps CLI behavior consistent across client setup paths and avoids shell-script drift.
+// Docs: docs/features/feature/enhanced-cli-config/index.md
 // cli.js — CLI command handler for gasoline-mcp management commands.
 // Invoked by the shell wrapper when --install, --config, --doctor, etc. are passed.
 

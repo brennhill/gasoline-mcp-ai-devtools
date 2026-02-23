@@ -1,3 +1,7 @@
+// Purpose: Validate injection_resistance_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
+// Docs: docs/features/feature/observe/index.md
+
 // injection_resistance_test.go — Tests for injection resistance in OS automation sanitizers.
 
 package main

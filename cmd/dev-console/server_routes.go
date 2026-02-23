@@ -1,5 +1,3 @@
-// server_routes.go — HTTP route registration and core endpoint handlers.
-// Media handlers (screenshots, draw mode, annotations) are in server_routes_media.go.
 package main
 
 import (

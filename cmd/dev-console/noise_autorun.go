@@ -1,7 +1,3 @@
-// noise_autorun.go — Automatic noise detection after page navigation.
-// Runs noise auto-detect in a debounced background goroutine, triggered when
-// the extension reports a navigation action. Prevents stale errors from
-// dominating observe() results after page changes.
 package main
 
 import (

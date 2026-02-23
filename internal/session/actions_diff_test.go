@@ -1,3 +1,7 @@
+// Purpose: Validate actions_diff_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
+// Docs: docs/features/feature/pagination/index.md
+
 // actions_diff_test.go — Tests for actions-diff.go and helpers.go.
 // Covers: diffErrors, countPerfRegressions, hasStatusRegression, computeSummary,
 // validateName, removeFromOrder, ExtractURLPath.

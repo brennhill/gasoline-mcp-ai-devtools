@@ -1,8 +1,7 @@
-// Purpose: Owns session-types.go runtime behavior and integration logic.
-// Docs: docs/features/feature/backend-log-streaming/index.md
+// Purpose: Defines session-scoped snapshot tracking structures used for performance regression comparison.
+// Why: Keeps per-session baseline bookkeeping explicit and separate from global capture buffers.
+// Docs: docs/features/feature/performance-audit/index.md
 
-// session-types.go — Session tracking types.
-// SessionTracker records performance snapshots for delta computation.
 package capture
 
 import (

@@ -1,3 +1,7 @@
+// Purpose: Validate verify_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
+// Docs: docs/features/feature/pagination/index.md
+
 // verify_test.go — Tests for the verify_fix MCP tool.
 // Tests the verification loop: start (baseline) -> watch -> compare workflow.
 // Covers session lifecycle, verdict determination, error normalization, and limits.

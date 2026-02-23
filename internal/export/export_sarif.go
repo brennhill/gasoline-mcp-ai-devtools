@@ -1,4 +1,5 @@
 // Purpose: Implements export serializers and format-specific output builders.
+// Why: Provides stable export formats used by downstream analysis and tooling.
 // Docs: docs/features/feature/har-export/index.md
 // Docs: docs/features/feature/sarif-export/index.md
 

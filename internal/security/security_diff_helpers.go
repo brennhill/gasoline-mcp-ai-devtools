@@ -1,6 +1,7 @@
-// security_diff_helpers.go — Diff comparison helpers for security posture snapshots.
-// Contains per-origin header/cookie/transport diffing, cookie flag analysis,
-// key collection utilities, URL parsing helpers, and summary building.
+// Purpose: Provides helper routines for security diff normalization, comparison, and summarization.
+// Why: Keeps diff output stable so downstream tooling/tests can rely on deterministic change semantics.
+// Docs: docs/features/feature/security-hardening/index.md
+
 package security
 
 import (

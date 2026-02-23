@@ -1,3 +1,10 @@
+/**
+ * Purpose: Executes in-page actions and query handlers within the page context.
+ * Why: Executes page-context actions safely while preserving deterministic command results.
+ * Docs: docs/features/feature/interact-explore/index.md
+ * Docs: docs/features/feature/query-dom/index.md
+ */
+
 // message-handlers.ts — Message dispatch from content script to inject-context handlers.
 
 /**

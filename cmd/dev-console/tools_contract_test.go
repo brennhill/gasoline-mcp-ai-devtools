@@ -1,3 +1,7 @@
+// Purpose: Validate tools_contract_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
+// Docs: docs/features/feature/observe/index.md
+
 // tools_contract_test.go — Response shape contracts for configure, generate, and interact tools.
 // Lighter coverage than observe contracts — focuses on key actions that return JSON.
 //

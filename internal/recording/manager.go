@@ -1,6 +1,7 @@
-// manager.go — RecordingManager: recording lifecycle, persistence, and storage tracking.
-// Extracted from internal/capture. Owns its own sync.Mutex,
-// independent of Capture.mu. Zero cross-cutting dependencies.
+// Purpose: Implements recording storage, replay engine execution, and diffing helpers.
+// Why: Preserves traceability by storing replayable execution history and comparable outcomes.
+// Docs: docs/features/feature/playback-engine/index.md
+
 package recording
 
 import (

@@ -1,5 +1,10 @@
 # pylint: disable=duplicate-code
-"""Doctor diagnostics for Gasoline MCP CLI."""
+"""Doctor diagnostics for the PyPI wrapper.
+
+Purpose: Evaluate MCP config health and binary readiness for supported clients.
+Why: Provides actionable repair guidance when install/config drifts occur.
+Docs: docs/features/feature/enhanced-cli-config/index.md
+"""
 
 import os
 import subprocess

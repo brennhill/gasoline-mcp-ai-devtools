@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
 # install-bundled-skills.sh
+# Purpose: Install bundled managed skills from source for manual/local Gasoline builds.
+# Why: Gives source-build users the same skill availability as npm/PyPI install flows.
+# Docs: docs/features/feature/enhanced-cli-config/index.md
 # Install bundled Gasoline skills from source tree for manual/local builds.
 
 set -euo pipefail

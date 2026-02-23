@@ -1,3 +1,7 @@
+// Purpose: Validate redaction_fuzz_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
+// Docs: docs/features/feature/redaction-patterns/index.md
+
 // redaction_fuzz_test.go — Fuzz tests for redaction engine.
 package redaction
 

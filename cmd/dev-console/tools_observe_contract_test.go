@@ -1,3 +1,7 @@
+// Purpose: Validate tools_observe_contract_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
+// Docs: docs/features/feature/observe/index.md
+
 // tools_observe_contract_test.go — Response shape contracts for observe tool.
 // Each test verifies that an observe mode returns the correct JSON fields with
 // correct types. Catches field renames, missing fields, and type changes.

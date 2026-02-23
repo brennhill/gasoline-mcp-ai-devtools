@@ -1,4 +1,7 @@
-// heal.go — Test healing: selector analysis, repair, and batch processing.
+// Purpose: Implements prompt-driven test generation, healing, and classification helpers.
+// Why: Accelerates regression coverage by turning observed failures into repeatable tests.
+// Docs: docs/features/feature/test-generation/index.md
+
 package testgen
 
 import (

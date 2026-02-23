@@ -1,4 +1,8 @@
 #!/usr/bin/env python3
+# Purpose: Automate generate-feature-navigation.py workflow behavior for repository tooling.
+# Why: Keeps repetitive maintenance and verification steps deterministic.
+# Docs: docs/DEVELOPMENT.md
+
 # pylint: disable=invalid-name
 """
 Auto-generate FEATURE-NAVIGATION.md from actual folder structure.

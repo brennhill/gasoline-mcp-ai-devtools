@@ -1,4 +1,7 @@
-// time.go — Timestamp parsing utilities for RFC3339 and RFC3339Nano formats.
+// Purpose: Provides shared timestamp parsing helpers for RFC3339/RFC3339Nano inputs.
+// Why: Centralizes tolerant timestamp parsing behavior used across telemetry ingestion paths.
+// Docs: docs/features/feature/backend-log-streaming/index.md
+
 package util
 
 import "time"

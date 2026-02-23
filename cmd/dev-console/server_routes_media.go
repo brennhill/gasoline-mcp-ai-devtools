@@ -1,5 +1,3 @@
-// server_routes_media.go — Screenshot, draw mode, and annotation HTTP handlers.
-// Extracted from server_routes.go for file size compliance.
 package main
 
 import (

@@ -1,3 +1,7 @@
+// Purpose: Validate version_check_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
+// Docs: docs/features/feature/observe/index.md
+
 // version_check_test.go — Unit tests for version check helpers.
 package main
 

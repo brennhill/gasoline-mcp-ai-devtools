@@ -1,4 +1,5 @@
 // Purpose: Implements redaction rules for sensitive data in captured telemetry.
+// Why: Reduces secret leakage risk in logs, diagnostics, and captured payloads.
 // Docs: docs/features/feature/redaction-patterns/index.md
 
 // redaction.go — Configurable redaction patterns for MCP tool responses.

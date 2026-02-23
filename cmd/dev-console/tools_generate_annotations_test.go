@@ -1,3 +1,7 @@
+// Purpose: Validate tools_generate_annotations_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
+// Docs: docs/features/feature/test-generation/index.md
+
 // tools_generate_annotations_test.go — Tests for annotation-driven generate formats.
 // Covers: visual_test, annotation_report, annotation_issues.
 package main

@@ -10,6 +10,39 @@ import { debugLog } from './index.js';
 import { DebugCategory } from './debug.js';
 import { scaleTimeout } from '../lib/timeouts.js';
 /**
+ * Probe whether a tab's CSP blocks dynamic script execution (new Function).
+ * Returns one of three levels:
+ * - "none": No CSP restrictions — execute_js is safe
+ * - "script_exec": new Function() blocked — use dom/get_readable instead
+ * - "page_blocked": Privileged URL (chrome://, devtools://) — no extension access
+ */
+export async function probeCSPStatus(tabId) {
+    try {
+        const results = await chrome.scripting.executeScript({
+            target: { tabId },
+            world: 'MAIN',
+            func: () => {
+                try {
+                    new Function('return 1')();
+                    return 'ok';
+                }
+                catch {
+                    return 'csp_blocked';
+                }
+            }
+        });
+        const val = results?.[0]?.result;
+        if (val === 'ok')
+            return { csp_restricted: false, csp_level: 'none' };
+        if (val === 'csp_blocked')
+            return { csp_restricted: true, csp_level: 'script_exec' };
+        return { csp_restricted: true, csp_level: 'page_blocked' };
+    }
+    catch {
+        return { csp_restricted: true, csp_level: 'page_blocked' };
+    }
+}
+/**
  * Execute JavaScript via chrome.scripting.executeScript.
  * Used as fallback when MAIN world execution fails due to page CSP,
  * or when inject script is not loaded.

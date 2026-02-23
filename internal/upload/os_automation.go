@@ -1,4 +1,7 @@
-// os_automation.go — Stage 4 OS automation: browser PID detection and platform execution.
+// Purpose: Implements upload validation, security checks, and automation support paths.
+// Why: Enforces upload safety boundaries against path traversal and SSRF-style abuse.
+// Docs: docs/features/feature/file-upload/index.md
+
 package upload
 
 import (

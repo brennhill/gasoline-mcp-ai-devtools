@@ -1,4 +1,9 @@
-"""Tests for bundled skills installer."""
+"""Tests for bundled skill installation in the PyPI wrapper.
+
+Purpose: Validate managed write/update/skip behavior for packaged skills.
+Why: Prevents channel drift between npm and PyPI skill-install semantics.
+Docs: docs/features/feature/enhanced-cli-config/index.md
+"""
 
 import os
 import tempfile

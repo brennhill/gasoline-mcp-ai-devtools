@@ -1,9 +1,7 @@
-// Purpose: Owns network-types.go runtime behavior and integration logic.
-// Docs: docs/features/feature/backend-log-streaming/index.md
+// Purpose: Re-exports canonical network/waterfall type aliases for capture package compatibility.
+// Why: Keeps capture call sites stable while canonical type ownership lives in internal/types.
+// Docs: docs/features/feature/normalized-event-schema/index.md
 
-// network-types.go — Network waterfall and body types.
-// NetworkWaterfallEntry represents browser PerformanceResourceTiming data.
-// NetworkBody is an alias to canonical definition in internal/types/network.go.
 package capture
 
 import "github.com/dev-console/dev-console/internal/types"

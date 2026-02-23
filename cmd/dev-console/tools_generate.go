@@ -1,3 +1,7 @@
+// Purpose: Implements generate tool formats and output assembly.
+// Why: Keeps generated artifacts reproducible and consistent across environments.
+// Docs: docs/features/feature/test-generation/index.md
+
 // tools_generate.go — MCP generate tool dispatcher and handlers.
 // Docs: docs/features/feature/test-generation/index.md
 // Handles all generate formats: reproduction, test, pr_summary, sarif, har, csp, sri.

@@ -1,5 +1,3 @@
-// main_connection_diag.go — Connection diagnostics: health checks, port scanning, and failure analysis.
-// Docs: docs/features/feature/observe/index.md
 package main
 
 import (

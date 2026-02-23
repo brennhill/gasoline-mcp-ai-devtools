@@ -1,4 +1,7 @@
-// stream.go — StreamState: active context streaming via MCP notifications.
+// Purpose: Implements streaming configuration, filtering, batching, and alert emission behavior.
+// Why: Controls notification throughput and relevance for real-time alert consumers.
+// Docs: docs/features/feature/push-alerts/index.md
+
 package streaming
 
 import (

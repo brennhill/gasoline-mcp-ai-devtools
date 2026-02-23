@@ -1,7 +1,7 @@
-// Purpose: Owns response.go runtime behavior and integration logic.
-// Docs: docs/features/feature/observe/index.md
+// Purpose: Provides shared JSON HTTP response writer helpers for daemon handlers.
+// Why: Centralizes response encoding so API handlers return consistent status/content semantics.
+// Docs: docs/features/feature/query-service/index.md
 
-// response.go — HTTP response utilities
 package util
 
 import (
