@@ -23,12 +23,12 @@ var interactFailurePlaybooks = map[string]interactFailurePlaybook{
 	"ambiguous_target": {
 		DetectionSignal: "error=ambiguous_target",
 		OrderedRecoverySteps: []string{
-			`Add scope_selector or scope_rect to narrow candidates to the active container.`,
-			`Use list_interactive in that scope and choose element_id/index instead of global text selector.`,
-			`Retry the action with the resolved element_id/index.`,
+			`Pick the correct element from the candidates array in this response (use suggested_element_id if present).`,
+			`Retry the same action with element_id instead of the ambiguous selector.`,
+			`If none of the candidates match your intent, use scope_selector to narrow the search area.`,
 		},
 		StopAndReportCondition: "If ambiguity persists after one scoped retry, stop and report candidate list evidence instead of repeated blind clicks.",
-		RetrySuggestion:        `Recovery: add scope_selector/scope_rect, run list_interactive, then retry using element_id/index.`,
+		RetrySuggestion:        `Recovery: pick from the candidates array below and retry with element_id (or use suggested_element_id). No extra list_interactive call needed.`,
 	},
 	"stale_element_id": {
 		DetectionSignal: "error=stale_element_id",

@@ -553,6 +553,7 @@ func enrichCommandResponseData(result json.RawMessage, responseData map[string]a
 		"content_script_status", "resolved_tab_id", "resolved_url", "target_context",
 		"effective_tab_id", "effective_url", "effective_title", "final_url", "title",
 		"message", "hint", "retry", "retryable", "csp_blocked", "failure_cause", "error_code",
+		"candidates", "match_count", "match_strategy",
 	} {
 		if v, ok := extResult[key]; ok {
 			responseData[key] = v
@@ -626,6 +627,32 @@ func annotateInteractFailureRecovery(responseData map[string]any, cmdError strin
 	}
 	if _, exists := responseData["retryable"]; !exists {
 		responseData["retryable"] = true
+	}
+
+	// For ambiguous_target: compute suggested_element_id from first visible candidate.
+	if canonical == "ambiguous_target" {
+		annotateSuggestedElementID(responseData)
+	}
+}
+
+// annotateSuggestedElementID picks the first visible candidate's element_id
+// and sets it as suggested_element_id for single-retry LLM recovery.
+func annotateSuggestedElementID(responseData map[string]any) {
+	candidates, ok := responseData["candidates"].([]any)
+	if !ok || len(candidates) == 0 {
+		return
+	}
+	for _, c := range candidates {
+		cMap, ok := c.(map[string]any)
+		if !ok {
+			continue
+		}
+		visible, _ := cMap["visible"].(bool)
+		elementID, _ := cMap["element_id"].(string)
+		if visible && elementID != "" {
+			responseData["suggested_element_id"] = elementID
+			return
+		}
 	}
 }
 
