@@ -24,6 +24,7 @@ type daemonLockRecord struct {
 
 var (
 	daemonIsProcessAlive     = isProcessAlive
+	daemonIsServerRunning    = isServerRunning
 	daemonTryShutdown        = tryShutdownViaHTTP
 	daemonWaitForPortRelease = waitForPortRelease
 	daemonTerminatePID       = terminatePIDQuiet
@@ -175,8 +176,22 @@ func performDefaultTakeover(server *Server, stateDir string, port int, rec *daem
 
 	pidFromPortFile := readPIDFile(rec.Port)
 	if pidFromPortFile != rec.PID {
+		// Safety guard: if the lock PID mismatches the PID file, never kill blindly.
+		// But if the target port is not serving, this is stale lock state and we can reclaim it.
+		if !daemonIsServerRunning(rec.Port) {
+			server.logLifecycle("daemon_lock_reclaimed_stale_mismatch", port, map[string]any{
+				"state_dir":      stateDir,
+				"lock_pid":       rec.PID,
+				"lock_port":      rec.Port,
+				"pid_file":       pidFromPortFile,
+				"port_in_use":    false,
+				"reclaimed_lock": true,
+			})
+			removePIDFile(rec.Port)
+			return removeDaemonLockFile()
+		}
 		return fmt.Errorf(
-			"daemon ownership mismatch for state_dir=%s: lock pid=%d port=%d, pid_file=%d; refusing takeover",
+			"daemon ownership mismatch for state_dir=%s: lock pid=%d port=%d, pid_file=%d, port_in_use=true; refusing takeover",
 			stateDir,
 			rec.PID,
 			rec.Port,

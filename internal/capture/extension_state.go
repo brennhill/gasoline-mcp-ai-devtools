@@ -50,6 +50,11 @@ type ExtensionState struct {
 	trackedTabTitle string    // Tracked tab title (informational, may be stale).
 	trackingUpdated time.Time // When tracking status last refreshed.
 
+	// Extension-reported active command execution state from /sync heartbeats.
+	inProgress              []SyncInProgress // Last heartbeat snapshot of active commands.
+	inProgressUpdated       time.Time        // When inProgress was last refreshed.
+	missingInProgressByCorr map[string]int   // Consecutive missed heartbeats for started commands.
+
 	// Last-resort altered-environment debug mode.
 	securityMode     string   // "normal" (default) or "insecure_proxy".
 	insecureRewrites []string // Rewrite set active in insecure mode (for transparent reporting).
@@ -141,6 +146,13 @@ func (c *Capture) GetPilotStatus() any {
 		lastSeen = c.ext.lastSyncSeen.Format(time.RFC3339)
 	}
 
+	inProgress := make([]SyncInProgress, len(c.ext.inProgress))
+	copy(inProgress, c.ext.inProgress)
+	inProgressUpdated := ""
+	if !c.ext.inProgressUpdated.IsZero() {
+		inProgressUpdated = c.ext.inProgressUpdated.Format(time.RFC3339)
+	}
+
 	return map[string]any{
 		"enabled":             snap.EffectiveEnabled,
 		"configured_enabled":  snap.ConfiguredEnabled,
@@ -149,7 +161,19 @@ func (c *Capture) GetPilotStatus() any {
 		"source":              snap.Source,
 		"extension_connected": !c.ext.lastSyncSeen.IsZero() && time.Since(c.ext.lastSyncSeen) < extensionDisconnectThreshold,
 		"extension_last_seen": lastSeen,
+		"in_progress_count":   len(inProgress),
+		"in_progress":         inProgress,
+		"in_progress_updated": inProgressUpdated,
 	}
+}
+
+// GetInProgressCommands returns the latest extension heartbeat view of active commands.
+func (c *Capture) GetInProgressCommands() []SyncInProgress {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	out := make([]SyncInProgress, len(c.ext.inProgress))
+	copy(out, c.ext.inProgress)
+	return out
 }
 
 // GetExtensionVersion returns the last reported extension version.

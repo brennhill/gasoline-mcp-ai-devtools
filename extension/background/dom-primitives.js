@@ -1,5 +1,5 @@
 // AUTO-GENERATED FILE. DO NOT EDIT DIRECTLY.
-// Source template: scripts/templates/dom-primitives.ts.tpl
+// Source: scripts/templates/dom-primitives.ts.tpl + partials/_dom-selectors.tpl, _dom-intent.tpl
 // Generator: scripts/generate-dom-primitives.js
 // Re-export list_interactive primitive for backward compatibility
 export { domPrimitiveListInteractive } from './dom-primitives-list-interactive.js';
@@ -9,6 +9,7 @@ export { domPrimitiveListInteractive } from './dom-primitives-list-interactive.j
  * MUST NOT reference any module-level variables — Chrome serializes the function source only.
  */
 export function domPrimitive(action, selector, options) {
+    // --- PARTIAL: DOM Selector Resolution ---
     // — Shadow DOM: deep traversal utilities —
     function getShadowRoot(el) {
         return el.shadowRoot ?? null;
@@ -16,7 +17,7 @@ export function domPrimitive(action, selector, options) {
     }
     function querySelectorDeep(selector, root = document) {
         const fast = root.querySelector(selector);
-        if (fast)
+        if (fast && !isGasolineOwnedElement(fast))
             return fast;
         return querySelectorDeepWalk(selector, root);
     }
@@ -34,7 +35,7 @@ export function domPrimitive(action, selector, options) {
             const shadow = getShadowRoot(child);
             if (shadow) {
                 const match = shadow.querySelector(selector);
-                if (match)
+                if (match && !isGasolineOwnedElement(match))
                     return match;
                 const deep = querySelectorDeepWalk(selector, shadow, depth + 1);
                 if (deep)
@@ -51,7 +52,12 @@ export function domPrimitive(action, selector, options) {
     function querySelectorAllDeep(selector, root = document, results = [], depth = 0) {
         if (depth > 10)
             return results;
-        results.push(...Array.from(root.querySelectorAll(selector)));
+        const matches = Array.from(root.querySelectorAll(selector));
+        for (const match of matches) {
+            if (!isGasolineOwnedElement(match)) {
+                results.push(match);
+            }
+        }
         const children = 'children' in root
             ? root.children
             : root.body?.children || root.documentElement?.children;
@@ -89,8 +95,25 @@ export function domPrimitive(action, selector, options) {
         return null;
     }
     // — Selector resolver: CSS or semantic (text=, role=, placeholder=, label=, aria-label=) —
+    function isGasolineOwnedElement(element) {
+        let node = element;
+        while (node) {
+            const id = node.id || '';
+            if (id.startsWith('gasoline-'))
+                return true;
+            const className = node.className;
+            if (typeof className === 'string' && className.includes('gasoline-'))
+                return true;
+            if (node.getAttribute && node.getAttribute('data-gasoline-owned') === 'true')
+                return true;
+            node = node.parentElement;
+        }
+        return false;
+    }
     // Visibility check: skip display:none, visibility:hidden, zero-size elements
     function isVisible(el) {
+        if (isGasolineOwnedElement(el))
+            return false;
         if (!(el instanceof HTMLElement))
             return true;
         const style = getComputedStyle(el);
@@ -227,6 +250,8 @@ export function domPrimitive(action, selector, options) {
                         continue;
                     const interactive = parent.closest('a, button, [role="button"], [role="link"], label, summary');
                     const target = interactive || parent;
+                    if (isGasolineOwnedElement(target) || !isVisible(target))
+                        continue;
                     if (!seen.has(target)) {
                         seen.add(target);
                         results.push(target);
@@ -309,6 +334,8 @@ export function domPrimitive(action, selector, options) {
                         continue;
                     const interactive = parent.closest('a, button, [role="button"], [role="link"], label, summary');
                     const target = interactive || parent;
+                    if (isGasolineOwnedElement(target))
+                        continue;
                     if (!fallback)
                         fallback = target;
                     if (isVisible(target))
@@ -375,10 +402,6 @@ export function domPrimitive(action, selector, options) {
     function resolveElements(sel, scope = document) {
         if (!sel)
             return [];
-        if (sel.includes(' >>> ')) {
-            const resolved = resolveDeepCombinator(sel, scope);
-            return resolved ? [resolved] : [];
-        }
         if (sel.startsWith('text='))
             return resolveByTextAll(sel.slice('text='.length), scope);
         if (sel.startsWith('role='))
@@ -540,6 +563,7 @@ export function domPrimitive(action, selector, options) {
         }
         return best;
     }
+    // --- PARTIAL: Intent Resolution & List Interactive ---
     function listInteractiveCompatibility() {
         const interactiveSelectors = [
             'a[href]',
@@ -1405,67 +1429,6 @@ export function domPrimitive(action, selector, options) {
         return domError('unknown_action', `Unknown DOM action: ${action}`);
     }
     return handler();
-}
-export function domWaitFor(selector, timeoutMs = 5000) {
-    const timeout = Math.max(1, timeoutMs);
-    return new Promise((resolve) => {
-        let resolved = false;
-        let pollTimer = null;
-        let timeoutTimer = null;
-        let observer = null;
-        const timeoutResult = {
-            success: false,
-            action: 'wait_for',
-            selector,
-            error: 'timeout',
-            message: `Element not found within ${timeout}ms: ${selector}`
-        };
-        function cleanup() {
-            if (pollTimer)
-                clearInterval(pollTimer);
-            if (timeoutTimer)
-                clearTimeout(timeoutTimer);
-            if (observer)
-                observer.disconnect();
-        }
-        function finish(result) {
-            if (resolved)
-                return;
-            resolved = true;
-            cleanup();
-            resolve(result);
-        }
-        function checkNow() {
-            const result = domPrimitive('wait_for', selector, { timeout_ms: timeout });
-            if (result && typeof result.then === 'function') {
-                void result
-                    .then((resolvedResult) => {
-                    if (resolvedResult.success)
-                        finish(resolvedResult);
-                })
-                    .catch(() => { });
-                return;
-            }
-            if (result.success) {
-                finish(result);
-            }
-        }
-        checkNow();
-        if (resolved)
-            return;
-        if (typeof MutationObserver === 'function') {
-            observer = new MutationObserver(() => {
-                checkNow();
-            });
-            observer.observe(document.body || document.documentElement, {
-                childList: true,
-                subtree: true,
-                attributes: true
-            });
-        }
-        pollTimer = setInterval(checkNow, Math.min(80, timeout));
-        timeoutTimer = setTimeout(() => finish(timeoutResult), timeout);
-    });
 }
 // Dispatcher utilities (parseDOMParams, executeDOMAction, etc.) moved to ./dom-dispatch.ts
 //# sourceMappingURL=dom-primitives.js.map

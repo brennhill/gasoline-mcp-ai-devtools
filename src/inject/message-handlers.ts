@@ -111,6 +111,14 @@ interface FormDiscoveryQueryRequestMessageData {
 }
 
 /**
+ * Bridge readiness ping from content script to inject context
+ */
+interface BridgePingMessageData {
+  type: 'GASOLINE_INJECT_BRIDGE_PING'
+  requestId: number | string
+}
+
+/**
  * Union of all page message data types
  */
 type PageMessageData =
@@ -124,6 +132,7 @@ type PageMessageData =
   | LinkHealthQueryRequestMessageData
   | ComputedStylesQueryRequestMessageData
   | FormDiscoveryQueryRequestMessageData
+  | BridgePingMessageData
 
 /**
  * Handle link health check request from content script
@@ -183,7 +192,8 @@ export function installMessageListener(
     GASOLINE_GET_WATERFALL: (data) => handleGetWaterfall(data as GetWaterfallRequestMessageData),
     GASOLINE_LINK_HEALTH_QUERY: (data) => handleLinkHealthMessage(data as LinkHealthQueryRequestMessageData),
     GASOLINE_COMPUTED_STYLES_QUERY: (data) => handleComputedStylesMessage(data as ComputedStylesQueryRequestMessageData),
-    GASOLINE_FORM_DISCOVERY_QUERY: (data) => handleFormDiscoveryMessage(data as FormDiscoveryQueryRequestMessageData)
+    GASOLINE_FORM_DISCOVERY_QUERY: (data) => handleFormDiscoveryMessage(data as FormDiscoveryQueryRequestMessageData),
+    GASOLINE_INJECT_BRIDGE_PING: (data) => handleBridgePingMessage(data as BridgePingMessageData)
   }
 
   window.addEventListener('message', (event: MessageEvent<PageMessageData>) => {
@@ -196,6 +206,17 @@ export function installMessageListener(
     const handler = messageHandlers[msgType] // nosemgrep: unsafe-dynamic-method
     if (handler) handler(event.data)
   })
+}
+
+function handleBridgePingMessage(data: BridgePingMessageData): void {
+  window.postMessage(
+    {
+      type: 'GASOLINE_INJECT_BRIDGE_PONG',
+      requestId: data.requestId,
+      _nonce: pageNonce
+    },
+    window.location.origin
+  )
 }
 
 function handleComputedStylesMessage(data: ComputedStylesQueryRequestMessageData): void {

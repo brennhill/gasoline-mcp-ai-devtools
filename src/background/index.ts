@@ -111,17 +111,17 @@ export function debugLog(category: string, message: string, data: unknown = null
 
   addDebugLogEntry(entry)
 
-  if (getConnectionStatus().connected) {
-    pushExtensionLog({
-      timestamp,
-      level: 'debug',
-      message,
-      source: 'background',
-      category,
-      ...(data !== null ? { data } : {})
-    })
-    capExtensionLogs(2000)
-  }
+  // Always queue debug logs, even while disconnected, so the next successful
+  // sync can flush the full failure timeline to the daemon for root-cause analysis.
+  pushExtensionLog({
+    timestamp,
+    level: 'debug',
+    message,
+    source: 'background',
+    category,
+    ...(data !== null ? { data } : {})
+  })
+  capExtensionLogs(2000)
 
   if (isDebugMode()) {
     const prefix = `[Gasoline:${category}]`

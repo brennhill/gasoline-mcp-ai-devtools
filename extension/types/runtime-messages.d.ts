@@ -170,13 +170,17 @@ export interface DrawModeCaptureScreenshotMessage {
     readonly type: 'GASOLINE_CAPTURE_SCREENSHOT';
 }
 /**
- * Draw mode: content script sends completed annotation results
+ * Draw mode: content script sends completed annotation results.
+ * Fields match the wire format sent by extension/content/draw-mode.js.
  */
 export interface DrawModeCompletedMessage {
     readonly type: 'DRAW_MODE_COMPLETED';
     readonly annotations?: readonly unknown[];
-    readonly screenshot?: string;
-    readonly annotSessionName?: string;
+    readonly screenshot_data_url?: string;
+    readonly elementDetails?: Readonly<Record<string, unknown>>;
+    readonly page_url?: string;
+    readonly correlation_id?: string;
+    readonly annot_session_name?: string;
 }
 /**
  * Ping message to check if content script is loaded
@@ -342,11 +346,11 @@ export type ContentMessage = ContentPingMessage | HighlightMessage | ExecuteJsMe
 /**
  * Page to content script messages (postMessage types)
  */
-export type PageMessageType = 'GASOLINE_LOG' | 'GASOLINE_WS' | 'GASOLINE_NETWORK_BODY' | 'GASOLINE_ENHANCED_ACTION' | 'GASOLINE_PERFORMANCE_SNAPSHOT' | 'GASOLINE_HIGHLIGHT_RESPONSE' | 'GASOLINE_EXECUTE_JS_RESULT' | 'GASOLINE_A11Y_QUERY_RESPONSE' | 'GASOLINE_DOM_QUERY_RESPONSE' | 'GASOLINE_STATE_RESPONSE' | 'GASOLINE_WATERFALL_RESPONSE' | 'GASOLINE_LINK_HEALTH_RESPONSE';
+export type PageMessageType = 'GASOLINE_LOG' | 'GASOLINE_WS' | 'GASOLINE_NETWORK_BODY' | 'GASOLINE_ENHANCED_ACTION' | 'GASOLINE_PERFORMANCE_SNAPSHOT' | 'GASOLINE_INJECT_BRIDGE_PONG' | 'GASOLINE_HIGHLIGHT_RESPONSE' | 'GASOLINE_EXECUTE_JS_RESULT' | 'GASOLINE_A11Y_QUERY_RESPONSE' | 'GASOLINE_DOM_QUERY_RESPONSE' | 'GASOLINE_STATE_RESPONSE' | 'GASOLINE_WATERFALL_RESPONSE' | 'GASOLINE_LINK_HEALTH_RESPONSE';
 /**
  * Content to page messages (postMessage types)
  */
-export type ContentToPageMessageType = 'GASOLINE_SETTING' | 'GASOLINE_HIGHLIGHT_REQUEST' | 'GASOLINE_EXECUTE_JS' | 'GASOLINE_A11Y_QUERY' | 'GASOLINE_DOM_QUERY' | 'GASOLINE_STATE_COMMAND' | 'GASOLINE_GET_WATERFALL' | 'GASOLINE_LINK_HEALTH_QUERY';
+export type ContentToPageMessageType = 'GASOLINE_SETTING' | 'GASOLINE_INJECT_BRIDGE_PING' | 'GASOLINE_HIGHLIGHT_REQUEST' | 'GASOLINE_EXECUTE_JS' | 'GASOLINE_A11Y_QUERY' | 'GASOLINE_DOM_QUERY' | 'GASOLINE_STATE_COMMAND' | 'GASOLINE_GET_WATERFALL' | 'GASOLINE_LINK_HEALTH_QUERY';
 /**
  * Start recording message (SW → offscreen)
  */

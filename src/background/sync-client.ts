@@ -48,6 +48,17 @@ export interface SyncCommandResult {
   error?: string
 }
 
+/** Active command metadata sent on each sync heartbeat */
+export interface SyncInProgress {
+  id: string
+  correlation_id?: string
+  type?: string
+  status: 'running' | 'pending'
+  progress_pct?: number
+  started_at: string
+  updated_at: string
+}
+
 /** Request sent to /sync */
 interface SyncRequest {
   ext_session_id: string
@@ -56,6 +67,7 @@ interface SyncRequest {
   extension_logs?: SyncExtensionLog[]
   last_command_ack?: string
   command_results?: SyncCommandResult[]
+  in_progress?: SyncInProgress[]
 }
 
 /** Command from server */
@@ -120,6 +132,7 @@ export class SyncClient {
   private syncing = false
   private flushRequested = false
   private pendingResults: SyncCommandResult[] = []
+  private inProgressById = new Map<string, SyncInProgress>()
   private processedCommandSignatures: Set<string> = new Set()
   private extensionVersion: string
 
@@ -166,6 +179,7 @@ export class SyncClient {
 
   /** Queue a command result to send on next sync, then flush immediately */
   queueCommandResult(result: SyncCommandResult): void {
+    this.clearInProgressById(result.id)
     this.pendingResults.push(result)
     // Cap queue size to prevent memory leak if server is unreachable
     const MAX_PENDING_RESULTS = 200
@@ -205,6 +219,21 @@ export class SyncClient {
     this.serverUrl = url
   }
 
+  /** Optional progress updates for long-running commands */
+  updateCommandProgress(commandId: string, progressPct?: number, status: 'running' | 'pending' = 'running'): void {
+    const current = this.inProgressById.get(commandId)
+    if (!current) return
+    const next: SyncInProgress = {
+      ...current,
+      status,
+      updated_at: new Date().toISOString()
+    }
+    if (typeof progressPct === 'number' && Number.isFinite(progressPct)) {
+      next.progress_pct = clampPercent(progressPct)
+    }
+    this.inProgressById.set(commandId, next)
+  }
+
   // =============================================================================
   // PRIVATE METHODS
   // =============================================================================
@@ -227,7 +256,8 @@ export class SyncClient {
       const request: SyncRequest = {
         ext_session_id: this.extSessionId,
         extension_version: this.extensionVersion || undefined,
-        settings
+        settings,
+        in_progress: this.getInProgressSnapshot()
       }
 
       // Include logs if any
@@ -299,8 +329,8 @@ export class SyncClient {
         this.pendingResults.splice(0, resultsSentCount)
       }
 
-      // Process commands sequentially so the service worker stays alive while
-      // a command is actively executing. A per-command timeout prevents deadlocks.
+      // Dispatch commands without blocking the heartbeat loop.
+      // Command completion is returned asynchronously via queueCommandResult().
       if (data.commands && data.commands.length > 0) {
         this.log('Received commands', { count: data.commands.length, ids: data.commands.map((c) => c.id) })
         for (const command of data.commands) {
@@ -333,7 +363,7 @@ export class SyncClient {
             type: command.type,
             correlation_id: command.correlation_id
           })
-          await this.dispatchCommand(command)
+          void this.dispatchCommand(command)
         }
       }
 
@@ -413,6 +443,7 @@ export class SyncClient {
   }
 
   private async dispatchCommand(command: SyncCommand): Promise<void> {
+    this.markInProgress(command)
     const timeoutMs = this.commandTimeoutFor(command)
     let timeoutHandle: ReturnType<typeof setTimeout> | null = null
     try {
@@ -443,8 +474,44 @@ export class SyncClient {
       if (timeoutHandle) {
         clearTimeout(timeoutHandle)
       }
+      this.clearInProgressById(command.id)
     }
   }
+
+  private markInProgress(command: SyncCommand): void {
+    const now = new Date().toISOString()
+    const current = this.inProgressById.get(command.id)
+    this.inProgressById.set(command.id, {
+      id: command.id,
+      correlation_id: command.correlation_id,
+      type: command.type,
+      status: current?.status || 'running',
+      progress_pct: current?.progress_pct,
+      started_at: current?.started_at || now,
+      updated_at: now
+    })
+  }
+
+  private clearInProgressById(id?: string): void {
+    if (!id) return
+    this.inProgressById.delete(id)
+  }
+
+  private getInProgressSnapshot(): SyncInProgress[] {
+    if (this.inProgressById.size === 0) {
+      return []
+    }
+    return Array.from(this.inProgressById.values()).map((entry) => ({
+      ...entry,
+      updated_at: entry.updated_at || new Date().toISOString()
+    }))
+  }
+}
+
+function clampPercent(value: number): number {
+  if (value < 0) return 0
+  if (value > 100) return 100
+  return Math.round(value * 100) / 100
 }
 
 // =============================================================================

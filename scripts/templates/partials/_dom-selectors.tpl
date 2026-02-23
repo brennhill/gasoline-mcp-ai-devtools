@@ -8,7 +8,7 @@
 
   function querySelectorDeep(selector: string, root: ParentNode = document): Element | null {
     const fast = root.querySelector(selector)
-    if (fast) return fast
+    if (fast && !isGasolineOwnedElement(fast)) return fast
     return querySelectorDeepWalk(selector, root)
   }
 
@@ -24,7 +24,7 @@
       const shadow = getShadowRoot(child)
       if (shadow) {
         const match = shadow.querySelector(selector)
-        if (match) return match
+        if (match && !isGasolineOwnedElement(match)) return match
         const deep = querySelectorDeepWalk(selector, shadow, depth + 1)
         if (deep) return deep
       }
@@ -43,7 +43,12 @@
     depth: number = 0
   ): Element[] {
     if (depth > 10) return results
-    results.push(...Array.from(root.querySelectorAll(selector)))
+    const matches = Array.from(root.querySelectorAll(selector))
+    for (const match of matches) {
+      if (!isGasolineOwnedElement(match)) {
+        results.push(match)
+      }
+    }
     const children = 'children' in root
       ? (root as Element).children
       : (root as Document).body?.children || (root as Document).documentElement?.children
@@ -80,8 +85,22 @@
 
   // — Selector resolver: CSS or semantic (text=, role=, placeholder=, label=, aria-label=) —
 
+  function isGasolineOwnedElement(element: Element | null): boolean {
+    let node: Element | null = element
+    while (node) {
+      const id = (node as HTMLElement).id || ''
+      if (id.startsWith('gasoline-')) return true
+      const className = (node as HTMLElement).className
+      if (typeof className === 'string' && className.includes('gasoline-')) return true
+      if (node.getAttribute && node.getAttribute('data-gasoline-owned') === 'true') return true
+      node = node.parentElement
+    }
+    return false
+  }
+
   // Visibility check: skip display:none, visibility:hidden, zero-size elements
   function isVisible(el: Element): boolean {
+    if (isGasolineOwnedElement(el)) return false
     if (!(el instanceof HTMLElement)) return true
     const style = getComputedStyle(el)
     if (style.visibility === 'hidden' || style.display === 'none') return false
@@ -221,6 +240,7 @@
           if (!parent) continue
           const interactive = parent.closest('a, button, [role="button"], [role="link"], label, summary')
           const target = interactive || parent
+          if (isGasolineOwnedElement(target) || !isVisible(target)) continue
           if (!seen.has(target)) {
             seen.add(target)
             results.push(target)
@@ -292,6 +312,7 @@
           if (!parent) continue
           const interactive = parent.closest('a, button, [role="button"], [role="link"], label, summary')
           const target = interactive || parent
+          if (isGasolineOwnedElement(target)) continue
           if (!fallback) fallback = target
           if (isVisible(target)) return target
         }

@@ -64,7 +64,8 @@ export function installMessageListener(captureStateFn, restoreStateFn) {
         GASOLINE_GET_WATERFALL: (data) => handleGetWaterfall(data),
         GASOLINE_LINK_HEALTH_QUERY: (data) => handleLinkHealthMessage(data),
         GASOLINE_COMPUTED_STYLES_QUERY: (data) => handleComputedStylesMessage(data),
-        GASOLINE_FORM_DISCOVERY_QUERY: (data) => handleFormDiscoveryMessage(data)
+        GASOLINE_FORM_DISCOVERY_QUERY: (data) => handleFormDiscoveryMessage(data),
+        GASOLINE_INJECT_BRIDGE_PING: (data) => handleBridgePingMessage(data)
     };
     window.addEventListener('message', (event) => {
         if (event.source !== window || event.origin !== window.location.origin)
@@ -78,6 +79,13 @@ export function installMessageListener(captureStateFn, restoreStateFn) {
         if (handler)
             handler(event.data);
     });
+}
+function handleBridgePingMessage(data) {
+    window.postMessage({
+        type: 'GASOLINE_INJECT_BRIDGE_PONG',
+        requestId: data.requestId,
+        _nonce: pageNonce
+    }, window.location.origin);
 }
 function handleComputedStylesMessage(data) {
     try {

@@ -33,6 +33,16 @@ export interface SyncCommandResult {
     result?: unknown;
     error?: string;
 }
+/** Active command metadata sent on each sync heartbeat */
+export interface SyncInProgress {
+    id: string;
+    correlation_id?: string;
+    type?: string;
+    status: 'running' | 'pending';
+    progress_pct?: number;
+    started_at: string;
+    updated_at: string;
+}
 /** Command from server */
 export interface SyncCommand {
     id: string;
@@ -71,6 +81,7 @@ export declare class SyncClient {
     private syncing;
     private flushRequested;
     private pendingResults;
+    private inProgressById;
     private processedCommandSignatures;
     private extensionVersion;
     constructor(serverUrl: string, extSessionId: string, callbacks: SyncClientCallbacks, extensionVersion?: string);
@@ -90,6 +101,8 @@ export declare class SyncClient {
     resetConnection(): void;
     /** Update server URL */
     setServerUrl(url: string): void;
+    /** Optional progress updates for long-running commands */
+    updateCommandProgress(commandId: string, progressPct?: number, status?: 'running' | 'pending'): void;
     private scheduleNextSync;
     private doSync;
     private onSuccess;
@@ -98,6 +111,9 @@ export declare class SyncClient {
     private getCommandSignature;
     private commandTimeoutFor;
     private dispatchCommand;
+    private markInProgress;
+    private clearInProgressById;
+    private getInProgressSnapshot;
 }
 /**
  * Create a sync client instance

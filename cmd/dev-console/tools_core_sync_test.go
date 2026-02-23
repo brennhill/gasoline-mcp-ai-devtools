@@ -142,6 +142,51 @@ func TestMaybeWaitForCommand_TimeoutGracefulFallback(t *testing.T) {
 	}
 }
 
+func TestMaybeWaitForCommand_PendingDisconnectReturnsTerminalError(t *testing.T) {
+	restoreThreshold := capture.SetExtensionDisconnectThresholdForTesting(200 * time.Millisecond)
+	defer restoreThreshold()
+
+	prevInitial := asyncInitialWait
+	prevRetry := asyncRetryWait
+	prevPoll := asyncPollInterval
+	asyncInitialWait = 500 * time.Millisecond
+	asyncRetryWait = 200 * time.Millisecond
+	asyncPollInterval = 20 * time.Millisecond
+	defer func() {
+		asyncInitialWait = prevInitial
+		asyncRetryWait = prevRetry
+		asyncPollInterval = prevPoll
+	}()
+
+	cap := capture.NewCapture()
+	handler := &ToolHandler{capture: cap}
+	req := JSONRPCRequest{ID: 1}
+	correlationID := "test-disconnect-midwait-123"
+	cap.RegisterCommand(correlationID, "q-disconnect-midwait-123", 5*time.Second)
+	cap.CreatePendingQueryWithTimeout(queries.PendingQuery{
+		Type:   "browser_action",
+		Params: json.RawMessage(`{"action":"noop"}`),
+	}, 5*time.Second, "test-client")
+
+	// Seed a recent /sync so the first connectivity check passes.
+	httpReq := httptest.NewRequest("POST", "/sync", strings.NewReader(`{"ext_session_id":"test"}`))
+	httpReq.Header.Set("X-Gasoline-Client", "test-client")
+	cap.HandleSync(httptest.NewRecorder(), httpReq)
+
+	resp := handler.MaybeWaitForCommand(req, correlationID, json.RawMessage(`{"sync":true}`), "Queued")
+	result := parseMCPResponseData(t, resp.Result)
+
+	if result["status"] != "error" {
+		t.Fatalf("Expected status=error when extension disconnects mid-wait, got %v", result["status"])
+	}
+	if result["error"] != "extension_disconnected" {
+		t.Fatalf("Expected error=extension_disconnected, got %v", result["error"])
+	}
+	if result["final"] != true {
+		t.Fatalf("Expected final=true, got %v", result["final"])
+	}
+}
+
 // parseMCPResponseData extracts and parses the JSON data from an MCP tool response.
 // MCPToolResult wraps data as Content[0].Text = "summary\n{json...}".
 func parseMCPResponseData(t *testing.T, rawResult json.RawMessage) map[string]any {

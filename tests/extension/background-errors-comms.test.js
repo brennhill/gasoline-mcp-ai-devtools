@@ -508,6 +508,24 @@ describe('Debug Logging', () => {
     // Should be capped at 200
     assert.ok(entries.length <= 200)
   })
+
+  test('should queue debug logs even while disconnected for later sync flush', async () => {
+    const { debugLog, DebugCategory } = await import('../../extension/background.js')
+    const { clearExtensionLogQueue, getExtensionLogQueue, setConnectionStatus } = await import(
+      '../../extension/background/state.js'
+    )
+
+    clearExtensionLogQueue()
+    setConnectionStatus({ connected: false })
+
+    debugLog(DebugCategory.CONNECTION, 'Sync failed, retrying', { attempt: 1 })
+
+    const queued = getExtensionLogQueue()
+    assert.ok(
+      queued.some((entry) => entry.message === 'Sync failed, retrying'),
+      'Expected disconnected debug logs to remain queued for next successful sync'
+    )
+  })
 })
 
 // =============================================================================

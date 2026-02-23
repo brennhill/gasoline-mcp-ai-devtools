@@ -149,6 +149,48 @@ describe('pending query targeting', () => {
     const queued = mockSyncClient.queueCommandResult.mock.calls[0].arguments[0]
     assert.strictEqual(queued.result.resolved_tab_id, 7)
     assert.strictEqual(queued.result.target_context.source, 'active_tab')
+    assert.strictEqual(queued.result.target_context.tracked_tab_id, 7)
+    assert.ok(
+      globalThis.chrome.storage.local.set.mock.calls.some((call) => {
+        const payload = call.arguments[0] || {}
+        return payload.trackedTabId === 7 && payload.trackedTabUrl === 'https://active/7'
+      }),
+      'expected use_active_tab to persist tracked tab state'
+    )
+  })
+
+  test('use_active_tab=true does not persist restricted/internal pages as tracked', async () => {
+    globalThis.chrome = createMockChrome(null, 55)
+    globalThis.chrome.tabs.query = mock.fn((query, callback) => {
+      const result = query?.active
+        ? [{ id: 55, windowId: 1, url: 'chrome://extensions', title: 'Extensions' }]
+        : [{ id: 55, windowId: 1, url: 'chrome://extensions', title: 'Extensions' }]
+      if (callback) callback(result)
+      return Promise.resolve(result)
+    })
+
+    const mockSyncClient = { queueCommandResult: mock.fn() }
+    await bgModule.handlePendingQuery(
+      {
+        id: 'q-active-internal',
+        type: 'browser_action',
+        correlation_id: 'corr-active-internal',
+        params: JSON.stringify({ action: 'back', use_active_tab: true })
+      },
+      mockSyncClient
+    )
+
+    const queued = mockSyncClient.queueCommandResult.mock.calls[0].arguments[0]
+    assert.strictEqual(queued.status, 'complete')
+    assert.strictEqual(queued.result.target_context.source, 'active_tab')
+    assert.strictEqual(queued.result.target_context.tracked_tab_id, null)
+    assert.ok(
+      !globalThis.chrome.storage.local.set.mock.calls.some((call) => {
+        const payload = call.arguments[0] || {}
+        return payload.trackedTabId === 55
+      }),
+      'restricted pages must not be persisted as tracked tabs'
+    )
   })
 
   test('returns deterministic missing_target error when no tab is targetable', async () => {

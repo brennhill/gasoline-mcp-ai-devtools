@@ -143,6 +143,9 @@ func GetBrowserLogs(deps Deps, req mcp.JSONRPCRequest, args json.RawMessage) mcp
 		BeforeCursor      string `json:"before_cursor"`
 		SinceCursor       string `json:"since_cursor"`
 		RestartOnEviction bool   `json:"restart_on_eviction"`
+		IncludeInternal   bool   `json:"include_internal"`
+		IncludeExtension  bool   `json:"include_extension_logs"`
+		ExtensionLimit    int    `json:"extension_limit"`
 	}
 	mcp.LenientUnmarshal(args, &params)
 	if params.Scope == "" {
@@ -170,7 +173,7 @@ func GetBrowserLogs(deps Deps, req mcp.JSONRPCRequest, args json.RawMessage) mcp
 	noiseSuppressed := 0
 	for _, e := range enriched {
 		entryType, _ := e.Entry["type"].(string)
-		if entryType == "lifecycle" || entryType == "tracking" || entryType == "extension" {
+		if !params.IncludeInternal && isInternalLogType(entryType) {
 			continue
 		}
 
@@ -180,13 +183,18 @@ func GetBrowserLogs(deps Deps, req mcp.JSONRPCRequest, args json.RawMessage) mcp
 		}
 
 		if params.Scope == "current_page" && trackedTabID != 0 {
-			entryTabID, _ := e.Entry["tabId"].(float64)
-			if int(entryTabID) != trackedTabID {
-				continue
+			if !(params.IncludeInternal && isInternalLogType(entryType)) {
+				entryTabID, _ := e.Entry["tabId"].(float64)
+				if int(entryTabID) != trackedTabID {
+					continue
+				}
 			}
 		}
 
 		level, _ := e.Entry["level"].(string)
+		if level == "" && isInternalLogType(entryType) {
+			level = "info"
+		}
 		if params.Level != "" && level != params.Level {
 			continue
 		}
@@ -225,23 +233,14 @@ func GetBrowserLogs(deps Deps, req mcp.JSONRPCRequest, args json.RawMessage) mcp
 
 	logs := make([]map[string]any, len(paginated))
 	for i, e := range paginated {
-		logs[i] = map[string]any{
-			"level":     e.Entry["level"],
-			"message":   e.Entry["message"],
-			"source":    e.Entry["source"],
-			"url":       e.Entry["url"],
-			"line":      e.Entry["line"],
-			"column":    e.Entry["column"],
-			"timestamp": e.Entry["ts"],
-			"tab_id":    e.Entry["tabId"],
-		}
+		logs[i] = normalizeBrowserLogEntry(e.Entry)
 	}
 
 	var newestTS time.Time
 	if len(paginated) > 0 {
 		last := paginated[len(paginated)-1]
-		if ts, ok := last.Entry["ts"].(string); ok {
-			newestTS, _ = time.Parse(time.RFC3339, ts)
+		if ts := logEntryTimestamp(last.Entry); ts != "" {
+			newestTS = parseRFC3339Flexible(ts)
 		}
 	}
 
@@ -251,11 +250,127 @@ func GetBrowserLogs(deps Deps, req mcp.JSONRPCRequest, args json.RawMessage) mcp
 		meta["noise_suppressed"] = noiseSuppressed
 	}
 
-	return mcp.JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcp.JSONResponse("Browser logs", map[string]any{
+	response := map[string]any{
 		"logs":     logs,
 		"count":    len(logs),
 		"metadata": meta,
-	})}
+	}
+
+	if params.IncludeExtension {
+		limit := params.ExtensionLimit
+		if limit <= 0 {
+			limit = params.Limit
+		}
+		limit = clampLimit(limit, 100)
+		extLogs := buildExtensionLogEntries(deps.GetCapture().GetExtensionLogs(), limit, params.Level)
+		response["extension_logs"] = extLogs
+		response["extension_logs_count"] = len(extLogs)
+	}
+
+	return mcp.JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcp.JSONResponse("Browser logs", response)}
+}
+
+func isInternalLogType(entryType string) bool {
+	return entryType == "lifecycle" || entryType == "tracking" || entryType == "extension"
+}
+
+func logEntryTimestamp(entry map[string]any) string {
+	if ts, ok := entry["ts"].(string); ok && ts != "" {
+		return ts
+	}
+	if ts, ok := entry["timestamp"].(string); ok && ts != "" {
+		return ts
+	}
+	return ""
+}
+
+func parseRFC3339Flexible(ts string) time.Time {
+	if ts == "" {
+		return time.Time{}
+	}
+	if parsed, err := time.Parse(time.RFC3339Nano, ts); err == nil {
+		return parsed
+	}
+	parsed, _ := time.Parse(time.RFC3339, ts)
+	return parsed
+}
+
+func normalizeBrowserLogEntry(entry map[string]any) map[string]any {
+	entryType, _ := entry["type"].(string)
+	level, _ := entry["level"].(string)
+	if level == "" && isInternalLogType(entryType) {
+		level = "info"
+	}
+
+	message, _ := entry["message"].(string)
+	if message == "" {
+		if event, ok := entry["event"].(string); ok {
+			message = event
+		}
+	}
+
+	source, _ := entry["source"].(string)
+	if source == "" && isInternalLogType(entryType) {
+		source = "daemon"
+	}
+
+	normalized := map[string]any{
+		"level":     level,
+		"message":   message,
+		"source":    source,
+		"url":       entry["url"],
+		"line":      entry["line"],
+		"column":    entry["column"],
+		"timestamp": logEntryTimestamp(entry),
+		"tab_id":    entry["tabId"],
+	}
+
+	if entryType != "" {
+		normalized["type"] = entryType
+	}
+	if event, ok := entry["event"]; ok {
+		normalized["event"] = event
+	}
+	if pid, ok := entry["pid"]; ok {
+		normalized["pid"] = pid
+	}
+	if port, ok := entry["port"]; ok {
+		normalized["port"] = port
+	}
+
+	extras := make(map[string]any)
+	for k, v := range entry {
+		switch k {
+		case "type", "level", "message", "source", "url", "line", "column", "ts", "timestamp", "tabId", "event", "pid", "port":
+			// handled above
+		default:
+			extras[k] = v
+		}
+	}
+	if len(extras) > 0 {
+		normalized["data"] = extras
+	}
+
+	return normalized
+}
+
+func buildExtensionLogEntries(allLogs []capture.ExtensionLog, limit int, level string) []map[string]any {
+	logs := make([]map[string]any, 0, limit)
+	for i := len(allLogs) - 1; i >= 0 && len(logs) < limit; i-- {
+		entry := allLogs[i]
+		if level != "" && entry.Level != level {
+			continue
+		}
+		logs = append(logs, map[string]any{
+			"level":     entry.Level,
+			"message":   entry.Message,
+			"source":    entry.Source,
+			"category":  entry.Category,
+			"data":      entry.Data,
+			"timestamp": entry.Timestamp,
+		})
+	}
+	return logs
 }
 
 // GetExtensionLogs returns internal extension debug logs.
