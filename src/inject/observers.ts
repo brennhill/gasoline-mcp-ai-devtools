@@ -21,7 +21,9 @@ import {
   setNetworkWaterfallEnabled,
   setNetworkBodyCaptureEnabled,
   setServerUrl,
-  wrapFetchWithBodies
+  wrapFetchWithBodies,
+  wrapXHRWithBodies,
+  unwrapXHR
 } from '../lib/network'
 import { installConsoleCapture, uninstallConsoleCapture } from '../lib/console'
 import { installExceptionCapture, uninstallExceptionCapture } from '../lib/exceptions'
@@ -173,6 +175,20 @@ export function installFetchCapture(): void {
 }
 
 /**
+ * Install XHR body capture (wraps XMLHttpRequest.prototype.open/send)
+ */
+export function installXHRCapture(): void {
+  wrapXHRWithBodies()
+}
+
+/**
+ * Uninstall XHR body capture
+ */
+export function uninstallXHRCapture(): void {
+  unwrapXHR()
+}
+
+/**
  * Uninstall fetch capture
  */
 export function uninstallFetchCapture(): void {
@@ -188,6 +204,7 @@ export function uninstallFetchCapture(): void {
 export function install(): void {
   installConsoleCapture()
   installFetchCapture()
+  installXHRCapture()
   installExceptionCapture()
   installActionCapture()
   installNavigationCapture()
@@ -201,6 +218,7 @@ export function install(): void {
 export function uninstall(): void {
   uninstallConsoleCapture()
   uninstallFetchCapture()
+  uninstallXHRCapture()
   uninstallExceptionCapture()
   uninstallActionCapture()
   uninstallNavigationCapture()

@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/dev-console/dev-console/internal/capture"
+	"github.com/dev-console/dev-console/internal/mcp"
 )
 
 // serverInstructions is sent once per session in the initialize response.
@@ -258,6 +259,9 @@ func (h *MCPHandler) HandleRequest(req JSONRPCRequest) *JSONRPCResponse {
 
 	if handler, ok := mcpMethodHandlers[req.Method]; ok {
 		resp := handler(h, req)
+		if resp.Result != nil {
+			resp.Result = mcp.ClampResponseSize(resp.Result)
+		}
 		return &resp
 	}
 

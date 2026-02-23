@@ -10,7 +10,7 @@
 import { installPerformanceCapture, uninstallPerformanceCapture } from '../lib/performance.js';
 import { installPerfObservers } from '../lib/perf-snapshot.js';
 import { installWebSocketCapture, uninstallWebSocketCapture } from '../lib/websocket.js';
-import { wrapFetchWithBodies } from '../lib/network.js';
+import { wrapFetchWithBodies, wrapXHRWithBodies, unwrapXHR } from '../lib/network.js';
 import { installConsoleCapture, uninstallConsoleCapture } from '../lib/console.js';
 import { installExceptionCapture, uninstallExceptionCapture } from '../lib/exceptions.js';
 import { installActionCapture, uninstallActionCapture, installNavigationCapture, uninstallNavigationCapture } from '../lib/actions.js';
@@ -120,6 +120,18 @@ export function installFetchCapture() {
     window.fetch = wrapFetch(wrappedWithBodies);
 }
 /**
+ * Install XHR body capture (wraps XMLHttpRequest.prototype.open/send)
+ */
+export function installXHRCapture() {
+    wrapXHRWithBodies();
+}
+/**
+ * Uninstall XHR body capture
+ */
+export function uninstallXHRCapture() {
+    unwrapXHR();
+}
+/**
  * Uninstall fetch capture
  */
 export function uninstallFetchCapture() {
@@ -134,6 +146,7 @@ export function uninstallFetchCapture() {
 export function install() {
     installConsoleCapture();
     installFetchCapture();
+    installXHRCapture();
     installExceptionCapture();
     installActionCapture();
     installNavigationCapture();
@@ -146,6 +159,7 @@ export function install() {
 export function uninstall() {
     uninstallConsoleCapture();
     uninstallFetchCapture();
+    uninstallXHRCapture();
     uninstallExceptionCapture();
     uninstallActionCapture();
     uninstallNavigationCapture();

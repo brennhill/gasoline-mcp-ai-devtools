@@ -287,6 +287,7 @@ export function resetForTesting() {
     pendingRequests.clear();
     requestIdCounter = 0;
     networkBodyCaptureEnabled = true;
+    unwrapXHR();
 }
 /**
  * Wrap a fetch function to capture request/response bodies
@@ -334,6 +335,82 @@ function postNetworkBody(win, url, method, response, contentType, requestBody, d
         }
     };
     win.postMessage(message, window.location.origin);
+}
+// =============================================================================
+// XHR BODY CAPTURE
+// =============================================================================
+let originalXHROpen = null;
+let originalXHRSend = null;
+/**
+ * Wrap XMLHttpRequest to capture request/response bodies.
+ * Mirrors the fetch body capture behavior for XHR requests.
+ */
+export function wrapXHRWithBodies() {
+    if (typeof XMLHttpRequest === 'undefined')
+        return;
+    originalXHROpen = XMLHttpRequest.prototype.open;
+    originalXHRSend = XMLHttpRequest.prototype.send;
+    XMLHttpRequest.prototype.open = function (method, url, ...rest) {
+        ;
+        this.__gasolineMethod = method;
+        this.__gasolineUrl =
+            typeof url === 'string' ? url : url.toString();
+        return originalXHROpen.apply(this, [method, url, ...rest]);
+    };
+    XMLHttpRequest.prototype.send = function (body) {
+        const url = this.__gasolineUrl || '';
+        const method = this.__gasolineMethod || 'GET';
+        if (shouldCaptureUrl(url) && networkBodyCaptureEnabled) {
+            const startTime = Date.now();
+            const requestBody = typeof body === 'string' ? body : null;
+            this.addEventListener('load', function () {
+                try {
+                    const duration = Date.now() - startTime;
+                    const contentType = this.getResponseHeader('content-type') || '';
+                    if (BINARY_CONTENT_TYPES.test(contentType))
+                        return;
+                    const responseType = this.responseType;
+                    // Only capture text-like responses
+                    if (responseType && responseType !== '' && responseType !== 'text' && responseType !== 'json')
+                        return;
+                    let responseBody = null;
+                    try {
+                        responseBody = this.responseText;
+                    }
+                    catch {
+                        return;
+                    }
+                    const rawReq = SENSITIVE_URL_PATTERNS.test(url) ? '[REDACTED: auth endpoint]' : requestBody;
+                    const { body: truncReq } = truncateRequestBody(rawReq);
+                    const { body: truncResp, truncated: respTruncated } = truncateResponseBody(responseBody);
+                    const win = typeof window !== 'undefined' ? window : null;
+                    if (win) {
+                        // Build a minimal Response-like shim for postNetworkBody
+                        const responseShim = {
+                            status: this.status,
+                            headers: { get: (h) => this.getResponseHeader(h) }
+                        };
+                        postNetworkBody(win, url, method, responseShim, contentType, requestBody, duration, truncResp || '', truncReq, respTruncated);
+                    }
+                }
+                catch {
+                    /* silent — body capture failure should not affect user code */
+                }
+            });
+        }
+        return originalXHRSend.call(this, body);
+    };
+}
+/**
+ * Restore original XMLHttpRequest.prototype.open and .send
+ */
+export function unwrapXHR() {
+    if (originalXHROpen)
+        XMLHttpRequest.prototype.open = originalXHROpen;
+    if (originalXHRSend)
+        XMLHttpRequest.prototype.send = originalXHRSend;
+    originalXHROpen = null;
+    originalXHRSend = null;
 }
 export function wrapFetchWithBodies(fetchFn) {
     return async function (input, init) {

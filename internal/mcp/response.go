@@ -160,6 +160,49 @@ func Truncate(s string, maxLen int) string {
 	return s[:maxLen-3] + "..."
 }
 
+// MaxResponseBytes is the safety-net limit for MCP tool result payloads.
+// Responses exceeding this size are truncated with a note.
+const MaxResponseBytes = 100_000
+
+// ClampResponseSize truncates the text content of the first content block
+// if the marshaled response exceeds MaxResponseBytes.
+func ClampResponseSize(result json.RawMessage) json.RawMessage {
+	if len(result) <= MaxResponseBytes {
+		return result
+	}
+
+	var toolResult MCPToolResult
+	if err := json.Unmarshal(result, &toolResult); err != nil || len(toolResult.Content) == 0 {
+		return result
+	}
+
+	originalSize := len(result)
+	text := toolResult.Content[0].Text
+
+	// Calculate overhead (everything except the text content)
+	overhead := originalSize - len(text)
+	if overhead < 0 {
+		overhead = 200
+	}
+
+	// Target text size to fit within MaxResponseBytes with room for truncation note
+	truncNote := fmt.Sprintf("\n\n[truncated: original %d bytes, limit %d bytes. Use pagination parameters (limit, offset, last_n) to page through results.]", originalSize, MaxResponseBytes)
+	targetTextLen := MaxResponseBytes - overhead - len(truncNote) - 100 // 100 bytes margin
+	if targetTextLen < 100 {
+		targetTextLen = 100
+	}
+
+	if len(text) > targetTextLen {
+		toolResult.Content[0].Text = text[:targetTextLen] + truncNote
+	}
+
+	clamped, err := json.Marshal(toolResult)
+	if err != nil {
+		return result
+	}
+	return json.RawMessage(clamped)
+}
+
 // AppendWarningsToResponse adds a warnings content block to an MCP response if there are any.
 func AppendWarningsToResponse(resp JSONRPCResponse, warnings []string) JSONRPCResponse {
 	if len(warnings) == 0 {

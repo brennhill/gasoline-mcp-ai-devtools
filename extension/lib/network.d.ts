@@ -157,6 +157,15 @@ export declare function resetForTesting(): void;
  * Type alias for fetch-like functions (avoids overload complexity)
  */
 type FetchLike = (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
+/**
+ * Wrap XMLHttpRequest to capture request/response bodies.
+ * Mirrors the fetch body capture behavior for XHR requests.
+ */
+export declare function wrapXHRWithBodies(): void;
+/**
+ * Restore original XMLHttpRequest.prototype.open and .send
+ */
+export declare function unwrapXHR(): void;
 export declare function wrapFetchWithBodies(fetchFn: FetchLike): FetchLike;
 export {};
 //# sourceMappingURL=network.d.ts.map

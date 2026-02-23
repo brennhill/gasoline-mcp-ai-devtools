@@ -112,6 +112,57 @@ func TestDescribeCapabilities_ToolsHaveModes(t *testing.T) {
 	}
 }
 
+func TestDescribeCapabilities_SummaryMode(t *testing.T) {
+	t.Parallel()
+	h := newTestToolHandler()
+	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`)}
+
+	// Full response
+	fullResp := h.handleDescribeCapabilities(req, json.RawMessage(`{}`))
+	// Summary response
+	summaryResp := h.handleDescribeCapabilities(req, json.RawMessage(`{"summary":true}`))
+
+	// Summary should be significantly smaller
+	if len(summaryResp.Result) >= len(fullResp.Result) {
+		t.Errorf("summary (%d bytes) should be smaller than full (%d bytes)",
+			len(summaryResp.Result), len(fullResp.Result))
+	}
+
+	// Parse summary and verify it has the right structure
+	var result MCPToolResult
+	if err := json.Unmarshal(summaryResp.Result, &result); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	text := result.Content[0].Text
+	idx := strings.Index(text, "{")
+	var data map[string]any
+	if err := json.Unmarshal([]byte(text[idx:]), &data); err != nil {
+		t.Fatalf("parse JSON: %v", err)
+	}
+
+	tools := data["tools"].(map[string]any)
+	for name, toolData := range tools {
+		td := toolData.(map[string]any)
+		// Summary should have description, dispatch_param, modes
+		if _, ok := td["description"]; !ok {
+			t.Errorf("summary tool %s: missing description", name)
+		}
+		if _, ok := td["dispatch_param"]; !ok {
+			t.Errorf("summary tool %s: missing dispatch_param", name)
+		}
+		// Summary should NOT have params, param_details, mode_params
+		if _, ok := td["params"]; ok {
+			t.Errorf("summary tool %s: should not have params", name)
+		}
+		if _, ok := td["param_details"]; ok {
+			t.Errorf("summary tool %s: should not have param_details", name)
+		}
+		if _, ok := td["mode_params"]; ok {
+			t.Errorf("summary tool %s: should not have mode_params", name)
+		}
+	}
+}
+
 func TestDescribeCapabilities_ConfigureIncludesModeParameterDetails(t *testing.T) {
 	t.Parallel()
 	h := newTestToolHandler()

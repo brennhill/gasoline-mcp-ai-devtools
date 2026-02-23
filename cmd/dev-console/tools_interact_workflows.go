@@ -156,12 +156,31 @@ func (h *ToolHandler) handleFillFormAndSubmit(req JSONRPCRequest, args json.RawM
 
 		stepStart := time.Now()
 		typeResp := h.handleDOMPrimitive(req, argsJSON, "type")
+
+		// Fallback: if the element is a <select>, retry with "select" action
+		actionUsed := "type"
+		if isNotTypeableError(typeResp) {
+			selectArgs := map[string]any{
+				"action": "select",
+				"value":  field.Value,
+				"tab_id": params.TabID,
+			}
+			if field.Index != nil {
+				selectArgs["index"] = *field.Index
+			} else {
+				selectArgs["selector"] = field.Selector
+			}
+			selectJSON, _ := json.Marshal(selectArgs)
+			typeResp = h.handleDOMPrimitive(req, selectJSON, "select")
+			actionUsed = "select"
+		}
+
 		selectorLabel := field.Selector
 		if field.Index != nil {
 			selectorLabel = fmt.Sprintf("index:%d", *field.Index)
 		}
 		trace = append(trace, WorkflowStep{
-			Action:   fmt.Sprintf("type[%d]", i),
+			Action:   fmt.Sprintf("%s[%d]", actionUsed, i),
 			Status:   responseStatus(typeResp),
 			TimingMs: time.Since(stepStart).Milliseconds(),
 			Detail:   selectorLabel,
@@ -247,12 +266,31 @@ func (h *ToolHandler) handleFillForm(req JSONRPCRequest, args json.RawMessage) J
 
 		stepStart := time.Now()
 		typeResp := h.handleDOMPrimitive(req, argsJSON, "type")
+
+		// Fallback: if the element is a <select>, retry with "select" action
+		actionUsed := "type"
+		if isNotTypeableError(typeResp) {
+			selectArgs := map[string]any{
+				"action": "select",
+				"value":  field.Value,
+				"tab_id": params.TabID,
+			}
+			if field.Index != nil {
+				selectArgs["index"] = *field.Index
+			} else {
+				selectArgs["selector"] = field.Selector
+			}
+			selectJSON, _ := json.Marshal(selectArgs)
+			typeResp = h.handleDOMPrimitive(req, selectJSON, "select")
+			actionUsed = "select"
+		}
+
 		selectorLabel := field.Selector
 		if field.Index != nil {
 			selectorLabel = fmt.Sprintf("index:%d", *field.Index)
 		}
 		trace = append(trace, WorkflowStep{
-			Action:   fmt.Sprintf("type[%d]", i),
+			Action:   fmt.Sprintf("%s[%d]", actionUsed, i),
 			Status:   responseStatus(typeResp),
 			TimingMs: time.Since(stepStart).Milliseconds(),
 			Detail:   selectorLabel,
@@ -340,6 +378,18 @@ func extractMCPResponseJSONPayload(resp JSONRPCResponse) json.RawMessage {
 		return nil
 	}
 	return json.RawMessage(payload)
+}
+
+// isNotTypeableError checks if a response contains a "not_typeable" error from the extension.
+// This indicates the element is a <select> (or similar), not an input/textarea.
+func isNotTypeableError(resp JSONRPCResponse) bool {
+	if resp.Error != nil {
+		return false
+	}
+	if resp.Result == nil {
+		return false
+	}
+	return strings.Contains(string(resp.Result), "not_typeable")
 }
 
 // ---- Workflow helpers — delegated to internal/tools/interact package ----

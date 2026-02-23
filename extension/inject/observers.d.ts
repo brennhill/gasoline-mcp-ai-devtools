@@ -14,6 +14,14 @@ export declare function wrapFetch(originalFetchFn: typeof fetch): typeof fetch;
  */
 export declare function installFetchCapture(): void;
 /**
+ * Install XHR body capture (wraps XMLHttpRequest.prototype.open/send)
+ */
+export declare function installXHRCapture(): void;
+/**
+ * Uninstall XHR body capture
+ */
+export declare function uninstallXHRCapture(): void;
+/**
  * Uninstall fetch capture
  */
 export declare function uninstallFetchCapture(): void;

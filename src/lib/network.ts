@@ -408,6 +408,7 @@ export function resetForTesting(): void {
   pendingRequests.clear()
   requestIdCounter = 0
   networkBodyCaptureEnabled = true
+  unwrapXHR()
 }
 
 /**
@@ -474,6 +475,97 @@ function postNetworkBody(
     }
   }
   win.postMessage(message, window.location.origin)
+}
+
+// =============================================================================
+// XHR BODY CAPTURE
+// =============================================================================
+
+let originalXHROpen: typeof XMLHttpRequest.prototype.open | null = null
+let originalXHRSend: typeof XMLHttpRequest.prototype.send | null = null
+
+/**
+ * Wrap XMLHttpRequest to capture request/response bodies.
+ * Mirrors the fetch body capture behavior for XHR requests.
+ */
+export function wrapXHRWithBodies(): void {
+  if (typeof XMLHttpRequest === 'undefined') return
+  originalXHROpen = XMLHttpRequest.prototype.open
+  originalXHRSend = XMLHttpRequest.prototype.send
+
+  XMLHttpRequest.prototype.open = function (method: string, url: string | URL, ...rest: unknown[]) {
+    ;(this as XMLHttpRequest & { __gasolineMethod: string }).__gasolineMethod = method
+    ;(this as XMLHttpRequest & { __gasolineUrl: string }).__gasolineUrl =
+      typeof url === 'string' ? url : url.toString()
+    return originalXHROpen!.apply(this, [method, url, ...rest] as Parameters<typeof XMLHttpRequest.prototype.open>)
+  }
+
+  XMLHttpRequest.prototype.send = function (body?: Document | XMLHttpRequestBodyInit | null) {
+    const url: string = (this as XMLHttpRequest & { __gasolineUrl?: string }).__gasolineUrl || ''
+    const method: string = (this as XMLHttpRequest & { __gasolineMethod?: string }).__gasolineMethod || 'GET'
+
+    if (shouldCaptureUrl(url) && networkBodyCaptureEnabled) {
+      const startTime = Date.now()
+      const requestBody = typeof body === 'string' ? body : null
+      this.addEventListener('load', function (this: XMLHttpRequest) {
+        try {
+          const duration = Date.now() - startTime
+          const contentType = this.getResponseHeader('content-type') || ''
+          if (BINARY_CONTENT_TYPES.test(contentType)) return
+
+          const responseType: string = this.responseType
+          // Only capture text-like responses
+          if (responseType && responseType !== '' && responseType !== 'text' && responseType !== 'json') return
+
+          let responseBody: string | null = null
+          try {
+            responseBody = this.responseText
+          } catch {
+            return
+          }
+
+          const rawReq = SENSITIVE_URL_PATTERNS.test(url) ? '[REDACTED: auth endpoint]' : requestBody
+          const { body: truncReq } = truncateRequestBody(rawReq)
+          const { body: truncResp, truncated: respTruncated } = truncateResponseBody(responseBody)
+
+          const win = typeof window !== 'undefined' ? window : null
+          if (win) {
+            // Build a minimal Response-like shim for postNetworkBody
+            const responseShim = {
+              status: this.status,
+              headers: { get: (h: string) => this.getResponseHeader(h) }
+            } as unknown as Response
+            postNetworkBody(
+              win,
+              url,
+              method,
+              responseShim,
+              contentType,
+              requestBody,
+              duration,
+              truncResp || '',
+              truncReq,
+              respTruncated
+            )
+          }
+        } catch {
+          /* silent — body capture failure should not affect user code */
+        }
+      })
+    }
+
+    return originalXHRSend!.call(this, body as XMLHttpRequestBodyInit | null | undefined)
+  }
+}
+
+/**
+ * Restore original XMLHttpRequest.prototype.open and .send
+ */
+export function unwrapXHR(): void {
+  if (originalXHROpen) XMLHttpRequest.prototype.open = originalXHROpen
+  if (originalXHRSend) XMLHttpRequest.prototype.send = originalXHRSend
+  originalXHROpen = null
+  originalXHRSend = null
 }
 
 export function wrapFetchWithBodies(fetchFn: FetchLike): FetchLike {
