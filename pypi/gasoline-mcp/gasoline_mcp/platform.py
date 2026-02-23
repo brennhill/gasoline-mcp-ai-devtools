@@ -379,71 +379,42 @@ def _best_effort_remove(path):
         return False
 
 
+def _remove_matching_pid_files(dirs, prefixes):
+    """Remove all .pid files matching any prefix in the given directories."""
+    for d in dirs:
+        try:
+            for entry in os.listdir(d):
+                if entry.endswith(".pid") and any(entry.startswith(p) for p in prefixes):
+                    _best_effort_remove(os.path.join(d, entry))
+        except OSError:
+            pass
+
+
 def _cleanup_pid_files():
     """Remove modern and legacy PID files for known ports."""
     homes = _candidate_home_dirs()
     roots = _pid_roots()
 
-    for root in roots:
-        try:
-            for entry in os.listdir(root):
-                if entry.startswith("gasoline-") and entry.endswith(".pid"):
-                    _best_effort_remove(os.path.join(root, entry))
-                if entry.startswith("dev-console-") and entry.endswith(".pid"):
-                    _best_effort_remove(os.path.join(root, entry))
-            try:
-                if not os.listdir(root):
-                    os.rmdir(root)
-            except OSError:
-                pass
-        except OSError:
-            pass
+    # Glob-based: scan directories for any PID files matching our prefixes
+    _remove_matching_pid_files(roots, ("gasoline-", "dev-console-"))
+    _remove_matching_pid_files(homes, (".gasoline-", ".dev-console-"))
 
-    for home in homes:
-        try:
-            for entry in os.listdir(home):
-                if entry.startswith(".gasoline-") and entry.endswith(".pid"):
-                    _best_effort_remove(os.path.join(home, entry))
-                if entry.startswith(".dev-console-") and entry.endswith(".pid"):
-                    _best_effort_remove(os.path.join(home, entry))
-        except OSError:
-            pass
-
-    for root in roots:
-        try:
-            for entry in os.listdir(root):
-                if entry.startswith("gasoline-") and entry.endswith(".pid"):
-                    try:
-                        os.remove(os.path.join(root, entry))
-                    except OSError:
-                        pass
-            try:
-                if not os.listdir(root):
-                    os.rmdir(root)
-            except OSError:
-                pass
-        except OSError:
-            pass
-
-    try:
-        for entry in os.listdir(home):
-            if entry.startswith(".gasoline-") and entry.endswith(".pid"):
-                try:
-                    os.remove(os.path.join(home, entry))
-                except OSError:
-                    pass
-    except OSError:
-        pass
-
+    # Targeted: remove by known port (catches files even if dir listing failed)
     for port in KNOWN_PORTS:
         for root in roots:
-            pid_path = os.path.join(root, f"gasoline-{port}.pid")
-            _best_effort_remove(pid_path)
+            _best_effort_remove(os.path.join(root, f"gasoline-{port}.pid"))
             _best_effort_remove(os.path.join(root, f"dev-console-{port}.pid"))
-
         for home in homes:
             _best_effort_remove(os.path.join(home, f".gasoline-{port}.pid"))
             _best_effort_remove(os.path.join(home, f".dev-console-{port}.pid"))
+
+    # Clean up empty PID directories
+    for root in roots:
+        try:
+            if not os.listdir(root):
+                os.rmdir(root)
+        except OSError:
+            pass
 
 
 def cleanup_old_processes():
