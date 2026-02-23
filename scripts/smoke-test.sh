@@ -118,10 +118,17 @@ MODULES=(
 )
 
 # ── Port conflict check ───────────────────────────────────
+# If a healthy daemon is already on the port, reuse it (preserves extension connection).
 if lsof -ti :"$PORT" >/dev/null 2>&1; then
-    echo "WARNING: Port $PORT is already in use. Killing existing process..." >&2
-    lsof -ti :"$PORT" 2>/dev/null | xargs kill -9 2>/dev/null || true
-    sleep 0.5
+    existing_ver=$(curl -s --connect-timeout 2 --max-time 3 "http://localhost:${PORT}/health" 2>/dev/null | jq -r '.version // empty' 2>/dev/null)
+    if [ -n "$existing_ver" ]; then
+        echo "  Reusing existing daemon on port $PORT (v${existing_ver})"
+        DAEMON_PID=$(lsof -ti :"$PORT" 2>/dev/null | head -1)
+    else
+        echo "  Port $PORT occupied by non-Gasoline process. Killing..." >&2
+        lsof -ti :"$PORT" 2>/dev/null | xargs kill -9 2>/dev/null || true
+        sleep 0.5
+    fi
 fi
 
 BINARY_VERSION=$("$WRAPPER" --version 2>/dev/null || echo "unknown")
@@ -164,7 +171,7 @@ if [ -n "$START_FROM" ]; then
     health_body=$(get_http_body "http://localhost:${PORT}/health" 2>/dev/null || echo "{}")
     daemon_ver=$(echo "$health_body" | jq -r '.version // "unknown"' 2>/dev/null || echo "unknown")
     echo "  Daemon version: v${daemon_ver}"
-    if echo "$health_body" | jq -e '.capture.available == true' >/dev/null 2>&1; then
+    if echo "$health_body" | jq -e '.capture.extension_connected == true' >/dev/null 2>&1; then
         EXTENSION_CONNECTED=true
         echo "  Extension: connected"
     else

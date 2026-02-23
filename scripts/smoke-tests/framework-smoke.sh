@@ -66,6 +66,20 @@ mkdir -p "$SMOKE_OUTPUT_DIR"
 DIAGNOSTICS_FILE="$SMOKE_OUTPUT_DIR/diagnostics.log"
 SMOKE_OUTPUT_FILE="$SMOKE_OUTPUT_DIR/output.log"
 
+wait_for_extension() {
+    local timeout_s="${1:-10}"
+    local attempts=$((timeout_s * 2))
+    for _wfe_i in $(seq 1 "$attempts"); do
+        local body
+        body=$(curl -s --connect-timeout 1 --max-time 2 "http://localhost:${PORT}/health" 2>/dev/null || echo "{}")
+        if echo "$body" | jq -e '.capture.extension_connected == true' >/dev/null 2>&1; then
+            return 0
+        fi
+        sleep 0.5
+    done
+    return 1
+}
+
 init_smoke() {
     local port="${1:-7890}"
     init_framework "$port" "/dev/null"

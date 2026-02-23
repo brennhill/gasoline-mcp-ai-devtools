@@ -108,7 +108,7 @@ echo ""
 # ── Pre-flight: Extension Connectivity ────────────────────
 # UAT MUST NOT pass without a browser extension connected.
 # Start a temporary daemon, check extension_connected, abort if false.
-PREFLIGHT_PORT=7889
+PREFLIGHT_PORT=7890
 lsof -ti :"$PREFLIGHT_PORT" 2>/dev/null | xargs kill -9 2>/dev/null || true
 sleep 0.3
 
