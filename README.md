@@ -91,6 +91,18 @@ cd gasoline
 go run ./cmd/dev-console
 ```
 
+### Optional: Install bundled skills (all channels)
+
+Bundled skills include `debug-triage`, `performance`, `regression-test`, `api-validation`, `ux-audit`, and `site-audit`.
+
+- npm: installed automatically during package install and by `gasoline-mcp --install`
+- PyPI: installed when you run `gasoline-mcp --install`
+- manual/local source builds: run:
+
+```bash
+./scripts/install-bundled-skills.sh
+```
+
 ### Step 3: Configure MCP in your AI tool
 
 Choose one option below based on your setup:

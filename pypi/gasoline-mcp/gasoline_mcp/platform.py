@@ -177,6 +177,29 @@ def run_install(args):
     try:
         result = install.execute_install(options)
         if result["success"]:
+            if not options["dryRun"]:
+                try:
+                    from . import skills  # pylint: disable=import-outside-toplevel
+
+                    skill_install = skills.install_bundled_skills(verbose=options["verbose"])
+                    if not skill_install["skipped"]:
+                        summary = skill_install["summary"]
+                        print(
+                            "🧠 Skills installed "
+                            f"({', '.join(skill_install['agents'])} / {skill_install['scope']}): "
+                            f"created={summary['created']} updated={summary['updated']} "
+                            f"unchanged={summary['unchanged']} "
+                            f"skipped={summary['skipped_user_owned']} "
+                            f"legacy_removed={summary['legacy_removed']} "
+                            f"errors={summary['errors']}"
+                        )
+                    elif options["verbose"]:
+                        print(f"[gasoline-mcp] skill install skipped: {skill_install['reason']}")
+
+                    for warning in skill_install.get("warnings", []):
+                        print(f"⚠️  {warning}")
+                except (OSError, RuntimeError, ValueError) as skill_err:
+                    print(f"⚠️  skill install failed: {skill_err}")
             _print_install_success(result, options["dryRun"])
         else:
             _print_install_failure(result)

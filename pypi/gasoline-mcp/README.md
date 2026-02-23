@@ -50,6 +50,14 @@ Add to your `.mcp.json`:
 gasoline-mcp
 ```
 
+### Install MCP config + bundled skills
+
+```bash
+gasoline-mcp --install
+```
+
+This installs MCP config for detected clients and managed bundled skills (`debug-triage`, `performance`, `regression-test`, `api-validation`, `ux-audit`, `site-audit`) into your agent skill directories.
+
 ## Chrome Extension
 
 Install the Chrome extension to capture browser telemetry:

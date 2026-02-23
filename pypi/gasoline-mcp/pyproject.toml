@@ -53,3 +53,6 @@ build-backend = "setuptools.build_meta"
 
 [tool.setuptools]
 packages = ["gasoline_mcp"]
+
+[tool.setuptools.package-data]
+gasoline_mcp = ["skills/skills.json", "skills/*/SKILL.md"]
