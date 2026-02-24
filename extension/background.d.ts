@@ -1,7 +1,9 @@
 /**
- * Purpose: Owns background.ts runtime behavior and integration logic.
- * Docs: docs/features/feature/interact-explore/index.md
+ * Purpose: Exposes the extension background facade and re-exports stable public runtime APIs.
+ * Why: Keeps service-worker internals modular while preserving a single import surface for startup and tests.
  * Docs: docs/features/feature/analyze-tool/index.md
+ * Docs: docs/features/feature/interact-explore/index.md
+ * Docs: docs/features/feature/observe/index.md
  */
 export { MEMORY_SOFT_LIMIT, MEMORY_HARD_LIMIT, MEMORY_CHECK_INTERVAL_MS, MEMORY_AVG_LOG_ENTRY_SIZE, MEMORY_AVG_WS_EVENT_SIZE, MEMORY_AVG_NETWORK_BODY_SIZE, MEMORY_AVG_ACTION_SIZE } from './background/state-manager';
 export { RATE_LIMIT_CONFIG } from './background/communication';

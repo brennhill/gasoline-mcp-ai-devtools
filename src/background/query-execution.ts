@@ -12,6 +12,8 @@
 import { debugLog } from './index'
 import { DebugCategory } from './debug'
 import { scaleTimeout } from '../lib/timeouts'
+import { parseExpression } from './csp-safe-parser'
+import { cspSafeExecutor } from './csp-safe-executor'
 
 // =============================================================================
 // CSP PROBE
@@ -60,6 +62,7 @@ export interface ExecutionResult {
   message?: string
   result?: unknown
   stack?: string
+  execution_mode?: string
 }
 
 /**
@@ -71,7 +74,8 @@ export interface ExecutionResult {
 export async function executeViaScriptingAPI(
   tabId: number,
   script: string,
-  timeoutMs: number
+  timeoutMs: number,
+  world: 'MAIN' | 'ISOLATED' = 'MAIN'
 ): Promise<ExecutionResult> {
   const timeoutPromise = new Promise<never>((_, reject) => {
     setTimeout(() => reject(new Error(`Script exceeded ${timeoutMs}ms timeout`)), timeoutMs + 2000)
@@ -79,7 +83,7 @@ export async function executeViaScriptingAPI(
 
   const executionPromise = chrome.scripting.executeScript({
     target: { tabId },
-    world: 'MAIN',
+    world: world,
     func: (code: string) => {
       try {
         const cleaned = code.trim()
@@ -175,6 +179,65 @@ export async function executeViaScriptingAPI(
   }
 }
 
+// =============================================================================
+// CSP-SAFE STRUCTURED EXECUTION (tier 3)
+// =============================================================================
+
+/**
+ * Execute JavaScript by parsing it into a structured command and running
+ * a pre-compiled executor function in the page's MAIN world.
+ * This bypasses CSP because no string-to-code conversion happens.
+ */
+async function executeViaStructuredCommand(
+  tabId: number,
+  script: string,
+  timeoutMs: number
+): Promise<ExecutionResult> {
+  const parseResult = parseExpression(script)
+  if (!parseResult.ok) {
+    return {
+      success: false,
+      error: 'csp_blocked_unparseable',
+      message:
+        `Page CSP blocks eval and this expression cannot be converted to a structured command: ${parseResult.reason}. ` +
+        'Use interact DOM primitives (click, type, get_text, get_attribute, list_interactive) instead, ' +
+        'or use execute_js with world="isolated" for full JS capability without page globals.'
+    }
+  }
+
+  const timeoutPromise = new Promise<never>((_, reject) => {
+    setTimeout(() => reject(new Error(`Structured execution exceeded ${timeoutMs}ms timeout`)), timeoutMs + 2000)
+  })
+
+  const executionPromise = chrome.scripting.executeScript({
+    target: { tabId },
+    world: 'MAIN',
+    func: cspSafeExecutor,
+    args: [parseResult.command]
+  })
+
+  try {
+    const results = await Promise.race([executionPromise, timeoutPromise])
+    const firstResult = results?.[0]?.result
+    if (firstResult && typeof firstResult === 'object') {
+      const execResult = firstResult as ExecutionResult
+      return { ...execResult, execution_mode: 'csp_safe_structured' }
+    }
+    return {
+      success: false,
+      error: 'no_result',
+      message: 'Structured executor produced no result',
+      execution_mode: 'csp_safe_structured'
+    }
+  } catch (err) {
+    const msg = (err as Error).message || ''
+    if (msg.includes('timeout')) {
+      return { success: false, error: 'execution_timeout', message: msg, execution_mode: 'csp_safe_structured' }
+    }
+    return { success: false, error: 'structured_execution_error', message: msg, execution_mode: 'csp_safe_structured' }
+  }
+}
+
 /**
  * Execute JS with world-aware routing.
  * - isolated: execute directly via chrome.scripting API
@@ -197,7 +260,13 @@ export async function executeWithWorldRouting(
   const timeoutMs = parsedParams.timeout_ms || scaleTimeout(5000)
 
   if (world === 'isolated') {
-    return executeViaScriptingAPI(tabId, script, timeoutMs)
+    const isolatedResult = await executeViaScriptingAPI(tabId, script, timeoutMs, 'ISOLATED')
+    if (isolatedResult.success) return isolatedResult
+    // ISOLATED world also uses new Function() — if CSP blocks it, fall back to structured executor
+    if (isolatedResult.error === 'csp_blocked_all_worlds') {
+      return executeViaStructuredCommand(tabId, script, timeoutMs)
+    }
+    return isolatedResult
   }
 
   // MAIN or AUTO: try content script (MAIN world) first
@@ -207,30 +276,47 @@ export async function executeWithWorldRouting(
       params: queryParams
     })) as ExecutionResult
 
-    // Auto-fallback: retry via scripting API on CSP or inject issues
-    if (
-      world === 'auto' &&
-      result &&
-      !result.success &&
-      (result.error === 'csp_blocked' ||
-        result.error === 'inject_not_loaded' ||
-        result.error === 'inject_not_responding')
-    ) {
-      debugLog(DebugCategory.CONNECTION, 'Auto-fallback to chrome.scripting API', {
-        error: result.error,
-        tabId
-      })
-      return executeViaScriptingAPI(tabId, script, timeoutMs)
+    // Auto-fallback: split by error type
+    if (world === 'auto' && result && !result.success) {
+      // CSP errors → try ISOLATED world (content scripts exempt from page CSP)
+      if (result.error === 'csp_blocked') {
+        debugLog(DebugCategory.CONNECTION, 'CSP fallback: trying ISOLATED world', { tabId })
+        const isolatedResult = await executeViaScriptingAPI(tabId, script, timeoutMs, 'ISOLATED')
+        if (isolatedResult.success) {
+          return { ...isolatedResult, execution_mode: 'isolated_csp_fallback' } as ExecutionResult
+        }
+        // ISOLATED also failed — try structured executor (tier 3)
+        return executeViaStructuredCommand(tabId, script, timeoutMs)
+      }
+
+      // Inject not loaded/responding → try MAIN world via scripting API
+      if (result.error === 'inject_not_loaded' || result.error === 'inject_not_responding') {
+        debugLog(DebugCategory.CONNECTION, 'Auto-fallback to chrome.scripting API (MAIN)', {
+          error: result.error,
+          tabId
+        })
+        return executeViaScriptingAPI(tabId, script, timeoutMs, 'MAIN')
+      }
     }
 
     return result
   } catch (err) {
     let message = (err as Error).message || 'Tab communication failed'
 
-    // Auto-fallback: content script not reachable
+    // Auto-fallback: content script not reachable — try ISOLATED first, then structured
     if (world === 'auto' && message.includes('Receiving end does not exist')) {
       debugLog(DebugCategory.CONNECTION, 'Auto-fallback (content script unreachable)', { tabId })
-      return executeViaScriptingAPI(tabId, script, timeoutMs)
+      const mainResult = await executeViaScriptingAPI(tabId, script, timeoutMs, 'MAIN')
+      if (mainResult.success) return mainResult
+      // If MAIN failed due to CSP, try ISOLATED
+      if (mainResult.error === 'csp_blocked_all_worlds') {
+        const isolatedResult = await executeViaScriptingAPI(tabId, script, timeoutMs, 'ISOLATED')
+        if (isolatedResult.success) {
+          return { ...isolatedResult, execution_mode: 'isolated_csp_fallback' } as ExecutionResult
+        }
+        return executeViaStructuredCommand(tabId, script, timeoutMs)
+      }
+      return mainResult
     }
 
     if (message.includes('Receiving end does not exist')) {

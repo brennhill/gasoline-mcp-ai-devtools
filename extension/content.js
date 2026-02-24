@@ -1,7 +1,9 @@
 /**
- * Purpose: Owns content.ts runtime behavior and integration logic.
+ * Purpose: Implements the content-script bridge that forwards page telemetry to the extension background worker.
+ * Why: Provides the safe boundary between page-context capture hooks and extension runtime message handling.
+ * Docs: docs/features/feature/backend-log-streaming/index.md
  * Docs: docs/features/feature/interact-explore/index.md
- * Docs: docs/features/feature/analyze-tool/index.md
+ * Docs: docs/features/feature/query-dom/index.md
  */
 /**
  * @fileoverview content.ts - Message bridge between page and extension contexts.

@@ -1,6 +1,7 @@
 /**
- * Purpose: Owns ai-web-pilot.ts runtime behavior and integration logic.
- * Docs: docs/features/feature/observe/index.md
+ * Purpose: Manages popup-side AI Web Pilot toggle state and background command dispatch.
+ * Why: Enforces a single state-authority path through background updates to avoid UI/storage divergence.
+ * Docs: docs/features/feature/ai-web-pilot/index.md
  */
 /**
  * Initialize the AI Web Pilot toggle.

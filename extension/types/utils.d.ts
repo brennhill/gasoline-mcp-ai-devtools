@@ -1,6 +1,7 @@
 /**
- * Purpose: Owns utils.ts runtime behavior and integration logic.
- * Docs: docs/features/feature/observe/index.md
+ * Purpose: Defines shared utility and helper TypeScript types used across extension modules.
+ * Why: Keeps common type patterns centralized to reduce duplication and improve type consistency.
+ * Docs: docs/features/feature/browser-extension-enhancement/index.md
  */
 /**
  * @fileoverview Utility Types for Gasoline Extension

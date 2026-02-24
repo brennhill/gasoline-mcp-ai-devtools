@@ -1,4 +1,9 @@
-// execute-js.ts — JavaScript execution sandbox for in-page script evaluation.
+/**
+ * Purpose: Executes in-page actions and query handlers within the page context.
+ * Why: Executes page-context actions safely while preserving deterministic command results.
+ * Docs: docs/features/feature/interact-explore/index.md
+ * Docs: docs/features/feature/query-dom/index.md
+ */
 import { createDeferredPromise } from '../lib/timeout-utils.js';
 /**
  * Safe serialization for complex objects returned from executeJavaScript.

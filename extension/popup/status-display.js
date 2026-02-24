@@ -1,6 +1,7 @@
 /**
- * Purpose: Owns status-display.ts runtime behavior and integration logic.
- * Docs: docs/features/feature/observe/index.md
+ * Purpose: Renders popup connection, health, and warning indicators from background status payloads.
+ * Why: Converts raw runtime status into operator-readable diagnostics during extension/server troubleshooting.
+ * Docs: docs/features/feature/browser-extension-enhancement/index.md
  */
 import { formatFileSize } from './ui-utils.js';
 const DEFAULT_MAX_ENTRIES = 1000;

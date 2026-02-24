@@ -1,3 +1,10 @@
+/**
+ * Purpose: Handles extension background coordination and message routing.
+ * Why: Centralizes extension coordination to reduce race conditions and split-brain state.
+ * Docs: docs/features/feature/analyze-tool/index.md
+ * Docs: docs/features/feature/interact-explore/index.md
+ * Docs: docs/features/feature/observe/index.md
+ */
 // analyze.ts — Command handlers for the analyze MCP tool.
 // Handles: dom, a11y, link_health, draw_mode.
 // Includes frame routing helpers used by dom and a11y.

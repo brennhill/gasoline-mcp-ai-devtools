@@ -1,5 +1,9 @@
-// form-discovery.ts — Form discovery and validation handler for inject context.
-// Scans forms on the page, extracts field metadata, and optionally validates.
+/**
+ * Purpose: Executes in-page actions and query handlers within the page context.
+ * Why: Executes page-context actions safely while preserving deterministic command results.
+ * Docs: docs/features/feature/interact-explore/index.md
+ * Docs: docs/features/feature/query-dom/index.md
+ */
 /**
  * Find the label text for a form element.
  */

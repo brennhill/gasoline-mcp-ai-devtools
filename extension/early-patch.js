@@ -1,7 +1,8 @@
 "use strict";
 /**
- * Purpose: Owns early-patch.ts runtime behavior and integration logic.
- * Docs: docs/features/feature/observe/index.md
+ * Purpose: Installs an early WebSocket shim before page scripts run and buffers pre-inject connection events.
+ * Why: Prevents loss of startup WebSocket activity that occurs before the main inject capture bundle is initialized.
+ * Docs: docs/features/feature/backend-log-streaming/index.md
  */
 // early-patch.ts — Lightweight WebSocket constructor patch.
 // Runs in MAIN world at document_start before any page scripts.

@@ -1,3 +1,8 @@
+/**
+ * Purpose: Provides shared runtime utilities used by extension and server workflows.
+ * Why: Avoids duplicated logic across runtime layers and keeps behavior consistent.
+ * Docs: docs/features/feature/backend-log-streaming/index.md
+ */
 import type { WebSocketCaptureMode } from '../types/index';
 /** WebSocket message data variants */
 export type WebSocketMessageData = string | ArrayBuffer | Blob;

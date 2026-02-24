@@ -1,6 +1,7 @@
 /**
- * Purpose: Owns index.ts runtime behavior and integration logic.
- * Docs: docs/features/feature/observe/index.md
+ * Purpose: Exposes the canonical extension type barrel that aggregates runtime, telemetry, and utility contracts.
+ * Why: Provides a stable import surface so cross-module typing remains consistent during refactors.
+ * Docs: docs/features/feature/query-service/index.md
  */
 // Re-export type guards from utils
 export { isObject, isNonEmptyString, hasType, isJsonValue, createTypeGuard } from './utils';

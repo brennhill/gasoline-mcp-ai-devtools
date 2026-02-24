@@ -1,6 +1,7 @@
 /**
- * Purpose: Owns settings.ts runtime behavior and integration logic.
- * Docs: docs/features/feature/observe/index.md
+ * Purpose: Implements popup settings controls for websocket capture mode and safe log clearing actions.
+ * Why: Keeps destructive and behavior-changing popup operations centralized with explicit UX safeguards.
+ * Docs: docs/features/feature/browser-extension-enhancement/index.md
  */
 /**
  * @fileoverview Settings Module

@@ -1,6 +1,7 @@
 /**
- * Purpose: Owns messages.ts runtime behavior and integration logic.
- * Docs: docs/features/feature/observe/index.md
+ * Purpose: Provides backward-compatible message/type export surface for extension communication contracts.
+ * Why: Preserves existing imports while message definitions are split into focused type modules.
+ * Docs: docs/features/feature/query-service/index.md
  */
 /**
  * @fileoverview Message Types for Gasoline Extension

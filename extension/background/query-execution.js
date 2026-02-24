@@ -1,5 +1,6 @@
 /**
  * Purpose: Handles extension background coordination and message routing.
+ * Why: Centralizes extension coordination to reduce race conditions and split-brain state.
  * Docs: docs/features/feature/analyze-tool/index.md
  * Docs: docs/features/feature/interact-explore/index.md
  * Docs: docs/features/feature/observe/index.md
@@ -9,6 +10,8 @@
 import { debugLog } from './index.js';
 import { DebugCategory } from './debug.js';
 import { scaleTimeout } from '../lib/timeouts.js';
+import { parseExpression } from './csp-safe-parser.js';
+import { cspSafeExecutor } from './csp-safe-executor.js';
 /**
  * Probe whether a tab's CSP blocks dynamic script execution (new Function).
  * Returns one of three levels:
@@ -48,13 +51,13 @@ export async function probeCSPStatus(tabId) {
  * or when inject script is not loaded.
  * The func is injected natively by Chrome's extension system.
  */
-export async function executeViaScriptingAPI(tabId, script, timeoutMs) {
+export async function executeViaScriptingAPI(tabId, script, timeoutMs, world = 'MAIN') {
     const timeoutPromise = new Promise((_, reject) => {
         setTimeout(() => reject(new Error(`Script exceeded ${timeoutMs}ms timeout`)), timeoutMs + 2000);
     });
     const executionPromise = chrome.scripting.executeScript({
         target: { tabId },
-        world: 'MAIN',
+        world: world,
         func: (code) => {
             try {
                 const cleaned = code.trim();
@@ -157,6 +160,56 @@ export async function executeViaScriptingAPI(tabId, script, timeoutMs) {
         return { success: false, error: 'scripting_api_error', message: msg };
     }
 }
+// =============================================================================
+// CSP-SAFE STRUCTURED EXECUTION (tier 3)
+// =============================================================================
+/**
+ * Execute JavaScript by parsing it into a structured command and running
+ * a pre-compiled executor function in the page's MAIN world.
+ * This bypasses CSP because no string-to-code conversion happens.
+ */
+async function executeViaStructuredCommand(tabId, script, timeoutMs) {
+    const parseResult = parseExpression(script);
+    if (!parseResult.ok) {
+        return {
+            success: false,
+            error: 'csp_blocked_unparseable',
+            message: `Page CSP blocks eval and this expression cannot be converted to a structured command: ${parseResult.reason}. ` +
+                'Use interact DOM primitives (click, type, get_text, get_attribute, list_interactive) instead, ' +
+                'or use execute_js with world="isolated" for full JS capability without page globals.'
+        };
+    }
+    const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error(`Structured execution exceeded ${timeoutMs}ms timeout`)), timeoutMs + 2000);
+    });
+    const executionPromise = chrome.scripting.executeScript({
+        target: { tabId },
+        world: 'MAIN',
+        func: cspSafeExecutor,
+        args: [parseResult.command]
+    });
+    try {
+        const results = await Promise.race([executionPromise, timeoutPromise]);
+        const firstResult = results?.[0]?.result;
+        if (firstResult && typeof firstResult === 'object') {
+            const execResult = firstResult;
+            return { ...execResult, execution_mode: 'csp_safe_structured' };
+        }
+        return {
+            success: false,
+            error: 'no_result',
+            message: 'Structured executor produced no result',
+            execution_mode: 'csp_safe_structured'
+        };
+    }
+    catch (err) {
+        const msg = err.message || '';
+        if (msg.includes('timeout')) {
+            return { success: false, error: 'execution_timeout', message: msg, execution_mode: 'csp_safe_structured' };
+        }
+        return { success: false, error: 'structured_execution_error', message: msg, execution_mode: 'csp_safe_structured' };
+    }
+}
 /**
  * Execute JS with world-aware routing.
  * - isolated: execute directly via chrome.scripting API
@@ -175,7 +228,14 @@ export async function executeWithWorldRouting(tabId, queryParams, world) {
     const script = parsedParams.script || '';
     const timeoutMs = parsedParams.timeout_ms || scaleTimeout(5000);
     if (world === 'isolated') {
-        return executeViaScriptingAPI(tabId, script, timeoutMs);
+        const isolatedResult = await executeViaScriptingAPI(tabId, script, timeoutMs, 'ISOLATED');
+        if (isolatedResult.success)
+            return isolatedResult;
+        // ISOLATED world also uses new Function() — if CSP blocks it, fall back to structured executor
+        if (isolatedResult.error === 'csp_blocked_all_worlds') {
+            return executeViaStructuredCommand(tabId, script, timeoutMs);
+        }
+        return isolatedResult;
     }
     // MAIN or AUTO: try content script (MAIN world) first
     try {
@@ -183,27 +243,46 @@ export async function executeWithWorldRouting(tabId, queryParams, world) {
             type: 'GASOLINE_EXECUTE_QUERY',
             params: queryParams
         }));
-        // Auto-fallback: retry via scripting API on CSP or inject issues
-        if (world === 'auto' &&
-            result &&
-            !result.success &&
-            (result.error === 'csp_blocked' ||
-                result.error === 'inject_not_loaded' ||
-                result.error === 'inject_not_responding')) {
-            debugLog(DebugCategory.CONNECTION, 'Auto-fallback to chrome.scripting API', {
-                error: result.error,
-                tabId
-            });
-            return executeViaScriptingAPI(tabId, script, timeoutMs);
+        // Auto-fallback: split by error type
+        if (world === 'auto' && result && !result.success) {
+            // CSP errors → try ISOLATED world (content scripts exempt from page CSP)
+            if (result.error === 'csp_blocked') {
+                debugLog(DebugCategory.CONNECTION, 'CSP fallback: trying ISOLATED world', { tabId });
+                const isolatedResult = await executeViaScriptingAPI(tabId, script, timeoutMs, 'ISOLATED');
+                if (isolatedResult.success) {
+                    return { ...isolatedResult, execution_mode: 'isolated_csp_fallback' };
+                }
+                // ISOLATED also failed — try structured executor (tier 3)
+                return executeViaStructuredCommand(tabId, script, timeoutMs);
+            }
+            // Inject not loaded/responding → try MAIN world via scripting API
+            if (result.error === 'inject_not_loaded' || result.error === 'inject_not_responding') {
+                debugLog(DebugCategory.CONNECTION, 'Auto-fallback to chrome.scripting API (MAIN)', {
+                    error: result.error,
+                    tabId
+                });
+                return executeViaScriptingAPI(tabId, script, timeoutMs, 'MAIN');
+            }
         }
         return result;
     }
     catch (err) {
         let message = err.message || 'Tab communication failed';
-        // Auto-fallback: content script not reachable
+        // Auto-fallback: content script not reachable — try ISOLATED first, then structured
         if (world === 'auto' && message.includes('Receiving end does not exist')) {
             debugLog(DebugCategory.CONNECTION, 'Auto-fallback (content script unreachable)', { tabId });
-            return executeViaScriptingAPI(tabId, script, timeoutMs);
+            const mainResult = await executeViaScriptingAPI(tabId, script, timeoutMs, 'MAIN');
+            if (mainResult.success)
+                return mainResult;
+            // If MAIN failed due to CSP, try ISOLATED
+            if (mainResult.error === 'csp_blocked_all_worlds') {
+                const isolatedResult = await executeViaScriptingAPI(tabId, script, timeoutMs, 'ISOLATED');
+                if (isolatedResult.success) {
+                    return { ...isolatedResult, execution_mode: 'isolated_csp_fallback' };
+                }
+                return executeViaStructuredCommand(tabId, script, timeoutMs);
+            }
+            return mainResult;
         }
         if (message.includes('Receiving end does not exist')) {
             message =

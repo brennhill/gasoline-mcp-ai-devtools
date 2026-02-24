@@ -1,4 +1,8 @@
-// websocket.ts — WebSocket constructor instrumentation and capture installation.
+/**
+ * Purpose: Provides shared runtime utilities used by extension and server workflows.
+ * Why: Avoids duplicated logic across runtime layers and keeps behavior consistent.
+ * Docs: docs/features/feature/backend-log-streaming/index.md
+ */
 import { getSize, formatPayload, truncateWsMessage, createConnectionTracker, setWebSocketCaptureModeInternal, getWebSocketCaptureModeInternal, resetCaptureModeForTesting } from './websocket-tracking.js';
 // Re-export everything from tracking so existing import paths work unchanged
 export { getSize, formatPayload, truncateWsMessage, createConnectionTracker } from './websocket-tracking.js';

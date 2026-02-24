@@ -1,9 +1,3 @@
-/**
- * Purpose: Declares generated canonical TypeScript wire contracts for websocket event payloads.
- * Why: Guarantees extension/server parity for websocket telemetry serialization across releases.
- * Docs: docs/features/feature/normalized-event-schema/index.md
- */
-
 // THIS FILE IS GENERATED — do not edit by hand.
 // Source: internal/types/wire_websocket_event.go
 // Generator: scripts/generate-wire-types.js

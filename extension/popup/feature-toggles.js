@@ -1,6 +1,7 @@
 /**
- * Purpose: Owns feature-toggles.ts runtime behavior and integration logic.
- * Docs: docs/features/feature/observe/index.md
+ * Purpose: Manages popup feature-toggle definitions and background-dispatched toggle updates.
+ * Why: Prevents state drift by routing all toggle mutations through one consistent popup workflow.
+ * Docs: docs/features/feature/browser-extension-enhancement/index.md
  */
 import { SettingName, StorageKey } from '../lib/constants.js';
 /**

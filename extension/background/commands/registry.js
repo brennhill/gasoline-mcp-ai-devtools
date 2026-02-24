@@ -1,5 +1,10 @@
-// registry.ts — Command registry and dispatch loop.
-// Replaces the monolithic if-chain in pending-queries.ts with a Map-based registry.
+/**
+ * Purpose: Handles extension background coordination and message routing.
+ * Why: Centralizes extension coordination to reduce race conditions and split-brain state.
+ * Docs: docs/features/feature/analyze-tool/index.md
+ * Docs: docs/features/feature/interact-explore/index.md
+ * Docs: docs/features/feature/observe/index.md
+ */
 import { initReady } from '../state.js';
 import { DebugCategory } from '../debug.js';
 import { sendResult, sendAsyncResult, requiresTargetTab, resolveTargetTab, parseQueryParamsObject, withTargetContext, actionToast, isRestrictedUrl, isBrowserEscapeAction } from './helpers.js';

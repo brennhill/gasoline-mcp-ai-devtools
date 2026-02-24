@@ -1,4 +1,11 @@
 /**
+ * Purpose: Handles extension background coordination and message routing.
+ * Why: Centralizes extension coordination to reduce race conditions and split-brain state.
+ * Docs: docs/features/feature/analyze-tool/index.md
+ * Docs: docs/features/feature/interact-explore/index.md
+ * Docs: docs/features/feature/observe/index.md
+ */
+/**
  * Self-contained function that scans a page for interactive elements.
  * Passed to chrome.scripting.executeScript({ func: domPrimitiveListInteractive }).
  * MUST NOT reference any module-level variables.

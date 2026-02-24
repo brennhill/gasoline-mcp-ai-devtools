@@ -1,4 +1,9 @@
 /**
+ * Purpose: Provides shared runtime utilities used by extension and server workflows.
+ * Why: Avoids duplicated logic across runtime layers and keeps behavior consistent.
+ * Docs: docs/features/feature/observe/index.md
+ */
+/**
  * @fileoverview Runtime introspection for AI error context.
  * Detects UI frameworks (React/Vue/Svelte), walks React fiber trees,
  * captures Redux state snapshots, generates AI summaries, and orchestrates

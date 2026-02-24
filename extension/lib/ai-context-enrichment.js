@@ -1,4 +1,8 @@
-// ai-context-enrichment.ts — Framework detection, state capture, and AI error enrichment pipeline.
+/**
+ * Purpose: Provides shared runtime utilities used by extension and server workflows.
+ * Why: Avoids duplicated logic across runtime layers and keeps behavior consistent.
+ * Docs: docs/features/feature/observe/index.md
+ */
 import { AI_CONTEXT_MAX_ANCESTRY_DEPTH, AI_CONTEXT_MAX_PROP_KEYS, AI_CONTEXT_MAX_STATE_KEYS, AI_CONTEXT_MAX_RELEVANT_SLICE, AI_CONTEXT_MAX_VALUE_LENGTH, AI_CONTEXT_PIPELINE_TIMEOUT_MS } from './constants.js';
 import { parseStackFrames, extractSourceSnippets, getSourceMapCache } from './ai-context-parsing.js';
 // =============================================================================

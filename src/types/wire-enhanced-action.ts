@@ -1,9 +1,3 @@
-/**
- * Purpose: Declares generated canonical TypeScript wire contracts for enhanced user action payloads.
- * Why: Guarantees extension/server parity for action payload serialization across releases.
- * Docs: docs/features/feature/normalized-event-schema/index.md
- */
-
 // THIS FILE IS GENERATED — do not edit by hand.
 // Source: internal/types/wire_enhanced_action.go
 // Generator: scripts/generate-wire-types.js

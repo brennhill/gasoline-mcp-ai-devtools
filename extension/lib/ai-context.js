@@ -1,3 +1,8 @@
+/**
+ * Purpose: Provides shared runtime utilities used by extension and server workflows.
+ * Why: Avoids duplicated logic across runtime layers and keeps behavior consistent.
+ * Docs: docs/features/feature/observe/index.md
+ */
 // ai-context.ts — AI error context barrel. Re-exports parsing and enrichment sub-modules.
 /**
  * @fileoverview AI-preprocessed error enrichment pipeline.

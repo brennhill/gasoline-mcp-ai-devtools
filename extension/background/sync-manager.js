@@ -1,6 +1,10 @@
-// sync-manager.ts — Sync client lifecycle management.
-// Owns the sync client instance and provides start/stop/reset operations.
-// Dependencies are injected to avoid circular imports with index.ts.
+/**
+ * Purpose: Handles extension background coordination and message routing.
+ * Why: Centralizes extension coordination to reduce race conditions and split-brain state.
+ * Docs: docs/features/feature/analyze-tool/index.md
+ * Docs: docs/features/feature/interact-explore/index.md
+ * Docs: docs/features/feature/observe/index.md
+ */
 import { createSyncClient } from './sync-client.js';
 import { getLastCSPStatus } from './browser-actions.js';
 import { DebugCategory } from './debug.js';

@@ -1,5 +1,6 @@
 /**
  * Purpose: Handles extension background coordination and message routing.
+ * Why: Centralizes extension coordination to reduce race conditions and split-brain state.
  * Docs: docs/features/feature/analyze-tool/index.md
  * Docs: docs/features/feature/interact-explore/index.md
  * Docs: docs/features/feature/observe/index.md
@@ -24,6 +25,7 @@ export interface ExecutionResult {
     message?: string;
     result?: unknown;
     stack?: string;
+    execution_mode?: string;
 }
 /**
  * Execute JavaScript via chrome.scripting.executeScript.
@@ -31,7 +33,7 @@ export interface ExecutionResult {
  * or when inject script is not loaded.
  * The func is injected natively by Chrome's extension system.
  */
-export declare function executeViaScriptingAPI(tabId: number, script: string, timeoutMs: number): Promise<ExecutionResult>;
+export declare function executeViaScriptingAPI(tabId: number, script: string, timeoutMs: number, world?: 'MAIN' | 'ISOLATED'): Promise<ExecutionResult>;
 /**
  * Execute JS with world-aware routing.
  * - isolated: execute directly via chrome.scripting API

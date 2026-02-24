@@ -1,6 +1,10 @@
-// interact.ts — Command handlers for the interact MCP tool.
-// Handles: subtitle, highlight, browser_action, dom_action, upload,
-//          execute, record_start, record_stop, state_*.
+/**
+ * Purpose: Handles extension background coordination and message routing.
+ * Why: Centralizes extension coordination to reduce race conditions and split-brain state.
+ * Docs: docs/features/feature/analyze-tool/index.md
+ * Docs: docs/features/feature/interact-explore/index.md
+ * Docs: docs/features/feature/observe/index.md
+ */
 import { isAiWebPilotEnabled } from '../state.js';
 import { executeDOMAction } from '../dom-dispatch.js';
 import { executeUpload } from '../upload-handler.js';

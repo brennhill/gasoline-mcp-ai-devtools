@@ -1,4 +1,8 @@
-// ai-context-parsing.ts — Stack trace parsing, source map resolution, and code snippet extraction.
+/**
+ * Purpose: Provides shared runtime utilities used by extension and server workflows.
+ * Why: Avoids duplicated logic across runtime layers and keeps behavior consistent.
+ * Docs: docs/features/feature/observe/index.md
+ */
 import { AI_CONTEXT_SNIPPET_LINES, AI_CONTEXT_MAX_LINE_LENGTH, AI_CONTEXT_MAX_SNIPPETS_SIZE, AI_CONTEXT_SOURCE_MAP_CACHE_SIZE } from './constants.js';
 // =============================================================================
 // MODULE STATE
