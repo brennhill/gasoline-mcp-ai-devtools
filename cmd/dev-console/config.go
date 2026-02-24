@@ -52,6 +52,7 @@ type parsedFlags struct {
 	bridgeMode, daemonMode, enableOsUploadAutomation                     *bool
 	parallelMode                                                         *bool
 	forceCleanup                                                         *bool
+	installMode                                                          *bool
 	uploadDenyPatterns                                                   multiFlag
 	ssrfAllowedHosts                                                     multiFlag
 }
@@ -79,6 +80,7 @@ func registerFlags() *parsedFlags {
 	f.enableOsUploadAutomation = flag.Bool("enable-os-upload-automation", false, "Enable OS-level file upload automation (Stage 4: AppleScript/xdotool)")
 	f.uploadDir = flag.String("upload-dir", "", "Directory from which file uploads are allowed (required for Stages 2-4)")
 	f.forceCleanup = flag.Bool("force", false, "Force kill all running gasoline daemons (used during install to ensure clean upgrade)")
+	f.installMode = flag.Bool("install", false, "Auto-install Gasoline to all detected MCP clients")
 	flag.Bool("mcp", false, "Run in MCP mode (default, kept for backwards compatibility)")
 	flag.Bool("persist", true, "Deprecated no-op (server persistence is default, kept for backwards compatibility)")
 	flag.Var(&f.uploadDenyPatterns, "upload-deny-pattern", "Additional sensitive path patterns to block (repeatable)")
@@ -119,6 +121,10 @@ func handleEarlyExitModes(f *parsedFlags) {
 	}
 	if *f.stopMode {
 		runStopMode(*f.port)
+		os.Exit(0)
+	}
+	if *f.installMode {
+		runNativeInstall()
 		os.Exit(0)
 	}
 	if *f.connectMode {

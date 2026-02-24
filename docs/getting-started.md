@@ -10,107 +10,50 @@ header:
 toc: true
 toc_sticky: true
 status: reference
-last_reviewed: 2026-02-16
+last_reviewed: 2026-02-24
 ---
 
-## <i class="fas fa-fire"></i> 1. Ignite the Server
+## <i class="fas fa-fire"></i> 1. Ignite the Server & Configure Clients
 
 <img src="/assets/images/sparky/features/sparky-fight-fire-web.webp" alt="Sparky firing up the server" style="float: right; width: 140px; margin: 0 0 20px 20px; border-radius: 6px;" />
 
-**Option A: NPM (recommended)**
+**The Quickest Way (One-liner)**
 
+**macOS / Linux:**
 ```bash
-npx gasoline-mcp
+curl -sSL https://raw.githubusercontent.com/brennhill/gasoline-mcp-ai-devtools/STABLE/scripts/install.sh | bash
 ```
 
-**Option B: PyPI (Python)**
-
-```bash
-pip install gasoline-mcp
-gasoline-mcp
+**Windows (PowerShell):**
+```powershell
+irm https://raw.githubusercontent.com/brennhill/gasoline-mcp-ai-devtools/STABLE/scripts/install.ps1 | iex
 ```
 
-**Option C: From source**
+This script automatically:
+1.  **Downloads** the latest stable `gasoline` binary for your OS and architecture.
+2.  **Installs** the browser extension files to `~/.gasoline/extension`.
+3.  **Auto-configures** all detected MCP clients (Claude Code, Cursor, Windsurf, Zed, etc.).
 
-```bash
-git clone https://github.com/brennhill/gasoline-mcp-ai-devtools.git
-cd gasoline
-go run ./cmd/dev-console
-```
-
-You'll see: `[gasoline] v0.7.8 — HTTP on port 7890`
-
-npm and PyPI are distribution channels — they deliver the native Go binary for your platform. The MCP server runs natively with no Node.js or Python runtime dependency.
-
-Leave this burning. No global install needed.
-
-**Extension install** (until Chrome Web Store approval):
-
-1. Open `chrome://extensions`
-2. Enable **Developer mode**
-3. Click **Load unpacked** and select the `extension/` folder in this repo
+---
 
 ## <i class="fas fa-puzzle-piece"></i> 2. Install the Extension
 
 <img src="/assets/images/sparky/features/sparky-wave-web.webp" alt="Sparky waving from the toolbar" style="float: left; width: 140px; margin: 0 20px 20px 0; border-radius: 6px;" />
 
-Grab it from the [Chrome Web Store](https://chromewebstore.google.com) (search "Gasoline"). Click the icon in your toolbar — it should show **Connected**.
+Since you've already downloaded the extension files with the script above, you just need to load them into Chrome:
 
-<details>
-<summary><i class="fas fa-wrench"></i> Load Unpacked (Development)</summary>
+1.  Open `chrome://extensions`
+2.  Enable **Developer mode** (top right)
+3.  Click **Load unpacked**
+4.  Select the folder: `~/.gasoline/extension`
 
-1. Clone the [repository](https://github.com/brennhill/gasoline-mcp-ai-devtools)
-2. Open `chrome://extensions` → enable **Developer mode**
-3. Click **Load unpacked** → select the `extension/` folder
+Click the Gasoline icon in your toolbar — it should show **Connected**.
 
-</details>
+## <i class="fas fa-plug"></i> 3. Verify Your AI Tool
 
-<img src="/assets/images/sparky/features/sparky-presents-browser-web.webp" alt="Sparky presenting the connected browser" style="float: right; width: 140px; margin: 0 0 20px 20px; border-radius: 6px;" />
+The install script has already added Gasoline to your MCP configuration. Just **restart your AI tool** (Claude Code, Cursor, etc.) and the server will ignite automatically.
 
-## <i class="fas fa-plug"></i> 3. Connect Your AI Tool
-
-Drop this config and your AI tool fires up Gasoline automatically:
-
-**Claude Code** — `.mcp.json` in your project root:
-
-*Option A: NPM (recommended)*
-```json
-{
-  "mcpServers": {
-    "gasoline": {
-      "command": "npx",
-      "args": ["-y", "gasoline-mcp"]
-    }
-  }
-}
-```
-
-*Option B: PyPI (Python)*
-```json
-{
-  "mcpServers": {
-    "gasoline": {
-      "command": "gasoline-mcp"
-    }
-  }
-}
-```
-
-*Option C: From source (development)*
-```json
-{
-  "mcpServers": {
-    "gasoline": {
-      "command": "go",
-      "args": ["run", "./cmd/dev-console"]
-    }
-  }
-}
-```
-
-<i class="fas fa-fire-alt"></i> See [MCP Integration](/mcp-integration/) for Cursor, Windsurf, Claude Desktop, Zed, and more.
-
-**Restart your AI tool.** From now on, the server ignites automatically.
+<i class="fas fa-fire-alt"></i> See [MCP Integration](/mcp-integration/) for manual setup if needed.
 
 ## <i class="fas fa-check-circle"></i> Verify the Flame
 
@@ -137,40 +80,6 @@ Your AI now has 5 tools covering the full debugging lifecycle:
 Each tool has sub-modes. For example, `observe` with `what: "errors"` returns console errors, while `what: "websocket_status"` returns active WebSocket connections.
 
 See [MCP Integration](/mcp-integration/) for full tool documentation.
-
-## <i class="fas fa-crosshairs"></i> Region-Scoped Automation (Screenshot → Rect → Action)
-
-When a page has many similar controls, constrain automation to a visual region:
-
-```json
-// 1) Capture screenshot and choose a target rectangle (x, y, width, height)
-{"tool":"observe","what":"screenshot"}
-
-// 2) List controls only inside that region
-{
-  "tool":"interact",
-  "what":"list_interactive",
-  "scope_rect":{"x":300,"y":220,"width":520,"height":420}
-}
-
-// 3) Act only within that same region
-{
-  "tool":"interact",
-  "what":"click",
-  "selector":"button",
-  "scope_rect":{"x":300,"y":220,"width":520,"height":420}
-}
-```
-
-If multiple matching controls are inside the region, Gasoline returns `ambiguous_target` instead of guessing.
-
-## <i class="fas fa-file-alt"></i> No MCP? No Problem.
-
-Run standalone — Gasoline writes to `~/gasoline-logs.jsonl`. Point your AI at the file.
-
-```bash
-npx gasoline-mcp
-```
 
 ## Next Steps
 
