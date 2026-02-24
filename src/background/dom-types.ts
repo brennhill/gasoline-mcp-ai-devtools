@@ -69,6 +69,13 @@ export interface DOMResult {
   dom_mutations?: DOMMutationEntry[]
   analysis?: string
   insertion_strategy?: string
+  ranked_candidates?: Array<{
+    element_id: string
+    tag: string
+    text_preview?: string
+    score: number
+  }>
+  suggested_element_id?: string
 }
 
 export interface DOMPrimitiveOptions {

@@ -32,7 +32,7 @@ const OUTPUT_PATH = path.join(ROOT, 'src', 'background', 'dom-primitives.ts')
 const CHECK_ONLY = process.argv.includes('--check')
 
 const GENERATED_BANNER = `// AUTO-GENERATED FILE. DO NOT EDIT DIRECTLY.
-// Source: scripts/templates/dom-primitives.ts.tpl + partials/_dom-selectors.tpl, _dom-intent.tpl
+// Source: scripts/templates/dom-primitives.ts.tpl + partials/_dom-selectors.tpl, _dom-intent.tpl, _dom-ranking.tpl
 // Generator: scripts/generate-dom-primitives.js
 
 `

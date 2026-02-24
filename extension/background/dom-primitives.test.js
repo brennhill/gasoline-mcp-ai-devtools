@@ -754,7 +754,7 @@ describe('ambiguity-safe mutating actions', () => {
     assert.strictEqual(result.success, false)
     assert.strictEqual(result.error, 'ambiguous_target')
     assert.strictEqual(result.match_count, 2)
-    assert.strictEqual(result.match_strategy, 'ambiguous_selector')
+    assert.strictEqual(result.match_strategy, 'ambiguous_ranked')
     assert.ok(Array.isArray(result.candidates), 'candidates should be provided for disambiguation')
     assert.ok(result.candidates.length >= 2, 'expected at least two candidates')
     assert.ok(
@@ -1043,6 +1043,324 @@ describe('ambiguity-safe mutating actions', () => {
     assert.strictEqual(insideClicks, 1, 'in-rect element should be clicked exactly once')
     assert.strictEqual(outsideClicks, 0, 'out-of-rect duplicate should not be clicked')
     assert.strictEqual(result.match_count, 1)
+  })
+
+  test('ranked resolution: button wins over link for click', async () => {
+    const btn = new MockHTMLElement('BUTTON', { textContent: 'Post' })
+    Object.setPrototypeOf(btn, MockHTMLElement.prototype)
+    btn.getBoundingClientRect = () => ({ width: 100, height: 30 })
+    btn.getRootNode = () => globalThis.document
+    btn.getAttribute = () => null
+    btn.click = () => {}
+
+    const link = new MockHTMLElement('A', { textContent: 'Post' })
+    Object.setPrototypeOf(link, MockHTMLElement.prototype)
+    link.getBoundingClientRect = () => ({ width: 80, height: 20 })
+    link.getRootNode = () => globalThis.document
+    link.getAttribute = () => null
+    link.click = () => {}
+
+    const textNodes = [
+      { textContent: 'Post', parentElement: btn },
+      { textContent: 'Post', parentElement: link }
+    ]
+    btn.closest = (sel) => sel.includes('button') ? btn : null
+    link.closest = (sel) => sel.includes('a') ? link : null
+
+    globalThis.document = {
+      querySelector: () => null,
+      querySelectorAll: (sel) => {
+        if (sel === '[role="dialog"]' || sel === '[aria-modal="true"]' || sel === 'dialog[open]') return []
+        return []
+      },
+      getElementById: () => null,
+      body: { querySelectorAll: () => [], appendChild: () => {}, children: { length: 0 } },
+      documentElement: { children: { length: 0 } },
+      createTreeWalker: () => {
+        let idx = -1
+        return {
+          currentNode: null,
+          nextNode() {
+            idx += 1
+            if (idx >= textNodes.length) return null
+            this.currentNode = textNodes[idx]
+            return this.currentNode
+          }
+        }
+      },
+      getSelection: () => null,
+      execCommand: () => {}
+    }
+
+    const raw = domPrimitive('click', 'text=Post', {})
+    const result = raw instanceof Promise ? await raw : raw
+
+    assert.strictEqual(result.success, true)
+    assert.strictEqual(result.match_strategy, 'ranked_resolution')
+    assert.strictEqual(result.matched.tag, 'button')
+  })
+
+  test('ranked resolution: modal scoping wins', async () => {
+    const outerBtn = new MockHTMLElement('BUTTON', { textContent: 'OK' })
+    Object.setPrototypeOf(outerBtn, MockHTMLElement.prototype)
+    outerBtn.getBoundingClientRect = () => ({ width: 80, height: 30 })
+    outerBtn.getRootNode = () => globalThis.document
+    outerBtn.getAttribute = () => null
+    outerBtn.click = () => {}
+    outerBtn.closest = (sel) => sel.includes('button') ? outerBtn : null
+
+    const dialog = new MockHTMLElement('DIV', { id: 'modal' })
+    Object.setPrototypeOf(dialog, MockHTMLElement.prototype)
+    dialog.getBoundingClientRect = () => ({ width: 400, height: 300 })
+    dialog.getRootNode = () => globalThis.document
+    dialog.getAttribute = (name) => name === 'role' ? 'dialog' : null
+    dialog.contains = (el) => el === modalBtn
+    dialog.children = { length: 0 }
+
+    const modalBtn = new MockHTMLElement('BUTTON', { textContent: 'OK' })
+    Object.setPrototypeOf(modalBtn, MockHTMLElement.prototype)
+    modalBtn.getBoundingClientRect = () => ({ width: 80, height: 30 })
+    modalBtn.getRootNode = () => globalThis.document
+    modalBtn.getAttribute = () => null
+    modalBtn.click = () => {}
+    modalBtn.closest = (sel) => sel.includes('button') ? modalBtn : null
+
+    const textNodes = [
+      { textContent: 'OK', parentElement: outerBtn },
+      { textContent: 'OK', parentElement: modalBtn }
+    ]
+
+    globalThis.document = {
+      querySelector: () => null,
+      querySelectorAll: (sel) => {
+        if (sel === '[role="dialog"]') return [dialog]
+        if (sel === '[aria-modal="true"]' || sel === 'dialog[open]') return []
+        return []
+      },
+      getElementById: () => null,
+      body: { querySelectorAll: () => [], appendChild: () => {}, children: { length: 0 } },
+      documentElement: { children: { length: 0 } },
+      createTreeWalker: () => {
+        let idx = -1
+        return {
+          currentNode: null,
+          nextNode() {
+            idx += 1
+            if (idx >= textNodes.length) return null
+            this.currentNode = textNodes[idx]
+            return this.currentNode
+          }
+        }
+      },
+      getSelection: () => null,
+      execCommand: () => {}
+    }
+
+    const raw = domPrimitive('click', 'text=OK', {})
+    const result = raw instanceof Promise ? await raw : raw
+
+    assert.strictEqual(result.success, true)
+    assert.strictEqual(result.match_strategy, 'ranked_resolution')
+    assert.strictEqual(result.matched.tag, 'button')
+    // Modal button should have won due to +200 modal scoping bonus
+  })
+
+  test('ranked resolution: exact text match preferred', async () => {
+    const exactBtn = new MockHTMLElement('BUTTON', { textContent: 'Post' })
+    Object.setPrototypeOf(exactBtn, MockHTMLElement.prototype)
+    exactBtn.getBoundingClientRect = () => ({ width: 80, height: 30 })
+    exactBtn.getRootNode = () => globalThis.document
+    exactBtn.getAttribute = () => null
+    exactBtn.click = () => {}
+    exactBtn.closest = (sel) => sel.includes('button') ? exactBtn : null
+
+    const longerBtn = new MockHTMLElement('BUTTON', { textContent: 'Post Comment' })
+    Object.setPrototypeOf(longerBtn, MockHTMLElement.prototype)
+    longerBtn.getBoundingClientRect = () => ({ width: 120, height: 30 })
+    longerBtn.getRootNode = () => globalThis.document
+    longerBtn.getAttribute = () => null
+    longerBtn.click = () => {}
+    longerBtn.closest = (sel) => sel.includes('button') ? longerBtn : null
+
+    const textNodes = [
+      { textContent: 'Post', parentElement: exactBtn },
+      { textContent: 'Post Comment', parentElement: longerBtn }
+    ]
+
+    globalThis.document = {
+      querySelector: () => null,
+      querySelectorAll: (sel) => {
+        if (sel === '[role="dialog"]' || sel === '[aria-modal="true"]' || sel === 'dialog[open]') return []
+        return []
+      },
+      getElementById: () => null,
+      body: { querySelectorAll: () => [], appendChild: () => {}, children: { length: 0 } },
+      documentElement: { children: { length: 0 } },
+      createTreeWalker: () => {
+        let idx = -1
+        return {
+          currentNode: null,
+          nextNode() {
+            idx += 1
+            if (idx >= textNodes.length) return null
+            this.currentNode = textNodes[idx]
+            return this.currentNode
+          }
+        }
+      },
+      getSelection: () => null,
+      execCommand: () => {}
+    }
+
+    const raw = domPrimitive('click', 'text=Post', {})
+    const result = raw instanceof Promise ? await raw : raw
+
+    assert.strictEqual(result.success, true)
+    assert.strictEqual(result.match_strategy, 'ranked_resolution')
+    // Exact text "Post" button should win over "Post Comment" button
+    assert.strictEqual(result.matched.text_preview, 'Post')
+  })
+
+  test('ranked resolution: input wins over button for type action', async () => {
+    const input = new globalThis.HTMLInputElement('INPUT', { textContent: '' })
+    Object.setPrototypeOf(input, globalThis.HTMLInputElement.prototype)
+    input.getBoundingClientRect = () => ({ width: 200, height: 30 })
+    input.getRootNode = () => globalThis.document
+    input.getAttribute = (name) => name === 'placeholder' ? 'Email' : null
+    input.value = ''
+    input.type = 'text'
+    input.closest = () => null
+
+    const btn = new MockHTMLElement('BUTTON', { textContent: 'Email' })
+    Object.setPrototypeOf(btn, MockHTMLElement.prototype)
+    btn.getBoundingClientRect = () => ({ width: 80, height: 30 })
+    btn.getRootNode = () => globalThis.document
+    btn.getAttribute = () => null
+    btn.click = () => {}
+    btn.closest = (sel) => sel.includes('button') ? btn : null
+
+    globalThis.document = {
+      querySelector: (sel) => {
+        if (sel === '.email-target') return input
+        return null
+      },
+      querySelectorAll: (sel) => {
+        if (sel === '.email-target') return [input, btn]
+        if (sel === '[role="dialog"]' || sel === '[aria-modal="true"]' || sel === 'dialog[open]') return []
+        return []
+      },
+      getElementById: () => null,
+      body: { querySelectorAll: () => [], appendChild: () => {}, children: { length: 0 } },
+      documentElement: { children: { length: 0 } },
+      createTreeWalker: () => ({ nextNode: () => null }),
+      getSelection: () => null,
+      execCommand: () => {}
+    }
+
+    const raw = domPrimitive('type', '.email-target', { text: 'test@example.com', clear: true })
+    const result = raw instanceof Promise ? await raw : raw
+
+    assert.strictEqual(result.success, true)
+    assert.strictEqual(result.match_strategy, 'ranked_resolution')
+    assert.strictEqual(result.matched.tag, 'input')
+  })
+
+  test('ranked resolution: suggested_element_id set on tie', async () => {
+    const btn1 = new MockHTMLElement('BUTTON', { textContent: 'Save' })
+    Object.setPrototypeOf(btn1, MockHTMLElement.prototype)
+    btn1.getBoundingClientRect = () => ({ width: 80, height: 30 })
+    btn1.getRootNode = () => globalThis.document
+    btn1.getAttribute = () => null
+    btn1.click = () => {}
+
+    const btn2 = new MockHTMLElement('BUTTON', { textContent: 'Save' })
+    Object.setPrototypeOf(btn2, MockHTMLElement.prototype)
+    btn2.getBoundingClientRect = () => ({ width: 80, height: 30 })
+    btn2.getRootNode = () => globalThis.document
+    btn2.getAttribute = () => null
+    btn2.click = () => {}
+
+    globalThis.document = {
+      querySelector: (sel) => (sel === '.save-btn' ? btn1 : null),
+      querySelectorAll: (sel) => {
+        if (sel === '.save-btn') return [btn1, btn2]
+        if (sel === '[role="dialog"]' || sel === '[aria-modal="true"]' || sel === 'dialog[open]') return []
+        return []
+      },
+      getElementById: () => null,
+      body: { querySelectorAll: () => [], appendChild: () => {}, children: { length: 0 } },
+      documentElement: { children: { length: 0 } },
+      createTreeWalker: () => ({ nextNode: () => null }),
+      getSelection: () => null,
+      execCommand: () => {}
+    }
+
+    const raw = domPrimitive('click', '.save-btn', {})
+    const result = raw instanceof Promise ? await raw : raw
+
+    assert.strictEqual(result.success, false)
+    assert.strictEqual(result.error, 'ambiguous_target')
+    assert.strictEqual(result.match_strategy, 'ambiguous_ranked')
+    assert.ok(result.suggested_element_id, 'suggested_element_id should be set on tie')
+    assert.ok(result.suggested_element_id.startsWith('el_'))
+  })
+
+  test('ranked resolution: ranked_candidates included in success response', async () => {
+    const btn = new MockHTMLElement('BUTTON', { textContent: 'Post' })
+    Object.setPrototypeOf(btn, MockHTMLElement.prototype)
+    btn.getBoundingClientRect = () => ({ width: 100, height: 30 })
+    btn.getRootNode = () => globalThis.document
+    btn.getAttribute = () => null
+    btn.click = () => {}
+    btn.closest = (sel) => sel.includes('button') ? btn : null
+
+    const span = new MockHTMLElement('SPAN', { textContent: 'Post impressions' })
+    Object.setPrototypeOf(span, MockHTMLElement.prototype)
+    span.getBoundingClientRect = () => ({ width: 100, height: 20 })
+    span.getRootNode = () => globalThis.document
+    span.getAttribute = () => null
+
+    const textNodes = [
+      { textContent: 'Post', parentElement: btn },
+      { textContent: 'Post impressions', parentElement: span }
+    ]
+
+    globalThis.document = {
+      querySelector: () => null,
+      querySelectorAll: (sel) => {
+        if (sel === '[role="dialog"]' || sel === '[aria-modal="true"]' || sel === 'dialog[open]') return []
+        return []
+      },
+      getElementById: () => null,
+      body: { querySelectorAll: () => [], appendChild: () => {}, children: { length: 0 } },
+      documentElement: { children: { length: 0 } },
+      createTreeWalker: () => {
+        let idx = -1
+        return {
+          currentNode: null,
+          nextNode() {
+            idx += 1
+            if (idx >= textNodes.length) return null
+            this.currentNode = textNodes[idx]
+            return this.currentNode
+          }
+        }
+      },
+      getSelection: () => null,
+      execCommand: () => {}
+    }
+
+    const raw = domPrimitive('click', 'text=Post', {})
+    const result = raw instanceof Promise ? await raw : raw
+
+    assert.strictEqual(result.success, true)
+    assert.strictEqual(result.match_strategy, 'ranked_resolution')
+    assert.ok(Array.isArray(result.ranked_candidates), 'ranked_candidates should be present')
+    assert.ok(result.ranked_candidates.length >= 2, 'should have at least 2 ranked candidates')
+    assert.ok(result.ranked_candidates[0].score >= result.ranked_candidates[1].score, 'candidates should be sorted by score desc')
+    assert.strictEqual(typeof result.ranked_candidates[0].element_id, 'string')
+    assert.strictEqual(typeof result.ranked_candidates[0].tag, 'string')
+    assert.strictEqual(typeof result.ranked_candidates[0].score, 'number')
   })
 })
 

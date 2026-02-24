@@ -1,3 +1,4 @@
+// eslint-disable max-lines - Auto-generated from template + partials; must be a single self-contained function for chrome.scripting.executeScript.
 /**
  * Purpose: Handles extension background coordination and message routing.
  * Docs: docs/features/feature/analyze-tool/index.md
@@ -34,12 +35,15 @@ export function domPrimitive(
 
   // @include _dom-intent.tpl
 
+  // @include _dom-ranking.tpl
+
   function resolveActionTarget(): {
     element?: Element
     error?: DOMResult
     match_count?: number
     match_strategy?: string
     scope_selector_used?: string
+    ranked_candidates?: { element_id: string; tag: string; text_preview?: string; score: number }[]
   } {
     const requestedScope = (options.scope_selector || '').trim()
     if (requestedScope && !scopeRoot) {
@@ -143,6 +147,24 @@ export function domPrimitive(
     })()
 
     if (viableMatches.length > 1) {
+      const ranking = rankAmbiguousCandidates(viableMatches, action, selector)
+      const topCandidates = ranking.ranked.slice(0, 3).map((entry) => ({
+        element_id: getOrCreateElementID(entry.element),
+        tag: entry.element.tagName.toLowerCase(),
+        text_preview: ((entry.element as HTMLElement).textContent || '').trim().slice(0, 60) || undefined,
+        score: entry.score
+      }))
+
+      if (ranking.winner) {
+        return {
+          element: ranking.winner,
+          match_count: 1,
+          match_strategy: 'ranked_resolution',
+          ranked_candidates: topCandidates
+        }
+      }
+
+      const sortedCandidates = ranking.ranked.map((entry) => entry.element)
       return {
         error: {
           success: false,
@@ -151,9 +173,11 @@ export function domPrimitive(
           error: 'ambiguous_target',
           message: `Selector matches multiple viable elements: ${selector}. Add scope/scope_rect, or use list_interactive element_id/index.`,
           match_count: viableMatches.length,
-          match_strategy: 'ambiguous_selector',
+          match_strategy: 'ambiguous_ranked',
           ...(scopeRect ? { scope_rect_used: scopeRect } : {}),
-          candidates: summarizeCandidates(viableMatches)
+          candidates: summarizeCandidates(sortedCandidates),
+          ranked_candidates: topCandidates,
+          suggested_element_id: getOrCreateElementID(ranking.ranked[0]!.element)
         }
       }
     }
@@ -180,6 +204,7 @@ export function domPrimitive(
   const resolvedMatchCount = resolved.match_count || 1
   const resolvedMatchStrategy = resolved.match_strategy || 'selector'
   const resolvedScopeSelector = resolved.scope_selector_used
+  const resolvedRankedCandidates = resolved.ranked_candidates
 
   function mutatingSuccess(
     node: Element,
@@ -193,7 +218,8 @@ export function domPrimitive(
       ...(extra || {}),
       matched: matchedTarget(node),
       match_count: resolvedMatchCount,
-      match_strategy: resolvedMatchStrategy
+      match_strategy: resolvedMatchStrategy,
+      ...(resolvedRankedCandidates ? { ranked_candidates: resolvedRankedCandidates } : {})
     }
   }
 
