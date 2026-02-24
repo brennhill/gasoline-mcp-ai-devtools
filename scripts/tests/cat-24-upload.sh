@@ -11,6 +11,10 @@ source "$SCRIPT_DIR/framework.sh"
 init_framework "$1" "$2"
 begin_category "24" "File Upload" "22"
 
+# macOS tmp paths are often /var -> /private/var symlinks; daemon startup
+# rejects symlinked --upload-dir for security. Canonicalize once for all tests.
+TEMP_DIR="$(cd "$TEMP_DIR" && pwd -P)"
+
 # ── Safety-net trap: kill orphaned upload servers on exit ──
 _cat24_cleanup() {
     # Kill upload servers on any port we might have used
@@ -18,7 +22,21 @@ _cat24_cleanup() {
         lsof -ti :"$_p" 2>/dev/null | xargs kill -9 2>/dev/null || true
     done
 }
-trap '_cat24_cleanup; rm -rf "$TEMP_DIR"' EXIT
+trap '_cat24_cleanup; framework_cleanup' EXIT INT TERM
+
+restart_daemon_with_upload_flags() {
+    local attempts=0
+    while [ "$attempts" -lt 3 ]; do
+        kill_server
+        sleep 0.4
+        if start_daemon_with_flags "$@"; then
+            return 0
+        fi
+        attempts=$((attempts + 1))
+        sleep 0.6
+    done
+    return 1
+}
 
 # ── Create temp test fixtures ──────────────────────────────
 echo "Hello upload test" > "$TEMP_DIR/test-file.txt"
@@ -33,7 +51,10 @@ begin_test "24.1" "Stage 4 OS automation disabled without --enable-os-upload-aut
     "Security: OS-level automation requires explicit opt-in."
 
 # Start daemon WITHOUT os-upload-automation flag for this test
-start_daemon
+if ! start_daemon; then
+    fail "Failed to start daemon for upload tests."
+    finish_category
+fi
 
 run_test_24_1() {
     local status
@@ -516,25 +537,31 @@ run_test_24_19() {
 
     # Get session cookie
     local cookie_jar="$TEMP_DIR/cookies.txt"
-    curl -s -c "$cookie_jar" "http://127.0.0.1:${UPLOAD_PORT}/" >/dev/null 2>&1
+    local session_cookie="" form_html="" csrf_token=""
+    local attempt
+    for attempt in 1 2 3 4 5; do
+        curl -s -c "$cookie_jar" "http://127.0.0.1:${UPLOAD_PORT}/" >/dev/null 2>&1
+        session_cookie=$(awk '$6 == "session" {print $7; exit}' "$cookie_jar" 2>/dev/null)
+        form_html=$(curl -s -b "$cookie_jar" "http://127.0.0.1:${UPLOAD_PORT}/upload" 2>/dev/null)
+        csrf_token=$(echo "$form_html" | grep -oE 'name="csrf_token"[^>]*value="[a-f0-9]{32}"' | head -1 | sed -E 's/.*value="([a-f0-9]{32})".*/\1/')
+        if [ -n "$session_cookie" ] && [ -n "$csrf_token" ]; then
+            break
+        fi
+        sleep 0.2
+    done
 
-    # Get CSRF token from upload form
-    local session_cookie
-    session_cookie=$(grep "session" "$cookie_jar" 2>/dev/null | awk '{print $NF}')
-    local form_html csrf_token
-    form_html=$(curl -s -b "$cookie_jar" "http://127.0.0.1:${UPLOAD_PORT}/upload" 2>/dev/null)
-    csrf_token=$(echo "$form_html" | grep -oE 'value="[a-f0-9]{32}"' | head -1 | sed 's/value="//;s/"//')
-
-    if [ -z "$csrf_token" ]; then
+    if [ -z "$csrf_token" ] || [ -z "$session_cookie" ]; then
         kill "$UPLOAD_SERVER_PID" 2>/dev/null || true
-        fail "Failed to extract CSRF token from upload form."
+        fail "Failed to extract session cookie or CSRF token from upload form."
         return
     fi
 
     # Restart daemon with --ssrf-allow-host and --upload-dir
-    kill_server
-    sleep 0.3
-    start_daemon_with_flags "--ssrf-allow-host=localhost:${UPLOAD_PORT}" "--upload-dir=$TEMP_DIR"
+    if ! restart_daemon_with_upload_flags "--ssrf-allow-host=localhost:${UPLOAD_PORT}" "--upload-dir=$TEMP_DIR"; then
+        kill "$UPLOAD_SERVER_PID" 2>/dev/null || true
+        fail "Failed to restart daemon with upload flags for Stage 3 test."
+        return
+    fi
 
     # Create test file
     local test_content="Gasoline E2E upload test $(date +%s)"
@@ -612,9 +639,11 @@ run_test_24_20() {
     fi
 
     # Restart daemon with allowed host
-    kill_server
-    sleep 0.3
-    start_daemon_with_flags "--ssrf-allow-host=localhost:${UPLOAD_PORT}" "--upload-dir=$TEMP_DIR"
+    if ! restart_daemon_with_upload_flags "--ssrf-allow-host=localhost:${UPLOAD_PORT}" "--upload-dir=$TEMP_DIR"; then
+        kill "$UPLOAD_SERVER_PID" 2>/dev/null || true
+        fail "Failed to restart daemon with upload flags for missing-cookie test."
+        return
+    fi
 
     echo -n "test" > "$TEMP_DIR/no-cookie.txt"
 
@@ -669,9 +698,11 @@ run_test_24_21() {
     session_cookie=$(grep "session" "$cookie_jar" 2>/dev/null | awk '{print $NF}')
 
     # Restart daemon with allowed host
-    kill_server
-    sleep 0.3
-    start_daemon_with_flags "--ssrf-allow-host=localhost:${UPLOAD_PORT}" "--upload-dir=$TEMP_DIR"
+    if ! restart_daemon_with_upload_flags "--ssrf-allow-host=localhost:${UPLOAD_PORT}" "--upload-dir=$TEMP_DIR"; then
+        kill "$UPLOAD_SERVER_PID" 2>/dev/null || true
+        fail "Failed to restart daemon with upload flags for bad-CSRF test."
+        return
+    fi
 
     echo -n "test" > "$TEMP_DIR/bad-csrf.txt"
 
@@ -708,9 +739,10 @@ begin_test "24.22" "Stage 4 OS automation returns non-403 when flag enabled" \
     "Restart daemon with --enable-os-upload-automation, POST /api/os-automation/inject, verify NOT 403" \
     "Proves flag unlocks the endpoint. Expect 400 (no dialog open), not 403 (disabled)."
 run_test_24_22() {
-    kill_server
-    sleep 0.3
-    start_daemon_with_flags "--enable-os-upload-automation" "--upload-dir=$TEMP_DIR"
+    if ! restart_daemon_with_upload_flags "--enable-os-upload-automation" "--upload-dir=$TEMP_DIR"; then
+        fail "Failed to restart daemon with --enable-os-upload-automation for Stage 4 test."
+        return
+    fi
 
     # Create a test file in the allowed upload dir
     echo -n "stage4-flag-test" > "$TEMP_DIR/stage4-test.txt"

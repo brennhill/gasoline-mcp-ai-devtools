@@ -1,3 +1,9 @@
+---
+doc_type: legacy_doc
+status: reference
+last_reviewed: 2026-02-16
+---
+
 # Comprehensive UAT Test Plan
 
 > Goal: If this script passes, ship with 100% confidence.
@@ -29,14 +35,14 @@ These tests verify MCP JSON-RPC 2.0 correctness. Failures here mean no MCP clien
 | **Assert** | `response.result.capabilities.tools` exists, `response.result.serverInfo.name == "gasoline-mcp"`, `response.result.serverInfo.version` matches VERSION file |
 | **Trust because** | If capabilities are wrong, Claude/Cursor won't know what tools exist. Version mismatch means wrong binary is installed. |
 
-### 1.2 — tools/list returns exactly 4 tools
+### 1.2 — tools/list returns exactly 5 tools
 
 | Field | Value |
 |-------|-------|
 | **Type** | Contract |
 | **What** | Send `tools/list`, extract tool names |
-| **Assert** | Exactly `["observe", "generate", "configure", "interact"]` — no more, no less. Count == 4. |
-| **Trust because** | We shipped stub tools before (analyze, etc). This catches tool creep. Exact-match means no extras sneak in. |
+| **Assert** | Exactly `["observe", "generate", "configure", "interact", "analyze"]` — no more, no less. Count == 5. |
+| **Trust because** | Exact-match means no extras sneak in and no tools are missing. |
 
 ### 1.3 — tools/list schema shapes are valid
 
@@ -44,7 +50,7 @@ These tests verify MCP JSON-RPC 2.0 correctness. Failures here mean no MCP clien
 |-------|-------|
 | **Type** | Contract |
 | **What** | For each tool in tools/list, verify `inputSchema` has correct `required` fields and `properties` |
-| **Assert** | `observe` requires `what`, `generate` requires `format`, `configure` requires `action`, `interact` requires `action`. Each has `type: "object"`. |
+| **Assert** | `observe` requires `what`, `generate` requires `format`, `configure` requires `action`, `interact` requires `action`. Each has `format: "object"`. |
 | **Trust because** | Schema errors mean MCP clients send wrong params. This is the contract AI models use to call tools. |
 
 ### 1.4 — Response IDs match request IDs
@@ -475,12 +481,12 @@ Each mode must return a valid response shape, even with no data.
 | **Assert** | Both return success. No error on start or end. |
 | **Trust because** | Test boundaries isolate CI test runs. If they error, CI tests can't use the feature. |
 
-### 4.10 — configure(query_dom) with selector
+### 4.10 — analyze(what:"dom") with selector
 
 | Field | Value |
 |-------|-------|
 | **Type** | Contract |
-| **What** | Call with `action: "query_dom"`, `selector: "body"` |
+| **What** | Call with `what: "dom"`, `selector: "body"` |
 | **Assert** | Response is valid (may be "no extension" or actual DOM result). Not a crash. |
 | **Trust because** | DOM queries are sent to extension via pending queries. Must not crash without extension. |
 
@@ -619,7 +625,7 @@ Each mode must return a valid response shape, even with no data.
 |-------|-------|
 | **Type** | Load |
 | **What** | Fork 10 processes, each sends `tools/list` simultaneously |
-| **Assert** | All 10 get valid responses with 4 tools each. Zero failures. |
+| **Assert** | All 10 get valid responses with 5 tools each. Zero failures. |
 | **Trust because** | Real usage has multiple MCP clients (Claude + Cursor + CI). Must handle concurrency. |
 
 ### 7.2 — Rapid sequential tool calls don't crash

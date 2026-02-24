@@ -1,3 +1,9 @@
+// Purpose: Implement doc.go internal behavior used by MCP runtime features.
+// Why: Maintains stable server behavior across tool and transport paths.
+// Docs: docs/features/feature/backend-log-streaming/index.md
+
+// doc.go — Package documentation for browser telemetry capture and buffering.
+
 // Package capture provides real-time browser telemetry capture and buffering.
 //
 // Core functionality includes:

@@ -1,3 +1,7 @@
+// Purpose: Validate tools_generate_annotations_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
+// Docs: docs/features/feature/test-generation/index.md
+
 // tools_generate_annotations_test.go — Tests for annotation-driven generate formats.
 // Covers: visual_test, annotation_report, annotation_issues.
 package main
@@ -80,7 +84,7 @@ func TestGenerate_VisualTest_NoAnnotations(t *testing.T) {
 	defer h.annotationStore.Close()
 
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: float64(1)}
-	args := json.RawMessage(`{"format":"visual_test"}`)
+	args := json.RawMessage(`{"what":"visual_test"}`)
 
 	resp := h.toolGenerate(req, args)
 	text := unmarshalMCPText(t, resp.Result)
@@ -95,7 +99,7 @@ func TestGenerate_VisualTest_GeneratesPlaywright(t *testing.T) {
 	seedAnnotationSession(t, h)
 
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: float64(1)}
-	args := json.RawMessage(`{"format":"visual_test"}`)
+	args := json.RawMessage(`{"what":"visual_test"}`)
 
 	resp := h.toolGenerate(req, args)
 	text := unmarshalMCPText(t, resp.Result)
@@ -117,7 +121,7 @@ func TestGenerate_VisualTest_IncludesAnnotationComments(t *testing.T) {
 	seedAnnotationSession(t, h)
 
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: float64(1)}
-	args := json.RawMessage(`{"format":"visual_test"}`)
+	args := json.RawMessage(`{"what":"visual_test"}`)
 
 	resp := h.toolGenerate(req, args)
 	text := unmarshalMCPText(t, resp.Result)
@@ -136,7 +140,7 @@ func TestGenerate_VisualTest_CustomTestName(t *testing.T) {
 	seedAnnotationSession(t, h)
 
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: float64(1)}
-	args := json.RawMessage(`{"format":"visual_test","test_name":"checkout visual review"}`)
+	args := json.RawMessage(`{"what":"visual_test","test_name":"checkout visual review"}`)
 
 	resp := h.toolGenerate(req, args)
 	text := unmarshalMCPText(t, resp.Result)
@@ -151,7 +155,7 @@ func TestGenerate_VisualTest_IncludesA11yAssertions(t *testing.T) {
 	seedAnnotationSession(t, h)
 
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: float64(1)}
-	args := json.RawMessage(`{"format":"visual_test"}`)
+	args := json.RawMessage(`{"what":"visual_test"}`)
 
 	resp := h.toolGenerate(req, args)
 	text := unmarshalMCPText(t, resp.Result)
@@ -182,7 +186,7 @@ func TestGenerate_VisualTest_NamedSession(t *testing.T) {
 	h.annotationStore.AppendToNamedSession("qa-review", page2)
 
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: float64(1)}
-	args := json.RawMessage(`{"format":"visual_test","session":"qa-review"}`)
+	args := json.RawMessage(`{"what":"visual_test","annot_session":"qa-review"}`)
 
 	resp := h.toolGenerate(req, args)
 	text := unmarshalMCPText(t, resp.Result)
@@ -206,7 +210,7 @@ func TestGenerate_AnnotationReport_NoAnnotations(t *testing.T) {
 	defer h.annotationStore.Close()
 
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: float64(1)}
-	args := json.RawMessage(`{"format":"annotation_report"}`)
+	args := json.RawMessage(`{"what":"annotation_report"}`)
 
 	resp := h.toolGenerate(req, args)
 	text := unmarshalMCPText(t, resp.Result)
@@ -221,7 +225,7 @@ func TestGenerate_AnnotationReport_GeneratesMarkdown(t *testing.T) {
 	seedAnnotationSession(t, h)
 
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: float64(1)}
-	args := json.RawMessage(`{"format":"annotation_report"}`)
+	args := json.RawMessage(`{"what":"annotation_report"}`)
 
 	resp := h.toolGenerate(req, args)
 	text := unmarshalMCPText(t, resp.Result)
@@ -244,7 +248,7 @@ func TestGenerate_AnnotationReport_IncludesScreenshotRef(t *testing.T) {
 	seedAnnotationSession(t, h)
 
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: float64(1)}
-	args := json.RawMessage(`{"format":"annotation_report"}`)
+	args := json.RawMessage(`{"what":"annotation_report"}`)
 
 	resp := h.toolGenerate(req, args)
 	text := unmarshalMCPText(t, resp.Result)
@@ -259,7 +263,7 @@ func TestGenerate_AnnotationReport_IncludesA11yFlags(t *testing.T) {
 	seedAnnotationSession(t, h)
 
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: float64(1)}
-	args := json.RawMessage(`{"format":"annotation_report"}`)
+	args := json.RawMessage(`{"what":"annotation_report"}`)
 
 	resp := h.toolGenerate(req, args)
 	text := unmarshalMCPText(t, resp.Result)
@@ -279,7 +283,7 @@ func TestGenerate_AnnotationIssues_NoAnnotations(t *testing.T) {
 	defer h.annotationStore.Close()
 
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: float64(1)}
-	args := json.RawMessage(`{"format":"annotation_issues"}`)
+	args := json.RawMessage(`{"what":"annotation_issues"}`)
 
 	resp := h.toolGenerate(req, args)
 	text := unmarshalMCPText(t, resp.Result)
@@ -294,7 +298,7 @@ func TestGenerate_AnnotationIssues_ReturnsStructuredJSON(t *testing.T) {
 	seedAnnotationSession(t, h)
 
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: float64(1)}
-	args := json.RawMessage(`{"format":"annotation_issues"}`)
+	args := json.RawMessage(`{"what":"annotation_issues"}`)
 
 	resp := h.toolGenerate(req, args)
 	text := unmarshalMCPText(t, resp.Result)
@@ -313,7 +317,7 @@ func TestGenerate_AnnotationIssues_IncludesElementInfo(t *testing.T) {
 	seedAnnotationSession(t, h)
 
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: float64(1)}
-	args := json.RawMessage(`{"format":"annotation_issues"}`)
+	args := json.RawMessage(`{"what":"annotation_issues"}`)
 
 	resp := h.toolGenerate(req, args)
 	text := unmarshalMCPText(t, resp.Result)
@@ -329,7 +333,7 @@ func TestGenerate_AnnotationIssues_CountsCorrect(t *testing.T) {
 	seedAnnotationSession(t, h)
 
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: float64(1)}
-	args := json.RawMessage(`{"format":"annotation_issues"}`)
+	args := json.RawMessage(`{"what":"annotation_issues"}`)
 
 	resp := h.toolGenerate(req, args)
 	text := unmarshalMCPText(t, resp.Result)
@@ -430,9 +434,9 @@ func TestGenerate_AnnotationFormats_NoPanic(t *testing.T) {
 		name string
 		args string
 	}{
-		{"visual_test", `{"format":"visual_test"}`},
-		{"annotation_report", `{"format":"annotation_report"}`},
-		{"annotation_issues", `{"format":"annotation_issues"}`},
+		{"visual_test", `{"what":"visual_test"}`},
+		{"annotation_report", `{"what":"annotation_report"}`},
+		{"annotation_issues", `{"what":"annotation_issues"}`},
 	}
 
 	for _, tc := range formats {

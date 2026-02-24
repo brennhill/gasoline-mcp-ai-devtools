@@ -1,3 +1,9 @@
+---
+doc_type: legacy_doc
+status: reference
+last_reviewed: 2026-02-16
+---
+
 # Agent Assignment: Reproduction Script Enhancements
 
 **Branch:** `feature/repro-v2`
@@ -61,7 +67,7 @@ Option: `visual_assertions: true`.
 
 ### 4. MCP Tool Updates
 
-**File:** `cmd/dev-console/tools.go`
+**File:** `cmd/dev-console/tools_core.go`
 
 Update `generate` tool schema:
 ```json
@@ -102,5 +108,5 @@ go test -v ./cmd/dev-console/ -run Reproduction
 | File | Change |
 |------|--------|
 | `cmd/dev-console/reproduction.go` | Screenshot, fixture, assertion generation |
-| `cmd/dev-console/tools.go` | Update generate tool schema |
+| `cmd/dev-console/tools_core.go` | Update generate tool schema |
 | `cmd/dev-console/reproduction_test.go` | Test new options |

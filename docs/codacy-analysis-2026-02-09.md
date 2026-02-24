@@ -1,3 +1,9 @@
+---
+doc_type: legacy_doc
+status: reference
+last_reviewed: 2026-02-16
+---
+
 # Codacy Analysis Report - February 9, 2026
 
 **Analysis Date:** February 9, 2026

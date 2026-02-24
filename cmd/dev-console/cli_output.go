@@ -1,4 +1,3 @@
-// cli_output.go — Output formatters for CLI mode: human, json, csv.
 package main
 
 import (

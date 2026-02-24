@@ -1,3 +1,7 @@
+// Purpose: Validate server_reliability_integration_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
+// Docs: docs/features/feature/observe/index.md
+
 // server_reliability_integration_test.go — MCP traffic, upgrade, and integration tests.
 //
 // ⚠️ RELEASE GATE TESTS - MANDATORY BEFORE EVERY RELEASE
@@ -41,7 +45,7 @@ func TestReliability_MCPTraffic_RealisticSession(t *testing.T) {
 	port := findFreePort(t)
 	binary := buildTestBinary(t)
 
-	cmd := startServerCmd(binary, "--port", fmt.Sprintf("%d", port))
+	cmd := startServerCmd(t, binary, "--port", fmt.Sprintf("%d", port))
 	stdin, err := cmd.StdinPipe()
 	if err != nil {
 		t.Fatalf("Failed to create stdin pipe: %v", err)
@@ -78,16 +82,16 @@ func TestReliability_MCPTraffic_RealisticSession(t *testing.T) {
 		{"observe page", `{"jsonrpc":"2.0","id":6,"method":"tools/call","params":{"name":"observe","arguments":{"what":"page"}}}`},
 
 		// Configuration
-		{"configure health", `{"jsonrpc":"2.0","id":7,"method":"tools/call","params":{"name":"configure","arguments":{"action":"health"}}}`},
-		{"configure noise list", `{"jsonrpc":"2.0","id":8,"method":"tools/call","params":{"name":"configure","arguments":{"action":"noise_rule","noise_action":"list"}}}`},
+		{"configure health", `{"jsonrpc":"2.0","id":7,"method":"tools/call","params":{"name":"configure","arguments":{"what":"health"}}}`},
+		{"configure noise list", `{"jsonrpc":"2.0","id":8,"method":"tools/call","params":{"name":"configure","arguments":{"what":"noise_rule","noise_action":"list"}}}`},
 
 		// More observation
 		{"observe vitals", `{"jsonrpc":"2.0","id":9,"method":"tools/call","params":{"name":"observe","arguments":{"what":"vitals"}}}`},
 		{"observe actions", `{"jsonrpc":"2.0","id":10,"method":"tools/call","params":{"name":"observe","arguments":{"what":"actions"}}}`},
 
 		// Generate outputs
-		{"generate test", `{"jsonrpc":"2.0","id":11,"method":"tools/call","params":{"name":"generate","arguments":{"format":"test"}}}`},
-		{"generate reproduction", `{"jsonrpc":"2.0","id":12,"method":"tools/call","params":{"name":"generate","arguments":{"format":"reproduction"}}}`},
+		{"generate test", `{"jsonrpc":"2.0","id":11,"method":"tools/call","params":{"name":"generate","arguments":{"what":"test"}}}`},
+		{"generate reproduction", `{"jsonrpc":"2.0","id":12,"method":"tools/call","params":{"name":"generate","arguments":{"what":"reproduction"}}}`},
 
 		// Final checks
 		{"observe errors again", `{"jsonrpc":"2.0","id":13,"method":"tools/call","params":{"name":"observe","arguments":{"what":"errors"}}}`},
@@ -138,7 +142,7 @@ func TestReliability_MCPTraffic_BurstPattern(t *testing.T) {
 	port := findFreePort(t)
 	binary := buildTestBinary(t)
 
-	cmd := startServerCmd(binary, "--port", fmt.Sprintf("%d", port))
+	cmd := startServerCmd(t, binary, "--port", fmt.Sprintf("%d", port))
 	stdin, err := cmd.StdinPipe()
 	if err != nil {
 		t.Fatalf("Failed to create stdin pipe: %v", err)
@@ -213,7 +217,7 @@ func TestReliability_Upgrade_OldServerKilled(t *testing.T) {
 	binary := buildTestBinary(t)
 
 	// Start "old" server
-	oldCmd := startServerCmd(binary, "--port", fmt.Sprintf("%d", port))
+	oldCmd := startServerCmd(t, binary, "--port", fmt.Sprintf("%d", port))
 	oldStdin, err := oldCmd.StdinPipe()
 	if err != nil {
 		t.Fatalf("Failed to create stdin pipe for old server: %v", err)
@@ -248,7 +252,7 @@ func TestReliability_Upgrade_OldServerKilled(t *testing.T) {
 	time.Sleep(500 * time.Millisecond)
 
 	// Start "new" server on same port
-	newCmd := startServerCmd(binary, "--port", fmt.Sprintf("%d", port))
+	newCmd := startServerCmd(t, binary, "--port", fmt.Sprintf("%d", port))
 	newStdin, err := newCmd.StdinPipe()
 	if err != nil {
 		t.Fatalf("Failed to create stdin pipe for new server: %v", err)
@@ -308,7 +312,7 @@ func TestReliability_Upgrade_PortConflictDetection(t *testing.T) {
 	binary := buildTestBinary(t)
 
 	// Start server on port
-	cmd1 := startServerCmd(binary, "--port", fmt.Sprintf("%d", port))
+	cmd1 := startServerCmd(t, binary, "--port", fmt.Sprintf("%d", port))
 	stdin1, err := cmd1.StdinPipe()
 	if err != nil {
 		t.Fatalf("Failed to create stdin pipe: %v", err)
@@ -329,7 +333,7 @@ func TestReliability_Upgrade_PortConflictDetection(t *testing.T) {
 	t.Logf("First server running on port %d", port)
 
 	// Use --check flag to detect port conflict without starting
-	cmd2 := startServerCmd(binary, "--port", fmt.Sprintf("%d", port), "--check")
+	cmd2 := startServerCmd(t, binary, "--port", fmt.Sprintf("%d", port), "--check")
 	output, _ := cmd2.CombinedOutput()
 
 	// --check should report the port is in use
@@ -362,7 +366,7 @@ func TestReliability_Integration_FullMCPProtocol(t *testing.T) {
 	port := findFreePort(t)
 	binary := buildTestBinary(t)
 
-	cmd := startServerCmd(binary, "--port", fmt.Sprintf("%d", port))
+	cmd := startServerCmd(t, binary, "--port", fmt.Sprintf("%d", port))
 	stdin, err := cmd.StdinPipe()
 	if err != nil {
 		t.Fatalf("Failed to create stdin pipe: %v", err)
@@ -495,7 +499,7 @@ func TestReliability_Integration_LargePayloads(t *testing.T) {
 	port := findFreePort(t)
 	binary := buildTestBinary(t)
 
-	cmd := startServerCmd(binary, "--port", fmt.Sprintf("%d", port))
+	cmd := startServerCmd(t, binary, "--port", fmt.Sprintf("%d", port))
 	stdin, err := cmd.StdinPipe()
 	if err != nil {
 		t.Fatalf("Failed to create stdin pipe: %v", err)
@@ -518,7 +522,7 @@ func TestReliability_Integration_LargePayloads(t *testing.T) {
 
 	// Test with large arguments
 	largeString := strings.Repeat("x", 100000) // 100KB string
-	largeReq := fmt.Sprintf(`{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"configure","arguments":{"action":"store","store_action":"save","key":"large_test","data":{"content":"%s"}}}}`, largeString)
+	largeReq := fmt.Sprintf(`{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"configure","arguments":{"what":"store","store_action":"save","key":"large_test","data":{"content":"%s"}}}}`, largeString)
 
 	resp, err := client.Post(mcpURL, "application/json", bytes.NewReader([]byte(largeReq)))
 	if err != nil {

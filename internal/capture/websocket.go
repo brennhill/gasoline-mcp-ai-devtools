@@ -1,8 +1,7 @@
-// websocket.go — WebSocket connection tracking and event buffering.
-// Captures connection lifecycle (open/close/error) and message payloads
-// with adaptive sampling for high-frequency streams.
-// Design: Ring buffer with LRU eviction per connection. Messages are
-// truncated at 4KB to bound memory. Connection map keyed by unique ID.
+// Purpose: Implements websocket event ingestion, repair, filtering, and query handlers for capture buffers.
+// Why: Preserves websocket lifecycle/message evidence with consistent buffering and binary-format enrichment.
+// Docs: docs/features/feature/backend-log-streaming/index.md
+
 package capture
 
 import (
@@ -20,7 +19,14 @@ import (
 // WebSocket Events
 // ============================================
 
-// repairWSParallelArrays truncates WS event parallel arrays to equal length if mismatched.
+// repairWSParallelArrays repairs wsEvents/wsAddedAt index alignment.
+//
+// Invariants:
+// - wsEvents and wsAddedAt lengths must match.
+// - wsMemoryTotal must equal sum of surviving entries.
+//
+// Failure semantics:
+// - Corruption is healed by truncating to common prefix and recomputing memory total.
 func (c *Capture) repairWSParallelArrays() {
 	if len(c.wsEvents) == len(c.wsAddedAt) {
 		return
@@ -36,7 +42,10 @@ func (c *Capture) repairWSParallelArrays() {
 	c.wsAddedAt = c.wsAddedAt[:minLen]
 }
 
-// detectWSBinaryFormat detects binary format in WebSocket message data.
+// detectWSBinaryFormat best-effort classifies message payload format.
+//
+// Failure semantics:
+// - Non-message/empty/unrecognized payloads remain unannotated without ingestion failure.
 func detectWSBinaryFormat(event *WebSocketEvent) {
 	if event.Event != "message" || event.BinaryFormat != "" || len(event.Data) == 0 {
 		return
@@ -47,7 +56,10 @@ func detectWSBinaryFormat(event *WebSocketEvent) {
 	}
 }
 
-// evictWSByCount trims WebSocket events to MaxWSEvents, updating memory accounting.
+// evictWSByCount enforces count cap while preserving newest events.
+//
+// Invariants:
+// - wsMemoryTotal is decremented for each dropped entry before slice replacement.
 func (c *Capture) evictWSByCount() {
 	if len(c.wsEvents) <= MaxWSEvents {
 		return
@@ -64,7 +76,16 @@ func (c *Capture) evictWSByCount() {
 	c.wsAddedAt = newAddedAt
 }
 
-// AddWebSocketEvents adds WebSocket events to the buffer.
+// AddWebSocketEvents ingests websocket telemetry and updates connection model.
+//
+// Invariants:
+// - wsEvents/wsAddedAt are appended in lockstep for TTL and cursor correctness.
+// - Connection tracking is updated from same event stream under the same lock.
+// - Active test IDs are snapshotted once per batch for deterministic tagging.
+//
+// Failure semantics:
+// - Over-capacity batches are accepted then oldest entries are evicted.
+// - Unknown event kinds are retained in wsEvents even if they do not change connection state.
 func (c *Capture) AddWebSocketEvents(events []WebSocketEvent) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -91,8 +112,13 @@ func (c *Capture) AddWebSocketEvents(events []WebSocketEvent) {
 	c.evictWSForMemory()
 }
 
-// evictWSForMemory removes oldest events if memory exceeds limit.
-// Calculates how many entries to drop in a single pass to avoid O(n²) re-scanning.
+// evictWSForMemory enforces websocket memory budget with oldest-first trimming.
+//
+// Invariants:
+// - Parallel arrays remain aligned after eviction.
+//
+// Failure semantics:
+// - Can drop multiple oldest events in one pass; newer events are preserved.
 func (c *Capture) evictWSForMemory() {
 	c.repairWSParallelArrays()
 	excess := c.wsMemoryTotal - wsBufferMemoryLimit
@@ -178,7 +204,10 @@ func (c *Capture) GetWebSocketEvents(filter WebSocketEventFilter) []WebSocketEve
 	return filtered
 }
 
-// trackConnection updates connection state from events
+// trackConnection applies one event to per-connection lifecycle state.
+//
+// Failure semantics:
+// - Events for unknown IDs are tolerated and ignored where state cannot be reconciled.
 func (c *Capture) trackConnection(event WebSocketEvent) {
 	switch event.Event {
 	case "open":
@@ -194,7 +223,10 @@ func (c *Capture) trackConnection(event WebSocketEvent) {
 	}
 }
 
-// trackConnOpen handles a new WebSocket connection opening.
+// trackConnOpen registers/refreshes active connection metadata.
+//
+// Invariants:
+// - Active connection map is bounded by maxActiveConns using oldest-id eviction.
 func (c *Capture) trackConnOpen(event WebSocketEvent) {
 	if len(c.ws.connections) >= maxActiveConns && len(c.ws.connOrder) > 0 {
 		oldestID := c.ws.connOrder[0]
@@ -209,7 +241,13 @@ func (c *Capture) trackConnOpen(event WebSocketEvent) {
 	c.ws.connOrder = append(c.ws.connOrder, event.ID)
 }
 
-// trackConnClose handles a WebSocket connection closing.
+// trackConnClose finalizes a connection and moves summary into closed history.
+//
+// Invariants:
+// - Closed connection history is bounded by maxClosedConns.
+//
+// Failure semantics:
+// - Unknown close events are ignored; no synthetic connection is created.
 func (c *Capture) trackConnClose(event WebSocketEvent) {
 	conn := c.ws.connections[event.ID]
 	if conn == nil {
@@ -234,7 +272,10 @@ func (c *Capture) trackConnClose(event WebSocketEvent) {
 	c.ws.connOrder = removeFromSlice(c.ws.connOrder, event.ID)
 }
 
-// updateDirectionStats updates message stats for a connection direction.
+// updateDirectionStats mutates per-direction counters and recency windows.
+//
+// Invariants:
+// - recentTimes contains only timestamps within rateWindow after appendAndPrune.
 func updateDirectionStats(stats *directionStats, event WebSocketEvent, msgTime time.Time) {
 	stats.total++
 	stats.bytes += event.Size
@@ -243,7 +284,10 @@ func updateDirectionStats(stats *directionStats, event WebSocketEvent, msgTime t
 	stats.recentTimes = appendAndPrune(stats.recentTimes, msgTime)
 }
 
-// trackConnMessage handles a WebSocket message event.
+// trackConnMessage updates rate/counter state for an active connection.
+//
+// Failure semantics:
+// - Messages on unknown connections are ignored instead of creating implicit connection records.
 func (c *Capture) trackConnMessage(event WebSocketEvent) {
 	conn := c.ws.connections[event.ID]
 	if conn == nil {
@@ -262,16 +306,15 @@ func (c *Capture) trackConnMessage(event WebSocketEvent) {
 	}
 }
 
-// parseTimestamp parses an RFC3339 timestamp string, returns zero time on failure
+// parseTimestamp delegates to util.ParseTimestamp for RFC3339/RFC3339Nano parsing.
 func parseTimestamp(ts string) time.Time {
-	t, err := time.Parse(time.RFC3339Nano, ts)
-	if err != nil {
-		t, _ = time.Parse(time.RFC3339, ts)
-	}
-	return t
+	return util.ParseTimestamp(ts)
 }
 
-// appendAndPrune adds a timestamp to the slice and removes entries older than rateWindow
+// appendAndPrune maintains a bounded-by-time event window.
+//
+// Invariants:
+// - Returned slice preserves chronological order of surviving timestamps.
 func appendAndPrune(times []time.Time, t time.Time) []time.Time {
 	cutoff := time.Now().Add(-rateWindow)
 	// Prune old entries

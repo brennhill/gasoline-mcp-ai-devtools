@@ -133,7 +133,7 @@ function createOverlay() {
     zIndex: String(OVERLAY_Z_INDEX),
     cursor: 'crosshair',
     boxShadow: 'inset 0 0 30px rgba(239, 68, 68, 0.3)',
-    transition: 'box-shadow 0.3s ease-in'
+    transition: 'opacity 0.3s ease-out, box-shadow 0.3s ease-in'
   })
 
   // Canvas for drawing
@@ -150,7 +150,7 @@ function createOverlay() {
   overlay.appendChild(canvas)
   ctx = canvas.getContext('2d')
 
-  // Mode badge (top-right)
+  // Mode badge (top-right) — small indicator, no ESC hint here
   const badge = document.createElement('div')
   badge.id = 'gasoline-draw-badge'
   Object.assign(badge.style, {
@@ -183,17 +183,30 @@ function createOverlay() {
   })
   badge.appendChild(dot)
   badge.appendChild(document.createTextNode('Draw Mode'))
-
-  // ESC hint
-  const hint = document.createElement('span')
-  hint.textContent = '(ESC to finish)'
-  Object.assign(hint.style, {
-    color: '#888',
-    fontWeight: '400',
-    marginLeft: '4px'
-  })
-  badge.appendChild(hint)
   overlay.appendChild(badge)
+
+  // Persistent centered ESC hint — stays visible throughout draw mode
+  const escHint = document.createElement('div')
+  escHint.id = 'gasoline-draw-esc-hint'
+  Object.assign(escHint.style, {
+    position: 'absolute',
+    bottom: '32px',
+    left: '50%',
+    transform: 'translateX(-50%)',
+    padding: '8px 20px',
+    background: 'rgba(0, 0, 0, 0.75)',
+    color: '#ccc',
+    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+    fontSize: '13px',
+    fontWeight: '500',
+    borderRadius: '8px',
+    border: '1px solid rgba(255, 255, 255, 0.15)',
+    pointerEvents: 'none',
+    zIndex: String(OVERLAY_Z_INDEX + 1),
+    textAlign: 'center'
+  })
+  escHint.textContent = 'Press ESC when done'
+  overlay.appendChild(escHint)
 
   // Center instruction toast — fades out after 2.5s
   const instruction = document.createElement('div')
@@ -484,6 +497,24 @@ function showTextInput(rect, elementData) {
   input.addEventListener('blur', onTextInputBlur)
 
   overlay.appendChild(input)
+
+  // Hint below input: "Enter to confirm · Esc to exit annotation mode"
+  const inputHint = document.createElement('div')
+  inputHint.id = 'gasoline-draw-input-hint'
+  const hintTop = parseInt(input.style.top) + 42
+  Object.assign(inputHint.style, {
+    position: 'absolute',
+    left: input.style.left,
+    top: `${hintTop}px`,
+    color: '#888',
+    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+    fontSize: '11px',
+    pointerEvents: 'none',
+    zIndex: String(OVERLAY_Z_INDEX + 2)
+  })
+  inputHint.textContent = 'Enter to confirm \u00b7 Esc to exit annotation mode'
+  overlay.appendChild(inputHint)
+
   textInput = input
   input.focus()
 }
@@ -507,6 +538,11 @@ function onTextInputBlur() {
   }
 }
 
+function removeInputHint() {
+  const hint = document.getElementById('gasoline-draw-input-hint')
+  if (hint) hint.remove()
+}
+
 function confirmTextInput() {
   if (!textInput) return
   // Capture and null immediately to prevent re-entry from blur during remove()
@@ -517,10 +553,11 @@ function confirmTextInput() {
   const rect = JSON.parse(input.dataset.rectJson)
   const elementData = JSON.parse(input.dataset.elementJson)
 
-  // Remove input element
+  // Remove input element and hint
   input.removeEventListener('keydown', onTextInputKeyDown)
   input.removeEventListener('blur', onTextInputBlur)
   input.remove()
+  removeInputHint()
 
   // Empty text → discard annotation
   if (!text) {
@@ -555,6 +592,7 @@ function cancelTextInput() {
   textInput.removeEventListener('keydown', onTextInputKeyDown)
   textInput.removeEventListener('blur', onTextInputBlur)
   textInput.remove()
+  removeInputHint()
   textInput = null
 }
 
@@ -1325,32 +1363,54 @@ export function deactivateAndSendResults() {
   const currentCorrelationId = sessionCorrelationId // capture before deactivate clears it
 
   /**
-   * Complete the deactivation: tear down overlay, send results to background,
-   * and clear persisted storage.
+   * Complete the deactivation: fade out overlay, show toast, tear down,
+   * send results to background, and clear persisted storage.
    */
   const finishDeactivation = (screenshotDataUrl) => {
-    const result = deactivateDrawMode()
-    isDeactivating = false
-    // Clear persisted annotations from storage after successful deactivation
-    clearPersistedAnnotations()
+    // Fade out the overlay before tearing it down
+    if (overlay) {
+      overlay.style.opacity = '0'
+    }
+
+    // Show success toast via extension messaging
     try {
       if (typeof chrome !== 'undefined' && chrome.runtime) {
-        const msg = {
-          type: 'DRAW_MODE_COMPLETED',
-          annotations: result.annotations,
-          elementDetails: result.elementDetails,
-          page_url: pageUrl,
-          screenshot_data_url: screenshotDataUrl,
-          correlation_id: currentCorrelationId
-        }
-        if (currentSessionName) {
-          msg.session_name = currentSessionName
-        }
-        chrome.runtime.sendMessage(msg)
+        chrome.runtime.sendMessage({
+          type: 'GASOLINE_ACTION_TOAST',
+          text: 'Annotations submitted',
+          state: 'success',
+          duration_ms: 2000
+        })
       }
     } catch {
       // Extension context may be invalidated
     }
+
+    // Delay teardown to let fade complete
+    setTimeout(() => {
+      const result = deactivateDrawMode()
+      isDeactivating = false
+      // Clear persisted annotations from storage after successful deactivation
+      clearPersistedAnnotations()
+      try {
+        if (typeof chrome !== 'undefined' && chrome.runtime) {
+          const msg = {
+            type: 'DRAW_MODE_COMPLETED',
+            annotations: result.annotations,
+            elementDetails: result.elementDetails,
+            page_url: pageUrl,
+            screenshot_data_url: screenshotDataUrl,
+            correlation_id: currentCorrelationId
+          }
+          if (currentSessionName) {
+            msg.annot_session_name = currentSessionName
+          }
+          chrome.runtime.sendMessage(msg)
+        }
+      } catch {
+        // Extension context may be invalidated
+      }
+    }, 300)
   }
 
   // Re-capture DOM data for all annotations so element details match the screenshot moment.

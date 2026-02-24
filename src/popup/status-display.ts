@@ -1,4 +1,10 @@
 /**
+ * Purpose: Renders popup connection, health, and warning indicators from background status payloads.
+ * Why: Converts raw runtime status into operator-readable diagnostics during extension/server troubleshooting.
+ * Docs: docs/features/feature/browser-extension-enhancement/index.md
+ */
+
+/**
  * @fileoverview Status Display Module
  * Updates connection status display in popup
  */
@@ -66,6 +72,25 @@ export function updateConnectionStatus(status: PopupConnectionStatus): void {
       }
     } else {
       versionWarningEl.style.display = 'none'
+    }
+  }
+
+  const securityWarningEl = document.getElementById('security-mode-warning')
+  const securityDetailEl = document.getElementById('security-mode-detail')
+  if (securityWarningEl) {
+    if (status.securityMode === 'insecure_proxy') {
+      securityWarningEl.style.display = 'block'
+      if (securityDetailEl) {
+        const rewrites = status.insecureRewritesApplied && status.insecureRewritesApplied.length > 0
+          ? status.insecureRewritesApplied.join(', ')
+          : 'csp_headers'
+        securityDetailEl.textContent = `INSECURE DEBUG MODE active. production_parity=${status.productionParity === false ? 'false' : 'true'}; rewrites=${rewrites}`
+      }
+    } else {
+      securityWarningEl.style.display = 'none'
+      if (securityDetailEl) {
+        securityDetailEl.textContent = ''
+      }
     }
   }
 

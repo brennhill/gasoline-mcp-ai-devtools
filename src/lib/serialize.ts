@@ -1,4 +1,10 @@
 /**
+ * Purpose: Provides shared runtime utilities used by extension and server workflows.
+ * Why: Avoids duplicated logic across runtime layers and keeps behavior consistent.
+ * Docs: docs/features/feature/observe/index.md
+ */
+
+/**
  * @fileoverview Serialization utilities for safe value handling.
  * Provides safe serialization with circular reference detection, DOM element
  * selector generation, and sensitive input detection.

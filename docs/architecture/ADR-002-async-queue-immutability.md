@@ -1,3 +1,9 @@
+---
+doc_type: legacy_doc
+status: reference
+last_reviewed: 2026-02-16
+---
+
 # ADR-002: Async Queue Architecture is Immutable
 
 **Status**: ACCEPTED (2026-02-02)
@@ -11,7 +17,7 @@
 
 On 2026-02-02, we experienced a critical production incident where the async queue-and-poll implementation was **deleted** during Phase 4b refactoring (commit 12c6a02). This caused:
 
-- **100% failure rate** on the "next" branch
+- **100% failure rate** on the "UNSTABLE" branch
 - All `interact()` commands timing out
 - No mechanism for AI to control the browser
 - Complete loss of correlation ID tracking
@@ -34,7 +40,7 @@ We declare the async queue-and-poll architecture **IMMUTABLE** and enforce it wi
 ### Layer 1: Pre-Commit Hook (Immediate Feedback)
 
 `.git/hooks/pre-commit` blocks commits that:
-- Delete critical files ([queries.go](internal/capture/queries.go), [handlers.go](internal/capture/handlers.go), [tools.go](cmd/dev-console/tools.go))
+- Delete critical files ([queries.go](internal/capture/queries.go), [handlers.go](internal/capture/handlers.go), [tools_core.go](cmd/dev-console/tools_core.go))
 - Introduce stub implementations
 - Remove required methods
 

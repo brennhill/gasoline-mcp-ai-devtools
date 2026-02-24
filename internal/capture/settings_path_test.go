@@ -1,3 +1,7 @@
+// Purpose: Validate settings_path_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
+// Docs: docs/features/feature/backend-log-streaming/index.md
+
 package capture
 
 import (
@@ -41,7 +45,7 @@ func TestLoadSettingsFromDiskFallsBackToLegacyPath(t *testing.T) {
 	payload := PersistedSettings{
 		AIWebPilotEnabled: boolPtr(true),
 		Timestamp:         time.Now(),
-		SessionID:         "legacy-session",
+		ExtSessionID:      "legacy-session",
 	}
 	data, err := json.Marshal(payload)
 	if err != nil {
@@ -70,8 +74,9 @@ func TestSaveSettingsToDiskWritesToStateDirectory(t *testing.T) {
 
 	c.mu.Lock()
 	c.ext.pilotEnabled = true
+	c.ext.pilotStatusKnown = true
 	c.ext.pilotUpdatedAt = now
-	c.ext.extensionSession = "session-123"
+	c.ext.extSessionID = "session-123"
 	c.mu.Unlock()
 
 	if err := c.SaveSettingsToDisk(); err != nil {
@@ -96,11 +101,42 @@ func TestSaveSettingsToDiskWritesToStateDirectory(t *testing.T) {
 	if persisted.AIWebPilotEnabled == nil || !*persisted.AIWebPilotEnabled {
 		t.Fatalf("AIWebPilotEnabled = %v, want true", persisted.AIWebPilotEnabled)
 	}
-	if persisted.SessionID != "session-123" {
-		t.Fatalf("SessionID = %q, want %q", persisted.SessionID, "session-123")
+	if persisted.ExtSessionID != "session-123" {
+		t.Fatalf("SessionID = %q, want %q", persisted.ExtSessionID, "session-123")
 	}
 }
 
 func boolPtr(v bool) *bool {
 	return &v
+}
+
+func TestSaveSettingsToDiskOmitsUnknownPilotState(t *testing.T) {
+	stateRoot := t.TempDir()
+	t.Setenv(state.StateDirEnv, stateRoot)
+
+	c := NewCapture()
+	c.mu.Lock()
+	c.ext.extSessionID = "session-unknown"
+	c.mu.Unlock()
+
+	if err := c.SaveSettingsToDisk(); err != nil {
+		t.Fatalf("SaveSettingsToDisk() error = %v", err)
+	}
+
+	path, err := getSettingsPath()
+	if err != nil {
+		t.Fatalf("getSettingsPath() error = %v", err)
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("os.ReadFile(%q) error = %v", path, err)
+	}
+
+	var persisted PersistedSettings
+	if err := json.Unmarshal(data, &persisted); err != nil {
+		t.Fatalf("json.Unmarshal() error = %v", err)
+	}
+	if persisted.AIWebPilotEnabled != nil {
+		t.Fatalf("AIWebPilotEnabled = %v, want nil when pilot state is unknown", persisted.AIWebPilotEnabled)
+	}
 }

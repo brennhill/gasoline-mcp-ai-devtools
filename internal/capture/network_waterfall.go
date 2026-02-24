@@ -1,6 +1,7 @@
-// network_waterfall.go — Network waterfall (PerformanceResourceTiming) buffering.
-// Captures browser resource timing data for CSP generation and performance analysis.
-// Design: Ring buffer with configurable capacity.
+// Purpose: Implements buffering and retrieval for captured network waterfall timing entries.
+// Why: Preserves request-timing evidence for performance and diagnostics tooling.
+// Docs: docs/features/feature/backend-log-streaming/index.md
+
 package capture
 
 import (

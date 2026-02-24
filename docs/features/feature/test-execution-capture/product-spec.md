@@ -5,6 +5,9 @@ ai-priority: high
 tags: [v7, testing, test-integration, ears]
 relates-to: [../custom-event-api.md, ../../core/architecture.md]
 last-verified: 2026-01-31
+doc_type: product-spec
+feature_id: feature-test-execution-capture
+last_reviewed: 2026-02-16
 ---
 
 # Test Execution Capture

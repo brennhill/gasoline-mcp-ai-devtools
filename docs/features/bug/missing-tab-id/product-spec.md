@@ -4,6 +4,9 @@ status: in-progress
 tool: observe
 mode: all
 version: 5.2.0
+doc_type: product-spec
+feature_id: bug-missing-tab-id
+last_reviewed: 2026-02-16
 ---
 
 # Product Spec: Missing Tab ID in MCP Responses (Bug Fix)

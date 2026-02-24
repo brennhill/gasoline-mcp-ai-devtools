@@ -1,3 +1,7 @@
+// Purpose: Validate websocket_repair_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
+// Docs: docs/features/feature/backend-log-streaming/index.md
+
 // websocket_repair_test.go — Unit tests for repairWSParallelArrays.
 //go:build !production
 

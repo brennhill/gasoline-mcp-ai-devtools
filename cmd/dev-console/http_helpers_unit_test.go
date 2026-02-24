@@ -1,3 +1,7 @@
+// Purpose: Validate http_helpers_unit_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
+// Docs: docs/features/feature/observe/index.md
+
 package main
 
 import (
@@ -5,6 +9,8 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	"github.com/dev-console/dev-console/internal/tools/observe"
 )
 
 func TestAuthMiddleware(t *testing.T) {
@@ -80,8 +86,8 @@ func TestHandleOpenAPIAndLogLevelRank(t *testing.T) {
 		"other": -1,
 	}
 	for level, want := range cases {
-		if got := logLevelRank(level); got != want {
-			t.Fatalf("logLevelRank(%q) = %d, want %d", level, got, want)
+		if got := observe.LogLevelRank(level); got != want {
+			t.Fatalf("observe.LogLevelRank(%q) = %d, want %d", level, got, want)
 		}
 	}
 }

@@ -1,3 +1,9 @@
+---
+doc_type: legacy_doc
+status: reference
+last_reviewed: 2026-02-16
+---
+
 # Development Guide
 
 This guide covers local development setup, quality checks, and CI pipeline for Gasoline.
@@ -106,7 +112,7 @@ Runs automatically before each push:
 ## CI Pipeline
 
 The GitHub Actions CI workflow (`.github/workflows/ci.yml`) runs on:
-- Push to `main` or `next` branches
+- Push to `main` or `UNSTABLE` branches
 - Pull requests to `main`
 - Nightly schedule (6 AM UTC)
 - Manual workflow dispatch

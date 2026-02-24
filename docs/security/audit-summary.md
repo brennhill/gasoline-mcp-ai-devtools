@@ -1,3 +1,9 @@
+---
+doc_type: legacy_doc
+status: reference
+last_reviewed: 2026-02-16
+---
+
 # Gasoline Chrome Extension - Security Audit & Fixes Summary
 
 **Date:** January 29, 2026

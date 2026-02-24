@@ -1,3 +1,9 @@
+---
+doc_type: legacy_doc
+status: reference
+last_reviewed: 2026-02-16
+---
+
 # Link Health Analyzer v2: CORS Detection & Server-Side Validation
 
 ## Problem: CORS Limitations in Browser-Based Link Checking

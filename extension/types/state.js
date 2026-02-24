@@ -1,6 +1,7 @@
 /**
- * @fileoverview State Management Types
- * Browser state snapshots, circuit breakers, and memory pressure
+ * Purpose: Defines extension runtime state contracts for snapshots, health, circuit-breaker, and memory-pressure reporting.
+ * Why: Keeps status/state payloads consistent across background logic, popup rendering, and query responses.
+ * Docs: docs/features/feature/backend-log-streaming/index.md
  */
-export {}
+export {};
 //# sourceMappingURL=state.js.map

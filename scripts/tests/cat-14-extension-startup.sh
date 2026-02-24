@@ -13,6 +13,11 @@ OUTPUT_FILE="${2:-/dev/null}"
 init_framework "$PORT" "$OUTPUT_FILE"
 begin_category "14" "Extension Startup Sequence" "5"
 
+if ! start_daemon; then
+    fail "Failed to start daemon for extension startup contract tests."
+    finish_category
+fi
+
 # ── 14.1 — Extension sends well-formed /sync payload ──
 begin_test "14.1" "Extension /sync payload has required fields" \
     "Simulate extension first sync after startup" \
@@ -20,7 +25,10 @@ begin_test "14.1" "Extension /sync payload has required fields" \
 
 run_test_14_1() {
     sleep 2
-    wait_for_health 10
+    if ! wait_for_health 10; then
+        fail "Daemon health check failed before /sync payload test."
+        return
+    fi
 
     local response
     response=$(curl -s -X POST \

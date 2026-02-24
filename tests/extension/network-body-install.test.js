@@ -148,7 +148,7 @@ describe('Bug #4 Fix: installFetchCapture uses wrapFetchWithBodies', () => {
 
     const event = capturedBodyEvents[0]
     assert.strictEqual(event.status, 200)
-    assert.strictEqual(event.responseBody, responseBody)
+    assert.strictEqual(event.response_body, responseBody)
 
     uninstallFetchCapture()
   })
@@ -177,8 +177,8 @@ describe('Bug #4 Fix: installFetchCapture uses wrapFetchWithBodies', () => {
     assert.ok(capturedBodyEvents.length > 0, 'Expected body capture for POST request')
     const event = capturedBodyEvents[0]
     assert.strictEqual(event.method, 'POST')
-    assert.ok(event.requestBody, 'Request body should be captured')
-    assert.ok(event.requestBody.includes('data'), 'Request body content should be present')
+    assert.ok(event.request_body, 'Request body should be captured')
+    assert.ok(event.request_body.includes('data'), 'Request body content should be present')
 
     uninstallFetchCapture()
   })
@@ -202,8 +202,8 @@ describe('Bug #4 Fix: installFetchCapture uses wrapFetchWithBodies', () => {
 
     assert.ok(capturedBodyEvents.length > 0, 'Expected body capture for large response')
     const event = capturedBodyEvents[0]
-    assert.ok(event.responseBody, 'Response body should be captured')
-    assert.ok(event.responseBody.length > 1000, 'Large body content should be present')
+    assert.ok(event.response_body, 'Response body should be captured')
+    assert.ok(event.response_body.length > 1000, 'Large body content should be present')
 
     uninstallFetchCapture()
   })
@@ -229,8 +229,8 @@ describe('Bug #4 Fix: installFetchCapture uses wrapFetchWithBodies', () => {
 
     assert.ok(capturedBodyEvents.length > 0, 'Expected body capture for binary response')
     const event = capturedBodyEvents[0]
-    assert.ok(event.responseBody.includes('[Binary:'), 'Binary content should be marked as such')
-    assert.ok(event.responseBody.includes('image/png'), 'Binary content type should be included')
+    assert.ok(event.response_body.includes('[Binary:'), 'Binary content should be marked as such')
+    assert.ok(event.response_body.includes('image/png'), 'Binary content type should be included')
 
     uninstallFetchCapture()
   })
@@ -259,7 +259,7 @@ describe('Bug #4 Fix: installFetchCapture uses wrapFetchWithBodies', () => {
     assert.ok(capturedBodyEvents.length > 0, 'Expected body capture for 500 response')
     const event = capturedBodyEvents[0]
     assert.strictEqual(event.status, 500)
-    assert.ok(event.responseBody.includes('Database connection failed'), 'Error response body should be captured')
+    assert.ok(event.response_body.includes('Database connection failed'), 'Error response body should be captured')
 
     uninstallFetchCapture()
   })
@@ -288,8 +288,8 @@ describe('Bug #4 Fix: installFetchCapture uses wrapFetchWithBodies', () => {
     const event = capturedBodyEvents[0]
     // 8KB = 8192 bytes
     assert.ok(
-      event.requestBody.length <= 8192,
-      `Request body should be truncated at 8KB, got ${event.requestBody.length}`
+      event.request_body.length <= 8192,
+      `Request body should be truncated at 8KB, got ${event.request_body.length}`
     )
 
     uninstallFetchCapture()
@@ -316,8 +316,8 @@ describe('Bug #4 Fix: installFetchCapture uses wrapFetchWithBodies', () => {
     const event = capturedBodyEvents[0]
     // 16KB = 16384 bytes
     assert.ok(
-      event.responseBody.length <= 16384,
-      `Response body should be truncated at 16KB, got ${event.responseBody.length}`
+      event.response_body.length <= 16384,
+      `Response body should be truncated at 16KB, got ${event.response_body.length}`
     )
 
     uninstallFetchCapture()
@@ -356,9 +356,9 @@ describe('Bug #4 Fix: installFetchCapture uses wrapFetchWithBodies', () => {
     )
 
     // Verify each has actual body content
-    assert.ok(capturedBodyEvents[0].responseBody.includes('alice'))
-    assert.ok(capturedBodyEvents[1].responseBody.includes('bob'))
-    assert.ok(capturedBodyEvents[2].responseBody.includes('created'))
+    assert.ok(capturedBodyEvents[0].response_body.includes('alice'))
+    assert.ok(capturedBodyEvents[1].response_body.includes('bob'))
+    assert.ok(capturedBodyEvents[2].response_body.includes('created'))
 
     uninstallFetchCapture()
   })

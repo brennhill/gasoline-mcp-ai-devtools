@@ -1,3 +1,9 @@
+---
+doc_type: legacy_doc
+status: reference
+last_reviewed: 2026-02-16
+---
+
 # Data Capture Pipeline: Continuous Telemetry Flow
 
 ## Overview

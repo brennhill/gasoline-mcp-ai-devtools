@@ -3,6 +3,9 @@ feature: behavioral-baselines
 status: in-progress
 tool: observe
 mode: performance
+doc_type: product-spec
+feature_id: feature-behavioral-baselines
+last_reviewed: 2026-02-16
 ---
 # Product Spec: Behavioral Baselines
 

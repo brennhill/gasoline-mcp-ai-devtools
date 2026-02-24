@@ -1,4 +1,7 @@
-// response.go — HTTP response utilities
+// Purpose: Provides shared JSON HTTP response writer helpers for daemon handlers.
+// Why: Centralizes response encoding so API handlers return consistent status/content semantics.
+// Docs: docs/features/feature/query-service/index.md
+
 package util
 
 import (

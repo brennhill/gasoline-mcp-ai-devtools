@@ -1,3 +1,9 @@
+---
+doc_type: legacy_doc
+status: reference
+last_reviewed: 2026-02-16
+---
+
 # Architecture Enforcement - Complete Summary
 
 **Date**: 2026-02-02
@@ -20,7 +26,7 @@ We've built **defense-in-depth** protection for the async queue-and-poll archite
 **When**: Before every `git commit`
 
 **Blocks commits that**:
-- Delete critical files (queries.go, handlers.go, tools.go)
+- Delete critical files (queries.go, handlers.go, tools_core.go)
 - Remove required methods
 - Introduce stub implementations
 - Modify without restoring functionality
@@ -56,7 +62,7 @@ We've built **defense-in-depth** protection for the async queue-and-poll archite
 1. ✅ 6 critical files exist
 2. ✅ 14 required methods in queries.go
 3. ✅ 4 HTTP handlers in handlers.go
-4. ✅ 5 MCP tool handlers in tools.go
+4. ✅ 5 MCP tool handlers in tools_core.go
 5. ✅ No stub implementations
 6. ✅ Integration tests pass
 7. ✅ AsyncCommandTimeout = 30s
@@ -70,7 +76,7 @@ We've built **defense-in-depth** protection for the async queue-and-poll archite
 ### 4. GitHub Actions (CI Enforcement) 📋
 
 **File**: `.github/workflows/architecture-validation.yml`
-**Triggers**: Every PR/push to main/next/develop
+**Triggers**: Every PR/push to main/UNSTABLE/develop
 
 **What it does**:
 - Runs validation script

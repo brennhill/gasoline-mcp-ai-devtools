@@ -3,6 +3,9 @@ feature: spa-route-measurement
 status: in-progress
 tool: observe
 mode: performance, timeline
+doc_type: product-spec
+feature_id: feature-spa-route-measurement
+last_reviewed: 2026-02-16
 ---
 # Product Spec: Spa Route Measurement
 

@@ -1,3 +1,7 @@
+// Purpose: Validate coverage_gaps_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
+// Docs: docs/features/feature/backend-log-streaming/index.md
+
 // coverage_gaps_test.go — Targeted tests for uncovered capture paths (part 1).
 // Covers: SetLifecycleCallback, emitLifecycleEvent, SetServerVersion,
 // GetVersionMismatch, majorMinor, PrintHTTPDebug, detectAndSetBinaryFormat,
@@ -10,7 +14,6 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
-	"time"
 )
 
 // ============================================
@@ -319,21 +322,8 @@ func TestRedactExtensionLog_WithRedactor(t *testing.T) {
 }
 
 // ============================================
-// Circuit breaker
+// Circuit breaker (delegation tests — struct tests live in internal/circuit)
 // ============================================
-
-func TestCircuitBreaker_RecordEventsWindowReset(t *testing.T) {
-	t.Parallel()
-	cb := NewCircuitBreaker(func(string, map[string]any) {})
-	cb.SetWindowState(time.Now().Add(-2*time.Second), 50)
-	cb.RecordEvents(10)
-	cb.mu.RLock()
-	count := cb.windowEventCount
-	cb.mu.RUnlock()
-	if count != 10 {
-		t.Errorf("windowEventCount = %d, want 10 after reset", count)
-	}
-}
 
 func TestCircuitBreaker_GetHealthStatus_Open(t *testing.T) {
 	t.Parallel()

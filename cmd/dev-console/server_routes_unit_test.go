@@ -1,3 +1,7 @@
+// Purpose: Validate server_routes_unit_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
+// Docs: docs/features/feature/observe/index.md
+
 package main
 
 import (
@@ -15,6 +19,7 @@ import (
 	"time"
 
 	"github.com/dev-console/dev-console/internal/capture"
+	"github.com/dev-console/dev-console/internal/queries"
 )
 
 func decodeJSONMap(t *testing.T, body []byte) map[string]any {
@@ -37,7 +42,9 @@ func TestSetupHTTPRoutesBasicEndpoints(t *testing.T) {
 	cap := capture.NewCapture()
 	mux := setupHTTPRoutes(srv, cap)
 
+	// JSON clients get the discovery response via content negotiation
 	rootReq := localRequest(http.MethodGet, "/", nil)
+	rootReq.Header.Set("Accept", "application/json")
 	rootRR := httptest.NewRecorder()
 	mux.ServeHTTP(rootRR, rootReq)
 	if rootRR.Code != http.StatusOK {
@@ -46,6 +53,17 @@ func TestSetupHTTPRoutesBasicEndpoints(t *testing.T) {
 	rootBody := decodeJSONMap(t, rootRR.Body.Bytes())
 	if rootBody["name"] != "gasoline" {
 		t.Fatalf("root name = %v, want gasoline", rootBody["name"])
+	}
+
+	// Browsers (no Accept: application/json) get the HTML dashboard
+	htmlReq := localRequest(http.MethodGet, "/", nil)
+	htmlRR := httptest.NewRecorder()
+	mux.ServeHTTP(htmlRR, htmlReq)
+	if htmlRR.Code != http.StatusOK {
+		t.Fatalf("GET / (html) status = %d, want %d", htmlRR.Code, http.StatusOK)
+	}
+	if ct := htmlRR.Header().Get("Content-Type"); ct != "text/html; charset=utf-8" {
+		t.Fatalf("GET / (html) content-type = %q, want text/html; charset=utf-8", ct)
 	}
 
 	notFoundReq := localRequest(http.MethodGet, "/missing", nil)
@@ -123,6 +141,43 @@ func TestSetupHTTPRoutesBasicEndpoints(t *testing.T) {
 	}
 	if !redactedFound {
 		t.Fatal("diagnostics did not include redacted http debug request body")
+	}
+
+	traceQueryID, _ := cap.CreatePendingQueryWithTimeout(queries.PendingQuery{
+		Type:          "browser_action",
+		CorrelationID: "diag-trace-corr",
+	}, 30*time.Second, "test-client")
+	_ = cap.GetPendingQueries()
+	cap.AcknowledgePendingQuery(traceQueryID)
+	cap.CompleteCommand("diag-trace-corr", json.RawMessage(`{"ok":true}`), "")
+
+	diagWithTraceRR := httptest.NewRecorder()
+	mux.ServeHTTP(diagWithTraceRR, localRequest(http.MethodGet, "/diagnostics", nil))
+	if diagWithTraceRR.Code != http.StatusOK {
+		t.Fatalf("GET /diagnostics (trace) status = %d, want %d", diagWithTraceRR.Code, http.StatusOK)
+	}
+	diagWithTrace := decodeJSONMap(t, diagWithTraceRR.Body.Bytes())
+	tracePayload, ok := diagWithTrace["command_traces"].(map[string]any)
+	if !ok {
+		t.Fatalf("diagnostics missing command_traces payload: %v", diagWithTrace)
+	}
+	traceCount, _ := tracePayload["count"].(float64)
+	if traceCount < 1 {
+		t.Fatalf("diagnostics command_traces.count = %v, want >=1", traceCount)
+	}
+	traceEntries, ok := tracePayload["entries"].([]any)
+	if !ok || len(traceEntries) == 0 {
+		t.Fatalf("diagnostics command_traces.entries missing: %v", tracePayload["entries"])
+	}
+	firstTrace, ok := traceEntries[0].(map[string]any)
+	if !ok {
+		t.Fatalf("first trace entry is not object: %T", traceEntries[0])
+	}
+	if firstTrace["trace_id"] == "" {
+		t.Fatalf("trace_id missing in diagnostics trace entry: %v", firstTrace)
+	}
+	if firstTrace["timeline"] == "" {
+		t.Fatalf("timeline missing in diagnostics trace entry: %v", firstTrace)
 	}
 
 	diagBadReq := localRequest(http.MethodPost, "/diagnostics", nil)

@@ -1,10 +1,19 @@
 /**
+ * Purpose: Handles extension background coordination and message routing.
+ * Why: Centralizes extension coordination to reduce race conditions and split-brain state.
+ * Docs: docs/features/feature/analyze-tool/index.md
+ * Docs: docs/features/feature/interact-explore/index.md
+ * Docs: docs/features/feature/observe/index.md
+ */
+
+/**
  * @fileoverview Event Listeners - Handles Chrome alarms, tab listeners,
  * storage change listeners, and other Chrome extension events.
  */
 
 import type { StorageChange } from '../types'
 import { scaleTimeout } from '../lib/timeouts'
+import { StorageKey } from '../lib/constants'
 
 // =============================================================================
 // CONSTANTS - Rate Limiting & DoS Protection
@@ -143,33 +152,29 @@ export function installTabUpdatedListener(onTabUpdated: (tabId: number, newUrl: 
  * Handle tracked tab URL change
  * Updates the stored URL and title when the tracked tab navigates
  */
-export function handleTrackedTabUrlChange(
+export async function handleTrackedTabUrlChange(
   updatedTabId: number,
   newUrl: string,
   logFn?: (message: string) => void
-): void {
+): Promise<void> {
   if (typeof chrome === 'undefined' || !chrome.storage) return
 
-  chrome.storage.local.get(['trackedTabId'], (result: { trackedTabId?: number }) => {
-    if (result.trackedTabId === updatedTabId) {
-      // Update URL immediately, then refresh title from the tab
-      chrome.tabs
-        .get(updatedTabId)
-        .then((tab) => {
-          const updates: Record<string, string> = { trackedTabUrl: newUrl }
-          if (tab?.title) updates.trackedTabTitle = tab.title
-          chrome.storage.local.set(updates, () => {
-            if (logFn) {
-              logFn('[Gasoline] Tracked tab updated: ' + newUrl)
-            }
-          })
-        })
-        .catch(() => {
-          // Tab may have been closed — update URL only
-          chrome.storage.local.set({ trackedTabUrl: newUrl })
-        })
+  const result = (await chrome.storage.local.get([StorageKey.TRACKED_TAB_ID])) as { trackedTabId?: number }
+  if (result.trackedTabId === updatedTabId) {
+    // Update URL immediately, then refresh title from the tab
+    try {
+      const tab = await chrome.tabs.get(updatedTabId)
+      const updates: Record<string, string> = { [StorageKey.TRACKED_TAB_URL]: newUrl }
+      if (tab?.title) updates[StorageKey.TRACKED_TAB_TITLE] = tab.title
+      await chrome.storage.local.set(updates)
+      if (logFn) {
+        logFn('[Gasoline] Tracked tab updated: ' + newUrl)
+      }
+    } catch {
+      // Tab may have been closed — update URL only
+      chrome.storage.local.set({ [StorageKey.TRACKED_TAB_URL]: newUrl })
     }
-  })
+  }
 }
 
 /**
@@ -177,15 +182,17 @@ export function handleTrackedTabUrlChange(
  * SECURITY: Clears ephemeral tracking state when tab closes
  * Uses session storage for ephemeral tab tracking data
  */
-export function handleTrackedTabClosed(closedTabId: number, logFn?: (message: string, data?: unknown) => void): void {
+export async function handleTrackedTabClosed(
+  closedTabId: number,
+  logFn?: (message: string, data?: unknown) => void
+): Promise<void> {
   if (typeof chrome === 'undefined' || !chrome.storage) return
 
-  chrome.storage.local.get(['trackedTabId'], (result: { trackedTabId?: number }) => {
-    if (result.trackedTabId === closedTabId) {
-      if (logFn) logFn('[Gasoline] Tracked tab closed (id:', closedTabId)
-      chrome.storage.local.remove(['trackedTabId', 'trackedTabUrl', 'trackedTabTitle'])
-    }
-  })
+  const result = (await chrome.storage.local.get([StorageKey.TRACKED_TAB_ID])) as { trackedTabId?: number }
+  if (result.trackedTabId === closedTabId) {
+    if (logFn) logFn('[Gasoline] Tracked tab closed (id:', closedTabId)
+    chrome.storage.local.remove([StorageKey.TRACKED_TAB_ID, StorageKey.TRACKED_TAB_URL, StorageKey.TRACKED_TAB_TITLE])
+  }
 }
 
 // =============================================================================
@@ -203,12 +210,12 @@ export function installStorageChangeListener(handlers: {
 
   chrome.storage.onChanged.addListener((changes: { [key: string]: StorageChange<unknown> }, areaName: string) => {
     if (areaName === 'local') {
-      if (changes.aiWebPilotEnabled && handlers.onAiWebPilotChanged) {
-        handlers.onAiWebPilotChanged(changes.aiWebPilotEnabled.newValue === true)
+      if (changes[StorageKey.AI_WEB_PILOT_ENABLED] && handlers.onAiWebPilotChanged) {
+        handlers.onAiWebPilotChanged(changes[StorageKey.AI_WEB_PILOT_ENABLED]!.newValue === true)
       }
-      if (changes.trackedTabId && handlers.onTrackedTabChanged) {
-        const newTabId = (changes.trackedTabId.newValue as number) ?? null
-        const oldTabId = (changes.trackedTabId.oldValue as number) ?? null
+      if (changes[StorageKey.TRACKED_TAB_ID] && handlers.onTrackedTabChanged) {
+        const newTabId = (changes[StorageKey.TRACKED_TAB_ID]!.newValue as number) ?? null
+        const oldTabId = (changes[StorageKey.TRACKED_TAB_ID]!.oldValue as number) ?? null
         handlers.onTrackedTabChanged(newTabId, oldTabId)
       }
     }
@@ -227,20 +234,20 @@ export function installStartupListener(logFn?: (message: string) => void): void 
 
   chrome.runtime.onStartup.addListener(async () => {
     try {
-      const result = await chrome.storage.local.get(['trackedTabId'])
-      const trackedTabId = result.trackedTabId as number | undefined
+      const result = await chrome.storage.local.get([StorageKey.TRACKED_TAB_ID])
+      const trackedTabId = result[StorageKey.TRACKED_TAB_ID] as number | undefined
       if (trackedTabId) {
         try {
           await chrome.tabs.get(trackedTabId)
           if (logFn) logFn('[Gasoline] Browser restarted - tracked tab still exists, keeping tracking')
         } catch {
           if (logFn) logFn('[Gasoline] Browser restarted - tracked tab gone, clearing tracking state')
-          chrome.storage.local.remove(['trackedTabId', 'trackedTabUrl', 'trackedTabTitle'])
+          chrome.storage.local.remove([StorageKey.TRACKED_TAB_ID, StorageKey.TRACKED_TAB_URL, StorageKey.TRACKED_TAB_TITLE])
         }
       }
     } catch {
       // Safety fallback: clear if we can't check
-      chrome.storage.local.remove(['trackedTabId', 'trackedTabUrl', 'trackedTabTitle'])
+      chrome.storage.local.remove([StorageKey.TRACKED_TAB_ID, StorageKey.TRACKED_TAB_URL, StorageKey.TRACKED_TAB_TITLE])
     }
   })
 }
@@ -351,105 +358,96 @@ export async function waitForTabLoad(tabId: number, timeoutMs = scaleTimeout(500
 /**
  * Forward a message to all content scripts
  */
-export function forwardToAllContentScripts(
+export async function forwardToAllContentScripts(
   message: { type: string; [key: string]: unknown },
   debugLogFn?: (category: string, message: string, data?: unknown) => void
-): void {
+): Promise<void> {
   if (typeof chrome === 'undefined' || !chrome.tabs) return
 
-  chrome.tabs.query({}, (tabs) => {
-    for (const tab of tabs) {
-      if (tab.id) {
-        chrome.tabs.sendMessage(tab.id, message).catch((err: Error) => {
-          if (
-            !err.message?.includes('Receiving end does not exist') &&
-            !err.message?.includes('Could not establish connection')
-          ) {
-            if (debugLogFn) {
-              debugLogFn('error', 'Unexpected error forwarding setting to tab', {
-                tabId: tab.id,
-                error: err.message
-              })
-            }
+  const tabs = await chrome.tabs.query({})
+  for (const tab of tabs) {
+    if (tab.id) {
+      chrome.tabs.sendMessage(tab.id, message).catch((err: Error) => {
+        if (
+          !err.message?.includes('Receiving end does not exist') &&
+          !err.message?.includes('Could not establish connection')
+        ) {
+          if (debugLogFn) {
+            debugLogFn('error', 'Unexpected error forwarding setting to tab', {
+              tabId: tab.id,
+              error: err.message
+            })
           }
-        })
-      }
+        }
+      })
     }
-  })
+  }
 }
 
 // =============================================================================
 // SETTINGS LOADING
 // =============================================================================
 
+/** Settings returned by loadSavedSettings */
+export interface SavedSettings {
+  serverUrl?: string
+  logLevel?: string
+  screenshotOnError?: boolean
+  sourceMapEnabled?: boolean
+  debugMode?: boolean
+}
+
 /**
  * Load saved settings from chrome.storage.local
  */
-export function loadSavedSettings(
-  callback: (settings: {
-    serverUrl?: string
-    logLevel?: string
-    screenshotOnError?: boolean
-    sourceMapEnabled?: boolean
-    debugMode?: boolean
-  }) => void
-): void {
+export async function loadSavedSettings(): Promise<SavedSettings> {
   if (typeof chrome === 'undefined' || !chrome.storage) {
-    callback({})
-    return
+    return {}
   }
 
-  chrome.storage.local.get(
-    ['serverUrl', 'logLevel', 'screenshotOnError', 'sourceMapEnabled', 'debugMode'],
-    (result: {
-      serverUrl?: string
-      logLevel?: string
-      screenshotOnError?: boolean
-      sourceMapEnabled?: boolean
-      debugMode?: boolean
-    }) => {
-      if (chrome.runtime.lastError) {
-        console.warn('[Gasoline] Could not load saved settings:', chrome.runtime.lastError.message, '- using defaults')
-        callback({})
-        return
-      }
-      callback(result)
-    }
-  )
+  try {
+    const result = (await chrome.storage.local.get([
+      StorageKey.SERVER_URL,
+      StorageKey.LOG_LEVEL,
+      StorageKey.SCREENSHOT_ON_ERROR,
+      StorageKey.SOURCE_MAP_ENABLED,
+      StorageKey.DEBUG_MODE
+    ])) as SavedSettings
+    return result
+  } catch {
+    console.warn('[Gasoline] Could not load saved settings - using defaults')
+    return {}
+  }
 }
 
 /**
  * Load AI Web Pilot enabled state from storage
  */
-export function loadAiWebPilotState(callback: (enabled: boolean) => void, logFn?: (message: string) => void): void {
+export async function loadAiWebPilotState(logFn?: (message: string) => void): Promise<boolean> {
   if (typeof chrome === 'undefined' || !chrome.storage) {
-    callback(false)
-    return
+    return false
   }
 
   const startTime = performance.now()
-  chrome.storage.local.get(['aiWebPilotEnabled'], (result: { aiWebPilotEnabled?: boolean }) => {
-    const wasLoaded = result.aiWebPilotEnabled !== false
-    const loadTime = performance.now() - startTime
-    if (logFn) {
-      logFn(`[Gasoline] AI Web Pilot loaded on startup: ${wasLoaded} (took ${loadTime.toFixed(1)}ms)`)
-    }
-    callback(wasLoaded)
-  })
+  const result = (await chrome.storage.local.get([StorageKey.AI_WEB_PILOT_ENABLED])) as { aiWebPilotEnabled?: boolean }
+  const wasLoaded = result.aiWebPilotEnabled !== false
+  const loadTime = performance.now() - startTime
+  if (logFn) {
+    logFn(`[Gasoline] AI Web Pilot loaded on startup: ${wasLoaded} (took ${loadTime.toFixed(1)}ms)`)
+  }
+  return wasLoaded
 }
 
 /**
  * Load debug mode state from storage
  */
-export function loadDebugModeState(callback: (enabled: boolean) => void): void {
+export async function loadDebugModeState(): Promise<boolean> {
   if (typeof chrome === 'undefined' || !chrome.storage) {
-    callback(false)
-    return
+    return false
   }
 
-  chrome.storage.local.get(['debugMode'], (result: { debugMode?: boolean }) => {
-    callback(result.debugMode === true)
-  })
+  const result = (await chrome.storage.local.get([StorageKey.DEBUG_MODE])) as { debugMode?: boolean }
+  return result.debugMode === true
 }
 
 /**
@@ -468,37 +466,24 @@ export interface TrackedTabInfo {
 }
 
 /**
- * Get tracked tab information (callback-based for compatibility with pre-async event listeners)
+ * Get tracked tab information.
  */
-// Overload: Promise-based (for await usage)
-export function getTrackedTabInfo(): Promise<TrackedTabInfo>
-// Overload: Callback-based (for backward compatibility)
-export function getTrackedTabInfo(callback: (info: TrackedTabInfo) => void): void
-// Implementation
-export function getTrackedTabInfo(callback?: (info: TrackedTabInfo) => void): void | Promise<TrackedTabInfo> {
-  if (!callback) {
-    // Promise-based version
-    return new Promise((resolve) => {
-      getTrackedTabInfo((info) => resolve(info))
-    })
-  }
-
-  // Callback-based version
+export async function getTrackedTabInfo(): Promise<TrackedTabInfo> {
   if (typeof chrome === 'undefined' || !chrome.storage) {
-    callback({ trackedTabId: null, trackedTabUrl: null, trackedTabTitle: null })
-    return
+    return { trackedTabId: null, trackedTabUrl: null, trackedTabTitle: null }
   }
 
-  chrome.storage.local.get(
-    ['trackedTabId', 'trackedTabUrl', 'trackedTabTitle'],
-    (result: { trackedTabId?: number; trackedTabUrl?: string; trackedTabTitle?: string }) => {
-      callback({
-        trackedTabId: result.trackedTabId || null,
-        trackedTabUrl: result.trackedTabUrl || null,
-        trackedTabTitle: result.trackedTabTitle || null
-      })
-    }
-  )
+  const result = (await chrome.storage.local.get([
+    StorageKey.TRACKED_TAB_ID,
+    StorageKey.TRACKED_TAB_URL,
+    StorageKey.TRACKED_TAB_TITLE
+  ])) as { trackedTabId?: number; trackedTabUrl?: string; trackedTabTitle?: string }
+
+  return {
+    trackedTabId: result.trackedTabId || null,
+    trackedTabUrl: result.trackedTabUrl || null,
+    trackedTabTitle: result.trackedTabTitle || null
+  }
 }
 
 /**
@@ -506,46 +491,27 @@ export function getTrackedTabInfo(callback?: (info: TrackedTabInfo) => void): vo
  */
 export function clearTrackedTab(): void {
   if (typeof chrome === 'undefined' || !chrome.storage) return
-  chrome.storage.local.remove(['trackedTabId', 'trackedTabUrl', 'trackedTabTitle'])
+  chrome.storage.local.remove([StorageKey.TRACKED_TAB_ID, StorageKey.TRACKED_TAB_URL, StorageKey.TRACKED_TAB_TITLE])
 }
 
 /**
- * Get all extension config settings
+ * Get all extension config settings.
  */
-// Overload: Promise-based (for await usage)
-export function getAllConfigSettings(): Promise<Record<string, boolean | string | undefined>>
-// Overload: Callback-based (for backward compatibility)
-export function getAllConfigSettings(callback: (settings: Record<string, boolean | string | undefined>) => void): void
-// Implementation
-export function getAllConfigSettings(
-  callback?: (settings: Record<string, boolean | string | undefined>) => void
-): void | Promise<Record<string, boolean | string | undefined>> {
-  if (!callback) {
-    // Promise-based version
-    return new Promise((resolve) => {
-      getAllConfigSettings((settings) => resolve(settings))
-    })
-  }
-
-  // Callback-based version
+export async function getAllConfigSettings(): Promise<Record<string, boolean | string | undefined>> {
   if (typeof chrome === 'undefined' || !chrome.storage) {
-    callback({})
-    return
+    return {}
   }
 
-  chrome.storage.local.get(
-    [
-      'aiWebPilotEnabled',
-      'webSocketCaptureEnabled',
-      'networkWaterfallEnabled',
-      'performanceMarksEnabled',
-      'actionReplayEnabled',
-      'screenshotOnError',
-      'sourceMapEnabled',
-      'networkBodyCaptureEnabled'
-    ],
-    (result: Record<string, boolean | string | undefined>) => {
-      callback(result)
-    }
-  )
+  const result = (await chrome.storage.local.get([
+    StorageKey.AI_WEB_PILOT_ENABLED,
+    StorageKey.WEBSOCKET_CAPTURE_ENABLED,
+    StorageKey.NETWORK_WATERFALL_ENABLED,
+    StorageKey.PERFORMANCE_MARKS_ENABLED,
+    StorageKey.ACTION_REPLAY_ENABLED,
+    StorageKey.SCREENSHOT_ON_ERROR,
+    StorageKey.SOURCE_MAP_ENABLED,
+    StorageKey.NETWORK_BODY_CAPTURE_ENABLED
+  ])) as Record<string, boolean | string | undefined>
+
+  return result
 }

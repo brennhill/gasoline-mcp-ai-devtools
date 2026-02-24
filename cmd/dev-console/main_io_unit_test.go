@@ -1,3 +1,7 @@
+// Purpose: Validate main_io_unit_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
+// Docs: docs/features/feature/observe/index.md
+
 package main
 
 import (
@@ -39,6 +43,9 @@ func TestPrintHelpIncludesKeySections(t *testing.T) {
 	}
 	if !strings.Contains(output, "--state-dir <path>") {
 		t.Fatalf("help output missing --state-dir docs")
+	}
+	if !strings.Contains(output, "--parallel") {
+		t.Fatalf("help output missing --parallel docs")
 	}
 	if !strings.Contains(output, "CLI Mode (direct tool access):") {
 		t.Fatalf("help output missing CLI mode section")

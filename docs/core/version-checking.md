@@ -1,3 +1,9 @@
+---
+doc_type: legacy_doc
+status: reference
+last_reviewed: 2026-02-16
+---
+
 # Version Checking & Update Notifications
 
 Gasoline includes automatic version checking to notify users when newer versions are available on GitHub. This document describes how the system works and how to use it.

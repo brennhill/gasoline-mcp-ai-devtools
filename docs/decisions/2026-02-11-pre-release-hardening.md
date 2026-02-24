@@ -1,3 +1,9 @@
+---
+doc_type: legacy_doc
+status: reference
+last_reviewed: 2026-02-16
+---
+
 # Pre-Release Hardening Decisions
 
 **Date:** 2026-02-11
@@ -61,6 +67,6 @@ Evaluation of architecture, polling, extension UI, and UX identified 18 issues.
 
 ## Implementation Notes
 
-- All changes branch from `next`, PR to `next`
+- All changes branch from `UNSTABLE`, PR to `UNSTABLE`
 - Run `make compile-ts` after any `src/` changes
 - Run `make test` to verify no regressions

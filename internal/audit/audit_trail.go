@@ -1,10 +1,7 @@
-// audit_trail.go — Enterprise Audit Trail (Tier 1).
-// Append-only tool invocation log with client identification, session management,
-// parameter redaction, and redaction event logging.
-// Design: The AuditTrail struct is a standalone, concurrent-safe, bounded buffer
-// that records every MCP tool call. Entries are never modified or deleted — only
-// evicted via FIFO when the buffer is full. The log is queryable with filters
-// for session, tool name, and time range.
+// Purpose: Implements bounded concurrent audit-trail storage with parameter redaction and session metadata.
+// Why: Provides compliance-grade traceability for tool calls while minimizing sensitive-data exposure.
+// Docs: docs/features/feature/enterprise-audit/index.md
+
 package audit
 
 import (
@@ -25,7 +22,7 @@ import (
 type AuditEntry struct {
 	ID           string    `json:"id"`
 	Timestamp    time.Time `json:"timestamp"`
-	SessionID    string    `json:"session_id"`
+	AuditSessionID string `json:"audit_session_id"`
 	ClientID     string    `json:"client_id"`
 	ToolName     string    `json:"tool_name"`
 	Parameters   string    `json:"parameters"`
@@ -37,17 +34,17 @@ type AuditEntry struct {
 
 // AuditTrail is an append-only, bounded, concurrent-safe audit log.
 type AuditTrail struct {
-	mu              sync.RWMutex
-	entries         []AuditEntry
-	maxSize         int
-	sessions        map[string]*SessionInfo
-	config          AuditConfig
-	redactions      []RedactionEvent
+	mu                sync.RWMutex
+	entries           []AuditEntry
+	maxSize           int
+	auditSessions    map[string]*AuditSessionInfo
+	config            AuditConfig
+	redactions        []RedactionEvent
 	redactionPatterns []*redactionPattern
 }
 
 // SessionInfo tracks metadata for an MCP session.
-type SessionInfo struct {
+type AuditSessionInfo struct {
 	ID        string    `json:"id"`
 	ClientID  string    `json:"client_id"`
 	StartedAt time.Time `json:"started_at"`
@@ -56,7 +53,7 @@ type SessionInfo struct {
 
 // AuditFilter specifies query criteria for audit log entries.
 type AuditFilter struct {
-	SessionID string     `json:"session_id,omitempty"`
+	AuditSessionID string `json:"audit_session_id,omitempty"`
 	ToolName  string     `json:"tool_name,omitempty"`
 	Since     *time.Time `json:"since,omitempty"`
 	Limit     int        `json:"limit,omitempty"`
@@ -78,7 +75,7 @@ type ClientIdentifier struct {
 // RedactionEvent records that a redaction pattern matched, without storing content.
 type RedactionEvent struct {
 	Timestamp   time.Time `json:"timestamp"`
-	SessionID   string    `json:"session_id"`
+	AuditSessionID string `json:"audit_session_id"`
 	ToolName    string    `json:"tool_name"`
 	FieldPath   string    `json:"field_path"`
 	PatternName string    `json:"pattern_name"`
@@ -116,10 +113,10 @@ func NewAuditTrail(config AuditConfig) *AuditTrail {
 	}
 
 	trail := &AuditTrail{
-		entries:  make([]AuditEntry, 0, config.MaxEntries),
-		maxSize:  config.MaxEntries,
-		sessions: make(map[string]*SessionInfo),
-		config:   config,
+		entries:    make([]AuditEntry, 0, config.MaxEntries),
+		maxSize:    config.MaxEntries,
+		auditSessions: make(map[string]*AuditSessionInfo),
+		config:     config,
 		redactions: make([]RedactionEvent, 0),
 	}
 
@@ -163,7 +160,7 @@ func (at *AuditTrail) Record(entry AuditEntry) {
 	at.entries = append(at.entries, entry)
 
 	// Update session tool call count
-	if sess, ok := at.sessions[entry.SessionID]; ok {
+	if sess, ok := at.auditSessions[entry.AuditSessionID]; ok {
 		sess.ToolCalls++
 	}
 }
@@ -208,7 +205,7 @@ func (at *AuditTrail) Query(filter AuditFilter) []AuditEntry {
 	for i := len(at.entries) - 1; i >= 0 && len(results) < limit; i-- {
 		e := at.entries[i]
 
-		if filter.SessionID != "" && e.SessionID != filter.SessionID {
+		if filter.AuditSessionID != "" && e.AuditSessionID != filter.AuditSessionID {
 			continue
 		}
 		if filter.ToolName != "" && e.ToolName != filter.ToolName {
@@ -222,6 +219,20 @@ func (at *AuditTrail) Query(filter AuditFilter) []AuditEntry {
 	}
 
 	return results
+}
+
+// Clear removes all audit entries, redaction events, and session state,
+// returning the number of entries removed. Session counters are reset to
+// prevent stale ToolCalls values from accumulating across clears.
+func (at *AuditTrail) Clear() int {
+	at.mu.Lock()
+	defer at.mu.Unlock()
+
+	cleared := len(at.entries)
+	at.entries = at.entries[:0]
+	at.redactions = at.redactions[:0]
+	at.auditSessions = make(map[string]*AuditSessionInfo)
+	return cleared
 }
 
 // QueryRedactions returns redaction events matching the given filter.
@@ -238,7 +249,7 @@ func (at *AuditTrail) QueryRedactions(filter AuditFilter) []RedactionEvent {
 	for i := len(at.redactions) - 1; i >= 0 && len(results) < limit; i-- {
 		e := at.redactions[i]
 
-		if filter.SessionID != "" && e.SessionID != filter.SessionID {
+		if filter.AuditSessionID != "" && e.AuditSessionID != filter.AuditSessionID {
 			continue
 		}
 		if filter.ToolName != "" && e.ToolName != filter.ToolName {
@@ -280,30 +291,30 @@ func (at *AuditTrail) IdentifyClient(client ClientIdentifier) string {
 
 // CreateSession generates a new unique session and registers it.
 // The session ID is a 16-byte random value, hex-encoded (32 chars).
-func (at *AuditTrail) CreateSession(client ClientIdentifier) *SessionInfo {
+func (at *AuditTrail) CreateAuditSession(client ClientIdentifier) *AuditSessionInfo {
 	at.mu.Lock()
 	defer at.mu.Unlock()
 
-	sessionID := generateSessionID()
+	sessionID := generateAuditSessionID()
 	clientID := at.identifyClientUnlocked(client)
 
-	info := &SessionInfo{
+	info := &AuditSessionInfo{
 		ID:        sessionID,
 		ClientID:  clientID,
 		StartedAt: time.Now(),
 		ToolCalls: 0,
 	}
 
-	at.sessions[sessionID] = info
+	at.auditSessions[sessionID] = info
 	return info
 }
 
 // GetSession returns session info for the given ID, or nil if not found.
-func (at *AuditTrail) GetSession(id string) *SessionInfo {
+func (at *AuditTrail) GetAuditSession(id string) *AuditSessionInfo {
 	at.mu.RLock()
 	defer at.mu.RUnlock()
 
-	return at.sessions[id]
+	return at.auditSessions[id]
 }
 
 // identifyClientUnlocked is the internal version without locking.
@@ -400,8 +411,8 @@ func generateAuditID() string {
 	return hex.EncodeToString(b)
 }
 
-// generateSessionID creates a unique session ID (32 hex chars from 16 random bytes).
-func generateSessionID() string {
+// generateAuditSessionID creates a unique session ID (32 hex chars from 16 random bytes).
+func generateAuditSessionID() string {
 	b := make([]byte, 16)
 	_, _ = rand.Read(b) // #nosec G104 -- best-effort randomness for non-security session ID
 	return hex.EncodeToString(b)

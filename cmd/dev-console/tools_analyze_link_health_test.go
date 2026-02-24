@@ -1,3 +1,7 @@
+// Purpose: Validate tools_analyze_link_health_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
+// Docs: docs/features/feature/analyze-tool/index.md
+
 // tools_analyze_link_health_test.go — Unit tests for analyze tool link_health mode.
 // Tests verify that link health checks create proper pending queries and return
 // expected correlation IDs for async tracking.
@@ -39,7 +43,7 @@ func newAnalyzeTestEnv(t *testing.T) *analyzeTestEnv {
 func (e *analyzeTestEnv) callAnalyze(t *testing.T, argsJSON string) (MCPToolResult, bool) {
 	t.Helper()
 
-	args := json.RawMessage(argsJSON)
+	args := normalizeAnalyzeArgsForAsync(argsJSON)
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: 1}
 	resp := e.handler.toolAnalyze(req, args)
 
@@ -196,6 +200,33 @@ func TestAnalyzeLinkHealth_Start_CreatesWatchableQuery(t *testing.T) {
 	if !strings.Contains(strings.ToLower(text), "queued") &&
 		!strings.Contains(strings.ToLower(text), "initiated") {
 		t.Errorf("link_health response should indicate async operation\nGot: %s", text)
+	}
+}
+
+// TestAnalyzeLinkHealth_DomainParamForwarded verifies link_health passes domain through.
+func TestAnalyzeLinkHealth_DomainParamForwarded(t *testing.T) {
+	env := newAnalyzeTestEnv(t)
+
+	result, ok := env.callAnalyze(t, `{"what":"link_health","domain":"example.com","timeout_ms":15000}`)
+	if !ok {
+		t.Fatal("link_health should return result")
+	}
+	if result.IsError {
+		t.Fatalf("link_health with domain should not error: %s", result.Content[0].Text)
+	}
+
+	pq := env.capture.GetLastPendingQuery()
+	if pq == nil {
+		t.Fatal("link_health should create a pending query")
+	}
+
+	var params map[string]any
+	if err := json.Unmarshal(pq.Params, &params); err != nil {
+		t.Fatalf("failed to parse pending query params: %v", err)
+	}
+
+	if got, ok := params["domain"].(string); !ok || got != "example.com" {
+		t.Fatalf("domain not forwarded, got %#v", params["domain"])
 	}
 }
 

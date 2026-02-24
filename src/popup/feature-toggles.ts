@@ -1,9 +1,16 @@
 /**
+ * Purpose: Manages popup feature-toggle definitions and background-dispatched toggle updates.
+ * Why: Prevents state drift by routing all toggle mutations through one consistent popup workflow.
+ * Docs: docs/features/feature/browser-extension-enhancement/index.md
+ */
+
+/**
  * @fileoverview Feature Toggles Module
  * Manages feature toggle configuration and initialization
  */
 
 import type { FeatureToggleConfig } from './types'
+import { SettingName, StorageKey } from '../lib/constants'
 
 /**
  * Feature toggle configuration
@@ -11,46 +18,46 @@ import type { FeatureToggleConfig } from './types'
 export const FEATURE_TOGGLES: readonly FeatureToggleConfig[] = [
   {
     id: 'toggle-websocket',
-    storageKey: 'webSocketCaptureEnabled',
-    messageType: 'setWebSocketCaptureEnabled',
+    storageKey: StorageKey.WEBSOCKET_CAPTURE_ENABLED,
+    messageType: SettingName.WEBSOCKET_CAPTURE,
     default: true
   },
   {
     id: 'toggle-network-waterfall',
-    storageKey: 'networkWaterfallEnabled',
-    messageType: 'setNetworkWaterfallEnabled',
+    storageKey: StorageKey.NETWORK_WATERFALL_ENABLED,
+    messageType: SettingName.NETWORK_WATERFALL,
     default: true
   },
   {
     id: 'toggle-performance-marks',
-    storageKey: 'performanceMarksEnabled',
-    messageType: 'setPerformanceMarksEnabled',
+    storageKey: StorageKey.PERFORMANCE_MARKS_ENABLED,
+    messageType: SettingName.PERFORMANCE_MARKS,
     default: true
   },
   {
     id: 'toggle-action-replay',
-    storageKey: 'actionReplayEnabled',
-    messageType: 'setActionReplayEnabled',
+    storageKey: StorageKey.ACTION_REPLAY_ENABLED,
+    messageType: SettingName.ACTION_REPLAY,
     default: true
   },
-  { id: 'toggle-screenshot', storageKey: 'screenshotOnError', messageType: 'setScreenshotOnError', default: true },
-  { id: 'toggle-source-maps', storageKey: 'sourceMapEnabled', messageType: 'setSourceMapEnabled', default: true },
+  { id: 'toggle-screenshot', storageKey: StorageKey.SCREENSHOT_ON_ERROR, messageType: 'setScreenshotOnError', default: true },
+  { id: 'toggle-source-maps', storageKey: StorageKey.SOURCE_MAP_ENABLED, messageType: 'setSourceMapEnabled', default: true },
   {
     id: 'toggle-network-body-capture',
-    storageKey: 'networkBodyCaptureEnabled',
-    messageType: 'setNetworkBodyCaptureEnabled',
+    storageKey: StorageKey.NETWORK_BODY_CAPTURE_ENABLED,
+    messageType: SettingName.NETWORK_BODY_CAPTURE,
     default: true
   },
   {
     id: 'toggle-action-toasts',
-    storageKey: 'actionToastsEnabled',
-    messageType: 'setActionToastsEnabled',
+    storageKey: StorageKey.ACTION_TOASTS_ENABLED,
+    messageType: SettingName.ACTION_TOASTS,
     default: true
   },
   {
     id: 'toggle-subtitles',
-    storageKey: 'subtitlesEnabled',
-    messageType: 'setSubtitlesEnabled',
+    storageKey: StorageKey.SUBTITLES_ENABLED,
+    messageType: SettingName.SUBTITLES,
     default: true
   }
 ]

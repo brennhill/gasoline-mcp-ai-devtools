@@ -1,6 +1,7 @@
-// security.go — Security and threat detection types.
-// Contains types for flagging suspicious network activity and security issues.
-// Zero dependencies - foundational types used by capture and security packages.
+// Purpose: Defines shared security-flag payload structures produced by security analysis routines.
+// Why: Keeps security findings transportable across scanners, auditors, and response formatters.
+// Docs: docs/features/feature/security-hardening/index.md
+
 package types
 
 import "time"

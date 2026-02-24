@@ -1,29 +1,17 @@
-// recording_manager.go — Recording lifecycle, persistence, and state management.
-// Extracted from the Capture god object. Owns its own sync.Mutex,
-// independent of Capture.mu. Zero cross-cutting dependencies.
+// Purpose: Re-exports recording-manager constructors and delegates recording lifecycle methods.
+// Why: Preserves capture package API compatibility while recording logic lives in internal/recording.
+// Docs: docs/features/feature/playback-engine/index.md
+// Docs: docs/features/feature/tab-recording/index.md
+
 package capture
 
 import (
-	"sync"
-
 	"github.com/dev-console/dev-console/internal/recording"
 )
 
-// RecordingManager manages recording lifecycle, persistence, and storage tracking.
-// Owns its own sync.Mutex — independent of Capture.mu.
-type RecordingManager struct {
-	mu                   sync.Mutex
-	activeRecordingID    string
-	recordings           map[string]*recording.Recording
-	recordingStorageUsed int64
-}
-
 // NewRecordingManager creates a RecordingManager with initialized state.
-func NewRecordingManager() *RecordingManager {
-	return &RecordingManager{
-		recordings: make(map[string]*recording.Recording),
-	}
-}
+// Re-exported for backward compatibility with tests that call it directly.
+var NewRecordingManager = recording.NewRecordingManager
 
 // ============================================================================
 // Capture delegation methods — preserve external API.

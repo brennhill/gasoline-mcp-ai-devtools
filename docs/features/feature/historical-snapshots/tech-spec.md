@@ -5,6 +5,9 @@ ai-priority: medium
 tags: [v7, persistence]
 relates-to: [product-spec.md, ../normalized-log-schema/tech-spec.md]
 last-verified: 2026-01-31
+doc_type: tech-spec
+feature_id: feature-historical-snapshots
+last_reviewed: 2026-02-16
 ---
 
 # Historical Snapshots — Technical Specification

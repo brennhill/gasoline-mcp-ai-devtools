@@ -145,14 +145,14 @@ describe('Screenshot Rate Limiting', () => {
     assert.strictEqual(result2.allowed, true)
   })
 
-  test('should enforce session limit of 10 screenshots per minute', () => {
+  test('should enforce session limit of 30 screenshots per minute', () => {
     const tabId = 99
-    // Record 10 screenshots with enough time between them to avoid rate limit
+    // Record 30 screenshots with enough time between them to avoid rate limit
     // We need to manipulate timestamps directly -- use recordScreenshot 10 times
     // but the rate limit check also looks at the 5-second window, so we need a workaround
     // Since recordScreenshot pushes Date.now(), and canTakeScreenshot filters by 60s window,
-    // we can just push 10 entries and check session limit
-    for (let i = 0; i < 10; i++) {
+    // we can just push 30 entries and check session limit
+    for (let i = 0; i < 30; i++) {
       recordScreenshot(tabId)
     }
 
@@ -250,7 +250,7 @@ describe('estimateBufferMemory', () => {
     const reqBody = 'x'.repeat(500)
     const resBody = 'y'.repeat(2000)
     const buffers = createBufferState({
-      networkBodies: [{ requestBody: reqBody, responseBody: resBody }]
+      networkBodies: [{ request_body: reqBody, response_body: resBody }]
     })
     const result = estimateBufferMemory(buffers)
     assert.strictEqual(result, MEMORY_AVG_NETWORK_BODY_SIZE + 500 + 2000)
@@ -258,7 +258,7 @@ describe('estimateBufferMemory', () => {
 
   test('should handle network bodies with only request or only response', () => {
     const buffers = createBufferState({
-      networkBodies: [{ requestBody: 'abc' }, { responseBody: 'defgh' }]
+      networkBodies: [{ request_body: 'abc' }, { response_body: 'defgh' }]
     })
     const result = estimateBufferMemory(buffers)
     assert.strictEqual(result, 2 * MEMORY_AVG_NETWORK_BODY_SIZE + 3 + 5)
@@ -276,7 +276,7 @@ describe('estimateBufferMemory', () => {
     const buffers = createBufferState({
       logEntries: new Array(3).fill({}),
       wsEvents: [{ data: 'hello' }],
-      networkBodies: [{ requestBody: 'req' }],
+      networkBodies: [{ request_body: 'req' }],
       enhancedActions: new Array(2).fill({})
     })
     const expected =
@@ -579,7 +579,7 @@ describe('Edge Cases', () => {
 
   test('estimateBufferMemory with network bodies with empty strings', () => {
     const buffers = createBufferState({
-      networkBodies: [{ requestBody: '', responseBody: '' }]
+      networkBodies: [{ request_body: '', response_body: '' }]
     })
     const result = estimateBufferMemory(buffers)
     assert.strictEqual(result, MEMORY_AVG_NETWORK_BODY_SIZE)

@@ -31,7 +31,10 @@ while [ $# -gt 0 ]; do
             echo "  04-network-websocket, 05-interact-dom, 06-interact-state,"
             echo "  07-generate-formats, 08-configure-features, 09-perf-analysis,"
             echo "  10-recording, 11-subtitle-screenshot, 12-cross-cutting,"
-            echo "  13-draw-mode, 15-file-upload, 14-stability-shutdown"
+            echo "  13-draw-mode, 15-file-upload, 20-inspect-visual,"
+            echo "  21-macro-recording, 22-log-aggregation, 23-doctor-preflight,"
+            echo "  24-retryable-errors, 25-action-enrichment, 26-default-upload-dir,"
+            echo "  27-extension-refactor, 28-proof-first, 30-stability-shutdown"
             exit 0
             ;;
         --start-from)
@@ -102,14 +105,30 @@ MODULES=(
     "12-cross-cutting.sh"
     "13-draw-mode.sh"
     "15-file-upload.sh"       # 15 runs before 14: upload needs a live daemon
-    "14-stability-shutdown.sh" # 14 must be last: it kills the daemon
+    "20-inspect-visual.sh"
+    "21-macro-recording.sh"
+    "22-log-aggregation.sh"
+    "23-doctor-preflight.sh"
+    "24-retryable-errors.sh"
+    "25-action-enrichment.sh"
+    "26-default-upload-dir.sh"
+    "27-extension-refactor.sh"
+    "28-proof-first.sh"
+    "30-stability-shutdown.sh" # 30 must be last: it kills the daemon
 )
 
 # ── Port conflict check ───────────────────────────────────
+# If a healthy daemon is already on the port, reuse it (preserves extension connection).
 if lsof -ti :"$PORT" >/dev/null 2>&1; then
-    echo "WARNING: Port $PORT is already in use. Killing existing process..." >&2
-    lsof -ti :"$PORT" 2>/dev/null | xargs kill -9 2>/dev/null || true
-    sleep 0.5
+    existing_ver=$(curl -s --connect-timeout 2 --max-time 3 "http://localhost:${PORT}/health" 2>/dev/null | jq -r '.version // empty' 2>/dev/null)
+    if [ -n "$existing_ver" ]; then
+        echo "  Reusing existing daemon on port $PORT (v${existing_ver})"
+        DAEMON_PID=$(lsof -ti :"$PORT" 2>/dev/null | head -1)
+    else
+        echo "  Port $PORT occupied by non-Gasoline process. Killing..." >&2
+        lsof -ti :"$PORT" 2>/dev/null | xargs kill -9 2>/dev/null || true
+        sleep 0.5
+    fi
 fi
 
 BINARY_VERSION=$("$WRAPPER" --version 2>/dev/null || echo "unknown")
@@ -152,15 +171,34 @@ if [ -n "$START_FROM" ]; then
     health_body=$(get_http_body "http://localhost:${PORT}/health" 2>/dev/null || echo "{}")
     daemon_ver=$(echo "$health_body" | jq -r '.version // "unknown"' 2>/dev/null || echo "unknown")
     echo "  Daemon version: v${daemon_ver}"
-    if echo "$health_body" | jq -e '.capture.available == true' >/dev/null 2>&1; then
+    if echo "$health_body" | jq -e '.capture.extension_connected == true' >/dev/null 2>&1; then
         EXTENSION_CONNECTED=true
         echo "  Extension: connected"
     else
         echo "  Extension: NOT connected (some tests will skip)"
     fi
-    # Probe pilot by checking if interact responds without "disabled"
-    PILOT_ENABLED=true
-    echo "  Pilot: assumed enabled (from previous run)"
+
+    # Probe pilot explicitly (instead of assuming enabled from prior run).
+    PILOT_ENABLED=false
+    if [ "$EXTENSION_CONNECTED" = "true" ]; then
+        pilot_probe=$(call_tool "interact" '{"action":"execute_js","script":"1","reason":"resume-pilot-probe"}' 2>/dev/null || true)
+        pilot_text=$(extract_content_text "$pilot_probe")
+        if [ -z "$pilot_text" ] && [ -n "$pilot_probe" ]; then
+            pilot_text="$pilot_probe"
+        fi
+        if echo "$pilot_text" | grep -qi "pilot_disabled\|ai_web_pilot_disabled"; then
+            PILOT_ENABLED=false
+            echo "  Pilot: disabled"
+        elif echo "$pilot_text" | grep -qi "error\|failed\|no_data\|starting up"; then
+            PILOT_ENABLED=false
+            echo "  Pilot: unavailable (probe error)"
+        else
+            PILOT_ENABLED=true
+            echo "  Pilot: enabled"
+        fi
+    else
+        echo "  Pilot: unavailable (extension not connected)"
+    fi
     echo ""
 fi
 
@@ -231,6 +269,9 @@ fi
 # ── Cleanup: kill any orphaned test servers ───────────────
 pkill -f "upload-server.py" 2>/dev/null || true
 kill_server 2>/dev/null || true
+if [ -f "$RUNNER_DIR/cleanup-test-daemons.sh" ]; then
+    bash "$RUNNER_DIR/cleanup-test-daemons.sh" --quiet >/dev/null 2>&1 || true
+fi
 
 # ── Summary ──────────────────────────────────────────────
 ELAPSED=$(( $(date +%s) - START_TIME ))

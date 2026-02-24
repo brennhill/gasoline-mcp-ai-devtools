@@ -1,9 +1,14 @@
+// Purpose: Validate recording_playback_result_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
+// Docs: docs/features/feature/observe/index.md
+
 // recording_playback_result_test.go — Tests for buildPlaybackResult method.
 package main
 
 import (
 	"encoding/json"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -276,17 +281,9 @@ func TestBuildPlaybackResult_MessageFormat(t *testing.T) {
 		t.Fatal("expected non-empty text content")
 	}
 	// Summary should contain "Playback complete"
-	if !containsString(text, "Playback complete") {
+	if !strings.Contains(text, "Playback complete") {
 		t.Errorf("expected text to contain 'Playback complete', got: %s", text[:min(len(text), 100)])
 	}
 }
 
-// containsString is a simple helper to avoid importing strings in tests.
-func containsString(s, substr string) bool {
-	for i := 0; i <= len(s)-len(substr); i++ {
-		if s[i:i+len(substr)] == substr {
-			return true
-		}
-	}
-	return false
-}
+// containsString removed — replaced by strings.Contains at all call sites.

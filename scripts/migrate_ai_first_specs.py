@@ -1,3 +1,7 @@
+# Purpose: Automate migrate_ai_first_specs.py workflow behavior for repository tooling.
+# Why: Keeps repetitive maintenance and verification steps deterministic.
+# Docs: docs/DEVELOPMENT.md
+
 """Migrate AI-first tech specs into feature directories."""
 
 from __future__ import annotations

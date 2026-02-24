@@ -1,4 +1,3 @@
-// main_connection_diag.go — Connection diagnostics: health checks, port scanning, and failure analysis.
 package main
 
 import (

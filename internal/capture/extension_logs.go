@@ -1,6 +1,7 @@
-// Extension internal logs endpoint
-// Receives log entries from browser extension contexts (background, content scripts).
-// Enables AI debugging of extension-internal behavior not visible through page-level capture.
+// Purpose: Implements ingestion and retrieval of extension-internal debug logs captured via sync channels.
+// Why: Enables debugging of extension runtime behavior that page-level console capture cannot observe.
+// Docs: docs/features/feature/backend-log-streaming/index.md
+
 package capture
 
 import (
@@ -16,8 +17,14 @@ import (
 // This enables AI debugging of extension-internal behavior that isn't
 // visible through page-level console capture.
 
-// AddExtensionLogs ingests extension log entries into the ring buffer.
-// Thread-safe: acquires write lock.
+// AddExtensionLogs ingests extension runtime logs into bounded in-memory buffer.
+//
+// Invariants:
+// - Logs are redacted before storage.
+// - Buffer compaction keeps the newest MaxExtensionLogs entries.
+//
+// Failure semantics:
+// - Missing timestamps are filled with server receive time.
 func (c *Capture) AddExtensionLogs(logs []ExtensionLog) {
 	now := time.Now()
 
@@ -42,8 +49,10 @@ func (c *Capture) AddExtensionLogs(logs []ExtensionLog) {
 	}
 }
 
-// GetExtensionLogs returns all extension log entries.
-// Thread-safe: acquires read lock.
+// GetExtensionLogs returns a detached copy of extension logs.
+//
+// Failure semantics:
+// - Returns empty slice when buffer is empty.
 func (c *Capture) GetExtensionLogs() []ExtensionLog {
 	c.mu.RLock()
 	defer c.mu.RUnlock()

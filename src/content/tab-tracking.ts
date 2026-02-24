@@ -1,9 +1,17 @@
 /**
+ * Purpose: Handles content-script message relay between background and inject contexts.
+ * Why: Keeps content-script bridging predictable between extension and page contexts.
+ * Docs: docs/features/feature/interact-explore/index.md
+ * Docs: docs/features/feature/query-dom/index.md
+ */
+
+/**
  * @fileoverview Tab Tracking Module
  * Manages tracking status for the current tab
  */
 
 import type { StorageChange } from '../types'
+import { StorageKey } from '../lib/constants'
 
 // Whether this content script's tab is the currently tracked tab
 let isTrackedTab = false
@@ -16,7 +24,7 @@ let currentTabId: number | null = null
  */
 export async function updateTrackingStatus(): Promise<void> {
   try {
-    const storage = await chrome.storage.local.get(['trackedTabId'])
+    const storage = await chrome.storage.local.get([StorageKey.TRACKED_TAB_ID])
 
     // Request tab ID from background script (content scripts can't access chrome.tabs)
     const response = (await chrome.runtime.sendMessage({ type: 'GET_TAB_ID' })) as { tabId?: number } | undefined
@@ -54,7 +62,7 @@ export function initTabTracking(onChange?: (tracked: boolean) => void): Promise<
   })
 
   chrome.storage.onChanged.addListener(async (changes: { [key: string]: StorageChange }) => {
-    if (changes.trackedTabId) {
+    if (changes[StorageKey.TRACKED_TAB_ID]) {
       await updateTrackingStatus()
       onChange?.(isTrackedTab)
     }

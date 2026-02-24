@@ -4,6 +4,7 @@ priority: tier-1
 phase: v6.0-sprint-1
 relates-to: [ring-buffer, normalized-event-schema]
 last-updated: 2026-01-31
+last_reviewed: 2026-02-16
 ---
 
 # Browser Extension Enhancement — Technical Specification

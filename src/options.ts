@@ -1,4 +1,10 @@
 /**
+ * Purpose: Implements the extension options page state, persistence, and background synchronization handlers.
+ * Why: Keeps operator-facing runtime settings explicit and immediately applied without extension restarts.
+ * Docs: docs/features/feature/browser-extension-enhancement/index.md
+ */
+
+/**
  * @fileoverview options.ts — Extension settings page for user-configurable options.
  * Manages server URL, domain filters (allowlist/blocklist), screenshot-on-error toggle,
  * source map resolution toggle, and interception deferral toggle.
@@ -8,7 +14,7 @@
  * stored as newline-separated strings, parsed to arrays on save.
  */
 
-const DEFAULT_SERVER_URL = 'http://localhost:7890'
+import { SettingName, StorageKey, DEFAULT_SERVER_URL } from './lib/constants'
 
 interface StorageResult {
   serverUrl?: string
@@ -35,7 +41,7 @@ interface ClearLogResponse {
  */
 export function loadOptions(): void {
   chrome.storage.local.get(
-    ['serverUrl', 'screenshotOnError', 'sourceMapEnabled', 'deferralEnabled', 'debugMode', 'theme'],
+    [StorageKey.SERVER_URL, StorageKey.SCREENSHOT_ON_ERROR, StorageKey.SOURCE_MAP_ENABLED, StorageKey.DEFERRAL_ENABLED, StorageKey.DEBUG_MODE, StorageKey.THEME],
     (result: StorageResult) => {
       // Set server URL
       const serverUrlInput = document.getElementById('server-url-input') as HTMLInputElement | null
@@ -115,10 +121,10 @@ export function saveOptions(): void {
       message?.classList.add('show')
 
       // Notify background of changes so it can update its in-memory state
-      chrome.runtime.sendMessage({ type: 'setServerUrl', url: serverUrl })
+      chrome.runtime.sendMessage({ type: SettingName.SERVER_URL, url: serverUrl })
       chrome.runtime.sendMessage({ type: 'setScreenshotOnError', enabled: screenshotOnError })
       chrome.runtime.sendMessage({ type: 'setSourceMapEnabled', enabled: sourceMapEnabled })
-      chrome.runtime.sendMessage({ type: 'setDeferralEnabled', enabled: deferralEnabled })
+      chrome.runtime.sendMessage({ type: SettingName.DEFERRAL, enabled: deferralEnabled })
       chrome.runtime.sendMessage({ type: 'setDebugMode', enabled: debugMode })
 
       // Hide message after 2 seconds

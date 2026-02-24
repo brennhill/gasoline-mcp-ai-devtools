@@ -1,4 +1,8 @@
 #!/usr/bin/env python3
+# Purpose: Automate standardize-filenames.py workflow behavior for repository tooling.
+# Why: Keeps repetitive maintenance and verification steps deterministic.
+# Docs: docs/DEVELOPMENT.md
+
 # pylint: disable=invalid-name
 """
 Standardize ALL markdown filenames to lowercase-with-hyphens.

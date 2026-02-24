@@ -1,6 +1,7 @@
-// types.go — Core capture types and the Capture struct.
-// WebSocket events, network bodies, user actions, and the main Capture buffer.
-// Design: Capture-specific types remain here; domain types moved to their packages.
+// Purpose: Documents capture package type-module composition and import-hub role.
+// Why: Keeps package-level type organization discoverable after type decomposition refactors.
+// Docs: docs/features/feature/backend-log-streaming/index.md
+
 package capture
 
 // This file now serves as a package-level import hub.

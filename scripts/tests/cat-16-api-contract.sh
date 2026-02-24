@@ -13,6 +13,11 @@ OUTPUT_FILE="${2:-/dev/null}"
 init_framework "$PORT" "$OUTPUT_FILE"
 begin_category "16" "Extension-Server API Contract" "5"
 
+if ! start_daemon; then
+    fail "Failed to start daemon for API contract tests."
+    finish_category
+fi
+
 # ── 16.1 — /sync request schema matches server expectations ──
 begin_test "16.1" "/sync schema: required fields present" \
     "Extension must send: session_id, extension_version, settings" \
@@ -20,7 +25,10 @@ begin_test "16.1" "/sync schema: required fields present" \
 
 run_test_16_1() {
     sleep 2
-    wait_for_health 10
+    if ! wait_for_health 10; then
+        fail "Daemon health check failed before API contract test."
+        return
+    fi
 
     # Valid minimal /sync
     local response_valid

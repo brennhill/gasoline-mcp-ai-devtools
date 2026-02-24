@@ -1,95 +1,128 @@
-// Bridge mode: stdio-to-HTTP transport for MCP
-// Spawns persistent HTTP server daemon if not running,
-// forwards JSON-RPC messages between stdio (MCP client) and HTTP (server).
+// Purpose: Implements bridge transport lifecycle, forwarding, and reconnect behavior.
+// Why: Keeps client tool calls resilient across daemon restarts and transport disruptions.
+// Docs: docs/features/feature/bridge-restart/index.md
+
 package main
 
 import (
 	"bufio"
-	"bytes"
-	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
-	"net"
 	"net/http"
 	"os"
 	"os/exec"
-	"strconv"
 	"strings"
 	"sync"
 	"time"
 
+	"github.com/dev-console/dev-console/internal/bridge"
+	"github.com/dev-console/dev-console/internal/schema"
 	statecfg "github.com/dev-console/dev-console/internal/state"
 	"github.com/dev-console/dev-console/internal/util"
 )
 
-// toolCallTimeout returns the per-request timeout based on the MCP tool name.
-// Fast tools (observe, generate, configure, resources/read) get 10s; slow tools
-// (analyze, interact) that round-trip to the extension get 35s.
-// Annotation observe (observe command_result for ann_*) gets 65s for blocking poll.
+// toolCallTimeout delegates to internal/bridge for per-request timeout logic.
 func toolCallTimeout(req JSONRPCRequest) time.Duration {
-	const (
-		fast         = 10 * time.Second
-		slow         = 35 * time.Second
-		blockingPoll = 65 * time.Second // annotation observe: server blocks up to 55s
-	)
-
-	if req.Method == "resources/read" {
-		return fast
-	}
-	if req.Method != "tools/call" {
-		return fast // non-tool calls (ping, list, etc.)
-	}
-
-	// Extract tool name and arguments without full unmarshal
-	var params struct {
-		Name      string          `json:"name"`
-		Arguments json.RawMessage `json:"arguments"`
-	}
-	if json.Unmarshal(req.Params, &params) != nil {
-		return fast
-	}
-
-	switch params.Name {
-	case "analyze", "interact":
-		return slow
-	case "observe":
-		// Annotation command_result polling blocks server-side for up to 55s
-		var args struct {
-			What          string `json:"what"`
-			CorrelationID string `json:"correlation_id"`
-		}
-		if json.Unmarshal(params.Arguments, &args) == nil &&
-			args.What == "command_result" &&
-			len(args.CorrelationID) > 4 && args.CorrelationID[:4] == "ann_" {
-			return blockingPoll
-		}
-		return fast
-	default:
-		return fast
-	}
+	return bridge.ToolCallTimeout(req.Method, req.Params)
 }
 
 // mcpStdoutMu serializes all writes to stdout so concurrent bridgeForwardRequest
 // goroutines cannot interleave JSON-RPC responses.
 var mcpStdoutMu sync.Mutex
 
+// daemonStartupGracePeriod is a short wait window for first tool calls so
+// clients don't fail on daemon boot races.
+var daemonStartupGracePeriod = 250 * time.Millisecond
+
 // daemonState tracks the state of daemon startup for fast-start mode.
 // Supports respawning: if the daemon dies mid-session, the bridge detects
 // connection errors and re-launches the daemon transparently.
 type daemonState struct {
-	ready    bool
-	failed   bool
-	err      string
-	mu       sync.Mutex
-	readyCh  chan struct{}
-	failedCh chan struct{}
+	ready     bool
+	failed    bool
+	err       string
+	mu        sync.Mutex
+	readyCh   chan struct{}
+	failedCh  chan struct{}
+	readySig  bool
+	failedSig bool
 
 	// Spawn config — set once at startup, read-only after.
 	port       int
 	logFile    string
 	maxEntries int
+}
+
+// resetSignalsLocked replaces readiness/failure channels for a fresh spawn cycle.
+// Caller must hold s.mu.
+func (s *daemonState) resetSignalsLocked() {
+	s.readyCh = make(chan struct{})
+	s.failedCh = make(chan struct{})
+	s.readySig = false
+	s.failedSig = false
+}
+
+// markReady atomically marks the daemon as ready and closes readyCh once.
+func (s *daemonState) markReady() {
+	s.mu.Lock()
+	s.ready = true
+	s.failed = false
+	s.err = ""
+	readyCh := s.readyCh
+	shouldClose := !s.readySig
+	if shouldClose {
+		s.readySig = true
+	}
+	s.mu.Unlock()
+	if shouldClose {
+		close(readyCh)
+	}
+}
+
+// markFailed atomically marks the daemon state as failed and closes failedCh once.
+func (s *daemonState) markFailed(errMsg string) {
+	s.mu.Lock()
+	s.ready = false
+	s.failed = true
+	s.err = errMsg
+	failedCh := s.failedCh
+	shouldClose := !s.failedSig
+	if shouldClose {
+		s.failedSig = true
+	}
+	s.mu.Unlock()
+	if shouldClose {
+		close(failedCh)
+	}
+}
+
+// buildDaemonCmd resolves the current executable and builds an exec.Cmd for the
+// daemon process with the appropriate flags and detached-process settings.
+func (s *daemonState) buildDaemonCmd() (*exec.Cmd, error) {
+	exe, err := os.Executable()
+	if err != nil {
+		return nil, fmt.Errorf("Cannot find executable: %w", err)
+	}
+
+	args := []string{"--daemon", "--port", fmt.Sprintf("%d", s.port)}
+	if stateDir := os.Getenv(statecfg.StateDirEnv); stateDir != "" {
+		args = append(args, "--state-dir", stateDir)
+	}
+	if s.logFile != "" {
+		args = append(args, "--log-file", s.logFile)
+	}
+	if s.maxEntries > 0 {
+		args = append(args, "--max-entries", fmt.Sprintf("%d", s.maxEntries))
+	}
+	cmd := exec.Command(exe, args...) // #nosec G702 -- exe is our own binary path from os.Executable with fixed flags // nosemgrep: go.lang.security.audit.dangerous-exec-command.dangerous-exec-command, go_subproc_rule-subproc -- bridge spawns own daemon
+	cmd.Args[0] = daemonProcessArgv0(exe)
+	cmd.Stdout = io.Discard
+	cmd.Stderr = io.Discard
+	cmd.Stdin = nil
+	util.SetDetachedProcess(cmd)
+	return cmd, nil
 }
 
 // respawnIfNeeded re-launches the daemon if it's not responding.
@@ -122,83 +155,34 @@ func (s *daemonState) respawnIfNeeded() bool {
 	s.ready = false
 	s.failed = false
 	s.err = ""
-	s.readyCh = make(chan struct{})
-	s.failedCh = make(chan struct{})
-	readyCh := s.readyCh
-	failedCh := s.failedCh
+	s.resetSignalsLocked()
 	s.mu.Unlock()
 
 	stderrf("[gasoline] daemon not responding, respawning on port %d\n", s.port)
 
-	exe, err := os.Executable()
+	cmd, err := s.buildDaemonCmd()
 	if err != nil {
-		s.mu.Lock()
-		s.failed = true
-		s.err = "Cannot find executable: " + err.Error()
-		s.mu.Unlock()
-		close(failedCh)
+		s.markFailed(err.Error())
 		return false
 	}
-
-	args := []string{"--daemon", "--port", fmt.Sprintf("%d", s.port)}
-	if stateDir := os.Getenv(statecfg.StateDirEnv); stateDir != "" {
-		args = append(args, "--state-dir", stateDir)
-	}
-	if s.logFile != "" {
-		args = append(args, "--log-file", s.logFile)
-	}
-	if s.maxEntries > 0 {
-		args = append(args, "--max-entries", fmt.Sprintf("%d", s.maxEntries))
-	}
-	cmd := exec.Command(exe, args...) // #nosec G702 -- exe is our own binary path from os.Executable with fixed flags // nosemgrep: go.lang.security.audit.dangerous-exec-command.dangerous-exec-command, go_subproc_rule-subproc -- bridge respawns own daemon
-	cmd.Stdout = io.Discard
-	cmd.Stderr = io.Discard
-	cmd.Stdin = nil
-	util.SetDetachedProcess(cmd)
 	if err := cmd.Start(); err != nil {
-		s.mu.Lock()
-		s.failed = true
-		s.err = "Failed to start daemon: " + err.Error()
-		s.mu.Unlock()
-		close(failedCh)
+		s.markFailed("Failed to start daemon: " + err.Error())
 		return false
 	}
 
 	if waitForServer(s.port, 4*time.Second) {
-		s.mu.Lock()
-		s.ready = true
-		s.mu.Unlock()
-		close(readyCh)
-			stderrf("[gasoline] daemon respawned successfully on port %d\n", s.port)
-			return true
+		s.markReady()
+		stderrf("[gasoline] daemon respawned successfully on port %d\n", s.port)
+		return true
 	}
 
-	s.mu.Lock()
-	s.failed = true
-	s.err = fmt.Sprintf("Daemon respawned but not responding on port %d after 4s", s.port)
-	s.mu.Unlock()
-	close(failedCh)
+	s.markFailed(fmt.Sprintf("Daemon respawned but not responding on port %d after 4s", s.port))
 	return false
 }
 
-// isConnectionError returns true if the error indicates the daemon is unreachable.
+// isConnectionError delegates to internal/bridge for connection error detection.
 func isConnectionError(err error) bool {
-	if err == nil {
-		return false
-	}
-	// Prefer typed error checks over string matching
-	var opErr *net.OpError
-	if errors.As(err, &opErr) {
-		return true
-	}
-	var dnsErr *net.DNSError
-	if errors.As(err, &dnsErr) {
-		return true
-	}
-	// Fallback: string check for wrapped errors that lose type info
-	msg := err.Error()
-	return strings.Contains(msg, "connection refused") ||
-		strings.Contains(msg, "no such host")
+	return bridge.IsConnectionError(err)
 }
 
 // flushStdout syncs stdout and logs any errors (best-effort)
@@ -210,13 +194,10 @@ func flushStdout() {
 func sendJSONResponse(resp any, id any) {
 	respJSON, err := json.Marshal(resp)
 	if err != nil {
-		sendBridgeError(id, -32603, "Failed to serialize response: "+err.Error())
+		sendBridgeError(id, -32603, "Failed to serialize response: "+err.Error(), bridge.StdioFramingLine)
 		return
 	}
-	mcpStdoutMu.Lock()
-	fmt.Println(string(respJSON))
-	flushStdout()
-	mcpStdoutMu.Unlock()
+	writeMCPPayload(respJSON, bridge.StdioFramingLine)
 }
 
 // runBridgeMode bridges stdio (from MCP client) to HTTP (to persistent server)
@@ -240,24 +221,19 @@ func runBridgeMode(port int, logFile string, maxEntries int) {
 	if isServerRunning(port) {
 		compatible, runningVersion, serviceName := runningServerVersionCompatible(port)
 		if compatible {
-			state.ready = true
-			close(state.readyCh)
+			state.markReady()
 			shouldSpawn = false
 		} else {
 			if strings.EqualFold(serviceName, "gasoline") {
 				if !stopServerForUpgrade(port) {
-					state.failed = true
-					state.err = fmt.Sprintf("found running daemon version %s but could not recycle it", runningVersion)
-					close(state.failedCh)
+					state.markFailed(fmt.Sprintf("found running daemon version %s but could not recycle it", runningVersion))
 					shouldSpawn = false
 				}
 			} else {
 				if serviceName == "" {
 					serviceName = "unknown"
 				}
-				state.failed = true
-				state.err = fmt.Sprintf("port %d is occupied by non-gasoline service %q", port, serviceName)
-				close(state.failedCh)
+				state.markFailed(fmt.Sprintf("port %d is occupied by non-gasoline service %q", port, serviceName))
 				shouldSpawn = false
 			}
 		}
@@ -274,66 +250,28 @@ func runBridgeMode(port int, logFile string, maxEntries int) {
 func spawnDaemonAsync(state *daemonState) {
 	// Spawn daemon in background (don't block on it)
 	util.SafeGo(func() {
-		exe, err := os.Executable()
+		cmd, err := state.buildDaemonCmd()
 		if err != nil {
-			state.mu.Lock()
-			state.failed = true
-			state.err = "Cannot find executable: " + err.Error()
-			state.mu.Unlock()
-			close(state.failedCh)
+			state.markFailed(err.Error())
 			return
 		}
-
-		args := []string{"--daemon", "--port", fmt.Sprintf("%d", state.port)}
-		if stateDir := os.Getenv(statecfg.StateDirEnv); stateDir != "" {
-			args = append(args, "--state-dir", stateDir)
-		}
-		if state.logFile != "" {
-			args = append(args, "--log-file", state.logFile)
-		}
-		if state.maxEntries > 0 {
-			args = append(args, "--max-entries", fmt.Sprintf("%d", state.maxEntries))
-		}
-		cmd := exec.Command(exe, args...) // #nosec G702 -- exe is our own binary path from os.Executable with fixed flags // nosemgrep: go.lang.security.audit.dangerous-exec-command.dangerous-exec-command, go_subproc_rule-subproc -- CLI bridge mode launches user-specified editor
-		cmd.Stdout = io.Discard
-		cmd.Stderr = io.Discard
-		cmd.Stdin = nil
-		util.SetDetachedProcess(cmd)
 		if err := cmd.Start(); err != nil {
-			state.mu.Lock()
-			state.failed = true
-			state.err = "Failed to start daemon: " + err.Error()
-			state.mu.Unlock()
-			close(state.failedCh)
+			state.markFailed("Failed to start daemon: " + err.Error())
 			return
 		}
 
 		// Wait for server to be ready (max 4 seconds - fail fast)
 		if waitForServer(state.port, 4*time.Second) {
-			state.mu.Lock()
-			state.ready = true
-			state.mu.Unlock()
-			close(state.readyCh)
+			state.markReady()
 		} else {
-			state.mu.Lock()
-			state.failed = true
-			state.err = fmt.Sprintf("Daemon started but not responding on port %d after 4s", state.port)
-			state.mu.Unlock()
-			close(state.failedCh)
+			state.markFailed(fmt.Sprintf("Daemon started but not responding on port %d after 4s", state.port))
 		}
 	})
 }
 
-// isServerRunning checks if a server is healthy on the given port via HTTP health check.
-// This catches zombie servers that accept TCP connections but don't respond to HTTP.
+// isServerRunning delegates to internal/bridge for health check.
 func isServerRunning(port int) bool {
-	client := &http.Client{Timeout: 500 * time.Millisecond}
-	resp, err := client.Get(fmt.Sprintf("http://127.0.0.1:%d/health", port)) // #nosec G704 -- localhost-only health probe
-	if err != nil {
-		return false
-	}
-	defer func() { _ = resp.Body.Close() }() //nolint:errcheck // best-effort cleanup
-	return resp.StatusCode == http.StatusOK
+	return bridge.IsServerRunning(port)
 }
 
 func runningServerVersionCompatible(port int) (bool, string, string) {
@@ -369,79 +307,42 @@ func runningServerVersionCompatible(port int) (bool, string, string) {
 	return versionsMatch(runningVersion, version), runningVersion, serviceName
 }
 
-// waitForServer waits for the server to start accepting connections
+// waitForServer delegates to internal/bridge for server startup wait.
 func waitForServer(port int, timeout time.Duration) bool {
-	deadline := time.Now().Add(timeout)
-	for time.Now().Before(deadline) {
-		if isServerRunning(port) {
-			return true
-		}
-		time.Sleep(100 * time.Millisecond)
-	}
-	return false
+	return bridge.WaitForServer(port, timeout)
 }
 
-// fastPathResponses maps MCP methods to their static JSON result bodies.
-// Methods in this map are handled without waiting for the daemon.
-var fastPathResponses = map[string]string{
-	"ping":                     `{}`,
-	"prompts/list":             `{"prompts":[]}`,
-	"resources/list":           `{"resources":[{"uri":"gasoline://guide","name":"Gasoline Usage Guide","description":"How to use Gasoline MCP tools for browser debugging","mimeType":"text/markdown"},{"uri":"gasoline://quickstart","name":"Gasoline MCP Quickstart","description":"Short, canonical MCP call examples and workflows","mimeType":"text/markdown"}]}`,
-	"resources/templates/list": `{"resourceTemplates":[{"uriTemplate":"gasoline://demo/{name}","name":"Gasoline Demo Script","description":"Demo scripts for websockets, annotations, recording, and dependency vetting","mimeType":"text/markdown"}]}`,
+func daemonStartupSuggestion(failErr string, port int) string {
+	suggestion := fmt.Sprintf("Server failed to start: %s. ", failErr)
+	if strings.Contains(failErr, "port") || strings.Contains(failErr, "bind") || strings.Contains(failErr, "address") {
+		suggestion += fmt.Sprintf("Port may be in use. Try: npx gasoline-mcp --port %d", port+1)
+	} else {
+		suggestion += "Try: npx gasoline-mcp --doctor"
+	}
+	return suggestion
 }
 
-// sendFastResponse marshals and sends a JSON-RPC response for the fast path.
-func sendFastResponse(id any, result json.RawMessage) {
-	resp := JSONRPCResponse{JSONRPC: "2.0", ID: id, Result: result}
-	// Error impossible: simple struct with no circular refs or unsupported types
-	respJSON, _ := json.Marshal(resp)
-	mcpStdoutMu.Lock()
-	fmt.Println(string(respJSON))
-	flushStdout()
-	mcpStdoutMu.Unlock()
-}
-
-// handleFastPath handles MCP methods that don't require the daemon.
-// Returns true if the method was handled.
-func handleFastPath(req JSONRPCRequest, toolsList []MCPTool) bool {
-	// MCP notifications are fire-and-forget; never respond on stdio.
-	if req.ID == nil && strings.HasPrefix(req.Method, "notifications/") {
-		return true
+func waitForDaemonReadinessSignal(state *daemonState, timeout time.Duration) (ready bool, failed bool) {
+	if timeout <= 0 {
+		return false, false
 	}
-
-	switch req.Method {
-	case "initialize":
-		result := map[string]any{
-			"protocolVersion": "2024-11-05",
-			"serverInfo":      map[string]any{"name": "gasoline", "version": version},
-			"capabilities":    map[string]any{"tools": map[string]any{}, "resources": map[string]any{}},
-			"instructions":    serverInstructions,
-		}
-		// Error impossible: map contains only primitive types and nested maps
-		resultJSON, _ := json.Marshal(result)
-		sendFastResponse(req.ID, resultJSON)
-		return true
-
-	case "initialized":
-		if req.ID != nil {
-			sendFastResponse(req.ID, json.RawMessage(`{}`))
-		}
-		return true
-
-	case "tools/list":
-		result := map[string]any{"tools": toolsList}
-		// Error impossible: map contains only serializable tool definitions
-		resultJSON, _ := json.Marshal(result)
-		sendFastResponse(req.ID, resultJSON)
-		return true
+	state.mu.Lock()
+	readyCh := state.readyCh
+	failedCh := state.failedCh
+	state.mu.Unlock()
+	if readyCh == nil || failedCh == nil {
+		return false, false
 	}
-
-	if staticResult, ok := fastPathResponses[req.Method]; ok {
-		sendFastResponse(req.ID, json.RawMessage(staticResult))
-		return true
+	timer := time.NewTimer(timeout)
+	defer timer.Stop()
+	select {
+	case <-readyCh:
+		return true, false
+	case <-failedCh:
+		return false, true
+	case <-timer.C:
+		return false, false
 	}
-
-	return false
 }
 
 // checkDaemonStatus returns an error string if the daemon is not ready, or "" if ready.
@@ -457,21 +358,48 @@ func checkDaemonStatus(state *daemonState, req JSONRPCRequest, port int) string 
 	failErr := state.err
 	state.mu.Unlock()
 
+	// Heal stale bridge state: daemon is up but local ready flag drifted.
+	// Only run this check when daemon state has a concrete port (state.port > 0)
+	// to avoid test and fast-path false positives from unrelated local daemons.
+	if state.port > 0 && isServerRunning(state.port) {
+		if !isReady || isFailed {
+			state.mu.Lock()
+			state.ready = true
+			state.failed = false
+			state.err = ""
+			state.mu.Unlock()
+		}
+		return ""
+	}
+
 	if isFailed {
 		// Previous spawn failed — try again before giving up.
 		if state.respawnIfNeeded() {
 			return ""
 		}
-		suggestion := fmt.Sprintf("Server failed to start: %s. ", failErr)
-		if strings.Contains(failErr, "port") || strings.Contains(failErr, "bind") || strings.Contains(failErr, "address") {
-			suggestion += fmt.Sprintf("Port may be in use. Try: npx gasoline-mcp --port %d", port+1)
-		} else {
-			suggestion += "Try: npx gasoline-mcp --doctor"
-		}
-		return suggestion
+		return daemonStartupSuggestion(failErr, port)
 	}
 
 	if !isReady {
+		readySignal, failedSignal := waitForDaemonReadinessSignal(state, daemonStartupGracePeriod)
+		if readySignal {
+			return ""
+		}
+		if failedSignal {
+			state.mu.Lock()
+			failErr = state.err
+			state.mu.Unlock()
+			if state.respawnIfNeeded() {
+				return ""
+			}
+			return daemonStartupSuggestion(failErr, port)
+		}
+
+		// Grace period elapsed: re-check daemon health once before returning startup retry.
+		if state.port > 0 && isServerRunning(state.port) {
+			state.markReady()
+			return ""
+		}
 		return "starting"
 	}
 	return ""
@@ -488,16 +416,16 @@ func bridgeStdioToHTTPFast(endpoint string, state *daemonState, port int) {
 	var wg sync.WaitGroup
 	responseSent := make(chan bool, 1)
 	var responseOnce sync.Once
+	stats := &bridgeSessionStats{}
 	signalResponseSent := func() {
 		responseOnce.Do(func() { responseSent <- true })
 	}
 
-	toolsHandler := &ToolHandler{}
-	toolsList := toolsHandler.ToolsList()
+	toolsList := schema.AllTools()
 
 	var readErr error
 	for {
-		line, err := readMCPStdioMessage(reader)
+		line, framing, err := readMCPStdioMessage(reader)
 		if err != nil {
 			if errors.Is(err, io.EOF) {
 				break
@@ -509,296 +437,67 @@ func bridgeStdioToHTTPFast(endpoint string, state *daemonState, port int) {
 		if len(line) == 0 {
 			continue
 		}
+		stats.requests++
+		if framing == bridge.StdioFramingContentLength {
+			stats.contentLengthFraming++
+		} else {
+			stats.lineFraming++
+		}
 
 		var req JSONRPCRequest
 		if err := json.Unmarshal(line, &req); err != nil {
-			sendBridgeParseError(line, err)
+			stats.parseErrors++
+			sendBridgeParseError(line, err, framing)
+			signalResponseSent()
+			continue
+		}
+		if req.HasInvalidID() {
+			stats.invalidIDs++
+			sendBridgeError(nil, -32600, "Invalid Request: id must be string or number when present", framing)
 			signalResponseSent()
 			continue
 		}
 		debugf("request method=%s id=%v", req.Method, req.ID)
+		stats.lastMethod = req.Method
 
 		// FAST PATH: Handle initialize and tools/list directly (no daemon needed)
-		if handleFastPath(req, toolsList) {
+		if handleFastPath(req, toolsList, framing) {
+			stats.fastPath++
+			signalResponseSent()
+			continue
+		}
+
+		// RESTART FAST PATH: configure(action="restart") handled in bridge, not daemon
+		if handleBridgeRestart(req, state, port, framing) {
+			stats.fastPath++
 			signalResponseSent()
 			continue
 		}
 
 		// SLOW PATH: Check daemon status for tools/call and other methods
 		if status := checkDaemonStatus(state, req, port); status != "" {
-			handleDaemonNotReady(req, status, signalResponseSent)
+			if status == "method_not_found" {
+				stats.methodNotFound++
+			}
+			if status == "starting" {
+				stats.starting++
+			}
+			handleDaemonNotReady(req, status, signalResponseSent, framing)
 			continue
 		}
 
 		// Forward to HTTP server concurrently
 		timeout := toolCallTimeout(req)
 		reqCopy, lineCopy := req, append([]byte(nil), line...)
+		stats.forwarded++
 		wg.Add(1)
 		util.SafeGo(func() {
 			defer wg.Done()
-			bridgeForwardRequest(client, endpoint, reqCopy, lineCopy, timeout, state, signalResponseSent)
+			bridgeForwardRequest(client, endpoint, reqCopy, lineCopy, timeout, state, signalResponseSent, framing)
 		})
 	}
 
-	bridgeShutdown(&wg, readErr, responseSent)
+	bridgeShutdown(&wg, readErr, responseSent, stats)
 }
 
-// handleDaemonNotReady sends appropriate error responses when the daemon is not available.
-func handleDaemonNotReady(req JSONRPCRequest, status string, signal func()) {
-	switch status {
-	case "method_not_found":
-		sendBridgeError(req.ID, -32601, "Method not found: "+req.Method)
-	case "starting":
-		sendToolError(req.ID, "Server is starting up. Please retry this tool call in 2 seconds.")
-	default:
-		sendToolError(req.ID, status)
-	}
-	signal()
-}
-
-// bridgeDoHTTP sends the raw JSON-RPC payload to the daemon and returns the HTTP response.
-// The caller must provide a context that outlives the response body read — creating the
-// context here with defer cancel() would cancel it before the caller reads resp.Body.
-func bridgeDoHTTP(ctx context.Context, client *http.Client, endpoint string, line []byte) (*http.Response, error) {
-	httpReq, err := http.NewRequestWithContext(ctx, "POST", endpoint, bytes.NewReader(line)) // #nosec G704 -- endpoint is localhost-only serverURL/mcp from runBridgeMode // nosemgrep: go_injection_rule-ssrf -- localhost-only bridge forwarding to own server
-	if err != nil {
-		return nil, err
-	}
-	httpReq.Header.Set("Content-Type", "application/json")
-	return client.Do(httpReq) // #nosec G704 -- endpoint is localhost-only serverURL/mcp from runBridgeMode
-}
-
-// bridgeForwardRequest forwards a JSON-RPC request to the HTTP server and writes the response.
-// If state is non-nil and the daemon is unreachable, attempts a single respawn + retry.
-// #lizard forgives
-func bridgeForwardRequest(client *http.Client, endpoint string, req JSONRPCRequest, line []byte, timeout time.Duration, state *daemonState, signal func()) {
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
-	activeCancel := cancel
-
-	resp, err := bridgeDoHTTP(ctx, client, endpoint, line)
-	if err != nil && isConnectionError(err) && state != nil {
-		// Daemon died — attempt respawn and retry with fresh context
-		// (original context may have little time left after respawn delay).
-		if state.respawnIfNeeded() {
-			cancel()
-			retryCtx, retryCancel := context.WithTimeout(context.Background(), timeout)
-			resp, err = bridgeDoHTTP(retryCtx, client, endpoint, line)
-			activeCancel = retryCancel
-		}
-	}
-	defer activeCancel()
-	if err != nil {
-		sendBridgeError(req.ID, -32603, "Server connection error: "+err.Error())
-		signal()
-		return
-	}
-
-	body, err := io.ReadAll(io.LimitReader(resp.Body, maxPostBodySize))
-	_ = resp.Body.Close() //nolint:errcheck // best-effort cleanup
-	if err != nil {
-		sendBridgeError(req.ID, -32603, "Failed to read response: "+err.Error())
-		signal()
-		return
-	}
-
-	if resp.StatusCode == 204 {
-		signal()
-		return
-	}
-
-	if resp.StatusCode != 200 {
-		sendBridgeError(req.ID, -32603, fmt.Sprintf("HTTP %d: %s", resp.StatusCode, string(body)))
-		signal()
-		return
-	}
-
-	mcpStdoutMu.Lock()
-	fmt.Print(string(body))
-	flushStdout()
-	mcpStdoutMu.Unlock()
-	signal()
-}
-
-// sendBridgeParseError sends a JSON-RPC parse error (id must be null per spec).
-func sendBridgeParseError(_ []byte, err error) {
-	errResp := JSONRPCResponse{
-		JSONRPC: "2.0",
-		ID:      nil, // JSON-RPC: parse errors must have null id
-		Error:   &JSONRPCError{Code: -32700, Message: "Parse error: " + err.Error()},
-	}
-	// Error impossible: simple struct with no circular refs or unsupported types
-	respJSON, _ := json.Marshal(errResp)
-	mcpStdoutMu.Lock()
-	fmt.Println(string(respJSON))
-	flushStdout()
-	mcpStdoutMu.Unlock()
-}
-
-// readMCPStdioMessage reads one MCP message from stdin.
-// Supports both line-delimited JSON and Content-Length framed messages.
-func readMCPStdioMessage(reader *bufio.Reader) ([]byte, error) {
-	for {
-		firstLineBytes, err := reader.ReadBytes('\n')
-		if err != nil {
-			if errors.Is(err, io.EOF) {
-				trimmed := strings.TrimSpace(string(firstLineBytes))
-				if trimmed == "" {
-					return nil, io.EOF
-				}
-				// Trailing non-empty bytes without newline: treat as final line-delimited message.
-				return []byte(trimmed), nil
-			}
-			return nil, err
-		}
-
-		firstLine := strings.TrimSpace(string(firstLineBytes))
-		if firstLine == "" {
-			continue
-		}
-
-		if !strings.HasPrefix(strings.ToLower(firstLine), "content-length:") {
-			// Line-delimited JSON (or malformed input handled by upstream JSON parse error path).
-			debugf("stdio line message bytes=%d", len(firstLine))
-			return []byte(firstLine), nil
-		}
-
-		parts := strings.SplitN(firstLine, ":", 2)
-		if len(parts) != 2 {
-			return []byte(firstLine), nil
-		}
-		contentLength, convErr := strconv.Atoi(strings.TrimSpace(parts[1]))
-		if convErr != nil || contentLength < 0 || contentLength > maxPostBodySize {
-			debugf("stdio framed header invalid length=%q", strings.TrimSpace(parts[1]))
-			return []byte(firstLine), nil
-		}
-
-		// Consume remaining headers until blank line.
-		for {
-			headerLine, headerErr := reader.ReadBytes('\n')
-			if headerErr != nil {
-				if errors.Is(headerErr, io.EOF) {
-					return nil, io.EOF
-				}
-				return nil, headerErr
-			}
-			if strings.TrimSpace(string(headerLine)) == "" {
-				break
-			}
-		}
-
-		payload := make([]byte, contentLength)
-		if _, readErr := io.ReadFull(reader, payload); readErr != nil {
-			debugf("stdio framed read error: %v", readErr)
-			return nil, readErr
-		}
-		debugf("stdio framed message bytes=%d", len(payload))
-		return bytes.TrimSpace(payload), nil
-	}
-}
-
-// bridgeShutdown waits for in-flight requests and performs clean shutdown.
-func bridgeShutdown(wg *sync.WaitGroup, readErr error, responseSent chan bool) {
-	wg.Wait()
-	if readErr != nil && !errors.Is(readErr, io.EOF) {
-		stderrf("[gasoline-bridge] ERROR: stdin read error: %v\n", readErr)
-	}
-
-	select {
-	case <-responseSent:
-	case <-time.After(5 * time.Second):
-	}
-	close(responseSent)
-
-	flushStdout()
-	time.Sleep(100 * time.Millisecond)
-}
-
-// bridgeStdioToHTTP forwards JSON-RPC messages between stdin/stdout and HTTP endpoint
-func bridgeStdioToHTTP(endpoint string) {
-	reader := bufio.NewReaderSize(os.Stdin, 64*1024)
-
-	client := &http.Client{} // per-request timeouts via context
-
-	var wg sync.WaitGroup
-	responseSent := make(chan bool, 1)
-	var responseOnce sync.Once
-	signalResponseSent := func() {
-		responseOnce.Do(func() { responseSent <- true })
-	}
-
-	var readErr error
-	for {
-		line, err := readMCPStdioMessage(reader)
-		if err != nil {
-			if errors.Is(err, io.EOF) {
-				break
-			}
-			debugf("stdin read error: %v", err)
-			readErr = err
-			break
-		}
-		if len(line) == 0 {
-			continue
-		}
-
-		var req JSONRPCRequest
-		if err := json.Unmarshal(line, &req); err != nil {
-			sendBridgeParseError(line, err)
-			signalResponseSent()
-			continue
-		}
-		debugf("request method=%s id=%v", req.Method, req.ID)
-
-		timeout := toolCallTimeout(req)
-		reqCopy, lineCopy := req, append([]byte(nil), line...)
-		wg.Add(1)
-		util.SafeGo(func() {
-			defer wg.Done()
-			bridgeForwardRequest(client, endpoint, reqCopy, lineCopy, timeout, nil, signalResponseSent)
-		})
-	}
-
-	bridgeShutdown(&wg, readErr, responseSent)
-}
-
-// sendBridgeError sends a JSON-RPC error response to stdout
-func sendBridgeError(id any, code int, message string) {
-	errResp := JSONRPCResponse{
-		JSONRPC: "2.0",
-		ID:      id,
-		Error: &JSONRPCError{
-			Code:    code,
-			Message: message,
-		},
-	}
-	// Error impossible: simple struct with no circular refs or unsupported types
-	respJSON, _ := json.Marshal(errResp)
-	mcpStdoutMu.Lock()
-	fmt.Println(string(respJSON))
-	flushStdout()
-	mcpStdoutMu.Unlock()
-}
-
-// sendToolError sends a tool result with isError: true (soft error, not protocol error)
-// This tells the LLM the tool ran but returned an error, allowing it to retry.
-func sendToolError(id any, message string) {
-	result := map[string]any{
-		"content": []map[string]any{
-			{"type": "text", "text": message},
-		},
-		"isError": true,
-	}
-	// Error impossible: map contains only primitive types and nested maps
-	resultJSON, _ := json.Marshal(result)
-	resp := JSONRPCResponse{
-		JSONRPC: "2.0",
-		ID:      id,
-		Result:  resultJSON,
-	}
-	// Error impossible: simple struct with no circular refs or unsupported types
-	respJSON, _ := json.Marshal(resp)
-	mcpStdoutMu.Lock()
-	fmt.Println(string(respJSON))
-	flushStdout()
-	mcpStdoutMu.Unlock()
-}
+// Forwarding, error responses, and restart handling moved to bridge_forward.go

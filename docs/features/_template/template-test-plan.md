@@ -1,3 +1,9 @@
+---
+doc_type: legacy_doc
+status: reference
+last_reviewed: 2026-02-16
+---
+
 # {Feature Name} — Test Plan
 
 **Status:** [ ] Product Tests Defined | [ ] Tech Tests Designed | [ ] Tests Generated | [ ] All Tests Passing

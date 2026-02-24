@@ -1,3 +1,7 @@
+// Purpose: Implement validate-versions.js behavior for npm wrapper command flows.
+// Why: Keeps distribution-channel behavior consistent and supportable.
+// Docs: docs/features/feature/enhanced-cli-config/index.md
+
 /**
  * Validate that optionalDependencies match the package version
  * Since npm package.json doesn't support variable substitution,

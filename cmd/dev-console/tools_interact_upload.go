@@ -1,4 +1,9 @@
+// Purpose: Implements interact tool handlers and browser action orchestration.
+// Why: Preserves deterministic browser action execution across agent workflows.
+// Docs: docs/features/feature/interact-explore/index.md
+
 // tools_interact_upload.go — MCP interact upload action handler.
+// Docs: docs/features/feature/interact-explore/index.md
 // Implements the "upload" action for the interact tool with 4-stage escalation.
 // Stage 4 (OS automation) requires --enable-os-upload-automation flag.
 //
@@ -8,7 +13,6 @@ package main
 
 import (
 	"encoding/json"
-	"fmt"
 	"os"
 	"path/filepath"
 	"time"
@@ -37,12 +41,19 @@ func (h *ToolHandler) handleUpload(req JSONRPCRequest, args json.RawMessage) JSO
 		return *errResp
 	}
 
+	if resp, blocked := h.requirePilot(req); blocked {
+		return resp
+	}
+	if resp, blocked := h.requireExtension(req); blocked {
+		return resp
+	}
+
 	info, errResp := validateUploadFile(req, params.FilePath)
 	if errResp != nil {
 		return *errResp
 	}
 
-	return h.queueUpload(req, params, info)
+	return h.queueUpload(req, args, params, info)
 }
 
 // validateUploadParams checks required parameters for the upload action.
@@ -52,7 +63,7 @@ func validateUploadParams(req JSONRPCRequest, params uploadParams) *JSONRPCRespo
 		return &resp
 	}
 	if params.Selector == "" && params.APIEndpoint == "" {
-		resp := JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrMissingParam, "Required parameter 'selector' is missing. Provide a CSS selector for the file input element, or use 'apiEndpoint' for direct API uploads.", "Add the 'selector' parameter (e.g., '#Filedata') or 'apiEndpoint'", withParam("selector"))}
+		resp := JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrMissingParam, "Required parameter 'selector' is missing. Provide a CSS selector for the file input element, or use 'api_endpoint' for direct API uploads.", "Add the 'selector' parameter (e.g., '#Filedata') or 'api_endpoint'", withParam("selector"))}
 		return &resp
 	}
 	if !filepath.IsAbs(params.FilePath) {
@@ -87,7 +98,7 @@ func uploadFileStatError(req JSONRPCRequest, filePath string, err error) JSONRPC
 }
 
 // queueUpload builds the upload payload and queues it for the extension.
-func (h *ToolHandler) queueUpload(req JSONRPCRequest, params uploadParams, info os.FileInfo) JSONRPCResponse {
+func (h *ToolHandler) queueUpload(req JSONRPCRequest, args json.RawMessage, params uploadParams, info os.FileInfo) JSONRPCResponse {
 	if params.EscalationTimeoutMs <= 0 {
 		params.EscalationTimeoutMs = defaultEscalationTimeoutMs
 	}
@@ -96,7 +107,8 @@ func (h *ToolHandler) queueUpload(req JSONRPCRequest, params uploadParams, info 
 	mimeType := detectMimeType(fileName)
 	fileSize := info.Size()
 	progressTier := getProgressTier(fileSize)
-	correlationID := fmt.Sprintf("upload_%d_%d", time.Now().UnixNano(), randomInt63())
+	correlationID := newCorrelationID("upload")
+	h.armEvidenceForCommand(correlationID, "upload", args, req.ClientID)
 
 	uploadPayload := map[string]any{
 		"action": "upload", "selector": params.Selector,

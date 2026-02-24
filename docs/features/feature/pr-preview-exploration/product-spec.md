@@ -7,6 +7,9 @@ mode: multi-mode (orchestration pattern)
 authors: []
 created: 2026-01-28
 updated: 2026-01-28
+doc_type: product-spec
+feature_id: feature-pr-preview-exploration
+last_reviewed: 2026-02-16
 ---
 
 # PR Preview Exploration
@@ -38,7 +41,7 @@ The workflow proceeds in five phases:
 
 ### Architecture: Orchestration, Not a New Tool
 
-This feature strictly follows the Gasoline architecture: **4 tools, no more**. The agent uses existing modes across all four tools:
+This feature strictly follows the Gasoline architecture: **5 tools, no more**. The agent uses existing modes across all five tools:
 
 | Phase | Tool | Mode/Action | Purpose |
 |-------|------|-------------|---------|
@@ -230,7 +233,7 @@ If any bound is reached, the agent stops exploration, captures whatever telemetr
 
 ## Non-Goals
 
-- **This feature does NOT add new MCP tools or modes.** It composes existing primitives. The 4-tool constraint is inviolate.
+- **This feature does NOT add new MCP tools or modes.** It composes existing primitives. The 5-tool model is inviolate.
 - **This feature does NOT implement CI/CD webhook handling.** How the agent gets triggered (webhook, cron, manual) is outside Gasoline's scope. Gasoline provides observation; triggering is the CI system's job.
 - **This feature does NOT implement GitHub PR comment posting.** The agent produces the report content; posting it to GitHub is the agent's responsibility via external tools (e.g., `gh pr comment`).
 - **This feature does NOT implement visual regression testing.** Gasoline captures behavioral telemetry (errors, network, performance), not pixel-level screenshots. Visual diffing is a separate concern.

@@ -4,6 +4,9 @@ status: shipped
 tool: configure, observe
 mode: audit_log, security_audit
 version: 5.0.0
+doc_type: product-spec
+feature_id: feature-enterprise-audit
+last_reviewed: 2026-02-16
 ---
 # Product Spec: Enterprise Audit
 

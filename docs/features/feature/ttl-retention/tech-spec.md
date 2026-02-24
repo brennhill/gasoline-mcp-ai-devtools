@@ -5,6 +5,9 @@ ai-priority: high
 tags: [implementation, architecture]
 relates-to: [product-spec.md, qa-plan.md]
 last-verified: 2026-01-31
+doc_type: tech-spec
+feature_id: feature-ttl-retention
+last_reviewed: 2026-02-16
 ---
 
 > **[MIGRATION NOTICE]**
@@ -603,7 +606,7 @@ New capabilities are additive:
 | `cmd/dev-console/ttl.go` | TTL types, parsing, resolution logic |
 | `cmd/dev-console/ttl_test.go` | TTL tests |
 | `cmd/dev-console/types.go` | TTLConfig struct definition |
-| `cmd/dev-console/tools.go` | MCP tool schema update |
+| `cmd/dev-console/tools_core.go` | MCP tool schema update |
 | `cmd/dev-console/configure.go` | TTL action handler |
 | `cmd/dev-console/health.go` | Health endpoint TTL section |
 | `cmd/dev-console/main.go` | CLI flag parsing |

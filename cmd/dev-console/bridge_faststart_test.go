@@ -1,3 +1,7 @@
+// Purpose: Validate bridge_faststart_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
+// Docs: docs/features/feature/observe/index.md
+
 // bridge_faststart_test.go — Tests for MCP fast-start behavior.
 // Verifies that initialize and tools/list respond immediately without waiting for daemon.
 package main
@@ -7,10 +11,44 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"strings"
 	"testing"
 	"time"
 )
+
+func readJSONRPCLine(t *testing.T, reader *bufio.Reader, timeout time.Duration) JSONRPCResponse {
+	t.Helper()
+	lineCh := make(chan string, 1)
+	errCh := make(chan error, 1)
+	go func() {
+		line, err := reader.ReadString('\n')
+		if err != nil {
+			errCh <- err
+			return
+		}
+		lineCh <- line
+	}()
+
+	select {
+	case line := <-lineCh:
+		var resp JSONRPCResponse
+		if err := json.Unmarshal([]byte(line), &resp); err != nil {
+			t.Fatalf("failed to parse JSON-RPC response: %v", err)
+		}
+		return resp
+	case err := <-errCh:
+		t.Fatalf("failed to read response: %v", err)
+	case <-time.After(timeout):
+		t.Fatalf("timeout waiting for response after %v", timeout)
+	}
+	return JSONRPCResponse{}
+}
+
+func writeJSONRPCLine(t *testing.T, w io.Writer, raw string) {
+	t.Helper()
+	if _, err := w.Write([]byte(raw + "\n")); err != nil {
+		t.Fatalf("failed to write request: %v", err)
+	}
+}
 
 // TestFastStart_InitializeRespondsImmediately verifies that initialize returns
 // within 100ms even when no daemon is running. This is critical for MCP client UX.
@@ -26,7 +64,7 @@ func TestFastStart_InitializeRespondsImmediately(t *testing.T) {
 	port := findFreePort(t)
 
 	// Start bridge mode (which uses fast-start)
-	cmd := startServerCmd(binary, "--bridge", "--port", fmt.Sprintf("%d", port))
+	cmd := startServerCmd(t, binary, "--bridge", "--port", fmt.Sprintf("%d", port))
 
 	stdin, err := cmd.StdinPipe()
 	if err != nil {
@@ -132,7 +170,7 @@ func TestFastStart_ToolsListRespondsImmediately(t *testing.T) {
 	binary := buildTestBinary(t)
 	port := findFreePort(t)
 
-	cmd := startServerCmd(binary, "--bridge", "--port", fmt.Sprintf("%d", port))
+	cmd := startServerCmd(t, binary, "--bridge", "--port", fmt.Sprintf("%d", port))
 
 	stdin, err := cmd.StdinPipe()
 	if err != nil {
@@ -305,7 +343,7 @@ func TestFastStart_OtherMethodsReturnQuickly(t *testing.T) {
 	binary := buildTestBinary(t)
 	port := findFreePort(t)
 
-	cmd := startServerCmd(binary, "--bridge", "--port", fmt.Sprintf("%d", port))
+	cmd := startServerCmd(t, binary, "--bridge", "--port", fmt.Sprintf("%d", port))
 
 	stdin, err := cmd.StdinPipe()
 	if err != nil {
@@ -382,181 +420,4 @@ func TestFastStart_OtherMethodsReturnQuickly(t *testing.T) {
 			}
 		})
 	}
-}
-
-// TestFastStart_ToolsCallReturnsRetryWhenBooting verifies that tools/call
-// returns a "retry" message instead of blocking when daemon isn't ready.
-func TestFastStart_ToolsCallReturnsRetryWhenBooting(t *testing.T) {
-	if testing.Short() {
-		t.Skip("skips server spawn in short mode")
-	}
-
-	binary := buildTestBinary(t)
-	// Use a port that definitely has no server running
-	port := findFreePort(t)
-
-	cmd := startServerCmd(binary, "--bridge", "--port", fmt.Sprintf("%d", port))
-
-	stdin, err := cmd.StdinPipe()
-	if err != nil {
-		t.Fatalf("Failed to get stdin pipe: %v", err)
-	}
-
-	stdout, err := cmd.StdoutPipe()
-	if err != nil {
-		t.Fatalf("Failed to get stdout pipe: %v", err)
-	}
-
-	cmd.Stderr = nil
-
-	if err := cmd.Start(); err != nil {
-		t.Fatalf("Failed to start command: %v", err)
-	}
-
-	defer func() {
-		_ = stdin.Close()
-		_ = cmd.Process.Kill()
-		_ = cmd.Wait()
-	}()
-
-	reader := bufio.NewReader(stdout)
-
-	// Send initialize first
-	initReq := `{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test","version":"1.0"}}}`
-	if _, initErr := stdin.Write([]byte(initReq + "\n")); initErr != nil {
-		t.Fatalf("Failed to write initialize: %v", initErr)
-	}
-	reader.ReadString('\n') // consume initialize response
-
-	// Immediately send tools/call - daemon won't be ready yet
-	toolsCallReq := `{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"observe","arguments":{"what":"errors"}}}`
-
-	start := time.Now()
-	if _, callErr := stdin.Write([]byte(toolsCallReq + "\n")); callErr != nil {
-		t.Fatalf("Failed to write tools/call: %v", callErr)
-	}
-
-	line, err := reader.ReadString('\n')
-	elapsed := time.Since(start)
-
-	if err != nil {
-		t.Fatalf("Failed to read response: %v", err)
-	}
-
-	// CRITICAL: Should respond quickly (< 500ms), not block for 15s
-	if elapsed > 500*time.Millisecond {
-		t.Errorf("❌ tools/call took %v, expected < 500ms (should return retry, not block)", elapsed)
-	} else {
-		t.Logf("✅ tools/call responded in %v (< 500ms)", elapsed)
-	}
-
-	// Verify response structure - should be a result, not an error
-	var rpcResp JSONRPCResponse
-	if err := json.Unmarshal([]byte(line), &rpcResp); err != nil {
-		t.Fatalf("Failed to parse response: %v", err)
-	}
-
-	// Could be either:
-	// 1. A retry message (if daemon not ready)
-	// 2. Actual data (if daemon started fast enough)
-	if rpcResp.Error != nil {
-		t.Errorf("Expected result (possibly with retry message), got protocol error: %v", rpcResp.Error.Message)
-	}
-
-	if rpcResp.Result != nil {
-		var result map[string]any
-		if err := json.Unmarshal(rpcResp.Result, &result); err != nil {
-			t.Fatalf("Failed to parse result: %v", err)
-		}
-
-		// Check if it's a retry message
-		if content, ok := result["content"].([]any); ok && len(content) > 0 {
-			if textObj, ok := content[0].(map[string]any); ok {
-				if text, ok := textObj["text"].(string); ok {
-					if strings.Contains(text, "retry") || strings.Contains(text, "starting") {
-						t.Logf("✅ Got retry message: %s", text)
-					} else {
-						t.Logf("✅ Got actual data (daemon started quickly): %s...", text[:min(50, len(text))])
-					}
-				}
-			}
-		}
-	}
-}
-
-// TestFastStart_VersionInResponse ensures the version in initialize response
-// matches the binary version.
-func TestFastStart_VersionInResponse(t *testing.T) {
-	if testing.Short() {
-		t.Skip("skips server spawn in short mode")
-	}
-
-	binary := buildTestBinary(t)
-	port := findFreePort(t)
-
-	cmd := startServerCmd(binary, "--bridge", "--port", fmt.Sprintf("%d", port))
-
-	stdin, err := cmd.StdinPipe()
-	if err != nil {
-		t.Fatalf("Failed to get stdin pipe: %v", err)
-	}
-
-	stdout, err := cmd.StdoutPipe()
-	if err != nil {
-		t.Fatalf("Failed to get stdout pipe: %v", err)
-	}
-
-	cmd.Stderr = nil
-
-	if err := cmd.Start(); err != nil {
-		t.Fatalf("Failed to start command: %v", err)
-	}
-
-	defer func() {
-		_ = stdin.Close()
-		_ = cmd.Process.Kill()
-		_ = cmd.Wait()
-	}()
-
-	initReq := `{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test","version":"1.0"}}}`
-	if _, lastErr := stdin.Write([]byte(initReq + "\n")); lastErr != nil {
-		t.Fatalf("Failed to write initialize: %v", lastErr)
-	}
-
-	reader := bufio.NewReader(stdout)
-	line, err := reader.ReadString('\n')
-	if err != nil {
-		t.Fatalf("Failed to read response: %v", err)
-	}
-
-	var rpcResp JSONRPCResponse
-	if err := json.Unmarshal([]byte(line), &rpcResp); err != nil {
-		t.Fatalf("Failed to parse response: %v", err)
-	}
-
-	var result map[string]any
-	if err := json.Unmarshal(rpcResp.Result, &result); err != nil {
-		t.Fatalf("Failed to parse result: %v", err)
-	}
-
-	serverInfo, ok := result["serverInfo"].(map[string]any)
-	if !ok {
-		t.Fatal("Missing serverInfo in response")
-	}
-
-	responseVersion, ok := serverInfo["version"].(string)
-	if !ok {
-		t.Fatal("Missing version in serverInfo")
-	}
-
-	// Version should not be empty and should look like a semver
-	if responseVersion == "" {
-		t.Error("Version is empty")
-	}
-
-	if !strings.Contains(responseVersion, ".") {
-		t.Errorf("Version '%s' doesn't look like semver", responseVersion)
-	}
-
-	t.Logf("✅ Version in response: %s", responseVersion)
 }

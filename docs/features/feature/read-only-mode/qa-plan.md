@@ -1,5 +1,8 @@
 ---
 feature: read-only-mode
+doc_type: qa-plan
+feature_id: feature-read-only-mode
+last_reviewed: 2026-02-16
 ---
 
 # QA Plan: Read-Only Mode
@@ -16,13 +19,13 @@ feature: read-only-mode
 - [ ] Test interact tool returns error when read-only enabled
 - [ ] Test observe tool works normally when read-only enabled
 - [ ] Test generate tool works normally when read-only enabled
-- [ ] Test configure query_dom works when read-only enabled
+- [ ] Test analyze({what: "dom"}) works when read-only enabled
 - [ ] Test configure clear returns error when read-only enabled
 
 **Integration tests:** Full read-only workflow
 - [ ] Test start server in read-only, connect agent, verify mutation blocked
 - [ ] Test start server normally, verify mutations allowed
-- [ ] Test observe server_config returns correct read_only_mode status
+- [ ] Test configure health returns correct read_only_mode status
 
 **Edge case tests:** Error handling
 - [ ] Test CLI flag overrides env var (--read-only=false with GASOLINE_READ_ONLY=true)
@@ -51,11 +54,11 @@ feature: read-only-mode
    - Open production web app in browser with extension
 2. Steps:
    - [ ] Connect agent (Claude Code or Cursor)
-   - [ ] Check status: `observe({what: "server_config"})` — verify read_only_mode: true
+- [ ] Check status: `configure({action: "health"})` — verify read_only_mode: true
    - [ ] Observe errors: `observe({what: "errors"})` — succeeds, returns errors
    - [ ] Observe network: `observe({what: "network_waterfall"})` — succeeds
-   - [ ] Query DOM: `configure({action: "query_dom", selector: ".error"})` — succeeds
-   - [ ] Generate reproduction: `generate({type: "reproduction"})` — succeeds
+   - [ ] Query DOM: `analyze({what: "dom", selector: ".error"})` — succeeds
+- [ ] Generate reproduction: `generate({format: "reproduction"})` — succeeds
 3. Expected Result: All observation and analysis operations work normally
 4. Verification: Agent can analyze production issue without any mutations
 
@@ -76,7 +79,7 @@ feature: read-only-mode
 1. Setup:
    - Start Gasoline without --read-only flag: `gasoline`
 2. Steps:
-   - [ ] Check status: `observe({what: "server_config"})` — verify read_only_mode: false
+   - [ ] Check status: `configure({action: "health"})` — verify read_only_mode: false
    - [ ] Attempt execute_js: `interact({action: "execute_js", code: "console.log('test')"})`
    - [ ] Verify succeeds
    - [ ] Attempt navigate: succeeds
@@ -88,7 +91,7 @@ feature: read-only-mode
    - Set env var: `export GASOLINE_READ_ONLY=true`
    - Start with flag: `gasoline --read-only=false`
 2. Steps:
-   - [ ] Check server_config: verify read_only_mode based on CLI flag (false)
+   - [ ] Check health response: verify read_only_mode based on CLI flag (false)
    - [ ] Attempt mutation: succeeds (CLI flag overrides env var)
 3. Expected Result: CLI flag takes precedence
 4. Verification: Mutations allowed when CLI flag says false

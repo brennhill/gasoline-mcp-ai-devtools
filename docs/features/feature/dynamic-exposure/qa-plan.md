@@ -1,5 +1,8 @@
 ---
 feature: dynamic-exposure
+doc_type: qa-plan
+feature_id: feature-dynamic-exposure
+last_reviewed: 2026-02-16
 ---
 
 # QA Plan: Dynamic Exposure
@@ -45,7 +48,7 @@ feature: dynamic-exposure
    - Start: `gasoline --feature-flags=features.yaml`
 2. Steps:
    - [ ] Check flags: `observe({what: "feature_flags"})` — verify generate_har: false
-   - [ ] Attempt HAR generation: `generate({type: "har"})`
+   - [ ] Attempt HAR generation: `generate({format: "har"})`
    - [ ] Verify error: {error: "feature_disabled", feature_flag: "generate_har"}
    - [ ] Attempt other generate types (reproduction): succeeds
 3. Expected Result: Disabled feature fails, others work

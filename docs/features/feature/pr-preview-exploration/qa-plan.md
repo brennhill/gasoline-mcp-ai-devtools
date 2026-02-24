@@ -5,6 +5,9 @@ ai-priority: medium
 tags: [testing, qa]
 relates-to: [product-spec.md, tech-spec.md]
 last-verified: 2026-01-31
+doc_type: qa-plan
+feature_id: feature-pr-preview-exploration
+last_reviewed: 2026-02-16
 ---
 
 # QA Plan: PR Preview Exploration
@@ -199,15 +202,15 @@ last-verified: 2026-01-31
 |---|-------------------|----------------|-----------------|------|
 | UAT-1 | **Phase 1 - Discover:** Human provides preview URL to AI | Human tells AI: "explore http://localhost:3001" | AI acknowledges URL, prepares to explore | [ ] |
 | UAT-2 | **Phase 2 - Baseline:** AI navigates to main branch: `{"tool":"interact","arguments":{"action":"navigate","url":"http://localhost:3000"}}` | Browser navigates to main app | Main branch app loads | [ ] |
-| UAT-3 | AI captures baseline: `{"tool":"configure","arguments":{"action":"diff_sessions","session_action":"capture","name":"main-baseline"}}` | N/A | Baseline snapshot captured and saved | [ ] |
+| UAT-3 | AI captures baseline: `{"tool":"configure","arguments":{"action":"diff_sessions","verif_session_action":"capture","name":"main-baseline"}}` | N/A | Baseline snapshot captured and saved | [ ] |
 | UAT-4 | AI checks baseline for errors: `{"tool":"observe","arguments":{"what":"errors"}}` | No errors in main branch | Error list empty or only known pre-existing errors | [ ] |
 | UAT-5 | **Phase 3 - Explore:** AI opens preview in new tab: `{"tool":"interact","arguments":{"action":"new_tab","url":"http://localhost:3001"}}` | New browser tab opens with preview app | Tab opened, tab_id returned, developer's tab unaffected | [ ] |
 | UAT-6 | AI waits for page load: `{"tool":"observe","arguments":{"what":"page"}}` | Preview page loads in new tab | Page ready state reported | [ ] |
 | UAT-7 | AI explores -- clicks navigation link: `{"tool":"interact","arguments":{"action":"execute_js","script":"document.querySelector('a[href=\"/dashboard\"]').click()"}}` | Browser navigates to dashboard in preview tab | Dashboard page loads (with intentional console error) | [ ] |
 | UAT-8 | AI captures errors: `{"tool":"observe","arguments":{"what":"errors"}}` | Console error visible in DevTools | Error returned in observe response (e.g., "TypeError: Cannot read property 'data' of undefined") | [ ] |
 | UAT-9 | AI checks performance: `{"tool":"observe","arguments":{"what":"performance"}}` | N/A | Performance metrics returned (load time, LCP, CLS) | [ ] |
-| UAT-10 | AI captures preview snapshot: `{"tool":"configure","arguments":{"action":"diff_sessions","session_action":"capture","name":"preview-pr-test"}}` | N/A | Preview session snapshot captured | [ ] |
-| UAT-11 | **Phase 4 - Compare:** AI compares sessions: `{"tool":"configure","arguments":{"action":"diff_sessions","session_action":"compare","compare_a":"main-baseline","compare_b":"preview-pr-test"}}` | N/A | Diff shows new error in preview not present in baseline, performance delta | [ ] |
+| UAT-10 | AI captures preview snapshot: `{"tool":"configure","arguments":{"action":"diff_sessions","verif_session_action":"capture","name":"preview-pr-test"}}` | N/A | Preview session snapshot captured | [ ] |
+| UAT-11 | **Phase 4 - Compare:** AI compares sessions: `{"tool":"configure","arguments":{"action":"diff_sessions","verif_session_action":"compare","compare_a":"main-baseline","compare_b":"preview-pr-test"}}` | N/A | Diff shows new error in preview not present in baseline, performance delta | [ ] |
 | UAT-12 | AI checks accessibility: `{"tool":"observe","arguments":{"what":"accessibility"}}` | N/A | Accessibility findings returned (if any) | [ ] |
 | UAT-13 | **Phase 5 - Report:** AI generates report: `{"tool":"generate","arguments":{"format":"pr_summary"}}` | N/A | Markdown report with preview URL, findings, regressions, performance comparison | [ ] |
 | UAT-14 | Human reviews report content | Read generated markdown | Report includes: (1) preview URL explored, (2) pages visited, (3) new error found, (4) performance comparison, (5) clear severity classification | [ ] |
@@ -233,7 +236,7 @@ last-verified: 2026-01-31
 - [ ] Existing `generate({format: "pr_summary"})` works independently
 - [ ] AI Web Pilot toggle still required for execute_js (security gate not bypassed)
 - [ ] Single-tab tracking isolation still functions correctly
-- [ ] 4-tool constraint maintained -- no new tools added
+- [ ] 5-tool model maintained -- no new tools added
 
 ---
 

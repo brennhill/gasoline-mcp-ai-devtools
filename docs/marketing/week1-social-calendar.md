@@ -1,3 +1,9 @@
+---
+doc_type: legacy_doc
+status: reference
+last_reviewed: 2026-02-16
+---
+
 # Gasoline MCP - Week 1 Social Media Content Calendar
 
 **Week Starting:** 2026-02-09  

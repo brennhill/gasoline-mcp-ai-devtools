@@ -1,3 +1,7 @@
+// Purpose: Validate main_connection_coverage_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
+// Docs: docs/features/feature/observe/index.md
+
 package main
 
 import (
@@ -196,7 +200,7 @@ func TestRunMCPModePortConflictRemovesStalePID(t *testing.T) {
 	}
 	defer server.shutdownAsyncLogger(2 * time.Second)
 
-	err = runMCPMode(server, port, "")
+	err = runMCPMode(server, port, "", daemonLaunchOptions{})
 	if err == nil || !strings.Contains(err.Error(), "already in use") {
 		t.Fatalf("runMCPMode() error = %v, want port conflict", err)
 	}
@@ -226,7 +230,7 @@ func TestRunMCPModeGracefulSignalShutdown(t *testing.T) {
 
 	done := make(chan error, 1)
 	go func() {
-		done <- runMCPMode(server, port, "")
+		done <- runMCPMode(server, port, "", daemonLaunchOptions{})
 	}()
 
 	deadline := time.Now().Add(5 * time.Second)

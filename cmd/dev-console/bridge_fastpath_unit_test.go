@@ -1,3 +1,7 @@
+// Purpose: Validate bridge_fastpath_unit_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
+// Docs: docs/features/feature/observe/index.md
+
 package main
 
 import (
@@ -12,10 +16,16 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	statecfg "github.com/dev-console/dev-console/internal/state"
 )
 
 func contentLengthFrame(payload string) string {
 	return fmt.Sprintf("Content-Length: %d\r\nContent-Type: application/json\r\n\r\n%s", len(payload), payload)
+}
+
+func contentTypeFirstFrame(payload string) string {
+	return fmt.Sprintf("Content-Type: application/json\r\nContent-Length: %d\r\n\r\n%s", len(payload), payload)
 }
 
 func captureBridgeIO(t *testing.T, input string, fn func()) string {
@@ -123,16 +133,91 @@ func parseJSONLines(t *testing.T, output string) []JSONRPCResponse {
 	return responses
 }
 
+func parseFramedJSONResponses(t *testing.T, output string) []JSONRPCResponse {
+	t.Helper()
+	remaining := output
+	responses := make([]JSONRPCResponse, 0, 4)
+
+	for strings.TrimSpace(remaining) != "" {
+		parts := strings.SplitN(remaining, "\r\n\r\n", 2)
+		if len(parts) != 2 {
+			t.Fatalf("output missing Content-Length framing boundary: %q", remaining)
+		}
+		headers := strings.Split(parts[0], "\r\n")
+		contentLength := -1
+		for _, header := range headers {
+			h := strings.TrimSpace(header)
+			if strings.HasPrefix(strings.ToLower(h), "content-length:") {
+				p := strings.SplitN(h, ":", 2)
+				if len(p) != 2 {
+					t.Fatalf("invalid Content-Length header format: %q", h)
+				}
+				n, err := strconv.Atoi(strings.TrimSpace(p[1]))
+				if err != nil || n < 0 {
+					t.Fatalf("invalid Content-Length header %q: %v", h, err)
+				}
+				contentLength = n
+				break
+			}
+		}
+		if contentLength < 0 {
+			t.Fatalf("framed output missing Content-Length header: %q", parts[0])
+		}
+
+		bodyAndRest := parts[1]
+		if len(bodyAndRest) < contentLength {
+			t.Fatalf("framed output body shorter than Content-Length (%d): %q", contentLength, bodyAndRest)
+		}
+		body := bodyAndRest[:contentLength]
+		remaining = bodyAndRest[contentLength:]
+
+		var resp JSONRPCResponse
+		if err := json.Unmarshal([]byte(strings.TrimSpace(body)), &resp); err != nil {
+			t.Fatalf("invalid framed JSON response body %q: %v", body, err)
+		}
+		responses = append(responses, resp)
+	}
+
+	return responses
+}
+
+func parseMCPResponses(t *testing.T, output string) []JSONRPCResponse {
+	t.Helper()
+	trimmed := strings.TrimSpace(output)
+	if strings.HasPrefix(strings.ToLower(trimmed), "content-length:") {
+		return parseFramedJSONResponses(t, output)
+	}
+	return parseJSONLines(t, output)
+}
+
+func parseFramedJSONResponse(t *testing.T, output string) JSONRPCResponse {
+	t.Helper()
+	parts := strings.SplitN(output, "\r\n\r\n", 2)
+	if len(parts) != 2 {
+		t.Fatalf("output missing Content-Length framing: %q", output)
+	}
+	if !strings.HasPrefix(strings.ToLower(parts[0]), "content-length:") {
+		t.Fatalf("framed output missing Content-Length header: %q", parts[0])
+	}
+	var resp JSONRPCResponse
+	if err := json.Unmarshal([]byte(strings.TrimSpace(parts[1])), &resp); err != nil {
+		t.Fatalf("invalid framed JSON response: %v", err)
+	}
+	return resp
+}
+
 func TestBridgeFastPathCoreMethods(t *testing.T) {
 	// Do not run in parallel; test redirects process stdio.
+	resetFastPathResourceReadCounters()
 	state := &daemonState{readyCh: make(chan struct{}), failedCh: make(chan struct{})}
 	input := strings.Join([]string{
 		`{"jsonrpc":"2.0","id":1,`,
 		`{"jsonrpc":"2.0","id":2,"method":"initialize","params":{}}`,
 		`{"jsonrpc":"2.0","id":3,"method":"tools/list","params":{}}`,
 		`{"jsonrpc":"2.0","id":4,"method":"resources/list","params":{}}`,
-		`{"jsonrpc":"2.0","id":5,"method":"unknown/method","params":{}}`,
-		`{"jsonrpc":"2.0","id":6,"method":"tools/call","params":{"name":"observe","arguments":{"what":"errors"}}}`,
+		`{"jsonrpc":"2.0","id":5,"method":"resources/read","params":{"uri":"gasoline://capabilities"}}`,
+		`{"jsonrpc":"2.0","id":6,"method":"unknown/method","params":{}}`,
+		`{"jsonrpc":"2.0","id":7,"method":"tools/call","params":{"name":"observe","arguments":{"what":"errors"}}}`,
 	}, "\n") + "\n"
 
 	output := captureBridgeIO(t, input, func() {
@@ -140,8 +225,8 @@ func TestBridgeFastPathCoreMethods(t *testing.T) {
 	})
 
 	responses := parseJSONLines(t, output)
-	if len(responses) != 6 {
-		t.Fatalf("response count = %d, want 6", len(responses))
+	if len(responses) != 7 {
+		t.Fatalf("response count = %d, want 7", len(responses))
 	}
 
 	// Parse error response.
@@ -157,8 +242,8 @@ func TestBridgeFastPathCoreMethods(t *testing.T) {
 	if err := json.Unmarshal(responses[1].Result, &initResult); err != nil {
 		t.Fatalf("initialize result unmarshal error = %v", err)
 	}
-	if initResult["protocolVersion"] != "2024-11-05" {
-		t.Fatalf("protocolVersion = %v, want 2024-11-05", initResult["protocolVersion"])
+	if initResult["protocolVersion"] != "2025-06-18" {
+		t.Fatalf("protocolVersion = %v, want 2025-06-18", initResult["protocolVersion"])
 	}
 
 	// tools/list fast path.
@@ -170,21 +255,225 @@ func TestBridgeFastPathCoreMethods(t *testing.T) {
 		t.Fatalf("tools/list result missing tools: %v", toolsResult)
 	}
 
+	// resources/read should be served by fast path while daemon is still starting.
+	var resourcesReadResult map[string]any
+	if err := json.Unmarshal(responses[4].Result, &resourcesReadResult); err != nil {
+		t.Fatalf("resources/read result unmarshal error = %v", err)
+	}
+	contents, _ := resourcesReadResult["contents"].([]any)
+	if len(contents) != 1 {
+		t.Fatalf("resources/read contents = %v, want one content item", resourcesReadResult["contents"])
+	}
+
 	// unknown method should return method-not-found protocol error.
-	if responses[4].Error == nil || responses[4].Error.Code != -32601 {
-		t.Fatalf("unknown method response = %+v, want -32601", responses[4])
+	if responses[5].Error == nil || responses[5].Error.Code != -32601 {
+		t.Fatalf("unknown method response = %+v, want -32601", responses[5])
 	}
 
 	// tools/call while not ready should be a soft tool error.
-	if responses[5].Error != nil {
-		t.Fatalf("tools/call startup response should be soft error, got protocol error %+v", responses[5].Error)
+	if responses[6].Error != nil {
+		t.Fatalf("tools/call startup response should be soft error, got protocol error %+v", responses[6].Error)
 	}
 	var startupResult map[string]any
-	if err := json.Unmarshal(responses[5].Result, &startupResult); err != nil {
+	if err := json.Unmarshal(responses[6].Result, &startupResult); err != nil {
 		t.Fatalf("startup result unmarshal error = %v", err)
 	}
 	if startupResult["isError"] != true {
 		t.Fatalf("startup result isError = %v, want true", startupResult["isError"])
+	}
+
+	success, failure := snapshotFastPathResourceReadCounters()
+	if success != 1 || failure != 0 {
+		t.Fatalf("fast-path resources/read counters = (%d,%d), want (1,0)", success, failure)
+	}
+}
+
+func TestBridgeFastPath_ContentLengthInputProducesContentLengthOutput(t *testing.T) {
+	// Do not run in parallel; test redirects process stdio.
+	state := &daemonState{readyCh: make(chan struct{}), failedCh: make(chan struct{})}
+	input := contentLengthFrame(`{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}`)
+
+	output := captureBridgeIO(t, input, func() {
+		bridgeStdioToHTTPFast("http://127.0.0.1:1/mcp", state, 7890)
+	})
+
+	resp := parseFramedJSONResponse(t, output)
+	if resp.Error != nil {
+		t.Fatalf("initialize response has error: %+v", resp.Error)
+	}
+	var initResult map[string]any
+	if err := json.Unmarshal(resp.Result, &initResult); err != nil {
+		t.Fatalf("initialize result unmarshal error = %v", err)
+	}
+	if initResult["protocolVersion"] != "2025-06-18" {
+		t.Fatalf("protocolVersion = %v, want 2025-06-18", initResult["protocolVersion"])
+	}
+}
+
+func TestBridgeFastPathResourcesReadCanonicalizesPlaybookAliases(t *testing.T) {
+	// Do not run in parallel; test redirects process stdio.
+	resetFastPathResourceReadCounters()
+	state := &daemonState{readyCh: make(chan struct{}), failedCh: make(chan struct{})}
+	input := strings.Join([]string{
+		`{"jsonrpc":"2.0","id":1,"method":"resources/read","params":{"uri":"gasoline://playbook/security"}}`,
+		`{"jsonrpc":"2.0","id":2,"method":"resources/read","params":{"uri":"gasoline://playbook/security_audit/quick"}}`,
+	}, "\n") + "\n"
+
+	output := captureBridgeIO(t, input, func() {
+		bridgeStdioToHTTPFast("http://127.0.0.1:1/mcp", state, 7890)
+	})
+
+	responses := parseJSONLines(t, output)
+	if len(responses) != 2 {
+		t.Fatalf("response count = %d, want 2", len(responses))
+	}
+	for i, resp := range responses {
+		if resp.Error != nil {
+			t.Fatalf("response[%d] error = %+v, want success", i, resp.Error)
+		}
+		var result map[string]any
+		if err := json.Unmarshal(resp.Result, &result); err != nil {
+			t.Fatalf("response[%d] unmarshal error = %v", i, err)
+		}
+		contents, _ := result["contents"].([]any)
+		if len(contents) != 1 {
+			t.Fatalf("response[%d] contents = %v, want one content", i, result["contents"])
+		}
+		content, _ := contents[0].(map[string]any)
+		if content["uri"] != "gasoline://playbook/security/quick" {
+			t.Fatalf("response[%d] content uri = %v, want gasoline://playbook/security/quick", i, content["uri"])
+		}
+	}
+
+	success, failure := snapshotFastPathResourceReadCounters()
+	if success != 2 || failure != 0 {
+		t.Fatalf("fast-path resources/read counters = (%d,%d), want (2,0)", success, failure)
+	}
+}
+
+func TestBridgeFastPathResourcesReadFailureTelemetry(t *testing.T) {
+	// Do not run in parallel; test redirects process stdio.
+	resetFastPathResourceReadCounters()
+	state := &daemonState{readyCh: make(chan struct{}), failedCh: make(chan struct{})}
+	input := strings.Join([]string{
+		`{"jsonrpc":"2.0","id":1,"method":"resources/read","params":{"uri":"gasoline://playbook/nonexistent/quick"}}`,
+		`{"jsonrpc":"2.0","id":2,"method":"resources/read","params":[]}`,
+	}, "\n") + "\n"
+
+	output := captureBridgeIO(t, input, func() {
+		bridgeStdioToHTTPFast("http://127.0.0.1:1/mcp", state, 7890)
+	})
+	responses := parseJSONLines(t, output)
+	if len(responses) != 2 {
+		t.Fatalf("response count = %d, want 2", len(responses))
+	}
+	if responses[0].Error == nil || responses[0].Error.Code != -32002 {
+		t.Fatalf("response[0] error = %+v, want -32002", responses[0].Error)
+	}
+	if responses[1].Error == nil || responses[1].Error.Code != -32602 {
+		t.Fatalf("response[1] error = %+v, want -32602", responses[1].Error)
+	}
+
+	success, failure := snapshotFastPathResourceReadCounters()
+	if success != 0 || failure != 2 {
+		t.Fatalf("fast-path resources/read counters = (%d,%d), want (0,2)", success, failure)
+	}
+}
+
+func TestBridgeFastPathResourcesReadTelemetryPersistsToStateLogs(t *testing.T) {
+	// Do not run in parallel; test redirects process stdio and env.
+	resetFastPathResourceReadCounters()
+	t.Setenv(statecfg.StateDirEnv, t.TempDir())
+
+	state := &daemonState{readyCh: make(chan struct{}), failedCh: make(chan struct{})}
+	input := strings.Join([]string{
+		`{"jsonrpc":"2.0","id":1,"method":"resources/read","params":{"uri":"gasoline://capabilities"}}`,
+		`{"jsonrpc":"2.0","id":2,"method":"resources/read","params":{"uri":"gasoline://playbook/nonexistent/quick"}}`,
+	}, "\n") + "\n"
+
+	_ = captureBridgeIO(t, input, func() {
+		bridgeStdioToHTTPFast("http://127.0.0.1:1/mcp", state, 7890)
+	})
+
+	path, err := fastPathResourceReadLogPath()
+	if err != nil {
+		t.Fatalf("fastPathResourceReadLogPath() error = %v", err)
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("os.ReadFile(%q) error = %v", path, err)
+	}
+	lines := strings.Split(strings.TrimSpace(string(data)), "\n")
+	if len(lines) != 2 {
+		t.Fatalf("telemetry log lines = %d, want 2; log=%q", len(lines), string(data))
+	}
+
+	var first map[string]any
+	if err := json.Unmarshal([]byte(lines[0]), &first); err != nil {
+		t.Fatalf("first telemetry line parse error = %v", err)
+	}
+	if first["event"] != "bridge_fastpath_resources_read" {
+		t.Fatalf("first telemetry event = %v, want bridge_fastpath_resources_read", first["event"])
+	}
+	if first["success"] != true {
+		t.Fatalf("first telemetry success = %v, want true", first["success"])
+	}
+
+	var second map[string]any
+	if err := json.Unmarshal([]byte(lines[1]), &second); err != nil {
+		t.Fatalf("second telemetry line parse error = %v", err)
+	}
+	if second["success"] != false {
+		t.Fatalf("second telemetry success = %v, want false", second["success"])
+	}
+	if code, ok := second["error_code"].(float64); !ok || int(code) != -32002 {
+		t.Fatalf("second telemetry error_code = %v, want -32002", second["error_code"])
+	}
+}
+
+func TestBridgeFastPathResourcesReadTelemetry(t *testing.T) {
+	// Do not run in parallel; test redirects process stdio and uses Setenv.
+	t.Setenv(statecfg.StateDirEnv, t.TempDir())
+	resetFastPathCounters()
+
+	state := &daemonState{readyCh: make(chan struct{}), failedCh: make(chan struct{})}
+	input := strings.Join([]string{
+		`{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}`,
+		`{"jsonrpc":"2.0","id":2,"method":"resources/read","params":{"uri":"gasoline://capabilities"}}`,
+		`{"jsonrpc":"2.0","id":3,"method":"resources/read","params":{"uri":"gasoline://playbook/not-a-thing/quick"}}`,
+	}, "\n") + "\n"
+
+	output := captureBridgeIO(t, input, func() {
+		bridgeStdioToHTTPFast("http://127.0.0.1:1/mcp", state, 7890)
+	})
+
+	responses := parseJSONLines(t, output)
+	if len(responses) != 3 {
+		t.Fatalf("response count = %d, want 3", len(responses))
+	}
+	if responses[1].Error != nil {
+		t.Fatalf("resources/read success response has protocol error: %+v", responses[1].Error)
+	}
+	if responses[2].Error == nil || responses[2].Error.Code != -32002 {
+		t.Fatalf("resources/read miss response = %+v, want -32002", responses[2])
+	}
+
+	path, err := fastPathTelemetryLogPath()
+	if err != nil {
+		t.Fatalf("fastPathTelemetryLogPath error = %v", err)
+	}
+	summary := summarizeFastPathTelemetryLog(path, 100)
+	if summary.total < 3 {
+		t.Fatalf("telemetry total = %d, want >= 3", summary.total)
+	}
+	if summary.methods["resources/read"] < 2 {
+		t.Fatalf("resources/read telemetry count = %d, want >= 2", summary.methods["resources/read"])
+	}
+	if summary.failure < 1 {
+		t.Fatalf("failure count = %d, want >= 1", summary.failure)
+	}
+	if summary.errorCodes[-32002] < 1 {
+		t.Fatalf("error code -32002 count = %d, want >= 1", summary.errorCodes[-32002])
 	}
 }
 
@@ -208,7 +497,7 @@ func TestBridgeFastPathFramedInitializeAndToolsList(t *testing.T) {
 		t.Fatalf("framed startup emitted parse error: %q", stdout)
 	}
 
-	responses := parseJSONLines(t, stdout)
+	responses := parseMCPResponses(t, stdout)
 	if len(responses) != 2 {
 		t.Fatalf("response count = %d, want 2", len(responses))
 	}
@@ -217,6 +506,70 @@ func TestBridgeFastPathFramedInitializeAndToolsList(t *testing.T) {
 	}
 	if responses[1].Error != nil {
 		t.Fatalf("tools/list returned protocol error: %+v", responses[1].Error)
+	}
+}
+
+func TestBridgeFastPathFramedInitializeAndToolsList_ContentTypeFirstHeaders(t *testing.T) {
+	// Do not run in parallel; test redirects process stdio.
+	state := &daemonState{readyCh: make(chan struct{}), failedCh: make(chan struct{})}
+	initReq := `{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"codex","version":"1"}}}`
+	toolsReq := `{"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}`
+	input := contentTypeFirstFrame(initReq) + contentTypeFirstFrame(toolsReq)
+
+	setStderrSink(io.Discard)
+	stdout, stderr := captureBridgeIOWithStderr(t, input, func() {
+		bridgeStdioToHTTPFast("http://127.0.0.1:1/mcp", state, 7890)
+	})
+	setStderrSink(os.Stderr)
+
+	if strings.TrimSpace(stderr) != "" {
+		t.Fatalf("framed startup emitted stderr output: %q", stderr)
+	}
+	if strings.Contains(stdout, `"code":-32700`) {
+		t.Fatalf("framed startup emitted parse error: %q", stdout)
+	}
+
+	responses := parseMCPResponses(t, stdout)
+	if len(responses) != 2 {
+		t.Fatalf("response count = %d, want 2", len(responses))
+	}
+	if responses[0].Error != nil {
+		t.Fatalf("initialize returned protocol error: %+v", responses[0].Error)
+	}
+	if responses[1].Error != nil {
+		t.Fatalf("tools/list returned protocol error: %+v", responses[1].Error)
+	}
+}
+
+func TestBridgeFastPathNotificationWithoutIDHasNoResponse(t *testing.T) {
+	// Do not run in parallel; test redirects process stdio.
+	state := &daemonState{readyCh: make(chan struct{}), failedCh: make(chan struct{})}
+	output := captureBridgeIO(t, `{"jsonrpc":"2.0","method":"ping","params":{}}`+"\n", func() {
+		bridgeStdioToHTTPFast("http://127.0.0.1:1/mcp", state, 7890)
+	})
+
+	responses := parseJSONLines(t, output)
+	if len(responses) != 0 {
+		t.Fatalf("notification should not emit response, got %d responses: %q", len(responses), output)
+	}
+}
+
+func TestBridgeFastPathNullIDReturnsInvalidRequest(t *testing.T) {
+	// Do not run in parallel; test redirects process stdio.
+	state := &daemonState{readyCh: make(chan struct{}), failedCh: make(chan struct{})}
+	output := captureBridgeIO(t, `{"jsonrpc":"2.0","id":null,"method":"ping","params":{}}`+"\n", func() {
+		bridgeStdioToHTTPFast("http://127.0.0.1:1/mcp", state, 7890)
+	})
+
+	responses := parseJSONLines(t, output)
+	if len(responses) != 1 {
+		t.Fatalf("expected one response, got %d: %q", len(responses), output)
+	}
+	if responses[0].Error == nil || responses[0].Error.Code != -32600 {
+		t.Fatalf("null-id response = %+v, want invalid request -32600", responses[0])
+	}
+	if responses[0].ID != nil {
+		t.Fatalf("null-id response id = %v, want null", responses[0].ID)
 	}
 }
 
@@ -297,6 +650,54 @@ func TestBridgeServerHealthHelpers(t *testing.T) {
 	time.Sleep(50 * time.Millisecond)
 	if isServerRunning(port) {
 		t.Fatalf("isServerRunning(%d) = true after shutdown, want false", port)
+	}
+}
+
+func TestCheckDaemonStatus_HealsReadyFlagFromHealth(t *testing.T) {
+	t.Parallel()
+
+	mux := http.NewServeMux()
+	mux.HandleFunc("/health", func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		_, _ = io.WriteString(w, `{"status":"ok","service-name":"gasoline","version":"1.0.0"}`)
+	})
+
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatalf("net.Listen error = %v", err)
+	}
+	port := ln.Addr().(*net.TCPAddr).Port
+	srv := &http.Server{Handler: mux}
+	go func() { _ = srv.Serve(ln) }()
+	t.Cleanup(func() {
+		_ = srv.Close()
+	})
+
+	state := &daemonState{
+		port:     port,
+		ready:    false,
+		failed:   true,
+		err:      "stale failure",
+		readyCh:  make(chan struct{}),
+		failedCh: make(chan struct{}),
+	}
+	req := JSONRPCRequest{Method: "tools/call"}
+
+	status := checkDaemonStatus(state, req, 7890)
+	if status != "" {
+		t.Fatalf("checkDaemonStatus() = %q, want empty status", status)
+	}
+
+	state.mu.Lock()
+	defer state.mu.Unlock()
+	if !state.ready {
+		t.Fatal("expected state.ready to be healed to true")
+	}
+	if state.failed {
+		t.Fatal("expected state.failed to be cleared")
+	}
+	if state.err != "" {
+		t.Fatalf("expected state.err to be cleared, got %q", state.err)
 	}
 }
 

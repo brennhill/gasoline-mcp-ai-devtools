@@ -1,4 +1,7 @@
-// safego.go — Panic-recovering goroutine launcher.
+// Purpose: Provides panic-recovering goroutine launcher for background asynchronous tasks.
+// Why: Prevents single background task panics from crashing the daemon process.
+// Docs: docs/features/feature/backend-log-streaming/index.md
+
 package util
 
 import (

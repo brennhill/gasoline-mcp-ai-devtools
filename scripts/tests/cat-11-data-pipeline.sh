@@ -181,6 +181,10 @@ run_test_11_5() {
     RESPONSE=$(call_tool "observe" '{"what":"actions"}')
     local text
     text=$(extract_content_text "$RESPONSE")
+    if check_contains "$text" "Extension is not connected" && check_contains "$text" "\"count\":0"; then
+        skip "POST /enhanced-actions returned 200, but observe(actions) returned no_data with extension disconnected."
+        return
+    fi
     if ! check_contains "$text" "uat-pipeline-11-5"; then
         fail "observe(actions) does not contain selector marker. Content: $(truncate "$text")"
         return

@@ -1,4 +1,9 @@
+// Purpose: Implements analyze tool handlers and response shaping.
+// Why: Keeps analyze tool behavior aligned with diagnostic and schema contracts.
+// Docs: docs/features/feature/analyze-tool/index.md
+
 // tools_analyze_annotations.go — Analyze handlers for draw mode annotations.
+// Docs: docs/features/feature/analyze-tool/index.md
 // Provides analyze({what: "annotations"}), analyze({what: "annotation_detail"}),
 // analyze({what: "draw_history"}), and analyze({what: "draw_session"}).
 // JSON CONVENTION: All fields MUST use snake_case. See .claude/refs/api-naming-standards.md
@@ -6,7 +11,6 @@ package main
 
 import (
 	"encoding/json"
-	"fmt"
 	"os"
 	"path/filepath"
 	"sort"
@@ -24,16 +28,16 @@ const annotationWaitCommandTTL = 10 * time.Minute
 // If session is specified, returns the named multi-page session.
 func (h *ToolHandler) toolGetAnnotations(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	var params struct {
-		Wait    bool   `json:"wait"`
-		Session string `json:"session"`
+		Wait         bool   `json:"wait"`
+		AnnotSession string `json:"annot_session"`
 	}
 	if len(args) > 0 {
 		lenientUnmarshal(args, &params)
 	}
 
 	// Named session path — returns multi-page aggregated results
-	if params.Session != "" {
-		return h.getNamedAnnotations(req, params.Session, params.Wait)
+	if params.AnnotSession != "" {
+		return h.getNamedAnnotations(req, params.AnnotSession, params.Wait)
 	}
 
 	// Anonymous session path — returns latest single-page result
@@ -49,7 +53,7 @@ func (h *ToolHandler) getAnonymousAnnotations(req JSONRPCRequest, wait bool) JSO
 
 		// Register a pending command — the annotation store will complete it
 		// when annotations arrive via /draw-mode/complete
-		corrID := fmt.Sprintf("ann_%d_%d", time.Now().UnixNano(), randomInt63()%1000000)
+		corrID := newCorrelationID("ann")
 		h.capture.RegisterCommand(corrID, "", annotationWaitCommandTTL)
 		h.annotationStore.RegisterWaiter(corrID, "")
 
@@ -94,29 +98,29 @@ func (h *ToolHandler) getNamedAnnotations(req JSONRPCRequest, sessionName string
 			return h.formatNamedAnnotationSession(req, ns)
 		}
 
-		corrID := fmt.Sprintf("ann_%d_%d", time.Now().UnixNano(), randomInt63()%1000000)
+		corrID := newCorrelationID("ann")
 		h.capture.RegisterCommand(corrID, "", annotationWaitCommandTTL)
 		h.annotationStore.RegisterWaiter(corrID, sessionName)
 
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Waiting for annotations", map[string]any{
-			"status":         "waiting_for_user",
-			"correlation_id": corrID,
-			"session_name":   sessionName,
-			"pages":          []any{},
-			"page_count":     0,
-			"total_count":    0,
-			"message":        "Draw mode is active. The user is drawing annotations. Poll with observe({what: 'command_result', correlation_id: '" + corrID + "'}) to check for results.",
+			"status":             "waiting_for_user",
+			"correlation_id":     corrID,
+			"annot_session_name": sessionName,
+			"pages":              []any{},
+			"page_count":         0,
+			"total_count":        0,
+			"message":            "Draw mode is active. The user is drawing annotations. Poll with observe({what: 'command_result', correlation_id: '" + corrID + "'}) to check for results.",
 		})}
 	}
 
 	ns := h.annotationStore.GetNamedSession(sessionName)
 	if ns == nil {
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("No annotations", map[string]any{
-			"session_name": sessionName,
-			"pages":        []any{},
-			"page_count":   0,
-			"total_count":  0,
-			"message":      "Named session '" + sessionName + "' not found. Use interact({action: 'draw_mode_start', session: '" + sessionName + "'}) to start.",
+			"annot_session_name": sessionName,
+			"pages":              []any{},
+			"page_count":         0,
+			"total_count":        0,
+			"message":            "Named session '" + sessionName + "' not found. Use interact({action: 'draw_mode_start', annot_session: '" + sessionName + "'}) to start.",
 		})}
 	}
 
@@ -141,10 +145,10 @@ func (h *ToolHandler) formatNamedAnnotationSession(req JSONRPCRequest, ns *Named
 	}
 
 	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Annotations retrieved", map[string]any{
-		"session_name": ns.Name,
-		"pages":        pages,
-		"page_count":   len(ns.Pages),
-		"total_count":  totalCount,
+		"annot_session_name": ns.Name,
+		"pages":              pages,
+		"page_count":         len(ns.Pages),
+		"total_count":        totalCount,
 	})}
 }
 
@@ -241,8 +245,8 @@ func (h *ToolHandler) toolListDrawHistory(req JSONRPCRequest, _ json.RawMessage)
 	})
 
 	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Draw session history", map[string]any{
-		"sessions":   sessions,
-		"count":      len(sessions),
+		"sessions":    sessions,
+		"count":       len(sessions),
 		"storage_dir": dir,
 	})}
 }
@@ -289,8 +293,76 @@ func (h *ToolHandler) toolGetDrawSession(req JSONRPCRequest, args json.RawMessag
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidJSON, "Corrupted draw session file: "+err.Error(), "The file may be damaged. Try a different session.")}
 	}
 
+	// Hydrate in-memory annotation stores so generate.annotation_* can consume
+	// sessions loaded from disk by analyze.draw_session.
+	h.hydrateAnnotationStoreFromDrawSession(data)
+
+	if name, ok := session["annot_session_name"].(string); ok && strings.TrimSpace(name) != "" {
+		// Alias for generate tool parameter naming.
+		session["annot_session"] = name
+	}
 	session["_file"] = params.File
 	session["_path"] = path
 
 	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Draw session loaded", session)}
+}
+
+type persistedDrawSession struct {
+	Annotations      []Annotation               `json:"annotations"`
+	ElementDetails   map[string]json.RawMessage `json:"element_details"`
+	PageURL          string                     `json:"page_url"`
+	TabID            int                        `json:"tab_id"`
+	Screenshot       string                     `json:"screenshot"`
+	Timestamp        int64                      `json:"timestamp"`
+	AnnotSessionName string                     `json:"annot_session_name"`
+}
+
+func (h *ToolHandler) hydrateAnnotationStoreFromDrawSession(raw []byte) {
+	var persisted persistedDrawSession
+	if err := json.Unmarshal(raw, &persisted); err != nil {
+		return
+	}
+
+	if persisted.TabID > 0 {
+		session := &AnnotationSession{
+			Annotations:    persisted.Annotations,
+			ScreenshotPath: persisted.Screenshot,
+			PageURL:        persisted.PageURL,
+			TabID:          persisted.TabID,
+			Timestamp:      persisted.Timestamp,
+		}
+		if session.Timestamp == 0 {
+			session.Timestamp = time.Now().UnixMilli()
+		}
+		h.annotationStore.StoreSession(session.TabID, session)
+
+		name := strings.TrimSpace(persisted.AnnotSessionName)
+		if name != "" && !namedSessionHasPage(h.annotationStore, name, session) {
+			h.annotationStore.AppendToNamedSession(name, session)
+		}
+	}
+
+	for correlationID, rawDetail := range persisted.ElementDetails {
+		var detail AnnotationDetail
+		if err := json.Unmarshal(rawDetail, &detail); err != nil {
+			continue
+		}
+		detail.CorrelationID = correlationID
+		h.annotationStore.StoreDetail(correlationID, detail)
+	}
+}
+
+func namedSessionHasPage(store *AnnotationStore, name string, session *AnnotationSession) bool {
+	ns := store.GetNamedSession(name)
+	if ns == nil {
+		return false
+	}
+	for _, page := range ns.Pages {
+		if page.TabID == session.TabID &&
+			page.Timestamp == session.Timestamp &&
+			page.PageURL == session.PageURL {
+			return true
+		}
+	}
+	return false
 }

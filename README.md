@@ -1,9 +1,14 @@
+> ## Branch Policy (Read First)
+> If you want something working, load code and run the server from `STABLE`.
+> `UNSTABLE` makes zero promises on regressions or issues and is treated as work in progress.
+> Stable builds are compressed, tagged, and moved to `STABLE`.
+
 <div align="center">
 
 <img src="docs/assets/images/chrome_store/readme-banner.png" alt="Gasoline MCP - Browser Observability for AI Coding Agents" width="100%" />
 
 [![License](https://img.shields.io/badge/license-AGPL--3.0-blue.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/version-0.7.2-green.svg)](https://github.com/brennhill/gasoline-mcp-ai-devtools/releases)
+[![Version](https://img.shields.io/badge/version-0.7.8-green.svg)](https://github.com/brennhill/gasoline-mcp-ai-devtools/releases)
 [![Go](https://img.shields.io/badge/Go-1.21+-00ADD8.svg?logo=go&logoColor=white)](https://go.dev/)
 [![Chrome](https://img.shields.io/badge/Chrome-Manifest%20V3-4285F4.svg?logo=googlechrome&logoColor=white)](https://developer.chrome.com/docs/extensions/mv3/)
 [![macOS](https://img.shields.io/badge/macOS-supported-000000.svg?logo=apple&logoColor=white)](https://github.com/brennhill/gasoline-mcp-ai-devtools)
@@ -30,10 +35,10 @@
 
 ## 📦 Latest Release
 
-Current version: **v0.7.2** — Link health analyzer, browser automation, recording, and performance analysis for AI agents.
+Current version: **v7.8.0** — Link health analyzer, browser automation, recording, and performance analysis for AI agents.
 
 ```bash
-npx gasoline-mcp@0.7.2
+npx gasoline-mcp@7.8.0
 ```
 
 </div>
@@ -67,7 +72,7 @@ Choose one option below based on your setup:
 #### Option A: NPM (recommended)
 
 ```bash
-npx gasoline-mcp@0.7.2
+npx gasoline-mcp@7.8.0
 ```
 
 #### Option B: PyPI
@@ -84,6 +89,18 @@ gasoline-mcp
 ```bash
 cd gasoline
 go run ./cmd/dev-console
+```
+
+### Optional: Install bundled skills (all channels)
+
+Bundled skills include `debug-triage`, `performance`, `regression-test`, `api-validation`, `ux-audit`, and `site-audit`.
+
+- npm: installed automatically during package install and by `gasoline-mcp --install`
+- PyPI: installed when you run `gasoline-mcp --install`
+- manual/local source builds: run:
+
+```bash
+./scripts/install-bundled-skills.sh
 ```
 
 ### Step 3: Configure MCP in your AI tool
@@ -131,7 +148,7 @@ Choose one option below based on your setup:
 **Verify setup:**
 ```bash
 curl http://localhost:7890/health
-# Should return: {"status":"ok","version":"0.7.2",...}
+# Should return: {"status":"ok","version":"7.8.0",...}
 ```
 
 **How it works:**
@@ -141,20 +158,79 @@ curl http://localhost:7890/health
 - MCP client communicates via stdio
 - Both share the same browser telemetry state
 
-Works with **Claude Code**, **Cursor**, **Windsurf**, **Claude Desktop**, **Zed**, and any MCP-compatible tool.
+Works with **Claude Code**, **Cursor**, **Windsurf**, **Claude Desktop**, **Gemini CLI**, **OpenCode**, **Antigravity**, **Zed**, and any MCP-compatible tool.
 
-**[Full setup guide →](https://cookwithgasoline.com/getting-started/)**
+*Option D: Gemini CLI*
+
+Add to `~/.gemini/settings.json`:
+```json
+{
+  "mcpServers": {
+    "gasoline": {
+      "command": "gasoline-mcp",
+      "args": []
+    }
+  }
+}
+```
+
+*Option E: OpenCode*
+
+Add to `~/.config/opencode/opencode.json`:
+```json
+{
+  "mcp": {
+    "gasoline": {
+      "type": "local",
+      "command": ["gasoline-mcp"],
+      "enabled": true
+    }
+  }
+}
+```
+
+*Option F: Antigravity*
+
+Add to `~/.gemini/antigravity/mcp_config.json`:
+```json
+{
+  "mcpServers": {
+    "gasoline": {
+      "command": "gasoline-mcp",
+      "args": []
+    }
+  }
+}
+```
+
+*Option G: Zed*
+
+Add to `~/.config/zed/settings.json`:
+```json
+{
+  "context_servers": {
+    "gasoline": {
+      "source": "custom",
+      "command": "gasoline-mcp",
+      "args": []
+    }
+  }
+}
+```
+
+**[Full setup guide →](https://cookwithgasoline.com/getting-started/)** | **[Per-tool install guide →](docs/mcp-install-guide.md)**
 
 **CLI options:**
 
 | Flag | Description |
 |------|-------------|
 | `--port <n>` | Port to listen on (default: 7890) |
-| `--server` | HTTP-only mode (no MCP) |
-| `--persist` | Keep running after MCP disconnect |
 | `--api-key <key>` | Require API key for HTTP requests |
 | `--connect` | Connect to existing server (multi-client) |
-| `--check` | Verify setup before running |
+| `--client-id <id>` | Override client ID (default: derived from CWD) |
+| `--check` | Verify setup and print status |
+| `--stop` | Stop the running server on the specified port |
+| `--version` | Show version |
 | `--help` | Show all options |
 
 ## Why You Cook With Gasoline MCP
@@ -200,7 +276,7 @@ Works with **Claude Code**, **Cursor**, **Windsurf**, **Claude Desktop**, **Zed*
 
 See [latest benchmarks](docs/benchmarks/latest-benchmark.md) for current performance data.
 
-Last benchmarked: 2026-02-09 on darwin/arm64 (v0.7.2)
+Last benchmarked: 2026-02-09 on darwin/arm64 (v0.7.8)
 
 ## Known Issues
 

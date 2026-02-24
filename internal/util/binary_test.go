@@ -1,3 +1,7 @@
+// Purpose: Validate binary_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
+// Docs: docs/features/feature/observe/index.md
+
 // binary_test.go — Tests for binary format detection via magic bytes.
 // Verifies detection of MessagePack, protobuf, CBOR, BSON formats
 // and correct handling of edge cases (empty, text, unknown binary).

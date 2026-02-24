@@ -1,3 +1,7 @@
+// Purpose: Implements performance metric diffing and threshold evaluation.
+// Why: Makes regressions measurable and comparable across baseline runs.
+// Docs: docs/features/feature/performance-audit/index.md
+
 // types.go — Performance monitoring types
 // Handles performance snapshots, baselines, regression detection, and
 // causal diffing for identifying performance bottlenecks.
@@ -10,7 +14,8 @@ package performance
 // Performance Budget Types
 // ============================================
 
-// PerformanceSnapshot represents a captured performance snapshot from a page load
+// PerformanceSnapshot represents a captured performance snapshot from a page load.
+// Wire fields: see WirePerformanceSnapshot in wire_performance.go
 type PerformanceSnapshot struct {
 	URL        string            `json:"url"`
 	Timestamp  string            `json:"timestamp"`

@@ -1,3 +1,7 @@
+// Purpose: Validate ai_noise_detect_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
+// Docs: docs/features/feature/observe/index.md
+
 // ai_noise_detect_test.go — Tests for auto-detection of noise patterns from browser telemetry.
 package ai
 

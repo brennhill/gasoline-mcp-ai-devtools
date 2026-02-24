@@ -1,4 +1,12 @@
 /**
+ * Purpose: Handles extension background coordination and message routing.
+ * Why: Centralizes extension coordination to reduce race conditions and split-brain state.
+ * Docs: docs/features/feature/analyze-tool/index.md
+ * Docs: docs/features/feature/interact-explore/index.md
+ * Docs: docs/features/feature/observe/index.md
+ */
+
+/**
  * @fileoverview Message Handlers - Handles all chrome.runtime.onMessage routing
  * with type-safe message discrimination.
  */
@@ -6,6 +14,7 @@
 import type {
   LogEntry,
   BackgroundMessage,
+  DrawModeCompletedMessage,
   ChromeMessageSender,
   BrowserStateSnapshot,
   ConnectionStatus,
@@ -17,6 +26,7 @@ import type {
   NetworkBodyPayload,
   PerformanceSnapshot
 } from '../types'
+import { SettingName, StorageKey, DEFAULT_SERVER_URL } from '../lib/constants'
 
 // =============================================================================
 // TYPE DEFINITIONS
@@ -176,8 +186,8 @@ function handleMessage(
         deps.debugLog('capture', 'Network body dropped: capture disabled')
         return true
       }
-      // Attach tabId to payload before batching (v5.3+)
-      deps.addToNetworkBodyBatcher({ ...message.payload, tabId: message.tabId })
+      // Attach tab_id from sender before batching (v5.3+)
+      deps.addToNetworkBodyBatcher({ ...message.payload, tab_id: message.payload.tab_id ?? message.tabId })
       return false
 
     case 'performance_snapshot':
@@ -207,12 +217,12 @@ function handleMessage(
 
     case 'setLogLevel':
       deps.setCurrentLogLevel(message.level)
-      deps.saveSetting('logLevel', message.level)
+      deps.saveSetting(StorageKey.LOG_LEVEL, message.level)
       return false
 
     case 'setScreenshotOnError':
       deps.setScreenshotOnError(message.enabled)
-      deps.saveSetting('screenshotOnError', message.enabled)
+      deps.saveSetting(StorageKey.SCREENSHOT_ON_ERROR, message.enabled)
       sendResponse({ success: true })
       return false
 
@@ -238,7 +248,7 @@ function handleMessage(
 
     case 'setSourceMapEnabled':
       deps.setSourceMapEnabled(message.enabled)
-      deps.saveSetting('sourceMapEnabled', message.enabled)
+      deps.saveSetting(StorageKey.SOURCE_MAP_ENABLED, message.enabled)
       if (!message.enabled) {
         deps.clearSourceMapCache()
       }
@@ -260,7 +270,7 @@ function handleMessage(
 
     case 'setDebugMode':
       deps.setDebugMode(message.enabled)
-      deps.saveSetting('debugMode', message.enabled)
+      deps.saveSetting(StorageKey.DEBUG_MODE, message.enabled)
       sendResponse({ success: true })
       return false
 
@@ -285,7 +295,7 @@ function handleMessage(
 
     case 'DRAW_MODE_COMPLETED':
       // Fire-and-forget: content script sends draw mode results
-      handleDrawModeCompletedAsync(message as unknown as Record<string, unknown>, sender, deps)
+      handleDrawModeCompletedAsync(message, sender, deps)
       return false
 
     default:
@@ -350,8 +360,8 @@ async function handleGetTrackingState(
   senderTabId?: number
 ): Promise<void> {
   try {
-    const result = await chrome.storage.local.get(['trackedTabId'])
-    const trackedTabId = result.trackedTabId as number | undefined
+    const result = await chrome.storage.local.get([StorageKey.TRACKED_TAB_ID])
+    const trackedTabId = result[StorageKey.TRACKED_TAB_ID] as number | undefined
     const aiPilotEnabled = deps.getAiWebPilotEnabled()
 
     sendResponse({
@@ -374,9 +384,9 @@ async function handleGetTrackingState(
  */
 export async function broadcastTrackingState(untrackedTabId?: number | null): Promise<void> {
   try {
-    const result = await chrome.storage.local.get(['trackedTabId', 'aiWebPilotEnabled'])
-    const trackedTabId = result.trackedTabId as number | undefined
-    const aiPilotEnabled = result.aiWebPilotEnabled === true
+    const result = await chrome.storage.local.get([StorageKey.TRACKED_TAB_ID, StorageKey.AI_WEB_PILOT_ENABLED])
+    const trackedTabId = result[StorageKey.TRACKED_TAB_ID] as number | undefined
+    const aiPilotEnabled = result[StorageKey.AI_WEB_PILOT_ENABLED] === true
 
     // Notify the currently tracked tab it's being tracked
     if (trackedTabId) {
@@ -422,7 +432,7 @@ function handleGetDiagnosticState(sendResponse: SendResponse, deps: MessageHandl
     return
   }
 
-  chrome.storage.local.get(['aiWebPilotEnabled'], (result: { aiWebPilotEnabled?: boolean }) => {
+  chrome.storage.local.get([StorageKey.AI_WEB_PILOT_ENABLED], (result: { aiWebPilotEnabled?: boolean }) => {
     sendResponse({
       cache: deps.getAiWebPilotEnabled(),
       storage: result.aiWebPilotEnabled,
@@ -485,7 +495,7 @@ async function handleDrawModeCaptureScreenshot(sender: ChromeMessageSender, send
  * Uses screenshot already captured by content script (before overlay removal).
  */
 async function handleDrawModeCompletedAsync(
-  message: Record<string, unknown>,
+  message: DrawModeCompletedMessage,
   sender: ChromeMessageSender,
   deps: MessageHandlerDependencies
 ): Promise<void> {
@@ -494,15 +504,15 @@ async function handleDrawModeCompletedAsync(
   try {
     const serverUrl = deps.getServerUrl()
     const body: Record<string, unknown> = {
-      screenshot_data_url: (message.screenshot_data_url as string) || '',
-      annotations: (message.annotations as unknown[]) || [],
-      element_details: (message.elementDetails as Record<string, unknown>) || {},
-      page_url: (message.page_url as string) || '',
+      screenshot_data_url: message.screenshot_data_url || '',
+      annotations: message.annotations || [],
+      element_details: message.elementDetails || {},
+      page_url: message.page_url || '',
       tab_id: tabId,
-      correlation_id: (message.correlation_id as string) || ''
+      correlation_id: message.correlation_id || ''
     }
-    if (message.session_name) {
-      body.session_name = message.session_name
+    if (message.annot_session_name) {
+      body.annot_session_name = message.annot_session_name
     }
     const response = await fetch(`${serverUrl}/draw-mode/complete`, {
       method: 'POST',
@@ -515,7 +525,7 @@ async function handleDrawModeCompletedAsync(
     } else {
       deps.debugLog(
         'draw',
-        `Draw mode results delivered (${(message.annotations as unknown[])?.length || 0} annotations)`
+        `Draw mode results delivered (${message.annotations?.length || 0} annotations)`
       )
     }
   } catch (err) {
@@ -524,12 +534,12 @@ async function handleDrawModeCompletedAsync(
 }
 
 function handleSetServerUrl(url: string, sendResponse: SendResponse, deps: MessageHandlerDependencies): void {
-  deps.setServerUrl(url || 'http://localhost:7890')
-  deps.saveSetting('serverUrl', deps.getServerUrl())
+  deps.setServerUrl(url || DEFAULT_SERVER_URL)
+  deps.saveSetting(StorageKey.SERVER_URL, deps.getServerUrl())
   deps.debugLog('settings', `Server URL changed to: ${deps.getServerUrl()}`)
 
   // Broadcast to all content scripts
-  deps.forwardToAllContentScripts({ type: 'setServerUrl', url: deps.getServerUrl() })
+  deps.forwardToAllContentScripts({ type: SettingName.SERVER_URL, url: deps.getServerUrl() })
 
   // Re-check connection with new URL
   deps.checkConnectionAndUpdate()

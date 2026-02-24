@@ -1,3 +1,7 @@
+// Purpose: Validate enhanced_actions_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
+// Docs: docs/features/feature/backend-log-streaming/index.md
+
 // enhanced_actions_test.go — Tests for enhanced action buffering, enrichment, and ring buffer eviction.
 package capture
 

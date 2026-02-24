@@ -134,7 +134,7 @@ describe('message routing', () => {
     assert.strictEqual(deps.addToEnhancedActionBatcher.mock.calls.length, 1)
   })
 
-  test('network_body routes to body batcher with tabId', () => {
+  test('network_body routes to body batcher with tab_id', () => {
     const { handler, deps } = getInstalledHandler()
     handler({
       type: 'network_body',
@@ -142,7 +142,7 @@ describe('message routing', () => {
       tabId: 42
     }, contentScriptSender, mock.fn())
     assert.strictEqual(deps.addToNetworkBodyBatcher.mock.calls.length, 1)
-    assert.strictEqual(deps.addToNetworkBodyBatcher.mock.calls[0].arguments[0].tabId, 42)
+    assert.strictEqual(deps.addToNetworkBodyBatcher.mock.calls[0].arguments[0].tab_id, 42)
   })
 
   test('network_body dropped when capture disabled', () => {
@@ -169,6 +169,23 @@ describe('message routing', () => {
     const resp = sendResponse.mock.calls[0].arguments[0]
     assert.strictEqual(resp.connected, true)
     assert.strictEqual(resp.serverUrl, 'http://localhost:9222')
+  })
+
+  test('getStatus includes security mode fields when present', () => {
+    const { handler } = getInstalledHandler({
+      getConnectionStatus: mock.fn(() => ({
+        connected: true,
+        securityMode: 'insecure_proxy',
+        productionParity: false,
+        insecureRewritesApplied: ['csp_headers']
+      }))
+    })
+    const sendResponse = mock.fn()
+    handler({ type: 'getStatus' }, extensionSender, sendResponse)
+    const resp = sendResponse.mock.calls[0].arguments[0]
+    assert.strictEqual(resp.securityMode, 'insecure_proxy')
+    assert.strictEqual(resp.productionParity, false)
+    assert.deepStrictEqual(resp.insecureRewritesApplied, ['csp_headers'])
   })
 
   test('clearLogs calls handler and responds', async () => {

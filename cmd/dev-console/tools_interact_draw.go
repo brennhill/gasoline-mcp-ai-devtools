@@ -1,10 +1,13 @@
+// Purpose: Implements interact tool handlers and browser action orchestration.
+// Why: Preserves deterministic browser action execution across agent workflows.
+// Docs: docs/features/feature/interact-explore/index.md
+
 // tools_interact_draw.go — MCP interact handler for draw_mode_start action.
+// Docs: docs/features/feature/interact-explore/index.md
 package main
 
 import (
 	"encoding/json"
-	"fmt"
-	"time"
 
 	"github.com/dev-console/dev-console/internal/queries"
 )
@@ -12,22 +15,25 @@ import (
 // handleDrawModeStart queues a draw_mode query for the extension to activate draw mode.
 func (h *ToolHandler) handleDrawModeStart(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	var params struct {
-		TabID   int    `json:"tab_id,omitempty"`
-		Session string `json:"session,omitempty"`
+		TabID        int    `json:"tab_id,omitempty"`
+		AnnotSession string `json:"annot_session,omitempty"`
 	}
 	if len(args) > 0 {
 		lenientUnmarshal(args, &params)
 	}
 
-	if !h.capture.IsPilotEnabled() {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrCodePilotDisabled, "AI Web Pilot is disabled", "Enable AI Web Pilot in the extension popup")}
+	if resp, blocked := h.requirePilot(req); blocked {
+		return resp
+	}
+	if resp, blocked := h.requireExtension(req); blocked {
+		return resp
 	}
 
-	correlationID := fmt.Sprintf("draw_%d_%d", time.Now().UnixNano(), randomInt63())
+	correlationID := newCorrelationID("draw")
 
 	queryParams := map[string]string{"action": "start"}
-	if params.Session != "" {
-		queryParams["session"] = params.Session
+	if params.AnnotSession != "" {
+		queryParams["annot_session"] = params.AnnotSession
 	}
 	// Error impossible: map contains only string values
 	queryParamsJSON, _ := json.Marshal(queryParams)

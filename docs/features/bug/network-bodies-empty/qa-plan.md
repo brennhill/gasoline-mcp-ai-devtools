@@ -1,5 +1,8 @@
 ---
 feature: network-bodies-empty
+doc_type: qa-plan
+feature_id: bug-network-bodies-empty
+last_reviewed: 2026-02-16
 ---
 
 # QA Plan: Network Bodies Empty (Bug Fix)

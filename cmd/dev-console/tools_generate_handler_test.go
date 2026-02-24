@@ -1,9 +1,12 @@
+// Purpose: Validate tools_generate_handler_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
+// Docs: docs/features/feature/test-generation/index.md
+
 // tools_generate_handler_test.go — Comprehensive unit tests for generate tool dispatch and response fields.
 // Validates all response fields, snake_case JSON convention, and output structure.
 package main
 
 import (
-	"encoding/json"
 	"strings"
 	"testing"
 	"time"
@@ -12,34 +15,12 @@ import (
 )
 
 // ============================================
-// Test Helpers
-// ============================================
-
-func makeGenerateToolHandler(t *testing.T) (*ToolHandler, *Server, *capture.Capture) {
-	t.Helper()
-	server, err := NewServer(t.TempDir()+"/test.jsonl", 100)
-	if err != nil {
-		t.Fatalf("NewServer: %v", err)
-	}
-	t.Cleanup(func() { server.Close() })
-	cap := capture.NewCapture()
-	mcpHandler := NewToolHandler(server, cap)
-	handler := mcpHandler.toolHandler.(*ToolHandler)
-	return handler, server, cap
-}
-
-func callGenerateRaw(h *ToolHandler, argsJSON string) JSONRPCResponse {
-	req := JSONRPCRequest{JSONRPC: "2.0", ID: 1}
-	return h.toolGenerate(req, json.RawMessage(argsJSON))
-}
-
-// ============================================
 // Dispatch Tests
 // ============================================
 
 func TestToolsGenerateDispatch_InvalidJSON(t *testing.T) {
 	t.Parallel()
-	h, _, _ := makeGenerateToolHandler(t)
+	h, _, _ := makeToolHandler(t)
 
 	resp := callGenerateRaw(h, `{bad json`)
 	result := parseToolResult(t, resp)
@@ -54,7 +35,7 @@ func TestToolsGenerateDispatch_InvalidJSON(t *testing.T) {
 
 func TestToolsGenerateDispatch_MissingFormat(t *testing.T) {
 	t.Parallel()
-	h, _, _ := makeGenerateToolHandler(t)
+	h, _, _ := makeToolHandler(t)
 
 	resp := callGenerateRaw(h, `{}`)
 	result := parseToolResult(t, resp)
@@ -76,9 +57,9 @@ func TestToolsGenerateDispatch_MissingFormat(t *testing.T) {
 
 func TestToolsGenerateDispatch_UnknownFormat(t *testing.T) {
 	t.Parallel()
-	h, _, _ := makeGenerateToolHandler(t)
+	h, _, _ := makeToolHandler(t)
 
-	resp := callGenerateRaw(h, `{"format":"nonexistent_format"}`)
+	resp := callGenerateRaw(h, `{"what":"nonexistent_format"}`)
 	result := parseToolResult(t, resp)
 	if !result.IsError {
 		t.Fatal("unknown format should return isError:true")
@@ -94,7 +75,7 @@ func TestToolsGenerateDispatch_UnknownFormat(t *testing.T) {
 
 func TestToolsGenerateDispatch_EmptyArgs(t *testing.T) {
 	t.Parallel()
-	h, _, _ := makeGenerateToolHandler(t)
+	h, _, _ := makeToolHandler(t)
 
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: 1}
 	resp := h.toolGenerate(req, nil)
@@ -132,9 +113,9 @@ func TestToolsGenerate_GetValidGenerateFormats(t *testing.T) {
 
 func TestToolsGenerateTest_ResponseFields(t *testing.T) {
 	t.Parallel()
-	h, _, _ := makeGenerateToolHandler(t)
+	h, _, _ := makeToolHandler(t)
 
-	resp := callGenerateRaw(h, `{"format":"test","test_name":"smoke"}`)
+	resp := callGenerateRaw(h, `{"what":"test","test_name":"smoke"}`)
 	result := parseToolResult(t, resp)
 	if result.IsError {
 		t.Fatalf("test format should succeed, got: %s", result.Content[0].Text)
@@ -176,9 +157,9 @@ func TestToolsGenerateTest_ResponseFields(t *testing.T) {
 
 func TestToolsGenerateTest_DefaultTestName(t *testing.T) {
 	t.Parallel()
-	h, _, _ := makeGenerateToolHandler(t)
+	h, _, _ := makeToolHandler(t)
 
-	resp := callGenerateRaw(h, `{"format":"test"}`)
+	resp := callGenerateRaw(h, `{"what":"test"}`)
 	result := parseToolResult(t, resp)
 	if result.IsError {
 		t.Fatalf("test format should succeed, got: %s", result.Content[0].Text)
@@ -192,14 +173,14 @@ func TestToolsGenerateTest_DefaultTestName(t *testing.T) {
 
 func TestToolsGenerateTest_WithActions(t *testing.T) {
 	t.Parallel()
-	h, _, cap := makeGenerateToolHandler(t)
+	h, _, cap := makeToolHandler(t)
 
 	cap.AddEnhancedActionsForTest([]capture.EnhancedAction{
 		{Type: "navigate", Timestamp: 1000, URL: "https://example.com", ToURL: "https://example.com"},
 		{Type: "click", Timestamp: 2000, URL: "https://example.com", Selectors: map[string]any{"css": "#btn"}},
 	})
 
-	resp := callGenerateRaw(h, `{"format":"test","test_name":"e2e"}`)
+	resp := callGenerateRaw(h, `{"what":"test","test_name":"e2e"}`)
 	result := parseToolResult(t, resp)
 	data := extractResultJSON(t, result)
 
@@ -223,9 +204,9 @@ func TestToolsGenerateTest_WithActions(t *testing.T) {
 
 func TestToolsGeneratePRSummary_ResponseFields(t *testing.T) {
 	t.Parallel()
-	h, _, _ := makeGenerateToolHandler(t)
+	h, _, _ := makeToolHandler(t)
 
-	resp := callGenerateRaw(h, `{"format":"pr_summary"}`)
+	resp := callGenerateRaw(h, `{"what":"pr_summary"}`)
 	result := parseToolResult(t, resp)
 	if result.IsError {
 		t.Fatalf("pr_summary should succeed, got: %s", result.Content[0].Text)
@@ -260,13 +241,13 @@ func TestToolsGeneratePRSummary_ResponseFields(t *testing.T) {
 
 func TestToolsGeneratePRSummary_WithActivity(t *testing.T) {
 	t.Parallel()
-	h, _, cap := makeGenerateToolHandler(t)
+	h, _, cap := makeToolHandler(t)
 
 	cap.AddEnhancedActionsForTest([]capture.EnhancedAction{
 		{Type: "click", Timestamp: time.Now().UnixMilli(), URL: "https://example.com"},
 	})
 
-	resp := callGenerateRaw(h, `{"format":"pr_summary"}`)
+	resp := callGenerateRaw(h, `{"what":"pr_summary"}`)
 	result := parseToolResult(t, resp)
 	data := extractResultJSON(t, result)
 
@@ -285,9 +266,9 @@ func TestToolsGeneratePRSummary_WithActivity(t *testing.T) {
 
 func TestToolsGenerateCSP_EmptyNetwork(t *testing.T) {
 	t.Parallel()
-	h, _, _ := makeGenerateToolHandler(t)
+	h, _, _ := makeToolHandler(t)
 
-	resp := callGenerateRaw(h, `{"format":"csp"}`)
+	resp := callGenerateRaw(h, `{"what":"csp"}`)
 	result := parseToolResult(t, resp)
 	if result.IsError {
 		t.Fatalf("csp empty should succeed, got: %s", result.Content[0].Text)
@@ -309,14 +290,14 @@ func TestToolsGenerateCSP_EmptyNetwork(t *testing.T) {
 
 func TestToolsGenerateCSP_WithNetworkData(t *testing.T) {
 	t.Parallel()
-	h, _, cap := makeGenerateToolHandler(t)
+	h, _, cap := makeToolHandler(t)
 
 	cap.AddNetworkBodies([]capture.NetworkBody{
 		{URL: "https://cdn.example.com/app.js", ContentType: "application/javascript", Status: 200, Timestamp: time.Now().UTC().Format(time.RFC3339)},
 		{URL: "https://fonts.googleapis.com/css", ContentType: "text/css", Status: 200, Timestamp: time.Now().UTC().Format(time.RFC3339)},
 	})
 
-	resp := callGenerateRaw(h, `{"format":"csp"}`)
+	resp := callGenerateRaw(h, `{"what":"csp"}`)
 	result := parseToolResult(t, resp)
 	if result.IsError {
 		t.Fatalf("csp should succeed, got: %s", result.Content[0].Text)
@@ -352,14 +333,14 @@ func TestToolsGenerateCSP_WithNetworkData(t *testing.T) {
 
 func TestToolsGenerateCSP_DefaultMode(t *testing.T) {
 	t.Parallel()
-	h, _, cap := makeGenerateToolHandler(t)
+	h, _, cap := makeToolHandler(t)
 
 	cap.AddNetworkBodies([]capture.NetworkBody{
 		{URL: "https://cdn.example.com/app.js", ContentType: "application/javascript", Status: 200, Timestamp: time.Now().UTC().Format(time.RFC3339)},
 	})
 
 	// No mode param should default to "moderate"
-	resp := callGenerateRaw(h, `{"format":"csp"}`)
+	resp := callGenerateRaw(h, `{"what":"csp"}`)
 	result := parseToolResult(t, resp)
 	data := extractResultJSON(t, result)
 	if data["mode"] != "moderate" {
@@ -373,9 +354,9 @@ func TestToolsGenerateCSP_DefaultMode(t *testing.T) {
 
 func TestToolsGenerateSRI_EmptyNetwork(t *testing.T) {
 	t.Parallel()
-	h, _, _ := makeGenerateToolHandler(t)
+	h, _, _ := makeToolHandler(t)
 
-	resp := callGenerateRaw(h, `{"format":"sri"}`)
+	resp := callGenerateRaw(h, `{"what":"sri"}`)
 	result := parseToolResult(t, resp)
 	if result.IsError {
 		t.Fatalf("sri empty should succeed, got: %s", result.Content[0].Text)
@@ -398,9 +379,9 @@ func TestToolsGenerateSRI_EmptyNetwork(t *testing.T) {
 
 func TestToolsGenerateHAR_EmptyNetwork(t *testing.T) {
 	t.Parallel()
-	h, _, _ := makeGenerateToolHandler(t)
+	h, _, _ := makeToolHandler(t)
 
-	resp := callGenerateRaw(h, `{"format":"har"}`)
+	resp := callGenerateRaw(h, `{"what":"har"}`)
 	result := parseToolResult(t, resp)
 	if result.IsError {
 		t.Fatalf("har empty should succeed, got: %s", result.Content[0].Text)
@@ -419,9 +400,9 @@ func TestToolsGenerateHAR_EmptyNetwork(t *testing.T) {
 
 func TestToolsGenerateSARIF_ResponseFields(t *testing.T) {
 	t.Parallel()
-	h, _, _ := makeGenerateToolHandler(t)
+	h, _, _ := makeToolHandler(t)
 
-	resp := callGenerateRaw(h, `{"format":"sarif"}`)
+	resp := callGenerateRaw(h, `{"what":"sarif"}`)
 	result := parseToolResult(t, resp)
 	if result.IsError {
 		t.Fatalf("sarif should succeed, got: %s", result.Content[0].Text)
@@ -433,119 +414,8 @@ func TestToolsGenerateSARIF_ResponseFields(t *testing.T) {
 	}
 }
 
-// ============================================
-// generateTestScript Tests
-// ============================================
-
-func TestToolsGenerateTestScript_NoActions(t *testing.T) {
-	t.Parallel()
-
-	params := TestGenParams{TestName: "empty test"}
-	script := generateTestScript(nil, params)
-
-	if !strings.Contains(script, "import { test, expect }") {
-		t.Error("script should contain Playwright imports")
-	}
-	if !strings.Contains(script, "test.describe('empty test'") {
-		t.Error("script should contain test.describe with test name")
-	}
-	if !strings.Contains(script, "No actions captured") {
-		t.Error("script should contain comment about no actions")
-	}
-	if !strings.Contains(script, "page.goto('/')") {
-		t.Error("script should contain default goto")
-	}
-}
-
-func TestToolsGenerateTestScript_WithActions(t *testing.T) {
-	t.Parallel()
-
-	actions := []capture.EnhancedAction{
-		{Type: "navigate", Timestamp: 1000, ToURL: "https://example.com/page"},
-		{Type: "click", Timestamp: 2000, URL: "https://example.com/page"},
-	}
-	params := TestGenParams{TestName: "e2e test", AssertNoErrors: true}
-	script := generateTestScript(actions, params)
-
-	if !strings.Contains(script, "test.describe('e2e test'") {
-		t.Error("script should contain test name")
-	}
-	if !strings.Contains(script, "expect(page).toHaveTitle") {
-		t.Error("script should contain title assertion for navigate action")
-	}
-	if !strings.Contains(script, "Assert no console errors") {
-		t.Error("script should contain error assertion when AssertNoErrors=true")
-	}
-}
-
-// ============================================
-// groupActionsByNavigation Tests
-// ============================================
-
-func TestToolsGroupActionsByNavigation(t *testing.T) {
-	t.Parallel()
-
-	// Empty
-	groups := groupActionsByNavigation(nil)
-	if len(groups) != 0 {
-		t.Errorf("nil actions should return 0 groups, got %d", len(groups))
-	}
-
-	// Single navigate
-	groups = groupActionsByNavigation([]capture.EnhancedAction{
-		{Type: "navigate", Timestamp: 1000},
-	})
-	if len(groups) != 1 {
-		t.Errorf("single navigate should return 1 group, got %d", len(groups))
-	}
-
-	// Navigate + click + navigate + click
-	groups = groupActionsByNavigation([]capture.EnhancedAction{
-		{Type: "navigate", Timestamp: 1000},
-		{Type: "click", Timestamp: 2000},
-		{Type: "navigate", Timestamp: 3000},
-		{Type: "click", Timestamp: 4000},
-	})
-	if len(groups) != 2 {
-		t.Errorf("two navigates should create 2 groups, got %d", len(groups))
-	}
-	if len(groups[0]) != 2 {
-		t.Errorf("first group should have 2 actions, got %d", len(groups[0]))
-	}
-	if len(groups[1]) != 2 {
-		t.Errorf("second group should have 2 actions, got %d", len(groups[1]))
-	}
-}
-
-// ============================================
-// testLabelForGroup Tests
-// ============================================
-
-func TestToolsTestLabelForGroup(t *testing.T) {
-	t.Parallel()
-
-	// Empty group
-	label := testLabelForGroup(nil, 0)
-	if label != "step 1" {
-		t.Errorf("empty group label = %q, want 'step 1'", label)
-	}
-
-	// Navigate with URL
-	label = testLabelForGroup([]capture.EnhancedAction{
-		{Type: "navigate", ToURL: "https://example.com/dashboard"},
-	}, 0)
-	if !strings.Contains(label, "/dashboard") {
-		t.Errorf("navigate group label should contain path, got: %q", label)
-	}
-
-	// Non-navigate first action
-	label = testLabelForGroup([]capture.EnhancedAction{
-		{Type: "click", Timestamp: 1000},
-	}, 2)
-	if label != "step 3" {
-		t.Errorf("non-navigate group label = %q, want 'step 3'", label)
-	}
-}
+// NOTE: generateTestScript, groupActionsByNavigation, and testLabelForGroup
+// tests moved to internal/tools/generate/test_script_test.go
 
 // ============================================
 // All generate formats safety net
@@ -553,18 +423,18 @@ func TestToolsTestLabelForGroup(t *testing.T) {
 
 func TestToolsGenerate_AllFormats_ResponseHasContent(t *testing.T) {
 	t.Parallel()
-	h, _, _ := makeGenerateToolHandler(t)
+	h, _, _ := makeToolHandler(t)
 
 	formats := []struct {
 		format string
 		args   string
 	}{
-		{"test", `{"format":"test"}`},
-		{"pr_summary", `{"format":"pr_summary"}`},
-		{"csp", `{"format":"csp"}`},
-		{"sri", `{"format":"sri"}`},
-		{"har", `{"format":"har"}`},
-		{"sarif", `{"format":"sarif"}`},
+		{"test", `{"what":"test"}`},
+		{"pr_summary", `{"what":"pr_summary"}`},
+		{"csp", `{"what":"csp"}`},
+		{"sri", `{"what":"sri"}`},
+		{"har", `{"what":"har"}`},
+		{"sarif", `{"what":"sarif"}`},
 	}
 
 	for _, tc := range formats {

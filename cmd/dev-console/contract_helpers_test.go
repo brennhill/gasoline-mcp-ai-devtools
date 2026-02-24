@@ -1,3 +1,7 @@
+// Purpose: Validate contract_helpers_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
+// Docs: docs/features/feature/observe/index.md
+
 // contract_helpers_test.go — Response shape contract testing utilities.
 // Provides scenario builders and JSON shape assertion helpers for MCP tool responses.
 // These helpers verify field presence and types without checking exact values,
@@ -155,7 +159,7 @@ func (s *scenario) loadExtensionLogs(t *testing.T) {
 func (s *scenario) loadTrackingState(t *testing.T) {
 	t.Helper()
 	syncReq := httptest.NewRequest("POST", "/sync", bytes.NewReader([]byte(`{
-		"session_id": "test-session",
+		"ext_session_id": "test-session",
 		"settings": {
 			"pilot_enabled": true,
 			"tracking_enabled": true,

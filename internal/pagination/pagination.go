@@ -1,5 +1,7 @@
-// pagination.go — Cursor-based pagination helpers for observe() responses.
-// Uses generic ApplyCursorPagination to eliminate duplication across log, action, and websocket types.
+// Purpose: Implements cursor pagination over captured telemetry collections.
+// Why: Makes large evidence sets queryable without losing ordering or cursor consistency.
+// Docs: docs/features/feature/pagination/index.md
+
 package pagination
 
 import (

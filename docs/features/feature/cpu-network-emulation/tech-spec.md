@@ -1,6 +1,9 @@
 ---
 feature: cpu-network-emulation
 status: proposed
+doc_type: tech-spec
+feature_id: feature-cpu-network-emulation
+last_reviewed: 2026-02-16
 ---
 
 # Tech Spec: CPU/Network Emulation

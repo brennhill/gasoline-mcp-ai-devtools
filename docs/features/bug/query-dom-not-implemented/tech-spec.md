@@ -1,6 +1,9 @@
 ---
 feature: query-dom-not-implemented
 status: in-progress
+doc_type: tech-spec
+feature_id: bug-query-dom-not-implemented
+last_reviewed: 2026-02-16
 ---
 
 # Tech Spec: Query DOM Not Implemented (Bug Fix)

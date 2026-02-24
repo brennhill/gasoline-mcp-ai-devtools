@@ -1,3 +1,7 @@
+// Purpose: Implements redaction of extension log message/category/data fields before storage.
+// Why: Prevents sensitive values from leaking through extension-side diagnostic logs.
+// Docs: docs/features/feature/redaction-patterns/index.md
+
 package capture
 
 import "encoding/json"

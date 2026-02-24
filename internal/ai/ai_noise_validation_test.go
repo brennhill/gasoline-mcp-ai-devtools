@@ -1,3 +1,7 @@
+// Purpose: Validate ai_noise_validation_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
+// Docs: docs/features/feature/observe/index.md
+
 // ai_noise_validation_test.go — Tests for noise JSON serialization, Reset, regex validation, and built-in rules.
 package ai
 

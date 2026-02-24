@@ -1,4 +1,3 @@
-// platform_errors.go — Platform-aware error messages and process utilities.
 package main
 
 import (

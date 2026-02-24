@@ -1,3 +1,7 @@
+// Purpose: Validate tools_observe_contract_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
+// Docs: docs/features/feature/observe/index.md
+
 // tools_observe_contract_test.go — Response shape contracts for observe tool.
 // Each test verifies that an observe mode returns the correct JSON fields with
 // correct types. Catches field renames, missing fields, and type changes.
@@ -237,6 +241,21 @@ func TestObserveContract_Tabs(t *testing.T) {
 	})
 }
 
+func TestObserveContract_History(t *testing.T) {
+	s := newScenario(t)
+	s.loadFullScenario(t)
+
+	result, ok := s.callObserve(t, "history")
+	if !ok {
+		t.Fatal("observe history: no result")
+	}
+
+	assertResponseShape(t, "history", result, []fieldSpec{
+		required("entries", "array"),
+		required("count", "number"),
+	})
+}
+
 // TestObserveContract_Performance removed in Phase 0: moved to analyze({what:'performance'})
 
 func TestObserveContract_Timeline(t *testing.T) {
@@ -280,8 +299,6 @@ func TestObserveContract_ErrorBundles_EmptyArray(t *testing.T) {
 	data := parseResponseJSON(t, result)
 	assertArrayNotNull(t, "error_bundles (empty)", data, "bundles")
 }
-
-// TestObserveContract_History removed in Phase 0: moved to analyze({what:'history'})
 
 // ============================================
 // Tier 2b: Pilot & Security Contracts

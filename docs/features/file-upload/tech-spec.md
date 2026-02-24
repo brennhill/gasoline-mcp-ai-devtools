@@ -1,3 +1,9 @@
+---
+doc_type: tech-spec
+feature_id: file-upload
+last_reviewed: 2026-02-16
+---
+
 # File Upload via Go Server — Tech Spec (Revised)
 
 **Feature:** Multi-stage intelligent file upload with automatic escalation, using the Go server and OS-level automation to bypass browser sandbox restrictions.

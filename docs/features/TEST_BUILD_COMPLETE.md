@@ -1,3 +1,9 @@
+---
+doc_type: legacy_doc
+status: reference
+last_reviewed: 2026-02-16
+---
+
 # Complete Test Build Summary — February 9, 2026
 
 ## Executive Summary
@@ -207,7 +213,7 @@ docs/features/feature/noise-filtering/test-plan.md (updated)
 4. Fix any failures
 
 ### Follow-Up Actions
-- Commit all test files to `next` branch
+- Commit all test files to `UNSTABLE` branch
 - Update CI/CD to run new test categories
 - Link test results to feature PRs
 - Iterate on feature implementation based on test feedback

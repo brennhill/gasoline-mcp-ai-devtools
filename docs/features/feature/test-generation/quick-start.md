@@ -1,6 +1,8 @@
 ---
 feature: test-generation
 type: quick-reference
+status: reference
+last_reviewed: 2026-02-16
 ---
 
 # Test Generation — Quick Reference

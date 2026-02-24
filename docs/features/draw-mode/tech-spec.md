@@ -2,6 +2,9 @@
 feature: Draw Mode
 status: proposed
 version: v0.7-rev1
+doc_type: tech-spec
+feature_id: draw-mode
+last_reviewed: 2026-02-16
 ---
 
 # Draw Mode -- Technical Specification

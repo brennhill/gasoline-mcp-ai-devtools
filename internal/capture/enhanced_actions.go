@@ -1,19 +1,31 @@
-// enhanced_actions.go — User action (click, input, navigation) buffering.
-// Captures browser user actions with multi-strategy selectors.
-// Design: Ring buffer with memory-based eviction.
+// Purpose: Implements ingestion and buffering of enhanced action telemetry with navigation callback integration.
+// Why: Preserves action history needed for replay/test-generation while enforcing capture memory constraints.
+// Docs: docs/features/feature/backend-log-streaming/index.md
+
 package capture
 
 import (
 	"fmt"
 	"os"
 	"time"
+
+	"github.com/dev-console/dev-console/internal/util"
 )
 
-// AddEnhancedActions adds enhanced actions to the buffer.
-// Enforces memory limits and updates running totals.
+// AddEnhancedActions ingests action telemetry and optionally triggers navigation callback.
+//
+// Invariants:
+// - enhancedActions/actionAddedAt remain index-aligned.
+// - actionTotalAdded is monotonic and never decremented outside explicit clear operations.
+// - navigationCallback is captured under lock and invoked after unlock.
+//
+// Failure semantics:
+// - Parallel-array mismatch is repaired by truncation to common prefix.
+// - Oversized action batches are accepted and oldest entries are evicted.
 func (c *Capture) AddEnhancedActions(actions []EnhancedAction) {
+	var navCb func()
+
 	c.mu.Lock()
-	defer c.mu.Unlock()
 
 	// Defensive: verify parallel arrays are in sync
 	if len(c.enhancedActions) != len(c.actionAddedAt) {
@@ -33,6 +45,7 @@ func (c *Capture) AddEnhancedActions(actions []EnhancedAction) {
 		activeTestIDs = append(activeTestIDs, testID)
 	}
 
+	hasNavigation := false
 	for i := range actions {
 		// Tag entry with active test IDs
 		actions[i].TestIDs = activeTestIDs
@@ -40,6 +53,11 @@ func (c *Capture) AddEnhancedActions(actions []EnhancedAction) {
 		// Add to ring buffer
 		c.enhancedActions = append(c.enhancedActions, actions[i])
 		c.actionAddedAt = append(c.actionAddedAt, now)
+
+		// Detect navigation actions
+		if actions[i].Type == "navigation" {
+			hasNavigation = true
+		}
 	}
 
 	// Enforce max count
@@ -51,6 +69,18 @@ func (c *Capture) AddEnhancedActions(actions []EnhancedAction) {
 		newAddedAt := make([]time.Time, MaxEnhancedActions)
 		copy(newAddedAt, c.actionAddedAt[keep:])
 		c.actionAddedAt = newAddedAt
+	}
+
+	// Capture callback reference before releasing lock
+	if hasNavigation && c.navigationCallback != nil {
+		navCb = c.navigationCallback
+	}
+
+	c.mu.Unlock()
+
+	// Fire navigation callback outside lock to prevent deadlocks
+	if navCb != nil {
+		util.SafeGo(navCb)
 	}
 }
 

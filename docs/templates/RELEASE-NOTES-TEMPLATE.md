@@ -2,6 +2,7 @@
 version: X.Y.Z
 date: YYYY-MM-DD
 status: draft           # draft | published
+last_reviewed: 2026-02-16
 ---
 
 # Release Notes — vX.Y.Z
@@ -43,4 +44,4 @@ Steps to upgrade from the previous version (if breaking changes exist).
 
 ## Known Issues
 
-See [known-issues.md](../../known-issues.md) for current known issues.
+See [known-issues.md](../core/known-issues.md) for current known issues.

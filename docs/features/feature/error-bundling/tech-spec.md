@@ -4,6 +4,9 @@ scope: v5.9
 ai-priority: critical
 tags: [implementation, architecture, v5.9]
 last-verified: 2026-02-06
+doc_type: tech-spec
+feature_id: feature-error-bundling
+last_reviewed: 2026-02-16
 ---
 
 # Technical Spec: Error Bundling

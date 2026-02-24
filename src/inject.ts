@@ -1,4 +1,12 @@
 /**
+ * Purpose: Exposes page-context capture and action/query handlers through the inject runtime facade.
+ * Why: Centralizes in-page instrumentation so browser telemetry and automation hooks share one deterministic entrypoint.
+ * Docs: docs/features/feature/backend-log-streaming/index.md
+ * Docs: docs/features/feature/interact-explore/index.md
+ * Docs: docs/features/feature/query-dom/index.md
+ */
+
+/**
  * @fileoverview inject.ts - Page-level capture script for browser telemetry.
  * Runs in the page context (not extension sandbox) to intercept console methods,
  * fetch/XHR requests, WebSocket connections, errors, and user actions. Posts
@@ -62,6 +70,8 @@ export {
   readResponseBody,
   readResponseBodyWithTimeout,
   wrapFetchWithBodies,
+  wrapXHRWithBodies,
+  unwrapXHR,
   getPerformanceMarks,
   getPerformanceMeasures,
   getCapturedMarks,
@@ -129,6 +139,8 @@ export {
   wrapFetch,
   installFetchCapture,
   uninstallFetchCapture,
+  installXHRCapture,
+  uninstallXHRCapture,
   installPhase1,
   installPhase2,
   getDeferralState,

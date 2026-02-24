@@ -1,18 +1,19 @@
 /**
- * @fileoverview Message bridge for posting log events to the content script.
- * Enriches error-level messages with context annotations and user action replay.
+ * Purpose: Provides shared runtime utilities used by extension and server workflows.
+ * Why: Avoids duplicated logic across runtime layers and keeps behavior consistent.
+ * Docs: docs/features/feature/observe/index.md
  */
 export interface BridgePayload {
-  level?: string
-  message?: string
-  error?: string
-  args?: unknown[]
-  filename?: string
-  lineno?: number
-  [key: string]: unknown
+    level?: string;
+    message?: string;
+    error?: string;
+    args?: unknown[];
+    filename?: string;
+    lineno?: number;
+    [key: string]: unknown;
 }
 /**
  * Post a log message to the content script
  */
-export declare function postLog(payload: BridgePayload): void
+export declare function postLog(payload: BridgePayload): void;
 //# sourceMappingURL=bridge.d.ts.map

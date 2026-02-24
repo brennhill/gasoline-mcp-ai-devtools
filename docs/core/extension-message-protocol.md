@@ -1,3 +1,9 @@
+---
+doc_type: legacy_doc
+status: reference
+last_reviewed: 2026-02-16
+---
+
 # Gasoline Extension Message Protocol
 
 This document describes the Chrome runtime message types and handlers used internally by the Gasoline extension. This is for extension developers and integration partners.

@@ -9,6 +9,8 @@ header:
   excerpt: "One command. Two minutes. Your AI sees your browser."
 toc: true
 toc_sticky: true
+status: reference
+last_reviewed: 2026-02-16
 ---
 
 ## <i class="fas fa-fire"></i> 1. Ignite the Server
@@ -36,7 +38,7 @@ cd gasoline
 go run ./cmd/dev-console
 ```
 
-You'll see: `[gasoline] v0.7.2 — HTTP on port 7890`
+You'll see: `[gasoline] v0.7.8 — HTTP on port 7890`
 
 npm and PyPI are distribution channels — they deliver the native Go binary for your platform. The MCP server runs natively with no Node.js or Python runtime dependency.
 
@@ -135,6 +137,32 @@ Your AI now has 5 tools covering the full debugging lifecycle:
 Each tool has sub-modes. For example, `observe` with `what: "errors"` returns console errors, while `what: "websocket_status"` returns active WebSocket connections.
 
 See [MCP Integration](/mcp-integration/) for full tool documentation.
+
+## <i class="fas fa-crosshairs"></i> Region-Scoped Automation (Screenshot → Rect → Action)
+
+When a page has many similar controls, constrain automation to a visual region:
+
+```json
+// 1) Capture screenshot and choose a target rectangle (x, y, width, height)
+{"tool":"observe","what":"screenshot"}
+
+// 2) List controls only inside that region
+{
+  "tool":"interact",
+  "what":"list_interactive",
+  "scope_rect":{"x":300,"y":220,"width":520,"height":420}
+}
+
+// 3) Act only within that same region
+{
+  "tool":"interact",
+  "what":"click",
+  "selector":"button",
+  "scope_rect":{"x":300,"y":220,"width":520,"height":420}
+}
+```
+
+If multiple matching controls are inside the region, Gasoline returns `ambiguous_target` instead of guessing.
 
 ## <i class="fas fa-file-alt"></i> No MCP? No Problem.
 

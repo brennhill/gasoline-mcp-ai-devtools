@@ -1,4 +1,8 @@
 #!/usr/bin/env python3
+# Purpose: Automate upload-server.py workflow behavior for repository tooling.
+# Why: Keeps repetitive maintenance and verification steps deterministic.
+# Docs: docs/DEVELOPMENT.md
+
 """upload-server.py — Zero-dependency test upload server mimicking Rumble-style uploads.
 
 Endpoints:
@@ -139,7 +143,7 @@ class UploadHandler(http.server.BaseHTTPRequestHandler):
         if path == "/upload":
             session = self._get_session()
             if not session:
-                self._send_html(401, "<h1>401 Not logged in</h1><p>Visit / first to get a session cookie.</p>")
+                self._send_html(401, "<!DOCTYPE html><html><head><title>401 Not Logged In</title></head><body><h1>401 Not logged in</h1><p>Visit / first to get a session cookie.</p></body></html>")
                 return
 
             # Generate CSRF token for this session
@@ -173,7 +177,7 @@ class UploadHandler(http.server.BaseHTTPRequestHandler):
         if path == "/upload/hardened":
             session = self._get_session()
             if not session:
-                self._send_html(401, "<h1>401 Not logged in</h1><p>Visit / first to get a session cookie.</p>")
+                self._send_html(401, "<!DOCTYPE html><html><head><title>401 Not Logged In</title></head><body><h1>401 Not logged in</h1><p>Visit / first to get a session cookie.</p></body></html>")
                 return
 
             # Generate CSRF token for this session (same as standard form)
@@ -201,7 +205,7 @@ class UploadHandler(http.server.BaseHTTPRequestHandler):
         if path == "/upload/hardened-addeventlistener":
             session = self._get_session()
             if not session:
-                self._send_html(401, "<h1>401 Not logged in</h1><p>Visit / first to get a session cookie.</p>")
+                self._send_html(401, "<!DOCTYPE html><html><head><title>401 Not Logged In</title></head><body><h1>401 Not logged in</h1><p>Visit / first to get a session cookie.</p></body></html>")
                 return
 
             token = hashlib.sha256(f"{session}-{time.time()}".encode()).hexdigest()[:32]
@@ -254,21 +258,21 @@ document.getElementById('file-input').addEventListener('change', function(event)
             self._send_json(200, last_upload if last_upload else {"error": "no uploads yet"})
             return
 
-        self._send_html(404, "<h1>404 Not Found</h1>")
+        self._send_html(404, "<!DOCTYPE html><html><head><title>404 Not Found</title></head><body><h1>404 Not Found</h1></body></html>")
 
     def do_POST(self):
         global last_upload, upload_counter
 
         parsed = urllib.parse.urlparse(self.path)
         if parsed.path != "/upload":
-            self._send_html(404, "<h1>404 Not Found</h1>")
+            self._send_html(404, "<!DOCTYPE html><html><head><title>404 Not Found</title></head><body><h1>404 Not Found</h1></body></html>")
             return
 
         # Check session cookie
         session = self._get_session()
         cookie_ok = session is not None
         if not cookie_ok:
-            self._send_html(401, "<h1>401 Not logged in</h1><p>Session cookie required.</p>")
+            self._send_html(401, "<!DOCTYPE html><html><head><title>401 Not Logged In</title></head><body><h1>401 Not logged in</h1><p>Session cookie required.</p></body></html>")
             return
 
         # Read body
@@ -284,22 +288,22 @@ document.getElementById('file-input').addEventListener('change', function(event)
         csrf_expected = csrf_tokens.get(session, "")
         csrf_ok = csrf_sent != "" and csrf_sent == csrf_expected
         if not csrf_ok:
-            self._send_html(403, "<h1>403 CSRF token expired</h1><p>CSRF token mismatch.</p>")
+            self._send_html(403, "<!DOCTYPE html><html><head><title>403 CSRF</title></head><body><h1>403 CSRF token expired</h1><p>CSRF token mismatch.</p></body></html>")
             return
 
         # Check file
         file_entry = files.get("Filedata")
         if not file_entry:
-            self._send_html(422, "<h1>422 No file uploaded</h1><p>The Filedata field is required.</p>")
+            self._send_html(422, "<!DOCTYPE html><html><head><title>422 No File</title></head><body><h1>422 No file uploaded</h1><p>The Filedata field is required.</p></body></html>")
             return
         if len(file_entry["data"]) == 0:
-            self._send_html(422, "<h1>422 Empty file</h1><p>File must not be empty.</p>")
+            self._send_html(422, "<!DOCTYPE html><html><head><title>422 Empty File</title></head><body><h1>422 Empty file</h1><p>File must not be empty.</p></body></html>")
             return
 
         # Check required field: title
         title = fields.get("title", "")
         if not title:
-            self._send_html(422, "<h1>422 Missing title</h1><p>The title field is required.</p>")
+            self._send_html(422, "<!DOCTYPE html><html><head><title>422 Missing Title</title></head><body><h1>422 Missing title</h1><p>The title field is required.</p></body></html>")
             return
 
         # Success

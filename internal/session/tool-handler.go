@@ -1,3 +1,8 @@
+// Purpose: Implements session lifecycle, snapshots, and diff state management.
+// Why: Maintains reliable state snapshots and diffs for investigations.
+// Docs: docs/features/feature/observe/index.md
+// Docs: docs/features/feature/pagination/index.md
+
 // tool-handler.go — Tool handler for diff_sessions MCP tool.
 // HandleTool function dispatches capture, compare, list, delete actions.
 package session

@@ -1,7 +1,16 @@
 /**
+ * Purpose: Provides shared runtime utilities used by extension and server workflows.
+ * Why: Avoids duplicated logic across runtime layers and keeps behavior consistent.
+ * Docs: docs/features/feature/observe/index.md
+ */
+
+/**
  * @fileoverview Shared constants for the Gasoline extension capture modules.
  */
 import { scaleTimeout } from './timeouts'
+
+// Server defaults
+export const DEFAULT_SERVER_URL = 'http://localhost:7890'
 
 // Serialization limits
 export const MAX_STRING_LENGTH = 10240 // 10KB
@@ -96,3 +105,88 @@ export const ACTIONABLE_KEYS: ReadonlySet<string> = new Set([
 export const MAX_LONG_TASKS = 50
 export const MAX_SLOWEST_REQUESTS = 3
 export const MAX_URL_LENGTH = 80
+
+// =============================================================================
+// SETTING NAMES — Single source of truth for all toggle/setting message types.
+// Background, content, inject, and popup layers all import from here.
+// =============================================================================
+
+/**
+ * Setting names used across background, content, and inject contexts.
+ * Single source of truth — all layers import from here.
+ *
+ * Note: These are the RUNTIME string values sent as message `type` fields.
+ * The TYPE-LEVEL literals in runtime-messages.ts (SetBooleanSettingMessage etc.)
+ * are deliberately kept as literal strings for TypeScript discriminated union narrowing.
+ */
+export const SettingName = {
+  NETWORK_WATERFALL: 'setNetworkWaterfallEnabled',
+  PERFORMANCE_MARKS: 'setPerformanceMarksEnabled',
+  ACTION_REPLAY: 'setActionReplayEnabled',
+  WEBSOCKET_CAPTURE: 'setWebSocketCaptureEnabled',
+  WEBSOCKET_CAPTURE_MODE: 'setWebSocketCaptureMode',
+  PERFORMANCE_SNAPSHOT: 'setPerformanceSnapshotEnabled',
+  DEFERRAL: 'setDeferralEnabled',
+  NETWORK_BODY_CAPTURE: 'setNetworkBodyCaptureEnabled',
+  ACTION_TOASTS: 'setActionToastsEnabled',
+  SUBTITLES: 'setSubtitlesEnabled',
+  SERVER_URL: 'setServerUrl',
+} as const
+
+export type SettingNameValue = typeof SettingName[keyof typeof SettingName]
+
+/** All valid setting names as a Set (for runtime validation) */
+export const VALID_SETTING_NAMES: ReadonlySet<string> = new Set<string>(Object.values(SettingName))
+
+/**
+ * Settings forwarded from background -> content -> inject (MAIN world).
+ * These are the settings that the inject script knows how to handle.
+ * Content-only settings (ACTION_TOASTS, SUBTITLES) are NOT in this set —
+ * they are handled directly by the content script runtime-message-listener.
+ */
+export const INJECT_FORWARDED_SETTINGS: ReadonlySet<string> = new Set<string>([
+  SettingName.NETWORK_WATERFALL,
+  SettingName.PERFORMANCE_MARKS,
+  SettingName.ACTION_REPLAY,
+  SettingName.WEBSOCKET_CAPTURE,
+  SettingName.WEBSOCKET_CAPTURE_MODE,
+  SettingName.PERFORMANCE_SNAPSHOT,
+  SettingName.DEFERRAL,
+  SettingName.NETWORK_BODY_CAPTURE,
+  SettingName.SERVER_URL,
+])
+
+// =============================================================================
+// STORAGE KEYS — Single source of truth for chrome.storage key strings.
+// =============================================================================
+
+/**
+ * Chrome storage key strings used in chrome.storage.local.get/set/remove calls.
+ * Single source of truth — all layers import from here.
+ */
+export const StorageKey = {
+  TRACKED_TAB_ID: 'trackedTabId',
+  TRACKED_TAB_URL: 'trackedTabUrl',
+  TRACKED_TAB_TITLE: 'trackedTabTitle',
+  AI_WEB_PILOT_ENABLED: 'aiWebPilotEnabled',
+  DEBUG_MODE: 'debugMode',
+  SERVER_URL: 'serverUrl',
+  SCREENSHOT_ON_ERROR: 'screenshotOnError',
+  SOURCE_MAP_ENABLED: 'sourceMapEnabled',
+  LOG_LEVEL: 'logLevel',
+  THEME: 'theme',
+  DEFERRAL_ENABLED: 'deferralEnabled',
+  WEBSOCKET_CAPTURE_ENABLED: 'webSocketCaptureEnabled',
+  WEBSOCKET_CAPTURE_MODE: 'webSocketCaptureMode',
+  NETWORK_WATERFALL_ENABLED: 'networkWaterfallEnabled',
+  PERFORMANCE_MARKS_ENABLED: 'performanceMarksEnabled',
+  ACTION_REPLAY_ENABLED: 'actionReplayEnabled',
+  NETWORK_BODY_CAPTURE_ENABLED: 'networkBodyCaptureEnabled',
+  ACTION_TOASTS_ENABLED: 'actionToastsEnabled',
+  SUBTITLES_ENABLED: 'subtitlesEnabled',
+  RECORDING: 'gasoline_recording',
+  PENDING_RECORDING: 'gasoline_pending_recording',
+  PENDING_MIC_RECORDING: 'gasoline_pending_mic_recording',
+  MIC_GRANTED: 'gasoline_mic_granted',
+  RECORD_AUDIO_PREF: 'gasoline_record_audio_pref',
+} as const

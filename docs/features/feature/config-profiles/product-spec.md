@@ -4,6 +4,9 @@ status: proposed
 tool: configure
 mode: profiles
 version: v6.3
+doc_type: product-spec
+feature_id: feature-config-profiles
+last_reviewed: 2026-02-16
 ---
 
 # Product Spec: Configuration Profiles
@@ -44,7 +47,7 @@ Add configuration profiles as named bundles of settings. Profiles are YAML files
 2. Start server: `gasoline --profile=restricted`
 3. Server loads profile, applies all settings
 4. Agent connects, operates under profile constraints
-5. User can query active profile: `observe({what: "server_config"})`
+5. User can query active profile: `configure({action:"health"})`
 
 ## Examples
 
@@ -106,7 +109,7 @@ gasoline --profile=restricted --project-expiration-minutes=30
 
 ## Query active profile:
 ```json
-observe({what: "server_config"})
+configure({action:"health"})
 // Returns:
 {
   "profile": "restricted",

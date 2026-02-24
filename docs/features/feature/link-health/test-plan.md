@@ -5,6 +5,7 @@ tool: analyze
 mode: link_health
 version: v1.0
 last-updated: 2026-02-09
+last_reviewed: 2026-02-16
 ---
 
 # Link Health Checker — Test Plan

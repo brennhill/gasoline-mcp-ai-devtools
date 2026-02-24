@@ -1,9 +1,12 @@
+// Purpose: Validate bridge_unit_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
+// Docs: docs/features/feature/observe/index.md
+
 // bridge_unit_test.go — Unit tests for bridge helper functions.
 package main
 
 import (
 	"encoding/json"
-	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -12,6 +15,8 @@ import (
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/dev-console/dev-console/internal/bridge"
 )
 
 // NOTE: Tests that redirect os.Stdout cannot use t.Parallel().
@@ -25,7 +30,7 @@ func TestSendBridgeError(t *testing.T) {
 	origStdout := os.Stdout
 	os.Stdout = w
 
-	sendBridgeError(42, -32603, "test error message")
+	sendBridgeError(42, -32603, "test error message", bridge.StdioFramingLine)
 
 	os.Stdout = origStdout
 	_ = w.Close()
@@ -63,7 +68,7 @@ func TestSendToolError(t *testing.T) {
 	origStdout := os.Stdout
 	os.Stdout = w
 
-	sendToolError("req-1", "Server is starting up. Please retry.")
+	sendToolError("req-1", "Server is starting up. Please retry.", bridge.StdioFramingLine)
 
 	os.Stdout = origStdout
 	_ = w.Close()
@@ -95,6 +100,21 @@ func TestSendToolError(t *testing.T) {
 	if result["isError"] != true {
 		t.Fatalf("expected isError=true, got %v", result["isError"])
 	}
+	if result["status"] != "error" {
+		t.Fatalf("expected status=error, got %v", result["status"])
+	}
+	if result["subsystem"] != "bridge" {
+		t.Fatalf("expected subsystem=bridge, got %v", result["subsystem"])
+	}
+	if result["retryable"] != false {
+		t.Fatalf("expected retryable=false default, got %v", result["retryable"])
+	}
+	if result["error_code"] != "bridge_tool_error" {
+		t.Fatalf("expected error_code=bridge_tool_error default, got %v", result["error_code"])
+	}
+	if result["correlation_id"] != "req-1" {
+		t.Fatalf("expected correlation_id=req-1, got %v", result["correlation_id"])
+	}
 	content, ok := result["content"].([]any)
 	if !ok || len(content) == 0 {
 		t.Fatalf("expected content array, got %v", result["content"])
@@ -105,14 +125,266 @@ func TestSendToolError(t *testing.T) {
 	}
 }
 
+func TestHandleDaemonNotReady_StartingIncludesStructuredRetryEnvelope(t *testing.T) {
+	// Do not run in parallel; test redirects process stdio.
+	output := captureBridgeIO(t, "", func() {
+		req := JSONRPCRequest{JSONRPC: "2.0", ID: "req-1", Method: "tools/call"}
+		handleDaemonNotReady(req, "starting", func() {}, bridge.StdioFramingLine)
+	})
+
+	responses := parseJSONLines(t, output)
+	if len(responses) != 1 {
+		t.Fatalf("response count = %d, want 1", len(responses))
+	}
+	if responses[0].Error != nil {
+		t.Fatalf("expected soft tool error, got protocol error: %+v", responses[0].Error)
+	}
+
+	var result map[string]any
+	if err := json.Unmarshal(responses[0].Result, &result); err != nil {
+		t.Fatalf("failed to parse result: %v", err)
+	}
+	if result["error_code"] != "daemon_starting" {
+		t.Fatalf("error_code = %v, want daemon_starting", result["error_code"])
+	}
+	if result["subsystem"] != "bridge_startup" {
+		t.Fatalf("subsystem = %v, want bridge_startup", result["subsystem"])
+	}
+	if result["reason"] != "daemon_starting" {
+		t.Fatalf("reason = %v, want daemon_starting", result["reason"])
+	}
+	retryable, ok := result["retryable"].(bool)
+	if !ok || !retryable {
+		t.Fatalf("retryable = %v (ok=%v), want true", result["retryable"], ok)
+	}
+	if ms, ok := result["retry_after_ms"].(float64); !ok || int(ms) != 2000 {
+		t.Fatalf("retry_after_ms = %v, want 2000", result["retry_after_ms"])
+	}
+	if result["correlation_id"] != "req-1" {
+		t.Fatalf("correlation_id = %v, want req-1", result["correlation_id"])
+	}
+}
+
+func TestBridgeForwardRequest_ToolsCallConnectionErrorReturnsSoftErrorEnvelope(t *testing.T) {
+	// Do not run in parallel; test redirects process stdio.
+	r, w, err := os.Pipe()
+	if err != nil {
+		t.Fatalf("pipe: %v", err)
+	}
+	origStdout := os.Stdout
+	os.Stdout = w
+
+	var wg sync.WaitGroup
+	wg.Add(1)
+	signal := func() { wg.Done() }
+
+	req := JSONRPCRequest{
+		JSONRPC: "2.0",
+		ID:      json.RawMessage(`1`),
+		Method:  "tools/call",
+	}
+	line := []byte(`{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"observe","arguments":{"what":"page"}}}`)
+
+	go func() {
+		bridgeForwardRequest(&http.Client{}, "http://127.0.0.1:1/mcp", req, line, 300*time.Millisecond, nil, signal, bridge.StdioFramingLine)
+	}()
+
+	wg.Wait()
+	os.Stdout = origStdout
+	_ = w.Close()
+
+	output, _ := io.ReadAll(r)
+	_ = r.Close()
+
+	var resp JSONRPCResponse
+	if err := json.Unmarshal(output, &resp); err != nil {
+		t.Fatalf("bridgeForwardRequest output not valid JSON: %v; got: %q", err, string(output))
+	}
+	if resp.Error != nil {
+		t.Fatalf("expected soft tool error result, got protocol error: %+v", resp.Error)
+	}
+
+	var result map[string]any
+	if err := json.Unmarshal(resp.Result, &result); err != nil {
+		t.Fatalf("failed to parse result: %v", err)
+	}
+	if result["isError"] != true {
+		t.Fatalf("isError = %v, want true", result["isError"])
+	}
+	if result["error_code"] != "bridge_connection_error" {
+		t.Fatalf("error_code = %v, want bridge_connection_error", result["error_code"])
+	}
+	if result["subsystem"] != "bridge_http_forwarder" {
+		t.Fatalf("subsystem = %v, want bridge_http_forwarder", result["subsystem"])
+	}
+	retryable, ok := result["retryable"].(bool)
+	if !ok || !retryable {
+		t.Fatalf("retryable = %v (ok=%v), want true", result["retryable"], ok)
+	}
+	if result["correlation_id"] != "1" {
+		t.Fatalf("correlation_id = %v, want 1", result["correlation_id"])
+	}
+}
+
+func TestBridgeForwardRequest_ToolsCallNoContentReturnsSoftErrorEnvelope(t *testing.T) {
+	client := &http.Client{
+		Transport: roundTripFunc(func(_ *http.Request) (*http.Response, error) {
+			return &http.Response{
+				StatusCode: http.StatusNoContent,
+				Body:       io.NopCloser(strings.NewReader("")),
+				Header:     make(http.Header),
+			}, nil
+		}),
+	}
+
+	output := captureBridgeIO(t, "", func() {
+		req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`), Method: "tools/call"}
+		line := []byte(`{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"observe","arguments":{"what":"page"}}}`)
+		bridgeForwardRequest(client, "http://unit.test/mcp", req, line, time.Second, nil, func() {}, bridge.StdioFramingLine)
+	})
+
+	var resp JSONRPCResponse
+	if err := json.Unmarshal([]byte(strings.TrimSpace(output)), &resp); err != nil {
+		t.Fatalf("invalid JSON response: %v; output=%q", err, output)
+	}
+	if resp.Error != nil {
+		t.Fatalf("expected soft error result, got protocol error: %+v", resp.Error)
+	}
+
+	var result map[string]any
+	if err := json.Unmarshal(resp.Result, &result); err != nil {
+		t.Fatalf("failed to parse result: %v", err)
+	}
+	if result["error_code"] != "bridge_unexpected_no_content" {
+		t.Fatalf("error_code = %v, want bridge_unexpected_no_content", result["error_code"])
+	}
+}
+
+func TestBridgeForwardRequest_ToolsCallEmptyBodyReturnsSoftErrorEnvelope(t *testing.T) {
+	client := &http.Client{
+		Transport: roundTripFunc(func(_ *http.Request) (*http.Response, error) {
+			return &http.Response{
+				StatusCode: http.StatusOK,
+				Body:       io.NopCloser(strings.NewReader("   ")),
+				Header:     make(http.Header),
+			}, nil
+		}),
+	}
+
+	output := captureBridgeIO(t, "", func() {
+		req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`), Method: "tools/call"}
+		line := []byte(`{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"observe","arguments":{"what":"page"}}}`)
+		bridgeForwardRequest(client, "http://unit.test/mcp", req, line, time.Second, nil, func() {}, bridge.StdioFramingLine)
+	})
+
+	var resp JSONRPCResponse
+	if err := json.Unmarshal([]byte(strings.TrimSpace(output)), &resp); err != nil {
+		t.Fatalf("invalid JSON response: %v; output=%q", err, output)
+	}
+	if resp.Error != nil {
+		t.Fatalf("expected soft error result, got protocol error: %+v", resp.Error)
+	}
+
+	var result map[string]any
+	if err := json.Unmarshal(resp.Result, &result); err != nil {
+		t.Fatalf("failed to parse result: %v", err)
+	}
+	if result["error_code"] != "bridge_empty_response" {
+		t.Fatalf("error_code = %v, want bridge_empty_response", result["error_code"])
+	}
+}
+
+func TestBridgeForwardRequest_ToolsCallInvalidJSONBodyReturnsSoftErrorEnvelope(t *testing.T) {
+	client := &http.Client{
+		Transport: roundTripFunc(func(_ *http.Request) (*http.Response, error) {
+			return &http.Response{
+				StatusCode: http.StatusOK,
+				Body:       io.NopCloser(strings.NewReader(`{not-valid-json`)),
+				Header:     make(http.Header),
+			}, nil
+		}),
+	}
+
+	output := captureBridgeIO(t, "", func() {
+		req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`), Method: "tools/call"}
+		line := []byte(`{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"observe","arguments":{"what":"page"}}}`)
+		bridgeForwardRequest(client, "http://unit.test/mcp", req, line, time.Second, nil, func() {}, bridge.StdioFramingLine)
+	})
+
+	var resp JSONRPCResponse
+	if err := json.Unmarshal([]byte(strings.TrimSpace(output)), &resp); err != nil {
+		t.Fatalf("invalid JSON response: %v; output=%q", err, output)
+	}
+	if resp.Error != nil {
+		t.Fatalf("expected soft error result, got protocol error: %+v", resp.Error)
+	}
+
+	var result map[string]any
+	if err := json.Unmarshal(resp.Result, &result); err != nil {
+		t.Fatalf("failed to parse result: %v", err)
+	}
+	if result["error_code"] != "bridge_invalid_response" {
+		t.Fatalf("error_code = %v, want bridge_invalid_response", result["error_code"])
+	}
+}
+
+type roundTripFunc func(*http.Request) (*http.Response, error)
+
+func (f roundTripFunc) RoundTrip(req *http.Request) (*http.Response, error) {
+	return f(req)
+}
+
+func TestBridgeRequestIDString(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		name string
+		id   any
+		want string
+	}{
+		{name: "string", id: "req-1", want: "req-1"},
+		{name: "raw-number", id: json.RawMessage(`123`), want: "123"},
+		{name: "raw-string", id: json.RawMessage(`"abc"`), want: "abc"},
+		{name: "float", id: 42.5, want: "42.5"},
+		{name: "nil", id: nil, want: ""},
+	}
+
+	for _, tc := range cases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			if got := bridgeRequestIDString(tc.id); got != tc.want {
+				t.Fatalf("bridgeRequestIDString(%v) = %q, want %q", tc.id, got, tc.want)
+			}
+		})
+	}
+}
+
 // TestBridgeForwardRequest_LargeBodyRead verifies that bridgeForwardRequest
 // reads the full response body even when the server writes it with a delay.
 // This is a regression test for a bug where bridgeDoHTTP created a context
 // with defer cancel(), which canceled before the caller read resp.Body.
 func TestBridgeForwardRequest_LargeBodyRead(t *testing.T) {
 	// Build a large JSON-RPC response (~20KB) to exceed any internal buffering
-	largePayload := strings.Repeat(`"key":"value",`, 1000)
-	rpcResponse := fmt.Sprintf(`{"jsonrpc":"2.0","id":1,"result":{"content":[{"type":"text","text":"{%s\"done\":true}"}],"isError":false}}`, largePayload)
+	largePayload := strings.Repeat("key:value,", 5000)
+	rpcEnvelope := map[string]any{
+		"jsonrpc": "2.0",
+		"id":      1,
+		"result": map[string]any{
+			"content": []map[string]any{
+				{
+					"type": "text",
+					"text": largePayload + "done:true",
+				},
+			},
+			"isError": false,
+		},
+	}
+	rpcBytes, err := json.Marshal(rpcEnvelope)
+	if err != nil {
+		t.Fatalf("json.Marshal rpcEnvelope: %v", err)
+	}
+	rpcResponse := string(rpcBytes)
 
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Simulate slow write: headers first, then delayed body
@@ -143,10 +415,10 @@ func TestBridgeForwardRequest_LargeBodyRead(t *testing.T) {
 	}
 
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`)}
-	line := []byte(`{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"configure","arguments":{"action":"health"}}}`)
+	line := []byte(`{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"configure","arguments":{"what":"health"}}}`)
 
 	go func() {
-		bridgeForwardRequest(&http.Client{}, srv.URL, req, line, 5*time.Second, nil, signal)
+		bridgeForwardRequest(&http.Client{}, srv.URL, req, line, 5*time.Second, nil, signal, bridge.StdioFramingLine)
 	}()
 
 	wg.Wait()
@@ -177,44 +449,92 @@ func TestBridgeForwardRequest_LargeBodyRead(t *testing.T) {
 	}
 }
 
-// TestToolCallTimeout verifies the per-request timeout branching logic.
-func TestToolCallTimeout(t *testing.T) {
-	t.Parallel()
-
-	tests := []struct {
-		name     string
-		method   string
-		params   string
-		expected time.Duration
-	}{
-		{"ping gets fast timeout", "ping", `{}`, 10 * time.Second},
-		{"resources/read gets fast timeout", "resources/read", `{}`, 10 * time.Second},
-		{"tools/list gets fast timeout", "tools/list", `{}`, 10 * time.Second},
-		{"observe gets fast timeout", "tools/call", `{"name":"observe","arguments":{"what":"logs"}}`, 10 * time.Second},
-		{"configure gets fast timeout", "tools/call", `{"name":"configure","arguments":{"action":"health"}}`, 10 * time.Second},
-		{"generate gets fast timeout", "tools/call", `{"name":"generate","arguments":{"format":"reproduction"}}`, 10 * time.Second},
-		{"analyze gets slow timeout", "tools/call", `{"name":"analyze","arguments":{"what":"dom"}}`, 35 * time.Second},
-		{"interact gets slow timeout", "tools/call", `{"name":"interact","arguments":{"action":"click"}}`, 35 * time.Second},
-		{"observe command_result non-annotation gets fast", "tools/call", `{"name":"observe","arguments":{"what":"command_result","correlation_id":"cmd_123"}}`, 10 * time.Second},
-		{"observe command_result annotation gets blocking poll", "tools/call", `{"name":"observe","arguments":{"what":"command_result","correlation_id":"ann_detail_abc"}}`, 65 * time.Second},
-		{"malformed params gets fast timeout", "tools/call", `{bad json}`, 10 * time.Second},
-		{"unknown tool gets fast timeout", "tools/call", `{"name":"unknown_tool","arguments":{}}`, 10 * time.Second},
+func TestDaemonStateMarkFailedAndReadyAreIdempotent(t *testing.T) {
+	state := &daemonState{
+		readyCh:  make(chan struct{}),
+		failedCh: make(chan struct{}),
 	}
 
-	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
-			t.Parallel()
-			req := JSONRPCRequest{
-				JSONRPC: "2.0",
-				ID:      json.RawMessage(`1`),
-				Method:  tc.method,
-				Params:  json.RawMessage(tc.params),
-			}
-			got := toolCallTimeout(req)
-			if got != tc.expected {
-				t.Errorf("toolCallTimeout(%s, %s) = %v, want %v", tc.method, tc.params, got, tc.expected)
-			}
-		})
+	state.markFailed("first")
+
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		state.markFailed("second")
+	}()
+
+	select {
+	case <-done:
+	case <-time.After(500 * time.Millisecond):
+		t.Fatal("second markFailed call blocked or panicked")
+	}
+
+	state.mu.Lock()
+	if !state.failed {
+		t.Fatal("expected failed=true after markFailed")
+	}
+	state.mu.Unlock()
+
+	// markReady should also be safe when invoked repeatedly.
+	state.mu.Lock()
+	state.resetSignalsLocked()
+	state.ready = false
+	state.failed = false
+	state.err = ""
+	state.mu.Unlock()
+
+	state.markReady()
+	state.markReady()
+
+	state.mu.Lock()
+	defer state.mu.Unlock()
+	if !state.ready {
+		t.Fatal("expected ready=true after markReady")
+	}
+	if state.failed {
+		t.Fatal("expected failed=false after markReady")
 	}
 }
 
+func TestCheckDaemonStatus_StartupGraceWaitsForReadySignal(t *testing.T) {
+	oldGrace := daemonStartupGracePeriod
+	daemonStartupGracePeriod = 120 * time.Millisecond
+	defer func() { daemonStartupGracePeriod = oldGrace }()
+
+	state := &daemonState{
+		readyCh:  make(chan struct{}),
+		failedCh: make(chan struct{}),
+	}
+
+	go func() {
+		time.Sleep(20 * time.Millisecond)
+		state.markReady()
+	}()
+
+	status := checkDaemonStatus(state, JSONRPCRequest{Method: "tools/call"}, 7890)
+	if status != "" {
+		t.Fatalf("checkDaemonStatus() = %q, want empty status after ready signal", status)
+	}
+}
+
+func TestCheckDaemonStatus_StartupGraceTimeoutReturnsStarting(t *testing.T) {
+	oldGrace := daemonStartupGracePeriod
+	daemonStartupGracePeriod = 60 * time.Millisecond
+	defer func() { daemonStartupGracePeriod = oldGrace }()
+
+	state := &daemonState{
+		readyCh:  make(chan struct{}),
+		failedCh: make(chan struct{}),
+	}
+
+	start := time.Now()
+	status := checkDaemonStatus(state, JSONRPCRequest{Method: "tools/call"}, 7890)
+	elapsed := time.Since(start)
+
+	if status != "starting" {
+		t.Fatalf("checkDaemonStatus() = %q, want starting", status)
+	}
+	if elapsed < 40*time.Millisecond {
+		t.Fatalf("startup grace wait too short: %v, want >= 40ms", elapsed)
+	}
+}

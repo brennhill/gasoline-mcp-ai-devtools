@@ -1,3 +1,7 @@
+// Purpose: Validate stdio_silence_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
+// Docs: docs/features/feature/observe/index.md
+
 package main
 
 import (
@@ -6,6 +10,7 @@ import (
 	"encoding/json"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"testing"
@@ -49,7 +54,7 @@ func TestStdioSilence_NormalConnection(t *testing.T) {
 	}
 
 	// Spawn server like MCP client would
-	cmd := startServerCmd(binary, "--port", strconv.Itoa(port))
+	cmd := startServerCmd(t, binary, "--port", strconv.Itoa(port))
 
 	// Capture stdout and stderr separately
 	var stdout, stderr bytes.Buffer
@@ -186,7 +191,7 @@ func TestStdioSilence_MultiClientSpawn(t *testing.T) {
 			t.Fatalf("Failed to get binary path: %v", err)
 		}
 
-		cmd := startServerCmd(binary, "--port", strconv.Itoa(port))
+		cmd := startServerCmd(t, binary, "--port", strconv.Itoa(port))
 
 		var stderr bytes.Buffer
 		cmd.Stderr = &stderr
@@ -266,7 +271,7 @@ func TestStdioSilence_ConnectionRetry(t *testing.T) {
 	}
 
 	// Start server
-	serverCmd := startServerCmd(binary, "--port", strconv.Itoa(port))
+	serverCmd := startServerCmd(t, binary, "--port", strconv.Itoa(port))
 	serverStdin, _ := serverCmd.StdinPipe()
 	if err := serverCmd.Start(); err != nil {
 		t.Fatalf("Failed to start server: %v", err)
@@ -280,7 +285,7 @@ func TestStdioSilence_ConnectionRetry(t *testing.T) {
 	time.Sleep(1 * time.Second)
 
 	// Now start a client - it will need to retry connection
-	clientCmd := startServerCmd(binary, "--port", strconv.Itoa(port))
+	clientCmd := startServerCmd(t, binary, "--port", strconv.Itoa(port))
 
 	var stderr bytes.Buffer
 	clientCmd.Stderr = &stderr
@@ -336,6 +341,191 @@ func TestStdioSilence_ConnectionRetry(t *testing.T) {
 
 	// Cleanup
 	killServerOnPort(t, port)
+}
+
+func TestStdioIsolation_StartupNoiseDoesNotPolluteMCPTransport(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping integration test in short mode")
+	}
+
+	port := findFreePort(t)
+	binary := buildTestBinary(t)
+	stateDir := filepath.Join(t.TempDir(), "state")
+	coverDir := filepath.Join(t.TempDir(), "cover")
+	if err := os.MkdirAll(coverDir, 0o755); err != nil {
+		t.Fatalf("Failed to create cover dir: %v", err)
+	}
+
+	cmd := startServerCmd(t, binary, "--bridge", "--port", strconv.Itoa(port), "--state-dir", stateDir)
+	cmd.Env = append(os.Environ(), "GASOLINE_TEST_BRIDGE_NOISE=1", "GOCOVERDIR="+coverDir)
+
+	var stdout, stderr bytes.Buffer
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+
+	stdin, err := cmd.StdinPipe()
+	if err != nil {
+		t.Fatalf("Failed to create stdin pipe: %v", err)
+	}
+	if err := cmd.Start(); err != nil {
+		t.Fatalf("Failed to start bridge process: %v", err)
+	}
+	defer func() {
+		_ = cmd.Process.Kill()
+		_ = cmd.Wait()
+	}()
+
+	initRequest := `{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test-llm","version":"1.0"}}}`
+	if _, err := stdin.Write([]byte(initRequest + "\n")); err != nil {
+		t.Fatalf("Failed to write initialize request: %v", err)
+	}
+	_ = stdin.Close()
+
+	time.Sleep(1500 * time.Millisecond)
+	_ = cmd.Process.Kill()
+	_ = cmd.Wait()
+
+	outStr := stdout.String()
+	errStr := stderr.String()
+
+	if strings.Contains(outStr, "GASOLINE_TEST_NOISE_STDOUT") || strings.Contains(outStr, "GASOLINE_TEST_NOISE_STDERR") {
+		t.Fatalf("transport polluted by startup noise: %q", outStr)
+	}
+	_ = parseMCPResponses(t, outStr)
+
+	if strings.TrimSpace(errStr) != "" {
+		t.Fatalf("stderr must stay silent in bridge mode, got: %q", errStr)
+	}
+
+	wrapperLogPath := filepath.Join(stateDir, "logs", bridgeWrapperLogFileName)
+	logBody, readErr := os.ReadFile(wrapperLogPath)
+	if readErr != nil {
+		t.Fatalf("read wrapper log: %v", readErr)
+	}
+	if !strings.Contains(string(logBody), "GASOLINE_TEST_NOISE_STDOUT") {
+		t.Fatalf("wrapper log missing redirected stdout noise: %s", wrapperLogPath)
+	}
+	if !strings.Contains(string(logBody), "GASOLINE_TEST_NOISE_STDERR") {
+		t.Fatalf("wrapper log missing redirected stderr noise: %s", wrapperLogPath)
+	}
+}
+
+func TestStdioIsolation_ContentLengthFramingNotPollutedByStartupNoise(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping integration test in short mode")
+	}
+
+	port := findFreePort(t)
+	binary := buildTestBinary(t)
+	stateDir := filepath.Join(t.TempDir(), "state")
+	coverDir := filepath.Join(t.TempDir(), "cover")
+	if err := os.MkdirAll(coverDir, 0o755); err != nil {
+		t.Fatalf("Failed to create cover dir: %v", err)
+	}
+
+	cmd := startServerCmd(t, binary, "--bridge", "--port", strconv.Itoa(port), "--state-dir", stateDir)
+	cmd.Env = append(os.Environ(), "GASOLINE_TEST_BRIDGE_NOISE=1", "GOCOVERDIR="+coverDir)
+
+	var stdout, stderr bytes.Buffer
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+
+	stdin, err := cmd.StdinPipe()
+	if err != nil {
+		t.Fatalf("Failed to create stdin pipe: %v", err)
+	}
+	if err := cmd.Start(); err != nil {
+		t.Fatalf("Failed to start bridge process: %v", err)
+	}
+	defer func() {
+		_ = cmd.Process.Kill()
+		_ = cmd.Wait()
+	}()
+
+	initPayload := `{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test-llm","version":"1.0"}}}`
+	listPayload := `{"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}`
+	framed := contentLengthFrame(initPayload) + contentLengthFrame(listPayload)
+	if _, err := stdin.Write([]byte(framed)); err != nil {
+		t.Fatalf("Failed to write framed requests: %v", err)
+	}
+	_ = stdin.Close()
+
+	time.Sleep(1500 * time.Millisecond)
+	_ = cmd.Process.Kill()
+	_ = cmd.Wait()
+
+	outStr := stdout.String()
+	errStr := stderr.String()
+
+	if !strings.HasPrefix(strings.ToLower(strings.TrimSpace(outStr)), "content-length:") {
+		t.Fatalf("expected content-length framed output, got: %q", outStr)
+	}
+	if strings.Contains(outStr, "GASOLINE_TEST_NOISE_STDOUT") || strings.Contains(outStr, "GASOLINE_TEST_NOISE_STDERR") {
+		t.Fatalf("framed transport polluted by startup noise: %q", outStr)
+	}
+
+	responses := parseMCPResponses(t, outStr)
+	if len(responses) < 2 {
+		t.Fatalf("expected at least 2 framed responses, got %d", len(responses))
+	}
+	for i, resp := range responses {
+		if resp.JSONRPC != "2.0" {
+			t.Fatalf("response %d missing jsonrpc 2.0: %+v", i, resp)
+		}
+	}
+
+	if strings.TrimSpace(errStr) != "" {
+		t.Fatalf("stderr must stay silent in bridge mode, got: %q", errStr)
+	}
+}
+
+func TestStdioIsolation_BridgeExitsAfterStdinEOF(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping integration test in short mode")
+	}
+
+	port := findFreePort(t)
+	binary := buildTestBinary(t)
+	stateDir := filepath.Join(t.TempDir(), "state")
+	coverDir := filepath.Join(t.TempDir(), "cover")
+	if err := os.MkdirAll(coverDir, 0o755); err != nil {
+		t.Fatalf("Failed to create cover dir: %v", err)
+	}
+
+	cmd := startServerCmd(t, binary, "--bridge", "--port", strconv.Itoa(port), "--state-dir", stateDir)
+	cmd.Env = append(os.Environ(), "GOCOVERDIR="+coverDir)
+
+	var stdout, stderr bytes.Buffer
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+
+	stdin, err := cmd.StdinPipe()
+	if err != nil {
+		t.Fatalf("Failed to create stdin pipe: %v", err)
+	}
+	if err := cmd.Start(); err != nil {
+		t.Fatalf("Failed to start bridge process: %v", err)
+	}
+
+	initRequest := `{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test-llm","version":"1.0"}}}`
+	if _, err := stdin.Write([]byte(initRequest + "\n")); err != nil {
+		t.Fatalf("Failed to write initialize request: %v", err)
+	}
+	_ = stdin.Close()
+
+	waitForProcessExit(t, cmd, 8*time.Second)
+
+	outStr := stdout.String()
+	errStr := stderr.String()
+
+	if strings.TrimSpace(outStr) == "" {
+		t.Fatalf("expected initialize JSON-RPC response, got empty stdout")
+	}
+	_ = parseMCPResponses(t, outStr)
+
+	if strings.TrimSpace(errStr) != "" {
+		t.Fatalf("stderr must stay silent in bridge mode, got: %q", errStr)
+	}
 }
 
 // Helper to kill server on port

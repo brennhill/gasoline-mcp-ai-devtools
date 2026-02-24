@@ -3,6 +3,8 @@ title: "Browser Observability for AI Coding Agents"
 description: "Autonomously debug and fix issues in real time. Streams console logs, network errors, and exceptions to Claude Code, Copilot, Cursor, or any MCP-compatible assistant."
 layout: home
 permalink: /
+status: reference
+last_reviewed: 2026-02-16
 ---
 
 <div class="hero">

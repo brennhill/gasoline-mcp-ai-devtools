@@ -1,9 +1,11 @@
-// type-aliases.go — Type aliases for imported packages.
-// These are real type aliases (= syntax), not forward declarations.
-// They provide convenience by avoiding qualifying imported types everywhere.
+// Purpose: Re-exports subsystem type aliases so capture can compose extracted packages without churn.
+// Why: Preserves capture package API/readability during modularization into circuit/queries/recording packages.
+// Docs: docs/features/feature/backend-log-streaming/index.md
+
 package capture
 
 import (
+	"github.com/dev-console/dev-console/internal/circuit"
 	"github.com/dev-console/dev-console/internal/performance"
 	"github.com/dev-console/dev-console/internal/queries"
 	"github.com/dev-console/dev-console/internal/recording"
@@ -23,4 +25,27 @@ type (
 	PendingQueryResponse  = queries.PendingQueryResponse      // Alias for convenience (avoid qualifying as queries.PendingQueryResponse everywhere)
 	PendingQuery          = queries.PendingQuery              // Alias for convenience
 	CommandResult         = queries.CommandResult             // Alias for convenience (avoid qualifying as queries.CommandResult everywhere)
+
+	// QueryDispatcher subsystem types — moved to internal/queries package.
+	QueryDispatcher = queries.QueryDispatcher // Query lifecycle, result storage, async command tracking
+	QuerySnapshot   = queries.QuerySnapshot   // Point-in-time view of query state for health reporting
+
+	// Circuit breaker subsystem types — moved to internal/circuit package.
+	CircuitBreaker    = circuit.CircuitBreaker    // Rate limiting + circuit breaker state machine
+	HealthResponse    = circuit.HealthResponse    // GET /health response
+	RateLimitResponse = circuit.RateLimitResponse // 429 response body
+
+	// Recording subsystem types — moved to internal/recording package.
+	RecordingManager = recording.RecordingManager // Recording lifecycle, playback, and log-diff engine
+	StorageInfo      = recording.StorageInfo      // Recording storage usage info
+	PlaybackSession  = recording.PlaybackSession  // Active playback session state
+	PlaybackResult   = recording.PlaybackResult   // Result of executing a single recorded action
+	Coordinates      = recording.Coordinates      // X/Y position on the page
+	LogDiffResult    = recording.LogDiffResult    // Comparison of two recordings
+	DiffLogEntry     = recording.DiffLogEntry     // Single log entry for diff comparison
+	ValueChange      = recording.ValueChange      // Field value change between recordings
+	ActionComparison = recording.ActionComparison // Action counts and types between recordings
 )
+
+// NewCircuitBreaker is re-exported from internal/circuit for backward compatibility.
+var NewCircuitBreaker = circuit.NewCircuitBreaker

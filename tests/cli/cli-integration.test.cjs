@@ -14,7 +14,7 @@ const _os = require('os')
 // Helper to run gasoline-mcp command
 function runCommand(args) {
   try {
-    const cmd = `node npm/gasoline-mcp/bin/gasoline-mcp ${args}`
+    const cmd = `npm/gasoline-mcp/bin/gasoline-mcp ${args}`.trim()
     const output = execSync(cmd, { encoding: 'utf8', stdio: ['pipe', 'pipe', 'pipe'] })
     return { success: true, output, exitCode: 0 }
   } catch (e) {
@@ -77,7 +77,7 @@ test('gasoline-mcp --install --dry-run previews without writing', () => {
   }
 
   try {
-    const result = runCommand('--install --dry-run')
+    const result = runCommand('--install --dry-run --skills-no-fallback')
 
     assert.strictEqual(result.exitCode, 0, 'Dry-run install should exit with 0')
     assert.ok(
@@ -107,13 +107,13 @@ test('gasoline-mcp --env without --install shows error', () => {
   )
 })
 
-test('gasoline-mcp --for-all without --install shows error', () => {
+test('gasoline-mcp with unsupported flag shows error', () => {
   const result = runCommand('--for-all')
 
   // Should fail or show error
   assert.ok(
-    result.output.includes('--for-all') || result.output.includes('--install') || !result.success,
-    'Should mention --for-all needs --install'
+    result.output.includes('Unknown command') || result.error.includes('Unknown command') || !result.success,
+    'Should mention unknown command'
   )
 })
 
@@ -181,10 +181,10 @@ test('CLI outputs use emoji markers for status', () => {
   )
 })
 
-test('gasoline-mcp --install --for-all --dry-run processes multiple tools', () => {
-  const result = runCommand('--install --for-all --dry-run')
+test('gasoline-mcp --install --dry-run handles install flags', () => {
+  const result = runCommand('--install --dry-run --skills-no-fallback')
 
-  assert.strictEqual(result.exitCode, 0, 'Dry-run forAll install should exit with 0')
+  assert.strictEqual(result.exitCode, 0, 'Dry-run install should exit with 0')
   assert.ok(result.output.length > 0, 'Should produce output')
 })
 
@@ -192,7 +192,7 @@ test('gasoline-mcp command parser handles flag combinations', () => {
   // These should all parse correctly even if they might fail
   const testCases = [
     '--install --dry-run',
-    '--install --for-all',
+    '--install --skills-no-fallback',
     '--install --env KEY=VALUE',
     '--doctor --verbose',
     '--help',

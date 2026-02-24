@@ -1,5 +1,10 @@
 # pylint: disable=duplicate-code
-"""Custom error classes for Gasoline MCP CLI."""
+"""Custom error classes for the PyPI wrapper.
+
+Purpose: Standardize user-facing error and recovery output across commands.
+Why: Keeps diagnostics and install failures understandable and fixable.
+Docs: docs/features/feature/enhanced-cli-config/index.md
+"""
 
 import os
 
@@ -87,16 +92,6 @@ class EnvWithoutInstallError(GasolineError):
         recovery = "Usage: gasoline-mcp --install --env KEY=VALUE"
         super().__init__(msg, recovery)
         self.name = "EnvWithoutInstallError"
-
-
-class ForAllWithoutInstallError(GasolineError):
-    """Raised when --for-all is used without --install."""
-
-    def __init__(self):
-        msg = "--for-all only works with --install"
-        recovery = "Usage: gasoline-mcp --install --for-all"
-        super().__init__(msg, recovery)
-        self.name = "ForAllWithoutInstallError"
 
 
 class ConfigValidationError(GasolineError):

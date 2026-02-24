@@ -248,11 +248,11 @@ run_test_3_9() {
         fail "isError was true but no content text. Full response: $(truncate "$RESPONSE")"
         return
     fi
-    if ! check_contains "$text" "format"; then
-        fail "Error message does not mention missing 'format' parameter. Got: $(truncate "$text")"
+    if ! check_contains "$text" "what" && ! check_contains "$text" "format"; then
+        fail "Error message does not mention missing required mode parameter (what/format). Got: $(truncate "$text")"
         return
     fi
-    pass "Sent generate({}), got isError:true. Error mentions missing 'format' parameter. Content: $(truncate "$text" 150)"
+    pass "Sent generate({}), got isError:true. Error mentions missing required mode parameter. Content: $(truncate "$text" 150)"
 }
 run_test_3_9
 

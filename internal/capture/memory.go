@@ -1,7 +1,7 @@
-// memory.go — Per-buffer memory tracking and estimation.
-// Each buffer (WS events, network bodies, actions) tracks its own memory
-// independently. Per-buffer limits are enforced at ingest time by each buffer's
-// own eviction function (evictWSForMemory, evictNBForMemory).
+// Purpose: Implements capture buffer memory accounting helpers and O(1) memory-total accessors.
+// Why: Keeps ingestion and eviction logic memory-aware to prevent runaway daemon usage.
+// Docs: docs/features/feature/backend-log-streaming/index.md
+
 package capture
 
 const (

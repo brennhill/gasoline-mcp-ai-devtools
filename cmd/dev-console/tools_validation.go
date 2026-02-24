@@ -1,13 +1,40 @@
-// tools_validation.go — Parameter validation and error checking utilities.
-// Validates log entries, extracts JSON field names, and unmarshals with warnings.
 package main
 
 import (
 	"encoding/json"
 	"fmt"
-	"reflect"
 	"strings"
+
+	"github.com/dev-console/dev-console/internal/mcp"
 )
+
+func getJSONFieldNames(v any) map[string]bool {
+	return mcp.GetJSONFieldNames(v)
+}
+
+// parseArgs unmarshals JSON args into a typed struct, returning a structured error on failure.
+// Usage: params, resp, ok := parseArgs[MyParams](req, args); if !ok { return resp }
+func parseArgs[T any](req JSONRPCRequest, args json.RawMessage) (T, JSONRPCResponse, bool) {
+	var p T
+	if err := json.Unmarshal(args, &p); err != nil {
+		return p, JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(
+			ErrInvalidJSON, "Invalid JSON arguments: "+err.Error(), "Fix JSON syntax and call again",
+		)}, false
+	}
+	return p, JSONRPCResponse{}, true
+}
+
+func unmarshalWithWarnings(data json.RawMessage, v any) ([]string, error) {
+	return mcp.UnmarshalWithWarnings(data, v)
+}
+
+func validateParamsAgainstSchema(data json.RawMessage, schema map[string]any) []string {
+	return mcp.ValidateParamsAgainstSchema(data, schema)
+}
+
+// ============================================
+// Log Quality Checking (observe-specific)
+// ============================================
 
 // logFieldCounts tracks missing field counts for log quality checking.
 type logFieldCounts struct {
@@ -63,56 +90,4 @@ func formatQualityWarning(c logFieldCounts, total int) string {
 	}
 	return fmt.Sprintf("WARNING: %d/%d entries have incomplete fields (%s). This may indicate a browser extension issue or version mismatch.",
 		c.badEntries, total, strings.Join(parts, ", "))
-}
-
-// getJSONFieldNames uses reflection to extract the set of known JSON field names
-// from a struct's json tags. Fields without a json tag use their Go field name.
-// Fields tagged with json:"-" are excluded.
-func getJSONFieldNames(v any) map[string]bool {
-	known := make(map[string]bool)
-	t := reflect.TypeOf(v)
-	if t.Kind() == reflect.Ptr {
-		t = t.Elem()
-	}
-	if t.Kind() != reflect.Struct {
-		return known
-	}
-	for i := 0; i < t.NumField(); i++ {
-		field := t.Field(i)
-		tag := field.Tag.Get("json")
-		if tag == "-" {
-			continue
-		}
-		if tag == "" {
-			known[field.Name] = true
-			continue
-		}
-		// Strip options like ",omitempty"
-		name := strings.Split(tag, ",")[0]
-		if name != "" {
-			known[name] = true
-		}
-	}
-	return known
-}
-
-// unmarshalWithWarnings unmarshals JSON into a struct and returns warnings for
-// any unknown top-level fields. This helps LLMs discover misspelled parameters.
-func unmarshalWithWarnings(data json.RawMessage, v any) ([]string, error) {
-	if err := json.Unmarshal(data, v); err != nil {
-		return nil, err
-	}
-	// Check for unknown fields by unmarshaling into a map
-	var raw map[string]json.RawMessage
-	if err := json.Unmarshal(data, &raw); err != nil {
-		return nil, nil // Can't check, skip warnings
-	}
-	known := getJSONFieldNames(v)
-	var warnings []string
-	for k := range raw {
-		if !known[k] {
-			warnings = append(warnings, fmt.Sprintf("unknown parameter '%s' (ignored)", k))
-		}
-	}
-	return warnings, nil
 }

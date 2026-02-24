@@ -834,6 +834,16 @@
         color: #555 !important;
       }
 
+      body.light-theme #security-mode-warning {
+        background: rgba(207, 34, 46, 0.08) !important;
+        border-color: #cf222e !important;
+        color: #cf222e !important;
+      }
+
+      body.light-theme #security-mode-detail {
+        color: #555 !important;
+      }
+
       /* Context warning banner */
       body.light-theme #context-warning {
         background: rgba(154, 103, 0, 0.08) !important;
@@ -1028,6 +1038,26 @@
       <span style="font-weight: 600">Version mismatch</span>
       <p class="version-detail" style="margin-top: 4px; color: #aaa"></p>
       <p style="margin-top: 4px; color: #888; font-size: 11px">Update both to the same major version.</p>
+    </div>
+
+    <div
+      id="security-mode-warning"
+      style="
+        display: none;
+        margin-bottom: 12px;
+        padding: 8px 12px;
+        background: rgba(248, 81, 73, 0.1);
+        border: 1px solid #f85149;
+        border-radius: 6px;
+        font-size: 12px;
+        color: #f85149;
+      "
+    >
+      <span style="font-weight: 600">INSECURE DEBUG MODE</span>
+      <p id="security-mode-detail" style="margin-top: 4px; color: #aaa"></p>
+      <p style="margin-top: 4px; color: #888; font-size: 11px">
+        Altered environment is active. Results are not production-parity evidence.
+      </p>
     </div>
 
     <div class="status-row">

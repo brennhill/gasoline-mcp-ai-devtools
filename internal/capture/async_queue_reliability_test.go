@@ -1,3 +1,7 @@
+// Purpose: Validate async_queue_reliability_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
+// Docs: docs/features/feature/backend-log-streaming/index.md
+
 // async_queue_reliability_test.go — Test async queue under various timing conditions
 // Ensures commands don't expire before extension can poll them.
 package capture
@@ -134,9 +138,7 @@ func TestAsyncQueueReliability(t *testing.T) {
 			<-pollingDone
 
 			// Check for expired commands
-			capture.qd.mu.Lock()
-			commandsExpired = len(capture.qd.pendingQueries)
-			capture.qd.mu.Unlock()
+			commandsExpired = capture.qd.QueueDepth()
 
 			mu.Lock()
 			sent := commandsSent
@@ -173,7 +175,7 @@ func TestAsyncQueueTimeout(t *testing.T) {
 		CorrelationID: "timeout_test",
 	}
 
-	id := capture.CreatePendingQueryWithTimeout(query, 250*time.Millisecond, "")
+	id, _ := capture.CreatePendingQueryWithTimeout(query, 250*time.Millisecond, "")
 
 	// Wait slightly less than timeout
 	time.Sleep(120 * time.Millisecond)

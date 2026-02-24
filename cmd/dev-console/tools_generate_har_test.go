@@ -1,3 +1,7 @@
+// Purpose: Validate tools_generate_har_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
+// Docs: docs/features/feature/test-generation/index.md
+
 // tools_generate_har_test.go — MCP integration tests for HAR export.
 package main
 

@@ -1,5 +1,7 @@
 ---
 feature: Version Checking & Update Notifications
+status: reference
+last_reviewed: 2026-02-16
 ---
 
 # QA Plan: Version Checking & Update Notifications

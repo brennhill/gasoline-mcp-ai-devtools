@@ -1,32 +1,24 @@
-// helpers.go — Shared utility functions used across the server.
-// Currently provides URL path extraction (stripping query params and fragments)
-// used by the network and performance subsystems for path-based grouping.
+// Purpose: Provides shared capture helper utilities for URL handling, slice operations, and ingest body processing.
+// Why: Prevents repeated low-level helper logic across capture handlers and ingestion code paths.
+// Docs: docs/features/feature/backend-log-streaming/index.md
+
 package capture
 
 import (
 	"io"
 	"net/http"
-	"net/url"
+
+	"github.com/dev-console/dev-console/internal/util"
 )
 
-// extractURLPath extracts the path portion from a URL string, stripping query parameters.
-// Returns "/" if the URL has no path component.
-// Returns the input unchanged if it cannot be parsed.
+// extractURLPath delegates to util.ExtractURLPath for URL path extraction.
 func extractURLPath(rawURL string) string {
-	parsed, err := url.Parse(rawURL)
-	if err != nil {
-		return rawURL
-	}
-	path := parsed.Path
-	if path == "" {
-		return "/"
-	}
-	return path
+	return util.ExtractURLPath(rawURL)
 }
 
-// ExtractURLPath is the exported version of extractURLPath for use in tests.
+// ExtractURLPath is the exported version for cross-package callers.
 func ExtractURLPath(rawURL string) string {
-	return extractURLPath(rawURL)
+	return util.ExtractURLPath(rawURL)
 }
 
 // reverseSlice reverses a slice in place.

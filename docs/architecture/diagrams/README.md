@@ -1,3 +1,9 @@
+---
+doc_type: legacy_doc
+status: reference
+last_reviewed: 2026-02-16
+---
+
 # Architecture Diagrams
 
 Visual guides to understanding Gasoline's core architecture.

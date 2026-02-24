@@ -223,7 +223,7 @@ describe('SyncClient — Connection state transitions', () => {
     assert.strictEqual(callbacks.onConnectionChange.mock.calls[0].arguments[0], true)
   })
 
-  test('should transition from connected to disconnected on fetch failure', async () => {
+  test('should transition from connected to disconnected after 2 consecutive failures', async () => {
     // First call succeeds, subsequent calls fail
     let callCount = 0
     globalThis.fetch = mock.fn(() => {
@@ -240,9 +240,9 @@ describe('SyncClient — Connection state transitions', () => {
     client = new SyncClient('http://localhost:7777', 'sess-1', callbacks)
     client.start()
 
-    // Wait for first success + second poll (failure). The first sync fires at ~0ms,
-    // completes and schedules next at +10ms. Give enough time for both.
-    await tick(200)
+    // Wait for first success + two failures (need 2 consecutive failures for disconnect).
+    // First sync fires at ~0ms (success), retry at ~10ms (fail #1), retry at ~1010ms (fail #2).
+    await tick(1200)
 
     assert.strictEqual(client.isConnected(), false)
 
@@ -265,6 +265,40 @@ describe('SyncClient — Connection state transitions', () => {
     // onConnectionChange(false) should only be called once despite multiple failures
     // (starts disconnected, so zero calls because it was never connected)
     assert.strictEqual(callbacks.onConnectionChange.mock.calls.length, 0)
+  })
+
+  test('should NOT disconnect after a single failure (requires 2 consecutive)', async () => {
+    // First call succeeds, second fails, third succeeds
+    let callCount = 0
+    globalThis.fetch = mock.fn(() => {
+      callCount++
+      if (callCount === 1) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve(makeSyncResponse({ next_poll_ms: 10 }))
+        })
+      }
+      if (callCount === 2) {
+        return Promise.reject(new Error('transient failure'))
+      }
+      return Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve(makeSyncResponse({ next_poll_ms: 60000 }))
+      })
+    })
+
+    client = new SyncClient('http://localhost:7777', 'sess-1', callbacks)
+    client.start()
+
+    // Wait for first success + one failure + recovery
+    await tick(1200)
+
+    assert.strictEqual(client.isConnected(), true)
+
+    // onConnectionChange should only have been called once (connected), never disconnected
+    const changeCalls = callbacks.onConnectionChange.mock.calls
+    const disconnectCalls = changeCalls.filter((c) => c.arguments[0] === false)
+    assert.strictEqual(disconnectCalls.length, 0, 'Should not have disconnected on single failure')
   })
 
   test('should reset consecutiveFailures on success', async () => {
@@ -369,13 +403,13 @@ describe('SyncClient — Request building', () => {
     client.stop()
   })
 
-  test('should send session_id and extension_version in request body', async () => {
+  test('should send ext_session_id and extension_version in request body', async () => {
     client.start()
     await tick(50)
 
     assert.ok(mockFetch.mock.calls.length >= 1)
     const body = JSON.parse(mockFetch.mock.calls[0].arguments[1].body)
-    assert.strictEqual(body.session_id, 'sess-1')
+    assert.strictEqual(body.ext_session_id, 'sess-1')
     assert.strictEqual(body.extension_version, '6.0.3')
   })
 
@@ -387,6 +421,15 @@ describe('SyncClient — Request building', () => {
     assert.ok(body.settings)
     assert.strictEqual(body.settings.capture_logs, true)
     assert.strictEqual(body.settings.pilot_enabled, false)
+  })
+
+  test('should include in_progress heartbeat field even when empty', async () => {
+    client.start()
+    await tick(50)
+
+    const body = JSON.parse(mockFetch.mock.calls[0].arguments[1].body)
+    assert.ok(Array.isArray(body.in_progress))
+    assert.strictEqual(body.in_progress.length, 0)
   })
 
   test('should include extension_logs when present', async () => {
@@ -415,7 +458,7 @@ describe('SyncClient — Request building', () => {
   })
 
   test('should include last_command_ack when set', async () => {
-    // First sync to get connected, with a command that sets lastCommandAck
+    // First sync to get connected, with a command that sets lastCommandAck after dispatch
     const response = makeSyncResponse({
       commands: [{ id: 'cmd-1', type: 'dom_query', params: {} }],
       next_poll_ms: 10
@@ -423,7 +466,7 @@ describe('SyncClient — Request building', () => {
     mockFetch = installFetchMock(response)
 
     client.start()
-    await tick(50)
+    await tick(50) // wait for dispatch to complete (ack set in finally block)
 
     // Second sync should include last_command_ack
     await tick(50)
@@ -489,7 +532,7 @@ describe('SyncClient — Command dispatch', () => {
 
     client = new SyncClient('http://localhost:7777', 'sess-1', callbacks)
     client.start()
-    await tick(50)
+    await tick(50) // wait for async dispatch to complete (ack set in finally block)
 
     assert.strictEqual(client.getState().lastCommandAck, 'cmd-2')
   })
@@ -510,12 +553,82 @@ describe('SyncClient — Command dispatch', () => {
 
     client = new SyncClient('http://localhost:7777', 'sess-1', callbacks)
     client.start()
-    await tick(50)
+    await tick(50) // wait for async dispatch to complete (ack set in finally block)
 
     // Both commands attempted
     assert.strictEqual(callbacks.onCommand.mock.calls.length, 2)
-    // lastCommandAck should be the second (successful) command
+    // lastCommandAck should be the second command — ack advances through failed dispatches too
     assert.strictEqual(client.getState().lastCommandAck, 'cmd-2')
+  })
+
+  test('should not ack commands before dispatch completes', async () => {
+    let resolveSlowHandler
+    callbacks.onCommand = mock.fn(
+      () =>
+        new Promise((resolve) => {
+          resolveSlowHandler = resolve
+        })
+    )
+
+    const commands = [{ id: 'cmd-slow', type: 'browser_action', params: {} }]
+    installFetchMock(makeSyncResponse({ commands, next_poll_ms: 60000 }))
+
+    client = new SyncClient('http://localhost:7777', 'sess-1', callbacks)
+    client.start()
+    await tick(30) // sync fires, command dispatched but handler not resolved yet
+
+    // Ack should NOT be set while dispatch is still in progress
+    assert.strictEqual(client.getState().lastCommandAck, null, 'should not ack before dispatch completes')
+
+    // Now resolve the handler
+    resolveSlowHandler()
+    await tick(30)
+
+    // Ack should now be set
+    assert.strictEqual(client.getState().lastCommandAck, 'cmd-slow', 'should ack after dispatch completes')
+  })
+
+  test('should report running commands in in_progress heartbeat payload', async () => {
+    let callCount = 0
+    globalThis.fetch = mock.fn(() => {
+      callCount++
+      if (callCount === 1) {
+        return Promise.resolve({
+          ok: true,
+          json: () =>
+            Promise.resolve(
+              makeSyncResponse({
+                commands: [{ id: 'cmd-running', type: 'browser_action', correlation_id: 'corr-running', params: {} }],
+                next_poll_ms: 10
+              })
+            )
+        })
+      }
+      return Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve(makeSyncResponse({ commands: [], next_poll_ms: 60000 }))
+      })
+    })
+
+    callbacks.onCommand = mock.fn(
+      () =>
+        new Promise((resolve) => {
+          setTimeout(resolve, 120)
+        })
+    )
+
+    client = new SyncClient('http://localhost:7777', 'sess-1', callbacks)
+    client.start()
+    await tick(70)
+
+    assert.ok(globalThis.fetch.mock.calls.length >= 2, 'expected at least two sync cycles')
+    const secondBody = JSON.parse(globalThis.fetch.mock.calls[1].arguments[1].body)
+    assert.ok(Array.isArray(secondBody.in_progress))
+    const active = secondBody.in_progress.find((cmd) => cmd.id === 'cmd-running')
+    assert.ok(active, `expected cmd-running in in_progress, got ${JSON.stringify(secondBody.in_progress)}`)
+    assert.strictEqual(active.correlation_id, 'corr-running')
+    assert.strictEqual(active.type, 'browser_action')
+    assert.ok(active.status === 'running' || active.status === 'pending')
   })
 
   test('should not dispatch commands when response has empty commands array', async () => {
@@ -561,6 +674,132 @@ describe('SyncClient — Command dispatch', () => {
     await tick(120)
 
     assert.strictEqual(callbacks.onCommand.mock.calls.length, 1)
+  })
+
+  test('should keep syncing while async command handlers are still running', async () => {
+    let fetchCalls = 0
+    globalThis.fetch = mock.fn(() => {
+      fetchCalls++
+      if (fetchCalls === 1) {
+        return Promise.resolve({
+          ok: true,
+          json: () =>
+            Promise.resolve(
+              makeSyncResponse({
+                commands: [{ id: 'cmd-slow', type: 'browser_action', params: {} }],
+                next_poll_ms: 10
+              })
+            )
+        })
+      }
+      return Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve(makeSyncResponse({ commands: [], next_poll_ms: 10 }))
+      })
+    })
+
+    callbacks.onCommand = mock.fn(
+      () =>
+        new Promise((resolve) => {
+          setTimeout(resolve, 80)
+        })
+    )
+
+    client = new SyncClient('http://localhost:7777', 'sess-1', callbacks)
+    client.start()
+
+    await tick(40)
+    assert.ok(fetchCalls >= 2, `expected heartbeat sync to continue while command is running, got ${fetchCalls}`)
+
+    await tick(120)
+    assert.strictEqual(callbacks.onCommand.mock.calls.length, 1)
+    assert.ok(fetchCalls >= 2, `expected at least 2 sync cycles, got ${fetchCalls}`)
+  })
+
+  test('should timeout hanging command handlers and continue syncing', async () => {
+    let fetchCalls = 0
+    globalThis.fetch = mock.fn(() => {
+      fetchCalls++
+      if (fetchCalls === 1) {
+        return Promise.resolve({
+          ok: true,
+          json: () =>
+            Promise.resolve(
+              makeSyncResponse({
+                commands: [{ id: 'cmd-hang', type: 'browser_action', params: {} }],
+                next_poll_ms: 10
+              })
+            )
+        })
+      }
+      return Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve(makeSyncResponse({ commands: [], next_poll_ms: 10 }))
+      })
+    })
+
+    callbacks.onCommand = mock.fn(async () => {
+      await new Promise(() => {})
+    })
+    callbacks.commandTimeoutMs = 50
+
+    client = new SyncClient('http://localhost:7777', 'sess-1', callbacks)
+    const queued = []
+    const originalQueue = client.queueCommandResult.bind(client)
+    client.queueCommandResult = (result) => {
+      queued.push(result)
+      originalQueue(result)
+    }
+    client.start()
+
+    for (let i = 0; i < 40 && queued.length === 0; i++) {
+      // eslint-disable-next-line no-await-in-loop
+      await tick(10)
+    }
+
+    assert.ok(queued.length > 0, 'expected a timeout error result to be queued')
+    assert.strictEqual(queued[0].id, 'cmd-hang')
+    assert.strictEqual(queued[0].status, 'error')
+    assert.ok(String(queued[0].error).includes('timed out'))
+    for (let i = 0; i < 20 && fetchCalls < 2; i++) {
+      // eslint-disable-next-line no-await-in-loop
+      await tick(10)
+    }
+    assert.ok(fetchCalls >= 2, `expected sync loop to continue after timeout, got ${fetchCalls} fetch call(s)`)
+  })
+
+  test('should not let long command timeout block heartbeat polling', async () => {
+    let fetchCalls = 0
+    globalThis.fetch = mock.fn(() => {
+      fetchCalls++
+      if (fetchCalls === 1) {
+        return Promise.resolve({
+          ok: true,
+          json: () =>
+            Promise.resolve(
+              makeSyncResponse({
+                commands: [{ id: 'cmd-long', type: 'browser_action', params: {} }],
+                next_poll_ms: 10
+              })
+            )
+        })
+      }
+      return Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve(makeSyncResponse({ commands: [], next_poll_ms: 10 }))
+      })
+    })
+
+    callbacks.onCommand = mock.fn(async () => {
+      await new Promise(() => {})
+    })
+    callbacks.commandTimeoutMs = 10_000
+
+    client = new SyncClient('http://localhost:7777', 'sess-1', callbacks)
+    client.start()
+
+    await tick(60)
+    assert.ok(fetchCalls >= 2, `expected follow-up heartbeat polls while command is still pending, got ${fetchCalls}`)
   })
 })
 
@@ -948,7 +1187,7 @@ describe('SyncClient — Error recovery', () => {
   })
 
   test('should handle AbortController timeout gracefully', async () => {
-    // Simulate fetch that hangs beyond the 3s timeout
+    // Simulate fetch that hangs beyond the 8s timeout
     globalThis.fetch = mock.fn((_url, opts) => {
       return new Promise((_resolve, reject) => {
         if (opts.signal) {
@@ -962,8 +1201,8 @@ describe('SyncClient — Error recovery', () => {
     client = new SyncClient('http://localhost:7777', 'sess-1', callbacks)
     client.start()
 
-    // Wait for the 3s timeout + a bit
-    await tick(3500)
+    // Wait for the 8s timeout + a bit
+    await tick(8500)
 
     assert.strictEqual(client.isConnected(), false)
     assert.ok(client.getState().consecutiveFailures >= 1)

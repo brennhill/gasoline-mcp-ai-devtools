@@ -1,4 +1,7 @@
-// http_debug_redaction.go — Sensitive data redaction for HTTP debug log entries.
+// Purpose: Implements redaction of HTTP debug entry fields before persistence/output.
+// Why: Prevents sensitive request/response values from leaking through debug diagnostics.
+// Docs: docs/features/feature/redaction-patterns/index.md
+
 package capture
 
 // redactHTTPDebugEntry scrubs sensitive data from HTTP debug entry fields before storage.

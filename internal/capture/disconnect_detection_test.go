@@ -1,3 +1,7 @@
+// Purpose: Validate disconnect_detection_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
+// Docs: docs/features/feature/backend-log-streaming/index.md
+
 // disconnect_detection_test.go — Tests for extension disconnect detection.
 // Covers: IsExtensionConnected, GetExtensionStatus, auto-expiry of pending
 // queries when extension disconnects, and pilot status enrichment.
@@ -154,7 +158,7 @@ func TestHandleSync_UpdatesLastSyncSeen(t *testing.T) {
 	}
 
 	// Send sync request
-	req := SyncRequest{SessionID: "test-session"}
+	req := SyncRequest{ExtSessionID: "test-session"}
 	body, _ := json.Marshal(req)
 	httpReq := httptest.NewRequest("POST", "/sync", bytes.NewReader(body))
 	httpReq.Header.Set("X-Gasoline-Client", "client-123")
@@ -213,6 +217,60 @@ func TestGetPilotStatus_EmptyLastSeenWhenNeverSynced(t *testing.T) {
 	lastSeen, ok := status["extension_last_seen"].(string)
 	if !ok || lastSeen != "" {
 		t.Fatalf("expected empty extension_last_seen, got %v", status["extension_last_seen"])
+	}
+}
+
+func TestGetPilotStatus_DefaultsToAssumedEnabledUntilAuthoritative(t *testing.T) {
+	t.Parallel()
+	c := NewCapture()
+	defer c.Close()
+
+	status := c.GetPilotStatus().(map[string]any)
+
+	if status["enabled"] != true {
+		t.Fatalf("enabled = %v, want true while startup state is uncertain", status["enabled"])
+	}
+	if status["state"] != "assumed_enabled" {
+		t.Fatalf("state = %v, want assumed_enabled", status["state"])
+	}
+	if status["authoritative"] != false {
+		t.Fatalf("authoritative = %v, want false before first explicit setting", status["authoritative"])
+	}
+}
+
+func TestGetPilotStatus_ExplicitDisableFromSyncIsAuthoritative(t *testing.T) {
+	t.Parallel()
+	c := NewCapture()
+	defer c.Close()
+
+	reqBody := `{
+		"ext_session_id":"pilot-explicit-disable",
+		"settings":{
+			"pilot_enabled":false,
+			"tracking_enabled":false,
+			"tracked_tab_id":0,
+			"tracked_tab_url":"",
+			"tracked_tab_title":"",
+			"capture_logs":true,
+			"capture_network":true,
+			"capture_websocket":true,
+			"capture_actions":true
+		}
+	}`
+	httpReq := httptest.NewRequest("POST", "/sync", bytes.NewBufferString(reqBody))
+	w := httptest.NewRecorder()
+	c.HandleSync(w, httpReq)
+
+	status := c.GetPilotStatus().(map[string]any)
+
+	if status["enabled"] != false {
+		t.Fatalf("enabled = %v, want false for explicit pilot disable", status["enabled"])
+	}
+	if status["state"] != "explicitly_disabled" {
+		t.Fatalf("state = %v, want explicitly_disabled", status["state"])
+	}
+	if status["authoritative"] != true {
+		t.Fatalf("authoritative = %v, want true after sync settings", status["authoritative"])
 	}
 }
 
@@ -330,7 +388,7 @@ func TestHandleSync_ExpiresPendingOnDisconnect(t *testing.T) {
 
 	// The sync handler calls GetPendingQueries internally via GetPendingQueriesDisconnectAware.
 	// After reconnection (new sync), queries should have been expired before this sync processes.
-	req := SyncRequest{SessionID: "reconnect-session"}
+	req := SyncRequest{ExtSessionID: "reconnect-session"}
 	body, _ := json.Marshal(req)
 	httpReq := httptest.NewRequest("POST", "/sync", bytes.NewReader(body))
 	w := httptest.NewRecorder()

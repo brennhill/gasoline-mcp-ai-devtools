@@ -4,6 +4,9 @@ status: proposed
 tool: interact, observe
 mode: record_start, record_stop, saved_videos
 version: v6.0
+doc_type: product-spec
+feature_id: feature-tab-recording
+last_reviewed: 2026-02-16
 ---
 
 # Product Spec: Tab Recording

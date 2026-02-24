@@ -1,3 +1,9 @@
+---
+doc_type: legacy_doc
+status: reference
+last_reviewed: 2026-02-16
+---
+
 # Chrome Extension CRX Distribution
 
 > **Status:** Enables direct installation of Gasoline extension while waiting for Chrome Web Store approval

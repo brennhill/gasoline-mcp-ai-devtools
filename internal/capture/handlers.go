@@ -1,6 +1,8 @@
-// handlers.go — HTTP handlers for extension ↔ server communication
-// Implements endpoints for pending queries, query results, and extension status.
-// Part of the async queue-and-poll architecture (see internal/capture/queries.go).
+// Purpose: Implements HTTP ingest handlers for network, query, and telemetry capture endpoints.
+// Why: Provides the daemon-side ingress boundary that validates and routes extension event batches.
+// Docs: docs/features/feature/backend-log-streaming/index.md
+// Docs: docs/features/feature/query-service/index.md
+
 package capture
 
 import (
@@ -60,7 +62,6 @@ func (c *Capture) HandleNetworkWaterfall(w http.ResponseWriter, r *http.Request)
 	})
 }
 
-
 // HandleQueryResult processes all query/command results from the extension.
 // Unified handler replacing separate dom-result, a11y-result, state-result,
 // execute-result, and highlight-result endpoints.
@@ -88,14 +89,20 @@ func (c *Capture) HandleQueryResult(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Handle correlation_id for async commands (execute_js, browser actions)
-	if body.CorrelationID != "" {
-		c.CompleteCommand(body.CorrelationID, body.Result, body.Error)
-	}
-
 	// Handle query_id for synchronous query results
 	if body.ID != "" {
-		c.SetQueryResultWithClient(body.ID, body.Result, body.ClientID)
+		if body.CorrelationID != "" {
+			// Correlated async commands carry explicit lifecycle status below.
+			// Do not force "complete" from query-id bookkeeping.
+			c.SetQueryResultWithClientNoCommandComplete(body.ID, body.Result, body.ClientID)
+		} else {
+			c.SetQueryResultWithClient(body.ID, body.Result, body.ClientID)
+		}
+	}
+
+	// Handle correlation_id for async commands (execute_js, browser actions)
+	if body.CorrelationID != "" {
+		c.ApplyCommandResult(body.CorrelationID, body.Status, body.Result, body.Error)
 	}
 
 	w.Header().Set("Content-Type", "application/json")

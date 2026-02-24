@@ -1,3 +1,7 @@
+// Purpose: Implement kill-daemon.js behavior for npm wrapper command flows.
+// Why: Keeps distribution-channel behavior consistent and supportable.
+// Docs: docs/features/feature/enhanced-cli-config/index.md
+
 // kill-daemon.js — Best-effort daemon cleanup for install/uninstall.
 // Goal: old binaries must not survive an upgrade in memory.
 const fs = require('fs');

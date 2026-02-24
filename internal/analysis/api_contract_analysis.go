@@ -1,6 +1,7 @@
-// api_contract_analysis.go — Contract analysis, reporting, and violation detection.
-// Contains the analysis pipeline that processes tracked endpoints, detects
-// error spikes, compares response shapes, and generates reports.
+// Purpose: Implements API contract analysis helpers and report assembly over tracked endpoint state.
+// Why: Converts raw contract tracker state into actionable violation summaries for tool responses.
+// Docs: docs/features/feature/api-schema/index.md
+
 package analysis
 
 import (

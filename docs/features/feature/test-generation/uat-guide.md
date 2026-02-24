@@ -1,5 +1,7 @@
 ---
 feature: test-generation
+status: reference
+last_reviewed: 2026-02-16
 ---
 
 # Test Generation — User Acceptance Testing Guide
@@ -52,7 +54,7 @@ You need a simple web application with:
 4. Ask AI: "Generate a test that reproduces the validation error I just triggered"
 
 #### Expected AI Actions:
-- AI calls `generate {type: "test_from_context", context: "error"}`
+- AI calls `generate {format: "test_from_context", context: "error"}`
 
 #### Verification:
 - [ ] Response includes valid Playwright test code
@@ -78,7 +80,7 @@ You need a simple web application with:
 3. Ask AI: "Generate a test from my recent interactions"
 
 #### Expected AI Actions:
-- AI calls `generate {type: "test_from_context", context: "interaction"}`
+- AI calls `generate {format: "test_from_context", context: "interaction"}`
 
 #### Verification:
 - [ ] Test includes all performed actions in order
@@ -97,7 +99,7 @@ You need a simple web application with:
 2. Ask AI: "Generate a test with network mocking for the API calls"
 
 #### Expected AI Actions:
-- AI calls `generate {type: "test_from_context", context: "interaction", include_mocks: true}`
+- AI calls `generate {format: "test_from_context", context: "interaction", include_mocks: true}`
 
 #### Verification:
 - [ ] Test includes `page.route()` for API endpoints
@@ -119,7 +121,7 @@ You need a simple web application with:
 3. Ask AI: "Fix the broken selector '#old-button-id' in my test"
 
 #### Expected AI Actions:
-- AI calls `generate {type: "test_heal", action: "repair", broken_selectors: ["#old-button-id"]}`
+- AI calls `generate {format: "test_heal", action: "repair", broken_selectors: ["#old-button-id"]}`
 
 #### Verification:
 - [ ] Response includes healed selector with new value
@@ -138,7 +140,7 @@ You need a simple web application with:
 2. Ask AI: "Analyze my test file for broken selectors"
 
 #### Expected AI Actions:
-- AI calls `generate {type: "test_heal", action: "analyze", test_file: "path/to/test.spec.ts"}`
+- AI calls `generate {format: "test_heal", action: "analyze", test_file: "path/to/test.spec.ts"}`
 
 #### Verification:
 - [ ] Response lists all selectors in the test
@@ -157,7 +159,7 @@ You need a simple web application with:
 3. Ask AI: "Why did this test fail?"
 
 #### Expected AI Actions:
-- AI calls `generate {type: "test_classify", action: "failure", failure: {...}}`
+- AI calls `generate {format: "test_classify", action: "failure", failure: {...}}`
 
 #### Verification:
 - [ ] Classification: `selector_broken`
@@ -177,7 +179,7 @@ You need a simple web application with:
 2. Ask AI: "Is this test failure a real bug?"
 
 #### Expected AI Actions:
-- AI calls `generate {type: "test_classify", action: "failure", failure: {...}}`
+- AI calls `generate {format: "test_classify", action: "failure", failure: {...}}`
 
 #### Verification:
 - [ ] Classification: `real_bug`
@@ -197,7 +199,7 @@ You need a simple web application with:
 3. Ask AI: "This test is flaky, can you diagnose it?"
 
 #### Expected AI Actions:
-- AI calls `generate {type: "test_classify", action: "failure", failure: {...}}`
+- AI calls `generate {format: "test_classify", action: "failure", failure: {...}}`
 
 #### Verification:
 - [ ] Classification: `timing_flaky`
@@ -215,7 +217,7 @@ You need a simple web application with:
 2. Ask AI: "Fix all broken selectors in my tests directory"
 
 #### Expected AI Actions:
-- AI calls `generate {type: "test_heal", action: "batch", test_dir: "tests/"}`
+- AI calls `generate {format: "test_heal", action: "batch", test_dir: "tests/"}`
 
 #### Verification:
 - [ ] All test files analyzed

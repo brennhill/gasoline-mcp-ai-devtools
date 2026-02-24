@@ -1,16 +1,23 @@
 /**
+ * Purpose: Implements popup settings controls for websocket capture mode and safe log clearing actions.
+ * Why: Keeps destructive and behavior-changing popup operations centralized with explicit UX safeguards.
+ * Docs: docs/features/feature/browser-extension-enhancement/index.md
+ */
+
+/**
  * @fileoverview Settings Module
  * Handles log level, WebSocket mode, and clear logs functionality
  */
 
 import type { WebSocketCaptureMode } from '../types'
+import { SettingName } from '../lib/constants'
 
 /**
  * Handle WebSocket mode change
  */
 export function handleWebSocketModeChange(mode: WebSocketCaptureMode): void {
   chrome.storage.local.set({ webSocketCaptureMode: mode })
-  chrome.runtime.sendMessage({ type: 'setWebSocketCaptureMode', mode })
+  chrome.runtime.sendMessage({ type: SettingName.WEBSOCKET_CAPTURE_MODE, mode })
 }
 
 /**

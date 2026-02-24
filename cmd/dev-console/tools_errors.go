@@ -1,88 +1,65 @@
-// tools_errors.go — Structured error handling and error codes for MCP tools.
-// Defines error constants, StructuredError type, and error response construction.
 package main
 
 import (
 	"encoding/json"
 	"fmt"
+
+	"github.com/dev-console/dev-console/internal/mcp"
 )
 
-// Error codes are self-describing snake_case strings.
-// Every code tells the LLM what went wrong.
+// Error code aliases — all callers in package main use these unchanged.
 const (
-	// Input errors — LLM can fix arguments and retry immediately
-	ErrInvalidJSON    = "invalid_json"
-	ErrMissingParam   = "missing_param"
-	ErrInvalidParam   = "invalid_param"
-	ErrUnknownMode    = "unknown_mode"
-	ErrPathNotAllowed = "path_not_allowed"
-
-	// State errors — LLM must change state before retrying
-	ErrNotInitialized    = "not_initialized"
-	ErrNoData            = "no_data"
-	ErrCodePilotDisabled    = "pilot_disabled" // Named ErrCodePilotDisabled to avoid collision with var ErrCodePilotDisabled in pilot.go
-	ErrOsAutomationDisabled = "os_automation_disabled"
-	ErrRateLimited       = "rate_limited"
-	ErrCursorExpired     = "cursor_expired" // Cursor pagination: buffer overflow evicted cursor position
-
-	// Communication errors — retry with backoff
-	ErrExtTimeout = "extension_timeout"
-	ErrExtError   = "extension_error"
-
-	// Internal errors — do not retry
-	ErrInternal      = "internal_error"
-	ErrMarshalFailed = "marshal_failed"
-	ErrExportFailed  = "export_failed"
+	ErrInvalidJSON          = mcp.ErrInvalidJSON
+	ErrMissingParam         = mcp.ErrMissingParam
+	ErrInvalidParam         = mcp.ErrInvalidParam
+	ErrUnknownMode          = mcp.ErrUnknownMode
+	ErrPathNotAllowed       = mcp.ErrPathNotAllowed
+	ErrNotInitialized       = mcp.ErrNotInitialized
+	ErrNoData               = mcp.ErrNoData
+	ErrCodePilotDisabled    = mcp.ErrCodePilotDisabled
+	ErrOsAutomationDisabled = mcp.ErrOsAutomationDisabled
+	ErrRateLimited          = mcp.ErrRateLimited
+	ErrCursorExpired        = mcp.ErrCursorExpired
+	ErrExtTimeout           = mcp.ErrExtTimeout
+	ErrExtError             = mcp.ErrExtError
+	ErrInternal             = mcp.ErrInternal
+	ErrMarshalFailed        = mcp.ErrMarshalFailed
+	ErrExportFailed         = mcp.ErrExportFailed
 )
 
-// StructuredError is embedded in MCP text content. Every field is
-// self-describing so an LLM can act on it without a lookup table.
-type StructuredError struct {
-	Error   string `json:"error"`
-	Message string `json:"message"`
-	Retry   string `json:"retry"`
-	Param   string `json:"param,omitempty"`
-	Hint    string `json:"hint,omitempty"`
-}
+// StructuredError alias.
+type StructuredError = mcp.StructuredError
 
-// mcpStructuredError constructs an MCP error response. Format:
-//
-//	Error: missing_param — Add the 'what' parameter and call again
-//	{"error":"missing_param","message":"...","retry":"Add the 'what' parameter and call again","hint":"..."}
-//
-// The retry string is a plain-English instruction the LLM can follow directly.
 func mcpStructuredError(code, message, retry string, opts ...func(*StructuredError)) json.RawMessage {
-	se := StructuredError{Error: code, Message: message, Retry: retry}
-	for _, opt := range opts {
-		opt(&se)
-	}
-
-	// Error impossible: StructuredError is a simple struct with no circular refs or unsupported types
-	seJSON, _ := json.Marshal(se)
-	text := fmt.Sprintf("Error: %s — %s\n%s", code, retry, string(seJSON))
-
-	result := MCPToolResult{
-		Content: []MCPContentBlock{{Type: "text", Text: text}},
-		IsError: true,
-	}
-	return safeMarshal(result, `{"content":[{"type":"text","text":"Internal error: failed to marshal result"}],"isError":true}`)
+	return mcp.StructuredErrorResponse(code, message, retry, opts...)
 }
 
-// withParam is an option function to add param field to StructuredError.
-func withParam(p string) func(*StructuredError) {
-	return func(se *StructuredError) { se.Param = p }
+func withParam(p string) func(*StructuredError) { return mcp.WithParam(p) }
+func withHint(h string) func(*StructuredError)  { return mcp.WithHint(h) }
+func withRetryable(retryable bool) func(*StructuredError) {
+	return mcp.WithRetryable(retryable)
+}
+func withRetryAfterMs(ms int) func(*StructuredError) { return mcp.WithRetryAfterMs(ms) }
+func withFinal(final bool) func(*StructuredError)    { return mcp.WithFinal(final) }
+
+func retryDefaultsForCode(code string) []func(*StructuredError) {
+	return mcp.RetryDefaultsForCode(code)
 }
 
-// withHint is an option function to add hint field to StructuredError.
-func withHint(h string) func(*StructuredError) {
-	return func(se *StructuredError) { se.Hint = h }
-}
-
-// diagnosticHint returns a snapshot of system state for inclusion in error hints.
-// Helps LLMs diagnose why a command failed by showing pilot/extension/tracking status.
-func (h *ToolHandler) diagnosticHint() func(*StructuredError) {
+// diagnosticHintString returns a plain-text snapshot of system state.
+// Used by both structured errors and JSON error responses.
+func (h *ToolHandler) DiagnosticHintString() string {
 	extConnected := h.capture.IsExtensionConnected()
 	pilotEnabled := h.capture.IsPilotEnabled()
+	pilotState := ""
+	if status, ok := h.capture.GetPilotStatus().(map[string]any); ok {
+		if state, ok := status["state"].(string); ok {
+			pilotState = state
+		}
+		if effective, ok := status["enabled"].(bool); ok {
+			pilotEnabled = effective
+		}
+	}
 	enabled, tabID, tabURL := h.capture.GetTrackingStatus()
 
 	var parts []string
@@ -91,20 +68,92 @@ func (h *ToolHandler) diagnosticHint() func(*StructuredError) {
 	} else {
 		parts = append(parts, "extension=DISCONNECTED")
 	}
-	if pilotEnabled {
-		parts = append(parts, "pilot=enabled")
-	} else {
-		parts = append(parts, "pilot=DISABLED")
+	pilotToken := "pilot=DISABLED"
+	switch pilotState {
+	case "assumed_enabled":
+		pilotToken = "pilot=ASSUMED_ENABLED(startup)"
+	case "explicitly_disabled":
+		pilotToken = "pilot=DISABLED(explicit)"
+	case "enabled":
+		pilotToken = "pilot=enabled"
+	default:
+		if pilotEnabled {
+			pilotToken = "pilot=enabled"
+		}
 	}
+	parts = append(parts, pilotToken)
 	if enabled && tabURL != "" {
 		parts = append(parts, fmt.Sprintf("tracked_tab=%q (id=%d)", tabURL, tabID))
 	} else {
 		parts = append(parts, "tracked_tab=NONE")
 	}
 
+	cspRestricted, cspLevel := h.capture.GetCSPStatus()
+	if cspRestricted {
+		parts = append(parts, fmt.Sprintf("csp=RESTRICTED(%s)", cspLevel))
+	} else {
+		parts = append(parts, "csp=clear")
+	}
+
 	hint := "Current state: " + parts[0]
 	for _, p := range parts[1:] {
 		hint += ", " + p
 	}
-	return withHint(hint)
+	return hint
+}
+
+// diagnosticHint returns a snapshot of system state for inclusion in structured errors.
+func (h *ToolHandler) diagnosticHint() func(*StructuredError) {
+	return withHint(h.DiagnosticHintString())
+}
+
+// requirePilot returns (resp, true) if AI Web Pilot is disabled, short-circuiting the caller.
+// Usage: if resp, blocked := h.requirePilot(req); blocked { return resp }
+func (h *ToolHandler) requirePilot(req JSONRPCRequest) (JSONRPCResponse, bool) {
+	if h.capture.IsPilotActionAllowed() {
+		return JSONRPCResponse{}, false
+	}
+	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(
+		ErrCodePilotDisabled, "AI Web Pilot is explicitly disabled",
+		"Enable AI Web Pilot in the extension popup", h.diagnosticHint(),
+	)}, true
+}
+
+// requireExtension returns (resp, true) if the browser extension is not connected,
+// short-circuiting the caller with an immediate structured error (~5ms) instead of
+// queuing a command that would time out after 15s.
+// Usage: if resp, blocked := h.requireExtension(req); blocked { return resp }
+func (h *ToolHandler) requireExtension(req JSONRPCRequest) (JSONRPCResponse, bool) {
+	if h.capture.IsExtensionConnected() {
+		return JSONRPCResponse{}, false
+	}
+	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(
+		ErrNoData, "Extension not connected. Commands cannot be dispatched.",
+		"Check that the Gasoline browser extension is installed and the page is open.",
+		h.diagnosticHint(), withRetryable(true), withRetryAfterMs(3000),
+	)}, true
+}
+
+// requireCSPClear returns (resp, true) if the page's CSP blocks script execution
+// for the given world. Only world="main" is blocked — "auto" and "isolated" bypass
+// page CSP because the extension's ISOLATED world is not subject to page CSP, and
+// "auto" falls back from MAIN → ISOLATED → structured executor automatically.
+// Usage: if resp, blocked := h.requireCSPClear(req, world); blocked { return resp }
+func (h *ToolHandler) requireCSPClear(req JSONRPCRequest, world string) (JSONRPCResponse, bool) {
+	// Only MAIN world execution is blocked by page CSP.
+	// ISOLATED world runs in the extension's security context (bypasses page CSP).
+	// AUTO tries MAIN first, then falls back to ISOLATED/structured — the extension handles this.
+	if world != "main" {
+		return JSONRPCResponse{}, false
+	}
+	restricted, level := h.capture.GetCSPStatus()
+	if !restricted {
+		return JSONRPCResponse{}, false
+	}
+	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(
+		ErrExtError,
+		fmt.Sprintf("Page CSP blocks MAIN world script execution (level: %s). Use world='auto' or world='isolated' to bypass.", level),
+		"Retry with world='auto' (falls back to isolated/structured), world='isolated' (DOM access, no page JS), or use DOM primitives (click, type).",
+		h.diagnosticHint(),
+	)}, true
 }

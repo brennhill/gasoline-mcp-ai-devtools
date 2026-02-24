@@ -1,3 +1,7 @@
+// Purpose: Validate server_reliability_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
+// Docs: docs/features/feature/observe/index.md
+
 // server_reliability_test.go — Stress, resource leak, and recovery tests.
 //
 // ⚠️ RELEASE GATE TESTS - MANDATORY BEFORE EVERY RELEASE
@@ -47,8 +51,7 @@ func TestReliability_Stress_ConcurrentConnections(t *testing.T) {
 	port := findFreePort(t)
 	binary := buildTestBinary(t)
 
-
-	cmd := startServerCmd(binary, "--port", fmt.Sprintf("%d", port))
+	cmd := startServerCmd(t, binary, "--port", fmt.Sprintf("%d", port))
 	stdin, err := cmd.StdinPipe()
 	if err != nil {
 		t.Fatalf("Failed to create stdin pipe: %v", err)
@@ -67,7 +70,7 @@ func TestReliability_Stress_ConcurrentConnections(t *testing.T) {
 	}
 
 	// Configuration
-	concurrency := 50      // Concurrent goroutines
+	concurrency := 50       // Concurrent goroutines
 	requestsPerWorker := 20 // Requests per goroutine
 	totalRequests := concurrency * requestsPerWorker
 
@@ -160,8 +163,7 @@ func TestReliability_Stress_ExtendedOperation(t *testing.T) {
 	port := findFreePort(t)
 	binary := buildTestBinary(t)
 
-
-	cmd := startServerCmd(binary, "--port", fmt.Sprintf("%d", port))
+	cmd := startServerCmd(t, binary, "--port", fmt.Sprintf("%d", port))
 	stdin, err := cmd.StdinPipe()
 	if err != nil {
 		t.Fatalf("Failed to create stdin pipe: %v", err)
@@ -241,8 +243,7 @@ func TestReliability_ResourceLeaks_Goroutines(t *testing.T) {
 	port := findFreePort(t)
 	binary := buildTestBinary(t)
 
-
-	cmd := startServerCmd(binary, "--port", fmt.Sprintf("%d", port))
+	cmd := startServerCmd(t, binary, "--port", fmt.Sprintf("%d", port))
 	stdin, err := cmd.StdinPipe()
 	if err != nil {
 		t.Fatalf("Failed to create stdin pipe: %v", err)
@@ -325,8 +326,7 @@ func TestReliability_ResourceLeaks_ConnectionDrain(t *testing.T) {
 	port := findFreePort(t)
 	binary := buildTestBinary(t)
 
-
-	cmd := startServerCmd(binary, "--port", fmt.Sprintf("%d", port))
+	cmd := startServerCmd(t, binary, "--port", fmt.Sprintf("%d", port))
 	stdin, err := cmd.StdinPipe()
 	if err != nil {
 		t.Fatalf("Failed to create stdin pipe: %v", err)
@@ -383,8 +383,7 @@ func TestReliability_Recovery_MalformedJSON(t *testing.T) {
 	port := findFreePort(t)
 	binary := buildTestBinary(t)
 
-
-	cmd := startServerCmd(binary, "--port", fmt.Sprintf("%d", port))
+	cmd := startServerCmd(t, binary, "--port", fmt.Sprintf("%d", port))
 	stdin, err := cmd.StdinPipe()
 	if err != nil {
 		t.Fatalf("Failed to create stdin pipe: %v", err)
@@ -462,8 +461,7 @@ func TestReliability_Recovery_InvalidToolCalls(t *testing.T) {
 	port := findFreePort(t)
 	binary := buildTestBinary(t)
 
-
-	cmd := startServerCmd(binary, "--port", fmt.Sprintf("%d", port))
+	cmd := startServerCmd(t, binary, "--port", fmt.Sprintf("%d", port))
 	stdin, err := cmd.StdinPipe()
 	if err != nil {
 		t.Fatalf("Failed to create stdin pipe: %v", err)
@@ -493,9 +491,9 @@ func TestReliability_Recovery_InvalidToolCalls(t *testing.T) {
 		{"null arguments", `{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"observe","arguments":null}}`},
 		{"wrong argument type", `{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"observe","arguments":"not an object"}}`},
 		{"invalid observe mode", `{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"observe","arguments":{"what":"nonexistent_mode"}}}`},
-		{"invalid configure action", `{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"configure","arguments":{"action":"nonexistent_action"}}}`},
-		{"invalid generate format", `{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"generate","arguments":{"format":"nonexistent_format"}}}`},
-		{"invalid interact action", `{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"interact","arguments":{"action":"nonexistent_action"}}}`},
+		{"invalid configure action", `{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"configure","arguments":{"what":"nonexistent_action"}}}`},
+		{"invalid generate format", `{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"generate","arguments":{"what":"nonexistent_format"}}}`},
+		{"invalid interact action", `{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"interact","arguments":{"what":"nonexistent_action"}}}`},
 		{"negative limit", `{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"observe","arguments":{"what":"logs","limit":-100}}}`},
 		{"huge limit", `{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"observe","arguments":{"what":"logs","limit":999999999}}}`},
 	}

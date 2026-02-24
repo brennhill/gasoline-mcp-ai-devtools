@@ -1,9 +1,15 @@
+// Purpose: Validate tools_interact_helpers_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
+// Docs: docs/features/feature/interact-explore/index.md
+
 // tools_interact_helpers_test.go — Tests for queueComposableSubtitle and queueStateNavigation.
 package main
 
 import (
 	"encoding/json"
+	"net/http/httptest"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/dev-console/dev-console/internal/capture"
@@ -28,8 +34,15 @@ func newInteractHelpersTestEnv(t *testing.T) *interactHelpersTestEnv {
 	}
 	t.Cleanup(func() { server.Close() })
 	cap := capture.NewCapture()
+	cap.SetPilotEnabled(false) // explicit default for state/pilot-disabled test branches
 	mcpHandler := NewToolHandler(server, cap)
 	handler := mcpHandler.toolHandler.(*ToolHandler)
+
+	// Simulate extension connection so tests that enable pilot don't hit the extension gate.
+	httpReq := httptest.NewRequest("POST", "/sync", strings.NewReader(`{"ext_session_id":"test"}`))
+	httpReq.Header.Set("X-Gasoline-Client", "test-client")
+	cap.HandleSync(httptest.NewRecorder(), httpReq)
+
 	return &interactHelpersTestEnv{handler: handler, server: server, capture: cap}
 }
 
@@ -149,6 +162,7 @@ func TestQueueStateNavigation_QueuesBrowserAction(t *testing.T) {
 	t.Parallel()
 	env := newInteractHelpersTestEnv(t)
 	env.enablePilot(t)
+	simulateExtensionConnection(t, env)
 
 	stateData := map[string]any{
 		"url":   "https://example.com/page",
@@ -275,6 +289,7 @@ func TestQueueStateNavigation_CorrelationIDHasNavPrefix(t *testing.T) {
 	t.Parallel()
 	env := newInteractHelpersTestEnv(t)
 	env.enablePilot(t)
+	simulateExtensionConnection(t, env)
 
 	stateData := map[string]any{
 		"url": "https://example.com",

@@ -4,6 +4,9 @@ status: proposed
 tool: configure
 mode: emulation
 version: v6.2
+doc_type: product-spec
+feature_id: feature-cpu-network-emulation
+last_reviewed: 2026-02-16
 ---
 
 # Product Spec: CPU/Network Emulation

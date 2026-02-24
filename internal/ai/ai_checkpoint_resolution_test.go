@@ -1,3 +1,7 @@
+// Purpose: Validate ai_checkpoint_resolution_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
+// Docs: docs/features/feature/observe/index.md
+
 // ai_checkpoint_resolution_test.go — Tests for checkpoint resolution, namespacing, and multi-client isolation.
 package ai
 

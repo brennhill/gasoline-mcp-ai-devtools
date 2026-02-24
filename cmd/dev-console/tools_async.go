@@ -1,0 +1,721 @@
+package main
+
+import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"strings"
+	"time"
+
+	"github.com/dev-console/dev-console/internal/performance"
+	"github.com/dev-console/dev-console/internal/queries"
+)
+
+// newCorrelationID generates a unique correlation ID with the given prefix.
+// Format: prefix_timestamp_random (e.g., "nav_1708300000000000000_4821937562").
+func newCorrelationID(prefix string) string {
+	return fmt.Sprintf("%s_%d_%d", prefix, time.Now().UnixNano(), randomInt63())
+}
+
+func canonicalLifecycleStatus(status string) string {
+	switch strings.ToLower(strings.TrimSpace(status)) {
+	case "queued":
+		return "queued"
+	case "pending", "running", "still_processing":
+		return "running"
+	case "complete":
+		return "complete"
+	case "error":
+		return "error"
+	case "timeout", "expired":
+		return "timeout"
+	case "cancelled", "canceled":
+		return "cancelled"
+	default:
+		return status
+	}
+}
+
+var (
+	asyncInitialWait  = 15 * time.Second
+	asyncRetryWait    = 5 * time.Second
+	asyncPollInterval = 500 * time.Millisecond
+)
+
+func (h *ToolHandler) waitForCommandWithConnectivity(correlationID string, timeout time.Duration) (*queries.CommandResult, bool, bool, int64) {
+	deadline := time.Now().Add(timeout)
+	waited := int64(0)
+	for {
+		remaining := time.Until(deadline)
+		if remaining <= 0 {
+			cmd, found := h.capture.GetCommandResult(correlationID)
+			disconnected := found && cmd != nil && cmd.Status == "pending" && !h.capture.IsExtensionConnected()
+			return cmd, found, disconnected, waited
+		}
+		waitStep := asyncPollInterval
+		if waitStep <= 0 || waitStep > remaining {
+			waitStep = remaining
+		}
+		cmd, found := h.capture.WaitForCommand(correlationID, waitStep)
+		waited += waitStep.Milliseconds()
+		if !found {
+			return nil, false, false, waited
+		}
+		if cmd.Status != "pending" {
+			return cmd, true, false, waited
+		}
+		if !h.capture.IsExtensionConnected() {
+			return cmd, true, true, waited
+		}
+	}
+}
+
+func (h *ToolHandler) finalizePendingDisconnect(req JSONRPCRequest, correlationID string) JSONRPCResponse {
+	h.capture.ApplyCommandResult(correlationID, "error", nil, "extension_disconnected")
+	if cmd, found := h.capture.GetCommandResult(correlationID); found && cmd != nil {
+		return h.formatCommandResult(req, *cmd, correlationID)
+	}
+	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(
+		ErrNoData,
+		"Extension disconnected while command was pending",
+		"Ensure the extension is connected, then retry the action.",
+		h.diagnosticHint(),
+		withFinal(true),
+	)}
+}
+
+// ============================================
+// Sync-by-Default Command Dispatch
+// ============================================
+
+// MaybeWaitForCommand blocks until an async command completes, or returns a "queued"
+// response if background execution is requested or the safety timeout is reached.
+// This is the core implementation of "Synchronous-by-Default" mode.
+func (h *ToolHandler) MaybeWaitForCommand(req JSONRPCRequest, correlationID string, args json.RawMessage, queuedSummary string) JSONRPCResponse {
+	var params struct {
+		Sync       *bool `json:"sync"`
+		Wait       *bool `json:"wait"`
+		Background bool  `json:"background"`
+	}
+	lenientUnmarshal(args, &params)
+
+	// Default to sync unless Background is true or Sync/Wait explicitly set to false
+	isSync := true
+	if params.Background {
+		isSync = false
+	}
+	if params.Sync != nil && !*params.Sync {
+		isSync = false
+	}
+	if params.Wait != nil && !*params.Wait {
+		isSync = false
+	}
+
+	if !isSync {
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse(queuedSummary, map[string]any{
+			"status":           "queued",
+			"lifecycle_status": "queued",
+			"correlation_id":   correlationID,
+			"trace_id":         correlationID,
+			"queued":           true,
+			"final":            false,
+		})}
+	}
+
+	// Check connectivity first to avoid useless waiting
+	if !h.capture.IsExtensionConnected() {
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrNoData, "Extension is not connected", "Ensure the Gasoline extension shows 'Connected' and a tab is tracked.", h.diagnosticHint())}
+	}
+
+	// Wait for result (15s default for "Sync-by-Default" pattern).
+	// Most DOM actions (click, type) take < 500ms over long-polling.
+	// 15s is safe for most navigations while staying well under the 60s IDE timeout.
+	attempts := 1
+	totalWaitMs := int64(0)
+
+	cmd, found, disconnected, waitedMs := h.waitForCommandWithConnectivity(correlationID, asyncInitialWait)
+	totalWaitMs += waitedMs
+	if !found {
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInternal, "Command not found after queuing", "Internal error — do not retry")}
+	}
+	if disconnected {
+		return h.finalizePendingDisconnect(req, correlationID)
+	}
+
+	// Single retry: if still pending and extension is connected, wait 5s more.
+	// This catches commands that complete just after the initial timeout.
+	if cmd.Status == "pending" && h.capture.IsExtensionConnected() {
+		attempts = 2
+		cmd, found, disconnected, waitedMs = h.waitForCommandWithConnectivity(correlationID, asyncRetryWait)
+		totalWaitMs += waitedMs
+		if !found {
+			return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInternal, "Command not found after retry", "Internal error — do not retry")}
+		}
+		if disconnected {
+			return h.finalizePendingDisconnect(req, correlationID)
+		}
+	}
+
+	// If still pending after retry, return a "still_processing" handle so the agent can poll.
+	if cmd.Status == "pending" {
+		if !h.capture.IsExtensionConnected() {
+			return h.finalizePendingDisconnect(req, correlationID)
+		}
+		stillProcessing := map[string]any{
+			"status":           "still_processing",
+			"lifecycle_status": "running",
+			"correlation_id":   correlationID,
+			"trace_id":         correlationID,
+			"queued":           false,
+			"final":            false,
+			"elapsed_ms":       cmd.ElapsedMs(),
+			"queue_depth":      h.capture.QueueDepth(),
+			"retry_context": map[string]any{
+				"attempts":            attempts,
+				"total_wait_ms":       totalWaitMs,
+				"extension_connected": h.capture.IsExtensionConnected(),
+			},
+			"suggested_retry_ms": 2000,
+			"message":            "Action is taking longer than expected. Polling is now required. Use observe({what:'command_result', correlation_id:'" + correlationID + "'}) to check the result.",
+		}
+		if pos := h.capture.QueuePosition(correlationID); pos >= 0 {
+			stillProcessing["queue_position"] = pos
+		}
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Action still processing", stillProcessing)}
+	}
+
+	// Result received — format using standard command result formatter
+	return h.formatCommandResult(req, *cmd, correlationID)
+}
+
+// ============================================
+// Command Result Observation
+// ============================================
+
+// annotationCommandWaitTimeout is how long observe blocks for pending annotation commands.
+// Fits within the bridge's 65s timeout for blocking observe calls.
+const annotationCommandWaitTimeout = 55 * time.Second
+
+// toolObserveCommandResult retrieves the result of an async command by correlation_id.
+// For annotation commands (ann_*), blocks up to 55s waiting for the user to finish drawing.
+func (h *ToolHandler) toolObserveCommandResult(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+	var params struct {
+		CorrelationID string `json:"correlation_id"`
+	}
+	if err := json.Unmarshal(args, &params); err != nil && len(args) > 0 {
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidJSON, "Invalid JSON arguments: "+err.Error(), "Fix JSON syntax and call again")}
+	}
+
+	if params.CorrelationID == "" {
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrMissingParam, "Required parameter 'correlation_id' is missing", "Add the 'correlation_id' parameter and call again", withParam("correlation_id"))}
+	}
+
+	corrID := params.CorrelationID
+
+	// Annotation commands: block up to 55s waiting for the user to finish drawing.
+	// This is token-efficient — the LLM makes one call and waits instead of rapid polling.
+	// See docs/core/async-tool-pattern.md for the full pattern.
+	if strings.HasPrefix(corrID, "ann_") {
+		cmd, found := h.capture.WaitForCommand(corrID, annotationCommandWaitTimeout)
+		if !found {
+			return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(
+				ErrNoData,
+				"Annotation command not found: "+corrID,
+				"The command may have expired (10 min TTL). Start a new draw mode session.",
+				withFinal(true),
+				h.diagnosticHint(),
+			)}
+		}
+		return h.formatCommandResult(req, *cmd, corrID)
+	}
+
+	cmd, found := h.capture.GetCommandResult(corrID)
+	if !found {
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(
+			ErrNoData,
+			"Command not found: "+corrID,
+			"The command may have already completed and been cleaned up (60s TTL), or the correlation_id is invalid. Use observe with what='pending_commands' to see active commands.",
+			withFinal(true),
+			h.diagnosticHint(),
+		)}
+	}
+
+	return h.formatCommandResult(req, *cmd, corrID)
+}
+
+// toolObservePendingCommands lists all pending, completed, and failed async commands.
+func (h *ToolHandler) toolObservePendingCommands(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+	pending := h.capture.GetPendingCommands()
+	completed := h.capture.GetCompletedCommands()
+	failed := h.capture.GetFailedCommands()
+	inProgress := h.capture.GetInProgressCommands()
+
+	responseData := map[string]any{
+		"pending":                     pending,
+		"completed":                   completed,
+		"failed":                      failed,
+		"extension_in_progress":       inProgress,
+		"extension_in_progress_count": len(inProgress),
+	}
+
+	summary := fmt.Sprintf(
+		"Pending: %d, Completed: %d, Failed: %d, Extension in-progress: %d",
+		len(pending),
+		len(completed),
+		len(failed),
+		len(inProgress),
+	)
+	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse(summary, responseData)}
+}
+
+// toolObserveFailedCommands lists recent failed/expired async commands.
+func (h *ToolHandler) toolObserveFailedCommands(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+	failed := h.capture.GetFailedCommands()
+
+	responseData := map[string]any{
+		"status":   "ok",
+		"commands": failed,
+		"count":    len(failed),
+	}
+
+	if len(failed) == 0 {
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("No failed commands found", responseData)}
+	}
+
+	summary := fmt.Sprintf("Found %d failed/expired commands", len(failed))
+	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse(summary, responseData)}
+}
+
+// ============================================
+// Command Result Formatting
+// ============================================
+
+func (h *ToolHandler) formatCommandResult(req JSONRPCRequest, cmd queries.CommandResult, corrID string) JSONRPCResponse {
+	traceID := cmd.TraceID
+	if traceID == "" {
+		traceID = cmd.CorrelationID
+	}
+	responseData := map[string]any{
+		"correlation_id":   cmd.CorrelationID,
+		"trace_id":         traceID,
+		"status":           cmd.Status,
+		"lifecycle_status": canonicalLifecycleStatus(cmd.Status),
+		"queued":           false,
+		"created_at":       cmd.CreatedAt.Format(time.RFC3339),
+		"elapsed_ms":       cmd.ElapsedMs(),
+	}
+	attachTraceSummary(responseData, cmd)
+
+	switch cmd.Status {
+	case "complete":
+		responseData["final"] = true
+		return h.formatCompleteCommand(req, cmd, corrID, responseData)
+	case "error":
+		responseData["final"] = true
+		if cmd.Error == "" {
+			cmd.Error = "Command failed in extension"
+		}
+		responseData["error"] = cmd.Error
+		if len(cmd.Result) > 0 {
+			responseData["result"] = cmd.Result
+			_, _ = enrichCommandResponseData(cmd.Result, responseData)
+		}
+		annotateCSPFailure(responseData, cmd.Error, cmd.Result)
+		annotateInteractFailureRecovery(responseData, cmd.Error, cmd.Result)
+		// Add corrective hints for common out-of-order errors
+		if strings.Contains(cmd.Error, "No active recording") {
+			responseData["retry"] = "No recording is active. Start one first: interact({what: 'record_start', name: 'my-recording'}) or configure({what: 'recording_start', name: 'my-recording'})"
+		}
+		h.attachEvidencePayload(corrID, responseData)
+		h.attachRetryContext(corrID, responseData, cmd.Status, cmd.Error)
+		summary := fmt.Sprintf("FAILED — Command %s error: %s", corrID, cmd.Error)
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONErrorResponse(summary, responseData)}
+	case "expired":
+		responseData["final"] = true
+		responseData["error"] = ErrExtTimeout
+		responseData["message"] = fmt.Sprintf("Command %s expired before the extension could execute it. Error: %s", corrID, cmd.Error)
+		responseData["retry"] = "The browser extension may be disconnected or the page is not active. Check observe with what='pilot' to verify extension status, then retry the command."
+		responseData["hint"] = h.DiagnosticHintString()
+		h.attachEvidencePayload(corrID, responseData)
+		h.attachRetryContext(corrID, responseData, cmd.Status, cmd.Error)
+		summary := fmt.Sprintf("FAILED — Command %s expired: %s", corrID, cmd.Error)
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONErrorResponse(summary, responseData)}
+	case "timeout":
+		responseData["final"] = true
+		responseData["error"] = ErrExtTimeout
+		responseData["message"] = fmt.Sprintf("Command %s timed out waiting for the extension to respond. Error: %s", corrID, cmd.Error)
+		retryMsg := "Extension connected but page execution timed out. This page may block content scripts (common on Google, Chrome Web Store, etc.). Try navigating to a different page: interact({what: 'navigate', url: 'https://example.com'})"
+		if !h.capture.IsExtensionConnected() {
+			retryMsg = "Extension is disconnected. Ensure the Gasoline extension shows 'Connected' and a tab is tracked, then retry."
+		}
+		responseData["retry"] = retryMsg
+		responseData["hint"] = h.DiagnosticHintString()
+		h.attachEvidencePayload(corrID, responseData)
+		h.attachRetryContext(corrID, responseData, cmd.Status, cmd.Error)
+		summary := fmt.Sprintf("FAILED — Command %s timed out: %s", corrID, cmd.Error)
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONErrorResponse(summary, responseData)}
+	case "cancelled":
+		responseData["final"] = true
+		responseData["error"] = ErrExtError
+		responseData["message"] = fmt.Sprintf("Command %s was cancelled before completion.", corrID)
+		if cmd.Error != "" {
+			responseData["detail"] = cmd.Error
+		}
+		h.attachEvidencePayload(corrID, responseData)
+		h.attachRetryContext(corrID, responseData, cmd.Status, cmd.Error)
+		summary := fmt.Sprintf("FAILED — Command %s cancelled", corrID)
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONErrorResponse(summary, responseData)}
+	default:
+		responseData["final"] = false
+		summary := fmt.Sprintf("Command %s: %s", corrID, cmd.Status)
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse(summary, responseData)}
+	}
+}
+
+func attachTraceSummary(responseData map[string]any, cmd queries.CommandResult) {
+	traceID := cmd.TraceID
+	if traceID == "" {
+		traceID = cmd.CorrelationID
+	}
+	if traceID == "" && len(cmd.TraceEvents) == 0 {
+		return
+	}
+
+	trace := map[string]any{
+		"trace_id": traceID,
+		"timeline": cmd.TraceTimeline,
+		"events":   cmd.TraceEvents,
+	}
+	if cmd.QueryID != "" {
+		trace["query_id"] = cmd.QueryID
+	}
+	if len(cmd.TraceEvents) > 0 {
+		trace["last_stage"] = cmd.TraceEvents[len(cmd.TraceEvents)-1].Stage
+	}
+	responseData["trace"] = trace
+}
+
+func (h *ToolHandler) formatCompleteCommand(req JSONRPCRequest, cmd queries.CommandResult, corrID string, responseData map[string]any) JSONRPCResponse {
+	normalizedResult, normalizedErr := normalizeCompleteCommandResult(corrID, cmd.Result)
+	responseData["result"] = normalizedResult
+	responseData["completed_at"] = cmd.CompletedAt.Format(time.RFC3339)
+	responseData["timing_ms"] = cmd.CompletedAt.Sub(cmd.CreatedAt).Milliseconds()
+
+	if cmd.Error == "" && normalizedErr != "" {
+		cmd.Error = normalizedErr
+	}
+
+	if embeddedErr, hasEmbeddedErr := enrichCommandResponseData(normalizedResult, responseData); cmd.Error == "" && hasEmbeddedErr {
+		cmd.Error = embeddedErr
+	}
+
+	if beforeSnap, ok := h.capture.GetAndDeleteBeforeSnapshot(corrID); ok {
+		// The "after" perf snapshot arrives ~2.5s after page load (2s content script
+		// delay + 500ms batcher debounce). Poll briefly for a snapshot newer than
+		// the "before" baseline. Without this wait, we'd compare the same snapshot
+		// to itself (zero diff) or find nothing.
+		afterSnap, found := h.capture.GetPerformanceSnapshotByURL(beforeSnap.URL)
+		if !found || afterSnap.Timestamp == beforeSnap.Timestamp {
+			for retry := 0; retry < 5; retry++ {
+				time.Sleep(500 * time.Millisecond)
+				afterSnap, found = h.capture.GetPerformanceSnapshotByURL(beforeSnap.URL)
+				if found && afterSnap.Timestamp != beforeSnap.Timestamp {
+					break // Found a genuinely new snapshot
+				}
+			}
+		}
+		if found && afterSnap.Timestamp != beforeSnap.Timestamp {
+			before := performance.SnapshotToPageLoadMetrics(beforeSnap)
+			after := performance.SnapshotToPageLoadMetrics(afterSnap)
+			responseData["perf_diff"] = performance.ComputePerfDiff(before, after)
+		}
+	}
+
+	if cmd.Error != "" {
+		responseData["error"] = cmd.Error
+		annotateCSPFailure(responseData, cmd.Error, normalizedResult)
+		annotateInteractFailureRecovery(responseData, cmd.Error, normalizedResult)
+		h.attachEvidencePayload(corrID, responseData)
+		h.attachRetryContext(corrID, responseData, cmd.Status, cmd.Error)
+		summary := fmt.Sprintf("FAILED — Command %s completed with error: %s", corrID, cmd.Error)
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONErrorResponse(summary, responseData)}
+	}
+
+	h.attachEvidencePayload(corrID, responseData)
+	h.attachRetryContext(corrID, responseData, cmd.Status, "")
+	summary := fmt.Sprintf("Command %s: complete", corrID)
+	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse(summary, responseData)}
+}
+
+func normalizeCompleteCommandResult(corrID string, result json.RawMessage) (json.RawMessage, string) {
+	if strings.HasPrefix(corrID, "dom_list_") {
+		return normalizeListInteractiveResult(result)
+	}
+	return result, ""
+}
+
+func normalizeListInteractiveResult(result json.RawMessage) (json.RawMessage, string) {
+	trimmed := bytes.TrimSpace(result)
+	if len(trimmed) == 0 || bytes.Equal(trimmed, []byte("null")) {
+		payload := buildListInteractiveMissingPayload(nil, "list_interactive returned empty payload")
+		return safeMarshal(payload, `{"success":false,"error":"list_interactive_missing_payload","elements":[]}`), "list_interactive_missing_payload"
+	}
+
+	var parsed any
+	if err := json.Unmarshal(trimmed, &parsed); err != nil {
+		return result, ""
+	}
+
+	m, ok := parsed.(map[string]any)
+	if !ok {
+		payload := buildListInteractiveMissingPayload(nil, "list_interactive returned non-object payload")
+		return safeMarshal(payload, `{"success":false,"error":"list_interactive_missing_payload","elements":[]}`), "list_interactive_missing_payload"
+	}
+
+	if elems, exists := m["elements"]; exists {
+		if elems == nil {
+			m["elements"] = []any{}
+			return safeMarshal(m, string(trimmed)), ""
+		}
+		if _, isArray := elems.([]any); isArray {
+			return result, ""
+		}
+		payload := buildListInteractiveMissingPayload(m, "list_interactive returned invalid elements payload")
+		return safeMarshal(payload, `{"success":false,"error":"list_interactive_missing_payload","elements":[]}`), "list_interactive_missing_payload"
+	}
+
+	if value, hasValue := m["value"]; hasValue && value == nil {
+		payload := buildListInteractiveMissingPayload(m, "list_interactive returned value:null without elements")
+		return safeMarshal(payload, `{"success":false,"error":"list_interactive_missing_payload","elements":[]}`), "list_interactive_missing_payload"
+	}
+
+	payload := buildListInteractiveMissingPayload(m, "list_interactive response missing elements")
+	return safeMarshal(payload, `{"success":false,"error":"list_interactive_missing_payload","elements":[]}`), "list_interactive_missing_payload"
+}
+
+func buildListInteractiveMissingPayload(existing map[string]any, message string) map[string]any {
+	payload := map[string]any{
+		"success":  false,
+		"error":    "list_interactive_missing_payload",
+		"message":  message,
+		"elements": []any{},
+	}
+	for _, key := range []string{
+		"resolved_tab_id",
+		"resolved_url",
+		"target_context",
+		"effective_tab_id",
+		"effective_url",
+		"effective_title",
+	} {
+		if existing != nil {
+			if v, ok := existing[key]; ok {
+				payload[key] = v
+			}
+		}
+	}
+	return payload
+}
+
+func enrichCommandResponseData(result json.RawMessage, responseData map[string]any) (embeddedErr string, hasEmbeddedErr bool) {
+	if len(result) == 0 {
+		return "", false
+	}
+
+	var extResult map[string]any
+	if err := json.Unmarshal(result, &extResult); err != nil {
+		return "", false
+	}
+
+	// Surface extension enrichment fields to top-level for easier LLM consumption.
+	for _, key := range []string{
+		"timing", "dom_changes", "dom_summary", "dom_mutations", "analysis",
+		"content_script_status", "resolved_tab_id", "resolved_url", "target_context",
+		"effective_tab_id", "effective_url", "effective_title", "final_url", "title",
+		"message", "hint", "retry", "retryable", "csp_blocked", "failure_cause", "error_code",
+		"candidates", "match_count", "match_strategy",
+	} {
+		if v, ok := extResult[key]; ok {
+			responseData[key] = v
+		}
+	}
+
+	if success, ok := extResult["success"].(bool); ok && !success {
+		msg := embeddedCommandError(extResult)
+		if msg == "" {
+			msg = "Command reported success=false"
+		}
+		return msg, true
+	}
+
+	if _, ok := extResult["error"]; ok {
+		msg := embeddedCommandError(extResult)
+		if msg != "" {
+			return msg, true
+		}
+	}
+
+	return "", false
+}
+
+func embeddedCommandError(extResult map[string]any) string {
+	if msg, ok := extResult["error"].(string); ok && msg != "" {
+		return msg
+	}
+	if msg, ok := extResult["message"].(string); ok && msg != "" {
+		return msg
+	}
+	return ""
+}
+
+func annotateCSPFailure(responseData map[string]any, cmdError string, result json.RawMessage) {
+	cspBlocked, errorCode, message := detectCSPFailure(cmdError, result)
+	if !cspBlocked {
+		return
+	}
+
+	responseData["csp_blocked"] = true
+	responseData["failure_cause"] = "csp"
+
+	if errorCode != "" {
+		responseData["error_code"] = errorCode
+	}
+	if message != "" {
+		if _, exists := responseData["message"]; !exists {
+			responseData["message"] = message
+		}
+	}
+	if _, exists := responseData["retry"]; !exists {
+		responseData["retry"] = cspRetryNavigationGuidance
+	}
+}
+
+func annotateInteractFailureRecovery(responseData map[string]any, cmdError string, result json.RawMessage) {
+	code := detectInteractFailureCode(responseData, cmdError, result)
+	canonical, playbook, ok := lookupInteractFailurePlaybook(code)
+	if !ok {
+		return
+	}
+	if _, exists := responseData["error_code"]; !exists {
+		responseData["error_code"] = canonical
+	}
+	if _, exists := responseData["retry"]; !exists {
+		responseData["retry"] = playbook.RetrySuggestion
+	}
+	if _, exists := responseData["hint"]; !exists {
+		responseData["hint"] = "Recovery playbook available for " + canonical + " in configure tutorial."
+	}
+	if _, exists := responseData["retryable"]; !exists {
+		responseData["retryable"] = true
+	}
+
+	// For ambiguous_target: compute suggested_element_id from first visible candidate.
+	if canonical == "ambiguous_target" {
+		annotateSuggestedElementID(responseData)
+	}
+}
+
+// annotateSuggestedElementID picks the first visible candidate's element_id
+// and sets it as suggested_element_id for single-retry LLM recovery.
+func annotateSuggestedElementID(responseData map[string]any) {
+	candidates, ok := responseData["candidates"].([]any)
+	if !ok || len(candidates) == 0 {
+		return
+	}
+	for _, c := range candidates {
+		cMap, ok := c.(map[string]any)
+		if !ok {
+			continue
+		}
+		visible, _ := cMap["visible"].(bool)
+		elementID, _ := cMap["element_id"].(string)
+		if visible && elementID != "" {
+			responseData["suggested_element_id"] = elementID
+			return
+		}
+	}
+}
+
+func detectInteractFailureCode(responseData map[string]any, cmdError string, result json.RawMessage) string {
+	candidates := make([]string, 0, 4)
+	if v, ok := responseData["error_code"].(string); ok && strings.TrimSpace(v) != "" {
+		candidates = append(candidates, v)
+	}
+	if v, ok := responseData["error"].(string); ok && strings.TrimSpace(v) != "" {
+		candidates = append(candidates, v)
+	}
+
+	if len(result) > 0 {
+		var extResult map[string]any
+		if err := json.Unmarshal(result, &extResult); err == nil {
+			if v, ok := extResult["error"].(string); ok && strings.TrimSpace(v) != "" {
+				candidates = append(candidates, v)
+			}
+			if v, ok := extResult["error_code"].(string); ok && strings.TrimSpace(v) != "" {
+				candidates = append(candidates, v)
+			}
+		}
+	}
+
+	if strings.TrimSpace(cmdError) != "" {
+		candidates = append(candidates, cmdError)
+	}
+
+	for _, candidate := range candidates {
+		if normalized := normalizeInteractFailureCode(candidate); normalized != "" {
+			return normalized
+		}
+	}
+	return ""
+}
+
+func detectCSPFailure(cmdError string, result json.RawMessage) (bool, string, string) {
+	errorCode := ""
+	message := ""
+
+	if len(result) > 0 {
+		var extResult map[string]any
+		if err := json.Unmarshal(result, &extResult); err == nil {
+			if v, ok := extResult["error"].(string); ok {
+				errorCode = strings.TrimSpace(v)
+			}
+			if v, ok := extResult["message"].(string); ok {
+				message = strings.TrimSpace(v)
+			}
+			if v, ok := extResult["csp_blocked"].(bool); ok && v {
+				return true, errorCode, message
+			}
+			if v, ok := extResult["failure_cause"].(string); ok && strings.EqualFold(strings.TrimSpace(v), "csp") {
+				return true, errorCode, message
+			}
+			for _, key := range []string{"error", "message", "hint"} {
+				if v, ok := extResult[key].(string); ok && looksLikeCSP(v) {
+					return true, errorCode, message
+				}
+			}
+		}
+	}
+
+	if looksLikeCSP(cmdError) {
+		if errorCode == "" {
+			errorCode = strings.TrimSpace(cmdError)
+		}
+		return true, errorCode, message
+	}
+
+	return false, errorCode, message
+}
+
+func looksLikeCSP(value string) bool {
+	v := strings.ToLower(strings.TrimSpace(value))
+	if v == "" {
+		return false
+	}
+	return strings.Contains(v, "csp") ||
+		strings.Contains(v, "content security policy") ||
+		strings.Contains(v, "trusted type") ||
+		strings.Contains(v, "unsafe-eval") ||
+		strings.Contains(v, "blocks content scripts") ||
+		strings.Contains(v, "blocked content scripts") ||
+		strings.Contains(v, "restricted_page")
+}

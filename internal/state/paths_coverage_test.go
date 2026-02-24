@@ -1,3 +1,7 @@
+// Purpose: Validate paths_coverage_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
+// Docs: docs/features/feature/observe/index.md
+
 // paths_coverage_test.go — Additional tests targeting uncovered branches in paths.go.
 // Covers InRoot error propagation, ProjectDir error paths, Legacy* function
 // success and error paths, RootDir XDG normalization errors, and normalizePath
@@ -768,5 +772,36 @@ func TestSecurityConfigFile_ErrorPropagation(t *testing.T) {
 	_, err := SecurityConfigFile()
 	if err == nil {
 		t.Fatal("SecurityConfigFile() expected error when RootDir fails, got nil")
+	}
+}
+
+// ---------------------------------------------------------------------------
+// UpgradeMarkerFile
+// ---------------------------------------------------------------------------
+
+func TestUpgradeMarkerFilePath(t *testing.T) {
+	root := t.TempDir()
+	t.Setenv(StateDirEnv, root)
+	t.Setenv(xdgStateHomeEnv, "")
+
+	got, err := UpgradeMarkerFile()
+	if err != nil {
+		t.Fatalf("UpgradeMarkerFile() error = %v", err)
+	}
+	want := filepath.Join(root, "run", "last-upgrade.json")
+	if got != want {
+		t.Fatalf("UpgradeMarkerFile() = %q, want %q", got, want)
+	}
+}
+
+func TestUpgradeMarkerFile_ErrorPropagation(t *testing.T) {
+	t.Setenv(StateDirEnv, "")
+	t.Setenv(xdgStateHomeEnv, "")
+	t.Setenv("HOME", "")
+	t.Setenv("USERPROFILE", "")
+
+	_, err := UpgradeMarkerFile()
+	if err == nil {
+		t.Fatal("UpgradeMarkerFile() expected error when RootDir fails, got nil")
 	}
 }

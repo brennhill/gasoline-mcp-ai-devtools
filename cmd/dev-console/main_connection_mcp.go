@@ -1,4 +1,3 @@
-// main_connection_mcp.go — MCP daemon mode: HTTP server startup, PID management, and signal handling.
 package main
 
 import (
@@ -15,8 +14,13 @@ import (
 	"time"
 
 	"github.com/dev-console/dev-console/internal/capture"
+	"github.com/dev-console/dev-console/internal/state"
 	"github.com/dev-console/dev-console/internal/util"
 )
+
+// binaryUpgradeState tracks whether a binary upgrade has been detected on disk.
+// Read by maybeAddUpgradeWarning() in handler.go and buildUpgradeInfo() in health.go.
+var binaryUpgradeState *BinaryWatcherState
 
 // runMCPMode runs the server in MCP mode:
 // - HTTP server runs in a goroutine (for browser extension)
@@ -24,7 +28,8 @@ import (
 // If stdin closes (EOF), the HTTP server keeps running until killed.
 // Returns error if port binding fails (race condition with another client).
 // Never returns on success (blocks forever serving MCP protocol).
-func runMCPMode(server *Server, port int, apiKey string) error {
+func runMCPMode(server *Server, port int, apiKey string, opts daemonLaunchOptions) error {
+	server.setListenPort(port)
 	cap := initCapture(server, port)
 	mux := setupHTTPRoutes(server, cap)
 
@@ -33,6 +38,42 @@ func runMCPMode(server *Server, port int, apiKey string) error {
 
 	startVersionCheckLoop(ctx)
 	startScreenshotRateLimiterCleanup(ctx)
+
+	binaryUpgradeState = startBinaryWatcher(ctx, version,
+		func(newVersion string) {
+			server.logLifecycle("binary_upgrade_detected", port, map[string]any{
+				"current_version": version,
+				"new_version":     newVersion,
+			})
+			server.AddWarning("UPGRADE DETECTED: v" + newVersion + " installed. Auto-restart in ~5s.")
+		},
+		func() {
+			if binaryUpgradeState != nil {
+				if _, newVer, _ := binaryUpgradeState.UpgradeInfo(); newVer != "" {
+					if markerPath, err := state.UpgradeMarkerFile(); err == nil {
+						_ = writeUpgradeMarker(version, newVer, markerPath)
+					}
+				}
+			}
+			server.logLifecycle("binary_upgrade_shutdown", port, map[string]any{"version": version})
+			p, _ := os.FindProcess(os.Getpid())
+			_ = p.Signal(syscall.SIGTERM)
+		},
+	)
+
+	if markerPath, err := state.UpgradeMarkerFile(); err == nil {
+		if marker, err := readAndClearUpgradeMarker(markerPath); err == nil && marker != nil {
+			server.AddWarning(fmt.Sprintf("Upgraded from v%s to v%s", marker.FromVersion, marker.ToVersion))
+			server.logLifecycle("binary_upgrade_complete", port, map[string]any{
+				"from_version": marker.FromVersion,
+				"to_version":   marker.ToVersion,
+			})
+		}
+	}
+
+	if err := enforceDaemonStartupPolicy(server, port, opts); err != nil {
+		return err
+	}
 
 	if err := cleanupStalePIDFile(server, port); err != nil {
 		return err
@@ -48,6 +89,9 @@ func runMCPMode(server *Server, port int, apiKey string) error {
 
 	if err := writePIDFile(port); err != nil {
 		server.logLifecycle("pid_file_error", port, map[string]any{"error": err.Error()})
+	}
+	if err := persistCurrentDaemonLock(port); err != nil {
+		server.logLifecycle("daemon_lock_write_failed", port, map[string]any{"error": err.Error()})
 	}
 
 	server.logLifecycle("startup", port, map[string]any{
@@ -77,7 +121,7 @@ func initCapture(server *Server, port int) *capture.Capture {
 		for k, v := range data {
 			entry[k] = v
 		}
-		_ = server.appendToFile([]LogEntry{entry})
+		server.addEntries([]LogEntry{entry})
 	})
 
 	server.logLifecycle("loading_settings", port, nil)
@@ -197,7 +241,7 @@ func startHTTPServer(server *Server, port int, apiKey string, mux *http.ServeMux
 	httpDone := make(chan struct{})
 	srv := &http.Server{
 		ReadTimeout:  5 * time.Second,
-		WriteTimeout: 10 * time.Second,
+		WriteTimeout: 65 * time.Second, // Must accommodate blocking tool waits (screenshot 20s, interact 35s, annotations 55s)
 		IdleTimeout:  120 * time.Second,
 		Handler:      AuthMiddleware(apiKey)(mux),
 	}
@@ -212,7 +256,11 @@ func startHTTPServer(server *Server, port int, apiKey string, mux *http.ServeMux
 		httpReady <- nil
 		// #nosec G114 -- localhost-only MCP background server
 		if err := srv.Serve(ln); err != nil && err != http.ErrServerClosed {
-			fmt.Fprintf(os.Stderr, "[gasoline] HTTP server error: %v\n", err)
+			_ = appendExitDiagnostic("http_listener_error", map[string]any{
+				"port":  port,
+				"error": err.Error(),
+			})
+			stderrf("[gasoline] HTTP server error: %v\n", err)
 		}
 	})
 
@@ -243,7 +291,7 @@ func awaitShutdownSignal(server *Server, srv *http.Server, port int, httpDone <-
 		// HTTP listener died unexpectedly — exit instead of hanging forever
 		shutdownSource = "http_listener_died"
 		s = syscall.SIGTERM // synthetic, for logging
-		fmt.Fprintf(os.Stderr, "[gasoline] HTTP listener exited unexpectedly, shutting down to avoid zombie process\n")
+		stderrf("[gasoline] HTTP listener exited unexpectedly, shutting down to avoid zombie process\n")
 	}
 
 	server.logLifecycle("shutdown", port, map[string]any{
@@ -251,6 +299,15 @@ func awaitShutdownSignal(server *Server, srv *http.Server, port int, httpDone <-
 		"shutdown_source": shutdownSource,
 		"uptime_seconds":  time.Since(startTime).Seconds(),
 	})
+	if diagPath := appendExitDiagnostic("daemon_shutdown", map[string]any{
+		"port":            port,
+		"signal":          s.String(),
+		"shutdown_source": shutdownSource,
+		"uptime_seconds":  time.Since(startTime).Seconds(),
+		"unexpected":      shutdownSource == "http_listener_died",
+	}); diagPath != "" && shutdownSource == "http_listener_died" {
+		stderrf("[gasoline] Shutdown diagnostics written to: %s\n", diagPath)
+	}
 
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
@@ -261,6 +318,7 @@ func awaitShutdownSignal(server *Server, srv *http.Server, port int, httpDone <-
 	server.shutdownAsyncLogger(2 * time.Second)
 	globalAnnotationStore.Close()
 	removePIDFile(port)
+	removeDaemonLockIfOwned(os.Getpid())
 }
 
 // mapSignalSource returns a human-readable description for a termination signal.

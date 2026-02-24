@@ -1,4 +1,10 @@
 /**
+ * Purpose: Provides shared runtime utilities used by extension and server workflows.
+ * Why: Avoids duplicated logic across runtime layers and keeps behavior consistent.
+ * Docs: docs/features/feature/observe/index.md
+ */
+
+/**
  * @fileoverview Context annotations storage and management.
  * Provides key-value annotations that attach to captured events for
  * richer debugging context (e.g., user flow, feature flag, session info).

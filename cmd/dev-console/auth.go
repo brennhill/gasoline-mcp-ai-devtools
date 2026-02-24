@@ -1,6 +1,7 @@
-// auth.go — API key authentication middleware for HTTP endpoints.
-// Uses constant-time comparison to prevent timing attacks. When no key
-// is configured, authentication is disabled (pass-through).
+// Purpose: Implements optional API-key HTTP middleware for daemon endpoint authentication.
+// Why: Provides lightweight access control for local/remote deployments without changing handler code.
+// Docs: docs/features/feature/api-key-auth/index.md
+
 package main
 
 import (

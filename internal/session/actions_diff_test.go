@@ -1,3 +1,7 @@
+// Purpose: Validate actions_diff_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
+// Docs: docs/features/feature/pagination/index.md
+
 // actions_diff_test.go — Tests for actions-diff.go and helpers.go.
 // Covers: diffErrors, countPerfRegressions, hasStatusRegression, computeSummary,
 // validateName, removeFromOrder, ExtractURLPath.
@@ -546,24 +550,24 @@ func TestExtractURLPath_WithQueryParams(t *testing.T) {
 func TestExtractURLPath_EmptyString(t *testing.T) {
 	t.Parallel()
 	result := ExtractURLPath("")
-	if result != "" {
-		t.Errorf("Expected empty string, got %q", result)
+	if result != "/" {
+		t.Errorf("Expected '/', got %q", result)
 	}
 }
 
 func TestExtractURLPath_OnlyQueryParams(t *testing.T) {
 	t.Parallel()
 	result := ExtractURLPath("?foo=bar")
-	if result != "" {
-		t.Errorf("Expected empty string, got %q", result)
+	if result != "/" {
+		t.Errorf("Expected '/', got %q", result)
 	}
 }
 
 func TestExtractURLPath_FullURL(t *testing.T) {
 	t.Parallel()
 	result := ExtractURLPath("https://example.com/api/v1/data?key=value")
-	if result != "https://example.com/api/v1/data" {
-		t.Errorf("Expected URL without query, got %q", result)
+	if result != "/api/v1/data" {
+		t.Errorf("Expected '/api/v1/data', got %q", result)
 	}
 }
 

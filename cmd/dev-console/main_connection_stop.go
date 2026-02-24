@@ -1,4 +1,3 @@
-// main_connection_stop.go — Server stop and force cleanup operations.
 package main
 
 import (

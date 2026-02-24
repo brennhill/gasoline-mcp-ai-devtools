@@ -1,3 +1,7 @@
+// Purpose: Validate tab_targeting_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
+// Docs: docs/features/feature/observe/index.md
+
 //go:build integration
 // +build integration
 
@@ -155,7 +159,7 @@ func TestPendingQueryWithTabID(t *testing.T) {
 	capture := setupTestCapture(t)
 
 	// Create query targeting a specific tab
-	id := capture.CreatePendingQuery(PendingQuery{
+	id, _ := capture.CreatePendingQuery(PendingQuery{
 		Type:   "dom",
 		Params: json.RawMessage(`{"selector":".test"}`),
 		TabID:  42,
@@ -180,7 +184,7 @@ func TestPendingQueryWithoutTabID(t *testing.T) {
 	capture := setupTestCapture(t)
 
 	// Create query without tab_id (falls back to active tab)
-	id := capture.CreatePendingQuery(PendingQuery{
+	id, _ := capture.CreatePendingQuery(PendingQuery{
 		Type:   "dom",
 		Params: json.RawMessage(`{"selector":".test"}`),
 	})

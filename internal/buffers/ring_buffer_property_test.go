@@ -1,3 +1,7 @@
+// Purpose: Validate ring_buffer_property_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
+// Docs: docs/features/feature/observe/index.md
+
 // ring_buffer_property_test.go — Property-based tests for ring buffer.
 
 package buffers

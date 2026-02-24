@@ -1,3 +1,7 @@
+// Purpose: Validate tools_observe_audit_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
+// Docs: docs/features/feature/observe/index.md
+
 // tools_observe_audit_test.go — Behavioral tests for observe tool
 //
 // ⚠️ ARCHITECTURAL INVARIANT - ALL OBSERVE MODES MUST WORK

@@ -9,6 +9,8 @@ header:
   excerpt: "One config. Your AI tool fires up Gasoline automatically."
 toc: true
 toc_sticky: true
+status: reference
+last_reviewed: 2026-02-16
 ---
 
 Gasoline implements the [Model Context Protocol](https://modelcontextprotocol.io/) — a standard for connecting AI assistants to external tools. Any MCP-compatible tool can tap into your browser state.
@@ -44,6 +46,30 @@ Gasoline exposes **5 tools** — each with multiple sub-modes controlled by a si
 | `generate` | Code and report generation | reproduction, csp, sarif, test_from_context, test_heal, visual_test, annotation_report |
 | `configure` | Session management | store, load, noise_rule, clear, health, streaming, recording_start, recording_stop, log_diff |
 | `interact` | Browser control and automation | navigate, click, type, select, execute_js, highlight, scroll_to, key_press, upload, draw_mode_start |
+
+## <i class="fas fa-layer-group"></i> Token-Efficient MCP Resources
+
+Gasoline also exposes MCP resources so agents can discover capabilities with minimal prompt overhead and load details only when needed.
+
+| Resource URI | Purpose | When to Read |
+|---|---|---|
+| `gasoline://capabilities` | Compact capability index + routing hints | First step for workflow selection |
+| `gasoline://guide` | Full usage guide for all tools | When broad reference is needed |
+| `gasoline://quickstart` | Canonical short examples | When you need quick command patterns |
+
+Playbooks are available via template:
+
+- `gasoline://playbook/{capability}/{level}`
+- Example: `gasoline://playbook/performance/quick`
+- Example: `gasoline://playbook/accessibility/quick`
+- Example: `gasoline://playbook/security/full`
+- Levels: `quick` (default recommended), `full` (deep workflow)
+
+Recommended agent behavior:
+
+1. Read `gasoline://capabilities` first.
+2. Choose a matching playbook by intent.
+3. Read only that playbook level (quick/full) for the active task.
 
 ### observe
 

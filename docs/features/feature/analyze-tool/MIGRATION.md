@@ -1,6 +1,8 @@
 ---
 feature: analyze-tool
 type: migration
+status: reference
+last_reviewed: 2026-02-16
 ---
 
 # Migration: 4-Tool → 5-Tool Architecture
@@ -21,7 +23,7 @@ observe | generate | configure | interact | analyze
 
 ## Rationale
 
-The 4-tool constraint was designed to:
+The 5-tool model was designed to:
 1. Keep LLM decision-making simple (fewer options)
 2. Force intentional design (no kitchen-sink sprawl)
 3. Maintain clear semantic boundaries

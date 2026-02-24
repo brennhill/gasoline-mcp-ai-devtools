@@ -1,6 +1,8 @@
 ---
 feature: test-generation
 date: 2026-01-29
+status: reference
+last_reviewed: 2026-02-16
 ---
 
 # Good Morning! Here's What's Done

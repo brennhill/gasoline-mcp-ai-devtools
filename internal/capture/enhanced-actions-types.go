@@ -1,11 +1,11 @@
-// enhanced-actions-types.go — Enhanced actions types.
-// EnhancedAction represents captured user actions with multi-strategy selectors.
-//
-// JSON CONVENTION: All fields MUST use snake_case. See .claude/refs/api-naming-standards.md
-// Deviations from snake_case MUST be tagged with // SPEC:<spec-name> at the field level.
+// Purpose: Defines capture-side enhanced action payload structures and filtering contracts.
+// Why: Standardizes action telemetry shape for replay, test generation, and observe query consumers.
+// Docs: docs/features/feature/normalized-event-schema/index.md
+
 package capture
 
-// EnhancedAction represents a captured user action with multi-strategy selectors
+// EnhancedAction represents a captured user action with multi-strategy selectors.
+// Wire fields: see WireEnhancedAction in internal/types/wire_enhanced_action.go
 type EnhancedAction struct {
 	Type      string `json:"type"`
 	Timestamp int64  `json:"timestamp"`

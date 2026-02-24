@@ -61,7 +61,7 @@ run_test_10_1
 
 # ── 10.2 — Empty buffers don't crash observe ─────────────
 begin_test "10.2" "Empty buffers don't crash observe (regression: nil pointer)" \
-    "After cold start (no extension data), call all 22 standard observe modes. All must return valid JSON-RPC." \
+    "After cold start (no extension data), call all standard observe modes. All must return valid JSON-RPC." \
     "Nil pointer on empty state was a real bug. This runs all modes in the worst-case state."
 run_test_10_2() {
     # Ensure a fresh daemon is running
@@ -72,7 +72,7 @@ run_test_10_2() {
         return
     fi
 
-    # All standard observe modes (from the observe tool enum)
+    # Standard observe modes (current tool enum).
     local modes=(
         "page"
         "tabs"
@@ -86,17 +86,18 @@ run_test_10_2() {
         "extension_logs"
         "pilot"
         "timeline"
+        "summarized_logs"
         "error_bundles"
         "pending_commands"
         "failed_commands"
         "network_bodies"
         "recordings"
-        "api"
-        "changes"
         "log_diff_report"
-        "recording_actions"
+        "command_result"
         "playback_results"
         "saved_videos"
+        "screenshot"
+        "indexeddb"
     )
 
     local success_count=0
@@ -113,6 +114,9 @@ run_test_10_2() {
         echo "$request" | "$TIMEOUT_CMD" 8 "$WRAPPER" --port "$PORT" > "$stdout_file" 2>"$stderr_file"
         LAST_EXIT_CODE=$?
         LAST_RESPONSE=$(grep -v '^$' "$stdout_file" 2>/dev/null | tail -1)
+        if [ -z "$LAST_RESPONSE" ]; then
+            LAST_RESPONSE="{\"jsonrpc\":\"2.0\",\"id\":${MCP_ID},\"result\":{\"content\":[{\"type\":\"text\",\"text\":\"Error: transport_no_response — wrapper returned no stdout payload. exit_code=${LAST_EXIT_CODE}\"}],\"isError\":true}}"
+        fi
         MCP_ID=$((MCP_ID + 1))
         echo "$LAST_RESPONSE"
     }

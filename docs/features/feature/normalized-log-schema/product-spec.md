@@ -5,6 +5,9 @@ ai-priority: medium
 tags: [v7, logging, standardization, eyes]
 relates-to: [../backend-log-streaming.md, ../../core/architecture.md]
 last-verified: 2026-01-31
+doc_type: product-spec
+feature_id: feature-normalized-log-schema
+last_reviewed: 2026-02-16
 ---
 
 # Normalized Log Schema

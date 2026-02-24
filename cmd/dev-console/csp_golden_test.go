@@ -1,3 +1,7 @@
+// Purpose: Validate csp_golden_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
+// Docs: docs/features/feature/observe/index.md
+
 // csp_golden_test.go — Golden file validation for CSP directive generation.
 package main
 
@@ -9,6 +13,7 @@ import (
 	"testing"
 
 	"github.com/dev-console/dev-console/internal/capture"
+	gen "github.com/dev-console/dev-console/internal/tools/generate"
 )
 
 func TestGoldenCSPModerate(t *testing.T) {
@@ -23,7 +28,7 @@ func TestGoldenCSPModerate(t *testing.T) {
 		{URL: "https://api.example.com/users", ContentType: "application/json"},
 	}
 
-	directives := buildCSPDirectives(networkBodies)
+	directives := gen.BuildCSPDirectives(networkBodies)
 
 	// Sort directive values for deterministic output
 	sortedDirectives := make(map[string][]string)

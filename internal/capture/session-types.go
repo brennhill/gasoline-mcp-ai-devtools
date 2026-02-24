@@ -1,5 +1,7 @@
-// session-types.go — Session tracking types.
-// SessionTracker records performance snapshots for delta computation.
+// Purpose: Defines session-scoped snapshot tracking structures used for performance regression comparison.
+// Why: Keeps per-session baseline bookkeeping explicit and separate from global capture buffers.
+// Docs: docs/features/feature/performance-audit/index.md
+
 package capture
 
 import (
