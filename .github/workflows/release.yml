@@ -4,28 +4,57 @@ on:
   push:
     tags:
       - 'v*.*.*'
-  workflow_dispatch:
-    inputs:
-      tag:
-        description: 'Release tag to publish (e.g., v0.7.1)'
-        required: true
-        default: 'v0.7.1'
 
 permissions:
   contents: write
   packages: write
 
 jobs:
+  # Gate: only run the release train for tags that point to commits on STABLE.
+  check-tag-on-stable:
+    name: Verify Tag Commit Is On STABLE
+    runs-on: ubuntu-latest
+    outputs:
+      should_release: ${{ steps.check.outputs.should_release }}
+      version: ${{ steps.check.outputs.version }}
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          fetch-depth: 0
+
+      - name: Check tag ancestry against STABLE
+        id: check
+        run: |
+          TAG_VERSION=${GITHUB_REF#refs/tags/v}
+          TAG_COMMIT=$(git rev-list -n 1 "$GITHUB_REF")
+          git fetch origin STABLE --depth=1
+
+          echo "Tag version: $TAG_VERSION"
+          echo "Tag commit: $TAG_COMMIT"
+
+          if git merge-base --is-ancestor "$TAG_COMMIT" origin/STABLE; then
+            echo "Tag commit is on STABLE; release train will run."
+            echo "should_release=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "Tag commit is NOT on STABLE; release train will be skipped."
+            echo "should_release=false" >> "$GITHUB_OUTPUT"
+          fi
+
+          echo "version=$TAG_VERSION" >> "$GITHUB_OUTPUT"
+
   # Step 1: Validate all versions match before doing anything
   validate:
     name: Validate Versions
+    needs: check-tag-on-stable
+    if: needs.check-tag-on-stable.outputs.should_release == 'true'
     uses: ./.github/workflows/validate-versions.yml
 
   # Step 2: Verify tag matches VERSION file
   verify-tag:
     name: Verify Tag Matches VERSION
     runs-on: ubuntu-latest
-    needs: validate
+    needs: [check-tag-on-stable, validate]
+    if: needs.check-tag-on-stable.outputs.should_release == 'true'
     outputs:
       version: ${{ steps.check.outputs.version }}
     steps:
@@ -34,12 +63,7 @@ jobs:
       - name: Verify tag matches VERSION file
         id: check
         run: |
-          if [ "${GITHUB_EVENT_NAME}" = "workflow_dispatch" ]; then
-            TAG_REF="${{ github.event.inputs.tag }}"
-            TAG_VERSION="${TAG_REF#v}"
-          else
-            TAG_VERSION=${GITHUB_REF#refs/tags/v}
-          fi
+          TAG_VERSION=${GITHUB_REF#refs/tags/v}
           FILE_VERSION=$(cat VERSION)
 
           echo "Tag version: $TAG_VERSION"
@@ -64,6 +88,7 @@ jobs:
     name: Build & Publish
     runs-on: ubuntu-latest
     needs: verify-tag
+    if: needs.verify-tag.result == 'success'
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
@@ -258,3 +283,14 @@ jobs:
           echo "- \`gasoline-mcp-linux-arm64==$VERSION\`" >> $GITHUB_STEP_SUMMARY
           echo "- \`gasoline-mcp-linux-x64==$VERSION\`" >> $GITHUB_STEP_SUMMARY
           echo "- \`gasoline-mcp-win32-x64==$VERSION\`" >> $GITHUB_STEP_SUMMARY
+
+  skip-nonstable-tag:
+    name: Skip Non-STABLE Tags
+    runs-on: ubuntu-latest
+    needs: check-tag-on-stable
+    if: needs.check-tag-on-stable.outputs.should_release != 'true'
+    steps:
+      - name: Explain skip
+        run: |
+          echo "Tag is not on STABLE; skipping release train."
+          echo "This workflow only publishes when a version tag points to a STABLE commit."
