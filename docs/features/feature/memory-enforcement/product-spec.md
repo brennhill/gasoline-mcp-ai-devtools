@@ -4,6 +4,9 @@ status: shipped
 tool: configure
 mode: health
 version: 5.0.0
+doc_type: product-spec
+feature_id: feature-memory-enforcement
+last_reviewed: 2026-02-16
 ---
 # Product Spec: Memory Enforcement
 

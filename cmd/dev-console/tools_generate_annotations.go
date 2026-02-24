@@ -1,4 +1,9 @@
+// Purpose: Implements generate tool formats and output assembly.
+// Why: Keeps generated artifacts reproducible and consistent across environments.
+// Docs: docs/features/feature/test-generation/index.md
+
 // tools_generate_annotations.go — Generate handlers for annotation-derived artifacts.
+// Docs: docs/features/feature/test-generation/index.md
 // Provides: visual_test (Playwright), annotation_report (Markdown), annotation_issues (JSON).
 package main
 
@@ -12,14 +17,14 @@ import (
 // toolGenerateVisualTest generates a Playwright test from annotation session data.
 func (h *ToolHandler) toolGenerateVisualTest(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	var params struct {
-		TestName string `json:"test_name"`
-		Session  string `json:"session"`
+		TestName     string `json:"test_name"`
+		AnnotSession string `json:"annot_session"`
 	}
 	if len(args) > 0 {
 		lenientUnmarshal(args, &params)
 	}
 
-	pages, err := h.collectAnnotationPages(params.Session)
+	pages, err := h.collectAnnotationPages(params.AnnotSession)
 	if err != "" {
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("No annotations", map[string]any{
 			"status":  "no_data",
@@ -39,13 +44,13 @@ func (h *ToolHandler) toolGenerateVisualTest(req JSONRPCRequest, args json.RawMe
 // toolGenerateAnnotationReport generates a Markdown report from annotation session data.
 func (h *ToolHandler) toolGenerateAnnotationReport(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	var params struct {
-		Session string `json:"session"`
+		AnnotSession string `json:"annot_session"`
 	}
 	if len(args) > 0 {
 		lenientUnmarshal(args, &params)
 	}
 
-	pages, err := h.collectAnnotationPages(params.Session)
+	pages, err := h.collectAnnotationPages(params.AnnotSession)
 	if err != "" {
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("No annotations", map[string]any{
 			"status":  "no_data",
@@ -60,13 +65,13 @@ func (h *ToolHandler) toolGenerateAnnotationReport(req JSONRPCRequest, args json
 // toolGenerateAnnotationIssues generates a structured JSON issue list from annotations.
 func (h *ToolHandler) toolGenerateAnnotationIssues(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	var params struct {
-		Session string `json:"session"`
+		AnnotSession string `json:"annot_session"`
 	}
 	if len(args) > 0 {
 		lenientUnmarshal(args, &params)
 	}
 
-	pages, err := h.collectAnnotationPages(params.Session)
+	pages, err := h.collectAnnotationPages(params.AnnotSession)
 	if err != "" {
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("No annotations", map[string]any{
 			"status":  "no_data",
@@ -91,7 +96,7 @@ func (h *ToolHandler) collectAnnotationPages(sessionName string) ([]*AnnotationS
 	if sessionName != "" {
 		ns := h.annotationStore.GetNamedSession(sessionName)
 		if ns == nil || len(ns.Pages) == 0 {
-			return nil, "No annotations found in session '" + sessionName + "'. Use interact({action: 'draw_mode_start', session: '" + sessionName + "'}) to create annotations."
+			return nil, "No annotations found in session '" + sessionName + "'. Use interact({action: 'draw_mode_start', annot_session: '" + sessionName + "'}) to create annotations."
 		}
 		return ns.Pages, ""
 	}

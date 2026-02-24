@@ -1,6 +1,6 @@
-// test_helpers.go — Test helper methods for setting up test data
-// These methods are ONLY for tests and bypass normal ingestion flow
-//go:build !production
+// Purpose: Provides test-only capture mutation helpers for deterministic unit/integration setup.
+// Why: Enables focused tests without exposing unsafe mutation primitives in production APIs.
+// Docs: docs/features/feature/self-testing/index.md
 
 package capture
 
@@ -21,6 +21,9 @@ func (c *Capture) AddNetworkBodiesForTest(bodies []NetworkBody) {
 		c.networkBodies = append(c.networkBodies, body)
 		c.networkAddedAt = append(c.networkAddedAt, now)
 		c.networkTotalAdded++
+		if body.Status >= 400 {
+			c.networkErrorTotalAdded++
+		}
 	}
 }
 
@@ -55,6 +58,19 @@ func (c *Capture) SetPilotEnabled(enabled bool) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	c.ext.pilotEnabled = enabled
+	c.ext.pilotStatusKnown = true
+	c.ext.pilotUpdatedAt = time.Now()
+	c.ext.pilotSource = PilotSourceTestHelper
+}
+
+// SetPilotUnknownForTest resets pilot to startup-uncertain state (TEST ONLY).
+func (c *Capture) SetPilotUnknownForTest() {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.ext.pilotEnabled = false
+	c.ext.pilotStatusKnown = false
+	c.ext.pilotUpdatedAt = time.Time{}
+	c.ext.pilotSource = PilotSourceAssumedStartup
 }
 
 // SetTrackingStatusForTest sets the tracked tab URL and ID (TEST ONLY)
@@ -102,19 +118,24 @@ func (c *Capture) GetWSLengthsForTest() (events int, addedAt int, memoryTotal in
 	return len(c.wsEvents), len(c.wsAddedAt), c.wsMemoryTotal
 }
 
+// SimulateExtensionDisconnectForTest marks the extension as disconnected by
+// setting lastSyncSeen far in the past. Thread-safe (operates on the instance, not a global).
+func (c *Capture) SimulateExtensionDisconnectForTest() {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.ext.lastSyncSeen = time.Now().Add(-1 * time.Hour)
+}
+
+// SetCSPStatusForTest sets the CSP restriction state (TEST ONLY)
+func (c *Capture) SetCSPStatusForTest(restricted bool, level string) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.ext.cspRestricted = restricted
+	c.ext.cspLevel = level
+}
+
 // GetLastPendingQuery returns the most recently created pending query (TEST ONLY)
 // Returns nil if no queries exist.
 func (c *Capture) GetLastPendingQuery() *queries.PendingQuery {
-	c.qd.mu.Lock()
-	defer c.qd.mu.Unlock()
-	if len(c.qd.pendingQueries) == 0 {
-		return nil
-	}
-	last := c.qd.pendingQueries[len(c.qd.pendingQueries)-1]
-	return &queries.PendingQuery{
-		Type:          last.query.Type,
-		Params:        last.query.Params,
-		TabID:         last.query.TabID,
-		CorrelationID: last.query.CorrelationID,
-	}
+	return c.qd.GetLastPendingQuery()
 }

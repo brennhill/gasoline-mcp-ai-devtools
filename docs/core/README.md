@@ -1,3 +1,9 @@
+---
+doc_type: legacy_doc
+status: reference
+last_reviewed: 2026-02-16
+---
+
 # Core Documentation
 
 This folder contains all cross-product and foundational documentation for Gasoline MCP, including:

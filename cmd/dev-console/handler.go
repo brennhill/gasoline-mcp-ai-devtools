@@ -1,6 +1,3 @@
-// handler.go — MCP protocol handler for JSON-RPC 2.0 requests.
-// Contains MCPHandler type and HTTP/stdio transport handling.
-// Extracted from cmd/gasoline/main.go during Phase 4 refactoring.
 package main
 
 import (
@@ -8,37 +5,52 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"os"
+	"sort"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/dev-console/dev-console/internal/capture"
+	"github.com/dev-console/dev-console/internal/mcp"
 )
 
 // serverInstructions is sent once per session in the initialize response.
 // It provides workflow guidance so tool descriptions can stay minimal.
-const serverInstructions = `Gasoline provides real-time browser telemetry via 5 tools.
+const serverInstructions = `Gasoline provides real-time browser telemetry and automation via 5 tools.
 
 Workflow:
-- observe: read passive buffers (errors, logs, network, actions, etc.)
+- observe: read passive buffers (errors, logs, network, screenshots, actions, etc.)
 - analyze: trigger active analysis (accessibility, security, performance, DOM queries)
 - generate: create artifacts from captured data (Playwright tests, reproductions, HAR, CSP, SARIF)
-- configure: session settings (noise rules, storage, streaming, clear buffers, health)
-- interact: browser automation (click, type, navigate, execute JS, record) — requires AI Web Pilot extension
+- configure: session settings (noise rules, storage, streaming, clear buffers, health, restart)
+- interact: browser automation (navigate, click, type, fill forms, upload, execute JS, record) — controls any web page
 
 Key patterns:
+- Browser automation: use interact to navigate to any URL, click buttons, type text, fill forms, and control the browser. Use observe(what="screenshot") to visually verify page state before and after actions.
 - Pagination: observe returns after_cursor/before_cursor in metadata. Pass them back for next page. Use restart_on_eviction=true if cursor expired.
 - Async analysis: analyze dispatches to the extension; poll results with observe(what="command_result", correlation_id=...).
 - Error debugging: start with observe(what="error_bundles") for pre-assembled context per error (error + network + actions + logs).
 - Performance: interact(action="navigate"|"refresh") auto-includes perf_diff. Add analyze=true to any interact action for profiling.
 - Noise filtering: use configure(action="noise_rule", noise_action="auto_detect") to suppress recurring noise.
-- For detailed docs, read gasoline://guide. For quick examples, read gasoline://quickstart.`
+- Recovery: if tools return repeated connection errors or timeouts, use configure(action="restart") to force-restart the daemon. This works even when the daemon is completely unresponsive.
+- For routing help, read gasoline://capabilities. For detailed docs, read gasoline://guide. For quick examples, read gasoline://quickstart.`
 
-// MCPHandler handles MCP protocol messages
+// MCPHandler owns JSON-RPC request routing and response post-processing for MCP.
+//
+// Invariants:
+// - toolHandler is expected to be set once during bootstrap before serving requests.
+// - telemetryCursors is guarded by telemetryMu.
+//
+// Failure semantics:
+// - Unknown methods/tools return JSON-RPC method-not-found errors.
+// - Notification requests (no id) intentionally produce no response.
 type MCPHandler struct {
 	server      *Server
 	toolHandler ToolHandlerInterface
 	version     string
+
+	telemetryMu      sync.Mutex
+	telemetryCursors map[string]passiveTelemetryCursor
 }
 
 // ToolHandlerInterface defines the minimal tool handler interface
@@ -58,35 +70,40 @@ type RateLimiter interface {
 // RedactionEngine interface for response redaction
 type RedactionEngine interface {
 	RedactJSON(data json.RawMessage) json.RawMessage
+	RedactMapValues(data map[string]any) map[string]any
 }
 
 // NewMCPHandler creates a new MCP handler
 func NewMCPHandler(server *Server, version string) *MCPHandler {
 	return &MCPHandler{
-		server:  server,
-		version: version,
+		server:           server,
+		version:          version,
+		telemetryCursors: make(map[string]passiveTelemetryCursor),
 	}
 }
 
-// SetToolHandler sets the tool handler (called after construction)
+// SetToolHandler injects the tool execution backend.
+//
+// Invariants:
+// - Intended for one-time startup wiring; runtime swapping is unsupported.
 func (h *MCPHandler) SetToolHandler(th ToolHandlerInterface) {
 	h.toolHandler = th
 }
 
 // httpRequestContext collects metadata from an HTTP request for debug logging.
 type httpRequestContext struct {
-	startTime time.Time
-	sessionID string
-	clientID  string
-	headers   map[string]string
+	startTime    time.Time
+	extSessionID string
+	clientID     string
+	headers      map[string]string
 }
 
 // newHTTPRequestContext extracts metadata from the request headers.
 func newHTTPRequestContext(r *http.Request, serverVersion string) httpRequestContext {
 	ctx := httpRequestContext{
-		startTime: time.Now(),
-		sessionID: r.Header.Get("X-Gasoline-Session"),
-		clientID:  r.Header.Get("X-Gasoline-Client"),
+		startTime:    time.Now(),
+		extSessionID: r.Header.Get("X-Gasoline-Ext-Session"),
+		clientID:     r.Header.Get("X-Gasoline-Client"),
 	}
 
 	ctx.headers = make(map[string]string)
@@ -100,7 +117,7 @@ func newHTTPRequestContext(r *http.Request, serverVersion string) httpRequestCon
 	}
 
 	if extVer := r.Header.Get("X-Gasoline-Extension-Version"); extVer != "" && extVer != serverVersion {
-		fmt.Fprintf(os.Stderr, "[gasoline] Version mismatch: server=%s extension=%s\n", serverVersion, extVer)
+		stderrf("[gasoline] Version mismatch: server=%s extension=%s\n", serverVersion, extVer)
 	}
 
 	return ctx
@@ -119,7 +136,7 @@ func (h *MCPHandler) logDebugEntry(ctx httpRequestContext, requestBody string, s
 		Timestamp:      ctx.startTime,
 		Endpoint:       "/mcp",
 		Method:         "POST",
-		SessionID:      ctx.sessionID,
+		ExtSessionID:   ctx.extSessionID,
 		ClientID:       ctx.clientID,
 		Headers:        ctx.headers,
 		RequestBody:    requestBody,
@@ -139,7 +156,11 @@ func truncatePreview(s string) string {
 	return s
 }
 
-// HandleHTTP handles MCP requests over HTTP (POST /mcp)
+// HandleHTTP serves MCP-over-HTTP with bounded body size and debug logging.
+//
+// Failure semantics:
+// - Non-POST or malformed JSON requests return protocol errors without invoking tool handlers.
+// - Notification requests are acknowledged with HTTP 204 and no JSON-RPC body.
 func (h *MCPHandler) HandleHTTP(w http.ResponseWriter, r *http.Request) {
 	ctx := newHTTPRequestContext(r, h.version)
 
@@ -148,12 +169,18 @@ func (h *MCPHandler) HandleHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Validate Content-Type: must be application/json (or empty for lenient clients)
+	if ct := r.Header.Get("Content-Type"); ct != "" && !strings.Contains(ct, "application/json") {
+		h.writeJSONRPCError(w, nil, -32700, "Unsupported Content-Type: "+ct)
+		return
+	}
+
 	r.Body = http.MaxBytesReader(w, r.Body, maxPostBodySize)
 
 	bodyBytes, err := io.ReadAll(r.Body)
 	if err != nil {
 		h.logDebugEntry(ctx, "", http.StatusBadRequest, "", fmt.Sprintf("Could not read body: %v", err))
-		h.writeJSONRPCError(w, "error", -32700, "Read error: "+err.Error())
+		h.writeJSONRPCError(w, nil, -32700, "Read error: "+err.Error())
 		return
 	}
 
@@ -193,19 +220,6 @@ func (h *MCPHandler) writeJSONRPCError(w http.ResponseWriter, id any, code int, 
 	_ = json.NewEncoder(w).Encode(resp)
 }
 
-// extractJSONRPCID attempts to extract the "id" field from JSON bytes.
-// Returns the extracted ID or "error" as fallback (never null - Cursor rejects it).
-func extractJSONRPCID(bodyBytes []byte) any {
-	var partial map[string]any
-	var errorID any = "error"
-	if json.Unmarshal(bodyBytes, &partial) == nil {
-		if id, ok := partial["id"]; ok && id != nil {
-			errorID = id
-		}
-	}
-	return errorID
-}
-
 // mcpMethodHandler is a function that handles a specific MCP method.
 type mcpMethodHandler func(h *MCPHandler, req JSONRPCRequest) JSONRPCResponse
 
@@ -226,16 +240,47 @@ var mcpStaticResponses = map[string]string{
 	"prompts/list": `{"prompts":[]}`,
 }
 
-// HandleRequest processes an MCP request and returns a response.
-// Returns nil for notifications (which should not receive a response).
+// HandleRequest routes one JSON-RPC request to the corresponding MCP method.
+//
+// Invariants:
+// - id validation and JSON-RPC version checks run before method dispatch.
+//
+// Failure semantics:
+// - Invalid request shape yields JSON-RPC -32600.
+// - Unknown method yields JSON-RPC -32601.
+// - Notifications return nil by design.
 func (h *MCPHandler) HandleRequest(req JSONRPCRequest) *JSONRPCResponse {
-	// CRITICAL: Notifications do NOT get responses per JSON-RPC 2.0 spec
-	if req.ID == nil || strings.HasPrefix(req.Method, "notifications/") {
+	if req.HasInvalidID() {
+		resp := JSONRPCResponse{
+			JSONRPC: "2.0",
+			ID:      nil,
+			Error: &JSONRPCError{
+				Code:    -32600,
+				Message: "Invalid Request: id must be string or number when present",
+			},
+		}
+		return &resp
+	}
+
+	// Notifications do not get responses per JSON-RPC 2.0.
+	if !req.HasID() {
 		return nil
+	}
+
+	// JSON-RPC 2.0: All requests must include "jsonrpc": "2.0"
+	if req.JSONRPC != "2.0" {
+		return &JSONRPCResponse{
+			JSONRPC: "2.0",
+			ID:      req.ID,
+			Error:   &JSONRPCError{Code: -32600, Message: `Invalid Request: jsonrpc must be "2.0"`},
+		}
 	}
 
 	if handler, ok := mcpMethodHandlers[req.Method]; ok {
 		resp := handler(h, req)
+		if resp.Result != nil {
+			resp.Result = mcp.ClampResponseSize(resp.Result)
+		}
 		return &resp
 	}
 
@@ -253,21 +298,7 @@ func (h *MCPHandler) HandleRequest(req JSONRPCRequest) *JSONRPCResponse {
 }
 
 func (h *MCPHandler) handleInitialize(req JSONRPCRequest) JSONRPCResponse {
-	const supportedVersion = "2024-11-05"
-
-	// Parse client's requested protocol version (best-effort; missing/empty is fine)
-	var initParams struct {
-		ProtocolVersion string `json:"protocolVersion"` // SPEC:MCP
-	}
-	if len(req.Params) > 0 {
-		_ = json.Unmarshal(req.Params, &initParams)
-	}
-
-	// Negotiate: echo client's version if supported, otherwise respond with our latest
-	negotiatedVersion := supportedVersion
-	if initParams.ProtocolVersion == supportedVersion {
-		negotiatedVersion = initParams.ProtocolVersion
-	}
+	negotiatedVersion := negotiateProtocolVersion(req.Params)
 
 	result := MCPInitializeResult{
 		ProtocolVersion: negotiatedVersion,
@@ -288,21 +319,7 @@ func (h *MCPHandler) handleInitialize(req JSONRPCRequest) JSONRPCResponse {
 }
 
 func (h *MCPHandler) handleResourcesList(req JSONRPCRequest) JSONRPCResponse {
-	resources := []MCPResource{
-		{
-			URI:         "gasoline://guide",
-			Name:        "Gasoline Usage Guide",
-			Description: "How to use Gasoline MCP tools for browser debugging",
-			MimeType:    "text/markdown",
-		},
-		{
-			URI:         "gasoline://quickstart",
-			Name:        "Gasoline MCP Quickstart",
-			Description: "Short, canonical MCP call examples and workflows",
-			MimeType:    "text/markdown",
-		},
-	}
-	result := MCPResourcesListResult{Resources: resources}
+	result := MCPResourcesListResult{Resources: mcpResources()}
 	// Error impossible: MCPResourcesListResult is a simple struct with no circular refs or unsupported types
 	resultJSON, _ := json.Marshal(result)
 	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: resultJSON}
@@ -323,7 +340,8 @@ func (h *MCPHandler) handleResourcesRead(req JSONRPCRequest) JSONRPCResponse {
 		}
 	}
 
-	if params.URI != "gasoline://guide" && params.URI != "gasoline://quickstart" && !strings.HasPrefix(params.URI, "gasoline://demo/") {
+	canonicalURI, text, ok := resolveResourceContent(params.URI)
+	if !ok {
 		return JSONRPCResponse{
 			JSONRPC: "2.0",
 			ID:      req.ID,
@@ -334,205 +352,16 @@ func (h *MCPHandler) handleResourcesRead(req JSONRPCRequest) JSONRPCResponse {
 		}
 	}
 
-	guide := `# Gasoline MCP Tools
-
-Browser observability for AI coding agents. 5 tools for real-time browser telemetry.
-
-## Quick Reference
-
-| Tool | Purpose | Key Parameters |
-|------|---------|----------------|
-| observe | Read passive browser buffers | what: errors, logs, extension_logs, network_waterfall, network_bodies, websocket_events, websocket_status, actions, vitals, page, tabs, pilot, timeline, error_bundles, screenshot, command_result, pending_commands, failed_commands, saved_videos, recordings, recording_actions, log_diff_report |
-| analyze | Trigger active analysis (async) | what: dom, accessibility, performance, security_audit, third_party_audit, link_health, link_validation, error_clusters, history, api_validation, annotations, annotation_detail, draw_history, draw_session |
-| generate | Create artifacts from captured data | format: test, reproduction, pr_summary, sarif, har, csp, sri, visual_test, annotation_report, annotation_issues, test_from_context, test_heal, test_classify |
-| configure | Session settings and utilities | action: health, store, load, noise_rule, clear, streaming, test_boundary_start, test_boundary_end, recording_start, recording_stop, playback, log_diff |
-| interact | Browser automation (needs AI Web Pilot) | action: click, type, select, check, navigate, refresh, execute_js, highlight, subtitle, key_press, scroll_to, wait_for, get_text, get_value, get_attribute, set_attribute, focus, list_interactive, save_state, load_state, list_states, delete_state, record_start, record_stop, upload, draw_mode_start, back, forward, new_tab |
-
-## Key Patterns
-
-### Check Extension Status First
-Always verify the extension is connected before debugging:
-  {"tool":"configure","arguments":{"action":"health"}}
-If extension_connected is false, ask the user to click "Track This Tab" in the extension popup.
-
-### Async Commands (analyze tool)
-analyze dispatches queries to the extension asynchronously. Poll for results:
-  1. {"tool":"analyze","arguments":{"what":"accessibility"}}  -> returns correlation_id
-  2. {"tool":"observe","arguments":{"what":"command_result","correlation_id":"..."}}
-
-### Pagination (observe tool)
-Responses include cursors in metadata. Pass back for next page:
-  {"tool":"observe","arguments":{"what":"logs","after_cursor":"...","limit":50}}
-Use restart_on_eviction=true if a cursor expires.
-
-## Common Workflows
-
-  // See errors with surrounding context (network + actions + logs)
-  {"tool":"observe","arguments":{"what":"error_bundles"}}
-
-  // Check failed network requests
-  {"tool":"observe","arguments":{"what":"network_waterfall","status_min":400}}
-
-  // Run accessibility audit (async)
-  {"tool":"analyze","arguments":{"what":"accessibility"}}
-
-  // Query DOM elements (async)
-  {"tool":"analyze","arguments":{"what":"dom","selector":".error-message"}}
-
-  // Generate Playwright test from session
-  {"tool":"generate","arguments":{"format":"test","test_name":"user_login"}}
-
-  // Check Web Vitals (LCP, CLS, INP, FCP)
-  {"tool":"observe","arguments":{"what":"vitals"}}
-
-  // Navigate and measure performance (auto perf_diff)
-  {"tool":"interact","arguments":{"action":"navigate","url":"https://example.com"}}
-
-  // Suppress noisy console errors
-  {"tool":"configure","arguments":{"action":"noise_rule","noise_action":"auto_detect"}}
-
-## Tips
-
-- Start with configure(action:"health") to verify extension is connected
-- Use observe(what:"error_bundles") instead of raw errors — includes surrounding context
-- Use observe(what:"page") to confirm which URL the browser is on
-- interact actions require the AI Web Pilot extension feature to be enabled
-- interact navigate and refresh automatically include performance diff metrics
-- Data comes from the active tracked browser tab
-`
-
-	quickstart := `# Gasoline MCP Quickstart
-
-## 1. Health Check
-{"tool":"configure","arguments":{"action":"health"}}
-
-## 2. Confirm Tracked Page
-{"tool":"observe","arguments":{"what":"page"}}
-
-## 3. Collect Errors + Context
-{"tool":"observe","arguments":{"what":"error_bundles"}}
-
-## 4. Network Failures
-{"tool":"observe","arguments":{"what":"network_waterfall","status_min":400}}
-
-## 5. WebSocket Status
-{"tool":"observe","arguments":{"what":"websocket_status"}}
-
-## 6. Accessibility Audit (Async)
-{"tool":"analyze","arguments":{"what":"accessibility"}}
-{"tool":"observe","arguments":{"what":"command_result","correlation_id":"..."}}
-
-## 7. DOM Query (Async)
-{"tool":"analyze","arguments":{"what":"dom","selector":".error-message"}}
-{"tool":"observe","arguments":{"what":"command_result","correlation_id":"..."}}
-
-## 8. Performance Check
-{"tool":"interact","arguments":{"action":"navigate","url":"https://example.com"}}
-
-## 9. Start Recording
-{"tool":"configure","arguments":{"action":"recording_start","name":"demo-run"}}
-
-## 10. Stop Recording
-{"tool":"configure","arguments":{"action":"recording_stop","recording_id":"..."}}
-`
-
-	demoScripts := map[string]string{
-		"ws": `# Demo: WebSocket Debugging
-
-Goal: show mismatched message format and where to fix it.
-
-Steps:
-1. {"tool":"observe","arguments":{"what":"websocket_status"}}
-2. {"tool":"observe","arguments":{"what":"websocket_events","limit":20}}
-3. {"tool":"analyze","arguments":{"what":"api_validation","operation":"analyze","ignore_endpoints":["/socket"]}}
-
-Expected:
-- Connection OK, but message schema warnings
-- Identify client-side parsing path for fix
-`,
-		"annotations": `# Demo: Usability Annotations
-
-Goal: highlight a layout issue and collect feedback.
-
-Steps:
-1. {"tool":"interact","arguments":{"action":"draw_mode_start","session":"demo-ux"}}
-2. Ask user to annotate oversized image and desired size.
-3. {"tool":"analyze","arguments":{"what":"annotations","session":"demo-ux","wait":true}}
-
-Expected:
-- Annotation list with coordinates and notes
-`,
-		"recording": `# Demo: Flow Recording
-
-Goal: show record → action → stop workflow.
-
-Steps:
-1. {"tool":"configure","arguments":{"action":"recording_start","name":"demo-flow"}}
-2. {"tool":"interact","arguments":{"action":"navigate","url":"http://localhost:xxxx"}}
-3. {"tool":"configure","arguments":{"action":"recording_stop","recording_id":"..."}}
-
-Expected:
-- Saved recording ID and playback instructions
-`,
-		"dependencies": `# Demo: Dependency Vetting
-
-Goal: identify unexpected third-party origins.
-
-Steps:
-1. {"tool":"analyze","arguments":{"what":"third_party_audit","first_party_origins":["http://localhost:xxxx"]}}
-2. {"tool":"observe","arguments":{"what":"network_waterfall","limit":50}}
-
-Expected:
-- Highlight unexpected origins for review
-`,
-	}
-
-	result := MCPResourcesReadResult{Contents: []MCPResourceContent{}}
-	if params.URI == "gasoline://guide" {
-		result.Contents = append(result.Contents, MCPResourceContent{
-			URI:      "gasoline://guide",
-			MimeType: "text/markdown",
-			Text:     guide,
-		})
-	} else if params.URI == "gasoline://quickstart" {
-		result.Contents = append(result.Contents, MCPResourceContent{
-			URI:      "gasoline://quickstart",
-			MimeType: "text/markdown",
-			Text:     quickstart,
-		})
-	} else {
-		name := strings.TrimPrefix(params.URI, "gasoline://demo/")
-		script, ok := demoScripts[name]
-		if !ok {
-			return JSONRPCResponse{
-				JSONRPC: "2.0",
-				ID:      req.ID,
-				Error: &JSONRPCError{
-					Code:    -32002,
-					Message: "Resource not found: " + params.URI,
-				},
-			}
-		}
-		result.Contents = append(result.Contents, MCPResourceContent{
-			URI:      params.URI,
-			MimeType: "text/markdown",
-			Text:     script,
-		})
-	}
+	result := MCPResourcesReadResult{Contents: []MCPResourceContent{
+		{URI: canonicalURI, MimeType: "text/markdown", Text: text},
+	}}
 	// Error impossible: MCPResourceContentResult is a simple struct with no circular refs or unsupported types
 	resultJSON, _ := json.Marshal(result)
 	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: resultJSON}
 }
 
 func (h *MCPHandler) handleResourcesTemplatesList(req JSONRPCRequest) JSONRPCResponse {
-	result := MCPResourceTemplatesListResult{ResourceTemplates: []any{
-		map[string]any{
-			"uriTemplate": "gasoline://demo/{name}",
-			"name":        "Gasoline Demo Script",
-			"description": "Demo scripts for websockets, annotations, recording, and dependency vetting",
-			"mimeType":    "text/markdown",
-		},
-	}}
+	result := MCPResourceTemplatesListResult{ResourceTemplates: mcpResourceTemplates()}
 	// Error impossible: MCPResourceTemplatesListResult is a simple struct with no circular refs or unsupported types
 	resultJSON, _ := json.Marshal(result)
 	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: resultJSON}
@@ -550,6 +379,11 @@ func (h *MCPHandler) handleToolsList(req JSONRPCRequest) JSONRPCResponse {
 	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: resultJSON}
 }
 
+// handleToolsCall validates tool call payload, executes tool, then applies response guards.
+//
+// Failure semantics:
+// - Invalid JSON args, missing tool handler, unknown tool, and rate-limit breaches are explicit errors.
+// - Tool post-processing (redaction/warnings/telemetry) is best-effort and never blocks success path.
 func (h *MCPHandler) handleToolsCall(req JSONRPCRequest) JSONRPCResponse {
 	var params struct {
 		Name      string          `json:"name"`
@@ -570,6 +404,8 @@ func (h *MCPHandler) handleToolsCall(req JSONRPCRequest) JSONRPCResponse {
 		}
 	}
 
+	h.warnUnknownToolArguments(params.Name, params.Arguments)
+
 	if err := h.checkToolRateLimit(); err != nil {
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Error: err}
 	}
@@ -582,11 +418,15 @@ func (h *MCPHandler) handleToolsCall(req JSONRPCRequest) JSONRPCResponse {
 		}
 	}
 
-	resp = h.applyToolResponsePostProcessing(resp)
+	telemetryModeOverride := parseTelemetryModeOverride(params.Arguments)
+	resp = h.applyToolResponsePostProcessing(resp, req.ClientID, params.Name, telemetryModeOverride)
 	return resp
 }
 
-// checkToolRateLimit returns a JSON-RPC error if the rate limit is exceeded.
+// checkToolRateLimit enforces per-process tool call throttling.
+//
+// Failure semantics:
+// - Nil limiter means unlimited mode.
 func (h *MCPHandler) checkToolRateLimit() *JSONRPCError {
 	limiter := h.toolHandler.GetToolCallLimiter()
 	if limiter != nil && !limiter.Allow() {
@@ -598,8 +438,64 @@ func (h *MCPHandler) checkToolRateLimit() *JSONRPCError {
 	return nil
 }
 
-// applyToolResponsePostProcessing applies redaction and version warnings to a tool response.
-func (h *MCPHandler) applyToolResponsePostProcessing(resp JSONRPCResponse) JSONRPCResponse {
+func (h *MCPHandler) warnUnknownToolArguments(toolName string, args json.RawMessage) {
+	if h.server == nil || h.toolHandler == nil || len(args) == 0 {
+		return
+	}
+
+	var raw map[string]json.RawMessage
+	if err := json.Unmarshal(args, &raw); err != nil {
+		return
+	}
+	if len(raw) == 0 {
+		return
+	}
+
+	allowed := h.allowedToolArgumentKeys(toolName, raw)
+	if len(allowed) == 0 {
+		return
+	}
+
+	unknown := make([]string, 0)
+	for k := range raw {
+		if _, ok := allowed[k]; !ok {
+			unknown = append(unknown, k)
+		}
+	}
+	sort.Strings(unknown)
+	for _, k := range unknown {
+		h.server.AddWarning(fmt.Sprintf("unknown parameter '%s' for tool '%s' (ignored)", k, toolName))
+	}
+}
+
+func (h *MCPHandler) allowedToolArgumentKeys(toolName string, rawArgs map[string]json.RawMessage) map[string]struct{} {
+	tools := h.toolHandler.ToolsList()
+	for _, tool := range tools {
+		if tool.Name != toolName {
+			continue
+		}
+
+		keys := make(map[string]struct{})
+		props, ok := tool.InputSchema["properties"].(map[string]any)
+		if !ok {
+			return keys
+		}
+		for k := range props {
+			keys[k] = struct{}{}
+		}
+		return keys
+	}
+	return nil
+}
+
+// applyToolResponsePostProcessing applies redaction and operator warnings to tool output.
+//
+// Invariants:
+// - Redaction runs before warnings/telemetry so downstream additions do not leak redacted inputs.
+//
+// Failure semantics:
+// - If redaction/warning parsing fails, original response is returned.
+func (h *MCPHandler) applyToolResponsePostProcessing(resp JSONRPCResponse, clientID, toolName, telemetryModeOverride string) JSONRPCResponse {
 	redactor := h.toolHandler.GetRedactionEngine()
 	if redactor != nil && resp.Result != nil {
 		resp.Result = redactor.RedactJSON(resp.Result)
@@ -607,7 +503,52 @@ func (h *MCPHandler) applyToolResponsePostProcessing(resp JSONRPCResponse) JSONR
 	if h.server != nil {
 		resp = appendWarningsToResponse(resp, h.server.TakeWarnings())
 	}
-	return h.maybeAddVersionWarning(resp)
+	resp = h.maybeAddSecurityModeWarning(resp)
+	resp = h.maybeAddVersionWarning(resp)
+	resp = maybeAddUpdateAvailableWarning(resp)
+	resp = maybeAddUpgradeWarning(resp)
+	return h.maybeAddTelemetrySummary(resp, clientID, toolName, telemetryModeOverride)
+}
+
+func (h *MCPHandler) maybeAddSecurityModeWarning(resp JSONRPCResponse) JSONRPCResponse {
+	if h.toolHandler == nil || resp.Result == nil {
+		return resp
+	}
+	cap := h.toolHandler.GetCapture()
+	if cap == nil {
+		return resp
+	}
+
+	mode, productionParity, rewrites := cap.GetSecurityMode()
+	if mode == capture.SecurityModeNormal {
+		return resp
+	}
+
+	var result MCPToolResult
+	if err := json.Unmarshal(resp.Result, &result); err != nil {
+		return resp
+	}
+
+	warning := "[ALTERED ENVIRONMENT] security_mode=insecure_proxy; production_parity=false. CSP headers are rewritten for debugging.\n\n"
+	if len(result.Content) > 0 && result.Content[0].Type == "text" {
+		result.Content[0].Text = warning + result.Content[0].Text
+	} else {
+		result.Content = append([]MCPContentBlock{{Type: "text", Text: warning}}, result.Content...)
+	}
+
+	if result.Metadata == nil {
+		result.Metadata = make(map[string]any)
+	}
+	result.Metadata["security_mode"] = mode
+	result.Metadata["production_parity"] = productionParity
+	result.Metadata["insecure_rewrites_applied"] = rewrites
+
+	resultJSON, err := json.Marshal(result)
+	if err != nil {
+		return resp
+	}
+	resp.Result = json.RawMessage(resultJSON)
+	return resp
 }
 
 // maybeAddVersionWarning prepends a version mismatch warning to the tool response
@@ -646,11 +587,95 @@ func (h *MCPHandler) maybeAddVersionWarning(resp JSONRPCResponse) JSONRPCRespons
 	return resp
 }
 
+// updateNotifyLastShown tracks when the "update available" warning was last shown.
+// Used to enforce a daily cooldown so we don't nag on every tool call.
+var updateNotifyLastShown time.Time
+
+// maybeAddUpdateAvailableWarning prepends an "update available" notice when the
+// GitHub version check has found a newer release than the running daemon.
+// Shows at most once per day (24h cooldown). Skipped when a binary upgrade
+// is already pending (that warning is more actionable).
+func maybeAddUpdateAvailableWarning(resp JSONRPCResponse) JSONRPCResponse {
+	if resp.Result == nil {
+		return resp
+	}
+
+	// Skip if a binary upgrade is already pending — that's more actionable.
+	if binaryUpgradeState != nil {
+		if pending, _, _ := binaryUpgradeState.UpgradeInfo(); pending {
+			return resp
+		}
+	}
+
+	versionCheckMu.Lock()
+	availVer := availableVersion
+	versionCheckMu.Unlock()
+
+	if availVer == "" || !isNewerVersion(availVer, version) {
+		return resp
+	}
+
+	// Daily cooldown: don't nag more than once per 24h.
+	if !updateNotifyLastShown.IsZero() && time.Since(updateNotifyLastShown) < 24*time.Hour {
+		return resp
+	}
+	updateNotifyLastShown = time.Now()
+
+	warning := fmt.Sprintf("UPDATE AVAILABLE: Gasoline v%s is available (current: v%s). Run: npm install -g gasoline-mcp@latest\n\n", availVer, version)
+
+	var result MCPToolResult
+	if err := json.Unmarshal(resp.Result, &result); err != nil {
+		return resp
+	}
+	if len(result.Content) > 0 && result.Content[0].Type == "text" {
+		result.Content[0].Text = warning + result.Content[0].Text
+	} else {
+		result.Content = append([]MCPContentBlock{{Type: "text", Text: warning}}, result.Content...)
+	}
+	resultJSON, err := json.Marshal(result)
+	if err != nil {
+		return resp
+	}
+	resp.Result = json.RawMessage(resultJSON)
+	return resp
+}
+
+// maybeAddUpgradeWarning prepends a binary upgrade notice to the tool response
+// when a newer binary has been detected on disk (pending auto-restart).
+func maybeAddUpgradeWarning(resp JSONRPCResponse) JSONRPCResponse {
+	if binaryUpgradeState == nil || resp.Result == nil {
+		return resp
+	}
+	pending, newVer, detectedAt := binaryUpgradeState.UpgradeInfo()
+	if !pending {
+		return resp
+	}
+
+	elapsed := time.Since(detectedAt).Truncate(time.Second)
+	warning := fmt.Sprintf("NOTICE: Gasoline v%s detected on disk (current: v%s, detected %s ago). Auto-restart imminent. Your next tool call will use the new version.\n\n", newVer, version, elapsed)
+
+	var result MCPToolResult
+	if err := json.Unmarshal(resp.Result, &result); err != nil {
+		return resp
+	}
+	if len(result.Content) > 0 && result.Content[0].Type == "text" {
+		result.Content[0].Text = warning + result.Content[0].Text
+	} else {
+		result.Content = append([]MCPContentBlock{{Type: "text", Text: warning}}, result.Content...)
+	}
+	resultJSON, err := json.Marshal(result)
+	if err != nil {
+		return resp
+	}
+	resp.Result = json.RawMessage(resultJSON)
+	return resp
+}
+
 // jsonResponse is a JSON response helper
 func jsonResponse(w http.ResponseWriter, status int, data any) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
 	if err := json.NewEncoder(w).Encode(data); err != nil {
-		fmt.Fprintf(os.Stderr, "[gasoline] Error encoding JSON response: %v\n", err)
+		stderrf("[gasoline] Error encoding JSON response: %v\n", err)
 	}
 }

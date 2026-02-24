@@ -1,3 +1,9 @@
+---
+doc_type: legacy_doc
+status: reference
+last_reviewed: 2026-02-16
+---
+
 # Video Script: WebSocket Capture - See What Others Can't
 
 **Title:** WebSocket Capture - See What Other Browser Tools Miss  

@@ -1,4 +1,10 @@
 /**
+ * Purpose: Provides shared runtime utilities used by extension and server workflows.
+ * Why: Avoids duplicated logic across runtime layers and keeps behavior consistent.
+ * Docs: docs/features/feature/query-dom/index.md
+ */
+
+/**
  * @fileoverview On-demand DOM queries.
  * Provides structured DOM querying, page info extraction, and
  * accessibility auditing via axe-core.

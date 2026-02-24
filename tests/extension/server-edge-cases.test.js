@@ -89,8 +89,8 @@ describe('sendNetworkBodiesToServer edge cases', () => {
     mockFetch.mock.mockImplementation(() => Promise.resolve({ ok: true }))
 
     await sendNetworkBodiesToServer('http://localhost:9222', [
-      { url: 'https://a.com', method: 'GET', status: 200, contentType: 'text/html' },
-      { url: 'https://b.com', method: 'POST', status: 201, contentType: 'application/json' },
+      { url: 'https://a.com', method: 'GET', status: 200, content_type: 'text/html' },
+      { url: 'https://b.com', method: 'POST', status: 201, content_type: 'application/json' },
       { url: 'https://c.com', method: 'DELETE', status: 204 }
     ])
 

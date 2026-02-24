@@ -1,3 +1,7 @@
+// Purpose: Validate tools_draw_mode_http_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
+// Docs: docs/features/feature/observe/index.md
+
 // tools_draw_mode_http_test.go — HTTP endpoint tests for draw mode completion.
 // Tests the POST /draw-mode/complete handler end-to-end: JSON parsing,
 // screenshot decoding/saving, annotation + detail storage.
@@ -281,10 +285,10 @@ func TestDrawModeComplete_InvalidBase64(t *testing.T) {
 
 	payload := map[string]any{
 		"screenshot_data_url": "data:image/png;base64,!!!not-valid-base64!!!",
-		"annotations":        []any{},
-		"element_details":    map[string]any{},
-		"page_url":           "https://example.com",
-		"tab_id":             77,
+		"annotations":         []any{},
+		"element_details":     map[string]any{},
+		"page_url":            "https://example.com",
+		"tab_id":              77,
 	}
 	body, _ := json.Marshal(payload)
 
@@ -356,9 +360,9 @@ func TestDrawModeComplete_WithSessionName(t *testing.T) {
 				"classes":      []string{"main"},
 			},
 		},
-		"page_url":     "https://example.com/home",
-		"tab_id":       200,
-		"session_name": "qa-review",
+		"page_url":           "https://example.com/home",
+		"tab_id":             200,
+		"annot_session_name": "qa-review",
 	}
 	body, _ := json.Marshal(payload)
 

@@ -4,6 +4,9 @@ status: in-progress
 tool: generate
 mode: accessibility
 version: 5.2.0
+doc_type: product-spec
+feature_id: bug-accessibility-audit-runtime-error
+last_reviewed: 2026-02-16
 ---
 
 # Product Spec: Accessibility Audit Runtime Error (Bug Fix)

@@ -1,3 +1,9 @@
+---
+doc_type: legacy_doc
+status: reference
+last_reviewed: 2026-02-16
+---
+
 # 5-Layer Architectural Protection
 
 ## Defense in Depth
@@ -5,7 +11,7 @@
 ```mermaid
 graph TB
     subgraph "Layer 1: Pre-Commit Hook"
-        L1[.git/hooks/pre-commit<br/>Local, instant feedback]
+        L1[scripts/hooks/pre-commit<br/>Local, instant feedback]
         L1 -->|Checks| L1A[Critical files exist]
         L1 -->|Checks| L1B[Required methods exist]
         L1 -->|Checks| L1C[No stub implementations]
@@ -187,7 +193,7 @@ graph TB
     subgraph "Protected Files (Layer 1 + 3)"
         F1[internal/capture/queries.go<br/>303 lines - queue implementation]
         F2[internal/capture/handlers.go<br/>HTTP polling endpoints]
-        F3[cmd/dev-console/tools.go<br/>MCP tool handlers]
+        F3[cmd/dev-console/tools_core.go<br/>MCP tool handlers]
         F4[cmd/dev-console/bridge.go<br/>MCP ↔ HTTP bridge]
         F5[internal/queries/types.go<br/>Type definitions]
     end
@@ -249,4 +255,4 @@ timeline
 - [ARCHITECTURE-ENFORCEMENT.md](../ARCHITECTURE-ENFORCEMENT.md)
 - [validate-architecture.sh](../../scripts/validate-architecture.sh)
 - [architecture-validation.yml](../../.github/workflows/architecture-validation.yml)
-- [Pre-commit hook](../../.git/hooks/pre-commit)
+- [Pre-commit hook](../../scripts/hooks/pre-commit)

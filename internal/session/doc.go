@@ -1,3 +1,9 @@
+// Purpose: Implement doc.go internal behavior used by MCP runtime features.
+// Why: Maintains stable server behavior across tool and transport paths.
+// Docs: docs/features/feature/pagination/index.md
+
+// doc.go — Package documentation for multi-client session management.
+
 // Package session provides multi-client session management for the Gasoline MCP server.
 //
 // Features:

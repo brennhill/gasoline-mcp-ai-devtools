@@ -1,3 +1,7 @@
+// Purpose: Validate testgen_classify_dispatch_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
+// Docs: docs/features/feature/test-generation/index.md
+
 // testgen_classify_dispatch_test.go — Tests for classify dispatch functions at 0% coverage.
 // Covers: dispatchClassifyAction, classifySingleFailure, classifyBatchFailures.
 package main

@@ -1,11 +1,13 @@
+// Purpose: Validate handler_unit_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
+// Docs: docs/features/feature/observe/index.md
+
+// handler_unit_test.go — Core MCP handler unit tests: request routing, resource methods,
+// tool dispatch, warnings, rate limiting, and shared test helpers.
 package main
 
 import (
-	"bytes"
 	"encoding/json"
-	"errors"
-	"net/http"
-	"net/http/httptest"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -25,6 +27,10 @@ type testRedactor struct {
 
 func (r testRedactor) RedactJSON(_ json.RawMessage) json.RawMessage {
 	return r.replacement
+}
+
+func (r testRedactor) RedactMapValues(data map[string]any) map[string]any {
+	return data // no-op for existing tests
 }
 
 type fakeToolHandlerForMCP struct {
@@ -50,10 +56,6 @@ func (f *fakeToolHandlerForMCP) HandleToolCall(req JSONRPCRequest, name string, 
 	return f.handleFn(req, name, arguments)
 }
 
-type failReader struct{}
-
-func (failReader) Read(_ []byte) (int, error) { return 0, errors.New("boom") }
-
 func mustDecodeJSON[T any](t *testing.T, raw json.RawMessage) T {
 	t.Helper()
 	var out T
@@ -61,6 +63,65 @@ func mustDecodeJSON[T any](t *testing.T, raw json.RawMessage) T {
 		t.Fatalf("json.Unmarshal() error = %v", err)
 	}
 	return out
+}
+
+func mustTelemetryMetadata(t *testing.T, raw json.RawMessage) map[string]any {
+	t.Helper()
+	var result MCPToolResult
+	if err := json.Unmarshal(raw, &result); err != nil {
+		t.Fatalf("json.Unmarshal(MCPToolResult) error = %v", err)
+	}
+	if result.Metadata == nil {
+		t.Fatal("result metadata missing")
+	}
+	return result.Metadata
+}
+
+func mustTelemetrySummary(t *testing.T, raw json.RawMessage) map[string]any {
+	t.Helper()
+	metadata := mustTelemetryMetadata(t, raw)
+	summary, ok := metadata["telemetry_summary"].(map[string]any)
+	if !ok {
+		t.Fatalf("telemetry_summary missing or wrong type: %#v", metadata["telemetry_summary"])
+	}
+	return summary
+}
+
+func telemetrySummaryIfPresent(t *testing.T, raw json.RawMessage) (map[string]any, bool) {
+	t.Helper()
+	metadata := mustTelemetryMetadata(t, raw)
+	summary, ok := metadata["telemetry_summary"].(map[string]any)
+	if !ok {
+		return nil, false
+	}
+	return summary, true
+}
+
+func mustTelemetryInt(t *testing.T, summary map[string]any, key string) int64 {
+	t.Helper()
+	v, ok := summary[key]
+	if !ok {
+		t.Fatalf("telemetry_summary[%q] missing", key)
+	}
+	f, ok := v.(float64)
+	if !ok {
+		t.Fatalf("telemetry_summary[%q] type = %T, want number", key, v)
+	}
+	return int64(f)
+}
+
+func mustTelemetryChanged(t *testing.T, raw json.RawMessage) bool {
+	t.Helper()
+	metadata := mustTelemetryMetadata(t, raw)
+	v, ok := metadata["telemetry_changed"]
+	if !ok {
+		t.Fatal("telemetry_changed missing")
+	}
+	changed, ok := v.(bool)
+	if !ok {
+		t.Fatalf("telemetry_changed type = %T, want bool", v)
+	}
+	return changed
 }
 
 func TestMCPHandlerHandleRequestCorePaths(t *testing.T) {
@@ -71,8 +132,9 @@ func TestMCPHandlerHandleRequestCorePaths(t *testing.T) {
 	if resp := h.HandleRequest(JSONRPCRequest{JSONRPC: "2.0", Method: "ping"}); resp != nil {
 		t.Fatalf("notification without ID should return nil, got %+v", resp)
 	}
-	if resp := h.HandleRequest(JSONRPCRequest{JSONRPC: "2.0", ID: 1, Method: "notifications/initialized"}); resp != nil {
-		t.Fatalf("notifications/* request should return nil, got %+v", resp)
+	notifyRequest := h.HandleRequest(JSONRPCRequest{JSONRPC: "2.0", ID: 1, Method: "notifications/initialized"})
+	if notifyRequest == nil || notifyRequest.Error == nil || notifyRequest.Error.Code != -32601 {
+		t.Fatalf("notifications/* request with id should return method-not-found, got %+v", notifyRequest)
 	}
 
 	unknown := h.HandleRequest(JSONRPCRequest{JSONRPC: "2.0", ID: 1, Method: "not/method"})
@@ -105,8 +167,19 @@ func TestMCPHandlerHandleRequestCorePaths(t *testing.T) {
 		Params:  json.RawMessage(`{"protocolVersion":"2023-01-01"}`),
 	})
 	initFallbackData := mustDecodeJSON[MCPInitializeResult](t, initFallback.Result)
-	if initFallbackData.ProtocolVersion != "2024-11-05" {
-		t.Fatalf("fallback protocol = %q, want supported version", initFallbackData.ProtocolVersion)
+	if initFallbackData.ProtocolVersion != "2025-06-18" {
+		t.Fatalf("fallback protocol = %q, want latest supported version 2025-06-18", initFallbackData.ProtocolVersion)
+	}
+
+	initLatest := h.HandleRequest(JSONRPCRequest{
+		JSONRPC: "2.0",
+		ID:      4,
+		Method:  "initialize",
+		Params:  json.RawMessage(`{"protocolVersion":"2025-06-18"}`),
+	})
+	initLatestData := mustDecodeJSON[MCPInitializeResult](t, initLatest.Result)
+	if initLatestData.ProtocolVersion != "2025-06-18" {
+		t.Fatalf("latest protocol = %q, want %q", initLatestData.ProtocolVersion, "2025-06-18")
 	}
 }
 
@@ -139,14 +212,31 @@ func TestMCPHandlerResourceAndToolMethods(t *testing.T) {
 		t.Fatalf("resources/list response = %+v, want success", resources)
 	}
 	resourceData := mustDecodeJSON[MCPResourcesListResult](t, resources.Result)
-	if len(resourceData.Resources) != 2 {
-		t.Fatalf("resources/list result = %+v, want 2 resources", resourceData)
+	if len(resourceData.Resources) != 3 {
+		t.Fatalf("resources/list result = %+v, want 3 resources", resourceData)
 	}
-	if resourceData.Resources[0].URI != "gasoline://guide" {
-		t.Fatalf("resources/list first resource = %q, want gasoline://guide", resourceData.Resources[0].URI)
+	if resourceData.Resources[0].URI != "gasoline://capabilities" {
+		t.Fatalf("resources/list first resource = %q, want gasoline://capabilities", resourceData.Resources[0].URI)
 	}
-	if resourceData.Resources[1].URI != "gasoline://quickstart" {
-		t.Fatalf("resources/list second resource = %q, want gasoline://quickstart", resourceData.Resources[1].URI)
+	if resourceData.Resources[1].URI != "gasoline://guide" {
+		t.Fatalf("resources/list second resource = %q, want gasoline://guide", resourceData.Resources[1].URI)
+	}
+	if resourceData.Resources[2].URI != "gasoline://quickstart" {
+		t.Fatalf("resources/list third resource = %q, want gasoline://quickstart", resourceData.Resources[2].URI)
+	}
+
+	readCapabilities := h.HandleRequest(JSONRPCRequest{
+		JSONRPC: "2.0",
+		ID:      40,
+		Method:  "resources/read",
+		Params:  json.RawMessage(`{"uri":"gasoline://capabilities"}`),
+	})
+	if readCapabilities == nil || readCapabilities.Error != nil {
+		t.Fatalf("resources/read capabilities response = %+v, want success", readCapabilities)
+	}
+	readCapabilitiesData := mustDecodeJSON[MCPResourcesReadResult](t, readCapabilities.Result)
+	if len(readCapabilitiesData.Contents) != 1 || readCapabilitiesData.Contents[0].URI != "gasoline://capabilities" {
+		t.Fatalf("resources/read capabilities result = %+v, want one capabilities content entry", readCapabilitiesData)
 	}
 
 	readInvalid := h.HandleRequest(JSONRPCRequest{
@@ -209,6 +299,82 @@ func TestMCPHandlerResourceAndToolMethods(t *testing.T) {
 	readDemoData := mustDecodeJSON[MCPResourcesReadResult](t, readDemo.Result)
 	if len(readDemoData.Contents) != 1 || readDemoData.Contents[0].URI != "gasoline://demo/ws" {
 		t.Fatalf("resources/read demo result = %+v, want demo content entry", readDemoData)
+	}
+
+	readPlaybook := h.HandleRequest(JSONRPCRequest{
+		JSONRPC: "2.0",
+		ID:      61,
+		Method:  "resources/read",
+		Params:  json.RawMessage(`{"uri":"gasoline://playbook/performance/quick"}`),
+	})
+	if readPlaybook == nil || readPlaybook.Error != nil {
+		t.Fatalf("resources/read playbook response = %+v, want success", readPlaybook)
+	}
+	readPlaybookData := mustDecodeJSON[MCPResourcesReadResult](t, readPlaybook.Result)
+	if len(readPlaybookData.Contents) != 1 || readPlaybookData.Contents[0].URI != "gasoline://playbook/performance/quick" {
+		t.Fatalf("resources/read playbook result = %+v, want playbook content entry", readPlaybookData)
+	}
+
+	readSecurityPlaybook := h.HandleRequest(JSONRPCRequest{
+		JSONRPC: "2.0",
+		ID:      62,
+		Method:  "resources/read",
+		Params:  json.RawMessage(`{"uri":"gasoline://playbook/security/full"}`),
+	})
+	if readSecurityPlaybook == nil || readSecurityPlaybook.Error != nil {
+		t.Fatalf("resources/read security playbook response = %+v, want success", readSecurityPlaybook)
+	}
+	readSecurityPlaybookData := mustDecodeJSON[MCPResourcesReadResult](t, readSecurityPlaybook.Result)
+	if len(readSecurityPlaybookData.Contents) != 1 || readSecurityPlaybookData.Contents[0].URI != "gasoline://playbook/security/full" {
+		t.Fatalf("resources/read security playbook result = %+v, want security playbook content entry", readSecurityPlaybookData)
+	}
+
+	readAliasedPlaybook := h.HandleRequest(JSONRPCRequest{
+		JSONRPC: "2.0",
+		ID:      63,
+		Method:  "resources/read",
+		Params:  json.RawMessage(`{"uri":"gasoline://playbook/security_audit/quick"}`),
+	})
+	if readAliasedPlaybook == nil || readAliasedPlaybook.Error != nil {
+		t.Fatalf("resources/read aliased playbook response = %+v, want success", readAliasedPlaybook)
+	}
+	readAliasedPlaybookData := mustDecodeJSON[MCPResourcesReadResult](t, readAliasedPlaybook.Result)
+	if len(readAliasedPlaybookData.Contents) != 1 || readAliasedPlaybookData.Contents[0].URI != "gasoline://playbook/security/quick" {
+		t.Fatalf("resources/read aliased playbook result = %+v, want canonical security/quick content entry", readAliasedPlaybookData)
+	}
+
+	readBareCapability := h.HandleRequest(JSONRPCRequest{
+		JSONRPC: "2.0",
+		ID:      64,
+		Method:  "resources/read",
+		Params:  json.RawMessage(`{"uri":"gasoline://playbook/security"}`),
+	})
+	if readBareCapability == nil || readBareCapability.Error != nil {
+		t.Fatalf("resources/read bare capability response = %+v, want success defaulting to quick", readBareCapability)
+	}
+	readBareCapabilityData := mustDecodeJSON[MCPResourcesReadResult](t, readBareCapability.Result)
+	if len(readBareCapabilityData.Contents) != 1 || readBareCapabilityData.Contents[0].URI != "gasoline://playbook/security/quick" {
+		t.Fatalf("resources/read bare capability result = %+v, want canonical security/quick content entry", readBareCapabilityData)
+	}
+
+	readInvalidPlaybook := h.HandleRequest(JSONRPCRequest{
+		JSONRPC: "2.0",
+		ID:      65,
+		Method:  "resources/read",
+		Params:  json.RawMessage(`{"uri":"gasoline://playbook/nonexistent/quick"}`),
+	})
+	if readInvalidPlaybook == nil || readInvalidPlaybook.Error == nil || readInvalidPlaybook.Error.Code != -32002 {
+		t.Fatalf("resources/read invalid playbook response = %+v, want -32002 error", readInvalidPlaybook)
+	}
+
+	readInvalidDemo := h.HandleRequest(JSONRPCRequest{
+		JSONRPC: "2.0",
+		ID:      66,
+		Method:  "resources/read",
+		Params:  json.RawMessage(`{"uri":"gasoline://demo/nonexistent"}`),
+	})
+	if readInvalidDemo == nil || readInvalidDemo.Error == nil || readInvalidDemo.Error.Code != -32002 {
+		t.Fatalf("resources/read invalid demo response = %+v, want -32002 error", readInvalidDemo)
 	}
 
 	templates := h.HandleRequest(JSONRPCRequest{JSONRPC: "2.0", ID: 7, Method: "resources/templates/list"})
@@ -331,6 +497,117 @@ func TestMCPHandler_AppendsServerWarningsToToolResponse(t *testing.T) {
 	}
 }
 
+func TestMCPHandler_WarnsOnUnknownToolArguments(t *testing.T) {
+	t.Parallel()
+
+	logFile := filepath.Join(t.TempDir(), "unknown-args-warning.jsonl")
+	srv, err := NewServer(logFile, 100)
+	if err != nil {
+		t.Fatalf("NewServer() error = %v", err)
+	}
+	t.Cleanup(srv.Close)
+
+	h := NewMCPHandler(srv, "v-test")
+	h.SetToolHandler(&fakeToolHandlerForMCP{
+		cap:     capture.NewCapture(),
+		limiter: testLimiter{allowed: true},
+		tools: []MCPTool{
+			{
+				Name: "observe",
+				InputSchema: map[string]any{
+					"properties": map[string]any{
+						"what":  map[string]any{"type": "string"},
+						"limit": map[string]any{"type": "number"},
+					},
+				},
+			},
+		},
+		handleFn: func(req JSONRPCRequest, name string, _ json.RawMessage) (JSONRPCResponse, bool) {
+			if name != "observe" {
+				return JSONRPCResponse{}, false
+			}
+			return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpTextResponse("ok")}, true
+		},
+	})
+
+	resp := h.HandleRequest(JSONRPCRequest{
+		JSONRPC: "2.0",
+		ID:      1,
+		Method:  "tools/call",
+		Params:  json.RawMessage(`{"name":"observe","arguments":{"what":"errors","limit":10,"typo_field":true}}`),
+	})
+	if resp == nil || resp.Error != nil {
+		t.Fatalf("tools/call response = %+v, want success", resp)
+	}
+
+	var result MCPToolResult
+	if err := json.Unmarshal(resp.Result, &result); err != nil {
+		t.Fatalf("result unmarshal error = %v", err)
+	}
+	if len(result.Content) < 2 {
+		t.Fatalf("expected warning content block, got %d blocks", len(result.Content))
+	}
+
+	last := result.Content[len(result.Content)-1].Text
+	if !strings.Contains(last, "_warnings:") || !strings.Contains(last, "typo_field") {
+		t.Fatalf("expected unknown-parameter warning, got %q", last)
+	}
+}
+
+func TestMCPHandler_DoesNotWarnOnKnownToolArguments(t *testing.T) {
+	t.Parallel()
+
+	logFile := filepath.Join(t.TempDir(), "known-args-no-warning.jsonl")
+	srv, err := NewServer(logFile, 100)
+	if err != nil {
+		t.Fatalf("NewServer() error = %v", err)
+	}
+	t.Cleanup(srv.Close)
+
+	h := NewMCPHandler(srv, "v-test")
+	h.SetToolHandler(&fakeToolHandlerForMCP{
+		cap:     capture.NewCapture(),
+		limiter: testLimiter{allowed: true},
+		tools: []MCPTool{
+			{
+				Name: "observe",
+				InputSchema: map[string]any{
+					"properties": map[string]any{
+						"what":  map[string]any{"type": "string"},
+						"limit": map[string]any{"type": "number"},
+					},
+				},
+			},
+		},
+		handleFn: func(req JSONRPCRequest, name string, _ json.RawMessage) (JSONRPCResponse, bool) {
+			if name != "observe" {
+				return JSONRPCResponse{}, false
+			}
+			return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpTextResponse("ok")}, true
+		},
+	})
+
+	resp := h.HandleRequest(JSONRPCRequest{
+		JSONRPC: "2.0",
+		ID:      1,
+		Method:  "tools/call",
+		Params:  json.RawMessage(`{"name":"observe","arguments":{"what":"errors","limit":10}}`),
+	})
+	if resp == nil || resp.Error != nil {
+		t.Fatalf("tools/call response = %+v, want success", resp)
+	}
+
+	var result MCPToolResult
+	if err := json.Unmarshal(resp.Result, &result); err != nil {
+		t.Fatalf("result unmarshal error = %v", err)
+	}
+	for _, block := range result.Content {
+		if strings.Contains(block.Text, "_warnings:") {
+			t.Fatalf("did not expect warnings for known args, got %q", block.Text)
+		}
+	}
+}
+
 func TestMCPHandlerToolRateLimit(t *testing.T) {
 	t.Parallel()
 
@@ -351,80 +628,4 @@ func TestMCPHandlerToolRateLimit(t *testing.T) {
 	}
 }
 
-func TestMCPHandlerHandleHTTP(t *testing.T) {
-	t.Parallel()
-
-	h := NewMCPHandler(nil, "v-http")
-	h.SetToolHandler(&fakeToolHandlerForMCP{
-		cap:     capture.NewCapture(),
-		limiter: testLimiter{allowed: true},
-		handleFn: func(req JSONRPCRequest, name string, _ json.RawMessage) (JSONRPCResponse, bool) {
-			if name != "observe" {
-				return JSONRPCResponse{}, false
-			}
-			return JSONRPCResponse{
-				JSONRPC: "2.0",
-				ID:      req.ID,
-				Result:  json.RawMessage(`{"ok":true}`),
-			}, true
-		},
-	})
-
-	getReq := httptest.NewRequest(http.MethodGet, "/mcp", nil)
-	getRR := httptest.NewRecorder()
-	h.HandleHTTP(getRR, getReq)
-	if getRR.Code != http.StatusMethodNotAllowed {
-		t.Fatalf("GET /mcp status = %d, want %d", getRR.Code, http.StatusMethodNotAllowed)
-	}
-
-	parseReq := httptest.NewRequest(http.MethodPost, "/mcp", bytes.NewBufferString(`{"jsonrpc":"2.0","id":1,`))
-	parseRR := httptest.NewRecorder()
-	h.HandleHTTP(parseRR, parseReq)
-	var parseResp JSONRPCResponse
-	if err := json.Unmarshal(parseRR.Body.Bytes(), &parseResp); err != nil {
-		t.Fatalf("json.Unmarshal(parse error response) error = %v", err)
-	}
-	if parseResp.Error == nil || parseResp.Error.Code != -32700 {
-		t.Fatalf("parse error response = %+v, want parse error code -32700", parseResp)
-	}
-
-	notifyReq := httptest.NewRequest(http.MethodPost, "/mcp", bytes.NewBufferString(`{"jsonrpc":"2.0","method":"notifications/initialized","params":{}}`))
-	notifyRR := httptest.NewRecorder()
-	h.HandleHTTP(notifyRR, notifyReq)
-	if notifyRR.Code != http.StatusNoContent {
-		t.Fatalf("notification status = %d, want %d", notifyRR.Code, http.StatusNoContent)
-	}
-
-	callReq := httptest.NewRequest(http.MethodPost, "/mcp", bytes.NewBufferString(`{"jsonrpc":"2.0","id":99,"method":"tools/call","params":{"name":"observe","arguments":{"what":"errors"}}}`))
-	callRR := httptest.NewRecorder()
-	h.HandleHTTP(callRR, callReq)
-	var callResp JSONRPCResponse
-	if err := json.Unmarshal(callRR.Body.Bytes(), &callResp); err != nil {
-		t.Fatalf("json.Unmarshal(call response) error = %v", err)
-	}
-	if callResp.Error != nil {
-		t.Fatalf("tools/call HTTP response has error: %+v", callResp.Error)
-	}
-
-	readErrReq := httptest.NewRequest(http.MethodPost, "/mcp", bytes.NewBuffer(nil))
-	readErrReq.Body = ioNopCloser{Reader: failReader{}}
-	readErrRR := httptest.NewRecorder()
-	h.HandleHTTP(readErrRR, readErrReq)
-	var readErrResp JSONRPCResponse
-	if err := json.Unmarshal(readErrRR.Body.Bytes(), &readErrResp); err != nil {
-		t.Fatalf("json.Unmarshal(read error response) error = %v", err)
-	}
-	if readErrResp.Error == nil || readErrResp.Error.Code != -32700 {
-		t.Fatalf("read error response = %+v, want code -32700", readErrResp)
-	}
-}
-
-// ioNopCloser is a local substitute for io.NopCloser to avoid pulling in io for one test path.
-type ioNopCloser struct {
-	Reader interface {
-		Read([]byte) (int, error)
-	}
-}
-
-func (n ioNopCloser) Read(p []byte) (int, error) { return n.Reader.Read(p) }
-func (n ioNopCloser) Close() error               { return nil }
+// Warning tests (upgrade/update) moved to handler_warning_test.go

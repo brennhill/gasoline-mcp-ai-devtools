@@ -5,6 +5,9 @@ ai-priority: medium
 tags: [testing, qa]
 relates-to: [product-spec.md, tech-spec.md]
 last-verified: 2026-01-31
+doc_type: qa-plan
+feature_id: feature-reproduction-enhancements
+last_reviewed: 2026-02-16
 ---
 
 # QA Plan: Reproduction Enhancements
@@ -78,10 +81,10 @@ last-verified: 2026-01-31
 | Workflow | Steps Required | Can Be Simplified? |
 |----------|---------------|-------------------|
 | Capture a screenshot | 1 step: `capture_screenshot` tool call | No — already minimal |
-| Generate reproduction with screenshots | 1 step: `generate({type: "reproduction", include_screenshots: true})` | No — single parameter adds screenshots |
-| Generate test with visual assertions | 1 step: `generate({type: "test", assert_visual: true})` | No — single parameter adds assertions |
-| Generate test with fixtures | 1 step: `generate({type: "test", include_fixtures: true})` | No — single parameter adds fixtures |
-| Generate full bug report | 1 step: `generate({type: "bug_report"})` | No — already minimal |
+| Generate reproduction with screenshots | 1 step: `generate({format: "reproduction", include_screenshots: true})` | No — single parameter adds screenshots |
+| Generate test with visual assertions | 1 step: `generate({format: "test", assert_visual: true})` | No — single parameter adds assertions |
+| Generate test with fixtures | 1 step: `generate({format: "test", include_fixtures: true})` | No — single parameter adds fixtures |
+| Generate full bug report | 1 step: `generate({format: "bug_report"})` | No — already minimal |
 | Configure auto-screenshot | 1 step: configure auto_screenshot settings | No — already minimal |
 | Full workflow: browse, capture, generate report | 3+ steps: browse site, trigger screenshots, generate report | Inherently multi-step; each step is minimal |
 
@@ -224,8 +227,8 @@ last-verified: 2026-01-31
 | DL-UAT-4 | Screenshot not accessible via HTTP | `curl http://localhost:7890/screenshots` or any path | 404 Not Found — no HTTP endpoint for screenshots | [ ] |
 
 ### Regression Checks
-- [ ] Existing `generate({type: "reproduction"})` without new parameters still works identically
-- [ ] Existing `generate({type: "test"})` without new parameters still works identically
+- [ ] Existing `generate({format: "reproduction"})` without new parameters still works identically
+- [ ] Existing `generate({format: "test"})` without new parameters still works identically
 - [ ] Network body capture pipeline unchanged
 - [ ] Action capture pipeline unchanged
 - [ ] Extension performance not degraded when auto-screenshot is disabled (default)

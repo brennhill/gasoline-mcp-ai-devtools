@@ -1,3 +1,7 @@
+// Purpose: Validate pagination_coverage_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
+// Docs: docs/features/feature/pagination/index.md
+
 // pagination_coverage_test.go — Targeted tests for uncovered branches in pagination package.
 package pagination
 

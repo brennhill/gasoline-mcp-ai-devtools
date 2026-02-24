@@ -1,4 +1,11 @@
 /**
+ * Purpose: Handles content-script message relay between background and inject contexts.
+ * Why: Keeps content-script bridging predictable between extension and page contexts.
+ * Docs: docs/features/feature/interact-explore/index.md
+ * Docs: docs/features/feature/query-dom/index.md
+ */
+
+/**
  * @fileoverview Message Handlers Module
  * Handles messages from background script
  */
@@ -19,30 +26,37 @@ import {
   hasHighlightRequest,
   deleteHighlightRequest,
   registerExecuteRequest,
+  hasExecuteRequest,
+  deleteExecuteRequest,
   registerA11yRequest,
-  registerDomRequest
+  hasA11yRequest,
+  deleteA11yRequest,
+  registerDomRequest,
+  hasDomRequest,
+  deleteDomRequest
 } from './request-tracking'
 import { createDeferredPromise, promiseRaceWithCleanup } from './timeout-utils'
-import { isInjectScriptLoaded, getPageNonce } from './script-injection'
-import { ASYNC_COMMAND_TIMEOUT_MS } from '../lib/constants'
+import { isInjectScriptLoaded, getPageNonce, ensureInjectBridgeReady } from './script-injection'
+import { ASYNC_COMMAND_TIMEOUT_MS, INJECT_FORWARDED_SETTINGS, SettingName } from '../lib/constants'
+
+/** Auto-incrementing request ID — avoids Date.now() collisions for concurrent queries */
+let nextRequestId = 1
+
+/** Parse query params from string (JSON) or object form into a plain object */
+function parseQueryParams(params: string | Record<string, unknown>): Record<string, unknown> {
+  if (typeof params === 'string') {
+    try { return JSON.parse(params) } catch { return {} }
+  }
+  return typeof params === 'object' ? params : {}
+}
 
 /** Send a nonce-authenticated message to inject.js (MAIN world) */
 function postToInject(data: Record<string, unknown>): void {
   window.postMessage({ ...data, _nonce: getPageNonce() }, window.location.origin)
 }
 
-// Feature toggle message types forwarded from background to inject.js
-export const TOGGLE_MESSAGES = new Set([
-  'setNetworkWaterfallEnabled',
-  'setPerformanceMarksEnabled',
-  'setActionReplayEnabled',
-  'setWebSocketCaptureEnabled',
-  'setWebSocketCaptureMode',
-  'setPerformanceSnapshotEnabled',
-  'setDeferralEnabled',
-  'setNetworkBodyCaptureEnabled',
-  'setServerUrl'
-])
+// Feature toggle message types forwarded from background to inject.js — imported from canonical constants.
+export const TOGGLE_MESSAGES = INJECT_FORWARDED_SETTINGS
 
 /**
  * Security: Validate sender is from the extension background script
@@ -56,45 +70,35 @@ export function isValidBackgroundSender(sender: chrome.runtime.MessageSender): b
 }
 
 /**
- * Create a timeout handler that cleans up a pending request from a Map
- */
-function createRequestTimeoutCleanup<T extends { error: string }>(
-  requestId: number,
-  pendingMap: Map<number, (result: T) => void>,
-  errorResponse: T
-): () => void {
-  return () => {
-    if (pendingMap.has(requestId)) {
-      const cb = pendingMap.get(requestId)
-      pendingMap.delete(requestId)
-      if (cb) {
-        cb(errorResponse)
-      }
-    }
-  }
-}
-
-/**
  * Forward a highlight message from background to inject.js
  */
 export function forwardHighlightMessage(message: {
   params: { selector: string; duration_ms?: number }
 }): Promise<HighlightResponse> {
-  const requestId = registerHighlightRequest((result) => deferred.resolve(result))
-  const deferred = createDeferredPromise<HighlightResponse>()
-
-  // Post message to page context (inject.js)
-  postToInject({
-    type: 'GASOLINE_HIGHLIGHT_REQUEST',
-    requestId,
-    params: message.params
-  })
-
-  // Timeout fallback + cleanup stale entries after 30 seconds
-  return promiseRaceWithCleanup(deferred.promise, 30000, { success: false, error: 'timeout' }, () => {
-    if (hasHighlightRequest(requestId)) {
-      deleteHighlightRequest(requestId)
+  return ensureInjectBridgeReady(1500).then((ready) => {
+    if (!ready) {
+      return {
+        success: false,
+        error: isInjectScriptLoaded() ? 'inject_not_responding' : 'inject_not_loaded'
+      }
     }
+
+    const requestId = registerHighlightRequest((result) => deferred.resolve(result))
+    const deferred = createDeferredPromise<HighlightResponse>()
+
+    // Post message to page context (inject.js)
+    postToInject({
+      type: 'GASOLINE_HIGHLIGHT_REQUEST',
+      requestId,
+      params: message.params
+    })
+
+    // Timeout fallback + cleanup stale entries after 30 seconds
+    return promiseRaceWithCleanup(deferred.promise, 30000, { success: false, error: 'timeout' }, () => {
+      if (hasHighlightRequest(requestId)) {
+        deleteHighlightRequest(requestId)
+      }
+    })
   })
 }
 
@@ -162,9 +166,9 @@ export function handleToggleMessage(
   if (!TOGGLE_MESSAGES.has(message.type)) return
 
   const payload: SettingMessage = { type: 'GASOLINE_SETTING', setting: message.type }
-  if (message.type === 'setWebSocketCaptureMode') {
+  if (message.type === SettingName.WEBSOCKET_CAPTURE_MODE) {
     payload.mode = message.mode
-  } else if (message.type === 'setServerUrl') {
+  } else if (message.type === SettingName.SERVER_URL) {
     payload.url = message.url
   } else {
     payload.enabled = message.enabled
@@ -194,14 +198,16 @@ function executeInMainWorld(
   // If inject script responds, its own timeout handles slow scripts.
   // This only fires if inject script never responds at all.
   const safetyTimeoutMs = timeoutMs + 2000
-  setTimeout(
-    createRequestTimeoutCleanup(requestId, new Map([[requestId, sendResponse]]), {
-      success: false,
-      error: 'inject_not_responding',
-      message: `Inject script did not respond within ${safetyTimeoutMs}ms. The tab may not be tracked or the inject script failed to load.`
-    }),
-    safetyTimeoutMs
-  )
+  setTimeout(() => {
+    if (hasExecuteRequest(requestId)) {
+      deleteExecuteRequest(requestId)
+      sendResponse({
+        success: false,
+        error: 'inject_not_responding',
+        message: `Inject script did not respond within ${safetyTimeoutMs}ms. The tab may not be tracked or the inject script failed to load.`
+      })
+    }
+  }, safetyTimeoutMs)
 
   postToInject({
     type: 'GASOLINE_EXECUTE_JS',
@@ -221,16 +227,23 @@ export function handleExecuteJs(
   params: { script?: string; timeout_ms?: number },
   sendResponse: (result: ExecuteJsResponse) => void
 ): boolean {
-  if (!isInjectScriptLoaded()) {
-    sendResponse({
-      success: false,
-      error: 'inject_not_loaded',
-      message: 'Inject script not loaded in page context. Tab may not be tracked.'
-    })
-    return true
-  }
+  const injectReadyWaitMs = Math.max(750, Math.min(3000, (params.timeout_ms || 5000) + 500))
+  void ensureInjectBridgeReady(injectReadyWaitMs).then((ready) => {
+    if (!ready) {
+      const fallbackError = isInjectScriptLoaded() ? 'inject_not_responding' : 'inject_not_loaded'
+      sendResponse({
+        success: false,
+        error: fallbackError,
+        message:
+          fallbackError === 'inject_not_loaded'
+            ? 'Inject script not loaded in page context. Tab may not be tracked.'
+            : `Inject script did not respond within ${injectReadyWaitMs}ms. The tab may not be tracked or the inject script failed to load.`
+      })
+      return
+    }
 
-  executeInMainWorld(params, sendResponse)
+    executeInMainWorld(params, sendResponse)
+  })
   return true
 }
 
@@ -262,27 +275,16 @@ export function handleA11yQuery(
   params: string | Record<string, unknown>,
   sendResponse: (result: A11yAuditResult | { error: string }) => void
 ): boolean {
-  // Parse params if it's a string (from JSON)
-  let parsedParams: Record<string, unknown> = {}
-  if (typeof params === 'string') {
-    try {
-      parsedParams = JSON.parse(params)
-    } catch {
-      parsedParams = {}
-    }
-  } else if (typeof params === 'object') {
-    parsedParams = params
-  }
-
+  const parsedParams = parseQueryParams(params)
   const requestId = registerA11yRequest(sendResponse)
 
-  // Timeout fallback: respond with error and cleanup after async command timeout
-  setTimeout(
-    createRequestTimeoutCleanup(requestId, new Map([[requestId, sendResponse]]), {
-      error: 'Accessibility audit timeout'
-    }),
-    ASYNC_COMMAND_TIMEOUT_MS
-  )
+  // Timeout fallback: respond with error and cleanup the real pending map
+  setTimeout(() => {
+    if (hasA11yRequest(requestId)) {
+      deleteA11yRequest(requestId)
+      sendResponse({ error: 'Accessibility audit timeout' })
+    }
+  }, ASYNC_COMMAND_TIMEOUT_MS)
 
   // Forward to inject.js via postMessage
   postToInject({
@@ -301,25 +303,16 @@ export function handleDomQuery(
   params: string | Record<string, unknown>,
   sendResponse: (result: { error?: string; matches?: unknown[] }) => void
 ): boolean {
-  // Parse params if it's a string (from JSON)
-  let parsedParams: Record<string, unknown> = {}
-  if (typeof params === 'string') {
-    try {
-      parsedParams = JSON.parse(params)
-    } catch {
-      parsedParams = {}
-    }
-  } else if (typeof params === 'object') {
-    parsedParams = params
-  }
-
+  const parsedParams = parseQueryParams(params)
   const requestId = registerDomRequest(sendResponse)
 
-  // Timeout fallback: respond with error and cleanup after async command timeout
-  setTimeout(
-    createRequestTimeoutCleanup(requestId, new Map([[requestId, sendResponse]]), { error: 'DOM query timeout' }),
-    ASYNC_COMMAND_TIMEOUT_MS
-  )
+  // Timeout fallback: respond with error and cleanup the real pending map
+  setTimeout(() => {
+    if (hasDomRequest(requestId)) {
+      deleteDomRequest(requestId)
+      sendResponse({ error: 'DOM query timeout' })
+    }
+  }, ASYNC_COMMAND_TIMEOUT_MS)
 
   // Forward to inject.js via postMessage
   postToInject({
@@ -335,13 +328,17 @@ export function handleDomQuery(
  * Handle GET_NETWORK_WATERFALL message
  */
 export function handleGetNetworkWaterfall(sendResponse: (result: { entries: WaterfallEntry[] }) => void): boolean {
-  const requestId = Date.now()
+  const requestId = nextRequestId++
   const deferred = createDeferredPromise<{ entries: WaterfallEntry[] }>()
 
-  // Set up a one-time listener for the response
-  const responseHandler = (event: MessageEvent<{ type?: string; entries?: WaterfallEntry[] }>) => {
+  // Set up a one-time listener for the response — match requestId to prevent cross-wiring
+  const responseHandler = (event: MessageEvent<{ type?: string; requestId?: number; entries?: WaterfallEntry[]; _nonce?: string }>) => {
     if (event.source !== window) return
-    if (event.data?.type === 'GASOLINE_WATERFALL_RESPONSE') {
+    // Validate nonce on response messages (spoofing prevention).
+    // Accept responses with no nonce for backwards compat during migration.
+    const nonce = event.data?._nonce
+    if (nonce && nonce !== getPageNonce()) return
+    if (event.data?.type === 'GASOLINE_WATERFALL_RESPONSE' && event.data?.requestId === requestId) {
       window.removeEventListener('message', responseHandler)
       deferred.resolve({ entries: event.data.entries || [] })
     }
@@ -371,56 +368,62 @@ export function handleGetNetworkWaterfall(sendResponse: (result: { entries: Wate
 }
 
 /**
- * Handle LINK_HEALTH_QUERY message
+ * Generic inject-query forwarder: parse params, post to inject, wait for response with timeout.
+ * Consolidates the identical pattern used by computed_styles, form_discovery, and link_health.
  */
-export function handleLinkHealthQuery(
+function forwardInjectQuery(
+  queryType: string,
+  responseType: string,
+  label: string,
   params: string | Record<string, unknown>,
   sendResponse: (result: unknown) => void
 ): boolean {
-  // Parse params if it's a string (from JSON)
-  let parsedParams: Record<string, unknown> = {}
-  if (typeof params === 'string') {
-    try {
-      parsedParams = JSON.parse(params)
-    } catch {
-      parsedParams = {}
-    }
-  } else if (typeof params === 'object') {
-    parsedParams = params
-  }
-
-  const requestId = Date.now()
+  const parsedParams = parseQueryParams(params)
+  const requestId = nextRequestId++
   const deferred = createDeferredPromise<unknown>()
 
-  // Set up a one-time listener for the response
-  const responseHandler = (event: MessageEvent<{ type?: string; result?: unknown }>) => {
+  const responseHandler = (event: MessageEvent<{ type?: string; requestId?: number; result?: unknown; _nonce?: string }>) => {
     if (event.source !== window) return
-    if (event.data?.type === 'GASOLINE_LINK_HEALTH_RESPONSE') {
+    // Validate nonce on response messages (spoofing prevention).
+    // Accept responses with no nonce for backwards compat during migration.
+    const nonce = event.data?._nonce
+    if (nonce && nonce !== getPageNonce()) return
+    if (event.data?.type === responseType && event.data?.requestId === requestId) {
       window.removeEventListener('message', responseHandler)
-      deferred.resolve(event.data.result || { error: 'No result from link health check' })
+      deferred.resolve(event.data.result || { error: `No result from ${label}` })
     }
   }
 
   window.addEventListener('message', responseHandler)
+  postToInject({ type: queryType, requestId, params: parsedParams })
 
-  // Forward to inject.js via postMessage
-  postToInject({
-    type: 'GASOLINE_LINK_HEALTH_QUERY',
-    requestId,
-    params: parsedParams
-  })
-
-  // Timeout fallback: respond with error after async command timeout window
-  promiseRaceWithCleanup(deferred.promise, ASYNC_COMMAND_TIMEOUT_MS, { error: 'Link health check timeout' }, () => {
+  promiseRaceWithCleanup(deferred.promise, ASYNC_COMMAND_TIMEOUT_MS, { error: `${label} timeout` }, () => {
     window.removeEventListener('message', responseHandler)
   }).then(
-    (result) => {
-      sendResponse(result)
-    },
-    () => {
-      sendResponse({ error: 'Link health check failed' })
-    }
+    (result) => sendResponse(result),
+    () => sendResponse({ error: `${label} failed` })
   )
 
   return true
+}
+
+export function handleComputedStylesQuery(
+  params: string | Record<string, unknown>,
+  sendResponse: (result: unknown) => void
+): boolean {
+  return forwardInjectQuery('GASOLINE_COMPUTED_STYLES_QUERY', 'GASOLINE_COMPUTED_STYLES_RESPONSE', 'Computed styles query', params, sendResponse)
+}
+
+export function handleFormDiscoveryQuery(
+  params: string | Record<string, unknown>,
+  sendResponse: (result: unknown) => void
+): boolean {
+  return forwardInjectQuery('GASOLINE_FORM_DISCOVERY_QUERY', 'GASOLINE_FORM_DISCOVERY_RESPONSE', 'Form discovery', params, sendResponse)
+}
+
+export function handleLinkHealthQuery(
+  params: string | Record<string, unknown>,
+  sendResponse: (result: unknown) => void
+): boolean {
+  return forwardInjectQuery('GASOLINE_LINK_HEALTH_QUERY', 'GASOLINE_LINK_HEALTH_RESPONSE', 'Link health check', params, sendResponse)
 }

@@ -44,7 +44,8 @@ fi
 # 4. Critical files exist
 echo "4️⃣  Checking critical files..."
 CRITICAL_FILES=(
-    "internal/capture/queries.go"
+    "internal/queries/dispatcher_queries.go"
+    "internal/capture/query_dispatcher.go"
     "internal/capture/handlers.go"
     "$CMD_DIR/tools_observe.go"
     "$CMD_DIR/tools_core.go"

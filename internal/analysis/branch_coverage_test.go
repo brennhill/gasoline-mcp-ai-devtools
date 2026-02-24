@@ -1,3 +1,7 @@
+// Purpose: Validate branch_coverage_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
+// Docs: docs/features/feature/observe/index.md
+
 // branch_coverage_test.go — Branch coverage tests for partially-covered functions.
 package analysis
 

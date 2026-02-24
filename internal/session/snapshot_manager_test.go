@@ -1,3 +1,7 @@
+// Purpose: Validate snapshot_manager_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
+// Docs: docs/features/feature/pagination/index.md
+
 // snapshot_manager_test.go — Tests for snapshot-manager.go.
 // Covers: NewSessionManager defaults, Capture, captureCurrentState,
 // List ordering, Delete, eviction, concurrent operations.

@@ -1,5 +1,7 @@
-// security-types.go — Security threat flagging types.
-// SecurityFlag represents detected security issues from network waterfall analysis.
+// Purpose: Defines capture-side security flag payloads derived from network analysis.
+// Why: Provides a stable threat-flag structure shared with downstream security tooling.
+// Docs: docs/features/feature/security-hardening/index.md
+
 package capture
 
 import (

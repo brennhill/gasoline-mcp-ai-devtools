@@ -1,3 +1,7 @@
+// Purpose: Validate tools_validation_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
+// Docs: docs/features/feature/observe/index.md
+
 // tools_validation_test.go — Unit tests for validation helpers.
 package main
 

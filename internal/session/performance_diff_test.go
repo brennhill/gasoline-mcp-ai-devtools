@@ -1,3 +1,7 @@
+// Purpose: Validate performance_diff_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
+// Docs: docs/features/feature/pagination/index.md
+
 // performance_diff_test.go — Tests for performance-diff.go.
 // Covers: computeMetricIfNonZero, computeMetricChange, formatPctChange, diffPerformance.
 package session

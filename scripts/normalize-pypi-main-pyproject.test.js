@@ -1,3 +1,7 @@
+// Purpose: Validate pyproject normalization used by the PyPI packaging pipeline.
+// Why: Prevents malformed dependency metadata from breaking publish/install flows.
+// Docs: docs/features/npm-preinstall-fix/tech-spec.md
+
 import assert from 'node:assert/strict'
 import test from 'node:test'
 

@@ -1,5 +1,10 @@
 # pylint: disable=duplicate-code
-"""Platform detection and binary execution for Gasoline MCP."""
+"""Platform detection and binary execution for the PyPI wrapper.
+
+Purpose: Route top-level wrapper commands and binary execution per platform.
+Why: Ensures install/config lifecycle and runtime invocation behave consistently on all OS targets.
+Docs: docs/features/feature/enhanced-cli-config/index.md
+"""
 
 import sys
 import platform
@@ -59,29 +64,35 @@ def show_help():
 Usage: gasoline-mcp [command] [options]
 
 Commands:
-  --config, -c          Show MCP configuration and where to put it
-  --install, -i         Auto-install to your AI assistant config
+  --config, -c          Show MCP configuration and detected clients
+  --install, -i         Auto-install to all detected AI clients
   --doctor              Run diagnostics on installed configs
-  --uninstall           Remove Gasoline from configs
+  --uninstall           Remove Gasoline from all clients
   --help, -h            Show this help message
 
+Supported clients:
+  Claude Code           via claude CLI (mcp add-json)
+  Claude Desktop        config file
+  Cursor                config file
+  Windsurf              config file
+  VS Code               config file
+
 Options (with --install):
-  --dry-run             Preview changes without writing files
-  --for-all             Install to all 4 tools (Claude, VSCode, Cursor, Codeium)
+  --dry-run             Preview changes without writing
   --env KEY=VALUE       Add environment variables to config (multiple allowed)
   --verbose             Show detailed operation logs
 
 Options (with --uninstall):
-  --dry-run             Preview changes without writing files
+  --dry-run             Preview changes without writing
   --verbose             Show detailed operation logs
 
 Examples:
-  gasoline-mcp --install                # Install to first matching tool
-  gasoline-mcp --install --for-all      # Install to all 4 tools
+  gasoline-mcp --install                # Install to all detected clients
   gasoline-mcp --install --dry-run      # Preview without changes
   gasoline-mcp --install --env DEBUG=1  # Install with env vars
+  gasoline-mcp --config                 # Show config and detected clients
   gasoline-mcp --doctor                 # Check config health
-  gasoline-mcp --uninstall              # Remove from all tools
+  gasoline-mcp --uninstall              # Remove from all clients
 """)
     sys.exit(0)
 
@@ -89,26 +100,32 @@ Examples:
 def show_config():
     """Show configuration information."""
     from . import install  # pylint: disable=import-outside-toplevel
+    from . import config as cfg_mod  # pylint: disable=import-outside-toplevel
     import json  # pylint: disable=import-outside-toplevel
 
-    cfg = install.generate_default_config()
+    mcp = install.generate_default_config()
 
     print("📋 Gasoline MCP Configuration\n")
-    print("Add this to your AI assistant settings file:\n")
-    print(json.dumps(cfg, indent=2))
-    print("\n📍 Configuration Locations:")
-    print("")
-    print("Claude Code (VSCode):")
-    print("  ~/.vscode/claude.mcp.json")
-    print("")
-    print("Claude Desktop App:")
-    print("  ~/.claude/claude.mcp.json")
-    print("")
-    print("Cursor:")
-    print("  ~/.cursor/mcp.json")
-    print("")
-    print("Codeium:")
-    print("  ~/.codeium/mcp.json")
+    print("Add this to your AI assistant settings:\n")
+    print(json.dumps(mcp, indent=2))
+    print("\n📍 Supported Clients:\n")
+
+    for definition in cfg_mod.CLIENT_DEFINITIONS:
+        detected = cfg_mod.is_client_installed(definition)
+        icon = "✅" if detected else "⚪"
+
+        if definition["type"] == "cli":
+            print(f"{icon} {definition['name']} (via {definition['detectCommand']} CLI)")
+        else:
+            cfg_path = cfg_mod.get_client_config_path(definition)
+            if cfg_path:
+                print(f"{icon} {definition['name']}")
+                print(f"   {cfg_path}")
+            else:
+                print(f"⚪ {definition['name']} (not available on this platform)")
+        print("")
+
+    print("Run: gasoline-mcp --install   (auto-installs to all detected clients)")
     sys.exit(0)
 
 
@@ -134,12 +151,7 @@ def _print_install_success(result, dry_run):
 
     if dry_run:
         print("ℹ️  Dry run: No files will be written\n")
-    print(output.install_result({
-        "updated": result["updated"],
-        "total": result["total"],
-        "errors": result["errors"],
-        "notFound": [],
-    }))
+    print(output.install_result(result))
     if not dry_run:
         print("✨ Gasoline MCP is ready to use!")
     sys.exit(0)
@@ -163,7 +175,6 @@ def run_install(args):
 
     options = {
         "dryRun": "--dry-run" in args,
-        "forAll": "--for-all" in args,
         "envVars": _parse_env_args(args),
         "verbose": "--verbose" in args,
     }
@@ -171,6 +182,29 @@ def run_install(args):
     try:
         result = install.execute_install(options)
         if result["success"]:
+            if not options["dryRun"]:
+                try:
+                    from . import skills  # pylint: disable=import-outside-toplevel
+
+                    skill_install = skills.install_bundled_skills(verbose=options["verbose"])
+                    if not skill_install["skipped"]:
+                        summary = skill_install["summary"]
+                        print(
+                            "🧠 Skills installed "
+                            f"({', '.join(skill_install['agents'])} / {skill_install['scope']}): "
+                            f"created={summary['created']} updated={summary['updated']} "
+                            f"unchanged={summary['unchanged']} "
+                            f"skipped={summary['skipped_user_owned']} "
+                            f"legacy_removed={summary['legacy_removed']} "
+                            f"errors={summary['errors']}"
+                        )
+                    elif options["verbose"]:
+                        print(f"[gasoline-mcp] skill install skipped: {skill_install['reason']}")
+
+                    for warning in skill_install.get("warnings", []):
+                        print(f"⚠️  {warning}")
+                except (OSError, RuntimeError, ValueError) as skill_err:
+                    print(f"⚠️  skill install failed: {skill_err}")
             _print_install_success(result, options["dryRun"])
         else:
             _print_install_failure(result)
@@ -364,7 +398,7 @@ def _best_effort_remove(path):
         return False
     except PermissionError:
         try:
-            os.chmod(path, 0o666)
+            os.chmod(path, 0o644)  # noqa: S103 — owner rw + group/other read-only; just need write to delete
             os.remove(path)
             return True
         except OSError:
@@ -373,45 +407,42 @@ def _best_effort_remove(path):
         return False
 
 
+def _remove_matching_pid_files(dirs, prefixes):
+    """Remove all .pid files matching any prefix in the given directories."""
+    for d in dirs:
+        try:
+            for entry in os.listdir(d):
+                if entry.endswith(".pid") and any(entry.startswith(p) for p in prefixes):
+                    _best_effort_remove(os.path.join(d, entry))
+        except OSError:
+            pass
+
+
 def _cleanup_pid_files():
     """Remove modern and legacy PID files for known ports."""
     homes = _candidate_home_dirs()
     roots = _pid_roots()
 
-    for root in roots:
-        try:
-            for entry in os.listdir(root):
-                if entry.startswith("gasoline-") and entry.endswith(".pid"):
-                    _best_effort_remove(os.path.join(root, entry))
-                if entry.startswith("dev-console-") and entry.endswith(".pid"):
-                    _best_effort_remove(os.path.join(root, entry))
-            try:
-                if not os.listdir(root):
-                    os.rmdir(root)
-            except OSError:
-                pass
-        except OSError:
-            pass
+    # Glob-based: scan directories for any PID files matching our prefixes
+    _remove_matching_pid_files(roots, ("gasoline-", "dev-console-"))
+    _remove_matching_pid_files(homes, (".gasoline-", ".dev-console-"))
 
-    for home in homes:
-        try:
-            for entry in os.listdir(home):
-                if entry.startswith(".gasoline-") and entry.endswith(".pid"):
-                    _best_effort_remove(os.path.join(home, entry))
-                if entry.startswith(".dev-console-") and entry.endswith(".pid"):
-                    _best_effort_remove(os.path.join(home, entry))
-        except OSError:
-            pass
-
+    # Targeted: remove by known port (catches files even if dir listing failed)
     for port in KNOWN_PORTS:
         for root in roots:
-            pid_path = os.path.join(root, f"gasoline-{port}.pid")
-            _best_effort_remove(pid_path)
+            _best_effort_remove(os.path.join(root, f"gasoline-{port}.pid"))
             _best_effort_remove(os.path.join(root, f"dev-console-{port}.pid"))
-
         for home in homes:
             _best_effort_remove(os.path.join(home, f".gasoline-{port}.pid"))
             _best_effort_remove(os.path.join(home, f".dev-console-{port}.pid"))
+
+    # Clean up empty PID directories
+    for root in roots:
+        try:
+            if not os.listdir(root):
+                os.rmdir(root)
+        except OSError:
+            pass
 
 
 def cleanup_old_processes():

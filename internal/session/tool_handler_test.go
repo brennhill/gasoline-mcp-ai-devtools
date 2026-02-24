@@ -1,3 +1,7 @@
+// Purpose: Validate tool_handler_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
+// Docs: docs/features/feature/pagination/index.md
+
 // tool_handler_test.go — Tests for tool-handler.go (SessionManager.HandleTool).
 // Covers: diffSessionsParams parsing, capture/compare/list/delete dispatching,
 // error paths for missing params, invalid JSON, unknown actions.

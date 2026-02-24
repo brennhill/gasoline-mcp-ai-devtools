@@ -1,9 +1,14 @@
+// Purpose: Validate tools_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
+// Docs: docs/features/feature/observe/index.md
+
 // tools_test.go — Tests for MCP tool handlers.
 // Covers core functionality: tool dispatch, error handling, and response formatting.
 package main
 
 import (
 	"encoding/json"
+	"strings"
 	"testing"
 	"time"
 
@@ -128,7 +133,7 @@ func TestHandleToolCall_GenerateTool(t *testing.T) {
 		Method:  "tools/call",
 	}
 
-	args := json.RawMessage(`{"format": "reproduction"}`)
+	args := json.RawMessage(`{"what": "reproduction"}`)
 	resp, handled := toolHandler.HandleToolCall(req, "generate", args)
 
 	if !handled {
@@ -162,7 +167,7 @@ func TestHandleToolCall_ConfigureTool(t *testing.T) {
 		Method:  "tools/call",
 	}
 
-	args := json.RawMessage(`{"action": "health"}`)
+	args := json.RawMessage(`{"what": "health"}`)
 	resp, handled := toolHandler.HandleToolCall(req, "configure", args)
 
 	if !handled {
@@ -197,7 +202,7 @@ func TestHandleToolCall_InteractTool(t *testing.T) {
 	}
 
 	// list_states doesn't require pilot to be enabled
-	args := json.RawMessage(`{"action": "list_states"}`)
+	args := json.RawMessage(`{"what": "list_states"}`)
 	resp, handled := toolHandler.HandleToolCall(req, "interact", args)
 
 	if !handled {
@@ -247,7 +252,7 @@ func TestToolObserve_MissingWhat(t *testing.T) {
 	if len(result.Content) == 0 {
 		t.Fatal("Expected content in error response")
 	}
-	if !containsSubstring(result.Content[0].Text, "missing_param") {
+	if !strings.Contains(result.Content[0].Text, "missing_param") {
 		t.Errorf("Expected error code 'missing_param' in text, got: %s", result.Content[0].Text)
 	}
 }
@@ -276,10 +281,10 @@ func TestToolObserve_UnknownMode(t *testing.T) {
 	if len(result.Content) == 0 {
 		t.Fatal("Expected content in error response")
 	}
-	if !containsSubstring(result.Content[0].Text, "unknown_mode") {
+	if !strings.Contains(result.Content[0].Text, "unknown_mode") {
 		t.Errorf("Expected error code 'unknown_mode' in text, got: %s", result.Content[0].Text)
 	}
-	if !containsSubstring(result.Content[0].Text, "invalid_mode") {
+	if !strings.Contains(result.Content[0].Text, "invalid_mode") {
 		t.Errorf("Expected invalid mode name in error text, got: %s", result.Content[0].Text)
 	}
 }
@@ -338,7 +343,7 @@ func TestToolGenerate_MissingFormat(t *testing.T) {
 	if !result.IsError {
 		t.Fatal("Expected error response for missing 'format' parameter")
 	}
-	if !containsSubstring(result.Content[0].Text, "missing_param") {
+	if !strings.Contains(result.Content[0].Text, "missing_param") {
 		t.Errorf("Expected error code 'missing_param', got: %s", result.Content[0].Text)
 	}
 }
@@ -354,7 +359,7 @@ func TestToolGenerate_UnknownFormat(t *testing.T) {
 		ID:      json.RawMessage(`"test-id"`),
 	}
 
-	resp := toolHandler.toolGenerate(req, json.RawMessage(`{"format": "invalid_format"}`))
+	resp := toolHandler.toolGenerate(req, json.RawMessage(`{"what": "invalid_format"}`))
 
 	var result MCPToolResult
 	if err := json.Unmarshal(resp.Result, &result); err != nil {
@@ -364,10 +369,10 @@ func TestToolGenerate_UnknownFormat(t *testing.T) {
 	if !result.IsError {
 		t.Fatal("Expected error response for unknown format")
 	}
-	if !containsSubstring(result.Content[0].Text, "unknown_mode") {
+	if !strings.Contains(result.Content[0].Text, "unknown_mode") {
 		t.Errorf("Expected error code 'unknown_mode', got: %s", result.Content[0].Text)
 	}
-	if !containsSubstring(result.Content[0].Text, "invalid_format") {
+	if !strings.Contains(result.Content[0].Text, "invalid_format") {
 		t.Errorf("Expected format name in error text, got: %s", result.Content[0].Text)
 	}
 }
@@ -397,7 +402,7 @@ func TestToolConfigure_MissingAction(t *testing.T) {
 	if !result.IsError {
 		t.Fatal("Expected error response for missing 'action' parameter")
 	}
-	if !containsSubstring(result.Content[0].Text, "missing_param") {
+	if !strings.Contains(result.Content[0].Text, "missing_param") {
 		t.Errorf("Expected error code 'missing_param', got: %s", result.Content[0].Text)
 	}
 }
@@ -413,7 +418,7 @@ func TestToolConfigure_UnknownAction(t *testing.T) {
 		ID:      json.RawMessage(`"test-id"`),
 	}
 
-	resp := toolHandler.toolConfigure(req, json.RawMessage(`{"action": "invalid_action"}`))
+	resp := toolHandler.toolConfigure(req, json.RawMessage(`{"what": "invalid_action"}`))
 
 	var result MCPToolResult
 	if err := json.Unmarshal(resp.Result, &result); err != nil {
@@ -423,10 +428,10 @@ func TestToolConfigure_UnknownAction(t *testing.T) {
 	if !result.IsError {
 		t.Fatal("Expected error response for unknown action")
 	}
-	if !containsSubstring(result.Content[0].Text, "unknown_mode") {
+	if !strings.Contains(result.Content[0].Text, "unknown_mode") {
 		t.Errorf("Expected error code 'unknown_mode', got: %s", result.Content[0].Text)
 	}
-	if !containsSubstring(result.Content[0].Text, "invalid_action") {
+	if !strings.Contains(result.Content[0].Text, "invalid_action") {
 		t.Errorf("Expected action name in error text, got: %s", result.Content[0].Text)
 	}
 }
@@ -442,7 +447,7 @@ func TestToolConfigure_Health(t *testing.T) {
 		ID:      json.RawMessage(`"test-id"`),
 	}
 
-	resp := toolHandler.toolConfigure(req, json.RawMessage(`{"action": "health"}`))
+	resp := toolHandler.toolConfigure(req, json.RawMessage(`{"what": "health"}`))
 
 	var result MCPToolResult
 	if err := json.Unmarshal(resp.Result, &result); err != nil {
@@ -489,7 +494,7 @@ func TestToolInteract_MissingAction(t *testing.T) {
 	if !result.IsError {
 		t.Fatal("Expected error response for missing 'action' parameter")
 	}
-	if !containsSubstring(result.Content[0].Text, "missing_param") {
+	if !strings.Contains(result.Content[0].Text, "missing_param") {
 		t.Errorf("Expected error code 'missing_param', got: %s", result.Content[0].Text)
 	}
 }
@@ -505,7 +510,7 @@ func TestToolInteract_UnknownAction(t *testing.T) {
 		ID:      json.RawMessage(`"test-id"`),
 	}
 
-	resp := toolHandler.toolInteract(req, json.RawMessage(`{"action": "invalid_action"}`))
+	resp := toolHandler.toolInteract(req, json.RawMessage(`{"what": "invalid_action"}`))
 
 	var result MCPToolResult
 	if err := json.Unmarshal(resp.Result, &result); err != nil {
@@ -515,10 +520,10 @@ func TestToolInteract_UnknownAction(t *testing.T) {
 	if !result.IsError {
 		t.Fatal("Expected error response for unknown action")
 	}
-	if !containsSubstring(result.Content[0].Text, "unknown_mode") {
+	if !strings.Contains(result.Content[0].Text, "unknown_mode") {
 		t.Errorf("Expected error code 'unknown_mode', got: %s", result.Content[0].Text)
 	}
-	if !containsSubstring(result.Content[0].Text, "invalid_action") {
+	if !strings.Contains(result.Content[0].Text, "invalid_action") {
 		t.Errorf("Expected action name in error text, got: %s", result.Content[0].Text)
 	}
 }
@@ -680,16 +685,16 @@ func TestMcpStructuredError(t *testing.T) {
 	}
 
 	// Should contain the error code and retry instruction
-	if !containsSubstring(text, "missing_param") {
+	if !strings.Contains(text, "missing_param") {
 		t.Error("Expected text to contain error code 'missing_param'")
 	}
-	if !containsSubstring(text, "Missing parameter 'what'") {
+	if !strings.Contains(text, "Missing parameter 'what'") {
 		t.Error("Expected text to contain message")
 	}
-	if !containsSubstring(text, "Add the 'what' parameter") {
+	if !strings.Contains(text, "Add the 'what' parameter") {
 		t.Error("Expected text to contain retry instruction")
 	}
-	if !containsSubstring(text, "Valid values: logs, errors") {
+	if !strings.Contains(text, "Valid values: logs, errors") {
 		t.Error("Expected text to contain hint")
 	}
 
@@ -738,15 +743,4 @@ func TestToolCallLimiter_Allow(t *testing.T) {
 	}
 }
 
-// ============================================
-// Helper Functions
-// ============================================
-
-func containsSubstring(s, substr string) bool {
-	for i := 0; i <= len(s)-len(substr); i++ {
-		if s[i:i+len(substr)] == substr {
-			return true
-		}
-	}
-	return false
-}
+// containsSubstring removed — replaced by strings.Contains at all call sites.

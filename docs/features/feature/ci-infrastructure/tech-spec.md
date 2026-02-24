@@ -1,6 +1,9 @@
 ---
 feature: Gasoline CI Infrastructure
 status: proposed
+doc_type: tech-spec
+feature_id: feature-ci-infrastructure
+last_reviewed: 2026-02-16
 ---
 
 # Tech Spec: Gasoline CI Infrastructure

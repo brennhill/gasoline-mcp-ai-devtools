@@ -18,7 +18,8 @@ ERRORS=0
 echo "1️⃣  Checking critical files..."
 
 CRITICAL_FILES=(
-    "internal/capture/queries.go"
+    "internal/queries/dispatcher_queries.go"
+    "internal/capture/query_dispatcher.go"
     "internal/capture/handlers.go"
     "internal/capture/types.go"
     "internal/queries/types.go"
@@ -42,7 +43,7 @@ done
 # ============================================
 
 echo ""
-echo "2️⃣  Checking required methods in queries.go..."
+echo "2️⃣  Checking required methods in query dispatcher..."
 
 REQUIRED_METHODS=(
     "CreatePendingQuery"
@@ -61,12 +62,15 @@ REQUIRED_METHODS=(
     "GetFailedCommands"
 )
 
+# Methods exist in either capture delegation or queries implementation
 for method in "${REQUIRED_METHODS[@]}"; do
-    if ! grep -q "func.*$method" internal/capture/queries.go; then
+    if grep -q "func.*$method" internal/capture/query_dispatcher.go || \
+       grep -q "func.*$method" internal/queries/dispatcher_queries.go || \
+       grep -q "func.*$method" internal/queries/dispatcher_commands.go; then
+        echo "   ✅ $method"
+    else
         echo "   ❌ MISSING METHOD: $method"
         ERRORS=$((ERRORS + 1))
-    else
-        echo "   ✅ $method"
     fi
 done
 
@@ -208,10 +212,12 @@ else
     echo "   ✅ AsyncCommandTimeout = ${ASYNC_TIMEOUT_SECONDS}s"
 fi
 
-if ! grep -q 'maxPendingQueries[[:space:]]*=[[:space:]]*5' internal/capture/constants.go; then
-    echo "   ⚠️  WARNING: maxPendingQueries not found or not set to 5 in constants.go"
-else
+if grep -q 'MaxPendingQueries[[:space:]]*=[[:space:]]*5' internal/queries/dispatcher_queries.go; then
+    echo "   ✅ MaxPendingQueries = 5"
+elif grep -q 'maxPendingQueries[[:space:]]*=[[:space:]]*5' internal/capture/constants.go; then
     echo "   ✅ maxPendingQueries = 5"
+else
+    echo "   ⚠️  WARNING: MaxPendingQueries not found or not set to 5"
 fi
 
 # ============================================

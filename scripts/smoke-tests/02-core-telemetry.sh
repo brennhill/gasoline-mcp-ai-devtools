@@ -17,14 +17,44 @@ run_test_2_1() {
         return
     fi
 
+    # Precondition: ensure we are on a CSP-safe page where execute_js can run.
+    # Without this, a restricted tracked tab can cause false "logs missing" failures.
+    local page_before page_before_text
+    page_before=$(call_tool "observe" '{"what":"page"}')
+    page_before_text=$(extract_content_text "$page_before")
+    if ! echo "$page_before_text" | grep -qi "example.com"; then
+        interact_and_wait "navigate" '{"action":"navigate","url":"https://example.com","reason":"Core telemetry 2.1 precondition: CSP-safe page"}'
+        sleep 1
+    fi
+
     interact_and_wait "execute_js" "{\"action\":\"execute_js\",\"reason\":\"Trigger console.log\",\"script\":\"console.log('${SMOKE_MARKER}_LOG')\"}"
+    local log_exec_result
+    log_exec_result="$INTERACT_RESULT"
+    if ! echo "$log_exec_result" | grep -q '"success":true'; then
+        fail "execute_js(console.log) failed before log assertion. Result: $(truncate "$log_exec_result" 220)"
+        return
+    fi
+
     interact_and_wait "execute_js" "{\"action\":\"execute_js\",\"reason\":\"Trigger console.error\",\"script\":\"console.error('${SMOKE_MARKER}_ERROR')\"}"
+    local err_exec_result
+    err_exec_result="$INTERACT_RESULT"
+    if ! echo "$err_exec_result" | grep -q '"success":true'; then
+        fail "execute_js(console.error) failed before error assertion. Result: $(truncate "$err_exec_result" 220)"
+        return
+    fi
+
     interact_and_wait "execute_js" "{\"action\":\"execute_js\",\"reason\":\"Trigger thrown error\",\"script\":\"try { throw new Error('${SMOKE_MARKER}_THROWN') } catch(e) { console.error(e.message, e.stack) }\"}"
+    local thrown_exec_result
+    thrown_exec_result="$INTERACT_RESULT"
+    if ! echo "$thrown_exec_result" | grep -q '"success":true'; then
+        fail "execute_js(thrown error) failed before assertion. Result: $(truncate "$thrown_exec_result" 220)"
+        return
+    fi
 
     sleep 2
 
     local log_response
-    log_response=$(call_tool "observe" '{"what":"logs"}')
+    log_response=$(call_tool "observe" '{"what":"logs","scope":"all","limit":200}')
     local log_text
     log_text=$(extract_content_text "$log_response")
 
@@ -34,7 +64,7 @@ run_test_2_1() {
     fi
 
     local err_response
-    err_response=$(call_tool "observe" '{"what":"errors"}')
+    err_response=$(call_tool "observe" '{"what":"errors","scope":"all","limit":200}')
     local err_text
     err_text=$(extract_content_text "$err_response")
 
@@ -213,32 +243,42 @@ run_test_2_6() {
         return
     fi
 
-    # analyze(dom) is async — returns a correlation_id, must poll for result
-    local dom_response
-    dom_response=$(call_tool "analyze" '{"what":"dom","selector":"h1, a, button, input"}')
-    local dom_text
-    dom_text=$(extract_content_text "$dom_response")
+    # DOM query helper — issues analyze(dom) and polls for async result.
+    # Returns result in dom_text. Retries once if the first attempt fails
+    # (content script may not be loaded yet on the target page).
+    _dom_query_attempt() {
+        local dom_response
+        dom_response=$(call_tool "analyze" '{"what":"dom","selector":"h1, a, button, input"}')
+        dom_text=$(extract_content_text "$dom_response")
 
-    # Extract correlation_id and poll for async result
-    local corr_id
-    corr_id=$(echo "$dom_text" | grep -oE '"correlation_id":\s*"[^"]+"' | head -1 | sed 's/.*"correlation_id":\s*"//' | sed 's/"//' || true)
+        local corr_id
+        corr_id=$(echo "$dom_text" | grep -oE '"correlation_id":\s*"[^"]+"' | head -1 | sed 's/.*"correlation_id":\s*"//' | sed 's/"//' || true)
 
-    if [ -n "$corr_id" ]; then
-        for i in $(seq 1 15); do
-            sleep 0.5
-            local poll_response
-            poll_response=$(call_tool "observe" "{\"what\":\"command_result\",\"correlation_id\":\"$corr_id\"}")
-            local poll_text
-            poll_text=$(extract_content_text "$poll_response")
-            if echo "$poll_text" | grep -q '"status":"complete"'; then
-                dom_text="$poll_text"
-                break
-            fi
-            if echo "$poll_text" | grep -q '"status":"failed"'; then
-                dom_text="$poll_text"
-                break
-            fi
-        done
+        if [ -n "$corr_id" ]; then
+            for i in $(seq 1 15); do
+                sleep 0.5
+                local poll_response
+                poll_response=$(call_tool "observe" "{\"what\":\"command_result\",\"correlation_id\":\"$corr_id\"}")
+                local poll_text
+                poll_text=$(extract_content_text "$poll_response")
+                if echo "$poll_text" | grep -q '"status":"complete"'; then
+                    dom_text="$poll_text"
+                    return 0
+                fi
+                if echo "$poll_text" | grep -q '"status":"failed"'; then
+                    dom_text="$poll_text"
+                    return 1
+                fi
+            done
+        fi
+    }
+
+    local dom_text=""
+    if ! _dom_query_attempt; then
+        # First attempt failed — content script may not be loaded yet. Wait and retry.
+        echo "  [DOM query attempt 1 failed, retrying after 3s...]"
+        sleep 3
+        _dom_query_attempt || true
     fi
 
     echo "  [DOM query: h1, a, button, input]"
@@ -301,6 +341,10 @@ except Exception as e:
 
     if echo "$dom_verdict" | grep -q "^PASS"; then
         pass "DOM query returned page elements. $dom_verdict"
+    elif echo "$dom_text" | grep -qi "Failed to execute DOM query\|dom_query_failed"; then
+        fail "DOM query execution failed — content script may not be loaded on the target page. Ensure the extension is connected and the page is not a chrome:// or restricted URL. Raw: $(truncate "$dom_text" 200)"
+    elif echo "$dom_text" | grep -qi "Receiving end does not exist"; then
+        fail "DOM query failed — content script not reachable on the tab. Extension may need to reload. Raw: $(truncate "$dom_text" 200)"
     else
         fail "DOM query invalid. $dom_verdict. Content: $(truncate "$dom_text" 200)"
     fi

@@ -1,3 +1,9 @@
+---
+doc_type: legacy_doc
+status: reference
+last_reviewed: 2026-02-16
+---
+
 # Selector Strategies in Gasoline
 
 The Gasoline extension uses a **multi-strategy selector approach** to create robust, maintainable selectors for test automation and element identification. This document explains how selectors are prioritized and when each strategy is used.

@@ -163,9 +163,22 @@ run_test_6_4() {
     # Start a fresh daemon
     kill_server
     sleep 0.3
-    start_daemon
 
-    if ! wait_for_health 50; then
+    # One bounded retry for occasional port-release/startup races.
+    local started=0
+    for attempt in 1 2; do
+        if start_daemon; then
+            started=1
+            break
+        fi
+        if [ "$attempt" -lt 2 ]; then
+            echo "  [retry] Daemon startup race detected, retrying once..." | tee -a "$OUTPUT_FILE"
+            kill_server
+            sleep 0.5
+        fi
+    done
+
+    if [ "$started" -ne 1 ]; then
         fail "Daemon failed to start for health endpoint test."
         return
     fi

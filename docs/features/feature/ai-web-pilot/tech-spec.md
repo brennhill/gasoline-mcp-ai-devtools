@@ -5,6 +5,9 @@ ai-priority: high
 tags: [implementation, architecture]
 relates-to: [product-spec.md, qa-plan.md]
 last-verified: 2026-01-31
+doc_type: tech-spec
+feature_id: feature-ai-web-pilot
+last_reviewed: 2026-02-16
 ---
 
 > **[MIGRATION NOTICE]**
@@ -232,5 +235,5 @@ Or as standalone tools if the composite pattern doesn't fit the use case.
 | `extension/popup.js` | Handle toggle state |
 | `extension/background.js` | Route new message types |
 | `extension/inject.js` | Implement highlight, state, execute handlers |
-| `cmd/dev-console/tools.go` | Add MCP tool handlers |
+| `cmd/dev-console/tools_core.go` | Add MCP tool handlers |
 | `cmd/dev-console/pilot.go` (new) | AI Web Pilot domain logic |

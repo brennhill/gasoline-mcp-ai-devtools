@@ -1,4 +1,10 @@
 /**
+ * Purpose: Defines user-action telemetry contracts and selector strategy shapes used for replay/test generation.
+ * Why: Keeps action capture payloads aligned with replay and generated-test consumers.
+ * Docs: docs/features/feature/test-generation/index.md
+ */
+
+/**
  * @fileoverview User Action Types
  * User interactions for action replay and test generation
  */
@@ -31,23 +37,8 @@ export interface SelectorStrategies {
 }
 
 /**
- * Enhanced action entry with multiple selector strategies
+ * Enhanced action — re-exported from wire type (canonical HTTP payload shape).
+ * The stale interface previously used camelCase fields (ts, scrollPosition, modifiers)
+ * that didn't match the actual runtime data or Go server expectations.
  */
-export interface EnhancedAction {
-  readonly type: ActionType
-  readonly ts: string
-  readonly url: string
-  readonly selectors: SelectorStrategies
-  readonly value?: string
-  readonly key?: string
-  readonly modifiers?: {
-    readonly ctrl?: boolean
-    readonly alt?: boolean
-    readonly shift?: boolean
-    readonly meta?: boolean
-  }
-  readonly scrollPosition?: {
-    readonly x: number
-    readonly y: number
-  }
-}
+export type { WireEnhancedAction as EnhancedAction } from './wire-enhanced-action'

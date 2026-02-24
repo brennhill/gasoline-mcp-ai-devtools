@@ -510,7 +510,7 @@ describe('Network Body E2E Tests', async () => {
 
       const event = capturedEvents.find((e) => e.method === 'POST')
       assert.ok(event, 'Expected POST event to be captured')
-      assert.strictEqual(event.requestBody, '{"test":"data"}')
+      assert.strictEqual(event.request_body, '{"test":"data"}')
     })
   })
 
@@ -691,7 +691,7 @@ describe('Network Body E2E Tests', async () => {
 
       const event = capturedEvents.find((e) => e.status === 500)
       assert.ok(event, 'Expected 500 error event')
-      assert.ok(event.responseBody.includes('Internal Server Error'))
+      assert.ok(event.response_body.includes('Internal Server Error'))
     })
   })
 
@@ -760,7 +760,7 @@ describe('Network Body E2E Tests', async () => {
       const event = capturedEvents[0]
       assert.strictEqual(event.method, 'GET')
       assert.strictEqual(event.status, 200)
-      assert.ok(event.responseBody)
+      assert.ok(event.response_body)
       assert.ok(event.duration >= 0)
     })
 

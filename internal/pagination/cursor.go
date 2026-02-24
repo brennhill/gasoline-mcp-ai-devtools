@@ -1,6 +1,7 @@
-// cursor.go — Cursor-based pagination utilities for stable live data pagination.
-// Implements composite cursors ("timestamp:sequence") to handle timestamp collisions
-// from batched browser events while providing LLM temporal awareness.
+// Purpose: Implements cursor pagination over captured telemetry collections.
+// Why: Makes large evidence sets queryable without losing ordering or cursor consistency.
+// Docs: docs/features/feature/pagination/index.md
+
 package pagination
 
 import (

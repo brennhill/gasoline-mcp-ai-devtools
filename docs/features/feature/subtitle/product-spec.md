@@ -3,6 +3,9 @@ status: proposed
 scope: feature/subtitle
 ai-priority: high
 tags: [interact, overlay, narration, demo, walkthrough]
+doc_type: product-spec
+feature_id: feature-subtitle
+last_reviewed: 2026-02-16
 ---
 
 # Subtitle

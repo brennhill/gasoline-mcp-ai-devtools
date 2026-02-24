@@ -1,6 +1,7 @@
-// cli.go — CLI mode entry point for direct tool invocation.
-// Allows: gasoline observe errors --limit 50
-// Talks to the daemon over HTTP (same /mcp endpoint as the MCP bridge).
+// Purpose: Implements standalone CLI mode execution flow, daemon bootstrap, and tool call dispatch.
+// Why: Enables scriptable local usage without requiring direct MCP client integration.
+// Docs: docs/features/feature/enhanced-cli-config/index.md
+
 package main
 
 import (
@@ -21,6 +22,7 @@ import (
 // cliToolNames lists valid tool names for CLI mode detection.
 var cliToolNames = map[string]bool{
 	"observe":   true,
+	"analyze":   true,
 	"generate":  true,
 	"configure": true,
 	"interact":  true,
@@ -47,7 +49,7 @@ func runCLIMode(args []string) int {
 
 	if len(remaining) < 2 {
 		fmt.Fprintf(os.Stderr, "Usage: gasoline <tool> <action> [flags]\n")
-		fmt.Fprintf(os.Stderr, "  Tools: observe, generate, configure, interact\n")
+		fmt.Fprintf(os.Stderr, "  Tools: observe, analyze, generate, configure, interact\n")
 		fmt.Fprintf(os.Stderr, "  Example: gasoline observe errors --limit 50\n")
 		return 2
 	}
@@ -70,10 +72,13 @@ func runCLIMode(args []string) int {
 		return 1
 	}
 
-	// Accessibility audits get extended timeout
+	// Long-running modes get extended timeout
 	timeout := cfg.Timeout
-	if tool == "observe" && normalizeAction(action) == "accessibility" {
+	if tool == "analyze" && normalizeAction(action) == "accessibility" {
 		timeout = 35000
+	}
+	if tool == "observe" && normalizeAction(action) == "command_result" && timeout < 60000 {
+		timeout = 60000
 	}
 
 	// Call the tool
@@ -91,7 +96,7 @@ func resolveCLIConfig(args []string) (cliConfig, []string) {
 	cfg := cliConfig{
 		Port:    defaultPort,
 		Format:  "human",
-		Timeout: 5000,
+		Timeout: 15000,
 	}
 
 	applyCLIEnvOverrides(&cfg)
@@ -158,6 +163,7 @@ func ensureDaemon(port int) (string, error) {
 	}
 
 	cmd := exec.Command(exe, "--daemon", "--port", fmt.Sprintf("%d", port)) // #nosec G204,G702 -- exe is our own binary path from os.Executable with fixed flags // nosemgrep: go.lang.security.audit.dangerous-exec-command.dangerous-exec-command, go_subproc_rule-subproc -- CLI opens browser with known URL
+	cmd.Args[0] = daemonProcessArgv0(exe)
 	cmd.Stdout = nil
 	cmd.Stderr = nil
 	cmd.Stdin = nil

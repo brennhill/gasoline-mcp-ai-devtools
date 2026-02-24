@@ -1,3 +1,7 @@
+// Purpose: Validate sri_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
+// Docs: docs/features/feature/observe/index.md
+
 // sri_test.go — Tests for SRI Hash Generator (generate_sri) MCP tool.
 // Tests hash computation, resource filtering, third-party detection, and output formats.
 package security
@@ -456,6 +460,39 @@ func TestSRIGeneratorInvalidParams(t *testing.T) {
 	_, err := HandleGenerateSRI([]byte(`{invalid}`), bodies, pageURLs)
 	if err == nil {
 		t.Error("expected error for invalid JSON params")
+	}
+}
+
+func TestSRIGeneratorPlaceholderBodies(t *testing.T) {
+	t.Parallel()
+	gen := NewSRIGenerator()
+	bodies := []NetworkBody{
+		// Placeholder from body read timeout — should be skipped with warning
+		{URL: "https://cdn.example.com/timeout.js", ContentType: "application/javascript", ResponseBody: "[Skipped: body read timeout]"},
+		// Placeholder from read error — should be skipped with warning
+		{URL: "https://cdn.example.com/error.js", ContentType: "application/javascript", ResponseBody: "[Could not read response]"},
+		// Binary placeholder — should be skipped with warning
+		{URL: "https://cdn.example.com/binary.js", ContentType: "application/javascript", ResponseBody: "[Binary: 4096 bytes, application/javascript]"},
+		// Real body — should be included
+		{URL: "https://cdn.example.com/real.js", ContentType: "application/javascript", ResponseBody: "console.log('real');"},
+	}
+	pageURLs := []string{"https://myapp.com/"}
+
+	result := gen.Generate(bodies, pageURLs, SRIParams{})
+
+	if len(result.Resources) != 1 {
+		t.Fatalf("expected 1 resource (only real body), got %d", len(result.Resources))
+	}
+	if result.Resources[0].URL != "https://cdn.example.com/real.js" {
+		t.Errorf("expected real.js URL, got %s", result.Resources[0].URL)
+	}
+	// Placeholder bodies should produce warnings
+	if len(result.Warnings) < 3 {
+		t.Errorf("expected at least 3 warnings for placeholder bodies, got %d: %v", len(result.Warnings), result.Warnings)
+	}
+	// Summary should count placeholders as third-party (they passed origin check)
+	if result.Summary.TotalThirdPartyResources != 4 {
+		t.Errorf("expected 4 total third-party resources, got %d", result.Summary.TotalThirdPartyResources)
 	}
 }
 

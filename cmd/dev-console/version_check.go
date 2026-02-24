@@ -1,5 +1,3 @@
-// version_check.go — GitHub version checking for update notifications.
-// Checks GitHub for new releases and notifies users of available updates.
 package main
 
 import (
@@ -110,7 +108,12 @@ func checkGitHubVersion() {
 	}
 
 	versionCheckMu.Lock()
-	availableVersion = newVersion
+	if isNewerVersion(newVersion, version) {
+		availableVersion = newVersion
+	} else {
+		// Do not advertise older/equal releases as available updates.
+		availableVersion = ""
+	}
 	lastVersionCheck = time.Now()
 	versionCheckMu.Unlock()
 

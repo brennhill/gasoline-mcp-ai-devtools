@@ -2,6 +2,9 @@
 feature: Flow Recording & Playback
 status: in-progress
 version: v6.0
+doc_type: tech-spec
+feature_id: feature-flow-recording
+last_reviewed: 2026-02-16
 ---
 
 # Tech Spec: Flow Recording & Playback (Regression Testing)
@@ -744,7 +747,7 @@ configure({action: 'test_boundary_end', test_id: 'replay-1'})
 
 | File | Changes | Impact |
 |------|---------|--------|
-| `cmd/dev-console/tools.go` | Add recording_start, recording_stop, playback actions | ~50 LOC |
+| `cmd/dev-console/tools_core.go` | Add recording_start, recording_stop, playback actions | ~50 LOC |
 | `cmd/dev-console/queries.go` | Add handlers for recordings, recording_actions, WebSocket upgrade | ~60 LOC |
 | `cmd/dev-console/main.go` | Initialize WebSocket router | ~20 LOC |
 | `extension/inject/action-capture.ts` | Extend with recording metadata (selector, x/y, screenshots) | ~30 LOC |

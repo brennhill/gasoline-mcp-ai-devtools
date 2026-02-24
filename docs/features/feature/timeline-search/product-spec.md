@@ -5,6 +5,9 @@ ai-priority: high
 tags: [v7, analysis, hands, debugging]
 relates-to: [../backend-control/product-spec.md, ../code-navigation-modification/product-spec.md, ../../core/architecture.md]
 last-verified: 2026-01-31
+doc_type: product-spec
+feature_id: feature-timeline-search
+last_reviewed: 2026-02-16
 ---
 
 # Timeline & Search

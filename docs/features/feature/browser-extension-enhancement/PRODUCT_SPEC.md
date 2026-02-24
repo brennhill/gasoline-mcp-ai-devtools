@@ -6,6 +6,7 @@ effort: 2 weeks
 relates-to: [ring-buffer, normalized-event-schema]
 blocks: [query-service, checkpoint-validation]
 last-updated: 2026-01-31
+last_reviewed: 2026-02-16
 ---
 
 # Browser Extension Enhancement — Product Specification

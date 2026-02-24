@@ -1,3 +1,9 @@
+---
+doc_type: legacy_doc
+status: reference
+last_reviewed: 2026-02-16
+---
+
 # Example: How to Request a New Feature (Top 1% Quality)
 
 > **Use this as a template when asking an LLM to implement a new feature**

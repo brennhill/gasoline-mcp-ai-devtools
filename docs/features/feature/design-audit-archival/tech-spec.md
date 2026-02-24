@@ -7,6 +7,9 @@ tags: [design-audit, archival, sqlite, storage, placeholder]
 relates-to: [product-spec.md, feature-tracking.md, qa-plan.md]
 last-verified: 2026-01-31
 incomplete: true
+doc_type: tech-spec
+feature_id: feature-design-audit-archival
+last_reviewed: 2026-02-16
 ---
 
 # Technical Specification: Design Audit & Archival

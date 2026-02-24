@@ -1,3 +1,7 @@
+// Purpose: Validate daemon cleanup behavior for install/uninstall upgrade paths.
+// Why: Prevents stale daemon processes from breaking MCP handoff during wrapper operations.
+// Docs: docs/features/feature/enhanced-cli-config/index.md
+
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');

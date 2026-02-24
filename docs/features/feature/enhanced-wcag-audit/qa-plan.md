@@ -5,6 +5,9 @@ ai-priority: medium
 tags: [testing, qa]
 relates-to: [product-spec.md, tech-spec.md]
 last-verified: 2026-01-31
+doc_type: qa-plan
+feature_id: feature-enhanced-wcag-audit
+last_reviewed: 2026-02-16
 ---
 
 # QA Plan: Enhanced WCAG Accessibility Audit
@@ -218,7 +221,7 @@ last-verified: 2026-01-31
 - [ ] a11y cache still works correctly for basic audits
 - [ ] Other observe modes (errors, network, page) are unaffected
 - [ ] Extension performance not degraded for non-a11y observe calls
-- [ ] SARIF export (`generate({type: "sarif"})`) still works with cached basic a11y results
+- [ ] SARIF export (`generate({format: "sarif"})`) still works with cached basic a11y results
 
 ---
 

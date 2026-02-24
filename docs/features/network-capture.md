@@ -1,3 +1,9 @@
+---
+doc_type: legacy_doc
+status: reference
+last_reviewed: 2026-02-16
+---
+
 # Network Capture Documentation
 
 **Last Updated:** 2026-01-30

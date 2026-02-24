@@ -1,4 +1,11 @@
 /**
+ * Purpose: Executes in-page actions and query handlers within the page context.
+ * Why: Executes page-context actions safely while preserving deterministic command results.
+ * Docs: docs/features/feature/interact-explore/index.md
+ * Docs: docs/features/feature/query-dom/index.md
+ */
+
+/**
  * @fileoverview Observers - Observer registration and management for DOM, network,
  * performance, and WebSocket events.
  */
@@ -15,7 +22,9 @@ import {
   setNetworkWaterfallEnabled,
   setNetworkBodyCaptureEnabled,
   setServerUrl,
-  wrapFetchWithBodies
+  wrapFetchWithBodies,
+  wrapXHRWithBodies,
+  unwrapXHR
 } from '../lib/network'
 import { installConsoleCapture, uninstallConsoleCapture } from '../lib/console'
 import { installExceptionCapture, uninstallExceptionCapture } from '../lib/exceptions'
@@ -167,6 +176,20 @@ export function installFetchCapture(): void {
 }
 
 /**
+ * Install XHR body capture (wraps XMLHttpRequest.prototype.open/send)
+ */
+export function installXHRCapture(): void {
+  wrapXHRWithBodies()
+}
+
+/**
+ * Uninstall XHR body capture
+ */
+export function uninstallXHRCapture(): void {
+  unwrapXHR()
+}
+
+/**
  * Uninstall fetch capture
  */
 export function uninstallFetchCapture(): void {
@@ -182,6 +205,7 @@ export function uninstallFetchCapture(): void {
 export function install(): void {
   installConsoleCapture()
   installFetchCapture()
+  installXHRCapture()
   installExceptionCapture()
   installActionCapture()
   installNavigationCapture()
@@ -195,6 +219,7 @@ export function install(): void {
 export function uninstall(): void {
   uninstallConsoleCapture()
   uninstallFetchCapture()
+  uninstallXHRCapture()
   uninstallExceptionCapture()
   uninstallActionCapture()
   uninstallNavigationCapture()

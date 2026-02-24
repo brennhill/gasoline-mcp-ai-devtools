@@ -1,3 +1,7 @@
+// Purpose: Validate coverage_boost_unit_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
+// Docs: docs/features/feature/backend-log-streaming/index.md
+
 package capture
 
 import (
@@ -217,7 +221,7 @@ func TestCoverageBoost_NetworkWaterfallGetters(t *testing.T) {
 func TestCoverageBoost_ResultHandlersAndPendingQueries(t *testing.T) {
 	c := newCoverageCapture(t)
 
-	queryID := c.CreatePendingQueryWithClient(queries.PendingQuery{
+	queryID, _ := c.CreatePendingQueryWithClient(queries.PendingQuery{
 		Type:   "dom",
 		Params: json.RawMessage(`{"selector":"body"}`),
 	}, "client-1")

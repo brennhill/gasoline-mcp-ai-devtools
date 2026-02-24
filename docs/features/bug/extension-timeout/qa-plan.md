@@ -1,5 +1,8 @@
 ---
 feature: extension-timeout
+doc_type: qa-plan
+feature_id: bug-extension-timeout
+last_reviewed: 2026-02-16
 ---
 
 # QA Plan: Extension Timeout After 5-6 Operations (Bug Fix)
@@ -67,7 +70,7 @@ feature: extension-timeout
    - Navigate to complex page (e.g., GitHub.com)
    - Track the tab
 2. Steps:
-   - [ ] Run script that calls `generate({action: "query_dom", selector: "div"})` 50 times in sequence
+   - [ ] Run script that calls `analyze({what: "dom", selector: "div"})` 50 times in sequence
    - [ ] Monitor Chrome Task Manager for memory usage
    - [ ] Monitor DevTools Console for errors
    - [ ] Record operation latency for operations 1, 10, 25, 50
@@ -140,7 +143,7 @@ feature: extension-timeout
 1. Setup: Navigate to page, track tab
 2. Steps:
    - [ ] Freeze page via DevTools (Rendering → Rendering paused)
-   - [ ] Send DOM query: `generate({action: "query_dom"})`
+   - [ ] Send DOM query: `analyze({what: "dom"})`
    - [ ] Wait up to 15 seconds
 3. Expected Result:
    - [ ] Operation times out after ~10 seconds

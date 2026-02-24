@@ -7,6 +7,9 @@ relates-to: [feature-proposal.md, tech-spec.md]
 version-applies-to: v6.0+
 last-verified: 2026-01-31
 incomplete: true
+doc_type: qa-plan
+feature_id: feature-advanced-filtering
+last_reviewed: 2026-02-16
 ---
 
 # QA Plan: Advanced Filtering for Signal-to-Noise

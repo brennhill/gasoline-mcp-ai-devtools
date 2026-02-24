@@ -1,3 +1,7 @@
+// Purpose: Validate smoke_upload_contract_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
+// Docs: docs/features/feature/observe/index.md
+
 package main
 
 import (
@@ -7,6 +11,8 @@ import (
 	"runtime"
 	"strings"
 	"testing"
+
+	"github.com/dev-console/dev-console/internal/upload"
 )
 
 func TestSmokeUploadScripts_Stage4PathsAligned(t *testing.T) {
@@ -25,7 +31,7 @@ func TestSmokeUploadScripts_Stage4PathsAligned(t *testing.T) {
 	}
 
 	bootstrap := string(bootstrapRaw)
-	upload := string(uploadRaw)
+	uploadScript := string(uploadRaw)
 
 	// If bootstrap starts daemon with Stage 4 enabled and no explicit --upload-dir,
 	// smoke upload fixtures must live under the daemon default: ~/gasoline-upload-dir.
@@ -36,7 +42,7 @@ func TestSmokeUploadScripts_Stage4PathsAligned(t *testing.T) {
 	}
 
 	re := regexp.MustCompile(`(?m)^UPLOAD_TEST_DIR="([^"]+)"`)
-	match := re.FindStringSubmatch(upload)
+	match := re.FindStringSubmatch(uploadScript)
 	if len(match) != 2 {
 		t.Fatalf("UPLOAD_TEST_DIR assignment not found in %s", uploadPath)
 	}
@@ -66,7 +72,7 @@ func TestOSAutomation_RejectsSmokeTmpPathOutsideDefaultUploadDir(t *testing.T) {
 		t.Fatalf("failed to write smoke file: %v", err)
 	}
 
-	sec := &UploadSecurity{uploadDir: allowedDir}
+	sec := upload.NewSecurity(allowedDir, nil)
 	resp := handleOSAutomationInternal(OSAutomationInjectRequest{
 		FilePath:   smokeFile,
 		BrowserPID: 12345, // skip PID auto-detect in test

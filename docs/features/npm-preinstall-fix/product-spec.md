@@ -1,3 +1,9 @@
+---
+doc_type: product-spec
+feature_id: npm-preinstall-fix
+last_reviewed: 2026-02-16
+---
+
 # Product Spec: npm Preinstall Auto-Uninstall
 
 ## Problem

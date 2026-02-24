@@ -1,3 +1,7 @@
+// Purpose: Validate tools_observe_bundling_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
+// Docs: docs/features/feature/observe/index.md
+
 // tools_observe_bundling_test.go — Tests for error bundling observe mode.
 //
 // Error bundles assemble complete debugging context in a single call:
@@ -13,6 +17,7 @@ import (
 	"time"
 
 	"github.com/dev-console/dev-console/internal/capture"
+	"github.com/dev-console/dev-console/internal/tools/observe"
 )
 
 // ============================================
@@ -48,7 +53,7 @@ func (e *bundleTestEnv) callErrorBundles(t *testing.T, args string) (MCPToolResu
 	t.Helper()
 	rawArgs := json.RawMessage(args)
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: 1}
-	resp := e.handler.toolGetErrorBundles(req, rawArgs)
+	resp := observe.GetErrorBundles(e.handler, req, rawArgs)
 	if resp.Result == nil {
 		return MCPToolResult{}, false
 	}

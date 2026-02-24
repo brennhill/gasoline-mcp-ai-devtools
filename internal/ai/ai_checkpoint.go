@@ -1,9 +1,7 @@
-// ai_checkpoint.go — Named checkpoint/diff system for session state comparison.
-// Checkpoints record buffer positions at a point in time. Diffs return only
-// new entries since the checkpoint, deduplicated and severity-filtered.
-// Design: Checkpoints store position counters, not data copies, making them
-// cheap to create. Max 20 named checkpoints with LRU eviction. Auto-checkpoint
-// advances on each diff call for "show me what's new" workflows.
+// Purpose: Implements checkpoint-based diffing over captured logs/network/actions for AI-facing change summaries.
+// Why: Enables incremental debugging by comparing current runtime state against prior named checkpoints.
+// Docs: docs/features/feature/push-alerts/index.md
+
 package ai
 
 import (

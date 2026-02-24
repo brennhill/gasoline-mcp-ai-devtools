@@ -4,6 +4,9 @@ status: in-progress
 tool: observe
 mode: network_bodies
 version: 5.2.0
+doc_type: product-spec
+feature_id: bug-network-bodies-empty
+last_reviewed: 2026-02-16
 ---
 
 # Product Spec: Network Bodies Empty (Bug Fix)

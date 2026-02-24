@@ -1,6 +1,7 @@
-// rate_limit.go — Capture delegation methods for rate limiting and circuit breaker.
-// Delegates to CircuitBreaker sub-struct. These methods preserve the existing
-// Capture API so callers (helpers.go, handlers, tests) don't need to change.
+// Purpose: Delegates capture rate-limiting and health endpoint behavior to the circuit-breaker subsystem.
+// Why: Keeps ingest throttling logic centralized while retaining capture package API stability.
+// Docs: docs/features/feature/rate-limiting/index.md
+
 package capture
 
 import (
@@ -9,24 +10,6 @@ import (
 
 	"github.com/dev-console/dev-console/internal/util"
 )
-
-// HealthResponse is returned by GET /health endpoint.
-type HealthResponse struct {
-	CircuitOpen bool   `json:"circuit_open"`
-	OpenedAt    string `json:"opened_at,omitempty"`
-	CurrentRate int    `json:"current_rate"`
-	Reason      string `json:"reason,omitempty"`
-}
-
-// RateLimitResponse is the 429 response body.
-type RateLimitResponse struct {
-	Error        string `json:"error"`
-	Message      string `json:"message"`
-	RetryAfterMs int    `json:"retry_after_ms"`
-	CircuitOpen  bool   `json:"circuit_open"`
-	CurrentRate  int    `json:"current_rate"`
-	Threshold    int    `json:"threshold"`
-}
 
 // RecordEvents delegates to CircuitBreaker.
 func (c *Capture) RecordEvents(count int) {

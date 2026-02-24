@@ -1,4 +1,11 @@
 /**
+ * Purpose: Handles content-script message relay between background and inject contexts.
+ * Why: Keeps content-script bridging predictable between extension and page contexts.
+ * Docs: docs/features/feature/interact-explore/index.md
+ * Docs: docs/features/feature/query-dom/index.md
+ */
+
+/**
  * @fileoverview Window Message Listener Module
  * Handles window.postMessage events from inject.js
  */
@@ -13,6 +20,7 @@ import {
 } from './request-tracking'
 import { MESSAGE_MAP, safeSendMessage } from './message-forwarding'
 import { getIsTrackedTab, getCurrentTabId } from './tab-tracking'
+import { getPageNonce } from './script-injection'
 
 /**
  * Initialize consolidated window message listener
@@ -35,6 +43,10 @@ export function initWindowMessageListener(): void {
 
     const responseHandler = messageType ? RESPONSE_HANDLERS[messageType] : undefined
     if (responseHandler) {
+      // Validate nonce on response messages (spoofing prevention).
+      // Accept responses with no nonce for backwards compat during migration.
+      const nonce = (event.data as { _nonce?: string })?._nonce
+      if (nonce && nonce !== getPageNonce()) return
       if (requestId !== undefined) responseHandler(requestId, result)
       return
     }

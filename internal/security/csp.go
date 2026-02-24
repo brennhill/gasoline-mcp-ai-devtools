@@ -1,28 +1,22 @@
-// csp.go — CSP Generator: produces Content-Security-Policy headers from observed traffic.
-// Maintains an append-only origin accumulator that records every unique
-// origin+resourceType+pageURL combination. Independent of the ring buffer,
-// so origins are never lost to eviction.
-// Design: Confidence scoring prevents observation poisoning (single injected
-// requests are excluded). Development pollution filtering removes extensions,
-// HMR, and dev-only origins automatically.
+// Purpose: Implements CSP origin accumulation and policy generation from observed runtime resource usage.
+// Why: Produces enforceable security policies grounded in real traffic instead of static guesswork.
+// Docs: docs/features/feature/security-hardening/index.md
+
 package security
 
 import (
 	"encoding/json"
 	"fmt"
 	"github.com/dev-console/dev-console/internal/capture"
-	"net/url"
-	"sort"
-	"strings"
 	"sync"
 	"time"
 )
 
-// ============================================
-// CSP Generator Types
-// ============================================
-
-// OriginEntry records observations of a specific origin+resourceType pair.
+// OriginEntry records aggregated observations for one origin/resource-type pair.
+//
+// Invariants:
+// - Count is monotonic for a live entry.
+// - Pages behaves as a bounded set (max 1000 page keys per entry).
 type OriginEntry struct {
 	Origin       string          `json:"origin"`
 	ResourceType string          `json:"resource_type"`
@@ -33,6 +27,14 @@ type OriginEntry struct {
 }
 
 // CSPGenerator maintains the origin accumulator and generates CSP policies.
+//
+// Invariants:
+// - origins/pages maps are mutated only under mu.
+// - origins map is bounded by eviction (max ~10k keys).
+// - Generated policies are pure reads over accumulated state.
+//
+// Failure semantics:
+// - Invalid/unknown resource types are excluded rather than causing generation failure.
 type CSPGenerator struct {
 	mu      sync.RWMutex
 	origins map[string]*OriginEntry // key: "origin|resourceType"
@@ -90,11 +92,30 @@ type CSPObservations struct {
 	PagesVisited    int `json:"pages_visited"`
 }
 
-// ============================================
-// CSP Generator Constructor
-// ============================================
+// resourceTypeToDirective maps resource types to CSP directive names.
+var resourceTypeToDirective = map[string]string{
+	"script":  "script-src",
+	"style":   "style-src",
+	"font":    "font-src",
+	"img":     "img-src",
+	"connect": "connect-src",
+	"frame":   "frame-src",
+	"media":   "media-src",
+	"worker":  "worker-src",
+}
 
-// NewCSPGenerator creates a new CSP generator with an empty origin accumulator.
+// originProcessingResult holds intermediate state from processing origin entries.
+type originProcessingResult struct {
+	directives      map[string]map[string]bool
+	originDetails   []OriginDetail
+	filteredOrigins []FilteredOrigin
+	totalResources  int
+	uniqueOrigins   int
+	originsIncluded int
+	originsFiltered int
+}
+
+// NewCSPGenerator creates a fresh accumulator for one daemon session.
 func NewCSPGenerator() *CSPGenerator {
 	return &CSPGenerator{
 		origins: make(map[string]*OriginEntry),
@@ -102,11 +123,14 @@ func NewCSPGenerator() *CSPGenerator {
 	}
 }
 
-// ============================================
-// Origin Recording
-// ============================================
-
-// RecordOrigin adds an observation of an origin+resourceType from a specific page.
+// RecordOrigin ingests one resource observation into bounded origin/page sets.
+//
+// Invariants:
+// - Entry keys are stable "origin|resourceType" tuples.
+// - FirstSeen is immutable per entry; LastSeen updates per observation.
+//
+// Failure semantics:
+// - Capacity pressure evicts oldest origin entries; ingestion remains non-blocking.
 func (g *CSPGenerator) RecordOrigin(origin, resourceType, pageURL string) {
 	g.mu.Lock()
 	defer g.mu.Unlock()
@@ -141,7 +165,10 @@ func (g *CSPGenerator) RecordOrigin(origin, resourceType, pageURL string) {
 	}
 }
 
-// evictOldestOrigin removes the origin entry with the earliest FirstSeen timestamp.
+// evictOldestOrigin removes the earliest-observed entry to enforce map bounds.
+//
+// Failure semantics:
+// - If map is empty, operation is a no-op.
 func (g *CSPGenerator) evictOldestOrigin() {
 	var oldestKey string
 	var oldestTime time.Time
@@ -156,7 +183,10 @@ func (g *CSPGenerator) evictOldestOrigin() {
 	}
 }
 
-// Reset clears the origin accumulator (called on session reset).
+// Reset clears accumulated observations.
+//
+// Invariants:
+// - Both origins and pages maps are replaced atomically under lock.
 func (g *CSPGenerator) Reset() {
 	g.mu.Lock()
 	defer g.mu.Unlock()
@@ -165,7 +195,10 @@ func (g *CSPGenerator) Reset() {
 	g.pages = make(map[string]bool)
 }
 
-// GetPages returns a copy of all observed page URLs.
+// GetPages returns a detached list of observed page URLs.
+//
+// Failure semantics:
+// - Ordering is map-iteration order (non-deterministic); callers must sort if needed.
 func (g *CSPGenerator) GetPages() []string {
 	g.mu.RLock()
 	defer g.mu.RUnlock()
@@ -177,34 +210,14 @@ func (g *CSPGenerator) GetPages() []string {
 	return pages
 }
 
-// ============================================
-// CSP Generation
-// ============================================
-
-// resourceTypeToDirective maps resource types to CSP directive names.
-var resourceTypeToDirective = map[string]string{
-	"script":  "script-src",
-	"style":   "style-src",
-	"font":    "font-src",
-	"img":     "img-src",
-	"connect": "connect-src",
-	"frame":   "frame-src",
-	"media":   "media-src",
-	"worker":  "worker-src",
-}
-
-// originProcessingResult holds intermediate state from processing origin entries.
-type originProcessingResult struct {
-	directives      map[string]map[string]bool
-	originDetails   []OriginDetail
-	filteredOrigins []FilteredOrigin
-	totalResources  int
-	uniqueOrigins   int
-	originsIncluded int
-	originsFiltered int
-}
-
-// GenerateCSP produces a CSP policy from accumulated origin observations.
+// GenerateCSP derives policy directives from accumulated observations.
+//
+// Invariants:
+// - Read lock protects consistent view of origins/pages during generation.
+//
+// Failure semantics:
+// - Empty/default mode normalizes to "moderate".
+// - Low-confidence or explicitly excluded origins are omitted rather than failing generation.
 func (g *CSPGenerator) GenerateCSP(params CSPParams) CSPResponse {
 	g.mu.RLock()
 	defer g.mu.RUnlock()
@@ -252,8 +265,13 @@ func (g *CSPGenerator) GenerateCSP(params CSPParams) CSPResponse {
 	return response
 }
 
-// processOriginEntries iterates all accumulated origins and classifies each as
-// included, filtered (dev pollution), or excluded (manual/low confidence).
+// processOriginEntries classifies each accumulated origin for policy inclusion.
+//
+// Invariants:
+// - default-src always starts with 'self'.
+//
+// Failure semantics:
+// - Entries flagged as dev pollution/explicitly excluded are tracked as filtered and skipped.
 func (g *CSPGenerator) processOriginEntries(excludeSet map[string]bool) originProcessingResult {
 	pageOrigins := g.extractPageOrigins()
 	directives := map[string]map[string]bool{
@@ -292,24 +310,10 @@ func (g *CSPGenerator) processOriginEntries(excludeSet map[string]bool) originPr
 	return r
 }
 
-// directiveForResourceType returns the CSP directive name for a resource type,
-// falling back to "default-src" for unknown types.
-func directiveForResourceType(resourceType string) string {
-	if d := resourceTypeToDirective[resourceType]; d != "" {
-		return d
-	}
-	return "default-src"
-}
-
-// addDirectiveSource adds an origin to the given directive's source set.
-func addDirectiveSource(directives map[string]map[string]bool, directive, origin string) {
-	if directives[directive] == nil {
-		directives[directive] = make(map[string]bool)
-	}
-	directives[directive][origin] = true
-}
-
-// buildOriginDetail creates an OriginDetail for a single entry with confidence scoring.
+// buildOriginDetail computes confidence metadata for one origin entry.
+//
+// Failure semantics:
+// - Low-confidence entries remain documented in output but are excluded from directives.
 func (g *CSPGenerator) buildOriginDetail(entry *OriginEntry, directive string) OriginDetail {
 	confidence := g.computeConfidence(entry)
 	included := confidence != "low"
@@ -331,26 +335,10 @@ func (g *CSPGenerator) buildOriginDetail(entry *OriginEntry, directive string) O
 	return detail
 }
 
-// sortDirectiveSources converts directive sets to sorted string slices.
-func sortDirectiveSources(directives map[string]map[string]bool) map[string][]string {
-	sorted := make(map[string][]string, len(directives))
-	for dir, sources := range directives {
-		list := make([]string, 0, len(sources))
-		for src := range sources {
-			list = append(list, src)
-		}
-		sort.Strings(list)
-		sorted[dir] = list
-	}
-	return sorted
-}
-
-// formatMetaTag wraps a CSP header string in an HTML meta tag.
-func formatMetaTag(cspHeader string) string {
-	return fmt.Sprintf(`<meta http-equiv="Content-Security-Policy" content="%s">`, cspHeader)
-}
-
-// applyWhitelistOverrides applies session-only whitelist origins and logs security events.
+// applyWhitelistOverrides appends session-scoped manual overrides to default-src.
+//
+// Failure semantics:
+// - Overrides affect generated output only; no persistent config is mutated.
 func (g *CSPGenerator) applyWhitelistOverrides(response *CSPResponse, overrides []string) {
 	if response.Directives["default-src"] == nil {
 		response.Directives["default-src"] = []string{"'self'"}
@@ -393,152 +381,6 @@ func (g *CSPGenerator) applyWhitelistOverrides(response *CSPResponse, overrides 
 	}
 }
 
-// ============================================
-// Confidence Scoring
-// ============================================
-
-// computeConfidence determines the confidence level for an origin entry.
-// High: 3+ observations AND 2+ pages
-// Medium: 2+ observations OR 2+ pages
-// Low: exactly 1 observation on 1 page
-// Exception: connect-src has relaxed threshold (1 observation = medium)
-func (g *CSPGenerator) computeConfidence(entry *OriginEntry) string {
-	pageCount := len(entry.Pages)
-	obsCount := entry.Count
-
-	if isHighConfidence(obsCount, pageCount) {
-		return "high"
-	}
-	if resourceTypeToDirective[entry.ResourceType] == "connect-src" {
-		return "medium"
-	}
-	if obsCount >= 2 || pageCount >= 2 {
-		return "medium"
-	}
-	return "low"
-}
-
-func isHighConfidence(obsCount, pageCount int) bool {
-	return obsCount >= 3 && pageCount >= 2
-}
-
-// ============================================
-// Development Pollution Filtering
-// ============================================
-
-// extensionPrefixes maps browser extension URL prefixes to their filter reasons.
-var extensionPrefixes = []struct {
-	prefix string
-	reason string
-}{
-	{"chrome-extension://", "Browser extension origin (auto-filtered)"},
-	{"moz-extension://", "Firefox extension origin (auto-filtered)"},
-}
-
-// isDevPollution checks if an origin is a known development-only pattern.
-// Returns the reason string if filtered, empty string if not filtered.
-func (g *CSPGenerator) isDevPollution(origin string, pageOrigins map[string]bool) string {
-	if reason := matchExtensionPrefix(origin); reason != "" {
-		return reason
-	}
-	return g.checkLocalhostDevServer(origin, pageOrigins)
-}
-
-// matchExtensionPrefix returns a filter reason if the origin matches a known browser extension prefix.
-func matchExtensionPrefix(origin string) string {
-	for _, ext := range extensionPrefixes {
-		if strings.HasPrefix(origin, ext.prefix) {
-			return ext.reason
-		}
-	}
-	return ""
-}
-
-// checkLocalhostDevServer filters localhost origins that differ from observed page origins.
-func (g *CSPGenerator) checkLocalhostDevServer(origin string, pageOrigins map[string]bool) string {
-	parsed, err := url.Parse(origin)
-	if err != nil {
-		return ""
-	}
-	host := parsed.Hostname()
-	if host != "localhost" && host != "127.0.0.1" {
-		return ""
-	}
-	if pageOrigins[origin] {
-		return ""
-	}
-	return "Development server (auto-filtered, different port from app)"
-}
-
-// extractPageOrigins returns the set of origins from observed page URLs.
-func (g *CSPGenerator) extractPageOrigins() map[string]bool {
-	origins := make(map[string]bool)
-	for pageURL := range g.pages {
-		parsed, err := url.Parse(pageURL)
-		if err != nil {
-			continue
-		}
-		// Reconstruct origin: scheme://host[:port]
-		origin := parsed.Scheme + "://" + parsed.Host
-		origins[origin] = true
-	}
-	return origins
-}
-
-// ============================================
-// CSP Header Building
-// ============================================
-
-// directiveOrder defines the canonical order for CSP directives.
-var directiveOrder = []string{
-	"default-src",
-	"script-src",
-	"style-src",
-	"img-src",
-	"font-src",
-	"connect-src",
-	"frame-src",
-	"media-src",
-	"worker-src",
-	"base-uri",
-	"form-action",
-	"frame-ancestors",
-}
-
-// directiveOrderSet is built from directiveOrder for O(1) membership checks.
-var directiveOrderSet = buildDirectiveOrderSet()
-
-func buildDirectiveOrderSet() map[string]bool {
-	s := make(map[string]bool, len(directiveOrder))
-	for _, d := range directiveOrder {
-		s[d] = true
-	}
-	return s
-}
-
-// buildCSPHeader builds the CSP header string from sorted directives.
-func (g *CSPGenerator) buildCSPHeader(directives map[string][]string) string {
-	parts := make([]string, 0, len(directives))
-
-	for _, dir := range directiveOrder {
-		if sources, ok := directives[dir]; ok && len(sources) > 0 {
-			parts = append(parts, dir+" "+strings.Join(sources, " "))
-		}
-	}
-
-	for dir, sources := range directives {
-		if !directiveOrderSet[dir] && len(sources) > 0 {
-			parts = append(parts, dir+" "+strings.Join(sources, " "))
-		}
-	}
-
-	return strings.Join(parts, "; ")
-}
-
-// ============================================
-// Warnings
-// ============================================
-
 // buildWarnings generates advisory warnings based on the observation state.
 func (g *CSPGenerator) buildWarnings(pagesVisited, originsFiltered int, details []OriginDetail) []string {
 	if len(g.origins) == 0 {
@@ -555,38 +397,6 @@ func (g *CSPGenerator) buildWarnings(pagesVisited, originsFiltered int, details 
 	return warnings
 }
 
-// countLowConfidenceExclusions returns the number of origin details excluded due to low confidence.
-func countLowConfidenceExclusions(details []OriginDetail) int {
-	count := 0
-	for _, d := range details {
-		if d.Confidence == "low" && !d.Included {
-			count++
-		}
-	}
-	return count
-}
-
-// ============================================
-// Helper Functions
-// ============================================
-
-// entryPages returns a sorted list of page URLs for an origin entry (up to 10).
-func (g *CSPGenerator) entryPages(entry *OriginEntry) []string {
-	var pages []string
-	for p := range entry.Pages {
-		pages = append(pages, p)
-		if len(pages) >= 10 {
-			break
-		}
-	}
-	sort.Strings(pages)
-	return pages
-}
-
-// ============================================
-// Network Body Integration
-// ============================================
-
 // RecordOriginFromBody extracts origin and resource type from a NetworkBody
 // and records it in the origin accumulator. Called from the network ingestion path.
 func (g *CSPGenerator) RecordOriginFromBody(body capture.NetworkBody, pageURL string) {
@@ -597,57 +407,6 @@ func (g *CSPGenerator) RecordOriginFromBody(body capture.NetworkBody, pageURL st
 	resourceType := contentTypeToResourceType(body.ContentType)
 	g.RecordOrigin(origin, resourceType, pageURL)
 }
-
-// extractOriginFromURL extracts scheme://host[:port] from a URL string.
-func extractOriginFromURL(rawURL string) string {
-	parsed, err := url.Parse(rawURL)
-	if err != nil || parsed.Host == "" {
-		return ""
-	}
-	return parsed.Scheme + "://" + parsed.Host
-}
-
-// exactContentTypeMap maps exact Content-Type values to CSP resource categories.
-var exactContentTypeMap = map[string]string{
-	"text/css":                "style",
-	"application/x-font-ttf":  "font",
-	"application/x-font-woff": "font",
-}
-
-// contentTypeToResourceType maps HTTP Content-Type to CSP resource category.
-func contentTypeToResourceType(ct string) string {
-	ct = strings.ToLower(ct)
-	if idx := strings.IndexByte(ct, ';'); idx >= 0 {
-		ct = ct[:idx]
-	}
-	ct = strings.TrimSpace(ct)
-
-	if res, ok := exactContentTypeMap[ct]; ok {
-		return res
-	}
-	return contentTypePrefixMatch(ct)
-}
-
-// contentTypePrefixMatch classifies content types by prefix or substring patterns.
-func contentTypePrefixMatch(ct string) string {
-	if strings.Contains(ct, "javascript") {
-		return "script"
-	}
-	if strings.HasPrefix(ct, "font/") || strings.Contains(ct, "application/font") {
-		return "font"
-	}
-	if strings.HasPrefix(ct, "image/") {
-		return "img"
-	}
-	if strings.HasPrefix(ct, "audio/") || strings.HasPrefix(ct, "video/") {
-		return "media"
-	}
-	return "connect"
-}
-
-// ============================================
-// MCP Tool Handler
-// ============================================
 
 // HandleGenerateCSP is the MCP tool handler for generate_csp.
 func (g *CSPGenerator) HandleGenerateCSP(params json.RawMessage) (any, error) {

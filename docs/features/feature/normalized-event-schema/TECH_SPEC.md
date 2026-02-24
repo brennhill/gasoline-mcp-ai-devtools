@@ -5,6 +5,7 @@ phase: v6.0-sprint-1
 relates-to: [browser-extension-enhancement, ring-buffer]
 blocks: [query-service, correlation-engine]
 last-updated: 2026-01-31
+last_reviewed: 2026-02-16
 ---
 
 # Normalized Event Schema — Technical Specification

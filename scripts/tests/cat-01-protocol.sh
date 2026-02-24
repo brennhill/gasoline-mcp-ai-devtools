@@ -107,21 +107,19 @@ run_test_1_3() {
         return
     fi
 
-    # Define expected required param for each tool
+    # Current schema uses unified `what` across all tools.
     declare -A expected_required=(
         [observe]="what"
-        [generate]="format"
-        [configure]="action"
-        [interact]="action"
+        [analyze]="what"
+        [generate]="what"
+        [configure]="what"
+        [interact]="what"
     )
-
-    local _tools_json
-    _tools_json=$(echo "$response" | jq -c '.result.tools[]' 2>/dev/null)
 
     local verified=0
     local errors=""
 
-    for tool_name in observe generate configure interact; do
+    for tool_name in observe analyze generate configure interact; do
         local tool_def
         tool_def=$(echo "$response" | jq -c ".result.tools[] | select(.name == \"$tool_name\")" 2>/dev/null)
 
@@ -153,7 +151,7 @@ run_test_1_3() {
         return
     fi
 
-    pass "All 4 tool schemas valid: inputSchema.type='object', observe requires 'what', generate requires 'format', configure requires 'action', interact requires 'action'."
+    pass "All 5 tool schemas valid: inputSchema.type='object' and required includes 'what'."
 }
 run_test_1_3
 

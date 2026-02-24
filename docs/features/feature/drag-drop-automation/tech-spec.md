@@ -1,6 +1,9 @@
 ---
 feature: drag-drop-automation
 status: proposed
+doc_type: tech-spec
+feature_id: feature-drag-drop-automation
+last_reviewed: 2026-02-16
 ---
 
 # Tech Spec: Drag & Drop Automation

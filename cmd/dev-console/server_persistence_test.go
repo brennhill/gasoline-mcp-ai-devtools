@@ -1,3 +1,7 @@
+// Purpose: Validate server_persistence_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
+// Docs: docs/features/feature/observe/index.md
+
 // server_persistence_test.go — Server persistence invariant tests.
 //
 // ⚠️ CRITICAL INVARIANT TESTS - DO NOT MODIFY WITHOUT PRINCIPAL REVIEW
@@ -44,9 +48,8 @@ func TestServerPersistence_StaysAliveWithOpenStdin(t *testing.T) {
 	port := findFreePort(t)
 	binary := buildTestBinary(t)
 
-
 	// Start server with stdin pipe (simulates FIFO)
-	cmd := startServerCmd(binary, "--port", fmt.Sprintf("%d", port))
+	cmd := startServerCmd(t, binary, "--port", fmt.Sprintf("%d", port))
 	stdin, err := cmd.StdinPipe()
 	if err != nil {
 		t.Fatalf("Failed to create stdin pipe: %v", err)
@@ -107,8 +110,7 @@ func TestServerPersistence_HealthResponseTime(t *testing.T) {
 	port := findFreePort(t)
 	binary := buildTestBinary(t)
 
-
-	cmd := startServerCmd(binary, "--port", fmt.Sprintf("%d", port))
+	cmd := startServerCmd(t, binary, "--port", fmt.Sprintf("%d", port))
 	stdin, err := cmd.StdinPipe()
 	if err != nil {
 		t.Fatalf("Failed to create stdin pipe: %v", err)
@@ -170,9 +172,8 @@ func TestServerPersistence_SurvivesStdinClose(t *testing.T) {
 	port := findFreePort(t)
 	binary := buildTestBinary(t)
 
-
 	// Start server (persist flag doesn't affect MCP stdin behavior)
-	cmd := startServerCmd(binary, "--port", fmt.Sprintf("%d", port))
+	cmd := startServerCmd(t, binary, "--port", fmt.Sprintf("%d", port))
 	stdin, err := cmd.StdinPipe()
 	if err != nil {
 		t.Fatalf("Failed to create stdin pipe: %v", err)
@@ -222,9 +223,8 @@ func TestServerPersistence_PersistModeKeepsAlive(t *testing.T) {
 	port := findFreePort(t)
 	binary := buildTestBinary(t)
 
-
 	// Start server (persistence is default behavior - server stays alive after stdin closes)
-	cmd := startServerCmd(binary, "--port", fmt.Sprintf("%d", port))
+	cmd := startServerCmd(t, binary, "--port", fmt.Sprintf("%d", port))
 	stdin, err := cmd.StdinPipe()
 	if err != nil {
 		t.Fatalf("Failed to create stdin pipe: %v", err)
@@ -284,8 +284,7 @@ func TestServerPersistence_MultipleHealthChecksUnderLoad(t *testing.T) {
 	port := findFreePort(t)
 	binary := buildTestBinary(t)
 
-
-	cmd := startServerCmd(binary, "--port", fmt.Sprintf("%d", port))
+	cmd := startServerCmd(t, binary, "--port", fmt.Sprintf("%d", port))
 	stdin, err := cmd.StdinPipe()
 	if err != nil {
 		t.Fatalf("Failed to create stdin pipe: %v", err)
@@ -340,8 +339,7 @@ func TestServerPersistence_StdinNoDataExtendedPeriod(t *testing.T) {
 	port := findFreePort(t)
 	binary := buildTestBinary(t)
 
-
-	cmd := startServerCmd(binary, "--port", fmt.Sprintf("%d", port))
+	cmd := startServerCmd(t, binary, "--port", fmt.Sprintf("%d", port))
 	stdin, err := cmd.StdinPipe()
 	if err != nil {
 		t.Fatalf("Failed to create stdin pipe: %v", err)

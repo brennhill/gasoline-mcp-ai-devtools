@@ -12,6 +12,16 @@ init_framework "$1" "$2"
 begin_category "19" "Link Health Analyzer" "19"
 ensure_daemon
 
+_health_json="$(curl -s --max-time 5 "http://localhost:${PORT}/health" 2>/dev/null || true)"
+_ext_connected="$(echo "$_health_json" | jq -r '.pilot.extension_connected // .capture.extension_connected // false' 2>/dev/null)"
+if [ "$_ext_connected" != "true" ]; then
+    begin_test "19.0" "Extension connectivity precondition" \
+        "Link health requires a connected extension + tracked tab context" \
+        "Without extension data, link health returns no_data by design."
+    skip "Extension is not connected on port ${PORT}; skipping link_health success-path tests."
+    finish_category
+fi
+
 # ── GROUP A: Basic Link Checking (5 tests) ─────────────────────────────────
 
 # 19.1 — analyze/link_health returns correlation_id

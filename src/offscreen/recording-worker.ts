@@ -1,3 +1,10 @@
+/**
+ * Purpose: Runs the offscreen MediaRecorder worker that captures tab streams and uploads finalized recordings.
+ * Why: Keeps long-running media capture out of the popup/service-worker lifecycle so recording survives UI transitions.
+ * Docs: docs/features/feature/playback-engine/index.md
+ * Docs: docs/features/feature/tab-recording/index.md
+ */
+
 // recording-worker.ts — Offscreen document recording engine.
 // Receives a tab media stream ID from the service worker, captures video/audio
 // via MediaRecorder, and POSTs the final blob to the Go server on stop.

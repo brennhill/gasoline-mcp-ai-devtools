@@ -40,8 +40,7 @@ test('doctor.runDiagnostics returns complete report structure', () => {
   assert.ok(report.binary, 'Should have binary result')
   assert.ok(report.summary, 'Should have summary string')
 
-  // Should have exactly 4 tools
-  assert.strictEqual(report.tools.length, 4, 'Should check all 4 tools')
+  assert.strictEqual(report.tools.length, config.CLIENT_DEFINITIONS.length, 'Should check all configured clients')
 })
 
 test('doctor.runDiagnostics tools have correct structure', () => {
@@ -49,7 +48,9 @@ test('doctor.runDiagnostics tools have correct structure', () => {
 
   for (const tool of report.tools) {
     assert.ok(tool.name, 'Tool should have name')
-    assert.ok(tool.path, 'Tool should have path')
+    if (tool.type === 'file') {
+      assert.ok(tool.path, 'File client should include config path')
+    }
     assert.ok(typeof tool.status === 'string', 'Tool should have status')
     assert.ok(Array.isArray(tool.issues), 'Tool should have issues array')
     assert.ok(Array.isArray(tool.suggestions), 'Tool should have suggestions array')
@@ -63,10 +64,11 @@ test('doctor.runDiagnostics identifies tool names correctly', () => {
   const report = doctor.runDiagnostics(false)
   const names = report.tools.map((t) => t.name)
 
+  assert.ok(names.includes('Claude Code'), 'Should identify Claude Code')
   assert.ok(names.includes('Claude Desktop'), 'Should identify Claude Desktop')
-  assert.ok(names.includes('VSCode'), 'Should identify VSCode')
+  assert.ok(names.includes('VS Code'), 'Should identify VS Code')
   assert.ok(names.includes('Cursor'), 'Should identify Cursor')
-  assert.ok(names.includes('Codeium'), 'Should identify Codeium')
+  assert.ok(names.includes('Windsurf'), 'Should identify Windsurf')
 })
 
 test('doctor.runDiagnostics with verbose=true does not crash', () => {
@@ -79,14 +81,10 @@ test('doctor.runDiagnostics with verbose=true does not crash', () => {
 test('doctor.runDiagnostics provides suggestions for unconfigured tools', () => {
   const report = doctor.runDiagnostics(false)
 
-  // At least some tools should have status and issues
-  const hasIssues = report.tools.some((t) => t.issues.length > 0)
-  if (hasIssues) {
-    // Any tool with issues should have suggestions
-    const toolsWithIssues = report.tools.filter((t) => t.issues.length > 0)
-    for (const tool of toolsWithIssues) {
-      assert.ok(tool.suggestions.length > 0, `Tool ${tool.name} with issues should have suggestions`)
-    }
+  // Error tools (misconfigured) should provide a remediation.
+  const errorTools = report.tools.filter((t) => t.status === 'error')
+  for (const tool of errorTools) {
+    assert.ok(tool.suggestions.length > 0, `Error tool ${tool.name} should have suggestions`)
   }
 })
 

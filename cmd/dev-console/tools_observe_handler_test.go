@@ -1,10 +1,13 @@
+// Purpose: Validate tools_observe_handler_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
+// Docs: docs/features/feature/observe/index.md
+
 // tools_observe_handler_test.go — Comprehensive unit tests for observe tool dispatch and response fields.
 // Validates all response fields, snake_case JSON convention, and dispatch logic.
 package main
 
 import (
 	"encoding/json"
-	"regexp"
 	"strings"
 	"testing"
 	"time"
@@ -13,106 +16,12 @@ import (
 )
 
 // ============================================
-// snake_case JSON assertion helper
-// ============================================
-
-// snakeCasePattern matches valid snake_case keys: lowercase alpha start, then lowercase alphanum/underscore.
-var snakeCasePattern = regexp.MustCompile(`^[a-z][a-z0-9_]*$`)
-
-// MCP spec exceptions: these camelCase fields are required by the MCP or JSON-RPC spec.
-var specExceptions = map[string]bool{
-	"jsonrpc":           true, // JSON-RPC 2.0 spec
-	"isError":           true, // SPEC:MCP
-	"protocolVersion":   true, // SPEC:MCP
-	"serverInfo":        true, // SPEC:MCP
-	"mimeType":          true, // SPEC:MCP
-	"inputSchema":       true, // SPEC:MCP
-	"resourceTemplates": true, // SPEC:MCP
-}
-
-// assertSnakeCaseFields recursively checks that all JSON field names use snake_case,
-// with exceptions for known MCP protocol fields.
-func assertSnakeCaseFields(t *testing.T, jsonStr string) {
-	t.Helper()
-
-	var raw any
-	if err := json.Unmarshal([]byte(jsonStr), &raw); err != nil {
-		t.Fatalf("assertSnakeCaseFields: invalid JSON: %v", err)
-	}
-	checkSnakeCaseRecursive(t, raw, "")
-}
-
-func checkSnakeCaseRecursive(t *testing.T, v any, path string) {
-	t.Helper()
-	switch val := v.(type) {
-	case map[string]any:
-		for key, child := range val {
-			fullPath := path + "." + key
-			if !specExceptions[key] && !snakeCasePattern.MatchString(key) {
-				t.Errorf("JSON field %q is NOT snake_case (path: %s)", key, fullPath)
-			}
-			checkSnakeCaseRecursive(t, child, fullPath)
-		}
-	case []any:
-		for i, child := range val {
-			checkSnakeCaseRecursive(t, child, path+"["+string(rune('0'+i))+"]")
-		}
-	}
-}
-
-// ============================================
-// Test Helpers
-// ============================================
-
-// extractResultJSON extracts the JSON body from the first content block of an MCP response.
-// MCP responses contain a summary line followed by JSON on the next line.
-func extractResultJSON(t *testing.T, result MCPToolResult) map[string]any {
-	t.Helper()
-	if len(result.Content) == 0 {
-		t.Fatal("extractResultJSON: no content blocks")
-	}
-	text := result.Content[0].Text
-	// Find the start of JSON object — look for the first '{' character
-	idx := strings.Index(text, "{")
-	if idx < 0 {
-		t.Fatalf("extractResultJSON: no JSON object found in text: %s", text)
-	}
-	jsonPart := text[idx:]
-
-	var data map[string]any
-	if err := json.Unmarshal([]byte(jsonPart), &data); err != nil {
-		t.Fatalf("extractResultJSON: failed to parse JSON: %v\nraw: %s", err, jsonPart)
-	}
-	return data
-}
-
-func makeObserveToolHandler(t *testing.T) (*ToolHandler, *Server, *capture.Capture) {
-	t.Helper()
-	server, err := NewServer(t.TempDir()+"/test.jsonl", 100)
-	if err != nil {
-		t.Fatalf("NewServer: %v", err)
-	}
-	t.Cleanup(func() { server.Close() })
-	cap := capture.NewCapture()
-	mcpHandler := NewToolHandler(server, cap)
-	handler := mcpHandler.toolHandler.(*ToolHandler)
-	return handler, server, cap
-}
-
-// callObserveRaw invokes toolObserve and returns the raw JSONRPCResponse.
-func callObserveRaw(h *ToolHandler, what string) JSONRPCResponse {
-	req := JSONRPCRequest{JSONRPC: "2.0", ID: 1}
-	args := json.RawMessage(`{"what":"` + what + `"}`)
-	return h.toolObserve(req, args)
-}
-
-// ============================================
 // Dispatch Tests
 // ============================================
 
 func TestToolsObserveDispatch_InvalidJSON(t *testing.T) {
 	t.Parallel()
-	h, _, _ := makeObserveToolHandler(t)
+	h, _, _ := makeToolHandler(t)
 
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: 1}
 	resp := h.toolObserve(req, json.RawMessage(`{bad json`))
@@ -128,7 +37,7 @@ func TestToolsObserveDispatch_InvalidJSON(t *testing.T) {
 
 func TestToolsObserveDispatch_MissingWhat(t *testing.T) {
 	t.Parallel()
-	h, _, _ := makeObserveToolHandler(t)
+	h, _, _ := makeToolHandler(t)
 
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: 1}
 	resp := h.toolObserve(req, json.RawMessage(`{}`))
@@ -148,7 +57,7 @@ func TestToolsObserveDispatch_MissingWhat(t *testing.T) {
 
 func TestToolsObserveDispatch_UnknownMode(t *testing.T) {
 	t.Parallel()
-	h, _, _ := makeObserveToolHandler(t)
+	h, _, _ := makeToolHandler(t)
 
 	resp := callObserveRaw(h, "nonexistent_mode")
 	result := parseToolResult(t, resp)
@@ -165,7 +74,7 @@ func TestToolsObserveDispatch_UnknownMode(t *testing.T) {
 
 func TestToolsObserveDispatch_EmptyArgs(t *testing.T) {
 	t.Parallel()
-	h, _, _ := makeObserveToolHandler(t)
+	h, _, _ := makeToolHandler(t)
 
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: 1}
 	resp := h.toolObserve(req, nil)
@@ -182,7 +91,7 @@ func TestToolsObserveDispatch_EmptyArgs(t *testing.T) {
 
 func TestToolsObserveErrors_ResponseFields(t *testing.T) {
 	t.Parallel()
-	h, server, cap := makeObserveToolHandler(t)
+	h, server, cap := makeToolHandler(t)
 	_ = cap
 
 	ts := time.Now().UTC().Format(time.RFC3339)
@@ -257,7 +166,7 @@ func TestToolsObserveErrors_ResponseFields(t *testing.T) {
 
 func TestToolsObserveErrors_EmptyBuffer(t *testing.T) {
 	t.Parallel()
-	h, _, _ := makeObserveToolHandler(t)
+	h, _, _ := makeToolHandler(t)
 
 	resp := callObserveRaw(h, "errors")
 	result := parseToolResult(t, resp)
@@ -278,7 +187,7 @@ func TestToolsObserveErrors_EmptyBuffer(t *testing.T) {
 
 func TestToolsObserveErrors_URLFilter(t *testing.T) {
 	t.Parallel()
-	h, server, _ := makeObserveToolHandler(t)
+	h, server, _ := makeToolHandler(t)
 
 	ts := time.Now().UTC().Format(time.RFC3339)
 	server.mu.Lock()
@@ -301,7 +210,7 @@ func TestToolsObserveErrors_URLFilter(t *testing.T) {
 
 func TestToolsObserveErrors_LimitParam(t *testing.T) {
 	t.Parallel()
-	h, server, _ := makeObserveToolHandler(t)
+	h, server, _ := makeToolHandler(t)
 
 	ts := time.Now().UTC().Format(time.RFC3339)
 	server.mu.Lock()
@@ -327,7 +236,7 @@ func TestToolsObserveErrors_LimitParam(t *testing.T) {
 
 func TestToolsObserveLogs_ResponseFields(t *testing.T) {
 	t.Parallel()
-	h, server, _ := makeObserveToolHandler(t)
+	h, server, _ := makeToolHandler(t)
 
 	ts := time.Now().UTC().Format(time.RFC3339)
 	server.mu.Lock()
@@ -395,7 +304,7 @@ func TestToolsObserveLogs_ResponseFields(t *testing.T) {
 
 func TestToolsObserveExtensionLogs_ResponseFields(t *testing.T) {
 	t.Parallel()
-	h, _, cap := makeObserveToolHandler(t)
+	h, _, cap := makeToolHandler(t)
 
 	cap.AddExtensionLogs([]capture.ExtensionLog{{
 		Level:     "info",
@@ -439,7 +348,7 @@ func TestToolsObserveExtensionLogs_ResponseFields(t *testing.T) {
 
 func TestToolsObserveNetworkBodies_ResponseFields(t *testing.T) {
 	t.Parallel()
-	h, _, cap := makeObserveToolHandler(t)
+	h, _, cap := makeToolHandler(t)
 
 	cap.AddNetworkBodies([]capture.NetworkBody{
 		{
@@ -474,7 +383,7 @@ func TestToolsObserveNetworkBodies_ResponseFields(t *testing.T) {
 
 func TestToolsObserveNetworkBodies_Filters(t *testing.T) {
 	t.Parallel()
-	h, _, cap := makeObserveToolHandler(t)
+	h, _, cap := makeToolHandler(t)
 
 	ts := time.Now().UTC().Format(time.RFC3339)
 	cap.AddNetworkBodies([]capture.NetworkBody{
@@ -512,13 +421,135 @@ func TestToolsObserveNetworkBodies_Filters(t *testing.T) {
 	}
 }
 
+func TestToolsObserveNetworkBodies_BodyPathFilter(t *testing.T) {
+	t.Parallel()
+	h, _, cap := makeToolHandler(t)
+
+	ts := time.Now().UTC().Format(time.RFC3339)
+	cap.AddNetworkBodies([]capture.NetworkBody{
+		{
+			URL:          "https://api.example.com/graphql",
+			Method:       "POST",
+			Status:       200,
+			ResponseBody: `{"data":{"viewer":{"id":"u_123","roles":["admin","editor"]}}}`,
+			Timestamp:    ts,
+		},
+		{
+			URL:          "https://api.example.com/other",
+			Method:       "GET",
+			Status:       200,
+			ResponseBody: `{"ok":true}`,
+			Timestamp:    ts,
+		},
+	})
+
+	req := JSONRPCRequest{JSONRPC: "2.0", ID: 1}
+	resp := h.toolObserve(req, json.RawMessage(`{"what":"network_bodies","body_path":"data.viewer.roles[0]"}`))
+	result := parseToolResult(t, resp)
+	if result.IsError {
+		t.Fatalf("network_bodies with body_path should not error, got: %s", result.Content[0].Text)
+	}
+	data := extractResultJSON(t, result)
+
+	count, _ := data["count"].(float64)
+	if count != 1 {
+		t.Fatalf("count = %v, want 1", count)
+	}
+
+	entries, _ := data["entries"].([]any)
+	if len(entries) != 1 {
+		t.Fatalf("entries len = %d, want 1", len(entries))
+	}
+	entry, _ := entries[0].(map[string]any)
+	responseBody, _ := entry["response_body"].(string)
+	var extracted any
+	if err := json.Unmarshal([]byte(responseBody), &extracted); err != nil {
+		t.Fatalf("response_body should be valid JSON, got err: %v", err)
+	}
+	if extracted != "admin" {
+		t.Fatalf("extracted value = %v, want admin", extracted)
+	}
+}
+
+func TestToolsObserveNetworkBodies_BodyKeyFilter(t *testing.T) {
+	t.Parallel()
+	h, _, cap := makeToolHandler(t)
+
+	ts := time.Now().UTC().Format(time.RFC3339)
+	cap.AddNetworkBodies([]capture.NetworkBody{
+		{
+			URL:          "https://api.example.com/data",
+			Method:       "GET",
+			Status:       200,
+			ResponseBody: `{"data":{"items":[{"id":1},{"id":2}]}}`,
+			Timestamp:    ts,
+		},
+	})
+
+	req := JSONRPCRequest{JSONRPC: "2.0", ID: 1}
+	resp := h.toolObserve(req, json.RawMessage(`{"what":"network_bodies","body_key":"id"}`))
+	result := parseToolResult(t, resp)
+	if result.IsError {
+		t.Fatalf("network_bodies with body_key should not error, got: %s", result.Content[0].Text)
+	}
+	data := extractResultJSON(t, result)
+
+	count, _ := data["count"].(float64)
+	if count != 1 {
+		t.Fatalf("count = %v, want 1", count)
+	}
+
+	entries, _ := data["entries"].([]any)
+	entry, _ := entries[0].(map[string]any)
+	responseBody, _ := entry["response_body"].(string)
+
+	var extracted any
+	if err := json.Unmarshal([]byte(responseBody), &extracted); err != nil {
+		t.Fatalf("response_body should be valid JSON, got err: %v", err)
+	}
+
+	values, ok := extracted.([]any)
+	if !ok || len(values) != 2 {
+		t.Fatalf("body_key extraction should return 2 values, got: %v", extracted)
+	}
+}
+
+func TestToolsObserveNetworkBodies_BodyFilterValidation(t *testing.T) {
+	t.Parallel()
+	h, _, cap := makeToolHandler(t)
+
+	ts := time.Now().UTC().Format(time.RFC3339)
+	cap.AddNetworkBodies([]capture.NetworkBody{
+		{
+			URL:          "https://api.example.com/data",
+			Method:       "GET",
+			Status:       200,
+			ResponseBody: `{"data":{"id":1}}`,
+			Timestamp:    ts,
+		},
+	})
+
+	req := JSONRPCRequest{JSONRPC: "2.0", ID: 1}
+	resp := h.toolObserve(req, json.RawMessage(`{"what":"network_bodies","body_key":"id","body_path":"data.id"}`))
+	result := parseToolResult(t, resp)
+	if !result.IsError {
+		t.Fatal("using both body_key and body_path should return isError:true")
+	}
+
+	resp = h.toolObserve(req, json.RawMessage(`{"what":"network_bodies","body_path":"data.items["}`))
+	result = parseToolResult(t, resp)
+	if !result.IsError {
+		t.Fatal("invalid body_path syntax should return isError:true")
+	}
+}
+
 // ============================================
 // observe(what:"websocket_events") — Response Fields
 // ============================================
 
 func TestToolsObserveWSEvents_ResponseFields(t *testing.T) {
 	t.Parallel()
-	h, _, cap := makeObserveToolHandler(t)
+	h, _, cap := makeToolHandler(t)
 
 	cap.AddWebSocketEvents([]capture.WebSocketEvent{
 		{
@@ -552,7 +583,7 @@ func TestToolsObserveWSEvents_ResponseFields(t *testing.T) {
 
 func TestToolsObserveActions_ResponseFields(t *testing.T) {
 	t.Parallel()
-	h, _, cap := makeObserveToolHandler(t)
+	h, _, cap := makeToolHandler(t)
 
 	cap.AddEnhancedActionsForTest([]capture.EnhancedAction{
 		{Type: "click", Timestamp: time.Now().UnixMilli(), URL: "https://example.com"},
@@ -585,7 +616,7 @@ func TestToolsObserveActions_ResponseFields(t *testing.T) {
 
 func TestToolsObservePilot_ResponseFields(t *testing.T) {
 	t.Parallel()
-	h, _, _ := makeObserveToolHandler(t)
+	h, _, _ := makeToolHandler(t)
 
 	resp := callObserveRaw(h, "pilot")
 	result := parseToolResult(t, resp)
@@ -613,15 +644,15 @@ func TestToolsObserve_IsServerSideObserveMode(t *testing.T) {
 		"playback_results", "log_diff_report", "pilot",
 	}
 	for _, mode := range serverSide {
-		if !isServerSideObserveMode(mode) {
-			t.Errorf("isServerSideObserveMode(%q) = false, want true", mode)
+		if !serverSideObserveModes[mode] {
+			t.Errorf("serverSideObserveModes[%q] = false, want true", mode)
 		}
 	}
 
 	clientSide := []string{"errors", "logs", "network_bodies", "actions", "vitals"}
 	for _, mode := range clientSide {
-		if isServerSideObserveMode(mode) {
-			t.Errorf("isServerSideObserveMode(%q) = true, want false", mode)
+		if serverSideObserveModes[mode] {
+			t.Errorf("serverSideObserveModes[%q] = true, want false", mode)
 		}
 	}
 }
@@ -656,7 +687,7 @@ func TestToolsObserve_GetValidObserveModes(t *testing.T) {
 
 func TestToolsObserve_StructuredErrorFields(t *testing.T) {
 	t.Parallel()
-	h, _, _ := makeObserveToolHandler(t)
+	h, _, _ := makeToolHandler(t)
 
 	resp := callObserveRaw(h, "nonexistent")
 	result := parseToolResult(t, resp)
@@ -693,4 +724,3 @@ func TestToolsObserve_StructuredErrorFields(t *testing.T) {
 	// Verify JSON fields are snake_case
 	assertSnakeCaseFields(t, jsonPart)
 }
-

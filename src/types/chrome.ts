@@ -1,4 +1,10 @@
 /**
+ * Purpose: Defines typed wrappers for Chrome extension APIs used across messaging and storage flows.
+ * Why: Prevents repeated ad-hoc Chrome API typing and reduces integration mistakes across extension modules.
+ * Docs: docs/features/feature/browser-extension-enhancement/index.md
+ */
+
+/**
  * @fileoverview Chrome API Wrapper Types
  * Chrome-specific types for message passing and storage
  */
@@ -49,10 +55,14 @@ export type StorageAreaName = 'sync' | 'local' | 'session'
  * Provides storage that resets on service worker restart
  */
 export interface ChromeSessionStorage {
+  get(keys: string | string[] | null): Promise<Record<string, unknown>>
   get(keys: string | string[] | null, callback: (result: Record<string, unknown>) => void): void
-  set(items: Record<string, unknown>, callback?: () => void): void
-  remove(keys: string | string[], callback?: () => void): void
-  clear(callback?: () => void): void
+  set(items: Record<string, unknown>): Promise<void>
+  set(items: Record<string, unknown>, callback: () => void): void
+  remove(keys: string | string[]): Promise<void>
+  remove(keys: string | string[], callback: () => void): void
+  clear(): Promise<void>
+  clear(callback: () => void): void
 }
 
 /**

@@ -1,5 +1,8 @@
 ---
 feature: config-profiles
+doc_type: qa-plan
+feature_id: feature-config-profiles
+last_reviewed: 2026-02-16
 ---
 
 # QA Plan: Configuration Profiles
@@ -43,7 +46,7 @@ feature: config-profiles
    - Start server: `gasoline --profile=paranoid`
 2. Steps:
    - [ ] Verify server starts, logs "Profile 'paranoid' loaded"
-   - [ ] Check config: `observe({what: "server_config"})` — verify read_only=true, aggressive redaction
+   - [ ] Check config: `configure({action:"health"})` — verify read_only=true, aggressive redaction
    - [ ] Attempt mutation: `interact({action: "execute_js"})` — fails (read-only)
    - [ ] Observe logs: succeeds
    - [ ] Verify project expiration is short (15 minutes)

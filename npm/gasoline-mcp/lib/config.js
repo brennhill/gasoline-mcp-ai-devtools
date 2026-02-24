@@ -1,3 +1,7 @@
+// Purpose: Implement config.js behavior for npm wrapper command flows.
+// Why: Keeps distribution-channel behavior consistent and supportable.
+// Docs: docs/features/feature/enhanced-cli-config/index.md
+
 /**
  * Config file utilities for Gasoline MCP CLI
  * Handles reading, writing, validating, and merging MCP configurations
@@ -6,6 +10,7 @@
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
+const { execFileSync } = require('child_process');
 const {
   InvalidJSONError,
   PermissionError,
@@ -16,30 +21,290 @@ const {
 const MAX_CONFIG_SIZE = 1024 * 1024; // 1MB
 
 /**
- * Get list of candidate config file paths (Claude, VSCode, Cursor, Codeium)
- * @returns {Array<string>} Array of config file paths
+ * Client definitions for all supported AI assistant clients.
+ * Each entry describes detection, config path, and install strategy.
  */
-function getConfigCandidates() {
-  const homeDir = os.homedir();
-  return [
-    path.join(homeDir, '.claude', 'claude.mcp.json'),
-    path.join(homeDir, '.vscode', 'claude.mcp.json'),
-    path.join(homeDir, '.cursor', 'mcp.json'),
-    path.join(homeDir, '.codeium', 'mcp.json'),
-  ];
+const CLIENT_DEFINITIONS = [
+  {
+    id: 'claude-code',
+    name: 'Claude Code',
+    type: 'cli',
+    detectCommand: 'claude',
+    installArgs: ['mcp', 'add-json', '--scope', 'user', 'gasoline'],
+    removeArgs: ['mcp', 'remove', '--scope', 'user', 'gasoline'],
+  },
+  {
+    id: 'claude-desktop',
+    name: 'Claude Desktop',
+    type: 'file',
+    configPath: {
+      darwin: '~/Library/Application Support/Claude/claude_desktop_config.json',
+      win32: '%APPDATA%/Claude/claude_desktop_config.json',
+    },
+    detectDir: {
+      darwin: '~/Library/Application Support/Claude',
+      win32: '%APPDATA%/Claude',
+    },
+  },
+  {
+    id: 'cursor',
+    name: 'Cursor',
+    type: 'file',
+    configPath: { all: '~/.cursor/mcp.json' },
+    detectDir: { all: '~/.cursor' },
+  },
+  {
+    id: 'windsurf',
+    name: 'Windsurf',
+    type: 'file',
+    configPath: { all: '~/.codeium/windsurf/mcp_config.json' },
+    detectDir: { all: '~/.codeium/windsurf' },
+  },
+  {
+    id: 'vscode',
+    name: 'VS Code',
+    type: 'file',
+    configPath: {
+      darwin: '~/Library/Application Support/Code/User/mcp.json',
+      win32: '%APPDATA%/Code/User/mcp.json',
+      linux: '~/.config/Code/User/mcp.json',
+    },
+    detectDir: {
+      darwin: '~/Library/Application Support/Code',
+      win32: '%APPDATA%/Code',
+      linux: '~/.config/Code',
+    },
+  },
+  {
+    id: 'gemini',
+    name: 'Gemini CLI',
+    type: 'file',
+    configPath: { all: '~/.gemini/settings.json' },
+    detectDir: { all: '~/.gemini' },
+  },
+  {
+    id: 'opencode',
+    name: 'OpenCode',
+    type: 'file',
+    configPath: { all: '~/.config/opencode/opencode.json' },
+    detectDir: { all: '~/.config/opencode' },
+    configKey: 'mcp',
+    buildEntry: (envVars) => {
+      const entry = { type: 'local', command: ['gasoline-mcp'], enabled: true };
+      if (envVars && Object.keys(envVars).length > 0) entry.env = envVars;
+      return entry;
+    },
+  },
+  {
+    id: 'antigravity',
+    name: 'Antigravity',
+    type: 'file',
+    configPath: {
+      darwin: '~/.gemini/antigravity/mcp_config.json',
+      win32: '%APPDATA%/.gemini/antigravity/mcp_config.json',
+      linux: '~/.gemini/antigravity/mcp_config.json',
+    },
+    detectDir: {
+      darwin: '~/.gemini/antigravity',
+      win32: '%APPDATA%/.gemini/antigravity',
+      linux: '~/.gemini/antigravity',
+    },
+  },
+  {
+    id: 'zed',
+    name: 'Zed',
+    type: 'file',
+    configPath: { all: '~/.config/zed/settings.json' },
+    detectDir: { all: '~/.config/zed' },
+    configKey: 'context_servers',
+    buildEntry: (envVars) => {
+      const entry = { source: 'custom', command: 'gasoline-mcp', args: [] };
+      if (envVars && Object.keys(envVars).length > 0) entry.env = envVars;
+      return entry;
+    },
+  },
+];
+
+/**
+ * Legacy paths that may contain orphaned configs from older versions.
+ * Used by doctor to warn users.
+ */
+const LEGACY_PATHS = [
+  { path: '~/.codeium/mcp.json', description: 'Old Windsurf/Codeium path' },
+  { path: '~/.vscode/claude.mcp.json', description: 'Old VS Code path' },
+  { path: '~/.claude.json', description: 'Old Claude Code path (now uses CLI)' },
+];
+
+/**
+ * Expand ~ and %APPDATA% in a path string
+ * @param {string} p Path with ~ or %APPDATA%
+ * @returns {string} Expanded path
+ */
+function expandPath(p) {
+  if (!p) return p;
+  let expanded = p.replace(/^~/, os.homedir());
+  if (process.platform === 'win32' && expanded.includes('%APPDATA%')) {
+    expanded = expanded.replace(/%APPDATA%/g, process.env.APPDATA || '');
+  }
+  return path.normalize(expanded);
 }
 
 /**
- * Get tool name from config path
+ * Get resolved config path for a file-type client definition
+ * @param {Object} def Client definition
+ * @param {string} [platform] Platform override (defaults to os.platform())
+ * @returns {string|null} Resolved path or null if not applicable
+ */
+function getClientConfigPath(def, platform) {
+  if (def.type === 'cli') return null;
+  const plat = platform || os.platform();
+  const raw = def.configPath[plat] || def.configPath.all || null;
+  return raw ? expandPath(raw) : null;
+}
+
+/**
+ * Get resolved detect directory for a file-type client definition
+ * @param {Object} def Client definition
+ * @param {string} [platform] Platform override
+ * @returns {string|null} Resolved path or null
+ */
+function getClientDetectDir(def, platform) {
+  if (def.type === 'cli') return null;
+  const plat = platform || os.platform();
+  const raw = def.detectDir[plat] || def.detectDir.all || null;
+  return raw ? expandPath(raw) : null;
+}
+
+/**
+ * Check if a command exists on PATH
+ * @param {string} cmd Command name
+ * @returns {boolean}
+ */
+function commandExistsOnPath(cmd) {
+  try {
+    const checkCmd = process.platform === 'win32' ? 'where' : 'which';
+    execFileSync(checkCmd, [cmd], { stdio: 'pipe', timeout: 3000 });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Check if a client is installed/detected on this system
+ * @param {Object} def Client definition
+ * @returns {boolean}
+ */
+function isClientInstalled(def) {
+  if (def.type === 'cli') {
+    return commandExistsOnPath(def.detectCommand);
+  }
+  const dir = getClientDetectDir(def);
+  if (!dir) return false;
+  try {
+    return fs.statSync(dir).isDirectory();
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Get all detected (installed) clients
+ * @returns {Array<Object>} Detected client definitions
+ */
+function getDetectedClients() {
+  return CLIENT_DEFINITIONS.filter(def => isClientInstalled(def));
+}
+
+/**
+ * Find a client definition by ID
+ * @param {string} id Client ID
+ * @returns {Object|undefined}
+ */
+function getClientById(id) {
+  return CLIENT_DEFINITIONS.find(def => def.id === id);
+}
+
+/**
+ * Short-name aliases for targeted install (maps to client IDs)
+ */
+const CLIENT_ALIASES = {
+  'claude': 'claude-code',
+  'claude-code': 'claude-code',
+  'claude-desktop': 'claude-desktop',
+  'desktop': 'claude-desktop',
+  'cursor': 'cursor',
+  'windsurf': 'windsurf',
+  'vscode': 'vscode',
+  'vs-code': 'vscode',
+  'gemini': 'gemini',
+  'opencode': 'opencode',
+  'antigravity': 'antigravity',
+  'zed': 'zed',
+};
+
+/**
+ * Look up a client definition by alias name
+ * @param {string} alias Short name (e.g. 'gemini', 'cursor')
+ * @returns {Object|null} Client definition or null if not found
+ */
+function getClientByAlias(alias) {
+  const id = CLIENT_ALIASES[alias.toLowerCase()];
+  if (!id) return null;
+  return getClientById(id);
+}
+
+/**
+ * Get all valid alias names (for error messages)
+ * @returns {Array<string>} Unique alias names (one per client)
+ */
+function getValidAliases() {
+  const seen = new Set();
+  const aliases = [];
+  for (const [alias, id] of Object.entries(CLIENT_ALIASES)) {
+    if (!seen.has(id)) {
+      seen.add(id);
+      aliases.push(alias);
+    }
+  }
+  return aliases;
+}
+
+/**
+ * Backward-compat: returns config file paths for detected file-type clients.
+ * @returns {Array<string>} Array of config file paths
+ */
+function getConfigCandidates() {
+  return CLIENT_DEFINITIONS
+    .filter(def => def.type === 'file')
+    .map(def => getClientConfigPath(def))
+    .filter(Boolean);
+}
+
+/**
+ * Backward-compat: get tool name from config path
  * @param {string} configPath Path to config file
  * @returns {string} Tool name
  */
 function getToolNameFromPath(configPath) {
   const normalized = path.normalize(configPath);
-  if (normalized.includes('.claude')) return 'Claude Desktop';
-  if (normalized.includes('.vscode')) return 'VSCode';
+  for (const def of CLIENT_DEFINITIONS) {
+    if (def.type !== 'file') continue;
+    const cfgPath = getClientConfigPath(def);
+    if (cfgPath && normalized === path.normalize(cfgPath)) {
+      return def.name;
+    }
+  }
+  // Fallback: substring matching for legacy paths
   if (normalized.includes('.cursor')) return 'Cursor';
-  if (normalized.includes('.codeium')) return 'Codeium';
+  if (normalized.includes(path.join('.codeium', 'windsurf'))) return 'Windsurf';
+  if (normalized.includes('.codeium')) return 'Windsurf';
+  if (normalized.includes('Claude')) return 'Claude Desktop';
+  if (normalized.includes(path.join('.gemini', 'antigravity'))) return 'Antigravity';
+  if (normalized.includes('.gemini')) return 'Gemini CLI';
+  if (normalized.includes(path.join('.config', 'opencode'))) return 'OpenCode';
+  if (normalized.includes(path.join('.config', 'zed'))) return 'Zed';
+  if (normalized.includes('Code')) return 'VS Code';
   return 'Unknown';
 }
 
@@ -104,12 +369,14 @@ function readConfigFile(filePath) {
  * @param {boolean} dryRun If true, returns what would be written without writing
  * @returns {Object} {success: bool, message: string, path: string, before?: Object, after?: Object}
  */
-function writeConfigFile(filePath, data, dryRun = false) {
+function writeConfigFile(filePath, data, dryRun = false, options = {}) {
   try {
-    // Validate data
-    const errors = validateMCPConfig(data);
-    if (errors.length > 0) {
-      throw new ConfigValidationError(errors);
+    // Validate data (skip for non-standard config formats like OpenCode)
+    if (!options.skipValidation) {
+      const errors = validateMCPConfig(data);
+      if (errors.length > 0) {
+        throw new ConfigValidationError(errors);
+      }
     }
 
     const jsonStr = JSON.stringify(data, null, 2);
@@ -233,6 +500,18 @@ function parseEnvVar(envStr) {
 }
 
 module.exports = {
+  CLIENT_DEFINITIONS,
+  CLIENT_ALIASES,
+  LEGACY_PATHS,
+  expandPath,
+  getClientConfigPath,
+  getClientDetectDir,
+  commandExistsOnPath,
+  isClientInstalled,
+  getDetectedClients,
+  getClientById,
+  getClientByAlias,
+  getValidAliases,
   getConfigCandidates,
   getToolNameFromPath,
   readConfigFile,

@@ -1,5 +1,8 @@
 ---
 feature: accessibility-audit-runtime-error
+doc_type: qa-plan
+feature_id: bug-accessibility-audit-runtime-error
+last_reviewed: 2026-02-16
 ---
 
 # QA Plan: Accessibility Audit Runtime Error (Bug Fix)
@@ -148,7 +151,7 @@ feature: accessibility-audit-runtime-error
 
 ### Must Not Break
 
-- [ ] DOM queries still work (`generate({action: "query_dom"})`)
+- [ ] DOM queries still work (`analyze({what: "dom"})`)
 - [ ] Page info queries still work (`observe({what: "page"})`)
 - [ ] Other extension message types still handled correctly
 - [ ] Tab tracking still works

@@ -1,6 +1,9 @@
 ---
 feature: pr-preview-exploration
 status: proposed
+doc_type: tech-spec
+feature_id: feature-pr-preview-exploration
+last_reviewed: 2026-02-16
 ---
 
 # Tech Spec: PR Preview Exploration

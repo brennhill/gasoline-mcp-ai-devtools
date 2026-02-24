@@ -1,6 +1,7 @@
-// interfaces.go — Abstracted component interfaces.
-// These interfaces are implemented by other packages (analysis, security, session).
-// They define the contracts for components that Capture depends on.
+// Purpose: Defines cross-package interfaces consumed by capture for schema, CSP, and client-registry integrations.
+// Why: Decouples capture from concrete implementations to avoid import cycles and tighten test seams.
+// Docs: docs/features/feature/backend-log-streaming/index.md
+
 package capture
 
 // SchemaStore defines the interface for API schema detection and tracking.

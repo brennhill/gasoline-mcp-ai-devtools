@@ -1,4 +1,12 @@
 /**
+ * Purpose: Handles extension background coordination and message routing.
+ * Why: Centralizes extension coordination to reduce race conditions and split-brain state.
+ * Docs: docs/features/feature/analyze-tool/index.md
+ * Docs: docs/features/feature/interact-explore/index.md
+ * Docs: docs/features/feature/observe/index.md
+ */
+
+/**
  * @fileoverview Unified Sync Client - Replaces multiple polling loops with single /sync endpoint.
  * Features: Simple exponential backoff, binary connection state, self-healing for MV3.
  */
@@ -20,6 +28,8 @@ export interface SyncSettings {
   capture_network: boolean
   capture_websocket: boolean
   capture_actions: boolean
+  csp_restricted: boolean
+  csp_level: string
 }
 
 /** Extension log entry */
@@ -36,19 +46,31 @@ export interface SyncExtensionLog {
 export interface SyncCommandResult {
   id: string
   correlation_id?: string
-  status: 'complete' | 'error' | 'timeout'
+  status: 'complete' | 'error' | 'timeout' | 'cancelled'
   result?: unknown
   error?: string
 }
 
+/** Active command metadata sent on each sync heartbeat */
+export interface SyncInProgress {
+  id: string
+  correlation_id?: string
+  type?: string
+  status: 'running' | 'pending'
+  progress_pct?: number
+  started_at: string
+  updated_at: string
+}
+
 /** Request sent to /sync */
 interface SyncRequest {
-  session_id: string
+  ext_session_id: string
   extension_version?: string
   settings?: SyncSettings
   extension_logs?: SyncExtensionLog[]
   last_command_ack?: string
   command_results?: SyncCommandResult[]
+  in_progress?: SyncInProgress[]
 }
 
 /** Command from server */
@@ -56,6 +78,7 @@ export interface SyncCommand {
   id: string
   type: string
   params: unknown
+  tab_id?: number
   correlation_id?: string
 }
 
@@ -83,6 +106,8 @@ export interface SyncClientCallbacks {
   onConnectionChange: (connected: boolean) => void
   onCaptureOverrides?: (overrides: Record<string, string>) => void
   onVersionMismatch?: (extensionVersion: string, serverVersion: string) => void
+  commandTimeoutMs?: number
+  uploadCommandTimeoutMs?: number
   getSettings: () => Promise<SyncSettings>
   getExtensionLogs: () => SyncExtensionLog[]
   clearExtensionLogs: () => void
@@ -94,6 +119,7 @@ export interface SyncClientCallbacks {
 // =============================================================================
 
 const BASE_POLL_MS = 1000
+const DEFAULT_COMMAND_TIMEOUT_MS = 65000
 
 // =============================================================================
 // SYNC CLIENT CLASS
@@ -101,7 +127,7 @@ const BASE_POLL_MS = 1000
 
 export class SyncClient {
   private serverUrl: string
-  private sessionId: string
+  private extSessionId: string
   private callbacks: SyncClientCallbacks
   private state: SyncState
   private intervalId: ReturnType<typeof setInterval> | null = null
@@ -109,12 +135,13 @@ export class SyncClient {
   private syncing = false
   private flushRequested = false
   private pendingResults: SyncCommandResult[] = []
-  private processedCommandIDs: Set<string> = new Set()
+  private inProgressById = new Map<string, SyncInProgress>()
+  private processedCommandSignatures: Set<string> = new Set()
   private extensionVersion: string
 
-  constructor(serverUrl: string, sessionId: string, callbacks: SyncClientCallbacks, extensionVersion = '') {
+  constructor(serverUrl: string, extSessionId: string, callbacks: SyncClientCallbacks, extensionVersion = '') {
     this.serverUrl = serverUrl
-    this.sessionId = sessionId
+    this.extSessionId = extSessionId
     this.callbacks = callbacks
     this.extensionVersion = extensionVersion
     this.state = {
@@ -155,6 +182,7 @@ export class SyncClient {
 
   /** Queue a command result to send on next sync, then flush immediately */
   queueCommandResult(result: SyncCommandResult): void {
+    this.clearInProgressById(result.id)
     this.pendingResults.push(result)
     // Cap queue size to prevent memory leak if server is unreachable
     const MAX_PENDING_RESULTS = 200
@@ -194,6 +222,21 @@ export class SyncClient {
     this.serverUrl = url
   }
 
+  /** Optional progress updates for long-running commands */
+  updateCommandProgress(commandId: string, progressPct?: number, status: 'running' | 'pending' = 'running'): void {
+    const current = this.inProgressById.get(commandId)
+    if (!current) return
+    const next: SyncInProgress = {
+      ...current,
+      status,
+      updated_at: new Date().toISOString()
+    }
+    if (typeof progressPct === 'number' && Number.isFinite(progressPct)) {
+      next.progress_pct = clampPercent(progressPct)
+    }
+    this.inProgressById.set(commandId, next)
+  }
+
   // =============================================================================
   // PRIVATE METHODS
   // =============================================================================
@@ -214,9 +257,10 @@ export class SyncClient {
       const logs = this.callbacks.getExtensionLogs()
 
       const request: SyncRequest = {
-        session_id: this.sessionId,
+        ext_session_id: this.extSessionId,
         extension_version: this.extensionVersion || undefined,
-        settings
+        settings,
+        in_progress: this.getInProgressSnapshot()
       }
 
       // Include logs if any
@@ -225,8 +269,9 @@ export class SyncClient {
       }
 
       // Include pending command results
-      if (this.pendingResults.length > 0) {
-        request.command_results = [...this.pendingResults]
+      const resultsSentCount = this.pendingResults.length
+      if (resultsSentCount > 0) {
+        request.command_results = this.pendingResults.slice(0, resultsSentCount)
       }
 
       // Include last command ack
@@ -236,7 +281,7 @@ export class SyncClient {
 
       // Make request with timeout to prevent hanging forever
       const controller = new AbortController()
-      const timeoutId = setTimeout(() => controller.abort(), 3000) // 3s timeout
+      const timeoutId = setTimeout(() => controller.abort(), 8000) // 8s: server holds up to 5s + margin
 
       const response = await fetch(`${this.serverUrl}/sync`, {
         method: 'POST',
@@ -283,45 +328,44 @@ export class SyncClient {
       if (logs.length > 0) {
         this.callbacks.clearExtensionLogs()
       }
-      this.pendingResults = []
+      if (resultsSentCount > 0) {
+        this.pendingResults.splice(0, resultsSentCount)
+      }
 
-      // Process commands
+      // Dispatch commands without blocking the heartbeat loop.
+      // Command completion is returned asynchronously via queueCommandResult().
       if (data.commands && data.commands.length > 0) {
         this.log('Received commands', { count: data.commands.length, ids: data.commands.map((c) => c.id) })
         for (const command of data.commands) {
-          if (command.id && this.processedCommandIDs.has(command.id)) {
-            this.log('Skipping already processed command', { id: command.id })
+          const signature = this.getCommandSignature(command)
+
+          if (command.id && this.processedCommandSignatures.has(signature)) {
+            this.log('Skipping already processed command', {
+              id: command.id,
+              correlation_id: command.correlation_id,
+              type: command.type
+            })
             continue
           }
+
+          // Dedup on RECEIPT — prevents re-execution if server re-sends before ack
+          if (command.id) {
+            this.processedCommandSignatures.add(signature)
+            const MAX_PROCESSED_COMMANDS = 1000
+            if (this.processedCommandSignatures.size > MAX_PROCESSED_COMMANDS) {
+              const oldest = this.processedCommandSignatures.values().next().value
+              if (oldest !== undefined) {
+                this.processedCommandSignatures.delete(oldest)
+              }
+            }
+          }
+
           this.log('Dispatching command', {
             id: command.id,
             type: command.type,
             correlation_id: command.correlation_id
           })
-          try {
-            await this.callbacks.onCommand(command)
-            // Track ack only after successful execution
-            this.state.lastCommandAck = command.id
-            this.log('Command dispatched OK', { id: command.id })
-          } catch (err) {
-            this.log('Command dispatch FAILED', { id: command.id, error: (err as Error).message })
-            this.queueCommandResult({
-              id: command.id,
-              status: 'error',
-              error: (err as Error).message || 'Command dispatch failed'
-            })
-          } finally {
-            if (command.id) {
-              this.processedCommandIDs.add(command.id)
-              const MAX_PROCESSED_COMMANDS = 1000
-              if (this.processedCommandIDs.size > MAX_PROCESSED_COMMANDS) {
-                const oldest = this.processedCommandIDs.values().next().value
-                if (oldest !== undefined) {
-                  this.processedCommandIDs.delete(oldest)
-                }
-              }
-            }
-          }
+          void this.dispatchCommand(command)
         }
       }
 
@@ -362,11 +406,12 @@ export class SyncClient {
   }
 
   private onFailure(): void {
-    const wasConnected = this.state.connected
-    this.state.connected = false
     this.state.consecutiveFailures++
 
-    if (wasConnected) {
+    // Require 2+ consecutive failures before marking disconnected
+    // to prevent a single transient timeout from flipping connection state
+    if (this.state.consecutiveFailures >= 2 && this.state.connected) {
+      this.state.connected = false
       this.log('Disconnected')
       this.callbacks.onConnectionChange(false)
     }
@@ -379,6 +424,100 @@ export class SyncClient {
       console.log(`[SyncClient] ${message}`, data || '') // nosemgrep: javascript.lang.security.audit.unsafe-formatstring.unsafe-formatstring -- console.log with internal sync state, not user-controlled
     }
   }
+
+  private getCommandSignature(command: SyncCommand): string {
+    // Include correlation_id and type so command ID reuse after daemon restart
+    // does not suppress new commands with the same queue ID.
+    const id = command.id || ''
+    const correlationID = command.correlation_id || ''
+    const type = command.type || ''
+    return `${id}::${correlationID}::${type}`
+  }
+
+  private commandTimeoutFor(command: SyncCommand): number {
+    if (command.type === 'upload' && typeof this.callbacks.uploadCommandTimeoutMs === 'number') {
+      return Math.max(1, this.callbacks.uploadCommandTimeoutMs)
+    }
+    if (typeof this.callbacks.commandTimeoutMs === 'number') {
+      return Math.max(1, this.callbacks.commandTimeoutMs)
+    }
+    return DEFAULT_COMMAND_TIMEOUT_MS
+  }
+
+  private async dispatchCommand(command: SyncCommand): Promise<void> {
+    this.markInProgress(command)
+    const timeoutMs = this.commandTimeoutFor(command)
+    let timeoutHandle: ReturnType<typeof setTimeout> | null = null
+    try {
+      await Promise.race([
+        Promise.resolve(this.callbacks.onCommand(command)),
+        new Promise<never>((_, reject) => {
+          timeoutHandle = setTimeout(
+            () =>
+              reject(
+                new Error(
+                  `Command ${command.id || '(unknown)'} (${command.type || 'unknown'}) timed out after ${timeoutMs}ms`
+                )
+              ),
+            timeoutMs
+          )
+        })
+      ])
+      this.log('Command completed OK', { id: command.id })
+    } catch (err) {
+      const message = (err as Error).message || 'Command execution failed'
+      this.log('Command execution FAILED', { id: command.id, error: message })
+      this.queueCommandResult({
+        id: command.id,
+        status: 'error',
+        error: message
+      })
+    } finally {
+      if (timeoutHandle) {
+        clearTimeout(timeoutHandle)
+      }
+      this.clearInProgressById(command.id)
+      // Ack after dispatch completes (success or failure) — not on bare receipt
+      if (command.id) {
+        this.state.lastCommandAck = command.id
+      }
+    }
+  }
+
+  private markInProgress(command: SyncCommand): void {
+    const now = new Date().toISOString()
+    const current = this.inProgressById.get(command.id)
+    this.inProgressById.set(command.id, {
+      id: command.id,
+      correlation_id: command.correlation_id,
+      type: command.type,
+      status: current?.status || 'running',
+      progress_pct: current?.progress_pct,
+      started_at: current?.started_at || now,
+      updated_at: now
+    })
+  }
+
+  private clearInProgressById(id?: string): void {
+    if (!id) return
+    this.inProgressById.delete(id)
+  }
+
+  private getInProgressSnapshot(): SyncInProgress[] {
+    if (this.inProgressById.size === 0) {
+      return []
+    }
+    return Array.from(this.inProgressById.values()).map((entry) => ({
+      ...entry,
+      updated_at: entry.updated_at || new Date().toISOString()
+    }))
+  }
+}
+
+function clampPercent(value: number): number {
+  if (value < 0) return 0
+  if (value > 100) return 100
+  return Math.round(value * 100) / 100
 }
 
 // =============================================================================
@@ -390,9 +529,9 @@ export class SyncClient {
  */
 export function createSyncClient(
   serverUrl: string,
-  sessionId: string,
+  extSessionId: string,
   callbacks: SyncClientCallbacks,
   extensionVersion = ''
 ): SyncClient {
-  return new SyncClient(serverUrl, sessionId, callbacks, extensionVersion)
+  return new SyncClient(serverUrl, extSessionId, callbacks, extensionVersion)
 }

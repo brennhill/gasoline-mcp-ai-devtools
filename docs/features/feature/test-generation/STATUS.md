@@ -2,6 +2,7 @@
 feature: test-generation
 status: implementation_complete__ready_for_validation
 date: 2026-01-29
+last_reviewed: 2026-02-16
 ---
 
 # Test Generation Feature — Status Report
@@ -275,7 +276,7 @@ Gasoline can generate tests that verify WebSocket behavior automatically — no 
 
 ### Modified Files
 
-1. `cmd/dev-console/tools.go` — Added dispatch for test generation modes
+1. `cmd/dev-console/tools_core.go` — Added dispatch for test generation modes
 
 ### Lines of Code
 

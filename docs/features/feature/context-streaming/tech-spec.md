@@ -1,6 +1,9 @@
 ---
 feature: context-streaming
 status: proposed
+doc_type: tech-spec
+feature_id: feature-context-streaming
+last_reviewed: 2026-02-16
 ---
 
 # Tech Spec: Context Streaming

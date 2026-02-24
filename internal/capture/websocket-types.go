@@ -1,15 +1,15 @@
-// websocket-types.go — WebSocket event and connection tracking types.
-// WebSocketEvent represents captured WebSocket events with sampling and schema info.
-//
-// JSON CONVENTION: All fields MUST use snake_case. See .claude/refs/api-naming-standards.md
-// Deviations from snake_case MUST be tagged with // SPEC:<spec-name> at the field level.
+// Purpose: Defines websocket telemetry payload, filter, and status model types for capture operations.
+// Why: Keeps websocket ingestion/query contracts explicit and aligned with wire serialization expectations.
+// Docs: docs/features/feature/normalized-event-schema/index.md
+
 package capture
 
 import (
 	"time"
 )
 
-// WebSocketEvent represents a captured WebSocket event
+// WebSocketEvent represents a captured WebSocket event.
+// Wire fields: see WireWebSocketEvent in internal/types/wire_websocket_event.go
 type WebSocketEvent struct {
 	Timestamp        string        `json:"ts,omitempty"`
 	Type             string        `json:"type,omitempty"`
@@ -21,11 +21,11 @@ type WebSocketEvent struct {
 	Size             int           `json:"size,omitempty"`
 	CloseCode        int           `json:"code,omitempty"`
 	CloseReason      string        `json:"reason,omitempty"`
-	Sampled          *SamplingInfo `json:"sampled,omitempty"`
-	BinaryFormat     string        `json:"binary_format,omitempty"`
-	FormatConfidence float64       `json:"format_confidence,omitempty"`
-	TabId            int           `json:"tab_id,omitempty"`   // Chrome tab ID that produced this event
-	TestIDs          []string      `json:"test_ids,omitempty"` // Test IDs this event belongs to (for test boundary correlation)
+	Sampled          *SamplingInfo `json:"sampled,omitempty"`          // server-only enrichment
+	BinaryFormat     string        `json:"binary_format,omitempty"`   // server-only enrichment
+	FormatConfidence float64       `json:"format_confidence,omitempty"` // server-only enrichment
+	TabId            int           `json:"tab_id,omitempty"`          // Chrome tab ID that produced this event
+	TestIDs          []string      `json:"test_ids,omitempty"`        // Test IDs this event belongs to (for test boundary correlation)
 }
 
 // SamplingInfo describes the sampling state when a message was captured

@@ -6,6 +6,7 @@
 
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PKG="${GASOLINE_CMD_PKG:-./cmd/dev-console}"
 SHARDS="${GO_TEST_SHARDS:-4}"
 COUNT="${GO_TEST_COUNT:-1}"
@@ -105,7 +106,12 @@ for i in "${!TESTS[@]}"; do
 done
 
 TMP_DIR="$(mktemp -d /tmp/gasoline-go-shards.XXXXXX)"
-cleanup() { rm -rf "$TMP_DIR"; }
+cleanup() {
+  rm -rf "$TMP_DIR"
+  if [[ -f "$SCRIPT_DIR/cleanup-test-daemons.sh" ]]; then
+    bash "$SCRIPT_DIR/cleanup-test-daemons.sh" --quiet >/dev/null 2>&1 || true
+  fi
+}
 trap cleanup EXIT
 
 declare -a PIDS

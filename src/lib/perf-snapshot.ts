@@ -1,4 +1,10 @@
 /**
+ * Purpose: Provides shared runtime utilities used by extension and server workflows.
+ * Why: Avoids duplicated logic across runtime layers and keeps behavior consistent.
+ * Docs: docs/features/feature/performance-audit/index.md
+ */
+
+/**
  * @fileoverview Performance snapshot capture.
  * Observes web vitals (FCP, LCP, CLS, INP), long tasks, and resource timing
  * to build comprehensive performance snapshots.

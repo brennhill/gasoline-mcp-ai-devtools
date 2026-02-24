@@ -1,3 +1,7 @@
+// Purpose: Validate sync_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
+// Docs: docs/features/feature/backend-log-streaming/index.md
+
 package capture
 
 import (
@@ -7,6 +11,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/dev-console/dev-console/internal/queries"
 )
@@ -17,7 +22,7 @@ func TestHandleSync_BasicRequest(t *testing.T) {
 
 	// Create a sync request
 	req := SyncRequest{
-		SessionID: "test_session_123",
+		ExtSessionID: "test_session_123",
 		Settings: &SyncSettings{
 			PilotEnabled:    true,
 			TrackingEnabled: false,
@@ -65,8 +70,8 @@ func TestHandleSync_BasicRequest(t *testing.T) {
 
 	// Verify state was updated
 	cap.mu.RLock()
-	if cap.ext.extensionSession != "test_session_123" {
-		t.Errorf("Expected session to be 'test_session_123', got '%s'", cap.ext.extensionSession)
+	if cap.ext.extSessionID != "test_session_123" {
+		t.Errorf("Expected session to be 'test_session_123', got '%s'", cap.ext.extSessionID)
 	}
 	if !cap.ext.pilotEnabled {
 		t.Error("Expected pilotEnabled to be true")
@@ -111,7 +116,7 @@ func TestHandleSync_WithExtensionLogs(t *testing.T) {
 
 	// Create request with extension logs
 	req := SyncRequest{
-		SessionID: "test_session",
+		ExtSessionID: "test_session",
 		ExtensionLogs: []ExtensionLog{
 			{
 				Level:    "info",
@@ -153,7 +158,7 @@ func TestHandleSync_WithExtensionLogs_RedactsSensitiveData(t *testing.T) {
 	)
 
 	req := SyncRequest{
-		SessionID: "test_session",
+		ExtSessionID: "test_session",
 		ExtensionLogs: []ExtensionLog{
 			{
 				Level:    "debug",
@@ -209,7 +214,7 @@ func TestHandleSync_UpdatesLastPollAt(t *testing.T) {
 	}
 
 	// Send sync request
-	req := SyncRequest{SessionID: "test"}
+	req := SyncRequest{ExtSessionID: "test"}
 	body, _ := json.Marshal(req)
 	httpReq := httptest.NewRequest("POST", "/sync", bytes.NewReader(body))
 	w := httptest.NewRecorder()
@@ -223,6 +228,175 @@ func TestHandleSync_UpdatesLastPollAt(t *testing.T) {
 
 	if newPollAt.IsZero() {
 		t.Error("Expected lastPollAt to be set after sync")
+	}
+}
+
+func TestHandleSync_StoresInProgressHeartbeat(t *testing.T) {
+	t.Parallel()
+	cap := NewCapture()
+
+	progress := 42.5
+	req := SyncRequest{
+		ExtSessionID: "test-session",
+		InProgress: []SyncInProgress{
+			{
+				ID:            "q-123",
+				CorrelationID: "corr-123",
+				Type:          "browser_action",
+				Status:        "running",
+				ProgressPct:   &progress,
+				StartedAt:     time.Now().Add(-2 * time.Second).UTC().Format(time.RFC3339),
+				UpdatedAt:     time.Now().UTC().Format(time.RFC3339),
+			},
+		},
+	}
+
+	body, _ := json.Marshal(req)
+	httpReq := httptest.NewRequest("POST", "/sync", bytes.NewReader(body))
+	w := httptest.NewRecorder()
+	cap.HandleSync(w, httpReq)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("Expected status 200, got %d", w.Code)
+	}
+
+	pilot, ok := cap.GetPilotStatus().(map[string]any)
+	if !ok {
+		t.Fatal("expected pilot status to be a map")
+	}
+	if pilot["in_progress_count"] != 1 {
+		t.Fatalf("in_progress_count = %v, want 1", pilot["in_progress_count"])
+	}
+
+	inProgress, ok := pilot["in_progress"].([]SyncInProgress)
+	if !ok {
+		t.Fatalf("in_progress type = %T, want []SyncInProgress", pilot["in_progress"])
+	}
+	if len(inProgress) != 1 {
+		t.Fatalf("len(in_progress) = %d, want 1", len(inProgress))
+	}
+	if inProgress[0].CorrelationID != "corr-123" {
+		t.Fatalf("in_progress[0].correlation_id = %q, want corr-123", inProgress[0].CorrelationID)
+	}
+}
+
+func TestHandleSync_MissingInProgressHeartbeatFailsStartedCommand(t *testing.T) {
+	t.Parallel()
+	cap := NewCapture()
+
+	corrID := "corr-missing-heartbeat"
+	queryID, _ := cap.CreatePendingQueryWithTimeout(queries.PendingQuery{
+		Type:          "browser_action",
+		Params:        json.RawMessage(`{"action":"navigate","url":"https://example.com"}`),
+		CorrelationID: corrID,
+	}, queries.AsyncCommandTimeout, "")
+	if queryID == "" {
+		t.Fatal("expected queryID")
+	}
+
+	// First sync dispatches the command to extension.
+	firstReqBody := []byte(`{"ext_session_id":"session-1","in_progress":[]}`)
+	firstReq := httptest.NewRequest("POST", "/sync", bytes.NewReader(firstReqBody))
+	firstResp := httptest.NewRecorder()
+	cap.HandleSync(firstResp, firstReq)
+	if firstResp.Code != http.StatusOK {
+		t.Fatalf("first sync status = %d, want 200", firstResp.Code)
+	}
+
+	// Second sync ACKs receipt but still reports no in_progress entries.
+	secondReqBody, _ := json.Marshal(map[string]any{
+		"ext_session_id":   "session-1",
+		"last_command_ack": queryID,
+		"in_progress":      []any{},
+	})
+	secondReq := httptest.NewRequest("POST", "/sync", bytes.NewReader(secondReqBody))
+	secondResp := httptest.NewRecorder()
+	cap.HandleSync(secondResp, secondReq)
+	if secondResp.Code != http.StatusOK {
+		t.Fatalf("second sync status = %d, want 200", secondResp.Code)
+	}
+
+	cmd, found := cap.GetCommandResult(corrID)
+	if !found {
+		t.Fatal("expected command result after second sync")
+	}
+	if cmd.Status != "pending" {
+		t.Fatalf("command status after first miss = %q, want pending", cmd.Status)
+	}
+
+	// Third sync still has no in_progress entry -> command should fail fast.
+	thirdReqBody, _ := json.Marshal(map[string]any{
+		"ext_session_id": "session-1",
+		"in_progress":    []any{},
+	})
+	thirdReq := httptest.NewRequest("POST", "/sync", bytes.NewReader(thirdReqBody))
+	thirdResp := httptest.NewRecorder()
+	cap.HandleSync(thirdResp, thirdReq)
+	if thirdResp.Code != http.StatusOK {
+		t.Fatalf("third sync status = %d, want 200", thirdResp.Code)
+	}
+
+	cmd, found = cap.GetCommandResult(corrID)
+	if !found {
+		t.Fatal("expected command result after desync reconciliation")
+	}
+	if cmd.Status != "error" {
+		t.Fatalf("command status after second miss = %q, want error", cmd.Status)
+	}
+	if !strings.Contains(cmd.Error, "extension_lost_command") {
+		t.Fatalf("command error = %q, want extension_lost_command", cmd.Error)
+	}
+}
+
+func TestUpdateSyncConnectionState_NoReconnectForShortPollGap(t *testing.T) {
+	t.Parallel()
+	cap := NewCapture()
+	defer cap.Close()
+
+	now := time.Now()
+	cap.mu.Lock()
+	cap.ext.lastPollAt = now.Add(-6 * time.Second)
+	cap.ext.lastSyncSeen = now.Add(-6 * time.Second)
+	cap.ext.lastExtensionConnected = true
+	cap.mu.Unlock()
+
+	state := cap.updateSyncConnectionState(
+		SyncRequest{ExtSessionID: "session-short-gap"},
+		"client-short-gap",
+		now,
+	)
+
+	if state.isReconnect {
+		t.Fatal("expected isReconnect=false for 6s gap (< disconnect threshold)")
+	}
+	if state.wasDisconnected {
+		t.Fatal("expected wasDisconnected=false for 6s gap (< disconnect threshold)")
+	}
+}
+
+func TestUpdateSyncConnectionState_ReconnectAfterDisconnectThreshold(t *testing.T) {
+	t.Parallel()
+	cap := NewCapture()
+	defer cap.Close()
+
+	now := time.Now()
+	cap.mu.Lock()
+	cap.ext.lastPollAt = now.Add(-12 * time.Second)
+	cap.ext.lastSyncSeen = now.Add(-12 * time.Second)
+	cap.ext.lastExtensionConnected = true
+	cap.mu.Unlock()
+
+	state := cap.updateSyncConnectionState(
+		SyncRequest{ExtSessionID: "session-long-gap"},
+		"client-long-gap",
+		now,
+	)
+
+	if !state.wasDisconnected {
+		t.Fatal("expected wasDisconnected=true after 12s gap")
+	}
+	if !state.isReconnect {
+		t.Fatal("expected isReconnect=true after disconnect threshold is crossed")
 	}
 }
 
@@ -241,7 +415,7 @@ func TestHandleSync_AdaptivePoll_FastWhenPendingCommands(t *testing.T) {
 	})
 
 	// Sync should return fast poll interval (200ms) since commands are pending
-	req := SyncRequest{SessionID: "test_session"}
+	req := SyncRequest{ExtSessionID: "test_session"}
 	body, _ := json.Marshal(req)
 	httpReq := httptest.NewRequest("POST", "/sync", bytes.NewReader(body))
 	w := httptest.NewRecorder()
@@ -265,12 +439,53 @@ func TestHandleSync_AdaptivePoll_FastWhenPendingCommands(t *testing.T) {
 	}
 }
 
+func TestHandleSync_CommandsIncludeTabID(t *testing.T) {
+	t.Parallel()
+	cap := NewCapture()
+
+	cap.CreatePendingQuery(queries.PendingQuery{
+		Type:          "dom_action",
+		Params:        json.RawMessage(`{"action":"click","selector":"#submit"}`),
+		TabID:         42,
+		CorrelationID: "corr-tab-42",
+	})
+
+	req := SyncRequest{ExtSessionID: "test_session"}
+	body, _ := json.Marshal(req)
+	httpReq := httptest.NewRequest("POST", "/sync", bytes.NewReader(body))
+	w := httptest.NewRecorder()
+
+	cap.HandleSync(w, httpReq)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("Expected status 200, got %d", w.Code)
+	}
+
+	var resp SyncResponse
+	if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
+		t.Fatalf("Failed to decode response: %v", err)
+	}
+
+	if len(resp.Commands) != 1 {
+		t.Fatalf("Expected 1 command, got %d", len(resp.Commands))
+	}
+	if resp.Commands[0].TabID != 42 {
+		t.Fatalf("Expected command tab_id 42, got %d", resp.Commands[0].TabID)
+	}
+	if resp.Commands[0].CorrelationID != "corr-tab-42" {
+		t.Fatalf("Expected correlation_id corr-tab-42, got %q", resp.Commands[0].CorrelationID)
+	}
+	if resp.Commands[0].TraceID != "corr-tab-42" {
+		t.Fatalf("Expected trace_id corr-tab-42, got %q", resp.Commands[0].TraceID)
+	}
+}
+
 func TestHandleSync_AdaptivePoll_SlowWhenNoCommands(t *testing.T) {
 	t.Parallel()
 	cap := NewCapture()
 
 	// No pending queries — should get default 1000ms interval
-	req := SyncRequest{SessionID: "test_session"}
+	req := SyncRequest{ExtSessionID: "test_session"}
 	body, _ := json.Marshal(req)
 	httpReq := httptest.NewRequest("POST", "/sync", bytes.NewReader(body))
 	w := httptest.NewRecorder()
@@ -299,13 +514,13 @@ func TestHandleSync_AdaptivePoll_RevertsAfterResultDelivered(t *testing.T) {
 	cap := NewCapture()
 
 	// Create a pending query
-	queryID := cap.CreatePendingQuery(queries.PendingQuery{
+	queryID, _ := cap.CreatePendingQuery(queries.PendingQuery{
 		Type:   "dom",
 		Params: json.RawMessage(`{"selector":"body"}`),
 	})
 
 	// First sync: should be fast (200ms) — commands pending
-	req1 := SyncRequest{SessionID: "test_session"}
+	req1 := SyncRequest{ExtSessionID: "test_session"}
 	body1, _ := json.Marshal(req1)
 	httpReq1 := httptest.NewRequest("POST", "/sync", bytes.NewReader(body1))
 	w1 := httptest.NewRecorder()
@@ -320,7 +535,7 @@ func TestHandleSync_AdaptivePoll_RevertsAfterResultDelivered(t *testing.T) {
 	// Extension delivers result via second sync
 	resultBytes, _ := json.Marshal(map[string]string{"html": "<body>test</body>"})
 	req2 := SyncRequest{
-		SessionID: "test_session",
+		ExtSessionID: "test_session",
 		CommandResults: []SyncCommandResult{
 			{ID: queryID, Status: "complete", Result: resultBytes},
 		},
@@ -339,6 +554,222 @@ func TestHandleSync_AdaptivePoll_RevertsAfterResultDelivered(t *testing.T) {
 	}
 }
 
+func TestHandleSync_CommandResultPropagatesErrorStatus(t *testing.T) {
+	t.Parallel()
+	cap := NewCapture()
+
+	corrID := "sync-corr-error-001"
+	cap.RegisterCommand(corrID, "q-sync-error-001", queries.AsyncCommandTimeout)
+
+	req := SyncRequest{
+		ExtSessionID: "test_session",
+		CommandResults: []SyncCommandResult{
+			{
+				ID:            "q-sync-error-001",
+				CorrelationID: corrID,
+				Status:        "error",
+				Error:         "sync path failure",
+			},
+		},
+	}
+	body, _ := json.Marshal(req)
+	httpReq := httptest.NewRequest("POST", "/sync", bytes.NewReader(body))
+	w := httptest.NewRecorder()
+
+	cap.HandleSync(w, httpReq)
+	if w.Code != http.StatusOK {
+		t.Fatalf("Expected status 200, got %d", w.Code)
+	}
+
+	cmd, found := cap.GetCommandResult(corrID)
+	if !found {
+		t.Fatal("expected command result to be present for correlation_id")
+	}
+	if cmd.Status != "error" {
+		t.Errorf("command status = %q, want error", cmd.Status)
+	}
+	if cmd.Error != "sync path failure" {
+		t.Errorf("command error = %q, want sync path failure", cmd.Error)
+	}
+}
+
+func TestHandleSync_CommandResultWithIDAndCorrelationPreservesErrorStatus(t *testing.T) {
+	t.Parallel()
+	cap := NewCapture()
+
+	corrID := "sync-corr-with-id-error-001"
+	queryID, _ := cap.CreatePendingQueryWithTimeout(queries.PendingQuery{
+		Type:          "dom_action",
+		Params:        json.RawMessage(`{"action":"click","selector":"#publish"}`),
+		CorrelationID: corrID,
+	}, queries.AsyncCommandTimeout, "")
+	if queryID == "" {
+		t.Fatal("expected queryID to be created")
+	}
+
+	req := SyncRequest{
+		ExtSessionID: "test_session",
+		CommandResults: []SyncCommandResult{
+			{
+				ID:            queryID,
+				CorrelationID: corrID,
+				Status:        "error",
+				Result:        json.RawMessage(`{"success":false}`),
+				Error:         "dom_action_failed",
+			},
+		},
+	}
+	body, _ := json.Marshal(req)
+	httpReq := httptest.NewRequest("POST", "/sync", bytes.NewReader(body))
+	w := httptest.NewRecorder()
+
+	cap.HandleSync(w, httpReq)
+	if w.Code != http.StatusOK {
+		t.Fatalf("Expected status 200, got %d", w.Code)
+	}
+
+	cmd, found := cap.GetCommandResult(corrID)
+	if !found {
+		t.Fatal("expected command result to be present for correlation_id")
+	}
+	if cmd.Status != "error" {
+		t.Errorf("command status = %q, want error", cmd.Status)
+	}
+	if cmd.Error != "dom_action_failed" {
+		t.Errorf("command error = %q, want dom_action_failed", cmd.Error)
+	}
+}
+
+func TestHandleSync_CommandResultLifecycleMatrix(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		name           string
+		hasID          bool
+		hasCorrelation bool
+		status         string
+		err            string
+		expectStatus   string
+		expectError    string
+	}{
+		{
+			name:           "id+correlation explicit error",
+			hasID:          true,
+			hasCorrelation: true,
+			status:         "error",
+			err:            "hard failure",
+			expectStatus:   "error",
+			expectError:    "hard failure",
+		},
+		{
+			name:           "id+correlation complete with error coerces to error",
+			hasID:          true,
+			hasCorrelation: true,
+			status:         "complete",
+			err:            "masked failure",
+			expectStatus:   "error",
+			expectError:    "masked failure",
+		},
+		{
+			name:           "id+correlation timeout remains timeout",
+			hasID:          true,
+			hasCorrelation: true,
+			status:         "timeout",
+			err:            "timed out",
+			expectStatus:   "timeout",
+			expectError:    "timed out",
+		},
+		{
+			name:           "correlation only error",
+			hasID:          false,
+			hasCorrelation: true,
+			status:         "error",
+			err:            "corr-only failure",
+			expectStatus:   "error",
+			expectError:    "corr-only failure",
+		},
+		{
+			name:           "id only stores query result",
+			hasID:          true,
+			hasCorrelation: false,
+			status:         "complete",
+			err:            "",
+		},
+	}
+
+	for _, tc := range cases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			cap := NewCapture()
+
+			corrID := ""
+			if tc.hasCorrelation {
+				corrID = "sync-matrix-" + strings.ReplaceAll(tc.name, " ", "-")
+			}
+
+			queryID := ""
+			if tc.hasID {
+				queryID, _ = cap.CreatePendingQueryWithTimeout(queries.PendingQuery{
+					Type:          "dom_action",
+					Params:        json.RawMessage(`{"action":"click","selector":"#publish"}`),
+					CorrelationID: corrID,
+				}, queries.AsyncCommandTimeout, "")
+				if queryID == "" {
+					t.Fatal("expected queryID to be created")
+				}
+			} else if tc.hasCorrelation {
+				cap.RegisterCommand(corrID, "q-"+corrID, queries.AsyncCommandTimeout)
+			}
+
+			result := SyncCommandResult{
+				Status: tc.status,
+				Result: json.RawMessage(`{"ok":false}`),
+				Error:  tc.err,
+			}
+			if tc.hasID {
+				result.ID = queryID
+			}
+			if tc.hasCorrelation {
+				result.CorrelationID = corrID
+			}
+
+			req := SyncRequest{
+				ExtSessionID:   "test_session",
+				CommandResults: []SyncCommandResult{result},
+			}
+			body, _ := json.Marshal(req)
+			httpReq := httptest.NewRequest("POST", "/sync", bytes.NewReader(body))
+			w := httptest.NewRecorder()
+			cap.HandleSync(w, httpReq)
+			if w.Code != http.StatusOK {
+				t.Fatalf("Expected status 200, got %d", w.Code)
+			}
+
+			if tc.hasCorrelation {
+				cmd, found := cap.GetCommandResult(corrID)
+				if !found {
+					t.Fatal("expected command result to be present for correlation_id")
+				}
+				if cmd.Status != tc.expectStatus {
+					t.Errorf("command status = %q, want %q", cmd.Status, tc.expectStatus)
+				}
+				if cmd.Error != tc.expectError {
+					t.Errorf("command error = %q, want %q", cmd.Error, tc.expectError)
+				}
+				return
+			}
+
+			if tc.hasID {
+				if _, found := cap.GetQueryResult(queryID); !found {
+					t.Fatal("expected query result to be stored for id-only command result")
+				}
+			}
+		})
+	}
+}
+
 // ============================================
 // Waterfall On-Demand Tests via Sync
 // ============================================
@@ -350,7 +781,7 @@ func TestHandleSync_WaterfallQueryDelivery(t *testing.T) {
 	cap := NewCapture()
 
 	// Create a waterfall query (simulating MCP requesting fresh data)
-	queryID := cap.CreatePendingQuery(queries.PendingQuery{
+	queryID, _ := cap.CreatePendingQuery(queries.PendingQuery{
 		Type:   "waterfall",
 		Params: json.RawMessage(`{}`),
 	})
@@ -359,7 +790,7 @@ func TestHandleSync_WaterfallQueryDelivery(t *testing.T) {
 	}
 
 	// Extension polls /sync and receives the command
-	req := SyncRequest{SessionID: "test_session"}
+	req := SyncRequest{ExtSessionID: "test_session"}
 	body, _ := json.Marshal(req)
 	httpReq := httptest.NewRequest("POST", "/sync", bytes.NewReader(body))
 	w := httptest.NewRecorder()
@@ -400,7 +831,7 @@ func TestHandleSync_WaterfallResultDelivery(t *testing.T) {
 	cap := NewCapture()
 
 	// Create a waterfall query
-	queryID := cap.CreatePendingQuery(queries.PendingQuery{
+	queryID, _ := cap.CreatePendingQuery(queries.PendingQuery{
 		Type:   "waterfall",
 		Params: json.RawMessage(`{}`),
 	})
@@ -415,7 +846,7 @@ func TestHandleSync_WaterfallResultDelivery(t *testing.T) {
 	resultBytes, _ := json.Marshal(waterfallResult)
 
 	req := SyncRequest{
-		SessionID: "test_session",
+		ExtSessionID: "test_session",
 		CommandResults: []SyncCommandResult{
 			{
 				ID:     queryID,
@@ -457,7 +888,7 @@ func TestHandleSync_LastCommandAckPreventsRedelivery(t *testing.T) {
 	t.Parallel()
 	cap := NewCapture()
 
-	queryID := cap.CreatePendingQuery(queries.PendingQuery{
+	queryID, _ := cap.CreatePendingQuery(queries.PendingQuery{
 		Type:   "dom",
 		Params: json.RawMessage(`{"selector":"body"}`),
 	})
@@ -465,7 +896,7 @@ func TestHandleSync_LastCommandAckPreventsRedelivery(t *testing.T) {
 		t.Fatal("expected query ID")
 	}
 
-	firstReqBody, _ := json.Marshal(SyncRequest{SessionID: "ack-session"})
+	firstReqBody, _ := json.Marshal(SyncRequest{ExtSessionID: "ack-session"})
 	firstReq := httptest.NewRequest("POST", "/sync", bytes.NewReader(firstReqBody))
 	firstResp := httptest.NewRecorder()
 	cap.HandleSync(firstResp, firstReq)
@@ -482,7 +913,7 @@ func TestHandleSync_LastCommandAckPreventsRedelivery(t *testing.T) {
 	}
 
 	ackReqBody, _ := json.Marshal(SyncRequest{
-		SessionID:      "ack-session",
+		ExtSessionID:   "ack-session",
 		LastCommandAck: queryID,
 	})
 	ackReq := httptest.NewRequest("POST", "/sync", bytes.NewReader(ackReqBody))

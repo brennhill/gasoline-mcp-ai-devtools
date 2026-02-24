@@ -1,3 +1,7 @@
+// Purpose: Validate diff_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
+// Docs: docs/features/feature/performance-audit/index.md
+
 // diff_test.go — TDD tests for Rich Action Results diff computation.
 // Tests the perf diff, resource diff, and summary generation functions.
 // These tests define the contract — implementations in diff.go.

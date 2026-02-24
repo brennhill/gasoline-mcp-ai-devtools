@@ -1,6 +1,7 @@
-// debug.go — Capture delegation methods for debug logging.
-// Delegates to DebugLogger sub-struct. These methods exist for backward
-// compatibility with callers that operate under c.mu and call c.logPollingActivity().
+// Purpose: Provides capture-level wrappers around DebugLogger for polling debug instrumentation.
+// Why: Preserves existing capture API call sites while delegating storage to the dedicated debug logger.
+// Docs: docs/features/feature/backend-log-streaming/index.md
+
 package capture
 
 // logPollingActivity delegates to the DebugLogger sub-struct.
@@ -8,4 +9,3 @@ package capture
 func (c *Capture) logPollingActivity(entry PollingLogEntry) {
 	c.debug.LogPollingActivity(entry)
 }
-

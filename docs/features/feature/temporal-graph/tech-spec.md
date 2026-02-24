@@ -5,6 +5,9 @@ ai-priority: high
 tags: [implementation, architecture]
 relates-to: [product-spec.md, qa-plan.md]
 last-verified: 2026-01-31
+doc_type: tech-spec
+feature_id: feature-temporal-graph
+last_reviewed: 2026-02-16
 ---
 
 > **[MIGRATION NOTICE]**

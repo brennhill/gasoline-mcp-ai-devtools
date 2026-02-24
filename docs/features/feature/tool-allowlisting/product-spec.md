@@ -4,6 +4,9 @@ status: proposed
 tool: configure
 mode: security
 version: v6.3
+doc_type: product-spec
+feature_id: feature-tool-allowlisting
+last_reviewed: 2026-02-16
 ---
 
 # Product Spec: Tool Allowlisting
@@ -39,13 +42,13 @@ Add tool allowlisting via configuration file. Define which tools (observe, gener
 - Admin can configure production profile (observe-only)
 - Admin can configure staging profile (observe + interact.navigate)
 - Non-allowlisted tools fail with clear error
-- Agent can query current allowlist via observe({what: "server_config"})
+- Agent can query current allowlist via configure({action:"health"})
 
 ## User Workflow
 
 1. Admin creates allowlist.yaml defining permitted tools/actions
 2. Start server: `gasoline --allowlist-config=allowlist.yaml`
-3. Agent connects, queries allowlist: `observe({what: "server_config"})`
+3. Agent connects, queries allowlist: `configure({action:"health"})`
 4. Agent calls allowed tool: succeeds
 5. Agent calls non-allowed tool: fails with "tool_not_allowed" error
 
@@ -57,7 +60,7 @@ Add tool allowlisting via configuration file. Define which tools (observe, gener
 allowed_tools:
   - observe.*          # All observe modes
   - generate.*         # All generate types
-  - configure.query_dom    # DOM queries only
+  - analyze.dom    # DOM queries only
   - configure.health       # Health checks
 ```
 
@@ -67,7 +70,7 @@ allowed_tools:
 allowed_tools:
   - observe.*
   - generate.*
-  - configure.query_dom
+  - analyze.dom
   - configure.health
   - interact.navigate      # Allow navigation
   - interact.refresh       # Allow page refresh
@@ -83,11 +86,11 @@ allowed_tools:
 
 ## Query current allowlist:
 ```json
-observe({what: "server_config"})
+configure({action:"health"})
 // Returns:
 {
   "allowlist_enabled": true,
-  "allowed_tools": ["observe.*", "generate.*", "configure.query_dom", "interact.navigate"],
+  "allowed_tools": ["observe.*", "generate.*", "analyze.dom", "interact.navigate"],
   "read_only_mode": false
 }
 ```

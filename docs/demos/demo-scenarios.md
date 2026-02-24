@@ -1,3 +1,9 @@
+---
+doc_type: legacy_doc
+status: reference
+last_reviewed: 2026-02-16
+---
+
 # Gasoline — Demo Scenarios
 
 Real-world scenarios where Gasoline dramatically accelerates product development.

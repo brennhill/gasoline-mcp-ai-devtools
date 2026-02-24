@@ -5,6 +5,9 @@ ai-priority: high
 tags: [implementation, architecture]
 relates-to: [product-spec.md, qa-plan.md]
 last-verified: 2026-01-31
+doc_type: tech-spec
+feature_id: feature-redaction-patterns
+last_reviewed: 2026-02-16
 ---
 
 > **[MIGRATION NOTICE]**
@@ -938,7 +941,7 @@ func (c *RedactionCache) Invalidate() {
 | `cmd/dev-console/redaction_config.go` | New: Pattern configuration management |
 | `cmd/dev-console/redaction_test.go` | Existing tests (extend) |
 | `cmd/dev-console/redaction_config_test.go` | New: Configuration tests |
-| `cmd/dev-console/tools.go` | Add `configure_redaction` tool registration |
+| `cmd/dev-console/tools_core.go` | Add `configure_redaction` tool registration |
 
 ---
 

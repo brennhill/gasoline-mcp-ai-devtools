@@ -1,3 +1,7 @@
+// Purpose: Validate status_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
+// Docs: docs/features/feature/backend-log-streaming/index.md
+
 // status_test.go — Tests for ExtensionStatus types and UpdateExtensionStatus method.
 package capture
 

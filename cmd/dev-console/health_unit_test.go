@@ -1,9 +1,15 @@
+// Purpose: Validate health_unit_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
+// Docs: docs/features/feature/observe/index.md
+
 // health_unit_test.go — Unit tests for HealthMetrics counters.
 package main
 
 import (
 	"sync"
 	"testing"
+
+	"github.com/dev-console/dev-console/internal/capture"
 )
 
 func TestHealthMetrics_IncrementAndGet(t *testing.T) {
@@ -134,6 +140,35 @@ func TestHealthResponseZeroDroppedCount(t *testing.T) {
 	}
 
 	close(srv.logDone)
+}
+
+func TestBuildPilotInfo_AssumedEnabledStartupState(t *testing.T) {
+	t.Parallel()
+
+	cap := capture.NewCapture()
+	info := buildPilotInfo(cap)
+
+	if !info.Enabled {
+		t.Fatalf("enabled = false, want true during startup uncertainty")
+	}
+	if info.Source != "assumed_startup" {
+		t.Fatalf("source = %q, want assumed_startup", info.Source)
+	}
+}
+
+func TestBuildPilotInfo_ExplicitDisableState(t *testing.T) {
+	t.Parallel()
+
+	cap := capture.NewCapture()
+	cap.SetPilotEnabled(false)
+
+	info := buildPilotInfo(cap)
+	if info.Enabled {
+		t.Fatalf("enabled = true, want false for explicit disable")
+	}
+	if info.Source != "explicitly_disabled" {
+		t.Fatalf("source = %q, want explicitly_disabled", info.Source)
+	}
 }
 
 func TestCalcUtilization_Normal(t *testing.T) {

@@ -1,7 +1,15 @@
 /**
+ * Purpose: Manages popup-side AI Web Pilot toggle state and background command dispatch.
+ * Why: Enforces a single state-authority path through background updates to avoid UI/storage divergence.
+ * Docs: docs/features/feature/ai-web-pilot/index.md
+ */
+
+/**
  * @fileoverview AI Web Pilot Toggle Module
  * Manages the AI Web Pilot feature toggle
  */
+
+import { StorageKey } from '../lib/constants'
 
 /**
  * Initialize the AI Web Pilot toggle.
@@ -13,7 +21,7 @@ export async function initAiWebPilotToggle(): Promise<void> {
 
   return new Promise((resolve) => {
     // Read from chrome.storage.local (single source of truth)
-    chrome.storage.local.get(['aiWebPilotEnabled'], (result: { aiWebPilotEnabled?: boolean }) => {
+    chrome.storage.local.get([StorageKey.AI_WEB_PILOT_ENABLED], (result: { aiWebPilotEnabled?: boolean }) => {
       toggle.checked = result.aiWebPilotEnabled !== false
 
       // Set up change handler

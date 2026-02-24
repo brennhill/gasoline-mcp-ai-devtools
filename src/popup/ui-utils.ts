@@ -1,4 +1,10 @@
 /**
+ * Purpose: Provides shared popup UI helper utilities for formatting and browser-page eligibility checks.
+ * Why: Avoids duplicated UI utility logic across popup modules and keeps display behavior consistent.
+ * Docs: docs/features/feature/browser-extension-enhancement/index.md
+ */
+
+/**
  * @fileoverview Popup UI Utilities
  * Helper functions for UI updates
  */

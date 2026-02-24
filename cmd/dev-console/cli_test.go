@@ -1,3 +1,7 @@
+// Purpose: Validate cli_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
+// Docs: docs/features/feature/observe/index.md
+
 // cli_test.go — Tests for CLI mode: argument parsing, output formatting, and end-to-end flow.
 package main
 
@@ -22,6 +26,7 @@ func TestIsCLIMode(t *testing.T) {
 		want bool
 	}{
 		{"observe tool", []string{"observe", "errors"}, true},
+		{"analyze tool", []string{"analyze", "dom"}, true},
 		{"generate tool", []string{"generate", "har"}, true},
 		{"configure tool", []string{"configure", "health"}, true},
 		{"interact tool", []string{"interact", "click", "--selector", "#btn"}, true},
@@ -33,6 +38,9 @@ func TestIsCLIMode(t *testing.T) {
 		{"flag --stop", []string{"--stop"}, false},
 		{"flag --force", []string{"--force"}, false},
 		{"flag --check", []string{"--check"}, false},
+		{"flag --doctor", []string{"--doctor"}, false},
+		{"flag --fastpath-min-samples", []string{"--fastpath-min-samples", "20"}, false},
+		{"flag --fastpath-max-failure-ratio", []string{"--fastpath-max-failure-ratio", "0.05"}, false},
 		{"flag --connect", []string{"--connect"}, false},
 		{"empty args", []string{}, false},
 		{"unknown word", []string{"foobar"}, false},
@@ -61,8 +69,8 @@ func TestResolveCLIConfigDefaults(t *testing.T) {
 	if cfg.Format != "human" {
 		t.Errorf("expected format 'human', got %q", cfg.Format)
 	}
-	if cfg.Timeout != 5000 {
-		t.Errorf("expected timeout 5000, got %d", cfg.Timeout)
+	if cfg.Timeout != 15000 {
+		t.Errorf("expected timeout 15000, got %d", cfg.Timeout)
 	}
 	if len(remaining) != 2 || remaining[0] != "observe" || remaining[1] != "errors" {
 		t.Errorf("expected remaining [observe errors], got %v", remaining)
@@ -125,6 +133,7 @@ func TestNormalizeAction(t *testing.T) {
 		{"network-bodies", "network_bodies"},
 		{"noise-rule", "noise_rule"},
 		{"execute-js", "execute_js"},
+		{"new-tab", "new_tab"},
 		{"key-press", "key_press"},
 		{"scroll-to", "scroll_to"},
 		{"wait-for", "wait_for"},
@@ -238,8 +247,8 @@ func TestParseGenerateArgsHAR(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if mcpArgs["format"] != "har" {
-		t.Errorf("expected format 'har', got %v", mcpArgs["format"])
+	if mcpArgs["what"] != "har" {
+		t.Errorf("expected format 'har', got %v", mcpArgs["what"])
 	}
 	if mcpArgs["save_to"] != "out.har" {
 		t.Errorf("expected save_to 'out.har', got %v", mcpArgs["save_to"])
@@ -300,8 +309,8 @@ func TestParseConfigureArgsHealth(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if mcpArgs["action"] != "health" {
-		t.Errorf("expected action 'health', got %v", mcpArgs["action"])
+	if mcpArgs["what"] != "health" {
+		t.Errorf("expected action 'health', got %v", mcpArgs["what"])
 	}
 }
 
@@ -360,8 +369,8 @@ func TestParseInteractArgsClick(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if mcpArgs["action"] != "click" {
-		t.Errorf("expected action 'click', got %v", mcpArgs["action"])
+	if mcpArgs["what"] != "click" {
+		t.Errorf("expected action 'click', got %v", mcpArgs["what"])
 	}
 	if mcpArgs["selector"] != "#btn" {
 		t.Errorf("expected selector '#btn', got %v", mcpArgs["selector"])
@@ -389,6 +398,9 @@ func TestParseInteractArgsNavigate(t *testing.T) {
 	}
 	if mcpArgs["url"] != "https://example.com" {
 		t.Errorf("expected url 'https://example.com', got %v", mcpArgs["url"])
+	}
+	if mcpArgs["what"] != "navigate" {
+		t.Errorf("expected what 'navigate', got %v", mcpArgs["what"])
 	}
 }
 
@@ -457,8 +469,8 @@ func TestParseInteractArgsKebabCase(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if mcpArgs["action"] != "get_text" {
-		t.Errorf("expected action 'get_text', got %v", mcpArgs["action"])
+	if mcpArgs["what"] != "get_text" {
+		t.Errorf("expected action 'get_text', got %v", mcpArgs["what"])
 	}
 }
 
@@ -468,18 +480,20 @@ func TestParseCLIArgsDispatch(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		name     string
-		tool     string
-		action   string
-		args     []string
-		wantKey  string
-		wantVal  any
-		wantErr  bool
+		name    string
+		tool    string
+		action  string
+		args    []string
+		wantKey string
+		wantVal any
+		wantErr bool
 	}{
 		{"observe errors", "observe", "errors", nil, "what", "errors", false},
-		{"generate har", "generate", "har", nil, "format", "har", false},
-		{"configure health", "configure", "health", nil, "action", "health", false},
-		{"interact click", "interact", "click", []string{"--selector", "#btn"}, "action", "click", false},
+		{"analyze dom", "analyze", "dom", nil, "what", "dom", false},
+		{"generate har", "generate", "har", nil, "what", "har", false},
+		{"configure health", "configure", "health", nil, "what", "health", false},
+		{"interact click", "interact", "click", []string{"--selector", "#btn"}, "what", "click", false},
+		{"interact new-tab kebab", "interact", "new-tab", []string{"--url", "https://example.com"}, "what", "new_tab", false},
 		{"unknown tool", "foobar", "x", nil, "", nil, true},
 	}
 

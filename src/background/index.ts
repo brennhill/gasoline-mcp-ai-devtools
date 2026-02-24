@@ -1,156 +1,85 @@
 /**
- * @fileoverview Main Background Service Worker
- * Manages server communication, batchers, log handling, and pending query processing.
- * Receives captured events from content scripts, batches them with debouncing,
- * and posts to the Go server. Handles error deduplication, connection status,
- * badge updates, and on-demand query polling.
+ * Purpose: Handles extension background coordination and message routing.
+ * Why: Centralizes extension coordination to reduce race conditions and split-brain state.
+ * Docs: docs/features/feature/analyze-tool/index.md
+ * Docs: docs/features/feature/interact-explore/index.md
+ * Docs: docs/features/feature/observe/index.md
+ */
+
+/**
+ * @fileoverview Main Background Service Worker — Business logic and export hub.
+ * Mutable state lives in state.ts; this module owns debug logging, log handling,
+ * connection management, and batcher wiring. Delegates batcher instance creation
+ * to batcher-instances.ts and sync client lifecycle to sync-manager.ts.
  */
 
 import type {
   LogEntry,
-  WebSocketEvent,
-  NetworkBodyPayload,
-  EnhancedAction,
-  PerformanceSnapshot,
-  ConnectionStatus,
-  ChromeMessageSender,
-  PendingQuery,
-  WaterfallEntry
+  ChromeMessageSender
 } from '../types'
 
-import * as stateManager from './state-manager'
-import * as communication from './communication'
-import * as eventListeners from './event-listeners'
+import {
+  getServerUrl,
+  getConnectionStatus,
+  getExtensionLogQueue,
+  pushExtensionLog,
+  capExtensionLogs,
+  getCurrentLogLevel,
+  isScreenshotOnError,
+  _setDebugModeRaw,
+  setConnectionStatus,
+  setConnectionCheckRunning,
+  clearExtensionLogQueue,
+  EXTENSION_SESSION_ID,
+  isAiControlled,
+  isAiWebPilotEnabled,
+  isConnectionCheckRunning as isConnectionCheckRunningFlag,
+  isDebugMode,
+  applyCaptureOverrides,
+  type MutableConnectionStatus
+} from './state'
+import {
+  addDebugLogEntry,
+  getDebugLog as getDebugLogEntries,
+  clearDebugLog as clearDebugLogEntries,
+  isSourceMapEnabled,
+  resolveStackTrace,
+  processErrorGroup,
+  canTakeScreenshot,
+  recordScreenshot
+} from './state-manager'
+import {
+  createCircuitBreaker,
+  RATE_LIMIT_CONFIG,
+  shouldCaptureLog,
+  formatLogEntry,
+  captureScreenshot,
+  updateBadge,
+  checkServerHealth,
+  sendStatusPing
+} from './communication'
+import { getTrackedTabInfo } from './event-listeners'
 import { DebugCategory } from './debug'
 import { getRequestHeaders } from './server'
 import {
-  installMessageListener,
   saveStateSnapshot,
   loadStateSnapshot,
   listStateSnapshots,
-  deleteStateSnapshot,
-  type MessageHandlerDependencies
+  deleteStateSnapshot
 } from './message-handlers'
 import {
   handlePendingQuery as handlePendingQueryImpl,
   handlePilotCommand as handlePilotCommandImpl
 } from './pending-queries'
-import { createSyncClient, type SyncClient, type SyncCommand, type SyncSettings } from './sync-client'
 import { updateVersionFromHealth } from './version-check'
+import { createBatcherInstances } from './batcher-instances'
+import {
+  startSyncClient as startSyncClientImpl,
+  resetSyncClientConnection as resetSyncClientConnectionImpl
+} from './sync-manager'
 
-// =============================================================================
-// CONSTANTS
-// =============================================================================
-
-export const DEFAULT_SERVER_URL = 'http://localhost:7890'
-
-// =============================================================================
-// MODULE STATE
-// =============================================================================
-
-/** Session ID for detecting extension reloads */
-export const EXTENSION_SESSION_ID = `ext_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
-
-// All communication now uses unified /sync endpoint
-
-/** Sync client instance (initialized lazily) */
-let syncClient: SyncClient | null = null
-
-/** Server URL */
-export let serverUrl = DEFAULT_SERVER_URL
-
-/** Debug mode flag */
-export let debugMode = false
-
-/** Connection status (mutable internal state) */
-interface MutableConnectionStatus {
-  connected: boolean
-  entries: number
-  maxEntries: number
-  errorCount: number
-  logFile: string
-  logFileSize?: number
-  serverVersion?: string
-  extensionVersion?: string
-  versionMismatch?: boolean
-}
-
-export let connectionStatus: MutableConnectionStatus = {
-  connected: false,
-  entries: 0,
-  maxEntries: 1000,
-  errorCount: 0,
-  logFile: ''
-}
-
-/** Log level filter */
-export let currentLogLevel = 'all'
-
-/** Screenshot settings */
-export let screenshotOnError = false
-
-/** AI capture control state */
-export let _captureOverrides: Record<string, string> = {}
-export let aiControlled = false
-
-/** Connection check mutex */
-export let _connectionCheckRunning = false
-
-/** AI Web Pilot state */
-export let __aiWebPilotEnabledCache = false
-export let __aiWebPilotCacheInitialized = false
-export let __pilotInitCallback: (() => void) | null = null
-
-/** Init-ready gate: resolves when initialization completes so early commands wait for cache */
-let _initResolve: (() => void) | null = null
-export const initReady: Promise<void> = new Promise((resolve) => {
-  _initResolve = resolve
-})
-export function markInitComplete(): void {
-  if (_initResolve) {
-    _initResolve()
-    _initResolve = null
-  }
-}
-
-/** Extension log queue for server posting */
-export const extensionLogQueue: Array<{
-  timestamp: string
-  level: string
-  message: string
-  source: string
-  category: string
-  data?: unknown
-}> = []
-
-// =============================================================================
-// STATE SETTERS (for init.ts)
-// =============================================================================
-// Note: setDebugMode is defined later in the file
-
-export function setServerUrl(url: string): void {
-  serverUrl = url
-}
-
-export function setCurrentLogLevel(level: string): void {
-  currentLogLevel = level
-}
-
-export function setScreenshotOnError(enabled: boolean): void {
-  screenshotOnError = enabled
-}
-
-export function setAiWebPilotEnabledCache(enabled: boolean): void {
-  __aiWebPilotEnabledCache = enabled
-}
-
-export function setAiWebPilotCacheInitialized(initialized: boolean): void {
-  __aiWebPilotCacheInitialized = initialized
-}
-
-export function setPilotInitCallback(callback: (() => void) | null): void {
-  __pilotInitCallback = callback
-}
+// Re-export for consumers that already import from here
+export { DEFAULT_SERVER_URL } from '../lib/constants'
 
 // =============================================================================
 // DEBUG LOGGING
@@ -163,7 +92,7 @@ export { DebugCategory } from './debug'
  * Log a diagnostic message only when debug mode is enabled
  */
 export function diagnosticLog(message: string): void {
-  if (debugMode) {
+  if (isDebugMode()) {
     console.log(message)
   }
 }
@@ -181,25 +110,21 @@ export function debugLog(category: string, message: string, data: unknown = null
     ...(data !== null ? { data } : {})
   }
 
-  stateManager.addDebugLogEntry(entry)
+  addDebugLogEntry(entry)
 
-  if (connectionStatus.connected) {
-    extensionLogQueue.push({
-      timestamp,
-      level: 'debug',
-      message,
-      source: 'background',
-      category,
-      ...(data !== null ? { data } : {})
-    })
-    // Cap queue size to prevent memory leak if server is unreachable
-    const MAX_EXTENSION_LOGS = 2000
-    if (extensionLogQueue.length > MAX_EXTENSION_LOGS) {
-      extensionLogQueue.splice(0, extensionLogQueue.length - MAX_EXTENSION_LOGS)
-    }
-  }
+  // Always queue debug logs, even while disconnected, so the next successful
+  // sync can flush the full failure timeline to the daemon for root-cause analysis.
+  pushExtensionLog({
+    timestamp,
+    level: 'debug',
+    message,
+    source: 'background',
+    category,
+    ...(data !== null ? { data } : {})
+  })
+  capExtensionLogs(2000)
 
-  if (debugMode) {
+  if (isDebugMode()) {
     const prefix = `[Gasoline:${category}]`
     if (data !== null) {
       console.log(prefix, message, data) // nosemgrep: javascript.lang.security.audit.unsafe-formatstring.unsafe-formatstring -- console.log with internal error message, not user-controlled
@@ -213,14 +138,14 @@ export function debugLog(category: string, message: string, data: unknown = null
  * Get all debug log entries
  */
 export function getDebugLog() {
-  return stateManager.getDebugLog()
+  return getDebugLogEntries()
 }
 
 /**
  * Clear debug log buffer
  */
 export function clearDebugLog(): void {
-  stateManager.clearDebugLog()
+  clearDebugLogEntries()
 }
 
 /**
@@ -231,14 +156,14 @@ export function exportDebugLog(): string {
     {
       exportedAt: new Date().toISOString(),
       version: typeof chrome !== 'undefined' ? chrome.runtime.getManifest().version : 'test',
-      debugMode,
-      connectionStatus,
+      debugMode: isDebugMode(),
+      connectionStatus: getConnectionStatus(),
       settings: {
-        logLevel: currentLogLevel,
-        screenshotOnError,
-        sourceMapEnabled: stateManager.isSourceMapEnabled()
+        logLevel: getCurrentLogLevel(),
+        screenshotOnError: isScreenshotOnError(),
+        sourceMapEnabled: isSourceMapEnabled()
       },
-      entries: stateManager.getDebugLog()
+      entries: getDebugLogEntries()
     },
     null,
     2
@@ -249,7 +174,7 @@ export function exportDebugLog(): string {
  * Set debug mode enabled/disabled
  */
 export function setDebugMode(enabled: boolean): void {
-  debugMode = enabled
+  _setDebugModeRaw(enabled)
   debugLog(DebugCategory.SETTINGS, `Debug mode ${enabled ? 'enabled' : 'disabled'}`)
 }
 
@@ -257,89 +182,53 @@ export function setDebugMode(enabled: boolean): void {
 // SHARED CIRCUIT BREAKER
 // =============================================================================
 
-export const sharedServerCircuitBreaker = communication.createCircuitBreaker(
+export const sharedServerCircuitBreaker = createCircuitBreaker(
   () => Promise.reject(new Error('shared circuit breaker')),
   {
-    maxFailures: communication.RATE_LIMIT_CONFIG.maxFailures,
-    resetTimeout: communication.RATE_LIMIT_CONFIG.resetTimeout,
+    maxFailures: RATE_LIMIT_CONFIG.maxFailures,
+    resetTimeout: RATE_LIMIT_CONFIG.resetTimeout,
     initialBackoff: 0,
     maxBackoff: 0
   }
 )
 
 // =============================================================================
-// BATCHERS
+// BATCHERS (delegated to batcher-instances.ts)
 // =============================================================================
 
-function withConnectionStatus<T>(
-  sendFn: (entries: T[]) => Promise<unknown>,
-  onSuccess?: (entries: T[], result: unknown) => void
-): (entries: T[]) => Promise<unknown> {
-  return async (entries: T[]) => {
-    try {
-      const result = await sendFn(entries)
-      connectionStatus.connected = true
-      if (onSuccess) onSuccess(entries, result)
-      communication.updateBadge(connectionStatus)
-      return result
-    } catch (err) {
-      connectionStatus.connected = false
-      communication.updateBadge(connectionStatus)
-      throw err
-    }
-  }
-}
-
-export const logBatcherWithCB = communication.createBatcherWithCircuitBreaker<LogEntry>(
-  withConnectionStatus(
-    (entries) => {
-      stateManager.checkContextAnnotations(entries)
-      return communication.sendLogsToServer(serverUrl, entries, debugLog)
+const _batchers = createBatcherInstances(
+  {
+    getServerUrl: () => getServerUrl(),
+    getConnectionStatus: () => getConnectionStatus(),
+    setConnectionStatus: (patch) => {
+      setConnectionStatus(patch)
     },
-    (entries, result) => {
-      const typedResult = result as { entries?: number }
-      connectionStatus.entries = typedResult.entries || connectionStatus.entries + entries.length
-      connectionStatus.errorCount += entries.filter((e) => e.level === 'error').length
-    }
-  ),
-  { sharedCircuitBreaker: sharedServerCircuitBreaker }
+    debugLog
+  },
+  sharedServerCircuitBreaker
 )
-export const logBatcher = logBatcherWithCB.batcher
 
-export const wsBatcherWithCB = communication.createBatcherWithCircuitBreaker<WebSocketEvent>(
-  withConnectionStatus((events) => communication.sendWSEventsToServer(serverUrl, events, debugLog)),
-  { debounceMs: 200, maxBatchSize: 100, sharedCircuitBreaker: sharedServerCircuitBreaker }
-)
-export const wsBatcher = wsBatcherWithCB.batcher
-
-export const enhancedActionBatcherWithCB = communication.createBatcherWithCircuitBreaker<EnhancedAction>(
-  withConnectionStatus((actions) => communication.sendEnhancedActionsToServer(serverUrl, actions, debugLog)),
-  { debounceMs: 200, maxBatchSize: 50, sharedCircuitBreaker: sharedServerCircuitBreaker }
-)
-export const enhancedActionBatcher = enhancedActionBatcherWithCB.batcher
-
-export const networkBodyBatcherWithCB = communication.createBatcherWithCircuitBreaker<NetworkBodyPayload>(
-  withConnectionStatus((bodies) => communication.sendNetworkBodiesToServer(serverUrl, bodies, debugLog)),
-  { debounceMs: 200, maxBatchSize: 50, sharedCircuitBreaker: sharedServerCircuitBreaker }
-)
-export const networkBodyBatcher = networkBodyBatcherWithCB.batcher
-
-export const perfBatcherWithCB = communication.createBatcherWithCircuitBreaker<PerformanceSnapshot>(
-  withConnectionStatus((snapshots) => communication.sendPerformanceSnapshotsToServer(serverUrl, snapshots, debugLog)),
-  { debounceMs: 500, maxBatchSize: 10, sharedCircuitBreaker: sharedServerCircuitBreaker }
-)
-export const perfBatcher = perfBatcherWithCB.batcher
+export const logBatcherWithCB = _batchers.logBatcherWithCB
+export const logBatcher = _batchers.logBatcher
+export const wsBatcherWithCB = _batchers.wsBatcherWithCB
+export const wsBatcher = _batchers.wsBatcher
+export const enhancedActionBatcherWithCB = _batchers.enhancedActionBatcherWithCB
+export const enhancedActionBatcher = _batchers.enhancedActionBatcher
+export const networkBodyBatcherWithCB = _batchers.networkBodyBatcherWithCB
+export const networkBodyBatcher = _batchers.networkBodyBatcher
+export const perfBatcherWithCB = _batchers.perfBatcherWithCB
+export const perfBatcher = _batchers.perfBatcher
 
 // =============================================================================
 // LOG HANDLING
 // =============================================================================
 
 async function tryResolveSourceMap(entry: LogEntry): Promise<LogEntry> {
-  if (!stateManager.isSourceMapEnabled()) return entry
+  if (!isSourceMapEnabled()) return entry
   if (!(entry as { stack?: string }).stack) return entry
 
   try {
-    const resolvedStack = await stateManager.resolveStackTrace((entry as { stack: string }).stack, debugLog)
+    const resolvedStack = await resolveStackTrace((entry as { stack: string }).stack, debugLog)
     const existingEnrichments = (entry as { _enrichments?: readonly string[] })._enrichments
     const enrichments: string[] = existingEnrichments ? [...existingEnrichments] : []
     if (!enrichments.includes('sourceMap')) {
@@ -359,7 +248,7 @@ async function tryResolveSourceMap(entry: LogEntry): Promise<LogEntry> {
 }
 
 export async function handleLogMessage(payload: LogEntry, sender: ChromeMessageSender, tabId?: number): Promise<void> {
-  if (!communication.shouldCaptureLog(payload.level, currentLogLevel, (payload as { type?: string }).type)) {
+  if (!shouldCaptureLog(payload.level, getCurrentLogLevel(), (payload as { type?: string }).type)) {
     debugLog(
       DebugCategory.CAPTURE,
       `Log filtered out: level=${payload.level}, type=${(payload as { type?: string }).type}` // nosemgrep: missing-template-string-indicator
@@ -367,7 +256,7 @@ export async function handleLogMessage(payload: LogEntry, sender: ChromeMessageS
     return
   }
 
-  let entry = communication.formatLogEntry(payload)
+  let entry = formatLogEntry(payload)
 
   const resolvedTabId = tabId ?? sender?.tab?.id
   if (resolvedTabId !== null && resolvedTabId !== undefined) {
@@ -382,7 +271,7 @@ export async function handleLogMessage(payload: LogEntry, sender: ChromeMessageS
 
   entry = await tryResolveSourceMap(entry)
 
-  const { shouldSend, entry: processedEntry } = stateManager.processErrorGroup(entry)
+  const { shouldSend, entry: processedEntry } = processErrorGroup(entry)
 
   if (shouldSend && processedEntry) {
     logBatcher.add(processedEntry)
@@ -398,7 +287,7 @@ export async function handleLogMessage(payload: LogEntry, sender: ChromeMessageS
 }
 
 async function maybeAutoScreenshot(errorEntry: LogEntry, sender: ChromeMessageSender): Promise<void> {
-  if (!screenshotOnError) return
+  if (!isScreenshotOnError()) return
   if (!sender?.tab?.id) return
   if (errorEntry.level !== 'error') return
 
@@ -408,13 +297,13 @@ async function maybeAutoScreenshot(errorEntry: LogEntry, sender: ChromeMessageSe
   const errorId = `err_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
   ;(errorEntry as { _errorId?: string })._errorId = errorId
 
-  const result = await communication.captureScreenshot(
+  const result = await captureScreenshot(
     sender.tab.id,
-    serverUrl,
+    getServerUrl(),
     errorId,
     entryType || null,
-    stateManager.canTakeScreenshot,
-    stateManager.recordScreenshot,
+    canTakeScreenshot,
+    recordScreenshot,
     debugLog
   )
 
@@ -425,10 +314,9 @@ async function maybeAutoScreenshot(errorEntry: LogEntry, sender: ChromeMessageSe
 
 export async function handleClearLogs(): Promise<{ success: boolean; error?: string }> {
   try {
-    await fetch(`${serverUrl}/logs`, { method: 'DELETE', headers: getRequestHeaders() })
-    connectionStatus.entries = 0
-    connectionStatus.errorCount = 0
-    communication.updateBadge(connectionStatus)
+    await fetch(`${getServerUrl()}/logs`, { method: 'DELETE', headers: getRequestHeaders() })
+    setConnectionStatus({ entries: 0, errorCount: 0 })
+    updateBadge(getConnectionStatus())
     return { success: true }
   } catch (error) {
     return { success: false, error: (error as Error).message }
@@ -443,7 +331,7 @@ export async function handleClearLogs(): Promise<{ success: boolean; error?: str
  * Check if a connection check is currently running (for testing)
  */
 export function isConnectionCheckRunning(): boolean {
-  return _connectionCheckRunning
+  return isConnectionCheckRunningFlag()
 }
 
 // #lizard forgives
@@ -459,18 +347,23 @@ function applyHealthLogs(health: {
   logs?: { logFile?: string; logFileSize?: number; entries?: number; maxEntries?: number }
 }): void {
   if (!health.logs) return
-  connectionStatus.logFile = health.logs.logFile || connectionStatus.logFile
-  connectionStatus.logFileSize = health.logs.logFileSize
-  connectionStatus.entries = health.logs.entries ?? connectionStatus.entries
-  connectionStatus.maxEntries = health.logs.maxEntries ?? connectionStatus.maxEntries
+  const status = getConnectionStatus()
+  setConnectionStatus({
+    logFile: health.logs.logFile || status.logFile,
+    logFileSize: health.logs.logFileSize,
+    entries: health.logs.entries ?? status.entries,
+    maxEntries: health.logs.maxEntries ?? status.maxEntries
+  })
 }
 
 function applyVersionMismatchCheck(health: { connected: boolean; version?: string }): void {
   if (!health.connected || !health.version || typeof chrome === 'undefined') return
   const extVersion = chrome.runtime.getManifest().version
-  connectionStatus.serverVersion = health.version
-  connectionStatus.extensionVersion = extVersion
-  connectionStatus.versionMismatch = health.version.split('.')[0] !== extVersion.split('.')[0]
+  setConnectionStatus({
+    serverVersion: health.version,
+    extensionVersion: extVersion,
+    versionMismatch: health.version.split('.')[0] !== extVersion.split('.')[0]
+  })
 }
 
 function logConnectionChange(
@@ -479,7 +372,7 @@ function logConnectionChange(
 ): void {
   if (wasConnected === health.connected) return
   debugLog(DebugCategory.CONNECTION, health.connected ? 'Connected to server' : 'Disconnected from server', {
-    entries: connectionStatus.entries,
+    entries: getConnectionStatus().entries,
     error: health.error || null,
     serverVersion: health.version || null
   })
@@ -488,50 +381,38 @@ function logConnectionChange(
 function broadcastStatusUpdate(): void {
   if (typeof chrome === 'undefined' || !chrome.runtime) return
   chrome.runtime
-    .sendMessage({ type: 'statusUpdate', status: { ...connectionStatus, aiControlled } })
+    .sendMessage({ type: 'statusUpdate', status: { ...getConnectionStatus(), aiControlled: isAiControlled() } })
     .catch((err) => console.error('[Gasoline] Error sending status update:', err))
 }
 
 // eslint-disable-next-line security-node/detect-unhandled-async-errors
 export async function checkConnectionAndUpdate(): Promise<void> {
-  if (_connectionCheckRunning) {
+  if (isConnectionCheckRunningFlag()) {
     debugLog(DebugCategory.CONNECTION, 'Skipping connection check - already running')
     return
   }
-  _connectionCheckRunning = true
+  setConnectionCheckRunning(true)
 
   try {
-    const health = await communication.checkServerHealth(serverUrl)
-    const wasConnected = connectionStatus.connected
+    const health = await checkServerHealth(getServerUrl())
+    const wasConnected = getConnectionStatus().connected
 
     if (health.connected) {
       updateVersionFromHealthSafe(health)
     }
 
-    connectionStatus = { ...connectionStatus, ...health, connected: health.connected }
+    setConnectionStatus({ ...health, connected: health.connected })
     applyHealthLogs(health)
     applyVersionMismatchCheck(health)
 
-    communication.updateBadge(connectionStatus)
+    updateBadge(getConnectionStatus())
     logConnectionChange(wasConnected, health)
 
     // Always start sync client - it handles failures gracefully with 1s retry
-    startSyncClient()
+    startSyncClientImpl(syncManagerDeps)
     broadcastStatusUpdate()
   } finally {
-    _connectionCheckRunning = false
-  }
-}
-
-export function applyCaptureOverrides(overrides: Record<string, string>): void {
-  _captureOverrides = overrides
-  aiControlled = Object.keys(overrides).length > 0
-
-  if (overrides.log_level !== undefined) {
-    currentLogLevel = overrides.log_level
-  }
-  if (overrides.screenshot_on_error !== undefined) {
-    screenshotOnError = overrides.screenshot_on_error === 'true'
+    setConnectionCheckRunning(false)
   }
 }
 
@@ -540,7 +421,7 @@ export function applyCaptureOverrides(overrides: Record<string, string>): void {
 // =============================================================================
 
 export async function sendStatusPingWrapper(): Promise<void> {
-  const trackingInfo = await eventListeners.getTrackedTabInfo()
+  const trackingInfo = await getTrackedTabInfo()
 
   const statusMessage = {
     type: 'status',
@@ -552,183 +433,34 @@ export async function sendStatusPingWrapper(): Promise<void> {
     timestamp: new Date().toISOString()
   }
 
-  await communication.sendStatusPing(serverUrl, statusMessage, diagnosticLog)
+  await sendStatusPing(getServerUrl(), statusMessage, diagnosticLog)
 }
 
 // =============================================================================
-// SYNC CLIENT
+// SYNC CLIENT (delegated to sync-manager.ts)
 // =============================================================================
 
-/**
- * Get extension version safely
- */
-function getExtensionVersion(): string {
-  if (typeof chrome !== 'undefined' && chrome.runtime?.getManifest) {
-    return chrome.runtime.getManifest().version
-  }
-  return ''
-}
-
-/**
- * Start the sync client (unified /sync endpoint)
- */
-function startSyncClient(): void {
-  if (syncClient) {
-    // Already running, nothing to do
-    return
-  }
-
-  syncClient = createSyncClient(
-    serverUrl,
-    EXTENSION_SESSION_ID,
-    {
-      // Handle commands from server
-      // #lizard forgives
-      onCommand: async (command: SyncCommand) => {
-        debugLog(DebugCategory.CONNECTION, 'Processing sync command', { type: command.type, id: command.id })
-        if (stateManager.isQueryProcessing(command.id)) {
-          debugLog(DebugCategory.CONNECTION, 'Skipping already processing command', { id: command.id })
-          return
-        }
-        stateManager.addProcessingQuery(command.id)
-        try {
-          await handlePendingQueryImpl(command as unknown as PendingQuery, syncClient!)
-        } catch (err) {
-          debugLog(DebugCategory.CONNECTION, 'Error processing sync command', {
-            type: command.type,
-            error: (err as Error).message
-          })
-        } finally {
-          stateManager.removeProcessingQuery(command.id)
-        }
-      },
-
-      // Handle connection state changes
-      onConnectionChange: (connected: boolean) => {
-        connectionStatus.connected = connected
-        communication.updateBadge(connectionStatus)
-        debugLog(DebugCategory.CONNECTION, connected ? 'Sync connected' : 'Sync disconnected')
-
-        // Notify popup
-        if (typeof chrome !== 'undefined' && chrome.runtime) {
-          chrome.runtime
-            .sendMessage({
-              type: 'statusUpdate',
-              status: { ...connectionStatus, aiControlled }
-            })
-            .catch(() => {
-              /* popup may not be open */
-            })
-        }
-      },
-
-      // Handle capture overrides from server
-      onCaptureOverrides: (overrides: Record<string, string>) => {
-        applyCaptureOverrides(overrides)
-      },
-
-      // Handle version mismatch between extension and server
-      onVersionMismatch: (extensionVersion: string, serverVersion: string) => {
-        debugLog(DebugCategory.CONNECTION, 'Version mismatch detected', { extensionVersion, serverVersion })
-        // Update connection status with version info
-        connectionStatus.serverVersion = serverVersion
-        connectionStatus.extensionVersion = extensionVersion
-        connectionStatus.versionMismatch = extensionVersion !== serverVersion
-        // Notify popup about version mismatch
-        if (typeof chrome !== 'undefined' && chrome.runtime) {
-          chrome.runtime
-            .sendMessage({
-              type: 'versionMismatch',
-              extensionVersion,
-              serverVersion
-            })
-            .catch(() => {
-              /* popup may not be open */
-            })
-        }
-      },
-
-      // Get current settings to send to server
-      getSettings: async (): Promise<SyncSettings> => {
-        const trackingInfo = await eventListeners.getTrackedTabInfo()
-        return {
-          pilot_enabled: __aiWebPilotEnabledCache,
-          tracking_enabled: !!trackingInfo.trackedTabId,
-          tracked_tab_id: trackingInfo.trackedTabId || 0,
-          tracked_tab_url: trackingInfo.trackedTabUrl || '',
-          tracked_tab_title: trackingInfo.trackedTabTitle || '',
-          capture_logs: true,
-          capture_network: true,
-          capture_websocket: true,
-          capture_actions: true
-        }
-      },
-
-      // Get pending extension logs
-      getExtensionLogs: () => {
-        return extensionLogQueue.map((log) => ({
-          timestamp: log.timestamp,
-          level: log.level,
-          message: log.message,
-          source: log.source,
-          category: log.category,
-          data: log.data
-        }))
-      },
-
-      // Clear extension logs after sending
-      clearExtensionLogs: () => {
-        extensionLogQueue.length = 0
-      },
-
-      // Debug logging
-      debugLog: (category: string, message: string, data?: unknown) => {
-        debugLog(DebugCategory.CONNECTION, `[Sync] ${message}`, data)
-      }
-    },
-    getExtensionVersion()
-  )
-
-  syncClient.start()
-  debugLog(DebugCategory.CONNECTION, 'Sync client started')
-}
-
-/**
- * Stop the sync client
- */
-function stopSyncClient(): void {
-  if (syncClient) {
-    syncClient.stop()
-    debugLog(DebugCategory.CONNECTION, 'Sync client stopped')
-  }
+/** Shared deps object for sync-manager — created once, closures read live state */
+const syncManagerDeps = {
+  getServerUrl: () => getServerUrl(),
+  getExtSessionId: () => EXTENSION_SESSION_ID,
+  getConnectionStatus: () => getConnectionStatus(),
+  setConnectionStatus: (patch: Partial<MutableConnectionStatus>) => {
+    setConnectionStatus(patch)
+  },
+  getAiControlled: () => isAiControlled(),
+  getAiWebPilotEnabledCache: () => isAiWebPilotEnabled(),
+  getExtensionLogQueue: () => getExtensionLogQueue(),
+  clearExtensionLogQueue: () => clearExtensionLogQueue(),
+  applyCaptureOverrides,
+  debugLog
 }
 
 /**
  * Reset sync client connection (call when user enables pilot/tracking)
  */
 export function resetSyncClientConnection(): void {
-  if (syncClient) {
-    syncClient.resetConnection()
-    debugLog(DebugCategory.CONNECTION, 'Sync client connection reset')
-  }
-}
-
-// =============================================================================
-// AI WEB PILOT UTILITIES
-// =============================================================================
-
-/**
- * Reset pilot cache for testing
- */
-export function _resetPilotCacheForTesting(value?: boolean): void {
-  __aiWebPilotEnabledCache = value !== undefined ? value : false
-}
-
-/**
- * Check if AI Web Pilot is enabled
- */
-export function isAiWebPilotEnabled(): boolean {
-  return __aiWebPilotEnabledCache === true
+  resetSyncClientConnectionImpl(debugLog)
 }
 
 // Re-export statically imported functions (Service Workers don't support dynamic import())

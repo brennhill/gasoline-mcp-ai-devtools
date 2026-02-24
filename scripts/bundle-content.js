@@ -1,4 +1,8 @@
 #!/usr/bin/env node
+// Purpose: Automate bundle-content.js workflow behavior for repository tooling.
+// Why: Keeps repetitive maintenance and verification steps deterministic.
+// Docs: docs/DEVELOPMENT.md
+
 /**
  * Bundle content and inject scripts using esbuild
  * Chrome content scripts don't support ES modules, so we bundle into single files

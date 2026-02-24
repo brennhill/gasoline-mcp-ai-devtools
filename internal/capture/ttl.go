@@ -1,4 +1,7 @@
-// ttl.go — TTL filtering utilities
+// Purpose: Implements TTL expiration checks for captured-entry filtering.
+// Why: Ensures query results reflect current session context rather than stale buffered events.
+// Docs: docs/features/feature/ttl-retention/index.md
+
 package capture
 
 import "time"

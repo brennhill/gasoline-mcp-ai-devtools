@@ -1,7 +1,7 @@
-// main_handlers.go — Server struct and core HTTP handlers.
-// Contains the Server type (log entry management), entry manipulation methods,
-// and the screenshot endpoint.
-// Extracted from cmd/gasoline/main.go during Phase 4 refactoring.
+// Purpose: Implements core server log storage/handler state and file-backed log lifecycle operations.
+// Why: Centralizes server-side log persistence and handler behavior behind one synchronized runtime.
+// Docs: docs/features/feature/backend-log-streaming/index.md
+
 package server
 
 import (
@@ -182,16 +182,16 @@ func buildScreenshotFilename(pageURL, correlationID string) string {
 func saveScreenshotFile(filename string, imageData []byte) (string, error) {
 	dir, err := state.ScreenshotsDir()
 	if err != nil {
-		return "", fmt.Errorf("failed to resolve screenshots directory")
+		return "", fmt.Errorf("failed to resolve screenshots directory: %w", err)
 	}
 	// #nosec G301 -- 0o755 is appropriate for screenshots directory
 	if err := os.MkdirAll(dir, 0o755); err != nil {
-		return "", fmt.Errorf("failed to create screenshots directory")
+		return "", fmt.Errorf("failed to create screenshots directory: %w", err)
 	}
 	savePath := filepath.Join(dir, filename)
 	// #nosec G306 -- screenshots are intentionally world-readable
 	if err := os.WriteFile(savePath, imageData, 0o644); err != nil {
-		return "", fmt.Errorf("failed to save screenshot")
+		return "", fmt.Errorf("failed to save screenshot: %w", err)
 	}
 	return savePath, nil
 }

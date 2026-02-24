@@ -612,14 +612,11 @@ describe('Service Worker Restart Detection', () => {
   test('wasServiceWorkerRestarted should return true when version not set', async () => {
     const mod = await loadModule()
     chromeMock.storage.session.get = mock.fn((keys, callback) => {
-      callback({})
+      if (typeof callback === 'function') callback({})
+      else return Promise.resolve({})
     })
-    await new Promise((resolve) => {
-      mod.wasServiceWorkerRestarted((wasRestarted) => {
-        assert.strictEqual(wasRestarted, true)
-        resolve()
-      })
-    })
+    const wasRestarted = await mod.wasServiceWorkerRestarted()
+    assert.strictEqual(wasRestarted, true)
   })
 
   test('wasServiceWorkerRestarted should return false after markStateVersion', async () => {
@@ -632,45 +629,31 @@ describe('Service Worker Restart Detection', () => {
       for (const [k, v] of Object.entries(data)) {
         storedVersion = { key: k, value: v }
       }
-      if (cb) cb()
+      if (typeof cb === 'function') cb()
+      else return Promise.resolve()
     })
     chromeMock.storage.session.get = mock.fn((keys, callback) => {
-      if (storedVersion) {
-        callback({ [storedVersion.key]: storedVersion.value })
-      } else {
-        callback({})
-      }
+      const result = storedVersion ? { [storedVersion.key]: storedVersion.value } : {}
+      if (typeof callback === 'function') callback(result)
+      else return Promise.resolve(result)
     })
 
-    await new Promise((resolve) => {
-      mod.markStateVersion(() => {
-        resolve()
-      })
-    })
-
-    await new Promise((resolve) => {
-      mod.wasServiceWorkerRestarted((wasRestarted) => {
-        assert.strictEqual(wasRestarted, false)
-        resolve()
-      })
-    })
+    await mod.markStateVersion()
+    const wasRestarted = await mod.wasServiceWorkerRestarted()
+    assert.strictEqual(wasRestarted, false)
   })
 
   test('wasServiceWorkerRestarted should return false when session storage unavailable', async () => {
     const mod = await loadModule()
     delete globalThis.chrome.storage.session
-    await new Promise((resolve) => {
-      mod.wasServiceWorkerRestarted((wasRestarted) => {
-        assert.strictEqual(wasRestarted, false)
-        resolve()
-      })
-    })
+    const wasRestarted = await mod.wasServiceWorkerRestarted()
+    assert.strictEqual(wasRestarted, false)
   })
 
-  test('markStateVersion should work without callback', async () => {
+  test('markStateVersion should resolve without error', async () => {
     const mod = await loadModule()
-    assert.doesNotThrow(() => {
-      mod.markStateVersion()
+    await assert.doesNotReject(async () => {
+      await mod.markStateVersion()
     })
   })
 })

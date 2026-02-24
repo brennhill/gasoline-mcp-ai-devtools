@@ -1,4 +1,7 @@
-// ai_noise_detect.go — Auto-detection of noise patterns from browser telemetry buffers.
+// Purpose: Implements automatic noise-rule proposal and confidence-based auto-application logic.
+// Why: Continuously identifies repetitive low-value events to keep debugging streams focused.
+// Docs: docs/features/feature/noise-filtering/index.md
+
 package ai
 
 import (

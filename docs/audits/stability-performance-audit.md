@@ -1,9 +1,15 @@
+---
+doc_type: legacy_doc
+status: reference
+last_reviewed: 2026-02-16
+---
+
 # Gasoline MCP Server -- Stability & Performance Audit
 
 **Date:** 2026-02-14
 **Auditor:** Senior Reliability Engineer (automated)
 **Scope:** Go server (`cmd/dev-console/`), capture package (`internal/capture/`), utility packages
-**Version audited:** 0.7.2
+**Version audited:** 7.8.0
 
 ---
 

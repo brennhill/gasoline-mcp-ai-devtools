@@ -144,7 +144,8 @@ echo ""
 
 echo "→ Checking critical architecture files exist..."
 CRITICAL_FILES=(
-    "internal/capture/queries.go"
+    "internal/queries/dispatcher_queries.go"
+    "internal/capture/query_dispatcher.go"
     "internal/capture/handlers.go"
     "$CMD_DIR/tools_core.go"
     "$CMD_DIR/tools_interact.go"
@@ -177,7 +178,8 @@ QUEUE_METHODS=(
 )
 
 for method in "${QUEUE_METHODS[@]}"; do
-    if grep -q "func.*$method" internal/capture/queries.go; then
+    if grep -q "func.*$method" internal/capture/query_dispatcher.go || \
+       grep -q "func.*$method" internal/queries/dispatcher_queries.go; then
         echo "  ✓ $method exists"
     else
         echo "  ❌ $method missing"

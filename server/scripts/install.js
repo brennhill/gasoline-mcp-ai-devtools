@@ -252,7 +252,6 @@ async function main() {
   const binDir = path.join(__dirname, '..', 'bin')
   const binaryName = getBinaryName()
   const binaryPath = path.join(binDir, binaryName)
-  const shimPath = path.join(binDir, BINARY_NAME)
 
   // Clean up any old gasoline processes before installing new version
   console.log('Cleaning up old gasoline processes...')
@@ -315,19 +314,8 @@ async function main() {
     fs.chmodSync(binaryPath, 0o755)
   }
 
-  // Create shim script that runs the binary
-  const shimContent =
-    process.platform === 'win32'
-      ? `@echo off\n"%~dp0${binaryName}" %*`
-      : `#!/bin/sh\nexec "$(dirname "$0")/${binaryName}" "$@"`
-
-  const shimExt = process.platform === 'win32' ? '.cmd' : ''
-  // eslint-disable-next-line security/detect-non-literal-fs-filename -- installer paths derived from verified platform config
-  fs.writeFileSync(shimPath + shimExt, shimContent)
-
-  if (process.platform !== 'win32') {
-    fs.chmodSync(shimPath, 0o755)
-  }
+  // bin/gasoline is a Node.js launcher that works on all platforms.
+  // No separate shim needed — npm's bin wiring + the node shebang handle it.
 
   // Verify the installed version
   verifyVersion(binaryPath)

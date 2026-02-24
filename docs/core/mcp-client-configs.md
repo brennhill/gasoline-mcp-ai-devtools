@@ -1,3 +1,9 @@
+---
+doc_type: legacy_doc
+status: reference
+last_reviewed: 2026-02-16
+---
+
 # MCP Client Configuration Locations
 
 Quick reference for updating Gasoline MCP configuration across all supported AI coding assistants.
@@ -76,7 +82,7 @@ All clients should use the same configuration pattern for consistency:
 Update all configs to a new version:
 
 ```bash
-VERSION="0.7.2"
+VERSION="7.8.0"
 
 # Claude Desktop
 sed -i '' "s/gasoline-mcp@[0-9.]*\"/gasoline-mcp@$VERSION\"/g" \

@@ -1,9 +1,7 @@
-// binary.go — Binary format detection via magic bytes.
-// Identifies protobuf, MessagePack, CBOR, BSON in network bodies and
-// WebSocket messages. Detection is heuristic-based using format-specific
-// byte patterns; confidence reflects pattern strength.
-// Design: Check formats in order of specificity. MessagePack before CBOR
-// due to overlapping ranges. Protobuf uses wire-type validation.
+// Purpose: Implements binary payload format detection heuristics (MessagePack/CBOR/Protobuf/BSON).
+// Why: Enables safer telemetry handling by classifying opaque network bodies before downstream processing.
+// Docs: docs/features/feature/binary-format-detection/index.md
+
 package util
 
 // BinaryFormat describes a detected binary serialization format

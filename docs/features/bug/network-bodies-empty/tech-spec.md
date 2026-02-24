@@ -1,6 +1,9 @@
 ---
 feature: network-bodies-empty
 status: in-progress
+doc_type: tech-spec
+feature_id: bug-network-bodies-empty
+last_reviewed: 2026-02-16
 ---
 
 # Tech Spec: Network Bodies Empty (Bug Fix)

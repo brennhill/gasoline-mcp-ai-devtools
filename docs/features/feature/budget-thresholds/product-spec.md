@@ -3,6 +3,9 @@ feature: budget-thresholds
 status: in-progress
 tool: configure
 mode: health
+doc_type: product-spec
+feature_id: feature-budget-thresholds
+last_reviewed: 2026-02-16
 ---
 # Product Spec: Budget Thresholds
 

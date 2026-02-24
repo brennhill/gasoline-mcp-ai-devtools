@@ -5,6 +5,9 @@ ai-priority: high
 tags: [implementation, architecture]
 relates-to: [product-spec.md, qa-plan.md]
 last-verified: 2026-01-31
+doc_type: tech-spec
+feature_id: feature-dom-fingerprinting
+last_reviewed: 2026-02-16
 ---
 
 > **[MIGRATION NOTICE]**
@@ -27,7 +30,7 @@ The trade-off: fingerprinting catches structural problems (missing nav, empty li
 
 ### Extraction (Extension-Side)
 
-When the agent calls `get_dom_fingerprint`, the server creates a pending query (using the same mechanism as `query_dom`). The extension picks it up via polling, routes it to the content script, which relays it to the injected page script.
+When the agent calls `get_dom_fingerprint`, the server creates a pending query (using the same mechanism as `analyze({what: "dom"})`). The extension picks it up via polling, routes it to the content script, which relays it to the injected page script.
 
 The page script runs `extractDOMFingerprint()` which walks the DOM and extracts:
 

@@ -4,6 +4,9 @@ status: shipped
 tool: observe
 mode: vitals
 version: 5.0.0
+doc_type: product-spec
+feature_id: feature-web-vitals
+last_reviewed: 2026-02-16
 ---
 # Product Spec: Web Vitals
 

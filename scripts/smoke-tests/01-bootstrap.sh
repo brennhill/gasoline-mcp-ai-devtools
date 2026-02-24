@@ -53,6 +53,10 @@ sleep 0.5
 if ! start_daemon_with_flags --enable-os-upload-automation; then
     echo "  WARNING: Daemon not healthy after restart. Tests may fail." >&2
 fi
+# Wait for extension to reconnect after daemon restart
+if ! wait_for_extension 10; then
+    echo "  WARNING: Extension did not reconnect within 10s. Browser tests may fail." >&2
+fi
 
 # ── Test 1.2: Health + version ───────────────────────────
 begin_test "1.2" "[DAEMON ONLY] Health endpoint and version" \
@@ -96,12 +100,12 @@ run_test_1_3() {
     local body
     body=$(get_http_body "http://localhost:${PORT}/health")
 
-    local capture_available
-    capture_available=$(echo "$body" | jq -r '.capture.available // false' 2>/dev/null)
+    local ext_connected
+    ext_connected=$(echo "$body" | jq -r '.capture.extension_connected // false' 2>/dev/null)
 
-    if [ "$capture_available" = "true" ]; then
+    if [ "$ext_connected" = "true" ]; then
         EXTENSION_CONNECTED=true
-        pass "Extension connected: capture.available=true."
+        pass "Extension connected: capture.extension_connected=true."
     else
         fail "Extension NOT connected. Open Chrome with Gasoline extension and track a tab."
         echo "" | tee -a "$OUTPUT_FILE"

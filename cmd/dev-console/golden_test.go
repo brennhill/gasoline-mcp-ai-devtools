@@ -1,3 +1,7 @@
+// Purpose: Validate golden_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
+// Docs: docs/features/feature/observe/index.md
+
 // golden_test.go — Golden file validation for MCP tool schemas and initialize response.
 package main
 

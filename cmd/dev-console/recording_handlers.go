@@ -1,5 +1,7 @@
-// recording_handlers.go — MCP tool handlers for Flow Recording & Playback feature.
-// Handles recording_start, recording_stop, recording_get, and playback actions.
+// Purpose: Implements recording and playback command handlers for captured browser sessions.
+// Why: Supports deterministic replay and comparison of browser behavior across runs.
+// Docs: docs/features/feature/playback-engine/index.md
+
 package main
 
 import (
@@ -10,7 +12,10 @@ import (
 	"github.com/dev-console/dev-console/internal/capture"
 )
 
-// buildPlaybackResult constructs the JSON-RPC response for a completed playback.
+// buildPlaybackResult constructs canonical playback completion payload.
+//
+// Failure semantics:
+// - Session timing is computed from session.StartedAt; clock skew only affects duration text.
 func (h *ToolHandler) buildPlaybackResult(req JSONRPCRequest, recordingID string, session *capture.PlaybackSession) JSONRPCResponse {
 	status := "ok"
 	if session.ActionsFailed > 0 {
@@ -31,7 +36,13 @@ func (h *ToolHandler) buildPlaybackResult(req JSONRPCRequest, recordingID string
 	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse(message, responseData)}
 }
 
-// appendServerLog adds a single log entry to the server's in-memory log buffer.
+// appendServerLog appends one entry to bounded in-memory daemon logs.
+//
+// Invariants:
+// - h.server.entries is always size-limited to h.server.maxEntries under h.server.mu.
+//
+// Failure semantics:
+// - Oldest entries are evicted first when capacity is exceeded.
 func (h *ToolHandler) appendServerLog(entry LogEntry) {
 	h.server.mu.Lock()
 	h.server.entries = append(h.server.entries, entry)
@@ -114,7 +125,7 @@ func (h *ToolHandler) toolConfigureRecordingStop(req JSONRPCRequest, args json.R
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(
 			ErrInternal,
 			fmt.Sprintf("Failed to stop recording: %v", err),
-			"Ensure the recording_id is valid and the recording is active",
+			"No active recording with this ID. Start one first: configure({what: 'recording_start', name: 'my-recording'})",
 		)}
 	}
 
@@ -221,7 +232,13 @@ func (h *ToolHandler) toolGetRecordingActions(req JSONRPCRequest, args json.RawM
 // Playback Handlers
 // ============================================================================
 
-// toolConfigurePlayback handles configure(action: "playback", recording_id: "...")
+// toolConfigurePlayback executes playback and stores session for later observe retrieval.
+//
+// Invariants:
+// - playbackSessions map is written only under playbackMu.
+//
+// Failure semantics:
+// - Invalid/missing recording IDs return explicit structured errors.
 func (h *ToolHandler) toolConfigurePlayback(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	var params struct {
 		RecordingID string `json:"recording_id"`
@@ -246,6 +263,11 @@ func (h *ToolHandler) toolConfigurePlayback(req JSONRPCRequest, args json.RawMes
 		)}
 	}
 
+	// Store session for later retrieval via observe(what:"playback_results")
+	h.playbackMu.Lock()
+	h.playbackSessions[params.RecordingID] = session
+	h.playbackMu.Unlock()
+
 	total := session.ActionsExecuted + session.ActionsFailed
 	h.appendServerLog(LogEntry{
 		"timestamp":        time.Now().Format(time.RFC3339Nano),
@@ -260,7 +282,13 @@ func (h *ToolHandler) toolConfigurePlayback(req JSONRPCRequest, args json.RawMes
 	return h.buildPlaybackResult(req, params.RecordingID, session)
 }
 
-// toolGetPlaybackResults handles observe(what: "playback_results", recording_id: "...")
+// toolGetPlaybackResults reads stored playback session snapshots by recording ID.
+//
+// Invariants:
+// - playbackSessions map is read under playbackMu and transformed into detached response maps.
+//
+// Failure semantics:
+// - Missing session returns ErrNoData without attempting replay.
 func (h *ToolHandler) toolGetPlaybackResults(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	var params struct {
 		RecordingID string `json:"recording_id"`
@@ -275,21 +303,61 @@ func (h *ToolHandler) toolGetPlaybackResults(req JSONRPCRequest, args json.RawMe
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrMissingParam, "Required parameter 'recording_id' is missing", "Provide the recording_id from playback", withParam("recording_id"))}
 	}
 
-	// For now, return a placeholder (would need to store playback sessions)
-	responseData := map[string]any{
-		"recording_id": params.RecordingID,
-		"message":      "Playback results would be stored here for later retrieval",
-		"results":      []any{},
+	// Look up stored playback session
+	h.playbackMu.RLock()
+	session, found := h.playbackSessions[params.RecordingID]
+	h.playbackMu.RUnlock()
+
+	if !found {
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(
+			ErrNoData,
+			fmt.Sprintf("No playback results for recording_id %s", params.RecordingID),
+			"Run configure(action:'playback', recording_id:'...') first",
+		)}
 	}
 
-	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Playback results", responseData)}
+	// Build per-action results
+	actions := make([]map[string]any, 0, len(session.Results))
+	for _, r := range session.Results {
+		action := map[string]any{
+			"status":           r.Status,
+			"action_index":     r.ActionIndex,
+			"action_type":      r.ActionType,
+			"selector_used":    r.SelectorUsed,
+			"duration_ms":      r.DurationMs,
+			"error":            r.Error,
+			"selector_fragile": r.SelectorFragile,
+		}
+		if r.Coordinates != nil {
+			action["coordinates"] = map[string]any{"x": r.Coordinates.X, "y": r.Coordinates.Y}
+		}
+		actions = append(actions, action)
+	}
+
+	total := session.ActionsExecuted + session.ActionsFailed
+	responseData := map[string]any{
+		"recording_id":      params.RecordingID,
+		"status":            "ok",
+		"actions_executed":  session.ActionsExecuted,
+		"actions_failed":    session.ActionsFailed,
+		"actions_total":     total,
+		"duration_ms":       time.Since(session.StartedAt).Milliseconds(),
+		"results":           actions,
+		"selector_failures": session.SelectorFailures,
+	}
+
+	summary := fmt.Sprintf("Playback results: %d/%d actions executed", session.ActionsExecuted, total)
+	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse(summary, responseData)}
 }
 
 // ============================================================================
 // Log Diffing Handlers
 // ============================================================================
 
-// toolConfigureLogDiff handles configure(action: "log_diff", original_id: "...", replay_id: "...")
+// toolConfigureLogDiff compares two recordings and returns summary delta counts.
+//
+// Failure semantics:
+// - Comparison errors are surfaced directly; no partial diff payload is returned.
 func (h *ToolHandler) toolConfigureLogDiff(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	var params struct {
 		OriginalID string `json:"original_id"`
@@ -339,7 +407,10 @@ func (h *ToolHandler) toolConfigureLogDiff(req JSONRPCRequest, args json.RawMess
 	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse(result.Summary, responseData)}
 }
 
-// toolGetLogDiffReport handles observe(what: "log_diff_report", original_id: "...", replay_id: "...")
+// toolGetLogDiffReport returns human-readable regression report text for two recordings.
+//
+// Failure semantics:
+// - Underlying diff errors short-circuit response with structured internal error.
 func (h *ToolHandler) toolGetLogDiffReport(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	var params struct {
 		OriginalID string `json:"original_id"`

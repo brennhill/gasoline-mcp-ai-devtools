@@ -1,3 +1,7 @@
+// Purpose: Implement errors.js behavior for npm wrapper command flows.
+// Why: Keeps distribution-channel behavior consistent and supportable.
+// Docs: docs/features/feature/enhanced-cli-config/index.md
+
 /**
  * Error classes and message catalog for Gasoline MCP CLI
  */
@@ -72,16 +76,6 @@ class EnvWithoutInstallError extends GasolineError {
   }
 }
 
-class ForAllWithoutInstallError extends GasolineError {
-  constructor() {
-    super(
-      '--for-all only works with --install',
-      'Usage: gasoline-mcp --install --for-all'
-    );
-    this.name = 'ForAllWithoutInstallError';
-  }
-}
-
 class ConfigValidationError extends GasolineError {
   constructor(errors) {
     super(
@@ -109,7 +103,6 @@ module.exports = {
   BinaryNotFoundError,
   InvalidEnvFormatError,
   EnvWithoutInstallError,
-  ForAllWithoutInstallError,
   ConfigValidationError,
   FileSizeError,
 };

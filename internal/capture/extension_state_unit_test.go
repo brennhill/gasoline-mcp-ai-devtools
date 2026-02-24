@@ -1,3 +1,7 @@
+// Purpose: Validate extension_state_unit_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
+// Docs: docs/features/feature/backend-log-streaming/index.md
+
 package capture
 
 import (
@@ -20,9 +24,10 @@ func TestExtensionStateGettersAndBoundaries(t *testing.T) {
 	c.ext.trackedTabTitle = "Example"
 	c.ext.pilotEnabled = true
 	c.ext.lastPollAt = now
+	c.ext.lastSyncSeen = now
 	c.ext.extensionVersion = "9.9.9"
-	c.ext.extensionSession = "session-a"
-	c.ext.sessionChangedAt = now
+	c.ext.extSessionID = "session-a"
+	c.ext.extSessionChangedAt = now
 	c.mu.Unlock()
 
 	enabled, tabID, tabURL := c.GetTrackingStatus()
@@ -51,7 +56,7 @@ func TestExtensionStateGettersAndBoundaries(t *testing.T) {
 	}
 
 	c.mu.Lock()
-	c.ext.lastPollAt = time.Now().Add(-6 * time.Second)
+	c.ext.lastSyncSeen = time.Now().Add(-11 * time.Second) // Beyond extensionDisconnectThreshold (10s)
 	c.mu.Unlock()
 	staleStatus := c.GetPilotStatus().(map[string]any)
 	if staleStatus["extension_connected"] != false {
@@ -73,7 +78,7 @@ func TestExtensionStateGettersAndBoundaries(t *testing.T) {
 	c.mu.RLock()
 	snap := c.getExtensionSnapshot()
 	c.mu.RUnlock()
-	if snap.ExtensionSession != "session-a" || !snap.PilotEnabled || snap.ActiveTestIDCount != 1 {
+	if snap.ExtSessionID != "session-a" || !snap.PilotEnabled || snap.ActiveTestIDCount != 1 {
 		t.Fatalf("extension snapshot = %+v, unexpected values", snap)
 	}
 }

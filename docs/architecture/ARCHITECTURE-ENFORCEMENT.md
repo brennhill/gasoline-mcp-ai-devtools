@@ -1,3 +1,9 @@
+---
+doc_type: legacy_doc
+status: reference
+last_reviewed: 2026-02-16
+---
+
 # Architecture Enforcement - Async Queue Immutability
 
 **Last Updated**: 2026-02-02
@@ -42,7 +48,7 @@ On 2026-02-02, we deleted the async queue implementation during refactoring. Thi
 **File**: `.git/hooks/pre-commit`
 
 **What it checks**:
-- ✅ Critical files exist ([queries.go](internal/capture/queries.go), [handlers.go](internal/capture/handlers.go), [tools.go](cmd/dev-console/tools.go))
+- ✅ Critical files exist ([queries.go](internal/capture/queries.go), [handlers.go](internal/capture/handlers.go), [tools_core.go](cmd/dev-console/tools_core.go))
 - ✅ Required methods exist (CreatePendingQuery, GetCommandResult, etc.)
 - ✅ No stub implementations
 
@@ -115,7 +121,7 @@ go test -v ./internal/capture -run TestAsyncQueueIntegration
 1. 📁 **Critical files** - 6 files must exist
 2. 🔧 **Required methods** - 14 methods in queries.go
 3. 🌐 **HTTP handlers** - 4 endpoints in handlers.go
-4. 🛠️ **MCP tools** - 5 tool handlers in tools.go
+4. 🛠️ **MCP tools** - 5 tool handlers in tools_core.go
 5. 🚫 **No stubs** - Real implementations only
 6. 🧪 **Integration tests** - Must exist and pass
 7. ⚙️ **Constants** - AsyncCommandTimeout = 30s
@@ -141,7 +147,7 @@ go test -v ./internal/capture -run TestAsyncQueueIntegration
 1️⃣  Checking critical files...
    ✅ internal/capture/queries.go
    ✅ internal/capture/handlers.go
-   ✅ cmd/dev-console/tools.go
+   ✅ cmd/dev-console/tools_core.go
 
 2️⃣  Checking required methods in queries.go...
    ✅ CreatePendingQuery
@@ -166,7 +172,7 @@ go test -v ./internal/capture -run TestAsyncQueueIntegration
 - Warns if critical files modified
 - **Blocks PR merge** if validation fails
 
-**When it runs**: Every PR/push to main/next/develop
+**When it runs**: Every PR/push to main/UNSTABLE/develop
 
 **Can be bypassed**: No (required status check)
 

@@ -1,12 +1,13 @@
 /**
- * @fileoverview AI Web Pilot Toggle Module
- * Manages the AI Web Pilot feature toggle
+ * Purpose: Manages popup-side AI Web Pilot toggle state and background command dispatch.
+ * Why: Enforces a single state-authority path through background updates to avoid UI/storage divergence.
+ * Docs: docs/features/feature/ai-web-pilot/index.md
  */
 /**
  * Initialize the AI Web Pilot toggle.
  * Read the current state from chrome.storage.local.
  */
-export declare function initAiWebPilotToggle(): Promise<void>
+export declare function initAiWebPilotToggle(): Promise<void>;
 /**
  * Handle AI Web Pilot toggle change.
  *
@@ -26,5 +27,5 @@ export declare function initAiWebPilotToggle(): Promise<void>
  * 4. Pilot commands see correct cache state
  * 5. Everything is consistent
  */
-export declare function handleAiWebPilotToggle(enabled: boolean): Promise<void>
+export declare function handleAiWebPilotToggle(enabled: boolean): Promise<void>;
 //# sourceMappingURL=ai-web-pilot.d.ts.map

@@ -1,4 +1,9 @@
+// Purpose: Implements generate tool formats and output assembly.
+// Why: Keeps generated artifacts reproducible and consistent across environments.
+// Docs: docs/features/feature/test-generation/index.md
+
 // tools_generate.go — MCP generate tool dispatcher and handlers.
+// Docs: docs/features/feature/test-generation/index.md
 // Handles all generate formats: reproduction, test, pr_summary, sarif, har, csp, sri.
 package main
 
@@ -12,26 +17,158 @@ import (
 	"github.com/dev-console/dev-console/internal/capture"
 	"github.com/dev-console/dev-console/internal/export"
 	"github.com/dev-console/dev-console/internal/security"
+	gen "github.com/dev-console/dev-console/internal/tools/generate"
 )
 
 // GenerateHandler is the function signature for generate format handlers.
 type GenerateHandler func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse
 
+// generateValidParams defines the allowed parameter names per generate format.
+// The "format" and "telemetry_mode" params are always allowed.
+var generateValidParams = map[string]map[string]bool{
+	"reproduction":      {"error_message": true, "last_n": true, "base_url": true, "include_screenshots": true, "generate_fixtures": true, "visual_assertions": true, "save_to": true},
+	"test":              {"test_name": true, "last_n": true, "base_url": true, "assert_network": true, "assert_no_errors": true, "assert_response_shape": true, "save_to": true},
+	"pr_summary":        {"save_to": true},
+	"har":               {"url": true, "method": true, "status_min": true, "status_max": true, "save_to": true},
+	"csp":               {"mode": true, "include_report_uri": true, "exclude_origins": true, "save_to": true},
+	"sri":               {"resource_types": true, "origins": true, "save_to": true},
+	"sarif":             {"scope": true, "include_passes": true, "save_to": true},
+	"visual_test":       {"test_name": true, "annot_session": true, "save_to": true},
+	"annotation_report": {"annot_session": true, "save_to": true},
+	"annotation_issues": {"annot_session": true, "save_to": true},
+	"test_from_context": {"context": true, "error_id": true, "include_mocks": true, "output_format": true, "save_to": true},
+	"test_heal":         {"action": true, "test_file": true, "test_dir": true, "broken_selectors": true, "auto_apply": true, "save_to": true},
+	"test_classify":     {"action": true, "failure": true, "failures": true, "save_to": true},
+}
+
+// alwaysAllowedGenerateParams are params valid for every generate format.
+var alwaysAllowedGenerateParams = map[string]bool{
+	"what":           true,
+	"format":         true,
+	"telemetry_mode": true,
+}
+
+// ignoredGenerateDispatchWarningParams are accepted at generate-dispatch level
+// but not consumed by every sub-handler.
+var ignoredGenerateDispatchWarningParams = map[string]bool{
+	"what":           true,
+	"format":         true,
+	"telemetry_mode": true,
+	"save_to":        true,
+}
+
+func filterGenerateDispatchWarnings(warnings []string) []string {
+	if len(warnings) == 0 {
+		return nil
+	}
+	filtered := make([]string, 0, len(warnings))
+	for _, warning := range warnings {
+		param, ok := parseUnknownParamWarning(warning)
+		if ok && ignoredGenerateDispatchWarningParams[param] {
+			continue
+		}
+		filtered = append(filtered, warning)
+	}
+	if len(filtered) == 0 {
+		return nil
+	}
+	return filtered
+}
+
+func parseUnknownParamWarning(warning string) (string, bool) {
+	const prefix = "unknown parameter '"
+	const suffix = "' (ignored)"
+	if !strings.HasPrefix(warning, prefix) || !strings.HasSuffix(warning, suffix) {
+		return "", false
+	}
+	param := strings.TrimPrefix(warning, prefix)
+	param = strings.TrimSuffix(param, suffix)
+	if param == "" {
+		return "", false
+	}
+	return param, true
+}
+
+// validateGenerateParams checks for unknown parameters and returns an error response if any are found.
+func validateGenerateParams(req JSONRPCRequest, format string, args json.RawMessage) *JSONRPCResponse {
+	if len(args) == 0 {
+		return nil
+	}
+	var raw map[string]json.RawMessage
+	if err := json.Unmarshal(args, &raw); err != nil {
+		return nil // let handler deal with bad JSON
+	}
+	allowed, ok := generateValidParams[format]
+	if !ok {
+		return nil // unknown format handled elsewhere
+	}
+	var unknown []string
+	for k := range raw {
+		if alwaysAllowedGenerateParams[k] || allowed[k] {
+			continue
+		}
+		unknown = append(unknown, k)
+	}
+	if len(unknown) == 0 {
+		return nil
+	}
+	sort.Strings(unknown)
+	validList := make([]string, 0, len(allowed))
+	for k := range allowed {
+		validList = append(validList, k)
+	}
+	sort.Strings(validList)
+	resp := JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(
+		ErrInvalidParam,
+		fmt.Sprintf("Unknown parameter(s) for format '%s': %s", format, strings.Join(unknown, ", ")),
+		"Remove unknown parameters and call again",
+		withParam(unknown[0]),
+		withHint(fmt.Sprintf("Valid params for '%s': %s", format, strings.Join(validList, ", "))),
+	)}
+	return &resp
+}
+
 // generateHandlers maps generate format names to their handler functions.
 var generateHandlers = map[string]GenerateHandler{
-	"reproduction":     func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse { return h.toolGetReproductionScript(req, args) },
-	"test":             func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse { return h.toolGenerateTest(req, args) },
-	"pr_summary":       func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse { return h.toolGeneratePRSummary(req, args) },
-	"sarif":            func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse { return h.toolExportSARIF(req, args) },
-	"har":              func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse { return h.toolExportHAR(req, args) },
-	"csp":              func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse { return h.toolGenerateCSP(req, args) },
-	"sri":              func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse { return h.toolGenerateSRI(req, args) },
-	"test_from_context": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse { return h.handleGenerateTestFromContext(req, args) },
-	"test_heal":        func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse { return h.handleGenerateTestHeal(req, args) },
-	"test_classify":    func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse { return h.handleGenerateTestClassify(req, args) },
-	"visual_test":      func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse { return h.toolGenerateVisualTest(req, args) },
-	"annotation_report": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse { return h.toolGenerateAnnotationReport(req, args) },
-	"annotation_issues": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse { return h.toolGenerateAnnotationIssues(req, args) },
+	"reproduction": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+		return h.toolGetReproductionScript(req, args)
+	},
+	"test": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+		return h.toolGenerateTest(req, args)
+	},
+	"pr_summary": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+		return h.toolGeneratePRSummary(req, args)
+	},
+	"sarif": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+		return h.toolExportSARIF(req, args)
+	},
+	"har": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+		return h.toolExportHAR(req, args)
+	},
+	"csp": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+		return h.toolGenerateCSP(req, args)
+	},
+	"sri": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+		return h.toolGenerateSRI(req, args)
+	},
+	"test_from_context": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+		return h.handleGenerateTestFromContext(req, args)
+	},
+	"test_heal": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+		return h.handleGenerateTestHeal(req, args)
+	},
+	"test_classify": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+		return h.handleGenerateTestClassify(req, args)
+	},
+	"visual_test": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+		return h.toolGenerateVisualTest(req, args)
+	},
+	"annotation_report": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+		return h.toolGenerateAnnotationReport(req, args)
+	},
+	"annotation_issues": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+		return h.toolGenerateAnnotationIssues(req, args)
+	},
 }
 
 // getValidGenerateFormats returns a sorted, comma-separated list of valid generate formats.
@@ -44,9 +181,10 @@ func getValidGenerateFormats() string {
 	return strings.Join(formats, ", ")
 }
 
-// toolGenerate dispatches generate requests based on the 'format' parameter.
+// toolGenerate dispatches generate requests based on the 'what' parameter.
 func (h *ToolHandler) toolGenerate(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	var params struct {
+		What   string `json:"what"`
 		Format string `json:"format"`
 	}
 	if len(args) > 0 {
@@ -55,15 +193,25 @@ func (h *ToolHandler) toolGenerate(req JSONRPCRequest, args json.RawMessage) JSO
 		}
 	}
 
-	if params.Format == "" {
-		validFormats := getValidGenerateFormats()
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrMissingParam, "Required parameter 'format' is missing", "Add the 'format' parameter and call again", withParam("format"), withHint("Valid values: "+validFormats))}
+	what := params.What
+	if what == "" {
+		what = params.Format
 	}
 
-	handler, ok := generateHandlers[params.Format]
+	if what == "" {
+		validFormats := getValidGenerateFormats()
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrMissingParam, "Required parameter 'what' is missing", "Add the 'what' parameter and call again", withParam("what"), withHint("Valid values: "+validFormats))}
+	}
+
+	handler, ok := generateHandlers[what]
 	if !ok {
 		validFormats := getValidGenerateFormats()
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrUnknownMode, "Unknown generate format: "+params.Format, "Use a valid format from the 'format' enum", withParam("format"), withHint("Valid values: "+validFormats))}
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrUnknownMode, "Unknown generate format: "+what, "Use a valid format from the 'what' enum", withParam("what"), withHint("Valid values: "+validFormats))}
+	}
+
+	// Strict parameter validation: reject unknown params for the given format
+	if errResp := validateGenerateParams(req, what, args); errResp != nil {
+		return *errResp
 	}
 
 	return handler(h, req, args)
@@ -77,19 +225,11 @@ func (h *ToolHandler) toolGetReproductionScript(req JSONRPCRequest, args json.Ra
 	return h.toolGetReproductionScriptImpl(req, args)
 }
 
-// TestGenParams are the parsed arguments for generate({format: "test"}).
-type TestGenParams struct {
-	Format             string `json:"format"`
-	TestName           string `json:"test_name"`
-	LastN              int    `json:"last_n"`
-	BaseURL            string `json:"base_url"`
-	AssertNetwork      bool   `json:"assert_network"`
-	AssertNoErrors     bool   `json:"assert_no_errors"`
-	AssertResponseShape bool  `json:"assert_response_shape"`
-}
+// TestGenParams delegates to internal/tools/generate.
+type TestGenParams = gen.TestGenParams
 
 func (h *ToolHandler) toolGenerateTest(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-	var params TestGenParams
+	var params gen.TestGenParams
 	if len(args) > 0 {
 		_ = json.Unmarshal(args, &params)
 	}
@@ -98,9 +238,8 @@ func (h *ToolHandler) toolGenerateTest(req JSONRPCRequest, args json.RawMessage)
 	}
 
 	allActions := h.capture.GetAllEnhancedActions()
-	actions := filterLastN(allActions, params.LastN)
-
-	script := generateTestScript(actions, params)
+	actions := gen.FilterLastN(allActions, params.LastN)
+	script := gen.GenerateTestScript(actions, params)
 
 	result := map[string]any{
 		"script":       script,
@@ -108,139 +247,20 @@ func (h *ToolHandler) toolGenerateTest(req JSONRPCRequest, args json.RawMessage)
 		"action_count": len(actions),
 		"metadata": map[string]any{
 			"generated_at":      time.Now().Format(time.RFC3339),
-			"actions_available":  len(allActions),
-			"actions_included":   len(actions),
+			"actions_available": len(allActions),
+			"actions_included":  len(actions),
 			"assert_network":    params.AssertNetwork,
 			"assert_no_errors":  params.AssertNoErrors,
 		},
 	}
 
+	if len(actions) == 0 {
+		result["reason"] = "no_actions_captured"
+		result["hint"] = "Navigate and interact with the browser first, then call generate(test) again."
+	}
+
 	summary := fmt.Sprintf("Playwright test '%s' (%d actions)", params.TestName, len(actions))
 	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse(summary, result)}
-}
-
-// generateTestScript builds a complete Playwright test file from captured actions.
-func generateTestScript(actions []capture.EnhancedAction, params TestGenParams) string {
-	var b strings.Builder
-
-	b.WriteString("import { test, expect } from '@playwright/test';\n\n")
-	fmt.Fprintf(&b, "test.describe('%s', () => {\n", escapeJS(params.TestName))
-
-	if len(actions) == 0 {
-		b.WriteString("  test('should load page', async ({ page }) => {\n")
-		b.WriteString("    // No actions captured — add test steps here\n")
-		b.WriteString("    await page.goto('/');\n")
-		b.WriteString("    await expect(page).toHaveTitle(/.+/);\n")
-		b.WriteString("  });\n")
-	} else {
-		writeTestSteps(&b, actions, params)
-	}
-
-	b.WriteString("});\n")
-	return b.String()
-}
-
-// writeTestSteps groups actions into logical test blocks and writes them.
-func writeTestSteps(b *strings.Builder, actions []capture.EnhancedAction, params TestGenParams) {
-	// Group actions by navigation — each page gets its own test() block.
-	groups := groupActionsByNavigation(actions)
-
-	for i, group := range groups {
-		testLabel := testLabelForGroup(group, i)
-		fmt.Fprintf(b, "  test('%s', async ({ page }) => {\n", escapeJS(testLabel))
-
-		opts := ReproductionParams{BaseURL: params.BaseURL}
-		var prevTs int64
-		for _, action := range group {
-			writePauseComment(b, prevTs, action.Timestamp, "    // [%ds pause]\n")
-			prevTs = action.Timestamp
-			line := playwrightStep(action, opts)
-			if line != "" {
-				b.WriteString("    " + line + "\n")
-			}
-		}
-
-		// Add assertions at the end of each test block.
-		writeTestAssertions(b, group, params)
-
-		b.WriteString("  });\n\n")
-	}
-}
-
-// groupActionsByNavigation splits actions into groups at each navigate action.
-// Each group starts with a navigate (if present) and includes all subsequent
-// actions until the next navigate.
-func groupActionsByNavigation(actions []capture.EnhancedAction) [][]capture.EnhancedAction {
-	if len(actions) == 0 {
-		return nil
-	}
-	var groups [][]capture.EnhancedAction
-	var current []capture.EnhancedAction
-
-	for _, action := range actions {
-		if action.Type == "navigate" && len(current) > 0 {
-			groups = append(groups, current)
-			current = nil
-		}
-		current = append(current, action)
-	}
-	if len(current) > 0 {
-		groups = append(groups, current)
-	}
-	return groups
-}
-
-// testLabelForGroup generates a descriptive test label for a group of actions.
-func testLabelForGroup(group []capture.EnhancedAction, index int) string {
-	if len(group) == 0 {
-		return fmt.Sprintf("step %d", index+1)
-	}
-	first := group[0]
-	if first.Type == "navigate" && first.ToURL != "" {
-		// Extract path from URL for a readable name.
-		path := first.ToURL
-		if idx := strings.Index(path, "://"); idx >= 0 {
-			path = path[idx+3:]
-		}
-		if idx := strings.Index(path, "/"); idx >= 0 {
-			path = path[idx:]
-		}
-		if path == "/" || path == "" {
-			path = "homepage"
-		}
-		return fmt.Sprintf("should work on %s", chopString(path, 60))
-	}
-	return fmt.Sprintf("step %d", index+1)
-}
-
-// writeTestAssertions adds expect() assertions at the end of a test block.
-func writeTestAssertions(b *strings.Builder, group []capture.EnhancedAction, params TestGenParams) {
-	hasNavigate := false
-	for _, a := range group {
-		if a.Type == "navigate" {
-			hasNavigate = true
-			break
-		}
-	}
-
-	if hasNavigate {
-		b.WriteString("    // Verify page loaded successfully\n")
-		b.WriteString("    await expect(page).toHaveTitle(/.+/);\n")
-	}
-
-	if params.AssertNoErrors {
-		b.WriteString("    // Assert no console errors\n")
-		b.WriteString("    const errors = [];\n")
-		b.WriteString("    page.on('console', msg => { if (msg.type() === 'error') errors.push(msg.text()); });\n")
-		b.WriteString("    expect(errors).toHaveLength(0);\n")
-	}
-
-	if params.AssertNetwork {
-		b.WriteString("    // Assert no failed network requests\n")
-		b.WriteString("    const failedRequests = [];\n")
-		b.WriteString("    page.on('requestfailed', req => failedRequests.push(req.url()));\n")
-		b.WriteString("    expect(failedRequests).toHaveLength(0);\n")
-	}
 }
 
 func (h *ToolHandler) toolGeneratePRSummary(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
@@ -282,6 +302,15 @@ func (h *ToolHandler) toolGeneratePRSummary(req JSONRPCRequest, args json.RawMes
 	if totalActivity == 0 {
 		sb.WriteString("No activity captured during this session.\n\n")
 		sb.WriteString("Navigate to a page or interact with the browser to generate activity.\n")
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("PR summary generated", map[string]any{
+			"summary": sb.String(),
+			"reason":  "no_activity_captured",
+			"hint":    "Navigate to a page or interact with the browser first, then call generate(pr_summary) again.",
+			"stats": map[string]any{
+				"actions": 0, "commands_completed": 0, "commands_failed": 0,
+				"console_errors": 0, "network_errors": 0, "network_captured": 0,
+			},
+		})}
 	} else {
 		if tabURL != "" {
 			sb.WriteString(fmt.Sprintf("- **Page:** %s\n", tabURL))
@@ -325,6 +354,8 @@ func (h *ToolHandler) toolExportSARIF(req JSONRPCRequest, args json.RawMessage) 
 		Scope         string `json:"scope"`
 		IncludePasses bool   `json:"include_passes"`
 		SaveTo        string `json:"save_to"`
+		// Internal-use path for workflows that already executed accessibility.
+		A11yResult json.RawMessage `json:"a11y_result"`
 	}
 	if len(args) > 0 {
 		if err := json.Unmarshal(args, &arguments); err != nil {
@@ -332,16 +363,18 @@ func (h *ToolHandler) toolExportSARIF(req JSONRPCRequest, args json.RawMessage) 
 		}
 	}
 
-	// Run a11y audit to get violations — fall back to empty if no extension connected
-	var a11yResult json.RawMessage
-	if h.capture.IsExtensionConnected() {
-		var err error
-		a11yResult, err = h.executeA11yQuery(arguments.Scope, nil)
-		if err != nil {
+	// Use precomputed a11y results when available; otherwise run a11y audit.
+	a11yResult := arguments.A11yResult
+	if len(a11yResult) == 0 {
+		if h.capture.IsExtensionConnected() {
+			var err error
+			a11yResult, err = h.ExecuteA11yQuery(arguments.Scope, nil, nil, false)
+			if err != nil {
+				a11yResult = json.RawMessage("{}")
+			}
+		} else {
 			a11yResult = json.RawMessage("{}")
 		}
-	} else {
-		a11yResult = json.RawMessage("{}")
 	}
 
 	// Convert to SARIF
@@ -442,102 +475,13 @@ func (h *ToolHandler) toolGenerateCSP(req JSONRPCRequest, args json.RawMessage) 
 		})}
 	}
 
-	directives := buildCSPDirectives(networkBodies)
-	policy := buildCSPPolicyString(directives)
+	directives := gen.BuildCSPDirectives(networkBodies)
+	policy := gen.BuildCSPPolicyString(directives)
 
 	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("CSP policy generated", map[string]any{
 		"status": "ok", "mode": mode, "policy": policy,
 		"directives": directives, "origins_observed": len(networkBodies),
 	})}
-}
-
-// buildCSPDirectives extracts unique origins from network bodies and groups them by CSP directive.
-func buildCSPDirectives(networkBodies []capture.NetworkBody) map[string][]string {
-	originsByType := make(map[string]map[string]bool)
-	for _, body := range networkBodies {
-		origin := extractOrigin(body.URL)
-		if origin == "" {
-			continue
-		}
-		directive := resourceTypeToCSPDirective(body.ContentType)
-		if originsByType[directive] == nil {
-			originsByType[directive] = make(map[string]bool)
-		}
-		originsByType[directive][origin] = true
-	}
-
-	directives := map[string][]string{"default-src": {"'self'"}}
-	for directive, origins := range originsByType {
-		originList := make([]string, 0, len(origins))
-		for origin := range origins {
-			originList = append(originList, origin)
-		}
-		if len(originList) > 0 {
-			directives[directive] = append([]string{"'self'"}, originList...)
-		}
-	}
-	return directives
-}
-
-// buildCSPPolicyString serializes CSP directives into a semicolon-separated policy string.
-func buildCSPPolicyString(directives map[string][]string) string {
-	var policyParts []string
-	for directive, sources := range directives {
-		policyParts = append(policyParts, directive+" "+joinStrings(sources, " "))
-	}
-	return joinStrings(policyParts, "; ")
-}
-
-// extractOrigin extracts the origin (scheme://host:port) from a URL
-func extractOrigin(urlStr string) string {
-	if urlStr == "" {
-		return ""
-	}
-	// Simple extraction - find scheme://host
-	idx := 0
-	if len(urlStr) > 8 && urlStr[:8] == "https://" {
-		idx = 8
-	} else if len(urlStr) > 7 && urlStr[:7] == "http://" {
-		idx = 7
-	} else {
-		return ""
-	}
-	// Find end of host (first / or end of string)
-	endIdx := idx
-	for endIdx < len(urlStr) && urlStr[endIdx] != '/' && urlStr[endIdx] != '?' {
-		endIdx++
-	}
-	return urlStr[:endIdx]
-}
-
-// resourceTypeToCSPDirective maps content-type to CSP directive
-func resourceTypeToCSPDirective(contentType string) string {
-	switch {
-	case containsIgnoreCase(contentType, "javascript"):
-		return "script-src"
-	case containsIgnoreCase(contentType, "css"):
-		return "style-src"
-	case containsIgnoreCase(contentType, "font"):
-		return "font-src"
-	case containsIgnoreCase(contentType, "image"):
-		return "img-src"
-	case containsIgnoreCase(contentType, "video"), containsIgnoreCase(contentType, "audio"):
-		return "media-src"
-	default:
-		return "connect-src"
-	}
-}
-
-// joinStrings joins strings with a separator
-func joinStrings(strs []string, sep string) string {
-	if len(strs) == 0 {
-		return ""
-	}
-	result := strs[0]
-	for i := 1; i < len(strs); i++ {
-		result += sep + strs[i]
-	}
-	return result
 }
 
 // toolGenerateSRI generates Subresource Integrity hashes for third-party scripts/styles.

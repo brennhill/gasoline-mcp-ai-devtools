@@ -1,4 +1,10 @@
 /**
+ * Purpose: Defines extension runtime state contracts for snapshots, health, circuit-breaker, and memory-pressure reporting.
+ * Why: Keeps status/state payloads consistent across background logic, popup rendering, and query responses.
+ * Docs: docs/features/feature/backend-log-streaming/index.md
+ */
+
+/**
  * @fileoverview State Management Types
  * Browser state snapshots, circuit breakers, and memory pressure
  */
@@ -71,6 +77,9 @@ export interface ConnectionStatus {
   readonly serverVersion?: string
   readonly extensionVersion?: string
   readonly versionMismatch?: boolean
+  readonly securityMode?: 'normal' | 'insecure_proxy'
+  readonly productionParity?: boolean
+  readonly insecureRewritesApplied?: readonly string[]
 }
 
 /**

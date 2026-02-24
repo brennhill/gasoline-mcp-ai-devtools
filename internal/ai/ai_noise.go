@@ -1,9 +1,7 @@
-// ai_noise.go — Noise filtering rules and auto-detection for browser telemetry.
-// Provides regex-based match specs that classify console, network, and WebSocket
-// entries as noise (third-party scripts, analytics, browser-generated warnings).
-// Auto-detection analyzes buffer contents to suggest rules for high-frequency patterns.
-// Design: Rules are AND-matched (all fields must match), stored in a mutex-guarded
-// slice with a hard cap of 100 rules. Dismissed patterns use a separate quick-match list.
+// Purpose: Defines noise-rule configuration state and rule compilation for AI-facing log filtering.
+// Why: Reduces repetitive low-signal telemetry so AI/debug workflows focus on actionable events.
+// Docs: docs/features/feature/noise-filtering/index.md
+
 package ai
 
 import (

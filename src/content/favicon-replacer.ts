@@ -1,4 +1,11 @@
 /**
+ * Purpose: Handles content-script message relay between background and inject contexts.
+ * Why: Keeps content-script bridging predictable between extension and page contexts.
+ * Docs: docs/features/feature/interact-explore/index.md
+ * Docs: docs/features/feature/query-dom/index.md
+ */
+
+/**
  * @fileoverview Favicon Replacer - Visual indicator for tracked tabs
  * Replaces the page's favicon with the Gasoline flame icon when tab tracking is enabled.
  * Adds flickering animation when AI Pilot is active.
@@ -26,11 +33,14 @@ export function initFaviconReplacer(): void {
   // Listen for tracking state updates from background
   chrome.runtime.onMessage.addListener((message, sender, _sendResponse) => {
     // Only accept messages from the extension itself (background script)
-    if (sender.id !== chrome.runtime.id) return
+    if (sender.id !== chrome.runtime.id) return false
     if (message.type === 'trackingStateChanged') {
       const newState: TrackingState = message.state
       updateFavicon(newState)
     }
+    // Explicitly return false so Chrome doesn't prematurely resolve
+    // sendMessage promises from other listeners (e.g. DOM_QUERY, A11Y_QUERY).
+    return false
   })
 
   // Request initial tracking state

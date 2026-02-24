@@ -1,110 +1,35 @@
-// query_dispatcher.go — Query lifecycle, result storage, and async command tracking.
-// Extracted from the Capture god object. Owns its own sync.Mutex (for pending queries
-// and condition variable) and sync.RWMutex (for async command results).
-// Zero cross-cutting dependencies.
+// Purpose: Re-exports query-dispatcher constructors and delegates capture query lifecycle methods.
+// Why: Preserves capture package API compatibility while query logic lives in internal/queries.
+// Docs: docs/features/feature/query-service/index.md
+
 package capture
 
 import (
 	"encoding/json"
-	"sync"
 	"time"
 
 	"github.com/dev-console/dev-console/internal/queries"
 )
 
-// pendingQueryEntry tracks a pending query with timeout
-type pendingQueryEntry struct {
-	query    queries.PendingQueryResponse
-	expires  time.Time
-	clientID string // owning client for multi-client isolation
-}
-
-// queryResultEntry stores a query result with client ownership
-type queryResultEntry struct {
-	result    json.RawMessage
-	clientID  string // owning client for multi-client isolation
-	createdAt time.Time
-}
-
-// QueryDispatcher manages pending query queues, result storage, and async command tracking.
-// Owns two locks:
-//   - mu (sync.Mutex): protects pendingQueries, queryResults, queryCond, queryIDCounter, queryTimeout
-//   - resultsMu (sync.RWMutex): protects completedResults, failedCommands
-//
-// Lock ordering: mu released BEFORE resultsMu acquired (never reverse).
-type QueryDispatcher struct {
-	mu             sync.Mutex
-	pendingQueries []pendingQueryEntry
-	queryResults   map[string]queryResultEntry
-	queryCond      *sync.Cond
-	queryIDCounter int
-	queryTimeout   time.Duration
-
-	resultsMu        sync.RWMutex
-	completedResults map[string]*queries.CommandResult
-	failedCommands   []*queries.CommandResult
-	commandNotify    chan struct{} // closed on CompleteCommand, then recreated
-
-	stopCleanup func()
-}
-
-// NewQueryDispatcher creates a QueryDispatcher with initialized state.
-func NewQueryDispatcher() *QueryDispatcher {
-	qd := &QueryDispatcher{
-		pendingQueries:   make([]pendingQueryEntry, 0),
-		queryResults:     make(map[string]queryResultEntry),
-		queryTimeout:     queries.DefaultQueryTimeout,
-		completedResults: make(map[string]*queries.CommandResult),
-		failedCommands:   make([]*queries.CommandResult, 0, 100),
-		commandNotify:    make(chan struct{}),
-	}
-	qd.queryCond = sync.NewCond(&qd.mu)
-	qd.stopCleanup = qd.startResultCleanup()
-	return qd
-}
-
-// Close stops background goroutines. Safe to call multiple times.
-func (qd *QueryDispatcher) Close() {
-	if qd.stopCleanup != nil {
-		qd.stopCleanup()
-		qd.stopCleanup = nil
-	}
-}
-
-// QuerySnapshot contains a point-in-time view of query state for health reporting.
-type QuerySnapshot struct {
-	PendingQueryCount int
-	QueryResultCount  int
-	QueryTimeout      time.Duration
-}
-
-// GetSnapshot returns a thread-safe snapshot of query state.
-func (qd *QueryDispatcher) GetSnapshot() QuerySnapshot {
-	qd.mu.Lock()
-	defer qd.mu.Unlock()
-	return QuerySnapshot{
-		PendingQueryCount: len(qd.pendingQueries),
-		QueryResultCount:  len(qd.queryResults),
-		QueryTimeout:      qd.queryTimeout,
-	}
-}
+// NewQueryDispatcher re-exports queries.NewQueryDispatcher for backward compatibility.
+var NewQueryDispatcher = queries.NewQueryDispatcher
 
 // ============================================================================
 // Capture delegation methods — preserve external API.
 // ============================================================================
 
 // CreatePendingQuery delegates to QueryDispatcher.
-func (c *Capture) CreatePendingQuery(query queries.PendingQuery) string {
+func (c *Capture) CreatePendingQuery(query queries.PendingQuery) (string, error) {
 	return c.qd.CreatePendingQuery(query)
 }
 
 // CreatePendingQueryWithClient delegates to QueryDispatcher.
-func (c *Capture) CreatePendingQueryWithClient(query queries.PendingQuery, clientID string) string {
+func (c *Capture) CreatePendingQueryWithClient(query queries.PendingQuery, clientID string) (string, error) {
 	return c.qd.CreatePendingQueryWithClient(query, clientID)
 }
 
 // CreatePendingQueryWithTimeout delegates to QueryDispatcher.
-func (c *Capture) CreatePendingQueryWithTimeout(query queries.PendingQuery, timeout time.Duration, clientID string) string {
+func (c *Capture) CreatePendingQueryWithTimeout(query queries.PendingQuery, timeout time.Duration, clientID string) (string, error) {
 	return c.qd.CreatePendingQueryWithTimeout(query, timeout, clientID)
 }
 
@@ -118,15 +43,24 @@ func (c *Capture) GetPendingQueriesForClient(clientID string) []queries.PendingQ
 	return c.qd.GetPendingQueriesForClient(clientID)
 }
 
+// WaitForPendingQueries delegates to QueryDispatcher.
+func (c *Capture) WaitForPendingQueries(timeout time.Duration) {
+	c.qd.WaitForPendingQueries(timeout)
+}
+
 // AcknowledgePendingQuery delegates to QueryDispatcher.
 func (c *Capture) AcknowledgePendingQuery(queryID string) {
 	c.qd.AcknowledgePendingQuery(queryID)
 }
 
-// GetPendingQueriesDisconnectAware returns pending queries with disconnect detection.
+// GetPendingQueriesDisconnectAware returns pending queries with disconnect reconciliation.
 // If the extension has not synced within extensionDisconnectThreshold (10s) and has
 // synced at least once, all pending queries are expired with "extension_disconnected".
 // This prevents queries from hanging indefinitely when the extension crashes or disconnects.
+//
+// Failure semantics:
+// - On detected disconnect, pending commands are force-expired and nil is returned.
+// - On healthy connection, behavior matches GetPendingQueries.
 func (c *Capture) GetPendingQueriesDisconnectAware() []queries.PendingQueryResponse {
 	c.mu.RLock()
 	neverSynced := c.ext.lastSyncSeen.IsZero()
@@ -150,6 +84,12 @@ func (c *Capture) SetQueryResult(id string, result json.RawMessage) {
 // SetQueryResultWithClient delegates to QueryDispatcher.
 func (c *Capture) SetQueryResultWithClient(id string, result json.RawMessage, clientID string) {
 	c.qd.SetQueryResultWithClient(id, result, clientID)
+}
+
+// SetQueryResultWithClientNoCommandComplete delegates to QueryDispatcher while
+// preserving command lifecycle status (no implicit "complete" transition).
+func (c *Capture) SetQueryResultWithClientNoCommandComplete(id string, result json.RawMessage, clientID string) {
+	c.qd.SetQueryResultWithClientNoCommandComplete(id, result, clientID)
 }
 
 // GetQueryResult delegates to QueryDispatcher.
@@ -192,6 +132,11 @@ func (c *Capture) CompleteCommand(correlationID string, result json.RawMessage, 
 	c.qd.CompleteCommand(correlationID, result, err)
 }
 
+// ApplyCommandResult delegates status-aware command updates to QueryDispatcher.
+func (c *Capture) ApplyCommandResult(correlationID string, status string, result json.RawMessage, err string) {
+	c.qd.ApplyCommandResult(correlationID, status, result, err)
+}
+
 // ExpireCommand delegates to QueryDispatcher.
 func (c *Capture) ExpireCommand(correlationID string) {
 	c.qd.ExpireCommand(correlationID)
@@ -220,4 +165,19 @@ func (c *Capture) GetCompletedCommands() []*queries.CommandResult {
 // GetFailedCommands delegates to QueryDispatcher.
 func (c *Capture) GetFailedCommands() []*queries.CommandResult {
 	return c.qd.GetFailedCommands()
+}
+
+// GetRecentCommandTraces returns the latest command traces for diagnostics.
+func (c *Capture) GetRecentCommandTraces(limit int) []*queries.CommandResult {
+	return c.qd.GetRecentCommandTraces(limit)
+}
+
+// QueuePosition delegates to QueryDispatcher.
+func (c *Capture) QueuePosition(correlationID string) int {
+	return c.qd.QueuePosition(correlationID)
+}
+
+// QueueDepth delegates to QueryDispatcher.
+func (c *Capture) QueueDepth() int {
+	return c.qd.QueueDepth()
 }

@@ -1,11 +1,3 @@
-// health.go — Health & SLA Metrics (Tier 3.4).
-// Exposes server uptime, buffer utilization, memory usage, request counts,
-// and error rates via the get_health MCP tool.
-// Design: Thread-safe counters using sync.RWMutex. Memory stats from runtime.
-// All metrics are computed on-demand when the tool is called.
-//
-// JSON CONVENTION: All fields MUST use snake_case. See .claude/refs/api-naming-standards.md
-// Deviations from snake_case MUST be tagged with // SPEC:<spec-name> at the field level.
 package main
 
 import (
@@ -104,12 +96,21 @@ func (hm *HealthMetrics) GetUptime() time.Duration {
 // MCPHealthResponse is the response structure for the get_health MCP tool.
 // Named to distinguish from the simpler HealthResponse used by /health HTTP endpoint.
 type MCPHealthResponse struct {
-	Server       ServerInfo       `json:"server"`
-	Memory       MemoryInfo       `json:"memory"`
-	Buffers      BuffersInfo      `json:"buffers"`
-	RateLimiting RateLimitingInfo `json:"rate_limiting"`
-	Audit        AuditInfo        `json:"audit"`
-	Pilot        PilotInfo        `json:"pilot"`
+	Server           ServerInfo           `json:"server"`
+	Memory           MemoryInfo           `json:"memory"`
+	Buffers          BuffersInfo          `json:"buffers"`
+	RateLimiting     RateLimitingInfo     `json:"rate_limiting"`
+	Audit            AuditInfo            `json:"audit"`
+	Pilot            PilotInfo            `json:"pilot"`
+	CommandExecution CommandExecutionInfo `json:"command_execution"`
+	Upgrade          *UpgradeInfo         `json:"upgrade,omitempty"`
+}
+
+// UpgradeInfo contains binary upgrade detection state.
+type UpgradeInfo struct {
+	Pending    bool   `json:"pending"`
+	NewVersion string `json:"new_version"`
+	DetectedAt string `json:"detected_at"`
 }
 
 // ServerInfo contains server identification and uptime.
@@ -184,13 +185,34 @@ type PilotInfo struct {
 // GetHealth computes and returns the current health metrics.
 // This is called on-demand when the get_health tool is invoked.
 func (hm *HealthMetrics) GetHealth(cap *capture.Capture, server *Server, ver string) MCPHealthResponse {
-	return MCPHealthResponse{
-		Server:       hm.buildServerInfo(ver),
-		Memory:       buildMemoryInfo(cap),
-		Buffers:      buildBuffersInfo(cap, server),
-		RateLimiting: buildRateLimitInfo(cap),
-		Audit:        hm.buildAuditInfo(),
-		Pilot:        buildPilotInfo(cap),
+	resp := MCPHealthResponse{
+		Server:           hm.buildServerInfo(ver),
+		Memory:           buildMemoryInfo(cap),
+		Buffers:          buildBuffersInfo(cap, server),
+		RateLimiting:     buildRateLimitInfo(cap),
+		Audit:            hm.buildAuditInfo(),
+		Pilot:            buildPilotInfo(cap),
+		CommandExecution: buildCommandExecutionInfo(cap),
+	}
+	if info := buildUpgradeInfo(); info != nil {
+		resp.Upgrade = info
+	}
+	return resp
+}
+
+// buildUpgradeInfo returns upgrade detection state, or nil if no upgrade is pending.
+func buildUpgradeInfo() *UpgradeInfo {
+	if binaryUpgradeState == nil {
+		return nil
+	}
+	pending, newVer, detectedAt := binaryUpgradeState.UpgradeInfo()
+	if !pending {
+		return nil
+	}
+	return &UpgradeInfo{
+		Pending:    true,
+		NewVersion: newVer,
+		DetectedAt: detectedAt.UTC().Format(time.RFC3339),
 	}
 }
 

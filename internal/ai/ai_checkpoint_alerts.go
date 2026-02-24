@@ -1,4 +1,7 @@
-// ai_checkpoint_alerts.go — Push regression alert detection and delivery.
+// Purpose: Implements checkpoint-derived alert generation and alert delivery bookkeeping.
+// Why: Surfaces high-signal regression events instead of forcing users to manually inspect raw diffs.
+// Docs: docs/features/feature/push-alerts/index.md
+
 package ai
 
 import (

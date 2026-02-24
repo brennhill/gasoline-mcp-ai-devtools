@@ -1,6 +1,7 @@
-// capture-struct.go — Main Capture struct and factory function.
-// Capture manages all buffered browser state: WebSocket events, network bodies,
-// user actions, connections, queries, rate limiting, and performance.
+// Purpose: Defines the core Capture state container and its concurrency-protected ring-buffer subsystem layout.
+// Why: Centralizes all in-memory telemetry state so ingestion/query paths share one coherent source of truth.
+// Docs: docs/features/feature/backend-log-streaming/index.md
+
 package capture
 
 import (
@@ -48,10 +49,11 @@ type Capture struct {
 	// Network Body Buffer (Ring Buffer)
 	// ============================================
 
-	networkBodies     []NetworkBody // Ring buffer of HTTP request/response bodies (cap: MaxNetworkBodies=100). Parallel with networkAddedAt.
-	networkAddedAt    []time.Time   // Parallel slice: insertion time for each networkBodies[i]. Used for TTL filtering and LRU eviction.
-	networkTotalAdded int64         // Monotonic counter: total bodies ever added (never reset/decremented). Survives eviction. Used for cursor-based delta queries.
-	nbMemoryTotal     int64         // Approximate memory: len(RequestBody)+len(ResponseBody)+300 bytes per entry. Updated incrementally on append/eviction.
+	networkBodies          []NetworkBody // Ring buffer of HTTP request/response bodies (cap: MaxNetworkBodies=100). Parallel with networkAddedAt.
+	networkAddedAt         []time.Time   // Parallel slice: insertion time for each networkBodies[i]. Used for TTL filtering and LRU eviction.
+	networkTotalAdded      int64         // Monotonic counter: total bodies ever added (never reset/decremented). Survives eviction. Used for cursor-based delta queries.
+	networkErrorTotalAdded int64         // Monotonic counter: total HTTP error responses (status>=400) ever added. Survives eviction.
+	nbMemoryTotal          int64         // Approximate memory: len(RequestBody)+len(ResponseBody)+300 bytes per entry. Updated incrementally on append/eviction.
 
 	// ============================================
 	// Enhanced Actions Buffer (Ring Buffer)
@@ -78,13 +80,13 @@ type Capture struct {
 	// Query Dispatch (Own Locks)
 	// ============================================
 
-	qd *QueryDispatcher // Pending queries, results, async command tracking. Has own sync.Mutex + sync.RWMutex — independent of Capture.mu.
+	qd *QueryDispatcher // Pending queries, results, async command tracking — delegates to QueryDispatcher sub-struct (aliased from internal/queries). Has own sync.Mutex + sync.RWMutex — independent of Capture.mu.
 
 	// ============================================
 	// Rate Limiting & Circuit Breaker (Own Lock)
 	// ============================================
 
-	circuit *CircuitBreaker // Rate limiting + circuit breaker state machine. Has own sync.RWMutex — independent of Capture.mu.
+	circuit *CircuitBreaker // Rate limiting + circuit breaker state machine — delegates to internal/circuit. Has own sync.RWMutex — independent of Capture.mu.
 
 	// ============================================
 	// Extension State (Protected by parent mu)
@@ -101,7 +103,7 @@ type Capture struct {
 	// Redaction engine for scrubbing sensitive values from extension debug logs.
 	logRedactor *redaction.RedactionEngine
 
-	// Recording Management — delegates to RecordingManager sub-struct.
+	// Recording Management — delegates to RecordingManager sub-struct (aliased from internal/recording).
 	rec *RecordingManager // Recording lifecycle, playback, and log-diff. Has own sync.Mutex — independent of Capture.mu.
 
 	// ============================================
@@ -122,7 +124,8 @@ type Capture struct {
 	// Lifecycle Event Callbacks
 	// ============================================
 
-	lifecycleCallback func(event string, data map[string]any) // Optional callback for lifecycle events (circuit breaker, extension state, buffer overflow)
+	lifecycleCallback  func(event string, data map[string]any) // Optional callback for lifecycle events (circuit breaker, extension state, buffer overflow)
+	navigationCallback func()                                  // Optional callback fired after a navigation action is ingested (called outside lock)
 
 	// ============================================
 	// Version Information
@@ -131,7 +134,11 @@ type Capture struct {
 	serverVersion string // Server version (e.g., "5.7.0"), set via SetServerVersion()
 }
 
-// NewCapture creates a new Capture instance with initialized buffers
+// NewCapture creates a fully initialized Capture with all subcomponents wired.
+//
+// Invariants:
+// - qd/circuit/debug/rec are non-nil in returned instance.
+// - ext.activeTestIDs and ext.missingInProgressByCorr start as initialized maps.
 func NewCapture() *Capture {
 	c := &Capture{
 		wsEvents:        make([]WebSocketEvent, 0, MaxWSEvents),
@@ -150,7 +157,10 @@ func NewCapture() *Capture {
 			connOrder:   make([]string, 0),
 		},
 		ext: ExtensionState{
-			activeTestIDs: make(map[string]bool),
+			activeTestIDs:           make(map[string]bool),
+			missingInProgressByCorr: make(map[string]int),
+			pilotSource:             PilotSourceAssumedStartup,
+			securityMode:            SecurityModeNormal,
 		},
 		perf: PerformanceStore{
 			snapshots:       make(map[string]performance.PerformanceSnapshot),
@@ -180,11 +190,25 @@ func NewCapture() *Capture {
 	return c
 }
 
-// Close stops background goroutines. Safe to call multiple times.
+// Close shuts down capture-owned background goroutines.
+//
+// Failure semantics:
+// - Idempotent for query cleanup lifecycle; no panic on repeated calls.
+// - Does not clear in-memory buffers.
 func (c *Capture) Close() {
 	if c.qd != nil {
 		c.qd.Close()
 	}
+}
+
+// SetNavigationCallback sets a callback function that fires after a navigation
+// action is ingested. The callback is invoked outside of the Capture lock in a
+// separate goroutine (via util.SafeGo) so it is safe to call Capture methods.
+// Used for automatic noise detection after page navigations.
+func (c *Capture) SetNavigationCallback(cb func()) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.navigationCallback = cb
 }
 
 // SetLifecycleCallback sets a callback function for lifecycle events.
@@ -197,8 +221,13 @@ func (c *Capture) SetLifecycleCallback(cb func(event string, data map[string]any
 	c.lifecycleCallback = cb
 }
 
-// emitLifecycleEvent calls the lifecycle callback if set.
-// Caller must NOT hold lock (callback may do I/O).
+// emitLifecycleEvent dispatches lifecycle callbacks outside lock-heavy paths.
+//
+// Invariants:
+// - Callback pointer is captured under c.mu and invoked after unlock.
+//
+// Failure semantics:
+// - Missing callback is a silent no-op.
 func (c *Capture) emitLifecycleEvent(event string, data map[string]any) {
 	c.mu.RLock()
 	cb := c.lifecycleCallback

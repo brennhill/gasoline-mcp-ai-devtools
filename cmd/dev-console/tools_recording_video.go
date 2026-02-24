@@ -1,18 +1,14 @@
-// tools_recording_video.go — Tab video recording: save endpoint and observe handler.
-// Handles POST /recordings/save (multipart: video blob + metadata JSON)
-// and observe({what: "saved_videos"}) to list saved recordings.
+// Purpose: Implements recording and playback command handlers for captured browser sessions.
+// Why: Supports deterministic replay and comparison of browser behavior across runs.
+// Docs: docs/features/feature/playback-engine/index.md
+
 package main
 
 import (
 	"encoding/json"
 	"fmt"
-	"io"
-	"net/http"
 	"os"
-	"os/exec"
 	"path/filepath"
-	"runtime"
-	"sort"
 	"strings"
 	"time"
 
@@ -21,6 +17,24 @@ import (
 )
 
 var maxRecordingUploadSizeBytes int64 = 1 << 30 // 1 GiB
+
+const (
+	recordingStateIdle            = "idle"
+	recordingStateAwaitingGesture = "awaiting_user_gesture"
+	recordingStateRecording       = "recording"
+	recordingStateStopping        = "stopping"
+
+	recordStartCommandTimeout = 2 * time.Minute
+	recordStopCommandTimeout  = 90 * time.Second
+)
+
+// interactRecordingState tracks interact(record_start/record_stop) lifecycle.
+type interactRecordingState struct {
+	State              string
+	StartCorrelationID string
+	StopCorrelationID  string
+	UpdatedAt          time.Time
+}
 
 // VideoRecordingMetadata is the sidecar JSON written next to each .webm file.
 type VideoRecordingMetadata struct {
@@ -154,9 +168,112 @@ func resolveRecordingPath(dir, name string) (fullName string, videoPath string) 
 	return fullName, videoPath
 }
 
+// extractRecordingLifecycleStatus pulls the extension-reported lifecycle status
+// from command result payloads ("recording", "saved", "error", etc.).
+func extractRecordingLifecycleStatus(result json.RawMessage) string {
+	if len(result) == 0 {
+		return ""
+	}
+	var payload struct {
+		Status string `json:"status"`
+	}
+	if err := json.Unmarshal(result, &payload); err != nil {
+		return ""
+	}
+	return strings.ToLower(strings.TrimSpace(payload.Status))
+}
+
+// resolveInteractRecordingState refreshes state using latest command results.
+func (h *ToolHandler) resolveInteractRecordingState() interactRecordingState {
+	h.recordInteractMu.Lock()
+	defer h.recordInteractMu.Unlock()
+
+	state := h.recordInteract
+	if state.State == "" {
+		state.State = recordingStateIdle
+	}
+
+	if state.StopCorrelationID != "" {
+		if stopCmd, found := h.capture.GetCommandResult(state.StopCorrelationID); found {
+			if stopCmd.Status == "pending" {
+				state.State = recordingStateStopping
+				state.UpdatedAt = time.Now()
+				h.recordInteract = state
+				return state
+			}
+			// Any terminal stop result returns the state machine to idle.
+			state = interactRecordingState{State: recordingStateIdle, UpdatedAt: time.Now()}
+			h.recordInteract = state
+			return state
+		}
+	}
+
+	if state.StartCorrelationID == "" {
+		state.State = recordingStateIdle
+		state.UpdatedAt = time.Now()
+		h.recordInteract = state
+		return state
+	}
+
+	startCmd, found := h.capture.GetCommandResult(state.StartCorrelationID)
+	if !found {
+		// Keep queued state until command result appears.
+		if state.State == "" {
+			state.State = recordingStateAwaitingGesture
+		}
+		state.UpdatedAt = time.Now()
+		h.recordInteract = state
+		return state
+	}
+
+	switch startCmd.Status {
+	case "pending":
+		state.State = recordingStateAwaitingGesture
+	case "complete":
+		switch extractRecordingLifecycleStatus(startCmd.Result) {
+		case recordingStateRecording:
+			state.State = recordingStateRecording
+		case recordingStateAwaitingGesture:
+			state.State = recordingStateAwaitingGesture
+		default:
+			state = interactRecordingState{State: recordingStateIdle}
+		}
+	default:
+		// error/timeout/expired/cancelled and unknown statuses are terminal.
+		state = interactRecordingState{State: recordingStateIdle}
+	}
+
+	state.UpdatedAt = time.Now()
+	h.recordInteract = state
+	return state
+}
+
+func (h *ToolHandler) setInteractRecordingStart(correlationID string) {
+	h.recordInteractMu.Lock()
+	defer h.recordInteractMu.Unlock()
+	h.recordInteract = interactRecordingState{
+		State:              recordingStateAwaitingGesture,
+		StartCorrelationID: correlationID,
+		UpdatedAt:          time.Now(),
+	}
+}
+
+func (h *ToolHandler) setInteractRecordingStopping(correlationID string) {
+	h.recordInteractMu.Lock()
+	defer h.recordInteractMu.Unlock()
+	state := h.recordInteract
+	if state.State == "" {
+		state.State = recordingStateIdle
+	}
+	state.State = recordingStateStopping
+	state.StopCorrelationID = correlationID
+	state.UpdatedAt = time.Now()
+	h.recordInteract = state
+}
+
 // queueRecordStart creates the pending query and returns the response for a record_start action.
 func (h *ToolHandler) queueRecordStart(req JSONRPCRequest, fullName, audio, videoPath string, fps, tabID int) JSONRPCResponse {
-	correlationID := fmt.Sprintf("rec_%d", time.Now().UnixNano())
+	correlationID := newCorrelationID("rec")
 
 	extParams := map[string]any{"action": "record_start", "name": fullName, "fps": fps, "audio": audio}
 	// Error impossible: map contains only primitive types from input
@@ -168,12 +285,14 @@ func (h *ToolHandler) queueRecordStart(req JSONRPCRequest, fullName, audio, vide
 		TabID:         tabID,
 		CorrelationID: correlationID,
 	}
-	h.capture.CreatePendingQueryWithTimeout(query, queries.AsyncCommandTimeout, req.ClientID)
+	h.capture.CreatePendingQueryWithTimeout(query, recordStartCommandTimeout, req.ClientID)
+	h.setInteractRecordingStart(correlationID)
 
 	h.recordAIAction("record_start", "", map[string]any{"name": fullName, "fps": fps, "audio": audio})
 
 	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Recording queued", map[string]any{
 		"status":                "queued",
+		"recording_state":       recordingStateAwaitingGesture,
 		"correlation_id":        correlationID,
 		"name":                  fullName,
 		"fps":                   fps,
@@ -198,8 +317,11 @@ func (h *ToolHandler) handleRecordStart(req JSONRPCRequest, args json.RawMessage
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidJSON, "Invalid JSON arguments: "+err.Error(), "Fix JSON syntax and call again")}
 	}
 
-	if !h.capture.IsPilotEnabled() {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrCodePilotDisabled, "AI Web Pilot is disabled", "Enable AI Web Pilot in the extension popup", h.diagnosticHint())}
+	if resp, blocked := h.requirePilot(req); blocked {
+		return resp
+	}
+	if resp, blocked := h.requireExtension(req); blocked {
+		return resp
 	}
 
 	fps := clampFPS(params.FPS)
@@ -231,11 +353,34 @@ func (h *ToolHandler) handleRecordStop(req JSONRPCRequest, args json.RawMessage)
 		_ = json.Unmarshal(args, &params)
 	}
 
-	if !h.capture.IsPilotEnabled() {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrCodePilotDisabled, "AI Web Pilot is disabled", "Enable AI Web Pilot in the extension popup", h.diagnosticHint())}
+	if resp, blocked := h.requirePilot(req); blocked {
+		return resp
+	}
+	if resp, blocked := h.requireExtension(req); blocked {
+		return resp
 	}
 
-	correlationID := fmt.Sprintf("recstop_%d", time.Now().UnixNano())
+	recordingState := h.resolveInteractRecordingState()
+	if recordingState.State != recordingStateRecording {
+		retry := "Run interact(action:'record_start') and wait for observe(what:'command_result') to report status 'recording' before stopping."
+		if recordingState.State == recordingStateAwaitingGesture {
+			retry = "Recording start is still awaiting user gesture. Ask the user to click the Gasoline icon, then retry stop after start reports status 'recording'."
+		}
+		if recordingState.State == recordingStateStopping {
+			retry = "A previous record_stop is still in progress. Poll observe(what:'command_result') for the stop correlation_id and wait for a terminal status."
+		}
+		msg := fmt.Sprintf("Cannot stop recording while state is %q", recordingState.State)
+		if recordingState.StartCorrelationID == "" {
+			msg = "Cannot stop recording: no active interact(record_start) session found"
+		}
+		return JSONRPCResponse{
+			JSONRPC: "2.0",
+			ID:      req.ID,
+			Result:  mcpStructuredError(ErrNoData, msg, retry, h.diagnosticHint()),
+		}
+	}
+
+	correlationID := newCorrelationID("recstop")
 
 	extParams := map[string]any{
 		"action": "record_stop",
@@ -249,377 +394,16 @@ func (h *ToolHandler) handleRecordStop(req JSONRPCRequest, args json.RawMessage)
 		TabID:         params.TabID,
 		CorrelationID: correlationID,
 	}
-	h.capture.CreatePendingQueryWithTimeout(query, queries.AsyncCommandTimeout, req.ClientID)
+	h.capture.CreatePendingQueryWithTimeout(query, recordStopCommandTimeout, req.ClientID)
+	h.setInteractRecordingStopping(correlationID)
 
 	h.recordAIAction("record_stop", "", nil)
 
 	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Recording stop queued", map[string]any{
-		"status":         "queued",
-		"correlation_id": correlationID,
-		"message":        "Recording stop queued. Use observe({what: 'command_result', correlation_id: '" + correlationID + "'}) to get the result.",
+		"status":          "queued",
+		"recording_state": recordingStateStopping,
+		"correlation_id":  correlationID,
+		"message":         "Recording stop queued. Use observe({what: 'command_result', correlation_id: '" + correlationID + "'}) to get the result.",
 	})}
 }
 
-// videoUpload holds the parsed multipart upload data for a recording save.
-type videoUpload struct {
-	videoFile io.ReadCloser
-	meta      VideoRecordingMetadata
-	queryID   string
-}
-
-// parseVideoUpload extracts and validates the multipart fields from a recording save request.
-// Returns nil and writes an HTTP error if validation fails.
-func parseVideoUpload(w http.ResponseWriter, r *http.Request) *videoUpload {
-	if err := r.ParseMultipartForm(32 << 20); err != nil {
-		parseErr := strings.ToLower(err.Error())
-		if strings.Contains(parseErr, "request body too large") {
-			jsonResponse(w, http.StatusRequestEntityTooLarge, map[string]string{"error": "RECORDING_SAVE: Upload exceeds 1GB limit"})
-			return nil
-		}
-		jsonResponse(w, http.StatusBadRequest, map[string]string{"error": "RECORDING_SAVE: Failed to parse multipart form. " + err.Error()})
-		return nil
-	}
-
-	videoFile, _, err := r.FormFile("video")
-	if err != nil {
-		jsonResponse(w, http.StatusBadRequest, map[string]string{"error": "RECORDING_SAVE: Missing 'video' field. " + err.Error()})
-		return nil
-	}
-
-	meta, metaErr := parseVideoMetadata(r.FormValue("metadata"))
-	if metaErr != "" {
-		_ = videoFile.Close()
-		jsonResponse(w, http.StatusBadRequest, map[string]string{"error": metaErr})
-		return nil
-	}
-
-	return &videoUpload{videoFile: videoFile, meta: meta, queryID: r.FormValue("query_id")}
-}
-
-// parseVideoMetadata validates and parses the metadata JSON string.
-// Returns the parsed metadata and an empty error string on success,
-// or a zero metadata and an error message string on failure.
-func parseVideoMetadata(metadataStr string) (VideoRecordingMetadata, string) {
-	if metadataStr == "" {
-		return VideoRecordingMetadata{}, "RECORDING_SAVE: Missing 'metadata' field. Include metadata JSON in the form."
-	}
-
-	var meta VideoRecordingMetadata
-	if err := json.Unmarshal([]byte(metadataStr), &meta); err != nil {
-		return VideoRecordingMetadata{}, "RECORDING_SAVE: Invalid metadata JSON. " + err.Error()
-	}
-
-	if meta.Name == "" {
-		return VideoRecordingMetadata{}, "RECORDING_SAVE: Metadata missing 'name' field. Include a name in the metadata."
-	}
-
-	if strings.ContainsAny(meta.Name, "/\\") || strings.Contains(meta.Name, "..") {
-		return VideoRecordingMetadata{}, "RECORDING_SAVE: Invalid recording name — contains path separators. Use alphanumeric characters and hyphens."
-	}
-	meta.Name = sanitizeVideoSlug(meta.Name)
-
-	return meta, ""
-}
-
-// writeVideoToDisk writes the video blob and metadata sidecar to dir.
-// Returns the video path and final byte count, or an error string for the HTTP response.
-func writeVideoToDisk(dir string, meta *VideoRecordingMetadata, videoFile io.Reader) (string, error) {
-	safeName := sanitizeVideoSlug(meta.Name)
-	if safeName == "" {
-		return "", fmt.Errorf("RECORDING_SAVE: Invalid recording name")
-	}
-
-	meta.Name = safeName
-	outFile, err := os.CreateTemp(dir, "recording-*.webm")
-	if err != nil {
-		return "", fmt.Errorf("RECORDING_SAVE: Failed to create file. %w", err)
-	}
-
-	videoPath := outFile.Name()
-	if !pathWithinDir(videoPath, dir) {
-		_ = outFile.Close()
-		// #nosec G703 -- path came from os.CreateTemp(dir, ...) and is constrained by pathWithinDir
-		_ = os.Remove(videoPath)
-		return "", fmt.Errorf("RECORDING_SAVE: Invalid recording path")
-	}
-
-	written, err := io.Copy(outFile, videoFile)
-	closeErr := outFile.Close()
-	if err != nil {
-		// #nosec G703 -- path came from os.CreateTemp(dir, ...) and is constrained by pathWithinDir
-		_ = os.Remove(videoPath)
-		return "", fmt.Errorf("RECORDING_SAVE: Failed to write video. %w", err)
-	}
-	if closeErr != nil {
-		// #nosec G703 -- path came from os.CreateTemp(dir, ...) and is constrained by pathWithinDir
-		_ = os.Remove(videoPath)
-		return "", fmt.Errorf("RECORDING_SAVE: Failed to finalize video file. %w", closeErr)
-	}
-
-	meta.SizeBytes = written
-
-	base := strings.TrimSuffix(filepath.Base(videoPath), ".webm")
-	metaPath := filepath.Join(dir, base+"_meta.json")
-	if !pathWithinDir(metaPath, dir) {
-		return "", fmt.Errorf("RECORDING_SAVE: Invalid metadata path")
-	}
-	// Error impossible: simple struct with no circular refs or unsupported types
-	metaJSON, _ := json.MarshalIndent(*meta, "", "  ")
-	// #nosec G306,G703 -- recording metadata path is derived from trusted temp filename in recordings dir
-	if err := os.WriteFile(metaPath, metaJSON, 0o600); err != nil {
-		return "", fmt.Errorf("RECORDING_SAVE: Failed to write metadata. %w", err)
-	}
-
-	return videoPath, nil
-}
-
-// handleVideoRecordingSave handles POST /recordings/save from the extension.
-// Accepts multipart form with "video" (binary) and "metadata" (JSON string) fields.
-func (s *Server) handleVideoRecordingSave(w http.ResponseWriter, r *http.Request, cap interface{ SetQueryResult(string, json.RawMessage) }) {
-	if r.Method != "POST" {
-		jsonResponse(w, http.StatusMethodNotAllowed, map[string]string{"error": "Method not allowed"})
-		return
-	}
-	r.Body = http.MaxBytesReader(w, r.Body, maxRecordingUploadSizeBytes)
-
-	upload := parseVideoUpload(w, r)
-	if upload == nil {
-		return
-	}
-	defer func() {
-		_ = upload.videoFile.Close()
-		if r.MultipartForm != nil {
-			_ = r.MultipartForm.RemoveAll()
-		}
-	}()
-
-	dir, err := recordingsDir()
-	if err != nil {
-		jsonResponse(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
-		return
-	}
-
-	videoPath, writeErr := writeVideoToDisk(dir, &upload.meta, upload.videoFile)
-	if writeErr != nil {
-		jsonResponse(w, http.StatusInternalServerError, map[string]string{"error": writeErr.Error()})
-		return
-	}
-
-	if upload.queryID != "" && cap != nil {
-		// Error impossible: map contains only primitive types from input
-		result, _ := json.Marshal(map[string]any{
-			"status":           "saved",
-			"name":             upload.meta.Name,
-			"path":             videoPath,
-			"duration_seconds": upload.meta.DurationSeconds,
-			"size_bytes":       upload.meta.SizeBytes,
-			"truncated":        upload.meta.Truncated,
-		})
-		cap.SetQueryResult(upload.queryID, result)
-	}
-
-	jsonResponse(w, http.StatusOK, map[string]any{
-		"status": "saved",
-		"name":   upload.meta.Name,
-		"path":   videoPath,
-		"size":   upload.meta.SizeBytes,
-	})
-}
-
-// resolveRevealPath resolves and validates a path against recordings directories.
-// Returns the resolved path, an HTTP status code, and an error message.
-// Status 0 means success.
-func resolveRevealPath(rawPath string, dirs []string) (string, int, string) {
-	absPath, err := filepath.Abs(rawPath)
-	if err != nil {
-		return "", http.StatusBadRequest, "Invalid path"
-	}
-	if resolved, resolveErr := filepath.EvalSymlinks(absPath); resolveErr == nil {
-		absPath = resolved
-	}
-
-	if !isPathInAnyDir(absPath, dirs) {
-		return "", http.StatusForbidden, "Path not within recordings directory"
-	}
-
-	if _, err := os.Stat(absPath); os.IsNotExist(err) {
-		return "", http.StatusNotFound, "File not found"
-	}
-
-	return absPath, 0, ""
-}
-
-// isPathInAnyDir returns true if absPath is within any of the given directories.
-func isPathInAnyDir(absPath string, dirs []string) bool {
-	for _, dir := range dirs {
-		if pathWithinDir(absPath, dir) {
-			return true
-		}
-	}
-	return false
-}
-
-// validateRevealPath checks that the path is valid and within a recordings directory.
-// Returns the resolved absolute path or writes an HTTP error and returns empty string.
-func validateRevealPath(w http.ResponseWriter, rawPath string) string {
-	dirs := recordingsReadDirs()
-	if len(dirs) == 0 {
-		jsonResponse(w, http.StatusInternalServerError, map[string]string{"error": "Could not resolve recordings directory"})
-		return ""
-	}
-
-	absPath, status, errMsg := resolveRevealPath(rawPath, dirs)
-	if status != 0 {
-		jsonResponse(w, status, map[string]string{"error": errMsg})
-		return ""
-	}
-
-	return absPath
-}
-
-// revealInFileManager opens the platform file manager highlighting the given path.
-func revealInFileManager(absPath string) error {
-	var cmd *exec.Cmd
-	switch runtime.GOOS {
-	case "darwin":
-		cmd = exec.Command("open", "-R", absPath)
-	case "windows":
-		cmd = exec.Command("explorer", "/select,", absPath)
-	default:
-		cmd = exec.Command("xdg-open", filepath.Dir(absPath))
-	}
-	return cmd.Run()
-}
-
-// handleRevealRecording handles POST /recordings/reveal — opens Finder/Explorer to the file.
-func handleRevealRecording(w http.ResponseWriter, r *http.Request) {
-	if r.Method != "POST" {
-		jsonResponse(w, http.StatusMethodNotAllowed, map[string]string{"error": "Method not allowed"})
-		return
-	}
-
-	r.Body = http.MaxBytesReader(w, r.Body, maxPostBodySize)
-	var body struct {
-		Path string `json:"path"`
-	}
-	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		jsonResponse(w, http.StatusBadRequest, map[string]string{"error": "Invalid JSON"})
-		return
-	}
-	if body.Path == "" {
-		jsonResponse(w, http.StatusBadRequest, map[string]string{"error": "Missing path"})
-		return
-	}
-
-	absPath := validateRevealPath(w, body.Path)
-	if absPath == "" {
-		return
-	}
-
-	if err := revealInFileManager(absPath); err != nil {
-		jsonResponse(w, http.StatusInternalServerError, map[string]string{"error": "Failed to reveal file: " + err.Error()})
-		return
-	}
-
-	jsonResponse(w, http.StatusOK, map[string]string{"status": "revealed", "path": absPath})
-}
-
-// collectRecordingMetadata scans recording directories and returns deduplicated metadata files.
-func collectRecordingMetadata(dirs []string) []string {
-	matches := make([]string, 0)
-	seen := make(map[string]bool)
-	for _, dir := range dirs {
-		dirMatches, globErr := filepath.Glob(filepath.Join(dir, "*_meta.json")) // nosemgrep: go_filesystem_rule-fileread
-		if globErr != nil {
-			continue
-		}
-		for _, m := range dirMatches {
-			if seen[m] {
-				continue
-			}
-			seen[m] = true
-			matches = append(matches, m)
-		}
-	}
-	return matches
-}
-
-// loadAndFilterRecordings reads metadata files, deduplicates by name, and applies URL filter.
-func loadAndFilterRecordings(matches []string, urlFilter string) ([]VideoRecordingMetadata, int64) {
-	var recordings []VideoRecordingMetadata
-	var totalSize int64
-	seenByName := make(map[string]bool)
-
-	for _, metaPath := range matches {
-		data, err := os.ReadFile(metaPath) // nosemgrep: go_filesystem_rule-fileread -- CLI tool reads local recording metadata
-		if err != nil {
-			continue
-		}
-		var meta VideoRecordingMetadata
-		if err := json.Unmarshal(data, &meta); err != nil {
-			continue
-		}
-		if seenByName[meta.Name] {
-			continue
-		}
-		seenByName[meta.Name] = true
-
-		if urlFilter != "" && !recordingMatchesFilter(meta, urlFilter) {
-			continue
-		}
-
-		recordings = append(recordings, meta)
-		totalSize += meta.SizeBytes
-	}
-
-	sort.Slice(recordings, func(i, j int) bool {
-		return recordings[i].CreatedAt > recordings[j].CreatedAt
-	})
-
-	return recordings, totalSize
-}
-
-// recordingMatchesFilter checks if a recording's name or URL contains the filter string (case-insensitive).
-func recordingMatchesFilter(meta VideoRecordingMetadata, filter string) bool {
-	lower := strings.ToLower(filter)
-	return strings.Contains(strings.ToLower(meta.Name), lower) ||
-		strings.Contains(strings.ToLower(meta.URL), lower)
-}
-
-// toolObserveSavedVideos handles observe({what: "saved_videos"}).
-// Globs state recordings metadata files and returns recording metadata.
-func (h *ToolHandler) toolObserveSavedVideos(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-	var params struct {
-		URL   string `json:"url"`
-		LastN int    `json:"last_n,omitempty"`
-	}
-	if len(args) > 0 {
-		_ = json.Unmarshal(args, &params)
-	}
-
-	dirs := recordingsReadDirs()
-	if len(dirs) == 0 {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInternal, "Could not resolve recordings directory", "Check disk permissions")}
-	}
-
-	matches := collectRecordingMetadata(dirs)
-	if len(matches) == 0 {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("No saved videos", map[string]any{
-			"recordings":         []any{},
-			"total":              0,
-			"storage_used_bytes": int64(0),
-		})}
-	}
-
-	recordings, totalSize := loadAndFilterRecordings(matches, params.URL)
-
-	if params.LastN > 0 && len(recordings) > params.LastN {
-		recordings = recordings[:params.LastN]
-	}
-
-	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse(fmt.Sprintf("%d saved videos", len(recordings)), map[string]any{
-		"recordings":         recordings,
-		"total":              len(recordings),
-		"storage_used_bytes": totalSize,
-	})}
-}

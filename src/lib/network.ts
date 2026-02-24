@@ -1,10 +1,16 @@
 /**
+ * Purpose: Provides shared runtime utilities used by extension and server workflows.
+ * Why: Avoids duplicated logic across runtime layers and keeps behavior consistent.
+ * Docs: docs/features/feature/backend-log-streaming/index.md
+ */
+
+/**
  * @fileoverview Network waterfall and body capture.
  * Provides PerformanceResourceTiming parsing, pending request tracking,
  * fetch body capture with size limits, and sensitive header sanitization.
  */
 
-import type { WaterfallEntry, WaterfallPhases, PendingRequest } from '../types/index'
+import type { WaterfallEntry, PendingRequest } from '../types/index'
 
 import {
   MAX_WATERFALL_ENTRIES,
@@ -64,10 +70,10 @@ interface NetworkBodyPostMessage {
     url: string
     method: string
     status: number
-    contentType: string
-    requestBody?: string
-    responseBody?: string
-    responseTruncated?: boolean
+    content_type: string
+    request_body?: string
+    response_body?: string
+    response_truncated?: boolean
     duration: number
   }
 }
@@ -88,6 +94,7 @@ let requestIdCounter = 0
 let networkBodyCaptureEnabled = true // Default: capture request/response bodies
 
 /** URL patterns for auth endpoints whose response bodies should be redacted */
+// nosemgrep: javascript.lang.security.audit.detect-non-literal-regexp.detect-non-literal-regexp -- static literal regex, no ReDoS risk (linear alternation of fixed strings)
 const SENSITIVE_URL_PATTERNS = /\/(auth|login|signin|signup|token|oauth|session|api[_-]?key|password|register)\b/i
 
 // =============================================================================
@@ -100,31 +107,18 @@ const SENSITIVE_URL_PATTERNS = /\/(auth|login|signin|signup|token|oauth|session|
  * @returns Parsed waterfall entry
  */
 export function parseResourceTiming(timing: PerformanceResourceTiming): WaterfallEntry {
-  const phases: WaterfallPhases = {
-    dns: Math.max(0, timing.domainLookupEnd - timing.domainLookupStart),
-    connect: Math.max(0, timing.connectEnd - timing.connectStart),
-    tls: timing.secureConnectionStart > 0 ? Math.max(0, timing.connectEnd - timing.secureConnectionStart) : 0,
-    ttfb: Math.max(0, timing.responseStart - timing.requestStart),
-    download: Math.max(0, timing.responseEnd - timing.responseStart)
-  }
-
-  const result: WaterfallEntry = {
+  return {
+    name: timing.name,
     url: timing.name,
-    initiatorType: timing.initiatorType,
-    startTime: timing.startTime,
+    initiator_type: timing.initiatorType,
+    start_time: timing.startTime,
     duration: timing.duration,
-    phases,
-    transferSize: timing.transferSize || 0,
-    encodedBodySize: timing.encodedBodySize || 0,
-    decodedBodySize: timing.decodedBodySize || 0
+    fetch_start: timing.fetchStart || undefined,
+    response_end: timing.responseEnd || undefined,
+    transfer_size: timing.transferSize || 0,
+    encoded_body_size: timing.encodedBodySize || 0,
+    decoded_body_size: timing.decodedBodySize || 0
   }
-
-  // Detect cache hit
-  if (timing.transferSize === 0 && timing.encodedBodySize > 0) {
-    ;(result as { cached?: boolean }).cached = true
-  }
-
-  return result
 }
 
 /**
@@ -416,6 +410,7 @@ export function resetForTesting(): void {
   pendingRequests.clear()
   requestIdCounter = 0
   networkBodyCaptureEnabled = true
+  unwrapXHR()
 }
 
 /**
@@ -474,14 +469,105 @@ function postNetworkBody(
       url,
       method,
       status: response.status,
-      contentType,
-      requestBody: truncReq || (typeof requestBody === 'string' ? requestBody : undefined),
-      responseBody: truncResp,
-      ...(responseTruncated ? { responseTruncated: true } : {}),
+      content_type: contentType,
+      request_body: truncReq || (typeof requestBody === 'string' ? requestBody : undefined),
+      response_body: truncResp,
+      ...(responseTruncated ? { response_truncated: true } : {}),
       duration
     }
   }
   win.postMessage(message, window.location.origin)
+}
+
+// =============================================================================
+// XHR BODY CAPTURE
+// =============================================================================
+
+let originalXHROpen: typeof XMLHttpRequest.prototype.open | null = null
+let originalXHRSend: typeof XMLHttpRequest.prototype.send | null = null
+
+/**
+ * Wrap XMLHttpRequest to capture request/response bodies.
+ * Mirrors the fetch body capture behavior for XHR requests.
+ */
+export function wrapXHRWithBodies(): void {
+  if (typeof XMLHttpRequest === 'undefined') return
+  originalXHROpen = XMLHttpRequest.prototype.open
+  originalXHRSend = XMLHttpRequest.prototype.send
+
+  XMLHttpRequest.prototype.open = function (method: string, url: string | URL, ...rest: unknown[]) {
+    ;(this as XMLHttpRequest & { __gasolineMethod: string }).__gasolineMethod = method
+    ;(this as XMLHttpRequest & { __gasolineUrl: string }).__gasolineUrl =
+      typeof url === 'string' ? url : url.toString()
+    return originalXHROpen!.apply(this, [method, url, ...rest] as Parameters<typeof XMLHttpRequest.prototype.open>)
+  }
+
+  XMLHttpRequest.prototype.send = function (body?: Document | XMLHttpRequestBodyInit | null) {
+    const url: string = (this as XMLHttpRequest & { __gasolineUrl?: string }).__gasolineUrl || ''
+    const method: string = (this as XMLHttpRequest & { __gasolineMethod?: string }).__gasolineMethod || 'GET'
+
+    if (shouldCaptureUrl(url) && networkBodyCaptureEnabled) {
+      const startTime = Date.now()
+      const requestBody = typeof body === 'string' ? body : null
+      this.addEventListener('load', function (this: XMLHttpRequest) {
+        try {
+          const duration = Date.now() - startTime
+          const contentType = this.getResponseHeader('content-type') || ''
+          if (BINARY_CONTENT_TYPES.test(contentType)) return
+
+          const responseType: string = this.responseType
+          // Only capture text-like responses
+          if (responseType && responseType !== '' && responseType !== 'text' && responseType !== 'json') return
+
+          let responseBody: string | null = null
+          try {
+            responseBody = this.responseText
+          } catch {
+            return
+          }
+
+          const rawReq = SENSITIVE_URL_PATTERNS.test(url) ? '[REDACTED: auth endpoint]' : requestBody
+          const { body: truncReq } = truncateRequestBody(rawReq)
+          const { body: truncResp, truncated: respTruncated } = truncateResponseBody(responseBody)
+
+          const win = typeof window !== 'undefined' ? window : null
+          if (win) {
+            // Build a minimal Response-like shim for postNetworkBody
+            const responseShim = {
+              status: this.status,
+              headers: { get: (h: string) => this.getResponseHeader(h) }
+            } as unknown as Response
+            postNetworkBody(
+              win,
+              url,
+              method,
+              responseShim,
+              contentType,
+              requestBody,
+              duration,
+              truncResp || '',
+              truncReq,
+              respTruncated
+            )
+          }
+        } catch {
+          /* silent — body capture failure should not affect user code */
+        }
+      })
+    }
+
+    return originalXHRSend!.call(this, body as XMLHttpRequestBodyInit | null | undefined)
+  }
+}
+
+/**
+ * Restore original XMLHttpRequest.prototype.open and .send
+ */
+export function unwrapXHR(): void {
+  if (originalXHROpen) XMLHttpRequest.prototype.open = originalXHROpen
+  if (originalXHRSend) XMLHttpRequest.prototype.send = originalXHRSend
+  originalXHROpen = null
+  originalXHRSend = null
 }
 
 export function wrapFetchWithBodies(fetchFn: FetchLike): FetchLike {

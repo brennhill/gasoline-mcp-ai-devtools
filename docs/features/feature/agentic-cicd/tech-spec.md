@@ -5,6 +5,9 @@ ai-priority: high
 tags: [implementation, architecture]
 relates-to: [product-spec.md, qa-plan.md]
 last-verified: 2026-01-31
+doc_type: tech-spec
+feature_id: feature-agentic-cicd
+last_reviewed: 2026-02-16
 ---
 
 > **[MIGRATION NOTICE]**
@@ -107,7 +110,7 @@ preconditions:
 - `GET /snapshot` — All browser state at failure point (CI endpoint)
 - `observe {what: "errors"}` — Console errors during test
 - `observe {what: "network"}` — API responses
-- `query_dom` — Current DOM state
+- `analyze({what: "dom"})` — Current DOM state
 - `verify_fix` — Before/after comparison to confirm fix worked
 - `analyze {target: "changes"}` — What changed since last passing run
 

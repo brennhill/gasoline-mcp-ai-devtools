@@ -1,14 +1,14 @@
 /**
- * @fileoverview Console method capture.
- * Monkey-patches console.log/warn/error/info/debug to capture messages
- * and forward them via postLog, while preserving original behavior.
+ * Purpose: Provides shared runtime utilities used by extension and server workflows.
+ * Why: Avoids duplicated logic across runtime layers and keeps behavior consistent.
+ * Docs: docs/features/feature/observe/index.md
  */
 /**
  * Install console capture hooks
  */
-export declare function installConsoleCapture(): void
+export declare function installConsoleCapture(): void;
 /**
  * Uninstall console capture hooks
  */
-export declare function uninstallConsoleCapture(): void
+export declare function uninstallConsoleCapture(): void;
 //# sourceMappingURL=console.d.ts.map

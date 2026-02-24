@@ -1,3 +1,7 @@
+// Purpose: Validate tools_interact_pilot_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
+// Docs: docs/features/feature/interact-explore/index.md
+
 // tools_interact_pilot_test.go — Coverage tests for navigate and executeJS success paths.
 package main
 
@@ -16,7 +20,7 @@ func TestHandleBrowserActionNavigate_Success(t *testing.T) {
 	env := newInteractTestEnv(t)
 	env.capture.SetPilotEnabled(true)
 
-	result, ok := env.callInteract(t, `{"action":"navigate","url":"https://example.com/page"}`)
+	result, ok := env.callInteract(t, `{"what":"navigate","url":"https://example.com/page"}`)
 	if !ok {
 		t.Fatal("navigate should return result")
 	}
@@ -30,6 +34,13 @@ func TestHandleBrowserActionNavigate_Success(t *testing.T) {
 	}
 	if pq.Type != "browser_action" {
 		t.Fatalf("pending query type = %q, want browser_action", pq.Type)
+	}
+	var params map[string]any
+	if err := json.Unmarshal(pq.Params, &params); err != nil {
+		t.Fatalf("unmarshal pending query params: %v", err)
+	}
+	if action, _ := params["action"].(string); action != "navigate" {
+		t.Fatalf("navigate action = %q, want navigate", action)
 	}
 
 	data := parseResponseJSON(t, result)
@@ -68,7 +79,7 @@ func TestHandlePilotExecuteJS_Success(t *testing.T) {
 	env := newInteractTestEnv(t)
 	env.capture.SetPilotEnabled(true)
 
-	result, ok := env.callInteract(t, `{"action":"execute_js","script":"document.title"}`)
+	result, ok := env.callInteract(t, `{"what":"execute_js","script":"document.title"}`)
 	if !ok {
 		t.Fatal("execute_js should return result")
 	}

@@ -1,3 +1,7 @@
+// Purpose: Validate tools_interact_upload_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
+// Docs: docs/features/feature/interact-explore/index.md
+
 // tools_interact_upload_test.go — Tests for file upload feature (4-stage escalation).
 //
 // WARNING: DO NOT use t.Parallel() — tests share global state (skipSSRFCheck, uploadSecurityConfig).
@@ -18,12 +22,14 @@ package main
 
 import (
 	"encoding/json"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 
 	"github.com/dev-console/dev-console/internal/capture"
+	"github.com/dev-console/dev-console/internal/upload"
 )
 
 // ============================================
@@ -36,7 +42,7 @@ func TestUpload_WorksWithoutFlag(t *testing.T) {
 	// Create a small test file
 	testFile := createTestFile(t, "test.txt", "hello world")
 
-	result, ok := env.callInteract(t, `{"action":"upload","selector":"#Filedata","file_path":"`+testFile+`"}`)
+	result, ok := env.callInteract(t, `{"what":"upload","selector":"#Filedata","file_path":"`+testFile+`"}`)
 	if !ok {
 		t.Fatal("upload should return result")
 	}
@@ -65,7 +71,7 @@ func TestUpload_WorksWithoutFlag(t *testing.T) {
 func TestUpload_MissingFilePath(t *testing.T) {
 	env := newUploadTestEnv(t)
 
-	result, ok := env.callInteract(t, `{"action":"upload","selector":"#Filedata"}`)
+	result, ok := env.callInteract(t, `{"what":"upload","selector":"#Filedata"}`)
 	if !ok {
 		t.Fatal("upload without file_path should return result")
 	}
@@ -85,13 +91,13 @@ func TestUpload_MissingFilePath(t *testing.T) {
 func TestUpload_MissingSelectorAndEndpoint(t *testing.T) {
 	env := newUploadTestEnv(t)
 
-	result, ok := env.callInteract(t, `{"action":"upload","file_path":"/tmp/test.mp4"}`)
+	result, ok := env.callInteract(t, `{"what":"upload","file_path":"/tmp/test.mp4"}`)
 	if !ok {
 		t.Fatal("upload without selector should return result")
 	}
 
 	if !result.IsError {
-		t.Error("upload without selector or apiEndpoint MUST return isError:true")
+		t.Error("upload without selector or api_endpoint MUST return isError:true")
 	}
 
 	if len(result.Content) > 0 {
@@ -99,13 +105,16 @@ func TestUpload_MissingSelectorAndEndpoint(t *testing.T) {
 		if !strings.Contains(text, "selector") {
 			t.Errorf("error should mention selector parameter\nGot: %s", result.Content[0].Text)
 		}
+		if !strings.Contains(text, "api_endpoint") {
+			t.Errorf("error should mention api_endpoint parameter\nGot: %s", result.Content[0].Text)
+		}
 	}
 }
 
 func TestUpload_FileNotFound(t *testing.T) {
 	env := newUploadTestEnv(t)
 
-	result, ok := env.callInteract(t, `{"action":"upload","selector":"#Filedata","file_path":"/nonexistent/path/video.mp4"}`)
+	result, ok := env.callInteract(t, `{"what":"upload","selector":"#Filedata","file_path":"/nonexistent/path/video.mp4"}`)
 	if !ok {
 		t.Fatal("upload with nonexistent file should return result")
 	}
@@ -592,7 +601,7 @@ func TestUpload_InvalidJSON_ReturnsError(t *testing.T) {
 func TestUpload_RelativePath_Rejected(t *testing.T) {
 	env := newUploadTestEnv(t)
 
-	result, ok := env.callInteract(t, `{"action":"upload","selector":"#Filedata","file_path":"../../../etc/passwd"}`)
+	result, ok := env.callInteract(t, `{"what":"upload","selector":"#Filedata","file_path":"../../../etc/passwd"}`)
 	if !ok {
 		t.Fatal("upload with relative path should return result")
 	}
@@ -606,11 +615,11 @@ func TestUpload_NoPanic_AllVariants(t *testing.T) {
 	env := newUploadTestEnv(t)
 
 	variants := []string{
-		`{"action":"upload","selector":"#f","file_path":"/tmp/x"}`,
-		`{"action":"upload","selector":"#f"}`,
-		`{"action":"upload","file_path":"/tmp/x"}`,
-		`{"action":"upload"}`,
-		`{"action":"upload","selector":"#f","file_path":"","submit":true}`,
+		`{"what":"upload","selector":"#f","file_path":"/tmp/x"}`,
+		`{"what":"upload","selector":"#f"}`,
+		`{"what":"upload","file_path":"/tmp/x"}`,
+		`{"what":"upload"}`,
+		`{"what":"upload","selector":"#f","file_path":"","submit":true}`,
 	}
 
 	for i, v := range variants {
@@ -644,19 +653,22 @@ type uploadTestEnv struct {
 func newUploadTestEnv(t *testing.T) *uploadTestEnv {
 	t.Helper()
 	// Allow private IPs in tests (httptest.NewServer uses 127.0.0.1)
-	skipSSRFCheck = true
-	t.Cleanup(func() { skipSSRFCheck = false })
+	upload.SkipSSRFCheck = true
+	t.Cleanup(func() { upload.SkipSSRFCheck = false })
 
 	server, err := NewServer(filepath.Join(t.TempDir(), "test-upload.jsonl"), 100)
 	if err != nil {
 		t.Fatalf("NewServer failed: %v", err)
 	}
 	cap := newTestCapture()
+	syncReq := httptest.NewRequest("POST", "/sync", strings.NewReader(`{"ext_session_id":"test"}`))
+	syncReq.Header.Set("X-Gasoline-Client", "test-client")
+	cap.HandleSync(httptest.NewRecorder(), syncReq)
 	mcpHandler := NewToolHandler(server, cap)
 	handler := mcpHandler.toolHandler.(*ToolHandler)
 
 	// Permissive upload security config for tests
-	handler.uploadSecurity = &UploadSecurity{uploadDir: "/"}
+	handler.uploadSecurity = upload.NewSecurity("/", nil)
 
 	return &uploadTestEnv{
 		interactTestEnv: &interactTestEnv{handler: handler, server: server, capture: cap},

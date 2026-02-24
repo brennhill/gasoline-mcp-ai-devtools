@@ -1,26 +1,8 @@
-// Gasoline - Browser observability for AI coding agents
-// A zero-dependency server that receives logs from the browser extension
-// and streams them to your AI coding agent via MCP.
-//
-// Error Handling Strategy:
-//  1. HTTP handlers: Return HTTP status codes (400/404/405/500), log to stderr
-//  2. MCP JSON-RPC: Return JSON-RPC error responses with code/message
-//  3. Background operations: Log to stderr and continue (e.g., file close errors)
-//  4. Fatal startup errors: Log to stderr and os.Exit(1)
-//  5. Context timeouts: Handled gracefully with error messages
-//
-// Logging Strategy (zero-dependency policy means no logging library):
-//  1. User-facing messages: fmt.Printf() to stdout
-//  2. Errors and warnings: fmt.Fprintf(os.Stderr, "[gasoline] ...") to stderr
-//  3. Lifecycle events: Written to log file via server.appendToFile()
-//  4. Debug output: Only when explicitly enabled
 package main
 
 import (
 	"encoding/json"
-	"flag"
 	"fmt"
-	"io"
 	"net"
 	"net/http"
 	"os"
@@ -33,14 +15,13 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/dev-console/dev-console/internal/session"
 	"github.com/dev-console/dev-console/internal/state"
 	"github.com/dev-console/dev-console/internal/util"
 )
 
 // version is set at build time via -ldflags "-X main.version=..."
 // Fallback used for `go run` and `make dev` (no ldflags).
-var version = "0.7.2"
+var version = "0.7.8"
 
 // startTime tracks when the server started for uptime calculation
 var startTime = time.Now()
@@ -53,15 +34,6 @@ const (
 	healthCheckMaxAttempts   = 30                     // 30 attempts * 100ms = 3 seconds total
 	healthCheckRetryInterval = 100 * time.Millisecond // Retry interval between health check attempts
 )
-
-// multiFlag implements flag.Value for repeatable string flags (e.g., --upload-deny-pattern).
-type multiFlag []string
-
-func (f *multiFlag) String() string { return strings.Join(*f, ", ") }
-func (f *multiFlag) Set(value string) error {
-	*f = append(*f, value)
-	return nil
-}
 
 var (
 	// Screenshot rate limiting: prevent DoS by limiting uploads to 1/second per client
@@ -90,6 +62,7 @@ func findMCPConfig() string {
 
 	// Check common MCP config locations
 	locations := []string{
+		filepath.Join(home, ".claude.json"),                            // Claude
 		filepath.Join(home, ".cursor", "mcp.json"),                     // Cursor
 		filepath.Join(home, ".codeium", "windsurf", "mcp_config.json"), // Windsurf
 		filepath.Join(home, ".continue", "config.json"),                // Continue
@@ -217,14 +190,12 @@ func handlePanicRecovery(r any) {
 		}
 	}
 
-	crashFile := resolveCrashFile()
-	crashContent := fmt.Sprintf("GASOLINE CRASH at %s\nPanic: %v\nStack:\n%s\n",
-		time.Now().Format(time.RFC3339), r, stack)
-	// #nosec G301 -- runtime state directory: owner rwx, group rx for diagnostics
-	_ = os.MkdirAll(filepath.Dir(crashFile), 0o750)
-	_ = os.WriteFile(crashFile, []byte(crashContent), 0600) // #nosec G104 -- best-effort crash logging; owner-only for privacy
-
-	fmt.Fprintf(os.Stderr, "[gasoline] Crash details written to: %s\n", crashFile)
+	if diagPath := appendExitDiagnostic("panic", map[string]any{
+		"reason": fmt.Sprintf("%v", r),
+		"stack":  string(stack),
+	}); diagPath != "" {
+		fmt.Fprintf(os.Stderr, "[gasoline] Crash details written to: %s\n", diagPath)
+	}
 	os.Exit(1)
 }
 
@@ -238,189 +209,6 @@ func resolveCrashFile() string {
 		return legacy
 	}
 	return filepath.Join(os.TempDir(), "gasoline-crash.log")
-}
-
-// serverConfig holds the parsed command-line flags for the server.
-type serverConfig struct {
-	port       int
-	logFile    string
-	maxEntries int
-	apiKey     string
-	stateDir   string
-	clientID   string
-	bridgeMode bool
-	daemonMode bool
-}
-
-type runtimeMode string
-
-const (
-	modeBridge runtimeMode = "bridge"
-	modeDaemon runtimeMode = "daemon"
-)
-
-// parsedFlags holds the raw parsed flag values before validation.
-type parsedFlags struct {
-	port, maxEntries                                         *int
-	logFile, apiKey, clientID, stateDir, uploadDir           *string
-	showVersion, showHelp, checkSetup, stopMode, connectMode *bool
-	bridgeMode, daemonMode, enableOsUploadAutomation         *bool
-	forceCleanup                                             *bool
-	uploadDenyPatterns                                       multiFlag
-	ssrfAllowedHosts                                         multiFlag
-}
-
-// registerFlags defines all CLI flags and returns the parsed values.
-func registerFlags() *parsedFlags {
-	f := &parsedFlags{}
-	f.port = flag.Int("port", defaultPort, "Port to listen on")
-	f.logFile = flag.String("log-file", "", "Path to log file (default: in runtime state dir)")
-	f.maxEntries = flag.Int("max-entries", defaultMaxEntries, "Max log entries before rotation")
-	f.showVersion = flag.Bool("version", false, "Show version")
-	f.showHelp = flag.Bool("help", false, "Show help")
-	f.apiKey = flag.String("api-key", os.Getenv("GASOLINE_API_KEY"), "API key for HTTP authentication (optional, or GASOLINE_API_KEY env)")
-	f.checkSetup = flag.Bool("check", false, "Verify setup: check if port is available and print status")
-	f.stopMode = flag.Bool("stop", false, "Stop the running server on the specified port")
-	f.connectMode = flag.Bool("connect", false, "Connect to existing server (multi-client mode)")
-	f.clientID = flag.String("client-id", "", "Override client ID (default: derived from CWD)")
-	f.bridgeMode = flag.Bool("bridge", false, "Run as stdio-to-HTTP bridge (spawns daemon if needed)")
-	f.daemonMode = flag.Bool("daemon", false, "Run as background server daemon (internal use)")
-	f.stateDir = flag.String("state-dir", "", "Directory for runtime state (default: OS app state directory)")
-	f.enableOsUploadAutomation = flag.Bool("enable-os-upload-automation", false, "Enable OS-level file upload automation (Stage 4: AppleScript/xdotool)")
-	f.uploadDir = flag.String("upload-dir", "", "Directory from which file uploads are allowed (required for Stages 2-4)")
-	f.forceCleanup = flag.Bool("force", false, "Force kill all running gasoline daemons (used during install to ensure clean upgrade)")
-	flag.Bool("mcp", false, "Run in MCP mode (default, kept for backwards compatibility)")
-	flag.Var(&f.uploadDenyPatterns, "upload-deny-pattern", "Additional sensitive path patterns to block (repeatable)")
-	flag.Var(&f.ssrfAllowedHosts, "ssrf-allow-host", "Host:port to allow for form submit SSRF (repeatable, test use)")
-	flag.Parse()
-	return f
-}
-
-// handleEarlyExitModes handles --version, --help, --force, --check, --stop, --connect.
-// Calls os.Exit for any matched mode; returns normally if none matched.
-func handleEarlyExitModes(f *parsedFlags) {
-	if *f.showVersion {
-		fmt.Printf("gasoline v%s\n", version)
-		os.Exit(0)
-	}
-	if *f.showHelp {
-		printHelp()
-		os.Exit(0)
-	}
-	if *f.forceCleanup {
-		runForceCleanup()
-		os.Exit(0)
-	}
-	if *f.checkSetup {
-		runSetupCheck(*f.port)
-		os.Exit(0)
-	}
-	if *f.stopMode {
-		runStopMode(*f.port)
-		os.Exit(0)
-	}
-	if *f.connectMode {
-		cwd, _ := os.Getwd()
-		id := *f.clientID
-		if id == "" {
-			id = session.DeriveClientID(cwd)
-		}
-		runConnectMode(*f.port, id, cwd)
-		os.Exit(0)
-	}
-}
-
-// parseAndValidateFlags parses CLI flags, validates them, and handles early-exit modes.
-func parseAndValidateFlags() *serverConfig {
-	f := registerFlags()
-
-	osUploadAutomationFlag = *f.enableOsUploadAutomation
-	ssrfAllowedHostsList = f.ssrfAllowedHosts
-	initUploadSecurity(*f.enableOsUploadAutomation, *f.uploadDir, f.uploadDenyPatterns)
-	validatePort(*f.port)
-	normalizeStateDir(f.stateDir)
-	handleEarlyExitModes(f)
-	resolveDefaultLogFile(f.logFile)
-
-	return &serverConfig{
-		port:       *f.port,
-		logFile:    *f.logFile,
-		maxEntries: *f.maxEntries,
-		apiKey:     *f.apiKey,
-		stateDir:   *f.stateDir,
-		clientID:   *f.clientID,
-		bridgeMode: *f.bridgeMode,
-		daemonMode: *f.daemonMode,
-	}
-}
-
-// initUploadSecurity validates upload security configuration from CLI flags.
-// When --enable-os-upload-automation is set without --upload-dir, defaults to ~/gasoline-upload-dir.
-func initUploadSecurity(enabled bool, dir string, denyPatterns multiFlag) {
-	if enabled || dir != "" {
-		// Default upload dir when OS automation is enabled but no dir specified
-		if enabled && dir == "" {
-			home, err := os.UserHomeDir()
-			if err != nil {
-				fmt.Fprintf(os.Stderr, "[gasoline] Cannot determine home directory for default upload dir: %v\n", err)
-				os.Exit(1)
-			}
-			dir = filepath.Join(home, "gasoline-upload-dir")
-			if err := os.MkdirAll(dir, 0o755); err != nil {
-				fmt.Fprintf(os.Stderr, "[gasoline] Cannot create default upload dir %s: %v\n", dir, err)
-				os.Exit(1)
-			}
-			fmt.Fprintf(os.Stderr, "[gasoline] Using default upload dir: %s\n", dir)
-		}
-		sec, err := ValidateUploadDir(dir, denyPatterns)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "[gasoline] Upload security validation failed: %v\n", err)
-			os.Exit(1)
-		}
-		uploadSecurityConfig = sec
-	} else {
-		uploadSecurityConfig = &UploadSecurity{}
-	}
-}
-
-// validatePort ensures the port is within the valid TCP range.
-func validatePort(port int) {
-	if port < 1 || port > 65535 {
-		fmt.Fprintf(os.Stderr, "[gasoline] Invalid port: %d (must be 1-65535)\n", port)
-		os.Exit(1)
-	}
-}
-
-// normalizeStateDir resolves the --state-dir flag to an absolute path and exports it.
-func normalizeStateDir(stateDir *string) {
-	if *stateDir == "" {
-		return
-	}
-	absStateDir, err := filepath.Abs(*stateDir)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "[gasoline] Invalid --state-dir: %v\n", err)
-		os.Exit(1)
-	}
-	*stateDir = filepath.Clean(absStateDir)
-	if err := os.Setenv(state.StateDirEnv, *stateDir); err != nil {
-		fmt.Fprintf(os.Stderr, "[gasoline] Failed to set %s: %v\n", state.StateDirEnv, err)
-		os.Exit(1)
-	}
-}
-
-// resolveDefaultLogFile sets the log file to the runtime state directory default if empty.
-func resolveDefaultLogFile(logFile *string) {
-	if *logFile != "" {
-		return
-	}
-	defaultLogFile, err := state.DefaultLogFile()
-	if err != nil {
-		fallback := filepath.Join(os.TempDir(), "gasoline", "logs", "gasoline.jsonl")
-		startupWarnings = append(startupWarnings, fmt.Sprintf("state_dir_unwritable: %v; falling back to %s", err, fallback))
-		*logFile = fallback
-		return
-	}
-	*logFile = defaultLogFile
 }
 
 // runTTYMode spawns a background daemon when the user runs gasoline interactively.
@@ -470,6 +258,7 @@ func spawnBackgroundDaemon(server *Server, cfg *serverConfig) *exec.Cmd {
 	}
 
 	cmd := exec.Command(exe, args...) // #nosec G204,G702 -- exe is our own binary path from os.Executable with fixed flags // nosemgrep: go.lang.security.audit.dangerous-exec-command.dangerous-exec-command, go_subproc_rule-subproc -- CLI opens browser with known URL
+	cmd.Args[0] = daemonProcessArgv0(exe)
 	cmd.Stdout = nil
 	cmd.Stderr = nil
 	_, err = cmd.StdinPipe()
@@ -557,35 +346,50 @@ func dispatchMode(server *Server, cfg *serverConfig) {
 	isTTY, stdinMode := detectStdinMode()
 	mcpConfigPath := findMCPConfig()
 	mode := selectRuntimeMode(cfg, isTTY)
-	if mode == modeBridge {
-		setStderrSink(io.Discard)
-	} else {
+	if mode == modeDaemon {
 		setStderrSink(os.Stderr)
 	}
 
 	server.logLifecycle("mode_detection", cfg.port, map[string]any{
-		"is_tty":          isTTY,
-		"stdin_mode":      fmt.Sprintf("%v", stdinMode),
-		"has_mcp_config":  mcpConfigPath != "",
+		"is_tty":           isTTY,
+		"stdin_mode":       fmt.Sprintf("%v", stdinMode),
+		"has_mcp_config":   mcpConfigPath != "",
 		"selected_runtime": mode,
 	})
 
 	switch mode {
 	case modeDaemon:
 		server.logLifecycle("daemon_mode_start", cfg.port, nil)
-		if err := runMCPMode(server, cfg.port, cfg.apiKey); err != nil {
+		if err := runMCPMode(server, cfg.port, cfg.apiKey, daemonLaunchOptions{Parallel: cfg.parallelMode}); err != nil {
+			diagPath := appendExitDiagnostic("daemon_start_failed", map[string]any{
+				"port":  cfg.port,
+				"error": err.Error(),
+			})
+			if diagPath != "" {
+				stderrf("[gasoline] Startup diagnostics written to: %s\n", diagPath)
+			}
 			stderrf("[gasoline] Daemon error: %v\n", err)
 			os.Exit(1)
 		}
 		return
 	case modeBridge:
-		server.logLifecycle("bridge_mode_start", cfg.port, nil)
+		if err := ensureBridgeIOIsolation(cfg.logFile); err != nil {
+			sendStartupError("Bridge stdio isolation failed: " + err.Error())
+			os.Exit(1)
+		}
+		server.logLifecycle("bridge_mode_start", cfg.port, bridgeLaunchFingerprint())
 		if cfg.bridgeMode {
 			stderrf("[gasoline] Starting in bridge mode (stdio -> HTTP)\n")
 		} else if isTTY && mcpConfigPath != "" {
 			stderrf("[gasoline] MCP config detected at %s; running in bridge mode for tool compatibility.\n", mcpConfigPath)
 		} else if isTTY {
 			stderrf("[gasoline] Running in bridge mode by default. Use --daemon for server-only mode.\n")
+		}
+		if os.Getenv("GASOLINE_TEST_BRIDGE_NOISE") == "1" {
+			// Test-only probe: verifies transport isolation prevents accidental
+			// stdout/stderr writes from corrupting MCP responses.
+			fmt.Fprintln(os.Stdout, "GASOLINE_TEST_NOISE_STDOUT")
+			fmt.Fprintln(os.Stderr, "GASOLINE_TEST_NOISE_STDERR")
 		}
 		runBridgeMode(cfg.port, cfg.logFile, cfg.maxEntries)
 		return
@@ -621,24 +425,6 @@ func main() {
 	dispatchMode(server, cfg)
 }
 
-// sendStartupError sends a JSON-RPC error response before exiting.
-// This ensures the parent process (IDE) receives a proper error instead of empty response.
-func sendStartupError(message string) {
-	errResp := JSONRPCResponse{
-		JSONRPC: "2.0",
-		ID:      "startup",
-		Error: &JSONRPCError{
-			Code:    -32603,
-			Message: message,
-		},
-	}
-	// Error impossible: simple struct with no circular refs or unsupported types
-	respJSON, _ := json.Marshal(errResp)
-	fmt.Println(string(respJSON))
-	syncStdoutBestEffort()
-	time.Sleep(100 * time.Millisecond) // Allow OS to flush pipe to parent
-}
-
 // #lizard forgives
 func printHelp() {
 	fmt.Print(`
@@ -650,6 +436,7 @@ Options:
   --port <number>        Port to listen on (default: 7890)
   --log-file <path>      Path to log file (default: in runtime state dir)
   --state-dir <path>     Directory for runtime state (default: OS app state dir)
+  --parallel             Opt-in parallel mode (isolated state dir, no takeover)
   --max-entries <number> Max log entries before rotation (default: 1000)
   --stop                 Stop the running server on the specified port
   --force                Force kill ALL running gasoline daemons (used during install)
@@ -657,6 +444,10 @@ Options:
   --connect              Connect to existing server (multi-client mode)
   --client-id <id>       Override client ID (default: derived from CWD)
   --check                Verify setup (check port availability, print status)
+  --doctor               Run full diagnostics (alias of --check)
+  --fastpath-min-samples Minimum telemetry samples required for threshold check (default: 50)
+  --fastpath-max-failure-ratio Maximum allowed fast-path failure ratio for --check (disabled by default)
+  --persist              Deprecated no-op (kept for backwards compatibility)
   --version              Show version
   --help                 Show this help message
 
@@ -676,6 +467,7 @@ Examples:
 
 CLI Mode (direct tool access):
   gasoline observe errors --limit 50
+  gasoline analyze dom --selector "button"
   gasoline observe logs --min-level warn
   gasoline generate har --save-to out.har
   gasoline configure health
@@ -685,75 +477,10 @@ CLI Mode (direct tool access):
   Env vars: GASOLINE_PORT, GASOLINE_FORMAT, GASOLINE_STATE_DIR
 
 MCP Configuration:
-  Add to your Claude Code settings.json or project .mcp.json:
-  {
-    "mcpServers": {
-      "gasoline": {
-        "command": "npx",
-        "args": ["gasoline-mcp"]
-      }
-    }
-  }
+  gasoline-mcp --install     Auto-install to all detected AI clients
+  gasoline-mcp --config      Show configuration and detected clients
+  gasoline-mcp --doctor      Run diagnostics on installed configs
+
+  Supported clients: Claude Code, Claude Desktop, Cursor, Windsurf, VS Code
 `)
-}
-
-// checkPortAvailability prints port availability status.
-func checkPortAvailability(port int) {
-	fmt.Print("Checking port availability... ")
-	ln, err := net.Listen("tcp", fmt.Sprintf("127.0.0.1:%d", port))
-	if err != nil {
-		fmt.Println("FAILED")
-		fmt.Printf("  Port %d is already in use.\n", port)
-		fmt.Printf("  Fix: %s\n", portKillHint(port))
-		fmt.Printf("  Or use a different port: --port %d\n", port+1)
-	} else {
-		_ = ln.Close() //nolint:errcheck // pre-flight check; port availability test only
-		fmt.Println("OK")
-		fmt.Printf("  Port %d is available.\n", port)
-	}
-	fmt.Println()
-}
-
-// checkStateDirectory prints runtime state directory status.
-func checkStateDirectory() {
-	fmt.Print("Checking runtime state directory... ")
-	rootDir, err := state.RootDir()
-	if err != nil {
-		fmt.Println("FAILED")
-		fmt.Printf("  Cannot determine runtime state directory: %v\n", err)
-	} else {
-		logFile, _ := state.DefaultLogFile()
-		fmt.Println("OK")
-		fmt.Printf("  State dir: %s\n", rootDir)
-		fmt.Printf("  Log file: %s\n", logFile)
-	}
-	fmt.Println()
-}
-
-// runSetupCheck verifies the setup and prints diagnostic information
-func runSetupCheck(port int) {
-	fmt.Println()
-	fmt.Println("GASOLINE SETUP CHECK")
-	fmt.Println("────────────────────────────────────────────────────────────────")
-	fmt.Println()
-	fmt.Printf("Version: %s\n", version)
-	fmt.Printf("Port:    %d\n", port)
-	fmt.Println()
-
-	checkPortAvailability(port)
-	checkStateDirectory()
-
-	fmt.Println("────────────────────────────────────────────────────────────────")
-	fmt.Println()
-	fmt.Println("Next steps:")
-	fmt.Println("  1. Start server:    npx gasoline-mcp")
-	fmt.Println("  2. Install extension:")
-	fmt.Println("     - Open chrome://extensions")
-	fmt.Println("     - Enable Developer mode")
-	fmt.Println("     - Click 'Load unpacked' → select extension/ folder")
-	fmt.Println("  3. Open any website")
-	fmt.Println("  4. Extension popup should show 'Connected'")
-	fmt.Println()
-	fmt.Printf("Verify:  curl http://localhost:%d/health\n", port)
-	fmt.Println()
 }

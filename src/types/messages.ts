@@ -1,4 +1,10 @@
 /**
+ * Purpose: Provides backward-compatible message/type export surface for extension communication contracts.
+ * Why: Preserves existing imports while message definitions are split into focused type modules.
+ * Docs: docs/features/feature/query-service/index.md
+ */
+
+/**
  * @fileoverview Message Types for Gasoline Extension
  *
  * Comprehensive discriminated unions for all message types used in the extension.

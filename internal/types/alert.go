@@ -1,5 +1,7 @@
-// alert.go — Alert types for proactive error notification and performance regression detection.
-// Zero dependencies - foundational types used across ai, session, and observation packages.
+// Purpose: Defines canonical alert and CI-result payload types emitted by server-side monitoring features.
+// Why: Standardizes alert payload structure so observe/analyze consumers can process alerts consistently.
+// Docs: docs/features/feature/push-alerts/index.md
+
 package types
 
 import "time"

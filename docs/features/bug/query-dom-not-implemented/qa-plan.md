@@ -1,5 +1,8 @@
 ---
 feature: query-dom-not-implemented
+doc_type: qa-plan
+feature_id: bug-query-dom-not-implemented
+last_reviewed: 2026-02-16
 ---
 
 # QA Plan: Query DOM Not Implemented (Bug Fix)
@@ -20,7 +23,7 @@ feature: query-dom-not-implemented
 - [ ] Query results flow back through content → background → server
 
 **Integration tests:** End-to-end query execution
-- [ ] MCP tool generate({action: "query_dom", selector: "h1"}) returns real h1 elements
+- [ ] MCP tool analyze({what: "dom", selector: "h1"}) returns real h1 elements
 - [ ] Universal selector "*" returns capped results (50 elements max), not empty
 - [ ] Complex selector "button[data-testid], a.nav-link" returns matching elements
 - [ ] Invalid selector returns error with meaningful message
@@ -58,7 +61,7 @@ feature: query-dom-not-implemented
    - Navigate to <https://example.com>
    - Start tracking the tab via interact tool
 2. Steps:
-   - [ ] Call MCP tool: `generate({action: "query_dom", selector: "h1"})`
+   - [ ] Call MCP tool: `analyze({what: "dom", selector: "h1"})`
    - [ ] Observe response
 3. Expected Result: Response contains:
    ```json
@@ -85,7 +88,7 @@ feature: query-dom-not-implemented
 ### Scenario 2: Universal Selector Returns Results
 1. Setup: Same as Scenario 1
 2. Steps:
-   - [ ] Call MCP tool: `generate({action: "query_dom", selector: "*"})`
+   - [ ] Call MCP tool: `analyze({what: "dom", selector: "*"})`
    - [ ] Observe response
 3. Expected Result:
    - [ ] totalMatchCount > 0 (page has elements)
@@ -99,7 +102,7 @@ feature: query-dom-not-implemented
    - Start Gasoline server
    - DO NOT track any tab
 2. Steps:
-   - [ ] Call MCP tool: `generate({action: "query_dom", selector: "button"})`
+   - [ ] Call MCP tool: `analyze({what: "dom", selector: "button"})`
    - [ ] Observe response
 3. Expected Result: Error response with clear message
 4. Verification: Error says "No tab is currently tracked" (not "not_implemented")
@@ -107,7 +110,7 @@ feature: query-dom-not-implemented
 ### Scenario 4: Invalid Selector Handling
 1. Setup: Same as Scenario 1 (tracked tab)
 2. Steps:
-   - [ ] Call MCP tool: `generate({action: "query_dom", selector: "[invalid::syntax"})`
+   - [ ] Call MCP tool: `analyze({what: "dom", selector: "[invalid::syntax"})`
    - [ ] Observe response
 3. Expected Result: Error response with CSS selector syntax error
 4. Verification: Error is about selector syntax, not implementation
@@ -115,7 +118,7 @@ feature: query-dom-not-implemented
 ### Scenario 5: Complex Selector Works
 1. Setup: Navigate to a page with multiple element types (e.g., GitHub.com)
 2. Steps:
-   - [ ] Call MCP tool: `generate({action: "query_dom", selector: "button, a[href]"})`
+   - [ ] Call MCP tool: `analyze({what: "dom", selector: "button, a[href]"})`
    - [ ] Observe response
 3. Expected Result:
    - [ ] totalMatchCount > 0
@@ -125,7 +128,7 @@ feature: query-dom-not-implemented
 ### Scenario 6: Empty Results Are Genuine
 1. Setup: Navigate to https://example.com
 2. Steps:
-   - [ ] Call MCP tool: `generate({action: "query_dom", selector: ".nonexistent-class"})`
+   - [ ] Call MCP tool: `analyze({what: "dom", selector: ".nonexistent-class"})`
    - [ ] Observe response
 3. Expected Result:
    ```json

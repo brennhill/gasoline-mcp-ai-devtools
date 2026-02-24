@@ -1,9 +1,7 @@
-// api_schema.go — API schema inference from observed network traffic.
-// Builds endpoint patterns by normalizing dynamic path segments, tracking
-// HTTP methods, status codes, and inferring response shapes from JSON bodies.
-// Design: Path normalization detects UUID/numeric segments and replaces with
-// :id placeholders. Response shapes use recursive type inference (string,
-// number, bool, array, object). Output in gasoline or OpenAPI stub format.
+// Purpose: Implements API schema inference state and endpoint-shape accumulation from captured traffic.
+// Why: Builds data-driven endpoint schemas that power validation and drift detection workflows.
+// Docs: docs/features/feature/api-schema/index.md
+
 package analysis
 
 import (

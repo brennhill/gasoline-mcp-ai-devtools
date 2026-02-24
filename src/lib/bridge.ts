@@ -1,4 +1,10 @@
 /**
+ * Purpose: Provides shared runtime utilities used by extension and server workflows.
+ * Why: Avoids duplicated logic across runtime layers and keeps behavior consistent.
+ * Docs: docs/features/feature/observe/index.md
+ */
+
+/**
  * @fileoverview Message bridge for posting log events to the content script.
  * Enriches error-level messages with context annotations and user action replay.
  */

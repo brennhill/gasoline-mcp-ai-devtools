@@ -1,3 +1,9 @@
+---
+doc_type: legacy_doc
+status: reference
+last_reviewed: 2026-02-16
+---
+
 # Upload Escalation Spec
 
 Behavioral specification for Stage 1 → Stage 4 escalation pipeline.

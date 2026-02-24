@@ -51,6 +51,8 @@ jobs:
         run: node --test npm/gasoline-mcp/lib/kill-daemon.test.js
 
       - name: PyPI cleanup tests
+        env:
+          PYTHONPATH: pypi/gasoline-mcp
         run: python -m unittest discover -s pypi/gasoline-mcp/tests -p "test_*.py"
 
       - name: End-to-end upgrade regression
@@ -74,6 +76,13 @@ jobs:
 
       - name: Go tests with race detection
         run: go test -race -v ./cmd/dev-console/...
+
+      - name: Reliability soak gate (bridge fast-start)
+        run: |
+          STATE_DIR="$(mktemp -d)"
+          echo "Using state dir: ${STATE_DIR}"
+          GASOLINE_STATE_DIR="${STATE_DIR}" go test -race ./cmd/dev-console -run TestFastStart_ResourceWorkflowSoak -count=3 -timeout=12m
+          go run ./cmd/dev-console --check --state-dir "${STATE_DIR}" --fastpath-min-samples 100 --fastpath-max-failure-ratio 0.02
 
       - name: Go test coverage (70% minimum)
         run: |
@@ -124,7 +133,7 @@ jobs:
 
       - name: Extension tests
         run: |
-          node --test --test-force-exit --test-timeout=20000 --test-concurrency=4 --test-reporter=spec tests/extension/*.test.js
+          npm run test:ext
 
   security:
     name: Security Scan

@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: Gasoline Async Command API
-  version: 0.7.2
+  version: 7.8.0
   description: |
     HTTP API for async command execution between MCP server and browser extension.
 
@@ -15,7 +15,7 @@ info:
     │   Client   │                    │  (Go HTTP) │                    │ (Chrome)   │
     └────────────┘                    └────────────┘                    └────────────┘
          │                                   │                                 │
-         │ interact({action: "execute_js"})  │                                 │
+         │ interact({what: "execute_js"})     │                                 │
          ├──────────────────────────────────>│                                 │
          │                                   │                                 │
          │  {status: "queued",               │                                 │
@@ -128,7 +128,7 @@ paths:
                     queries:
                       - id: "q-1706123457"
                         type: "browser_action"
-                        params: '{"action":"navigate","url":"https://example.com"}'
+                        params: '{"what":"navigate","url":"https://example.com"}'
                         correlation_id: "corr-1706123457-def456"
         "401":
           description: Missing or invalid session ID

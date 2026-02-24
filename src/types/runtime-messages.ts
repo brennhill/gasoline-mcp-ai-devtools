@@ -1,4 +1,10 @@
 /**
+ * Purpose: Defines canonical runtime message envelopes across background, content, inject, and popup contexts.
+ * Why: Keeps inter-context communication explicit and compatible as message surfaces evolve.
+ * Docs: docs/features/feature/query-service/index.md
+ */
+
+/**
  * @fileoverview Runtime Message Types
  * Chrome runtime messages for background, content, and inject script communication
  */
@@ -230,13 +236,17 @@ export interface DrawModeCaptureScreenshotMessage {
 }
 
 /**
- * Draw mode: content script sends completed annotation results
+ * Draw mode: content script sends completed annotation results.
+ * Fields match the wire format sent by extension/content/draw-mode.js.
  */
 export interface DrawModeCompletedMessage {
   readonly type: 'DRAW_MODE_COMPLETED'
   readonly annotations?: readonly unknown[]
-  readonly screenshot?: string
-  readonly sessionId?: string
+  readonly screenshot_data_url?: string
+  readonly elementDetails?: Readonly<Record<string, unknown>>
+  readonly page_url?: string
+  readonly correlation_id?: string
+  readonly annot_session_name?: string
 }
 
 // =============================================================================
@@ -341,6 +351,49 @@ export interface LinkHealthMessage {
 }
 
 /**
+ * Computed styles query message
+ */
+export interface ComputedStylesQueryMessage {
+  readonly type: 'COMPUTED_STYLES_QUERY'
+  readonly params?: string | Record<string, unknown>
+}
+
+/**
+ * Form discovery query message
+ */
+export interface FormDiscoveryQueryMessage {
+  readonly type: 'FORM_DISCOVERY_QUERY'
+  readonly params?: string | Record<string, unknown>
+}
+
+/**
+ * Draw mode control messages (background to content)
+ */
+export interface DrawModeStartMessage {
+  readonly type: 'GASOLINE_DRAW_MODE_START'
+  readonly started_by?: string
+  readonly annot_session_name?: string
+  readonly correlation_id?: string
+}
+
+export interface DrawModeStopMessage {
+  readonly type: 'GASOLINE_DRAW_MODE_STOP'
+}
+
+export interface GetAnnotationsMessage {
+  readonly type: 'GASOLINE_GET_ANNOTATIONS'
+}
+
+/**
+ * Tracking state change notification (background to content)
+ */
+export interface TrackingStateChangedMessage {
+  readonly type: 'trackingStateChanged'
+  readonly isTracked: boolean
+  readonly aiPilotEnabled: boolean
+}
+
+/**
  * State management message
  */
 export interface ManageStateMessage {
@@ -393,10 +446,16 @@ export type ContentMessage =
   | A11yQueryMessage
   | GetNetworkWaterfallMessage
   | LinkHealthMessage
+  | ComputedStylesQueryMessage
+  | FormDiscoveryQueryMessage
   | ManageStateMessage
   | ActionToastMessage
   | SubtitleMessage
   | RecordingWatermarkMessage
+  | DrawModeStartMessage
+  | DrawModeStopMessage
+  | GetAnnotationsMessage
+  | TrackingStateChangedMessage
   | SetBooleanSettingMessage
   | SetWebSocketCaptureModeMessage
   | SetServerUrlMessage
@@ -414,6 +473,7 @@ export type PageMessageType =
   | 'GASOLINE_NETWORK_BODY'
   | 'GASOLINE_ENHANCED_ACTION'
   | 'GASOLINE_PERFORMANCE_SNAPSHOT'
+  | 'GASOLINE_INJECT_BRIDGE_PONG'
   | 'GASOLINE_HIGHLIGHT_RESPONSE'
   | 'GASOLINE_EXECUTE_JS_RESULT'
   | 'GASOLINE_A11Y_QUERY_RESPONSE'
@@ -427,6 +487,7 @@ export type PageMessageType =
  */
 export type ContentToPageMessageType =
   | 'GASOLINE_SETTING'
+  | 'GASOLINE_INJECT_BRIDGE_PING'
   | 'GASOLINE_HIGHLIGHT_REQUEST'
   | 'GASOLINE_EXECUTE_JS'
   | 'GASOLINE_A11Y_QUERY'

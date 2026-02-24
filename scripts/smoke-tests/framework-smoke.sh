@@ -52,6 +52,9 @@ _smoke_master_cleanup() {
     # Base cleanup: kill daemon, remove temp dir
     kill_server 2>/dev/null || true
     pkill -f "upload-server.py" 2>/dev/null || true
+    if [ -f "$SMOKE_FRAMEWORK_DIR/../cleanup-test-daemons.sh" ]; then
+        bash "$SMOKE_FRAMEWORK_DIR/../cleanup-test-daemons.sh" --quiet >/dev/null 2>&1 || true
+    fi
     [ -n "$TEMP_DIR" ] && rm -rf "$TEMP_DIR" 2>/dev/null || true
 }
 
@@ -62,6 +65,20 @@ SMOKE_OUTPUT_DIR="${HOME}/.gasoline/smoke-results"
 mkdir -p "$SMOKE_OUTPUT_DIR"
 DIAGNOSTICS_FILE="$SMOKE_OUTPUT_DIR/diagnostics.log"
 SMOKE_OUTPUT_FILE="$SMOKE_OUTPUT_DIR/output.log"
+
+wait_for_extension() {
+    local timeout_s="${1:-10}"
+    local attempts=$((timeout_s * 2))
+    for _wfe_i in $(seq 1 "$attempts"); do
+        local body
+        body=$(curl -s --connect-timeout 1 --max-time 2 "http://localhost:${PORT}/health" 2>/dev/null || echo "{}")
+        if echo "$body" | jq -e '.capture.extension_connected == true' >/dev/null 2>&1; then
+            return 0
+        fi
+        sleep 0.5
+    done
+    return 1
+}
 
 init_smoke() {
     local port="${1:-7890}"
@@ -87,8 +104,9 @@ init_smoke() {
     fi
     echo ""
 
-    # Set the master EXIT trap (never overwritten by modules)
-    trap _smoke_master_cleanup EXIT
+    # Override ALL cleanup traps (init_framework sets EXIT+INT+TERM to framework_cleanup
+    # which deletes TEMP_DIR — we need INT/TERM to use our handler too)
+    trap _smoke_master_cleanup EXIT INT TERM
 
     # Trap ERR so crashes under set -e are immediately visible.
     # Logs the failing command, line, and function to both stderr and diagnostics.
@@ -197,33 +215,60 @@ log_diagnostic() {
 interact_and_wait() {
     local action="$1"
     local args="$2"
-    local max_polls="${3:-20}"
+    local max_polls="${3:-}"
+    if [ -z "$max_polls" ]; then
+        case "$action" in
+            navigate|refresh|back|forward|new_tab|upload|record_start|record_stop)
+                max_polls=120 ;; # up to 60s at 0.5s interval for slower async browser actions
+            *)
+                max_polls=20 ;;
+        esac
+    fi
 
     local response
     response=$(call_tool "interact" "$args")
     local content_text
     content_text=$(extract_content_text "$response")
+    if [ -z "$content_text" ] && [ -n "$response" ]; then
+        # Fall back to raw JSON-RPC payload if content extraction failed.
+        content_text="$response"
+    fi
 
     {
         echo ""
         echo "- $(date +%H:%M:%S) interact($action) initial response:"
-        echo "$content_text" | head -50
+        if [ -n "$content_text" ]; then
+            echo "$content_text" | head -50
+        else
+            echo "(empty response payload)"
+        fi
     } >> "$DIAGNOSTICS_FILE"
 
     local corr_id
     corr_id=$(echo "$content_text" | grep -oE '"correlation_id":\s*"[^"]+"' | head -1 | sed 's/.*"correlation_id":\s*"//' | sed 's/"//' || true)
 
     if [ -z "$corr_id" ]; then
-        INTERACT_RESULT="$content_text"
+        if [ -n "$content_text" ]; then
+            INTERACT_RESULT="$content_text"
+        else
+            INTERACT_RESULT="empty_response_payload"
+        fi
         return 0
     fi
 
+    local last_poll_text=""
     for i in $(seq 1 "$max_polls"); do
         sleep 0.5
         local poll_response
         poll_response=$(call_tool "observe" "{\"what\":\"command_result\",\"correlation_id\":\"$corr_id\"}")
         local poll_text
         poll_text=$(extract_content_text "$poll_response")
+        if [ -z "$poll_text" ] && [ -n "$poll_response" ]; then
+            poll_text="$poll_response"
+        fi
+        if [ -n "$poll_text" ]; then
+            last_poll_text="$poll_text"
+        fi
 
         if echo "$poll_text" | grep -q '"status":"complete"'; then
             INTERACT_RESULT="$poll_text"
@@ -233,7 +278,7 @@ interact_and_wait() {
             } >> "$DIAGNOSTICS_FILE"
             return 0
         fi
-        if echo "$poll_text" | grep -q '"status":"failed"'; then
+        if echo "$poll_text" | grep -q '"status":"failed"\|"status":"error"'; then
             INTERACT_RESULT="$poll_text"
             {
                 echo "  Failed after poll $i"
@@ -241,11 +286,83 @@ interact_and_wait() {
             } >> "$DIAGNOSTICS_FILE"
             return 0
         fi
+
+        # Fallback: command_result can be temporarily missing; inspect pending_commands.
+        if [ -z "$poll_text" ] || echo "$poll_text" | grep -qi "no_data\|not found"; then
+            local pending_response
+            pending_response=$(call_tool "observe" '{"what":"pending_commands"}')
+            local pending_text
+            pending_text=$(extract_content_text "$pending_response")
+            if [ -z "$pending_text" ] && [ -n "$pending_response" ]; then
+                pending_text="$pending_response"
+            fi
+            if [ -n "$pending_text" ]; then
+                local pending_hit
+                pending_hit=$(echo "$pending_text" | python3 - "$corr_id" -c "
+import sys, json
+corr = sys.argv[1]
+text = sys.stdin.read()
+i = text.find('{')
+if i < 0:
+    sys.exit(0)
+try:
+    data = json.loads(text[i:])
+except Exception:
+    sys.exit(0)
+for bucket in ('pending', 'completed', 'failed'):
+    items = data.get(bucket, [])
+    if not isinstance(items, list):
+        continue
+    for item in items:
+        if str(item.get('correlation_id', '')) != corr:
+            continue
+        status = str(item.get('status', '')).strip().lower()
+        if status in ('queued', 'running', 'still_processing'):
+            status = 'pending'
+        if not status:
+            status = 'complete' if bucket == 'completed' else ('error' if bucket == 'failed' else 'pending')
+        detail = f'fallback pending_commands bucket={bucket} status={status}'
+        err = item.get('error')
+        if err:
+            detail += f' error={err}'
+        print(f'{status}|{detail}')
+        sys.exit(0)
+" 2>/dev/null || true)
+                if [ -n "$pending_hit" ]; then
+                    local pending_status pending_detail
+                    pending_status="${pending_hit%%|*}"
+                    pending_detail="${pending_hit#*|}"
+                    if [ -n "$pending_detail" ]; then
+                        last_poll_text="$pending_detail"
+                    fi
+                    if [ "$pending_status" = "complete" ]; then
+                        INTERACT_RESULT="$pending_text"
+                        {
+                            echo "  Complete via pending_commands fallback after poll $i"
+                            echo "$pending_text" | head -30
+                        } >> "$DIAGNOSTICS_FILE"
+                        return 0
+                    fi
+                    if echo "$pending_status" | grep -qiE "error|failed|expired|timeout|cancelled"; then
+                        INTERACT_RESULT="$pending_text"
+                        {
+                            echo "  Failed via pending_commands fallback after poll $i"
+                            echo "$pending_text" | head -30
+                        } >> "$DIAGNOSTICS_FILE"
+                        return 0
+                    fi
+                fi
+            fi
+        fi
     done
 
-    INTERACT_RESULT="timeout waiting for $action"
+    if [ -z "$last_poll_text" ]; then
+        last_poll_text="no poll payload received"
+    fi
+    INTERACT_RESULT="timeout waiting for $action (corr_id=$corr_id). $last_poll_text"
     {
         echo "  Timeout after $max_polls polls"
+        echo "  Last poll: $(echo "$last_poll_text" | head -1)"
     } >> "$DIAGNOSTICS_FILE"
     return 0
 }

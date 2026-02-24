@@ -1,3 +1,7 @@
+// Purpose: Validate ai_persistence_edge_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
+// Docs: docs/features/feature/observe/index.md
+
 // ai_persistence_edge_test.go — Edge case tests for persistence, validation, and error paths.
 package ai
 

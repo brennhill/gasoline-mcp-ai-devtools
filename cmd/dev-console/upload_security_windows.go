@@ -1,11 +1,15 @@
-// upload_security_windows.go — Hard link detection stub for Windows.
-//go:build windows
+// Purpose: Implements upload command handling, validation, and OS automation wiring.
+// Why: Reduces upload flake by centralizing validation and secure browser-to-OS handoff behavior.
+// Docs: docs/features/feature/file-upload/index.md
 
 package main
 
-import "os"
+import (
+	"os"
 
-// checkHardlink is a no-op on Windows where Nlink detection is not reliably available.
-func checkHardlink(_ os.FileInfo) error {
-	return nil
+	"github.com/dev-console/dev-console/internal/upload"
+)
+
+func checkHardlink(info os.FileInfo) error {
+	return upload.CheckHardlink(info)
 }

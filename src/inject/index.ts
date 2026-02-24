@@ -1,4 +1,11 @@
 /**
+ * Purpose: Executes in-page actions and query handlers within the page context.
+ * Why: Executes page-context actions safely while preserving deterministic command results.
+ * Docs: docs/features/feature/interact-explore/index.md
+ * Docs: docs/features/feature/query-dom/index.md
+ */
+
+/**
  * @fileoverview inject/index.ts - Main orchestration and barrel exports
  * Combines API, observers, and message handlers for page-level capture.
  */
@@ -55,7 +62,9 @@ export {
   truncateResponseBody,
   readResponseBody,
   readResponseBodyWithTimeout,
-  wrapFetchWithBodies
+  wrapFetchWithBodies,
+  wrapXHRWithBodies,
+  unwrapXHR
 } from '../lib/network'
 export {
   getPerformanceMarks,
@@ -130,6 +139,8 @@ export {
   wrapFetch,
   installFetchCapture,
   uninstallFetchCapture,
+  installXHRCapture,
+  uninstallXHRCapture,
   installPhase1,
   installPhase2,
   getDeferralState,

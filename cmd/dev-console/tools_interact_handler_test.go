@@ -1,36 +1,18 @@
+// Purpose: Validate tools_interact_handler_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
+// Docs: docs/features/feature/interact-explore/index.md
+
 // tools_interact_handler_test.go — Comprehensive unit tests for interact tool dispatch and response fields.
 // Validates all response fields, snake_case JSON convention, parameter validation, and error handling.
 package main
 
 import (
 	"encoding/json"
+	"fmt"
+	"net/http/httptest"
 	"strings"
 	"testing"
-
-	"github.com/dev-console/dev-console/internal/capture"
 )
-
-// ============================================
-// Test Helpers
-// ============================================
-
-func makeInteractToolHandler(t *testing.T) (*ToolHandler, *Server, *capture.Capture) {
-	t.Helper()
-	server, err := NewServer(t.TempDir()+"/test.jsonl", 100)
-	if err != nil {
-		t.Fatalf("NewServer: %v", err)
-	}
-	t.Cleanup(func() { server.Close() })
-	cap := capture.NewCapture()
-	mcpHandler := NewToolHandler(server, cap)
-	handler := mcpHandler.toolHandler.(*ToolHandler)
-	return handler, server, cap
-}
-
-func callInteractRaw(h *ToolHandler, argsJSON string) JSONRPCResponse {
-	req := JSONRPCRequest{JSONRPC: "2.0", ID: 1}
-	return h.toolInteract(req, json.RawMessage(argsJSON))
-}
 
 // ============================================
 // Dispatch Tests
@@ -38,7 +20,7 @@ func callInteractRaw(h *ToolHandler, argsJSON string) JSONRPCResponse {
 
 func TestToolsInteractDispatch_InvalidJSON(t *testing.T) {
 	t.Parallel()
-	h, _, _ := makeInteractToolHandler(t)
+	h, _, _ := makeToolHandler(t)
 
 	resp := callInteractRaw(h, `{bad json`)
 	result := parseToolResult(t, resp)
@@ -53,7 +35,7 @@ func TestToolsInteractDispatch_InvalidJSON(t *testing.T) {
 
 func TestToolsInteractDispatch_MissingAction(t *testing.T) {
 	t.Parallel()
-	h, _, _ := makeInteractToolHandler(t)
+	h, _, _ := makeToolHandler(t)
 
 	resp := callInteractRaw(h, `{}`)
 	result := parseToolResult(t, resp)
@@ -75,9 +57,9 @@ func TestToolsInteractDispatch_MissingAction(t *testing.T) {
 
 func TestToolsInteractDispatch_UnknownAction(t *testing.T) {
 	t.Parallel()
-	h, _, _ := makeInteractToolHandler(t)
+	h, _, _ := makeToolHandler(t)
 
-	resp := callInteractRaw(h, `{"action":"nonexistent_action"}`)
+	resp := callInteractRaw(h, `{"what":"nonexistent_action"}`)
 	result := parseToolResult(t, resp)
 	if !result.IsError {
 		t.Fatal("unknown action should return isError:true")
@@ -91,9 +73,44 @@ func TestToolsInteractDispatch_UnknownAction(t *testing.T) {
 	assertSnakeCaseFields(t, string(resp.Result))
 }
 
+func TestToolsInteractDispatch_ScreenshotAlias(t *testing.T) {
+	t.Parallel()
+	h, _, _ := makeToolHandler(t)
+
+	resp := callInteractRaw(h, `{"what":"screenshot"}`)
+	result := parseToolResult(t, resp)
+	if !result.IsError {
+		t.Fatal("screenshot alias without tracked tab should return isError:true")
+	}
+	text := result.Content[0].Text
+	if strings.Contains(text, "unknown_mode") {
+		t.Fatalf("screenshot alias should not return unknown_mode. Got: %s", text)
+	}
+	if !strings.Contains(text, "no_data") {
+		t.Fatalf("screenshot alias should route to screenshot handler (no_data expected in unit test). Got: %s", text)
+	}
+	assertSnakeCaseFields(t, string(resp.Result))
+}
+
+func TestToolsInteractDispatch_StateActionAliases(t *testing.T) {
+	t.Parallel()
+	h, _, _ := makeToolHandler(t)
+
+	for _, action := range []string{"state_save", "state_load", "state_list", "state_delete"} {
+		t.Run(action, func(t *testing.T) {
+			resp := callInteractRaw(h, fmt.Sprintf(`{"what":"%s"}`, action))
+			result := parseToolResult(t, resp)
+			text := result.Content[0].Text
+			if strings.Contains(text, "unknown_mode") {
+				t.Fatalf("%s should be recognized alias, got unknown_mode: %s", action, text)
+			}
+		})
+	}
+}
+
 func TestToolsInteractDispatch_EmptyArgs(t *testing.T) {
 	t.Parallel()
-	h, _, _ := makeInteractToolHandler(t)
+	h, _, _ := makeToolHandler(t)
 
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: 1}
 	resp := h.toolInteract(req, nil)
@@ -109,9 +126,9 @@ func TestToolsInteractDispatch_EmptyArgs(t *testing.T) {
 
 func TestToolsInteractHighlight_MissingSelector(t *testing.T) {
 	t.Parallel()
-	h, _, _ := makeInteractToolHandler(t)
+	h, _, _ := makeToolHandler(t)
 
-	resp := callInteractRaw(h, `{"action":"highlight"}`)
+	resp := callInteractRaw(h, `{"what":"highlight"}`)
 	result := parseToolResult(t, resp)
 	if !result.IsError {
 		t.Fatal("highlight without selector should return isError:true")
@@ -127,9 +144,9 @@ func TestToolsInteractHighlight_MissingSelector(t *testing.T) {
 
 func TestToolsInteractHighlight_PilotDisabled(t *testing.T) {
 	t.Parallel()
-	h, _, _ := makeInteractToolHandler(t)
+	h, _, _ := makeToolHandler(t)
 
-	resp := callInteractRaw(h, `{"action":"highlight","selector":"#main"}`)
+	resp := callInteractRaw(h, `{"what":"highlight","selector":"#main"}`)
 	result := parseToolResult(t, resp)
 	if !result.IsError {
 		t.Fatal("highlight with pilot disabled should return isError:true")
@@ -142,10 +159,13 @@ func TestToolsInteractHighlight_PilotDisabled(t *testing.T) {
 
 func TestToolsInteractHighlight_Success(t *testing.T) {
 	t.Parallel()
-	h, _, cap := makeInteractToolHandler(t)
+	h, _, cap := makeToolHandler(t)
 	cap.SetPilotEnabled(true)
+	syncReq := httptest.NewRequest("POST", "/sync", strings.NewReader(`{"ext_session_id":"test"}`))
+	syncReq.Header.Set("X-Gasoline-Client", "test-client")
+	cap.HandleSync(httptest.NewRecorder(), syncReq)
 
-	resp := callInteractRaw(h, `{"action":"highlight","selector":".btn"}`)
+	resp := callInteractRaw(h, `{"what":"highlight","selector":".btn"}`)
 	result := parseToolResult(t, resp)
 	if result.IsError {
 		t.Fatalf("highlight should succeed with pilot enabled, got: %s", result.Content[0].Text)
@@ -153,7 +173,7 @@ func TestToolsInteractHighlight_Success(t *testing.T) {
 
 	data := extractResultJSON(t, result)
 	// Verify response fields
-	for _, field := range []string{"status", "correlation_id", "message"} {
+	for _, field := range []string{"status", "correlation_id", "queued", "final"} {
 		if _, ok := data[field]; !ok {
 			t.Errorf("highlight response missing field %q", field)
 		}
@@ -187,9 +207,9 @@ func TestToolsInteractHighlight_Success(t *testing.T) {
 
 func TestToolsInteractExecuteJS_MissingScript(t *testing.T) {
 	t.Parallel()
-	h, _, _ := makeInteractToolHandler(t)
+	h, _, _ := makeToolHandler(t)
 
-	resp := callInteractRaw(h, `{"action":"execute_js"}`)
+	resp := callInteractRaw(h, `{"what":"execute_js"}`)
 	result := parseToolResult(t, resp)
 	if !result.IsError {
 		t.Fatal("execute_js without script should return isError:true")
@@ -202,9 +222,9 @@ func TestToolsInteractExecuteJS_MissingScript(t *testing.T) {
 
 func TestToolsInteractExecuteJS_InvalidWorld(t *testing.T) {
 	t.Parallel()
-	h, _, _ := makeInteractToolHandler(t)
+	h, _, _ := makeToolHandler(t)
 
-	resp := callInteractRaw(h, `{"action":"execute_js","script":"1+1","world":"invalid_world"}`)
+	resp := callInteractRaw(h, `{"what":"execute_js","script":"1+1","world":"invalid_world"}`)
 	result := parseToolResult(t, resp)
 	if !result.IsError {
 		t.Fatal("invalid world should return isError:true")
@@ -220,12 +240,12 @@ func TestToolsInteractExecuteJS_InvalidWorld(t *testing.T) {
 
 func TestToolsInteractExecuteJS_ValidWorlds(t *testing.T) {
 	t.Parallel()
-	h, _, _ := makeInteractToolHandler(t)
+	h, _, _ := makeToolHandler(t)
 
 	// All valid worlds should pass world validation (fail at pilot check, not world check)
 	for _, world := range []string{"auto", "main", "isolated"} {
 		t.Run(world, func(t *testing.T) {
-			resp := callInteractRaw(h, `{"action":"execute_js","script":"1+1","world":"`+world+`"}`)
+			resp := callInteractRaw(h, `{"what":"execute_js","script":"1+1","world":"`+world+`"}`)
 			result := parseToolResult(t, resp)
 			// Should fail at pilot check, NOT world validation
 			if !result.IsError {
@@ -240,10 +260,10 @@ func TestToolsInteractExecuteJS_ValidWorlds(t *testing.T) {
 
 func TestToolsInteractExecuteJS_DefaultWorld(t *testing.T) {
 	t.Parallel()
-	h, _, _ := makeInteractToolHandler(t)
+	h, _, _ := makeToolHandler(t)
 
 	// Omitting world should default to "auto" and pass validation
-	resp := callInteractRaw(h, `{"action":"execute_js","script":"1+1"}`)
+	resp := callInteractRaw(h, `{"what":"execute_js","script":"1+1"}`)
 	result := parseToolResult(t, resp)
 	if !result.IsError {
 		t.Fatal("should return error (pilot disabled)")
@@ -256,17 +276,17 @@ func TestToolsInteractExecuteJS_DefaultWorld(t *testing.T) {
 
 func TestToolsInteractExecuteJS_Success(t *testing.T) {
 	t.Parallel()
-	h, _, cap := makeInteractToolHandler(t)
+	h, _, cap := makeToolHandler(t)
 	cap.SetPilotEnabled(true)
 
-	resp := callInteractRaw(h, `{"action":"execute_js","script":"document.title"}`)
+	resp := callInteractRaw(h, `{"what":"execute_js","script":"document.title"}`)
 	result := parseToolResult(t, resp)
 	if result.IsError {
 		t.Fatalf("execute_js should succeed, got: %s", result.Content[0].Text)
 	}
 
 	data := extractResultJSON(t, result)
-	for _, field := range []string{"status", "correlation_id", "message"} {
+	for _, field := range []string{"status", "correlation_id", "queued", "final"} {
 		if _, ok := data[field]; !ok {
 			t.Errorf("execute_js response missing field %q", field)
 		}
@@ -288,9 +308,9 @@ func TestToolsInteractExecuteJS_Success(t *testing.T) {
 
 func TestToolsInteractNavigate_MissingURL(t *testing.T) {
 	t.Parallel()
-	h, _, _ := makeInteractToolHandler(t)
+	h, _, _ := makeToolHandler(t)
 
-	resp := callInteractRaw(h, `{"action":"navigate"}`)
+	resp := callInteractRaw(h, `{"what":"navigate"}`)
 	result := parseToolResult(t, resp)
 	if !result.IsError {
 		t.Fatal("navigate without url should return isError:true")
@@ -301,12 +321,32 @@ func TestToolsInteractNavigate_MissingURL(t *testing.T) {
 	assertSnakeCaseFields(t, string(resp.Result))
 }
 
+func TestToolsInteractNavigate_AssumedEnabledWhenPilotStatusUncertain(t *testing.T) {
+	t.Parallel()
+	h, _, cap := makeToolHandler(t)
+	cap.SetPilotUnknownForTest()
+
+	resp := callInteractRaw(h, `{"what":"navigate","url":"https://example.com"}`)
+	result := parseToolResult(t, resp)
+	if result.IsError {
+		t.Fatalf("navigate should not fail with pilot_disabled during startup uncertainty, got: %s", result.Content[0].Text)
+	}
+
+	data := extractResultJSON(t, result)
+	if data["status"] != "queued" {
+		t.Fatalf("status = %v, want queued", data["status"])
+	}
+}
+
 func TestToolsInteractNavigate_Success(t *testing.T) {
 	t.Parallel()
-	h, _, cap := makeInteractToolHandler(t)
+	h, _, cap := makeToolHandler(t)
 	cap.SetPilotEnabled(true)
+	syncReq := httptest.NewRequest("POST", "/sync", strings.NewReader(`{"ext_session_id":"test"}`))
+	syncReq.Header.Set("X-Gasoline-Client", "test-client")
+	cap.HandleSync(httptest.NewRecorder(), syncReq)
 
-	resp := callInteractRaw(h, `{"action":"navigate","url":"https://example.com"}`)
+	resp := callInteractRaw(h, `{"what":"navigate","url":"https://example.com"}`)
 	result := parseToolResult(t, resp)
 	if result.IsError {
 		t.Fatalf("navigate should succeed, got: %s", result.Content[0].Text)
@@ -330,16 +370,16 @@ func TestToolsInteractNavigate_Success(t *testing.T) {
 
 func TestToolsInteractBrowserActions_PilotRequired(t *testing.T) {
 	t.Parallel()
-	h, _, _ := makeInteractToolHandler(t)
+	h, _, _ := makeToolHandler(t)
 
 	actions := []struct {
 		name string
 		args string
 	}{
-		{"refresh", `{"action":"refresh"}`},
-		{"back", `{"action":"back"}`},
-		{"forward", `{"action":"forward"}`},
-		{"new_tab", `{"action":"new_tab","url":"https://example.com"}`},
+		{"refresh", `{"what":"refresh"}`},
+		{"back", `{"what":"back"}`},
+		{"forward", `{"what":"forward"}`},
+		{"new_tab", `{"what":"new_tab","url":"https://example.com"}`},
 	}
 
 	for _, tc := range actions {
@@ -358,7 +398,7 @@ func TestToolsInteractBrowserActions_PilotRequired(t *testing.T) {
 
 func TestToolsInteractBrowserActions_SuccessWithPilot(t *testing.T) {
 	t.Parallel()
-	h, _, cap := makeInteractToolHandler(t)
+	h, _, cap := makeToolHandler(t)
 	cap.SetPilotEnabled(true)
 
 	actions := []struct {
@@ -366,10 +406,10 @@ func TestToolsInteractBrowserActions_SuccessWithPilot(t *testing.T) {
 		args   string
 		prefix string
 	}{
-		{"refresh", `{"action":"refresh"}`, "refresh_"},
-		{"back", `{"action":"back"}`, "back_"},
-		{"forward", `{"action":"forward"}`, "forward_"},
-		{"new_tab", `{"action":"new_tab","url":"https://example.com"}`, "newtab_"},
+		{"refresh", `{"what":"refresh"}`, "refresh_"},
+		{"back", `{"what":"back"}`, "back_"},
+		{"forward", `{"what":"forward"}`, "forward_"},
+		{"new_tab", `{"what":"new_tab","url":"https://example.com"}`, "newtab_"},
 	}
 
 	for _, tc := range actions {
@@ -399,9 +439,9 @@ func TestToolsInteractBrowserActions_SuccessWithPilot(t *testing.T) {
 
 func TestToolsInteractSubtitle_MissingText(t *testing.T) {
 	t.Parallel()
-	h, _, _ := makeInteractToolHandler(t)
+	h, _, _ := makeToolHandler(t)
 
-	resp := callInteractRaw(h, `{"action":"subtitle"}`)
+	resp := callInteractRaw(h, `{"what":"subtitle"}`)
 	result := parseToolResult(t, resp)
 	if !result.IsError {
 		t.Fatal("subtitle without text should return isError:true")
@@ -414,9 +454,9 @@ func TestToolsInteractSubtitle_MissingText(t *testing.T) {
 
 func TestToolsInteractSubtitle_SetText(t *testing.T) {
 	t.Parallel()
-	h, _, _ := makeInteractToolHandler(t)
+	h, _, _ := makeToolHandler(t)
 
-	resp := callInteractRaw(h, `{"action":"subtitle","text":"Hello world"}`)
+	resp := callInteractRaw(h, `{"what":"subtitle","text":"Hello world"}`)
 	result := parseToolResult(t, resp)
 	if result.IsError {
 		t.Fatalf("subtitle set should succeed, got: %s", result.Content[0].Text)
@@ -426,8 +466,11 @@ func TestToolsInteractSubtitle_SetText(t *testing.T) {
 	if data["status"] != "queued" {
 		t.Errorf("status = %v, want 'queued'", data["status"])
 	}
-	if data["subtitle"] != "Hello world" {
-		t.Errorf("subtitle = %v, want 'Hello world'", data["subtitle"])
+	if queued, ok := data["queued"].(bool); !ok || !queued {
+		t.Errorf("queued = %v, want true", data["queued"])
+	}
+	if final, ok := data["final"].(bool); !ok || final {
+		t.Errorf("final = %v, want false", data["final"])
 	}
 	corr, _ := data["correlation_id"].(string)
 	if !strings.HasPrefix(corr, "subtitle_") {
@@ -439,17 +482,20 @@ func TestToolsInteractSubtitle_SetText(t *testing.T) {
 
 func TestToolsInteractSubtitle_ClearText(t *testing.T) {
 	t.Parallel()
-	h, _, _ := makeInteractToolHandler(t)
+	h, _, _ := makeToolHandler(t)
 
-	resp := callInteractRaw(h, `{"action":"subtitle","text":""}`)
+	resp := callInteractRaw(h, `{"what":"subtitle","text":""}`)
 	result := parseToolResult(t, resp)
 	if result.IsError {
 		t.Fatalf("subtitle clear should succeed, got: %s", result.Content[0].Text)
 	}
 
 	data := extractResultJSON(t, result)
-	if data["subtitle"] != "cleared" {
-		t.Errorf("subtitle = %v, want 'cleared'", data["subtitle"])
+	if data["status"] != "queued" {
+		t.Errorf("status = %v, want 'queued'", data["status"])
+	}
+	if queued, ok := data["queued"].(bool); !ok || !queued {
+		t.Errorf("queued = %v, want true", data["queued"])
 	}
 
 	assertSnakeCaseFields(t, string(resp.Result))
@@ -461,14 +507,14 @@ func TestToolsInteractSubtitle_ClearText(t *testing.T) {
 
 func TestToolsInteractDOMPrimitives_MissingSelector(t *testing.T) {
 	t.Parallel()
-	h, _, _ := makeInteractToolHandler(t)
+	h, _, _ := makeToolHandler(t)
 
 	actions := []string{"click", "type", "select", "check", "get_text", "get_value",
 		"get_attribute", "set_attribute", "focus", "scroll_to", "wait_for", "key_press"}
 
 	for _, action := range actions {
 		t.Run(action, func(t *testing.T) {
-			resp := callInteractRaw(h, `{"action":"`+action+`"}`)
+			resp := callInteractRaw(h, `{"what":"`+action+`"}`)
 			result := parseToolResult(t, resp)
 			if !result.IsError {
 				t.Fatalf("%s without selector should return isError:true", action)
@@ -480,20 +526,45 @@ func TestToolsInteractDOMPrimitives_MissingSelector(t *testing.T) {
 	}
 }
 
+func TestToolsInteractDOMPrimitives_IntentActions_NoSelector(t *testing.T) {
+	t.Parallel()
+	h, _, _ := makeToolHandler(t)
+
+	actions := []string{
+		"open_composer",
+		"submit_active_composer",
+		"confirm_top_dialog",
+		"dismiss_top_overlay",
+	}
+
+	for _, action := range actions {
+		t.Run(action, func(t *testing.T) {
+			resp := callInteractRaw(h, `{"what":"`+action+`"}`)
+			result := parseToolResult(t, resp)
+			if !result.IsError {
+				t.Fatalf("%s without selector should still error while pilot is disabled", action)
+			}
+			if strings.Contains(strings.ToLower(result.Content[0].Text), "selector") {
+				t.Errorf("%s should not fail with selector-missing guidance: %s", action, result.Content[0].Text)
+			}
+		})
+	}
+}
+
 func TestToolsInteractDOMPrimitives_ActionSpecificParams(t *testing.T) {
 	t.Parallel()
-	h, _, _ := makeInteractToolHandler(t)
+	h, _, _ := makeToolHandler(t)
 
 	// Actions that require specific params beyond selector
 	cases := []struct {
-		action    string
-		args      string
-		missing   string
+		action  string
+		args    string
+		missing string
 	}{
-		{"type", `{"action":"type","selector":"input"}`, "text"},
-		{"select", `{"action":"select","selector":"select"}`, "value"},
-		{"get_attribute", `{"action":"get_attribute","selector":"div"}`, "name"},
-		{"set_attribute", `{"action":"set_attribute","selector":"div"}`, "name"},
+		{"type", `{"what":"type","selector":"input"}`, "text"},
+		{"select", `{"what":"select","selector":"select"}`, "value"},
+		{"get_attribute", `{"what":"get_attribute","selector":"div"}`, "name"},
+		{"set_attribute", `{"what":"set_attribute","selector":"div"}`, "name"},
 	}
 
 	for _, tc := range cases {
@@ -512,25 +583,29 @@ func TestToolsInteractDOMPrimitives_ActionSpecificParams(t *testing.T) {
 
 func TestToolsInteractDOMPrimitives_SuccessWithPilot(t *testing.T) {
 	t.Parallel()
-	h, _, cap := makeInteractToolHandler(t)
+	h, _, cap := makeToolHandler(t)
 	cap.SetPilotEnabled(true)
 
 	cases := []struct {
 		action string
 		args   string
 	}{
-		{"click", `{"action":"click","selector":"#btn"}`},
-		{"type", `{"action":"type","selector":"input","text":"hello"}`},
-		{"select", `{"action":"select","selector":"select","value":"opt1"}`},
-		{"check", `{"action":"check","selector":"input[type=checkbox]"}`},
-		{"get_text", `{"action":"get_text","selector":"div"}`},
-		{"get_value", `{"action":"get_value","selector":"input"}`},
-		{"get_attribute", `{"action":"get_attribute","selector":"a","name":"href"}`},
-		{"set_attribute", `{"action":"set_attribute","selector":"div","name":"data-test","value":"1"}`},
-		{"focus", `{"action":"focus","selector":"input"}`},
-		{"scroll_to", `{"action":"scroll_to","selector":"#footer"}`},
-		{"wait_for", `{"action":"wait_for","selector":"#spinner"}`},
-		{"key_press", `{"action":"key_press","selector":"input","text":"Enter"}`},
+		{"click", `{"what":"click","selector":"#btn"}`},
+		{"type", `{"what":"type","selector":"input","text":"hello"}`},
+		{"select", `{"what":"select","selector":"select","value":"opt1"}`},
+		{"check", `{"what":"check","selector":"input[type=checkbox]"}`},
+		{"get_text", `{"what":"get_text","selector":"div"}`},
+		{"get_value", `{"what":"get_value","selector":"input"}`},
+		{"get_attribute", `{"what":"get_attribute","selector":"a","name":"href"}`},
+		{"set_attribute", `{"what":"set_attribute","selector":"div","name":"data-test","value":"1"}`},
+		{"focus", `{"what":"focus","selector":"input"}`},
+		{"scroll_to", `{"what":"scroll_to","selector":"#footer"}`},
+		{"wait_for", `{"what":"wait_for","selector":"#spinner"}`},
+		{"key_press", `{"what":"key_press","selector":"input","text":"Enter"}`},
+		{"open_composer", `{"what":"open_composer"}`},
+		{"submit_active_composer", `{"what":"submit_active_composer"}`},
+		{"confirm_top_dialog", `{"what":"confirm_top_dialog"}`},
+		{"dismiss_top_overlay", `{"what":"dismiss_top_overlay"}`},
 	}
 
 	for _, tc := range cases {
@@ -549,8 +624,50 @@ func TestToolsInteractDOMPrimitives_SuccessWithPilot(t *testing.T) {
 			if !strings.HasPrefix(corr, "dom_") {
 				t.Errorf("correlation_id should start with 'dom_', got: %s", corr)
 			}
+
+			pq := cap.GetLastPendingQuery()
+			if pq == nil {
+				t.Fatalf("expected pending query for %s", tc.action)
+			}
+			if !strings.Contains(string(pq.Params), `"action":"`+tc.action+`"`) {
+				t.Errorf("pending query params should include canonical action=%q, got: %s", tc.action, string(pq.Params))
+			}
 			assertSnakeCaseFields(t, string(resp.Result))
 		})
+	}
+}
+
+func TestToolsInteractDOMPrimitive_AnnotationRectAliasMapsToScopeRect(t *testing.T) {
+	t.Parallel()
+	h, _, cap := makeToolHandler(t)
+	cap.SetPilotEnabled(true)
+
+	resp := callInteractRaw(h, `{"what":"click","selector":".compose","annotation_rect":{"x":120,"y":240,"width":300,"height":180}}`)
+	result := parseToolResult(t, resp)
+	if result.IsError {
+		t.Fatalf("click with annotation_rect should queue, got error: %s", result.Content[0].Text)
+	}
+
+	pq := cap.GetLastPendingQuery()
+	if pq == nil {
+		t.Fatal("expected pending query for click")
+	}
+
+	var payload map[string]any
+	if err := json.Unmarshal(pq.Params, &payload); err != nil {
+		t.Fatalf("failed to parse pending query params: %v", err)
+	}
+	if got, _ := payload["action"].(string); got != "click" {
+		t.Fatalf("pending action = %v, want click", payload["action"])
+	}
+	scopeRect, ok := payload["scope_rect"].(map[string]any)
+	if !ok {
+		t.Fatalf("scope_rect missing from normalized payload: %s", string(pq.Params))
+	}
+	for _, k := range []string{"x", "y", "width", "height"} {
+		if _, exists := scopeRect[k]; !exists {
+			t.Fatalf("scope_rect missing key %q in payload: %s", k, string(pq.Params))
+		}
 	}
 }
 
@@ -560,9 +677,9 @@ func TestToolsInteractDOMPrimitives_SuccessWithPilot(t *testing.T) {
 
 func TestToolsInteractSaveState_MissingSnapshotName(t *testing.T) {
 	t.Parallel()
-	h, _, _ := makeInteractToolHandler(t)
+	h, _, _ := makeToolHandler(t)
 
-	resp := callInteractRaw(h, `{"action":"save_state"}`)
+	resp := callInteractRaw(h, `{"what":"save_state"}`)
 	result := parseToolResult(t, resp)
 	if !result.IsError {
 		t.Fatal("save_state without snapshot_name should return isError:true")
@@ -575,9 +692,9 @@ func TestToolsInteractSaveState_MissingSnapshotName(t *testing.T) {
 
 func TestToolsInteractSaveState_Success(t *testing.T) {
 	t.Parallel()
-	h, _, _ := makeInteractToolHandler(t)
+	h, _, _ := makeToolHandler(t)
 
-	resp := callInteractRaw(h, `{"action":"save_state","snapshot_name":"test_save"}`)
+	resp := callInteractRaw(h, `{"what":"save_state","snapshot_name":"test_save"}`)
 	result := parseToolResult(t, resp)
 	if result.IsError {
 		t.Fatalf("save_state should succeed, got: %s", result.Content[0].Text)
@@ -605,9 +722,9 @@ func TestToolsInteractSaveState_Success(t *testing.T) {
 
 func TestToolsInteractListStates_ResponseFields(t *testing.T) {
 	t.Parallel()
-	h, _, _ := makeInteractToolHandler(t)
+	h, _, _ := makeToolHandler(t)
 
-	resp := callInteractRaw(h, `{"action":"list_states"}`)
+	resp := callInteractRaw(h, `{"what":"list_states"}`)
 	result := parseToolResult(t, resp)
 	if result.IsError {
 		t.Fatalf("list_states should succeed, got: %s", result.Content[0].Text)
@@ -629,10 +746,10 @@ func TestToolsInteractListStates_ResponseFields(t *testing.T) {
 
 func TestToolsInteractListInteractive_ResponseFields(t *testing.T) {
 	t.Parallel()
-	h, _, cap := makeInteractToolHandler(t)
+	h, _, cap := makeToolHandler(t)
 	cap.SetPilotEnabled(true)
 
-	resp := callInteractRaw(h, `{"action":"list_interactive"}`)
+	resp := callInteractRaw(h, `{"what":"list_interactive"}`)
 	result := parseToolResult(t, resp)
 	if result.IsError {
 		t.Fatalf("list_interactive should succeed, got: %s", result.Content[0].Text)
@@ -645,6 +762,14 @@ func TestToolsInteractListInteractive_ResponseFields(t *testing.T) {
 	corr, _ := data["correlation_id"].(string)
 	if !strings.HasPrefix(corr, "dom_list_") {
 		t.Errorf("correlation_id should start with 'dom_list_', got: %s", corr)
+	}
+
+	pq := cap.GetLastPendingQuery()
+	if pq == nil {
+		t.Fatal("expected pending query for list_interactive")
+	}
+	if !strings.Contains(string(pq.Params), `"action":"list_interactive"`) {
+		t.Errorf("pending query params should include canonical action=list_interactive, got: %s", string(pq.Params))
 	}
 
 	assertSnakeCaseFields(t, string(resp.Result))
@@ -698,20 +823,4 @@ func TestToolsValidateDOMActionParams(t *testing.T) {
 	}
 }
 
-// ============================================
-// truncateToLen Tests
-// ============================================
-
-func TestToolsTruncateToLen(t *testing.T) {
-	t.Parallel()
-
-	if got := truncateToLen("short", 10); got != "short" {
-		t.Errorf("truncateToLen('short', 10) = %q, want 'short'", got)
-	}
-	if got := truncateToLen("longstring", 4); got != "long..." {
-		t.Errorf("truncateToLen('longstring', 4) = %q, want 'long...'", got)
-	}
-	if got := truncateToLen("", 10); got != "" {
-		t.Errorf("truncateToLen('', 10) = %q, want ''", got)
-	}
-}
+// truncateToLen pure function tests live in internal/tools/interact/selector_test.go.

@@ -1,3 +1,7 @@
+// Purpose: Validate tools_configure_noise_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
+// Docs: docs/features/feature/observe/index.md
+
 // tools_configure_noise_test.go — Coverage tests for noise and analyze(api_validation) handlers.
 package main
 
@@ -15,7 +19,7 @@ func TestToolConfigureNoise_List(t *testing.T) {
 	t.Parallel()
 	env := newConfigureTestEnv(t)
 
-	result, ok := env.callConfigure(t, `{"action":"noise_rule","noise_action":"list"}`)
+	result, ok := env.callConfigure(t, `{"what":"noise_rule","noise_action":"list"}`)
 	if !ok {
 		t.Fatal("noise list should return result")
 	}
@@ -36,7 +40,7 @@ func TestToolConfigureNoise_Reset(t *testing.T) {
 	t.Parallel()
 	env := newConfigureTestEnv(t)
 
-	result, ok := env.callConfigure(t, `{"action":"noise_rule","noise_action":"reset"}`)
+	result, ok := env.callConfigure(t, `{"what":"noise_rule","noise_action":"reset"}`)
 	if !ok {
 		t.Fatal("noise reset should return result")
 	}
@@ -54,7 +58,7 @@ func TestToolConfigureNoise_AddRule(t *testing.T) {
 	t.Parallel()
 	env := newConfigureTestEnv(t)
 
-	result, ok := env.callConfigure(t, `{"action":"noise_rule","noise_action":"add","rules":[{"category":"console","classification":"noisy","match_spec":{"message_regex":"test.*pattern"}}]}`)
+	result, ok := env.callConfigure(t, `{"what":"noise_rule","noise_action":"add","rules":[{"category":"console","classification":"noisy","match_spec":{"message_regex":"test.*pattern"}}]}`)
 	if !ok {
 		t.Fatal("noise add should return result")
 	}
@@ -69,11 +73,63 @@ func TestToolConfigureNoise_AddRule(t *testing.T) {
 	}
 }
 
+func TestToolConfigureNoise_AddRule_FlatParams(t *testing.T) {
+	t.Parallel()
+	env := newConfigureTestEnv(t)
+
+	result, ok := env.callConfigure(t, `{"what":"noise_rule","noise_action":"add","pattern":"flat-single-noise"}`)
+	if !ok {
+		t.Fatal("noise add flat params should return result")
+	}
+	if result.IsError {
+		t.Fatalf("noise add flat params should not error, got: %s", result.Content[0].Text)
+	}
+
+	data := parseResponseJSON(t, result)
+	rulesAdded, _ := data["rules_added"].(float64)
+	if rulesAdded != 1 {
+		t.Fatalf("rules_added = %v, want 1", rulesAdded)
+	}
+
+	listResult, ok := env.callConfigure(t, `{"what":"noise_rule","noise_action":"list"}`)
+	if !ok {
+		t.Fatal("noise list should return result")
+	}
+	if listResult.IsError {
+		t.Fatalf("noise list should not error, got: %s", listResult.Content[0].Text)
+	}
+	listData := parseResponseJSON(t, listResult)
+	rules, ok := listData["rules"].([]any)
+	if !ok {
+		t.Fatalf("rules type = %T, want []any", listData["rules"])
+	}
+	found := false
+	for _, r := range rules {
+		rule, ok := r.(map[string]any)
+		if !ok {
+			continue
+		}
+		ms, _ := rule["match_spec"].(map[string]any)
+		if ms == nil {
+			continue
+		}
+		if ms["message_regex"] == "flat-single-noise" {
+			found = true
+			if rule["category"] != "console" {
+				t.Fatalf("flat rule category = %v, want console", rule["category"])
+			}
+		}
+	}
+	if !found {
+		t.Fatal("flat single noise rule was not added")
+	}
+}
+
 func TestToolConfigureNoise_RemoveMissingRuleID(t *testing.T) {
 	t.Parallel()
 	env := newConfigureTestEnv(t)
 
-	result, ok := env.callConfigure(t, `{"action":"noise_rule","noise_action":"remove"}`)
+	result, ok := env.callConfigure(t, `{"what":"noise_rule","noise_action":"remove"}`)
 	if !ok {
 		t.Fatal("noise remove should return result")
 	}
@@ -90,7 +146,7 @@ func TestToolConfigureNoise_AutoDetect(t *testing.T) {
 	t.Parallel()
 	env := newConfigureTestEnv(t)
 
-	result, ok := env.callConfigure(t, `{"action":"noise_rule","noise_action":"auto_detect"}`)
+	result, ok := env.callConfigure(t, `{"what":"noise_rule","noise_action":"auto_detect"}`)
 	if !ok {
 		t.Fatal("noise auto_detect should return result")
 	}
@@ -108,7 +164,7 @@ func TestToolConfigureNoise_UnknownAction(t *testing.T) {
 	t.Parallel()
 	env := newConfigureTestEnv(t)
 
-	result, ok := env.callConfigure(t, `{"action":"noise_rule","noise_action":"invalid_action"}`)
+	result, ok := env.callConfigure(t, `{"what":"noise_rule","noise_action":"invalid_action"}`)
 	if !ok {
 		t.Fatal("noise unknown action should return result")
 	}
@@ -137,7 +193,7 @@ func TestToolConfigureNoise_FullLifecycle(t *testing.T) {
 	env := newConfigureTestEnv(t)
 
 	// Step 1: Add a rule
-	addResult, ok := env.callConfigure(t, `{"action":"noise_rule","noise_action":"add","rules":[{"category":"console","match_spec":{"message_regex":"smoke-test-noise"}}]}`)
+	addResult, ok := env.callConfigure(t, `{"what":"noise_rule","noise_action":"add","rules":[{"category":"console","match_spec":{"message_regex":"smoke-test-noise"}}]}`)
 	if !ok {
 		t.Fatal("noise add should return result")
 	}
@@ -153,7 +209,7 @@ func TestToolConfigureNoise_FullLifecycle(t *testing.T) {
 	}
 
 	// Step 2: List rules and verify the added rule is present
-	listResult, ok := env.callConfigure(t, `{"action":"noise_rule","noise_action":"list"}`)
+	listResult, ok := env.callConfigure(t, `{"what":"noise_rule","noise_action":"list"}`)
 	if !ok {
 		t.Fatal("noise list should return result")
 	}
@@ -194,7 +250,7 @@ func TestToolConfigureNoise_FullLifecycle(t *testing.T) {
 	t.Logf("Found rule_id: %s", ruleID)
 
 	// Step 4: Remove the rule
-	removeResult, ok := env.callConfigure(t, `{"action":"noise_rule","noise_action":"remove","rule_id":"`+ruleID+`"}`)
+	removeResult, ok := env.callConfigure(t, `{"what":"noise_rule","noise_action":"remove","rule_id":"`+ruleID+`"}`)
 	if !ok {
 		t.Fatal("noise remove should return result")
 	}
@@ -204,7 +260,7 @@ func TestToolConfigureNoise_FullLifecycle(t *testing.T) {
 	t.Logf("REMOVE response text: %s", removeResult.Content[0].Text)
 
 	// Step 5: List again and verify the rule is gone
-	list2Result, ok := env.callConfigure(t, `{"action":"noise_rule","noise_action":"list"}`)
+	list2Result, ok := env.callConfigure(t, `{"what":"noise_rule","noise_action":"list"}`)
 	if !ok {
 		t.Fatal("noise list2 should return result")
 	}
@@ -220,7 +276,7 @@ func TestToolConfigureNoise_FullLifecycle(t *testing.T) {
 
 	// Step 6: Also test the wire-format JSON-RPC response (what the smoke test would see)
 	// This simulates what the HTTP endpoint returns
-	listArgs := json.RawMessage(`{"action":"noise_rule","noise_action":"list"}`)
+	listArgs := json.RawMessage(`{"what":"noise_rule","noise_action":"list"}`)
 	listReq := JSONRPCRequest{JSONRPC: "2.0", ID: 42}
 	listResp := env.handler.toolConfigure(listReq, listArgs)
 	wireJSON, _ := json.Marshal(listResp)

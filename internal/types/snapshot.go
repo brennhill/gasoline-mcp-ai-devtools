@@ -1,5 +1,7 @@
-// snapshot.go — Snapshot types for representing captured browser state at a point in time.
-// Used by session checkpoints, diff comparisons, and test fixtures.
+// Purpose: Defines named-snapshot structures for persisted point-in-time browser state comparisons.
+// Why: Enables deterministic before/after diagnostics by preserving structured snapshot evidence.
+// Docs: docs/features/feature/historical-snapshots/index.md
+
 package types
 
 import "time"

@@ -1,9 +1,7 @@
-// types.go — Recording types for flow recording and playback
-// Captures user interactions as structured actions that can be replayed
-// as Playwright tests or bug reproduction scripts.
-//
-// JSON CONVENTION: All fields MUST use snake_case. See .claude/refs/api-naming-standards.md
-// Deviations from snake_case MUST be tagged with // SPEC:<spec-name> at the field level.
+// Purpose: Implements recording storage, replay engine execution, and diffing helpers.
+// Why: Preserves traceability by storing replayable execution history and comparable outcomes.
+// Docs: docs/features/feature/playback-engine/index.md
+
 package recording
 
 // ============================================

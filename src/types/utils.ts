@@ -1,4 +1,10 @@
 /**
+ * Purpose: Defines shared utility and helper TypeScript types used across extension modules.
+ * Why: Keeps common type patterns centralized to reduce duplication and improve type consistency.
+ * Docs: docs/features/feature/browser-extension-enhancement/index.md
+ */
+
+/**
  * @fileoverview Utility Types for Gasoline Extension
  *
  * Generic utility types, type guards, and helper types used across the extension.

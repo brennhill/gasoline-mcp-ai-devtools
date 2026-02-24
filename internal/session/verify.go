@@ -1,3 +1,8 @@
+// Purpose: Implements session lifecycle, snapshots, and diff state management.
+// Why: Maintains reliable state snapshots and diffs for investigations.
+// Docs: docs/features/feature/observe/index.md
+// Docs: docs/features/feature/pagination/index.md
+
 // verify.go — Verification Loop (verify_fix) MCP tool.
 // Provides before/after session comparison for fix verification.
 // AI captures state before a fix, applies fix, captures after, compares to verify.
@@ -51,24 +56,24 @@ var (
 
 // VerificationSession tracks a before/after comparison
 type VerificationSession struct {
-	ID        string    `json:"session_id"`
+	ID        string    `json:"verif_session_id"`
 	Label     string    `json:"label"`
 	Status    string    `json:"status"` // "baseline_captured", "watching", "compared", "cancelled"
 	URLFilter string    `json:"url,omitempty"`
 	CreatedAt time.Time `json:"created_at"`
 
 	// Baseline snapshot (captured at "start")
-	Baseline *SessionSnapshot `json:"baseline"`
+	Baseline *VerifSnapshot `json:"baseline"`
 
 	// Watch state
 	WatchStartedAt *time.Time `json:"watch_started_at,omitempty"`
 
 	// After snapshot (captured at "compare")
-	After *SessionSnapshot `json:"after,omitempty"`
+	After *VerifSnapshot `json:"after,omitempty"`
 }
 
-// SessionSnapshot is a point-in-time capture of browser state for verification
-type SessionSnapshot struct {
+// VerifSnapshot is a point-in-time capture of browser state for verification
+type VerifSnapshot struct {
 	CapturedAt         time.Time            `json:"captured_at"`
 	ConsoleErrors      []VerifyError        `json:"console_errors"`
 	NetworkErrors      []VerifyNetworkEntry `json:"network_errors"`      // Only 4xx/5xx responses
@@ -100,7 +105,7 @@ type VerifyNetworkEntry struct {
 
 // StartResult is the response from the start action
 type StartResult struct {
-	SessionID string             `json:"session_id"`
+	VerifSessionID string             `json:"verif_session_id"`
 	Label     string             `json:"label,omitempty"`
 	Status    string             `json:"status"`
 	Baseline  BaselineSummary    `json:"baseline"`
@@ -126,14 +131,14 @@ type ErrorDetail struct {
 
 // WatchResult is the response from the watch action
 type WatchResult struct {
-	SessionID string `json:"session_id"`
+	VerifSessionID string `json:"verif_session_id"`
 	Status    string `json:"status"`
 	Message   string `json:"message"`
 }
 
 // CompareResult is the response from the compare action
 type CompareResult struct {
-	SessionID string             `json:"session_id"`
+	VerifSessionID string             `json:"verif_session_id"`
 	Status    string             `json:"status"`
 	Label     string             `json:"label,omitempty"`
 	Result    VerificationResult `json:"result"`
@@ -173,13 +178,13 @@ type VerifyPerfDiff struct {
 
 // CancelResult is the response from the cancel action
 type CancelResult struct {
-	SessionID string `json:"session_id"`
+	VerifSessionID string `json:"verif_session_id"`
 	Status    string `json:"status"`
 }
 
 // StatusResult is the response from the status action
 type StatusResult struct {
-	SessionID string    `json:"session_id"`
+	VerifSessionID string    `json:"verif_session_id"`
 	Label     string    `json:"label,omitempty"`
 	Status    string    `json:"status"`
 	CreatedAt time.Time `json:"created_at"`
@@ -257,7 +262,7 @@ func (vm *VerificationManager) Start(label, urlFilter string) (*StartResult, err
 
 	// Build response
 	result := &StartResult{
-		SessionID: sessionID,
+		VerifSessionID: sessionID,
 		Label:     label,
 		Status:    "baseline_captured",
 		Baseline:  vm.buildBaselineSummary(baseline),
@@ -298,7 +303,7 @@ func (vm *VerificationManager) Watch(sessionID string) (*WatchResult, error) {
 	session.Status = "watching"
 
 	return &WatchResult{
-		SessionID: sessionID,
+		VerifSessionID: sessionID,
 		Status:    "watching",
 		Message:   "Monitoring started. Ask the user to reproduce the scenario.",
 	}, nil
@@ -339,7 +344,7 @@ func (vm *VerificationManager) Compare(sessionID string) (*CompareResult, error)
 	result := vm.computeVerification(session.Baseline, after)
 
 	return &CompareResult{
-		SessionID: sessionID,
+		VerifSessionID: sessionID,
 		Status:    "compared",
 		Label:     session.Label,
 		Result:    result,
@@ -365,7 +370,7 @@ func (vm *VerificationManager) Cancel(sessionID string) (*CancelResult, error) {
 	vm.removeFromOrder(sessionID)
 
 	return &CancelResult{
-		SessionID: sessionID,
+		VerifSessionID: sessionID,
 		Status:    "cancelled",
 	}, nil
 }
@@ -385,7 +390,7 @@ func (vm *VerificationManager) Status(sessionID string) (*StatusResult, error) {
 	}
 
 	return &StatusResult{
-		SessionID: sessionID,
+		VerifSessionID: sessionID,
 		Label:     session.Label,
 		Status:    session.Status,
 		CreatedAt: session.CreatedAt,
@@ -439,7 +444,7 @@ func truncateSlice[T any](s []T, maxLen int) []T {
 }
 
 // captureSnapshot captures current state from the reader
-func (vm *VerificationManager) captureSnapshot(urlFilter string) *SessionSnapshot {
+func (vm *VerificationManager) captureSnapshot(urlFilter string) *VerifSnapshot {
 	perf := vm.reader.GetPerformance()
 	allNetwork, networkErrors := convertNetworkRequests(vm.reader.GetNetworkRequests(), urlFilter)
 
@@ -449,7 +454,7 @@ func (vm *VerificationManager) captureSnapshot(urlFilter string) *SessionSnapsho
 		perfCopy = &p
 	}
 
-	return &SessionSnapshot{
+	return &VerifSnapshot{
 		CapturedAt:         time.Now(),
 		ConsoleErrors:      convertConsoleErrors(vm.reader.GetConsoleErrors()),
 		NetworkErrors:      networkErrors,
@@ -460,7 +465,7 @@ func (vm *VerificationManager) captureSnapshot(urlFilter string) *SessionSnapsho
 }
 
 // buildBaselineSummary creates a summary of the baseline snapshot
-func (vm *VerificationManager) buildBaselineSummary(baseline *SessionSnapshot) BaselineSummary {
+func (vm *VerificationManager) buildBaselineSummary(baseline *VerifSnapshot) BaselineSummary {
 	// Count total console errors
 	consoleErrorCount := 0
 	for _, e := range baseline.ConsoleErrors {

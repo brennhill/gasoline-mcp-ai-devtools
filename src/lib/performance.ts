@@ -1,4 +1,10 @@
 /**
+ * Purpose: Provides shared runtime utilities used by extension and server workflows.
+ * Why: Avoids duplicated logic across runtime layers and keeps behavior consistent.
+ * Docs: docs/features/feature/performance-audit/index.md
+ */
+
+/**
  * @fileoverview Performance marks and measures capture.
  * Wraps performance.mark/measure to capture calls, uses PerformanceObserver
  * for additional entries, and provides error-time performance snapshots.

@@ -1,5 +1,7 @@
-// buffer-types.go — Ring buffer types for Capture composition.
-// NetworkWaterfallBuffer, ExtensionLogBuffer, WSConnectionTracker.
+// Purpose: Defines grouped buffer-state structs used to compose Capture ring-buffer internals.
+// Why: Improves maintainability by isolating related buffer fields behind focused container types.
+// Docs: docs/features/feature/backend-log-streaming/index.md
+
 package capture
 
 // NetworkWaterfallBuffer groups network waterfall ring buffer fields.

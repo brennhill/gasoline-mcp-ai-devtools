@@ -1,18 +1,8 @@
-// tools_core.go — Core MCP tool types, constants, and response helpers.
-// This file contains the foundational pieces used by all tool handlers:
-// - MCP typed response structs
-// - Tool call rate limiter
-// - Response helpers (mcpTextResponse, mcpJSONResponse, mcpStructuredError)
-// - Error codes and StructuredError type
-// - Unknown parameter warning helpers
-// - ToolHandler struct definition and constructor
-//
-// JSON CONVENTION: All fields MUST use snake_case. See .claude/refs/api-naming-standards.md
-// Deviations from snake_case MUST be tagged with // SPEC:<spec-name> at the field level.
-// SPEC:MCP — Fields in this file use camelCase where required by the MCP protocol spec.
 package main
 
 import (
+	"crypto/rand"
+	"encoding/binary"
 	"encoding/json"
 	"os"
 	"sync"
@@ -20,86 +10,46 @@ import (
 
 	"github.com/dev-console/dev-console/internal/ai"
 	"github.com/dev-console/dev-console/internal/analysis"
+	"github.com/dev-console/dev-console/internal/audit"
 	"github.com/dev-console/dev-console/internal/capture"
+	"github.com/dev-console/dev-console/internal/mcp"
+	"github.com/dev-console/dev-console/internal/redaction"
 	"github.com/dev-console/dev-console/internal/security"
+	"github.com/dev-console/dev-console/internal/session"
+	"github.com/dev-console/dev-console/internal/streaming"
 )
 
 // ============================================
-// MCP Typed Response Structs
+// Shared Utilities
 // ============================================
 
-// MCPContentBlock represents a single content block in an MCP tool result.
-type MCPContentBlock struct {
-	Type string `json:"type"`
-	Text string `json:"text"`
+// randomInt63 generates a random int64 for correlation IDs using crypto/rand.
+func randomInt63() int64 {
+	var b [8]byte
+	if _, err := rand.Read(b[:]); err != nil {
+		// Fallback to time-based if rand fails (should never happen)
+		return time.Now().UnixNano()
+	}
+	return int64(binary.BigEndian.Uint64(b[:]) & 0x7FFFFFFFFFFFFFFF)
 }
 
-// MCPToolResult represents the result of an MCP tool call.
-type MCPToolResult struct {
-	Content []MCPContentBlock `json:"content"`
-	IsError bool              `json:"isError"` // SPEC:MCP
-}
+// ============================================
+// MCP Typed Response Structs (aliases to internal/mcp)
+// ============================================
 
-// MCPInitializeResult represents the result of an MCP initialize request.
-type MCPInitializeResult struct {
-	ProtocolVersion string          `json:"protocolVersion"` // SPEC:MCP
-	ServerInfo      MCPServerInfo   `json:"serverInfo"`      // SPEC:MCP
-	Capabilities    MCPCapabilities `json:"capabilities"`
-	Instructions    string          `json:"instructions,omitempty"`
-}
-
-// MCPServerInfo identifies the MCP server.
-type MCPServerInfo struct {
-	Name    string `json:"name"`
-	Version string `json:"version"`
-}
-
-// MCPCapabilities declares the server's MCP capabilities.
-type MCPCapabilities struct {
-	Tools     MCPToolsCapability     `json:"tools"`
-	Resources MCPResourcesCapability `json:"resources"`
-}
-
-// MCPToolsCapability declares tool support.
-type MCPToolsCapability struct{}
-
-// MCPResourcesCapability declares resource support.
-type MCPResourcesCapability struct{}
-
-// MCPResource describes an available resource.
-type MCPResource struct {
-	URI         string `json:"uri"`
-	Name        string `json:"name"`
-	Description string `json:"description,omitempty"`
-	MimeType    string `json:"mimeType,omitempty"` // SPEC:MCP
-}
-
-// MCPResourcesListResult represents the result of a resources/list request.
-type MCPResourcesListResult struct {
-	Resources []MCPResource `json:"resources"`
-}
-
-// MCPResourceContent represents the content of a resource.
-type MCPResourceContent struct {
-	URI      string `json:"uri"`
-	MimeType string `json:"mimeType,omitempty"` // SPEC:MCP
-	Text     string `json:"text,omitempty"`
-}
-
-// MCPResourcesReadResult represents the result of a resources/read request.
-type MCPResourcesReadResult struct {
-	Contents []MCPResourceContent `json:"contents"`
-}
-
-// MCPToolsListResult represents the result of a tools/list request.
-type MCPToolsListResult struct {
-	Tools []MCPTool `json:"tools"`
-}
-
-// MCPResourceTemplatesListResult represents the result of a resources/templates/list request.
-type MCPResourceTemplatesListResult struct {
-	ResourceTemplates []any `json:"resourceTemplates"` // SPEC:MCP
-}
+type MCPContentBlock = mcp.MCPContentBlock
+type MCPToolResult = mcp.MCPToolResult
+type MCPInitializeResult = mcp.MCPInitializeResult
+type MCPServerInfo = mcp.MCPServerInfo
+type MCPCapabilities = mcp.MCPCapabilities
+type MCPToolsCapability = mcp.MCPToolsCapability
+type MCPResourcesCapability = mcp.MCPResourcesCapability
+type MCPResource = mcp.MCPResource
+type MCPResourcesListResult = mcp.MCPResourcesListResult
+type MCPResourceContent = mcp.MCPResourceContent
+type MCPResourcesReadResult = mcp.MCPResourcesReadResult
+type MCPToolsListResult = mcp.MCPToolsListResult
+type MCPResourceTemplatesListResult = mcp.MCPResourceTemplatesListResult
 
 // ============================================
 // Tool Call Rate Limiter
@@ -167,20 +117,13 @@ type ToolHandler struct {
 	healthMetrics *HealthMetrics
 
 	// Redaction engine for scrubbing sensitive data from tool responses
-	redactionEngine *RedactionEngine
+	redactionEngine RedactionEngine
 
 	// Rate limiter for MCP tool calls (sliding window)
 	toolCallLimiter *ToolCallLimiter
 
-	// Context streaming: active push notifications via MCP
-	streamState *StreamState
-
-	// Alert buffer state (local management)
-	alertMu   sync.Mutex
-	alerts    []Alert
-	ciResults []CIResult
-	// Anomaly detection: sliding window error counter
-	errorTimes []time.Time
+	// Alert system + context streaming (delegates to internal/streaming)
+	alertBuffer *streaming.AlertBuffer
 
 	// Concrete implementations (interface signatures differ from types package)
 	// These are used directly by tool handlers rather than through the interface fields above.
@@ -188,9 +131,20 @@ type ToolHandler struct {
 	sessionStoreImpl      *ai.SessionStore
 	securityScannerImpl   *security.SecurityScanner
 	thirdPartyAuditorImpl *analysis.ThirdPartyAuditor
+	sessionManager        *session.SessionManager
+	auditTrail            *audit.AuditTrail
+
+	// Per-client audit session mapping (client_id -> session_id).
+	auditMu         sync.Mutex
+	auditSessionMap map[string]string
 
 	// Draw mode annotation store (in-memory, TTL-based)
 	annotationStore *AnnotationStore
+
+	// API contract validation state (incremental over captured network bodies).
+	apiContractMu        sync.Mutex
+	apiContractValidator *analysis.APIContractValidator
+	apiContractOffset    int
 
 	// Upload security config (folder-scoped permissions + denylist)
 	uploadSecurity *UploadSecurity
@@ -198,11 +152,68 @@ type ToolHandler struct {
 	// Cached interact dispatch map (initialized once via sync.Once)
 	interactOnce     sync.Once
 	interactHandlers map[string]interactHandler
+
+	// Element index store: maps index→selector from the last list_interactive call.
+	// Protected by elementIndexMu; replaced on each list_interactive response.
+	// NOTE: This is a single shared store — concurrent clients calling list_interactive
+	// will overwrite each other's index. Acceptable for single-agent usage; scope by
+	// tab or client ID if multi-client support is needed.
+	elementIndexMu    sync.RWMutex
+	elementIndexStore map[int]string
+
+	// Active test boundaries: test_id → start time.
+	// Used to detect out-of-order test_boundary_end calls.
+	activeBoundariesMu sync.Mutex
+	activeBoundaries   map[string]time.Time
+
+	// Playback results store: recording_id → session after playback completes.
+	playbackMu       sync.RWMutex
+	playbackSessions map[string]*capture.PlaybackSession
+
+	// Interact recording state gate (record_start/record_stop sequencing).
+	recordInteractMu sync.Mutex
+	recordInteract   interactRecordingState
+
+	// Optional evidence capture state keyed by correlation_id.
+	// Tracks before/after screenshots for interact actions when evidence mode is enabled.
+	evidenceMu        sync.Mutex
+	evidenceByCommand map[string]*commandEvidenceState
+
+	// Deterministic retry contract metadata keyed by correlation_id.
+	retryContractMu sync.Mutex
+	retryByCommand  map[string]*commandRetryState
+
+	// Module registry for plugin-style tool dispatch (incremental migration).
+	toolModules *toolModuleRegistry
 }
 
 // GetCapture returns the capture instance
 func (h *ToolHandler) GetCapture() *capture.Capture {
 	return h.capture
+}
+
+// GetLogEntries returns a snapshot of the server's log entries and their timestamps.
+// The returned slices are copies — safe to use without holding the server lock.
+func (h *ToolHandler) GetLogEntries() ([]LogEntry, []time.Time) {
+	h.server.mu.RLock()
+	defer h.server.mu.RUnlock()
+	entries := make([]LogEntry, len(h.server.entries))
+	copy(entries, h.server.entries)
+	addedAt := make([]time.Time, len(h.server.logAddedAt))
+	copy(addedAt, h.server.logAddedAt)
+	return entries, addedAt
+}
+
+// GetLogTotalAdded returns the monotonic counter of total log entries ever added.
+func (h *ToolHandler) GetLogTotalAdded() int64 {
+	h.server.mu.RLock()
+	defer h.server.mu.RUnlock()
+	return h.server.logTotalAdded
+}
+
+// GetAnnotationStore returns the annotation store for draw mode data.
+func (h *ToolHandler) GetAnnotationStore() *AnnotationStore {
+	return h.annotationStore
 }
 
 // GetToolCallLimiter returns the tool call limiter
@@ -212,23 +223,29 @@ func (h *ToolHandler) GetToolCallLimiter() RateLimiter {
 
 // GetRedactionEngine returns the redaction engine
 func (h *ToolHandler) GetRedactionEngine() RedactionEngine {
-	if h.redactionEngine != nil {
-		return *h.redactionEngine
-	}
-	return nil
+	return h.redactionEngine
+}
+
+// newPlaybackSessionsMap returns an initialized playback sessions map.
+// Separated to avoid the parameter name "capture" shadowing the package import.
+func newPlaybackSessionsMap() map[string]*capture.PlaybackSession {
+	return make(map[string]*capture.PlaybackSession)
 }
 
 // NewToolHandler creates an MCP handler with composite tool capabilities
 func NewToolHandler(server *Server, capture *capture.Capture) *MCPHandler {
 	handler := &ToolHandler{
-		MCPHandler: NewMCPHandler(server, version),
-		capture:    capture,
+		MCPHandler:        NewMCPHandler(server, version),
+		capture:           capture,
+		playbackSessions:  newPlaybackSessionsMap(),
+		evidenceByCommand: make(map[string]*commandEvidenceState),
+		retryByCommand:    make(map[string]*commandRetryState),
 	}
 
 	// Initialize health metrics
 	handler.healthMetrics = NewHealthMetrics()
 	handler.toolCallLimiter = NewToolCallLimiter(500, time.Minute)
-	handler.streamState = NewStreamState()
+	handler.alertBuffer = streaming.NewAlertBuffer()
 
 	// Initialize session store (use current working directory as project path)
 	cwd, err := os.Getwd()
@@ -244,6 +261,7 @@ func NewToolHandler(server *Server, capture *capture.Capture) *MCPHandler {
 	} else {
 		handler.noiseConfig = ai.NewNoiseConfig()
 	}
+	handler.redactionEngine = redaction.NewRedactionEngine("")
 
 	// Use global annotation store for draw mode
 	handler.annotationStore = globalAnnotationStore
@@ -255,12 +273,26 @@ func NewToolHandler(server *Server, capture *capture.Capture) *MCPHandler {
 		})
 	}
 
+	// Wire automatic noise detection after page navigations
+	wireNoiseAutoDetect(handler)
+
 	// Initialize security tools (concrete types - interface signatures differ)
 	handler.securityScannerImpl = security.NewSecurityScanner()
 	handler.thirdPartyAuditorImpl = analysis.NewThirdPartyAuditor()
+	handler.apiContractValidator = analysis.NewAPIContractValidator()
+	handler.sessionManager = session.NewSessionManager(10, newToolCaptureStateReader(handler))
+	handler.auditTrail = audit.NewAuditTrail(audit.AuditConfig{
+		MaxEntries:   10000,
+		Enabled:      true,
+		RedactParams: true,
+	})
+	handler.auditSessionMap = make(map[string]string)
 
 	// Initialize upload security config from package-level var set by CLI
 	handler.uploadSecurity = uploadSecurityConfig
+
+	// Wire plugin-style tool modules.
+	handler.toolModules = handler.buildToolModuleRegistry()
 
 	// Wire error clustering: feed error-level log entries into the cluster manager.
 	// Use SetOnEntries for thread-safe assignment (avoids racing with addEntries).
@@ -273,19 +305,64 @@ func NewToolHandler(server *Server, capture *capture.Capture) *MCPHandler {
 	}
 }
 
+// maybeWaitForCommand, formatCommandResult, and related async infrastructure
+// moved to tools_async.go
+
 // handleToolCall dispatches composite tool calls by mode parameter.
 func (h *ToolHandler) HandleToolCall(req JSONRPCRequest, name string, args json.RawMessage) (JSONRPCResponse, bool) {
-	switch name {
-	case "observe":
-		return h.toolObserve(req, args), true
-	case "analyze":
-		return h.toolAnalyze(req, args), true
-	case "generate":
-		return h.toolGenerate(req, args), true
-	case "configure":
-		return h.toolConfigure(req, args), true
-	case "interact":
-		return h.toolInteract(req, args), true
+	start := time.Now()
+
+	if h.toolModules == nil {
+		h.toolModules = h.buildToolModuleRegistry()
 	}
-	return JSONRPCResponse{}, false
+	resp, handled := h.dispatchViaModules(req, name, args)
+	if !handled {
+		return JSONRPCResponse{}, false
+	}
+
+	// Validate params against tool schema and append warnings for unknown fields.
+	// Skip validation for error responses (already failed, warnings would be noise).
+	if !isToolResultError(resp.Result) {
+		if schema := h.getToolSchema(name); schema != nil {
+			if warnings := validateParamsAgainstSchema(args, schema); len(warnings) > 0 {
+				resp = appendWarningsToResponse(resp, warnings)
+			}
+		}
+	}
+
+	if h.healthMetrics != nil {
+		h.healthMetrics.IncrementRequest(name)
+		if resp.Error != nil || isToolResultError(resp.Result) {
+			h.healthMetrics.IncrementError(name)
+		}
+	}
+
+	h.recordAuditToolCall(req, name, args, resp, start)
+
+	return resp, true
+}
+
+// toolSchemaCache caches InputSchema by tool name for validation.
+var toolSchemaCache map[string]map[string]any
+
+// getToolSchema returns the InputSchema for a tool by name (cached).
+func (h *ToolHandler) getToolSchema(name string) map[string]any {
+	if toolSchemaCache == nil {
+		toolSchemaCache = make(map[string]map[string]any)
+		for _, tool := range h.ToolsList() {
+			toolSchemaCache[tool.Name] = tool.InputSchema
+		}
+	}
+	return toolSchemaCache[name]
+}
+
+func isToolResultError(raw json.RawMessage) bool {
+	if len(raw) == 0 {
+		return false
+	}
+	var result MCPToolResult
+	if err := json.Unmarshal(raw, &result); err != nil {
+		return false
+	}
+	return result.IsError
 }

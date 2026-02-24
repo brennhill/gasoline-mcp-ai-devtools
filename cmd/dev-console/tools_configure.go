@@ -1,50 +1,108 @@
-// tools_configure.go — MCP configure tool dispatcher and handlers.
-// Handles session settings: store, load, noise_rule, clear, streaming, recordings, etc.
-//
-// JSON CONVENTION: All fields MUST use snake_case. See .claude/refs/api-naming-standards.md
-// Deviations from snake_case MUST be tagged with // SPEC:<spec-name> at the field level.
+// Purpose: Implements configure tool handlers for policy, profiles, and session controls.
+// Why: Keeps runtime/session configuration changes explicit and auditable from a single tool surface.
+// Docs: docs/features/feature/config-profiles/index.md
+
 package main
 
 import (
-	"crypto/rand"
-	"encoding/binary"
 	"encoding/json"
+	"os"
 	"sort"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/dev-console/dev-console/internal/ai"
+	"github.com/dev-console/dev-console/internal/capture"
+	cfg "github.com/dev-console/dev-console/internal/tools/configure"
+	"github.com/dev-console/dev-console/internal/util"
 )
-
-// randomInt63 generates a random int64 for correlation IDs using crypto/rand.
-func randomInt63() int64 {
-	var b [8]byte
-	if _, err := rand.Read(b[:]); err != nil {
-		// Fallback to time-based if rand fails (should never happen)
-		return time.Now().UnixNano()
-	}
-	return int64(binary.BigEndian.Uint64(b[:]) & 0x7FFFFFFFFFFFFFFF)
-}
 
 // ConfigureHandler is the function signature for configure action handlers.
 type ConfigureHandler func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse
 
+const defaultStoreNamespace = "session"
+
 // configureHandlers maps configure action names to their handler functions.
 var configureHandlers = map[string]ConfigureHandler{
-	"store":                func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse { return h.toolConfigureStore(req, args) },
-	"load":                 func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse { return h.toolLoadSessionContext(req, args) },
-	"noise_rule":           func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse { return h.toolConfigureNoiseRule(req, args) },
-	"clear":                func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse { return h.toolConfigureClear(req, args) },
-	"diff_sessions":        func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse { return h.toolDiffSessionsWrapper(req, args) },
-	"audit_log":            func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse { return h.toolGetAuditLog(req, args) },
-	"health":               func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse { return h.toolGetHealth(req) },
-	"streaming":            func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse { return h.toolConfigureStreamingWrapper(req, args) },
-	"test_boundary_start":  func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse { return h.toolConfigureTestBoundaryStart(req, args) },
-	"test_boundary_end":    func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse { return h.toolConfigureTestBoundaryEnd(req, args) },
-	"recording_start":      func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse { return h.toolConfigureRecordingStart(req, args) },
-	"recording_stop":       func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse { return h.toolConfigureRecordingStop(req, args) },
-	"playback":             func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse { return h.toolConfigurePlayback(req, args) },
-	"log_diff":             func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse { return h.toolConfigureLogDiff(req, args) },
+	"store": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+		return h.toolConfigureStore(req, args)
+	},
+	"load": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+		return h.toolLoadSessionContext(req, args)
+	},
+	"noise_rule": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+		return h.toolConfigureNoiseRule(req, args)
+	},
+	"clear": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+		return h.toolConfigureClear(req, args)
+	},
+	"diff_sessions": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+		return h.toolDiffSessionsWrapper(req, args)
+	},
+	"audit_log": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+		return h.toolGetAuditLog(req, args)
+	},
+	"health": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+		return h.toolGetHealth(req)
+	},
+	"streaming": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+		return h.toolConfigureStreamingWrapper(req, args)
+	},
+	"test_boundary_start": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+		return h.toolConfigureTestBoundaryStart(req, args)
+	},
+	"test_boundary_end": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+		return h.toolConfigureTestBoundaryEnd(req, args)
+	},
+	"recording_start": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+		return h.toolConfigureRecordingStart(req, args)
+	},
+	"recording_stop": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+		return h.toolConfigureRecordingStop(req, args)
+	},
+	"playback": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+		return h.toolConfigurePlayback(req, args)
+	},
+	"log_diff": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+		return h.toolConfigureLogDiff(req, args)
+	},
+	"telemetry": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+		return h.toolConfigureTelemetry(req, args)
+	},
+	"describe_capabilities": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+		return h.handleDescribeCapabilities(req, args)
+	},
+	"restart": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+		return h.toolConfigureRestart(req)
+	},
+	"doctor": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+		return h.toolDoctor(req)
+	},
+	"tutorial": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+		return h.toolConfigureTutorial(req, args)
+	},
+	"examples": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+		return h.toolConfigureTutorial(req, args)
+	},
+	"save_sequence": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+		return h.toolConfigureSaveSequence(req, args)
+	},
+	"get_sequence": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+		return h.toolConfigureGetSequence(req, args)
+	},
+	"list_sequences": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+		return h.toolConfigureListSequences(req, args)
+	},
+	"delete_sequence": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+		return h.toolConfigureDeleteSequence(req, args)
+	},
+	"replay_sequence": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+		return h.toolConfigureReplaySequence(req, args)
+	},
+	"security_mode": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+		return h.toolConfigureSecurityMode(req, args)
+	},
 }
 
 // getValidConfigureActions returns a sorted, comma-separated list of valid configure actions.
@@ -57,9 +115,10 @@ func getValidConfigureActions() string {
 	return strings.Join(actions, ", ")
 }
 
-// toolConfigure dispatches configure requests based on the 'action' parameter.
+// toolConfigure dispatches configure requests based on the 'what' parameter.
 func (h *ToolHandler) toolConfigure(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	var params struct {
+		What   string `json:"what"`
 		Action string `json:"action"`
 	}
 	if len(args) > 0 {
@@ -68,30 +127,33 @@ func (h *ToolHandler) toolConfigure(req JSONRPCRequest, args json.RawMessage) JS
 		}
 	}
 
-	if params.Action == "" {
-		validActions := getValidConfigureActions()
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrMissingParam, "Required parameter 'action' is missing", "Add the 'action' parameter and call again", withParam("action"), withHint("Valid values: "+validActions))}
+	what := params.What
+	if what == "" {
+		what = params.Action
 	}
 
-	handler, ok := configureHandlers[params.Action]
+	if what == "" {
+		validActions := getValidConfigureActions()
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrMissingParam, "Required parameter 'what' is missing", "Add the 'what' parameter and call again", withParam("what"), withHint("Valid values: "+validActions))}
+	}
+
+	handler, ok := configureHandlers[what]
 	if !ok {
 		validActions := getValidConfigureActions()
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrUnknownMode, "Unknown configure action: "+params.Action, "Use a valid action from the 'action' enum", withParam("action"), withHint("Valid values: "+validActions))}
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrUnknownMode, "Unknown configure action: "+what, "Use a valid action from the 'what' enum", withParam("what"), withHint("Valid values: "+validActions))}
 	}
 
 	return handler(h, req, args)
 }
 
-// ============================================
-// Configure sub-handlers
-// ============================================
-
 func (h *ToolHandler) toolConfigureStore(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	var compositeArgs struct {
 		StoreAction string          `json:"store_action"`
+		Action      string          `json:"action"`
 		Namespace   string          `json:"namespace"`
 		Key         string          `json:"key"`
 		Data        json.RawMessage `json:"data"`
+		Value       json.RawMessage `json:"value"`
 	}
 	if len(args) > 0 {
 		if err := json.Unmarshal(args, &compositeArgs); err != nil {
@@ -100,8 +162,21 @@ func (h *ToolHandler) toolConfigureStore(req JSONRPCRequest, args json.RawMessag
 	}
 
 	action := compositeArgs.StoreAction
+	if action == "" && isStoreAction(compositeArgs.Action) {
+		action = compositeArgs.Action
+	}
 	if action == "" {
 		action = "list"
+	}
+
+	namespace := compositeArgs.Namespace
+	if namespace == "" {
+		namespace = defaultStoreNamespace
+	}
+
+	data := compositeArgs.Data
+	if len(data) == 0 && len(compositeArgs.Value) > 0 {
+		data = compositeArgs.Value
 	}
 
 	// Ensure session store is initialized
@@ -112,9 +187,9 @@ func (h *ToolHandler) toolConfigureStore(req JSONRPCRequest, args json.RawMessag
 	// Convert to SessionStoreArgs
 	storeArgs := ai.SessionStoreArgs{
 		Action:    action,
-		Namespace: compositeArgs.Namespace,
+		Namespace: namespace,
 		Key:       compositeArgs.Key,
-		Data:      compositeArgs.Data,
+		Data:      data,
 	}
 
 	result, err := h.sessionStoreImpl.HandleSessionStore(storeArgs)
@@ -129,6 +204,133 @@ func (h *ToolHandler) toolConfigureStore(req JSONRPCRequest, args json.RawMessag
 	}
 
 	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Store operation complete", responseData)}
+}
+
+func isStoreAction(action string) bool {
+	switch action {
+	case "save", "load", "list", "delete", "stats":
+		return true
+	default:
+		return false
+	}
+}
+
+func (h *ToolHandler) toolConfigureTelemetry(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+	if h.server == nil {
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrNotInitialized, "Server not initialized", "Internal error — do not retry")}
+	}
+
+	var params struct {
+		TelemetryMode string `json:"telemetry_mode"`
+	}
+	lenientUnmarshal(args, &params)
+
+	if params.TelemetryMode == "" {
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Telemetry mode", map[string]any{
+			"status":         "ok",
+			"telemetry_mode": h.server.getTelemetryMode(),
+		})}
+	}
+
+	mode, ok := normalizeTelemetryMode(params.TelemetryMode)
+	if !ok {
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(
+			ErrInvalidParam,
+			"Invalid telemetry_mode: "+params.TelemetryMode,
+			"Use telemetry_mode: off, auto, or full",
+			withParam("telemetry_mode"),
+		)}
+	}
+
+	h.server.setTelemetryMode(mode)
+	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Telemetry mode updated", map[string]any{
+		"status":         "ok",
+		"telemetry_mode": mode,
+	})}
+}
+
+func (h *ToolHandler) toolConfigureSecurityMode(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+	if h.capture == nil {
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(
+			ErrNotInitialized,
+			"Capture subsystem not initialized",
+			"Internal error — do not retry",
+		)}
+	}
+
+	var params struct {
+		Mode    string `json:"mode"`
+		Confirm bool   `json:"confirm"`
+	}
+	lenientUnmarshal(args, &params)
+
+	mode := strings.ToLower(strings.TrimSpace(params.Mode))
+	if mode == "" {
+		current, productionParity, rewrites := h.capture.GetSecurityMode()
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Security mode", map[string]any{
+			"status":                    "ok",
+			"security_mode":             current,
+			"production_parity":         productionParity,
+			"insecure_rewrites_applied": rewrites,
+			"requires_confirmation_for_insecure_mode": true,
+		})}
+	}
+
+	switch mode {
+	case capture.SecurityModeNormal:
+		h.capture.SetSecurityMode(capture.SecurityModeNormal, nil)
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Security mode updated", map[string]any{
+			"status":                    "ok",
+			"security_mode":             capture.SecurityModeNormal,
+			"production_parity":         true,
+			"insecure_rewrites_applied": []string{},
+		})}
+	case capture.SecurityModeInsecureProxy:
+		if !params.Confirm {
+			return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(
+				ErrInvalidParam,
+				"security_mode=insecure_proxy requires explicit confirmation",
+				"Retry with confirm=true to acknowledge altered-environment debugging mode",
+				withParam("confirm"),
+			)}
+		}
+		rewrites := []string{"csp_headers"}
+		h.capture.SetSecurityMode(capture.SecurityModeInsecureProxy, rewrites)
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Security mode updated", map[string]any{
+			"status":                    "ok",
+			"security_mode":             capture.SecurityModeInsecureProxy,
+			"production_parity":         false,
+			"insecure_rewrites_applied": rewrites,
+			"warning":                   "Altered environment active. Findings are not production-parity evidence.",
+		})}
+	default:
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(
+			ErrInvalidParam,
+			"Invalid security mode: "+params.Mode,
+			"Use mode: normal or insecure_proxy",
+			withParam("mode"),
+		)}
+	}
+}
+
+// toolConfigureRestart handles restart requests that reach the daemon.
+// Sends self-SIGTERM so the bridge auto-respawns a fresh daemon.
+// This covers the case where the daemon is responsive but needs a clean restart.
+func (h *ToolHandler) toolConfigureRestart(req JSONRPCRequest) JSONRPCResponse {
+	resp := JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Daemon restarting", map[string]any{
+		"status":    "ok",
+		"restarted": true,
+		"message":   "Daemon shutting down — bridge will respawn automatically",
+	})}
+
+	// Send SIGTERM to self after a brief delay so the response is sent first.
+	util.SafeGo(func() {
+		time.Sleep(100 * time.Millisecond)
+		p, _ := os.FindProcess(os.Getpid())
+		_ = p.Signal(syscall.SIGTERM)
+	})
+
+	return resp
 }
 
 func (h *ToolHandler) toolLoadSessionContext(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
@@ -156,177 +358,6 @@ func (h *ToolHandler) toolLoadSessionContext(req JSONRPCRequest, args json.RawMe
 
 	// Session store not initialized — return error, matching store behavior
 	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrNotInitialized, "Session store not initialized", "Internal error — do not retry")}
-}
-
-func (h *ToolHandler) toolConfigureNoiseRule(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-	// Extract the noise_action field as the action for configure_noise
-	var compositeArgs struct {
-		NoiseAction string `json:"noise_action"`
-	}
-	if len(args) > 0 {
-		if err := json.Unmarshal(args, &compositeArgs); err != nil {
-			return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidJSON, "Invalid JSON arguments: "+err.Error(), "Fix JSON syntax and call again")}
-		}
-	}
-
-	// Rewrite args to have "action" field that toolConfigureNoise expects
-	var rawMap map[string]any
-	if len(args) > 0 {
-		if err := json.Unmarshal(args, &rawMap); err != nil {
-			return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidJSON, "Invalid JSON arguments: "+err.Error(), "Fix JSON syntax and call again")}
-		}
-	}
-	if rawMap == nil {
-		rawMap = make(map[string]any)
-	}
-	rawMap["action"] = compositeArgs.NoiseAction
-	if rawMap["action"] == "" {
-		rawMap["action"] = "list"
-	}
-	// Error impossible: rawMap contains only primitive types and strings from input
-	rewrittenArgs, _ := json.Marshal(rawMap)
-
-	return h.toolConfigureNoise(req, rewrittenArgs)
-}
-
-// noiseRuleArgs holds the parsed parameters for noise configuration.
-type noiseRuleArgs struct {
-	Action string `json:"action"`
-	Rules  []struct {
-		Category       string `json:"category"`
-		Classification string `json:"classification"`
-		MatchSpec      struct {
-			MessageRegex string `json:"message_regex"`
-			SourceRegex  string `json:"source_regex"`
-			URLRegex     string `json:"url_regex"`
-			Method       string `json:"method"`
-			StatusMin    int    `json:"status_min"`
-			StatusMax    int    `json:"status_max"`
-			Level        string `json:"level"`
-		} `json:"match_spec"`
-	} `json:"rules"`
-	RuleID string `json:"rule_id"`
-}
-
-func (h *ToolHandler) toolConfigureNoise(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-	var arguments noiseRuleArgs
-	if len(args) > 0 {
-		if err := json.Unmarshal(args, &arguments); err != nil {
-			return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidJSON, "Invalid JSON arguments: "+err.Error(), "Fix JSON syntax and call again")}
-		}
-	}
-
-	if h.noiseConfig == nil {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrNotInitialized, "Noise configuration not initialized", "Internal error — do not retry")}
-	}
-
-	responseData, errResp := h.dispatchNoiseAction(req, arguments)
-	if errResp != nil {
-		return *errResp
-	}
-
-	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Noise configuration updated", responseData)}
-}
-
-func (h *ToolHandler) dispatchNoiseAction(req JSONRPCRequest, args noiseRuleArgs) (any, *JSONRPCResponse) {
-	switch args.Action {
-	case "add":
-		return h.noiseActionAdd(req, args)
-	case "remove":
-		return h.noiseActionRemove(req, args)
-	case "list":
-		return h.noiseActionList(), nil
-	case "reset":
-		return h.noiseActionReset(), nil
-	case "auto_detect":
-		return h.noiseActionAutoDetect(), nil
-	default:
-		resp := JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrUnknownMode, "Unknown noise action: "+args.Action, "Use a valid action: add, remove, list, reset, auto_detect", withParam("noise_action"))}
-		return nil, &resp
-	}
-}
-
-func (h *ToolHandler) noiseActionAdd(req JSONRPCRequest, args noiseRuleArgs) (any, *JSONRPCResponse) {
-	rules := make([]ai.NoiseRule, len(args.Rules))
-	for i, r := range args.Rules {
-		rules[i] = ai.NoiseRule{
-			Category:       r.Category,
-			Classification: r.Classification,
-			MatchSpec: ai.NoiseMatchSpec{
-				MessageRegex: r.MatchSpec.MessageRegex,
-				SourceRegex:  r.MatchSpec.SourceRegex,
-				URLRegex:     r.MatchSpec.URLRegex,
-				Method:       r.MatchSpec.Method,
-				StatusMin:    r.MatchSpec.StatusMin,
-				StatusMax:    r.MatchSpec.StatusMax,
-				Level:        r.MatchSpec.Level,
-			},
-		}
-	}
-	if err := h.noiseConfig.AddRules(rules); err != nil {
-		resp := JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidParam, err.Error(), "Fix the rule pattern and try again")}
-		return nil, &resp
-	}
-	return map[string]any{
-		"status":     "ok",
-		"rules_added": len(args.Rules),
-		"total_rules": len(h.noiseConfig.ListRules()),
-	}, nil
-}
-
-func (h *ToolHandler) noiseActionRemove(req JSONRPCRequest, args noiseRuleArgs) (any, *JSONRPCResponse) {
-	if args.RuleID == "" {
-		resp := JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrMissingParam, "Required parameter 'rule_id' is missing", "Add the 'rule_id' parameter", withParam("rule_id"))}
-		return nil, &resp
-	}
-	if err := h.noiseConfig.RemoveRule(args.RuleID); err != nil {
-		resp := JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidParam, err.Error(), "Use a valid rule ID from list action")}
-		return nil, &resp
-	}
-	return map[string]any{"status": "ok", "removed": args.RuleID}, nil
-}
-
-func (h *ToolHandler) noiseActionList() any {
-	rules := h.noiseConfig.ListRules()
-	stats := h.noiseConfig.GetStatistics()
-	return map[string]any{
-		"rules": rules,
-		"statistics": map[string]any{
-			"total_filtered": stats.TotalFiltered,
-			"per_rule":       stats.PerRule,
-			"last_signal_at": stats.LastSignalAt,
-			"last_noise_at":  stats.LastNoiseAt,
-		},
-	}
-}
-
-func (h *ToolHandler) noiseActionReset() any {
-	h.noiseConfig.Reset()
-	return map[string]any{
-		"status":      "ok",
-		"total_rules": len(h.noiseConfig.ListRules()),
-		"message":     "Reset to built-in rules only",
-	}
-}
-
-func (h *ToolHandler) noiseActionAutoDetect() any {
-	h.server.mu.RLock()
-	consoleEntries := make([]ai.LogEntry, len(h.server.entries))
-	for i, e := range h.server.entries {
-		consoleEntries[i] = ai.LogEntry(e)
-	}
-	h.server.mu.RUnlock()
-
-	networkBodies := h.capture.GetNetworkBodies()
-	wsEvents := h.capture.GetAllWebSocketEvents()
-
-	proposals := h.noiseConfig.AutoDetect(consoleEntries, networkBodies, wsEvents)
-	return map[string]any{
-		"proposals":       proposals,
-		"total_rules":     len(h.noiseConfig.ListRules()),
-		"proposals_count": len(proposals),
-		"message":         "High-confidence proposals (>= 0.9) were auto-applied",
-	}
 }
 
 // toolConfigureClear handles buffer-specific clearing with optional buffer parameter.
@@ -381,136 +412,80 @@ func (h *ToolHandler) clearBuffer(buffer string) (any, bool) {
 	}
 }
 
-// toolDiffSessionsWrapper repackages session_action → action for toolDiffSessions.
-func (h *ToolHandler) toolDiffSessionsWrapper(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-	var raw map[string]any
-	if len(args) > 0 {
-		if err := json.Unmarshal(args, &raw); err != nil {
-			return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidJSON, "Invalid JSON arguments: "+err.Error(), "Fix JSON syntax and call again")}
-		}
-	}
-	if raw == nil {
-		raw = make(map[string]any)
-	}
-	if sa, ok := raw["session_action"].(string); ok {
-		raw["action"] = sa
-	}
-	// Error impossible: raw contains only primitive types and strings from input
-	rewritten, _ := json.Marshal(raw)
-	return h.toolDiffSessions(req, rewritten)
-}
-
-func (h *ToolHandler) toolDiffSessions(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-	var params struct {
-		SessionAction string `json:"session_action"`
-		Name          string `json:"name"`
-	}
-	if len(args) > 0 {
-		if err := json.Unmarshal(args, &params); err != nil {
-			return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidJSON, "Invalid JSON arguments: "+err.Error(), "Fix JSON syntax and call again")}
-		}
-	}
-
-	responseData := map[string]any{
-		"status": "ok",
-		"action": params.SessionAction,
-	}
-	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Session diff", responseData)}
-}
-
-func (h *ToolHandler) toolGetAuditLog(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-	var params struct {
-		SessionID string `json:"session_id"`
-		ToolName  string `json:"tool_name"`
-		Limit     int    `json:"limit"`
-		Since     string `json:"since"`
-	}
-	if len(args) > 0 {
-		if err := json.Unmarshal(args, &params); err != nil {
-			return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidJSON, "Invalid JSON arguments: "+err.Error(), "Fix JSON syntax and call again")}
-		}
-	}
-
-	responseData := map[string]any{
-		"status":  "ok",
-		"entries": []any{},
-	}
-	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Audit log entries", responseData)}
-}
-
-// toolConfigureStreamingWrapper repackages streaming_action → action for toolConfigureStreaming.
+// toolConfigureStreamingWrapper repackages streaming_action -> action for toolConfigureStreaming.
 func (h *ToolHandler) toolConfigureStreamingWrapper(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-	var raw map[string]any
-	if len(args) > 0 {
-		if err := json.Unmarshal(args, &raw); err != nil {
-			return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidJSON, "Invalid JSON arguments: "+err.Error(), "Fix JSON syntax and call again")}
-		}
+	rewritten, err := cfg.RewriteStreamingArgs(args)
+	if err != nil {
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidJSON, "Invalid JSON arguments: "+err.Error(), "Fix JSON syntax and call again")}
 	}
-	if raw == nil {
-		raw = make(map[string]any)
-	}
-	if sa, ok := raw["streaming_action"].(string); ok {
-		raw["action"] = sa
-	}
-	// Error impossible: raw contains only primitive types and strings from input
-	rewritten, _ := json.Marshal(raw)
 	return h.toolConfigureStreaming(req, rewritten)
 }
 
-// ============================================
-// Test Boundary Tool Implementations
-// ============================================
-
 func (h *ToolHandler) toolConfigureTestBoundaryStart(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-	var params struct {
-		TestID string `json:"test_id"`
-		Label  string `json:"label"`
-	}
-	if len(args) > 0 {
-		if err := json.Unmarshal(args, &params); err != nil {
-			return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidJSON, "Invalid JSON arguments: "+err.Error(), "Fix JSON syntax and call again")}
-		}
+	result, errResp := cfg.ParseTestBoundaryStart(req.ID, args)
+	if errResp != nil {
+		return *errResp
 	}
 
-	if params.TestID == "" {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrMissingParam, "Required parameter 'test_id' is missing", "Add the 'test_id' parameter", withParam("test_id"))}
+	// Track the active boundary
+	h.activeBoundariesMu.Lock()
+	if h.activeBoundaries == nil {
+		h.activeBoundaries = make(map[string]time.Time)
 	}
+	h.activeBoundaries[result.TestID] = time.Now()
+	h.activeBoundariesMu.Unlock()
 
-	label := params.Label
-	if label == "" {
-		label = "Test: " + params.TestID
-	}
-
-	responseData := map[string]any{
-		"status":  "ok",
-		"test_id": params.TestID,
-		"label":   label,
-		"message": "Test boundary started",
-	}
-
-	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Test boundary started", responseData)}
+	return cfg.BuildTestBoundaryStartResponse(req.ID, result)
 }
 
 func (h *ToolHandler) toolConfigureTestBoundaryEnd(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+	result, errResp := cfg.ParseTestBoundaryEnd(req.ID, args)
+	if errResp != nil {
+		return *errResp
+	}
+
+	// Check if this boundary was actually started
+	h.activeBoundariesMu.Lock()
+	_, wasActive := h.activeBoundaries[result.TestID]
+	if wasActive {
+		delete(h.activeBoundaries, result.TestID)
+	}
+	h.activeBoundariesMu.Unlock()
+
+	if !wasActive {
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(
+			ErrInvalidParam,
+			"No active test boundary for test_id '"+result.TestID+"'",
+			"Call configure({what: 'test_boundary_start', test_id: '"+result.TestID+"'}) first",
+			withParam("test_id"),
+		)}
+	}
+
+	return cfg.BuildTestBoundaryEndResponse(req.ID, result, wasActive)
+}
+
+// handleDescribeCapabilities returns machine-readable tool metadata derived from ToolsList().
+// When summary=true, returns only tool name → { description, dispatch_param, modes },
+// reducing output from ~757K to ~10K.
+func (h *ToolHandler) handleDescribeCapabilities(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	var params struct {
-		TestID string `json:"test_id"`
+		Summary bool `json:"summary"`
 	}
-	if len(args) > 0 {
-		if err := json.Unmarshal(args, &params); err != nil {
-			return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidJSON, "Invalid JSON arguments: "+err.Error(), "Fix JSON syntax and call again")}
-		}
+	lenientUnmarshal(args, &params)
+
+	tools := h.ToolsList()
+
+	var toolsMap map[string]any
+	if params.Summary {
+		toolsMap = cfg.BuildCapabilitiesSummary(tools)
+	} else {
+		toolsMap = cfg.BuildCapabilitiesMap(tools)
 	}
 
-	if params.TestID == "" {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrMissingParam, "Required parameter 'test_id' is missing", "Add the 'test_id' parameter", withParam("test_id"))}
-	}
-
-	responseData := map[string]any{
-		"status":     "ok",
-		"test_id":    params.TestID,
-		"was_active": true,
-		"message":    "Test boundary ended",
-	}
-
-	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Test boundary ended", responseData)}
+	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Capabilities", map[string]any{
+		"version":          version,
+		"protocol_version": "2024-11-05",
+		"tools":            toolsMap,
+		"deprecated":       []string{},
+	})}
 }

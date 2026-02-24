@@ -1,3 +1,7 @@
+// Purpose: Validate refactoring_verification_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
+// Docs: docs/features/feature/observe/index.md
+
 // refactoring_verification_test.go — Post-refactoring verification tests for buffer types.
 //
 // These tests verify that the buffer package types work correctly after the

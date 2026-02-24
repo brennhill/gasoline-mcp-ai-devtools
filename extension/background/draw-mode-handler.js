@@ -29,11 +29,11 @@ export async function handleDrawModeQuery(query, tabId, sendResult, sendAsyncRes
 
   if (action === 'start') {
     try {
-      const sessionName = params.session || ''
+      const sessionName = params.annot_session || ''
       const result = await chrome.tabs.sendMessage(tabId, {
         type: 'GASOLINE_DRAW_MODE_START',
         started_by: 'llm',
-        session_name: sessionName,
+        annot_session_name: sessionName,
         correlation_id: query.correlation_id || query.id || ''
       })
       sendResult(syncClient, query.id, {
@@ -94,7 +94,7 @@ export async function handleDrawModeCompleted(message, sender, syncClient) {
   const annotations = message.annotations || []
   const elementDetails = message.elementDetails || {}
   const pageUrl = message.page_url || ''
-  const sessionName = message.session_name || ''
+  const sessionName = message.annot_session_name || ''
   // Screenshot is now captured by content script before overlay removal
   const screenshotDataUrl = message.screenshot_data_url || ''
 
@@ -109,7 +109,7 @@ export async function handleDrawModeCompleted(message, sender, syncClient) {
       tab_id: tabId
     }
     if (sessionName) {
-      body.session_name = sessionName
+      body.annot_session_name = sessionName
     }
     const response = await fetch(`${serverUrl}/draw-mode/complete`, {
       method: 'POST',

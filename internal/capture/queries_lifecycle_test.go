@@ -1,3 +1,7 @@
+// Purpose: Validate queries_lifecycle_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
+// Docs: docs/features/feature/backend-log-streaming/index.md
+
 // queries_lifecycle_test.go — Tests for query goroutine lifecycle fixes.
 // Covers: startResultCleanup stop mechanism, WaitForResult goroutine control,
 // and Close() method for Capture cleanup.
@@ -11,6 +15,17 @@ import (
 
 	"github.com/dev-console/dev-console/internal/queries"
 )
+
+// ============================================
+// queryResultTTL: must be long enough for multi-step agents
+// ============================================
+
+func TestQueryResultTTL_FiveMinutes(t *testing.T) {
+	t.Parallel()
+	if queryResultTTL != 5*time.Minute {
+		t.Fatalf("queryResultTTL = %v, want 5m", queryResultTTL)
+	}
+}
 
 // ============================================
 // startResultCleanup: stop function
@@ -81,7 +96,7 @@ func TestWaitForResult_NoGoroutineLeakOnTimeout(t *testing.T) {
 	c := NewCapture()
 	defer c.Close()
 
-	id := c.CreatePendingQuery(queries.PendingQuery{
+	id, _ := c.CreatePendingQuery(queries.PendingQuery{
 		Type:   "dom",
 		Params: json.RawMessage(`{"selector":"#leak-test"}`),
 	})
@@ -120,7 +135,7 @@ func TestWaitForResult_MultipleTimeoutsNoLeak(t *testing.T) {
 	before := runtime.NumGoroutine()
 
 	for i := 0; i < 6; i++ {
-		id := c.CreatePendingQuery(queries.PendingQuery{
+		id, _ := c.CreatePendingQuery(queries.PendingQuery{
 			Type:   "dom",
 			Params: json.RawMessage(`{"selector":"#leak-test"}`),
 		})
@@ -145,7 +160,7 @@ func TestWaitForResult_ReturnsResultWhenAvailable(t *testing.T) {
 	c := NewCapture()
 	defer c.Close()
 
-	id := c.CreatePendingQuery(queries.PendingQuery{
+	id, _ := c.CreatePendingQuery(queries.PendingQuery{
 		Type:   "dom",
 		Params: json.RawMessage(`{"selector":"#test"}`),
 	})

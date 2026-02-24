@@ -1,3 +1,7 @@
+# Purpose: Validate test_platform_cleanup.py behavior and guard against regressions.
+# Why: Prevents silent regressions in critical behavior paths.
+# Docs: docs/features/feature/enhanced-cli-config/index.md
+
 import os
 import sys
 import tempfile

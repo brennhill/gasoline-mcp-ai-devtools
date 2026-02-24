@@ -1,4 +1,9 @@
 /**
+ * Purpose: Provides backward-compatible message/type export surface for extension communication contracts.
+ * Why: Preserves existing imports while message definitions are split into focused type modules.
+ * Docs: docs/features/feature/query-service/index.md
+ */
+/**
  * @fileoverview Message Types for Gasoline Extension
  *
  * Comprehensive discriminated unions for all message types used in the extension.
@@ -12,18 +17,18 @@
  * New code should import from the specific modules directly.
  */
 // Re-export all types for backward compatibility
-export * from './telemetry'
-export * from './websocket'
-export * from './network'
-export * from './performance'
-export * from './actions'
-export * from './ai-context'
-export * from './accessibility'
-export * from './dom'
-export * from './state'
-export * from './queries'
-export * from './sourcemap'
-export * from './chrome'
-export * from './debug'
-export * from './runtime-messages'
+export * from './telemetry';
+export * from './websocket';
+export * from './network';
+export * from './performance';
+export * from './actions';
+export * from './ai-context';
+export * from './accessibility';
+export * from './dom';
+export * from './state';
+export * from './queries';
+export * from './sourcemap';
+export * from './chrome';
+export * from './debug';
+export * from './runtime-messages';
 //# sourceMappingURL=messages.js.map

@@ -1,5 +1,8 @@
 ---
 feature: drag-drop-automation
+doc_type: qa-plan
+feature_id: feature-drag-drop-automation
+last_reviewed: 2026-02-16
 ---
 
 # QA Plan: Drag & Drop Automation

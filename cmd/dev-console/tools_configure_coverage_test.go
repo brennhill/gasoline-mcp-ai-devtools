@@ -1,3 +1,7 @@
+// Purpose: Validate tools_configure_coverage_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
+// Docs: docs/features/feature/observe/index.md
+
 // tools_configure_coverage_test.go — Coverage tests for configure sub-handlers.
 package main
 
@@ -15,7 +19,7 @@ func TestToolConfigureClear_AllBuffers(t *testing.T) {
 	t.Parallel()
 	env := newConfigureTestEnv(t)
 
-	result, ok := env.callConfigure(t, `{"action":"clear","buffer":"all"}`)
+	result, ok := env.callConfigure(t, `{"what":"clear","buffer":"all"}`)
 	if !ok {
 		t.Fatal("clear all should return result")
 	}
@@ -33,7 +37,7 @@ func TestToolConfigureClear_DefaultsToAll(t *testing.T) {
 	env := newConfigureTestEnv(t)
 
 	// No buffer param — should default to "all"
-	result, ok := env.callConfigure(t, `{"action":"clear"}`)
+	result, ok := env.callConfigure(t, `{"what":"clear"}`)
 	if !ok {
 		t.Fatal("clear (default) should return result")
 	}
@@ -46,7 +50,7 @@ func TestToolConfigureClear_Network(t *testing.T) {
 	t.Parallel()
 	env := newConfigureTestEnv(t)
 
-	result, ok := env.callConfigure(t, `{"action":"clear","buffer":"network"}`)
+	result, ok := env.callConfigure(t, `{"what":"clear","buffer":"network"}`)
 	if !ok {
 		t.Fatal("clear network should return result")
 	}
@@ -59,7 +63,7 @@ func TestToolConfigureClear_WebSocket(t *testing.T) {
 	t.Parallel()
 	env := newConfigureTestEnv(t)
 
-	result, ok := env.callConfigure(t, `{"action":"clear","buffer":"websocket"}`)
+	result, ok := env.callConfigure(t, `{"what":"clear","buffer":"websocket"}`)
 	if !ok {
 		t.Fatal("clear websocket should return result")
 	}
@@ -72,7 +76,7 @@ func TestToolConfigureClear_Actions(t *testing.T) {
 	t.Parallel()
 	env := newConfigureTestEnv(t)
 
-	result, ok := env.callConfigure(t, `{"action":"clear","buffer":"actions"}`)
+	result, ok := env.callConfigure(t, `{"what":"clear","buffer":"actions"}`)
 	if !ok {
 		t.Fatal("clear actions should return result")
 	}
@@ -85,7 +89,7 @@ func TestToolConfigureClear_Logs(t *testing.T) {
 	t.Parallel()
 	env := newConfigureTestEnv(t)
 
-	result, ok := env.callConfigure(t, `{"action":"clear","buffer":"logs"}`)
+	result, ok := env.callConfigure(t, `{"what":"clear","buffer":"logs"}`)
 	if !ok {
 		t.Fatal("clear logs should return result")
 	}
@@ -98,7 +102,7 @@ func TestToolConfigureClear_UnknownBuffer(t *testing.T) {
 	t.Parallel()
 	env := newConfigureTestEnv(t)
 
-	result, ok := env.callConfigure(t, `{"action":"clear","buffer":"invalid_buffer"}`)
+	result, ok := env.callConfigure(t, `{"what":"clear","buffer":"invalid_buffer"}`)
 	if !ok {
 		t.Fatal("clear invalid should return result")
 	}

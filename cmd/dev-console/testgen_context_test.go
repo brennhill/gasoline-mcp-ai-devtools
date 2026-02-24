@@ -1,3 +1,7 @@
+// Purpose: Validate testgen_context_test.go behavior and guard against regressions.
+// Why: Prevents silent regressions in critical behavior paths.
+// Docs: docs/features/feature/test-generation/index.md
+
 // testgen_context_test.go — Tests for testgen.go context generation functions at 0% coverage.
 // Covers: generateTestFromInteraction, generateTestFromRegression.
 package main

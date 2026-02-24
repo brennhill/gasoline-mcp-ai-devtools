@@ -337,7 +337,7 @@ run_test_13_9() {
     # Page 1
     interact_and_wait "navigate" '{"action":"navigate","url":"https://example.com","reason":"Session page 1"}' 20
     sleep 2
-    call_tool "interact" "{\"action\":\"draw_mode_start\",\"session\":\"$session_name\"}" >/dev/null 2>&1
+    call_tool "interact" "{\"action\":\"draw_mode_start\",\"annot_session\":\"$session_name\"}" >/dev/null 2>&1
     echo "  >>> Draw 1 annotation on this page, then press ESC <<<"
     echo "  -- Press Enter when done --"
     if [ -t 0 ]; then read -r; fi
@@ -345,14 +345,14 @@ run_test_13_9() {
     # Page 2
     interact_and_wait "navigate" '{"action":"navigate","url":"https://www.iana.org/domains/reserved","reason":"Session page 2"}' 20
     sleep 2
-    call_tool "interact" "{\"action\":\"draw_mode_start\",\"session\":\"$session_name\"}" >/dev/null 2>&1
+    call_tool "interact" "{\"action\":\"draw_mode_start\",\"annot_session\":\"$session_name\"}" >/dev/null 2>&1
     echo "  >>> Draw 1 annotation on this page, then press ESC <<<"
     echo "  -- Press Enter when done --"
     if [ -t 0 ]; then read -r; fi
 
     # Retrieve named session
     local response
-    response=$(call_tool "analyze" "{\"what\":\"annotations\",\"session\":\"$session_name\"}")
+    response=$(call_tool "analyze" "{\"what\":\"annotations\",\"annot_session\":\"$session_name\"}")
     local content_text
     content_text=$(extract_content_text "$response")
 

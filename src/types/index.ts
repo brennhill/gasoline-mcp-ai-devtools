@@ -1,4 +1,10 @@
 /**
+ * Purpose: Exposes the canonical extension type barrel that aggregates runtime, telemetry, and utility contracts.
+ * Why: Provides a stable import surface so cross-module typing remains consistent during refactors.
+ * Docs: docs/features/feature/query-service/index.md
+ */
+
+/**
  * @fileoverview Type Index - Barrel export for all Gasoline Extension types
  *
  * This is the single entry point for importing types in the extension.
@@ -25,7 +31,6 @@ export type {
   WebSocketEvent,
 
   // Network types
-  WaterfallPhases,
   WaterfallEntry,
   PendingRequest,
   NetworkBodyPayload,
@@ -33,8 +38,6 @@ export type {
   // Performance types
   PerformanceMark,
   PerformanceMeasure,
-  LongTaskMetrics,
-  WebVitals,
   PerformanceSnapshot,
 
   // User action types
@@ -86,6 +89,7 @@ export type {
   ClearDebugLogMessage,
   SetServerUrlMessage,
   StatusUpdateMessage,
+  DrawModeCompletedMessage,
   BackgroundMessage,
 
   // Content script message types
@@ -138,6 +142,32 @@ export type {
   ChromeSessionStorage,
   ChromeStorageWithSession
 } from './messages'
+
+// Re-export wire types (canonical HTTP payload shapes)
+export type {
+  WireEnhancedAction
+} from './wire-enhanced-action'
+
+export type {
+  WireNetworkBody,
+  WireNetworkWaterfallEntry,
+  WireNetworkWaterfallPayload
+} from './wire-network'
+
+export type {
+  WireWebSocketEvent
+} from './wire-websocket-event'
+
+export type {
+  WirePerformanceTiming,
+  WireTypeSummary,
+  WireSlowRequest,
+  WireNetworkSummary,
+  WireLongTaskMetrics,
+  WireUserTimingEntry,
+  WireUserTimingData,
+  WirePerformanceSnapshot
+} from './wire-performance-snapshot'
 
 // Re-export all utility types
 export type {

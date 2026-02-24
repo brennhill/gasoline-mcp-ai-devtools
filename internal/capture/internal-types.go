@@ -1,5 +1,7 @@
-// internal-types.go — Internal types used by Capture struct.
-// A11yCache, PerformanceStore, and related internal helper types.
+// Purpose: Defines internal cache/store structs used by capture for a11y and performance sub-state.
+// Why: Isolates non-exported supporting state to keep core capture structs focused and readable.
+// Docs: docs/features/feature/backend-log-streaming/index.md
+
 package capture
 
 import (

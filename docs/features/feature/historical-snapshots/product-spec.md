@@ -5,6 +5,9 @@ ai-priority: medium
 tags: [v7, persistence, analysis, eyes]
 relates-to: [../normalized-log-schema.md, ../../core/architecture.md]
 last-verified: 2026-01-31
+doc_type: product-spec
+feature_id: feature-historical-snapshots
+last_reviewed: 2026-02-16
 ---
 
 # Historical Snapshots

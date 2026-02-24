@@ -1,9 +1,8 @@
 /**
- * @fileoverview Type Index - Barrel export for all Gasoline Extension types
- *
- * This is the single entry point for importing types in the extension.
- * Usage: import type { LogEntry, BackgroundMessage } from './types';
+ * Purpose: Exposes the canonical extension type barrel that aggregates runtime, telemetry, and utility contracts.
+ * Why: Provides a stable import surface so cross-module typing remains consistent during refactors.
+ * Docs: docs/features/feature/query-service/index.md
  */
 // Re-export type guards from utils
-export { isObject, isNonEmptyString, hasType, isJsonValue, createTypeGuard } from './utils'
+export { isObject, isNonEmptyString, hasType, isJsonValue, createTypeGuard } from './utils';
 //# sourceMappingURL=index.js.map

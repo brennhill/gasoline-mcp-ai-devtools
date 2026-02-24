@@ -1,8 +1,7 @@
-// extension-logging-types.go — Extension logging types.
-// ExtensionLog, PollingLogEntry, and HTTPDebugEntry for extension internal logging.
-//
-// JSON CONVENTION: All fields MUST use snake_case. See .claude/refs/api-naming-standards.md
-// Deviations from snake_case MUST be tagged with // SPEC:<spec-name> at the field level.
+// Purpose: Defines extension-origin log/debug entry payload structures used by sync ingestion paths.
+// Why: Keeps extension diagnostic event shapes consistent for buffering, filtering, and display.
+// Docs: docs/features/feature/backend-log-streaming/index.md
+
 package capture
 
 import (
@@ -25,7 +24,7 @@ type PollingLogEntry struct {
 	Timestamp    time.Time `json:"timestamp"`
 	Endpoint     string    `json:"endpoint"` // "pending-queries" or "settings"
 	Method       string    `json:"method"`   // "GET" or "POST"
-	SessionID    string    `json:"session_id,omitempty"`
+	ExtSessionID string    `json:"ext_session_id,omitempty"`
 	PilotEnabled *bool     `json:"pilot_enabled,omitempty"` // Only for POST /settings
 	PilotHeader  string    `json:"pilot_header,omitempty"`  // Only for GET with X-Gasoline-Pilot header
 	QueryCount   int       `json:"query_count,omitempty"`   // Number of pending queries returned
@@ -36,7 +35,7 @@ type HTTPDebugEntry struct {
 	Timestamp      time.Time         `json:"timestamp"`
 	Endpoint       string            `json:"endpoint"` // URL path
 	Method         string            `json:"method"`   // HTTP method
-	SessionID      string            `json:"session_id,omitempty"`
+	ExtSessionID   string            `json:"ext_session_id,omitempty"`
 	ClientID       string            `json:"client_id,omitempty"`
 	Headers        map[string]string `json:"headers,omitempty"`         // Request headers (redacted auth)
 	RequestBody    string            `json:"request_body,omitempty"`    // First 1KB of request body

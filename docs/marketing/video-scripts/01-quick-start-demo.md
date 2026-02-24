@@ -1,3 +1,9 @@
+---
+doc_type: legacy_doc
+status: reference
+last_reviewed: 2026-02-16
+---
+
 # Video Script: Gasoline MCP - Quick Start Demo
 
 **Title:** Get Gasoline MCP Running in 2 Minutes  

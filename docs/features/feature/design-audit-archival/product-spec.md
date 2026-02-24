@@ -7,6 +7,9 @@ tags: [screenshots, design-regression, archival, placeholder]
 relates-to: [feature-tracking.md, tech-spec.md, qa-plan.md]
 last-verified: 2026-01-31
 incomplete: true
+doc_type: product-spec
+feature_id: feature-design-audit-archival
+last_reviewed: 2026-02-16
 ---
 
 # Product Specification: Design Audit & Archival
