@@ -618,6 +618,10 @@ func annotateInteractFailureRecovery(responseData map[string]any, cmdError strin
 // annotateSuggestedElementID picks the first visible candidate's element_id
 // and sets it as suggested_element_id for single-retry LLM recovery.
 func annotateSuggestedElementID(responseData map[string]any) {
+	// Skip if extension already set suggested_element_id (e.g. ranked resolution)
+	if existing, ok := responseData["suggested_element_id"].(string); ok && existing != "" {
+		return
+	}
 	candidates, ok := responseData["candidates"].([]any)
 	if !ok || len(candidates) == 0 {
 		return
