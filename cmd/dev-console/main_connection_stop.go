@@ -258,6 +258,29 @@ func cleanupPIDFiles() {
 	}
 }
 
+// runForceCleanupQuietly performs the same logic as runForceCleanup but with NO terminal output.
+func runForceCleanupQuietly() error {
+	if runtime.GOOS != "windows" {
+		_, _ = killUnixGasolineProcessesQuietly()
+	} else {
+		_ = killWindowsGasolineProcessesQuietly()
+	}
+	cleanupPIDFiles()
+	return nil
+}
+
+func killUnixGasolineProcessesQuietly() (int, int) {
+	cmd := exec.Command("pkill", "-f", "gasoline.*--daemon")
+	_ = cmd.Run()
+	return 0, 0
+}
+
+func killWindowsGasolineProcessesQuietly() int {
+	cmd := exec.Command("taskkill", "/IM", "gasoline.exe", "/F")
+	_ = cmd.Run()
+	return 0
+}
+
 // printForceCleanupSummary outputs the results of the force cleanup operation.
 func printForceCleanupSummary(killed, failedToKill int) {
 	fmt.Println()

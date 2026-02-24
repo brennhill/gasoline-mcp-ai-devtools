@@ -14,7 +14,8 @@
   "files": [
     "bin",
     "lib",
-    "skills"
+    "skills",
+    "extension"
   ],
   "optionalDependencies": {
     "@brennhill/gasoline-darwin-arm64": "0.7.8",

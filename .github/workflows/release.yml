@@ -246,6 +246,9 @@ jobs:
           TWINE_USERNAME: __token__
           TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
 
+      - name: Build extension zip
+        run: make extension-zip
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@a06a81a03ee405af7f2048a818ed3f03bbf83c7b # v2
         with:
@@ -255,6 +258,7 @@ jobs:
             dist/gasoline-linux-arm64
             dist/gasoline-linux-x64
             dist/gasoline-win32-x64.exe
+            dist/gasoline-extension-v*.zip
           generate_release_notes: true
           draft: false
           prerelease: false
