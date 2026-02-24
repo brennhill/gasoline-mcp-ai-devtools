@@ -37,3 +37,9 @@ package main
 - `Purpose` and at least one `Docs` line are required.
 - Link to feature index docs (`.../index.md`) instead of deep links when possible.
 - Test files (`*_test.go`, `*.test.ts`) are excluded.
+
+## Architecture Authority
+
+- File headers and inline comments are local guidance, not the source of truth for architecture invariants.
+- Canonical architecture constraints live in `docs/architecture/` and linked ADRs.
+- If comments and architecture docs disagree, update docs first, then align comments and tests in the same change.

@@ -35,10 +35,16 @@
 
 ## 📦 Latest Release
 
-Current version: **v7.8.0** — Link health analyzer, browser automation, recording, and performance analysis for AI agents.
+Current version: **v0.7.8** — Link health analyzer, browser automation, recording, and performance analysis for AI agents.
 
+**macOS / Linux:**
 ```bash
-npx gasoline-mcp@7.8.0
+curl -sSL https://raw.githubusercontent.com/brennhill/gasoline-mcp-ai-devtools/STABLE/scripts/install.sh | bash
+```
+
+**Windows (PowerShell):**
+```powershell
+irm https://raw.githubusercontent.com/brennhill/gasoline-mcp-ai-devtools/STABLE/scripts/install.ps1 | iex
 ```
 
 </div>
@@ -47,197 +53,45 @@ npx gasoline-mcp@7.8.0
 
 ## Quick Start
 
-**You need TWO things:**
+**Fire up Gasoline (Binary + Extension + Auto-Config) in one command:**
 
-- **Browser extension** (captures browser telemetry)
-- **MCP server** (forwards data to your AI tool)
+**macOS / Linux:**
+```bash
+curl -sSL https://raw.githubusercontent.com/brennhill/gasoline-mcp-ai-devtools/STABLE/scripts/install.sh | bash
+```
+
+**Windows (PowerShell):**
+```powershell
+irm https://raw.githubusercontent.com/brennhill/gasoline-mcp-ai-devtools/STABLE/scripts/install.ps1 | iex
+```
+
+This script automatically:
+1.  **Downloads** the latest stable binary for your platform.
+2.  **Installs** the browser extension files to `~/.gasoline/extension`.
+3.  **Auto-configures** all detected MCP clients (Claude Code, Cursor, Windsurf, Zed, etc.).
 
 ---
 
-### Step 1: Install the Browser Extension
+### Step 1: Finalize Browser Extension
 
-1. Download the latest release from [GitHub Releases](https://github.com/brennhill/gasoline-mcp-ai-devtools/releases) and unzip it, or clone the repo:
-   ```bash
-   git clone https://github.com/brennhill/gasoline-mcp-ai-devtools.git
-   ```
-2. Open `chrome://extensions`
-3. Enable **Developer mode** (top right)
-4. Click **Load unpacked**
-5. Select the `extension/` folder
+1. Open `chrome://extensions`
+2. Enable **Developer mode** (top right)
+3. Click **Load unpacked**
+4. Select the folder: `~/.gasoline/extension` (or wherever the script printed)
 
-### Step 2: Start the MCP Server
+### Step 2: Restart Your AI Tool
 
-Choose one option below based on your setup:
-
-#### Option A: NPM (recommended)
-
-```bash
-npx gasoline-mcp@7.8.0
-```
-
-#### Option B: PyPI
-
-```bash
-pip install gasoline-mcp
-gasoline-mcp
-```
-
-> **Note:** npm and PyPI are distribution channels only — they deliver the native Go binary for your platform. The MCP server itself has zero Node.js/Python runtime dependency.
-
-#### Option C: Local development
-
-```bash
-cd gasoline
-go run ./cmd/dev-console
-```
-
-### Optional: Install bundled skills (all channels)
-
-Bundled skills include `debug-triage`, `performance`, `regression-test`, `api-validation`, `ux-audit`, and `site-audit`.
-
-- npm: installed automatically during package install and by `gasoline-mcp --install`
-- PyPI: installed when you run `gasoline-mcp --install`
-- manual/local source builds: run:
-
-```bash
-./scripts/install-bundled-skills.sh
-```
-
-### Step 3: Configure MCP in your AI tool
-
-Choose one option below based on your setup:
-
-*Option A: NPM (recommended)*
-```json
-{
-  "mcpServers": {
-    "gasoline": {
-      "type": "stdio",
-      "command": "npx",
-      "args": ["-y", "gasoline-mcp"]
-    }
-  }
-}
-```
-
-*Option B: PyPI*
-```json
-{
-  "mcpServers": {
-    "gasoline": {
-      "type": "stdio",
-      "command": "gasoline-mcp"
-    }
-  }
-}
-```
-
-*Option C: Local development (from repo root)*
-```json
-{
-  "mcpServers": {
-    "gasoline": {
-      "type": "stdio",
-      "command": "go",
-      "args": ["run", "./cmd/dev-console"]
-    }
-  }
-}
-```
-
-**Verify setup:**
-```bash
-curl http://localhost:7890/health
-# Should return: {"status":"ok","version":"7.8.0",...}
-```
-
-**How it works:**
-- Gasoline MCP runs as a stdio-based MCP server (bridge mode)
-- The bridge automatically spawns a persistent daemon on port 7890 if needed
-- Extension connects to the daemon to send browser telemetry
-- MCP client communicates via stdio
-- Both share the same browser telemetry state
-
-Works with **Claude Code**, **Cursor**, **Windsurf**, **Claude Desktop**, **Gemini CLI**, **OpenCode**, **Antigravity**, **Zed**, and any MCP-compatible tool.
-
-*Option D: Gemini CLI*
-
-Add to `~/.gemini/settings.json`:
-```json
-{
-  "mcpServers": {
-    "gasoline": {
-      "command": "gasoline-mcp",
-      "args": []
-    }
-  }
-}
-```
-
-*Option E: OpenCode*
-
-Add to `~/.config/opencode/opencode.json`:
-```json
-{
-  "mcp": {
-    "gasoline": {
-      "type": "local",
-      "command": ["gasoline-mcp"],
-      "enabled": true
-    }
-  }
-}
-```
-
-*Option F: Antigravity*
-
-Add to `~/.gemini/antigravity/mcp_config.json`:
-```json
-{
-  "mcpServers": {
-    "gasoline": {
-      "command": "gasoline-mcp",
-      "args": []
-    }
-  }
-}
-```
-
-*Option G: Zed*
-
-Add to `~/.config/zed/settings.json`:
-```json
-{
-  "context_servers": {
-    "gasoline": {
-      "source": "custom",
-      "command": "gasoline-mcp",
-      "args": []
-    }
-  }
-}
-```
+Restart Claude Code, Cursor, Windsurf, or Zed. The Gasoline server will now start automatically when needed.
 
 **[Full setup guide →](https://cookwithgasoline.com/getting-started/)** | **[Per-tool install guide →](docs/mcp-install-guide.md)**
 
-**CLI options:**
-
-| Flag | Description |
-|------|-------------|
-| `--port <n>` | Port to listen on (default: 7890) |
-| `--api-key <key>` | Require API key for HTTP requests |
-| `--connect` | Connect to existing server (multi-client) |
-| `--client-id <id>` | Override client ID (default: derived from CWD) |
-| `--check` | Verify setup and print status |
-| `--stop` | Stop the running server on the specified port |
-| `--version` | Show version |
-| `--help` | Show all options |
+---
 
 ## Why You Cook With Gasoline MCP
 
 **No debug port required.** Other tools need Chrome launched with `--remote-debugging-port`, which disables security sandboxing and breaks your normal browser workflow. Gasoline MCP uses a standard extension — your browser stays secure and unmodified.
 
-**Single binary, zero runtime.** One Go binary that runs anywhere — no runtime dependencies, no Puppeteer, no framework. npm and PyPI are just delivery channels; the MCP server executes natively with no interpreter in the loop.
+**Single binary, zero runtime.** One Go binary that runs anywhere — no runtime dependencies, no Puppeteer, no framework.
 
 **Captures what others can't.** WebSocket messages, full request/response bodies, user action recording, Web Vitals, automatic regression detection, visual annotations, and Playwright test generation from real browser sessions — features no other MCP browser tool offers.
 

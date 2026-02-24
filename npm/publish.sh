@@ -37,6 +37,11 @@ chmod +x npm/linux-x64/bin/gasoline
 chmod +x npm/gasoline-mcp/bin/gasoline-mcp
 
 echo ""
+echo "Copying extension to main npm package..."
+mkdir -p npm/gasoline-mcp/extension
+cp -r "$ROOT_DIR/extension/"* npm/gasoline-mcp/extension/
+
+echo ""
 echo "Publishing platform packages..."
 
 PACKAGES=(

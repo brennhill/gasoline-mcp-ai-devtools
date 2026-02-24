@@ -184,13 +184,16 @@ windows-amd64:
 	GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -ldflags="$(LDFLAGS)" -o $(BUILD_DIR)/$(BINARY_NAME)-win32-x64.exe $(CMD_PKG)
 
 # Build and copy binaries to NPM package directories (for releases)
-npm-binaries: build
+npm-binaries: build compile-ts
 	@echo "=== Copying binaries to NPM packages ==="
 	cp $(BUILD_DIR)/$(BINARY_NAME)-darwin-arm64 npm/darwin-arm64/bin/gasoline
 	cp $(BUILD_DIR)/$(BINARY_NAME)-darwin-x64 npm/darwin-x64/bin/gasoline
 	cp $(BUILD_DIR)/$(BINARY_NAME)-linux-arm64 npm/linux-arm64/bin/gasoline
 	cp $(BUILD_DIR)/$(BINARY_NAME)-linux-x64 npm/linux-x64/bin/gasoline
 	cp $(BUILD_DIR)/$(BINARY_NAME)-win32-x64.exe npm/win32-x64/bin/gasoline.exe
+	@echo "=== Copying extension to main NPM package ==="
+	@mkdir -p npm/gasoline-mcp/extension
+	@cp -r extension/* npm/gasoline-mcp/extension/
 	@echo "=== Verifying embedded versions ==="
 	@EMBEDDED=$$(npm/darwin-arm64/bin/gasoline --version 2>&1 | grep -o '[0-9]\+\.[0-9]\+\.[0-9]\+'); \
 	EXPECTED=$$(cat VERSION); \
@@ -198,7 +201,7 @@ npm-binaries: build
 		echo "❌ ERROR: Embedded version $$EMBEDDED does not match VERSION file $$EXPECTED"; \
 		exit 1; \
 	fi
-	@echo "✅ NPM binaries ready with version $(VERSION)"
+	@echo "✅ NPM binaries and extension ready with version $(VERSION)"
 
 # Build for current platform only (for development)
 dev:
