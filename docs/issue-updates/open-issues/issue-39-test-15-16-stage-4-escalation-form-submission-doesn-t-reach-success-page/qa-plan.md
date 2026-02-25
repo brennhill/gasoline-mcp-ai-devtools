@@ -1,7 +1,7 @@
 # QA Plan: Issue #39
 
 ## Source
-- Issue: https://github.com/brennhill/gasoline-mcp-ai-devtools/issues/39
+- Issue: https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/issues/39
 - Title: Test 15.16: Stage 4 escalation form submission doesn't reach success page
 
 ## QA Goal

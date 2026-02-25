@@ -188,7 +188,7 @@ func handleFastPath(req JSONRPCRequest, toolsList []MCPTool, framing bridge.Stdi
 	case "initialize":
 		result := map[string]any{
 			"protocolVersion": negotiateProtocolVersion(req.Params),
-			"serverInfo":      map[string]any{"name": "gasoline", "version": version},
+			"serverInfo":      map[string]any{"name": "gasoline-agentic-browser", "version": version},
 			"capabilities":    map[string]any{"tools": map[string]any{}, "resources": map[string]any{}},
 			"instructions":    serverInstructions,
 		}

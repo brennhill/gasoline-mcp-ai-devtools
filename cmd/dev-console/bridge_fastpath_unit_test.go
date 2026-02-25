@@ -659,7 +659,7 @@ func TestCheckDaemonStatus_HealsReadyFlagFromHealth(t *testing.T) {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/health", func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
-		_, _ = io.WriteString(w, `{"status":"ok","service-name":"gasoline","version":"1.0.0"}`)
+		_, _ = io.WriteString(w, `{"status":"ok","service-name":"gasoline-agentic-browser","version":"1.0.0"}`)
 	})
 
 	ln, err := net.Listen("tcp", "127.0.0.1:0")
@@ -712,7 +712,7 @@ func TestRunningServerVersionCompatible(t *testing.T) {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/health", func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
-		_, _ = io.WriteString(w, `{"status":"ok","service-name":"gasoline","version":"`+healthVersion+`"}`)
+		_, _ = io.WriteString(w, `{"status":"ok","service-name":"gasoline-agentic-browser","version":"`+healthVersion+`"}`)
 	})
 
 	ln, err := net.Listen("tcp", "127.0.0.1:0")
@@ -727,14 +727,14 @@ func TestRunningServerVersionCompatible(t *testing.T) {
 	})
 
 	compatible, gotVersion, gotService := runningServerVersionCompatible(port)
-	if !compatible || gotVersion != "9.9.9" || gotService != "gasoline" {
-		t.Fatalf("runningServerVersionCompatible() = (%v, %q, %q), want (true, %q, %q)", compatible, gotVersion, gotService, "9.9.9", "gasoline")
+	if !compatible || gotVersion != "9.9.9" || gotService != "gasoline-agentic-browser" {
+		t.Fatalf("runningServerVersionCompatible() = (%v, %q, %q), want (true, %q, %q)", compatible, gotVersion, gotService, "9.9.9", "gasoline-agentic-browser")
 	}
 
 	healthVersion = "1.0.0"
 	compatible, gotVersion, gotService = runningServerVersionCompatible(port)
-	if compatible || gotVersion != "1.0.0" || gotService != "gasoline" {
-		t.Fatalf("runningServerVersionCompatible() = (%v, %q, %q), want (false, %q, %q)", compatible, gotVersion, gotService, "1.0.0", "gasoline")
+	if compatible || gotVersion != "1.0.0" || gotService != "gasoline-agentic-browser" {
+		t.Fatalf("runningServerVersionCompatible() = (%v, %q, %q), want (false, %q, %q)", compatible, gotVersion, gotService, "1.0.0", "gasoline-agentic-browser")
 	}
 }
 

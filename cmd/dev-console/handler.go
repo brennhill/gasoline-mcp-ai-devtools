@@ -16,7 +16,7 @@ import (
 
 // serverInstructions is sent once per session in the initialize response.
 // It provides workflow guidance so tool descriptions can stay minimal.
-const serverInstructions = `Gasoline provides real-time browser telemetry and automation via 5 tools.
+const serverInstructions = `Gasoline Agentic Browser provides real-time browser telemetry and automation via 5 tools.
 
 Workflow:
 - observe: read passive buffers (errors, logs, network, screenshots, actions, etc.)
@@ -303,7 +303,7 @@ func (h *MCPHandler) handleInitialize(req JSONRPCRequest) JSONRPCResponse {
 	result := MCPInitializeResult{
 		ProtocolVersion: negotiatedVersion,
 		ServerInfo: MCPServerInfo{
-			Name:    "gasoline",
+			Name:    "gasoline-agentic-browser",
 			Version: h.version,
 		},
 		Capabilities: MCPCapabilities{

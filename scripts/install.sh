@@ -1,20 +1,20 @@
 #!/bin/bash
-# Gasoline - The Ultimate One-liner Installer
-# https://github.com/brennhill/gasoline-mcp-ai-devtools
+# Gasoline Agentic Browser - The Ultimate One-liner Installer
+# https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp
 #
 # PURPOSE:
 # This script provides a zero-dependency, platform-aware installation flow for Gasoline.
 # It handles binary acquisition, extension staging, and native configuration in one go.
 #
 # USAGE:
-#   curl -sSL https://raw.githubusercontent.com/brennhill/gasoline-mcp-ai-devtools/STABLE/scripts/install.sh | bash
+#   curl -sSL https://raw.githubusercontent.com/brennhill/gasoline-agentic-browser-devtools-mcp/STABLE/scripts/install.sh | bash
 
 # Fail immediately if a command fails (-e), an unset variable is used (-u),
 # or a command in a pipeline fails (-o pipefail). This is critical for installer safety.
 set -euo pipefail
 
 # Configuration: Define the single source of truth for paths and repository metadata.
-REPO="brennhill/gasoline-mcp-ai-devtools"
+REPO="brennhill/gasoline-agentic-browser-devtools-mcp"
 INSTALL_DIR="$HOME/.gasoline"
 BIN_DIR="$INSTALL_DIR/bin"
 EXT_DIR="$INSTALL_DIR/extension"
@@ -37,7 +37,7 @@ cleanup() {
 }
 trap cleanup EXIT
 
-echo -e "${BLUE}${BOLD}🔥 Gasoline Installer${NC}"
+echo -e "${BLUE}${BOLD}🔥 Gasoline Agentic Browser Installer${NC}"
 echo -e "${BLUE}--------------------------------------------------${NC}"
 
 # 1. Platform Detection: Identify the OS and CPU architecture to download the correct binary.
@@ -80,8 +80,8 @@ mkdir -p "$BIN_DIR"
 mkdir -p "$EXT_DIR"
 
 # 4. Binary Installation: Download the pre-compiled Go binary from GitHub Releases.
-GASOLINE_BIN="$BIN_DIR/gasoline$BINARY_EXT"
-BINARY_NAME="gasoline-$PLATFORM-$E_ARCH$BINARY_EXT"
+GASOLINE_BIN="$BIN_DIR/gasoline-agentic-browser$BINARY_EXT"
+BINARY_NAME="gasoline-agentic-browser-$PLATFORM-$E_ARCH$BINARY_EXT"
 BINARY_URL="https://github.com/$REPO/releases/download/v$VERSION/$BINARY_NAME"
 CHECKSUM_URL="https://github.com/$REPO/releases/download/v$VERSION/checksums.txt"
 

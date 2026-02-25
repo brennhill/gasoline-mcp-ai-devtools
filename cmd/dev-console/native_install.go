@@ -151,7 +151,7 @@ func installClaudeCode(exePath string) {
 	}
 	data, _ := json.Marshal(entry)
 
-	cmd := exec.Command("claude", "mcp", "add-json", "--scope", "user", "gasoline")
+	cmd := exec.Command("claude", "mcp", "add-json", "--scope", "user", "gasoline-agentic-browser")
 	cmd.Stdin = strings.NewReader(string(data))
 	cmd.Env = append(os.Environ(), "CLAUDECODE=")
 	_ = cmd.Run()
@@ -174,20 +174,20 @@ func mergeJSONConfig(path, key, exePath string, isCustom bool) error {
 
 	if isCustom {
 		if key == "mcp" { // OpenCode
-			servers["gasoline"] = map[string]any{
+			servers["gasoline-agentic-browser"] = map[string]any{
 				"type":    "local",
 				"command": []string{exePath},
 				"enabled": true,
 			}
 		} else if key == "context_servers" { // Zed
-			servers["gasoline"] = map[string]any{
+			servers["gasoline-agentic-browser"] = map[string]any{
 				"source":  "custom",
 				"command": exePath,
 				"args":    []string{},
 			}
 		}
 	} else {
-		servers["gasoline"] = map[string]any{
+		servers["gasoline-agentic-browser"] = map[string]any{
 			"command": exePath,
 			"args":    []string{},
 		}

@@ -1,5 +1,5 @@
 {
-  "name": "@brennhill/gasoline-darwin-arm64",
+  "name": "@brennhill/gasoline-agentic-browser-darwin-arm64",
   "version": "0.7.9",
   "description": "Gasoline binary for macOS ARM64 (Apple Silicon)",
   "license": "AGPL-3.0-only",

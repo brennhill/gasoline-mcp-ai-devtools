@@ -318,8 +318,8 @@ func TestFormatMCPNotification(t *testing.T) {
 	if notif.Params.Level != "error" {
 		t.Fatalf("expected level=error, got %q", notif.Params.Level)
 	}
-	if notif.Params.Logger != "gasoline" {
-		t.Fatalf("expected logger=gasoline, got %q", notif.Params.Logger)
+	if notif.Params.Logger != "gasoline-agentic-browser" {
+		t.Fatalf("expected logger=gasoline-agentic-browser, got %q", notif.Params.Logger)
 	}
 
 	data := notif.Params.Data.(map[string]any)

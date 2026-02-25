@@ -44,7 +44,7 @@ Gasoline is a browser extension + local MCP server that streams real-time browse
 • No SaaS, no cloud service, no telemetry
 • All data stays on your machine
 • Automatic redaction of passwords, API keys, tokens
-• Open source (AGPL-3.0): github.com/brennhill/gasoline-mcp-ai-devtools
+• Open source (AGPL-3.0): github.com/brennhill/gasoline-agentic-browser-devtools-mcp
 
 ✨ Key Features
 • MCP protocol integration (emerging standard for AI tooling)
@@ -62,7 +62,7 @@ Gasoline is a browser extension + local MCP server that streams real-time browse
 📚 Documentation
 • Setup guide: cookwithgasoline.com/getting-started
 • Full docs: cookwithgasoline.com
-• GitHub: github.com/brennhill/gasoline-mcp-ai-devtools
+• GitHub: github.com/brennhill/gasoline-agentic-browser-devtools-mcp
 
 🔧 Technical Requirements
 • Chrome or Brave browser
@@ -266,7 +266,7 @@ Verify by inspecting:
 
 ## Open Source
 
-Full source code: https://github.com/brennhill/gasoline-mcp-ai-devtools
+Full source code: https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp
 License: AGPL-3.0
 All compiled code matches source (TypeScript → JavaScript via tsc)
 ```

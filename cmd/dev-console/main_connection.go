@@ -273,7 +273,7 @@ func connectWithRetries(server *Server, healthURL string, mcpEndpoint string, dw
 				return &nonGasolineServiceError{serviceName: ""}
 			}
 			serviceName := meta.resolvedServiceName()
-			if !strings.EqualFold(serviceName, "gasoline") {
+			if !isGasolineService(serviceName) {
 				return &nonGasolineServiceError{serviceName: serviceName}
 			}
 			runningVersion := strings.TrimSpace(meta.Version)

@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "name": "Gasoline",
+  "name": "Gasoline Agentic Browser",
   "version": "0.7.8",
   "description": "Browser observability for AI agents. Stream console logs, network errors to Claude Code, Cursor, Copilot via MCP protocol.",
   "icons": {
@@ -14,7 +14,7 @@
       "16": "icons/icon-16.png",
       "48": "icons/icon-48.png"
     },
-    "default_title": "Gasoline"
+    "default_title": "Gasoline Agentic Browser"
   },
   "background": {
     "service_worker": "background.js",

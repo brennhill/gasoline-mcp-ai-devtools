@@ -5,7 +5,7 @@
     {
       "tool": {
         "driver": {
-          "name": "Gasoline",
+          "name": "Gasoline Agentic Browser",
           "version": "VERSION",
           "informationUri": "https://github.com/anthropics/gasoline",
           "rules": [

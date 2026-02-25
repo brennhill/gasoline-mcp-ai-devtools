@@ -1,7 +1,7 @@
 # QA Plan: Issue #63
 
 ## Source
-- Issue: https://github.com/brennhill/gasoline-mcp-ai-devtools/issues/63
+- Issue: https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/issues/63
 - Title: Navigate should return page content and metadata in one call
 
 ## QA Goal

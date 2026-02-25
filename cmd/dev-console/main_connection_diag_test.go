@@ -52,7 +52,7 @@ func TestGatherConnectionDiagnosticsHealthyServer(t *testing.T) {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/health", func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
-		_, _ = io.WriteString(w, `{"status":"ok","name":"gasoline"}`)
+		_, _ = io.WriteString(w, `{"status":"ok","name":"gasoline-agentic-browser"}`)
 	})
 	mux.HandleFunc("/mcp", func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)

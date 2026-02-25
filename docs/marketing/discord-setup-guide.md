@@ -199,7 +199,7 @@ It gives your AI assistant real-time visibility into browser activity.
 🚀 Get Started:
 • Documentation: https://cookwithgasoline.com
 • Quick Start: https://cookwithgasoline.com/getting-started/
-• GitHub: https://github.com/brennhill/gasoline-mcp-ai-devtools
+• GitHub: https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp
 
 ❓ Need Help?
 • Check #faq for common questions
@@ -255,7 +255,7 @@ Report issues to moderators via DM or in #help.
 🔗 Official Links:
 • Website: https://cookwithgasoline.com
 • Documentation: https://cookwithgasoline.com/docs/
-• GitHub: https://github.com/brennhill/gasoline-mcp-ai-devtools
+• GitHub: https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp
 • Chrome Extension: https://cookwithgasoline.com/downloads/
 
 📖 Documentation:

@@ -654,8 +654,8 @@ func TestMCPInitialize(t *testing.T) {
 		t.Errorf("Expected protocol version 2024-11-05, got %s", result.ProtocolVersion)
 	}
 
-	if result.ServerInfo.Name != "gasoline" {
-		t.Errorf("Expected server name 'gasoline', got %s", result.ServerInfo.Name)
+	if result.ServerInfo.Name != "gasoline-agentic-browser" {
+		t.Errorf("Expected server name 'gasoline-agentic-browser', got %s", result.ServerInfo.Name)
 	}
 }
 

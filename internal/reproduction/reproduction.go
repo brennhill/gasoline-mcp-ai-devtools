@@ -59,14 +59,14 @@ func ParseParams(args json.RawMessage) Params {
 		_ = json.Unmarshal(args, &params)
 	}
 	if params.OutputFormat == "" {
-		params.OutputFormat = "gasoline"
+		params.OutputFormat = "gasoline-agentic-browser"
 	}
 	return params
 }
 
 // ValidateOutputFormat returns an error message if format is invalid, empty string if OK.
 func ValidateOutputFormat(format string) string {
-	if format != "gasoline" && format != "playwright" {
+	if format != "gasoline-agentic-browser" && format != "playwright" {
 		return "Invalid output_format: " + format
 	}
 	return ""

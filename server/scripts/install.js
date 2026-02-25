@@ -12,7 +12,7 @@ const path = require('path')
 const { spawnSync, spawn } = require('child_process')
 
 const VERSION = require('../package.json').version
-const GITHUB_REPO = 'brennhill/gasoline-mcp-ai-devtools'
+const GITHUB_REPO = 'brennhill/gasoline-agentic-browser-devtools-mcp'
 const BINARY_NAME = 'gasoline'
 
 /**
@@ -290,7 +290,7 @@ async function main() {
       console.error('No pre-built binary found for your platform.')
       console.error('')
       console.error('OPTION 1: Build from source (requires Go 1.21+)')
-      console.error('  git clone https://github.com/brennhill/gasoline-mcp-ai-devtools.git')
+      console.error('  git clone https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp.git')
       console.error('  cd gasoline')
       console.error('  go build -o /usr/local/bin/gasoline ./cmd/dev-console')
       console.error('')
@@ -301,7 +301,7 @@ async function main() {
       console.error('  Add to .mcp.json:')
       console.error('  {"mcpServers":{"gasoline":{"command":"go","args":["run","./cmd/dev-console"]}}}')
       console.error('')
-      console.error('For help: https://github.com/brennhill/gasoline-mcp-ai-devtools#quick-start')
+      console.error('For help: https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp#quick-start')
       console.error('')
       // eslint-disable-next-line n/no-process-exit -- CLI script exits with error status
       process.exit(1)

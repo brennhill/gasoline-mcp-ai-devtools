@@ -80,7 +80,7 @@ func TestHandleMCPConnectionConnectExistingSuccess(t *testing.T) {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/health", func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
-		_, _ = io.WriteString(w, `{"status":"ok","service-name":"gasoline","version":"`+version+`"}`)
+		_, _ = io.WriteString(w, `{"status":"ok","service-name":"gasoline-agentic-browser","version":"`+version+`"}`)
 	})
 	mux.HandleFunc("/mcp", func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
@@ -117,7 +117,7 @@ func TestConnectWithRetriesRejectsVersionMismatch(t *testing.T) {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/health", func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
-		_, _ = io.WriteString(w, `{"status":"ok","service-name":"gasoline","version":"0.0.1"}`)
+		_, _ = io.WriteString(w, `{"status":"ok","service-name":"gasoline-agentic-browser","version":"0.0.1"}`)
 	})
 	httpSrv := &http.Server{Handler: mux}
 	go func() { _ = httpSrv.Serve(ln) }()

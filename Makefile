@@ -1,7 +1,7 @@
 # Gasoline Build Makefile
 
 VERSION := $(shell cat VERSION)
-BINARY_NAME := gasoline
+BINARY_NAME := gasoline-agentic-browser
 BUILD_DIR := dist
 LDFLAGS := -s -w -X main.version=$(VERSION) -X github.com/dev-console/dev-console/internal/export.version=$(VERSION)
 CMD_PKG ?= ./cmd/dev-console
@@ -144,7 +144,7 @@ verify-imports:
 
 verify-size:
 	@make dev 2>/dev/null
-	@SIZE=$$(wc -c < dist/gasoline | tr -d ' '); \
+	@SIZE=$$(wc -c < dist/$(BINARY_NAME) | tr -d ' '); \
 	MAX=15000000; \
 	if [ $$SIZE -gt $$MAX ]; then echo "FAIL: Binary size $${SIZE} bytes exceeds $${MAX} byte limit"; exit 1; \
 	else echo "OK: Binary size $${SIZE} bytes (limit: $${MAX})"; fi
@@ -159,7 +159,7 @@ validate-semver:
 
 # Validate optionalDependencies match package version
 validate-deps-versions:
-	@node npm/gasoline-mcp/lib/validate-versions.js
+	@node npm/gasoline-agentic-browser/lib/validate-versions.js
 
 build: $(PLATFORMS)
 
@@ -192,8 +192,8 @@ npm-binaries: build compile-ts
 	cp $(BUILD_DIR)/$(BINARY_NAME)-linux-x64 npm/linux-x64/bin/gasoline
 	cp $(BUILD_DIR)/$(BINARY_NAME)-win32-x64.exe npm/win32-x64/bin/gasoline.exe
 	@echo "=== Copying extension to main NPM package ==="
-	@mkdir -p npm/gasoline-mcp/extension
-	@cp -r extension/* npm/gasoline-mcp/extension/
+	@mkdir -p npm/gasoline-agentic-browser/extension
+	@cp -r extension/* npm/gasoline-agentic-browser/extension/
 	@echo "=== Verifying embedded versions ==="
 	@EMBEDDED=$$(npm/darwin-arm64/bin/gasoline --version 2>&1 | grep -o '[0-9]\+\.[0-9]\+\.[0-9]\+'); \
 	EXPECTED=$$(cat VERSION); \
@@ -361,8 +361,8 @@ quality-gate: check-file-length lint lint-hardening typecheck security-check tes
 test-upgrade-guards:
 	go test ./cmd/dev-console -run 'TestConnectWithRetriesRejectsVersionMismatch' -count=1
 	node --test scripts/install-upgrade-regression.contract.test.mjs
-	node --test npm/gasoline-mcp/lib/kill-daemon.test.js
-	python3 -m unittest discover -s pypi/gasoline-mcp/tests -p 'test_*.py'
+	node --test npm/gasoline-agentic-browser/lib/kill-daemon.test.js
+	python3 -m unittest discover -s pypi/gasoline-agentic-browser/tests -p 'test_*.py'
 	node scripts/install-upgrade-regression.mjs
 
 # Release gate for daemon cleanup/version safety.
@@ -375,32 +375,32 @@ sync-version:
 	@# JSON "version" fields
 	@perl -pi -e 's/"version": "[0-9]+\.[0-9]+\.[0-9]+"/"version": "$(VERSION)"/g' \
 			extension/manifest.json extension/package.json server/package.json \
-			npm/gasoline-mcp/package.json npm/darwin-x64/package.json \
+			npm/gasoline-agentic-browser/package.json npm/darwin-x64/package.json \
 			npm/darwin-arm64/package.json npm/linux-x64/package.json \
 			npm/linux-arm64/package.json npm/win32-x64/package.json \
 			$(CMD_DIR)/testdata/mcp-initialize.golden.json
 	@# NPM optionalDependencies versions
 	@perl -pi -e 's/("@brennhill\/gasoline-[^"]+": ")[0-9]+\.[0-9]+\.[0-9]+(")/$${1}$(VERSION)$$2/g' \
-		npm/gasoline-mcp/package.json
+		npm/gasoline-agentic-browser/package.json
 	@# PyPI version fields in pyproject.toml
 	@perl -pi -e 's/^version = "[0-9]+\.[0-9]+\.[0-9]+"/version = "$(VERSION)"/' \
-		pypi/gasoline-mcp/pyproject.toml \
-		pypi/gasoline-mcp-darwin-arm64/pyproject.toml \
-		pypi/gasoline-mcp-darwin-x64/pyproject.toml \
-		pypi/gasoline-mcp-linux-arm64/pyproject.toml \
-		pypi/gasoline-mcp-linux-x64/pyproject.toml \
-		pypi/gasoline-mcp-win32-x64/pyproject.toml
+		pypi/gasoline-agentic-browser/pyproject.toml \
+		pypi/gasoline-agentic-browser-darwin-arm64/pyproject.toml \
+		pypi/gasoline-agentic-browser-darwin-x64/pyproject.toml \
+		pypi/gasoline-agentic-browser-linux-arm64/pyproject.toml \
+		pypi/gasoline-agentic-browser-linux-x64/pyproject.toml \
+		pypi/gasoline-agentic-browser-win32-x64/pyproject.toml
 	@# PyPI optional dependencies versions
-	@perl -pi -e 's/(gasoline-mcp-[^"]+==)[0-9]+\.[0-9]+\.[0-9]+/$${1}$(VERSION)/g' \
-		pypi/gasoline-mcp/pyproject.toml
+	@perl -pi -e 's/(gasoline-agentic-browser-[^"]+==)[0-9]+\.[0-9]+\.[0-9]+/$${1}$(VERSION)/g' \
+		pypi/gasoline-agentic-browser/pyproject.toml
 	@# PyPI __init__.py versions
 	@perl -pi -e 's/__version__ = "[0-9]+\.[0-9]+\.[0-9]+"/__version__ = "$(VERSION)"/' \
-		pypi/gasoline-mcp/gasoline_mcp/__init__.py \
-		pypi/gasoline-mcp-darwin-arm64/gasoline_mcp_darwin_arm64/__init__.py \
-		pypi/gasoline-mcp-darwin-x64/gasoline_mcp_darwin_x64/__init__.py \
-		pypi/gasoline-mcp-linux-arm64/gasoline_mcp_linux_arm64/__init__.py \
-		pypi/gasoline-mcp-linux-x64/gasoline_mcp_linux_x64/__init__.py \
-		pypi/gasoline-mcp-win32-x64/gasoline_mcp_win32_x64/__init__.py
+		pypi/gasoline-agentic-browser/gasoline_agentic_browser/__init__.py \
+		pypi/gasoline-agentic-browser-darwin-arm64/gasoline_agentic_browser_darwin_arm64/__init__.py \
+		pypi/gasoline-agentic-browser-darwin-x64/gasoline_agentic_browser_darwin_x64/__init__.py \
+		pypi/gasoline-agentic-browser-linux-arm64/gasoline_agentic_browser_linux_arm64/__init__.py \
+		pypi/gasoline-agentic-browser-linux-x64/gasoline_agentic_browser_linux_x64/__init__.py \
+		pypi/gasoline-agentic-browser-win32-x64/gasoline_agentic_browser_win32_x64/__init__.py
 	@# JS version strings
 	@perl -pi -e "s/version: '[0-9]+\.[0-9]+\.[0-9]+'/version: '$(VERSION)'/g" \
 		extension/inject.js tests/extension/popup.test.js
@@ -413,7 +413,7 @@ sync-version:
 		$(CMD_DIR)/main.go
 	@# Shell wrapper version
 	@perl -pi -e 's/GASOLINE_VERSION="[0-9]+\.[0-9]+\.[0-9]+"/GASOLINE_VERSION="$(VERSION)"/' \
-		npm/gasoline-mcp/bin/gasoline-mcp
+		npm/gasoline-agentic-browser/bin/gasoline-agentic-browser
 	@# README badge and benchmark
 	@perl -pi -e 's/version-[0-9]+\.[0-9]+\.[0-9]+-green/version-$(VERSION)-green/' README.md
 	@perl -pi -e 's/\(v[0-9]+\.[0-9]+\.[0-9]+\)/(v$(VERSION))/' README.md
@@ -457,11 +457,11 @@ context-size:
 
 pypi-binaries: build
 	@echo "Copying binaries to PyPI platform packages..."
-	@cp $(BUILD_DIR)/$(BINARY_NAME)-darwin-arm64 pypi/gasoline-mcp-darwin-arm64/gasoline_mcp_darwin_arm64/gasoline
-	@cp $(BUILD_DIR)/$(BINARY_NAME)-darwin-x64 pypi/gasoline-mcp-darwin-x64/gasoline_mcp_darwin_x64/gasoline
-	@cp $(BUILD_DIR)/$(BINARY_NAME)-linux-arm64 pypi/gasoline-mcp-linux-arm64/gasoline_mcp_linux_arm64/gasoline
-	@cp $(BUILD_DIR)/$(BINARY_NAME)-linux-x64 pypi/gasoline-mcp-linux-x64/gasoline_mcp_linux_x64/gasoline
-	@cp $(BUILD_DIR)/$(BINARY_NAME)-win32-x64.exe pypi/gasoline-mcp-win32-x64/gasoline_mcp_win32_x64/gasoline.exe
+	@cp $(BUILD_DIR)/$(BINARY_NAME)-darwin-arm64 pypi/gasoline-agentic-browser-darwin-arm64/gasoline_agentic_browser_darwin_arm64/gasoline
+	@cp $(BUILD_DIR)/$(BINARY_NAME)-darwin-x64 pypi/gasoline-agentic-browser-darwin-x64/gasoline_agentic_browser_darwin_x64/gasoline
+	@cp $(BUILD_DIR)/$(BINARY_NAME)-linux-arm64 pypi/gasoline-agentic-browser-linux-arm64/gasoline_agentic_browser_linux_arm64/gasoline
+	@cp $(BUILD_DIR)/$(BINARY_NAME)-linux-x64 pypi/gasoline-agentic-browser-linux-x64/gasoline_agentic_browser_linux_x64/gasoline
+	@cp $(BUILD_DIR)/$(BINARY_NAME)-win32-x64.exe pypi/gasoline-agentic-browser-win32-x64/gasoline_agentic_browser_win32_x64/gasoline.exe
 	@echo "Binaries copied successfully"
 
 pypi-preflight:
@@ -477,7 +477,7 @@ pypi-preflight:
 pypi-schema-check:
 	@echo "Checking PyPI main pyproject normalization..."
 	@node scripts/normalize-pypi-main-pyproject.js --check --validate
-	@python3 -c 'import sys,tomllib; p="pypi/gasoline-mcp/pyproject.toml"; d=tomllib.load(open(p,"rb")); project=d.get("project", {}); scripts=project.get("scripts", {}); \
+	@python3 -c 'import sys,tomllib; p="pypi/gasoline-agentic-browser/pyproject.toml"; d=tomllib.load(open(p,"rb")); project=d.get("project", {}); scripts=project.get("scripts", {}); \
 	(isinstance(scripts, dict) or (print("ERROR: [project.scripts] must be a TOML table"), sys.exit(1))); \
 	("dependencies" not in scripts or (print("ERROR: project.scripts.dependencies must not exist"), sys.exit(1))); \
 	print("PyPI schema check ok"); print("project keys:", sorted(project.keys())); print("project.scripts keys:", sorted(scripts.keys())); print("project.dependencies count:", len(project.get("dependencies", [])))'
@@ -489,12 +489,12 @@ pypi-build: pypi-preflight pypi-schema-check
 	@echo "Validating PyPI main pyproject metadata..."
 	@node scripts/normalize-pypi-main-pyproject.js --validate
 	@echo "Building PyPI wheels..."
-	@for pkg in pypi/gasoline-mcp-*/; do \
+	@for pkg in pypi/gasoline-agentic-browser-*/; do \
 		echo "Building $$pkg..."; \
 		(cd "$$pkg" && python3 -m build); \
 	done
 	@echo "Building main package..."
-	@(cd pypi/gasoline-mcp && python3 -m build)
+	@(cd pypi/gasoline-agentic-browser && python3 -m build)
 	@echo "All PyPI packages built successfully"
 	@echo ""
 	@echo "Wheels created:"
@@ -503,28 +503,28 @@ pypi-build: pypi-preflight pypi-schema-check
 pypi-test-publish: pypi-build
 	@echo "Publishing to Test PyPI..."
 	@echo "NOTE: Requires TWINE_USERNAME and TWINE_PASSWORD environment variables"
-	@for pkg in pypi/gasoline-mcp-*/; do \
+	@for pkg in pypi/gasoline-agentic-browser-*/; do \
 		echo "Uploading $$pkg..."; \
 		(cd "$$pkg" && python3 -m twine upload --repository testpypi dist/*); \
 	done
 	@echo "Uploading main package..."
-	@(cd pypi/gasoline-mcp && python3 -m twine upload --repository testpypi dist/*)
+	@(cd pypi/gasoline-agentic-browser && python3 -m twine upload --repository testpypi dist/*)
 	@echo "All packages published to Test PyPI"
-	@echo "Test installation: pip install --index-url https://test.pypi.org/simple/ gasoline-mcp"
+	@echo "Test installation: pip install --index-url https://test.pypi.org/simple/ gasoline-agentic-browser"
 
 pypi-publish: pypi-build
 	@echo "Publishing to PyPI..."
 	@echo "NOTE: Requires TWINE_USERNAME and TWINE_PASSWORD environment variables"
 	@echo "Press Ctrl+C to cancel, or Enter to continue..."
 	@read dummy
-	@for pkg in pypi/gasoline-mcp-*/; do \
+	@for pkg in pypi/gasoline-agentic-browser-*/; do \
 		echo "Uploading $$pkg..."; \
 		(cd "$$pkg" && python3 -m twine upload dist/*); \
 	done
 	@echo "Uploading main package..."
-	@(cd pypi/gasoline-mcp && python3 -m twine upload dist/*)
+	@(cd pypi/gasoline-agentic-browser && python3 -m twine upload dist/*)
 	@echo "All packages published to PyPI"
-	@echo "Installation: pip install gasoline-mcp"
+	@echo "Installation: pip install gasoline-agentic-browser"
 
 pypi-clean:
 	@echo "Cleaning PyPI build artifacts..."

@@ -7,7 +7,7 @@ Gasoline MCP supports 9 AI coding tools. Use the one-liner installer or configur
 The quickest way to install Gasoline and configure all your AI tools is via the one-liner script:
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/brennhill/gasoline-mcp-ai-devtools/STABLE/scripts/install.sh | bash
+curl -sSL https://raw.githubusercontent.com/brennhill/gasoline-agentic-browser-devtools-mcp/STABLE/scripts/install.sh | bash
 ```
 
 This script:

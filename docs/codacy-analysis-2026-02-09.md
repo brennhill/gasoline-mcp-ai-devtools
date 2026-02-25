@@ -252,7 +252,7 @@ To re-run Codacy analysis with fresh API token:
 
 ```bash
 CODACY_API_TOKEN="lHYOvUqzdGUcjC9p7wru" \
-curl -s -X POST "https://app.codacy.com/api/v3/analysis/organizations/gh/brennhill/gasoline-mcp-ai-devtools/issues/search" \
+curl -s -X POST "https://app.codacy.com/api/v3/analysis/organizations/gh/brennhill/gasoline-agentic-browser-devtools-mcp/issues/search" \
   -H "api-token: ${CODACY_API_TOKEN}" \
   -H "Content-Type: application/json" \
   -d '{"levels":["Error","Warning"]}'

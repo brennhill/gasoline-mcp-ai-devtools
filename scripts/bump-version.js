@@ -4,7 +4,7 @@
 // Docs: docs/DEVELOPMENT.md
 
 /**
- * Comprehensive version bump script for Gasoline MCP
+ * Comprehensive version bump script for Gasoline Agentic Browser
  *
  * Usage: node scripts/bump-version.js <new-version>
  * Example: node scripts/bump-version.js 6.1.0
@@ -110,7 +110,7 @@ function findVersionReferences(oldVersion, searchDir = ROOT) {
 const CRITICAL_FILES = [
   'VERSION',
   'cmd/dev-console/main.go',
-  'npm/gasoline-mcp/package.json',
+  'npm/gasoline-agentic-browser/package.json',
   'extension/inject.bundled.js',
   'server/package.json',
   'cmd/dev-console/openapi.json',
@@ -256,7 +256,7 @@ function updateVersionInFile(filePath, oldVersion, newVersion) {
 async function main() {
   const newVersion = process.argv[2]
 
-  log('cyan', '=>', 'Gasoline MCP Version Bump Script')
+  log('cyan', '=>', 'Gasoline Agentic Browser Version Bump Script')
   log('cyan', '=>', '')
 
   // Step 1: Get current version
@@ -347,7 +347,7 @@ async function main() {
   }
 
   // Step 5b: Normalize the main PyPI pyproject structure defensively.
-  const normalizeResult = normalizeMainPyprojectFile(path.join(ROOT, 'pypi', 'gasoline-mcp', 'pyproject.toml'), {
+  const normalizeResult = normalizeMainPyprojectFile(path.join(ROOT, 'pypi', 'gasoline-agentic-browser', 'pyproject.toml'), {
     write: true
   })
   if (normalizeResult.changed) {
@@ -358,7 +358,7 @@ async function main() {
     log('yellow', '⚠', `Normalized ${normalizedRelPath} (moved dependencies under [project])`)
   }
 
-  const mainPyprojectPath = path.join(ROOT, 'pypi', 'gasoline-mcp', 'pyproject.toml')
+  const mainPyprojectPath = path.join(ROOT, 'pypi', 'gasoline-agentic-browser', 'pyproject.toml')
   const mainPyprojectContent = fs.readFileSync(mainPyprojectPath, 'utf8')
   const metadataValidation = validateMainPyprojectContent(mainPyprojectContent, { expectedVersion: newVersion })
   if (!metadataValidation.valid) {
@@ -374,7 +374,7 @@ async function main() {
   log('cyan', '=>', '')
   log('cyan', 'Validating package.json dependencies...')
 
-  const mainPackageJson = JSON.parse(fs.readFileSync(path.join(ROOT, 'npm/gasoline-mcp/package.json')))
+  const mainPackageJson = JSON.parse(fs.readFileSync(path.join(ROOT, 'npm/gasoline-agentic-browser/package.json')))
   const optionalDeps = mainPackageJson.optionalDependencies || {}
 
   let depsMatch = true

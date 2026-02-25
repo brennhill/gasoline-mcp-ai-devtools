@@ -132,7 +132,7 @@ func ExportHAR(bodies []types.NetworkBody, filter types.NetworkBodyFilter, creat
 	return HARLog{
 		Log: HARLogInner{
 			Version: "1.2",
-			Creator: HARCreator{Name: "Gasoline", Version: creatorVersion},
+			Creator: HARCreator{Name: "Gasoline Agentic Browser", Version: creatorVersion},
 			Entries: entries,
 		},
 	}
@@ -205,7 +205,7 @@ func ExportHARMerged(bodies []types.NetworkBody, waterfall []types.NetworkWaterf
 	return HARLog{
 		Log: HARLogInner{
 			Version: "1.2",
-			Creator: HARCreator{Name: "Gasoline", Version: creatorVersion},
+			Creator: HARCreator{Name: "Gasoline Agentic Browser", Version: creatorVersion},
 			Entries: entries,
 		},
 	}
@@ -274,7 +274,7 @@ func buildHARRequest(body types.NetworkBody) HARRequest {
 	}
 
 	if body.RequestTruncated {
-		req.Comment = "Body truncated at 8KB by Gasoline"
+		req.Comment = "Body truncated at 8KB by Gasoline Agentic Browser"
 	}
 
 	return req
@@ -301,7 +301,7 @@ func buildHARResponse(body types.NetworkBody) HARResponse {
 	}
 
 	if body.ResponseTruncated {
-		resp.Comment = "Body truncated at 16KB by Gasoline"
+		resp.Comment = "Body truncated at 16KB by Gasoline Agentic Browser"
 	}
 
 	return resp

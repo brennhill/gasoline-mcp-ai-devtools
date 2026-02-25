@@ -23,6 +23,12 @@ import (
 	"github.com/dev-console/dev-console/internal/util"
 )
 
+// isGasolineService accepts both the legacy "gasoline" and new "gasoline-agentic-browser" names.
+func isGasolineService(name string) bool {
+	n := strings.ToLower(strings.TrimSpace(name))
+	return n == "gasoline" || n == "gasoline-agentic-browser"
+}
+
 // toolCallTimeout delegates to internal/bridge for per-request timeout logic.
 func toolCallTimeout(req JSONRPCRequest) time.Duration {
 	return bridge.ToolCallTimeout(req.Method, req.Params)
@@ -224,7 +230,7 @@ func runBridgeMode(port int, logFile string, maxEntries int) {
 			state.markReady()
 			shouldSpawn = false
 		} else {
-			if strings.EqualFold(serviceName, "gasoline") {
+			if isGasolineService(serviceName) {
 				if !stopServerForUpgrade(port) {
 					state.markFailed(fmt.Sprintf("found running daemon version %s but could not recycle it", runningVersion))
 					shouldSpawn = false
@@ -296,7 +302,7 @@ func runningServerVersionCompatible(port int) (bool, string, string) {
 	}
 
 	serviceName := meta.resolvedServiceName()
-	if !strings.EqualFold(serviceName, "gasoline") {
+	if !isGasolineService(serviceName) {
 		return false, strings.TrimSpace(meta.Version), serviceName
 	}
 

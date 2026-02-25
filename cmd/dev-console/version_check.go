@@ -29,7 +29,7 @@ var (
 	// githubAPIURL can be overridden via GASOLINE_RELEASES_URL env var for forked repos.
 	// Access must be protected by versionCheckMu (read via getGitHubAPIURL).
 	githubAPIURL = getEnvOrDefault("GASOLINE_RELEASES_URL",
-		"https://api.github.com/repos/brennhill/gasoline-mcp-ai-devtools/releases/latest")
+		"https://api.github.com/repos/brennhill/gasoline-agentic-browser-devtools-mcp/releases/latest")
 )
 
 // getGitHubAPIURL returns the current GitHub API URL (thread-safe).

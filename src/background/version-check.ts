@@ -112,7 +112,7 @@ export function getUpdateInfo(): {
     available: newVersionAvailable,
     currentVersion: getExtensionVersion(),
     availableVersion: availableVersion,
-    downloadUrl: 'https://github.com/brennhill/gasoline-mcp-ai-devtools/releases/latest'
+    downloadUrl: 'https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/releases/latest'
   }
 }
 

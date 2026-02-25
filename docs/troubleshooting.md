@@ -160,7 +160,7 @@ The debug buffer holds 200 entries (circular — oldest are dropped). Logs are s
 
 ## <i class="fas fa-flag"></i> Reporting Issues
 
-[Open an issue](https://github.com/brennhill/gasoline-mcp-ai-devtools/issues/new) with:
+[Open an issue](https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/issues/new) with:
 
 1. **Environment**: OS, Chrome version, Gasoline version (`window.__gasoline.version`)
 2. **Steps to reproduce**
