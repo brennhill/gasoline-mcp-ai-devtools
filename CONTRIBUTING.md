@@ -5,14 +5,14 @@ Thanks for your interest in contributing! We appreciate all kinds of contributio
 ## Easy Ways to Contribute
 
 ### 1. **Report Issues**
-Found a bug? Have a feature idea? [Open an issue](https://github.com/brennhill/gasoline-mcp-ai-devtools/issues). Be specific about:
+Found a bug? Have a feature idea? [Open an issue](https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/issues). Be specific about:
 - What you were trying to do
 - What happened vs what you expected
 - Your setup (OS, Chrome version, Node.js version)
 
 ### 2. **Share Feedback**
 - Use Gasoline and tell us what's working (or not)
-- [GitHub Discussions](https://github.com/brennhill/gasoline-mcp-ai-devtools/discussions) are great for ideas
+- [GitHub Discussions](https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/discussions) are great for ideas
 - [X/Twitter](https://x.com/gasolinedev) for quick feedback
 
 ### 3. **Improve Documentation**
@@ -21,20 +21,20 @@ Found a bug? Have a feature idea? [Open an issue](https://github.com/brennhill/g
 - Fix broken links
 
 ### 4. **Star the Project**
-If Gasoline helps you, [star the repo](https://github.com/brennhill/gasoline-mcp-ai-devtools/stargazers). It helps others discover it.
+If Gasoline helps you, [star the repo](https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/stargazers). It helps others discover it.
 
 ## Code Contributions
 
 ### Setup
 ```bash
-git clone https://github.com/brennhill/gasoline-mcp-ai-devtools.git
+git clone https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp.git
 cd gasoline
 make install
 make test
 ```
 
 ### Before You Code
-1. Check [existing issues](https://github.com/brennhill/gasoline-mcp-ai-devtools/issues) and [PRs](https://github.com/brennhill/gasoline-mcp-ai-devtools/pulls)
+1. Check [existing issues](https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/issues) and [PRs](https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/pulls)
 2. Open an issue to discuss larger changes
 3. Keep changes focused (one feature per PR)
 
@@ -59,8 +59,8 @@ make test
 ## Questions?
 
 - 📖 [Docs](https://cookwithgasoline.com)
-- 💬 [GitHub Discussions](https://github.com/brennhill/gasoline-mcp-ai-devtools/discussions)
-- 🐛 [Issues](https://github.com/brennhill/gasoline-mcp-ai-devtools/issues)
+- 💬 [GitHub Discussions](https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/discussions)
+- 🐛 [Issues](https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/issues)
 
 ## Developer Certificate of Origin (DCO)
 

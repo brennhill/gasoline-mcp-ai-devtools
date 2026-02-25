@@ -31,8 +31,8 @@ func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request, cap *captu
 
 	resp := map[string]any{
 		"status":       "ok",
-		"service-name": "gasoline",
-		"name":         "gasoline", // legacy compatibility
+		"service-name": "gasoline-agentic-browser",
+		"name":         "gasoline-agentic-browser", // legacy compatibility
 		"version":      version,
 		"logs": map[string]any{
 			"entries":       s.getEntryCount(),

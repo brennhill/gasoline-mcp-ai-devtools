@@ -446,8 +446,8 @@ func TestExportSARIF_Schema(t *testing.T) {
 	if log.Schema != "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/main/sarif-2.1/schema/sarif-schema-2.1.0.json" {
 		t.Errorf("Unexpected $schema: %q", log.Schema)
 	}
-	if log.Runs[0].Tool.Driver.Name != "Gasoline" {
-		t.Errorf("Expected tool name 'Gasoline', got %q", log.Runs[0].Tool.Driver.Name)
+	if log.Runs[0].Tool.Driver.Name != "Gasoline Agentic Browser" {
+		t.Errorf("Expected tool name 'Gasoline Agentic Browser', got %q", log.Runs[0].Tool.Driver.Name)
 	}
 	if log.Runs[0].Tool.Driver.Version != version {
 		t.Errorf("Expected tool version %q, got %q", version, log.Runs[0].Tool.Driver.Version)

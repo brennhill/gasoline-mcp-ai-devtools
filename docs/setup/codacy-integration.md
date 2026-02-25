@@ -36,7 +36,7 @@ cp .env.example .env
 export CODACY_API_TOKEN=lHYOvUqzdGUcjC9p7wru
 export CODACY_ORGANIZATION_PROVIDER=gh
 export CODACY_USERNAME=brennhill
-export CODACY_PROJECT_NAME=gasoline-mcp-ai-devtools
+export CODACY_PROJECT_NAME=gasoline-agentic-browser-devtools-mcp
 ```
 
 ### 3. Source the environment:

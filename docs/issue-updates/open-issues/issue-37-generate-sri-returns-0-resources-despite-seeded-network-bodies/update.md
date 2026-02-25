@@ -1,7 +1,7 @@
 # Product Update: Issue #37
 
 ## Source
-- Issue: https://github.com/brennhill/gasoline-mcp-ai-devtools/issues/37
+- Issue: https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/issues/37
 - Title: generate(sri) returns 0 resources despite seeded network bodies
 - Last Updated: 2026-02-13T16:28:03Z
 

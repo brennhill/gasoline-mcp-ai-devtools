@@ -118,7 +118,7 @@ func TestNetworkBodyToHAREntry(t *testing.T) {
 
 		entry := networkBodyToHAREntry(body)
 
-		if entry.Request.Comment != "Body truncated at 8KB by Gasoline" {
+		if entry.Request.Comment != "Body truncated at 8KB by Gasoline Agentic Browser" {
 			t.Errorf("expected truncation comment, got %q", entry.Request.Comment)
 		}
 	})
@@ -134,7 +134,7 @@ func TestNetworkBodyToHAREntry(t *testing.T) {
 
 		entry := networkBodyToHAREntry(body)
 
-		if entry.Response.Comment != "Body truncated at 16KB by Gasoline" {
+		if entry.Response.Comment != "Body truncated at 16KB by Gasoline Agentic Browser" {
 			t.Errorf("expected truncation comment, got %q", entry.Response.Comment)
 		}
 	})
@@ -336,8 +336,8 @@ func TestExportHAR(t *testing.T) {
 	t.Run("creator field", func(t *testing.T) {
 		harLog := ExportHAR(nil, types.NetworkBodyFilter{}, "1.2.3")
 
-		if harLog.Log.Creator.Name != "Gasoline" {
-			t.Errorf("expected creator name Gasoline, got %s", harLog.Log.Creator.Name)
+		if harLog.Log.Creator.Name != "Gasoline Agentic Browser" {
+			t.Errorf("expected creator name Gasoline Agentic Browser, got %s", harLog.Log.Creator.Name)
 		}
 		if harLog.Log.Creator.Version != "1.2.3" {
 			t.Errorf("expected creator version 1.2.3, got %s", harLog.Log.Creator.Version)

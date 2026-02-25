@@ -320,7 +320,7 @@ func FormatMCPNotification(alert types.Alert) MCPNotification {
 		Method:  "notifications/message",
 		Params: NotificationParams{
 			Level:  alert.Severity,
-			Logger: "gasoline",
+			Logger: "gasoline-agentic-browser",
 			Data: map[string]any{
 				"category":  alert.Category,
 				"severity":  alert.Severity,

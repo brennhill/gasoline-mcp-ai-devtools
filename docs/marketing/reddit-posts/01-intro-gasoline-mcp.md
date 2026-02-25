@@ -44,7 +44,7 @@ Then download the extension and add to your MCP config.
 
 Looking for feedback from the community! What would make this more useful for your AI development workflow?
 
-Link: https://github.com/brennhill/gasoline-mcp-ai-devtools
+Link: https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp
 Docs: https://cookwithgasoline.com
 ```
 

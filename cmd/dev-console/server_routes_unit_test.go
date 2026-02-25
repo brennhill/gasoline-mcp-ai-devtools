@@ -51,8 +51,8 @@ func TestSetupHTTPRoutesBasicEndpoints(t *testing.T) {
 		t.Fatalf("GET / status = %d, want %d", rootRR.Code, http.StatusOK)
 	}
 	rootBody := decodeJSONMap(t, rootRR.Body.Bytes())
-	if rootBody["name"] != "gasoline" {
-		t.Fatalf("root name = %v, want gasoline", rootBody["name"])
+	if rootBody["name"] != "gasoline-agentic-browser" {
+		t.Fatalf("root name = %v, want gasoline-agentic-browser", rootBody["name"])
 	}
 
 	// Browsers (no Accept: application/json) get the HTML dashboard
@@ -83,8 +83,8 @@ func TestSetupHTTPRoutesBasicEndpoints(t *testing.T) {
 	if healthBody["status"] != "ok" {
 		t.Fatalf("health status = %v, want ok", healthBody["status"])
 	}
-	if healthBody["service-name"] != "gasoline" {
-		t.Fatalf("health service-name = %v, want gasoline", healthBody["service-name"])
+	if healthBody["service-name"] != "gasoline-agentic-browser" {
+		t.Fatalf("health service-name = %v, want gasoline-agentic-browser", healthBody["service-name"])
 	}
 
 	healthBadReq := localRequest(http.MethodPost, "/health", nil)

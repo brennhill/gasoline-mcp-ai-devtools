@@ -1,5 +1,5 @@
 {
-  "name": "gasoline-mcp",
+  "name": "gasoline-agentic-browser",
   "private": true,
   "type": "module",
   "scripts": {
@@ -35,10 +35,10 @@
   "homepage": "https://cookwithgasoline.com",
   "repository": {
     "type": "git",
-    "url": "https://github.com/brennhill/gasoline-mcp-ai-devtools"
+    "url": "https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp"
   },
   "bugs": {
-    "url": "https://github.com/brennhill/gasoline-mcp-ai-devtools/issues"
+    "url": "https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/issues"
   },
   "engines": {
     "node": ">=20.0.0"

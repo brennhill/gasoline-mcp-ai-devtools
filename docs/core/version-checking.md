@@ -58,7 +58,7 @@ Versions follow semantic versioning: `X.Y.Z` (e.g., `5.2.5`)
 ```
 ┌──────────────────────────────────────────────────────────┐
 │                      GitHub API                          │
-│  /repos/brennhill/gasoline-mcp-ai-devtools/releases/...  │
+│  /repos/brennhill/gasoline-agentic-browser-devtools-mcp/releases/...  │
 └────────────────────────┬─────────────────────────────────┘
                          │ (daily check, 6h cache)
                          ↓
@@ -87,7 +87,7 @@ Versions follow semantic versioning: `X.Y.Z` (e.g., `5.2.5`)
 
 1. **Server starts**: `startVersionCheckLoop()` is called during initialization
 2. **Immediate check**: `checkGitHubVersion()` fetches the latest release from GitHub (if no cached value)
-3. **GitHub API call**: Fetches `https://api.github.com/repos/brennhill/gasoline-mcp-ai-devtools/releases/latest`
+3. **GitHub API call**: Fetches `https://api.github.com/repos/brennhill/gasoline-agentic-browser-devtools-mcp/releases/latest`
 4. **Extract version**: Parses `tag_name` field (e.g., "v5.2.6" → "5.2.6")
 5. **Cache result**: Stores in memory with 6-hour TTL
 6. **Periodic polling**: Checks again every 24 hours (or if cache expired)
@@ -177,7 +177,7 @@ Edit [cmd/dev-console/main.go:42-52](../../cmd/dev-console/main.go#L42-L52):
 
 ```go
 const (
-	githubAPIURL         = "https://api.github.com/repos/brennhill/gasoline-mcp-ai-devtools/releases/latest"
+	githubAPIURL         = "https://api.github.com/repos/brennhill/gasoline-agentic-browser-devtools-mcp/releases/latest"
 	versionCheckCacheTTL = 6 * time.Hour    // Cache validity period
 	versionCheckInterval = 24 * time.Hour   // Polling frequency
 	httpClientTimeout    = 10 * time.Second // GitHub API timeout
@@ -220,7 +220,7 @@ If no `-ldflags` provided, defaults to `5.2.5` (see [cmd/dev-console/main.go:30]
 **Solutions**:
 1. Check GitHub has the newer version:
    ```bash
-   curl -s https://api.github.com/repos/brennhill/gasoline-mcp-ai-devtools/releases/latest | jq .tag_name
+   curl -s https://api.github.com/repos/brennhill/gasoline-agentic-browser-devtools-mcp/releases/latest | jq .tag_name
    ```
 
 2. Server hasn't checked GitHub yet
@@ -236,7 +236,7 @@ If no `-ldflags` provided, defaults to `5.2.5` (see [cmd/dev-console/main.go:30]
    - DevTools → Network → click `/health` request → Response tab
 
 5. Verify GitHub API is accessible from your network
-   - Try: `curl https://api.github.com/repos/brennhill/gasoline-mcp-ai-devtools/releases/latest`
+   - Try: `curl https://api.github.com/repos/brennhill/gasoline-agentic-browser-devtools-mcp/releases/latest`
 
 ### GitHub API Unreachable
 

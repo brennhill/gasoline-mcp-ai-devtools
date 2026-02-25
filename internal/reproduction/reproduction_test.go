@@ -470,14 +470,14 @@ func TestReproduction_LastN(t *testing.T) {
 
 func TestReproduction_DefaultFormat(t *testing.T) {
 	t.Parallel()
-	// When output_format is empty, should default to "gasoline"
+	// When output_format is empty, should default to "gasoline-agentic-browser"
 	params := Params{}
 	format := params.OutputFormat
 	if format == "" {
-		format = "gasoline" // default
+		format = "gasoline-agentic-browser" // default
 	}
-	if format != "gasoline" {
-		t.Errorf("expected default format 'gasoline', got %q", format)
+	if format != "gasoline-agentic-browser" {
+		t.Errorf("expected default format 'gasoline-agentic-browser', got %q", format)
 	}
 }
 

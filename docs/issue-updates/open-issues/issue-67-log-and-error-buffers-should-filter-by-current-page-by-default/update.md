@@ -1,7 +1,7 @@
 # Product Update: Issue #67
 
 ## Source
-- Issue: https://github.com/brennhill/gasoline-mcp-ai-devtools/issues/67
+- Issue: https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/issues/67
 - Title: Log and error buffers should filter by current page by default
 - Last Updated: 2026-02-16T13:44:14Z
 

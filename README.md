@@ -5,18 +5,18 @@
 
 <div align="center">
 
-<img src="docs/assets/images/chrome_store/readme-banner.png" alt="Gasoline MCP - Browser Observability for AI Coding Agents" width="100%" />
+<img src="docs/assets/images/chrome_store/readme-banner.png" alt="Gasoline Agentic Browser - Browser Observability for AI Coding Agents" width="100%" />
 
 [![License](https://img.shields.io/badge/license-AGPL--3.0-blue.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/version-0.7.8-green.svg)](https://github.com/brennhill/gasoline-mcp-ai-devtools/releases)
+[![Version](https://img.shields.io/badge/version-0.7.8-green.svg)](https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/releases)
 [![Go](https://img.shields.io/badge/Go-1.21+-00ADD8.svg?logo=go&logoColor=white)](https://go.dev/)
 [![Chrome](https://img.shields.io/badge/Chrome-Manifest%20V3-4285F4.svg?logo=googlechrome&logoColor=white)](https://developer.chrome.com/docs/extensions/mv3/)
-[![macOS](https://img.shields.io/badge/macOS-supported-000000.svg?logo=apple&logoColor=white)](https://github.com/brennhill/gasoline-mcp-ai-devtools)
-[![Linux](https://img.shields.io/badge/Linux-supported-FCC624.svg?logo=linux&logoColor=black)](https://github.com/brennhill/gasoline-mcp-ai-devtools)
-[![Windows](https://img.shields.io/badge/Windows-supported-0078D6.svg?logo=windows&logoColor=white)](https://github.com/brennhill/gasoline-mcp-ai-devtools)
-[![Codacy Badge](https://app.codacy.com/project/badge/Grade/62158fcb044348c3bc51942787a9a535)](https://app.codacy.com/gh/brennhill/gasoline-mcp-ai-devtools/dashboard?utm_source=gh&utm_medium=referral&utm_content=&utm_campaign=Badge_grade)
-[![Snyk Status](https://snyk.io/test/github/brennhill/gasoline-mcp-ai-devtools/badge.svg)](https://snyk.io/test/github/brennhill/gasoline-mcp-ai-devtools)
-[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](https://github.com/brennhill/gasoline-mcp-ai-devtools/pulls)
+[![macOS](https://img.shields.io/badge/macOS-supported-000000.svg?logo=apple&logoColor=white)](https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp)
+[![Linux](https://img.shields.io/badge/Linux-supported-FCC624.svg?logo=linux&logoColor=black)](https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp)
+[![Windows](https://img.shields.io/badge/Windows-supported-0078D6.svg?logo=windows&logoColor=white)](https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp)
+[![Codacy Badge](https://app.codacy.com/project/badge/Grade/62158fcb044348c3bc51942787a9a535)](https://app.codacy.com/gh/brennhill/gasoline-agentic-browser-devtools-mcp/dashboard?utm_source=gh&utm_medium=referral&utm_content=&utm_campaign=Badge_grade)
+[![Snyk Status](https://snyk.io/test/github/brennhill/gasoline-agentic-browser-devtools-mcp/badge.svg)](https://snyk.io/test/github/brennhill/gasoline-agentic-browser-devtools-mcp)
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/pulls)
 [![X Follow](https://img.shields.io/badge/follow-%40gasolinedev-000000.svg?logo=x&logoColor=white)](https://x.com/gasolinedev)
 [![Made with love for AI developers](https://img.shields.io/badge/made%20with%20❤%20for-AI%20developers-FF6B6B.svg)](https://cookwithgasoline.com)
 
@@ -39,12 +39,12 @@ Current version: **v0.7.8** — Link health analyzer, browser automation, record
 
 **macOS / Linux:**
 ```bash
-curl -sSL https://raw.githubusercontent.com/brennhill/gasoline-mcp-ai-devtools/STABLE/scripts/install.sh | bash
+curl -sSL https://raw.githubusercontent.com/brennhill/gasoline-agentic-browser-devtools-mcp/STABLE/scripts/install.sh | bash
 ```
 
 **Windows (PowerShell):**
 ```powershell
-irm https://raw.githubusercontent.com/brennhill/gasoline-mcp-ai-devtools/STABLE/scripts/install.ps1 | iex
+irm https://raw.githubusercontent.com/brennhill/gasoline-agentic-browser-devtools-mcp/STABLE/scripts/install.ps1 | iex
 ```
 
 </div>
@@ -53,16 +53,16 @@ irm https://raw.githubusercontent.com/brennhill/gasoline-mcp-ai-devtools/STABLE/
 
 ## Quick Start
 
-**Fire up Gasoline (Binary + Extension + Auto-Config) in one command:**
+**Fire up Gasoline Agentic Browser (Binary + Extension + Auto-Config) in one command:**
 
 **macOS / Linux:**
 ```bash
-curl -sSL https://raw.githubusercontent.com/brennhill/gasoline-mcp-ai-devtools/STABLE/scripts/install.sh | bash
+curl -sSL https://raw.githubusercontent.com/brennhill/gasoline-agentic-browser-devtools-mcp/STABLE/scripts/install.sh | bash
 ```
 
 **Windows (PowerShell):**
 ```powershell
-irm https://raw.githubusercontent.com/brennhill/gasoline-mcp-ai-devtools/STABLE/scripts/install.ps1 | iex
+irm https://raw.githubusercontent.com/brennhill/gasoline-agentic-browser-devtools-mcp/STABLE/scripts/install.ps1 | iex
 ```
 
 This script automatically:
@@ -87,9 +87,9 @@ Restart Claude Code, Cursor, Windsurf, or Zed. The Gasoline server will now star
 
 ---
 
-## Why You Cook With Gasoline MCP
+## Why You Cook With Gasoline Agentic Browser
 
-**No debug port required.** Other tools need Chrome launched with `--remote-debugging-port`, which disables security sandboxing and breaks your normal browser workflow. Gasoline MCP uses a standard extension — your browser stays secure and unmodified.
+**No debug port required.** Other tools need Chrome launched with `--remote-debugging-port`, which disables security sandboxing and breaks your normal browser workflow. Gasoline Agentic Browser uses a standard extension — your browser stays secure and unmodified.
 
 **Single binary, zero runtime.** One Go binary that runs anywhere — no runtime dependencies, no Puppeteer, no framework.
 
@@ -162,8 +162,8 @@ Artwork, logos, and the Sparky mascot are **Copyright (c) Brenn Hill** and are n
 
 *Pouring fuel on the AI development fire*
 
-If you find Gasoline MCP useful, please consider giving it a star!
+If you find Gasoline Agentic Browser useful, please consider giving it a star!
 
-[![Star on GitHub](https://img.shields.io/github/stars/brennhill/gasoline-mcp-ai-devtools.svg?style=social)](https://github.com/brennhill/gasoline-mcp-ai-devtools)
+[![Star on GitHub](https://img.shields.io/github/stars/brennhill/gasoline-agentic-browser-devtools-mcp.svg?style=social)](https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp)
 
 </div>
