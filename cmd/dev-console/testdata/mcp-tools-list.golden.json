@@ -1277,6 +1277,10 @@
           "description": "CSS or semantic selector for target element",
           "type": "string"
         },
+        "set_tracked": {
+          "description": "Controls whether switch_tab updates the tracked tab to the newly activated tab (default: true). Set to false to switch focus without changing which tab the server targets for subsequent commands.",
+          "type": "boolean"
+        },
         "snapshot_name": {
           "description": "State snapshot name",
           "type": "string"

@@ -115,9 +115,10 @@ export interface TrackedTabInfo {
     trackedTabId: number | null;
     trackedTabUrl: string | null;
     trackedTabTitle: string | null;
+    tabStatus: 'loading' | 'complete' | null;
 }
 /**
- * Get tracked tab information.
+ * Get tracked tab information, including Chrome tab status.
  */
 export declare function getTrackedTabInfo(): Promise<TrackedTabInfo>;
 /**

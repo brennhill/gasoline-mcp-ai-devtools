@@ -306,6 +306,7 @@ func (h *ToolHandler) queueRecordStart(req JSONRPCRequest, fullName, audio, vide
 
 // handleRecordStart processes interact({action: "record_start"}).
 // Generates the filename, forwards to extension via PendingQuery.
+// Recording targets the browser, not a specific tab -- no requireTabTracking gate needed.
 func (h *ToolHandler) handleRecordStart(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	var params struct {
 		Name  string `json:"name"`
@@ -345,6 +346,7 @@ func (h *ToolHandler) handleRecordStart(req JSONRPCRequest, args json.RawMessage
 }
 
 // handleRecordStop processes interact({action: "record_stop"}).
+// Recording targets the browser, not a specific tab -- no requireTabTracking gate needed.
 func (h *ToolHandler) handleRecordStop(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	var params struct {
 		TabID int `json:"tab_id,omitempty"`

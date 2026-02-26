@@ -5,6 +5,7 @@
 package capture
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -80,6 +81,67 @@ func TestExtensionStateGettersAndBoundaries(t *testing.T) {
 	c.mu.RUnlock()
 	if snap.ExtSessionID != "session-a" || !snap.PilotEnabled || snap.ActiveTestIDCount != 1 {
 		t.Fatalf("extension snapshot = %+v, unexpected values", snap)
+	}
+}
+
+// ============================================
+// WaitForExtensionConnected tests (issue #302)
+// ============================================
+
+func TestWaitForExtensionConnected_AlreadyConnected(t *testing.T) {
+	t.Parallel()
+	c := NewCapture()
+
+	// Simulate extension already connected.
+	c.mu.Lock()
+	c.ext.lastSyncSeen = time.Now()
+	c.mu.Unlock()
+
+	if !c.WaitForExtensionConnected(context.Background(), 5*time.Second) {
+		t.Fatal("WaitForExtensionConnected returned false when extension already connected")
+	}
+}
+
+func TestWaitForExtensionConnected_ConnectsDuringWait(t *testing.T) {
+	t.Parallel()
+	c := NewCapture()
+
+	// Connect at 50ms — well before the first 200ms poll tick, giving a comfortable
+	// 150ms margin before the tick catches the connection.
+	go func() {
+		time.Sleep(50 * time.Millisecond)
+		c.mu.Lock()
+		c.ext.lastSyncSeen = time.Now()
+		c.mu.Unlock()
+	}()
+
+	if !c.WaitForExtensionConnected(context.Background(), time.Second) {
+		t.Fatal("WaitForExtensionConnected returned false; expected true after late connection")
+	}
+}
+
+func TestWaitForExtensionConnected_Timeout(t *testing.T) {
+	t.Parallel()
+	c := NewCapture()
+	// Extension never connects.
+
+	if c.WaitForExtensionConnected(context.Background(), 100*time.Millisecond) {
+		t.Fatal("WaitForExtensionConnected returned true; expected false after timeout")
+	}
+}
+
+func TestWaitForExtensionConnected_ContextCancelled(t *testing.T) {
+	t.Parallel()
+	c := NewCapture()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	go func() {
+		time.Sleep(50 * time.Millisecond)
+		cancel()
+	}()
+
+	if c.WaitForExtensionConnected(ctx, 5*time.Second) {
+		t.Fatal("WaitForExtensionConnected returned true; expected false after context cancellation")
 	}
 }
 

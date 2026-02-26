@@ -8,15 +8,15 @@
  * @fileoverview Observers - Observer registration and management for DOM, network,
  * performance, and WebSocket events.
  */
-import { installPerformanceCapture, uninstallPerformanceCapture } from '../lib/performance.js';
-import { installPerfObservers } from '../lib/perf-snapshot.js';
-import { installWebSocketCapture, uninstallWebSocketCapture } from '../lib/websocket.js';
-import { wrapFetchWithBodies, wrapXHRWithBodies, unwrapXHR } from '../lib/network.js';
-import { installConsoleCapture, uninstallConsoleCapture } from '../lib/console.js';
-import { installExceptionCapture, uninstallExceptionCapture } from '../lib/exceptions.js';
-import { installActionCapture, uninstallActionCapture, installNavigationCapture, uninstallNavigationCapture } from '../lib/actions.js';
-import { postLog } from '../lib/bridge.js';
-import { MAX_RESPONSE_LENGTH, SENSITIVE_HEADERS, MEMORY_SOFT_LIMIT_MB, MEMORY_HARD_LIMIT_MB } from '../lib/constants.js';
+import { installPerformanceCapture, uninstallPerformanceCapture } from '../lib/performance';
+import { installPerfObservers } from '../lib/perf-snapshot';
+import { installWebSocketCapture, uninstallWebSocketCapture } from '../lib/websocket';
+import { wrapFetchWithBodies, wrapXHRWithBodies, unwrapXHR, adoptEarlyBodies } from '../lib/network';
+import { installConsoleCapture, uninstallConsoleCapture } from '../lib/console';
+import { installExceptionCapture, uninstallExceptionCapture } from '../lib/exceptions';
+import { installActionCapture, uninstallActionCapture, installNavigationCapture, uninstallNavigationCapture } from '../lib/actions';
+import { postLog } from '../lib/bridge';
+import { MAX_RESPONSE_LENGTH, SENSITIVE_HEADERS, MEMORY_SOFT_LIMIT_MB, MEMORY_HARD_LIMIT_MB } from '../lib/constants';
 // Store original fetch for restoration
 let originalFetch = null;
 // Interception deferral state (Phase 1/Phase 2 split)
@@ -109,9 +109,12 @@ export function wrapFetch(originalFetchFn) {
  * Install fetch capture.
  * Uses wrapFetchWithBodies to capture request/response bodies for all requests,
  * then wraps that with wrapFetch to also capture error details for 4xx/5xx responses.
+ * If the early-patch script ran first, uses the saved original fetch (not the early wrapper).
  */
 export function installFetchCapture() {
-    originalFetch = window.fetch;
+    // Check for early-patch: use the saved original, not the early-patch wrapper
+    const earlyOriginal = window.__GASOLINE_ORIGINAL_FETCH__;
+    originalFetch = earlyOriginal || window.fetch;
     // Layer 1: wrapFetchWithBodies captures request/response bodies for ALL requests
     // Layer 2: wrapFetch captures detailed error logging for 4xx/5xx responses
     // Use unknown intermediate cast to handle TypeScript's strict fetch overload types
@@ -243,6 +246,8 @@ export function installPhase2() {
     phase2Installed = true;
     // Install all heavy interceptors
     install();
+    // Adopt fetch/XHR bodies buffered by the early-patch script
+    adoptEarlyBodies();
     // FCP/LCP/CLS/INP/long-task observers (buffered: true replays pre-Phase-2 entries)
     installPerfObservers();
 }

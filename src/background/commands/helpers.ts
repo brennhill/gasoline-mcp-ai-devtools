@@ -297,7 +297,7 @@ function buildMissingTargetError(queryType: string, useActiveTab: boolean, track
   }
 }
 
-async function persistTrackedTab(tab: chrome.tabs.Tab): Promise<void> {
+export async function persistTrackedTab(tab: chrome.tabs.Tab): Promise<void> {
   if (!tab.id) return
   await chrome.storage.local.set({
     trackedTabId: tab.id,

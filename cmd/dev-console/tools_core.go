@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"crypto/rand"
 	"encoding/binary"
 	"encoding/json"
@@ -18,6 +19,14 @@ import (
 	"github.com/dev-console/dev-console/internal/session"
 	"github.com/dev-console/dev-console/internal/streaming"
 )
+
+// defaultColdStartTimeout is how long requireExtension waits for the extension
+// to connect during a cold start before returning an error.
+// This eliminates "no_data" failures when the LLM sends a command before the
+// extension's first /sync heartbeat arrives.
+// Note: MaybeWaitForCommand does only an instant IsExtensionConnected() check;
+// the blocking wait is exclusively in requireExtension (P1-2: no double wait).
+const defaultColdStartTimeout = 5 * time.Second
 
 // ============================================
 // Shared Utilities
@@ -113,6 +122,12 @@ type ToolHandler struct {
 	*MCPHandler
 	capture *capture.Capture
 
+	// shutdownCtx is cancelled when the ToolHandler is closed. Gates like
+	// requireExtension pass this context to blocking waits so they abort
+	// promptly on server shutdown instead of leaking goroutines.
+	shutdownCtx    context.Context
+	shutdownCancel context.CancelFunc
+
 	// Health metrics for MCP get_health tool
 	healthMetrics *HealthMetrics
 
@@ -148,6 +163,12 @@ type ToolHandler struct {
 
 	// Upload security config (folder-scoped permissions + denylist)
 	uploadSecurity *UploadSecurity
+
+	// Cold-start readiness gate timeout: how long requireExtension waits
+	// for the extension to connect before failing. MaybeWaitForCommand only
+	// does an instant check (P1-2: no double wait).
+	// Default: 5s. Set to 0 in tests to restore instant-fail behavior.
+	coldStartTimeout time.Duration
 
 	// Cached interact dispatch map (initialized once via sync.Once)
 	interactOnce     sync.Once
@@ -190,6 +211,17 @@ type ToolHandler struct {
 	summaryPrefMu    sync.RWMutex
 	summaryPrefValue bool
 	summaryPrefReady bool
+
+	// extensionReadinessTimeout overrides the cold-start wait duration for requireExtension.
+	// Zero uses capture.ExtensionReadinessTimeout (5s). Tests set this to 100ms.
+	extensionReadinessTimeout time.Duration
+}
+
+// Close cancels the shutdown context, unblocking any in-flight readiness gates.
+func (h *ToolHandler) Close() {
+	if h.shutdownCancel != nil {
+		h.shutdownCancel()
+	}
 }
 
 // GetCapture returns the capture instance
@@ -239,9 +271,13 @@ func newPlaybackSessionsMap() map[string]*capture.PlaybackSession {
 
 // NewToolHandler creates an MCP handler with composite tool capabilities
 func NewToolHandler(server *Server, capture *capture.Capture) *MCPHandler {
+	shutdownCtx, shutdownCancel := context.WithCancel(context.Background())
 	handler := &ToolHandler{
 		MCPHandler:           NewMCPHandler(server, version),
 		capture:              capture,
+		shutdownCtx:          shutdownCtx,
+		shutdownCancel:       shutdownCancel,
+		coldStartTimeout:     defaultColdStartTimeout,
 		playbackSessions:     newPlaybackSessionsMap(),
 		evidenceByCommand:    make(map[string]*commandEvidenceState),
 		retryByCommand:       make(map[string]*commandRetryState),

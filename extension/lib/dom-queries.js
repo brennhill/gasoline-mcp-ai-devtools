@@ -189,19 +189,38 @@ export async function runAxeAudit(params) {
     return formatAxeResults(results);
 }
 /**
- * Run axe audit with a timeout
+ * Build an empty partial result with an error message.
+ * Used by timeout and catch paths to avoid duplicated object literals.
+ */
+function emptyPartialResult(errorMessage) {
+    return {
+        violations: [],
+        passes: [],
+        incomplete: [],
+        inapplicable: [],
+        summary: { violations: 0, passes: 0, incomplete: 0, inapplicable: 0 },
+        partial: true,
+        error: errorMessage
+    };
+}
+/**
+ * Run axe audit with a timeout.
+ * Issue #276: Returns partial results on timeout or conflict instead of throwing.
  */
 export async function runAxeAuditWithTimeout(params, timeoutMs = A11Y_AUDIT_TIMEOUT_MS) {
-    return Promise.race([
-        runAxeAudit(params),
-        new Promise((resolve) => {
-            setTimeout(() => resolve({
-                violations: [],
-                summary: { violations: 0, passes: 0, incomplete: 0, inapplicable: 0 },
-                error: 'Accessibility audit timeout'
-            }), timeoutMs);
-        })
-    ]);
+    try {
+        return await Promise.race([
+            runAxeAudit(params),
+            new Promise((resolve) => {
+                setTimeout(() => resolve(emptyPartialResult('Accessibility audit timed out')), timeoutMs);
+            })
+        ]);
+    }
+    catch (err) {
+        // Issue #276: Return partial results with error instead of throwing.
+        // Handles "Axe is already running" and other runtime errors gracefully.
+        return emptyPartialResult(err instanceof Error ? err.message : String(err));
+    }
 }
 /**
  * Format axe-core results into a compact representation

@@ -888,8 +888,10 @@ var originalXHRSend = null;
 function wrapXHRWithBodies() {
   if (typeof XMLHttpRequest === "undefined")
     return;
-  originalXHROpen = XMLHttpRequest.prototype.open;
-  originalXHRSend = XMLHttpRequest.prototype.send;
+  const earlyOpen = typeof window !== "undefined" ? window.__GASOLINE_ORIGINAL_XHR_OPEN__ : void 0;
+  const earlySend = typeof window !== "undefined" ? window.__GASOLINE_ORIGINAL_XHR_SEND__ : void 0;
+  originalXHROpen = earlyOpen || XMLHttpRequest.prototype.open;
+  originalXHRSend = earlySend || XMLHttpRequest.prototype.send;
   XMLHttpRequest.prototype.open = function(method, url, ...rest) {
     ;
     this.__gasolineMethod = method;
@@ -942,6 +944,48 @@ function unwrapXHR() {
     XMLHttpRequest.prototype.send = originalXHRSend;
   originalXHROpen = null;
   originalXHRSend = null;
+}
+function adoptEarlyBodies() {
+  if (typeof window === "undefined")
+    return;
+  const earlyBodies = window.__GASOLINE_EARLY_BODIES__;
+  if (!earlyBodies || earlyBodies.length === 0) {
+    delete window.__GASOLINE_ORIGINAL_FETCH__;
+    delete window.__GASOLINE_ORIGINAL_XHR_OPEN__;
+    delete window.__GASOLINE_ORIGINAL_XHR_SEND__;
+    delete window.__GASOLINE_EARLY_BODIES__;
+    return;
+  }
+  let adopted = 0;
+  for (const entry of earlyBodies) {
+    if (!shouldCaptureUrl(entry.url))
+      continue;
+    if (!networkBodyCaptureEnabled)
+      continue;
+    adopted++;
+    const { body: truncResp, truncated: respTruncated } = truncateResponseBody(entry.response_body);
+    const message = {
+      type: "GASOLINE_NETWORK_BODY",
+      payload: {
+        url: entry.url,
+        method: entry.method,
+        status: entry.status,
+        content_type: entry.content_type,
+        response_body: truncResp || "",
+        ...respTruncated ? { response_truncated: true } : {},
+        duration: 0
+        // Duration unknown for early-captured bodies
+      }
+    };
+    window.postMessage(message, window.location.origin);
+  }
+  if (adopted > 0) {
+    console.log(`[Gasoline] Adopted ${adopted} early network body(ies)`);
+  }
+  delete window.__GASOLINE_ORIGINAL_FETCH__;
+  delete window.__GASOLINE_ORIGINAL_XHR_OPEN__;
+  delete window.__GASOLINE_ORIGINAL_XHR_SEND__;
+  delete window.__GASOLINE_EARLY_BODIES__;
 }
 function wrapFetchWithBodies(fetchFn) {
   return async function(input, init) {
@@ -2424,17 +2468,28 @@ async function runAxeAudit(params) {
   const results = await window.axe.run(context, config);
   return formatAxeResults(results);
 }
+function emptyPartialResult(errorMessage) {
+  return {
+    violations: [],
+    passes: [],
+    incomplete: [],
+    inapplicable: [],
+    summary: { violations: 0, passes: 0, incomplete: 0, inapplicable: 0 },
+    partial: true,
+    error: errorMessage
+  };
+}
 async function runAxeAuditWithTimeout(params, timeoutMs = A11Y_AUDIT_TIMEOUT_MS) {
-  return Promise.race([
-    runAxeAudit(params),
-    new Promise((resolve) => {
-      setTimeout(() => resolve({
-        violations: [],
-        summary: { violations: 0, passes: 0, incomplete: 0, inapplicable: 0 },
-        error: "Accessibility audit timeout"
-      }), timeoutMs);
-    })
-  ]);
+  try {
+    return await Promise.race([
+      runAxeAudit(params),
+      new Promise((resolve) => {
+        setTimeout(() => resolve(emptyPartialResult("Accessibility audit timed out")), timeoutMs);
+      })
+    ]);
+  } catch (err) {
+    return emptyPartialResult(err instanceof Error ? err.message : String(err));
+  }
 }
 function formatAxeResults(axeResult) {
   const formatViolation = (v) => {
@@ -2782,7 +2837,8 @@ function wrapFetch(originalFetchFn) {
   };
 }
 function installFetchCapture() {
-  originalFetch = window.fetch;
+  const earlyOriginal = window.__GASOLINE_ORIGINAL_FETCH__;
+  originalFetch = earlyOriginal || window.fetch;
   const wrappedWithBodies = wrapFetchWithBodies(originalFetch);
   window.fetch = wrapFetch(wrappedWithBodies);
 }
@@ -2868,6 +2924,7 @@ function installPhase2() {
   phase2Timestamp = performance.now();
   phase2Installed = true;
   install();
+  adoptEarlyBodies();
   installPerfObservers();
 }
 function getDeferralState() {
@@ -4012,6 +4069,7 @@ export {
   MAX_PERFORMANCE_ENTRIES,
   MAX_WATERFALL_ENTRIES,
   SENSITIVE_HEADERS,
+  adoptEarlyBodies,
   aggregateResourceTiming,
   capturePerformanceSnapshot,
   captureState,

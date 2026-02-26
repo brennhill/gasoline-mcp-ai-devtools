@@ -4,7 +4,10 @@
 
 package capture
 
-import "time"
+import (
+	"context"
+	"time"
+)
 
 const (
 	PilotStateAssumedEnabled    = "assumed_enabled"
@@ -55,6 +58,7 @@ type ExtensionState struct {
 	trackedTabID    int       // Browser tab ID (0=none). Invariant: trackingEnabled → trackedTabID>0.
 	trackedTabURL   string    // Tracked tab URL (informational, may be stale).
 	trackedTabTitle string    // Tracked tab title (informational, may be stale).
+	tabStatus       string    // Chrome tab status: "loading" or "complete". Empty if unknown.
 	trackingUpdated time.Time // When tracking status last refreshed.
 
 	// Extension-reported active command execution state from /sync heartbeats.
@@ -85,11 +89,37 @@ func (c *Capture) GetTrackingStatus() (enabled bool, tabID int, tabURL string) {
 	return c.ext.trackingEnabled, c.ext.trackedTabID, c.ext.trackedTabURL
 }
 
+// UpdateTrackedTab programmatically updates the tracked tab state.
+// Used by switch_tab to retarget subsequent commands to the newly activated tab.
+//
+// Invariants:
+// - tabID must be > 0; zero/negative values are silently ignored.
+// - trackingEnabled is set to true when a valid tabID is provided.
+func (c *Capture) UpdateTrackedTab(tabID int, tabURL string, tabTitle string) {
+	if tabID <= 0 {
+		return
+	}
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.ext.trackingEnabled = true
+	c.ext.trackedTabID = tabID
+	c.ext.trackedTabURL = tabURL
+	c.ext.trackedTabTitle = tabTitle
+	c.ext.trackingUpdated = time.Now()
+}
+
 // GetTrackedTabTitle returns the tracked tab's title (may be stale).
 func (c *Capture) GetTrackedTabTitle() string {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 	return c.ext.trackedTabTitle
+}
+
+// GetTabStatus returns the Chrome tab status ("loading", "complete", or empty if unknown).
+func (c *Capture) GetTabStatus() string {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	return c.ext.tabStatus
 }
 
 // IsPilotEnabled returns whether AI Web Pilot is currently enabled.
@@ -116,6 +146,31 @@ func (c *Capture) IsPilotExplicitlyDisabled() bool {
 	return snap.State == PilotStateExplicitlyDisable
 }
 
+// WaitForExtensionConnected polls until the extension connects, the timeout elapses,
+// or ctx is cancelled. Returns true if connected within the window, false otherwise.
+// A zero or negative timeout returns false immediately (no polling).
+// Poll interval is extensionReadinessPollInterval (200ms). ctx cancellation is
+// honoured between polls.
+func (c *Capture) WaitForExtensionConnected(ctx context.Context, timeout time.Duration) bool {
+	if c.IsExtensionConnected() {
+		return true
+	}
+	ctx, cancel := context.WithTimeout(ctx, timeout)
+	defer cancel()
+	ticker := time.NewTicker(extensionReadinessPollInterval)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return false
+		case <-ticker.C:
+			if c.IsExtensionConnected() {
+				return true
+			}
+		}
+	}
+}
+
 // IsExtensionConnected returns true if the extension has synced within the
 // disconnect threshold (10s). Returns false if never synced or stale.
 func (c *Capture) IsExtensionConnected() bool {
@@ -123,7 +178,6 @@ func (c *Capture) IsExtensionConnected() bool {
 	defer c.mu.RUnlock()
 	return !c.ext.lastSyncSeen.IsZero() && time.Since(c.ext.lastSyncSeen) < extensionDisconnectThreshold
 }
-
 // GetExtensionStatus returns a detached connection snapshot.
 // Fields: connected (bool), last_seen (RFC3339 string), client_id (string).
 //
