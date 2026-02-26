@@ -1425,18 +1425,37 @@ export function domPrimitive(action, selector, options) {
         }
         return false;
     }
+    // --- #332: Find nearest interactive ancestor for non-interactive wrapper elements ---
+    function findInteractiveAncestor(el) {
+        const tag = el.tagName.toLowerCase();
+        const role = el.getAttribute('role') || '';
+        const interactiveTags = new Set(['a', 'button', 'input', 'select', 'textarea']);
+        const interactiveRoles = new Set(['button', 'link', 'menuitem', 'tab', 'option', 'switch']);
+        // Already interactive — no need to bubble up
+        if (interactiveTags.has(tag) || interactiveRoles.has(role))
+            return null;
+        if (typeof el.closest === 'function') {
+            const ancestor = el.closest('a, button, [role="button"], [role="link"], [role="menuitem"], [role="tab"], input, select, textarea');
+            if (ancestor && ancestor !== el)
+                return ancestor;
+        }
+        return null;
+    }
     function buildActionHandlers(node) {
         return {
             click: () => withMutationTracking(() => {
                 if (!(node instanceof HTMLElement))
                     return domError('not_interactive', `Element is not an HTMLElement: ${node.tagName}`);
+                // #332: Bubble up to nearest interactive ancestor if the matched element is a wrapper
+                const interactiveAncestor = findInteractiveAncestor(node);
+                const clickTarget = (interactiveAncestor instanceof HTMLElement ? interactiveAncestor : node);
                 if (options.new_tab) {
                     const linkNode = (() => {
-                        const tag = node.tagName.toLowerCase();
+                        const tag = clickTarget.tagName.toLowerCase();
                         if (tag === 'a')
-                            return node;
-                        if (typeof node.closest === 'function') {
-                            return node.closest('a[href]');
+                            return clickTarget;
+                        if (typeof clickTarget.closest === 'function') {
+                            return clickTarget.closest('a[href]');
                         }
                         return null;
                     })();
@@ -1467,12 +1486,12 @@ export function domPrimitive(action, selector, options) {
                             linkNode.setAttribute('target', previousTarget);
                         }
                     }
-                    return mutatingSuccess(node, { value: href, reason: 'opened_new_tab' });
+                    return mutatingSuccess(clickTarget, { value: href, reason: 'opened_new_tab' });
                 }
                 // #336: Auto-scroll off-screen elements into view before clicking
-                const didScroll = autoScrollIfNeeded(node);
-                node.click();
-                return mutatingSuccess(node, didScroll ? { auto_scrolled: true } : undefined);
+                const didScroll = autoScrollIfNeeded(clickTarget);
+                clickTarget.click();
+                return mutatingSuccess(clickTarget, didScroll ? { auto_scrolled: true } : undefined);
             }),
             type: () => withMutationTracking(() => {
                 // Normalize literal \n sequences to actual newlines (MCP parameter encoding)
