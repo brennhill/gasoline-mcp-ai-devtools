@@ -28,6 +28,10 @@ func ConfigureToolSchema() mcp.MCPTool {
 					"description": "Security mode target for configure(what='security_mode'). Omit to read current mode.",
 					"enum":        []string{"normal", "insecure_proxy"},
 				},
+				"tool": map[string]any{
+					"type":        "string",
+					"description": "Filter describe_capabilities to a single tool by name (e.g. 'observe', 'interact')",
+				},
 				"confirm": map[string]any{
 					"type":        "boolean",
 					"description": "Required true when enabling insecure_proxy mode.",
