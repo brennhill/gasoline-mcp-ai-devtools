@@ -18,7 +18,7 @@ Browser extension + MCP server for real-time browser telemetry.
 
 ## Git Workflow
 
-- Branch from `next`, PR to `next`
+- Branch from `UNSTABLE`, PR to `UNSTABLE`
 - Never push directly to `main`
 - Squash commits before merge
 
