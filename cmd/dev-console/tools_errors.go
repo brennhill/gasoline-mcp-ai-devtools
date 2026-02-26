@@ -213,7 +213,7 @@ func (h *ToolHandler) requireCSPClear(req JSONRPCRequest, world string) (JSONRPC
 		h.diagnosticHint(),
 		withRecoveryToolCall(map[string]any{
 			"tool":      "interact",
-			"arguments": map[string]any{"what": "execute_js", "script": "return document.title", "world": "auto"},
+			"arguments": map[string]any{"what": "execute_js", "world": "auto"},
 		}),
 	)}, true
 }

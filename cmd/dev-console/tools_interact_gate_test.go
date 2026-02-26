@@ -389,6 +389,13 @@ func TestRequirePilot_RecoveryToolCall(t *testing.T) {
 	if se.RecoveryToolCall["tool"] != "configure" {
 		t.Fatalf("expected recovery tool 'configure', got %v", se.RecoveryToolCall["tool"])
 	}
+	args, ok := se.RecoveryToolCall["arguments"].(map[string]any)
+	if !ok {
+		t.Fatal("expected recovery_tool_call to have 'arguments' map")
+	}
+	if args["what"] != "pilot" {
+		t.Fatalf("expected arguments.what='pilot', got %v", args["what"])
+	}
 }
 
 func TestRequireExtension_RecoveryToolCall(t *testing.T) {
@@ -407,6 +414,13 @@ func TestRequireExtension_RecoveryToolCall(t *testing.T) {
 	}
 	if se.RecoveryToolCall["tool"] != "observe" {
 		t.Fatalf("expected recovery tool 'observe', got %v", se.RecoveryToolCall["tool"])
+	}
+	args, ok := se.RecoveryToolCall["arguments"].(map[string]any)
+	if !ok {
+		t.Fatal("expected recovery_tool_call to have 'arguments' map")
+	}
+	if args["what"] != "status" {
+		t.Fatalf("expected arguments.what='status', got %v", args["what"])
 	}
 }
 
@@ -427,6 +441,16 @@ func TestRequireCSPClear_RecoveryToolCall(t *testing.T) {
 	if se.RecoveryToolCall["tool"] != "interact" {
 		t.Fatalf("expected recovery tool 'interact', got %v", se.RecoveryToolCall["tool"])
 	}
+	args, ok := se.RecoveryToolCall["arguments"].(map[string]any)
+	if !ok {
+		t.Fatal("expected recovery_tool_call to have 'arguments' map")
+	}
+	if args["what"] != "execute_js" {
+		t.Fatalf("expected arguments.what='execute_js', got %v", args["what"])
+	}
+	if args["world"] != "auto" {
+		t.Fatalf("expected arguments.world='auto', got %v", args["world"])
+	}
 }
 
 func TestRequireTabTracking_RecoveryToolCall(t *testing.T) {
@@ -443,8 +467,18 @@ func TestRequireTabTracking_RecoveryToolCall(t *testing.T) {
 	if se.RecoveryToolCall == nil {
 		t.Fatal("expected recovery_tool_call in tab tracking error")
 	}
-	if se.RecoveryToolCall["tool"] != "observe" {
-		t.Fatalf("expected recovery tool 'observe', got %v", se.RecoveryToolCall["tool"])
+	if se.RecoveryToolCall["tool"] != "interact" {
+		t.Fatalf("expected recovery tool 'interact', got %v", se.RecoveryToolCall["tool"])
+	}
+	args, ok := se.RecoveryToolCall["arguments"].(map[string]any)
+	if !ok {
+		t.Fatal("expected recovery_tool_call to have 'arguments' map")
+	}
+	if args["what"] != "navigate" {
+		t.Fatalf("expected arguments.what='navigate', got %v", args["what"])
+	}
+	if args["url"] != "about:blank" {
+		t.Fatalf("expected arguments.url='about:blank', got %v", args["url"])
 	}
 }
 

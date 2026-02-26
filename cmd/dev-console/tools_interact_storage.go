@@ -174,15 +174,16 @@ func (h *ToolHandler) queueExecuteScript(
 	if resp, blocked := h.requireTabTracking(req); blocked {
 		return resp
 	}
-	if resp, blocked := h.requireCSPClear(req, "main"); blocked {
+
+	if world == "" {
+		world = "auto"
+	}
+	if resp, blocked := h.requireCSPClear(req, world); blocked {
 		return resp
 	}
 
 	if timeoutMs <= 0 {
 		timeoutMs = 5000
-	}
-	if world == "" {
-		world = "auto"
 	}
 	if !validWorldValues[world] {
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidParam, "Invalid 'world' value: "+world, "Use 'auto' (default), 'main', or 'isolated'", withParam("world"))}
