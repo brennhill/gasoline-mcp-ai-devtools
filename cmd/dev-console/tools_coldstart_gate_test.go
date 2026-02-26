@@ -1,0 +1,171 @@
+// tools_coldstart_gate_test.go — Tests for cold-start readiness gate in requireExtension.
+// Why: Validates that interact commands wait for extension connection during cold starts.
+// Docs: docs/features/feature/cold-start-queuing/index.md
+
+package main
+
+import (
+	"encoding/json"
+	"testing"
+	"time"
+
+	"github.com/dev-console/dev-console/internal/capture"
+)
+
+// ============================================
+// Cold-start gate: requireExtension waits
+// ============================================
+
+func TestRequireExtension_ColdStart_WaitsForConnection(t *testing.T) {
+	t.Parallel()
+	env := newGateTestEnv(t)
+	env.handler.extensionReadinessTimeout = 500 * time.Millisecond
+
+	// Simulate extension connecting after 100ms
+	go func() {
+		time.Sleep(100 * time.Millisecond)
+		env.capture.SimulateExtensionConnectForTest()
+	}()
+
+	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`)}
+	start := time.Now()
+	_, blocked := env.handler.requireExtension(req)
+	elapsed := time.Since(start)
+
+	if blocked {
+		t.Fatal("expected requireExtension to pass after waiting for connection")
+	}
+	if elapsed < 50*time.Millisecond {
+		t.Fatalf("expected some wait time, got %v", elapsed)
+	}
+	if elapsed > 450*time.Millisecond {
+		t.Fatalf("waited too long: %v (connection fires at 100ms)", elapsed)
+	}
+}
+
+func TestRequireExtension_ColdStart_TimesOut(t *testing.T) {
+	t.Parallel()
+	env := newGateTestEnv(t)
+	env.handler.extensionReadinessTimeout = 200 * time.Millisecond
+
+	// Extension never connects
+	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`)}
+	start := time.Now()
+	resp, blocked := env.handler.requireExtension(req)
+	elapsed := time.Since(start)
+
+	if !blocked {
+		t.Fatal("expected requireExtension to block after cold-start timeout expires")
+	}
+	code := extractErrorCode(t, resp)
+	if code != ErrNoData {
+		t.Fatalf("expected error code %q, got %q", ErrNoData, code)
+	}
+	if elapsed < 150*time.Millisecond {
+		t.Fatalf("should have waited near timeout, only waited %v", elapsed)
+	}
+}
+
+func TestRequireExtension_AlreadyConnected_NoWait(t *testing.T) {
+	t.Parallel()
+	env := newGateTestEnv(t)
+	env.simulateConnection(t)
+	env.handler.extensionReadinessTimeout = 5 * time.Second
+
+	// Even with a long timeout, already-connected should be instant
+	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`)}
+	start := time.Now()
+	_, blocked := env.handler.requireExtension(req)
+	elapsed := time.Since(start)
+
+	if blocked {
+		t.Fatal("expected requireExtension to pass instantly when already connected")
+	}
+	if elapsed > 50*time.Millisecond {
+		t.Fatalf("already connected should be instant, took %v", elapsed)
+	}
+}
+
+// ============================================
+// MaybeWaitForCommand cold-start gate
+// ============================================
+
+func TestMaybeWaitForCommand_ColdStart_WaitsForConnection(t *testing.T) {
+	t.Parallel()
+
+	cap := capture.NewCapture()
+	handler := &ToolHandler{capture: cap, coldStartTimeout: 500 * time.Millisecond}
+	correlationID := "test-coldstart-123"
+	cap.RegisterCommand(correlationID, "q-coldstart-123", 15*time.Second)
+
+	// Simulate extension connecting after 100ms, then complete the command
+	go func() {
+		time.Sleep(100 * time.Millisecond)
+		cap.SimulateExtensionConnectForTest()
+
+		time.Sleep(50 * time.Millisecond)
+		cap.CompleteCommand(correlationID, json.RawMessage(`{"success":true}`), "")
+	}()
+
+	req := JSONRPCRequest{ID: 1, ClientID: "test-client"}
+	start := time.Now()
+	resp := handler.MaybeWaitForCommand(req, correlationID, json.RawMessage(`{}`), "Queued")
+	elapsed := time.Since(start)
+
+	result := parseMCPResponseData(t, resp.Result)
+	if result["status"] != "complete" {
+		t.Errorf("expected status complete, got %v", result["status"])
+	}
+	if elapsed < 100*time.Millisecond {
+		t.Fatalf("expected some wait, got %v", elapsed)
+	}
+	if elapsed > 2*time.Second {
+		t.Fatalf("took too long: %v (connection at 100ms, result at 150ms)", elapsed)
+	}
+}
+
+func TestMaybeWaitForCommand_ColdStart_TimesOut(t *testing.T) {
+	t.Parallel()
+
+	cap := capture.NewCapture()
+	handler := &ToolHandler{capture: cap, coldStartTimeout: 200 * time.Millisecond}
+	correlationID := "test-coldstart-timeout"
+	cap.RegisterCommand(correlationID, "q-coldstart-timeout", 15*time.Second)
+
+	// Extension never connects
+	req := JSONRPCRequest{ID: 1, ClientID: "test-client"}
+	start := time.Now()
+	resp := handler.MaybeWaitForCommand(req, correlationID, json.RawMessage(`{}`), "Queued")
+	elapsed := time.Since(start)
+
+	// Should get no_data error after cold-start timeout
+	se := extractStructuredErrorJSON(t, resp.Result)
+	if se["error_code"] != ErrNoData {
+		t.Errorf("expected error code %q, got %v", ErrNoData, se["error_code"])
+	}
+	if elapsed < 150*time.Millisecond {
+		t.Fatalf("should have waited near timeout, only waited %v", elapsed)
+	}
+}
+
+func TestMaybeWaitForCommand_Background_SkipsColdStartGate(t *testing.T) {
+	t.Parallel()
+
+	cap := capture.NewCapture()
+	handler := &ToolHandler{capture: cap, coldStartTimeout: 5 * time.Second}
+	correlationID := "test-bg-skip"
+
+	// Extension NOT connected, background mode
+	req := JSONRPCRequest{ID: 1}
+	start := time.Now()
+	resp := handler.MaybeWaitForCommand(req, correlationID, json.RawMessage(`{"background":true}`), "Queued")
+	elapsed := time.Since(start)
+
+	result := parseMCPResponseData(t, resp.Result)
+	if result["status"] != "queued" {
+		t.Errorf("expected status queued for background, got %v", result["status"])
+	}
+	if elapsed > 50*time.Millisecond {
+		t.Fatalf("background mode should skip cold-start gate, took %v", elapsed)
+	}
+}

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"bytes"
 	"encoding/json"
 	"fmt"
@@ -122,8 +123,11 @@ func (h *ToolHandler) MaybeWaitForCommand(req JSONRPCRequest, correlationID stri
 		})}
 	}
 
-	// Check connectivity first to avoid useless waiting
-	if !h.capture.IsExtensionConnected() {
+	// Cold-start readiness gate: hold the request for up to ColdStartTimeout
+	// waiting for the extension's first /sync heartbeat. This eliminates
+	// "no_data" failures when the LLM sends a command before the browser
+	// extension has connected.
+	if !h.capture.WaitForExtensionConnected(context.Background(), h.coldStartTimeout) {
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrNoData, "Extension is not connected", "Ensure the Gasoline extension shows 'Connected' and a tab is tracked.", h.diagnosticHint())}
 	}
 

@@ -52,4 +52,9 @@ var (
 	// the extension is considered disconnected. Pending queries are auto-expired
 	// when the extension exceeds this threshold.
 	extensionDisconnectThreshold = 10 * time.Second
+
+	// readinessGatePollInterval is how often WaitForExtensionConnected checks
+	// for a connection. Kept short (100ms) to minimize latency after the
+	// extension actually connects.
+	readinessGatePollInterval = 100 * time.Millisecond
 )

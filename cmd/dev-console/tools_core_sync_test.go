@@ -126,7 +126,7 @@ func TestToolObserveCommandResult_IncludesTraceTimeline(t *testing.T) {
 
 func TestMaybeWaitForCommand_TimeoutGracefulFallback(t *testing.T) {
 	cap := capture.NewCapture()
-	handler := &ToolHandler{capture: cap}
+	handler := &ToolHandler{capture: cap, coldStartTimeout: 0} // Disable cold-start gate for fast-fail test
 	req := JSONRPCRequest{ID: 1}
 	correlationID := "test-timeout-123"
 
@@ -140,7 +140,7 @@ func TestMaybeWaitForCommand_TimeoutGracefulFallback(t *testing.T) {
 	duration := time.Since(start)
 
 	// Since we didn't mock connection or result, it should fail fast or timeout.
-	// Current impl fails fast if extension not connected.
+	// With coldStartTimeout=0, it fails fast if extension not connected.
 	if duration > 1*time.Second {
 		t.Errorf("Should have failed fast since extension is not connected, took %v", duration)
 	}

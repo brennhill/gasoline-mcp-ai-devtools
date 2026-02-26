@@ -170,7 +170,6 @@ func (c *Capture) IsExtensionConnected() bool {
 	defer c.mu.RUnlock()
 	return !c.ext.lastSyncSeen.IsZero() && time.Since(c.ext.lastSyncSeen) < extensionDisconnectThreshold
 }
-
 // GetExtensionStatus returns a detached connection snapshot.
 // Fields: connected (bool), last_seen (RFC3339 string), client_id (string).
 //

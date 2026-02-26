@@ -19,6 +19,12 @@ import (
 	"github.com/dev-console/dev-console/internal/streaming"
 )
 
+// defaultColdStartTimeout is how long requireExtension and MaybeWaitForCommand
+// wait for the extension to connect during a cold start before returning an error.
+// This eliminates "no_data" failures when the LLM sends a command before the
+// extension's first /sync heartbeat arrives.
+const defaultColdStartTimeout = 5 * time.Second
+
 // ============================================
 // Shared Utilities
 // ============================================
@@ -149,6 +155,11 @@ type ToolHandler struct {
 	// Upload security config (folder-scoped permissions + denylist)
 	uploadSecurity *UploadSecurity
 
+	// Cold-start readiness gate timeout: how long requireExtension and
+	// MaybeWaitForCommand wait for the extension to connect before failing.
+	// Default: 5s. Set to 0 in tests to restore instant-fail behavior.
+	coldStartTimeout time.Duration
+
 	// Cached interact dispatch map (initialized once via sync.Once)
 	interactOnce     sync.Once
 	interactHandlers map[string]interactHandler
@@ -246,6 +257,7 @@ func NewToolHandler(server *Server, capture *capture.Capture) *MCPHandler {
 	handler := &ToolHandler{
 		MCPHandler:        NewMCPHandler(server, version),
 		capture:           capture,
+		coldStartTimeout:  defaultColdStartTimeout,
 		playbackSessions:  newPlaybackSessionsMap(),
 		evidenceByCommand: make(map[string]*commandEvidenceState),
 		retryByCommand:    make(map[string]*commandRetryState),
