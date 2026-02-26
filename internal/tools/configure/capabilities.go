@@ -24,6 +24,74 @@ var (
 	defaultsToPattern   = regexp.MustCompile(`(?i)defaults?\s+to\s+([a-zA-Z0-9_./:-]+)`)
 )
 
+var configureModeSpecs = map[string]modeParamSpec{
+	"store": {
+		Optional: []string{"store_action", "namespace", "key", "data", "value"},
+	},
+	"load": {},
+	"noise_rule": {
+		Optional: []string{
+			"noise_action", "rules", "rule_id", "pattern", "category", "classification",
+			"message_regex", "source_regex", "url_regex", "method", "status_min", "status_max", "level", "reason",
+		},
+	},
+	"clear": {
+		Optional: []string{"buffer"},
+	},
+	"health":   {},
+	"tutorial": {},
+	"examples": {},
+	"streaming": {
+		Optional: []string{"streaming_action", "events", "throttle_seconds", "severity_min"},
+	},
+	"test_boundary_start": {
+		Required: []string{"test_id"},
+		Optional: []string{"label"},
+	},
+	"test_boundary_end": {
+		Required: []string{"test_id"},
+	},
+	"recording_start": {
+		Optional: []string{"name", "tab_id", "sensitive_data_enabled"},
+	},
+	"recording_stop": {
+		Optional: []string{"recording_id"},
+	},
+	"playback": {
+		Optional: []string{"recording_id"},
+	},
+	"log_diff": {
+		Optional: []string{"original_id", "replay_id"},
+	},
+	"telemetry": {
+		Optional: []string{"telemetry_mode"},
+	},
+	"describe_capabilities": {
+		Optional: []string{"summary", "tool", "mode"},
+	},
+	"diff_sessions": {
+		Optional: []string{"verif_session_action", "name", "compare_a", "compare_b", "url"},
+	},
+	"audit_log": {
+		Optional: []string{"operation", "audit_session_id", "tool_name", "since", "limit"},
+	},
+	"restart": {},
+	"save_sequence": {
+		Optional: []string{"name", "description", "steps", "tags"},
+	},
+	"get_sequence": {
+		Optional: []string{"name"},
+	},
+	"list_sequences": {},
+	"delete_sequence": {
+		Optional: []string{"name"},
+	},
+	"replay_sequence": {
+		Optional: []string{"name", "override_steps", "step_timeout_ms", "continue_on_error", "stop_after_step"},
+	},
+	"doctor": {},
+}
+
 // BuildCapabilitiesSummary returns a compact summary: tool name → { description, dispatch_param, modes }.
 // modes is a map of mode name → one-line hint for discovery.
 // Omits full parameter schemas, reducing output from ~757K to ~10K.
@@ -31,12 +99,7 @@ func BuildCapabilitiesSummary(tools []mcp.MCPTool) map[string]any {
 	toolsMap := make(map[string]any, len(tools))
 	for _, tool := range tools {
 		props, _ := tool.InputSchema["properties"].(map[string]any)
-		required := toStringSlice(tool.InputSchema["required"])
-
-		dispatchParam := ""
-		if len(required) > 0 {
-			dispatchParam = required[0]
-		}
+		dispatchParam := inferDispatchParam(tool.InputSchema, props)
 
 		modeNames := extractModes(dispatchParam, props)
 		modes := buildModeIndex(tool.Name, modeNames)
@@ -75,12 +138,7 @@ func BuildCapabilitiesMap(tools []mcp.MCPTool) map[string]any {
 	toolsMap := make(map[string]any, len(tools))
 	for _, tool := range tools {
 		props, _ := tool.InputSchema["properties"].(map[string]any)
-		required := toStringSlice(tool.InputSchema["required"])
-
-		dispatchParam := ""
-		if len(required) > 0 {
-			dispatchParam = required[0]
-		}
+		dispatchParam := inferDispatchParam(tool.InputSchema, props)
 
 		modes := extractModes(dispatchParam, props)
 
@@ -105,6 +163,67 @@ func BuildCapabilitiesMap(tools []mcp.MCPTool) map[string]any {
 		}
 	}
 	return toolsMap
+}
+
+// BuildCapabilitiesForTool returns the full capability map for a single tool by name.
+// Returns (toolCapabilities, true) if found, or (nil, false) if the tool name is unknown.
+func BuildCapabilitiesForTool(tools []mcp.MCPTool, toolName string) (map[string]any, bool) {
+	for _, tool := range tools {
+		if tool.Name != toolName {
+			continue
+		}
+		props, _ := tool.InputSchema["properties"].(map[string]any)
+		required := toStringSlice(tool.InputSchema["required"])
+
+		dispatchParam := ""
+		if len(required) > 0 {
+			dispatchParam = required[0]
+		}
+
+		modes := extractModes(dispatchParam, props)
+
+		paramNames := make([]string, 0, len(props))
+		for name := range props {
+			if name != dispatchParam {
+				paramNames = append(paramNames, name)
+			}
+		}
+		sort.Strings(paramNames)
+
+		paramDetails := buildParamDetails(props)
+		modeParams := buildModeParams(tool.Name, modes, dispatchParam, paramNames, paramDetails)
+
+		return map[string]any{
+			"dispatch_param": dispatchParam,
+			"modes":          modes,
+			"params":         paramNames,
+			"param_details":  paramDetails,
+			"mode_params":    modeParams,
+			"description":    tool.Description,
+		}, true
+	}
+	return nil, false
+}
+
+// FilterToolByMode extracts a single mode's entry from a tool's capability map.
+// Returns a flat structure: {tool, mode, required, optional, params}.
+// Returns (nil, false) if the mode is not found in mode_params.
+func FilterToolByMode(toolCap map[string]any, toolName, mode string) (map[string]any, bool) {
+	modeParamsRaw, ok := toolCap["mode_params"].(map[string]any)
+	if !ok {
+		return nil, false
+	}
+	modeEntry, ok := modeParamsRaw[mode].(map[string]any)
+	if !ok {
+		return nil, false
+	}
+	return map[string]any{
+		"tool":     toolName,
+		"mode":     mode,
+		"required": modeEntry["required"],
+		"optional": modeEntry["optional"],
+		"params":   modeEntry["params"],
+	}, true
 }
 
 func extractModes(dispatchParam string, props map[string]any) []string {
