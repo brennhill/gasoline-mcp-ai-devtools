@@ -1124,6 +1124,18 @@ export function domPrimitive(
       return resolveIntentTarget(requestedScope, activeScope)
     }
 
+    // key_press without selector: dispatch on activeElement or body (#321)
+    if (action === 'key_press' && !selector && !options.element_id) {
+      const target = document.activeElement || document.body
+      if (target) {
+        return {
+          element: target,
+          match_count: 1,
+          match_strategy: 'active_element_fallback'
+        }
+      }
+    }
+
     const requestedElementID = (options.element_id || '').trim()
     if (requestedElementID) {
       const resolvedByID = resolveElementByID(requestedElementID)

@@ -40,7 +40,6 @@ func TestDOMPrimitive_MissingSelector(t *testing.T) {
 		{"focus", `{"what":"focus"}`},
 		{"scroll_to", `{"what":"scroll_to"}`},
 		{"wait_for", `{"what":"wait_for"}`},
-		{"key_press", `{"what":"key_press","text":"Enter"}`},
 	}
 
 	for _, tc := range actions {
@@ -233,6 +232,28 @@ func TestDOMPrimitive_ListInteractive_NoSelectorNeeded(t *testing.T) {
 		text := strings.ToLower(result.Content[0].Text)
 		if strings.Contains(text, "selector") {
 			t.Errorf("list_interactive should NOT require selector\nGot: %s", result.Content[0].Text)
+		}
+	}
+}
+
+// ============================================
+// key_press: No selector required (#321)
+// ============================================
+
+func TestDOMPrimitive_KeyPress_NoSelectorRequired(t *testing.T) {
+	env := newInteractTestEnv(t)
+
+	// key_press without selector should NOT get a "selector missing" error.
+	// It should reach the pilot check instead (pilot is disabled in test env).
+	result, ok := env.callInteract(t, `{"what":"key_press","text":"Escape"}`)
+	if !ok {
+		t.Fatal("key_press without selector should return result")
+	}
+
+	if len(result.Content) > 0 {
+		text := strings.ToLower(result.Content[0].Text)
+		if strings.Contains(text, "selector") {
+			t.Errorf("key_press should NOT require selector (#321)\nGot: %s", result.Content[0].Text)
 		}
 	}
 }

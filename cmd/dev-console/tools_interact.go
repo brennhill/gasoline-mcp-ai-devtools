@@ -776,6 +776,7 @@ func (h *ToolHandler) handleDOMPrimitive(req JSONRPCRequest, args json.RawMessag
 		"submit_active_composer": true,
 		"confirm_top_dialog":     true,
 		"dismiss_top_overlay":    true,
+		"key_press":             true,
 	}
 	if params.Selector == "" && params.ElementID == "" && !selectorOptionalActions[action] {
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(

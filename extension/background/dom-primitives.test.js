@@ -1960,4 +1960,33 @@ describe('key_press key mapping', () => {
 
     assert.deepStrictEqual(dispatched, ['keydown', 'keypress', 'keyup'])
   })
+
+  test('key_press works without selector, falls back to activeElement (#321)', async () => {
+    const activeEl = new globalThis.HTMLElement('BODY', { id: 'body-el' })
+    activeEl.ownerDocument = { querySelectorAll: () => [] }
+    const dispatched = []
+    activeEl.dispatchEvent = (e) => dispatched.push({ type: e.type, key: e.key })
+
+    // Set up document with activeElement pointing to our mock
+    globalThis.document = {
+      querySelector: () => null,
+      querySelectorAll: () => [],
+      getElementById: () => null,
+      activeElement: activeEl,
+      body: activeEl,
+      documentElement: { children: { length: 0 } },
+      createTreeWalker: () => ({ nextNode: () => null }),
+      getSelection: () => null,
+      execCommand: () => {}
+    }
+
+    const result = await domPrimitive('key_press', '', { text: 'Escape' })
+
+    assert.strictEqual(result.success, true)
+    assert.strictEqual(result.value, 'Escape')
+    assert.strictEqual(result.match_strategy, 'active_element_fallback')
+    const keydown = dispatched.find((e) => e.type === 'keydown')
+    assert.ok(keydown, 'keydown event should be dispatched on activeElement')
+    assert.strictEqual(keydown.key, 'Escape')
+  })
 })
