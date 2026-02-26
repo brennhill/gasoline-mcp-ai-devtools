@@ -83,6 +83,45 @@ func TestToolsAnalyzeDispatch_EmptyArgs(t *testing.T) {
 	}
 }
 
+func TestToolsAnalyzeDispatch_ModeAliasAddsCanonicalWhatWarning(t *testing.T) {
+	t.Parallel()
+	h, _, _ := makeToolHandler(t)
+
+	resp := callAnalyzeRaw(h, `{"mode":"dom","selector":"body","sync":false}`)
+	result := parseToolResult(t, resp)
+	if result.IsError {
+		t.Fatalf("mode alias should be accepted, got: %s", result.Content[0].Text)
+	}
+	foundCanonicalWarning := false
+	for _, block := range result.Content {
+		if strings.Contains(block.Text, "canonical parameter is 'what'") {
+			foundCanonicalWarning = true
+			break
+		}
+	}
+	if !foundCanonicalWarning {
+		t.Fatalf("expected canonical what warning block, got %d content blocks", len(result.Content))
+	}
+}
+
+func TestToolsAnalyzeDispatch_ConflictingWhatAndMode(t *testing.T) {
+	t.Parallel()
+	h, _, _ := makeToolHandler(t)
+
+	resp := callAnalyzeRaw(h, `{"what":"dom","mode":"performance","selector":"body"}`)
+	result := parseToolResult(t, resp)
+	if !result.IsError {
+		t.Fatal("conflicting what/mode should return isError:true")
+	}
+	text := result.Content[0].Text
+	if !strings.Contains(text, "invalid_param") {
+		t.Fatalf("expected invalid_param, got: %s", text)
+	}
+	if !strings.Contains(text, "Conflicting parameters") {
+		t.Fatalf("expected conflict explanation, got: %s", text)
+	}
+}
+
 // ============================================
 // getValidAnalyzeModes Tests
 // ============================================

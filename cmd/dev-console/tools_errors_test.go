@@ -83,6 +83,28 @@ func TestStructuredError_DefaultRetryable_IsFalse(t *testing.T) {
 	}
 }
 
+func TestStructuredError_CanonicalRecoveryContractFields(t *testing.T) {
+	t.Parallel()
+
+	result := mcpStructuredError(
+		ErrMissingParam, "Missing parameter", "Call interact with what=list_interactive",
+	)
+
+	se := extractStructuredErrorJSON(t, result)
+	if se["error_code"] != ErrMissingParam {
+		t.Fatalf("error_code = %v, want %q", se["error_code"], ErrMissingParam)
+	}
+	if se["error"] != ErrMissingParam {
+		t.Fatalf("error = %v, want %q", se["error"], ErrMissingParam)
+	}
+	if se["recovery_playbook"] != "Call interact with what=list_interactive" {
+		t.Fatalf("recovery_playbook = %v", se["recovery_playbook"])
+	}
+	if se["retry"] != "Call interact with what=list_interactive" {
+		t.Fatalf("retry = %v", se["retry"])
+	}
+}
+
 func TestStructuredError_ErrorCodes_RetryableDefaults(t *testing.T) {
 	t.Parallel()
 

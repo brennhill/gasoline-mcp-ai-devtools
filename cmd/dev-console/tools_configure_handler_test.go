@@ -83,6 +83,45 @@ func TestToolsConfigureDispatch_EmptyArgs(t *testing.T) {
 	}
 }
 
+func TestToolsConfigureDispatch_ActionAliasAddsCanonicalWhatWarning(t *testing.T) {
+	t.Parallel()
+	h, _, _ := makeToolHandler(t)
+
+	resp := callConfigureRaw(h, `{"action":"health"}`)
+	result := parseToolResult(t, resp)
+	if result.IsError {
+		t.Fatalf("action alias should be accepted, got: %s", result.Content[0].Text)
+	}
+	foundCanonicalWarning := false
+	for _, block := range result.Content {
+		if strings.Contains(block.Text, "canonical parameter is 'what'") {
+			foundCanonicalWarning = true
+			break
+		}
+	}
+	if !foundCanonicalWarning {
+		t.Fatalf("expected canonical what warning block, got %d content blocks", len(result.Content))
+	}
+}
+
+func TestToolsConfigureDispatch_ConflictingWhatAndAction(t *testing.T) {
+	t.Parallel()
+	h, _, _ := makeToolHandler(t)
+
+	resp := callConfigureRaw(h, `{"what":"health","action":"clear"}`)
+	result := parseToolResult(t, resp)
+	if !result.IsError {
+		t.Fatal("conflicting what/action should return isError:true")
+	}
+	text := result.Content[0].Text
+	if !strings.Contains(text, "invalid_param") {
+		t.Fatalf("expected invalid_param, got: %s", text)
+	}
+	if !strings.Contains(text, "Conflicting parameters") {
+		t.Fatalf("expected conflict explanation, got: %s", text)
+	}
+}
+
 // ============================================
 // getValidConfigureActions Tests
 // ============================================

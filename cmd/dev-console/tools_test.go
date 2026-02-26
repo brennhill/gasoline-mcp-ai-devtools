@@ -714,8 +714,14 @@ func TestMcpStructuredError(t *testing.T) {
 		if se["error"] != "missing_param" {
 			t.Errorf("Expected error code 'missing_param', got %v", se["error"])
 		}
+		if se["error_code"] != "missing_param" {
+			t.Errorf("Expected canonical error_code 'missing_param', got %v", se["error_code"])
+		}
 		if se["param"] != "what" {
 			t.Errorf("Expected param 'what', got %v", se["param"])
+		}
+		if se["recovery_playbook"] != "Add the 'what' parameter" {
+			t.Errorf("Expected canonical recovery_playbook, got %v", se["recovery_playbook"])
 		}
 
 		// Verify snake_case in the structured error JSON
