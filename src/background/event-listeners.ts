@@ -11,9 +11,9 @@
  * storage change listeners, and other Chrome extension events.
  */
 
-import type { StorageChange } from '../types'
-import { scaleTimeout } from '../lib/timeouts'
-import { StorageKey } from '../lib/constants'
+import type { StorageChange } from '../types/index.js'
+import { scaleTimeout } from '../lib/timeouts.js'
+import { StorageKey } from '../lib/constants.js'
 
 // =============================================================================
 // CONSTANTS - Rate Limiting & DoS Protection
@@ -463,14 +463,15 @@ export interface TrackedTabInfo {
   trackedTabId: number | null
   trackedTabUrl: string | null
   trackedTabTitle: string | null
+  tabStatus: 'loading' | 'complete' | null
 }
 
 /**
- * Get tracked tab information.
+ * Get tracked tab information, including Chrome tab status.
  */
 export async function getTrackedTabInfo(): Promise<TrackedTabInfo> {
   if (typeof chrome === 'undefined' || !chrome.storage) {
-    return { trackedTabId: null, trackedTabUrl: null, trackedTabTitle: null }
+    return { trackedTabId: null, trackedTabUrl: null, trackedTabTitle: null, tabStatus: null }
   }
 
   const result = (await chrome.storage.local.get([
@@ -479,10 +480,26 @@ export async function getTrackedTabInfo(): Promise<TrackedTabInfo> {
     StorageKey.TRACKED_TAB_TITLE
   ])) as { trackedTabId?: number; trackedTabUrl?: string; trackedTabTitle?: string }
 
+  const tabId = result.trackedTabId || null
+  let tabStatus: 'loading' | 'complete' | null = null
+
+  // Query Chrome tab API for live tab status if we have a tracked tab
+  if (tabId && typeof chrome !== 'undefined' && chrome.tabs) {
+    try {
+      const tab = await chrome.tabs.get(tabId)
+      if (tab.status === 'loading' || tab.status === 'complete') {
+        tabStatus = tab.status
+      }
+    } catch {
+      // Tab may have been closed — tabStatus stays null
+    }
+  }
+
   return {
-    trackedTabId: result.trackedTabId || null,
+    trackedTabId: tabId,
     trackedTabUrl: result.trackedTabUrl || null,
-    trackedTabTitle: result.trackedTabTitle || null
+    trackedTabTitle: result.trackedTabTitle || null,
+    tabStatus
   }
 }
 

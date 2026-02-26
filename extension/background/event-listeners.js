@@ -399,21 +399,36 @@ export function saveSetting(key, value) {
     chrome.storage.local.set({ [key]: value });
 }
 /**
- * Get tracked tab information.
+ * Get tracked tab information, including Chrome tab status.
  */
 export async function getTrackedTabInfo() {
     if (typeof chrome === 'undefined' || !chrome.storage) {
-        return { trackedTabId: null, trackedTabUrl: null, trackedTabTitle: null };
+        return { trackedTabId: null, trackedTabUrl: null, trackedTabTitle: null, tabStatus: null };
     }
     const result = (await chrome.storage.local.get([
         StorageKey.TRACKED_TAB_ID,
         StorageKey.TRACKED_TAB_URL,
         StorageKey.TRACKED_TAB_TITLE
     ]));
+    const tabId = result.trackedTabId || null;
+    let tabStatus = null;
+    // Query Chrome tab API for live tab status if we have a tracked tab
+    if (tabId && typeof chrome !== 'undefined' && chrome.tabs) {
+        try {
+            const tab = await chrome.tabs.get(tabId);
+            if (tab.status === 'loading' || tab.status === 'complete') {
+                tabStatus = tab.status;
+            }
+        }
+        catch {
+            // Tab may have been closed — tabStatus stays null
+        }
+    }
     return {
-        trackedTabId: result.trackedTabId || null,
+        trackedTabId: tabId,
         trackedTabUrl: result.trackedTabUrl || null,
-        trackedTabTitle: result.trackedTabTitle || null
+        trackedTabTitle: result.trackedTabTitle || null,
+        tabStatus
     };
 }
 /**

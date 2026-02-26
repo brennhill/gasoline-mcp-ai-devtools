@@ -198,56 +198,6 @@ func buildVitalsMap(snapshots []capture.PerformanceSnapshot) map[string]any {
 	return vitals
 }
 
-// GetPageInfo returns information about the currently tracked page.
-func GetPageInfo(deps Deps, req mcp.JSONRPCRequest, _ json.RawMessage) mcp.JSONRPCResponse {
-	cap := deps.GetCapture()
-	enabled, tabID, trackedURL := cap.GetTrackingStatus()
-	trackedTitle := cap.GetTrackedTabTitle()
-
-	pageURL := resolvePageURL(cap, trackedURL)
-	pageTitle := resolvePageTitle(deps, trackedTitle)
-
-	cspRestricted, cspLevel := cap.GetCSPStatus()
-
-	result := map[string]any{
-		"url":            pageURL,
-		"title":          pageTitle,
-		"tracked":        enabled,
-		"csp_restricted": cspRestricted,
-		"csp_level":      cspLevel,
-		"metadata":       BuildResponseMetadata(cap, time.Now()),
-	}
-	if tabID > 0 {
-		result["tab_id"] = tabID
-	}
-
-	return mcp.JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcp.JSONResponse("Page info", result)}
-}
-
-func resolvePageURL(cap *capture.Capture, trackedURL string) string {
-	if trackedURL != "" {
-		return trackedURL
-	}
-	waterfallEntries := cap.GetNetworkWaterfallEntries()
-	if len(waterfallEntries) > 0 {
-		return waterfallEntries[len(waterfallEntries)-1].PageURL
-	}
-	return ""
-}
-
-func resolvePageTitle(deps Deps, trackedTitle string) string {
-	if trackedTitle != "" {
-		return trackedTitle
-	}
-	entries, _ := deps.GetLogEntries()
-	for i := len(entries) - 1; i >= 0; i-- {
-		if title, ok := entries[i]["title"].(string); ok && title != "" {
-			return title
-		}
-	}
-	return ""
-}
-
 // GetTabs returns information about tracked browser tabs.
 func GetTabs(deps Deps, req mcp.JSONRPCRequest, _ json.RawMessage) mcp.JSONRPCResponse {
 	cap := deps.GetCapture()
@@ -624,4 +574,3 @@ func buildA11ySummary(auditResult map[string]any) map[string]any {
 		"top_issues": topIssues,
 	}
 }
-
