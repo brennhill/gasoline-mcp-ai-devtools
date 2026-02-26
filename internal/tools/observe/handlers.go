@@ -493,11 +493,17 @@ func GetNetworkBodies(deps Deps, req mcp.JSONRPCRequest, args json.RawMessage) m
 		return mcp.JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcp.JSONResponse("Network bodies", buildNetworkBodiesSummary(filtered, responseMeta))}
 	}
 
-	return mcp.JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcp.JSONResponse("Network bodies", map[string]any{
+	response := map[string]any{
 		"entries":  filtered,
 		"count":    len(filtered),
 		"metadata": responseMeta,
-	})}
+	}
+
+	if len(filtered) == 0 {
+		response["hint"] = networkBodiesEmptyHint(deps, len(allBodies), params.URL)
+	}
+
+	return mcp.JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcp.JSONResponse("Network bodies", response)}
 }
 
 // GetWSEvents returns captured WebSocket events with optional filtering.
@@ -537,11 +543,17 @@ func GetWSEvents(deps Deps, req mcp.JSONRPCRequest, args json.RawMessage) mcp.JS
 		return mcp.JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcp.JSONResponse("WebSocket events", buildWSEventsSummary(filtered, responseMeta))}
 	}
 
-	return mcp.JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcp.JSONResponse("WebSocket events", map[string]any{
+	response := map[string]any{
 		"entries":  filtered,
 		"count":    len(filtered),
 		"metadata": responseMeta,
-	})}
+	}
+
+	if len(filtered) == 0 {
+		response["hint"] = wsEventsEmptyHint(len(allEvents), params.URL)
+	}
+
+	return mcp.JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcp.JSONResponse("WebSocket events", response)}
 }
 
 // GetEnhancedActions returns captured user actions (clicks, inputs, navigations).

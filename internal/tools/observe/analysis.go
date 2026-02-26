@@ -148,13 +148,19 @@ func GetWSStatus(deps Deps, req mcp.JSONRPCRequest, args json.RawMessage) mcp.JS
 	}
 	status := deps.GetCapture().GetWebSocketStatus(filter)
 
-	return mcp.JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcp.JSONResponse("WebSocket status", map[string]any{
+	response := map[string]any{
 		"connections":  status.Connections,
 		"closed":       status.Closed,
 		"active_count": len(status.Connections),
 		"closed_count": len(status.Closed),
 		"metadata":     BuildResponseMetadata(deps.GetCapture(), time.Now()),
-	})}
+	}
+
+	if len(status.Connections) == 0 && len(status.Closed) == 0 {
+		response["hint"] = wsStatusEmptyHint()
+	}
+
+	return mcp.JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcp.JSONResponse("WebSocket status", response)}
 }
 
 // GetWebVitals returns Core Web Vitals metrics from performance snapshots.
