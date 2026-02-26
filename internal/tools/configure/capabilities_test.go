@@ -134,13 +134,52 @@ func TestBuildCapabilitiesMap_NoRequired(t *testing.T) {
 	}
 }
 
+func TestBuildCapabilitiesMap_InferDispatchParamWhenRequiredOmitted(t *testing.T) {
+	t.Parallel()
+
+	tools := []mcp.MCPTool{
+		{
+			Name: "interact",
+			InputSchema: map[string]any{
+				"properties": map[string]any{
+					"what": map[string]any{
+						"type": "string",
+						"enum": []string{"navigate", "click"},
+					},
+					"action": map[string]any{
+						"type": "string",
+						"enum": []string{"navigate", "click"},
+					},
+					"url": map[string]any{"type": "string"},
+				},
+				"anyOf": []map[string]any{
+					{"required": []string{"what"}},
+					{"required": []string{"action"}},
+				},
+			},
+		},
+	}
+
+	result := BuildCapabilitiesMap(tools)
+	tool := result["interact"].(map[string]any)
+
+	if got := tool["dispatch_param"]; got != "what" {
+		t.Fatalf("dispatch_param = %v, want what", got)
+	}
+
+	modes := tool["modes"].([]string)
+	if len(modes) != 2 || modes[0] != "navigate" || modes[1] != "click" {
+		t.Fatalf("modes = %v, want [navigate click]", modes)
+	}
+}
+
 func TestBuildCapabilitiesMap_IncludesModeParamsAndTypeMetadata(t *testing.T) {
 	t.Parallel()
 
 	tools := []mcp.MCPTool{
 		{
-			Name:        "observe",
-			Description: "Observe browser state",
+			Name:        "test_tool",
+			Description: "Test tool for metadata",
 			InputSchema: map[string]any{
 				"properties": map[string]any{
 					"what": map[string]any{
@@ -161,16 +200,16 @@ func TestBuildCapabilitiesMap_IncludesModeParamsAndTypeMetadata(t *testing.T) {
 	}
 
 	result := BuildCapabilitiesMap(tools)
-	observeRaw, ok := result["observe"]
+	toolRaw, ok := result["test_tool"]
 	if !ok {
-		t.Fatal("expected observe tool in result")
+		t.Fatal("expected test_tool in result")
 	}
-	observe, ok := observeRaw.(map[string]any)
+	toolMap, ok := toolRaw.(map[string]any)
 	if !ok {
-		t.Fatalf("observe type = %T, want map[string]any", observeRaw)
+		t.Fatalf("test_tool type = %T, want map[string]any", toolRaw)
 	}
 
-	modeParamsRaw, ok := observe["mode_params"]
+	modeParamsRaw, ok := toolMap["mode_params"]
 	if !ok {
 		t.Fatal("expected mode_params in capabilities")
 	}

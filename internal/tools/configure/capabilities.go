@@ -1,6 +1,7 @@
 // Purpose: Provides configure tool implementation helpers for policy and rewrite flows.
 // Why: Centralizes configure logic so policy/rewrite behavior remains deterministic and testable.
 // Docs: docs/features/feature/config-profiles/index.md
+// Docs: docs/features/describe_capabilities.md
 
 package configure
 
@@ -13,6 +14,7 @@ import (
 )
 
 type modeParamSpec struct {
+	Hint     string
 	Required []string
 	Optional []string
 }
@@ -91,19 +93,16 @@ var configureModeSpecs = map[string]modeParamSpec{
 }
 
 // BuildCapabilitiesSummary returns a compact summary: tool name → { description, dispatch_param, modes }.
+// modes is a map of mode name → one-line hint for discovery.
 // Omits full parameter schemas, reducing output from ~757K to ~10K.
 func BuildCapabilitiesSummary(tools []mcp.MCPTool) map[string]any {
 	toolsMap := make(map[string]any, len(tools))
 	for _, tool := range tools {
 		props, _ := tool.InputSchema["properties"].(map[string]any)
-		required := toStringSlice(tool.InputSchema["required"])
+		dispatchParam := inferDispatchParam(tool.InputSchema, props)
 
-		dispatchParam := ""
-		if len(required) > 0 {
-			dispatchParam = required[0]
-		}
-
-		modes := extractModes(dispatchParam, props)
+		modeNames := extractModes(dispatchParam, props)
+		modes := buildModeIndex(tool.Name, modeNames)
 
 		toolsMap[tool.Name] = map[string]any{
 			"description":    tool.Description,
@@ -114,6 +113,23 @@ func BuildCapabilitiesSummary(tools []mcp.MCPTool) map[string]any {
 	return toolsMap
 }
 
+// buildModeIndex returns a mode name → hint map for a tool.
+// Falls back to empty string if no hint is defined for a mode.
+func buildModeIndex(toolName string, modeNames []string) map[string]string {
+	specs := toolModeSpecs[toolName]
+	index := make(map[string]string, len(modeNames))
+	for _, mode := range modeNames {
+		hint := ""
+		if specs != nil {
+			if spec, ok := specs[mode]; ok {
+				hint = spec.Hint
+			}
+		}
+		index[mode] = hint
+	}
+	return index
+}
+
 // BuildCapabilitiesMap transforms tool schemas into machine-readable capability metadata.
 // It preserves legacy fields (dispatch_param, modes, params, description) and adds:
 // - param_details: per-parameter type/enum/default metadata
@@ -122,12 +138,7 @@ func BuildCapabilitiesMap(tools []mcp.MCPTool) map[string]any {
 	toolsMap := make(map[string]any, len(tools))
 	for _, tool := range tools {
 		props, _ := tool.InputSchema["properties"].(map[string]any)
-		required := toStringSlice(tool.InputSchema["required"])
-
-		dispatchParam := ""
-		if len(required) > 0 {
-			dispatchParam = required[0]
-		}
+		dispatchParam := inferDispatchParam(tool.InputSchema, props)
 
 		modes := extractModes(dispatchParam, props)
 
@@ -310,11 +321,11 @@ func buildModeParams(
 			spec.Required = append(spec.Required, dispatchParam)
 		}
 
-		if toolName == "configure" {
-			if configureSpec, ok := configureModeSpecs[mode]; ok {
+		if toolSpecs, ok := toolModeSpecs[toolName]; ok {
+			if modeSpec, ok := toolSpecs[mode]; ok {
 				spec = modeParamSpec{
-					Required: append([]string{}, configureSpec.Required...),
-					Optional: append([]string{}, configureSpec.Optional...),
+					Required: append([]string{}, modeSpec.Required...),
+					Optional: append([]string{}, modeSpec.Optional...),
 				}
 				if dispatchParam != "" && !containsString(spec.Required, dispatchParam) {
 					spec.Required = append([]string{dispatchParam}, spec.Required...)

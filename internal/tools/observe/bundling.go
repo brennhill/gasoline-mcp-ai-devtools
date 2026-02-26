@@ -34,6 +34,7 @@ func GetErrorBundles(deps Deps, req mcp.JSONRPCRequest, args json.RawMessage) mc
 		Limit         int    `json:"limit"`
 		WindowSeconds int    `json:"window_seconds"`
 		URL           string `json:"url"`
+		Summary       bool   `json:"summary"`
 	}
 	mcp.LenientUnmarshal(args, &params)
 	if params.Limit <= 0 {
@@ -62,6 +63,10 @@ func GetErrorBundles(deps Deps, req mcp.JSONRPCRequest, args json.RawMessage) mc
 	var newestEntry time.Time
 	if len(errors) > 0 {
 		newestEntry = errors[0].ts
+	}
+
+	if params.Summary {
+		return mcp.JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcp.JSONResponse("Error bundles", buildErrorBundlesSummary(bundles, newestEntry, BuildResponseMetadata(cap, newestEntry)))}
 	}
 
 	return mcp.JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcp.JSONResponse("Error bundles", map[string]any{

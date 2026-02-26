@@ -136,9 +136,24 @@ func (h *ToolHandler) toolInteract(req JSONRPCRequest, args json.RawMessage) JSO
 		what = params.Action
 	}
 
+	if params.What != "" && params.Action != "" && params.What != params.Action {
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(
+			ErrInvalidParam,
+			"Conflicting dispatch values: 'what' and 'action' do not match",
+			"Provide only one dispatch field, or set both to the same action value",
+			withParam("what"),
+		)}
+	}
+
 	if what == "" {
 		validActions := h.getValidInteractActions()
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrMissingParam, "Required parameter 'what' is missing", "Add the 'what' parameter and call again", withParam("what"), withHint("Valid values: "+validActions))}
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(
+			ErrMissingParam,
+			"Required dispatch parameter is missing: provide 'what' or alias 'action'",
+			"Add 'what' (preferred) or 'action' and call again",
+			withParam("what"),
+			withHint("Valid values: "+validActions),
+		)}
 	}
 
 	if _, err := parseEvidenceMode(args); err != nil {

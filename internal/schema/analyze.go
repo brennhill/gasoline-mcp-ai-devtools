@@ -142,6 +142,10 @@ func AnalyzeToolSchema() mcp.MCPTool {
 					"type":        "number",
 					"description": "Pixel diff threshold 0-255 (visual_diff, default 30)",
 				},
+				"summary": map[string]any{
+					"type":        "boolean",
+					"description": "Return compact summary instead of full details (accessibility, security_audit, third_party_audit, form_validation)",
+				},
 			},
 			"required": []string{"what"},
 		},
