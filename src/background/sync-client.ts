@@ -11,7 +11,7 @@
  * Features: Simple exponential backoff, binary connection state, self-healing for MV3.
  */
 
-import type { PendingQuery } from '../types'
+import type { PendingQuery } from '../types/index.js'
 
 // =============================================================================
 // TYPES

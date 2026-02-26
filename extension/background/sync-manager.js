@@ -5,13 +5,13 @@
  * Docs: docs/features/feature/interact-explore/index.md
  * Docs: docs/features/feature/observe/index.md
  */
-import { createSyncClient } from './sync-client';
-import { getLastCSPStatus } from './browser-actions';
-import { DebugCategory } from './debug';
-import { updateBadge } from './communication';
-import { isQueryProcessing, addProcessingQuery, removeProcessingQuery } from './state-manager';
-import { getTrackedTabInfo } from './event-listeners';
-import { handlePendingQuery as handlePendingQueryImpl } from './pending-queries';
+import { createSyncClient } from './sync-client.js';
+import { getLastCSPStatus } from './browser-actions.js';
+import { DebugCategory } from './debug.js';
+import { updateBadge } from './communication.js';
+import { isQueryProcessing, addProcessingQuery, removeProcessingQuery } from './state-manager.js';
+import { getTrackedTabInfo } from './event-listeners.js';
+import { handlePendingQuery as handlePendingQueryImpl } from './pending-queries.js';
 // =============================================================================
 // MODULE STATE
 // =============================================================================

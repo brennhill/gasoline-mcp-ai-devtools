@@ -5,8 +5,8 @@
  * Docs: docs/features/feature/interact-explore/index.md
  * Docs: docs/features/feature/observe/index.md
  */
-import { scaleTimeout } from '../lib/timeouts';
-import { StorageKey } from '../lib/constants';
+import { scaleTimeout } from '../lib/timeouts.js';
+import { StorageKey } from '../lib/constants.js';
 // =============================================================================
 // CONSTANTS - Rate Limiting & DoS Protection
 // =============================================================================

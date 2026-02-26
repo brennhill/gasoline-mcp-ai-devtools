@@ -2,6 +2,8 @@
 // Why: Prevents silent regressions in critical behavior paths.
 // Docs: docs/features/feature/observe/index.md
 
+// TODO: Split into tools_observe_page_test.go for page-specific tests when this file approaches 1000 LOC.
+
 // tools_observe_handler_test.go — Comprehensive unit tests for observe tool dispatch and response fields.
 // Validates all response fields, snake_case JSON convention, and dispatch logic.
 package main

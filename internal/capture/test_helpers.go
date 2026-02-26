@@ -134,15 +134,6 @@ func (c *Capture) SimulateExtensionDisconnectForTest() {
 	defer c.mu.Unlock()
 	c.ext.lastSyncSeen = time.Now().Add(-1 * time.Hour)
 }
-
-// SimulateExtensionConnectForTest marks the extension as connected by
-// setting lastSyncSeen to now. Thread-safe (operates on the instance, not a global).
-func (c *Capture) SimulateExtensionConnectForTest() {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	c.ext.lastSyncSeen = time.Now()
-}
-
 // SetTabStatusForTest sets the tracked tab status (TEST ONLY).
 // Valid values: "loading", "complete".
 func (c *Capture) SetTabStatusForTest(status string) {

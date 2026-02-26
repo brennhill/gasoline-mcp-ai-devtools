@@ -11,9 +11,9 @@
  * storage change listeners, and other Chrome extension events.
  */
 
-import type { StorageChange } from '../types'
-import { scaleTimeout } from '../lib/timeouts'
-import { StorageKey } from '../lib/constants'
+import type { StorageChange } from '../types/index.js'
+import { scaleTimeout } from '../lib/timeouts.js'
+import { StorageKey } from '../lib/constants.js'
 
 // =============================================================================
 // CONSTANTS - Rate Limiting & DoS Protection

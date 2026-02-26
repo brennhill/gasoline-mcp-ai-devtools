@@ -183,7 +183,12 @@ func (c *Capture) updateSyncConnectionState(req SyncRequest, clientID string, no
 		c.ext.trackedTabURL = req.Settings.TrackedTabURL
 		c.ext.trackedTabTitle = req.Settings.TrackedTabTitle
 		c.ext.trackingUpdated = now
-		c.ext.tabStatus = req.Settings.TabStatus
+		switch req.Settings.TabStatus {
+		case "loading", "complete":
+			c.ext.tabStatus = req.Settings.TabStatus
+		default:
+			c.ext.tabStatus = ""
+		}
 		c.ext.cspRestricted = req.Settings.CspRestricted
 		c.ext.cspLevel = req.Settings.CspLevel
 	}

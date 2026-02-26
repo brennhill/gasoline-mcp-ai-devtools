@@ -12,16 +12,18 @@ import (
 	"github.com/dev-console/dev-console/internal/pagination"
 )
 
+// TODO: Add data_age_ms, page_ready_for_commands, tab_status to OpenAPI spec.
+
 // ResponseMetadata provides freshness information for buffer-backed observe responses.
 type ResponseMetadata struct {
-	RetrievedAt     string `json:"retrieved_at"`
-	IsStale         bool   `json:"is_stale"`
-	DataAge         string `json:"data_age"`
+	RetrievedAt string `json:"retrieved_at"`
+	IsStale     bool   `json:"is_stale"`
+	DataAge     string `json:"data_age"`
 	// DataAgeMs is milliseconds since the newest entry in the response data.
 	// Returns -1 when no data exists (sentinel for "no data").
 	// Clamped to zero if the clock reports a negative age (e.g., NTP adjustment).
-	DataAgeMs       int64  `json:"data_age_ms"`
-	NoiseSuppressed int    `json:"noise_suppressed,omitempty"`
+	DataAgeMs       int64 `json:"data_age_ms"`
+	NoiseSuppressed int   `json:"noise_suppressed,omitempty"`
 }
 
 // BuildResponseMetadata constructs freshness metadata for an observe response.
