@@ -6,48 +6,39 @@ package schema
 
 import "github.com/dev-console/dev-console/internal/mcp"
 
+// interactActions is the canonical list of values accepted by the 'what' parameter.
+// The deprecated 'action' alias mirrors this list exactly; update both together.
+var interactActions = []string{
+	"highlight", "subtitle", "save_state", "state_save", "load_state", "state_load", "list_states", "state_list", "delete_state", "state_delete",
+	"set_storage", "delete_storage", "clear_storage", "set_cookie", "delete_cookie",
+	"execute_js", "navigate", "refresh", "back", "forward", "new_tab", "switch_tab", "close_tab", "screenshot",
+	"click", "type", "select", "check",
+	"get_text", "get_value", "get_attribute",
+	"set_attribute", "focus", "scroll_to", "wait_for", "key_press", "paste",
+	"open_composer", "submit_active_composer", "confirm_top_dialog", "dismiss_top_overlay",
+	"list_interactive",
+	"get_readable", "get_markdown",
+	"navigate_and_wait_for", "fill_form_and_submit", "fill_form", "run_a11y_and_export_sarif",
+	"record_start", "record_stop",
+	"upload", "draw_mode_start",
+}
+
 // InteractToolSchema returns the MCP tool definition for the interact tool.
 func InteractToolSchema() mcp.MCPTool {
 	return mcp.MCPTool{
 		Name:        "interact",
-		Description: "Browser actions. Requires AI Web Pilot.\n\nSynchronous Mode (Default): Tools now block until the extension returns a result (up to 15s). Set background:true to return immediately with a correlation_id.\n\nSelectors: CSS or semantic (text=Submit, role=button, placeholder=Email, label=Name, aria-label=Close). subtitle param composable with any action. analyze=true captures perf_diff. navigate/refresh auto-include perf_diff.\n\nDraw Mode: draw_mode_start activates annotation overlay — user draws rectangles and types feedback, presses ESC to finish. Use analyze({what:'annotations'}) to retrieve results.\n\nCompatibility: either what='navigate' or action='navigate' is accepted. action='screenshot' remains a backward-compatible alias for observe({what:'screenshot'}).",
+		Description: "Browser actions. Requires AI Web Pilot.\n\nSynchronous Mode (Default): Tools now block until the extension returns a result (up to 15s). Set background:true to return immediately with a correlation_id.\n\nSelectors: CSS or semantic (text=Submit, role=button, placeholder=Email, label=Name, aria-label=Close). subtitle param composable with any action. analyze=true captures perf_diff. navigate/refresh auto-include perf_diff.\n\nDraw Mode: draw_mode_start activates annotation overlay — user draws rectangles and types feedback, presses ESC to finish. Use analyze({what:'annotations'}) to retrieve results.\n\nDispatch: 'what' is required. 'action' is a deprecated runtime alias accepted for backward compatibility — prefer 'what'.",
 		InputSchema: map[string]any{
 			"type": "object",
 			"properties": map[string]any{
 				"what": map[string]any{
 					"type": "string",
-					"enum": []string{
-						"highlight", "subtitle", "save_state", "state_save", "load_state", "state_load", "list_states", "state_list", "delete_state", "state_delete",
-						"set_storage", "delete_storage", "clear_storage", "set_cookie", "delete_cookie",
-						"execute_js", "navigate", "refresh", "back", "forward", "new_tab", "switch_tab", "close_tab", "screenshot",
-						"click", "type", "select", "check",
-						"get_text", "get_value", "get_attribute",
-						"set_attribute", "focus", "scroll_to", "wait_for", "key_press", "paste",
-						"open_composer", "submit_active_composer", "confirm_top_dialog", "dismiss_top_overlay",
-						"list_interactive",
-						"get_readable", "get_markdown",
-						"navigate_and_wait_for", "fill_form_and_submit", "fill_form", "run_a11y_and_export_sarif",
-						"record_start", "record_stop",
-						"upload", "draw_mode_start",
-					},
+					"enum": interactActions,
 				},
 				"action": map[string]any{
 					"type":        "string",
-					"description": "Deprecated alias for 'what'",
-					"enum": []string{
-						"highlight", "subtitle", "save_state", "state_save", "load_state", "state_load", "list_states", "state_list", "delete_state", "state_delete",
-						"set_storage", "delete_storage", "clear_storage", "set_cookie", "delete_cookie",
-						"execute_js", "navigate", "refresh", "back", "forward", "new_tab", "switch_tab", "close_tab", "screenshot",
-						"click", "type", "select", "check",
-						"get_text", "get_value", "get_attribute",
-						"set_attribute", "focus", "scroll_to", "wait_for", "key_press", "paste",
-						"open_composer", "submit_active_composer", "confirm_top_dialog", "dismiss_top_overlay",
-						"list_interactive",
-						"get_readable", "get_markdown",
-						"navigate_and_wait_for", "fill_form_and_submit", "fill_form", "run_a11y_and_export_sarif",
-						"record_start", "record_stop",
-						"upload", "draw_mode_start",
-					},
+					"description": "Deprecated alias for 'what'. Prefer 'what'.",
+					"enum":        interactActions,
 				},
 				"telemetry_mode": map[string]any{
 					"type":        "string",

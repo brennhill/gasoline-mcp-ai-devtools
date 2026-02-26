@@ -139,6 +139,10 @@ func inferDispatchParam(inputSchema map[string]any, props map[string]any) string
 	if len(required) > 0 {
 		return required[0]
 	}
+	// Defensive fallback: schemas must not use top-level anyOf/oneOf (invariant
+	// enforced by TestAllToolSchemas_NoTopLevelCombiners), but external tool
+	// schemas passed to BuildCapabilitiesMap/BuildCapabilitiesSummary may predate
+	// that constraint. Return the first branch whose required param has an enum.
 	for _, combinerKey := range []string{"anyOf", "oneOf"} {
 		combinerRaw, ok := inputSchema[combinerKey]
 		if !ok {
@@ -214,12 +218,7 @@ func BuildCapabilitiesForTool(tools []mcp.MCPTool, toolName string) (map[string]
 			continue
 		}
 		props, _ := tool.InputSchema["properties"].(map[string]any)
-		required := toStringSlice(tool.InputSchema["required"])
-
-		dispatchParam := ""
-		if len(required) > 0 {
-			dispatchParam = required[0]
-		}
+		dispatchParam := inferDispatchParam(tool.InputSchema, props)
 
 		modes := extractModes(dispatchParam, props)
 

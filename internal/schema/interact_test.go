@@ -2,7 +2,7 @@ package schema
 
 import "testing"
 
-func TestInteractToolSchema_DispatchAcceptsWhatOrAction(t *testing.T) {
+func TestInteractToolSchema_RequiresWhat_ActionIsRuntimeAlias(t *testing.T) {
 	t.Parallel()
 
 	tool := InteractToolSchema()
