@@ -253,7 +253,7 @@ func TestStoreElementDetails_MultipleDetails(t *testing.T) {
 		"d1": json.RawMessage(`{"selector":"div.a","tag":"div","text_content":"A"}`),
 		"d2": json.RawMessage(`{"selector":"span.b","tag":"span","text_content":"B"}`),
 	}
-	storeElementDetails(details)
+	storeElementDetails(globalAnnotationStore, details)
 
 	got1, found1 := globalAnnotationStore.GetDetail("d1")
 	if !found1 || got1.Selector != "div.a" {
@@ -281,7 +281,7 @@ func TestStoreElementDetails_InvalidJSON(t *testing.T) {
 		"bad": json.RawMessage(`not-valid-json`),
 	}
 	// Should not panic; invalid JSON is silently ignored
-	storeElementDetails(details)
+	storeElementDetails(globalAnnotationStore, details)
 
 	_, found := globalAnnotationStore.GetDetail("bad")
 	if found {
@@ -298,10 +298,10 @@ func TestStoreElementDetails_Empty(t *testing.T) {
 	}()
 
 	// Should not panic with empty map
-	storeElementDetails(map[string]json.RawMessage{})
+	storeElementDetails(globalAnnotationStore, map[string]json.RawMessage{})
 
 	// Should not panic with nil map
-	storeElementDetails(nil)
+	storeElementDetails(globalAnnotationStore, nil)
 }
 
 // --- storeAnnotationSession edge cases ---

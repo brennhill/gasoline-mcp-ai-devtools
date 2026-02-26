@@ -8,6 +8,7 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"strings"
 
 	"github.com/dev-console/dev-console/internal/queries"
@@ -51,9 +52,12 @@ func (h *ToolHandler) handleListInteractive(req JSONRPCRequest, args json.RawMes
 
 	resp := h.MaybeWaitForCommand(req, correlationID, args, "list_interactive queued")
 
-	// Post-process: extract elements from result and build index→selector store
-	// IMPORTANT: index store is built from ALL elements before truncation
-	h.buildElementIndexFromResponse(resp)
+	// Post-process: extract elements from result and build index→selector store.
+	// IMPORTANT: index store is built from ALL elements before truncation.
+	indexGeneration := h.buildElementIndexFromResponse(req.ClientID, params.TabID, correlationID, resp)
+	if indexGeneration != "" {
+		resp = annotateListInteractiveIndexMetadata(resp, params.TabID, indexGeneration)
+	}
 
 	if params.Limit > 0 {
 		resp = truncateListInteractiveResponse(resp, params.Limit)
@@ -62,16 +66,14 @@ func (h *ToolHandler) handleListInteractive(req JSONRPCRequest, args json.RawMes
 	return resp
 }
 
-// buildElementIndexFromResponse parses list_interactive results and populates elementIndexStore.
-func (h *ToolHandler) buildElementIndexFromResponse(resp JSONRPCResponse) {
+// buildElementIndexFromResponse parses list_interactive results and stores scoped index selectors.
+func (h *ToolHandler) buildElementIndexFromResponse(clientID string, tabID int, generation string, resp JSONRPCResponse) string {
 	var result MCPToolResult
 	if err := json.Unmarshal(resp.Result, &result); err != nil || result.IsError {
-		return
+		return ""
 	}
 
-	// Extract the result JSON from the command response
 	for _, block := range result.Content {
-		// Try to find JSON in the text content
 		idx := strings.Index(block.Text, "{")
 		if idx < 0 {
 			continue
@@ -83,14 +85,12 @@ func (h *ToolHandler) buildElementIndexFromResponse(resp JSONRPCResponse) {
 			continue
 		}
 
-		// Look for result.elements or result.result.elements
 		elements := extractElementList(data)
 		if elements == nil {
 			continue
 		}
 
-		h.elementIndexMu.Lock()
-		h.elementIndexStore = make(map[int]string, len(elements))
+		indexMap := make(map[int]string, len(elements))
 		for _, elem := range elements {
 			elemMap, ok := elem.(map[string]any)
 			if !ok {
@@ -99,12 +99,49 @@ func (h *ToolHandler) buildElementIndexFromResponse(resp JSONRPCResponse) {
 			indexVal, _ := elemMap["index"].(float64)
 			selector, _ := elemMap["selector"].(string)
 			if selector != "" {
-				h.elementIndexStore[int(indexVal)] = selector
+				indexMap[int(indexVal)] = selector
 			}
 		}
-		h.elementIndexMu.Unlock()
-		return
+		if h.elementIndexRegistry == nil {
+			h.elementIndexRegistry = newElementIndexRegistry()
+		}
+		return h.elementIndexRegistry.store(clientID, tabID, generation, indexMap)
 	}
+	return ""
+}
+
+func annotateListInteractiveIndexMetadata(resp JSONRPCResponse, tabID int, generation string) JSONRPCResponse {
+	if generation == "" {
+		return resp
+	}
+	var result MCPToolResult
+	if err := json.Unmarshal(resp.Result, &result); err != nil || result.IsError {
+		return resp
+	}
+	for i, block := range result.Content {
+		idx := strings.Index(block.Text, "{")
+		if idx < 0 {
+			continue
+		}
+		jsonStr := block.Text[idx:]
+		prefix := block.Text[:idx]
+
+		var data map[string]any
+		if json.Unmarshal([]byte(jsonStr), &data) != nil {
+			continue
+		}
+		data["index_generation"] = generation
+		data["index_scope_tab_id"] = tabID
+		newJSON, err := json.Marshal(data)
+		if err != nil {
+			continue
+		}
+		result.Content[i].Text = prefix + string(newJSON)
+		newResult, _ := json.Marshal(result)
+		resp.Result = newResult
+		return resp
+	}
+	return resp
 }
 
 // truncateListInteractiveResponse limits the elements array in a list_interactive response.
@@ -173,10 +210,17 @@ func setNestedElements(data map[string]any, elements []any) {
 // extractElementList — delegated to internal/tools/interact package.
 var extractElementList = act.ExtractElementList
 
-// resolveIndexToSelector looks up a selector from the element index store.
-func (h *ToolHandler) resolveIndexToSelector(index int) (string, bool) {
-	h.elementIndexMu.RLock()
-	defer h.elementIndexMu.RUnlock()
-	sel, ok := h.elementIndexStore[index]
-	return sel, ok
+// resolveIndexToSelector looks up a selector from the scoped element index store.
+func (h *ToolHandler) resolveIndexToSelector(clientID string, tabID int, index int, generation string) (string, bool, bool, string) {
+	if h.elementIndexRegistry == nil {
+		return "", false, false, ""
+	}
+	return h.elementIndexRegistry.resolve(clientID, tabID, index, generation)
+}
+
+func formatIndexGenerationConflict(expected, actual string) string {
+	if expected == "" || actual == "" {
+		return "Element index generation mismatch. Call list_interactive again and retry with the latest index_generation."
+	}
+	return fmt.Sprintf("Element index generation mismatch (expected %q, latest %q). Call list_interactive again and retry with the latest index_generation.", expected, actual)
 }
