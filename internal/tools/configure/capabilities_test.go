@@ -211,6 +211,50 @@ func TestBuildCapabilitiesMap_InferDispatchParamAnyOfSliceAny(t *testing.T) {
 	}
 }
 
+func TestBuildCapabilitiesForTool_InferDispatchParamWhenRequiredOmitted(t *testing.T) {
+	t.Parallel()
+
+	tools := []mcp.MCPTool{
+		{
+			Name: "interact",
+			InputSchema: map[string]any{
+				"properties": map[string]any{
+					"what": map[string]any{
+						"type": "string",
+						"enum": []string{"navigate", "click"},
+					},
+					"action": map[string]any{
+						"type": "string",
+						"enum": []string{"navigate", "click"},
+					},
+					"url": map[string]any{"type": "string"},
+				},
+				"anyOf": []map[string]any{
+					{"required": []string{"what"}},
+					{"required": []string{"action"}},
+				},
+			},
+		},
+	}
+
+	tool, ok := BuildCapabilitiesForTool(tools, "interact")
+	if !ok {
+		t.Fatal("expected interact capabilities")
+	}
+
+	if got := tool["dispatch_param"]; got != "what" {
+		t.Fatalf("dispatch_param = %v, want what", got)
+	}
+
+	modes, ok := tool["modes"].([]string)
+	if !ok {
+		t.Fatalf("modes type = %T, want []string", tool["modes"])
+	}
+	if len(modes) != 2 || modes[0] != "navigate" || modes[1] != "click" {
+		t.Fatalf("modes = %v, want [navigate click]", modes)
+	}
+}
+
 func TestBuildCapabilitiesMap_IncludesModeParamsAndTypeMetadata(t *testing.T) {
 	t.Parallel()
 
