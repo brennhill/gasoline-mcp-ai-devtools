@@ -33,6 +33,7 @@ Key patterns:
 - Performance: interact(action="navigate"|"refresh") auto-includes perf_diff. Add analyze=true to any interact action for profiling.
 - Noise filtering: use configure(action="noise_rule", noise_action="auto_detect") to suppress recurring noise.
 - Recovery: if tools return repeated connection errors or timeouts, use configure(action="restart") to force-restart the daemon. This works even when the daemon is completely unresponsive.
+- Token savings: pass summary=true to observe or analyze for compact responses (~60-70% smaller). Set once per session: configure(what="store", store_action="save", namespace="session", key="response_mode", data={"summary":true}). Use limit=N on interact(what="list_interactive") to cap returned elements.
 - For routing help, read gasoline://capabilities. For detailed docs, read gasoline://guide. For quick examples, read gasoline://quickstart.`
 
 // MCPHandler owns JSON-RPC request routing and response post-processing for MCP.

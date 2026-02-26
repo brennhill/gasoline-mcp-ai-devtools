@@ -115,36 +115,36 @@ var toolModeSpecs = map[string]map[string]modeParamSpec{
 	// ── observe ────────────────────────────────────────────────
 	"observe": {
 		"errors": {
-			Hint:     "Raw JavaScript console errors",
-			Optional: []string{"scope", "limit"},
+			Hint:     "Raw JavaScript console errors. summary=true returns counts by source + top messages",
+			Optional: []string{"scope", "limit", "summary"},
 		},
 		"logs": {
-			Hint:     "Console log messages with level/source filtering",
-			Optional: []string{"min_level", "level", "source", "include_internal", "include_extension_logs", "extension_limit", "limit", "scope"},
+			Hint:     "Console log messages with level/source filtering. summary=true returns counts by level/source",
+			Optional: []string{"min_level", "level", "source", "include_internal", "include_extension_logs", "extension_limit", "limit", "scope", "summary"},
 		},
 		"extension_logs": {
 			Hint:     "Gasoline extension internal debug logs",
 			Optional: []string{"limit"},
 		},
 		"network_waterfall": {
-			Hint:     "HTTP request/response timeline with status and timing",
-			Optional: []string{"url", "method", "status_min", "status_max", "limit", "after_cursor", "before_cursor", "since_cursor", "restart_on_eviction"},
+			Hint:     "HTTP request/response timeline with status and timing. summary=true returns compact {url,ms,type} entries",
+			Optional: []string{"url", "method", "status_min", "status_max", "limit", "summary", "after_cursor", "before_cursor", "since_cursor", "restart_on_eviction"},
 		},
 		"network_bodies": {
-			Hint:     "HTTP response bodies with JSON path extraction",
-			Optional: []string{"url", "body_key", "body_path", "method", "status_min", "status_max", "limit", "after_cursor", "before_cursor", "since_cursor", "restart_on_eviction"},
+			Hint:     "HTTP response bodies with JSON path extraction. summary=true returns status groups + top URLs",
+			Optional: []string{"url", "body_key", "body_path", "method", "status_min", "status_max", "limit", "after_cursor", "before_cursor", "since_cursor", "restart_on_eviction", "summary"},
 		},
 		"websocket_events": {
-			Hint:     "WebSocket message frames (incoming/outgoing)",
-			Optional: []string{"connection_id", "direction", "limit", "after_cursor", "before_cursor", "since_cursor", "restart_on_eviction"},
+			Hint:     "WebSocket message frames (incoming/outgoing). summary=true returns direction/event counts",
+			Optional: []string{"connection_id", "direction", "limit", "after_cursor", "before_cursor", "since_cursor", "restart_on_eviction", "summary"},
 		},
 		"websocket_status": {
 			Hint:     "Active WebSocket connection states",
 			Optional: []string{"limit"},
 		},
 		"actions": {
-			Hint:     "User interaction log (clicks, inputs, navigation)",
-			Optional: []string{"limit", "after_cursor", "before_cursor", "since_cursor", "last_n", "restart_on_eviction"},
+			Hint:     "User interaction log (clicks, inputs, navigation). summary=true returns counts by type + time range",
+			Optional: []string{"limit", "after_cursor", "before_cursor", "since_cursor", "last_n", "restart_on_eviction", "summary"},
 		},
 		"vitals": {
 			Hint:     "Core Web Vitals (LCP, CLS, INP, FCP, TTFB)",
@@ -157,20 +157,20 @@ var toolModeSpecs = map[string]map[string]modeParamSpec{
 			Hint: "All open browser tabs with URLs",
 		},
 		"history": {
-			Hint:     "Recent page navigation history",
-			Optional: []string{"limit"},
+			Hint:     "Recent page navigation history. summary=true returns counts only",
+			Optional: []string{"limit", "summary"},
 		},
 		"pilot": {
 			Hint:     "AI Web Pilot connection status and availability",
 			Optional: []string{"limit"},
 		},
 		"timeline": {
-			Hint:     "Merged chronological view of actions, errors, network, and WebSocket events",
-			Optional: []string{"include", "limit"},
+			Hint:     "Merged chronological view of actions, errors, network, and WebSocket events. summary=true returns counts by type",
+			Optional: []string{"include", "limit", "summary"},
 		},
 		"error_bundles": {
-			Hint:     "Pre-assembled debug context per error (error + network + actions + logs in time window)",
-			Optional: []string{"window_seconds", "limit", "scope"},
+			Hint:     "Pre-assembled debug context per error (error + network + actions + logs in time window). summary=true returns bundle counts + unique messages",
+			Optional: []string{"window_seconds", "limit", "scope", "summary"},
 		},
 		"screenshot": {
 			Hint:     "Capture page screenshot (full page or element)",
@@ -318,8 +318,8 @@ var toolModeSpecs = map[string]map[string]modeParamSpec{
 			Optional: []string{"script", "world", "timeout_ms"},
 		},
 		"list_interactive": {
-			Hint:     "List all clickable/typeable elements on the page",
-			Optional: []string{"visible_only", "frame", "scope_selector"},
+			Hint:     "List all clickable/typeable elements on the page. Use limit to cap results",
+			Optional: []string{"visible_only", "frame", "scope_selector", "limit"},
 		},
 		"get_readable": {
 			Hint:     "Extract readable text content from the page",
@@ -435,8 +435,8 @@ var toolModeSpecs = map[string]map[string]modeParamSpec{
 			Hint: "Page load performance metrics and bottleneck analysis",
 		},
 		"accessibility": {
-			Hint:     "WCAG/axe accessibility audit with violation details",
-			Optional: []string{"selector", "scope", "tags", "force_refresh", "frame"},
+			Hint:     "WCAG/axe accessibility audit with violation details. summary=true returns counts + top issues",
+			Optional: []string{"selector", "scope", "tags", "force_refresh", "frame", "summary"},
 		},
 		"error_clusters": {
 			Hint: "Group errors by pattern to identify systemic issues",
@@ -445,12 +445,12 @@ var toolModeSpecs = map[string]map[string]modeParamSpec{
 			Hint: "Analyze navigation history patterns",
 		},
 		"security_audit": {
-			Hint:     "Check for credential leaks, CSP, cookie, and header risks",
-			Optional: []string{"checks", "severity_min"},
+			Hint:     "Check for credential leaks, CSP, cookie, and header risks. summary=true returns counts + top issues",
+			Optional: []string{"checks", "severity_min", "summary"},
 		},
 		"third_party_audit": {
-			Hint:     "Audit third-party script origins and data exposure",
-			Optional: []string{"first_party_origins", "include_static", "custom_lists"},
+			Hint:     "Audit third-party script origins and data exposure. summary=true returns counts + top origins",
+			Optional: []string{"first_party_origins", "include_static", "custom_lists", "summary"},
 		},
 		"link_health": {
 			Hint:     "Check all page links for broken URLs (404s, timeouts)",
@@ -492,7 +492,8 @@ var toolModeSpecs = map[string]map[string]modeParamSpec{
 			Optional: []string{"selector", "frame"},
 		},
 		"form_validation": {
-			Hint: "Check form validation rules and constraint violations",
+			Hint:     "Check form validation rules and constraint violations. summary=true returns counts only",
+			Optional: []string{"summary"},
 		},
 		"visual_baseline": {
 			Hint:     "Capture a baseline screenshot for visual regression",

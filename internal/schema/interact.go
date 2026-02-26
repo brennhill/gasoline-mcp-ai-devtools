@@ -86,6 +86,10 @@ func InteractToolSchema() mcp.MCPTool {
 					"type":        "boolean",
 					"description": "Only return visible elements (list_interactive)",
 				},
+				"limit": map[string]any{
+					"type":        "number",
+					"description": "Max elements to return (list_interactive, default all)",
+				},
 				"frame": map[string]any{
 					"description": "Target iframe: CSS selector, 0-based index, or \"all\"",
 					"type":        "string",

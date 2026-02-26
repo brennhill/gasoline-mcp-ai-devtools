@@ -18,6 +18,7 @@ func (h *ToolHandler) handleListInteractive(req JSONRPCRequest, args json.RawMes
 	var params struct {
 		TabID       int  `json:"tab_id,omitempty"`
 		VisibleOnly bool `json:"visible_only,omitempty"`
+		Limit       int  `json:"limit,omitempty"`
 	}
 	if err := json.Unmarshal(args, &params); err != nil {
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidJSON, "Invalid JSON arguments: "+err.Error(), "Fix JSON syntax and call again")}
@@ -48,7 +49,12 @@ func (h *ToolHandler) handleListInteractive(req JSONRPCRequest, args json.RawMes
 	resp := h.MaybeWaitForCommand(req, correlationID, args, "list_interactive queued")
 
 	// Post-process: extract elements from result and build index→selector store
+	// IMPORTANT: index store is built from ALL elements before truncation
 	h.buildElementIndexFromResponse(resp)
+
+	if params.Limit > 0 {
+		resp = truncateListInteractiveResponse(resp, params.Limit)
+	}
 
 	return resp
 }
@@ -95,6 +101,69 @@ func (h *ToolHandler) buildElementIndexFromResponse(resp JSONRPCResponse) {
 		}
 		h.elementIndexMu.Unlock()
 		return
+	}
+}
+
+// truncateListInteractiveResponse limits the elements array in a list_interactive response.
+func truncateListInteractiveResponse(resp JSONRPCResponse, limit int) JSONRPCResponse {
+	var result MCPToolResult
+	if err := json.Unmarshal(resp.Result, &result); err != nil || result.IsError {
+		return resp
+	}
+
+	for i, block := range result.Content {
+		idx := strings.Index(block.Text, "{")
+		if idx < 0 {
+			continue
+		}
+		jsonStr := block.Text[idx:]
+		prefix := block.Text[:idx]
+
+		var data map[string]any
+		if json.Unmarshal([]byte(jsonStr), &data) != nil {
+			continue
+		}
+
+		elements := act.ExtractElementList(data)
+		if elements == nil || len(elements) <= limit {
+			continue
+		}
+
+		total := len(elements)
+		setNestedElements(data, elements[:limit])
+		data["total"] = total
+		data["truncated"] = true
+
+		newJSON, err := json.Marshal(data)
+		if err != nil {
+			continue
+		}
+		result.Content[i].Text = prefix + string(newJSON)
+		newResult, _ := json.Marshal(result)
+		resp.Result = newResult
+		return resp
+	}
+
+	return resp
+}
+
+// setNestedElements updates the elements array at whatever nesting level it was found.
+func setNestedElements(data map[string]any, elements []any) {
+	if _, ok := data["elements"]; ok {
+		data["elements"] = elements
+		return
+	}
+	if r, ok := data["result"].(map[string]any); ok {
+		if _, ok := r["elements"]; ok {
+			r["elements"] = elements
+			return
+		}
+		if rr, ok := r["result"].(map[string]any); ok {
+			if _, ok := rr["elements"]; ok {
+				rr["elements"] = elements
+				return
+			}
+		}
 	}
 }
 

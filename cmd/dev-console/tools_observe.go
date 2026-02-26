@@ -149,6 +149,8 @@ func (h *ToolHandler) toolObserve(req JSONRPCRequest, args json.RawMessage) JSON
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrUnknownMode, "Unknown observe mode: "+params.What, "Use a valid mode from the 'what' enum", withParam("what"), withHint("Valid values: "+validModes))}
 	}
 
+	args = h.maybeInjectSummary(args)
+
 	resp := handler(h, req, args)
 
 	// Warn when extension is disconnected (except for server-side modes that don't need it)

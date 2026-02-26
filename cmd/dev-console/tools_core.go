@@ -185,6 +185,11 @@ type ToolHandler struct {
 
 	// Module registry for plugin-style tool dispatch (incremental migration).
 	toolModules *toolModuleRegistry
+
+	// Session-level summary preference cache.
+	summaryPrefMu    sync.RWMutex
+	summaryPrefValue bool
+	summaryPrefReady bool
 }
 
 // GetCapture returns the capture instance
