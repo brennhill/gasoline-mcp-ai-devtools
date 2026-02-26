@@ -486,6 +486,8 @@ func registerCoreRoutes(mux *http.ServeMux, server *Server, cap *capture.Capture
 		serveEmbeddedHTML(w, r, docsHTML, "docs")
 	}))
 
+	// NOT MCP — WebSocket echo server for test harness (must be registered before /tests/ subtree)
+	mux.HandleFunc("/tests/ws", handleTestHarnessWS)
 	// NOT MCP — Embedded test/demo pages for self-testing
 	mux.HandleFunc("/tests/", corsMiddleware(handleTestPages()))
 

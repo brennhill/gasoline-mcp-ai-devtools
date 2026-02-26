@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Interaction Gauntlet — Gasoline Test Harness</title>
+  <link rel="stylesheet" href="gasoline.css">
+</head>
+<body>
+
+<header class="gh-header">
+  <a href="index.html" class="gh-logo">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="28" height="28">
+      <defs>
+        <linearGradient id="fl" x1="0%" y1="100%" x2="0%" y2="0%">
+          <stop offset="0%"   style="stop-color:#f97316"/>
+          <stop offset="50%"  style="stop-color:#fb923c"/>
+          <stop offset="100%" style="stop-color:#fbbf24"/>
+        </linearGradient>
+        <linearGradient id="ifl" x1="0%" y1="100%" x2="0%" y2="0%">
+          <stop offset="0%"   style="stop-color:#fbbf24"/>
+          <stop offset="100%" style="stop-color:#fef3c7"/>
+        </linearGradient>
+      </defs>
+      <circle cx="64" cy="64" r="60" fill="#1a1a1a"/>
+      <path d="M64 16 C40 40,28 60,28 80 C28 100,44 116,64 116 C84 116,100 100,100 80 C100 60,88 40,64 16 Z" fill="url(#fl)"/>
+      <path d="M64 48 C52 60,44 72,44 84 C44 96,52 104,64 104 C76 104,84 96,84 84 C84 72,76 60,64 48 Z" fill="url(#ifl)"/>
+    </svg>
+    <span class="gh-wordmark">Gasoline</span>
+  </a>
+  <span class="gh-badge gh-badge-harness">Interaction Gauntlet</span>
+  <nav class="gh-nav">
+    <a href="index.html">Hub</a>
+    <a href="interact.html" class="active">Interact</a>
+    <a href="telemetry.html">Telemetry</a>
+    <a href="performance.html">Performance</a>
+    <a href="a11y.html">A11y</a>
+    <a href="recording.html">Recording</a>
+  </nav>
+</header>
+
+<main class="gh-main">
+  <div class="gh-hero">
+    <h1>🎯 Interaction Gauntlet</h1>
+    <p>
+      All 19 DOM primitives pre-loaded. Mirrors the smoke form injected by
+      <code style="color:var(--blue);font-size:12px;">_inject_smoke_form</code> in 05-interact-dom.sh —
+      no injection needed. Also includes React-style traps, ambiguous targets, overlapping overlays,
+      delayed elements, and a 2 000 px scroll anchor.
+    </p>
+  </div>
+
+  <!-- ── §1: Standard Smoke Form (mirrors _inject_smoke_form) ─────────────── -->
+  <div class="gh-section">
+    <div class="gh-section-header">
+      <span class="dot dot-green"></span>
+      <h2>Standard Smoke Form</h2>
+      <span class="section-meta">Tests 5.1 – 5.12 · #smoke-form-dom</span>
+    </div>
+    <div class="gh-section-body">
+      <!-- smoke-form-dom: exact structure expected by 05-interact-dom.sh -->
+      <div id="smoke-form-dom" style="display:flex;flex-direction:column;gap:10px;">
+        <div class="gh-form-grid">
+          <input type="text"  id="sf-name"  placeholder="Name">
+          <input type="email" id="sf-email" placeholder="Email">
+        </div>
+        <select id="sf-role">
+          <option value="">Pick</option>
+          <option value="admin">Admin</option>
+          <option value="user">User</option>
+        </select>
+        <div class="gh-form-inline">
+          <label><input type="checkbox" id="sf-agree"> I agree to the test terms</label>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+          <button id="sf-btn" type="button" class="btn btn-primary">Submit</button>
+          <a id="sf-link" href="/tests/test" style="color:var(--blue);font-size:13px;">Test Link</a>
+        </div>
+        <div class="gh-status" id="sf-result">Waiting for interaction…</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── §2: Ambiguous Targets (test 5.17) ──────────────────────────────────── -->
+  <div class="gh-section">
+    <div class="gh-section-header">
+      <span class="dot dot-amber"></span>
+      <h2>Ambiguous Targets</h2>
+      <span class="section-meta">Test 5.17 · .dup-target in #dup-a / #dup-b</span>
+    </div>
+    <div class="gh-section-body">
+      <p style="font-size:12px;color:var(--text-dim);margin-bottom:12px;">
+        Two identical <code>.dup-target</code> buttons. Selecting <code>.dup-target</code> without
+        a <code>scope_selector</code> triggers <code>ambiguous_target</code>. Recover with
+        <code>scope_selector:"#dup-a"</code> or <code>"#dup-b"</code>.
+      </p>
+      <div style="display:flex;gap:16px;">
+        <div id="dup-a" style="flex:1;background:var(--bg-card);border:1px solid var(--border);border-radius:6px;padding:12px;">
+          <label style="color:var(--text-dim);margin-bottom:8px;">Container A <span class="tag tag-id">#dup-a</span></label>
+          <button class="dup-target btn btn-ghost" type="button">Post</button>
+        </div>
+        <div id="dup-b" style="flex:1;background:var(--bg-card);border:1px solid var(--border);border-radius:6px;padding:12px;">
+          <label style="color:var(--text-dim);margin-bottom:8px;">Container B <span class="tag tag-id">#dup-b</span></label>
+          <button class="dup-target btn btn-ghost" type="button">Post</button>
+        </div>
+      </div>
+      <div class="gh-status" id="dup-result">Click a Post button to test…</div>
+    </div>
+  </div>
+
+  <!-- ── §3: Dynamic / Delayed Elements (test 5.9) ────────────────────────── -->
+  <div class="gh-section">
+    <div class="gh-section-header">
+      <span class="dot dot-amber"></span>
+      <h2>Dynamic Elements</h2>
+      <span class="section-meta">Test 5.9 · wait_for · #delayed-el</span>
+    </div>
+    <div class="gh-section-body">
+      <p style="font-size:12px;color:var(--text-dim);margin-bottom:12px;">
+        Click to schedule <code>#delayed-el</code> to appear after 1 000 ms.
+        Use <code>wait_for("#delayed-el", timeout_ms:5000)</code> to verify.
+      </p>
+      <div class="btn-row">
+        <button type="button" class="btn btn-ghost" onclick="scheduleDelayedEl(1000)">
+          Add #delayed-el (1 s delay)
+        </button>
+        <button type="button" class="btn btn-ghost btn-sm" onclick="removeDelayedEl()">
+          Remove #delayed-el
+        </button>
+      </div>
+      <div id="delayed-target-area" style="margin-top:10px;min-height:32px;"></div>
+    </div>
+  </div>
+
+  <!-- ── §4: React-Style Controlled Input ──────────────────────────────────── -->
+  <div class="gh-section">
+    <div class="gh-section-header">
+      <span class="dot dot-amber"></span>
+      <h2>React-Style Event Trap</h2>
+      <span class="section-meta">Controlled input · requires input event</span>
+    </div>
+    <div class="gh-section-body">
+      <p style="font-size:12px;color:var(--text-dim);margin-bottom:12px;">
+        This input manages its own state via an <code>input</code> listener and rejects direct
+        <code>.value</code> assignments. Typing via CDP/keyboard events works; raw value writes are ignored.
+      </p>
+      <div class="gh-form-row">
+        <label>Controlled Input <span class="tag tag-id">#react-input</span></label>
+        <input type="text" id="react-input" placeholder="Type something…" autocomplete="off">
+      </div>
+      <div class="gh-status" id="react-mirror">State: (empty)</div>
+    </div>
+  </div>
+
+  <!-- ── §5: Overlay / Modal Trap ──────────────────────────────────────────── -->
+  <div class="gh-section">
+    <div class="gh-section-header">
+      <span class="dot dot-red"></span>
+      <h2>Overlay &amp; Modal Trap</h2>
+      <span class="section-meta">z-index trap · dismiss_top_overlay · confirm_top_dialog</span>
+    </div>
+    <div class="gh-section-body">
+      <p style="font-size:12px;color:var(--text-dim);margin-bottom:12px;">
+        The real button is obscured by a transparent overlay (honeypot). Dismiss the overlay first,
+        then click the button. Also tests <code>confirm_top_dialog</code> via native <code>alert()</code>.
+      </p>
+      <div class="btn-row">
+        <button type="button" class="btn btn-ghost" onclick="showModal()">Open Modal</button>
+        <button type="button" class="btn btn-ghost" onclick="triggerAlert()">Fire alert()</button>
+        <button type="button" class="btn btn-ghost" onclick="triggerConfirm()">Fire confirm()</button>
+      </div>
+      <div style="position:relative;display:inline-block;margin-top:10px;">
+        <button id="real-target-btn" type="button" class="btn btn-green">Real Target Button</button>
+        <div id="honeypot-overlay"
+             style="position:absolute;inset:0;z-index:10;background:rgba(248,81,73,0.08);
+                    border:1px dashed var(--red);border-radius:6px;cursor:not-allowed;display:none;"
+             title="Honeypot overlay — dismiss me first">
+        </div>
+      </div>
+      <div style="margin-top:8px;">
+        <button type="button" class="btn btn-sm btn-danger" onclick="toggleHoneypot()">
+          Toggle honeypot overlay
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── §6: State Management ──────────────────────────────────────────────── -->
+  <div class="gh-section">
+    <div class="gh-section-header">
+      <span class="dot dot-green"></span>
+      <h2>State Management</h2>
+      <span class="section-meta">Test 6.x · localStorage · sessionStorage</span>
+    </div>
+    <div class="gh-section-body">
+      <div class="gh-form-grid">
+        <div>
+          <label>localStorage key</label>
+          <input type="text" id="ls-key" value="gasoline_test_key">
+        </div>
+        <div>
+          <label>value</label>
+          <input type="text" id="ls-val" value="smoke-value-123">
+        </div>
+      </div>
+      <div class="btn-row">
+        <button type="button" class="btn btn-ghost btn-sm" onclick="lsSet()">localStorage.setItem</button>
+        <button type="button" class="btn btn-ghost btn-sm" onclick="lsGet()">localStorage.getItem</button>
+        <button type="button" class="btn btn-ghost btn-sm" onclick="ssSet()">sessionStorage.setItem</button>
+        <button type="button" class="btn btn-ghost btn-sm" onclick="ssGet()">sessionStorage.getItem</button>
+      </div>
+      <div class="gh-status" id="storage-result">Storage output…</div>
+    </div>
+  </div>
+
+  <!-- ── §7: Full Form Lifecycle (test 2.7) ────────────────────────────────── -->
+  <div class="gh-section">
+    <div class="gh-section-header">
+      <span class="dot dot-green"></span>
+      <h2>Full Form Lifecycle</h2>
+      <span class="section-meta">Test 2.7 · multi-field fill + submit</span>
+    </div>
+    <div class="gh-section-body">
+      <form id="smoke-form" onsubmit="formSubmit(event)">
+        <div class="gh-form-grid">
+          <div class="gh-form-row">
+            <label for="sf-user">Username</label>
+            <input type="text"     id="sf-user" name="username" placeholder="smokeuser">
+          </div>
+          <div class="gh-form-row">
+            <label for="sf-email2">Email</label>
+            <input type="email"    id="sf-email2" name="email" placeholder="smoke@test.com">
+          </div>
+        </div>
+        <div class="gh-form-row">
+          <label for="sf-pass">Password</label>
+          <input type="password"   id="sf-pass" name="password" placeholder="••••••••">
+        </div>
+        <div class="gh-form-row">
+          <label for="sf-role2">Role</label>
+          <select id="sf-role2" name="role">
+            <option value="user">User</option>
+            <option value="admin">Admin</option>
+          </select>
+        </div>
+        <button type="submit" id="sf-submit" class="btn btn-primary">Submit</button>
+      </form>
+      <div class="gh-status" id="form-result">Submit to see captured events…</div>
+    </div>
+  </div>
+
+  <!-- ── Scroll anchor at 2000px ───────────────────────────────────────────── -->
+  <div style="margin-top:2000px;padding-top:20px;border-top:1px dashed var(--border);" id="sf-scroll-target">
+    <div style="display:flex;align-items:center;gap:10px;color:var(--green);">
+      <span class="dot dot-green"></span>
+      <strong>Scroll Target</strong>
+      <span class="tag tag-id">#sf-scroll-target</span>
+    </div>
+    <p style="margin-top:8px;font-size:12px;color:var(--text-dim);">
+      scroll_to("#sf-scroll-target") navigated here successfully.
+      window.scrollY should be &gt; 1000.
+    </p>
+  </div>
+</main>
+
+<!-- Native modal -->
+<div class="gh-modal-backdrop" id="modal-backdrop">
+  <div class="gh-modal">
+    <h2 style="font-size:15px;font-weight:600;color:var(--text-bright);margin-bottom:8px;">
+      Test Modal
+    </h2>
+    <p style="font-size:13px;color:var(--text-dim);margin-bottom:16px;">
+      This modal sits at <code>z-index:9999</code>. Use
+      <code>dismiss_top_overlay</code> to close it, then interact with
+      elements beneath.
+    </p>
+    <div class="btn-row">
+      <button type="button" class="btn btn-ghost" onclick="closeModal()">Dismiss</button>
+      <button id="modal-confirm-btn" type="button" class="btn btn-primary">Confirm</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── Smoke form feedback ──────────────────────────────────────────────────────
+document.getElementById('sf-btn').addEventListener('click', () => {
+  const name  = document.getElementById('sf-name').value;
+  const email = document.getElementById('sf-email').value;
+  const role  = document.getElementById('sf-role').value;
+  const agree = document.getElementById('sf-agree').checked;
+  const el    = document.getElementById('sf-result');
+  el.textContent = `Clicked — name="${name}" email="${email}" role="${role}" agree=${agree}`;
+  el.className = 'gh-status ok';
+});
+
+document.querySelectorAll('.dup-target').forEach(btn => {
+  btn.addEventListener('click', (e) => {
+    const container = e.target.closest('[id]');
+    const el = document.getElementById('dup-result');
+    el.textContent = `Clicked .dup-target in #${container ? container.id : '?'}`;
+    el.className = 'gh-status ok';
+  });
+});
+
+// ── Delayed element ──────────────────────────────────────────────────────────
+function scheduleDelayedEl(ms) {
+  const area = document.getElementById('delayed-target-area');
+  area.innerHTML = '<span style="color:var(--text-dim);font-size:12px;">Scheduling…</span>';
+  setTimeout(() => {
+    var d = document.createElement('div');
+    d.id = 'delayed-el';
+    d.style.cssText = 'padding:8px 12px;background:var(--green-bg);border:1px solid rgba(63,185,80,0.3);border-radius:6px;color:var(--green);font-size:13px;';
+    d.textContent = 'I appeared! (#delayed-el)';
+    area.innerHTML = '';
+    area.appendChild(d);
+  }, ms);
+}
+function removeDelayedEl() {
+  var el = document.getElementById('delayed-el');
+  if (el) el.remove();
+  document.getElementById('delayed-target-area').innerHTML = '';
+}
+
+// ── React-style controlled input ─────────────────────────────────────────────
+(function() {
+  var state = '';
+  var input = document.getElementById('react-input');
+  var mirror = document.getElementById('react-mirror');
+
+  // Listen for real input events — ignores direct .value writes
+  input.addEventListener('input', (e) => {
+    state = e.target.value;
+    mirror.textContent = 'State: "' + state + '" (length=' + state.length + ')';
+    mirror.className = state ? 'gh-status ok' : 'gh-status';
+  });
+
+  // Override value setter to show when direct assignment is attempted
+  var descriptor = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value');
+  Object.defineProperty(input, 'value', {
+    get: () => state,
+    set: (v) => {
+      // Silently reject — only event-driven updates are accepted
+      mirror.textContent = 'Direct .value write rejected (tried: "' + v + '"). Use input events.';
+      mirror.className = 'gh-status err';
+    }
+  });
+})();
+
+// ── Overlay / modal ──────────────────────────────────────────────────────────
+function showModal()       { document.getElementById('modal-backdrop').classList.add('open'); }
+function closeModal()      { document.getElementById('modal-backdrop').classList.remove('open'); }
+function toggleHoneypot()  {
+  var hp = document.getElementById('honeypot-overlay');
+  hp.style.display = hp.style.display === 'none' ? 'block' : 'none';
+}
+function triggerAlert()    { window.alert('Gasoline alert() test — use confirm_top_dialog to dismiss'); }
+function triggerConfirm()  { window.confirm('Gasoline confirm() test — confirm or cancel'); }
+
+document.getElementById('real-target-btn').addEventListener('click', () => {
+  console.log('real-target-btn clicked');
+});
+
+// ── Storage ──────────────────────────────────────────────────────────────────
+function lsSet() {
+  var k = document.getElementById('ls-key').value;
+  var v = document.getElementById('ls-val').value;
+  localStorage.setItem(k, v);
+  setStorageResult('localStorage.setItem("' + k + '", "' + v + '") ✓');
+}
+function lsGet() {
+  var k = document.getElementById('ls-key').value;
+  var v = localStorage.getItem(k);
+  setStorageResult('localStorage.getItem("' + k + '") = ' + JSON.stringify(v));
+}
+function ssSet() {
+  var k = document.getElementById('ls-key').value;
+  var v = document.getElementById('ls-val').value;
+  sessionStorage.setItem(k, v);
+  setStorageResult('sessionStorage.setItem("' + k + '", "' + v + '") ✓');
+}
+function ssGet() {
+  var k = document.getElementById('ls-key').value;
+  var v = sessionStorage.getItem(k);
+  setStorageResult('sessionStorage.getItem("' + k + '") = ' + JSON.stringify(v));
+}
+function setStorageResult(msg) {
+  var el = document.getElementById('storage-result');
+  el.textContent = msg;
+  el.className = 'gh-status ok';
+}
+
+// ── Full form ────────────────────────────────────────────────────────────────
+window.__SMOKE_FORM_SUBMITTED__ = false;
+function formSubmit(e) {
+  e.preventDefault();
+  window.__SMOKE_FORM_SUBMITTED__ = true;
+  var el = document.getElementById('form-result');
+  el.textContent = 'Form submitted ✓ (window.__SMOKE_FORM_SUBMITTED__ = true)';
+  el.className = 'gh-status ok';
+}
+</script>
+
+</body>
+</html>

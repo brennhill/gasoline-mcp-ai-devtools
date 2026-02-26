@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Recording Test — Gasoline Test Harness</title>
+  <link rel="stylesheet" href="gasoline.css">
+  <style>
+    .yt-frame-wrapper {
+      position: relative;
+      width: 100%;
+      padding-top: 56.25%; /* 16:9 */
+      background: #000;
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    .yt-frame-wrapper iframe {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      border: none;
+    }
+    .recording-step {
+      display: flex;
+      gap: 12px;
+      align-items: flex-start;
+      padding: 10px 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .recording-step:last-child { border-bottom: none; }
+    .step-num {
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      background: var(--blue-bg);
+      border: 1px solid rgba(88,166,255,0.4);
+      color: var(--blue);
+      font-size: 11px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+    .step-text { font-size: 13px; color: var(--text); line-height: 1.5; }
+    .step-code { font-family: monospace; font-size: 12px; color: var(--blue); background: var(--bg-card); padding: 2px 6px; border-radius: 4px; }
+    .rec-indicator {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 10px;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: 500;
+    }
+    .rec-active { background: rgba(229,57,53,0.15); color: #e53935; border: 1px solid rgba(229,57,53,0.4); animation: glow 1.5s ease-in-out infinite; }
+    .rec-idle   { background: var(--bg-card); color: var(--text-dim); border: 1px solid var(--border); }
+  </style>
+</head>
+<body>
+
+<header class="gh-header">
+  <a href="index.html" class="gh-logo">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="28" height="28">
+      <defs>
+        <linearGradient id="fl" x1="0%" y1="100%" x2="0%" y2="0%">
+          <stop offset="0%"   style="stop-color:#f97316"/>
+          <stop offset="50%"  style="stop-color:#fb923c"/>
+          <stop offset="100%" style="stop-color:#fbbf24"/>
+        </linearGradient>
+        <linearGradient id="ifl" x1="0%" y1="100%" x2="0%" y2="0%">
+          <stop offset="0%"   style="stop-color:#fbbf24"/>
+          <stop offset="100%" style="stop-color:#fef3c7"/>
+        </linearGradient>
+      </defs>
+      <circle cx="64" cy="64" r="60" fill="#1a1a1a"/>
+      <path d="M64 16 C40 40,28 60,28 80 C28 100,44 116,64 116 C84 116,100 100,100 80 C100 60,88 40,64 16 Z" fill="url(#fl)"/>
+      <path d="M64 48 C52 60,44 72,44 84 C44 96,52 104,64 104 C76 104,84 96,84 84 C84 72,76 60,64 48 Z" fill="url(#ifl)"/>
+    </svg>
+    <span class="gh-wordmark">Gasoline</span>
+  </a>
+  <span class="gh-badge gh-badge-purple">Recording Test</span>
+  <div class="rec-indicator rec-idle" id="rec-indicator">
+    <span style="width:8px;height:8px;border-radius:50%;background:currentColor;display:inline-block;"></span>
+    Not Recording
+  </div>
+  <nav class="gh-nav">
+    <a href="index.html">Hub</a>
+    <a href="interact.html">Interact</a>
+    <a href="telemetry.html">Telemetry</a>
+    <a href="performance.html">Performance</a>
+    <a href="a11y.html">A11y</a>
+    <a href="recording.html" class="active">Recording</a>
+  </nav>
+</header>
+
+<main class="gh-main">
+  <div class="gh-hero">
+    <h1>🎬 Recording Test Page</h1>
+    <p>
+      Embedded YouTube lofi stream — the same stream used in smoke test 10.x.
+      Provides a local, branded target for <code>record_start</code> / <code>record_stop</code>
+      and tab audio capture (<code>audio:"tab"</code>) without navigating to YouTube directly.
+    </p>
+  </div>
+
+  <!-- ── §1: Embedded YouTube ──────────────────────────────────────────── -->
+  <div class="gh-section">
+    <div class="gh-section-header">
+      <span class="dot dot-green"></span>
+      <h2>Lofi Stream (YouTube Embed)</h2>
+      <span class="section-meta">Tests 10.1 / 10.2 · tabCapture · audio:tab</span>
+    </div>
+    <div class="gh-section-body">
+      <div class="yt-frame-wrapper">
+        <!-- Same video as 10-recording.sh: youtu.be/n61ULEU7CO0 starting at t=646 -->
+        <iframe
+          id="yt-player"
+          src="https://www.youtube.com/embed/n61ULEU7CO0?start=646&autoplay=1&mute=0&rel=0&modestbranding=1"
+          title="Lofi Hip Hop Radio — beats to relax/study to (Recording Test)"
+          allow="autoplay; encrypted-media; picture-in-picture"
+          allowfullscreen>
+        </iframe>
+      </div>
+      <div style="margin-top:10px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+        <span class="tag tag-dom">youtu.be/n61ULEU7CO0</span>
+        <span class="tag tag-dom">t=646</span>
+        <span class="tag tag-dom">autoplay=1</span>
+        <span style="font-size:12px;color:var(--text-dim);">
+          Browser may block autoplay. Click the video to start playback before recording with audio.
+        </span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── §2: Recording Instructions ──────────────────────────────────────── -->
+  <div class="gh-section">
+    <div class="gh-section-header">
+      <span class="dot dot-amber"></span>
+      <h2>Smoke Test 10 — Quick Reference</h2>
+      <span class="section-meta">record_start · record_stop · watermark persistence</span>
+    </div>
+    <div class="gh-section-body">
+      <div class="recording-step">
+        <div class="step-num">1</div>
+        <div class="step-text">
+          Ensure Gasoline is tracking this tab. Click the extension icon if needed.
+        </div>
+      </div>
+      <div class="recording-step">
+        <div class="step-num">2</div>
+        <div class="step-text">
+          Start tab recording (video only):
+          <br><span class="step-code">interact(record_start, name:"smoke-video-test")</span>
+        </div>
+      </div>
+      <div class="recording-step">
+        <div class="step-num">3</div>
+        <div class="step-text">
+          Wait 5 seconds. The Gasoline watermark <span class="tag tag-id">#gasoline-recording-watermark</span>
+          should appear in the corner.
+        </div>
+      </div>
+      <div class="recording-step">
+        <div class="step-num">4</div>
+        <div class="step-text">
+          Stop and verify: <span class="step-code">interact(record_stop)</span>
+          then <span class="step-code">observe(saved_videos, last_n:5)</span>
+        </div>
+      </div>
+      <div class="recording-step">
+        <div class="step-num">5</div>
+        <div class="step-text">
+          For audio test: <span class="step-code">interact(record_start, name:"smoke-audio-test", audio:"tab")</span>.
+          Start YouTube playback first, then verify <code>has_audio:true</code> in saved_videos.
+        </div>
+      </div>
+      <div class="recording-step">
+        <div class="step-num">6</div>
+        <div class="step-text">
+          Watermark persistence test: start recording, then
+          <span class="step-code">interact(refresh)</span> — watermark should reappear
+          after the page reloads (tests <code>tabs.onUpdated</code> re-send).
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── §3: Watermark Detection Helper ─────────────────────────────────── -->
+  <div class="gh-section">
+    <div class="gh-section-header">
+      <span class="dot dot-green"></span>
+      <h2>Watermark Detection</h2>
+      <span class="section-meta">execute_js check · #gasoline-recording-watermark</span>
+    </div>
+    <div class="gh-section-body">
+      <p style="font-size:12px;color:var(--text-dim);margin-bottom:10px;">
+        Use this to verify the recording watermark is present (smoke test 10.3):
+      </p>
+      <div class="gh-status" style="font-size:12px;">document.getElementById("gasoline-recording-watermark") ? "WATERMARK_FOUND" : "WATERMARK_MISSING"</div>
+      <div class="btn-row">
+        <button type="button" class="btn btn-ghost btn-sm" onclick="checkWatermark()">
+          Check watermark (execute_js)
+        </button>
+      </div>
+      <div class="gh-status" id="watermark-result">Click to check…</div>
+    </div>
+  </div>
+
+  <!-- ── §4: Rich UI for Recording Content ───────────────────────────────── -->
+  <div class="gh-section">
+    <div class="gh-section-header">
+      <span class="dot dot-green"></span>
+      <h2>Recording Test Canvas</h2>
+      <span class="section-meta">Interactive elements · visual interest for recordings</span>
+    </div>
+    <div class="gh-section-body">
+      <p style="font-size:12px;color:var(--text-dim);margin-bottom:12px;">
+        These elements provide visual variety and interactive content for recording tests.
+        Use <code>interact(click)</code> and <code>interact(type)</code> while recording
+        to capture representative agent interactions.
+      </p>
+      <div class="gh-form-grid" style="margin-bottom:12px;">
+        <div class="gh-form-row">
+          <label>Search query</label>
+          <input type="text" id="rec-search" placeholder="Type while recording…">
+        </div>
+        <div class="gh-form-row">
+          <label>Category</label>
+          <select id="rec-category">
+            <option value="music">Music</option>
+            <option value="code">Code Review</option>
+            <option value="design">Design</option>
+            <option value="research">Research</option>
+          </select>
+        </div>
+      </div>
+      <div class="btn-row">
+        <button id="rec-btn-a" type="button" class="btn btn-primary">Analyze</button>
+        <button id="rec-btn-b" type="button" class="btn btn-ghost">Save</button>
+        <button id="rec-btn-c" type="button" class="btn btn-ghost">Share</button>
+        <button id="rec-btn-d" type="button" class="btn btn-danger btn-sm">Reset</button>
+      </div>
+
+      <!-- Animated flame for visual interest in recordings -->
+      <div style="text-align:center;margin-top:24px;padding:20px 0;">
+        <svg id="anim-flame" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="64" height="64">
+          <defs>
+            <linearGradient id="afl" x1="0%" y1="100%" x2="0%" y2="0%">
+              <stop offset="0%"   style="stop-color:#f97316"/>
+              <stop offset="50%"  style="stop-color:#fb923c"/>
+              <stop offset="100%" style="stop-color:#fbbf24"/>
+            </linearGradient>
+            <linearGradient id="aifl" x1="0%" y1="100%" x2="0%" y2="0%">
+              <stop offset="0%"   style="stop-color:#fbbf24"/>
+              <stop offset="100%" style="stop-color:#fef3c7"/>
+            </linearGradient>
+          </defs>
+          <circle cx="64" cy="64" r="60" fill="#1a1a1a"/>
+          <path d="M64 16 C40 40,28 60,28 80 C28 100,44 116,64 116 C84 116,100 100,100 80 C100 60,88 40,64 16 Z" fill="url(#afl)"/>
+          <path d="M64 48 C52 60,44 72,44 84 C44 96,52 104,64 104 C76 104,84 96,84 84 C84 72,76 60,64 48 Z" fill="url(#aifl)"/>
+        </svg>
+        <div style="margin-top:8px;font-size:14px;font-weight:600;" class="flame-text">Gasoline Agentic Browser</div>
+        <div style="font-size:12px;color:var(--text-dim);margin-top:4px;" id="rec-clock">Recording target ready</div>
+      </div>
+      <div class="gh-status" id="rec-canvas-result">Interact with elements above while recording…</div>
+    </div>
+  </div>
+</main>
+
+<script>
+// ── Live clock for visual interest ───────────────────────────────────────────
+(function() {
+  var clockEl = document.getElementById('rec-clock');
+  function update() {
+    clockEl.textContent = new Date().toLocaleTimeString('en-US', { hour12: false });
+  }
+  update();
+  setInterval(update, 1000);
+})();
+
+// ── Watermark check ──────────────────────────────────────────────────────────
+function checkWatermark() {
+  var found = !!document.getElementById('gasoline-recording-watermark');
+  var el    = document.getElementById('watermark-result');
+  el.textContent = found ? 'WATERMARK_FOUND — recording is active' : 'WATERMARK_MISSING — recording not started';
+  el.className   = 'gh-status ' + (found ? 'ok' : 'err');
+}
+
+// ── Recording indicator: watch for watermark insertion ───────────────────────
+var observer = new MutationObserver(function() {
+  var ind = document.getElementById('rec-indicator');
+  if (document.getElementById('gasoline-recording-watermark')) {
+    ind.className   = 'rec-indicator rec-active';
+    ind.innerHTML   = '<span style="width:8px;height:8px;border-radius:50%;background:currentColor;display:inline-block;"></span> Recording…';
+  } else {
+    ind.className   = 'rec-indicator rec-idle';
+    ind.innerHTML   = '<span style="width:8px;height:8px;border-radius:50%;background:currentColor;display:inline-block;"></span> Not Recording';
+  }
+});
+observer.observe(document.body, { childList: true, subtree: true });
+
+// ── Canvas feedback ──────────────────────────────────────────────────────────
+var canvasResult = document.getElementById('rec-canvas-result');
+function showCanvasAction(msg) {
+  canvasResult.textContent = msg;
+  canvasResult.className = 'gh-status ok';
+}
+document.getElementById('rec-search').addEventListener('input', function(e) {
+  showCanvasAction('Typed: "' + e.target.value + '"');
+});
+document.getElementById('rec-btn-a').addEventListener('click', function() { showCanvasAction('Clicked: Analyze'); });
+document.getElementById('rec-btn-b').addEventListener('click', function() { showCanvasAction('Clicked: Save'); });
+document.getElementById('rec-btn-c').addEventListener('click', function() { showCanvasAction('Clicked: Share'); });
+document.getElementById('rec-btn-d').addEventListener('click', function() {
+  document.getElementById('rec-search').value = '';
+  document.getElementById('rec-category').value = 'music';
+  showCanvasAction('Reset — form cleared');
+});
+</script>
+
+</body>
+</html>

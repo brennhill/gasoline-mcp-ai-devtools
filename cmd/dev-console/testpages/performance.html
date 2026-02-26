@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Performance Nightmare — Gasoline Test Harness</title>
+  <link rel="stylesheet" href="gasoline.css">
+  <style>
+    .perf-metric {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 8px 0;
+      border-bottom: 1px solid var(--border);
+      font-size: 13px;
+    }
+    .perf-metric:last-child { border-bottom: none; }
+    .perf-metric-name  { color: var(--text-dim); font-family: monospace; }
+    .perf-metric-value { color: var(--text-bright); font-weight: 600; font-family: monospace; }
+    .perf-metric-value.poor { color: var(--red); }
+    .perf-metric-value.ok   { color: var(--green); }
+  </style>
+</head>
+<body>
+
+<header class="gh-header">
+  <a href="index.html" class="gh-logo">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="28" height="28">
+      <defs>
+        <linearGradient id="fl" x1="0%" y1="100%" x2="0%" y2="0%">
+          <stop offset="0%"   style="stop-color:#f97316"/>
+          <stop offset="50%"  style="stop-color:#fb923c"/>
+          <stop offset="100%" style="stop-color:#fbbf24"/>
+        </linearGradient>
+        <linearGradient id="ifl" x1="0%" y1="100%" x2="0%" y2="0%">
+          <stop offset="0%"   style="stop-color:#fbbf24"/>
+          <stop offset="100%" style="stop-color:#fef3c7"/>
+        </linearGradient>
+      </defs>
+      <circle cx="64" cy="64" r="60" fill="#1a1a1a"/>
+      <path d="M64 16 C40 40,28 60,28 80 C28 100,44 116,64 116 C84 116,100 100,100 80 C100 60,88 40,64 16 Z" fill="url(#fl)"/>
+      <path d="M64 48 C52 60,44 72,44 84 C44 96,52 104,64 104 C76 104,84 96,84 84 C84 72,76 60,64 48 Z" fill="url(#ifl)"/>
+    </svg>
+    <span class="gh-wordmark">Gasoline</span>
+  </a>
+  <span class="gh-badge gh-badge-amber">Performance Nightmare</span>
+  <nav class="gh-nav">
+    <a href="index.html">Hub</a>
+    <a href="interact.html">Interact</a>
+    <a href="telemetry.html">Telemetry</a>
+    <a href="performance.html" class="active">Performance</a>
+    <a href="a11y.html">A11y</a>
+    <a href="recording.html">Recording</a>
+  </nav>
+</header>
+
+<main class="gh-main">
+  <div class="gh-hero">
+    <h1>⚡ Performance Nightmare</h1>
+    <p>
+      Deliberately bad Web Vitals: delayed LCP image, CLS layout shift at 1.5 s,
+      800 ms main-thread blocking button, and User Timing marks on every load.
+      Tests 9.x — <code>analyze(performance)</code>, <code>perf_diff</code>,
+      <code>user_timing</code>, Long Tasks.
+    </p>
+  </div>
+
+  <!-- ── §1: LCP Disaster ──────────────────────────────────────────────── -->
+  <div class="gh-section">
+    <div class="gh-section-header">
+      <span class="dot dot-red"></span>
+      <h2>LCP Disaster</h2>
+      <span class="section-meta">Delayed Largest Contentful Paint</span>
+    </div>
+    <div class="gh-section-body">
+      <p style="font-size:12px;color:var(--text-dim);margin-bottom:12px;">
+        The hero image below loads after a 2 000 ms artificial delay.
+        This pushes LCP well past the "poor" threshold of 4 s
+        and registers as a delayed resource in the network waterfall.
+      </p>
+      <!-- LCP target: large, slow-loading element -->
+      <div class="lcp-hero" id="lcp-hero">
+        <span id="lcp-placeholder" style="color:var(--text-dim);">
+          ⏳ LCP image loading in 2 000 ms…
+        </span>
+        <img id="lcp-image" alt="LCP Hero"
+             style="width:100%;height:100%;object-fit:cover;border-radius:6px;display:none;">
+      </div>
+      <div class="gh-status" id="lcp-status">Waiting for LCP image…</div>
+    </div>
+  </div>
+
+  <!-- ── §2: CLS Bomb ─────────────────────────────────────────────────── -->
+  <div class="gh-section">
+    <div class="gh-section-header">
+      <span class="dot dot-red"></span>
+      <h2>CLS Bomb</h2>
+      <span class="section-meta">Layout shift at 1 500 ms after load</span>
+    </div>
+    <div class="gh-section-body">
+      <p style="font-size:12px;color:var(--text-dim);margin-bottom:12px;">
+        The box below grows from 60 px to 200 px at 1.5 s, pushing content down and
+        triggering a measurable Cumulative Layout Shift. CLS score shows in
+        <code>analyze(performance)</code>.
+      </p>
+      <!-- CLS target element -->
+      <div class="cls-box" id="cls-box">
+        <span id="cls-label">Stable (pre-shift)</span>
+      </div>
+      <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:6px;padding:10px;font-size:12px;color:var(--text-dim);">
+        This text shifts downward when the box above expands. The layout shift
+        is captured by the PerformanceObserver watching <code>layout-shift</code> entries.
+      </div>
+      <div class="btn-row">
+        <button type="button" class="btn btn-ghost btn-sm" onclick="triggerCLS()">Force CLS now</button>
+        <button type="button" class="btn btn-ghost btn-sm" onclick="resetCLS()">Reset</button>
+      </div>
+      <div class="gh-status" id="cls-status">CLS shift fires automatically at 1 500 ms…</div>
+    </div>
+  </div>
+
+  <!-- ── §3: Long Task / Main Thread Block ─────────────────────────────── -->
+  <div class="gh-section">
+    <div class="gh-section-header">
+      <span class="dot dot-red"></span>
+      <h2>Long Task Factory</h2>
+      <span class="section-meta">800 ms main-thread block · INP trigger</span>
+    </div>
+    <div class="gh-section-body">
+      <p style="font-size:12px;color:var(--text-dim);margin-bottom:12px;">
+        Runs a tight computation loop for exactly 800 ms — well over the 50 ms
+        Long Task threshold. Appears in <code>analyze(performance)</code> as a
+        long task and degrades INP (Interaction to Next Paint).
+      </p>
+      <div class="btn-row">
+        <button id="long-task-btn" type="button" class="btn btn-danger" onclick="runLongTask(800)">
+          Block main thread 800 ms
+        </button>
+        <button type="button" class="btn btn-ghost btn-sm" onclick="runLongTask(200)">
+          200 ms block
+        </button>
+        <button type="button" class="btn btn-ghost btn-sm" onclick="runLongTask(50)">
+          50 ms (threshold)
+        </button>
+      </div>
+      <div class="gh-status" id="long-task-status">Click to trigger a Long Task.</div>
+    </div>
+  </div>
+
+  <!-- ── §4: User Timing Lab ───────────────────────────────────────────── -->
+  <div class="gh-section">
+    <div class="gh-section-header">
+      <span class="dot dot-green"></span>
+      <h2>User Timing Lab</h2>
+      <span class="section-meta">Test 9.4 · performance.mark / measure</span>
+    </div>
+    <div class="gh-section-body">
+      <p style="font-size:12px;color:var(--text-dim);margin-bottom:12px;">
+        Marks are set automatically on load: <code>harness_load_start</code>,
+        <code>harness_interactive</code>, <code>harness_load_end</code>.
+        Use the buttons to add custom marks and measures.
+        Verify with <code>analyze(performance)</code> &rarr; <code>user_timing</code>.
+      </p>
+      <div class="gh-form-row">
+        <label>Mark name</label>
+        <input type="text" id="mark-name" value="smoke_custom_mark" style="max-width:320px;">
+      </div>
+      <div class="btn-row">
+        <button type="button" class="btn btn-ghost btn-sm" onclick="addMark()">performance.mark()</button>
+        <button type="button" class="btn btn-ghost btn-sm" onclick="addMeasure()">performance.measure()</button>
+        <button type="button" class="btn btn-ghost btn-sm" onclick="clearMarks()">clearMarks()</button>
+      </div>
+      <div class="gh-log" id="timing-log"></div>
+    </div>
+  </div>
+
+  <!-- ── §5: Live Metrics Panel ────────────────────────────────────────── -->
+  <div class="gh-section">
+    <div class="gh-section-header">
+      <span class="dot dot-green"></span>
+      <h2>Live Metrics</h2>
+      <span class="section-meta">PerformanceObserver · Web Vitals</span>
+    </div>
+    <div class="gh-section-body">
+      <div id="perf-metrics">
+        <div class="perf-metric">
+          <span class="perf-metric-name">TTFB</span>
+          <span class="perf-metric-value" id="m-ttfb">—</span>
+        </div>
+        <div class="perf-metric">
+          <span class="perf-metric-name">FCP</span>
+          <span class="perf-metric-value" id="m-fcp">—</span>
+        </div>
+        <div class="perf-metric">
+          <span class="perf-metric-name">LCP</span>
+          <span class="perf-metric-value" id="m-lcp">— (expect &gt;2000ms)</span>
+        </div>
+        <div class="perf-metric">
+          <span class="perf-metric-name">CLS</span>
+          <span class="perf-metric-value" id="m-cls">0.000 (expect &gt;0.1)</span>
+        </div>
+        <div class="perf-metric">
+          <span class="perf-metric-name">Long Tasks</span>
+          <span class="perf-metric-value" id="m-lt">0</span>
+        </div>
+        <div class="perf-metric">
+          <span class="perf-metric-name">User Marks</span>
+          <span class="perf-metric-value" id="m-marks">0</span>
+        </div>
+      </div>
+      <div class="btn-row">
+        <button type="button" class="btn btn-ghost btn-sm" onclick="refreshMetrics()">Refresh metrics</button>
+      </div>
+    </div>
+  </div>
+</main>
+
+<script>
+// ── User Timing: auto-marks on load ──────────────────────────────────────────
+performance.mark('harness_load_start');
+var timingLog = document.getElementById('timing-log');
+var markCount = 0;
+var ltCount = 0;
+var clsTotal = 0;
+
+function appendTimingLog(msg, cls) {
+  var d = document.createElement('div');
+  d.className = 'log-line ' + (cls || 'log');
+  d.textContent = msg;
+  timingLog.appendChild(d);
+  timingLog.scrollTop = timingLog.scrollHeight;
+}
+
+// ── §1: LCP delay ────────────────────────────────────────────────────────────
+window.addEventListener('load', function() {
+  performance.mark('harness_interactive');
+
+  // Delay LCP image by 2000ms
+  setTimeout(function() {
+    var img   = document.getElementById('lcp-image');
+    var ph    = document.getElementById('lcp-placeholder');
+    var hero  = document.getElementById('lcp-hero');
+    var st    = document.getElementById('lcp-status');
+
+    // Use a large, eye-catching gradient rendered as a data URI
+    var canvas = document.createElement('canvas');
+    canvas.width  = 800;
+    canvas.height = 200;
+    var ctx = canvas.getContext('2d');
+    var grd = ctx.createLinearGradient(0, 0, 800, 200);
+    grd.addColorStop(0,   '#f97316');
+    grd.addColorStop(0.5, '#fb923c');
+    grd.addColorStop(1,   '#fbbf24');
+    ctx.fillStyle = grd;
+    ctx.fillRect(0, 0, 800, 200);
+    ctx.fillStyle = 'rgba(26,26,26,0.5)';
+    ctx.fillRect(0, 0, 800, 200);
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 28px -apple-system, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('Gasoline LCP Hero — Loaded after 2 000 ms delay', 400, 110);
+
+    img.src     = canvas.toDataURL('image/png');
+    img.style.display = 'block';
+    ph.style.display  = 'none';
+    hero.style.height = 'auto';
+
+    st.textContent = 'LCP image rendered at ' + Math.round(performance.now()) + ' ms ✓';
+    st.className = 'gh-status ok';
+
+    performance.mark('harness_lcp_rendered');
+    performance.measure('harness_lcp_delay', 'harness_load_start', 'harness_lcp_rendered');
+    appendTimingLog('measure: harness_lcp_delay = ' + Math.round(performance.now()) + 'ms', 'warn');
+    updateMarkCount();
+  }, 2000);
+
+  // CLS shift at 1500ms
+  setTimeout(function() { triggerCLS(); }, 1500);
+
+  performance.mark('harness_load_end');
+  performance.measure('harness_load_duration', 'harness_load_start', 'harness_load_end');
+  appendTimingLog('mark: harness_load_start', 'log');
+  appendTimingLog('mark: harness_interactive', 'log');
+  appendTimingLog('mark: harness_load_end', 'log');
+  appendTimingLog('measure: harness_load_duration = ' + Math.round(
+    performance.getEntriesByName('harness_load_duration')[0].duration
+  ) + 'ms', 'log');
+  updateMarkCount();
+
+  // Update TTFB/FCP from Navigation/Paint API
+  requestAnimationFrame(function() { setTimeout(refreshMetrics, 500); });
+});
+
+// ── §2: CLS ──────────────────────────────────────────────────────────────────
+function triggerCLS() {
+  var box   = document.getElementById('cls-box');
+  var label = document.getElementById('cls-label');
+  var st    = document.getElementById('cls-status');
+  box.style.height     = '200px';
+  box.style.transition = 'none'; // sudden shift — no animation so it counts
+  label.textContent    = 'SHIFTED — height expanded to 200 px';
+  st.textContent       = 'CLS shift triggered — check analyze(performance) for layout-shift entries';
+  st.className         = 'gh-status err';
+}
+function resetCLS() {
+  var box   = document.getElementById('cls-box');
+  var label = document.getElementById('cls-label');
+  var st    = document.getElementById('cls-status');
+  box.style.height  = '60px';
+  label.textContent = 'Stable (pre-shift)';
+  st.textContent    = 'Reset — trigger again for another CLS event.';
+  st.className      = 'gh-status';
+}
+
+// ── §3: Long Task ────────────────────────────────────────────────────────────
+function runLongTask(ms) {
+  var btn = document.getElementById('long-task-btn');
+  var st  = document.getElementById('long-task-status');
+  btn.disabled = true;
+  st.textContent = 'Running ' + ms + 'ms block…';
+  st.className = 'gh-status info';
+
+  performance.mark('long_task_start_' + ms);
+
+  setTimeout(function() {
+    // Synchronous CPU burn — this IS the Long Task
+    var end = performance.now() + ms;
+    var i = 0;
+    while (performance.now() < end) { i++; } // tight loop
+
+    performance.mark('long_task_end_' + ms);
+    performance.measure('long_task_' + ms + 'ms', 'long_task_start_' + ms, 'long_task_end_' + ms);
+
+    btn.disabled = false;
+    st.textContent = 'Long Task completed: ' + ms + 'ms block (' + i + ' iterations). Check analyze(performance).';
+    st.className = 'gh-status err';
+    ltCount++;
+    document.getElementById('m-lt').textContent = ltCount;
+    appendTimingLog('long_task: ' + ms + 'ms completed', 'warn');
+    updateMarkCount();
+  }, 0);
+}
+
+// ── §4: User Timing controls ─────────────────────────────────────────────────
+function addMark() {
+  var name = document.getElementById('mark-name').value || 'smoke_mark';
+  var fullName = name + '_' + Date.now();
+  performance.mark(fullName);
+  appendTimingLog('mark: ' + fullName + ' @ ' + Math.round(performance.now()) + 'ms', 'log');
+  updateMarkCount();
+}
+function addMeasure() {
+  var name = document.getElementById('mark-name').value || 'smoke_measure';
+  try {
+    var start = performance.getEntriesByType('mark').slice(-2)[0];
+    var end   = performance.getEntriesByType('mark').slice(-1)[0];
+    if (start && end) {
+      performance.measure(name + '_measure', start.name, end.name);
+      appendTimingLog('measure: ' + name + '_measure = ' +
+        Math.round(performance.getEntriesByName(name + '_measure').slice(-1)[0].duration) + 'ms', 'log');
+    } else {
+      appendTimingLog('Need at least 2 marks to measure.', 'warn');
+    }
+  } catch(e) {
+    appendTimingLog('measure error: ' + e.message, 'error');
+  }
+}
+function clearMarks() {
+  performance.clearMarks();
+  performance.clearMeasures();
+  appendTimingLog('Marks and measures cleared.', 'system');
+  updateMarkCount();
+}
+function updateMarkCount() {
+  var count = performance.getEntriesByType('mark').length;
+  document.getElementById('m-marks').textContent = count;
+  markCount = count;
+}
+
+// ── §5: Live Metrics ─────────────────────────────────────────────────────────
+function refreshMetrics() {
+  try {
+    var nav = performance.getEntriesByType('navigation')[0];
+    if (nav) {
+      var ttfb = Math.round(nav.responseStart - nav.requestStart);
+      document.getElementById('m-ttfb').textContent = ttfb + 'ms';
+      document.getElementById('m-ttfb').className = 'perf-metric-value ' + (ttfb > 800 ? 'poor' : 'ok');
+    }
+    var paint = performance.getEntriesByType('paint');
+    paint.forEach(function(p) {
+      if (p.name === 'first-contentful-paint') {
+        var fcp = Math.round(p.startTime);
+        document.getElementById('m-fcp').textContent = fcp + 'ms';
+        document.getElementById('m-fcp').className = 'perf-metric-value ' + (fcp > 1800 ? 'poor' : 'ok');
+      }
+    });
+    updateMarkCount();
+  } catch(e) { /* non-critical */ }
+}
+
+// PerformanceObserver: LCP
+if (window.PerformanceObserver) {
+  try {
+    new PerformanceObserver(function(list) {
+      var entries = list.getEntries();
+      var last = entries[entries.length - 1];
+      var lcp = Math.round(last.startTime);
+      var el = document.getElementById('m-lcp');
+      el.textContent = lcp + 'ms';
+      el.className = 'perf-metric-value ' + (lcp > 2500 ? 'poor' : 'ok');
+    }).observe({ type: 'largest-contentful-paint', buffered: true });
+  } catch(e) {}
+
+  // CLS observer
+  try {
+    new PerformanceObserver(function(list) {
+      list.getEntries().forEach(function(entry) {
+        if (!entry.hadRecentInput) {
+          clsTotal += entry.value;
+          var el = document.getElementById('m-cls');
+          el.textContent = clsTotal.toFixed(4);
+          el.className = 'perf-metric-value ' + (clsTotal > 0.1 ? 'poor' : 'ok');
+        }
+      });
+    }).observe({ type: 'layout-shift', buffered: true });
+  } catch(e) {}
+
+  // Long Tasks observer
+  try {
+    new PerformanceObserver(function(list) {
+      list.getEntries().forEach(function() {
+        ltCount++;
+        document.getElementById('m-lt').textContent = ltCount;
+      });
+    }).observe({ type: 'longtask', buffered: true });
+  } catch(e) {}
+}
+</script>
+
+</body>
+</html>
