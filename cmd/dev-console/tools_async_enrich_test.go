@@ -438,3 +438,71 @@ func TestStripRetryContextOnSuccess_NoRetryContext(t *testing.T) {
 	// Should not panic
 	stripRetryContextOnSuccess(responseData)
 }
+
+// ============================================
+// blocked_by_overlay playbook tests (#319)
+// ============================================
+
+func TestLookupInteractFailurePlaybook_BlockedByOverlay(t *testing.T) {
+	t.Parallel()
+	canonical, playbook, ok := lookupInteractFailurePlaybook("blocked_by_overlay")
+	if !ok {
+		t.Fatal("blocked_by_overlay playbook should exist")
+	}
+	if canonical != "blocked_by_overlay" {
+		t.Errorf("expected canonical code 'blocked_by_overlay', got %q", canonical)
+	}
+	if playbook.RetrySuggestion == "" {
+		t.Error("blocked_by_overlay should have a retry suggestion")
+	}
+}
+
+func TestNormalizeInteractFailureCode_OverlayVariants(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		input    string
+		expected string
+	}{
+		{"blocked_by_overlay", "blocked_by_overlay"},
+		{"BLOCKED_BY_OVERLAY", "blocked_by_overlay"},
+		{"Element is blocked_by_overlay: click intercepted", "blocked_by_overlay"},
+		{"unrelated_error", ""},
+	}
+	for _, tt := range tests {
+		got := normalizeInteractFailureCode(tt.input)
+		if got != tt.expected {
+			t.Errorf("normalizeInteractFailureCode(%q) = %q, want %q", tt.input, got, tt.expected)
+		}
+	}
+}
+
+func TestAnnotateInteractFailureRecovery_BlockedByOverlay(t *testing.T) {
+	t.Parallel()
+
+	result := json.RawMessage(`{
+		"success": false,
+		"error": "blocked_by_overlay",
+		"message": "Element is behind a modal overlay. Use dismiss_top_overlay first."
+	}`)
+
+	responseData := map[string]any{}
+	annotateInteractFailureRecovery(responseData, "blocked_by_overlay", result)
+
+	if responseData["error_code"] != "blocked_by_overlay" {
+		t.Errorf("expected error_code 'blocked_by_overlay', got %v", responseData["error_code"])
+	}
+	if responseData["retryable"] != true {
+		t.Error("blocked_by_overlay should be marked retryable")
+	}
+
+	retry, ok := responseData["retry"].(string)
+	if !ok || retry == "" {
+		t.Error("retry suggestion should be present for blocked_by_overlay")
+	}
+
+	hint, ok := responseData["hint"].(string)
+	if !ok || hint == "" {
+		t.Error("hint should be present for blocked_by_overlay")
+	}
+}

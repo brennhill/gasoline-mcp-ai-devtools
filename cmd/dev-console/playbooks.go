@@ -251,6 +251,7 @@ Use for complex multi-step browser workflows: form filling, multi-page navigatio
 - element_not_found: use list_interactive to discover elements, retry with element_id
 - ambiguous_target: narrow with scope_selector or scope_rect
 - stale_element_id: refresh list_interactive, reacquire element_id
+- blocked_by_overlay: run interact({what:"dismiss_top_overlay"}) then retry
 - page_changed_unexpectedly: take screenshot, reassess
 
 ## Tips
@@ -453,6 +454,8 @@ var quickstartContent = `# Gasoline MCP Quickstart
   - Refresh list_interactive in same scope, reacquire element_id, retry once.
 - scope_not_found
   - Fallback from scope_selector to scope_rect/frame, then rerun list_interactive.
+- blocked_by_overlay
+  - Run interact({what:"dismiss_top_overlay"}) to close the modal, then retry the original action.
 
 Stop and report evidence when recovery does not converge after one scoped retry cycle:
 - observe({what:"command_result", correlation_id:"..."})

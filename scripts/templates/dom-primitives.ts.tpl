@@ -522,6 +522,19 @@ export function domPrimitive(
 
   type ActionHandler = () => DOMResult | Promise<DOMResult>
 
+  // Detect if an element is obscured by a modal/dialog overlay.
+  // Returns the overlay element if blocking, null otherwise.
+  function detectBlockingOverlay(el: Element): Element | null {
+    const dialogs = collectDialogs()
+    if (dialogs.length === 0) return null
+    const topDialog = pickTopDialog(dialogs)
+    if (!topDialog) return null
+    // If the element is inside the top dialog, it's not blocked
+    if (typeof topDialog.contains === 'function' && topDialog.contains(el)) return null
+    // Element is outside the top dialog — it's blocked by the overlay
+    return topDialog
+  }
+
   function buildActionHandlers(node: Element): Record<string, ActionHandler> {
     return {
       click: () =>
@@ -532,6 +545,15 @@ export function domPrimitive(
           const interactiveAncestor = findInteractiveAncestor(node)
           const clickTarget = (interactiveAncestor instanceof HTMLElement ? interactiveAncestor : node) as HTMLElement
 
+          // Check if element is behind a modal overlay before clicking
+          const blockingOverlay = detectBlockingOverlay(node)
+          if (blockingOverlay) {
+            const overlayTag = blockingOverlay.tagName.toLowerCase()
+            const overlayRole = blockingOverlay.getAttribute('role') || ''
+            const overlayLabel = blockingOverlay.getAttribute('aria-label') || ''
+            const overlayDesc = overlayLabel ? `${overlayTag}[aria-label="${overlayLabel}"]` : overlayRole ? `${overlayTag}[role="${overlayRole}"]` : overlayTag
+            return domError('blocked_by_overlay', `Element is behind a modal overlay (${overlayDesc}). Use interact({what:"dismiss_top_overlay"}) to close it first.`)
+          }
           if (options.new_tab) {
             const linkNode = (() => {
               const tag = clickTarget.tagName.toLowerCase()

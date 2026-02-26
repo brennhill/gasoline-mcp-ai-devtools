@@ -299,7 +299,7 @@ func TestToolsConfigureTutorial_IncludesFailureRecoveryPlaybooks(t *testing.T) {
 		t.Fatalf("failure_recovery_playbooks type = %T, want map[string]any", data["failure_recovery_playbooks"])
 	}
 
-	required := []string{"element_not_found", "ambiguous_target", "stale_element_id", "scope_not_found"}
+	required := []string{"element_not_found", "ambiguous_target", "stale_element_id", "scope_not_found", "blocked_by_overlay"}
 	for _, code := range required {
 		raw, ok := playbooks[code]
 		if !ok {
