@@ -224,6 +224,8 @@ gasoline-mcp [options]
 
 Gasoline ships with bundled skills (including `debug-triage`, `performance`, `regression-test`, `api-validation`, `ux-audit`, and `site-audit`).
 
+`site-audit` provides full menu mapping plus page-by-page and feature-by-feature product analysis with usability findings and reproducibility notes.
+
 - `gasoline-mcp --install` installs bundled skills into detected agent skill directories.
 - npm package install also runs the bundled skill installer via postinstall.
 - Set `GASOLINE_SKIP_SKILL_INSTALL=1` to disable automatic skill installation.

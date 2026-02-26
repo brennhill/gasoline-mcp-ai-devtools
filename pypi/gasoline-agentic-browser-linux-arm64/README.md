@@ -1,6 +1,6 @@
 # gasoline-agentic-browser-linux-arm64
 
-Platform-specific binary package for Gasoline Agentic Browser (linux-arm64).
+Platform-specific binary package for Gasoline Agentic Browser Devtool MCP (linux-arm64).
 
 This package is automatically installed as a dependency when you run:
 

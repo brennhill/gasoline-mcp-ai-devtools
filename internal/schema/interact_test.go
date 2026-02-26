@@ -34,29 +34,15 @@ func TestInteractToolSchema_DispatchAcceptsWhatOrAction(t *testing.T) {
 		}
 	}
 
-	if _, hasRequired := tool.InputSchema["required"]; hasRequired {
-		t.Fatal("interact schema should not hard-require 'what' when 'action' alias is supported")
+	// Claude API forbids oneOf/allOf/anyOf at the top level of input_schema.
+	// 'what' is required; 'action' is a runtime alias handled by the server.
+	if _, hasAnyOf := tool.InputSchema["anyOf"]; hasAnyOf {
+		t.Fatal("interact schema must not use top-level anyOf (Claude API limitation)")
 	}
 
-	anyOfRaw, ok := tool.InputSchema["anyOf"]
-	if !ok {
-		t.Fatal("interact schema missing anyOf dispatch requirement")
-	}
-	anyOf, ok := anyOfRaw.([]map[string]any)
-	if !ok {
-		t.Fatalf("interact anyOf type = %T, want []map[string]any", anyOfRaw)
-	}
-	if len(anyOf) != 2 {
-		t.Fatalf("interact anyOf length = %d, want 2", len(anyOf))
-	}
-
-	firstRequired := toSchemaStringSlice(t, anyOf[0]["required"])
-	secondRequired := toSchemaStringSlice(t, anyOf[1]["required"])
-	if len(firstRequired) != 1 || firstRequired[0] != "what" {
-		t.Fatalf("first anyOf required = %v, want [what]", firstRequired)
-	}
-	if len(secondRequired) != 1 || secondRequired[0] != "action" {
-		t.Fatalf("second anyOf required = %v, want [action]", secondRequired)
+	required := toSchemaStringSlice(t, tool.InputSchema["required"])
+	if len(required) != 1 || required[0] != "what" {
+		t.Fatalf("interact schema required = %v, want [what]", required)
 	}
 }
 

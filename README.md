@@ -5,10 +5,10 @@
 
 <div align="center">
 
-<img src="docs/assets/images/chrome_store/readme-banner.png" alt="Gasoline Agentic Browser - Browser Observability for AI Coding Agents" width="100%" />
+<img src="docs/assets/images/chrome_store/readme-banner.png" alt="Gasoline Agentic Browser Devtool MCP - Browser Observability for AI Coding Agents" width="100%" />
 
 [![License](https://img.shields.io/badge/license-AGPL--3.0-blue.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/version-0.7.8-green.svg)](https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/releases)
+[![Version](https://img.shields.io/badge/version-0.7.9-green.svg)](https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/releases)
 [![Go](https://img.shields.io/badge/Go-1.21+-00ADD8.svg?logo=go&logoColor=white)](https://go.dev/)
 [![Chrome](https://img.shields.io/badge/Chrome-Manifest%20V3-4285F4.svg?logo=googlechrome&logoColor=white)](https://developer.chrome.com/docs/extensions/mv3/)
 [![macOS](https://img.shields.io/badge/macOS-supported-000000.svg?logo=apple&logoColor=white)](https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp)
@@ -35,7 +35,7 @@
 
 ## 📦 Latest Release
 
-Current version: **v0.7.8** — Link health analyzer, browser automation, recording, and performance analysis for AI agents.
+Current version: **v0.7.9** — Link health analyzer, browser automation, recording, and performance analysis for AI agents.
 
 **macOS / Linux:**
 ```bash
@@ -53,7 +53,7 @@ irm https://raw.githubusercontent.com/brennhill/gasoline-agentic-browser-devtool
 
 ## Quick Start
 
-**Fire up Gasoline Agentic Browser (Binary + Extension + Auto-Config) in one command:**
+**Fire up Gasoline Agentic Browser Devtool MCP (Binary + Extension + Auto-Config) in one command:**
 
 **macOS / Linux:**
 ```bash
@@ -87,9 +87,9 @@ Restart Claude Code, Cursor, Windsurf, or Zed. The Gasoline server will now star
 
 ---
 
-## Why You Cook With Gasoline Agentic Browser
+## Why You Cook With Gasoline Agentic Browser Devtool MCP
 
-**No debug port required.** Other tools need Chrome launched with `--remote-debugging-port`, which disables security sandboxing and breaks your normal browser workflow. Gasoline Agentic Browser uses a standard extension — your browser stays secure and unmodified.
+**No debug port required.** Other tools need Chrome launched with `--remote-debugging-port`, which disables security sandboxing and breaks your normal browser workflow. Gasoline Agentic Browser Devtool MCP uses a standard extension — your browser stays secure and unmodified.
 
 **Single binary, zero runtime.** One Go binary that runs anywhere — no runtime dependencies, no Puppeteer, no framework.
 
@@ -130,7 +130,7 @@ Restart Claude Code, Cursor, Windsurf, or Zed. The Gasoline server will now star
 
 See [latest benchmarks](docs/benchmarks/latest-benchmark.md) for current performance data.
 
-Last benchmarked: 2026-02-09 on darwin/arm64 (v0.7.8)
+Last benchmarked: 2026-02-09 on darwin/arm64 (v0.7.9)
 
 ## Known Issues
 
@@ -162,7 +162,7 @@ Artwork, logos, and the Sparky mascot are **Copyright (c) Brenn Hill** and are n
 
 *Pouring fuel on the AI development fire*
 
-If you find Gasoline Agentic Browser useful, please consider giving it a star!
+If you find Gasoline Agentic Browser Devtool MCP useful, please consider giving it a star!
 
 [![Star on GitHub](https://img.shields.io/github/stars/brennhill/gasoline-agentic-browser-devtools-mcp.svg?style=social)](https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp)
 

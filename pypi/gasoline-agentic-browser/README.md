@@ -1,4 +1,4 @@
-# Gasoline Agentic Browser
+# Gasoline Agentic Browser Devtool MCP
 
 Browser observability for AI coding agents - autonomously debug and fix issues in real time.
 
@@ -57,6 +57,8 @@ gasoline-agentic-browser --install
 ```
 
 This installs MCP config for detected clients and managed bundled skills (`debug-triage`, `performance`, `regression-test`, `api-validation`, `ux-audit`, `site-audit`) into your agent skill directories.
+
+`site-audit` includes full menu mapping plus page-by-page and feature-by-feature product analysis with usability findings and reproducibility notes.
 
 ## Chrome Extension
 

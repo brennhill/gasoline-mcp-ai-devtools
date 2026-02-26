@@ -25,7 +25,7 @@ This is the inverse of "recording for replay." Instead of record-first, it's rep
 
 **Page:** `https://cookwithgasoline.com/demo/recipe-search`
 
-**LLM:** Claude Code (with Gasoline MCP enabled)
+**LLM:** Claude Code (with Gasoline Agentic Browser Devtool MCP enabled)
 
 ---
 
