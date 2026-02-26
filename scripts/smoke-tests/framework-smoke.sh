@@ -164,12 +164,42 @@ init_smoke() {
 
 rewrite_smoke_urls() {
     local payload="$1"
-    payload="${payload//https:\/\/example.com/$SMOKE_EXAMPLE_URL}"
-    payload="${payload//http:\/\/example.com/$SMOKE_EXAMPLE_URL}"
-    payload="${payload//https:\/\/www.example.com/$SMOKE_EXAMPLE_URL}"
-    payload="${payload//https:\/\/example.org/${SMOKE_BASE_URL}/example.org}"
-    payload="${payload//http:\/\/example.org/${SMOKE_BASE_URL}/example.org}"
-    echo "$payload"
+    local rewritten
+    rewritten=$(
+        printf '%s' "$payload" | \
+            SMOKE_EXAMPLE_URL="$SMOKE_EXAMPLE_URL" SMOKE_BASE_URL="$SMOKE_BASE_URL" \
+            jq -c '
+                def rewrite_example_domain_url:
+                    if type != "string" then .
+                    elif test("^https?://(www\\.)?example\\.com(/|$)") then
+                        sub("^https?://(www\\.)?example\\.com"; env.SMOKE_EXAMPLE_URL)
+                    elif test("^https?://example\\.org(/|$)") then
+                        sub("^https?://example\\.org"; (env.SMOKE_BASE_URL + "/example.org"))
+                    else .
+                    end;
+
+                def rewrite_url_fields:
+                    if type == "object" then
+                        with_entries(
+                            if (.key == "url" or .key == "base_url" or .key == "from_url" or .key == "to_url")
+                            then .value |= rewrite_example_domain_url
+                            else .value |= rewrite_url_fields
+                            end
+                        )
+                    elif type == "array" then map(rewrite_url_fields)
+                    else .
+                    end;
+
+                rewrite_url_fields
+            ' 2>/dev/null
+    )
+
+    if [ -n "$rewritten" ]; then
+        echo "$rewritten"
+    else
+        # Non-JSON payloads should pass through unchanged.
+        echo "$payload"
+    fi
 }
 
 # Override base framework call_tool so smoke runs stay on local harness pages.

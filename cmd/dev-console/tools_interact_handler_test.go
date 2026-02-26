@@ -73,6 +73,27 @@ func TestToolsInteractDispatch_UnknownAction(t *testing.T) {
 	assertSnakeCaseFields(t, string(resp.Result))
 }
 
+func TestToolsInteractDispatch_UnknownActionAliasAddsCanonicalWhatWarning(t *testing.T) {
+	t.Parallel()
+	h, _, _ := makeToolHandler(t)
+
+	resp := callInteractRaw(h, `{"action":"nonexistent_action"}`)
+	result := parseToolResult(t, resp)
+	if !result.IsError {
+		t.Fatal("unknown action alias should return isError:true")
+	}
+	foundCanonicalWarning := false
+	for _, block := range result.Content {
+		if strings.Contains(block.Text, "canonical parameter is 'what'") {
+			foundCanonicalWarning = true
+			break
+		}
+	}
+	if !foundCanonicalWarning {
+		t.Fatalf("expected canonical what warning block on error path, got %d content blocks", len(result.Content))
+	}
+}
+
 func TestToolsInteractDispatch_ScreenshotAlias(t *testing.T) {
 	t.Parallel()
 	h, _, _ := makeToolHandler(t)
