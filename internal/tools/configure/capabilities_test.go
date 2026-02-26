@@ -134,6 +134,45 @@ func TestBuildCapabilitiesMap_NoRequired(t *testing.T) {
 	}
 }
 
+func TestBuildCapabilitiesMap_InferDispatchParamWhenRequiredOmitted(t *testing.T) {
+	t.Parallel()
+
+	tools := []mcp.MCPTool{
+		{
+			Name: "interact",
+			InputSchema: map[string]any{
+				"properties": map[string]any{
+					"what": map[string]any{
+						"type": "string",
+						"enum": []string{"navigate", "click"},
+					},
+					"action": map[string]any{
+						"type": "string",
+						"enum": []string{"navigate", "click"},
+					},
+					"url": map[string]any{"type": "string"},
+				},
+				"anyOf": []map[string]any{
+					{"required": []string{"what"}},
+					{"required": []string{"action"}},
+				},
+			},
+		},
+	}
+
+	result := BuildCapabilitiesMap(tools)
+	tool := result["interact"].(map[string]any)
+
+	if got := tool["dispatch_param"]; got != "what" {
+		t.Fatalf("dispatch_param = %v, want what", got)
+	}
+
+	modes := tool["modes"].([]string)
+	if len(modes) != 2 || modes[0] != "navigate" || modes[1] != "click" {
+		t.Fatalf("modes = %v, want [navigate click]", modes)
+	}
+}
+
 func TestBuildCapabilitiesMap_IncludesModeParamsAndTypeMetadata(t *testing.T) {
 	t.Parallel()
 

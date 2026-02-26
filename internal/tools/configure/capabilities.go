@@ -31,12 +31,7 @@ func BuildCapabilitiesSummary(tools []mcp.MCPTool) map[string]any {
 	toolsMap := make(map[string]any, len(tools))
 	for _, tool := range tools {
 		props, _ := tool.InputSchema["properties"].(map[string]any)
-		required := toStringSlice(tool.InputSchema["required"])
-
-		dispatchParam := ""
-		if len(required) > 0 {
-			dispatchParam = required[0]
-		}
+		dispatchParam := inferDispatchParam(tool.InputSchema, props)
 
 		modeNames := extractModes(dispatchParam, props)
 		modes := buildModeIndex(tool.Name, modeNames)
@@ -75,12 +70,7 @@ func BuildCapabilitiesMap(tools []mcp.MCPTool) map[string]any {
 	toolsMap := make(map[string]any, len(tools))
 	for _, tool := range tools {
 		props, _ := tool.InputSchema["properties"].(map[string]any)
-		required := toStringSlice(tool.InputSchema["required"])
-
-		dispatchParam := ""
-		if len(required) > 0 {
-			dispatchParam = required[0]
-		}
+		dispatchParam := inferDispatchParam(tool.InputSchema, props)
 
 		modes := extractModes(dispatchParam, props)
 
@@ -105,6 +95,29 @@ func BuildCapabilitiesMap(tools []mcp.MCPTool) map[string]any {
 		}
 	}
 	return toolsMap
+}
+
+// inferDispatchParam selects the canonical mode/action parameter for a tool.
+// Primary source is schema.required[0]. For alias-friendly schemas that use
+// anyOf/oneOf instead of a top-level required field, fall back to known enum
+// dispatch keys so capabilities output remains stable.
+func inferDispatchParam(inputSchema map[string]any, props map[string]any) string {
+	required := toStringSlice(inputSchema["required"])
+	if len(required) > 0 {
+		return required[0]
+	}
+
+	candidates := []string{"what", "mode", "format", "action"}
+	for _, name := range candidates {
+		prop, ok := props[name].(map[string]any)
+		if !ok {
+			continue
+		}
+		if len(toStringSlice(prop["enum"])) > 0 {
+			return name
+		}
+	}
+	return ""
 }
 
 func extractModes(dispatchParam string, props map[string]any) []string {
