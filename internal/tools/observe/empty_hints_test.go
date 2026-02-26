@@ -1,0 +1,108 @@
+// empty_hints_test.go — Unit tests for diagnostic hint builders.
+package observe
+
+import (
+	"strings"
+	"testing"
+)
+
+// ============================================
+// networkBodiesEmptyHint
+// ============================================
+
+func TestNetworkBodiesEmptyHint_FilterMismatch(t *testing.T) {
+	t.Parallel()
+	hint := networkBodiesEmptyHint(0, 5, "github.com")
+
+	if !strings.Contains(hint, "github.com") {
+		t.Errorf("hint should mention the URL filter, got: %s", hint)
+	}
+	if !strings.Contains(hint, "5 bodies exist in the buffer") {
+		t.Errorf("hint should mention unfiltered count with 'in the buffer' wording, got: %s", hint)
+	}
+}
+
+func TestNetworkBodiesEmptyHint_WaterfallOnly(t *testing.T) {
+	t.Parallel()
+	hint := networkBodiesEmptyHint(10, 0, "")
+
+	if !strings.Contains(hint, "waterfall") {
+		t.Errorf("hint should mention waterfall, got: %s", hint)
+	}
+	if !strings.Contains(hint, "10 requests") {
+		t.Errorf("hint should mention waterfall count, got: %s", hint)
+	}
+	if !strings.Contains(hint, "after") {
+		t.Errorf("hint should explain prospective-only capture, got: %s", hint)
+	}
+}
+
+func TestNetworkBodiesEmptyHint_NothingCaptured(t *testing.T) {
+	t.Parallel()
+	hint := networkBodiesEmptyHint(0, 0, "")
+
+	if !strings.Contains(hint, "pilot") {
+		t.Errorf("hint should suggest checking pilot status, got: %s", hint)
+	}
+	if !strings.Contains(hint, "No network bodies captured") {
+		t.Errorf("hint should state no bodies captured, got: %s", hint)
+	}
+}
+
+func TestNetworkBodiesEmptyHint_FilterWithZeroUnfiltered(t *testing.T) {
+	t.Parallel()
+	// URL filter present but unfilteredCount is 0 — should fall through to case 2/3
+	hint := networkBodiesEmptyHint(0, 0, "github.com")
+
+	// Should NOT mention the filter (case 1 requires unfilteredCount > 0)
+	if strings.Contains(hint, "filter") {
+		t.Errorf("hint should not mention filter when unfiltered count is 0, got: %s", hint)
+	}
+}
+
+// ============================================
+// wsEventsEmptyHint
+// ============================================
+
+func TestWSEventsEmptyHint_FilterMismatch(t *testing.T) {
+	t.Parallel()
+	hint := wsEventsEmptyHint(8, "stream.example.com")
+
+	if !strings.Contains(hint, "stream.example.com") {
+		t.Errorf("hint should mention the URL filter, got: %s", hint)
+	}
+	if !strings.Contains(hint, "8 events exist") {
+		t.Errorf("hint should mention unfiltered count, got: %s", hint)
+	}
+}
+
+func TestWSEventsEmptyHint_NoEvents(t *testing.T) {
+	t.Parallel()
+	hint := wsEventsEmptyHint(0, "")
+
+	if !strings.Contains(strings.ToLower(hint), "websocket") {
+		t.Errorf("hint should mention WebSocket, got: %s", hint)
+	}
+	if !strings.Contains(hint, "before connections open") {
+		t.Errorf("hint should explain prospective interception, got: %s", hint)
+	}
+}
+
+// ============================================
+// wsStatusEmptyHint
+// ============================================
+
+func TestWSStatusEmptyHint_Content(t *testing.T) {
+	t.Parallel()
+	hint := wsStatusEmptyHint()
+
+	if !strings.Contains(strings.ToLower(hint), "websocket") {
+		t.Errorf("hint should mention WebSocket, got: %s", hint)
+	}
+	if !strings.Contains(hint, "before connections open") {
+		t.Errorf("hint should explain prospective interception, got: %s", hint)
+	}
+	if hint == "" {
+		t.Fatal("hint should not be empty")
+	}
+}

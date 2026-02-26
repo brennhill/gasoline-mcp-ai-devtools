@@ -24,7 +24,8 @@ import {
   setServerUrl,
   wrapFetchWithBodies,
   wrapXHRWithBodies,
-  unwrapXHR
+  unwrapXHR,
+  adoptEarlyBodies
 } from '../lib/network'
 import { installConsoleCapture, uninstallConsoleCapture } from '../lib/console'
 import { installExceptionCapture, uninstallExceptionCapture } from '../lib/exceptions'
@@ -163,9 +164,12 @@ export function wrapFetch(originalFetchFn: typeof fetch): typeof fetch {
  * Install fetch capture.
  * Uses wrapFetchWithBodies to capture request/response bodies for all requests,
  * then wraps that with wrapFetch to also capture error details for 4xx/5xx responses.
+ * If the early-patch script ran first, uses the saved original fetch (not the early wrapper).
  */
 export function installFetchCapture(): void {
-  originalFetch = window.fetch
+  // Check for early-patch: use the saved original, not the early-patch wrapper
+  const earlyOriginal = window.__GASOLINE_ORIGINAL_FETCH__
+  originalFetch = earlyOriginal || window.fetch
   // Layer 1: wrapFetchWithBodies captures request/response bodies for ALL requests
   // Layer 2: wrapFetch captures detailed error logging for 4xx/5xx responses
   // Use unknown intermediate cast to handle TypeScript's strict fetch overload types
@@ -315,6 +319,9 @@ export function installPhase2(): void {
 
   // Install all heavy interceptors
   install()
+
+  // Adopt fetch/XHR bodies buffered by the early-patch script
+  adoptEarlyBodies()
 
   // FCP/LCP/CLS/INP/long-task observers (buffered: true replays pre-Phase-2 entries)
   installPerfObservers()
