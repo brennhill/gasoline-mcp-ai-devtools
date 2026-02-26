@@ -367,26 +367,37 @@ export async function runAxeAudit(params: AxeAuditParams): Promise<FormattedAxeR
 }
 
 /**
- * Run axe audit with a timeout
+ * Run axe audit with a timeout.
+ * Issue #276: Returns partial results on timeout or conflict instead of throwing.
  */
 export async function runAxeAuditWithTimeout(
   params: AxeAuditParams,
   timeoutMs: number = A11Y_AUDIT_TIMEOUT_MS
 ): Promise<FormattedAxeResults> {
-  return Promise.race([
-    runAxeAudit(params),
-    new Promise<FormattedAxeResults>((resolve) => {
-      setTimeout(
-        () =>
-          resolve({
-            violations: [],
-            summary: { violations: 0, passes: 0, incomplete: 0, inapplicable: 0 },
-            error: 'Accessibility audit timeout'
-          }),
-        timeoutMs
-      )
-    })
-  ])
+  try {
+    return await Promise.race([
+      runAxeAudit(params),
+      new Promise<FormattedAxeResults>((resolve) => {
+        setTimeout(
+          () =>
+            resolve({
+              violations: [],
+              summary: { violations: 0, passes: 0, incomplete: 0, inapplicable: 0 },
+              error: 'Accessibility audit timeout'
+            }),
+          timeoutMs
+        )
+      })
+    ])
+  } catch (err) {
+    // Issue #276: Return partial results with error instead of throwing.
+    // Handles "Axe is already running" and other runtime errors gracefully.
+    return {
+      violations: [],
+      summary: { violations: 0, passes: 0, incomplete: 0, inapplicable: 0 },
+      error: (err as Error).message || 'Accessibility audit failed'
+    }
+  }
 }
 
 /**

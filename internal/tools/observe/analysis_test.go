@@ -6,11 +6,37 @@
 package observe
 
 import (
+	"encoding/json"
+	"errors"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/dev-console/dev-console/internal/capture"
+	"github.com/dev-console/dev-console/internal/mcp"
 )
+
+// ============================================
+// Mock Deps for RunA11yAudit tests
+// ============================================
+
+type mockA11yDeps struct {
+	cap           *capture.Capture
+	a11yResult    json.RawMessage
+	a11yErr       error
+	diagnosticStr string
+}
+
+func (m *mockA11yDeps) DiagnosticHintString() string { return m.diagnosticStr }
+func (m *mockA11yDeps) GetCapture() *capture.Capture { return m.cap }
+func (m *mockA11yDeps) GetLogEntries() ([]mcp.LogEntry, []time.Time) {
+	return nil, nil
+}
+func (m *mockA11yDeps) GetLogTotalAdded() int64 { return 0 }
+func (m *mockA11yDeps) ExecuteA11yQuery(_ string, _ []string, _ any, _ bool) (json.RawMessage, error) {
+	return m.a11yResult, m.a11yErr
+}
+func (m *mockA11yDeps) IsConsoleNoise(_ mcp.LogEntry) bool { return false }
 
 // ============================================
 // Waterfall Summary Tests
@@ -337,5 +363,128 @@ func TestBuildA11ySummary_TopIssuesLimitedTo5(t *testing.T) {
 	topIssues := result["top_issues"].([]map[string]any)
 	if len(topIssues) != 5 {
 		t.Errorf("expected 5 top issues (capped), got %d", len(topIssues))
+	}
+}
+
+// ============================================
+// Issue #276: A11y Audit Partial Results Tests
+// ============================================
+
+func TestRunA11yAudit_TimeoutReturnsPartialResults(t *testing.T) {
+	t.Parallel()
+	cap := capture.NewCapture()
+	cap.SetTrackingStatusForTest(1, "https://example.com")
+
+	deps := &mockA11yDeps{
+		cap:     cap,
+		a11yErr: errors.New("context deadline exceeded"),
+	}
+
+	req := mcp.JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`)}
+	resp := RunA11yAudit(deps, req, json.RawMessage(`{}`))
+
+	// Should NOT be an error response — should return partial results gracefully
+	var result mcp.MCPToolResult
+	if err := json.Unmarshal(resp.Result, &result); err != nil {
+		t.Fatalf("failed to parse result: %v", err)
+	}
+	if result.IsError {
+		t.Fatal("timeout should return partial results, not isError:true")
+	}
+
+	// Should contain an error field in the data
+	text := result.Content[0].Text
+	if !strings.Contains(text, "error") {
+		t.Errorf("partial result should contain 'error' field, got: %s", text)
+	}
+	if !strings.Contains(text, "timeout") && !strings.Contains(text, "deadline") {
+		t.Errorf("partial result should mention timeout or deadline, got: %s", text)
+	}
+
+	// Should have empty violations/passes arrays (partial result structure)
+	var data map[string]any
+	idx := strings.Index(text, "{")
+	if idx >= 0 {
+		if err := json.Unmarshal([]byte(text[idx:]), &data); err == nil {
+			if _, ok := data["violations"]; !ok {
+				t.Error("partial result should include 'violations' field")
+			}
+			if _, ok := data["summary"]; !ok {
+				t.Error("partial result should include 'summary' field")
+			}
+		}
+	}
+}
+
+func TestRunA11yAudit_AlreadyRunningReturnsPartialResults(t *testing.T) {
+	t.Parallel()
+	cap := capture.NewCapture()
+	cap.SetTrackingStatusForTest(1, "https://example.com")
+
+	deps := &mockA11yDeps{
+		cap:     cap,
+		a11yErr: errors.New("Axe is already running"),
+	}
+
+	req := mcp.JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`)}
+	resp := RunA11yAudit(deps, req, json.RawMessage(`{}`))
+
+	var result mcp.MCPToolResult
+	if err := json.Unmarshal(resp.Result, &result); err != nil {
+		t.Fatalf("failed to parse result: %v", err)
+	}
+	if result.IsError {
+		t.Fatal("already-running should return partial results, not isError:true")
+	}
+
+	text := result.Content[0].Text
+	if !strings.Contains(text, "error") {
+		t.Errorf("partial result should contain error field, got: %s", text)
+	}
+	if !strings.Contains(text, "already running") {
+		t.Errorf("partial result should mention 'already running', got: %s", text)
+	}
+}
+
+func TestRunA11yAudit_ResultWithErrorFieldReturnsGracefully(t *testing.T) {
+	t.Parallel()
+	cap := capture.NewCapture()
+	cap.SetTrackingStatusForTest(1, "https://example.com")
+
+	// Simulate extension returning partial results with an error field
+	partialResult := map[string]any{
+		"violations": []any{},
+		"passes":     []any{},
+		"incomplete": []any{},
+		"summary": map[string]any{
+			"violations":   0,
+			"passes":       0,
+			"incomplete":   0,
+			"inapplicable": 0,
+		},
+		"error": "Accessibility audit timeout",
+	}
+	resultJSON, _ := json.Marshal(partialResult)
+
+	deps := &mockA11yDeps{
+		cap:        cap,
+		a11yResult: resultJSON,
+	}
+
+	req := mcp.JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`)}
+	resp := RunA11yAudit(deps, req, json.RawMessage(`{}`))
+
+	var result mcp.MCPToolResult
+	if err := json.Unmarshal(resp.Result, &result); err != nil {
+		t.Fatalf("failed to parse result: %v", err)
+	}
+	// Should NOT be isError — partial results are still useful
+	if result.IsError {
+		t.Fatal("result with error field should not be isError:true")
+	}
+
+	text := result.Content[0].Text
+	if !strings.Contains(text, "error") {
+		t.Errorf("response should preserve error field, got: %s", text)
 	}
 }

@@ -129,7 +129,8 @@ export declare function getPageInfo(): Promise<PageInfoResult>;
  */
 export declare function runAxeAudit(params: AxeAuditParams): Promise<FormattedAxeResults>;
 /**
- * Run axe audit with a timeout
+ * Run axe audit with a timeout.
+ * Issue #276: Returns partial results on timeout or conflict instead of throwing.
  */
 export declare function runAxeAuditWithTimeout(params: AxeAuditParams, timeoutMs?: number): Promise<FormattedAxeResults>;
 /**

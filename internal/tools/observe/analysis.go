@@ -292,7 +292,21 @@ func RunA11yAudit(deps Deps, req mcp.JSONRPCRequest, args json.RawMessage) mcp.J
 
 	result, err := deps.ExecuteA11yQuery(params.Scope, params.Tags, params.Frame, params.ForceRefresh)
 	if err != nil {
-		return mcp.JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcp.StructuredErrorResponse(mcp.ErrExtTimeout, "A11y audit timeout: "+err.Error(), "Ensure the extension is connected and the page has loaded. Try refreshing the page, then retry.", mcp.WithHint(deps.DiagnosticHintString()))}
+		// Issue #276: return partial results with error field instead of hard failure.
+		// This lets the caller know what happened while providing a usable response shape.
+		partialResult := map[string]any{
+			"violations":   []any{},
+			"passes":       []any{},
+			"incomplete":   []any{},
+			"inapplicable": []any{},
+			"error":        err.Error(),
+			"partial":      true,
+			"summary": map[string]any{
+				"violation_count": 0,
+				"pass_count":      0,
+			},
+		}
+		return mcp.JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcp.JSONResponse("A11y audit (partial — "+err.Error()+")", partialResult)}
 	}
 
 	var auditResult map[string]any

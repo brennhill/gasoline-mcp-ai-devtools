@@ -236,18 +236,39 @@ func TestToolsAnalyzePageSummary_InvalidWorld(t *testing.T) {
 // analyze(what:"dom") — Response Fields
 // ============================================
 
-func TestToolsAnalyzeDOM_MissingSelector(t *testing.T) {
+func TestToolsAnalyzeDOM_NoSelector_FullDOMDump(t *testing.T) {
 	t.Parallel()
-	h, _, _ := makeToolHandler(t)
+	h, _, cap := makeToolHandler(t)
 
-	resp := callAnalyzeRaw(h, `{"what":"dom"}`)
+	// Issue #274: dom without selector should succeed (full DOM dump with selector="*")
+	resp := callAnalyzeRaw(h, `{"what":"dom","sync":false}`)
 	result := parseToolResult(t, resp)
-	if !result.IsError {
-		t.Fatal("dom without selector should return isError:true")
+	if result.IsError {
+		t.Fatalf("dom without selector should succeed for full DOM dump, got: %s", result.Content[0].Text)
 	}
-	if !strings.Contains(result.Content[0].Text, "selector") {
-		t.Error("error should mention 'selector' parameter")
+
+	data := extractResultJSON(t, result)
+	if data["status"] != "queued" {
+		t.Errorf("status = %v, want 'queued'", data["status"])
 	}
+	corr, _ := data["correlation_id"].(string)
+	if !strings.HasPrefix(corr, "dom_") {
+		t.Errorf("correlation_id should start with 'dom_', got: %s", corr)
+	}
+
+	// Verify the pending query uses "*" as default selector
+	pq := cap.GetLastPendingQuery()
+	if pq == nil {
+		t.Fatal("expected pending query to be created")
+	}
+	var params map[string]any
+	if err := json.Unmarshal(pq.Params, &params); err != nil {
+		t.Fatalf("failed to parse pending query params: %v", err)
+	}
+	if got, ok := params["selector"].(string); !ok || got != "*" {
+		t.Fatalf("selector should default to '*' for full DOM dump, got %#v", params["selector"])
+	}
+
 	assertSnakeCaseFields(t, string(resp.Result))
 }
 
@@ -544,7 +565,8 @@ func TestToolsAnalyze_AllModes_ResponseStructure(t *testing.T) {
 		what string
 		args string
 	}{
-		{"dom", `{"what":"dom","selector":"div"}`},
+		{"dom", `{"what":"dom"}`},
+		{"dom_with_selector", `{"what":"dom","selector":"div"}`},
 		{"api_validation", `{"what":"api_validation","operation":"analyze"}`},
 		{"performance", `{"what":"performance"}`},
 		{"link_health", `{"what":"link_health"}`},

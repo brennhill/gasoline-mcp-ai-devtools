@@ -9,7 +9,7 @@
  * accessibility auditing via axe-core.
  */
 import { DOM_QUERY_MAX_ELEMENTS, DOM_QUERY_MAX_TEXT, DOM_QUERY_MAX_DEPTH, DOM_QUERY_MAX_HTML, A11Y_MAX_NODES_PER_VIOLATION, A11Y_AUDIT_TIMEOUT_MS } from './constants.js';
-import { scaleTimeout } from './timeouts.js';
+import { scaleTimeout } from './timeouts';
 /**
  * Execute a DOM query and return structured results
  */
@@ -189,19 +189,31 @@ export async function runAxeAudit(params) {
     return formatAxeResults(results);
 }
 /**
- * Run axe audit with a timeout
+ * Run axe audit with a timeout.
+ * Issue #276: Returns partial results on timeout or conflict instead of throwing.
  */
 export async function runAxeAuditWithTimeout(params, timeoutMs = A11Y_AUDIT_TIMEOUT_MS) {
-    return Promise.race([
-        runAxeAudit(params),
-        new Promise((resolve) => {
-            setTimeout(() => resolve({
-                violations: [],
-                summary: { violations: 0, passes: 0, incomplete: 0, inapplicable: 0 },
-                error: 'Accessibility audit timeout'
-            }), timeoutMs);
-        })
-    ]);
+    try {
+        return await Promise.race([
+            runAxeAudit(params),
+            new Promise((resolve) => {
+                setTimeout(() => resolve({
+                    violations: [],
+                    summary: { violations: 0, passes: 0, incomplete: 0, inapplicable: 0 },
+                    error: 'Accessibility audit timeout'
+                }), timeoutMs);
+            })
+        ]);
+    }
+    catch (err) {
+        // Issue #276: Return partial results with error instead of throwing.
+        // Handles "Axe is already running" and other runtime errors gracefully.
+        return {
+            violations: [],
+            summary: { violations: 0, passes: 0, incomplete: 0, inapplicable: 0 },
+            error: err.message || 'Accessibility audit failed'
+        };
+    }
 }
 /**
  * Format axe-core results into a compact representation
