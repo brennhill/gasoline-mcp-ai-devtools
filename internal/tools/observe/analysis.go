@@ -210,8 +210,22 @@ func GetPageInfo(deps Deps, req mcp.JSONRPCRequest, _ json.RawMessage) mcp.JSONR
 	cspRestricted, cspLevel := cap.GetCSPStatus()
 	tabStatus := cap.GetTabStatus()
 
+	// Each state getter acquires c.mu.RLock independently. Between calls, state
+	// could change (e.g., extension disconnects between GetTabStatus and
+	// IsExtensionConnected). This is acceptable for an advisory readiness signal
+	// — the next observe(what:"page") call will correct any inconsistency.
 	extensionConnected := cap.IsExtensionConnected()
-	pilotEnabled := cap.IsPilotActionAllowed()
+
+	// Use IsPilotEnabled (defaults false) instead of IsPilotActionAllowed (defaults
+	// true during startup). This avoids briefly reporting page_ready_for_commands=true
+	// before the first extension sync confirms pilot status.
+	pilotEnabled := cap.IsPilotEnabled()
+
+	// page_ready_for_commands is true when all four conditions hold:
+	//   1. extensionConnected — WebSocket link to extension is live
+	//   2. pilotEnabled       — AI Web Pilot is enabled in extension settings
+	//   3. enabled            — a tab is actively being tracked
+	//   4. tabStatus=="complete" — the tracked tab has finished loading
 	pageReady := extensionConnected && pilotEnabled && enabled && tabStatus == "complete"
 
 	result := map[string]any{

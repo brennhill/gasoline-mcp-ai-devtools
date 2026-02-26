@@ -67,6 +67,27 @@ func TestBuildResponseMetadata_DataAgeMs_NoData(t *testing.T) {
 	}
 }
 
+func TestBuildResponseMetadata_DataAgeMs_FutureTimestamp(t *testing.T) {
+	t.Parallel()
+	cap := capture.NewCapture()
+	cap.SimulateExtensionConnectForTest()
+
+	// Simulate NTP clock adjustment: newestEntry is in the future relative to now.
+	newestEntry := time.Now().Add(5 * time.Second)
+	meta := BuildResponseMetadata(cap, newestEntry)
+
+	// data_age_ms must be clamped to 0, not negative.
+	if meta.DataAgeMs < 0 {
+		t.Errorf("DataAgeMs = %d, want >= 0 (negative age should be clamped)", meta.DataAgeMs)
+	}
+	if meta.DataAgeMs != 0 {
+		t.Errorf("DataAgeMs = %d, want 0 for future timestamp", meta.DataAgeMs)
+	}
+	if meta.DataAge != "0.0s" {
+		t.Errorf("DataAge = %q, want '0.0s' for clamped age", meta.DataAge)
+	}
+}
+
 func TestBuildResponseMetadata_DataAgeMs_InPaginatedMetadata(t *testing.T) {
 	t.Parallel()
 	cap := capture.NewCapture()

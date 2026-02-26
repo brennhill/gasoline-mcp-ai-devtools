@@ -17,6 +17,9 @@ type ResponseMetadata struct {
 	RetrievedAt     string `json:"retrieved_at"`
 	IsStale         bool   `json:"is_stale"`
 	DataAge         string `json:"data_age"`
+	// DataAgeMs is milliseconds since the newest entry in the response data.
+	// Returns -1 when no data exists (sentinel for "no data").
+	// Clamped to zero if the clock reports a negative age (e.g., NTP adjustment).
 	DataAgeMs       int64  `json:"data_age_ms"`
 	NoiseSuppressed int    `json:"noise_suppressed,omitempty"`
 }
@@ -30,6 +33,9 @@ func BuildResponseMetadata(cap *capture.Capture, newestEntry time.Time) Response
 	}
 	if !newestEntry.IsZero() {
 		age := now.Sub(newestEntry)
+		if age < 0 {
+			age = 0
+		}
 		meta.DataAge = fmt.Sprintf("%.1fs", age.Seconds())
 		meta.DataAgeMs = age.Milliseconds()
 	} else {
