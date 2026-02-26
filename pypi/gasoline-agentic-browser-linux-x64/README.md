@@ -1,6 +1,6 @@
 # gasoline-agentic-browser-linux-x64
 
-Platform-specific binary package for Gasoline Agentic Browser (linux-x64).
+Platform-specific binary package for Gasoline Agentic Browser Devtool MCP (linux-x64).
 
 This package is automatically installed as a dependency when you run:
 

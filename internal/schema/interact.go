@@ -260,10 +260,7 @@ func InteractToolSchema() mcp.MCPTool {
 					"description": "File path to save output (run_a11y_and_export_sarif)",
 				},
 			},
-			"anyOf": []map[string]any{
-				{"required": []string{"what"}},
-				{"required": []string{"action"}},
-			},
+			"required": []string{"what"},
 		},
 	}
 }
