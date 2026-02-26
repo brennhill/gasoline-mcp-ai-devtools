@@ -486,6 +486,9 @@ func registerCoreRoutes(mux *http.ServeMux, server *Server, cap *capture.Capture
 		serveEmbeddedHTML(w, r, docsHTML, "docs")
 	}))
 
+	// NOT MCP — Embedded test/demo pages for self-testing
+	mux.HandleFunc("/tests/", corsMiddleware(handleTestPages()))
+
 	// NOT MCP — Screenshot binary upload from extension (MCP reads via observe(what: "screenshot"))
 	mux.HandleFunc("/screenshots", corsMiddleware(extensionOnly(func(w http.ResponseWriter, r *http.Request) {
 		server.handleScreenshot(w, r, cap)
