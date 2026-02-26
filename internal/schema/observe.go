@@ -168,6 +168,10 @@ func ObserveToolSchema() mcp.MCPTool {
 					"type":        "number",
 					"description": "Minimum occurrences to form a group (summarized_logs, default 2)",
 				},
+				"summary": map[string]any{
+					"type":        "boolean",
+					"description": "Return compact summary instead of full entries (errors, logs, network_waterfall, network_bodies, websocket_events, actions, error_bundles, timeline, history)",
+				},
 			},
 			"required": []string{"what"},
 		},

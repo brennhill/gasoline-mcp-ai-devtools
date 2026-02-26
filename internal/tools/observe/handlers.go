@@ -57,9 +57,10 @@ func clampLimit(limit, defaultVal int) int {
 // GetBrowserErrors returns error-level log entries from the capture buffer.
 func GetBrowserErrors(deps Deps, req mcp.JSONRPCRequest, args json.RawMessage) mcp.JSONRPCResponse {
 	var params struct {
-		Limit int    `json:"limit"`
-		URL   string `json:"url"`
-		Scope string `json:"scope"`
+		Limit   int    `json:"limit"`
+		URL     string `json:"url"`
+		Scope   string `json:"scope"`
+		Summary bool   `json:"summary"`
 	}
 	mcp.LenientUnmarshal(args, &params)
 	params.Limit = clampLimit(params.Limit, 100)
@@ -124,6 +125,10 @@ func GetBrowserErrors(deps Deps, req mcp.JSONRPCRequest, args json.RawMessage) m
 	responseMeta := BuildResponseMetadata(deps.GetCapture(), newestTS)
 	responseMeta.NoiseSuppressed = noiseSuppressed
 
+	if params.Summary {
+		return mcp.JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcp.JSONResponse("Browser errors", buildErrorsSummary(errors, noiseSuppressed, responseMeta))}
+	}
+
 	return mcp.JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcp.JSONResponse("Browser errors", map[string]any{
 		"errors":   errors,
 		"count":    len(errors),
@@ -149,6 +154,7 @@ func GetBrowserLogs(deps Deps, req mcp.JSONRPCRequest, args json.RawMessage) mcp
 		IncludeInternal   bool   `json:"include_internal"`
 		IncludeExtension  bool   `json:"include_extension_logs"`
 		ExtensionLimit    int    `json:"extension_limit"`
+		Summary           bool   `json:"summary"`
 	}
 	mcp.LenientUnmarshal(args, &params)
 	if params.Scope == "" {
@@ -247,10 +253,17 @@ func GetBrowserLogs(deps Deps, req mcp.JSONRPCRequest, args json.RawMessage) mcp
 		}
 	}
 
-	meta := BuildPaginatedResponseMetadata(deps.GetCapture(), newestTS, pMeta)
+	isFirstPage := params.AfterCursor == "" && params.BeforeCursor == "" && params.SinceCursor == ""
+	meta := BuildPaginatedMetadataWithSummary(deps.GetCapture(), newestTS, pMeta, isFirstPage, func() map[string]any {
+		return quickLogsSummary(logs)
+	})
 	meta["scope"] = params.Scope
 	if noiseSuppressed > 0 {
 		meta["noise_suppressed"] = noiseSuppressed
+	}
+
+	if params.Summary {
+		return mcp.JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcp.JSONResponse("Browser logs", buildLogsSummary(logs, meta))}
 	}
 
 	response := map[string]any{
@@ -426,6 +439,7 @@ func GetNetworkBodies(deps Deps, req mcp.JSONRPCRequest, args json.RawMessage) m
 		StatusMax int    `json:"status_max"`
 		BodyKey   string `json:"body_key"`
 		BodyPath  string `json:"body_path"`
+		Summary   bool   `json:"summary"`
 	}
 	mcp.LenientUnmarshal(args, &params)
 	if params.BodyKey != "" && params.BodyPath != "" {
@@ -474,10 +488,15 @@ func GetNetworkBodies(deps Deps, req mcp.JSONRPCRequest, args json.RawMessage) m
 		newestTS, _ = time.Parse(time.RFC3339, allBodies[len(allBodies)-1].Timestamp)
 	}
 
+	responseMeta := BuildResponseMetadata(deps.GetCapture(), newestTS)
+	if params.Summary {
+		return mcp.JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcp.JSONResponse("Network bodies", buildNetworkBodiesSummary(filtered, responseMeta))}
+	}
+
 	return mcp.JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcp.JSONResponse("Network bodies", map[string]any{
 		"entries":  filtered,
 		"count":    len(filtered),
-		"metadata": BuildResponseMetadata(deps.GetCapture(), newestTS),
+		"metadata": responseMeta,
 	})}
 }
 
@@ -488,6 +507,7 @@ func GetWSEvents(deps Deps, req mcp.JSONRPCRequest, args json.RawMessage) mcp.JS
 		URL          string `json:"url"`
 		ConnectionID string `json:"connection_id"`
 		Direction    string `json:"direction"`
+		Summary      bool   `json:"summary"`
 	}
 	mcp.LenientUnmarshal(args, &params)
 	params.Limit = clampLimit(params.Limit, 100)
@@ -512,18 +532,24 @@ func GetWSEvents(deps Deps, req mcp.JSONRPCRequest, args json.RawMessage) mcp.JS
 		newestTS, _ = time.Parse(time.RFC3339, allEvents[len(allEvents)-1].Timestamp)
 	}
 
+	responseMeta := BuildResponseMetadata(deps.GetCapture(), newestTS)
+	if params.Summary {
+		return mcp.JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcp.JSONResponse("WebSocket events", buildWSEventsSummary(filtered, responseMeta))}
+	}
+
 	return mcp.JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcp.JSONResponse("WebSocket events", map[string]any{
 		"entries":  filtered,
 		"count":    len(filtered),
-		"metadata": BuildResponseMetadata(deps.GetCapture(), newestTS),
+		"metadata": responseMeta,
 	})}
 }
 
 // GetEnhancedActions returns captured user actions (clicks, inputs, navigations).
 func GetEnhancedActions(deps Deps, req mcp.JSONRPCRequest, args json.RawMessage) mcp.JSONRPCResponse {
 	var params struct {
-		Limit int    `json:"limit"`
-		URL   string `json:"url"`
+		Limit   int    `json:"limit"`
+		URL     string `json:"url"`
+		Summary bool   `json:"summary"`
 	}
 	mcp.LenientUnmarshal(args, &params)
 	params.Limit = clampLimit(params.Limit, 100)
@@ -542,10 +568,15 @@ func GetEnhancedActions(deps Deps, req mcp.JSONRPCRequest, args json.RawMessage)
 		newestTS = time.UnixMilli(allActions[len(allActions)-1].Timestamp)
 	}
 
+	responseMeta := BuildResponseMetadata(deps.GetCapture(), newestTS)
+	if params.Summary {
+		return mcp.JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcp.JSONResponse("Enhanced actions", buildActionsSummary(filtered, responseMeta))}
+	}
+
 	return mcp.JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcp.JSONResponse("Enhanced actions", map[string]any{
 		"entries":  filtered,
 		"count":    len(filtered),
-		"metadata": BuildResponseMetadata(deps.GetCapture(), newestTS),
+		"metadata": responseMeta,
 	})}
 }
 

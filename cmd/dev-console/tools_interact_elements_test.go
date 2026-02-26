@@ -173,3 +173,100 @@ func TestExtractElementList_NoElements(t *testing.T) {
 		t.Error("expected nil for data without elements")
 	}
 }
+
+// ============================================
+// List Interactive Limit/Truncation Tests
+// ============================================
+
+func TestTruncateListInteractiveResponse_Basic(t *testing.T) {
+	t.Parallel()
+
+	elements := make([]any, 20)
+	for i := range elements {
+		elements[i] = map[string]any{"index": float64(i), "selector": "#el-" + string(rune('a'+i)), "tag": "div"}
+	}
+	elemData := map[string]any{"elements": elements}
+	elemJSON, _ := json.Marshal(elemData)
+
+	result := MCPToolResult{
+		Content: []MCPContentBlock{{Type: "text", Text: "list_interactive results\n" + string(elemJSON)}},
+	}
+	resultJSON, _ := json.Marshal(result)
+	resp := JSONRPCResponse{JSONRPC: "2.0", Result: resultJSON}
+
+	truncated := truncateListInteractiveResponse(resp, 5)
+
+	// Parse truncated response
+	var truncResult MCPToolResult
+	if err := json.Unmarshal(truncated.Result, &truncResult); err != nil {
+		t.Fatal(err)
+	}
+
+	text := truncResult.Content[0].Text
+	idx := 0
+	for i, ch := range text {
+		if ch == '{' {
+			idx = i
+			break
+		}
+	}
+	var data map[string]any
+	if err := json.Unmarshal([]byte(text[idx:]), &data); err != nil {
+		t.Fatalf("parse truncated JSON: %v", err)
+	}
+
+	elems, ok := data["elements"].([]any)
+	if !ok {
+		t.Fatal("elements not found in truncated response")
+	}
+	if len(elems) != 5 {
+		t.Errorf("expected 5 elements, got %d", len(elems))
+	}
+	if data["total"] != float64(20) {
+		t.Errorf("total = %v, want 20", data["total"])
+	}
+	if data["truncated"] != true {
+		t.Errorf("truncated = %v, want true", data["truncated"])
+	}
+}
+
+func TestTruncateListInteractiveResponse_NoTruncationNeeded(t *testing.T) {
+	t.Parallel()
+
+	elemData := map[string]any{
+		"elements": []any{
+			map[string]any{"index": float64(0), "selector": "#a"},
+			map[string]any{"index": float64(1), "selector": "#b"},
+		},
+	}
+	elemJSON, _ := json.Marshal(elemData)
+
+	result := MCPToolResult{
+		Content: []MCPContentBlock{{Type: "text", Text: string(elemJSON)}},
+	}
+	resultJSON, _ := json.Marshal(result)
+	resp := JSONRPCResponse{JSONRPC: "2.0", Result: resultJSON}
+
+	truncated := truncateListInteractiveResponse(resp, 10)
+
+	// Should be unchanged
+	if string(truncated.Result) != string(resp.Result) {
+		t.Error("response should be unchanged when limit > element count")
+	}
+}
+
+func TestTruncateListInteractiveResponse_ErrorResponse(t *testing.T) {
+	t.Parallel()
+
+	result := MCPToolResult{
+		Content: []MCPContentBlock{{Type: "text", Text: "error"}},
+		IsError: true,
+	}
+	resultJSON, _ := json.Marshal(result)
+	resp := JSONRPCResponse{JSONRPC: "2.0", Result: resultJSON}
+
+	truncated := truncateListInteractiveResponse(resp, 5)
+	if string(truncated.Result) != string(resp.Result) {
+		t.Error("error response should be unchanged")
+	}
+}
