@@ -527,8 +527,9 @@ func (h *ToolHandler) handleBrowserActionNewTab(req JSONRPCRequest, args json.Ra
 
 func (h *ToolHandler) handleBrowserActionSwitchTab(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	var params struct {
-		TabID    int  `json:"tab_id,omitempty"`
-		TabIndex *int `json:"tab_index,omitempty"`
+		TabID      int   `json:"tab_id,omitempty"`
+		TabIndex   *int  `json:"tab_index,omitempty"`
+		SetTracked *bool `json:"set_tracked,omitempty"`
 	}
 	if err := json.Unmarshal(args, &params); err != nil {
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidJSON, "Invalid JSON arguments: "+err.Error(), "Fix JSON syntax and call again")}
@@ -550,6 +551,9 @@ func (h *ToolHandler) handleBrowserActionSwitchTab(req JSONRPCRequest, args json
 			withParam("tab_index"),
 		)}
 	}
+
+	// Default set_tracked to true so subsequent commands target the new tab.
+	setTracked := params.SetTracked == nil || *params.SetTracked
 
 	if resp, blocked := h.requirePilot(req); blocked {
 		return resp
@@ -579,7 +583,15 @@ func (h *ToolHandler) handleBrowserActionSwitchTab(req JSONRPCRequest, args json
 		"tab_index": params.TabIndex,
 	})
 
-	return h.MaybeWaitForCommand(req, correlationID, args, "Switch tab queued")
+	resp := h.MaybeWaitForCommand(req, correlationID, args, "Switch tab queued")
+
+	// After the command completes, update tracked tab state so subsequent
+	// commands target the newly activated tab. See issue #271.
+	if setTracked {
+		h.applySwitchTabTracking(correlationID)
+	}
+
+	return resp
 }
 
 func (h *ToolHandler) handleBrowserActionCloseTab(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {

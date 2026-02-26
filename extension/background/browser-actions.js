@@ -5,13 +5,14 @@
  * Docs: docs/features/feature/interact-explore/index.md
  * Docs: docs/features/feature/observe/index.md
  */
-import { waitForTabLoad, pingContentScript } from './event-listeners.js';
-import { debugLog } from './index.js';
-import { isAiWebPilotEnabled } from './state.js';
-import { DebugCategory } from './debug.js';
-import { broadcastTrackingState } from './message-handlers.js';
-import { executeWithWorldRouting, probeCSPStatus } from './query-execution.js';
-import { ASYNC_COMMAND_TIMEOUT_MS } from '../lib/constants.js';
+import { waitForTabLoad, pingContentScript } from './event-listeners';
+import { debugLog } from './index';
+import { isAiWebPilotEnabled } from './state';
+import { DebugCategory } from './debug';
+import { broadcastTrackingState } from './message-handlers';
+import { executeWithWorldRouting, probeCSPStatus } from './query-execution';
+import { ASYNC_COMMAND_TIMEOUT_MS } from '../lib/constants';
+import { persistTrackedTab } from './commands/helpers';
 // =============================================================================
 // TIMEOUT CONFIGURATION
 // =============================================================================
@@ -188,6 +189,11 @@ export async function handleBrowserAction(tabId, params, actionToast) {
                 }
                 const updated = await chrome.tabs.update(targetTab.id, { active: true });
                 const activeTab = updated || targetTab;
+                // Persist tracked tab so the extension-side state matches the server-side
+                // update (issue #271). This ensures subsequent /sync heartbeats report
+                // the correct tracked tab.
+                await persistTrackedTab(activeTab);
+                broadcastTrackingState().catch(() => { });
                 return {
                     success: true,
                     action: 'switch_tab',

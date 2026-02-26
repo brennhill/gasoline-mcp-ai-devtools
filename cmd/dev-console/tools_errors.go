@@ -46,6 +46,9 @@ func withRetryable(retryable bool) func(*StructuredError) {
 }
 func withRetryAfterMs(ms int) func(*StructuredError) { return mcp.WithRetryAfterMs(ms) }
 func withFinal(final bool) func(*StructuredError)    { return mcp.WithFinal(final) }
+func withRecoveryToolCall(toolCall map[string]any) func(*StructuredError) {
+	return mcp.WithRecoveryToolCall(toolCall)
+}
 
 func retryDefaultsForCode(code string) []func(*StructuredError) {
 	return mcp.RetryDefaultsForCode(code)
@@ -144,7 +147,13 @@ func (h *ToolHandler) requirePilot(req JSONRPCRequest, extraOpts ...func(*Struct
 	if h.capture.IsPilotActionAllowed() {
 		return JSONRPCResponse{}, false
 	}
-	opts := append([]func(*StructuredError){h.diagnosticHint()}, extraOpts...)
+	opts := append([]func(*StructuredError){
+		h.diagnosticHint(),
+		withRecoveryToolCall(map[string]any{
+			"tool":      "observe",
+			"arguments": map[string]any{"what": "pilot"},
+		}),
+	}, extraOpts...)
 	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(
 		ErrCodePilotDisabled, "AI Web Pilot is explicitly disabled",
 		"Enable AI Web Pilot in the extension popup", opts...,
@@ -165,7 +174,15 @@ func (h *ToolHandler) requireExtension(req JSONRPCRequest, extraOpts ...func(*St
 	if h.capture.WaitForExtensionConnected(context.Background(), timeout) {
 		return JSONRPCResponse{}, false
 	}
-	opts := append([]func(*StructuredError){h.diagnosticHint(), withRetryable(true), withRetryAfterMs(3000)}, extraOpts...)
+	opts := append([]func(*StructuredError){
+		h.diagnosticHint(),
+		withRetryable(true),
+		withRetryAfterMs(3000),
+		withRecoveryToolCall(map[string]any{
+			"tool":      "observe",
+			"arguments": map[string]any{"what": "status"},
+		}),
+	}, extraOpts...)
 	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(
 		ErrNoData, "Extension not connected. Commands cannot be dispatched.",
 		"Check that the Gasoline browser extension is installed and the page is open.",
@@ -194,5 +211,10 @@ func (h *ToolHandler) requireCSPClear(req JSONRPCRequest, world string) (JSONRPC
 		fmt.Sprintf("Page CSP blocks MAIN world script execution (level: %s). Use world='auto' or world='isolated' to bypass.", level),
 		"Retry with world='auto' (falls back to isolated/structured), world='isolated' (DOM access, no page JS), or use DOM primitives (click, type).",
 		h.diagnosticHint(),
+		withRecoveryToolCall(map[string]any{
+			"tool":      "interact",
+			"arguments": map[string]any{"what": "execute_js", "script": "return document.title", "world": "auto"},
+		}),
 	)}, true
 }
+
