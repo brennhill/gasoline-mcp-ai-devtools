@@ -971,7 +971,7 @@
           "type": "array"
         },
         "telemetry_mode": {
-          "description": "Telemetry metadata mode: off, auto, full. configure(action='telemetry') sets global default. Any tools/call may override per request with telemetry_mode.",
+          "description": "Telemetry metadata mode: off, auto, full. configure(what='telemetry') sets global default. Any tools/call may override per request with telemetry_mode.",
           "enum": [
             "off",
             "auto",
@@ -1228,6 +1228,10 @@
         "index": {
           "description": "Element index from list_interactive results (legacy alternative to selector/element_id)",
           "type": "number"
+        },
+        "index_generation": {
+          "description": "Generation token from list_interactive to ensure index resolves against the same element snapshot",
+          "type": "string"
         },
         "key": {
           "description": "Storage key for set_storage/delete_storage",

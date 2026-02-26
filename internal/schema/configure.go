@@ -38,7 +38,7 @@ func ConfigureToolSchema() mcp.MCPTool {
 				},
 				"telemetry_mode": map[string]any{
 					"type":        "string",
-					"description": "Telemetry metadata mode: off, auto, full. configure(action='telemetry') sets global default. Any tools/call may override per request with telemetry_mode.",
+					"description": "Telemetry metadata mode: off, auto, full. configure(what='telemetry') sets global default. Any tools/call may override per request with telemetry_mode.",
 					"enum":        []string{"off", "auto", "full"},
 				},
 				"store_action": map[string]any{

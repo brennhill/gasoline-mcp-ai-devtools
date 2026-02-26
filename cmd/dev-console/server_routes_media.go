@@ -221,8 +221,11 @@ func parseAnnotations(rawAnnotations []json.RawMessage) ([]Annotation, []string)
 	return parsed, warnings
 }
 
-// storeElementDetails persists annotation element details into the global store.
-func storeElementDetails(details map[string]json.RawMessage) {
+// storeElementDetails persists annotation element details into the provided store.
+func storeElementDetails(store *AnnotationStore, details map[string]json.RawMessage) {
+	if store == nil {
+		return
+	}
 	for correlationID, rawDetail := range details {
 		var detail AnnotationDetail
 		if err := json.Unmarshal(rawDetail, &detail); err == nil {
@@ -234,7 +237,7 @@ func storeElementDetails(details map[string]json.RawMessage) {
 				stderrf("[gasoline] draw detail %s: empty (raw=%s)\n", correlationID, rawStr)
 			}
 			detail.CorrelationID = correlationID
-			globalAnnotationStore.StoreDetail(correlationID, detail)
+			store.StoreDetail(correlationID, detail)
 		} else {
 			rawStr := string(rawDetail)
 			if len(rawStr) > 200 {
@@ -291,6 +294,13 @@ func persistDrawSession(body *drawModeRequest, screenshotPath string, annotation
 // storeAnnotationSession creates and persists an annotation session, returning
 // the stored session for response building.
 func storeAnnotationSession(body *drawModeRequest, screenshotPath string, annotations []Annotation) {
+	storeAnnotationSessionInStore(globalAnnotationStore, body, screenshotPath, annotations)
+}
+
+func storeAnnotationSessionInStore(store *AnnotationStore, body *drawModeRequest, screenshotPath string, annotations []Annotation) {
+	if store == nil || body == nil {
+		return
+	}
 	session := &AnnotationSession{
 		Annotations:    annotations,
 		ScreenshotPath: screenshotPath,
@@ -298,9 +308,9 @@ func storeAnnotationSession(body *drawModeRequest, screenshotPath string, annota
 		TabID:          body.TabID,
 		Timestamp:      time.Now().UnixMilli(),
 	}
-	globalAnnotationStore.StoreSession(body.TabID, session)
+	store.StoreSession(body.TabID, session)
 	if body.AnnotSessionName != "" {
-		globalAnnotationStore.AppendToNamedSession(body.AnnotSessionName, session)
+		store.AppendToNamedSession(body.AnnotSessionName, session)
 	}
 }
 
@@ -334,8 +344,9 @@ func (s *Server) handleDrawModeComplete(w http.ResponseWriter, r *http.Request, 
 	}
 
 	parsedAnnotations, parseWarnings := parseAnnotations(body.Annotations)
-	storeAnnotationSession(&body, screenshotPath, parsedAnnotations)
-	storeElementDetails(body.ElementDetails)
+	store := s.getAnnotationStore()
+	storeAnnotationSessionInStore(store, &body, screenshotPath, parsedAnnotations)
+	storeElementDetails(store, body.ElementDetails)
 
 	// Persist full session to disk so the LLM can compare/contrast across restarts
 	persistDrawSession(&body, screenshotPath, parsedAnnotations)

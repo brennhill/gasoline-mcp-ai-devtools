@@ -316,7 +316,7 @@ func awaitShutdownSignal(server *Server, srv *http.Server, port int, httpDone <-
 	}
 
 	server.shutdownAsyncLogger(2 * time.Second)
-	globalAnnotationStore.Close()
+	server.closeAnnotationStore()
 	removePIDFile(port)
 	removeDaemonLockIfOwned(os.Getpid())
 }

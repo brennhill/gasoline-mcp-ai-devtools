@@ -174,13 +174,8 @@ type ToolHandler struct {
 	interactOnce     sync.Once
 	interactHandlers map[string]interactHandler
 
-	// Element index store: maps index→selector from the last list_interactive call.
-	// Protected by elementIndexMu; replaced on each list_interactive response.
-	// NOTE: This is a single shared store — concurrent clients calling list_interactive
-	// will overwrite each other's index. Acceptable for single-agent usage; scope by
-	// tab or client ID if multi-client support is needed.
-	elementIndexMu    sync.RWMutex
-	elementIndexStore map[int]string
+	// Scoped element index registry used by list_interactive/index follow-up actions.
+	elementIndexRegistry *elementIndexRegistry
 
 	// Active test boundaries: test_id → start time.
 	// Used to detect out-of-order test_boundary_end calls.
@@ -205,7 +200,12 @@ type ToolHandler struct {
 	retryByCommand  map[string]*commandRetryState
 
 	// Module registry for plugin-style tool dispatch (incremental migration).
-	toolModules *toolModuleRegistry
+	toolModulesOnce sync.Once
+	toolModules     *toolModuleRegistry
+
+	// Tool schema cache for parameter-warning validation.
+	toolSchemasOnce sync.Once
+	toolSchemas     map[string]map[string]any
 
 	// Session-level summary preference cache.
 	summaryPrefMu    sync.RWMutex
@@ -273,14 +273,15 @@ func newPlaybackSessionsMap() map[string]*capture.PlaybackSession {
 func NewToolHandler(server *Server, capture *capture.Capture) *MCPHandler {
 	shutdownCtx, shutdownCancel := context.WithCancel(context.Background())
 	handler := &ToolHandler{
-		MCPHandler:        NewMCPHandler(server, version),
-		capture:           capture,
-		shutdownCtx:       shutdownCtx,
-		shutdownCancel:    shutdownCancel,
-		coldStartTimeout:  defaultColdStartTimeout,
-		playbackSessions:  newPlaybackSessionsMap(),
-		evidenceByCommand: make(map[string]*commandEvidenceState),
-		retryByCommand:    make(map[string]*commandRetryState),
+		MCPHandler:           NewMCPHandler(server, version),
+		capture:              capture,
+		shutdownCtx:          shutdownCtx,
+		shutdownCancel:       shutdownCancel,
+		coldStartTimeout:     defaultColdStartTimeout,
+		playbackSessions:     newPlaybackSessionsMap(),
+		evidenceByCommand:    make(map[string]*commandEvidenceState),
+		retryByCommand:       make(map[string]*commandRetryState),
+		elementIndexRegistry: newElementIndexRegistry(),
 	}
 
 	// Initialize health metrics
@@ -304,8 +305,8 @@ func NewToolHandler(server *Server, capture *capture.Capture) *MCPHandler {
 	}
 	handler.redactionEngine = redaction.NewRedactionEngine("")
 
-	// Use global annotation store for draw mode
-	handler.annotationStore = globalAnnotationStore
+	// Use server-scoped annotation store for draw mode.
+	handler.annotationStore = server.getAnnotationStore()
 
 	// Wire async annotation waiter → CommandTracker completion
 	if handler.capture != nil {
@@ -332,8 +333,9 @@ func NewToolHandler(server *Server, capture *capture.Capture) *MCPHandler {
 	// Initialize upload security config from package-level var set by CLI
 	handler.uploadSecurity = uploadSecurityConfig
 
-	// Wire plugin-style tool modules.
-	handler.toolModules = handler.buildToolModuleRegistry()
+	// Initialize dispatch modules and tool schemas once at startup.
+	handler.ensureToolModules()
+	handler.ensureToolSchemas()
 
 	// Wire error clustering: feed error-level log entries into the cluster manager.
 	// Use SetOnEntries for thread-safe assignment (avoids racing with addEntries).
@@ -353,27 +355,38 @@ func NewToolHandler(server *Server, capture *capture.Capture) *MCPHandler {
 func (h *ToolHandler) HandleToolCall(req JSONRPCRequest, name string, args json.RawMessage) (JSONRPCResponse, bool) {
 	start := time.Now()
 
-	if h.toolModules == nil {
-		h.toolModules = h.buildToolModuleRegistry()
-	}
+	h.ensureToolModules()
+	h.ensureToolSchemas()
 	resp, handled := h.dispatchViaModules(req, name, args)
 	if !handled {
 		return JSONRPCResponse{}, false
 	}
 
+	parsedResult, parsedOK := parseToolResultForPostProcessing(resp.Result)
+	resultIsError := false
+	if parsedOK {
+		resultIsError = parsedResult.IsError
+	} else {
+		resultIsError = isToolResultError(resp.Result)
+	}
+
 	// Validate params against tool schema and append warnings for unknown fields.
 	// Skip validation for error responses (already failed, warnings would be noise).
-	if !isToolResultError(resp.Result) {
+	if !resultIsError {
 		if schema := h.getToolSchema(name); schema != nil {
 			if warnings := validateParamsAgainstSchema(args, schema); len(warnings) > 0 {
-				resp = appendWarningsToResponse(resp, warnings)
+				if parsedOK && mcp.AppendWarningsToToolResult(parsedResult, warnings) {
+					resp.Result = safeMarshal(parsedResult, string(resp.Result))
+				} else {
+					resp = appendWarningsToResponse(resp, warnings)
+				}
 			}
 		}
 	}
 
 	if h.healthMetrics != nil {
 		h.healthMetrics.IncrementRequest(name)
-		if resp.Error != nil || isToolResultError(resp.Result) {
+		if resp.Error != nil || resultIsError {
 			h.healthMetrics.IncrementError(name)
 		}
 	}
@@ -383,18 +396,36 @@ func (h *ToolHandler) HandleToolCall(req JSONRPCRequest, name string, args json.
 	return resp, true
 }
 
-// toolSchemaCache caches InputSchema by tool name for validation.
-var toolSchemaCache map[string]map[string]any
-
 // getToolSchema returns the InputSchema for a tool by name (cached).
 func (h *ToolHandler) getToolSchema(name string) map[string]any {
-	if toolSchemaCache == nil {
-		toolSchemaCache = make(map[string]map[string]any)
+	h.ensureToolSchemas()
+	return h.toolSchemas[name]
+}
+
+func (h *ToolHandler) ensureToolModules() {
+	h.toolModulesOnce.Do(func() {
+		h.toolModules = h.buildToolModuleRegistry()
+	})
+}
+
+func (h *ToolHandler) ensureToolSchemas() {
+	h.toolSchemasOnce.Do(func() {
+		h.toolSchemas = make(map[string]map[string]any)
 		for _, tool := range h.ToolsList() {
-			toolSchemaCache[tool.Name] = tool.InputSchema
+			h.toolSchemas[tool.Name] = tool.InputSchema
 		}
+	})
+}
+
+func parseToolResultForPostProcessing(raw json.RawMessage) (*MCPToolResult, bool) {
+	if len(raw) == 0 {
+		return nil, false
 	}
-	return toolSchemaCache[name]
+	var result MCPToolResult
+	if err := json.Unmarshal(raw, &result); err != nil {
+		return nil, false
+	}
+	return &result, true
 }
 
 func isToolResultError(raw json.RawMessage) bool {

@@ -73,6 +73,10 @@ func InteractToolSchema() mcp.MCPTool {
 					"type":        "number",
 					"description": "Element index from list_interactive results (legacy alternative to selector/element_id)",
 				},
+				"index_generation": map[string]any{
+					"type":        "string",
+					"description": "Generation token from list_interactive to ensure index resolves against the same element snapshot",
+				},
 				"visible_only": map[string]any{
 					"type":        "boolean",
 					"description": "Only return visible elements (list_interactive)",
