@@ -971,7 +971,7 @@
           "type": "array"
         },
         "telemetry_mode": {
-          "description": "Telemetry metadata mode: off, auto, full. configure(action='telemetry') sets global default. Any tools/call may override per request with telemetry_mode.",
+          "description": "Telemetry metadata mode: off, auto, full. configure(what='telemetry') sets global default. Any tools/call may override per request with telemetry_mode.",
           "enum": [
             "off",
             "auto",
@@ -988,6 +988,10 @@
           "maximum": 60,
           "minimum": 1,
           "type": "integer"
+        },
+        "tool": {
+          "description": "Filter describe_capabilities to a single tool by name (e.g. 'observe', 'interact')",
+          "type": "string"
         },
         "tool_name": {
           "description": "Filter by tool name",
@@ -1054,23 +1058,11 @@
   },
   {
     "name": "interact",
-    "description": "Browser actions. Requires AI Web Pilot.\n\nSynchronous Mode (Default): Tools now block until the extension returns a result (up to 15s). Set background:true to return immediately with a correlation_id.\n\nSelectors: CSS or semantic (text=Submit, role=button, placeholder=Email, label=Name, aria-label=Close). subtitle param composable with any action. analyze=true captures perf_diff. navigate/refresh auto-include perf_diff.\n\nDraw Mode: draw_mode_start activates annotation overlay — user draws rectangles and types feedback, presses ESC to finish. Use analyze({what:'annotations'}) to retrieve results.\n\nCompatibility: either what='navigate' or action='navigate' is accepted. action='screenshot' remains a backward-compatible alias for observe({what:'screenshot'}).",
+    "description": "Browser actions. Requires AI Web Pilot.\n\nSynchronous Mode (Default): Tools now block until the extension returns a result (up to 15s). Set background:true to return immediately with a correlation_id.\n\nSelectors: CSS or semantic (text=Submit, role=button, placeholder=Email, label=Name, aria-label=Close). subtitle param composable with any action. analyze=true captures perf_diff. navigate/refresh auto-include perf_diff.\n\nDraw Mode: draw_mode_start activates annotation overlay — user draws rectangles and types feedback, presses ESC to finish. Use analyze({what:'annotations'}) to retrieve results.\n\nDispatch: 'what' is required. 'action' is a deprecated runtime alias accepted for backward compatibility — prefer 'what'.",
     "inputSchema": {
-      "anyOf": [
-        {
-          "required": [
-            "what"
-          ]
-        },
-        {
-          "required": [
-            "action"
-          ]
-        }
-      ],
       "properties": {
         "action": {
-          "description": "Deprecated alias for 'what'",
+          "description": "Deprecated alias for 'what'. Prefer 'what'.",
           "enum": [
             "highlight",
             "subtitle",
@@ -1236,6 +1228,10 @@
         "index": {
           "description": "Element index from list_interactive results (legacy alternative to selector/element_id)",
           "type": "number"
+        },
+        "index_generation": {
+          "description": "Generation token from list_interactive to ensure index resolves against the same element snapshot",
+          "type": "string"
         },
         "key": {
           "description": "Storage key for set_storage/delete_storage",
@@ -1425,6 +1421,9 @@
           "type": "string"
         }
       },
+      "required": [
+        "what"
+      ],
       "type": "object"
     }
   }

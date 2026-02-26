@@ -306,6 +306,80 @@ log_diagnostic() {
     } >> "$DIAGNOSTICS_FILE"
 }
 
+extract_embedded_json() {
+    local text="$1"
+    local suffix="${text#*\{}"
+    if [ "$suffix" = "$text" ]; then
+        return 1
+    fi
+    printf '{%s' "$suffix"
+}
+
+content_json_query() {
+    local text="$1"
+    local expr="$2"
+    local fallback="${3:-}"
+    local payload
+    if ! payload=$(extract_embedded_json "$text"); then
+        printf '%s' "$fallback"
+        return 0
+    fi
+    local out
+    out="$(printf '%s' "$payload" | jq -r "$expr" 2>/dev/null || true)"
+    if [ -z "$out" ]; then
+        printf '%s' "$fallback"
+    else
+        printf '%s' "$out"
+    fi
+}
+
+content_json_cursor() {
+    content_json_query "$1" '.metadata.cursor // .metadata.after_cursor // .metadata.next_cursor // empty' ""
+}
+
+content_json_entry_count() {
+    content_json_query "$1" '(.entries // .logs // []) | if type=="array" then length else 0 end' "0"
+}
+
+content_json_count() {
+    content_json_query "$1" '.count // ((.entries // .logs // []) | if type=="array" then length else 0 end)' "0"
+}
+
+pending_status_for_correlation() {
+    local text="$1"
+    local corr="$2"
+    local payload
+    if ! payload=$(extract_embedded_json "$text"); then
+        return 0
+    fi
+    printf '%s' "$payload" | jq -r --arg corr "$corr" '
+        def normalize_status($bucket; $raw):
+            ($raw // "" | tostring | ascii_downcase | gsub("^\\s+|\\s+$"; "")) as $s |
+            if ($s == "queued" or $s == "running" or $s == "still_processing") then "pending"
+            elif $s != "" then $s
+            elif $bucket == "completed" then "complete"
+            elif $bucket == "failed" then "error"
+            else "pending"
+            end;
+
+        [
+            "pending", "completed", "failed"
+        ] as $buckets |
+        [
+            $buckets[] as $bucket |
+            (.[$bucket] // []) |
+            if type == "array" then .[] else empty end |
+            select((.correlation_id // "" | tostring) == $corr) |
+            (normalize_status($bucket; .status)) as $status |
+            (
+                $status + "|" +
+                ("fallback pending_commands bucket=" + $bucket + " status=" + $status) +
+                (if .error then " error=" + (.error | tostring) else "" end)
+            )
+        ][0] // empty
+    ' 2>/dev/null || true
+}
+
 # ── Interact helper ──────────────────────────────────────
 # Fires an interact command and waits for completion via polling.
 # Sets INTERACT_RESULT to the command result text (or empty on timeout).
@@ -397,36 +471,7 @@ interact_and_wait() {
             fi
             if [ -n "$pending_text" ]; then
                 local pending_hit
-                pending_hit=$(echo "$pending_text" | python3 - "$corr_id" -c "
-import sys, json
-corr = sys.argv[1]
-text = sys.stdin.read()
-i = text.find('{')
-if i < 0:
-    sys.exit(0)
-try:
-    data = json.loads(text[i:])
-except Exception:
-    sys.exit(0)
-for bucket in ('pending', 'completed', 'failed'):
-    items = data.get(bucket, [])
-    if not isinstance(items, list):
-        continue
-    for item in items:
-        if str(item.get('correlation_id', '')) != corr:
-            continue
-        status = str(item.get('status', '')).strip().lower()
-        if status in ('queued', 'running', 'still_processing'):
-            status = 'pending'
-        if not status:
-            status = 'complete' if bucket == 'completed' else ('error' if bucket == 'failed' else 'pending')
-        detail = f'fallback pending_commands bucket={bucket} status={status}'
-        err = item.get('error')
-        if err:
-            detail += f' error={err}'
-        print(f'{status}|{detail}')
-        sys.exit(0)
-" 2>/dev/null || true)
+                pending_hit=$(pending_status_for_correlation "$pending_text" "$corr_id")
                 if [ -n "$pending_hit" ]; then
                     local pending_status pending_detail
                     pending_status="${pending_hit%%|*}"

@@ -692,6 +692,7 @@ func (h *ToolHandler) handleDOMPrimitive(req JSONRPCRequest, args json.RawMessag
 		ScopeSelector string   `json:"scope_selector,omitempty"`
 		ElementID     string   `json:"element_id,omitempty"`
 		Index         *int     `json:"index,omitempty"`
+		IndexGen      string   `json:"index_generation,omitempty"`
 		Text          string   `json:"text,omitempty"`
 		Value         string   `json:"value,omitempty"`
 		Clear         bool     `json:"clear,omitempty"`
@@ -714,13 +715,23 @@ func (h *ToolHandler) handleDOMPrimitive(req JSONRPCRequest, args json.RawMessag
 
 	// Resolve index to selector if index is provided and selector is empty
 	if params.Index != nil && params.Selector == "" && params.ElementID == "" {
-		sel, ok := h.resolveIndexToSelector(*params.Index)
+		sel, ok, stale, latestGeneration := h.resolveIndexToSelector(req.ClientID, params.TabID, *params.Index, params.IndexGen)
+		if stale {
+			return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(
+				ErrInvalidParam,
+				formatIndexGenerationConflict(params.IndexGen, latestGeneration),
+				"Re-run interact with what='list_interactive' for the current page context, then retry with the returned index_generation.",
+				withParam("index_generation"),
+				withParam("index"),
+			)}
+		}
 		if !ok {
 			return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(
 				ErrInvalidParam,
-				fmt.Sprintf("Element index %d not found. Call list_interactive first to refresh the element index.", *params.Index),
-				"Call interact with action='list_interactive' first, then use the index from the results.",
+				fmt.Sprintf("Element index %d not found for tab_id=%d. Call list_interactive first to refresh the element index for this tab/client scope.", *params.Index, params.TabID),
+				"Call interact with what='list_interactive' first (same tab/client scope), then use the returned index.",
 				withParam("index"),
+				withParam("tab_id"),
 			)}
 		}
 		params.Selector = sel

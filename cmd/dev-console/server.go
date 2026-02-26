@@ -44,20 +44,24 @@ type Server struct {
 	warningsMu  sync.Mutex
 	warnings    []string
 	warningSeen map[string]struct{}
+
+	// Annotation store is server-scoped to avoid cross-session contamination.
+	annotationStore *AnnotationStore
 }
 
 // NewServer creates a new server instance
 func NewServer(logFile string, maxEntries int) (*Server, error) {
 	s := &Server{
-		logFile:       logFile,
-		maxEntries:    maxEntries,
-		maxFileSize:   defaultMaxFileSize,
-		listenPort:    defaultPort,
-		entries:       make([]LogEntry, 0),
-		telemetryMode: telemetryModeAuto,
-		logChan:       make(chan []LogEntry, 10000), // 10k buffer for burst traffic
-		logDone:       make(chan struct{}),
-		warningSeen:   make(map[string]struct{}),
+		logFile:         logFile,
+		maxEntries:      maxEntries,
+		maxFileSize:     defaultMaxFileSize,
+		listenPort:      defaultPort,
+		entries:         make([]LogEntry, 0),
+		telemetryMode:   telemetryModeAuto,
+		logChan:         make(chan []LogEntry, 10000), // 10k buffer for burst traffic
+		logDone:         make(chan struct{}),
+		warningSeen:     make(map[string]struct{}),
+		annotationStore: NewAnnotationStore(10 * time.Minute),
 	}
 
 	// Start async logger goroutine
@@ -119,9 +123,36 @@ func (s *Server) getListenPort() int {
 	return s.listenPort
 }
 
+func (s *Server) getAnnotationStore() *AnnotationStore {
+	if s == nil {
+		return globalAnnotationStore
+	}
+
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.annotationStore == nil {
+		s.annotationStore = NewAnnotationStore(10 * time.Minute)
+	}
+	return s.annotationStore
+}
+
+func (s *Server) closeAnnotationStore() {
+	if s == nil {
+		return
+	}
+	s.mu.Lock()
+	store := s.annotationStore
+	s.annotationStore = nil
+	s.mu.Unlock()
+	if store != nil {
+		store.Close()
+	}
+}
+
 // Close gracefully shuts down the server, draining the async log writer.
 func (s *Server) Close() {
 	s.shutdownAsyncLogger(2 * time.Second)
+	s.closeAnnotationStore()
 }
 
 // SetOnEntries sets the callback invoked when new log entries are added.
