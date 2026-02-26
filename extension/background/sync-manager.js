@@ -5,13 +5,13 @@
  * Docs: docs/features/feature/interact-explore/index.md
  * Docs: docs/features/feature/observe/index.md
  */
-import { createSyncClient } from './sync-client.js';
-import { getLastCSPStatus } from './browser-actions.js';
-import { DebugCategory } from './debug.js';
-import { updateBadge } from './communication.js';
-import { isQueryProcessing, addProcessingQuery, removeProcessingQuery } from './state-manager.js';
-import { getTrackedTabInfo } from './event-listeners.js';
-import { handlePendingQuery as handlePendingQueryImpl } from './pending-queries.js';
+import { createSyncClient } from './sync-client';
+import { getLastCSPStatus } from './browser-actions';
+import { DebugCategory } from './debug';
+import { updateBadge } from './communication';
+import { isQueryProcessing, addProcessingQuery, removeProcessingQuery } from './state-manager';
+import { getTrackedTabInfo } from './event-listeners';
+import { handlePendingQuery as handlePendingQueryImpl } from './pending-queries';
 // =============================================================================
 // MODULE STATE
 // =============================================================================
@@ -128,6 +128,7 @@ export function startSyncClient(deps) {
                 tracked_tab_id: trackingInfo.trackedTabId || 0,
                 tracked_tab_url: trackingInfo.trackedTabUrl || '',
                 tracked_tab_title: trackingInfo.trackedTabTitle || '',
+                tab_status: trackingInfo.tabStatus || undefined,
                 capture_logs: true,
                 capture_network: true,
                 capture_websocket: true,

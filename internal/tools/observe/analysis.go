@@ -208,14 +208,21 @@ func GetPageInfo(deps Deps, req mcp.JSONRPCRequest, _ json.RawMessage) mcp.JSONR
 	pageTitle := resolvePageTitle(deps, trackedTitle)
 
 	cspRestricted, cspLevel := cap.GetCSPStatus()
+	tabStatus := cap.GetTabStatus()
+
+	extensionConnected := cap.IsExtensionConnected()
+	pilotEnabled := cap.IsPilotActionAllowed()
+	pageReady := extensionConnected && pilotEnabled && enabled && tabStatus == "complete"
 
 	result := map[string]any{
-		"url":            pageURL,
-		"title":          pageTitle,
-		"tracked":        enabled,
-		"csp_restricted": cspRestricted,
-		"csp_level":      cspLevel,
-		"metadata":       BuildResponseMetadata(cap, time.Now()),
+		"url":                      pageURL,
+		"title":                    pageTitle,
+		"tracked":                  enabled,
+		"csp_restricted":           cspRestricted,
+		"csp_level":                cspLevel,
+		"tab_status":               tabStatus,
+		"page_ready_for_commands":  pageReady,
+		"metadata":                 BuildResponseMetadata(cap, time.Now()),
 	}
 	if tabID > 0 {
 		result["tab_id"] = tabID

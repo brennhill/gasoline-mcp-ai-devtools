@@ -17,6 +17,7 @@ type ResponseMetadata struct {
 	RetrievedAt     string `json:"retrieved_at"`
 	IsStale         bool   `json:"is_stale"`
 	DataAge         string `json:"data_age"`
+	DataAgeMs       int64  `json:"data_age_ms"`
 	NoiseSuppressed int    `json:"noise_suppressed,omitempty"`
 }
 
@@ -30,8 +31,10 @@ func BuildResponseMetadata(cap *capture.Capture, newestEntry time.Time) Response
 	if !newestEntry.IsZero() {
 		age := now.Sub(newestEntry)
 		meta.DataAge = fmt.Sprintf("%.1fs", age.Seconds())
+		meta.DataAgeMs = age.Milliseconds()
 	} else {
 		meta.DataAge = "no_data"
+		meta.DataAgeMs = -1
 	}
 	return meta
 }
@@ -43,6 +46,7 @@ func BuildPaginatedResponseMetadata(cap *capture.Capture, newestEntry time.Time,
 		"retrieved_at": base.RetrievedAt,
 		"is_stale":     base.IsStale,
 		"data_age":     base.DataAge,
+		"data_age_ms":  base.DataAgeMs,
 		"total":        pMeta.Total,
 		"has_more":     pMeta.HasMore,
 	}

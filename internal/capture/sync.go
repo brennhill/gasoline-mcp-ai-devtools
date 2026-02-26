@@ -58,6 +58,7 @@ type SyncSettings struct {
 	TrackedTabID     int    `json:"tracked_tab_id"`
 	TrackedTabURL    string `json:"tracked_tab_url"`
 	TrackedTabTitle  string `json:"tracked_tab_title"`
+	TabStatus        string `json:"tab_status,omitempty"`
 	CaptureLogs      bool   `json:"capture_logs"`
 	CaptureNetwork   bool   `json:"capture_network"`
 	CaptureWebSocket bool   `json:"capture_websocket"`
@@ -182,6 +183,7 @@ func (c *Capture) updateSyncConnectionState(req SyncRequest, clientID string, no
 		c.ext.trackedTabURL = req.Settings.TrackedTabURL
 		c.ext.trackedTabTitle = req.Settings.TrackedTabTitle
 		c.ext.trackingUpdated = now
+		c.ext.tabStatus = req.Settings.TabStatus
 		c.ext.cspRestricted = req.Settings.CspRestricted
 		c.ext.cspLevel = req.Settings.CspLevel
 	}
