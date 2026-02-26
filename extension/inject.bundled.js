@@ -2468,17 +2468,28 @@ async function runAxeAudit(params) {
   const results = await window.axe.run(context, config);
   return formatAxeResults(results);
 }
+function emptyPartialResult(errorMessage) {
+  return {
+    violations: [],
+    passes: [],
+    incomplete: [],
+    inapplicable: [],
+    summary: { violations: 0, passes: 0, incomplete: 0, inapplicable: 0 },
+    partial: true,
+    error: errorMessage
+  };
+}
 async function runAxeAuditWithTimeout(params, timeoutMs = A11Y_AUDIT_TIMEOUT_MS) {
-  return Promise.race([
-    runAxeAudit(params),
-    new Promise((resolve) => {
-      setTimeout(() => resolve({
-        violations: [],
-        summary: { violations: 0, passes: 0, incomplete: 0, inapplicable: 0 },
-        error: "Accessibility audit timeout"
-      }), timeoutMs);
-    })
-  ]);
+  try {
+    return await Promise.race([
+      runAxeAudit(params),
+      new Promise((resolve) => {
+        setTimeout(() => resolve(emptyPartialResult("Accessibility audit timed out")), timeoutMs);
+      })
+    ]);
+  } catch (err) {
+    return emptyPartialResult(err instanceof Error ? err.message : String(err));
+  }
 }
 function formatAxeResults(axeResult) {
   const formatViolation = (v) => {
