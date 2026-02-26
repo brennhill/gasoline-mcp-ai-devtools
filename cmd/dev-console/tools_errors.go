@@ -148,8 +148,8 @@ func (h *ToolHandler) requirePilot(req JSONRPCRequest, extraOpts ...func(*Struct
 	opts := append([]func(*StructuredError){
 		h.diagnosticHint(),
 		withRecoveryToolCall(map[string]any{
-			"tool":      "configure",
-			"arguments": map[string]any{"what": "pilot", "enabled": true},
+			"tool":      "observe",
+			"arguments": map[string]any{"what": "pilot"},
 		}),
 	}, extraOpts...)
 	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(
@@ -210,27 +210,3 @@ func (h *ToolHandler) requireCSPClear(req JSONRPCRequest, world string) (JSONRPC
 	)}, true
 }
 
-// requireTabTracking returns (resp, true) if no tab is currently being tracked,
-// short-circuiting the caller with an immediate structured error (~5ms) instead of
-// queuing a command that would be delivered to an unknown tab.
-// Usage: if resp, blocked := h.requireTabTracking(req); blocked { return resp }
-func (h *ToolHandler) requireTabTracking(req JSONRPCRequest, extraOpts ...func(*StructuredError)) (JSONRPCResponse, bool) {
-	enabled, _, _ := h.capture.GetTrackingStatus()
-	if enabled {
-		return JSONRPCResponse{}, false
-	}
-	opts := append([]func(*StructuredError){
-		h.diagnosticHint(),
-		withRetryable(true),
-		withRetryAfterMs(2000),
-		withRecoveryToolCall(map[string]any{
-			"tool":      "observe",
-			"arguments": map[string]any{"what": "status"},
-		}),
-	}, extraOpts...)
-	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(
-		ErrNoData, "No tab is being tracked. Navigate to a page first.",
-		"Open a page in the browser, or call interact(what='navigate', url='...').",
-		opts...,
-	)}, true
-}

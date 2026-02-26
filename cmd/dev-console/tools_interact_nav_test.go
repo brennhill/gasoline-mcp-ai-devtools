@@ -271,8 +271,9 @@ func TestHandleBrowserActionCloseTab_WithTabID(t *testing.T) {
 // completePendingCommands polls for pending commands in the background and
 // completes them with the given result payload. Used by switch_tab tests
 // to simulate the extension completing the browser_action command.
+// Polls up to 100 iterations x 10ms sleep = 1s max wait before giving up.
 func completePendingCommands(env *interactTestEnv, result json.RawMessage, cmdErr string) {
-	for i := 0; i < 100; i++ {
+	for i := 0; i < 100; i++ { // 100 iterations * 10ms = 1s max polling window
 		time.Sleep(10 * time.Millisecond)
 		pending := env.capture.GetPendingCommands()
 		for _, cmd := range pending {
