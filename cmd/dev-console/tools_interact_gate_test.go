@@ -15,6 +15,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/dev-console/dev-console/internal/capture"
 )
@@ -41,7 +42,18 @@ func newGateTestEnv(t *testing.T) *gateTestEnv {
 	cap := capture.NewCapture()
 	mcpHandler := NewToolHandler(server, cap)
 	handler := mcpHandler.toolHandler.(*ToolHandler)
+	// Keep disconnect tests fast — override the 5s production readiness timeout.
+	handler.extensionReadinessTimeout = 100 * time.Millisecond
 	return &gateTestEnv{handler: handler, server: server, capture: cap}
+}
+
+// newGateTestEnvWithTimeout creates a gate test env with an explicit readiness timeout,
+// avoiding the double-override pattern (newGateTestEnv default + manual field write).
+func newGateTestEnvWithTimeout(t *testing.T, timeout time.Duration) *gateTestEnv {
+	t.Helper()
+	env := newGateTestEnv(t)
+	env.handler.extensionReadinessTimeout = timeout
+	return env
 }
 
 // simulateConnection sends a /sync POST to mark extension as connected.
@@ -347,6 +359,28 @@ func TestGateOrder_Extension_BeforeCSP(t *testing.T) {
 // ============================================
 // Diagnostic hint test
 // ============================================
+
+// TestRequireExtension_ConnectsDuringWait verifies the cold-start readiness gate:
+// if the extension connects within the wait window, the gate passes instead of failing.
+func TestRequireExtension_ConnectsDuringWait(t *testing.T) {
+	t.Parallel()
+	// 500ms window: goroutine connects at 150ms, caught on the 200ms poll tick.
+	env := newGateTestEnvWithTimeout(t, 500*time.Millisecond)
+
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		time.Sleep(150 * time.Millisecond)
+		env.simulateConnection(t)
+	}()
+
+	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`)}
+	resp, blocked := env.handler.requireExtension(req)
+	<-done // ensure goroutine finished before test returns
+	if blocked {
+		t.Fatalf("expected requireExtension to pass after late connection, got blocked: %v", resp)
+	}
+}
 
 func TestDiagnosticHint_IncludesCSP(t *testing.T) {
 	t.Parallel()
