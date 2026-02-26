@@ -65,6 +65,7 @@ canonical: true
 | Self-Testing | in-progress | interact, generate | execute_js, test_from_context | — | [feature/self-testing](feature/self-testing/) |
 | SPA Route Measurement | in-progress | analyze, observe | performance, timeline | — | [feature/spa-route-measurement](feature/spa-route-measurement/) |
 | Temporal Graph | shipped | analyze | history | 5.0.0 | [feature/temporal-graph](feature/temporal-graph/) |
+| Test Harness V2 | proposed | — | — | — | [feature-test-harness.md](feature-test-harness.md) |
 | TTL Retention | shipped | configure | (data TTL) | 5.0.0 | [feature/ttl-retention](feature/ttl-retention/) |
 | Web Vitals | shipped | observe | vitals | 5.0.0 | [feature/web-vitals](feature/web-vitals/) |
 | Workflow Integration | proposed | observe, generate | (CI integration) | — | [feature/workflow-integration](feature/workflow-integration/) |
