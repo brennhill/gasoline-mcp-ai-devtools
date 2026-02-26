@@ -106,29 +106,33 @@ func TestWaitForExtensionConnected_ContextCancelled(t *testing.T) {
 }
 
 // P2-3: Connect-then-disconnect during wait — lastSyncSeen is still recent so returns true.
+// NOTE: This test mutates a package-level var (extensionDisconnectThreshold)
+// via SetExtensionDisconnectThresholdForTesting, so it must NOT use t.Parallel().
 func TestWaitForExtensionConnected_ConnectsThenDisconnects(t *testing.T) {
-	t.Parallel()
 	c := NewCapture()
 	// Use a short disconnect threshold so the test can verify disconnect detection.
 	restore := SetExtensionDisconnectThresholdForTesting(500 * time.Millisecond)
 	defer restore()
 
-	// Simulate connect at 100ms
+	// Simulate connect at 50ms — early enough that the first poll tick (100ms)
+	// reliably sees the connected state.
 	go func() {
-		time.Sleep(100 * time.Millisecond)
+		time.Sleep(50 * time.Millisecond)
 		c.SimulateExtensionConnectForTest()
 	}()
 
-	// Simulate disconnect at 200ms (move lastSyncSeen to the past)
+	// Simulate disconnect at 400ms — gives at least 3 poll ticks (100ms each)
+	// to detect the connection before it goes away. The previous 200ms delay
+	// left only a ~100ms window which caused flaky failures when the poll tick
+	// aligned with the disconnect.
 	go func() {
-		time.Sleep(200 * time.Millisecond)
+		time.Sleep(400 * time.Millisecond)
 		c.SimulateExtensionDisconnectForTest()
 	}()
 
-	// Start waiting — extension connects at 100ms. The poll at ~200ms should catch
-	// the connected state (lastSyncSeen is set at 100ms and still within threshold).
-	// Even though disconnect fires at 200ms, the poll at ~100-200ms range should
-	// see the connection.
+	// Start waiting — extension connects at 50ms. The poll at ~100ms should catch
+	// the connected state. Even though disconnect fires at 400ms, the poll at
+	// ~100ms should see the connection well before the disconnect.
 	start := time.Now()
 	ok := c.WaitForExtensionConnected(context.Background(), 2*time.Second)
 	elapsed := time.Since(start)
@@ -136,8 +140,8 @@ func TestWaitForExtensionConnected_ConnectsThenDisconnects(t *testing.T) {
 	if !ok {
 		t.Fatal("expected WaitForExtensionConnected to return true — lastSyncSeen was recent when polled")
 	}
-	if elapsed < 50*time.Millisecond {
-		t.Fatalf("detected connection too fast (%v), connection fires at 100ms", elapsed)
+	if elapsed < 30*time.Millisecond {
+		t.Fatalf("detected connection too fast (%v), connection fires at 50ms", elapsed)
 	}
 	if elapsed > 500*time.Millisecond {
 		t.Fatalf("took too long to detect connection (%v)", elapsed)

@@ -8,20 +8,12 @@ import "time"
 
 // SetExtensionDisconnectThresholdForTesting overrides the disconnect threshold and
 // returns a restore function for test cleanup.
+// NOTE: Tests that mutate this var must NOT use t.Parallel() since it is a
+// package-level variable shared across all tests in the package.
 func SetExtensionDisconnectThresholdForTesting(d time.Duration) func() {
 	prev := extensionDisconnectThreshold
 	extensionDisconnectThreshold = d
 	return func() {
 		extensionDisconnectThreshold = prev
-	}
-}
-
-// SetReadinessGatePollIntervalForTesting overrides the readiness gate poll interval
-// and returns a restore function for test cleanup.
-func SetReadinessGatePollIntervalForTesting(d time.Duration) func() {
-	prev := readinessGatePollInterval
-	readinessGatePollInterval = d
-	return func() {
-		readinessGatePollInterval = prev
 	}
 }

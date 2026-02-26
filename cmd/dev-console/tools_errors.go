@@ -169,9 +169,14 @@ func (h *ToolHandler) requireExtension(req JSONRPCRequest, extraOpts ...func(*St
 	if timeout <= 0 {
 		timeout = capture.ExtensionReadinessTimeout
 	}
-	// TODO(#302): Use request-scoped context once JSONRPCRequest carries one.
-	// context.Background() means cold-start waits are not cancellable during shutdown.
-	if h.capture.WaitForExtensionConnected(context.Background(), timeout) {
+	// Use shutdownCtx so the wait aborts promptly when the server shuts down,
+	// preventing goroutine leaks. Falls back to context.Background() if the
+	// handler was constructed without a shutdown context (e.g., in tests).
+	ctx := h.shutdownCtx
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	if h.capture.WaitForExtensionConnected(ctx, timeout) {
 		return JSONRPCResponse{}, false
 	}
 	opts := append([]func(*StructuredError){

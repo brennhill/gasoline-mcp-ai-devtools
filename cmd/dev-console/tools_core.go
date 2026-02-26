@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"crypto/rand"
 	"encoding/binary"
 	"encoding/json"
@@ -121,6 +122,12 @@ type ToolHandler struct {
 	*MCPHandler
 	capture *capture.Capture
 
+	// shutdownCtx is cancelled when the ToolHandler is closed. Gates like
+	// requireExtension pass this context to blocking waits so they abort
+	// promptly on server shutdown instead of leaking goroutines.
+	shutdownCtx    context.Context
+	shutdownCancel context.CancelFunc
+
 	// Health metrics for MCP get_health tool
 	healthMetrics *HealthMetrics
 
@@ -210,6 +217,13 @@ type ToolHandler struct {
 	extensionReadinessTimeout time.Duration
 }
 
+// Close cancels the shutdown context, unblocking any in-flight readiness gates.
+func (h *ToolHandler) Close() {
+	if h.shutdownCancel != nil {
+		h.shutdownCancel()
+	}
+}
+
 // GetCapture returns the capture instance
 func (h *ToolHandler) GetCapture() *capture.Capture {
 	return h.capture
@@ -257,9 +271,12 @@ func newPlaybackSessionsMap() map[string]*capture.PlaybackSession {
 
 // NewToolHandler creates an MCP handler with composite tool capabilities
 func NewToolHandler(server *Server, capture *capture.Capture) *MCPHandler {
+	shutdownCtx, shutdownCancel := context.WithCancel(context.Background())
 	handler := &ToolHandler{
 		MCPHandler:        NewMCPHandler(server, version),
 		capture:           capture,
+		shutdownCtx:       shutdownCtx,
+		shutdownCancel:    shutdownCancel,
 		coldStartTimeout:  defaultColdStartTimeout,
 		playbackSessions:  newPlaybackSessionsMap(),
 		evidenceByCommand: make(map[string]*commandEvidenceState),

@@ -18,7 +18,8 @@ import (
 func TestMaybeWaitForCommand_SyncByDefault(t *testing.T) {
 	// Setup
 	cap := capture.NewCapture()
-	handler := &ToolHandler{capture: cap}
+	// coldStartTimeout=0 disables cold-start gate; extension is pre-connected via HandleSync below.
+	handler := &ToolHandler{capture: cap, coldStartTimeout: 0}
 	req := JSONRPCRequest{ID: 1, ClientID: "test-client"}
 	correlationID := "test-sync-123"
 	cap.RegisterCommand(correlationID, "q-sync-123", 15*time.Second)

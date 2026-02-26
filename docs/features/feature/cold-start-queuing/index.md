@@ -33,11 +33,12 @@ connectivity. The cold-start gate is bypassed entirely for background commands.
 
 ## Interaction with fast-fail gate (#261)
 
-The `requireExtension` gate runs **before** other fast-fail gates
-(`requirePilot`, `requireCSPClear`). If the extension connects within the
-timeout, subsequent gates evaluate normally. If it times out, the structured
-error includes `retryable: true` and `retry_after_ms: 3000` so the LLM
-can retry after the extension finishes booting.
+The `requireExtension` gate runs **after** `requirePilot` but **before**
+other gates (`requireTabTracking`, `requireCSPClear`). If the extension
+connects within the timeout, subsequent gates evaluate normally. If it
+times out, the structured error includes `retryable: true` and
+`retry_after_ms: 3000` so the LLM can retry after the extension finishes
+booting.
 
 ## Architecture
 

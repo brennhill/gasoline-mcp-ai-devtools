@@ -56,5 +56,7 @@ var (
 	// readinessGatePollInterval is how often WaitForExtensionConnected checks
 	// for a connection. Kept short (100ms) to minimize latency after the
 	// extension actually connects.
+	// NOTE: This is a mutable package-level var. If a test hook is added to
+	// override it, tests using that hook must NOT use t.Parallel().
 	readinessGatePollInterval = 100 * time.Millisecond
 )
