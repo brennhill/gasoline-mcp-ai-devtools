@@ -319,6 +319,7 @@ func (h *ToolHandler) formatCommandResult(req JSONRPCRequest, cmd queries.Comman
 		if len(cmd.Result) > 0 {
 			responseData["result"] = cmd.Result
 			_, _ = enrichCommandResponseData(cmd.Result, responseData)
+			stripEnrichedFieldsFromResult(responseData)
 		}
 		annotateCSPFailure(responseData, cmd.Error, cmd.Result)
 		annotateInteractFailureRecovery(responseData, cmd.Error, cmd.Result)
@@ -384,7 +385,6 @@ func attachTraceSummary(responseData map[string]any, cmd queries.CommandResult) 
 	trace := map[string]any{
 		"trace_id": traceID,
 		"timeline": cmd.TraceTimeline,
-		"events":   cmd.TraceEvents,
 	}
 	if cmd.QueryID != "" {
 		trace["query_id"] = cmd.QueryID
@@ -408,6 +408,7 @@ func (h *ToolHandler) formatCompleteCommand(req JSONRPCRequest, cmd queries.Comm
 	if embeddedErr, hasEmbeddedErr := enrichCommandResponseData(normalizedResult, responseData); cmd.Error == "" && hasEmbeddedErr {
 		cmd.Error = embeddedErr
 	}
+	stripEnrichedFieldsFromResult(responseData)
 
 	if beforeSnap, ok := h.capture.GetAndDeleteBeforeSnapshot(corrID); ok {
 		// The "after" perf snapshot arrives ~2.5s after page load (2s content script
@@ -443,6 +444,8 @@ func (h *ToolHandler) formatCompleteCommand(req JSONRPCRequest, cmd queries.Comm
 
 	h.attachEvidencePayload(corrID, responseData)
 	h.attachRetryContext(corrID, responseData, cmd.Status, "")
+	stripSuccessOnlyFields(responseData)
+	stripRetryContextOnSuccess(responseData)
 	summary := fmt.Sprintf("Command %s: complete", corrID)
 	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse(summary, responseData)}
 }
@@ -517,6 +520,64 @@ func buildListInteractiveMissingPayload(existing map[string]any, message string)
 	return payload
 }
 
+// stripEnrichedFieldsFromResult removes fields from the inner "result" that
+// enrichCommandResponseData() already surfaced to the top level. This eliminates
+// token-wasting duplication — the agent sees each field exactly once.
+func stripEnrichedFieldsFromResult(responseData map[string]any) {
+	resultRaw, ok := responseData["result"].(json.RawMessage)
+	if !ok || len(resultRaw) == 0 {
+		return
+	}
+	var resultMap map[string]any
+	if err := json.Unmarshal(resultRaw, &resultMap); err != nil {
+		return
+	}
+
+	enrichedKeys := []string{
+		"timing", "dom_changes", "dom_summary", "dom_mutations", "analysis",
+		"content_script_status", "target_context",
+		"message", "hint", "retry", "retryable", "csp_blocked", "failure_cause", "error_code",
+		"candidates", "match_count", "match_strategy",
+		"effective_url", "effective_tab_id", "effective_title",
+		"resolved_tab_id", "resolved_url", "final_url", "title",
+	}
+	for _, key := range enrichedKeys {
+		delete(resultMap, key)
+	}
+
+	if cleaned, err := json.Marshal(resultMap); err == nil {
+		responseData["result"] = json.RawMessage(cleaned)
+	}
+}
+
+// stripSuccessOnlyFields removes internal routing fields that are not useful to
+// agents on successful responses. Error responses keep these for debugging.
+func stripSuccessOnlyFields(responseData map[string]any) {
+	delete(responseData, "target_context")
+	delete(responseData, "content_script_status")
+	delete(responseData, "created_at")
+	delete(responseData, "trace_id")
+}
+
+// stripRetryContextOnSuccess removes retry_context when the command succeeded
+// on the first attempt (no retry occurred), saving ~50 tokens per response.
+func stripRetryContextOnSuccess(responseData map[string]any) {
+	rc, ok := responseData["retry_context"].(map[string]any)
+	if !ok {
+		return
+	}
+	var attempt int
+	switch v := rc["attempt"].(type) {
+	case int:
+		attempt = v
+	case float64:
+		attempt = int(v)
+	}
+	if attempt <= 1 {
+		delete(responseData, "retry_context")
+	}
+}
+
 func enrichCommandResponseData(result json.RawMessage, responseData map[string]any) (embeddedErr string, hasEmbeddedErr bool) {
 	if len(result) == 0 {
 		return "", false
@@ -528,16 +589,47 @@ func enrichCommandResponseData(result json.RawMessage, responseData map[string]a
 	}
 
 	// Surface extension enrichment fields to top-level for easier LLM consumption.
+	// Non-tab fields are always surfaced.
 	for _, key := range []string{
 		"timing", "dom_changes", "dom_summary", "dom_mutations", "analysis",
-		"content_script_status", "resolved_tab_id", "resolved_url", "target_context",
-		"effective_tab_id", "effective_url", "effective_title", "final_url", "title",
+		"content_script_status", "target_context",
 		"message", "hint", "retry", "retryable", "csp_blocked", "failure_cause", "error_code",
 		"candidates", "match_count", "match_strategy",
 	} {
 		if v, ok := extResult[key]; ok {
 			responseData[key] = v
 		}
+	}
+
+	// Deduplicate tab context: only include resolved_*/final_url/title when URLs changed.
+	resolvedURL, _ := extResult["resolved_url"].(string)
+	effectiveURL, _ := extResult["effective_url"].(string)
+	effectiveTitle, _ := extResult["effective_title"].(string)
+
+	// Always surface effective_* when present
+	if effectiveURL != "" {
+		responseData["effective_url"] = effectiveURL
+	}
+	if v, ok := extResult["effective_tab_id"]; ok {
+		responseData["effective_tab_id"] = v
+	}
+	if effectiveTitle != "" {
+		responseData["effective_title"] = effectiveTitle
+	}
+
+	// Only surface resolved_*/final_url/title when URL changed (navigation/redirect)
+	if resolvedURL != "" && effectiveURL != "" && resolvedURL != effectiveURL {
+		responseData["resolved_tab_id"] = extResult["resolved_tab_id"]
+		responseData["resolved_url"] = resolvedURL
+		if v, ok := extResult["final_url"]; ok {
+			responseData["final_url"] = v
+		}
+		if v, ok := extResult["title"]; ok {
+			responseData["title"] = v
+		}
+		responseData["tab_changed"] = true
+		responseData["navigation_detected"] = true
+		responseData["navigation_note"] = fmt.Sprintf("Page navigated from %s to %s", resolvedURL, effectiveURL)
 	}
 
 	if success, ok := extResult["success"].(bool); ok && !success {
