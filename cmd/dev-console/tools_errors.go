@@ -1,10 +1,12 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"strings"
 
+	"github.com/dev-console/dev-console/internal/capture"
 	"github.com/dev-console/dev-console/internal/mcp"
 )
 
@@ -150,11 +152,17 @@ func (h *ToolHandler) requirePilot(req JSONRPCRequest, extraOpts ...func(*Struct
 }
 
 // requireExtension returns (resp, true) if the browser extension is not connected,
-// short-circuiting the caller with an immediate structured error (~5ms) instead of
-// queuing a command that would time out after 15s.
+// short-circuiting the caller with a structured error. On cold starts it waits up to
+// ExtensionReadinessTimeout (5s) for the extension to connect before giving up.
 // Usage: if resp, blocked := h.requireExtension(req); blocked { return resp }
 func (h *ToolHandler) requireExtension(req JSONRPCRequest, extraOpts ...func(*StructuredError)) (JSONRPCResponse, bool) {
-	if h.capture.IsExtensionConnected() {
+	timeout := h.extensionReadinessTimeout
+	if timeout <= 0 {
+		timeout = capture.ExtensionReadinessTimeout
+	}
+	// TODO(#302): Use request-scoped context once JSONRPCRequest carries one.
+	// context.Background() means cold-start waits are not cancellable during shutdown.
+	if h.capture.WaitForExtensionConnected(context.Background(), timeout) {
 		return JSONRPCResponse{}, false
 	}
 	opts := append([]func(*StructuredError){h.diagnosticHint(), withRetryable(true), withRetryAfterMs(3000)}, extraOpts...)
