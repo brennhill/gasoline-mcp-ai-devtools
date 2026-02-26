@@ -224,3 +224,17 @@ func AppendWarningsToResponse(resp JSONRPCResponse, warnings []string) JSONRPCRe
 	resp.Result = json.RawMessage(resultJSON)
 	return resp
 }
+
+// AppendWarningsToToolResult mutates a parsed MCP tool result in-place by adding a
+// warning content block. It returns true if warnings were appended.
+func AppendWarningsToToolResult(result *MCPToolResult, warnings []string) bool {
+	if result == nil || len(warnings) == 0 {
+		return false
+	}
+	warningText := "_warnings: " + strings.Join(warnings, "; ")
+	result.Content = append(result.Content, MCPContentBlock{
+		Type: "text",
+		Text: warningText,
+	})
+	return true
+}

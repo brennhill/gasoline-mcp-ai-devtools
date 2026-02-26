@@ -122,3 +122,35 @@ func TestTruncate(t *testing.T) {
 		}
 	}
 }
+
+func TestAppendWarningsToToolResult(t *testing.T) {
+	t.Parallel()
+	result := &MCPToolResult{
+		Content: []MCPContentBlock{{Type: "text", Text: "ok"}},
+	}
+
+	changed := AppendWarningsToToolResult(result, []string{"unknown parameter 'x' (ignored)"})
+	if !changed {
+		t.Fatal("expected warnings to be appended")
+	}
+	if len(result.Content) != 2 {
+		t.Fatalf("content blocks = %d, want 2", len(result.Content))
+	}
+	if !strings.Contains(result.Content[1].Text, "_warnings:") {
+		t.Fatalf("warning block text missing prefix: %q", result.Content[1].Text)
+	}
+}
+
+func TestAppendWarningsToToolResult_NoOp(t *testing.T) {
+	t.Parallel()
+	result := &MCPToolResult{
+		Content: []MCPContentBlock{{Type: "text", Text: "ok"}},
+	}
+
+	if AppendWarningsToToolResult(result, nil) {
+		t.Fatal("expected false for nil warnings")
+	}
+	if AppendWarningsToToolResult(nil, []string{"warn"}) {
+		t.Fatal("expected false for nil result")
+	}
+}
