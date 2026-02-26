@@ -123,11 +123,11 @@
     <div class="gh-section-header">
       <span class="dot" id="ws-section-dot" style="background:var(--amber);animation:pulse 1.2s infinite"></span>
       <h2>WebSocket Arena</h2>
-      <span class="section-meta">Test 4.1 · observe(websocket_status) · observe(websocket_events)</span>
+      <span class="section-meta">observe(websocket_status) · observe(websocket_events)</span>
     </div>
     <div class="gh-section-body">
       <p style="font-size:12px;color:var(--text-dim);margin-bottom:10px;">
-        Auto-connects to <code>ws://localhost:8080/ws</code> on load.
+        Auto-connects to <code>ws://{host}/tests/ws</code> on load.
         Gasoline's early-patch intercepts the <code>WebSocket</code> constructor.
         Connection state and messages are visible in <code>observe(websocket_status)</code>.
       </p>
@@ -317,7 +317,7 @@ function setWsStatus(state, color) {
 function wsConnect() {
   var host = window.location.host || 'localhost:8080';
   setWsStatus('Connecting', 'var(--amber)');
-  appendLog(wslog, 'Connecting to ws://' + host + '/ws…', 'system');
+  appendLog(wslog, 'Connecting to ws://' + host + '/tests/ws…', 'system');
   ws = new WebSocket('ws://' + host + '/tests/ws');
 
   ws.onopen = function() {
@@ -334,7 +334,7 @@ function wsConnect() {
   };
   ws.onerror = function() {
     setWsStatus('Error', 'var(--red)');
-    appendLog(wslog, 'WebSocket error — is server.py running?', 'error');
+    appendLog(wslog, 'WebSocket error — is the Gasoline daemon running on ' + host + '?', 'error');
   };
 }
 
@@ -364,6 +364,12 @@ function wsReconnect() {
 
 window.addEventListener('load', function() {
   setTimeout(wsConnect, 500);
+});
+
+// Close the WebSocket cleanly on navigation so the server receives a proper
+// close frame rather than an abrupt TCP FIN.
+window.addEventListener('pagehide', function() {
+  if (ws && ws.readyState === WebSocket.OPEN) { ws.close(1000, 'page unload'); }
 });
 
 // ── §4: Error Bombs ──────────────────────────────────────────────────────────
@@ -398,8 +404,8 @@ function throwReferenceError() {
 }
 function throwUnhandledPromise() {
   Promise.reject(new Error('SMOKE_UNHANDLED_REJECTION_' + Date.now()));
+  // setErrResult already calls incError() — no extra call needed here.
   setErrResult('UnhandledPromiseRejection fired — check observe(errors)');
-  incError();
 }
 function throwDeepStack() {
   function a() { b(); }

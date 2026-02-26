@@ -242,7 +242,9 @@ window.addEventListener('load', function() {
     var hero  = document.getElementById('lcp-hero');
     var st    = document.getElementById('lcp-status');
 
-    // Use a large, eye-catching gradient rendered as a data URI
+    // Use a large, eye-catching gradient as the LCP image.
+    // canvas.toBlob() + createObjectURL() produces a blob: URL that Chrome
+    // includes as an LCP candidate — unlike data: URIs, which are excluded.
     var canvas = document.createElement('canvas');
     canvas.width  = 800;
     canvas.height = 200;
@@ -260,7 +262,12 @@ window.addEventListener('load', function() {
     ctx.textAlign = 'center';
     ctx.fillText('Gasoline LCP Hero — Loaded after 2 000 ms delay', 400, 110);
 
-    img.src     = canvas.toDataURL('image/png');
+    canvas.toBlob(function(blob) {
+      var blobUrl = URL.createObjectURL(blob);
+      img.src = blobUrl;
+      // Store for cleanup on unload.
+      img.dataset.blobUrl = blobUrl;
+    }, 'image/png');
     img.style.display = 'block';
     ph.style.display  = 'none';
     hero.style.height = 'auto';
@@ -306,6 +313,9 @@ function resetCLS() {
   var box   = document.getElementById('cls-box');
   var label = document.getElementById('cls-label');
   var st    = document.getElementById('cls-status');
+  // Keep transition:none so the reset itself doesn't become an animated shift
+  // (animated shifts are excluded from CLS scoring — we want the reset invisible).
+  box.style.transition = 'none';
   box.style.height  = '60px';
   label.textContent = 'Stable (pre-shift)';
   st.textContent    = 'Reset — trigger again for another CLS event.';
@@ -334,8 +344,8 @@ function runLongTask(ms) {
     btn.disabled = false;
     st.textContent = 'Long Task completed: ' + ms + 'ms block (' + i + ' iterations). Check analyze(performance).';
     st.className = 'gh-status err';
-    ltCount++;
-    document.getElementById('m-lt').textContent = ltCount;
+    // ltCount is incremented by the PerformanceObserver below — do not also
+    // increment here or the counter will be doubled (once per click + once per entry).
     appendTimingLog('long_task: ' + ms + 'ms completed', 'warn');
     updateMarkCount();
   }, 0);
@@ -425,7 +435,7 @@ if (window.PerformanceObserver) {
     }).observe({ type: 'layout-shift', buffered: true });
   } catch(e) {}
 
-  // Long Tasks observer
+  // Long Tasks observer — sole source of truth for ltCount.
   try {
     new PerformanceObserver(function(list) {
       list.getEntries().forEach(function() {
@@ -435,6 +445,12 @@ if (window.PerformanceObserver) {
     }).observe({ type: 'longtask', buffered: true });
   } catch(e) {}
 }
+
+// Release the LCP blob URL on navigation to avoid memory leaks.
+window.addEventListener('pagehide', function() {
+  var img = document.getElementById('lcp-image');
+  if (img && img.dataset.blobUrl) { URL.revokeObjectURL(img.dataset.blobUrl); }
+});
 </script>
 
 </body>

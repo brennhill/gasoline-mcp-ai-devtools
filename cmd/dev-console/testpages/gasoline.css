@@ -399,7 +399,7 @@ input[type=checkbox] {
   justify-content: center;
   color: var(--blue);
   font-size: 12px;
-  transition: height 0.3s ease;
+  transition: none; /* No transition — sudden shift must be unanimated to register as CLS */
   margin-bottom: 8px;
   overflow: hidden;
 }

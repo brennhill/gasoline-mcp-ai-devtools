@@ -486,8 +486,10 @@ func registerCoreRoutes(mux *http.ServeMux, server *Server, cap *capture.Capture
 		serveEmbeddedHTML(w, r, docsHTML, "docs")
 	}))
 
-	// NOT MCP — WebSocket echo server for test harness (must be registered before /tests/ subtree)
-	mux.HandleFunc("/tests/ws", handleTestHarnessWS)
+	// NOT MCP — WebSocket echo server for test harness (must be registered before /tests/ subtree).
+	// corsMiddleware sets headers on http.ResponseWriter pre-hijack; those headers are not included
+	// in the manually-written 101 response (intentional — WS upgrade bypasses HTTP CORS).
+	mux.HandleFunc("/tests/ws", corsMiddleware(handleTestHarnessWS))
 	// NOT MCP — Embedded test/demo pages for self-testing
 	mux.HandleFunc("/tests/", corsMiddleware(handleTestPages()))
 

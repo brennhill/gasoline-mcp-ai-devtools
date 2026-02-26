@@ -104,7 +104,7 @@
       <div class="gh-card-desc">
         Auto-fires 100+ console messages, fetch()es /404 /500 and a CORS-blocked URL,
         opens a WebSocket to the local echo server, and offers one-click error bombs
-        for error cluster testing. Tests 2.x, 4.x.
+        for error cluster testing. Tests 2.x.
       </div>
       <div class="gh-card-tags">
         <span class="tag tag-error">console.error</span>
@@ -196,7 +196,7 @@
     };
     ws.onerror = () => {
       dot.className    = 'dot dot-red';
-      status.textContent = 'WebSocket error — is server.py running?';
+      status.textContent = 'WebSocket error — is the Gasoline daemon running?';
       status.style.color = 'var(--red)';
     };
   }
@@ -204,6 +204,11 @@
 
   // Keep server URL in sync
   document.getElementById('server-url').textContent = window.location.origin;
+
+  // Close the WebSocket cleanly on navigation.
+  window.addEventListener('pagehide', function() {
+    if (ws && ws.readyState === WebSocket.OPEN) { ws.close(1000, 'page unload'); }
+  });
 })();
 </script>
 

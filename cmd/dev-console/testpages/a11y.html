@@ -11,8 +11,10 @@
     /* ── Deliberate WCAG violations ── */
 
     /* Violation: insufficient contrast (fails AA 4.5:1) */
-    .v-contrast-fail-1 { color: #aaaaaa; background: #252525; padding: 10px 12px; border-radius: 4px; font-size: 13px; margin-bottom: 6px; }
-    .v-contrast-fail-2 { color: #999999; background: #ffffff; padding: 10px 12px; border-radius: 4px; font-size: 13px; color: #aaaaaa; margin-bottom: 6px; }
+    /* #777777 on #252525 → ratio ≈ 3.5:1 — fails WCAG 1.4.3 AA (requires 4.5:1) */
+    .v-contrast-fail-1 { color: #777777; background: #252525; padding: 10px 12px; border-radius: 4px; font-size: 13px; margin-bottom: 6px; }
+    /* #aaaaaa on #ffffff → ratio ≈ 2.3:1 — fails WCAG 1.4.3 AA */
+    .v-contrast-fail-2 { color: #aaaaaa; background: #ffffff; padding: 10px 12px; border-radius: 4px; font-size: 13px; margin-bottom: 6px; }
     .v-contrast-fail-3 { color: #888888; background: #707070; padding: 10px 12px; border-radius: 4px; font-size: 13px; margin-bottom: 6px; }
 
     /* Violation: tiny font (below 14px) */
@@ -38,7 +40,7 @@
     }
   </style>
 </head>
-<!-- Violation: <body> inside <html> without <head> lang (lang already set, but aria-hidden missing) -->
+<!-- NOTE: No aria-label on <body>, and page intentionally lacks <main> landmark (see §D). -->
 <body>
 
 <!-- NOTE: No <header> landmark — intentional WCAG violation (missing banner role) -->
@@ -95,9 +97,9 @@
       <h2>Color Contrast Failures <span class="violation-badge">WCAG 1.4.3</span></h2>
     </div>
     <div class="gh-section-body">
-      <!-- Violation: #aaa on #252525 — ratio ≈ 2.9:1 (fails AA 4.5:1) -->
+      <!-- Violation: #777777 on #252525 — ratio ≈ 3.5:1 (fails AA 4.5:1) -->
       <div class="v-contrast-fail-1">
-        This text is #aaaaaa on #252525 — contrast ratio ≈ 2.9:1. Fails WCAG 1.4.3 (AA requires 4.5:1).
+        This text is #777777 on #252525 — contrast ratio ≈ 3.5:1. Fails WCAG 1.4.3 (AA requires 4.5:1).
       </div>
       <!-- Violation: #aaa on #ffffff — ratio ≈ 2.3:1 -->
       <div style="background:#ffffff;padding:10px 12px;border-radius:4px;margin-bottom:6px;">
