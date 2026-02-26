@@ -199,8 +199,12 @@ export async function runAxeAuditWithTimeout(params, timeoutMs = A11Y_AUDIT_TIME
             new Promise((resolve) => {
                 setTimeout(() => resolve({
                     violations: [],
+                    passes: [],
+                    incomplete: [],
+                    inapplicable: [],
                     summary: { violations: 0, passes: 0, incomplete: 0, inapplicable: 0 },
-                    error: 'Accessibility audit timeout'
+                    partial: true,
+                    error: 'Accessibility audit timed out'
                 }), timeoutMs);
             })
         ]);
@@ -210,8 +214,12 @@ export async function runAxeAuditWithTimeout(params, timeoutMs = A11Y_AUDIT_TIME
         // Handles "Axe is already running" and other runtime errors gracefully.
         return {
             violations: [],
+            passes: [],
+            incomplete: [],
+            inapplicable: [],
             summary: { violations: 0, passes: 0, incomplete: 0, inapplicable: 0 },
-            error: err.message || 'Accessibility audit failed'
+            partial: true,
+            error: err instanceof Error ? err.message : String(err)
         };
     }
 }

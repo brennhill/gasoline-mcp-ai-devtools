@@ -76,12 +76,16 @@ interface FormattedAxeViolation {
 }
 interface FormattedAxeResults {
     violations: FormattedAxeViolation[];
+    passes?: FormattedAxeViolation[];
+    incomplete?: FormattedAxeViolation[];
+    inapplicable?: FormattedAxeViolation[];
     summary: {
         violations: number;
         passes: number;
         incomplete: number;
         inapplicable: number;
     };
+    partial?: boolean;
     error?: string;
 }
 interface AxeNode {

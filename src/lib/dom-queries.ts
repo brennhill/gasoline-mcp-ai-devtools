@@ -106,12 +106,17 @@ interface FormattedAxeViolation {
 // Formatted axe results
 interface FormattedAxeResults {
   violations: FormattedAxeViolation[]
+  passes?: FormattedAxeViolation[]
+  incomplete?: FormattedAxeViolation[]
+  inapplicable?: FormattedAxeViolation[]
+  // TODO: Summary uses 'violations'/'passes' here but Go uses 'violation_count'/'pass_count'. Unify in future PR.
   summary: {
     violations: number
     passes: number
     incomplete: number
     inapplicable: number
   }
+  partial?: boolean
   error?: string
 }
 
@@ -382,8 +387,12 @@ export async function runAxeAuditWithTimeout(
           () =>
             resolve({
               violations: [],
+              passes: [],
+              incomplete: [],
+              inapplicable: [],
               summary: { violations: 0, passes: 0, incomplete: 0, inapplicable: 0 },
-              error: 'Accessibility audit timeout'
+              partial: true,
+              error: 'Accessibility audit timed out'
             }),
           timeoutMs
         )
@@ -394,8 +403,12 @@ export async function runAxeAuditWithTimeout(
     // Handles "Axe is already running" and other runtime errors gracefully.
     return {
       violations: [],
+      passes: [],
+      incomplete: [],
+      inapplicable: [],
       summary: { violations: 0, passes: 0, incomplete: 0, inapplicable: 0 },
-      error: (err as Error).message || 'Accessibility audit failed'
+      partial: true,
+      error: err instanceof Error ? err.message : String(err)
     }
   }
 }
