@@ -112,7 +112,7 @@ export function domPrimitive(
 
     const ambiguitySensitiveActions = new Set([
       'click', 'type', 'select', 'check', 'set_attribute',
-      'paste', 'key_press', 'focus', 'scroll_to'
+      'paste', 'key_press', 'focus', 'scroll_to', 'hover'
     ])
 
     if (!ambiguitySensitiveActions.has(action)) {
@@ -840,6 +840,19 @@ export function domPrimitive(
         withMutationTracking(() => {
           if (!(node instanceof HTMLElement)) return domError('not_interactive', `Element is not an HTMLElement: ${node.tagName}`)
           node.click()
+          return mutatingSuccess(node)
+        }),
+
+      hover: () =>
+        withMutationTracking(() => {
+          if (!(node instanceof HTMLElement)) return domError('not_interactive', `Element is not an HTMLElement: ${node.tagName}`)
+          const rect = node.getBoundingClientRect()
+          const centerX = rect.left + rect.width / 2
+          const centerY = rect.top + rect.height / 2
+          const eventInit = { bubbles: true, cancelable: true, clientX: centerX, clientY: centerY }
+          node.dispatchEvent(new MouseEvent('mouseenter', { ...eventInit, bubbles: false }))
+          node.dispatchEvent(new MouseEvent('mouseover', eventInit))
+          node.dispatchEvent(new MouseEvent('mousemove', eventInit))
           return mutatingSuccess(node)
         }),
 
