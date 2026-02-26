@@ -44,6 +44,7 @@ export function domPrimitive(
     match_strategy?: string
     scope_selector_used?: string
     ranked_candidates?: { element_id: string; tag: string; text_preview?: string; score: number }[]
+    ambiguous_matches?: { total_count: number; warning: string; candidates: { tag: string; element_id: string; text_preview?: string }[] }
   } {
     const requestedScope = (options.scope_selector || '').trim()
     if (requestedScope && !scopeRoot) {
@@ -115,6 +116,23 @@ export function domPrimitive(
     ])
 
     if (!ambiguitySensitiveActions.has(action)) {
+      // #316: For text= selectors, always check total match count to add disambiguation warning
+      const allMatches = selector.startsWith('text=') ? resolveElements(selector, activeScope) : null
+      const ambiguousInfo = (() => {
+        if (!allMatches || allMatches.length <= 1) return undefined
+        const uniqueAll = uniqueElements(allMatches)
+        if (uniqueAll.length <= 1) return undefined
+        return {
+          total_count: uniqueAll.length,
+          warning: `Selector "${selector}" matched ${uniqueAll.length} elements. First match was used. Use :nth-match(N) or scope_selector to disambiguate.`,
+          candidates: uniqueAll.slice(0, 5).map((c) => ({
+            tag: c.tagName.toLowerCase(),
+            element_id: getOrCreateElementID(c),
+            text_preview: ((c as HTMLElement).textContent || '').trim().slice(0, 60) || undefined
+          }))
+        }
+      })()
+
       const direct = resolveElement(selector, activeScope)
       if (direct && intersectsScopeRect(direct)) {
         return {
@@ -123,7 +141,8 @@ export function domPrimitive(
           match_strategy: selector.includes(':nth-match(')
             ? 'nth_match_selector'
             : (scopeRect ? 'rect_selector' : (requestedScope ? 'scoped_selector' : 'selector')),
-          scope_selector_used: scopeSelectorUsed
+          scope_selector_used: scopeSelectorUsed,
+          ...(ambiguousInfo ? { ambiguous_matches: ambiguousInfo } : {})
         }
       }
       const scopedMatches = filterByScopeRect(uniqueElements(resolveElements(selector, activeScope)))
@@ -137,7 +156,8 @@ export function domPrimitive(
         element: found,
         match_count: 1,
         match_strategy: scopeRect ? 'rect_selector' : (requestedScope ? 'scoped_selector' : 'selector'),
-        scope_selector_used: scopeSelectorUsed
+        scope_selector_used: scopeSelectorUsed,
+        ...(ambiguousInfo ? { ambiguous_matches: ambiguousInfo } : {})
       }
     }
 
@@ -217,6 +237,7 @@ export function domPrimitive(
   const resolvedMatchStrategy = resolved.match_strategy || 'selector'
   const resolvedScopeSelector = resolved.scope_selector_used
   const resolvedRankedCandidates = resolved.ranked_candidates
+  const resolvedAmbiguousMatches = resolved.ambiguous_matches
 
   function mutatingSuccess(
     node: Element,
@@ -836,7 +857,22 @@ export function domPrimitive(
   if (!handler) {
     return domError('unknown_action', `Unknown DOM action: ${action}`)
   }
-  return handler()
+
+  // #316: Enrich result with ambiguous_matches warning if text= matched multiple elements
+  const rawResult = handler()
+  if (!resolvedAmbiguousMatches) return rawResult
+  if (rawResult instanceof Promise) {
+    return rawResult.then((r) => {
+      if (r && typeof r === 'object' && r.success) {
+        return { ...r, ambiguous_matches: resolvedAmbiguousMatches }
+      }
+      return r
+    })
+  }
+  if (rawResult && typeof rawResult === 'object' && (rawResult as DOMResult).success) {
+    return { ...(rawResult as DOMResult), ambiguous_matches: resolvedAmbiguousMatches }
+  }
+  return rawResult
 }
 
 // Dispatcher utilities (parseDOMParams, executeDOMAction, etc.) moved to ./dom-dispatch.ts

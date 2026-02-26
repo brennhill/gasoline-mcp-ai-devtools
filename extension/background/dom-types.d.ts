@@ -57,6 +57,15 @@ export interface DOMResult {
         visible?: boolean;
     }>;
     auto_scrolled?: boolean;
+    ambiguous_matches?: {
+        total_count: number;
+        warning: string;
+        candidates: Array<{
+            tag: string;
+            element_id: string;
+            text_preview?: string;
+        }>;
+    };
     reason?: string;
     error?: string;
     message?: string;
