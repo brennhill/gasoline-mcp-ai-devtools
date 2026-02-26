@@ -197,6 +197,11 @@ func (h *ToolHandler) toolConfigureStore(req JSONRPCRequest, args json.RawMessag
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidParam, err.Error(), "Fix the request parameters and try again")}
 	}
 
+	// Invalidate summary preference cache when response_mode is written
+	if namespace == "session" && compositeArgs.Key == "response_mode" {
+		h.invalidateSummaryPref()
+	}
+
 	// Parse result back to map for response
 	var responseData map[string]any
 	if err := json.Unmarshal(result, &responseData); err != nil {

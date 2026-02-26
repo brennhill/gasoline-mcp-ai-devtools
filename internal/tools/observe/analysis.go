@@ -20,18 +20,28 @@ func GetNetworkWaterfall(deps Deps, req mcp.JSONRPCRequest, args json.RawMessage
 	var params struct {
 		Limit     int    `json:"limit"`
 		URLFilter string `json:"url"`
+		Summary   bool   `json:"summary"`
 	}
 	mcp.LenientUnmarshal(args, &params)
 	params.Limit = clampLimit(params.Limit, 100)
 
 	allEntries := refreshWaterfallIfStale(deps)
-	entries := filterWaterfallEntries(allEntries, params.URLFilter, params.Limit)
 
 	var newestTS time.Time
 	if len(allEntries) > 0 {
 		newestTS = allEntries[len(allEntries)-1].Timestamp
 	}
 
+	if params.Summary {
+		entries := filterWaterfallSummaryEntries(allEntries, params.URLFilter, params.Limit)
+		return mcp.JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcp.JSONResponse("Network waterfall", map[string]any{
+			"entries":  entries,
+			"count":    len(entries),
+			"metadata": BuildResponseMetadata(deps.GetCapture(), newestTS),
+		})}
+	}
+
+	entries := filterWaterfallEntries(allEntries, params.URLFilter, params.Limit)
 	return mcp.JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcp.JSONResponse("Network waterfall", map[string]any{
 		"entries":  entries,
 		"count":    len(entries),
@@ -98,6 +108,26 @@ func waterfallEntryToMap(entry capture.NetworkWaterfallEntry) map[string]any {
 		"timestamp":         entry.Timestamp,
 		"page_url":          entry.PageURL,
 	}
+}
+
+func waterfallSummaryEntry(entry capture.NetworkWaterfallEntry) map[string]any {
+	url := entry.URL
+	if len(url) > 80 {
+		url = url[:80] + "..."
+	}
+	return map[string]any{"url": url, "ms": entry.Duration, "type": entry.InitiatorType}
+}
+
+func filterWaterfallSummaryEntries(allEntries []capture.NetworkWaterfallEntry, urlFilter string, limit int) []map[string]any {
+	entries := make([]map[string]any, 0)
+	for i := len(allEntries) - 1; i >= 0 && len(entries) < limit; i-- {
+		entry := allEntries[i]
+		if urlFilter != "" && (entry.URL == "" || !ContainsIgnoreCase(entry.URL, urlFilter)) {
+			continue
+		}
+		entries = append(entries, waterfallSummaryEntry(entry))
+	}
+	return entries
 }
 
 // GetWSStatus returns the current WebSocket connection status.
@@ -241,6 +271,7 @@ func RunA11yAudit(deps Deps, req mcp.JSONRPCRequest, args json.RawMessage) mcp.J
 		Tags         []string `json:"tags"`
 		ForceRefresh bool     `json:"force_refresh"`
 		Frame        any      `json:"frame"`
+		Summary      bool     `json:"summary"`
 	}
 	mcp.LenientUnmarshal(args, &params)
 	if params.Scope == "" && params.Selector != "" {
@@ -260,6 +291,10 @@ func RunA11yAudit(deps Deps, req mcp.JSONRPCRequest, args json.RawMessage) mcp.J
 	var auditResult map[string]any
 	if err := json.Unmarshal(result, &auditResult); err != nil {
 		return mcp.JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcp.StructuredErrorResponse(mcp.ErrInvalidJSON, "Failed to parse a11y result: "+err.Error(), "Check extension logs for errors")}
+	}
+
+	if params.Summary {
+		return mcp.JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcp.JSONResponse("A11y audit", buildA11ySummary(auditResult))}
 	}
 
 	ensureA11ySummary(auditResult)
@@ -400,6 +435,7 @@ func GetSessionTimeline(deps Deps, req mcp.JSONRPCRequest, args json.RawMessage)
 	var params struct {
 		Limit   int      `json:"limit"`
 		Include []string `json:"include"`
+		Summary bool     `json:"summary"`
 	}
 	mcp.LenientUnmarshal(args, &params)
 	if params.Limit <= 0 {
@@ -415,6 +451,12 @@ func GetSessionTimeline(deps Deps, req mcp.JSONRPCRequest, args json.RawMessage)
 	sort.Slice(entries, func(i, j int) bool {
 		return entries[i].Timestamp > entries[j].Timestamp
 	})
+
+	if params.Summary {
+		summary := buildTimelineSummary(entries)
+		summary["metadata"] = BuildResponseMetadata(deps.GetCapture(), time.Now())
+		return mcp.JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcp.JSONResponse("Timeline", summary)}
+	}
 
 	if len(entries) > params.Limit {
 		entries = entries[:params.Limit]
@@ -517,6 +559,28 @@ func collectTimelineWebSocket(wsEvents []capture.WebSocketEvent) []timelineEntry
 		})
 	}
 	return entries
+}
+
+func buildTimelineSummary(entries []timelineEntry) map[string]any {
+	counts := make(map[string]int)
+	var first, last string
+	for _, e := range entries {
+		counts[e.Type]++
+		if first == "" || e.Timestamp < first {
+			first = e.Timestamp
+		}
+		if last == "" || e.Timestamp > last {
+			last = e.Timestamp
+		}
+	}
+	result := map[string]any{
+		"counts_by_type": counts,
+		"total":          len(entries),
+	}
+	if first != "" {
+		result["time_range"] = map[string]string{"first": first, "last": last}
+	}
+	return result
 }
 
 // ============================================
@@ -627,13 +691,26 @@ type historyEntry struct {
 }
 
 // AnalyzeHistory extracts navigation history from captured user actions.
-func AnalyzeHistory(deps Deps, req mcp.JSONRPCRequest, _ json.RawMessage) mcp.JSONRPCResponse {
+func AnalyzeHistory(deps Deps, req mcp.JSONRPCRequest, args json.RawMessage) mcp.JSONRPCResponse {
+	var params struct {
+		Limit   int  `json:"limit"`
+		Summary bool `json:"summary"`
+	}
+	mcp.LenientUnmarshal(args, &params)
+
 	actions := deps.GetCapture().GetAllEnhancedActions()
 	entries := buildHistoryEntries(actions)
+	entries = limitHistoryEntries(entries, clampLimit(params.Limit, 0))
+
+	responseMeta := BuildResponseMetadata(deps.GetCapture(), time.Now())
+	if params.Summary {
+		return mcp.JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcp.JSONResponse("History", buildHistorySummary(entries, responseMeta))}
+	}
+
 	return mcp.JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcp.JSONResponse("History", map[string]any{
 		"entries":  entries,
 		"count":    len(entries),
-		"metadata": BuildResponseMetadata(deps.GetCapture(), time.Now()),
+		"metadata": responseMeta,
 	})}
 }
 
@@ -653,5 +730,58 @@ func buildHistoryEntries(actions []capture.EnhancedAction) []historyEntry {
 		}
 	}
 	return entries
+}
+
+func limitHistoryEntries(entries []historyEntry, limit int) []historyEntry {
+	if limit <= 0 || len(entries) <= limit {
+		return entries
+	}
+	return entries[len(entries)-limit:]
+}
+
+// buildA11ySummary creates a compact representation of an a11y audit result.
+func buildA11ySummary(auditResult map[string]any) map[string]any {
+	passes, _ := auditResult["passes"].([]any)
+	violations, _ := auditResult["violations"].([]any)
+	incomplete, _ := auditResult["incomplete"].([]any)
+
+	type issueInfo struct {
+		rule     string
+		severity string
+		count    int
+	}
+	issues := make([]issueInfo, 0, len(violations))
+	for _, v := range violations {
+		vMap, ok := v.(map[string]any)
+		if !ok {
+			continue
+		}
+		rule, _ := vMap["id"].(string)
+		impact, _ := vMap["impact"].(string)
+		nodes, _ := vMap["nodes"].([]any)
+		issues = append(issues, issueInfo{rule: rule, severity: impact, count: len(nodes)})
+	}
+	sort.Slice(issues, func(i, j int) bool {
+		return issues[i].count > issues[j].count
+	})
+	topN := 5
+	if len(issues) < topN {
+		topN = len(issues)
+	}
+	topIssues := make([]map[string]any, topN)
+	for i := 0; i < topN; i++ {
+		topIssues[i] = map[string]any{
+			"rule":     issues[i].rule,
+			"count":    issues[i].count,
+			"severity": issues[i].severity,
+		}
+	}
+
+	return map[string]any{
+		"pass":       len(passes),
+		"violations": len(violations),
+		"incomplete": len(incomplete),
+		"top_issues": topIssues,
+	}
 }
 
