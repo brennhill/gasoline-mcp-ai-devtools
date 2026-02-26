@@ -64,7 +64,8 @@ export {
   readResponseBodyWithTimeout,
   wrapFetchWithBodies,
   wrapXHRWithBodies,
-  unwrapXHR
+  unwrapXHR,
+  adoptEarlyBodies
 } from '../lib/network'
 export {
   getPerformanceMarks,

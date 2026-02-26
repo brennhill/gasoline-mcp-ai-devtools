@@ -290,6 +290,13 @@ export function resetForTesting() {
     requestIdCounter = 0;
     networkBodyCaptureEnabled = true;
     unwrapXHR();
+    // Clean up early-patch globals if present
+    if (typeof window !== 'undefined') {
+        delete window.__GASOLINE_ORIGINAL_FETCH__;
+        delete window.__GASOLINE_ORIGINAL_XHR_OPEN__;
+        delete window.__GASOLINE_ORIGINAL_XHR_SEND__;
+        delete window.__GASOLINE_EARLY_BODIES__;
+    }
 }
 /**
  * Wrap a fetch function to capture request/response bodies
@@ -346,12 +353,16 @@ let originalXHRSend = null;
 /**
  * Wrap XMLHttpRequest to capture request/response bodies.
  * Mirrors the fetch body capture behavior for XHR requests.
+ * If the early-patch script ran first, uses the saved originals (not the early wrappers).
  */
 export function wrapXHRWithBodies() {
     if (typeof XMLHttpRequest === 'undefined')
         return;
-    originalXHROpen = XMLHttpRequest.prototype.open;
-    originalXHRSend = XMLHttpRequest.prototype.send;
+    // Check for early-patch: use the saved originals, not the early-patch wrappers
+    const earlyOpen = typeof window !== 'undefined' ? window.__GASOLINE_ORIGINAL_XHR_OPEN__ : undefined;
+    const earlySend = typeof window !== 'undefined' ? window.__GASOLINE_ORIGINAL_XHR_SEND__ : undefined;
+    originalXHROpen = earlyOpen || XMLHttpRequest.prototype.open;
+    originalXHRSend = earlySend || XMLHttpRequest.prototype.send;
     XMLHttpRequest.prototype.open = function (method, url, ...rest) {
         ;
         this.__gasolineMethod = method;
@@ -413,6 +424,59 @@ export function unwrapXHR() {
         XMLHttpRequest.prototype.send = originalXHRSend;
     originalXHROpen = null;
     originalXHRSend = null;
+}
+// =============================================================================
+// EARLY BODY ADOPTION
+// =============================================================================
+/**
+ * Adopt network bodies buffered by the early-patch script (fetch + XHR).
+ * Mirrors adoptEarlyConnections() in websocket.ts: reads from
+ * window.__GASOLINE_EARLY_BODIES__, posts each as GASOLINE_NETWORK_BODY
+ * to the content script, then cleans up globals.
+ * Called once during Phase 2 installation.
+ */
+export function adoptEarlyBodies() {
+    if (typeof window === 'undefined')
+        return;
+    const earlyBodies = window.__GASOLINE_EARLY_BODIES__;
+    if (!earlyBodies || earlyBodies.length === 0) {
+        // Clean up globals even if no bodies
+        delete window.__GASOLINE_ORIGINAL_FETCH__;
+        delete window.__GASOLINE_ORIGINAL_XHR_OPEN__;
+        delete window.__GASOLINE_ORIGINAL_XHR_SEND__;
+        delete window.__GASOLINE_EARLY_BODIES__;
+        return;
+    }
+    let adopted = 0;
+    for (const entry of earlyBodies) {
+        if (!shouldCaptureUrl(entry.url))
+            continue;
+        if (!networkBodyCaptureEnabled)
+            continue;
+        adopted++;
+        const { body: truncResp, truncated: respTruncated } = truncateResponseBody(entry.response_body);
+        const message = {
+            type: 'GASOLINE_NETWORK_BODY',
+            payload: {
+                url: entry.url,
+                method: entry.method,
+                status: entry.status,
+                content_type: entry.content_type,
+                response_body: truncResp || '',
+                ...(respTruncated ? { response_truncated: true } : {}),
+                duration: 0 // Duration unknown for early-captured bodies
+            }
+        };
+        window.postMessage(message, window.location.origin);
+    }
+    if (adopted > 0) {
+        console.log(`[Gasoline] Adopted ${adopted} early network body(ies)`);
+    }
+    // Clean up early-patch globals
+    delete window.__GASOLINE_ORIGINAL_FETCH__;
+    delete window.__GASOLINE_ORIGINAL_XHR_OPEN__;
+    delete window.__GASOLINE_ORIGINAL_XHR_SEND__;
+    delete window.__GASOLINE_EARLY_BODIES__;
 }
 export function wrapFetchWithBodies(fetchFn) {
     return async function (input, init) {

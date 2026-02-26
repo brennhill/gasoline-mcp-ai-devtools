@@ -12,6 +12,7 @@ export declare function wrapFetch(originalFetchFn: typeof fetch): typeof fetch;
  * Install fetch capture.
  * Uses wrapFetchWithBodies to capture request/response bodies for all requests,
  * then wraps that with wrapFetch to also capture error details for 4xx/5xx responses.
+ * If the early-patch script ran first, uses the saved original fetch (not the early wrapper).
  */
 export declare function installFetchCapture(): void;
 /**

@@ -72,6 +72,7 @@ export {
   wrapFetchWithBodies,
   wrapXHRWithBodies,
   unwrapXHR,
+  adoptEarlyBodies,
   getPerformanceMarks,
   getPerformanceMeasures,
   getCapturedMarks,
