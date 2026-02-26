@@ -164,12 +164,13 @@ func (h *ToolHandler) toolInteract(req JSONRPCRequest, args json.RawMessage) JSO
 	}
 
 	if _, err := parseEvidenceMode(args); err != nil {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(
+		resp := JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(
 			ErrInvalidParam,
 			"Invalid 'evidence' value",
 			"Use evidence='off' (default), 'on_mutation', or 'always'",
 			withParam("evidence"),
 		)}
+		return appendCanonicalWhatAliasWarning(resp, usedAliasParam, what)
 	}
 
 	// Extract optional subtitle param (composable: works on any action)

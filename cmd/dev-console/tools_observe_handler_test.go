@@ -72,6 +72,28 @@ func TestToolsObserveDispatch_UnknownMode(t *testing.T) {
 	}
 }
 
+func TestToolsObserveDispatch_UnknownModeAliasAddsCanonicalWhatWarning(t *testing.T) {
+	t.Parallel()
+	h, _, _ := makeToolHandler(t)
+
+	req := JSONRPCRequest{JSONRPC: "2.0", ID: 1}
+	resp := h.toolObserve(req, json.RawMessage(`{"mode":"nonexistent_mode"}`))
+	result := parseToolResult(t, resp)
+	if !result.IsError {
+		t.Fatal("unknown mode alias should return isError:true")
+	}
+	foundCanonicalWarning := false
+	for _, block := range result.Content {
+		if strings.Contains(block.Text, "canonical parameter is 'what'") {
+			foundCanonicalWarning = true
+			break
+		}
+	}
+	if !foundCanonicalWarning {
+		t.Fatalf("expected canonical what warning block on error path, got %d content blocks", len(result.Content))
+	}
+}
+
 func TestToolsObserveDispatch_EmptyArgs(t *testing.T) {
 	t.Parallel()
 	h, _, _ := makeToolHandler(t)
