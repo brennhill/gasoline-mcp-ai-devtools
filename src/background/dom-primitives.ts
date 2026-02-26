@@ -1304,6 +1304,20 @@ export function domPrimitive(
   const resolvedRankedCandidates = resolved.ranked_candidates
   const resolvedAmbiguousMatches = resolved.ambiguous_matches
 
+  /** Capture current viewport/scroll position for action responses. */
+  function captureViewport(): { scroll_x: number; scroll_y: number; viewport_width: number; viewport_height: number; page_height: number } {
+    return {
+      scroll_x: Math.round(window.scrollX || window.pageXOffset || 0),
+      scroll_y: Math.round(window.scrollY || window.pageYOffset || 0),
+      viewport_width: window.innerWidth || document.documentElement.clientWidth || 0,
+      viewport_height: window.innerHeight || document.documentElement.clientHeight || 0,
+      page_height: Math.max(
+        document.body?.scrollHeight || 0,
+        document.documentElement?.scrollHeight || 0
+      )
+    }
+  }
+
   function mutatingSuccess(
     node: Element,
     extra?: Omit<Partial<DOMResult>, 'success' | 'action' | 'selector' | 'matched' | 'match_count' | 'match_strategy'>
@@ -1317,7 +1331,8 @@ export function domPrimitive(
       matched: matchedTarget(node),
       match_count: resolvedMatchCount,
       match_strategy: resolvedMatchStrategy,
-      ...(resolvedRankedCandidates ? { ranked_candidates: resolvedRankedCandidates } : {})
+      ...(resolvedRankedCandidates ? { ranked_candidates: resolvedRankedCandidates } : {}),
+      viewport: captureViewport()
     }
   }
 

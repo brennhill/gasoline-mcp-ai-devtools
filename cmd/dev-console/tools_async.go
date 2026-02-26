@@ -541,6 +541,7 @@ func stripEnrichedFieldsFromResult(responseData map[string]any) {
 		"content_script_status", "target_context",
 		"message", "hint", "retry", "retryable", "csp_blocked", "failure_cause", "error_code",
 		"candidates", "match_count", "match_strategy",
+		"viewport",
 		"effective_url", "effective_tab_id", "effective_title",
 		"resolved_tab_id", "resolved_url", "final_url", "title",
 	}
@@ -598,6 +599,7 @@ func enrichCommandResponseData(result json.RawMessage, responseData map[string]a
 		"content_script_status", "target_context",
 		"message", "hint", "retry", "retryable", "csp_blocked", "failure_cause", "error_code",
 		"candidates", "match_count", "match_strategy",
+		"viewport",
 	} {
 		if v, ok := extResult[key]; ok {
 			responseData[key] = v

@@ -77,6 +77,13 @@ export interface DOMResult {
   timing?: { total_ms: number }
   dom_changes?: { added: number; removed: number; modified: number; summary: string }
   dom_mutations?: DOMMutationEntry[]
+  viewport?: {
+    scroll_x: number
+    scroll_y: number
+    viewport_width: number
+    viewport_height: number
+    page_height: number
+  }
   analysis?: string
   insertion_strategy?: string
   ranked_candidates?: Array<{
