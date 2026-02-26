@@ -1,8 +1,8 @@
 #!/bin/bash
-# 12-cross-cutting.sh — 12.1-12.3: Pagination, error recovery, buffer overflow.
+# 12-cross-cutting.sh — 12.1-12.4: Pagination, error recovery, buffer overflow, rewrite safety.
 set -eo pipefail
 
-begin_category "12" "Cross-Cutting Concerns" "3"
+begin_category "12" "Cross-Cutting Concerns" "4"
 
 # ── Test 12.1: Pagination via cursors ────────────────────
 begin_test "12.1" "[BROWSER] Pagination: observe(logs) with limit and cursor" \
@@ -191,3 +191,48 @@ except:
     fi
 }
 run_test_12_3
+
+# ── Test 12.4: Rewrite safety ─────────────────────────────
+begin_test "12.4" "[DAEMON ONLY] rewrite_smoke_urls key-scoped rewriting + non-JSON pass-through" \
+    "Verify non-JSON payloads pass through unchanged and JSON rewrites only url/base_url/from_url/to_url fields" \
+    "Tests: smoke URL rewriting safety under set -e/pipefail"
+
+run_test_12_4() {
+    local raw_payload="https://example.com raw text"
+    local raw_out
+    if ! raw_out=$(rewrite_smoke_urls "$raw_payload"); then
+        fail "rewrite_smoke_urls exited non-zero for non-JSON payload under set -e/pipefail."
+        return
+    fi
+    if [ "$raw_out" != "$raw_payload" ]; then
+        fail "Non-JSON payload should pass through unchanged. Got: $(truncate "$raw_out" 120)"
+        return
+    fi
+
+    local json_payload='{"url":"https://example.com/path","note":"https://example.com keep","nested":{"from_url":"https://example.org/a","other":"https://example.org keep"},"steps":[{"to_url":"http://example.com/x"}],"email":"test@example.com"}'
+    local json_out
+    if ! json_out=$(rewrite_smoke_urls "$json_payload"); then
+        fail "rewrite_smoke_urls failed for valid JSON payload."
+        return
+    fi
+
+    local verdict
+    verdict=$(printf '%s' "$json_out" | SMOKE_BASE_URL="$SMOKE_BASE_URL" jq -r '
+        if .url == (env.SMOKE_BASE_URL + "/example.com/path")
+            and .nested.from_url == (env.SMOKE_BASE_URL + "/example.org/a")
+            and .steps[0].to_url == (env.SMOKE_BASE_URL + "/example.com/x")
+            and .note == "https://example.com keep"
+            and .nested.other == "https://example.org keep"
+            and .email == "test@example.com"
+        then "ok"
+        else "bad"
+        end
+    ' 2>/dev/null || echo "bad")
+
+    if [ "$verdict" = "ok" ]; then
+        pass "rewrite_smoke_urls preserves non-URL text and rewrites only URL-key fields."
+    else
+        fail "rewrite_smoke_urls did not produce expected field-scoped rewrite. Output: $(truncate "$json_out" 200)"
+    fi
+}
+run_test_12_4

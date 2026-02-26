@@ -140,6 +140,22 @@ func firstText(result MCPToolResult) string {
 	return ""
 }
 
+func hasCanonicalWhatWarning(result MCPToolResult) bool {
+	for _, block := range result.Content {
+		if strings.Contains(block.Text, "canonical parameter is 'what'") {
+			return true
+		}
+	}
+	return false
+}
+
+func assertCanonicalWhatWarning(t *testing.T, result MCPToolResult) {
+	t.Helper()
+	if !hasCanonicalWhatWarning(result) {
+		t.Fatalf("expected canonical what warning block, got %d content blocks", len(result.Content))
+	}
+}
+
 // ============================================
 // Tool Call Wrappers
 // ============================================

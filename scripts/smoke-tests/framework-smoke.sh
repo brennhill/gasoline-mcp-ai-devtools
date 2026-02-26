@@ -165,7 +165,7 @@ init_smoke() {
 rewrite_smoke_urls() {
     local payload="$1"
     local rewritten
-    rewritten=$(
+    if rewritten=$(
         printf '%s' "$payload" | \
             SMOKE_EXAMPLE_URL="$SMOKE_EXAMPLE_URL" SMOKE_BASE_URL="$SMOKE_BASE_URL" \
             jq -c '
@@ -192,14 +192,15 @@ rewrite_smoke_urls() {
 
                 rewrite_url_fields
             ' 2>/dev/null
-    )
-
-    if [ -n "$rewritten" ]; then
-        echo "$rewritten"
-    else
-        # Non-JSON payloads should pass through unchanged.
-        echo "$payload"
+    ); then
+        if [ -n "$rewritten" ]; then
+            echo "$rewritten"
+            return
+        fi
     fi
+
+    # Non-JSON payloads should pass through unchanged.
+    echo "$payload"
 }
 
 # Override base framework call_tool so smoke runs stay on local harness pages.

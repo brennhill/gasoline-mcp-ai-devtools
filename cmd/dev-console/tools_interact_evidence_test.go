@@ -217,3 +217,20 @@ func TestInteractEvidence_InvalidModeReturnsError(t *testing.T) {
 		t.Fatalf("expected invalid evidence error details, got: %s", firstText(result))
 	}
 }
+
+func TestInteractEvidence_InvalidModeWithActionAliasAddsCanonicalWarning(t *testing.T) {
+	env := newInteractTestEnv(t)
+
+	result, ok := env.callInteract(t, `{"action":"click","selector":"#btn","evidence":"sometimes"}`)
+	if !ok {
+		t.Fatal("interact should return a structured error result")
+	}
+	if !result.IsError {
+		t.Fatalf("invalid evidence mode should return isError=true, got: %s", firstText(result))
+	}
+	text := strings.ToLower(firstText(result))
+	if !strings.Contains(text, "evidence") || !strings.Contains(text, "invalid") {
+		t.Fatalf("expected invalid evidence error details, got: %s", firstText(result))
+	}
+	assertCanonicalWhatWarning(t, result)
+}

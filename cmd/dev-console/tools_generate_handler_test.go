@@ -82,16 +82,7 @@ func TestToolsGenerateDispatch_UnknownFormatAliasAddsCanonicalWhatWarning(t *tes
 	if !result.IsError {
 		t.Fatal("unknown format alias should return isError:true")
 	}
-	foundCanonicalWarning := false
-	for _, block := range result.Content {
-		if strings.Contains(block.Text, "canonical parameter is 'what'") {
-			foundCanonicalWarning = true
-			break
-		}
-	}
-	if !foundCanonicalWarning {
-		t.Fatalf("expected canonical what warning block on error path, got %d content blocks", len(result.Content))
-	}
+	assertCanonicalWhatWarning(t, result)
 }
 
 func TestToolsGenerateDispatch_EmptyArgs(t *testing.T) {
@@ -115,16 +106,7 @@ func TestToolsGenerateDispatch_FormatAliasAddsCanonicalWhatWarning(t *testing.T)
 	if result.IsError {
 		t.Fatalf("format alias should be accepted, got: %s", result.Content[0].Text)
 	}
-	foundCanonicalWarning := false
-	for _, block := range result.Content {
-		if strings.Contains(block.Text, "canonical parameter is 'what'") {
-			foundCanonicalWarning = true
-			break
-		}
-	}
-	if !foundCanonicalWarning {
-		t.Fatalf("expected canonical what warning block, got %d content blocks", len(result.Content))
-	}
+	assertCanonicalWhatWarning(t, result)
 }
 
 func TestToolsGenerateDispatch_ConflictingWhatAndFormat(t *testing.T) {

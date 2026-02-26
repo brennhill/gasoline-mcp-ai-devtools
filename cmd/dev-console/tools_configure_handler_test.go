@@ -80,16 +80,7 @@ func TestToolsConfigureDispatch_UnknownActionAliasAddsCanonicalWhatWarning(t *te
 	if !result.IsError {
 		t.Fatal("unknown action alias should return isError:true")
 	}
-	foundCanonicalWarning := false
-	for _, block := range result.Content {
-		if strings.Contains(block.Text, "canonical parameter is 'what'") {
-			foundCanonicalWarning = true
-			break
-		}
-	}
-	if !foundCanonicalWarning {
-		t.Fatalf("expected canonical what warning block on error path, got %d content blocks", len(result.Content))
-	}
+	assertCanonicalWhatWarning(t, result)
 }
 
 func TestToolsConfigureDispatch_EmptyArgs(t *testing.T) {
@@ -113,16 +104,7 @@ func TestToolsConfigureDispatch_ActionAliasAddsCanonicalWhatWarning(t *testing.T
 	if result.IsError {
 		t.Fatalf("action alias should be accepted, got: %s", result.Content[0].Text)
 	}
-	foundCanonicalWarning := false
-	for _, block := range result.Content {
-		if strings.Contains(block.Text, "canonical parameter is 'what'") {
-			foundCanonicalWarning = true
-			break
-		}
-	}
-	if !foundCanonicalWarning {
-		t.Fatalf("expected canonical what warning block, got %d content blocks", len(result.Content))
-	}
+	assertCanonicalWhatWarning(t, result)
 }
 
 func TestToolsConfigureDispatch_ConflictingWhatAndAction(t *testing.T) {
