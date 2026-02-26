@@ -187,6 +187,7 @@ func (h *ToolHandler) toolQueryDOM(req JSONRPCRequest, args json.RawMessage) JSO
 			raw = make(map[string]any)
 		}
 		raw["selector"] = "*"
+		// Marshal cannot realistically fail with string/map values; silent fallback is acceptable.
 		if marshaled, err := json.Marshal(raw); err == nil {
 			queryArgs = marshaled
 		}

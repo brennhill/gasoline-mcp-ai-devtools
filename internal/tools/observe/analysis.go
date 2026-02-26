@@ -302,8 +302,10 @@ func RunA11yAudit(deps Deps, req mcp.JSONRPCRequest, args json.RawMessage) mcp.J
 			"error":        err.Error(),
 			"partial":      true,
 			"summary": map[string]any{
-				"violation_count": 0,
-				"pass_count":      0,
+				"violation_count":    0,
+				"pass_count":         0,
+				"incomplete_count":   0,
+				"inapplicable_count": 0,
 			},
 		}
 		return mcp.JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcp.JSONResponse("A11y audit (partial — "+err.Error()+")", partialResult)}
@@ -322,15 +324,23 @@ func RunA11yAudit(deps Deps, req mcp.JSONRPCRequest, args json.RawMessage) mcp.J
 	return mcp.JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcp.JSONResponse("A11y audit", auditResult)}
 }
 
+// ensureA11ySummary adds a summary map if the audit result doesn't already have one.
+// NOTE: Go uses snake_case (violation_count, pass_count, incomplete_count, inapplicable_count)
+// while TS uses bare names (violations, passes, incomplete, inapplicable).
+// TODO(#276): Unify summary field naming between Go (violation_count) and TS (violations).
 func ensureA11ySummary(auditResult map[string]any) {
 	if _, ok := auditResult["summary"]; ok {
 		return
 	}
 	violations, _ := auditResult["violations"].([]any)
 	passes, _ := auditResult["passes"].([]any)
+	incomplete, _ := auditResult["incomplete"].([]any)
+	inapplicable, _ := auditResult["inapplicable"].([]any)
 	auditResult["summary"] = map[string]any{
-		"violation_count": len(violations),
-		"pass_count":      len(passes),
+		"violation_count":    len(violations),
+		"pass_count":         len(passes),
+		"incomplete_count":   len(incomplete),
+		"inapplicable_count": len(inapplicable),
 	}
 }
 

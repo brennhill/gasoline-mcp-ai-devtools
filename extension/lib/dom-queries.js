@@ -9,7 +9,7 @@
  * accessibility auditing via axe-core.
  */
 import { DOM_QUERY_MAX_ELEMENTS, DOM_QUERY_MAX_TEXT, DOM_QUERY_MAX_DEPTH, DOM_QUERY_MAX_HTML, A11Y_MAX_NODES_PER_VIOLATION, A11Y_AUDIT_TIMEOUT_MS } from './constants.js';
-import { scaleTimeout } from './timeouts';
+import { scaleTimeout } from './timeouts.js';
 /**
  * Execute a DOM query and return structured results
  */
@@ -189,6 +189,21 @@ export async function runAxeAudit(params) {
     return formatAxeResults(results);
 }
 /**
+ * Build an empty partial result with an error message.
+ * Used by timeout and catch paths to avoid duplicated object literals.
+ */
+function emptyPartialResult(errorMessage) {
+    return {
+        violations: [],
+        passes: [],
+        incomplete: [],
+        inapplicable: [],
+        summary: { violations: 0, passes: 0, incomplete: 0, inapplicable: 0 },
+        partial: true,
+        error: errorMessage
+    };
+}
+/**
  * Run axe audit with a timeout.
  * Issue #276: Returns partial results on timeout or conflict instead of throwing.
  */
@@ -197,30 +212,14 @@ export async function runAxeAuditWithTimeout(params, timeoutMs = A11Y_AUDIT_TIME
         return await Promise.race([
             runAxeAudit(params),
             new Promise((resolve) => {
-                setTimeout(() => resolve({
-                    violations: [],
-                    passes: [],
-                    incomplete: [],
-                    inapplicable: [],
-                    summary: { violations: 0, passes: 0, incomplete: 0, inapplicable: 0 },
-                    partial: true,
-                    error: 'Accessibility audit timed out'
-                }), timeoutMs);
+                setTimeout(() => resolve(emptyPartialResult('Accessibility audit timed out')), timeoutMs);
             })
         ]);
     }
     catch (err) {
         // Issue #276: Return partial results with error instead of throwing.
         // Handles "Axe is already running" and other runtime errors gracefully.
-        return {
-            violations: [],
-            passes: [],
-            incomplete: [],
-            inapplicable: [],
-            summary: { violations: 0, passes: 0, incomplete: 0, inapplicable: 0 },
-            partial: true,
-            error: err instanceof Error ? err.message : String(err)
-        };
+        return emptyPartialResult(err instanceof Error ? err.message : String(err));
     }
 }
 /**

@@ -401,18 +401,23 @@ func TestRunA11yAudit_TimeoutReturnsPartialResults(t *testing.T) {
 		t.Errorf("partial result should mention timeout or deadline, got: %s", text)
 	}
 
-	// Should have empty violations/passes arrays (partial result structure)
+	// Should have empty violations/passes arrays and partial flag (partial result structure)
 	var data map[string]any
 	idx := strings.Index(text, "{")
-	if idx >= 0 {
-		if err := json.Unmarshal([]byte(text[idx:]), &data); err == nil {
-			if _, ok := data["violations"]; !ok {
-				t.Error("partial result should include 'violations' field")
-			}
-			if _, ok := data["summary"]; !ok {
-				t.Error("partial result should include 'summary' field")
-			}
-		}
+	if idx < 0 {
+		t.Fatal("partial result text should contain JSON object")
+	}
+	if err := json.Unmarshal([]byte(text[idx:]), &data); err != nil {
+		t.Fatalf("failed to parse partial result JSON: %v", err)
+	}
+	if _, ok := data["violations"]; !ok {
+		t.Error("partial result should include 'violations' field")
+	}
+	if _, ok := data["summary"]; !ok {
+		t.Error("partial result should include 'summary' field")
+	}
+	if data["partial"] != true {
+		t.Errorf("partial result should have partial=true, got: %v", data["partial"])
 	}
 }
 
@@ -444,6 +449,19 @@ func TestRunA11yAudit_AlreadyRunningReturnsPartialResults(t *testing.T) {
 	if !strings.Contains(text, "already running") {
 		t.Errorf("partial result should mention 'already running', got: %s", text)
 	}
+
+	// Verify partial flag is set
+	var data map[string]any
+	idx := strings.Index(text, "{")
+	if idx < 0 {
+		t.Fatal("partial result text should contain JSON object")
+	}
+	if err := json.Unmarshal([]byte(text[idx:]), &data); err != nil {
+		t.Fatalf("failed to parse partial result JSON: %v", err)
+	}
+	if data["partial"] != true {
+		t.Errorf("partial result should have partial=true, got: %v", data["partial"])
+	}
 }
 
 func TestRunA11yAudit_ResultWithErrorFieldReturnsGracefully(t *testing.T) {
@@ -453,9 +471,10 @@ func TestRunA11yAudit_ResultWithErrorFieldReturnsGracefully(t *testing.T) {
 
 	// Simulate extension returning partial results with an error field
 	partialResult := map[string]any{
-		"violations": []any{},
-		"passes":     []any{},
-		"incomplete": []any{},
+		"violations":   []any{},
+		"passes":       []any{},
+		"incomplete":   []any{},
+		"inapplicable": []any{},
 		"summary": map[string]any{
 			"violations":   0,
 			"passes":       0,
