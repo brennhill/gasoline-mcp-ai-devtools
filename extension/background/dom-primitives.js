@@ -1605,7 +1605,7 @@ export function domPrimitive(action, selector, options) {
             key_press: () => withMutationTracking(() => {
                 if (!(node instanceof HTMLElement))
                     return domError('not_interactive', `Element is not an HTMLElement: ${node.tagName}`);
-                const key = options.text || 'Enter';
+                const key = options.text || options.key || 'Enter';
                 // Tab/Shift+Tab: manually move focus (dispatchEvent can't trigger native tab traversal)
                 if (key === 'Tab' || key === 'Shift+Tab') {
                     const focusable = Array.from(node.ownerDocument.querySelectorAll('a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])')).filter((e) => e.offsetParent !== null);

@@ -55,7 +55,14 @@ globalThis.CSS = { escape: (s) => s }
 globalThis.NodeFilter = { SHOW_TEXT: 4 }
 globalThis.ShadowRoot = class ShadowRoot {}
 globalThis.InputEvent = class extends Event {}
-globalThis.KeyboardEvent = class extends Event {}
+globalThis.KeyboardEvent = class extends Event {
+  constructor(type, init = {}) {
+    super(type, init)
+    this.key = init.key || ''
+    this.code = init.code || ''
+    this.keyCode = init.keyCode || 0
+  }
+}
 globalThis.getComputedStyle = () => ({ visibility: 'visible', display: 'block' })
 
 // MutationObserver mock
@@ -1872,5 +1879,85 @@ describe('intent-level composer and dialog primitives', () => {
     assert.strictEqual(result.match_strategy, 'intent_submit_active_composer')
     assert.ok(Array.isArray(result.candidates), 'ambiguous response should include candidates')
     assert.ok(result.candidates.length >= 2, 'expected candidate summary for ambiguity')
+  })
+})
+
+// ===========================================================================
+// key_press: key mapping and alias support (#331)
+// ===========================================================================
+describe('key_press key mapping', () => {
+  beforeEach(() => {
+    perfNowValue = 0
+    globalThis.MutationObserver = MockMutationObserver
+    globalThis.requestAnimationFrame = (cb) => cb()
+  })
+
+  test('key_press with text="Escape" dispatches Escape, not Enter', async () => {
+    const btn = setupDocument()
+    const dispatched = []
+    btn.dispatchEvent = (e) => dispatched.push({ type: e.type, key: e.key, keyCode: e.keyCode })
+
+    const result = await domPrimitive('key_press', '#test-btn', { text: 'Escape' })
+
+    assert.strictEqual(result.success, true)
+    assert.strictEqual(result.value, 'Escape')
+    const keydown = dispatched.find((e) => e.type === 'keydown')
+    assert.ok(keydown, 'keydown event should be dispatched')
+    assert.strictEqual(keydown.key, 'Escape', 'dispatched key should be Escape')
+    assert.strictEqual(keydown.keyCode, 27, 'Escape keyCode should be 27')
+  })
+
+  test('key_press with key="Escape" option dispatches Escape (#331)', async () => {
+    const btn = setupDocument()
+    const dispatched = []
+    btn.dispatchEvent = (e) => dispatched.push({ type: e.type, key: e.key, keyCode: e.keyCode })
+
+    const result = await domPrimitive('key_press', '#test-btn', { key: 'Escape' })
+
+    assert.strictEqual(result.success, true)
+    assert.strictEqual(result.value, 'Escape')
+    const keydown = dispatched.find((e) => e.type === 'keydown')
+    assert.ok(keydown, 'keydown event should be dispatched')
+    assert.strictEqual(keydown.key, 'Escape', 'dispatched key should be Escape when using key option')
+    assert.strictEqual(keydown.keyCode, 27)
+  })
+
+  test('key_press defaults to Enter when no text or key provided', async () => {
+    const btn = setupDocument()
+    const dispatched = []
+    btn.dispatchEvent = (e) => dispatched.push({ type: e.type, key: e.key, keyCode: e.keyCode })
+    btn.ownerDocument = { querySelectorAll: () => [] }
+
+    const result = await domPrimitive('key_press', '#test-btn', {})
+
+    assert.strictEqual(result.success, true)
+    assert.strictEqual(result.value, 'Enter')
+    const keydown = dispatched.find((e) => e.type === 'keydown')
+    assert.ok(keydown)
+    assert.strictEqual(keydown.key, 'Enter')
+    assert.strictEqual(keydown.keyCode, 13)
+  })
+
+  test('key_press text takes precedence over key when both provided', async () => {
+    const btn = setupDocument()
+    const dispatched = []
+    btn.dispatchEvent = (e) => dispatched.push({ type: e.type, key: e.key })
+    btn.ownerDocument = { querySelectorAll: () => [] }
+
+    const result = await domPrimitive('key_press', '#test-btn', { text: 'ArrowDown', key: 'Escape' })
+
+    // text should win when both are provided (backward compat)
+    assert.strictEqual(result.value, 'ArrowDown')
+  })
+
+  test('key_press dispatches all three keyboard events', async () => {
+    const btn = setupDocument()
+    const dispatched = []
+    btn.dispatchEvent = (e) => dispatched.push(e.type)
+    btn.ownerDocument = { querySelectorAll: () => [] }
+
+    await domPrimitive('key_press', '#test-btn', { text: 'Space' })
+
+    assert.deepStrictEqual(dispatched, ['keydown', 'keypress', 'keyup'])
   })
 })
