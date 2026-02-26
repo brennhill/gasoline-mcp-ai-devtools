@@ -9,18 +9,18 @@ import "fmt"
 // networkBodiesEmptyHint returns a diagnostic hint when GetNetworkBodies returns
 // 0 filtered entries. It cross-references the waterfall count to explain
 // whether the issue is prospective-only capture, a URL filter mismatch, or no data at all.
-func networkBodiesEmptyHint(deps Deps, unfilteredCount int, urlFilter string) string {
+// waterfallCount is the number of entries in the network waterfall buffer.
+func networkBodiesEmptyHint(waterfallCount int, unfilteredCount int, urlFilter string) string {
 	// Case 1: Filter reduced non-empty results to zero
 	if unfilteredCount > 0 && urlFilter != "" {
 		return fmt.Sprintf(
-			"No bodies matched the url filter %q, but %d bodies exist unfiltered. "+
+			"No bodies matched the url filter %q, but %d bodies exist in the buffer. "+
 				"Try broadening the filter or calling observe({what: \"network_bodies\"}) without a url param.",
 			urlFilter, unfilteredCount,
 		)
 	}
 
 	// Case 2: No bodies at all — check waterfall for context
-	waterfallCount := len(deps.GetCapture().GetNetworkWaterfallEntries())
 	if waterfallCount > 0 {
 		return fmt.Sprintf(
 			"No network bodies captured, but the network waterfall shows %d requests. "+
