@@ -1749,6 +1749,32 @@ export function domPrimitive(
       },
 
       scroll_to: () => {
+        // #333: For body/html targets, find the actual scrollable container in SPA layouts
+        const tag = node.tagName.toLowerCase()
+        if (tag === 'body' || tag === 'html') {
+          const scrollable = (() => {
+            const divs = document.querySelectorAll('*')
+            for (let i = 0; i < divs.length; i++) {
+              const d = divs[i] as HTMLElement
+              if (!d || typeof d.getBoundingClientRect !== 'function') continue
+              if (d.scrollHeight > d.clientHeight + 50) {
+                const style = typeof getComputedStyle === 'function' ? getComputedStyle(d) : null
+                if (style) {
+                  const ov = style.overflow || ''
+                  const ovY = style.overflowY || ''
+                  if (ov === 'auto' || ov === 'scroll' || ovY === 'auto' || ovY === 'scroll') {
+                    return d
+                  }
+                }
+              }
+            }
+            return null
+          })()
+          if (scrollable) {
+            scrollable.scrollIntoView({ behavior: 'smooth', block: 'center' })
+            return mutatingSuccess(node, { reason: 'scrolled_nested_container' })
+          }
+        }
         node.scrollIntoView({ behavior: 'smooth', block: 'center' })
         return mutatingSuccess(node)
       },
