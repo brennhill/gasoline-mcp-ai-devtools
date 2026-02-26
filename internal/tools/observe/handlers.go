@@ -488,16 +488,29 @@ func GetNetworkBodies(deps Deps, req mcp.JSONRPCRequest, args json.RawMessage) m
 		newestTS, _ = time.Parse(time.RFC3339, allBodies[len(allBodies)-1].Timestamp)
 	}
 
+	waterfallCount := len(deps.GetCapture().GetNetworkWaterfallEntries())
 	responseMeta := BuildResponseMetadata(deps.GetCapture(), newestTS)
 	if params.Summary {
-		return mcp.JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcp.JSONResponse("Network bodies", buildNetworkBodiesSummary(filtered, responseMeta))}
+		summary := buildNetworkBodiesSummary(filtered, responseMeta)
+		if len(filtered) == 0 {
+			// TODO: Extend hints to reflect method/status/body_key/body_path filters, not just URL.
+			summary["hint"] = networkBodiesEmptyHint(waterfallCount, len(allBodies), params.URL)
+		}
+		return mcp.JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcp.JSONResponse("Network bodies", summary)}
 	}
 
-	return mcp.JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcp.JSONResponse("Network bodies", map[string]any{
+	response := map[string]any{
 		"entries":  filtered,
 		"count":    len(filtered),
 		"metadata": responseMeta,
-	})}
+	}
+
+	if len(filtered) == 0 {
+		// TODO: Extend hints to reflect method/status/body_key/body_path filters, not just URL.
+		response["hint"] = networkBodiesEmptyHint(waterfallCount, len(allBodies), params.URL)
+	}
+
+	return mcp.JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcp.JSONResponse("Network bodies", response)}
 }
 
 // GetWSEvents returns captured WebSocket events with optional filtering.
@@ -534,14 +547,24 @@ func GetWSEvents(deps Deps, req mcp.JSONRPCRequest, args json.RawMessage) mcp.JS
 
 	responseMeta := BuildResponseMetadata(deps.GetCapture(), newestTS)
 	if params.Summary {
-		return mcp.JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcp.JSONResponse("WebSocket events", buildWSEventsSummary(filtered, responseMeta))}
+		summary := buildWSEventsSummary(filtered, responseMeta)
+		if len(filtered) == 0 {
+			summary["hint"] = wsEventsEmptyHint(len(allEvents), params.URL)
+		}
+		return mcp.JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcp.JSONResponse("WebSocket events", summary)}
 	}
 
-	return mcp.JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcp.JSONResponse("WebSocket events", map[string]any{
+	response := map[string]any{
 		"entries":  filtered,
 		"count":    len(filtered),
 		"metadata": responseMeta,
-	})}
+	}
+
+	if len(filtered) == 0 {
+		response["hint"] = wsEventsEmptyHint(len(allEvents), params.URL)
+	}
+
+	return mcp.JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcp.JSONResponse("WebSocket events", response)}
 }
 
 // GetEnhancedActions returns captured user actions (clicks, inputs, navigations).

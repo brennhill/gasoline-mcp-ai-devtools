@@ -161,12 +161,21 @@ type FetchLike = (input: RequestInfo | URL, init?: RequestInit) => Promise<Respo
 /**
  * Wrap XMLHttpRequest to capture request/response bodies.
  * Mirrors the fetch body capture behavior for XHR requests.
+ * If the early-patch script ran first, uses the saved originals (not the early wrappers).
  */
 export declare function wrapXHRWithBodies(): void;
 /**
  * Restore original XMLHttpRequest.prototype.open and .send
  */
 export declare function unwrapXHR(): void;
+/**
+ * Adopt network bodies buffered by the early-patch script (fetch + XHR).
+ * Mirrors adoptEarlyConnections() in websocket.ts: reads from
+ * window.__GASOLINE_EARLY_BODIES__, posts each as GASOLINE_NETWORK_BODY
+ * to the content script, then cleans up globals.
+ * Called once during Phase 2 installation.
+ */
+export declare function adoptEarlyBodies(): void;
 export declare function wrapFetchWithBodies(fetchFn: FetchLike): FetchLike;
 export {};
 //# sourceMappingURL=network.d.ts.map

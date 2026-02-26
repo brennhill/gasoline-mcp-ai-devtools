@@ -192,6 +192,9 @@ func (h *ToolHandler) handleGetReadable(req JSONRPCRequest, args json.RawMessage
 	if resp, blocked := h.requireExtension(req); blocked {
 		return resp
 	}
+	if resp, blocked := h.requireTabTracking(req); blocked {
+		return resp
+	}
 
 	if params.World == "" {
 		params.World = "isolated"
@@ -235,6 +238,9 @@ func (h *ToolHandler) handleGetMarkdown(req JSONRPCRequest, args json.RawMessage
 		return resp
 	}
 	if resp, blocked := h.requireExtension(req); blocked {
+		return resp
+	}
+	if resp, blocked := h.requireTabTracking(req); blocked {
 		return resp
 	}
 

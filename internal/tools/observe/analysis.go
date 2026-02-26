@@ -131,6 +131,7 @@ func filterWaterfallSummaryEntries(allEntries []capture.NetworkWaterfallEntry, u
 }
 
 // GetWSStatus returns the current WebSocket connection status.
+// TODO(#278): GetWSStatus does not support summary mode -- add for consistency.
 func GetWSStatus(deps Deps, req mcp.JSONRPCRequest, args json.RawMessage) mcp.JSONRPCResponse {
 	var arguments struct {
 		URL          string `json:"url"`
@@ -148,13 +149,19 @@ func GetWSStatus(deps Deps, req mcp.JSONRPCRequest, args json.RawMessage) mcp.JS
 	}
 	status := deps.GetCapture().GetWebSocketStatus(filter)
 
-	return mcp.JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcp.JSONResponse("WebSocket status", map[string]any{
+	response := map[string]any{
 		"connections":  status.Connections,
 		"closed":       status.Closed,
 		"active_count": len(status.Connections),
 		"closed_count": len(status.Closed),
 		"metadata":     BuildResponseMetadata(deps.GetCapture(), time.Now()),
-	})}
+	}
+
+	if len(status.Connections) == 0 && len(status.Closed) == 0 {
+		response["hint"] = wsStatusEmptyHint()
+	}
+
+	return mcp.JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcp.JSONResponse("WebSocket status", response)}
 }
 
 // GetWebVitals returns Core Web Vitals metrics from performance snapshots.
@@ -189,56 +196,6 @@ func buildVitalsMap(snapshots []capture.PerformanceSnapshot) map[string]any {
 		vitals["cls"] = *latest.CLS
 	}
 	return vitals
-}
-
-// GetPageInfo returns information about the currently tracked page.
-func GetPageInfo(deps Deps, req mcp.JSONRPCRequest, _ json.RawMessage) mcp.JSONRPCResponse {
-	cap := deps.GetCapture()
-	enabled, tabID, trackedURL := cap.GetTrackingStatus()
-	trackedTitle := cap.GetTrackedTabTitle()
-
-	pageURL := resolvePageURL(cap, trackedURL)
-	pageTitle := resolvePageTitle(deps, trackedTitle)
-
-	cspRestricted, cspLevel := cap.GetCSPStatus()
-
-	result := map[string]any{
-		"url":            pageURL,
-		"title":          pageTitle,
-		"tracked":        enabled,
-		"csp_restricted": cspRestricted,
-		"csp_level":      cspLevel,
-		"metadata":       BuildResponseMetadata(cap, time.Now()),
-	}
-	if tabID > 0 {
-		result["tab_id"] = tabID
-	}
-
-	return mcp.JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcp.JSONResponse("Page info", result)}
-}
-
-func resolvePageURL(cap *capture.Capture, trackedURL string) string {
-	if trackedURL != "" {
-		return trackedURL
-	}
-	waterfallEntries := cap.GetNetworkWaterfallEntries()
-	if len(waterfallEntries) > 0 {
-		return waterfallEntries[len(waterfallEntries)-1].PageURL
-	}
-	return ""
-}
-
-func resolvePageTitle(deps Deps, trackedTitle string) string {
-	if trackedTitle != "" {
-		return trackedTitle
-	}
-	entries, _ := deps.GetLogEntries()
-	for i := len(entries) - 1; i >= 0; i-- {
-		if title, ok := entries[i]["title"].(string); ok && title != "" {
-			return title
-		}
-	}
-	return ""
 }
 
 // GetTabs returns information about tracked browser tabs.
@@ -285,7 +242,23 @@ func RunA11yAudit(deps Deps, req mcp.JSONRPCRequest, args json.RawMessage) mcp.J
 
 	result, err := deps.ExecuteA11yQuery(params.Scope, params.Tags, params.Frame, params.ForceRefresh)
 	if err != nil {
-		return mcp.JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcp.StructuredErrorResponse(mcp.ErrExtTimeout, "A11y audit timeout: "+err.Error(), "Ensure the extension is connected and the page has loaded. Try refreshing the page, then retry.", mcp.WithHint(deps.DiagnosticHintString()))}
+		// Issue #276: return partial results with error field instead of hard failure.
+		// This lets the caller know what happened while providing a usable response shape.
+		partialResult := map[string]any{
+			"violations":   []any{},
+			"passes":       []any{},
+			"incomplete":   []any{},
+			"inapplicable": []any{},
+			"error":        err.Error(),
+			"partial":      true,
+			"summary": map[string]any{
+				"violation_count":    0,
+				"pass_count":         0,
+				"incomplete_count":   0,
+				"inapplicable_count": 0,
+			},
+		}
+		return mcp.JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcp.JSONResponse("A11y audit (partial — "+err.Error()+")", partialResult)}
 	}
 
 	var auditResult map[string]any
@@ -301,15 +274,23 @@ func RunA11yAudit(deps Deps, req mcp.JSONRPCRequest, args json.RawMessage) mcp.J
 	return mcp.JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcp.JSONResponse("A11y audit", auditResult)}
 }
 
+// ensureA11ySummary adds a summary map if the audit result doesn't already have one.
+// NOTE: Go uses snake_case (violation_count, pass_count, incomplete_count, inapplicable_count)
+// while TS uses bare names (violations, passes, incomplete, inapplicable).
+// TODO(#276): Unify summary field naming between Go (violation_count) and TS (violations).
 func ensureA11ySummary(auditResult map[string]any) {
 	if _, ok := auditResult["summary"]; ok {
 		return
 	}
 	violations, _ := auditResult["violations"].([]any)
 	passes, _ := auditResult["passes"].([]any)
+	incomplete, _ := auditResult["incomplete"].([]any)
+	inapplicable, _ := auditResult["inapplicable"].([]any)
 	auditResult["summary"] = map[string]any{
-		"violation_count": len(violations),
-		"pass_count":      len(passes),
+		"violation_count":    len(violations),
+		"pass_count":         len(passes),
+		"incomplete_count":   len(incomplete),
+		"inapplicable_count": len(inapplicable),
 	}
 }
 
@@ -390,197 +371,6 @@ func GetScreenshot(deps Deps, req mcp.JSONRPCRequest, args json.RawMessage) mcp.
 	}
 
 	return mcp.JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcp.JSONResponse("Screenshot captured", screenshotResult)}
-}
-
-// ============================================
-// Timeline
-// ============================================
-
-type timelineEntry struct {
-	Timestamp string `json:"timestamp"`
-	Type      string `json:"type"`
-	Summary   string `json:"summary"`
-	Data      any    `json:"data,omitempty"`
-}
-
-type timelineIncludes struct {
-	actions bool
-	errors  bool
-	network bool
-	ws      bool
-}
-
-func parseTimelineIncludes(include []string) timelineIncludes {
-	if len(include) == 0 {
-		return timelineIncludes{actions: true, errors: true, network: true, ws: true}
-	}
-	var inc timelineIncludes
-	for _, v := range include {
-		switch v {
-		case "actions":
-			inc.actions = true
-		case "errors":
-			inc.errors = true
-		case "network":
-			inc.network = true
-		case "websocket":
-			inc.ws = true
-		}
-	}
-	return inc
-}
-
-// GetSessionTimeline returns a merged, time-sorted timeline of all captured events.
-func GetSessionTimeline(deps Deps, req mcp.JSONRPCRequest, args json.RawMessage) mcp.JSONRPCResponse {
-	var params struct {
-		Limit   int      `json:"limit"`
-		Include []string `json:"include"`
-		Summary bool     `json:"summary"`
-	}
-	mcp.LenientUnmarshal(args, &params)
-	if params.Limit <= 0 {
-		params.Limit = 50
-	}
-	if params.Limit > MaxObserveLimit {
-		params.Limit = MaxObserveLimit
-	}
-
-	inc := parseTimelineIncludes(params.Include)
-	entries := collectTimelineEntries(deps, inc)
-
-	sort.Slice(entries, func(i, j int) bool {
-		return entries[i].Timestamp > entries[j].Timestamp
-	})
-
-	if params.Summary {
-		summary := buildTimelineSummary(entries)
-		summary["metadata"] = BuildResponseMetadata(deps.GetCapture(), time.Now())
-		return mcp.JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcp.JSONResponse("Timeline", summary)}
-	}
-
-	if len(entries) > params.Limit {
-		entries = entries[:params.Limit]
-	}
-
-	return mcp.JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcp.JSONResponse("Timeline", map[string]any{
-		"entries":  entries,
-		"count":    len(entries),
-		"metadata": BuildResponseMetadata(deps.GetCapture(), time.Now()),
-	})}
-}
-
-func collectTimelineEntries(deps Deps, inc timelineIncludes) []timelineEntry {
-	cap := deps.GetCapture()
-	entries := make([]timelineEntry, 0)
-	if inc.actions {
-		entries = append(entries, collectTimelineActions(cap)...)
-	}
-	if inc.errors {
-		entries = append(entries, collectTimelineErrors(deps)...)
-	}
-	if inc.network {
-		entries = append(entries, collectTimelineNetwork(cap.GetNetworkWaterfallEntries())...)
-	}
-	if inc.ws {
-		entries = append(entries, collectTimelineWebSocket(cap.GetAllWebSocketEvents())...)
-	}
-	return entries
-}
-
-func collectTimelineActions(cap *capture.Capture) []timelineEntry {
-	actions := cap.GetAllEnhancedActions()
-	entries := make([]timelineEntry, 0, len(actions))
-	for _, a := range actions {
-		ts := time.UnixMilli(a.Timestamp).Format(time.RFC3339Nano)
-		selector := ""
-		if css, ok := a.Selectors["css"].(string); ok {
-			selector = css
-		}
-		entries = append(entries, timelineEntry{
-			Timestamp: ts,
-			Type:      "action",
-			Summary:   a.Type + " on " + selector,
-		})
-	}
-	return entries
-}
-
-func collectTimelineErrors(deps Deps) []timelineEntry {
-	logEntries, _ := deps.GetLogEntries()
-	entries := make([]timelineEntry, 0)
-	for _, entry := range logEntries {
-		level, _ := entry["level"].(string)
-		if level != "error" {
-			continue
-		}
-		ts, _ := entry["timestamp"].(string)
-		msg, _ := entry["message"].(string)
-		if len(msg) > 80 {
-			msg = msg[:80] + "..."
-		}
-		entries = append(entries, timelineEntry{
-			Timestamp: ts,
-			Type:      "error",
-			Summary:   msg,
-		})
-	}
-	return entries
-}
-
-func collectTimelineNetwork(networkEntries []capture.NetworkWaterfallEntry) []timelineEntry {
-	entries := make([]timelineEntry, 0, len(networkEntries))
-	for _, n := range networkEntries {
-		var ts string
-		if !n.Timestamp.IsZero() {
-			ts = n.Timestamp.Format(time.RFC3339Nano)
-		} else {
-			ts = time.Now().Add(-time.Duration(n.StartTime) * time.Millisecond).Format(time.RFC3339Nano)
-		}
-		entries = append(entries, timelineEntry{
-			Timestamp: ts,
-			Type:      "network",
-			Summary:   n.InitiatorType + " " + n.URL,
-		})
-	}
-	return entries
-}
-
-func collectTimelineWebSocket(wsEvents []capture.WebSocketEvent) []timelineEntry {
-	entries := make([]timelineEntry, 0, len(wsEvents))
-	for _, ws := range wsEvents {
-		summary := ws.Event
-		if ws.Direction != "" {
-			summary += " (" + ws.Direction + ")"
-		}
-		entries = append(entries, timelineEntry{
-			Timestamp: ws.Timestamp,
-			Type:      "websocket",
-			Summary:   summary,
-		})
-	}
-	return entries
-}
-
-func buildTimelineSummary(entries []timelineEntry) map[string]any {
-	counts := make(map[string]int)
-	var first, last string
-	for _, e := range entries {
-		counts[e.Type]++
-		if first == "" || e.Timestamp < first {
-			first = e.Timestamp
-		}
-		if last == "" || e.Timestamp > last {
-			last = e.Timestamp
-		}
-	}
-	result := map[string]any{
-		"counts_by_type": counts,
-		"total":          len(entries),
-	}
-	if first != "" {
-		result["time_range"] = map[string]string{"first": first, "last": last}
-	}
-	return result
 }
 
 // ============================================
@@ -784,4 +574,3 @@ func buildA11ySummary(auditResult map[string]any) map[string]any {
 		"top_issues": topIssues,
 	}
 }
-

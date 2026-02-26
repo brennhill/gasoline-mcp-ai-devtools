@@ -180,6 +180,10 @@ func InteractToolSchema() mcp.MCPTool {
 					"type":        "number",
 					"description": "Tab index in current window ordering (switch_tab)",
 				},
+				"set_tracked": map[string]any{
+					"type":        "boolean",
+					"description": "Controls whether switch_tab updates the tracked tab to the newly activated tab (default: true). Set to false to switch focus without changing which tab the server targets for subsequent commands.",
+				},
 				"new_tab": map[string]any{
 					"type":        "boolean",
 					"description": "Open navigation URL in a background tab instead of replacing current tab (navigate)",

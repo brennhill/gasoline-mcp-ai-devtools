@@ -19,6 +19,7 @@ import { broadcastTrackingState } from './message-handlers'
 import { executeWithWorldRouting, probeCSPStatus, type CSPProbeResult } from './query-execution'
 import { ASYNC_COMMAND_TIMEOUT_MS } from '../lib/constants'
 import type { SendAsyncResultFn, ActionToastFn } from './pending-queries'
+import { persistTrackedTab } from './commands/helpers'
 
 // =============================================================================
 // TIMEOUT CONFIGURATION
@@ -254,6 +255,13 @@ export async function handleBrowserAction(
 
         const updated = await chrome.tabs.update(targetTab.id, { active: true })
         const activeTab = updated || targetTab
+
+        // Persist tracked tab so the extension-side state matches the server-side
+        // update (issue #271). This ensures subsequent /sync heartbeats report
+        // the correct tracked tab.
+        await persistTrackedTab(activeTab)
+        broadcastTrackingState().catch(() => {})
+
         return {
           success: true,
           action: 'switch_tab',

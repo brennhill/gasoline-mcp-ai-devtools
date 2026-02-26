@@ -11,7 +11,7 @@
  * Features: Simple exponential backoff, binary connection state, self-healing for MV3.
  */
 
-import type { PendingQuery } from '../types'
+import type { PendingQuery } from '../types/index.js'
 
 // =============================================================================
 // TYPES
@@ -24,6 +24,7 @@ export interface SyncSettings {
   tracked_tab_id: number
   tracked_tab_url: string
   tracked_tab_title: string
+  tab_status?: 'loading' | 'complete'
   capture_logs: boolean
   capture_network: boolean
   capture_websocket: boolean

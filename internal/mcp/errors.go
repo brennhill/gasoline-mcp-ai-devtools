@@ -53,6 +53,10 @@ type StructuredError struct {
 	Hint         string `json:"hint,omitempty"`
 	Action       string `json:"action,omitempty"`
 	Selector     string `json:"selector,omitempty"`
+
+	// RecoveryToolCall is a copy-pasteable MCP tool call the LLM can use to recover.
+	// Keys: "tool" (string), "arguments" (map[string]any).
+	RecoveryToolCall map[string]any `json:"recovery_tool_call,omitempty"`
 }
 
 // StructuredErrorResponse constructs an MCP error response. Format:
@@ -119,6 +123,12 @@ func WithRetryAfterMs(ms int) func(*StructuredError) {
 // WithFinal marks a structured error as terminal/non-terminal for async command flows.
 func WithFinal(final bool) func(*StructuredError) {
 	return func(se *StructuredError) { se.Final = final }
+}
+
+// WithRecoveryToolCall attaches a copy-pasteable MCP tool call for LLM recovery.
+// toolCall should have keys "tool" (string) and "arguments" (map[string]any).
+func WithRecoveryToolCall(toolCall map[string]any) func(*StructuredError) {
+	return func(se *StructuredError) { se.RecoveryToolCall = toolCall }
 }
 
 // RetryDefaultsForCode returns option functions that set retryable and retry_after_ms
