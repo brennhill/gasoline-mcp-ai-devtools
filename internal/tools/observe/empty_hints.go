@@ -1,6 +1,8 @@
 // empty_hints.go — Diagnostic hint builders for empty observe results.
+// Purpose: Generates contextual hints when observe modes return 0 entries.
 // Why: When an observe mode returns 0 entries, the hint field explains why
 // the buffer may be empty and suggests remediation. Fixes #278 and #287.
+// Docs: docs/features/feature/observe/index.md
 
 package observe
 

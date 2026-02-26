@@ -1,4 +1,8 @@
 // timeline.go — Session timeline: merged, time-sorted view of all captured events.
+// Purpose: Provides a unified, chronologically-sorted timeline across all capture buffers.
+// Why: Extracted from analysis.go to keep files under 800 LOC and isolate timeline logic.
+// Docs: docs/features/feature/observe/index.md
+
 package observe
 
 import (
@@ -127,7 +131,7 @@ func collectTimelineErrors(deps Deps) []timelineEntry {
 		if level != "error" {
 			continue
 		}
-		ts, _ := entry["timestamp"].(string)
+		ts := logEntryTimestamp(entry)
 		msg, _ := entry["message"].(string)
 		if len(msg) > 80 {
 			msg = msg[:80] + "..."

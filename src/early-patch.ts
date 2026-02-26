@@ -15,7 +15,7 @@
   if (typeof window === 'undefined') return
 
   // Guard: only install once (extension reloads, multiple frames)
-  if (window.__GASOLINE_ORIGINAL_WS__ || window.__GASOLINE_ORIGINAL_FETCH__) return
+  if (window.__GASOLINE_ORIGINAL_WS__ || window.__GASOLINE_ORIGINAL_FETCH__ || window.__GASOLINE_EARLY_BODIES__) return
 
   // =========================================================================
   // SHARED: Early body buffer (used by fetch + XHR patches)
