@@ -1,6 +1,6 @@
 # gasoline-mcp-darwin-arm64
 
-Platform-specific binary package for Gasoline MCP (darwin-arm64).
+Platform-specific binary package for Gasoline Agentic Browser Devtool MCP (darwin-arm64).
 
 This package is automatically installed as a dependency when you run:
 

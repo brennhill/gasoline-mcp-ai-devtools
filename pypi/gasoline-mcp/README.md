@@ -1,4 +1,4 @@
-# Gasoline MCP
+# Gasoline Agentic Browser Devtool MCP
 
 Browser observability for AI coding agents - autonomously debug and fix issues in real time.
 
