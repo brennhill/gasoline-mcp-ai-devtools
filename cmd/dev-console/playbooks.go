@@ -34,6 +34,12 @@ Use this index for discovery. Load detailed guidance only when task intent match
 - gasoline://playbook/automation/quick
 - gasoline://playbook/automation/full
 
+## Runtime Discovery
+
+When unsure which params a mode accepts, use per-mode filtering:
+- configure(what:"describe_capabilities", tool:"observe", mode:"errors") → returns only params relevant to observe/errors
+- configure(what:"describe_capabilities", tool:"interact") → returns all interact modes with their per-mode params
+
 ## Notes
 
 - Keep this index small; do not inline full workflows here.

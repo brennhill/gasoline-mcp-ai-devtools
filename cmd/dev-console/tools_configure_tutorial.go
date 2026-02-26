@@ -190,6 +190,12 @@ func tutorialSnippets() []map[string]any {
 			"snippet":   `configure({what:"describe_capabilities"})`,
 			"arguments": map[string]any{"what": "describe_capabilities"},
 		},
+		{
+			"tool":      "configure",
+			"goal":      "Get per-mode params for a specific tool mode",
+			"snippet":   `configure({what:"describe_capabilities", tool:"observe", mode:"errors"})`,
+			"arguments": map[string]any{"what": "describe_capabilities", "tool": "observe", "mode": "errors"},
+		},
 	}
 }
 
