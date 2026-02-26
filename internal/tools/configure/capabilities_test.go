@@ -134,9 +134,14 @@ func TestBuildCapabilitiesMap_NoRequired(t *testing.T) {
 	}
 }
 
+// TestBuildCapabilitiesMap_InferDispatchParamWhenRequiredOmitted exercises the
+// anyOf fallback path in inferDispatchParam. Real schemas must not use top-level
+// anyOf (see TestAllToolSchemas_NoTopLevelCombiners), but inferDispatchParam
+// supports it defensively for external or legacy schemas.
 func TestBuildCapabilitiesMap_InferDispatchParamWhenRequiredOmitted(t *testing.T) {
 	t.Parallel()
 
+	// Fixture uses anyOf ([]map[string]any form) — not valid in production schemas.
 	tools := []mcp.MCPTool{
 		{
 			Name: "interact",
@@ -170,6 +175,39 @@ func TestBuildCapabilitiesMap_InferDispatchParamWhenRequiredOmitted(t *testing.T
 	modes := tool["modes"].([]string)
 	if len(modes) != 2 || modes[0] != "navigate" || modes[1] != "click" {
 		t.Fatalf("modes = %v, want [navigate click]", modes)
+	}
+}
+
+// TestBuildCapabilitiesMap_InferDispatchParamAnyOfSliceAny exercises the []any
+// branch of inferDispatchParam's anyOf type switch. JSON-unmarshaled schemas
+// produce []any, not []map[string]any, so both paths must work.
+func TestBuildCapabilitiesMap_InferDispatchParamAnyOfSliceAny(t *testing.T) {
+	t.Parallel()
+
+	// Simulate a schema that arrived via JSON round-trip (anyOf as []any).
+	tools := []mcp.MCPTool{
+		{
+			Name: "legacy",
+			InputSchema: map[string]any{
+				"properties": map[string]any{
+					"what": map[string]any{
+						"type": "string",
+						"enum": []string{"read", "write"},
+					},
+				},
+				// []any mirrors what json.Unmarshal produces for an array of objects.
+				"anyOf": []any{
+					map[string]any{"required": []any{"what"}},
+				},
+			},
+		},
+	}
+
+	result := BuildCapabilitiesMap(tools)
+	tool := result["legacy"].(map[string]any)
+
+	if got := tool["dispatch_param"]; got != "what" {
+		t.Fatalf("dispatch_param = %v, want what", got)
 	}
 }
 

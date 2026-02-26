@@ -144,15 +144,6 @@ func (h *ToolHandler) toolInteract(req JSONRPCRequest, args json.RawMessage) JSO
 		}
 	}
 
-	if params.What != "" && params.Action != "" && params.What != params.Action {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(
-			ErrInvalidParam,
-			"Conflicting dispatch values: 'what' and 'action' do not match",
-			"Provide only one dispatch field, or set both to the same action value",
-			withParam("what"),
-		)}
-	}
-
 	if what == "" {
 		validActions := h.getValidInteractActions()
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(
