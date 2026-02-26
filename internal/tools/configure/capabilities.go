@@ -99,7 +99,7 @@ func BuildCapabilitiesSummary(tools []mcp.MCPTool) map[string]any {
 	toolsMap := make(map[string]any, len(tools))
 	for _, tool := range tools {
 		props, _ := tool.InputSchema["properties"].(map[string]any)
-		dispatchParam := inferDispatchParam(tool.InputSchema, props)
+		dispatchParam := inferDispatchParam(tool.InputSchema)
 
 		modeNames := extractModes(dispatchParam, props)
 		modes := buildModeIndex(tool.Name, modeNames)
@@ -134,7 +134,8 @@ func buildModeIndex(toolName string, modeNames []string) map[string]string {
 // Primary source is schema.required[0]. For alias-friendly schemas that use
 // anyOf/oneOf instead of a top-level required field, fall back to the first
 // anyOf/oneOf branch whose required param has an enum in props.
-func inferDispatchParam(inputSchema map[string]any, props map[string]any) string {
+func inferDispatchParam(inputSchema map[string]any) string {
+	props, _ := inputSchema["properties"].(map[string]any)
 	required := toStringSlice(inputSchema["required"])
 	if len(required) > 0 {
 		return required[0]
@@ -175,6 +176,35 @@ func inferDispatchParam(inputSchema map[string]any, props map[string]any) string
 	return ""
 }
 
+// buildToolCapEntry builds the full capability entry map for a single MCPTool.
+// Shared by BuildCapabilitiesMap and BuildCapabilitiesForTool.
+func buildToolCapEntry(tool mcp.MCPTool) map[string]any {
+	props, _ := tool.InputSchema["properties"].(map[string]any)
+	dispatchParam := inferDispatchParam(tool.InputSchema)
+
+	modes := extractModes(dispatchParam, props)
+
+	paramNames := make([]string, 0, len(props))
+	for name := range props {
+		if name != dispatchParam {
+			paramNames = append(paramNames, name)
+		}
+	}
+	sort.Strings(paramNames)
+
+	paramDetails := buildParamDetails(props)
+	modeParams := buildModeParams(tool.Name, modes, dispatchParam, paramNames, paramDetails)
+
+	return map[string]any{
+		"dispatch_param": dispatchParam,
+		"modes":          modes,
+		"params":         paramNames,
+		"param_details":  paramDetails,
+		"mode_params":    modeParams,
+		"description":    tool.Description,
+	}
+}
+
 // BuildCapabilitiesMap transforms tool schemas into machine-readable capability metadata.
 // It preserves legacy fields (dispatch_param, modes, params, description) and adds:
 // - param_details: per-parameter type/enum/default metadata
@@ -182,30 +212,7 @@ func inferDispatchParam(inputSchema map[string]any, props map[string]any) string
 func BuildCapabilitiesMap(tools []mcp.MCPTool) map[string]any {
 	toolsMap := make(map[string]any, len(tools))
 	for _, tool := range tools {
-		props, _ := tool.InputSchema["properties"].(map[string]any)
-		dispatchParam := inferDispatchParam(tool.InputSchema, props)
-
-		modes := extractModes(dispatchParam, props)
-
-		paramNames := make([]string, 0, len(props))
-		for name := range props {
-			if name != dispatchParam {
-				paramNames = append(paramNames, name)
-			}
-		}
-		sort.Strings(paramNames)
-
-		paramDetails := buildParamDetails(props)
-		modeParams := buildModeParams(tool.Name, modes, dispatchParam, paramNames, paramDetails)
-
-		toolsMap[tool.Name] = map[string]any{
-			"dispatch_param": dispatchParam,
-			"modes":          modes,
-			"params":         paramNames,
-			"param_details":  paramDetails,
-			"mode_params":    modeParams,
-			"description":    tool.Description,
-		}
+		toolsMap[tool.Name] = buildToolCapEntry(tool)
 	}
 	return toolsMap
 }
@@ -217,30 +224,7 @@ func BuildCapabilitiesForTool(tools []mcp.MCPTool, toolName string) (map[string]
 		if tool.Name != toolName {
 			continue
 		}
-		props, _ := tool.InputSchema["properties"].(map[string]any)
-		dispatchParam := inferDispatchParam(tool.InputSchema, props)
-
-		modes := extractModes(dispatchParam, props)
-
-		paramNames := make([]string, 0, len(props))
-		for name := range props {
-			if name != dispatchParam {
-				paramNames = append(paramNames, name)
-			}
-		}
-		sort.Strings(paramNames)
-
-		paramDetails := buildParamDetails(props)
-		modeParams := buildModeParams(tool.Name, modes, dispatchParam, paramNames, paramDetails)
-
-		return map[string]any{
-			"dispatch_param": dispatchParam,
-			"modes":          modes,
-			"params":         paramNames,
-			"param_details":  paramDetails,
-			"mode_params":    modeParams,
-			"description":    tool.Description,
-		}, true
+		return buildToolCapEntry(tool), true
 	}
 	return nil, false
 }
@@ -481,6 +465,9 @@ func containsString(values []string, target string) bool {
 	return false
 }
 
+// toStringSlice converts a raw schema value to a string slice.
+// Handles both []string (Go-constructed schemas) and []any (JSON-unmarshaled schemas).
+// Empty strings are silently dropped — schema fields must not contain blank entries.
 func toStringSlice(raw any) []string {
 	switch typed := raw.(type) {
 	case []string:

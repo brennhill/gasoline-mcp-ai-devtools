@@ -183,6 +183,21 @@ func TestToolsInteractDispatch_ConflictingWhatAndAction(t *testing.T) {
 	}
 }
 
+// TestToolsInteractDispatch_SameWhatAndActionAllowed verifies that providing
+// the same value for both 'what' and the deprecated 'action' alias is not
+// treated as a conflict — it is a no-op redundancy the server should tolerate.
+func TestToolsInteractDispatch_SameWhatAndActionAllowed(t *testing.T) {
+	t.Parallel()
+	h, _, _ := makeToolHandler(t)
+
+	resp := callInteractRaw(h, `{"what":"list_states","action":"list_states"}`)
+	result := parseToolResult(t, resp)
+	// Should not return an invalid_param conflict error — same value is not a conflict.
+	if result.IsError && strings.Contains(result.Content[0].Text, "Conflicting parameters") {
+		t.Fatalf("same what+action value should not trigger conflict error, got: %s", result.Content[0].Text)
+	}
+}
+
 // ============================================
 // interact(action:"highlight") — Response Fields & Validation
 // ============================================

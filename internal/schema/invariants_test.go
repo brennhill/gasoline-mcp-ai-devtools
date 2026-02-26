@@ -28,7 +28,8 @@ func TestAllToolSchemas_NoTopLevelCombiners(t *testing.T) {
 
 // TestAllToolSchemas_NoNestedCombiners checks that property-level schemas also
 // avoid combiners. Nested oneOf/anyOf/allOf in property definitions can cause
-// Claude API validation errors in some contexts.
+// Claude API validation errors in some contexts. Walks recursively into items
+// and nested properties so array-typed fields are also covered.
 func TestAllToolSchemas_NoNestedCombiners(t *testing.T) {
 	t.Parallel()
 
@@ -41,31 +42,48 @@ func TestAllToolSchemas_NoNestedCombiners(t *testing.T) {
 			if !ok {
 				return
 			}
-			for propName, propRaw := range props {
-				prop, ok := propRaw.(map[string]any)
-				if !ok {
-					continue
-				}
-				for _, key := range forbidden {
-					if _, found := prop[key]; found {
-						t.Errorf("tool %q property %q: has nested %q — avoid combiners in property schemas", tool.Name, propName, key)
-					}
-				}
-			}
+			checkPropsForCombiners(t, tool.Name, props, forbidden)
 		})
 	}
 }
 
+// checkPropsForCombiners recursively checks a properties map and any nested
+// items.properties for forbidden combiner keywords.
+func checkPropsForCombiners(t *testing.T, toolName string, props map[string]any, forbidden []string) {
+	t.Helper()
+	for propName, propRaw := range props {
+		prop, ok := propRaw.(map[string]any)
+		if !ok {
+			continue
+		}
+		for _, key := range forbidden {
+			if _, found := prop[key]; found {
+				t.Errorf("tool %q property %q: has nested %q — avoid combiners in property schemas", toolName, propName, key)
+			}
+		}
+		// Recurse into items.properties for array-typed fields.
+		if items, ok := prop["items"].(map[string]any); ok {
+			if nestedProps, ok := items["properties"].(map[string]any); ok {
+				checkPropsForCombiners(t, toolName, nestedProps, forbidden)
+			}
+		}
+	}
+}
+
 // TestAllToolSchemas_HavePropertiesAndObjectType ensures every tool schema has
-// type:object and a properties field, catching accidentally empty or malformed schemas.
+// type:object and a non-empty properties field, catching accidentally empty or
+// malformed schemas.
 func TestAllToolSchemas_HavePropertiesAndObjectType(t *testing.T) {
 	t.Parallel()
 
 	for _, tool := range AllTools() {
 		t.Run(tool.Name, func(t *testing.T) {
 			t.Parallel()
-			if _, ok := tool.InputSchema["properties"]; !ok {
-				t.Errorf("tool %q: input_schema missing top-level \"properties\"", tool.Name)
+			props, ok := tool.InputSchema["properties"].(map[string]any)
+			if !ok {
+				t.Errorf("tool %q: input_schema missing or invalid top-level \"properties\"", tool.Name)
+			} else if len(props) == 0 {
+				t.Errorf("tool %q: input_schema \"properties\" is empty — every tool must declare at least one parameter", tool.Name)
 			}
 			typeVal, ok := tool.InputSchema["type"].(string)
 			if !ok || typeVal != "object" {
@@ -75,9 +93,10 @@ func TestAllToolSchemas_HavePropertiesAndObjectType(t *testing.T) {
 	}
 }
 
-// TestAllToolSchemas_ValidJSON ensures every tool schema serializes to valid JSON.
-// This catches type mismatches (e.g. []int instead of []string in required) that
-// compile fine but break at the MCP serialization boundary.
+// TestAllToolSchemas_ValidJSON ensures every tool schema serializes to valid JSON
+// and survives a round-trip without losing properties. This catches type
+// mismatches (e.g. []int instead of []string in required) that compile fine but
+// break at the MCP serialization boundary.
 func TestAllToolSchemas_ValidJSON(t *testing.T) {
 	t.Parallel()
 
@@ -91,6 +110,19 @@ func TestAllToolSchemas_ValidJSON(t *testing.T) {
 			var round map[string]any
 			if err := json.Unmarshal(data, &round); err != nil {
 				t.Fatalf("tool %q: marshaled schema is not valid JSON: %v", tool.Name, err)
+			}
+			// Verify the round-trip preserved the properties map and its size.
+			origProps, _ := tool.InputSchema["properties"].(map[string]any)
+			roundProps, ok := round["properties"].(map[string]any)
+			if !ok {
+				t.Fatalf("tool %q: round-trip lost \"properties\"", tool.Name)
+			}
+			if len(roundProps) != len(origProps) {
+				t.Errorf("tool %q: round-trip properties count = %d, want %d", tool.Name, len(roundProps), len(origProps))
+			}
+			// Verify type field survived round-trip.
+			if round["type"] != tool.InputSchema["type"] {
+				t.Errorf("tool %q: round-trip type = %v, want %v", tool.Name, round["type"], tool.InputSchema["type"])
 			}
 		})
 	}

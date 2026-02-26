@@ -34,6 +34,19 @@ func TestInteractToolSchema_RequiresWhat_ActionIsRuntimeAlias(t *testing.T) {
 		}
 	}
 
+	// Spot-check that well-known actions are present in the canonical enum.
+	// Since both 'what' and 'action' reference the same slice, we only check whatEnum.
+	mustContain := []string{"navigate", "click", "screenshot", "type", "execute_js", "upload"}
+	whatSet := make(map[string]bool, len(whatEnum))
+	for _, v := range whatEnum {
+		whatSet[v] = true
+	}
+	for _, name := range mustContain {
+		if !whatSet[name] {
+			t.Errorf("interact enum missing expected action %q", name)
+		}
+	}
+
 	// Claude API forbids oneOf/allOf/anyOf at the top level of input_schema.
 	// 'what' is required; 'action' is a runtime alias handled by the server.
 	if _, hasAnyOf := tool.InputSchema["anyOf"]; hasAnyOf {
