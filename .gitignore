@@ -67,3 +67,4 @@ docs/benchmarks/*.txt
 #Ignore marketing
 docs/marketing
 docs/marketing-plan.md
+.gitnexus

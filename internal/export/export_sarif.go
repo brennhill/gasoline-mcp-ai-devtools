@@ -199,7 +199,7 @@ func ExportSARIF(a11yResultJSON json.RawMessage, opts SARIFExportOptions) (*SARI
 				Driver: SARIFDriver{
 					Name:           "Gasoline Agentic Browser",
 					Version:        version,
-					InformationURI: "https://github.com/anthropics/gasoline",
+					InformationURI: "https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp",
 					Rules:          []SARIFRule{},
 				},
 			},

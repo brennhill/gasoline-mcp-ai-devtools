@@ -7,7 +7,7 @@
         "driver": {
           "name": "Gasoline Agentic Browser",
           "version": "VERSION",
-          "informationUri": "https://github.com/anthropics/gasoline",
+          "informationUri": "https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp",
           "rules": [
             {
               "id": "color-contrast",

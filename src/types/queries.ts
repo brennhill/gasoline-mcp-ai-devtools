@@ -34,6 +34,7 @@ export type QueryType =
   | 'link_health'
   | 'draw_mode'
   | 'upload'
+  | 'cdp_action'
 
 /**
  * Pending query from server

@@ -130,6 +130,47 @@ func buildModeIndex(toolName string, modeNames []string) map[string]string {
 	return index
 }
 
+// inferDispatchParam selects the canonical mode/action parameter for a tool.
+// Primary source is schema.required[0]. For alias-friendly schemas that use
+// anyOf/oneOf instead of a top-level required field, fall back to the first
+// anyOf/oneOf branch whose required param has an enum in props.
+func inferDispatchParam(inputSchema map[string]any, props map[string]any) string {
+	required := toStringSlice(inputSchema["required"])
+	if len(required) > 0 {
+		return required[0]
+	}
+	for _, combinerKey := range []string{"anyOf", "oneOf"} {
+		combinerRaw, ok := inputSchema[combinerKey]
+		if !ok {
+			continue
+		}
+		var branches []map[string]any
+		switch v := combinerRaw.(type) {
+		case []map[string]any:
+			branches = v
+		case []any:
+			for _, item := range v {
+				if m, ok := item.(map[string]any); ok {
+					branches = append(branches, m)
+				}
+			}
+		}
+		for _, branch := range branches {
+			branchRequired := toStringSlice(branch["required"])
+			if len(branchRequired) == 0 {
+				continue
+			}
+			candidate := branchRequired[0]
+			if prop, ok := props[candidate].(map[string]any); ok {
+				if _, hasEnum := prop["enum"]; hasEnum {
+					return candidate
+				}
+			}
+		}
+	}
+	return ""
+}
+
 // BuildCapabilitiesMap transforms tool schemas into machine-readable capability metadata.
 // It preserves legacy fields (dispatch_param, modes, params, description) and adds:
 // - param_details: per-parameter type/enum/default metadata

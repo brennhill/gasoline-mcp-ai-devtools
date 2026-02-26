@@ -452,7 +452,7 @@ func TestExportSARIF_Schema(t *testing.T) {
 	if log.Runs[0].Tool.Driver.Version != version {
 		t.Errorf("Expected tool version %q, got %q", version, log.Runs[0].Tool.Driver.Version)
 	}
-	if log.Runs[0].Tool.Driver.InformationURI != "https://github.com/anthropics/gasoline" {
+	if log.Runs[0].Tool.Driver.InformationURI != "https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp" {
 		t.Errorf("Unexpected informationUri: %q", log.Runs[0].Tool.Driver.InformationURI)
 	}
 }

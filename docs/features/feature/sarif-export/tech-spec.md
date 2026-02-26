@@ -142,7 +142,7 @@ The agent can do this as part of the PR creation workflow (see workflow integrat
       "driver": {
         "name": "Gasoline",
         "version": "4.0.0",
-        "informationUri": "https://github.com/anthropics/gasoline",
+        "informationUri": "https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp",
         "rules": [
           {
             "id": "color-contrast",

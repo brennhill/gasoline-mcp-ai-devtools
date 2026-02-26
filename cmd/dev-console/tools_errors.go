@@ -35,8 +35,10 @@ func mcpStructuredError(code, message, retry string, opts ...func(*StructuredErr
 	return mcp.StructuredErrorResponse(code, message, retry, opts...)
 }
 
-func withParam(p string) func(*StructuredError) { return mcp.WithParam(p) }
-func withHint(h string) func(*StructuredError)  { return mcp.WithHint(h) }
+func withParam(p string) func(*StructuredError)    { return mcp.WithParam(p) }
+func withHint(h string) func(*StructuredError)     { return mcp.WithHint(h) }
+func withAction(a string) func(*StructuredError)   { return mcp.WithAction(a) }
+func withSelector(s string) func(*StructuredError) { return mcp.WithSelector(s) }
 func withRetryable(retryable bool) func(*StructuredError) {
 	return mcp.WithRetryable(retryable)
 }
@@ -136,13 +138,14 @@ func (h *ToolHandler) diagnosticHint() func(*StructuredError) {
 
 // requirePilot returns (resp, true) if AI Web Pilot is disabled, short-circuiting the caller.
 // Usage: if resp, blocked := h.requirePilot(req); blocked { return resp }
-func (h *ToolHandler) requirePilot(req JSONRPCRequest) (JSONRPCResponse, bool) {
+func (h *ToolHandler) requirePilot(req JSONRPCRequest, extraOpts ...func(*StructuredError)) (JSONRPCResponse, bool) {
 	if h.capture.IsPilotActionAllowed() {
 		return JSONRPCResponse{}, false
 	}
+	opts := append([]func(*StructuredError){h.diagnosticHint()}, extraOpts...)
 	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(
 		ErrCodePilotDisabled, "AI Web Pilot is explicitly disabled",
-		"Enable AI Web Pilot in the extension popup", h.diagnosticHint(),
+		"Enable AI Web Pilot in the extension popup", opts...,
 	)}, true
 }
 
@@ -150,14 +153,15 @@ func (h *ToolHandler) requirePilot(req JSONRPCRequest) (JSONRPCResponse, bool) {
 // short-circuiting the caller with an immediate structured error (~5ms) instead of
 // queuing a command that would time out after 15s.
 // Usage: if resp, blocked := h.requireExtension(req); blocked { return resp }
-func (h *ToolHandler) requireExtension(req JSONRPCRequest) (JSONRPCResponse, bool) {
+func (h *ToolHandler) requireExtension(req JSONRPCRequest, extraOpts ...func(*StructuredError)) (JSONRPCResponse, bool) {
 	if h.capture.IsExtensionConnected() {
 		return JSONRPCResponse{}, false
 	}
+	opts := append([]func(*StructuredError){h.diagnosticHint(), withRetryable(true), withRetryAfterMs(3000)}, extraOpts...)
 	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(
 		ErrNoData, "Extension not connected. Commands cannot be dispatched.",
 		"Check that the Gasoline browser extension is installed and the page is open.",
-		h.diagnosticHint(), withRetryable(true), withRetryAfterMs(3000),
+		opts...,
 	)}, true
 }
 

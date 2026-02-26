@@ -363,18 +363,74 @@ export function domPrimitive(
     return { success: true }
   }
 
-  // — Keyboard simulation fallback for generic contenteditable (no framework detected) —
+  // — Keyboard event helpers —
+  function keyCodeForChar(char: string): { key: string; code: string; keyCode: number } {
+    if (char === '\n') return { key: 'Enter', code: 'Enter', keyCode: 13 }
+    if (char === '\t') return { key: 'Tab', code: 'Tab', keyCode: 9 }
+    if (char === ' ') return { key: ' ', code: 'Space', keyCode: 32 }
+
+    const upper = char.toUpperCase()
+    const isLetter = upper >= 'A' && upper <= 'Z'
+    const isDigit = char >= '0' && char <= '9'
+
+    let code: string
+    let keyCode: number
+
+    if (isLetter) {
+      code = 'Key' + upper
+      keyCode = upper.charCodeAt(0)
+    } else if (isDigit) {
+      code = 'Digit' + char
+      keyCode = char.charCodeAt(0)
+    } else {
+      // Punctuation / symbols: use Unidentified code, charCode as keyCode
+      code = ''
+      keyCode = char.charCodeAt(0)
+    }
+
+    return { key: char, code, keyCode }
+  }
+
+  function dispatchKeySequence(target: EventTarget, char: string, isContentEditable: boolean): void {
+    const { key, code, keyCode } = keyCodeForChar(char)
+    const shiftKey = char !== char.toLowerCase() && char === char.toUpperCase() && char.toLowerCase() !== char.toUpperCase()
+
+    const kbOpts: KeyboardEventInit & { keyCode?: number } = { key, code, keyCode, bubbles: true, cancelable: true, shiftKey }
+
+    target.dispatchEvent(new KeyboardEvent('keydown', kbOpts))
+    target.dispatchEvent(new KeyboardEvent('keypress', kbOpts))
+
+    if (isContentEditable) {
+      // Browsers fire beforeinput/input as InputEvents on contenteditable
+      target.dispatchEvent(new InputEvent('beforeinput', {
+        bubbles: true, cancelable: true, inputType: 'insertText', data: char,
+      }))
+      // Insert text at selection (replaces execCommand)
+      const sel = document.getSelection()
+      if (sel && sel.rangeCount > 0) {
+        const range = sel.getRangeAt(0)
+        range.deleteContents()
+        if (char === '\n') {
+          range.insertNode(document.createElement('br'))
+        } else {
+          range.insertNode(document.createTextNode(char))
+        }
+        range.collapse(false)
+        sel.removeAllRanges()
+        sel.addRange(range)
+      }
+      target.dispatchEvent(new InputEvent('input', {
+        bubbles: true, inputType: 'insertText', data: char,
+      }))
+    }
+
+    target.dispatchEvent(new KeyboardEvent('keyup', kbOpts))
+  }
+
+  // — Keyboard simulation for generic contenteditable (no framework detected) —
   function insertViaKeyboardSim(node: HTMLElement, text: string): { success: boolean } {
-    const lines = text.split('\n')
-    for (let i = 0; i < lines.length; i++) {
-      if (i > 0) {
-        node.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', code: 'Enter', keyCode: 13, bubbles: true }))
-        node.dispatchEvent(new KeyboardEvent('keyup', { key: 'Enter', code: 'Enter', keyCode: 13, bubbles: true }))
-      }
-      const line = lines[i]!
-      if (line.length > 0) {
-        document.execCommand('insertText', false, line)
-      }
+    for (const char of text) {
+      dispatchKeySequence(node, char, true)
     }
     return { success: true }
   }
@@ -454,14 +510,10 @@ export function domPrimitive(
               // Native DOM insertion — bypasses CSP, works with Quill/ProseMirror/etc
               insertViaRichEditor(editor.type, editor.target, text, !!options.clear)
               strategy = editor.type + '_native'
-            } else if (text.includes('\n')) {
-              // Keyboard simulation fallback for generic contenteditable
+            } else {
+              // Per-character keyboard event simulation for all generic contenteditable
               insertViaKeyboardSim(node, text)
               strategy = 'keyboard_simulation'
-            } else {
-              // Single-line: keep execCommand (still works everywhere for single lines)
-              document.execCommand('insertText', false, text)
-              strategy = 'exec_command'
             }
 
             return mutatingSuccess(node, { value: node.innerText, insertion_strategy: strategy })
@@ -470,6 +522,14 @@ export function domPrimitive(
           if (!(node instanceof HTMLInputElement) && !(node instanceof HTMLTextAreaElement)) {
             return domError('not_typeable', `Element is not an input, textarea, or contenteditable: ${node.tagName}`)
           }
+
+          // Dispatch per-character keyboard events so React/Vue onChange handlers fire
+          node.focus()
+          for (const char of text) {
+            dispatchKeySequence(node, char, false)
+          }
+
+          // Set the value via native setter (needed to bypass React's synthetic event system)
           const proto = node instanceof HTMLTextAreaElement ? HTMLTextAreaElement : HTMLInputElement
           const nativeSetter = Object.getOwnPropertyDescriptor(proto.prototype, 'value')?.set
           if (nativeSetter) {

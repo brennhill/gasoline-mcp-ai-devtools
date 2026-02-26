@@ -225,6 +225,7 @@ const TARGETED_QUERY_TYPES = new Set<string>([
   'execute',
   'link_health',
   'draw_mode',
+  'cdp_action',
   'computed_styles',
   'form_discovery',
   'state_capture',

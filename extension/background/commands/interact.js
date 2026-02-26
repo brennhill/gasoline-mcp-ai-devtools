@@ -7,6 +7,7 @@
  */
 import { isAiWebPilotEnabled } from '../state.js';
 import { executeDOMAction } from '../dom-dispatch.js';
+import { executeCDPAction } from '../cdp-dispatch.js';
 import { executeUpload } from '../upload-handler.js';
 import { startRecording, stopRecording } from '../recording.js';
 import { executeWithWorldRouting } from '../query-execution.js';
@@ -93,6 +94,16 @@ registerCommand('dom_action', async (ctx) => {
         return;
     }
     await executeDOMAction(ctx.query, ctx.tabId, ctx.syncClient, ctx.sendAsyncResult, ctx.actionToast);
+});
+// =============================================================================
+// CDP ACTION
+// =============================================================================
+registerCommand('cdp_action', async (ctx) => {
+    if (!isAiWebPilotEnabled()) {
+        ctx.sendAsyncResult(ctx.syncClient, ctx.query.id, ctx.query.correlation_id, 'error', null, 'ai_web_pilot_disabled');
+        return;
+    }
+    await executeCDPAction(ctx.query, ctx.tabId, ctx.syncClient, ctx.sendAsyncResult, ctx.actionToast);
 });
 // =============================================================================
 // UPLOAD

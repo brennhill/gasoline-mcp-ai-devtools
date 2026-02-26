@@ -759,20 +759,14 @@ func TestToolsObserve_StructuredErrorFields(t *testing.T) {
 	}
 
 	text := result.Content[0].Text
-	// Should contain error code line
-	if !strings.HasPrefix(text, "Error: ") {
-		t.Errorf("structured error should start with 'Error: ', got: %s", text[:min(50, len(text))])
+	// Response should be a single JSON object (no text prefix)
+	if !strings.HasPrefix(text, "{") {
+		t.Errorf("structured error should be JSON, got: %s", text[:min(50, len(text))])
 	}
 
-	// Parse the JSON part of the error
-	idx := strings.Index(text, "\n")
-	if idx < 0 {
-		t.Fatal("structured error should have newline separating header from JSON")
-	}
-	jsonPart := text[idx+1:]
 	var se StructuredError
-	if err := json.Unmarshal([]byte(jsonPart), &se); err != nil {
-		t.Fatalf("structured error JSON parse failed: %v\nraw: %s", err, jsonPart)
+	if err := json.Unmarshal([]byte(text), &se); err != nil {
+		t.Fatalf("structured error JSON parse failed: %v\nraw: %s", err, text)
 	}
 	if se.ErrorCode == "" {
 		t.Error("StructuredError.ErrorCode should not be empty")
@@ -785,5 +779,5 @@ func TestToolsObserve_StructuredErrorFields(t *testing.T) {
 	}
 
 	// Verify JSON fields are snake_case
-	assertSnakeCaseFields(t, jsonPart)
+	assertSnakeCaseFields(t, text)
 }
