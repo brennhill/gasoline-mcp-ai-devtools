@@ -239,6 +239,9 @@ func (h *ToolHandler) handlePilotHighlight(req JSONRPCRequest, args json.RawMess
 	if resp, blocked := h.requireExtension(req); blocked {
 		return resp
 	}
+	if resp, blocked := h.requireTabTracking(req); blocked {
+		return resp
+	}
 
 	// Queue highlight command for extension
 	correlationID := newCorrelationID("highlight")
@@ -287,6 +290,9 @@ func (h *ToolHandler) handlePilotExecuteJS(req JSONRPCRequest, args json.RawMess
 		return resp
 	}
 	if resp, blocked := h.requireExtension(req); blocked {
+		return resp
+	}
+	if resp, blocked := h.requireTabTracking(req); blocked {
 		return resp
 	}
 	if resp, blocked := h.requireCSPClear(req, params.World); blocked {
@@ -393,6 +399,9 @@ func (h *ToolHandler) handleBrowserActionRefresh(req JSONRPCRequest, args json.R
 	if resp, blocked := h.requireExtension(req); blocked {
 		return resp
 	}
+	if resp, blocked := h.requireTabTracking(req); blocked {
+		return resp
+	}
 
 	correlationID := newCorrelationID("refresh")
 	h.armEvidenceForCommand(correlationID, "refresh", args, req.ClientID)
@@ -432,6 +441,9 @@ func (h *ToolHandler) handleBrowserActionBack(req JSONRPCRequest, args json.RawM
 	if resp, blocked := h.requireExtension(req); blocked {
 		return resp
 	}
+	if resp, blocked := h.requireTabTracking(req); blocked {
+		return resp
+	}
 
 	correlationID := newCorrelationID("back")
 	h.armEvidenceForCommand(correlationID, "back", args, req.ClientID)
@@ -453,6 +465,9 @@ func (h *ToolHandler) handleBrowserActionForward(req JSONRPCRequest, args json.R
 		return resp
 	}
 	if resp, blocked := h.requireExtension(req); blocked {
+		return resp
+	}
+	if resp, blocked := h.requireTabTracking(req); blocked {
 		return resp
 	}
 
@@ -527,8 +542,9 @@ func (h *ToolHandler) handleBrowserActionNewTab(req JSONRPCRequest, args json.Ra
 
 func (h *ToolHandler) handleBrowserActionSwitchTab(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	var params struct {
-		TabID    int  `json:"tab_id,omitempty"`
-		TabIndex *int `json:"tab_index,omitempty"`
+		TabID      int   `json:"tab_id,omitempty"`
+		TabIndex   *int  `json:"tab_index,omitempty"`
+		SetTracked *bool `json:"set_tracked,omitempty"`
 	}
 	if err := json.Unmarshal(args, &params); err != nil {
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidJSON, "Invalid JSON arguments: "+err.Error(), "Fix JSON syntax and call again")}
@@ -551,10 +567,16 @@ func (h *ToolHandler) handleBrowserActionSwitchTab(req JSONRPCRequest, args json
 		)}
 	}
 
+	// Default set_tracked to true so subsequent commands target the new tab.
+	setTracked := params.SetTracked == nil || *params.SetTracked
+
 	if resp, blocked := h.requirePilot(req); blocked {
 		return resp
 	}
 	if resp, blocked := h.requireExtension(req); blocked {
+		return resp
+	}
+	if resp, blocked := h.requireTabTracking(req); blocked {
 		return resp
 	}
 
@@ -579,7 +601,45 @@ func (h *ToolHandler) handleBrowserActionSwitchTab(req JSONRPCRequest, args json
 		"tab_index": params.TabIndex,
 	})
 
-	return h.MaybeWaitForCommand(req, correlationID, args, "Switch tab queued")
+	resp := h.MaybeWaitForCommand(req, correlationID, args, "Switch tab queued")
+
+	// After the command completes, update tracked tab state so subsequent
+	// commands target the newly activated tab. See issue #271.
+	if setTracked {
+		h.applySwitchTabTracking(correlationID, resp)
+	}
+
+	return resp
+}
+
+// applySwitchTabTracking extracts tab_id/url/title from a completed switch_tab
+// response and updates the server-side tracked tab state.
+// Only updates on success (status=complete, success=true, tab_id present).
+func (h *ToolHandler) applySwitchTabTracking(correlationID string, resp JSONRPCResponse) {
+	cmd, found := h.capture.GetCommandResult(correlationID)
+	if !found || cmd == nil || cmd.Status != "complete" {
+		return
+	}
+
+	var result map[string]any
+	if err := json.Unmarshal(cmd.Result, &result); err != nil {
+		return
+	}
+
+	success, _ := result["success"].(bool)
+	if !success {
+		return
+	}
+
+	tabIDFloat, _ := result["tab_id"].(float64)
+	tabID := int(tabIDFloat)
+	if tabID <= 0 {
+		return
+	}
+
+	tabURL, _ := result["url"].(string)
+	tabTitle, _ := result["title"].(string)
+	h.capture.UpdateTrackedTab(tabID, tabURL, tabTitle)
 }
 
 func (h *ToolHandler) handleBrowserActionCloseTab(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
@@ -594,6 +654,9 @@ func (h *ToolHandler) handleBrowserActionCloseTab(req JSONRPCRequest, args json.
 		return resp
 	}
 	if resp, blocked := h.requireExtension(req); blocked {
+		return resp
+	}
+	if resp, blocked := h.requireTabTracking(req); blocked {
 		return resp
 	}
 
@@ -762,6 +825,9 @@ func (h *ToolHandler) handleDOMPrimitive(req JSONRPCRequest, args json.RawMessag
 	if resp, blocked := h.requireExtension(req, contextOpts...); blocked {
 		return resp
 	}
+	if resp, blocked := h.requireTabTracking(req, contextOpts...); blocked {
+		return resp
+	}
 
 	args = normalizeDOMActionArgs(args, action)
 
@@ -860,6 +926,9 @@ func (h *ToolHandler) handleCDPClick(req JSONRPCRequest, args json.RawMessage, a
 		return resp
 	}
 	if resp, blocked := h.requireExtension(req, withAction(action)); blocked {
+		return resp
+	}
+	if resp, blocked := h.requireTabTracking(req, withAction(action)); blocked {
 		return resp
 	}
 

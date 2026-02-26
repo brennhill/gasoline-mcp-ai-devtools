@@ -85,6 +85,25 @@ func (c *Capture) GetTrackingStatus() (enabled bool, tabID int, tabURL string) {
 	return c.ext.trackingEnabled, c.ext.trackedTabID, c.ext.trackedTabURL
 }
 
+// UpdateTrackedTab programmatically updates the tracked tab state.
+// Used by switch_tab to retarget subsequent commands to the newly activated tab.
+//
+// Invariants:
+// - tabID must be > 0; zero/negative values are silently ignored.
+// - trackingEnabled is set to true when a valid tabID is provided.
+func (c *Capture) UpdateTrackedTab(tabID int, tabURL string, tabTitle string) {
+	if tabID <= 0 {
+		return
+	}
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.ext.trackingEnabled = true
+	c.ext.trackedTabID = tabID
+	c.ext.trackedTabURL = tabURL
+	c.ext.trackedTabTitle = tabTitle
+	c.ext.trackingUpdated = time.Now()
+}
+
 // GetTrackedTabTitle returns the tracked tab's title (may be stale).
 func (c *Capture) GetTrackedTabTitle() string {
 	c.mu.RLock()
