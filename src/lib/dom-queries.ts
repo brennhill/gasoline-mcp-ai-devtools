@@ -18,7 +18,7 @@ import {
   A11Y_MAX_NODES_PER_VIOLATION,
   A11Y_AUDIT_TIMEOUT_MS
 } from './constants.js'
-import { scaleTimeout } from './timeouts'
+import { scaleTimeout } from './timeouts.js'
 
 // DOM query parameters
 export interface DOMQueryParams {
@@ -97,7 +97,7 @@ interface FormattedAxeViolation {
   id: string
   impact?: string
   description: string
-  helpUrl: string
+  helpUrl: string // SPEC:axe-core
   wcag?: string[]
   nodes: FormattedAxeNode[]
   nodeCount?: number
@@ -106,12 +106,17 @@ interface FormattedAxeViolation {
 // Formatted axe results
 interface FormattedAxeResults {
   violations: FormattedAxeViolation[]
+  passes?: FormattedAxeViolation[]
+  incomplete?: FormattedAxeViolation[]
+  inapplicable?: FormattedAxeViolation[]
+  // TODO(#276): Unify summary field naming between Go (violation_count) and TS (violations).
   summary: {
     violations: number
     passes: number
     incomplete: number
     inapplicable: number
   }
+  partial?: boolean
   error?: string
 }
 
@@ -126,7 +131,7 @@ interface AxeViolation {
   id: string
   impact?: string
   description: string
-  helpUrl: string
+  helpUrl: string // SPEC:axe-core
   tags?: string[]
   nodes?: AxeNode[]
 }
@@ -367,26 +372,41 @@ export async function runAxeAudit(params: AxeAuditParams): Promise<FormattedAxeR
 }
 
 /**
- * Run axe audit with a timeout
+ * Build an empty partial result with an error message.
+ * Used by timeout and catch paths to avoid duplicated object literals.
+ */
+function emptyPartialResult(errorMessage: string): FormattedAxeResults {
+  return {
+    violations: [],
+    passes: [],
+    incomplete: [],
+    inapplicable: [],
+    summary: { violations: 0, passes: 0, incomplete: 0, inapplicable: 0 },
+    partial: true,
+    error: errorMessage
+  }
+}
+
+/**
+ * Run axe audit with a timeout.
+ * Issue #276: Returns partial results on timeout or conflict instead of throwing.
  */
 export async function runAxeAuditWithTimeout(
   params: AxeAuditParams,
   timeoutMs: number = A11Y_AUDIT_TIMEOUT_MS
 ): Promise<FormattedAxeResults> {
-  return Promise.race([
-    runAxeAudit(params),
-    new Promise<FormattedAxeResults>((resolve) => {
-      setTimeout(
-        () =>
-          resolve({
-            violations: [],
-            summary: { violations: 0, passes: 0, incomplete: 0, inapplicable: 0 },
-            error: 'Accessibility audit timeout'
-          }),
-        timeoutMs
-      )
-    })
-  ])
+  try {
+    return await Promise.race([
+      runAxeAudit(params),
+      new Promise<FormattedAxeResults>((resolve) => {
+        setTimeout(() => resolve(emptyPartialResult('Accessibility audit timed out')), timeoutMs)
+      })
+    ])
+  } catch (err) {
+    // Issue #276: Return partial results with error instead of throwing.
+    // Handles "Axe is already running" and other runtime errors gracefully.
+    return emptyPartialResult(err instanceof Error ? err.message : String(err))
+  }
 }
 
 /**

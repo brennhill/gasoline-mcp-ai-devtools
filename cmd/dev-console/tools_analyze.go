@@ -179,8 +179,18 @@ func (h *ToolHandler) toolQueryDOM(req JSONRPCRequest, args json.RawMessage) JSO
 		}
 	}
 
+	// Issue #274: selector is optional — default to "*" for full DOM dump.
+	queryArgs := args
 	if params.Selector == "" {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrMissingParam, "Required parameter 'selector' is missing", "Add the 'selector' parameter with a CSS selector and call again", withParam("selector"))}
+		var raw map[string]any
+		if json.Unmarshal(args, &raw) != nil || raw == nil {
+			raw = make(map[string]any)
+		}
+		raw["selector"] = "*"
+		// Marshal cannot realistically fail with string/map values; silent fallback is acceptable.
+		if marshaled, err := json.Marshal(raw); err == nil {
+			queryArgs = marshaled
+		}
 	}
 
 	// Generate correlation ID for tracking
@@ -189,13 +199,13 @@ func (h *ToolHandler) toolQueryDOM(req JSONRPCRequest, args json.RawMessage) JSO
 	// Create pending query for DOM query
 	query := queries.PendingQuery{
 		Type:          "dom",
-		Params:        args,
+		Params:        queryArgs,
 		TabID:         params.TabID,
 		CorrelationID: correlationID,
 	}
 	h.capture.CreatePendingQueryWithTimeout(query, queries.AsyncCommandTimeout, req.ClientID)
 
-	return h.MaybeWaitForCommand(req, correlationID, args, "DOM query queued")
+	return h.MaybeWaitForCommand(req, correlationID, queryArgs, "DOM query queued")
 }
 
 const pageSummaryScript = `(function () {
