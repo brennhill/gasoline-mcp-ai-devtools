@@ -81,7 +81,7 @@ func extractErrorCode(t *testing.T, resp JSONRPCResponse) string {
 	if err := json.Unmarshal([]byte(text[idx:]), &se); err != nil {
 		t.Fatalf("unmarshal structured error: %v\nraw: %s", err, text[idx:])
 	}
-	return se.Error
+	return se.ErrorCode
 }
 
 // isSuccessOrQueued returns true if the response is not a structured error.

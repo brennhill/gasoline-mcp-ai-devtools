@@ -150,6 +150,12 @@ func TestContractEnforcement_ErrorsHaveRetryableField(t *testing.T) {
 			if _, exists := data["retryable"]; !exists {
 				t.Errorf("error code %q missing 'retryable' field", tc.code)
 			}
+			if code, _ := data["error_code"].(string); code == "" {
+				t.Errorf("error code %q missing canonical 'error_code' field", tc.code)
+			}
+			if playbook, _ := data["recovery_playbook"].(string); playbook == "" {
+				t.Errorf("error code %q missing canonical 'recovery_playbook' field", tc.code)
+			}
 		})
 	}
 }

@@ -1,0 +1,9 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>example.com/test local</title></head>
+<body>
+  <h1>Local example.com/test</h1>
+  <p>Deterministic local substitute for https://example.com/test.</p>
+  <a href="/example.com/">Back to local example.com</a>
+</body>
+</html>

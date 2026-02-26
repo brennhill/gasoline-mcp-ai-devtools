@@ -85,6 +85,47 @@ func TestToolsObserveDispatch_EmptyArgs(t *testing.T) {
 	}
 }
 
+func TestToolsObserveDispatch_ModeAliasAddsCanonicalWhatWarning(t *testing.T) {
+	t.Parallel()
+	h, _, _ := makeToolHandler(t)
+
+	req := JSONRPCRequest{JSONRPC: "2.0", ID: 1}
+	resp := h.toolObserve(req, json.RawMessage(`{"mode":"pilot"}`))
+	result := parseToolResult(t, resp)
+	if result.IsError {
+		t.Fatalf("mode alias should be accepted, got: %s", result.Content[0].Text)
+	}
+	foundCanonicalWarning := false
+	for _, block := range result.Content {
+		if strings.Contains(block.Text, "canonical parameter is 'what'") {
+			foundCanonicalWarning = true
+			break
+		}
+	}
+	if !foundCanonicalWarning {
+		t.Fatalf("expected canonical what warning block, got %d content blocks", len(result.Content))
+	}
+}
+
+func TestToolsObserveDispatch_ConflictingWhatAndMode(t *testing.T) {
+	t.Parallel()
+	h, _, _ := makeToolHandler(t)
+
+	req := JSONRPCRequest{JSONRPC: "2.0", ID: 1}
+	resp := h.toolObserve(req, json.RawMessage(`{"what":"pilot","mode":"errors"}`))
+	result := parseToolResult(t, resp)
+	if !result.IsError {
+		t.Fatal("conflicting what/mode should return isError:true")
+	}
+	text := result.Content[0].Text
+	if !strings.Contains(text, "invalid_param") {
+		t.Fatalf("expected invalid_param, got: %s", text)
+	}
+	if !strings.Contains(text, "Conflicting parameters") {
+		t.Fatalf("expected conflict explanation, got: %s", text)
+	}
+}
+
 // ============================================
 // observe(what:"errors") — Response Field Tests
 // ============================================
@@ -711,14 +752,14 @@ func TestToolsObserve_StructuredErrorFields(t *testing.T) {
 	if err := json.Unmarshal([]byte(jsonPart), &se); err != nil {
 		t.Fatalf("structured error JSON parse failed: %v\nraw: %s", err, jsonPart)
 	}
-	if se.Error == "" {
-		t.Error("StructuredError.Error should not be empty")
+	if se.ErrorCode == "" {
+		t.Error("StructuredError.ErrorCode should not be empty")
 	}
 	if se.Message == "" {
 		t.Error("StructuredError.Message should not be empty")
 	}
-	if se.Retry == "" {
-		t.Error("StructuredError.Retry should not be empty")
+	if se.RecoveryPlaybook == "" {
+		t.Error("StructuredError.RecoveryPlaybook should not be empty")
 	}
 
 	// Verify JSON fields are snake_case

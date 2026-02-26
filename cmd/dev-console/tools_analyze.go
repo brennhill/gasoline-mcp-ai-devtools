@@ -116,7 +116,9 @@ func getValidAnalyzeModes() string {
 // toolAnalyze dispatches analyze requests based on the 'what' parameter.
 func (h *ToolHandler) toolAnalyze(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	var params struct {
-		What string `json:"what"`
+		What   string `json:"what"`
+		Mode   string `json:"mode"`
+		Action string `json:"action"`
 	}
 	if len(args) > 0 {
 		if err := json.Unmarshal(args, &params); err != nil {
@@ -124,24 +126,41 @@ func (h *ToolHandler) toolAnalyze(req JSONRPCRequest, args json.RawMessage) JSON
 		}
 	}
 
-	if params.What == "" {
+	what := params.What
+	usedAliasParam := ""
+	if what != "" && params.Mode != "" && params.Mode != what {
+		return whatAliasConflictResponse(req, "mode", what, params.Mode, getValidAnalyzeModes())
+	}
+	if what != "" && params.Action != "" && params.Action != what {
+		return whatAliasConflictResponse(req, "action", what, params.Action, getValidAnalyzeModes())
+	}
+	if what == "" {
+		if params.Mode != "" {
+			what = params.Mode
+			usedAliasParam = "mode"
+		} else if params.Action != "" {
+			what = params.Action
+			usedAliasParam = "action"
+		}
+	}
+
+	if what == "" {
 		validModes := getValidAnalyzeModes()
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrMissingParam, "Required parameter 'what' is missing", "Add the 'what' parameter and call again", withParam("what"), withHint("Valid values: "+validModes))}
 	}
 
-	if alias, ok := analyzeAliases[params.What]; ok {
-		params.What = alias
+	if alias, ok := analyzeAliases[what]; ok {
+		what = alias
 	}
 
-	handler, ok := analyzeHandlers[params.What]
+	handler, ok := analyzeHandlers[what]
 	if !ok {
 		validModes := getValidAnalyzeModes()
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrUnknownMode, "Unknown analyze mode: "+params.What, "Use a valid mode from the 'what' enum", withParam("what"), withHint("Valid values: "+validModes))}
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrUnknownMode, "Unknown analyze mode: "+what, "Use a valid mode from the 'what' enum", withParam("what"), withHint("Valid values: "+validModes))}
 	}
 
-	args = h.maybeInjectSummary(args)
-
-	return handler(h, req, args)
+	resp := handler(h, req, args)
+	return appendCanonicalWhatAliasWarning(resp, usedAliasParam, what)
 }
 
 // ============================================

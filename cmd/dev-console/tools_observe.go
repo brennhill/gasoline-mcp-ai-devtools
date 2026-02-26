@@ -126,7 +126,9 @@ func getValidObserveModes() string {
 // toolObserve dispatches observe requests based on the 'what' parameter.
 func (h *ToolHandler) toolObserve(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	var params struct {
-		What string `json:"what"`
+		What   string `json:"what"`
+		Mode   string `json:"mode"`
+		Action string `json:"action"`
 	}
 	if len(args) > 0 {
 		if err := json.Unmarshal(args, &params); err != nil {
@@ -134,19 +136,37 @@ func (h *ToolHandler) toolObserve(req JSONRPCRequest, args json.RawMessage) JSON
 		}
 	}
 
-	if params.What == "" {
+	what := params.What
+	usedAliasParam := ""
+	if what != "" && params.Mode != "" && params.Mode != what {
+		return whatAliasConflictResponse(req, "mode", what, params.Mode, getValidObserveModes())
+	}
+	if what != "" && params.Action != "" && params.Action != what {
+		return whatAliasConflictResponse(req, "action", what, params.Action, getValidObserveModes())
+	}
+	if what == "" {
+		if params.Mode != "" {
+			what = params.Mode
+			usedAliasParam = "mode"
+		} else if params.Action != "" {
+			what = params.Action
+			usedAliasParam = "action"
+		}
+	}
+
+	if what == "" {
 		validModes := getValidObserveModes()
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrMissingParam, "Required parameter 'what' is missing", "Add the 'what' parameter and call again", withParam("what"), withHint("Valid values: "+validModes))}
 	}
 
-	if alias, ok := observeAliases[params.What]; ok {
-		params.What = alias
+	if alias, ok := observeAliases[what]; ok {
+		what = alias
 	}
 
-	handler, ok := observeHandlers[params.What]
+	handler, ok := observeHandlers[what]
 	if !ok {
 		validModes := getValidObserveModes()
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrUnknownMode, "Unknown observe mode: "+params.What, "Use a valid mode from the 'what' enum", withParam("what"), withHint("Valid values: "+validModes))}
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrUnknownMode, "Unknown observe mode: "+what, "Use a valid mode from the 'what' enum", withParam("what"), withHint("Valid values: "+validModes))}
 	}
 
 	args = h.maybeInjectSummary(args)
@@ -154,7 +174,7 @@ func (h *ToolHandler) toolObserve(req JSONRPCRequest, args json.RawMessage) JSON
 	resp := handler(h, req, args)
 
 	// Warn when extension is disconnected (except for server-side modes that don't need it)
-	if !h.capture.IsExtensionConnected() && !serverSideObserveModes[params.What] {
+	if !h.capture.IsExtensionConnected() && !serverSideObserveModes[what] {
 		resp = h.prependDisconnectWarning(resp)
 	}
 
@@ -164,6 +184,7 @@ func (h *ToolHandler) toolObserve(req JSONRPCRequest, args json.RawMessage) JSON
 		resp = h.appendAlertsToResponse(resp, alerts)
 	}
 
+	resp = appendCanonicalWhatAliasWarning(resp, usedAliasParam, what)
 	return resp
 }
 

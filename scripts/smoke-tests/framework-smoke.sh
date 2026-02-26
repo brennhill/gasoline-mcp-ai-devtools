@@ -46,6 +46,7 @@ register_cleanup() {
 
 # Master cleanup: runs all registered handlers, then base cleanup.
 _smoke_master_cleanup() {
+    _smoke_kill_harness 2>/dev/null || true
     for handler in $_smoke_cleanup_handlers; do
         "$handler" 2>/dev/null || true
     done
@@ -65,6 +66,50 @@ SMOKE_OUTPUT_DIR="${HOME}/.gasoline/smoke-results"
 mkdir -p "$SMOKE_OUTPUT_DIR"
 DIAGNOSTICS_FILE="$SMOKE_OUTPUT_DIR/diagnostics.log"
 SMOKE_OUTPUT_FILE="$SMOKE_OUTPUT_DIR/output.log"
+SMOKE_HARNESS_PORT="${SMOKE_HARNESS_PORT:-8787}"
+SMOKE_HARNESS_ROOT="${SMOKE_HARNESS_ROOT:-$SMOKE_FRAMEWORK_DIR/../../tests/pages}"
+SMOKE_HARNESS_PID=""
+SMOKE_BASE_URL="http://127.0.0.1:${SMOKE_HARNESS_PORT}"
+SMOKE_EXAMPLE_URL="${SMOKE_BASE_URL}/example.com"
+SMOKE_INTERACT_URL="${SMOKE_BASE_URL}/interact.html"
+SMOKE_PERFORMANCE_URL="${SMOKE_BASE_URL}/performance.html"
+SMOKE_TELEMETRY_URL="${SMOKE_BASE_URL}/telemetry.html"
+SMOKE_A11Y_URL="${SMOKE_BASE_URL}/a11y.html"
+
+_smoke_kill_harness() {
+    if [ -n "${SMOKE_HARNESS_PID:-}" ]; then
+        kill "$SMOKE_HARNESS_PID" 2>/dev/null || true
+        sleep 0.1
+        kill -0 "$SMOKE_HARNESS_PID" 2>/dev/null && kill -9 "$SMOKE_HARNESS_PID" 2>/dev/null || true
+        SMOKE_HARNESS_PID=""
+    fi
+}
+
+start_local_harness() {
+    _smoke_kill_harness
+    local harness_log="$SMOKE_OUTPUT_DIR/harness.log"
+    python3 "$SMOKE_FRAMEWORK_DIR/harness-server.py" \
+        --root "$SMOKE_HARNESS_ROOT" \
+        --port "$SMOKE_HARNESS_PORT" >"$harness_log" 2>&1 &
+    SMOKE_HARNESS_PID=$!
+
+    local ok=false
+    for _i in $(seq 1 30); do
+        if curl -s --connect-timeout 1 --max-time 2 "${SMOKE_BASE_URL}/healthz" >/dev/null 2>&1; then
+            ok=true
+            break
+        fi
+        sleep 0.2
+    done
+
+    if [ "$ok" != "true" ]; then
+        echo "FATAL: local harness failed to start on ${SMOKE_BASE_URL}" >&2
+        echo "  Harness log: $harness_log" >&2
+        tail -n 20 "$harness_log" >&2 || true
+        return 1
+    fi
+    return 0
+}
 
 wait_for_extension() {
     local timeout_s="${1:-10}"
@@ -91,12 +136,14 @@ init_smoke() {
     echo "Smoke Test Output — $(date)" > "$OUTPUT_FILE"
     echo "Smoke Test Diagnostics — $(date)" > "$DIAGNOSTICS_FILE"
     echo "Port: $port" >> "$DIAGNOSTICS_FILE"
+    echo "Harness: $SMOKE_BASE_URL" >> "$DIAGNOSTICS_FILE"
     echo "======================================" >> "$DIAGNOSTICS_FILE"
 
     # Print file locations and mode upfront so they're always visible
     echo ""
     echo "  Output:      $OUTPUT_FILE"
     echo "  Diagnostics: $DIAGNOSTICS_FILE"
+    echo "  Harness:     $SMOKE_BASE_URL"
     if [ "$_INTERACTIVE" = "true" ]; then
         echo "  Mode:        interactive (pauses between tests)"
     else
@@ -111,6 +158,28 @@ init_smoke() {
     # Trap ERR so crashes under set -e are immediately visible.
     # Logs the failing command, line, and function to both stderr and diagnostics.
     trap '_smoke_on_error $LINENO "${FUNCNAME[0]:-main}" "${BASH_COMMAND}"' ERR
+
+    start_local_harness
+}
+
+rewrite_smoke_urls() {
+    local payload="$1"
+    payload="${payload//https:\/\/example.com/$SMOKE_EXAMPLE_URL}"
+    payload="${payload//http:\/\/example.com/$SMOKE_EXAMPLE_URL}"
+    payload="${payload//https:\/\/www.example.com/$SMOKE_EXAMPLE_URL}"
+    payload="${payload//https:\/\/example.org/${SMOKE_BASE_URL}/example.org}"
+    payload="${payload//http:\/\/example.org/${SMOKE_BASE_URL}/example.org}"
+    echo "$payload"
+}
+
+# Override base framework call_tool so smoke runs stay on local harness pages.
+call_tool() {
+    local tool_name="$1"
+    local arguments="${2:-\{\}}"
+    local rewritten
+    rewritten="$(rewrite_smoke_urls "$arguments")"
+    local request="{\"jsonrpc\":\"2.0\",\"id\":${MCP_ID},\"method\":\"tools/call\",\"params\":{\"name\":\"${tool_name}\",\"arguments\":${rewritten}}}"
+    send_mcp "$request" "call_${tool_name}"
 }
 
 _smoke_on_error() {
