@@ -134,11 +134,11 @@ func TestBuildCapabilitiesMap_NoRequired(t *testing.T) {
 	}
 }
 
-// TestBuildCapabilitiesMap_InferDispatchParamWhenRequiredOmitted exercises the
+// TestBuildCapabilitiesMap_InferDispatchParamFallbackToAnyOf exercises the
 // anyOf fallback path in inferDispatchParam. Real schemas must not use top-level
 // anyOf (see TestAllToolSchemas_NoTopLevelCombiners), but inferDispatchParam
 // supports it defensively for external or legacy schemas.
-func TestBuildCapabilitiesMap_InferDispatchParamWhenRequiredOmitted(t *testing.T) {
+func TestBuildCapabilitiesMap_InferDispatchParamFallbackToAnyOf(t *testing.T) {
 	t.Parallel()
 
 	// Fixture uses anyOf ([]map[string]any form) — not valid in production schemas.
@@ -185,6 +185,15 @@ func TestBuildCapabilitiesMap_InferDispatchParamAnyOfSliceAny(t *testing.T) {
 	t.Parallel()
 
 	// Simulate a schema that arrived via JSON round-trip (anyOf as []any).
+	// The required field is []any (not []string) to mirror json.Unmarshal output.
+	anyOfFixture := []any{
+		map[string]any{"required": []any{"what"}},
+	}
+	// Self-assert: fixture must be []any (not []map[string]any) to test the right branch.
+	if _, isSliceAny := anyOfFixture[0].(map[string]any)["required"].([]any); !isSliceAny {
+		t.Fatal("fixture setup error: required must be []any to exercise the []any branch")
+	}
+
 	tools := []mcp.MCPTool{
 		{
 			Name: "legacy",
@@ -195,10 +204,7 @@ func TestBuildCapabilitiesMap_InferDispatchParamAnyOfSliceAny(t *testing.T) {
 						"enum": []string{"read", "write"},
 					},
 				},
-				// []any mirrors what json.Unmarshal produces for an array of objects.
-				"anyOf": []any{
-					map[string]any{"required": []any{"what"}},
-				},
+				"anyOf": anyOfFixture,
 			},
 		},
 	}

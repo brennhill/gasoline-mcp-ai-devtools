@@ -7,7 +7,7 @@ package schema
 import "github.com/dev-console/dev-console/internal/mcp"
 
 // interactActions is the canonical list of values accepted by the 'what' parameter.
-// The deprecated 'action' alias mirrors this list exactly; update both together.
+// The deprecated 'action' alias references this same slice — do not mutate it at runtime.
 var interactActions = []string{
 	"highlight", "subtitle", "save_state", "state_save", "load_state", "state_load", "list_states", "state_list", "delete_state", "state_delete",
 	"set_storage", "delete_storage", "clear_storage", "set_cookie", "delete_cookie",

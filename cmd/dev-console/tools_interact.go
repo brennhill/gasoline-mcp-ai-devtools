@@ -134,6 +134,8 @@ func (h *ToolHandler) toolInteract(req JSONRPCRequest, args json.RawMessage) JSO
 
 	what := params.What
 	usedAliasParam := ""
+	// Check for conflict before falling back: if both what and action are set but
+	// disagree, that is a caller error — report it before applying the alias fallback.
 	if what != "" && params.Action != "" && params.Action != what {
 		return whatAliasConflictResponse(req, "action", what, params.Action, h.getValidInteractActions())
 	}
@@ -148,7 +150,7 @@ func (h *ToolHandler) toolInteract(req JSONRPCRequest, args json.RawMessage) JSO
 		validActions := h.getValidInteractActions()
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(
 			ErrMissingParam,
-			"Required dispatch parameter is missing: provide 'what' or alias 'action'",
+			"Required dispatch parameter is missing: provide 'what' (or deprecated alias 'action')",
 			"Add 'what' (preferred) or 'action' and call again",
 			withParam("what"),
 			withHint("Valid values: "+validActions),
