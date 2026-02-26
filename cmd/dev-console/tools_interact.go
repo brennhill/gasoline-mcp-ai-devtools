@@ -58,6 +58,7 @@ func (h *ToolHandler) interactDispatch() map[string]interactHandler {
 			"record_stop":               h.handleRecordStop,
 			"upload":                    h.handleUpload,
 			"draw_mode_start":           h.handleDrawModeStart,
+			"hardware_click":            h.handleHardwareClick,
 			"get_readable":              h.handleGetReadable,
 			"get_markdown":              h.handleGetMarkdown,
 			"navigate_and_wait_for":     h.handleNavigateAndWaitFor,
@@ -694,21 +695,28 @@ func normalizeDOMActionArgs(args json.RawMessage, action string) json.RawMessage
 
 func (h *ToolHandler) handleDOMPrimitive(req JSONRPCRequest, args json.RawMessage, action string) JSONRPCResponse {
 	var params struct {
-		Selector      string `json:"selector"`
-		ScopeSelector string `json:"scope_selector,omitempty"`
-		ElementID     string `json:"element_id,omitempty"`
-		Index         *int   `json:"index,omitempty"`
-		Text          string `json:"text,omitempty"`
-		Value         string `json:"value,omitempty"`
-		Clear         bool   `json:"clear,omitempty"`
-		Checked       *bool  `json:"checked,omitempty"`
-		Name          string `json:"name,omitempty"`
-		TimeoutMs     int    `json:"timeout_ms,omitempty"`
-		TabID         int    `json:"tab_id,omitempty"`
-		Analyze       bool   `json:"analyze,omitempty"`
+		Selector      string   `json:"selector"`
+		ScopeSelector string   `json:"scope_selector,omitempty"`
+		ElementID     string   `json:"element_id,omitempty"`
+		Index         *int     `json:"index,omitempty"`
+		Text          string   `json:"text,omitempty"`
+		Value         string   `json:"value,omitempty"`
+		Clear         bool     `json:"clear,omitempty"`
+		Checked       *bool    `json:"checked,omitempty"`
+		Name          string   `json:"name,omitempty"`
+		TimeoutMs     int      `json:"timeout_ms,omitempty"`
+		TabID         int      `json:"tab_id,omitempty"`
+		Analyze       bool     `json:"analyze,omitempty"`
+		X             *float64 `json:"x,omitempty"`
+		Y             *float64 `json:"y,omitempty"`
 	}
 	if err := json.Unmarshal(args, &params); err != nil {
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidJSON, "Invalid JSON arguments: "+err.Error(), "Fix JSON syntax and call again")}
+	}
+
+	// If x/y coordinates provided on a click action, escalate to CDP for hardware-level click
+	if action == "click" && params.X != nil && params.Y != nil {
+		return h.handleCDPClick(req, args, action, *params.X, *params.Y, params.TabID)
 	}
 
 	// Resolve index to selector if index is provided and selector is empty
@@ -751,10 +759,14 @@ func (h *ToolHandler) handleDOMPrimitive(req JSONRPCRequest, args json.RawMessag
 		return errResp
 	}
 
-	if resp, blocked := h.requirePilot(req); blocked {
+	contextOpts := []func(*StructuredError){withAction(action)}
+	if params.Selector != "" {
+		contextOpts = append(contextOpts, withSelector(params.Selector))
+	}
+	if resp, blocked := h.requirePilot(req, contextOpts...); blocked {
 		return resp
 	}
-	if resp, blocked := h.requireExtension(req); blocked {
+	if resp, blocked := h.requireExtension(req, contextOpts...); blocked {
 		return resp
 	}
 
@@ -825,6 +837,59 @@ func validateDOMActionParams(req JSONRPCRequest, action, text, value, name strin
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrMissingParam, rule.Message, rule.Retry, withParam(rule.Field))}, true
 	}
 	return JSONRPCResponse{}, false
+}
+
+// handleHardwareClick dispatches a coordinate-based click via CDP Input.dispatchMouseEvent.
+// This gives LLMs an explicit "I see coordinates in a screenshot, click there" path.
+func (h *ToolHandler) handleHardwareClick(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+	var params struct {
+		X     *float64 `json:"x"`
+		Y     *float64 `json:"y"`
+		TabID int      `json:"tab_id,omitempty"`
+	}
+	if err := json.Unmarshal(args, &params); err != nil {
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidJSON, "Invalid JSON arguments: "+err.Error(), "Fix JSON syntax and call again")}
+	}
+
+	if params.X == nil {
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrMissingParam, "Required parameter 'x' is missing", "Add the 'x' coordinate (pixels from left)", withParam("x"))}
+	}
+	if params.Y == nil {
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrMissingParam, "Required parameter 'y' is missing", "Add the 'y' coordinate (pixels from top)", withParam("y"))}
+	}
+
+	return h.handleCDPClick(req, args, "hardware_click", *params.X, *params.Y, params.TabID)
+}
+
+// handleCDPClick creates a cdp_action query for a hardware-level click at coordinates.
+func (h *ToolHandler) handleCDPClick(req JSONRPCRequest, args json.RawMessage, action string, x, y float64, tabID int) JSONRPCResponse {
+	if resp, blocked := h.requirePilot(req, withAction(action)); blocked {
+		return resp
+	}
+	if resp, blocked := h.requireExtension(req, withAction(action)); blocked {
+		return resp
+	}
+
+	correlationID := newCorrelationID("cdp_click")
+	h.armEvidenceForCommand(correlationID, action, args, req.ClientID)
+
+	cdpParams, _ := json.Marshal(map[string]any{
+		"action": "click",
+		"x":      x,
+		"y":      y,
+	})
+
+	query := queries.PendingQuery{
+		Type:          "cdp_action",
+		Params:        cdpParams,
+		TabID:         tabID,
+		CorrelationID: correlationID,
+	}
+	h.capture.CreatePendingQueryWithTimeout(query, queries.AsyncCommandTimeout, req.ClientID)
+
+	h.recordAIAction(action, "", map[string]any{"x": x, "y": y, "method": "cdp"})
+
+	return h.MaybeWaitForCommand(req, correlationID, args, action+" queued")
 }
 
 func (h *ToolHandler) handleSubtitle(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {

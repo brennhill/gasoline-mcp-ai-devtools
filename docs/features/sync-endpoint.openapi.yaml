@@ -9,7 +9,7 @@ info:
   version: 1.0.0
   contact:
     name: Gasoline
-    url: https://github.com/anthropics/gasoline
+    url: https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp
 
 servers:
   - url: http://localhost:9331

@@ -33,8 +33,8 @@
     },
     {
       "id": "site-audit",
-      "version": 1,
-      "description": "Map a site and produce an issue inventory by combining crawl coverage with logs, network failures, and UX evidence."
+      "version": 2,
+      "description": "Perform a comprehensive logged-in site/product audit with menu mapping, page and feature breakdowns, usability findings, and reproducibility notes."
     },
     {
       "id": "demo",

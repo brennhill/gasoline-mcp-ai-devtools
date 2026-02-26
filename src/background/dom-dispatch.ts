@@ -17,6 +17,7 @@ import type { DOMActionParams, DOMResult } from './dom-types'
 import { domFrameProbe } from './dom-frame-probe'
 import { domPrimitive } from './dom-primitives'
 import { domPrimitiveListInteractive } from './dom-primitives-list-interactive'
+import { isCDPEscalatable, tryCDPEscalation } from './cdp-dispatch'
 
 type SendAsyncResult = (
   syncClient: SyncClient,
@@ -435,6 +436,38 @@ export async function executeDOMAction(
     const executionTarget = await resolveExecutionTarget(tabId, params.frame)
     const tryingShownAt = Date.now()
     if (!readOnly) actionToast(tabId, toastLabel, toastDetail, 'trying', 10000)
+
+    // CDP auto-escalation: try hardware events first for click/type/key_press (main frame only).
+    // Falls back to DOM primitives silently if CDP is unavailable or fails.
+    if (isCDPEscalatable(action) && !params.frame) {
+      try {
+        const cdpResult = await tryCDPEscalation(tabId, action, params)
+        if (cdpResult) {
+          const { result: reconciledResult, status, error } = deriveAsyncStatusFromDOMResult(
+            action,
+            selector || '',
+            cdpResult
+          )
+          const domResult = toDOMResult(reconciledResult)
+          if (domResult) {
+            sendToastForResult(tabId, false, domResult, actionToast, toastLabel, toastDetail)
+          } else {
+            actionToast(tabId, toastLabel, toastDetail, 'success')
+          }
+          sendAsyncResult(
+            syncClient,
+            query.id,
+            query.correlation_id!,
+            status,
+            await enrichWithEffectiveContext(tabId, reconciledResult),
+            error
+          )
+          return
+        }
+      } catch {
+        // CDP failed — fall through to DOM primitives
+      }
+    }
 
     const rawResult =
       action === 'list_interactive'

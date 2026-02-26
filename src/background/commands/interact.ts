@@ -14,6 +14,7 @@ import type { PendingQuery } from '../../types'
 import type { SyncClient } from '../sync-client'
 import { isAiWebPilotEnabled } from '../state'
 import { executeDOMAction } from '../dom-dispatch'
+import { executeCDPAction } from '../cdp-dispatch'
 import { executeUpload } from '../upload-handler'
 import { startRecording, stopRecording } from '../recording'
 import { executeWithWorldRouting } from '../query-execution'
@@ -113,6 +114,18 @@ registerCommand('dom_action', async (ctx) => {
     return
   }
   await executeDOMAction(ctx.query, ctx.tabId, ctx.syncClient, ctx.sendAsyncResult, ctx.actionToast)
+})
+
+// =============================================================================
+// CDP ACTION
+// =============================================================================
+
+registerCommand('cdp_action', async (ctx) => {
+  if (!isAiWebPilotEnabled()) {
+    ctx.sendAsyncResult(ctx.syncClient, ctx.query.id, ctx.query.correlation_id!, 'error', null, 'ai_web_pilot_disabled')
+    return
+  }
+  await executeCDPAction(ctx.query, ctx.tabId, ctx.syncClient, ctx.sendAsyncResult, ctx.actionToast)
 })
 
 // =============================================================================

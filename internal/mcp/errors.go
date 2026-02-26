@@ -51,6 +51,8 @@ type StructuredError struct {
 	Final        bool   `json:"final,omitempty"`
 	Param        string `json:"param,omitempty"`
 	Hint         string `json:"hint,omitempty"`
+	Action       string `json:"action,omitempty"`
+	Selector     string `json:"selector,omitempty"`
 }
 
 // StructuredErrorResponse constructs an MCP error response. Format:
@@ -92,6 +94,16 @@ func WithParam(p string) func(*StructuredError) {
 // WithHint is an option function to add hint field to StructuredError.
 func WithHint(h string) func(*StructuredError) {
 	return func(se *StructuredError) { se.Hint = h }
+}
+
+// WithAction sets the action that triggered the error.
+func WithAction(a string) func(*StructuredError) {
+	return func(se *StructuredError) { se.Action = a }
+}
+
+// WithSelector sets the selector that was being targeted when the error occurred.
+func WithSelector(s string) func(*StructuredError) {
+	return func(se *StructuredError) { se.Selector = s }
 }
 
 // WithRetryable marks whether the error is retryable by the LLM.

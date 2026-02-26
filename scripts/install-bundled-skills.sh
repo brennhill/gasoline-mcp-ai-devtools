@@ -9,7 +9,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
-SKILLS_SRC_DIR="${GASOLINE_BUNDLED_SKILLS_DIR:-$PROJECT_ROOT/npm/gasoline-mcp/skills}"
+SKILLS_SRC_DIR="${GASOLINE_BUNDLED_SKILLS_DIR:-$PROJECT_ROOT/npm/gasoline-agentic-browser/skills}"
 MARKER="<!-- gasoline-managed-skill"
 
 SCOPE="${GASOLINE_SKILL_SCOPE:-global}"

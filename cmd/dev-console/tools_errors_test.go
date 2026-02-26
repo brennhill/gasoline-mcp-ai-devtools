@@ -151,4 +151,46 @@ func TestStructuredError_ErrorCodes_RetryableDefaults(t *testing.T) {
 	}
 }
 
+// ============================================
+// Action/Selector Context Tests
+// ============================================
+
+func TestStructuredError_ActionAndSelector_OmittedWhenEmpty(t *testing.T) {
+	t.Parallel()
+
+	result := mcpStructuredError(
+		ErrExtTimeout, "Extension timed out", "Retry the command",
+	)
+
+	se := extractStructuredErrorJSON(t, result)
+
+	if _, exists := se["action"]; exists {
+		t.Error("action should be omitted when not set")
+	}
+	if _, exists := se["selector"]; exists {
+		t.Error("selector should be omitted when not set")
+	}
+}
+
+func TestStructuredError_ActionAndSelector_PresentWhenSet(t *testing.T) {
+	t.Parallel()
+
+	result := mcpStructuredError(
+		ErrNoData, "Extension not connected", "Check extension",
+		withAction("click"), withSelector("#submit-btn"),
+	)
+
+	se := extractStructuredErrorJSON(t, result)
+
+	action, ok := se["action"].(string)
+	if !ok || action != "click" {
+		t.Errorf("action = %v, want 'click'", se["action"])
+	}
+
+	selector, ok := se["selector"].(string)
+	if !ok || selector != "#submit-btn" {
+		t.Errorf("selector = %v, want '#submit-btn'", se["selector"])
+	}
+}
+
 // Helpers: extractStructuredErrorJSON and extractJSONFromText are in tools_test_helpers_test.go.

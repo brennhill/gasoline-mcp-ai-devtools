@@ -2695,7 +2695,7 @@ function installGasolineAPI() {
     /**
      * Version of the Gasoline API
      */
-    version: "0.7.8"
+    version: "0.7.9"
   };
 }
 function uninstallGasolineAPI() {
