@@ -477,8 +477,9 @@ func TestRequireTabTracking_RecoveryToolCall(t *testing.T) {
 	if args["what"] != "navigate" {
 		t.Fatalf("expected arguments.what='navigate', got %v", args["what"])
 	}
-	if args["url"] != "about:blank" {
-		t.Fatalf("expected arguments.url='about:blank', got %v", args["url"])
+	// url is intentionally omitted so the LLM fills in the actual target URL.
+	if _, hasURL := args["url"]; hasURL {
+		t.Fatalf("expected no 'url' key in recovery arguments (LLM should fill it), got %v", args["url"])
 	}
 }
 
@@ -517,6 +518,24 @@ func TestClick_NoTabTracking_FastFail(t *testing.T) {
 	code := extractErrorCode(t, resp)
 	if code != ErrNoData {
 		t.Fatalf("expected %q error for click without tab tracking, got %q", ErrNoData, code)
+	}
+}
+
+func TestSwitchTab_NoTabTracking_NotBlocked(t *testing.T) {
+	t.Parallel()
+	env := newGateTestEnv(t)
+	env.enablePilot(t)
+	env.simulateConnection(t)
+	// No tab tracking — switch_tab should NOT be blocked because it IS how
+	// you establish tracking for an existing tab (P1-2 fix).
+
+	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`)}
+	args := json.RawMessage(`{"what":"switch_tab","tab_id":42,"sync":false}`)
+	resp := env.handler.handleBrowserActionSwitchTab(req, args)
+
+	// switch_tab should succeed (queued) even without tab tracking.
+	if !isSuccessOrQueued(t, resp) {
+		t.Fatal("expected switch_tab to succeed without tab tracking gate, got error")
 	}
 }
 
@@ -591,12 +610,13 @@ func TestGateOrder_Extension_BeforeTabTracking(t *testing.T) {
 
 	code := extractErrorCode(t, resp)
 	if code != ErrNoData {
-		// Both extension disconnect and tab tracking return ErrNoData,
-		// but extension gate should fire first. Check the message.
-		se := extractStructuredError(t, resp)
-		if !strings.Contains(se.Message, "Extension") {
-			t.Fatalf("expected extension gate to fire before tab tracking, got: %s", se.Message)
-		}
+		t.Fatalf("expected error code %q, got %q", ErrNoData, code)
+	}
+	// Both extension disconnect and tab tracking return ErrNoData,
+	// but extension gate should fire first. Verify via message.
+	se := extractStructuredError(t, resp)
+	if !strings.Contains(se.Message, "Extension") {
+		t.Fatalf("expected extension gate to fire before tab tracking, got: %s", se.Message)
 	}
 }
 

@@ -20,6 +20,7 @@ type WorkflowStep = act.WorkflowStep
 
 // handleNavigateAndWaitFor navigates to a URL, waits for a CSS selector to appear,
 // and optionally returns page content — all in one call.
+// Gates (requirePilot, requireExtension, requireTabTracking) are applied by the delegated handlers.
 func (h *ToolHandler) handleNavigateAndWaitFor(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	var params struct {
 		URL            string `json:"url"`
@@ -104,6 +105,7 @@ func (h *ToolHandler) handleNavigateAndWaitFor(req JSONRPCRequest, args json.Raw
 type FormField = act.FormField
 
 // handleFillFormAndSubmit fills multiple form fields and clicks a submit button.
+// Gates (requirePilot, requireExtension, requireTabTracking) are applied by the delegated handlers.
 func (h *ToolHandler) handleFillFormAndSubmit(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	var params struct {
 		Fields         []FormField `json:"fields"`
@@ -219,6 +221,7 @@ func (h *ToolHandler) handleFillFormAndSubmit(req JSONRPCRequest, args json.RawM
 }
 
 // handleFillForm fills multiple form fields without submitting.
+// Gates (requirePilot, requireExtension, requireTabTracking) are applied by the delegated handlers.
 func (h *ToolHandler) handleFillForm(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	var params struct {
 		Fields    []FormField `json:"fields"`
@@ -313,6 +316,7 @@ func (h *ToolHandler) handleFillForm(req JSONRPCRequest, args json.RawMessage) J
 }
 
 // handleRunA11yAndExportSARIF runs accessibility audit then exports SARIF in one call.
+// Gates (requirePilot, requireExtension, requireTabTracking) are applied by the delegated handlers.
 func (h *ToolHandler) handleRunA11yAndExportSARIF(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	var params struct {
 		Scope  string `json:"scope,omitempty"`

@@ -206,6 +206,8 @@ func (h *ToolHandler) requireCSPClear(req JSONRPCRequest, world string) (JSONRPC
 	if !restricted {
 		return JSONRPCResponse{}, false
 	}
+	// Recovery template: LLM should re-send its original call with world='auto'.
+	// The 'script' param is intentionally omitted — the LLM fills it from its original call.
 	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(
 		ErrExtError,
 		fmt.Sprintf("Page CSP blocks MAIN world script execution (level: %s). Use world='auto' or world='isolated' to bypass.", level),
