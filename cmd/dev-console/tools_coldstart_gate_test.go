@@ -87,23 +87,27 @@ func TestRequireExtension_AlreadyConnected_NoWait(t *testing.T) {
 }
 
 // ============================================
-// MaybeWaitForCommand cold-start gate
+// MaybeWaitForCommand — instant extension check (P1-2: no double wait)
 // ============================================
 
-func TestMaybeWaitForCommand_ColdStart_WaitsForConnection(t *testing.T) {
+// After P1-2, MaybeWaitForCommand does an instant IsExtensionConnected() check
+// instead of a blocking WaitForExtensionConnected. The cold-start gate is only
+// in requireExtension, which runs before MaybeWaitForCommand in every handler.
+
+func TestMaybeWaitForCommand_ExtensionConnected_WaitsForResult(t *testing.T) {
 	t.Parallel()
 
 	cap := capture.NewCapture()
 	handler := &ToolHandler{capture: cap, coldStartTimeout: 500 * time.Millisecond}
-	correlationID := "test-coldstart-123"
-	cap.RegisterCommand(correlationID, "q-coldstart-123", 15*time.Second)
+	correlationID := "test-connected-result"
+	cap.RegisterCommand(correlationID, "q-connected-result", 15*time.Second)
 
-	// Simulate extension connecting after 100ms, then complete the command
+	// Extension is already connected (requireExtension would have passed)
+	cap.SimulateExtensionConnectForTest()
+
+	// Complete the command after 100ms
 	go func() {
 		time.Sleep(100 * time.Millisecond)
-		cap.SimulateExtensionConnectForTest()
-
-		time.Sleep(50 * time.Millisecond)
 		cap.CompleteCommand(correlationID, json.RawMessage(`{"success":true}`), "")
 	}()
 
@@ -116,35 +120,35 @@ func TestMaybeWaitForCommand_ColdStart_WaitsForConnection(t *testing.T) {
 	if result["status"] != "complete" {
 		t.Errorf("expected status complete, got %v", result["status"])
 	}
-	if elapsed < 100*time.Millisecond {
-		t.Fatalf("expected some wait, got %v", elapsed)
+	if elapsed < 50*time.Millisecond {
+		t.Fatalf("expected some wait for command completion, got %v", elapsed)
 	}
 	if elapsed > 2*time.Second {
-		t.Fatalf("took too long: %v (connection at 100ms, result at 150ms)", elapsed)
+		t.Fatalf("took too long: %v (result at 100ms)", elapsed)
 	}
 }
 
-func TestMaybeWaitForCommand_ColdStart_TimesOut(t *testing.T) {
+func TestMaybeWaitForCommand_ExtensionNotConnected_InstantError(t *testing.T) {
 	t.Parallel()
 
 	cap := capture.NewCapture()
 	handler := &ToolHandler{capture: cap, coldStartTimeout: 200 * time.Millisecond}
-	correlationID := "test-coldstart-timeout"
-	cap.RegisterCommand(correlationID, "q-coldstart-timeout", 15*time.Second)
+	correlationID := "test-instant-fail"
+	cap.RegisterCommand(correlationID, "q-instant-fail", 15*time.Second)
 
-	// Extension never connects
+	// Extension NOT connected — MaybeWaitForCommand does instant check (no blocking wait)
 	req := JSONRPCRequest{ID: 1, ClientID: "test-client"}
 	start := time.Now()
 	resp := handler.MaybeWaitForCommand(req, correlationID, json.RawMessage(`{}`), "Queued")
 	elapsed := time.Since(start)
 
-	// Should get no_data error after cold-start timeout
+	// Should get instant no_data error (no blocking wait)
 	se := extractStructuredErrorJSON(t, resp.Result)
 	if se["error_code"] != ErrNoData {
 		t.Errorf("expected error code %q, got %v", ErrNoData, se["error_code"])
 	}
-	if elapsed < 150*time.Millisecond {
-		t.Fatalf("should have waited near timeout, only waited %v", elapsed)
+	if elapsed > 100*time.Millisecond {
+		t.Fatalf("should be instant (no blocking wait), took %v", elapsed)
 	}
 }
 

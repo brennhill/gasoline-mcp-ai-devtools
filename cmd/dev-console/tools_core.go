@@ -19,10 +19,12 @@ import (
 	"github.com/dev-console/dev-console/internal/streaming"
 )
 
-// defaultColdStartTimeout is how long requireExtension and MaybeWaitForCommand
-// wait for the extension to connect during a cold start before returning an error.
+// defaultColdStartTimeout is how long requireExtension waits for the extension
+// to connect during a cold start before returning an error.
 // This eliminates "no_data" failures when the LLM sends a command before the
 // extension's first /sync heartbeat arrives.
+// Note: MaybeWaitForCommand does only an instant IsExtensionConnected() check;
+// the blocking wait is exclusively in requireExtension (P1-2: no double wait).
 const defaultColdStartTimeout = 5 * time.Second
 
 // ============================================
@@ -155,8 +157,9 @@ type ToolHandler struct {
 	// Upload security config (folder-scoped permissions + denylist)
 	uploadSecurity *UploadSecurity
 
-	// Cold-start readiness gate timeout: how long requireExtension and
-	// MaybeWaitForCommand wait for the extension to connect before failing.
+	// Cold-start readiness gate timeout: how long requireExtension waits
+	// for the extension to connect before failing. MaybeWaitForCommand only
+	// does an instant check (P1-2: no double wait).
 	// Default: 5s. Set to 0 in tests to restore instant-fail behavior.
 	coldStartTimeout time.Duration
 
