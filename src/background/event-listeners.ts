@@ -464,6 +464,7 @@ export interface TrackedTabInfo {
   trackedTabUrl: string | null
   trackedTabTitle: string | null
   tabStatus: 'loading' | 'complete' | null
+  trackedTabActive: boolean | null
 }
 
 /**
@@ -471,7 +472,7 @@ export interface TrackedTabInfo {
  */
 export async function getTrackedTabInfo(): Promise<TrackedTabInfo> {
   if (typeof chrome === 'undefined' || !chrome.storage) {
-    return { trackedTabId: null, trackedTabUrl: null, trackedTabTitle: null, tabStatus: null }
+    return { trackedTabId: null, trackedTabUrl: null, trackedTabTitle: null, tabStatus: null, trackedTabActive: null }
   }
 
   const result = (await chrome.storage.local.get([
@@ -482,6 +483,7 @@ export async function getTrackedTabInfo(): Promise<TrackedTabInfo> {
 
   const tabId = result.trackedTabId || null
   let tabStatus: 'loading' | 'complete' | null = null
+  let trackedTabActive: boolean | null = null
 
   // Query Chrome tab API for live tab status if we have a tracked tab
   if (tabId && typeof chrome !== 'undefined' && chrome.tabs) {
@@ -490,6 +492,7 @@ export async function getTrackedTabInfo(): Promise<TrackedTabInfo> {
       if (tab.status === 'loading' || tab.status === 'complete') {
         tabStatus = tab.status
       }
+      trackedTabActive = !!tab.active
     } catch {
       // Tab may have been closed — tabStatus stays null
     }
@@ -499,7 +502,8 @@ export async function getTrackedTabInfo(): Promise<TrackedTabInfo> {
     trackedTabId: tabId,
     trackedTabUrl: result.trackedTabUrl || null,
     trackedTabTitle: result.trackedTabTitle || null,
-    tabStatus
+    tabStatus,
+    trackedTabActive
   }
 }
 

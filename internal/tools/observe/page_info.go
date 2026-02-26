@@ -43,6 +43,9 @@ func GetPageInfo(deps Deps, req mcp.JSONRPCRequest, _ json.RawMessage) mcp.JSONR
 	//   4. tabStatus=="complete" — the tracked tab has finished loading
 	pageReady := extensionConnected && pilotEnabled && enabled && tabStatus == "complete"
 
+	// Tab focus state: is the tracked tab the active (foreground) tab?
+	tabActive, tabActiveKnown := cap.IsTrackedTabActive()
+
 	result := map[string]any{
 		"url":                     pageURL,
 		"title":                   pageTitle,
@@ -55,6 +58,9 @@ func GetPageInfo(deps Deps, req mcp.JSONRPCRequest, _ json.RawMessage) mcp.JSONR
 	}
 	if tabID > 0 {
 		result["tab_id"] = tabID
+	}
+	if tabActiveKnown {
+		result["is_active"] = tabActive
 	}
 
 	return mcp.JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcp.JSONResponse("Page info", result)}
