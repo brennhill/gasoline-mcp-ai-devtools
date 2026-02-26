@@ -190,6 +190,10 @@ type ToolHandler struct {
 	summaryPrefMu    sync.RWMutex
 	summaryPrefValue bool
 	summaryPrefReady bool
+
+	// extensionReadinessTimeout overrides the cold-start wait duration for requireExtension.
+	// Zero uses capture.ExtensionReadinessTimeout (5s). Tests set this to 100ms.
+	extensionReadinessTimeout time.Duration
 }
 
 // GetCapture returns the capture instance

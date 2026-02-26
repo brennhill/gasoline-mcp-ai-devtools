@@ -39,6 +39,14 @@ const (
 
 )
 
+// ExtensionReadinessTimeout is how long requireExtension will wait for a cold-start
+// connection before returning no_data. Tests override this via ToolHandler.extensionReadinessTimeout.
+const ExtensionReadinessTimeout = 5 * time.Second
+
+// extensionReadinessPollInterval is the server-side connection check cadence.
+// Faster than the extension's idle heartbeat (1s) to detect connection promptly.
+const extensionReadinessPollInterval = 200 * time.Millisecond
+
 var (
 	// extensionDisconnectThreshold is how long since last /sync before
 	// the extension is considered disconnected. Pending queries are auto-expired

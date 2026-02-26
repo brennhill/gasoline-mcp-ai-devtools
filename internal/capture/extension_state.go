@@ -4,7 +4,10 @@
 
 package capture
 
-import "time"
+import (
+	"context"
+	"time"
+)
 
 const (
 	PilotStateAssumedEnabled    = "assumed_enabled"
@@ -114,6 +117,31 @@ func (c *Capture) IsPilotExplicitlyDisabled() bool {
 	defer c.mu.RUnlock()
 	snap := pilotStatusSnapshotFromExtensionState(c.ext)
 	return snap.State == PilotStateExplicitlyDisable
+}
+
+// WaitForExtensionConnected polls until the extension connects, the timeout elapses,
+// or ctx is cancelled. Returns true if connected within the window, false otherwise.
+// A zero or negative timeout returns false immediately (no polling).
+// Poll interval is extensionReadinessPollInterval (200ms). ctx cancellation is
+// honoured between polls.
+func (c *Capture) WaitForExtensionConnected(ctx context.Context, timeout time.Duration) bool {
+	if c.IsExtensionConnected() {
+		return true
+	}
+	ctx, cancel := context.WithTimeout(ctx, timeout)
+	defer cancel()
+	ticker := time.NewTicker(extensionReadinessPollInterval)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return false
+		case <-ticker.C:
+			if c.IsExtensionConnected() {
+				return true
+			}
+		}
+	}
 }
 
 // IsExtensionConnected returns true if the extension has synced within the
