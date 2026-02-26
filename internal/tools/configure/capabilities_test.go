@@ -139,8 +139,8 @@ func TestBuildCapabilitiesMap_IncludesModeParamsAndTypeMetadata(t *testing.T) {
 
 	tools := []mcp.MCPTool{
 		{
-			Name:        "observe",
-			Description: "Observe browser state",
+			Name:        "test_tool",
+			Description: "Test tool for metadata",
 			InputSchema: map[string]any{
 				"properties": map[string]any{
 					"what": map[string]any{
@@ -161,16 +161,16 @@ func TestBuildCapabilitiesMap_IncludesModeParamsAndTypeMetadata(t *testing.T) {
 	}
 
 	result := BuildCapabilitiesMap(tools)
-	observeRaw, ok := result["observe"]
+	toolRaw, ok := result["test_tool"]
 	if !ok {
-		t.Fatal("expected observe tool in result")
+		t.Fatal("expected test_tool in result")
 	}
-	observe, ok := observeRaw.(map[string]any)
+	toolMap, ok := toolRaw.(map[string]any)
 	if !ok {
-		t.Fatalf("observe type = %T, want map[string]any", observeRaw)
+		t.Fatalf("test_tool type = %T, want map[string]any", toolRaw)
 	}
 
-	modeParamsRaw, ok := observe["mode_params"]
+	modeParamsRaw, ok := toolMap["mode_params"]
 	if !ok {
 		t.Fatal("expected mode_params in capabilities")
 	}

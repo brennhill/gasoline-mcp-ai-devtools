@@ -685,7 +685,7 @@
   },
   {
     "name": "configure",
-    "description": "Session settings and utilities.\n\nKey actions: health (check server/extension status), clear (reset buffers), noise_rule (suppress recurring console noise), store/load (persist/retrieve session data), tutorial/examples (quick snippets + context-aware guidance), streaming (enable push notifications), recording_start/recording_stop (capture browser sessions), playback (replay recordings), log_diff (compare error states), security_mode (opt-in altered-environment debug mode), restart (force-restart daemon when unresponsive).\n\nMacro sequences: save_sequence/replay_sequence/get_sequence/list_sequences/delete_sequence — save named interact action sequences and replay them in a single call.",
+    "description": "Session settings and utilities.\n\nKey actions: health (check server/extension status), clear (reset buffers), noise_rule (suppress recurring console noise), store/load (persist/retrieve session data), tutorial/examples (quick snippets + context-aware guidance), streaming (enable push notifications), recording_start/recording_stop (capture browser sessions), playback (replay recordings), log_diff (compare error states), security_mode (opt-in altered-environment debug mode), restart (force-restart daemon when unresponsive).\n\nMacro sequences: save_sequence/replay_sequence/get_sequence/list_sequences/delete_sequence — save named interact action sequences and replay them in a single call.\n\nDiscovery: describe_capabilities — list available modes and per-mode parameters for any tool. Filter with tool and mode params, e.g. configure(what:'describe_capabilities', tool:'observe', mode:'errors') returns only the params relevant to that mode.",
     "inputSchema": {
       "properties": {
         "action": {
@@ -981,6 +981,10 @@
           "minimum": 1,
           "type": "integer"
         },
+        "tool": {
+          "description": "Filter describe_capabilities to a single tool by name (e.g. 'observe', 'interact')",
+          "type": "string"
+        },
         "tool_name": {
           "description": "Filter by tool name",
           "type": "string"
@@ -1046,7 +1050,7 @@
   },
   {
     "name": "interact",
-    "description": "Browser actions. Requires AI Web Pilot.\n\nSynchronous Mode (Default): Tools now block until the extension returns a result (up to 15s). Set background:true to return immediately with a correlation_id.\n\nSelectors: CSS or semantic (text=Submit, role=button, placeholder=Email, label=Name, aria-label=Close). subtitle param composable with any action. analyze=true captures perf_diff. navigate/refresh auto-include perf_diff.\n\nDraw Mode: draw_mode_start activates annotation overlay — user draws rectangles and types feedback, presses ESC to finish. Use analyze({what:'annotations'}) to retrieve results.\n\nCompatibility: action='screenshot' is a backward-compatible alias for observe({what:'screenshot'}).",
+    "description": "Browser actions. Requires AI Web Pilot.\n\nSynchronous Mode (Default): Tools now block until the extension returns a result (up to 15s). Set background:true to return immediately with a correlation_id.\n\nSelectors: CSS or semantic (text=Submit, role=button, placeholder=Email, label=Name, aria-label=Close). subtitle param composable with any action. analyze=true captures perf_diff. navigate/refresh auto-include perf_diff.\n\nHardware Input: click/type/key_press auto-escalate to Chrome DevTools Protocol (CDP) for isTrusted:true events. Falls back to DOM primitives if CDP is unavailable. hardware_click accepts x/y coordinates for direct coordinate-based clicking.\n\nDraw Mode: draw_mode_start activates annotation overlay — user draws rectangles and types feedback, presses ESC to finish. Use analyze({what:'annotations'}) to retrieve results.\n\nCompatibility: action='screenshot' is a backward-compatible alias for observe({what:'screenshot'}).",
     "inputSchema": {
       "properties": {
         "action": {
@@ -1103,7 +1107,8 @@
             "record_start",
             "record_stop",
             "upload",
-            "draw_mode_start"
+            "draw_mode_start",
+            "hardware_click"
           ],
           "type": "string"
         },
@@ -1387,7 +1392,8 @@
             "record_start",
             "record_stop",
             "upload",
-            "draw_mode_start"
+            "draw_mode_start",
+            "hardware_click"
           ],
           "type": "string"
         },
@@ -1399,6 +1405,14 @@
             "isolated"
           ],
           "type": "string"
+        },
+        "x": {
+          "description": "X coordinate in pixels from left (hardware_click, or click with x/y for CDP escalation)",
+          "type": "number"
+        },
+        "y": {
+          "description": "Y coordinate in pixels from top (hardware_click, or click with x/y for CDP escalation)",
+          "type": "number"
         }
       },
       "required": [
