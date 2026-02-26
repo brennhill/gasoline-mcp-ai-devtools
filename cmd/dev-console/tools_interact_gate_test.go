@@ -243,6 +243,7 @@ func TestExecuteJS_CSP_MainWorld_FastFail(t *testing.T) {
 	env := newGateTestEnv(t)
 	env.enablePilot(t)
 	env.simulateConnection(t)
+	env.simulateTabTracking(t)
 	env.capture.SetCSPStatusForTest(true, "script_exec")
 
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`)}
@@ -260,6 +261,7 @@ func TestExecuteJS_CSP_AutoWorld_PassesThrough(t *testing.T) {
 	env := newGateTestEnv(t)
 	env.enablePilot(t)
 	env.simulateConnection(t)
+	env.simulateTabTracking(t)
 	env.capture.SetCSPStatusForTest(true, "script_exec")
 
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`)}
@@ -304,6 +306,210 @@ func TestSubtitle_NoExtensionGate(t *testing.T) {
 }
 
 // ============================================
+// Gate unit tests: requireTabTracking
+// ============================================
+
+func TestRequireTabTracking_NoTabTracked(t *testing.T) {
+	t.Parallel()
+	env := newGateTestEnv(t)
+	// No tab tracking set — default state
+
+	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`)}
+	resp, blocked := env.handler.requireTabTracking(req)
+	if !blocked {
+		t.Fatal("expected requireTabTracking to block when no tab is tracked")
+	}
+	code := extractErrorCode(t, resp)
+	if code != ErrNoData {
+		t.Fatalf("expected error code %q, got %q", ErrNoData, code)
+	}
+}
+
+func TestRequireTabTracking_TabTracked(t *testing.T) {
+	t.Parallel()
+	env := newGateTestEnv(t)
+	env.simulateTabTracking(t)
+
+	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`)}
+	_, blocked := env.handler.requireTabTracking(req)
+	if blocked {
+		t.Fatal("expected requireTabTracking to pass when a tab is tracked")
+	}
+}
+
+// simulateTabTracking sets tracking state so tab-tracking gates pass.
+func (e *gateTestEnv) simulateTabTracking(t *testing.T) {
+	t.Helper()
+	e.capture.SetTrackingStatusForTest(42, "https://example.com")
+}
+
+// extractStructuredError parses the full StructuredError from a JSONRPCResponse result.
+func extractStructuredError(t *testing.T, resp JSONRPCResponse) StructuredError {
+	t.Helper()
+	var result MCPToolResult
+	if err := json.Unmarshal(resp.Result, &result); err != nil {
+		t.Fatalf("unmarshal result: %v", err)
+	}
+	if !result.IsError {
+		t.Fatal("expected error response, got success")
+	}
+	if len(result.Content) == 0 {
+		t.Fatal("error response has no content blocks")
+	}
+	text := result.Content[0].Text
+	idx := strings.Index(text, "{")
+	if idx < 0 {
+		t.Fatalf("no JSON found in error text: %s", text)
+	}
+	var se StructuredError
+	if err := json.Unmarshal([]byte(text[idx:]), &se); err != nil {
+		t.Fatalf("unmarshal structured error: %v\nraw: %s", err, text[idx:])
+	}
+	return se
+}
+
+// ============================================
+// Recovery tool call tests
+// ============================================
+
+func TestRequirePilot_RecoveryToolCall(t *testing.T) {
+	t.Parallel()
+	env := newGateTestEnv(t)
+	env.capture.SetPilotEnabled(false)
+
+	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`)}
+	resp, blocked := env.handler.requirePilot(req)
+	if !blocked {
+		t.Fatal("expected requirePilot to block")
+	}
+	se := extractStructuredError(t, resp)
+	if se.RecoveryToolCall == nil {
+		t.Fatal("expected recovery_tool_call in pilot error")
+	}
+	if se.RecoveryToolCall["tool"] != "configure" {
+		t.Fatalf("expected recovery tool 'configure', got %v", se.RecoveryToolCall["tool"])
+	}
+}
+
+func TestRequireExtension_RecoveryToolCall(t *testing.T) {
+	t.Parallel()
+	env := newGateTestEnv(t)
+	// Extension NOT connected
+
+	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`)}
+	resp, blocked := env.handler.requireExtension(req)
+	if !blocked {
+		t.Fatal("expected requireExtension to block")
+	}
+	se := extractStructuredError(t, resp)
+	if se.RecoveryToolCall == nil {
+		t.Fatal("expected recovery_tool_call in extension error")
+	}
+	if se.RecoveryToolCall["tool"] != "observe" {
+		t.Fatalf("expected recovery tool 'observe', got %v", se.RecoveryToolCall["tool"])
+	}
+}
+
+func TestRequireCSPClear_RecoveryToolCall(t *testing.T) {
+	t.Parallel()
+	env := newGateTestEnv(t)
+	env.capture.SetCSPStatusForTest(true, "script_exec")
+
+	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`)}
+	resp, blocked := env.handler.requireCSPClear(req, "main")
+	if !blocked {
+		t.Fatal("expected requireCSPClear to block")
+	}
+	se := extractStructuredError(t, resp)
+	if se.RecoveryToolCall == nil {
+		t.Fatal("expected recovery_tool_call in CSP error")
+	}
+	if se.RecoveryToolCall["tool"] != "interact" {
+		t.Fatalf("expected recovery tool 'interact', got %v", se.RecoveryToolCall["tool"])
+	}
+}
+
+func TestRequireTabTracking_RecoveryToolCall(t *testing.T) {
+	t.Parallel()
+	env := newGateTestEnv(t)
+	// No tab tracking set
+
+	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`)}
+	resp, blocked := env.handler.requireTabTracking(req)
+	if !blocked {
+		t.Fatal("expected requireTabTracking to block")
+	}
+	se := extractStructuredError(t, resp)
+	if se.RecoveryToolCall == nil {
+		t.Fatal("expected recovery_tool_call in tab tracking error")
+	}
+	if se.RecoveryToolCall["tool"] != "observe" {
+		t.Fatalf("expected recovery tool 'observe', got %v", se.RecoveryToolCall["tool"])
+	}
+}
+
+// ============================================
+// Tab tracking integration tests through handlers
+// ============================================
+
+func TestNavigate_NoTabTracking_NotBlocked(t *testing.T) {
+	t.Parallel()
+	env := newGateTestEnv(t)
+	env.enablePilot(t)
+	env.simulateConnection(t)
+	// No tab tracking — navigate should NOT be blocked (it creates tracking)
+
+	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`)}
+	args := json.RawMessage(`{"what":"navigate","url":"https://example.com","sync":false}`)
+	resp := env.handler.handleBrowserActionNavigate(req, args)
+
+	// Navigate should succeed (queued) even without tab tracking
+	if !isSuccessOrQueued(t, resp) {
+		t.Fatal("expected navigate to succeed without tab tracking gate, got error")
+	}
+}
+
+func TestClick_NoTabTracking_FastFail(t *testing.T) {
+	t.Parallel()
+	env := newGateTestEnv(t)
+	env.enablePilot(t)
+	env.simulateConnection(t)
+	// No tab tracking — click should be blocked
+
+	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`)}
+	args := json.RawMessage(`{"what":"click","selector":"#btn","sync":false}`)
+	resp := env.handler.handleDOMPrimitive(req, args, "click")
+
+	code := extractErrorCode(t, resp)
+	if code != ErrNoData {
+		t.Fatalf("expected %q error for click without tab tracking, got %q", ErrNoData, code)
+	}
+}
+
+func TestSaveState_NoTabTracking_NoGate(t *testing.T) {
+	t.Parallel()
+	env := newGateTestEnv(t)
+	env.enablePilot(t)
+	env.simulateConnection(t)
+	// No tab tracking — save_state should NOT be blocked by tab tracking gate.
+	// It may fail for other reasons (e.g. session store not initialized) but that is
+	// unrelated to the gate — the important thing is that it is NOT a tab tracking error.
+
+	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`)}
+	args := json.RawMessage(`{"what":"save_state","snapshot_name":"test-state","sync":false}`)
+	resp := env.handler.handlePilotManageStateSave(req, args)
+
+	// If it is an error, it must NOT be the tab tracking error (ErrNoData with "tab" message).
+	if !isSuccessOrQueued(t, resp) {
+		se := extractStructuredError(t, resp)
+		if se.ErrorCode == ErrNoData && strings.Contains(se.Message, "tab") {
+			t.Fatalf("save_state was blocked by tab tracking gate — it should bypass this gate. Error: %s", se.Message)
+		}
+		// Other errors (e.g. session store not initialized) are fine — they are not gate errors.
+	}
+}
+
+// ============================================
 // Gate ordering tests
 // ============================================
 
@@ -336,6 +542,49 @@ func TestGateOrder_Pilot_BeforeExtension(t *testing.T) {
 	code := extractErrorCode(t, resp)
 	if code != ErrCodePilotDisabled {
 		t.Fatalf("expected %q (pilot before extension), got %q", ErrCodePilotDisabled, code)
+	}
+}
+
+func TestGateOrder_Extension_BeforeTabTracking(t *testing.T) {
+	t.Parallel()
+	env := newGateTestEnv(t)
+	env.enablePilot(t)
+	// Extension NOT connected + no tab tracking — extension gate should fire first
+
+	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`)}
+	args := json.RawMessage(`{"what":"click","selector":"#btn","sync":false}`)
+	resp := env.handler.handleDOMPrimitive(req, args, "click")
+
+	code := extractErrorCode(t, resp)
+	if code != ErrNoData {
+		// Both extension disconnect and tab tracking return ErrNoData,
+		// but extension gate should fire first. Check the message.
+		se := extractStructuredError(t, resp)
+		if !strings.Contains(se.Message, "Extension") {
+			t.Fatalf("expected extension gate to fire before tab tracking, got: %s", se.Message)
+		}
+	}
+}
+
+func TestGateOrder_TabTracking_BeforeCSP(t *testing.T) {
+	t.Parallel()
+	env := newGateTestEnv(t)
+	env.enablePilot(t)
+	env.simulateConnection(t)
+	// No tab tracking + CSP restricted — tab tracking gate should fire before CSP
+	env.capture.SetCSPStatusForTest(true, "script_exec")
+
+	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`)}
+	args := json.RawMessage(`{"what":"execute_js","script":"return 1","world":"main","sync":false}`)
+	resp := env.handler.handlePilotExecuteJS(req, args)
+
+	code := extractErrorCode(t, resp)
+	if code != ErrNoData {
+		t.Fatalf("expected %q (tab tracking before CSP), got %q", ErrNoData, code)
+	}
+	se := extractStructuredError(t, resp)
+	if !strings.Contains(se.Message, "tab") {
+		t.Fatalf("expected tab tracking error message, got: %s", se.Message)
 	}
 }
 

@@ -171,6 +171,9 @@ func (h *ToolHandler) queueExecuteScript(
 	if resp, blocked := h.requireExtension(req); blocked {
 		return resp
 	}
+	if resp, blocked := h.requireTabTracking(req); blocked {
+		return resp
+	}
 	if resp, blocked := h.requireCSPClear(req, "main"); blocked {
 		return resp
 	}
