@@ -2,6 +2,8 @@
 // Why: Prevents silent regressions in critical behavior paths.
 // Docs: docs/features/feature/observe/index.md
 
+// TODO: Split into tools_observe_page_test.go for page-specific tests when this file approaches 1000 LOC.
+
 // tools_observe_handler_test.go — Comprehensive unit tests for observe tool dispatch and response fields.
 // Validates all response fields, snake_case JSON convention, and dispatch logic.
 package main
@@ -691,6 +693,161 @@ func TestToolsObservePilot_ResponseFields(t *testing.T) {
 	text := result.Content[0].Text
 	if strings.Contains(text, "Extension is not connected") {
 		t.Error("pilot is server-side mode, should NOT get disconnect warning")
+	}
+}
+
+// ============================================
+// observe(what:"page") — page_ready_for_commands Tests
+// ============================================
+
+func TestToolsObservePage_PageReadyForCommands_AllConditionsMet(t *testing.T) {
+	t.Parallel()
+	h, _, cap := makeToolHandler(t)
+
+	// Set up all conditions for page_ready_for_commands=true
+	cap.SimulateExtensionConnectForTest()
+	cap.SetPilotEnabled(true)
+	cap.SetTrackingStatusForTest(42, "https://example.com")
+	cap.SetTabStatusForTest("complete")
+
+	resp := callObserveRaw(h, "page")
+	result := parseToolResult(t, resp)
+	if result.IsError {
+		t.Fatalf("page should not error, got: %s", result.Content[0].Text)
+	}
+	data := extractResultJSON(t, result)
+
+	ready, ok := data["page_ready_for_commands"]
+	if !ok {
+		t.Fatal("response missing 'page_ready_for_commands' field")
+	}
+	if ready != true {
+		t.Errorf("page_ready_for_commands = %v, want true", ready)
+	}
+
+	tabStatus, ok := data["tab_status"]
+	if !ok {
+		t.Fatal("response missing 'tab_status' field")
+	}
+	if tabStatus != "complete" {
+		t.Errorf("tab_status = %v, want 'complete'", tabStatus)
+	}
+}
+
+func TestToolsObservePage_PageReadyForCommands_ExtensionDisconnected(t *testing.T) {
+	t.Parallel()
+	h, _, cap := makeToolHandler(t)
+
+	cap.SimulateExtensionDisconnectForTest()
+	cap.SetPilotEnabled(true)
+	cap.SetTrackingStatusForTest(42, "https://example.com")
+	cap.SetTabStatusForTest("complete")
+
+	resp := callObserveRaw(h, "page")
+	result := parseToolResult(t, resp)
+	data := extractResultJSON(t, result)
+
+	if data["page_ready_for_commands"] != false {
+		t.Errorf("page_ready_for_commands = %v, want false (extension disconnected)", data["page_ready_for_commands"])
+	}
+}
+
+func TestToolsObservePage_PageReadyForCommands_PilotDisabled(t *testing.T) {
+	t.Parallel()
+	h, _, cap := makeToolHandler(t)
+
+	cap.SimulateExtensionConnectForTest()
+	cap.SetPilotEnabled(false)
+	cap.SetTrackingStatusForTest(42, "https://example.com")
+	cap.SetTabStatusForTest("complete")
+
+	resp := callObserveRaw(h, "page")
+	result := parseToolResult(t, resp)
+	data := extractResultJSON(t, result)
+
+	if data["page_ready_for_commands"] != false {
+		t.Errorf("page_ready_for_commands = %v, want false (pilot disabled)", data["page_ready_for_commands"])
+	}
+}
+
+func TestToolsObservePage_PageReadyForCommands_NoTrackedTab(t *testing.T) {
+	t.Parallel()
+	h, _, cap := makeToolHandler(t)
+
+	cap.SimulateExtensionConnectForTest()
+	cap.SetPilotEnabled(true)
+	// No tracked tab set
+	cap.SetTabStatusForTest("complete")
+
+	resp := callObserveRaw(h, "page")
+	result := parseToolResult(t, resp)
+	data := extractResultJSON(t, result)
+
+	if data["page_ready_for_commands"] != false {
+		t.Errorf("page_ready_for_commands = %v, want false (no tracked tab)", data["page_ready_for_commands"])
+	}
+}
+
+func TestToolsObservePage_PageReadyForCommands_TabLoading(t *testing.T) {
+	t.Parallel()
+	h, _, cap := makeToolHandler(t)
+
+	cap.SimulateExtensionConnectForTest()
+	cap.SetPilotEnabled(true)
+	cap.SetTrackingStatusForTest(42, "https://example.com")
+	cap.SetTabStatusForTest("loading")
+
+	resp := callObserveRaw(h, "page")
+	result := parseToolResult(t, resp)
+	data := extractResultJSON(t, result)
+
+	if data["page_ready_for_commands"] != false {
+		t.Errorf("page_ready_for_commands = %v, want false (tab loading)", data["page_ready_for_commands"])
+	}
+	if data["tab_status"] != "loading" {
+		t.Errorf("tab_status = %v, want 'loading'", data["tab_status"])
+	}
+}
+
+func TestToolsObservePage_DataAgeMs_Present(t *testing.T) {
+	t.Parallel()
+	h, _, cap := makeToolHandler(t)
+	cap.SimulateExtensionConnectForTest()
+
+	resp := callObserveRaw(h, "page")
+	result := parseToolResult(t, resp)
+	data := extractResultJSON(t, result)
+
+	meta, ok := data["metadata"].(map[string]any)
+	if !ok {
+		t.Fatal("metadata should be a map")
+	}
+	if _, ok := meta["data_age_ms"]; !ok {
+		t.Error("metadata missing 'data_age_ms' field")
+	}
+}
+
+func TestToolsObserveErrors_DataAgeMs_Present(t *testing.T) {
+	t.Parallel()
+	h, server, _ := makeToolHandler(t)
+
+	ts := time.Now().UTC().Format(time.RFC3339)
+	server.mu.Lock()
+	server.entries = append(server.entries, LogEntry{
+		"level": "error", "message": "Test error", "ts": ts,
+	})
+	server.mu.Unlock()
+
+	resp := callObserveRaw(h, "errors")
+	result := parseToolResult(t, resp)
+	data := extractResultJSON(t, result)
+
+	meta, ok := data["metadata"].(map[string]any)
+	if !ok {
+		t.Fatal("metadata should be a map")
+	}
+	if _, ok := meta["data_age_ms"]; !ok {
+		t.Error("metadata missing 'data_age_ms' field")
 	}
 }
 

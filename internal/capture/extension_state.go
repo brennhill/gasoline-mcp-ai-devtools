@@ -58,6 +58,7 @@ type ExtensionState struct {
 	trackedTabID    int       // Browser tab ID (0=none). Invariant: trackingEnabled → trackedTabID>0.
 	trackedTabURL   string    // Tracked tab URL (informational, may be stale).
 	trackedTabTitle string    // Tracked tab title (informational, may be stale).
+	tabStatus       string    // Chrome tab status: "loading" or "complete". Empty if unknown.
 	trackingUpdated time.Time // When tracking status last refreshed.
 
 	// Extension-reported active command execution state from /sync heartbeats.
@@ -112,6 +113,13 @@ func (c *Capture) GetTrackedTabTitle() string {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 	return c.ext.trackedTabTitle
+}
+
+// GetTabStatus returns the Chrome tab status ("loading", "complete", or empty if unknown).
+func (c *Capture) GetTabStatus() string {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	return c.ext.tabStatus
 }
 
 // IsPilotEnabled returns whether AI Web Pilot is currently enabled.

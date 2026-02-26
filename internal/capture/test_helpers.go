@@ -134,6 +134,13 @@ func (c *Capture) SimulateExtensionDisconnectForTest() {
 	defer c.mu.Unlock()
 	c.ext.lastSyncSeen = time.Now().Add(-1 * time.Hour)
 }
+// SetTabStatusForTest sets the tracked tab status (TEST ONLY).
+// Valid values: "loading", "complete".
+func (c *Capture) SetTabStatusForTest(status string) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.ext.tabStatus = status
+}
 
 // SetCSPStatusForTest sets the CSP restriction state (TEST ONLY)
 func (c *Capture) SetCSPStatusForTest(restricted bool, level string) {
