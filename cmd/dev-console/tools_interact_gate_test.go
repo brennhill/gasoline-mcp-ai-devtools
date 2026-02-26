@@ -694,3 +694,105 @@ func TestDiagnosticHint_IncludesCSP(t *testing.T) {
 		t.Fatalf("expected diagnostic hint to include CSP level 'script_exec', got: %s", hint)
 	}
 }
+
+// ============================================
+// Smoke Tests: Stream 2 — Sequential gate firing for execute_js
+// ============================================
+
+func TestSmoke_AllGates_SequentialFiring_ExecuteJS(t *testing.T) {
+	t.Parallel()
+
+	// This test verifies that for execute_js(world="main"), gates fire in the
+	// correct priority order as conditions are progressively fixed.
+	// Gate order: param validation → pilot → extension → tab tracking → CSP
+
+	t.Run("1_no_script_missing_param", func(t *testing.T) {
+		env := newGateTestEnv(t)
+		env.capture.SetPilotEnabled(false)
+		// No script param, pilot off, ext off, no tab, CSP on
+		env.capture.SetCSPStatusForTest(true, "script_exec")
+
+		req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`)}
+		args := json.RawMessage(`{"what":"execute_js","world":"main","sync":false}`)
+		resp := env.handler.handlePilotExecuteJS(req, args)
+
+		code := extractErrorCode(t, resp)
+		if code != ErrMissingParam {
+			t.Fatalf("step 1: expected %q (param validation first), got %q", ErrMissingParam, code)
+		}
+	})
+
+	t.Run("2_script_present_pilot_disabled", func(t *testing.T) {
+		env := newGateTestEnv(t)
+		env.capture.SetPilotEnabled(false)
+		// Script present, pilot off, ext off, no tab, CSP on
+		env.capture.SetCSPStatusForTest(true, "script_exec")
+
+		req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`)}
+		args := json.RawMessage(`{"what":"execute_js","script":"return 1","world":"main","sync":false}`)
+		resp := env.handler.handlePilotExecuteJS(req, args)
+
+		code := extractErrorCode(t, resp)
+		if code != ErrCodePilotDisabled {
+			t.Fatalf("step 2: expected %q (pilot before extension), got %q", ErrCodePilotDisabled, code)
+		}
+	})
+
+	t.Run("3_pilot_on_ext_disconnected", func(t *testing.T) {
+		env := newGateTestEnv(t)
+		env.enablePilot(t)
+		// Pilot on, ext off, no tab, CSP on
+		env.capture.SetCSPStatusForTest(true, "script_exec")
+
+		req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`)}
+		args := json.RawMessage(`{"what":"execute_js","script":"return 1","world":"main","sync":false}`)
+		resp := env.handler.handlePilotExecuteJS(req, args)
+
+		code := extractErrorCode(t, resp)
+		if code != ErrNoData {
+			t.Fatalf("step 3: expected %q (extension gate), got %q", ErrNoData, code)
+		}
+		se := extractStructuredError(t, resp)
+		if !strings.Contains(se.Message, "Extension") {
+			t.Fatalf("step 3: expected extension-related message, got: %s", se.Message)
+		}
+	})
+
+	t.Run("4_ext_connected_no_tab", func(t *testing.T) {
+		env := newGateTestEnv(t)
+		env.enablePilot(t)
+		env.simulateConnection(t)
+		// Ext on, no tab, CSP on
+		env.capture.SetCSPStatusForTest(true, "script_exec")
+
+		req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`)}
+		args := json.RawMessage(`{"what":"execute_js","script":"return 1","world":"main","sync":false}`)
+		resp := env.handler.handlePilotExecuteJS(req, args)
+
+		code := extractErrorCode(t, resp)
+		if code != ErrNoData {
+			t.Fatalf("step 4: expected %q (tab tracking gate), got %q", ErrNoData, code)
+		}
+		se := extractStructuredError(t, resp)
+		if !strings.Contains(se.Message, "tab") {
+			t.Fatalf("step 4: expected tab-related message, got: %s", se.Message)
+		}
+	})
+
+	t.Run("5_tab_tracked_csp_blocked", func(t *testing.T) {
+		env := newGateTestEnv(t)
+		env.enablePilot(t)
+		env.simulateConnection(t)
+		env.simulateTabTracking(t)
+		env.capture.SetCSPStatusForTest(true, "script_exec")
+
+		req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`)}
+		args := json.RawMessage(`{"what":"execute_js","script":"return 1","world":"main","sync":false}`)
+		resp := env.handler.handlePilotExecuteJS(req, args)
+
+		code := extractErrorCode(t, resp)
+		if code != ErrExtError {
+			t.Fatalf("step 5: expected %q (CSP gate), got %q", ErrExtError, code)
+		}
+	})
+}

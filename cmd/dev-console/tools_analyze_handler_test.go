@@ -556,6 +556,93 @@ func TestToolsAnalyzeLinkValidation_NonHTTPURLs(t *testing.T) {
 // All analyze modes safety net
 // ============================================
 
+// ============================================
+// Smoke Tests: Stream 5 — selector forwarding, default selector, a11y alias
+// ============================================
+
+func TestSmoke_AnalyzeDOM_SelectorParam_ForwardedInPendingQuery(t *testing.T) {
+	t.Parallel()
+	h, _, cap := makeToolHandler(t)
+
+	resp := callAnalyzeRaw(h, `{"what":"dom","selector":".sidebar","sync":false}`)
+	result := parseToolResult(t, resp)
+	if result.IsError {
+		t.Fatalf("dom with selector should succeed, got: %s", result.Content[0].Text)
+	}
+
+	data := extractResultJSON(t, result)
+	if data["status"] != "queued" {
+		t.Errorf("status = %v, want 'queued'", data["status"])
+	}
+
+	pq := cap.GetLastPendingQuery()
+	if pq == nil {
+		t.Fatal("expected pending query to be created")
+	}
+
+	var params map[string]any
+	if err := json.Unmarshal(pq.Params, &params); err != nil {
+		t.Fatalf("failed to parse pending query params: %v", err)
+	}
+	if got, ok := params["selector"].(string); !ok || got != ".sidebar" {
+		t.Fatalf("selector should be '.sidebar', got %#v", params["selector"])
+	}
+	// Confirm it is not the default "*"
+	if params["selector"] == "*" {
+		t.Fatal("selector should be '.sidebar', not the default '*'")
+	}
+}
+
+func TestSmoke_AnalyzeDOM_DefaultSelector_IsStar(t *testing.T) {
+	t.Parallel()
+	h, _, cap := makeToolHandler(t)
+
+	// No selector provided — should default to "*"
+	resp := callAnalyzeRaw(h, `{"what":"dom","sync":false}`)
+	result := parseToolResult(t, resp)
+	if result.IsError {
+		t.Fatalf("dom without selector should succeed, got: %s", result.Content[0].Text)
+	}
+
+	pq := cap.GetLastPendingQuery()
+	if pq == nil {
+		t.Fatal("expected pending query to be created")
+	}
+
+	var params map[string]any
+	if err := json.Unmarshal(pq.Params, &params); err != nil {
+		t.Fatalf("failed to parse pending query params: %v", err)
+	}
+	if got, ok := params["selector"].(string); !ok || got != "*" {
+		t.Fatalf("selector should default to '*' for full DOM dump, got %#v", params["selector"])
+	}
+}
+
+func TestSmoke_AnalyzeA11y_Alias_Resolves(t *testing.T) {
+	t.Parallel()
+	h, _, _ := makeToolHandler(t)
+
+	// "a11y" is an alias for "accessibility" — should NOT return unknown_mode
+	resp := callAnalyzeRaw(h, `{"what":"a11y","sync":false}`)
+	result := parseToolResult(t, resp)
+
+	// The a11y handler may produce an error for other reasons (e.g., extension
+	// not connected), but it must NOT be "unknown_mode". If unknown_mode is
+	// returned, the alias resolution is broken.
+	if result.IsError {
+		text := result.Content[0].Text
+		if strings.Contains(text, "unknown_mode") {
+			t.Fatalf("a11y alias should resolve to accessibility, but got unknown_mode: %s", text)
+		}
+		// Other errors (no data, extension disconnected) are acceptable —
+		// they prove the alias resolved correctly and reached the handler.
+	}
+}
+
+// ============================================
+// All analyze modes safety net
+// ============================================
+
 func TestToolsAnalyze_AllModes_ResponseStructure(t *testing.T) {
 	t.Parallel()
 	h, _, _ := makeToolHandler(t)

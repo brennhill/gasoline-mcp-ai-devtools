@@ -6,6 +6,8 @@
 package main
 
 import (
+	"encoding/json"
+	"strings"
 	"testing"
 )
 
@@ -190,6 +192,91 @@ func TestStructuredError_ActionAndSelector_PresentWhenSet(t *testing.T) {
 	selector, ok := se["selector"].(string)
 	if !ok || selector != "#submit-btn" {
 		t.Errorf("selector = %v, want '#submit-btn'", se["selector"])
+	}
+}
+
+// ============================================
+// Smoke Tests: Stream 4 — Diagnostic Hints in Gate Errors
+// ============================================
+
+func TestSmoke_RequireExtension_ErrorContainsDiagnosticHint(t *testing.T) {
+	t.Parallel()
+	env := newGateTestEnv(t)
+
+	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`)}
+	resp, blocked := env.handler.requireExtension(req)
+	if !blocked {
+		t.Fatal("expected requireExtension to block when extension is disconnected")
+	}
+
+	se := extractStructuredError(t, resp)
+	if se.Hint == "" {
+		t.Fatal("StructuredError.Hint should not be empty for extension gate error")
+	}
+	for _, expected := range []string{"extension=DISCONNECTED", "pilot=", "tracked_tab=", "csp="} {
+		if !strings.Contains(se.Hint, expected) {
+			t.Errorf("hint should contain %q, got: %s", expected, se.Hint)
+		}
+	}
+}
+
+func TestSmoke_RequirePilot_ErrorContainsDiagnosticHint(t *testing.T) {
+	t.Parallel()
+	env := newGateTestEnv(t)
+	env.capture.SetPilotEnabled(false)
+
+	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`)}
+	resp, blocked := env.handler.requirePilot(req)
+	if !blocked {
+		t.Fatal("expected requirePilot to block when pilot is disabled")
+	}
+
+	se := extractStructuredError(t, resp)
+	if se.Hint == "" {
+		t.Fatal("StructuredError.Hint should not be empty for pilot gate error")
+	}
+	if !strings.Contains(se.Hint, "pilot=DISABLED") {
+		t.Errorf("hint should contain 'pilot=DISABLED', got: %s", se.Hint)
+	}
+}
+
+func TestSmoke_RequireTabTracking_ErrorContainsDiagnosticHint(t *testing.T) {
+	t.Parallel()
+	env := newGateTestEnv(t)
+	// No tab tracking set
+
+	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`)}
+	resp, blocked := env.handler.requireTabTracking(req)
+	if !blocked {
+		t.Fatal("expected requireTabTracking to block when no tab is tracked")
+	}
+
+	se := extractStructuredError(t, resp)
+	if se.Hint == "" {
+		t.Fatal("StructuredError.Hint should not be empty for tab tracking gate error")
+	}
+	if !strings.Contains(se.Hint, "tracked_tab=NONE") {
+		t.Errorf("hint should contain 'tracked_tab=NONE', got: %s", se.Hint)
+	}
+}
+
+func TestSmoke_RequireCSPClear_ErrorContainsDiagnosticHint(t *testing.T) {
+	t.Parallel()
+	env := newGateTestEnv(t)
+	env.capture.SetCSPStatusForTest(true, "script_exec")
+
+	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`)}
+	resp, blocked := env.handler.requireCSPClear(req, "main")
+	if !blocked {
+		t.Fatal("expected requireCSPClear to block world=main when CSP restricts script_exec")
+	}
+
+	se := extractStructuredError(t, resp)
+	if se.Hint == "" {
+		t.Fatal("StructuredError.Hint should not be empty for CSP gate error")
+	}
+	if !strings.Contains(se.Hint, "csp=RESTRICTED(script_exec)") {
+		t.Errorf("hint should contain 'csp=RESTRICTED(script_exec)', got: %s", se.Hint)
 	}
 }
 
