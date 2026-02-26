@@ -10,13 +10,13 @@
  * from modular subcomponents: circuit-breaker.ts, batchers.ts, and server.ts
  */
 // Re-export circuit breaker functions
-export { createCircuitBreaker } from './circuit-breaker.js';
+export { createCircuitBreaker } from './circuit-breaker';
 // Re-export batcher functions and types
-export { createBatcherWithCircuitBreaker, createLogBatcher, RATE_LIMIT_CONFIG } from './batchers.js';
+export { createBatcherWithCircuitBreaker, createLogBatcher, RATE_LIMIT_CONFIG } from './batchers';
 // Re-export server communication functions
 // NOTE: postSettings and pollCaptureSettings removed - use /sync for all communication
-export { sendLogsToServer, sendWSEventsToServer, sendNetworkBodiesToServer, sendNetworkWaterfallToServer, sendEnhancedActionsToServer, sendPerformanceSnapshotsToServer, checkServerHealth, updateBadge, postQueryResult, postAsyncCommandResult, postExtensionLogs, sendStatusPing, pollPendingQueries } from './server.js';
-import { getRequestHeaders } from './server.js';
+export { sendLogsToServer, sendWSEventsToServer, sendNetworkBodiesToServer, sendNetworkWaterfallToServer, sendEnhancedActionsToServer, sendPerformanceSnapshotsToServer, checkServerHealth, updateBadge, postQueryResult, postAsyncCommandResult, postExtensionLogs, sendStatusPing, pollPendingQueries } from './server';
+import { getRequestHeaders } from './server';
 /**
  * Truncate a single argument if too large
  */

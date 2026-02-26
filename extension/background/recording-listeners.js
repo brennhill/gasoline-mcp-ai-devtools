@@ -9,8 +9,8 @@
 // Handles popup-initiated record start/stop, auto-stop from offscreen memory guard,
 // mic permission grant flow, and file reveal requests.
 // Deps are injected to avoid circular imports with recording.ts.
-import { scaleTimeout } from '../lib/timeouts.js';
-import { StorageKey } from '../lib/constants.js';
+import { scaleTimeout } from '../lib/timeouts';
+import { StorageKey } from '../lib/constants';
 const LOG = '[Gasoline REC]';
 /**
  * Install all chrome.runtime.onMessage listeners for recording.

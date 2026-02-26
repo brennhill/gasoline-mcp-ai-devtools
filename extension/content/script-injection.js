@@ -4,7 +4,7 @@
  * Docs: docs/features/feature/interact-explore/index.md
  * Docs: docs/features/feature/query-dom/index.md
  */
-import { SettingName } from '../lib/constants.js';
+import { SettingName } from '../lib/constants';
 /** Whether inject.bundled.js has been injected into the page (MAIN world) */
 let injected = false;
 /** Whether inject.js has responded to a bridge ping for this page load */

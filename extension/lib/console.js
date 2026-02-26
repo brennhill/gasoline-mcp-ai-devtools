@@ -8,8 +8,8 @@
  * Monkey-patches console.log/warn/error/info/debug to capture messages
  * and forward them via postLog, while preserving original behavior.
  */
-import { safeSerialize } from './serialize.js';
-import { postLog } from './bridge.js';
+import { safeSerialize } from './serialize';
+import { postLog } from './bridge';
 // Store original methods
 let originalConsole = {};
 /**

@@ -7,7 +7,7 @@
  * @fileoverview AI Web Pilot Toggle Module
  * Manages the AI Web Pilot feature toggle
  */
-import { StorageKey } from '../lib/constants.js';
+import { StorageKey } from '../lib/constants';
 /**
  * Initialize the AI Web Pilot toggle.
  * Read the current state from chrome.storage.local.

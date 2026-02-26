@@ -4,12 +4,12 @@
  * Docs: docs/features/feature/interact-explore/index.md
  * Docs: docs/features/feature/query-dom/index.md
  */
-import { setContextAnnotation, removeContextAnnotation, clearContextAnnotations, getContextAnnotations } from '../lib/context.js';
-import { computeSelectors, recordEnhancedAction, getEnhancedActionBuffer, clearEnhancedActionBuffer, generatePlaywrightScript } from '../lib/reproduction.js';
-import { getActionBuffer, clearActionBuffer, setActionCaptureEnabled } from '../lib/actions.js';
-import { getNetworkWaterfall, setNetworkWaterfallEnabled } from '../lib/network.js';
-import { getPerformanceMarks, getPerformanceMeasures, setPerformanceMarksEnabled } from '../lib/performance.js';
-import { enrichErrorWithAiContext, setAiContextEnabled, setAiContextStateSnapshot } from '../lib/ai-context.js';
+import { setContextAnnotation, removeContextAnnotation, clearContextAnnotations, getContextAnnotations } from '../lib/context';
+import { computeSelectors, recordEnhancedAction, getEnhancedActionBuffer, clearEnhancedActionBuffer, generatePlaywrightScript } from '../lib/reproduction';
+import { getActionBuffer, clearActionBuffer, setActionCaptureEnabled } from '../lib/actions';
+import { getNetworkWaterfall, setNetworkWaterfallEnabled } from '../lib/network';
+import { getPerformanceMarks, getPerformanceMeasures, setPerformanceMarksEnabled } from '../lib/performance';
+import { enrichErrorWithAiContext, setAiContextEnabled, setAiContextStateSnapshot } from '../lib/ai-context';
 function setWithNativeSetter(element, proto, prop, val) {
     const setter = Object.getOwnPropertyDescriptor(proto.prototype, prop)?.set;
     if (setter)

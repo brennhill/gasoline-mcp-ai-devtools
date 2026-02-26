@@ -60,6 +60,7 @@ export interface DOMResult {
     bbox?: BoundingBox
     visible?: boolean
   }>
+  auto_scrolled?: boolean
   reason?: string
   error?: string
   message?: string

@@ -4,15 +4,15 @@
  * Docs: docs/features/feature/interact-explore/index.md
  * Docs: docs/features/feature/query-dom/index.md
  */
-import { executeDOMQuery, runAxeAuditWithTimeout } from '../lib/dom-queries.js';
-import { checkLinkHealth } from '../lib/link-health.js';
-import { queryComputedStyles } from './computed-styles.js';
-import { discoverForms } from './form-discovery.js';
-import { getNetworkWaterfall } from '../lib/network.js';
-import { executeJavaScript } from './execute-js.js';
-import { isValidSettingPayload, handleSetting, handleStateCommand } from './settings.js';
+import { executeDOMQuery, runAxeAuditWithTimeout } from '../lib/dom-queries';
+import { checkLinkHealth } from '../lib/link-health';
+import { queryComputedStyles } from './computed-styles';
+import { discoverForms } from './form-discovery';
+import { getNetworkWaterfall } from '../lib/network';
+import { executeJavaScript } from './execute-js';
+import { isValidSettingPayload, handleSetting, handleStateCommand } from './settings';
 // Re-export for barrel (src/inject/index.ts)
-export { executeJavaScript, safeSerializeForExecute } from './execute-js.js';
+export { executeJavaScript, safeSerializeForExecute } from './execute-js';
 /** Read the page nonce set by the content script on the inject script element */
 let pageNonce = '';
 if (typeof document !== 'undefined' && typeof document.querySelector === 'function') {

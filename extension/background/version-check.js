@@ -8,7 +8,7 @@
 /**
  * @fileoverview Version Check - Badge display based on /health response
  */
-import { isVersionNewer } from '../lib/version.js';
+import { isVersionNewer } from '../lib/version';
 /**
  * Version check state
  */

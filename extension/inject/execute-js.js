@@ -4,7 +4,7 @@
  * Docs: docs/features/feature/interact-explore/index.md
  * Docs: docs/features/feature/query-dom/index.md
  */
-import { createDeferredPromise } from '../lib/timeout-utils.js';
+import { createDeferredPromise } from '../lib/timeout-utils';
 /**
  * Safe serialization for complex objects returned from executeJavaScript.
  */

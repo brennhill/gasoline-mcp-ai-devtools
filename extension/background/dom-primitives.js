@@ -1403,6 +1403,28 @@ export function domPrimitive(action, selector, options) {
         }
         return { success: true };
     }
+    // --- #336: Check if element is outside the viewport and auto-scroll into view ---
+    function isElementOutsideViewport(el) {
+        if (!(el instanceof HTMLElement) || typeof el.getBoundingClientRect !== 'function')
+            return false;
+        const rect = el.getBoundingClientRect();
+        const viewHeight = typeof window !== 'undefined' && typeof window.innerHeight === 'number'
+            ? window.innerHeight
+            : (typeof document !== 'undefined' && document.documentElement ? document.documentElement.clientHeight : 0);
+        const viewWidth = typeof window !== 'undefined' && typeof window.innerWidth === 'number'
+            ? window.innerWidth
+            : (typeof document !== 'undefined' && document.documentElement ? document.documentElement.clientWidth : 0);
+        if (viewHeight === 0 && viewWidth === 0)
+            return false;
+        return rect.bottom < 0 || rect.top > viewHeight || rect.right < 0 || rect.left > viewWidth;
+    }
+    function autoScrollIfNeeded(el) {
+        if (isElementOutsideViewport(el)) {
+            el.scrollIntoView({ behavior: 'instant', block: 'center' });
+            return true;
+        }
+        return false;
+    }
     function buildActionHandlers(node) {
         return {
             click: () => withMutationTracking(() => {
@@ -1447,8 +1469,10 @@ export function domPrimitive(action, selector, options) {
                     }
                     return mutatingSuccess(node, { value: href, reason: 'opened_new_tab' });
                 }
+                // #336: Auto-scroll off-screen elements into view before clicking
+                const didScroll = autoScrollIfNeeded(node);
                 node.click();
-                return mutatingSuccess(node);
+                return mutatingSuccess(node, didScroll ? { auto_scrolled: true } : undefined);
             }),
             type: () => withMutationTracking(() => {
                 // Normalize literal \n sequences to actual newlines (MCP parameter encoding)

@@ -3,7 +3,7 @@
  * Why: Prevents state drift by routing all toggle mutations through one consistent popup workflow.
  * Docs: docs/features/feature/browser-extension-enhancement/index.md
  */
-import { SettingName, StorageKey } from '../lib/constants.js';
+import { SettingName, StorageKey } from '../lib/constants';
 /**
  * Feature toggle configuration
  */
