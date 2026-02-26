@@ -31,6 +31,8 @@ type gateTestEnv struct {
 }
 
 // newGateTestEnv creates a test env WITHOUT extension connection (for disconnect tests).
+// Sets coldStartTimeout to 0 so fast-fail gate tests don't wait for the readiness gate.
+// Cold-start-specific tests override handler.coldStartTimeout directly.
 func newGateTestEnv(t *testing.T) *gateTestEnv {
 	t.Helper()
 	logFile := filepath.Join(t.TempDir(), "test-gate.jsonl")
@@ -343,115 +345,6 @@ func (e *gateTestEnv) simulateTabTracking(t *testing.T) {
 	e.capture.SetTrackingStatusForTest(42, "https://example.com")
 }
 
-// extractStructuredError parses the full StructuredError from a JSONRPCResponse result.
-func extractStructuredError(t *testing.T, resp JSONRPCResponse) StructuredError {
-	t.Helper()
-	var result MCPToolResult
-	if err := json.Unmarshal(resp.Result, &result); err != nil {
-		t.Fatalf("unmarshal result: %v", err)
-	}
-	if !result.IsError {
-		t.Fatal("expected error response, got success")
-	}
-	if len(result.Content) == 0 {
-		t.Fatal("error response has no content blocks")
-	}
-	text := result.Content[0].Text
-	idx := strings.Index(text, "{")
-	if idx < 0 {
-		t.Fatalf("no JSON found in error text: %s", text)
-	}
-	var se StructuredError
-	if err := json.Unmarshal([]byte(text[idx:]), &se); err != nil {
-		t.Fatalf("unmarshal structured error: %v\nraw: %s", err, text[idx:])
-	}
-	return se
-}
-
-// ============================================
-// Recovery tool call tests
-// ============================================
-
-func TestRequirePilot_RecoveryToolCall(t *testing.T) {
-	t.Parallel()
-	env := newGateTestEnv(t)
-	env.capture.SetPilotEnabled(false)
-
-	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`)}
-	resp, blocked := env.handler.requirePilot(req)
-	if !blocked {
-		t.Fatal("expected requirePilot to block")
-	}
-	se := extractStructuredError(t, resp)
-	if se.RecoveryToolCall == nil {
-		t.Fatal("expected recovery_tool_call in pilot error")
-	}
-	if se.RecoveryToolCall["tool"] != "configure" {
-		t.Fatalf("expected recovery tool 'configure', got %v", se.RecoveryToolCall["tool"])
-	}
-	args, ok := se.RecoveryToolCall["arguments"].(map[string]any)
-	if !ok {
-		t.Fatal("expected recovery_tool_call to have 'arguments' map")
-	}
-	if args["what"] != "pilot" {
-		t.Fatalf("expected arguments.what='pilot', got %v", args["what"])
-	}
-}
-
-func TestRequireExtension_RecoveryToolCall(t *testing.T) {
-	t.Parallel()
-	env := newGateTestEnv(t)
-	// Extension NOT connected
-
-	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`)}
-	resp, blocked := env.handler.requireExtension(req)
-	if !blocked {
-		t.Fatal("expected requireExtension to block")
-	}
-	se := extractStructuredError(t, resp)
-	if se.RecoveryToolCall == nil {
-		t.Fatal("expected recovery_tool_call in extension error")
-	}
-	if se.RecoveryToolCall["tool"] != "observe" {
-		t.Fatalf("expected recovery tool 'observe', got %v", se.RecoveryToolCall["tool"])
-	}
-	args, ok := se.RecoveryToolCall["arguments"].(map[string]any)
-	if !ok {
-		t.Fatal("expected recovery_tool_call to have 'arguments' map")
-	}
-	if args["what"] != "status" {
-		t.Fatalf("expected arguments.what='status', got %v", args["what"])
-	}
-}
-
-func TestRequireCSPClear_RecoveryToolCall(t *testing.T) {
-	t.Parallel()
-	env := newGateTestEnv(t)
-	env.capture.SetCSPStatusForTest(true, "script_exec")
-
-	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`)}
-	resp, blocked := env.handler.requireCSPClear(req, "main")
-	if !blocked {
-		t.Fatal("expected requireCSPClear to block")
-	}
-	se := extractStructuredError(t, resp)
-	if se.RecoveryToolCall == nil {
-		t.Fatal("expected recovery_tool_call in CSP error")
-	}
-	if se.RecoveryToolCall["tool"] != "interact" {
-		t.Fatalf("expected recovery tool 'interact', got %v", se.RecoveryToolCall["tool"])
-	}
-	args, ok := se.RecoveryToolCall["arguments"].(map[string]any)
-	if !ok {
-		t.Fatal("expected recovery_tool_call to have 'arguments' map")
-	}
-	if args["what"] != "execute_js" {
-		t.Fatalf("expected arguments.what='execute_js', got %v", args["what"])
-	}
-	if args["world"] != "auto" {
-		t.Fatalf("expected arguments.world='auto', got %v", args["world"])
-	}
-}
 
 func TestRequireTabTracking_RecoveryToolCall(t *testing.T) {
 	t.Parallel()

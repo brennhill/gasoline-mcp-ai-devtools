@@ -118,6 +118,15 @@ func (c *Capture) GetWSLengthsForTest() (events int, addedAt int, memoryTotal in
 	return len(c.wsEvents), len(c.wsAddedAt), c.wsMemoryTotal
 }
 
+// SimulateExtensionConnectForTest marks the extension as connected by
+// setting lastSyncSeen to now. Thread-safe (operates on the instance, not a global).
+func (c *Capture) SimulateExtensionConnectForTest() {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.ext.lastSyncSeen = time.Now()
+	c.ext.lastExtensionConnected = true
+}
+
 // SimulateExtensionDisconnectForTest marks the extension as disconnected by
 // setting lastSyncSeen far in the past. Thread-safe (operates on the instance, not a global).
 func (c *Capture) SimulateExtensionDisconnectForTest() {
