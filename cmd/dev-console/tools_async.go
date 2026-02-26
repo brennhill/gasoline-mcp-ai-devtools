@@ -637,6 +637,13 @@ func enrichCommandResponseData(result json.RawMessage, responseData map[string]a
 		responseData["navigation_note"] = fmt.Sprintf("Page navigated from %s to %s", resolvedURL, effectiveURL)
 	}
 
+	// Surface execute_js return values prominently so agents don't have to
+	// dig into result.result. The field is named "return_value" to distinguish
+	// the script's return value from the overall command result envelope.
+	if v, ok := extResult["result"]; ok {
+		responseData["return_value"] = v
+	}
+
 	if success, ok := extResult["success"].(bool); ok && !success {
 		msg := embeddedCommandError(extResult)
 		if msg == "" {

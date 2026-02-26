@@ -153,6 +153,72 @@ func TestEnrichCommandResponseData_ErrorStillSurfaced(t *testing.T) {
 	}
 }
 
+func TestEnrichCommandResponseData_ReturnValueSurfaced(t *testing.T) {
+	t.Parallel()
+
+	result := json.RawMessage(`{
+		"success": true,
+		"result": {"links": ["https://a.com", "https://b.com"]},
+		"effective_url": "https://example.com"
+	}`)
+
+	responseData := map[string]any{}
+	embeddedErr, hasErr := enrichCommandResponseData(result, responseData)
+	if hasErr {
+		t.Fatalf("unexpected embedded error: %s", embeddedErr)
+	}
+
+	// return_value should be surfaced at top level
+	rv, ok := responseData["return_value"]
+	if !ok {
+		t.Fatal("return_value should be surfaced at top level for execute_js results")
+	}
+	rvMap, ok := rv.(map[string]any)
+	if !ok {
+		t.Fatalf("return_value should be a map, got %T", rv)
+	}
+	links, ok := rvMap["links"].([]any)
+	if !ok || len(links) != 2 {
+		t.Errorf("return_value.links should have 2 items, got %v", rvMap["links"])
+	}
+}
+
+func TestEnrichCommandResponseData_ReturnValueNil(t *testing.T) {
+	t.Parallel()
+
+	result := json.RawMessage(`{
+		"success": true,
+		"result": null,
+		"effective_url": "https://example.com"
+	}`)
+
+	responseData := map[string]any{}
+	enrichCommandResponseData(result, responseData)
+
+	// return_value should still be surfaced even when null
+	if _, ok := responseData["return_value"]; !ok {
+		t.Error("return_value should be surfaced even when null")
+	}
+}
+
+func TestEnrichCommandResponseData_NoResultField(t *testing.T) {
+	t.Parallel()
+
+	result := json.RawMessage(`{
+		"success": true,
+		"action": "click",
+		"selector": "#btn"
+	}`)
+
+	responseData := map[string]any{}
+	enrichCommandResponseData(result, responseData)
+
+	// return_value should NOT be surfaced when there's no "result" field in extension response
+	if _, ok := responseData["return_value"]; ok {
+		t.Error("return_value should not be surfaced when no result field in extension response")
+	}
+}
+
 // ============================================
 // stripEnrichedFieldsFromResult tests
 // ============================================
