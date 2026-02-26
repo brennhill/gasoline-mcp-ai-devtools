@@ -752,14 +752,14 @@ func TestToolsObserve_StructuredErrorFields(t *testing.T) {
 	if err := json.Unmarshal([]byte(jsonPart), &se); err != nil {
 		t.Fatalf("structured error JSON parse failed: %v\nraw: %s", err, jsonPart)
 	}
-	if se.Error == "" {
-		t.Error("StructuredError.Error should not be empty")
+	if se.ErrorCode == "" {
+		t.Error("StructuredError.ErrorCode should not be empty")
 	}
 	if se.Message == "" {
 		t.Error("StructuredError.Message should not be empty")
 	}
-	if se.Retry == "" {
-		t.Error("StructuredError.Retry should not be empty")
+	if se.RecoveryPlaybook == "" {
+		t.Error("StructuredError.RecoveryPlaybook should not be empty")
 	}
 
 	// Verify JSON fields are snake_case

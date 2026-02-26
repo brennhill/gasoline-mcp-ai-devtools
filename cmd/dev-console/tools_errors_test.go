@@ -94,14 +94,14 @@ func TestStructuredError_CanonicalRecoveryContractFields(t *testing.T) {
 	if se["error_code"] != ErrMissingParam {
 		t.Fatalf("error_code = %v, want %q", se["error_code"], ErrMissingParam)
 	}
-	if se["error"] != ErrMissingParam {
-		t.Fatalf("error = %v, want %q", se["error"], ErrMissingParam)
-	}
 	if se["recovery_playbook"] != "Call interact with what=list_interactive" {
 		t.Fatalf("recovery_playbook = %v", se["recovery_playbook"])
 	}
-	if se["retry"] != "Call interact with what=list_interactive" {
-		t.Fatalf("retry = %v", se["retry"])
+	if _, exists := se["error"]; exists {
+		t.Fatalf("legacy field error should not be present: %v", se["error"])
+	}
+	if _, exists := se["retry"]; exists {
+		t.Fatalf("legacy field retry should not be present: %v", se["retry"])
 	}
 }
 

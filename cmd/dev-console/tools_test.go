@@ -711,9 +711,6 @@ func TestMcpStructuredError(t *testing.T) {
 		if err := json.Unmarshal([]byte(text[jsonStart:]), &se); err != nil {
 			t.Fatalf("Expected valid JSON in structured error, got error: %v", err)
 		}
-		if se["error"] != "missing_param" {
-			t.Errorf("Expected error code 'missing_param', got %v", se["error"])
-		}
 		if se["error_code"] != "missing_param" {
 			t.Errorf("Expected canonical error_code 'missing_param', got %v", se["error_code"])
 		}
@@ -722,6 +719,12 @@ func TestMcpStructuredError(t *testing.T) {
 		}
 		if se["recovery_playbook"] != "Add the 'what' parameter" {
 			t.Errorf("Expected canonical recovery_playbook, got %v", se["recovery_playbook"])
+		}
+		if _, exists := se["error"]; exists {
+			t.Errorf("Legacy field 'error' should not be present: %v", se["error"])
+		}
+		if _, exists := se["retry"]; exists {
+			t.Errorf("Legacy field 'retry' should not be present: %v", se["retry"])
 		}
 
 		// Verify snake_case in the structured error JSON

@@ -272,17 +272,12 @@ func assertStructuredErrorCode(t *testing.T, label string, result MCPToolResult,
 
 	assertObjectShape(t, label+" (structured_error)", data, []fieldSpec{
 		required("error_code", "string"),
-		required("error", "string"),
 		required("message", "string"),
 		required("recovery_playbook", "string"),
-		required("retry", "string"),
 	})
 
 	if expectedCode != "" {
 		code, _ := data["error_code"].(string)
-		if code == "" {
-			code, _ = data["error"].(string)
-		}
 		if code != expectedCode {
 			t.Errorf("%s: expected error code %q, got %q", label, expectedCode, code)
 		}

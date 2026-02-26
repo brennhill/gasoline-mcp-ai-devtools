@@ -7,7 +7,6 @@ package mcp
 import (
 	"encoding/json"
 	"fmt"
-	"strings"
 )
 
 // Error codes are self-describing snake_case strings.
@@ -47,10 +46,6 @@ type StructuredError struct {
 	Message          string `json:"message"`
 	RecoveryPlaybook string `json:"recovery_playbook"`
 
-	// Backward-compatible aliases retained for existing clients/tests.
-	Error string `json:"error"`
-	Retry string `json:"retry"`
-
 	Retryable    bool   `json:"retryable"`
 	RetryAfterMs int    `json:"retry_after_ms,omitempty"`
 	Final        bool   `json:"final,omitempty"`
@@ -69,8 +64,6 @@ func StructuredErrorResponse(code, message, recoveryPlaybook string, opts ...fun
 		ErrorCode:        code,
 		Message:          message,
 		RecoveryPlaybook: recoveryPlaybook,
-		Error:            code,
-		Retry:            recoveryPlaybook,
 	}
 	// Apply retryable defaults based on error code first, then user opts can override
 	for _, defaultOpt := range RetryDefaultsForCode(code) {
@@ -79,7 +72,6 @@ func StructuredErrorResponse(code, message, recoveryPlaybook string, opts ...fun
 	for _, opt := range opts {
 		opt(&se)
 	}
-	normalizeStructuredErrorAliases(&se)
 
 	// Error impossible: StructuredError is a simple struct with no circular refs or unsupported types
 	seJSON, _ := json.Marshal(se)
@@ -90,21 +82,6 @@ func StructuredErrorResponse(code, message, recoveryPlaybook string, opts ...fun
 		IsError: true,
 	}
 	return SafeMarshal(result, `{"content":[{"type":"text","text":"Internal error: failed to marshal result"}],"isError":true}`)
-}
-
-func normalizeStructuredErrorAliases(se *StructuredError) {
-	if strings.TrimSpace(se.ErrorCode) == "" {
-		se.ErrorCode = se.Error
-	}
-	if strings.TrimSpace(se.Error) == "" {
-		se.Error = se.ErrorCode
-	}
-	if strings.TrimSpace(se.RecoveryPlaybook) == "" {
-		se.RecoveryPlaybook = se.Retry
-	}
-	if strings.TrimSpace(se.Retry) == "" {
-		se.Retry = se.RecoveryPlaybook
-	}
 }
 
 // WithParam is an option function to add param field to StructuredError.
