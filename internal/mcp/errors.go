@@ -41,9 +41,11 @@ const (
 // StructuredError is embedded in MCP text content. Every field is
 // self-describing so an LLM can act on it without a lookup table.
 type StructuredError struct {
-	Error        string `json:"error"`
-	Message      string `json:"message"`
-	Retry        string `json:"retry"`
+	// Canonical contract fields.
+	ErrorCode        string `json:"error_code"`
+	Message          string `json:"message"`
+	RecoveryPlaybook string `json:"recovery_playbook"`
+
 	Retryable    bool   `json:"retryable"`
 	RetryAfterMs int    `json:"retry_after_ms,omitempty"`
 	Final        bool   `json:"final,omitempty"`
@@ -54,11 +56,15 @@ type StructuredError struct {
 // StructuredErrorResponse constructs an MCP error response. Format:
 //
 //	Error: missing_param — Add the 'what' parameter and call again
-//	{"error":"missing_param","message":"...","retry":"Add the 'what' parameter and call again","hint":"..."}
+//	{"error_code":"missing_param","message":"...","recovery_playbook":"Add the 'what' parameter and call again",...}
 //
 // The retry string is a plain-English instruction the LLM can follow directly.
-func StructuredErrorResponse(code, message, retry string, opts ...func(*StructuredError)) json.RawMessage {
-	se := StructuredError{Error: code, Message: message, Retry: retry}
+func StructuredErrorResponse(code, message, recoveryPlaybook string, opts ...func(*StructuredError)) json.RawMessage {
+	se := StructuredError{
+		ErrorCode:        code,
+		Message:          message,
+		RecoveryPlaybook: recoveryPlaybook,
+	}
 	// Apply retryable defaults based on error code first, then user opts can override
 	for _, defaultOpt := range RetryDefaultsForCode(code) {
 		defaultOpt(&se)
@@ -69,7 +75,7 @@ func StructuredErrorResponse(code, message, retry string, opts ...func(*Structur
 
 	// Error impossible: StructuredError is a simple struct with no circular refs or unsupported types
 	seJSON, _ := json.Marshal(se)
-	text := fmt.Sprintf("Error: %s — %s\n%s", code, retry, string(seJSON))
+	text := fmt.Sprintf("Error: %s — %s\n%s", se.ErrorCode, se.RecoveryPlaybook, string(seJSON))
 
 	result := MCPToolResult{
 		Content: []MCPContentBlock{{Type: "text", Text: text}},

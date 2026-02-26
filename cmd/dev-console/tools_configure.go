@@ -128,8 +128,17 @@ func (h *ToolHandler) toolConfigure(req JSONRPCRequest, args json.RawMessage) JS
 	}
 
 	what := params.What
+	usedAliasParam := ""
+	if what != "" && params.Action != "" && params.Action != what {
+		if _, isTopLevelConfigureAction := configureHandlers[params.Action]; isTopLevelConfigureAction {
+			return whatAliasConflictResponse(req, "action", what, params.Action, getValidConfigureActions())
+		}
+	}
 	if what == "" {
 		what = params.Action
+		if what != "" {
+			usedAliasParam = "action"
+		}
 	}
 
 	if what == "" {
@@ -143,7 +152,8 @@ func (h *ToolHandler) toolConfigure(req JSONRPCRequest, args json.RawMessage) JS
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrUnknownMode, "Unknown configure action: "+what, "Use a valid action from the 'what' enum", withParam("what"), withHint("Valid values: "+validActions))}
 	}
 
-	return handler(h, req, args)
+	resp := handler(h, req, args)
+	return appendCanonicalWhatAliasWarning(resp, usedAliasParam, what)
 }
 
 func (h *ToolHandler) toolConfigureStore(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {

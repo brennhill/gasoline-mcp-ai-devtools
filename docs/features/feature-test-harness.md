@@ -1,10 +1,10 @@
 ---
-status: proposed
+status: implemented
 scope: feature/test-harness/implementation
 ai-priority: high
 tags: [implementation, testing, architecture]
 relates-to: []
-last-verified: 2026-02-24
+last-verified: 2026-02-26
 doc_type: tech-spec
 feature_id: feature-test-harness
 ---
@@ -70,10 +70,23 @@ We will use a lightweight local server to host the `tests/pages/` directory duri
 * **Implementation:** A simple Python `http.server`, a small Go file server, or `vite preview`.
 * **Lifecycle:** Spun up at the start of `smoke-test.sh` and torn down automatically via `trap`.
 
+Implemented as:
+* `scripts/smoke-tests/harness-server.py` (ThreadingHTTPServer)
+* Root: `tests/pages/`
+* Deterministic API endpoints:
+  * `/healthz`
+  * `/api/status/404`
+  * `/api/status/500`
+  * `/api/slow`
+
 ### Refactoring `smoke-test.sh`
 The existing smoke tests will be updated to point to `http://localhost:8080/interact.html` (or similar) instead of `https://example.com`. 
 
 The test validations will be tightened. Instead of checking if `example.com` loaded, we will assert that Gasoline specifically caught the 800ms long task on `performance.html` or successfully navigated the React event trap on `interact.html`.
+
+Implemented migration strategy:
+* `scripts/smoke-tests/framework-smoke.sh` now starts the local harness automatically.
+* Smoke requests are URL-rewritten at the framework layer so legacy `https://example.com` navigations are routed to local deterministic pages under `tests/pages/example.com/`.
 
 ### The "Real World" Exceptions
 We will maintain a dedicated `external-evasion.sh` module for tests that *must* run against the open web to prove resilience against commercial anti-bot systems:

@@ -132,8 +132,15 @@ func (h *ToolHandler) toolInteract(req JSONRPCRequest, args json.RawMessage) JSO
 	}
 
 	what := params.What
+	usedAliasParam := ""
+	if what != "" && params.Action != "" && params.Action != what {
+		return whatAliasConflictResponse(req, "action", what, params.Action, h.getValidInteractActions())
+	}
 	if what == "" {
 		what = params.Action
+		if what != "" {
+			usedAliasParam = "action"
+		}
 	}
 
 	if params.What != "" && params.Action != "" && params.What != params.Action {
@@ -179,6 +186,7 @@ func (h *ToolHandler) toolInteract(req JSONRPCRequest, args json.RawMessage) JSO
 		h.queueComposableSubtitle(req, *composableSubtitle.Subtitle)
 	}
 
+	resp = appendCanonicalWhatAliasWarning(resp, usedAliasParam, what)
 	return resp
 }
 

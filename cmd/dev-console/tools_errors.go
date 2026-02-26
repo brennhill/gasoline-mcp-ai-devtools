@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"strings"
 
 	"github.com/dev-console/dev-console/internal/mcp"
 )
@@ -44,6 +45,32 @@ func withFinal(final bool) func(*StructuredError)    { return mcp.WithFinal(fina
 
 func retryDefaultsForCode(code string) []func(*StructuredError) {
 	return mcp.RetryDefaultsForCode(code)
+}
+
+func appendCanonicalWhatAliasWarning(resp JSONRPCResponse, aliasParam, mode string) JSONRPCResponse {
+	if strings.TrimSpace(aliasParam) == "" || strings.TrimSpace(mode) == "" {
+		return resp
+	}
+	warning := fmt.Sprintf("Accepted alias parameter '%s'; canonical parameter is 'what' (use what=%q).", aliasParam, mode)
+	return appendWarningsToResponse(resp, []string{warning})
+}
+
+func whatAliasConflictResponse(req JSONRPCRequest, aliasParam, whatValue, aliasValue, validValues string) JSONRPCResponse {
+	hint := "Use only 'what' when specifying tool mode/action."
+	if strings.TrimSpace(validValues) != "" {
+		hint += " Valid values: " + validValues
+	}
+	return JSONRPCResponse{
+		JSONRPC: "2.0",
+		ID:      req.ID,
+		Result: mcpStructuredError(
+			ErrInvalidParam,
+			fmt.Sprintf("Conflicting parameters: what=%q and %s=%q", whatValue, aliasParam, aliasValue),
+			"Send only the canonical 'what' parameter and retry.",
+			withParam("what"),
+			withHint(hint),
+		),
+	}
 }
 
 // diagnosticHintString returns a plain-text snapshot of system state.

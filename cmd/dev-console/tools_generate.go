@@ -186,6 +186,7 @@ func (h *ToolHandler) toolGenerate(req JSONRPCRequest, args json.RawMessage) JSO
 	var params struct {
 		What   string `json:"what"`
 		Format string `json:"format"`
+		Action string `json:"action"`
 	}
 	if len(args) > 0 {
 		if err := json.Unmarshal(args, &params); err != nil {
@@ -194,8 +195,23 @@ func (h *ToolHandler) toolGenerate(req JSONRPCRequest, args json.RawMessage) JSO
 	}
 
 	what := params.What
+	usedAliasParam := ""
+	if what != "" && params.Format != "" && params.Format != what {
+		return whatAliasConflictResponse(req, "format", what, params.Format, getValidGenerateFormats())
+	}
+	if what != "" && params.Action != "" && params.Action != what {
+		if _, isTopLevelGenerateMode := generateHandlers[params.Action]; isTopLevelGenerateMode {
+			return whatAliasConflictResponse(req, "action", what, params.Action, getValidGenerateFormats())
+		}
+	}
 	if what == "" {
-		what = params.Format
+		if params.Format != "" {
+			what = params.Format
+			usedAliasParam = "format"
+		} else if _, isTopLevelGenerateMode := generateHandlers[params.Action]; isTopLevelGenerateMode {
+			what = params.Action
+			usedAliasParam = "action"
+		}
 	}
 
 	if what == "" {
@@ -211,10 +227,11 @@ func (h *ToolHandler) toolGenerate(req JSONRPCRequest, args json.RawMessage) JSO
 
 	// Strict parameter validation: reject unknown params for the given format
 	if errResp := validateGenerateParams(req, what, args); errResp != nil {
-		return *errResp
+		return appendCanonicalWhatAliasWarning(*errResp, usedAliasParam, what)
 	}
 
-	return handler(h, req, args)
+	resp := handler(h, req, args)
+	return appendCanonicalWhatAliasWarning(resp, usedAliasParam, what)
 }
 
 // ============================================

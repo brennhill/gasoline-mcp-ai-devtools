@@ -85,6 +85,45 @@ func TestToolsGenerateDispatch_EmptyArgs(t *testing.T) {
 	}
 }
 
+func TestToolsGenerateDispatch_FormatAliasAddsCanonicalWhatWarning(t *testing.T) {
+	t.Parallel()
+	h, _, _ := makeToolHandler(t)
+
+	resp := callGenerateRaw(h, `{"format":"pr_summary"}`)
+	result := parseToolResult(t, resp)
+	if result.IsError {
+		t.Fatalf("format alias should be accepted, got: %s", result.Content[0].Text)
+	}
+	foundCanonicalWarning := false
+	for _, block := range result.Content {
+		if strings.Contains(block.Text, "canonical parameter is 'what'") {
+			foundCanonicalWarning = true
+			break
+		}
+	}
+	if !foundCanonicalWarning {
+		t.Fatalf("expected canonical what warning block, got %d content blocks", len(result.Content))
+	}
+}
+
+func TestToolsGenerateDispatch_ConflictingWhatAndFormat(t *testing.T) {
+	t.Parallel()
+	h, _, _ := makeToolHandler(t)
+
+	resp := callGenerateRaw(h, `{"what":"test","format":"har"}`)
+	result := parseToolResult(t, resp)
+	if !result.IsError {
+		t.Fatal("conflicting what/format should return isError:true")
+	}
+	text := result.Content[0].Text
+	if !strings.Contains(text, "invalid_param") {
+		t.Fatalf("expected invalid_param, got: %s", text)
+	}
+	if !strings.Contains(text, "Conflicting parameters") {
+		t.Fatalf("expected conflict explanation, got: %s", text)
+	}
+}
+
 // ============================================
 // getValidGenerateFormats Tests
 // ============================================

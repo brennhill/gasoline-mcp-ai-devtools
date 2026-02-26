@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Performance Nightmare</title>
+  <style>
+    :root {
+      --bg: #fff6ec;
+      --ink: #1b1b1b;
+      --accent: #a33f00;
+    }
+    body {
+      margin: 0;
+      font-family: "Lucida Sans", "Lucida Grande", sans-serif;
+      color: var(--ink);
+      background: linear-gradient(180deg, #fff3e6 0%, var(--bg) 70%);
+    }
+    nav {
+      position: sticky;
+      top: 0;
+      z-index: 4;
+      display: flex;
+      gap: 0.6rem;
+      flex-wrap: wrap;
+      background: #42210b;
+      color: #fff4ea;
+      padding: 0.7rem;
+    }
+    nav a {
+      color: inherit;
+      text-decoration: none;
+      border: 1px solid rgba(255,255,255,0.35);
+      padding: 0.35rem 0.6rem;
+      border-radius: 8px;
+      font-size: 0.9rem;
+    }
+    main {
+      max-width: 980px;
+      margin: 1rem auto;
+      padding: 0 1rem 3rem;
+    }
+    .hero-placeholder {
+      min-height: 280px;
+      border-radius: 14px;
+      border: 2px dashed #b45309;
+      display: grid;
+      place-items: center;
+      background: repeating-linear-gradient(135deg, #ffe2c7 0 14px, #ffe9d7 14px 28px);
+      margin-bottom: 1rem;
+    }
+    #hero-image {
+      display: none;
+      width: 100%;
+      min-height: 320px;
+      border-radius: 14px;
+      background: linear-gradient(135deg, #8b1e3f, #f97316);
+      color: #fff;
+      font-size: 2rem;
+      font-weight: 700;
+      align-items: center;
+      justify-content: center;
+    }
+    #shift-slot {
+      min-height: 48px;
+      margin-bottom: 1rem;
+    }
+    #shift-banner {
+      display: none;
+      padding: 1rem;
+      border-left: 8px solid #ef4444;
+      background: #fee2e2;
+      border-radius: 10px;
+    }
+    .panel {
+      background: #fff;
+      border: 1px solid #f1c89c;
+      border-radius: 12px;
+      padding: 1rem;
+      box-shadow: 0 6px 18px rgba(139, 69, 19, 0.11);
+      margin-top: 1rem;
+    }
+    button {
+      padding: 0.6rem 0.9rem;
+      border-radius: 8px;
+      border: 1px solid #7c2d12;
+      background: #b45309;
+      color: #fff;
+      cursor: pointer;
+      font: inherit;
+    }
+    #block-result {
+      margin-top: 0.65rem;
+      font-weight: 700;
+    }
+    .spacer {
+      height: 1200px;
+      background: linear-gradient(180deg, rgba(180,83,9,0.05), rgba(180,83,9,0.13));
+      border-radius: 10px;
+      margin-top: 1rem;
+    }
+  </style>
+</head>
+<body>
+  <nav aria-label="Primary menu">
+    <a href="/">Home</a>
+    <a href="/interact.html">Interact</a>
+    <a href="/performance.html">Performance</a>
+    <a href="/telemetry.html">Telemetry</a>
+    <a href="/a11y.html">A11y</a>
+  </nav>
+
+  <main>
+    <h1>Performance Nightmare</h1>
+    <p>Designed to trigger deterministic Web Vitals and long-task signals.</p>
+
+    <div id="lcp-slot" class="hero-placeholder" aria-live="polite">Hero loading... (delayed 2s)</div>
+    <div id="hero-image">Delayed LCP Hero</div>
+
+    <div id="shift-slot"></div>
+
+    <section class="panel">
+      <h2>Main-Thread Blocking Action</h2>
+      <p>Clicking this runs a deterministic busy loop for ~800ms.</p>
+      <button id="block-main" type="button">Run 800ms blocking task</button>
+      <div id="block-result" role="status"></div>
+    </section>
+
+    <div class="spacer" aria-hidden="true"></div>
+
+    <section class="panel" id="lower-content">
+      <h2>Lower Content</h2>
+      <p>This content gets pushed down when CLS banner appears.</p>
+    </section>
+  </main>
+
+  <script>
+    (function () {
+      setTimeout(function () {
+        var slot = document.getElementById('lcp-slot');
+        var hero = document.getElementById('hero-image');
+        slot.style.display = 'none';
+        hero.style.display = 'flex';
+      }, 2000);
+
+      setTimeout(function () {
+        var shiftSlot = document.getElementById('shift-slot');
+        var banner = document.createElement('div');
+        banner.id = 'shift-banner';
+        banner.textContent = 'Late-loading alert inserted to force layout shift.';
+        banner.style.display = 'block';
+        shiftSlot.appendChild(banner);
+      }, 1500);
+
+      document.getElementById('block-main').addEventListener('click', function () {
+        var start = performance.now();
+        while (performance.now() - start < 800) {
+          // Intentional busy loop to force long task.
+        }
+        document.getElementById('block-result').textContent = 'blocking task complete in ' + Math.round(performance.now() - start) + 'ms';
+      });
+    }());
+  </script>
+</body>
+</html>
