@@ -6,7 +6,7 @@
 // Verifies that extension-disconnect and CSP-restricted states return immediate structured errors
 // instead of queuing commands destined to time out.
 //
-// Run: go test ./cmd/dev-console -run "TestRequireExtension|TestRequireCSP|TestGateOrder|TestDiagnosticHint|TestNavigate_Ext|TestExecuteJS_CSP|TestClick_Ext|TestSubtitle_No" -v -count=1
+// Run: go test ./cmd/dev-console -run "TestRequireExtension|TestRequireCSP|TestGateOrder|TestDiagnosticHint|TestNavigate_Ext|TestExecuteJS_CSP|TestClick_Ext|TestSubtitle_No|TestRequirePilot" -v -count=1
 package main
 
 import (
@@ -353,6 +353,109 @@ func TestGateOrder_Extension_BeforeCSP(t *testing.T) {
 	code := extractErrorCode(t, resp)
 	if code != ErrNoData {
 		t.Fatalf("expected %q (extension before CSP), got %q", ErrNoData, code)
+	}
+}
+
+// ============================================
+// Recovery tool call tests
+// ============================================
+
+// extractStructuredError parses the full StructuredError from a JSONRPCResponse result.
+func extractStructuredError(t *testing.T, resp JSONRPCResponse) StructuredError {
+	t.Helper()
+	var result MCPToolResult
+	if err := json.Unmarshal(resp.Result, &result); err != nil {
+		t.Fatalf("unmarshal result: %v", err)
+	}
+	if !result.IsError {
+		t.Fatal("expected error response, got success")
+	}
+	if len(result.Content) == 0 {
+		t.Fatal("error response has no content blocks")
+	}
+	text := result.Content[0].Text
+	idx := strings.Index(text, "{")
+	if idx < 0 {
+		t.Fatalf("no JSON found in error text: %s", text)
+	}
+	var se StructuredError
+	if err := json.Unmarshal([]byte(text[idx:]), &se); err != nil {
+		t.Fatalf("unmarshal structured error: %v\nraw: %s", err, text[idx:])
+	}
+	return se
+}
+
+func TestRequirePilot_RecoveryToolCall(t *testing.T) {
+	t.Parallel()
+	env := newGateTestEnv(t)
+	env.capture.SetPilotEnabled(false)
+
+	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`)}
+	resp, blocked := env.handler.requirePilot(req)
+	if !blocked {
+		t.Fatal("expected requirePilot to block when pilot is disabled")
+	}
+	se := extractStructuredError(t, resp)
+	if se.RecoveryToolCall == nil {
+		t.Fatal("expected recovery_tool_call in pilot_disabled error")
+	}
+	toolName, _ := se.RecoveryToolCall["tool"].(string)
+	if toolName != "observe" {
+		t.Fatalf("expected recovery_tool_call tool='observe', got %q", toolName)
+	}
+	args, _ := se.RecoveryToolCall["arguments"].(map[string]any)
+	if args == nil {
+		t.Fatal("expected recovery_tool_call to have 'arguments'")
+	}
+	if what, _ := args["what"].(string); what != "pilot" {
+		t.Fatalf("expected recovery_tool_call arguments.what='pilot', got %q", what)
+	}
+}
+
+func TestRequireExtension_RecoveryToolCall(t *testing.T) {
+	t.Parallel()
+	env := newGateTestEnv(t)
+
+	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`)}
+	resp, blocked := env.handler.requireExtension(req)
+	if !blocked {
+		t.Fatal("expected requireExtension to block when extension is disconnected")
+	}
+	se := extractStructuredError(t, resp)
+	if se.RecoveryToolCall == nil {
+		t.Fatal("expected recovery_tool_call in extension disconnected error")
+	}
+	toolName, _ := se.RecoveryToolCall["tool"].(string)
+	if toolName == "" {
+		t.Fatal("expected recovery_tool_call to have a 'tool' field")
+	}
+}
+
+func TestRequireCSPClear_RecoveryToolCall(t *testing.T) {
+	t.Parallel()
+	env := newGateTestEnv(t)
+	env.capture.SetCSPStatusForTest(true, "script_exec")
+
+	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`)}
+	resp, blocked := env.handler.requireCSPClear(req, "main")
+	if !blocked {
+		t.Fatal("expected requireCSPClear to block when CSP restricts main world")
+	}
+	se := extractStructuredError(t, resp)
+	if se.RecoveryToolCall == nil {
+		t.Fatal("expected recovery_tool_call in CSP blocked error")
+	}
+	toolName, _ := se.RecoveryToolCall["tool"].(string)
+	if toolName != "interact" {
+		t.Fatalf("expected recovery_tool_call tool='interact', got %q", toolName)
+	}
+	args, _ := se.RecoveryToolCall["arguments"].(map[string]any)
+	if args == nil {
+		t.Fatal("expected recovery_tool_call to have 'arguments'")
+	}
+	// The recovery for CSP should suggest world=auto or world=isolated
+	if world, ok := args["world"]; !ok || world == "main" {
+		t.Fatalf("expected recovery_tool_call to suggest world != 'main', got %v", world)
 	}
 }
 

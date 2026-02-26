@@ -35,6 +35,7 @@ export declare function parseQueryParamsObject(params: PendingQuery['params']): 
 export declare function withTargetContext(result: unknown, target: TargetResolution): Record<string, unknown>;
 export declare function requiresTargetTab(queryType: string): boolean;
 export declare function isBrowserEscapeAction(queryType: string, paramsObj: QueryParamsObject): boolean;
+export declare function persistTrackedTab(tab: chrome.tabs.Tab): Promise<void>;
 export declare function resolveTargetTab(query: PendingQuery, paramsObj: QueryParamsObject): Promise<{
     target?: TargetResolution;
     error?: TargetResolutionError;
