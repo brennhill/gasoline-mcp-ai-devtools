@@ -131,6 +131,7 @@ func filterWaterfallSummaryEntries(allEntries []capture.NetworkWaterfallEntry, u
 }
 
 // GetWSStatus returns the current WebSocket connection status.
+// TODO: GetWSStatus does not support summary mode — add for consistency with GetNetworkBodies/GetWSEvents.
 func GetWSStatus(deps Deps, req mcp.JSONRPCRequest, args json.RawMessage) mcp.JSONRPCResponse {
 	var arguments struct {
 		URL          string `json:"url"`

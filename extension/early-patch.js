@@ -196,5 +196,37 @@
             return OriginalSend.call(this, body);
         };
     }
+    // =========================================================================
+    // SELF-CLEANUP: If Phase 2 never adopts early patches (e.g., CSP blocks
+    // inject bundle), restore originals and free buffers after 30 seconds.
+    // Bounds worst-case memory leak to ~800KB for the 30-second window.
+    // =========================================================================
+    setTimeout(() => {
+        // Phase 2 deletes __GASOLINE_EARLY_BODIES__ on adoption — if it still
+        // exists, Phase 2 never ran and we must clean up.
+        if (window.__GASOLINE_EARLY_BODIES__) {
+            delete window.__GASOLINE_EARLY_BODIES__;
+            // Restore fetch
+            if (window.__GASOLINE_ORIGINAL_FETCH__) {
+                window.fetch = window.__GASOLINE_ORIGINAL_FETCH__;
+                delete window.__GASOLINE_ORIGINAL_FETCH__;
+            }
+            // Restore XHR
+            if (window.__GASOLINE_ORIGINAL_XHR_OPEN__) {
+                XMLHttpRequest.prototype.open = window.__GASOLINE_ORIGINAL_XHR_OPEN__;
+                delete window.__GASOLINE_ORIGINAL_XHR_OPEN__;
+            }
+            if (window.__GASOLINE_ORIGINAL_XHR_SEND__) {
+                XMLHttpRequest.prototype.send = window.__GASOLINE_ORIGINAL_XHR_SEND__;
+                delete window.__GASOLINE_ORIGINAL_XHR_SEND__;
+            }
+            // Restore WebSocket
+            if (window.__GASOLINE_ORIGINAL_WS__) {
+                window.WebSocket = window.__GASOLINE_ORIGINAL_WS__;
+                delete window.__GASOLINE_ORIGINAL_WS__;
+            }
+            delete window.__GASOLINE_EARLY_WS__;
+        }
+    }, 30_000);
 })();
 //# sourceMappingURL=early-patch.js.map
