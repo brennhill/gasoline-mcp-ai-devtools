@@ -47,6 +47,9 @@ func (h *ToolHandler) handleUpload(req JSONRPCRequest, args json.RawMessage) JSO
 	if resp, blocked := h.requireExtension(req); blocked {
 		return resp
 	}
+	if resp, blocked := h.requireTabTracking(req); blocked {
+		return resp
+	}
 
 	info, errResp := validateUploadFile(req, params.FilePath)
 	if errResp != nil {

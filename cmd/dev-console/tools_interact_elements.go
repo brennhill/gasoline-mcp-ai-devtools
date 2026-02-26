@@ -30,6 +30,9 @@ func (h *ToolHandler) handleListInteractive(req JSONRPCRequest, args json.RawMes
 	if resp, blocked := h.requireExtension(req); blocked {
 		return resp
 	}
+	if resp, blocked := h.requireTabTracking(req); blocked {
+		return resp
+	}
 
 	args = normalizeDOMActionArgs(args, "list_interactive")
 
