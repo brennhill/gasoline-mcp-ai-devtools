@@ -43,6 +43,9 @@ func newInteractHelpersTestEnv(t *testing.T) *interactHelpersTestEnv {
 	httpReq.Header.Set("X-Gasoline-Client", "test-client")
 	cap.HandleSync(httptest.NewRecorder(), httpReq)
 
+	// Simulate tab tracking so tests don't hit the tab tracking gate.
+	cap.SetTrackingStatusForTest(42, "https://example.com")
+
 	return &interactHelpersTestEnv{handler: handler, server: server, capture: cap}
 }
 

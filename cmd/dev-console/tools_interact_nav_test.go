@@ -398,6 +398,7 @@ func TestSwitchTab_FailedCommand_NoUpdate(t *testing.T) {
 	}
 }
 
+<<<<<<< HEAD
 // TestSwitchTab_TabIDZero_NoUpdate verifies that when the extension returns
 // success=true but tab_id is 0 or missing, the tracked tab state is NOT updated.
 // This guards against extension responses with incomplete data. See P2-4 / #271.
