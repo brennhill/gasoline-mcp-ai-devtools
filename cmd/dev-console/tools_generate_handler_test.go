@@ -73,6 +73,27 @@ func TestToolsGenerateDispatch_UnknownFormat(t *testing.T) {
 	assertSnakeCaseFields(t, string(resp.Result))
 }
 
+func TestToolsGenerateDispatch_UnknownFormatAliasAddsCanonicalWhatWarning(t *testing.T) {
+	t.Parallel()
+	h, _, _ := makeToolHandler(t)
+
+	resp := callGenerateRaw(h, `{"format":"nonexistent_format"}`)
+	result := parseToolResult(t, resp)
+	if !result.IsError {
+		t.Fatal("unknown format alias should return isError:true")
+	}
+	foundCanonicalWarning := false
+	for _, block := range result.Content {
+		if strings.Contains(block.Text, "canonical parameter is 'what'") {
+			foundCanonicalWarning = true
+			break
+		}
+	}
+	if !foundCanonicalWarning {
+		t.Fatalf("expected canonical what warning block on error path, got %d content blocks", len(result.Content))
+	}
+}
+
 func TestToolsGenerateDispatch_EmptyArgs(t *testing.T) {
 	t.Parallel()
 	h, _, _ := makeToolHandler(t)

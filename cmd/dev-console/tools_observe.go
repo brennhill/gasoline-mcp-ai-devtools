@@ -166,7 +166,8 @@ func (h *ToolHandler) toolObserve(req JSONRPCRequest, args json.RawMessage) JSON
 	handler, ok := observeHandlers[what]
 	if !ok {
 		validModes := getValidObserveModes()
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrUnknownMode, "Unknown observe mode: "+what, "Use a valid mode from the 'what' enum", withParam("what"), withHint("Valid values: "+validModes))}
+		resp := JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrUnknownMode, "Unknown observe mode: "+what, "Use a valid mode from the 'what' enum", withParam("what"), withHint("Valid values: "+validModes))}
+		return appendCanonicalWhatAliasWarning(resp, usedAliasParam, what)
 	}
 
 	args = h.maybeInjectSummary(args)

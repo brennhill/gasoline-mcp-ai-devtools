@@ -156,7 +156,8 @@ func (h *ToolHandler) toolAnalyze(req JSONRPCRequest, args json.RawMessage) JSON
 	handler, ok := analyzeHandlers[what]
 	if !ok {
 		validModes := getValidAnalyzeModes()
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrUnknownMode, "Unknown analyze mode: "+what, "Use a valid mode from the 'what' enum", withParam("what"), withHint("Valid values: "+validModes))}
+		resp := JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrUnknownMode, "Unknown analyze mode: "+what, "Use a valid mode from the 'what' enum", withParam("what"), withHint("Valid values: "+validModes))}
+		return appendCanonicalWhatAliasWarning(resp, usedAliasParam, what)
 	}
 
 	resp := handler(h, req, args)

@@ -1,5 +1,5 @@
 ---
-status: implemented
+status: partially_implemented
 scope: feature/test-harness/implementation
 ai-priority: high
 tags: [implementation, testing, architecture]
@@ -96,6 +96,11 @@ We will maintain a dedicated `external-evasion.sh` module for tests that *must* 
 ---
 
 ## Execution Plan
+
+Current phase status:
+* Phase 1: implemented
+* Phase 2: partially implemented (framework rewrite is in place; per-module assertion hardening remains)
+* Phase 3: pending
 
 1. **Phase 1: Create the Test Server & Pages**
    * Setup the local web server in the Makefile/test scripts.
