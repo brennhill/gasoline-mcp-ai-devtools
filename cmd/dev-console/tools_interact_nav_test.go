@@ -397,6 +397,102 @@ func TestSwitchTab_FailedCommand_NoUpdate(t *testing.T) {
 	}
 }
 
+// TestSwitchTab_TabIDZero_NoUpdate verifies that when the extension returns
+// success=true but tab_id is 0 or missing, the tracked tab state is NOT updated.
+// This guards against extension responses with incomplete data. See P2-4 / #271.
+func TestSwitchTab_TabIDZero_NoUpdate(t *testing.T) {
+	t.Parallel()
+	env := newInteractTestEnv(t)
+	env.capture.SetPilotEnabled(true)
+	env.capture.SetTrackingStatusForTest(100, "https://old-page.example.com")
+
+	// Simulate extension returning success but with tab_id=0 (missing/invalid).
+	go completePendingCommands(env, json.RawMessage(`{
+		"success": true,
+		"action": "switch_tab",
+		"tab_id": 0,
+		"url": "https://zero-tab.example.com",
+		"title": "Zero Tab"
+	}`), "")
+
+	req := JSONRPCRequest{JSONRPC: "2.0", ID: 1}
+	_ = env.handler.handleBrowserActionSwitchTab(req, json.RawMessage(`{"tab_id":42}`))
+
+	// Tracked tab should remain 100 because tab_id=0 is invalid.
+	_, tabID, tabURL := env.capture.GetTrackingStatus()
+	if tabID != 100 {
+		t.Errorf("tracked tab ID should remain 100 when ext returns tab_id=0, got %d", tabID)
+	}
+	if tabURL != "https://old-page.example.com" {
+		t.Errorf("tracked tab URL should remain unchanged when ext returns tab_id=0, got %q", tabURL)
+	}
+}
+
+// TestSwitchTab_TabIDMissing_NoUpdate verifies that when the extension returns
+// success=true but no tab_id field at all, the tracked tab state is NOT updated.
+func TestSwitchTab_TabIDMissing_NoUpdate(t *testing.T) {
+	t.Parallel()
+	env := newInteractTestEnv(t)
+	env.capture.SetPilotEnabled(true)
+	env.capture.SetTrackingStatusForTest(100, "https://old-page.example.com")
+
+	// Simulate extension returning success but without a tab_id field.
+	go completePendingCommands(env, json.RawMessage(`{
+		"success": true,
+		"action": "switch_tab",
+		"url": "https://missing-tab.example.com",
+		"title": "Missing Tab"
+	}`), "")
+
+	req := JSONRPCRequest{JSONRPC: "2.0", ID: 1}
+	_ = env.handler.handleBrowserActionSwitchTab(req, json.RawMessage(`{"tab_id":42}`))
+
+	// Tracked tab should remain 100 because tab_id is absent (defaults to 0).
+	_, tabID, tabURL := env.capture.GetTrackingStatus()
+	if tabID != 100 {
+		t.Errorf("tracked tab ID should remain 100 when ext omits tab_id, got %d", tabID)
+	}
+	if tabURL != "https://old-page.example.com" {
+		t.Errorf("tracked tab URL should remain unchanged when ext omits tab_id, got %q", tabURL)
+	}
+}
+
+// TestSwitchTab_AsyncMode_NoImmediateTrackingUpdate verifies that in async mode
+// (background=true), the server-side tracked tab state is NOT immediately updated.
+// In async mode, the extension-side persistTrackedTab handles retarget via the
+// next /sync heartbeat. See P2-3 / #271.
+func TestSwitchTab_AsyncMode_NoImmediateTrackingUpdate(t *testing.T) {
+	t.Parallel()
+	env := newInteractTestEnv(t)
+	env.capture.SetPilotEnabled(true)
+	env.capture.SetTrackingStatusForTest(100, "https://old-page.example.com")
+
+	// Call switch_tab with background=true (async mode).
+	req := JSONRPCRequest{JSONRPC: "2.0", ID: 1}
+	args := json.RawMessage(`{"tab_id":200,"background":true}`)
+	resp := env.handler.handleBrowserActionSwitchTab(req, args)
+
+	// Should return immediately with a queued response (not an error).
+	var result MCPToolResult
+	if err := json.Unmarshal(resp.Result, &result); err != nil {
+		t.Fatalf("unmarshal result: %v", err)
+	}
+	if result.IsError {
+		t.Fatalf("async switch_tab should not error, got: %s", result.Content[0].Text)
+	}
+
+	// Tracked tab should remain 100 because async mode does not wait for
+	// the command to complete, so applySwitchTabTracking cannot extract
+	// tab data from the (not-yet-available) extension response.
+	_, tabID, tabURL := env.capture.GetTrackingStatus()
+	if tabID != 100 {
+		t.Errorf("tracked tab ID should remain 100 in async mode, got %d", tabID)
+	}
+	if tabURL != "https://old-page.example.com" {
+		t.Errorf("tracked tab URL should remain unchanged in async mode, got %q", tabURL)
+	}
+}
+
 func TestHandleBrowserActionNavigate_NewTabFlagPreserved(t *testing.T) {
 	t.Parallel()
 	env := newInteractTestEnv(t)

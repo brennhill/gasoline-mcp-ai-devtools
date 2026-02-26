@@ -44,6 +44,9 @@ func withRetryable(retryable bool) func(*StructuredError) {
 }
 func withRetryAfterMs(ms int) func(*StructuredError) { return mcp.WithRetryAfterMs(ms) }
 func withFinal(final bool) func(*StructuredError)    { return mcp.WithFinal(final) }
+func withRecoveryToolCall(toolCall map[string]any) func(*StructuredError) {
+	return mcp.WithRecoveryToolCall(toolCall)
+}
 
 func retryDefaultsForCode(code string) []func(*StructuredError) {
 	return mcp.RetryDefaultsForCode(code)
@@ -142,7 +145,13 @@ func (h *ToolHandler) requirePilot(req JSONRPCRequest, extraOpts ...func(*Struct
 	if h.capture.IsPilotActionAllowed() {
 		return JSONRPCResponse{}, false
 	}
-	opts := append([]func(*StructuredError){h.diagnosticHint()}, extraOpts...)
+	opts := append([]func(*StructuredError){
+		h.diagnosticHint(),
+		withRecoveryToolCall(map[string]any{
+			"tool":      "configure",
+			"arguments": map[string]any{"what": "pilot", "enabled": true},
+		}),
+	}, extraOpts...)
 	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(
 		ErrCodePilotDisabled, "AI Web Pilot is explicitly disabled",
 		"Enable AI Web Pilot in the extension popup", opts...,
@@ -157,7 +166,15 @@ func (h *ToolHandler) requireExtension(req JSONRPCRequest, extraOpts ...func(*St
 	if h.capture.IsExtensionConnected() {
 		return JSONRPCResponse{}, false
 	}
-	opts := append([]func(*StructuredError){h.diagnosticHint(), withRetryable(true), withRetryAfterMs(3000)}, extraOpts...)
+	opts := append([]func(*StructuredError){
+		h.diagnosticHint(),
+		withRetryable(true),
+		withRetryAfterMs(3000),
+		withRecoveryToolCall(map[string]any{
+			"tool":      "observe",
+			"arguments": map[string]any{"what": "status"},
+		}),
+	}, extraOpts...)
 	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(
 		ErrNoData, "Extension not connected. Commands cannot be dispatched.",
 		"Check that the Gasoline browser extension is installed and the page is open.",
@@ -186,5 +203,34 @@ func (h *ToolHandler) requireCSPClear(req JSONRPCRequest, world string) (JSONRPC
 		fmt.Sprintf("Page CSP blocks MAIN world script execution (level: %s). Use world='auto' or world='isolated' to bypass.", level),
 		"Retry with world='auto' (falls back to isolated/structured), world='isolated' (DOM access, no page JS), or use DOM primitives (click, type).",
 		h.diagnosticHint(),
+		withRecoveryToolCall(map[string]any{
+			"tool":      "interact",
+			"arguments": map[string]any{"what": "execute_js", "script": "return document.title", "world": "auto"},
+		}),
+	)}, true
+}
+
+// requireTabTracking returns (resp, true) if no tab is currently being tracked,
+// short-circuiting the caller with an immediate structured error (~5ms) instead of
+// queuing a command that would be delivered to an unknown tab.
+// Usage: if resp, blocked := h.requireTabTracking(req); blocked { return resp }
+func (h *ToolHandler) requireTabTracking(req JSONRPCRequest, extraOpts ...func(*StructuredError)) (JSONRPCResponse, bool) {
+	enabled, _, _ := h.capture.GetTrackingStatus()
+	if enabled {
+		return JSONRPCResponse{}, false
+	}
+	opts := append([]func(*StructuredError){
+		h.diagnosticHint(),
+		withRetryable(true),
+		withRetryAfterMs(2000),
+		withRecoveryToolCall(map[string]any{
+			"tool":      "observe",
+			"arguments": map[string]any{"what": "status"},
+		}),
+	}, extraOpts...)
+	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(
+		ErrNoData, "No tab is being tracked. Navigate to a page first.",
+		"Open a page in the browser, or call interact(what='navigate', url='...').",
+		opts...,
 	)}, true
 }
