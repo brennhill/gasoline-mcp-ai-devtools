@@ -54,7 +54,11 @@ mock.module('../../extension/background/debug.js', {
 globalThis.chrome = {
   tabs: {
     get: mock.fn(async () => ({ windowId: 11, url: 'https://www.linkedin.com/feed/' })),
+    update: mock.fn(async () => ({})),
     captureVisibleTab: mock.fn(async () => 'data:image/jpeg;base64,Zm9v')
+  },
+  windows: {
+    update: mock.fn(async () => ({}))
   }
 }
 
@@ -79,6 +83,13 @@ describe('observe screenshot command', () => {
 
     assert.strictEqual(sendResult.mock.calls.length, 0, 'success path should resolve via server/query_id')
     assert.strictEqual(globalThis.chrome.tabs.get.mock.calls.length, 1)
+
+    // Verify window focus + tab activation before capture
+    assert.strictEqual(globalThis.chrome.windows.update.mock.calls.length, 1)
+    assert.deepStrictEqual(globalThis.chrome.windows.update.mock.calls[0].arguments, [11, { focused: true }])
+    assert.strictEqual(globalThis.chrome.tabs.update.mock.calls.length, 1)
+    assert.deepStrictEqual(globalThis.chrome.tabs.update.mock.calls[0].arguments, [123, { active: true }])
+
     assert.strictEqual(globalThis.chrome.tabs.captureVisibleTab.mock.calls.length, 1)
     assert.strictEqual(mockRecordScreenshot.mock.calls.length, 1)
     assert.strictEqual(globalThis.fetch.mock.calls.length, 1)
