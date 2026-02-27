@@ -198,7 +198,41 @@ func normalizeAnalyzeArgsForAsync(argsJSON string) json.RawMessage {
 
 	what, _ := params["what"].(string)
 	switch what {
-	case "dom", "page_summary", "link_health", "computed_styles", "forms", "form_validation":
+	case "dom", "page_summary", "link_health", "computed_styles", "forms", "form_validation", "navigation":
+	default:
+		return raw
+	}
+
+	if _, hasSync := params["sync"]; hasSync {
+		return raw
+	}
+	if _, hasWait := params["wait"]; hasWait {
+		return raw
+	}
+	if _, hasBackground := params["background"]; hasBackground {
+		return raw
+	}
+
+	params["sync"] = false
+	if normalized, err := json.Marshal(params); err == nil {
+		return json.RawMessage(normalized)
+	}
+	return raw
+}
+
+// normalizeObserveArgsForAsync adds sync=false for async-capable observe operations
+// (page_inventory) unless sync/wait/background is already specified.
+func normalizeObserveArgsForAsync(argsJSON string) json.RawMessage {
+	raw := json.RawMessage(argsJSON)
+
+	var params map[string]any
+	if err := json.Unmarshal(raw, &params); err != nil {
+		return raw
+	}
+
+	what, _ := params["what"].(string)
+	switch what {
+	case "page_inventory":
 	default:
 		return raw
 	}

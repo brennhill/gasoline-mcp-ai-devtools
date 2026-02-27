@@ -351,6 +351,33 @@ func (h *ToolHandler) toolListVisualBaselines(req JSONRPCRequest, _ json.RawMess
 	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Visual baselines", listData)}
 }
 
+// ============================================
+// Navigation / SPA Route Discovery (#335)
+// ============================================
+
+func (h *ToolHandler) toolAnalyzeNavigation(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+	var params struct {
+		TabID int `json:"tab_id"`
+	}
+	if len(args) > 0 {
+		if err := json.Unmarshal(args, &params); err != nil {
+			return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidJSON, "Invalid JSON arguments: "+err.Error(), "Fix JSON syntax and call again")}
+		}
+	}
+
+	correlationID := newCorrelationID("navigation")
+
+	query := queries.PendingQuery{
+		Type:          "navigation",
+		Params:        args,
+		TabID:         params.TabID,
+		CorrelationID: correlationID,
+	}
+	h.capture.CreatePendingQueryWithTimeout(query, queries.AsyncCommandTimeout, req.ClientID)
+
+	return h.MaybeWaitForCommand(req, correlationID, args, "Navigation discovery queued")
+}
+
 // ---- helpers ----
 
 // extractScreenshotPath extracts the file path from a screenshot response.

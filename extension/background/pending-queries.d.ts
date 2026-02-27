@@ -9,6 +9,7 @@ import type { PendingQuery } from '../types';
 import type { SyncClient } from './sync-client';
 import './commands/observe';
 import './commands/analyze';
+import './commands/analyze-navigation';
 import './commands/interact';
 export type { SendAsyncResultFn, ActionToastFn } from './commands/helpers';
 export { handlePilotCommand } from './commands/interact';
