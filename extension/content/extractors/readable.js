@@ -1,7 +1,7 @@
 // readable.ts — Readable content extraction for get_readable query type.
 // Runs in the content script's ISOLATED world (CSP-safe, no eval).
 // Issue #257: Replaces the IIFE string that was embedded in the Go handler.
-import { findMainContentElement } from './shared';
+import { findMainContentElement } from './shared.js';
 /** Tags and selectors to strip from content before extracting text. */
 const REMOVE_SELECTORS = [
     'nav', 'header', 'footer', 'aside', 'script', 'style', 'noscript', 'svg',

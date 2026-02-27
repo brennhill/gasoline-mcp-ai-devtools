@@ -11,7 +11,7 @@
  * snapshots in chrome.storage.local. Used by the interact tool's state_*
  * actions (save_state, load_state, list_states, delete_state).
  */
-import type { BrowserStateSnapshot } from '../types';
+import type { BrowserStateSnapshot } from '../types/index.js';
 interface StoredStateSnapshot extends BrowserStateSnapshot {
     name: string;
     size_bytes: number;

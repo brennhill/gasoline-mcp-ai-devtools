@@ -54,7 +54,6 @@ compile-ts: generate-wire-types generate-dom-primitives
 		echo "❌ ERROR: TypeScript compilation failed - extension/background/index.js not found"; \
 		exit 1; \
 	fi
-	@./scripts/fix-esm-imports.sh
 	@echo "=== Bundling extension scripts ==="
 	@node scripts/bundle-content.js
 	@if [ ! -f extension/content.bundled.js ]; then \
@@ -247,6 +246,7 @@ check-wire-drift:
 	@node scripts/generate-wire-types.js --check
 
 check-invariants: check-wire-drift
+	@./scripts/check-esm-extensions.sh
 	@./scripts/check-sync-invariants.sh
 	@./scripts/check-bridge-stdout-invariant.sh
 	@./scripts/validate-codex-skills.sh

@@ -11,8 +11,8 @@
  * Includes periodic cleanup timer to handle edge cases where pagehide/beforeunload don't fire.
  */
 
-import type { HighlightResponse, ExecuteJsResult, A11yAuditResult, DomQueryResult } from '../types'
-import type { PendingRequestStats } from './types'
+import type { HighlightResponse, ExecuteJsResult, A11yAuditResult, DomQueryResult } from '../types/index.js'
+import type { PendingRequestStats } from './types.js'
 
 // Pending highlight response resolvers (keyed by request ID)
 const pendingHighlightRequests = new Map<number, (result: HighlightResponse) => void>()

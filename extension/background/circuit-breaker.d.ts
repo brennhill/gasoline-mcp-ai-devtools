@@ -9,7 +9,7 @@
  * @fileoverview Circuit Breaker - Implements circuit breaker pattern with
  * exponential backoff for protecting server communication.
  */
-import type { CircuitBreakerState, CircuitBreakerStats } from '../types';
+import type { CircuitBreakerState, CircuitBreakerStats } from '../types/index.js';
 export type { CircuitBreakerState, CircuitBreakerStats };
 /** State change callback type */
 export type CircuitBreakerStateChangeCallback = (oldState: CircuitBreakerState, newState: CircuitBreakerState, reason: string) => void;

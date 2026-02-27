@@ -10,8 +10,8 @@
  * and forward them via postLog, while preserving original behavior.
  */
 
-import { safeSerialize } from './serialize'
-import { postLog } from './bridge'
+import { safeSerialize } from './serialize.js'
+import { postLog } from './bridge.js'
 
 type ConsoleMethods = 'log' | 'warn' | 'error' | 'info' | 'debug'
 

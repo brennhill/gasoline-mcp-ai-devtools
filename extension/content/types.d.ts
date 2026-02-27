@@ -8,7 +8,7 @@
  * @fileoverview Content Script Internal Types
  * Type definitions for internal content script use
  */
-import type { WebSocketCaptureMode, StateAction, BrowserStateSnapshot, PageMessageType, LogEntry, WebSocketEvent, NetworkBodyPayload, EnhancedAction, PerformanceSnapshot } from '../types';
+import type { WebSocketCaptureMode, StateAction, BrowserStateSnapshot, PageMessageType, LogEntry, WebSocketEvent, NetworkBodyPayload, EnhancedAction, PerformanceSnapshot } from '../types/index.js';
 /**
  * Pending request statistics
  */

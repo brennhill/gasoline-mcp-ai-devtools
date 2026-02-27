@@ -13,7 +13,7 @@ import type {
   PerformanceMark,
   PerformanceMeasure,
   AiContextData
-} from './messages'
+} from './messages.js'
 
 // =============================================================================
 // GASOLINE DEVELOPER API (window.__gasoline)

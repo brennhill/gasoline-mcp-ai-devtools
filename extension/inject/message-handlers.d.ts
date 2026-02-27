@@ -9,8 +9,8 @@
  * specialized modules for settings, state management, JavaScript execution,
  * and DOM/accessibility queries.
  */
-import type { BrowserStateSnapshot } from '../types/index';
-export { executeJavaScript, safeSerializeForExecute } from './execute-js';
+import type { BrowserStateSnapshot } from '../types/index.js';
+export { executeJavaScript, safeSerializeForExecute } from './execute-js.js';
 /**
  * Link health query request message from content script
  */

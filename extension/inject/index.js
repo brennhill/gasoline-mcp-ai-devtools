@@ -9,34 +9,34 @@
  * Combines API, observers, and message handlers for page-level capture.
  */
 // Re-export barrel pattern for tests and consumers
-export { safeSerialize, getElementSelector, isSensitiveInput } from '../lib/serialize';
-export { getContextAnnotations, setContextAnnotation, removeContextAnnotation, clearContextAnnotations } from '../lib/context';
-export { getImplicitRole, isDynamicClass, computeCssPath, computeSelectors, recordEnhancedAction, getEnhancedActionBuffer, clearEnhancedActionBuffer, generatePlaywrightScript } from '../lib/reproduction';
-export { recordAction, getActionBuffer, clearActionBuffer, handleClick, handleInput, handleScroll, handleKeydown, handleChange, installActionCapture, uninstallActionCapture, setActionCaptureEnabled, installNavigationCapture, uninstallNavigationCapture } from '../lib/actions';
-export { parseResourceTiming, getNetworkWaterfall, trackPendingRequest, completePendingRequest, getPendingRequests, clearPendingRequests, getNetworkWaterfallForError, setNetworkWaterfallEnabled, isNetworkWaterfallEnabled, setNetworkBodyCaptureEnabled, isNetworkBodyCaptureEnabled, shouldCaptureUrl, setServerUrl, sanitizeHeaders, truncateRequestBody, truncateResponseBody, readResponseBody, readResponseBodyWithTimeout, wrapFetchWithBodies, wrapXHRWithBodies, unwrapXHR, adoptEarlyBodies } from '../lib/network';
-export { getPerformanceMarks, getPerformanceMeasures, getCapturedMarks, getCapturedMeasures, installPerformanceCapture, uninstallPerformanceCapture, isPerformanceCaptureActive, getPerformanceSnapshotForError, setPerformanceMarksEnabled, isPerformanceMarksEnabled } from '../lib/performance';
-export { postLog } from '../lib/bridge';
-export { installConsoleCapture, uninstallConsoleCapture } from '../lib/console';
-export { parseStackFrames, parseSourceMap, extractSnippet, extractSourceSnippets, detectFramework, getReactComponentAncestry, captureStateSnapshot, generateAiSummary, enrichErrorWithAiContext, setAiContextEnabled, setAiContextStateSnapshot, setSourceMapCache, getSourceMapCache, getSourceMapCacheSize } from '../lib/ai-context';
-export { installExceptionCapture, uninstallExceptionCapture } from '../lib/exceptions';
-export { getSize, formatPayload, truncateWsMessage, createConnectionTracker, installWebSocketCapture, setWebSocketCaptureMode, setWebSocketCaptureEnabled, getWebSocketCaptureMode, uninstallWebSocketCapture, resetForTesting } from '../lib/websocket';
-export { executeDOMQuery, getPageInfo, runAxeAudit, runAxeAuditWithTimeout, formatAxeResults } from '../lib/dom-queries';
-export { mapInitiatorType, aggregateResourceTiming, capturePerformanceSnapshot, installPerfObservers, uninstallPerfObservers, getLongTaskMetrics, getFCP, getLCP, getCLS, getINP, sendPerformanceSnapshot, isPerformanceSnapshotEnabled, setPerformanceSnapshotEnabled } from '../lib/perf-snapshot';
+export { safeSerialize, getElementSelector, isSensitiveInput } from '../lib/serialize.js';
+export { getContextAnnotations, setContextAnnotation, removeContextAnnotation, clearContextAnnotations } from '../lib/context.js';
+export { getImplicitRole, isDynamicClass, computeCssPath, computeSelectors, recordEnhancedAction, getEnhancedActionBuffer, clearEnhancedActionBuffer, generatePlaywrightScript } from '../lib/reproduction.js';
+export { recordAction, getActionBuffer, clearActionBuffer, handleClick, handleInput, handleScroll, handleKeydown, handleChange, installActionCapture, uninstallActionCapture, setActionCaptureEnabled, installNavigationCapture, uninstallNavigationCapture } from '../lib/actions.js';
+export { parseResourceTiming, getNetworkWaterfall, trackPendingRequest, completePendingRequest, getPendingRequests, clearPendingRequests, getNetworkWaterfallForError, setNetworkWaterfallEnabled, isNetworkWaterfallEnabled, setNetworkBodyCaptureEnabled, isNetworkBodyCaptureEnabled, shouldCaptureUrl, setServerUrl, sanitizeHeaders, truncateRequestBody, truncateResponseBody, readResponseBody, readResponseBodyWithTimeout, wrapFetchWithBodies, wrapXHRWithBodies, unwrapXHR, adoptEarlyBodies } from '../lib/network.js';
+export { getPerformanceMarks, getPerformanceMeasures, getCapturedMarks, getCapturedMeasures, installPerformanceCapture, uninstallPerformanceCapture, isPerformanceCaptureActive, getPerformanceSnapshotForError, setPerformanceMarksEnabled, isPerformanceMarksEnabled } from '../lib/performance.js';
+export { postLog } from '../lib/bridge.js';
+export { installConsoleCapture, uninstallConsoleCapture } from '../lib/console.js';
+export { parseStackFrames, parseSourceMap, extractSnippet, extractSourceSnippets, detectFramework, getReactComponentAncestry, captureStateSnapshot, generateAiSummary, enrichErrorWithAiContext, setAiContextEnabled, setAiContextStateSnapshot, setSourceMapCache, getSourceMapCache, getSourceMapCacheSize } from '../lib/ai-context.js';
+export { installExceptionCapture, uninstallExceptionCapture } from '../lib/exceptions.js';
+export { getSize, formatPayload, truncateWsMessage, createConnectionTracker, installWebSocketCapture, setWebSocketCaptureMode, setWebSocketCaptureEnabled, getWebSocketCaptureMode, uninstallWebSocketCapture, resetForTesting } from '../lib/websocket.js';
+export { executeDOMQuery, getPageInfo, runAxeAudit, runAxeAuditWithTimeout, formatAxeResults } from '../lib/dom-queries.js';
+export { mapInitiatorType, aggregateResourceTiming, capturePerformanceSnapshot, installPerfObservers, uninstallPerfObservers, getLongTaskMetrics, getFCP, getLCP, getCLS, getINP, sendPerformanceSnapshot, isPerformanceSnapshotEnabled, setPerformanceSnapshotEnabled } from '../lib/perf-snapshot.js';
 // Re-export constants that tests import from inject.js
-export { MAX_WATERFALL_ENTRIES, MAX_PERFORMANCE_ENTRIES, SENSITIVE_HEADERS } from '../lib/constants';
+export { MAX_WATERFALL_ENTRIES, MAX_PERFORMANCE_ENTRIES, SENSITIVE_HEADERS } from '../lib/constants.js';
 // Export API module
-export { installGasolineAPI, uninstallGasolineAPI } from './api';
+export { installGasolineAPI, uninstallGasolineAPI } from './api.js';
 // Export observer module
-export { install, uninstall, wrapFetch, installFetchCapture, uninstallFetchCapture, installXHRCapture, uninstallXHRCapture, installPhase1, installPhase2, getDeferralState, setDeferralEnabled, shouldDeferIntercepts, checkMemoryPressure } from './observers';
+export { install, uninstall, wrapFetch, installFetchCapture, uninstallFetchCapture, installXHRCapture, uninstallXHRCapture, installPhase1, installPhase2, getDeferralState, setDeferralEnabled, shouldDeferIntercepts, checkMemoryPressure } from './observers.js';
 // Export message handlers module
-export { installMessageListener, executeJavaScript, safeSerializeForExecute } from './message-handlers';
+export { installMessageListener, executeJavaScript, safeSerializeForExecute } from './message-handlers.js';
 // Export state management functions
-export { captureState, restoreState, highlightElement, clearHighlight } from './state';
-import { installGasolineAPI } from './api';
-import { installPhase1 } from './observers';
-import { installMessageListener } from './message-handlers';
-import { captureState, restoreState } from './state';
-import { sendPerformanceSnapshot } from '../lib/perf-snapshot';
+export { captureState, restoreState, highlightElement, clearHighlight } from './state.js';
+import { installGasolineAPI } from './api.js';
+import { installPhase1 } from './observers.js';
+import { installMessageListener } from './message-handlers.js';
+import { captureState, restoreState } from './state.js';
+import { sendPerformanceSnapshot } from '../lib/perf-snapshot.js';
 /**
  * Auto-install when loaded in browser
  */

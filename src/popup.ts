@@ -15,32 +15,32 @@
  * via chrome.runtime.sendMessage for status queries and log-level changes.
  */
 
-import type { WebSocketCaptureMode } from './types'
-import type { PopupConnectionStatus, ToggleWarningConfig } from './popup/types'
-import { StorageKey } from './lib/constants'
-import { updateConnectionStatus } from './popup/status-display'
-import { setupRecordingUI } from './popup/recording'
-import { setupDrawModeButton } from './popup/draw-mode'
-import { initFeatureToggles } from './popup/feature-toggles'
-import { initTrackPageButton } from './popup/tab-tracking'
-import { initAiWebPilotToggle } from './popup/ai-web-pilot'
+import type { WebSocketCaptureMode } from './types/index.js'
+import type { PopupConnectionStatus, ToggleWarningConfig } from './popup/types.js'
+import { StorageKey } from './lib/constants.js'
+import { updateConnectionStatus } from './popup/status-display.js'
+import { setupRecordingUI } from './popup/recording.js'
+import { setupDrawModeButton } from './popup/draw-mode.js'
+import { initFeatureToggles } from './popup/feature-toggles.js'
+import { initTrackPageButton } from './popup/tab-tracking.js'
+import { initAiWebPilotToggle } from './popup/ai-web-pilot.js'
 import {
   initWebSocketModeSelector,
   handleWebSocketModeChange,
   handleClearLogs,
   resetClearConfirm
-} from './popup/settings'
+} from './popup/settings.js'
 
 // Re-export for testing
 export { resetClearConfirm, handleClearLogs }
 export { updateConnectionStatus }
-export { FEATURE_TOGGLES, initFeatureToggles } from './popup/feature-toggles'
-export { handleFeatureToggle } from './popup/feature-toggles'
-export { initAiWebPilotToggle, handleAiWebPilotToggle } from './popup/ai-web-pilot'
-export { initTrackPageButton, handleTrackPageClick } from './popup/tab-tracking'
-export { handleWebSocketModeChange } from './popup/settings'
-export { initWebSocketModeSelector } from './popup/settings'
-export { isInternalUrl } from './popup/ui-utils'
+export { FEATURE_TOGGLES, initFeatureToggles } from './popup/feature-toggles.js'
+export { handleFeatureToggle } from './popup/feature-toggles.js'
+export { initAiWebPilotToggle, handleAiWebPilotToggle } from './popup/ai-web-pilot.js'
+export { initTrackPageButton, handleTrackPageClick } from './popup/tab-tracking.js'
+export { handleWebSocketModeChange } from './popup/settings.js'
+export { initWebSocketModeSelector } from './popup/settings.js'
+export { isInternalUrl } from './popup/ui-utils.js'
 
 const DEFAULT_MAX_ENTRIES = 1000
 

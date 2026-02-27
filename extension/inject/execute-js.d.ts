@@ -4,7 +4,7 @@
  * Docs: docs/features/feature/interact-explore/index.md
  * Docs: docs/features/feature/query-dom/index.md
  */
-import type { ExecuteJsResult } from '../types/index';
+import type { ExecuteJsResult } from '../types/index.js';
 export declare function safeSerializeForExecute(value: unknown, depth?: number, seen?: WeakSet<object>): unknown;
 /**
  * Execute arbitrary JavaScript in the page context with timeout handling.

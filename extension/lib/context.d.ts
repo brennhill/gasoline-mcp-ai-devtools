@@ -3,7 +3,7 @@
  * Why: Avoids duplicated logic across runtime layers and keeps behavior consistent.
  * Docs: docs/features/feature/observe/index.md
  */
-import type { JsonValue } from '../types/index';
+import type { JsonValue } from '../types/index.js';
 /**
  * Get current context annotations as an object
  */

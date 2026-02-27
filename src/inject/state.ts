@@ -10,8 +10,8 @@
  * element highlighting for the AI Web Pilot.
  */
 
-import type { BrowserStateSnapshot } from '../types/index'
-import { sendPerformanceSnapshot } from '../lib/perf-snapshot'
+import type { BrowserStateSnapshot } from '../types/index.js'
+import { sendPerformanceSnapshot } from '../lib/perf-snapshot.js'
 
 /** Read the page nonce set by the content script on the inject script element */
 let pageNonce = ''

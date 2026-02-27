@@ -8,8 +8,8 @@
  * Monkey-patches window.onerror and listens for unhandledrejection events,
  * enriching errors with AI context before posting via bridge.
  */
-import { postLog } from './bridge';
-import { enrichErrorWithAiContext } from './ai-context';
+import { postLog } from './bridge.js';
+import { enrichErrorWithAiContext } from './ai-context.js';
 // Exception capture state
 let originalOnerror = null;
 let unhandledrejectionHandler = null;

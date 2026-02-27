@@ -16,7 +16,7 @@ import type {
   NetworkBodyPayload,
   EnhancedAction,
   PerformanceSnapshot
-} from '../types'
+} from '../types/index.js'
 
 import {
   updateBadge,
@@ -29,8 +29,8 @@ import {
   type CircuitBreaker,
   type BatcherWithCircuitBreaker,
   type Batcher
-} from './communication'
-import { checkContextAnnotations } from './state-manager'
+} from './communication.js'
+import { checkContextAnnotations } from './state-manager.js'
 
 // =============================================================================
 // TYPES

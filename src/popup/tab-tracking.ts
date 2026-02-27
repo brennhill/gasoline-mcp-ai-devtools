@@ -9,8 +9,8 @@
  * Manages the "Track This Tab" button and tracking status
  */
 
-import { isInternalUrl } from './ui-utils'
-import { StorageKey } from '../lib/constants'
+import { isInternalUrl } from './ui-utils.js'
+import { StorageKey } from '../lib/constants.js'
 
 let trackingStorageSyncInstalled = false
 

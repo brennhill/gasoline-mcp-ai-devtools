@@ -10,14 +10,14 @@
  * performance, and WebSocket events.
  */
 
-import { installPerformanceCapture, uninstallPerformanceCapture, setPerformanceMarksEnabled } from '../lib/performance'
-import { installPerfObservers } from '../lib/perf-snapshot'
+import { installPerformanceCapture, uninstallPerformanceCapture, setPerformanceMarksEnabled } from '../lib/performance.js'
+import { installPerfObservers } from '../lib/perf-snapshot.js'
 import {
   installWebSocketCapture,
   setWebSocketCaptureMode,
   setWebSocketCaptureEnabled,
   uninstallWebSocketCapture
-} from '../lib/websocket'
+} from '../lib/websocket.js'
 import {
   setNetworkWaterfallEnabled,
   setNetworkBodyCaptureEnabled,
@@ -26,18 +26,18 @@ import {
   wrapXHRWithBodies,
   unwrapXHR,
   adoptEarlyBodies
-} from '../lib/network'
-import { installConsoleCapture, uninstallConsoleCapture } from '../lib/console'
-import { installExceptionCapture, uninstallExceptionCapture } from '../lib/exceptions'
+} from '../lib/network.js'
+import { installConsoleCapture, uninstallConsoleCapture } from '../lib/console.js'
+import { installExceptionCapture, uninstallExceptionCapture } from '../lib/exceptions.js'
 import {
   installActionCapture,
   uninstallActionCapture,
   installNavigationCapture,
   uninstallNavigationCapture
-} from '../lib/actions'
-import { postLog } from '../lib/bridge'
-import { MAX_RESPONSE_LENGTH, SENSITIVE_HEADERS, MEMORY_SOFT_LIMIT_MB, MEMORY_HARD_LIMIT_MB } from '../lib/constants'
-import { createDeferredPromise } from '../lib/timeout-utils'
+} from '../lib/actions.js'
+import { postLog } from '../lib/bridge.js'
+import { MAX_RESPONSE_LENGTH, SENSITIVE_HEADERS, MEMORY_SOFT_LIMIT_MB, MEMORY_HARD_LIMIT_MB } from '../lib/constants.js'
+import { createDeferredPromise } from '../lib/timeout-utils.js'
 
 // Store original fetch for restoration
 let originalFetch: typeof fetch | null = null

@@ -5,10 +5,10 @@
  * Docs: docs/features/feature/interact-explore/index.md
  * Docs: docs/features/feature/observe/index.md
  */
-import { domFrameProbe } from './dom-frame-probe';
-import { domPrimitive } from './dom-primitives';
-import { domPrimitiveListInteractive } from './dom-primitives-list-interactive';
-import { isCDPEscalatable, tryCDPEscalation } from './cdp-dispatch';
+import { domFrameProbe } from './dom-frame-probe.js';
+import { domPrimitive } from './dom-primitives.js';
+import { domPrimitiveListInteractive } from './dom-primitives-list-interactive.js';
+import { isCDPEscalatable, tryCDPEscalation } from './cdp-dispatch.js';
 function parseDOMParams(query) {
     try {
         return typeof query.params === 'string' ? JSON.parse(query.params) : query.params;

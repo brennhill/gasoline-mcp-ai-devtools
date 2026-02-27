@@ -9,11 +9,11 @@
 // helpers.ts — Shared infrastructure for command dispatch.
 // Types, result helpers, target resolution, action toast, and constants.
 
-import type { PendingQuery } from '../../types'
-import type { SyncClient } from '../sync-client'
-import { getTrackedTabInfo, clearTrackedTab } from '../event-listeners'
-import { DebugCategory } from '../debug'
-import { isAiWebPilotEnabled } from '../state'
+import type { PendingQuery } from '../../types/index.js'
+import type { SyncClient } from '../sync-client.js'
+import { getTrackedTabInfo, clearTrackedTab } from '../event-listeners.js'
+import { DebugCategory } from '../debug.js'
+import { isAiWebPilotEnabled } from '../state.js'
 
 // =============================================================================
 // EXPORTED TYPE ALIASES (used by browser-actions.ts, dom-dispatch.ts, etc.)

@@ -7,24 +7,24 @@
 
 // settings.ts — Settings dispatch and state command handling for inject context.
 
-import type { BrowserStateSnapshot, StateAction, WebSocketCaptureMode } from '../types/index'
+import type { BrowserStateSnapshot, StateAction, WebSocketCaptureMode } from '../types/index.js'
 
 import {
   setNetworkWaterfallEnabled,
   setNetworkBodyCaptureEnabled,
   setServerUrl
-} from '../lib/network'
-import { setPerformanceMarksEnabled, installPerformanceCapture, uninstallPerformanceCapture } from '../lib/performance'
-import { setActionCaptureEnabled } from '../lib/actions'
+} from '../lib/network.js'
+import { setPerformanceMarksEnabled, installPerformanceCapture, uninstallPerformanceCapture } from '../lib/performance.js'
+import { setActionCaptureEnabled } from '../lib/actions.js'
 import {
   setWebSocketCaptureEnabled,
   setWebSocketCaptureMode,
   installWebSocketCapture,
   uninstallWebSocketCapture
-} from '../lib/websocket'
-import { setPerformanceSnapshotEnabled } from '../lib/perf-snapshot'
-import { setDeferralEnabled } from './observers'
-import { INJECT_FORWARDED_SETTINGS, SettingName } from '../lib/constants'
+} from '../lib/websocket.js'
+import { setPerformanceSnapshotEnabled } from '../lib/perf-snapshot.js'
+import { setDeferralEnabled } from './observers.js'
+import { INJECT_FORWARDED_SETTINGS, SettingName } from '../lib/constants.js'
 
 /**
  * Valid setting names from content script — imported from canonical constants.

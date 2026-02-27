@@ -4,10 +4,10 @@
  * Docs: docs/features/feature/interact-explore/index.md
  * Docs: docs/features/feature/query-dom/index.md
  */
-import { resolveHighlightRequest, resolveExecuteRequest, resolveA11yRequest, resolveDomRequest } from './request-tracking';
-import { MESSAGE_MAP, safeSendMessage } from './message-forwarding';
-import { getIsTrackedTab, getCurrentTabId } from './tab-tracking';
-import { getPageNonce } from './script-injection';
+import { resolveHighlightRequest, resolveExecuteRequest, resolveA11yRequest, resolveDomRequest } from './request-tracking.js';
+import { MESSAGE_MAP, safeSendMessage } from './message-forwarding.js';
+import { getIsTrackedTab, getCurrentTabId } from './tab-tracking.js';
+import { getPageNonce } from './script-injection.js';
 const RESPONSE_HANDLERS = {
     GASOLINE_HIGHLIGHT_RESPONSE: (id, result) => resolveHighlightRequest(id, result),
     GASOLINE_EXECUTE_JS_RESULT: (id, result) => resolveExecuteRequest(id, result),

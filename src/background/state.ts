@@ -12,7 +12,7 @@
  * is explicit and separated from business logic in index.ts.
  */
 
-import { DEFAULT_SERVER_URL } from '../lib/constants'
+import { DEFAULT_SERVER_URL } from '../lib/constants.js'
 
 // =============================================================================
 // MODULE STATE

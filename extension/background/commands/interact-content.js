@@ -2,7 +2,7 @@
 // Handles: get_readable, get_markdown, page_summary.
 // Routes through chrome.tabs.sendMessage to the content script (ISOLATED world, CSP-safe).
 // No chrome.scripting.executeScript or eval — extraction logic lives in the content script.
-import { registerCommand } from './registry';
+import { registerCommand } from './registry.js';
 /**
  * Factory for content extraction command handlers.
  * All three extractors share identical structure — they differ only in message type and error code.

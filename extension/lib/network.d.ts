@@ -8,7 +8,7 @@
  * Provides PerformanceResourceTiming parsing, pending request tracking,
  * fetch body capture with size limits, and sensitive header sanitization.
  */
-import type { WaterfallEntry, PendingRequest } from '../types/index';
+import type { WaterfallEntry, PendingRequest } from '../types/index.js';
 /**
  * Options for filtering network waterfall entries
  */

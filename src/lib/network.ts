@@ -10,7 +10,7 @@
  * fetch body capture with size limits, and sensitive header sanitization.
  */
 
-import type { WaterfallEntry, PendingRequest } from '../types/index'
+import type { WaterfallEntry, PendingRequest } from '../types/index.js'
 
 import {
   MAX_WATERFALL_ENTRIES,

@@ -3,7 +3,7 @@
  * Why: Avoids duplicated logic across runtime layers and keeps behavior consistent.
  * Docs: docs/features/feature/backend-log-streaming/index.md
  */
-import type { WebSocketCaptureMode } from '../types/index';
+import type { WebSocketCaptureMode } from '../types/index.js';
 /** WebSocket message data variants */
 export type WebSocketMessageData = string | ArrayBuffer | Blob;
 /** Object with a size property (like Blob) */

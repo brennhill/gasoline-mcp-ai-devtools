@@ -4,7 +4,7 @@
  * Docs: docs/features/feature/interact-explore/index.md
  * Docs: docs/features/feature/query-dom/index.md
  */
-import { StorageKey } from '../lib/constants';
+import { StorageKey } from '../lib/constants.js';
 // Whether this content script's tab is the currently tracked tab
 let isTrackedTab = false;
 // The tab ID of this content script's tab

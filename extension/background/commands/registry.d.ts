@@ -5,10 +5,10 @@
  * Docs: docs/features/feature/interact-explore/index.md
  * Docs: docs/features/feature/observe/index.md
  */
-import type { PendingQuery } from '../../types';
-import type { SyncClient } from '../sync-client';
-import type { SendAsyncResultFn, QueryParamsObject, TargetResolution } from './helpers';
-import { actionToast } from './helpers';
+import type { PendingQuery } from '../../types/index.js';
+import type { SyncClient } from '../sync-client.js';
+import type { SendAsyncResultFn, QueryParamsObject, TargetResolution } from './helpers.js';
+import { actionToast } from './helpers.js';
 export interface CommandContext {
     query: PendingQuery;
     syncClient: SyncClient;

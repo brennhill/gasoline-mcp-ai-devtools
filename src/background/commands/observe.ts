@@ -9,12 +9,12 @@
 // observe.ts — Command handlers for the observe MCP tool.
 // Handles: screenshot, waterfall, page_info, tabs.
 
-import { debugLog } from '../index'
-import { getServerUrl } from '../state'
-import { DebugCategory } from '../debug'
-import { recordScreenshot } from '../state-manager'
-import { domPrimitiveListInteractive } from '../dom-primitives-list-interactive'
-import { registerCommand } from './registry'
+import { debugLog } from '../index.js'
+import { getServerUrl } from '../state.js'
+import { DebugCategory } from '../debug.js'
+import { recordScreenshot } from '../state-manager.js'
+import { domPrimitiveListInteractive } from '../dom-primitives-list-interactive.js'
+import { registerCommand } from './registry.js'
 
 // =============================================================================
 // SCREENSHOT

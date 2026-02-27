@@ -9,11 +9,11 @@
 // registry.ts — Command registry and dispatch loop.
 // Replaces the monolithic if-chain in pending-queries.ts with a Map-based registry.
 
-import type { PendingQuery } from '../../types'
-import type { SyncClient } from '../sync-client'
-import { initReady } from '../state'
-import { DebugCategory } from '../debug'
-import type { SendAsyncResultFn, QueryParamsObject, TargetResolution } from './helpers'
+import type { PendingQuery } from '../../types/index.js'
+import type { SyncClient } from '../sync-client.js'
+import { initReady } from '../state.js'
+import { DebugCategory } from '../debug.js'
+import type { SendAsyncResultFn, QueryParamsObject, TargetResolution } from './helpers.js'
 import {
   sendResult,
   sendAsyncResult,
@@ -24,7 +24,7 @@ import {
   actionToast,
   isRestrictedUrl,
   isBrowserEscapeAction
-} from './helpers'
+} from './helpers.js'
 
 function debugLog(category: string, message: string, data: unknown = null): void {
   // Keep registry independent from index.ts to avoid circular imports during command registration.

@@ -2,8 +2,8 @@
 // Combines page metadata, interactive elements, readable text, and navigation
 // links into a single extension response, reducing MCP round-trips for AI agents.
 
-import { domPrimitiveListInteractive } from '../dom-primitives-list-interactive'
-import { registerCommand } from './registry'
+import { domPrimitiveListInteractive } from '../dom-primitives-list-interactive.js'
+import { registerCommand } from './registry.js'
 
 // =============================================================================
 // READABLE CONTENT EXTRACTION (self-contained for chrome.scripting.executeScript)

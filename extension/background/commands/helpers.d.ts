@@ -5,8 +5,8 @@
  * Docs: docs/features/feature/interact-explore/index.md
  * Docs: docs/features/feature/observe/index.md
  */
-import type { PendingQuery } from '../../types';
-import type { SyncClient } from '../sync-client';
+import type { PendingQuery } from '../../types/index.js';
+import type { SyncClient } from '../sync-client.js';
 /** Callback signature for sending async command results back through /sync */
 export type SendAsyncResultFn = (syncClient: SyncClient, queryId: string, correlationId: string, status: 'complete' | 'error' | 'timeout' | 'cancelled', result?: unknown, error?: string) => void;
 /** Callback signature for showing visual action toasts */

@@ -4,7 +4,7 @@
  * Docs: docs/features/feature/interact-explore/index.md
  * Docs: docs/features/feature/query-dom/index.md
  */
-import type { LogEntry, ActionEntry, EnhancedAction, SelectorStrategies, WaterfallEntry, PerformanceMark, PerformanceMeasure } from '../types/index';
+import type { LogEntry, ActionEntry, EnhancedAction, SelectorStrategies, WaterfallEntry, PerformanceMark, PerformanceMeasure } from '../types/index.js';
 /**
  * GasolineAPI interface exposed on window.__gasoline
  */

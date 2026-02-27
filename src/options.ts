@@ -14,7 +14,7 @@
  * stored as newline-separated strings, parsed to arrays on save.
  */
 
-import { SettingName, StorageKey, DEFAULT_SERVER_URL } from './lib/constants'
+import { SettingName, StorageKey, DEFAULT_SERVER_URL } from './lib/constants.js'
 
 interface StorageResult {
   serverUrl?: string

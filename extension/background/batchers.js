@@ -5,8 +5,8 @@
  * Docs: docs/features/feature/interact-explore/index.md
  * Docs: docs/features/feature/observe/index.md
  */
-import { createCircuitBreaker } from './circuit-breaker';
-import { MAX_PENDING_BUFFER } from './state-manager';
+import { createCircuitBreaker } from './circuit-breaker.js';
+import { MAX_PENDING_BUFFER } from './state-manager.js';
 const DEFAULT_DEBOUNCE_MS = 100;
 const DEFAULT_MAX_BATCH_SIZE = 50;
 /** Rate limit configuration */

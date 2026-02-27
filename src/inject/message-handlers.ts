@@ -13,25 +13,25 @@
  * and DOM/accessibility queries.
  */
 
-import type { BrowserStateSnapshot } from '../types/index'
+import type { BrowserStateSnapshot } from '../types/index.js'
 
-import { executeDOMQuery, runAxeAuditWithTimeout, type DOMQueryParams } from '../lib/dom-queries'
-import { checkLinkHealth } from '../lib/link-health'
-import { queryComputedStyles } from './computed-styles'
-import { discoverForms } from './form-discovery'
-import { getNetworkWaterfall } from '../lib/network'
+import { executeDOMQuery, runAxeAuditWithTimeout, type DOMQueryParams } from '../lib/dom-queries.js'
+import { checkLinkHealth } from '../lib/link-health.js'
+import { queryComputedStyles } from './computed-styles.js'
+import { discoverForms } from './form-discovery.js'
+import { getNetworkWaterfall } from '../lib/network.js'
 
-import { executeJavaScript } from './execute-js'
+import { executeJavaScript } from './execute-js.js'
 import {
   isValidSettingPayload,
   handleSetting,
   handleStateCommand,
   type SettingMessageData,
   type StateCommandMessageData
-} from './settings'
+} from './settings.js'
 
 // Re-export for barrel (src/inject/index.ts)
-export { executeJavaScript, safeSerializeForExecute } from './execute-js'
+export { executeJavaScript, safeSerializeForExecute } from './execute-js.js'
 
 /** Read the page nonce set by the content script on the inject script element */
 let pageNonce = ''

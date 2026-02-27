@@ -2,7 +2,7 @@
 // Runs in the content script's ISOLATED world (CSP-safe, no eval).
 // Issue #257: Replaces the IIFE string that was embedded in the Go handler.
 
-import { findMainContentElement } from './shared'
+import { findMainContentElement } from './shared.js'
 
 /** Maximum output size in characters to prevent memory pressure on large pages. */
 const MAX_OUTPUT_CHARS = 200_000

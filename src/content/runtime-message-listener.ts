@@ -12,8 +12,8 @@
  * Handles chrome.runtime messages from background script
  */
 
-import type { ContentMessage, WebSocketCaptureMode } from '../types'
-import { SettingName } from '../lib/constants'
+import type { ContentMessage, WebSocketCaptureMode } from '../types/index.js'
+import { SettingName } from '../lib/constants.js'
 import {
   isValidBackgroundSender,
   handlePing,
@@ -31,9 +31,9 @@ import {
   handleGetReadable,
   handleGetMarkdown,
   handlePageSummary
-} from './message-handlers'
-import { showActionToast } from './ui/toast'
-import { showSubtitle, toggleRecordingWatermark } from './ui/subtitle'
+} from './message-handlers.js'
+import { showActionToast } from './ui/toast.js'
+import { showSubtitle, toggleRecordingWatermark } from './ui/subtitle.js'
 
 // Toggle state caches — updated by forwarded setting messages from background
 let actionToastsEnabled = true

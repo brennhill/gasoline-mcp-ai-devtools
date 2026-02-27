@@ -5,7 +5,7 @@
  * Docs: docs/features/feature/interact-explore/index.md
  * Docs: docs/features/feature/observe/index.md
  */
-import type { LogEntry, ParsedSourceMap, ContextWarning } from '../types';
+import type { LogEntry, ParsedSourceMap, ContextWarning } from '../types/index.js';
 /** Parsed stack frame */
 interface ParsedStackFrame {
     functionName: string;

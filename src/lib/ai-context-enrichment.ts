@@ -13,7 +13,7 @@
  * the full error enrichment pipeline with timeout guards.
  */
 
-import type { LogEntry, AiContextData } from '../types/index'
+import type { LogEntry, AiContextData } from '../types/index.js'
 
 import {
   AI_CONTEXT_MAX_ANCESTRY_DEPTH,

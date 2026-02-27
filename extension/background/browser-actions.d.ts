@@ -5,10 +5,10 @@
  * Docs: docs/features/feature/interact-explore/index.md
  * Docs: docs/features/feature/observe/index.md
  */
-import type { PendingQuery } from '../types';
-import type { SyncClient } from './sync-client';
-import { type CSPProbeResult } from './query-execution';
-import type { SendAsyncResultFn, ActionToastFn } from './pending-queries';
+import type { PendingQuery } from '../types/index.js';
+import type { SyncClient } from './sync-client.js';
+import { type CSPProbeResult } from './query-execution.js';
+import type { SendAsyncResultFn, ActionToastFn } from './pending-queries.js';
 export type BrowserActionResult = {
     success: boolean;
     action?: string;

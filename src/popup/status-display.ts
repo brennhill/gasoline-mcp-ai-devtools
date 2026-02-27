@@ -9,8 +9,8 @@
  * Updates connection status display in popup
  */
 
-import type { PopupConnectionStatus } from './types'
-import { formatFileSize } from './ui-utils'
+import type { PopupConnectionStatus } from './types.js'
+import { formatFileSize } from './ui-utils.js'
 
 const DEFAULT_MAX_ENTRIES = 1000
 

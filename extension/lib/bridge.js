@@ -7,8 +7,8 @@
  * @fileoverview Message bridge for posting log events to the content script.
  * Enriches error-level messages with context annotations and user action replay.
  */
-import { getContextAnnotations } from './context';
-import { getActionBuffer } from './actions';
+import { getContextAnnotations } from './context.js';
+import { getActionBuffer } from './actions.js';
 /**
  * Post a log message to the content script
  */

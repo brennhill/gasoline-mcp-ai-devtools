@@ -10,7 +10,7 @@
 // via MediaRecorder, and POSTs the final blob to the Go server on stop.
 // Standalone: imports nothing from src/background/ to avoid circular deps.
 
-import type { OffscreenStartRecordingMessage, OffscreenStopRecordingMessage } from '../types/runtime-messages'
+import type { OffscreenStartRecordingMessage, OffscreenStopRecordingMessage } from '../types/runtime-messages.js'
 
 /** Maximum recording size in bytes before auto-stop (1GB). */
 const MAX_RECORDING_BYTES = 1024 * 1024 * 1024

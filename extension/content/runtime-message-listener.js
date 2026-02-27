@@ -1,8 +1,8 @@
 // runtime-message-listener.ts — Message routing between background and content contexts.
-import { SettingName } from '../lib/constants';
-import { isValidBackgroundSender, handlePing, handleToggleMessage, forwardHighlightMessage, handleStateCommand, handleExecuteJs, handleExecuteQuery, handleA11yQuery, handleDomQuery, handleGetNetworkWaterfall, handleLinkHealthQuery, handleComputedStylesQuery, handleFormDiscoveryQuery, handleGetReadable, handleGetMarkdown, handlePageSummary } from './message-handlers';
-import { showActionToast } from './ui/toast';
-import { showSubtitle, toggleRecordingWatermark } from './ui/subtitle';
+import { SettingName } from '../lib/constants.js';
+import { isValidBackgroundSender, handlePing, handleToggleMessage, forwardHighlightMessage, handleStateCommand, handleExecuteJs, handleExecuteQuery, handleA11yQuery, handleDomQuery, handleGetNetworkWaterfall, handleLinkHealthQuery, handleComputedStylesQuery, handleFormDiscoveryQuery, handleGetReadable, handleGetMarkdown, handlePageSummary } from './message-handlers.js';
+import { showActionToast } from './ui/toast.js';
+import { showSubtitle, toggleRecordingWatermark } from './ui/subtitle.js';
 // Toggle state caches — updated by forwarded setting messages from background
 let actionToastsEnabled = true;
 let subtitlesEnabled = true;

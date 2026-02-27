@@ -11,13 +11,13 @@
 // Script builders stay self-contained because chrome.scripting.executeScript
 // serializes injected functions independently.
 
-import type { PendingQuery } from '../types/queries'
-import type { SyncClient } from './sync-client'
-import type { DOMActionParams, DOMResult } from './dom-types'
-import { domFrameProbe } from './dom-frame-probe'
-import { domPrimitive } from './dom-primitives'
-import { domPrimitiveListInteractive } from './dom-primitives-list-interactive'
-import { isCDPEscalatable, tryCDPEscalation } from './cdp-dispatch'
+import type { PendingQuery } from '../types/queries.js'
+import type { SyncClient } from './sync-client.js'
+import type { DOMActionParams, DOMResult } from './dom-types.js'
+import { domFrameProbe } from './dom-frame-probe.js'
+import { domPrimitive } from './dom-primitives.js'
+import { domPrimitiveListInteractive } from './dom-primitives-list-interactive.js'
+import { isCDPEscalatable, tryCDPEscalation } from './cdp-dispatch.js'
 
 type SendAsyncResult = (
   syncClient: SyncClient,

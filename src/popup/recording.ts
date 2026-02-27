@@ -10,7 +10,7 @@
  * Manages recording controls, timer display, and mic permission flow.
  */
 
-import { StorageKey } from '../lib/constants'
+import { StorageKey } from '../lib/constants.js'
 
 interface RecordingElements {
   row: HTMLElement

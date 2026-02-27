@@ -20,25 +20,25 @@ import type {
   WaterfallEntry,
   PerformanceMark,
   PerformanceMeasure
-} from '../types/index'
+} from '../types/index.js'
 
 import {
   setContextAnnotation,
   removeContextAnnotation,
   clearContextAnnotations,
   getContextAnnotations
-} from '../lib/context'
+} from '../lib/context.js'
 import {
   computeSelectors,
   recordEnhancedAction,
   getEnhancedActionBuffer,
   clearEnhancedActionBuffer,
   generatePlaywrightScript
-} from '../lib/reproduction'
-import { getActionBuffer, clearActionBuffer, setActionCaptureEnabled } from '../lib/actions'
-import { getNetworkWaterfall, setNetworkWaterfallEnabled } from '../lib/network'
-import { getPerformanceMarks, getPerformanceMeasures, setPerformanceMarksEnabled } from '../lib/performance'
-import { enrichErrorWithAiContext, setAiContextEnabled, setAiContextStateSnapshot } from '../lib/ai-context'
+} from '../lib/reproduction.js'
+import { getActionBuffer, clearActionBuffer, setActionCaptureEnabled } from '../lib/actions.js'
+import { getNetworkWaterfall, setNetworkWaterfallEnabled } from '../lib/network.js'
+import { getPerformanceMarks, getPerformanceMeasures, setPerformanceMarksEnabled } from '../lib/performance.js'
+import { enrichErrorWithAiContext, setAiContextEnabled, setAiContextStateSnapshot } from '../lib/ai-context.js'
 
 /**
  * GasolineAPI interface exposed on window.__gasoline

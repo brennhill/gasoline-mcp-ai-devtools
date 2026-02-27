@@ -1,6 +1,6 @@
 // analyze-page-structure.ts — Structural page analysis command handler (#341).
 
-import { registerCommand } from './registry'
+import { registerCommand } from './registry.js'
 
 // =============================================================================
 // PAGE STRUCTURE ANALYSIS (#341)

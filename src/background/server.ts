@@ -19,8 +19,8 @@ import type {
   PerformanceSnapshot,
   ConnectionStatus,
   WaterfallEntry
-} from '../types'
-import { getExtensionVersion } from './version-check'
+} from '../types/index.js'
+import { getExtensionVersion } from './version-check.js'
 
 /**
  * Server health response

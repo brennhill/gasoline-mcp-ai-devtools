@@ -21,7 +21,7 @@ import type {
   NetworkBodyPayload,
   EnhancedAction,
   PerformanceSnapshot
-} from '../types'
+} from '../types/index.js'
 
 /**
  * Pending request statistics

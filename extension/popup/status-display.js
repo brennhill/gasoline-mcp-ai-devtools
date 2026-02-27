@@ -3,7 +3,7 @@
  * Why: Converts raw runtime status into operator-readable diagnostics during extension/server troubleshooting.
  * Docs: docs/features/feature/browser-extension-enhancement/index.md
  */
-import { formatFileSize } from './ui-utils';
+import { formatFileSize } from './ui-utils.js';
 const DEFAULT_MAX_ENTRIES = 1000;
 /**
  * Update the connection status display

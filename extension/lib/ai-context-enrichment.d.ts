@@ -9,7 +9,7 @@
  * captures Redux state snapshots, generates AI summaries, and orchestrates
  * the full error enrichment pipeline with timeout guards.
  */
-import type { LogEntry, AiContextData } from '../types/index';
+import type { LogEntry, AiContextData } from '../types/index.js';
 /**
  * Framework detection result
  */

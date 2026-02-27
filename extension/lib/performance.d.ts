@@ -3,7 +3,7 @@
  * Why: Avoids duplicated logic across runtime layers and keeps behavior consistent.
  * Docs: docs/features/feature/performance-audit/index.md
  */
-import type { PerformanceMark, PerformanceMeasure } from '../types/index';
+import type { PerformanceMark, PerformanceMeasure } from '../types/index.js';
 /**
  * Get performance marks
  */
