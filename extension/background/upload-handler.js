@@ -8,6 +8,7 @@
 import { debugLog } from './index.js';
 import { getServerUrl } from './state.js';
 import { DebugCategory } from './debug.js';
+import { getOrCreateTransportProvider } from './transport-provider.js';
 // ============================================
 // Timing Constants
 // ============================================
@@ -154,20 +155,11 @@ let escalationInProgress = false;
  * Best-effort — errors are logged but not propagated.
  */
 async function dismissFileDialog(serverUrl) {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 5000);
     try {
-        await fetch(`${serverUrl}/api/os-automation/dismiss`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'X-Gasoline-Client': 'gasoline-extension' },
-            signal: controller.signal
-        });
+        await getOrCreateTransportProvider(serverUrl).osAutomationDismiss(undefined, 5000);
     }
     catch {
         // Best-effort cleanup — ignore errors
-    }
-    finally {
-        clearTimeout(timeoutId);
     }
 }
 /**
@@ -204,24 +196,13 @@ async function escalateToStage4Internal(tabId, selector, filePath, serverUrl) {
     await sleep(DIALOG_OPEN_DELAY_MS);
     // Step 3: Call daemon for OS automation with browser_pid: 0 (auto-detect)
     let daemonResponse;
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), DAEMON_FETCH_TIMEOUT_MS);
+    const provider = getOrCreateTransportProvider(serverUrl);
     try {
-        const response = await fetch(`${serverUrl}/api/os-automation/inject`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'X-Gasoline-Client': 'gasoline-extension' },
-            body: JSON.stringify({ file_path: filePath, browser_pid: 0 }),
-            signal: controller.signal
-        });
-        clearTimeout(timeoutId);
+        const response = await provider.osAutomationInject({ file_path: filePath, browser_pid: 0 }, undefined, DAEMON_FETCH_TIMEOUT_MS);
         if (!response.ok) {
             let errorMsg = `HTTP ${response.status}`;
-            try {
-                const body = (await response.json());
-                errorMsg = body.error || errorMsg;
-            }
-            catch {
-                /* non-JSON body */
+            if (response.data && typeof response.data === 'object') {
+                errorMsg = response.data.error || errorMsg;
             }
             if (response.status === 403) {
                 await dismissFileDialog(serverUrl);
@@ -238,7 +219,7 @@ async function escalateToStage4Internal(tabId, selector, filePath, serverUrl) {
                 error: `Stage 4 OS automation failed: ${errorMsg}`
             };
         }
-        daemonResponse = (await response.json());
+        daemonResponse = response.data || {};
         if (!daemonResponse.success) {
             const errorMsg = daemonResponse.error || 'unknown daemon error';
             await dismissFileDialog(serverUrl);
@@ -250,7 +231,6 @@ async function escalateToStage4Internal(tabId, selector, filePath, serverUrl) {
         }
     }
     catch (err) {
-        clearTimeout(timeoutId);
         const msg = err.name === 'AbortError'
             ? `Escalation timed out after ${DAEMON_FETCH_TIMEOUT_MS}ms waiting for daemon at ${serverUrl}/api/os-automation/inject`
             : `Escalation failed: cannot reach daemon at ${serverUrl}/api/os-automation/inject. Error: ${err.message}`;
@@ -305,30 +285,25 @@ export async function executeUpload(query, tabId, syncClient, sendAsyncResult, a
     actionToast(tabId, 'upload', file_name || 'file', 'trying', 10000);
     // Stage 1: Fetch file data from Go server
     let fileData;
-    const fileReadController = new AbortController();
-    const fileReadTimeout = setTimeout(() => fileReadController.abort(), DAEMON_FETCH_TIMEOUT_MS);
+    const serverUrl = getServerUrl();
+    const provider = getOrCreateTransportProvider(serverUrl);
     try {
-        const response = await fetch(`${getServerUrl()}/api/file/read`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'X-Gasoline-Client': 'gasoline-extension' },
-            body: JSON.stringify({ file_path }),
-            signal: fileReadController.signal
-        });
-        clearTimeout(fileReadTimeout);
-        if (!response.ok) {
-            sendAsyncResult(syncClient, query.id, correlationId, 'error', null, `file_read_failed: HTTP ${response.status}`);
-            actionToast(tabId, 'upload', `HTTP ${response.status}`, 'error');
-            return;
-        }
-        fileData = (await response.json());
+        fileData = await provider.readFile({ file_path }, undefined, DAEMON_FETCH_TIMEOUT_MS);
     }
     catch (err) {
-        clearTimeout(fileReadTimeout);
-        const msg = err.name === 'AbortError'
-            ? `file_read_timeout: daemon did not respond within ${DAEMON_FETCH_TIMEOUT_MS}ms`
-            : `file_read_failed: ${err.message}`;
+        let msg;
+        if (err.name === 'AbortError') {
+            msg = `file_read_timeout: daemon did not respond within ${DAEMON_FETCH_TIMEOUT_MS}ms`;
+        }
+        else if (typeof err.status === 'number') {
+            msg = `file_read_failed: HTTP ${err.status}`;
+            actionToast(tabId, 'upload', `HTTP ${err.status}`, 'error');
+        }
+        else {
+            msg = `file_read_failed: ${err.message}`;
+            actionToast(tabId, 'upload', 'fetch failed', 'error');
+        }
         sendAsyncResult(syncClient, query.id, correlationId, 'error', null, msg);
-        actionToast(tabId, 'upload', 'fetch failed', 'error');
         return;
     }
     if (!fileData.success || !fileData.data_base64) {
