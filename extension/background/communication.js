@@ -16,7 +16,7 @@ export { createBatcherWithCircuitBreaker, createLogBatcher, RATE_LIMIT_CONFIG } 
 // Re-export server communication functions
 // NOTE: postSettings and pollCaptureSettings removed - use /sync for all communication
 export { sendLogsToServer, sendWSEventsToServer, sendNetworkBodiesToServer, sendNetworkWaterfallToServer, sendEnhancedActionsToServer, sendPerformanceSnapshotsToServer, checkServerHealth, updateBadge, postQueryResult, postAsyncCommandResult, postExtensionLogs, sendStatusPing, pollPendingQueries } from './server.js';
-import { getRequestHeaders } from './server.js';
+import { getOrCreateTransportProvider } from './transport-provider.js';
 /**
  * Truncate a single argument if too large
  */
@@ -91,20 +91,13 @@ export async function captureScreenshot(tabId, serverUrl, relatedErrorId, errorT
             quality: 80
         });
         recordScreenshotFn(tabId);
-        const response = await fetch(`${serverUrl}/screenshots`, {
-            method: 'POST',
-            headers: getRequestHeaders(),
-            body: JSON.stringify({
-                dataUrl,
-                url: tab.url,
-                errorId: relatedErrorId || '',
-                errorType: errorType || ''
-            })
-        });
-        if (!response.ok) {
-            throw new Error(`Failed to upload screenshot: server returned HTTP ${response.status} ${response.statusText}`);
-        }
-        const result = (await response.json());
+        const provider = getOrCreateTransportProvider(serverUrl);
+        const result = (await provider.postScreenshot({
+            dataUrl,
+            url: tab.url,
+            errorId: relatedErrorId || '',
+            errorType: errorType || ''
+        }));
         const screenshotEntry = {
             ts: new Date().toISOString(),
             type: 'screenshot',
