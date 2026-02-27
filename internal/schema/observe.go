@@ -16,7 +16,7 @@ func ObserveToolSchema() mcp.MCPTool {
 			"properties": map[string]any{
 				"what": map[string]any{
 					"type": "string",
-					"enum": []string{"errors", "logs", "extension_logs", "network_waterfall", "network_bodies", "websocket_events", "websocket_status", "actions", "vitals", "page", "tabs", "history", "pilot", "timeline", "error_bundles", "screenshot", "storage", "indexeddb", "command_result", "pending_commands", "failed_commands", "saved_videos", "recordings", "recording_actions", "playback_results", "log_diff_report", "summarized_logs"},
+					"enum": []string{"errors", "logs", "extension_logs", "network_waterfall", "network_bodies", "websocket_events", "websocket_status", "actions", "vitals", "page", "tabs", "history", "pilot", "timeline", "error_bundles", "screenshot", "storage", "indexeddb", "command_result", "pending_commands", "failed_commands", "saved_videos", "recordings", "recording_actions", "playback_results", "log_diff_report", "summarized_logs", "page_inventory"},
 				},
 				"telemetry_mode": map[string]any{
 					"type":        "string",
@@ -171,6 +171,10 @@ func ObserveToolSchema() mcp.MCPTool {
 				"summary": map[string]any{
 					"type":        "boolean",
 					"description": "Return compact summary instead of full entries (errors, logs, network_waterfall, network_bodies, websocket_events, actions, error_bundles, timeline, history)",
+				},
+				"visible_only": map[string]any{
+					"type":        "boolean",
+					"description": "Only return visible elements (page_inventory)",
 				},
 			},
 			"required": []string{"what"},

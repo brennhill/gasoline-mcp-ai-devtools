@@ -220,6 +220,40 @@ func normalizeAnalyzeArgsForAsync(argsJSON string) json.RawMessage {
 	return raw
 }
 
+// normalizeObserveArgsForAsync adds sync=false for async-capable observe operations
+// (page_inventory) unless sync/wait/background is already specified.
+func normalizeObserveArgsForAsync(argsJSON string) json.RawMessage {
+	raw := json.RawMessage(argsJSON)
+
+	var params map[string]any
+	if err := json.Unmarshal(raw, &params); err != nil {
+		return raw
+	}
+
+	what, _ := params["what"].(string)
+	switch what {
+	case "page_inventory":
+	default:
+		return raw
+	}
+
+	if _, hasSync := params["sync"]; hasSync {
+		return raw
+	}
+	if _, hasWait := params["wait"]; hasWait {
+		return raw
+	}
+	if _, hasBackground := params["background"]; hasBackground {
+		return raw
+	}
+
+	params["sync"] = false
+	if normalized, err := json.Marshal(params); err == nil {
+		return json.RawMessage(normalized)
+	}
+	return raw
+}
+
 // normalizeInteractArgsForAsync adds background=true for interact calls with an action
 // unless background/sync/wait is already specified.
 func normalizeInteractArgsForAsync(argsJSON string) json.RawMessage {

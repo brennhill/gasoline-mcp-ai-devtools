@@ -216,6 +216,10 @@ var toolModeSpecs = map[string]map[string]modeParamSpec{
 			Hint:     "Console messages grouped by fingerprint for pattern detection",
 			Optional: []string{"min_level", "source", "limit", "min_group_size"},
 		},
+		"page_inventory": {
+			Hint:     "Combined page info + interactive elements in one call (replaces observe/page + interact/list_interactive)",
+			Optional: []string{"visible_only", "limit"},
+		},
 	},
 
 	// ── interact ───────────────────────────────────────────────
