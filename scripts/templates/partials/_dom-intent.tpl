@@ -196,7 +196,8 @@
     'open_composer',
     'submit_active_composer',
     'confirm_top_dialog',
-    'dismiss_top_overlay'
+    'dismiss_top_overlay',
+    'auto_dismiss_overlays'
   ])
 
   type RankedIntentCandidate = { element: Element; score: number }
@@ -492,6 +493,107 @@
         match_count: 1,
         match_strategy: 'dismiss_escape_fallback',
         scope_selector_used: requestedScope || 'intent:auto_top_overlay'
+      }
+    }
+
+    if (action === 'auto_dismiss_overlays') {
+      // Auto-dismiss cookie consent banners and overlays (#342)
+      // Strategy 1: Try known consent framework selectors (most specific)
+      const consentSelectors = [
+        // CookieBot
+        '#CybotCookiebotDialogBodyLevelButtonLevelOptinAllowAll',
+        '#CybotCookiebotDialogBodyButtonDecline',
+        // OneTrust
+        '#onetrust-accept-btn-handler',
+        '.onetrust-close-btn-handler',
+        // CookieYes
+        '.cky-btn-accept',
+        // Quantcast / GDPR generic
+        '[data-cookieconsent="accept"]',
+        '.cc-accept',
+        '.cc-dismiss',
+        // Generic patterns
+        'button[id*="cookie" i][id*="accept" i]',
+        'button[id*="consent" i][id*="accept" i]',
+      ]
+      for (const consentSelector of consentSelectors) {
+        try {
+          const matches = querySelectorAllDeep(consentSelector)
+          const visible = matches.filter(isActionableVisible)
+          if (visible.length > 0) {
+            return {
+              element: visible[0],
+              match_count: 1,
+              match_strategy: 'consent_framework_selector',
+              scope_selector_used: 'intent:auto_dismiss_consent'
+            }
+          }
+        } catch {
+          // Ignore invalid selectors (e.g., :i flag not supported in some contexts)
+          continue
+        }
+      }
+
+      // Strategy 2: Fall back to dismiss_top_overlay multi-strategy approach
+      const overlayElement = findTopmostOverlay()
+      if (overlayElement) {
+        // Reuse the dismiss_top_overlay strategy chain
+        const closeButtonSelectors = [
+          'button.close', '.btn-close',
+          '[aria-label="Close"]', '[aria-label="close"]', '[aria-label="Dismiss"]', '[aria-label="dismiss"]',
+          '[data-dismiss="modal"]', '[data-bs-dismiss="modal"]',
+        ]
+        for (const closeSelector of closeButtonSelectors) {
+          const matches = querySelectorAllDeep(closeSelector, overlayElement as ParentNode)
+          const visible = matches.filter(isActionableVisible)
+          if (visible.length > 0) {
+            return {
+              element: visible[0],
+              match_count: 1,
+              match_strategy: 'auto_dismiss_close_button',
+              scope_selector_used: 'intent:auto_dismiss_overlay'
+            }
+          }
+        }
+
+        // Try dismiss-like text buttons
+        const dismissTextPatterns = /^(close|dismiss|cancel|not now|no thanks|skip|hide|got it|maybe later|x|\u00d7|\u2715|\u2716|\u2573|accept|allow|agree|ok|okay)$/i
+        const allButtons = querySelectorAllDeep('button, [role="button"]', overlayElement as ParentNode)
+        const dismissCandidates: RankedIntentCandidate[] = []
+        for (const btn of uniqueElements(allButtons)) {
+          if (!isActionableVisible(btn)) continue
+          const label = extractElementLabel(btn).trim()
+          let score = 0
+          if (dismissTextPatterns.test(label)) score += 900
+          else if (dismissVerb.test(label)) score += 700
+          const hasSvgIcon = btn.querySelector('svg') !== null
+          const textLen = (btn.textContent || '').trim().length
+          if (hasSvgIcon && textLen <= 2) score += 500
+          score += elementZIndexScore(btn)
+          if (score > 0) dismissCandidates.push({ element: btn, score })
+        }
+        if (dismissCandidates.length > 0) {
+          dismissCandidates.sort((a, b) => b.score - a.score)
+          return {
+            element: dismissCandidates[0]!.element,
+            match_count: 1,
+            match_strategy: 'auto_dismiss_text_button',
+            scope_selector_used: 'intent:auto_dismiss_overlay'
+          }
+        }
+
+        // Escape fallback
+        return {
+          element: overlayElement,
+          match_count: 1,
+          match_strategy: 'dismiss_escape_fallback',
+          scope_selector_used: 'intent:auto_dismiss_overlay'
+        }
+      }
+
+      // No overlay found — return success with no element (nothing to dismiss)
+      return {
+        error: domError('no_overlays', 'No cookie consent banners or overlays found to dismiss.')
       }
     }
 

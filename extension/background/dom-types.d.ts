@@ -101,6 +101,12 @@ export interface DOMResult {
     overlay_type?: string;
     overlay_selector?: string;
     overlay_text_preview?: string;
+    stable?: boolean;
+    timed_out?: boolean;
+    waited_ms?: number;
+    mutations_observed?: number;
+    stability_ms?: number;
+    dismissed_count?: number;
 }
 export interface DOMPrimitiveOptions {
     text?: string;
@@ -110,6 +116,7 @@ export interface DOMPrimitiveOptions {
     checked?: boolean;
     name?: string;
     timeout_ms?: number;
+    stability_ms?: number;
     analyze?: boolean;
     observe_mutations?: boolean;
     element_id?: string;

@@ -763,7 +763,8 @@ export function domPrimitive(
     'open_composer',
     'submit_active_composer',
     'confirm_top_dialog',
-    'dismiss_top_overlay'
+    'dismiss_top_overlay',
+    'auto_dismiss_overlays'
   ])
 
   type RankedIntentCandidate = { element: Element; score: number }
@@ -1059,6 +1060,107 @@ export function domPrimitive(
         match_count: 1,
         match_strategy: 'dismiss_escape_fallback',
         scope_selector_used: requestedScope || 'intent:auto_top_overlay'
+      }
+    }
+
+    if (action === 'auto_dismiss_overlays') {
+      // Auto-dismiss cookie consent banners and overlays (#342)
+      // Strategy 1: Try known consent framework selectors (most specific)
+      const consentSelectors = [
+        // CookieBot
+        '#CybotCookiebotDialogBodyLevelButtonLevelOptinAllowAll',
+        '#CybotCookiebotDialogBodyButtonDecline',
+        // OneTrust
+        '#onetrust-accept-btn-handler',
+        '.onetrust-close-btn-handler',
+        // CookieYes
+        '.cky-btn-accept',
+        // Quantcast / GDPR generic
+        '[data-cookieconsent="accept"]',
+        '.cc-accept',
+        '.cc-dismiss',
+        // Generic patterns
+        'button[id*="cookie" i][id*="accept" i]',
+        'button[id*="consent" i][id*="accept" i]',
+      ]
+      for (const consentSelector of consentSelectors) {
+        try {
+          const matches = querySelectorAllDeep(consentSelector)
+          const visible = matches.filter(isActionableVisible)
+          if (visible.length > 0) {
+            return {
+              element: visible[0],
+              match_count: 1,
+              match_strategy: 'consent_framework_selector',
+              scope_selector_used: 'intent:auto_dismiss_consent'
+            }
+          }
+        } catch {
+          // Ignore invalid selectors (e.g., :i flag not supported in some contexts)
+          continue
+        }
+      }
+
+      // Strategy 2: Fall back to dismiss_top_overlay multi-strategy approach
+      const overlayElement = findTopmostOverlay()
+      if (overlayElement) {
+        // Reuse the dismiss_top_overlay strategy chain
+        const closeButtonSelectors = [
+          'button.close', '.btn-close',
+          '[aria-label="Close"]', '[aria-label="close"]', '[aria-label="Dismiss"]', '[aria-label="dismiss"]',
+          '[data-dismiss="modal"]', '[data-bs-dismiss="modal"]',
+        ]
+        for (const closeSelector of closeButtonSelectors) {
+          const matches = querySelectorAllDeep(closeSelector, overlayElement as ParentNode)
+          const visible = matches.filter(isActionableVisible)
+          if (visible.length > 0) {
+            return {
+              element: visible[0],
+              match_count: 1,
+              match_strategy: 'auto_dismiss_close_button',
+              scope_selector_used: 'intent:auto_dismiss_overlay'
+            }
+          }
+        }
+
+        // Try dismiss-like text buttons
+        const dismissTextPatterns = /^(close|dismiss|cancel|not now|no thanks|skip|hide|got it|maybe later|x|\u00d7|\u2715|\u2716|\u2573|accept|allow|agree|ok|okay)$/i
+        const allButtons = querySelectorAllDeep('button, [role="button"]', overlayElement as ParentNode)
+        const dismissCandidates: RankedIntentCandidate[] = []
+        for (const btn of uniqueElements(allButtons)) {
+          if (!isActionableVisible(btn)) continue
+          const label = extractElementLabel(btn).trim()
+          let score = 0
+          if (dismissTextPatterns.test(label)) score += 900
+          else if (dismissVerb.test(label)) score += 700
+          const hasSvgIcon = btn.querySelector('svg') !== null
+          const textLen = (btn.textContent || '').trim().length
+          if (hasSvgIcon && textLen <= 2) score += 500
+          score += elementZIndexScore(btn)
+          if (score > 0) dismissCandidates.push({ element: btn, score })
+        }
+        if (dismissCandidates.length > 0) {
+          dismissCandidates.sort((a, b) => b.score - a.score)
+          return {
+            element: dismissCandidates[0]!.element,
+            match_count: 1,
+            match_strategy: 'auto_dismiss_text_button',
+            scope_selector_used: 'intent:auto_dismiss_overlay'
+          }
+        }
+
+        // Escape fallback
+        return {
+          element: overlayElement,
+          match_count: 1,
+          match_strategy: 'dismiss_escape_fallback',
+          scope_selector_used: 'intent:auto_dismiss_overlay'
+        }
+      }
+
+      // No overlay found — return success with no element (nothing to dismiss)
+      return {
+        error: domError('no_overlays', 'No cookie consent banners or overlays found to dismiss.')
       }
     }
 
@@ -2119,6 +2221,9 @@ export function domPrimitive(
             if (resolvedMatchStrategy === 'dismiss_close_button_selector') return 'close_button'
             if (resolvedMatchStrategy === 'dismiss_text_button') return 'text_button'
             if (resolvedMatchStrategy === 'dismiss_attr_match') return 'attribute_match'
+            if (resolvedMatchStrategy === 'consent_framework_selector') return 'consent_framework'
+            if (resolvedMatchStrategy === 'auto_dismiss_close_button') return 'close_button'
+            if (resolvedMatchStrategy === 'auto_dismiss_text_button') return 'text_button'
             return 'close_button'
           })()
 
@@ -2128,7 +2233,124 @@ export function domPrimitive(
             selector_used: selector || resolvedMatchStrategy,
             ...overlayInfo
           })
+        }),
+
+      auto_dismiss_overlays: () =>
+        withMutationTracking(() => {
+          if (!(node instanceof HTMLElement)) return domError('not_interactive', `Element is not an HTMLElement: ${node.tagName}`)
+
+          // Resolve overlay info for response enrichment
+          const overlayEl = (() => {
+            const dialogs = collectDialogs()
+            const top = pickTopDialog(dialogs)
+            if (top) return top
+            return node
+          })()
+          const overlayInfo = describeOverlay(overlayEl)
+
+          // Strategy: escape_fallback — dispatch Escape key instead of clicking
+          if (resolvedMatchStrategy === 'dismiss_escape_fallback') {
+            const escKb: KeyboardEventInit & { keyCode?: number } = {
+              key: 'Escape', code: 'Escape', keyCode: 27,
+              bubbles: true, cancelable: true
+            }
+            document.dispatchEvent(new KeyboardEvent('keydown', escKb))
+            document.dispatchEvent(new KeyboardEvent('keyup', escKb))
+            node.dispatchEvent(new KeyboardEvent('keydown', escKb))
+            node.dispatchEvent(new KeyboardEvent('keyup', escKb))
+            return mutatingSuccess(node, {
+              dismissed_count: 1,
+              strategy: 'escape_key',
+              ...overlayInfo
+            })
+          }
+
+          // Click the resolved dismiss/accept button
+          const strategy = (() => {
+            if (resolvedMatchStrategy === 'consent_framework_selector') return 'consent_framework'
+            if (resolvedMatchStrategy === 'auto_dismiss_close_button') return 'close_button'
+            if (resolvedMatchStrategy === 'auto_dismiss_text_button') return 'text_button'
+            return resolvedMatchStrategy || 'close_button'
+          })()
+
+          node.click()
+          return mutatingSuccess(node, {
+            dismissed_count: 1,
+            strategy,
+            selector_used: selector || resolvedMatchStrategy,
+            ...overlayInfo
+          })
+        }),
+
+      wait_for_stable: (): Promise<DOMResult> => {
+        // Smart DOM stability wait (#344)
+        const stabilityMs = typeof options.stability_ms === 'number' && options.stability_ms > 0
+          ? options.stability_ms : 500
+        const maxTimeout = typeof options.timeout_ms === 'number' && options.timeout_ms > 0
+          ? options.timeout_ms : 5000
+
+        return new Promise<DOMResult>((resolve) => {
+          let mutationCount = 0
+          let lastMutationTime = performance.now()
+          let timedOut = false
+          const startTime = performance.now()
+
+          const observer = new MutationObserver(() => {
+            mutationCount++
+            lastMutationTime = performance.now()
+          })
+
+          observer.observe(document.body || document.documentElement, {
+            childList: true,
+            subtree: true,
+            attributes: true,
+            characterData: true
+          })
+
+          function checkStability() {
+            const elapsed = performance.now() - startTime
+            const sinceLastMutation = performance.now() - lastMutationTime
+
+            if (sinceLastMutation >= stabilityMs) {
+              // DOM is stable
+              observer.disconnect()
+              resolve({
+                success: true,
+                action: 'wait_for_stable',
+                selector: '',
+                stable: true,
+                waited_ms: Math.round(elapsed),
+                mutations_observed: mutationCount,
+                stability_ms: stabilityMs
+              } as DOMResult)
+              return
+            }
+
+            if (elapsed >= maxTimeout) {
+              // Timed out
+              observer.disconnect()
+              timedOut = true
+              resolve({
+                success: true,
+                action: 'wait_for_stable',
+                selector: '',
+                stable: false,
+                timed_out: true,
+                waited_ms: Math.round(elapsed),
+                mutations_observed: mutationCount,
+                stability_ms: stabilityMs
+              } as DOMResult)
+              return
+            }
+
+            // Check again after a short interval
+            setTimeout(checkStability, Math.min(100, stabilityMs / 2))
+          }
+
+          // Start checking after initial delay
+          setTimeout(checkStability, Math.min(100, stabilityMs / 2))
         })
+      }
     }
   }
 
