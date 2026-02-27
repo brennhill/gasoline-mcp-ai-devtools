@@ -91,5 +91,17 @@ export declare function handleGetNetworkWaterfall(sendResponse: (result: {
 export declare function handleComputedStylesQuery(params: string | Record<string, unknown>, sendResponse: (result: unknown) => void): boolean;
 export declare function handleFormDiscoveryQuery(params: string | Record<string, unknown>, sendResponse: (result: unknown) => void): boolean;
 export declare function handleLinkHealthQuery(params: string | Record<string, unknown>, sendResponse: (result: unknown) => void): boolean;
+/**
+ * Handle GET_READABLE message — extract readable content directly in ISOLATED world.
+ */
+export declare function handleGetReadable(sendResponse: (result: unknown) => void): boolean;
+/**
+ * Handle GET_MARKDOWN message — extract markdown content directly in ISOLATED world.
+ */
+export declare function handleGetMarkdown(sendResponse: (result: unknown) => void): boolean;
+/**
+ * Handle PAGE_SUMMARY message — extract page summary directly in ISOLATED world.
+ */
+export declare function handlePageSummary(sendResponse: (result: unknown) => void): boolean;
 export {};
 //# sourceMappingURL=message-handlers.d.ts.map

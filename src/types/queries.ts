@@ -36,6 +36,9 @@ export type QueryType =
   | 'upload'
   | 'cdp_action'
   | 'explore_page'
+  | 'get_readable'
+  | 'get_markdown'
+  | 'page_summary'
 
 /**
  * Pending query from server
