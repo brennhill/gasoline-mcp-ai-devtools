@@ -594,6 +594,8 @@ export function domPrimitive(
 
             return mutatingSuccess(clickTarget, { value: href, reason: 'opened_new_tab' })
           }
+
+
           // #336: Auto-scroll off-screen elements into view before clicking
           const didScroll = autoScrollIfNeeded(clickTarget)
           clickTarget.click()
@@ -896,8 +898,48 @@ export function domPrimitive(
       dismiss_top_overlay: () =>
         withMutationTracking(() => {
           if (!(node instanceof HTMLElement)) return domError('not_interactive', `Element is not an HTMLElement: ${node.tagName}`)
+
+          // Resolve overlay info for response enrichment
+          const overlayEl = (() => {
+            const dialogs = collectDialogs()
+            const top = pickTopDialog(dialogs)
+            if (top) return top
+            // Fallback: the resolved node may itself be the overlay
+            return node
+          })()
+          const overlayInfo = describeOverlay(overlayEl)
+
+          // Strategy: escape_fallback — dispatch Escape key instead of clicking
+          if (resolvedMatchStrategy === 'dismiss_escape_fallback') {
+            const escKb: KeyboardEventInit & { keyCode?: number } = {
+              key: 'Escape', code: 'Escape', keyCode: 27,
+              bubbles: true, cancelable: true
+            }
+            document.dispatchEvent(new KeyboardEvent('keydown', escKb))
+            document.dispatchEvent(new KeyboardEvent('keyup', escKb))
+            // Also try the overlay element directly
+            node.dispatchEvent(new KeyboardEvent('keydown', escKb))
+            node.dispatchEvent(new KeyboardEvent('keyup', escKb))
+            return mutatingSuccess(node, {
+              strategy: 'escape_key',
+              ...overlayInfo
+            })
+          }
+
+          // Strategy: click the resolved dismiss button
+          const strategy = (() => {
+            if (resolvedMatchStrategy === 'dismiss_close_button_selector') return 'close_button'
+            if (resolvedMatchStrategy === 'dismiss_text_button') return 'text_button'
+            if (resolvedMatchStrategy === 'dismiss_attr_match') return 'attribute_match'
+            return 'close_button'
+          })()
+
           node.click()
-          return mutatingSuccess(node)
+          return mutatingSuccess(node, {
+            strategy,
+            selector_used: selector || resolvedMatchStrategy,
+            ...overlayInfo
+          })
         })
     }
   }

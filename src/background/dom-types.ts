@@ -93,6 +93,11 @@ export interface DOMResult {
     score: number
   }>
   suggested_element_id?: string
+  strategy?: string
+  selector_used?: string
+  overlay_type?: string
+  overlay_selector?: string
+  overlay_text_preview?: string
 }
 
 export interface DOMPrimitiveOptions {

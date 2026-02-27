@@ -408,33 +408,156 @@
     }
 
     if (action === 'dismiss_top_overlay') {
-      const scopeRoot = requestedScope ? activeScope : pickTopDialog(collectDialogs())
-      if (!scopeRoot) {
+      // Enhanced dismiss: find overlay using z-index analysis + role detection,
+      // then try multiple dismissal strategies in sequence (#334)
+      const overlayElement = requestedScope ? activeScope as Element : findTopmostOverlay()
+      if (!overlayElement) {
         return {
-          error: domError('overlay_not_found', 'No visible dialog/overlay found to dismiss.')
+          error: domError('overlay_not_found', 'No visible dialog/overlay/modal found to dismiss.')
         }
       }
-      const candidates = querySelectorAllDeep('button, [role="button"], [aria-label], [data-testid], [title]', scopeRoot)
-      const ranked = uniqueElements(candidates).map((candidate) => {
-        const label = extractElementLabel(candidate)
+
+      // Strategy A: Try expanded close button selectors within the overlay
+      const closeButtonSelectors = [
+        'button.close', '.btn-close',
+        '[aria-label="Close"]', '[aria-label="close"]', '[aria-label="Dismiss"]', '[aria-label="dismiss"]',
+        '[data-dismiss="modal"]', '[data-bs-dismiss="modal"]', '[data-dismiss="dialog"]',
+        '[data-dismiss="alert"]', '[data-bs-dismiss="alert"]',
+        'button.modal-close', '.dialog-close', '.overlay-close', '.popup-close',
+      ]
+      for (const closeSelector of closeButtonSelectors) {
+        const matches = querySelectorAllDeep(closeSelector, overlayElement as ParentNode)
+        const visible = matches.filter(isActionableVisible)
+        if (visible.length > 0) {
+          return {
+            element: visible[0],
+            match_count: 1,
+            match_strategy: 'dismiss_close_button_selector',
+            scope_selector_used: requestedScope || 'intent:auto_top_overlay'
+          }
+        }
+      }
+
+      // Strategy B: Find buttons with dismiss-like text content (expanded patterns)
+      const dismissTextPatterns = /^(close|dismiss|cancel|not now|no thanks|skip|hide|back|got it|maybe later|x|\u00d7|\u2715|\u2716|\u2573)$/i
+      const allButtons = querySelectorAllDeep('button, [role="button"]', overlayElement as ParentNode)
+      const dismissButtons: RankedIntentCandidate[] = []
+      for (const btn of uniqueElements(allButtons)) {
+        if (!isActionableVisible(btn)) continue
+        const label = extractElementLabel(btn).trim()
         let score = 0
-        if (dismissVerb.test(label)) score += 800
-        if (submitVerb.test(label)) score -= 550
-        score += areaScore(candidate, 30)
-        score += elementZIndexScore(candidate)
-        return { element: candidate, score }
-      })
-      const best = pickBestIntentTarget(
-        ranked,
-        'intent_dismiss_top_overlay',
-        'dismiss_action_not_found',
-        'No dismiss control found in the top overlay.'
-      )
+        if (dismissTextPatterns.test(label)) score += 900
+        else if (dismissVerb.test(label)) score += 700
+        if (submitVerb.test(label)) score -= 600
+        // SVG close icons: button containing only an SVG (common close icon pattern)
+        const hasSvgIcon = btn.querySelector('svg') !== null
+        const textLen = (btn.textContent || '').trim().length
+        if (hasSvgIcon && textLen <= 2) score += 500
+        // Small buttons in header area are likely close buttons
+        const rect = (btn as HTMLElement).getBoundingClientRect()
+        if (rect.width > 0 && rect.width < 60 && rect.height > 0 && rect.height < 60) score += 100
+        score += elementZIndexScore(btn)
+        if (score > 0) dismissButtons.push({ element: btn, score })
+      }
+      if (dismissButtons.length > 0) {
+        dismissButtons.sort((a, b) => b.score - a.score)
+        return {
+          element: dismissButtons[0]!.element,
+          match_count: 1,
+          match_strategy: 'dismiss_text_button',
+          scope_selector_used: requestedScope || 'intent:auto_top_overlay'
+        }
+      }
+
+      // Strategy C: Try elements with dismiss-related attributes (data-testid, title)
+      const attrCandidates = querySelectorAllDeep('[data-testid], [title]', overlayElement as ParentNode)
+      for (const candidate of uniqueElements(attrCandidates)) {
+        if (!isActionableVisible(candidate)) continue
+        const testId = candidate.getAttribute('data-testid') || ''
+        const title = candidate.getAttribute('title') || ''
+        if (dismissVerb.test(testId) || dismissVerb.test(title)) {
+          return {
+            element: candidate,
+            match_count: 1,
+            match_strategy: 'dismiss_attr_match',
+            scope_selector_used: requestedScope || 'intent:auto_top_overlay'
+          }
+        }
+      }
+
+      // Strategy D: Press Escape key (most modals respond to Escape)
+      // Return the overlay itself as the element; the action handler will dispatch Escape
       return {
-        ...best,
-        scope_selector_used: requestedScope || 'intent:auto_top_dialog'
+        element: overlayElement,
+        match_count: 1,
+        match_strategy: 'dismiss_escape_fallback',
+        scope_selector_used: requestedScope || 'intent:auto_top_overlay'
       }
     }
 
     return { error: domError('unknown_action', `Unknown DOM action: ${action}`) }
+  }
+
+  // --- Helper: Find topmost visible overlay using z-index analysis + role detection (#334) ---
+  function findTopmostOverlay(): Element | null {
+    // Collect all dialog/modal candidates
+    const dialogSelectors = [
+      '[role="dialog"]', '[role="alertdialog"]', '[aria-modal="true"]', 'dialog[open]',
+      '.modal.show', '.modal.in', '.modal.is-active', '.modal[style*="display: block"]',
+      '.overlay', '.popup', '.lightbox',
+      '[data-modal]', '[data-overlay]', '[data-dialog]',
+    ]
+    const candidates: Element[] = []
+    for (const dialogSelector of dialogSelectors) {
+      candidates.push(...querySelectorAllDeep(dialogSelector))
+    }
+
+    // Also check for high z-index elements that look like overlays
+    const allElements = document.querySelectorAll('*')
+    for (let i = 0; i < allElements.length; i++) {
+      const el = allElements[i]!
+      if (!(el instanceof HTMLElement)) continue
+      const style = getComputedStyle(el)
+      const zIndex = Number.parseInt(style.zIndex || '', 10)
+      if (Number.isNaN(zIndex) || zIndex < 1000) continue
+      const position = style.position || ''
+      if (position !== 'fixed' && position !== 'absolute') continue
+      const rect = el.getBoundingClientRect()
+      // Must be reasonably sized (not a tiny tooltip)
+      if (rect.width < 100 || rect.height < 100) continue
+      // Must be visible
+      if (style.display === 'none' || style.visibility === 'hidden' || style.opacity === '0') continue
+      candidates.push(el)
+    }
+
+    const unique = uniqueElements(candidates).filter(isActionableVisible)
+    if (unique.length === 0) return null
+
+    // Score and pick the topmost
+    const ranked = unique.map((candidate, index) => ({
+      element: candidate,
+      score: elementZIndexScore(candidate) * 1000 + areaScore(candidate, 200) + index
+    }))
+    ranked.sort((a, b) => b.score - a.score)
+    return ranked[0]?.element || null
+  }
+
+  function describeOverlay(el: Element): { overlay_type: string; overlay_selector: string; overlay_text_preview: string } {
+    const tag = el.tagName.toLowerCase()
+    const role = el.getAttribute('role') || ''
+    const ariaModal = el.getAttribute('aria-modal') || ''
+    let overlayType = 'unknown'
+    if (tag === 'dialog') overlayType = 'dialog'
+    else if (role === 'dialog' || role === 'alertdialog') overlayType = role
+    else if (ariaModal === 'true') overlayType = 'modal'
+    else overlayType = 'overlay'
+    const overlaySelector = (() => {
+      if (el.id) return `#${el.id}`
+      if (role) return `${tag}[role="${role}"]`
+      const className = (el as HTMLElement).className
+      if (typeof className === 'string' && className.trim()) return `${tag}.${className.trim().split(/\s+/)[0]}`
+      return tag
+    })()
+    const textPreview = ((el as HTMLElement).textContent || '').trim().slice(0, 120)
+    return { overlay_type: overlayType, overlay_selector: overlaySelector, overlay_text_preview: textPreview }
   }
