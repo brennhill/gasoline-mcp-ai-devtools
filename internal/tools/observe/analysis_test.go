@@ -464,6 +464,56 @@ func TestRunA11yAudit_AlreadyRunningReturnsPartialResults(t *testing.T) {
 	}
 }
 
+// ============================================
+// parseDataURL Tests
+// ============================================
+
+func TestParseDataURL_ValidJPEG(t *testing.T) {
+	t.Parallel()
+	data, mime := parseDataURL("data:image/jpeg;base64,/9j/4AAQSkZJRg==")
+	if data != "/9j/4AAQSkZJRg==" {
+		t.Errorf("base64Data = %q, want %q", data, "/9j/4AAQSkZJRg==")
+	}
+	if mime != "image/jpeg" {
+		t.Errorf("mimeType = %q, want %q", mime, "image/jpeg")
+	}
+}
+
+func TestParseDataURL_ValidPNG(t *testing.T) {
+	t.Parallel()
+	data, mime := parseDataURL("data:image/png;base64,iVBORw0KGgo=")
+	if data != "iVBORw0KGgo=" {
+		t.Errorf("base64Data = %q, want %q", data, "iVBORw0KGgo=")
+	}
+	if mime != "image/png" {
+		t.Errorf("mimeType = %q, want %q", mime, "image/png")
+	}
+}
+
+func TestParseDataURL_MalformedNoDataPrefix(t *testing.T) {
+	t.Parallel()
+	data, mime := parseDataURL("image/jpeg;base64,/9j/4AAQ")
+	if data != "" || mime != "" {
+		t.Errorf("expected empty strings for missing data: prefix, got data=%q mime=%q", data, mime)
+	}
+}
+
+func TestParseDataURL_MalformedNoBase64Marker(t *testing.T) {
+	t.Parallel()
+	data, mime := parseDataURL("data:image/jpeg;charset=utf-8,sometext")
+	if data != "" || mime != "" {
+		t.Errorf("expected empty strings for missing base64 marker, got data=%q mime=%q", data, mime)
+	}
+}
+
+func TestParseDataURL_EmptyString(t *testing.T) {
+	t.Parallel()
+	data, mime := parseDataURL("")
+	if data != "" || mime != "" {
+		t.Errorf("expected empty strings for empty input, got data=%q mime=%q", data, mime)
+	}
+}
+
 func TestRunA11yAudit_ResultWithErrorFieldReturnsGracefully(t *testing.T) {
 	t.Parallel()
 	cap := capture.NewCapture()
