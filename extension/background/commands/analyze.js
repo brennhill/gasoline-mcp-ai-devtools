@@ -575,4 +575,5 @@ registerCommand('draw_mode', async (ctx) => {
         });
     }
 });
+// Navigation command handler extracted to analyze-navigation.ts (#335)
 //# sourceMappingURL=analyze.js.map

@@ -11,6 +11,7 @@ import { debugLog } from '../index';
 import { getServerUrl } from '../state';
 import { DebugCategory } from '../debug';
 import { recordScreenshot } from '../state-manager';
+import { domPrimitiveListInteractive } from '../dom-primitives-list-interactive';
 import { registerCommand } from './registry';
 // =============================================================================
 // SCREENSHOT
@@ -123,6 +124,86 @@ registerCommand('tabs', async (ctx) => {
             error: 'tabs_query_failed',
             message: err.message || 'Failed to query tabs'
         });
+    }
+});
+// =============================================================================
+// PAGE INVENTORY (#318)
+// =============================================================================
+registerCommand('page_inventory', async (ctx) => {
+    try {
+        // 1. Get tab info (page metadata)
+        const tab = await chrome.tabs.get(ctx.tabId);
+        // 2. Run list_interactive via chrome.scripting in the page
+        const interactiveResults = await chrome.scripting.executeScript({
+            target: { tabId: ctx.tabId, allFrames: true },
+            world: 'MAIN',
+            func: domPrimitiveListInteractive,
+            args: ['']
+        });
+        // Merge interactive elements from all frames (up to 100)
+        const elements = [];
+        let firstError;
+        for (const r of interactiveResults) {
+            const res = r.result;
+            if (res?.success === false) {
+                if (!firstError)
+                    firstError = res.error || res.message;
+                continue;
+            }
+            if (res?.elements) {
+                elements.push(...res.elements);
+                if (elements.length >= 100)
+                    break;
+            }
+        }
+        const cappedElements = elements.slice(0, 100);
+        // Apply visible_only filter if requested
+        let filteredElements = cappedElements;
+        if (ctx.params.visible_only === true) {
+            filteredElements = cappedElements.filter((el) => {
+                const elem = el;
+                return elem.visible !== false;
+            });
+        }
+        // Apply limit if specified
+        const limit = typeof ctx.params.limit === 'number' && ctx.params.limit > 0
+            ? ctx.params.limit
+            : filteredElements.length;
+        const finalElements = filteredElements.slice(0, limit);
+        const payload = {
+            url: tab.url || '',
+            title: tab.title || '',
+            tab_status: tab.status || '',
+            favicon: tab.favIconUrl || '',
+            viewport: {
+                width: tab.width,
+                height: tab.height
+            },
+            interactive_elements: finalElements,
+            interactive_count: finalElements.length,
+            total_candidates: cappedElements.length
+        };
+        if (firstError && finalElements.length === 0) {
+            payload.interactive_error = firstError;
+        }
+        if (ctx.query.correlation_id) {
+            ctx.sendAsyncResult(ctx.syncClient, ctx.query.id, ctx.query.correlation_id, 'complete', payload);
+        }
+        else {
+            ctx.sendResult(payload);
+        }
+    }
+    catch (err) {
+        const message = err.message || 'Page inventory failed';
+        if (ctx.query.correlation_id) {
+            ctx.sendAsyncResult(ctx.syncClient, ctx.query.id, ctx.query.correlation_id, 'error', null, message);
+        }
+        else {
+            ctx.sendResult({
+                error: 'page_inventory_failed',
+                message
+            });
+        }
     }
 });
 //# sourceMappingURL=observe.js.map

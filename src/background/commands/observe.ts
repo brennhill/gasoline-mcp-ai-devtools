@@ -145,12 +145,11 @@ registerCommand('page_inventory', async (ctx) => {
     const tab = await chrome.tabs.get(ctx.tabId)
 
     // 2. Run list_interactive via chrome.scripting in the page
-    const scopeSelector = typeof ctx.params.scope_selector === 'string' ? ctx.params.scope_selector : ''
     const interactiveResults = await chrome.scripting.executeScript({
       target: { tabId: ctx.tabId, allFrames: true },
       world: 'MAIN',
       func: domPrimitiveListInteractive,
-      args: [scopeSelector]
+      args: ['']
     })
 
     // Merge interactive elements from all frames (up to 100)
