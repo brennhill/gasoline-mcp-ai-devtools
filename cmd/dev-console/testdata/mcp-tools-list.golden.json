@@ -1112,6 +1112,8 @@
             "confirm_top_dialog",
             "dismiss_top_overlay",
             "hover",
+            "auto_dismiss_overlays",
+            "wait_for_stable",
             "list_interactive",
             "get_readable",
             "get_markdown",
@@ -1149,6 +1151,10 @@
             "both"
           ],
           "type": "string"
+        },
+        "auto_dismiss": {
+          "description": "After navigation completes, automatically dismiss cookie consent banners and overlays",
+          "type": "boolean"
         },
         "background": {
           "description": "Run in background and return a correlation_id immediately.",
@@ -1299,6 +1305,10 @@
           "description": "State snapshot name",
           "type": "string"
         },
+        "stability_ms": {
+          "description": "Milliseconds of DOM quiet time required for wait_for_stable (default 500)",
+          "type": "number"
+        },
         "storage_type": {
           "description": "Storage target for state mutation actions",
           "enum": [
@@ -1372,6 +1382,10 @@
           "description": "CSS selector to wait for after navigation (navigate_and_wait_for)",
           "type": "string"
         },
+        "wait_for_stable": {
+          "description": "Wait for DOM stability (no mutations) before returning. Composable with navigate and click.",
+          "type": "boolean"
+        },
         "what": {
           "enum": [
             "highlight",
@@ -1416,6 +1430,8 @@
             "confirm_top_dialog",
             "dismiss_top_overlay",
             "hover",
+            "auto_dismiss_overlays",
+            "wait_for_stable",
             "list_interactive",
             "get_readable",
             "get_markdown",

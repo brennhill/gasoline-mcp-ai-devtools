@@ -197,7 +197,8 @@
     'submit_active_composer',
     'confirm_top_dialog',
     'dismiss_top_overlay',
-    'auto_dismiss_overlays'
+    'auto_dismiss_overlays',
+    'wait_for_stable'
   ])
 
   type RankedIntentCandidate = { element: Element; score: number }
@@ -494,6 +495,10 @@
         match_strategy: 'dismiss_escape_fallback',
         scope_selector_used: requestedScope || 'intent:auto_top_overlay'
       }
+    }
+
+    if (action === 'wait_for_stable') {
+      return { element: document.body, match_count: 1, match_strategy: 'wait_for_stable' }
     }
 
     if (action === 'auto_dismiss_overlays') {
