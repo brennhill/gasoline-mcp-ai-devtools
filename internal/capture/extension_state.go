@@ -276,6 +276,28 @@ func (c *Capture) GetCSPStatus() (restricted bool, level string) {
 	return c.ext.cspRestricted, c.ext.cspLevel
 }
 
+// CSPBlockedActions returns the actions blocked by the given CSP level and a
+// human-readable reason string. When the level is "none" or unrecognized, both
+// return values are nil/"" — callers should omit them from the response entirely
+// to avoid wasting tokens on normal pages.
+func CSPBlockedActions(level string) (actions []string, reason string) {
+	switch level {
+	case "script_exec":
+		return []string{"execute_js"},
+			"Page CSP blocks dynamic script execution. Use dom, get_readable, or list_interactive instead."
+	case "page_blocked":
+		return []string{
+				"execute_js", "click", "type", "select", "check", "scroll_to", "focus",
+				"get_text", "get_value", "get_attribute", "set_attribute",
+				"list_interactive", "get_readable", "get_markdown",
+				"fill_form", "fill_form_and_submit",
+			},
+			"Page blocks all script injection. Only navigate, screenshot, and network observation available."
+	default:
+		return nil, ""
+	}
+}
+
 // GetExtensionVersion returns the last reported extension version.
 func (c *Capture) GetExtensionVersion() string {
 	c.mu.RLock()
