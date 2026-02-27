@@ -59,6 +59,7 @@ func (h *ToolHandler) interactDispatch() map[string]interactHandler {
 			"upload":                    h.handleUpload,
 			"draw_mode_start":           h.handleDrawModeStart,
 			"hardware_click":            h.handleHardwareClick,
+			"activate_tab":              h.handleActivateTab,
 			"get_readable":              h.handleGetReadable,
 			"get_markdown":              h.handleGetMarkdown,
 			"navigate_and_wait_for":     h.handleNavigateAndWaitFor,
@@ -613,6 +614,32 @@ func (h *ToolHandler) handleBrowserActionSwitchTab(req JSONRPCRequest, args json
 	}
 
 	return resp
+}
+
+func (h *ToolHandler) handleActivateTab(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+	if resp, blocked := h.requirePilot(req); blocked {
+		return resp
+	}
+	if resp, blocked := h.requireExtension(req); blocked {
+		return resp
+	}
+	if resp, blocked := h.requireTabTracking(req); blocked {
+		return resp
+	}
+
+	correlationID := newCorrelationID("activate")
+	h.armEvidenceForCommand(correlationID, "activate_tab", args, req.ClientID)
+
+	query := queries.PendingQuery{
+		Type:          "browser_action",
+		Params:        json.RawMessage(`{"action":"activate_tab"}`),
+		CorrelationID: correlationID,
+	}
+	h.capture.CreatePendingQueryWithTimeout(query, queries.AsyncCommandTimeout, req.ClientID)
+
+	h.recordAIAction("activate_tab", "", nil)
+
+	return h.MaybeWaitForCommand(req, correlationID, args, "Activate tab queued")
 }
 
 func (h *ToolHandler) handleBrowserActionCloseTab(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {

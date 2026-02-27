@@ -80,6 +80,13 @@ export interface DOMResult {
         summary: string;
     };
     dom_mutations?: DOMMutationEntry[];
+    viewport?: {
+        scroll_x: number;
+        scroll_y: number;
+        viewport_width: number;
+        viewport_height: number;
+        page_height: number;
+    };
     analysis?: string;
     insertion_strategy?: string;
     ranked_candidates?: Array<{

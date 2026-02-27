@@ -408,7 +408,7 @@ func (h *ToolHandler) formatCompleteCommand(req JSONRPCRequest, cmd queries.Comm
 		cmd.Error = normalizedErr
 	}
 
-	if embeddedErr, hasEmbeddedErr := enrichCommandResponseData(normalizedResult, responseData); cmd.Error == "" && hasEmbeddedErr {
+	if embeddedErr, hasEmbeddedErr := enrichCommandResponseData(normalizedResult, responseData, corrID); cmd.Error == "" && hasEmbeddedErr {
 		cmd.Error = embeddedErr
 	}
 	stripEnrichedFieldsFromResult(responseData)
@@ -541,6 +541,7 @@ func stripEnrichedFieldsFromResult(responseData map[string]any) {
 		"content_script_status", "target_context",
 		"message", "hint", "retry", "retryable", "csp_blocked", "failure_cause", "error_code",
 		"candidates", "match_count", "match_strategy",
+		"viewport", "result",
 		"effective_url", "effective_tab_id", "effective_title",
 		"resolved_tab_id", "resolved_url", "final_url", "title",
 	}
@@ -581,7 +582,7 @@ func stripRetryContextOnSuccess(responseData map[string]any) {
 	}
 }
 
-func enrichCommandResponseData(result json.RawMessage, responseData map[string]any) (embeddedErr string, hasEmbeddedErr bool) {
+func enrichCommandResponseData(result json.RawMessage, responseData map[string]any, corrID ...string) (embeddedErr string, hasEmbeddedErr bool) {
 	if len(result) == 0 {
 		return "", false
 	}
@@ -598,6 +599,7 @@ func enrichCommandResponseData(result json.RawMessage, responseData map[string]a
 		"content_script_status", "target_context",
 		"message", "hint", "retry", "retryable", "csp_blocked", "failure_cause", "error_code",
 		"candidates", "match_count", "match_strategy",
+		"viewport",
 	} {
 		if v, ok := extResult[key]; ok {
 			responseData[key] = v
@@ -633,6 +635,19 @@ func enrichCommandResponseData(result json.RawMessage, responseData map[string]a
 		responseData["tab_changed"] = true
 		responseData["navigation_detected"] = true
 		responseData["navigation_note"] = fmt.Sprintf("Page navigated from %s to %s", resolvedURL, effectiveURL)
+	}
+
+	// Surface execute_js return values prominently so agents don't have to
+	// dig into result.result. The field is named "return_value" to distinguish
+	// the script's return value from the overall command result envelope.
+	// Only applies to execute_js commands (corrID prefix "exec_") to avoid
+	// leaking internal result fields from other action types.
+	cid := ""
+	if len(corrID) > 0 {
+		cid = corrID[0]
+	}
+	if v, ok := extResult["result"]; ok && strings.HasPrefix(cid, "exec_") {
+		responseData["return_value"] = v
 	}
 
 	if success, ok := extResult["success"].(bool); ok && !success {

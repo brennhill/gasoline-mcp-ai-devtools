@@ -175,9 +175,9 @@ func isMutationAction(action string) bool {
 	case
 		"highlight",
 		"execute_js",
-		"navigate", "refresh", "back", "forward", "new_tab", "switch_tab", "close_tab",
+		"navigate", "refresh", "back", "forward", "new_tab", "switch_tab", "close_tab", "activate_tab",
 		"click", "type", "select", "check", "paste", "key_press",
-		"set_attribute", "scroll_to", "focus",
+		"set_attribute", "scroll_to", "focus", "hover",
 		"open_composer", "submit_active_composer", "confirm_top_dialog", "dismiss_top_overlay",
 		"set_storage", "delete_storage", "clear_storage",
 		"set_cookie", "delete_cookie",

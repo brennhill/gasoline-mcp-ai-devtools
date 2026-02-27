@@ -58,7 +58,8 @@ function isMutatingAction(action: string): boolean {
     action === 'paste' ||
     action === 'key_press' ||
     action === 'focus' ||
-    action === 'scroll_to'
+    action === 'scroll_to' ||
+    action === 'hover'
   )
 }
 
