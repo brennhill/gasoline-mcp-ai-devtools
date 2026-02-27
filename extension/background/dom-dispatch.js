@@ -29,7 +29,8 @@ function isMutatingAction(action) {
         action === 'paste' ||
         action === 'key_press' ||
         action === 'focus' ||
-        action === 'scroll_to');
+        action === 'scroll_to' ||
+        action === 'hover');
 }
 function hasMatchedTargetEvidence(result) {
     const matched = result.matched;

@@ -134,6 +134,13 @@ func (c *Capture) IsTrackedTabActive() (bool, bool) {
 	return *c.ext.trackedTabActive, true
 }
 
+// SetTrackedTabActiveForTest sets the tracked tab active state for testing.
+func (c *Capture) SetTrackedTabActiveForTest(active bool) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.ext.trackedTabActive = &active
+}
+
 // IsPilotEnabled returns whether AI Web Pilot is currently enabled.
 func (c *Capture) IsPilotEnabled() bool {
 	c.mu.RLock()

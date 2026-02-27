@@ -242,3 +242,78 @@ func TestSmoke_ObservePage_DataAgeMs_RecentValue(t *testing.T) {
 		t.Error("found camelCase 'dataAge' — all fields should use snake_case")
 	}
 }
+
+// ============================================
+// Smoke Tests: is_active tab focus metadata
+// ============================================
+
+func TestSmoke_ObservePage_IsActive_PresentWhenKnown(t *testing.T) {
+	t.Parallel()
+	h, _, cap := makeToolHandler(t)
+	cap.SimulateExtensionConnectForTest()
+	cap.SetPilotEnabled(true)
+	cap.SetTrackingStatusForTest(42, "https://example.com")
+	cap.SetTabStatusForTest("complete")
+	cap.SetTrackedTabActiveForTest(true)
+
+	resp := callObserveRaw(h, "page")
+	result := parseToolResult(t, resp)
+	if result.IsError {
+		t.Fatalf("page should not error, got: %s", result.Content[0].Text)
+	}
+
+	data := extractResultJSON(t, result)
+	isActive, ok := data["is_active"]
+	if !ok {
+		t.Fatal("is_active should be present when tab active state is known")
+	}
+	if isActive != true {
+		t.Errorf("is_active = %v, want true", isActive)
+	}
+}
+
+func TestSmoke_ObservePage_IsActive_FalseWhenInactive(t *testing.T) {
+	t.Parallel()
+	h, _, cap := makeToolHandler(t)
+	cap.SimulateExtensionConnectForTest()
+	cap.SetPilotEnabled(true)
+	cap.SetTrackingStatusForTest(42, "https://example.com")
+	cap.SetTabStatusForTest("complete")
+	cap.SetTrackedTabActiveForTest(false)
+
+	resp := callObserveRaw(h, "page")
+	result := parseToolResult(t, resp)
+	if result.IsError {
+		t.Fatalf("page should not error, got: %s", result.Content[0].Text)
+	}
+
+	data := extractResultJSON(t, result)
+	isActive, ok := data["is_active"]
+	if !ok {
+		t.Fatal("is_active should be present when tab active state is known")
+	}
+	if isActive != false {
+		t.Errorf("is_active = %v, want false", isActive)
+	}
+}
+
+func TestSmoke_ObservePage_IsActive_AbsentWhenUnknown(t *testing.T) {
+	t.Parallel()
+	h, _, cap := makeToolHandler(t)
+	cap.SimulateExtensionConnectForTest()
+	cap.SetPilotEnabled(true)
+	cap.SetTrackingStatusForTest(42, "https://example.com")
+	cap.SetTabStatusForTest("complete")
+	// Do NOT call SetTrackedTabActiveForTest — state is unknown
+
+	resp := callObserveRaw(h, "page")
+	result := parseToolResult(t, resp)
+	if result.IsError {
+		t.Fatalf("page should not error, got: %s", result.Content[0].Text)
+	}
+
+	data := extractResultJSON(t, result)
+	if _, ok := data["is_active"]; ok {
+		t.Error("is_active should NOT be present when tab active state is unknown")
+	}
+}

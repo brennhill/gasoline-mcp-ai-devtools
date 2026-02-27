@@ -179,6 +179,7 @@ func TestDOMPrimitive_AllActions_PilotDisabled(t *testing.T) {
 		{"dismiss_top_overlay", `{"what":"dismiss_top_overlay"}`},
 		{"list_interactive", `{"what":"list_interactive"}`},
 		{"hover", `{"what":"hover","selector":"#el"}`},
+		{"activate_tab", `{"what":"activate_tab"}`},
 	}
 
 	for _, tc := range actions {
@@ -268,6 +269,7 @@ func TestDOMPrimitive_IntentActions_NoSelectorNeeded(t *testing.T) {
 		"submit_active_composer",
 		"confirm_top_dialog",
 		"dismiss_top_overlay",
+		"activate_tab",
 	}
 
 	for _, action := range actions {
@@ -381,6 +383,7 @@ func TestDOMPrimitive_AllActions_NoPanic(t *testing.T) {
 		{"dismiss_top_overlay", `{"what":"dismiss_top_overlay"}`},
 		{"list_interactive", `{"what":"list_interactive"}`},
 		{"hover", `{"what":"hover","selector":"#el"}`},
+		{"activate_tab", `{"what":"activate_tab"}`},
 	}
 
 	for _, tc := range allActions {
