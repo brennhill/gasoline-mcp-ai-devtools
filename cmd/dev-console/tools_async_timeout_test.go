@@ -48,8 +48,7 @@ func TestMaybeWaitForCommand_TimeoutMs_CustomTimeout(t *testing.T) {
 }
 
 func TestMaybeWaitForCommand_TimeoutMs_ShortTimeout(t *testing.T) {
-	t.Parallel()
-
+	// Not parallel: mutates package-level asyncPollInterval.
 	prevPoll := asyncPollInterval
 	asyncPollInterval = 50 * time.Millisecond
 	defer func() {
@@ -207,8 +206,7 @@ func TestAnalyze_LinkHealth_SyncFalse_ReturnsCorrelationID(t *testing.T) {
 }
 
 func TestAnalyze_Dom_TimeoutMs_Respected(t *testing.T) {
-	t.Parallel()
-
+	// Not parallel: mutates package-level asyncPollInterval.
 	prevPoll := asyncPollInterval
 	asyncPollInterval = 50 * time.Millisecond
 	defer func() {

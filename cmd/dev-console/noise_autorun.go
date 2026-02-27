@@ -123,8 +123,13 @@ func wireNoiseFirstConnect(h *ToolHandler) {
 		once.Do(func() {
 			// Small delay to let the first batch of logs/network data arrive
 			// before running auto-detection, so there's data to analyze.
+			// Respects shutdownCtx so the goroutine exits promptly on server shutdown.
 			util.SafeGo(func() {
-				time.Sleep(2 * time.Second)
+				select {
+				case <-time.After(2 * time.Second):
+				case <-h.shutdownCtx.Done():
+					return
+				}
 				fn := h.noiseFirstConnectFn
 				if fn != nil {
 					fn()
