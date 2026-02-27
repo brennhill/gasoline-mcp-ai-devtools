@@ -1,0 +1,606 @@
+/**
+ * Purpose: Dispatches hardware-level input via Chrome DevTools Protocol.
+ * Why: Synthetic DOM events have isTrusted:false which anti-bot systems and complex SPAs ignore.
+ *      CDP Input.dispatch* commands produce true hardware events indistinguishable from real user input.
+ * Docs: docs/features/feature/interact-explore/index.md
+ */
+const CDP_VERSION = '1.3';
+// Key code mappings for CDP Input.dispatchKeyEvent
+const KEY_CODES = {
+    Enter: { code: 'Enter', keyCode: 13 },
+    Tab: { code: 'Tab', keyCode: 9 },
+    Escape: { code: 'Escape', keyCode: 27 },
+    Backspace: { code: 'Backspace', keyCode: 8 },
+    Delete: { code: 'Delete', keyCode: 46 },
+    ArrowUp: { code: 'ArrowUp', keyCode: 38 },
+    ArrowDown: { code: 'ArrowDown', keyCode: 40 },
+    ArrowLeft: { code: 'ArrowLeft', keyCode: 37 },
+    ArrowRight: { code: 'ArrowRight', keyCode: 39 },
+    Space: { code: 'Space', keyCode: 32 },
+    Home: { code: 'Home', keyCode: 36 },
+    End: { code: 'End', keyCode: 35 },
+    PageUp: { code: 'PageUp', keyCode: 33 },
+    PageDown: { code: 'PageDown', keyCode: 34 }
+};
+// Characters that require shift on a US keyboard
+const SHIFT_CHARS = '~!@#$%^&*()_+{}|:"<>?ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+function charToKeyInfo(char) {
+    const shiftKey = SHIFT_CHARS.includes(char);
+    const lower = char.toLowerCase();
+    // Letter keys
+    if (lower >= 'a' && lower <= 'z') {
+        return {
+            key: char,
+            code: `Key${lower.toUpperCase()}`,
+            keyCode: lower.charCodeAt(0) - 32, // A=65
+            shiftKey
+        };
+    }
+    // Digit keys
+    if (char >= '0' && char <= '9') {
+        return {
+            key: char,
+            code: `Digit${char}`,
+            keyCode: char.charCodeAt(0),
+            shiftKey: false
+        };
+    }
+    // Space
+    if (char === ' ') {
+        return { key: ' ', code: 'Space', keyCode: 32, shiftKey: false };
+    }
+    // Common punctuation — approximate key codes
+    const punctuation = {
+        '-': { code: 'Minus', keyCode: 189 },
+        '=': { code: 'Equal', keyCode: 187 },
+        '[': { code: 'BracketLeft', keyCode: 219 },
+        ']': { code: 'BracketRight', keyCode: 221 },
+        '\\': { code: 'Backslash', keyCode: 220 },
+        ';': { code: 'Semicolon', keyCode: 186 },
+        "'": { code: 'Quote', keyCode: 222 },
+        ',': { code: 'Comma', keyCode: 188 },
+        '.': { code: 'Period', keyCode: 190 },
+        '/': { code: 'Slash', keyCode: 191 },
+        '`': { code: 'Backquote', keyCode: 192 },
+        // Shifted variants
+        '_': { code: 'Minus', keyCode: 189 },
+        '+': { code: 'Equal', keyCode: 187 },
+        '{': { code: 'BracketLeft', keyCode: 219 },
+        '}': { code: 'BracketRight', keyCode: 221 },
+        '|': { code: 'Backslash', keyCode: 220 },
+        ':': { code: 'Semicolon', keyCode: 186 },
+        '"': { code: 'Quote', keyCode: 222 },
+        '<': { code: 'Comma', keyCode: 188 },
+        '>': { code: 'Period', keyCode: 190 },
+        '?': { code: 'Slash', keyCode: 191 },
+        '~': { code: 'Backquote', keyCode: 192 },
+        '!': { code: 'Digit1', keyCode: 49 },
+        '@': { code: 'Digit2', keyCode: 50 },
+        '#': { code: 'Digit3', keyCode: 51 },
+        '$': { code: 'Digit4', keyCode: 52 },
+        '%': { code: 'Digit5', keyCode: 53 },
+        '^': { code: 'Digit6', keyCode: 54 },
+        '&': { code: 'Digit7', keyCode: 55 },
+        '*': { code: 'Digit8', keyCode: 56 },
+        '(': { code: 'Digit9', keyCode: 57 },
+        ')': { code: 'Digit0', keyCode: 48 }
+    };
+    const punct = punctuation[char];
+    if (punct) {
+        return { key: char, ...punct, shiftKey };
+    }
+    // Fallback for other characters
+    return { key: char, code: '', keyCode: 0, shiftKey: false };
+}
+async function cdpSend(tabId, method, params) {
+    await chrome.debugger.sendCommand({ tabId }, method, params);
+}
+async function resolveCoordinates(tabId, params) {
+    if (typeof params.x === 'number' && typeof params.y === 'number') {
+        return { x: params.x, y: params.y };
+    }
+    if (!params.selector) {
+        throw new Error('click requires x/y coordinates or a selector');
+    }
+    // Use Runtime.evaluate to get element center coordinates
+    const expression = `(() => {
+    const el = document.querySelector(${JSON.stringify(params.selector)});
+    if (!el) return null;
+    const r = el.getBoundingClientRect();
+    return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
+  })()`;
+    const evalResult = await chrome.debugger.sendCommand({ tabId }, 'Runtime.evaluate', {
+        expression,
+        returnByValue: true
+    });
+    const coords = evalResult?.result?.value;
+    if (!coords) {
+        throw new Error(`Element not found: ${params.selector}`);
+    }
+    return coords;
+}
+async function cdpClick(tabId, params) {
+    const { x, y } = await resolveCoordinates(tabId, params);
+    await cdpSend(tabId, 'Input.dispatchMouseEvent', {
+        type: 'mousePressed',
+        x,
+        y,
+        button: 'left',
+        clickCount: 1
+    });
+    await cdpSend(tabId, 'Input.dispatchMouseEvent', {
+        type: 'mouseReleased',
+        x,
+        y,
+        button: 'left',
+        clickCount: 1
+    });
+    return {
+        success: true,
+        action: 'hardware_click',
+        x,
+        y,
+        method: 'cdp'
+    };
+}
+async function cdpType(tabId, params) {
+    const text = params.text || '';
+    if (!text) {
+        throw new Error('type requires text parameter');
+    }
+    for (const char of text) {
+        const info = charToKeyInfo(char);
+        const modifiers = info.shiftKey ? 8 : 0;
+        await cdpSend(tabId, 'Input.dispatchKeyEvent', {
+            type: 'keyDown',
+            key: info.key,
+            code: info.code,
+            text: char,
+            unmodifiedText: info.shiftKey ? char.toLowerCase() : char,
+            windowsVirtualKeyCode: info.keyCode,
+            nativeVirtualKeyCode: info.keyCode,
+            modifiers
+        });
+        await cdpSend(tabId, 'Input.dispatchKeyEvent', {
+            type: 'keyUp',
+            key: info.key,
+            code: info.code,
+            windowsVirtualKeyCode: info.keyCode,
+            nativeVirtualKeyCode: info.keyCode,
+            modifiers
+        });
+    }
+    return {
+        success: true,
+        action: 'hardware_type',
+        char_count: text.length,
+        method: 'cdp'
+    };
+}
+async function cdpKeyPress(tabId, params) {
+    const key = params.text || params.key || '';
+    if (!key) {
+        throw new Error('key_press requires text or key parameter');
+    }
+    const mapped = KEY_CODES[key];
+    if (mapped) {
+        // Named key (Enter, Tab, etc.)
+        await cdpSend(tabId, 'Input.dispatchKeyEvent', {
+            type: 'keyDown',
+            key,
+            code: mapped.code,
+            windowsVirtualKeyCode: mapped.keyCode,
+            nativeVirtualKeyCode: mapped.keyCode
+        });
+        await cdpSend(tabId, 'Input.dispatchKeyEvent', {
+            type: 'keyUp',
+            key,
+            code: mapped.code,
+            windowsVirtualKeyCode: mapped.keyCode,
+            nativeVirtualKeyCode: mapped.keyCode
+        });
+    }
+    else {
+        // Single character
+        const info = charToKeyInfo(key);
+        const modifiers = info.shiftKey ? 8 : 0;
+        await cdpSend(tabId, 'Input.dispatchKeyEvent', {
+            type: 'keyDown',
+            key: info.key,
+            code: info.code,
+            text: key,
+            unmodifiedText: info.shiftKey ? key.toLowerCase() : key,
+            windowsVirtualKeyCode: info.keyCode,
+            nativeVirtualKeyCode: info.keyCode,
+            modifiers
+        });
+        await cdpSend(tabId, 'Input.dispatchKeyEvent', {
+            type: 'keyUp',
+            key: info.key,
+            code: info.code,
+            windowsVirtualKeyCode: info.keyCode,
+            nativeVirtualKeyCode: info.keyCode,
+            modifiers
+        });
+    }
+    return {
+        success: true,
+        action: 'hardware_key_press',
+        key,
+        method: 'cdp'
+    };
+}
+function parseCDPParams(query) {
+    try {
+        const raw = typeof query.params === 'string'
+            ? JSON.parse(query.params)
+            : query.params;
+        if (!raw || typeof raw !== 'object' || !('action' in raw))
+            return null;
+        return raw;
+    }
+    catch {
+        return null;
+    }
+}
+function mapCDPError(err) {
+    const msg = err?.message || 'unknown_error';
+    if (msg.includes('Cannot attach to this target')) {
+        return 'cdp_attach_failed: Cannot attach debugger to this tab. It may be an internal browser page.';
+    }
+    if (msg.includes('Another debugger is already attached')) {
+        return 'cdp_already_attached: Another debugger session is active. Close DevTools or other debugging sessions.';
+    }
+    if (msg.includes('Debugger is not attached')) {
+        return 'cdp_not_attached: Debugger was detached during execution.';
+    }
+    return `cdp_error: ${msg}`;
+}
+// =============================================================================
+// AUTO-ESCALATION: CDP-first for click/type/key_press, fallback to DOM
+// =============================================================================
+// Platform-specific modifier for select-all (Meta on macOS, Ctrl elsewhere)
+const SELECT_ALL_MODIFIER = /mac/i.test(navigator.platform || '') ? 4 : 2;
+/** Actions that auto-escalate to CDP. */
+const CDP_ESCALATABLE = new Set(['click', 'type', 'key_press']);
+/** Check whether an action should attempt CDP before DOM primitives. */
+export function isCDPEscalatable(action) {
+    return CDP_ESCALATABLE.has(action);
+}
+/**
+ * Injected into the page via chrome.scripting.executeScript to resolve an
+ * element by selector, get its bounding rect, and optionally focus it.
+ * Must be fully self-contained — no closures over outer scope.
+ */
+function cdpResolveAndPrepare(selectorStr, actionType, scopeSelectorStr, elementIdStr) {
+    let root = document;
+    if (scopeSelectorStr) {
+        const scope = document.querySelector(scopeSelectorStr);
+        if (scope)
+            root = scope;
+    }
+    let el = null;
+    // Try element_id first
+    if (elementIdStr) {
+        el = root.querySelector(`[data-gasoline-eid="${elementIdStr}"]`);
+    }
+    // Resolve selector (CSS or semantic)
+    if (!el && selectorStr) {
+        const eqIdx = selectorStr.indexOf('=');
+        if (eqIdx > 0) {
+            const prefix = selectorStr.substring(0, eqIdx);
+            const value = selectorStr.substring(eqIdx + 1);
+            switch (prefix) {
+                case 'text': {
+                    const searchRoot = root === document ? document.body : root;
+                    if (searchRoot) {
+                        const all = searchRoot.querySelectorAll('*');
+                        for (let i = 0; i < all.length; i++) {
+                            const candidate = all[i];
+                            if (!candidate)
+                                continue;
+                            const textContent = candidate.textContent?.trim() || '';
+                            if (textContent === value || textContent.startsWith(value)) {
+                                el = candidate;
+                                break;
+                            }
+                        }
+                    }
+                    break;
+                }
+                case 'role':
+                    el = root.querySelector(`[role="${value}"]`);
+                    break;
+                case 'label':
+                case 'aria-label':
+                    el = root.querySelector(`[aria-label="${value}"]`);
+                    break;
+                case 'placeholder':
+                    el = root.querySelector(`[placeholder="${value}"]`);
+                    break;
+                default:
+                    try {
+                        el = root.querySelector(selectorStr);
+                    }
+                    catch {
+                        /* invalid selector */
+                    }
+            }
+        }
+        else {
+            try {
+                el = root.querySelector(selectorStr);
+            }
+            catch {
+                /* invalid selector */
+            }
+        }
+    }
+    if (!el)
+        return null;
+    const rect = el.getBoundingClientRect();
+    if (rect.width === 0 && rect.height === 0)
+        return null; // Hidden element
+    // Focus for type/key_press so CDP key events land on the right element
+    if (actionType === 'type' || actionType === 'key_press') {
+        ;
+        el.focus?.();
+    }
+    return {
+        x: rect.left + rect.width / 2,
+        y: rect.top + rect.height / 2,
+        tag: el.tagName.toLowerCase(),
+        text_preview: (el.textContent || '').trim().substring(0, 80),
+        selector: selectorStr,
+        element_id: el.getAttribute('data-gasoline-eid') || undefined,
+        aria_label: el.getAttribute('aria-label') || undefined,
+        role: el.getAttribute('role') || undefined,
+        bbox: { x: rect.x, y: rect.y, width: rect.width, height: rect.height }
+    };
+}
+async function resolveElement(tabId, params) {
+    const results = await chrome.scripting.executeScript({
+        target: { tabId },
+        world: 'MAIN',
+        func: cdpResolveAndPrepare,
+        args: [params.selector || '', params.action || '', params.scope_selector ?? null, params.element_id ?? null]
+    });
+    return results?.[0]?.result ?? null;
+}
+function buildCDPResult(action, selector, resolved, elapsedMs, extra) {
+    return {
+        success: true,
+        action,
+        selector,
+        matched: {
+            tag: resolved.tag,
+            text_preview: resolved.text_preview,
+            selector: resolved.selector,
+            element_id: resolved.element_id,
+            aria_label: resolved.aria_label,
+            role: resolved.role,
+            bbox: resolved.bbox
+        },
+        timing: { total_ms: elapsedMs },
+        insertion_strategy: 'cdp',
+        ...extra
+    };
+}
+async function cdpClearField(tabId) {
+    // Select all then delete — works cross-platform
+    await cdpSend(tabId, 'Input.dispatchKeyEvent', {
+        type: 'keyDown',
+        key: 'a',
+        code: 'KeyA',
+        windowsVirtualKeyCode: 65,
+        modifiers: SELECT_ALL_MODIFIER
+    });
+    await cdpSend(tabId, 'Input.dispatchKeyEvent', {
+        type: 'keyUp',
+        key: 'a',
+        code: 'KeyA',
+        windowsVirtualKeyCode: 65,
+        modifiers: SELECT_ALL_MODIFIER
+    });
+    await cdpSend(tabId, 'Input.dispatchKeyEvent', {
+        type: 'keyDown',
+        key: 'Backspace',
+        code: 'Backspace',
+        windowsVirtualKeyCode: 8
+    });
+    await cdpSend(tabId, 'Input.dispatchKeyEvent', {
+        type: 'keyUp',
+        key: 'Backspace',
+        code: 'Backspace',
+        windowsVirtualKeyCode: 8
+    });
+}
+async function cdpDispatchKeySequence(tabId, text) {
+    for (const char of text) {
+        const info = charToKeyInfo(char);
+        const modifiers = info.shiftKey ? 8 : 0;
+        await cdpSend(tabId, 'Input.dispatchKeyEvent', {
+            type: 'keyDown',
+            key: info.key,
+            code: info.code,
+            text: char,
+            unmodifiedText: info.shiftKey ? char.toLowerCase() : char,
+            windowsVirtualKeyCode: info.keyCode,
+            nativeVirtualKeyCode: info.keyCode,
+            modifiers
+        });
+        await cdpSend(tabId, 'Input.dispatchKeyEvent', {
+            type: 'keyUp',
+            key: info.key,
+            code: info.code,
+            windowsVirtualKeyCode: info.keyCode,
+            nativeVirtualKeyCode: info.keyCode,
+            modifiers
+        });
+    }
+}
+async function cdpDispatchSingleKey(tabId, key) {
+    const mapped = KEY_CODES[key];
+    if (mapped) {
+        await cdpSend(tabId, 'Input.dispatchKeyEvent', {
+            type: 'keyDown',
+            key,
+            code: mapped.code,
+            windowsVirtualKeyCode: mapped.keyCode,
+            nativeVirtualKeyCode: mapped.keyCode
+        });
+        await cdpSend(tabId, 'Input.dispatchKeyEvent', {
+            type: 'keyUp',
+            key,
+            code: mapped.code,
+            windowsVirtualKeyCode: mapped.keyCode,
+            nativeVirtualKeyCode: mapped.keyCode
+        });
+    }
+    else {
+        const info = charToKeyInfo(key);
+        const modifiers = info.shiftKey ? 8 : 0;
+        await cdpSend(tabId, 'Input.dispatchKeyEvent', {
+            type: 'keyDown',
+            key: info.key,
+            code: info.code,
+            text: key,
+            unmodifiedText: info.shiftKey ? key.toLowerCase() : key,
+            windowsVirtualKeyCode: info.keyCode,
+            nativeVirtualKeyCode: info.keyCode,
+            modifiers
+        });
+        await cdpSend(tabId, 'Input.dispatchKeyEvent', {
+            type: 'keyUp',
+            key: info.key,
+            code: info.code,
+            windowsVirtualKeyCode: info.keyCode,
+            nativeVirtualKeyCode: info.keyCode,
+            modifiers
+        });
+    }
+}
+/**
+ * Attempt CDP-first execution for click/type/key_press.
+ * Returns a DOMResult on success, or null to signal fallback to DOM primitives.
+ * Any error is caught internally — callers just check for null.
+ */
+export async function tryCDPEscalation(tabId, action, params) {
+    if (!CDP_ESCALATABLE.has(action))
+        return null;
+    const selector = params.selector || '';
+    const startTime = Date.now();
+    try {
+        // Step 1: Resolve element via page script (also focuses for type/key_press)
+        const resolved = await resolveElement(tabId, params);
+        if (!resolved)
+            return null;
+        // Step 2: Attach debugger
+        await chrome.debugger.attach({ tabId }, CDP_VERSION);
+        try {
+            // Step 3: Execute CDP action
+            if (action === 'click') {
+                await cdpSend(tabId, 'Input.dispatchMouseEvent', {
+                    type: 'mousePressed',
+                    x: resolved.x,
+                    y: resolved.y,
+                    button: 'left',
+                    clickCount: 1
+                });
+                await cdpSend(tabId, 'Input.dispatchMouseEvent', {
+                    type: 'mouseReleased',
+                    x: resolved.x,
+                    y: resolved.y,
+                    button: 'left',
+                    clickCount: 1
+                });
+            }
+            else if (action === 'type') {
+                const text = params.text || '';
+                if (!text)
+                    return null;
+                if (params.clear)
+                    await cdpClearField(tabId);
+                await cdpDispatchKeySequence(tabId, text);
+            }
+            else if (action === 'key_press') {
+                const key = params.text || '';
+                if (!key)
+                    return null;
+                await cdpDispatchSingleKey(tabId, key);
+            }
+            // Step 4: Build DOMResult with matched evidence
+            return buildCDPResult(action, selector, resolved, Date.now() - startTime);
+        }
+        finally {
+            try {
+                await chrome.debugger.detach({ tabId });
+            }
+            catch {
+                /* already detached */
+            }
+        }
+    }
+    catch {
+        // CDP unavailable or failed — fall back to DOM primitives silently
+        return null;
+    }
+}
+// =============================================================================
+// DIRECT CDP QUERIES (hardware_click via Go-side cdp_action)
+// =============================================================================
+export async function executeCDPAction(query, tabId, syncClient, sendAsyncResult, actionToast) {
+    const params = parseCDPParams(query);
+    if (!params) {
+        sendAsyncResult(syncClient, query.id, query.correlation_id, 'error', null, 'invalid_params');
+        return;
+    }
+    const { action } = params;
+    if (!action) {
+        sendAsyncResult(syncClient, query.id, query.correlation_id, 'error', null, 'missing_action');
+        return;
+    }
+    const toastLabel = `CDP ${action}`;
+    actionToast(tabId, toastLabel, undefined, 'trying', 10000);
+    try {
+        await chrome.debugger.attach({ tabId }, CDP_VERSION);
+    }
+    catch (err) {
+        const errorMsg = mapCDPError(err);
+        actionToast(tabId, toastLabel, errorMsg, 'error');
+        sendAsyncResult(syncClient, query.id, query.correlation_id, 'error', null, errorMsg);
+        return;
+    }
+    try {
+        let result;
+        switch (action) {
+            case 'click':
+                result = await cdpClick(tabId, params);
+                break;
+            case 'type':
+                result = await cdpType(tabId, params);
+                break;
+            case 'key_press':
+                result = await cdpKeyPress(tabId, params);
+                break;
+            default:
+                throw new Error(`Unknown CDP action: ${action}`);
+        }
+        actionToast(tabId, toastLabel, undefined, 'success');
+        sendAsyncResult(syncClient, query.id, query.correlation_id, 'complete', result);
+    }
+    catch (err) {
+        const errorMsg = mapCDPError(err);
+        actionToast(tabId, toastLabel, errorMsg, 'error');
+        sendAsyncResult(syncClient, query.id, query.correlation_id, 'error', null, errorMsg);
+    }
+    finally {
+        try {
+            await chrome.debugger.detach({ tabId });
+        }
+        catch {
+            // Already detached or tab closed — safe to ignore
+        }
+    }
+}
+//# sourceMappingURL=cdp-dispatch.js.map

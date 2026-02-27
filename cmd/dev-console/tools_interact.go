@@ -66,6 +66,7 @@ func (h *ToolHandler) interactDispatch() map[string]interactHandler {
 			"fill_form_and_submit":      h.handleFillFormAndSubmit,
 			"fill_form":                 h.handleFillForm,
 			"run_a11y_and_export_sarif": h.handleRunA11yAndExportSARIF,
+			"explore_page":              h.handleExplorePage,
 		}
 	})
 	return h.interactHandlers
@@ -221,6 +222,38 @@ func isResponseError(resp JSONRPCResponse) bool {
 		return false
 	}
 	return result.IsError
+}
+
+// isResponseQueued checks if an MCP response is a "queued" async response.
+func isResponseQueued(resp JSONRPCResponse) bool {
+	if resp.Result == nil {
+		return false
+	}
+	var result MCPToolResult
+	if err := json.Unmarshal(resp.Result, &result); err != nil {
+		return false
+	}
+	if len(result.Content) == 0 {
+		return false
+	}
+	// Check the text content for the queued status JSON.
+	// The text may be "summary\n{json}" or just "{json}".
+	for _, c := range result.Content {
+		if c.Type == "text" && len(c.Text) > 0 {
+			text := c.Text
+			// If text has a summary line before JSON, extract the JSON part
+			if idx := strings.Index(text, "\n{"); idx >= 0 {
+				text = text[idx+1:]
+			}
+			var data map[string]any
+			if err := json.Unmarshal([]byte(text), &data); err == nil {
+				if status, ok := data["status"].(string); ok && status == "queued" {
+					return true
+				}
+			}
+		}
+	}
+	return false
 }
 
 // appendScreenshotToResponse captures a screenshot and appends it as an inline

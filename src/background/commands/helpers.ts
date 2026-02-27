@@ -230,7 +230,8 @@ const TARGETED_QUERY_TYPES = new Set<string>([
   'form_discovery',
   'state_capture',
   'state_save',
-  'state_load'
+  'state_load',
+  'explore_page'
 ])
 
 export function requiresTargetTab(queryType: string): boolean {

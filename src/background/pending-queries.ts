@@ -18,6 +18,7 @@ import './commands/observe'
 import './commands/analyze'
 import './commands/analyze-navigation'
 import './commands/interact'
+import './commands/interact-explore'
 
 // Re-export types for backward compatibility (used by browser-actions.ts, upload-handler.ts, dom-dispatch.ts)
 export type { SendAsyncResultFn, ActionToastFn } from './commands/helpers'
