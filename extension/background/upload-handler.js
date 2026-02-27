@@ -5,9 +5,9 @@
  * Docs: docs/features/feature/interact-explore/index.md
  * Docs: docs/features/feature/observe/index.md
  */
-import { debugLog } from './index.js';
-import { getServerUrl } from './state.js';
-import { DebugCategory } from './debug.js';
+import { debugLog } from './index';
+import { getServerUrl } from './state';
+import { DebugCategory } from './debug';
 // ============================================
 // Timing Constants
 // ============================================

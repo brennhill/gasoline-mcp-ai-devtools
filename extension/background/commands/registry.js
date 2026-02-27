@@ -5,9 +5,9 @@
  * Docs: docs/features/feature/interact-explore/index.md
  * Docs: docs/features/feature/observe/index.md
  */
-import { initReady } from '../state.js';
-import { DebugCategory } from '../debug.js';
-import { sendResult, sendAsyncResult, requiresTargetTab, resolveTargetTab, parseQueryParamsObject, withTargetContext, actionToast, isRestrictedUrl, isBrowserEscapeAction } from './helpers.js';
+import { initReady } from '../state';
+import { DebugCategory } from '../debug';
+import { sendResult, sendAsyncResult, requiresTargetTab, resolveTargetTab, parseQueryParamsObject, withTargetContext, actionToast, isRestrictedUrl, isBrowserEscapeAction } from './helpers';
 function debugLog(category, message, data = null) {
     // Keep registry independent from index.ts to avoid circular imports during command registration.
     const debugEnabled = globalThis.__GASOLINE_REGISTRY_DEBUG__ === true;

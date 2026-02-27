@@ -5,7 +5,7 @@
  * Docs: docs/features/feature/interact-explore/index.md
  * Docs: docs/features/feature/observe/index.md
  */
-import { SettingName, StorageKey, DEFAULT_SERVER_URL } from '../lib/constants.js';
+import { SettingName, StorageKey, DEFAULT_SERVER_URL } from '../lib/constants';
 // =============================================================================
 // MESSAGE HANDLER
 // =============================================================================

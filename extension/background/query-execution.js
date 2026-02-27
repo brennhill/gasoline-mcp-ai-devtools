@@ -7,11 +7,11 @@
  */
 // query-execution.ts — JavaScript execution with world-aware routing and CSP fallback.
 // Handles execute_js queries via content script relay, chrome.scripting API, or structured executor.
-import { debugLog } from './index.js';
-import { DebugCategory } from './debug.js';
-import { scaleTimeout } from '../lib/timeouts.js';
-import { parseExpression } from './csp-safe-parser.js';
-import { cspSafeExecutor } from './csp-safe-executor.js';
+import { debugLog } from './index';
+import { DebugCategory } from './debug';
+import { scaleTimeout } from '../lib/timeouts';
+import { parseExpression } from './csp-safe-parser';
+import { cspSafeExecutor } from './csp-safe-executor';
 /**
  * Probe whether a tab's CSP blocks dynamic script execution (new Function).
  * Returns one of three levels:
