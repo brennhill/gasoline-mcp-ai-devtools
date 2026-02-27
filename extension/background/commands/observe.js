@@ -19,17 +19,7 @@ import { registerCommand } from './registry.js';
 registerCommand('screenshot', async (ctx) => {
     try {
         const tab = await chrome.tabs.get(ctx.tabId);
-        const captureWindowId = tab.windowId;
-        // Multiple windows: focus the target tab's window, then activate the tab in that window.
-        await chrome.windows.update(captureWindowId, { focused: true });
-        const activatedTab = await chrome.tabs.update(ctx.tabId, { active: true });
-        const activeTabs = await chrome.tabs.query({ windowId: captureWindowId, active: true });
-        const activeTab = activeTabs[0];
-        if (!activeTab?.id || activeTab.id !== ctx.tabId) {
-            throw new Error(`Failed to activate target tab ${ctx.tabId} in window ${captureWindowId} before screenshot`);
-        }
-        const captureUrl = activatedTab?.url || tab.url;
-        const dataUrl = await chrome.tabs.captureVisibleTab(captureWindowId, {
+        const dataUrl = await chrome.tabs.captureVisibleTab(tab.windowId, {
             format: 'jpeg',
             quality: 80
         });
@@ -40,7 +30,7 @@ registerCommand('screenshot', async (ctx) => {
             headers: { 'Content-Type': 'application/json', 'X-Gasoline-Client': 'gasoline-extension' },
             body: JSON.stringify({
                 data_url: dataUrl,
-                url: captureUrl,
+                url: tab.url,
                 query_id: ctx.query.id
             })
         });

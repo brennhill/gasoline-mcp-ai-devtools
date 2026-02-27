@@ -6,7 +6,6 @@
  */
 import * as index from './index.js'
 import * as eventListeners from './event-listeners.js'
-import { getOrCreateTransportProvider } from './transport-provider.js'
 
 const { debugLog } = index
 
@@ -112,7 +111,11 @@ export async function handleDrawModeCompleted(message, sender, syncClient) {
     if (sessionName) {
       body.annot_session_name = sessionName
     }
-    const response = await getOrCreateTransportProvider(serverUrl).postDrawModeCompletion(body)
+    const response = await fetch(`${serverUrl}/draw-mode/complete`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    })
 
     if (!response.ok) {
       const body = await response.text().catch(() => '')
