@@ -376,6 +376,18 @@ export function domPrimitiveListInteractive(
     if (rawEntries.length >= 100) break
   }
 
+  // Sort spatially: visible elements in reading order (top-to-bottom, left-to-right),
+  // invisible elements at the end. Elements within 10px vertically are treated as same row.
+  const ROW_THRESHOLD = 10
+  rawEntries.sort((a, b) => {
+    if (a.visible && !b.visible) return -1
+    if (!a.visible && b.visible) return 1
+    if (!a.visible && !b.visible) return 0
+    const sameRow = Math.abs(a.bbox.y - b.bbox.y) <= ROW_THRESHOLD
+    if (sameRow) return a.bbox.x - b.bbox.x
+    return a.bbox.y - b.bbox.y
+  })
+
   // Second pass: deduplicate selectors by appending :nth-match(N)
   const selectorCount = new Map<string, number>()
   for (const entry of rawEntries) {
