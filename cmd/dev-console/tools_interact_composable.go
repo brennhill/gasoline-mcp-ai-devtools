@@ -1,5 +1,5 @@
 // tools_interact_composable.go — Composable parameter handlers for interact tool.
-// Implements auto_dismiss, wait_for_stable, and wait_for_stable standalone action.
+// Implements auto_dismiss, wait_for_stable, action_diff, and standalone actions.
 // These queue side-effect queries after the primary action completes.
 package main
 
@@ -56,6 +56,25 @@ func (h *ToolHandler) queueComposableAutoDismiss(req JSONRPCRequest) {
 	query := queries.PendingQuery{
 		Type:          "dom_action",
 		Params:        dismissArgs,
+		CorrelationID: correlationID,
+	}
+	h.capture.CreatePendingQueryWithTimeout(query, queries.AsyncCommandTimeout, req.ClientID)
+}
+
+// queueComposableActionDiff queues an action_diff command as a side effect.
+// Used when action_diff=true is passed as a composable param on any mutating action.
+// The extension instruments a MutationObserver after the main action, captures mutations,
+// and returns a structured summary of what changed (overlays, toasts, form errors, etc.).
+func (h *ToolHandler) queueComposableActionDiff(req JSONRPCRequest) {
+	diffArgs, _ := json.Marshal(map[string]any{
+		"action":     "action_diff",
+		"timeout_ms": 3000,
+	})
+	correlationID := newCorrelationID("dom_action_diff")
+
+	query := queries.PendingQuery{
+		Type:          "dom_action",
+		Params:        diffArgs,
 		CorrelationID: correlationID,
 	}
 	h.capture.CreatePendingQueryWithTimeout(query, queries.AsyncCommandTimeout, req.ClientID)
