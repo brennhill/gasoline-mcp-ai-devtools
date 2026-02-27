@@ -103,6 +103,45 @@ func wireNoiseAutoDetect(h *ToolHandler) {
 	stderrf("[gasoline] noise auto-detect enabled (triggers after navigation, debounce=%s)\n", noiseAutoDetectInterval)
 }
 
+// wireNoiseFirstConnect sets up a lifecycle callback to run noise auto-detection
+// once on the first extension connection. This ensures sessions start with common
+// noise patterns suppressed without requiring the LLM to call auto_detect.
+// Issue #264: Auto-detect noise rules on first connection.
+//
+// Implementation: chains with any existing lifecycle callback instead of replacing it.
+func wireNoiseFirstConnect(h *ToolHandler) {
+	if h.capture == nil || h.noiseConfig == nil {
+		return
+	}
+
+	var once sync.Once
+
+	h.capture.AddLifecycleCallback(func(event string, data map[string]any) {
+		if event != "extension_connected" {
+			return
+		}
+		once.Do(func() {
+			// Small delay to let the first batch of logs/network data arrive
+			// before running auto-detection, so there's data to analyze.
+			// Respects shutdownCtx so the goroutine exits promptly on server shutdown.
+			util.SafeGo(func() {
+				select {
+				case <-time.After(2 * time.Second):
+				case <-h.shutdownCtx.Done():
+					return
+				}
+				fn := h.noiseFirstConnectFn
+				if fn != nil {
+					fn()
+					return
+				}
+				h.runNoiseAutoDetect()
+				stderrf("[gasoline] noise auto-detect: ran on first extension connection\n")
+			})
+		})
+	})
+}
+
 func noiseAutoDetectEnabled() bool {
 	val := strings.ToLower(strings.TrimSpace(os.Getenv(noiseAutoDetectEnvVar)))
 	return val == "1" || val == "true" || val == "yes" || val == "on"

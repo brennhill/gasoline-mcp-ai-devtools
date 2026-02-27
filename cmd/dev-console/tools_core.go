@@ -215,6 +215,10 @@ type ToolHandler struct {
 	// extensionReadinessTimeout overrides the cold-start wait duration for requireExtension.
 	// Zero uses capture.ExtensionReadinessTimeout (5s). Tests set this to 100ms.
 	extensionReadinessTimeout time.Duration
+
+	// noiseFirstConnectFn overrides the noise auto-detect function for first-connection.
+	// When nil, runNoiseAutoDetect() is used. Set in tests to inject counting stubs.
+	noiseFirstConnectFn func()
 }
 
 // Close cancels the shutdown context, unblocking any in-flight readiness gates.
@@ -317,6 +321,9 @@ func NewToolHandler(server *Server, capture *capture.Capture) *MCPHandler {
 
 	// Wire automatic noise detection after page navigations
 	wireNoiseAutoDetect(handler)
+
+	// Wire automatic noise detection on first extension connection (#264)
+	wireNoiseFirstConnect(handler)
 
 	// Initialize security tools (concrete types - interface signatures differ)
 	handler.securityScannerImpl = security.NewSecurityScanner()
