@@ -63,6 +63,15 @@ func GetPageInfo(deps Deps, req mcp.JSONRPCRequest, _ json.RawMessage) mcp.JSONR
 		result["is_active"] = tabActive
 	}
 
+	// Include blocked_actions/blocked_reason when CSP restricts — omit entirely
+	// when CSP is clear to avoid wasting tokens on normal pages. (#262)
+	if cspRestricted {
+		if actions, reason := capture.CSPBlockedActions(cspLevel); actions != nil {
+			result["blocked_actions"] = actions
+			result["blocked_reason"] = reason
+		}
+	}
+
 	return mcp.JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcp.JSONResponse("Page info", result)}
 }
 
