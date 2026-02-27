@@ -171,8 +171,16 @@ func (s *Server) handleScreenshot(w http.ResponseWriter, r *http.Request, cap *c
 		"correlation_id": body.CorrelationID,
 	}
 	if body.QueryID != "" && cap != nil {
+		// Include data_url in query result so observe(what="screenshot") can return inline image.
+		// The HTTP response intentionally omits it to keep the /screenshots response lean.
+		queryResult := map[string]string{
+			"filename":       filename,
+			"path":           savePath,
+			"correlation_id": body.CorrelationID,
+			"data_url":       body.DataURL,
+		}
 		// Error impossible: map contains only primitive types from input
-		resultJSON, _ := json.Marshal(result)
+		resultJSON, _ := json.Marshal(queryResult)
 		cap.SetQueryResult(body.QueryID, resultJSON)
 	}
 	jsonResponse(w, http.StatusOK, result)

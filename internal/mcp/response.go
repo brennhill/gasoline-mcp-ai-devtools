@@ -112,6 +112,33 @@ func JSONResponse(summary string, data any) json.RawMessage {
 	return json.RawMessage(resultJSON)
 }
 
+// ImageContentBlock creates an MCP image content block with base64-encoded data.
+// mimeType should be "image/png" or "image/jpeg".
+func ImageContentBlock(base64Data, mimeType string) MCPContentBlock {
+	return MCPContentBlock{
+		Type:     "image",
+		Data:     base64Data,
+		MimeType: mimeType,
+	}
+}
+
+// AppendImageToResponse adds an image content block to an existing MCP response.
+// If the response cannot be parsed, it is returned unchanged.
+func AppendImageToResponse(resp JSONRPCResponse, base64Data, mimeType string) JSONRPCResponse {
+	if base64Data == "" {
+		return resp
+	}
+	var result MCPToolResult
+	if err := json.Unmarshal(resp.Result, &result); err != nil {
+		return resp
+	}
+	result.Content = append(result.Content, ImageContentBlock(base64Data, mimeType))
+	// Error impossible: simple struct with no circular refs or unsupported types
+	resultJSON, _ := json.Marshal(result)
+	resp.Result = json.RawMessage(resultJSON)
+	return resp
+}
+
 // MarkdownTable converts a slice of items into a markdown table.
 // headers defines column names. rows contains cell values for each row.
 // Pipe chars in cell values are escaped, newlines are replaced with spaces.

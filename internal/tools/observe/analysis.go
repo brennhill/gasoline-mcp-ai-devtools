@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/dev-console/dev-console/internal/capture"
@@ -370,7 +371,40 @@ func GetScreenshot(deps Deps, req mcp.JSONRPCRequest, args json.RawMessage) mcp.
 		return mcp.JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcp.StructuredErrorResponse(mcp.ErrExtError, "Screenshot capture failed: "+errMsg, "Check that the tab is visible and accessible. The extension reported an error.", mcp.WithHint(deps.DiagnosticHintString()))}
 	}
 
-	return mcp.JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcp.JSONResponse("Screenshot captured", screenshotResult)}
+	// Build text response with file path info (backward compatible)
+	resp := mcp.JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcp.JSONResponse("Screenshot captured", screenshotResult)}
+
+	// Append inline image content block if data_url is available
+	if dataURL, ok := screenshotResult["data_url"].(string); ok && dataURL != "" {
+		base64Data, mimeType := parseDataURL(dataURL)
+		if base64Data != "" {
+			resp = mcp.AppendImageToResponse(resp, base64Data, mimeType)
+		}
+	}
+
+	return resp
+}
+
+// parseDataURL extracts the base64 data and MIME type from a data URL.
+// Example: "data:image/jpeg;base64,/9j/4AAQ..." -> ("/9j/4AAQ...", "image/jpeg")
+// Returns empty strings if the data URL format is invalid.
+func parseDataURL(dataURL string) (base64Data, mimeType string) {
+	if !strings.HasPrefix(dataURL, "data:") {
+		return "", ""
+	}
+	// Format: data:<mimeType>;base64,<data>
+	rest := dataURL[5:] // strip "data:"
+	semicolonIdx := strings.Index(rest, ";")
+	if semicolonIdx < 0 {
+		return "", ""
+	}
+	mimeType = rest[:semicolonIdx]
+	rest = rest[semicolonIdx+1:]
+	if !strings.HasPrefix(rest, "base64,") {
+		return "", ""
+	}
+	base64Data = rest[7:] // strip "base64,"
+	return base64Data, mimeType
 }
 
 // ============================================
