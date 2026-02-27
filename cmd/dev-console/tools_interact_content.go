@@ -3,8 +3,10 @@
 // Docs: docs/features/feature/interact-explore/index.md
 
 // tools_interact_content.go — Content extraction handlers for interact tool.
-// Implements get_readable and get_markdown actions using embedded JS scripts
-// executed via the "execute" query type (no TypeScript changes needed).
+// Implements get_readable, get_markdown, and page_summary using dedicated query types
+// routed through content script message-passing (CSP-safe, ISOLATED world).
+// Issue #257: Moved from "execute" query type with embedded IIFE scripts to
+// structured query types that the content script handles directly.
 package main
 
 import (
@@ -14,175 +16,13 @@ import (
 	"github.com/dev-console/dev-console/internal/queries"
 )
 
-// getReadableScript is a self-contained IIFE that extracts clean article content.
-// Finds <article>/<main>/largest text block, strips nav/footer/ads, returns structured content.
-const getReadableScript = `(function() {
-  function cleanText(el) {
-    if (!el) return '';
-    var clone = el.cloneNode(true);
-    var removeTags = ['nav','header','footer','aside','script','style','noscript','svg',
-      '[role="navigation"]','[role="banner"]','[role="contentinfo"]','[aria-hidden="true"]',
-      '.ad,.ads,.advertisement,.social-share,.comments,.sidebar,.related-posts,.newsletter'];
-    removeTags.forEach(function(sel) {
-      var els = clone.querySelectorAll(sel);
-      for (var i = 0; i < els.length; i++) els[i].remove();
-    });
-    return (clone.innerText || clone.textContent || '').replace(/\s+/g,' ').trim();
-  }
-
-  function findMainContent() {
-    var candidates = ['article','main','[role="main"]','.post-content','.entry-content',
-      '.article-body','.article-content','.story-body','#content','.content'];
-    for (var i = 0; i < candidates.length; i++) {
-      var el = document.querySelector(candidates[i]);
-      if (el) {
-        var text = cleanText(el);
-        if (text.length > 100) return {el: el, text: text};
-      }
-    }
-    return {el: document.body, text: cleanText(document.body)};
-  }
-
-  function getByline() {
-    var selectors = ['.author','[rel="author"]','.byline','.post-author','meta[name="author"]'];
-    for (var i = 0; i < selectors.length; i++) {
-      var el = document.querySelector(selectors[i]);
-      if (el) {
-        var text = el.getAttribute('content') || el.innerText || '';
-        text = text.trim();
-        if (text.length > 0 && text.length < 200) return text;
-      }
-    }
-    return '';
-  }
-
-  var found = findMainContent();
-  var content = found.text;
-  var excerpt = content.slice(0, 300);
-  var words = content.split(/\s+/).filter(Boolean);
-
-  return {
-    title: document.title || '',
-    content: content,
-    excerpt: excerpt,
-    byline: getByline(),
-    word_count: words.length,
-    url: window.location.href
-  };
-})()`
-
-// getMarkdownScript extracts content and converts to Markdown.
-const getMarkdownScript = `(function() {
-  function findMainContent() {
-    var candidates = ['article','main','[role="main"]','.post-content','.entry-content',
-      '.article-body','.article-content','.story-body','#content','.content'];
-    for (var i = 0; i < candidates.length; i++) {
-      var el = document.querySelector(candidates[i]);
-      if (el && (el.innerText||'').trim().length > 100) return el;
-    }
-    return document.body;
-  }
-
-  function nodeToMarkdown(node, depth) {
-    if (!node) return '';
-    if (depth > 20) return '';
-    if (node.nodeType === 3) return node.textContent || '';
-    if (node.nodeType !== 1) return '';
-    var el = node;
-    var tag = el.tagName.toLowerCase();
-
-    // Skip unwanted elements
-    if (['nav','header','footer','aside','script','style','noscript','svg'].indexOf(tag) >= 0) return '';
-    if (el.getAttribute('role') === 'navigation') return '';
-    if (el.getAttribute('aria-hidden') === 'true') return '';
-
-    var children = '';
-    for (var i = 0; i < el.childNodes.length; i++) {
-      children += nodeToMarkdown(el.childNodes[i], depth + 1);
-    }
-    children = children.replace(/\n{3,}/g, '\n\n');
-
-    switch(tag) {
-      case 'h1': return '\n# ' + children.trim() + '\n\n';
-      case 'h2': return '\n## ' + children.trim() + '\n\n';
-      case 'h3': return '\n### ' + children.trim() + '\n\n';
-      case 'h4': return '\n#### ' + children.trim() + '\n\n';
-      case 'h5': return '\n##### ' + children.trim() + '\n\n';
-      case 'h6': return '\n###### ' + children.trim() + '\n\n';
-      case 'p': return '\n' + children.trim() + '\n\n';
-      case 'br': return '\n';
-      case 'hr': return '\n---\n\n';
-      case 'strong': case 'b': return '**' + children.trim() + '**';
-      case 'em': case 'i': return '*' + children.trim() + '*';
-      case 'code': return '` + "`" + `' + children.trim() + '` + "`" + `';
-      case 'pre': return '\n` + "```" + `\n' + (el.innerText||'').trim() + '\n` + "```" + `\n\n';
-      case 'a':
-        var href = el.getAttribute('href') || '';
-        if (href && href !== '#' && !href.startsWith('javascript:')) {
-          try { href = new URL(href, window.location.href).href; } catch(e) {}
-          return '[' + children.trim() + '](' + href + ')';
-        }
-        return children;
-      case 'img':
-        var src = el.getAttribute('src') || '';
-        var alt = el.getAttribute('alt') || '';
-        if (src) {
-          try { src = new URL(src, window.location.href).href; } catch(e) {}
-          return '![' + alt + '](' + src + ')';
-        }
-        return '';
-      case 'ul': case 'ol': return '\n' + children + '\n';
-      case 'li':
-        var parent = el.parentElement;
-        if (parent && parent.tagName.toLowerCase() === 'ol') {
-          var idx = Array.from(parent.children).indexOf(el) + 1;
-          return idx + '. ' + children.trim() + '\n';
-        }
-        return '- ' + children.trim() + '\n';
-      case 'blockquote': return '\n> ' + children.trim().replace(/\n/g, '\n> ') + '\n\n';
-      case 'table': return '\n' + tableToMarkdown(el) + '\n\n';
-      case 'div': case 'section': case 'article': case 'main': return children;
-      default: return children;
-    }
-  }
-
-  function tableToMarkdown(table) {
-    var rows = table.querySelectorAll('tr');
-    if (rows.length === 0) return '';
-    var md = '';
-    for (var r = 0; r < rows.length; r++) {
-      var cells = rows[r].querySelectorAll('th,td');
-      var row = '|';
-      for (var c = 0; c < cells.length; c++) {
-        row += ' ' + (cells[c].innerText||'').trim().replace(/\|/g,'\\|').replace(/\n/g,' ') + ' |';
-      }
-      md += row + '\n';
-      if (r === 0 && rows[r].querySelector('th')) {
-        md += '|';
-        for (var c2 = 0; c2 < cells.length; c2++) md += ' --- |';
-        md += '\n';
-      }
-    }
-    return md;
-  }
-
-  var main = findMainContent();
-  var markdown = nodeToMarkdown(main, 0).trim();
-  var words = markdown.replace(/[#*\[\]()` + "`" + `|>-]/g,' ').split(/\s+/).filter(Boolean);
-
-  return {
-    title: document.title || '',
-    markdown: markdown,
-    word_count: words.length,
-    url: window.location.href
-  };
-})()`
-
-func (h *ToolHandler) handleGetReadable(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+// handleContentExtraction is the shared handler for get_readable, get_markdown, and page_summary.
+// All three use the same pattern: gate checks, timeout validation, create a pending query with
+// the dedicated query type, and wait for the content script to respond.
+func (h *ToolHandler) handleContentExtraction(req JSONRPCRequest, args json.RawMessage, queryType string, correlationPrefix string) JSONRPCResponse {
 	var params struct {
-		TabID     int    `json:"tab_id,omitempty"`
-		TimeoutMs int    `json:"timeout_ms,omitempty"`
-		World     string `json:"world,omitempty"`
+		TabID     int `json:"tab_id,omitempty"`
+		TimeoutMs int `json:"timeout_ms,omitempty"`
 	}
 	lenientUnmarshal(args, &params)
 
@@ -196,86 +36,43 @@ func (h *ToolHandler) handleGetReadable(req JSONRPCRequest, args json.RawMessage
 		return resp
 	}
 
-	if params.World == "" {
-		params.World = "isolated"
-	}
-	if !validWorldValues[params.World] {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidParam, "Invalid 'world' value: "+params.World, "Use 'isolated' (default), 'main', or 'auto'", withParam("world"))}
-	}
 	if params.TimeoutMs <= 0 {
 		params.TimeoutMs = 10_000
 	}
+	if params.TimeoutMs > 30_000 {
+		params.TimeoutMs = 30_000
+	}
 
-	correlationID := newCorrelationID("readable")
-	h.armEvidenceForCommand(correlationID, "get_readable", args, req.ClientID)
-	execParams, _ := json.Marshal(map[string]any{
-		"script":     getReadableScript,
+	correlationID := newCorrelationID(correlationPrefix)
+	h.armEvidenceForCommand(correlationID, queryType, args, req.ClientID)
+
+	// Structured params — no embedded script. The content script handles extraction directly.
+	queryParams, _ := json.Marshal(map[string]any{
 		"timeout_ms": params.TimeoutMs,
-		"world":      params.World,
-		"reason":     "get_readable",
 	})
 
 	query := queries.PendingQuery{
-		Type:          "execute",
-		Params:        execParams,
+		Type:          queryType,
+		Params:        queryParams,
 		TabID:         params.TabID,
 		CorrelationID: correlationID,
 	}
 	h.capture.CreatePendingQueryWithTimeout(query, queries.AsyncCommandTimeout, req.ClientID)
 
-	return h.MaybeWaitForCommand(req, correlationID, args, "get_readable queued")
+	return h.MaybeWaitForCommand(req, correlationID, args, queryType+" queued")
+}
+
+func (h *ToolHandler) handleGetReadable(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+	return h.handleContentExtraction(req, args, "get_readable", "readable")
 }
 
 func (h *ToolHandler) handleGetMarkdown(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-	var params struct {
-		TabID     int    `json:"tab_id,omitempty"`
-		TimeoutMs int    `json:"timeout_ms,omitempty"`
-		World     string `json:"world,omitempty"`
-	}
-	lenientUnmarshal(args, &params)
-
-	if resp, blocked := h.requirePilot(req); blocked {
-		return resp
-	}
-	if resp, blocked := h.requireExtension(req); blocked {
-		return resp
-	}
-	if resp, blocked := h.requireTabTracking(req); blocked {
-		return resp
-	}
-
-	if params.World == "" {
-		params.World = "isolated"
-	}
-	if !validWorldValues[params.World] {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidParam, "Invalid 'world' value: "+params.World, "Use 'isolated' (default), 'main', or 'auto'", withParam("world"))}
-	}
-	if params.TimeoutMs <= 0 {
-		params.TimeoutMs = 10_000
-	}
-
-	correlationID := newCorrelationID("markdown")
-	h.armEvidenceForCommand(correlationID, "get_markdown", args, req.ClientID)
-	execParams, _ := json.Marshal(map[string]any{
-		"script":     getMarkdownScript,
-		"timeout_ms": params.TimeoutMs,
-		"world":      params.World,
-		"reason":     "get_markdown",
-	})
-
-	query := queries.PendingQuery{
-		Type:          "execute",
-		Params:        execParams,
-		TabID:         params.TabID,
-		CorrelationID: correlationID,
-	}
-	h.capture.CreatePendingQueryWithTimeout(query, queries.AsyncCommandTimeout, req.ClientID)
-
-	return h.MaybeWaitForCommand(req, correlationID, args, "get_markdown queued")
+	return h.handleContentExtraction(req, args, "get_markdown", "markdown")
 }
 
 // enrichNavigateResponse appends page content to a successful navigate response.
-// Runs a page_summary script (defined in tools_analyze.go) to extract text content, headings, and metadata.
+// Uses the "page_summary" query type to extract text content, headings, and metadata
+// via the content script (ISOLATED world, CSP-safe).
 func (h *ToolHandler) enrichNavigateResponse(resp JSONRPCResponse, req JSONRPCRequest, tabID int) JSONRPCResponse {
 	// Only enrich successful (non-error) responses
 	var result MCPToolResult
@@ -290,23 +87,22 @@ func (h *ToolHandler) enrichNavigateResponse(resp JSONRPCResponse, req JSONRPCRe
 	// Get performance vitals
 	vitals := h.capture.GetPerformanceSnapshots()
 
-	// Execute page summary script for text content
+	// Request page summary via dedicated query type (CSP-safe, no eval).
+	// Use 4s query timeout to finish before the 5s Go-side wait.
 	summaryCorrelationID := newCorrelationID("nav_content")
-	execParams, _ := json.Marshal(map[string]any{
-		"script":     pageSummaryScript,
-		"timeout_ms": 10000,
-		"world":      "isolated",
-		"reason":     "navigate_content_enrichment",
+	summaryParams, _ := json.Marshal(map[string]any{
+		"timeout_ms": 4000,
 	})
 	summaryQuery := queries.PendingQuery{
-		Type:          "execute",
-		Params:        execParams,
+		Type:          "page_summary",
+		Params:        summaryParams,
 		TabID:         tabID,
 		CorrelationID: summaryCorrelationID,
 	}
 	h.capture.CreatePendingQueryWithTimeout(summaryQuery, queries.AsyncCommandTimeout, req.ClientID)
 
-	// Wait for page summary (5s timeout — page should already be loaded)
+	// Wait for page summary (5s — page should already be loaded).
+	// Best-effort enrichment: if extraction fails, navigate still succeeds with empty content.
 	var textContent string
 	cmd, found := h.capture.WaitForCommand(summaryCorrelationID, 5*time.Second)
 	if found && cmd.Status != "pending" && cmd.Result != nil {

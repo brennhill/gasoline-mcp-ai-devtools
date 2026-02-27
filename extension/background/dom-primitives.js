@@ -2259,7 +2259,6 @@ export function domPrimitive(action, selector, options) {
                     let networkRequests = 0;
                     let lastMutationTime = performance.now();
                     const addedNodes = [];
-                    const removedNodes = [];
                     const startTime = performance.now();
                     // Count network requests triggered by the action using PerformanceObserver.
                     // This avoids monkey-patching fetch/XHR and the associated type complexity.
@@ -2281,14 +2280,14 @@ export function domPrimitive(action, selector, options) {
                                     const n = record.addedNodes[i];
                                     if (n && n.nodeType === 1) {
                                         elementsAdded++;
-                                        addedNodes.push(n);
+                                        if (addedNodes.length < 500)
+                                            addedNodes.push(n);
                                     }
                                 }
                                 for (let i = 0; i < record.removedNodes.length; i++) {
                                     const n = record.removedNodes[i];
                                     if (n && n.nodeType === 1) {
                                         elementsRemoved++;
-                                        removedNodes.push(n);
                                     }
                                 }
                             }

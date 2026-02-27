@@ -200,9 +200,10 @@ func TestToolsAnalyzeSchema_HasFrameParam(t *testing.T) {
 
 func TestToolsAnalyzePageSummary_QueuedAsync(t *testing.T) {
 	t.Parallel()
-	h, _, _ := makeToolHandler(t)
+	// page_summary now requires pilot, extension, and tab tracking (issue #257)
+	env := newContentTestEnv(t)
 
-	resp := callAnalyzeRaw(h, `{"what":"page_summary","sync":false}`)
+	resp := callAnalyzeRaw(env.handler, `{"what":"page_summary","sync":false}`)
 	result := parseToolResult(t, resp)
 	if result.IsError {
 		t.Fatalf("page_summary with sync=false should queue, got: %s", result.Content[0].Text)
@@ -218,19 +219,8 @@ func TestToolsAnalyzePageSummary_QueuedAsync(t *testing.T) {
 	}
 }
 
-func TestToolsAnalyzePageSummary_InvalidWorld(t *testing.T) {
-	t.Parallel()
-	h, _, _ := makeToolHandler(t)
-
-	resp := callAnalyzeRaw(h, `{"what":"page_summary","sync":false,"world":"bad_world"}`)
-	result := parseToolResult(t, resp)
-	if !result.IsError {
-		t.Fatal("invalid world should return isError:true")
-	}
-	if !strings.Contains(result.Content[0].Text, "world") {
-		t.Errorf("error should mention 'world', got: %s", result.Content[0].Text)
-	}
-}
+// TestToolsAnalyzePageSummary_InvalidWorld removed: world parameter was removed in #257.
+// Content extractors always run in ISOLATED world — accepting world param was misleading.
 
 // ============================================
 // analyze(what:"dom") — Response Fields
