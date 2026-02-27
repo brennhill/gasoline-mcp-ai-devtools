@@ -5,7 +5,6 @@
  * Docs: docs/features/feature/interact-explore/index.md
  * Docs: docs/features/feature/observe/index.md
  */
-import { createHTTPExtensionTransportProvider } from './transport-provider.js';
 // =============================================================================
 // CONSTANTS
 // =============================================================================
@@ -15,7 +14,6 @@ const DEFAULT_COMMAND_TIMEOUT_MS = 65000;
 // SYNC CLIENT CLASS
 // =============================================================================
 export class SyncClient {
-    provider;
     serverUrl;
     extSessionId;
     callbacks;
@@ -28,15 +26,8 @@ export class SyncClient {
     inProgressById = new Map();
     processedCommandSignatures = new Set();
     extensionVersion;
-    constructor(serverUrlOrProvider, extSessionId, callbacks, extensionVersion = '') {
-        if (typeof serverUrlOrProvider === 'string') {
-            this.serverUrl = serverUrlOrProvider;
-            this.provider = createHTTPExtensionTransportProvider(serverUrlOrProvider);
-        }
-        else {
-            this.provider = serverUrlOrProvider;
-            this.serverUrl = '';
-        }
+    constructor(serverUrl, extSessionId, callbacks, extensionVersion = '') {
+        this.serverUrl = serverUrl;
         this.extSessionId = extSessionId;
         this.callbacks = callbacks;
         this.extensionVersion = extensionVersion;
@@ -110,7 +101,6 @@ export class SyncClient {
     /** Update server URL */
     setServerUrl(url) {
         this.serverUrl = url;
-        this.provider.setEndpoint(url);
     }
     /** Optional progress updates for long-running commands */
     updateCommandProgress(commandId, progressPct, status = 'running') {
@@ -163,7 +153,24 @@ export class SyncClient {
             if (this.state.lastCommandAck) {
                 request.last_command_ack = this.state.lastCommandAck;
             }
-            const data = await this.provider.sendSync(request, this.extensionVersion);
+            // Make request with timeout to prevent hanging forever
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 8000); // 8s: server holds up to 5s + margin
+            const response = await fetch(`${this.serverUrl}/sync`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Gasoline-Client': `gasoline-extension/${this.extensionVersion}`,
+                    'X-Gasoline-Extension-Version': this.extensionVersion
+                },
+                body: JSON.stringify(request),
+                signal: controller.signal
+            });
+            clearTimeout(timeoutId);
+            if (!response.ok) {
+                throw new Error(`Sync request failed: HTTP ${response.status} ${response.statusText} from ${this.serverUrl}/sync`);
+            }
+            const data = await response.json();
             // Log sync cycle summary
             this.log('Sync OK', {
                 commands: data.commands?.length || 0,
@@ -366,11 +373,5 @@ function clampPercent(value) {
  */
 export function createSyncClient(serverUrl, extSessionId, callbacks, extensionVersion = '') {
     return new SyncClient(serverUrl, extSessionId, callbacks, extensionVersion);
-}
-/**
- * Create a sync client instance with an explicit transport provider.
- */
-export function createSyncClientWithProvider(provider, extSessionId, callbacks, extensionVersion = '') {
-    return new SyncClient(provider, extSessionId, callbacks, extensionVersion);
 }
 //# sourceMappingURL=sync-client.js.map

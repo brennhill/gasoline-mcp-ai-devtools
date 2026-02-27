@@ -6,7 +6,6 @@
  * Docs: docs/features/feature/observe/index.md
  */
 import { SettingName, StorageKey, DEFAULT_SERVER_URL } from '../lib/constants.js';
-import { getOrCreateTransportProvider } from './transport-provider.js';
 // =============================================================================
 // MESSAGE HANDLER
 // =============================================================================
@@ -363,7 +362,11 @@ async function handleDrawModeCompletedAsync(message, sender, deps) {
         if (message.annot_session_name) {
             body.annot_session_name = message.annot_session_name;
         }
-        const response = await getOrCreateTransportProvider(serverUrl).postDrawModeCompletion(body);
+        const response = await fetch(`${serverUrl}/draw-mode/complete`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-Gasoline-Client': 'gasoline-extension' },
+            body: JSON.stringify(body)
+        });
         if (!response.ok) {
             const respBody = await response.text().catch(() => '');
             deps.debugLog('error', `Draw mode POST failed: ${response.status} ${respBody}`);
