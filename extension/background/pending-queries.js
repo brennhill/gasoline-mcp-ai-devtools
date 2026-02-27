@@ -11,6 +11,7 @@ import './commands/observe';
 import './commands/analyze';
 import './commands/analyze-navigation';
 import './commands/interact';
+import './commands/interact-explore';
 // Re-export handlePilotCommand (used by index.ts re-export chain)
 export { handlePilotCommand } from './commands/interact';
 export async function handlePendingQuery(query, syncClient) {

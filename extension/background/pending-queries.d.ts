@@ -11,6 +11,7 @@ import './commands/observe';
 import './commands/analyze';
 import './commands/analyze-navigation';
 import './commands/interact';
+import './commands/interact-explore';
 export type { SendAsyncResultFn, ActionToastFn } from './commands/helpers';
 export { handlePilotCommand } from './commands/interact';
 export declare function handlePendingQuery(query: PendingQuery, syncClient: SyncClient): Promise<void>;
