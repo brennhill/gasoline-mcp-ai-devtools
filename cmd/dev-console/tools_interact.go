@@ -481,6 +481,10 @@ func (h *ToolHandler) handleBrowserActionNavigate(req JSONRPCRequest, args json.
 		resp = h.enrichNavigateResponse(resp, req, params.TabID)
 	}
 
+	// Include blocked_actions/blocked_reason when CSP restricts — omit entirely
+	// when CSP is clear to avoid wasting tokens on normal pages. (#262)
+	resp = h.injectCSPBlockedActions(resp)
+
 	return resp
 }
 
