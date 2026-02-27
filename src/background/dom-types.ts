@@ -98,6 +98,14 @@ export interface DOMResult {
   overlay_type?: string
   overlay_selector?: string
   overlay_text_preview?: string
+  // wait_for_stable fields (#344)
+  stable?: boolean
+  timed_out?: boolean
+  waited_ms?: number
+  mutations_observed?: number
+  stability_ms?: number
+  // auto_dismiss_overlays fields (#342)
+  dismissed_count?: number
 }
 
 export interface DOMPrimitiveOptions {
@@ -108,6 +116,7 @@ export interface DOMPrimitiveOptions {
   checked?: boolean
   name?: string
   timeout_ms?: number
+  stability_ms?: number
   analyze?: boolean
   observe_mutations?: boolean
   element_id?: string

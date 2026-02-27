@@ -1,0 +1,85 @@
+// tools_interact_composable.go — Composable parameter handlers for interact tool.
+// Implements auto_dismiss, wait_for_stable, and wait_for_stable standalone action.
+// These queue side-effect queries after the primary action completes.
+package main
+
+import (
+	"encoding/json"
+
+	"github.com/dev-console/dev-console/internal/queries"
+)
+
+// handleWaitForStable is the named handler for the standalone wait_for_stable action.
+// It injects default stability_ms and timeout_ms if not provided, then delegates
+// to the standard DOM primitive dispatch.
+func (h *ToolHandler) handleWaitForStable(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+	var params struct {
+		StabilityMs int `json:"stability_ms,omitempty"`
+		TimeoutMs   int `json:"timeout_ms,omitempty"`
+		TabID       int `json:"tab_id,omitempty"`
+	}
+	lenientUnmarshal(args, &params)
+
+	// Apply defaults
+	if params.StabilityMs <= 0 {
+		params.StabilityMs = 500
+	}
+	if params.TimeoutMs <= 0 {
+		params.TimeoutMs = 5000
+	}
+
+	// Rewrite args with defaults injected
+	var rawArgs map[string]any
+	if err := json.Unmarshal(args, &rawArgs); err != nil {
+		rawArgs = make(map[string]any)
+	}
+	rawArgs["stability_ms"] = params.StabilityMs
+	rawArgs["timeout_ms"] = params.TimeoutMs
+	enrichedArgs, _ := json.Marshal(rawArgs)
+
+	return h.handleDOMPrimitive(req, enrichedArgs, "wait_for_stable")
+}
+
+// handleAutoDismissOverlays is the named handler for the standalone auto_dismiss_overlays action.
+// It delegates to the DOM primitive dispatch, which runs consent framework selectors
+// followed by the existing dismiss_top_overlay multi-strategy approach on the extension side.
+func (h *ToolHandler) handleAutoDismissOverlays(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+	return h.handleDOMPrimitive(req, args, "auto_dismiss_overlays")
+}
+
+// queueComposableAutoDismiss queues an auto_dismiss_overlays command as a side effect.
+// Used when auto_dismiss=true is passed as a composable param on navigate.
+func (h *ToolHandler) queueComposableAutoDismiss(req JSONRPCRequest) {
+	dismissArgs, _ := json.Marshal(map[string]string{"action": "auto_dismiss_overlays"})
+	correlationID := newCorrelationID("dom_auto_dismiss_overlays")
+
+	query := queries.PendingQuery{
+		Type:          "dom_action",
+		Params:        dismissArgs,
+		CorrelationID: correlationID,
+	}
+	h.capture.CreatePendingQueryWithTimeout(query, queries.AsyncCommandTimeout, req.ClientID)
+}
+
+// queueComposableWaitForStable queues a wait_for_stable command as a side effect.
+// Used when wait_for_stable=true is passed as a composable param on navigate or click.
+func (h *ToolHandler) queueComposableWaitForStable(req JSONRPCRequest, stabilityMs int) {
+	if stabilityMs <= 0 {
+		stabilityMs = 500
+	}
+	timeoutMs := 5000
+
+	stableArgs, _ := json.Marshal(map[string]any{
+		"action":       "wait_for_stable",
+		"stability_ms": stabilityMs,
+		"timeout_ms":   timeoutMs,
+	})
+	correlationID := newCorrelationID("dom_wait_for_stable")
+
+	query := queries.PendingQuery{
+		Type:          "dom_action",
+		Params:        stableArgs,
+		CorrelationID: correlationID,
+	}
+	h.capture.CreatePendingQueryWithTimeout(query, queries.AsyncCommandTimeout, req.ClientID)
+}

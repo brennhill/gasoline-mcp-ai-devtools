@@ -36,7 +36,7 @@ func TestInteractToolSchema_RequiresWhat_ActionIsRuntimeAlias(t *testing.T) {
 
 	// Spot-check that well-known actions are present in the canonical enum.
 	// Since both 'what' and 'action' reference the same slice, we only check whatEnum.
-	mustContain := []string{"navigate", "click", "screenshot", "type", "execute_js", "upload"}
+	mustContain := []string{"navigate", "click", "screenshot", "type", "execute_js", "upload", "auto_dismiss_overlays", "wait_for_stable"}
 	whatSet := make(map[string]bool, len(whatEnum))
 	for _, v := range whatEnum {
 		whatSet[v] = true
@@ -56,6 +56,38 @@ func TestInteractToolSchema_RequiresWhat_ActionIsRuntimeAlias(t *testing.T) {
 	required := toSchemaStringSlice(t, tool.InputSchema["required"])
 	if len(required) != 1 || required[0] != "what" {
 		t.Fatalf("interact schema required = %v, want [what]", required)
+	}
+}
+
+func TestInteractToolSchema_AutoDismissParam(t *testing.T) {
+	t.Parallel()
+	tool := InteractToolSchema()
+	props, ok := tool.InputSchema["properties"].(map[string]any)
+	if !ok {
+		t.Fatal("schema properties missing")
+	}
+	adProp, ok := props["auto_dismiss"].(map[string]any)
+	if !ok {
+		t.Fatal("auto_dismiss param should be in interact schema properties")
+	}
+	if adProp["type"] != "boolean" {
+		t.Errorf("auto_dismiss type = %v, want boolean", adProp["type"])
+	}
+}
+
+func TestInteractToolSchema_StabilityMsParam(t *testing.T) {
+	t.Parallel()
+	tool := InteractToolSchema()
+	props, ok := tool.InputSchema["properties"].(map[string]any)
+	if !ok {
+		t.Fatal("schema properties missing")
+	}
+	smProp, ok := props["stability_ms"].(map[string]any)
+	if !ok {
+		t.Fatal("stability_ms param should be in interact schema properties")
+	}
+	if smProp["type"] != "number" {
+		t.Errorf("stability_ms type = %v, want number", smProp["type"])
 	}
 }
 

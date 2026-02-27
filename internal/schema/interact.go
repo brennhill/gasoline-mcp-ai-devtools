@@ -17,6 +17,8 @@ var interactActions = []string{
 	"set_attribute", "focus", "scroll_to", "wait_for", "key_press", "paste",
 	"open_composer", "submit_active_composer", "confirm_top_dialog", "dismiss_top_overlay",
 	"hover",
+	"auto_dismiss_overlays",
+	"wait_for_stable",
 	"list_interactive",
 	"get_readable", "get_markdown",
 	"navigate_and_wait_for", "fill_form_and_submit", "fill_form", "run_a11y_and_export_sarif",
@@ -264,6 +266,18 @@ func InteractToolSchema() mcp.MCPTool {
 				"include_screenshot": map[string]any{
 					"type":        "boolean",
 					"description": "Capture a screenshot after the action completes and return it inline as an image content block",
+				},
+				"auto_dismiss": map[string]any{
+					"type":        "boolean",
+					"description": "After navigation completes, automatically dismiss cookie consent banners and overlays",
+				},
+				"wait_for_stable": map[string]any{
+					"type":        "boolean",
+					"description": "Wait for DOM stability (no mutations) before returning. Composable with navigate and click.",
+				},
+				"stability_ms": map[string]any{
+					"type":        "number",
+					"description": "Milliseconds of DOM quiet time required for wait_for_stable (default 500)",
 				},
 			},
 			"required": []string{"what"},

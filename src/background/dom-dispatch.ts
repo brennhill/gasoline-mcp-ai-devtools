@@ -285,6 +285,7 @@ async function executeStandardAction(
         checked: params.checked,
         name: params.name,
         timeout_ms: params.timeout_ms,
+        stability_ms: params.stability_ms,
         analyze: params.analyze,
         observe_mutations: params.observe_mutations,
         element_id: params.element_id,

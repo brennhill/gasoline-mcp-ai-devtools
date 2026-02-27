@@ -931,6 +931,9 @@ export function domPrimitive(
             if (resolvedMatchStrategy === 'dismiss_close_button_selector') return 'close_button'
             if (resolvedMatchStrategy === 'dismiss_text_button') return 'text_button'
             if (resolvedMatchStrategy === 'dismiss_attr_match') return 'attribute_match'
+            if (resolvedMatchStrategy === 'consent_framework_selector') return 'consent_framework'
+            if (resolvedMatchStrategy === 'auto_dismiss_close_button') return 'close_button'
+            if (resolvedMatchStrategy === 'auto_dismiss_text_button') return 'text_button'
             return 'close_button'
           })()
 
@@ -940,7 +943,124 @@ export function domPrimitive(
             selector_used: selector || resolvedMatchStrategy,
             ...overlayInfo
           })
+        }),
+
+      auto_dismiss_overlays: () =>
+        withMutationTracking(() => {
+          if (!(node instanceof HTMLElement)) return domError('not_interactive', `Element is not an HTMLElement: ${node.tagName}`)
+
+          // Resolve overlay info for response enrichment
+          const overlayEl = (() => {
+            const dialogs = collectDialogs()
+            const top = pickTopDialog(dialogs)
+            if (top) return top
+            return node
+          })()
+          const overlayInfo = describeOverlay(overlayEl)
+
+          // Strategy: escape_fallback — dispatch Escape key instead of clicking
+          if (resolvedMatchStrategy === 'dismiss_escape_fallback') {
+            const escKb: KeyboardEventInit & { keyCode?: number } = {
+              key: 'Escape', code: 'Escape', keyCode: 27,
+              bubbles: true, cancelable: true
+            }
+            document.dispatchEvent(new KeyboardEvent('keydown', escKb))
+            document.dispatchEvent(new KeyboardEvent('keyup', escKb))
+            node.dispatchEvent(new KeyboardEvent('keydown', escKb))
+            node.dispatchEvent(new KeyboardEvent('keyup', escKb))
+            return mutatingSuccess(node, {
+              dismissed_count: 1,
+              strategy: 'escape_key',
+              ...overlayInfo
+            })
+          }
+
+          // Click the resolved dismiss/accept button
+          const strategy = (() => {
+            if (resolvedMatchStrategy === 'consent_framework_selector') return 'consent_framework'
+            if (resolvedMatchStrategy === 'auto_dismiss_close_button') return 'close_button'
+            if (resolvedMatchStrategy === 'auto_dismiss_text_button') return 'text_button'
+            return resolvedMatchStrategy || 'close_button'
+          })()
+
+          node.click()
+          return mutatingSuccess(node, {
+            dismissed_count: 1,
+            strategy,
+            selector_used: selector || resolvedMatchStrategy,
+            ...overlayInfo
+          })
+        }),
+
+      wait_for_stable: (): Promise<DOMResult> => {
+        // Smart DOM stability wait (#344)
+        const stabilityMs = typeof options.stability_ms === 'number' && options.stability_ms > 0
+          ? options.stability_ms : 500
+        const maxTimeout = typeof options.timeout_ms === 'number' && options.timeout_ms > 0
+          ? options.timeout_ms : 5000
+
+        return new Promise<DOMResult>((resolve) => {
+          let mutationCount = 0
+          let lastMutationTime = performance.now()
+          let timedOut = false
+          const startTime = performance.now()
+
+          const observer = new MutationObserver(() => {
+            mutationCount++
+            lastMutationTime = performance.now()
+          })
+
+          observer.observe(document.body || document.documentElement, {
+            childList: true,
+            subtree: true,
+            attributes: true,
+            characterData: true
+          })
+
+          function checkStability() {
+            const elapsed = performance.now() - startTime
+            const sinceLastMutation = performance.now() - lastMutationTime
+
+            if (sinceLastMutation >= stabilityMs) {
+              // DOM is stable
+              observer.disconnect()
+              resolve({
+                success: true,
+                action: 'wait_for_stable',
+                selector: '',
+                stable: true,
+                waited_ms: Math.round(elapsed),
+                mutations_observed: mutationCount,
+                stability_ms: stabilityMs
+              } as DOMResult)
+              return
+            }
+
+            if (elapsed >= maxTimeout) {
+              // Timed out
+              observer.disconnect()
+              timedOut = true
+              resolve({
+                success: true,
+                action: 'wait_for_stable',
+                selector: '',
+                stable: false,
+                timed_out: true,
+                waited_ms: Math.round(elapsed),
+                mutations_observed: mutationCount,
+                stability_ms: stabilityMs
+              } as DOMResult)
+              return
+            }
+
+            // Check again after a short interval
+            setTimeout(checkStability, Math.min(100, stabilityMs / 2))
+          }
+
+          // Start checking after initial delay
+          setTimeout(checkStability, Math.min(100, stabilityMs / 2))
         })
+      }
     }
   }
 

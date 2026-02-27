@@ -226,7 +226,7 @@ var toolModeSpecs = map[string]map[string]modeParamSpec{
 	"interact": {
 		"click": {
 			Hint:     "Click an element by selector, element_id, or coordinates",
-			Optional: []string{"selector", "element_id", "index", "scope_selector", "frame", "reason", "correlation_id", "timeout_ms", "x", "y", "analyze"},
+			Optional: []string{"selector", "element_id", "index", "scope_selector", "frame", "reason", "correlation_id", "timeout_ms", "x", "y", "analyze", "wait_for_stable", "stability_ms"},
 		},
 		"type": {
 			Hint:     "Type text into an input or textarea",
@@ -286,7 +286,7 @@ var toolModeSpecs = map[string]map[string]modeParamSpec{
 		},
 		"navigate": {
 			Hint:     "Navigate to a URL",
-			Optional: []string{"url", "include_content", "new_tab", "analyze"},
+			Optional: []string{"url", "include_content", "new_tab", "analyze", "auto_dismiss", "wait_for_stable", "stability_ms"},
 		},
 		"navigate_and_wait_for": {
 			Hint:     "Navigate to a URL and wait for a selector to appear",
@@ -426,6 +426,14 @@ var toolModeSpecs = map[string]map[string]modeParamSpec{
 		},
 		"dismiss_top_overlay": {
 			Hint: "Dismiss/close the top-most overlay or popover",
+		},
+		"auto_dismiss_overlays": {
+			Hint:     "Auto-dismiss cookie consent banners and overlays using known framework selectors",
+			Optional: []string{"timeout_ms"},
+		},
+		"wait_for_stable": {
+			Hint:     "Wait for DOM stability (no mutations for stability_ms). Returns stable/timed_out status",
+			Optional: []string{"stability_ms", "timeout_ms"},
 		},
 		"hover": {
 			Hint:     "Trigger hover state on an element for tooltip discovery",
