@@ -494,6 +494,75 @@ func TestSwitchTab_AsyncMode_NoImmediateTrackingUpdate(t *testing.T) {
 	}
 }
 
+// ============================================
+// Smoke Tests: Stream 1 — switch_tab dispatch through toolInteract
+// ============================================
+
+func TestSmoke_SwitchTab_DispatchesThroughToolInteract(t *testing.T) {
+	t.Parallel()
+	env := newInteractTestEnv(t)
+	env.capture.SetPilotEnabled(true)
+
+	// Dispatch through the top-level callInteractRaw (toolInteract dispatch path).
+	resp := callInteractRaw(env.handler, `{"what":"switch_tab","tab_id":99}`)
+	result := parseToolResult(t, resp)
+	if result.IsError {
+		t.Fatalf("switch_tab through toolInteract should not error, got: %s", result.Content[0].Text)
+	}
+
+	data := extractResultJSON(t, result)
+	if data["status"] != "queued" {
+		t.Errorf("status = %v, want 'queued'", data["status"])
+	}
+
+	corr, _ := data["correlation_id"].(string)
+	if !strings.HasPrefix(corr, "switchtab_") {
+		t.Errorf("correlation_id should start with 'switchtab_', got: %s", corr)
+	}
+
+	pq := env.capture.GetLastPendingQuery()
+	if pq == nil {
+		t.Fatal("switch_tab should create a pending query")
+	}
+
+	var params map[string]any
+	if err := json.Unmarshal(pq.Params, &params); err != nil {
+		t.Fatalf("unmarshal params: %v", err)
+	}
+	if action, _ := params["action"].(string); action != "switch_tab" {
+		t.Fatalf("params action = %q, want switch_tab", action)
+	}
+	if tabID, _ := params["tab_id"].(float64); int(tabID) != 99 {
+		t.Fatalf("params tab_id = %v, want 99", params["tab_id"])
+	}
+}
+
+func TestSmoke_SwitchTab_MissingTabID_StructuredError(t *testing.T) {
+	t.Parallel()
+	env := newInteractTestEnv(t)
+	env.capture.SetPilotEnabled(true)
+
+	// No tab_id or tab_index — should return structured error
+	resp := callInteractRaw(env.handler, `{"what":"switch_tab"}`)
+	result := parseToolResult(t, resp)
+	if !result.IsError {
+		t.Fatal("switch_tab without tab_id/tab_index should return isError:true")
+	}
+
+	text := result.Content[0].Text
+	if !strings.Contains(text, "tab_id") && !strings.Contains(text, "tab_index") {
+		t.Errorf("error should mention tab_id or tab_index, got: %s", text)
+	}
+	// Verify it's a structured error, not a panic/unhandled
+	if !strings.Contains(text, "missing_param") {
+		t.Errorf("error should have code 'missing_param', got: %s", text)
+	}
+}
+
+// ============================================
+// navigate — new_tab flag preservation
+// ============================================
+
 func TestHandleBrowserActionNavigate_NewTabFlagPreserved(t *testing.T) {
 	t.Parallel()
 	env := newInteractTestEnv(t)

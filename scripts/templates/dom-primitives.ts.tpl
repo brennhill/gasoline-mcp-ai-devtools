@@ -59,6 +59,18 @@ export function domPrimitive(
       return resolveIntentTarget(requestedScope, activeScope)
     }
 
+    // key_press without selector: dispatch on activeElement or body (#321)
+    if (action === 'key_press' && !selector && !options.element_id) {
+      const target = document.activeElement || document.body
+      if (target) {
+        return {
+          element: target,
+          match_count: 1,
+          match_strategy: 'active_element_fallback'
+        }
+      }
+    }
+
     const requestedElementID = (options.element_id || '').trim()
     if (requestedElementID) {
       const resolvedByID = resolveElementByID(requestedElementID)
@@ -669,7 +681,7 @@ export function domPrimitive(
       key_press: () =>
         withMutationTracking(() => {
           if (!(node instanceof HTMLElement)) return domError('not_interactive', `Element is not an HTMLElement: ${node.tagName}`)
-          const key = options.text || 'Enter'
+          const key = options.text || options.key || 'Enter'
 
           // Tab/Shift+Tab: manually move focus (dispatchEvent can't trigger native tab traversal)
           if (key === 'Tab' || key === 'Shift+Tab') {

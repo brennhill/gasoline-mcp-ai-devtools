@@ -82,6 +82,7 @@ export interface DOMResult {
 }
 export interface DOMPrimitiveOptions {
     text?: string;
+    key?: string;
     value?: string;
     clear?: boolean;
     checked?: boolean;
