@@ -5,9 +5,13 @@
 package mcp
 
 // MCPContentBlock represents a single content block in an MCP tool result.
+// Supports both text (type="text") and image (type="image") content types.
+// For text: Type + Text are used. For image: Type + Data + MimeType are used.
 type MCPContentBlock struct {
-	Type string `json:"type"`
-	Text string `json:"text"`
+	Type     string `json:"type"`
+	Text     string `json:"text,omitempty"`
+	Data     string `json:"data,omitempty"`     // SPEC:MCP — base64-encoded image data (type="image")
+	MimeType string `json:"mimeType,omitempty"` // SPEC:MCP — MIME type for image content (e.g. "image/png", "image/jpeg")
 }
 
 // MCPToolResult represents the result of an MCP tool call.

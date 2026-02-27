@@ -168,18 +168,25 @@ func (h *ToolHandler) toolInteract(req JSONRPCRequest, args json.RawMessage) JSO
 		return appendCanonicalWhatAliasWarning(resp, usedAliasParam, what)
 	}
 
-	// Extract optional subtitle param (composable: works on any action)
-	var composableSubtitle struct {
-		Subtitle *string `json:"subtitle"`
+	// Extract optional composable params (work on any action)
+	var composableParams struct {
+		Subtitle          *string `json:"subtitle"`
+		IncludeScreenshot bool    `json:"include_screenshot"`
 	}
-	lenientUnmarshal(args, &composableSubtitle)
+	lenientUnmarshal(args, &composableParams)
 
 	resp := h.dispatchInteractAction(req, args, what)
 
 	// If a composable subtitle was provided on a non-subtitle action, queue it.
 	// Only queue if the primary action didn't fail (avoid subtitle on error).
-	if composableSubtitle.Subtitle != nil && what != "subtitle" && resp.Error == nil {
-		h.queueComposableSubtitle(req, *composableSubtitle.Subtitle)
+	if composableParams.Subtitle != nil && what != "subtitle" && resp.Error == nil {
+		h.queueComposableSubtitle(req, *composableParams.Subtitle)
+	}
+
+	// If include_screenshot was requested and the action succeeded, capture a screenshot
+	// and append it as an inline image content block.
+	if composableParams.IncludeScreenshot && resp.Error == nil && !isResponseError(resp) {
+		resp = h.appendScreenshotToResponse(resp, req)
 	}
 
 	resp = appendCanonicalWhatAliasWarning(resp, usedAliasParam, what)
@@ -202,6 +209,51 @@ func (h *ToolHandler) dispatchInteractAction(req JSONRPCRequest, args json.RawMe
 // interact({action:"screenshot"}). The canonical API remains observe({what:"screenshot"}).
 func (h *ToolHandler) handleScreenshotAlias(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	return observe.GetScreenshot(h, req, args)
+}
+
+// isResponseError checks if an MCP response contains an error result.
+func isResponseError(resp JSONRPCResponse) bool {
+	if resp.Result == nil {
+		return false
+	}
+	var result MCPToolResult
+	if err := json.Unmarshal(resp.Result, &result); err != nil {
+		return false
+	}
+	return result.IsError
+}
+
+// appendScreenshotToResponse captures a screenshot and appends it as an inline
+// image content block to the response. If screenshot capture fails, the original
+// response is returned unchanged (best-effort).
+func (h *ToolHandler) appendScreenshotToResponse(resp JSONRPCResponse, req JSONRPCRequest) JSONRPCResponse {
+	screenshotReq := JSONRPCRequest{JSONRPC: "2.0", ID: req.ID}
+	screenshotResp := observe.GetScreenshot(h, screenshotReq, nil)
+
+	// Extract the image content block from the screenshot response
+	var screenshotResult MCPToolResult
+	if err := json.Unmarshal(screenshotResp.Result, &screenshotResult); err != nil {
+		return resp // best-effort: return original response
+	}
+
+	// Find the image content block and append it to the original response
+	for _, block := range screenshotResult.Content {
+		if block.Type == "image" && block.Data != "" {
+			var result MCPToolResult
+			if err := json.Unmarshal(resp.Result, &result); err != nil {
+				return resp
+			}
+			result.Content = append(result.Content, block)
+			resultJSON, err := json.Marshal(result)
+			if err != nil {
+				return resp
+			}
+			resp.Result = json.RawMessage(resultJSON)
+			break
+		}
+	}
+
+	return resp
 }
 
 // queueComposableSubtitle queues a subtitle command as a side effect of another action.

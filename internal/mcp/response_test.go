@@ -154,3 +154,89 @@ func TestAppendWarningsToToolResult_NoOp(t *testing.T) {
 		t.Fatal("expected false for nil result")
 	}
 }
+
+func TestImageContentBlock(t *testing.T) {
+	t.Parallel()
+	block := ImageContentBlock("dGVzdA==", "image/png")
+	if block.Type != "image" {
+		t.Errorf("Type = %q, want 'image'", block.Type)
+	}
+	if block.Data != "dGVzdA==" {
+		t.Errorf("Data = %q, want 'dGVzdA=='", block.Data)
+	}
+	if block.MimeType != "image/png" {
+		t.Errorf("MimeType = %q, want 'image/png'", block.MimeType)
+	}
+	if block.Text != "" {
+		t.Errorf("Text should be empty for image blocks, got %q", block.Text)
+	}
+}
+
+func TestAppendImageToResponse(t *testing.T) {
+	t.Parallel()
+	textResult := TextResponse("Screenshot captured")
+	resp := JSONRPCResponse{JSONRPC: "2.0", ID: json.RawMessage(`1`), Result: textResult}
+
+	resp = AppendImageToResponse(resp, "dGVzdA==", "image/jpeg")
+
+	var result MCPToolResult
+	if err := json.Unmarshal(resp.Result, &result); err != nil {
+		t.Fatalf("failed to parse result: %v", err)
+	}
+
+	if len(result.Content) != 2 {
+		t.Fatalf("expected 2 content blocks, got %d", len(result.Content))
+	}
+	if result.Content[0].Type != "text" {
+		t.Errorf("first block type = %q, want 'text'", result.Content[0].Type)
+	}
+	if result.Content[1].Type != "image" {
+		t.Errorf("second block type = %q, want 'image'", result.Content[1].Type)
+	}
+	if result.Content[1].Data != "dGVzdA==" {
+		t.Errorf("image data = %q, want 'dGVzdA=='", result.Content[1].Data)
+	}
+	if result.Content[1].MimeType != "image/jpeg" {
+		t.Errorf("image mimeType = %q, want 'image/jpeg'", result.Content[1].MimeType)
+	}
+}
+
+func TestAppendImageToResponse_EmptyData(t *testing.T) {
+	t.Parallel()
+	textResult := TextResponse("test")
+	resp := JSONRPCResponse{JSONRPC: "2.0", ID: json.RawMessage(`1`), Result: textResult}
+
+	resp = AppendImageToResponse(resp, "", "image/png")
+
+	var result MCPToolResult
+	if err := json.Unmarshal(resp.Result, &result); err != nil {
+		t.Fatalf("failed to parse result: %v", err)
+	}
+	if len(result.Content) != 1 {
+		t.Fatalf("expected 1 content block (no image appended for empty data), got %d", len(result.Content))
+	}
+}
+
+func TestImageContentBlock_SerializesCorrectly(t *testing.T) {
+	t.Parallel()
+	block := ImageContentBlock("AAAA", "image/png")
+	data, err := json.Marshal(block)
+	if err != nil {
+		t.Fatalf("marshal error: %v", err)
+	}
+	s := string(data)
+	// Should have "type":"image", "data":"AAAA", "mimeType":"image/png"
+	if !strings.Contains(s, `"type":"image"`) {
+		t.Errorf("JSON should contain type:image, got: %s", s)
+	}
+	if !strings.Contains(s, `"data":"AAAA"`) {
+		t.Errorf("JSON should contain data:AAAA, got: %s", s)
+	}
+	if !strings.Contains(s, `"mimeType":"image/png"`) {
+		t.Errorf("JSON should contain mimeType:image/png, got: %s", s)
+	}
+	// Should NOT have "text" field
+	if strings.Contains(s, `"text"`) {
+		t.Errorf("image block JSON should not contain 'text' field, got: %s", s)
+	}
+}
