@@ -1,0 +1,182 @@
+// tools_interact_batch.go — Batch interaction handler (#340).
+// Executes a sequence of interact actions inline, without requiring a saved sequence.
+// Reuses the replay_sequence execution pattern from tools_configure_sequence.go.
+package main
+
+import (
+	"encoding/json"
+	"fmt"
+	"time"
+)
+
+// handleBatch executes a sequence of interact steps provided inline.
+func (h *ToolHandler) handleBatch(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+	var params struct {
+		Steps         []json.RawMessage `json:"steps"`
+		StepTimeoutMs int               `json:"step_timeout_ms"`
+		ContinueOnErr *bool             `json:"continue_on_error"`
+		StopAfterStep int               `json:"stop_after_step"`
+	}
+	if err := json.Unmarshal(args, &params); err != nil {
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidJSON, "Invalid JSON arguments: "+err.Error(), "Fix JSON syntax and call again")}
+	}
+
+	// Validate steps
+	if len(params.Steps) == 0 {
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidParam, "Steps must be a non-empty array", "Add at least one step", withParam("steps"))}
+	}
+	if len(params.Steps) > maxSequenceSteps {
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidParam, fmt.Sprintf("Steps exceeds maximum of %d", maxSequenceSteps), "Split into smaller batches", withParam("steps"))}
+	}
+
+	// Validate each step has a what (or action) field
+	for i, step := range params.Steps {
+		var s struct {
+			What   string `json:"what"`
+			Action string `json:"action"`
+		}
+		if err := json.Unmarshal(step, &s); err != nil || (s.What == "" && s.Action == "") {
+			return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidParam, fmt.Sprintf("Step[%d] missing required 'what' field", i), "Add a 'what' field to each step", withParam("steps"))}
+		}
+	}
+
+	// Default continue_on_error to true
+	continueOnError := true
+	if params.ContinueOnErr != nil {
+		continueOnError = *params.ContinueOnErr
+	}
+
+	if params.StepTimeoutMs <= 0 {
+		params.StepTimeoutMs = defaultStepTimeout
+	}
+
+	// Acquire replay mutex (prevent concurrent batch/replay)
+	if !replayMu.TryLock() {
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidParam, "Another batch or sequence is currently executing", "Wait for it to complete")}
+	}
+	defer replayMu.Unlock()
+
+	// Record audit trail
+	h.recordAIAction("batch", "", map[string]any{"steps": len(params.Steps)})
+
+	start := time.Now()
+	results := make([]SequenceStepResult, 0, len(params.Steps))
+	stepsExecuted := 0
+	stepsFailed := 0
+	stepsQueued := 0
+	maxSteps := len(params.Steps)
+	if params.StopAfterStep > 0 && params.StopAfterStep < maxSteps {
+		maxSteps = params.StopAfterStep
+	}
+
+	for i := 0; i < maxSteps; i++ {
+		stepArgs := params.Steps[i]
+
+		// Extract action name for result
+		var stepAction struct {
+			What   string `json:"what"`
+			Action string `json:"action"`
+		}
+		json.Unmarshal(stepArgs, &stepAction) //nolint:errcheck // best-effort extraction
+		actionName := stepAction.What
+		if actionName == "" {
+			actionName = stepAction.Action
+		}
+
+		replayStepArgs := forceReplayAsyncInteractStep(stepArgs)
+		stepStart := time.Now()
+		stepResp := h.toolInteract(req, replayStepArgs)
+		stepDuration := time.Since(stepStart).Milliseconds()
+
+		stepResult := SequenceStepResult{
+			StepIndex:  i,
+			Action:     actionName,
+			DurationMs: stepDuration,
+		}
+
+		if corrID := extractCorrelationIDFromToolResponse(stepResp); corrID != "" {
+			stepResult.CorrelationID = corrID
+			timeout := time.Duration(params.StepTimeoutMs) * time.Millisecond
+			if timeout > 0 {
+				cmd, found := h.capture.WaitForCommand(corrID, timeout)
+				if found {
+					switch cmd.Status {
+					case "pending":
+						stepResult.Status = "queued"
+						stepsQueued++
+					case "complete":
+						stepResult.Status = "ok"
+					default:
+						stepResult.Status = "error"
+						if cmd.Error != "" {
+							stepResult.Error = cmd.Error
+						} else {
+							stepResult.Error = "command failed with status " + cmd.Status
+						}
+						stepsFailed++
+					}
+				} else {
+					stepResult.Status = "queued"
+					stepsQueued++
+				}
+			}
+		}
+
+		if isErrorResponse(stepResp) {
+			stepResult.Status = "error"
+			stepResult.Error = extractErrorMessage(stepResp)
+			stepsFailed++
+			results = append(results, stepResult)
+			stepsExecuted++
+			if !continueOnError {
+				break
+			}
+			continue
+		}
+
+		if stepResult.Status == "" {
+			stepResult.Status = "ok"
+		}
+		stepsExecuted++
+		results = append(results, stepResult)
+	}
+
+	totalDuration := time.Since(start).Milliseconds()
+
+	status := "ok"
+	var message string
+	stepsTotal := len(params.Steps)
+	if stepsFailed > 0 && stepsExecuted < stepsTotal {
+		// Stopped early (continue_on_error=false)
+		status = "error"
+		message = fmt.Sprintf("Batch failed at step %d/%d", stepsExecuted, stepsTotal)
+	} else if stepsFailed > 0 && stepsFailed == stepsExecuted {
+		// All executed steps failed
+		status = "error"
+		message = fmt.Sprintf("Batch failed: all %d executed steps had errors", stepsFailed)
+	} else if stepsQueued > 0 && stepsFailed > 0 {
+		status = "partial"
+		message = fmt.Sprintf("Batch executed with failures: %d queued, %d failed", stepsQueued, stepsFailed)
+	} else if stepsQueued > 0 {
+		status = "queued"
+		message = fmt.Sprintf("Batch queued: %d/%d steps still running", stepsQueued, stepsTotal)
+	} else if stepsFailed > 0 {
+		status = "partial"
+		message = fmt.Sprintf("Batch partially executed: %d/%d steps succeeded, %d failed", stepsExecuted-stepsFailed, stepsTotal, stepsFailed)
+	} else {
+		message = fmt.Sprintf("Batch executed: %d/%d steps in %dms", stepsExecuted, stepsTotal, totalDuration)
+	}
+
+	responseData := map[string]any{
+		"status":         status,
+		"steps_executed": stepsExecuted,
+		"steps_failed":   stepsFailed,
+		"steps_queued":   stepsQueued,
+		"steps_total":    stepsTotal,
+		"duration_ms":    totalDuration,
+		"results":        results,
+		"message":        message,
+	}
+
+	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Batch execution", responseData)}
+}

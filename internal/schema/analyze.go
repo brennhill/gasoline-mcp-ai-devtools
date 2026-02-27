@@ -16,7 +16,7 @@ func AnalyzeToolSchema() mcp.MCPTool {
 			"properties": map[string]any{
 				"what": map[string]any{
 					"type": "string",
-					"enum": []string{"dom", "performance", "accessibility", "error_clusters", "history", "security_audit", "third_party_audit", "link_health", "link_validation", "page_summary", "annotations", "annotation_detail", "api_validation", "draw_history", "draw_session", "computed_styles", "forms", "form_validation", "visual_baseline", "visual_diff", "visual_baselines", "navigation"},
+					"enum": []string{"dom", "performance", "accessibility", "error_clusters", "history", "security_audit", "third_party_audit", "link_health", "link_validation", "page_summary", "annotations", "annotation_detail", "api_validation", "draw_history", "draw_session", "computed_styles", "forms", "form_validation", "visual_baseline", "visual_diff", "visual_baselines", "navigation", "page_structure", "audit"},
 				},
 				"telemetry_mode": map[string]any{
 					"type":        "string",
@@ -144,7 +144,12 @@ func AnalyzeToolSchema() mcp.MCPTool {
 				},
 				"summary": map[string]any{
 					"type":        "boolean",
-					"description": "Return compact summary instead of full details (accessibility, security_audit, third_party_audit, form_validation)",
+					"description": "Return compact summary instead of full details (accessibility, security_audit, third_party_audit, form_validation, audit)",
+				},
+				"categories": map[string]any{
+					"type":        "array",
+					"description": "Audit categories to include (audit). Valid: performance, accessibility, security, best_practices",
+					"items":       map[string]any{"type": "string"},
 				},
 			},
 			"required": []string{"what"},
