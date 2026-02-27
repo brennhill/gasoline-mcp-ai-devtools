@@ -54,12 +54,13 @@ type ExtensionState struct {
 	pilotSource      string    // Source of last authoritative pilot signal (sync/cache/test helper).
 
 	// Tab tracking
-	trackingEnabled bool      // Single-tab mode active. true=specific tab, false=all tabs.
-	trackedTabID    int       // Browser tab ID (0=none). Invariant: trackingEnabled → trackedTabID>0.
-	trackedTabURL   string    // Tracked tab URL (informational, may be stale).
-	trackedTabTitle string    // Tracked tab title (informational, may be stale).
-	tabStatus       string    // Chrome tab status: "loading" or "complete". Empty if unknown.
-	trackingUpdated time.Time // When tracking status last refreshed.
+	trackingEnabled  bool      // Single-tab mode active. true=specific tab, false=all tabs.
+	trackedTabID     int       // Browser tab ID (0=none). Invariant: trackingEnabled → trackedTabID>0.
+	trackedTabURL    string    // Tracked tab URL (informational, may be stale).
+	trackedTabTitle  string    // Tracked tab title (informational, may be stale).
+	tabStatus        string    // Chrome tab status: "loading" or "complete". Empty if unknown.
+	trackedTabActive *bool     // Whether the tracked tab is the active (foreground) tab. nil=unknown.
+	trackingUpdated  time.Time // When tracking status last refreshed.
 
 	// Extension-reported active command execution state from /sync heartbeats.
 	inProgress              []SyncInProgress // Last heartbeat snapshot of active commands.
@@ -120,6 +121,24 @@ func (c *Capture) GetTabStatus() string {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 	return c.ext.tabStatus
+}
+
+// IsTrackedTabActive returns whether the tracked tab is the foreground tab.
+// Returns (active, known). known=false means the extension has not reported this yet.
+func (c *Capture) IsTrackedTabActive() (bool, bool) {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	if c.ext.trackedTabActive == nil {
+		return false, false
+	}
+	return *c.ext.trackedTabActive, true
+}
+
+// SetTrackedTabActiveForTest sets the tracked tab active state for testing.
+func (c *Capture) SetTrackedTabActiveForTest(active bool) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.ext.trackedTabActive = &active
 }
 
 // IsPilotEnabled returns whether AI Web Pilot is currently enabled.

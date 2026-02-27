@@ -53,18 +53,19 @@ type SyncRequest struct {
 
 // SyncSettings contains extension settings from the sync request
 type SyncSettings struct {
-	PilotEnabled     bool   `json:"pilot_enabled"`
-	TrackingEnabled  bool   `json:"tracking_enabled"`
-	TrackedTabID     int    `json:"tracked_tab_id"`
-	TrackedTabURL    string `json:"tracked_tab_url"`
-	TrackedTabTitle  string `json:"tracked_tab_title"`
-	TabStatus        string `json:"tab_status,omitempty"`
-	CaptureLogs      bool   `json:"capture_logs"`
-	CaptureNetwork   bool   `json:"capture_network"`
-	CaptureWebSocket bool   `json:"capture_websocket"`
-	CaptureActions   bool   `json:"capture_actions"`
-	CspRestricted    bool   `json:"csp_restricted"`
-	CspLevel         string `json:"csp_level"`
+	PilotEnabled      bool   `json:"pilot_enabled"`
+	TrackingEnabled   bool   `json:"tracking_enabled"`
+	TrackedTabID      int    `json:"tracked_tab_id"`
+	TrackedTabURL     string `json:"tracked_tab_url"`
+	TrackedTabTitle   string `json:"tracked_tab_title"`
+	TabStatus         string `json:"tab_status,omitempty"`
+	TrackedTabActive  *bool  `json:"tracked_tab_active,omitempty"`
+	CaptureLogs       bool   `json:"capture_logs"`
+	CaptureNetwork    bool   `json:"capture_network"`
+	CaptureWebSocket  bool   `json:"capture_websocket"`
+	CaptureActions    bool   `json:"capture_actions"`
+	CspRestricted     bool   `json:"csp_restricted"`
+	CspLevel          string `json:"csp_level"`
 }
 
 // SyncCommandResult is a command result from the extension
@@ -189,6 +190,7 @@ func (c *Capture) updateSyncConnectionState(req SyncRequest, clientID string, no
 		default:
 			c.ext.tabStatus = ""
 		}
+		c.ext.trackedTabActive = req.Settings.TrackedTabActive
 		c.ext.cspRestricted = req.Settings.CspRestricted
 		c.ext.cspLevel = req.Settings.CspLevel
 	}

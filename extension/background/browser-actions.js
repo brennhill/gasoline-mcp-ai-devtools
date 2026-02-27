@@ -203,6 +203,23 @@ export async function handleBrowserAction(tabId, params, actionToast) {
                     title: activeTab.title || targetTab.title
                 };
             }
+            case 'activate_tab': {
+                actionToast(tabId, reason || 'activate_tab', reason ? undefined : 'bringing tab to foreground', 'trying', 5000);
+                await chrome.tabs.update(tabId, { active: true });
+                // Also focus the window containing this tab
+                const tab = await chrome.tabs.get(tabId);
+                if (tab.windowId) {
+                    await chrome.windows.update(tab.windowId, { focused: true });
+                }
+                actionToast(tabId, reason || 'activate_tab', undefined, 'success');
+                return {
+                    success: true,
+                    action: 'activate_tab',
+                    tab_id: tabId,
+                    url: tab.url,
+                    title: tab.title
+                };
+            }
             case 'close_tab': {
                 const requestedTabID = coerceNonNegativeInt(params?.tab_id);
                 const targetTabID = requestedTabID !== null ? requestedTabID : tabId;

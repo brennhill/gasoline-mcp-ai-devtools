@@ -403,7 +403,7 @@ export function saveSetting(key, value) {
  */
 export async function getTrackedTabInfo() {
     if (typeof chrome === 'undefined' || !chrome.storage) {
-        return { trackedTabId: null, trackedTabUrl: null, trackedTabTitle: null, tabStatus: null };
+        return { trackedTabId: null, trackedTabUrl: null, trackedTabTitle: null, tabStatus: null, trackedTabActive: null };
     }
     const result = (await chrome.storage.local.get([
         StorageKey.TRACKED_TAB_ID,
@@ -412,6 +412,7 @@ export async function getTrackedTabInfo() {
     ]));
     const tabId = result.trackedTabId || null;
     let tabStatus = null;
+    let trackedTabActive = null;
     // Query Chrome tab API for live tab status if we have a tracked tab
     if (tabId && typeof chrome !== 'undefined' && chrome.tabs) {
         try {
@@ -419,6 +420,7 @@ export async function getTrackedTabInfo() {
             if (tab.status === 'loading' || tab.status === 'complete') {
                 tabStatus = tab.status;
             }
+            trackedTabActive = !!tab.active;
         }
         catch {
             // Tab may have been closed — tabStatus stays null
@@ -428,7 +430,8 @@ export async function getTrackedTabInfo() {
         trackedTabId: tabId,
         trackedTabUrl: result.trackedTabUrl || null,
         trackedTabTitle: result.trackedTabTitle || null,
-        tabStatus
+        tabStatus,
+        trackedTabActive
     };
 }
 /**

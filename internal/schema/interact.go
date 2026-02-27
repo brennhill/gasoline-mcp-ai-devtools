@@ -16,11 +16,13 @@ var interactActions = []string{
 	"get_text", "get_value", "get_attribute",
 	"set_attribute", "focus", "scroll_to", "wait_for", "key_press", "paste",
 	"open_composer", "submit_active_composer", "confirm_top_dialog", "dismiss_top_overlay",
+	"hover",
 	"list_interactive",
 	"get_readable", "get_markdown",
 	"navigate_and_wait_for", "fill_form_and_submit", "fill_form", "run_a11y_and_export_sarif",
 	"record_start", "record_stop",
 	"upload", "draw_mode_start",
+	"hardware_click", "activate_tab",
 }
 
 // InteractToolSchema returns the MCP tool definition for the interact tool.

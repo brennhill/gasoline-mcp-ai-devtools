@@ -1085,7 +1085,7 @@ export function domPrimitive(action, selector, options) {
         }
         const ambiguitySensitiveActions = new Set([
             'click', 'type', 'select', 'check', 'set_attribute',
-            'paste', 'key_press', 'focus', 'scroll_to'
+            'paste', 'key_press', 'focus', 'scroll_to', 'hover'
         ]);
         if (!ambiguitySensitiveActions.has(action)) {
             // #316: For text= selectors, always check total match count to add disambiguation warning
@@ -1212,6 +1212,16 @@ export function domPrimitive(action, selector, options) {
     const resolvedScopeSelector = resolved.scope_selector_used;
     const resolvedRankedCandidates = resolved.ranked_candidates;
     const resolvedAmbiguousMatches = resolved.ambiguous_matches;
+    /** Capture current viewport/scroll position for action responses. */
+    function captureViewport() {
+        return {
+            scroll_x: Math.round(window.scrollX || window.pageXOffset || 0),
+            scroll_y: Math.round(window.scrollY || window.pageYOffset || 0),
+            viewport_width: window.innerWidth || document.documentElement.clientWidth || 0,
+            viewport_height: window.innerHeight || document.documentElement.clientHeight || 0,
+            page_height: Math.max(document.body?.scrollHeight || 0, document.documentElement?.scrollHeight || 0)
+        };
+    }
     function mutatingSuccess(node, extra) {
         return {
             success: true,
@@ -1222,7 +1232,8 @@ export function domPrimitive(action, selector, options) {
             matched: matchedTarget(node),
             match_count: resolvedMatchCount,
             match_strategy: resolvedMatchStrategy,
-            ...(resolvedRankedCandidates ? { ranked_candidates: resolvedRankedCandidates } : {})
+            ...(resolvedRankedCandidates ? { ranked_candidates: resolvedRankedCandidates } : {}),
+            viewport: captureViewport()
         };
     }
     // — Mutation tracking: MutationObserver wrapper for DOM change capture —
@@ -1462,6 +1473,21 @@ export function domPrimitive(action, selector, options) {
         }
         return null;
     }
+    // Detect if an element is obscured by a modal/dialog overlay.
+    // Returns the overlay element if blocking, null otherwise.
+    function detectBlockingOverlay(el) {
+        const dialogs = collectDialogs();
+        if (dialogs.length === 0)
+            return null;
+        const topDialog = pickTopDialog(dialogs);
+        if (!topDialog)
+            return null;
+        // If the element is inside the top dialog, it's not blocked
+        if (typeof topDialog.contains === 'function' && topDialog.contains(el))
+            return null;
+        // Element is outside the top dialog — it's blocked by the overlay
+        return topDialog;
+    }
     function buildActionHandlers(node) {
         return {
             click: () => withMutationTracking(() => {
@@ -1470,6 +1496,15 @@ export function domPrimitive(action, selector, options) {
                 // #332: Bubble up to nearest interactive ancestor if the matched element is a wrapper
                 const interactiveAncestor = findInteractiveAncestor(node);
                 const clickTarget = (interactiveAncestor instanceof HTMLElement ? interactiveAncestor : node);
+                // Check if element is behind a modal overlay before clicking
+                const blockingOverlay = detectBlockingOverlay(node);
+                if (blockingOverlay) {
+                    const overlayTag = blockingOverlay.tagName.toLowerCase();
+                    const overlayRole = blockingOverlay.getAttribute('role') || '';
+                    const overlayLabel = blockingOverlay.getAttribute('aria-label') || '';
+                    const overlayDesc = overlayLabel ? `${overlayTag}[aria-label="${overlayLabel}"]` : overlayRole ? `${overlayTag}[role="${overlayRole}"]` : overlayTag;
+                    return domError('blocked_by_overlay', `Element is behind a modal overlay (${overlayDesc}). Use interact({what:"dismiss_top_overlay"}) to close it first.`);
+                }
                 if (options.new_tab) {
                     const linkNode = (() => {
                         const tag = clickTarget.tagName.toLowerCase();
@@ -1759,6 +1794,18 @@ export function domPrimitive(action, selector, options) {
                 if (!(node instanceof HTMLElement))
                     return domError('not_interactive', `Element is not an HTMLElement: ${node.tagName}`);
                 node.click();
+                return mutatingSuccess(node);
+            }),
+            hover: () => withMutationTracking(() => {
+                if (!(node instanceof HTMLElement))
+                    return domError('not_interactive', `Element is not an HTMLElement: ${node.tagName}`);
+                const rect = node.getBoundingClientRect();
+                const centerX = rect.left + rect.width / 2;
+                const centerY = rect.top + rect.height / 2;
+                const eventInit = { bubbles: true, cancelable: true, clientX: centerX, clientY: centerY };
+                node.dispatchEvent(new MouseEvent('mouseenter', { ...eventInit, bubbles: false }));
+                node.dispatchEvent(new MouseEvent('mouseover', eventInit));
+                node.dispatchEvent(new MouseEvent('mousemove', eventInit));
                 return mutatingSuccess(node);
             }),
             dismiss_top_overlay: () => withMutationTracking(() => {

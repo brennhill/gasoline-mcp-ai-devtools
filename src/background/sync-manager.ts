@@ -191,6 +191,7 @@ export function startSyncClient(deps: SyncManagerDeps): void {
           tracked_tab_url: trackingInfo.trackedTabUrl || '',
           tracked_tab_title: trackingInfo.trackedTabTitle || '',
           tab_status: trackingInfo.tabStatus || undefined,
+          tracked_tab_active: trackingInfo.trackedTabActive ?? undefined,
           capture_logs: true,
           capture_network: true,
           capture_websocket: true,

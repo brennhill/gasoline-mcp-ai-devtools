@@ -13,6 +13,7 @@ export interface SyncSettings {
     tracked_tab_url: string;
     tracked_tab_title: string;
     tab_status?: 'loading' | 'complete';
+    tracked_tab_active?: boolean;
     capture_logs: boolean;
     capture_network: boolean;
     capture_websocket: boolean;

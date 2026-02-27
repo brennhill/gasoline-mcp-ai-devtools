@@ -25,6 +25,7 @@ func TestQuickstartContent_IncludesInteractFailureRecoveryExamples(t *testing.T)
 		"ambiguous_target",
 		"stale_element_id",
 		"scope_not_found",
+		"blocked_by_overlay",
 		"Stop and report evidence",
 	}
 	for _, token := range requiredTokens {

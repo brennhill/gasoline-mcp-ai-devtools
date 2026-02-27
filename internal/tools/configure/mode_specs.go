@@ -423,6 +423,13 @@ var toolModeSpecs = map[string]map[string]modeParamSpec{
 		"dismiss_top_overlay": {
 			Hint: "Dismiss/close the top-most overlay or popover",
 		},
+		"hover": {
+			Hint:     "Trigger hover state on an element for tooltip discovery",
+			Optional: []string{"selector", "element_id", "index", "scope_selector", "frame"},
+		},
+		"activate_tab": {
+			Hint: "Bring the tracked tab to the foreground",
+		},
 	},
 
 	// ── analyze ────────────────────────────────────────────────

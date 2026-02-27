@@ -116,6 +116,7 @@ export interface TrackedTabInfo {
     trackedTabUrl: string | null;
     trackedTabTitle: string | null;
     tabStatus: 'loading' | 'complete' | null;
+    trackedTabActive: boolean | null;
 }
 /**
  * Get tracked tab information, including Chrome tab status.
