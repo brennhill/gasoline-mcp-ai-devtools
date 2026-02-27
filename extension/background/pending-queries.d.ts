@@ -10,6 +10,7 @@ import type { SyncClient } from './sync-client';
 import './commands/observe';
 import './commands/analyze';
 import './commands/analyze-navigation';
+import './commands/analyze-page-structure';
 import './commands/interact';
 import './commands/interact-content';
 import './commands/interact-explore';

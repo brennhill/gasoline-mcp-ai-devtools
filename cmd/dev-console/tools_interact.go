@@ -69,6 +69,7 @@ func (h *ToolHandler) interactDispatch() map[string]interactHandler {
 			"explore_page":              h.handleExplorePage,
 			"wait_for_stable":          h.handleWaitForStable,
 			"auto_dismiss_overlays":    h.handleAutoDismissOverlays,
+			"batch":                    h.handleBatch,
 		}
 	})
 	return h.interactHandlers

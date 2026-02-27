@@ -101,6 +101,16 @@ var analyzeHandlers = map[string]AnalyzeHandler{
 	"navigation": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 		return h.toolAnalyzeNavigation(req, args)
 	},
+
+	// Structural page analysis (#341)
+	"page_structure": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+		return h.toolAnalyzePageStructure(req, args)
+	},
+
+	// Combined audit report (#280)
+	"audit": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+		return h.toolAnalyzeAudit(req, args)
+	},
 }
 
 // analyzeAliases maps shorthand names to their canonical analyze mode names.
