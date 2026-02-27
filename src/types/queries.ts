@@ -35,6 +35,7 @@ export type QueryType =
   | 'draw_mode'
   | 'upload'
   | 'cdp_action'
+  | 'explore_page'
 
 /**
  * Pending query from server

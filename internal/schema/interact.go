@@ -23,6 +23,7 @@ var interactActions = []string{
 	"record_start", "record_stop",
 	"upload", "draw_mode_start",
 	"hardware_click", "activate_tab",
+	"explore_page",
 }
 
 // InteractToolSchema returns the MCP tool definition for the interact tool.

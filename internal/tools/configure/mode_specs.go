@@ -434,6 +434,10 @@ var toolModeSpecs = map[string]map[string]modeParamSpec{
 		"activate_tab": {
 			Hint: "Bring the tracked tab to the foreground",
 		},
+		"explore_page": {
+			Hint:     "Composite page exploration: screenshot, interactive elements, readable text, navigation links, and metadata in one call",
+			Optional: []string{"url", "visible_only", "limit"},
+		},
 	},
 
 	// ── analyze ────────────────────────────────────────────────

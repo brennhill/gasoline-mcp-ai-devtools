@@ -66,6 +66,7 @@ func (h *ToolHandler) interactDispatch() map[string]interactHandler {
 			"fill_form_and_submit":      h.handleFillFormAndSubmit,
 			"fill_form":                 h.handleFillForm,
 			"run_a11y_and_export_sarif": h.handleRunA11yAndExportSARIF,
+			"explore_page":              h.handleExplorePage,
 		}
 	})
 	return h.interactHandlers
