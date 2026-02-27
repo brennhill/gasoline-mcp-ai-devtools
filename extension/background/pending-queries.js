@@ -9,6 +9,7 @@ import { dispatch } from './commands/registry';
 // Import command modules to trigger handler registration
 import './commands/observe';
 import './commands/analyze';
+import './commands/analyze-navigation';
 import './commands/interact';
 // Re-export handlePilotCommand (used by index.ts re-export chain)
 export { handlePilotCommand } from './commands/interact';
