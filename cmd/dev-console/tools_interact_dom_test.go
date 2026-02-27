@@ -40,6 +40,7 @@ func TestDOMPrimitive_MissingSelector(t *testing.T) {
 		{"focus", `{"what":"focus"}`},
 		{"scroll_to", `{"what":"scroll_to"}`},
 		{"wait_for", `{"what":"wait_for"}`},
+		{"hover", `{"what":"hover"}`},
 	}
 
 	for _, tc := range actions {
@@ -177,6 +178,7 @@ func TestDOMPrimitive_AllActions_PilotDisabled(t *testing.T) {
 		{"confirm_top_dialog", `{"what":"confirm_top_dialog"}`},
 		{"dismiss_top_overlay", `{"what":"dismiss_top_overlay"}`},
 		{"list_interactive", `{"what":"list_interactive"}`},
+		{"hover", `{"what":"hover","selector":"#el"}`},
 	}
 
 	for _, tc := range actions {
@@ -378,6 +380,7 @@ func TestDOMPrimitive_AllActions_NoPanic(t *testing.T) {
 		{"confirm_top_dialog", `{"what":"confirm_top_dialog"}`},
 		{"dismiss_top_overlay", `{"what":"dismiss_top_overlay"}`},
 		{"list_interactive", `{"what":"list_interactive"}`},
+		{"hover", `{"what":"hover","selector":"#el"}`},
 	}
 
 	for _, tc := range allActions {
