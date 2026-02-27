@@ -278,6 +278,7 @@ async function executeStandardAction(
       params.selector || '',
       {
         text: params.text,
+        key: params.key,
         value: params.value,
         clear: params.clear,
         checked: params.checked,
