@@ -371,11 +371,19 @@ func GetScreenshot(deps Deps, req mcp.JSONRPCRequest, args json.RawMessage) mcp.
 		return mcp.JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcp.StructuredErrorResponse(mcp.ErrExtError, "Screenshot capture failed: "+errMsg, "Check that the tab is visible and accessible. The extension reported an error.", mcp.WithHint(deps.DiagnosticHintString()))}
 	}
 
+	// Extract data_url before building text block to avoid duplicating
+	// the large base64 payload in both text and image content blocks.
+	var dataURL string
+	if du, ok := screenshotResult["data_url"].(string); ok && du != "" {
+		dataURL = du
+		delete(screenshotResult, "data_url")
+	}
+
 	// Build text response with file path info (backward compatible)
 	resp := mcp.JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcp.JSONResponse("Screenshot captured", screenshotResult)}
 
-	// Append inline image content block if data_url is available
-	if dataURL, ok := screenshotResult["data_url"].(string); ok && dataURL != "" {
+	// Append inline image content block if data_url was present
+	if dataURL != "" {
 		base64Data, mimeType := parseDataURL(dataURL)
 		if base64Data != "" {
 			resp = mcp.AppendImageToResponse(resp, base64Data, mimeType)
