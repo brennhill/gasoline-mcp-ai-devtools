@@ -27,7 +27,10 @@ import {
   handleGetNetworkWaterfall,
   handleLinkHealthQuery,
   handleComputedStylesQuery,
-  handleFormDiscoveryQuery
+  handleFormDiscoveryQuery,
+  handleGetReadable,
+  handleGetMarkdown,
+  handlePageSummary
 } from './message-handlers'
 import { showActionToast } from './ui/toast'
 import { showSubtitle, toggleRecordingWatermark } from './ui/subtitle'
@@ -136,7 +139,10 @@ export function initRuntimeMessageListener(): void {
     GET_NETWORK_WATERFALL: (_msg, sr) => handleGetNetworkWaterfall(sr),
     LINK_HEALTH_QUERY: (msg, sr) => handleLinkHealthQuery((msg.params ?? {}) as Record<string, unknown>, sr),
     COMPUTED_STYLES_QUERY: (msg, sr) => handleComputedStylesQuery((msg.params ?? {}) as Record<string, unknown>, sr),
-    FORM_DISCOVERY_QUERY: (msg, sr) => handleFormDiscoveryQuery((msg.params ?? {}) as Record<string, unknown>, sr)
+    FORM_DISCOVERY_QUERY: (msg, sr) => handleFormDiscoveryQuery((msg.params ?? {}) as Record<string, unknown>, sr),
+    GASOLINE_GET_READABLE: (_msg, sr) => handleGetReadable(sr),
+    GASOLINE_GET_MARKDOWN: (_msg, sr) => handleGetMarkdown(sr),
+    GASOLINE_PAGE_SUMMARY: (_msg, sr) => handlePageSummary(sr)
   }
 
   chrome.runtime.onMessage.addListener(

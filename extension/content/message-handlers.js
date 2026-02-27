@@ -8,6 +8,9 @@ import { registerHighlightRequest, hasHighlightRequest, deleteHighlightRequest, 
 import { createDeferredPromise, promiseRaceWithCleanup } from './timeout-utils';
 import { isInjectScriptLoaded, getPageNonce, ensureInjectBridgeReady } from './script-injection';
 import { ASYNC_COMMAND_TIMEOUT_MS, INJECT_FORWARDED_SETTINGS, SettingName } from '../lib/constants';
+import { extractReadable as extractReadableContent } from './extractors/readable';
+import { extractMarkdown as extractMarkdownContent } from './extractors/markdown';
+import { extractPageSummary as extractPageSummaryContent } from './extractors/page-summary';
 /** Auto-incrementing request ID — avoids Date.now() collisions for concurrent queries */
 let nextRequestId = 1;
 /** Parse query params from string (JSON) or object form into a plain object */
@@ -304,5 +307,48 @@ export function handleFormDiscoveryQuery(params, sendResponse) {
 }
 export function handleLinkHealthQuery(params, sendResponse) {
     return forwardInjectQuery('GASOLINE_LINK_HEALTH_QUERY', 'GASOLINE_LINK_HEALTH_RESPONSE', 'Link health check', params, sendResponse);
+}
+// ============================================
+// Content-Script-Native Extractors (ISOLATED world, CSP-safe)
+// Issue #257: These run directly in the content script — no inject bridge needed.
+// ============================================
+/**
+ * Handle GET_READABLE message — extract readable content directly in ISOLATED world.
+ */
+export function handleGetReadable(sendResponse) {
+    try {
+        sendResponse(extractReadableContent());
+    }
+    catch (err) {
+        sendResponse({ error: 'get_readable_failed', message: err.message || 'Readable extraction failed' });
+    }
+    // Synchronous — sendResponse called inline, no async channel needed.
+    return false;
+}
+/**
+ * Handle GET_MARKDOWN message — extract markdown content directly in ISOLATED world.
+ */
+export function handleGetMarkdown(sendResponse) {
+    try {
+        sendResponse(extractMarkdownContent());
+    }
+    catch (err) {
+        sendResponse({ error: 'get_markdown_failed', message: err.message || 'Markdown extraction failed' });
+    }
+    // Synchronous — sendResponse called inline, no async channel needed.
+    return false;
+}
+/**
+ * Handle PAGE_SUMMARY message — extract page summary directly in ISOLATED world.
+ */
+export function handlePageSummary(sendResponse) {
+    try {
+        sendResponse(extractPageSummaryContent());
+    }
+    catch (err) {
+        sendResponse({ error: 'page_summary_failed', message: err.message || 'Page summary extraction failed' });
+    }
+    // Synchronous — sendResponse called inline, no async channel needed.
+    return false;
 }
 //# sourceMappingURL=message-handlers.js.map
