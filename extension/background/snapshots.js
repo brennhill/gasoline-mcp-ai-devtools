@@ -10,7 +10,7 @@
  * Handles source map fetching and caching, stack frame parsing,
  * VLQ decoding, and stack trace resolution for better error messages.
  */
-import { getSourceMapCacheEntry, setSourceMapCacheEntry, isSourceMapEnabled } from './cache-limits';
+import { getSourceMapCacheEntry, setSourceMapCacheEntry, isSourceMapEnabled } from './cache-limits.js';
 // =============================================================================
 // CONSTANTS
 // =============================================================================

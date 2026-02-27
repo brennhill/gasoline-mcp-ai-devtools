@@ -5,6 +5,6 @@
  * Docs: docs/features/feature/interact-explore/index.md
  * Docs: docs/features/feature/query-dom/index.md
  */
-import { getPendingRequestStats, clearPendingRequests, cleanupRequestTracking } from './content/request-tracking';
+import { getPendingRequestStats, clearPendingRequests, cleanupRequestTracking } from './content/request-tracking.js';
 export { getPendingRequestStats, clearPendingRequests, cleanupRequestTracking };
 //# sourceMappingURL=content.d.ts.map

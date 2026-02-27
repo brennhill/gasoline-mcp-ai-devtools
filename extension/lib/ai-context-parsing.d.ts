@@ -9,7 +9,7 @@
  * base64 source maps, extracts code snippets around error lines, and manages
  * an LRU source map cache.
  */
-import type { ParsedSourceMap } from '../types/index';
+import type { ParsedSourceMap } from '../types/index.js';
 /**
  * Parsed stack frame (internal representation with nullable functionName)
  */

@@ -10,17 +10,17 @@
  * Handles window.postMessage events from inject.js
  */
 
-import type { HighlightResponse, ExecuteJsResult, A11yAuditResult, DomQueryResult } from '../types'
-import type { PageMessageEventData, BackgroundMessageFromContent } from './types'
+import type { HighlightResponse, ExecuteJsResult, A11yAuditResult, DomQueryResult } from '../types/index.js'
+import type { PageMessageEventData, BackgroundMessageFromContent } from './types.js'
 import {
   resolveHighlightRequest,
   resolveExecuteRequest,
   resolveA11yRequest,
   resolveDomRequest
-} from './request-tracking'
-import { MESSAGE_MAP, safeSendMessage } from './message-forwarding'
-import { getIsTrackedTab, getCurrentTabId } from './tab-tracking'
-import { getPageNonce } from './script-injection'
+} from './request-tracking.js'
+import { MESSAGE_MAP, safeSendMessage } from './message-forwarding.js'
+import { getIsTrackedTab, getCurrentTabId } from './tab-tracking.js'
+import { getPageNonce } from './script-injection.js'
 
 /**
  * Initialize consolidated window message listener

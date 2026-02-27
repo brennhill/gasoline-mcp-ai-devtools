@@ -5,7 +5,7 @@
  * Docs: docs/features/feature/interact-explore/index.md
  * Docs: docs/features/feature/observe/index.md
  */
-import { getExtensionVersion } from './version-check';
+import { getExtensionVersion } from './version-check.js';
 /**
  * Get standard headers for API requests including version header
  */

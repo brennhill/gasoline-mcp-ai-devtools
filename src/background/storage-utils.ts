@@ -27,7 +27,7 @@
  * This module handles graceful degradation for older versions
  */
 
-import type { StorageAreaName, ChromeStorageWithSession } from '../types'
+import type { StorageAreaName, ChromeStorageWithSession } from '../types/index.js'
 
 // =============================================================================
 // FEATURE DETECTION

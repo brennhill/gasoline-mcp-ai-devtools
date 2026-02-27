@@ -9,24 +9,24 @@
 // pending-queries.ts — Thin dispatcher shell.
 // Delegates to command modules registered in commands/.
 
-import type { PendingQuery } from '../types'
-import type { SyncClient } from './sync-client'
-import { dispatch } from './commands/registry'
+import type { PendingQuery } from '../types/index.js'
+import type { SyncClient } from './sync-client.js'
+import { dispatch } from './commands/registry.js'
 
 // Import command modules to trigger handler registration
-import './commands/observe'
-import './commands/analyze'
-import './commands/analyze-navigation'
-import './commands/analyze-page-structure'
-import './commands/interact'
-import './commands/interact-content'
-import './commands/interact-explore'
+import './commands/observe.js'
+import './commands/analyze.js'
+import './commands/analyze-navigation.js'
+import './commands/analyze-page-structure.js'
+import './commands/interact.js'
+import './commands/interact-content.js'
+import './commands/interact-explore.js'
 
 // Re-export types for backward compatibility (used by browser-actions.ts, upload-handler.ts, dom-dispatch.ts)
-export type { SendAsyncResultFn, ActionToastFn } from './commands/helpers'
+export type { SendAsyncResultFn, ActionToastFn } from './commands/helpers.js'
 
 // Re-export handlePilotCommand (used by index.ts re-export chain)
-export { handlePilotCommand } from './commands/interact'
+export { handlePilotCommand } from './commands/interact.js'
 
 export async function handlePendingQuery(query: PendingQuery, syncClient: SyncClient): Promise<void> {
   return dispatch(query, syncClient)

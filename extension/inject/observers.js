@@ -8,15 +8,15 @@
  * @fileoverview Observers - Observer registration and management for DOM, network,
  * performance, and WebSocket events.
  */
-import { installPerformanceCapture, uninstallPerformanceCapture } from '../lib/performance';
-import { installPerfObservers } from '../lib/perf-snapshot';
-import { installWebSocketCapture, uninstallWebSocketCapture } from '../lib/websocket';
-import { wrapFetchWithBodies, wrapXHRWithBodies, unwrapXHR, adoptEarlyBodies } from '../lib/network';
-import { installConsoleCapture, uninstallConsoleCapture } from '../lib/console';
-import { installExceptionCapture, uninstallExceptionCapture } from '../lib/exceptions';
-import { installActionCapture, uninstallActionCapture, installNavigationCapture, uninstallNavigationCapture } from '../lib/actions';
-import { postLog } from '../lib/bridge';
-import { MAX_RESPONSE_LENGTH, SENSITIVE_HEADERS, MEMORY_SOFT_LIMIT_MB, MEMORY_HARD_LIMIT_MB } from '../lib/constants';
+import { installPerformanceCapture, uninstallPerformanceCapture } from '../lib/performance.js';
+import { installPerfObservers } from '../lib/perf-snapshot.js';
+import { installWebSocketCapture, uninstallWebSocketCapture } from '../lib/websocket.js';
+import { wrapFetchWithBodies, wrapXHRWithBodies, unwrapXHR, adoptEarlyBodies } from '../lib/network.js';
+import { installConsoleCapture, uninstallConsoleCapture } from '../lib/console.js';
+import { installExceptionCapture, uninstallExceptionCapture } from '../lib/exceptions.js';
+import { installActionCapture, uninstallActionCapture, installNavigationCapture, uninstallNavigationCapture } from '../lib/actions.js';
+import { postLog } from '../lib/bridge.js';
+import { MAX_RESPONSE_LENGTH, SENSITIVE_HEADERS, MEMORY_SOFT_LIMIT_MB, MEMORY_HARD_LIMIT_MB } from '../lib/constants.js';
 // Store original fetch for restoration
 let originalFetch = null;
 // Interception deferral state (Phase 1/Phase 2 split)

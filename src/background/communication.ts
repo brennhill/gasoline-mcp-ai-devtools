@@ -12,7 +12,7 @@
  */
 
 // Re-export circuit breaker functions
-export { createCircuitBreaker, type CircuitBreakerOptions, type CircuitBreaker } from './circuit-breaker'
+export { createCircuitBreaker, type CircuitBreakerOptions, type CircuitBreaker } from './circuit-breaker.js'
 
 // Re-export batcher functions and types
 export {
@@ -23,7 +23,7 @@ export {
   type BatcherWithCircuitBreaker,
   type BatcherConfig,
   type LogBatcherOptions
-} from './batchers'
+} from './batchers.js'
 
 // Re-export server communication functions
 // NOTE: postSettings and pollCaptureSettings removed - use /sync for all communication
@@ -42,11 +42,11 @@ export {
   sendStatusPing,
   pollPendingQueries,
   type ServerHealthResponse
-} from './server'
+} from './server.js'
 
 // Import for logging formatting functions (still in this file for now)
-import type { LogEntry } from '../types'
-import { getRequestHeaders } from './server'
+import type { LogEntry } from '../types/index.js'
+import { getRequestHeaders } from './server.js'
 
 /**
  * Truncate a single argument if too large

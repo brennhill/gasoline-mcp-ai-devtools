@@ -512,6 +512,376 @@
     }
   }
 
+  // extension/content/extractors/shared.js
+  var MAIN_CONTENT_SELECTORS = [
+    "main",
+    "article",
+    '[role="main"]',
+    "#main",
+    ".main",
+    ".post-content",
+    ".entry-content",
+    ".article-body",
+    ".article-content",
+    ".story-body",
+    ".article",
+    ".post",
+    "#content",
+    ".content",
+    ".results"
+  ];
+  function findMainContentElement(minTextLength = 100) {
+    for (const sel of MAIN_CONTENT_SELECTORS) {
+      const el = document.querySelector(sel);
+      if (!el)
+        continue;
+      const text = (el.innerText || el.textContent || "").trim();
+      if (text.length > minTextLength)
+        return el;
+    }
+    return document.body || document.documentElement;
+  }
+
+  // extension/content/extractors/readable.js
+  var REMOVE_SELECTORS = [
+    "nav",
+    "header",
+    "footer",
+    "aside",
+    "script",
+    "style",
+    "noscript",
+    "svg",
+    '[role="navigation"]',
+    '[role="banner"]',
+    '[role="contentinfo"]',
+    '[aria-hidden="true"]',
+    ".ad",
+    ".ads",
+    ".advertisement",
+    ".social-share",
+    ".comments",
+    ".sidebar",
+    ".related-posts",
+    ".newsletter"
+  ];
+  function cleanText(el) {
+    if (!el)
+      return "";
+    const clone = el.cloneNode(true);
+    for (const sel of REMOVE_SELECTORS) {
+      const els = clone.querySelectorAll(sel);
+      for (const child of Array.from(els))
+        child.remove();
+    }
+    return (clone.innerText || clone.textContent || "").replace(/\s+/g, " ").trim();
+  }
+  function getByline() {
+    const selectors = [".author", '[rel="author"]', ".byline", ".post-author", 'meta[name="author"]'];
+    for (const sel of selectors) {
+      const el = document.querySelector(sel);
+      if (el) {
+        const text = (el.getAttribute("content") || el.innerText || "").trim();
+        if (text.length > 0 && text.length < 200)
+          return text;
+      }
+    }
+    return "";
+  }
+  function extractReadable() {
+    const main = findMainContentElement(100);
+    const content = cleanText(main);
+    const excerpt = content.slice(0, 300);
+    const words = content.split(/\s+/).filter(Boolean);
+    return {
+      title: document.title || "",
+      content,
+      excerpt,
+      byline: getByline(),
+      word_count: words.length,
+      url: window.location.href
+    };
+  }
+
+  // extension/content/extractors/markdown.js
+  var MAX_OUTPUT_CHARS = 2e5;
+  var SKIP_TAGS = ["nav", "header", "footer", "aside", "script", "style", "noscript", "svg"];
+  function tableToMarkdown(table) {
+    const rows = table.querySelectorAll("tr");
+    if (rows.length === 0)
+      return "";
+    let md = "";
+    for (let r = 0; r < rows.length; r++) {
+      const rowEl = rows[r];
+      if (!rowEl)
+        continue;
+      const cells = rowEl.querySelectorAll("th,td");
+      let row = "|";
+      for (let c = 0; c < cells.length; c++) {
+        row += " " + (cells[c].innerText || "").trim().replace(/\|/g, "\\|").replace(/\n/g, " ") + " |";
+      }
+      md += row + "\n";
+      if (r === 0 && rowEl.querySelector("th")) {
+        md += "|";
+        for (let c2 = 0; c2 < cells.length; c2++)
+          md += " --- |";
+        md += "\n";
+      }
+    }
+    return md;
+  }
+  function nodeToMarkdown(node, depth, budget) {
+    if (!node || budget.remaining <= 0)
+      return "";
+    if (depth > 20)
+      return "";
+    if (node.nodeType === 3) {
+      const text = node.textContent || "";
+      budget.remaining -= text.length;
+      return text;
+    }
+    if (node.nodeType !== 1)
+      return "";
+    const el = node;
+    const tag = el.tagName.toLowerCase();
+    if (SKIP_TAGS.includes(tag))
+      return "";
+    if (el.getAttribute("role") === "navigation")
+      return "";
+    if (el.getAttribute("aria-hidden") === "true")
+      return "";
+    let children = "";
+    for (let i = 0; i < el.childNodes.length; i++) {
+      if (budget.remaining <= 0)
+        break;
+      const child = el.childNodes[i];
+      if (child)
+        children += nodeToMarkdown(child, depth + 1, budget);
+    }
+    children = children.replace(/\n{3,}/g, "\n\n");
+    switch (tag) {
+      case "h1":
+        return "\n# " + children.trim() + "\n\n";
+      case "h2":
+        return "\n## " + children.trim() + "\n\n";
+      case "h3":
+        return "\n### " + children.trim() + "\n\n";
+      case "h4":
+        return "\n#### " + children.trim() + "\n\n";
+      case "h5":
+        return "\n##### " + children.trim() + "\n\n";
+      case "h6":
+        return "\n###### " + children.trim() + "\n\n";
+      case "p":
+        return "\n" + children.trim() + "\n\n";
+      case "br":
+        return "\n";
+      case "hr":
+        return "\n---\n\n";
+      case "strong":
+      case "b":
+        return "**" + children.trim() + "**";
+      case "em":
+      case "i":
+        return "*" + children.trim() + "*";
+      case "code":
+        return "`" + children.trim() + "`";
+      case "pre":
+        return "\n```\n" + (el.innerText || "").trim() + "\n```\n\n";
+      case "a": {
+        let href = el.getAttribute("href") || "";
+        if (href && href !== "#" && !href.startsWith("javascript:")) {
+          try {
+            href = new URL(href, window.location.href).href;
+          } catch {
+          }
+          return "[" + children.trim() + "](" + href + ")";
+        }
+        return children;
+      }
+      case "img": {
+        let src = el.getAttribute("src") || "";
+        const alt = el.getAttribute("alt") || "";
+        if (src) {
+          try {
+            src = new URL(src, window.location.href).href;
+          } catch {
+          }
+          return "![" + alt + "](" + src + ")";
+        }
+        return "";
+      }
+      case "ul":
+      case "ol":
+        return "\n" + children + "\n";
+      case "li": {
+        const parent = el.parentElement;
+        if (parent && parent.tagName.toLowerCase() === "ol") {
+          const idx = Array.from(parent.children).indexOf(el) + 1;
+          return idx + ". " + children.trim() + "\n";
+        }
+        return "- " + children.trim() + "\n";
+      }
+      case "blockquote":
+        return "\n> " + children.trim().replace(/\n/g, "\n> ") + "\n\n";
+      case "table":
+        return "\n" + tableToMarkdown(el) + "\n\n";
+      case "div":
+      case "section":
+      case "article":
+      case "main":
+        return children;
+      default:
+        return children;
+    }
+  }
+  function extractMarkdown() {
+    const main = findMainContentElement(100);
+    const budget = { remaining: MAX_OUTPUT_CHARS };
+    let markdown = nodeToMarkdown(main, 0, budget).trim();
+    const truncated = budget.remaining <= 0;
+    if (truncated) {
+      markdown = markdown.slice(0, MAX_OUTPUT_CHARS) + "\n\n[...truncated]";
+    }
+    const words = markdown.replace(/[#*[\]()`|>-]/g, " ").split(/\s+/).filter(Boolean);
+    return {
+      title: document.title || "",
+      markdown,
+      word_count: words.length,
+      url: window.location.href,
+      ...truncated ? { truncated: true } : {}
+    };
+  }
+
+  // extension/content/extractors/page-summary.js
+  function cleanText2(value, maxLen) {
+    let text = (value || "").replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, "").replace(/\s+/g, " ").trim();
+    if (maxLen > 0 && text.length > maxLen) {
+      text = text.slice(0, maxLen);
+    }
+    return text;
+  }
+  function absoluteHref(value) {
+    try {
+      return new URL(value || "", window.location.href).href;
+    } catch {
+      return value || "";
+    }
+  }
+  function visibleInteractiveCount() {
+    const nodes = document.querySelectorAll('a[href],button,input:not([type="hidden"]),select,textarea,[role="button"],[role="link"],[tabindex]');
+    let count = 0;
+    for (const node of Array.from(nodes)) {
+      if (node.disabled)
+        continue;
+      const style = window.getComputedStyle(node);
+      if (style.display === "none" || style.visibility === "hidden")
+        continue;
+      const rect = node.getBoundingClientRect();
+      if (rect.width <= 0 || rect.height <= 0)
+        continue;
+      count += 1;
+    }
+    return count;
+  }
+  function findMainNode() {
+    return findMainContentElement(120);
+  }
+  function classifyPage(forms, interactiveCount, linkCount, paragraphCount, headingCount, previewText) {
+    const hasSearchInput = !!document.querySelector('input[type="search"], input[name*="search" i], input[placeholder*="search" i]');
+    const likelySearchURL = /[?&](q|query|search)=/i.test(window.location.search);
+    const hasArticle = document.querySelectorAll("article").length > 0;
+    const hasTable = document.querySelectorAll("table").length > 0;
+    let totalFormFields = 0;
+    for (const form of forms) {
+      totalFormFields += form.fields.length;
+    }
+    if (hasSearchInput && (likelySearchURL || linkCount > 10))
+      return "search_results";
+    if (forms.length > 0 && totalFormFields >= 3 && paragraphCount < 8)
+      return "form";
+    if (hasArticle || paragraphCount >= 8 && linkCount < paragraphCount * 2)
+      return "article";
+    if (hasTable || interactiveCount > 25 && headingCount >= 2)
+      return "dashboard";
+    if (linkCount > 30 && paragraphCount < 10)
+      return "link_list";
+    if (previewText.length < 80 && interactiveCount > 10)
+      return "app";
+    return "generic";
+  }
+  function extractPageSummary() {
+    const headingNodes = document.querySelectorAll("h1, h2, h3");
+    const headings = [];
+    for (const heading of Array.from(headingNodes)) {
+      if (headings.length >= 30)
+        break;
+      const text = cleanText2(heading.innerText || heading.textContent || "", 200);
+      if (!text)
+        continue;
+      headings.push(heading.tagName.toLowerCase() + ": " + text);
+    }
+    const navCandidates = document.querySelectorAll('nav a[href], header a[href], [role="navigation"] a[href]');
+    const navLinks = [];
+    const seenNav = {};
+    for (const link of Array.from(navCandidates)) {
+      if (navLinks.length >= 25)
+        break;
+      const linkText = cleanText2(link.innerText || link.textContent || "", 80);
+      const href = absoluteHref(link.getAttribute("href") || "");
+      if (!href)
+        continue;
+      const key = linkText + "|" + href;
+      if (seenNav[key])
+        continue;
+      seenNav[key] = true;
+      navLinks.push({ text: linkText, href });
+    }
+    const forms = [];
+    const formNodes = document.querySelectorAll("form");
+    for (const form of Array.from(formNodes)) {
+      if (forms.length >= 10)
+        break;
+      const fieldNodes = form.querySelectorAll("input, select, textarea");
+      const fields = [];
+      const seenFields = {};
+      for (const field of Array.from(fieldNodes)) {
+        if (fields.length >= 25)
+          break;
+        const candidate = field.getAttribute("name") || field.getAttribute("id") || field.getAttribute("aria-label") || field.getAttribute("type") || field.tagName.toLowerCase();
+        const cleaned = cleanText2(candidate || "", 60);
+        if (!cleaned || seenFields[cleaned])
+          continue;
+        seenFields[cleaned] = true;
+        fields.push(cleaned);
+      }
+      forms.push({
+        action: absoluteHref(form.getAttribute("action") || window.location.href),
+        method: (form.getAttribute("method") || "GET").toUpperCase(),
+        fields
+      });
+    }
+    const mainNode = findMainNode();
+    const mainText = cleanText2(mainNode ? mainNode.innerText || mainNode.textContent || "" : "", 2e4);
+    const preview = mainText.slice(0, 500);
+    const wordCount = mainText ? mainText.split(/\s+/).filter(Boolean).length : 0;
+    const linkCount = document.querySelectorAll("a[href]").length;
+    const paragraphCount = document.querySelectorAll("p").length;
+    const interactiveCount = visibleInteractiveCount();
+    const pageType = classifyPage(forms, interactiveCount, linkCount, paragraphCount, headings.length, preview);
+    return {
+      url: window.location.href,
+      title: document.title || "",
+      type: pageType,
+      headings,
+      nav_links: navLinks,
+      forms,
+      interactive_element_count: interactiveCount,
+      main_content_preview: preview,
+      word_count: wordCount
+    };
+  }
+
   // extension/content/message-handlers.js
   var nextRequestId = 1;
   function parseQueryParams(params) {
@@ -733,6 +1103,30 @@
   }
   function handleLinkHealthQuery(params, sendResponse) {
     return forwardInjectQuery("GASOLINE_LINK_HEALTH_QUERY", "GASOLINE_LINK_HEALTH_RESPONSE", "Link health check", params, sendResponse);
+  }
+  function handleGetReadable(sendResponse) {
+    try {
+      sendResponse(extractReadable());
+    } catch (err) {
+      sendResponse({ error: "get_readable_failed", message: err.message || "Readable extraction failed" });
+    }
+    return false;
+  }
+  function handleGetMarkdown(sendResponse) {
+    try {
+      sendResponse(extractMarkdown());
+    } catch (err) {
+      sendResponse({ error: "get_markdown_failed", message: err.message || "Markdown extraction failed" });
+    }
+    return false;
+  }
+  function handlePageSummary(sendResponse) {
+    try {
+      sendResponse(extractPageSummary());
+    } catch (err) {
+      sendResponse({ error: "page_summary_failed", message: err.message || "Page summary extraction failed" });
+    }
+    return false;
   }
 
   // extension/content/ui/toast.js
@@ -1113,7 +1507,10 @@
       GET_NETWORK_WATERFALL: (_msg, sr) => handleGetNetworkWaterfall(sr),
       LINK_HEALTH_QUERY: (msg, sr) => handleLinkHealthQuery(msg.params ?? {}, sr),
       COMPUTED_STYLES_QUERY: (msg, sr) => handleComputedStylesQuery(msg.params ?? {}, sr),
-      FORM_DISCOVERY_QUERY: (msg, sr) => handleFormDiscoveryQuery(msg.params ?? {}, sr)
+      FORM_DISCOVERY_QUERY: (msg, sr) => handleFormDiscoveryQuery(msg.params ?? {}, sr),
+      GASOLINE_GET_READABLE: (_msg, sr) => handleGetReadable(sr),
+      GASOLINE_GET_MARKDOWN: (_msg, sr) => handleGetMarkdown(sr),
+      GASOLINE_PAGE_SUMMARY: (_msg, sr) => handlePageSummary(sr)
     };
     chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       if (!isValidBackgroundSender(sender)) {

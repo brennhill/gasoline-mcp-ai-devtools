@@ -9,8 +9,8 @@
  * Manages feature toggle configuration and initialization
  */
 
-import type { FeatureToggleConfig } from './types'
-import { SettingName, StorageKey } from '../lib/constants'
+import type { FeatureToggleConfig } from './types.js'
+import { SettingName, StorageKey } from '../lib/constants.js'
 
 /**
  * Feature toggle configuration

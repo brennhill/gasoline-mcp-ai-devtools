@@ -5,9 +5,9 @@
  * Docs: docs/features/feature/interact-explore/index.md
  * Docs: docs/features/feature/observe/index.md
  */
-import { getTrackedTabInfo, clearTrackedTab } from '../event-listeners';
-import { DebugCategory } from '../debug';
-import { isAiWebPilotEnabled } from '../state';
+import { getTrackedTabInfo, clearTrackedTab } from '../event-listeners.js';
+import { DebugCategory } from '../debug.js';
+import { isAiWebPilotEnabled } from '../state.js';
 function debugLog(category, message, data = null) {
     // Keep helpers independent from index.ts to avoid circular imports during registry boot.
     const debugEnabled = globalThis.__GASOLINE_REGISTRY_DEBUG__ === true;

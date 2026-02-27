@@ -10,8 +10,8 @@
 // Handles: dom, a11y, link_health, draw_mode.
 // Includes frame routing helpers used by dom and a11y.
 
-import { isAiWebPilotEnabled } from '../state'
-import { registerCommand } from './registry'
+import { isAiWebPilotEnabled } from '../state.js'
+import { registerCommand } from './registry.js'
 
 // =============================================================================
 // FRAME ROUTING TYPES

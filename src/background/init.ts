@@ -31,7 +31,7 @@ import {
   clearDebugLog,
   sendStatusPingWrapper,
   DEFAULT_SERVER_URL
-} from './index'
+} from './index.js'
 import {
   getServerUrl,
   getConnectionStatus,
@@ -48,7 +48,7 @@ import {
   setAiWebPilotEnabledCache,
   setAiWebPilotCacheInitialized,
   setPilotInitCallback
-} from './state'
+} from './state.js'
 import {
   isSourceMapEnabled,
   setSourceMapEnabled,
@@ -61,7 +61,7 @@ import {
   flushErrorGroups,
   cleanupStaleErrorGroups,
   clearScreenshotTimestamps
-} from './state-manager'
+} from './state-manager.js'
 import {
   loadDebugModeState,
   installStartupListener,
@@ -78,12 +78,12 @@ import {
   getTrackedTabInfo,
   handleTrackedTabClosed,
   handleTrackedTabUrlChange
-} from './event-listeners'
-import { handlePendingQuery } from './pending-queries'
-import type { MessageHandlerDependencies } from './message-handlers'
-import { installMessageListener, broadcastTrackingState } from './message-handlers'
-import { captureScreenshot, updateBadge } from './communication'
-import { wasServiceWorkerRestarted, markStateVersion } from './storage-utils'
+} from './event-listeners.js'
+import { handlePendingQuery } from './pending-queries.js'
+import type { MessageHandlerDependencies } from './message-handlers.js'
+import { installMessageListener, broadcastTrackingState } from './message-handlers.js'
+import { captureScreenshot, updateBadge } from './communication.js'
+import { wasServiceWorkerRestarted, markStateVersion } from './storage-utils.js'
 
 /**
  * Initialize the extension on startup

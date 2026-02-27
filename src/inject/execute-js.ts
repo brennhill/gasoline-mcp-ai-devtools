@@ -7,8 +7,8 @@
 
 // execute-js.ts — JavaScript execution sandbox for in-page script evaluation.
 
-import type { ExecuteJsResult } from '../types/index'
-import { createDeferredPromise } from '../lib/timeout-utils'
+import type { ExecuteJsResult } from '../types/index.js'
+import { createDeferredPromise } from '../lib/timeout-utils.js'
 
 /**
  * Safe serialization for complex objects returned from executeJavaScript.

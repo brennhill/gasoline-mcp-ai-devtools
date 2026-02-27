@@ -12,7 +12,7 @@
  * and cleanup of stale error groups.
  */
 
-import type { LogEntry } from '../types'
+import type { LogEntry } from '../types/index.js'
 
 // =============================================================================
 // CONSTANTS

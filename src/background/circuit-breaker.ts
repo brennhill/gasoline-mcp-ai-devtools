@@ -11,7 +11,7 @@
  * exponential backoff for protecting server communication.
  */
 
-import type { CircuitBreakerState, CircuitBreakerStats } from '../types'
+import type { CircuitBreakerState, CircuitBreakerStats } from '../types/index.js'
 
 // Re-export types for external use
 export type { CircuitBreakerState, CircuitBreakerStats }

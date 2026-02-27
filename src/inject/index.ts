@@ -11,13 +11,13 @@
  */
 
 // Re-export barrel pattern for tests and consumers
-export { safeSerialize, getElementSelector, isSensitiveInput } from '../lib/serialize'
+export { safeSerialize, getElementSelector, isSensitiveInput } from '../lib/serialize.js'
 export {
   getContextAnnotations,
   setContextAnnotation,
   removeContextAnnotation,
   clearContextAnnotations
-} from '../lib/context'
+} from '../lib/context.js'
 export {
   getImplicitRole,
   isDynamicClass,
@@ -27,7 +27,7 @@ export {
   getEnhancedActionBuffer,
   clearEnhancedActionBuffer,
   generatePlaywrightScript
-} from '../lib/reproduction'
+} from '../lib/reproduction.js'
 export {
   recordAction,
   getActionBuffer,
@@ -42,7 +42,7 @@ export {
   setActionCaptureEnabled,
   installNavigationCapture,
   uninstallNavigationCapture
-} from '../lib/actions'
+} from '../lib/actions.js'
 export {
   parseResourceTiming,
   getNetworkWaterfall,
@@ -66,7 +66,7 @@ export {
   wrapXHRWithBodies,
   unwrapXHR,
   adoptEarlyBodies
-} from '../lib/network'
+} from '../lib/network.js'
 export {
   getPerformanceMarks,
   getPerformanceMeasures,
@@ -78,9 +78,9 @@ export {
   getPerformanceSnapshotForError,
   setPerformanceMarksEnabled,
   isPerformanceMarksEnabled
-} from '../lib/performance'
-export { postLog } from '../lib/bridge'
-export { installConsoleCapture, uninstallConsoleCapture } from '../lib/console'
+} from '../lib/performance.js'
+export { postLog } from '../lib/bridge.js'
+export { installConsoleCapture, uninstallConsoleCapture } from '../lib/console.js'
 export {
   parseStackFrames,
   parseSourceMap,
@@ -96,8 +96,8 @@ export {
   setSourceMapCache,
   getSourceMapCache,
   getSourceMapCacheSize
-} from '../lib/ai-context'
-export { installExceptionCapture, uninstallExceptionCapture } from '../lib/exceptions'
+} from '../lib/ai-context.js'
+export { installExceptionCapture, uninstallExceptionCapture } from '../lib/exceptions.js'
 export {
   getSize,
   formatPayload,
@@ -109,8 +109,8 @@ export {
   getWebSocketCaptureMode,
   uninstallWebSocketCapture,
   resetForTesting
-} from '../lib/websocket'
-export { executeDOMQuery, getPageInfo, runAxeAudit, runAxeAuditWithTimeout, formatAxeResults } from '../lib/dom-queries'
+} from '../lib/websocket.js'
+export { executeDOMQuery, getPageInfo, runAxeAudit, runAxeAuditWithTimeout, formatAxeResults } from '../lib/dom-queries.js'
 export {
   mapInitiatorType,
   aggregateResourceTiming,
@@ -125,13 +125,13 @@ export {
   sendPerformanceSnapshot,
   isPerformanceSnapshotEnabled,
   setPerformanceSnapshotEnabled
-} from '../lib/perf-snapshot'
+} from '../lib/perf-snapshot.js'
 
 // Re-export constants that tests import from inject.js
-export { MAX_WATERFALL_ENTRIES, MAX_PERFORMANCE_ENTRIES, SENSITIVE_HEADERS } from '../lib/constants'
+export { MAX_WATERFALL_ENTRIES, MAX_PERFORMANCE_ENTRIES, SENSITIVE_HEADERS } from '../lib/constants.js'
 
 // Export API module
-export { installGasolineAPI, uninstallGasolineAPI, type GasolineAPI } from './api'
+export { installGasolineAPI, uninstallGasolineAPI, type GasolineAPI } from './api.js'
 
 // Export observer module
 export {
@@ -149,10 +149,10 @@ export {
   shouldDeferIntercepts,
   checkMemoryPressure,
   type DeferralState
-} from './observers'
+} from './observers.js'
 
 // Export message handlers module
-export { installMessageListener, executeJavaScript, safeSerializeForExecute } from './message-handlers'
+export { installMessageListener, executeJavaScript, safeSerializeForExecute } from './message-handlers.js'
 
 // Export state management functions
 export {
@@ -163,13 +163,13 @@ export {
   type RestoreStateResult,
   type RestoredCounts,
   type HighlightResult
-} from './state'
+} from './state.js'
 
-import { installGasolineAPI } from './api'
-import { installPhase1 } from './observers'
-import { installMessageListener } from './message-handlers'
-import { captureState, restoreState, sendPerformanceSnapshotWrapper } from './state'
-import { sendPerformanceSnapshot } from '../lib/perf-snapshot'
+import { installGasolineAPI } from './api.js'
+import { installPhase1 } from './observers.js'
+import { installMessageListener } from './message-handlers.js'
+import { captureState, restoreState, sendPerformanceSnapshotWrapper } from './state.js'
+import { sendPerformanceSnapshot } from '../lib/perf-snapshot.js'
 
 /**
  * Auto-install when loaded in browser

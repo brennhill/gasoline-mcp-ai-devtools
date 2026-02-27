@@ -8,7 +8,7 @@
  * Observes web vitals (FCP, LCP, CLS, INP), long tasks, and resource timing
  * to build comprehensive performance snapshots.
  */
-import { MAX_LONG_TASKS, MAX_SLOWEST_REQUESTS, MAX_URL_LENGTH } from './constants';
+import { MAX_LONG_TASKS, MAX_SLOWEST_REQUESTS, MAX_URL_LENGTH } from './constants.js';
 // Performance snapshot state
 let perfSnapshotEnabled = true;
 let longTaskEntries = [];

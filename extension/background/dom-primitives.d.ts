@@ -4,7 +4,7 @@
  * Docs: docs/features/feature/interact-explore/index.md
  * Docs: docs/features/feature/observe/index.md
  */
-import type { DOMPrimitiveOptions, DOMResult } from './dom-types';
+import type { DOMPrimitiveOptions, DOMResult } from './dom-types.js';
 export { domPrimitiveListInteractive } from './dom-primitives-list-interactive.js';
 /**
  * Single self-contained function for all DOM primitives.

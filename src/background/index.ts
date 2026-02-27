@@ -16,7 +16,7 @@
 import type {
   LogEntry,
   ChromeMessageSender
-} from '../types'
+} from '../types/index.js'
 
 import {
   getServerUrl,
@@ -37,7 +37,7 @@ import {
   isDebugMode,
   applyCaptureOverrides,
   type MutableConnectionStatus
-} from './state'
+} from './state.js'
 import {
   addDebugLogEntry,
   getDebugLog as getDebugLogEntries,
@@ -47,7 +47,7 @@ import {
   processErrorGroup,
   canTakeScreenshot,
   recordScreenshot
-} from './state-manager'
+} from './state-manager.js'
 import {
   createCircuitBreaker,
   RATE_LIMIT_CONFIG,
@@ -57,36 +57,36 @@ import {
   updateBadge,
   checkServerHealth,
   sendStatusPing
-} from './communication'
-import { getTrackedTabInfo } from './event-listeners'
-import { DebugCategory } from './debug'
-import { getRequestHeaders } from './server'
+} from './communication.js'
+import { getTrackedTabInfo } from './event-listeners.js'
+import { DebugCategory } from './debug.js'
+import { getRequestHeaders } from './server.js'
 import {
   saveStateSnapshot,
   loadStateSnapshot,
   listStateSnapshots,
   deleteStateSnapshot
-} from './message-handlers'
+} from './message-handlers.js'
 import {
   handlePendingQuery as handlePendingQueryImpl,
   handlePilotCommand as handlePilotCommandImpl
-} from './pending-queries'
-import { updateVersionFromHealth } from './version-check'
-import { createBatcherInstances } from './batcher-instances'
+} from './pending-queries.js'
+import { updateVersionFromHealth } from './version-check.js'
+import { createBatcherInstances } from './batcher-instances.js'
 import {
   startSyncClient as startSyncClientImpl,
   resetSyncClientConnection as resetSyncClientConnectionImpl
-} from './sync-manager'
+} from './sync-manager.js'
 
 // Re-export for consumers that already import from here
-export { DEFAULT_SERVER_URL } from '../lib/constants'
+export { DEFAULT_SERVER_URL } from '../lib/constants.js'
 
 // =============================================================================
 // DEBUG LOGGING
 // =============================================================================
 
 // Re-export DebugCategory from debug module (to avoid circular dependencies)
-export { DebugCategory } from './debug'
+export { DebugCategory } from './debug.js'
 
 /**
  * Log a diagnostic message only when debug mode is enabled
@@ -103,9 +103,9 @@ export function diagnosticLog(message: string): void {
 export function debugLog(category: string, message: string, data: unknown = null): void {
   const timestamp = new Date().toISOString()
   // Cast category to DebugCategory - callers use DebugCategory constants
-  const entry: import('../types').DebugLogEntry = {
+  const entry: import('../types/index.js').DebugLogEntry = {
     ts: timestamp,
-    category: category as import('../types').DebugCategory,
+    category: category as import('../types/index.js').DebugCategory,
     message,
     ...(data !== null ? { data } : {})
   }

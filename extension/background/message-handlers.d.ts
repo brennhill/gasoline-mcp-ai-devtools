@@ -9,7 +9,7 @@
  * @fileoverview Message Handlers - Handles all chrome.runtime.onMessage routing
  * with type-safe message discrimination.
  */
-import type { LogEntry, ChromeMessageSender, BrowserStateSnapshot, ConnectionStatus, ContextWarning, CircuitBreakerState, MemoryPressureState, WebSocketEvent, EnhancedAction, NetworkBodyPayload, PerformanceSnapshot } from '../types';
+import type { LogEntry, ChromeMessageSender, BrowserStateSnapshot, ConnectionStatus, ContextWarning, CircuitBreakerState, MemoryPressureState, WebSocketEvent, EnhancedAction, NetworkBodyPayload, PerformanceSnapshot } from '../types/index.js';
 /** Message handler dependencies */
 export interface MessageHandlerDependencies {
     getServerUrl: () => string;

@@ -5,8 +5,8 @@
  * Docs: docs/features/feature/interact-explore/index.md
  * Docs: docs/features/feature/observe/index.md
  */
-import type { LogEntry, WebSocketEvent, NetworkBodyPayload, EnhancedAction, PerformanceSnapshot } from '../types';
-import { type CircuitBreaker, type BatcherWithCircuitBreaker, type Batcher } from './communication';
+import type { LogEntry, WebSocketEvent, NetworkBodyPayload, EnhancedAction, PerformanceSnapshot } from '../types/index.js';
+import { type CircuitBreaker, type BatcherWithCircuitBreaker, type Batcher } from './communication.js';
 /** Mutable connection status passed in from the state owner */
 export interface ConnectionStatusRef {
     connected: boolean;

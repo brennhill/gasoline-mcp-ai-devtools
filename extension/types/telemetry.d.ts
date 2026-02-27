@@ -7,7 +7,7 @@
  * @fileoverview Telemetry Data Types
  * Log entries, console logs, network errors, exceptions, and screenshots
  */
-import type { AiContextData } from './ai-context';
+import type { AiContextData } from './ai-context.js';
 /**
  * Log levels supported by the extension
  */

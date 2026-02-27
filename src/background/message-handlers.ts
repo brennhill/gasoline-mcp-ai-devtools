@@ -25,8 +25,8 @@ import type {
   EnhancedAction,
   NetworkBodyPayload,
   PerformanceSnapshot
-} from '../types'
-import { SettingName, StorageKey, DEFAULT_SERVER_URL } from '../lib/constants'
+} from '../types/index.js'
+import { SettingName, StorageKey, DEFAULT_SERVER_URL } from '../lib/constants.js'
 
 // =============================================================================
 // TYPE DEFINITIONS

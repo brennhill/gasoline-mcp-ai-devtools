@@ -9,17 +9,17 @@
 // browser-actions.ts — Browser navigation and action handlers.
 // Handles navigate, refresh, back, forward actions with async timeout support.
 
-import type { PendingQuery } from '../types'
-import type { SyncClient } from './sync-client'
-import { waitForTabLoad, pingContentScript } from './event-listeners'
-import { debugLog } from './index'
-import { isAiWebPilotEnabled } from './state'
-import { DebugCategory } from './debug'
-import { broadcastTrackingState } from './message-handlers'
-import { executeWithWorldRouting, probeCSPStatus, type CSPProbeResult } from './query-execution'
-import { ASYNC_COMMAND_TIMEOUT_MS } from '../lib/constants'
-import type { SendAsyncResultFn, ActionToastFn } from './pending-queries'
-import { persistTrackedTab } from './commands/helpers'
+import type { PendingQuery } from '../types/index.js'
+import type { SyncClient } from './sync-client.js'
+import { waitForTabLoad, pingContentScript } from './event-listeners.js'
+import { debugLog } from './index.js'
+import { isAiWebPilotEnabled } from './state.js'
+import { DebugCategory } from './debug.js'
+import { broadcastTrackingState } from './message-handlers.js'
+import { executeWithWorldRouting, probeCSPStatus, type CSPProbeResult } from './query-execution.js'
+import { ASYNC_COMMAND_TIMEOUT_MS } from '../lib/constants.js'
+import type { SendAsyncResultFn, ActionToastFn } from './pending-queries.js'
+import { persistTrackedTab } from './commands/helpers.js'
 
 // =============================================================================
 // TIMEOUT CONFIGURATION

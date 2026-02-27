@@ -1,6 +1,6 @@
 // analyze-navigation.ts — Navigation/SPA route discovery command handler (#335).
 
-import { registerCommand } from './registry'
+import { registerCommand } from './registry.js'
 
 // =============================================================================
 // NAVIGATION / SPA ROUTE DISCOVERY (#335)

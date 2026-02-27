@@ -10,12 +10,12 @@
 // Fetches file data from Go server's /api/file/read, then injects into DOM <input type="file">.
 // Supports Stage 1 (DataTransfer) with automatic escalation to Stage 4 (OS automation).
 
-import type { PendingQuery } from '../types/queries'
-import type { SyncClient } from './sync-client'
-import type { SendAsyncResultFn, ActionToastFn } from './pending-queries'
-import { debugLog } from './index'
-import { getServerUrl } from './state'
-import { DebugCategory } from './debug'
+import type { PendingQuery } from '../types/queries.js'
+import type { SyncClient } from './sync-client.js'
+import type { SendAsyncResultFn, ActionToastFn } from './pending-queries.js'
+import { debugLog } from './index.js'
+import { getServerUrl } from './state.js'
+import { DebugCategory } from './debug.js'
 
 // ============================================
 // Timing Constants

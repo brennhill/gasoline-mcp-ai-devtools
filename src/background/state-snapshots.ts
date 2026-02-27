@@ -15,7 +15,7 @@
  * actions (save_state, load_state, list_states, delete_state).
  */
 
-import type { BrowserStateSnapshot } from '../types'
+import type { BrowserStateSnapshot } from '../types/index.js'
 
 // =============================================================================
 // CONSTANTS & TYPES

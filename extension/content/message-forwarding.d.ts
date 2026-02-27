@@ -8,7 +8,7 @@
  * @fileoverview Message Forwarding Module
  * Forwards messages between page context and background script
  */
-import type { BackgroundMessageFromContent } from './types';
+import type { BackgroundMessageFromContent } from './types.js';
 export declare const MESSAGE_MAP: Record<string, string>;
 /**
  * Safely send a message to the background script

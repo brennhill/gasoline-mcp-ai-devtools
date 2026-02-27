@@ -5,8 +5,8 @@
  * Docs: docs/features/feature/interact-explore/index.md
  * Docs: docs/features/feature/observe/index.md
  */
-import { updateBadge, createBatcherWithCircuitBreaker, sendLogsToServer, sendWSEventsToServer, sendEnhancedActionsToServer, sendNetworkBodiesToServer, sendPerformanceSnapshotsToServer } from './communication';
-import { checkContextAnnotations } from './state-manager';
+import { updateBadge, createBatcherWithCircuitBreaker, sendLogsToServer, sendWSEventsToServer, sendEnhancedActionsToServer, sendNetworkBodiesToServer, sendPerformanceSnapshotsToServer } from './communication.js';
+import { checkContextAnnotations } from './state-manager.js';
 // =============================================================================
 // CONNECTION STATUS WRAPPER
 // =============================================================================

@@ -10,8 +10,8 @@
  * enriching errors with AI context before posting via bridge.
  */
 
-import { postLog, type BridgePayload } from './bridge'
-import { enrichErrorWithAiContext } from './ai-context'
+import { postLog, type BridgePayload } from './bridge.js'
+import { enrichErrorWithAiContext } from './ai-context.js'
 
 interface ExceptionEntry extends Record<string, unknown> {
   level: 'error'

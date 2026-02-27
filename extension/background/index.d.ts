@@ -11,11 +11,11 @@
  * connection management, and batcher wiring. Delegates batcher instance creation
  * to batcher-instances.ts and sync client lifecycle to sync-manager.ts.
  */
-import type { LogEntry, ChromeMessageSender } from '../types';
-import { saveStateSnapshot, loadStateSnapshot, listStateSnapshots, deleteStateSnapshot } from './message-handlers';
-import { handlePendingQuery as handlePendingQueryImpl, handlePilotCommand as handlePilotCommandImpl } from './pending-queries';
-export { DEFAULT_SERVER_URL } from '../lib/constants';
-export { DebugCategory } from './debug';
+import type { LogEntry, ChromeMessageSender } from '../types/index.js';
+import { saveStateSnapshot, loadStateSnapshot, listStateSnapshots, deleteStateSnapshot } from './message-handlers.js';
+import { handlePendingQuery as handlePendingQueryImpl, handlePilotCommand as handlePilotCommandImpl } from './pending-queries.js';
+export { DEFAULT_SERVER_URL } from '../lib/constants.js';
+export { DebugCategory } from './debug.js';
 /**
  * Log a diagnostic message only when debug mode is enabled
  */
@@ -27,7 +27,7 @@ export declare function debugLog(category: string, message: string, data?: unkno
 /**
  * Get all debug log entries
  */
-export declare function getDebugLog(): import("../types").DebugLogEntry[];
+export declare function getDebugLog(): import("../types/debug.js").DebugLogEntry[];
 /**
  * Clear debug log buffer
  */
@@ -40,17 +40,17 @@ export declare function exportDebugLog(): string;
  * Set debug mode enabled/disabled
  */
 export declare function setDebugMode(enabled: boolean): void;
-export declare const sharedServerCircuitBreaker: import("./circuit-breaker").CircuitBreaker;
-export declare const logBatcherWithCB: import("./batchers").BatcherWithCircuitBreaker<LogEntry>;
-export declare const logBatcher: import("./batchers").Batcher<LogEntry>;
-export declare const wsBatcherWithCB: import("./batchers").BatcherWithCircuitBreaker<import("../types").WebSocketEvent>;
-export declare const wsBatcher: import("./batchers").Batcher<import("../types").WebSocketEvent>;
-export declare const enhancedActionBatcherWithCB: import("./batchers").BatcherWithCircuitBreaker<import("../types").EnhancedAction>;
-export declare const enhancedActionBatcher: import("./batchers").Batcher<import("../types").EnhancedAction>;
-export declare const networkBodyBatcherWithCB: import("./batchers").BatcherWithCircuitBreaker<import("../types").NetworkBodyPayload>;
-export declare const networkBodyBatcher: import("./batchers").Batcher<import("../types").NetworkBodyPayload>;
-export declare const perfBatcherWithCB: import("./batchers").BatcherWithCircuitBreaker<import("../types").PerformanceSnapshot>;
-export declare const perfBatcher: import("./batchers").Batcher<import("../types").PerformanceSnapshot>;
+export declare const sharedServerCircuitBreaker: import("./circuit-breaker.js").CircuitBreaker;
+export declare const logBatcherWithCB: import("./batchers.js").BatcherWithCircuitBreaker<LogEntry>;
+export declare const logBatcher: import("./batchers.js").Batcher<LogEntry>;
+export declare const wsBatcherWithCB: import("./batchers.js").BatcherWithCircuitBreaker<import("../types/wire-websocket-event.js").WireWebSocketEvent>;
+export declare const wsBatcher: import("./batchers.js").Batcher<import("../types/wire-websocket-event.js").WireWebSocketEvent>;
+export declare const enhancedActionBatcherWithCB: import("./batchers.js").BatcherWithCircuitBreaker<import("../types/wire-enhanced-action.js").WireEnhancedAction>;
+export declare const enhancedActionBatcher: import("./batchers.js").Batcher<import("../types/wire-enhanced-action.js").WireEnhancedAction>;
+export declare const networkBodyBatcherWithCB: import("./batchers.js").BatcherWithCircuitBreaker<import("../types/wire-network.js").WireNetworkBody>;
+export declare const networkBodyBatcher: import("./batchers.js").Batcher<import("../types/wire-network.js").WireNetworkBody>;
+export declare const perfBatcherWithCB: import("./batchers.js").BatcherWithCircuitBreaker<import("../types/wire-performance-snapshot.js").WirePerformanceSnapshot>;
+export declare const perfBatcher: import("./batchers.js").Batcher<import("../types/wire-performance-snapshot.js").WirePerformanceSnapshot>;
 export declare function handleLogMessage(payload: LogEntry, sender: ChromeMessageSender, tabId?: number): Promise<void>;
 export declare function handleClearLogs(): Promise<{
     success: boolean;

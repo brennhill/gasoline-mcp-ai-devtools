@@ -5,14 +5,14 @@
  * Docs: docs/features/feature/interact-explore/index.md
  * Docs: docs/features/feature/observe/index.md
  */
-import { waitForTabLoad, pingContentScript } from './event-listeners';
-import { debugLog } from './index';
-import { isAiWebPilotEnabled } from './state';
-import { DebugCategory } from './debug';
-import { broadcastTrackingState } from './message-handlers';
-import { executeWithWorldRouting, probeCSPStatus } from './query-execution';
-import { ASYNC_COMMAND_TIMEOUT_MS } from '../lib/constants';
-import { persistTrackedTab } from './commands/helpers';
+import { waitForTabLoad, pingContentScript } from './event-listeners.js';
+import { debugLog } from './index.js';
+import { isAiWebPilotEnabled } from './state.js';
+import { DebugCategory } from './debug.js';
+import { broadcastTrackingState } from './message-handlers.js';
+import { executeWithWorldRouting, probeCSPStatus } from './query-execution.js';
+import { ASYNC_COMMAND_TIMEOUT_MS } from '../lib/constants.js';
+import { persistTrackedTab } from './commands/helpers.js';
 // =============================================================================
 // TIMEOUT CONFIGURATION
 // =============================================================================

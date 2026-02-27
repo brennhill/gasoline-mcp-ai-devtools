@@ -11,9 +11,9 @@
  * debounced batching of server requests.
  */
 
-import type { MemoryPressureState, TimeoutId, CircuitBreakerState, CircuitBreakerStats } from '../types'
-import { createCircuitBreaker, type CircuitBreaker } from './circuit-breaker'
-import { MAX_PENDING_BUFFER } from './state-manager'
+import type { MemoryPressureState, TimeoutId, CircuitBreakerState, CircuitBreakerStats } from '../types/index.js'
+import { createCircuitBreaker, type CircuitBreaker } from './circuit-breaker.js'
+import { MAX_PENDING_BUFFER } from './state-manager.js'
 
 const DEFAULT_DEBOUNCE_MS = 100
 const DEFAULT_MAX_BATCH_SIZE = 50
@@ -38,8 +38,8 @@ export interface Batcher<T> {
 export interface BatcherWithCircuitBreaker<T> {
   batcher: Batcher<T>
   circuitBreaker: {
-    getState: () => import('./circuit-breaker').CircuitBreakerState
-    getStats: () => import('../types').CircuitBreakerStats
+    getState: () => import('./circuit-breaker.js').CircuitBreakerState
+    getStats: () => import('../types/index.js').CircuitBreakerStats
     reset: () => void
   }
   getConnectionStatus: () => { connected: boolean }

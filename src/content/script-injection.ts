@@ -10,8 +10,8 @@
  * Injects capture script into the page context and syncs stored settings
  */
 
-import type { WebSocketCaptureMode } from '../types'
-import { SettingName } from '../lib/constants'
+import type { WebSocketCaptureMode } from '../types/index.js'
+import { SettingName } from '../lib/constants.js'
 
 /** Whether inject.bundled.js has been injected into the page (MAIN world) */
 let injected = false

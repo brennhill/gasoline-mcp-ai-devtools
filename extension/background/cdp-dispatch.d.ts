@@ -4,9 +4,9 @@
  *      CDP Input.dispatch* commands produce true hardware events indistinguishable from real user input.
  * Docs: docs/features/feature/interact-explore/index.md
  */
-import type { PendingQuery } from '../types/queries';
-import type { SyncClient } from './sync-client';
-import type { DOMActionParams, DOMResult } from './dom-types';
+import type { PendingQuery } from '../types/queries.js';
+import type { SyncClient } from './sync-client.js';
+import type { DOMActionParams, DOMResult } from './dom-types.js';
 type SendAsyncResult = (syncClient: SyncClient, queryId: string, correlationId: string, status: 'complete' | 'error' | 'timeout', result?: unknown, error?: string) => void;
 type ActionToast = (tabId: number, text: string, detail?: string, state?: 'trying' | 'success' | 'warning' | 'error', durationMs?: number) => void;
 /** Check whether an action should attempt CDP before DOM primitives. */

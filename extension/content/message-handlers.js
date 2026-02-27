@@ -4,13 +4,13 @@
  * Docs: docs/features/feature/interact-explore/index.md
  * Docs: docs/features/feature/query-dom/index.md
  */
-import { registerHighlightRequest, hasHighlightRequest, deleteHighlightRequest, registerExecuteRequest, hasExecuteRequest, deleteExecuteRequest, registerA11yRequest, hasA11yRequest, deleteA11yRequest, registerDomRequest, hasDomRequest, deleteDomRequest } from './request-tracking';
-import { createDeferredPromise, promiseRaceWithCleanup } from './timeout-utils';
-import { isInjectScriptLoaded, getPageNonce, ensureInjectBridgeReady } from './script-injection';
-import { ASYNC_COMMAND_TIMEOUT_MS, INJECT_FORWARDED_SETTINGS, SettingName } from '../lib/constants';
-import { extractReadable as extractReadableContent } from './extractors/readable';
-import { extractMarkdown as extractMarkdownContent } from './extractors/markdown';
-import { extractPageSummary as extractPageSummaryContent } from './extractors/page-summary';
+import { registerHighlightRequest, hasHighlightRequest, deleteHighlightRequest, registerExecuteRequest, hasExecuteRequest, deleteExecuteRequest, registerA11yRequest, hasA11yRequest, deleteA11yRequest, registerDomRequest, hasDomRequest, deleteDomRequest } from './request-tracking.js';
+import { createDeferredPromise, promiseRaceWithCleanup } from './timeout-utils.js';
+import { isInjectScriptLoaded, getPageNonce, ensureInjectBridgeReady } from './script-injection.js';
+import { ASYNC_COMMAND_TIMEOUT_MS, INJECT_FORWARDED_SETTINGS, SettingName } from '../lib/constants.js';
+import { extractReadable as extractReadableContent } from './extractors/readable.js';
+import { extractMarkdown as extractMarkdownContent } from './extractors/markdown.js';
+import { extractPageSummary as extractPageSummaryContent } from './extractors/page-summary.js';
 /** Auto-incrementing request ID — avoids Date.now() collisions for concurrent queries */
 let nextRequestId = 1;
 /** Parse query params from string (JSON) or object form into a plain object */

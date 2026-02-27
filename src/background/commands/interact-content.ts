@@ -3,8 +3,8 @@
 // Routes through chrome.tabs.sendMessage to the content script (ISOLATED world, CSP-safe).
 // No chrome.scripting.executeScript or eval — extraction logic lives in the content script.
 
-import { registerCommand } from './registry'
-import type { CommandHandler } from './registry'
+import { registerCommand } from './registry.js'
+import type { CommandHandler } from './registry.js'
 
 /**
  * Factory for content extraction command handlers.

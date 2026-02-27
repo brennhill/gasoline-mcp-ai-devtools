@@ -1,5 +1,5 @@
 // analyze-page-structure.ts — Structural page analysis command handler (#341).
-import { registerCommand } from './registry';
+import { registerCommand } from './registry.js';
 /**
  * Combined page structure script. When useGlobals=true (MAIN world), detects
  * frameworks via window globals. When false (ISOLATED fallback), uses DOM hints only.

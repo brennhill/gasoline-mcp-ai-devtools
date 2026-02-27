@@ -8,7 +8,7 @@
  * @fileoverview Message Handlers Module
  * Handles messages from background script
  */
-import type { ContentMessage, ContentPingResponse, WebSocketCaptureMode, HighlightResponse, WaterfallEntry, StateAction, BrowserStateSnapshot, A11yAuditResult } from '../types';
+import type { ContentMessage, ContentPingResponse, WebSocketCaptureMode, HighlightResponse, WaterfallEntry, StateAction, BrowserStateSnapshot, A11yAuditResult } from '../types/index.js';
 export declare const TOGGLE_MESSAGES: ReadonlySet<string>;
 /**
  * Security: Validate sender is from the extension background script

@@ -25,7 +25,7 @@
  * Note: chrome.storage.session only available in Chrome 102+
  * This module handles graceful degradation for older versions
  */
-import type { StorageAreaName } from '../types';
+import type { StorageAreaName } from '../types/index.js';
 /**
  * Set an ephemeral value in session storage (callback-based)
  * Falls back to memory for older Chrome versions

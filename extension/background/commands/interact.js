@@ -5,16 +5,16 @@
  * Docs: docs/features/feature/interact-explore/index.md
  * Docs: docs/features/feature/observe/index.md
  */
-import { isAiWebPilotEnabled } from '../state';
-import { executeDOMAction } from '../dom-dispatch';
-import { executeCDPAction } from '../cdp-dispatch';
-import { executeUpload } from '../upload-handler';
-import { startRecording, stopRecording } from '../recording';
-import { executeWithWorldRouting } from '../query-execution';
-import { handleBrowserAction, handleAsyncBrowserAction, handleAsyncExecuteCommand } from '../browser-actions';
-import { saveStateSnapshot, loadStateSnapshot, listStateSnapshots, deleteStateSnapshot } from '../message-handlers';
-import { registerCommand } from './registry';
-import { sendAsyncResult } from './helpers';
+import { isAiWebPilotEnabled } from '../state.js';
+import { executeDOMAction } from '../dom-dispatch.js';
+import { executeCDPAction } from '../cdp-dispatch.js';
+import { executeUpload } from '../upload-handler.js';
+import { startRecording, stopRecording } from '../recording.js';
+import { executeWithWorldRouting } from '../query-execution.js';
+import { handleBrowserAction, handleAsyncBrowserAction, handleAsyncExecuteCommand } from '../browser-actions.js';
+import { saveStateSnapshot, loadStateSnapshot, listStateSnapshots, deleteStateSnapshot } from '../message-handlers.js';
+import { registerCommand } from './registry.js';
+import { sendAsyncResult } from './helpers.js';
 function statusFromError(error) {
     return error ? 'error' : 'complete';
 }

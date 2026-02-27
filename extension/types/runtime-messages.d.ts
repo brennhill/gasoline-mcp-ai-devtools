@@ -7,14 +7,14 @@
  * @fileoverview Runtime Message Types
  * Chrome runtime messages for background, content, and inject script communication
  */
-import type { LogEntry } from './telemetry';
-import type { WebSocketEvent, WebSocketCaptureMode } from './websocket';
-import type { NetworkBodyPayload } from './network';
-import type { EnhancedAction } from './actions';
-import type { PerformanceSnapshot } from './performance';
-import type { LogLevelFilter } from './telemetry';
-import type { ConnectionStatus } from './state';
-import type { BrowserStateSnapshot, StateAction } from './state';
+import type { LogEntry } from './telemetry.js';
+import type { WebSocketEvent, WebSocketCaptureMode } from './websocket.js';
+import type { NetworkBodyPayload } from './network.js';
+import type { EnhancedAction } from './actions.js';
+import type { PerformanceSnapshot } from './performance.js';
+import type { LogLevelFilter } from './telemetry.js';
+import type { ConnectionStatus } from './state.js';
+import type { BrowserStateSnapshot, StateAction } from './state.js';
 /**
  * Message to get current tab ID
  */

@@ -84,7 +84,7 @@ export interface ContextWarning {
  * Error group for deduplication
  */
 export interface ErrorGroup {
-    readonly entry: import('./telemetry').LogEntry;
+    readonly entry: import('./telemetry.js').LogEntry;
     readonly count: number;
     readonly firstSeen: number;
     readonly lastSeen: number;
@@ -102,7 +102,7 @@ export interface RateLimitResult {
  */
 export interface CaptureScreenshotResult {
     readonly success: boolean;
-    readonly entry?: import('./telemetry').ScreenshotLogEntry;
+    readonly entry?: import('./telemetry.js').ScreenshotLogEntry;
     readonly error?: string;
     readonly nextAllowedIn?: number;
 }

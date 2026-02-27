@@ -9,7 +9,7 @@
  * @fileoverview Server Communication - HTTP functions for sending data to
  * the Gasoline server.
  */
-import type { LogEntry, WebSocketEvent, NetworkBodyPayload, EnhancedAction, PerformanceSnapshot, ConnectionStatus, WaterfallEntry } from '../types';
+import type { LogEntry, WebSocketEvent, NetworkBodyPayload, EnhancedAction, PerformanceSnapshot, ConnectionStatus, WaterfallEntry } from '../types/index.js';
 /**
  * Server health response
  */

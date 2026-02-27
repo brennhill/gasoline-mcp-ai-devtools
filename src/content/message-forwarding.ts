@@ -10,7 +10,7 @@
  * Forwards messages between page context and background script
  */
 
-import type { BackgroundMessageFromContent } from './types'
+import type { BackgroundMessageFromContent } from './types.js'
 
 // Dispatch table: page postMessage type -> background message type
 export const MESSAGE_MAP: Record<string, string> = {

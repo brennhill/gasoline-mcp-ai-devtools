@@ -10,18 +10,18 @@
 // Handles: subtitle, highlight, browser_action, dom_action, upload,
 //          execute, record_start, record_stop, state_*.
 
-import type { PendingQuery } from '../../types'
-import type { SyncClient } from '../sync-client'
-import { isAiWebPilotEnabled } from '../state'
-import { executeDOMAction } from '../dom-dispatch'
-import { executeCDPAction } from '../cdp-dispatch'
-import { executeUpload } from '../upload-handler'
-import { startRecording, stopRecording } from '../recording'
-import { executeWithWorldRouting } from '../query-execution'
-import { handleBrowserAction, handleAsyncBrowserAction, handleAsyncExecuteCommand } from '../browser-actions'
-import { saveStateSnapshot, loadStateSnapshot, listStateSnapshots, deleteStateSnapshot } from '../message-handlers'
-import { registerCommand } from './registry'
-import { sendResult, sendAsyncResult } from './helpers'
+import type { PendingQuery } from '../../types/index.js'
+import type { SyncClient } from '../sync-client.js'
+import { isAiWebPilotEnabled } from '../state.js'
+import { executeDOMAction } from '../dom-dispatch.js'
+import { executeCDPAction } from '../cdp-dispatch.js'
+import { executeUpload } from '../upload-handler.js'
+import { startRecording, stopRecording } from '../recording.js'
+import { executeWithWorldRouting } from '../query-execution.js'
+import { handleBrowserAction, handleAsyncBrowserAction, handleAsyncExecuteCommand } from '../browser-actions.js'
+import { saveStateSnapshot, loadStateSnapshot, listStateSnapshots, deleteStateSnapshot } from '../message-handlers.js'
+import { registerCommand } from './registry.js'
+import { sendResult, sendAsyncResult } from './helpers.js'
 
 function statusFromError(error?: string): 'complete' | 'error' {
   return error ? 'error' : 'complete'

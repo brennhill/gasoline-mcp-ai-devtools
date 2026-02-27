@@ -23,7 +23,7 @@ export {
   flushErrorGroups,
   type ProcessedLogEntry,
   ERROR_GROUP_MAX_AGE_MS
-} from './error-groups'
+} from './error-groups.js'
 
 // Re-export cache and memory management
 export {
@@ -50,7 +50,7 @@ export {
   MEMORY_AVG_NETWORK_BODY_SIZE,
   MEMORY_AVG_ACTION_SIZE,
   MAX_PENDING_BUFFER
-} from './cache-limits'
+} from './cache-limits.js'
 
 // Re-export source map and context monitoring
 export {
@@ -72,7 +72,7 @@ export {
   removeProcessingQuery,
   isQueryProcessing,
   cleanupStaleProcessingQueries
-} from './snapshots'
+} from './snapshots.js'
 
 // Debug log functions are defined and exported below
 
@@ -80,7 +80,7 @@ export {
 // DEBUG LOG BUFFER
 // =============================================================================
 
-import type { DebugLogEntry } from '../types'
+import type { DebugLogEntry } from '../types/index.js'
 
 /** Debug log buffer */
 const debugLogBuffer: DebugLogEntry[] = []

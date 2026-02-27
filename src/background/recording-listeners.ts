@@ -11,9 +11,9 @@
 // mic permission grant flow, and file reveal requests.
 // Deps are injected to avoid circular imports with recording.ts.
 
-import { scaleTimeout } from '../lib/timeouts'
-import { StorageKey } from '../lib/constants'
-import type { OffscreenRecordingStoppedMessage } from '../types/runtime-messages'
+import { scaleTimeout } from '../lib/timeouts.js'
+import { StorageKey } from '../lib/constants.js'
+import type { OffscreenRecordingStoppedMessage } from '../types/runtime-messages.js'
 
 const LOG = '[Gasoline REC]'
 

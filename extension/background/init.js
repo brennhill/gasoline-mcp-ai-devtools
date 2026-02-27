@@ -10,13 +10,13 @@
  * Handles startup logic: loading settings, installing listeners, and initial connection setup.
  * Uses async/await for cleaner control flow (replaces callback nesting).
  */
-import { debugLog, DebugCategory, setDebugMode, resetSyncClientConnection, sharedServerCircuitBreaker, logBatcher, wsBatcher, enhancedActionBatcher, networkBodyBatcher, perfBatcher, handleLogMessage, handleClearLogs, checkConnectionAndUpdate, exportDebugLog, clearDebugLog, sendStatusPingWrapper, DEFAULT_SERVER_URL } from './index';
-import { getServerUrl, getConnectionStatus, isDebugMode, isScreenshotOnError, getCurrentLogLevel, isAiWebPilotEnabled, isAiWebPilotCacheInitialized, getPilotInitCallback, markInitComplete, setServerUrl, setCurrentLogLevel, setScreenshotOnError, setAiWebPilotEnabledCache, setAiWebPilotCacheInitialized, setPilotInitCallback } from './state';
-import { isSourceMapEnabled, setSourceMapEnabled, canTakeScreenshot, recordScreenshot, clearSourceMapCache, getContextWarning, getMemoryPressureState, isNetworkBodyCaptureDisabled, flushErrorGroups, cleanupStaleErrorGroups, clearScreenshotTimestamps } from './state-manager';
-import { loadDebugModeState, installStartupListener, loadAiWebPilotState, loadSavedSettings, installStorageChangeListener, setupChromeAlarms, installAlarmListener, installTabRemovedListener, installTabUpdatedListener, installDrawModeCommandListener, saveSetting, forwardToAllContentScripts, handleTrackedTabClosed, handleTrackedTabUrlChange } from './event-listeners';
-import { installMessageListener, broadcastTrackingState } from './message-handlers';
-import { captureScreenshot, updateBadge } from './communication';
-import { wasServiceWorkerRestarted, markStateVersion } from './storage-utils';
+import { debugLog, DebugCategory, setDebugMode, resetSyncClientConnection, sharedServerCircuitBreaker, logBatcher, wsBatcher, enhancedActionBatcher, networkBodyBatcher, perfBatcher, handleLogMessage, handleClearLogs, checkConnectionAndUpdate, exportDebugLog, clearDebugLog, sendStatusPingWrapper, DEFAULT_SERVER_URL } from './index.js';
+import { getServerUrl, getConnectionStatus, isDebugMode, isScreenshotOnError, getCurrentLogLevel, isAiWebPilotEnabled, isAiWebPilotCacheInitialized, getPilotInitCallback, markInitComplete, setServerUrl, setCurrentLogLevel, setScreenshotOnError, setAiWebPilotEnabledCache, setAiWebPilotCacheInitialized, setPilotInitCallback } from './state.js';
+import { isSourceMapEnabled, setSourceMapEnabled, canTakeScreenshot, recordScreenshot, clearSourceMapCache, getContextWarning, getMemoryPressureState, isNetworkBodyCaptureDisabled, flushErrorGroups, cleanupStaleErrorGroups, clearScreenshotTimestamps } from './state-manager.js';
+import { loadDebugModeState, installStartupListener, loadAiWebPilotState, loadSavedSettings, installStorageChangeListener, setupChromeAlarms, installAlarmListener, installTabRemovedListener, installTabUpdatedListener, installDrawModeCommandListener, saveSetting, forwardToAllContentScripts, handleTrackedTabClosed, handleTrackedTabUrlChange } from './event-listeners.js';
+import { installMessageListener, broadcastTrackingState } from './message-handlers.js';
+import { captureScreenshot, updateBadge } from './communication.js';
+import { wasServiceWorkerRestarted, markStateVersion } from './storage-utils.js';
 /**
  * Initialize the extension on startup
  * Handles state recovery after service worker restart, loads settings, installs listeners.

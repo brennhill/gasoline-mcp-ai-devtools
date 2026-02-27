@@ -28,7 +28,7 @@
  * as structured commands and are rejected with guidance to use DOM primitives.
  */
 
-import type { StructuredCommand, StructuredValue, StructuredStep, ParseResult } from './csp-safe-types'
+import type { StructuredCommand, StructuredValue, StructuredStep, ParseResult } from './csp-safe-types.js'
 
 // Patterns that we reject outright before attempting to parse
 const REJECTED_PATTERNS: Array<{ pattern: RegExp; reason: string }> = [

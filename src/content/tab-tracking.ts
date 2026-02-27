@@ -10,8 +10,8 @@
  * Manages tracking status for the current tab
  */
 
-import type { StorageChange } from '../types'
-import { StorageKey } from '../lib/constants'
+import type { StorageChange } from '../types/index.js'
+import { StorageKey } from '../lib/constants.js'
 
 // Whether this content script's tab is the currently tracked tab
 let isTrackedTab = false

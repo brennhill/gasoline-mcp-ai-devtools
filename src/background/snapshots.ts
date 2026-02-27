@@ -17,8 +17,8 @@ import {
   setSourceMapCacheEntry,
   SOURCE_MAP_CACHE_SIZE,
   isSourceMapEnabled
-} from './cache-limits'
-import type { LogEntry, ParsedSourceMap, ContextWarning } from '../types'
+} from './cache-limits.js'
+import type { LogEntry, ParsedSourceMap, ContextWarning } from '../types/index.js'
 
 // =============================================================================
 // CONSTANTS
