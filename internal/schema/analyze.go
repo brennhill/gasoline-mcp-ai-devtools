@@ -16,7 +16,7 @@ func AnalyzeToolSchema() mcp.MCPTool {
 			"properties": map[string]any{
 				"what": map[string]any{
 					"type": "string",
-					"enum": []string{"dom", "performance", "accessibility", "error_clusters", "history", "security_audit", "third_party_audit", "link_health", "link_validation", "page_summary", "annotations", "annotation_detail", "api_validation", "draw_history", "draw_session", "computed_styles", "forms", "form_validation", "visual_baseline", "visual_diff", "visual_baselines"},
+					"enum": []string{"dom", "performance", "accessibility", "error_clusters", "history", "security_audit", "third_party_audit", "link_health", "link_validation", "page_summary", "annotations", "annotation_detail", "api_validation", "draw_history", "draw_session", "computed_styles", "forms", "form_validation", "visual_baseline", "visual_diff", "visual_baselines", "navigation"},
 				},
 				"telemetry_mode": map[string]any{
 					"type":        "string",

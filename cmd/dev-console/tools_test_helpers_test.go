@@ -198,7 +198,7 @@ func normalizeAnalyzeArgsForAsync(argsJSON string) json.RawMessage {
 
 	what, _ := params["what"].(string)
 	switch what {
-	case "dom", "page_summary", "link_health", "computed_styles", "forms", "form_validation":
+	case "dom", "page_summary", "link_health", "computed_styles", "forms", "form_validation", "navigation":
 	default:
 		return raw
 	}

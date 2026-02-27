@@ -513,6 +513,10 @@ var toolModeSpecs = map[string]map[string]modeParamSpec{
 		"visual_baselines": {
 			Hint: "List all stored visual regression baselines",
 		},
+		"navigation": {
+			Hint:     "Discover navigable links grouped by page region (nav, header, footer, aside)",
+			Optional: []string{"tab_id"},
+		},
 	},
 
 	// ── generate ───────────────────────────────────────────────

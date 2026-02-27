@@ -96,6 +96,11 @@ var analyzeHandlers = map[string]AnalyzeHandler{
 	"visual_baselines": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 		return h.toolListVisualBaselines(req, args)
 	},
+
+	// SPA route discovery (#335)
+	"navigation": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+		return h.toolAnalyzeNavigation(req, args)
+	},
 }
 
 // analyzeAliases maps shorthand names to their canonical analyze mode names.
