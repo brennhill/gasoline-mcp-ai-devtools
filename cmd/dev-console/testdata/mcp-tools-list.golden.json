@@ -177,6 +177,10 @@
           "description": "Filter by URL substring",
           "type": "string"
         },
+        "visible_only": {
+          "description": "Only return visible elements (page_inventory)",
+          "type": "boolean"
+        },
         "wait_for_stable": {
           "description": "Wait for layout to stabilize before capture (screenshot)",
           "type": "boolean"
@@ -209,7 +213,8 @@
             "recording_actions",
             "playback_results",
             "log_diff_report",
-            "summarized_logs"
+            "summarized_logs",
+            "page_inventory"
           ],
           "type": "string"
         },
@@ -403,7 +408,8 @@
             "form_validation",
             "visual_baseline",
             "visual_diff",
-            "visual_baselines"
+            "visual_baselines",
+            "navigation"
           ],
           "type": "string"
         },
@@ -1105,6 +1111,7 @@
             "submit_active_composer",
             "confirm_top_dialog",
             "dismiss_top_overlay",
+            "hover",
             "list_interactive",
             "get_readable",
             "get_markdown",
@@ -1115,7 +1122,10 @@
             "record_start",
             "record_stop",
             "upload",
-            "draw_mode_start"
+            "draw_mode_start",
+            "hardware_click",
+            "activate_tab",
+            "explore_page"
           ],
           "type": "string"
         },
@@ -1219,6 +1229,10 @@
         },
         "include_content": {
           "description": "Return page content with navigate response (url, title, text_content, vitals)",
+          "type": "boolean"
+        },
+        "include_screenshot": {
+          "description": "Capture a screenshot after the action completes and return it inline as an image content block",
           "type": "boolean"
         },
         "include_url": {
@@ -1401,6 +1415,7 @@
             "submit_active_composer",
             "confirm_top_dialog",
             "dismiss_top_overlay",
+            "hover",
             "list_interactive",
             "get_readable",
             "get_markdown",
@@ -1411,7 +1426,10 @@
             "record_start",
             "record_stop",
             "upload",
-            "draw_mode_start"
+            "draw_mode_start",
+            "hardware_click",
+            "activate_tab",
+            "explore_page"
           ],
           "type": "string"
         },

@@ -7,6 +7,7 @@
 package main
 
 import (
+	"net/http/httptest"
 	"strings"
 	"testing"
 )
@@ -18,6 +19,11 @@ import (
 func TestInteract_ExplorePage_DispatchesPendingQuery(t *testing.T) {
 	t.Parallel()
 	h, _, cap := makeToolHandler(t)
+	cap.SetPilotEnabled(true)
+	httpReq := httptest.NewRequest("POST", "/sync", strings.NewReader(`{"ext_session_id":"test"}`))
+	httpReq.Header.Set("X-Gasoline-Client", "test-client")
+	cap.HandleSync(httptest.NewRecorder(), httpReq)
+	cap.SetTrackingStatusForTest(42, "https://example.com")
 
 	resp := callInteractRaw(h, `{"what":"explore_page"}`)
 	result := parseToolResult(t, resp)
@@ -48,6 +54,11 @@ func TestInteract_ExplorePage_DispatchesPendingQuery(t *testing.T) {
 func TestInteract_ExplorePage_NoURL_UsesCurrentTab(t *testing.T) {
 	t.Parallel()
 	h, _, cap := makeToolHandler(t)
+	cap.SetPilotEnabled(true)
+	httpReq := httptest.NewRequest("POST", "/sync", strings.NewReader(`{"ext_session_id":"test"}`))
+	httpReq.Header.Set("X-Gasoline-Client", "test-client")
+	cap.HandleSync(httptest.NewRecorder(), httpReq)
+	cap.SetTrackingStatusForTest(42, "https://example.com")
 
 	resp := callInteractRaw(h, `{"what":"explore_page"}`)
 	result := parseToolResult(t, resp)
@@ -70,6 +81,11 @@ func TestInteract_ExplorePage_NoURL_UsesCurrentTab(t *testing.T) {
 func TestInteract_ExplorePage_WithURL_IncludesNavigate(t *testing.T) {
 	t.Parallel()
 	h, _, cap := makeToolHandler(t)
+	cap.SetPilotEnabled(true)
+	httpReq := httptest.NewRequest("POST", "/sync", strings.NewReader(`{"ext_session_id":"test"}`))
+	httpReq.Header.Set("X-Gasoline-Client", "test-client")
+	cap.HandleSync(httptest.NewRecorder(), httpReq)
+	cap.SetTrackingStatusForTest(42, "https://example.com")
 
 	resp := callInteractRaw(h, `{"what":"explore_page","url":"https://example.com"}`)
 	result := parseToolResult(t, resp)
@@ -95,6 +111,11 @@ func TestInteract_ExplorePage_WithURL_IncludesNavigate(t *testing.T) {
 func TestInteract_ExplorePage_ForwardsParams(t *testing.T) {
 	t.Parallel()
 	h, _, cap := makeToolHandler(t)
+	cap.SetPilotEnabled(true)
+	httpReq := httptest.NewRequest("POST", "/sync", strings.NewReader(`{"ext_session_id":"test"}`))
+	httpReq.Header.Set("X-Gasoline-Client", "test-client")
+	cap.HandleSync(httptest.NewRecorder(), httpReq)
+	cap.SetTrackingStatusForTest(42, "https://example.com")
 
 	resp := callInteractRaw(h, `{"what":"explore_page","visible_only":true,"limit":50}`)
 	result := parseToolResult(t, resp)

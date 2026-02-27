@@ -16,6 +16,16 @@ import (
 // If url is provided, the extension navigates first before collecting data.
 // Screenshot is appended server-side after the extension returns.
 func (h *ToolHandler) handleExplorePage(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+	if resp, blocked := h.requirePilot(req); blocked {
+		return resp
+	}
+	if resp, blocked := h.requireExtension(req); blocked {
+		return resp
+	}
+	if resp, blocked := h.requireTabTracking(req); blocked {
+		return resp
+	}
+
 	var params struct {
 		URL         string `json:"url,omitempty"`
 		TabID       int    `json:"tab_id,omitempty"`
@@ -42,8 +52,8 @@ func (h *ToolHandler) handleExplorePage(req JSONRPCRequest, args json.RawMessage
 
 	resp := h.MaybeWaitForCommand(req, correlationID, args, "Explore page queued")
 
-	// Append inline screenshot if the command completed successfully
-	if !isResponseError(resp) {
+	// Append inline screenshot only if the command completed (not queued or error)
+	if !isResponseError(resp) && !isResponseQueued(resp) {
 		resp = h.appendScreenshotToResponse(resp, req)
 	}
 
