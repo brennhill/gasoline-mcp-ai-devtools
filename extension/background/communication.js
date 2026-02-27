@@ -86,6 +86,8 @@ export async function captureScreenshot(tabId, serverUrl, relatedErrorId, errorT
     }
     try {
         const tab = await chrome.tabs.get(tabId);
+        await chrome.windows.update(tab.windowId, { focused: true });
+        await chrome.tabs.update(tabId, { active: true });
         const dataUrl = await chrome.tabs.captureVisibleTab(tab.windowId, {
             format: 'jpeg',
             quality: 80
