@@ -44,6 +44,7 @@ export function domPrimitive(
     match_strategy?: string
     scope_selector_used?: string
     ranked_candidates?: { element_id: string; tag: string; text_preview?: string; score: number }[]
+    ambiguous_matches?: { total_count: number; warning: string; candidates: { tag: string; element_id: string; text_preview?: string }[] }
   } {
     const requestedScope = (options.scope_selector || '').trim()
     if (requestedScope && !scopeRoot) {
@@ -115,6 +116,23 @@ export function domPrimitive(
     ])
 
     if (!ambiguitySensitiveActions.has(action)) {
+      // #316: For text= selectors, always check total match count to add disambiguation warning
+      const allMatches = selector.startsWith('text=') ? resolveElements(selector, activeScope) : null
+      const ambiguousInfo = (() => {
+        if (!allMatches || allMatches.length <= 1) return undefined
+        const uniqueAll = uniqueElements(allMatches)
+        if (uniqueAll.length <= 1) return undefined
+        return {
+          total_count: uniqueAll.length,
+          warning: `Selector "${selector}" matched ${uniqueAll.length} elements. First match was used. Use :nth-match(N) or scope_selector to disambiguate.`,
+          candidates: uniqueAll.slice(0, 5).map((c) => ({
+            tag: c.tagName.toLowerCase(),
+            element_id: getOrCreateElementID(c),
+            text_preview: ((c as HTMLElement).textContent || '').trim().slice(0, 60) || undefined
+          }))
+        }
+      })()
+
       const direct = resolveElement(selector, activeScope)
       if (direct && intersectsScopeRect(direct)) {
         return {
@@ -123,7 +141,8 @@ export function domPrimitive(
           match_strategy: selector.includes(':nth-match(')
             ? 'nth_match_selector'
             : (scopeRect ? 'rect_selector' : (requestedScope ? 'scoped_selector' : 'selector')),
-          scope_selector_used: scopeSelectorUsed
+          scope_selector_used: scopeSelectorUsed,
+          ...(ambiguousInfo ? { ambiguous_matches: ambiguousInfo } : {})
         }
       }
       const scopedMatches = filterByScopeRect(uniqueElements(resolveElements(selector, activeScope)))
@@ -137,7 +156,8 @@ export function domPrimitive(
         element: found,
         match_count: 1,
         match_strategy: scopeRect ? 'rect_selector' : (requestedScope ? 'scoped_selector' : 'selector'),
-        scope_selector_used: scopeSelectorUsed
+        scope_selector_used: scopeSelectorUsed,
+        ...(ambiguousInfo ? { ambiguous_matches: ambiguousInfo } : {})
       }
     }
 
@@ -217,6 +237,7 @@ export function domPrimitive(
   const resolvedMatchStrategy = resolved.match_strategy || 'selector'
   const resolvedScopeSelector = resolved.scope_selector_used
   const resolvedRankedCandidates = resolved.ranked_candidates
+  const resolvedAmbiguousMatches = resolved.ambiguous_matches
 
   function mutatingSuccess(
     node: Element,
@@ -447,6 +468,43 @@ export function domPrimitive(
     return { success: true }
   }
 
+  // --- #336: Check if element is outside the viewport and auto-scroll into view ---
+  function isElementOutsideViewport(el: Element): boolean {
+    if (!(el instanceof HTMLElement) || typeof el.getBoundingClientRect !== 'function') return false
+    const rect = el.getBoundingClientRect()
+    const viewHeight = typeof window !== 'undefined' && typeof window.innerHeight === 'number'
+      ? window.innerHeight
+      : (typeof document !== 'undefined' && document.documentElement ? document.documentElement.clientHeight : 0)
+    const viewWidth = typeof window !== 'undefined' && typeof window.innerWidth === 'number'
+      ? window.innerWidth
+      : (typeof document !== 'undefined' && document.documentElement ? document.documentElement.clientWidth : 0)
+    if (viewHeight === 0 && viewWidth === 0) return false
+    return rect.bottom < 0 || rect.top > viewHeight || rect.right < 0 || rect.left > viewWidth
+  }
+
+  function autoScrollIfNeeded(el: Element): boolean {
+    if (isElementOutsideViewport(el)) {
+      el.scrollIntoView({ behavior: 'instant', block: 'center' })
+      return true
+    }
+    return false
+  }
+
+  // --- #332: Find nearest interactive ancestor for non-interactive wrapper elements ---
+  function findInteractiveAncestor(el: Element): Element | null {
+    const tag = el.tagName.toLowerCase()
+    const role = el.getAttribute('role') || ''
+    const interactiveTags = new Set(['a', 'button', 'input', 'select', 'textarea'])
+    const interactiveRoles = new Set(['button', 'link', 'menuitem', 'tab', 'option', 'switch'])
+    // Already interactive — no need to bubble up
+    if (interactiveTags.has(tag) || interactiveRoles.has(role)) return null
+    if (typeof el.closest === 'function') {
+      const ancestor = el.closest('a, button, [role="button"], [role="link"], [role="menuitem"], [role="tab"], input, select, textarea')
+      if (ancestor && ancestor !== el) return ancestor
+    }
+    return null
+  }
+
   type ActionHandler = () => DOMResult | Promise<DOMResult>
 
   function buildActionHandlers(node: Element): Record<string, ActionHandler> {
@@ -454,12 +512,17 @@ export function domPrimitive(
       click: () =>
         withMutationTracking(() => {
           if (!(node instanceof HTMLElement)) return domError('not_interactive', `Element is not an HTMLElement: ${node.tagName}`)
+
+          // #332: Bubble up to nearest interactive ancestor if the matched element is a wrapper
+          const interactiveAncestor = findInteractiveAncestor(node)
+          const clickTarget = (interactiveAncestor instanceof HTMLElement ? interactiveAncestor : node) as HTMLElement
+
           if (options.new_tab) {
             const linkNode = (() => {
-              const tag = node.tagName.toLowerCase()
-              if (tag === 'a') return node as Element
-              if (typeof node.closest === 'function') {
-                return node.closest('a[href]')
+              const tag = clickTarget.tagName.toLowerCase()
+              if (tag === 'a') return clickTarget as Element
+              if (typeof clickTarget.closest === 'function') {
+                return clickTarget.closest('a[href]')
               }
               return null
             })()
@@ -492,10 +555,12 @@ export function domPrimitive(
               }
             }
 
-            return mutatingSuccess(node, { value: href, reason: 'opened_new_tab' })
+            return mutatingSuccess(clickTarget, { value: href, reason: 'opened_new_tab' })
           }
-          node.click()
-          return mutatingSuccess(node)
+          // #336: Auto-scroll off-screen elements into view before clicking
+          const didScroll = autoScrollIfNeeded(clickTarget)
+          clickTarget.click()
+          return mutatingSuccess(clickTarget, didScroll ? { auto_scrolled: true } : undefined)
         }),
 
       type: () =>
@@ -640,6 +705,32 @@ export function domPrimitive(
       },
 
       scroll_to: () => {
+        // #333: For body/html targets, find the actual scrollable container in SPA layouts
+        const tag = node.tagName.toLowerCase()
+        if (tag === 'body' || tag === 'html') {
+          const scrollable = (() => {
+            const divs = document.querySelectorAll('*')
+            for (let i = 0; i < divs.length; i++) {
+              const d = divs[i] as HTMLElement
+              if (!d || typeof d.getBoundingClientRect !== 'function') continue
+              if (d.scrollHeight > d.clientHeight + 50) {
+                const style = typeof getComputedStyle === 'function' ? getComputedStyle(d) : null
+                if (style) {
+                  const ov = style.overflow || ''
+                  const ovY = style.overflowY || ''
+                  if (ov === 'auto' || ov === 'scroll' || ovY === 'auto' || ovY === 'scroll') {
+                    return d
+                  }
+                }
+              }
+            }
+            return null
+          })()
+          if (scrollable) {
+            scrollable.scrollIntoView({ behavior: 'smooth', block: 'center' })
+            return mutatingSuccess(node, { reason: 'scrolled_nested_container' })
+          }
+        }
         node.scrollIntoView({ behavior: 'smooth', block: 'center' })
         return mutatingSuccess(node)
       },
@@ -766,7 +857,22 @@ export function domPrimitive(
   if (!handler) {
     return domError('unknown_action', `Unknown DOM action: ${action}`)
   }
-  return handler()
+
+  // #316: Enrich result with ambiguous_matches warning if text= matched multiple elements
+  const rawResult = handler()
+  if (!resolvedAmbiguousMatches) return rawResult
+  if (rawResult instanceof Promise) {
+    return rawResult.then((r) => {
+      if (r && typeof r === 'object' && r.success) {
+        return { ...r, ambiguous_matches: resolvedAmbiguousMatches }
+      }
+      return r
+    })
+  }
+  if (rawResult && typeof rawResult === 'object' && (rawResult as DOMResult).success) {
+    return { ...(rawResult as DOMResult), ambiguous_matches: resolvedAmbiguousMatches }
+  }
+  return rawResult
 }
 
 // Dispatcher utilities (parseDOMParams, executeDOMAction, etc.) moved to ./dom-dispatch.ts

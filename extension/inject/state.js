@@ -4,7 +4,7 @@
  * Docs: docs/features/feature/interact-explore/index.md
  * Docs: docs/features/feature/query-dom/index.md
  */
-import { sendPerformanceSnapshot } from '../lib/perf-snapshot.js';
+import { sendPerformanceSnapshot } from '../lib/perf-snapshot';
 /** Read the page nonce set by the content script on the inject script element */
 let pageNonce = '';
 if (typeof document !== 'undefined' && typeof document.querySelector === 'function') {

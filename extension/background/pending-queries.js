@@ -5,13 +5,13 @@
  * Docs: docs/features/feature/interact-explore/index.md
  * Docs: docs/features/feature/observe/index.md
  */
-import { dispatch } from './commands/registry.js';
+import { dispatch } from './commands/registry';
 // Import command modules to trigger handler registration
-import './commands/observe.js';
-import './commands/analyze.js';
-import './commands/interact.js';
+import './commands/observe';
+import './commands/analyze';
+import './commands/interact';
 // Re-export handlePilotCommand (used by index.ts re-export chain)
-export { handlePilotCommand } from './commands/interact.js';
+export { handlePilotCommand } from './commands/interact';
 export async function handlePendingQuery(query, syncClient) {
     return dispatch(query, syncClient);
 }

@@ -12,7 +12,7 @@
  * Design: Toggle controls use CSS class 'active' for state. Domain filters are
  * stored as newline-separated strings, parsed to arrays on save.
  */
-import { SettingName, StorageKey, DEFAULT_SERVER_URL } from './lib/constants.js';
+import { SettingName, StorageKey, DEFAULT_SERVER_URL } from './lib/constants';
 /**
  * Load saved options
  */

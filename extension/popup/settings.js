@@ -3,7 +3,7 @@
  * Why: Keeps destructive and behavior-changing popup operations centralized with explicit UX safeguards.
  * Docs: docs/features/feature/browser-extension-enhancement/index.md
  */
-import { SettingName } from '../lib/constants.js';
+import { SettingName } from '../lib/constants';
 /**
  * Handle WebSocket mode change
  */

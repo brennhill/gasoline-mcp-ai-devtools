@@ -7,8 +7,8 @@
  */
 // recording-capture.ts — Tab capture stream acquisition, offscreen document management, and user gesture flow.
 // Extracted from recording.ts to separate media plumbing from recording lifecycle.
-import { scaleTimeout } from '../lib/timeouts.js';
-import { StorageKey } from '../lib/constants.js';
+import { scaleTimeout } from '../lib/timeouts';
+import { StorageKey } from '../lib/constants';
 const LOG = '[Gasoline REC]';
 /** Ensure the offscreen document exists for recording. */
 export async function ensureOffscreenDocument() {

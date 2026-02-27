@@ -6,7 +6,7 @@
 /**
  * @fileoverview Shared constants for the Gasoline extension capture modules.
  */
-import { scaleTimeout } from './timeouts.js';
+import { scaleTimeout } from './timeouts';
 // Server defaults
 export const DEFAULT_SERVER_URL = 'http://localhost:7890';
 // Serialization limits

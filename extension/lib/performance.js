@@ -8,8 +8,8 @@
  * Wraps performance.mark/measure to capture calls, uses PerformanceObserver
  * for additional entries, and provides error-time performance snapshots.
  */
-import { MAX_PERFORMANCE_ENTRIES, PERFORMANCE_TIME_WINDOW_MS } from './constants.js';
-import { scheduleSnapshotResend } from './perf-snapshot.js';
+import { MAX_PERFORMANCE_ENTRIES, PERFORMANCE_TIME_WINDOW_MS } from './constants';
+import { scheduleSnapshotResend } from './perf-snapshot';
 // Performance Marks state
 let performanceMarksEnabled = false;
 let capturedMarks = [];

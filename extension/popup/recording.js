@@ -8,7 +8,7 @@
  * @fileoverview Recording UI Module for Popup
  * Manages recording controls, timer display, and mic permission flow.
  */
-import { StorageKey } from '../lib/constants.js';
+import { StorageKey } from '../lib/constants';
 // #lizard forgives
 function showRecording(els, state, name, startTime) {
     state.isRecording = true;
