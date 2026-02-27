@@ -983,7 +983,6 @@ export function domPrimitive(
           error: domError('overlay_not_found', 'No visible dialog/overlay/modal found to dismiss.')
         }
       }
-      const overlayInfo = describeOverlay(overlayElement)
 
       // Strategy A: Try expanded close button selectors within the overlay
       const closeButtonSelectors = [
@@ -1783,6 +1782,8 @@ export function domPrimitive(
 
             return mutatingSuccess(clickTarget, { value: href, reason: 'opened_new_tab' })
           }
+
+
           // #336: Auto-scroll off-screen elements into view before clicking
           const didScroll = autoScrollIfNeeded(clickTarget)
           clickTarget.click()

@@ -416,7 +416,6 @@
           error: domError('overlay_not_found', 'No visible dialog/overlay/modal found to dismiss.')
         }
       }
-      const overlayInfo = describeOverlay(overlayElement)
 
       // Strategy A: Try expanded close button selectors within the overlay
       const closeButtonSelectors = [

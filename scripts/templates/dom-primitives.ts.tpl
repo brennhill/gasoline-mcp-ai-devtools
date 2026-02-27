@@ -594,6 +594,8 @@ export function domPrimitive(
 
             return mutatingSuccess(clickTarget, { value: href, reason: 'opened_new_tab' })
           }
+
+
           // #336: Auto-scroll off-screen elements into view before clicking
           const didScroll = autoScrollIfNeeded(clickTarget)
           clickTarget.click()
