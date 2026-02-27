@@ -221,6 +221,23 @@ func (c *Capture) SetLifecycleCallback(cb func(event string, data map[string]any
 	c.lifecycleCallback = cb
 }
 
+// AddLifecycleCallback appends a callback to the lifecycle event chain.
+// Unlike SetLifecycleCallback, this preserves any previously registered callback
+// and calls both in order. Thread-safe.
+func (c *Capture) AddLifecycleCallback(cb func(event string, data map[string]any)) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	existing := c.lifecycleCallback
+	if existing == nil {
+		c.lifecycleCallback = cb
+		return
+	}
+	c.lifecycleCallback = func(event string, data map[string]any) {
+		existing(event, data)
+		cb(event, data)
+	}
+}
+
 // emitLifecycleEvent dispatches lifecycle callbacks outside lock-heavy paths.
 //
 // Invariants:
