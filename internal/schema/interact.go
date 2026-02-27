@@ -260,6 +260,10 @@ func InteractToolSchema() mcp.MCPTool {
 					"type":        "string",
 					"description": "File path to save output (run_a11y_and_export_sarif)",
 				},
+				"include_screenshot": map[string]any{
+					"type":        "boolean",
+					"description": "Capture a screenshot after the action completes and return it inline as an image content block",
+				},
 			},
 			"required": []string{"what"},
 		},
