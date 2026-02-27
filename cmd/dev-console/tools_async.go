@@ -91,11 +91,16 @@ func (h *ToolHandler) finalizePendingDisconnect(req JSONRPCRequest, correlationI
 // MaybeWaitForCommand blocks until an async command completes, or returns a "queued"
 // response if background execution is requested or the safety timeout is reached.
 // This is the core implementation of "Synchronous-by-Default" mode.
+//
+// Accepts optional timeout_ms parameter (via args JSON) to override the default
+// wait duration. When timeout_ms > 0, the total wait budget is set to that value
+// instead of the default 15s + 5s retry. Issue #275.
 func (h *ToolHandler) MaybeWaitForCommand(req JSONRPCRequest, correlationID string, args json.RawMessage, queuedSummary string) JSONRPCResponse {
 	var params struct {
 		Sync       *bool `json:"sync"`
 		Wait       *bool `json:"wait"`
 		Background bool  `json:"background"`
+		TimeoutMs  int   `json:"timeout_ms"`
 	}
 	lenientUnmarshal(args, &params)
 
@@ -130,13 +135,31 @@ func (h *ToolHandler) MaybeWaitForCommand(req JSONRPCRequest, correlationID stri
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrNoData, "Extension is not connected", "Ensure the Gasoline extension shows 'Connected' and a tab is tracked.", h.diagnosticHint())}
 	}
 
-	// Wait for result (15s default for "Sync-by-Default" pattern).
+	// Determine wait budget from timeout_ms or defaults.
+	// timeout_ms > 0 overrides the default 15s initial + 5s retry pattern.
+	// Clamp to [100ms, 120s] to prevent misuse.
+	initialWait := asyncInitialWait
+	retryWait := asyncRetryWait
+	if params.TimeoutMs > 0 {
+		totalBudget := time.Duration(params.TimeoutMs) * time.Millisecond
+		if totalBudget < 100*time.Millisecond {
+			totalBudget = 100 * time.Millisecond
+		}
+		if totalBudget > 120*time.Second {
+			totalBudget = 120 * time.Second
+		}
+		// Allocate 75% to initial wait, 25% to retry
+		initialWait = totalBudget * 3 / 4
+		retryWait = totalBudget - initialWait
+	}
+
+	// Wait for result (15s default for "Sync-by-Default" pattern, or timeout_ms).
 	// Most DOM actions (click, type) take < 500ms over long-polling.
 	// 15s is safe for most navigations while staying well under the 60s IDE timeout.
 	attempts := 1
 	totalWaitMs := int64(0)
 
-	cmd, found, disconnected, waitedMs := h.waitForCommandWithConnectivity(correlationID, asyncInitialWait)
+	cmd, found, disconnected, waitedMs := h.waitForCommandWithConnectivity(correlationID, initialWait)
 	totalWaitMs += waitedMs
 	if !found {
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInternal, "Command not found after queuing", "Internal error — do not retry")}
@@ -145,11 +168,11 @@ func (h *ToolHandler) MaybeWaitForCommand(req JSONRPCRequest, correlationID stri
 		return h.finalizePendingDisconnect(req, correlationID)
 	}
 
-	// Single retry: if still pending and extension is connected, wait 5s more.
+	// Single retry: if still pending and extension is connected, wait more.
 	// This catches commands that complete just after the initial timeout.
 	if cmd.Status == "pending" && h.capture.IsExtensionConnected() {
 		attempts = 2
-		cmd, found, disconnected, waitedMs = h.waitForCommandWithConnectivity(correlationID, asyncRetryWait)
+		cmd, found, disconnected, waitedMs = h.waitForCommandWithConnectivity(correlationID, retryWait)
 		totalWaitMs += waitedMs
 		if !found {
 			return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInternal, "Command not found after retry", "Internal error — do not retry")}

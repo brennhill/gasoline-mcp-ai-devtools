@@ -155,3 +155,28 @@ func (c *Capture) SetCSPStatusForTest(restricted bool, level string) {
 func (c *Capture) GetLastPendingQuery() *queries.PendingQuery {
 	return c.qd.GetLastPendingQuery()
 }
+
+// SimulateSyncForTest simulates a /sync connection from the extension,
+// triggering lifecycle callbacks (extension_connected) like a real sync would.
+// This is faster than calling HandleSync because it avoids the 5-second long-poll.
+// Thread-safe (TEST ONLY).
+func (c *Capture) SimulateSyncForTest(extSessionID string, clientID string) {
+	now := time.Now()
+	req := SyncRequest{
+		ExtSessionID: extSessionID,
+		Settings: &SyncSettings{
+			PilotEnabled:    false,
+			TrackingEnabled: true,
+			TrackedTabID:    1,
+		},
+	}
+	state := c.updateSyncConnectionState(req, clientID, now)
+
+	if !state.wasConnected || state.isReconnect {
+		c.emitLifecycleEvent("extension_connected", map[string]any{
+			"ext_session_id":     state.extSessionID,
+			"is_reconnect":       state.isReconnect,
+			"disconnect_seconds": state.timeSinceLastPoll.Seconds(),
+		})
+	}
+}
