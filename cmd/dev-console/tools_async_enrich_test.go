@@ -163,7 +163,7 @@ func TestEnrichCommandResponseData_ReturnValueSurfaced(t *testing.T) {
 	}`)
 
 	responseData := map[string]any{}
-	embeddedErr, hasErr := enrichCommandResponseData(result, responseData)
+	embeddedErr, hasErr := enrichCommandResponseData(result, responseData, "exec_test_123")
 	if hasErr {
 		t.Fatalf("unexpected embedded error: %s", embeddedErr)
 	}
@@ -193,7 +193,7 @@ func TestEnrichCommandResponseData_ReturnValueNil(t *testing.T) {
 	}`)
 
 	responseData := map[string]any{}
-	enrichCommandResponseData(result, responseData)
+	enrichCommandResponseData(result, responseData, "exec_test_456")
 
 	// return_value should still be surfaced even when null
 	if _, ok := responseData["return_value"]; !ok {
