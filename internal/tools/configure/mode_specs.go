@@ -446,6 +446,10 @@ var toolModeSpecs = map[string]map[string]modeParamSpec{
 			Hint:     "Composite page exploration: screenshot, interactive elements, readable text, navigation links, and metadata in one call",
 			Optional: []string{"url", "visible_only", "limit"},
 		},
+		"batch": {
+			Hint:     "Execute a sequence of interact actions in one call",
+			Optional: []string{"steps", "step_timeout_ms", "continue_on_error", "stop_after_step"},
+		},
 	},
 
 	// ── analyze ────────────────────────────────────────────────
@@ -532,6 +536,14 @@ var toolModeSpecs = map[string]map[string]modeParamSpec{
 		"navigation": {
 			Hint:     "Discover navigable links grouped by page region (nav, header, footer, aside)",
 			Optional: []string{"tab_id"},
+		},
+		"page_structure": {
+			Hint:     "Detect frameworks, routing, scroll containers, modals, shadow DOM, and meta tags",
+			Optional: []string{"tab_id"},
+		},
+		"audit": {
+			Hint:     "Lighthouse-style combined audit: performance, accessibility, security, best practices",
+			Optional: []string{"categories", "summary"},
 		},
 	},
 

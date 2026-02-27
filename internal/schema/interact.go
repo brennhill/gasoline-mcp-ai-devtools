@@ -26,6 +26,7 @@ var interactActions = []string{
 	"upload", "draw_mode_start",
 	"hardware_click", "activate_tab",
 	"explore_page",
+	"batch",
 }
 
 // InteractToolSchema returns the MCP tool definition for the interact tool.
@@ -278,6 +279,23 @@ func InteractToolSchema() mcp.MCPTool {
 				"stability_ms": map[string]any{
 					"type":        "number",
 					"description": "Milliseconds of DOM quiet time required for wait_for_stable (default 500)",
+				},
+				"steps": map[string]any{
+					"type":        "array",
+					"description": "Ordered list of interact actions to execute sequentially (batch)",
+					"items":       map[string]any{"type": "object"},
+				},
+				"step_timeout_ms": map[string]any{
+					"type":        "number",
+					"description": "Timeout per step during batch execution (default 10000)",
+				},
+				"continue_on_error": map[string]any{
+					"type":        "boolean",
+					"description": "Continue executing remaining steps after a failure (default true)",
+				},
+				"stop_after_step": map[string]any{
+					"type":        "number",
+					"description": "Stop batch execution after this many steps",
 				},
 			},
 			"required": []string{"what"},
