@@ -67,6 +67,8 @@ func (h *ToolHandler) interactDispatch() map[string]interactHandler {
 			"fill_form":                 h.handleFillForm,
 			"run_a11y_and_export_sarif": h.handleRunA11yAndExportSARIF,
 			"explore_page":              h.handleExplorePage,
+			"wait_for_stable":          h.handleWaitForStable,
+			"auto_dismiss_overlays":    h.handleAutoDismissOverlays,
 		}
 	})
 	return h.interactHandlers
@@ -173,6 +175,9 @@ func (h *ToolHandler) toolInteract(req JSONRPCRequest, args json.RawMessage) JSO
 	var composableParams struct {
 		Subtitle          *string `json:"subtitle"`
 		IncludeScreenshot bool    `json:"include_screenshot"`
+		AutoDismiss       bool    `json:"auto_dismiss"`
+		WaitForStable     bool    `json:"wait_for_stable"`
+		StabilityMs       int     `json:"stability_ms,omitempty"`
 	}
 	lenientUnmarshal(args, &composableParams)
 
@@ -182,6 +187,16 @@ func (h *ToolHandler) toolInteract(req JSONRPCRequest, args json.RawMessage) JSO
 	// Only queue if the primary action didn't fail (avoid subtitle on error).
 	if composableParams.Subtitle != nil && what != "subtitle" && resp.Error == nil {
 		h.queueComposableSubtitle(req, *composableParams.Subtitle)
+	}
+
+	// If auto_dismiss was requested on navigate and succeeded, queue auto_dismiss_overlays.
+	if composableParams.AutoDismiss && what == "navigate" && resp.Error == nil && !isResponseError(resp) {
+		h.queueComposableAutoDismiss(req)
+	}
+
+	// If wait_for_stable was requested on navigate/click and succeeded, queue wait_for_stable.
+	if composableParams.WaitForStable && (what == "navigate" || what == "click") && resp.Error == nil && !isResponseError(resp) {
+		h.queueComposableWaitForStable(req, composableParams.StabilityMs)
 	}
 
 	// If include_screenshot was requested and the action succeeded, capture a screenshot
@@ -899,6 +914,8 @@ func (h *ToolHandler) handleDOMPrimitive(req JSONRPCRequest, args json.RawMessag
 		"submit_active_composer": true,
 		"confirm_top_dialog":     true,
 		"dismiss_top_overlay":    true,
+		"auto_dismiss_overlays":  true,
+		"wait_for_stable":        true,
 		"key_press":             true,
 	}
 	if params.Selector == "" && params.ElementID == "" && !selectorOptionalActions[action] {
