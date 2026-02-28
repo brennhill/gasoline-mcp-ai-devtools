@@ -170,8 +170,8 @@ func TestBuildCapabilitiesSummary_ObserveHints(t *testing.T) {
 	observeRaw := summary["observe"].(map[string]any)
 	modes := observeRaw["modes"].(map[string]string)
 
-	if modes["errors"] != "Raw JavaScript console errors" {
-		t.Errorf("errors hint = %q, want 'Raw JavaScript console errors'", modes["errors"])
+	if modes["errors"] != "Raw JavaScript console errors. summary=true returns counts by source + top messages" {
+		t.Errorf("errors hint = %q, want 'Raw JavaScript console errors. summary=true returns counts by source + top messages'", modes["errors"])
 	}
 	if modes["screenshot"] != "Capture page screenshot (full page or element)" {
 		t.Errorf("screenshot hint = %q", modes["screenshot"])

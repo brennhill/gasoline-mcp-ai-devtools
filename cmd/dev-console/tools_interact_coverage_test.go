@@ -193,7 +193,7 @@ func TestHandleListInteractive_InvalidJSON(t *testing.T) {
 }
 
 // ============================================
-// handlePilotHighlight — 50% → 80%+
+// handleHighlight — 50% → 80%+
 // ============================================
 
 func TestHandlePilotHighlight_Success(t *testing.T) {
@@ -281,7 +281,7 @@ func TestHandlePilotHighlight_InvalidJSON(t *testing.T) {
 
 	args := json.RawMessage(`{bad}`)
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: 1}
-	resp := env.handler.handlePilotHighlight(req, args)
+	resp := env.handler.handleHighlight(req, args)
 
 	var result MCPToolResult
 	if err := json.Unmarshal(resp.Result, &result); err != nil {

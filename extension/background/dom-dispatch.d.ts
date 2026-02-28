@@ -7,8 +7,6 @@
  */
 import type { PendingQuery } from '../types/queries.js';
 import type { SyncClient } from './sync-client.js';
-type SendAsyncResult = (syncClient: SyncClient, queryId: string, correlationId: string, status: 'complete' | 'error' | 'timeout', result?: unknown, error?: string) => void;
-type ActionToast = (tabId: number, text: string, detail?: string, state?: 'trying' | 'success' | 'warning' | 'error', durationMs?: number) => void;
-export declare function executeDOMAction(query: PendingQuery, tabId: number, syncClient: SyncClient, sendAsyncResult: SendAsyncResult, actionToast: ActionToast): Promise<void>;
-export {};
+import type { SendAsyncResultFn, ActionToastFn } from './commands/helpers.js';
+export declare function executeDOMAction(query: PendingQuery, tabId: number, syncClient: SyncClient, sendAsyncResult: SendAsyncResultFn, actionToast: ActionToastFn): Promise<void>;
 //# sourceMappingURL=dom-dispatch.d.ts.map

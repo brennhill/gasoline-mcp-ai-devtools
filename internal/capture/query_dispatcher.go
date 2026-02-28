@@ -20,37 +20,37 @@ var NewQueryDispatcher = queries.NewQueryDispatcher
 
 // CreatePendingQuery delegates to QueryDispatcher.
 func (c *Capture) CreatePendingQuery(query queries.PendingQuery) (string, error) {
-	return c.qd.CreatePendingQuery(query)
+	return c.queryDispatcher.CreatePendingQuery(query)
 }
 
 // CreatePendingQueryWithClient delegates to QueryDispatcher.
 func (c *Capture) CreatePendingQueryWithClient(query queries.PendingQuery, clientID string) (string, error) {
-	return c.qd.CreatePendingQueryWithClient(query, clientID)
+	return c.queryDispatcher.CreatePendingQueryWithClient(query, clientID)
 }
 
 // CreatePendingQueryWithTimeout delegates to QueryDispatcher.
 func (c *Capture) CreatePendingQueryWithTimeout(query queries.PendingQuery, timeout time.Duration, clientID string) (string, error) {
-	return c.qd.CreatePendingQueryWithTimeout(query, timeout, clientID)
+	return c.queryDispatcher.CreatePendingQueryWithTimeout(query, timeout, clientID)
 }
 
 // GetPendingQueries delegates to QueryDispatcher.
 func (c *Capture) GetPendingQueries() []queries.PendingQueryResponse {
-	return c.qd.GetPendingQueries()
+	return c.queryDispatcher.GetPendingQueries()
 }
 
 // GetPendingQueriesForClient delegates to QueryDispatcher.
 func (c *Capture) GetPendingQueriesForClient(clientID string) []queries.PendingQueryResponse {
-	return c.qd.GetPendingQueriesForClient(clientID)
+	return c.queryDispatcher.GetPendingQueriesForClient(clientID)
 }
 
 // WaitForPendingQueries delegates to QueryDispatcher.
 func (c *Capture) WaitForPendingQueries(timeout time.Duration) {
-	c.qd.WaitForPendingQueries(timeout)
+	c.queryDispatcher.WaitForPendingQueries(timeout)
 }
 
 // AcknowledgePendingQuery delegates to QueryDispatcher.
 func (c *Capture) AcknowledgePendingQuery(queryID string) {
-	c.qd.AcknowledgePendingQuery(queryID)
+	c.queryDispatcher.AcknowledgePendingQuery(queryID)
 }
 
 // GetPendingQueriesDisconnectAware returns pending queries with disconnect reconciliation.
@@ -63,121 +63,121 @@ func (c *Capture) AcknowledgePendingQuery(queryID string) {
 // - On healthy connection, behavior matches GetPendingQueries.
 func (c *Capture) GetPendingQueriesDisconnectAware() []queries.PendingQueryResponse {
 	c.mu.RLock()
-	neverSynced := c.ext.lastSyncSeen.IsZero()
-	disconnected := !neverSynced && time.Since(c.ext.lastSyncSeen) >= extensionDisconnectThreshold
+	neverSynced := c.extensionState.lastSyncSeen.IsZero()
+	disconnected := !neverSynced && time.Since(c.extensionState.lastSyncSeen) >= extensionDisconnectThreshold
 	c.mu.RUnlock()
 
 	// If extension was previously connected but is now stale, expire all pending queries
 	if disconnected {
-		c.qd.ExpireAllPendingQueries("extension_disconnected")
+		c.queryDispatcher.ExpireAllPendingQueries("extension_disconnected")
 		return nil
 	}
 
-	return c.qd.GetPendingQueries()
+	return c.queryDispatcher.GetPendingQueries()
 }
 
 // SetQueryResult delegates to QueryDispatcher.
 func (c *Capture) SetQueryResult(id string, result json.RawMessage) {
-	c.qd.SetQueryResult(id, result)
+	c.queryDispatcher.SetQueryResult(id, result)
 }
 
 // SetQueryResultWithClient delegates to QueryDispatcher.
 func (c *Capture) SetQueryResultWithClient(id string, result json.RawMessage, clientID string) {
-	c.qd.SetQueryResultWithClient(id, result, clientID)
+	c.queryDispatcher.SetQueryResultWithClient(id, result, clientID)
 }
 
 // SetQueryResultWithClientNoCommandComplete delegates to QueryDispatcher while
 // preserving command lifecycle status (no implicit "complete" transition).
 func (c *Capture) SetQueryResultWithClientNoCommandComplete(id string, result json.RawMessage, clientID string) {
-	c.qd.SetQueryResultWithClientNoCommandComplete(id, result, clientID)
+	c.queryDispatcher.SetQueryResultWithClientNoCommandComplete(id, result, clientID)
 }
 
 // GetQueryResult delegates to QueryDispatcher.
 func (c *Capture) GetQueryResult(id string) (json.RawMessage, bool) {
-	return c.qd.GetQueryResult(id)
+	return c.queryDispatcher.GetQueryResult(id)
 }
 
 // GetQueryResultForClient delegates to QueryDispatcher.
 func (c *Capture) GetQueryResultForClient(id string, clientID string) (json.RawMessage, bool) {
-	return c.qd.GetQueryResultForClient(id, clientID)
+	return c.queryDispatcher.GetQueryResultForClient(id, clientID)
 }
 
 // WaitForResult delegates to QueryDispatcher.
 func (c *Capture) WaitForResult(id string, timeout time.Duration) (json.RawMessage, error) {
-	return c.qd.WaitForResult(id, timeout)
+	return c.queryDispatcher.WaitForResult(id, timeout)
 }
 
 // WaitForResultWithClient delegates to QueryDispatcher.
 func (c *Capture) WaitForResultWithClient(id string, timeout time.Duration, clientID string) (json.RawMessage, error) {
-	return c.qd.WaitForResultWithClient(id, timeout, clientID)
+	return c.queryDispatcher.WaitForResultWithClient(id, timeout, clientID)
 }
 
 // SetQueryTimeout delegates to QueryDispatcher.
 func (c *Capture) SetQueryTimeout(timeout time.Duration) {
-	c.qd.SetQueryTimeout(timeout)
+	c.queryDispatcher.SetQueryTimeout(timeout)
 }
 
 // GetQueryTimeout delegates to QueryDispatcher.
 func (c *Capture) GetQueryTimeout() time.Duration {
-	return c.qd.GetQueryTimeout()
+	return c.queryDispatcher.GetQueryTimeout()
 }
 
 // RegisterCommand delegates to QueryDispatcher.
 func (c *Capture) RegisterCommand(correlationID string, queryID string, timeout time.Duration) {
-	c.qd.RegisterCommand(correlationID, queryID, timeout)
+	c.queryDispatcher.RegisterCommand(correlationID, queryID, timeout)
 }
 
 // CompleteCommand delegates to QueryDispatcher.
 func (c *Capture) CompleteCommand(correlationID string, result json.RawMessage, err string) {
-	c.qd.CompleteCommand(correlationID, result, err)
+	c.queryDispatcher.CompleteCommand(correlationID, result, err)
 }
 
 // ApplyCommandResult delegates status-aware command updates to QueryDispatcher.
 func (c *Capture) ApplyCommandResult(correlationID string, status string, result json.RawMessage, err string) {
-	c.qd.ApplyCommandResult(correlationID, status, result, err)
+	c.queryDispatcher.ApplyCommandResult(correlationID, status, result, err)
 }
 
 // ExpireCommand delegates to QueryDispatcher.
 func (c *Capture) ExpireCommand(correlationID string) {
-	c.qd.ExpireCommand(correlationID)
+	c.queryDispatcher.ExpireCommand(correlationID)
 }
 
 // WaitForCommand delegates to QueryDispatcher.
 func (c *Capture) WaitForCommand(correlationID string, timeout time.Duration) (*queries.CommandResult, bool) {
-	return c.qd.WaitForCommand(correlationID, timeout)
+	return c.queryDispatcher.WaitForCommand(correlationID, timeout)
 }
 
 // GetCommandResult delegates to QueryDispatcher.
 func (c *Capture) GetCommandResult(correlationID string) (*queries.CommandResult, bool) {
-	return c.qd.GetCommandResult(correlationID)
+	return c.queryDispatcher.GetCommandResult(correlationID)
 }
 
 // GetPendingCommands delegates to QueryDispatcher.
 func (c *Capture) GetPendingCommands() []*queries.CommandResult {
-	return c.qd.GetPendingCommands()
+	return c.queryDispatcher.GetPendingCommands()
 }
 
 // GetCompletedCommands delegates to QueryDispatcher.
 func (c *Capture) GetCompletedCommands() []*queries.CommandResult {
-	return c.qd.GetCompletedCommands()
+	return c.queryDispatcher.GetCompletedCommands()
 }
 
 // GetFailedCommands delegates to QueryDispatcher.
 func (c *Capture) GetFailedCommands() []*queries.CommandResult {
-	return c.qd.GetFailedCommands()
+	return c.queryDispatcher.GetFailedCommands()
 }
 
 // GetRecentCommandTraces returns the latest command traces for diagnostics.
 func (c *Capture) GetRecentCommandTraces(limit int) []*queries.CommandResult {
-	return c.qd.GetRecentCommandTraces(limit)
+	return c.queryDispatcher.GetRecentCommandTraces(limit)
 }
 
 // QueuePosition delegates to QueryDispatcher.
 func (c *Capture) QueuePosition(correlationID string) int {
-	return c.qd.QueuePosition(correlationID)
+	return c.queryDispatcher.QueuePosition(correlationID)
 }
 
 // QueueDepth delegates to QueryDispatcher.
 func (c *Capture) QueueDepth() int {
-	return c.qd.QueueDepth()
+	return c.queryDispatcher.QueueDepth()
 }

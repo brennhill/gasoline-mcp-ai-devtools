@@ -185,8 +185,6 @@ func copyCommandResultWithTrace(src *CommandResult) *CommandResult {
 // GetRecentCommandTraces returns the latest command traces across active and failed commands.
 // Sorted by UpdatedAt descending and bounded by limit (if > 0).
 func (qd *QueryDispatcher) GetRecentCommandTraces(limit int) []*CommandResult {
-	qd.cleanExpiredCommands()
-
 	qd.resultsMu.RLock()
 	defer qd.resultsMu.RUnlock()
 

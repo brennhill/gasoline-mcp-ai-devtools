@@ -105,7 +105,7 @@ MCP_TOOL_HANDLERS=(
     "toolObserveCommandResult"
     "toolObservePendingCommands"
     "toolObserveFailedCommands"
-    "handlePilotExecuteJS"
+    "handleExecuteJS"
     "handleBrowserActionNavigate"
 )
 

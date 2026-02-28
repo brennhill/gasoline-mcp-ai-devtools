@@ -30,21 +30,21 @@ type interactHandler func(req JSONRPCRequest, args json.RawMessage) JSONRPCRespo
 func (h *ToolHandler) interactDispatch() map[string]interactHandler {
 	h.interactOnce.Do(func() {
 		h.interactHandlers = map[string]interactHandler{
-			"highlight":                 h.handlePilotHighlight,
-			"save_state":                h.handlePilotManageStateSave,
-			"state_save":                h.handlePilotManageStateSave, // backward-compatible alias
-			"load_state":                h.handlePilotManageStateLoad,
-			"state_load":                h.handlePilotManageStateLoad, // backward-compatible alias
-			"list_states":               h.handlePilotManageStateList,
-			"state_list":                h.handlePilotManageStateList, // backward-compatible alias
-			"delete_state":              h.handlePilotManageStateDelete,
-			"state_delete":              h.handlePilotManageStateDelete, // backward-compatible alias
+			"highlight":                 h.handleHighlight,
+			"save_state":                h.handleStateSave,
+			"state_save":                h.handleStateSave, // backward-compatible alias
+			"load_state":                h.handleStateLoad,
+			"state_load":                h.handleStateLoad, // backward-compatible alias
+			"list_states":               h.handleStateList,
+			"state_list":                h.handleStateList, // backward-compatible alias
+			"delete_state":              h.handleStateDelete,
+			"state_delete":              h.handleStateDelete, // backward-compatible alias
 			"set_storage":               h.handleSetStorage,
 			"delete_storage":            h.handleDeleteStorage,
 			"clear_storage":             h.handleClearStorage,
 			"set_cookie":                h.handleSetCookie,
 			"delete_cookie":             h.handleDeleteCookie,
-			"execute_js":                h.handlePilotExecuteJS,
+			"execute_js":                h.handleExecuteJS,
 			"navigate":                  h.handleBrowserActionNavigate,
 			"refresh":                   h.handleBrowserActionRefresh,
 			"back":                      h.handleBrowserActionBack,
@@ -191,19 +191,19 @@ func (h *ToolHandler) toolInteract(req JSONRPCRequest, args json.RawMessage) JSO
 	hasComposableSideEffects := false
 
 	// If auto_dismiss was requested on navigate and succeeded, queue auto_dismiss_overlays.
-	if composableParams.AutoDismiss && what == "navigate" && resp.Error == nil && !isResponseError(resp) {
+	if composableParams.AutoDismiss && what == "navigate" && !isErrorResponse(resp) {
 		h.queueComposableAutoDismiss(req)
 		hasComposableSideEffects = true
 	}
 
 	// If wait_for_stable was requested on navigate/click and succeeded, queue wait_for_stable.
-	if composableParams.WaitForStable && (what == "navigate" || what == "click") && resp.Error == nil && !isResponseError(resp) {
+	if composableParams.WaitForStable && (what == "navigate" || what == "click") && !isErrorResponse(resp) {
 		h.queueComposableWaitForStable(req, composableParams.StabilityMs)
 		hasComposableSideEffects = true
 	}
 
 	// If action_diff was requested and the action succeeded, queue mutation capture (#343).
-	if composableParams.ActionDiff && resp.Error == nil && !isResponseError(resp) {
+	if composableParams.ActionDiff && !isErrorResponse(resp) {
 		h.queueComposableActionDiff(req)
 		hasComposableSideEffects = true
 	}
@@ -220,13 +220,13 @@ func (h *ToolHandler) toolInteract(req JSONRPCRequest, args json.RawMessage) JSO
 
 	// If include_screenshot was requested and the action succeeded, capture a screenshot
 	// and append it as an inline image content block.
-	if composableParams.IncludeScreenshot && resp.Error == nil && !isResponseError(resp) {
+	if composableParams.IncludeScreenshot && !isErrorResponse(resp) {
 		resp = h.appendScreenshotToResponse(resp, req)
 	}
 
 	// If include_interactive was requested and the action succeeded, run list_interactive
 	// and merge the results into the response text.
-	if composableParams.IncludeInteractive && resp.Error == nil && !isResponseError(resp) {
+	if composableParams.IncludeInteractive && !isErrorResponse(resp) {
 		resp = h.appendInteractiveToResponse(resp, req)
 	}
 
@@ -287,18 +287,6 @@ func (h *ToolHandler) dispatchInteractAction(req JSONRPCRequest, args json.RawMe
 		return h.handleDOMPrimitive(req, args, action)
 	}
 	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrUnknownMode, "Unknown interact action: "+action, "Use a valid action from the 'what' enum", withParam("what"))}
-}
-
-// isResponseError checks if an MCP response contains an error result.
-func isResponseError(resp JSONRPCResponse) bool {
-	if resp.Result == nil {
-		return false
-	}
-	var result MCPToolResult
-	if err := json.Unmarshal(resp.Result, &result); err != nil {
-		return false
-	}
-	return result.IsError
 }
 
 // isResponseQueued checks if an MCP response is a "queued" async response.

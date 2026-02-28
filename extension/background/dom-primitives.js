@@ -2535,7 +2535,7 @@ export function domPrimitive(action, selector, options) {
                             '[class*="toast"]', '[class*="snackbar"]', '[class*="notification"]'
                         ];
                         for (const added of addedNodes) {
-                            if (isToastElement(added, toastSelectors)) {
+                            if (matchesAnySelectorSafe(added, toastSelectors)) {
                                 const text = (added.textContent || '').trim().slice(0, 200);
                                 if (text) {
                                     toasts.push({ text, type: classifyToastType(added) });
@@ -2563,7 +2563,7 @@ export function domPrimitive(action, selector, options) {
                             '[aria-invalid="true"]', '.has-error', '.is-invalid'
                         ];
                         for (const added of addedNodes) {
-                            if (isFormErrorElement(added, errorSelectors)) {
+                            if (matchesAnySelectorSafe(added, errorSelectors)) {
                                 const text = (added.textContent || '').trim().slice(0, 200);
                                 if (text)
                                     formErrors.push(text);
@@ -2587,7 +2587,7 @@ export function domPrimitive(action, selector, options) {
                             '[class*="spinner"]', '[class*="loading"]', '[class*="skeleton"]'
                         ];
                         for (const added of addedNodes) {
-                            if (isLoadingElement(added, loadingSelectors)) {
+                            if (matchesAnySelectorSafe(added, loadingSelectors)) {
                                 loadingIndicators.push(describeSelector(added));
                             }
                         }
@@ -2646,14 +2646,14 @@ export function domPrimitive(action, selector, options) {
                         }
                         return false;
                     }
-                    // Helper: check if element is a toast/notification
-                    function isToastElement(el, sels) {
+                    // Helper: check if element matches any selector from a list
+                    function matchesAnySelectorSafe(el, sels) {
                         for (const sel of sels) {
                             try {
                                 if (typeof el.matches === 'function' && el.matches(sel))
                                     return true;
                             }
-                            catch { /* ignore invalid selectors in matches */ }
+                            catch { }
                         }
                         return false;
                     }
@@ -2674,28 +2674,6 @@ export function domPrimitive(action, selector, options) {
                         if (role === 'status')
                             return 'status';
                         return 'info';
-                    }
-                    // Helper: check if element is a form error
-                    function isFormErrorElement(el, sels) {
-                        for (const sel of sels) {
-                            try {
-                                if (typeof el.matches === 'function' && el.matches(sel))
-                                    return true;
-                            }
-                            catch { /* ignore */ }
-                        }
-                        return false;
-                    }
-                    // Helper: check if element is a loading indicator
-                    function isLoadingElement(el, sels) {
-                        for (const sel of sels) {
-                            try {
-                                if (typeof el.matches === 'function' && el.matches(sel))
-                                    return true;
-                            }
-                            catch { /* ignore */ }
-                        }
-                        return false;
                     }
                     // Helper: generate a compact selector description for an element
                     function describeSelector(el) {

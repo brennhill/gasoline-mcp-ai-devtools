@@ -250,7 +250,7 @@ func TestExecuteJS_CSP_MainWorld_FastFail(t *testing.T) {
 
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`)}
 	args := json.RawMessage(`{"what":"execute_js","script":"return 1","world":"main","sync":false}`)
-	resp := env.handler.handlePilotExecuteJS(req, args)
+	resp := env.handler.handleExecuteJS(req, args)
 
 	code := extractErrorCode(t, resp)
 	if code != ErrExtError {
@@ -268,7 +268,7 @@ func TestExecuteJS_CSP_AutoWorld_PassesThrough(t *testing.T) {
 
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`)}
 	args := json.RawMessage(`{"what":"execute_js","script":"return 1","sync":false}`)
-	resp := env.handler.handlePilotExecuteJS(req, args)
+	resp := env.handler.handleExecuteJS(req, args)
 
 	// world=auto (default) passes through gate — extension handles CSP fallback
 	if !isSuccessOrQueued(t, resp) {
@@ -443,7 +443,7 @@ func TestSaveState_NoTabTracking_NoGate(t *testing.T) {
 
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`)}
 	args := json.RawMessage(`{"what":"save_state","snapshot_name":"test-state","sync":false}`)
-	resp := env.handler.handlePilotManageStateSave(req, args)
+	resp := env.handler.handleStateSave(req, args)
 
 	// If it is an error, it must NOT be the tab tracking error (ErrNoData with "tab" message).
 	if !isSuccessOrQueued(t, resp) {
@@ -467,7 +467,7 @@ func TestGateOrder_ParamValidation_BeforeExtension(t *testing.T) {
 
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`)}
 	args := json.RawMessage(`{"what":"execute_js","sync":false}`)
-	resp := env.handler.handlePilotExecuteJS(req, args)
+	resp := env.handler.handleExecuteJS(req, args)
 
 	code := extractErrorCode(t, resp)
 	if code != ErrMissingParam {
@@ -523,7 +523,7 @@ func TestGateOrder_TabTracking_BeforeCSP(t *testing.T) {
 
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`)}
 	args := json.RawMessage(`{"what":"execute_js","script":"return 1","world":"main","sync":false}`)
-	resp := env.handler.handlePilotExecuteJS(req, args)
+	resp := env.handler.handleExecuteJS(req, args)
 
 	code := extractErrorCode(t, resp)
 	if code != ErrNoData {
@@ -544,7 +544,7 @@ func TestGateOrder_Extension_BeforeCSP(t *testing.T) {
 
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`)}
 	args := json.RawMessage(`{"what":"execute_js","script":"return 1","world":"main","sync":false}`)
-	resp := env.handler.handlePilotExecuteJS(req, args)
+	resp := env.handler.handleExecuteJS(req, args)
 
 	code := extractErrorCode(t, resp)
 	if code != ErrNoData {
@@ -714,7 +714,7 @@ func TestSmoke_AllGates_SequentialFiring_ExecuteJS(t *testing.T) {
 
 		req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`)}
 		args := json.RawMessage(`{"what":"execute_js","world":"main","sync":false}`)
-		resp := env.handler.handlePilotExecuteJS(req, args)
+		resp := env.handler.handleExecuteJS(req, args)
 
 		code := extractErrorCode(t, resp)
 		if code != ErrMissingParam {
@@ -730,7 +730,7 @@ func TestSmoke_AllGates_SequentialFiring_ExecuteJS(t *testing.T) {
 
 		req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`)}
 		args := json.RawMessage(`{"what":"execute_js","script":"return 1","world":"main","sync":false}`)
-		resp := env.handler.handlePilotExecuteJS(req, args)
+		resp := env.handler.handleExecuteJS(req, args)
 
 		code := extractErrorCode(t, resp)
 		if code != ErrCodePilotDisabled {
@@ -746,7 +746,7 @@ func TestSmoke_AllGates_SequentialFiring_ExecuteJS(t *testing.T) {
 
 		req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`)}
 		args := json.RawMessage(`{"what":"execute_js","script":"return 1","world":"main","sync":false}`)
-		resp := env.handler.handlePilotExecuteJS(req, args)
+		resp := env.handler.handleExecuteJS(req, args)
 
 		code := extractErrorCode(t, resp)
 		if code != ErrNoData {
@@ -767,7 +767,7 @@ func TestSmoke_AllGates_SequentialFiring_ExecuteJS(t *testing.T) {
 
 		req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`)}
 		args := json.RawMessage(`{"what":"execute_js","script":"return 1","world":"main","sync":false}`)
-		resp := env.handler.handlePilotExecuteJS(req, args)
+		resp := env.handler.handleExecuteJS(req, args)
 
 		code := extractErrorCode(t, resp)
 		if code != ErrNoData {
@@ -788,7 +788,7 @@ func TestSmoke_AllGates_SequentialFiring_ExecuteJS(t *testing.T) {
 
 		req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`)}
 		args := json.RawMessage(`{"what":"execute_js","script":"return 1","world":"main","sync":false}`)
-		resp := env.handler.handlePilotExecuteJS(req, args)
+		resp := env.handler.handleExecuteJS(req, args)
 
 		code := extractErrorCode(t, resp)
 		if code != ErrExtError {

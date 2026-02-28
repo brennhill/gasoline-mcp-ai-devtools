@@ -103,6 +103,10 @@ func ValidatePathForOSAutomation(filePath string) error {
 	if strings.Contains(filePath, "`") {
 		return fmt.Errorf("file path contains backtick characters")
 	}
+	// Reject $ (PowerShell variable expansion) and ; (command separator)
+	if strings.ContainsAny(filePath, "$;") {
+		return fmt.Errorf("file path contains shell metacharacters")
+	}
 	return nil
 }
 
@@ -120,12 +124,19 @@ func SanitizeForContentDisposition(s string) string {
 	return s
 }
 
-// SanitizeForAppleScript escapes a string for safe embedding in AppleScript.
-// Replaces backslashes and double quotes to prevent command injection.
+// SanitizeForAppleScript strips all characters not in the allowlist for safe
+// embedding in AppleScript strings. Only alphanumerics, dot, underscore,
+// hyphen, slash, space, colon, and comma are preserved.
 func SanitizeForAppleScript(s string) string {
-	s = strings.ReplaceAll(s, `\`, `\\`)
-	s = strings.ReplaceAll(s, `"`, `\"`)
-	return s
+	var b strings.Builder
+	b.Grow(len(s))
+	for _, r := range s {
+		if (r >= 'A' && r <= 'Z') || (r >= 'a' && r <= 'z') || (r >= '0' && r <= '9') ||
+			r == '.' || r == '_' || r == '/' || r == '-' || r == ' ' || r == ':' || r == ',' {
+			b.WriteRune(r)
+		}
+	}
+	return b.String()
 }
 
 // SanitizeForSendKeys escapes a string for safe use with SendKeys.

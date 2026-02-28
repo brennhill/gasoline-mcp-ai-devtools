@@ -1,7 +1,3 @@
-// Purpose: Implements interact tool handlers and browser action orchestration.
-// Why: Preserves deterministic browser action execution across agent workflows.
-// Docs: docs/features/feature/interact-explore/index.md
-
 // tools_interact_state.go — MCP interact state management handlers.
 // Implements save_state, load_state, list_states, delete_state with form, storage, and cookie capture.
 //
@@ -16,56 +12,24 @@ import (
 	act "github.com/dev-console/dev-console/internal/tools/interact"
 )
 
-// State constants — delegated to internal/tools/interact package.
-var stateNamespace = act.StateNamespace
-
-// State capture status values — always present in save_state response as "state_capture".
-var (
-	stateCaptureStatusCaptured              = act.StateCaptureStatusCaptured
-	stateCaptureStatusPilotDisabled         = act.StateCaptureStatusPilotDisabled
-	stateCaptureStatusExtensionDisconnected = act.StateCaptureStatusExtensionDisconnected
-	stateCaptureStatusTimeout               = act.StateCaptureStatusTimeout
-	stateCaptureStatusError                 = act.StateCaptureStatusError
-)
-
-// State restore status values — always present in load_state response as "state_restore".
-var (
-	stateRestoreStatusQueued        = act.StateRestoreStatusQueued
-	stateRestoreStatusPilotDisabled = act.StateRestoreStatusPilotDisabled
-	stateRestoreStatusExtensionDown = act.StateRestoreStatusExtensionDown
-	stateRestoreStatusNoData        = act.StateRestoreStatusNoData
-)
-
-// stateCaptureScript — delegated to internal/tools/interact package.
-var stateCaptureScript = act.StateCaptureScript
-
 // stateCaptureResult — type alias delegated to internal/tools/interact package.
 type stateCaptureResult = act.StateCaptureResult
-
-// parseCapturedStatePayload — delegated to internal/tools/interact package.
-var parseCapturedStatePayload = act.ParseCapturedStatePayload
-
-// stateDataFields — delegated to internal/tools/interact package.
-var stateDataFields = act.StateDataFields
-
-// buildStateRestoreScript — delegated to internal/tools/interact package.
-var buildStateRestoreScript = act.BuildStateRestoreScript
 
 // captureState attempts to capture form values, scroll position, and web storage from the browser.
 // Always returns a stateCaptureResult with an explicit Status the caller can surface to the LLM.
 func (h *ToolHandler) captureState(req JSONRPCRequest) stateCaptureResult {
 	if !h.capture.IsPilotActionAllowed() {
-		return stateCaptureResult{Status: stateCaptureStatusPilotDisabled}
+		return stateCaptureResult{Status: act.StateCaptureStatusPilotDisabled}
 	}
 	if !h.capture.IsExtensionConnected() {
-		return stateCaptureResult{Status: stateCaptureStatusExtensionDisconnected}
+		return stateCaptureResult{Status: act.StateCaptureStatusExtensionDisconnected}
 	}
 
 	correlationID := newCorrelationID("state_capture")
 
 	scriptArgs, _ := json.Marshal(map[string]any{
 		"action": "execute_js",
-		"script": stateCaptureScript,
+		"script": act.StateCaptureScript,
 		"world":  "main",
 	})
 
@@ -78,21 +42,21 @@ func (h *ToolHandler) captureState(req JSONRPCRequest) stateCaptureResult {
 
 	cmd, found := h.capture.WaitForCommand(correlationID, 5*time.Second)
 	if !found || cmd.Status == "pending" {
-		return stateCaptureResult{Status: stateCaptureStatusTimeout}
+		return stateCaptureResult{Status: act.StateCaptureStatusTimeout}
 	}
 	if cmd.Error != "" {
-		return stateCaptureResult{Status: stateCaptureStatusError}
+		return stateCaptureResult{Status: act.StateCaptureStatusError}
 	}
 	if cmd.Status != "complete" || len(cmd.Result) == 0 {
-		return stateCaptureResult{Status: stateCaptureStatusError}
+		return stateCaptureResult{Status: act.StateCaptureStatusError}
 	}
 
-	captureData, err := parseCapturedStatePayload(cmd.Result)
+	captureData, err := act.ParseCapturedStatePayload(cmd.Result)
 	if err != nil {
-		return stateCaptureResult{Status: stateCaptureStatusError}
+		return stateCaptureResult{Status: act.StateCaptureStatusError}
 	}
 
-	return stateCaptureResult{Status: stateCaptureStatusCaptured, Data: captureData}
+	return stateCaptureResult{Status: act.StateCaptureStatusCaptured, Data: captureData}
 }
 
 // queueStateRestore queues a JS execute command to restore form values, scroll position,
@@ -100,7 +64,7 @@ func (h *ToolHandler) captureState(req JSONRPCRequest) stateCaptureResult {
 func (h *ToolHandler) queueStateRestore(req JSONRPCRequest, formValues, scrollPos, localStorage, sessionStorage, cookies map[string]any) string {
 	correlationID := newCorrelationID("state_restore")
 
-	script := buildStateRestoreScript(formValues, scrollPos, localStorage, sessionStorage, cookies)
+	script := act.BuildStateRestoreScript(formValues, scrollPos, localStorage, sessionStorage, cookies)
 	scriptArgs, _ := json.Marshal(map[string]any{
 		"action": "execute_js",
 		"script": script,
@@ -117,7 +81,7 @@ func (h *ToolHandler) queueStateRestore(req JSONRPCRequest, formValues, scrollPo
 	return correlationID
 }
 
-func (h *ToolHandler) handlePilotManageStateSave(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+func (h *ToolHandler) handleStateSave(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	var params struct {
 		SnapshotName string `json:"snapshot_name"`
 		Name         string `json:"name"` // backward-compatible alias
@@ -150,8 +114,8 @@ func (h *ToolHandler) handlePilotManageStateSave(req JSONRPCRequest, args json.R
 
 	// State capture — always produces a status for the response
 	capture := h.captureState(req)
-	if capture.Status == stateCaptureStatusCaptured && capture.Data != nil {
-		for _, field := range stateDataFields {
+	if capture.Status == act.StateCaptureStatusCaptured && capture.Data != nil {
+		for _, field := range act.StateDataFields {
 			if v, ok := capture.Data[field]; ok {
 				stateData[field] = v
 			}
@@ -168,7 +132,7 @@ func (h *ToolHandler) handlePilotManageStateSave(req JSONRPCRequest, args json.R
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInternal, "Failed to serialize state: "+err.Error(), "Internal error — do not retry")}
 	}
 
-	if err := h.sessionStoreImpl.Save(stateNamespace, snapshotName, data); err != nil {
+	if err := h.sessionStoreImpl.Save(act.StateNamespace, snapshotName, data); err != nil {
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInternal, "Failed to save state: "+err.Error(), "Internal error — check storage")}
 	}
 
@@ -185,7 +149,7 @@ func (h *ToolHandler) handlePilotManageStateSave(req JSONRPCRequest, args json.R
 	})}
 }
 
-func (h *ToolHandler) handlePilotManageStateLoad(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+func (h *ToolHandler) handleStateLoad(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	var params struct {
 		SnapshotName string `json:"snapshot_name"`
 		Name         string `json:"name"` // backward-compatible alias
@@ -207,7 +171,7 @@ func (h *ToolHandler) handlePilotManageStateLoad(req JSONRPCRequest, args json.R
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrNotInitialized, "Session store not initialized", "Internal error — do not retry")}
 	}
 
-	data, err := h.sessionStoreImpl.Load(stateNamespace, snapshotName)
+	data, err := h.sessionStoreImpl.Load(act.StateNamespace, snapshotName)
 	if err != nil {
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrNoData, "State not found: "+snapshotName, "Use interact with action='list_states' to see available snapshots", h.diagnosticHint())}
 	}
@@ -236,14 +200,14 @@ func (h *ToolHandler) handlePilotManageStateLoad(req JSONRPCRequest, args json.R
 	hasData := len(formValues) > 0 || len(localStorage) > 0 || len(sessionStorage) > 0 || len(cookies) > 0
 
 	if !hasData {
-		responseData["state_restore"] = stateRestoreStatusNoData
+		responseData["state_restore"] = act.StateRestoreStatusNoData
 	} else if !h.capture.IsPilotActionAllowed() {
-		responseData["state_restore"] = stateRestoreStatusPilotDisabled
+		responseData["state_restore"] = act.StateRestoreStatusPilotDisabled
 	} else if !h.capture.IsExtensionConnected() {
-		responseData["state_restore"] = stateRestoreStatusExtensionDown
+		responseData["state_restore"] = act.StateRestoreStatusExtensionDown
 	} else {
 		restoreCorrelationID := h.queueStateRestore(req, formValues, scrollPos, localStorage, sessionStorage, cookies)
-		responseData["state_restore"] = stateRestoreStatusQueued
+		responseData["state_restore"] = act.StateRestoreStatusQueued
 		responseData["restore_correlation_id"] = restoreCorrelationID
 	}
 
@@ -272,12 +236,12 @@ func (h *ToolHandler) queueStateNavigation(req JSONRPCRequest, stateData map[str
 	stateData["correlation_id"] = correlationID
 }
 
-func (h *ToolHandler) handlePilotManageStateList(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+func (h *ToolHandler) handleStateList(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	if h.sessionStoreImpl == nil {
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrNotInitialized, "Session store not initialized", "Internal error — do not retry")}
 	}
 
-	keys, err := h.sessionStoreImpl.List(stateNamespace)
+	keys, err := h.sessionStoreImpl.List(act.StateNamespace)
 	if err != nil {
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInternal, "Failed to list states: "+err.Error(), "Internal error — do not retry")}
 	}
@@ -296,7 +260,7 @@ func (h *ToolHandler) handlePilotManageStateList(req JSONRPCRequest, args json.R
 // buildStateEntry loads metadata for a single saved state key and returns an entry map.
 func (h *ToolHandler) buildStateEntry(key string) map[string]any {
 	entry := map[string]any{"name": key}
-	data, err := h.sessionStoreImpl.Load(stateNamespace, key)
+	data, err := h.sessionStoreImpl.Load(act.StateNamespace, key)
 	if err != nil {
 		return entry
 	}
@@ -312,7 +276,7 @@ func (h *ToolHandler) buildStateEntry(key string) map[string]any {
 	return entry
 }
 
-func (h *ToolHandler) handlePilotManageStateDelete(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+func (h *ToolHandler) handleStateDelete(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	var params struct {
 		SnapshotName string `json:"snapshot_name"`
 		Name         string `json:"name"` // backward-compatible alias
@@ -333,7 +297,7 @@ func (h *ToolHandler) handlePilotManageStateDelete(req JSONRPCRequest, args json
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrNotInitialized, "Session store not initialized", "Internal error — do not retry")}
 	}
 
-	if err := h.sessionStoreImpl.Delete(stateNamespace, snapshotName); err != nil {
+	if err := h.sessionStoreImpl.Delete(act.StateNamespace, snapshotName); err != nil {
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrNoData, "State not found: "+snapshotName, "Use interact with action='list_states' to see available snapshots", h.diagnosticHint())}
 	}
 

@@ -67,20 +67,3 @@ export function isVersionNewer(newer: string, older: string): boolean {
   return result === 1
 }
 
-/**
- * Check if a version is same or newer than another
- * @param version - Version to check
- * @param minimum - Minimum required version
- * @returns true if version >= minimum
- */
-export function isVersionSameOrNewer(version: string, minimum: string): boolean {
-  const result = compareVersions(version, minimum)
-  return result === 1 || result === 0
-}
-
-/**
- * Format version for display (e.g., "v5.2.5")
- */
-export function formatVersionDisplay(version: string): string {
-  return `v${version}`
-}

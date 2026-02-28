@@ -279,7 +279,8 @@ export async function postQueryResult(
 ): Promise<void> {
   const endpoint = '/query-result'
 
-  const logData = { queryId, type, endpoint, resultSize: JSON.stringify(result).length }
+  const body = JSON.stringify({ id: queryId, result })
+  const logData = { queryId, type, endpoint, resultSize: body.length }
   if (debugLogFn) debugLogFn('api', `POST ${endpoint}`, logData)
   console.log(`[Gasoline API] POST ${endpoint}`, logData) // nosemgrep: javascript.lang.security.audit.unsafe-formatstring.unsafe-formatstring -- console.log with internal server state, not user-controlled format string
 
@@ -287,7 +288,7 @@ export async function postQueryResult(
     const response = await fetch(`${serverUrl}${endpoint}`, {
       method: 'POST',
       headers: getRequestHeaders(),
-      body: JSON.stringify({ id: queryId, result })
+      body
     })
 
     if (!response.ok) {

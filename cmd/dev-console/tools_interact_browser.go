@@ -20,7 +20,7 @@ var validWorldValues = act.ValidWorldValues
 // truncateToLen delegates to the interact package.
 var truncateToLen = act.TruncateToLen
 
-func (h *ToolHandler) handlePilotHighlight(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+func (h *ToolHandler) handleHighlight(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	var params struct {
 		Selector   string `json:"selector"`
 		DurationMs int    `json:"duration_ms,omitempty"`
@@ -62,7 +62,7 @@ func (h *ToolHandler) handlePilotHighlight(req JSONRPCRequest, args json.RawMess
 	return h.MaybeWaitForCommand(req, correlationID, args, "Highlight queued")
 }
 
-func (h *ToolHandler) handlePilotExecuteJS(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+func (h *ToolHandler) handleExecuteJS(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	var params struct {
 		Script    string `json:"script"`
 		TimeoutMs int    `json:"timeout_ms,omitempty"`

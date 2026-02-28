@@ -21,7 +21,8 @@ import type { DebugLogEntry } from '../types/index.js';
  */
 export declare function getDebugLog(): DebugLogEntry[];
 /**
- * Add entry to debug log buffer
+ * Add entry to debug log buffer.
+ * Uses batch splice (25% eviction) instead of per-entry shift() to amortize O(n) cost.
  */
 export declare function addDebugLogEntry(entry: DebugLogEntry): void;
 /**

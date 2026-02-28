@@ -155,51 +155,51 @@ func (c *Capture) updateSyncConnectionState(req SyncRequest, clientID string, no
 	defer c.mu.Unlock()
 
 	s := syncConnectionState{
-		wasConnected:      c.ext.lastExtensionConnected,
-		timeSinceLastPoll: now.Sub(c.ext.lastPollAt),
+		wasConnected:      c.extensionState.lastExtensionConnected,
+		timeSinceLastPoll: now.Sub(c.extensionState.lastPollAt),
 	}
-	s.wasDisconnected = !c.ext.lastSyncSeen.IsZero() && now.Sub(c.ext.lastSyncSeen) >= extensionDisconnectThreshold
+	s.wasDisconnected = !c.extensionState.lastSyncSeen.IsZero() && now.Sub(c.extensionState.lastSyncSeen) >= extensionDisconnectThreshold
 	// A reconnect should mean we actually crossed the disconnect threshold,
 	// not merely that polls are slower than a short interval.
 	s.isReconnect = s.wasDisconnected
 
-	c.ext.lastPollAt = now
-	c.ext.lastExtensionConnected = true
-	c.ext.lastSyncSeen = now
-	c.ext.lastSyncClientID = clientID
+	c.extensionState.lastPollAt = now
+	c.extensionState.lastExtensionConnected = true
+	c.extensionState.lastSyncSeen = now
+	c.extensionState.lastSyncClientID = clientID
 
-	if req.ExtSessionID != "" && req.ExtSessionID != c.ext.extSessionID {
-		c.ext.extSessionID = req.ExtSessionID
-		c.ext.extSessionChangedAt = now
+	if req.ExtSessionID != "" && req.ExtSessionID != c.extensionState.extSessionID {
+		c.extensionState.extSessionID = req.ExtSessionID
+		c.extensionState.extSessionChangedAt = now
 	}
-	s.extSessionID = c.ext.extSessionID
+	s.extSessionID = c.extensionState.extSessionID
 
 	if req.Settings != nil {
-		c.ext.pilotEnabled = req.Settings.PilotEnabled
-		c.ext.pilotStatusKnown = true
-		c.ext.pilotUpdatedAt = now
-		c.ext.pilotSource = PilotSourceExtensionSync
-		c.ext.trackingEnabled = req.Settings.TrackingEnabled
-		c.ext.trackedTabID = req.Settings.TrackedTabID
-		c.ext.trackedTabURL = req.Settings.TrackedTabURL
-		c.ext.trackedTabTitle = req.Settings.TrackedTabTitle
-		c.ext.trackingUpdated = now
+		c.extensionState.pilotEnabled = req.Settings.PilotEnabled
+		c.extensionState.pilotStatusKnown = true
+		c.extensionState.pilotUpdatedAt = now
+		c.extensionState.pilotSource = PilotSourceExtensionSync
+		c.extensionState.trackingEnabled = req.Settings.TrackingEnabled
+		c.extensionState.trackedTabID = req.Settings.TrackedTabID
+		c.extensionState.trackedTabURL = req.Settings.TrackedTabURL
+		c.extensionState.trackedTabTitle = req.Settings.TrackedTabTitle
+		c.extensionState.trackingUpdated = now
 		switch req.Settings.TabStatus {
 		case "loading", "complete":
-			c.ext.tabStatus = req.Settings.TabStatus
+			c.extensionState.tabStatus = req.Settings.TabStatus
 		default:
-			c.ext.tabStatus = ""
+			c.extensionState.tabStatus = ""
 		}
-		c.ext.trackedTabActive = req.Settings.TrackedTabActive
-		c.ext.cspRestricted = req.Settings.CspRestricted
-		c.ext.cspLevel = req.Settings.CspLevel
+		c.extensionState.trackedTabActive = req.Settings.TrackedTabActive
+		c.extensionState.cspRestricted = req.Settings.CspRestricted
+		c.extensionState.cspLevel = req.Settings.CspLevel
 	}
 	if req.InProgress != nil {
-		c.ext.inProgress = normalizeInProgressList(req.InProgress)
-		c.ext.inProgressUpdated = now
+		c.extensionState.inProgress = normalizeInProgressList(req.InProgress)
+		c.extensionState.inProgressUpdated = now
 	}
-	s.pilotEnabled = c.ext.pilotEnabled
-	s.inProgressCount = len(c.ext.inProgress)
+	s.pilotEnabled = c.extensionState.pilotEnabled
+	s.inProgressCount = len(c.extensionState.inProgress)
 	return s
 }
 
@@ -254,18 +254,18 @@ func (c *Capture) updateSyncLogs(req SyncRequest, now time.Time, pilotEnabled bo
 			log.Timestamp = now
 		}
 		log = c.redactExtensionLog(log)
-		c.elb.logs = append(c.elb.logs, log)
+		c.extensionLogs.logs = append(c.extensionLogs.logs, log)
 		// Amortized eviction: only compact when buffer exceeds 1.5x capacity.
 		evictionThreshold := MaxExtensionLogs + MaxExtensionLogs/2
-		if len(c.elb.logs) > evictionThreshold {
+		if len(c.extensionLogs.logs) > evictionThreshold {
 			kept := make([]ExtensionLog, MaxExtensionLogs)
-			copy(kept, c.elb.logs[len(c.elb.logs)-MaxExtensionLogs:])
-			c.elb.logs = kept
+			copy(kept, c.extensionLogs.logs[len(c.extensionLogs.logs)-MaxExtensionLogs:])
+			c.extensionLogs.logs = kept
 		}
 	}
 
 	if req.ExtensionVersion != "" {
-		c.ext.extensionVersion = req.ExtensionVersion
+		c.extensionState.extensionVersion = req.ExtensionVersion
 	}
 }
 
@@ -390,8 +390,8 @@ func (c *Capture) reconcileInProgressCommandState(inProgress []SyncInProgress) {
 	toFailIDs := make([]string, 0)
 
 	c.mu.Lock()
-	if c.ext.missingInProgressByCorr == nil {
-		c.ext.missingInProgressByCorr = make(map[string]int)
+	if c.extensionState.missingInProgressByCorr == nil {
+		c.extensionState.missingInProgressByCorr = make(map[string]int)
 	}
 	for _, cmd := range pending {
 		if cmd == nil || cmd.CorrelationID == "" {
@@ -401,23 +401,23 @@ func (c *Capture) reconcileInProgressCommandState(inProgress []SyncInProgress) {
 		pendingCorr[corr] = struct{}{}
 
 		if _, ok := active[corr]; ok {
-			delete(c.ext.missingInProgressByCorr, corr)
+			delete(c.extensionState.missingInProgressByCorr, corr)
 			continue
 		}
 		if !commandHasStarted(cmd) {
 			continue
 		}
-		c.ext.missingInProgressByCorr[corr]++
-		if c.ext.missingInProgressByCorr[corr] >= 2 {
+		c.extensionState.missingInProgressByCorr[corr]++
+		if c.extensionState.missingInProgressByCorr[corr] >= 2 {
 			toFail = append(toFail, corr)
 			toFailIDs = append(toFailIDs, cmd.QueryID)
-			delete(c.ext.missingInProgressByCorr, corr)
+			delete(c.extensionState.missingInProgressByCorr, corr)
 		}
 	}
 
-	for corr := range c.ext.missingInProgressByCorr {
+	for corr := range c.extensionState.missingInProgressByCorr {
 		if _, stillPending := pendingCorr[corr]; !stillPending {
-			delete(c.ext.missingInProgressByCorr, corr)
+			delete(c.extensionState.missingInProgressByCorr, corr)
 		}
 	}
 	c.mu.Unlock()
@@ -491,7 +491,7 @@ func (c *Capture) HandleSync(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if state.wasDisconnected {
-		c.qd.ExpireAllPendingQueries("extension_disconnected")
+		c.queryDispatcher.ExpireAllPendingQueries("extension_disconnected")
 		util.SafeGo(func() {
 			c.emitLifecycleEvent("extension_disconnected", map[string]any{
 				"ext_session_id": state.extSessionID,

@@ -63,9 +63,9 @@ func recalcMemoryTotals(c *Capture) {
 	for i := range c.wsEvents {
 		c.wsMemoryTotal += wsEventMemory(&c.wsEvents[i])
 	}
-	c.nbMemoryTotal = 0
+	c.networkBodyMemoryTotal = 0
 	for i := range c.networkBodies {
-		c.nbMemoryTotal += nbEntryMemory(&c.networkBodies[i])
+		c.networkBodyMemoryTotal += nbEntryMemory(&c.networkBodies[i])
 	}
 }
 
@@ -209,12 +209,12 @@ func TestMemory_RunningTotal_NBAccurateAfterAdd(t *testing.T) {
 	c.AddNetworkBodies(bodies)
 
 	c.mu.RLock()
-	runningTotal := c.nbMemoryTotal
+	runningTotal := c.networkBodyMemoryTotal
 	expected := bruteForceNBMemory(c.networkBodies)
 	c.mu.RUnlock()
 
 	if runningTotal != expected {
-		t.Errorf("nbMemoryTotal = %d, brute force = %d", runningTotal, expected)
+		t.Errorf("networkBodyMemoryTotal = %d, brute force = %d", runningTotal, expected)
 	}
 }
 
@@ -255,7 +255,7 @@ func TestMemory_RunningTotal_NBAccurateAfterRotation(t *testing.T) {
 	c.AddNetworkBodies(bodies)
 
 	c.mu.RLock()
-	runningTotal := c.nbMemoryTotal
+	runningTotal := c.networkBodyMemoryTotal
 	expected := bruteForceNBMemory(c.networkBodies)
 	count := len(c.networkBodies)
 	c.mu.RUnlock()
@@ -264,7 +264,7 @@ func TestMemory_RunningTotal_NBAccurateAfterRotation(t *testing.T) {
 		t.Errorf("expected at most %d bodies, got %d", MaxNetworkBodies, count)
 	}
 	if runningTotal != expected {
-		t.Errorf("after rotation: nbMemoryTotal = %d, brute force = %d", runningTotal, expected)
+		t.Errorf("after rotation: networkBodyMemoryTotal = %d, brute force = %d", runningTotal, expected)
 	}
 }
 
@@ -302,12 +302,12 @@ func TestMemory_RunningTotal_NBAccurateAfterPerBufferEviction(t *testing.T) {
 	c.AddNetworkBodies(bodies)
 
 	c.mu.RLock()
-	runningTotal := c.nbMemoryTotal
+	runningTotal := c.networkBodyMemoryTotal
 	expected := bruteForceNBMemory(c.networkBodies)
 	c.mu.RUnlock()
 
 	if runningTotal != expected {
-		t.Errorf("after per-buffer NB eviction: nbMemoryTotal = %d, brute force = %d", runningTotal, expected)
+		t.Errorf("after per-buffer NB eviction: networkBodyMemoryTotal = %d, brute force = %d", runningTotal, expected)
 	}
 }
 
@@ -320,28 +320,28 @@ func TestMemory_RunningTotal_ZeroAfterClearAll(t *testing.T) {
 
 	c.mu.RLock()
 	wsBefore := c.wsMemoryTotal
-	nbBefore := c.nbMemoryTotal
+	nbBefore := c.networkBodyMemoryTotal
 	c.mu.RUnlock()
 
 	if wsBefore == 0 {
 		t.Fatal("expected non-zero wsMemoryTotal before ClearAll")
 	}
 	if nbBefore == 0 {
-		t.Fatal("expected non-zero nbMemoryTotal before ClearAll")
+		t.Fatal("expected non-zero networkBodyMemoryTotal before ClearAll")
 	}
 
 	c.ClearAll()
 
 	c.mu.RLock()
 	wsAfter := c.wsMemoryTotal
-	nbAfter := c.nbMemoryTotal
+	nbAfter := c.networkBodyMemoryTotal
 	c.mu.RUnlock()
 
 	if wsAfter != 0 {
 		t.Errorf("expected wsMemoryTotal = 0 after ClearAll, got %d", wsAfter)
 	}
 	if nbAfter != 0 {
-		t.Errorf("expected nbMemoryTotal = 0 after ClearAll, got %d", nbAfter)
+		t.Errorf("expected networkBodyMemoryTotal = 0 after ClearAll, got %d", nbAfter)
 	}
 }
 
@@ -369,11 +369,11 @@ func TestMemory_CalcNBMemory_ReturnsRunningTotal(t *testing.T) {
 
 	c.mu.RLock()
 	calcResult := c.calcNBMemory()
-	runningTotal := c.nbMemoryTotal
+	runningTotal := c.networkBodyMemoryTotal
 	c.mu.RUnlock()
 
 	if calcResult != runningTotal {
-		t.Errorf("calcNBMemory() = %d, nbMemoryTotal = %d; expected equal", calcResult, runningTotal)
+		t.Errorf("calcNBMemory() = %d, networkBodyMemoryTotal = %d; expected equal", calcResult, runningTotal)
 	}
 }
 
@@ -394,7 +394,7 @@ func TestMemory_RunningTotal_MultipleAddEvictCycles(t *testing.T) {
 	c.mu.RLock()
 	wsRunning := c.wsMemoryTotal
 	wsExpected := bruteForceWSMemory(c.wsEvents)
-	nbRunning := c.nbMemoryTotal
+	nbRunning := c.networkBodyMemoryTotal
 	nbExpected := bruteForceNBMemory(c.networkBodies)
 	c.mu.RUnlock()
 
@@ -402,6 +402,6 @@ func TestMemory_RunningTotal_MultipleAddEvictCycles(t *testing.T) {
 		t.Errorf("after multiple cycles: wsMemoryTotal = %d, brute force = %d", wsRunning, wsExpected)
 	}
 	if nbRunning != nbExpected {
-		t.Errorf("after multiple cycles: nbMemoryTotal = %d, brute force = %d", nbRunning, nbExpected)
+		t.Errorf("after multiple cycles: networkBodyMemoryTotal = %d, brute force = %d", nbRunning, nbExpected)
 	}
 }

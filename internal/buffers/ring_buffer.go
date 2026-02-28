@@ -239,12 +239,12 @@ func (rb *RingBuffer[T]) Cap() int {
 	return rb.capacity // Immutable, no lock needed
 }
 
-// Clear removes all entries from the buffer.
+// Clear removes all entries from the buffer, preserving pre-allocated capacity.
 func (rb *RingBuffer[T]) Clear() {
 	rb.mu.Lock()
 	defer rb.mu.Unlock()
-	rb.entries = nil
-	rb.addedAt = nil
+	rb.entries = make([]T, 0, rb.capacity)
+	rb.addedAt = make([]time.Time, 0, rb.capacity)
 	rb.head = 0
 	// Don't reset totalAdded - cursors need it to stay monotonic
 }
@@ -320,22 +320,40 @@ func (rb *RingBuffer[T]) ReadFromWithFilter(cursor BufferCursor, filter func(T) 
 }
 
 // ReadAllWithFilter returns all entries that pass the filter, oldest first.
+// Filters in a single RLock pass to avoid copying unneeded entries.
 func (rb *RingBuffer[T]) ReadAllWithFilter(filter func(T) bool, limit int) []T {
-	entries := rb.ReadAll()
-	if entries == nil {
+	rb.mu.RLock()
+	defer rb.mu.RUnlock()
+
+	if len(rb.entries) == 0 {
 		return nil
 	}
 
-	capHint := len(entries)
+	capHint := len(rb.entries)
 	if limit > 0 && limit < capHint {
 		capHint = limit
 	}
 	result := make([]T, 0, capHint)
-	for _, entry := range entries {
-		if filter(entry) {
-			result = append(result, entry)
-			if limit > 0 && len(result) >= limit {
-				break
+
+	if len(rb.entries) < rb.capacity {
+		// Buffer not full, entries are in order from 0
+		for i := 0; i < len(rb.entries); i++ {
+			if filter(rb.entries[i]) {
+				result = append(result, rb.entries[i])
+				if limit > 0 && len(result) >= limit {
+					break
+				}
+			}
+		}
+	} else {
+		// Buffer full, head points to oldest entry
+		for i := 0; i < len(rb.entries); i++ {
+			idx := (rb.head + i) % len(rb.entries)
+			if filter(rb.entries[idx]) {
+				result = append(result, rb.entries[idx])
+				if limit > 0 && len(result) >= limit {
+					break
+				}
 			}
 		}
 	}

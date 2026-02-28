@@ -14,28 +14,12 @@
 import type { PendingQuery } from '../types/queries.js'
 import type { SyncClient } from './sync-client.js'
 import type { DOMActionParams, DOMResult } from './dom-types.js'
+import type { SendAsyncResultFn, ActionToastFn } from './commands/helpers.js'
 import { domFrameProbe } from './dom-frame-probe.js'
 import { domPrimitive } from './dom-primitives.js'
 import { domPrimitiveListInteractive } from './dom-primitives-list-interactive.js'
 import { domPrimitiveQuery } from './dom-primitives-query.js'
 import { isCDPEscalatable, tryCDPEscalation } from './cdp-dispatch.js'
-
-type SendAsyncResult = (
-  syncClient: SyncClient,
-  queryId: string,
-  correlationId: string,
-  status: 'complete' | 'error' | 'timeout',
-  result?: unknown,
-  error?: string
-) => void
-
-type ActionToast = (
-  tabId: number,
-  text: string,
-  detail?: string,
-  state?: 'trying' | 'success' | 'warning' | 'error',
-  durationMs?: number
-) => void
 
 function parseDOMParams(query: PendingQuery): DOMActionParams | null {
   try {
@@ -380,7 +364,7 @@ function sendToastForResult(
   tabId: number,
   readOnly: boolean,
   result: { success?: boolean; error?: string },
-  actionToast: ActionToast,
+  actionToast: ActionToastFn,
   toastLabel: string,
   toastDetail: string | undefined
 ): void {
@@ -476,8 +460,8 @@ export async function executeDOMAction(
   query: PendingQuery,
   tabId: number,
   syncClient: SyncClient,
-  sendAsyncResult: SendAsyncResult,
-  actionToast: ActionToast
+  sendAsyncResult: SendAsyncResultFn,
+  actionToast: ActionToastFn
 ): Promise<void> {
   const params = parseDOMParams(query)
   if (!params) {

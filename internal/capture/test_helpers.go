@@ -57,30 +57,30 @@ func (c *Capture) AddEnhancedActionsForTest(actions []EnhancedAction) {
 func (c *Capture) SetPilotEnabled(enabled bool) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	c.ext.pilotEnabled = enabled
-	c.ext.pilotStatusKnown = true
-	c.ext.pilotUpdatedAt = time.Now()
-	c.ext.pilotSource = PilotSourceTestHelper
+	c.extensionState.pilotEnabled = enabled
+	c.extensionState.pilotStatusKnown = true
+	c.extensionState.pilotUpdatedAt = time.Now()
+	c.extensionState.pilotSource = PilotSourceTestHelper
 }
 
 // SetPilotUnknownForTest resets pilot to startup-uncertain state (TEST ONLY).
 func (c *Capture) SetPilotUnknownForTest() {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	c.ext.pilotEnabled = false
-	c.ext.pilotStatusKnown = false
-	c.ext.pilotUpdatedAt = time.Time{}
-	c.ext.pilotSource = PilotSourceAssumedStartup
+	c.extensionState.pilotEnabled = false
+	c.extensionState.pilotStatusKnown = false
+	c.extensionState.pilotUpdatedAt = time.Time{}
+	c.extensionState.pilotSource = PilotSourceAssumedStartup
 }
 
 // SetTrackingStatusForTest sets the tracked tab URL and ID (TEST ONLY)
 func (c *Capture) SetTrackingStatusForTest(tabID int, tabURL string) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	c.ext.trackingEnabled = true
-	c.ext.trackedTabID = tabID
-	c.ext.trackedTabURL = tabURL
-	c.ext.trackingUpdated = time.Now()
+	c.extensionState.trackingEnabled = true
+	c.extensionState.trackedTabID = tabID
+	c.extensionState.trackedTabURL = tabURL
+	c.extensionState.trackingUpdated = time.Now()
 }
 
 // SetClientRegistryForTest sets the client registry (TEST ONLY)
@@ -123,8 +123,8 @@ func (c *Capture) GetWSLengthsForTest() (events int, addedAt int, memoryTotal in
 func (c *Capture) SimulateExtensionConnectForTest() {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	c.ext.lastSyncSeen = time.Now()
-	c.ext.lastExtensionConnected = true
+	c.extensionState.lastSyncSeen = time.Now()
+	c.extensionState.lastExtensionConnected = true
 }
 
 // SimulateExtensionDisconnectForTest marks the extension as disconnected by
@@ -132,28 +132,28 @@ func (c *Capture) SimulateExtensionConnectForTest() {
 func (c *Capture) SimulateExtensionDisconnectForTest() {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	c.ext.lastSyncSeen = time.Now().Add(-1 * time.Hour)
+	c.extensionState.lastSyncSeen = time.Now().Add(-1 * time.Hour)
 }
 // SetTabStatusForTest sets the tracked tab status (TEST ONLY).
 // Valid values: "loading", "complete".
 func (c *Capture) SetTabStatusForTest(status string) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	c.ext.tabStatus = status
+	c.extensionState.tabStatus = status
 }
 
 // SetCSPStatusForTest sets the CSP restriction state (TEST ONLY)
 func (c *Capture) SetCSPStatusForTest(restricted bool, level string) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	c.ext.cspRestricted = restricted
-	c.ext.cspLevel = level
+	c.extensionState.cspRestricted = restricted
+	c.extensionState.cspLevel = level
 }
 
 // GetLastPendingQuery returns the most recently created pending query (TEST ONLY)
 // Returns nil if no queries exist.
 func (c *Capture) GetLastPendingQuery() *queries.PendingQuery {
-	return c.qd.GetLastPendingQuery()
+	return c.queryDispatcher.GetLastPendingQuery()
 }
 
 // SimulateSyncForTest simulates a /sync connection from the extension,

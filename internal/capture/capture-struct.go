@@ -23,7 +23,7 @@ import (
 // Ring buffers (wsEvents, networkBodies, enhancedActions) maintain three parallel invariants:
 // 1. Parallel timestamp slices kept in perfect sync (wsAddedAt, networkAddedAt, actionAddedAt)
 // 2. Monotonic counters that survive eviction (wsTotalAdded, networkTotalAdded, actionTotalAdded)
-// 3. Memory totals that estimate buffer overhead (wsMemoryTotal, nbMemoryTotal)
+// 3. Memory totals that estimate buffer overhead (wsMemoryTotal, networkBodyMemoryTotal)
 //
 // Rate limiting uses a sliding 1-second window with circuit breaker:
 // windowEventCount resets per window. rateLimitStreak tracks consecutive seconds over threshold.
@@ -53,7 +53,7 @@ type Capture struct {
 	networkAddedAt         []time.Time   // Parallel slice: insertion time for each networkBodies[i]. Used for TTL filtering and LRU eviction.
 	networkTotalAdded      int64         // Monotonic counter: total bodies ever added (never reset/decremented). Survives eviction. Used for cursor-based delta queries.
 	networkErrorTotalAdded int64         // Monotonic counter: total HTTP error responses (status>=400) ever added. Survives eviction.
-	nbMemoryTotal          int64         // Approximate memory: len(RequestBody)+len(ResponseBody)+300 bytes per entry. Updated incrementally on append/eviction.
+	networkBodyMemoryTotal int64         // Approximate memory: len(RequestBody)+len(ResponseBody)+300 bytes per entry. Updated incrementally on append/eviction.
 
 	// ============================================
 	// Enhanced Actions Buffer (Ring Buffer)
@@ -67,20 +67,20 @@ type Capture struct {
 	// Timings and Performance Data
 	// ============================================
 
-	nw  NetworkWaterfallBuffer // Ring buffer of browser PerformanceResourceTiming data (configurable capacity, default 1000).
-	elb ExtensionLogBuffer     // Ring buffer of extension internal logs (max 500). FIFO eviction. No TTL filtering.
+	networkWaterfall NetworkWaterfallBuffer // Ring buffer of browser PerformanceResourceTiming data (configurable capacity, default 1000).
+	extensionLogs ExtensionLogBuffer // Ring buffer of extension internal logs (max 500). FIFO eviction. No TTL filtering.
 
 	// ============================================
 	// WebSocket Connection Tracking
 	// ============================================
 
-	ws WSConnectionTracker // Active + closed WS connections, LRU eviction order. Protected by parent mu (no separate lock).
+	wsConnections WSConnectionTracker // Active + closed WS connections, LRU eviction order. Protected by parent mu (no separate lock).
 
 	// ============================================
 	// Query Dispatch (Own Locks)
 	// ============================================
 
-	qd *QueryDispatcher // Pending queries, results, async command tracking — delegates to QueryDispatcher sub-struct (aliased from internal/queries). Has own sync.Mutex + sync.RWMutex — independent of Capture.mu.
+	queryDispatcher *QueryDispatcher // Pending queries, results, async command tracking — delegates to QueryDispatcher sub-struct (aliased from internal/queries). Has own sync.Mutex + sync.RWMutex — independent of Capture.mu.
 
 	// ============================================
 	// Rate Limiting & Circuit Breaker (Own Lock)
@@ -92,7 +92,7 @@ type Capture struct {
 	// Extension State (Protected by parent mu)
 	// ============================================
 
-	ext ExtensionState // Connection, pilot, tracking, test boundaries. Protected by parent mu (no separate lock).
+	extensionState ExtensionState // Connection, pilot, tracking, test boundaries. Protected by parent mu (no separate lock).
 
 	// ============================================
 	// Debug Logging (Own Lock)
@@ -104,7 +104,7 @@ type Capture struct {
 	logRedactor *redaction.RedactionEngine
 
 	// Recording Management — delegates to RecordingManager sub-struct (aliased from internal/recording).
-	rec *RecordingManager // Recording lifecycle, playback, and log-diff. Has own sync.Mutex — independent of Capture.mu.
+	recordingManager *RecordingManager // Recording lifecycle, playback, and log-diff. Has own sync.Mutex — independent of Capture.mu.
 
 	// ============================================
 	// Composed Sub-Structures
@@ -137,26 +137,26 @@ type Capture struct {
 // NewCapture creates a fully initialized Capture with all subcomponents wired.
 //
 // Invariants:
-// - qd/circuit/debug/rec are non-nil in returned instance.
-// - ext.activeTestIDs and ext.missingInProgressByCorr start as initialized maps.
+// - queryDispatcher/circuit/debug/recordingManager are non-nil in returned instance.
+// - extensionState.activeTestIDs and extensionState.missingInProgressByCorr start as initialized maps.
 func NewCapture() *Capture {
 	c := &Capture{
 		wsEvents:        make([]WebSocketEvent, 0, MaxWSEvents),
 		networkBodies:   make([]NetworkBody, 0, MaxNetworkBodies),
 		enhancedActions: make([]EnhancedAction, 0, MaxEnhancedActions),
-		nw: NetworkWaterfallBuffer{
+		networkWaterfall: NetworkWaterfallBuffer{
 			entries:  make([]NetworkWaterfallEntry, 0, DefaultNetworkWaterfallCapacity),
 			capacity: DefaultNetworkWaterfallCapacity,
 		},
-		elb: ExtensionLogBuffer{
+		extensionLogs: ExtensionLogBuffer{
 			logs: make([]ExtensionLog, 0, MaxExtensionLogs),
 		},
-		ws: WSConnectionTracker{
+		wsConnections: WSConnectionTracker{
 			connections: make(map[string]*connectionState),
 			closedConns: make([]WebSocketClosedConnection, 0),
 			connOrder:   make([]string, 0),
 		},
-		ext: ExtensionState{
+		extensionState: ExtensionState{
 			activeTestIDs:           make(map[string]bool),
 			missingInProgressByCorr: make(map[string]int),
 			pilotSource:             PilotSourceAssumedStartup,
@@ -178,11 +178,11 @@ func NewCapture() *Capture {
 			inflight:   make(map[string]*a11yInflightEntry),
 		},
 		debug: NewDebugLogger(),
-		rec:   NewRecordingManager(),
+		recordingManager: NewRecordingManager(),
 
 		logRedactor: redaction.NewRedactionEngine(""),
 	}
-	c.qd = NewQueryDispatcher()
+	c.queryDispatcher = NewQueryDispatcher()
 	c.circuit = NewCircuitBreaker(c.emitLifecycleEvent)
 
 	// Note: clientRegistry is initialized by capture.New() in capture package
@@ -196,8 +196,8 @@ func NewCapture() *Capture {
 // - Idempotent for query cleanup lifecycle; no panic on repeated calls.
 // - Does not clear in-memory buffers.
 func (c *Capture) Close() {
-	if c.qd != nil {
-		c.qd.Close()
+	if c.queryDispatcher != nil {
+		c.queryDispatcher.Close()
 	}
 }
 

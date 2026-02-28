@@ -7,8 +7,7 @@
 import type { PendingQuery } from '../types/queries.js';
 import type { SyncClient } from './sync-client.js';
 import type { DOMActionParams, DOMResult } from './dom-types.js';
-type SendAsyncResult = (syncClient: SyncClient, queryId: string, correlationId: string, status: 'complete' | 'error' | 'timeout', result?: unknown, error?: string) => void;
-type ActionToast = (tabId: number, text: string, detail?: string, state?: 'trying' | 'success' | 'warning' | 'error', durationMs?: number) => void;
+import type { SendAsyncResultFn, ActionToastFn } from './commands/helpers.js';
 /** Check whether an action should attempt CDP before DOM primitives. */
 export declare function isCDPEscalatable(action: string): boolean;
 /**
@@ -17,6 +16,5 @@ export declare function isCDPEscalatable(action: string): boolean;
  * Any error is caught internally — callers just check for null.
  */
 export declare function tryCDPEscalation(tabId: number, action: string, params: DOMActionParams): Promise<DOMResult | null>;
-export declare function executeCDPAction(query: PendingQuery, tabId: number, syncClient: SyncClient, sendAsyncResult: SendAsyncResult, actionToast: ActionToast): Promise<void>;
-export {};
+export declare function executeCDPAction(query: PendingQuery, tabId: number, syncClient: SyncClient, sendAsyncResult: SendAsyncResultFn, actionToast: ActionToastFn): Promise<void>;
 //# sourceMappingURL=cdp-dispatch.d.ts.map

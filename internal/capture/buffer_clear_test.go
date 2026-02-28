@@ -16,7 +16,7 @@ func TestClearNetworkBuffers(t *testing.T) {
 
 	// Add network data directly to buffers
 	capture.mu.Lock()
-	capture.nw.entries = []NetworkWaterfallEntry{
+	capture.networkWaterfall.entries = []NetworkWaterfallEntry{
 		{URL: "https://example.com/1"},
 		{URL: "https://example.com/2"},
 	}
@@ -28,7 +28,7 @@ func TestClearNetworkBuffers(t *testing.T) {
 
 	// Verify data exists
 	capture.mu.RLock()
-	initialWaterfall := len(capture.nw.entries)
+	initialWaterfall := len(capture.networkWaterfall.entries)
 	initialBodies := len(capture.networkBodies)
 	capture.mu.RUnlock()
 
@@ -55,8 +55,8 @@ func TestClearNetworkBuffers(t *testing.T) {
 
 	// Verify buffers empty
 	capture.mu.RLock()
-	if len(capture.nw.entries) != 0 {
-		t.Errorf("Expected networkWaterfall to be empty, got %d entries", len(capture.nw.entries))
+	if len(capture.networkWaterfall.entries) != 0 {
+		t.Errorf("Expected networkWaterfall to be empty, got %d entries", len(capture.networkWaterfall.entries))
 	}
 	if len(capture.networkBodies) != 0 {
 		t.Errorf("Expected networkBodies to be empty, got %d entries", len(capture.networkBodies))
@@ -80,7 +80,7 @@ func TestClearWebSocketBuffers(t *testing.T) {
 
 	// Add WS connections
 	capture.mu.Lock()
-	capture.ws.connections["conn1"] = &connectionState{id: "conn1", url: "ws://localhost", state: "open"}
+	capture.wsConnections.connections["conn1"] = &connectionState{id: "conn1", url: "ws://localhost", state: "open"}
 	capture.mu.Unlock()
 
 	// Clear
@@ -99,8 +99,8 @@ func TestClearWebSocketBuffers(t *testing.T) {
 	if len(capture.wsEvents) != 0 {
 		t.Errorf("Expected wsEvents to be empty, got %d entries", len(capture.wsEvents))
 	}
-	if len(capture.ws.connections) != 0 {
-		t.Errorf("Expected connections to be empty, got %d entries", len(capture.ws.connections))
+	if len(capture.wsConnections.connections) != 0 {
+		t.Errorf("Expected connections to be empty, got %d entries", len(capture.wsConnections.connections))
 	}
 	capture.mu.RUnlock()
 }
@@ -139,7 +139,7 @@ func TestClearExtensionLogs(t *testing.T) {
 
 	// Add extension logs
 	capture.mu.Lock()
-	capture.elb.logs = append(capture.elb.logs, ExtensionLog{Level: "debug", Message: "ext log", Timestamp: time.Now()})
+	capture.extensionLogs.logs = append(capture.extensionLogs.logs, ExtensionLog{Level: "debug", Message: "ext log", Timestamp: time.Now()})
 	capture.mu.Unlock()
 
 	// Clear
@@ -152,8 +152,8 @@ func TestClearExtensionLogs(t *testing.T) {
 
 	// Verify buffer empty
 	capture.mu.RLock()
-	if len(capture.elb.logs) != 0 {
-		t.Errorf("Expected extensionLogs to be empty, got %d entries", len(capture.elb.logs))
+	if len(capture.extensionLogs.logs) != 0 {
+		t.Errorf("Expected extensionLogs to be empty, got %d entries", len(capture.extensionLogs.logs))
 	}
 	capture.mu.RUnlock()
 }
@@ -165,7 +165,7 @@ func TestClearAllCapture(t *testing.T) {
 
 	// Add data to all capture buffers
 	capture.mu.Lock()
-	capture.nw.entries = []NetworkWaterfallEntry{{URL: "test"}}
+	capture.networkWaterfall.entries = []NetworkWaterfallEntry{{URL: "test"}}
 	capture.mu.Unlock()
 
 	capture.AddWebSocketEvents([]WebSocketEvent{{ID: "conn1", Data: "test"}})
@@ -178,7 +178,7 @@ func TestClearAllCapture(t *testing.T) {
 	capture.mu.RLock()
 	defer capture.mu.RUnlock()
 
-	if len(capture.nw.entries) != 0 {
+	if len(capture.networkWaterfall.entries) != 0 {
 		t.Error("Expected networkWaterfall to be empty")
 	}
 	if len(capture.wsEvents) != 0 {
