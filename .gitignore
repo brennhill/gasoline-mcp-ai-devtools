@@ -67,3 +67,8 @@ docs/benchmarks/*.txt
 #Ignore marketing
 docs/marketing
 docs/marketing-plan.md
+
+# Astro site (cookwithgasoline.com)
+cookwithgasoline.com/node_modules/
+cookwithgasoline.com/dist/
+cookwithgasoline.com/.astro/

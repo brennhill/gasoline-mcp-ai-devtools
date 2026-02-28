@@ -1,0 +1,8 @@
+{
+  "profile": "release-readiness",
+  "region": "us-west-2",
+  "bridge_health": "healthy",
+  "active_sessions": 24,
+  "error_rate": "0.6%",
+  "p95_latency": "138ms"
+}

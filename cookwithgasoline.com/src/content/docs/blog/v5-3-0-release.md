@@ -1,0 +1,40 @@
+---
+title: "Gasoline v5.3.0 Released"
+description: "WebSocket inspection and improved performance"
+date: 2026-01-13T19:34:00Z
+authors: [brennhill]
+tags: [release]
+---
+
+## What's New in v5.3.0
+
+Gasoline v5.3.0 adds comprehensive WebSocket inspection and significant performance improvements.
+
+### Features
+
+- **WebSocket Capture** — Full message tracking for WebSocket connections
+- **Real-time Message Streaming** — Monitor WebSocket traffic as it happens
+- **Binary Message Support** — Handle binary WebSocket frames alongside text
+- **Connection State Tracking** — Visualize connection open/close lifecycle
+
+### Performance
+
+- 40% reduction in memory overhead
+- Optimized log buffer management
+- Faster message serialization
+
+### Fixes
+
+- Fixed observer timeout on high message volume
+- Improved handling of concurrent connections
+- Better cleanup of abandoned resources
+
+## Upgrade
+
+```bash
+npm install -g gasoline-mcp@5.3.0
+```
+
+## Full Changelog
+
+[v5.3.0 Release](https://github.com/brennhill/gasoline-mcp-ai-devtools/releases/tag/v5.3.0)
