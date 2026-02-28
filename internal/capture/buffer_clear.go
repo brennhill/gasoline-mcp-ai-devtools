@@ -6,27 +6,13 @@ package capture
 
 import (
 	"time"
+
+	"github.com/dev-console/dev-console/internal/types"
 )
 
-// BufferClearCounts reports per-buffer clear impact.
-//
-// Invariants:
-// - Counts reflect pre-clear item totals from one critical section.
-type BufferClearCounts struct {
-	NetworkWaterfall int `json:"network_waterfall,omitempty"`
-	NetworkBodies    int `json:"network_bodies,omitempty"`
-	WebSocketEvents  int `json:"websocket_events,omitempty"`
-	WebSocketStatus  int `json:"websocket_status,omitempty"`
-	Actions          int `json:"actions,omitempty"`
-	Logs             int `json:"logs,omitempty"`
-	ExtensionLogs    int `json:"extension_logs,omitempty"`
-}
-
-// Total returns sum of all cleared items.
-func (c *BufferClearCounts) Total() int {
-	return c.NetworkWaterfall + c.NetworkBodies + c.WebSocketEvents +
-		c.WebSocketStatus + c.Actions + c.Logs + c.ExtensionLogs
-}
+// BufferClearCounts is an alias to canonical definition in internal/types/buffer.go.
+// Total() method is inherited through the type alias.
+type BufferClearCounts = types.BufferClearCounts
 
 // ClearNetworkBuffers resets network telemetry buffers and related counters.
 //
