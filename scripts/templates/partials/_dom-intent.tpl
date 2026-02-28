@@ -198,7 +198,10 @@
     'confirm_top_dialog',
     'dismiss_top_overlay',
     'auto_dismiss_overlays',
-    'wait_for_stable'
+    'wait_for_stable',
+    'wait_for_text',
+    'wait_for_absent',
+    'action_diff'
   ])
 
   type RankedIntentCandidate = { element: Element; score: number }
@@ -499,6 +502,18 @@
 
     if (action === 'wait_for_stable') {
       return { element: document.body, match_count: 1, match_strategy: 'wait_for_stable' }
+    }
+
+    if (action === 'wait_for_text') {
+      return { element: document.body, match_count: 1, match_strategy: 'wait_for_text' }
+    }
+
+    if (action === 'wait_for_absent') {
+      return { element: document.body, match_count: 1, match_strategy: 'wait_for_absent' }
+    }
+
+    if (action === 'action_diff') {
+      return { element: document.body, match_count: 1, match_strategy: 'action_diff' }
     }
 
     if (action === 'auto_dismiss_overlays') {

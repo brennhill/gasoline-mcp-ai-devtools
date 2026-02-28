@@ -260,6 +260,14 @@ func InteractToolSchema() mcp.MCPTool {
 					"type":        "string",
 					"description": "CSS selector to wait for after navigation (navigate_and_wait_for)",
 				},
+				"url_contains": map[string]any{
+					"type":        "string",
+					"description": "Wait for URL to contain this substring (wait_for)",
+				},
+				"absent": map[string]any{
+					"type":        "boolean",
+					"description": "Wait for element to disappear (wait_for)",
+				},
 				"save_to": map[string]any{
 					"type":        "string",
 					"description": "File path to save output (run_a11y_and_export_sarif)",

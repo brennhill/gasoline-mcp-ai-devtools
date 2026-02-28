@@ -873,6 +873,8 @@ func (h *ToolHandler) handleDOMPrimitive(req JSONRPCRequest, args json.RawMessag
 		Analyze       bool     `json:"analyze,omitempty"`
 		X             *float64 `json:"x,omitempty"`
 		Y             *float64 `json:"y,omitempty"`
+		URLContains   string   `json:"url_contains,omitempty"`
+		Absent        bool     `json:"absent,omitempty"`
 	}
 	if err := json.Unmarshal(args, &params); err != nil {
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidJSON, "Invalid JSON arguments: "+err.Error(), "Fix JSON syntax and call again")}
@@ -921,7 +923,8 @@ func (h *ToolHandler) handleDOMPrimitive(req JSONRPCRequest, args json.RawMessag
 		"dismiss_top_overlay":    true,
 		"auto_dismiss_overlays":  true,
 		"wait_for_stable":        true,
-		"key_press":             true,
+		"key_press":              true,
+		"wait_for":               true,
 	}
 	if params.Selector == "" && params.ElementID == "" && !selectorOptionalActions[action] {
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(
@@ -930,6 +933,46 @@ func (h *ToolHandler) handleDOMPrimitive(req JSONRPCRequest, args json.RawMessag
 			"Add 'selector' (CSS or semantic selector), or use 'element_id'/'index' from list_interactive results.",
 			withParam("selector"),
 		)}
+	}
+
+	// wait_for: require at least one condition and reject incompatible combinations
+	if action == "wait_for" {
+		hasSelector := params.Selector != "" || params.ElementID != ""
+		hasText := params.Text != ""
+		hasURL := params.URLContains != ""
+		condCount := 0
+		if hasSelector || params.Absent {
+			condCount++
+		}
+		if hasText {
+			condCount++
+		}
+		if hasURL {
+			condCount++
+		}
+		if condCount == 0 {
+			return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(
+				ErrMissingParam,
+				"wait_for requires at least one condition: selector, text, or url_contains",
+				"Provide 'selector' (wait for element), 'text' (wait for text), or 'url_contains' (wait for URL change).",
+				withParam("selector"),
+			)}
+		}
+		if condCount > 1 {
+			return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(
+				ErrInvalidParam,
+				"wait_for conditions are mutually exclusive: use only one of selector, text, or url_contains",
+				"Choose a single wait condition per call.",
+			)}
+		}
+		if params.Absent && !hasSelector {
+			return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(
+				ErrMissingParam,
+				"wait_for with absent requires a selector",
+				"Provide 'selector' to specify which element to wait to disappear.",
+				withParam("selector"),
+			)}
+		}
 	}
 
 	if errResp, failed := validateDOMActionParams(req, action, params.Text, params.Value, params.Name); failed {
