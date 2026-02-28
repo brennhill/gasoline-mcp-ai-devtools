@@ -7,6 +7,7 @@ package main
 
 import (
 	"encoding/json"
+	"net/http/httptest"
 	"strings"
 	"testing"
 )
@@ -32,9 +33,22 @@ func TestToolsInteractBatch_Dispatches(t *testing.T) {
 	}
 }
 
+// setupBatchHandler creates a ToolHandler with pilot/extension enabled,
+// which is required since handleBatch has early requirePilot/requireExtension gates (#9.R3.9).
+func setupBatchHandler(t *testing.T) *ToolHandler {
+	t.Helper()
+	h, _, cap := makeToolHandler(t)
+	cap.SetPilotEnabled(true)
+	httpReq := httptest.NewRequest("POST", "/sync", strings.NewReader(`{"ext_session_id":"test"}`))
+	httpReq.Header.Set("X-Gasoline-Client", "test-client")
+	cap.HandleSync(httptest.NewRecorder(), httpReq)
+	cap.SetTrackingStatusForTest(42, "https://example.com")
+	return h
+}
+
 func TestToolsInteractBatch_MissingSteps(t *testing.T) {
 	t.Parallel()
-	h, _, _ := makeToolHandler(t)
+	h := setupBatchHandler(t)
 
 	resp := callInteractRaw(h, `{"what":"batch","sync":false}`)
 	result := parseToolResult(t, resp)
@@ -42,14 +56,14 @@ func TestToolsInteractBatch_MissingSteps(t *testing.T) {
 		t.Fatal("batch without steps should be an error")
 	}
 	text := firstText(result)
-	if !strings.Contains(text, "steps") {
+	if !strings.Contains(text, "steps") && !strings.Contains(text, "Steps") {
 		t.Errorf("error should mention 'steps', got: %s", text)
 	}
 }
 
 func TestToolsInteractBatch_EmptySteps(t *testing.T) {
 	t.Parallel()
-	h, _, _ := makeToolHandler(t)
+	h := setupBatchHandler(t)
 
 	resp := callInteractRaw(h, `{"what":"batch","steps":[],"sync":false}`)
 	result := parseToolResult(t, resp)
@@ -60,7 +74,7 @@ func TestToolsInteractBatch_EmptySteps(t *testing.T) {
 
 func TestToolsInteractBatch_TooManySteps(t *testing.T) {
 	t.Parallel()
-	h, _, _ := makeToolHandler(t)
+	h := setupBatchHandler(t)
 
 	// Build 51 steps
 	steps := make([]map[string]string, 51)
@@ -83,7 +97,7 @@ func TestToolsInteractBatch_TooManySteps(t *testing.T) {
 
 func TestToolsInteractBatch_StepMissingWhat(t *testing.T) {
 	t.Parallel()
-	h, _, _ := makeToolHandler(t)
+	h := setupBatchHandler(t)
 
 	resp := callInteractRaw(h, `{"what":"batch","steps":[{"text":"hello"}],"sync":false}`)
 	result := parseToolResult(t, resp)
@@ -177,7 +191,7 @@ func TestToolsInteractSchema_StepsParam(t *testing.T) {
 
 func TestToolsInteractBatch_Execution(t *testing.T) {
 	// These subtests run sequentially because they contend on the global replayMu.
-	h, _, _ := makeToolHandler(t)
+	h := setupBatchHandler(t)
 
 	t.Run("ResponseStructure", func(t *testing.T) {
 		resp := callInteractRaw(h, `{"what":"batch","steps":[{"what":"subtitle","text":"test"}],"step_timeout_ms":100,"sync":false}`)
@@ -333,4 +347,90 @@ func TestToolsInteractBatch_Execution(t *testing.T) {
 			t.Errorf("expected 3 executed steps, got %v", stepsExecuted)
 		}
 	})
+}
+
+// ============================================
+// stripComposableScreenshotFromStep (#9.R12)
+// ============================================
+
+func TestStripComposableScreenshotFromStep_RemovesFlag(t *testing.T) {
+	t.Parallel()
+	input := json.RawMessage(`{"what":"click","selector":"btn","include_screenshot":true}`)
+	output := stripComposableScreenshotFromStep(input)
+
+	var result map[string]any
+	if err := json.Unmarshal(output, &result); err != nil {
+		t.Fatalf("output should be valid JSON: %v", err)
+	}
+	if _, has := result["include_screenshot"]; has {
+		t.Error("include_screenshot should be removed")
+	}
+	if result["what"] != "click" {
+		t.Errorf("what should be preserved, got %v", result["what"])
+	}
+	if result["selector"] != "btn" {
+		t.Errorf("selector should be preserved, got %v", result["selector"])
+	}
+}
+
+func TestStripComposableScreenshotFromStep_NoOp(t *testing.T) {
+	t.Parallel()
+	input := json.RawMessage(`{"what":"click","selector":"btn"}`)
+	output := stripComposableScreenshotFromStep(input)
+
+	if string(output) != string(input) {
+		t.Errorf("output should be unchanged when no include_screenshot present\ninput:  %s\noutput: %s", input, output)
+	}
+}
+
+func TestStripComposableScreenshotFromStep_InvalidJSON(t *testing.T) {
+	t.Parallel()
+	input := json.RawMessage(`{invalid json`)
+	output := stripComposableScreenshotFromStep(input)
+
+	if string(output) != string(input) {
+		t.Errorf("invalid JSON should be returned unchanged\ninput:  %s\noutput: %s", input, output)
+	}
+}
+
+func TestStripComposableScreenshotFromStep_PreservesOtherFields(t *testing.T) {
+	t.Parallel()
+	input := json.RawMessage(`{"what":"type","selector":"input","text":"hello","clear":true,"include_screenshot":true}`)
+	output := stripComposableScreenshotFromStep(input)
+
+	var result map[string]any
+	if err := json.Unmarshal(output, &result); err != nil {
+		t.Fatalf("output should be valid JSON: %v", err)
+	}
+	if _, has := result["include_screenshot"]; has {
+		t.Error("include_screenshot should be removed")
+	}
+	// All other fields should survive
+	if result["what"] != "type" {
+		t.Errorf("what = %v, want 'type'", result["what"])
+	}
+	if result["selector"] != "input" {
+		t.Errorf("selector = %v, want 'input'", result["selector"])
+	}
+	if result["text"] != "hello" {
+		t.Errorf("text = %v, want 'hello'", result["text"])
+	}
+	if result["clear"] != true {
+		t.Errorf("clear = %v, want true", result["clear"])
+	}
+}
+
+func TestStripComposableScreenshotFromStep_FalseValue(t *testing.T) {
+	t.Parallel()
+	// Even include_screenshot:false should be stripped (it's wasteful to send)
+	input := json.RawMessage(`{"what":"click","include_screenshot":false}`)
+	output := stripComposableScreenshotFromStep(input)
+
+	var result map[string]any
+	if err := json.Unmarshal(output, &result); err != nil {
+		t.Fatalf("output should be valid JSON: %v", err)
+	}
+	if _, has := result["include_screenshot"]; has {
+		t.Error("include_screenshot:false should also be stripped")
+	}
 }

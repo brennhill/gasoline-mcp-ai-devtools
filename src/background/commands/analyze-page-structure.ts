@@ -145,8 +145,10 @@ function pageStructureScript(useGlobals: boolean): PageStructureResult {
   // --- Scroll containers ---
   const scrollContainers: ScrollContainer[] = []
   const allElements = document.querySelectorAll('*')
+  // Bail out on massive DOMs to avoid expensive getComputedStyle calls (#9.7.6)
+  const skipScrollDetection = allElements.length > 50000
   let scCount = 0
-  for (const el of Array.from(allElements)) {
+  for (const el of Array.from(skipScrollDetection ? [] : allElements)) {
     if (scCount >= MAX_SCROLL_CONTAINERS) break
     const htmlEl = el as HTMLElement
     if (htmlEl.scrollHeight > htmlEl.clientHeight + 50 && htmlEl.clientHeight > 0) {
@@ -194,9 +196,14 @@ function pageStructureScript(useGlobals: boolean): PageStructureResult {
   }
 
   // --- Shadow DOM count ---
+  // Cap iteration to avoid blocking on massive DOMs (#9.R8)
+  const MAX_SHADOW_WALK = 50000
   let shadowRoots = 0
+  let shadowWalked = 0
   const walker = document.createTreeWalker(document.body || document.documentElement, NodeFilter.SHOW_ELEMENT)
   while (walker.nextNode()) {
+    shadowWalked++
+    if (shadowWalked > MAX_SHADOW_WALK) break
     if ((walker.currentNode as Element).shadowRoot) {
       shadowRoots++
     }

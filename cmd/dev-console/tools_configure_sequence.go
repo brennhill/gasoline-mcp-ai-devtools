@@ -55,7 +55,9 @@ type SequenceStepResult struct {
 	Error         string `json:"error,omitempty"`
 }
 
-// Replay mutex prevents concurrent sequence replays.
+// replayMu prevents concurrent sequence replays and batch executions.
+// Shared between replay_sequence (this file) and batch (tools_interact_batch.go).
+// Only one can execute at a time to prevent interleaved browser actions.
 var replayMu sync.Mutex
 
 // ============================================
@@ -369,9 +371,13 @@ func (h *ToolHandler) toolConfigureReplaySequence(req JSONRPCRequest, args json.
 		}
 
 		if isErrorResponse(stepResp) {
-			stepResult.Status = "error"
-			stepResult.Error = extractErrorMessage(stepResp)
-			stepsFailed++
+			// Only count as failed if not already counted by the correlation path above (#9.R1).
+			// See tools_interact_batch.go for detailed rationale on contradictory state handling.
+			if stepResult.Status == "" {
+				stepResult.Status = "error"
+				stepResult.Error = extractErrorMessage(stepResp)
+				stepsFailed++
+			}
 			results = append(results, stepResult)
 			stepsExecuted++
 			if !continueOnError {

@@ -158,6 +158,91 @@ func TestQueueComposableSubtitle_UniqueCorrelationIDs(t *testing.T) {
 }
 
 // ============================================
+// queueComposableActionDiff (#343, #9.R6)
+// ============================================
+
+func TestQueueComposableActionDiff_QueuesPendingQuery(t *testing.T) {
+	t.Parallel()
+	env := newInteractHelpersTestEnv(t)
+
+	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`)}
+	env.handler.queueComposableActionDiff(req)
+
+	// Verify a pending query was created with type "dom_action"
+	queries := env.capture.GetPendingQueries()
+	found := false
+	for _, q := range queries {
+		if q.Type == "dom_action" {
+			var params map[string]any
+			if err := json.Unmarshal(q.Params, &params); err != nil {
+				t.Fatalf("failed to parse action_diff params: %v", err)
+			}
+			if params["action"] != "action_diff" {
+				continue // different dom_action, skip
+			}
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Error("expected a pending query of type 'dom_action' with action 'action_diff'")
+	}
+}
+
+func TestQueueComposableActionDiff_CorrelationIDPrefix(t *testing.T) {
+	t.Parallel()
+	env := newInteractHelpersTestEnv(t)
+
+	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`)}
+	env.handler.queueComposableActionDiff(req)
+
+	queries := env.capture.GetPendingQueries()
+	for _, q := range queries {
+		if q.Type == "dom_action" {
+			var params map[string]any
+			if err := json.Unmarshal(q.Params, &params); err != nil {
+				continue
+			}
+			if params["action"] != "action_diff" {
+				continue
+			}
+			if !strings.HasPrefix(q.CorrelationID, "dom_action_diff_") {
+				t.Errorf("expected correlation_id prefix 'dom_action_diff_', got %q", q.CorrelationID)
+			}
+			return
+		}
+	}
+	t.Error("action_diff query not found")
+}
+
+func TestQueueComposableActionDiff_HasTimeoutParam(t *testing.T) {
+	t.Parallel()
+	env := newInteractHelpersTestEnv(t)
+
+	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`)}
+	env.handler.queueComposableActionDiff(req)
+
+	queries := env.capture.GetPendingQueries()
+	for _, q := range queries {
+		if q.Type == "dom_action" {
+			var params map[string]any
+			if err := json.Unmarshal(q.Params, &params); err != nil {
+				continue
+			}
+			if params["action"] != "action_diff" {
+				continue
+			}
+			timeoutMs, ok := params["timeout_ms"].(float64)
+			if !ok || timeoutMs <= 0 {
+				t.Errorf("expected positive timeout_ms, got %v", params["timeout_ms"])
+			}
+			return
+		}
+	}
+	t.Error("action_diff query not found")
+}
+
+// ============================================
 // queueStateNavigation
 // ============================================
 
