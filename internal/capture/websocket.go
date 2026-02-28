@@ -95,7 +95,7 @@ func (c *Capture) AddWebSocketEvents(events []WebSocketEvent) {
 	now := time.Now()
 
 	activeTestIDs := make([]string, 0)
-	for testID := range c.ext.activeTestIDs {
+	for testID := range c.extensionState.activeTestIDs {
 		activeTestIDs = append(activeTestIDs, testID)
 	}
 
@@ -176,7 +176,8 @@ func containsTestID(testIDs []string, target string) bool {
 	return false
 }
 
-// GetWebSocketEvents returns filtered WebSocket events (newest first)
+// GetWebSocketEvents returns filtered WebSocket events (newest first).
+// Iterates backward from newest and stops at limit for O(limit) instead of O(n).
 func (c *Capture) GetWebSocketEvents(filter WebSocketEventFilter) []WebSocketEvent {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
@@ -186,20 +187,18 @@ func (c *Capture) GetWebSocketEvents(filter WebSocketEventFilter) []WebSocketEve
 		limit = defaultWSLimit
 	}
 
-	var filtered []WebSocketEvent
-	for i := range c.wsEvents {
+	filtered := make([]WebSocketEvent, 0, limit)
+	for i := len(c.wsEvents) - 1; i >= 0; i-- {
 		if c.TTL > 0 && i < len(c.wsAddedAt) && isExpiredByTTL(c.wsAddedAt[i], c.TTL) {
-			continue
+			break
 		}
 		if !matchesWSEventFilter(&c.wsEvents[i], filter) {
 			continue
 		}
 		filtered = append(filtered, c.wsEvents[i])
-	}
-
-	reverseSlice(filtered)
-	if len(filtered) > limit {
-		filtered = filtered[:limit]
+		if len(filtered) >= limit {
+			break
+		}
 	}
 	return filtered
 }
@@ -215,7 +214,7 @@ func (c *Capture) trackConnection(event WebSocketEvent) {
 	case "close":
 		c.trackConnClose(event)
 	case "error":
-		if conn := c.ws.connections[event.ID]; conn != nil {
+		if conn := c.wsConnections.connections[event.ID]; conn != nil {
 			conn.state = "error"
 		}
 	case "message":
@@ -228,17 +227,17 @@ func (c *Capture) trackConnection(event WebSocketEvent) {
 // Invariants:
 // - Active connection map is bounded by maxActiveConns using oldest-id eviction.
 func (c *Capture) trackConnOpen(event WebSocketEvent) {
-	if len(c.ws.connections) >= maxActiveConns && len(c.ws.connOrder) > 0 {
-		oldestID := c.ws.connOrder[0]
-		delete(c.ws.connections, oldestID)
-		newOrder := make([]string, len(c.ws.connOrder)-1)
-		copy(newOrder, c.ws.connOrder[1:])
-		c.ws.connOrder = newOrder
+	if len(c.wsConnections.connections) >= maxActiveConns && len(c.wsConnections.connOrder) > 0 {
+		oldestID := c.wsConnections.connOrder[0]
+		delete(c.wsConnections.connections, oldestID)
+		newOrder := make([]string, len(c.wsConnections.connOrder)-1)
+		copy(newOrder, c.wsConnections.connOrder[1:])
+		c.wsConnections.connOrder = newOrder
 	}
-	c.ws.connections[event.ID] = &connectionState{
+	c.wsConnections.connections[event.ID] = &connectionState{
 		id: event.ID, url: event.URL, state: "open", openedAt: event.Timestamp,
 	}
-	c.ws.connOrder = append(c.ws.connOrder, event.ID)
+	c.wsConnections.connOrder = append(c.wsConnections.connOrder, event.ID)
 }
 
 // trackConnClose finalizes a connection and moves summary into closed history.
@@ -249,7 +248,7 @@ func (c *Capture) trackConnOpen(event WebSocketEvent) {
 // Failure semantics:
 // - Unknown close events are ignored; no synthetic connection is created.
 func (c *Capture) trackConnClose(event WebSocketEvent) {
-	conn := c.ws.connections[event.ID]
+	conn := c.wsConnections.connections[event.ID]
 	if conn == nil {
 		return
 	}
@@ -261,15 +260,15 @@ func (c *Capture) trackConnClose(event WebSocketEvent) {
 	closed.TotalMessages.Incoming = conn.incoming.total
 	closed.TotalMessages.Outgoing = conn.outgoing.total
 
-	c.ws.closedConns = append(c.ws.closedConns, closed)
-	if len(c.ws.closedConns) > maxClosedConns {
-		keep := len(c.ws.closedConns) - maxClosedConns
+	c.wsConnections.closedConns = append(c.wsConnections.closedConns, closed)
+	if len(c.wsConnections.closedConns) > maxClosedConns {
+		keep := len(c.wsConnections.closedConns) - maxClosedConns
 		surviving := make([]WebSocketClosedConnection, maxClosedConns)
-		copy(surviving, c.ws.closedConns[keep:])
-		c.ws.closedConns = surviving
+		copy(surviving, c.wsConnections.closedConns[keep:])
+		c.wsConnections.closedConns = surviving
 	}
-	delete(c.ws.connections, event.ID)
-	c.ws.connOrder = removeFromSlice(c.ws.connOrder, event.ID)
+	delete(c.wsConnections.connections, event.ID)
+	c.wsConnections.connOrder = removeFromSlice(c.wsConnections.connOrder, event.ID)
 }
 
 // updateDirectionStats mutates per-direction counters and recency windows.
@@ -289,7 +288,7 @@ func updateDirectionStats(stats *directionStats, event WebSocketEvent, msgTime t
 // Failure semantics:
 // - Messages on unknown connections are ignored instead of creating implicit connection records.
 func (c *Capture) trackConnMessage(event WebSocketEvent) {
-	conn := c.ws.connections[event.ID]
+	conn := c.wsConnections.connections[event.ID]
 	if conn == nil {
 		return
 	}
@@ -315,19 +314,19 @@ func parseTimestamp(ts string) time.Time {
 //
 // Invariants:
 // - Returned slice preserves chronological order of surviving timestamps.
+// - Prunes in-place to avoid allocation on every call.
 func appendAndPrune(times []time.Time, t time.Time) []time.Time {
 	cutoff := time.Now().Add(-rateWindow)
-	// Prune old entries
+	// Prune old entries in-place
 	start := 0
 	for start < len(times) && times[start].Before(cutoff) {
 		start++
 	}
-	surviving := make([]time.Time, len(times)-start)
-	copy(surviving, times[start:])
+	times = times[start:]
 	if !t.IsZero() {
-		surviving = append(surviving, t)
+		times = append(times, t)
 	}
-	return surviving
+	return times
 }
 
 // calcRate returns messages per second from recent timestamps within the rate window
@@ -430,7 +429,7 @@ func (c *Capture) GetWebSocketStatus(filter WebSocketStatusFilter) WebSocketStat
 		Closed:      make([]WebSocketClosedConnection, 0),
 	}
 
-	for _, conn := range c.ws.connections {
+	for _, conn := range c.wsConnections.connections {
 		if filter.URLFilter != "" && !strings.Contains(conn.url, filter.URLFilter) {
 			continue
 		}
@@ -440,7 +439,7 @@ func (c *Capture) GetWebSocketStatus(filter WebSocketStatusFilter) WebSocketStat
 		resp.Connections = append(resp.Connections, buildWSConnection(conn))
 	}
 
-	for _, closed := range c.ws.closedConns {
+	for _, closed := range c.wsConnections.closedConns {
 		if filter.URLFilter != "" && !strings.Contains(closed.URL, filter.URLFilter) {
 			continue
 		}

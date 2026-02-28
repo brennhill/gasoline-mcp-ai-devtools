@@ -11,23 +11,7 @@
 import type { PendingQuery } from '../types/queries.js'
 import type { SyncClient } from './sync-client.js'
 import type { DOMActionParams, DOMResult } from './dom-types.js'
-
-type SendAsyncResult = (
-  syncClient: SyncClient,
-  queryId: string,
-  correlationId: string,
-  status: 'complete' | 'error' | 'timeout',
-  result?: unknown,
-  error?: string
-) => void
-
-type ActionToast = (
-  tabId: number,
-  text: string,
-  detail?: string,
-  state?: 'trying' | 'success' | 'warning' | 'error',
-  durationMs?: number
-) => void
+import type { SendAsyncResultFn, ActionToastFn } from './commands/helpers.js'
 
 interface CDPActionParams {
   action: string
@@ -653,8 +637,8 @@ export async function executeCDPAction(
   query: PendingQuery,
   tabId: number,
   syncClient: SyncClient,
-  sendAsyncResult: SendAsyncResult,
-  actionToast: ActionToast
+  sendAsyncResult: SendAsyncResultFn,
+  actionToast: ActionToastFn
 ): Promise<void> {
   const params = parseCDPParams(query)
   if (!params) {

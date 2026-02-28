@@ -1362,7 +1362,7 @@ export function domPrimitive(
               '[class*="toast"]', '[class*="snackbar"]', '[class*="notification"]'
             ]
             for (const added of addedNodes) {
-              if (isToastElement(added, toastSelectors)) {
+              if (matchesAnySelectorSafe(added, toastSelectors)) {
                 const text = (added.textContent || '').trim().slice(0, 200)
                 if (text) {
                   toasts.push({ text, type: classifyToastType(added) })
@@ -1390,7 +1390,7 @@ export function domPrimitive(
               '[aria-invalid="true"]', '.has-error', '.is-invalid'
             ]
             for (const added of addedNodes) {
-              if (isFormErrorElement(added, errorSelectors)) {
+              if (matchesAnySelectorSafe(added, errorSelectors)) {
                 const text = (added.textContent || '').trim().slice(0, 200)
                 if (text) formErrors.push(text)
               }
@@ -1412,7 +1412,7 @@ export function domPrimitive(
               '[class*="spinner"]', '[class*="loading"]', '[class*="skeleton"]'
             ]
             for (const added of addedNodes) {
-              if (isLoadingElement(added, loadingSelectors)) {
+              if (matchesAnySelectorSafe(added, loadingSelectors)) {
                 loadingIndicators.push(describeSelector(added))
               }
             }
@@ -1471,12 +1471,10 @@ export function domPrimitive(
             return false
           }
 
-          // Helper: check if element is a toast/notification
-          function isToastElement(el: Element, sels: string[]): boolean {
+          // Helper: check if element matches any selector from a list
+          function matchesAnySelectorSafe(el: Element, sels: string[]): boolean {
             for (const sel of sels) {
-              try {
-                if (typeof el.matches === 'function' && el.matches(sel)) return true
-              } catch { /* ignore invalid selectors in matches */ }
+              try { if (typeof el.matches === 'function' && el.matches(sel)) return true } catch {}
             }
             return false
           }
@@ -1494,25 +1492,6 @@ export function domPrimitive(
             return 'info'
           }
 
-          // Helper: check if element is a form error
-          function isFormErrorElement(el: Element, sels: string[]): boolean {
-            for (const sel of sels) {
-              try {
-                if (typeof el.matches === 'function' && el.matches(sel)) return true
-              } catch { /* ignore */ }
-            }
-            return false
-          }
-
-          // Helper: check if element is a loading indicator
-          function isLoadingElement(el: Element, sels: string[]): boolean {
-            for (const sel of sels) {
-              try {
-                if (typeof el.matches === 'function' && el.matches(sel)) return true
-              } catch { /* ignore */ }
-            }
-            return false
-          }
 
           // Helper: generate a compact selector description for an element
           function describeSelector(el: Element): string {

@@ -70,10 +70,10 @@ func TestHandleSync_BasicRequest(t *testing.T) {
 
 	// Verify state was updated
 	cap.mu.RLock()
-	if cap.ext.extSessionID != "test_session_123" {
-		t.Errorf("Expected session to be 'test_session_123', got '%s'", cap.ext.extSessionID)
+	if cap.extensionState.extSessionID != "test_session_123" {
+		t.Errorf("Expected session to be 'test_session_123', got '%s'", cap.extensionState.extSessionID)
 	}
-	if !cap.ext.pilotEnabled {
+	if !cap.extensionState.pilotEnabled {
 		t.Error("Expected pilotEnabled to be true")
 	}
 	cap.mu.RUnlock()
@@ -206,7 +206,7 @@ func TestHandleSync_UpdatesLastPollAt(t *testing.T) {
 
 	// Initially lastPollAt should be zero
 	cap.mu.RLock()
-	initialPollAt := cap.ext.lastPollAt
+	initialPollAt := cap.extensionState.lastPollAt
 	cap.mu.RUnlock()
 
 	if !initialPollAt.IsZero() {
@@ -223,7 +223,7 @@ func TestHandleSync_UpdatesLastPollAt(t *testing.T) {
 
 	// Verify lastPollAt was updated
 	cap.mu.RLock()
-	newPollAt := cap.ext.lastPollAt
+	newPollAt := cap.extensionState.lastPollAt
 	cap.mu.RUnlock()
 
 	if newPollAt.IsZero() {
@@ -355,9 +355,9 @@ func TestUpdateSyncConnectionState_NoReconnectForShortPollGap(t *testing.T) {
 
 	now := time.Now()
 	cap.mu.Lock()
-	cap.ext.lastPollAt = now.Add(-6 * time.Second)
-	cap.ext.lastSyncSeen = now.Add(-6 * time.Second)
-	cap.ext.lastExtensionConnected = true
+	cap.extensionState.lastPollAt = now.Add(-6 * time.Second)
+	cap.extensionState.lastSyncSeen = now.Add(-6 * time.Second)
+	cap.extensionState.lastExtensionConnected = true
 	cap.mu.Unlock()
 
 	state := cap.updateSyncConnectionState(
@@ -381,9 +381,9 @@ func TestUpdateSyncConnectionState_ReconnectAfterDisconnectThreshold(t *testing.
 
 	now := time.Now()
 	cap.mu.Lock()
-	cap.ext.lastPollAt = now.Add(-12 * time.Second)
-	cap.ext.lastSyncSeen = now.Add(-12 * time.Second)
-	cap.ext.lastExtensionConnected = true
+	cap.extensionState.lastPollAt = now.Add(-12 * time.Second)
+	cap.extensionState.lastSyncSeen = now.Add(-12 * time.Second)
+	cap.extensionState.lastExtensionConnected = true
 	cap.mu.Unlock()
 
 	state := cap.updateSyncConnectionState(

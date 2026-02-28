@@ -41,7 +41,7 @@ func (c *Capture) AddEnhancedActions(actions []EnhancedAction) {
 
 	// Collect active test IDs for tagging
 	activeTestIDs := make([]string, 0)
-	for testID := range c.ext.activeTestIDs {
+	for testID := range c.extensionState.activeTestIDs {
 		activeTestIDs = append(activeTestIDs, testID)
 	}
 

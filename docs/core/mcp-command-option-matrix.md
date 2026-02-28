@@ -78,13 +78,13 @@ canonical: true
 - `audit_log` -> `toolGetAuditLog`
 
 ### `interact` (`action` -> handler -> query type)
-- `highlight` -> `handlePilotHighlight` -> `highlight`
+- `highlight` -> `handleHighlight` -> `highlight`
 - `subtitle` -> `handleSubtitle` -> `subtitle`
-- `save_state` -> `handlePilotManageStateSave` -> state path
-- `load_state` -> `handlePilotManageStateLoad` -> state path
-- `list_states` -> `handlePilotManageStateList` -> state path
-- `delete_state` -> `handlePilotManageStateDelete` -> state path
-- `execute_js` -> `handlePilotExecuteJS` -> `execute`
+- `save_state` -> `handleStateSave` -> state path
+- `load_state` -> `handleStateLoad` -> state path
+- `list_states` -> `handleStateList` -> state path
+- `delete_state` -> `handleStateDelete` -> state path
+- `execute_js` -> `handleExecuteJS` -> `execute`
 - `navigate` -> `handleBrowserActionNavigate` -> `browser_action`
 - `refresh` -> `handleBrowserActionRefresh` -> `browser_action`
 - `back` -> `handleBrowserActionBack` -> `browser_action`

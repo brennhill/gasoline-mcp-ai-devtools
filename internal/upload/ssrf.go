@@ -34,9 +34,13 @@ func init() {
 		"192.168.0.0/16", // RFC 1918
 		"169.254.0.0/16", // link-local / cloud metadata
 		"0.0.0.0/8",      // unspecified (routes to localhost)
+		"224.0.0.0/4",    // IPv4 multicast
+		"100.64.0.0/10",  // RFC 6598 Carrier-Grade NAT
+		"198.18.0.0/15",  // RFC 2544 benchmarking
 		"::1/128",        // IPv6 loopback
 		"fc00::/7",       // IPv6 unique local
 		"fe80::/10",      // IPv6 link-local
+		"ff00::/8",       // IPv6 multicast
 	} {
 		_, ipNet, _ := net.ParseCIDR(cidr)
 		privateRanges = append(privateRanges, ipNet)
@@ -45,7 +49,7 @@ func init() {
 
 // IsPrivateIP returns true if the IP is in a private, loopback, link-local, or unspecified range.
 func IsPrivateIP(ip net.IP) bool {
-	if ip.IsUnspecified() || ip.IsLoopback() {
+	if ip.IsUnspecified() || ip.IsLoopback() || ip.IsMulticast() {
 		return true
 	}
 	for _, cidr := range privateRanges {

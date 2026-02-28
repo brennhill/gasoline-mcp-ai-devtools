@@ -38,7 +38,7 @@ func (c *Capture) calcWSMemory() int64 {
 // calcNBMemory returns the running total of network bodies buffer memory (caller must hold lock).
 // O(1) — maintained incrementally by add/evict/clear operations.
 func (c *Capture) calcNBMemory() int64 {
-	return c.nbMemoryTotal
+	return c.networkBodyMemoryTotal
 }
 
 // calcActionMemory approximates memory usage of enhanced actions buffer (caller must hold lock)

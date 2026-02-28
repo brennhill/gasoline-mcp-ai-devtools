@@ -1,3 +1,5 @@
+// server_routes_insecure_proxy.go — Insecure proxy endpoint for CSP-bypass debugging.
+
 package main
 
 import (
@@ -5,10 +7,31 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/dev-console/dev-console/internal/capture"
+	"github.com/dev-console/dev-console/internal/upload"
 )
+
+// ssrfCheckEnabled controls whether the SSRF denylist is enforced.
+// Disabled in tests that need to reach localhost mock servers.
+var ssrfCheckEnabled = true
+
+var (
+	insecureProxyClient     *http.Client
+	insecureProxyClientOnce sync.Once
+)
+
+func getInsecureProxyClient() *http.Client {
+	insecureProxyClientOnce.Do(func() {
+		insecureProxyClient = &http.Client{
+			Timeout:   20 * time.Second,
+			Transport: upload.NewSSRFSafeTransport(func() bool { return !ssrfCheckEnabled }),
+		}
+	})
+	return insecureProxyClient
+}
 
 var insecureProxyStripHeaders = map[string]bool{
 	"content-security-policy":             true,
@@ -58,9 +81,16 @@ func (s *Server) handleInsecureProxy(w http.ResponseWriter, r *http.Request, cap
 		upstreamReq.Header.Set("User-Agent", ua)
 	}
 
-	client := &http.Client{Timeout: 20 * time.Second}
+	// Use pooled SSRF-safe client that pins DNS resolution at the dial layer,
+	// preventing redirect-based SSRF bypasses and TOCTOU DNS rebinding.
+	// Reuses the comprehensive denylist from internal/upload/ssrf.go.
+	client := getInsecureProxyClient()
 	upstreamResp, err := client.Do(upstreamReq)
 	if err != nil {
+		if strings.Contains(err.Error(), "ssrf_blocked") {
+			jsonResponse(w, http.StatusForbidden, map[string]string{"error": "Target URL resolves to private/internal network address"})
+			return
+		}
 		jsonResponse(w, http.StatusBadGateway, map[string]string{"error": "Failed to fetch target URL"})
 		return
 	}

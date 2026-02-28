@@ -55,20 +55,4 @@ export function isVersionNewer(newer, older) {
     const result = compareVersions(newer, older);
     return result === 1;
 }
-/**
- * Check if a version is same or newer than another
- * @param version - Version to check
- * @param minimum - Minimum required version
- * @returns true if version >= minimum
- */
-export function isVersionSameOrNewer(version, minimum) {
-    const result = compareVersions(version, minimum);
-    return result === 1 || result === 0;
-}
-/**
- * Format version for display (e.g., "v5.2.5")
- */
-export function formatVersionDisplay(version) {
-    return `v${version}`;
-}
 //# sourceMappingURL=version.js.map

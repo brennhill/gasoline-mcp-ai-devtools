@@ -198,11 +198,11 @@ type HealthSnapshot struct {
 // GetHealthSnapshot returns a lock-safe aggregate health view.
 //
 // Invariants:
-// - Reads c.circuit/c.qd first, then c.mu, preserving declared lock hierarchy.
+// - Reads c.circuit/c.queryDispatcher first, then c.mu, preserving declared lock hierarchy.
 func (c *Capture) GetHealthSnapshot() HealthSnapshot {
 	// Get sub-struct state (own locks) before acquiring c.mu
 	circuitOpen, circuitReason, circuitOpenedAt, windowEventCount := c.circuit.GetState()
-	querySnap := c.qd.GetSnapshot()
+	querySnap := c.queryDispatcher.GetSnapshot()
 
 	c.mu.RLock()
 	defer c.mu.RUnlock()
@@ -211,18 +211,18 @@ func (c *Capture) GetHealthSnapshot() HealthSnapshot {
 		WebSocketCount:     len(c.wsEvents),
 		NetworkBodyCount:   len(c.networkBodies),
 		ActionCount:        len(c.enhancedActions),
-		ConnectionCount:    len(c.ws.connections),
-		LastPollTime:       c.ext.lastPollAt,
-		ExtSessionID:        c.ext.extSessionID,
-		ExtSessionChangedTime: c.ext.extSessionChangedAt,
-		PilotEnabled:       c.ext.pilotEnabled,
+		ConnectionCount:    len(c.wsConnections.connections),
+		LastPollTime:       c.extensionState.lastPollAt,
+		ExtSessionID:        c.extensionState.extSessionID,
+		ExtSessionChangedTime: c.extensionState.extSessionChangedAt,
+		PilotEnabled:       c.extensionState.pilotEnabled,
 		CircuitOpen:        circuitOpen,
 		WindowEventCount:   windowEventCount,
 		CircuitReason:      circuitReason,
 		CircuitOpenedTime:  circuitOpenedAt,
 		PendingQueryCount:  querySnap.PendingQueryCount,
 		QueryResultCount:   querySnap.QueryResultCount,
-		ActiveTestIDCount:  len(c.ext.activeTestIDs),
+		ActiveTestIDCount:  len(c.extensionState.activeTestIDs),
 		QueryTimeout:       querySnap.QueryTimeout,
 	}
 }

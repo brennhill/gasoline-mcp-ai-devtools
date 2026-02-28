@@ -228,11 +228,11 @@ func (qd *QueryDispatcher) WaitForCommand(correlationID string, timeout time.Dur
 //
 // Invariants:
 // - Returned value is a detached copy; internal slices/maps stay lock-owned.
+// - Eagerly cleans expired commands so wait loops see timely expiration.
 //
 // Failure semantics:
-// - May trigger lazy expiration before lookup to avoid returning stale pending entries.
+// - Expired commands are also cleaned by the periodic 30s ticker in startResultCleanup.
 func (qd *QueryDispatcher) GetCommandResult(correlationID string) (*CommandResult, bool) {
-	// First ensure any expired queries are marked as failed
 	qd.cleanExpiredCommands()
 
 	qd.resultsMu.RLock()
@@ -305,9 +305,6 @@ func (qd *QueryDispatcher) cleanExpiredCommands() {
 // GetPendingCommands returns all commands with status "pending".
 // Used by toolObservePendingCommands.
 func (qd *QueryDispatcher) GetPendingCommands() []*CommandResult {
-	// First ensure any expired queries are marked as failed
-	qd.cleanExpiredCommands()
-
 	qd.resultsMu.RLock()
 	defer qd.resultsMu.RUnlock()
 
@@ -323,9 +320,6 @@ func (qd *QueryDispatcher) GetPendingCommands() []*CommandResult {
 // GetCompletedCommands returns all commands with status "complete".
 // Used by toolObservePendingCommands.
 func (qd *QueryDispatcher) GetCompletedCommands() []*CommandResult {
-	// First ensure any expired queries are marked as failed
-	qd.cleanExpiredCommands()
-
 	qd.resultsMu.RLock()
 	defer qd.resultsMu.RUnlock()
 
@@ -340,8 +334,8 @@ func (qd *QueryDispatcher) GetCompletedCommands() []*CommandResult {
 
 // GetFailedCommands returns recent failed/expired commands.
 // Used by toolObserveFailedCommands.
+// Eagerly cleans expired commands so callers see freshly expired entries.
 func (qd *QueryDispatcher) GetFailedCommands() []*CommandResult {
-	// First ensure any expired queries are marked as failed
 	qd.cleanExpiredCommands()
 
 	qd.resultsMu.RLock()

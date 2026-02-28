@@ -12,6 +12,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	act "github.com/dev-console/dev-console/internal/tools/interact"
 )
 
 // extractResponseData parses the JSON payload from an MCPToolResult's text content.
@@ -57,7 +59,7 @@ func TestSaveState_LegacyNameParamSupported(t *testing.T) {
 	requireSessionStore(t, env)
 
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`), ClientID: "test-client"}
-	resp := env.handler.handlePilotManageStateSave(req, json.RawMessage(`{"name":"legacy_name_save"}`))
+	resp := env.handler.handleStateSave(req, json.RawMessage(`{"name":"legacy_name_save"}`))
 	data := extractResponseData(t, resp)
 
 	if data["status"] != "saved" {
@@ -74,12 +76,12 @@ func TestLoadState_LegacyNameParamSupported(t *testing.T) {
 	requireSessionStore(t, env)
 
 	stateData, _ := json.Marshal(map[string]any{"url": "https://example.com", "saved_at": time.Now().Format(time.RFC3339)})
-	if err := env.handler.sessionStoreImpl.Save(stateNamespace, "legacy_name_load", stateData); err != nil {
+	if err := env.handler.sessionStoreImpl.Save(act.StateNamespace, "legacy_name_load", stateData); err != nil {
 		t.Fatalf("seed state: %v", err)
 	}
 
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`), ClientID: "test-client"}
-	resp := env.handler.handlePilotManageStateLoad(req, json.RawMessage(`{"name":"legacy_name_load"}`))
+	resp := env.handler.handleStateLoad(req, json.RawMessage(`{"name":"legacy_name_load"}`))
 	data := extractResponseData(t, resp)
 
 	if data["status"] != "loaded" {
@@ -96,12 +98,12 @@ func TestDeleteState_LegacyNameParamSupported(t *testing.T) {
 	requireSessionStore(t, env)
 
 	stateData, _ := json.Marshal(map[string]any{"url": "https://example.com"})
-	if err := env.handler.sessionStoreImpl.Save(stateNamespace, "legacy_name_delete", stateData); err != nil {
+	if err := env.handler.sessionStoreImpl.Save(act.StateNamespace, "legacy_name_delete", stateData); err != nil {
 		t.Fatalf("seed state: %v", err)
 	}
 
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`), ClientID: "test-client"}
-	resp := env.handler.handlePilotManageStateDelete(req, json.RawMessage(`{"name":"legacy_name_delete"}`))
+	resp := env.handler.handleStateDelete(req, json.RawMessage(`{"name":"legacy_name_delete"}`))
 	data := extractResponseData(t, resp)
 
 	if data["status"] != "deleted" {
@@ -122,8 +124,8 @@ func TestCaptureState_Status_PilotDisabled(t *testing.T) {
 
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`)}
 	result := env.handler.captureState(req)
-	if result.Status != stateCaptureStatusPilotDisabled {
-		t.Errorf("status = %q, want %q", result.Status, stateCaptureStatusPilotDisabled)
+	if result.Status != act.StateCaptureStatusPilotDisabled {
+		t.Errorf("status = %q, want %q", result.Status, act.StateCaptureStatusPilotDisabled)
 	}
 	if result.Data != nil {
 		t.Error("Data should be nil when pilot is disabled")
@@ -137,8 +139,8 @@ func TestCaptureState_Status_ExtensionDisconnected(t *testing.T) {
 
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`)}
 	result := env.handler.captureState(req)
-	if result.Status != stateCaptureStatusExtensionDisconnected {
-		t.Errorf("status = %q, want %q", result.Status, stateCaptureStatusExtensionDisconnected)
+	if result.Status != act.StateCaptureStatusExtensionDisconnected {
+		t.Errorf("status = %q, want %q", result.Status, act.StateCaptureStatusExtensionDisconnected)
 	}
 	if result.Data != nil {
 		t.Error("Data should be nil when extension is disconnected")
@@ -175,7 +177,7 @@ func TestSaveState_StateCapture_Captured(t *testing.T) {
 	}()
 
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`), ClientID: "test-client"}
-	resp := env.handler.handlePilotManageStateSave(req, json.RawMessage(`{"snapshot_name":"form_test"}`))
+	resp := env.handler.handleStateSave(req, json.RawMessage(`{"snapshot_name":"form_test"}`))
 	data := extractResponseData(t, resp)
 
 	if data["state_capture"] != "captured" {
@@ -186,7 +188,7 @@ func TestSaveState_StateCapture_Captured(t *testing.T) {
 	}
 
 	// Verify form_values actually persisted by loading the state
-	resp2 := env.handler.handlePilotManageStateLoad(req, json.RawMessage(`{"snapshot_name":"form_test"}`))
+	resp2 := env.handler.handleStateLoad(req, json.RawMessage(`{"snapshot_name":"form_test"}`))
 	loadData := extractResponseData(t, resp2)
 	state, _ := loadData["state"].(map[string]any)
 	if _, ok := state["form_values"]; !ok {
@@ -226,7 +228,7 @@ func TestSaveState_CapturesStorage(t *testing.T) {
 	}()
 
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`), ClientID: "test-client"}
-	resp := env.handler.handlePilotManageStateSave(req, json.RawMessage(`{"snapshot_name":"storage_test"}`))
+	resp := env.handler.handleStateSave(req, json.RawMessage(`{"snapshot_name":"storage_test"}`))
 	data := extractResponseData(t, resp)
 
 	if data["state_capture"] != "captured" {
@@ -234,7 +236,7 @@ func TestSaveState_CapturesStorage(t *testing.T) {
 	}
 
 	// Load and verify all storage fields persisted
-	resp2 := env.handler.handlePilotManageStateLoad(req, json.RawMessage(`{"snapshot_name":"storage_test"}`))
+	resp2 := env.handler.handleStateLoad(req, json.RawMessage(`{"snapshot_name":"storage_test"}`))
 	loadData := extractResponseData(t, resp2)
 	state, _ := loadData["state"].(map[string]any)
 
@@ -299,13 +301,13 @@ func TestSaveState_ServerRedaction_RedactsSensitiveFormValues(t *testing.T) {
 	}()
 
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`), ClientID: "test-client"}
-	resp := env.handler.handlePilotManageStateSave(req, json.RawMessage(`{"snapshot_name":"redaction_server_side"}`))
+	resp := env.handler.handleStateSave(req, json.RawMessage(`{"snapshot_name":"redaction_server_side"}`))
 	data := extractResponseData(t, resp)
 	if data["status"] != "saved" {
 		t.Fatalf("status = %v, want \"saved\"", data["status"])
 	}
 
-	savedRaw, err := env.handler.sessionStoreImpl.Load(stateNamespace, "redaction_server_side")
+	savedRaw, err := env.handler.sessionStoreImpl.Load(act.StateNamespace, "redaction_server_side")
 	if err != nil {
 		t.Fatalf("load persisted state: %v", err)
 	}
@@ -372,13 +374,13 @@ func TestSaveState_ServerRedaction_RedactsLegacyFormValueShapes(t *testing.T) {
 	}()
 
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`), ClientID: "test-client"}
-	resp := env.handler.handlePilotManageStateSave(req, json.RawMessage(`{"snapshot_name":"redaction_legacy_shape"}`))
+	resp := env.handler.handleStateSave(req, json.RawMessage(`{"snapshot_name":"redaction_legacy_shape"}`))
 	data := extractResponseData(t, resp)
 	if data["status"] != "saved" {
 		t.Fatalf("status = %v, want \"saved\"", data["status"])
 	}
 
-	savedRaw, err := env.handler.sessionStoreImpl.Load(stateNamespace, "redaction_legacy_shape")
+	savedRaw, err := env.handler.sessionStoreImpl.Load(act.StateNamespace, "redaction_legacy_shape")
 	if err != nil {
 		t.Fatalf("load persisted state: %v", err)
 	}
@@ -399,7 +401,7 @@ func TestSaveState_StateCapture_SkippedPilotDisabled(t *testing.T) {
 	requireSessionStore(t, env)
 
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`)}
-	resp := env.handler.handlePilotManageStateSave(req, json.RawMessage(`{"snapshot_name":"no_pilot"}`))
+	resp := env.handler.handleStateSave(req, json.RawMessage(`{"snapshot_name":"no_pilot"}`))
 	data := extractResponseData(t, resp)
 
 	if data["state_capture"] != "skipped_pilot_disabled" {
@@ -419,7 +421,7 @@ func TestSaveState_StateCapture_SkippedExtensionDisconnected(t *testing.T) {
 	env.capture.SimulateExtensionDisconnectForTest()
 
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`)}
-	resp := env.handler.handlePilotManageStateSave(req, json.RawMessage(`{"snapshot_name":"no_ext"}`))
+	resp := env.handler.handleStateSave(req, json.RawMessage(`{"snapshot_name":"no_ext"}`))
 	data := extractResponseData(t, resp)
 
 	if data["state_capture"] != "skipped_extension_disconnected" {
@@ -454,7 +456,7 @@ func TestSaveState_StateCapture_SkippedErrorOnExecuteFailure(t *testing.T) {
 	}()
 
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`), ClientID: "test-client"}
-	resp := env.handler.handlePilotManageStateSave(req, json.RawMessage(`{"snapshot_name":"capture_failure"}`))
+	resp := env.handler.handleStateSave(req, json.RawMessage(`{"snapshot_name":"capture_failure"}`))
 	data := extractResponseData(t, resp)
 
 	if data["state_capture"] != "skipped_error" {
@@ -485,7 +487,7 @@ func TestLoadState_StateRestore_Queued(t *testing.T) {
 	}
 
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`)}
-	resp := env.handler.handlePilotManageStateLoad(req, json.RawMessage(`{"snapshot_name":"with_forms"}`))
+	resp := env.handler.handleStateLoad(req, json.RawMessage(`{"snapshot_name":"with_forms"}`))
 	data := extractResponseData(t, resp)
 
 	if data["state_restore"] != "queued" {
@@ -540,7 +542,7 @@ func TestLoadState_RestoresStorage(t *testing.T) {
 	}
 
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`)}
-	resp := env.handler.handlePilotManageStateLoad(req, json.RawMessage(`{"snapshot_name":"with_storage"}`))
+	resp := env.handler.handleStateLoad(req, json.RawMessage(`{"snapshot_name":"with_storage"}`))
 	data := extractResponseData(t, resp)
 
 	if data["state_restore"] != "queued" {
@@ -600,7 +602,7 @@ func TestLoadState_StateRestore_SkippedNoData(t *testing.T) {
 	}
 
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`)}
-	resp := env.handler.handlePilotManageStateLoad(req, json.RawMessage(`{"snapshot_name":"no_data"}`))
+	resp := env.handler.handleStateLoad(req, json.RawMessage(`{"snapshot_name":"no_data"}`))
 	data := extractResponseData(t, resp)
 
 	if data["state_restore"] != "skipped_no_state_data" {
@@ -627,7 +629,7 @@ func TestLoadState_StateRestore_SkippedPilotDisabled(t *testing.T) {
 	}
 
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`)}
-	resp := env.handler.handlePilotManageStateLoad(req, json.RawMessage(`{"snapshot_name":"has_forms"}`))
+	resp := env.handler.handleStateLoad(req, json.RawMessage(`{"snapshot_name":"has_forms"}`))
 	data := extractResponseData(t, resp)
 
 	if data["state_restore"] != "skipped_pilot_disabled" {
@@ -656,7 +658,7 @@ func TestLoadState_StateRestore_SkippedExtensionDisconnected(t *testing.T) {
 	}
 
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`)}
-	resp := env.handler.handlePilotManageStateLoad(req, json.RawMessage(`{"snapshot_name":"has_forms_disconnected"}`))
+	resp := env.handler.handleStateLoad(req, json.RawMessage(`{"snapshot_name":"has_forms_disconnected"}`))
 	data := extractResponseData(t, resp)
 
 	if data["state_restore"] != "skipped_extension_disconnected" {
@@ -683,7 +685,7 @@ func TestLoadState_StorageOnly_QueuesRestore(t *testing.T) {
 	}
 
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`)}
-	resp := env.handler.handlePilotManageStateLoad(req, json.RawMessage(`{"snapshot_name":"storage_only"}`))
+	resp := env.handler.handleStateLoad(req, json.RawMessage(`{"snapshot_name":"storage_only"}`))
 	data := extractResponseData(t, resp)
 
 	if data["state_restore"] != "queued" {
@@ -710,7 +712,7 @@ func TestLoadState_IncludeURL_SkipsNavigationWhenExtensionDisconnected(t *testin
 	}
 
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`)}
-	resp := env.handler.handlePilotManageStateLoad(req, json.RawMessage(`{"snapshot_name":"nav_disconnected","include_url":true}`))
+	resp := env.handler.handleStateLoad(req, json.RawMessage(`{"snapshot_name":"nav_disconnected","include_url":true}`))
 	data := extractResponseData(t, resp)
 
 	state, _ := data["state"].(map[string]any)
@@ -737,7 +739,7 @@ func TestLoadState_IncludeURL_QueuesNavigationWhenConnected(t *testing.T) {
 	}
 
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`)}
-	resp := env.handler.handlePilotManageStateLoad(req, json.RawMessage(`{"snapshot_name":"nav_connected","include_url":true}`))
+	resp := env.handler.handleStateLoad(req, json.RawMessage(`{"snapshot_name":"nav_connected","include_url":true}`))
 	data := extractResponseData(t, resp)
 
 	state, _ := data["state"].(map[string]any)

@@ -65,7 +65,7 @@ func (h *ToolHandler) handleExplorePage(req JSONRPCRequest, args json.RawMessage
 	resp := h.MaybeWaitForCommand(req, correlationID, args, "Explore page queued")
 
 	// Append inline screenshot only if the command completed (not queued or error)
-	if !isResponseError(resp) && !isResponseQueued(resp) {
+	if !isErrorResponse(resp) && !isResponseQueued(resp) {
 		resp = h.appendScreenshotToResponse(resp, req)
 	}
 

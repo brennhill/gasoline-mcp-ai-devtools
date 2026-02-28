@@ -42,6 +42,18 @@ var (
 	asyncPollInterval = 500 * time.Millisecond
 )
 
+// enrichedFieldKeys lists the fields that enrichCommandResponseData() surfaces
+// from the inner extension result to the top-level response. Both the enrichment
+// loop and stripEnrichedFieldsFromResult() reference this slice so the two sides
+// cannot diverge.
+var enrichedFieldKeys = []string{
+	"timing", "dom_changes", "dom_summary", "dom_mutations", "analysis",
+	"content_script_status", "target_context",
+	"message", "hint", "retry", "retryable", "csp_blocked", "failure_cause", "error_code",
+	"candidates", "match_count", "match_strategy",
+	"viewport",
+}
+
 func (h *ToolHandler) waitForCommandWithConnectivity(correlationID string, timeout time.Duration) (*queries.CommandResult, bool, bool, int64) {
 	deadline := time.Now().Add(timeout)
 	waited := int64(0)
@@ -56,8 +68,9 @@ func (h *ToolHandler) waitForCommandWithConnectivity(correlationID string, timeo
 		if waitStep <= 0 || waitStep > remaining {
 			waitStep = remaining
 		}
+		stepStart := time.Now()
 		cmd, found := h.capture.WaitForCommand(correlationID, waitStep)
-		waited += waitStep.Milliseconds()
+		waited += time.Since(stepStart).Milliseconds()
 		if !found {
 			return nil, false, false, waited
 		}
@@ -316,6 +329,14 @@ func (h *ToolHandler) toolObserveFailedCommands(req JSONRPCRequest, args json.Ra
 // Command Result Formatting
 // ============================================
 
+// finalizeResponseEnrichment attaches evidence, transient elements, and retry context
+// to the response data in a single call. Consolidates the repeated triplet pattern.
+func (h *ToolHandler) finalizeResponseEnrichment(corrID string, responseData map[string]any, cmd queries.CommandResult) {
+	h.attachEvidencePayload(corrID, responseData)
+	h.attachTransientElements(responseData, cmd.CreatedAt)
+	h.attachRetryContext(corrID, responseData, cmd.Status, cmd.Error)
+}
+
 func (h *ToolHandler) formatCommandResult(req JSONRPCRequest, cmd queries.CommandResult, corrID string) JSONRPCResponse {
 	traceID := cmd.TraceID
 	if traceID == "" {
@@ -353,9 +374,7 @@ func (h *ToolHandler) formatCommandResult(req JSONRPCRequest, cmd queries.Comman
 		if strings.Contains(cmd.Error, "No active recording") {
 			responseData["retry"] = "No recording is active. Start one first: interact({what: 'record_start', name: 'my-recording'}) or configure({what: 'recording_start', name: 'my-recording'})"
 		}
-		h.attachEvidencePayload(corrID, responseData)
-		h.attachTransientElements(responseData, cmd.CreatedAt)
-		h.attachRetryContext(corrID, responseData, cmd.Status, cmd.Error)
+		h.finalizeResponseEnrichment(corrID, responseData, cmd)
 		summary := fmt.Sprintf("FAILED — Command %s error: %s", corrID, cmd.Error)
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONErrorResponse(summary, responseData)}
 	case "expired":
@@ -364,9 +383,7 @@ func (h *ToolHandler) formatCommandResult(req JSONRPCRequest, cmd queries.Comman
 		responseData["message"] = fmt.Sprintf("Command %s expired before the extension could execute it. Error: %s", corrID, cmd.Error)
 		responseData["retry"] = "The browser extension may be disconnected or the page is not active. Check observe with what='pilot' to verify extension status, then retry the command."
 		responseData["hint"] = h.DiagnosticHintString()
-		h.attachEvidencePayload(corrID, responseData)
-		h.attachTransientElements(responseData, cmd.CreatedAt)
-		h.attachRetryContext(corrID, responseData, cmd.Status, cmd.Error)
+		h.finalizeResponseEnrichment(corrID, responseData, cmd)
 		summary := fmt.Sprintf("FAILED — Command %s expired: %s", corrID, cmd.Error)
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONErrorResponse(summary, responseData)}
 	case "timeout":
@@ -379,9 +396,7 @@ func (h *ToolHandler) formatCommandResult(req JSONRPCRequest, cmd queries.Comman
 		}
 		responseData["retry"] = retryMsg
 		responseData["hint"] = h.DiagnosticHintString()
-		h.attachEvidencePayload(corrID, responseData)
-		h.attachTransientElements(responseData, cmd.CreatedAt)
-		h.attachRetryContext(corrID, responseData, cmd.Status, cmd.Error)
+		h.finalizeResponseEnrichment(corrID, responseData, cmd)
 		summary := fmt.Sprintf("FAILED — Command %s timed out: %s", corrID, cmd.Error)
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONErrorResponse(summary, responseData)}
 	case "cancelled":
@@ -391,9 +406,7 @@ func (h *ToolHandler) formatCommandResult(req JSONRPCRequest, cmd queries.Comman
 		if cmd.Error != "" {
 			responseData["detail"] = cmd.Error
 		}
-		h.attachEvidencePayload(corrID, responseData)
-		h.attachTransientElements(responseData, cmd.CreatedAt)
-		h.attachRetryContext(corrID, responseData, cmd.Status, cmd.Error)
+		h.finalizeResponseEnrichment(corrID, responseData, cmd)
 		summary := fmt.Sprintf("FAILED — Command %s cancelled", corrID)
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONErrorResponse(summary, responseData)}
 	default:
@@ -466,16 +479,12 @@ func (h *ToolHandler) formatCompleteCommand(req JSONRPCRequest, cmd queries.Comm
 		responseData["error"] = cmd.Error
 		annotateCSPFailure(responseData, cmd.Error, normalizedResult)
 		annotateInteractFailureRecovery(responseData, cmd.Error, normalizedResult)
-		h.attachEvidencePayload(corrID, responseData)
-		h.attachTransientElements(responseData, cmd.CreatedAt)
-		h.attachRetryContext(corrID, responseData, cmd.Status, cmd.Error)
+		h.finalizeResponseEnrichment(corrID, responseData, cmd)
 		summary := fmt.Sprintf("FAILED — Command %s completed with error: %s", corrID, cmd.Error)
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONErrorResponse(summary, responseData)}
 	}
 
-	h.attachEvidencePayload(corrID, responseData)
-	h.attachTransientElements(responseData, cmd.CreatedAt)
-	h.attachRetryContext(corrID, responseData, cmd.Status, "")
+	h.finalizeResponseEnrichment(corrID, responseData, cmd)
 	stripSuccessOnlyFields(responseData)
 	stripRetryContextOnSuccess(responseData)
 	summary := fmt.Sprintf("Command %s: complete", corrID)
@@ -565,16 +574,16 @@ func stripEnrichedFieldsFromResult(responseData map[string]any) {
 		return
 	}
 
-	enrichedKeys := []string{
-		"timing", "dom_changes", "dom_summary", "dom_mutations", "analysis",
-		"content_script_status", "target_context",
-		"message", "hint", "retry", "retryable", "csp_blocked", "failure_cause", "error_code",
-		"candidates", "match_count", "match_strategy",
-		"viewport", "result",
+	// Strip keys shared with enrichCommandResponseData, plus result-only keys
+	// (URL/tab fields and "result") that are surfaced separately.
+	for _, key := range enrichedFieldKeys {
+		delete(resultMap, key)
+	}
+	for _, key := range []string{
+		"result",
 		"effective_url", "effective_tab_id", "effective_title",
 		"resolved_tab_id", "resolved_url", "final_url", "title",
-	}
-	for _, key := range enrichedKeys {
+	} {
 		delete(resultMap, key)
 	}
 
@@ -623,13 +632,7 @@ func enrichCommandResponseData(result json.RawMessage, responseData map[string]a
 
 	// Surface extension enrichment fields to top-level for easier LLM consumption.
 	// Non-tab fields are always surfaced.
-	for _, key := range []string{
-		"timing", "dom_changes", "dom_summary", "dom_mutations", "analysis",
-		"content_script_status", "target_context",
-		"message", "hint", "retry", "retryable", "csp_blocked", "failure_cause", "error_code",
-		"candidates", "match_count", "match_strategy",
-		"viewport",
-	} {
+	for _, key := range enrichedFieldKeys {
 		if v, ok := extResult[key]; ok {
 			responseData[key] = v
 		}

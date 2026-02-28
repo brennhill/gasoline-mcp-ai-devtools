@@ -30,15 +30,4 @@ export declare function compareVersions(versionA: string, versionB: string): -1 
  * @returns true if newer > older
  */
 export declare function isVersionNewer(newer: string, older: string): boolean;
-/**
- * Check if a version is same or newer than another
- * @param version - Version to check
- * @param minimum - Minimum required version
- * @returns true if version >= minimum
- */
-export declare function isVersionSameOrNewer(version: string, minimum: string): boolean;
-/**
- * Format version for display (e.g., "v5.2.5")
- */
-export declare function formatVersionDisplay(version: string): string;
 //# sourceMappingURL=version.d.ts.map

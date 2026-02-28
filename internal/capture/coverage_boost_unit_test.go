@@ -116,7 +116,7 @@ func TestCoverageBoost_EnhancedActionsBranches(t *testing.T) {
 	c.mu.Lock()
 	c.enhancedActions = []EnhancedAction{{Type: "click"}, {Type: "click"}}
 	c.actionAddedAt = []time.Time{time.Now()}
-	c.ext.activeTestIDs["test-1"] = true
+	c.extensionState.activeTestIDs["test-1"] = true
 	c.mu.Unlock()
 
 	c.AddEnhancedActions([]EnhancedAction{{Type: "type", Value: "hello"}})
@@ -152,7 +152,7 @@ func TestCoverageBoost_NetworkBodiesBranches(t *testing.T) {
 		{Method: "GET", URL: "https://b.example", RequestBody: "b", ResponseBody: "b"},
 	}
 	c.networkAddedAt = []time.Time{time.Now()}
-	c.ext.activeTestIDs["tid"] = true
+	c.extensionState.activeTestIDs["tid"] = true
 	c.mu.Unlock()
 
 	c.AddNetworkBodies([]NetworkBody{{
@@ -195,7 +195,7 @@ func TestCoverageBoost_NetworkWaterfallGetters(t *testing.T) {
 	}
 
 	c.mu.Lock()
-	c.nw.capacity = 1
+	c.networkWaterfall.capacity = 1
 	c.mu.Unlock()
 
 	c.AddNetworkWaterfallEntries([]NetworkWaterfallEntry{

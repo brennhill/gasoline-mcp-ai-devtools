@@ -60,7 +60,7 @@ func TestLoadSettingsFromDiskFallsBackToLegacyPath(t *testing.T) {
 
 	c.mu.RLock()
 	defer c.mu.RUnlock()
-	if !c.ext.pilotEnabled {
+	if !c.extensionState.pilotEnabled {
 		t.Fatalf("pilotEnabled = false, want true from legacy settings")
 	}
 }
@@ -73,10 +73,10 @@ func TestSaveSettingsToDiskWritesToStateDirectory(t *testing.T) {
 	now := time.Now().UTC()
 
 	c.mu.Lock()
-	c.ext.pilotEnabled = true
-	c.ext.pilotStatusKnown = true
-	c.ext.pilotUpdatedAt = now
-	c.ext.extSessionID = "session-123"
+	c.extensionState.pilotEnabled = true
+	c.extensionState.pilotStatusKnown = true
+	c.extensionState.pilotUpdatedAt = now
+	c.extensionState.extSessionID = "session-123"
 	c.mu.Unlock()
 
 	if err := c.SaveSettingsToDisk(); err != nil {
@@ -116,7 +116,7 @@ func TestSaveSettingsToDiskOmitsUnknownPilotState(t *testing.T) {
 
 	c := NewCapture()
 	c.mu.Lock()
-	c.ext.extSessionID = "session-unknown"
+	c.extensionState.extSessionID = "session-unknown"
 	c.mu.Unlock()
 
 	if err := c.SaveSettingsToDisk(); err != nil {

@@ -57,7 +57,7 @@ func detectAndSetBinaryFormat(body *NetworkBody) {
 // evictNBByCount enforces count-based cap while preserving newest entries.
 //
 // Invariants:
-// - c.nbMemoryTotal remains consistent with surviving entries after eviction.
+// - c.networkBodyMemoryTotal remains consistent with surviving entries after eviction.
 //
 // Failure semantics:
 // - Oldest entries are dropped first (FIFO eviction).
@@ -67,7 +67,7 @@ func (c *Capture) evictNBByCount() {
 	}
 	keep := len(c.networkBodies) - MaxNetworkBodies
 	for j := 0; j < keep; j++ {
-		c.nbMemoryTotal -= nbEntryMemory(&c.networkBodies[j])
+		c.networkBodyMemoryTotal -= nbEntryMemory(&c.networkBodies[j])
 	}
 	newBodies := make([]NetworkBody, MaxNetworkBodies)
 	copy(newBodies, c.networkBodies[keep:])
@@ -100,7 +100,7 @@ func (c *Capture) AddNetworkBodies(bodies []NetworkBody) {
 	now := time.Now()
 
 	activeTestIDs := make([]string, 0)
-	for testID := range c.ext.activeTestIDs {
+	for testID := range c.extensionState.activeTestIDs {
 		activeTestIDs = append(activeTestIDs, testID)
 	}
 
@@ -109,7 +109,7 @@ func (c *Capture) AddNetworkBodies(bodies []NetworkBody) {
 		detectAndSetBinaryFormat(&bodies[i])
 		c.networkBodies = append(c.networkBodies, bodies[i])
 		c.networkAddedAt = append(c.networkAddedAt, now)
-		c.nbMemoryTotal += nbEntryMemory(&bodies[i])
+		c.networkBodyMemoryTotal += nbEntryMemory(&bodies[i])
 	}
 
 	c.evictNBByCount()
@@ -119,12 +119,12 @@ func (c *Capture) AddNetworkBodies(bodies []NetworkBody) {
 // evictNBForMemory enforces memory cap using oldest-first eviction.
 //
 // Invariants:
-// - c.nbMemoryTotal is decremented by exact removed-entry estimates.
+// - c.networkBodyMemoryTotal is decremented by exact removed-entry estimates.
 //
 // Failure semantics:
 // - Drops enough leading entries to get under cap in one pass; may remove multiple recent appends.
 func (c *Capture) evictNBForMemory() {
-	excess := c.nbMemoryTotal - nbBufferMemoryLimit
+	excess := c.networkBodyMemoryTotal - nbBufferMemoryLimit
 	if excess <= 0 {
 		return
 	}
@@ -132,7 +132,7 @@ func (c *Capture) evictNBForMemory() {
 	for drop < len(c.networkBodies) && excess > 0 {
 		entryMem := nbEntryMemory(&c.networkBodies[drop])
 		excess -= entryMem
-		c.nbMemoryTotal -= entryMem
+		c.networkBodyMemoryTotal -= entryMem
 		drop++
 	}
 	surviving := make([]NetworkBody, len(c.networkBodies)-drop)

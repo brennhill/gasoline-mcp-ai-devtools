@@ -37,19 +37,19 @@ func (c *Capture) ClearNetworkBuffers() BufferClearCounts {
 	defer c.mu.Unlock()
 
 	counts := BufferClearCounts{
-		NetworkWaterfall: len(c.nw.entries),
+		NetworkWaterfall: len(c.networkWaterfall.entries),
 		NetworkBodies:    len(c.networkBodies),
 	}
 
 	// Clear network waterfall buffer
-	c.nw.entries = make([]NetworkWaterfallEntry, 0, c.nw.capacity)
+	c.networkWaterfall.entries = make([]NetworkWaterfallEntry, 0, c.networkWaterfall.capacity)
 
 	// Clear network bodies buffer and reset memory tracking
 	c.networkBodies = make([]NetworkBody, 0)
 	c.networkAddedAt = make([]time.Time, 0)
 	c.networkTotalAdded = 0
 	c.networkErrorTotalAdded = 0
-	c.nbMemoryTotal = 0
+	c.networkBodyMemoryTotal = 0
 
 	return counts
 }
@@ -64,7 +64,7 @@ func (c *Capture) ClearWebSocketBuffers() BufferClearCounts {
 
 	counts := BufferClearCounts{
 		WebSocketEvents: len(c.wsEvents),
-		WebSocketStatus: len(c.ws.connections),
+		WebSocketStatus: len(c.wsConnections.connections),
 	}
 
 	// Clear WebSocket events buffer
@@ -74,8 +74,8 @@ func (c *Capture) ClearWebSocketBuffers() BufferClearCounts {
 	c.wsMemoryTotal = 0
 
 	// Clear WebSocket connections map
-	c.ws.connections = make(map[string]*connectionState)
-	c.ws.connOrder = make([]string, 0)
+	c.wsConnections.connections = make(map[string]*connectionState)
+	c.wsConnections.connOrder = make([]string, 0)
 
 	return counts
 }
@@ -106,8 +106,8 @@ func (c *Capture) ClearExtensionLogs() int {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	count := len(c.elb.logs)
-	c.elb.logs = make([]ExtensionLog, 0)
+	count := len(c.extensionLogs.logs)
+	c.extensionLogs.logs = make([]ExtensionLog, 0)
 
 	return count
 }
@@ -125,14 +125,14 @@ func (c *Capture) ClearAll() {
 	c.wsMemoryTotal = 0
 	c.networkBodies = make([]NetworkBody, 0)
 	c.networkAddedAt = make([]time.Time, 0)
-	c.nbMemoryTotal = 0
-	c.nw.entries = make([]NetworkWaterfallEntry, 0, c.nw.capacity)
+	c.networkBodyMemoryTotal = 0
+	c.networkWaterfall.entries = make([]NetworkWaterfallEntry, 0, c.networkWaterfall.capacity)
 	c.enhancedActions = make([]EnhancedAction, 0)
 	c.actionAddedAt = make([]time.Time, 0)
-	c.ws.connections = make(map[string]*connectionState)
-	c.ws.closedConns = make([]WebSocketClosedConnection, 0)
-	c.ws.connOrder = make([]string, 0)
-	c.ext.activeTestIDs = make(map[string]bool)
+	c.wsConnections.connections = make(map[string]*connectionState)
+	c.wsConnections.closedConns = make([]WebSocketClosedConnection, 0)
+	c.wsConnections.connOrder = make([]string, 0)
+	c.extensionState.activeTestIDs = make(map[string]bool)
 
 	// Reset performance data
 	c.perf.snapshots = make(map[string]PerformanceSnapshot)

@@ -511,6 +511,25 @@ func (h *MCPHandler) applyToolResponsePostProcessing(resp JSONRPCResponse, clien
 	return h.maybeAddTelemetrySummary(resp, clientID, toolName, telemetryModeOverride)
 }
 
+// prependWarningToResponse prepends a warning string to the first text content block of an MCP tool response.
+func prependWarningToResponse(resp JSONRPCResponse, warning string) JSONRPCResponse {
+	var result MCPToolResult
+	if err := json.Unmarshal(resp.Result, &result); err != nil {
+		return resp
+	}
+	if len(result.Content) > 0 && result.Content[0].Type == "text" {
+		result.Content[0].Text = warning + result.Content[0].Text
+	} else {
+		result.Content = append([]MCPContentBlock{{Type: "text", Text: warning}}, result.Content...)
+	}
+	resultJSON, err := json.Marshal(result)
+	if err != nil {
+		return resp
+	}
+	resp.Result = json.RawMessage(resultJSON)
+	return resp
+}
+
 func (h *MCPHandler) maybeAddSecurityModeWarning(resp JSONRPCResponse) JSONRPCResponse {
 	if h.toolHandler == nil || resp.Result == nil {
 		return resp
@@ -525,18 +544,14 @@ func (h *MCPHandler) maybeAddSecurityModeWarning(resp JSONRPCResponse) JSONRPCRe
 		return resp
 	}
 
+	warning := "[ALTERED ENVIRONMENT] security_mode=insecure_proxy; production_parity=false. CSP headers are rewritten for debugging.\n\n"
+	resp = prependWarningToResponse(resp, warning)
+
+	// Add security metadata to the result.
 	var result MCPToolResult
 	if err := json.Unmarshal(resp.Result, &result); err != nil {
 		return resp
 	}
-
-	warning := "[ALTERED ENVIRONMENT] security_mode=insecure_proxy; production_parity=false. CSP headers are rewritten for debugging.\n\n"
-	if len(result.Content) > 0 && result.Content[0].Type == "text" {
-		result.Content[0].Text = warning + result.Content[0].Text
-	} else {
-		result.Content = append([]MCPContentBlock{{Type: "text", Text: warning}}, result.Content...)
-	}
-
 	if result.Metadata == nil {
 		result.Metadata = make(map[string]any)
 	}
@@ -568,24 +583,7 @@ func (h *MCPHandler) maybeAddVersionWarning(resp JSONRPCResponse) JSONRPCRespons
 	}
 
 	warning := fmt.Sprintf("WARNING: Version mismatch detected — server v%s, extension v%s. Update your extension to avoid issues.\n\n", srvVer, extVer)
-
-	// Parse existing result, prepend warning to first text content block
-	var result MCPToolResult
-	if err := json.Unmarshal(resp.Result, &result); err != nil {
-		return resp
-	}
-	if len(result.Content) > 0 && result.Content[0].Type == "text" {
-		result.Content[0].Text = warning + result.Content[0].Text
-	} else {
-		// Insert warning as new first content block
-		result.Content = append([]MCPContentBlock{{Type: "text", Text: warning}}, result.Content...)
-	}
-	resultJSON, err := json.Marshal(result)
-	if err != nil {
-		return resp
-	}
-	resp.Result = json.RawMessage(resultJSON)
-	return resp
+	return prependWarningToResponse(resp, warning)
 }
 
 // updateNotifyLastShown tracks when the "update available" warning was last shown.
@@ -623,22 +621,7 @@ func maybeAddUpdateAvailableWarning(resp JSONRPCResponse) JSONRPCResponse {
 	updateNotifyLastShown = time.Now()
 
 	warning := fmt.Sprintf("UPDATE AVAILABLE: Gasoline v%s is available (current: v%s). Run: npm install -g gasoline-mcp@latest\n\n", availVer, version)
-
-	var result MCPToolResult
-	if err := json.Unmarshal(resp.Result, &result); err != nil {
-		return resp
-	}
-	if len(result.Content) > 0 && result.Content[0].Type == "text" {
-		result.Content[0].Text = warning + result.Content[0].Text
-	} else {
-		result.Content = append([]MCPContentBlock{{Type: "text", Text: warning}}, result.Content...)
-	}
-	resultJSON, err := json.Marshal(result)
-	if err != nil {
-		return resp
-	}
-	resp.Result = json.RawMessage(resultJSON)
-	return resp
+	return prependWarningToResponse(resp, warning)
 }
 
 // maybeAddUpgradeWarning prepends a binary upgrade notice to the tool response
@@ -654,22 +637,7 @@ func maybeAddUpgradeWarning(resp JSONRPCResponse) JSONRPCResponse {
 
 	elapsed := time.Since(detectedAt).Truncate(time.Second)
 	warning := fmt.Sprintf("NOTICE: Gasoline v%s detected on disk (current: v%s, detected %s ago). Auto-restart imminent. Your next tool call will use the new version.\n\n", newVer, version, elapsed)
-
-	var result MCPToolResult
-	if err := json.Unmarshal(resp.Result, &result); err != nil {
-		return resp
-	}
-	if len(result.Content) > 0 && result.Content[0].Type == "text" {
-		result.Content[0].Text = warning + result.Content[0].Text
-	} else {
-		result.Content = append([]MCPContentBlock{{Type: "text", Text: warning}}, result.Content...)
-	}
-	resultJSON, err := json.Marshal(result)
-	if err != nil {
-		return resp
-	}
-	resp.Result = json.RawMessage(resultJSON)
-	return resp
+	return prependWarningToResponse(resp, warning)
 }
 
 // jsonResponse is a JSON response helper

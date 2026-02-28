@@ -29,12 +29,14 @@ export function getDebugLog() {
     return [...debugLogBuffer];
 }
 /**
- * Add entry to debug log buffer
+ * Add entry to debug log buffer.
+ * Uses batch splice (25% eviction) instead of per-entry shift() to amortize O(n) cost.
  */
 export function addDebugLogEntry(entry) {
     debugLogBuffer.push(entry);
     if (debugLogBuffer.length > DEBUG_LOG_MAX_ENTRIES) {
-        debugLogBuffer.shift();
+        const evictCount = Math.ceil(DEBUG_LOG_MAX_ENTRIES * 0.25);
+        debugLogBuffer.splice(0, evictCount);
     }
 }
 /**

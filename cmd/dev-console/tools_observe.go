@@ -213,18 +213,8 @@ var serverSideObserveModes = map[string]bool{
 
 // prependDisconnectWarning adds a warning to the first content block when the extension is disconnected.
 func (h *ToolHandler) prependDisconnectWarning(resp JSONRPCResponse) JSONRPCResponse {
-	var result MCPToolResult
-	if err := json.Unmarshal(resp.Result, &result); err != nil || len(result.Content) == 0 {
-		return resp
-	}
-
 	warning := "⚠ Extension is not connected — results may be stale or empty. Ensure the Gasoline extension shows 'Connected' and a tab is tracked.\n\n"
-	result.Content[0].Text = warning + result.Content[0].Text
-
-	// Error impossible: simple struct with no circular refs or unsupported types
-	resultJSON, _ := json.Marshal(result)
-	resp.Result = json.RawMessage(resultJSON)
-	return resp
+	return prependWarningToResponse(resp, warning)
 }
 
 // appendAlertsToResponse adds an alerts content block to an existing MCP response.

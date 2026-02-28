@@ -180,9 +180,6 @@ func (qd *QueryDispatcher) cleanExpiredQueries() {
 // Failure semantics:
 // - Expired commands are cleaned before snapshot; callers never receive already-dead entries.
 func (qd *QueryDispatcher) GetPendingQueries() []PendingQueryResponse {
-	// First ensure any expired queries are marked as failed
-	qd.cleanExpiredCommands()
-
 	qd.mu.Lock()
 
 	// Clean expired queries from pending queue
@@ -212,9 +209,6 @@ func (qd *QueryDispatcher) GetPendingQueries() []PendingQueryResponse {
 // Failure semantics:
 // - If client has no queued entries, returns empty slice (not nil).
 func (qd *QueryDispatcher) GetPendingQueriesForClient(clientID string) []PendingQueryResponse {
-	// First ensure any expired queries are marked as failed
-	qd.cleanExpiredCommands()
-
 	qd.mu.Lock()
 
 	// Clean expired queries from pending queue
@@ -314,6 +308,11 @@ func (qd *QueryDispatcher) ExpireAllPendingQueries(reason string) {
 	for _, correlationID := range correlationIDs {
 		cmd, exists := qd.completedResults[correlationID]
 		if !exists {
+			continue
+		}
+		// Guard: only expire commands still in pending state.
+		// Commands already completed by processSyncCommandResults must not be overwritten.
+		if cmd.Status != "pending" {
 			continue
 		}
 		cmd.Status = "expired"

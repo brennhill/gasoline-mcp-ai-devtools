@@ -19,16 +19,16 @@ func TestExtensionStateGettersAndBoundaries(t *testing.T) {
 
 	now := time.Now().UTC()
 	c.mu.Lock()
-	c.ext.trackingEnabled = true
-	c.ext.trackedTabID = 42
-	c.ext.trackedTabURL = "https://example.test/page"
-	c.ext.trackedTabTitle = "Example"
-	c.ext.pilotEnabled = true
-	c.ext.lastPollAt = now
-	c.ext.lastSyncSeen = now
-	c.ext.extensionVersion = "9.9.9"
-	c.ext.extSessionID = "session-a"
-	c.ext.extSessionChangedAt = now
+	c.extensionState.trackingEnabled = true
+	c.extensionState.trackedTabID = 42
+	c.extensionState.trackedTabURL = "https://example.test/page"
+	c.extensionState.trackedTabTitle = "Example"
+	c.extensionState.pilotEnabled = true
+	c.extensionState.lastPollAt = now
+	c.extensionState.lastSyncSeen = now
+	c.extensionState.extensionVersion = "9.9.9"
+	c.extensionState.extSessionID = "session-a"
+	c.extensionState.extSessionChangedAt = now
 	c.mu.Unlock()
 
 	enabled, tabID, tabURL := c.GetTrackingStatus()
@@ -57,7 +57,7 @@ func TestExtensionStateGettersAndBoundaries(t *testing.T) {
 	}
 
 	c.mu.Lock()
-	c.ext.lastSyncSeen = time.Now().Add(-11 * time.Second) // Beyond extensionDisconnectThreshold (10s)
+	c.extensionState.lastSyncSeen = time.Now().Add(-11 * time.Second) // Beyond extensionDisconnectThreshold (10s)
 	c.mu.Unlock()
 	staleStatus := c.GetPilotStatus().(map[string]any)
 	if staleStatus["extension_connected"] != false {
@@ -94,7 +94,7 @@ func TestWaitForExtensionConnected_AlreadyConnected(t *testing.T) {
 
 	// Simulate extension already connected.
 	c.mu.Lock()
-	c.ext.lastSyncSeen = time.Now()
+	c.extensionState.lastSyncSeen = time.Now()
 	c.mu.Unlock()
 
 	if !c.WaitForExtensionConnected(context.Background(), 5*time.Second) {
@@ -111,7 +111,7 @@ func TestWaitForExtensionConnected_ConnectsDuringWait(t *testing.T) {
 	go func() {
 		time.Sleep(50 * time.Millisecond)
 		c.mu.Lock()
-		c.ext.lastSyncSeen = time.Now()
+		c.extensionState.lastSyncSeen = time.Now()
 		c.mu.Unlock()
 	}()
 
@@ -130,20 +130,8 @@ func TestWaitForExtensionConnected_Timeout(t *testing.T) {
 	}
 }
 
-func TestWaitForExtensionConnected_ContextCancelled(t *testing.T) {
-	t.Parallel()
-	c := NewCapture()
-
-	ctx, cancel := context.WithCancel(context.Background())
-	go func() {
-		time.Sleep(50 * time.Millisecond)
-		cancel()
-	}()
-
-	if c.WaitForExtensionConnected(ctx, 5*time.Second) {
-		t.Fatal("WaitForExtensionConnected returned true; expected false after context cancellation")
-	}
-}
+// TestWaitForExtensionConnected_ContextCancelled lives in readiness_gate_test.go
+// with full timing bounds checks (P1-1).
 
 func TestCaptureTestHelpersAndTTL(t *testing.T) {
 	t.Parallel()
