@@ -295,6 +295,70 @@ func TestInteract_ExplorePage_HTTPURL_Accepted(t *testing.T) {
 	}
 }
 
+func TestInteract_ExplorePage_MalformedURL_Rejected(t *testing.T) {
+	t.Parallel()
+	h, _, cap := makeToolHandler(t)
+	cap.SetPilotEnabled(true)
+	httpReq := httptest.NewRequest("POST", "/sync", strings.NewReader(`{"ext_session_id":"test"}`))
+	httpReq.Header.Set("X-Gasoline-Client", "test-client")
+	cap.HandleSync(httptest.NewRecorder(), httpReq)
+	cap.SetTrackingStatusForTest(42, "https://example.com")
+
+	resp := callInteractRaw(h, `{"what":"explore_page","url":"://bad"}`)
+	result := parseToolResult(t, resp)
+	if !result.IsError {
+		t.Fatal("malformed URL (://bad) should be rejected")
+	}
+}
+
+func TestInteract_ExplorePage_BareDomain_Rejected(t *testing.T) {
+	t.Parallel()
+	h, _, cap := makeToolHandler(t)
+	cap.SetPilotEnabled(true)
+	httpReq := httptest.NewRequest("POST", "/sync", strings.NewReader(`{"ext_session_id":"test"}`))
+	httpReq.Header.Set("X-Gasoline-Client", "test-client")
+	cap.HandleSync(httptest.NewRecorder(), httpReq)
+	cap.SetTrackingStatusForTest(42, "https://example.com")
+
+	resp := callInteractRaw(h, `{"what":"explore_page","url":"example.com"}`)
+	result := parseToolResult(t, resp)
+	if !result.IsError {
+		t.Fatal("bare domain (example.com) should be rejected — requires http/https scheme")
+	}
+}
+
+func TestInteract_ExplorePage_VbscriptURL_Rejected(t *testing.T) {
+	t.Parallel()
+	h, _, cap := makeToolHandler(t)
+	cap.SetPilotEnabled(true)
+	httpReq := httptest.NewRequest("POST", "/sync", strings.NewReader(`{"ext_session_id":"test"}`))
+	httpReq.Header.Set("X-Gasoline-Client", "test-client")
+	cap.HandleSync(httptest.NewRecorder(), httpReq)
+	cap.SetTrackingStatusForTest(42, "https://example.com")
+
+	resp := callInteractRaw(h, `{"what":"explore_page","url":"vbscript:alert(1)"}`)
+	result := parseToolResult(t, resp)
+	if !result.IsError {
+		t.Fatal("vbscript: URL should be rejected")
+	}
+}
+
+func TestInteract_ExplorePage_BlobURL_Rejected(t *testing.T) {
+	t.Parallel()
+	h, _, cap := makeToolHandler(t)
+	cap.SetPilotEnabled(true)
+	httpReq := httptest.NewRequest("POST", "/sync", strings.NewReader(`{"ext_session_id":"test"}`))
+	httpReq.Header.Set("X-Gasoline-Client", "test-client")
+	cap.HandleSync(httptest.NewRecorder(), httpReq)
+	cap.SetTrackingStatusForTest(42, "https://example.com")
+
+	resp := callInteractRaw(h, `{"what":"explore_page","url":"blob:http://example.com/abc"}`)
+	result := parseToolResult(t, resp)
+	if !result.IsError {
+		t.Fatal("blob: URL should be rejected")
+	}
+}
+
 // ============================================
 // Response Structure
 // ============================================

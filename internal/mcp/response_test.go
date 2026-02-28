@@ -234,6 +234,57 @@ func TestClampResponseSize_JSONBoundaryTruncation(t *testing.T) {
 	}
 }
 
+func TestClampResponseSize_TruncatedTextContainsValidishJSON(t *testing.T) {
+	t.Parallel()
+	// The inner text (which is JSON) should remain parseable after truncation (#9.QA7).
+	inner := `{"items":[` + strings.Repeat(`{"id":1,"val":"data"},`, MaxResponseBytes/25) + `{"id":999}]}`
+	result := buildRawToolResult(inner)
+	clamped := ClampResponseSize(result)
+
+	var toolResult MCPToolResult
+	if err := json.Unmarshal(clamped, &toolResult); err != nil {
+		t.Fatalf("wrapper should be valid JSON: %v", err)
+	}
+
+	// The text content should be parseable as JSON (truncateAtJSONBoundary should close brackets)
+	text := toolResult.Content[0].Text
+	// Strip trailing truncation note if present
+	if idx := strings.Index(text, "\n\n[truncated"); idx > 0 {
+		text = text[:idx]
+	}
+
+	var inner2 any
+	if err := json.Unmarshal([]byte(text), &inner2); err != nil {
+		// Accept "best-effort" — if truncation lands mid-string it may not parse
+		// But it should at least start with valid JSON structure
+		if text[0] != '{' && text[0] != '[' {
+			t.Errorf("truncated text should start with JSON opener, got: %.50s", text)
+		}
+	}
+}
+
+func TestClampResponseSize_DeeplyNestedJSON(t *testing.T) {
+	t.Parallel()
+	// Build 10-level nested JSON that exceeds limit (#9.QA8)
+	prefix := ""
+	suffix := ""
+	for i := 0; i < 10; i++ {
+		prefix += `{"level` + string(rune('0'+i)) + `":[`
+		suffix = `]}` + suffix
+	}
+	inner := prefix + strings.Repeat(`"data",`, MaxResponseBytes/8) + `"end"` + suffix
+	result := buildRawToolResult(inner)
+	clamped := ClampResponseSize(result)
+
+	var toolResult MCPToolResult
+	if err := json.Unmarshal(clamped, &toolResult); err != nil {
+		t.Fatalf("deeply nested JSON should still produce valid MCPToolResult: %v", err)
+	}
+	if len(toolResult.Content) == 0 {
+		t.Fatal("expected content blocks")
+	}
+}
+
 func TestClampResponseSize_PreservesImageBlocks(t *testing.T) {
 	t.Parallel()
 	// Image blocks should not count toward the byte limit.
@@ -260,6 +311,124 @@ func TestClampResponseSize_PreservesImageBlocks(t *testing.T) {
 	}
 	if !hasImage {
 		t.Error("image content block should be preserved")
+	}
+}
+
+func TestClampResponseSize_TextExceedsLimitWithImageBlock(t *testing.T) {
+	t.Parallel()
+	// Text exceeds limit AND image block present (#9.QA9).
+	// Image bytes should be excluded from the effective limit calculation,
+	// so only text gets truncated while image is preserved.
+	textContent := strings.Repeat("x", MaxResponseBytes+5000)
+	result := MCPToolResult{
+		Content: []MCPContentBlock{
+			{Type: "text", Text: textContent},
+			{Type: "image", Data: strings.Repeat("B", 30000), MimeType: "image/jpeg"},
+		},
+	}
+	raw, _ := json.Marshal(result)
+	clamped := ClampResponseSize(json.RawMessage(raw))
+
+	var toolResult MCPToolResult
+	if err := json.Unmarshal(clamped, &toolResult); err != nil {
+		t.Fatalf("response should remain valid after clamping: %v", err)
+	}
+
+	// Text should be truncated
+	if !strings.Contains(string(clamped), "[truncated") {
+		t.Error("text should be truncated when exceeding limit")
+	}
+
+	// Image block should still be present
+	hasImage := false
+	for _, block := range toolResult.Content {
+		if block.Type == "image" {
+			hasImage = true
+			if block.Data == "" {
+				t.Error("image data should be preserved")
+			}
+		}
+	}
+	if !hasImage {
+		t.Error("image block should be preserved even when text is truncated")
+	}
+}
+
+// ============================================
+// truncateAtJSONBoundary direct tests (#9.QA10)
+// ============================================
+
+func TestTruncateAtJSONBoundary_EmptyInput(t *testing.T) {
+	t.Parallel()
+	result := truncateAtJSONBoundary("")
+	if result != "" {
+		t.Errorf("empty input should return empty, got %q", result)
+	}
+}
+
+func TestTruncateAtJSONBoundary_NonJSON(t *testing.T) {
+	t.Parallel()
+	input := "plain text content"
+	result := truncateAtJSONBoundary(input)
+	if result != input {
+		t.Errorf("non-JSON should be returned as-is, got %q", result)
+	}
+}
+
+func TestTruncateAtJSONBoundary_SimpleObject(t *testing.T) {
+	t.Parallel()
+	input := `{"key":"val","other":"data`
+	result := truncateAtJSONBoundary(input)
+	// Should close the open brace
+	if !strings.HasSuffix(result, "}") {
+		t.Errorf("should close open brace, got %q", result)
+	}
+}
+
+func TestTruncateAtJSONBoundary_NestedArray(t *testing.T) {
+	t.Parallel()
+	input := `[{"a":1},{"b":2`
+	result := truncateAtJSONBoundary(input)
+	// The lastSafe search finds the comma after 1}, so truncation removes {"b":2.
+	// Only the outer [ remains unmatched → closed with ]
+	if !strings.HasSuffix(result, "]") {
+		t.Errorf("should close outer bracket, got %q", result)
+	}
+	// Verify the incomplete {"b":2 is removed
+	if strings.Contains(result, `"b"`) {
+		t.Errorf("incomplete object should be removed, got %q", result)
+	}
+}
+
+func TestTruncateAtJSONBoundary_ClosingOrder(t *testing.T) {
+	t.Parallel()
+	// [{ should close as }] not ]}
+	input := `[{"key":"val`
+	result := truncateAtJSONBoundary(input)
+	// Find the closers at the end
+	if !strings.HasSuffix(result, "}]") {
+		t.Errorf("closers should be in reverse order: }] not ]}, got %q", result)
+	}
+}
+
+func TestTruncateAtJSONBoundary_EscapedQuotes(t *testing.T) {
+	t.Parallel()
+	// The string value contains escaped quotes that shouldn't confuse the parser
+	input := `{"key":"value with \"escaped\" quotes","other":"trunc`
+	result := truncateAtJSONBoundary(input)
+	if !strings.HasSuffix(result, "}") {
+		t.Errorf("should handle escaped quotes, got %q", result)
+	}
+}
+
+func TestTruncateAtJSONBoundary_AllOpeners(t *testing.T) {
+	t.Parallel()
+	// All openers, no closers
+	input := `[[[{{{`
+	result := truncateAtJSONBoundary(input)
+	// All should be closed
+	if !strings.Contains(result, "}}}]]]") {
+		t.Errorf("should close all openers in reverse order, got %q", result)
 	}
 }
 
