@@ -1,0 +1,429 @@
+/* ============================================
+  Gasoline MCP Dark Theme for Starlight
+   Flame-inspired palette on deep dark backgrounds
+   ============================================ */
+
+/* Force dark mode only */
+:root {
+  color-scheme: dark;
+}
+
+/* Hide theme toggle — Gasoline MCP is dark-only */
+starlight-theme-select {
+  display: none !important;
+}
+
+/* Map Gasoline MCP palette onto Starlight tokens */
+:root,
+:root[data-theme='light'],
+[data-theme='dark'] {
+  /* Accent = flame colors */
+  --sl-color-accent-low: #3d2a0e;
+  --sl-color-accent: #e67e22;
+  --sl-color-accent-high: #f5c842;
+
+  /* Gray scale from Gasoline MCP palette */
+  --sl-color-white: #e8e8e8;
+  --sl-color-gray-1: #d4d4d4;
+  --sl-color-gray-2: #a0a0a0;
+  --sl-color-gray-3: #6b6b6b;
+  --sl-color-gray-4: #333333;
+  --sl-color-gray-5: #242424;
+  --sl-color-gray-6: #1a1a1a;
+  --sl-color-gray-7: #121212;
+  --sl-color-black: #0a0a0a;
+
+  /* Functional overrides */
+  --sl-color-bg: #121212;
+  --sl-color-bg-nav: #1a1a1a;
+  --sl-color-bg-sidebar: #1a1a1a;
+  --sl-color-bg-inline-code: #1a1a1a;
+  --sl-color-text: #e8e8e8;
+  --sl-color-text-accent: #f39c12;
+  --sl-color-hairline: #333333;
+  --sl-color-hairline-light: #2a2a2a;
+  --sl-color-hairline-shade: #1a1a1a;
+
+  /* Green for success */
+  --sl-color-green-low: #0d2818;
+  --sl-color-green: #22c55e;
+  --sl-color-green-high: #86efac;
+}
+
+/* ============================================
+   Typography & Links
+   ============================================ */
+
+/* Links — flame-mid color */
+:root a:not([class]) {
+  color: var(--sl-color-text-accent);
+}
+:root a:not([class]):hover {
+  color: #f5c842;
+}
+
+/* Headings */
+.sl-markdown-content h1,
+.sl-markdown-content h2,
+.sl-markdown-content h3,
+.sl-markdown-content h4,
+.sl-markdown-content h5,
+.sl-markdown-content h6 {
+  color: #fff;
+}
+
+/* ============================================
+   Code Blocks
+   ============================================ */
+
+pre {
+  background: #0a0a0a !important;
+  border: 1px solid #333333;
+}
+
+code:not(pre code) {
+  background: #1a1a1a;
+  color: #f39c12;
+}
+
+/* ============================================
+   Buttons — flame orange CTA
+   ============================================ */
+
+.sl-link-button[data-variant='primary'],
+a.sl-link-button[data-variant='primary'] {
+  background: #e67e22;
+  color: #121212;
+  border-color: #e67e22;
+}
+.sl-link-button[data-variant='primary']:hover,
+a.sl-link-button[data-variant='primary']:hover {
+  background: #f39c12;
+  border-color: #f39c12;
+}
+
+/* ============================================
+  Tables — Gasoline MCP style
+   ============================================ */
+
+.sl-markdown-content table {
+  background: #1a1a1a;
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.sl-markdown-content th {
+  background: #242424;
+  color: #fff;
+  font-weight: 600;
+}
+
+.sl-markdown-content th,
+.sl-markdown-content td {
+  border-bottom: 1px solid #333333;
+}
+
+.sl-markdown-content tr.spacer td {
+  padding: 0.25rem;
+  background: #121212;
+}
+
+.table-wrapper {
+  overflow-x: auto;
+}
+
+/* ============================================
+   Blockquotes — flame accent border
+   ============================================ */
+
+.sl-markdown-content blockquote {
+  border-left-color: #e67e22;
+  background: #1a1a1a;
+  color: #a0a0a0;
+}
+
+/* ============================================
+   Scrollbars
+   ============================================ */
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: #121212;
+}
+::-webkit-scrollbar-thumb {
+  background: #333333;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #e67e22;
+}
+
+/* ============================================
+   Landing Page — Custom Sections
+   ============================================ */
+
+/* Hero enhancements */
+.hero .hero-html img {
+  height: 300px;
+  width: auto;
+}
+
+/* Landing wrapper */
+.landing-content {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 0 2rem;
+}
+
+/* Intro section */
+.intro {
+  margin-bottom: 3rem;
+}
+
+.intro-row {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.intro-sparky {
+  width: clamp(40px, 10vw, 80px);
+  height: auto;
+  border-radius: 6px;
+}
+
+.intro-text {
+  font-size: 1.1em;
+  color: #f39c12;
+}
+
+/* Features section */
+.features {
+  margin-bottom: 3rem;
+}
+
+.feature-row {
+  display: flex;
+  gap: 2rem;
+  align-items: flex-start;
+}
+
+.feature-content {
+  flex: 1;
+}
+
+.feature-sparky {
+  width: clamp(60px, 15vw, 120px);
+  height: auto;
+  border-radius: 8px;
+  flex-shrink: 0;
+}
+
+.sparky-says {
+  color: #22c55e;
+  margin-bottom: 1.5rem;
+}
+
+/* Section with Sparky */
+.section-with-sparky {
+  display: flex;
+  align-items: flex-start;
+  gap: 2rem;
+}
+
+.section-with-sparky > div {
+  flex: 1;
+}
+
+.section-sparky {
+  width: clamp(50px, 12vw, 200px);
+  height: auto;
+  flex-shrink: 0;
+}
+
+/* CTA footer section */
+.cta-footer {
+  display: flex;
+  align-items: center;
+  gap: 2rem;
+  padding: 2rem;
+  background: #1a1a1a;
+  border-radius: 12px;
+  margin: 2rem 0;
+}
+
+.cta-footer h3 {
+  margin: 0 0 0.5rem;
+  color: #fff;
+}
+
+.cta-footer p {
+  margin: 0;
+}
+
+.cta-sparky {
+  width: clamp(50px, 12vw, 200px);
+  height: auto;
+}
+
+/* Generic section margins */
+.landing-content section {
+  margin-bottom: 3rem;
+}
+
+.landing-content h2 {
+  color: #fff;
+  font-size: 1.5rem;
+  border-bottom: 1px solid #333333;
+  padding-bottom: 0.5rem;
+  margin: 2rem 0 1rem;
+}
+
+.landing-content p {
+  margin: 1rem 0;
+  line-height: 1.6;
+}
+
+.landing-content ul,
+.landing-content ol {
+  margin: 1rem 0;
+  padding-left: 2rem;
+}
+
+.landing-content li {
+  margin: 0.5rem 0;
+}
+
+.landing-content pre {
+  background: #0a0a0a;
+  border: 1px solid #333333;
+  border-radius: 6px;
+  padding: 1rem;
+  overflow-x: auto;
+  margin: 1.5rem 0;
+}
+
+.landing-content code {
+  font-family: "SF Mono", Monaco, "Cascadia Code", monospace;
+  font-size: 0.9em;
+}
+
+.landing-content code:not(pre code) {
+  background: #1a1a1a;
+  color: #f39c12;
+  padding: 0.2em 0.4em;
+  border-radius: 3px;
+}
+
+.landing-content pre code {
+  background: none;
+  padding: 0;
+  color: #e8e8e8;
+}
+
+.landing-content a {
+  color: #f39c12;
+  text-decoration: none;
+}
+
+.landing-content a:hover {
+  color: #f5c842;
+  text-decoration: underline;
+}
+
+.landing-content table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1.5rem 0;
+  background: #1a1a1a;
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.landing-content th,
+.landing-content td {
+  padding: 0.75rem 1rem;
+  text-align: left;
+  border-bottom: 1px solid #333333;
+}
+
+.landing-content th {
+  background: #242424;
+  color: #fff;
+  font-weight: 600;
+}
+
+.landing-content tr.spacer td {
+  padding: 0.25rem;
+  background: #121212;
+}
+
+/* Button in landing context */
+.landing-content .btn {
+  display: inline-block;
+  background: #e67e22;
+  color: #121212 !important;
+  padding: 0.75rem 1.5rem;
+  border-radius: 6px;
+  font-weight: 600;
+  text-decoration: none !important;
+  transition: background 0.2s;
+}
+
+.landing-content .btn:hover {
+  background: #f39c12;
+}
+
+/* ============================================
+   Responsive — Landing
+   ============================================ */
+
+@media (max-width: 768px) {
+  .hero .hero-html img {
+    height: 180px;
+  }
+
+  .feature-row,
+  .section-with-sparky,
+  .cta-footer {
+    flex-direction: column;
+  }
+
+  .feature-sparky,
+  .section-sparky {
+    align-self: center;
+    order: -1;
+  }
+
+  .cta-footer {
+    text-align: center;
+  }
+}
+
+/* ============================================
+   Site Footer
+   ============================================ */
+
+.gasoline-footer {
+  border-top: 1px solid #333333;
+  padding: 2rem var(--sl-content-pad-x, 1rem);
+  color: #a0a0a0;
+  font-size: 0.9rem;
+}
+
+.gasoline-footer-content {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  max-width: var(--sl-content-width, 75ch);
+  margin: 0 auto;
+}
+
+.gasoline-footer-sparky {
+  width: clamp(24px, 5vw, 40px);
+  height: auto;
+}

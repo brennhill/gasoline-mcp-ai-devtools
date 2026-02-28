@@ -1,0 +1,75 @@
+<svg viewBox="0 0 1000 500" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <style>
+      .participant-box { fill: #1E293B; stroke: #F97316; stroke-width: 2; }
+      .participant-text { fill: #FFFFFF; font-family: system-ui; font-size: 14px; font-weight: bold; }
+      .message-arrow { stroke: #F97316; stroke-width: 2; fill: none; marker-end: url(#arrowhead); }
+      .message-label { fill: #FFFFFF; font-family: system-ui; font-size: 12px; }
+      .lifeline { stroke: #334155; stroke-width: 1; stroke-dasharray: 3,3; }
+      .note-box { fill: #0F172A; stroke: #F97316; stroke-width: 1; }
+      .note-text { fill: #FFFFFF; font-family: system-ui; font-size: 11px; }
+      .event-number { fill: #FBBF24; font-family: system-ui; font-size: 11px; font-weight: bold; }
+    </style>
+    <marker id="arrowhead" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+      <polygon points="0 0, 10 3, 0 6" fill="#F97316" />
+    </marker>
+  </defs>
+
+  <!-- Title -->
+  <text style="font-size: 18px; font-weight: bold; fill: #FFFFFF;" x="20" y="35">Forward Communication Flow: Page Event → MCP</text>
+
+  <!-- Participant boxes -->
+  <rect class="participant-box" x="50" y="60" width="120" height="35" rx="4"/>
+  <text class="participant-text" x="65" y="83">Page</text>
+
+  <rect class="participant-box" x="220" y="60" width="120" height="35" rx="4"/>
+  <text class="participant-text" x="230" y="83">inject.js</text>
+
+  <rect class="participant-box" x="390" y="60" width="120" height="35" rx="4"/>
+  <text class="participant-text" x="395" y="83">content.js</text>
+
+  <rect class="participant-box" x="560" y="60" width="140" height="35" rx="4"/>
+  <text class="participant-text" x="565" y="83">background.js</text>
+
+  <rect class="participant-box" x="750" y="60" width="140" height="35" rx="4"/>
+  <text class="participant-text" x="760" y="83">Go Server</text>
+
+  <!-- Lifelines -->
+  <line class="lifeline" x1="110" y1="95" x2="110" y2="420"/>
+  <line class="lifeline" x1="280" y1="95" x2="280" y2="420"/>
+  <line class="lifeline" x1="450" y1="95" x2="450" y2="420"/>
+  <line class="lifeline" x1="630" y1="95" x2="630" y2="420"/>
+  <line class="lifeline" x1="820" y1="95" x2="820" y2="420"/>
+
+  <!-- Message 1: Page → inject.js -->
+  <path class="message-arrow" d="M 130 140 L 260 140"/>
+  <text class="event-number" x="135" y="135">1</text>
+  <text class="message-label" x="145" y="133">Page event occurs</text>
+  <text class="message-label" x="145" y="147">(click, error, etc)</text>
+
+  <!-- Message 2: inject.js → content.js -->
+  <path class="message-arrow" d="M 340 200 L 410 200"/>
+  <text class="event-number" x="345" y="195">2</text>
+  <text class="message-label" x="320" y="193">window.postMessage</text>
+
+  <!-- Message 3: content.js → background.js -->
+  <path class="message-arrow" d="M 510 260 L 590 260"/>
+  <text class="event-number" x="515" y="255">3</text>
+  <text class="message-label" x="495" y="253">chrome.runtime.sendMessage</text>
+
+  <!-- Message 4: background.js → Server -->
+  <path class="message-arrow" d="M 700 320 L 790 320"/>
+  <text class="event-number" x="705" y="315">4</text>
+  <text class="message-label" x="700" y="313">HTTP POST</text>
+  <text class="message-label" x="700" y="327">localhost:7890</text>
+
+  <!-- Server processing note -->
+  <rect class="note-box" x="750" y="350" width="180" height="50" rx="3"/>
+  <text class="note-text" x="765" y="368">Server stores event in</text>
+  <text class="note-text" x="765" y="382">ring buffer</text>
+  <text class="note-text" x="765" y="396">Available via MCP tool call</text>
+
+  <!-- Legend -->
+  <rect x="20" y="450" width="960" height="30" fill="none" stroke="#334155" stroke-width="1" rx="3"/>
+  <text style="fill: #FFFFFF; font-size: 12px; font-family: system-ui;" x="35" y="470">Timeline: User interaction → Extension batching → Server storage → MCP exposure (all within &lt;10ms)</text>
+</svg>

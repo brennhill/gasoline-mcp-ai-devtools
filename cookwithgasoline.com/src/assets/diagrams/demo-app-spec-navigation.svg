@@ -1,0 +1,105 @@
+<svg viewBox="0 0 800 600" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <style>
+      .sidebar-box { fill: #F97316; stroke: #ea580c; stroke-width: 2; }
+      .sidebar-title { fill: #0F172A; font-family: system-ui; font-size: 14px; font-weight: bold; }
+      .nav-item { fill: #0F172A; stroke: #F97316; stroke-width: 2; }
+      .nav-text { fill: #FFFFFF; font-family: system-ui; font-size: 13px; font-weight: bold; text-anchor: middle; }
+      .nav-text-dark { fill: #0F172A; font-family: system-ui; font-size: 13px; font-weight: bold; text-anchor: middle; }
+      .arrow { stroke: #F97316; stroke-width: 2; fill: none; marker-end: url(#arrowhead); }
+      .label { fill: #FFFFFF; font-family: system-ui; font-size: 11px; text-anchor: middle; }
+    </style>
+    <marker id="arrowhead" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+      <polygon points="0 0, 10 3, 0 6" fill="#F97316" />
+    </marker>
+  </defs>
+
+  <!-- Title -->
+  <text style="font-size: 18px; font-weight: bold; fill: #FFFFFF;" x="400" y="35" text-anchor="middle">Demo App Navigation Structure</text>
+
+  <!-- Sidebar -->
+  <rect class="sidebar-box" x="50" y="80" width="200" height="480" rx="6"/>
+  <text class="sidebar-title" x="150" y="105" text-anchor="middle">📱 Sidebar Navigation</text>
+
+  <!-- Dashboard -->
+  <rect class="nav-item" x="70" y="130" width="160" height="50" rx="4"/>
+  <text class="nav-text-dark" x="150" y="155">📊 Dashboard</text>
+
+  <!-- Users -->
+  <rect class="nav-item" x="70" y="195" width="160" height="50" rx="4"/>
+  <text class="nav-text-dark" x="150" y="220">👥 Users</text>
+
+  <!-- Notifications -->
+  <rect class="nav-item" x="70" y="260" width="160" height="50" rx="4"/>
+  <text class="nav-text-dark" x="150" y="285">🔔 Notifications</text>
+
+  <!-- Reports -->
+  <rect class="nav-item" x="70" y="325" width="160" height="50" rx="4"/>
+  <text class="nav-text-dark" x="150" y="350">📄 Reports</text>
+
+  <!-- Activity -->
+  <rect class="nav-item" x="70" y="390" width="160" height="50" rx="4"/>
+  <text class="nav-text-dark" x="150" y="415">💓 Activity</text>
+
+  <!-- Billing -->
+  <rect class="nav-item" x="70" y="455" width="160" height="50" rx="4"/>
+  <text class="nav-text-dark" x="150" y="480">💳 Billing</text>
+
+  <!-- Settings -->
+  <rect class="nav-item" x="70" y="520" width="160" height="50" rx="4"/>
+  <text class="nav-text-dark" x="150" y="545">⚙️ Settings</text>
+
+  <!-- Page descriptions on the right -->
+  <!-- Dashboard -->
+  <g>
+    <rect x="300" y="130" width="450" height="50" fill="#1E293B" stroke="#F97316" stroke-width="1" rx="4"/>
+    <text style="fill: #FFFFFF; font-size: 12px; font-family: system-ui; font-weight: bold;" x="315" y="150">Dashboard</text>
+    <text style="fill: #CCCCCC; font-size: 11px; font-family: system-ui;" x="315" y="167">Key metrics, charts, real-time data</text>
+  </g>
+
+  <!-- Users -->
+  <g>
+    <rect x="300" y="195" width="450" height="50" fill="#1E293B" stroke="#F97316" stroke-width="1" rx="4"/>
+    <text style="fill: #FFFFFF; font-size: 12px; font-family: system-ui; font-weight: bold;" x="315" y="215">Users</text>
+    <text style="fill: #CCCCCC; font-size: 11px; font-family: system-ui;" x="315" y="232">User list, search, filter, manage</text>
+  </g>
+
+  <!-- Notifications -->
+  <g>
+    <rect x="300" y="260" width="450" height="50" fill="#1E293B" stroke="#F97316" stroke-width="1" rx="4"/>
+    <text style="fill: #FFFFFF; font-size: 12px; font-family: system-ui; font-weight: bold;" x="315" y="280">Notifications</text>
+    <text style="fill: #CCCCCC; font-size: 11px; font-family: system-ui;" x="315" y="297">Real-time updates (WebSocket), dismiss</text>
+  </g>
+
+  <!-- Reports -->
+  <g>
+    <rect x="300" y="325" width="450" height="50" fill="#1E293B" stroke="#F97316" stroke-width="1" rx="4"/>
+    <text style="fill: #FFFFFF; font-size: 12px; font-family: system-ui; font-weight: bold;" x="315" y="345">Reports</text>
+    <text style="fill: #CCCCCC; font-size: 11px; font-family: system-ui;" x="315" y="362">Analytics, export, scheduling</text>
+  </g>
+
+  <!-- Activity -->
+  <g>
+    <rect x="300" y="390" width="450" height="50" fill="#1E293B" stroke="#F97316" stroke-width="1" rx="4"/>
+    <text style="fill: #FFFFFF; font-size: 12px; font-family: system-ui; font-weight: bold;" x="315" y="410">Activity</text>
+    <text style="fill: #CCCCCC; font-size: 11px; font-family: system-ui;" x="315" y="427">Event feed, API payload validation</text>
+  </g>
+
+  <!-- Billing -->
+  <g>
+    <rect x="300" y="455" width="450" height="50" fill="#1E293B" stroke="#F97316" stroke-width="1" rx="4"/>
+    <text style="fill: #FFFFFF; font-size: 12px; font-family: system-ui; font-weight: bold;" x="315" y="475">Billing</text>
+    <text style="fill: #CCCCCC; font-size: 11px; font-family: system-ui;" x="315" y="492">Payment form, WCAG violations</text>
+  </g>
+
+  <!-- Settings -->
+  <g>
+    <rect x="300" y="520" width="450" height="50" fill="#1E293B" stroke="#F97316" stroke-width="1" rx="4"/>
+    <text style="fill: #FFFFFF; font-size: 12px; font-family: system-ui; font-weight: bold;" x="315" y="540">Settings</text>
+    <text style="fill: #CCCCCC; font-size: 11px; font-family: system-ui;" x="315" y="557">Profile, preferences, security</text>
+  </g>
+
+  <!-- Bottom note -->
+  <rect x="50" y="570" width="700" height="20" fill="none" stroke="#334155" stroke-width="1" rx="3"/>
+  <text style="fill: #FFFFFF; font-size: 11px; font-family: system-ui;" x="70" y="583">Each page includes realistic bugs designed to be caught by Gasoline (errors, network issues, accessibility violations)</text>
+</svg>
