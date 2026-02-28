@@ -142,54 +142,92 @@ function toDOMResult(value) {
         return null;
     return candidate;
 }
-function withTimeoutResult(results, selector, timeoutMs) {
-    const timeoutResult = {
-        success: false,
-        action: 'wait_for',
-        selector,
-        error: 'timeout',
-        message: `Element not found within ${timeoutMs}ms: ${selector}`
-    };
-    if (results.length === 0) {
-        return [{ frameId: 0, result: timeoutResult }];
-    }
-    return results.map((result) => ({ ...result, result: timeoutResult }));
-}
 function wait(ms) {
     return new Promise((resolve) => setTimeout(resolve, ms));
 }
+/** Resolve which DOM action name to dispatch for wait_for based on params.
+ *  Callers must validate mutual exclusivity before calling this. */
+function resolveWaitForAction(params) {
+    if (params.absent)
+        return 'wait_for_absent';
+    if (params.text)
+        return 'wait_for_text';
+    return 'wait_for';
+}
+async function executeWaitForURL(tabId, params) {
+    const urlSubstring = params.url_contains;
+    const timeoutMs = Math.max(1, params.timeout_ms ?? 5000);
+    const startedAt = Date.now();
+    while (true) {
+        const tab = await chrome.tabs.get(tabId);
+        if (tab.url && tab.url.includes(urlSubstring)) {
+            return {
+                success: true,
+                action: 'wait_for',
+                selector: '',
+                value: tab.url
+            };
+        }
+        if (Date.now() - startedAt >= timeoutMs) {
+            return {
+                success: false,
+                action: 'wait_for',
+                selector: '',
+                error: 'timeout',
+                message: `URL did not contain "${urlSubstring}" within ${timeoutMs}ms`
+            };
+        }
+        const remaining = timeoutMs - (Date.now() - startedAt);
+        await wait(Math.min(WAIT_FOR_POLL_INTERVAL_MS, Math.max(1, remaining)));
+    }
+}
 async function executeWaitFor(target, params) {
     const selector = params.selector || '';
-    const timeoutMs = Math.max(1, params.timeout_ms || 5000);
+    const timeoutMs = Math.max(1, params.timeout_ms ?? 5000);
+    const domAction = resolveWaitForAction(params);
+    const domOpts = { timeout_ms: timeoutMs, text: params.text };
     const startedAt = Date.now();
     const quickCheck = await chrome.scripting.executeScript({
         target,
         world: 'MAIN',
         func: domPrimitive,
-        args: [params.action, selector, { timeout_ms: timeoutMs }]
+        args: [domAction, selector, domOpts]
     });
     const quickPicked = pickFrameResult(quickCheck);
     const quickResult = toDOMResult(quickPicked?.result);
     if (quickResult?.success) {
         return quickResult;
     }
-    let lastResults = quickCheck;
+    let lastResult = toDOMResult(quickPicked?.result) ?? null;
     while (Date.now() - startedAt < timeoutMs) {
-        await wait(Math.min(WAIT_FOR_POLL_INTERVAL_MS, timeoutMs));
+        const remaining = timeoutMs - (Date.now() - startedAt);
+        await wait(Math.min(WAIT_FOR_POLL_INTERVAL_MS, Math.max(1, remaining)));
         const probeResults = await chrome.scripting.executeScript({
             target,
             world: 'MAIN',
             func: domPrimitive,
-            args: [params.action, selector, { timeout_ms: timeoutMs }]
+            args: [domAction, selector, domOpts]
         });
-        lastResults = probeResults;
         const picked = pickFrameResult(probeResults);
         const result = toDOMResult(picked?.result);
+        if (result)
+            lastResult = result;
         if (result?.success) {
-            return probeResults;
+            return result;
         }
     }
-    return withTimeoutResult(lastResults, selector, timeoutMs);
+    const label = domAction === 'wait_for_text'
+        ? `Text "${params.text}" not found within ${timeoutMs}ms`
+        : domAction === 'wait_for_absent'
+            ? `Element still present within ${timeoutMs}ms: ${selector}`
+            : undefined;
+    return lastResult ?? {
+        success: false,
+        action: 'wait_for',
+        selector,
+        error: 'timeout',
+        message: label || `Element not found within ${timeoutMs}ms: ${selector}`
+    };
 }
 async function executeStandardAction(target, params) {
     return chrome.scripting.executeScript({
@@ -317,13 +355,40 @@ export async function executeDOMAction(query, tabId, syncClient, sendAsyncResult
         sendAsyncResult(syncClient, query.id, query.correlation_id, 'error', null, 'missing_action');
         return;
     }
-    if (action === 'wait_for' && !selector) {
-        sendAsyncResult(syncClient, query.id, query.correlation_id, 'error', null, 'missing_selector');
-        return;
+    if (action === 'wait_for') {
+        const hasSelector = !!(selector || params.element_id);
+        const hasText = !!params.text;
+        const hasURL = !!params.url_contains;
+        const condCount = ((hasSelector || params.absent) ? 1 : 0) + (hasText ? 1 : 0) + (hasURL ? 1 : 0);
+        if (condCount === 0) {
+            sendAsyncResult(syncClient, query.id, query.correlation_id, 'error', null, 'wait_for requires selector, text, or url_contains');
+            return;
+        }
+        if (condCount > 1) {
+            sendAsyncResult(syncClient, query.id, query.correlation_id, 'error', null, 'wait_for conditions are mutually exclusive');
+            return;
+        }
+        if (params.absent && !hasSelector) {
+            sendAsyncResult(syncClient, query.id, query.correlation_id, 'error', null, 'wait_for with absent requires a selector');
+            return;
+        }
     }
     const toastLabel = reason || action;
     const toastDetail = reason ? undefined : selector || 'page';
     const readOnly = isReadOnlyAction(action);
+    // URL-based wait_for: polls chrome.tabs.get from background — no page injection needed.
+    if (action === 'wait_for' && params.url_contains) {
+        try {
+            const urlResult = await executeWaitForURL(tabId, params);
+            const status = urlResult.success ? 'complete' : 'error';
+            sendAsyncResult(syncClient, query.id, query.correlation_id, status, await enrichWithEffectiveContext(tabId, urlResult), urlResult.success ? undefined : urlResult.error);
+        }
+        catch (err) {
+            actionToast(tabId, action, err.message, 'error');
+            sendAsyncResult(syncClient, query.id, query.correlation_id, 'error', null, err.message);
+        }
+        return;
+    }
     try {
         const executionTarget = await resolveExecutionTarget(tabId, params.frame);
         const tryingShownAt = Date.now();

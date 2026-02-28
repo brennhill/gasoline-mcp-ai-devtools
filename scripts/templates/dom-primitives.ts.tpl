@@ -9,7 +9,7 @@
 // These bypass CSP restrictions because they use the `func` parameter (no eval/new Function).
 // Each function MUST be self-contained — no closures over external variables.
 
-import type { DOMMutationEntry, DOMPrimitiveOptions, DOMResult } from './dom-types'
+import type { DOMMutationEntry, DOMPrimitiveOptions, DOMResult } from './dom-types.js'
 
 // Re-export list_interactive primitive for backward compatibility
 export { domPrimitiveListInteractive } from './dom-primitives-list-interactive.js'
@@ -775,6 +775,29 @@ export function domPrimitive(
       },
 
       wait_for: () => ({ success: true, action, selector, value: node.tagName.toLowerCase() }),
+
+      wait_for_text: () => {
+        const searchText = options.text || ''
+        if (!searchText) {
+          return { success: false, action, selector: '', error: 'empty_text', message: 'text parameter is required for wait_for_text' } as DOMResult
+        }
+        const bodyText = document.body?.innerText ?? ''
+        if (bodyText.includes(searchText)) {
+          return { success: true, action, selector: '', matched_text: searchText } as DOMResult
+        }
+        return { success: false, action, selector: '', error: 'text_not_found' } as DOMResult
+      },
+
+      wait_for_absent: () => {
+        if (!selector) {
+          return { success: false, action, selector: '', error: 'missing_selector', message: 'selector is required for wait_for_absent' } as DOMResult
+        }
+        const el = resolveElement(selector)
+        if (!el) {
+          return { success: true, action, selector, absent: true } as DOMResult
+        }
+        return { success: false, action, selector, error: 'element_still_present' } as DOMResult
+      },
 
       paste: () =>
         withMutationTracking(() => {

@@ -106,6 +106,8 @@ export interface DOMResult {
     waited_ms?: number;
     mutations_observed?: number;
     stability_ms?: number;
+    matched_text?: string;
+    absent?: boolean;
     dismissed_count?: number;
 }
 export interface DOMPrimitiveOptions {
@@ -123,6 +125,8 @@ export interface DOMPrimitiveOptions {
     scope_selector?: string;
     scope_rect?: ScopeRect;
     new_tab?: boolean;
+    url_contains?: string;
+    absent?: boolean;
 }
 export interface DOMActionParams extends DOMPrimitiveOptions {
     action?: string;
