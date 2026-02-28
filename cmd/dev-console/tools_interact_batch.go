@@ -11,6 +11,15 @@ import (
 
 // handleBatch executes a sequence of interact steps provided inline.
 func (h *ToolHandler) handleBatch(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+	// Fail fast if pilot/extension are not available — avoids acquiring replayMu
+	// and iterating steps that would all fail individually (#9.R3.9).
+	if resp, blocked := h.requirePilot(req); blocked {
+		return resp
+	}
+	if resp, blocked := h.requireExtension(req); blocked {
+		return resp
+	}
+
 	var params struct {
 		Steps         []json.RawMessage `json:"steps"`
 		StepTimeoutMs int               `json:"step_timeout_ms"`
@@ -83,6 +92,10 @@ func (h *ToolHandler) handleBatch(req JSONRPCRequest, args json.RawMessage) JSON
 			actionName = stepAction.Action
 		}
 
+		// Strip include_screenshot from batch steps — screenshots are captured per-step
+		// but then discarded in the aggregate response, wasting CPU on base64 encoding (#9.2.2).
+		stepArgs = stripComposableScreenshotFromStep(stepArgs)
+
 		replayStepArgs := forceReplayAsyncInteractStep(stepArgs)
 		stepStart := time.Now()
 		stepResp := h.toolInteract(req, replayStepArgs)
@@ -123,9 +136,16 @@ func (h *ToolHandler) handleBatch(req JSONRPCRequest, args json.RawMessage) JSON
 		}
 
 		if isErrorResponse(stepResp) {
-			stepResult.Status = "error"
-			stepResult.Error = extractErrorMessage(stepResp)
-			stepsFailed++
+			// Only count as failed if not already counted by the correlation path above (#9.R1).
+			// In the contradictory case where correlation resolved to "ok" but isErrorResponse
+			// is true, we trust the correlation result since it reflects the actual extension-side
+			// outcome. This cannot happen in practice because forceReplayAsyncInteractStep generates
+			// a fresh correlation ID per step.
+			if stepResult.Status == "" {
+				stepResult.Status = "error"
+				stepResult.Error = extractErrorMessage(stepResp)
+				stepsFailed++
+			}
 			results = append(results, stepResult)
 			stepsExecuted++
 			if !continueOnError {
@@ -179,4 +199,22 @@ func (h *ToolHandler) handleBatch(req JSONRPCRequest, args json.RawMessage) JSON
 	}
 
 	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Batch execution", responseData)}
+}
+
+// stripComposableScreenshotFromStep removes include_screenshot from batch step args
+// to prevent wasted screenshot captures that are discarded in the aggregate response.
+func stripComposableScreenshotFromStep(stepArgs json.RawMessage) json.RawMessage {
+	var raw map[string]any
+	if err := json.Unmarshal(stepArgs, &raw); err != nil {
+		return stepArgs
+	}
+	if _, has := raw["include_screenshot"]; has {
+		delete(raw, "include_screenshot")
+		patched, err := json.Marshal(raw)
+		if err != nil {
+			return stepArgs
+		}
+		return patched
+	}
+	return stepArgs
 }

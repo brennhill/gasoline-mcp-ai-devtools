@@ -34,7 +34,7 @@ var interactActions = []string{
 func InteractToolSchema() mcp.MCPTool {
 	return mcp.MCPTool{
 		Name:        "interact",
-		Description: "Browser actions. Requires AI Web Pilot.\n\nSynchronous Mode (Default): Tools now block until the extension returns a result (up to 15s). Set background:true to return immediately with a correlation_id.\n\nSelectors: CSS or semantic (text=Submit, role=button, placeholder=Email, label=Name, aria-label=Close). subtitle param composable with any action. analyze=true captures perf_diff. navigate/refresh auto-include perf_diff.\n\nDraw Mode: draw_mode_start activates annotation overlay — user draws rectangles and types feedback, presses ESC to finish. Use analyze({what:'annotations'}) to retrieve results.\n\nDispatch: 'what' is required. 'action' is a deprecated runtime alias accepted for backward compatibility — prefer 'what'.",
+		Description: "Browser actions. Requires AI Web Pilot. Dispatch key: 'what'.\n\nGetting started: Use explore_page for a complete page snapshot (screenshot, interactive elements, readable text, navigation links) in one call. Use list_interactive for element discovery. Use click/type/select for interaction.\n\nElement targeting: Prefer element_id (from list_interactive/explore_page) for reliability, selector for flexibility, or index (legacy). Add scope_selector to constrain to a page region.\n\nEnrichments: Add include_screenshot:true for visual feedback, observe_mutations:true for DOM change tracking, action_diff:true for structured mutation summary, wait_for_stable:true to wait for DOM to settle.\n\nPage understanding: explore_page (full snapshot), list_interactive, get_readable, get_markdown.\nInteraction: click, type, select, check, hover, focus, scroll_to, key_press, paste.\nNavigation: navigate, back, forward, refresh, new_tab, switch_tab, close_tab.\nForms: fill_form, fill_form_and_submit.\nAdvanced: execute_js, batch, upload, draw_mode_start.\n\nSynchronous Mode (Default): Tools block until result (up to 15s). Set background:true to return immediately.\n\nSelectors: CSS or semantic (text=Submit, role=button, placeholder=Email, label=Name, aria-label=Close).\n\nCall configure({what:'describe_capabilities', tool:'interact', mode:'click'}) for per-action param details.",
 		InputSchema: map[string]any{
 			"type": "object",
 			"properties": map[string]any{
@@ -330,6 +330,10 @@ func InteractToolSchema() mcp.MCPTool {
 				"stability_ms": map[string]any{
 					"type":        "number",
 					"description": "Milliseconds of DOM quiet time required for wait_for_stable (default 500)",
+				},
+				"action_diff": map[string]any{
+					"type":        "boolean",
+					"description": "After the action completes, capture a structured mutation summary (overlays opened/closed, toasts, form errors, text changes). Composable with click, type, select, and other DOM-mutating actions.",
 				},
 				"steps": map[string]any{
 					"type":        "array",

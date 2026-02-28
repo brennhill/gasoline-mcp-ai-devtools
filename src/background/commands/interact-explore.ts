@@ -3,6 +3,7 @@
 // links into a single extension response, reducing MCP round-trips for AI agents.
 
 import { domPrimitiveListInteractive } from '../dom-primitives-list-interactive.js'
+import { domPrimitiveNavDiscovery } from '../dom-primitives-nav-discovery.js'
 import { registerCommand } from './registry.js'
 
 // =============================================================================
@@ -73,131 +74,6 @@ function readableContentScript(): Record<string, unknown> {
 }
 
 // =============================================================================
-// NAVIGATION DISCOVERY (self-contained for chrome.scripting.executeScript)
-// =============================================================================
-
-/**
- * Self-contained navigation discovery script. Mirrors analyze-navigation.ts
- * navigationDiscoveryScript but as a separate reference for explore_page.
- */
-function navigationDiscoveryScript(): Record<string, unknown> {
-  const MAX_LINKS_PER_REGION = 50
-  const MAX_REGIONS = 20
-
-  function cleanText(value: string, maxLen: number): string {
-    const text = (value || '').replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '').replace(/\s+/g, ' ').trim()
-    if (maxLen > 0 && text.length > maxLen) return text.slice(0, maxLen)
-    return text
-  }
-
-  function absoluteHref(value: string): string {
-    try { return new URL(value || '', window.location.href).href }
-    catch { return value || '' }
-  }
-
-  function isSameOrigin(href: string): boolean {
-    try { return new URL(href).origin === window.location.origin }
-    catch { return false }
-  }
-
-  function getRegionLabel(el: Element): string {
-    const ariaLabel = el.getAttribute('aria-label')
-    if (ariaLabel) return cleanText(ariaLabel, 80)
-    const ariaLabelledBy = el.getAttribute('aria-labelledby')
-    if (ariaLabelledBy) {
-      const labelEl = document.getElementById(ariaLabelledBy)
-      if (labelEl) {
-        const text = cleanText(labelEl.textContent || '', 80)
-        if (text) return text
-      }
-    }
-    const heading = el.querySelector('h1, h2, h3, h4, h5, h6')
-    if (heading) {
-      const text = cleanText(heading.textContent || '', 80)
-      if (text) return text
-    }
-    return ''
-  }
-
-  function getPositionLabel(el: Element): string {
-    const rect = el.getBoundingClientRect()
-    const viewH = window.innerHeight
-    if (rect.top < viewH * 0.15) return 'top'
-    if (rect.bottom > viewH * 0.85) return 'bottom'
-    if (rect.left < window.innerWidth * 0.25 && rect.width < window.innerWidth * 0.35) return 'left_sidebar'
-    if (rect.right > window.innerWidth * 0.75 && rect.width < window.innerWidth * 0.35) return 'right_sidebar'
-    return 'main'
-  }
-
-  interface NavLink { text: string; href: string; is_internal: boolean }
-  interface NavRegion { tag: string; role: string; label: string; position: string; links: NavLink[] }
-
-  const regionSelectors = [
-    'nav', '[role="navigation"]', 'header', 'footer', 'aside',
-    '[role="banner"]', '[role="contentinfo"]', '[role="complementary"]'
-  ]
-
-  const seenRegions = new Set<Element>()
-  const regions: NavRegion[] = []
-
-  for (const sel of regionSelectors) {
-    const elements = document.querySelectorAll(sel)
-    for (const el of Array.from(elements)) {
-      if (seenRegions.has(el) || regions.length >= MAX_REGIONS) continue
-      seenRegions.add(el)
-      const anchors = el.querySelectorAll('a[href]')
-      if (anchors.length === 0) continue
-      const links: NavLink[] = []
-      const seenHrefs = new Set<string>()
-      for (const a of Array.from(anchors)) {
-        if (links.length >= MAX_LINKS_PER_REGION) break
-        const rawHref = a.getAttribute('href') || ''
-        if (!rawHref || rawHref === '#' || rawHref.startsWith('javascript:')) continue
-        const href = absoluteHref(rawHref)
-        if (seenHrefs.has(href)) continue
-        seenHrefs.add(href)
-        links.push({ text: cleanText(a.textContent || '', 100), href, is_internal: isSameOrigin(href) })
-      }
-      if (links.length === 0) continue
-      const tag = el.tagName.toLowerCase()
-      const role = el.getAttribute('role') || ''
-      const label = getRegionLabel(el) || tag
-      const position = getPositionLabel(el)
-      regions.push({ tag, role, label, position, links })
-    }
-  }
-
-  // Unregioned links
-  const allAnchors = document.querySelectorAll('a[href]')
-  const regionedAnchors = new Set<Element>()
-  for (const region of seenRegions) {
-    for (const a of Array.from(region.querySelectorAll('a[href]'))) regionedAnchors.add(a)
-  }
-  const unregionedLinks: NavLink[] = []
-  const seenUnregioned = new Set<string>()
-  for (const a of Array.from(allAnchors)) {
-    if (unregionedLinks.length >= MAX_LINKS_PER_REGION) break
-    if (regionedAnchors.has(a)) continue
-    const rawHref = a.getAttribute('href') || ''
-    if (!rawHref || rawHref === '#' || rawHref.startsWith('javascript:')) continue
-    const href = absoluteHref(rawHref)
-    if (seenUnregioned.has(href)) continue
-    seenUnregioned.add(href)
-    unregionedLinks.push({ text: cleanText(a.textContent || '', 100), href, is_internal: isSameOrigin(href) })
-  }
-
-  const totalLinks = regions.reduce((sum, r) => sum + r.links.length, 0) + unregionedLinks.length
-  const internalLinks = regions.reduce((sum, r) => sum + r.links.filter((l) => l.is_internal).length, 0) +
-    unregionedLinks.filter((l) => l.is_internal).length
-
-  return {
-    regions,
-    unregioned_links: unregionedLinks,
-    summary: { total_regions: regions.length, total_links: totalLinks, internal_links: internalLinks, external_links: totalLinks - internalLinks }
-  }
-}
-
-// =============================================================================
 // EXPLORE_PAGE COMMAND (#338)
 // =============================================================================
 
@@ -206,28 +82,37 @@ registerCommand('explore_page', async (ctx) => {
     // If URL is provided, navigate first
     const targetUrl = typeof ctx.params.url === 'string' ? ctx.params.url : undefined
     if (targetUrl) {
-      await chrome.tabs.update(ctx.tabId, { url: targetUrl })
-      // Wait for page load to complete
+      // Validate URL scheme — only http/https allowed (security: prevent javascript:/data:/chrome: injection)
+      if (!/^https?:\/\//i.test(targetUrl)) {
+        throw new Error('Only http/https URLs are supported for explore_page navigation, got: ' + targetUrl.split(':')[0] + ':')
+      }
+      // Register onUpdated listener BEFORE calling tabs.update to prevent race condition
+      // where the page load completes before the listener is attached (#9.3.2, #9.7.5).
       await new Promise<void>((resolve) => {
+        const timeout = setTimeout(() => {
+          chrome.tabs.onUpdated.removeListener(onUpdated)
+          resolve()
+        }, 15000)
         const onUpdated = (tabId: number, changeInfo: { status?: string }): void => {
           if (tabId === ctx.tabId && changeInfo.status === 'complete') {
             chrome.tabs.onUpdated.removeListener(onUpdated)
+            clearTimeout(timeout)
             resolve()
           }
         }
         chrome.tabs.onUpdated.addListener(onUpdated)
-        // Safety timeout: resolve after 15s even if load doesn't fire
-        setTimeout(() => {
+        chrome.tabs.update(ctx.tabId, { url: targetUrl }).catch(() => {
           chrome.tabs.onUpdated.removeListener(onUpdated)
-          resolve()
-        }, 15000)
+          clearTimeout(timeout)
+          resolve() // continue with current page state
+        })
       })
     }
 
     // 1. Get tab info (page metadata)
     const tab = await chrome.tabs.get(ctx.tabId)
 
-    // 2. Run all data collection in parallel
+    // 2. Run all data collection in parallel — capture errors for _errors array (#9.7.4)
     const [interactiveResults, readableResults, navResults] = await Promise.all([
       // Interactive elements
       chrome.scripting.executeScript({
@@ -235,21 +120,21 @@ registerCommand('explore_page', async (ctx) => {
         world: 'MAIN',
         func: domPrimitiveListInteractive,
         args: ['']
-      }).catch(() => []),
+      }).catch((err: Error) => [{ result: { success: false, error: err.message, _source: 'interactive' } }]),
 
       // Readable content
       chrome.scripting.executeScript({
         target: { tabId: ctx.tabId },
         world: 'ISOLATED',
         func: readableContentScript
-      }).catch(() => []),
+      }).catch((err: Error) => [{ result: { error: 'extraction_failed', _reason: err.message, _source: 'readable' } }]),
 
-      // Navigation links
+      // Navigation links (uses shared dom-primitives-nav-discovery)
       chrome.scripting.executeScript({
         target: { tabId: ctx.tabId },
         world: 'ISOLATED',
-        func: navigationDiscoveryScript
-      }).catch(() => [])
+        func: domPrimitiveNavDiscovery
+      }).catch((err: Error) => [{ result: { error: 'extraction_failed', _reason: err.message, _source: 'navigation' } }])
     ])
 
     // Process interactive elements (capped at 100)
@@ -322,8 +207,22 @@ registerCommand('explore_page', async (ctx) => {
       navigation: navigation || { error: 'extraction_failed' }
     }
 
+    // Build unified _errors array for partial failures (UX Review R6)
+    const errors: Array<{ component: string; error: string }> = []
     if (interactiveError && finalElements.length === 0) {
       payload.interactive_error = interactiveError
+      errors.push({ component: 'interactive', error: interactiveError })
+    }
+    if (readable && typeof readable === 'object' && 'error' in readable) {
+      const reason = (readable as Record<string, unknown>)._reason
+      errors.push({ component: 'readable', error: String(reason || (readable as Record<string, unknown>).error) })
+    }
+    if (navigation && typeof navigation === 'object' && 'error' in navigation) {
+      const reason = (navigation as Record<string, unknown>)._reason
+      errors.push({ component: 'navigation', error: String(reason || (navigation as Record<string, unknown>).error) })
+    }
+    if (errors.length > 0) {
+      payload._errors = errors
     }
 
     if (ctx.query.correlation_id) {

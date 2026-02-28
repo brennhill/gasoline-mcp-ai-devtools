@@ -226,7 +226,7 @@ var toolModeSpecs = map[string]map[string]modeParamSpec{
 			Optional: []string{"min_level", "source", "limit", "min_group_size"},
 		},
 		"page_inventory": {
-			Hint:     "Combined page info + interactive elements in one call (replaces observe/page + interact/list_interactive)",
+			Hint:     "Combined page info + interactive elements in one call. For a richer snapshot (readable text, navigation links, screenshot), use interact(what='explore_page') instead.",
 			Optional: []string{"visible_only", "limit"},
 		},
 		"transients": {
