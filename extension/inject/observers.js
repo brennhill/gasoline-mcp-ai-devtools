@@ -15,6 +15,7 @@ import { wrapFetchWithBodies, wrapXHRWithBodies, unwrapXHR, adoptEarlyBodies } f
 import { installConsoleCapture, uninstallConsoleCapture } from '../lib/console.js';
 import { installExceptionCapture, uninstallExceptionCapture } from '../lib/exceptions.js';
 import { installActionCapture, uninstallActionCapture, installNavigationCapture, uninstallNavigationCapture } from '../lib/actions.js';
+import { installTransientCapture, uninstallTransientCapture } from '../lib/transient-capture.js';
 import { postLog } from '../lib/bridge.js';
 import { MAX_RESPONSE_LENGTH, SENSITIVE_HEADERS, MEMORY_SOFT_LIMIT_MB, MEMORY_HARD_LIMIT_MB } from '../lib/constants.js';
 // Store original fetch for restoration
@@ -156,6 +157,7 @@ export function install() {
     installNavigationCapture();
     installWebSocketCapture();
     installPerformanceCapture();
+    installTransientCapture();
 }
 /**
  * Uninstall all capture hooks
@@ -169,6 +171,7 @@ export function uninstall() {
     uninstallNavigationCapture();
     uninstallWebSocketCapture();
     uninstallPerformanceCapture();
+    uninstallTransientCapture();
 }
 /**
  * Check if heavy intercepts should be deferred until page load

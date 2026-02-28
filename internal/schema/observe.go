@@ -16,7 +16,7 @@ func ObserveToolSchema() mcp.MCPTool {
 			"properties": map[string]any{
 				"what": map[string]any{
 					"type": "string",
-					"enum": []string{"errors", "logs", "extension_logs", "network_waterfall", "network_bodies", "websocket_events", "websocket_status", "actions", "vitals", "page", "tabs", "history", "pilot", "timeline", "error_bundles", "screenshot", "storage", "indexeddb", "command_result", "pending_commands", "failed_commands", "saved_videos", "recordings", "recording_actions", "playback_results", "log_diff_report", "summarized_logs", "page_inventory"},
+					"enum": []string{"errors", "logs", "extension_logs", "network_waterfall", "network_bodies", "websocket_events", "websocket_status", "actions", "vitals", "page", "tabs", "history", "pilot", "timeline", "error_bundles", "screenshot", "storage", "indexeddb", "command_result", "pending_commands", "failed_commands", "saved_videos", "recordings", "recording_actions", "playback_results", "log_diff_report", "summarized_logs", "page_inventory", "transients"},
 				},
 				"telemetry_mode": map[string]any{
 					"type":        "string",
@@ -168,9 +168,14 @@ func ObserveToolSchema() mcp.MCPTool {
 					"type":        "number",
 					"description": "Minimum occurrences to form a group (summarized_logs, default 2)",
 				},
+				"classification": map[string]any{
+					"type":        "string",
+					"description": "Transient element classification filter (transients)",
+					"enum":        []string{"alert", "toast", "snackbar", "notification", "tooltip", "banner", "flash"},
+				},
 				"summary": map[string]any{
 					"type":        "boolean",
-					"description": "Return compact summary instead of full entries (errors, logs, network_waterfall, network_bodies, websocket_events, actions, error_bundles, timeline, history)",
+					"description": "Return compact summary instead of full entries (errors, logs, network_waterfall, network_bodies, websocket_events, actions, error_bundles, timeline, history, transients)",
 				},
 				"visible_only": map[string]any{
 					"type":        "boolean",
