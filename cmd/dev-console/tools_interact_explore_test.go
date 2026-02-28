@@ -363,8 +363,9 @@ func TestInteract_ExplorePage_BlobURL_Rejected(t *testing.T) {
 // Response Structure
 // ============================================
 
-func TestInteract_ExplorePage_ResponseStructure(t *testing.T) {
+func TestInteract_ExplorePage_ErrorResponseStructure(t *testing.T) {
 	t.Parallel()
+	// Without pilot/extension setup, this tests the error response format.
 	h, _, _ := makeToolHandler(t)
 
 	resp := callInteractRaw(h, `{"what":"explore_page"}`)
@@ -374,11 +375,67 @@ func TestInteract_ExplorePage_ResponseStructure(t *testing.T) {
 
 	result := parseToolResult(t, resp)
 	if len(result.Content) == 0 {
-		t.Error("interact(explore_page) should return at least one content block")
+		t.Error("explore_page error response should return at least one content block")
 	}
 	if result.Content[0].Type != "text" {
 		t.Errorf("content type = %q, want 'text'", result.Content[0].Type)
 	}
+	if !result.IsError {
+		t.Error("explore_page without pilot should be an error")
+	}
 
 	assertSnakeCaseFields(t, string(resp.Result))
+}
+
+func TestInteract_ExplorePage_SuccessResponseStructure(t *testing.T) {
+	t.Parallel()
+	h, _, cap := makeToolHandler(t)
+	cap.SetPilotEnabled(true)
+	httpReq := httptest.NewRequest("POST", "/sync", strings.NewReader(`{"ext_session_id":"test"}`))
+	httpReq.Header.Set("X-Gasoline-Client", "test-client")
+	cap.HandleSync(httptest.NewRecorder(), httpReq)
+	cap.SetTrackingStatusForTest(42, "https://example.com")
+
+	resp := callInteractRaw(h, `{"what":"explore_page"}`)
+	result := parseToolResult(t, resp)
+	if result.IsError {
+		t.Fatalf("explore_page with pilot should succeed, got: %s", result.Content[0].Text)
+	}
+	if len(result.Content) == 0 {
+		t.Error("explore_page success response should return at least one content block")
+	}
+
+	data := extractResultJSON(t, result)
+	if data["status"] != "queued" {
+		t.Errorf("status = %v, want 'queued'", data["status"])
+	}
+	if _, ok := data["correlation_id"].(string); !ok {
+		t.Error("success response should contain correlation_id")
+	}
+
+	assertSnakeCaseFields(t, string(resp.Result))
+}
+
+func TestInteract_ExplorePage_TabIDForwarded(t *testing.T) {
+	t.Parallel()
+	h, _, cap := makeToolHandler(t)
+	cap.SetPilotEnabled(true)
+	httpReq := httptest.NewRequest("POST", "/sync", strings.NewReader(`{"ext_session_id":"test"}`))
+	httpReq.Header.Set("X-Gasoline-Client", "test-client")
+	cap.HandleSync(httptest.NewRecorder(), httpReq)
+	cap.SetTrackingStatusForTest(42, "https://example.com")
+
+	resp := callInteractRaw(h, `{"what":"explore_page","tab_id":99}`)
+	result := parseToolResult(t, resp)
+	if result.IsError {
+		t.Fatalf("explore_page with tab_id should succeed, got: %s", result.Content[0].Text)
+	}
+
+	pq := cap.GetLastPendingQuery()
+	if pq == nil {
+		t.Fatal("expected pending query to be created")
+	}
+	if pq.TabID != 99 {
+		t.Errorf("pending query TabID = %d, want 99", pq.TabID)
+	}
 }

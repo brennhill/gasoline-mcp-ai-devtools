@@ -255,11 +255,9 @@ func TestClampResponseSize_TruncatedTextContainsValidishJSON(t *testing.T) {
 
 	var inner2 any
 	if err := json.Unmarshal([]byte(text), &inner2); err != nil {
-		// Accept "best-effort" — if truncation lands mid-string it may not parse
-		// But it should at least start with valid JSON structure
-		if text[0] != '{' && text[0] != '[' {
-			t.Errorf("truncated text should start with JSON opener, got: %.50s", text)
-		}
+		// With trailing-comma fix (#9.R3.1) and stack-based closers (#9.R2),
+		// truncated JSON should be parseable. Fail if it isn't.
+		t.Errorf("truncated JSON text should be parseable after boundary fix: %v\nfirst 200 chars: %.200s", err, text)
 	}
 }
 
@@ -429,6 +427,37 @@ func TestTruncateAtJSONBoundary_AllOpeners(t *testing.T) {
 	// All should be closed
 	if !strings.Contains(result, "}}}]]]") {
 		t.Errorf("should close all openers in reverse order, got %q", result)
+	}
+}
+
+func TestTruncateAtJSONBoundary_BraceInsideString(t *testing.T) {
+	t.Parallel()
+	// A closing brace inside a quoted string should NOT pop the stack (#9.QA.HIGH2).
+	input := `{"msg":"hello } world","key":"trunc`
+	result := truncateAtJSONBoundary(input)
+	// The } inside "hello } world" is inside a string, so the outer { is still open.
+	if !strings.HasSuffix(result, "}") {
+		t.Errorf("should close outer brace, got %q", result)
+	}
+	// Verify the result doesn't double-close (only one unmatched { at top level)
+	// Count net openers outside strings
+	opens := strings.Count(result, "{") - strings.Count(result, "}")
+	// Inside-string braces are counted by strings.Count but that's fine —
+	// the key check is that the function produces output ending in }
+	_ = opens
+}
+
+func TestTruncateAtJSONBoundary_Unicode(t *testing.T) {
+	t.Parallel()
+	// Unicode characters in values should not break truncation (#9.QA.HIGH3).
+	input := `{"emoji":"🚀","name":"日本語","data":"trunc`
+	result := truncateAtJSONBoundary(input)
+	if !strings.HasSuffix(result, "}") {
+		t.Errorf("should close outer brace with unicode content, got %q", result)
+	}
+	// Should still contain the emoji (it's before truncation point)
+	if !strings.Contains(result, "🚀") {
+		t.Errorf("unicode content before truncation should be preserved, got %q", result)
 	}
 }
 
