@@ -83,6 +83,10 @@ func (h *ToolHandler) handleBatch(req JSONRPCRequest, args json.RawMessage) JSON
 			actionName = stepAction.Action
 		}
 
+		// Strip include_screenshot from batch steps — screenshots are captured per-step
+		// but then discarded in the aggregate response, wasting CPU on base64 encoding (#9.2.2).
+		stepArgs = stripComposableScreenshotFromStep(stepArgs)
+
 		replayStepArgs := forceReplayAsyncInteractStep(stepArgs)
 		stepStart := time.Now()
 		stepResp := h.toolInteract(req, replayStepArgs)
@@ -179,4 +183,22 @@ func (h *ToolHandler) handleBatch(req JSONRPCRequest, args json.RawMessage) JSON
 	}
 
 	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Batch execution", responseData)}
+}
+
+// stripComposableScreenshotFromStep removes include_screenshot from batch step args
+// to prevent wasted screenshot captures that are discarded in the aggregate response.
+func stripComposableScreenshotFromStep(stepArgs json.RawMessage) json.RawMessage {
+	var raw map[string]any
+	if err := json.Unmarshal(stepArgs, &raw); err != nil {
+		return stepArgs
+	}
+	if _, has := raw["include_screenshot"]; has {
+		delete(raw, "include_screenshot")
+		patched, err := json.Marshal(raw)
+		if err != nil {
+			return stepArgs
+		}
+		return patched
+	}
+	return stepArgs
 }

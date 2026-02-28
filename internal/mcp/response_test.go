@@ -217,6 +217,52 @@ func TestAppendImageToResponse_EmptyData(t *testing.T) {
 	}
 }
 
+func TestClampResponseSize_JSONBoundaryTruncation(t *testing.T) {
+	t.Parallel()
+	// Build a JSON payload with nested objects that exceeds MaxResponseBytes.
+	// After clamping, the result should still be valid JSON (parseable).
+	inner := `{"items":[` + strings.Repeat(`{"id":1,"name":"test item with some content"},`, MaxResponseBytes/50) + `{"id":999}]}`
+	result := buildRawToolResult(inner)
+	clamped := ClampResponseSize(result)
+
+	var toolResult MCPToolResult
+	if err := json.Unmarshal(clamped, &toolResult); err != nil {
+		t.Fatalf("clamped JSON-heavy response should still be valid MCPToolResult JSON: %v\nraw: %s", err, string(clamped)[:200])
+	}
+	if len(toolResult.Content) == 0 {
+		t.Fatal("expected at least one content block after clamping")
+	}
+}
+
+func TestClampResponseSize_PreservesImageBlocks(t *testing.T) {
+	t.Parallel()
+	// Image blocks should not count toward the byte limit.
+	textContent := strings.Repeat("x", MaxResponseBytes-500)
+	result := MCPToolResult{
+		Content: []MCPContentBlock{
+			{Type: "text", Text: textContent},
+			{Type: "image", Data: strings.Repeat("A", 50000), MimeType: "image/png"},
+		},
+	}
+	raw, _ := json.Marshal(result)
+	clamped := ClampResponseSize(json.RawMessage(raw))
+
+	var toolResult MCPToolResult
+	if err := json.Unmarshal(clamped, &toolResult); err != nil {
+		t.Fatalf("response with image block should remain valid: %v", err)
+	}
+	// Text should NOT be truncated since it's under the limit
+	hasImage := false
+	for _, block := range toolResult.Content {
+		if block.Type == "image" {
+			hasImage = true
+		}
+	}
+	if !hasImage {
+		t.Error("image content block should be preserved")
+	}
+}
+
 func TestImageContentBlock_SerializesCorrectly(t *testing.T) {
 	t.Parallel()
 	block := ImageContentBlock("AAAA", "image/png")

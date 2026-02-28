@@ -55,7 +55,9 @@ type SequenceStepResult struct {
 	Error         string `json:"error,omitempty"`
 }
 
-// Replay mutex prevents concurrent sequence replays.
+// replayMu prevents concurrent sequence replays and batch executions.
+// Shared between replay_sequence (this file) and batch (tools_interact_batch.go).
+// Only one can execute at a time to prevent interleaved browser actions.
 var replayMu sync.Mutex
 
 // ============================================

@@ -179,6 +179,7 @@ func (h *ToolHandler) toolInteract(req JSONRPCRequest, args json.RawMessage) JSO
 		AutoDismiss       bool    `json:"auto_dismiss"`
 		WaitForStable     bool    `json:"wait_for_stable"`
 		StabilityMs       int     `json:"stability_ms,omitempty"`
+		ActionDiff        bool    `json:"action_diff"`
 	}
 	lenientUnmarshal(args, &composableParams)
 
@@ -190,14 +191,32 @@ func (h *ToolHandler) toolInteract(req JSONRPCRequest, args json.RawMessage) JSO
 		h.queueComposableSubtitle(req, *composableParams.Subtitle)
 	}
 
+	// Queue composable side-effects in correct order: dismiss overlays → wait for stable → action_diff.
+	// These are processed by the extension before the screenshot is captured.
+	hasComposableSideEffects := false
+
 	// If auto_dismiss was requested on navigate and succeeded, queue auto_dismiss_overlays.
 	if composableParams.AutoDismiss && what == "navigate" && resp.Error == nil && !isResponseError(resp) {
 		h.queueComposableAutoDismiss(req)
+		hasComposableSideEffects = true
 	}
 
 	// If wait_for_stable was requested on navigate/click and succeeded, queue wait_for_stable.
 	if composableParams.WaitForStable && (what == "navigate" || what == "click") && resp.Error == nil && !isResponseError(resp) {
 		h.queueComposableWaitForStable(req, composableParams.StabilityMs)
+		hasComposableSideEffects = true
+	}
+
+	// If action_diff was requested and the action succeeded, queue mutation capture (#343).
+	if composableParams.ActionDiff && resp.Error == nil && !isResponseError(resp) {
+		h.queueComposableActionDiff(req)
+		hasComposableSideEffects = true
+	}
+
+	// Wait briefly for composable side-effects to complete before capturing screenshot.
+	// This ensures screenshots show the page AFTER overlays are dismissed and DOM stabilizes (#9.3.4).
+	if hasComposableSideEffects && composableParams.IncludeScreenshot {
+		time.Sleep(300 * time.Millisecond)
 	}
 
 	// If include_screenshot was requested and the action succeeded, capture a screenshot
