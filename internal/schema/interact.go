@@ -13,7 +13,7 @@ var interactActions = []string{
 	"set_storage", "delete_storage", "clear_storage", "set_cookie", "delete_cookie",
 	"execute_js", "navigate", "refresh", "back", "forward", "new_tab", "switch_tab", "close_tab", "screenshot",
 	"click", "type", "select", "check",
-	"get_text", "get_value", "get_attribute",
+	"get_text", "get_value", "get_attribute", "query",
 	"set_attribute", "focus", "scroll_to", "wait_for", "key_press", "paste",
 	"open_composer", "submit_active_composer", "confirm_top_dialog", "dismiss_top_overlay",
 	"hover",
@@ -27,6 +27,7 @@ var interactActions = []string{
 	"hardware_click", "activate_tab",
 	"explore_page",
 	"batch",
+	"clipboard_read", "clipboard_write",
 }
 
 // InteractToolSchema returns the MCP tool definition for the interact tool.
@@ -83,6 +84,18 @@ func InteractToolSchema() mcp.MCPTool {
 					"type":        "string",
 					"description": "Generation token from list_interactive to ensure index resolves against the same element snapshot",
 				},
+				"nth": map[string]any{
+					"type":        "number",
+					"description": "Select the Nth matching element when a selector matches multiple. 0 = first visible match, 1 = second, etc. Negative values count from end (-1 = last). Prefers visible elements when available.",
+				},
+				"x": map[string]any{
+					"type":        "number",
+					"description": "X coordinate in pixels from left edge (click, hardware_click)",
+				},
+				"y": map[string]any{
+					"type":        "number",
+					"description": "Y coordinate in pixels from top edge (click, hardware_click)",
+				},
 				"visible_only": map[string]any{
 					"type":        "boolean",
 					"description": "Only return visible elements (list_interactive)",
@@ -90,6 +103,28 @@ func InteractToolSchema() mcp.MCPTool {
 				"limit": map[string]any{
 					"type":        "number",
 					"description": "Max elements to return (list_interactive, default all)",
+				},
+				"text_contains": map[string]any{
+					"type":        "string",
+					"description": "Filter list_interactive elements whose label contains this substring (case-insensitive)",
+				},
+				"role": map[string]any{
+					"type":        "string",
+					"description": "Filter list_interactive elements by element type or ARIA role (e.g., 'button', 'link', 'input', 'tab')",
+				},
+				"exclude_nav": map[string]any{
+					"type":        "boolean",
+					"description": "Exclude elements inside navigation containers — nav, header, or role=navigation (list_interactive)",
+				},
+				"query_type": map[string]any{
+					"type":        "string",
+					"description": "Query operation type for interact(what='query'): exists, count, text, text_all, attributes",
+					"enum":        []string{"exists", "count", "text", "text_all", "attributes"},
+				},
+				"attribute_names": map[string]any{
+					"type":        "array",
+					"description": "Attribute names to read for query_type='attributes' (e.g., ['href', 'data-id'])",
+					"items":       map[string]any{"type": "string"},
 				},
 				"frame": map[string]any{
 					"description": "Target iframe: CSS selector, 0-based index, or \"all\"",
@@ -268,6 +303,10 @@ func InteractToolSchema() mcp.MCPTool {
 					"type":        "boolean",
 					"description": "Wait for element to disappear (wait_for)",
 				},
+				"structured": map[string]any{
+					"type":        "boolean",
+					"description": "Return nested/hierarchical text extraction (get_text)",
+				},
 				"save_to": map[string]any{
 					"type":        "string",
 					"description": "File path to save output (run_a11y_and_export_sarif)",
@@ -275,6 +314,10 @@ func InteractToolSchema() mcp.MCPTool {
 				"include_screenshot": map[string]any{
 					"type":        "boolean",
 					"description": "Capture a screenshot after the action completes and return it inline as an image content block",
+				},
+				"include_interactive": map[string]any{
+					"type":        "boolean",
+					"description": "Run list_interactive after the action and include results in the response",
 				},
 				"auto_dismiss": map[string]any{
 					"type":        "boolean",

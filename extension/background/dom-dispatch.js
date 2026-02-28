@@ -8,6 +8,7 @@
 import { domFrameProbe } from './dom-frame-probe.js';
 import { domPrimitive } from './dom-primitives.js';
 import { domPrimitiveListInteractive } from './dom-primitives-list-interactive.js';
+import { domPrimitiveQuery } from './dom-primitives-query.js';
 import { isCDPEscalatable, tryCDPEscalation } from './cdp-dispatch.js';
 function parseDOMParams(query) {
     try {
@@ -18,7 +19,7 @@ function parseDOMParams(query) {
     }
 }
 function isReadOnlyAction(action) {
-    return action === 'list_interactive' || action.startsWith('get_');
+    return action === 'list_interactive' || action === 'query' || action.startsWith('get_');
 }
 function isMutatingAction(action) {
     return (action === 'click' ||
@@ -251,20 +252,50 @@ async function executeStandardAction(target, params) {
                 element_id: params.element_id,
                 scope_selector: params.scope_selector,
                 scope_rect: params.scope_rect,
+                nth: params.nth,
                 new_tab: params.new_tab
             }
         ]
     });
 }
 async function executeListInteractive(target, params) {
-    const args = params.scope_rect
-        ? [params.selector || '', { scope_rect: params.scope_rect }]
+    // Build options object with scope_rect and filter params (#369)
+    const opts = {};
+    if (params.scope_rect)
+        opts.scope_rect = params.scope_rect;
+    if (params.text_contains)
+        opts.text_contains = params.text_contains;
+    if (params.role)
+        opts.role = params.role;
+    if (params.visible_only)
+        opts.visible_only = params.visible_only;
+    if (params.exclude_nav)
+        opts.exclude_nav = params.exclude_nav;
+    const hasOpts = Object.keys(opts).length > 0;
+    const args = hasOpts
+        ? [params.selector || '', opts]
         : [params.selector || ''];
     return chrome.scripting.executeScript({
         target,
         world: 'MAIN',
         func: domPrimitiveListInteractive,
         args
+    });
+}
+// #370: Execute DOM query (exists, count, text, text_all, attributes)
+async function executeQuery(target, params) {
+    const opts = {};
+    if (params.query_type)
+        opts.query_type = params.query_type;
+    if (params.attribute_names)
+        opts.attribute_names = params.attribute_names;
+    if (params.scope_selector)
+        opts.scope_selector = params.scope_selector;
+    return chrome.scripting.executeScript({
+        target,
+        world: 'MAIN',
+        func: domPrimitiveQuery,
+        args: [params.selector || '', Object.keys(opts).length > 0 ? opts : undefined]
     });
 }
 function sendToastForResult(tabId, readOnly, result, actionToast, toastLabel, toastDetail) {
@@ -396,7 +427,7 @@ export async function executeDOMAction(query, tabId, syncClient, sendAsyncResult
             actionToast(tabId, toastLabel, toastDetail, 'trying', 10000);
         // CDP auto-escalation: try hardware events first for click/type/key_press (main frame only).
         // Falls back to DOM primitives silently if CDP is unavailable or fails.
-        if (isCDPEscalatable(action) && !params.frame) {
+        if (isCDPEscalatable(action) && !params.frame && params.nth === undefined) {
             try {
                 const cdpResult = await tryCDPEscalation(tabId, action, params);
                 if (cdpResult) {
@@ -418,9 +449,11 @@ export async function executeDOMAction(query, tabId, syncClient, sendAsyncResult
         }
         const rawResult = action === 'list_interactive'
             ? await executeListInteractive(executionTarget, params)
-            : action === 'wait_for'
-                ? await executeWaitFor(executionTarget, params)
-                : await executeStandardAction(executionTarget, params);
+            : action === 'query'
+                ? await executeQuery(executionTarget, params)
+                : action === 'wait_for'
+                    ? await executeWaitFor(executionTarget, params)
+                    : await executeStandardAction(executionTarget, params);
         // wait_for quick-check can return a DOMResult directly
         if (!Array.isArray(rawResult)) {
             if (rawResult === null || rawResult === undefined) {

@@ -5,8 +5,11 @@
 package observe
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"os"
+	"path/filepath"
 	"sort"
 	"strings"
 	"time"
@@ -309,6 +312,7 @@ func GetScreenshot(deps Deps, req mcp.JSONRPCRequest, args json.RawMessage) mcp.
 		FullPage      bool   `json:"full_page,omitempty"`
 		Selector      string `json:"selector,omitempty"`
 		WaitForStable bool   `json:"wait_for_stable,omitempty"`
+		SaveTo        string `json:"save_to,omitempty"`
 	}
 	mcp.LenientUnmarshal(args, &params)
 
@@ -379,6 +383,15 @@ func GetScreenshot(deps Deps, req mcp.JSONRPCRequest, args json.RawMessage) mcp.
 		delete(screenshotResult, "data_url")
 	}
 
+	// #386: save_to — copy screenshot to user-specified path
+	if params.SaveTo != "" && dataURL != "" {
+		if saveErr := saveScreenshotToPath(params.SaveTo, dataURL); saveErr != nil {
+			screenshotResult["save_to_error"] = saveErr.Error()
+		} else {
+			screenshotResult["save_to"] = params.SaveTo
+		}
+	}
+
 	// Build text response with file path info (backward compatible)
 	resp := mcp.JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcp.JSONResponse("Screenshot captured", screenshotResult)}
 
@@ -413,6 +426,47 @@ func parseDataURL(dataURL string) (base64Data, mimeType string) {
 	}
 	base64Data = rest[7:] // strip "base64,"
 	return base64Data, mimeType
+}
+
+// saveScreenshotToPath saves a screenshot data URL to a user-specified file path (#386).
+// Creates parent directories if needed. Only allows .png and .jpeg/.jpg extensions.
+func saveScreenshotToPath(saveTo string, dataURL string) error {
+	// Validate the path is absolute
+	absPath, err := filepath.Abs(saveTo)
+	if err != nil {
+		return fmt.Errorf("invalid save_to path: %w", err)
+	}
+
+	// Validate file extension
+	ext := strings.ToLower(filepath.Ext(absPath))
+	if ext != ".png" && ext != ".jpg" && ext != ".jpeg" {
+		return fmt.Errorf("save_to must have .png, .jpg, or .jpeg extension, got %q", ext)
+	}
+
+	// Decode the data URL
+	b64Data, _ := parseDataURL(dataURL)
+	if b64Data == "" {
+		return fmt.Errorf("invalid data URL format")
+	}
+
+	imageData, err := base64.StdEncoding.DecodeString(b64Data)
+	if err != nil {
+		return fmt.Errorf("failed to decode image data: %w", err)
+	}
+
+	// Create parent directories
+	dir := filepath.Dir(absPath)
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		return fmt.Errorf("failed to create directory %s: %w", dir, err)
+	}
+
+	// Write the file
+	// #nosec G306 -- user-specified path for screenshot save
+	if err := os.WriteFile(absPath, imageData, 0o644); err != nil {
+		return fmt.Errorf("failed to write screenshot: %w", err)
+	}
+
+	return nil
 }
 
 // ============================================

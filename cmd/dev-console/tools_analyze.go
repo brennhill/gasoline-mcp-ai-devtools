@@ -1,11 +1,5 @@
-// Purpose: Implements analyze tool handlers and response shaping.
-// Why: Keeps analyze tool behavior aligned with diagnostic and schema contracts.
-// Docs: docs/features/feature/analyze-tool/index.md
-
 // tools_analyze.go — MCP analyze tool dispatcher and handlers.
-// Docs: docs/features/feature/analyze-tool/index.md
-// Handles active analysis operations: dom queries, API validation, link health checks,
-// performance analysis, accessibility audits, security checks, error analysis, and history analysis.
+
 package main
 
 import (
@@ -110,6 +104,11 @@ var analyzeHandlers = map[string]AnalyzeHandler{
 	// Combined audit report (#280)
 	"audit": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 		return h.toolAnalyzeAudit(req, args)
+	},
+
+	// Feature gate detection (#345)
+	"feature_gates": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+		return h.handleContentExtraction(req, args, "feature_gates", "feature_gates")
 	},
 }
 

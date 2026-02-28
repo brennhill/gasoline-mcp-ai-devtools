@@ -33,7 +33,7 @@
       "run_at": "document_start"
     }
   ],
-  "permissions": ["storage", "alarms", "tabs", "scripting", "tabCapture", "offscreen", "activeTab", "debugger"],
+  "permissions": ["storage", "alarms", "tabs", "scripting", "tabCapture", "offscreen", "activeTab", "debugger", "cookies"],
   "host_permissions": ["<all_urls>"],
   "options_ui": {
     "page": "options.html",

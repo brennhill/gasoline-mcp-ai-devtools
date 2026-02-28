@@ -1,3 +1,5 @@
+// tools_core.go — ToolHandler struct and shared infrastructure for MCP tool dispatch.
+
 package main
 
 import (
@@ -199,6 +201,13 @@ type ToolHandler struct {
 	retryContractMu sync.Mutex
 	retryByCommand  map[string]*commandRetryState
 
+	// Passive network traffic recording state (start/stop capture).
+	networkRecording *networkRecordingState
+
+	// Action jitter: randomized micro-delays before interact actions.
+	jitterMu          sync.RWMutex
+	actionJitterMaxMs int // max jitter before each interact action (0 = disabled)
+
 	// Module registry for plugin-style tool dispatch (incremental migration).
 	toolModulesOnce sync.Once
 	toolModules     *toolModuleRegistry
@@ -286,6 +295,7 @@ func NewToolHandler(server *Server, capture *capture.Capture) *MCPHandler {
 		evidenceByCommand:    make(map[string]*commandEvidenceState),
 		retryByCommand:       make(map[string]*commandRetryState),
 		elementIndexRegistry: newElementIndexRegistry(),
+		networkRecording:     &networkRecordingState{},
 	}
 
 	// Initialize health metrics

@@ -110,6 +110,38 @@ export function domPrimitive(
       }
     }
 
+    // #385: nth parameter for explicit disambiguation — works for all selector-based actions
+    const nthParam = options.nth
+    if (nthParam !== undefined && nthParam !== null) {
+      const nth = Number(nthParam)
+      if (!Number.isInteger(nth)) {
+        return { error: domError('invalid_nth', `nth must be an integer, got: ${nthParam}`) }
+      }
+      const allMatches = resolveElements(selector, activeScope)
+      const uniqueAll = uniqueElements(allMatches)
+      const rectFiltered = filterByScopeRect(uniqueAll)
+      const visibleFiltered = rectFiltered.filter(isActionableVisible)
+      const candidates = visibleFiltered.length > 0 ? visibleFiltered : rectFiltered
+      if (candidates.length === 0) {
+        return { error: domError('element_not_found', `No element matches selector: ${selector}`) }
+      }
+      const resolvedIndex = nth < 0 ? candidates.length + nth : nth
+      if (resolvedIndex < 0 || resolvedIndex >= candidates.length) {
+        return {
+          error: domError(
+            'nth_out_of_range',
+            `nth=${nth} is out of range — selector matched ${candidates.length} element(s). Use nth 0..${candidates.length - 1} or -1..-${candidates.length}.`
+          )
+        }
+      }
+      return {
+        element: candidates[resolvedIndex]!,
+        match_count: candidates.length,
+        match_strategy: 'nth_param',
+        scope_selector_used: scopeSelectorUsed
+      }
+    }
+
     const ambiguitySensitiveActions = new Set([
       'click', 'type', 'select', 'check', 'set_attribute',
       'paste', 'key_press', 'focus', 'scroll_to', 'hover'
@@ -124,7 +156,7 @@ export function domPrimitive(
         if (uniqueAll.length <= 1) return undefined
         return {
           total_count: uniqueAll.length,
-          warning: `Selector "${selector}" matched ${uniqueAll.length} elements. First match was used. Use :nth-match(N) or scope_selector to disambiguate.`,
+          warning: `Selector "${selector}" matched ${uniqueAll.length} elements. First match was used. Use nth, :nth-match(N), or scope_selector to disambiguate.`,
           candidates: uniqueAll.slice(0, 5).map((c) => ({
             tag: c.tagName.toLowerCase(),
             element_id: getOrCreateElementID(c),
@@ -203,7 +235,7 @@ export function domPrimitive(
           action,
           selector,
           error: 'ambiguous_target',
-          message: `Selector matches multiple viable elements: ${selector}. Add scope/scope_rect, or use list_interactive element_id/index.`,
+          message: `Selector matches multiple viable elements: ${selector}. Add nth, scope/scope_rect, or use list_interactive element_id/index.`,
           match_count: viableMatches.length,
           match_strategy: 'ambiguous_ranked',
           ...(scopeRect ? { scope_rect_used: scopeRect } : {}),
@@ -253,16 +285,31 @@ export function domPrimitive(
     }
   }
 
+  // #368: Check if an overlay might be obscuring the target element
+  function detectOverlayWarning(targetEl: Element): { overlay_warning?: string; overlay_selector?: string } {
+    const overlay = findTopmostOverlay()
+    if (!overlay) return {}
+    // If the target is inside the overlay, no warning needed — the action is targeting the overlay correctly
+    if (overlay.contains(targetEl)) return {}
+    const overlayInfo = describeOverlay(overlay)
+    return {
+      overlay_warning: `An overlay (${overlayInfo.overlay_type}) is covering the page. The action targeted the intended element, but input may be intercepted. Use dismiss_top_overlay to close it first.`,
+      overlay_selector: overlayInfo.overlay_selector
+    }
+  }
+
   function mutatingSuccess(
     node: Element,
     extra?: Omit<Partial<DOMResult>, 'success' | 'action' | 'selector' | 'matched' | 'match_count' | 'match_strategy'>
   ): DOMResult {
+    const overlayInfo = detectOverlayWarning(node)
     return {
       success: true,
       action,
       selector,
       ...(scopeRect ? { scope_rect_used: scopeRect } : {}),
       ...(extra || {}),
+      ...(overlayInfo.overlay_warning ? overlayInfo : {}),
       matched: matchedTarget(node),
       match_count: resolvedMatchCount,
       match_strategy: resolvedMatchStrategy,
@@ -685,6 +732,45 @@ export function domPrimitive(
         }),
 
       get_text: () => {
+        if (options.structured && node instanceof HTMLElement) {
+          // Structured extraction: preserve hierarchy for accordions, lists, etc.
+          const sections: Array<{header?: string; content: string; expanded?: boolean; tag: string}> = []
+          const children = node.children
+          for (let i = 0; i < children.length && sections.length < 50; i++) {
+            const child = children[i] as HTMLElement
+            if (!child.tagName) continue
+            const tag = child.tagName.toLowerCase()
+            // Detect accordion/collapsible patterns
+            const heading = child.querySelector('h1, h2, h3, h4, h5, h6, [role="heading"], summary, button[aria-expanded]')
+            if (heading) {
+              const headerText = (heading as HTMLElement).innerText?.trim() || ''
+              const ariaExpanded = heading.getAttribute('aria-expanded')
+              const expanded = ariaExpanded !== null ? ariaExpanded === 'true' : undefined
+              // Get content from sibling/next panel or remaining text
+              const contentParts: string[] = []
+              const contentNodes = child.querySelectorAll('p, li, span, div, td, pre, code')
+              contentNodes.forEach((cn) => {
+                if (cn !== heading && !heading.contains(cn)) {
+                  const t = (cn as HTMLElement).innerText?.trim()
+                  if (t && t.length > 0) contentParts.push(t)
+                }
+              })
+              sections.push({
+                header: headerText,
+                content: contentParts.join('\n') || (child.innerText?.replace(headerText, '').trim() || ''),
+                expanded,
+                tag,
+              })
+            } else {
+              // Non-accordion child: just capture its text
+              const t = child.innerText?.trim()
+              if (t && t.length > 0) {
+                sections.push({ content: t, tag })
+              }
+            }
+          }
+          return { success: true, action, selector, sections, section_count: sections.length }
+        }
         const text = node instanceof HTMLElement ? node.innerText : node.textContent
         if (text === null || text === undefined) {
           return {
@@ -744,32 +830,73 @@ export function domPrimitive(
       },
 
       scroll_to: () => {
-        // #333: For body/html targets, find the actual scrollable container in SPA layouts
-        const tag = node.tagName.toLowerCase()
-        if (tag === 'body' || tag === 'html') {
-          const scrollable = (() => {
-            const divs = document.querySelectorAll('*')
-            for (let i = 0; i < divs.length; i++) {
-              const d = divs[i] as HTMLElement
-              if (!d || typeof d.getBoundingClientRect !== 'function') continue
-              if (d.scrollHeight > d.clientHeight + 50) {
-                const style = typeof getComputedStyle === 'function' ? getComputedStyle(d) : null
-                if (style) {
-                  const ov = style.overflow || ''
-                  const ovY = style.overflowY || ''
-                  if (ov === 'auto' || ov === 'scroll' || ovY === 'auto' || ovY === 'scroll') {
-                    return d
-                  }
+        // #387: Container-aware scroll_to — find scrollable ancestor and support directional scrolling
+        function findScrollableContainer(el: Element): HTMLElement | null {
+          let current: Element | null = el
+          while (current && current !== document.documentElement) {
+            if (current instanceof HTMLElement && current.scrollHeight > current.clientHeight + 10) {
+              const style = typeof getComputedStyle === 'function' ? getComputedStyle(current) : null
+              if (style) {
+                const ov = style.overflow || ''
+                const ovY = style.overflowY || ''
+                if (ov === 'auto' || ov === 'scroll' || ovY === 'auto' || ovY === 'scroll') {
+                  return current
                 }
               }
             }
-            return null
+            current = current.parentElement
+          }
+          return null
+        }
+
+        const direction = (options.value || '').toLowerCase()
+        const tag = node.tagName.toLowerCase()
+
+        // Check if the target itself is a scrollable container
+        const isContainer = node instanceof HTMLElement &&
+          node.scrollHeight > node.clientHeight + 10 && (() => {
+            const s = typeof getComputedStyle === 'function' ? getComputedStyle(node) : null
+            if (!s) return false
+            const ov = s.overflow || ''
+            const ovY = s.overflowY || ''
+            return ov === 'auto' || ov === 'scroll' || ovY === 'auto' || ovY === 'scroll'
           })()
+
+        // Directional scrolling within a container
+        if (direction && (isContainer || tag === 'body' || tag === 'html')) {
+          const container = isContainer ? (node as HTMLElement) : (findScrollableContainer(node) || document.documentElement)
+          switch (direction) {
+            case 'top':
+              container.scrollTo({ top: 0, behavior: 'smooth' })
+              return mutatingSuccess(node, { reason: 'scrolled_container_top' })
+            case 'bottom':
+              container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' })
+              return mutatingSuccess(node, { reason: 'scrolled_container_bottom' })
+            case 'up':
+              container.scrollBy({ top: -container.clientHeight * 0.8, behavior: 'smooth' })
+              return mutatingSuccess(node, { reason: 'scrolled_container_up' })
+            case 'down':
+              container.scrollBy({ top: container.clientHeight * 0.8, behavior: 'smooth' })
+              return mutatingSuccess(node, { reason: 'scrolled_container_down' })
+          }
+        }
+
+        // #333: For body/html targets, find the actual scrollable container in SPA layouts
+        if (tag === 'body' || tag === 'html') {
+          const scrollable = findScrollableContainer(document.body)
           if (scrollable) {
             scrollable.scrollIntoView({ behavior: 'smooth', block: 'center' })
             return mutatingSuccess(node, { reason: 'scrolled_nested_container' })
           }
         }
+
+        // If element is inside a scrollable container, scroll it into view within that container
+        const parentContainer = findScrollableContainer(node)
+        if (parentContainer && parentContainer !== document.documentElement) {
+          node.scrollIntoView({ behavior: 'smooth', block: 'center' })
+          return mutatingSuccess(node, { reason: 'scrolled_within_container' })
+        }
+
         node.scrollIntoView({ behavior: 'smooth', block: 'center' })
         return mutatingSuccess(node)
       },
@@ -1025,7 +1152,6 @@ export function domPrimitive(
         return new Promise<DOMResult>((resolve) => {
           let mutationCount = 0
           let lastMutationTime = performance.now()
-          let timedOut = false
           const startTime = performance.now()
 
           const observer = new MutationObserver(() => {
@@ -1062,7 +1188,6 @@ export function domPrimitive(
             if (elapsed >= maxTimeout) {
               // Timed out
               observer.disconnect()
-              timedOut = true
               resolve({
                 success: true,
                 action: 'wait_for_stable',

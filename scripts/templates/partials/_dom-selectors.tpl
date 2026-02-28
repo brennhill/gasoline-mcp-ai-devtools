@@ -184,17 +184,23 @@
   type ElementHandleStore = {
     byElement: WeakMap<Element, string>
     byID: Map<string, Element>
+    selectorByID: Map<string, string>
     nextID: number
   }
 
   function getElementHandleStore(): ElementHandleStore {
     const root = globalThis as typeof globalThis & { __gasolineElementHandles?: ElementHandleStore }
     if (root.__gasolineElementHandles) {
+      // Migrate legacy stores that lack selectorByID (#361)
+      if (!root.__gasolineElementHandles.selectorByID) {
+        root.__gasolineElementHandles.selectorByID = new Map<string, string>()
+      }
       return root.__gasolineElementHandles
     }
     const created: ElementHandleStore = {
       byElement: new WeakMap<Element, string>(),
       byID: new Map<string, Element>(),
+      selectorByID: new Map<string, string>(),
       nextID: 1
     }
     root.__gasolineElementHandles = created
@@ -214,17 +220,30 @@
     return elementID
   }
 
+  // #361: When element is stale (disconnected after SPA navigation), try to re-resolve
+  // using the stored selector. This allows persistent elements (nav links, sidebars)
+  // to survive SPA navigations without requiring a fresh list_interactive call.
   function resolveElementByID(rawElementID?: string): Element | null {
     const elementID = (rawElementID || '').trim()
     if (!elementID) return null
     const store = getElementHandleStore()
     const node = store.byID.get(elementID)
-    if (!node) return null
-    if ((node as Node).isConnected === false) {
-      store.byID.delete(elementID)
-      return null
+    if (node && (node as Node).isConnected !== false) return node
+    // Element is stale or missing — try re-resolution via stored selector
+    const storedSelector = store.selectorByID.get(elementID)
+    if (storedSelector) {
+      const reresolved = resolveElement(storedSelector, document)
+      if (reresolved && (reresolved as Node).isConnected !== false) {
+        // Update mappings to point to the new element
+        store.byElement.set(reresolved, elementID)
+        store.byID.set(elementID, reresolved)
+        return reresolved
+      }
     }
-    return node
+    // Truly stale — clean up
+    if (node) store.byID.delete(elementID)
+    store.selectorByID.delete(elementID)
+    return null
   }
 
   function resolveByTextAll(searchText: string, scope: ParentNode = document): Element[] {
@@ -411,12 +430,14 @@
   // list_interactive is handled by domPrimitiveListInteractive in production dispatch,
   // but remains available here for backward compatibility and direct tests.
   function buildUniqueSelector(el: Element, htmlEl: HTMLElement, fallbackSelector: string): string {
-    if (el.id) return `#${el.id}`
-    if (el instanceof HTMLInputElement && el.name) return `input[name="${el.name}"]`
+    if (el.id) return `#${CSS.escape(el.id)}`
+    if (el instanceof HTMLInputElement && el.name) return `input[name="${CSS.escape(el.name)}"]`
     const ariaLabel = el.getAttribute('aria-label')
-    if (ariaLabel) return `aria-label=${ariaLabel}`
+    // Use CSS attribute selectors — these resolve via querySelectorAll directly,
+    // avoiding semantic resolver ordering mismatches (#360).
+    if (ariaLabel) return `[aria-label="${CSS.escape(ariaLabel)}"]`
     const placeholder = el.getAttribute('placeholder')
-    if (placeholder) return `placeholder=${placeholder}`
+    if (placeholder) return `[placeholder="${CSS.escape(placeholder)}"]`
     const text = (htmlEl.textContent || '').trim().slice(0, 40)
     if (text) return `text=${text}`
     return fallbackSelector

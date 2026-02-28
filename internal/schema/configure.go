@@ -16,12 +16,12 @@ func ConfigureToolSchema() mcp.MCPTool {
 			"properties": map[string]any{
 				"what": map[string]any{
 					"type": "string",
-					"enum": []string{"store", "load", "noise_rule", "clear", "health", "tutorial", "examples", "streaming", "test_boundary_start", "test_boundary_end", "recording_start", "recording_stop", "playback", "log_diff", "telemetry", "describe_capabilities", "diff_sessions", "audit_log", "restart", "save_sequence", "get_sequence", "list_sequences", "delete_sequence", "replay_sequence", "doctor", "security_mode"},
+					"enum": []string{"store", "load", "noise_rule", "clear", "health", "tutorial", "examples", "streaming", "test_boundary_start", "test_boundary_end", "recording_start", "recording_stop", "playback", "log_diff", "telemetry", "describe_capabilities", "diff_sessions", "audit_log", "restart", "save_sequence", "get_sequence", "list_sequences", "delete_sequence", "replay_sequence", "doctor", "security_mode", "network_recording", "action_jitter"},
 				},
 				"action": map[string]any{
 					"type":        "string",
 					"description": "Deprecated alias for 'what'",
-					"enum":        []string{"store", "load", "noise_rule", "clear", "health", "tutorial", "examples", "streaming", "test_boundary_start", "test_boundary_end", "recording_start", "recording_stop", "playback", "log_diff", "telemetry", "describe_capabilities", "diff_sessions", "audit_log", "restart", "save_sequence", "get_sequence", "list_sequences", "delete_sequence", "replay_sequence", "doctor", "security_mode"},
+					"enum":        []string{"store", "load", "noise_rule", "clear", "health", "tutorial", "examples", "streaming", "test_boundary_start", "test_boundary_end", "recording_start", "recording_stop", "playback", "log_diff", "telemetry", "describe_capabilities", "diff_sessions", "audit_log", "restart", "save_sequence", "get_sequence", "list_sequences", "delete_sequence", "replay_sequence", "doctor", "security_mode", "network_recording", "action_jitter"},
 				},
 				"mode": map[string]any{
 					"type":        "string",
@@ -95,6 +95,10 @@ func ConfigureToolSchema() mcp.MCPTool {
 					"type":        "string",
 					"description": "Single-rule flattening helper for noise_action=add",
 				},
+				"domain": map[string]any{
+					"type":        "string",
+					"description": "Domain filter for network_recording",
+				},
 				"status_min": map[string]any{
 					"type":        "integer",
 					"description": "Single-rule flattening helper for noise_action=add",
@@ -161,10 +165,14 @@ func ConfigureToolSchema() mcp.MCPTool {
 					"type":        "boolean",
 					"description": "Include sensitive data in recording capture",
 				},
+				"action_jitter_ms": map[string]any{
+					"type":        "number",
+					"description": "Max random delay (ms) before each interact action, 0 to disable (action_jitter)",
+				},
 				"operation": map[string]any{
 					"type":        "string",
 					"description": "Action-specific operation key",
-					"enum":        []string{"analyze", "report", "clear"},
+					"enum":        []string{"analyze", "report", "clear", "start", "stop", "status"},
 				},
 				"audit_session_id": map[string]any{
 					"type":        "string",
