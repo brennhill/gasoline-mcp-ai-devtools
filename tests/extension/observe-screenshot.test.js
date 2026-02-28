@@ -84,9 +84,8 @@ describe('observe screenshot command', () => {
     assert.strictEqual(sendResult.mock.calls.length, 0, 'success path should resolve via server/query_id')
     assert.strictEqual(globalThis.chrome.tabs.get.mock.calls.length, 1)
 
-    // Verify window focus + tab activation before capture
-    assert.strictEqual(globalThis.chrome.windows.update.mock.calls.length, 1)
-    assert.deepStrictEqual(globalThis.chrome.windows.update.mock.calls[0].arguments, [11, { focused: true }])
+    // Verify tab activation before capture (no window focus — avoid interrupting the user)
+    assert.strictEqual(globalThis.chrome.windows.update.mock.calls.length, 0, 'should not focus the window')
     assert.strictEqual(globalThis.chrome.tabs.update.mock.calls.length, 1)
     assert.deepStrictEqual(globalThis.chrome.tabs.update.mock.calls[0].arguments, [123, { active: true }])
 
