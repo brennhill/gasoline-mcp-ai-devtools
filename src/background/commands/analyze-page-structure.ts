@@ -145,8 +145,10 @@ function pageStructureScript(useGlobals: boolean): PageStructureResult {
   // --- Scroll containers ---
   const scrollContainers: ScrollContainer[] = []
   const allElements = document.querySelectorAll('*')
+  // Bail out on massive DOMs to avoid expensive getComputedStyle calls (#9.7.6)
+  const skipScrollDetection = allElements.length > 50000
   let scCount = 0
-  for (const el of Array.from(allElements)) {
+  for (const el of Array.from(skipScrollDetection ? [] : allElements)) {
     if (scCount >= MAX_SCROLL_CONTAINERS) break
     const htmlEl = el as HTMLElement
     if (htmlEl.scrollHeight > htmlEl.clientHeight + 50 && htmlEl.clientHeight > 0) {
