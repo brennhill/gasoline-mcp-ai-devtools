@@ -24,6 +24,7 @@ PLATFORMS := \
 	security-check pre-commit verify-all npm-binaries validate-semver \
 	test-upgrade-guards release-gate clean-test-daemons \
 	generate-wire-types generate-dom-primitives \
+	site-dev site-build site-preview \
 	$(PLATFORMS)
 
 GO_TEST_SHARDS ?= 4
@@ -533,3 +534,14 @@ pypi-clean:
 	@find pypi -type d -name "*.egg-info" -exec rm -rf {} + 2>/dev/null || true
 	@find pypi -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true
 	@echo "PyPI artifacts cleaned"
+
+# --- Docs Site (cookwithgasoline.com) ---
+
+site-dev:
+	cd cookwithgasoline.com && npm run dev
+
+site-build:
+	cd cookwithgasoline.com && npm run build
+
+site-preview:
+	cd cookwithgasoline.com && npm run preview

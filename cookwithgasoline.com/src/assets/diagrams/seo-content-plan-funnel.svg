@@ -1,0 +1,73 @@
+<svg viewBox="0 0 900 600" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <style>
+      .funnel-top { fill: #F97316; stroke: #ea580c; stroke-width: 2; }
+      .funnel-level { fill: #0F172A; stroke: #F97316; stroke-width: 2; }
+      .funnel-text { fill: #FFFFFF; font-family: system-ui; font-size: 13px; font-weight: bold; text-anchor: middle; }
+      .funnel-text-dark { fill: #0F172A; font-family: system-ui; font-size: 13px; font-weight: bold; text-anchor: middle; }
+      .funnel-detail { fill: #CCCCCC; font-family: system-ui; font-size: 11px; text-anchor: middle; }
+      .arrow { stroke: #F97316; stroke-width: 2; fill: none; marker-end: url(#arrowhead); }
+      .label { fill: #F97316; font-family: system-ui; font-size: 11px; text-anchor: middle; font-weight: bold; }
+    </style>
+    <marker id="arrowhead" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+      <polygon points="0 0, 10 3, 0 6" fill="#F97316" />
+    </marker>
+  </defs>
+
+  <!-- Title -->
+  <text style="font-size: 18px; font-weight: bold; fill: #FFFFFF;" x="450" y="35" text-anchor="middle">SEO Content Funnel: Search to Community</text>
+
+  <!-- Level 1: Search Query -->
+  <polygon class="funnel-top" points="150,80 750,80 680,140 220,140"/>
+  <text class="funnel-text-dark" x="450" y="105">🔍 Search Query</text>
+  <text class="funnel-detail" x="450" y="123">(Google / YouTube / ChatGPT / Perplexity)</text>
+
+  <!-- Arrow 1 -->
+  <path class="arrow" d="M 450 140 L 450 160"/>
+
+  <!-- Level 2: Blog Post -->
+  <polygon class="funnel-level" points="120,160 780,160 750,220 150,220"/>
+  <text class="funnel-text" x="450" y="180">📝 Blog Post</text>
+  <text class="funnel-detail" x="450" y="198">(cookwithgasoline.com — Primary SEO target)</text>
+  <text class="label" x="450" y="213">"Get found"</text>
+
+  <!-- Arrow 2 -->
+  <path class="arrow" d="M 450 220 L 450 240"/>
+
+  <!-- Level 3: YouTube -->
+  <polygon class="funnel-level" points="100,240 800,240 770,300 130,300"/>
+  <text class="funnel-text" x="450" y="260">▶️ YouTube Video</text>
+  <text class="funnel-detail" x="450" y="278">(Embedded in blog — Second discovery)</text>
+  <text class="label" x="450" y="293">"Understand it"</text>
+
+  <!-- Arrow 3 -->
+  <path class="arrow" d="M 450 300 L 450 320"/>
+
+  <!-- Level 4: Medium -->
+  <polygon class="funnel-level" points="80,320 820,320 800,380 100,380"/>
+  <text class="funnel-text" x="450" y="340">📰 Medium Article</text>
+  <text class="funnel-detail" x="450" y="358">(Cross-post, stripped of videos — Authority building)</text>
+  <text class="label" x="450" y="373">"Build credibility"</text>
+
+  <!-- Arrow 4 -->
+  <path class="arrow" d="M 450 380 L 450 400"/>
+
+  <!-- Level 5: LinkedIn -->
+  <polygon class="funnel-level" points="60,400 840,400 820,460 80,460"/>
+  <text class="funnel-text" x="450" y="420">💼 LinkedIn Post</text>
+  <text class="funnel-detail" x="450" y="438">(Insight + CTA — Professional reach)</text>
+  <text class="label" x="450" y="453">"Reach decision makers"</text>
+
+  <!-- Arrow 5 -->
+  <path class="arrow" d="M 450 460 L 450 480"/>
+
+  <!-- Level 6: X (Twitter) -->
+  <polygon class="funnel-level" points="40,480 860,480 850,540 50,540"/>
+  <text class="funnel-text" x="450" y="500">𝕏 X Thread</text>
+  <text class="funnel-detail" x="450" y="518">(Quick tip + CTA — Developer community)</text>
+  <text class="label" x="450" y="533">"Viral loop"</text>
+
+  <!-- Bottom metrics -->
+  <rect x="50" y="560" width="800" height="30" fill="none" stroke="#334155" stroke-width="1" rx="3"/>
+  <text style="fill: #FFFFFF; font-size: 11px; font-family: system-ui;" x="70" y="578">Cross-platform approach: one blog post reaches developers through their preferred channels (search, videos, professional networks, social)</text>
+</svg>

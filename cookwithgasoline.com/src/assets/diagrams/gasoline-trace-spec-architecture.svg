@@ -1,0 +1,116 @@
+<svg viewBox="0 0 1000 550" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <style>
+      .section-header { fill: #F97316; stroke: #ea580c; stroke-width: 2; }
+      .section-title { fill: #0F172A; font-family: system-ui; font-size: 13px; font-weight: bold; }
+      .section-dark { fill: #0F172A; stroke: #F97316; stroke-width: 2; }
+      .section-light { fill: #1E293B; stroke: #F97316; stroke-width: 1; }
+      .text-light { fill: #FFFFFF; font-family: system-ui; font-size: 11px; }
+      .text-bold { font-weight: bold; font-size: 12px; }
+      .text-sm { font-size: 10px; }
+      .arrow { stroke: #F97316; stroke-width: 2; fill: none; marker-end: url(#arrowhead); }
+      .arrow-dashed { stroke: #F97316; stroke-width: 2; fill: none; stroke-dasharray: 4,4; marker-end: url(#arrowhead); }
+      .label { fill: #FFFFFF; font-family: system-ui; font-size: 10px; }
+    </style>
+    <marker id="arrowhead" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+      <polygon points="0 0, 10 3, 0 6" fill="#F97316" />
+    </marker>
+  </defs>
+
+  <!-- Title -->
+  <text style="font-size: 18px; font-weight: bold; fill: #FFFFFF;" x="20" y="35">Gasoline Trace: Distributed Tracing with W3C Standard</text>
+
+  <!-- Browser Section -->
+  <rect class="section-header" x="20" y="60" width="200" height="150" rx="6"/>
+  <text class="section-title" x="35" y="80">🌐 Browser</text>
+  <rect class="section-light" x="35" y="100" width="170" height="100" rx="4"/>
+  <text class="text-light text-bold" x="50" y="120">Gasoline Extension</text>
+  <text class="text-light text-sm" x="50" y="135">▪ User interaction</text>
+  <text class="text-light text-sm" x="50" y="148">▪ W3C Trace Context</text>
+  <text class="text-light text-sm" x="50" y="161">▪ Browser spans</text>
+  <text class="text-light text-sm" x="50" y="174">▪ Console/network</text>
+  <text class="text-light text-sm" x="50" y="187">▪ traceparent header</text>
+
+  <!-- Services Section -->
+  <rect class="section-dark" x="270" y="60" width="180" height="350" rx="6"/>
+  <text class="text-light" x="285" y="80" style="font-size: 12px; font-weight: bold;">🔗 Services (Multi-tier)</text>
+
+  <rect class="section-light" x="285" y="105" width="150" height="50" rx="4"/>
+  <text class="text-light text-sm" x="300" y="120">API Gateway</text>
+  <text class="text-light text-sm" x="300" y="134">+ Gasoline Trace SDK</text>
+
+  <rect class="section-light" x="285" y="165" width="150" height="50" rx="4"/>
+  <text class="text-light text-sm" x="300" y="180">Auth Service</text>
+  <text class="text-light text-sm" x="300" y="194">+ Gasoline Trace SDK</text>
+
+  <rect class="section-light" x="285" y="225" width="150" height="50" rx="4"/>
+  <text class="text-light text-sm" x="300" y="240">Order Service</text>
+  <text class="text-light text-sm" x="300" y="254">+ Gasoline Trace SDK</text>
+
+  <rect class="section-light" x="285" y="285" width="150" height="50" rx="4"/>
+  <text class="text-light text-sm" x="300" y="300">PostgreSQL</text>
+  <text class="text-light text-sm" x="300" y="314">auto-instrumented</text>
+
+  <rect class="section-light" x="285" y="345" width="150" height="50" rx="4"/>
+  <text class="text-light text-sm" x="300" y="360">Redis</text>
+  <text class="text-light text-sm" x="300" y="374">auto-instrumented</text>
+
+  <!-- Go Server Section -->
+  <rect class="section-dark" x="520" y="60" width="460" height="350" rx="6"/>
+  <text class="text-light" x="540" y="80" style="font-size: 12px; font-weight: bold;">⚙️  Gasoline Server (Go)</text>
+
+  <!-- Port 7890 -->
+  <rect class="section-light" x="540" y="105" width="200" height="60" rx="4"/>
+  <text class="text-light text-bold" x="560" y="125">Port 7890 (Browser)</text>
+  <text class="text-light text-sm" x="560" y="140">▪ /logs, /websocket-events</text>
+  <text class="text-light text-sm" x="560" y="153">▪ /network-bodies</text>
+
+  <!-- Port 7891 -->
+  <rect class="section-light" x="760" y="105" width="200" height="60" rx="4"/>
+  <text class="text-light text-bold" x="780" y="125">Port 7891 (OTLP)</text>
+  <text class="text-light text-sm" x="780" y="140">▪ OTLP/HTTP Receiver</text>
+  <text class="text-light text-sm" x="780" y="153">▪ POST /v1/traces</text>
+
+  <!-- Trace Assembly -->
+  <rect class="section-light" x="540" y="185" width="420" height="80" rx="4"/>
+  <text class="text-light text-bold" x="560" y="205">Trace Assembly Engine</text>
+  <text class="text-light text-sm" x="560" y="220">▪ Span grouping by trace_id</text>
+  <text class="text-light text-sm" x="560" y="233">▪ Tree construction (parent-child)</text>
+  <text class="text-light text-sm" x="560" y="246">▪ Completion detection</text>
+  <text class="text-light text-sm" x="560" y="259">▪ Critical path analysis (bottleneck detection)</text>
+
+  <!-- Storage -->
+  <rect class="section-light" x="540" y="285" width="420" height="80" rx="4"/>
+  <text class="text-light text-bold" x="560" y="305">Storage & Output</text>
+  <text class="text-light text-sm" x="560" y="320">▪ Ring buffer: 10K traces</text>
+  <text class="text-light text-sm" x="560" y="333">▪ JSONL persist: ~/.gasoline/traces</text>
+  <text class="text-light text-sm" x="560" y="346">▪ Query by trace_id, service, latency</text>
+  <text class="text-light text-sm" x="560" y="359">▪ MCP interface: observe_trace(), analyze_trace(), critical_path()</text>
+
+  <!-- Data flow arrows -->
+  <!-- Browser to Gateway -->
+  <path class="arrow" d="M 220 135 L 270 135"/>
+  <text class="label" x="220" y="130">HTTP +</text>
+  <text class="label" x="220" y="143">traceparent</text>
+
+  <!-- Gateway to other services -->
+  <path class="arrow-dashed" d="M 355 155 L 355 165"/>
+  <path class="arrow-dashed" d="M 355 215 L 355 225"/>
+  <path class="arrow-dashed" d="M 355 275 L 355 285"/>
+
+  <!-- Services to OTLP -->
+  <path class="arrow" d="M 435 190 L 760 165"/>
+  <text class="label" x="600" y="160">OTLP/HTTP</text>
+
+  <!-- DB to OTLP -->
+  <path class="arrow" d="M 435 310 L 760 245"/>
+
+  <!-- Summary box -->
+  <rect x="20" y="430" width="960" height="100" fill="none" stroke="#334155" stroke-width="1" rx="4"/>
+  <text style="fill: #F97316; font-weight: bold; font-size: 13px;" x="40" y="450">W3C Trace Context Standard:</text>
+
+  <text style="fill: #FFFFFF; font-size: 11px; font-family: system-ui;" x="40" y="470">✓ Browser generates trace-id and passes traceparent header to services</text>
+  <text style="fill: #FFFFFF; font-size: 11px; font-family: system-ui;" x="40" y="485">✓ Each service auto-instruments with Gasoline SDK (or OTEL SDK + OTLP exporter)</text>
+  <text style="fill: #FFFFFF; font-size: 11px; font-family: system-ui;" x="40" y="500">✓ OTLP receiver assembles spans into complete distributed trace tree</text>
+  <text style="fill: #FFFFFF; font-size: 11px; font-family: system-xml;" x="40" y="515">✓ Critical path analysis identifies bottleneck services (which service = slowest, on critical path)</text>
+</svg>

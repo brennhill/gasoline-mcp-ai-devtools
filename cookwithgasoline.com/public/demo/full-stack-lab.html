@@ -1,0 +1,822 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Gasoline Full Stack Demo Lab</title>
+  <style>
+    :root {
+      --bg: #070a12;
+      --panel: rgba(16, 22, 35, 0.87);
+      --line: #2b3855;
+      --text: #eaf0ff;
+      --muted: #9cb0d8;
+      --accent: #ff7f3c;
+      --accent-alt: #35d2ff;
+      --ok: #39d793;
+      --warn: #ffd166;
+      --bad: #ff6d8b;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      color: var(--text);
+      font-family: "Avenir Next", "Avenir", "Segoe UI", sans-serif;
+      background:
+        radial-gradient(circle at 0% 0%, #301b49 0%, transparent 35%),
+        radial-gradient(circle at 100% 0%, #183b5f 0%, transparent 38%),
+        linear-gradient(145deg, #060910 0%, #0b1220 56%, #0f182b 100%);
+      min-height: 100vh;
+    }
+
+    .shell {
+      max-width: 1260px;
+      margin: 0 auto;
+      padding: 24px;
+      display: grid;
+      gap: 16px;
+    }
+
+    .top {
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: var(--panel);
+      padding: 14px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      font-size: 12px;
+      color: var(--muted);
+      font-weight: 700;
+    }
+
+    .dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 999px;
+      background: linear-gradient(120deg, var(--accent), #ffb27b);
+      box-shadow: 0 0 18px rgba(255, 127, 60, 0.62);
+    }
+
+    .top-links {
+      display: flex;
+      gap: 9px;
+      flex-wrap: wrap;
+    }
+
+    .chip {
+      text-decoration: none;
+      color: var(--muted);
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      padding: 8px 14px;
+      font-size: 13px;
+      background: rgba(8, 14, 24, 0.72);
+    }
+
+    .hero {
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      background: var(--panel);
+      padding: 22px;
+      display: grid;
+      gap: 8px;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(30px, 4.8vw, 48px);
+      letter-spacing: -0.02em;
+      line-height: 1.08;
+    }
+
+    .hero p {
+      margin: 0;
+      color: var(--muted);
+      max-width: 80ch;
+      line-height: 1.5;
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: 1.35fr 1fr;
+      gap: 16px;
+    }
+
+    .panel {
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: var(--panel);
+      padding: 14px;
+      display: grid;
+      gap: 10px;
+      min-width: 0;
+    }
+
+    .panel h2,
+    .panel h3 {
+      margin: 0;
+      letter-spacing: -0.01em;
+    }
+
+    .product-area {
+      border: 1px solid #2b3d60;
+      border-radius: 12px;
+      padding: 12px;
+      background: rgba(8, 13, 22, 0.72);
+      overflow: hidden;
+      position: relative;
+    }
+
+    .product-grid {
+      display: grid;
+      grid-template-columns: 1fr 0.8fr;
+      gap: 12px;
+      align-items: center;
+    }
+
+    .product-copy h3 {
+      margin: 0;
+      font-size: 24px;
+      line-height: 1.15;
+    }
+
+    .product-copy p {
+      margin: 8px 0 0;
+      color: var(--muted);
+      line-height: 1.45;
+      font-size: 14px;
+    }
+
+    .oversized-image-frame {
+      border: 1px solid #355080;
+      border-radius: 10px;
+      background: rgba(9, 16, 28, 0.84);
+      padding: 8px;
+      overflow: auto;
+      max-width: 100%;
+    }
+
+    #hero-product-image {
+      width: 980px;
+      max-width: none;
+      border-radius: 10px;
+      display: block;
+      border: 2px solid #355080;
+    }
+
+    .layout-note {
+      margin: 0;
+      color: #ffd8ad;
+      font-size: 13px;
+    }
+
+    .controls {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+    }
+
+    .mode-controls {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+      max-width: 640px;
+    }
+
+    label {
+      display: block;
+      color: var(--muted);
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 5px;
+    }
+
+    input,
+    textarea,
+    button,
+    select {
+      font: inherit;
+    }
+
+    input,
+    textarea,
+    select {
+      width: 100%;
+      border: 1px solid #32476d;
+      border-radius: 8px;
+      background: #0a1324;
+      color: var(--text);
+      padding: 9px 10px;
+    }
+
+    textarea {
+      resize: vertical;
+      min-height: 80px;
+    }
+
+    button {
+      border: 1px solid var(--line);
+      border-radius: 9px;
+      background: rgba(12, 20, 33, 0.85);
+      color: var(--text);
+      padding: 10px 12px;
+      cursor: pointer;
+    }
+
+    button.primary {
+      border-color: transparent;
+      color: #1e1107;
+      font-weight: 700;
+      background: linear-gradient(120deg, var(--accent), #ffb27b);
+    }
+
+    .annotation-active {
+      cursor: crosshair;
+    }
+
+    .selected-target {
+      outline: 3px solid var(--accent-alt);
+      outline-offset: 2px;
+      box-shadow: 0 0 0 3px rgba(53, 210, 255, 0.24);
+    }
+
+    .annotation-log,
+    .ws-raw,
+    .ws-parsed,
+    .dependency-log {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+      display: grid;
+      gap: 7px;
+      max-height: 190px;
+      overflow: auto;
+    }
+
+    .annotation-log li,
+    .ws-raw li,
+    .ws-parsed li,
+    .dependency-log li {
+      border: 1px solid #2a3c5f;
+      border-radius: 9px;
+      padding: 8px;
+      background: rgba(9, 14, 24, 0.8);
+      font-size: 13px;
+      line-height: 1.42;
+    }
+
+    .ws-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    .mono {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 12px;
+      color: #bed1fb;
+      white-space: pre-wrap;
+      word-break: break-word;
+      margin: 0;
+      border: 1px solid #2a3d5f;
+      border-radius: 9px;
+      padding: 8px;
+      background: rgba(9, 14, 24, 0.72);
+    }
+
+    .pill {
+      display: inline-block;
+      border: 1px solid #35507b;
+      border-radius: 999px;
+      padding: 4px 9px;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: #b8cafa;
+      background: rgba(9, 16, 28, 0.8);
+    }
+
+    .mode-pill-fixed {
+      border-color: #295e4a;
+      color: #b8f3d6;
+      background: rgba(17, 57, 41, 0.6);
+    }
+
+    .mode-pill-broken {
+      border-color: #6b5724;
+      color: #ffe4ad;
+      background: rgba(57, 43, 12, 0.56);
+    }
+
+    @media (max-width: 1050px) {
+      .layout {
+        grid-template-columns: 1fr;
+      }
+
+      .ws-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .controls,
+      .mode-controls {
+        grid-template-columns: 1fr;
+      }
+
+      .product-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <header class="top">
+      <div class="brand">
+        <span class="dot" aria-hidden="true"></span>
+        <span>Gasoline Full Stack Lab</span>
+      </div>
+      <nav class="top-links" aria-label="Demo lab links">
+        <a class="chip" href="/">Main Site</a>
+        <a class="chip" href="/demo/index.html">Signal Forge</a>
+      </nav>
+    </header>
+
+    <section class="hero">
+      <h1>Full Stack Demo Lab</h1>
+      <p>
+        This page intentionally includes usability and integration issues so an LLM + Gasoline can detect,
+        annotate, and fix real problems: oversized layout elements, websocket contract mismatch,
+        and suspicious dependency loads.
+      </p>
+    </section>
+
+    <section class="panel" aria-label="Runtime mode switch">
+      <h2>Runtime Mode Switch</h2>
+      <p style="margin: 0; color: var(--muted); font-size: 13px;">
+        Use one action to flip between broken and corrected behavior. Broken mode keeps the oversized image and strict parser.
+        Post-fix mode applies a safe image width and payload normalization.
+      </p>
+      <div class="mode-controls">
+        <button id="apply-post-fix-mode" class="primary" type="button">Activate Post-Fix Mode</button>
+        <button id="revert-broken-mode" type="button">Revert to Broken Mode</button>
+      </div>
+      <div>
+        <span class="pill mode-pill-broken" id="demo-mode-pill">mode: broken</span>
+      </div>
+    </section>
+
+    <div class="layout">
+      <section class="panel" aria-label="Usability and annotation panel">
+        <h2>Usability Review Surface</h2>
+        <div class="product-area" id="product-area">
+          <div class="product-grid">
+            <div class="product-copy">
+              <h3 id="hero-title">Launch Monitor</h3>
+              <p>
+                Synthetic release cockpit used for narrated QA walkthroughs.
+                The image to the right is intentionally too large for this layout.
+              </p>
+              <p class="layout-note" id="layout-note">
+                Intentional issue: oversized hero image causes horizontal overflow.
+              </p>
+            </div>
+            <div class="oversized-image-frame" id="oversized-image-frame">
+              <img
+                id="hero-product-image"
+                class="annotatable"
+                src="/images/sparky-presents-browser-2.png"
+                alt="Product mock with oversized image"
+              />
+            </div>
+          </div>
+        </div>
+
+        <h3>Annotation Mode</h3>
+        <div>
+          <label for="annotation-text">Annotation Text</label>
+          <textarea id="annotation-text" placeholder="example: this image is too big"></textarea>
+        </div>
+        <div>
+          <label for="proposed-image-width">Proposed Image Width (px)</label>
+          <input id="proposed-image-width" type="range" min="260" max="760" step="10" value="420" />
+          <div style="margin-top: 6px;"><span class="pill" id="proposed-image-width-label">420px</span></div>
+        </div>
+        <div class="controls">
+          <button id="enable-annotation-mode" type="button">Enable Annotation Mode</button>
+          <button id="disable-annotation-mode" type="button">Disable Annotation Mode</button>
+          <button id="annotate-selected" class="primary" type="button">Annotate Selected Element</button>
+          <button id="preview-proposed-size" type="button">Preview Proposed Size</button>
+        </div>
+
+        <h3>Annotation Log</h3>
+        <ul id="annotation-log" class="annotation-log" aria-label="Annotation log"></ul>
+      </section>
+
+      <section class="panel" aria-label="WebSocket diagnostics panel">
+        <h2>WebSocket Diagnostics</h2>
+        <p style="margin: 0; color: var(--muted); font-size: 13px;">
+          Simulated third-party websocket feed. URL is correct. Payload schema is not what this UI expects.
+          The fix should be in the UI parser, not on the server.
+        </p>
+
+        <div>
+          <label for="ws-url">WebSocket URL</label>
+          <input id="ws-url" type="text" value="ws://localhost:8787/third-party-feed" />
+        </div>
+        <div class="controls">
+          <button id="connect-ws" class="primary" type="button">Connect WebSocket</button>
+          <button id="disconnect-ws" type="button">Disconnect WebSocket</button>
+        </div>
+
+        <div>
+          <span class="pill" id="ws-state">disconnected</span>
+        </div>
+
+        <p class="mono" id="expected-schema">Expected schema (strict UI expectation in broken mode):
+{
+  "type": "notification",
+  "payload": { "message": "...", "severity": "info|warn|error" }
+}</p>
+
+        <div class="ws-grid">
+          <div>
+            <h3 style="font-size: 16px;">Raw Messages</h3>
+            <ul id="ws-raw" class="ws-raw" aria-label="WebSocket raw messages"></ul>
+          </div>
+          <div>
+            <h3 style="font-size: 16px;">Parsed Notifications</h3>
+            <ul id="ws-parsed" class="ws-parsed" aria-label="Parsed notifications"></ul>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <section class="panel" aria-label="Dependency vetting panel">
+      <h2>Dependency Vetting</h2>
+      <p style="margin: 0; color: var(--muted); font-size: 13px;">
+        On load, the page attempts to load a third-party script from <span class="pill">mysite.xyz</span>.
+        Use Gasoline network tools to confirm where dependencies come from and whether this is intentional.
+      </p>
+      <div class="controls" style="max-width: 520px;">
+        <button id="reload-dependencies" type="button">Reload Dependencies</button>
+      </div>
+      <ul id="dependency-log" class="dependency-log" aria-label="Dependency log"></ul>
+    </section>
+  </div>
+
+  <script src="/demo/data/local-widget.js"></script>
+  <script>
+    const app = {
+      annotationMode: false,
+      selectedElement: null,
+      ws: null,
+      mode: 'broken',
+      modes: {
+        broken: {
+          heroWidth: 980,
+          layoutNote: 'Intentional issue: oversized hero image causes horizontal overflow.',
+          schemaText:
+            'Expected schema (strict UI expectation in broken mode):\n' +
+            '{\n' +
+            '  "type": "notification",\n' +
+            '  "payload": { "message": "...", "severity": "info|warn|error" }\n' +
+            '}',
+        },
+        fixed: {
+          heroWidth: 420,
+          layoutNote: 'Post-fix mode: hero image width is constrained for stable layout.',
+          schemaText:
+            'Post-fix parser accepts strict schema and vendor schema:\n' +
+            '- strict: payload.message + payload.severity\n' +
+            '- vendor: event_name + data[] normalized in UI',
+        },
+      },
+    };
+
+    const annotationText = document.getElementById('annotation-text');
+    const annotationLog = document.getElementById('annotation-log');
+    const proposedWidth = document.getElementById('proposed-image-width');
+    const proposedWidthLabel = document.getElementById('proposed-image-width-label');
+    const heroImage = document.getElementById('hero-product-image');
+    const productArea = document.getElementById('product-area');
+    const layoutNote = document.getElementById('layout-note');
+
+    const wsUrlInput = document.getElementById('ws-url');
+    const wsState = document.getElementById('ws-state');
+    const wsRaw = document.getElementById('ws-raw');
+    const wsParsed = document.getElementById('ws-parsed');
+    const expectedSchema = document.getElementById('expected-schema');
+
+    const dependencyLog = document.getElementById('dependency-log');
+    const modePill = document.getElementById('demo-mode-pill');
+
+    function addListItem(list, text, tone) {
+      const li = document.createElement('li');
+      li.textContent = new Date().toLocaleTimeString() + ' - ' + text;
+      if (tone === 'error') {
+        li.style.borderColor = '#713247';
+      }
+      if (tone === 'warn') {
+        li.style.borderColor = '#6f5924';
+      }
+      list.prepend(li);
+    }
+
+    function clearSelectedElement() {
+      if (app.selectedElement) {
+        app.selectedElement.classList.remove('selected-target');
+      }
+      app.selectedElement = null;
+    }
+
+    function enableAnnotationMode() {
+      app.annotationMode = true;
+      productArea.classList.add('annotation-active');
+      addListItem(annotationLog, 'Annotation mode enabled. Click an element to select it.', 'warn');
+    }
+
+    function disableAnnotationMode() {
+      app.annotationMode = false;
+      productArea.classList.remove('annotation-active');
+      addListItem(annotationLog, 'Annotation mode disabled.', 'info');
+    }
+
+    function applyMode(mode, source) {
+      if (!app.modes[mode]) {
+        return { ok: false, error: 'unknown mode: ' + mode };
+      }
+
+      const previousMode = app.mode;
+      app.mode = mode;
+
+      heroImage.style.width = app.modes[mode].heroWidth + 'px';
+      layoutNote.textContent = app.modes[mode].layoutNote;
+      expectedSchema.textContent = app.modes[mode].schemaText;
+
+      modePill.textContent = 'mode: ' + mode;
+      modePill.classList.remove('mode-pill-fixed', 'mode-pill-broken');
+      modePill.classList.add(mode === 'fixed' ? 'mode-pill-fixed' : 'mode-pill-broken');
+
+      const label = source ? (' via ' + source) : '';
+      addListItem(
+        annotationLog,
+        'Runtime mode changed from ' + previousMode + ' to ' + mode + label + '.',
+        mode === 'fixed' ? 'info' : 'warn'
+      );
+
+      return {
+        ok: true,
+        mode,
+        previous_mode: previousMode,
+        hero_image_width: app.modes[mode].heroWidth,
+      };
+    }
+
+    window.gasolineDemo = {
+      setMode(mode) {
+        return applyMode(mode, 'gasolineDemo.setMode');
+      },
+      applyPostFixMode() {
+        return applyMode('fixed', 'gasolineDemo.applyPostFixMode');
+      },
+      applyBrokenMode() {
+        return applyMode('broken', 'gasolineDemo.applyBrokenMode');
+      },
+      getMode() {
+        return app.mode;
+      },
+    };
+
+    productArea.addEventListener('click', function(event) {
+      if (!app.annotationMode) {
+        return;
+      }
+
+      const target = event.target;
+      if (!(target instanceof HTMLElement)) {
+        return;
+      }
+
+      if (!target.classList.contains('annotatable') && target.id !== 'hero-product-image') {
+        return;
+      }
+
+      clearSelectedElement();
+      app.selectedElement = target;
+      app.selectedElement.classList.add('selected-target');
+      addListItem(annotationLog, 'Selected element #' + app.selectedElement.id + ' for annotation.', 'info');
+    });
+
+    document.getElementById('enable-annotation-mode').addEventListener('click', enableAnnotationMode);
+    document.getElementById('disable-annotation-mode').addEventListener('click', disableAnnotationMode);
+    document.getElementById('apply-post-fix-mode').addEventListener('click', function() {
+      applyMode('fixed', 'button');
+    });
+    document.getElementById('revert-broken-mode').addEventListener('click', function() {
+      applyMode('broken', 'button');
+    });
+
+    proposedWidth.addEventListener('input', function() {
+      proposedWidthLabel.textContent = proposedWidth.value + 'px';
+    });
+
+    document.getElementById('annotate-selected').addEventListener('click', function() {
+      const note = annotationText.value.trim();
+      if (!app.selectedElement) {
+        addListItem(annotationLog, 'No element selected. Enable annotation mode and click an element.', 'error');
+        return;
+      }
+      if (!note) {
+        addListItem(annotationLog, 'Annotation text is empty.', 'error');
+        return;
+      }
+      addListItem(
+        annotationLog,
+        'Annotation on #' + app.selectedElement.id + ': ' + note,
+        'warn'
+      );
+    });
+
+    document.getElementById('preview-proposed-size').addEventListener('click', function() {
+      if (!app.selectedElement) {
+        addListItem(annotationLog, 'No selected element to resize.', 'error');
+        return;
+      }
+      const px = proposedWidth.value + 'px';
+      app.selectedElement.style.width = px;
+      addListItem(annotationLog, 'Preview applied to #' + app.selectedElement.id + ' width=' + px + '.', 'info');
+    });
+
+    function setWsState(text, tone) {
+      wsState.textContent = text;
+      wsState.style.borderColor = tone === 'error' ? '#7a3347' : tone === 'warn' ? '#6f5a26' : '#35507b';
+      wsState.style.color = tone === 'error' ? '#ffc3d1' : tone === 'warn' ? '#ffe3af' : '#bed1fb';
+    }
+
+    function normalizeVendorPayload(payload) {
+      if (payload && payload.payload && typeof payload.payload.message === 'string') {
+        return {
+          message: payload.payload.message,
+          severity: payload.payload.severity || 'info',
+        };
+      }
+
+      if (payload && payload.event_name === 'status_update' && Array.isArray(payload.data)) {
+        const service = payload.data[0] || 'unknown';
+        const status = payload.data[1] || 'unknown';
+        return {
+          message: service + ' status changed to ' + status,
+          severity: status === 'critical' ? 'error' : status === 'degraded' ? 'warn' : 'info',
+        };
+      }
+
+      if (payload && payload.event_name === 'operator_note' && Array.isArray(payload.data)) {
+        return {
+          message: payload.data.join(' | '),
+          severity: 'info',
+        };
+      }
+
+      return {
+        message: 'Unrecognized vendor payload: ' + JSON.stringify(payload),
+        severity: 'warn',
+      };
+    }
+
+    function parseSocketMessage(rawData) {
+      if (app.mode === 'broken') {
+        const payload = JSON.parse(rawData);
+
+        // INTENTIONAL BUG IN BROKEN MODE: assumes payload.message exists in payload object.
+        const notification = {
+          message: payload.payload.message,
+          severity: payload.payload.severity || 'info',
+        };
+
+        if (!notification.message) {
+          throw new Error('Socket payload missing payload.message field.');
+        }
+
+        return notification;
+      }
+
+      try {
+        const payload = JSON.parse(rawData);
+        return normalizeVendorPayload(payload);
+      } catch (_error) {
+        return {
+          message: 'Non-JSON vendor message: ' + String(rawData),
+          severity: 'warn',
+        };
+      }
+    }
+
+    function connectWebSocket() {
+      const url = wsUrlInput.value.trim();
+      if (!url) {
+        addListItem(wsRaw, 'WebSocket URL is empty.', 'error');
+        return;
+      }
+
+      if (app.ws && app.ws.readyState === WebSocket.OPEN) {
+        addListItem(wsRaw, 'WebSocket already connected.', 'warn');
+        return;
+      }
+
+      app.ws = new WebSocket(url);
+      setWsState('connecting', 'warn');
+
+      app.ws.onopen = function() {
+        setWsState('connected', 'info');
+        addListItem(wsRaw, 'WebSocket connected to ' + url + '.', 'info');
+      };
+
+      app.ws.onerror = function() {
+        setWsState('error', 'error');
+        addListItem(wsRaw, 'WebSocket error event fired.', 'error');
+      };
+
+      app.ws.onclose = function(event) {
+        setWsState('disconnected', 'warn');
+        addListItem(wsRaw, 'WebSocket closed (code=' + event.code + ').', 'warn');
+      };
+
+      app.ws.onmessage = function(event) {
+        addListItem(wsRaw, 'Raw: ' + event.data, 'info');
+
+        const notification = parseSocketMessage(event.data);
+
+        addListItem(
+          wsParsed,
+          '[' + notification.severity + '] ' + notification.message,
+          notification.severity === 'error' ? 'error' : notification.severity === 'warn' ? 'warn' : 'info'
+        );
+      };
+    }
+
+    function disconnectWebSocket() {
+      if (app.ws) {
+        app.ws.close();
+      }
+      app.ws = null;
+      setWsState('disconnected', 'warn');
+    }
+
+    document.getElementById('connect-ws').addEventListener('click', connectWebSocket);
+    document.getElementById('disconnect-ws').addEventListener('click', disconnectWebSocket);
+
+    function loadDependency(url) {
+      const script = document.createElement('script');
+      script.src = url;
+      script.async = true;
+      script.crossOrigin = 'anonymous';
+      script.addEventListener('load', function() {
+        addListItem(dependencyLog, 'Loaded dependency: ' + url, 'info');
+      });
+      script.addEventListener('error', function() {
+        addListItem(dependencyLog, 'Failed to load dependency: ' + url, 'error');
+      });
+      document.head.appendChild(script);
+      addListItem(dependencyLog, 'Attempted dependency load: ' + url, 'warn');
+    }
+
+    function loadDemoDependencies() {
+      loadDependency('/demo/data/local-widget.js');
+      loadDependency('https://mysite.xyz/sdk/browser-client-v3.js');
+    }
+
+    document.getElementById('reload-dependencies').addEventListener('click', loadDemoDependencies);
+
+    window.addEventListener('error', function(event) {
+      addListItem(wsParsed, 'Runtime error: ' + event.message, 'error');
+    });
+
+    window.addEventListener('unhandledrejection', function(event) {
+      const detail = event.reason && event.reason.message ? event.reason.message : String(event.reason);
+      addListItem(wsParsed, 'Unhandled rejection: ' + detail, 'error');
+    });
+
+    applyMode('broken', 'initial-load');
+    addListItem(annotationLog, 'Demo loaded. Start with: "this image is too big".', 'info');
+    addListItem(wsRaw, 'WebSocket is idle. Click Connect WebSocket.', 'info');
+    addListItem(wsRaw, 'One-command fix path: window.gasolineDemo.applyPostFixMode()', 'info');
+    loadDemoDependencies();
+  </script>
+</body>
+</html>
