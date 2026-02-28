@@ -1,0 +1,204 @@
+---
+import Analytics from './Analytics.astro';
+---
+
+<head>
+  <title>Gasoline MCP: Enabling Full-stack Automated AI Debugging</title>
+  <Analytics />
+  <meta name="description" content="Gasoline MCP is an open-source browser extension + MCP server that streams real-time browser telemetry to AI coding assistants. Console logs, network errors, exceptions, WebSocket events — your AI sees it all. Zero dependencies. Localhost only. Enterprise safe.">
+  <meta property="og:title" content="Gasoline MCP: Enabling Full-stack Automated AI Debugging">
+  <meta property="og:description" content="Gasoline MCP is an open-source browser extension + MCP server for AI coding assistants. See everything, fix anything.">
+  <meta property="og:image" content="/images/og-default.png">
+  <meta property="og:image:width" content="1280">
+  <meta property="og:image:height" content="640">
+  <meta property="og:image:type" content="image/png">
+  <meta property="og:url" content="https://cookwithgasoline.com/">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Gasoline MCP: Enabling Full-stack Automated AI Debugging">
+  <meta name="twitter:description" content="Gasoline MCP is an open-source browser extension + MCP server for AI coding assistants. See everything, fix anything.">
+  <meta name="twitter:image" content="/images/og-default.png">
+  <meta name="twitter:image:alt" content="Gasoline MCP - Browser automation and debugging for AI agents">
+  <script type="application/ld+json">
+  {
+    "@type": "SoftwareApplication",
+    "name": "Gasoline MCP",
+    "applicationCategory": "DeveloperApplication",
+    "operatingSystem": "Windows, macOS, Linux",
+    "offers": {
+      "@type": "Offer",
+      "price": "0",
+      "priceCurrency": "USD"
+    }
+  }
+  </script>
+</head>
+
+<!--
+  Landing.astro — Full landing page body below the Starlight hero
+  Ported from Hugo themes/gasoline-mcp/layouts/index.html
+-->
+
+<div class="landing-content">
+  <section class="intro">
+    <h2>Your AI Agent Is Blind to the Browser</h2>
+    <div class="intro-row">
+      <img src="/images/sparky-wave-web.webp" alt="Sparky waving" class="intro-sparky" />
+      <span class="intro-text">Your AI writes code. But it can't see if that code actually works in the browser.</span>
+    </div>
+    <p>Console errors, failed API calls, broken WebSocket connections, slow renders — your AI has no idea any of this is happening. You're the one copying errors from DevTools, describing what you see, taking screenshots. <strong>You are the bottleneck.</strong></p>
+    <p>Gasoline fixes this. One command gives your AI agent direct access to everything happening in your browser:</p>
+    <pre><code>npx gasoline-mcp</code></pre>
+    <p>Now your AI can see errors, read network responses, inspect the DOM, check performance, and verify its own fixes — <strong>without you in the loop.</strong></p>
+  </section>
+
+  <section class="features">
+    <h2>Why Not Just Use DevTools MCP?</h2>
+    <div class="feature-row">
+      <div class="feature-content">
+        <p>Other MCP browser tools exist. They share the same fundamental limitations.</p>
+
+        <p>Tools like Chrome DevTools MCP need you to launch Chrome with <code>--remote-debugging-port</code>. This disables Chrome's security sandbox, creates a separate browser instance, and can't observe your normal browsing session. They can't capture WebSocket traffic. They can't automate browser actions through the AI agent. They can't record your actions to generate test scripts. They're read-only views into a puppet browser.</p>
+
+        <p>BrowserTools MCP avoids the debug port but requires Node.js and runs three separate processes. Still no WebSocket capture, no browser automation, no action recording, no test generation.</p>
+
+        <p><strong>Gasoline is different.</strong> A standard Chrome extension passively captures your real browser session — including WebSocket traffic, full request/response bodies, and every user action (clicks, form inputs, navigation, scrolls). Your AI can also act: navigate pages, execute JavaScript, inspect the live DOM. And it can turn your recorded session into Playwright tests automatically. No debug port, no separate browser, no Node.js.</p>
+
+        <p>This isn't incremental. It's a different architecture. Gasoline gives your AI <strong>eyes and hands</strong> on your actual browser.</p>
+      </div>
+      <img src="/images/sparky-cook-with-gasoline-1.png" alt="Sparky cooking with gasoline" class="feature-sparky" />
+    </div>
+  </section>
+
+  <section class="comparison">
+    <h2>The Closed Loop: Observe, Diagnose, Fix, Verify</h2>
+    <p>Browser observability alone is useful. But what makes Gasoline AI-native is the <strong>closed feedback loop</strong> — your AI can observe the problem, diagnose the root cause, fix the code, and verify the fix worked, all without human intervention.</p>
+
+    <div class="table-wrapper">
+      <table style="font-size: 0.9rem;">
+        <thead>
+          <tr>
+            <th>Step</th>
+            <th>What Your AI Does</th>
+            <th>Gasoline Tool</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Observe</strong></td>
+            <td>Sees a <code>TypeError</code> in the console, a 500 from the API, and a failed WebSocket reconnect</td>
+            <td><code>observe</code> &mdash; errors, network_bodies, websocket_status</td>
+          </tr>
+          <tr>
+            <td><strong>Diagnose</strong></td>
+            <td>Correlates: the API 500 returns <code>{'{"error": "null reference"}'}</code>, the TypeError is in the response handler, the WebSocket dropped because of the same backend crash</td>
+            <td><code>observe</code> &mdash; timeline, error_clusters</td>
+          </tr>
+          <tr>
+            <td><strong>Fix</strong></td>
+            <td>Patches the backend null reference, adds a guard in the frontend handler</td>
+            <td>Your AI's code editing tools</td>
+          </tr>
+          <tr>
+            <td><strong>Verify</strong></td>
+            <td>Refreshes the page, checks that the error is gone, the API returns 200, the WebSocket reconnects</td>
+            <td><code>interact</code> &mdash; refresh &rarr; <code>observe</code> &mdash; errors, network_bodies</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p style="margin-top: 1.5rem;">Without Gasoline, your AI writes a fix and hopes it works. With Gasoline, it <strong>knows</strong>.</p>
+  </section>
+
+  <section class="captures">
+    <h2>What This Unlocks</h2>
+
+    <h3>Autonomous Error Resolution</h3>
+    <p>Your AI sees a console error, traces it to the failing network request, reads the response body, identifies the root cause, fixes the code, and checks that the error is gone. You don't touch DevTools once.</p>
+
+    <h3>Test Generation from Real Sessions</h3>
+    <p>Gasoline records every user action — clicks, form inputs, navigation, scrolls. Your AI turns these into Playwright tests with network assertions. Tests based on what actually happened, not what you think happened.</p>
+
+    <h3>Human-Narrated UAT</h3>
+    <p>Your product manager walks through a flow and describes what should happen. Gasoline captures every action. Your AI turns it into a Playwright test — no developer required. Mid-flow changes ("oh, also test the discount code") just work because the recording is live. Try doing that with a hand-written Playwright script.</p>
+
+    <h3>Regression Detection Across Sessions</h3>
+    <p>Save performance snapshots. Compare them later. Your AI spots that LCP regressed from 1.2s to 2.8s after your last deploy — and tells you which change caused it.</p>
+
+    <h3>Security and Accessibility Audits</h3>
+    <p>Your AI runs WCAG accessibility checks and security audits (exposed credentials, PII in responses, missing headers) against the live page. Exports results as SARIF for CI integration.</p>
+
+    <h3>WebSocket Debugging</h3>
+    <p>Most tools can't see WebSocket traffic at all. Gasoline captures connection lifecycle and message payloads from the moment the page loads — even connections created before the extension's inject script runs.</p>
+
+    <h3>Live DOM Inspection</h3>
+    <p>Your AI queries the live page with CSS selectors. "Is the modal visible?" "What does the error banner say?" "Is the submit button disabled?" Structured data, not screenshots.</p>
+  </section>
+
+  <section class="pipeline">
+    <h2>Architecture</h2>
+    <pre><code>[ Your Browser ] &rarr; [ Extension ] &rarr; [ localhost:7890 ] &rarr; [ Any MCP Agent ]
+                                             &darr;
+                                    Everything stays local</code></pre>
+    <ol>
+      <li>The extension passively captures your browser activity</li>
+      <li>Data flows to a local Go server — single binary, zero dependencies</li>
+      <li>Your AI reads it via MCP (stdio transport)</li>
+      <li><strong>Nothing leaves your machine</strong></li>
+    </ol>
+  </section>
+
+  <section class="enterprise">
+    <h2>Enterprise Safe by Design</h2>
+    <div class="section-with-sparky">
+      <img src="/images/sparky-shield-web.webp" alt="Sparky with shield" class="section-sparky" />
+      <div>
+        <p><strong>No browser data is ever shared with any AI provider.</strong> Gasoline runs entirely on your machine:</p>
+        <ul>
+          <li><strong>Localhost only</strong> — the server binds to <code>127.0.0.1</code>, unreachable from the network</li>
+          <li><strong>No cloud, no accounts, no telemetry</strong> — nothing phones home, ever</li>
+          <li><strong>Auth headers stripped</strong> — tokens and API keys are automatically redacted from captured data</li>
+          <li><strong>Single binary</strong> — Go. No Node.js, no <code>node_modules</code>, no supply chain risk</li>
+          <li><strong>Open source (AGPL-3.0)</strong> — audit every line your security team cares about</li>
+        </ul>
+        <p>Safe for regulated environments, proprietary codebases, and enterprise security policies.</p>
+        <p><a href="/security/">Full Security Details &rarr;</a></p>
+      </div>
+    </div>
+  </section>
+
+  <section class="ecosystem">
+    <h2>Works With Every MCP Agent</h2>
+    <p>Gasoline implements the open <strong><a href="https://modelcontextprotocol.io/">Model Context Protocol</a></strong>. If your agent speaks MCP, Gasoline fuels it:</p>
+    <ul>
+      <li><strong>Claude Code</strong> — <code>.mcp.json</code> in project root</li>
+      <li><strong>Cursor</strong> — <code>~/.cursor/mcp.json</code></li>
+      <li><strong>Windsurf</strong> — <code>~/.codeium/windsurf/mcp_config.json</code></li>
+      <li><strong>Claude Desktop</strong> — OS-specific config</li>
+      <li><strong>Zed</strong> — <code>~/.config/zed/settings.json</code></li>
+      <li><strong>Gemini CLI</strong> — <code>~/.gemini/settings.json</code></li>
+      <li><strong>OpenCode</strong> — <code>~/.config/opencode/opencode.json</code></li>
+      <li><strong>Antigravity</strong> — <code>~/.gemini/antigravity/mcp_config.json</code></li>
+      <li><strong>VS Code + Continue</strong> — <code>~/.continue/config.json</code></li>
+    </ul>
+    <p>Not tied to any vendor. Switch AI tools without changing your debugging setup.</p>
+  </section>
+
+  <section class="zero-bloat">
+    <h2>Performance</h2>
+    <ul>
+      <li><strong>&lt; 0.1ms overhead</strong> — per console intercept. Your browsing stays fast.</li>
+      <li><strong>20MB memory cap</strong> — the extension never bloats your browser.</li>
+      <li><strong>Zero network calls</strong> — the binary never connects to the internet.</li>
+      <li><strong>4-second cold start</strong> — MCP server is ready before your AI's first tool call.</li>
+    </ul>
+  </section>
+
+  <div class="cta-footer">
+    <img src="/images/sparky-thumbs-up-transparent.png" alt="Sparky ready to help" class="cta-sparky" />
+    <div>
+      <h3>Ready to Fire It Up?</h3>
+      <p><a href="/getting-started/" class="btn">Get Started</a></p>
+    </div>
+  </div>
+</div>

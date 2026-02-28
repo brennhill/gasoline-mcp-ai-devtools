@@ -68,3 +68,8 @@ docs/benchmarks/*.txt
 docs/marketing
 docs/marketing-plan.md
 .gitnexus
+
+# Astro site (cookwithgasoline.com)
+cookwithgasoline.com/node_modules/
+cookwithgasoline.com/dist/
+cookwithgasoline.com/.astro/

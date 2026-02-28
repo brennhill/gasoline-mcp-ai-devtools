@@ -1,0 +1,43 @@
+---
+title: Gasoline + Claude Desktop
+description: "Configure Gasoline as an MCP server for Claude Desktop. Give Claude real-time access to your browser's console logs, network errors, and DOM state."
+---
+
+Gasoline is an open-source MCP server that gives Claude Desktop real-time access to browser console logs, network errors, exceptions, WebSocket events, and live DOM state. Zero dependencies.
+
+## Configuration
+
+Edit the Claude Desktop config file:
+
+- **macOS**: `~/Library/Application Support/Claude/claude_desktop_config.json`
+- **Windows**: `%APPDATA%\Claude\claude_desktop_config.json`
+
+```json
+{
+  "mcpServers": {
+    "gasoline": {
+      "command": "npx",
+      "args": ["gasoline-mcp"]
+    }
+  }
+}
+```
+
+## Usage
+
+After restarting Claude Desktop, Claude can:
+
+- Read browser console errors and warnings
+- Inspect failed API calls with response bodies
+- Query the live DOM
+- Monitor WebSocket connections
+- Run accessibility audits
+
+Ask Claude: _"What errors are showing in my browser?"_
+
+## Troubleshooting
+
+1. **Restart Claude Desktop** after editing config
+2. **Check file location** — path is OS-specific
+3. **Verify JSON syntax** — invalid JSON fails silently
+4. **Check extension popup** — should show "Connected"

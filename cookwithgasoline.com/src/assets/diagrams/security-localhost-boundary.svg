@@ -1,0 +1,107 @@
+<svg viewBox="0 0 1000 600" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <style>
+      .boundary-box { fill: #0F172A; stroke: #F97316; stroke-width: 3; }
+      .local-box { fill: #F97316; stroke: #ea580c; stroke-width: 2; }
+      .local-box-dark { fill: #0F172A; stroke: #F97316; stroke-width: 2; }
+      .local-box-light { fill: #1E293B; stroke: #F97316; stroke-width: 1; }
+      .blocked-box { fill: #DC2626; stroke: #b91c1c; stroke-width: 2; }
+      .text-dark { fill: #0F172A; font-family: system-ui; font-size: 14px; font-weight: bold; }
+      .text-light { fill: #FFFFFF; font-family: system-ui; font-size: 14px; font-weight: bold; }
+      .arrow { stroke: #F97316; stroke-width: 2; fill: none; marker-end: url(#arrowhead); }
+      .arrow-blocked { stroke: #DC2626; stroke-width: 2; fill: none; stroke-dasharray: 4,4; marker-end: url(#arrowhead-blocked); }
+      .label { fill: #FFFFFF; font-family: system-ui; font-size: 11px; }
+      .blocked-label { fill: #FFFFFF; font-family: system-ui; font-size: 11px; font-weight: bold; }
+    </style>
+    <marker id="arrowhead" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+      <polygon points="0 0, 10 3, 0 6" fill="#F97316" />
+    </marker>
+    <marker id="arrowhead-blocked" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+      <polygon points="0 0, 10 3, 0 6" fill="#DC2626" />
+    </marker>
+  </defs>
+
+  <!-- Title -->
+  <text style="font-size: 18px; font-weight: bold; fill: #FFFFFF;" x="20" y="30">🔒 Localhost-Only Security Boundary</text>
+
+  <!-- Main boundary box -->
+  <rect class="boundary-box" x="50" y="70" width="650" height="400" rx="8"/>
+  <text style="font-size: 14px; font-weight: bold; fill: #F97316;" x="70" y="95">LOCALHOST ONLY - YOUR MACHINE (127.0.0.1)</text>
+
+  <!-- Browser -->
+  <rect class="local-box" x="70" y="120" width="140" height="60" rx="4"/>
+  <text class="text-dark" x="85" y="140">🌐 Browser</text>
+  <text class="text-dark" x="85" y="160">(tab)</text>
+
+  <!-- Extension -->
+  <rect class="local-box" x="240" y="120" width="140" height="60" rx="4"/>
+  <text class="text-dark" x="250" y="140">🧩 Extension</text>
+  <text class="text-dark" x="250" y="160">(inject.js)</text>
+
+  <!-- Go Server -->
+  <rect class="local-box-dark" x="70" y="240" width="140" height="80" rx="4"/>
+  <text class="text-light" x="85" y="265">⚙️  Go Server</text>
+  <text class="label" x="85" y="282">Localhost</text>
+  <text class="label" x="85" y="296">:7890</text>
+
+  <!-- JSONL File -->
+  <rect class="local-box-light" x="240" y="240" width="140" height="80" rx="4"/>
+  <text class="text-light" x="255" y="265">📄 JSONL File</text>
+  <text class="label" x="255" y="282">(local disk)</text>
+
+  <!-- AI Tool (inside boundary) -->
+  <rect class="local-box-dark" x="410" y="240" width="140" height="80" rx="4"/>
+  <text class="text-light" x="425" y="265">🤖 AI Tool</text>
+  <text class="label" x="425" y="282">Claude/Cursor</text>
+  <text class="label" x="425" y="296">(stdio)</text>
+
+  <!-- Data flow arrows -->
+  <!-- Browser → Extension -->
+  <path class="arrow" d="M 210 150 L 240 150"/>
+  <text class="label" x="205" y="145">Strips auth</text>
+
+  <!-- Extension → Server -->
+  <path class="arrow" d="M 140 180 L 140 240"/>
+  <text class="label" x="95" y="210">HTTP POST</text>
+
+  <!-- Server → File -->
+  <path class="arrow" d="M 210 280 L 240 280"/>
+  <text class="label" x="200" y="275">Write</text>
+
+  <!-- File → AI -->
+  <path class="arrow" d="M 380 280 L 410 280"/>
+  <text class="label" x="380" y="275">stdio</text>
+
+  <!-- Blocked connections from outside -->
+  <!-- Internet -->
+  <rect class="blocked-box" x="750" y="120" width="140" height="60" rx="4"/>
+  <text class="text-light" x="760" y="140">🌐 Internet</text>
+  <text class="text-light" x="760" y="160">❌ NO ACCESS</text>
+
+  <path class="arrow-blocked" d="M 700 150 L 750 150"/>
+  <text class="blocked-label" x="710" y="145">Blocked</text>
+
+  <!-- LAN -->
+  <rect class="blocked-box" x="750" y="220" width="140" height="60" rx="4"/>
+  <text class="text-light" x="760" y="240">💻 LAN</text>
+  <text class="text-light" x="760" y="260">❌ NO ACCESS</text>
+
+  <path class="arrow-blocked" d="M 700 250 L 750 250"/>
+  <text class="blocked-label" x="710" y="245">Blocked</text>
+
+  <!-- Docker -->
+  <rect class="blocked-box" x="750" y="320" width="140" height="60" rx="4"/>
+  <text class="text-light" x="760" y="340">🐳 Docker</text>
+  <text class="text-light" x="760" y="360">❌ NO ACCESS</text>
+
+  <path class="arrow-blocked" d="M 700 350 L 750 350"/>
+  <text class="blocked-label" x="710" y="345">Blocked</text>
+
+  <!-- Key facts section -->
+  <rect x="50" y="490" width="900" height="90" fill="#0F172A" stroke="#F97316" stroke-width="1" rx="4"/>
+  <text style="fill: #F97316; font-weight: bold; font-size: 13px;" x="70" y="510">🔐 Security Guarantees (TCP-level):</text>
+
+  <text style="fill: #FFFFFF; font-size: 12px; font-family: system-ui;" x="70" y="530">✓ Server binds to 127.0.0.1:7890 — OS-level TCP restriction prevents all remote access</text>
+  <text style="fill: #FFFFFF; font-size: 12px; font-family: system-ui;" x="70" y="548">✓ No firewall configuration needed — localhost binding is enforced by kernel</text>
+  <text style="fill: #FFFFFF; font-size: 12px; font-family: system-ui;" x="70" y="566">✓ No data egress — extension strips auth headers before transmission</text>
+</svg>
