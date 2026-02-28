@@ -110,6 +110,14 @@ var toolModeSpecs = map[string]map[string]modeParamSpec{
 			Hint:     "Toggle normal/insecure_proxy mode for debug environments",
 			Optional: []string{"mode", "confirm"},
 		},
+		"network_recording": {
+			Hint:     "Passive network traffic recording with start/stop capture",
+			Optional: []string{"operation", "domain", "method"},
+		},
+		"action_jitter": {
+			Hint:     "Randomized micro-delays before interact actions for human-like timing",
+			Optional: []string{"action_jitter_ms"},
+		},
 	},
 
 	// ── observe ────────────────────────────────────────────────
@@ -174,10 +182,11 @@ var toolModeSpecs = map[string]map[string]modeParamSpec{
 		},
 		"screenshot": {
 			Hint:     "Capture page screenshot (full page or element)",
-			Optional: []string{"format", "quality", "full_page", "selector", "wait_for_stable"},
+			Optional: []string{"format", "quality", "full_page", "selector", "wait_for_stable", "save_to"},
 		},
 		"storage": {
-			Hint: "localStorage and sessionStorage contents",
+			Hint:     "localStorage, sessionStorage, and cookies (with full metadata including httpOnly)",
+			Optional: []string{"storage_type", "key", "summary"},
 		},
 		"indexeddb": {
 			Hint:     "IndexedDB database/store contents",
@@ -220,57 +229,61 @@ var toolModeSpecs = map[string]map[string]modeParamSpec{
 			Hint:     "Combined page info + interactive elements in one call (replaces observe/page + interact/list_interactive)",
 			Optional: []string{"visible_only", "limit"},
 		},
+		"transients": {
+			Hint:     "Captured transient UI elements (toasts, alerts, snackbars)",
+			Optional: []string{"limit", "summary"},
+		},
 	},
 
 	// ── interact ───────────────────────────────────────────────
 	"interact": {
 		"click": {
 			Hint:     "Click an element by selector, element_id, or coordinates",
-			Optional: []string{"selector", "element_id", "index", "scope_selector", "frame", "reason", "correlation_id", "timeout_ms", "x", "y", "analyze", "wait_for_stable", "stability_ms"},
+			Optional: []string{"selector", "element_id", "index", "nth", "scope_selector", "frame", "reason", "correlation_id", "timeout_ms", "x", "y", "analyze", "wait_for_stable", "stability_ms"},
 		},
 		"type": {
 			Hint:     "Type text into an input or textarea",
-			Optional: []string{"selector", "element_id", "index", "scope_selector", "frame", "text", "clear"},
+			Optional: []string{"selector", "element_id", "index", "nth", "scope_selector", "frame", "text", "clear"},
 		},
 		"select": {
 			Hint:     "Choose an option in a <select> dropdown",
-			Optional: []string{"selector", "element_id", "index", "scope_selector", "frame", "value"},
+			Optional: []string{"selector", "element_id", "index", "nth", "scope_selector", "frame", "value"},
 		},
 		"check": {
 			Hint:     "Toggle a checkbox or radio button",
-			Optional: []string{"selector", "element_id", "index", "scope_selector", "frame", "checked"},
+			Optional: []string{"selector", "element_id", "index", "nth", "scope_selector", "frame", "checked"},
 		},
 		"get_text": {
 			Hint:     "Read text content of an element",
-			Optional: []string{"selector", "element_id", "index", "scope_selector", "frame"},
+			Optional: []string{"selector", "element_id", "index", "nth", "scope_selector", "frame"},
 		},
 		"get_value": {
 			Hint:     "Read value of an input element",
-			Optional: []string{"selector", "element_id", "index", "scope_selector", "frame"},
+			Optional: []string{"selector", "element_id", "index", "nth", "scope_selector", "frame"},
 		},
 		"focus": {
 			Hint:     "Focus an element",
-			Optional: []string{"selector", "element_id", "index", "scope_selector", "frame"},
+			Optional: []string{"selector", "element_id", "index", "nth", "scope_selector", "frame"},
 		},
 		"scroll_to": {
-			Hint:     "Scroll an element into view",
-			Optional: []string{"selector", "element_id", "index", "scope_selector", "frame"},
+			Hint:     "Scroll an element into view, or scroll by direction (value='top'|'bottom'|'up'|'down')",
+			Optional: []string{"selector", "element_id", "index", "nth", "scope_selector", "frame", "value"},
 		},
 		"get_attribute": {
 			Hint:     "Read an HTML attribute from an element",
-			Optional: []string{"selector", "element_id", "index", "scope_selector", "frame", "name"},
+			Optional: []string{"selector", "element_id", "index", "nth", "scope_selector", "frame", "name"},
 		},
 		"set_attribute": {
 			Hint:     "Set an HTML attribute on an element",
-			Optional: []string{"selector", "element_id", "index", "scope_selector", "frame", "name", "value"},
+			Optional: []string{"selector", "element_id", "index", "nth", "scope_selector", "frame", "name", "value"},
 		},
 		"paste": {
 			Hint:     "Paste text into an element via clipboard",
-			Optional: []string{"selector", "element_id", "index", "scope_selector", "frame", "text"},
+			Optional: []string{"selector", "element_id", "index", "nth", "scope_selector", "frame", "text"},
 		},
 		"highlight": {
 			Hint:     "Visually highlight an element with a colored overlay",
-			Optional: []string{"selector", "element_id", "index", "scope_selector", "frame", "duration_ms"},
+			Optional: []string{"selector", "element_id", "index", "nth", "scope_selector", "frame", "duration_ms"},
 		},
 		"wait_for": {
 			Hint:     "Wait until a selector appears in the DOM",
@@ -437,7 +450,7 @@ var toolModeSpecs = map[string]map[string]modeParamSpec{
 		},
 		"hover": {
 			Hint:     "Trigger hover state on an element for tooltip discovery",
-			Optional: []string{"selector", "element_id", "index", "scope_selector", "frame"},
+			Optional: []string{"selector", "element_id", "index", "nth", "scope_selector", "frame"},
 		},
 		"activate_tab": {
 			Hint: "Bring the tracked tab to the foreground",
@@ -449,6 +462,17 @@ var toolModeSpecs = map[string]map[string]modeParamSpec{
 		"batch": {
 			Hint:     "Execute a sequence of interact actions in one call",
 			Optional: []string{"steps", "step_timeout_ms", "continue_on_error", "stop_after_step"},
+		},
+		"clipboard_read": {
+			Hint: "Read current clipboard text content",
+		},
+		"clipboard_write": {
+			Hint:     "Write text to the clipboard",
+			Optional: []string{"text"},
+		},
+		"query": {
+			Hint:     "Query DOM elements: check existence, count, read text or attributes without screenshots",
+			Optional: []string{"selector", "element_id", "index", "nth", "scope_selector", "frame", "query_type", "attribute_names"},
 		},
 	},
 
@@ -544,6 +568,10 @@ var toolModeSpecs = map[string]map[string]modeParamSpec{
 		"audit": {
 			Hint:     "Lighthouse-style combined audit: performance, accessibility, security, best practices",
 			Optional: []string{"categories", "summary"},
+		},
+		"feature_gates": {
+			Hint:     "Detect feature flags, A/B tests, and experiment gates in page JavaScript",
+			Optional: []string{"tab_id"},
 		},
 	},
 

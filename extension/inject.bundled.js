@@ -355,6 +355,15 @@ var ACTION_DATA_ENRICHERS = {
   },
   scroll: (a, _el, o) => {
     a.scroll_y = o.scroll_y || 0;
+  },
+  transient: (a, _el, o) => {
+    a.classification = o.classification || "unknown";
+    if (o.duration_ms !== void 0)
+      a.duration_ms = o.duration_ms;
+    if (o.role)
+      a.role = o.role;
+    if (o.value)
+      a.value = o.value;
   }
 };
 function recordEnhancedAction(type, element, opts = {}) {
@@ -404,7 +413,8 @@ var ACTION_STEP_GENERATORS = {
   keypress: (action) => `  await page.keyboard.press('${escapeString(action.key || "")}');`,
   navigate: (action, _locator, baseUrl) => `  await page.waitForURL('${escapeString(rebaseUrl(action.to_url || "", baseUrl))}');`,
   select: (action, locator) => locator ? `  await page.${locator}.selectOption('${escapeString(action.selected_value || "")}');` : null,
-  scroll: (action) => `  // User scrolled to y=${action.scroll_y || 0}`
+  scroll: (action) => `  // User scrolled to y=${action.scroll_y || 0}`,
+  transient: (action) => `  // [${action.classification || "transient"}] "${(action.value || "").slice(0, 80)}"`
 };
 function actionToPlaywrightStep(action, baseUrl) {
   const locator = getPlaywrightLocator(action.selectors || { cssPath: "" });
@@ -2759,6 +2769,155 @@ function uninstallGasolineAPI() {
   }
 }
 
+// extension/lib/transient-capture.js
+var SKIP_TAGS = /* @__PURE__ */ new Set(["SCRIPT", "STYLE", "LINK", "META", "NOSCRIPT", "BR", "HR"]);
+var CLASS_FINGERPRINTS = [
+  [/toast/i, "toast"],
+  [/snackbar/i, "snackbar"],
+  [/notification/i, "notification"],
+  [/tooltip/i, "tooltip"],
+  [/alert/i, "alert"],
+  [/banner/i, "banner"],
+  [/flash/i, "flash"]
+];
+var DEDUP_WINDOW_MS = 2e3;
+var DEDUP_MAP_CAP = 100;
+var MAX_TEXT_LENGTH = 500;
+var DEDUP_KEY_TEXT_LENGTH = 100;
+var observer = null;
+var dedupMap = /* @__PURE__ */ new Map();
+function classifyTransient(el) {
+  const tag = el.tagName;
+  if (!tag || SKIP_TAGS.has(tag))
+    return null;
+  const text = extractText(el);
+  if (!text)
+    return null;
+  const role = el.getAttribute("role");
+  const ariaLive = el.getAttribute("aria-live");
+  if (role === "alert" || ariaLive === "assertive") {
+    return { classification: "alert", role: role || "alert", text };
+  }
+  if (role === "status" || ariaLive === "polite") {
+    return { classification: "toast", role: role || "status", text };
+  }
+  const className = el.className;
+  if (className && typeof className === "string") {
+    for (const [pattern, classification] of CLASS_FINGERPRINTS) {
+      if (pattern.test(className)) {
+        return { classification, role: role || "", text };
+      }
+    }
+  }
+  if (typeof window !== "undefined" && window.getComputedStyle) {
+    try {
+      const style = window.getComputedStyle(el);
+      const position = style.position;
+      if (position === "fixed" || position === "absolute") {
+        const zIndex = parseInt(style.zIndex, 10);
+        const height = el.getBoundingClientRect().height;
+        if (zIndex > 1e3 && height > 0 && height < 200) {
+          return { classification: "flash", role: role || "", text };
+        }
+      }
+    } catch {
+    }
+  }
+  return null;
+}
+function extractText(el) {
+  const raw = (el.textContent || "").trim();
+  return raw.slice(0, MAX_TEXT_LENGTH);
+}
+function dedupKey(classification, text) {
+  return `${classification}:${text.slice(0, DEDUP_KEY_TEXT_LENGTH)}`;
+}
+function isDuplicate(key, now) {
+  const entry = dedupMap.get(key);
+  return entry !== void 0 && now - entry.timestamp < DEDUP_WINDOW_MS;
+}
+function recordDedup(key, now) {
+  dedupMap.set(key, { timestamp: now });
+  if (dedupMap.size > DEDUP_MAP_CAP) {
+    for (const [k, v] of dedupMap) {
+      if (now - v.timestamp > DEDUP_WINDOW_MS) {
+        dedupMap.delete(k);
+      }
+    }
+  }
+}
+function classifyCandidates(el) {
+  const info = classifyTransient(el);
+  if (info)
+    return info;
+  for (let i = 0; i < el.children.length; i++) {
+    const child = el.children[i];
+    if (child) {
+      const childInfo = classifyTransient(child);
+      if (childInfo)
+        return childInfo;
+    }
+  }
+  return null;
+}
+function recordPendingTransients(pending) {
+  const now = Date.now();
+  for (const { element, info } of pending) {
+    const key = dedupKey(info.classification, info.text);
+    if (isDuplicate(key, now))
+      continue;
+    recordDedup(key, now);
+    recordEnhancedAction("transient", null, {
+      classification: info.classification,
+      duration_ms: 0,
+      // MVP: capture moment only; removal tracking not yet implemented
+      role: info.role,
+      value: info.text
+    });
+  }
+}
+function mutationCallback(mutations) {
+  const pending = [];
+  for (const mutation of mutations) {
+    if (mutation.type !== "childList")
+      continue;
+    for (let i = 0; i < mutation.addedNodes.length; i++) {
+      const node = mutation.addedNodes[i];
+      if (node.nodeType !== Node.ELEMENT_NODE)
+        continue;
+      const el = node;
+      const info = classifyCandidates(el);
+      if (info) {
+        pending.push({ element: el, info });
+      }
+    }
+  }
+  if (pending.length === 0)
+    return;
+  if (typeof requestIdleCallback === "function") {
+    requestIdleCallback(() => recordPendingTransients(pending));
+  } else {
+    setTimeout(() => recordPendingTransients(pending), 0);
+  }
+}
+function installTransientCapture() {
+  if (observer)
+    return;
+  if (typeof document === "undefined" || !document.body)
+    return;
+  if (typeof MutationObserver === "undefined")
+    return;
+  observer = new MutationObserver(mutationCallback);
+  observer.observe(document.body, { childList: true, subtree: true });
+}
+function uninstallTransientCapture() {
+  if (observer) {
+    observer.disconnect();
+    observer = null;
+  }
+  dedupMap.clear();
+}
+
 // extension/inject/observers.js
 var originalFetch = null;
 var deferralEnabled = true;
@@ -2863,6 +3022,7 @@ function install() {
   installNavigationCapture();
   installWebSocketCapture();
   installPerformanceCapture();
+  installTransientCapture();
 }
 function uninstall() {
   uninstallConsoleCapture();
@@ -2873,6 +3033,7 @@ function uninstall() {
   uninstallNavigationCapture();
   uninstallWebSocketCapture();
   uninstallPerformanceCapture();
+  uninstallTransientCapture();
 }
 function shouldDeferIntercepts() {
   if (typeof document === "undefined")
@@ -3407,6 +3568,12 @@ function serializeObject2(obj, depth, seen) {
   if (typeof Node !== "undefined" && obj instanceof Node) {
     const node = obj;
     return `[${node.nodeName}${node.id ? "#" + node.id : ""}]`;
+  }
+  if (typeof obj.toJSON === "function") {
+    try {
+      return safeSerializeForExecute(obj.toJSON(), depth + 1, seen);
+    } catch {
+    }
   }
   const result = {};
   const keys = Object.keys(obj).slice(0, 50);

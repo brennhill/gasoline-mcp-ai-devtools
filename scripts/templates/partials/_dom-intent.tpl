@@ -142,11 +142,16 @@
   function matchedTarget(node: Element): NonNullable<DOMResult['matched']> {
     const htmlEl = node as HTMLElement
     const textPreview = (htmlEl.textContent || '').trim().slice(0, 80)
+    // #388: Include class list for selector diagnostics
+    const classList = typeof htmlEl.className === 'string' && htmlEl.className
+      ? htmlEl.className.split(/\s+/).filter(Boolean).slice(0, 5)
+      : undefined
     return {
       tag: node.tagName.toLowerCase(),
       role: node.getAttribute('role') || undefined,
       aria_label: node.getAttribute('aria-label') || undefined,
       text_preview: textPreview || undefined,
+      classes: classList && classList.length > 0 ? classList : undefined,
       selector,
       element_id: getOrCreateElementID(node),
       bbox: extractBoundingBox(node),
@@ -256,7 +261,7 @@
           action,
           selector,
           error: 'ambiguous_target',
-          message: `Multiple candidates tie for ${action}. Use scope_selector/scope_rect or list_interactive element_id.`,
+          message: `Multiple candidates tie for ${action}. Use nth, scope_selector/scope_rect, or list_interactive element_id.`,
           match_count: tiedTop.length,
           match_strategy: matchStrategy,
           ...(scopeRect ? { scope_rect_used: scopeRect } : {}),

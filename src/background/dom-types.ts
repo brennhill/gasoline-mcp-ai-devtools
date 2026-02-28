@@ -43,6 +43,7 @@ export interface DOMResult {
     role?: string
     aria_label?: string
     text_preview?: string
+    classes?: string[]
     selector?: string
     element_id?: string
     bbox?: BoundingBox
@@ -98,6 +99,7 @@ export interface DOMResult {
   overlay_type?: string
   overlay_selector?: string
   overlay_text_preview?: string
+  overlay_warning?: string
   // wait_for_stable fields (#344)
   stable?: boolean
   timed_out?: boolean
@@ -109,6 +111,14 @@ export interface DOMResult {
   absent?: boolean
   // auto_dismiss_overlays fields (#342)
   dismissed_count?: number
+  // get_text structured mode fields (#390)
+  sections?: Array<{
+    header?: string
+    content: string
+    expanded?: boolean
+    tag: string
+  }>
+  section_count?: number
 }
 
 export interface DOMPrimitiveOptions {
@@ -125,9 +135,11 @@ export interface DOMPrimitiveOptions {
   element_id?: string
   scope_selector?: string
   scope_rect?: ScopeRect
+  nth?: number
   new_tab?: boolean
   url_contains?: string
   absent?: boolean
+  structured?: boolean
 }
 
 export interface DOMActionParams extends DOMPrimitiveOptions {
@@ -135,4 +147,12 @@ export interface DOMActionParams extends DOMPrimitiveOptions {
   selector?: string
   reason?: string
   frame?: string | number
+  // list_interactive filters (#369)
+  text_contains?: string
+  role?: string
+  exclude_nav?: boolean
+  visible_only?: boolean
+  // query action (#370)
+  query_type?: string
+  attribute_names?: string[]
 }

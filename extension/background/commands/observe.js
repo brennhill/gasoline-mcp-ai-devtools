@@ -16,27 +16,92 @@ import { registerCommand } from './registry.js';
 // =============================================================================
 // SCREENSHOT
 // =============================================================================
-registerCommand('screenshot', async (ctx) => {
+const CDP_VERSION = '1.3';
+const MAX_CAPTURE_HEIGHT = 16384; // Chrome max texture size
+/**
+ * Self-contained function injected via chrome.scripting.executeScript.
+ * Temporarily expands scrollable containers so CDP captures full content.
+ * Stores original styles in data attributes for restoration.
+ */
+function screenshotExpandContainers() {
+    let count = 0;
+    function tryExpand(el) {
+        const style = getComputedStyle(el);
+        const oy = style.overflowY || '';
+        if ((oy === 'auto' || oy === 'scroll' || oy === 'hidden') && el.scrollHeight > el.clientHeight + 1) {
+            el.setAttribute('data-gasoline-fpx', JSON.stringify({
+                o: el.style.overflow, h: el.style.height, m: el.style.maxHeight
+            }));
+            el.style.overflow = 'visible';
+            el.style.height = 'auto';
+            el.style.maxHeight = 'none';
+            count++;
+        }
+    }
+    tryExpand(document.documentElement);
+    tryExpand(document.body);
+    const all = document.body.querySelectorAll('*');
+    for (let i = 0; i < all.length; i++) {
+        if (all[i] instanceof HTMLElement)
+            tryExpand(all[i]);
+    }
+    return { expanded: count };
+}
+/** Self-contained: restore containers after full-page capture. */
+function screenshotRestoreContainers() {
+    function tryRestore(el) {
+        const raw = el.getAttribute('data-gasoline-fpx');
+        if (!raw)
+            return;
+        try {
+            const s = JSON.parse(raw);
+            el.style.overflow = s.o || '';
+            el.style.height = s.h || '';
+            el.style.maxHeight = s.m || '';
+        }
+        catch { /* ignore parse errors */ }
+        el.removeAttribute('data-gasoline-fpx');
+    }
+    tryRestore(document.documentElement);
+    const all = document.querySelectorAll('[data-gasoline-fpx]');
+    for (let i = 0; i < all.length; i++) {
+        tryRestore(all[i]);
+    }
+}
+/** Post screenshot data to server for saving and query resolution. */
+async function postScreenshot(dataUrl, pageUrl, queryId) {
     try {
-        const tab = await chrome.tabs.get(ctx.tabId);
-        await chrome.tabs.update(ctx.tabId, { active: true });
-        const dataUrl = await chrome.tabs.captureVisibleTab(tab.windowId, {
-            format: 'jpeg',
-            quality: 80
-        });
-        recordScreenshot(ctx.tabId);
-        // POST to /screenshots with query_id — server saves file and resolves query directly
         const response = await fetch(`${getServerUrl()}/screenshots`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'X-Gasoline-Client': 'gasoline-extension' },
-            body: JSON.stringify({
-                data_url: dataUrl,
-                url: tab.url,
-                query_id: ctx.query.id
-            })
+            body: JSON.stringify({ data_url: dataUrl, url: pageUrl, query_id: queryId })
         });
-        if (!response.ok) {
-            ctx.sendResult({ error: `Server returned ${response.status}` });
+        return response.ok;
+    }
+    catch {
+        return false;
+    }
+}
+registerCommand('screenshot', async (ctx) => {
+    const format = ctx.params.format === 'png' ? 'png' : 'jpeg';
+    const quality = typeof ctx.params.quality === 'number' ? ctx.params.quality : 80;
+    const fullPage = ctx.params.full_page === true;
+    try {
+        const tab = await chrome.tabs.get(ctx.tabId);
+        await chrome.tabs.update(ctx.tabId, { active: true });
+        if (fullPage) {
+            await captureFullPage(ctx, tab, format, quality);
+            return;
+        }
+        const dataUrl = await chrome.tabs.captureVisibleTab(tab.windowId, {
+            format: format,
+            quality
+        });
+        recordScreenshot(ctx.tabId);
+        // POST to /screenshots with query_id — server saves file and resolves query directly
+        const ok = await postScreenshot(dataUrl, tab.url, ctx.query.id);
+        if (!ok) {
+            ctx.sendResult({ error: 'screenshot_upload_failed', message: 'Server rejected screenshot' });
         }
         // No sendResult needed — server resolves the query via query_id
     }
@@ -47,6 +112,75 @@ registerCommand('screenshot', async (ctx) => {
         });
     }
 });
+/** Full-page screenshot via CDP with scrollable container expansion (#363). */
+async function captureFullPage(ctx, tab, format, quality) {
+    // Step 1: Expand scrollable containers in the page
+    await chrome.scripting.executeScript({
+        target: { tabId: ctx.tabId },
+        world: 'MAIN',
+        func: screenshotExpandContainers
+    });
+    try {
+        // Step 2: Attach CDP debugger
+        await chrome.debugger.attach({ tabId: ctx.tabId }, CDP_VERSION);
+        try {
+            // Step 3: Get full content dimensions
+            const metrics = await chrome.debugger.sendCommand({ tabId: ctx.tabId }, 'Page.getLayoutMetrics', {});
+            const contentSize = metrics.cssContentSize || metrics.contentSize || { width: 1280, height: 720 };
+            const captureWidth = Math.ceil(contentSize.width);
+            const captureHeight = Math.min(Math.ceil(contentSize.height), MAX_CAPTURE_HEIGHT);
+            // Step 4: Override viewport to full content size
+            await chrome.debugger.sendCommand({ tabId: ctx.tabId }, 'Emulation.setDeviceMetricsOverride', { width: captureWidth, height: captureHeight, deviceScaleFactor: 1, mobile: false });
+            // Brief pause for layout reflow after viewport resize
+            await new Promise((r) => setTimeout(r, 150));
+            // Step 5: Capture full-page screenshot via CDP
+            const screenshotResult = await chrome.debugger.sendCommand({ tabId: ctx.tabId }, 'Page.captureScreenshot', {
+                format,
+                quality: format === 'jpeg' ? quality : undefined,
+                clip: { x: 0, y: 0, width: captureWidth, height: captureHeight, scale: 1 }
+            });
+            // Step 6: Clear device metrics override
+            await chrome.debugger.sendCommand({ tabId: ctx.tabId }, 'Emulation.clearDeviceMetricsOverride', {});
+            // Step 7: Build data URL and post to server
+            const mimeType = format === 'png' ? 'image/png' : 'image/jpeg';
+            const dataUrl = `data:${mimeType};base64,${screenshotResult.data}`;
+            recordScreenshot(ctx.tabId);
+            const ok = await postScreenshot(dataUrl, tab.url, ctx.query.id);
+            if (!ok) {
+                ctx.sendResult({ error: 'screenshot_upload_failed', message: 'Server rejected screenshot' });
+            }
+        }
+        finally {
+            try {
+                await chrome.debugger.detach({ tabId: ctx.tabId });
+            }
+            catch { /* already detached */ }
+        }
+    }
+    catch (err) {
+        // CDP unavailable — fall back to regular captureVisibleTab with warning
+        debugLog(DebugCategory.CAPTURE, 'Full-page CDP failed, falling back to viewport capture', {
+            error: err.message
+        });
+        const dataUrl = await chrome.tabs.captureVisibleTab(tab.windowId, {
+            format: format,
+            quality
+        });
+        recordScreenshot(ctx.tabId);
+        const ok = await postScreenshot(dataUrl, tab.url, ctx.query.id);
+        if (!ok) {
+            ctx.sendResult({ error: 'screenshot_upload_failed', message: 'Server rejected screenshot' });
+        }
+    }
+    finally {
+        // Step 8: Always restore containers
+        await chrome.scripting.executeScript({
+            target: { tabId: ctx.tabId },
+            world: 'MAIN',
+            func: screenshotRestoreContainers
+        }).catch(() => { });
+    }
+}
 // =============================================================================
 // WATERFALL
 // =============================================================================

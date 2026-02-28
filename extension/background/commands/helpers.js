@@ -149,7 +149,10 @@ const TARGETED_QUERY_TYPES = new Set([
     'explore_page',
     'get_readable',
     'get_markdown',
-    'page_summary'
+    'page_summary',
+    'page_structure',
+    'navigation',
+    'feature_gates'
 ]);
 export function requiresTargetTab(queryType) {
     return TARGETED_QUERY_TYPES.has(queryType);

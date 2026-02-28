@@ -56,6 +56,7 @@ var DOMPrimitiveActions = map[string]bool{
 	"hover":                  true,
 	"auto_dismiss_overlays":  true,
 	"wait_for_stable":        true,
+	"query":                  true,
 }
 
 // DOMActionToReproType maps interact DOM action names to reproduction-compatible types.

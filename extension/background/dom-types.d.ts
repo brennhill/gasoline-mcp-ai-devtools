@@ -39,6 +39,7 @@ export interface DOMResult {
         role?: string;
         aria_label?: string;
         text_preview?: string;
+        classes?: string[];
         selector?: string;
         element_id?: string;
         bbox?: BoundingBox;
@@ -101,6 +102,7 @@ export interface DOMResult {
     overlay_type?: string;
     overlay_selector?: string;
     overlay_text_preview?: string;
+    overlay_warning?: string;
     stable?: boolean;
     timed_out?: boolean;
     waited_ms?: number;
@@ -109,6 +111,13 @@ export interface DOMResult {
     matched_text?: string;
     absent?: boolean;
     dismissed_count?: number;
+    sections?: Array<{
+        header?: string;
+        content: string;
+        expanded?: boolean;
+        tag: string;
+    }>;
+    section_count?: number;
 }
 export interface DOMPrimitiveOptions {
     text?: string;
@@ -124,14 +133,22 @@ export interface DOMPrimitiveOptions {
     element_id?: string;
     scope_selector?: string;
     scope_rect?: ScopeRect;
+    nth?: number;
     new_tab?: boolean;
     url_contains?: string;
     absent?: boolean;
+    structured?: boolean;
 }
 export interface DOMActionParams extends DOMPrimitiveOptions {
     action?: string;
     selector?: string;
     reason?: string;
     frame?: string | number;
+    text_contains?: string;
+    role?: string;
+    exclude_nav?: boolean;
+    visible_only?: boolean;
+    query_type?: string;
+    attribute_names?: string[];
 }
 //# sourceMappingURL=dom-types.d.ts.map

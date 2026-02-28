@@ -1,9 +1,7 @@
 /**
- * Purpose: Handles extension background coordination and message routing.
- * Why: Centralizes extension coordination to reduce race conditions and split-brain state.
- * Docs: docs/features/feature/analyze-tool/index.md
+ * Purpose: Enumerates interactive elements on a page for AI-driven automation.
+ * Why: Self-contained for chrome.scripting.executeScript (no closures allowed).
  * Docs: docs/features/feature/interact-explore/index.md
- * Docs: docs/features/feature/observe/index.md
  */
 // dom-primitives-list-interactive.ts — Self-contained list_interactive DOM primitive for chrome.scripting.executeScript.
 // Extracted from dom-primitives.ts to keep file sizes under the 800 LOC limit.
@@ -17,26 +15,36 @@ export function domPrimitiveListInteractive(scopeSelector, options) {
     function getElementHandleStore() {
         const root = globalThis;
         if (root.__gasolineElementHandles) {
+            // Migrate legacy stores that lack selectorByID (#361)
+            if (!root.__gasolineElementHandles.selectorByID) {
+                root.__gasolineElementHandles.selectorByID = new Map();
+            }
             return root.__gasolineElementHandles;
         }
         const created = {
             byElement: new WeakMap(),
             byID: new Map(),
+            selectorByID: new Map(),
             nextID: 1
         };
         root.__gasolineElementHandles = created;
         return created;
     }
-    function getOrCreateElementID(el) {
+    // #361: Store selector alongside element_id so stale handles can be re-resolved
+    function getOrCreateElementID(el, selector) {
         const store = getElementHandleStore();
         const existing = store.byElement.get(el);
         if (existing) {
             store.byID.set(existing, el);
+            if (selector)
+                store.selectorByID.set(existing, selector);
             return existing;
         }
         const elementID = `el_${(store.nextID++).toString(36)}`;
         store.byElement.set(el, elementID);
         store.byID.set(elementID, el);
+        if (selector)
+            store.selectorByID.set(elementID, selector);
         return elementID;
     }
     // — Shadow DOM: deep traversal utilities (duplicated from dom-primitives.ts, required for self-containment) —
@@ -64,15 +72,17 @@ export function domPrimitiveListInteractive(scopeSelector, options) {
     // — Selector and classification helpers —
     function buildUniqueSelector(el, htmlEl, fallbackSelector) {
         if (el.id)
-            return `#${el.id}`;
+            return `#${CSS.escape(el.id)}`;
         if (el instanceof HTMLInputElement && el.name)
-            return `input[name="${el.name}"]`;
+            return `input[name="${CSS.escape(el.name)}"]`;
         const ariaLabel = el.getAttribute('aria-label');
+        // Use CSS attribute selectors — these resolve via querySelectorAll directly,
+        // avoiding semantic resolver ordering mismatches (#360).
         if (ariaLabel)
-            return `aria-label=${ariaLabel}`;
+            return `[aria-label="${CSS.escape(ariaLabel)}"]`;
         const placeholder = el.getAttribute('placeholder');
         if (placeholder)
-            return `placeholder=${placeholder}`;
+            return `[placeholder="${CSS.escape(placeholder)}"]`;
         const text = (htmlEl.textContent || '').trim().slice(0, 40);
         if (text)
             return `text=${text}`;
@@ -132,6 +142,41 @@ export function domPrimitiveListInteractive(scopeSelector, options) {
         const rect = htmlEl.getBoundingClientRect();
         return rect.width > 0 && rect.height > 0 && htmlEl.offsetParent !== null;
     }
+    // #368: Detect if an element is inside an overlay (position:fixed/sticky with high z-index)
+    function isInsideOverlay(el) {
+        let node = el;
+        while (node && node !== document.documentElement) {
+            if (node instanceof HTMLElement) {
+                const style = getComputedStyle(node);
+                const position = style.position || '';
+                if (position === 'fixed' || position === 'sticky') {
+                    const zIndex = Number.parseInt(style.zIndex || '', 10);
+                    if (zIndex >= 100)
+                        return true;
+                    // Common overlay indicators
+                    const role = node.getAttribute('role') || '';
+                    if (role === 'dialog' || role === 'alertdialog' || node.getAttribute('aria-modal') === 'true')
+                        return true;
+                }
+            }
+            node = node.parentElement;
+        }
+        return false;
+    }
+    // #369: Detect if an element is inside a navigation container (nav, header, role=navigation)
+    function isInsideNavigation(el) {
+        let node = el;
+        while (node && node !== document.documentElement) {
+            const tag = node.tagName.toLowerCase();
+            if (tag === 'nav' || tag === 'header')
+                return true;
+            const role = node.getAttribute('role');
+            if (role === 'navigation' || role === 'banner')
+                return true;
+            node = node.parentElement;
+        }
+        return false;
+    }
     function extractBoundingBox(el) {
         const htmlEl = el;
         if (!htmlEl || typeof htmlEl.getBoundingClientRect !== 'function') {
@@ -175,6 +220,11 @@ export function domPrimitiveListInteractive(scopeSelector, options) {
             message: 'scope_rect must include finite x, y, width, and height > 0'
         };
     }
+    // #369: Extract filter options
+    const textContains = (options?.text_contains || '').toLowerCase();
+    const roleFilter = (options?.role || '').toLowerCase();
+    const visibleOnly = options?.visible_only === true;
+    const excludeNav = options?.exclude_nav === true;
     function intersectsScopeRect(el) {
         if (!scopeRect)
             return true;
@@ -289,6 +339,11 @@ export function domPrimitiveListInteractive(scopeSelector, options) {
             const visible = rect.width > 0 && rect.height > 0 && htmlEl.offsetParent !== null;
             if (!intersectsScopeRect(el))
                 continue;
+            // #369: Apply filters early to maximize useful elements within the 100-cap
+            if (visibleOnly && !visible)
+                continue;
+            if (excludeNav && isInsideNavigation(el))
+                continue;
             const bbox = extractBoundingBox(el);
             // Use >>> selector for shadow DOM elements, regular selector otherwise
             const shadowSel = buildShadowSelector(el);
@@ -299,18 +354,27 @@ export function domPrimitiveListInteractive(scopeSelector, options) {
                 el.getAttribute('placeholder') ||
                 (htmlEl.textContent || '').trim().slice(0, 60) ||
                 el.tagName.toLowerCase();
+            // #369: Apply text and role filters after label/type are computed
+            if (textContains && !label.toLowerCase().includes(textContains))
+                continue;
+            const elementType = classifyElement(el);
+            const ariaRole = el.getAttribute('role') || '';
+            if (roleFilter && elementType !== roleFilter && ariaRole.toLowerCase() !== roleFilter)
+                continue;
             rawEntries.push({
                 el,
                 htmlEl,
                 baseSelector,
+                finalSelector: baseSelector, // will be updated with :nth-match before sort
                 tag: el.tagName.toLowerCase(),
                 inputType: el instanceof HTMLInputElement ? el.type : undefined,
-                elementType: classifyElement(el),
+                elementType,
                 label,
-                role: el.getAttribute('role') || undefined,
+                role: ariaRole || undefined,
                 placeholder: el.getAttribute('placeholder') || undefined,
                 bbox,
-                visible
+                visible,
+                inOverlay: isInsideOverlay(el)
             });
             if (rawEntries.length >= 100)
                 break;
@@ -318,10 +382,63 @@ export function domPrimitiveListInteractive(scopeSelector, options) {
         if (rawEntries.length >= 100)
             break;
     }
+    // Disambiguate selectors in DOM order BEFORE dedup and spatial sort.
+    // The resolver (resolveByTextAll, querySelectorAllDeep) returns elements in DOM order,
+    // so :nth-match(N) numbering must match DOM order, not spatial order (#360).
+    // IMPORTANT: assign :nth-match on the FULL pre-dedup set so indices match the resolver (#366).
+    const selectorCount = new Map();
+    for (const entry of rawEntries) {
+        selectorCount.set(entry.baseSelector, (selectorCount.get(entry.baseSelector) || 0) + 1);
+    }
+    const selectorIndex = new Map();
+    for (const entry of rawEntries) {
+        const count = selectorCount.get(entry.baseSelector) || 1;
+        if (count > 1) {
+            const nth = (selectorIndex.get(entry.baseSelector) || 0) + 1;
+            selectorIndex.set(entry.baseSelector, nth);
+            entry.finalSelector = `${entry.baseSelector}:nth-match(${nth})`;
+        }
+    }
+    // #366: Deduplicate responsive variants — when hidden and visible copies of the same
+    // element exist (e.g., mobile + desktop nav links), keep only the visible one.
+    // Key includes tag, elementType, label, AND href (for links) to avoid collapsing distinct elements.
+    const dedupKey = (e) => {
+        const href = e.tag === 'a' ? (e.el.getAttribute('href') || '') : '';
+        return `${e.tag}|${e.elementType}|${e.label}|${href}`;
+    };
+    const dedupGroups = new Map();
+    for (const entry of rawEntries) {
+        const key = dedupKey(entry);
+        const group = dedupGroups.get(key);
+        if (group) {
+            group.push(entry);
+        }
+        else {
+            dedupGroups.set(key, [entry]);
+        }
+    }
+    const finalEntries = [];
+    for (const group of dedupGroups.values()) {
+        if (group.length > 1) {
+            const visible = group.filter((e) => e.visible);
+            const hidden = group.filter((e) => !e.visible);
+            if (visible.length > 0 && hidden.length > 0) {
+                // Keep only visible copies when both visible and hidden exist
+                finalEntries.push(...visible);
+            }
+            else {
+                // All same visibility — keep all
+                finalEntries.push(...group);
+            }
+        }
+        else {
+            finalEntries.push(group[0]);
+        }
+    }
     // Sort spatially: visible elements in reading order (top-to-bottom, left-to-right),
     // invisible elements at the end. Elements within 10px vertically are treated as same row.
     const ROW_THRESHOLD = 10;
-    rawEntries.sort((a, b) => {
+    finalEntries.sort((a, b) => {
         if (a.visible && !b.visible)
             return -1;
         if (!a.visible && b.visible)
@@ -333,40 +450,39 @@ export function domPrimitiveListInteractive(scopeSelector, options) {
             return a.bbox.x - b.bbox.x;
         return a.bbox.y - b.bbox.y;
     });
-    // Second pass: deduplicate selectors by appending :nth-match(N)
-    const selectorCount = new Map();
-    for (const entry of rawEntries) {
-        selectorCount.set(entry.baseSelector, (selectorCount.get(entry.baseSelector) || 0) + 1);
-    }
-    const selectorIndex = new Map();
-    for (let i = 0; i < rawEntries.length; i++) {
-        const entry = rawEntries[i];
-        let finalSelector = entry.baseSelector;
-        const count = selectorCount.get(entry.baseSelector) || 1;
-        if (count > 1) {
-            const nth = (selectorIndex.get(entry.baseSelector) || 0) + 1;
-            selectorIndex.set(entry.baseSelector, nth);
-            finalSelector = `${entry.baseSelector}:nth-match(${nth})`;
-        }
+    for (let i = 0; i < finalEntries.length; i++) {
+        const entry = finalEntries[i];
         elements.push({
             index: i,
             tag: entry.tag,
             type: entry.inputType,
             element_type: entry.elementType,
-            selector: finalSelector,
-            element_id: getOrCreateElementID(entry.el),
+            selector: entry.finalSelector,
+            element_id: getOrCreateElementID(entry.el, entry.finalSelector),
             label: entry.label,
             role: entry.role,
             placeholder: entry.placeholder,
             bbox: entry.bbox,
-            visible: entry.visible
+            visible: entry.visible,
+            ...(entry.inOverlay ? { in_overlay: true } : {})
         });
     }
+    // #369: Build filter metadata for the response
+    const filters = {};
+    if (textContains)
+        filters.text_contains = options.text_contains;
+    if (roleFilter)
+        filters.role = options.role;
+    if (visibleOnly)
+        filters.visible_only = true;
+    if (excludeNav)
+        filters.exclude_nav = true;
     return {
         success: true,
         elements,
         candidate_count: elements.length,
-        ...(scopeRect ? { scope_rect_used: scopeRect } : {})
+        ...(scopeRect ? { scope_rect_used: scopeRect } : {}),
+        ...(Object.keys(filters).length > 0 ? { filters_applied: filters } : {})
     };
 }
 //# sourceMappingURL=dom-primitives-list-interactive.js.map

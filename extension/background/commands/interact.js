@@ -1,9 +1,7 @@
 /**
- * Purpose: Handles extension background coordination and message routing.
- * Why: Centralizes extension coordination to reduce race conditions and split-brain state.
- * Docs: docs/features/feature/analyze-tool/index.md
+ * Purpose: Dispatches interact tool commands to extension-side handlers.
+ * Why: Routes MCP interact actions to DOM primitives, browser actions, and CDP operations.
  * Docs: docs/features/feature/interact-explore/index.md
- * Docs: docs/features/feature/observe/index.md
  */
 import { isAiWebPilotEnabled } from '../state.js';
 import { executeDOMAction } from '../dom-dispatch.js';
@@ -14,7 +12,6 @@ import { executeWithWorldRouting } from '../query-execution.js';
 import { handleBrowserAction, handleAsyncBrowserAction, handleAsyncExecuteCommand } from '../browser-actions.js';
 import { saveStateSnapshot, loadStateSnapshot, listStateSnapshots, deleteStateSnapshot } from '../message-handlers.js';
 import { registerCommand } from './registry.js';
-import { sendAsyncResult } from './helpers.js';
 function statusFromError(error) {
     return error ? 'error' : 'complete';
 }
@@ -90,7 +87,10 @@ registerCommand('browser_action', async (ctx) => {
 // =============================================================================
 registerCommand('dom_action', async (ctx) => {
     if (!isAiWebPilotEnabled()) {
-        ctx.sendAsyncResult(ctx.syncClient, ctx.query.id, ctx.query.correlation_id, 'error', null, 'ai_web_pilot_disabled');
+        if (ctx.query.correlation_id)
+            ctx.sendAsyncResult(ctx.syncClient, ctx.query.id, ctx.query.correlation_id, 'error', null, 'ai_web_pilot_disabled');
+        else
+            ctx.sendResult({ error: 'ai_web_pilot_disabled' });
         return;
     }
     await executeDOMAction(ctx.query, ctx.tabId, ctx.syncClient, ctx.sendAsyncResult, ctx.actionToast);
@@ -100,7 +100,10 @@ registerCommand('dom_action', async (ctx) => {
 // =============================================================================
 registerCommand('cdp_action', async (ctx) => {
     if (!isAiWebPilotEnabled()) {
-        ctx.sendAsyncResult(ctx.syncClient, ctx.query.id, ctx.query.correlation_id, 'error', null, 'ai_web_pilot_disabled');
+        if (ctx.query.correlation_id)
+            ctx.sendAsyncResult(ctx.syncClient, ctx.query.id, ctx.query.correlation_id, 'error', null, 'ai_web_pilot_disabled');
+        else
+            ctx.sendResult({ error: 'ai_web_pilot_disabled' });
         return;
     }
     await executeCDPAction(ctx.query, ctx.tabId, ctx.syncClient, ctx.sendAsyncResult, ctx.actionToast);
@@ -110,7 +113,10 @@ registerCommand('cdp_action', async (ctx) => {
 // =============================================================================
 registerCommand('upload', async (ctx) => {
     if (!isAiWebPilotEnabled()) {
-        ctx.sendAsyncResult(ctx.syncClient, ctx.query.id, ctx.query.correlation_id, 'error', null, 'ai_web_pilot_disabled');
+        if (ctx.query.correlation_id)
+            ctx.sendAsyncResult(ctx.syncClient, ctx.query.id, ctx.query.correlation_id, 'error', null, 'ai_web_pilot_disabled');
+        else
+            ctx.sendResult({ error: 'ai_web_pilot_disabled' });
         return;
     }
     await executeUpload(ctx.query, ctx.tabId, ctx.syncClient, ctx.sendAsyncResult, ctx.actionToast);
@@ -120,7 +126,10 @@ registerCommand('upload', async (ctx) => {
 // =============================================================================
 registerCommand('record_start', async (ctx) => {
     if (!isAiWebPilotEnabled()) {
-        ctx.sendAsyncResult(ctx.syncClient, ctx.query.id, ctx.query.correlation_id, 'error', undefined, 'ai_web_pilot_disabled');
+        if (ctx.query.correlation_id)
+            ctx.sendAsyncResult(ctx.syncClient, ctx.query.id, ctx.query.correlation_id, 'error', undefined, 'ai_web_pilot_disabled');
+        else
+            ctx.sendResult({ error: 'ai_web_pilot_disabled' });
         return;
     }
     let params;
@@ -132,19 +141,28 @@ registerCommand('record_start', async (ctx) => {
     }
     const result = await startRecording(params.name ?? 'recording', params.fps ?? 15, ctx.query.id, params.audio ?? '', false, ctx.tabId);
     const error = result.error || undefined;
-    ctx.sendAsyncResult(ctx.syncClient, ctx.query.id, ctx.query.correlation_id, statusFromError(error), result, error);
+    if (ctx.query.correlation_id)
+        ctx.sendAsyncResult(ctx.syncClient, ctx.query.id, ctx.query.correlation_id, statusFromError(error), result, error);
+    else
+        ctx.sendResult(error ? { error } : result);
 });
 // =============================================================================
 // RECORD STOP
 // =============================================================================
 registerCommand('record_stop', async (ctx) => {
     if (!isAiWebPilotEnabled()) {
-        sendAsyncResult(ctx.syncClient, ctx.query.id, ctx.query.correlation_id, 'error', undefined, 'ai_web_pilot_disabled');
+        if (ctx.query.correlation_id)
+            ctx.sendAsyncResult(ctx.syncClient, ctx.query.id, ctx.query.correlation_id, 'error', undefined, 'ai_web_pilot_disabled');
+        else
+            ctx.sendResult({ error: 'ai_web_pilot_disabled' });
         return;
     }
     const result = await stopRecording();
     const error = result.error || undefined;
-    sendAsyncResult(ctx.syncClient, ctx.query.id, ctx.query.correlation_id, statusFromError(error), result, error);
+    if (ctx.query.correlation_id)
+        ctx.sendAsyncResult(ctx.syncClient, ctx.query.id, ctx.query.correlation_id, statusFromError(error), result, error);
+    else
+        ctx.sendResult(error ? { error } : result);
 });
 // =============================================================================
 // STATE QUERIES (state_capture, state_save, state_load, state_list, state_delete)
@@ -177,10 +195,31 @@ registerCommand('state_*', async (ctx) => {
         let result;
         switch (action) {
             case 'capture': {
-                result = await chrome.tabs.sendMessage(tabId, {
+                const captureData = (await chrome.tabs.sendMessage(tabId, {
                     type: 'GASOLINE_MANAGE_STATE',
                     params: { action: 'capture' }
-                });
+                }));
+                // Enrich with chrome.cookies API for full cookie metadata (HttpOnly, Secure, etc.)
+                try {
+                    const tab = await chrome.tabs.get(tabId);
+                    if (tab.url) {
+                        const chromeCookies = await chrome.cookies.getAll({ url: tab.url });
+                        captureData.cookies = chromeCookies.map((c) => ({
+                            name: c.name,
+                            value: c.value,
+                            domain: c.domain,
+                            path: c.path,
+                            secure: c.secure,
+                            httpOnly: c.httpOnly,
+                            sameSite: c.sameSite,
+                            expirationDate: c.expirationDate
+                        }));
+                    }
+                }
+                catch {
+                    // Falls back to document.cookie string from captureState()
+                }
+                result = captureData;
                 break;
             }
             case 'save': {

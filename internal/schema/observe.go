@@ -81,6 +81,15 @@ func ObserveToolSchema() mcp.MCPTool {
 					"type":        "string",
 					"description": "IndexedDB object store name (indexeddb)",
 				},
+				"storage_type": map[string]any{
+					"type":        "string",
+					"description": "Storage type filter: local, session, or cookies (storage)",
+					"enum":        []string{"local", "session", "cookies"},
+				},
+				"key": map[string]any{
+					"type":        "string",
+					"description": "Filter by specific storage key or cookie name (storage)",
+				},
 				"method": map[string]any{
 					"type":        "string",
 					"description": "HTTP method filter",
@@ -163,6 +172,10 @@ func ObserveToolSchema() mcp.MCPTool {
 				"wait_for_stable": map[string]any{
 					"type":        "boolean",
 					"description": "Wait for layout to stabilize before capture (screenshot)",
+				},
+				"save_to": map[string]any{
+					"type":        "string",
+					"description": "File path to save screenshot to disk (screenshot)",
 				},
 				"min_group_size": map[string]any{
 					"type":        "number",
