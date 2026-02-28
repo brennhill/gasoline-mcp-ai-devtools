@@ -1,6 +1,6 @@
 ---
 title: "interact() — Control the Browser"
-description: "Complete reference for the interact tool. 35 actions for navigation, DOM manipulation, element discovery, file upload, draw mode, recording, compound actions, content extraction, state management, and JavaScript execution."
+description: "Complete reference for the interact tool. 59 actions for navigation, DOM manipulation, element discovery, tab management, storage & cookies, dialog handling, file upload, draw mode, recording, compound actions, content extraction, state management, and JavaScript execution."
 ---
 
 The `interact` tool gives the AI control over the browser — navigate, click, type, read elements, run JavaScript, upload files, record sessions, manage state, and display narration. **Requires AI Web Pilot to be enabled** in the extension popup.
@@ -14,14 +14,14 @@ Tools now block until the extension returns a result (up to 15s). Set `backgroun
 ## Quick Reference
 
 ```js
-interact({action: "navigate", url: "https://example.com"})
-interact({action: "click", selector: "text=Submit"})
-interact({action: "type", selector: "label=Email", text: "user@example.com"})
-interact({action: "list_interactive"})
-interact({action: "screenshot"})  // use observe({what: "screenshot"}) instead
-interact({action: "subtitle", text: "Welcome to the demo"})
-interact({action: "execute_js", script: "document.title"})
-interact({action: "save_state", snapshot_name: "logged-in"})
+interact({what: "navigate", url: "https://example.com"})
+interact({what: "click", selector: "text=Submit"})
+interact({what: "type", selector: "label=Email", text: "user@example.com"})
+interact({what: "list_interactive"})
+interact({what: "screenshot"})
+interact({what: "execute_js", script: "document.title"})
+interact({what: "batch", steps: [{what: "click", selector: "text=Menu"}, ...]})
+interact({what: "set_cookie", name: "theme", value: "dark", domain: "example.com"})
 ```
 
 ## Composable Parameters
@@ -35,8 +35,15 @@ These parameters can be added to **any** action:
 | `correlation_id` | string | Link this action to a specific error or investigation |
 | `analyze` | boolean | Enable performance profiling (returns perf_diff in result) |
 | `tab_id` | number | Target a specific tab (omit for active tab) |
-| `index` | number | Element index from `list_interactive` results (alternative to selector) |
-| `visible_only` | boolean | Only return visible elements (`list_interactive`) |
+| `element_id` | string | Stable element handle from `list_interactive` (preferred for deterministic follow-up actions) |
+| `index` | number | Element index from `list_interactive` results (legacy alternative to selector/element_id) |
+| `index_generation` | string | Generation token from `list_interactive` to ensure index resolves against the same element snapshot |
+| `scope_selector` | string | Container CSS selector to constrain DOM actions to a specific region |
+| `include_screenshot` | boolean | Capture a screenshot after the action completes and return it inline |
+| `evidence` | string | Visual evidence capture mode: `off` (default), `on_mutation`, `always` |
+| `observe_mutations` | boolean | Track element-level DOM mutations during action execution |
+| `wait_for_stable` | boolean | Wait for DOM stability (no mutations) before returning. Composable with `navigate` and `click`. |
+| `frame` | string | Target iframe: CSS selector, 0-based index, or `"all"` |
 
 ### Subtitles
 
@@ -46,14 +53,14 @@ Subtitles are persistent narration text displayed at the bottom of the viewport,
 
 ```js
 // Standalone
-interact({action: "subtitle", text: "Creating a new project"})
+interact({what: "subtitle", text: "Creating a new project"})
 
 // Composable — narration + action in one call
-interact({action: "click", selector: "text=Create",
+interact({what: "click", selector: "text=Create",
           subtitle: "One click to start a new project"})
 
 // Clear
-interact({action: "subtitle", text: ""})
+interact({what: "subtitle", text: ""})
 ```
 
 ### Action Toasts
@@ -65,10 +72,10 @@ When enabled, action toasts show brief notifications at the top of the viewport 
 
 ```js
 // Without reason: toast shows "Click: #submit-btn"
-interact({action: "click", selector: "#submit-btn"})
+interact({what: "click", selector: "#submit-btn"})
 
 // With reason: toast shows "Submit the registration form"
-interact({action: "click", selector: "#submit-btn", reason: "Submit the registration form"})
+interact({what: "click", selector: "#submit-btn", reason: "Submit the registration form"})
 ```
 
 Toasts can be toggled off in the extension popup — useful during demos.
@@ -97,8 +104,8 @@ The `aria-label=` selector uses starts-with matching, so `aria-label=Send` match
 Use the `frame` parameter to target elements inside iframes:
 
 ```js
-interact({action: "click", selector: "text=Submit", frame: "#payment-iframe"})
-interact({action: "type", selector: "label=Card", text: "4242...", frame: 0})
+interact({what: "click", selector: "text=Submit", frame: "#payment-iframe"})
+interact({what: "type", selector: "label=Card", text: "4242...", frame: 0})
 ```
 
 | Value | Behavior |
@@ -114,7 +121,7 @@ interact({action: "type", selector: "label=Card", text: "4242...", frame: 0})
 ### navigate
 
 ```js
-interact({action: "navigate", url: "https://example.com"})
+interact({what: "navigate", url: "https://example.com"})
 ```
 
 Navigates the active tab to the specified URL. Automatically includes `perf_diff` in the async result (before/after performance comparison).
@@ -123,11 +130,13 @@ Navigates the active tab to the specified URL. Automatically includes `perf_diff
 |-----------|------|-------------|
 | `url` | string (required) | URL to navigate to |
 | `include_content` | boolean | Return page content with response (url, title, text_content, vitals) |
+| `new_tab` | boolean | Open URL in a background tab instead of replacing current tab |
+| `auto_dismiss` | boolean | After navigation completes, automatically dismiss cookie consent banners and overlays |
 
 ### refresh
 
 ```js
-interact({action: "refresh"})
+interact({what: "refresh"})
 ```
 
 Refreshes the current page. Includes `perf_diff` automatically.
@@ -135,8 +144,8 @@ Refreshes the current page. Includes `perf_diff` automatically.
 ### back / forward
 
 ```js
-interact({action: "back"})
-interact({action: "forward"})
+interact({what: "back"})
+interact({what: "forward"})
 ```
 
 Browser history navigation.
@@ -144,7 +153,7 @@ Browser history navigation.
 ### new_tab
 
 ```js
-interact({action: "new_tab", url: "https://example.com"})
+interact({what: "new_tab", url: "https://example.com"})
 ```
 
 Opens a new tab with the specified URL.
@@ -153,6 +162,45 @@ Opens a new tab with the specified URL.
 |-----------|------|-------------|
 | `url` | string (required) | URL to open in the new tab |
 
+### switch_tab
+
+Switch to a different browser tab.
+
+```js
+interact({what: "switch_tab", tab_id: 123})
+interact({what: "switch_tab", tab_index: 2})
+```
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `tab_id` | number | Tab ID to switch to |
+| `tab_index` | number | Tab index in current window ordering (alternative to tab_id) |
+| `set_tracked` | boolean | Whether to update the tracked tab to the newly activated tab (default: true). Set to false to switch focus without changing which tab the server targets. |
+
+### close_tab
+
+Close a browser tab.
+
+```js
+interact({what: "close_tab", tab_id: 123})
+```
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `tab_id` | number | Tab ID to close (omit for active tab) |
+
+### activate_tab
+
+Activate (bring to front) a specific browser tab.
+
+```js
+interact({what: "activate_tab", tab_id: 123})
+```
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `tab_id` | number | Tab ID to activate |
+
 ---
 
 ## DOM Primitives
@@ -160,8 +208,8 @@ Opens a new tab with the specified URL.
 ### click
 
 ```js
-interact({action: "click", selector: "text=Submit"})
-interact({action: "click", selector: "#confirm-btn", reason: "Confirm the order"})
+interact({what: "click", selector: "text=Submit"})
+interact({what: "click", selector: "#confirm-btn", reason: "Confirm the order"})
 ```
 
 | Parameter | Type | Description |
@@ -171,8 +219,8 @@ interact({action: "click", selector: "#confirm-btn", reason: "Confirm the order"
 ### type
 
 ```js
-interact({action: "type", selector: "label=Email", text: "user@example.com"})
-interact({action: "type", selector: "placeholder=Search", text: "wireless headphones", clear: true})
+interact({what: "type", selector: "label=Email", text: "user@example.com"})
+interact({what: "type", selector: "placeholder=Search", text: "wireless headphones", clear: true})
 ```
 
 | Parameter | Type | Description |
@@ -184,7 +232,7 @@ interact({action: "type", selector: "placeholder=Search", text: "wireless headph
 ### select
 
 ```js
-interact({action: "select", selector: "#country", value: "US"})
+interact({what: "select", selector: "#country", value: "US"})
 ```
 
 | Parameter | Type | Description |
@@ -195,8 +243,8 @@ interact({action: "select", selector: "#country", value: "US"})
 ### check
 
 ```js
-interact({action: "check", selector: "text=I agree to the Terms"})
-interact({action: "check", selector: "#newsletter", checked: false})
+interact({what: "check", selector: "text=I agree to the Terms"})
+interact({what: "check", selector: "#newsletter", checked: false})
 ```
 
 | Parameter | Type | Default | Description |
@@ -207,8 +255,8 @@ interact({action: "check", selector: "#newsletter", checked: false})
 ### key_press
 
 ```js
-interact({action: "key_press", selector: "label=Search", text: "Enter"})
-interact({action: "key_press", text: "Escape"})
+interact({what: "key_press", selector: "label=Search", text: "Enter"})
+interact({what: "key_press", text: "Escape"})
 ```
 
 | Parameter | Type | Description |
@@ -219,13 +267,38 @@ interact({action: "key_press", text: "Escape"})
 ### focus
 
 ```js
-interact({action: "focus", selector: "label=Email"})
+interact({what: "focus", selector: "label=Email"})
 ```
+
+### hover
+
+Hover over an element.
+
+```js
+interact({what: "hover", selector: "text=Products"})
+interact({what: "hover", selector: ".dropdown-trigger"})
+```
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `selector` | string | CSS or semantic selector |
+
+### hardware_click
+
+Click using OS-level hardware simulation instead of DOM events. Useful for elements that don't respond to synthetic clicks (e.g., custom canvas, embedded iframes with strict event handling).
+
+```js
+interact({what: "hardware_click", selector: "#canvas-element"})
+```
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `selector` | string | CSS or semantic selector |
 
 ### scroll_to
 
 ```js
-interact({action: "scroll_to", selector: "#pricing-section"})
+interact({what: "scroll_to", selector: "#pricing-section"})
 ```
 
 ### wait_for
@@ -233,13 +306,26 @@ interact({action: "scroll_to", selector: "#pricing-section"})
 Wait for an element to appear on the page. Useful for async content.
 
 ```js
-interact({action: "wait_for", selector: "text=Dashboard", timeout_ms: 10000})
+interact({what: "wait_for", selector: "text=Dashboard", timeout_ms: 10000})
 ```
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
 | `selector` | string | — | CSS or semantic selector |
 | `timeout_ms` | number | 5000 | Maximum wait time in milliseconds |
+
+### wait_for_stable
+
+Wait for the DOM to stop changing (no mutations) before returning. Useful after dynamic content loads.
+
+```js
+interact({what: "wait_for_stable"})
+interact({what: "wait_for_stable", stability_ms: 1000})
+```
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `stability_ms` | number | 500 | Milliseconds of DOM quiet time required |
 
 ---
 
@@ -248,7 +334,7 @@ interact({action: "wait_for", selector: "text=Dashboard", timeout_ms: 10000})
 ### get_text
 
 ```js
-interact({action: "get_text", selector: ".order-total"})
+interact({what: "get_text", selector: ".order-total"})
 ```
 
 Returns the text content of the matched element.
@@ -256,7 +342,7 @@ Returns the text content of the matched element.
 ### get_value
 
 ```js
-interact({action: "get_value", selector: "input[name='email']"})
+interact({what: "get_value", selector: "input[name='email']"})
 ```
 
 Returns the current value of a form element.
@@ -264,7 +350,7 @@ Returns the current value of a form element.
 ### get_attribute
 
 ```js
-interact({action: "get_attribute", selector: "#submit", name: "disabled"})
+interact({what: "get_attribute", selector: "#submit", name: "disabled"})
 ```
 
 | Parameter | Type | Description |
@@ -274,7 +360,7 @@ interact({action: "get_attribute", selector: "#submit", name: "disabled"})
 ### set_attribute
 
 ```js
-interact({action: "set_attribute", selector: "#submit", name: "disabled", value: "false"})
+interact({what: "set_attribute", selector: "#submit", name: "disabled", value: "false"})
 ```
 
 | Parameter | Type | Description |
@@ -287,10 +373,16 @@ interact({action: "set_attribute", selector: "#submit", name: "disabled", value:
 Discovers all interactive elements on the page — buttons, links, inputs, selects, etc. Returns up to 100 elements with suggested selectors.
 
 ```js
-interact({action: "list_interactive"})
+interact({what: "list_interactive"})
+interact({what: "list_interactive", limit: 20, visible_only: true})
 ```
 
-No parameters. Returns an array of elements, each with:
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `limit` | number | Max elements to return (default: all) |
+| `visible_only` | boolean | Only return visible elements |
+
+Returns an array of elements, each with:
 
 | Field | Description |
 |-------|-------------|
@@ -312,9 +404,9 @@ This is the best way to discover what's clickable on an unfamiliar page. The AI 
 Run arbitrary JavaScript in the page context. See [How Gasoline Executes Page Scripts](/execute-scripts/) for the full deep dive.
 
 ```js
-interact({action: "execute_js", script: "document.title"})
-interact({action: "execute_js", script: "window.location.href"})
-interact({action: "execute_js",
+interact({what: "execute_js", script: "document.title"})
+interact({what: "execute_js", script: "window.location.href"})
+interact({what: "execute_js",
           script: "document.querySelectorAll('li').length",
           world: "main"})
 ```
@@ -334,8 +426,8 @@ interact({action: "execute_js",
 Highlights an element on the page with a visual overlay. Useful for demos and debugging.
 
 ```js
-interact({action: "highlight", selector: "#error-message"})
-interact({action: "highlight", selector: "text=Submit", duration_ms: 3000})
+interact({what: "highlight", selector: "#error-message"})
+interact({what: "highlight", selector: "text=Submit", duration_ms: 3000})
 ```
 
 | Parameter | Type | Default | Description |
@@ -350,8 +442,8 @@ interact({action: "highlight", selector: "text=Submit", duration_ms: 3000})
 Display persistent narration text at the bottom of the viewport.
 
 ```js
-interact({action: "subtitle", text: "Welcome to the product tour"})
-interact({action: "subtitle", text: ""})  // Clear
+interact({what: "subtitle", text: "Welcome to the product tour"})
+interact({what: "subtitle", text: ""})  // Clear
 ```
 
 | Parameter | Type | Description |
@@ -364,12 +456,16 @@ interact({action: "subtitle", text: ""})  // Clear
 
 ## State Management
 
+:::note[Aliases]
+`state_save`, `state_load`, `state_list`, and `state_delete` are aliases for `save_state`, `load_state`, `list_states`, and `delete_state` respectively.
+:::
+
 ### save_state
 
 Save the current browser state (URL, title, tab) as a named checkpoint.
 
 ```js
-interact({action: "save_state", snapshot_name: "logged-in"})
+interact({what: "save_state", snapshot_name: "logged-in"})
 ```
 
 ### load_state
@@ -377,8 +473,8 @@ interact({action: "save_state", snapshot_name: "logged-in"})
 Restore a saved state checkpoint.
 
 ```js
-interact({action: "load_state", snapshot_name: "logged-in"})
-interact({action: "load_state", snapshot_name: "logged-in", include_url: true})
+interact({what: "load_state", snapshot_name: "logged-in"})
+interact({what: "load_state", snapshot_name: "logged-in", include_url: true})
 ```
 
 | Parameter | Type | Default | Description |
@@ -389,7 +485,7 @@ interact({action: "load_state", snapshot_name: "logged-in", include_url: true})
 ### list_states
 
 ```js
-interact({action: "list_states"})
+interact({what: "list_states"})
 ```
 
 Returns all saved states with metadata (name, URL, title, saved_at).
@@ -397,7 +493,108 @@ Returns all saved states with metadata (name, URL, title, saved_at).
 ### delete_state
 
 ```js
-interact({action: "delete_state", snapshot_name: "old-checkpoint"})
+interact({what: "delete_state", snapshot_name: "old-checkpoint"})
+```
+
+---
+
+## Browser Storage
+
+### set_storage
+
+Set a key in localStorage or sessionStorage.
+
+```js
+interact({what: "set_storage", storage_type: "localStorage", key: "theme", value: "dark"})
+interact({what: "set_storage", storage_type: "sessionStorage", key: "debug", value: "true"})
+```
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `storage_type` | string | `localStorage` or `sessionStorage` |
+| `key` | string | Storage key |
+| `value` | string | Value to set |
+
+### delete_storage
+
+Remove a key from localStorage or sessionStorage.
+
+```js
+interact({what: "delete_storage", storage_type: "localStorage", key: "theme"})
+```
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `storage_type` | string | `localStorage` or `sessionStorage` |
+| `key` | string | Storage key to delete |
+
+### clear_storage
+
+Clear all keys from localStorage or sessionStorage.
+
+```js
+interact({what: "clear_storage", storage_type: "localStorage"})
+```
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `storage_type` | string | `localStorage` or `sessionStorage` |
+
+### set_cookie
+
+Set a browser cookie.
+
+```js
+interact({what: "set_cookie", name: "session_id", value: "abc123", domain: "example.com"})
+```
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `name` | string | Cookie name |
+| `value` | string | Cookie value |
+| `domain` | string | Cookie domain |
+| `path` | string | Cookie path (default: `/`) |
+
+### delete_cookie
+
+Delete a browser cookie.
+
+```js
+interact({what: "delete_cookie", name: "session_id", domain: "example.com"})
+```
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `name` | string | Cookie name |
+| `domain` | string | Cookie domain |
+| `path` | string | Cookie path (default: `/`) |
+
+---
+
+## Dialog Handling
+
+### confirm_top_dialog
+
+Accept (confirm/OK) the topmost browser dialog (alert, confirm, prompt).
+
+```js
+interact({what: "confirm_top_dialog"})
+```
+
+### dismiss_top_overlay
+
+Dismiss the topmost overlay, modal, or popup on the page.
+
+```js
+interact({what: "dismiss_top_overlay"})
+```
+
+### auto_dismiss_overlays
+
+Automatically detect and dismiss cookie consent banners, newsletter popups, and other overlays.
+
+```js
+interact({what: "auto_dismiss_overlays"})
 ```
 
 ---
@@ -409,7 +606,7 @@ interact({action: "delete_state", snapshot_name: "old-checkpoint"})
 Upload a file via native file dialogs. Works with `<input type="file">` elements and drag-and-drop zones.
 
 ```js
-interact({action: "upload", selector: "input[type='file']", file_path: "/path/to/report.pdf"})
+interact({what: "upload", selector: "input[type='file']", file_path: "/path/to/report.pdf"})
 ```
 
 | Parameter | Type | Description |
@@ -429,13 +626,13 @@ interact({action: "upload", selector: "input[type='file']", file_path: "/path/to
 Activate the visual annotation overlay. Users draw rectangles on the page and type feedback. Press ESC to finish. Retrieve annotations with `analyze({what: "annotations"})`.
 
 ```js
-interact({action: "draw_mode_start"})
-interact({action: "draw_mode_start", session: "checkout-review", wait: true, timeout_ms: 300000})
+interact({what: "draw_mode_start"})
+interact({what: "draw_mode_start", annot_session: "checkout-review", wait: true, timeout_ms: 300000})
 ```
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
-| `session` | string | — | Named session for multi-page annotation review |
+| `annot_session` | string | — | Named session for multi-page annotation review |
 | `wait` | boolean | — | Block until the user finishes drawing (press ESC) |
 | `timeout_ms` | number | 300000 | Max wait time (only with `wait: true`, max 600000) |
 
@@ -448,8 +645,8 @@ interact({action: "draw_mode_start", session: "checkout-review", wait: true, tim
 Start video recording of the current tab.
 
 ```js
-interact({action: "record_start"})
-interact({action: "record_start", name: "checkout-flow", audio: "tab", fps: 30})
+interact({what: "record_start"})
+interact({what: "record_start", name: "checkout-flow", audio: "tab", fps: 30})
 ```
 
 | Parameter | Type | Default | Description |
@@ -463,13 +660,30 @@ interact({action: "record_start", name: "checkout-flow", audio: "tab", fps: 30})
 Stop the active video recording.
 
 ```js
-interact({action: "record_stop"})
-interact({action: "record_stop", name: "checkout-flow"})
+interact({what: "record_stop"})
+interact({what: "record_stop", name: "checkout-flow"})
 ```
 
 | Parameter | Type | Description |
 |-----------|------|-------------|
 | `name` | string | Recording name (if multiple active) |
+
+### screenshot
+
+Capture a screenshot from the interact tool. Prefer `observe({what: "screenshot"})` for passive captures — this version is useful when composing with other interact actions via `include_screenshot`.
+
+```js
+interact({what: "screenshot"})
+interact({what: "screenshot", selector: ".hero-section"})
+```
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `selector` | string | — | Capture a specific element by CSS selector |
+| `full_page` | boolean | false | Capture the full scrollable page |
+| `format` | string | `png` | Image format: `png` or `jpeg` |
+| `quality` | number | — | JPEG quality 1-100 (only for `jpeg`) |
+| `wait_for_stable` | boolean | false | Wait for layout to stabilize before capture |
 
 ---
 
@@ -480,12 +694,32 @@ interact({action: "record_stop", name: "checkout-flow"})
 Paste text at the currently focused element.
 
 ```js
-interact({action: "paste", text: "Hello, world!"})
+interact({what: "paste", text: "Hello, world!"})
 ```
 
 | Parameter | Type | Description |
 |-----------|------|-------------|
 | `text` | string | Text to paste |
+
+---
+
+## Composer
+
+### open_composer
+
+Open the page's native compose/new-message UI (e.g., Gmail's compose window).
+
+```js
+interact({what: "open_composer"})
+```
+
+### submit_active_composer
+
+Submit the currently active compose form.
+
+```js
+interact({what: "submit_active_composer"})
+```
 
 ---
 
@@ -496,7 +730,7 @@ interact({action: "paste", text: "Hello, world!"})
 Extract the page content as readable text (similar to reader mode).
 
 ```js
-interact({action: "get_readable"})
+interact({what: "get_readable"})
 ```
 
 ### get_markdown
@@ -504,7 +738,7 @@ interact({action: "get_readable"})
 Extract the page content as markdown.
 
 ```js
-interact({action: "get_markdown"})
+interact({what: "get_markdown"})
 ```
 
 ---
@@ -518,7 +752,7 @@ These actions combine multiple steps into a single call, reducing round-trips.
 Navigate to a URL and wait for a specific element to appear before returning.
 
 ```js
-interact({action: "navigate_and_wait_for", url: "https://example.com/dashboard", wait_for: ".dashboard-loaded"})
+interact({what: "navigate_and_wait_for", url: "https://example.com/dashboard", wait_for: ".dashboard-loaded"})
 ```
 
 | Parameter | Type | Description |
@@ -527,12 +761,28 @@ interact({action: "navigate_and_wait_for", url: "https://example.com/dashboard",
 | `wait_for` | string | CSS selector to wait for after navigation |
 | `timeout_ms` | number | Max wait time for the selector |
 
+### fill_form
+
+Fill multiple form fields without submitting. Use when you need to fill fields and then perform additional actions before submission.
+
+```js
+interact({what: "fill_form",
+          fields: [
+            {selector: "label=Email", value: "user@example.com"},
+            {selector: "label=Name", value: "Jane Doe"}
+          ]})
+```
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `fields` | array | Form fields: `[{selector, value, index?}]` |
+
 ### fill_form_and_submit
 
 Fill multiple form fields and submit the form in a single action.
 
 ```js
-interact({action: "fill_form_and_submit",
+interact({what: "fill_form_and_submit",
           fields: [
             {selector: "label=Email", value: "user@example.com"},
             {selector: "label=Password", value: "password123"}
@@ -551,12 +801,41 @@ interact({action: "fill_form_and_submit",
 Run an accessibility audit and export results as SARIF in one step.
 
 ```js
-interact({action: "run_a11y_and_export_sarif", save_to: "/tmp/a11y.sarif"})
+interact({what: "run_a11y_and_export_sarif", save_to: "/tmp/a11y.sarif"})
 ```
 
 | Parameter | Type | Description |
 |-----------|------|-------------|
 | `save_to` | string | File path to save the SARIF report |
+
+### explore_page
+
+Autonomous page exploration — discovers interactive elements, follows links, and maps the page structure.
+
+```js
+interact({what: "explore_page"})
+```
+
+### batch
+
+Execute multiple interact actions sequentially in a single call. Reduces round-trips for multi-step flows.
+
+```js
+interact({what: "batch",
+          steps: [
+            {what: "navigate", url: "https://example.com/login"},
+            {what: "type", selector: "label=Email", text: "user@example.com"},
+            {what: "type", selector: "label=Password", text: "password123"},
+            {what: "click", selector: "text=Sign In"}
+          ]})
+```
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `steps` | array (required) | — | Ordered list of interact action objects |
+| `step_timeout_ms` | number | 10000 | Timeout per step |
+| `continue_on_error` | boolean | true | Continue executing remaining steps after a failure |
+| `stop_after_step` | number | — | Stop execution after this many steps |
 
 ---
 
@@ -565,7 +844,7 @@ interact({action: "run_a11y_and_export_sarif", save_to: "/tmp/a11y.sarif"})
 Add `analyze: true` to any DOM action to get a `perf_diff` in the result — before/after timing comparison with Web Vitals ratings and a verdict.
 
 ```js
-interact({action: "click", selector: "text=Load Dashboard", analyze: true})
+interact({what: "click", selector: "text=Load Dashboard", analyze: true})
 ```
 
 The `navigate` and `refresh` actions include `perf_diff` automatically.

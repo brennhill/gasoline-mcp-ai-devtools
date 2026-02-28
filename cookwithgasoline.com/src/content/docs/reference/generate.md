@@ -8,17 +8,17 @@ The `generate` tool creates production-ready artifacts from captured browser dat
 ## Quick Reference
 
 ```js
-generate({format: "test"})                               // Playwright regression test
-generate({format: "reproduction"})                        // Bug reproduction script
-generate({format: "har", url: "/api"})                    // HTTP Archive export
-generate({format: "sarif"})                               // Accessibility SARIF report
-generate({format: "csp", mode: "strict"})                 // Content Security Policy
-generate({format: "sri"})                                 // Subresource Integrity hashes
-generate({format: "pr_summary"})                          // PR performance summary
-generate({format: "visual_test", session: "checkout"})   // Visual test from annotations
-generate({format: "test_from_context", context: "error"}) // Test from error context
-generate({format: "test_heal", action: "analyze", test_file: "tests/login.spec.ts"})  // Heal broken selectors
-generate({format: "test_classify", action: "failure", failure: {error: "timeout"}})    // Classify failure
+generate({what: "test"})                               // Playwright regression test
+generate({what: "reproduction"})                        // Bug reproduction script
+generate({what: "har", url: "/api"})                    // HTTP Archive export
+generate({what: "sarif"})                               // Accessibility SARIF report
+generate({what: "csp", mode: "strict"})                 // Content Security Policy
+generate({what: "sri"})                                 // Subresource Integrity hashes
+generate({what: "pr_summary"})                          // PR performance summary
+generate({what: "visual_test", annot_session: "checkout"})   // Visual test from annotations
+generate({what: "test_from_context", context: "error"}) // Test from error context
+generate({what: "test_heal", action: "analyze", test_file: "tests/login.spec.ts"})  // Heal broken selectors
+generate({what: "test_classify", action: "failure", failure: {error: "timeout"}})    // Classify failure
 ```
 
 ---
@@ -28,9 +28,9 @@ generate({format: "test_classify", action: "failure", failure: {error: "timeout"
 Generates a complete Playwright test from the current browser session. Captures user actions, correlates them with API calls, and produces tests with real assertions — not just click replay.
 
 ```js
-generate({format: "test"})
+generate({what:"test"})
 
-generate({format: "test",
+generate({what:"test",
           test_name: "guest-checkout",
           base_url: "http://localhost:3000",
           assert_network: true,
@@ -88,9 +88,9 @@ test('submit-form flow', async ({ page }) => {
 Generates a Playwright script that reproduces the user's actions leading up to a bug. Unlike `test`, this focuses on replaying the exact sequence rather than asserting outcomes.
 
 ```js
-generate({format: "reproduction"})
+generate({what:"reproduction"})
 
-generate({format: "reproduction",
+generate({what:"reproduction",
           error_message: "TypeError: Cannot read property 'id' of undefined",
           last_n: 10,
           base_url: "http://localhost:3000",
@@ -113,9 +113,9 @@ generate({format: "reproduction",
 Exports captured network traffic in HAR 1.2 format. HAR files can be imported into Chrome DevTools, Charles Proxy, or any HAR viewer for analysis.
 
 ```js
-generate({format: "har"})
+generate({what:"har"})
 
-generate({format: "har",
+generate({what:"har",
           url: "/api",
           method: "POST",
           status_min: 400,
@@ -137,9 +137,9 @@ generate({format: "har",
 Exports accessibility audit results in SARIF format (Static Analysis Results Interchange Format). SARIF files integrate with GitHub Code Scanning, VS Code, and CI/CD pipelines.
 
 ```js
-generate({format: "sarif"})
+generate({what:"sarif"})
 
-generate({format: "sarif",
+generate({what:"sarif",
           scope: "#main-content",
           include_passes: true,
           save_to: "/tmp/a11y.sarif"})
@@ -158,9 +158,9 @@ generate({format: "sarif",
 Generates a Content Security Policy header from observed network traffic. Gasoline sees which origins your page loads resources from and produces a CSP that allows exactly those origins.
 
 ```js
-generate({format: "csp"})
+generate({what:"csp"})
 
-generate({format: "csp",
+generate({what:"csp",
           mode: "strict",
           exclude_origins: ["https://analytics.google.com"],
           include_report_uri: true})
@@ -179,9 +179,9 @@ generate({format: "csp",
 Generates SRI hashes for external scripts and stylesheets. SRI ensures that fetched resources haven't been tampered with.
 
 ```js
-generate({format: "sri"})
+generate({what:"sri"})
 
-generate({format: "sri",
+generate({what:"sri",
           resource_types: ["script"],
           origins: ["https://cdn.example.com"]})
 ```
@@ -198,7 +198,7 @@ generate({format: "sri",
 Generates a performance impact summary suitable for pull request descriptions. Compares before/after metrics and highlights regressions or improvements.
 
 ```js
-generate({format: "pr_summary"})
+generate({what:"pr_summary"})
 ```
 
 No additional parameters. Uses the current performance snapshot data.
@@ -216,16 +216,16 @@ Output includes:
 Generates a Playwright visual regression test from a draw mode annotation session. Each annotation becomes a visual assertion.
 
 ```js
-generate({format: "visual_test", session: "checkout-flow"})
+generate({what:"visual_test", annot_session: "checkout-flow"})
 
-generate({format: "visual_test",
+generate({what:"visual_test",
           session: "checkout-flow",
           test_name: "checkout-visual-regression"})
 ```
 
 | Parameter | Type | Description |
 |-----------|------|-------------|
-| `session` | string | Named annotation session from draw mode |
+| `annot_session` | string | Named annotation session from draw mode |
 | `test_name` | string | Name for the generated test |
 
 ---
@@ -235,12 +235,12 @@ generate({format: "visual_test",
 Generates a report from draw mode annotations — summarizes all user feedback from an annotation session.
 
 ```js
-generate({format: "annotation_report", session: "homepage-review"})
+generate({what:"annotation_report", annot_session: "homepage-review"})
 ```
 
 | Parameter | Type | Description |
 |-----------|------|-------------|
-| `session` | string | Named annotation session |
+| `annot_session` | string | Named annotation session |
 
 ---
 
@@ -249,12 +249,12 @@ generate({format: "annotation_report", session: "homepage-review"})
 Extracts structured issues from draw mode annotations, suitable for issue tracker integration.
 
 ```js
-generate({format: "annotation_issues", session: "homepage-review"})
+generate({what:"annotation_issues", annot_session: "homepage-review"})
 ```
 
 | Parameter | Type | Description |
 |-----------|------|-------------|
-| `session` | string | Named annotation session |
+| `annot_session` | string | Named annotation session |
 
 ---
 
@@ -263,9 +263,9 @@ generate({format: "annotation_issues", session: "homepage-review"})
 Generates a Playwright test from a specific error, interaction, or regression context. More targeted than `test` — focuses on reproducing a specific scenario.
 
 ```js
-generate({format: "test_from_context", context: "error"})
-generate({format: "test_from_context", context: "interaction"})
-generate({format: "test_from_context", context: "regression", include_mocks: true})
+generate({what:"test_from_context", context: "error"})
+generate({what:"test_from_context", context: "interaction"})
+generate({what:"test_from_context", context: "regression", include_mocks: true})
 ```
 
 | Parameter | Type | Description |
@@ -284,13 +284,13 @@ Self-healing for Playwright tests — analyzes test files for broken selectors a
 ### Analyze a test file
 
 ```js
-generate({format: "test_heal", action: "analyze", test_file: "tests/login.spec.ts"})
+generate({what:"test_heal", action: "analyze", test_file: "tests/login.spec.ts"})
 ```
 
 ### Repair broken selectors
 
 ```js
-generate({format: "test_heal", action: "repair",
+generate({what:"test_heal", action: "repair",
           broken_selectors: ["#old-submit-btn", ".deprecated-class"],
           auto_apply: true})
 ```
@@ -298,7 +298,7 @@ generate({format: "test_heal", action: "repair",
 ### Batch heal a directory
 
 ```js
-generate({format: "test_heal", action: "batch", test_dir: "tests/"})
+generate({what:"test_heal", action: "batch", test_dir: "tests/"})
 ```
 
 | Parameter | Type | Description |
@@ -318,14 +318,14 @@ Classifies test failures by root cause — infrastructure, flaky, regression, en
 ### Classify a single failure
 
 ```js
-generate({format: "test_classify", action: "failure",
+generate({what:"test_classify", action: "failure",
           failure: {test_name: "login-flow", error: "Timeout 30000ms exceeded", duration_ms: 30500}})
 ```
 
 ### Batch classify
 
 ```js
-generate({format: "test_classify", action: "batch",
+generate({what:"test_classify", action: "batch",
           failures: [
             {error: "Timeout 30000ms exceeded", test_name: "login"},
             {error: "Element not found: #submit", test_name: "checkout"}

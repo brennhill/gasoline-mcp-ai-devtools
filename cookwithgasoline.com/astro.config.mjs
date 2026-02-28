@@ -66,6 +66,7 @@ export default defineConfig({
           label: 'Tool Reference',
           items: [
             { label: 'observe()', slug: 'reference/observe' },
+            { label: 'analyze()', slug: 'reference/analyze' },
             { label: 'generate()', slug: 'reference/generate' },
             { label: 'configure()', slug: 'reference/configure' },
             { label: 'interact()', slug: 'reference/interact' },
@@ -94,6 +95,8 @@ export default defineConfig({
           items: [
             { label: 'Architecture', slug: 'architecture' },
             { label: 'Security', slug: 'security' },
+            { label: 'Troubleshooting', slug: 'troubleshooting' },
+            { label: 'Agent Install Guide', slug: 'agent-install-guide' },
             { label: 'Alternatives', slug: 'alternatives' },
           ],
         },

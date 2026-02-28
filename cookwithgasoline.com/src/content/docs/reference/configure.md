@@ -1,6 +1,6 @@
 ---
 title: "configure() — Customize the Session"
-description: "Complete reference for the configure tool. 16 actions for noise filtering, persistent storage, recording, playback, streaming, log diff, session diffs, audit log, and more."
+description: "Complete reference for the configure tool. 28 modes for noise filtering, persistent storage, recording, playback, streaming, log diff, session diffs, macro sequences, audit log, diagnostics, and more."
 ---
 
 The `configure` tool manages your Gasoline session — filter noise, store data, manage recordings, compare error states, diff sessions, control streaming, and view audit logs.
@@ -8,16 +8,16 @@ The `configure` tool manages your Gasoline session — filter noise, store data,
 ## Quick Reference
 
 ```js
-configure({action: "noise_rule", noise_action: "auto_detect"})       // Auto-filter noise
-configure({action: "store", store_action: "save", key: "baseline", data: {...}})  // Save data
-configure({action: "clear", buffer: "all"})                          // Clear all buffers
-configure({action: "health"})                                        // Server health
-configure({action: "recording_start"})                               // Start recording
-configure({action: "recording_stop", recording_id: "rec-123"})      // Stop recording
-configure({action: "playback", recording_id: "rec-123"})            // Replay recording
-configure({action: "log_diff", original_id: "rec-1", replay_id: "rec-2"})  // Compare error states
-configure({action: "diff_sessions", session_action: "capture", name: "v1"})  // Session snapshot
-configure({action: "audit_log", tool_name: "observe"})               // View tool usage history
+configure({what:"noise_rule", noise_action: "auto_detect"})       // Auto-filter noise
+configure({what:"store", store_action: "save", key: "baseline", data: {...}})  // Save data
+configure({what:"clear", buffer: "all"})                          // Clear all buffers
+configure({what:"health"})                                        // Server health
+configure({what:"recording_start"})                               // Start recording
+configure({what:"recording_stop", recording_id: "rec-123"})      // Stop recording
+configure({what:"playback", recording_id: "rec-123"})            // Replay recording
+configure({what:"log_diff", original_id: "rec-1", replay_id: "rec-2"})  // Compare error states
+configure({what:"diff_sessions", session_action: "capture", name: "v1"})  // Session snapshot
+configure({what:"audit_log", tool_name: "observe"})               // View tool usage history
 ```
 
 ---
@@ -29,7 +29,7 @@ Manages noise rules that suppress irrelevant errors — browser extension noise,
 ### Auto-detect noise
 
 ```js
-configure({action: "noise_rule", noise_action: "auto_detect"})
+configure({what:"noise_rule", noise_action: "auto_detect"})
 ```
 
 Scans current errors and identifies patterns that are likely noise (extension errors, analytics, third-party scripts). Creates rules automatically.
@@ -37,7 +37,7 @@ Scans current errors and identifies patterns that are likely noise (extension er
 ### Add a manual rule
 
 ```js
-configure({action: "noise_rule",
+configure({what:"noise_rule",
            noise_action: "add",
            pattern: "analytics\\.google",
            category: "console",
@@ -56,19 +56,19 @@ configure({action: "noise_rule",
 ### List current rules
 
 ```js
-configure({action: "noise_rule", noise_action: "list"})
+configure({what:"noise_rule", noise_action: "list"})
 ```
 
 ### Remove a rule
 
 ```js
-configure({action: "noise_rule", noise_action: "remove", rule_id: "rule-123"})
+configure({what:"noise_rule", noise_action: "remove", rule_id: "rule-123"})
 ```
 
 ### Reset all rules
 
 ```js
-configure({action: "noise_rule", noise_action: "reset"})
+configure({what:"noise_rule", noise_action: "reset"})
 ```
 
 ---
@@ -80,7 +80,7 @@ Save and load JSON data that persists across sessions. Useful for storing baseli
 ### Save data
 
 ```js
-configure({action: "store",
+configure({what:"store",
            store_action: "save",
            namespace: "baselines",
            key: "homepage-vitals",
@@ -90,7 +90,7 @@ configure({action: "store",
 ### Load data
 
 ```js
-configure({action: "store",
+configure({what:"store",
            store_action: "load",
            namespace: "baselines",
            key: "homepage-vitals"})
@@ -99,20 +99,20 @@ configure({action: "store",
 ### List keys
 
 ```js
-configure({action: "store", store_action: "list"})
-configure({action: "store", store_action: "list", namespace: "baselines"})
+configure({what:"store", store_action: "list"})
+configure({what:"store", store_action: "list", namespace: "baselines"})
 ```
 
 ### Delete a key
 
 ```js
-configure({action: "store", store_action: "delete", key: "homepage-vitals"})
+configure({what:"store", store_action: "delete", key: "homepage-vitals"})
 ```
 
 ### Storage stats
 
 ```js
-configure({action: "store", store_action: "stats"})
+configure({what:"store", store_action: "stats"})
 ```
 
 | Parameter | Type | Description |
@@ -129,9 +129,9 @@ configure({action: "store", store_action: "stats"})
 Remove captured data from memory.
 
 ```js
-configure({action: "clear", buffer: "all"})
-configure({action: "clear", buffer: "network"})
-configure({action: "clear", buffer: "logs"})
+configure({what:"clear", buffer: "all"})
+configure({what:"clear", buffer: "network"})
+configure({what:"clear", buffer: "logs"})
 ```
 
 | Parameter | Type | Description |
@@ -145,7 +145,7 @@ configure({action: "clear", buffer: "logs"})
 Start capturing a browser session. Records user actions and browser state for later playback or comparison.
 
 ```js
-configure({action: "recording_start"})
+configure({what:"recording_start"})
 ```
 
 ---
@@ -155,7 +155,7 @@ configure({action: "recording_start"})
 Stop an active recording session.
 
 ```js
-configure({action: "recording_stop", recording_id: "rec-123"})
+configure({what:"recording_stop", recording_id: "rec-123"})
 ```
 
 | Parameter | Type | Description |
@@ -169,7 +169,7 @@ configure({action: "recording_stop", recording_id: "rec-123"})
 Replay a previously captured recording.
 
 ```js
-configure({action: "playback", recording_id: "rec-123"})
+configure({what:"playback", recording_id: "rec-123"})
 ```
 
 | Parameter | Type | Description |
@@ -183,7 +183,7 @@ configure({action: "playback", recording_id: "rec-123"})
 Compare error states between two recordings. Useful for verifying that a bug fix resolved the issue, or detecting regressions after a deploy.
 
 ```js
-configure({action: "log_diff", original_id: "rec-abc", replay_id: "rec-xyz"})
+configure({what:"log_diff", original_id: "rec-abc", replay_id: "rec-xyz"})
 ```
 
 | Parameter | Type | Description |
@@ -198,8 +198,8 @@ configure({action: "log_diff", original_id: "rec-abc", replay_id: "rec-xyz"})
 Set the global telemetry metadata mode. Individual tool calls can override this with the `telemetry_mode` parameter.
 
 ```js
-configure({action: "telemetry", telemetry_mode: "auto"})
-configure({action: "telemetry", telemetry_mode: "off"})
+configure({what:"telemetry", telemetry_mode: "auto"})
+configure({what:"telemetry", telemetry_mode: "off"})
 ```
 
 | Parameter | Type | Description |
@@ -213,13 +213,13 @@ configure({action: "telemetry", telemetry_mode: "off"})
 Enable or disable real-time event notifications. When enabled, Gasoline proactively notifies the AI about errors, performance regressions, and security issues as they happen.
 
 ```js
-configure({action: "streaming", streaming_action: "enable",
+configure({what:"streaming", streaming_action: "enable",
            events: ["errors", "performance", "security"],
            severity_min: "warning",
            throttle_seconds: 5})
 
-configure({action: "streaming", streaming_action: "disable"})
-configure({action: "streaming", streaming_action: "status"})
+configure({what:"streaming", streaming_action: "disable"})
+configure({what:"streaming", streaming_action: "status"})
 ```
 
 | Parameter | Type | Description |
@@ -236,7 +236,7 @@ configure({action: "streaming", streaming_action: "status"})
 Check the Gasoline server's status, uptime, buffer usage, and connected clients.
 
 ```js
-configure({action: "health"})
+configure({what:"health"})
 ```
 
 No additional parameters. Returns server version, uptime, buffer occupancy, client count, and rate limit status.
@@ -248,11 +248,11 @@ No additional parameters. Returns server version, uptime, buffer occupancy, clie
 Mark the start and end of a test run. Events within boundaries can be correlated for test-specific analysis.
 
 ```js
-configure({action: "test_boundary_start", test_id: "checkout-flow", label: "Guest Checkout Test"})
+configure({what:"test_boundary_start", test_id: "checkout-flow", label: "Guest Checkout Test"})
 
 // ... run the test ...
 
-configure({action: "test_boundary_end", test_id: "checkout-flow"})
+configure({what:"test_boundary_end", test_id: "checkout-flow"})
 ```
 
 | Parameter | Type | Description |
@@ -269,13 +269,13 @@ Capture named snapshots of the current session state and compare them to detect 
 ### Capture a snapshot
 
 ```js
-configure({action: "diff_sessions", session_action: "capture", name: "before-deploy"})
+configure({what:"diff_sessions", session_action: "capture", name: "before-deploy"})
 ```
 
 ### Compare two snapshots
 
 ```js
-configure({action: "diff_sessions",
+configure({what:"diff_sessions",
            session_action: "compare",
            compare_a: "before-deploy",
            compare_b: "after-deploy"})
@@ -284,13 +284,13 @@ configure({action: "diff_sessions",
 ### List snapshots
 
 ```js
-configure({action: "diff_sessions", session_action: "list"})
+configure({what:"diff_sessions", session_action: "list"})
 ```
 
 ### Delete a snapshot
 
 ```js
-configure({action: "diff_sessions", session_action: "delete", name: "old-snapshot"})
+configure({what:"diff_sessions", session_action: "delete", name: "old-snapshot"})
 ```
 
 | Parameter | Type | Description |
@@ -307,9 +307,9 @@ configure({action: "diff_sessions", session_action: "delete", name: "old-snapsho
 View a log of all MCP tool calls made during the session. Useful for debugging, compliance, and understanding AI agent behavior.
 
 ```js
-configure({action: "audit_log"})
-configure({action: "audit_log", tool_name: "observe", limit: 20})
-configure({action: "audit_log", since: "2026-02-07T10:00:00Z"})
+configure({what:"audit_log"})
+configure({what:"audit_log", tool_name: "observe", limit: 20})
+configure({what:"audit_log", since: "2026-02-07T10:00:00Z"})
 ```
 
 | Parameter | Type | Description |
@@ -326,7 +326,141 @@ configure({action: "audit_log", since: "2026-02-07T10:00:00Z"})
 Returns a description of the tool's capabilities. Useful for AI agents to understand what actions are available.
 
 ```js
-configure({action: "describe_capabilities"})
+configure({what: "describe_capabilities"})
+configure({what: "describe_capabilities", tool: "observe", mode: "errors"})
 ```
 
-No additional parameters.
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `tool` | string | Filter to a specific tool (e.g., `observe`, `interact`) |
+| `mode` | string | Filter to a specific mode within that tool |
+
+---
+
+## restart — Force Restart Daemon
+
+Force-restart the Gasoline daemon when it becomes unresponsive. Works even when the daemon is completely hung.
+
+```js
+configure({what: "restart"})
+```
+
+---
+
+## doctor — Diagnostic Self-Check
+
+Run a diagnostic health check. Verifies binary, port, extension connection, and client configuration.
+
+```js
+configure({what: "doctor"})
+```
+
+---
+
+## security_mode — Debug Mode for Altered Environments
+
+Opt into an altered-environment debug mode for advanced troubleshooting scenarios like proxied traffic inspection.
+
+```js
+configure({what: "security_mode"})                                    // Read current mode
+configure({what: "security_mode", mode: "insecure_proxy", confirm: true})  // Enable
+configure({what: "security_mode", mode: "normal"})                    // Disable
+```
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `mode` | string | `normal` or `insecure_proxy` |
+| `confirm` | boolean | Required `true` when enabling `insecure_proxy` |
+
+---
+
+## Macro Sequences
+
+Save and replay named sequences of interact actions. Useful for repeatable workflows — demo scripts, test setup flows, or multi-step automation.
+
+### save_sequence
+
+```js
+configure({what: "save_sequence",
+           name: "login-flow",
+           description: "Log in as test user",
+           steps: [
+             {what: "navigate", url: "https://example.com/login"},
+             {what: "type", selector: "label=Email", text: "test@example.com"},
+             {what: "click", selector: "text=Sign In"}
+           ],
+           tags: ["auth", "setup"]})
+```
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `name` | string (required) | Sequence name |
+| `steps` | array (required) | Ordered list of interact actions |
+| `description` | string | Human-readable description |
+| `tags` | array | Labels for categorization |
+
+### replay_sequence
+
+```js
+configure({what: "replay_sequence", name: "login-flow"})
+configure({what: "replay_sequence", name: "login-flow", step_timeout_ms: 15000, stop_after_step: 2})
+```
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `name` | string (required) | Sequence name to replay |
+| `override_steps` | array | Sparse array of step overrides (null = use saved) |
+| `step_timeout_ms` | number | Timeout per step (default 10000) |
+| `continue_on_error` | boolean | Continue if a step fails (default true) |
+| `stop_after_step` | number | Stop after executing this many steps |
+
+### get_sequence / list_sequences / delete_sequence
+
+```js
+configure({what: "get_sequence", name: "login-flow"})
+configure({what: "list_sequences"})
+configure({what: "delete_sequence", name: "login-flow"})
+```
+
+---
+
+## tutorial / examples — Quick Start Guidance
+
+Return quickstart snippets and context-aware setup guidance.
+
+```js
+configure({what: "tutorial"})
+configure({what: "examples"})
+```
+
+---
+
+## network_recording — Network Traffic Recording
+
+Manage network traffic recording for specific domains.
+
+```js
+configure({what: "network_recording", operation: "start", domain: "api.example.com"})
+configure({what: "network_recording", operation: "status"})
+configure({what: "network_recording", operation: "stop"})
+```
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `operation` | string | `start`, `stop`, or `status` |
+| `domain` | string | Domain to record traffic for |
+
+---
+
+## action_jitter — Random Action Delays
+
+Configure random delays before interact actions. Useful for making automated flows look more natural or for stress-testing race conditions.
+
+```js
+configure({what: "action_jitter", action_jitter_ms: 500})
+configure({what: "action_jitter", action_jitter_ms: 0})  // Disable
+```
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `action_jitter_ms` | number | Maximum random delay in milliseconds (0 to disable) |
