@@ -6,6 +6,7 @@ package main
 
 import (
 	"encoding/json"
+	"net/url"
 
 	"github.com/dev-console/dev-console/internal/queries"
 )
@@ -35,6 +36,17 @@ func (h *ToolHandler) handleExplorePage(req JSONRPCRequest, args json.RawMessage
 	if len(args) > 0 {
 		if err := json.Unmarshal(args, &params); err != nil {
 			return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidJSON, "Invalid JSON arguments: "+err.Error(), "Fix JSON syntax and call again")}
+		}
+	}
+
+	// Validate URL scheme — only http/https allowed (#341 security review)
+	if params.URL != "" {
+		parsed, err := url.Parse(params.URL)
+		if err != nil || parsed.Scheme == "" {
+			return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidParam, "Invalid URL: "+params.URL, "Provide a valid http or https URL", withParam("url"))}
+		}
+		if parsed.Scheme != "http" && parsed.Scheme != "https" {
+			return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidParam, "Only http and https URLs are allowed, got: "+parsed.Scheme, "Use an http or https URL", withParam("url"))}
 		}
 	}
 
