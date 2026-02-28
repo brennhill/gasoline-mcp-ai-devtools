@@ -127,9 +127,12 @@ func (h *ToolHandler) handleBatch(req JSONRPCRequest, args json.RawMessage) JSON
 		}
 
 		if isErrorResponse(stepResp) {
-			stepResult.Status = "error"
-			stepResult.Error = extractErrorMessage(stepResp)
-			stepsFailed++
+			// Only count as failed if not already counted by the correlation path above (#9.R1).
+			if stepResult.Status == "" {
+				stepResult.Status = "error"
+				stepResult.Error = extractErrorMessage(stepResp)
+				stepsFailed++
+			}
 			results = append(results, stepResult)
 			stepsExecuted++
 			if !continueOnError {

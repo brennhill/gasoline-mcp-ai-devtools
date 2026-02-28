@@ -334,3 +334,89 @@ func TestToolsInteractBatch_Execution(t *testing.T) {
 		}
 	})
 }
+
+// ============================================
+// stripComposableScreenshotFromStep (#9.R12)
+// ============================================
+
+func TestStripComposableScreenshotFromStep_RemovesFlag(t *testing.T) {
+	t.Parallel()
+	input := json.RawMessage(`{"what":"click","selector":"btn","include_screenshot":true}`)
+	output := stripComposableScreenshotFromStep(input)
+
+	var result map[string]any
+	if err := json.Unmarshal(output, &result); err != nil {
+		t.Fatalf("output should be valid JSON: %v", err)
+	}
+	if _, has := result["include_screenshot"]; has {
+		t.Error("include_screenshot should be removed")
+	}
+	if result["what"] != "click" {
+		t.Errorf("what should be preserved, got %v", result["what"])
+	}
+	if result["selector"] != "btn" {
+		t.Errorf("selector should be preserved, got %v", result["selector"])
+	}
+}
+
+func TestStripComposableScreenshotFromStep_NoOp(t *testing.T) {
+	t.Parallel()
+	input := json.RawMessage(`{"what":"click","selector":"btn"}`)
+	output := stripComposableScreenshotFromStep(input)
+
+	if string(output) != string(input) {
+		t.Errorf("output should be unchanged when no include_screenshot present\ninput:  %s\noutput: %s", input, output)
+	}
+}
+
+func TestStripComposableScreenshotFromStep_InvalidJSON(t *testing.T) {
+	t.Parallel()
+	input := json.RawMessage(`{invalid json`)
+	output := stripComposableScreenshotFromStep(input)
+
+	if string(output) != string(input) {
+		t.Errorf("invalid JSON should be returned unchanged\ninput:  %s\noutput: %s", input, output)
+	}
+}
+
+func TestStripComposableScreenshotFromStep_PreservesOtherFields(t *testing.T) {
+	t.Parallel()
+	input := json.RawMessage(`{"what":"type","selector":"input","text":"hello","clear":true,"include_screenshot":true}`)
+	output := stripComposableScreenshotFromStep(input)
+
+	var result map[string]any
+	if err := json.Unmarshal(output, &result); err != nil {
+		t.Fatalf("output should be valid JSON: %v", err)
+	}
+	if _, has := result["include_screenshot"]; has {
+		t.Error("include_screenshot should be removed")
+	}
+	// All other fields should survive
+	if result["what"] != "type" {
+		t.Errorf("what = %v, want 'type'", result["what"])
+	}
+	if result["selector"] != "input" {
+		t.Errorf("selector = %v, want 'input'", result["selector"])
+	}
+	if result["text"] != "hello" {
+		t.Errorf("text = %v, want 'hello'", result["text"])
+	}
+	if result["clear"] != true {
+		t.Errorf("clear = %v, want true", result["clear"])
+	}
+}
+
+func TestStripComposableScreenshotFromStep_FalseValue(t *testing.T) {
+	t.Parallel()
+	// Even include_screenshot:false should be stripped (it's wasteful to send)
+	input := json.RawMessage(`{"what":"click","include_screenshot":false}`)
+	output := stripComposableScreenshotFromStep(input)
+
+	var result map[string]any
+	if err := json.Unmarshal(output, &result); err != nil {
+		t.Fatalf("output should be valid JSON: %v", err)
+	}
+	if _, has := result["include_screenshot"]; has {
+		t.Error("include_screenshot:false should also be stripped")
+	}
+}

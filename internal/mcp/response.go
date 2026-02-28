@@ -261,6 +261,7 @@ func ClampResponseSize(result json.RawMessage) json.RawMessage {
 // truncateAtJSONBoundary finds the last safe truncation point in a JSON string.
 // It looks for the last closing bracket/brace that could form valid JSON,
 // or falls back to the last comma boundary to avoid mid-value truncation.
+// Uses a stack-based approach to close open structures in correct order (#9.R2).
 func truncateAtJSONBoundary(text string) string {
 	if len(text) == 0 {
 		return text
@@ -291,13 +292,13 @@ func truncateAtJSONBoundary(text string) string {
 
 	truncated := text[:lastSafe]
 
-	// Close any open brackets/braces to produce valid-ish JSON.
-	// Count unmatched openers.
-	openBraces := 0
-	openBrackets := 0
+	// Track open structures with a stack so closers are emitted in correct
+	// reverse order (e.g., [{ → }] not ]}). (#9.R2)
+	var stack []byte
 	inString := false
 	escaped := false
-	for _, ch := range truncated {
+	for i := 0; i < len(truncated); i++ {
+		ch := truncated[i]
 		if escaped {
 			escaped = false
 			continue
@@ -314,27 +315,30 @@ func truncateAtJSONBoundary(text string) string {
 			continue
 		}
 		switch ch {
-		case '{':
-			openBraces++
+		case '{', '[':
+			stack = append(stack, ch)
 		case '}':
-			openBraces--
-		case '[':
-			openBrackets++
+			if len(stack) > 0 && stack[len(stack)-1] == '{' {
+				stack = stack[:len(stack)-1]
+			}
 		case ']':
-			openBrackets--
+			if len(stack) > 0 && stack[len(stack)-1] == '[' {
+				stack = stack[:len(stack)-1]
+			}
 		}
 	}
 
-	// Close any remaining open structures
-	closers := ""
-	for i := 0; i < openBrackets; i++ {
-		closers += "]"
-	}
-	for i := 0; i < openBraces; i++ {
-		closers += "}"
+	// Close remaining open structures in reverse order
+	closers := make([]byte, len(stack))
+	for i, opener := range stack {
+		if opener == '{' {
+			closers[len(stack)-1-i] = '}'
+		} else {
+			closers[len(stack)-1-i] = ']'
+		}
 	}
 
-	return truncated + closers
+	return truncated + string(closers)
 }
 
 // AppendWarningsToResponse adds a warnings content block to an MCP response if there are any.
