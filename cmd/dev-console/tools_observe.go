@@ -80,6 +80,9 @@ var observeHandlers = map[string]ObserveHandler{
 	"summarized_logs": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 		return observe.GetSummarizedLogs(h, req, args)
 	},
+	"transients": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+		return observe.GetTransients(h, req, args)
+	},
 	// Composite: page inventory (#318)
 	"page_inventory": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 		return h.toolObservePageInventory(req, args)

@@ -41,6 +41,7 @@ var Handlers = map[string]Handler{
 	"storage":           GetStorage,
 	"indexeddb":         GetIndexedDB,
 	"summarized_logs":   GetSummarizedLogs,
+	"transients":        GetTransients,
 }
 
 // clampLimit applies default and max bounds to a limit parameter.
@@ -568,10 +569,12 @@ func GetWSEvents(deps Deps, req mcp.JSONRPCRequest, args json.RawMessage) mcp.JS
 }
 
 // GetEnhancedActions returns captured user actions (clicks, inputs, navigations).
+// Supports optional "type" filter to return only actions of a specific type.
 func GetEnhancedActions(deps Deps, req mcp.JSONRPCRequest, args json.RawMessage) mcp.JSONRPCResponse {
 	var params struct {
 		Limit   int    `json:"limit"`
 		URL     string `json:"url"`
+		Type    string `json:"type"`
 		Summary bool   `json:"summary"`
 	}
 	mcp.LenientUnmarshal(args, &params)
@@ -581,6 +584,9 @@ func GetEnhancedActions(deps Deps, req mcp.JSONRPCRequest, args json.RawMessage)
 	filtered := make([]capture.EnhancedAction, 0)
 	for i := len(allActions) - 1; i >= 0 && len(filtered) < params.Limit; i-- {
 		a := allActions[i]
+		if params.Type != "" && a.Type != params.Type {
+			continue
+		}
 		if params.URL != "" && !ContainsIgnoreCase(a.URL, params.URL) {
 			continue
 		}
@@ -601,6 +607,71 @@ func GetEnhancedActions(deps Deps, req mcp.JSONRPCRequest, args json.RawMessage)
 		"count":    len(filtered),
 		"metadata": responseMeta,
 	})}
+}
+
+// GetTransients returns captured transient UI elements (toasts, alerts, snackbars).
+// Filters enhanced actions for type == "transient" with optional classification and URL filters.
+func GetTransients(deps Deps, req mcp.JSONRPCRequest, args json.RawMessage) mcp.JSONRPCResponse {
+	var params struct {
+		Limit          int    `json:"limit"`
+		URL            string `json:"url"`
+		Classification string `json:"classification"`
+		Summary        bool   `json:"summary"`
+	}
+	mcp.LenientUnmarshal(args, &params)
+	// Lower default than other handlers (50 vs 100): transients are less frequent than logs/actions.
+	// MVP: duration_ms is always 0 — removal tracking is not yet implemented.
+	params.Limit = clampLimit(params.Limit, 50)
+
+	allActions := deps.GetCapture().GetAllEnhancedActions()
+	filtered := make([]capture.EnhancedAction, 0)
+	for i := len(allActions) - 1; i >= 0 && len(filtered) < params.Limit; i-- {
+		a := allActions[i]
+		if a.Type != "transient" {
+			continue
+		}
+		if params.URL != "" && !ContainsIgnoreCase(a.URL, params.URL) {
+			continue
+		}
+		if params.Classification != "" && a.Classification != params.Classification {
+			continue
+		}
+		filtered = append(filtered, a)
+	}
+
+	var newestTS time.Time
+	if len(filtered) > 0 {
+		newestTS = time.UnixMilli(filtered[0].Timestamp)
+	}
+
+	responseMeta := BuildResponseMetadata(deps.GetCapture(), newestTS)
+	if params.Summary {
+		return mcp.JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcp.JSONResponse("Transient elements", buildTransientsSummary(filtered, responseMeta))}
+	}
+
+	return mcp.JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcp.JSONResponse("Transient elements", map[string]any{
+		"entries":  filtered,
+		"count":    len(filtered),
+		"metadata": responseMeta,
+	})}
+}
+
+// buildTransientsSummary returns {total, by_classification, metadata}.
+func buildTransientsSummary(actions []capture.EnhancedAction, meta ResponseMetadata) map[string]any {
+	byClassification := make(map[string]int)
+	for _, a := range actions {
+		cls := a.Classification
+		if cls == "" {
+			cls = "unknown"
+		}
+		byClassification[cls]++
+	}
+
+	return map[string]any{
+		"total":             len(actions),
+		"by_classification": byClassification,
+		"metadata":          meta,
+	}
 }
 
 // ObservePilot returns the current pilot/extension connection status.
