@@ -766,6 +766,8 @@ export function domPrimitive(
     'dismiss_top_overlay',
     'auto_dismiss_overlays',
     'wait_for_stable',
+    'wait_for_text',
+    'wait_for_absent',
     'action_diff'
   ])
 
@@ -1067,6 +1069,14 @@ export function domPrimitive(
 
     if (action === 'wait_for_stable') {
       return { element: document.body, match_count: 1, match_strategy: 'wait_for_stable' }
+    }
+
+    if (action === 'wait_for_text') {
+      return { element: document.body, match_count: 1, match_strategy: 'wait_for_text' }
+    }
+
+    if (action === 'wait_for_absent') {
+      return { element: document.body, match_count: 1, match_strategy: 'wait_for_absent' }
     }
 
     if (action === 'action_diff') {
@@ -2075,6 +2085,29 @@ export function domPrimitive(
       },
 
       wait_for: () => ({ success: true, action, selector, value: node.tagName.toLowerCase() }),
+
+      wait_for_text: () => {
+        const searchText = options.text || ''
+        if (!searchText) {
+          return { success: false, action, selector: '', error: 'empty_text', message: 'text parameter is required for wait_for_text' } as DOMResult
+        }
+        const bodyText = document.body?.innerText ?? ''
+        if (bodyText.includes(searchText)) {
+          return { success: true, action, selector: '', matched_text: searchText } as DOMResult
+        }
+        return { success: false, action, selector: '', error: 'text_not_found' } as DOMResult
+      },
+
+      wait_for_absent: () => {
+        if (!selector) {
+          return { success: false, action, selector: '', error: 'missing_selector', message: 'selector is required for wait_for_absent' } as DOMResult
+        }
+        const el = resolveElement(selector)
+        if (!el) {
+          return { success: true, action, selector, absent: true } as DOMResult
+        }
+        return { success: false, action, selector, error: 'element_still_present' } as DOMResult
+      },
 
       paste: () =>
         withMutationTracking(() => {
