@@ -215,6 +215,10 @@ func (h *ToolHandler) toolInteract(req JSONRPCRequest, args json.RawMessage) JSO
 
 	// Wait briefly for composable side-effects to complete before capturing screenshot.
 	// This ensures screenshots show the page AFTER overlays are dismissed and DOM stabilizes (#9.3.4).
+	// 300ms is a pragmatic heuristic: most overlay dismissals and DOM mutations settle within
+	// 100-200ms, and the composable commands (auto_dismiss, wait_for_stable, action_diff) run
+	// asynchronously in the extension. If the delay is insufficient, the screenshot captures
+	// a pre-effect state — this degrades gracefully (stale screenshot) rather than failing.
 	if hasComposableSideEffects && composableParams.IncludeScreenshot {
 		time.Sleep(300 * time.Millisecond)
 	}

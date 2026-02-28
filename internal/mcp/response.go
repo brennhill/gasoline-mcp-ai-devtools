@@ -292,6 +292,11 @@ func truncateAtJSONBoundary(text string) string {
 
 	truncated := text[:lastSafe]
 
+	// Strip trailing comma that would produce invalid JSON (e.g., [1,] or {"a":1,}).
+	// The lastSafe search may land on a comma boundary, leaving a dangling comma
+	// before the auto-appended closers (#9.R3.1).
+	truncated = strings.TrimRight(truncated, ",")
+
 	// Track open structures with a stack so closers are emitted in correct
 	// reverse order (e.g., [{ → }] not ]}). (#9.R2)
 	var stack []byte
