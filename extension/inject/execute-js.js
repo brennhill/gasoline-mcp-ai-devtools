@@ -25,6 +25,16 @@ function serializeObject(obj, depth, seen) {
         const node = obj;
         return `[${node.nodeName}${node.id ? '#' + node.id : ''}]`;
     }
+    // Browser host objects (DOMRect, DOMPoint, DOMMatrix) have prototype getters
+    // that Object.keys() misses. Their toJSON() returns a plain object.
+    if (typeof obj.toJSON === 'function') {
+        try {
+            return safeSerializeForExecute(obj.toJSON(), depth + 1, seen);
+        }
+        catch {
+            // Fall through to Object.keys() enumeration
+        }
+    }
     const result = {};
     const keys = Object.keys(obj).slice(0, 50);
     for (const key of keys) {

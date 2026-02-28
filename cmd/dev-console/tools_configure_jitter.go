@@ -1,0 +1,43 @@
+// tools_configure_jitter.go — Action jitter configuration for human-like interaction timing.
+
+package main
+
+import (
+	"encoding/json"
+)
+
+// toolConfigureActionJitter handles configure(what="action_jitter").
+// Sets randomized micro-delays before interact actions.
+func (h *ToolHandler) toolConfigureActionJitter(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+	var params struct {
+		ActionJitterMs *int `json:"action_jitter_ms"`
+	}
+	if len(args) > 0 {
+		if err := json.Unmarshal(args, &params); err != nil {
+			return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(
+				ErrInvalidJSON,
+				"Invalid JSON arguments: "+err.Error(),
+				"Fix JSON syntax and call again",
+			)}
+		}
+	}
+
+	h.jitterMu.Lock()
+	if params.ActionJitterMs != nil {
+		v := *params.ActionJitterMs
+		if v < 0 {
+			v = 0
+		}
+		if v > 5000 {
+			v = 5000
+		}
+		h.actionJitterMaxMs = v
+	}
+	actionMs := h.actionJitterMaxMs
+	h.jitterMu.Unlock()
+
+	result := map[string]any{
+		"action_jitter_ms": actionMs,
+	}
+	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Action jitter configured", result)}
+}

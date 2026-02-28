@@ -68,6 +68,15 @@ export function cspSafeExecutor(command: ExecutorCommand): any {
       if ('nodeType' in value && 'nodeName' in value) {
         return `[${value.nodeName}${value.id ? '#' + value.id : ''}]`
       }
+      // Browser host objects (DOMRect, DOMPoint, DOMMatrix) have prototype getters
+      // that Object.keys() misses. Their toJSON() returns a plain object.
+      if (typeof value.toJSON === 'function') {
+        try {
+          return serialize(value.toJSON(), depth + 1, seen)
+        } catch {
+          // Fall through to Object.keys() enumeration
+        }
+      }
       const result: Record<string, any> = {}
       const keys = Object.keys(value).slice(0, 50)
       for (const key of keys) {

@@ -75,9 +75,63 @@ func summarizeCookies(cookies []any) map[string]any {
 	}
 }
 
+// storageParams holds parsed parameters for storage queries.
+type storageParams struct {
+	Summary     bool
+	StorageType string // "local", "session", "cookies", or "" for all
+	Key         string // specific key/cookie name filter
+}
+
+func parseStorageParams(args json.RawMessage) storageParams {
+	p := storageParams{Summary: true}
+	if len(args) == 0 {
+		return p
+	}
+	var raw struct {
+		Summary     *bool  `json:"summary"`
+		StorageType string `json:"storage_type"`
+		Key         string `json:"key"`
+	}
+	if json.Unmarshal(args, &raw) == nil {
+		if raw.Summary != nil {
+			p.Summary = *raw.Summary
+		}
+		p.StorageType = raw.StorageType
+		p.Key = raw.Key
+	}
+	return p
+}
+
+// filterStorageMap filters a storage map by key. Returns nil if key not found.
+func filterStorageMap(data map[string]any, key string) map[string]any {
+	if key == "" {
+		return data
+	}
+	if v, ok := data[key]; ok {
+		return map[string]any{key: v}
+	}
+	return map[string]any{}
+}
+
+// filterCookies filters a cookie array by name.
+func filterCookies(cookies []any, name string) []any {
+	if name == "" {
+		return cookies
+	}
+	var filtered []any
+	for _, c := range cookies {
+		if m, ok := c.(map[string]any); ok {
+			if n, ok := m["name"].(string); ok && n == name {
+				filtered = append(filtered, c)
+			}
+		}
+	}
+	return filtered
+}
+
 // GetStorage returns localStorage, sessionStorage, and cookies from the tracked tab.
 func GetStorage(deps Deps, req mcp.JSONRPCRequest, args json.RawMessage) mcp.JSONRPCResponse {
-	summary := parseSummaryParam(args)
+	params := parseStorageParams(args)
 	cap := deps.GetCapture()
 	enabled, _, _ := cap.GetTrackingStatus()
 	if !enabled {
@@ -138,39 +192,55 @@ func GetStorage(deps Deps, req mcp.JSONRPCRequest, args json.RawMessage) mcp.JSO
 		"metadata": BuildResponseMetadata(cap, time.Now()),
 	}
 
-	if summary {
-		// Summary mode: return key counts and byte estimates instead of full data
-		if v, ok := stateResult["localStorage"].(map[string]any); ok {
-			response["local_storage"] = summarizeStorageMap(v)
+	includeLocal := params.StorageType == "" || params.StorageType == "local"
+	includeSession := params.StorageType == "" || params.StorageType == "session"
+	includeCookies := params.StorageType == "" || params.StorageType == "cookies"
+
+	if params.Summary {
+		if includeLocal {
+			if v, ok := stateResult["localStorage"].(map[string]any); ok {
+				response["local_storage"] = summarizeStorageMap(filterStorageMap(v, params.Key))
+			}
 		}
-		if v, ok := stateResult["sessionStorage"].(map[string]any); ok {
-			response["session_storage"] = summarizeStorageMap(v)
+		if includeSession {
+			if v, ok := stateResult["sessionStorage"].(map[string]any); ok {
+				response["session_storage"] = summarizeStorageMap(filterStorageMap(v, params.Key))
+			}
 		}
-		if v, ok := stateResult["cookies"].([]any); ok {
-			response["cookies"] = summarizeCookies(v)
+		if includeCookies {
+			if v, ok := stateResult["cookies"].([]any); ok {
+				response["cookies"] = summarizeCookies(filterCookies(v, params.Key))
+			}
 		}
 	} else {
-		// Full mode: return raw key-value pairs
-		if v, ok := stateResult["localStorage"]; ok {
-			response["local_storage"] = v
+		if includeLocal {
+			if v, ok := stateResult["localStorage"].(map[string]any); ok {
+				response["local_storage"] = filterStorageMap(v, params.Key)
+			}
 		}
-		if v, ok := stateResult["sessionStorage"]; ok {
-			response["session_storage"] = v
+		if includeSession {
+			if v, ok := stateResult["sessionStorage"].(map[string]any); ok {
+				response["session_storage"] = filterStorageMap(v, params.Key)
+			}
 		}
-		if v, ok := stateResult["cookies"]; ok {
-			response["cookies"] = v
+		if includeCookies {
+			if v, ok := stateResult["cookies"].([]any); ok {
+				response["cookies"] = filterCookies(v, params.Key)
+			}
 		}
 	}
 
-	// IndexedDB listing is best-effort: return storage data even if this probe fails.
-	if indexeddb, err := getIndexedDBListing(cap); err != nil {
-		response["indexeddb"] = map[string]any{
-			"supported": false,
-			"databases": []any{},
+	// IndexedDB listing is best-effort (skip if storage_type filter excludes it)
+	if params.StorageType == "" {
+		if indexeddb, err := getIndexedDBListing(cap); err != nil {
+			response["indexeddb"] = map[string]any{
+				"supported": false,
+				"databases": []any{},
+			}
+			response["indexeddb_error"] = err.Error()
+		} else {
+			response["indexeddb"] = indexeddb
 		}
-		response["indexeddb_error"] = err.Error()
-	} else {
-		response["indexeddb"] = indexeddb
 	}
 
 	return mcp.JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcp.JSONResponse("Browser storage", response)}
