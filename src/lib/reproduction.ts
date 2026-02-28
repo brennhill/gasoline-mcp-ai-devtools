@@ -20,7 +20,7 @@ import {
 import { isSensitiveInput } from './serialize.js'
 
 // Action types
-type EnhancedActionType = 'click' | 'input' | 'keypress' | 'navigate' | 'select' | 'scroll'
+type EnhancedActionType = 'click' | 'input' | 'keypress' | 'navigate' | 'select' | 'scroll' | 'transient'
 
 // Role selector info
 interface RoleSelector {
@@ -52,6 +52,9 @@ interface EnhancedActionRecord {
   selected_value?: string
   selected_text?: string
   scroll_y?: number
+  classification?: string
+  duration_ms?: number
+  role?: string
 }
 
 // Script generation options
@@ -276,6 +279,9 @@ interface RecordActionOptions {
   selected_value?: string
   selected_text?: string
   scroll_y?: number
+  classification?: string
+  duration_ms?: number
+  role?: string
 }
 
 // PostMessage payload type
@@ -306,6 +312,12 @@ const ACTION_DATA_ENRICHERS: Record<string, ActionDataEnricher> = {
   },
   scroll: (a, _el, o) => {
     a.scroll_y = o.scroll_y || 0
+  },
+  transient: (a, _el, o) => {
+    a.classification = o.classification || 'unknown'
+    if (o.duration_ms !== undefined) a.duration_ms = o.duration_ms
+    if (o.role) a.role = o.role
+    if (o.value) a.value = o.value
   }
 }
 
@@ -389,7 +401,9 @@ const ACTION_STEP_GENERATORS: Record<string, StepGenerator> = {
     `  await page.waitForURL('${escapeString(rebaseUrl(action.to_url || '', baseUrl))}');`,
   select: (action, locator) =>
     locator ? `  await page.${locator}.selectOption('${escapeString(action.selected_value || '')}');` : null,
-  scroll: (action) => `  // User scrolled to y=${action.scroll_y || 0}`
+  scroll: (action) => `  // User scrolled to y=${action.scroll_y || 0}`,
+  transient: (action) =>
+    `  // [${action.classification || 'transient'}] "${(action.value || '').slice(0, 80)}"`
 }
 
 // #lizard forgives
