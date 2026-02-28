@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"time"
 
+	"github.com/dev-console/dev-console/internal/buffers"
 	"github.com/dev-console/dev-console/internal/capture"
 	"github.com/dev-console/dev-console/internal/mcp"
 	"github.com/dev-console/dev-console/internal/pagination"
@@ -76,35 +77,34 @@ func GetBrowserErrors(deps Deps, req mcp.JSONRPCRequest, args json.RawMessage) m
 
 	entries, _ := deps.GetLogEntries()
 
-	errors := make([]map[string]any, 0)
 	noiseSuppressed := 0
-	for i := len(entries) - 1; i >= 0 && len(errors) < params.Limit; i-- {
-		entry := entries[i]
+	matched := buffers.ReverseFilterLimit(entries, func(entry map[string]any) bool {
 		level, _ := entry["level"].(string)
 		if level != "error" {
-			continue
+			return false
 		}
-
 		if deps.IsConsoleNoise(entry) {
 			noiseSuppressed++
-			continue
+			return false
 		}
-
 		if params.Scope == "current_page" && trackedTabID != 0 {
 			entryTabID, _ := entry["tabId"].(float64)
 			if int(entryTabID) != trackedTabID {
-				continue
+				return false
 			}
 		}
-
 		if params.URL != "" {
 			entryURL, _ := entry["url"].(string)
 			if !ContainsIgnoreCase(entryURL, params.URL) {
-				continue
+				return false
 			}
 		}
+		return true
+	}, params.Limit)
 
-		errors = append(errors, map[string]any{
+	errors := make([]map[string]any, len(matched))
+	for i, entry := range matched {
+		errors[i] = map[string]any{
 			"message":   entry["message"],
 			"source":    entry["source"],
 			"url":       entry["url"],
@@ -113,7 +113,7 @@ func GetBrowserErrors(deps Deps, req mcp.JSONRPCRequest, args json.RawMessage) m
 			"stack":     entry["stack"],
 			"timestamp": entry["ts"],
 			"tab_id":    entry["tabId"],
-		})
+		}
 	}
 
 	var newestTS time.Time
@@ -372,20 +372,20 @@ func normalizeBrowserLogEntry(entry map[string]any) map[string]any {
 }
 
 func buildExtensionLogEntries(allLogs []capture.ExtensionLog, limit int, level string) []map[string]any {
-	logs := make([]map[string]any, 0, limit)
-	for i := len(allLogs) - 1; i >= 0 && len(logs) < limit; i-- {
-		entry := allLogs[i]
-		if level != "" && entry.Level != level {
-			continue
-		}
-		logs = append(logs, map[string]any{
+	matched := buffers.ReverseFilterLimit(allLogs, func(entry capture.ExtensionLog) bool {
+		return level == "" || entry.Level == level
+	}, limit)
+
+	logs := make([]map[string]any, len(matched))
+	for i, entry := range matched {
+		logs[i] = map[string]any{
 			"level":     entry.Level,
 			"message":   entry.Message,
 			"source":    entry.Source,
 			"category":  entry.Category,
 			"data":      entry.Data,
 			"timestamp": entry.Timestamp,
-		})
+		}
 	}
 	return logs
 }
@@ -401,20 +401,20 @@ func GetExtensionLogs(deps Deps, req mcp.JSONRPCRequest, args json.RawMessage) m
 
 	allLogs := deps.GetCapture().GetExtensionLogs()
 
-	logs := make([]map[string]any, 0)
-	for i := len(allLogs) - 1; i >= 0 && len(logs) < params.Limit; i-- {
-		entry := allLogs[i]
-		if params.Level != "" && entry.Level != params.Level {
-			continue
-		}
-		logs = append(logs, map[string]any{
+	matched := buffers.ReverseFilterLimit(allLogs, func(entry capture.ExtensionLog) bool {
+		return params.Level == "" || entry.Level == params.Level
+	}, params.Limit)
+
+	logs := make([]map[string]any, len(matched))
+	for i, entry := range matched {
+		logs[i] = map[string]any{
 			"level":     entry.Level,
 			"message":   entry.Message,
 			"source":    entry.Source,
 			"category":  entry.Category,
 			"data":      entry.Data,
 			"timestamp": entry.Timestamp,
-		})
+		}
 	}
 
 	var newestTS time.Time
@@ -455,34 +455,46 @@ func GetNetworkBodies(deps Deps, req mcp.JSONRPCRequest, args json.RawMessage) m
 	params.Limit = clampLimit(params.Limit, 100)
 
 	allBodies := deps.GetCapture().GetNetworkBodies()
-	filtered := make([]capture.NetworkBody, 0)
-	for i := len(allBodies) - 1; i >= 0 && len(filtered) < params.Limit; i-- {
-		b := allBodies[i]
+	var bodyFilterErr error
+	filtered := buffers.ReverseFilterLimit(allBodies, func(b capture.NetworkBody) bool {
+		if bodyFilterErr != nil {
+			return false
+		}
 		if params.URL != "" && !ContainsIgnoreCase(b.URL, params.URL) {
-			continue
+			return false
 		}
 		if params.Method != "" && !ContainsIgnoreCase(b.Method, params.Method) {
-			continue
+			return false
 		}
 		if params.StatusMin > 0 && b.Status < params.StatusMin {
-			continue
+			return false
 		}
 		if params.StatusMax > 0 && b.Status > params.StatusMax {
-			continue
+			return false
 		}
-		filteredBody, include, err := ApplyNetworkBodyFilter(b, params.BodyKey, params.BodyPath)
+		_, include, err := ApplyNetworkBodyFilter(b, params.BodyKey, params.BodyPath)
 		if err != nil {
-			return mcp.JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcp.StructuredErrorResponse(
-				mcp.ErrInvalidParam,
-				"Invalid network body filter: "+err.Error(),
-				"Use a valid body_path syntax like data.items[0].id",
-				mcp.WithParam("body_path"),
-			)}
+			bodyFilterErr = err
+			return false
 		}
-		if !include {
-			continue
+		return include
+	}, params.Limit)
+
+	if bodyFilterErr != nil {
+		return mcp.JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcp.StructuredErrorResponse(
+			mcp.ErrInvalidParam,
+			"Invalid network body filter: "+bodyFilterErr.Error(),
+			"Use a valid body_path syntax like data.items[0].id",
+			mcp.WithParam("body_path"),
+		)}
+	}
+
+	// Re-apply body filter to transform matched entries (extract body_key/body_path).
+	if params.BodyKey != "" || params.BodyPath != "" {
+		for i, b := range filtered {
+			filteredBody, _, _ := ApplyNetworkBodyFilter(b, params.BodyKey, params.BodyPath)
+			filtered[i] = filteredBody
 		}
-		filtered = append(filtered, filteredBody)
 	}
 	var newestTS time.Time
 	if len(allBodies) > 0 {
@@ -527,20 +539,18 @@ func GetWSEvents(deps Deps, req mcp.JSONRPCRequest, args json.RawMessage) mcp.JS
 	params.Limit = clampLimit(params.Limit, 100)
 
 	allEvents := deps.GetCapture().GetAllWebSocketEvents()
-	filtered := make([]capture.WebSocketEvent, 0)
-	for i := len(allEvents) - 1; i >= 0 && len(filtered) < params.Limit; i-- {
-		evt := allEvents[i]
+	filtered := buffers.ReverseFilterLimit(allEvents, func(evt capture.WebSocketEvent) bool {
 		if params.URL != "" && !ContainsIgnoreCase(evt.URL, params.URL) {
-			continue
+			return false
 		}
 		if params.ConnectionID != "" && evt.ID != params.ConnectionID {
-			continue
+			return false
 		}
 		if params.Direction != "" && evt.Direction != params.Direction {
-			continue
+			return false
 		}
-		filtered = append(filtered, evt)
-	}
+		return true
+	}, params.Limit)
 	var newestTS time.Time
 	if len(allEvents) > 0 {
 		newestTS, _ = time.Parse(time.RFC3339, allEvents[len(allEvents)-1].Timestamp)
@@ -581,17 +591,15 @@ func GetEnhancedActions(deps Deps, req mcp.JSONRPCRequest, args json.RawMessage)
 	params.Limit = clampLimit(params.Limit, 100)
 
 	allActions := deps.GetCapture().GetAllEnhancedActions()
-	filtered := make([]capture.EnhancedAction, 0)
-	for i := len(allActions) - 1; i >= 0 && len(filtered) < params.Limit; i-- {
-		a := allActions[i]
+	filtered := buffers.ReverseFilterLimit(allActions, func(a capture.EnhancedAction) bool {
 		if params.Type != "" && a.Type != params.Type {
-			continue
+			return false
 		}
 		if params.URL != "" && !ContainsIgnoreCase(a.URL, params.URL) {
-			continue
+			return false
 		}
-		filtered = append(filtered, a)
-	}
+		return true
+	}, params.Limit)
 	var newestTS time.Time
 	if len(allActions) > 0 {
 		newestTS = time.UnixMilli(allActions[len(allActions)-1].Timestamp)
@@ -624,20 +632,18 @@ func GetTransients(deps Deps, req mcp.JSONRPCRequest, args json.RawMessage) mcp.
 	params.Limit = clampLimit(params.Limit, 50)
 
 	allActions := deps.GetCapture().GetAllEnhancedActions()
-	filtered := make([]capture.EnhancedAction, 0)
-	for i := len(allActions) - 1; i >= 0 && len(filtered) < params.Limit; i-- {
-		a := allActions[i]
+	filtered := buffers.ReverseFilterLimit(allActions, func(a capture.EnhancedAction) bool {
 		if a.Type != "transient" {
-			continue
+			return false
 		}
 		if params.URL != "" && !ContainsIgnoreCase(a.URL, params.URL) {
-			continue
+			return false
 		}
 		if params.Classification != "" && a.Classification != params.Classification {
-			continue
+			return false
 		}
-		filtered = append(filtered, a)
-	}
+		return true
+	}, params.Limit)
 
 	var newestTS time.Time
 	if len(filtered) > 0 {

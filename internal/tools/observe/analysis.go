@@ -14,6 +14,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/dev-console/dev-console/internal/buffers"
 	"github.com/dev-console/dev-console/internal/capture"
 	"github.com/dev-console/dev-console/internal/mcp"
 	"github.com/dev-console/dev-console/internal/queries"
@@ -89,13 +90,13 @@ func refreshWaterfallIfStale(deps Deps) []capture.NetworkWaterfallEntry {
 }
 
 func filterWaterfallEntries(allEntries []capture.NetworkWaterfallEntry, urlFilter string, limit int) []map[string]any {
-	entries := make([]map[string]any, 0)
-	for i := len(allEntries) - 1; i >= 0 && len(entries) < limit; i-- {
-		entry := allEntries[i]
-		if urlFilter != "" && (entry.URL == "" || !ContainsIgnoreCase(entry.URL, urlFilter)) {
-			continue
-		}
-		entries = append(entries, waterfallEntryToMap(entry))
+	matched := buffers.ReverseFilterLimit(allEntries, func(entry capture.NetworkWaterfallEntry) bool {
+		return urlFilter == "" || (entry.URL != "" && ContainsIgnoreCase(entry.URL, urlFilter))
+	}, limit)
+
+	entries := make([]map[string]any, len(matched))
+	for i, entry := range matched {
+		entries[i] = waterfallEntryToMap(entry)
 	}
 	return entries
 }
@@ -123,13 +124,13 @@ func waterfallSummaryEntry(entry capture.NetworkWaterfallEntry) map[string]any {
 }
 
 func filterWaterfallSummaryEntries(allEntries []capture.NetworkWaterfallEntry, urlFilter string, limit int) []map[string]any {
-	entries := make([]map[string]any, 0)
-	for i := len(allEntries) - 1; i >= 0 && len(entries) < limit; i-- {
-		entry := allEntries[i]
-		if urlFilter != "" && (entry.URL == "" || !ContainsIgnoreCase(entry.URL, urlFilter)) {
-			continue
-		}
-		entries = append(entries, waterfallSummaryEntry(entry))
+	matched := buffers.ReverseFilterLimit(allEntries, func(entry capture.NetworkWaterfallEntry) bool {
+		return urlFilter == "" || (entry.URL != "" && ContainsIgnoreCase(entry.URL, urlFilter))
+	}, limit)
+
+	entries := make([]map[string]any, len(matched))
+	for i, entry := range matched {
+		entries[i] = waterfallSummaryEntry(entry)
 	}
 	return entries
 }

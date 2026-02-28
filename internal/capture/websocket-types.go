@@ -1,129 +1,53 @@
-// Purpose: Defines websocket telemetry payload, filter, and status model types for capture operations.
-// Why: Keeps websocket ingestion/query contracts explicit and aligned with wire serialization expectations.
+// Purpose: Re-exports canonical WebSocket type aliases for capture package compatibility.
+// Why: Keeps capture call sites stable while canonical type ownership lives in internal/types.
 // Docs: docs/features/feature/normalized-event-schema/index.md
 
 package capture
 
 import (
 	"time"
+
+	"github.com/dev-console/dev-console/internal/types"
 )
 
-// WebSocketEvent represents a captured WebSocket event.
-// Wire fields: see WireWebSocketEvent in internal/types/wire_websocket_event.go
-type WebSocketEvent struct {
-	Timestamp        string        `json:"ts,omitempty"`
-	Type             string        `json:"type,omitempty"`
-	Event            string        `json:"event"`
-	ID               string        `json:"id"`
-	URL              string        `json:"url,omitempty"`
-	Direction        string        `json:"direction,omitempty"`
-	Data             string        `json:"data,omitempty"`
-	Size             int           `json:"size,omitempty"`
-	CloseCode        int           `json:"code,omitempty"`
-	CloseReason      string        `json:"reason,omitempty"`
-	Sampled          *SamplingInfo `json:"sampled,omitempty"`          // server-only enrichment
-	BinaryFormat     string        `json:"binary_format,omitempty"`   // server-only enrichment
-	FormatConfidence float64       `json:"format_confidence,omitempty"` // server-only enrichment
-	TabId            int           `json:"tab_id,omitempty"`          // Chrome tab ID that produced this event
-	TestIDs          []string      `json:"test_ids,omitempty"`        // Test IDs this event belongs to (for test boundary correlation)
-}
+// WebSocketEvent is an alias to canonical definition in internal/types/network.go
+type WebSocketEvent = types.WebSocketEvent
 
-// SamplingInfo describes the sampling state when a message was captured
-type SamplingInfo struct {
-	Rate   string `json:"rate"`
-	Logged string `json:"logged"`
-	Window string `json:"window"`
-}
+// SamplingInfo is an alias to canonical definition in internal/types/network.go
+type SamplingInfo = types.SamplingInfo
 
-// WebSocketEventFilter defines filtering criteria for events
-type WebSocketEventFilter struct {
-	ConnectionID string
-	URLFilter    string
-	Direction    string
-	Limit        int
-	TestID       string // If set, filter events where TestID is in event's TestIDs array
-}
+// WebSocketEventFilter is an alias to canonical definition in internal/types/network.go
+type WebSocketEventFilter = types.WebSocketEventFilter
 
-// WebSocketStatusFilter defines filtering criteria for status
-type WebSocketStatusFilter struct {
-	URLFilter    string
-	ConnectionID string
-}
+// WebSocketStatusFilter is an alias to canonical definition in internal/types/network.go
+type WebSocketStatusFilter = types.WebSocketStatusFilter
 
-// WebSocketStatusResponse is the response from get_websocket_status
-type WebSocketStatusResponse struct {
-	Connections []WebSocketConnection       `json:"connections"`
-	Closed      []WebSocketClosedConnection `json:"closed"`
-}
+// WebSocketStatusResponse is an alias to canonical definition in internal/types/network.go
+type WebSocketStatusResponse = types.WebSocketStatusResponse
 
-// WebSocketConnection represents an active WebSocket connection
-type WebSocketConnection struct {
-	ID          string                  `json:"id"`
-	URL         string                  `json:"url"`
-	State       string                  `json:"state"`
-	OpenedAt    string                  `json:"opened_at,omitempty"`
-	Duration    string                  `json:"duration,omitempty"`
-	MessageRate WebSocketMessageRate    `json:"message_rate"`
-	LastMessage WebSocketLastMessage    `json:"last_message"`
-	Schema      *WebSocketSchema        `json:"schema,omitempty"`
-	Sampling    WebSocketSamplingStatus `json:"sampling"`
-}
+// WebSocketConnection is an alias to canonical definition in internal/types/network.go
+type WebSocketConnection = types.WebSocketConnection
 
-// WebSocketClosedConnection represents a closed WebSocket connection
-type WebSocketClosedConnection struct {
-	ID            string `json:"id"`
-	URL           string `json:"url"`
-	State         string `json:"state"`
-	OpenedAt      string `json:"opened_at,omitempty"`
-	ClosedAt      string `json:"closed_at,omitempty"`
-	CloseCode     int    `json:"close_code"`
-	CloseReason   string `json:"close_reason"`
-	TotalMessages struct {
-		Incoming int `json:"incoming"`
-		Outgoing int `json:"outgoing"`
-	} `json:"total_messages"`
-}
+// WebSocketClosedConnection is an alias to canonical definition in internal/types/network.go
+type WebSocketClosedConnection = types.WebSocketClosedConnection
 
-// WebSocketMessageRate contains rate info for a direction
-type WebSocketMessageRate struct {
-	Incoming WebSocketDirectionStats `json:"incoming"`
-	Outgoing WebSocketDirectionStats `json:"outgoing"`
-}
+// WebSocketMessageRate is an alias to canonical definition in internal/types/network.go
+type WebSocketMessageRate = types.WebSocketMessageRate
 
-// WebSocketDirectionStats contains stats for a message direction
-type WebSocketDirectionStats struct {
-	PerSecond float64 `json:"per_second"`
-	Total     int     `json:"total"`
-	Bytes     int     `json:"bytes"`
-}
+// WebSocketDirectionStats is an alias to canonical definition in internal/types/network.go
+type WebSocketDirectionStats = types.WebSocketDirectionStats
 
-// WebSocketLastMessage contains last message info
-type WebSocketLastMessage struct {
-	Incoming *WebSocketMessagePreview `json:"incoming,omitempty"`
-	Outgoing *WebSocketMessagePreview `json:"outgoing,omitempty"`
-}
+// WebSocketLastMessage is an alias to canonical definition in internal/types/network.go
+type WebSocketLastMessage = types.WebSocketLastMessage
 
-// WebSocketMessagePreview contains a preview of the last message
-type WebSocketMessagePreview struct {
-	At      string `json:"at"`
-	Age     string `json:"age"`
-	Preview string `json:"preview"`
-}
+// WebSocketMessagePreview is an alias to canonical definition in internal/types/network.go
+type WebSocketMessagePreview = types.WebSocketMessagePreview
 
-// WebSocketSchema describes detected message schema
-type WebSocketSchema struct {
-	DetectedKeys []string `json:"detected_keys,omitempty"`
-	MessageCount int      `json:"message_count"`
-	Consistent   bool     `json:"consistent"`
-	Variants     []string `json:"variants,omitempty"`
-}
+// WebSocketSchema is an alias to canonical definition in internal/types/network.go
+type WebSocketSchema = types.WebSocketSchema
 
-// WebSocketSamplingStatus describes sampling state
-type WebSocketSamplingStatus struct {
-	Active bool   `json:"active"`
-	Rate   string `json:"rate,omitempty"`
-	Reason string `json:"reason,omitempty"`
-}
+// WebSocketSamplingStatus is an alias to canonical definition in internal/types/network.go
+type WebSocketSamplingStatus = types.WebSocketSamplingStatus
 
 // connectionState tracks state for an active connection
 type connectionState struct {
