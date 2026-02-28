@@ -23,7 +23,6 @@ import { registerCommand } from './registry.js'
 registerCommand('screenshot', async (ctx) => {
   try {
     const tab = await chrome.tabs.get(ctx.tabId)
-    await chrome.windows.update(tab.windowId, { focused: true })
     await chrome.tabs.update(ctx.tabId, { active: true })
     const dataUrl = await chrome.tabs.captureVisibleTab(tab.windowId, {
       format: 'jpeg',
