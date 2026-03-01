@@ -1,5 +1,4 @@
-// Purpose: Provides configure tool implementation helpers for policy and rewrite flows.
-// Why: Centralizes configure logic so policy/rewrite behavior remains deterministic and testable.
+// Purpose: Builds describe_capabilities responses by introspecting tool schemas, modes, and per-mode parameter sets.
 // Docs: docs/features/feature/config-profiles/index.md
 // Docs: docs/features/describe_capabilities.md
 

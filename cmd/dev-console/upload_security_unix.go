@@ -1,8 +1,8 @@
 //go:build !windows
 // +build !windows
 
-// Purpose: Implements upload command handling, validation, and OS automation wiring.
-// Why: Reduces upload flake by centralizing validation and secure browser-to-OS handoff behavior.
+// Purpose: Unix-specific upload security aliases — symlink resolution and ownership checks via internal/upload.
+// Why: Prevents symlink traversal attacks on Unix by validating real paths before file operations.
 // Docs: docs/features/feature/file-upload/index.md
 
 package main

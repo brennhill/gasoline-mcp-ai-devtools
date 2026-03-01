@@ -1,4 +1,6 @@
-// tools_analyze.go — MCP analyze tool dispatcher and handlers.
+// Purpose: Dispatches analyze tool modes (dom, accessibility, performance, error_clusters, history, page_structure, etc.) to sub-handlers.
+// Why: Acts as the top-level router for all active analysis that requires extension-side computation.
+// Docs: docs/features/feature/analyze-tool/index.md
 
 package main
 

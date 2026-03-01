@@ -1,6 +1,6 @@
-// Purpose: Implements test generation, classification, and healing command handlers.
-// Why: Makes failure investigation reproducible through generated and self-healed test artifacts.
-// Docs: docs/features/feature/test-generation/index.md
+// Purpose: Handles test_heal mode — analyzes broken selectors and repairs test files with updated locators.
+// Why: Automates test maintenance by detecting stale selectors and applying high-confidence fixes.
+// Docs: docs/features/feature/self-healing-tests/index.md
 
 package main
 

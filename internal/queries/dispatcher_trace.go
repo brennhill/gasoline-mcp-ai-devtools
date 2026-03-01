@@ -1,5 +1,4 @@
-// Purpose: Implements async command/query dispatch and correlation state tracking.
-// Why: Coordinates async command flow so extension/server state stays coherent under concurrency.
+// Purpose: Records query lifecycle stage transitions (queued/sent/resolved/timed_out) for diagnostic tracing.
 // Docs: docs/features/feature/query-service/index.md
 
 package queries

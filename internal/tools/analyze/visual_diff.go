@@ -1,5 +1,4 @@
-// Purpose: Provides analyze tool implementation helpers shared by command handlers.
-// Why: Centralizes analyze logic to keep handler behavior consistent across command paths.
+// Purpose: Parses visual baseline/diff arguments and manages named baseline storage for visual regression testing.
 // Docs: docs/features/feature/analyze-tool/index.md
 
 package analyze

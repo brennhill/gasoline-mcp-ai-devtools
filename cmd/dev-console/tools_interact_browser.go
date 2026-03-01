@@ -1,4 +1,6 @@
-// tools_interact_browser.go — Browser action handlers for navigate, tabs, history.
+// Purpose: Handles navigate, refresh, back, forward, new_tab, switch_tab, and close_tab browser actions with perf_diff capture.
+// Why: Groups all browser navigation and tab management actions into a single handler file.
+// Docs: docs/features/feature/interact-explore/index.md
 
 package main
 

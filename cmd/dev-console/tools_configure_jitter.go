@@ -1,4 +1,5 @@
-// tools_configure_jitter.go — Action jitter configuration for human-like interaction timing.
+// Purpose: Configures randomized micro-delays (action jitter) before interact actions for human-like interaction timing.
+// Why: Prevents bot-detection by adding configurable random delays that simulate natural user input cadence.
 
 package main
 

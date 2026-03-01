@@ -1,5 +1,5 @@
-// Purpose: Implements bridge transport lifecycle, forwarding, and reconnect behavior.
-// Why: Keeps client tool calls resilient across daemon restarts and transport disruptions.
+// Purpose: Configures stdout/stderr isolation in bridge mode so MCP JSON-RPC framing cannot be corrupted by diagnostic output.
+// Why: Duplicates the original stdout for MCP transport and redirects os.Stdout/Stderr to a wrapper log file.
 // Docs: docs/features/feature/bridge-restart/index.md
 
 package main

@@ -1,3 +1,6 @@
+// Purpose: Re-exports core MCP wire types (JSONRPCRequest, JSONRPCResponse, MCPTool) as package-level aliases.
+// Why: Allows cmd/dev-console code to reference MCP types by short names without direct internal/mcp imports.
+
 package main
 
 import (

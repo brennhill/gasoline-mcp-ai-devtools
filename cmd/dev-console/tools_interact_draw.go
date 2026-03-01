@@ -1,9 +1,6 @@
-// Purpose: Implements interact tool handlers and browser action orchestration.
-// Why: Preserves deterministic browser action execution across agent workflows.
-// Docs: docs/features/feature/interact-explore/index.md
-
-// tools_interact_draw.go — MCP interact handler for draw_mode_start action.
-// Docs: docs/features/feature/interact-explore/index.md
+// Purpose: Queues draw_mode_start queries for the extension to activate the user annotation overlay.
+// Why: Separates draw mode activation from annotation retrieval to support async user interaction.
+// Docs: docs/features/feature/annotated-screenshots/index.md
 package main
 
 import (

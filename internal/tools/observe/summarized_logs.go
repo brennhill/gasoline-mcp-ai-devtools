@@ -1,5 +1,4 @@
-// Purpose: Provides observe tool implementation helpers for filtering and storage queries.
-// Why: Centralizes observe query behavior so evidence filtering stays predictable.
+// Purpose: Groups and fingerprints log entries into aggregated summaries for the summarized_logs observe mode.
 // Docs: docs/features/feature/observe/index.md
 
 package observe

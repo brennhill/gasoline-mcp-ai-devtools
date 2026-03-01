@@ -1,4 +1,4 @@
-// Purpose: Implements bridge transport lifecycle, forwarding, and reconnect behavior.
+// Purpose: Orchestrates bridge mode lifecycle — daemon spawn, health polling, stdin read loop, and auto-reconnect on daemon restart.
 // Why: Keeps client tool calls resilient across daemon restarts and transport disruptions.
 // Docs: docs/features/feature/bridge-restart/index.md
 

@@ -1,3 +1,6 @@
+// Purpose: Provides MCP response builders (text, markdown, JSON, error) and safe marshal/unmarshal helpers for tool results.
+// Why: Standardizes response shaping across all five tools through a single set of formatting functions.
+
 package main
 
 import (

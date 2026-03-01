@@ -1,5 +1,4 @@
-// Purpose: Provides analyze tool implementation helpers shared by command handlers.
-// Why: Centralizes analyze logic to keep handler behavior consistent across command paths.
+// Purpose: Declares the Deps interface that analyze handlers require from the host server.
 // Docs: docs/features/feature/analyze-tool/index.md
 
 package analyze

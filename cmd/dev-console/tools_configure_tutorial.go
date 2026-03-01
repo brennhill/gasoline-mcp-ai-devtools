@@ -1,6 +1,6 @@
-// Purpose: Implements configure tool handlers for policy, profiles, and session controls.
-// Why: Keeps runtime/session configuration changes explicit and auditable from a single tool surface.
-// Docs: docs/features/feature/config-profiles/index.md
+// Purpose: Generates context-aware tutorial content and CSP-retry guidance for the configure(what="tutorial") mode.
+// Why: Provides onboarding help and CSP navigation fallback guidance without requiring external documentation.
+// Docs: docs/features/feature/enhanced-cli-config/index.md
 
 package main
 

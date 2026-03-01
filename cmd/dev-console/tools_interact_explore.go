@@ -1,6 +1,6 @@
-// tools_interact_explore.go — Compound explore_page handler for interact tool.
-// Dispatches a single pending query to the extension that returns screenshot,
-// interactive elements, page metadata, readable text, and navigation links (#338).
+// Purpose: Handles explore_page — a single compound query returning screenshot, interactive elements, metadata, text, and links.
+// Why: Reduces agent round-trips by combining page discovery signals into one call instead of multiple observe/interact calls.
+// Docs: docs/features/feature/interact-explore/index.md
 
 package main
 

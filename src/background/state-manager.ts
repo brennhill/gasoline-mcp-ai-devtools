@@ -1,9 +1,6 @@
 /**
- * Purpose: Handles extension background coordination and message routing.
- * Why: Centralizes extension coordination to reduce race conditions and split-brain state.
- * Docs: docs/features/feature/analyze-tool/index.md
- * Docs: docs/features/feature/interact-explore/index.md
- * Docs: docs/features/feature/observe/index.md
+ * Purpose: Facade re-exporting state management functions from error-groups, cache-limits, and snapshots sub-modules.
+ * Why: Provides a single import point so consumers do not need to know which sub-module owns each function.
  */
 
 /**

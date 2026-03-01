@@ -1,3 +1,6 @@
+// Purpose: Serves the HTTP /telemetry endpoint, dispatching to capture buffer getters by type query parameter.
+// Why: Provides a REST-accessible view of captured telemetry (logs, network, WebSocket, actions) for non-MCP consumers.
+
 package main
 
 import (

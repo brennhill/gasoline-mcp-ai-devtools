@@ -1,9 +1,6 @@
 /**
- * Purpose: Handles extension background coordination and message routing.
- * Why: Centralizes extension coordination to reduce race conditions and split-brain state.
- * Docs: docs/features/feature/analyze-tool/index.md
+ * Purpose: Dispatches DOM actions (click, type, wait_for, list_interactive, query) to injected page scripts with frame targeting and CDP escalation.
  * Docs: docs/features/feature/interact-explore/index.md
- * Docs: docs/features/feature/observe/index.md
  */
 
 // dom-dispatch.ts — DOM action dispatcher and utilities.
@@ -80,7 +77,7 @@ function normalizeFrameTarget(frame: unknown): string | number | undefined | nul
 async function resolveExecutionTarget(tabId: number, frame: unknown): Promise<DOMExecutionTarget> {
   const normalized = normalizeFrameTarget(frame)
   if (normalized === null) {
-    throw new Error('invalid_frame')
+    throw new Error('invalid_frame: frame parameter must be a CSS selector, 0-based index, or "all". Got unsupported type or value')
   }
 
   if (normalized === undefined || normalized === 'all') {
@@ -104,7 +101,7 @@ async function resolveExecutionTarget(tabId: number, frame: unknown): Promise<DO
   )
 
   if (frameIds.length === 0) {
-    throw new Error('frame_not_found')
+    throw new Error('frame_not_found: no iframe matched the given selector or index. Verify the iframe exists and is loaded on the page')
   }
 
   return { tabId, frameIds }

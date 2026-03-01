@@ -1,3 +1,6 @@
+// Purpose: Program entry point — dispatches to MCP server, bridge, CLI, connect, stop, doctor, or install modes based on flags.
+// Why: Provides a single binary with multiple operating modes selected at startup via command-line arguments.
+
 package main
 
 import (

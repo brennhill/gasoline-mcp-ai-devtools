@@ -1,9 +1,6 @@
-// Purpose: Implements interact tool handlers and browser action orchestration.
-// Why: Preserves deterministic browser action execution across agent workflows.
-// Docs: docs/features/feature/interact-explore/index.md
-
-// tools_interact_workflows.go — High-level workflow primitives for interact tool.
-// Implements compound actions that chain existing handlers to reduce agent call overhead.
+// Purpose: Implements compound workflow actions (navigate_and_wait_for, fill_form_and_submit, fill_form) that chain multiple interact primitives.
+// Why: Reduces agent call overhead by bundling common multi-step browser interactions into single tool calls.
+// Docs: docs/features/feature/form-filling/index.md
 package main
 
 import (

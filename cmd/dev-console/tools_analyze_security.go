@@ -1,8 +1,6 @@
-// Purpose: Implements analyze tool handlers and response shaping.
-// Why: Keeps analyze tool behavior aligned with diagnostic and schema contracts.
-// Docs: docs/features/feature/analyze-tool/index.md
-
-// tools_analyze_security.go — Analyze sub-handlers for security audit and third-party audit.
+// Purpose: Handles analyze modes for security_audit and third_party_audit, delegating to internal/security and internal/analysis.
+// Why: Isolates security-focused analysis from general analyze dispatch to keep audit logic focused.
+// Docs: docs/features/feature/security-hardening/index.md
 package main
 
 import (

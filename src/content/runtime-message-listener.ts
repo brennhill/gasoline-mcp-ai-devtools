@@ -1,10 +1,8 @@
 // runtime-message-listener.ts — Message routing between background and content contexts.
 
 /**
- * Purpose: Handles content-script message relay between background and inject contexts.
- * Why: Keeps content-script bridging predictable between extension and page contexts.
- * Docs: docs/features/feature/interact-explore/index.md
- * Docs: docs/features/feature/query-dom/index.md
+ * Purpose: Installs the chrome.runtime.onMessage listener that routes background messages to content-script handlers with sender validation.
+ * Docs: docs/features/feature/csp-safe-execution/index.md
  */
 
 /**

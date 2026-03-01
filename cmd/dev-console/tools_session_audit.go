@@ -1,3 +1,7 @@
+// Purpose: Implements session audit snapshots, session diff comparisons, and audit log queries for the configure tool.
+// Why: Enables before/after session state comparison for regression detection across test runs.
+// Docs: docs/features/feature/enterprise-audit/index.md
+
 package main
 
 import (

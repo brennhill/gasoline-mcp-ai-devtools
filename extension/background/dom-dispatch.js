@@ -1,9 +1,6 @@
 /**
- * Purpose: Handles extension background coordination and message routing.
- * Why: Centralizes extension coordination to reduce race conditions and split-brain state.
- * Docs: docs/features/feature/analyze-tool/index.md
+ * Purpose: Dispatches DOM actions (click, type, wait_for, list_interactive, query) to injected page scripts with frame targeting and CDP escalation.
  * Docs: docs/features/feature/interact-explore/index.md
- * Docs: docs/features/feature/observe/index.md
  */
 import { domFrameProbe } from './dom-frame-probe.js';
 import { domPrimitive } from './dom-primitives.js';
@@ -63,7 +60,7 @@ function normalizeFrameTarget(frame) {
 async function resolveExecutionTarget(tabId, frame) {
     const normalized = normalizeFrameTarget(frame);
     if (normalized === null) {
-        throw new Error('invalid_frame');
+        throw new Error('invalid_frame: frame parameter must be a CSS selector, 0-based index, or "all". Got unsupported type or value');
     }
     if (normalized === undefined || normalized === 'all') {
         return { tabId, allFrames: true };
@@ -79,7 +76,7 @@ async function resolveExecutionTarget(tabId, frame) {
         .map((r) => r.frameId)
         .filter((id) => typeof id === 'number')));
     if (frameIds.length === 0) {
-        throw new Error('frame_not_found');
+        throw new Error('frame_not_found: no iframe matched the given selector or index. Verify the iframe exists and is loaded on the page');
     }
     return { tabId, frameIds };
 }

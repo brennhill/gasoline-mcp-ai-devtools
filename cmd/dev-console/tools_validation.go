@@ -1,3 +1,6 @@
+// Purpose: Generic JSON argument parsing, schema validation, unknown field warnings, and log quality checking for tool inputs.
+// Why: Centralizes input validation so all tools reject malformed parameters with consistent structured errors.
+
 package main
 
 import (

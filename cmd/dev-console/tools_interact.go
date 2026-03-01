@@ -1,4 +1,6 @@
-// tools_interact.go — MCP interact tool dispatcher and response utilities.
+// Purpose: Dispatches interact tool actions to sub-handlers, manages action jitter, and shapes command result responses.
+// Why: Acts as the top-level router for all browser automation actions under the interact tool.
+// Docs: docs/features/feature/interact-explore/index.md
 
 package main
 

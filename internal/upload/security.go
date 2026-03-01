@@ -1,5 +1,4 @@
-// Purpose: Implements upload validation, security checks, and automation support paths.
-// Why: Enforces upload safety boundaries against path traversal and SSRF-style abuse.
+// Purpose: Enforces file path security: upload-dir scoping, symlink resolution, sensitive path denylist, and case-fold matching.
 // Docs: docs/features/feature/file-upload/index.md
 
 package upload

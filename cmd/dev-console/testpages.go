@@ -1,7 +1,7 @@
-// testpages.go — Embedded test/demo pages served at /tests/.
-// Includes a WebSocket echo server at /tests/ws and deterministic error
-// endpoints at /tests/404, /tests/500, /tests/cors-test, /tests/slow
-// for use by the Gasoline smoke-test harness.
+// Purpose: Serves embedded test/demo pages at /tests/ including a WebSocket echo server and deterministic error endpoints.
+// Why: Provides self-contained test fixtures (404, 500, CORS, slow) for the smoke-test harness without external dependencies.
+// Docs: docs/features/feature/self-testing/index.md
+
 package main
 
 import (

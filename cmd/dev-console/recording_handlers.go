@@ -1,6 +1,6 @@
-// Purpose: Implements recording and playback command handlers for captured browser sessions.
-// Why: Supports deterministic replay and comparison of browser behavior across runs.
-// Docs: docs/features/feature/playback-engine/index.md
+// Purpose: Builds canonical playback result payloads and handles recording_start/recording_stop/playback MCP commands.
+// Why: Centralizes action-recording lifecycle (start/stop/playback) and log-diff comparison in one handler file.
+// Docs: docs/features/feature/flow-recording/index.md
 
 package main
 

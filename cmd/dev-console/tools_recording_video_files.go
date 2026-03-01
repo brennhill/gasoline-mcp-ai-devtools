@@ -1,6 +1,6 @@
-// Purpose: Implements recording and playback command handlers for captured browser sessions.
-// Why: Supports deterministic replay and comparison of browser behavior across runs.
-// Docs: docs/features/feature/playback-engine/index.md
+// Purpose: Manages video file persistence — download from extension, save to disk, list/serve saved recordings.
+// Why: Handles the file I/O and HTTP serving side of video recordings separately from recording lifecycle.
+// Docs: docs/features/feature/tab-recording/index.md
 
 package main
 

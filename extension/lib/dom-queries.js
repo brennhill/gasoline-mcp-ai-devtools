@@ -1,6 +1,5 @@
 /**
- * Purpose: Provides shared runtime utilities used by extension and server workflows.
- * Why: Avoids duplicated logic across runtime layers and keeps behavior consistent.
+ * Purpose: Structured DOM querying, page info extraction, and accessibility auditing via axe-core for the inject context.
  * Docs: docs/features/feature/query-dom/index.md
  */
 /**

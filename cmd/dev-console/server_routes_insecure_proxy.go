@@ -1,4 +1,6 @@
-// server_routes_insecure_proxy.go — Insecure proxy endpoint for CSP-bypass debugging.
+// Purpose: Serves an opt-in insecure proxy endpoint at /proxy for CSP-bypass debugging of third-party resources.
+// Why: Enables debugging CSP-restricted pages by proxying requests through the local server in explicit security_mode.
+// Docs: docs/features/feature/csp-safe-execution/index.md
 
 package main
 

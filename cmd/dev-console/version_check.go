@@ -1,3 +1,6 @@
+// Purpose: Periodically fetches the latest GitHub release to detect available upgrades, with TTL caching and dedup.
+// Why: Surfaces upgrade-available warnings in health and tool responses without blocking normal operation.
+
 package main
 
 import (

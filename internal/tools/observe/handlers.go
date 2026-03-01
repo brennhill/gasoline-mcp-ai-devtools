@@ -1,5 +1,4 @@
-// Purpose: Provides observe tool implementation helpers for filtering and storage queries.
-// Why: Centralizes observe query behavior so evidence filtering stays predictable.
+// Purpose: Defines the Handler function type and dispatches observe mode calls with limit/filter/cursor support.
 // Docs: docs/features/feature/observe/index.md
 
 package observe

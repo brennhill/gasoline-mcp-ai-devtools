@@ -1,9 +1,7 @@
 /**
- * Purpose: Handles extension background coordination and message routing.
- * Why: Centralizes extension coordination to reduce race conditions and split-brain state.
- * Docs: docs/features/feature/analyze-tool/index.md
- * Docs: docs/features/feature/interact-explore/index.md
- * Docs: docs/features/feature/observe/index.md
+ * Purpose: Main background service worker hub -- owns debug logging, log handling, connection management, and batcher wiring.
+ * Why: Central export point that delegates to specialized modules while owning cross-cutting concerns.
+ * Docs: docs/features/feature/backend-log-streaming/index.md
  */
 /**
  * @fileoverview Main Background Service Worker — Business logic and export hub.

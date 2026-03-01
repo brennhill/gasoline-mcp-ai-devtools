@@ -1,7 +1,7 @@
-// tools_interact_state.go — MCP interact state management handlers.
-// Implements save_state, load_state, list_states, delete_state with form, storage, and cookie capture.
-//
-// JSON CONVENTION: All fields MUST use snake_case. See .claude/refs/api-naming-standards.md
+// Purpose: Implements save_state, load_state, list_states, and delete_state with form, storage, and cookie capture/restore.
+// Why: Enables agents to checkpoint and restore full page state (DOM + storage + cookies) for deterministic test scenarios.
+// Docs: docs/features/feature/state-time-travel/index.md
+
 package main
 
 import (

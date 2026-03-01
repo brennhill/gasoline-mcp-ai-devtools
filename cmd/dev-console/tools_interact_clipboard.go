@@ -1,4 +1,6 @@
-// tools_interact_clipboard.go — Clipboard read/write actions for testing copy interactions.
+// Purpose: Handles clipboard read and paste actions via navigator.clipboard API for testing copy/paste interactions.
+// Why: Enables agents to verify clipboard content without injecting arbitrary JavaScript.
+// Docs: docs/features/feature/interact-explore/index.md
 
 package main
 

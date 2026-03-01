@@ -1,8 +1,8 @@
 //go:build !windows
 // +build !windows
 
-// Purpose: Implements bridge transport lifecycle, forwarding, and reconnect behavior.
-// Why: Keeps client tool calls resilient across daemon restarts and transport disruptions.
+// Purpose: Sends SIGCONT to a suspended daemon process on Unix to resume it after bridge reconnection.
+// Why: Allows the bridge to wake a stopped daemon without requiring a full restart.
 // Docs: docs/features/feature/bridge-restart/index.md
 
 package main

@@ -1,7 +1,5 @@
-// Purpose: Implements export serializers and format-specific output builders.
-// Why: Provides stable export formats used by downstream analysis and tooling.
+// Purpose: Converts captured NetworkBody entries into HAR 1.2 format for import into browser DevTools and HAR consumers.
 // Docs: docs/features/feature/har-export/index.md
-// Docs: docs/features/feature/sarif-export/index.md
 
 // export_har.go — HAR 1.2 export from captured network data.
 // Converts NetworkBody entries to HTTP Archive format for import into

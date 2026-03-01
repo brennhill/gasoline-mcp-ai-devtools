@@ -1,6 +1,6 @@
-// tools_observe_page_inventory.go — Composite page inventory handler.
-// Dispatches a single pending query to the extension that returns
-// page info + interactive elements in one call (#318).
+// Purpose: Handles observe(what="page_inventory") — returns combined page info and interactive elements in a single extension query.
+// Why: Reduces two separate observe calls (page + list_interactive) into one for faster page discovery.
+// Docs: docs/features/feature/observe/index.md
 
 package main
 

@@ -1,8 +1,6 @@
 /**
- * Purpose: Executes in-page actions and query handlers within the page context.
- * Why: Executes page-context actions safely while preserving deterministic command results.
+ * Purpose: Dispatches window.postMessage commands from the content script to specialized inject-context handlers (settings, state, JS execution, DOM/a11y queries).
  * Docs: docs/features/feature/interact-explore/index.md
- * Docs: docs/features/feature/query-dom/index.md
  */
 
 // message-handlers.ts — Message dispatch from content script to inject-context handlers.

@@ -1,8 +1,6 @@
 /**
- * Purpose: Handles content-script message relay between background and inject contexts.
- * Why: Keeps content-script bridging predictable between extension and page contexts.
+ * Purpose: Handles incoming chrome.runtime messages from the background script -- pings, setting toggles, highlights, JS execution, state management, and draw mode.
  * Docs: docs/features/feature/interact-explore/index.md
- * Docs: docs/features/feature/query-dom/index.md
  */
 /**
  * @fileoverview Message Handlers Module

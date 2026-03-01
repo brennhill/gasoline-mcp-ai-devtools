@@ -1,6 +1,5 @@
 /**
- * Purpose: Provides shared runtime utilities used by extension and server workflows.
- * Why: Avoids duplicated logic across runtime layers and keeps behavior consistent.
+ * Purpose: Extracts all links from the current page and checks their health via HEAD/GET/no-cors fallback chain, categorizing results by status.
  * Docs: docs/features/feature/link-health/index.md
  */
 

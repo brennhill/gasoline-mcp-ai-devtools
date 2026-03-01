@@ -1,3 +1,6 @@
+// Purpose: Builds compact summary maps for network waterfall, errors, and log entries when summary=true.
+// Docs: docs/features/feature/observe/index.md
+
 // summary_builders.go — Compact summary builders for observe modes.
 package observe
 

@@ -1,3 +1,6 @@
+// Purpose: Auto-detects and configures MCP client integrations (Claude Code, Cursor, Windsurf, etc.) during --install.
+// Why: Provides zero-config onboarding by writing the correct JSON config for each supported MCP client.
+
 package main
 
 import (

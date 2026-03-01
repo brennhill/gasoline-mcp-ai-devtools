@@ -1,8 +1,6 @@
-// Purpose: Implements interact tool handlers and browser action orchestration.
-// Why: Preserves deterministic browser action execution across agent workflows.
-// Docs: docs/features/feature/interact-explore/index.md
-
-// tools_interact_storage.go — Granular storage/cookie mutation handlers for interact tool.
+// Purpose: Handles granular localStorage, sessionStorage, and cookie mutation actions (set, delete, clear) via extension queries.
+// Why: Enables agents to manipulate browser storage state without injecting arbitrary JavaScript.
+// Docs: docs/features/feature/environment-manipulation/index.md
 package main
 
 import (

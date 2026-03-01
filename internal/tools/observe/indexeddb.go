@@ -1,5 +1,4 @@
-// Purpose: Provides observe tool implementation helpers for filtering and storage queries.
-// Why: Centralizes observe query behavior so evidence filtering stays predictable.
+// Purpose: Dispatches IndexedDB queries to the extension and formats database/store enumeration responses.
 // Docs: docs/features/feature/observe/index.md
 
 package observe

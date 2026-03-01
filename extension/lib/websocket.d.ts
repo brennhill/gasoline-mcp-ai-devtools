@@ -1,7 +1,6 @@
 /**
- * Purpose: Provides shared runtime utilities used by extension and server workflows.
- * Why: Avoids duplicated logic across runtime layers and keeps behavior consistent.
- * Docs: docs/features/feature/backend-log-streaming/index.md
+ * Purpose: Wraps the WebSocket constructor to intercept lifecycle events and messages, delegating tracking and sampling to websocket-tracking.ts.
+ * Docs: docs/features/feature/observe/index.md
  */
 /**
  * @fileoverview WebSocket capture.

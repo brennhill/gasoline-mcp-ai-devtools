@@ -1,5 +1,4 @@
-// Purpose: Provides configure tool implementation helpers for policy and rewrite flows.
-// Why: Centralizes configure logic so policy/rewrite behavior remains deterministic and testable.
+// Purpose: Summarizes audit trail entries into tool call counts, success/failure rates, and session aggregations.
 // Docs: docs/features/feature/config-profiles/index.md
 
 package configure

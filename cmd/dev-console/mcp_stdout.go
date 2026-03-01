@@ -1,3 +1,6 @@
+// Purpose: Serializes and writes MCP JSON-RPC payloads to stdout with content-length or line framing.
+// Why: Guarantees stdout output invariants (valid JSON, single newline) required by the MCP transport spec.
+
 package main
 
 import (

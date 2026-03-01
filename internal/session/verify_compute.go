@@ -1,7 +1,5 @@
-// Purpose: Implements session lifecycle, snapshots, and diff state management.
-// Why: Maintains reliable state snapshots and diffs for investigations.
+// Purpose: Computes verification diffs (console/network/perf), determines verdict, and dispatches verify_fix MCP actions.
 // Docs: docs/features/feature/observe/index.md
-// Docs: docs/features/feature/pagination/index.md
 
 // verify_compute.go — Verification computation and MCP tool dispatch.
 // Contains: computeVerification, determineVerdict, HandleTool.

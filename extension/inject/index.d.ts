@@ -1,8 +1,6 @@
 /**
- * Purpose: Executes in-page actions and query handlers within the page context.
- * Why: Executes page-context actions safely while preserving deterministic command results.
- * Docs: docs/features/feature/interact-explore/index.md
- * Docs: docs/features/feature/query-dom/index.md
+ * Purpose: Main orchestration and barrel exports for the inject context -- combines API, observers, and message handlers for page-level capture.
+ * Docs: docs/features/feature/observe/index.md
  */
 /**
  * @fileoverview inject/index.ts - Main orchestration and barrel exports

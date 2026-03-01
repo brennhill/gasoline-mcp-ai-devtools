@@ -1,5 +1,4 @@
-// Purpose: Implements prompt-driven test generation, healing, and classification helpers.
-// Why: Accelerates regression coverage by turning observed failures into repeatable tests.
+// Purpose: Generates Playwright test scripts from captured errors, interactions, or regression baselines.
 // Docs: docs/features/feature/test-generation/index.md
 
 package testgen

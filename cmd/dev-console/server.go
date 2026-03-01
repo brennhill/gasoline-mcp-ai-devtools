@@ -1,3 +1,6 @@
+// Purpose: Defines the Server struct with log storage, async log channel, file rotation, and entry management methods.
+// Why: Owns the core mutable server state that all HTTP handlers and MCP tools read from and write to.
+
 package main
 
 import (
@@ -479,7 +482,7 @@ func fallbackLogFilePath() string {
 
 func ensureLogFileWritable(path string) error {
 	if path == "" {
-		return fmt.Errorf("empty log file path")
+		return fmt.Errorf("log_init: log file path is empty. Set a valid path via --log-file or GASOLINE_LOG_FILE")
 	}
 	f, err := os.OpenFile(path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o600) // #nosec G304 -- local path configured at startup
 	if err != nil {

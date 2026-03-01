@@ -1,6 +1,6 @@
-// Purpose: Implements configure tool handlers for policy, profiles, and session controls.
-// Why: Keeps runtime/session configuration changes explicit and auditable from a single tool surface.
-// Docs: docs/features/feature/config-profiles/index.md
+// Purpose: Implements save_sequence, get_sequence, list_sequences, delete_sequence, and replay_sequence for reusable interact macros.
+// Why: Enables agents to record and replay named action sequences across sessions without re-specifying steps.
+// Docs: docs/features/feature/batch-sequences/index.md
 
 package main
 

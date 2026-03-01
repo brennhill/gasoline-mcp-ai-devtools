@@ -520,8 +520,8 @@ func TestNormalizePath_EmptyReturnsError(t *testing.T) {
 	if err == nil {
 		t.Fatal("normalizePath(\"\") should return error")
 	}
-	if !strings.Contains(err.Error(), "empty path") {
-		t.Fatalf("normalizePath(\"\") error = %q, want 'empty path'", err.Error())
+	if !strings.Contains(err.Error(), "resolve_path: path argument is empty") {
+		t.Fatalf("normalizePath(\"\") error = %q, want 'resolve_path: path argument is empty'", err.Error())
 	}
 }
 

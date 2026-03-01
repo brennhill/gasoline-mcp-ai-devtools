@@ -1,5 +1,4 @@
-// Purpose: Provides observe tool implementation helpers for filtering and storage queries.
-// Why: Centralizes observe query behavior so evidence filtering stays predictable.
+// Purpose: Builds waterfall summaries, timeline aggregations, and compact accessibility responses for observe modes.
 // Docs: docs/features/feature/observe/index.md
 
 package observe
@@ -447,7 +446,7 @@ func saveScreenshotToPath(saveTo string, dataURL string) error {
 	// Decode the data URL
 	b64Data, _ := parseDataURL(dataURL)
 	if b64Data == "" {
-		return fmt.Errorf("invalid data URL format")
+		return fmt.Errorf("screenshot_save: invalid data URL format. Expected 'data:image/...;base64,...'")
 	}
 
 	imageData, err := base64.StdEncoding.DecodeString(b64Data)

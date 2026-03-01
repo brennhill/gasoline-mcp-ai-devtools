@@ -1,5 +1,4 @@
-// Purpose: Provides generate tool implementation helpers for emitted artifacts.
-// Why: Centralizes artifact generation logic to avoid drift across output formats.
+// Purpose: Builds Content-Security-Policy directive maps from captured network body origins.
 // Docs: docs/features/feature/test-generation/index.md
 
 package generate

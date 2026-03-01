@@ -1,14 +1,6 @@
-// Purpose: Implements interact tool handlers and browser action orchestration.
-// Why: Preserves deterministic browser action execution across agent workflows.
-// Docs: docs/features/feature/interact-explore/index.md
-
-// tools_interact_upload.go — MCP interact upload action handler.
-// Docs: docs/features/feature/interact-explore/index.md
-// Implements the "upload" action for the interact tool with 4-stage escalation.
-// Stage 4 (OS automation) requires --enable-os-upload-automation flag.
-//
-// JSON CONVENTION: All fields MUST use snake_case. See .claude/refs/api-naming-standards.md
-// Deviations from snake_case MUST be tagged with // SPEC:<spec-name> at the field level.
+// Purpose: Implements the interact upload action with 4-stage escalation (extension inject, form submit, direct API, OS automation).
+// Why: Provides reliable file upload across diverse page architectures by cascading through progressively more aggressive strategies.
+// Docs: docs/features/feature/file-upload/index.md
 package main
 
 import (

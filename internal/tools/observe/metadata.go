@@ -1,5 +1,4 @@
-// Purpose: Provides observe tool implementation helpers for filtering and storage queries.
-// Why: Centralizes observe query behavior so evidence filtering stays predictable.
+// Purpose: Attaches response metadata (data_age_ms, entry count, pagination cursors) to observe results.
 // Docs: docs/features/feature/observe/index.md
 
 package observe

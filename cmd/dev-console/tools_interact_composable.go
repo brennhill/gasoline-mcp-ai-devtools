@@ -1,6 +1,7 @@
-// tools_interact_composable.go — Composable parameter handlers for interact tool.
-// Implements auto_dismiss, wait_for_stable, action_diff, and standalone actions.
-// These queue side-effect queries after the primary action completes.
+// Purpose: Handles composable side-effect parameters (auto_dismiss, wait_for_stable, action_diff) that attach to any interact action.
+// Why: Enables agents to combine overlay dismissal, stability waits, and diff capture with primary actions in a single call.
+// Docs: docs/features/feature/interact-explore/index.md
+
 package main
 
 import (

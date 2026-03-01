@@ -1,3 +1,6 @@
+// Purpose: Assesses async command execution reliability by analyzing recent success/failure/timeout rates.
+// Why: Surfaces command queue health in doctor and health endpoints to diagnose extension responsiveness.
+
 package main
 
 import (
