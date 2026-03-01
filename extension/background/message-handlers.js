@@ -3,6 +3,7 @@
  * Why: Centralizes message validation and sender security checks in one place.
  */
 import { SettingName, StorageKey, DEFAULT_SERVER_URL } from '../lib/constants.js';
+import { pushChatMessage } from './push-handler.js';
 // =============================================================================
 // MESSAGE HANDLER
 // =============================================================================
@@ -169,6 +170,9 @@ function handleMessage(message, sender, sendResponse, deps) {
         case 'GASOLINE_CAPTURE_SCREENSHOT':
             // Content script requests screenshot capture (while draw mode overlay is still visible)
             handleDrawModeCaptureScreenshot(sender, sendResponse);
+            return true;
+        case 'GASOLINE_PUSH_CHAT':
+            handlePushChatAsync(message, sender, sendResponse);
             return true;
         case 'DRAW_MODE_COMPLETED':
             // Fire-and-forget: content script sends draw mode results
@@ -374,6 +378,25 @@ async function handleDrawModeCompletedAsync(message, sender, deps) {
     }
     catch (err) {
         deps.debugLog('error', `Draw mode completion error: ${err.message}. Server may be unreachable.`);
+    }
+}
+/**
+ * Handle GASOLINE_PUSH_CHAT from content script (chat widget).
+ * Pushes a text message to the daemon's push pipeline.
+ */
+async function handlePushChatAsync(message, sender, sendResponse) {
+    try {
+        const tabId = sender.tab?.id ?? 0;
+        const result = await pushChatMessage(message.message, message.page_url, tabId);
+        if (result) {
+            sendResponse({ success: true, status: result.status, event_id: result.event_id });
+        }
+        else {
+            sendResponse({ success: false, error: 'Failed to push message' });
+        }
+    }
+    catch (err) {
+        sendResponse({ success: false, error: err.message });
     }
 }
 function handleSetServerUrl(url, sendResponse, deps) {

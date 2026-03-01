@@ -409,6 +409,9 @@ func (h *ToolHandler) HandleToolCall(req JSONRPCRequest, name string, args json.
 		}
 	}
 
+	// Piggyback push inbox hint if events are pending
+	resp = h.appendPushPiggyback(resp)
+
 	h.recordAuditToolCall(req, name, args, resp, start)
 
 	return resp, true

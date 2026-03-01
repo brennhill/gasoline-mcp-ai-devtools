@@ -186,6 +186,11 @@ func handleFastPath(req JSONRPCRequest, toolsList []MCPTool, framing bridge.Stdi
 
 	switch req.Method {
 	case "initialize":
+		// Extract client capabilities for push delivery pipeline
+		caps := extractClientCapabilities(req.Params)
+		setPushClientCapabilities(caps)
+		storeBridgeFraming(framing)
+
 		result := map[string]any{
 			"protocolVersion": negotiateProtocolVersion(req.Params),
 			"serverInfo":      map[string]any{"name": "gasoline-agentic-browser", "version": version},

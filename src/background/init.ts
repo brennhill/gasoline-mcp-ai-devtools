@@ -77,6 +77,7 @@ import {
   handleTrackedTabUrlChange
 } from './event-listeners.js'
 import { handlePendingQuery } from './pending-queries.js'
+import { installPushCommandListener, installChatCommandListener } from './push-handler.js'
 import type { MessageHandlerDependencies } from './message-handlers.js'
 import { installMessageListener, broadcastTrackingState } from './message-handlers.js'
 import { captureScreenshot, updateBadge } from './communication.js'
@@ -294,6 +295,10 @@ async function initializeExtensionAsync(): Promise<void> {
 
     // ============= STEP 9.6: Install draw mode keyboard shortcut listener =============
     installDrawModeCommandListener((msg) => console.log(`[Gasoline] ${msg}`))
+
+    // ============= STEP 9.7: Install push keyboard shortcut listeners =============
+    installPushCommandListener((msg) => console.log(`[Gasoline] ${msg}`))
+    installChatCommandListener((msg) => console.log(`[Gasoline] ${msg}`))
 
     // ============= STEP 10: Set disconnected badge immediately =============
     // Badge must reflect disconnected state BEFORE the async health check.

@@ -11,6 +11,7 @@ import { debugLog, DebugCategory, setDebugMode, resetSyncClientConnection, share
 import { getServerUrl, getConnectionStatus, isDebugMode, isScreenshotOnError, getCurrentLogLevel, isAiWebPilotEnabled, isAiWebPilotCacheInitialized, getPilotInitCallback, markInitComplete, setServerUrl, setCurrentLogLevel, setScreenshotOnError, setAiWebPilotEnabledCache, setAiWebPilotCacheInitialized, setPilotInitCallback } from './state.js';
 import { isSourceMapEnabled, setSourceMapEnabled, canTakeScreenshot, recordScreenshot, clearSourceMapCache, getContextWarning, getMemoryPressureState, isNetworkBodyCaptureDisabled, flushErrorGroups, cleanupStaleErrorGroups, clearScreenshotTimestamps } from './state-manager.js';
 import { loadDebugModeState, installStartupListener, loadAiWebPilotState, loadSavedSettings, installStorageChangeListener, setupChromeAlarms, installAlarmListener, installTabRemovedListener, installTabUpdatedListener, installDrawModeCommandListener, saveSetting, forwardToAllContentScripts, handleTrackedTabClosed, handleTrackedTabUrlChange } from './event-listeners.js';
+import { installPushCommandListener, installChatCommandListener } from './push-handler.js';
 import { installMessageListener, broadcastTrackingState } from './message-handlers.js';
 import { captureScreenshot, updateBadge } from './communication.js';
 import { wasServiceWorkerRestarted, markStateVersion } from './storage-utils.js';
@@ -196,6 +197,9 @@ async function initializeExtensionAsync() {
         });
         // ============= STEP 9.6: Install draw mode keyboard shortcut listener =============
         installDrawModeCommandListener((msg) => console.log(`[Gasoline] ${msg}`));
+        // ============= STEP 9.7: Install push keyboard shortcut listeners =============
+        installPushCommandListener((msg) => console.log(`[Gasoline] ${msg}`));
+        installChatCommandListener((msg) => console.log(`[Gasoline] ${msg}`));
         // ============= STEP 10: Set disconnected badge immediately =============
         // Badge must reflect disconnected state BEFORE the async health check.
         // Without this, a stale "connected" badge persists from a previous SW session
