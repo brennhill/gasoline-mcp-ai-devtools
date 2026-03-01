@@ -506,6 +506,17 @@ func registerCoreRoutes(mux *http.ServeMux, server *Server, cap *capture.Capture
 		server.handleDrawModeComplete(w, r, cap)
 	})))
 
+	// NOT MCP — Push pipeline endpoints (extension → daemon → AI client)
+	mux.HandleFunc("/push/screenshot", corsMiddleware(extensionOnly(func(w http.ResponseWriter, r *http.Request) {
+		server.handlePushScreenshot(w, r)
+	})))
+	mux.HandleFunc("/push/message", corsMiddleware(extensionOnly(func(w http.ResponseWriter, r *http.Request) {
+		server.handlePushMessage(w, r)
+	})))
+	mux.HandleFunc("/push/capabilities", corsMiddleware(extensionOnly(func(w http.ResponseWriter, r *http.Request) {
+		server.handlePushCapabilities(w, r)
+	})))
+
 	// NOT MCP — HTML dashboard (browser) with JSON fallback (Accept: application/json)
 	mux.HandleFunc("/", corsMiddleware(func(w http.ResponseWriter, r *http.Request) {
 		server.handleDashboard(w, r)

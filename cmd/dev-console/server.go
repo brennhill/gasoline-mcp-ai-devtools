@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/dev-console/dev-console/internal/mcp"
+	"github.com/dev-console/dev-console/internal/push"
 	"github.com/dev-console/dev-console/internal/util"
 )
 
@@ -50,6 +51,10 @@ type Server struct {
 
 	// Annotation store is server-scoped to avoid cross-session contamination.
 	annotationStore *AnnotationStore
+
+	// Push delivery pipeline
+	pushInbox  *push.PushInbox
+	pushRouter *push.Router
 }
 
 // NewServer creates a new server instance
@@ -65,7 +70,15 @@ func NewServer(logFile string, maxEntries int) (*Server, error) {
 		logDone:         make(chan struct{}),
 		warningSeen:     make(map[string]struct{}),
 		annotationStore: NewAnnotationStore(10 * time.Minute),
+		pushInbox:       push.NewPushInbox(50),
 	}
+
+	// Initialize push router with capability sync callback
+	caps := getPushClientCapabilities()
+	s.pushRouter = push.NewRouter(s.pushInbox, &stdioSamplingSender{}, &stdioNotifier{}, caps)
+	onPushCapabilitiesChange(func(newCaps push.ClientCapabilities) {
+		s.pushRouter.UpdateCapabilities(newCaps)
+	})
 
 	// Start async logger goroutine
 	util.SafeGo(func() { s.asyncLoggerWorker() })

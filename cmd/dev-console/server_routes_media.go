@@ -379,5 +379,8 @@ func (s *Server) handleDrawModeComplete(w http.ResponseWriter, r *http.Request, 
 		cap.CompleteCommand(body.CorrelationID, resultJSON, "")
 	}
 
+	// Auto-push annotations to AI client via push pipeline
+	s.pushDrawModeCompletion(&body, screenshotPath, parsedAnnotations)
+
 	jsonResponse(w, http.StatusOK, result)
 }

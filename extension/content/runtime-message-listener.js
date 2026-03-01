@@ -3,6 +3,7 @@ import { SettingName } from '../lib/constants.js';
 import { isValidBackgroundSender, handlePing, handleToggleMessage, forwardHighlightMessage, handleStateCommand, handleExecuteJs, handleExecuteQuery, handleA11yQuery, handleDomQuery, handleGetNetworkWaterfall, handleLinkHealthQuery, handleComputedStylesQuery, handleFormDiscoveryQuery, handleGetReadable, handleGetMarkdown, handlePageSummary } from './message-handlers.js';
 import { showActionToast } from './ui/toast.js';
 import { showSubtitle, toggleRecordingWatermark } from './ui/subtitle.js';
+import { toggleChatWidget } from './ui/chat-widget.js';
 // Toggle state caches — updated by forwarded setting messages from background
 let actionToastsEnabled = true;
 let subtitlesEnabled = true;
@@ -28,6 +29,10 @@ export function initRuntimeMessageListener() {
             const m = msg;
             if (m.text)
                 showActionToast(m.text, m.detail, m.state || 'trying', m.duration_ms);
+            return false;
+        },
+        GASOLINE_TOGGLE_CHAT: (msg) => {
+            toggleChatWidget(msg.client_name);
             return false;
         },
         GASOLINE_RECORDING_WATERMARK: (msg) => {

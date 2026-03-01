@@ -84,6 +84,10 @@ var observeHandlers = map[string]ObserveHandler{
 	"page_inventory": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 		return h.toolObservePageInventory(req, args)
 	},
+	// Push inbox handler
+	"inbox": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+		return h.toolObserveInbox(req, args)
+	},
 	// Local handlers — depend on async/recording subsystems
 	"command_result": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 		return h.toolObserveCommandResult(req, args)
@@ -206,6 +210,7 @@ var serverSideObserveModes = map[string]bool{
 	"log_diff_report":   true,
 	"pilot":             true,
 	"history":           true,
+	"inbox":             true,
 }
 
 // prependDisconnectWarning adds a warning to the first content block when the extension is disconnected.
