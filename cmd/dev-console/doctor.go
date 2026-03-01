@@ -1,3 +1,6 @@
+// Purpose: Runs pre-flight diagnostic checks for port availability, state directory, extension connectivity, and capture health.
+// Why: Gives users a single command to identify and fix common setup issues before filing bug reports.
+
 package main
 
 import (

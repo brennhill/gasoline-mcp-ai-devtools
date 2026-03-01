@@ -1,5 +1,5 @@
-// Purpose: Implements upload command handling, validation, and OS automation wiring.
-// Why: Reduces upload flake by centralizing validation and secure browser-to-OS handoff behavior.
+// Purpose: Handles HTTP file read requests and upload route dispatch, delegating core logic to internal/upload.
+// Why: Provides the HTTP-facing upload endpoints while keeping validation and streaming in a testable internal package.
 // Docs: docs/features/feature/file-upload/index.md
 
 package main

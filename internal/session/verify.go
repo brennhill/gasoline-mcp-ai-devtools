@@ -1,7 +1,6 @@
-// Purpose: Implements session lifecycle, snapshots, and diff state management.
-// Why: Maintains reliable state snapshots and diffs for investigations.
+// Purpose: Implements the verify_fix verification loop: baseline capture, watch, and before/after comparison.
+// Why: Enables AI to verify that a fix resolved the targeted issue without introducing regressions.
 // Docs: docs/features/feature/observe/index.md
-// Docs: docs/features/feature/pagination/index.md
 
 // verify.go — Verification Loop (verify_fix) MCP tool.
 // Provides before/after session comparison for fix verification.

@@ -1,9 +1,6 @@
 /**
- * Purpose: Handles extension background coordination and message routing.
- * Why: Centralizes extension coordination to reduce race conditions and split-brain state.
- * Docs: docs/features/feature/analyze-tool/index.md
- * Docs: docs/features/feature/interact-explore/index.md
- * Docs: docs/features/feature/observe/index.md
+ * Purpose: Installs Chrome runtime message listeners for recording start/stop, auto-stop from offscreen memory guard, and mic permission flow.
+ * Docs: docs/features/feature/flow-recording/index.md
  */
 /** Dependencies injected by recording.ts to avoid circular imports. */
 export interface RecordingListenerDeps {

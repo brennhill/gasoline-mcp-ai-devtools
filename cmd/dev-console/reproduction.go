@@ -1,3 +1,7 @@
+// Purpose: Wires reproduction script generation into the MCP generate tool, delegating to internal/reproduction.
+// Why: Keeps the cmd layer as a thin adapter while reproduction logic lives in a testable internal package.
+// Docs: docs/features/feature/reproduction-scripts/index.md
+
 package main
 
 import (

@@ -1,3 +1,6 @@
+// Purpose: Defines the ToolModule interface and pluggable module registry for mode-based tool dispatch.
+// Why: Enables tool modes to be registered as self-contained modules with validate/execute/describe contracts.
+
 package main
 
 import (
@@ -81,7 +84,7 @@ func validateJSONObjectArgs(args json.RawMessage) error {
 		return err
 	}
 	if _, ok := decoded.(map[string]any); !ok {
-		return fmt.Errorf("arguments must be a JSON object")
+		return fmt.Errorf("tool_dispatch: arguments must be a JSON object, got %T. Wrap tool arguments in {}", decoded)
 	}
 	return nil
 }

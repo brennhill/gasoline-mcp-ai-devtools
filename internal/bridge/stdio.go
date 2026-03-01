@@ -1,5 +1,4 @@
-// Purpose: Implements framed stdio transport, timeouts, and bridge connection lifecycle.
-// Why: Protects MCP request reliability by isolating framing, timeout, and reconnect concerns.
+// Purpose: Reads MCP messages from stdin supporting both line-delimited JSON and Content-Length framing.
 // Docs: docs/features/feature/bridge-restart/index.md
 
 package bridge

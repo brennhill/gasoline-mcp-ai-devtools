@@ -1,3 +1,6 @@
+// Purpose: Orchestrates daemon discovery, spawn, health-check, and version-mismatch handling for bridge client connections.
+// Why: Handles the complex startup handshake where a bridge client must find or launch a compatible daemon.
+
 package main
 
 import (

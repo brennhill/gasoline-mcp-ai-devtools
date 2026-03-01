@@ -1,5 +1,5 @@
-// Purpose: Implements upload command handling, validation, and OS automation wiring.
-// Why: Reduces upload flake by centralizing validation and secure browser-to-OS handoff behavior.
+// Purpose: Re-exports form submission handlers and file validation functions from internal/upload for interact upload stages.
+// Why: Keeps form submit logic in internal/upload while maintaining backward-compatible function references in cmd.
 // Docs: docs/features/feature/file-upload/index.md
 
 package main

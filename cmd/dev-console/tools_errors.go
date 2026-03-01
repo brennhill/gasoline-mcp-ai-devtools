@@ -1,3 +1,6 @@
+// Purpose: Re-exports MCP error codes, structured error builders, and extension connection/pilot gate checks.
+// Why: Gives all tool handlers a uniform error vocabulary without importing internal/mcp directly.
+
 package main
 
 import (

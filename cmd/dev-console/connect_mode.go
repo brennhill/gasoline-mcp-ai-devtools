@@ -1,3 +1,6 @@
+// Purpose: Implements multi-client connect mode, forwarding MCP stdin/stdout to an existing daemon via HTTP.
+// Why: Enables multiple Claude Code sessions to share a single Gasoline server with client ID isolation.
+
 package main
 
 import (

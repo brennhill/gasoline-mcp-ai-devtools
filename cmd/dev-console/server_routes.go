@@ -1,3 +1,6 @@
+// Purpose: Registers all HTTP routes (/health, /mcp, /telemetry, /shutdown, etc.) and wires handlers to the server mux.
+// Why: Centralizes route registration so new endpoints are discoverable in one file.
+
 package main
 
 import (

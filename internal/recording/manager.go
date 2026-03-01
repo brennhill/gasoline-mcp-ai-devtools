@@ -1,5 +1,4 @@
-// Purpose: Implements recording storage, replay engine execution, and diffing helpers.
-// Why: Preserves traceability by storing replayable execution history and comparable outcomes.
+// Purpose: Manages recording lifecycle: start/stop, disk persistence, storage quota enforcement, and metadata indexing.
 // Docs: docs/features/feature/playback-engine/index.md
 
 package recording

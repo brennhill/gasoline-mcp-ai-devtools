@@ -115,19 +115,19 @@ func parseCIWebhookBody(r *http.Request) (CIResult, error) {
 
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
-		return CIResult{}, fmt.Errorf(`{"error":"request body too large"}`)
+		return CIResult{}, fmt.Errorf("ci_alert: request body too large. Reduce payload size to under 1 MB")
 	}
 
 	var ciResult CIResult
 	if err := json.Unmarshal(body, &ciResult); err != nil {
-		return CIResult{}, fmt.Errorf(`{"error":"invalid JSON"}`)
+		return CIResult{}, fmt.Errorf("ci_alert: invalid JSON in request body. Send a valid JSON object with status and source fields")
 	}
 
 	if ciResult.Status == "" {
-		return CIResult{}, fmt.Errorf(`{"error":"missing required field: status"}`)
+		return CIResult{}, fmt.Errorf("ci_alert: missing required field 'status'. Include a status field (e.g. pass, fail) in the request body")
 	}
 	if ciResult.Source == "" {
-		return CIResult{}, fmt.Errorf(`{"error":"missing required field: source"}`)
+		return CIResult{}, fmt.Errorf("ci_alert: missing required field 'source'. Include a source field identifying the CI system")
 	}
 
 	return ciResult, nil

@@ -1,15 +1,7 @@
-// Purpose: Implements interact tool handlers and browser action orchestration.
-// Why: Preserves deterministic browser action execution across agent workflows.
+// Purpose: Implements the evidence capture state machine — before/after screenshot pairs for interact actions.
+// Why: Enables visual regression proof by capturing screenshots around DOM-mutating actions when evidence mode is enabled.
 // Docs: docs/features/feature/interact-explore/index.md
 
-// tools_interact_evidence.go — Evidence capture state machine for interact actions.
-//
-// Evidence mode is opt-in per interact call via:
-//
-//	evidence: "off" | "on_mutation" | "always"
-//
-// When enabled, the server captures screenshot artifacts before and after actions
-// and surfaces them in command results as evidence.before/evidence.after.
 package main
 
 import (
@@ -75,7 +67,7 @@ func parseEvidenceMode(args json.RawMessage) (evidenceMode, error) {
 	case evidenceModeOff, evidenceModeOnMutation, evidenceModeAlways:
 		return mode, nil
 	default:
-		return evidenceModeOff, fmt.Errorf("invalid evidence mode: %s", raw)
+		return evidenceModeOff, fmt.Errorf("interact_evidence: invalid evidence mode %q. Valid modes: off, on_mutation, always", raw)
 	}
 }
 

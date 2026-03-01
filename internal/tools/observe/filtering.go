@@ -1,5 +1,4 @@
-// Purpose: Provides observe tool implementation helpers for filtering and storage queries.
-// Why: Centralizes observe query behavior so evidence filtering stays predictable.
+// Purpose: Filters and sorts log entries by level, source, URL, and time range for observe responses.
 // Docs: docs/features/feature/observe/index.md
 
 package observe
@@ -131,7 +130,7 @@ func extractJSONPath(root any, path string) (any, bool, error) {
 func parseJSONPath(path string) ([]jsonPathToken, error) {
 	trimmed := strings.TrimSpace(path)
 	if trimmed == "" {
-		return nil, fmt.Errorf("path cannot be empty")
+		return nil, fmt.Errorf("body_path_filter: path argument cannot be empty. Provide a dot-delimited path like 'data.items'")
 	}
 
 	if strings.HasPrefix(trimmed, "$.") {

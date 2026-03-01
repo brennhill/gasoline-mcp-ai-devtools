@@ -1,14 +1,6 @@
-// Purpose: Implements interact tool handlers and browser action orchestration.
-// Why: Preserves deterministic browser action execution across agent workflows.
+// Purpose: Enforces the deterministic retry contract — max one retry per step with mandatory strategy change and evidence summary.
+// Why: Prevents agents from retrying blindly by requiring observable strategy changes between attempts.
 // Docs: docs/features/feature/interact-explore/index.md
-
-// tools_interact_retry_contract.go — Deterministic retry contract for interact actions.
-//
-// Contract goals:
-// - Max one retry per step (2 attempts total)
-// - Retry attempt must use a changed strategy
-// - Terminal failures include an actionable evidence summary
-// - Retry metadata is exposed via retry_context
 package main
 
 import (

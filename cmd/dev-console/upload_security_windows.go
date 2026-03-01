@@ -1,8 +1,8 @@
 //go:build windows
 // +build windows
 
-// Purpose: Implements upload command handling, validation, and OS automation wiring.
-// Why: Reduces upload flake by centralizing validation and secure browser-to-OS handoff behavior.
+// Purpose: Windows-specific upload security aliases — path validation with Windows-native ownership semantics.
+// Why: Provides platform-appropriate file security checks for upload path validation on Windows.
 // Docs: docs/features/feature/file-upload/index.md
 
 package main

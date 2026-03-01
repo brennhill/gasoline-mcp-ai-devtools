@@ -1,3 +1,6 @@
+// Purpose: Defines serverConfig struct, CLI flag parsing, runtime mode constants, and startup orchestration.
+// Why: Centralizes all command-line configuration and mode selection logic for the daemon entry point.
+
 package main
 
 import (

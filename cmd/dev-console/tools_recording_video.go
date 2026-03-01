@@ -1,6 +1,6 @@
-// Purpose: Implements recording and playback command handlers for captured browser sessions.
-// Why: Supports deterministic replay and comparison of browser behavior across runs.
-// Docs: docs/features/feature/playback-engine/index.md
+// Purpose: Handles video recording start/stop lifecycle and tab-recording management via extension queries.
+// Why: Coordinates browser-side MediaRecorder capture with server-side recording state tracking.
+// Docs: docs/features/feature/tab-recording/index.md
 
 package main
 

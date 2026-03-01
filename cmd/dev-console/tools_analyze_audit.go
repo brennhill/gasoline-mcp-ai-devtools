@@ -1,6 +1,7 @@
-// tools_analyze_audit.go — Lighthouse-style combined audit report (#280).
-// Aggregates existing analyzers (performance, accessibility, security, best_practices)
-// into a single scored report.
+// Purpose: Aggregates performance, accessibility, security, and best-practices analyzers into a single scored audit report.
+// Why: Provides a Lighthouse-style combined score without requiring agents to call each analyzer separately.
+// Docs: docs/features/feature/best-practices-audit/index.md
+
 package main
 
 import (

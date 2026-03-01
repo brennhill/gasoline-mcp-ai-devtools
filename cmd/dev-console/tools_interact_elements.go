@@ -1,9 +1,6 @@
-// Purpose: Implements interact tool handlers and browser action orchestration.
-// Why: Preserves deterministic browser action execution across agent workflows.
+// Purpose: Implements list_interactive with indexed element store, scope filtering, and index-to-selector resolution.
+// Why: Provides stable numeric element handles that agents can reference across multiple interact calls.
 // Docs: docs/features/feature/interact-explore/index.md
-
-// tools_interact_elements.go — Element indexing for interact tool.
-// Implements list_interactive with indexed element store and index→selector resolution.
 package main
 
 import (

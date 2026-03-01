@@ -1,7 +1,5 @@
-// Purpose: Implements session lifecycle, snapshots, and diff state management.
-// Why: Maintains reliable state snapshots and diffs for investigations.
+// Purpose: Orchestrates full diff between two named snapshots (errors, network, performance, summary).
 // Docs: docs/features/feature/observe/index.md
-// Docs: docs/features/feature/pagination/index.md
 
 // comparison.go — Main comparison logic.
 // Compare function and related comparison orchestration.

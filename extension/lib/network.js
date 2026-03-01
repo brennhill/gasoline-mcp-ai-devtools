@@ -1,7 +1,6 @@
 /**
- * Purpose: Provides shared runtime utilities used by extension and server workflows.
- * Why: Avoids duplicated logic across runtime layers and keeps behavior consistent.
- * Docs: docs/features/feature/backend-log-streaming/index.md
+ * Purpose: Network waterfall capture (PerformanceResourceTiming), fetch body interception with size limits, and sensitive header sanitization.
+ * Docs: docs/features/feature/observe/index.md
  */
 import { MAX_WATERFALL_ENTRIES, WATERFALL_TIME_WINDOW_MS, REQUEST_BODY_MAX, RESPONSE_BODY_MAX, BODY_READ_TIMEOUT_MS, SENSITIVE_HEADER_PATTERNS, BINARY_CONTENT_TYPES } from './constants.js';
 // =============================================================================

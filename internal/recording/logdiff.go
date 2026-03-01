@@ -1,5 +1,4 @@
-// Purpose: Implements recording storage, replay engine execution, and diffing helpers.
-// Why: Preserves traceability by storing replayable execution history and comparable outcomes.
+// Purpose: Compares two recordings to produce a log diff: new errors, missing events, changed values, and action stats.
 // Docs: docs/features/feature/playback-engine/index.md
 
 package recording

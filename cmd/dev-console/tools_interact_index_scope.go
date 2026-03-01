@@ -1,3 +1,7 @@
+// Purpose: Maintains a per-client/tab element index registry that maps numeric indices to CSS selectors for interact actions.
+// Why: Enables stable element references across list_interactive snapshots with generation-based staleness detection.
+// Docs: docs/features/feature/interact-explore/index.md
+
 package main
 
 import (

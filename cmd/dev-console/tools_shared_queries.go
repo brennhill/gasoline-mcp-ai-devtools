@@ -1,3 +1,7 @@
+// Purpose: Builds and executes shared query patterns (accessibility audits) used by both observe and generate tools.
+// Why: Prevents duplicated query construction logic when multiple tools need the same extension query type.
+// Docs: docs/features/feature/enhanced-wcag-audit/index.md
+
 package main
 
 import (

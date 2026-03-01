@@ -1,7 +1,5 @@
-// Purpose: Implements session lifecycle, snapshots, and diff state management.
-// Why: Maintains reliable state snapshots and diffs for investigations.
+// Purpose: Declares CaptureStateReader interface and snapshot data types (NamedSnapshot, SnapshotError, etc.).
 // Docs: docs/features/feature/observe/index.md
-// Docs: docs/features/feature/pagination/index.md
 
 // types.go — Session comparison types.
 // CaptureStateReader, NamedSnapshot, and related snapshot types.

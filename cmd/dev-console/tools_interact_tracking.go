@@ -1,6 +1,7 @@
-// tools_interact_tracking.go — Tracked tab retarget logic for switch_tab.
-// Extracts tab_id/url/title from completed switch_tab responses and updates
-// server-side tracked tab state. See issue #271.
+// Purpose: Updates server-side tracked tab state (tab_id, url, title) after switch_tab completes successfully.
+// Why: Keeps the server's active tab reference in sync with the browser so subsequent actions target the correct tab.
+// Docs: docs/features/feature/tab-tracking-ux/index.md
+
 package main
 
 import "encoding/json"

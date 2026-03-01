@@ -1,3 +1,7 @@
+// Purpose: Parses CLI arguments into MCP tool call parameters for all five tools.
+// Why: Bridges shell-style flag/arg syntax to JSON-RPC parameter maps without MCP client overhead.
+// Docs: docs/features/feature/enhanced-cli-config/index.md
+
 package main
 
 import (
@@ -127,11 +131,11 @@ func parseFlagsBySpec(args []string, specs map[string]cliFlagSpec) (map[string]a
 func requireFlagValue(args []string, idx int) (string, int, error) {
 	next := idx + 1
 	if next >= len(args) {
-		return "", idx, fmt.Errorf("missing value")
+		return "", idx, fmt.Errorf("cli_parse: no value provided after flag. Add a value after the flag")
 	}
 	val := args[next]
 	if strings.HasPrefix(val, "--") {
-		return "", idx, fmt.Errorf("missing value")
+		return "", idx, fmt.Errorf("cli_parse: expected a value but got flag %q. Provide a value between the flags", val)
 	}
 	return val, next, nil
 }

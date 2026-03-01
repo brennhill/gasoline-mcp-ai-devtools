@@ -1,8 +1,6 @@
-// Purpose: Implements analyze tool handlers and response shaping.
-// Why: Keeps analyze tool behavior aligned with diagnostic and schema contracts.
+// Purpose: Handles analyze modes for computed_styles, forms, form_validation, visual_baseline, visual_diff, and navigation queries.
+// Why: Groups DOM inspection and visual regression analysis into a dedicated handler file.
 // Docs: docs/features/feature/analyze-tool/index.md
-
-// tools_analyze_inspect.go — Analyze handlers for computed styles, forms, and visual regression.
 package main
 
 import (

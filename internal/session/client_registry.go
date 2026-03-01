@@ -1,7 +1,6 @@
-// Purpose: Implements session lifecycle, snapshots, and diff state management.
-// Why: Maintains reliable state snapshots and diffs for investigations.
+// Purpose: Tracks connected MCP clients, their buffer cursors, and per-client state with LRU eviction.
+// Why: Isolates per-client read positions and namespaces so concurrent sessions do not interfere.
 // Docs: docs/features/feature/observe/index.md
-// Docs: docs/features/feature/pagination/index.md
 
 // client_registry.go — Multi-client session management.
 // Tracks connected MCP clients, their buffer cursors, and per-client state isolation.

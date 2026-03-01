@@ -1,8 +1,6 @@
 /**
- * Purpose: Executes in-page actions and query handlers within the page context.
- * Why: Executes page-context actions safely while preserving deterministic command results.
- * Docs: docs/features/feature/interact-explore/index.md
- * Docs: docs/features/feature/query-dom/index.md
+ * Purpose: Queries elements by CSS selector and returns computed CSS properties, box model dimensions, and contrast ratios for the analyze tool.
+ * Docs: docs/features/feature/analyze-tool/index.md
  */
 // computed-styles.ts — Computed styles query handler for inject context.
 // Queries elements matching a CSS selector and returns computed CSS properties,

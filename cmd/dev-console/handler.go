@@ -1,3 +1,6 @@
+// Purpose: Implements JSON-RPC request routing, MCP protocol negotiation, and response post-processing for all tool calls.
+// Why: Centralizes the MCP handler lifecycle (initialize, tools/list, tools/call) in a single dispatch surface.
+
 package main
 
 import (

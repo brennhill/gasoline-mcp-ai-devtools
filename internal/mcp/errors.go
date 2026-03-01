@@ -1,5 +1,4 @@
-// Purpose: Defines MCP protocol types, validation, and structured error response helpers.
-// Why: Gives all tools consistent protocol validation and machine-readable error semantics.
+// Purpose: Defines structured error codes, ToolError type, and error response builders for MCP tool results.
 // Docs: docs/features/feature/query-service/index.md
 
 package mcp

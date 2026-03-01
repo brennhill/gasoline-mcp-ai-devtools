@@ -1,5 +1,4 @@
-// Purpose: Provides observe tool implementation helpers for filtering and storage queries.
-// Why: Centralizes observe query behavior so evidence filtering stays predictable.
+// Purpose: Handles observe(what:"storage") mode: reads localStorage/sessionStorage and returns filtered entries.
 // Docs: docs/features/feature/observe/index.md
 
 package observe

@@ -1,5 +1,4 @@
-// Purpose: Implements upload validation, security checks, and automation support paths.
-// Why: Enforces upload safety boundaries against path traversal and SSRF-style abuse.
+// Purpose: Blocks SSRF via DNS-pinned dialing: resolves hostnames, rejects private IPs, and provides SSRF-safe HTTP transport.
 // Docs: docs/features/feature/file-upload/index.md
 
 package upload

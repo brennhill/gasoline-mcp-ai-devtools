@@ -1,5 +1,5 @@
-// Purpose: Implements test generation, classification, and healing command handlers.
-// Why: Makes failure investigation reproducible through generated and self-healed test artifacts.
+// Purpose: Generates Playwright test scripts from captured browser actions and context (error, interaction, regression).
+// Why: Converts runtime telemetry into executable test artifacts for reproduction and regression coverage.
 // Docs: docs/features/feature/test-generation/index.md
 
 package main

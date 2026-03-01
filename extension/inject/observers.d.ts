@@ -1,8 +1,6 @@
 /**
- * Purpose: Executes in-page actions and query handlers within the page context.
- * Why: Executes page-context actions safely while preserving deterministic command results.
- * Docs: docs/features/feature/interact-explore/index.md
- * Docs: docs/features/feature/query-dom/index.md
+ * Purpose: Registers and manages runtime observers for DOM mutations, network requests, performance entries, and WebSocket events in the page context.
+ * Docs: docs/features/feature/observe/index.md
  */
 /**
  * Wrap fetch to capture network errors

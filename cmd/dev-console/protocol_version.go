@@ -1,3 +1,6 @@
+// Purpose: Negotiates MCP protocol version during initialize, supporting latest and one legacy version.
+// Why: Ensures backward compatibility when older MCP clients connect to a newer server.
+
 package main
 
 import "encoding/json"

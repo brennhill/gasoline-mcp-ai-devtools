@@ -1,7 +1,5 @@
-// Purpose: Implements session lifecycle, snapshots, and diff state management.
-// Why: Maintains reliable state snapshots and diffs for investigations.
+// Purpose: Provides snapshot name validation, insertion-order removal, and URL path extraction helpers.
 // Docs: docs/features/feature/observe/index.md
-// Docs: docs/features/feature/pagination/index.md
 
 // helpers.go — Helper functions for session package.
 // validateName, removeFromOrder, extractPath functions.

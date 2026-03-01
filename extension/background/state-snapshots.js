@@ -1,9 +1,6 @@
 /**
- * Purpose: Handles extension background coordination and message routing.
- * Why: Centralizes extension coordination to reduce race conditions and split-brain state.
- * Docs: docs/features/feature/analyze-tool/index.md
- * Docs: docs/features/feature/interact-explore/index.md
- * Docs: docs/features/feature/observe/index.md
+ * Purpose: CRUD operations for saving, loading, listing, and deleting browser state snapshots in chrome.storage.local.
+ * Docs: docs/features/feature/state-time-travel/index.md
  */
 // =============================================================================
 // CONSTANTS & TYPES

@@ -1,5 +1,4 @@
-// Purpose: Defines MCP protocol types, validation, and structured error response helpers.
-// Why: Gives all tools consistent protocol validation and machine-readable error semantics.
+// Purpose: Declares provider interfaces (DiagnosticProvider, CaptureProvider, etc.) that tools require from the host server.
 // Docs: docs/features/feature/query-service/index.md
 
 package mcp

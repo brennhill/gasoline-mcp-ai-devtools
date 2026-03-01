@@ -1,5 +1,4 @@
-// Purpose: Defines MCP protocol types, validation, and structured error response helpers.
-// Why: Gives all tools consistent protocol validation and machine-readable error semantics.
+// Purpose: Provides SafeMarshal, JSON response writers, and stdout-safe MCP result formatting helpers.
 // Docs: docs/features/feature/query-service/index.md
 
 package mcp

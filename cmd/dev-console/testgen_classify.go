@@ -1,6 +1,6 @@
-// Purpose: Implements test generation, classification, and healing command handlers.
-// Why: Makes failure investigation reproducible through generated and self-healed test artifacts.
-// Docs: docs/features/feature/test-generation/index.md
+// Purpose: Handles test_classify mode — classifies test failures as flaky, environment, assertion, or crash using failure signatures.
+// Why: Enables agents to triage failing tests automatically without manual inspection.
+// Docs: docs/features/feature/self-healing-tests/index.md
 
 package main
 

@@ -1,4 +1,6 @@
-// tools_interact_dom.go — DOM primitive action handlers and hardware click.
+// Purpose: Dispatches DOM primitive actions (click, type, select, check, focus, scroll, hover, key_press) and hardware click to the extension.
+// Why: Maps each low-level DOM interaction to a pending query with selector/element resolution and timeout handling.
+// Docs: docs/features/feature/interact-explore/index.md
 
 package main
 

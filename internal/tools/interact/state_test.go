@@ -119,7 +119,7 @@ func TestParseCapturedStatePayload_FailureNoMessage(t *testing.T) {
 	if err == nil {
 		t.Fatal("should return error on failure with no message")
 	}
-	if !strings.Contains(err.Error(), "execute_js failed") {
+	if !strings.Contains(err.Error(), "state_capture: execute_js failed") {
 		t.Errorf("error should be generic, got: %v", err)
 	}
 }

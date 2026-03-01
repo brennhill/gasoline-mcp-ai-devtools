@@ -1,3 +1,6 @@
+// Purpose: Manages daemon lock file, process liveness checks, and stale-daemon cleanup for singleton enforcement.
+// Why: Prevents port conflicts and zombie daemons by coordinating lifecycle via PID-based lock records.
+
 package main
 
 import (

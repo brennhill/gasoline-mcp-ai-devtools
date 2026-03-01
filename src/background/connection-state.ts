@@ -1,9 +1,7 @@
 /**
- * Purpose: Handles extension background coordination and message routing.
- * Why: Centralizes extension coordination to reduce race conditions and split-brain state.
- * Docs: docs/features/feature/analyze-tool/index.md
- * Docs: docs/features/feature/interact-explore/index.md
- * Docs: docs/features/feature/observe/index.md
+ * Purpose: Formal state machine managing extension-server connection lifecycle with invariant enforcement.
+ * Why: Prevents illegal state combinations (e.g., polling while disconnected) that cause silent failures.
+ * Docs: docs/features/feature/backend-log-streaming/index.md
  */
 
 /**

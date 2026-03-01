@@ -1,3 +1,7 @@
+// Purpose: Re-exports streaming types/functions and implements the configure_streaming MCP handler for push notifications.
+// Why: Bridges internal/streaming into the cmd package while keeping the configure tool dispatch surface unified.
+// Docs: docs/features/feature/push-alerts/index.md
+
 package main
 
 import (

@@ -1,6 +1,6 @@
-// Purpose: Implements configure tool handlers for policy, profiles, and session controls.
-// Why: Keeps runtime/session configuration changes explicit and auditable from a single tool surface.
-// Docs: docs/features/feature/config-profiles/index.md
+// Purpose: Handles noise rule management (add/remove/list/reset/auto_detect) and audit log queries for the configure tool.
+// Why: Centralizes noise filtering CRUD and automatic noise detection in a single handler file.
+// Docs: docs/features/feature/noise-filtering/index.md
 
 package main
 

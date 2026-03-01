@@ -1,3 +1,6 @@
+// Purpose: Serves embedded HTML dashboard, diagnostics, logs, setup, and docs pages at browser-accessible routes.
+// Why: Provides a local web UI for inspecting server state without requiring MCP client tooling.
+
 package main
 
 import (

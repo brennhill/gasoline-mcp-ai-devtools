@@ -1,3 +1,7 @@
+// Purpose: Defines structured recovery playbooks for interact action failures (element_not_found, ambiguous_target, stale handle, etc.).
+// Why: Enables deterministic agent self-recovery by embedding ordered retry steps and stop conditions in error responses.
+// Docs: docs/features/feature/interact-explore/index.md
+
 package main
 
 import "strings"

@@ -1,4 +1,6 @@
-// tools_summary_pref.go — Session-level summary preference injection.
+// Purpose: Loads and caches the session-level summary preference, injecting summary=true into tool args when the preference is set.
+// Why: Allows agents to set a one-time preference that automatically compacts all subsequent tool responses.
+
 package main
 
 import "encoding/json"

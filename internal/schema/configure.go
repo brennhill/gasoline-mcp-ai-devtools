@@ -1,5 +1,4 @@
-// Purpose: Defines JSON schema contracts for tool arguments and responses.
-// Why: Keeps tool interfaces strict and synchronized across server, extension, and clients.
+// Purpose: Returns the MCP tool definition (name, description, input schema) for the configure tool.
 // Docs: docs/features/feature/config-profiles/index.md
 
 package schema

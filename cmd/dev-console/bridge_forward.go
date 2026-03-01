@@ -1,5 +1,5 @@
-// Purpose: Implements bridge transport lifecycle, forwarding, and reconnect behavior.
-// Why: Keeps client tool calls resilient across daemon restarts and transport disruptions.
+// Purpose: Forwards JSON-RPC requests from bridge stdin to the daemon HTTP endpoint and writes responses to stdout.
+// Why: Implements the core bridge forwarding loop with session stats, timeout handling, and error response shaping.
 // Docs: docs/features/feature/bridge-restart/index.md
 
 package main

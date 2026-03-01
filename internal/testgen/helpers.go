@@ -1,5 +1,4 @@
-// Purpose: Implements prompt-driven test generation, healing, and classification helpers.
-// Why: Accelerates regression coverage by turning observed failures into repeatable tests.
+// Purpose: Pure helper functions for test generation: filename sanitization, selector extraction, Playwright script building.
 // Docs: docs/features/feature/test-generation/index.md
 
 package testgen

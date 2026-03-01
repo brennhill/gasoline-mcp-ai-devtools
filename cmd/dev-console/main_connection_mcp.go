@@ -1,3 +1,6 @@
+// Purpose: Runs the primary MCP mode — HTTP server for extension, stdin/stdout for Claude Code, signal handling, and graceful shutdown.
+// Why: This is the main runtime entry point that wires capture, routing, bridge, and MCP protocol together.
+
 package main
 
 import (

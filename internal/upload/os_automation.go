@@ -1,5 +1,4 @@
-// Purpose: Implements upload validation, security checks, and automation support paths.
-// Why: Enforces upload safety boundaries against path traversal and SSRF-style abuse.
+// Purpose: Handles Stage 4 OS automation: browser PID detection, AppleScript/xdotool/SendKeys file dialog injection.
 // Docs: docs/features/feature/file-upload/index.md
 
 package upload

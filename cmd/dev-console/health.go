@@ -1,3 +1,6 @@
+// Purpose: Tracks per-tool request/error counters and builds the /health JSON response with uptime, version, and capture stats.
+// Why: Gives operators and automated checks a single endpoint to verify daemon liveness and operational metrics.
+
 package main
 
 import (

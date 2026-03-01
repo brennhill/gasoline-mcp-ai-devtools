@@ -1,3 +1,6 @@
+// Purpose: Manages async command lifecycle — correlation IDs, synchronous wait-for-result, timeout handling, and result shaping.
+// Why: All extension-dispatched queries share the same async poll/wait/timeout contract managed here.
+
 package main
 
 import (

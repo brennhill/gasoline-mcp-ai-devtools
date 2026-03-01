@@ -1,5 +1,5 @@
-// Purpose: Implements bridge transport lifecycle, forwarding, and reconnect behavior.
-// Why: Keeps client tool calls resilient across daemon restarts and transport disruptions.
+// Purpose: Handles bridge fast-path responses for MCP resource reads and tools/list without round-tripping to the daemon.
+// Why: Reduces latency for high-frequency read-only MCP calls by serving them directly from the bridge process.
 // Docs: docs/features/feature/bridge-restart/index.md
 
 package main

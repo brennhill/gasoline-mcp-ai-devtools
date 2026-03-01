@@ -1,5 +1,4 @@
-// Purpose: Implements async command/query dispatch and correlation state tracking.
-// Why: Coordinates async command flow so extension/server state stays coherent under concurrency.
+// Purpose: Creates pending queries, delivers them to the extension, and stores/retrieves one-time query results.
 // Docs: docs/features/feature/query-service/index.md
 
 package queries

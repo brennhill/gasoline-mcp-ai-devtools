@@ -1,8 +1,6 @@
-// Purpose: Implements interact tool handlers and browser action orchestration.
-// Why: Preserves deterministic browser action execution across agent workflows.
+// Purpose: Handles get_readable, get_markdown, and page_summary content extraction via structured extension query types.
+// Why: Replaces unsafe IIFE script injection with CSP-safe content-script message-passing for text extraction.
 // Docs: docs/features/feature/interact-explore/index.md
-
-// tools_interact_content.go — Content extraction handlers for interact tool.
 // Implements get_readable, get_markdown, and page_summary using dedicated query types
 // routed through content script message-passing (CSP-safe, ISOLATED world).
 // Issue #257: Moved from "execute" query type with embedded IIFE scripts to

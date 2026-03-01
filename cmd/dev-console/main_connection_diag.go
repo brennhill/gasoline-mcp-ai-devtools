@@ -1,3 +1,6 @@
+// Purpose: Gathers detailed connection diagnostics (port status, process identity, endpoint probes) when daemon connection fails.
+// Why: Provides actionable troubleshooting data in error messages instead of generic "connection refused" failures.
+
 package main
 
 import (

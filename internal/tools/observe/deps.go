@@ -1,5 +1,4 @@
-// Purpose: Provides observe tool implementation helpers for filtering and storage queries.
-// Why: Centralizes observe query behavior so evidence filtering stays predictable.
+// Purpose: Declares the Deps interface that observe handlers require from the host server.
 // Docs: docs/features/feature/observe/index.md
 
 package observe

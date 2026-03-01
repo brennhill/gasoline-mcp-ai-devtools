@@ -1,7 +1,5 @@
-// Purpose: Implements session lifecycle, snapshots, and diff state management.
-// Why: Maintains reliable state snapshots and diffs for investigations.
+// Purpose: Manages named snapshot CRUD: capture current state, list, delete, with capacity-based eviction.
 // Docs: docs/features/feature/observe/index.md
-// Docs: docs/features/feature/pagination/index.md
 
 // snapshot-manager.go — SessionManager struct and snapshot management.
 // NewSessionManager, Capture, captureCurrentState, List, Delete functions.

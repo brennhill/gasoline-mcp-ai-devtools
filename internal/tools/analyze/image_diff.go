@@ -1,5 +1,4 @@
-// Purpose: Provides analyze tool implementation helpers shared by command handlers.
-// Why: Centralizes analyze logic to keep handler behavior consistent across command paths.
+// Purpose: Computes pixel-level image diffs between two screenshots and identifies changed regions.
 // Docs: docs/features/feature/analyze-tool/index.md
 
 package analyze

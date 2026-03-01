@@ -1,3 +1,7 @@
+// Purpose: Handles screenshot upload, retrieval, rate limiting, and video file serving at /screenshot and /videos routes.
+// Why: Separates media-specific HTTP handlers from core API routes to keep route files focused.
+// Docs: docs/features/feature/tab-recording/index.md
+
 package main
 
 import (

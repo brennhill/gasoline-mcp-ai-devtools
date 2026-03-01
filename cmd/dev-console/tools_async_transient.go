@@ -1,4 +1,6 @@
-// tools_async_transient.go — Attaches transient UI elements to async command results.
+// Purpose: Attaches transient UI elements (toasts, alerts, snackbars) captured after an action to async command results.
+// Why: Surfaces ephemeral UI feedback that appeared during action execution without requiring a separate observe call.
+
 package main
 
 import "time"

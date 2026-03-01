@@ -185,7 +185,7 @@ func InRoot(parts ...string) (string, error) {
 
 func normalizePath(path string) (string, error) {
 	if path == "" {
-		return "", errors.New("empty path")
+		return "", errors.New("resolve_path: path argument is empty. Provide a non-empty file path")
 	}
 	if filepath.IsAbs(path) {
 		return filepath.Clean(path), nil

@@ -1,5 +1,5 @@
-// Purpose: Implements configure tool handlers for policy, profiles, and session controls.
-// Why: Keeps runtime/session configuration changes explicit and auditable from a single tool surface.
+// Purpose: Dispatches configure tool modes (health, clear, store, streaming, restart, doctor, security_mode, etc.) to sub-handlers.
+// Why: Acts as the top-level router for all session/runtime configuration actions under the configure tool.
 // Docs: docs/features/feature/config-profiles/index.md
 
 package main

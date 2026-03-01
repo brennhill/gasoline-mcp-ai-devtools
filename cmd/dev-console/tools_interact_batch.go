@@ -1,6 +1,7 @@
-// tools_interact_batch.go — Batch interaction handler (#340).
-// Executes a sequence of interact actions inline, without requiring a saved sequence.
-// Reuses the replay_sequence execution pattern from tools_configure_sequence.go.
+// Purpose: Executes a sequence of interact actions inline in a single tool call, without requiring a saved sequence.
+// Why: Reduces round-trip overhead when agents need to execute predictable multi-step interactions.
+// Docs: docs/features/feature/batch-sequences/index.md
+
 package main
 
 import (

@@ -1,9 +1,6 @@
 /**
- * Purpose: Handles extension background coordination and message routing.
- * Why: Centralizes extension coordination to reduce race conditions and split-brain state.
+ * Purpose: Command handlers for the analyze MCP tool (DOM inspection, accessibility audits, link health, draw mode) with frame routing.
  * Docs: docs/features/feature/analyze-tool/index.md
- * Docs: docs/features/feature/interact-explore/index.md
- * Docs: docs/features/feature/observe/index.md
  */
 // analyze.ts — Command handlers for the analyze MCP tool.
 // Handles: dom, a11y, link_health, draw_mode.
@@ -78,7 +75,7 @@ function analyzeFrameProbe(frameTarget) {
 async function resolveAnalyzeFrameSelection(tabId, frame) {
     const normalized = normalizeAnalyzeFrameTarget(frame);
     if (normalized === null) {
-        throw new Error('invalid_frame');
+        throw new Error('invalid_frame: frame parameter must be a CSS selector, 0-based index, or "all". Got unsupported type or value');
     }
     // No frame targeting requested — skip the probe entirely and target the main frame.
     if (normalized === undefined) {
@@ -96,7 +93,7 @@ async function resolveAnalyzeFrameSelection(tabId, frame) {
         .map((r) => r.frameId)
         .filter((id) => typeof id === 'number')));
     if (frameIds.length === 0) {
-        throw new Error('frame_not_found');
+        throw new Error('frame_not_found: no iframe matched the given selector or index. Verify the iframe exists and is loaded on the page');
     }
     if (normalized === 'all') {
         return { frameIds, mode: 'all' };

@@ -1,5 +1,4 @@
-// Purpose: Provides observe tool implementation helpers for filtering and storage queries.
-// Why: Centralizes observe query behavior so evidence filtering stays predictable.
+// Purpose: Assembles error bundles by correlating console errors with surrounding network/action context.
 // Docs: docs/features/feature/observe/index.md
 
 package observe

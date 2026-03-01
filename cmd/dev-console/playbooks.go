@@ -1,3 +1,6 @@
+// Purpose: Embeds the capability index, usage guide, quickstart, and on-demand playbook content served as MCP resources.
+// Why: Provides token-efficient documentation that MCP clients can read without external network access.
+
 package main
 
 import "strings"

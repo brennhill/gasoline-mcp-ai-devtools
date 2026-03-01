@@ -1,8 +1,6 @@
 /**
- * Purpose: Handles content-script message relay between background and inject contexts.
- * Why: Keeps content-script bridging predictable between extension and page contexts.
- * Docs: docs/features/feature/interact-explore/index.md
- * Docs: docs/features/feature/query-dom/index.md
+ * Purpose: Renders subtitle overlays and recording watermarks on the page for AI-driven action narration.
+ * Docs: docs/features/feature/subtitle/index.md
  */
 // subtitle.ts — Subtitle overlay, recording watermark, and shared DOM helpers for content UI.
 /** Active Escape key listener reference for subtitle dismiss */

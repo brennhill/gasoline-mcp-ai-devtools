@@ -1,3 +1,7 @@
+// Purpose: Debounces and triggers automatic noise detection on navigation events when GASOLINE_NOISE_AUTORUN is enabled.
+// Why: Coalesces rapid SPA route changes into a single noise-detection pass to avoid redundant analysis.
+// Docs: docs/features/feature/noise-filtering/index.md
+
 package main
 
 import (

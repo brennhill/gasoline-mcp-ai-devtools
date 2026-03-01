@@ -1,8 +1,8 @@
 //go:build linux
 // +build linux
 
-// Purpose: Implements bridge transport lifecycle, forwarding, and reconnect behavior.
-// Why: Keeps client tool calls resilient across daemon restarts and transport disruptions.
+// Purpose: Provides Linux-specific dup3 syscall wrapper for file descriptor duplication in bridge IO isolation.
+// Why: Linux requires dup3 instead of dup2 for safe fd duplication with close-on-exec semantics.
 // Docs: docs/features/feature/bridge-restart/index.md
 
 package main

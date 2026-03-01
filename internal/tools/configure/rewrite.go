@@ -1,5 +1,4 @@
-// Purpose: Provides configure tool implementation helpers for policy and rewrite flows.
-// Why: Centralizes configure logic so policy/rewrite behavior remains deterministic and testable.
+// Purpose: Rewrites noise_rule argument maps to normalize noise_action to the canonical action field.
 // Docs: docs/features/feature/config-profiles/index.md
 
 package configure

@@ -1,4 +1,6 @@
-// tools_configure_network_recording.go — Passive network traffic recording with start/stop.
+// Purpose: Implements passive network traffic recording with start/stop lifecycle and snapshot diffing for the configure tool.
+// Why: Captures network baseline snapshots so agents can compare traffic patterns before and after code changes.
+// Docs: docs/features/feature/backend-log-streaming/index.md
 
 package main
 

@@ -1,3 +1,6 @@
+// Purpose: Implements the --stop command with hybrid shutdown strategy: PID file, HTTP /shutdown, and platform-aware process kill.
+// Why: Ensures reliable daemon teardown across crash states where not all shutdown paths may be available.
+
 package main
 
 import (

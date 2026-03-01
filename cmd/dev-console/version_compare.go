@@ -1,3 +1,6 @@
+// Purpose: Parses and compares semver version strings for upgrade detection and version mismatch checks.
+// Why: Supports the version check and binary watcher features without depending on external semver libraries.
+
 package main
 
 import (
