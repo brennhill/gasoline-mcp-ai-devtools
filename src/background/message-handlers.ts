@@ -24,6 +24,7 @@ import type {
   PerformanceSnapshot
 } from '../types/index.js'
 import { SettingName, StorageKey, DEFAULT_SERVER_URL } from '../lib/constants.js'
+import { pushChatMessage } from './push-handler.js'
 
 // =============================================================================
 // TYPE DEFINITIONS
@@ -290,6 +291,10 @@ function handleMessage(
       handleDrawModeCaptureScreenshot(sender, sendResponse)
       return true
 
+    case 'GASOLINE_PUSH_CHAT':
+      handlePushChatAsync(message as { message: string; page_url: string }, sender, sendResponse)
+      return true
+
     case 'DRAW_MODE_COMPLETED':
       // Fire-and-forget: content script sends draw mode results
       handleDrawModeCompletedAsync(message, sender, deps)
@@ -527,6 +532,28 @@ async function handleDrawModeCompletedAsync(
     }
   } catch (err) {
     deps.debugLog('error', `Draw mode completion error: ${(err as Error).message}. Server may be unreachable.`)
+  }
+}
+
+/**
+ * Handle GASOLINE_PUSH_CHAT from content script (chat widget).
+ * Pushes a text message to the daemon's push pipeline.
+ */
+async function handlePushChatAsync(
+  message: { message: string; page_url: string },
+  sender: ChromeMessageSender,
+  sendResponse: SendResponse
+): Promise<void> {
+  try {
+    const tabId = sender.tab?.id ?? 0
+    const result = await pushChatMessage(message.message, message.page_url, tabId)
+    if (result) {
+      sendResponse({ success: true, status: result.status, event_id: result.event_id })
+    } else {
+      sendResponse({ success: false, error: 'Failed to push message' })
+    }
+  } catch (err) {
+    sendResponse({ success: false, error: (err as Error).message })
   }
 }
 

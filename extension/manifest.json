@@ -46,6 +46,20 @@
         "mac": "Alt+Shift+D"
       },
       "description": "Toggle Draw Mode"
+    },
+    "push_screenshot": {
+      "suggested_key": {
+        "default": "Alt+Shift+S",
+        "mac": "Alt+Shift+S"
+      },
+      "description": "Push Screenshot to AI"
+    },
+    "push_chat": {
+      "suggested_key": {
+        "default": "Alt+Shift+C",
+        "mac": "Alt+Shift+C"
+      },
+      "description": "Push Chat to AI"
     }
   },
   "web_accessible_resources": [
