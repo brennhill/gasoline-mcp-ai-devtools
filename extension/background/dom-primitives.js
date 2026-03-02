@@ -2098,7 +2098,26 @@ export function domPrimitive(action, selector, options) {
                     }
                     return null;
                 }
-                const direction = (options.value || '').toLowerCase();
+                function scrollToY(container, top) {
+                    if (typeof container.scrollTo === 'function') {
+                        container.scrollTo({ top, behavior: 'smooth' });
+                        return;
+                    }
+                    ;
+                    container.scrollTop = top;
+                }
+                function scrollByY(container, deltaY) {
+                    if (typeof container.scrollBy === 'function') {
+                        container.scrollBy({ top: deltaY, behavior: 'smooth' });
+                        return;
+                    }
+                    const currentTop = typeof container.scrollTop === 'number'
+                        ? Number(container.scrollTop)
+                        : 0;
+                    container.scrollTop = currentTop + deltaY;
+                }
+                // Accept both `direction` (preferred) and legacy `value` for backward compatibility.
+                const direction = (options.direction || options.value || '').toLowerCase();
                 const tag = node.tagName.toLowerCase();
                 // Check if the target itself is a scrollable container
                 const isContainer = node instanceof HTMLElement &&
@@ -2110,21 +2129,34 @@ export function domPrimitive(action, selector, options) {
                     const ovY = s.overflowY || '';
                     return ov === 'auto' || ov === 'scroll' || ovY === 'auto' || ovY === 'scroll';
                 })();
-                // Directional scrolling within a container
-                if (direction && (isContainer || tag === 'body' || tag === 'html')) {
-                    const container = isContainer ? node : (findScrollableContainer(node) || document.documentElement);
+                // Directional scrolling within the resolved container (target, ancestor, or page root)
+                const directionalContainer = (() => {
+                    if (isContainer)
+                        return node;
+                    const ancestor = findScrollableContainer(node);
+                    if (ancestor)
+                        return ancestor;
+                    if (typeof document !== 'undefined' && document.scrollingElement instanceof HTMLElement) {
+                        return document.scrollingElement;
+                    }
+                    if (tag === 'body' || tag === 'html')
+                        return document.documentElement;
+                    return document.documentElement;
+                })();
+                if (direction && directionalContainer) {
+                    const container = directionalContainer;
                     switch (direction) {
                         case 'top':
-                            container.scrollTo({ top: 0, behavior: 'smooth' });
+                            scrollToY(container, 0);
                             return mutatingSuccess(node, { reason: 'scrolled_container_top' });
                         case 'bottom':
-                            container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' });
+                            scrollToY(container, container.scrollHeight);
                             return mutatingSuccess(node, { reason: 'scrolled_container_bottom' });
                         case 'up':
-                            container.scrollBy({ top: -container.clientHeight * 0.8, behavior: 'smooth' });
+                            scrollByY(container, -container.clientHeight * 0.8);
                             return mutatingSuccess(node, { reason: 'scrolled_container_up' });
                         case 'down':
-                            container.scrollBy({ top: container.clientHeight * 0.8, behavior: 'smooth' });
+                            scrollByY(container, container.clientHeight * 0.8);
                             return mutatingSuccess(node, { reason: 'scrolled_container_down' });
                     }
                 }
