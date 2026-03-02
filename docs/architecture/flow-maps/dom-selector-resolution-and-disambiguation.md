@@ -41,16 +41,22 @@ Selector resolution inside extension DOM primitives used by `interact` mutating 
 1. `:nth-match(N)` is a stable contract between `list_interactive` output and mutating action input.
 2. Ordinal is 1-based and scoped to the evaluated selector context.
 3. `nth` is 0-based after filtering (negative values count from end) and is shared across selector-based mutating/read-only actions.
+4. Successful mutating actions return selector diagnostics in `matched` (tag/role/aria/text/classes/bbox/selector/element_id).
+5. `observe(command_result)` surfaces `matched` at top level and removes the duplicate nested copy for token efficiency.
 
 ## Code Paths
 
 - `src/background/dom-primitives.ts`
 - `scripts/templates/partials/_dom-selectors.tpl`
 - `extension/background/dom-primitives.js`
+- `cmd/dev-console/tools_async_result_enrichment.go`
+- `cmd/dev-console/tools_async_result_normalization.go`
 
 ## Test Paths
 
 - `extension/background/dom-primitives.test.js`
+- `cmd/dev-console/tools_async_enrich_test.go`
+- `cmd/dev-console/tools_interact_rich_test.go`
 
 ## Edit Guardrails
 

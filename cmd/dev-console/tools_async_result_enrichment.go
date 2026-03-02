@@ -18,7 +18,7 @@ var enrichedFieldKeys = []string{
 	"content_script_status", "target_context",
 	"message", "hint", "retry", "retryable", "csp_blocked", "failure_cause", "error_code",
 	"terminal_reason",
-	"candidates", "match_count", "match_strategy",
+	"matched", "candidates", "match_count", "match_strategy",
 	"viewport",
 }
 
