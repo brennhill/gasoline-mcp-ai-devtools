@@ -12,7 +12,7 @@ import (
 
 func TestNetworkBodiesEmptyHint_FilterMismatch(t *testing.T) {
 	t.Parallel()
-	hint := networkBodiesEmptyHint(0, 5, "github.com")
+	hint := networkBodiesEmptyHint(0, 5, NetworkBodiesHintFilters{URL: "github.com"})
 
 	if !strings.Contains(hint, "github.com") {
 		t.Errorf("hint should mention the URL filter, got: %s", hint)
@@ -24,7 +24,7 @@ func TestNetworkBodiesEmptyHint_FilterMismatch(t *testing.T) {
 
 func TestNetworkBodiesEmptyHint_WaterfallOnly(t *testing.T) {
 	t.Parallel()
-	hint := networkBodiesEmptyHint(10, 0, "")
+	hint := networkBodiesEmptyHint(10, 0, NetworkBodiesHintFilters{})
 
 	if !strings.Contains(hint, "waterfall") {
 		t.Errorf("hint should mention waterfall, got: %s", hint)
@@ -39,7 +39,7 @@ func TestNetworkBodiesEmptyHint_WaterfallOnly(t *testing.T) {
 
 func TestNetworkBodiesEmptyHint_NothingCaptured(t *testing.T) {
 	t.Parallel()
-	hint := networkBodiesEmptyHint(0, 0, "")
+	hint := networkBodiesEmptyHint(0, 0, NetworkBodiesHintFilters{})
 
 	if !strings.Contains(hint, "pilot") {
 		t.Errorf("hint should suggest checking pilot status, got: %s", hint)
@@ -52,11 +52,33 @@ func TestNetworkBodiesEmptyHint_NothingCaptured(t *testing.T) {
 func TestNetworkBodiesEmptyHint_FilterWithZeroUnfiltered(t *testing.T) {
 	t.Parallel()
 	// URL filter present but unfilteredCount is 0 — should fall through to case 2/3
-	hint := networkBodiesEmptyHint(0, 0, "github.com")
+	hint := networkBodiesEmptyHint(0, 0, NetworkBodiesHintFilters{URL: "github.com"})
 
 	// Should NOT mention the filter (case 1 requires unfilteredCount > 0)
 	if strings.Contains(hint, "filter") {
 		t.Errorf("hint should not mention filter when unfiltered count is 0, got: %s", hint)
+	}
+}
+
+func TestNetworkBodiesEmptyHint_FilterMismatch_MultipleFilters(t *testing.T) {
+	t.Parallel()
+	hint := networkBodiesEmptyHint(0, 3, NetworkBodiesHintFilters{
+		URL:       "api.example.com",
+		Method:    "post",
+		StatusMin: 400,
+		StatusMax: 499,
+		BodyPath:  "data.items[0].id",
+	})
+
+	for _, expected := range []string{
+		`url~"api.example.com"`,
+		"method=POST",
+		"status=400..499",
+		"body_path=data.items[0].id",
+	} {
+		if !strings.Contains(hint, expected) {
+			t.Errorf("hint should mention %q, got: %s", expected, hint)
+		}
 	}
 }
 

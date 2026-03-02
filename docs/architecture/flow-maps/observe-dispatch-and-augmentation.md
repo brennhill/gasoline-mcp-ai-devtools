@@ -58,6 +58,7 @@ Covers the `observe` tool entrypoint, mode selection, handler dispatch, and post
 - Missing mode returns `ErrMissingParam` with valid mode hint.
 - Unknown mode returns `ErrUnknownMode` with canonical mode list.
 - Conflicting `what` vs alias values return alias conflict response.
+- For `network_bodies`, empty-result hints incorporate active filters (`url`, `method`, `status_*`, `body_key`, `body_path`) so recovery guidance matches the exact query.
 
 ## State and Contracts
 

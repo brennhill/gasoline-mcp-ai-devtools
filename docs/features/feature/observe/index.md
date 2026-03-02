@@ -48,3 +48,4 @@ test_paths:
 
 Accessibility (`what:"accessibility"`) normalizes `summary` counts with canonical keys (`violations`, `passes`, `incomplete`, `inapplicable`) and preserves legacy aliases (`*_count`) for compatibility.
 WebSocket status (`what:"websocket_status"`) supports `summary:true` with compact URL/connection-id previews while preserving the full default payload when `summary` is omitted.
+Network-bodies empty-result hints now echo all active filters (`url`, `method`, `status_*`, `body_key`, `body_path`) so retry guidance is specific to the current query.
