@@ -15,6 +15,7 @@ Browser extension + MCP server for real-time browser telemetry.
 6. **Performance** — WebSocket < 0.1ms, HTTP < 0.5ms
 7. **Privacy** — All data stays local, no external transmission
 8. **Wire Types** — `wire_*.go` and `wire-*.ts` are the source of truth for HTTP payloads. Changes to either side MUST update the counterpart. Run `make check-wire-drift`
+9. **Docs Cross-Ref (Required)** — EVERY feature and EVERY refactor MUST ship with cross-referenced docs updates (flow map + feature pointers + code/test paths)
 
 ## Git Workflow
 
@@ -69,6 +70,21 @@ Tests: cold start, tool calls, concurrent clients, stdout purity, persistence, g
 - File headers required: `// filename.go — Purpose summary.`
 
 **File size:** Max 800 LOC. Refactor if larger.
+
+## Documentation Cross-Reference Contract (Required)
+
+For every feature and every refactor, update docs in the same change:
+
+1. Add or update the canonical flow map in `docs/architecture/flow-maps/`.
+2. Add or update the feature-local `flow-map.md` pointer under `docs/features/feature/<feature>/` when a feature folder exists.
+3. Update the feature `index.md`:
+   - `last_reviewed`
+   - `code_paths` and `test_paths`
+   - link to `flow-map.md`
+4. Update `docs/architecture/flow-maps/README.md` when adding a new canonical flow map.
+5. Keep cross-links bidirectional (feature -> canonical map, and canonical map lists code/test anchors).
+
+No code-only refactor is considered complete until this documentation contract is satisfied.
 
 ## Finding Things
 
