@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Deterministic local harness server for smoke/integration tests.
 
-Serves static files from tests/pages and exposes deterministic API endpoints
-for telemetry/performance scenarios.
+Serves static files from a caller-provided root and exposes deterministic API
+endpoints for telemetry/performance scenarios.
 """
 
 from __future__ import annotations
@@ -43,6 +43,17 @@ class HarnessHandler(SimpleHTTPRequestHandler):
 
         if path == "/healthz":
             self._send_json(HTTPStatus.OK, {"status": "ok"})
+            return
+
+        # Smoke URL rewriting maps https://example.com* into /example.com* on this
+        # local harness. Serve deterministic HTML instead of Python's default 404 page.
+        if path in ("/example.com", "/example.com/", "/example.org", "/example.org/"):
+            self.path = "/index.html"
+            super().do_GET()
+            return
+        if path.startswith("/example.com/") or path.startswith("/example.org/"):
+            self.path = "/index.html"
+            super().do_GET()
             return
 
         if path == "/api/status/404":

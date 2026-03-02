@@ -65,7 +65,7 @@ func TestCheckGitHubVersionIgnoresOlderOrEqualRelease(t *testing.T) {
 	defer setGitHubAPIURL(oldURL)
 
 	origVersion := version
-	version = "0.7.9"
+	version = "0.7.10"
 	defer func() { version = origVersion }()
 
 	tests := []struct {
@@ -73,7 +73,7 @@ func TestCheckGitHubVersionIgnoresOlderOrEqualRelease(t *testing.T) {
 		tag  string
 	}{
 		{name: "older release", tag: "v0.7.2"},
-		{name: "equal release", tag: "v0.7.9"},
+		{name: "equal release", tag: "v0.7.10"},
 	}
 
 	for _, tc := range tests {

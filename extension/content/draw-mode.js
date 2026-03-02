@@ -27,12 +27,16 @@ let currentY = 0
 let rafId = null
 let saveTimeout = null
 let isDeactivating = false // Re-entry guard for deactivateAndSendResults
+let recentActions = []
 
 const MIN_RECT_SIZE = 5
 const OVERLAY_Z_INDEX = 2147483644
 const ANNOTATION_COLOR = '#ef4444'
 const ANNOTATION_FILL = 'rgba(239, 68, 68, 0.15)'
 const ANNOTATION_STROKE_WIDTH = 2
+const COORD_SPACE_DOCUMENT = 'document'
+const ACTION_TRAIL_LIMIT = 5
+const ACTION_BUFFER_LIMIT = 40
 
 // ============================================================================
 // PUBLIC API
@@ -51,6 +55,7 @@ export function activateDrawMode(source = 'user', session = '', correlationId = 
   startedBy = source
   sessionName = session
   sessionCorrelationId = correlationId
+  recentActions = []
   active = true
   createOverlay()
   loadAnnotations()
@@ -74,6 +79,7 @@ export function deactivateDrawMode() {
   // Clear state to prevent leaks across activate/deactivate cycles
   annotations = []
   elementDetails.clear()
+  recentActions = []
   sessionName = ''
   sessionCorrelationId = ''
   destroyOverlay()
@@ -248,9 +254,15 @@ function createOverlay() {
   overlay.addEventListener('mousemove', onMouseMove)
   overlay.addEventListener('mouseup', onMouseUp)
   document.addEventListener('keydown', onKeyDown)
+  document.addEventListener('click', onActionClick, true)
+  document.addEventListener('input', onActionInput, true)
+  document.addEventListener('change', onActionChange, true)
 
   // Resize observer
   window.addEventListener('resize', onResize)
+  window.addEventListener('scroll', onScroll, { passive: true })
+  window.addEventListener('popstate', onActionNavigation)
+  window.addEventListener('hashchange', onActionNavigation)
 
   // Warn before navigating away with unsaved annotations
   window.addEventListener('beforeunload', onBeforeUnload)
@@ -278,7 +290,13 @@ function destroyOverlay() {
     overlay = null
   }
   document.removeEventListener('keydown', onKeyDown)
+  document.removeEventListener('click', onActionClick, true)
+  document.removeEventListener('input', onActionInput, true)
+  document.removeEventListener('change', onActionChange, true)
   window.removeEventListener('resize', onResize)
+  window.removeEventListener('scroll', onScroll)
+  window.removeEventListener('popstate', onActionNavigation)
+  window.removeEventListener('hashchange', onActionNavigation)
   window.removeEventListener('beforeunload', onBeforeUnload)
   canvas = null
   ctx = null
@@ -312,6 +330,7 @@ function removeStyles() {
 function onMouseDown(e) {
   if (textInput) return // Don't start new rect while typing
   if (e.button !== 0) return // Left click only
+  recordRecentAction('click', e.target || overlay)
   drawing = true
   startX = e.clientX
   startY = e.clientY
@@ -371,6 +390,33 @@ function onResize() {
   renderAnnotations()
 }
 
+function onScroll() {
+  recordRecentAction('scroll', document.activeElement, { scroll_x: Math.round(window.scrollX || 0), scroll_y: Math.round(window.scrollY || 0) })
+  if (!canvas) return
+  renderAnnotations()
+}
+
+function onActionClick(e) {
+  recordRecentAction('click', e.target)
+}
+
+function onActionInput(e) {
+  recordRecentAction('type', e.target)
+}
+
+function onActionChange(e) {
+  const tag = e.target?.tagName?.toLowerCase?.() || ''
+  if (tag === 'select') {
+    recordRecentAction('select', e.target)
+    return
+  }
+  recordRecentAction('change', e.target)
+}
+
+function onActionNavigation() {
+  recordRecentAction('navigation', document.activeElement, { url: window.location.href })
+}
+
 function onBeforeUnload(e) {
   if (active && annotations.length > 0) {
     e.preventDefault()
@@ -409,7 +455,10 @@ function drawExistingAnnotations() {
   if (!ctx) return
   for (let i = 0; i < annotations.length; i++) {
     const ann = annotations[i]
-    const r = ann.rect
+    const r = toViewportRect(ann.rect, ann.coord_space)
+    if (!Number.isFinite(r.x) || !Number.isFinite(r.y) || !Number.isFinite(r.width) || !Number.isFinite(r.height)) {
+      continue
+    }
 
     // Semi-transparent fill
     ctx.fillStyle = ANNOTATION_FILL
@@ -458,7 +507,7 @@ function showTextInput(rect, elementData) {
 
   const input = document.createElement('input')
   input.type = 'text'
-  input.placeholder = 'What should the AI change here?'
+  input.placeholder = "Don't just tell the AI what's wrong, tell it what you want instead..."
   input.dataset.rectJson = JSON.stringify(rect)
   input.dataset.elementJson = JSON.stringify(elementData)
 
@@ -498,7 +547,8 @@ function showTextInput(rect, elementData) {
 
   overlay.appendChild(input)
 
-  // Hint below input: "Enter to confirm · Esc to exit annotation mode"
+  // Hint below input: enter submits current annotation. Re-pressing the
+  // draw-mode shortcut while editing also submits and exits draw mode.
   const inputHint = document.createElement('div')
   inputHint.id = 'gasoline-draw-input-hint'
   const hintTop = parseInt(input.style.top) + 42
@@ -512,7 +562,7 @@ function showTextInput(rect, elementData) {
     pointerEvents: 'none',
     zIndex: String(OVERLAY_Z_INDEX + 2)
   })
-  inputHint.textContent = 'Enter to confirm \u00b7 Esc to exit annotation mode'
+  inputHint.textContent = 'Enter to submit \u00b7 Draw shortcut again submits + exits \u00b7 Esc cancels'
   overlay.appendChild(inputHint)
 
   textInput = input
@@ -550,7 +600,8 @@ function confirmTextInput() {
   textInput = null
 
   const text = input.value.trim()
-  const rect = JSON.parse(input.dataset.rectJson)
+  const viewportRect = JSON.parse(input.dataset.rectJson)
+  const rect = toDocumentRect(viewportRect)
   const elementData = JSON.parse(input.dataset.elementJson)
 
   // Remove input element and hint
@@ -568,20 +619,29 @@ function confirmTextInput() {
   // Create annotation
   const id = `ann_${Date.now()}_${Math.random().toString(36).slice(2, 5)}`
   const correlationId = `ann_detail_${Math.random().toString(36).slice(2, 8)}`
+  const actionTrail = snapshotActionTrail(ACTION_TRAIL_LIMIT)
+  const uiContext = collectUIContextMetadata()
 
   const annotation = {
     id,
     rect,
+    coord_space: COORD_SPACE_DOCUMENT,
     text,
     timestamp: Date.now(),
     page_url: window.location.href,
     element_summary: elementData.summary || '',
-    correlation_id: correlationId
+    correlation_id: correlationId,
+    action_trail: actionTrail,
+    ui_context: uiContext
   }
   annotations.push(annotation)
 
   // Store full detail for lazy retrieval
-  elementDetails.set(correlationId, elementData.detail)
+  elementDetails.set(correlationId, {
+    ...elementData.detail,
+    action_trail: actionTrail,
+    ui_context: uiContext
+  })
 
   renderAnnotations()
   persistAnnotations()
@@ -789,9 +849,14 @@ function refreshElementDetails() {
   for (const ann of annotations) {
     if (!ann.rect || !ann.correlation_id) continue
     try {
-      const freshData = captureElementsUnderRect(ann.rect)
+      const freshData = captureElementsUnderRect(toViewportRect(ann.rect, ann.coord_space))
       if (freshData.detail && Object.keys(freshData.detail).length > 0) {
-        elementDetails.set(ann.correlation_id, freshData.detail)
+        const existing = elementDetails.get(ann.correlation_id) || {}
+        elementDetails.set(ann.correlation_id, {
+          ...freshData.detail,
+          action_trail: existing.action_trail || ann.action_trail || [],
+          ui_context: existing.ui_context || ann.ui_context || collectUIContextMetadata()
+        })
         ann.element_summary = freshData.summary || ann.element_summary
       }
     } catch {
@@ -1336,7 +1401,7 @@ function loadAnnotations() {
       }
       const data = result?.[key]
       if (data?.annotations && data.page_url === window.location.href) {
-        annotations = data.annotations
+        annotations = data.annotations.map(normalizeLoadedAnnotation)
         renderAnnotations()
       }
     })
@@ -1358,6 +1423,18 @@ function loadAnnotations() {
 export function deactivateAndSendResults() {
   if (!active || isDeactivating) return
   isDeactivating = true
+
+  // Shortcut/popup stop while an editor is open should behave like submit, not cancel.
+  if (textInput) {
+    if (!submitActiveTextInputBeforeExit()) {
+      isDeactivating = false
+      return {
+        status: 'validation_error',
+        message: 'Annotation text is required before exiting draw mode.'
+      }
+    }
+  }
+
   const pageUrl = window.location.href
   const currentSessionName = sessionName // capture before deactivate clears it
   const currentCorrelationId = sessionCorrelationId // capture before deactivate clears it
@@ -1451,6 +1528,32 @@ export function deactivateAndSendResults() {
   }
 }
 
+function submitActiveTextInputBeforeExit() {
+  if (!textInput) return true
+  const text = textInput.value.trim()
+  if (!text) {
+    try {
+      if (typeof chrome !== 'undefined' && chrome.runtime) {
+        chrome.runtime.sendMessage({
+          type: 'GASOLINE_ACTION_TOAST',
+          text: 'Annotation text required',
+          detail: 'Type feedback, then press the shortcut again to submit.',
+          state: 'error',
+          duration_ms: 2500
+        })
+      }
+    } catch {
+      // Extension context may be invalidated
+    }
+    textInput.focus()
+    return false
+  }
+
+  // Reuse Enter-submit path so payload matches explicit submit behavior.
+  confirmTextInput()
+  return true
+}
+
 // ============================================================================
 // UTILITY
 // ============================================================================
@@ -1461,5 +1564,179 @@ function normalizeRect(x1, y1, x2, y2) {
     y: Math.min(y1, y2),
     width: Math.abs(x2 - x1),
     height: Math.abs(y2 - y1)
+  }
+}
+
+function scrollOffsets() {
+  return {
+    x: window.scrollX || window.pageXOffset || 0,
+    y: window.scrollY || window.pageYOffset || 0
+  }
+}
+
+function toDocumentRect(rect) {
+  const scroll = scrollOffsets()
+  return {
+    x: rect.x + scroll.x,
+    y: rect.y + scroll.y,
+    width: rect.width,
+    height: rect.height
+  }
+}
+
+function toViewportRect(rect, coordSpace) {
+  if (!rect) {
+    return { x: 0, y: 0, width: 0, height: 0 }
+  }
+  if (coordSpace === COORD_SPACE_DOCUMENT || coordSpace === undefined || coordSpace === null || coordSpace === '') {
+    const scroll = scrollOffsets()
+    return {
+      x: rect.x - scroll.x,
+      y: rect.y - scroll.y,
+      width: rect.width,
+      height: rect.height
+    }
+  }
+  return {
+    x: rect.x,
+    y: rect.y,
+    width: rect.width,
+    height: rect.height
+  }
+}
+
+function normalizeLoadedAnnotation(annotation) {
+  if (!annotation || !annotation.rect) return annotation
+  if (annotation.coord_space === COORD_SPACE_DOCUMENT) {
+    if (!Array.isArray(annotation.action_trail)) annotation.action_trail = []
+    if (!annotation.ui_context) annotation.ui_context = collectUIContextMetadata()
+    return annotation
+  }
+  return {
+    ...annotation,
+    rect: toDocumentRect(annotation.rect),
+    coord_space: COORD_SPACE_DOCUMENT,
+    action_trail: Array.isArray(annotation.action_trail) ? annotation.action_trail : [],
+    ui_context: annotation.ui_context || collectUIContextMetadata()
+  }
+}
+
+function recordRecentAction(type, target, extra = {}) {
+  const entry = {
+    type,
+    target_summary: summarizeActionTarget(target),
+    timestamp: Date.now(),
+    ...extra
+  }
+  recentActions.push(entry)
+  if (recentActions.length > ACTION_BUFFER_LIMIT) {
+    recentActions = recentActions.slice(recentActions.length - ACTION_BUFFER_LIMIT)
+  }
+}
+
+function snapshotActionTrail(limit) {
+  const max = Number.isFinite(limit) && limit > 0 ? Math.floor(limit) : ACTION_TRAIL_LIMIT
+  const selected = recentActions.slice(-max)
+  const now = Date.now()
+  return selected.map((entry, index) => ({
+    type: entry.type,
+    target_summary: entry.target_summary,
+    timestamp: entry.timestamp,
+    delta_ms: Math.max(0, now - entry.timestamp),
+    order: index + 1
+  }))
+}
+
+function summarizeActionTarget(target) {
+  if (!target || !target.tagName) return 'unknown'
+  const tag = target.tagName.toLowerCase()
+  const selector = safeBuildSelector(target)
+  const role = typeof target.getAttribute === 'function' ? target.getAttribute('role') || '' : ''
+  const text = (target.textContent || '').trim().replace(/\s+/g, ' ').slice(0, 60)
+  const parts = [selector || tag]
+  if (role) parts.push(`role=${role}`)
+  if (text) parts.push(`text="${text}"`)
+  return parts.join(' ')
+}
+
+function collectUIContextMetadata() {
+  return {
+    theme: detectTheme(),
+    viewport: {
+      width: window.innerWidth,
+      height: window.innerHeight
+    },
+    sidebars: {
+      left_open: isSidebarOpen([
+        '[data-sidebar="left"]',
+        '#left-sidebar',
+        '.left-sidebar',
+        '.sidebar-left',
+        'aside.left'
+      ]),
+      right_open: isSidebarOpen([
+        '[data-sidebar="right"]',
+        '#right-sidebar',
+        '.right-sidebar',
+        '.sidebar-right',
+        'aside.right'
+      ])
+    },
+    focused_element: summarizeFocusedElement()
+  }
+}
+
+function detectTheme() {
+  try {
+    const html = document.documentElement
+    const dataTheme = html?.dataset?.theme
+    if (dataTheme === 'dark' || dataTheme === 'light') return dataTheme
+    if (html?.classList?.contains('dark')) return 'dark'
+    if (html?.classList?.contains('light')) return 'light'
+    if (typeof window.matchMedia === 'function' && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+      return 'dark'
+    }
+  } catch {
+    // fallback below
+  }
+  return 'light'
+}
+
+function isSidebarOpen(selectors) {
+  for (const selector of selectors) {
+    let el = null
+    try {
+      el = document.querySelector(selector)
+    } catch {
+      el = null
+    }
+    if (!el) continue
+    const rect = el.getBoundingClientRect ? el.getBoundingClientRect() : null
+    const width = rect?.width || 0
+    const height = rect?.height || 0
+    if (width <= 0 || height <= 0) continue
+    const computed = window.getComputedStyle?.(el)
+    if (computed?.display === 'none' || computed?.visibility === 'hidden') continue
+    return true
+  }
+  return false
+}
+
+function summarizeFocusedElement() {
+  const el = document.activeElement
+  if (!el || el === document.body || el === document.documentElement) return null
+  return {
+    selector: safeBuildSelector(el),
+    tag: el.tagName?.toLowerCase?.() || '',
+    role: typeof el.getAttribute === 'function' ? el.getAttribute('role') || '' : '',
+    text: (el.textContent || '').trim().replace(/\s+/g, ' ').slice(0, 80)
+  }
+}
+
+function safeBuildSelector(el) {
+  try {
+    return buildCSSSelector(el)
+  } catch {
+    return el?.tagName?.toLowerCase?.() || 'unknown'
   }
 }

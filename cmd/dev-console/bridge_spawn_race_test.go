@@ -89,7 +89,7 @@ func TestTryConnectToExisting_NonGasolineService(t *testing.T) {
 // --- waitForPeerDaemon tests ---
 
 func TestWaitForPeerDaemon_ServerAppearsOnFirstRetry(t *testing.T) {
-	// Start server after a short delay (< 500ms) so the first retry finds it.
+	// Start server after a short delay so peer polling can discover it.
 	ln, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
 		t.Fatal(err)
@@ -97,7 +97,7 @@ func TestWaitForPeerDaemon_ServerAppearsOnFirstRetry(t *testing.T) {
 	port := ln.Addr().(*net.TCPAddr).Port
 	_ = ln.Close()
 
-	// Launch server after 200ms (before 500ms first retry completes).
+	// Launch server after 200ms.
 	go func() {
 		time.Sleep(200 * time.Millisecond)
 		startHealthServerOnPort(t, port, http.StatusOK, healthJSON(version, "gasoline"))
@@ -114,13 +114,12 @@ func TestWaitForPeerDaemon_ServerAppearsOnFirstRetry(t *testing.T) {
 	if !got {
 		t.Fatal("waitForPeerDaemon() = false, want true when server appears during retry")
 	}
-	// Should have waited at least 500ms (the first sleep)
-	if elapsed < 400*time.Millisecond {
-		t.Fatalf("elapsed = %v, want >= 400ms (first retry sleep)", elapsed)
+	// Polling should wait long enough for the delayed server to come online.
+	if elapsed < 150*time.Millisecond {
+		t.Fatalf("elapsed = %v, want >= 150ms", elapsed)
 	}
-	// Should NOT have needed the second 2s wait
-	if elapsed > 2*time.Second {
-		t.Fatalf("elapsed = %v, want < 2s (should find on first retry)", elapsed)
+	if elapsed > daemonPeerWaitTimeout {
+		t.Fatalf("elapsed = %v, want <= %s", elapsed, daemonPeerWaitTimeout)
 	}
 }
 
@@ -143,12 +142,11 @@ func TestWaitForPeerDaemon_NoServerReturnsQuickly(t *testing.T) {
 	if got {
 		t.Fatal("waitForPeerDaemon() = true, want false when no server ever appears")
 	}
-	// Should have taken ~2.5s total (500ms + 2s retries)
-	if elapsed < 2*time.Second {
-		t.Fatalf("elapsed = %v, want >= 2s (both retries)", elapsed)
+	if elapsed < daemonPeerWaitTimeout-daemonPeerPollInterval {
+		t.Fatalf("elapsed = %v, want >= %s", elapsed, daemonPeerWaitTimeout-daemonPeerPollInterval)
 	}
-	if elapsed > 5*time.Second {
-		t.Fatalf("elapsed = %v, want < 5s", elapsed)
+	if elapsed > daemonPeerWaitTimeout+500*time.Millisecond {
+		t.Fatalf("elapsed = %v, want <= %s", elapsed, daemonPeerWaitTimeout+500*time.Millisecond)
 	}
 }
 

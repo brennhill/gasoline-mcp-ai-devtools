@@ -35,6 +35,8 @@ Each flow map should include:
 
 ## Current Maps
 
+- [Bridge Startup Contention and Convergence](./bridge-startup-contention-and-convergence.md)
+- [Analyze Annotation Waiter and Flush Recovery](./analyze-annotations-waiter-and-flush.md)
 - [Daemon Stop and Force Cleanup](./daemon-stop-and-force-cleanup.md)
 - [MCP Daemon Lifecycle](./mcp-daemon-lifecycle.md)
 - [Network Recording Control](./network-recording-control.md)

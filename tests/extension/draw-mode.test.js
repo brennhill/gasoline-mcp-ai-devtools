@@ -60,9 +60,14 @@ function createMockElement(tag = 'div') {
       return { x: 10, y: 20, width: 100, height: 50 }
     },
     getContext(type) {
-      if (type === '2d') return createMockCanvasContext()
-      return null
+      if (type !== '2d') return null
+      if (!this._ctx) this._ctx = createMockCanvasContext()
+      return this._ctx
     },
+    get _context2d() {
+      return this._ctx || null
+    },
+    _ctx: null,
     // For canvas
     width: 1024,
     height: 768,
@@ -483,6 +488,21 @@ describe('Draw Mode — Drawing Mechanics', () => {
     assert.ok(inputEls.length > 0, 'expected text input after drawing rectangle')
   })
 
+  test('annotation composer shows desired-outcome helper guidance', () => {
+    dm.activateDrawMode('user')
+    const overlay = documentBody.children[0]
+
+    overlay._dispatch('mousedown', { button: 0, clientX: 100, clientY: 100 })
+    overlay._dispatch('mouseup', { clientX: 250, clientY: 200 })
+
+    const inputEl = createdElements.find((el) => el.tagName === 'INPUT')
+    assert.ok(inputEl, 'expected text input element')
+    assert.ok(
+      inputEl.placeholder.includes("Don't just tell the AI what's wrong"),
+      `unexpected placeholder guidance: ${inputEl.placeholder}`
+    )
+  })
+
   test('tiny rectangle (< 5px) does not create text input', () => {
     dm.activateDrawMode('user')
     const overlay = documentBody.children[0]
@@ -529,6 +549,150 @@ describe('Draw Mode — Drawing Mechanics', () => {
     assert.strictEqual(annotations[0].rect.y, 100)
     assert.strictEqual(annotations[0].rect.width, 150)
     assert.strictEqual(annotations[0].rect.height, 100)
+  })
+
+  test('annotation rect is stored in document coordinates when page is scrolled', () => {
+    globalThis.window.scrollX = 40
+    globalThis.window.scrollY = 120
+
+    dm.activateDrawMode('user')
+    const overlay = documentBody.children[0]
+
+    overlay._dispatch('mousedown', { button: 0, clientX: 100, clientY: 100 })
+    overlay._dispatch('mouseup', { clientX: 250, clientY: 200 })
+
+    const inputEl = createdElements.find((el) => el.tagName === 'INPUT')
+    inputEl.value = 'doc-space'
+    inputEl._listeners['keydown']?.[0]?.({ key: 'Enter', preventDefault: mock.fn(), stopPropagation: mock.fn() })
+
+    const annotations = dm.getAnnotations()
+    assert.strictEqual(annotations.length, 1)
+    assert.strictEqual(annotations[0].rect.x, 140)
+    assert.strictEqual(annotations[0].rect.y, 220)
+    assert.strictEqual(annotations[0].coord_space, 'document')
+  })
+
+  test('scrolling re-renders annotations anchored to page content', () => {
+    dm.activateDrawMode('user')
+    const overlay = documentBody.children[0]
+
+    overlay._dispatch('mousedown', { button: 0, clientX: 100, clientY: 100 })
+    overlay._dispatch('mouseup', { clientX: 250, clientY: 200 })
+
+    const inputEl = createdElements.find((el) => el.tagName === 'INPUT')
+    inputEl.value = 'scroll-anchor'
+    inputEl._listeners['keydown']?.[0]?.({ key: 'Enter', preventDefault: mock.fn(), stopPropagation: mock.fn() })
+
+    const canvasEl = createdElements.find((el) => el.tagName === 'CANVAS')
+    assert.ok(canvasEl?._context2d, 'expected canvas 2d context')
+    canvasEl._context2d.strokeRect.mock.resetCalls()
+
+    globalThis.window.scrollX = 20
+    globalThis.window.scrollY = 40
+
+    const scrollCall = globalThis.window.addEventListener.mock.calls.find((c) => c.arguments?.[0] === 'scroll')
+    assert.ok(scrollCall, 'expected scroll listener registration')
+    const onScroll = scrollCall.arguments[1]
+    onScroll()
+
+    const drawCall = canvasEl._context2d.strokeRect.mock.calls[0]
+    assert.ok(drawCall, 'expected annotation redraw on scroll')
+    assert.strictEqual(drawCall.arguments[0], 80) // 100 docX - 20 scrollX
+    assert.strictEqual(drawCall.arguments[1], 60) // 100 docY - 40 scrollY
+    assert.strictEqual(drawCall.arguments[2], 150)
+    assert.strictEqual(drawCall.arguments[3], 100)
+  })
+
+  test('resize after scrolling preserves annotation alignment', () => {
+    dm.activateDrawMode('user')
+    const overlay = documentBody.children[0]
+
+    overlay._dispatch('mousedown', { button: 0, clientX: 100, clientY: 100 })
+    overlay._dispatch('mouseup', { clientX: 250, clientY: 200 })
+
+    const inputEl = createdElements.find((el) => el.tagName === 'INPUT')
+    inputEl.value = 'resize-anchor'
+    inputEl._listeners['keydown']?.[0]?.({ key: 'Enter', preventDefault: mock.fn(), stopPropagation: mock.fn() })
+
+    const canvasEl = createdElements.find((el) => el.tagName === 'CANVAS')
+    assert.ok(canvasEl?._context2d, 'expected canvas 2d context')
+    canvasEl._context2d.strokeRect.mock.resetCalls()
+
+    globalThis.window.scrollX = 15
+    globalThis.window.scrollY = 30
+    globalThis.window.innerWidth = 1280
+    globalThis.window.innerHeight = 900
+
+    const resizeCall = globalThis.window.addEventListener.mock.calls.find((c) => c.arguments?.[0] === 'resize')
+    assert.ok(resizeCall, 'expected resize listener registration')
+    const onResize = resizeCall.arguments[1]
+    onResize()
+
+    const drawCall = canvasEl._context2d.strokeRect.mock.calls[0]
+    assert.ok(drawCall, 'expected redraw on resize')
+    assert.strictEqual(drawCall.arguments[0], 85) // 100 docX - 15 scrollX
+    assert.strictEqual(drawCall.arguments[1], 70) // 100 docY - 30 scrollY
+    assert.strictEqual(drawCall.arguments[2], 150)
+    assert.strictEqual(drawCall.arguments[3], 100)
+  })
+
+  test('second shortcut submit path commits active annotation text before exit', async () => {
+    dm.activateDrawMode('user')
+    const overlay = documentBody.children[0]
+
+    const sentMessages = []
+    globalThis.chrome.runtime.sendMessage = mock.fn((msg, callback) => {
+      sentMessages.push(msg)
+      if (msg.type === 'GASOLINE_CAPTURE_SCREENSHOT' && typeof callback === 'function') {
+        callback({ dataUrl: 'data:image/png;base64,mockscreenshot' })
+      }
+      return undefined
+    })
+
+    overlay._dispatch('mousedown', { button: 0, clientX: 100, clientY: 100 })
+    overlay._dispatch('mouseup', { clientX: 250, clientY: 200 })
+
+    const inputEl = createdElements.find((el) => el.tagName === 'INPUT')
+    inputEl.value = 'submit-via-shortcut'
+
+    dm.deactivateAndSendResults()
+    await new Promise((r) => setTimeout(r, 350))
+
+    assert.strictEqual(dm.isDrawModeActive(), false, 'draw mode should be inactive after shortcut submit')
+
+    const completed = sentMessages.find((m) => m.type === 'DRAW_MODE_COMPLETED')
+    assert.ok(completed, 'expected DRAW_MODE_COMPLETED message')
+    assert.strictEqual(completed.annotations.length, 1)
+    assert.strictEqual(completed.annotations[0].text, 'submit-via-shortcut')
+  })
+
+  test('second shortcut submit path with empty text keeps editor open and warns user', () => {
+    dm.activateDrawMode('user')
+    const overlay = documentBody.children[0]
+
+    const sentMessages = []
+    globalThis.chrome.runtime.sendMessage = mock.fn((msg, callback) => {
+      sentMessages.push(msg)
+      if (msg.type === 'GASOLINE_CAPTURE_SCREENSHOT' && typeof callback === 'function') {
+        callback({ dataUrl: 'data:image/png;base64,mockscreenshot' })
+      }
+      return undefined
+    })
+
+    overlay._dispatch('mousedown', { button: 0, clientX: 100, clientY: 100 })
+    overlay._dispatch('mouseup', { clientX: 250, clientY: 200 })
+
+    const inputEl = createdElements.find((el) => el.tagName === 'INPUT')
+    inputEl.value = ''
+
+    dm.deactivateAndSendResults()
+
+    assert.strictEqual(dm.isDrawModeActive(), true, 'draw mode should remain active on invalid submit')
+    assert.ok(inputEl.parentElement, 'text input should remain mounted for correction')
+
+    const errorToast = sentMessages.find((m) => m.type === 'GASOLINE_ACTION_TOAST' && m.state === 'error')
+    assert.ok(errorToast, 'expected validation error toast')
+    assert.ok(!sentMessages.some((m) => m.type === 'DRAW_MODE_COMPLETED'), 'should not send completion on invalid submit')
   })
 
   test('empty text on Enter discards annotation', () => {
@@ -668,6 +832,62 @@ describe('Draw Mode — Drawing Mechanics', () => {
     assert.ok(detail, 'should retrieve detail by correlation_id')
     assert.ok(detail.selector, 'detail should have selector')
     assert.ok(detail.tag, 'detail should have tag')
+    assert.ok(Array.isArray(detail.action_trail), 'detail should include action_trail')
+    assert.ok(detail.ui_context, 'detail should include ui_context')
+  })
+
+  test('new annotations include bounded recent action trail', () => {
+    dm.activateDrawMode('user')
+    const overlay = documentBody.children[0]
+
+    // Trigger a prior action so trail is non-empty.
+    const scrollCall = globalThis.window.addEventListener.mock.calls.find((c) => c.arguments?.[0] === 'scroll')
+    assert.ok(scrollCall, 'expected scroll listener registration')
+    globalThis.window.scrollY = 55
+    scrollCall.arguments[1]()
+
+    overlay._dispatch('mousedown', { button: 0, clientX: 100, clientY: 100 })
+    overlay._dispatch('mouseup', { clientX: 250, clientY: 200 })
+
+    const inputEl = createdElements.find((el) => el.tagName === 'INPUT')
+    inputEl.value = 'trail metadata'
+    inputEl._listeners['keydown']?.[0]?.({ key: 'Enter', preventDefault: mock.fn(), stopPropagation: mock.fn() })
+
+    const annotation = dm.getAnnotations()[0]
+    assert.ok(Array.isArray(annotation.action_trail), 'expected action_trail array')
+    assert.ok(annotation.action_trail.length > 0, 'expected non-empty action_trail')
+
+    const first = annotation.action_trail[0]
+    assert.ok(first.type, 'trail entry should include type')
+    assert.ok(first.target_summary, 'trail entry should include target_summary')
+    assert.strictEqual(typeof first.timestamp, 'number')
+  })
+
+  test('new annotations include ui context metadata and focused-element summary', () => {
+    dm.activateDrawMode('user')
+    const overlay = documentBody.children[0]
+
+    const focused = createMockElement('button')
+    focused.id = 'save-btn'
+    focused.textContent = 'Save'
+    focused.parentElement = createMockElement('div')
+    globalThis.document.activeElement = focused
+
+    overlay._dispatch('mousedown', { button: 0, clientX: 100, clientY: 100 })
+    overlay._dispatch('mouseup', { clientX: 250, clientY: 200 })
+
+    const inputEl = createdElements.find((el) => el.tagName === 'INPUT')
+    inputEl.value = 'context metadata'
+    inputEl._listeners['keydown']?.[0]?.({ key: 'Enter', preventDefault: mock.fn(), stopPropagation: mock.fn() })
+
+    const annotation = dm.getAnnotations()[0]
+    assert.ok(annotation.ui_context, 'expected ui_context on annotation')
+    assert.ok(['light', 'dark'].includes(annotation.ui_context.theme), 'expected normalized theme')
+    assert.strictEqual(annotation.ui_context.viewport.width, globalThis.window.innerWidth)
+    assert.strictEqual(annotation.ui_context.viewport.height, globalThis.window.innerHeight)
+    assert.strictEqual(typeof annotation.ui_context.sidebars.left_open, 'boolean')
+    assert.strictEqual(typeof annotation.ui_context.sidebars.right_open, 'boolean')
+    assert.ok(annotation.ui_context.focused_element, 'expected focused_element summary')
   })
 })
 

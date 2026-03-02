@@ -36,7 +36,7 @@ func AnalyzeToolSchema() mcp.MCPTool {
 				},
 				"wait": map[string]any{
 					"type":        "boolean",
-					"description": "Wait for result (default: true). For annotations: blocks up to 5 min for user to finish drawing.",
+					"description": "Wait for result (default: true). For annotations with wait=true, blocks up to timeout_ms before falling back to correlation polling.",
 				},
 				"background": map[string]any{
 					"type":        "boolean",
@@ -44,8 +44,8 @@ func AnalyzeToolSchema() mcp.MCPTool {
 				},
 				"operation": map[string]any{
 					"type":        "string",
-					"description": "API validation operation",
-					"enum":        []string{"analyze", "report", "clear"},
+					"description": "Operation selector (api_validation: analyze/report/clear; annotations: flush)",
+					"enum":        []string{"analyze", "report", "clear", "flush"},
 				},
 				"ignore_endpoints": map[string]any{
 					"type":        "array",
@@ -71,7 +71,7 @@ func AnalyzeToolSchema() mcp.MCPTool {
 				},
 				"timeout_ms": map[string]any{
 					"type":        "number",
-					"description": "Timeout ms (link_health, page_summary, annotations). For annotations with wait=true: default 300000 (5 min), max 600000 (10 min).",
+					"description": "Timeout ms (link_health, page_summary, annotations). For annotations with wait=true: default 15000 (15s), max 600000 (10 min).",
 				},
 				"world": map[string]any{
 					"type":        "string",

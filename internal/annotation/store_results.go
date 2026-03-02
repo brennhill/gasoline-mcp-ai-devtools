@@ -9,10 +9,11 @@ import "encoding/json"
 // BuildSessionResult serializes an annotation session for the CommandTracker.
 func BuildSessionResult(session *Session) json.RawMessage {
 	result := map[string]any{
-		"status":      "complete",
-		"annotations": session.Annotations,
-		"count":       len(session.Annotations),
-		"page_url":    session.PageURL,
+		"status":          "complete",
+		"annotations":     session.Annotations,
+		"count":           len(session.Annotations),
+		"page_url":        session.PageURL,
+		"terminal_reason": "completed",
 	}
 	if session.ScreenshotPath != "" {
 		result["screenshot"] = session.ScreenshotPath
@@ -45,6 +46,7 @@ func BuildNamedSessionResult(ns *NamedSession) json.RawMessage {
 		"pages":              pages,
 		"page_count":         len(ns.Pages),
 		"total_count":        totalCount,
+		"terminal_reason":    "completed",
 	}
 	// Error impossible: map of primitive types.
 	data, _ := json.Marshal(result)

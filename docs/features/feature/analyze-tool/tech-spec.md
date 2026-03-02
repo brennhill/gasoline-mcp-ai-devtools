@@ -1,17 +1,20 @@
 ---
 feature: analyze-tool
 status: shipped
-version: v7.0
+version: v7.1
 doc_type: tech-spec
 feature_id: feature-analyze-tool
-last_reviewed: 2026-02-17
+last_reviewed: 2026-03-02
 ---
 
-# Analyze Tech Spec (TARGET)
+# Analyze Tech Spec
 
-## Dispatcher and Handlers
-- Primary dispatch map: `analyzeHandlers` in `cmd/dev-console/tools_analyze.go`
-- Annotation/session handlers: `cmd/dev-console/tools_analyze_annotations.go`
+## Dispatcher and Handler Topology
+- Dispatch entrypoint: `toolAnalyze` in `cmd/dev-console/tools_analyze_dispatch.go`.
+- Mode routing table: `analyzeHandlers` in `cmd/dev-console/tools_analyze_dispatch.go`.
+- Annotation handlers: `cmd/dev-console/tools_analyze_annotations_handlers.go`.
+- API validation handlers: `cmd/dev-console/tools_analyze_api_validation.go`.
+- Async command-result polling: `cmd/dev-console/tools_async_observe_commands.go`.
 
 ## Query-Type Mapping
 - `dom` -> pending query type `dom`
@@ -20,22 +23,44 @@ last_reviewed: 2026-02-17
 - `link_health` -> pending query type `link_health`
 
 ## Server-Only Flows
-- `link_validation` uses server-side HTTP verification with SSRF-safe transport.
-- `api_validation` runs incremental contract analysis over captured network bodies.
-- `security_audit` and `third_party_audit` consume server capture buffers.
+- `link_validation` performs server-side URL checks (no extension dependency).
+- `api_validation` performs contract analysis over captured network bodies.
+- `security_audit` and `third_party_audit` consume capture buffers and policy filters.
 
-## Async/Synchronous Control
-- Uses `maybeWaitForCommand` to implement sync-by-default behavior.
-- Wait timeout is bounded; prolonged commands return `still_processing` and require polling.
+## Async and Sync-by-Default
+- Async-capable handlers register a command correlation ID in the command tracker.
+- `MaybeWaitForCommand` provides sync-by-default behavior and falls back to `still_processing`.
+- `observe({what:"command_result", correlation_id})` is the canonical retrieval path.
 
-## Annotation Flow
-- Draw mode completion persists sessions.
-- `annotations(wait=true)` uses waiter registration and command completion callbacks.
-- `annotation_detail` resolves from annotation detail store.
+## Annotation Waiter and Flush Recovery
+- `analyze({what:"annotations", wait:true})` creates `ann_*` command records plus annotation waiters.
+- Normal completion path:
+  1. Draw-mode completion stores session data in `internal/annotation`.
+  2. Store callback completes matching waiters via `capture.CompleteCommand`.
+  3. `observe(command_result)` returns final command output.
+- Recovery path (`#412`):
+  - `analyze({what:"annotations", operation:"flush", correlation_id:"ann_*"})`
+  - Removes the pending waiter (`TakeWaiter`) to prevent duplicate later completion.
+  - Force-completes pending command quickly with currently available annotations.
+  - Emits explicit `terminal_reason` values:
+    - `completed` (normal storage callback path)
+    - `flushed` (operator recovery flush with available data)
+    - `abandoned` (flush with no captured annotation data)
+- Repeated flush calls are idempotent: terminal commands are returned as-is.
+
+## Schema Contract Notes
+- Analyze schema source: `internal/schema/analyze.go`.
+- `operation` currently supports:
+  - `api_validation`: `analyze`, `report`, `clear`
+  - `annotations`: `flush`
 
 ## Code Anchors
-- `cmd/dev-console/tools_analyze.go`
-- `cmd/dev-console/tools_analyze_annotations.go`
-- `cmd/dev-console/tools_security.go`
-- `internal/capture/queries.go`
-- `src/background/pending-queries.ts`
+- `cmd/dev-console/tools_analyze_dispatch.go`
+- `cmd/dev-console/tools_analyze_annotations_handlers.go`
+- `cmd/dev-console/tools_async_observe_commands.go`
+- `cmd/dev-console/tools_async_formatting.go`
+- `internal/annotation/store.go`
+- `internal/annotation/store_results.go`
+- `internal/annotation/store_wait.go`
+- `internal/schema/analyze.go`
+

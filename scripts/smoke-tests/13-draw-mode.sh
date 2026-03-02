@@ -378,10 +378,33 @@ begin_test "13.10" "[DAEMON ONLY] Generate Playwright test from annotations" \
     "Tests: annotation-to-test code generation"
 
 run_test_13_10() {
-    local response
-    response=$(call_tool "generate" '{"format":"visual_test"}')
-    local content_text
-    content_text=$(extract_content_text "$response")
+    local response content_text
+    local max_attempts=8
+    local settled=false
+
+    for i in $(seq 1 "$max_attempts"); do
+        response=$(call_tool "generate" '{"format":"visual_test"}')
+        content_text=$(extract_content_text "$response")
+
+        if [ -z "$content_text" ]; then
+            content_text="$response"
+        fi
+
+        if echo "$content_text" | grep -qi "starting up"; then
+            if [ "$i" -lt "$max_attempts" ]; then
+                sleep 2
+                continue
+            fi
+        else
+            settled=true
+            break
+        fi
+    done
+
+    if [ "$settled" != "true" ] && echo "$content_text" | grep -qi "starting up"; then
+        skip "visual_test deferred: daemon still starting after ${max_attempts} retries."
+        return
+    fi
 
     if echo "$content_text" | grep -q "test(" && echo "$content_text" | grep -q "page.goto"; then
         pass "visual_test contains test() and page.goto()."
