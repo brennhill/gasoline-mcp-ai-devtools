@@ -68,6 +68,22 @@ export declare function installStartupListener(logFn?: (message: string) => void
  * Sends GASOLINE_DRAW_MODE_START or GASOLINE_DRAW_MODE_STOP to the active tab's content script.
  */
 export declare function installDrawModeCommandListener(logFn?: (message: string) => void): void;
+export interface RecordingShortcutHandlers {
+    isRecording: () => boolean;
+    startRecording: (name: string, fps?: number, queryId?: string, audio?: string, fromPopup?: boolean, targetTabId?: number) => Promise<{
+        status: string;
+        error?: string;
+    }>;
+    stopRecording: (truncated?: boolean) => Promise<{
+        status: string;
+        error?: string;
+    }>;
+}
+/**
+ * Install keyboard shortcut listener for action-sequence recording toggle.
+ * Shortcut is defined in manifest as `toggle_action_sequence_recording`.
+ */
+export declare function installRecordingShortcutCommandListener(handlers: RecordingShortcutHandlers, logFn?: (message: string) => void): void;
 /**
  * Ping content script to check if it's loaded
  */

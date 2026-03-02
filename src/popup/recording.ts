@@ -25,11 +25,14 @@ interface RecordingState {
   timerInterval: ReturnType<typeof setInterval> | null
 }
 
+const START_LABEL = 'Record action sequence'
+const STOP_LABEL = 'Stop action sequence'
+
 // #lizard forgives
 function showRecording(els: RecordingElements, state: RecordingState, name: string, startTime: number): void {
   state.isRecording = true
   els.row.classList.add('is-recording')
-  els.label.textContent = 'Stop'
+  els.label.textContent = STOP_LABEL
   els.statusEl.textContent = ''
   if (els.optionsEl) els.optionsEl.style.display = 'none'
 
@@ -45,7 +48,7 @@ function showRecording(els: RecordingElements, state: RecordingState, name: stri
 function showIdle(els: RecordingElements, state: RecordingState): void {
   state.isRecording = false
   els.row.classList.remove('is-recording')
-  els.label.textContent = 'Record'
+  els.label.textContent = START_LABEL
   els.statusEl.textContent = ''
   if (els.optionsEl) els.optionsEl.style.display = 'block'
   if (state.timerInterval) {

@@ -276,6 +276,63 @@ export function installDrawModeCommandListener(logFn) {
         }
     });
 }
+function buildActionSequenceRecordingName(now = new Date()) {
+    const yyyy = now.getFullYear();
+    const mm = String(now.getMonth() + 1).padStart(2, '0');
+    const dd = String(now.getDate()).padStart(2, '0');
+    const hh = String(now.getHours()).padStart(2, '0');
+    const min = String(now.getMinutes()).padStart(2, '0');
+    const ss = String(now.getSeconds()).padStart(2, '0');
+    return `action-sequence--${yyyy}-${mm}-${dd}-${hh}${min}${ss}`;
+}
+async function sendRecordingShortcutToast(tabId, text, detail, state = 'warning') {
+    try {
+        await chrome.tabs.sendMessage(tabId, {
+            type: 'GASOLINE_ACTION_TOAST',
+            text,
+            detail,
+            state,
+            duration_ms: 3500
+        });
+    }
+    catch {
+        // Tab may not have content script yet.
+    }
+}
+/**
+ * Install keyboard shortcut listener for action-sequence recording toggle.
+ * Shortcut is defined in manifest as `toggle_action_sequence_recording`.
+ */
+export function installRecordingShortcutCommandListener(handlers, logFn) {
+    if (typeof chrome === 'undefined' || !chrome.commands)
+        return;
+    chrome.commands.onCommand.addListener(async (command) => {
+        if (command !== 'toggle_action_sequence_recording')
+            return;
+        try {
+            const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+            const tab = tabs[0];
+            if (!tab?.id)
+                return;
+            if (handlers.isRecording()) {
+                const stopResult = await handlers.stopRecording(false);
+                if (stopResult.status !== 'saved' && stopResult.status !== 'stopped') {
+                    await sendRecordingShortcutToast(tab.id, 'Stop recording failed', stopResult.error || 'Could not stop action sequence recording', 'error');
+                }
+                return;
+            }
+            const name = buildActionSequenceRecordingName();
+            const startResult = await handlers.startRecording(name, 15, '', '', true, tab.id);
+            if (startResult.status !== 'recording') {
+                await sendRecordingShortcutToast(tab.id, 'Start recording failed', startResult.error || 'Open the extension popup and try Record action sequence', 'error');
+            }
+        }
+        catch (err) {
+            if (logFn)
+                logFn(`Recording shortcut error: ${err.message}`);
+        }
+    });
+}
 // =============================================================================
 // CONTENT SCRIPT HELPERS
 // =============================================================================
