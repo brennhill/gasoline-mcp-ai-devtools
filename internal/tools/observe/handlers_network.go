@@ -85,11 +85,18 @@ func GetNetworkBodies(deps Deps, req mcp.JSONRPCRequest, args json.RawMessage) m
 
 	waterfallCount := len(deps.GetCapture().GetNetworkWaterfallEntries())
 	responseMeta := BuildResponseMetadata(deps.GetCapture(), newestTS)
+	hintFilters := NetworkBodiesHintFilters{
+		URL:       params.URL,
+		Method:    params.Method,
+		StatusMin: params.StatusMin,
+		StatusMax: params.StatusMax,
+		BodyKey:   params.BodyKey,
+		BodyPath:  params.BodyPath,
+	}
 	if params.Summary {
 		summary := buildNetworkBodiesSummary(filtered, responseMeta)
 		if len(filtered) == 0 {
-			// TODO: Extend hints to reflect method/status/body_key/body_path filters, not just URL.
-			summary["hint"] = networkBodiesEmptyHint(waterfallCount, len(allBodies), params.URL)
+			summary["hint"] = networkBodiesEmptyHint(waterfallCount, len(allBodies), hintFilters)
 		}
 		return mcp.JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcp.JSONResponse("Network bodies", summary)}
 	}
@@ -101,8 +108,7 @@ func GetNetworkBodies(deps Deps, req mcp.JSONRPCRequest, args json.RawMessage) m
 	}
 
 	if len(filtered) == 0 {
-		// TODO: Extend hints to reflect method/status/body_key/body_path filters, not just URL.
-		response["hint"] = networkBodiesEmptyHint(waterfallCount, len(allBodies), params.URL)
+		response["hint"] = networkBodiesEmptyHint(waterfallCount, len(allBodies), hintFilters)
 	}
 
 	return mcp.JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcp.JSONResponse("Network bodies", response)}

@@ -6,19 +6,34 @@
 
 package observe
 
-import "fmt"
+import (
+	"fmt"
+	"strings"
+)
+
+// NetworkBodiesHintFilters captures active network_bodies filters for hint generation.
+type NetworkBodiesHintFilters struct {
+	URL       string
+	Method    string
+	StatusMin int
+	StatusMax int
+	BodyKey   string
+	BodyPath  string
+}
 
 // networkBodiesEmptyHint returns a diagnostic hint when GetNetworkBodies returns
 // 0 filtered entries. It cross-references the waterfall count to explain
 // whether the issue is prospective-only capture, a URL filter mismatch, or no data at all.
 // waterfallCount is the number of entries in the network waterfall buffer.
-func networkBodiesEmptyHint(waterfallCount int, unfilteredCount int, urlFilter string) string {
+func networkBodiesEmptyHint(waterfallCount int, unfilteredCount int, filters NetworkBodiesHintFilters) string {
+	activeFilterSummary := formatNetworkBodiesFilterSummary(filters)
+
 	// Case 1: Filter reduced non-empty results to zero
-	if unfilteredCount > 0 && urlFilter != "" {
+	if unfilteredCount > 0 && activeFilterSummary != "" {
 		return fmt.Sprintf(
-			"No bodies matched the url filter %q, but %d bodies exist in the buffer. "+
-				"Try broadening the filter or calling observe({what: \"network_bodies\"}) without a url param.",
-			urlFilter, unfilteredCount,
+			"No bodies matched filters (%s), but %d bodies exist in the buffer. "+
+				"Try broadening the filters or calling observe({what: \"network_bodies\"}) without filter params.",
+			activeFilterSummary, unfilteredCount,
 		)
 	}
 
@@ -36,6 +51,30 @@ func networkBodiesEmptyHint(waterfallCount int, unfilteredCount int, urlFilter s
 	// Case 3: No waterfall, no bodies — nothing captured yet
 	return "No network bodies captured. Ensure the Gasoline extension is connected and tracking a tab. " +
 		"Bodies are captured for requests made after tracking starts. Check observe({what: \"pilot\"}) for extension status."
+}
+
+func formatNetworkBodiesFilterSummary(filters NetworkBodiesHintFilters) string {
+	parts := make([]string, 0, 5)
+	if filters.URL != "" {
+		parts = append(parts, fmt.Sprintf("url~%q", filters.URL))
+	}
+	if filters.Method != "" {
+		parts = append(parts, fmt.Sprintf("method=%s", strings.ToUpper(filters.Method)))
+	}
+	if filters.StatusMin > 0 && filters.StatusMax > 0 {
+		parts = append(parts, fmt.Sprintf("status=%d..%d", filters.StatusMin, filters.StatusMax))
+	} else if filters.StatusMin > 0 {
+		parts = append(parts, fmt.Sprintf("status>=%d", filters.StatusMin))
+	} else if filters.StatusMax > 0 {
+		parts = append(parts, fmt.Sprintf("status<=%d", filters.StatusMax))
+	}
+	if filters.BodyKey != "" {
+		parts = append(parts, fmt.Sprintf("body_key=%s", filters.BodyKey))
+	}
+	if filters.BodyPath != "" {
+		parts = append(parts, fmt.Sprintf("body_path=%s", filters.BodyPath))
+	}
+	return strings.Join(parts, ", ")
 }
 
 // wsEventsEmptyHint returns a diagnostic hint when GetWSEvents returns 0 filtered entries.
