@@ -5,7 +5,7 @@ ai-priority: high
 tags: [features, navigation, index, lookup]
 relates-to: [FEATURE-INDEX.md, README.md]
 canonical: true
-last-verified: 2026-03-01
+last-verified: 2026-03-02
 ---
 
 # Feature Navigation Index
@@ -55,6 +55,7 @@ Features with active code implementations referencing their feature docs.
 | har-export | `feature/har-export/` | product-spec.md, qa-plan.md, tech-spec.md | HAR format export for network traffic |
 | historical-snapshots | `feature/historical-snapshots/` | product-spec.md, qa-plan.md, tech-spec.md | Point-in-time state snapshots |
 | interact-explore | `feature/interact-explore/` | product-spec.md, qa-plan.md, tech-spec.md | AI exploration suite for browser interaction |
+| issue-reporting | `feature/issue-reporting/` | product-spec.md, qa-plan.md, tech-spec.md | Opt-in issue reporting via configure(what="report_issue") |
 | link-health | `feature/link-health/` | product-spec.md, qa-plan.md, tech-spec.md, test-plan.md | Link health checking and validation |
 | mcp-persistent-server | `feature/mcp-persistent-server/` | index.md | Persistent daemon mode for long-lived MCP server |
 | noise-filtering | `feature/noise-filtering/` | product-spec.md, qa-plan.md, tech-spec.md, test-plan.md | Console and network noise suppression rules |
@@ -155,9 +156,9 @@ Features that are documented but not yet implemented in code.
 
 | Status | Count |
 |--------|-------|
-| Shipped | 49 |
+| Shipped | 50 |
 | Proposed | 60 |
-| **Total** | **109** |
+| **Total** | **110** |
 
 ---
 
