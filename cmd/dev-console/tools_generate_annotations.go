@@ -6,8 +6,6 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"strings"
-	"time"
 )
 
 // toolGenerateVisualTest generates a Playwright test from annotation session data.
@@ -20,12 +18,9 @@ func (h *ToolHandler) toolGenerateVisualTest(req JSONRPCRequest, args json.RawMe
 		lenientUnmarshal(args, &params)
 	}
 
-	pages, err := h.collectAnnotationPages(params.AnnotSession)
-	if err != "" {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("No annotations", map[string]any{
-			"status":  "no_data",
-			"message": err,
-		})}
+	pages, noDataResp, noData := h.resolveAnnotationPages(req, params.AnnotSession)
+	if noData {
+		return noDataResp
 	}
 
 	testName := params.TestName
@@ -46,12 +41,9 @@ func (h *ToolHandler) toolGenerateAnnotationReport(req JSONRPCRequest, args json
 		lenientUnmarshal(args, &params)
 	}
 
-	pages, err := h.collectAnnotationPages(params.AnnotSession)
-	if err != "" {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("No annotations", map[string]any{
-			"status":  "no_data",
-			"message": err,
-		})}
+	pages, noDataResp, noData := h.resolveAnnotationPages(req, params.AnnotSession)
+	if noData {
+		return noDataResp
 	}
 
 	report := generateMarkdownReport(pages, h.annotationStore)
@@ -67,12 +59,9 @@ func (h *ToolHandler) toolGenerateAnnotationIssues(req JSONRPCRequest, args json
 		lenientUnmarshal(args, &params)
 	}
 
-	pages, err := h.collectAnnotationPages(params.AnnotSession)
-	if err != "" {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("No annotations", map[string]any{
-			"status":  "no_data",
-			"message": err,
-		})}
+	pages, noDataResp, noData := h.resolveAnnotationPages(req, params.AnnotSession)
+	if noData {
+		return noDataResp
 	}
 
 	issues := buildIssueList(pages, h.annotationStore)
@@ -84,6 +73,17 @@ func (h *ToolHandler) toolGenerateAnnotationIssues(req JSONRPCRequest, args json
 
 	summary := fmt.Sprintf("Annotation issues (%d issues across %d pages)", len(issues), len(pages))
 	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse(summary, result)}
+}
+
+func (h *ToolHandler) resolveAnnotationPages(req JSONRPCRequest, sessionName string) ([]*AnnotationSession, JSONRPCResponse, bool) {
+	pages, err := h.collectAnnotationPages(sessionName)
+	if err == "" {
+		return pages, JSONRPCResponse{}, false
+	}
+	return nil, JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("No annotations", map[string]any{
+		"status":  "no_data",
+		"message": err,
+	})}, true
 }
 
 // collectAnnotationPages gathers annotation pages from either a named or anonymous session.
@@ -102,203 +102,4 @@ func (h *ToolHandler) collectAnnotationPages(sessionName string) ([]*AnnotationS
 		return nil, "No annotation session found. Use interact({action: 'draw_mode_start'}) to create annotations."
 	}
 	return []*AnnotationSession{session}, ""
-}
-
-// ============================================
-// Playwright test generation
-// ============================================
-
-func generatePlaywrightFromAnnotations(testName string, pages []*AnnotationSession, store *AnnotationStore) string {
-	var b builder
-	b.line("import { test, expect } from '@playwright/test';")
-	b.line("")
-	b.linef("test('%s', async ({ page }) => {", jsEscapeSingle(testName))
-
-	for i, pg := range pages {
-		if i > 0 {
-			b.line("")
-		}
-		b.linef("  // --- Page: %s ---", pg.PageURL)
-		b.linef("  await page.goto('%s');", jsEscapeSingle(pg.PageURL))
-		b.line("")
-
-		for j, ann := range pg.Annotations {
-			b.linef("  // Annotation %d: %s", j+1, ann.Text)
-			b.linef("  // Element: %s", ann.ElementSummary)
-
-			// Try to get detail for richer selectors and a11y info
-			detail, found := store.GetDetail(ann.CorrelationID)
-			if found {
-				b.linef("  // Selector: %s", detail.Selector)
-				if len(detail.A11yFlags) > 0 {
-					for _, flag := range detail.A11yFlags {
-						b.linef("  // TODO [a11y]: %s", flag)
-					}
-				}
-				// Generate a locator-based assertion
-				selector := detail.Selector
-				if detail.ID != "" {
-					selector = "#" + detail.ID
-				}
-				b.linef("  await expect(page.locator('%s')).toBeVisible();", jsEscapeSingle(selector))
-			} else {
-				b.linef("  // (detail expired — re-run draw mode for full selectors)")
-			}
-
-			// Add screenshot assertion at annotation region
-			b.linef("  await expect(page.locator('%s')).toHaveScreenshot('annotation-%d-%d.png');",
-				jsEscapeSingle(annotationLocator(ann, detail)), i+1, j+1)
-			b.line("")
-		}
-	}
-
-	b.line("});")
-	return b.string()
-}
-
-func annotationLocator(ann Annotation, detail *AnnotationDetail) string {
-	if detail != nil && detail.ID != "" {
-		return "#" + detail.ID
-	}
-	if detail != nil && detail.Selector != "" {
-		return detail.Selector
-	}
-	return "body"
-}
-
-// ============================================
-// Markdown report generation
-// ============================================
-
-func generateMarkdownReport(pages []*AnnotationSession, store *AnnotationStore) string {
-	var b builder
-	b.line("# Annotation Report")
-	b.linef("Generated: %s", time.Now().Format("2006-01-02 15:04"))
-	b.line("")
-
-	totalCount := 0
-	for _, pg := range pages {
-		totalCount += len(pg.Annotations)
-	}
-	b.linef("**Total annotations:** %d across %d page(s)", totalCount, len(pages))
-	b.line("")
-
-	for i, pg := range pages {
-		writePageSection(&b, i, pg, store)
-	}
-
-	return b.string()
-}
-
-func writePageSection(b *builder, pageIdx int, pg *AnnotationSession, store *AnnotationStore) {
-	b.linef("## Page %d: %s", pageIdx+1, pg.PageURL)
-	b.line("")
-
-	if pg.ScreenshotPath != "" {
-		b.linef("Screenshot: `%s`", pg.ScreenshotPath)
-		b.line("")
-	}
-
-	for j, ann := range pg.Annotations {
-		writeAnnotationSection(b, j, ann, store)
-	}
-}
-
-func writeAnnotationSection(b *builder, idx int, ann Annotation, store *AnnotationStore) {
-	b.linef("### %d. %s", idx+1, ann.Text)
-	b.linef("- **Element:** %s", ann.ElementSummary)
-	b.linef("- **Region:** (%.0f, %.0f) %0.fx%.0f", ann.Rect.X, ann.Rect.Y, ann.Rect.Width, ann.Rect.Height)
-
-	detail, found := store.GetDetail(ann.CorrelationID)
-	if found {
-		writeAnnotationDetail(b, detail)
-	}
-	b.line("")
-}
-
-func writeAnnotationDetail(b *builder, detail *AnnotationDetail) {
-	b.linef("- **Selector:** `%s`", detail.Selector)
-	if len(detail.ComputedStyles) > 0 {
-		b.line("- **Styles:**")
-		for prop, val := range detail.ComputedStyles {
-			b.linef("  - `%s`: `%s`", prop, val)
-		}
-	}
-	if len(detail.A11yFlags) > 0 {
-		b.line("- **Accessibility issues:**")
-		for _, flag := range detail.A11yFlags {
-			b.linef("  - %s", flag)
-		}
-	}
-}
-
-// ============================================
-// Structured issue list
-// ============================================
-
-func buildIssueList(pages []*AnnotationSession, store *AnnotationStore) []map[string]any {
-	issues := make([]map[string]any, 0)
-
-	for _, pg := range pages {
-		for _, ann := range pg.Annotations {
-			issue := map[string]any{
-				"annotation_id":  ann.ID,
-				"text":           ann.Text,
-				"element":        ann.ElementSummary,
-				"page_url":       pg.PageURL,
-				"rect":           ann.Rect,
-				"correlation_id": ann.CorrelationID,
-			}
-
-			detail, found := store.GetDetail(ann.CorrelationID)
-			if found {
-				issue["selector"] = detail.Selector
-				issue["tag"] = detail.Tag
-				issue["computed_styles"] = detail.ComputedStyles
-				if len(detail.A11yFlags) > 0 {
-					issue["a11y_flags"] = detail.A11yFlags
-				}
-			}
-
-			issues = append(issues, issue)
-		}
-	}
-
-	return issues
-}
-
-// ============================================
-// JS string escaping
-// ============================================
-
-// jsEscapeSingle escapes a string for safe embedding inside JS single-quoted literals.
-// Handles backslashes, single quotes, and newlines to prevent code injection.
-func jsEscapeSingle(s string) string {
-	s = strings.ReplaceAll(s, `\`, `\\`)
-	s = strings.ReplaceAll(s, `'`, `\'`)
-	s = strings.ReplaceAll(s, "\n", `\n`)
-	s = strings.ReplaceAll(s, "\r", `\r`)
-	return s
-}
-
-// ============================================
-// String builder helper
-// ============================================
-
-type builder struct {
-	buf []byte
-}
-
-func (b *builder) line(s string) {
-	b.buf = append(b.buf, s...)
-	b.buf = append(b.buf, '\n')
-}
-
-func (b *builder) linef(format string, args ...any) {
-	b.buf = append(b.buf, fmt.Sprintf(format, args...)...)
-	b.buf = append(b.buf, '\n')
-}
-
-func (b *builder) string() string {
-	return string(b.buf)
 }
