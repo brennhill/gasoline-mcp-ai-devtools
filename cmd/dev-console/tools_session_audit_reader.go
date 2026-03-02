@@ -1,16 +1,14 @@
-// Purpose: Implements session audit snapshots, session diff comparisons, and audit log queries for the configure tool.
-// Why: Enables before/after session state comparison for regression detection across test runs.
+// Purpose: Adapts ToolHandler runtime state into session snapshot reader interfaces.
+// Why: Isolates snapshot extraction logic from audit trail persistence utilities.
 // Docs: docs/features/feature/enterprise-audit/index.md
 
 package main
 
 import (
-	"encoding/json"
 	"sort"
 	"strings"
 	"time"
 
-	"github.com/dev-console/dev-console/internal/audit"
 	"github.com/dev-console/dev-console/internal/capture"
 	"github.com/dev-console/dev-console/internal/performance"
 	"github.com/dev-console/dev-console/internal/session"
@@ -160,107 +158,4 @@ func (r *toolCaptureStateReader) GetCurrentPageURL() string {
 		return bodies[len(bodies)-1].URL
 	}
 	return ""
-}
-
-func (h *ToolHandler) recordAuditToolCall(
-	req JSONRPCRequest,
-	toolName string,
-	args json.RawMessage,
-	resp JSONRPCResponse,
-	started time.Time,
-) {
-	if h == nil || h.auditTrail == nil {
-		return
-	}
-	if shouldSkipAuditRecording(toolName, args) {
-		return
-	}
-
-	sessionID := h.auditSessionForClient(req.ClientID)
-	if sessionID == "" {
-		return
-	}
-
-	success := resp.Error == nil && !isToolResultError(resp.Result)
-	entry := audit.AuditEntry{
-		AuditSessionID: sessionID,
-		ClientID:       normalizeAuditClientID(req.ClientID),
-		ToolName:       toolName,
-		Parameters:     string(args),
-		ResponseSize:   len(resp.Result),
-		Duration:       time.Since(started).Milliseconds(),
-		Success:        success,
-	}
-	if !success {
-		entry.ErrorMessage = auditErrorMessage(resp)
-	}
-
-	h.auditTrail.Record(entry)
-}
-
-func (h *ToolHandler) auditSessionForClient(clientID string) string {
-	if h == nil || h.auditTrail == nil {
-		return ""
-	}
-
-	client := normalizeAuditClientID(clientID)
-
-	h.auditMu.Lock()
-	defer h.auditMu.Unlock()
-
-	if sid, ok := h.auditSessionMap[client]; ok && sid != "" {
-		if h.auditTrail.GetAuditSession(sid) != nil {
-			return sid
-		}
-		delete(h.auditSessionMap, client)
-	}
-
-	info := h.auditTrail.CreateAuditSession(audit.ClientIdentifier{Name: client})
-	if info == nil || info.ID == "" {
-		return ""
-	}
-	h.auditSessionMap[client] = info.ID
-	return info.ID
-}
-
-func normalizeAuditClientID(clientID string) string {
-	trimmed := strings.TrimSpace(clientID)
-	if trimmed == "" {
-		return "unknown"
-	}
-	return trimmed
-}
-
-func auditErrorMessage(resp JSONRPCResponse) string {
-	if resp.Error != nil && resp.Error.Message != "" {
-		return resp.Error.Message
-	}
-	var result MCPToolResult
-	if err := json.Unmarshal(resp.Result, &result); err != nil {
-		return ""
-	}
-	if len(result.Content) == 0 {
-		return ""
-	}
-	return result.Content[0].Text
-}
-
-func shouldSkipAuditRecording(toolName string, args json.RawMessage) bool {
-	if toolName != "configure" || len(args) == 0 {
-		return false
-	}
-	var params struct {
-		What      string `json:"what"`
-		Action    string `json:"action"`
-		Operation string `json:"operation"`
-	}
-	if err := json.Unmarshal(args, &params); err != nil {
-		return false
-	}
-	dispatch := params.What
-	if dispatch == "" {
-		dispatch = params.Action
-	}
-	return strings.EqualFold(strings.TrimSpace(dispatch), "audit_log") &&
-		strings.EqualFold(strings.TrimSpace(params.Operation), "clear")
 }
