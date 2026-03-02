@@ -66,8 +66,45 @@ SMOKE_OUTPUT_DIR="${HOME}/.gasoline/smoke-results"
 mkdir -p "$SMOKE_OUTPUT_DIR"
 DIAGNOSTICS_FILE="$SMOKE_OUTPUT_DIR/diagnostics.log"
 SMOKE_OUTPUT_FILE="$SMOKE_OUTPUT_DIR/output.log"
+
+_smoke_abs_dir() {
+    local dir="$1"
+    (cd "$dir" >/dev/null 2>&1 && pwd -P)
+}
+
+_resolve_harness_root() {
+    if [ -n "${SMOKE_HARNESS_ROOT:-}" ]; then
+        if [ -d "$SMOKE_HARNESS_ROOT" ]; then
+            _smoke_abs_dir "$SMOKE_HARNESS_ROOT"
+            return 0
+        fi
+        echo "FATAL: SMOKE_HARNESS_ROOT is set but invalid: $SMOKE_HARNESS_ROOT" >&2
+        return 1
+    fi
+
+    local candidates=(
+        "$SMOKE_FRAMEWORK_DIR/../../tests/pages"
+        "$SMOKE_FRAMEWORK_DIR/../../cmd/dev-console/testpages"
+    )
+    local candidate
+    for candidate in "${candidates[@]}"; do
+        if [ -d "$candidate" ]; then
+            _smoke_abs_dir "$candidate"
+            return 0
+        fi
+    done
+
+    echo "FATAL: unable to resolve harness root directory." >&2
+    echo "  Tried:" >&2
+    for candidate in "${candidates[@]}"; do
+        echo "    - $candidate" >&2
+    done
+    echo "  Override with: SMOKE_HARNESS_ROOT=/absolute/path/to/testpages" >&2
+    return 1
+}
+
 SMOKE_HARNESS_PORT="${SMOKE_HARNESS_PORT:-8787}"
-SMOKE_HARNESS_ROOT="${SMOKE_HARNESS_ROOT:-$SMOKE_FRAMEWORK_DIR/../../tests/pages}"
+SMOKE_HARNESS_ROOT="$(_resolve_harness_root)"
 SMOKE_HARNESS_PID=""
 SMOKE_BASE_URL="http://127.0.0.1:${SMOKE_HARNESS_PORT}"
 SMOKE_EXAMPLE_URL="${SMOKE_BASE_URL}/example.com"
@@ -104,6 +141,7 @@ start_local_harness() {
 
     if [ "$ok" != "true" ]; then
         echo "FATAL: local harness failed to start on ${SMOKE_BASE_URL}" >&2
+        echo "  Harness root: $SMOKE_HARNESS_ROOT" >&2
         echo "  Harness log: $harness_log" >&2
         tail -n 20 "$harness_log" >&2 || true
         return 1

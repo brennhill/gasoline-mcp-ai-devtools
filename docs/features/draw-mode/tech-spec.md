@@ -116,6 +116,8 @@ sequenceDiagram
     User->>CS: Draw rectangles + type annotations
     CS->>CS: Persist to chrome.storage.session
 
+    Note over CS: If annotation text input is open,<br/>pressing Cmd+Shift+D again submits text and exits.<br/>Empty text keeps editor open with validation toast.
+
     User->>CS: Press ESC
     CS->>CS: Capture screenshot
     CS->>BG: DRAW_MODE_COMPLETED<br/>{annotations, screenshot_path}
@@ -158,12 +160,22 @@ Returned by `analyze({what: "annotations"})`.
 ```js
 {
   id: "ann_1707580800000_abc",           // unique ID
-  rect: { x: 120, y: 340, width: 200, height: 45 },  // viewport-relative px
+  rect: { x: 120, y: 340, width: 200, height: 45 },  // document-relative px (scroll anchored)
+  coord_space: "document",
   text: "this button should be darker",  // user-typed feedback
   timestamp: 1707580800000,              // when annotation was created
   page_url: "https://example.com/checkout",
   element_summary: "button.btn-primary 'Submit'",  // tag.class 'textContent'
-  correlation_id: "ann_detail_abc"       // use to fetch full detail
+  correlation_id: "ann_detail_abc",      // use to fetch full detail
+  action_trail: [                         // bounded recent UI trail (default last 5)
+    { type: "click", target_summary: "#checkout-btn role=button text=\"Checkout\"", timestamp: 1707580799000 }
+  ],
+  ui_context: {
+    theme: "light",
+    viewport: { width: 1440, height: 900 },
+    sidebars: { left_open: false, right_open: true },
+    focused_element: { selector: "#coupon", tag: "input", role: "textbox", text: "" }
+  }
 }
 ```
 
@@ -179,6 +191,8 @@ Returned by `analyze({what: "annotation_detail", correlation_id: "ann_detail_abc
   text_content: "Submit",
   classes: ["btn-primary", "rounded-lg"],
   id: "submit-btn",
+  action_trail: [ /* same action trail captured at submit time */ ],
+  ui_context: { /* same UI metadata captured at submit time */ },
   computed_styles: {
     "background-color": "rgb(59, 130, 246)",
     "color": "rgb(255, 255, 255)",

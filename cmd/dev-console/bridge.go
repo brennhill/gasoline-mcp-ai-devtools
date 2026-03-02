@@ -154,16 +154,28 @@ func bridgeStdioToHTTPFast(endpoint string, state *daemonState, port int) {
 			continue
 		}
 
-		// SLOW PATH: Check daemon status for tools/call and other methods
+		// SLOW PATH: Check daemon status for tools/call and other methods.
+		shouldForward := true
 		if status := checkDaemonStatus(state, req, port); status != "" {
 			if status == "method_not_found" {
 				stats.methodNotFound++
 			}
 			if status == "starting" {
 				stats.starting++
+				// During startup, tools/call should wait-and-forward rather than
+				// immediately returning a retry envelope to stdio clients.
+				if req.Method == "tools/call" {
+					shouldForward = true
+				} else {
+					shouldForward = false
+				}
+			} else {
+				shouldForward = false
 			}
-			handleDaemonNotReady(req, status, signalResponseSent, framing)
-			continue
+			if !shouldForward {
+				handleDaemonNotReady(req, status, signalResponseSent, framing)
+				continue
+			}
 		}
 
 		// Forward to HTTP server concurrently

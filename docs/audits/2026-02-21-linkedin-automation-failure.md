@@ -6,7 +6,7 @@ The attempt exposed multiple reliability defects across CLI/browser action dispa
 
 ## Context
 - Goal: research a current AI release, generate a LinkedIn post, and publish it through Gasoline automation.
-- Environment: `gasoline-mcp 0.7.9`, macOS (`darwin/arm64`), extension connected intermittently.
+- Environment: `gasoline-mcp 0.7.10`, macOS (`darwin/arm64`), extension connected intermittently.
 
 ## Coverage Matrix
 | Flow | Status | Notes |

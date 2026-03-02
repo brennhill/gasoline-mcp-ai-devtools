@@ -145,13 +145,13 @@ func (s *daemonState) respawnIfNeeded() bool {
 		return false
 	}
 
-	if waitForServer(s.port, 4*time.Second) {
+	if waitForServer(s.port, daemonStartupReadyTimeout) {
 		s.markReady()
 		stderrf("[gasoline] daemon respawned successfully on port %d\n", s.port)
 		return true
 	}
 
-	s.markFailed(fmt.Sprintf("Daemon respawned but not responding on port %d after 4s", s.port))
+	s.markFailed(fmt.Sprintf("Daemon respawned but not responding on port %d after %s", s.port, daemonStartupReadyTimeout))
 	return false
 }
 
@@ -168,11 +168,11 @@ func spawnDaemonAsync(state *daemonState) {
 			return
 		}
 
-		// Wait for server to be ready (max 4 seconds - fail fast)
-		if waitForServer(state.port, 4*time.Second) {
+		// Wait for server to be ready (bounded startup budget).
+		if waitForServer(state.port, daemonStartupReadyTimeout) {
 			state.markReady()
 		} else {
-			state.markFailed(fmt.Sprintf("Daemon started but not responding on port %d after 4s", state.port))
+			state.markFailed(fmt.Sprintf("Daemon started but not responding on port %d after %s", state.port, daemonStartupReadyTimeout))
 		}
 	})
 }

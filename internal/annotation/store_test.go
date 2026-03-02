@@ -265,8 +265,8 @@ func TestStore_ConcurrentAccess(t *testing.T) {
 		go func(tabID int) {
 			defer wg.Done()
 			store.StoreSession(tabID, &Session{
-				TabID:     tabID,
-				Timestamp: time.Now().UnixMilli(),
+				TabID:       tabID,
+				Timestamp:   time.Now().UnixMilli(),
 				Annotations: []Annotation{{Text: fmt.Sprintf("tab%d", tabID)}},
 			})
 		}(i)
@@ -335,8 +335,8 @@ func TestStore_SessionEvictionCap(t *testing.T) {
 	// Store more sessions than MaxSessions (100)
 	for i := 1; i <= 110; i++ {
 		store.StoreSession(i, &Session{
-			TabID:     i,
-			Timestamp: int64(i),
+			TabID:       i,
+			Timestamp:   int64(i),
 			Annotations: []Annotation{{Text: fmt.Sprintf("session_%d", i)}},
 		})
 	}
@@ -1451,5 +1451,40 @@ func TestStore_DetailEvictionCap(t *testing.T) {
 	_, found := store.GetDetail(fmt.Sprintf("detail-%d", MaxDetails+9))
 	if !found {
 		t.Error("expected latest detail entry to exist")
+	}
+}
+
+func TestStore_TakeWaiter_RemovesAndReturnsSessionName(t *testing.T) {
+	store := NewStore(10 * time.Minute)
+	defer store.Close()
+
+	store.RegisterWaiter("ann_1", "qa")
+	store.RegisterWaiter("ann_2", "")
+
+	sessionName, found := store.TakeWaiter("ann_1")
+	if !found {
+		t.Fatal("expected waiter ann_1 to be found")
+	}
+	if sessionName != "qa" {
+		t.Fatalf("sessionName = %q, want qa", sessionName)
+	}
+
+	_, found = store.TakeWaiter("ann_1")
+	if found {
+		t.Fatal("expected waiter ann_1 to be removed after first take")
+	}
+
+	store.mu.RLock()
+	remaining := len(store.waiters)
+	remainingID := ""
+	if remaining > 0 {
+		remainingID = store.waiters[0].CorrelationID
+	}
+	store.mu.RUnlock()
+	if remaining != 1 {
+		t.Fatalf("remaining waiters = %d, want 1", remaining)
+	}
+	if remainingID != "ann_2" {
+		t.Fatalf("remaining waiter = %q, want ann_2", remainingID)
 	}
 }

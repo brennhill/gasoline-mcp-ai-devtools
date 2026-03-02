@@ -321,7 +321,7 @@ func TestToolGetAnnotations_WaitTrue_ImmediateReturn(t *testing.T) {
 	})
 
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: float64(1)}
-	args := json.RawMessage(`{"what": "annotations", "wait": true}`)
+	args := json.RawMessage(`{"what": "annotations", "wait": true, "timeout_ms": 10}`)
 
 	resp := h.toolGetAnnotations(req, args)
 	text := unmarshalMCPText(t, resp.Result)
@@ -339,7 +339,7 @@ func TestToolGetAnnotations_WaitTrue_ReturnsCorrelationID(t *testing.T) {
 	h.annotationStore.MarkDrawStarted()
 
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: float64(1)}
-	args := json.RawMessage(`{"what": "annotations", "wait": true}`)
+	args := json.RawMessage(`{"what": "annotations", "wait": true, "timeout_ms": 10}`)
 
 	resp := h.toolGetAnnotations(req, args)
 	text := unmarshalMCPText(t, resp.Result)
@@ -365,6 +365,151 @@ func TestToolGetAnnotations_WaitTrue_ReturnsCorrelationID(t *testing.T) {
 	}
 }
 
+func TestToolGetAnnotations_Flush_CompletesPendingCommand_WithEmptyResultReason(t *testing.T) {
+	h := createTestToolHandler(t)
+	h.annotationStore = NewAnnotationStore(10 * time.Minute)
+	defer h.annotationStore.Close()
+
+	h.annotationStore.MarkDrawStarted()
+
+	req := JSONRPCRequest{JSONRPC: "2.0", ID: float64(1)}
+
+	waitResp := h.toolGetAnnotations(req, json.RawMessage(`{"what":"annotations","wait":true,"timeout_ms":10}`))
+	waitText := unmarshalMCPText(t, waitResp.Result)
+	waitJSON := extractJSONFromText(waitText)
+
+	var waiting map[string]any
+	if err := json.Unmarshal([]byte(waitJSON), &waiting); err != nil {
+		t.Fatalf("failed to parse waiting response: %v", err)
+	}
+	corrID, ok := waiting["correlation_id"].(string)
+	if !ok || corrID == "" {
+		t.Fatalf("expected correlation_id in wait response, got: %v", waiting["correlation_id"])
+	}
+
+	flushResp := h.toolGetAnnotations(req, json.RawMessage(`{"what":"annotations","operation":"flush","correlation_id":"`+corrID+`"}`))
+	flushText := unmarshalMCPText(t, flushResp.Result)
+	flushJSON := extractJSONFromText(flushText)
+
+	var flushed map[string]any
+	if err := json.Unmarshal([]byte(flushJSON), &flushed); err != nil {
+		t.Fatalf("failed to parse flush response: %v", err)
+	}
+
+	if flushed["status"] != "complete" {
+		t.Fatalf("flush status = %v, want complete", flushed["status"])
+	}
+	if final, _ := flushed["final"].(bool); !final {
+		t.Fatalf("flush should produce final=true, got: %v", flushed["final"])
+	}
+	if flushed["terminal_reason"] != "abandoned" {
+		t.Fatalf("terminal_reason = %v, want abandoned", flushed["terminal_reason"])
+	}
+	resultPayload, ok := flushed["result"].(map[string]any)
+	if !ok {
+		t.Fatalf("expected result payload object, got: %T", flushed["result"])
+	}
+	if resultPayload["count"] != float64(0) {
+		t.Fatalf("result.count = %v, want 0", resultPayload["count"])
+	}
+
+	cmd, found := h.capture.GetCommandResult(corrID)
+	if !found || cmd == nil {
+		t.Fatal("flushed command should exist in command tracker")
+	}
+	if cmd.Status != "complete" {
+		t.Fatalf("flushed command status = %q, want complete", cmd.Status)
+	}
+}
+
+func TestToolGetAnnotations_Flush_IsIdempotent(t *testing.T) {
+	h := createTestToolHandler(t)
+	h.annotationStore = NewAnnotationStore(10 * time.Minute)
+	defer h.annotationStore.Close()
+
+	// Seed currently-available data, then mark draw start so wait=true still returns pending.
+	h.annotationStore.StoreSession(1, &AnnotationSession{
+		TabID:       1,
+		Timestamp:   time.Now().UnixMilli(),
+		Annotations: []Annotation{{Text: "available-before-flush"}},
+		PageURL:     "https://example.com",
+	})
+	h.annotationStore.MarkDrawStarted()
+
+	req := JSONRPCRequest{JSONRPC: "2.0", ID: float64(1)}
+	waitResp := h.toolGetAnnotations(req, json.RawMessage(`{"what":"annotations","wait":true,"timeout_ms":10}`))
+	waitText := unmarshalMCPText(t, waitResp.Result)
+	waitJSON := extractJSONFromText(waitText)
+
+	var waiting map[string]any
+	if err := json.Unmarshal([]byte(waitJSON), &waiting); err != nil {
+		t.Fatalf("failed to parse waiting response: %v", err)
+	}
+	corrID := waiting["correlation_id"].(string)
+
+	flushArgs := json.RawMessage(`{"what":"annotations","operation":"flush","correlation_id":"` + corrID + `"}`)
+	first := h.toolGetAnnotations(req, flushArgs)
+	second := h.toolGetAnnotations(req, flushArgs)
+
+	firstText := unmarshalMCPText(t, first.Result)
+	secondText := unmarshalMCPText(t, second.Result)
+
+	var firstData map[string]any
+	if err := json.Unmarshal([]byte(extractJSONFromText(firstText)), &firstData); err != nil {
+		t.Fatalf("failed to parse first flush response: %v", err)
+	}
+	var secondData map[string]any
+	if err := json.Unmarshal([]byte(extractJSONFromText(secondText)), &secondData); err != nil {
+		t.Fatalf("failed to parse second flush response: %v", err)
+	}
+
+	if firstData["status"] != "complete" || secondData["status"] != "complete" {
+		t.Fatalf("flush should be complete both times, got first=%v second=%v", firstData["status"], secondData["status"])
+	}
+	if firstData["terminal_reason"] != "flushed" {
+		t.Fatalf("first terminal_reason = %v, want flushed", firstData["terminal_reason"])
+	}
+	if secondData["terminal_reason"] != "flushed" {
+		t.Fatalf("second terminal_reason = %v, want flushed", secondData["terminal_reason"])
+	}
+
+	cmd, found := h.capture.GetCommandResult(corrID)
+	if !found || cmd == nil {
+		t.Fatal("command should still be queryable after repeated flush")
+	}
+	if cmd.Status != "complete" {
+		t.Fatalf("command status after repeated flush = %q, want complete", cmd.Status)
+	}
+}
+
+func TestToolGetAnnotations_Flush_MissingCorrelationID(t *testing.T) {
+	h := createTestToolHandler(t)
+	h.annotationStore = NewAnnotationStore(10 * time.Minute)
+	defer h.annotationStore.Close()
+
+	req := JSONRPCRequest{JSONRPC: "2.0", ID: float64(1)}
+	resp := h.toolGetAnnotations(req, json.RawMessage(`{"what":"annotations","operation":"flush"}`))
+
+	text := unmarshalMCPText(t, resp.Result)
+	if !strings.Contains(text, "correlation_id") {
+		t.Fatalf("expected missing correlation_id error, got: %s", text)
+	}
+}
+
+func TestToolGetAnnotations_InvalidOperation(t *testing.T) {
+	h := createTestToolHandler(t)
+	h.annotationStore = NewAnnotationStore(10 * time.Minute)
+	defer h.annotationStore.Close()
+
+	req := JSONRPCRequest{JSONRPC: "2.0", ID: float64(1)}
+	resp := h.toolGetAnnotations(req, json.RawMessage(`{"what":"annotations","operation":"invalid"}`))
+
+	text := unmarshalMCPText(t, resp.Result)
+	if !strings.Contains(text, "Invalid annotations operation") {
+		t.Fatalf("expected invalid operation error, got: %s", text)
+	}
+}
+
 func TestToolGetAnnotations_WaitTrue_ImmediateIfDataReady(t *testing.T) {
 	h := createTestToolHandler(t)
 	h.annotationStore = NewAnnotationStore(10 * time.Minute)
@@ -382,13 +527,71 @@ func TestToolGetAnnotations_WaitTrue_ImmediateIfDataReady(t *testing.T) {
 	})
 
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: float64(1)}
-	args := json.RawMessage(`{"what": "annotations", "wait": true}`)
+	args := json.RawMessage(`{"what": "annotations", "wait": true, "timeout_ms": 10}`)
 
 	resp := h.toolGetAnnotations(req, args)
 	text := unmarshalMCPText(t, resp.Result)
 
 	if !strings.Contains(text, "already-done") {
 		t.Errorf("expected annotation text, got %q", text)
+	}
+}
+
+func TestToolGetAnnotations_WaitTrue_BlocksAndReturnsSessionWithinTimeout(t *testing.T) {
+	h := createTestToolHandler(t)
+	h.annotationStore = NewAnnotationStore(10 * time.Minute)
+	defer h.annotationStore.Close()
+
+	h.annotationStore.MarkDrawStarted()
+
+	go func() {
+		time.Sleep(15 * time.Millisecond)
+		h.annotationStore.StoreSession(1, &AnnotationSession{
+			TabID:       1,
+			Timestamp:   time.Now().UnixMilli(),
+			Annotations: []Annotation{{Text: "arrived-during-blocking-wait"}},
+			PageURL:     "https://example.com",
+		})
+	}()
+
+	req := JSONRPCRequest{JSONRPC: "2.0", ID: float64(1)}
+	args := json.RawMessage(`{"what":"annotations","wait":true,"timeout_ms":250}`)
+
+	resp := h.toolGetAnnotations(req, args)
+	text := unmarshalMCPText(t, resp.Result)
+
+	if !strings.Contains(text, "arrived-during-blocking-wait") {
+		t.Fatalf("expected blocking wait to return session payload, got: %s", text)
+	}
+	if strings.Contains(text, "waiting_for_user") {
+		t.Fatalf("expected completed payload, got waiting response: %s", text)
+	}
+}
+
+func TestToolGetAnnotations_WaitTrue_TimesOutToCorrelationFallback(t *testing.T) {
+	h := createTestToolHandler(t)
+	h.annotationStore = NewAnnotationStore(10 * time.Minute)
+	defer h.annotationStore.Close()
+
+	h.annotationStore.MarkDrawStarted()
+
+	req := JSONRPCRequest{JSONRPC: "2.0", ID: float64(1)}
+	args := json.RawMessage(`{"what":"annotations","wait":true,"timeout_ms":10}`)
+
+	resp := h.toolGetAnnotations(req, args)
+	text := unmarshalMCPText(t, resp.Result)
+	jsonText := extractJSONFromText(text)
+
+	var data map[string]any
+	if err := json.Unmarshal([]byte(jsonText), &data); err != nil {
+		t.Fatalf("Failed to parse response JSON: %v", err)
+	}
+
+	if data["status"] != "waiting_for_user" {
+		t.Fatalf("expected waiting_for_user fallback, got %v", data["status"])
+	}
+	if _, ok := data["correlation_id"].(string); !ok {
+		t.Fatalf("expected correlation_id in fallback response, got %v", data["correlation_id"])
 	}
 }
 

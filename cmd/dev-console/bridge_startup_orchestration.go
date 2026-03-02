@@ -49,11 +49,59 @@ func runBridgeMode(port int, logFile string, maxEntries int) {
 // stdio handling can start immediately.
 func startDaemonSpawnCoordinator(state *daemonState, port int) {
 	util.SafeGo(func() {
-		if waitForPeerDaemon(state, port) {
+		if coordinateDaemonStartup(state, port) {
 			return
 		}
 		spawnDaemonAsync(state)
 	})
+}
+
+func coordinateDaemonStartup(state *daemonState, port int) bool {
+	lock, acquired, err := tryAcquireBridgeStartupLock(port)
+	if err != nil {
+		// Coordination failed (state dir/lock issue). Fall back to local spawn.
+		return false
+	}
+	if acquired {
+		startAsStartupLeader(state, port, lock)
+		return true
+	}
+
+	// Another bridge owns startup leadership. Give it time to bring the daemon up.
+	if waitForPeerDaemon(state, port) {
+		return true
+	}
+
+	// Leader appears stalled. Reclaim stale/dead lock and try to take over.
+	_ = clearStaleBridgeStartupLock(port, daemonStartupLockStaleAfter)
+	lock, acquired, err = tryAcquireBridgeStartupLock(port)
+	if err != nil {
+		return false
+	}
+	if acquired {
+		startAsStartupLeader(state, port, lock)
+		return true
+	}
+
+	// Last short wait in case leader just completed while lock handoff converges.
+	return waitForPeerDaemonWithin(state, port, daemonPeerFallbackWaitTimeout)
+}
+
+func startAsStartupLeader(state *daemonState, port int, lock *bridgeStartupLock) {
+	if lock != nil {
+		defer lock.release()
+	}
+	if tryConnectToExisting(state, port) {
+		return
+	}
+	spawnDaemonAsync(state)
+	// Hold leadership until this spawn attempt resolves so followers don't stampede.
+	if ready, failed := waitForDaemonReadinessSignal(state, daemonStartupReadyTimeout+daemonPeerPollInterval); ready || failed {
+		return
+	}
+	if isServerRunning(port) {
+		state.markReady()
+	}
 }
 
 // tryConnectToExisting checks for a running server and validates compatibility.
@@ -85,14 +133,28 @@ func tryConnectToExisting(state *daemonState, port int) bool {
 }
 
 // waitForPeerDaemon retries connecting to a server that another bridge may be spawning.
-// Backoff: 500ms, then 2s. Returns true if a compatible server appeared.
+// Returns true if a compatible server appeared before the follower wait budget expires.
 func waitForPeerDaemon(state *daemonState, port int) bool {
-	// Retry 1: 500ms — quick check in case another bridge just beat us.
-	time.Sleep(500 * time.Millisecond)
-	if tryConnectToExisting(state, port) {
-		return true
+	return waitForPeerDaemonWithin(state, port, daemonPeerWaitTimeout)
+}
+
+func waitForPeerDaemonWithin(state *daemonState, port int, timeout time.Duration) bool {
+	if timeout <= 0 {
+		return tryConnectToExisting(state, port)
 	}
-	// Retry 2: 2s — longer wait for daemon startup.
-	time.Sleep(2 * time.Second)
-	return tryConnectToExisting(state, port)
+	deadline := time.Now().Add(timeout)
+	for {
+		if tryConnectToExisting(state, port) {
+			return true
+		}
+		remaining := time.Until(deadline)
+		if remaining <= 0 {
+			return false
+		}
+		sleepFor := daemonPeerPollInterval
+		if remaining < sleepFor {
+			sleepFor = remaining
+		}
+		time.Sleep(sleepFor)
+	}
 }

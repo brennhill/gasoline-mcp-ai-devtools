@@ -17,6 +17,7 @@ var enrichedFieldKeys = []string{
 	"timing", "dom_changes", "dom_summary", "dom_mutations", "analysis",
 	"content_script_status", "target_context",
 	"message", "hint", "retry", "retryable", "csp_blocked", "failure_cause", "error_code",
+	"terminal_reason",
 	"candidates", "match_count", "match_strategy",
 	"viewport",
 }

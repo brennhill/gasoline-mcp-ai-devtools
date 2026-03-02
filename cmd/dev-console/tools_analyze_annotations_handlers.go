@@ -6,31 +6,70 @@ package main
 
 import (
 	"encoding/json"
+	"strings"
 	"time"
 )
 
 // annotationWaitCommandTTL is how long pending annotation commands remain active.
 const annotationWaitCommandTTL = 10 * time.Minute
 
+// annotationBlockingWaitDefault is the initial synchronous wait budget for annotations(wait=true).
+// If annotations arrive in this window, return them directly without requiring polling.
+const annotationBlockingWaitDefault = 15 * time.Second
+
+// annotationBlockingWaitMax caps caller-provided timeout_ms for wait=true annotation calls.
+const annotationBlockingWaitMax = 10 * time.Minute
+
 // toolGetAnnotations returns latest annotation session or a named multi-page session.
 func (h *ToolHandler) toolGetAnnotations(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	var params struct {
 		Wait         bool   `json:"wait"`
 		AnnotSession string `json:"annot_session"`
+		Operation    string `json:"operation"`
+		Correlation  string `json:"correlation_id"`
+		TimeoutMs    int    `json:"timeout_ms"`
 	}
 	if len(args) > 0 {
 		lenientUnmarshal(args, &params)
 	}
 
-	if params.AnnotSession != "" {
-		return h.getNamedAnnotations(req, params.AnnotSession, params.Wait)
+	operation := strings.ToLower(strings.TrimSpace(params.Operation))
+	if operation != "" {
+		if operation != "flush" {
+			return JSONRPCResponse{
+				JSONRPC: "2.0",
+				ID:      req.ID,
+				Result:  mcpStructuredError(ErrInvalidParam, "Invalid annotations operation: "+params.Operation, "Use operation='flush' for annotation waiter recovery.", withParam("operation"), withHint("flush")),
+			}
+		}
+		return h.toolFlushAnnotations(req, params.Correlation)
 	}
-	return h.getAnonymousAnnotations(req, params.Wait)
+
+	waitTimeout := annotationBlockingWaitDuration(params.TimeoutMs)
+	if params.AnnotSession != "" {
+		return h.getNamedAnnotations(req, params.AnnotSession, params.Wait, waitTimeout)
+	}
+	return h.getAnonymousAnnotations(req, params.Wait, waitTimeout)
 }
 
-func (h *ToolHandler) getAnonymousAnnotations(req JSONRPCRequest, wait bool) JSONRPCResponse {
+func annotationBlockingWaitDuration(timeoutMs int) time.Duration {
+	if timeoutMs <= 0 {
+		return annotationBlockingWaitDefault
+	}
+	waitDuration := time.Duration(timeoutMs) * time.Millisecond
+	if waitDuration > annotationBlockingWaitMax {
+		return annotationBlockingWaitMax
+	}
+	return waitDuration
+}
+
+func (h *ToolHandler) getAnonymousAnnotations(req JSONRPCRequest, wait bool, waitTimeout time.Duration) JSONRPCResponse {
 	if wait {
 		if session := h.annotationStore.GetLatestSessionSinceDraw(); session != nil {
+			return h.formatAnnotationSession(req, session)
+		}
+
+		if session, _ := h.annotationStore.WaitForSession(waitTimeout); session != nil {
 			return h.formatAnnotationSession(req, session)
 		}
 
@@ -59,21 +98,17 @@ func (h *ToolHandler) getAnonymousAnnotations(req JSONRPCRequest, wait bool) JSO
 }
 
 func (h *ToolHandler) formatAnnotationSession(req JSONRPCRequest, session *AnnotationSession) JSONRPCResponse {
-	result := map[string]any{
-		"annotations": session.Annotations,
-		"count":       len(session.Annotations),
-		"page_url":    session.PageURL,
-	}
-	if session.ScreenshotPath != "" {
-		result["screenshot"] = session.ScreenshotPath
-	}
-	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Annotations retrieved", result)}
+	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Annotations retrieved", buildAnnotationSessionResult(session))}
 }
 
 // #lizard forgives
-func (h *ToolHandler) getNamedAnnotations(req JSONRPCRequest, sessionName string, wait bool) JSONRPCResponse {
+func (h *ToolHandler) getNamedAnnotations(req JSONRPCRequest, sessionName string, wait bool, waitTimeout time.Duration) JSONRPCResponse {
 	if wait {
 		if ns := h.annotationStore.GetNamedSessionSinceDraw(sessionName); ns != nil {
+			return h.formatNamedAnnotationSession(req, ns)
+		}
+
+		if ns, _ := h.annotationStore.WaitForNamedSession(sessionName, waitTimeout); ns != nil {
 			return h.formatNamedAnnotationSession(req, ns)
 		}
 
@@ -107,6 +142,22 @@ func (h *ToolHandler) getNamedAnnotations(req JSONRPCRequest, sessionName string
 }
 
 func (h *ToolHandler) formatNamedAnnotationSession(req JSONRPCRequest, ns *NamedAnnotationSession) JSONRPCResponse {
+	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Annotations retrieved", buildNamedAnnotationSessionResult(ns))}
+}
+
+func buildAnnotationSessionResult(session *AnnotationSession) map[string]any {
+	result := map[string]any{
+		"annotations": session.Annotations,
+		"count":       len(session.Annotations),
+		"page_url":    session.PageURL,
+	}
+	if session.ScreenshotPath != "" {
+		result["screenshot"] = session.ScreenshotPath
+	}
+	return result
+}
+
+func buildNamedAnnotationSessionResult(ns *NamedAnnotationSession) map[string]any {
 	totalCount := 0
 	pages := make([]map[string]any, 0, len(ns.Pages))
 	for _, page := range ns.Pages {
@@ -123,12 +174,100 @@ func (h *ToolHandler) formatNamedAnnotationSession(req JSONRPCRequest, ns *Named
 		pages = append(pages, p)
 	}
 
-	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Annotations retrieved", map[string]any{
+	return map[string]any{
 		"annot_session_name": ns.Name,
 		"pages":              pages,
 		"page_count":         len(ns.Pages),
 		"total_count":        totalCount,
-	})}
+	}
+}
+
+// toolFlushAnnotations forces completion of a pending annotation waiter.
+// This is a recovery path for stuck waiters that would otherwise remain pending.
+func (h *ToolHandler) toolFlushAnnotations(req JSONRPCRequest, correlationID string) JSONRPCResponse {
+	correlationID = strings.TrimSpace(correlationID)
+	if correlationID == "" {
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(
+			ErrMissingParam,
+			"Required parameter 'correlation_id' is missing for operation='flush'",
+			"Pass the correlation_id returned by analyze({what:'annotations',wait:true}).",
+			withParam("correlation_id"),
+		)}
+	}
+	if !strings.HasPrefix(correlationID, "ann_") {
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(
+			ErrInvalidParam,
+			"Invalid annotation correlation_id: "+correlationID,
+			"Use an annotation correlation_id (prefix ann_) from analyze({what:'annotations',wait:true}).",
+			withParam("correlation_id"),
+		)}
+	}
+
+	// Remove waiter first so later session writes cannot re-complete the same flush target.
+	sessionName, _ := h.annotationStore.TakeWaiter(correlationID)
+
+	// Idempotent behavior: if the command is already terminal, return current state.
+	if cmd, found := h.capture.GetCommandResult(correlationID); found && cmd != nil && cmd.Status != "pending" {
+		return h.formatCommandResult(req, *cmd, correlationID)
+	}
+
+	payload := h.buildFlushedAnnotationResult(sessionName)
+	h.capture.ApplyCommandResult(correlationID, "complete", payload, "")
+
+	// Normal path: return canonical command_result envelope.
+	if cmd, found := h.capture.GetCommandResult(correlationID); found && cmd != nil {
+		return h.formatCommandResult(req, *cmd, correlationID)
+	}
+
+	// Recovery fallback: command tracker no longer has this correlation_id.
+	// Return flush payload directly so callers still receive deterministic output.
+	var data map[string]any
+	_ = json.Unmarshal(payload, &data)
+	data["status"] = "complete"
+	data["final"] = true
+	data["correlation_id"] = correlationID
+	data["lifecycle_status"] = "complete"
+	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Annotation flush completed", data)}
+}
+
+func (h *ToolHandler) buildFlushedAnnotationResult(sessionName string) json.RawMessage {
+	if sessionName != "" {
+		if ns := h.annotationStore.GetNamedSession(sessionName); ns != nil {
+			data := buildNamedAnnotationSessionResult(ns)
+			data["status"] = "complete"
+			data["terminal_reason"] = "flushed"
+			encoded, _ := json.Marshal(data)
+			return encoded
+		}
+
+		encoded, _ := json.Marshal(map[string]any{
+			"status":             "complete",
+			"annot_session_name": sessionName,
+			"pages":              []any{},
+			"page_count":         0,
+			"total_count":        0,
+			"terminal_reason":    "abandoned",
+			"message":            "Annotation waiter flushed with no named-session annotations available.",
+		})
+		return encoded
+	}
+
+	if session := h.annotationStore.GetLatestSession(); session != nil {
+		data := buildAnnotationSessionResult(session)
+		data["status"] = "complete"
+		data["terminal_reason"] = "flushed"
+		encoded, _ := json.Marshal(data)
+		return encoded
+	}
+
+	encoded, _ := json.Marshal(map[string]any{
+		"status":          "complete",
+		"annotations":     []any{},
+		"count":           0,
+		"terminal_reason": "abandoned",
+		"message":         "Annotation waiter flushed with no captured annotations available.",
+	})
+	return encoded
 }
 
 // toolGetAnnotationDetail returns full DOM/style detail for a specific annotation.

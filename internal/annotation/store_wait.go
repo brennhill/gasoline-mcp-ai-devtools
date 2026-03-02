@@ -6,6 +6,21 @@ package annotation
 
 import "time"
 
+// TakeWaiter removes and returns a pending async annotation waiter by correlation_id.
+// Returns (sessionName, true) when found, or ("", false) when missing.
+func (s *Store) TakeWaiter(correlationID string) (string, bool) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	for i, w := range s.waiters {
+		if w.CorrelationID != correlationID {
+			continue
+		}
+		s.waiters = append(s.waiters[:i], s.waiters[i+1:]...)
+		return w.AnnotSessionName, true
+	}
+	return "", false
+}
+
 // waitForCondition blocks until checker returns non-nil, timeout, or store close.
 // Returns (result, timedOut). result is nil if timed out or store closed.
 func (s *Store) waitForCondition(timeout time.Duration, checker func() any) (any, bool) {
