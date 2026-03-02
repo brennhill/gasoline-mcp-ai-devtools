@@ -6,78 +6,8 @@ package main
 
 import (
 	"encoding/json"
-	"strconv"
-	"strings"
-	"sync"
 	"time"
-
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/types"
 )
-
-// recordingSnapshot holds the captured state from a recording session.
-type recordingSnapshot struct {
-	Active    bool
-	StartTime time.Time
-	Domain    string
-	Method    string
-}
-
-// networkRecordingState tracks an active network recording session.
-type networkRecordingState struct {
-	mu        sync.Mutex
-	active    bool
-	startTime time.Time
-	domain    string // optional domain filter
-	method    string // optional HTTP method filter
-}
-
-// tryStart atomically checks if recording is inactive and starts it.
-// Returns (startTime, true) on success, or (zero, false) if already active.
-func (s *networkRecordingState) tryStart(domain, method string) (time.Time, bool) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	if s.active {
-		return time.Time{}, false
-	}
-	s.active = true
-	s.startTime = time.Now()
-	s.domain = domain
-	s.method = method
-	return s.startTime, true
-}
-
-// stop atomically stops recording and returns a snapshot of the session state.
-// Returns (snapshot, true) if recording was active, or (zero, false) if not.
-func (s *networkRecordingState) stop() (recordingSnapshot, bool) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	if !s.active {
-		return recordingSnapshot{}, false
-	}
-	snap := recordingSnapshot{
-		Active:    true,
-		StartTime: s.startTime,
-		Domain:    s.domain,
-		Method:    s.method,
-	}
-	s.active = false
-	s.startTime = time.Time{}
-	s.domain = ""
-	s.method = ""
-	return snap, true
-}
-
-// info returns a snapshot of the current recording state.
-func (s *networkRecordingState) info() recordingSnapshot {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	return recordingSnapshot{
-		Active:    s.active,
-		StartTime: s.startTime,
-		Domain:    s.domain,
-		Method:    s.method,
-	}
-}
 
 // toolConfigureNetworkRecording handles configure(what="network_recording").
 func (h *ToolHandler) toolConfigureNetworkRecording(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
@@ -128,38 +58,8 @@ func (h *ToolHandler) toolConfigureNetworkRecording(req JSONRPCRequest, args jso
 			)}
 		}
 
-		// Collect network bodies captured since start time
-		bodies := h.capture.GetNetworkBodies()
-		var recorded []map[string]any
-		for _, b := range bodies {
-			if !matchesRecordingFilter(b, snap.StartTime, snap.Domain, snap.Method) {
-				continue
-			}
-			entry := map[string]any{
-				"method": b.Method,
-				"url":    b.URL,
-				"status": b.Status,
-			}
-			if b.RequestBody != "" {
-				entry["request_body"] = b.RequestBody
-			}
-			if b.ResponseBody != "" {
-				entry["response_body"] = b.ResponseBody
-			}
-			if b.ContentType != "" {
-				entry["content_type"] = b.ContentType
-			}
-			if b.Duration > 0 {
-				entry["duration_ms"] = b.Duration
-			}
-			if b.HasAuthHeader {
-				entry["has_auth_header"] = true
-			}
-			if b.Timestamp != "" {
-				entry["timestamp"] = b.Timestamp
-			}
-			recorded = append(recorded, entry)
-		}
+		// Collect network bodies captured since start time.
+		recorded := collectRecordedRequests(h.capture.GetNetworkBodies(), snap)
 
 		duration := time.Since(snap.StartTime)
 		result := map[string]any{
@@ -194,35 +94,4 @@ func (h *ToolHandler) toolConfigureNetworkRecording(req JSONRPCRequest, args jso
 			"Use 'start', 'stop', or 'status'.",
 		)}
 	}
-}
-
-// matchesRecordingFilter checks if a network body matches recording filters.
-func matchesRecordingFilter(b types.NetworkBody, startTime time.Time, domain, method string) bool {
-	// Filter by timestamp — only include entries captured after recording started
-	if b.Timestamp != "" {
-		ts, err := time.Parse(time.RFC3339Nano, b.Timestamp)
-		if err != nil {
-			// Try millisecond epoch format (extension may send numeric timestamps)
-			if msEpoch, numErr := strconv.ParseInt(b.Timestamp, 10, 64); numErr == nil {
-				ts = time.UnixMilli(msEpoch)
-				err = nil
-			}
-		}
-		if err == nil && ts.Before(startTime) {
-			return false
-		}
-		// If both RFC3339 and epoch parsing fail, include the entry (best-effort)
-	}
-
-	// Filter by domain
-	if domain != "" && !strings.Contains(strings.ToLower(b.URL), strings.ToLower(domain)) {
-		return false
-	}
-
-	// Filter by HTTP method
-	if method != "" && !strings.EqualFold(b.Method, method) {
-		return false
-	}
-
-	return true
 }
