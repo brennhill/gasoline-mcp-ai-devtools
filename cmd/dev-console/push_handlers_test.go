@@ -19,6 +19,18 @@ func newTestPushServer() *Server {
 	}
 }
 
+type testPushNotifier struct {
+	method string
+	params map[string]any
+	calls  int
+}
+
+func (n *testPushNotifier) SendNotification(method string, params map[string]any) {
+	n.calls++
+	n.method = method
+	n.params = params
+}
+
 func TestHandlePushMessage_Success(t *testing.T) {
 	s := newTestPushServer()
 	body := `{"message":"hello world","page_url":"https://example.com","tab_id":1}`
@@ -37,6 +49,9 @@ func TestHandlePushMessage_Success(t *testing.T) {
 	}
 	if resp["status"] != "queued" {
 		t.Fatalf("expected queued, got %s", resp["status"])
+	}
+	if resp["delivery_method"] != "inbox" {
+		t.Fatalf("expected delivery_method=inbox, got %v", resp["delivery_method"])
 	}
 	if resp["event_id"] == "" {
 		t.Fatal("expected event_id")
@@ -115,6 +130,13 @@ func TestHandlePushScreenshot_Success(t *testing.T) {
 	if w.Code != http.StatusOK {
 		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
 	}
+	var resp map[string]any
+	if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
+		t.Fatal(err)
+	}
+	if resp["delivery_method"] != "inbox" {
+		t.Fatalf("expected delivery_method=inbox, got %v", resp["delivery_method"])
+	}
 }
 
 func TestHandlePushScreenshot_StripsDataPrefix(t *testing.T) {
@@ -169,6 +191,51 @@ func TestHandlePushCapabilities(t *testing.T) {
 	}
 	if resp["client_name"] != "test-client" {
 		t.Fatalf("expected test-client, got %s", resp["client_name"])
+	}
+}
+
+func TestHandlePushMessage_NotificationRouting(t *testing.T) {
+	inbox := push.NewPushInbox(50)
+	notifier := &testPushNotifier{}
+	router := push.NewRouter(inbox, nil, notifier, push.ClientCapabilities{
+		SupportsSampling:      false,
+		SupportsNotifications: true,
+		ClientName:            "codex",
+	})
+	s := &Server{
+		pushInbox:  inbox,
+		pushRouter: router,
+	}
+
+	body := `{"message":"notify me","page_url":"https://example.com","tab_id":1}`
+	req := httptest.NewRequest("POST", "/push/message", strings.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+
+	s.handlePushMessage(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
+	}
+
+	var resp map[string]any
+	if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
+		t.Fatal(err)
+	}
+	if resp["status"] != "queued" {
+		t.Fatalf("expected queued status on notification path, got %v", resp["status"])
+	}
+	if resp["delivery_method"] != "notification" {
+		t.Fatalf("expected delivery_method=notification, got %v", resp["delivery_method"])
+	}
+	if notifier.calls != 1 {
+		t.Fatalf("expected 1 notification call, got %d", notifier.calls)
+	}
+	if notifier.method != "notifications/message" {
+		t.Fatalf("expected notifications/message method, got %q", notifier.method)
+	}
+	if inbox.Len() != 1 {
+		t.Fatalf("expected inbox fallback enqueue after notification, got %d events", inbox.Len())
 	}
 }
 
