@@ -66,6 +66,7 @@ type RateLimiter interface {
 
 // RedactionEngine interface for response redaction.
 type RedactionEngine interface {
+	Redact(input string) string
 	RedactJSON(data json.RawMessage) json.RawMessage
 	RedactMapValues(data map[string]any) map[string]any
 }

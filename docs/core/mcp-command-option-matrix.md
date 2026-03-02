@@ -5,7 +5,7 @@ scope: core/mcp-contract/matrix
 ai-priority: high
 tags: [core, mcp, command-matrix, option-traceability, canonical]
 relates-to: [product-spec.md, tech-spec.md, qa-spec.md]
-last-verified: 2026-02-17
+last-verified: 2026-03-02
 canonical: true
 ---
 
@@ -76,6 +76,7 @@ canonical: true
 - `telemetry` -> `toolConfigureTelemetry`
 - `diff_sessions` -> `toolDiffSessionsWrapper`
 - `audit_log` -> `toolGetAuditLog`
+- `report_issue` -> `toolConfigureReportIssue`
 
 ### `interact` (`action` -> handler -> query type)
 - `highlight` -> `handleHighlight` -> `highlight`
@@ -148,6 +149,7 @@ canonical: true
 - `recording_stop`: `recording_id`
 - `playback`: `recording_id`
 - `log_diff`: `original_id`, `replay_id`
+- `report_issue`: `operation`, `template`, `title`, `user_context`
 - Cross-cutting key: `telemetry_mode`
 
 ### `interact` options

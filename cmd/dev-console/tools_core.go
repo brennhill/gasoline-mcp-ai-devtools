@@ -13,6 +13,7 @@ import (
 	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/analysis"
 	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/audit"
 	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/capture"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/issuereport"
 	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/mcp"
 	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/security"
 	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/session"
@@ -137,6 +138,10 @@ type ToolHandler struct {
 	// noiseFirstConnectFn overrides the noise auto-detect function for first-connection.
 	// When nil, runNoiseAutoDetect() is used. Set in tests to inject counting stubs.
 	noiseFirstConnectFn func()
+
+	// issueCommandRunner overrides the exec runner for issue submission.
+	// When nil, issuereport.ExecRunner{} is used. Set in tests to inject a fake.
+	issueCommandRunner issuereport.CommandRunner
 }
 
 // maybeWaitForCommand, formatCommandResult, and related async infrastructure
