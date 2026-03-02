@@ -112,7 +112,8 @@ Tutorial snippets (`configure(what:"examples")`) include a filtering example.
 | `internal/tools/configure/mode_specs_test.go` | Validates specs match schemas, all modes have hints, no unknown params |
 | `cmd/dev-console/tools_configure.go` | `handleDescribeCapabilities` handler |
 | `cmd/dev-console/tools_configure_capabilities_test.go` | Handler integration tests |
-| `cmd/dev-console/playbooks.go` | `capabilityIndex` with "Runtime Discovery" section |
+| `cmd/dev-console/playbooks.go` + `cmd/dev-console/playbooks_*.go` | `capabilityIndex` plus capability-specific playbook content |
+| `cmd/dev-console/playbooks_resolver.go` | Canonical playbook URI resolution + alias normalization |
 | `cmd/dev-console/tools_configure_tutorial.go` | Tutorial snippet with filtering example |
 
 ### Data flow

@@ -4,7 +4,7 @@ feature_id: feature-backend-log-streaming
 status: proposed
 feature_type: feature
 owners: []
-last_reviewed: 2026-02-16
+last_reviewed: 2026-03-02
 code_paths:
   - internal/capture/accessor.go
   - internal/capture/buffer_clear.go
@@ -67,6 +67,7 @@ test_paths: []
 - Product Spec: [product-spec.md](./product-spec.md)
 - Tech Spec: [tech-spec.md](./tech-spec.md)
 - QA Plan: [qa-plan.md](./qa-plan.md)
+- Flow Map: [flow-map.md](./flow-map.md)
 
 ## Requirement IDs
 

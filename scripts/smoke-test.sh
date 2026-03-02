@@ -104,7 +104,7 @@ MODULES=(
     "11-subtitle-screenshot.sh"
     "12-cross-cutting.sh"
     "13-draw-mode.sh"
-    "15-file-upload.sh"       # 15 runs before 14: upload needs a live daemon
+    "15-file-upload.sh"       # upload requires a live daemon before shutdown/stability modules
     "20-inspect-visual.sh"
     "21-macro-recording.sh"
     "22-log-aggregation.sh"
