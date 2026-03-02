@@ -728,6 +728,53 @@ describe('ambiguity-safe mutating actions', () => {
     globalThis.requestAnimationFrame = (cb) => cb()
   })
 
+  function setupDuplicateTextButtonsForClick(text, rects) {
+    const clickCounts = Array(rects.length).fill(0)
+    const buttons = rects.map((rect, idx) => {
+      const btn = new MockHTMLElement('BUTTON', { textContent: text })
+      Object.setPrototypeOf(btn, MockHTMLElement.prototype)
+      btn.getBoundingClientRect = () => ({ ...rect })
+      btn.getRootNode = () => globalThis.document
+      btn.getAttribute = () => null
+      btn.click = () => { clickCounts[idx] += 1 }
+      return btn
+    })
+
+    const textNodes = buttons.map((btn) => ({ textContent: text, parentElement: btn }))
+    const prevWindow = globalThis.window
+    const prevDocument = globalThis.document
+    globalThis.window = { innerHeight: 900, innerWidth: 1440 }
+    globalThis.document = {
+      querySelector: () => null,
+      querySelectorAll: () => [],
+      getElementById: () => null,
+      body: { querySelectorAll: () => [], appendChild: () => {}, children: { length: 0 } },
+      documentElement: { children: { length: 0 }, clientHeight: 900, clientWidth: 1440 },
+      createTreeWalker: () => {
+        let idx = -1
+        return {
+          currentNode: null,
+          nextNode() {
+            idx += 1
+            if (idx >= textNodes.length) return null
+            this.currentNode = textNodes[idx]
+            return this.currentNode
+          }
+        }
+      },
+      getSelection: () => null,
+      execCommand: () => {}
+    }
+
+    return {
+      clickCounts,
+      restore() {
+        globalThis.window = prevWindow
+        globalThis.document = prevDocument
+      }
+    }
+  }
+
   test('click supports text=:nth-match(N) selectors from list_interactive', async () => {
     let firstClicks = 0
     let secondClicks = 0
@@ -781,6 +828,76 @@ describe('ambiguity-safe mutating actions', () => {
     assert.strictEqual(result.match_strategy, 'nth_match_selector')
     assert.strictEqual(firstClicks, 0, 'first match should not be clicked')
     assert.strictEqual(secondClicks, 1, 'second match should be clicked once')
+  })
+
+  test('click nth=1 targets the second visible match for text selectors', async () => {
+    const { clickCounts, restore } = setupDuplicateTextButtonsForClick('Edit & post', [
+      { x: 120, y: 120, left: 120, top: 120, right: 280, bottom: 160, width: 160, height: 40 },
+      { x: 120, y: 220, left: 120, top: 220, right: 280, bottom: 260, width: 160, height: 40 },
+      { x: 120, y: 320, left: 120, top: 320, right: 280, bottom: 360, width: 160, height: 40 }
+    ])
+    try {
+      const raw = domPrimitive('click', 'text=Edit & post', { nth: 1 })
+      const result = raw instanceof Promise ? await raw : raw
+
+      assert.strictEqual(result.success, true, 'expected click to resolve')
+      assert.strictEqual(result.match_strategy, 'nth_param')
+      assert.deepStrictEqual(clickCounts, [0, 1, 0], 'nth=1 should click only the second visible match')
+    } finally {
+      restore()
+    }
+  })
+
+  test('click nth=-1 targets the last visible match for text selectors', async () => {
+    const { clickCounts, restore } = setupDuplicateTextButtonsForClick('Edit & post', [
+      { x: 120, y: 120, left: 120, top: 120, right: 280, bottom: 160, width: 160, height: 40 },
+      { x: 120, y: 220, left: 120, top: 220, right: 280, bottom: 260, width: 160, height: 40 },
+      { x: 120, y: 320, left: 120, top: 320, right: 280, bottom: 360, width: 160, height: 40 }
+    ])
+    try {
+      const raw = domPrimitive('click', 'text=Edit & post', { nth: -1 })
+      const result = raw instanceof Promise ? await raw : raw
+
+      assert.strictEqual(result.success, true, 'expected click to resolve')
+      assert.strictEqual(result.match_strategy, 'nth_param')
+      assert.deepStrictEqual(clickCounts, [0, 0, 1], 'nth=-1 should click only the last visible match')
+    } finally {
+      restore()
+    }
+  })
+
+  test('click returns nth_out_of_range when nth exceeds visible matches', async () => {
+    const { restore } = setupDuplicateTextButtonsForClick('Edit & post', [
+      { x: 120, y: 120, left: 120, top: 120, right: 280, bottom: 160, width: 160, height: 40 },
+      { x: 120, y: 220, left: 120, top: 220, right: 280, bottom: 260, width: 160, height: 40 }
+    ])
+    try {
+      const raw = domPrimitive('click', 'text=Edit & post', { nth: 5 })
+      const result = raw instanceof Promise ? await raw : raw
+
+      assert.strictEqual(result.success, false)
+      assert.strictEqual(result.error, 'nth_out_of_range')
+      assert.ok((result.message || '').includes('nth=5'), 'error message should include offending nth')
+    } finally {
+      restore()
+    }
+  })
+
+  test('click returns invalid_nth when nth is non-integer', async () => {
+    const { restore } = setupDuplicateTextButtonsForClick('Edit & post', [
+      { x: 120, y: 120, left: 120, top: 120, right: 280, bottom: 160, width: 160, height: 40 },
+      { x: 120, y: 220, left: 120, top: 220, right: 280, bottom: 260, width: 160, height: 40 }
+    ])
+    try {
+      const raw = domPrimitive('click', 'text=Edit & post', { nth: 1.5 })
+      const result = raw instanceof Promise ? await raw : raw
+
+      assert.strictEqual(result.success, false)
+      assert.strictEqual(result.error, 'invalid_nth')
+      assert.ok((result.message || '').includes('integer'), 'error message should explain integer requirement')
+    } finally {
+      restore()
+    }
   })
 
   test('click returns ambiguous_target when selector matches multiple visible elements', async () => {
@@ -882,61 +999,19 @@ describe('ambiguity-safe mutating actions', () => {
   })
 
   test('click text selector prefers in-viewport target over off-screen duplicate', async () => {
-    let offscreenClicks = 0
-    let visibleClicks = 0
+    const { clickCounts, restore } = setupDuplicateTextButtonsForClick('Edit & post', [
+      { x: 120, y: 2041, left: 120, top: 2041, right: 280, bottom: 2081, width: 160, height: 40 },
+      { x: 120, y: 180, left: 120, top: 180, right: 280, bottom: 220, width: 160, height: 40 }
+    ])
+    try {
+      const raw = domPrimitive('click', 'text=Edit & post', {})
+      const result = raw instanceof Promise ? await raw : raw
 
-    const offscreen = new MockHTMLElement('BUTTON', { textContent: 'Edit & post' })
-    Object.setPrototypeOf(offscreen, MockHTMLElement.prototype)
-    offscreen.getBoundingClientRect = () => ({ x: 120, y: 2041, left: 120, top: 2041, right: 280, bottom: 2081, width: 160, height: 40 })
-    offscreen.getRootNode = () => globalThis.document
-    offscreen.getAttribute = () => null
-    offscreen.click = () => { offscreenClicks++ }
-
-    const visible = new MockHTMLElement('BUTTON', { textContent: 'Edit & post' })
-    Object.setPrototypeOf(visible, MockHTMLElement.prototype)
-    visible.getBoundingClientRect = () => ({ x: 120, y: 180, left: 120, top: 180, right: 280, bottom: 220, width: 160, height: 40 })
-    visible.getRootNode = () => globalThis.document
-    visible.getAttribute = () => null
-    visible.click = () => { visibleClicks++ }
-
-    const textNodes = [
-      { textContent: 'Edit & post', parentElement: offscreen },
-      { textContent: 'Edit & post', parentElement: visible }
-    ]
-
-    const prevWindow = globalThis.window
-    globalThis.window = { innerHeight: 900, innerWidth: 1440 }
-
-    globalThis.document = {
-      querySelector: () => null,
-      querySelectorAll: () => [],
-      getElementById: () => null,
-      body: { querySelectorAll: () => [], appendChild: () => {}, children: { length: 0 } },
-      documentElement: { children: { length: 0 }, clientHeight: 900, clientWidth: 1440 },
-      createTreeWalker: () => {
-        let idx = -1
-        return {
-          currentNode: null,
-          nextNode() {
-            idx += 1
-            if (idx >= textNodes.length) return null
-            this.currentNode = textNodes[idx]
-            return this.currentNode
-          }
-        }
-      },
-      getSelection: () => null,
-      execCommand: () => {}
+      assert.strictEqual(result.success, true, 'expected click to resolve')
+      assert.deepStrictEqual(clickCounts, [0, 1], 'in-viewport candidate should be clicked')
+    } finally {
+      restore()
     }
-
-    const raw = domPrimitive('click', 'text=Edit & post', {})
-    const result = raw instanceof Promise ? await raw : raw
-
-    globalThis.window = prevWindow
-
-    assert.strictEqual(result.success, true, 'expected click to resolve')
-    assert.strictEqual(offscreenClicks, 0, 'off-screen duplicate should not be clicked')
-    assert.strictEqual(visibleClicks, 1, 'in-viewport candidate should be clicked')
   })
 
   test('read-only actions remain backward-compatible on duplicate matches', () => {

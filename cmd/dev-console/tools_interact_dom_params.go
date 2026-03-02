@@ -11,6 +11,7 @@ type domPrimitiveParams struct {
 	ScopeSelector string   `json:"scope_selector,omitempty"`
 	ElementID     string   `json:"element_id,omitempty"`
 	Index         *int     `json:"index,omitempty"`
+	Nth           *int     `json:"nth,omitempty"`
 	IndexGen      string   `json:"index_generation,omitempty"`
 	Text          string   `json:"text,omitempty"`
 	Value         string   `json:"value,omitempty"`

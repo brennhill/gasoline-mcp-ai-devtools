@@ -23,7 +23,7 @@ func interactTargetingProperties() map[string]any {
 			"description": "Generation token from list_interactive to ensure index resolves against the same element snapshot",
 		},
 		"nth": map[string]any{
-			"type":        "number",
+			"type":        "integer",
 			"description": "Select the Nth matching element when a selector matches multiple. 0 = first visible match, 1 = second, etc. Negative values count from end (-1 = last). Prefers visible elements when available.",
 		},
 		"x": map[string]any{

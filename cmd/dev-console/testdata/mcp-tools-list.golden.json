@@ -1360,7 +1360,7 @@
         },
         "nth": {
           "description": "Select the Nth matching element when a selector matches multiple. 0 = first visible match, 1 = second, etc. Negative values count from end (-1 = last). Prefers visible elements when available.",
-          "type": "number"
+          "type": "integer"
         },
         "observe_mutations": {
           "description": "Track element-level DOM mutations during action execution",
