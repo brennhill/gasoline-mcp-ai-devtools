@@ -25,6 +25,10 @@ type testRedactor struct {
 	replacement json.RawMessage
 }
 
+func (r testRedactor) Redact(input string) string {
+	return input // no-op for existing tests
+}
+
 func (r testRedactor) RedactJSON(_ json.RawMessage) json.RawMessage {
 	return r.replacement
 }

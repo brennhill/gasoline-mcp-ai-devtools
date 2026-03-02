@@ -47,3 +47,4 @@ Each flow map should include:
 - [Tab Recording and Media Ingest](./tab-recording-and-media-ingest.md)
 - [Self-Testing Test Harness](./self-testing-test-harness.md)
 - [Test Generation Dispatch](./test-generation-dispatch.md)
+- [Issue Reporting Submission](./issue-reporting-submission.md)
