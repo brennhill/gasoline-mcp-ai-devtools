@@ -881,6 +881,64 @@ describe('ambiguity-safe mutating actions', () => {
     assert.strictEqual(clickCount, 1, 'expected page element click, not overlay match')
   })
 
+  test('click text selector prefers in-viewport target over off-screen duplicate', async () => {
+    let offscreenClicks = 0
+    let visibleClicks = 0
+
+    const offscreen = new MockHTMLElement('BUTTON', { textContent: 'Edit & post' })
+    Object.setPrototypeOf(offscreen, MockHTMLElement.prototype)
+    offscreen.getBoundingClientRect = () => ({ x: 120, y: 2041, left: 120, top: 2041, right: 280, bottom: 2081, width: 160, height: 40 })
+    offscreen.getRootNode = () => globalThis.document
+    offscreen.getAttribute = () => null
+    offscreen.click = () => { offscreenClicks++ }
+
+    const visible = new MockHTMLElement('BUTTON', { textContent: 'Edit & post' })
+    Object.setPrototypeOf(visible, MockHTMLElement.prototype)
+    visible.getBoundingClientRect = () => ({ x: 120, y: 180, left: 120, top: 180, right: 280, bottom: 220, width: 160, height: 40 })
+    visible.getRootNode = () => globalThis.document
+    visible.getAttribute = () => null
+    visible.click = () => { visibleClicks++ }
+
+    const textNodes = [
+      { textContent: 'Edit & post', parentElement: offscreen },
+      { textContent: 'Edit & post', parentElement: visible }
+    ]
+
+    const prevWindow = globalThis.window
+    globalThis.window = { innerHeight: 900, innerWidth: 1440 }
+
+    globalThis.document = {
+      querySelector: () => null,
+      querySelectorAll: () => [],
+      getElementById: () => null,
+      body: { querySelectorAll: () => [], appendChild: () => {}, children: { length: 0 } },
+      documentElement: { children: { length: 0 }, clientHeight: 900, clientWidth: 1440 },
+      createTreeWalker: () => {
+        let idx = -1
+        return {
+          currentNode: null,
+          nextNode() {
+            idx += 1
+            if (idx >= textNodes.length) return null
+            this.currentNode = textNodes[idx]
+            return this.currentNode
+          }
+        }
+      },
+      getSelection: () => null,
+      execCommand: () => {}
+    }
+
+    const raw = domPrimitive('click', 'text=Edit & post', {})
+    const result = raw instanceof Promise ? await raw : raw
+
+    globalThis.window = prevWindow
+
+    assert.strictEqual(result.success, true, 'expected click to resolve')
+    assert.strictEqual(offscreenClicks, 0, 'off-screen duplicate should not be clicked')
+    assert.strictEqual(visibleClicks, 1, 'in-viewport candidate should be clicked')
+  })
+
   test('read-only actions remain backward-compatible on duplicate matches', () => {
     const first = new MockHTMLElement('DIV', { textContent: 'alpha' })
     first.innerText = 'alpha'
