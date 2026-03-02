@@ -6,130 +6,30 @@ package main
 
 import (
 	"encoding/json"
-	"sort"
-	"strings"
 )
 
-// ConfigureHandler is the function signature for configure action handlers.
-type ConfigureHandler func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse
-
-const defaultStoreNamespace = "session"
-
-// configureHandlers maps configure action names to their handler functions.
-var configureHandlers = map[string]ConfigureHandler{
-	"store": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-		return h.toolConfigureStore(req, args)
-	},
-	"load": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-		return h.toolLoadSessionContext(req, args)
-	},
-	"noise_rule": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-		return h.toolConfigureNoiseRule(req, args)
-	},
-	"clear": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-		return h.toolConfigureClear(req, args)
-	},
-	"diff_sessions": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-		return h.toolDiffSessionsWrapper(req, args)
-	},
-	"audit_log": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-		return h.toolGetAuditLog(req, args)
-	},
-	"health": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-		return h.toolGetHealth(req)
-	},
-	"streaming": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-		return h.toolConfigureStreamingWrapper(req, args)
-	},
-	"test_boundary_start": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-		return h.toolConfigureTestBoundaryStart(req, args)
-	},
-	"test_boundary_end": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-		return h.toolConfigureTestBoundaryEnd(req, args)
-	},
-	"recording_start": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-		return h.toolConfigureRecordingStart(req, args)
-	},
-	"recording_stop": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-		return h.toolConfigureRecordingStop(req, args)
-	},
-	"playback": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-		return h.toolConfigurePlayback(req, args)
-	},
-	"log_diff": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-		return h.toolConfigureLogDiff(req, args)
-	},
-	"telemetry": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-		return h.toolConfigureTelemetry(req, args)
-	},
-	"describe_capabilities": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-		return h.handleDescribeCapabilities(req, args)
-	},
-	"restart": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-		return h.toolConfigureRestart(req)
-	},
-	"doctor": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-		return h.toolDoctor(req)
-	},
-	"tutorial": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-		return h.toolConfigureTutorial(req, args)
-	},
-	"examples": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-		return h.toolConfigureTutorial(req, args)
-	},
-	"save_sequence": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-		return h.toolConfigureSaveSequence(req, args)
-	},
-	"get_sequence": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-		return h.toolConfigureGetSequence(req, args)
-	},
-	"list_sequences": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-		return h.toolConfigureListSequences(req, args)
-	},
-	"delete_sequence": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-		return h.toolConfigureDeleteSequence(req, args)
-	},
-	"replay_sequence": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-		return h.toolConfigureReplaySequence(req, args)
-	},
-	"security_mode": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-		return h.toolConfigureSecurityMode(req, args)
-	},
-	"network_recording": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-		return h.toolConfigureNetworkRecording(req, args)
-	},
-	"action_jitter": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-		return h.toolConfigureActionJitter(req, args)
-	},
+type configureModeParams struct {
+	What   string `json:"what"`
+	Action string `json:"action"`
 }
 
-// getValidConfigureActions returns a sorted, comma-separated list of valid configure actions.
-func getValidConfigureActions() string {
-	actions := make([]string, 0, len(configureHandlers))
-	for action := range configureHandlers {
-		actions = append(actions, action)
+func parseConfigureModeParams(args json.RawMessage) (configureModeParams, error) {
+	params := configureModeParams{}
+	if len(args) == 0 {
+		return params, nil
 	}
-	sort.Strings(actions)
-	return strings.Join(actions, ", ")
+	if err := json.Unmarshal(args, &params); err != nil {
+		return configureModeParams{}, err
+	}
+	return params, nil
 }
 
-// toolConfigure dispatches configure requests based on the 'what' parameter.
-func (h *ToolHandler) toolConfigure(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-	var params struct {
-		What   string `json:"what"`
-		Action string `json:"action"`
-	}
-	if len(args) > 0 {
-		if err := json.Unmarshal(args, &params); err != nil {
-			return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidJSON, "Invalid JSON arguments: "+err.Error(), "Fix JSON syntax and call again")}
-		}
-	}
-
-	what := params.What
-	usedAliasParam := ""
+func resolveConfigureAction(req JSONRPCRequest, params configureModeParams) (what string, usedAliasParam string, errResp *JSONRPCResponse) {
+	what = params.What
 	if what != "" && params.Action != "" && params.Action != what {
 		if _, isTopLevelConfigureAction := configureHandlers[params.Action]; isTopLevelConfigureAction {
-			return whatAliasConflictResponse(req, "action", what, params.Action, getValidConfigureActions())
+			resp := whatAliasConflictResponse(req, "action", what, params.Action, getValidConfigureActions())
+			return "", "", &resp
 		}
 	}
 	if what == "" {
@@ -138,10 +38,24 @@ func (h *ToolHandler) toolConfigure(req JSONRPCRequest, args json.RawMessage) JS
 			usedAliasParam = "action"
 		}
 	}
-
 	if what == "" {
 		validActions := getValidConfigureActions()
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrMissingParam, "Required parameter 'what' is missing", "Add the 'what' parameter and call again", withParam("what"), withHint("Valid values: "+validActions))}
+		resp := JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrMissingParam, "Required parameter 'what' is missing", "Add the 'what' parameter and call again", withParam("what"), withHint("Valid values: "+validActions))}
+		return "", usedAliasParam, &resp
+	}
+	return what, usedAliasParam, nil
+}
+
+// toolConfigure dispatches configure requests based on the 'what' parameter.
+func (h *ToolHandler) toolConfigure(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+	params, err := parseConfigureModeParams(args)
+	if err != nil {
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidJSON, "Invalid JSON arguments: "+err.Error(), "Fix JSON syntax and call again")}
+	}
+
+	what, usedAliasParam, errResp := resolveConfigureAction(req, params)
+	if errResp != nil {
+		return *errResp
 	}
 
 	handler, ok := configureHandlers[what]
