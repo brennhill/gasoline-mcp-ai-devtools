@@ -4,7 +4,6 @@
 package main
 
 import (
-	"encoding/json"
 	"net/http"
 	"strings"
 
@@ -42,12 +41,7 @@ func registerCaptureRoutes(mux *http.ServeMux, server *Server, cap *capture.Capt
 	mux.HandleFunc("/sync", corsMiddleware(extensionOnly(cap.HandleSync)))
 
 	// NOT MCP — Multi-client registry (extension bookkeeping, not AI-facing)
-	mux.HandleFunc("/clients", corsMiddleware(extensionOnly(func(w http.ResponseWriter, r *http.Request) {
-		handleClientsList(w, r, cap)
-	})))
-	mux.HandleFunc("/clients/", corsMiddleware(extensionOnly(func(w http.ResponseWriter, r *http.Request) {
-		handleClientByID(w, r, cap)
-	})))
+	registerClientRegistryRoutes(mux, cap)
 
 	// NOT MCP — Video recording binary upload (extension → daemon file storage)
 	mux.HandleFunc("/recordings/save", corsMiddleware(extensionOnly(func(w http.ResponseWriter, r *http.Request) {
@@ -67,57 +61,6 @@ func registerCaptureRoutes(mux *http.ServeMux, server *Server, cap *capture.Capt
 	mux.HandleFunc("/snapshot", corsMiddleware(extensionOnly(handleSnapshot(server, cap))))
 	mux.HandleFunc("/clear", corsMiddleware(extensionOnly(handleClear(server, cap))))
 	mux.HandleFunc("/test-boundary", corsMiddleware(extensionOnly(handleTestBoundary(cap))))
-}
-
-// handleClientsList handles GET/POST on /clients for multi-client management.
-func handleClientsList(w http.ResponseWriter, r *http.Request, cap *capture.Capture) {
-	switch r.Method {
-	case "GET":
-		clients := cap.GetClientRegistry().List()
-		jsonResponse(w, http.StatusOK, map[string]any{
-			"clients": clients,
-			"count":   cap.GetClientRegistry().Count(),
-		})
-	case "POST":
-		r.Body = http.MaxBytesReader(w, r.Body, maxPostBodySize)
-		var body struct {
-			CWD string `json:"cwd"`
-		}
-		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-			jsonResponse(w, http.StatusBadRequest, map[string]string{"error": "Invalid JSON"})
-			return
-		}
-		cs := cap.GetClientRegistry().Register(body.CWD)
-		jsonResponse(w, http.StatusOK, map[string]any{
-			"result": cs,
-		})
-	default:
-		jsonResponse(w, http.StatusMethodNotAllowed, map[string]string{"error": "Method not allowed"})
-	}
-}
-
-// handleClientByID handles GET/DELETE on /clients/{id} for specific client operations.
-func handleClientByID(w http.ResponseWriter, r *http.Request, cap *capture.Capture) {
-	clientID := strings.TrimPrefix(r.URL.Path, "/clients/")
-	if clientID == "" {
-		jsonResponse(w, http.StatusBadRequest, map[string]string{"error": "Missing client ID"})
-		return
-	}
-
-	switch r.Method {
-	case "GET":
-		cs := cap.GetClientRegistry().Get(clientID)
-		if cs == nil {
-			jsonResponse(w, http.StatusNotFound, map[string]string{"error": "Client not found"})
-			return
-		}
-		jsonResponse(w, http.StatusOK, cs)
-	case "DELETE":
-		// Note: ClientRegistry interface doesn't expose Unregister method
-		jsonResponse(w, http.StatusOK, map[string]bool{"unregistered": true})
-	default:
-		jsonResponse(w, http.StatusMethodNotAllowed, map[string]string{"error": "Method not allowed"})
-	}
 }
 
 // registerUploadRoutes adds upload automation endpoints to the mux.
