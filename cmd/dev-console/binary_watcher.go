@@ -6,7 +6,6 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"os"
 	"os/exec"
@@ -124,64 +123,6 @@ func parseVersionOutput(output string) (string, error) {
 		return "", fmt.Errorf("invalid version output: %q", output)
 	}
 	return output, nil
-}
-
-// upgradeMarker is persisted to disk so the new daemon can report the completed upgrade.
-type upgradeMarker struct {
-	FromVersion string `json:"from_version"`
-	ToVersion   string `json:"to_version"`
-	Timestamp   string `json:"timestamp"`
-}
-
-// writeUpgradeMarker writes the upgrade marker file.
-func writeUpgradeMarker(fromVersion, toVersion, path string) error {
-	marker := upgradeMarker{
-		FromVersion: fromVersion,
-		ToVersion:   toVersion,
-		Timestamp:   time.Now().UTC().Format(time.RFC3339),
-	}
-	data, err := json.Marshal(marker)
-	if err != nil {
-		return fmt.Errorf("marshal upgrade marker: %w", err)
-	}
-	if err := os.MkdirAll(parentDir(path), 0o755); err != nil {
-		return fmt.Errorf("create marker dir: %w", err)
-	}
-	return os.WriteFile(path, data, 0o644)
-}
-
-// readAndClearUpgradeMarker reads the marker file and removes it.
-// Returns nil if the file doesn't exist or contains invalid JSON.
-func readAndClearUpgradeMarker(path string) (*upgradeMarker, error) {
-	data, err := os.ReadFile(path)
-	if err != nil {
-		if os.IsNotExist(err) {
-			return nil, nil
-		}
-		return nil, fmt.Errorf("read upgrade marker: %w", err)
-	}
-
-	// Always remove the file, even if JSON is invalid
-	_ = os.Remove(path)
-
-	var marker upgradeMarker
-	if err := json.Unmarshal(data, &marker); err != nil {
-		return nil, nil // invalid JSON, treat as no marker
-	}
-	if marker.FromVersion == "" || marker.ToVersion == "" {
-		return nil, nil
-	}
-	return &marker, nil
-}
-
-// parentDir returns the parent directory of a path.
-func parentDir(path string) string {
-	for i := len(path) - 1; i >= 0; i-- {
-		if path[i] == '/' || path[i] == '\\' {
-			return path[:i]
-		}
-	}
-	return "."
 }
 
 // startBinaryWatcher starts a background goroutine that watches the daemon binary for changes.
