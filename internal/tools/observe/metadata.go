@@ -11,7 +11,8 @@ import (
 	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/pagination"
 )
 
-// TODO: Add data_age_ms, page_ready_for_commands, tab_status to OpenAPI spec.
+// NOTE: data_age_ms is documented in observe schema/tests; page_ready_for_commands
+// and tab_status are mode-specific fields on observe(page) responses.
 
 // ResponseMetadata provides freshness information for buffer-backed observe responses.
 type ResponseMetadata struct {
