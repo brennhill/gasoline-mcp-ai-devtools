@@ -33,7 +33,9 @@ last_reviewed: 2026-03-02
 - `observe({what:"command_result", correlation_id})` is the canonical retrieval path.
 
 ## Annotation Waiter and Flush Recovery
-- `analyze({what:"annotations", wait:true})` creates `ann_*` command records plus annotation waiters.
+- `analyze({what:"annotations", wait:true})` now uses a two-stage wait path:
+  1. bounded blocking wait for new annotations (`timeout_ms`, default 15s, max 10m),
+  2. fallback to `ann_*` async waiter + command-result polling if the block window expires.
 - Normal completion path:
   1. Draw-mode completion stores session data in `internal/annotation`.
   2. Store callback completes matching waiters via `capture.CompleteCommand`.
@@ -63,4 +65,3 @@ last_reviewed: 2026-03-02
 - `internal/annotation/store_results.go`
 - `internal/annotation/store_wait.go`
 - `internal/schema/analyze.go`
-
