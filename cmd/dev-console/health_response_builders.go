@@ -48,12 +48,16 @@ func buildUpgradeInfo() *UpgradeInfo {
 
 // buildServerInfo returns server identification and uptime.
 func (hm *HealthMetrics) buildServerInfo(ver string) ServerInfo {
+	launch := getCurrentLaunchMode()
 	return ServerInfo{
-		Version:       ver,
-		UptimeSeconds: hm.GetUptime().Seconds(),
-		PID:           os.Getpid(),
-		Platform:      runtime.GOOS + "/" + runtime.GOARCH,
-		GoVersion:     runtime.Version(),
+		Version:          ver,
+		UptimeSeconds:    hm.GetUptime().Seconds(),
+		PID:              os.Getpid(),
+		Platform:         runtime.GOOS + "/" + runtime.GOARCH,
+		GoVersion:        runtime.Version(),
+		LaunchMode:       launch.Mode,
+		LaunchModeReason: launch.Reason,
+		ParentProcess:    launch.ParentProcess,
 	}
 }
 
