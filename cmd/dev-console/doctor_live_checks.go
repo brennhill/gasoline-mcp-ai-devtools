@@ -9,7 +9,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/dev-console/dev-console/internal/capture"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/capture"
 )
 
 // doctorCheck represents a single diagnostic check result.

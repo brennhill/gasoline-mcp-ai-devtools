@@ -4,14 +4,21 @@ feature_id: feature-test-generation
 status: proposed
 feature_type: feature
 owners: []
-last_reviewed: 2026-02-16
+last_reviewed: 2026-03-02
 code_paths:
+  - cmd/dev-console/testgen_aliases.go
+  - cmd/dev-console/testgen_provider_adapter.go
   - cmd/dev-console/testgen_classify.go
   - cmd/dev-console/testgen_heal.go
   - cmd/dev-console/testgen.go
-  - cmd/dev-console/tools_generate_annotations.go
   - cmd/dev-console/tools_generate.go
-test_paths: []
+test_paths:
+  - cmd/dev-console/testgen_context_test.go
+  - cmd/dev-console/testgen_generate_test.go
+  - cmd/dev-console/testgen_heal_test.go
+  - cmd/dev-console/testgen_classify_dispatch_test.go
+  - internal/testgen/generate_test.go
+  - internal/testgen/helpers_test.go
 ---
 
 # Test Generation
@@ -28,6 +35,7 @@ test_paths: []
 - Product Spec: [product-spec.md](./product-spec.md)
 - Tech Spec: [tech-spec.md](./tech-spec.md)
 - QA Plan: [qa-plan.md](./qa-plan.md)
+- Flow Map: [flow-map.md](./flow-map.md)
 
 ## Requirement IDs
 
@@ -37,4 +45,8 @@ test_paths: []
 
 ## Code and Tests
 
-Add concrete implementation and test links here as this feature evolves.
+- Context dispatch: `cmd/dev-console/testgen.go`
+- Alias/contracts: `cmd/dev-console/testgen_aliases.go`
+- Provider and wrapper delegation: `cmd/dev-console/testgen_provider_adapter.go`
+- Heal and classify handlers: `cmd/dev-console/testgen_heal.go`, `cmd/dev-console/testgen_classify.go`
+- Core behavior tests: `cmd/dev-console/testgen_context_test.go`, `cmd/dev-console/testgen_generate_test.go`, `cmd/dev-console/testgen_heal_test.go`, `cmd/dev-console/testgen_classify_dispatch_test.go`

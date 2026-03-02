@@ -6,8 +6,8 @@ import (
 	"encoding/json"
 	"time"
 
-	"github.com/dev-console/dev-console/internal/mcp"
-	"github.com/dev-console/dev-console/internal/pagination"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/mcp"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/pagination"
 )
 
 // GetBrowserLogs returns console log entries with cursor-based pagination.

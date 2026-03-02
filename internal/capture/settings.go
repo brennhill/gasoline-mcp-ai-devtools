@@ -11,7 +11,7 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/dev-console/dev-console/internal/state"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/state"
 )
 
 // PersistedSettings is the on-disk cache schema for extension pilot status.

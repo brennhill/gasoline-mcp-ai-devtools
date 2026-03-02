@@ -6,9 +6,9 @@ import (
 	"encoding/json"
 	"time"
 
-	"github.com/dev-console/dev-console/internal/buffers"
-	"github.com/dev-console/dev-console/internal/capture"
-	"github.com/dev-console/dev-console/internal/mcp"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/buffers"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/capture"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/mcp"
 )
 
 func buildExtensionLogEntries(allLogs []capture.ExtensionLog, limit int, level string) []map[string]any {

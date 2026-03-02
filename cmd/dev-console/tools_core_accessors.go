@@ -6,7 +6,7 @@ package main
 import (
 	"time"
 
-	"github.com/dev-console/dev-console/internal/capture"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/capture"
 )
 
 // Close cancels the shutdown context, unblocking any in-flight readiness gates.

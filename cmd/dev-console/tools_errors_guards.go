@@ -7,7 +7,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/dev-console/dev-console/internal/capture"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/capture"
 )
 
 // requirePilot returns (resp, true) if AI Web Pilot is disabled, short-circuiting the caller.

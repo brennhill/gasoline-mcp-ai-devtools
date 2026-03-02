@@ -15,8 +15,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dev-console/dev-console/internal/queries"
-	"github.com/dev-console/dev-console/internal/state"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/queries"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/state"
 )
 
 func newCoverageCapture(t *testing.T) *Capture {

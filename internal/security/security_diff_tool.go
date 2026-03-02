@@ -8,7 +8,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/dev-console/dev-console/internal/capture"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/capture"
 )
 
 // HandleDiffSecurity dispatches MCP diff tool actions.

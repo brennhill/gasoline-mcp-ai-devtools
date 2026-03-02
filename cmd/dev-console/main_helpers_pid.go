@@ -12,7 +12,7 @@ import (
 	"strings"
 	"syscall"
 
-	"github.com/dev-console/dev-console/internal/state"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/state"
 )
 
 // pidFilePath returns the path to the PID file for a given port.

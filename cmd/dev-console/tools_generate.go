@@ -5,7 +5,7 @@ package main
 
 import (
 	"encoding/json"
-	gen "github.com/dev-console/dev-console/internal/tools/generate"
+	gen "github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/tools/generate"
 	"sort"
 	"strings"
 )

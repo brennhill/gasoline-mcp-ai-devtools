@@ -6,7 +6,7 @@ package main
 import (
 	"encoding/json"
 
-	"github.com/dev-console/dev-console/internal/mcp"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/mcp"
 )
 
 // mcpMethodHandler is a function that handles a specific MCP method.

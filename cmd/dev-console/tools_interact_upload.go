@@ -9,7 +9,7 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/dev-console/dev-console/internal/queries"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/queries"
 )
 
 // uploadParams holds the parsed and validated upload parameters.

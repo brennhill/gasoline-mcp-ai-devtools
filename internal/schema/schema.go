@@ -2,7 +2,7 @@
 
 package schema
 
-import "github.com/dev-console/dev-console/internal/mcp"
+import "github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/mcp"
 
 // AllTools returns all MCP tool definitions.
 func AllTools() []mcp.MCPTool {

@@ -4,7 +4,7 @@
 package main
 
 import (
-	"github.com/dev-console/dev-console/internal/mcp"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/mcp"
 )
 
 // Type aliases — all callers in package main continue to use these names unchanged.

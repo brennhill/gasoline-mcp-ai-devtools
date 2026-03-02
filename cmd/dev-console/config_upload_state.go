@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/dev-console/dev-console/internal/state"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/state"
 )
 
 // initUploadSecurity validates upload security configuration from CLI flags.

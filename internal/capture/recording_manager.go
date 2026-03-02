@@ -6,7 +6,7 @@
 package capture
 
 import (
-	"github.com/dev-console/dev-console/internal/recording"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/recording"
 )
 
 // NewRecordingManager creates a RecordingManager with initialized state.

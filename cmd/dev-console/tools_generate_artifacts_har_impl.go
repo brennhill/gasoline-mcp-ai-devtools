@@ -7,8 +7,8 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/dev-console/dev-console/internal/capture"
-	"github.com/dev-console/dev-console/internal/export"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/capture"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/export"
 )
 
 func (h *ToolHandler) exportHARImpl(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {

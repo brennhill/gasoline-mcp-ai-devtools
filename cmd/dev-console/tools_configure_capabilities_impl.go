@@ -8,7 +8,7 @@ import (
 	"sort"
 	"strings"
 
-	cfg "github.com/dev-console/dev-console/internal/tools/configure"
+	cfg "github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/tools/configure"
 )
 
 // configureDescribeCapabilitiesImpl returns machine-readable tool metadata derived from ToolsList().

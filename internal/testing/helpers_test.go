@@ -9,7 +9,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	testhelpers "github.com/dev-console/dev-console/internal/testing"
+	testhelpers "github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/testing"
 )
 
 func TestSetupTestServer(t *testing.T) {

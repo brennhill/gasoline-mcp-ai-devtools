@@ -7,7 +7,7 @@ import (
 	"encoding/json"
 	"time"
 
-	"github.com/dev-console/dev-console/internal/capture"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/capture"
 )
 
 // DiagnosticProvider supplies system state snapshots for error messages.

@@ -30,7 +30,7 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/dev-console/dev-console/internal/capture"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/capture"
 )
 
 // captureStdout runs fn while capturing stdout output.

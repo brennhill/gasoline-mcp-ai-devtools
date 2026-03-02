@@ -5,10 +5,10 @@
 package capture
 
 import (
-	"github.com/dev-console/dev-console/internal/circuit"
-	"github.com/dev-console/dev-console/internal/performance"
-	"github.com/dev-console/dev-console/internal/queries"
-	"github.com/dev-console/dev-console/internal/recording"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/circuit"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/performance"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/queries"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/recording"
 )
 
 // Type aliases for imported packages to avoid qualifying every use.

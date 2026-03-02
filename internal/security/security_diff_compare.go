@@ -4,7 +4,7 @@
 
 package security
 
-import "github.com/dev-console/dev-console/internal/capture"
+import "github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/capture"
 
 // Compare computes regressions/improvements between two snapshots.
 //

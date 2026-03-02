@@ -3,7 +3,7 @@
 
 package schema
 
-import "github.com/dev-console/dev-console/internal/mcp"
+import "github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/mcp"
 
 // InteractToolSchema returns the MCP tool definition for the interact tool.
 func InteractToolSchema() mcp.MCPTool {

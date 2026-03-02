@@ -13,7 +13,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dev-console/dev-console/internal/state"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/state"
 )
 
 func writeDaemonPIDFileForTest(t *testing.T, port int, pid int) {

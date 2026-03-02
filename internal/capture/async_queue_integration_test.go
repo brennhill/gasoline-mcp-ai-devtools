@@ -12,7 +12,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dev-console/dev-console/internal/queries"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/queries"
 )
 
 // TestAsyncQueueIntegration verifies the complete async queue-and-poll architecture.

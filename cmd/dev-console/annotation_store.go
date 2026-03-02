@@ -7,7 +7,7 @@ package main
 import (
 	"time"
 
-	"github.com/dev-console/dev-console/internal/annotation"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/annotation"
 )
 
 // Type aliases — keep existing code compiling without changes.

@@ -7,7 +7,7 @@ package capture
 import (
 	"time"
 
-	"github.com/dev-console/dev-console/internal/queries"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/queries"
 )
 
 // AddNetworkBodiesForTest adds network bodies directly to the buffer (TEST ONLY)

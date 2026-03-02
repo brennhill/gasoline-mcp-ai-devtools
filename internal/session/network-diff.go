@@ -8,7 +8,7 @@ package session
 import (
 	"fmt"
 
-	"github.com/dev-console/dev-console/internal/capture"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/capture"
 )
 
 // endpointKey uniquely identifies a network endpoint by method and path.

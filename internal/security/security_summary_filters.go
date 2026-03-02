@@ -3,7 +3,7 @@ package security
 import (
 	"strings"
 
-	"github.com/dev-console/dev-console/internal/capture"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/capture"
 )
 
 func buildSummary(findings []SecurityFinding, bodies []capture.NetworkBody) ScanSummary {

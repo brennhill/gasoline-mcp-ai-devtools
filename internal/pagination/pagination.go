@@ -7,7 +7,7 @@ package pagination
 import (
 	"fmt"
 
-	"github.com/dev-console/dev-console/internal/capture"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/capture"
 )
 
 // Type aliases for imported types to avoid qualifying every use.

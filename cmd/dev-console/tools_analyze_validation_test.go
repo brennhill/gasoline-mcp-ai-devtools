@@ -11,8 +11,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dev-console/dev-console/internal/capture"
-	az "github.com/dev-console/dev-console/internal/tools/analyze"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/capture"
+	az "github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/tools/analyze"
 )
 
 func newAnalyzeValidationHandler(t *testing.T) *ToolHandler {

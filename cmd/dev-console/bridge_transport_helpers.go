@@ -13,8 +13,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/dev-console/dev-console/internal/bridge"
-	"github.com/dev-console/dev-console/internal/util"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/bridge"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/util"
 )
 
 type bridgeSessionStats struct {

@@ -11,7 +11,7 @@ import (
 	"encoding/json"
 	"time"
 
-	"github.com/dev-console/dev-console/internal/queries"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/queries"
 )
 
 // handleContentExtraction is the shared handler for get_readable, get_markdown, and page_summary.

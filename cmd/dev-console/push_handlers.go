@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/dev-console/dev-console/internal/push"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/push"
 )
 
 // pushEventID generates a unique event ID with the given prefix.

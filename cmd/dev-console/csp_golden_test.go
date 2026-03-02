@@ -12,8 +12,8 @@ import (
 	"sort"
 	"testing"
 
-	"github.com/dev-console/dev-console/internal/capture"
-	gen "github.com/dev-console/dev-console/internal/tools/generate"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/capture"
+	gen "github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/tools/generate"
 )
 
 func TestGoldenCSPModerate(t *testing.T) {

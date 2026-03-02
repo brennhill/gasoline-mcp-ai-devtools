@@ -10,7 +10,7 @@ package main
 import (
 	"os"
 
-	"github.com/dev-console/dev-console/internal/upload"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/upload"
 )
 
 func checkHardlink(info os.FileInfo) error {

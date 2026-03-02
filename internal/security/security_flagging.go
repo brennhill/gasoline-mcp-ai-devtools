@@ -5,7 +5,7 @@
 package security
 
 import (
-	"github.com/dev-console/dev-console/internal/capture"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/capture"
 )
 
 // analyzeNetworkSecurity runs the full set of origin/resource checks for one network entry.

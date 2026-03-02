@@ -6,8 +6,8 @@ package main
 import (
 	"encoding/json"
 
-	"github.com/dev-console/dev-console/internal/capture"
-	"github.com/dev-console/dev-console/internal/mcp"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/capture"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/mcp"
 )
 
 func safeMarshal(v any, fallback string) json.RawMessage {

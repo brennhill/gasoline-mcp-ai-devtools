@@ -8,7 +8,7 @@ package configure
 import (
 	"testing"
 
-	"github.com/dev-console/dev-console/internal/audit"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/audit"
 )
 
 func TestSummarizeAuditEntries_Empty(t *testing.T) {

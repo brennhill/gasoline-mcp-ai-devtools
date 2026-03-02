@@ -5,7 +5,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/dev-console/dev-console/internal/util"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/util"
 )
 
 // trackConnection applies one event to per-connection lifecycle state.

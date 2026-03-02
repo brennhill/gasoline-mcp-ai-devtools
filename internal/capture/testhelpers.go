@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/dev-console/dev-console/internal/server"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/server"
 )
 
 // setupTestCapture creates a new Capture instance for testing.

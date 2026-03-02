@@ -7,7 +7,7 @@ package main
 import (
 	"encoding/json"
 
-	cfg "github.com/dev-console/dev-console/internal/tools/configure"
+	cfg "github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/tools/configure"
 )
 
 // toolDiffSessionsWrapper repackages verif_session_action -> action for toolDiffSessions.

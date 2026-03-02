@@ -5,7 +5,7 @@
 
 package capture
 
-import "github.com/dev-console/dev-console/internal/recording"
+import "github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/recording"
 
 // Constants re-exported as unexported for capture-package test compatibility.
 const (

@@ -8,7 +8,7 @@ import (
 	"encoding/json"
 	"time"
 
-	act "github.com/dev-console/dev-console/internal/tools/interact"
+	act "github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/tools/interact"
 )
 
 func (h *ToolHandler) handleStateSave(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {

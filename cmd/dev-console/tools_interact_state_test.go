@@ -13,7 +13,7 @@ import (
 	"testing"
 	"time"
 
-	act "github.com/dev-console/dev-console/internal/tools/interact"
+	act "github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/tools/interact"
 )
 
 // extractResponseData parses the JSON payload from an MCPToolResult's text content.

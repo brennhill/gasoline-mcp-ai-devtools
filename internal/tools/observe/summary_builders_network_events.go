@@ -3,7 +3,7 @@ package observe
 import (
 	"time"
 
-	"github.com/dev-console/dev-console/internal/capture"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/capture"
 )
 
 // buildNetworkBodiesSummary returns {total, by_status_group, by_method, top_urls, metadata}.

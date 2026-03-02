@@ -9,7 +9,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/dev-console/dev-console/internal/util"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/util"
 )
 
 // AddEnhancedActions ingests action telemetry and optionally triggers navigation callback.

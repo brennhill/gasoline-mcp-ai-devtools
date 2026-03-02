@@ -17,7 +17,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dev-console/dev-console/internal/bridge"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/bridge"
 )
 
 // ⚠️ CRITICAL MCP PROTOCOL COMPLIANCE TESTS - DO NOT MODIFY WITHOUT PRINCIPAL REVIEW

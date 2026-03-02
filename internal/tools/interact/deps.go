@@ -3,7 +3,7 @@
 
 package interact
 
-import "github.com/dev-console/dev-console/internal/mcp"
+import "github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/mcp"
 
 // Deps provides all dependencies the interact handlers need.
 // *ToolHandler in cmd/dev-console/ satisfies this interface.

@@ -60,7 +60,7 @@ last_reviewed: 2026-02-16
 
 ```bash
 $ go test -short ./cmd/dev-console/
-ok      github.com/dev-console/dev-console/cmd/dev-console     2.438s
+ok      github.com/brennhill/gasoline-agentic-browser-devtools-mcp/cmd/dev-console     2.438s
 ```
 
 ### Documentation

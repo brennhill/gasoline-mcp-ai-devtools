@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/dev-console/dev-console/internal/capture"
-	"github.com/dev-console/dev-console/internal/server"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/capture"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/server"
 )
 
 func NewCheckpointManager(serverReader server.LogReader, capture *capture.Capture) *CheckpointManager {

@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/dev-console/dev-console/internal/types"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/types"
 )
 
 // ProcessCIResult stores the CI result and generates an alert if new.

@@ -7,7 +7,7 @@ package capture
 import (
 	"strings"
 
-	"github.com/dev-console/dev-console/internal/queries"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/queries"
 )
 
 // buildSyncCommands converts pending queries to sync commands.

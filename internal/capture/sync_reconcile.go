@@ -7,8 +7,8 @@ package capture
 import (
 	"strings"
 
-	"github.com/dev-console/dev-console/internal/queries"
-	"github.com/dev-console/dev-console/internal/util"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/queries"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/util"
 )
 
 // normalizeInProgressList sanitizes extension heartbeat command state for reconciliation.

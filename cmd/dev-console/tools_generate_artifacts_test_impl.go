@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"time"
 
-	gen "github.com/dev-console/dev-console/internal/tools/generate"
+	gen "github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/tools/generate"
 )
 
 func (h *ToolHandler) generateTestImpl(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {

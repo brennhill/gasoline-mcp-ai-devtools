@@ -1,6 +1,6 @@
 package streaming
 
-import "github.com/dev-console/dev-console/internal/types"
+import "github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/types"
 
 // eventCategoryMap maps streaming event types to matching alert categories.
 var eventCategoryMap = map[string]map[string]bool{

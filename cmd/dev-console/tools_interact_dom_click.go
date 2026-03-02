@@ -7,7 +7,7 @@ package main
 import (
 	"encoding/json"
 
-	"github.com/dev-console/dev-console/internal/queries"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/queries"
 )
 
 // handleHardwareClick dispatches a coordinate-based click via CDP Input.dispatchMouseEvent.

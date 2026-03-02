@@ -9,7 +9,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/dev-console/dev-console/internal/upload"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/upload"
 )
 
 // multiFlag implements flag.Value for repeatable string flags (e.g., --upload-deny-pattern).

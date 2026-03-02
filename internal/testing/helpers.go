@@ -8,8 +8,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/dev-console/dev-console/internal/capture"
-	"github.com/dev-console/dev-console/internal/server"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/capture"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/server"
 )
 
 // SetupTestServer creates a test instance of Server with a temporary log file.

@@ -9,9 +9,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/dev-console/dev-console/internal/capture"
-	"github.com/dev-console/dev-console/internal/performance"
-	"github.com/dev-console/dev-console/internal/session"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/capture"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/performance"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/session"
 )
 
 // toolCaptureStateReader adapts ToolHandler state to session.CaptureStateReader.

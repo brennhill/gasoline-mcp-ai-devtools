@@ -4,7 +4,7 @@
 package analyze
 
 import (
-	"github.com/dev-console/dev-console/internal/mcp"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/mcp"
 )
 
 // Deps provides all dependencies the analyze handlers need.

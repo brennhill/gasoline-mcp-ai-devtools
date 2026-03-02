@@ -7,8 +7,8 @@ package main
 import (
 	"encoding/json"
 
-	"github.com/dev-console/dev-console/internal/queries"
-	az "github.com/dev-console/dev-console/internal/tools/analyze"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/queries"
+	az "github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/tools/analyze"
 )
 
 // ============================================

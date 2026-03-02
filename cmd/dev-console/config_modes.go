@@ -6,7 +6,7 @@ package main
 import (
 	"os"
 
-	"github.com/dev-console/dev-console/internal/session"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/session"
 )
 
 // handleEarlyExitModes handles --version, --help, --force, --check/--doctor, --stop, --connect.

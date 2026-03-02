@@ -8,7 +8,7 @@ package session
 import (
 	"time"
 
-	"github.com/dev-console/dev-console/internal/performance"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/performance"
 )
 
 // CaptureStateReader abstracts reading current server state for snapshot capture.

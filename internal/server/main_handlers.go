@@ -11,7 +11,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/dev-console/dev-console/internal/types"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/types"
 )
 
 // LogEntry is a type alias for the canonical definition in internal/types

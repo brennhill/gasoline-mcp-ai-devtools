@@ -7,7 +7,7 @@ package main
 import (
 	"encoding/json"
 
-	"github.com/dev-console/dev-console/internal/streaming"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/streaming"
 )
 
 // ============================================

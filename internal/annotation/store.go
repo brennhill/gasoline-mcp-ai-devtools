@@ -9,7 +9,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/dev-console/dev-console/internal/util"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/util"
 )
 
 // Rect represents a viewport-relative rectangle.

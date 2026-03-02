@@ -18,8 +18,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dev-console/dev-console/internal/capture"
-	"github.com/dev-console/dev-console/internal/queries"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/capture"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/queries"
 )
 
 func decodeJSONMap(t *testing.T, body []byte) map[string]any {

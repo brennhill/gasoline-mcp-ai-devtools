@@ -4,7 +4,7 @@
 
 package capture
 
-import "github.com/dev-console/dev-console/internal/types"
+import "github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/types"
 
 // EnhancedAction is an alias to canonical definition in internal/types/network.go
 type EnhancedAction = types.EnhancedAction

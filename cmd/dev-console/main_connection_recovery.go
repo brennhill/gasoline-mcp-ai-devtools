@@ -12,8 +12,8 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/dev-console/dev-console/internal/state"
-	"github.com/dev-console/dev-console/internal/util"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/state"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/util"
 )
 
 func recoverVersionMismatchServer(server *Server, port int, apiKey string, mcpEndpoint string) bool {

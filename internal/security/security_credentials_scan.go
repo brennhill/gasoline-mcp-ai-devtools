@@ -3,7 +3,7 @@ package security
 import (
 	"fmt"
 
-	"github.com/dev-console/dev-console/internal/capture"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/capture"
 )
 
 func (s *SecurityScanner) checkCredentials(bodies []capture.NetworkBody, entries []LogEntry) []SecurityFinding {
