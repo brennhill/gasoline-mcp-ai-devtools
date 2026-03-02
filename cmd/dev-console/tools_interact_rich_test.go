@@ -479,6 +479,68 @@ func TestRichAction_NoAnalyzeFieldsWhenAbsent(t *testing.T) {
 	}
 }
 
+func TestRichAction_MatchedDiagnosticsSurfacedTopLevel(t *testing.T) {
+	env := newInteractTestEnv(t)
+	env.capture.SetPilotEnabled(true)
+
+	result, _ := env.callInteract(t, `{"what":"click","selector":"text=Submit","background":true}`)
+	var resultData map[string]any
+	_ = json.Unmarshal([]byte(extractJSONFromText(result.Content[0].Text)), &resultData)
+	corrID := resultData["correlation_id"].(string)
+
+	extensionResult := json.RawMessage(`{
+		"success": true,
+		"action": "click",
+		"matched": {
+			"tag": "button",
+			"role": "button",
+			"classes": ["btn", "btn-primary"],
+			"text_preview": "Submit",
+			"selector": "text=Submit",
+			"bbox": {"x": 64, "y": 120, "width": 128, "height": 36}
+		}
+	}`)
+	env.capture.CompleteCommand(corrID, extensionResult, "")
+
+	req := JSONRPCRequest{JSONRPC: "2.0", ID: 2}
+	args := json.RawMessage(`{"correlation_id":"` + corrID + `"}`)
+	resp := env.handler.toolObserveCommandResult(req, args)
+
+	var observeResult MCPToolResult
+	_ = json.Unmarshal(resp.Result, &observeResult)
+
+	var responseData map[string]any
+	if err := json.Unmarshal([]byte(extractJSONFromText(observeResult.Content[0].Text)), &responseData); err != nil {
+		t.Fatalf("Failed to parse response JSON: %v", err)
+	}
+
+	matched, ok := responseData["matched"].(map[string]any)
+	if !ok {
+		t.Fatal("matched diagnostics must be surfaced at top level")
+	}
+	if matched["tag"] != "button" {
+		t.Fatalf("matched.tag = %v, want button", matched["tag"])
+	}
+	if matched["text_preview"] != "Submit" {
+		t.Fatalf("matched.text_preview = %v, want Submit", matched["text_preview"])
+	}
+	bbox, ok := matched["bbox"].(map[string]any)
+	if !ok {
+		t.Fatal("matched.bbox should be present")
+	}
+	if bbox["width"] != float64(128) {
+		t.Fatalf("matched.bbox.width = %v, want 128", bbox["width"])
+	}
+
+	extResult, ok := responseData["result"].(map[string]any)
+	if !ok {
+		t.Fatal("result envelope must still exist")
+	}
+	if _, exists := extResult["matched"]; exists {
+		t.Fatal("matched should be stripped from nested result after top-level enrichment")
+	}
+}
+
 func TestRichAction_TargetContextSurfacedTopLevel(t *testing.T) {
 	env := newInteractTestEnv(t)
 	env.capture.SetPilotEnabled(true)
