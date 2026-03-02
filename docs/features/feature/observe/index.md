@@ -10,8 +10,11 @@ code_paths:
   - cmd/dev-console/tools_observe_registry.go
   - cmd/dev-console/tools_observe_response.go
   - cmd/dev-console/tools_observe_analysis.go
+  - cmd/dev-console/tools_shared_queries.go
   - cmd/dev-console/tools_observe_bundling.go
   - cmd/dev-console/observe_filtering.go
+  - internal/a11ysummary/summary.go
+  - internal/tools/observe/analysis_a11y.go
   - internal/tools/observe/analysis_screenshot.go
   - internal/capture/queries.go
   - internal/capture/sync.go
@@ -20,6 +23,9 @@ test_paths:
   - cmd/dev-console/tools_observe_blackbox_test.go
   - cmd/dev-console/tools_observe_audit_test.go
   - cmd/dev-console/tools_observe_screenshot_test.go
+  - cmd/dev-console/tools_observe_analysis_test.go
+  - internal/a11ysummary/summary_test.go
+  - internal/tools/observe/analysis_test.go
   - internal/tools/observe/analysis_save_test.go
 ---
 
@@ -39,3 +45,5 @@ test_paths:
 
 ## Canonical Note
 `observe` is the passive read surface for captured browser/server state. It is the canonical polling surface for async command completion via `what:"command_result"`.
+
+Accessibility (`what:"accessibility"`) normalizes `summary` counts with canonical keys (`violations`, `passes`, `incomplete`, `inapplicable`) and preserves legacy aliases (`*_count`) for compatibility.
