@@ -728,6 +728,61 @@ describe('ambiguity-safe mutating actions', () => {
     globalThis.requestAnimationFrame = (cb) => cb()
   })
 
+  test('click supports text=:nth-match(N) selectors from list_interactive', async () => {
+    let firstClicks = 0
+    let secondClicks = 0
+
+    const btn1 = new MockHTMLElement('BUTTON', { textContent: 'OK' })
+    Object.setPrototypeOf(btn1, MockHTMLElement.prototype)
+    btn1.getBoundingClientRect = () => ({ width: 80, height: 30 })
+    btn1.getRootNode = () => globalThis.document
+    btn1.click = () => { firstClicks++ }
+
+    const btn2 = new MockHTMLElement('BUTTON', { textContent: 'OK' })
+    Object.setPrototypeOf(btn2, MockHTMLElement.prototype)
+    btn2.getBoundingClientRect = () => ({ width: 80, height: 30 })
+    btn2.getRootNode = () => globalThis.document
+    btn2.click = () => { secondClicks++ }
+
+    const textNodes = [
+      { textContent: 'OK', parentElement: btn1 },
+      { textContent: 'OK', parentElement: btn2 }
+    ]
+
+    globalThis.document = {
+      querySelector: () => null,
+      querySelectorAll: (sel) => {
+        if (sel === '[role="dialog"]' || sel === '[aria-modal="true"]' || sel === 'dialog[open]') return []
+        return []
+      },
+      getElementById: () => null,
+      body: { querySelectorAll: () => [], appendChild: () => {}, children: { length: 0 } },
+      documentElement: { children: { length: 0 } },
+      createTreeWalker: () => {
+        let idx = -1
+        return {
+          currentNode: null,
+          nextNode() {
+            idx += 1
+            if (idx >= textNodes.length) return null
+            this.currentNode = textNodes[idx]
+            return this.currentNode
+          }
+        }
+      },
+      getSelection: () => null,
+      execCommand: () => {}
+    }
+
+    const raw = domPrimitive('click', 'text=OK:nth-match(2)', {})
+    const result = raw instanceof Promise ? await raw : raw
+
+    assert.strictEqual(result.success, true, 'text=:nth-match(N) should resolve for click')
+    assert.strictEqual(result.match_strategy, 'nth_match_selector')
+    assert.strictEqual(firstClicks, 0, 'first match should not be clicked')
+    assert.strictEqual(secondClicks, 1, 'second match should be clicked once')
+  })
+
   test('click returns ambiguous_target when selector matches multiple visible elements', async () => {
     let clickCount = 0
     const btn1 = new MockHTMLElement('BUTTON', { id: '', textContent: 'Post' })
