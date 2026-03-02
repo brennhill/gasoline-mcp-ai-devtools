@@ -21,7 +21,7 @@ var interactModeSpecs = map[string]modeParamSpec{
 	},
 	"get_text": {
 		Hint:     "Read text content of an element",
-		Optional: []string{"selector", "element_id", "index", "nth", "scope_selector", "frame"},
+		Optional: []string{"selector", "element_id", "index", "nth", "scope_selector", "frame", "structured"},
 	},
 	"get_value": {
 		Hint:     "Read value of an input element",

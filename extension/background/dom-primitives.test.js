@@ -779,6 +779,76 @@ describe('list_interactive returns index, element_type, and deduplicates selecto
   })
 })
 
+describe('get_text structured extraction', () => {
+  beforeEach(() => {
+    perfNowValue = 0
+    globalThis.MutationObserver = MockMutationObserver
+    globalThis.requestAnimationFrame = (cb) => cb()
+  })
+
+  test('get_text with structured=true returns hierarchical sections', () => {
+    const headingOne = new MockHTMLElement('H3', { textContent: 'Saved Actions' })
+    Object.setPrototypeOf(headingOne, MockHTMLElement.prototype)
+    headingOne.innerText = 'Saved Actions'
+    headingOne.getAttribute = (name) => (name === 'aria-expanded' ? 'false' : null)
+    headingOne.contains = () => false
+
+    const contentOne = new MockHTMLElement('DIV', { textContent: 'Generate 10 ideas' })
+    Object.setPrototypeOf(contentOne, MockHTMLElement.prototype)
+    contentOne.innerText = 'Generate 10 ideas'
+
+    const sectionOne = new MockHTMLElement('SECTION', { textContent: '' })
+    Object.setPrototypeOf(sectionOne, MockHTMLElement.prototype)
+    sectionOne.innerText = 'Saved Actions Generate 10 ideas'
+    sectionOne.querySelector = () => headingOne
+    sectionOne.querySelectorAll = () => [headingOne, contentOne]
+
+    const headingTwo = new MockHTMLElement('H3', { textContent: 'Create posts from scratch' })
+    Object.setPrototypeOf(headingTwo, MockHTMLElement.prototype)
+    headingTwo.innerText = 'Create posts from scratch'
+    headingTwo.getAttribute = (name) => (name === 'aria-expanded' ? 'true' : null)
+    headingTwo.contains = () => false
+
+    const contentTwo = new MockHTMLElement('DIV', { textContent: 'Draft an original post' })
+    Object.setPrototypeOf(contentTwo, MockHTMLElement.prototype)
+    contentTwo.innerText = 'Draft an original post'
+
+    const sectionTwo = new MockHTMLElement('SECTION', { textContent: '' })
+    Object.setPrototypeOf(sectionTwo, MockHTMLElement.prototype)
+    sectionTwo.innerText = 'Create posts from scratch Draft an original post'
+    sectionTwo.querySelector = () => headingTwo
+    sectionTwo.querySelectorAll = () => [headingTwo, contentTwo]
+
+    const accordion = new MockHTMLElement('DIV', { id: 'accordion-root', textContent: '' })
+    Object.setPrototypeOf(accordion, MockHTMLElement.prototype)
+    accordion.children = [sectionOne, sectionTwo]
+    accordion.getRootNode = () => globalThis.document
+    accordion.getAttribute = () => null
+
+    globalThis.document = {
+      querySelector: (sel) => (sel === '#accordion-root' ? accordion : null),
+      querySelectorAll: (sel) => (sel === '#accordion-root' ? [accordion] : []),
+      getElementById: () => null,
+      body: { querySelectorAll: () => [], appendChild: () => {}, children: { length: 0 } },
+      documentElement: { children: { length: 0 } },
+      createTreeWalker: () => ({ nextNode: () => null }),
+      getSelection: () => null,
+      execCommand: () => {}
+    }
+
+    const result = domPrimitive('get_text', '#accordion-root', { structured: true })
+    assert.strictEqual(result.success, true)
+    assert.strictEqual(result.section_count, 2)
+    assert.ok(Array.isArray(result.sections), 'sections should be present for structured get_text')
+    assert.strictEqual(result.sections[0].header, 'Saved Actions')
+    assert.strictEqual(result.sections[0].expanded, false)
+    assert.ok((result.sections[0].content || '').includes('Generate 10 ideas'))
+    assert.strictEqual(result.sections[1].header, 'Create posts from scratch')
+    assert.strictEqual(result.sections[1].expanded, true)
+    assert.ok((result.sections[1].content || '').includes('Draft an original post'))
+  })
+})
+
 describe('ambiguity-safe mutating actions', () => {
   beforeEach(() => {
     perfNowValue = 0

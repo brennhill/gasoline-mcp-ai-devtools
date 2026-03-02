@@ -26,6 +26,7 @@ type domPrimitiveParams struct {
 	Y             *float64 `json:"y,omitempty"`
 	URLContains   string   `json:"url_contains,omitempty"`
 	Absent        bool     `json:"absent,omitempty"`
+	Structured    bool     `json:"structured,omitempty"`
 }
 
 type hardwareClickParams struct {
