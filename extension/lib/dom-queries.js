@@ -211,7 +211,7 @@ export async function runAxeAuditWithTimeout(params, timeoutMs = A11Y_AUDIT_TIME
         return await Promise.race([
             runAxeAudit(params),
             new Promise((resolve) => {
-                setTimeout(() => resolve(emptyPartialResult('Accessibility audit timed out')), timeoutMs);
+                setTimeout(() => resolve(emptyPartialResult('Accessibility audit timeout')), timeoutMs);
             })
         ]);
     }
