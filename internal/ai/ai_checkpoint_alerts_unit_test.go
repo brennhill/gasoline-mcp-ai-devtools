@@ -25,7 +25,7 @@ func TestCheckpointDetectAndStoreAlertsLifecycle(t *testing.T) {
 	cm := NewCheckpointManager(&fakeLogReader{}, capture.NewCapture())
 
 	// SampleCount < 1 should not alert.
-	cm.DetectAndStoreAlerts(performance.PerformanceSnapshot{URL: "https://example.test"}, performance.PerformanceBaseline{SampleCount: 0})
+	cm.DetectAndStoreAlerts(performance.Snapshot{URL: "https://example.test"}, performance.Baseline{SampleCount: 0})
 	if got := len(cm.pendingAlerts); got != 0 {
 		t.Fatalf("pending alerts = %d, want 0 for first-sample baseline", got)
 	}
@@ -33,7 +33,7 @@ func TestCheckpointDetectAndStoreAlertsLifecycle(t *testing.T) {
 	baseFCP := 1000.0
 	baseLCP := 1200.0
 	baseCLS := 0.05
-	baseline := performance.PerformanceBaseline{
+	baseline := performance.Baseline{
 		SampleCount: 2,
 		Timing: performance.BaselineTiming{
 			Load:                   1000,
@@ -50,9 +50,9 @@ func TestCheckpointDetectAndStoreAlertsLifecycle(t *testing.T) {
 	curFCP := 1300.0
 	curLCP := 1500.0
 	curCLS := 0.20
-	snapshot := performance.PerformanceSnapshot{
+	snapshot := performance.Snapshot{
 		URL: "https://example.test/page",
-		Timing: performance.PerformanceTiming{
+		Timing: performance.Timing{
 			Load:                   1300,
 			FirstContentfulPaint:   float64Ptr(curFCP),
 			LargestContentfulPaint: float64Ptr(curLCP),
@@ -119,7 +119,7 @@ func TestCheckpointDetectAndStoreAlertsCapsPendingBuffer(t *testing.T) {
 	t.Parallel()
 
 	cm := NewCheckpointManager(&fakeLogReader{}, capture.NewCapture())
-	baseline := performance.PerformanceBaseline{
+	baseline := performance.Baseline{
 		SampleCount: 1,
 		Timing: performance.BaselineTiming{
 			Load: 1000,
@@ -127,9 +127,9 @@ func TestCheckpointDetectAndStoreAlertsCapsPendingBuffer(t *testing.T) {
 	}
 
 	for i := 0; i < maxPendingAlerts+2; i++ {
-		snapshot := performance.PerformanceSnapshot{
+		snapshot := performance.Snapshot{
 			URL: fmt.Sprintf("https://example.test/%d", i),
-			Timing: performance.PerformanceTiming{
+			Timing: performance.Timing{
 				Load: 1300,
 			},
 		}

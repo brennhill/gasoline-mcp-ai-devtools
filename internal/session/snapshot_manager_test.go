@@ -83,9 +83,9 @@ func TestCapture_AllFieldsPopulated(t *testing.T) {
 		wsConnections: []SnapshotWSConnection{
 			{URL: "ws://localhost:8080/ws", State: "open", MessageRate: 5.2},
 		},
-		performance: &performance.PerformanceSnapshot{
+		performance: &performance.Snapshot{
 			URL:    "http://localhost:3000",
-			Timing: performance.PerformanceTiming{Load: 1500, TimeToFirstByte: 100},
+			Timing: performance.Timing{Load: 1500, TimeToFirstByte: 100},
 			Network: performance.NetworkSummary{
 				RequestCount: 8,
 				TransferSize: 120000,

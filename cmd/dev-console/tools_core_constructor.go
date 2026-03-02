@@ -96,7 +96,7 @@ func NewToolHandler(server *Server, capture *capture.Store) *MCPHandler {
 	handler.thirdPartyAuditorImpl = analysis.NewThirdPartyAuditor()
 	handler.apiContractValidator = analysis.NewAPIContractValidator()
 	handler.sessionManager = session.NewSessionManager(10, newToolCaptureStateReader(handler))
-	handler.auditTrail = audit.NewAuditTrail(audit.AuditConfig{
+	handler.auditTrail = audit.NewAuditTrail(audit.Config{
 		MaxEntries:   10000,
 		Enabled:      true,
 		RedactParams: true,

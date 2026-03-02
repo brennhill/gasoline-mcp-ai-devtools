@@ -63,7 +63,7 @@ func (vm *VerificationManager) captureSnapshot(urlFilter string) *VerifSnapshot 
 	perf := vm.reader.GetPerformance()
 	allNetwork, networkErrors := convertNetworkRequests(vm.reader.GetNetworkRequests(), urlFilter)
 
-	var perfCopy *performance.PerformanceSnapshot
+	var perfCopy *performance.Snapshot
 	if perf != nil {
 		p := *perf
 		perfCopy = &p
