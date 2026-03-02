@@ -43,6 +43,7 @@ func parseInteractArgs(action string, args []string) (map[string]any, error) {
 		"--text":                  {mcpKey: "text", kind: flagString},
 		"--subtitle":              {mcpKey: "subtitle", kind: flagString},
 		"--value":                 {mcpKey: "value", kind: flagString},
+		"--direction":             {mcpKey: "direction", kind: flagString},
 		"--clear":                 {mcpKey: "clear", kind: flagBool},
 		"--checked":               {mcpKey: "checked", kind: flagBool},
 		"--name":                  {mcpKey: "name", kind: flagString},

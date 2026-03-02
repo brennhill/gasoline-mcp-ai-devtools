@@ -11,7 +11,7 @@ owners:
 
 ## Scope
 
-Selector resolution inside extension DOM primitives used by `interact` mutating actions (`click`, `type`, `select`, `focus`, and intent helpers).
+Selector resolution inside extension DOM primitives used by `interact` mutating actions (`click`, `type`, `select`, `focus`, `scroll_to`, and intent helpers).
 
 ## Entrypoints
 
@@ -27,6 +27,7 @@ Selector resolution inside extension DOM primitives used by `interact` mutating 
 5. `resolveElements` resolves the base selector and narrows to the indexed candidate.
 6. `resolveElement` uses the same helper for single-target resolution.
 7. Action runs against the resolved element and reports match strategy (`nth_param`, `nth_match_selector`, `selector`, or scoped variants).
+8. For `scroll_to` with directional intent, the resolved target picks a container in priority order: target if scrollable -> nearest scrollable ancestor -> document scrolling root.
 
 ## Error and Recovery Paths
 
@@ -43,12 +44,16 @@ Selector resolution inside extension DOM primitives used by `interact` mutating 
 3. `nth` is 0-based after filtering (negative values count from end) and is shared across selector-based mutating/read-only actions.
 4. Successful mutating actions return selector diagnostics in `matched` (tag/role/aria/text/classes/bbox/selector/element_id).
 5. `observe(command_result)` surfaces `matched` at top level and removes the duplicate nested copy for token efficiency.
+6. `scroll_to` accepts semantic `direction` (`top|bottom|up|down`); legacy `value` remains supported for backward compatibility.
 
 ## Code Paths
 
 - `src/background/dom-primitives.ts`
 - `scripts/templates/partials/_dom-selectors.tpl`
+- `scripts/templates/dom-primitives.ts.tpl`
 - `extension/background/dom-primitives.js`
+- `src/background/dom-dispatch.ts`
+- `src/background/dom-types.ts`
 - `cmd/dev-console/tools_async_result_enrichment.go`
 - `cmd/dev-console/tools_async_result_normalization.go`
 
@@ -57,6 +62,7 @@ Selector resolution inside extension DOM primitives used by `interact` mutating 
 - `extension/background/dom-primitives.test.js`
 - `cmd/dev-console/tools_async_enrich_test.go`
 - `cmd/dev-console/tools_interact_rich_test.go`
+- `cmd/dev-console/cli_test.go`
 
 ## Edit Guardrails
 

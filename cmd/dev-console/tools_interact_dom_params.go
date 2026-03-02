@@ -15,6 +15,7 @@ type domPrimitiveParams struct {
 	IndexGen      string   `json:"index_generation,omitempty"`
 	Text          string   `json:"text,omitempty"`
 	Value         string   `json:"value,omitempty"`
+	Direction     string   `json:"direction,omitempty"`
 	Clear         bool     `json:"clear,omitempty"`
 	Checked       *bool    `json:"checked,omitempty"`
 	Name          string   `json:"name,omitempty"`

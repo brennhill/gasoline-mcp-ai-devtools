@@ -298,6 +298,7 @@ async function executeStandardAction(
         text: params.text,
         key: params.key,
         value: params.value,
+        direction: params.direction,
         clear: params.clear,
         checked: params.checked,
         name: params.name,

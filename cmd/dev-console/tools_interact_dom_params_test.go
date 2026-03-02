@@ -25,3 +25,12 @@ func TestParseDOMPrimitiveParams_RejectsFractionalNth(t *testing.T) {
 	}
 }
 
+func TestParseDOMPrimitiveParams_ParsesScrollDirection(t *testing.T) {
+	params, err := parseDOMPrimitiveParams(json.RawMessage(`{"selector":"#modal","direction":"bottom"}`))
+	if err != nil {
+		t.Fatalf("parseDOMPrimitiveParams returned error: %v", err)
+	}
+	if got, want := params.Direction, "bottom"; got != want {
+		t.Fatalf("Direction = %q, want %q", got, want)
+	}
+}

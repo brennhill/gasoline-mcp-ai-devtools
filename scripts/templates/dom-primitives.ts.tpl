@@ -849,7 +849,27 @@ export function domPrimitive(
           return null
         }
 
-        const direction = (options.value || '').toLowerCase()
+        function scrollToY(container: HTMLElement, top: number): void {
+          if (typeof (container as { scrollTo?: unknown }).scrollTo === 'function') {
+            container.scrollTo({ top, behavior: 'smooth' })
+            return
+          }
+          ;(container as { scrollTop?: number }).scrollTop = top
+        }
+
+        function scrollByY(container: HTMLElement, deltaY: number): void {
+          if (typeof (container as { scrollBy?: unknown }).scrollBy === 'function') {
+            container.scrollBy({ top: deltaY, behavior: 'smooth' })
+            return
+          }
+          const currentTop = typeof (container as { scrollTop?: unknown }).scrollTop === 'number'
+            ? Number((container as { scrollTop?: unknown }).scrollTop)
+            : 0
+          ;(container as { scrollTop?: number }).scrollTop = currentTop + deltaY
+        }
+
+        // Accept both `direction` (preferred) and legacy `value` for backward compatibility.
+        const direction = (options.direction || options.value || '').toLowerCase()
         const tag = node.tagName.toLowerCase()
 
         // Check if the target itself is a scrollable container
@@ -862,21 +882,32 @@ export function domPrimitive(
             return ov === 'auto' || ov === 'scroll' || ovY === 'auto' || ovY === 'scroll'
           })()
 
-        // Directional scrolling within a container
-        if (direction && (isContainer || tag === 'body' || tag === 'html')) {
-          const container = isContainer ? (node as HTMLElement) : (findScrollableContainer(node) || document.documentElement)
+        // Directional scrolling within the resolved container (target, ancestor, or page root)
+        const directionalContainer = (() => {
+          if (isContainer) return node as HTMLElement
+          const ancestor = findScrollableContainer(node)
+          if (ancestor) return ancestor
+          if (typeof document !== 'undefined' && document.scrollingElement instanceof HTMLElement) {
+            return document.scrollingElement
+          }
+          if (tag === 'body' || tag === 'html') return document.documentElement as HTMLElement
+          return document.documentElement as HTMLElement
+        })()
+
+        if (direction && directionalContainer) {
+          const container = directionalContainer
           switch (direction) {
             case 'top':
-              container.scrollTo({ top: 0, behavior: 'smooth' })
+              scrollToY(container, 0)
               return mutatingSuccess(node, { reason: 'scrolled_container_top' })
             case 'bottom':
-              container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' })
+              scrollToY(container, container.scrollHeight)
               return mutatingSuccess(node, { reason: 'scrolled_container_bottom' })
             case 'up':
-              container.scrollBy({ top: -container.clientHeight * 0.8, behavior: 'smooth' })
+              scrollByY(container, -container.clientHeight * 0.8)
               return mutatingSuccess(node, { reason: 'scrolled_container_up' })
             case 'down':
-              container.scrollBy({ top: container.clientHeight * 0.8, behavior: 'smooth' })
+              scrollByY(container, container.clientHeight * 0.8)
               return mutatingSuccess(node, { reason: 'scrolled_container_down' })
           }
         }

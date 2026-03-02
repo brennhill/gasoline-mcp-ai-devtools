@@ -348,6 +348,64 @@ describe('compact click feedback contract (when rAF works)', () => {
   })
 })
 
+describe('scroll_to container-aware behavior', () => {
+  beforeEach(() => {
+    perfNowValue = 0
+    globalThis.MutationObserver = MockMutationObserver
+    globalThis.requestAnimationFrame = (cb) => cb()
+  })
+
+  test('scroll_to supports direction alias and scrolls nearest scrollable ancestor', async () => {
+    let scrolledTop = null
+
+    const container = new MockHTMLElement('DIV', { id: 'modal-body', textContent: '' })
+    Object.setPrototypeOf(container, MockHTMLElement.prototype)
+    container.scrollHeight = 2000
+    container.clientHeight = 400
+    container.scrollTop = 0
+    container.scrollTo = ({ top }) => {
+      scrolledTop = top
+      container.scrollTop = top
+    }
+    container.getBoundingClientRect = () => ({ width: 600, height: 400, top: 80, left: 40, x: 40, y: 80 })
+    container.getRootNode = () => globalThis.document
+    container.getAttribute = () => null
+
+    const target = new MockHTMLElement('BUTTON', { id: 'inside-modal', textContent: 'You post about' })
+    Object.setPrototypeOf(target, MockHTMLElement.prototype)
+    target.parentElement = container
+    target.getBoundingClientRect = () => ({ width: 120, height: 32, top: 920, left: 60, x: 60, y: 920 })
+    target.getRootNode = () => globalThis.document
+    target.getAttribute = () => null
+
+    const previousGetComputedStyle = globalThis.getComputedStyle
+    globalThis.getComputedStyle = (el) => {
+      if (el === container) return { visibility: 'visible', display: 'block', overflow: 'auto', overflowY: 'auto' }
+      return { visibility: 'visible', display: 'block', overflow: 'visible', overflowY: 'visible' }
+    }
+
+    globalThis.document = {
+      querySelector: (sel) => (sel === '#inside-modal' ? target : null),
+      querySelectorAll: (sel) => (sel === '#inside-modal' ? [target] : []),
+      getElementById: () => null,
+      body: { querySelectorAll: () => [], appendChild: () => {}, children: { length: 0 } },
+      documentElement: { children: { length: 0 } },
+      createTreeWalker: () => ({ nextNode: () => null }),
+      getSelection: () => null,
+      execCommand: () => {}
+    }
+
+    try {
+      const result = await domPrimitive('scroll_to', '#inside-modal', { direction: 'bottom' })
+      assert.strictEqual(result.success, true)
+      assert.strictEqual(result.reason, 'scrolled_container_bottom')
+      assert.strictEqual(scrolledTop, 2000, 'expected nearest scrollable container to scroll to bottom')
+    } finally {
+      globalThis.getComputedStyle = previousGetComputedStyle
+    }
+  })
+})
+
 describe('list_interactive returns index, element_type, and deduplicates selectors', () => {
   beforeEach(() => {
     perfNowValue = 0

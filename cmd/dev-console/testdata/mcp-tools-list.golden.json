@@ -1253,6 +1253,16 @@
           "description": "Link to error/investigation",
           "type": "string"
         },
+        "direction": {
+          "description": "Scroll direction for scroll_to: top, bottom, up, or down (preferred over value)",
+          "enum": [
+            "top",
+            "bottom",
+            "up",
+            "down"
+          ],
+          "type": "string"
+        },
         "domain": {
           "description": "Cookie domain (set_cookie/delete_cookie)",
           "type": "string"
@@ -1502,7 +1512,7 @@
           "type": "string"
         },
         "value": {
-          "description": "Value for select/set_attribute",
+          "description": "Value for select/set_attribute. Also accepted by scroll_to as a legacy direction alias.",
           "type": "string"
         },
         "visible_only": {

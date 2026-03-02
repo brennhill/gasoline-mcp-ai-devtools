@@ -434,6 +434,21 @@ func TestParseInteractArgsType(t *testing.T) {
 	}
 }
 
+func TestParseInteractArgsScrollToDirection(t *testing.T) {
+	t.Parallel()
+
+	mcpArgs, err := parseInteractArgs("scroll_to", []string{"--selector", "#modal-body", "--direction", "bottom"})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if mcpArgs["selector"] != "#modal-body" {
+		t.Errorf("expected selector '#modal-body', got %v", mcpArgs["selector"])
+	}
+	if mcpArgs["direction"] != "bottom" {
+		t.Errorf("expected direction 'bottom', got %v", mcpArgs["direction"])
+	}
+}
+
 func TestParseInteractArgsExecuteJS(t *testing.T) {
 	t.Parallel()
 
