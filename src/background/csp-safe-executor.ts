@@ -77,8 +77,36 @@ export function cspSafeExecutor(command: ExecutorCommand): any {
           // Fall through to Object.keys() enumeration
         }
       }
-      const result: Record<string, any> = {}
       const keys = Object.keys(value).slice(0, 50)
+      // #389: Host objects may expose values only via prototype getters.
+      // Capture primitive getter values when enumerable keys are absent.
+      if (keys.length === 0) {
+        try {
+          const proto = Object.getPrototypeOf(value)
+          if (proto && proto !== Object.prototype) {
+            const hostResult: Record<string, any> = {}
+            const propNames = Object.getOwnPropertyNames(proto).slice(0, 120)
+            for (const key of propNames) {
+              if (key === 'constructor') continue
+              try {
+                const propValue = value[key]
+                const valueType = typeof propValue
+                if (propValue === undefined || valueType === 'function') continue
+                if (valueType === 'string' || valueType === 'number' || valueType === 'boolean' || propValue === null) {
+                  hostResult[key] = propValue
+                }
+              } catch {
+                // Ignore getter access errors.
+              }
+              if (Object.keys(hostResult).length >= 50) break
+            }
+            if (Object.keys(hostResult).length > 0) return hostResult
+          }
+        } catch {
+          // Fall through to default object key enumeration.
+        }
+      }
+      const result: Record<string, any> = {}
       for (const key of keys) {
         try {
           result[key] = serialize(value[key], depth + 1, seen)
