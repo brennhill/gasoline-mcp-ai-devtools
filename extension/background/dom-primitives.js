@@ -740,7 +740,28 @@ export function domPrimitive(action, selector, options) {
         const rect = typeof el.getBoundingClientRect === 'function'
             ? el.getBoundingClientRect()
             : { width: 0, height: 0 };
-        return rect.width > 0 && rect.height > 0 && el.offsetParent !== null;
+        if (!(rect.width > 0 && rect.height > 0))
+            return false;
+        if (el.offsetParent === null) {
+            const style = typeof getComputedStyle === 'function' ? getComputedStyle(el) : null;
+            const position = style?.position || '';
+            if (position !== 'fixed' && position !== 'sticky')
+                return false;
+        }
+        // #384: Prefer in-viewport actionable targets for disambiguation.
+        const viewHeight = typeof window !== 'undefined' && typeof window.innerHeight === 'number'
+            ? window.innerHeight
+            : (typeof document !== 'undefined' && document.documentElement ? Number(document.documentElement.clientHeight || 0) : 0);
+        const viewWidth = typeof window !== 'undefined' && typeof window.innerWidth === 'number'
+            ? window.innerWidth
+            : (typeof document !== 'undefined' && document.documentElement ? Number(document.documentElement.clientWidth || 0) : 0);
+        const left = typeof rect.left === 'number' ? rect.left : (typeof rect.x === 'number' ? rect.x : 0);
+        const top = typeof rect.top === 'number' ? rect.top : (typeof rect.y === 'number' ? rect.y : 0);
+        const right = typeof rect.right === 'number' ? rect.right : left + rect.width;
+        const bottom = typeof rect.bottom === 'number' ? rect.bottom : top + rect.height;
+        const intersectsX = viewWidth <= 0 || (right > 0 && left < viewWidth);
+        const intersectsY = viewHeight <= 0 || (bottom > 0 && top < viewHeight);
+        return intersectsX && intersectsY;
     }
     function extractBoundingBox(el) {
         if (!(el instanceof HTMLElement) || typeof el.getBoundingClientRect !== 'function') {
