@@ -35,8 +35,11 @@ Each flow map should include:
 
 ## Current Maps
 
+- [Daemon Stop and Force Cleanup](./daemon-stop-and-force-cleanup.md)
 - [MCP Daemon Lifecycle](./mcp-daemon-lifecycle.md)
+- [Network Recording Control](./network-recording-control.md)
 - [Observe Dispatch and Augmentation](./observe-dispatch-and-augmentation.md)
+- [Playbook Resource Resolution](./playbook-resource-resolution.md)
 - [Recording Control and Playback](./recording-control-and-playback.md)
 - [Tab Recording and Media Ingest](./tab-recording-and-media-ingest.md)
 - [Self-Testing Test Harness](./self-testing-test-harness.md)
