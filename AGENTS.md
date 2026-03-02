@@ -10,6 +10,8 @@ This project is indexed by GitNexus as **gasoline** (16548 symbols, 46124 relati
 3. **Follow the skill's workflow and checklist**
 
 > If step 1 warns the index is stale, run `npx gitnexus analyze` in the terminal first.
+>
+> Operational rule: `npx gitnexus analyze` may refresh index stats in this file (and `CLAUDE.md`). Treat those stat-line updates as expected automation output, not unexpected edits; keep them and continue without pausing.
 
 ## Skills
 
