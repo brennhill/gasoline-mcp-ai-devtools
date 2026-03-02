@@ -8,7 +8,9 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
+	"net/http/httptest"
 	"strings"
 	"testing"
 	"time"
@@ -291,4 +293,83 @@ func TestGetWSStatus_Empty_ReturnsHint(t *testing.T) {
 	}
 
 	t.Logf("hint: %s", hint)
+}
+
+func TestGetWSStatus_SummaryMode_ReturnsCompactShape(t *testing.T) {
+	t.Parallel()
+
+	env := newToolTestEnv(t)
+	now := time.Now()
+
+	wsPayload := struct {
+		Events []capture.WebSocketEvent `json:"events"`
+	}{
+		Events: []capture.WebSocketEvent{
+			{
+				URL:       "wss://realtime.example.com/live",
+				Type:      "websocket",
+				Event:     "open",
+				ID:        "ws-active-1",
+				Timestamp: now.Add(-2 * time.Second).Format(time.RFC3339),
+			},
+			{
+				URL:       "wss://realtime.example.com/archive",
+				Type:      "websocket",
+				Event:     "open",
+				ID:        "ws-closed-1",
+				Timestamp: now.Add(-4 * time.Second).Format(time.RFC3339),
+			},
+			{
+				URL:         "wss://realtime.example.com/archive",
+				Type:        "websocket",
+				Event:       "close",
+				ID:          "ws-closed-1",
+				CloseCode:   1000,
+				CloseReason: "normal",
+				Timestamp:   now.Add(-1 * time.Second).Format(time.RFC3339),
+			},
+		},
+	}
+	body, _ := json.Marshal(wsPayload)
+	req := httptest.NewRequest("POST", "/websocket-events", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	rec := httptest.NewRecorder()
+	env.capture.HandleWebSocketEvents(rec, req)
+	if rec.Code != 200 {
+		t.Fatalf("expected websocket-events ingest 200, got %d", rec.Code)
+	}
+
+	resp := observe.GetWSStatus(env.handler, JSONRPCRequest{JSONRPC: "2.0", ID: 1}, json.RawMessage(`{"summary":true}`))
+	result := parseToolResult(t, resp)
+	data := extractResultJSON(t, result)
+
+	if _, ok := data["connections"]; ok {
+		t.Fatal("summary mode should omit full connections array")
+	}
+	if _, ok := data["closed"]; ok {
+		t.Fatal("summary mode should omit full closed array")
+	}
+
+	if activeCount, _ := data["active_count"].(float64); activeCount != 1 {
+		t.Fatalf("active_count = %v, want 1", data["active_count"])
+	}
+	if closedCount, _ := data["closed_count"].(float64); closedCount != 1 {
+		t.Fatalf("closed_count = %v, want 1", data["closed_count"])
+	}
+
+	activeURLs, ok := data["active_urls"].([]any)
+	if !ok || len(activeURLs) == 0 {
+		t.Fatalf("expected active_urls array in summary mode, got %T", data["active_urls"])
+	}
+	closedURLs, ok := data["closed_urls"].([]any)
+	if !ok || len(closedURLs) == 0 {
+		t.Fatalf("expected closed_urls array in summary mode, got %T", data["closed_urls"])
+	}
+
+	if activeURLs[0] != "wss://realtime.example.com/live" {
+		t.Fatalf("active_urls[0] = %v, want wss://realtime.example.com/live", activeURLs[0])
+	}
+	if closedURLs[0] != "wss://realtime.example.com/archive" {
+		t.Fatalf("closed_urls[0] = %v, want wss://realtime.example.com/archive", closedURLs[0])
+	}
 }

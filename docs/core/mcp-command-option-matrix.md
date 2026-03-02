@@ -119,6 +119,7 @@ canonical: true
 ### `observe` options
 - Dispatch key: `what`
 - Filtering/pagination keys: `limit`, `after_cursor`, `before_cursor`, `since_cursor`, `restart_on_eviction`, `min_level`, `level`, `source`, `url`, `method`, `status_min`, `status_max`, `body_key`, `body_path`, `connection_id`, `direction`, `last_n`, `include`, `window_seconds`, `recording_id`, `correlation_id`, `original_id`, `replay_id`
+- `summary` mode currently applies to: `errors`, `logs`, `network_waterfall`, `network_bodies`, `websocket_events`, `websocket_status`, `actions`, `error_bundles`, `timeline`, `history`, `transients`
 - Cross-cutting key: `telemetry_mode`
 
 ### `analyze` options

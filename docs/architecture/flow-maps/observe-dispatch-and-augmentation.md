@@ -65,6 +65,7 @@ Covers the `observe` tool entrypoint, mode selection, handler dispatch, and post
 - `serverSideObserveModes` defines which modes skip disconnect warnings.
 - Schema parity tests must stay aligned with `observeHandlers` keys.
 - Accessibility summary payloads are normalized through `internal/a11ysummary` so canonical keys (`violations`, `passes`, `incomplete`, `inapplicable`) and legacy aliases (`*_count`) remain synchronized.
+- `websocket_status` honors `summary:true` by returning compact connection/url previews instead of full connection objects.
 
 ## Code Paths
 

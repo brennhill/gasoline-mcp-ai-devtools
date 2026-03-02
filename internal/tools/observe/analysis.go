@@ -13,6 +13,8 @@ import (
 	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/queries"
 )
 
+const wsStatusSummarySampleLimit = 10
+
 // GetNetworkWaterfall returns network waterfall entries from the performance API.
 func GetNetworkWaterfall(deps Deps, req mcp.JSONRPCRequest, args json.RawMessage) mcp.JSONRPCResponse {
 	var params struct {
@@ -129,11 +131,11 @@ func filterWaterfallSummaryEntries(allEntries []capture.NetworkWaterfallEntry, u
 }
 
 // GetWSStatus returns the current WebSocket connection status.
-// TODO(#278): GetWSStatus does not support summary mode -- add for consistency.
 func GetWSStatus(deps Deps, req mcp.JSONRPCRequest, args json.RawMessage) mcp.JSONRPCResponse {
 	var arguments struct {
 		URL          string `json:"url"`
 		ConnectionID string `json:"connection_id"`
+		Summary      bool   `json:"summary"`
 	}
 	if len(args) > 0 {
 		if err := json.Unmarshal(args, &arguments); err != nil {
@@ -146,13 +148,22 @@ func GetWSStatus(deps Deps, req mcp.JSONRPCRequest, args json.RawMessage) mcp.JS
 		ConnectionID: arguments.ConnectionID,
 	}
 	status := deps.GetCapture().GetWebSocketStatus(filter)
+	metadata := BuildResponseMetadata(deps.GetCapture(), time.Now())
+
+	if arguments.Summary {
+		response := buildWSStatusSummary(status, metadata)
+		if len(status.Connections) == 0 && len(status.Closed) == 0 {
+			response["hint"] = wsStatusEmptyHint()
+		}
+		return mcp.JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcp.JSONResponse("WebSocket status", response)}
+	}
 
 	response := map[string]any{
 		"connections":  status.Connections,
 		"closed":       status.Closed,
 		"active_count": len(status.Connections),
 		"closed_count": len(status.Closed),
-		"metadata":     BuildResponseMetadata(deps.GetCapture(), time.Now()),
+		"metadata":     metadata,
 	}
 
 	if len(status.Connections) == 0 && len(status.Closed) == 0 {
@@ -160,6 +171,54 @@ func GetWSStatus(deps Deps, req mcp.JSONRPCRequest, args json.RawMessage) mcp.JS
 	}
 
 	return mcp.JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcp.JSONResponse("WebSocket status", response)}
+}
+
+func buildWSStatusSummary(status capture.WebSocketStatusResponse, metadata ResponseMetadata) map[string]any {
+	activeURLs := make([]string, 0, wsStatusSummarySampleLimit)
+	activeIDs := make([]string, 0, wsStatusSummarySampleLimit)
+	closedURLs := make([]string, 0, wsStatusSummarySampleLimit)
+	closedIDs := make([]string, 0, wsStatusSummarySampleLimit)
+
+	activeURLSeen := map[string]struct{}{}
+	closedURLSeen := map[string]struct{}{}
+
+	for _, conn := range status.Connections {
+		if len(activeIDs) < wsStatusSummarySampleLimit && conn.ID != "" {
+			activeIDs = append(activeIDs, conn.ID)
+		}
+		if len(activeURLs) >= wsStatusSummarySampleLimit || conn.URL == "" {
+			continue
+		}
+		if _, ok := activeURLSeen[conn.URL]; ok {
+			continue
+		}
+		activeURLSeen[conn.URL] = struct{}{}
+		activeURLs = append(activeURLs, conn.URL)
+	}
+
+	for _, conn := range status.Closed {
+		if len(closedIDs) < wsStatusSummarySampleLimit && conn.ID != "" {
+			closedIDs = append(closedIDs, conn.ID)
+		}
+		if len(closedURLs) >= wsStatusSummarySampleLimit || conn.URL == "" {
+			continue
+		}
+		if _, ok := closedURLSeen[conn.URL]; ok {
+			continue
+		}
+		closedURLSeen[conn.URL] = struct{}{}
+		closedURLs = append(closedURLs, conn.URL)
+	}
+
+	return map[string]any{
+		"active_count":          len(status.Connections),
+		"closed_count":          len(status.Closed),
+		"active_urls":           activeURLs,
+		"closed_urls":           closedURLs,
+		"active_connection_ids": activeIDs,
+		"closed_connection_ids": closedIDs,
+		"metadata":              metadata,
+	}
 }
 
 // GetWebVitals returns Core Web Vitals metrics from performance snapshots.
