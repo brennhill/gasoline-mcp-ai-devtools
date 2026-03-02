@@ -398,7 +398,7 @@ export async function runAxeAuditWithTimeout(
     return await Promise.race([
       runAxeAudit(params),
       new Promise<FormattedAxeResults>((resolve) => {
-        setTimeout(() => resolve(emptyPartialResult('Accessibility audit timed out')), timeoutMs)
+        setTimeout(() => resolve(emptyPartialResult('Accessibility audit timeout')), timeoutMs)
       })
     ])
   } catch (err) {
