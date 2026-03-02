@@ -24,6 +24,7 @@ func (h *ToolHandler) toolConfigureActionJitter(req JSONRPCRequest, args json.Ra
 	}
 
 	h.jitterMu.Lock()
+	defer h.jitterMu.Unlock()
 	if params.ActionJitterMs != nil {
 		v := *params.ActionJitterMs
 		if v < 0 {
@@ -35,7 +36,6 @@ func (h *ToolHandler) toolConfigureActionJitter(req JSONRPCRequest, args json.Ra
 		h.actionJitterMaxMs = v
 	}
 	actionMs := h.actionJitterMaxMs
-	h.jitterMu.Unlock()
 
 	result := map[string]any{
 		"action_jitter_ms": actionMs,

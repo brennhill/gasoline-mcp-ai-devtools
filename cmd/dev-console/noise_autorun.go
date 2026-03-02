@@ -18,9 +18,22 @@ import (
 // Navigation events closer together than this are coalesced into a single run.
 const noiseAutoDetectInterval = 30 * time.Second
 
+// noiseFirstConnectDefaultDelay allows initial capture buffers to warm before auto-detect.
+const noiseFirstConnectDefaultDelay = 2 * time.Second
+
+// noiseFirstConnectTestDelay keeps unit tests fast while preserving callback semantics.
+const noiseFirstConnectTestDelay = 10 * time.Millisecond
+
 // noiseAutoDetectEnvVar gates navigation-triggered noise auto-detection.
 // Default is off; set to 1/true/on/yes to enable.
 const noiseAutoDetectEnvVar = "GASOLINE_NOISE_AUTORUN"
+
+func noiseFirstConnectDelay() time.Duration {
+	if strings.HasSuffix(os.Args[0], ".test") {
+		return noiseFirstConnectTestDelay
+	}
+	return noiseFirstConnectDefaultDelay
+}
 
 // noiseAutoRunner debounces automatic noise detection. Multiple rapid navigation
 // events (e.g., SPA route changes) are coalesced: only one auto-detect runs per
@@ -50,30 +63,36 @@ func (r *noiseAutoRunner) schedule() {
 		return
 	}
 
-	r.mu.Lock()
-	if r.pending {
-		r.mu.Unlock()
+	immediate, delay, shouldRun := r.planRunSchedule(time.Now())
+	if !shouldRun {
 		return
 	}
-
-	elapsed := time.Since(r.lastRun)
-	if elapsed >= r.interval {
-		// Enough time has passed — run immediately in background
-		r.pending = true
-		r.mu.Unlock()
+	if immediate {
+		// Enough time has passed — run immediately in background.
 		util.SafeGo(r.run)
 		return
 	}
 
-	// Schedule for after the remaining debounce period
-	r.pending = true
-	delay := r.interval - elapsed
-	r.mu.Unlock()
-
+	// Schedule for after the remaining debounce period.
 	util.SafeGo(func() {
 		time.Sleep(delay)
 		r.run()
 	})
+}
+
+func (r *noiseAutoRunner) planRunSchedule(now time.Time) (immediate bool, delay time.Duration, shouldRun bool) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if r.pending {
+		return false, 0, false
+	}
+
+	elapsed := now.Sub(r.lastRun)
+	r.pending = true
+	if elapsed >= r.interval {
+		return true, 0, true
+	}
+	return false, r.interval - elapsed, true
 }
 
 // run executes the function and resets the debounce state.
@@ -81,9 +100,9 @@ func (r *noiseAutoRunner) run() {
 	r.fn()
 
 	r.mu.Lock()
+	defer r.mu.Unlock()
 	r.lastRun = time.Now()
 	r.pending = false
-	r.mu.Unlock()
 }
 
 // wireNoiseAutoDetect connects automatic noise detection to navigation events.
@@ -125,12 +144,13 @@ func wireNoiseFirstConnect(h *ToolHandler) {
 			return
 		}
 		once.Do(func() {
+			delay := noiseFirstConnectDelay()
 			// Small delay to let the first batch of logs/network data arrive
 			// before running auto-detection, so there's data to analyze.
 			// Respects shutdownCtx so the goroutine exits promptly on server shutdown.
 			util.SafeGo(func() {
 				select {
-				case <-time.After(2 * time.Second):
+				case <-time.After(delay):
 				case <-h.shutdownCtx.Done():
 					return
 				}

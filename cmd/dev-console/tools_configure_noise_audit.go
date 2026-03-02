@@ -237,9 +237,11 @@ func (h *ToolHandler) toolGetAuditLog(req JSONRPCRequest, args json.RawMessage) 
 	}
 	if operation == "clear" {
 		cleared := h.auditTrail.Clear()
-		h.auditMu.Lock()
-		h.auditSessionMap = make(map[string]string)
-		h.auditMu.Unlock()
+		func() {
+			h.auditMu.Lock()
+			defer h.auditMu.Unlock()
+			h.auditSessionMap = make(map[string]string)
+		}()
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Audit log cleared", map[string]any{
 			"status":    "ok",
 			"operation": "clear",

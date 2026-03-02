@@ -103,3 +103,14 @@ func (h *ToolHandler) queueComposableWaitForStable(req JSONRPCRequest, stability
 	}
 	h.capture.CreatePendingQueryWithTimeout(query, queries.AsyncCommandTimeout, req.ClientID)
 }
+
+// queueComposableSubtitle queues a subtitle command as a side effect of another action.
+func (h *ToolHandler) queueComposableSubtitle(req JSONRPCRequest, text string) {
+	subtitleArgs, _ := json.Marshal(map[string]string{"text": text})
+	subtitleQuery := queries.PendingQuery{
+		Type:          "subtitle",
+		Params:        subtitleArgs,
+		CorrelationID: newCorrelationID("subtitle"),
+	}
+	h.capture.CreatePendingQueryWithTimeout(subtitleQuery, queries.AsyncCommandTimeout, req.ClientID)
+}

@@ -42,6 +42,13 @@ func getGitHubAPIURL() string {
 	return githubAPIURL
 }
 
+// getAvailableVersion returns the currently known newer release version, if any.
+func getAvailableVersion() string {
+	versionCheckMu.Lock()
+	defer versionCheckMu.Unlock()
+	return availableVersion
+}
+
 // setGitHubAPIURL sets the GitHub API URL (thread-safe). Used by tests.
 func setGitHubAPIURL(url string) {
 	versionCheckMu.Lock()
@@ -57,26 +64,49 @@ func getEnvOrDefault(key, defaultValue string) string {
 	return defaultValue
 }
 
+func beginVersionFetch(now time.Time) (fetchURL string, shouldFetch bool) {
+	versionCheckMu.Lock()
+	defer versionCheckMu.Unlock()
+
+	// Check if cache is still valid (6 hour TTL) or fetch already in progress.
+	if (!lastVersionCheck.IsZero() && now.Sub(lastVersionCheck) < versionCheckCacheTTL) || versionFetchActive {
+		return "", false
+	}
+
+	// Mark fetch as active to prevent duplicate concurrent fetches.
+	versionFetchActive = true
+	return githubAPIURL, true
+}
+
+func endVersionFetch() {
+	versionCheckMu.Lock()
+	defer versionCheckMu.Unlock()
+	versionFetchActive = false
+}
+
+func updateAvailableVersion(newVersion string, now time.Time) {
+	versionCheckMu.Lock()
+	defer versionCheckMu.Unlock()
+
+	if isNewerVersion(newVersion, version) {
+		availableVersion = newVersion
+	} else {
+		// Do not advertise older/equal releases as available updates.
+		availableVersion = ""
+	}
+	lastVersionCheck = now
+}
+
 // checkGitHubVersion fetches the latest version from GitHub
 // Returns early if cache is still valid (within 6 hours)
 // Used to determine if a newer version is available to notify users
 func checkGitHubVersion() {
-	versionCheckMu.Lock()
-	// Check if cache is still valid (6 hour TTL) or fetch already in progress
-	if (!lastVersionCheck.IsZero() && time.Since(lastVersionCheck) < versionCheckCacheTTL) || versionFetchActive {
-		versionCheckMu.Unlock()
+	now := time.Now()
+	fetchURL, shouldFetch := beginVersionFetch(now)
+	if !shouldFetch {
 		return
 	}
-	// Mark fetch as active to prevent duplicate concurrent fetches
-	versionFetchActive = true
-	fetchURL := githubAPIURL
-	versionCheckMu.Unlock()
-
-	defer func() {
-		versionCheckMu.Lock()
-		versionFetchActive = false
-		versionCheckMu.Unlock()
-	}()
+	defer endVersionFetch()
 
 	// Fetch from GitHub (silent on errors - version check is optional/non-critical)
 	client := &http.Client{Timeout: httpClientTimeout}
@@ -110,15 +140,7 @@ func checkGitHubVersion() {
 		return
 	}
 
-	versionCheckMu.Lock()
-	if isNewerVersion(newVersion, version) {
-		availableVersion = newVersion
-	} else {
-		// Do not advertise older/equal releases as available updates.
-		availableVersion = ""
-	}
-	lastVersionCheck = time.Now()
-	versionCheckMu.Unlock()
+	updateAvailableVersion(newVersion, now)
 
 	// Quiet mode: Version check results are available via get_health tool
 	// No need to spam stderr - LLMs don't care about version updates

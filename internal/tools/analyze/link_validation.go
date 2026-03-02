@@ -102,7 +102,7 @@ func DoLinkRequest(client *http.Client, linkURL string, version string) (*http.R
 
 	if err != nil || (resp != nil && resp.StatusCode == http.StatusMethodNotAllowed) {
 		if resp != nil {
-			_ = resp.Body.Close()
+			_ = resp.Body.Close() // lint:body-close-ok close HEAD response before GET retry
 		}
 		req, err = http.NewRequest("GET", linkURL, nil)
 		if err != nil {

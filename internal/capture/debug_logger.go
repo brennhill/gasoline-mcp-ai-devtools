@@ -33,17 +33,17 @@ func NewDebugLogger() DebugLogger {
 // LogPollingActivity adds an entry to the circular polling log buffer.
 func (dl *DebugLogger) LogPollingActivity(entry PollingLogEntry) {
 	dl.mu.Lock()
+	defer dl.mu.Unlock()
 	dl.pollingLog[dl.pollingLogIndex] = entry
 	dl.pollingLogIndex = (dl.pollingLogIndex + 1) % debugLogSize
-	dl.mu.Unlock()
 }
 
 // LogHTTPDebugEntry adds an entry to the circular HTTP debug log buffer.
 func (dl *DebugLogger) LogHTTPDebugEntry(entry HTTPDebugEntry) {
 	dl.mu.Lock()
+	defer dl.mu.Unlock()
 	dl.httpDebugLog[dl.httpDebugLogIndex] = entry
 	dl.httpDebugLogIndex = (dl.httpDebugLogIndex + 1) % debugLogSize
-	dl.mu.Unlock()
 }
 
 // GetPollingLog returns a copy of the polling activity log.

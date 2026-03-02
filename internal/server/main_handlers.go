@@ -6,19 +6,15 @@ package server
 
 import (
 	"bufio"
-	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"net/url"
 	"os"
 	"path/filepath"
-	"regexp"
 	"strings"
 	"sync"
 	"time"
 
-	"github.com/dev-console/dev-console/internal/state"
 	"github.com/dev-console/dev-console/internal/types"
 )
 
@@ -67,8 +63,8 @@ func NewServer(logFile string, maxEntries int) (*Server, error) {
 // Thread-safe: acquires the write lock to avoid racing with addEntries.
 func (s *Server) SetOnEntries(cb func([]LogEntry)) {
 	s.mu.Lock()
+	defer s.mu.Unlock()
 	s.onEntries = cb
-	s.mu.Unlock()
 }
 
 // loadEntries reads existing log entries from file
@@ -134,155 +130,63 @@ func (s *Server) saveEntriesCopy(entries []LogEntry) error {
 	return nil
 }
 
-// sanitizeFilename removes characters unsafe for filenames
-var unsafeChars = regexp.MustCompile(`[^a-zA-Z0-9._-]`)
-
-func sanitizeForFilename(s string) string {
-	s = unsafeChars.ReplaceAllString(s, "_")
-	if len(s) > 50 {
-		s = s[:50]
-	}
-	return s
-}
-
-const maxPostBodySize = 10 * 1024 * 1024 // 10MB
-
-// screenshotRequest holds the parsed screenshot request body.
-type screenshotRequest struct {
-	DataURL       string `json:"data_url"`
-	URL           string `json:"url"`
-	CorrelationID string `json:"correlation_id"`
-}
-
-// decodeDataURL extracts raw image bytes from a data URL string.
-func decodeDataURL(dataURL string) ([]byte, error) {
-	parts := strings.SplitN(dataURL, ",", 2)
-	if len(parts) != 2 {
-		return nil, fmt.Errorf("invalid dataUrl format")
-	}
-	return base64.StdEncoding.DecodeString(parts[1])
-}
-
-// buildScreenshotFilename creates a sanitized filename from hostname, timestamp, and optional correlation ID.
-func buildScreenshotFilename(pageURL, correlationID string) string {
-	hostname := "unknown"
-	if pageURL != "" {
-		if u, err := url.Parse(pageURL); err == nil && u.Host != "" {
-			hostname = u.Host
-		}
-	}
-	ts := time.Now().Format("20060102-150405")
-	if correlationID != "" {
-		return fmt.Sprintf("%s-%s-%s.jpg", sanitizeForFilename(hostname), ts, sanitizeForFilename(correlationID))
-	}
-	return fmt.Sprintf("%s-%s.jpg", sanitizeForFilename(hostname), ts)
-}
-
-// saveScreenshotFile writes image data to the screenshots directory and returns the full path.
-func saveScreenshotFile(filename string, imageData []byte) (string, error) {
-	dir, err := state.ScreenshotsDir()
-	if err != nil {
-		return "", fmt.Errorf("failed to resolve screenshots directory: %w", err)
-	}
-	// #nosec G301 -- 0o755 is appropriate for screenshots directory
-	if err := os.MkdirAll(dir, 0o755); err != nil {
-		return "", fmt.Errorf("failed to create screenshots directory: %w", err)
-	}
-	savePath := filepath.Join(dir, filename)
-	// #nosec G306 -- screenshots are intentionally world-readable
-	if err := os.WriteFile(savePath, imageData, 0o644); err != nil {
-		return "", fmt.Errorf("failed to save screenshot: %w", err)
-	}
-	return savePath, nil
-}
-
-// handleScreenshot saves a screenshot JPEG to disk and returns the filename
-func (s *Server) handleScreenshot(w http.ResponseWriter, r *http.Request) {
-	if r.Method != "POST" {
-		jsonResponse(w, http.StatusMethodNotAllowed, map[string]string{"error": "Method not allowed"})
-		return
-	}
-
-	r.Body = http.MaxBytesReader(w, r.Body, maxPostBodySize)
-	var body screenshotRequest
-	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		jsonResponse(w, http.StatusBadRequest, map[string]string{"error": "Invalid JSON"})
-		return
-	}
-	if body.DataURL == "" {
-		jsonResponse(w, http.StatusBadRequest, map[string]string{"error": "Missing dataUrl"})
-		return
-	}
-
-	imageData, err := decodeDataURL(body.DataURL)
-	if err != nil {
-		jsonResponse(w, http.StatusBadRequest, map[string]string{"error": "Invalid base64 data"})
-		return
-	}
-
-	filename := buildScreenshotFilename(body.URL, body.CorrelationID)
-	savePath, err := saveScreenshotFile(filename, imageData)
-	if err != nil {
-		jsonResponse(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
-		return
-	}
-
-	jsonResponse(w, http.StatusOK, map[string]string{
-		"filename":       filename,
-		"path":           savePath,
-		"correlation_id": body.CorrelationID,
-	})
-}
-
 // addEntries adds new entries and rotates if needed
 func (s *Server) addEntries(newEntries []LogEntry) int {
-	s.mu.Lock()
-
-	s.logTotalAdded += int64(len(newEntries))
-	now := time.Now()
-	for range newEntries {
-		s.logAddedAt = append(s.logAddedAt, now)
+	type addEntriesPlan struct {
+		entriesToSave []LogEntry
+		appendOnly    []LogEntry
+		callback      func([]LogEntry)
 	}
-	s.entries = append(s.entries, newEntries...)
+	plan := func() addEntriesPlan {
+		s.mu.Lock()
+		defer s.mu.Unlock()
 
-	// Rotate if needed — copy to new slice to allow GC of evicted entries
-	rotated := len(s.entries) > s.maxEntries
-	if rotated {
-		kept := make([]LogEntry, s.maxEntries)
-		copy(kept, s.entries[len(s.entries)-s.maxEntries:])
-		s.entries = kept
-		keptAt := make([]time.Time, s.maxEntries)
-		copy(keptAt, s.logAddedAt[len(s.logAddedAt)-s.maxEntries:])
-		s.logAddedAt = keptAt
-	}
+		s.logTotalAdded += int64(len(newEntries))
+		now := time.Now()
+		for range newEntries {
+			s.logAddedAt = append(s.logAddedAt, now)
+		}
+		s.entries = append(s.entries, newEntries...)
 
-	// Snapshot data for file I/O outside the lock
-	var entriesToSave []LogEntry
-	var appendOnly []LogEntry
-	if rotated {
-		entriesToSave = make([]LogEntry, len(s.entries))
-		copy(entriesToSave, s.entries)
-	} else {
-		appendOnly = make([]LogEntry, len(newEntries))
-		copy(appendOnly, newEntries)
-	}
-	cb := s.onEntries
-	s.mu.Unlock()
+		// Rotate if needed — copy to new slice to allow GC of evicted entries.
+		rotated := len(s.entries) > s.maxEntries
+		if rotated {
+			kept := make([]LogEntry, s.maxEntries)
+			copy(kept, s.entries[len(s.entries)-s.maxEntries:])
+			s.entries = kept
+			keptAt := make([]time.Time, s.maxEntries)
+			copy(keptAt, s.logAddedAt[len(s.logAddedAt)-s.maxEntries:])
+			s.logAddedAt = keptAt
+		}
+
+		result := addEntriesPlan{
+			callback: s.onEntries,
+		}
+		// Snapshot data for file I/O outside the lock.
+		if rotated {
+			result.entriesToSave = make([]LogEntry, len(s.entries))
+			copy(result.entriesToSave, s.entries)
+		} else {
+			result.appendOnly = make([]LogEntry, len(newEntries))
+			copy(result.appendOnly, newEntries)
+		}
+		return result
+	}()
 
 	// File I/O outside lock
-	if rotated {
-		if err := s.saveEntriesCopy(entriesToSave); err != nil {
+	if len(plan.entriesToSave) > 0 {
+		if err := s.saveEntriesCopy(plan.entriesToSave); err != nil {
 			fmt.Fprintf(os.Stderr, "[gasoline] Error saving entries: %v\n", err)
 		}
 	} else {
-		if err := s.appendToFile(appendOnly); err != nil {
+		if err := s.appendToFile(plan.appendOnly); err != nil {
 			fmt.Fprintf(os.Stderr, "[gasoline] Error saving entries: %v\n", err)
 		}
 	}
 
 	// Notify listeners outside the lock (e.g., cluster manager)
-	if cb != nil {
-		cb(newEntries)
+	if plan.callback != nil {
+		plan.callback(newEntries)
 	}
 
 	return len(newEntries)
@@ -313,14 +217,17 @@ func (s *Server) appendToFile(entries []LogEntry) error {
 
 // clearEntries removes all entries
 func (s *Server) clearEntries() {
-	s.mu.Lock()
-	s.entries = nil
-	s.logAddedAt = nil
-	s.mu.Unlock()
+	logFile := func() string {
+		s.mu.Lock()
+		defer s.mu.Unlock()
+		s.entries = nil
+		s.logAddedAt = nil
+		return s.logFile
+	}()
 	// Write empty file outside lock
 	// #nosec G306 -- log files are owner-only (0600) for privacy
-	if s.logFile != "" {
-		if err := os.WriteFile(s.logFile, []byte{}, 0600); err != nil {
+	if logFile != "" {
+		if err := os.WriteFile(logFile, []byte{}, 0600); err != nil {
 			fmt.Fprintf(os.Stderr, "[gasoline] Error clearing log file: %v\n", err)
 		}
 	}

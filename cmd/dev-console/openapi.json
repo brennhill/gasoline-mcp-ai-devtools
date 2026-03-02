@@ -1330,6 +1330,147 @@
         }
       }
     },
+    "/push/screenshot": {
+      "post": {
+        "tags": [
+          "Media"
+        ],
+        "summary": "Push screenshot notification",
+        "description": "Accepts extension push events for screenshots and forwards them through the server push pipeline to connected MCP clients.",
+        "operationId": "postPushScreenshot",
+        "security": [
+          {
+            "extensionClient": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Screenshot push event accepted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StatusOk"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/push/message": {
+      "post": {
+        "tags": [
+          "Management"
+        ],
+        "summary": "Push text notification",
+        "description": "Accepts extension push message events and routes them to connected MCP clients via the server push inbox.",
+        "operationId": "postPushMessage",
+        "security": [
+          {
+            "extensionClient": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Push message accepted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StatusOk"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/push/capabilities": {
+      "get": {
+        "tags": [
+          "Management"
+        ],
+        "summary": "Get push capabilities",
+        "description": "Returns the server push capability snapshot used by the extension to decide which push channels can be delivered.",
+        "operationId": "getPushCapabilities",
+        "security": [
+          {
+            "extensionClient": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Push capability state",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/tests/": {
+      "get": {
+        "tags": [
+          "Control"
+        ],
+        "summary": "Serve embedded test pages",
+        "description": "Serves deterministic embedded test harness pages under /tests/ for smoke testing and browser behavior validation.",
+        "operationId": "getTestsPages",
+        "responses": {
+          "200": {
+            "description": "HTML test page index or static test asset",
+            "content": {
+              "text/html": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/tests/ws": {
+      "get": {
+        "tags": [
+          "Control"
+        ],
+        "summary": "WebSocket echo test endpoint",
+        "description": "Upgrades to a WebSocket echo server used by the test harness for deterministic websocket behavior checks.",
+        "operationId": "getTestsWebSocket",
+        "responses": {
+          "101": {
+            "description": "Switching Protocols (WebSocket upgrade)"
+          },
+          "400": {
+            "description": "WebSocket upgrade required"
+          }
+        }
+      }
+    },
     "/recordings/storage": {
       "get": {
         "tags": [

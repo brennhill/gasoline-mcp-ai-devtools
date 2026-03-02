@@ -1,0 +1,40 @@
+---
+doc_type: flow_map_index
+status: active
+last_reviewed: 2026-03-02
+owners:
+  - Brenn
+---
+
+# Flow Maps
+
+Flow maps are concise architecture navigation docs optimized for both human maintainers and LLM retrieval.
+
+## Placement Best Practice
+
+Use a hybrid placement model:
+
+1. Keep canonical flow maps in `docs/architecture/flow-maps/`.
+2. Add feature-local `flow-map.md` pointer files in relevant feature directories.
+3. Link each feature `index.md` to its local pointer file.
+
+This avoids content drift while preserving high retrieval recall.
+
+## Format Standard
+
+Each flow map should include:
+
+1. Scope
+2. Entrypoints
+3. Primary Flow (numbered)
+4. Error and Recovery Paths
+5. State and Contracts
+6. Code Paths
+7. Test Paths
+8. Edit Guardrails
+
+## Current Maps
+
+- [MCP Daemon Lifecycle](./mcp-daemon-lifecycle.md)
+- [Recording Control and Playback](./recording-control-and-playback.md)
+- [Tab Recording and Media Ingest](./tab-recording-and-media-ingest.md)

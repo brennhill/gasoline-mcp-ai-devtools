@@ -87,10 +87,10 @@ func (s *BinaryWatcherState) checkForUpgrade(currentVersion string) bool {
 	}
 
 	s.mu.Lock()
+	defer s.mu.Unlock()
 	s.upgradePending = true
 	s.detectedVersion = newVer
 	s.detectedAt = time.Now()
-	s.mu.Unlock()
 	return true
 }
 

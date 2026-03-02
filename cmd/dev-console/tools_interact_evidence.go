@@ -217,9 +217,7 @@ func (h *ToolHandler) armEvidenceForCommand(correlationID, action string, args j
 	}
 
 	if mode == evidenceModeOff {
-		h.evidenceMu.Lock()
-		delete(h.evidenceByCommand, correlationID)
-		h.evidenceMu.Unlock()
+		h.clearEvidenceState(correlationID)
 		return
 	}
 
@@ -254,12 +252,7 @@ func (h *ToolHandler) armEvidenceForCommand(correlationID, action string, args j
 		state.before = h.captureEvidenceWithRetry(clientID)
 	}
 
-	h.evidenceMu.Lock()
-	if h.evidenceByCommand == nil {
-		h.evidenceByCommand = make(map[string]*commandEvidenceState)
-	}
-	h.evidenceByCommand[correlationID] = state
-	h.evidenceMu.Unlock()
+	h.storeEvidenceState(correlationID, state)
 }
 
 func (h *ToolHandler) attachEvidencePayload(correlationID string, responseData map[string]any) {
@@ -267,31 +260,64 @@ func (h *ToolHandler) attachEvidencePayload(correlationID string, responseData m
 		return
 	}
 
-	h.evidenceMu.Lock()
-	state, ok := h.evidenceByCommand[correlationID]
-	if !ok {
-		h.evidenceMu.Unlock()
+	cached, needsAfter, clientID, done := h.loadEvidenceAttachContext(correlationID)
+	if done {
+		if cached != nil {
+			responseData["evidence"] = cached
+		}
 		return
 	}
-	if state.finalized {
-		responseData["evidence"] = cloneAnyMap(state.cached)
-		h.evidenceMu.Unlock()
-		return
-	}
-	needsAfter := state.shouldCapture && state.maxCaptures > 1
-	clientID := state.clientID
-	h.evidenceMu.Unlock()
 
 	var after evidenceShot
 	if needsAfter {
 		after = h.captureEvidenceWithRetry(clientID)
 	}
 
-	h.evidenceMu.Lock()
-	state, ok = h.evidenceByCommand[correlationID]
+	payload, ok := h.finalizeEvidencePayload(correlationID, needsAfter, after)
 	if !ok {
-		h.evidenceMu.Unlock()
 		return
+	}
+
+	responseData["evidence"] = payload
+}
+
+func (h *ToolHandler) clearEvidenceState(correlationID string) {
+	h.evidenceMu.Lock()
+	defer h.evidenceMu.Unlock()
+	delete(h.evidenceByCommand, correlationID)
+}
+
+func (h *ToolHandler) storeEvidenceState(correlationID string, state *commandEvidenceState) {
+	h.evidenceMu.Lock()
+	defer h.evidenceMu.Unlock()
+	if h.evidenceByCommand == nil {
+		h.evidenceByCommand = make(map[string]*commandEvidenceState)
+	}
+	h.evidenceByCommand[correlationID] = state
+}
+
+func (h *ToolHandler) loadEvidenceAttachContext(correlationID string) (cached map[string]any, needsAfter bool, clientID string, done bool) {
+	h.evidenceMu.Lock()
+	defer h.evidenceMu.Unlock()
+
+	state, ok := h.evidenceByCommand[correlationID]
+	if !ok {
+		return nil, false, "", true
+	}
+	if state.finalized {
+		return cloneAnyMap(state.cached), false, "", true
+	}
+
+	return nil, state.shouldCapture && state.maxCaptures > 1, state.clientID, false
+}
+
+func (h *ToolHandler) finalizeEvidencePayload(correlationID string, needsAfter bool, after evidenceShot) (map[string]any, bool) {
+	h.evidenceMu.Lock()
+	defer h.evidenceMu.Unlock()
+
+	state, ok := h.evidenceByCommand[correlationID]
+	if !ok {
+		return nil, false
 	}
 	if !state.finalized {
 		if needsAfter {
@@ -300,10 +326,8 @@ func (h *ToolHandler) attachEvidencePayload(correlationID string, responseData m
 		state.cached = buildEvidencePayload(state)
 		state.finalized = true
 	}
-	payload := cloneAnyMap(state.cached)
-	h.evidenceMu.Unlock()
 
-	responseData["evidence"] = payload
+	return cloneAnyMap(state.cached), true
 }
 
 func buildEvidencePayload(state *commandEvidenceState) map[string]any {

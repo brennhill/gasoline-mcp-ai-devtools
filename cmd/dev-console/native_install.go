@@ -107,39 +107,39 @@ func runNativeInstall() {
 	// 4. Start the Daemon
 	// We start the daemon so the extension works immediately and the user
 	// can verify the install with a health check.
-	fmt.Printf("🚀 Starting Gasoline server...")
+	stderrf("🚀 Starting Gasoline server...")
 	startDaemonSilently(exe)
 
 	// 5. BIG SUCCESS MESSAGE
-	fmt.Println("\n\033[1;32m✅ GASOLINE INSTALLED & RUNNING!\033[0m")
-	fmt.Println("\033[1;34m--------------------------------------------------\033[0m")
-	fmt.Printf("\033[1;33m1. INSTALL YOUR EXTENSION AT:\033[0m\n")
-	fmt.Printf("   \033[1m%s\033[0m\n", extDir)
-	fmt.Println("   (Open chrome://extensions -> Developer mode -> Load unpacked)")
-	fmt.Println("")
-	fmt.Printf("\033[1;33m2. READY TO COOK:\033[0m\n")
-	fmt.Println("   The Gasoline server is active on port 7890.")
-	fmt.Println("   Your AI tool (Claude, Cursor, etc.) is now configured.")
-	fmt.Println("\033[1;34m--------------------------------------------------\033[0m")
+	stderrf("\n\033[1;32m✅ GASOLINE INSTALLED & RUNNING!\033[0m\n")
+	stderrf("\033[1;34m--------------------------------------------------\033[0m\n")
+	stderrf("\033[1;33m1. INSTALL YOUR EXTENSION AT:\033[0m\n")
+	stderrf("   \033[1m%s\033[0m\n", extDir)
+	stderrf("   (Open chrome://extensions -> Developer mode -> Load unpacked)\n")
+	stderrf("\n")
+	stderrf("\033[1;33m2. READY TO COOK:\033[0m\n")
+	stderrf("   The Gasoline server is active on port 7890.\n")
+	stderrf("   Your AI tool (Claude, Cursor, etc.) is now configured.\n")
+	stderrf("\033[1;34m--------------------------------------------------\033[0m\n")
 }
 
 func startDaemonSilently(exe string) {
 	// Standard daemon flags
 	args := []string{"--daemon", "--port", "7890"}
 	cmd := exec.Command(exe, args...)
-	
+
 	// Ensure it's detached
 	cmd.Stdout = nil
 	cmd.Stderr = nil
 	cmd.Stdin = nil
-	
+
 	// Platform-specific detachment (Unix/Windows)
 	util.SetDetachedProcess(cmd)
 
 	if err := cmd.Start(); err != nil {
-		fmt.Printf(" ⚠️  (could not start background server: %v)\n", err)
+		stderrf(" ⚠️  (could not start background server: %v)\n", err)
 	} else {
-		fmt.Println(" ✅")
+		stderrf(" ✅\n")
 	}
 }
 

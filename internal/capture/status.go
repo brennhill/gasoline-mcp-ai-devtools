@@ -29,9 +29,9 @@ type ExtensionStatus struct {
 // - Timestamp parsing/validation is not enforced here; caller-provided fields are trusted.
 func (c *Capture) UpdateExtensionStatus(status ExtensionStatus) {
 	c.mu.Lock()
+	defer c.mu.Unlock()
 	c.extensionState.trackingEnabled = status.TrackingEnabled
 	c.extensionState.trackedTabID = status.TrackedTabID
 	c.extensionState.trackedTabURL = status.TrackedTabURL
 	c.extensionState.trackingUpdated = time.Now()
-	c.mu.Unlock()
 }

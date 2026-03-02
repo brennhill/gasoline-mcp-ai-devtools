@@ -1,0 +1,183 @@
+// Purpose: Handles analyze annotation modes for session reads and annotation detail.
+// Why: Keeps annotation retrieval and detail formatting separate from draw-session file I/O.
+// Docs: docs/features/feature/annotated-screenshots/index.md
+
+package main
+
+import (
+	"encoding/json"
+	"time"
+)
+
+// annotationWaitCommandTTL is how long pending annotation commands remain active.
+const annotationWaitCommandTTL = 10 * time.Minute
+
+// toolGetAnnotations returns latest annotation session or a named multi-page session.
+func (h *ToolHandler) toolGetAnnotations(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+	var params struct {
+		Wait         bool   `json:"wait"`
+		AnnotSession string `json:"annot_session"`
+	}
+	if len(args) > 0 {
+		lenientUnmarshal(args, &params)
+	}
+
+	if params.AnnotSession != "" {
+		return h.getNamedAnnotations(req, params.AnnotSession, params.Wait)
+	}
+	return h.getAnonymousAnnotations(req, params.Wait)
+}
+
+func (h *ToolHandler) getAnonymousAnnotations(req JSONRPCRequest, wait bool) JSONRPCResponse {
+	if wait {
+		if session := h.annotationStore.GetLatestSessionSinceDraw(); session != nil {
+			return h.formatAnnotationSession(req, session)
+		}
+
+		corrID := newCorrelationID("ann")
+		h.capture.RegisterCommand(corrID, "", annotationWaitCommandTTL)
+		h.annotationStore.RegisterWaiter(corrID, "")
+
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Waiting for annotations", map[string]any{
+			"status":         "waiting_for_user",
+			"correlation_id": corrID,
+			"annotations":    []any{},
+			"count":          0,
+			"message":        "Draw mode is active. The user is drawing annotations. Poll with observe({what: 'command_result', correlation_id: '" + corrID + "'}) to check for results.",
+		})}
+	}
+
+	session := h.annotationStore.GetLatestSession()
+	if session == nil {
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("No annotations", map[string]any{
+			"annotations": []any{},
+			"count":       0,
+			"message":     "No annotation session found. Use interact({action: 'draw_mode_start'}) to activate draw mode, then the user draws annotations and presses ESC to finish.",
+		})}
+	}
+	return h.formatAnnotationSession(req, session)
+}
+
+func (h *ToolHandler) formatAnnotationSession(req JSONRPCRequest, session *AnnotationSession) JSONRPCResponse {
+	result := map[string]any{
+		"annotations": session.Annotations,
+		"count":       len(session.Annotations),
+		"page_url":    session.PageURL,
+	}
+	if session.ScreenshotPath != "" {
+		result["screenshot"] = session.ScreenshotPath
+	}
+	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Annotations retrieved", result)}
+}
+
+// #lizard forgives
+func (h *ToolHandler) getNamedAnnotations(req JSONRPCRequest, sessionName string, wait bool) JSONRPCResponse {
+	if wait {
+		if ns := h.annotationStore.GetNamedSessionSinceDraw(sessionName); ns != nil {
+			return h.formatNamedAnnotationSession(req, ns)
+		}
+
+		corrID := newCorrelationID("ann")
+		h.capture.RegisterCommand(corrID, "", annotationWaitCommandTTL)
+		h.annotationStore.RegisterWaiter(corrID, sessionName)
+
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Waiting for annotations", map[string]any{
+			"status":             "waiting_for_user",
+			"correlation_id":     corrID,
+			"annot_session_name": sessionName,
+			"pages":              []any{},
+			"page_count":         0,
+			"total_count":        0,
+			"message":            "Draw mode is active. The user is drawing annotations. Poll with observe({what: 'command_result', correlation_id: '" + corrID + "'}) to check for results.",
+		})}
+	}
+
+	ns := h.annotationStore.GetNamedSession(sessionName)
+	if ns == nil {
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("No annotations", map[string]any{
+			"annot_session_name": sessionName,
+			"pages":              []any{},
+			"page_count":         0,
+			"total_count":        0,
+			"message":            "Named session '" + sessionName + "' not found. Use interact({action: 'draw_mode_start', annot_session: '" + sessionName + "'}) to start.",
+		})}
+	}
+
+	return h.formatNamedAnnotationSession(req, ns)
+}
+
+func (h *ToolHandler) formatNamedAnnotationSession(req JSONRPCRequest, ns *NamedAnnotationSession) JSONRPCResponse {
+	totalCount := 0
+	pages := make([]map[string]any, 0, len(ns.Pages))
+	for _, page := range ns.Pages {
+		totalCount += len(page.Annotations)
+		p := map[string]any{
+			"page_url":    page.PageURL,
+			"annotations": page.Annotations,
+			"count":       len(page.Annotations),
+			"tab_id":      page.TabID,
+		}
+		if page.ScreenshotPath != "" {
+			p["screenshot"] = page.ScreenshotPath
+		}
+		pages = append(pages, p)
+	}
+
+	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Annotations retrieved", map[string]any{
+		"annot_session_name": ns.Name,
+		"pages":              pages,
+		"page_count":         len(ns.Pages),
+		"total_count":        totalCount,
+	})}
+}
+
+// toolGetAnnotationDetail returns full DOM/style detail for a specific annotation.
+func (h *ToolHandler) toolGetAnnotationDetail(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+	var params struct {
+		CorrelationID string `json:"correlation_id"`
+	}
+	if len(args) > 0 {
+		if err := json.Unmarshal(args, &params); err != nil {
+			return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidJSON, "Invalid JSON arguments: "+err.Error(), "Fix JSON syntax and call again")}
+		}
+	}
+
+	if params.CorrelationID == "" {
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrMissingParam, "Required parameter 'correlation_id' is missing", "Add the 'correlation_id' from the annotation you want detail for", withParam("correlation_id"))}
+	}
+
+	detail, found := h.annotationStore.GetDetail(params.CorrelationID)
+	if !found {
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrNoData, "Annotation detail not found or expired for correlation_id: "+params.CorrelationID, "Detail data expires after 10 minutes. Re-run draw mode to capture fresh data.")}
+	}
+
+	result := map[string]any{
+		"correlation_id":  detail.CorrelationID,
+		"selector":        detail.Selector,
+		"tag":             detail.Tag,
+		"text_content":    detail.TextContent,
+		"classes":         detail.Classes,
+		"id":              detail.ID,
+		"computed_styles": detail.ComputedStyles,
+		"parent_selector": detail.ParentSelector,
+		"bounding_rect":   detail.BoundingRect,
+	}
+	if len(detail.A11yFlags) > 0 {
+		result["a11y_flags"] = detail.A11yFlags
+	}
+	if detail.OuterHTML != "" {
+		result["outer_html"] = detail.OuterHTML
+	}
+	if len(detail.ShadowDOM) > 0 {
+		result["shadow_dom"] = detail.ShadowDOM
+	}
+	if len(detail.AllElements) > 0 {
+		result["all_elements"] = detail.AllElements
+		result["element_count"] = detail.ElementCount
+	}
+	if len(detail.IframeContent) > 0 {
+		result["iframe_content"] = detail.IframeContent
+	}
+
+	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Annotation detail", result)}
+}

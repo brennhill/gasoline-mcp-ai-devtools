@@ -136,6 +136,7 @@ func TestCaptureState_Status_ExtensionDisconnected(t *testing.T) {
 	t.Parallel()
 	env := newInteractHelpersTestEnv(t)
 	env.enablePilot(t)
+	env.capture.SimulateExtensionDisconnectForTest()
 
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`)}
 	result := env.handler.captureState(req)

@@ -469,17 +469,16 @@ func TestRichAction_CompactClickHasDomSummary_WhenExtensionResponds(t *testing.T
 		t.Error("timing_ms should be present at top level (added by Go server)")
 	}
 
-	// dom_summary should be inside result (extension provides this)
+	// dom_summary should be promoted to top-level and stripped from nested result.
+	if responseData["dom_summary"] != "1 added" {
+		t.Errorf("dom_summary = %q, want '1 added'", responseData["dom_summary"])
+	}
+
 	extResult, ok := responseData["result"].(map[string]any)
 	if !ok {
 		t.Fatal("response should contain 'result' object")
 	}
-
-	domSummary, exists := extResult["dom_summary"]
-	if !exists {
-		t.Fatal("dom_summary should pass through from extension to command result")
-	}
-	if domSummary != "1 added" {
-		t.Errorf("dom_summary = %q, want '1 added'", domSummary)
+	if _, exists := extResult["dom_summary"]; exists {
+		t.Fatal("nested result should not duplicate dom_summary after enrichment")
 	}
 }

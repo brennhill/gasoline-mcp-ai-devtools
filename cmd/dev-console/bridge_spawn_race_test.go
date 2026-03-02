@@ -16,7 +16,6 @@ import (
 // --- tryConnectToExisting tests ---
 
 func TestTryConnectToExisting_NoServer(t *testing.T) {
-	t.Parallel()
 	state := &daemonState{
 		readyCh:  make(chan struct{}),
 		failedCh: make(chan struct{}),
@@ -44,7 +43,6 @@ func TestTryConnectToExisting_NoServer(t *testing.T) {
 }
 
 func TestTryConnectToExisting_CompatibleServer(t *testing.T) {
-	t.Parallel()
 	ln, port := startHealthServer(t, http.StatusOK, healthJSON(version, "gasoline"))
 	defer ln.Close()
 
@@ -64,7 +62,6 @@ func TestTryConnectToExisting_CompatibleServer(t *testing.T) {
 }
 
 func TestTryConnectToExisting_NonGasolineService(t *testing.T) {
-	t.Parallel()
 	ln, port := startHealthServer(t, http.StatusOK, healthJSON("1.0.0", "some-other-service"))
 	defer ln.Close()
 
@@ -92,7 +89,6 @@ func TestTryConnectToExisting_NonGasolineService(t *testing.T) {
 // --- waitForPeerDaemon tests ---
 
 func TestWaitForPeerDaemon_ServerAppearsOnFirstRetry(t *testing.T) {
-	t.Parallel()
 	// Start server after a short delay (< 500ms) so the first retry finds it.
 	ln, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
@@ -129,7 +125,6 @@ func TestWaitForPeerDaemon_ServerAppearsOnFirstRetry(t *testing.T) {
 }
 
 func TestWaitForPeerDaemon_NoServerReturnsQuickly(t *testing.T) {
-	t.Parallel()
 	ln, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
 		t.Fatal(err)
