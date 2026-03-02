@@ -27,16 +27,22 @@ This map covers annotation retrieval through `analyze(what:"annotations")`, incl
 
 ## Primary Flow
 
-1. Client calls `analyze({what:"annotations", wait:true})`.
+1. Client calls `analyze({what:"annotations", wait:true})` (optionally with `timeout_ms`).
 2. Server checks for session newer than `MarkDrawStarted`.
-3. If unavailable, server:
+3. If unavailable, server performs a bounded blocking wait:
+   - `WaitForSession` / `WaitForNamedSession`
+   - default 15s
+   - caller override via `timeout_ms`
+   - max 10m clamp
+4. If annotations arrive during that wait, server returns final annotation payload directly (no polling).
+5. If the wait times out, server:
    - registers command tracker record (`ann_*`)
    - registers annotation waiter
    - returns `waiting_for_user` + `correlation_id`.
-4. User exits draw mode; extension posts draw result payload.
-5. Server stores session (`StoreSession` / `AppendToNamedSession`).
-6. Store callback completes matching `ann_*` command with session payload.
-7. Client polls `observe({what:"command_result", correlation_id})` and receives terminal result.
+6. User exits draw mode; extension posts draw result payload.
+7. Server stores session (`StoreSession` / `AppendToNamedSession`).
+8. Store callback completes matching `ann_*` command with session payload.
+9. Client polls `observe({what:"command_result", correlation_id})` and receives terminal result.
 
 ## Error and Recovery Paths
 
@@ -85,4 +91,3 @@ This map covers annotation retrieval through `analyze(what:"annotations")`, incl
 - Do not introduce stdout/stderr writes in command/result handlers (MCP framing safety).
 - Any new terminal reason code must be documented here and in the feature tech spec.
 - Schema changes for `analyze` must update golden tool list snapshots.
-
