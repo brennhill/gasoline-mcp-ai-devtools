@@ -230,3 +230,25 @@ func TestHealthMetrics_ConcurrentAccess(t *testing.T) {
 		t.Fatalf("GetTotalErrors() after 100 concurrent increments = %d, want 100", got)
 	}
 }
+
+func TestBuildServerInfo_IncludesLaunchModeMetadata(t *testing.T) {
+	previous := getCurrentLaunchMode()
+	setCurrentLaunchMode(launchModeInfo{
+		Mode:          launchModeLikelyTransient,
+		Reason:        "interactive_shell_parent",
+		ParentProcess: "zsh",
+	})
+	t.Cleanup(func() { setCurrentLaunchMode(previous) })
+
+	hm := NewHealthMetrics()
+	info := hm.buildServerInfo("test-version")
+	if info.LaunchMode != launchModeLikelyTransient {
+		t.Fatalf("launch_mode = %q, want %q", info.LaunchMode, launchModeLikelyTransient)
+	}
+	if info.LaunchModeReason != "interactive_shell_parent" {
+		t.Fatalf("launch_mode_reason = %q, want interactive_shell_parent", info.LaunchModeReason)
+	}
+	if info.ParentProcess != "zsh" {
+		t.Fatalf("parent_process = %q, want zsh", info.ParentProcess)
+	}
+}

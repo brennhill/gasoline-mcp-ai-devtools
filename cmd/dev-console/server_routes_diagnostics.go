@@ -43,6 +43,7 @@ func (s *Server) handleDiagnostics(w http.ResponseWriter, r *http.Request, cap *
 	}
 
 	now := time.Now()
+	launch := getCurrentLaunchMode()
 	resp := map[string]any{
 		"generated_at":   now.Format(time.RFC3339),
 		"version":        version,
@@ -57,6 +58,14 @@ func (s *Server) handleDiagnostics(w http.ResponseWriter, r *http.Request, cap *
 			"entries":     s.getEntryCount(),
 			"max_entries": s.maxEntries,
 			"log_file":    s.logFile,
+		},
+		"launch_mode": map[string]any{
+			"mode":             launch.Mode,
+			"reason":           launch.Reason,
+			"parent_process":   launch.ParentProcess,
+			"is_tty":           launch.IsTTY,
+			"strict_required":  launch.StrictRequired,
+			"under_supervisor": launch.UnderSupervisor,
 		},
 	}
 

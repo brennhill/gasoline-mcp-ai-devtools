@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/capture"
 )
@@ -188,7 +189,9 @@ func TestMCPHandlerHandleRequestCorePaths(t *testing.T) {
 }
 
 func TestMCPHandlerResourceAndToolMethods(t *testing.T) {
-	t.Parallel()
+	origLastNotify := updateNotifyLastShown
+	updateNotifyLastShown = time.Now()
+	t.Cleanup(func() { updateNotifyLastShown = origLastNotify })
 
 	h := NewMCPHandler(nil, "v-test")
 	th := &fakeToolHandlerForMCP{
