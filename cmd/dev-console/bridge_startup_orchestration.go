@@ -5,6 +5,8 @@ package main
 import (
 	"fmt"
 	"time"
+
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/util"
 )
 
 // runBridgeMode bridges stdio (from MCP client) to HTTP (to persistent server)
@@ -31,16 +33,27 @@ func runBridgeMode(port int, logFile string, maxEntries int) {
 
 	// Phase 2: No server found. Wait for a peer bridge to finish spawning
 	// before we start our own daemon (avoids multi-bridge spawn races).
+	//
+	// IMPORTANT: This wait must not block MCP stdio startup. The bridge read loop
+	// must begin immediately so initialize/tools/list fast-path responses are not
+	// delayed during cold start.
 	if shouldSpawn {
-		shouldSpawn = !waitForPeerDaemon(state, port)
-	}
-
-	if shouldSpawn {
-		spawnDaemonAsync(state)
+		startDaemonSpawnCoordinator(state, port)
 	}
 
 	// Bridge stdio <-> HTTP with fast-start support
 	bridgeStdioToHTTPFast(serverURL+"/mcp", state, port)
+}
+
+// startDaemonSpawnCoordinator runs peer-wait/spawn policy asynchronously so MCP
+// stdio handling can start immediately.
+func startDaemonSpawnCoordinator(state *daemonState, port int) {
+	util.SafeGo(func() {
+		if waitForPeerDaemon(state, port) {
+			return
+		}
+		spawnDaemonAsync(state)
+	})
 }
 
 // tryConnectToExisting checks for a running server and validates compatibility.

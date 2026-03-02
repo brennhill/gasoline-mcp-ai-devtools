@@ -4,9 +4,11 @@ feature_id: feature-observe
 status: shipped
 feature_type: feature
 owners: []
-last_reviewed: 2026-02-17
+last_reviewed: 2026-03-02
 code_paths:
   - cmd/dev-console/tools_observe.go
+  - cmd/dev-console/tools_observe_registry.go
+  - cmd/dev-console/tools_observe_response.go
   - cmd/dev-console/tools_observe_analysis.go
   - cmd/dev-console/tools_observe_bundling.go
   - cmd/dev-console/observe_filtering.go
@@ -30,6 +32,7 @@ test_paths:
 - Product: `product-spec.md`
 - Tech: `tech-spec.md`
 - QA: `qa-plan.md`
+- Flow Map: `flow-map.md`
 
 ## Canonical Note
 `observe` is the passive read surface for captured browser/server state. It is the canonical polling surface for async command completion via `what:"command_result"`.

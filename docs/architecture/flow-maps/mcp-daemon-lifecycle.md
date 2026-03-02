@@ -13,11 +13,14 @@ code_paths:
   - cmd/dev-console/main_connection_mcp_bootstrap.go
   - cmd/dev-console/main_connection_mcp_upgrade.go
   - cmd/dev-console/main_connection_mcp_shutdown.go
+  - cmd/dev-console/daemon_lifecycle.go
+  - cmd/dev-console/daemon_lock_file.go
   - cmd/dev-console/server_routes.go
 test_paths:
   - cmd/dev-console/main_connection_coverage_test.go
   - cmd/dev-console/main_connection_diag_test.go
   - cmd/dev-console/main_connection_pid_contract_test.go
+  - cmd/dev-console/daemon_lifecycle_policy_test.go
   - cmd/dev-console/runtime_mode_test.go
 ---
 
@@ -62,12 +65,15 @@ Covers daemon startup, HTTP bind, PID/lock persistence, upgrade watcher wiring, 
 - `cmd/dev-console/main_connection_mcp_bootstrap.go`
 - `cmd/dev-console/main_connection_mcp_upgrade.go`
 - `cmd/dev-console/main_connection_mcp_shutdown.go`
+- `cmd/dev-console/daemon_lifecycle.go`
+- `cmd/dev-console/daemon_lock_file.go`
 
 ## Test Paths
 
 - `cmd/dev-console/main_connection_coverage_test.go`
 - `cmd/dev-console/main_connection_diag_test.go`
 - `cmd/dev-console/main_connection_pid_contract_test.go`
+- `cmd/dev-console/daemon_lifecycle_policy_test.go`
 - `cmd/dev-console/runtime_mode_test.go`
 
 ## Edit Guardrails
