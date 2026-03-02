@@ -27,7 +27,7 @@ type ResponseMetadata struct {
 }
 
 // BuildResponseMetadata constructs freshness metadata for an observe response.
-func BuildResponseMetadata(cap *capture.Capture, newestEntry time.Time) ResponseMetadata {
+func BuildResponseMetadata(cap *capture.Store, newestEntry time.Time) ResponseMetadata {
 	now := time.Now()
 	meta := ResponseMetadata{
 		RetrievedAt: now.Format(time.RFC3339),
@@ -48,7 +48,7 @@ func BuildResponseMetadata(cap *capture.Capture, newestEntry time.Time) Response
 }
 
 // BuildPaginatedResponseMetadata merges freshness metadata with cursor pagination metadata.
-func BuildPaginatedResponseMetadata(cap *capture.Capture, newestEntry time.Time, pMeta *pagination.CursorPaginationMetadata) map[string]any {
+func BuildPaginatedResponseMetadata(cap *capture.Store, newestEntry time.Time, pMeta *pagination.CursorPaginationMetadata) map[string]any {
 	base := BuildResponseMetadata(cap, newestEntry)
 	meta := map[string]any{
 		"retrieved_at": base.RetrievedAt,

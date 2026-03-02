@@ -83,7 +83,7 @@ func saveImageToScreenshotsDir(filename string, imageData []byte) (string, int, 
 
 // handleScreenshot saves a screenshot JPEG to disk and returns the filename.
 // If query_id is provided, resolves the pending query directly (on-demand screenshot flow).
-func (s *Server) handleScreenshot(w http.ResponseWriter, r *http.Request, cap *capture.Capture) {
+func (s *Server) handleScreenshot(w http.ResponseWriter, r *http.Request, cap *capture.Store) {
 	if r.Method != "POST" {
 		jsonResponse(w, http.StatusMethodNotAllowed, map[string]string{"error": "Method not allowed"})
 		return

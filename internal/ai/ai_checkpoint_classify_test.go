@@ -26,7 +26,7 @@ func TestCapWSDiff_CapsAllFields(t *testing.T) {
 
 	diff := &WebSocketDiff{}
 	for i := 0; i < maxDiffEntriesPerCat+10; i++ {
-		diff.Disconnections = append(diff.Disconnections, WSDisco{URL: fmt.Sprintf("ws://%d", i)})
+		diff.Disconnections = append(diff.Disconnections, WSDisconnection{URL: fmt.Sprintf("ws://%d", i)})
 		diff.Connections = append(diff.Connections, WSConn{URL: fmt.Sprintf("ws://%d", i)})
 		diff.Errors = append(diff.Errors, WSError{URL: fmt.Sprintf("ws://%d", i)})
 	}

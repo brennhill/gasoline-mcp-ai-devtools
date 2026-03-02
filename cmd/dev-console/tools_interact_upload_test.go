@@ -708,6 +708,6 @@ func (e *uploadTestEnv) handleOSAutomation(t *testing.T, req OSAutomationInjectR
 }
 
 // newTestCapture creates a capture for testing (reused from existing test infra)
-func newTestCapture() *capture.Capture {
+func newTestCapture() *capture.Store {
 	return capture.NewCapture()
 }

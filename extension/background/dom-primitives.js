@@ -1005,14 +1005,14 @@ export function domPrimitive(action, selector, options) {
                     return {
                         element: visible[0],
                         match_count: 1,
-                        match_strategy: 'dismiss_close_button_selector',
+                        match_strategy: 'intent_dismiss_top_overlay',
                         scope_selector_used: requestedScope || 'intent:auto_top_overlay'
                     };
                 }
             }
             // Strategy B: Find buttons with dismiss-like text content (expanded patterns)
             const dismissTextPatterns = /^(close|dismiss|cancel|not now|no thanks|skip|hide|back|got it|maybe later|x|\u00d7|\u2715|\u2716|\u2573)$/i;
-            const allButtons = querySelectorAllDeep('button, [role="button"]', overlayElement);
+            const allButtons = querySelectorAllDeep('button, [role="button"], [aria-label], [data-testid], [title]', overlayElement);
             const dismissButtons = [];
             for (const btn of uniqueElements(allButtons)) {
                 if (!isActionableVisible(btn))
@@ -1026,7 +1026,7 @@ export function domPrimitive(action, selector, options) {
                 if (submitVerb.test(label))
                     score -= 600;
                 // SVG close icons: button containing only an SVG (common close icon pattern)
-                const hasSvgIcon = btn.querySelector('svg') !== null;
+                const hasSvgIcon = typeof btn.querySelector === 'function' && btn.querySelector('svg') !== null;
                 const textLen = (btn.textContent || '').trim().length;
                 if (hasSvgIcon && textLen <= 2)
                     score += 500;
@@ -1043,7 +1043,7 @@ export function domPrimitive(action, selector, options) {
                 return {
                     element: dismissButtons[0].element,
                     match_count: 1,
-                    match_strategy: 'dismiss_text_button',
+                    match_strategy: 'intent_dismiss_top_overlay',
                     scope_selector_used: requestedScope || 'intent:auto_top_overlay'
                 };
             }
@@ -1058,7 +1058,7 @@ export function domPrimitive(action, selector, options) {
                     return {
                         element: candidate,
                         match_count: 1,
-                        match_strategy: 'dismiss_attr_match',
+                        match_strategy: 'intent_dismiss_top_overlay',
                         scope_selector_used: requestedScope || 'intent:auto_top_overlay'
                     };
                 }
@@ -1558,13 +1558,24 @@ export function domPrimitive(action, selector, options) {
     const resolvedAmbiguousMatches = resolved.ambiguous_matches;
     /** Capture current viewport/scroll position for action responses. */
     function captureViewport() {
+        const w = typeof window !== 'undefined' ? window : null;
+        const docEl = document?.documentElement;
+        const body = document?.body;
         return {
-            scroll_x: Math.round(window.scrollX || window.pageXOffset || 0),
-            scroll_y: Math.round(window.scrollY || window.pageYOffset || 0),
-            viewport_width: window.innerWidth || document.documentElement.clientWidth || 0,
-            viewport_height: window.innerHeight || document.documentElement.clientHeight || 0,
-            page_height: Math.max(document.body?.scrollHeight || 0, document.documentElement?.scrollHeight || 0)
+            scroll_x: Math.round((w?.scrollX ?? w?.pageXOffset ?? 0)),
+            scroll_y: Math.round((w?.scrollY ?? w?.pageYOffset ?? 0)),
+            viewport_width: w?.innerWidth ?? docEl?.clientWidth ?? 0,
+            viewport_height: w?.innerHeight ?? docEl?.clientHeight ?? 0,
+            page_height: Math.max(body?.scrollHeight || 0, docEl?.scrollHeight || 0)
         };
+    }
+    function dispatchEventIfPossible(target, event) {
+        if (!target)
+            return;
+        const dispatch = target.dispatchEvent;
+        if (typeof dispatch !== 'function')
+            return;
+        dispatch.call(target, event);
     }
     // #368: Check if an overlay might be obscuring the target element
     function detectOverlayWarning(targetEl) {
@@ -1572,7 +1583,7 @@ export function domPrimitive(action, selector, options) {
         if (!overlay)
             return {};
         // If the target is inside the overlay, no warning needed — the action is targeting the overlay correctly
-        if (overlay.contains(targetEl))
+        if (typeof overlay.contains === 'function' && overlay.contains(targetEl))
             return {};
         const overlayInfo = describeOverlay(overlay);
         return {
@@ -2317,11 +2328,11 @@ export function domPrimitive(action, selector, options) {
                         key: 'Escape', code: 'Escape', keyCode: 27,
                         bubbles: true, cancelable: true
                     };
-                    document.dispatchEvent(new KeyboardEvent('keydown', escKb));
-                    document.dispatchEvent(new KeyboardEvent('keyup', escKb));
+                    dispatchEventIfPossible(document, new KeyboardEvent('keydown', escKb));
+                    dispatchEventIfPossible(document, new KeyboardEvent('keyup', escKb));
                     // Also try the overlay element directly
-                    node.dispatchEvent(new KeyboardEvent('keydown', escKb));
-                    node.dispatchEvent(new KeyboardEvent('keyup', escKb));
+                    dispatchEventIfPossible(node, new KeyboardEvent('keydown', escKb));
+                    dispatchEventIfPossible(node, new KeyboardEvent('keyup', escKb));
                     return mutatingSuccess(node, {
                         strategy: 'escape_key',
                         ...overlayInfo
@@ -2368,10 +2379,10 @@ export function domPrimitive(action, selector, options) {
                         key: 'Escape', code: 'Escape', keyCode: 27,
                         bubbles: true, cancelable: true
                     };
-                    document.dispatchEvent(new KeyboardEvent('keydown', escKb));
-                    document.dispatchEvent(new KeyboardEvent('keyup', escKb));
-                    node.dispatchEvent(new KeyboardEvent('keydown', escKb));
-                    node.dispatchEvent(new KeyboardEvent('keyup', escKb));
+                    dispatchEventIfPossible(document, new KeyboardEvent('keydown', escKb));
+                    dispatchEventIfPossible(document, new KeyboardEvent('keyup', escKb));
+                    dispatchEventIfPossible(node, new KeyboardEvent('keydown', escKb));
+                    dispatchEventIfPossible(node, new KeyboardEvent('keyup', escKb));
                     return mutatingSuccess(node, {
                         dismissed_count: 1,
                         strategy: 'escape_key',

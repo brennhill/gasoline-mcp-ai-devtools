@@ -14,6 +14,13 @@ import (
 // Type aliases for imported packages to avoid qualifying every use.
 // These are real type aliases (= syntax), not any forward declarations.
 type (
+	// Store is the preferred non-stuttering name for the package's primary state container.
+	// Backward compatibility: Capture remains available as an alias target.
+	Store = Capture
+	// Snapshot is the preferred non-stuttering name for CaptureSnapshot.
+	// Backward compatibility: CaptureSnapshot remains available as an alias target.
+	Snapshot = CaptureSnapshot
+
 	PerformanceSnapshot   = performance.PerformanceSnapshot   // Alias for convenience (avoid qualifying as performance.PerformanceSnapshot everywhere)
 	PerformanceBaseline   = performance.PerformanceBaseline   // Alias for convenience
 	PerformanceRegression = performance.PerformanceRegression // Alias for convenience
@@ -49,3 +56,7 @@ type (
 
 // NewCircuitBreaker is re-exported from internal/circuit for backward compatibility.
 var NewCircuitBreaker = circuit.NewCircuitBreaker
+
+// NewStore is the preferred constructor name for Store.
+// Backward compatibility: NewCapture remains available.
+func NewStore() *Store { return NewCapture() }

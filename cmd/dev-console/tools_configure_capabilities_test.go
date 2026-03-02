@@ -15,7 +15,7 @@ func TestDescribeCapabilities_ResponseStructure(t *testing.T) {
 	t.Parallel()
 	h := newTestToolHandler()
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`)}
-	resp := h.handleDescribeCapabilities(req, json.RawMessage(`{}`))
+	resp := h.toolConfigureDescribeCapabilities(req, json.RawMessage(`{}`))
 
 	var result MCPToolResult
 	if err := json.Unmarshal(resp.Result, &result); err != nil {
@@ -83,7 +83,7 @@ func TestDescribeCapabilities_ToolsHaveModes(t *testing.T) {
 	t.Parallel()
 	h := newTestToolHandler()
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`)}
-	resp := h.handleDescribeCapabilities(req, json.RawMessage(`{}`))
+	resp := h.toolConfigureDescribeCapabilities(req, json.RawMessage(`{}`))
 
 	var result MCPToolResult
 	if err := json.Unmarshal(resp.Result, &result); err != nil {
@@ -122,9 +122,9 @@ func TestDescribeCapabilities_SummaryMode(t *testing.T) {
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`)}
 
 	// Full response
-	fullResp := h.handleDescribeCapabilities(req, json.RawMessage(`{}`))
+	fullResp := h.toolConfigureDescribeCapabilities(req, json.RawMessage(`{}`))
 	// Summary response
-	summaryResp := h.handleDescribeCapabilities(req, json.RawMessage(`{"summary":true}`))
+	summaryResp := h.toolConfigureDescribeCapabilities(req, json.RawMessage(`{"summary":true}`))
 
 	// Summary should be significantly smaller
 	if len(summaryResp.Result) >= len(fullResp.Result) {
@@ -171,7 +171,7 @@ func TestDescribeCapabilities_ConfigureIncludesModeParameterDetails(t *testing.T
 	t.Parallel()
 	h := newTestToolHandler()
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`)}
-	resp := h.handleDescribeCapabilities(req, json.RawMessage(`{}`))
+	resp := h.toolConfigureDescribeCapabilities(req, json.RawMessage(`{}`))
 
 	var result MCPToolResult
 	if err := json.Unmarshal(resp.Result, &result); err != nil {
@@ -236,7 +236,7 @@ func TestDescribeCapabilities_FilterByTool(t *testing.T) {
 	t.Parallel()
 	h := newTestToolHandler()
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`)}
-	resp := h.handleDescribeCapabilities(req, json.RawMessage(`{"tool":"observe"}`))
+	resp := h.toolConfigureDescribeCapabilities(req, json.RawMessage(`{"tool":"observe"}`))
 
 	data := parseCapabilitiesJSON(t, resp)
 
@@ -263,7 +263,7 @@ func TestDescribeCapabilities_FilterByToolAndMode(t *testing.T) {
 	t.Parallel()
 	h := newTestToolHandler()
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`)}
-	resp := h.handleDescribeCapabilities(req, json.RawMessage(`{"tool":"configure","mode":"store"}`))
+	resp := h.toolConfigureDescribeCapabilities(req, json.RawMessage(`{"tool":"configure","mode":"store"}`))
 
 	data := parseCapabilitiesJSON(t, resp)
 
@@ -292,7 +292,7 @@ func TestDescribeCapabilities_FilterByTool_Unknown(t *testing.T) {
 	t.Parallel()
 	h := newTestToolHandler()
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`)}
-	resp := h.handleDescribeCapabilities(req, json.RawMessage(`{"tool":"nonexistent"}`))
+	resp := h.toolConfigureDescribeCapabilities(req, json.RawMessage(`{"tool":"nonexistent"}`))
 
 	var result MCPToolResult
 	if err := json.Unmarshal(resp.Result, &result); err != nil {
@@ -317,7 +317,7 @@ func TestDescribeCapabilities_ModeWithoutTool(t *testing.T) {
 	t.Parallel()
 	h := newTestToolHandler()
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`)}
-	resp := h.handleDescribeCapabilities(req, json.RawMessage(`{"mode":"store"}`))
+	resp := h.toolConfigureDescribeCapabilities(req, json.RawMessage(`{"mode":"store"}`))
 
 	var result MCPToolResult
 	if err := json.Unmarshal(resp.Result, &result); err != nil {
@@ -336,7 +336,7 @@ func TestDescribeCapabilities_FilterByToolAndMode_Unknown(t *testing.T) {
 	t.Parallel()
 	h := newTestToolHandler()
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`)}
-	resp := h.handleDescribeCapabilities(req, json.RawMessage(`{"tool":"configure","mode":"nonexistent"}`))
+	resp := h.toolConfigureDescribeCapabilities(req, json.RawMessage(`{"tool":"configure","mode":"nonexistent"}`))
 
 	var result MCPToolResult
 	if err := json.Unmarshal(resp.Result, &result); err != nil {

@@ -24,7 +24,7 @@ import (
 type videoTestEnv struct {
 	handler *ToolHandler
 	server  *Server
-	capture *capture.Capture
+	capture *capture.Store
 }
 
 func newVideoTestEnv(t *testing.T) *videoTestEnv {

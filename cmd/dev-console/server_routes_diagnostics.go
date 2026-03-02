@@ -36,7 +36,7 @@ func (s *Server) lastConsoleEvent() map[string]any {
 }
 
 // handleDiagnostics serves the /diagnostics endpoint with debug information.
-func (s *Server) handleDiagnostics(w http.ResponseWriter, r *http.Request, cap *capture.Capture) {
+func (s *Server) handleDiagnostics(w http.ResponseWriter, r *http.Request, cap *capture.Store) {
 	if r.Method != "GET" {
 		jsonResponse(w, http.StatusMethodNotAllowed, map[string]string{"error": "Method not allowed"})
 		return
@@ -82,7 +82,7 @@ func (s *Server) handleDiagnostics(w http.ResponseWriter, r *http.Request, cap *
 }
 
 // appendCaptureDiagnostics adds capture-related diagnostic fields to response map.
-func appendCaptureDiagnostics(resp map[string]any, cap *capture.Capture) {
+func appendCaptureDiagnostics(resp map[string]any, cap *capture.Store) {
 	snap := cap.GetHealthSnapshot()
 	health := cap.GetHealthStatus()
 

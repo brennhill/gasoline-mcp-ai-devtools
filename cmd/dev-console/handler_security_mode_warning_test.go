@@ -73,7 +73,7 @@ func TestToolResponsePostProcessing_AddsSecurityModeMetadataAndWarning(t *testin
 	}
 }
 
-func makeTestCapture(t *testing.T) *capture.Capture {
+func makeTestCapture(t *testing.T) *capture.Store {
 	t.Helper()
 	cap := capture.NewCapture()
 	cap.SetPilotEnabled(true)

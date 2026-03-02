@@ -23,7 +23,7 @@ import (
 // makeToolHandler creates a ToolHandler with a temp-dir-backed Server and fresh Capture.
 // Replaces: makeObserveToolHandler, makeAnalyzeToolHandler, makeGenerateToolHandler,
 // makeConfigureToolHandler, makeInteractToolHandler (all identical).
-func makeToolHandler(t *testing.T) (*ToolHandler, *Server, *capture.Capture) {
+func makeToolHandler(t *testing.T) (*ToolHandler, *Server, *capture.Store) {
 	t.Helper()
 	server, err := NewServer(t.TempDir()+"/test.jsonl", 100)
 	if err != nil {
@@ -43,7 +43,7 @@ func makeToolHandler(t *testing.T) (*ToolHandler, *Server, *capture.Capture) {
 type toolTestEnv struct {
 	handler *ToolHandler
 	server  *Server
-	capture *capture.Capture
+	capture *capture.Store
 }
 
 // newToolTestEnv creates a toolTestEnv with t.TempDir() and t.Cleanup.
@@ -65,7 +65,7 @@ func newToolTestEnv(t *testing.T) *toolTestEnv {
 
 // mockConnectedTrackedTab simulates an extension sync and a tracked active tab.
 // Use this for tests that exercise interact flows requiring extension + tab state.
-func mockConnectedTrackedTab(t *testing.T, cap *capture.Capture) {
+func mockConnectedTrackedTab(t *testing.T, cap *capture.Store) {
 	t.Helper()
 	httpReq := httptest.NewRequest("POST", "/sync", strings.NewReader(`{"ext_session_id":"test"}`))
 	httpReq.Header.Set("X-Gasoline-Client", "test-client")

@@ -61,7 +61,7 @@ func (s *Server) handleDashboard(w http.ResponseWriter, r *http.Request) {
 }
 
 // handleStatusAPI serves GET /api/status with aggregated data for the dashboard.
-func handleStatusAPI(server *Server, cap *capture.Capture, mcpHandler *MCPHandler) http.HandlerFunc {
+func handleStatusAPI(server *Server, cap *capture.Store, mcpHandler *MCPHandler) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != "GET" {
 			jsonResponse(w, http.StatusMethodNotAllowed, map[string]string{"error": "Method not allowed"})

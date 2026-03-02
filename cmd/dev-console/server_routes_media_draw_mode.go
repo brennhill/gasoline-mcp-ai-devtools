@@ -153,7 +153,7 @@ func storeAnnotationSessionInStore(store *AnnotationStore, body *drawModeRequest
 
 // handleDrawModeComplete receives annotation data and screenshot from the extension
 // when the user finishes a draw mode session.
-func (s *Server) handleDrawModeComplete(w http.ResponseWriter, r *http.Request, cap *capture.Capture) {
+func (s *Server) handleDrawModeComplete(w http.ResponseWriter, r *http.Request, cap *capture.Store) {
 	if r.Method != "POST" {
 		jsonResponse(w, http.StatusMethodNotAllowed, map[string]string{"error": "Method not allowed"})
 		return

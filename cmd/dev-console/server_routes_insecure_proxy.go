@@ -42,7 +42,7 @@ var insecureProxyStripHeaders = map[string]bool{
 	"x-webkit-csp":                        true,
 }
 
-func (s *Server) handleInsecureProxy(w http.ResponseWriter, r *http.Request, cap *capture.Capture) {
+func (s *Server) handleInsecureProxy(w http.ResponseWriter, r *http.Request, cap *capture.Store) {
 	if r.Method != http.MethodGet {
 		jsonResponse(w, http.StatusMethodNotAllowed, map[string]string{"error": "Method not allowed"})
 		return

@@ -19,7 +19,7 @@ import (
 
 // BuildPaginatedMetadataWithSummary adds a summary block to first-page paginated responses.
 func BuildPaginatedMetadataWithSummary(
-	cap *capture.Capture, newestEntry time.Time,
+	cap *capture.Store, newestEntry time.Time,
 	pMeta *pagination.CursorPaginationMetadata,
 	isFirstPage bool,
 	summaryFn func() map[string]any,

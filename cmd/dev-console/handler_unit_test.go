@@ -38,14 +38,14 @@ func (r testRedactor) RedactMapValues(data map[string]any) map[string]any {
 }
 
 type fakeToolHandlerForMCP struct {
-	cap      *capture.Capture
+	cap      *capture.Store
 	limiter  RateLimiter
 	redactor RedactionEngine
 	tools    []MCPTool
 	handleFn func(req JSONRPCRequest, name string, arguments json.RawMessage) (JSONRPCResponse, bool)
 }
 
-func (f *fakeToolHandlerForMCP) GetCapture() *capture.Capture { return f.cap }
+func (f *fakeToolHandlerForMCP) GetCapture() *capture.Store { return f.cap }
 func (f *fakeToolHandlerForMCP) GetToolCallLimiter() RateLimiter {
 	return f.limiter
 }
