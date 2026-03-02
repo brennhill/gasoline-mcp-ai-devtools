@@ -2,6 +2,12 @@
 
 Use this with `CLAUDE.md` and `.claude/instructions.md`. If rules conflict, choose the stricter rule.
 
+## GitNexus Policy (Non-Blocking)
+
+- Use GitNexus when it helps with architecture/context, but treat it as optional.
+- If GitNexus is unavailable, stale, slow, or errors, continue immediately using local repo inspection and tests.
+- Never pause task execution waiting for GitNexus index refresh.
+
 ## Worktree Isolation (Required)
 
 Before writing code:

@@ -121,15 +121,15 @@ No code-only refactor is considered complete until this documentation contract i
 
 This project is indexed by GitNexus as **gasoline** (16548 symbols, 46124 relationships, 300 execution flows).
 
-## Always Start Here
+## Fast Path (Non-Blocking)
 
-1. **Read `gitnexus://repo/{name}/context`** — codebase overview + check index freshness
-2. **Match your task to a skill below** and **read that skill file**
-3. **Follow the skill's workflow and checklist**
+1. Prefer to read `gitnexus://repo/{name}/context` first for codebase overview and index freshness.
+2. Match your task to a skill below and read that skill file when it adds value.
+3. If GitNexus is unavailable, stale, slow, or errors, continue immediately with local code search/tests (`rg`, targeted file reads, and normal test runs).
 
-> If step 1 warns the index is stale, run `npx gitnexus analyze` in the terminal first.
+> GitNexus is advisory, not a gate. Do not pause delivery waiting for GitNexus.
 >
-> Operational rule: `npx gitnexus analyze` may refresh index stats in this file (and `AGENTS.md`). Treat those stat-line updates as expected automation output, not unexpected edits; keep them and continue without pausing.
+> If index refresh is useful, run `npx gitnexus analyze` opportunistically. Any stat-line updates in this file (and `AGENTS.md`) are expected automation output; keep them and continue without pausing.
 
 ## Skills
 
