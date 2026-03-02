@@ -8,8 +8,8 @@ import (
 	"encoding/json"
 	"time"
 
-	"github.com/dev-console/dev-console/internal/queries"
-	act "github.com/dev-console/dev-console/internal/tools/interact"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/queries"
+	act "github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/tools/interact"
 )
 
 // stateCaptureResult — type alias delegated to internal/tools/interact package.

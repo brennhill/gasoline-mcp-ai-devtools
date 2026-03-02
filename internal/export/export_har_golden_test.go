@@ -11,7 +11,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/dev-console/dev-console/internal/types"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/types"
 )
 
 func TestGoldenHARBasic(t *testing.T) {

@@ -7,7 +7,7 @@ package main
 import (
 	"encoding/json"
 
-	"github.com/dev-console/dev-console/internal/queries"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/queries"
 )
 
 // handleWaitForStable is the named handler for the standalone wait_for_stable action.

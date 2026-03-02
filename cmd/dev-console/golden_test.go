@@ -13,7 +13,7 @@ import (
 	"regexp"
 	"testing"
 
-	"github.com/dev-console/dev-console/internal/capture"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/capture"
 )
 
 var updateGolden = os.Getenv("UPDATE_GOLDEN") == "1"

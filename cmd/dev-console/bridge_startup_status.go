@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/dev-console/dev-console/internal/bridge"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/bridge"
 )
 
 // isServerRunning delegates to internal/bridge for health check.

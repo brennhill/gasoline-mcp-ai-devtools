@@ -17,10 +17,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/dev-console/dev-console/internal/bridge"
-	"github.com/dev-console/dev-console/internal/schema"
-	statecfg "github.com/dev-console/dev-console/internal/state"
-	"github.com/dev-console/dev-console/internal/util"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/bridge"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/schema"
+	statecfg "github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/state"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/util"
 )
 
 // isGasolineService accepts both the legacy "gasoline" and new "gasoline-agentic-browser" names.

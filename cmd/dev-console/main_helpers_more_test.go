@@ -13,7 +13,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/dev-console/dev-console/internal/state"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/state"
 )
 
 func TestFindMCPConfigResolution(t *testing.T) {

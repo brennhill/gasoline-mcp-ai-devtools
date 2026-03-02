@@ -4,7 +4,7 @@
 
 package main
 
-import "github.com/dev-console/dev-console/internal/upload"
+import "github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/upload"
 
 var (
 	resolvePublicIP      = upload.ResolvePublicIP

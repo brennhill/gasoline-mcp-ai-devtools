@@ -7,8 +7,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/dev-console/dev-console/internal/capture"
-	"github.com/dev-console/dev-console/internal/pagination"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/capture"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/pagination"
 )
 
 // TODO: Add data_age_ms, page_ready_for_commands, tab_status to OpenAPI spec.

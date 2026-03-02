@@ -10,10 +10,10 @@ import (
 	"path/filepath"
 	"time"
 
-	ai "github.com/dev-console/dev-console/internal/ai"
-	"github.com/dev-console/dev-console/internal/state"
-	az "github.com/dev-console/dev-console/internal/tools/analyze"
-	"github.com/dev-console/dev-console/internal/tools/observe"
+	ai "github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/ai"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/state"
+	az "github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/tools/analyze"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/tools/observe"
 )
 
 // ============================================

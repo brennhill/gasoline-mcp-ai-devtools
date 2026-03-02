@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/dev-console/dev-console/internal/capture"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/capture"
 )
 
 // Learn records a network body observation for contract tracking.

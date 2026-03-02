@@ -6,7 +6,7 @@ package configure
 import (
 	"encoding/json"
 
-	"github.com/dev-console/dev-console/internal/mcp"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/mcp"
 )
 
 // TestBoundaryStartResult holds the validated parameters for a test_boundary_start request.

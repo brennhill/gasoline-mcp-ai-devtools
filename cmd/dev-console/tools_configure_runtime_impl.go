@@ -10,9 +10,9 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/dev-console/dev-console/internal/capture"
-	cfg "github.com/dev-console/dev-console/internal/tools/configure"
-	"github.com/dev-console/dev-console/internal/util"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/capture"
+	cfg "github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/tools/configure"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/util"
 )
 
 func (h *ToolHandler) configureTelemetryImpl(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {

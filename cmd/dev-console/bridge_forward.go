@@ -13,7 +13,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/dev-console/dev-console/internal/bridge"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/bridge"
 )
 
 // bridgeDoHTTP delegates to internal/bridge for HTTP forwarding.

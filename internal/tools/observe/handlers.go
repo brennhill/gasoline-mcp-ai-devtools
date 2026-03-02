@@ -6,7 +6,7 @@ package observe
 import (
 	"encoding/json"
 
-	"github.com/dev-console/dev-console/internal/mcp"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/mcp"
 )
 
 // MaxObserveLimit caps the limit parameter to prevent oversized responses.

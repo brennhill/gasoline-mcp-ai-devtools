@@ -3,7 +3,7 @@
 
 package configure
 
-import "github.com/dev-console/dev-console/internal/audit"
+import "github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/audit"
 
 // SummarizeAuditEntries aggregates audit entries into a summary map
 // with tool call counts, success/failure rates, and session counts.

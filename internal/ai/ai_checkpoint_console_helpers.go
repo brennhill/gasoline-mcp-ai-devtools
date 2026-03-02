@@ -1,6 +1,6 @@
 package ai
 
-import gasTypes "github.com/dev-console/dev-console/internal/types"
+import gasTypes "github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/types"
 
 type fingerprintEntry struct {
 	message string

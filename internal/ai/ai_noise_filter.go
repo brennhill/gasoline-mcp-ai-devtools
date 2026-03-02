@@ -4,7 +4,7 @@
 
 package ai
 
-import "github.com/dev-console/dev-console/internal/capture"
+import "github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/capture"
 
 // IsConsoleNoise checks if a console log entry matches any noise rule.
 func (nc *NoiseConfig) IsConsoleNoise(entry LogEntry) bool {

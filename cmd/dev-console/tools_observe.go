@@ -9,7 +9,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/dev-console/dev-console/internal/tools/observe"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/tools/observe"
 )
 
 // ObserveHandler is the function signature for observe tool handlers.

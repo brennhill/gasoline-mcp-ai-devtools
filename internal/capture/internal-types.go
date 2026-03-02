@@ -5,7 +5,7 @@
 package capture
 
 import (
-	"github.com/dev-console/dev-console/internal/performance"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/performance"
 )
 
 // A11yCache manages accessibility audit result cache with LRU eviction

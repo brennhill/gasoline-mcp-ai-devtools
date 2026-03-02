@@ -7,8 +7,8 @@ package main
 import (
 	"encoding/json"
 
-	"github.com/dev-console/dev-console/internal/ai"
-	cfg "github.com/dev-console/dev-console/internal/tools/configure"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/ai"
+	cfg "github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/tools/configure"
 )
 
 func (h *ToolHandler) toolConfigureNoiseRule(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {

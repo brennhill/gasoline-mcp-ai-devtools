@@ -9,7 +9,7 @@ import (
 	"encoding/json"
 	"testing"
 
-	"github.com/dev-console/dev-console/internal/ai"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/ai"
 )
 
 // newSequenceTestEnv creates a test env with an isolated session store

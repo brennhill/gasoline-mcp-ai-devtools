@@ -5,8 +5,8 @@ import (
 	"encoding/json"
 	"sync"
 
-	"github.com/dev-console/dev-console/internal/bridge"
-	"github.com/dev-console/dev-console/internal/push"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/bridge"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/push"
 )
 
 // pushState holds client capabilities and framing mode detected during MCP initialize.

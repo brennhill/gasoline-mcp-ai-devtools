@@ -8,8 +8,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/dev-console/dev-console/internal/performance"
-	"github.com/dev-console/dev-console/internal/redaction"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/performance"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/redaction"
 )
 
 // Capture manages all buffered browser state: WebSocket events, network bodies,

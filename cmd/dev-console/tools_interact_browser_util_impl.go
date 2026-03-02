@@ -10,9 +10,9 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/dev-console/dev-console/internal/capture"
-	"github.com/dev-console/dev-console/internal/queries"
-	"github.com/dev-console/dev-console/internal/tools/observe"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/capture"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/queries"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/tools/observe"
 )
 
 // stashPerfSnapshotImpl saves the current performance snapshot as a "before" baseline

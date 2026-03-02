@@ -9,9 +9,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/dev-console/dev-console/internal/capture"
-	"github.com/dev-console/dev-console/internal/performance"
-	gasTypes "github.com/dev-console/dev-console/internal/types"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/capture"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/performance"
+	gasTypes "github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/types"
 )
 
 // ============================================

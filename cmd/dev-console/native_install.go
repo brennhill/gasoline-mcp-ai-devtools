@@ -12,7 +12,7 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/dev-console/dev-console/internal/util"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/util"
 )
 
 // runNativeInstall detects and configures all supported MCP clients.

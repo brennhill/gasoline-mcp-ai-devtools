@@ -1,6 +1,6 @@
 package ai
 
-import "github.com/dev-console/dev-console/internal/capture"
+import "github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/capture"
 
 func classifyWSEvent(diff *WebSocketDiff, evt *capture.WebSocketEvent, severity string) {
 	switch evt.Event {

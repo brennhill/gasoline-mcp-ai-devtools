@@ -9,7 +9,7 @@ import (
 	"sort"
 	"testing"
 
-	"github.com/dev-console/dev-console/internal/mcp"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/mcp"
 )
 
 func TestBuildCapabilitiesMap_Empty(t *testing.T) {

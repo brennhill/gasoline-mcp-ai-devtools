@@ -8,8 +8,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/dev-console/dev-console/internal/performance"
-	"github.com/dev-console/dev-console/internal/queries"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/performance"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/queries"
 )
 
 // finalizeResponseEnrichment attaches evidence, transient elements, and retry context

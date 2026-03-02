@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/dev-console/dev-console/internal/capture"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/capture"
 )
 
 // applyToolResponsePostProcessing applies redaction and operator warnings to tool output.

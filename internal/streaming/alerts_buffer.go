@@ -4,7 +4,7 @@
 
 package streaming
 
-import "github.com/dev-console/dev-console/internal/types"
+import "github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/types"
 
 // AddAlert appends an alert to the buffer, evicting the oldest if at capacity.
 // Also emits the alert as an MCP notification if streaming is enabled.

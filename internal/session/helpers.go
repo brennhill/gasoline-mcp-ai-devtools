@@ -8,7 +8,7 @@ package session
 import (
 	"fmt"
 
-	"github.com/dev-console/dev-console/internal/util"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/util"
 )
 
 // validateName checks snapshot name constraints.

@@ -12,8 +12,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/dev-console/dev-console/internal/capture"
-	"github.com/dev-console/dev-console/internal/upload"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/capture"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/upload"
 )
 
 // ssrfCheckEnabled controls whether the SSRF denylist is enforced.

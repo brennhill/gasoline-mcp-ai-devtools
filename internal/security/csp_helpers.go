@@ -10,7 +10,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/dev-console/dev-console/internal/util"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/util"
 )
 
 // computeConfidence determines the confidence level for an origin entry.

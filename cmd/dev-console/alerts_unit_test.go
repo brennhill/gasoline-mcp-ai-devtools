@@ -14,7 +14,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dev-console/dev-console/internal/streaming"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/streaming"
 )
 
 func TestHandleCIWebhook(t *testing.T) {

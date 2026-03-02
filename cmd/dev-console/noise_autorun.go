@@ -10,8 +10,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/dev-console/dev-console/internal/ai"
-	"github.com/dev-console/dev-console/internal/util"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/ai"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/util"
 )
 
 // noiseAutoDetectInterval is the minimum time between automatic noise detection runs.

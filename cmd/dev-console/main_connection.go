@@ -11,8 +11,8 @@ import (
 	"os/exec"
 	"time"
 
-	"github.com/dev-console/dev-console/internal/state"
-	"github.com/dev-console/dev-console/internal/util"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/state"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/util"
 )
 
 // handleMCPConnection implements the enhanced connection lifecycle with retry and auto-recovery.

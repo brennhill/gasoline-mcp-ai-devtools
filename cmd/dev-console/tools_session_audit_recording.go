@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/dev-console/dev-console/internal/audit"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/audit"
 )
 
 func (h *ToolHandler) recordAuditToolCall(

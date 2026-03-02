@@ -23,7 +23,7 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/dev-console/dev-console/internal/upload"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/upload"
 )
 
 // allowTestSSRF enables private IP access for tests using httptest.NewServer (127.0.0.1).

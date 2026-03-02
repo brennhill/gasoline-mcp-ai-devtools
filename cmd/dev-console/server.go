@@ -10,9 +10,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/dev-console/dev-console/internal/mcp"
-	"github.com/dev-console/dev-console/internal/push"
-	"github.com/dev-console/dev-console/internal/util"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/mcp"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/push"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/util"
 )
 
 // LogEntry represents a single log entry (alias to internal/mcp).

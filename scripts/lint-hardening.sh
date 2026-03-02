@@ -429,7 +429,7 @@ bold "14. Checking for forbidden stdout writes in production code..."
 #   main.go            — startup / background spawn
 #   main_connection.go — MCP pipe writes
 #   main_connection_stop*.go — CLI stop/force command output
-STDOUT_ALLOWLIST="mcp_stdout.go|connect_mode.go|bridge_io_isolation|cli\.go|cli_output\.go|config\.go|main\.go|main_connection\.go|main_connection_stop(_.*)?\.go|main_helpers\.go|doctor\.go"
+STDOUT_ALLOWLIST="mcp_stdout.go|connect_mode.go|bridge_io_isolation|cli\.go|cli_output\.go|config\.go|main\.go|main_connection\.go|main_connection_stop(_.*)?\.go|main_helpers\.go|doctor(_.*)?\.go"
 
 # Pattern: fmt.Print/Println/Printf (writes to stdout), or direct os.Stdout usage
 # Excludes: fmt.Fprintf(os.Stderr, ...) which is safe, and fmt.Sprintf which returns a string

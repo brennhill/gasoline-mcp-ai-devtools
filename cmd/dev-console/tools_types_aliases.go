@@ -2,7 +2,7 @@
 
 package main
 
-import "github.com/dev-console/dev-console/internal/mcp"
+import "github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/mcp"
 
 type MCPContentBlock = mcp.MCPContentBlock
 type MCPToolResult = mcp.MCPToolResult

@@ -1,6 +1,6 @@
 package ai
 
-import "github.com/dev-console/dev-console/internal/capture"
+import "github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/capture"
 
 func classifyNetworkBody(diff *NetworkDiff, body capture.NetworkBody, known map[string]endpointState) {
 	path := capture.ExtractURLPath(body.URL)

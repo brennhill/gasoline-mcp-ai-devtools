@@ -3,7 +3,7 @@
 VERSION := $(shell cat VERSION)
 BINARY_NAME := gasoline-agentic-browser
 BUILD_DIR := dist
-LDFLAGS := -s -w -X main.version=$(VERSION) -X github.com/dev-console/dev-console/internal/export.version=$(VERSION)
+LDFLAGS := -s -w -X main.version=$(VERSION) -X github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/export.version=$(VERSION)
 CMD_PKG ?= ./cmd/dev-console
 CMD_DIR ?= $(patsubst ./%,%,$(CMD_PKG))
 
@@ -138,7 +138,7 @@ verify-zero-deps:
 	@echo "OK: Zero external dependencies verified"
 
 verify-imports:
-	@VIOLATIONS=$$(go list -f '{{range .Imports}}{{.}} {{end}}' $(CMD_PKG)/ | tr ' ' '\n' | grep -v '^$$' | grep -v '^[a-z]' | grep -v '^github.com/dev-console/dev-console'); \
+	@VIOLATIONS=$$(go list -f '{{range .Imports}}{{.}} {{end}}' $(CMD_PKG)/ | tr ' ' '\n' | grep -v '^$$' | grep -v '^[a-z]' | grep -v '^github.com/brennhill/gasoline-agentic-browser-devtools-mcp'); \
 	if [ -n "$$VIOLATIONS" ]; then echo "FAIL: Non-stdlib imports found:"; echo "$$VIOLATIONS"; exit 1; fi
 	@echo "OK: All imports are stdlib or internal"
 

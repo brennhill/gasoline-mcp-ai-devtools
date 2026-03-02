@@ -12,7 +12,7 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/dev-console/dev-console/internal/capture"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/capture"
 )
 
 // newTestToolHandler creates a minimal ToolHandler for unit tests.

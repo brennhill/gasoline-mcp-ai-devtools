@@ -8,8 +8,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/dev-console/dev-console/internal/performance"
-	gasTypes "github.com/dev-console/dev-console/internal/types"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/performance"
+	gasTypes "github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/types"
 )
 
 // ============================================

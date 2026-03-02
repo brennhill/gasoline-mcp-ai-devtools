@@ -6,8 +6,8 @@ package main
 import (
 	"encoding/json"
 
-	"github.com/dev-console/dev-console/internal/security"
-	gen "github.com/dev-console/dev-console/internal/tools/generate"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/security"
+	gen "github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/tools/generate"
 )
 
 func (h *ToolHandler) generateCSPImpl(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {

@@ -6,8 +6,8 @@ package main
 import (
 	"encoding/json"
 
-	"github.com/dev-console/dev-console/internal/analysis"
-	"github.com/dev-console/dev-console/internal/security"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/analysis"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/security"
 )
 
 // ============================================

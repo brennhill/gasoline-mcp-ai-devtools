@@ -7,8 +7,8 @@ package main
 import (
 	"encoding/json"
 
-	"github.com/dev-console/dev-console/internal/queries"
-	act "github.com/dev-console/dev-console/internal/tools/interact"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/queries"
+	act "github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/tools/interact"
 )
 
 // domPrimitiveActions delegates to the interact package.

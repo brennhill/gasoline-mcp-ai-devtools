@@ -16,7 +16,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/dev-console/dev-console/internal/capture"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/capture"
 )
 
 // createDrawModeTestServer creates an httptest server with just the draw-mode endpoint.

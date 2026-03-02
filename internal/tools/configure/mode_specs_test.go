@@ -5,8 +5,8 @@ package configure
 import (
 	"testing"
 
-	"github.com/dev-console/dev-console/internal/mcp"
-	"github.com/dev-console/dev-console/internal/schema"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/mcp"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/schema"
 )
 
 func TestToolModeSpecs_AllToolsPresent(t *testing.T) {

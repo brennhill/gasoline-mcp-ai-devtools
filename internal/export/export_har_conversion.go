@@ -1,6 +1,6 @@
 package export
 
-import "github.com/dev-console/dev-console/internal/types"
+import "github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/types"
 
 // networkBodyToHAREntry converts a single NetworkBody to a HAR entry.
 func networkBodyToHAREntry(body types.NetworkBody) HAREntry {

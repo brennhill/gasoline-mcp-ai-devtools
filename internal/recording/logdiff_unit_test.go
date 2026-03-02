@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dev-console/dev-console/internal/state"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/state"
 )
 
 func persistRecordingForLogDiff(t *testing.T, mgr *RecordingManager, id string, actions []RecordingAction) {

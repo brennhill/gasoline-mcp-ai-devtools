@@ -310,23 +310,23 @@ import (
 	"sync"
 	"time"
 
-	"github.com/dev-console/dev-console/internal/performance"
-	"github.com/dev-console/dev-console/internal/queries"
-	"github.com/dev-console/dev-console/internal/recording"
-	"github.com/dev-console/dev-console/internal/types"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/performance"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/queries"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/recording"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/types"
 
 	// Import from new type files
-	"github.com/dev-console/dev-console/internal/capture/interfaces"
-	"github.com/dev-console/dev-console/internal/capture/type-aliases"
-	"github.com/dev-console/dev-console/internal/capture/session-types"
-	"github.com/dev-console/dev-console/internal/capture/security-types"
-	"github.com/dev-console/dev-console/internal/capture/network-types"
-	"github.com/dev-console/dev-console/internal/capture/websocket-types"
-	"github.com/dev-console/dev-console/internal/capture/extension-logging-types"
-	"github.com/dev-console/dev-console/internal/capture/enhanced-actions-types"
-	"github.com/dev-console/dev-console/internal/capture/internal-types"
-	"github.com/dev-console/dev-console/internal/capture/constants"
-	"github.com/dev-console/dev-console/internal/capture/buffer-types"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/capture/interfaces"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/capture/type-aliases"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/capture/session-types"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/capture/security-types"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/capture/network-types"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/capture/websocket-types"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/capture/extension-logging-types"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/capture/enhanced-actions-types"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/capture/internal-types"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/capture/constants"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/capture/buffer-types"
 )
 ```
 

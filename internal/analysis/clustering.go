@@ -8,7 +8,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/dev-console/dev-console/internal/types"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/types"
 )
 
 // Alert is an alias for types.Alert to avoid qualifying everywhere.

@@ -11,8 +11,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/dev-console/dev-console/internal/upload"
-	"github.com/dev-console/dev-console/internal/util"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/upload"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/util"
 )
 
 // MaxLinkValidationURLs is the upper bound on URLs accepted per validation request.

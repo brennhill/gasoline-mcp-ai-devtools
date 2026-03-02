@@ -9,7 +9,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/dev-console/dev-console/internal/bridge"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/bridge"
 )
 
 // writeMCPPayload is the only stdout emitter used by MCP wrapper responses.

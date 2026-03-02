@@ -4,7 +4,7 @@ package main
 import (
 	"encoding/json"
 
-	"github.com/dev-console/dev-console/internal/push"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/push"
 )
 
 // stdioSamplingSender sends sampling/createMessage requests via MCP stdio.

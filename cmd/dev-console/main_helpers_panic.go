@@ -12,7 +12,7 @@ import (
 	"runtime"
 	"time"
 
-	"github.com/dev-console/dev-console/internal/state"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/state"
 )
 
 // handlePanicRecovery logs crash details and writes a crash file for diagnostic discovery.

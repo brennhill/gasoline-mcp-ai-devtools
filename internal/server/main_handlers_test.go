@@ -16,7 +16,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dev-console/dev-console/internal/state"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/state"
 )
 
 func newTestServer(t *testing.T, maxEntries int) (*Server, string) {

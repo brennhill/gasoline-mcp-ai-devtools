@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/dev-console/dev-console/internal/push"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/push"
 )
 
 func newTestPushServer() *Server {

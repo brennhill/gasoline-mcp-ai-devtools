@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/dev-console/dev-console/internal/state"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/state"
 )
 
 func NewSessionStore(projectPath string) (*SessionStore, error) {

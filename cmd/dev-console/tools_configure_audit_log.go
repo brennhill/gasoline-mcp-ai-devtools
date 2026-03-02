@@ -9,8 +9,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/dev-console/dev-console/internal/audit"
-	cfg "github.com/dev-console/dev-console/internal/tools/configure"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/audit"
+	cfg "github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/tools/configure"
 )
 
 func (h *ToolHandler) toolGetAuditLog(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {

@@ -6,7 +6,7 @@ package main
 import (
 	"encoding/json"
 
-	"github.com/dev-console/dev-console/internal/export"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/export"
 )
 
 func (h *ToolHandler) exportSARIFImpl(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {

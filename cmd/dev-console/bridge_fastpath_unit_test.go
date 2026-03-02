@@ -17,7 +17,7 @@ import (
 	"testing"
 	"time"
 
-	statecfg "github.com/dev-console/dev-console/internal/state"
+	statecfg "github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/state"
 )
 
 func contentLengthFrame(payload string) string {

@@ -10,14 +10,14 @@ import (
 	"strings"
 	"time"
 
-	"github.com/dev-console/dev-console/internal/ai"
-	"github.com/dev-console/dev-console/internal/analysis"
-	"github.com/dev-console/dev-console/internal/audit"
-	"github.com/dev-console/dev-console/internal/capture"
-	"github.com/dev-console/dev-console/internal/redaction"
-	"github.com/dev-console/dev-console/internal/security"
-	"github.com/dev-console/dev-console/internal/session"
-	"github.com/dev-console/dev-console/internal/streaming"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/ai"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/analysis"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/audit"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/capture"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/redaction"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/security"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/session"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/streaming"
 )
 
 // defaultColdStartTimeout is how long requireExtension waits for the extension

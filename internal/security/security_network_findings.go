@@ -1,6 +1,6 @@
 package security
 
-import "github.com/dev-console/dev-console/internal/capture"
+import "github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/capture"
 
 func (s *SecurityScanner) checkNetworkSecurity(entries []capture.NetworkWaterfallEntry, pageURLs []string) []SecurityFinding {
 	var findings []SecurityFinding
