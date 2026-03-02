@@ -1,0 +1,73 @@
+package ai
+
+import (
+	"fmt"
+	"os"
+)
+
+func (s *SessionStore) Save(namespace, key string, data []byte) error {
+	nsDir, filePath, err := s.validatedPath(namespace, key)
+	if err != nil {
+		return err
+	}
+	if len(data) > maxFileSize {
+		return fmt.Errorf("data exceeds maximum file size (1MB): %d bytes", len(data))
+	}
+
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	currentSize, sizeErr := s.projectSize()
+	if sizeErr == nil && currentSize+int64(len(data)) > maxProjectSize {
+		return fmt.Errorf("project size limit exceeded (10MB): current=%d, adding=%d", currentSize, len(data))
+	}
+	if err := os.MkdirAll(nsDir, dirPermissions); err != nil {
+		return fmt.Errorf("failed to create namespace directory: %w", err)
+	}
+	if err := os.WriteFile(filePath, data, filePermissions); err != nil {
+		return fmt.Errorf("failed to write file: %w", err)
+	}
+	return nil
+}
+
+func (s *SessionStore) Load(namespace, key string) ([]byte, error) {
+	_, filePath, err := s.validatedPath(namespace, key)
+	if err != nil {
+		return nil, err
+	}
+
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	data, readErr := os.ReadFile(filePath) // #nosec G304 -- path validated above
+	if readErr != nil {
+		return nil, fmt.Errorf("key not found: %s/%s", namespace, key)
+	}
+	return data, nil
+}
+
+func (s *SessionStore) List(namespace string) ([]string, error) {
+	nsDir, err := s.validatedNsDir(namespace)
+	if err != nil {
+		return nil, err
+	}
+
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return jsonKeysFromDir(nsDir)
+}
+
+func (s *SessionStore) Delete(namespace, key string) error {
+	_, filePath, err := s.validatedPath(namespace, key)
+	if err != nil {
+		return err
+	}
+
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	if err := os.Remove(filePath); err != nil {
+		return fmt.Errorf("failed to delete: %s/%s: %w", namespace, key, err)
+	}
+	return nil
+}
