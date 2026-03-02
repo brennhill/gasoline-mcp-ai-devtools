@@ -12,12 +12,15 @@ code_paths:
   - cmd/dev-console/tools_observe_analysis.go
   - cmd/dev-console/tools_observe_bundling.go
   - cmd/dev-console/observe_filtering.go
+  - internal/tools/observe/analysis_screenshot.go
   - internal/capture/queries.go
   - internal/capture/sync.go
 test_paths:
   - cmd/dev-console/tools_observe_handler_test.go
   - cmd/dev-console/tools_observe_blackbox_test.go
   - cmd/dev-console/tools_observe_audit_test.go
+  - cmd/dev-console/tools_observe_screenshot_test.go
+  - internal/tools/observe/analysis_save_test.go
 ---
 
 # Observe
