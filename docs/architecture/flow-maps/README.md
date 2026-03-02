@@ -38,6 +38,7 @@ Each flow map should include:
 - [Bridge Startup Contention and Convergence](./bridge-startup-contention-and-convergence.md)
 - [Analyze Annotation Waiter and Flush Recovery](./analyze-annotations-waiter-and-flush.md)
 - [Daemon Stop and Force Cleanup](./daemon-stop-and-force-cleanup.md)
+- [DOM Selector Resolution and Disambiguation](./dom-selector-resolution-and-disambiguation.md)
 - [MCP Daemon Lifecycle](./mcp-daemon-lifecycle.md)
 - [Network Recording Control](./network-recording-control.md)
 - [Observe Dispatch and Augmentation](./observe-dispatch-and-augmentation.md)

@@ -418,9 +418,25 @@ export function domPrimitive(action, selector, options) {
         }
         return fallback;
     }
+    function parseNthMatchSelector(sel) {
+        const nthMatch = sel.match(/^(.*):nth-match\((\d+)\)$/);
+        if (!nthMatch)
+            return null;
+        const base = nthMatch[1] || '';
+        const n = Number.parseInt(nthMatch[2] || '0', 10);
+        if (!base || Number.isNaN(n) || n < 1)
+            return null;
+        return { base, n };
+    }
     function resolveElements(sel, scope = document) {
         if (!sel)
             return [];
+        const parsedNth = parseNthMatchSelector(sel);
+        if (parsedNth) {
+            const matches = resolveElements(parsedNth.base, scope);
+            const target = matches[parsedNth.n - 1];
+            return target ? [target] : [];
+        }
         if (sel.startsWith('text='))
             return resolveByTextAll(sel.slice('text='.length), scope);
         if (sel.startsWith('role='))
@@ -443,14 +459,10 @@ export function domPrimitive(action, selector, options) {
             return null;
         if (sel.includes(' >>> '))
             return resolveDeepCombinator(sel, scope);
-        const nthMatch = sel.match(/^(.*):nth-match\((\d+)\)$/);
-        if (nthMatch) {
-            const base = nthMatch[1] || '';
-            const n = Number.parseInt(nthMatch[2] || '0', 10);
-            if (!base || Number.isNaN(n) || n < 1)
-                return null;
-            const matches = resolveElements(base, scope);
-            return matches[n - 1] || null;
+        const parsedNth = parseNthMatchSelector(sel);
+        if (parsedNth) {
+            const matches = resolveElements(parsedNth.base, scope);
+            return matches[parsedNth.n - 1] || null;
         }
         if (sel.startsWith('text='))
             return resolveByText(sel.slice('text='.length), scope);
