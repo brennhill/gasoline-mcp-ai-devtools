@@ -101,6 +101,9 @@ var configureHandlers = map[string]ConfigureHandler{
 	"action_jitter": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 		return h.toolConfigureActionJitter(req, args)
 	},
+	"report_issue": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+		return h.toolConfigureReportIssue(req, args)
+	},
 }
 
 // getValidConfigureActions returns a sorted, comma-separated list of valid configure actions.

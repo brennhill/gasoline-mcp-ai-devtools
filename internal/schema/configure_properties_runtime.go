@@ -45,7 +45,19 @@ func configureRuntimeProperties() map[string]any {
 		"operation": map[string]any{
 			"type":        "string",
 			"description": "Action-specific operation key",
-			"enum":        []string{"analyze", "report", "clear", "start", "stop", "status"},
+			"enum":        []string{"analyze", "report", "clear", "start", "stop", "status", "list_templates", "preview", "submit"},
+		},
+		"template": map[string]any{
+			"type":        "string",
+			"description": "Issue template name (report_issue)",
+		},
+		"title": map[string]any{
+			"type":        "string",
+			"description": "Issue title (report_issue submit)",
+		},
+		"user_context": map[string]any{
+			"type":        "string",
+			"description": "User description of the issue (report_issue)",
 		},
 		"audit_session_id": map[string]any{
 			"type":        "string",

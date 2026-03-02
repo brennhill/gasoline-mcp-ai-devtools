@@ -112,4 +112,8 @@ var configureModeSpecs = map[string]modeParamSpec{
 		Hint:     "Randomized micro-delays before interact actions for human-like timing",
 		Optional: []string{"action_jitter_ms"},
 	},
+	"report_issue": {
+		Hint:     "Report an issue to the Gasoline team via GitHub",
+		Optional: []string{"operation", "template", "title", "user_context"},
+	},
 }
