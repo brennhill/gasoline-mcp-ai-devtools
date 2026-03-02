@@ -39,11 +39,11 @@ type CommandExecutionInfo struct {
 	LastSuccessAgeMs     int64   `json:"last_success_age_ms,omitempty"`
 }
 
-func buildCommandExecutionInfo(cap *capture.Capture) CommandExecutionInfo {
+func buildCommandExecutionInfo(cap *capture.Store) CommandExecutionInfo {
 	return buildCommandExecutionInfoAt(cap, time.Now())
 }
 
-func buildCommandExecutionInfoAt(cap *capture.Capture, now time.Time) CommandExecutionInfo {
+func buildCommandExecutionInfoAt(cap *capture.Store, now time.Time) CommandExecutionInfo {
 	info := CommandExecutionInfo{
 		Ready:         true,
 		Status:        "pass",

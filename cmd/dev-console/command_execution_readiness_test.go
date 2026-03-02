@@ -11,7 +11,7 @@ import (
 	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/capture"
 )
 
-func addCommandResultForTest(cap *capture.Capture, correlationID string, status string) {
+func addCommandResultForTest(cap *capture.Store, correlationID string, status string) {
 	cap.RegisterCommand(correlationID, "query-"+correlationID, time.Minute)
 	errText := ""
 	if status != "complete" {

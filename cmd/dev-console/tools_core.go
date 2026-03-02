@@ -32,7 +32,7 @@ import (
 // ToolHandler extends MCPHandler with composite tool dispatch
 type ToolHandler struct {
 	*MCPHandler
-	capture *capture.Capture
+	capture *capture.Store
 
 	// shutdownCtx is cancelled when the ToolHandler is closed. Gates like
 	// requireExtension pass this context to blocking waits so they abort

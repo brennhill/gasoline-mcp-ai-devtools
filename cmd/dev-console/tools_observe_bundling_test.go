@@ -27,7 +27,7 @@ import (
 type bundleTestEnv struct {
 	handler *ToolHandler
 	server  *Server
-	capture *capture.Capture
+	capture *capture.Store
 }
 
 func newBundleTestEnv(t *testing.T) *bundleTestEnv {

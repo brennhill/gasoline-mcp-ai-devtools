@@ -20,7 +20,7 @@ import (
 // handleSnapshot returns an HTTP handler for GET /snapshot.
 // Returns all captured state in a single response.
 // #lizard forgives
-func handleSnapshot(server *Server, cap *capture.Capture) http.HandlerFunc {
+func handleSnapshot(server *Server, cap *capture.Store) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != "GET" {
 			jsonResponse(w, http.StatusMethodNotAllowed, map[string]string{"error": "Method not allowed"})
@@ -79,7 +79,7 @@ func handleSnapshot(server *Server, cap *capture.Capture) http.HandlerFunc {
 
 // handleClear returns an HTTP handler for POST/DELETE /clear.
 // Resets all buffers atomically.
-func handleClear(server *Server, cap *capture.Capture) http.HandlerFunc {
+func handleClear(server *Server, cap *capture.Store) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != "POST" && r.Method != "DELETE" {
 			jsonResponse(w, http.StatusMethodNotAllowed, map[string]string{"error": "Method not allowed"})
@@ -99,7 +99,7 @@ func handleClear(server *Server, cap *capture.Capture) http.HandlerFunc {
 
 // handleTestBoundary returns an HTTP handler for POST /test-boundary.
 // Marks test boundaries for correlation.
-func handleTestBoundary(cap *capture.Capture) http.HandlerFunc {
+func handleTestBoundary(cap *capture.Store) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != "POST" {
 			jsonResponse(w, http.StatusMethodNotAllowed, map[string]string{"error": "Method not allowed"})

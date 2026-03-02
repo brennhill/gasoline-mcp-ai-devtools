@@ -105,7 +105,7 @@ func collectTimelineEntries(deps Deps, inc timelineIncludes) []timelineEntry {
 	return entries
 }
 
-func collectTimelineActions(cap *capture.Capture) []timelineEntry {
+func collectTimelineActions(cap *capture.Store) []timelineEntry {
 	actions := cap.GetAllEnhancedActions()
 	entries := make([]timelineEntry, 0, len(actions))
 	for _, a := range actions {

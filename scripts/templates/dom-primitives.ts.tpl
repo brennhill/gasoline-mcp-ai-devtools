@@ -273,16 +273,26 @@ export function domPrimitive(
 
   /** Capture current viewport/scroll position for action responses. */
   function captureViewport(): { scroll_x: number; scroll_y: number; viewport_width: number; viewport_height: number; page_height: number } {
+    const w = typeof window !== 'undefined' ? window : null
+    const docEl = document?.documentElement
+    const body = document?.body
     return {
-      scroll_x: Math.round(window.scrollX || window.pageXOffset || 0),
-      scroll_y: Math.round(window.scrollY || window.pageYOffset || 0),
-      viewport_width: window.innerWidth || document.documentElement.clientWidth || 0,
-      viewport_height: window.innerHeight || document.documentElement.clientHeight || 0,
+      scroll_x: Math.round((w?.scrollX ?? w?.pageXOffset ?? 0)),
+      scroll_y: Math.round((w?.scrollY ?? w?.pageYOffset ?? 0)),
+      viewport_width: w?.innerWidth ?? docEl?.clientWidth ?? 0,
+      viewport_height: w?.innerHeight ?? docEl?.clientHeight ?? 0,
       page_height: Math.max(
-        document.body?.scrollHeight || 0,
-        document.documentElement?.scrollHeight || 0
+        body?.scrollHeight || 0,
+        docEl?.scrollHeight || 0
       )
     }
+  }
+
+  function dispatchEventIfPossible(target: EventTarget | null | undefined, event: Event): void {
+    if (!target) return
+    const dispatch = (target as { dispatchEvent?: unknown }).dispatchEvent
+    if (typeof dispatch !== 'function') return
+    dispatch.call(target, event)
   }
 
   // #368: Check if an overlay might be obscuring the target element
@@ -290,7 +300,7 @@ export function domPrimitive(
     const overlay = findTopmostOverlay()
     if (!overlay) return {}
     // If the target is inside the overlay, no warning needed — the action is targeting the overlay correctly
-    if (overlay.contains(targetEl)) return {}
+    if (typeof (overlay as { contains?: unknown }).contains === 'function' && overlay.contains(targetEl)) return {}
     const overlayInfo = describeOverlay(overlay)
     return {
       overlay_warning: `An overlay (${overlayInfo.overlay_type}) is covering the page. The action targeted the intended element, but input may be intercepted. Use dismiss_top_overlay to close it first.`,
@@ -1096,11 +1106,11 @@ export function domPrimitive(
               key: 'Escape', code: 'Escape', keyCode: 27,
               bubbles: true, cancelable: true
             }
-            document.dispatchEvent(new KeyboardEvent('keydown', escKb))
-            document.dispatchEvent(new KeyboardEvent('keyup', escKb))
+            dispatchEventIfPossible(document, new KeyboardEvent('keydown', escKb))
+            dispatchEventIfPossible(document, new KeyboardEvent('keyup', escKb))
             // Also try the overlay element directly
-            node.dispatchEvent(new KeyboardEvent('keydown', escKb))
-            node.dispatchEvent(new KeyboardEvent('keyup', escKb))
+            dispatchEventIfPossible(node, new KeyboardEvent('keydown', escKb))
+            dispatchEventIfPossible(node, new KeyboardEvent('keyup', escKb))
             return mutatingSuccess(node, {
               strategy: 'escape_key',
               ...overlayInfo
@@ -1145,10 +1155,10 @@ export function domPrimitive(
               key: 'Escape', code: 'Escape', keyCode: 27,
               bubbles: true, cancelable: true
             }
-            document.dispatchEvent(new KeyboardEvent('keydown', escKb))
-            document.dispatchEvent(new KeyboardEvent('keyup', escKb))
-            node.dispatchEvent(new KeyboardEvent('keydown', escKb))
-            node.dispatchEvent(new KeyboardEvent('keyup', escKb))
+            dispatchEventIfPossible(document, new KeyboardEvent('keydown', escKb))
+            dispatchEventIfPossible(document, new KeyboardEvent('keyup', escKb))
+            dispatchEventIfPossible(node, new KeyboardEvent('keydown', escKb))
+            dispatchEventIfPossible(node, new KeyboardEvent('keyup', escKb))
             return mutatingSuccess(node, {
               dismissed_count: 1,
               strategy: 'escape_key',

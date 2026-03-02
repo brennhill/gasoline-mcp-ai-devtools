@@ -462,7 +462,7 @@
           return {
             element: visible[0],
             match_count: 1,
-            match_strategy: 'dismiss_close_button_selector',
+            match_strategy: 'intent_dismiss_top_overlay',
             scope_selector_used: requestedScope || 'intent:auto_top_overlay'
           }
         }
@@ -470,7 +470,7 @@
 
       // Strategy B: Find buttons with dismiss-like text content (expanded patterns)
       const dismissTextPatterns = /^(close|dismiss|cancel|not now|no thanks|skip|hide|back|got it|maybe later|x|\u00d7|\u2715|\u2716|\u2573)$/i
-      const allButtons = querySelectorAllDeep('button, [role="button"]', overlayElement as ParentNode)
+      const allButtons = querySelectorAllDeep('button, [role="button"], [aria-label], [data-testid], [title]', overlayElement as ParentNode)
       const dismissButtons: RankedIntentCandidate[] = []
       for (const btn of uniqueElements(allButtons)) {
         if (!isActionableVisible(btn)) continue
@@ -480,7 +480,7 @@
         else if (dismissVerb.test(label)) score += 700
         if (submitVerb.test(label)) score -= 600
         // SVG close icons: button containing only an SVG (common close icon pattern)
-        const hasSvgIcon = btn.querySelector('svg') !== null
+        const hasSvgIcon = typeof btn.querySelector === 'function' && btn.querySelector('svg') !== null
         const textLen = (btn.textContent || '').trim().length
         if (hasSvgIcon && textLen <= 2) score += 500
         // Small buttons in header area are likely close buttons
@@ -494,7 +494,7 @@
         return {
           element: dismissButtons[0]!.element,
           match_count: 1,
-          match_strategy: 'dismiss_text_button',
+          match_strategy: 'intent_dismiss_top_overlay',
           scope_selector_used: requestedScope || 'intent:auto_top_overlay'
         }
       }
@@ -509,7 +509,7 @@
           return {
             element: candidate,
             match_count: 1,
-            match_strategy: 'dismiss_attr_match',
+            match_strategy: 'intent_dismiss_top_overlay',
             scope_selector_used: requestedScope || 'intent:auto_top_overlay'
           }
         }

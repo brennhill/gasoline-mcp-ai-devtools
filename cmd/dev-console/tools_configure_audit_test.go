@@ -37,7 +37,7 @@ import (
 type configureTestEnv struct {
 	handler *ToolHandler
 	server  *Server
-	capture *capture.Capture
+	capture *capture.Store
 }
 
 func newConfigureTestEnv(t *testing.T) *configureTestEnv {

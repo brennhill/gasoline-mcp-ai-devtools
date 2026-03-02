@@ -36,7 +36,7 @@ import (
 type generateTestEnv struct {
 	handler *ToolHandler
 	server  *Server
-	capture *capture.Capture
+	capture *capture.Store
 }
 
 func newGenerateTestEnv(t *testing.T) *generateTestEnv {

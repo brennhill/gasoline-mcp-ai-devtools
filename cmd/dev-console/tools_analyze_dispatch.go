@@ -42,7 +42,7 @@ var analyzeHandlers = map[string]AnalyzeHandler{
 		return observe.AnalyzeHistory(h, req, args)
 	},
 	"security_audit": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-		return h.toolSecurityAudit(req, args)
+		return h.handleAnalyzeSecurityAudit(req, args)
 	},
 	"third_party_audit": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 		return h.toolAuditThirdParties(req, args)

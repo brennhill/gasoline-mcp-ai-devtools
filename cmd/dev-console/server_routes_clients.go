@@ -12,7 +12,7 @@ import (
 )
 
 // registerClientRegistryRoutes binds the multi-client registry endpoints.
-func registerClientRegistryRoutes(mux *http.ServeMux, cap *capture.Capture) {
+func registerClientRegistryRoutes(mux *http.ServeMux, cap *capture.Store) {
 	mux.HandleFunc("/clients", corsMiddleware(extensionOnly(func(w http.ResponseWriter, r *http.Request) {
 		handleClientsList(w, r, cap)
 	})))
@@ -22,7 +22,7 @@ func registerClientRegistryRoutes(mux *http.ServeMux, cap *capture.Capture) {
 }
 
 // handleClientsList handles GET/POST on /clients for multi-client management.
-func handleClientsList(w http.ResponseWriter, r *http.Request, cap *capture.Capture) {
+func handleClientsList(w http.ResponseWriter, r *http.Request, cap *capture.Store) {
 	switch r.Method {
 	case "GET":
 		clients := cap.GetClientRegistry().List()
@@ -49,7 +49,7 @@ func handleClientsList(w http.ResponseWriter, r *http.Request, cap *capture.Capt
 }
 
 // handleClientByID handles GET/DELETE on /clients/{id} for specific client operations.
-func handleClientByID(w http.ResponseWriter, r *http.Request, cap *capture.Capture) {
+func handleClientByID(w http.ResponseWriter, r *http.Request, cap *capture.Store) {
 	clientID := strings.TrimPrefix(r.URL.Path, "/clients/")
 	if clientID == "" {
 		jsonResponse(w, http.StatusBadRequest, map[string]string{"error": "Missing client ID"})

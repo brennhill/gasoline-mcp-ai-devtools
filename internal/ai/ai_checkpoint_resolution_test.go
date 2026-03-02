@@ -471,7 +471,7 @@ func TestApplySeverityFilter_ErrorsOnly(t *testing.T) {
 		},
 		WebSocket: &WebSocketDiff{
 			TotalNew:       1,
-			Disconnections: []WSDisco{{URL: "ws://a"}},
+			Disconnections: []WSDisconnection{{URL: "ws://a"}},
 		},
 	}
 

@@ -40,7 +40,7 @@ func defaultExtensionReadinessTimeout() time.Duration {
 }
 
 // NewToolHandler creates an MCP handler with composite tool capabilities.
-func NewToolHandler(server *Server, capture *capture.Capture) *MCPHandler {
+func NewToolHandler(server *Server, capture *capture.Store) *MCPHandler {
 	shutdownCtx, shutdownCancel := context.WithCancel(context.Background())
 	handler := &ToolHandler{
 		MCPHandler:                NewMCPHandler(server, version),

@@ -14,7 +14,7 @@ import (
 )
 
 // handleHealth serves the /health endpoint with server status and version info.
-func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request, cap *capture.Capture) {
+func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request, cap *capture.Store) {
 	if r.Method != "GET" {
 		jsonResponse(w, http.StatusMethodNotAllowed, map[string]string{"error": "Method not allowed"})
 		return

@@ -14,7 +14,7 @@ import (
 // Security Tool Implementations
 // ============================================
 
-func (h *ToolHandler) toolSecurityAudit(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+func (h *ToolHandler) handleAnalyzeSecurityAudit(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	var params struct {
 		SeverityMin string   `json:"severity_min"`
 		Checks      []string `json:"checks"`

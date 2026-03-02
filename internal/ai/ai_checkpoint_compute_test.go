@@ -187,7 +187,7 @@ func TestDetermineSeverity_AllPaths(t *testing.T) {
 		{
 			name: "warning_from_ws_disconnections",
 			resp: DiffResponse{
-				WebSocket: &WebSocketDiff{Disconnections: []WSDisco{{URL: "ws://example.com"}}},
+				WebSocket: &WebSocketDiff{Disconnections: []WSDisconnection{{URL: "ws://example.com"}}},
 			},
 			expected: "warning",
 		},
@@ -195,7 +195,7 @@ func TestDetermineSeverity_AllPaths(t *testing.T) {
 			name: "error_takes_precedence_over_warning",
 			resp: DiffResponse{
 				Console:   &ConsoleDiff{Errors: []ConsoleEntry{{Message: "err", Count: 1}}, Warnings: []ConsoleEntry{{Message: "warn", Count: 1}}},
-				WebSocket: &WebSocketDiff{Disconnections: []WSDisco{{URL: "ws://example.com"}}},
+				WebSocket: &WebSocketDiff{Disconnections: []WSDisconnection{{URL: "ws://example.com"}}},
 			},
 			expected: "error",
 		},
@@ -266,7 +266,7 @@ func TestBuildSummary_AllPaths(t *testing.T) {
 			name: "ws_disconnections",
 			resp: DiffResponse{
 				Severity:  "warning",
-				WebSocket: &WebSocketDiff{Disconnections: []WSDisco{{URL: "ws://a"}, {URL: "ws://b"}, {URL: "ws://c"}}},
+				WebSocket: &WebSocketDiff{Disconnections: []WSDisconnection{{URL: "ws://a"}, {URL: "ws://b"}, {URL: "ws://c"}}},
 			},
 			contains: []string{"3 websocket disconnection(s)"},
 		},
@@ -276,7 +276,7 @@ func TestBuildSummary_AllPaths(t *testing.T) {
 				Severity:  "error",
 				Console:   &ConsoleDiff{Errors: []ConsoleEntry{{Count: 1}}, Warnings: []ConsoleEntry{{Count: 2}}},
 				Network:   &NetworkDiff{Failures: []NetworkFailure{{Path: "/x"}}},
-				WebSocket: &WebSocketDiff{Disconnections: []WSDisco{{URL: "ws://a"}}},
+				WebSocket: &WebSocketDiff{Disconnections: []WSDisconnection{{URL: "ws://a"}}},
 			},
 			contains: []string{"console error", "network failure", "console warning", "websocket disconnection"},
 		},

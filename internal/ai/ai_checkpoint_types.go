@@ -94,13 +94,13 @@ type NetworkDegraded struct {
 }
 
 type WebSocketDiff struct {
-	TotalNew       int       `json:"total_new"`
-	Disconnections []WSDisco `json:"disconnections,omitempty"`
-	Connections    []WSConn  `json:"connections,omitempty"`
-	Errors         []WSError `json:"errors,omitempty"`
+	TotalNew       int               `json:"total_new"`
+	Disconnections []WSDisconnection `json:"disconnections,omitempty"`
+	Connections    []WSConn          `json:"connections,omitempty"`
+	Errors         []WSError         `json:"errors,omitempty"`
 }
 
-type WSDisco struct {
+type WSDisconnection struct {
 	URL         string `json:"url"`
 	CloseCode   int    `json:"close_code,omitempty"`
 	CloseReason string `json:"close_reason,omitempty"`
@@ -138,5 +138,5 @@ type CheckpointManager struct {
 	pendingAlerts []gasTypes.PerformanceAlert
 	alertCounter  int64
 	alertDelivery int64
-	capture       *capture.Capture
+	capture       *capture.Store
 }

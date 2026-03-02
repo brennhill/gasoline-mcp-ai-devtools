@@ -27,7 +27,7 @@ type AsyncCommandDispatcher interface {
 // CaptureProvider gives access to the capture instance for buffer reads.
 // Used by all 5 tools.
 type CaptureProvider interface {
-	GetCapture() *capture.Capture
+	GetCapture() *capture.Store
 }
 
 // LogBufferReader provides read-only access to server log entries.

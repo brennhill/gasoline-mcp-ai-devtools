@@ -1,7 +1,7 @@
 <!-- gitnexus:start -->
 # GitNexus MCP
 
-This project is indexed by GitNexus as **gasoline** (16542 symbols, 46071 relationships, 300 execution flows).
+This project is indexed by GitNexus as **gasoline** (16709 symbols, 46771 relationships, 300 execution flows).
 
 ## Fast Path (Non-Blocking)
 
@@ -59,3 +59,4 @@ No code-only refactor is considered complete until this documentation contract i
 14. New dependencies require explicit justification; remove unused dependencies promptly.
 15. Reviews and handoffs must cover correctness, modularity, performance, testability, docs quality, and DRY adherence.
 16. CI must block merges on broken docs links, missing required docs, or failing quality gates.
+17. ToolHandler naming convention is strict: `tool*` for top-level MCP mode/action entry points, `handle*` for sub-action handlers/helpers.

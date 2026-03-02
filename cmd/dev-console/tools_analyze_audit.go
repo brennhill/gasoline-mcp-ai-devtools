@@ -28,7 +28,7 @@ func defaultAuditCategories() []auditCategory {
 			return observe.RunA11yAudit(h, req, args)
 		}, Weight: 1.0},
 		{Name: "security", Handler: func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-			return h.toolSecurityAudit(req, args)
+			return h.handleAnalyzeSecurityAudit(req, args)
 		}, Weight: 1.0},
 		{Name: "best_practices", Handler: func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 			return h.toolAuditThirdParties(req, args)

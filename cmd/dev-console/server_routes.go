@@ -11,7 +11,7 @@ import (
 )
 
 // setupHTTPRoutes configures the HTTP routes (extracted for reuse).
-func setupHTTPRoutes(server *Server, cap *capture.Capture) *http.ServeMux {
+func setupHTTPRoutes(server *Server, cap *capture.Store) *http.ServeMux {
 	mux := http.NewServeMux()
 
 	if cap != nil {
@@ -27,7 +27,7 @@ func setupHTTPRoutes(server *Server, cap *capture.Capture) *http.ServeMux {
 // registerCaptureRoutes adds capture-dependent routes to the mux.
 // NOT MCP — These are extension-to-daemon HTTP endpoints for telemetry ingestion
 // and internal state management. AI agents use the 5 MCP tools instead.
-func registerCaptureRoutes(mux *http.ServeMux, server *Server, cap *capture.Capture) {
+func registerCaptureRoutes(mux *http.ServeMux, server *Server, cap *capture.Store) {
 	// NOT MCP — Extension telemetry ingestion (extension → daemon data pipeline)
 	mux.HandleFunc("/websocket-events", corsMiddleware(extensionOnly(cap.HandleWebSocketEvents)))
 	mux.HandleFunc("/websocket-status", corsMiddleware(extensionOnly(cap.HandleWebSocketStatus)))
@@ -91,7 +91,7 @@ func registerUploadRoutes(mux *http.ServeMux, server *Server) {
 }
 
 // registerCoreRoutes adds non-capture-dependent routes to the mux.
-func registerCoreRoutes(mux *http.ServeMux, server *Server, cap *capture.Capture) {
+func registerCoreRoutes(mux *http.ServeMux, server *Server, cap *capture.Store) {
 	// NOT MCP — OpenAPI spec for HTTP API documentation
 	mux.HandleFunc("/openapi.json", corsMiddleware(handleOpenAPI))
 

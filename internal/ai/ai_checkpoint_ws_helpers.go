@@ -6,7 +6,7 @@ func classifyWSEvent(diff *WebSocketDiff, evt *capture.WebSocketEvent, severity 
 	switch evt.Event {
 	case "close":
 		if severity != "errors_only" {
-			diff.Disconnections = append(diff.Disconnections, WSDisco{
+			diff.Disconnections = append(diff.Disconnections, WSDisconnection{
 				URL:         evt.URL,
 				CloseCode:   evt.CloseCode,
 				CloseReason: evt.CloseReason,

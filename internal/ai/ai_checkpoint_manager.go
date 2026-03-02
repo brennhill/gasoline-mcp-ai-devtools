@@ -9,7 +9,7 @@ import (
 	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/server"
 )
 
-func NewCheckpointManager(serverReader server.LogReader, capture *capture.Capture) *CheckpointManager {
+func NewCheckpointManager(serverReader server.LogReader, capture *capture.Store) *CheckpointManager {
 	return &CheckpointManager{
 		namedCheckpoints: make(map[string]*Checkpoint),
 		namedOrder:       make([]string, 0),
