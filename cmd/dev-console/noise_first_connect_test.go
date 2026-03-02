@@ -20,6 +20,10 @@ func simulateExtensionConnect(cap *capture.Capture) {
 	cap.SimulateSyncForTest("test-sess-1", "test-client")
 }
 
+func waitForNoiseFirstConnectCallback() {
+	time.Sleep(noiseFirstConnectDelay() + 150*time.Millisecond)
+}
+
 func TestNoiseAutoDetectOnFirstSync_TriggersOnce(t *testing.T) {
 	t.Parallel()
 
@@ -41,8 +45,8 @@ func TestNoiseAutoDetectOnFirstSync_TriggersOnce(t *testing.T) {
 	// Simulate first extension connection
 	simulateExtensionConnect(cap)
 
-	// Give the async callback time to fire (2s sleep + execution)
-	time.Sleep(3 * time.Second)
+	// Give the async callback time to fire and execute.
+	waitForNoiseFirstConnectCallback()
 
 	if got := detectCount.Load(); got != 1 {
 		t.Errorf("noise auto-detect should run once on first connection, got %d", got)
@@ -73,8 +77,8 @@ func TestNoiseAutoDetectOnFirstSync_DoesNotRepeat(t *testing.T) {
 		time.Sleep(50 * time.Millisecond)
 	}
 
-	// Give async callback time (2s sleep in wireNoiseFirstConnect + execution)
-	time.Sleep(3 * time.Second)
+	// Give async callback time to fire and execute.
+	waitForNoiseFirstConnectCallback()
 
 	if got := detectCount.Load(); got != 1 {
 		t.Errorf("noise auto-detect should run exactly once across multiple syncs, got %d", got)
@@ -88,7 +92,7 @@ func TestNoiseAutoDetectOnFirstSync_ManualAutoDetectStillWorks(t *testing.T) {
 
 	// Trigger first-connection auto-detect
 	simulateExtensionConnect(env.capture)
-	time.Sleep(200 * time.Millisecond)
+	waitForNoiseFirstConnectCallback()
 
 	// Manual auto_detect should still work independently
 	result, ok := env.callConfigure(t, `{"what":"noise_rule","noise_action":"auto_detect"}`)
@@ -122,8 +126,8 @@ func TestNoiseAutoDetectOnFirstSync_EmitsLogEntry(t *testing.T) {
 	// Simulate first extension connection
 	simulateExtensionConnect(cap)
 
-	// Give async callback time to fire and complete (2s sleep + execution)
-	time.Sleep(3 * time.Second)
+	// Give async callback time to fire and complete.
+	waitForNoiseFirstConnectCallback()
 
 	// The stderrf log is written to stderr; we mainly verify no panic occurs
 	// and the auto-detect function executes (covered by count tests above)

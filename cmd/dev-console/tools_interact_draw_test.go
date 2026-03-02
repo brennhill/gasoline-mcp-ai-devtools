@@ -7,7 +7,6 @@ package main
 
 import (
 	"encoding/json"
-	"net/http/httptest"
 	"strings"
 	"testing"
 )
@@ -32,9 +31,7 @@ func TestHandleDrawModeStart_Success(t *testing.T) {
 
 	// Enable pilot
 	h.capture.SetPilotEnabled(true)
-	syncReq := httptest.NewRequest("POST", "/sync", strings.NewReader(`{"ext_session_id":"test"}`))
-	syncReq.Header.Set("X-Gasoline-Client", "test-client")
-	h.capture.HandleSync(httptest.NewRecorder(), syncReq)
+	mockConnectedTrackedTab(t, h.capture)
 
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: float64(1)}
 	args := json.RawMessage(`{}`)
@@ -50,9 +47,7 @@ func TestHandleDrawModeStart_Success(t *testing.T) {
 func TestHandleDrawModeStart_WithSession(t *testing.T) {
 	h := createTestToolHandler(t)
 	h.capture.SetPilotEnabled(true)
-	syncReq := httptest.NewRequest("POST", "/sync", strings.NewReader(`{"ext_session_id":"test"}`))
-	syncReq.Header.Set("X-Gasoline-Client", "test-client")
-	h.capture.HandleSync(httptest.NewRecorder(), syncReq)
+	mockConnectedTrackedTab(t, h.capture)
 
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: float64(1)}
 	args := json.RawMessage(`{"annot_session":"my-review"}`)

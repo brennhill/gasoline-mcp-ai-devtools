@@ -16,12 +16,18 @@ import (
 
 func TestHandleSync_LongPolling(t *testing.T) {
 	cap := NewCapture()
-	
-	// Start a goroutine that will queue a command after 500ms
+
+	timeout := syncLongPollTimeout()
+	queueDelay := timeout / 2
+	if queueDelay < 20*time.Millisecond {
+		queueDelay = 20 * time.Millisecond
+	}
+
+	// Start a goroutine that will queue a command halfway through the poll window.
 	go func() {
-		time.Sleep(500 * time.Millisecond)
+		time.Sleep(queueDelay)
 		cap.CreatePendingQuery(queries.PendingQuery{
-			Type: "test_cmd",
+			Type:   "test_cmd",
 			Params: json.RawMessage(`{"foo":"bar"}`),
 		})
 	}()
@@ -34,8 +40,12 @@ func TestHandleSync_LongPolling(t *testing.T) {
 	cap.HandleSync(w, req)
 	duration := time.Since(start)
 
-	if duration < 400*time.Millisecond {
-		t.Errorf("Sync returned too fast (%v), long-polling should have waited for command", duration)
+	minExpected := queueDelay - 10*time.Millisecond
+	if minExpected < 1*time.Millisecond {
+		minExpected = 1 * time.Millisecond
+	}
+	if duration < minExpected {
+		t.Errorf("Sync returned too fast (%v), long-polling should have waited for command (min %v)", duration, minExpected)
 	}
 
 	var resp SyncResponse
@@ -50,17 +60,23 @@ func TestHandleSync_LongPolling(t *testing.T) {
 
 func TestHandleSync_TimeoutIfNoCommand(t *testing.T) {
 	cap := NewCapture()
-	
+
+	timeout := syncLongPollTimeout()
+
 	reqBody, _ := json.Marshal(SyncRequest{ExtSessionID: "test"})
 	req := httptest.NewRequest("POST", "/sync", bytes.NewReader(reqBody))
 	w := httptest.NewRecorder()
 
 	start := time.Now()
-	cap.HandleSync(w, req) // Should wait ~5s
+	cap.HandleSync(w, req) // Should wait roughly syncLongPollTimeout().
 	duration := time.Since(start)
 
-	if duration < 4*time.Second {
-		t.Errorf("Sync timeout too short (%v), expected ~5s", duration)
+	minExpected := timeout - 20*time.Millisecond
+	if minExpected < 1*time.Millisecond {
+		minExpected = 1 * time.Millisecond
+	}
+	if duration < minExpected {
+		t.Errorf("Sync timeout too short (%v), expected around %v", duration, timeout)
 	}
 
 	var resp SyncResponse

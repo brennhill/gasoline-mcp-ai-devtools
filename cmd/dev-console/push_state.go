@@ -20,10 +20,12 @@ var pushState struct {
 
 // setPushClientCapabilities stores capabilities extracted from MCP initialize.
 func setPushClientCapabilities(caps push.ClientCapabilities) {
-	pushState.mu.Lock()
-	pushState.caps = caps
-	cb := pushState.onChange
-	pushState.mu.Unlock()
+	cb := func() func(push.ClientCapabilities) {
+		pushState.mu.Lock()
+		defer pushState.mu.Unlock()
+		pushState.caps = caps
+		return pushState.onChange
+	}()
 
 	if cb != nil {
 		cb(caps)

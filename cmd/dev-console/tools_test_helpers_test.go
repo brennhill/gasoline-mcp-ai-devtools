@@ -8,6 +8,7 @@ package main
 
 import (
 	"encoding/json"
+	"net/http/httptest"
 	"regexp"
 	"strings"
 	"testing"
@@ -60,6 +61,16 @@ func newToolTestEnv(t *testing.T) *toolTestEnv {
 	mcpHandler := NewToolHandler(server, cap)
 	handler := mcpHandler.toolHandler.(*ToolHandler)
 	return &toolTestEnv{handler: handler, server: server, capture: cap}
+}
+
+// mockConnectedTrackedTab simulates an extension sync and a tracked active tab.
+// Use this for tests that exercise interact flows requiring extension + tab state.
+func mockConnectedTrackedTab(t *testing.T, cap *capture.Capture) {
+	t.Helper()
+	httpReq := httptest.NewRequest("POST", "/sync", strings.NewReader(`{"ext_session_id":"test"}`))
+	httpReq.Header.Set("X-Gasoline-Client", "test-client")
+	cap.HandleSync(httptest.NewRecorder(), httpReq)
+	cap.SetTrackingStatusForTest(42, "https://example.com")
 }
 
 // ============================================

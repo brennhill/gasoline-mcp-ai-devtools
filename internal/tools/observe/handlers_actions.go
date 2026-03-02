@@ -1,0 +1,132 @@
+// Purpose: Observe handlers for actions, transient UI elements, and pilot/performance status.
+
+package observe
+
+import (
+	"encoding/json"
+	"time"
+
+	"github.com/dev-console/dev-console/internal/buffers"
+	"github.com/dev-console/dev-console/internal/capture"
+	"github.com/dev-console/dev-console/internal/mcp"
+)
+
+// GetEnhancedActions returns captured user actions (clicks, inputs, navigations).
+// Supports optional "type" filter to return only actions of a specific type.
+func GetEnhancedActions(deps Deps, req mcp.JSONRPCRequest, args json.RawMessage) mcp.JSONRPCResponse {
+	var params struct {
+		Limit   int    `json:"limit"`
+		URL     string `json:"url"`
+		Type    string `json:"type"`
+		Summary bool   `json:"summary"`
+	}
+	mcp.LenientUnmarshal(args, &params)
+	params.Limit = clampLimit(params.Limit, 100)
+
+	allActions := deps.GetCapture().GetAllEnhancedActions()
+	filtered := buffers.ReverseFilterLimit(allActions, func(a capture.EnhancedAction) bool {
+		if params.Type != "" && a.Type != params.Type {
+			return false
+		}
+		if params.URL != "" && !ContainsIgnoreCase(a.URL, params.URL) {
+			return false
+		}
+		return true
+	}, params.Limit)
+	var newestTS time.Time
+	if len(allActions) > 0 {
+		newestTS = time.UnixMilli(allActions[len(allActions)-1].Timestamp)
+	}
+
+	responseMeta := BuildResponseMetadata(deps.GetCapture(), newestTS)
+	if params.Summary {
+		return mcp.JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcp.JSONResponse("Enhanced actions", buildActionsSummary(filtered, responseMeta))}
+	}
+
+	return mcp.JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcp.JSONResponse("Enhanced actions", map[string]any{
+		"entries":  filtered,
+		"count":    len(filtered),
+		"metadata": responseMeta,
+	})}
+}
+
+// GetTransients returns captured transient UI elements (toasts, alerts, snackbars).
+// Filters enhanced actions for type == "transient" with optional classification and URL filters.
+func GetTransients(deps Deps, req mcp.JSONRPCRequest, args json.RawMessage) mcp.JSONRPCResponse {
+	var params struct {
+		Limit          int    `json:"limit"`
+		URL            string `json:"url"`
+		Classification string `json:"classification"`
+		Summary        bool   `json:"summary"`
+	}
+	mcp.LenientUnmarshal(args, &params)
+	// Lower default than other handlers (50 vs 100): transients are less frequent than logs/actions.
+	// MVP: duration_ms is always 0 — removal tracking is not yet implemented.
+	params.Limit = clampLimit(params.Limit, 50)
+
+	allActions := deps.GetCapture().GetAllEnhancedActions()
+	filtered := buffers.ReverseFilterLimit(allActions, func(a capture.EnhancedAction) bool {
+		if a.Type != "transient" {
+			return false
+		}
+		if params.URL != "" && !ContainsIgnoreCase(a.URL, params.URL) {
+			return false
+		}
+		if params.Classification != "" && a.Classification != params.Classification {
+			return false
+		}
+		return true
+	}, params.Limit)
+
+	var newestTS time.Time
+	if len(filtered) > 0 {
+		newestTS = time.UnixMilli(filtered[0].Timestamp)
+	}
+
+	responseMeta := BuildResponseMetadata(deps.GetCapture(), newestTS)
+	if params.Summary {
+		return mcp.JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcp.JSONResponse("Transient elements", buildTransientsSummary(filtered, responseMeta))}
+	}
+
+	return mcp.JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcp.JSONResponse("Transient elements", map[string]any{
+		"entries":  filtered,
+		"count":    len(filtered),
+		"metadata": responseMeta,
+	})}
+}
+
+// buildTransientsSummary returns {total, by_classification, metadata}.
+func buildTransientsSummary(actions []capture.EnhancedAction, meta ResponseMetadata) map[string]any {
+	byClassification := make(map[string]int)
+	for _, a := range actions {
+		cls := a.Classification
+		if cls == "" {
+			cls = "unknown"
+		}
+		byClassification[cls]++
+	}
+
+	return map[string]any{
+		"total":             len(actions),
+		"by_classification": byClassification,
+		"metadata":          meta,
+	}
+}
+
+// ObservePilot returns the current pilot/extension connection status.
+func ObservePilot(deps Deps, req mcp.JSONRPCRequest, _ json.RawMessage) mcp.JSONRPCResponse {
+	status := deps.GetCapture().GetPilotStatus()
+	if statusMap, ok := status.(map[string]any); ok {
+		statusMap["metadata"] = BuildResponseMetadata(deps.GetCapture(), time.Now())
+	}
+	return mcp.JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcp.JSONResponse("Pilot status", status)}
+}
+
+// CheckPerformance returns performance snapshots from the capture buffer.
+func CheckPerformance(deps Deps, req mcp.JSONRPCRequest, _ json.RawMessage) mcp.JSONRPCResponse {
+	snapshots := deps.GetCapture().GetPerformanceSnapshots()
+	return mcp.JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcp.JSONResponse("Performance", map[string]any{
+		"snapshots": snapshots,
+		"count":     len(snapshots),
+	})}
+}

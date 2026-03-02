@@ -92,19 +92,28 @@ func handleTestPages() http.HandlerFunc {
 func handleTestHarnessWS(w http.ResponseWriter, r *http.Request) {
 	key := r.Header.Get("Sec-WebSocket-Key")
 	if key == "" || strings.ToLower(r.Header.Get("Upgrade")) != "websocket" {
-		http.Error(w, "websocket upgrade required", http.StatusBadRequest)
+		jsonResponse(w, http.StatusBadRequest, map[string]string{
+			"error":   "bad_request",
+			"message": "websocket upgrade required",
+		})
 		return
 	}
 
 	hj, ok := w.(http.Hijacker)
 	if !ok {
-		http.Error(w, "server does not support hijacking", http.StatusInternalServerError)
+		jsonResponse(w, http.StatusInternalServerError, map[string]string{
+			"error":   "internal_error",
+			"message": "server does not support hijacking",
+		})
 		return
 	}
 
 	conn, bufrw, err := hj.Hijack()
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		jsonResponse(w, http.StatusInternalServerError, map[string]string{
+			"error":   "internal_error",
+			"message": err.Error(),
+		})
 		return
 	}
 	defer conn.Close()
@@ -295,7 +304,10 @@ func wsAcceptKey(key string) string {
 func serveTestIndex(w http.ResponseWriter) {
 	entries, err := fs.ReadDir(testPagesFS, "testpages")
 	if err != nil {
-		http.Error(w, "failed to read test pages", http.StatusInternalServerError)
+		jsonResponse(w, http.StatusInternalServerError, map[string]string{
+			"error":   "internal_error",
+			"message": "failed to read test pages",
+		})
 		return
 	}
 

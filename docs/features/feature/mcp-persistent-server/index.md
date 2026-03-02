@@ -16,6 +16,7 @@ The persistent server mode allows the daemon to survive beyond a single MCP clie
 
 - `internal/util/proc_unix.go` — Unix process management
 - `internal/util/proc_windows.go` — Windows process management
+- Flow map: [flow-map.md](./flow-map.md)
 
 ## Status
 

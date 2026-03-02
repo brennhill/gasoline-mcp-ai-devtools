@@ -87,8 +87,9 @@ func ValidateCookieHeader(cookies string) error {
 	return nil
 }
 
-// ValidatePathForOSAutomation rejects file paths containing shell metacharacters
-// that could be used for command injection in OS automation scripts.
+// ValidatePathForOSAutomation rejects path bytes that can break script framing
+// in OS automation handlers. Shell metacharacters are allowed because callers
+// use transport-specific escaping/sanitization before script execution.
 func ValidatePathForOSAutomation(filePath string) error {
 	// Reject null bytes (path traversal via null byte injection)
 	if strings.ContainsRune(filePath, 0) {
@@ -101,10 +102,6 @@ func ValidatePathForOSAutomation(filePath string) error {
 	// Reject backticks (shell command substitution in PowerShell)
 	if strings.Contains(filePath, "`") {
 		return fmt.Errorf("file path contains backtick characters")
-	}
-	// Reject $ (PowerShell variable expansion) and ; (command separator)
-	if strings.ContainsAny(filePath, "$;") {
-		return fmt.Errorf("file path contains shell metacharacters")
 	}
 	return nil
 }
@@ -123,19 +120,12 @@ func SanitizeForContentDisposition(s string) string {
 	return s
 }
 
-// SanitizeForAppleScript strips all characters not in the allowlist for safe
-// embedding in AppleScript strings. Only alphanumerics, dot, underscore,
-// hyphen, slash, space, colon, and comma are preserved.
+// SanitizeForAppleScript escapes string delimiters for safe embedding in
+// AppleScript double-quoted string literals.
 func SanitizeForAppleScript(s string) string {
-	var b strings.Builder
-	b.Grow(len(s))
-	for _, r := range s {
-		if (r >= 'A' && r <= 'Z') || (r >= 'a' && r <= 'z') || (r >= '0' && r <= '9') ||
-			r == '.' || r == '_' || r == '/' || r == '-' || r == ' ' || r == ':' || r == ',' {
-			b.WriteRune(r)
-		}
-	}
-	return b.String()
+	escaped := strings.ReplaceAll(s, `\`, `\\`)
+	escaped = strings.ReplaceAll(escaped, `"`, `\"`)
+	return escaped
 }
 
 // SanitizeForSendKeys escapes a string for safe use with SendKeys.

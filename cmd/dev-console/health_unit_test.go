@@ -166,8 +166,8 @@ func TestBuildPilotInfo_ExplicitDisableState(t *testing.T) {
 	if info.Enabled {
 		t.Fatalf("enabled = true, want false for explicit disable")
 	}
-	if info.Source != "explicitly_disabled" {
-		t.Fatalf("source = %q, want explicitly_disabled", info.Source)
+	if info.Source != "test_helper" {
+		t.Fatalf("source = %q, want test_helper", info.Source)
 	}
 }
 

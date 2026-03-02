@@ -94,9 +94,9 @@ var fastPathCounters bridgeFastPathCounters
 
 func resetFastPathCounters() {
 	fastPathCounters.mu.Lock()
+	defer fastPathCounters.mu.Unlock()
 	fastPathCounters.success = 0
 	fastPathCounters.failure = 0
-	fastPathCounters.mu.Unlock()
 }
 
 func fastPathTelemetryLogPath() (string, error) {
@@ -104,15 +104,16 @@ func fastPathTelemetryLogPath() (string, error) {
 }
 
 func recordFastPathEvent(method string, success bool, errorCode int) {
-	fastPathCounters.mu.Lock()
-	if success {
-		fastPathCounters.success++
-	} else {
-		fastPathCounters.failure++
-	}
-	successCount := fastPathCounters.success
-	failureCount := fastPathCounters.failure
-	fastPathCounters.mu.Unlock()
+	successCount, failureCount := func() (int, int) {
+		fastPathCounters.mu.Lock()
+		defer fastPathCounters.mu.Unlock()
+		if success {
+			fastPathCounters.success++
+		} else {
+			fastPathCounters.failure++
+		}
+		return fastPathCounters.success, fastPathCounters.failure
+	}()
 
 	path, err := fastPathTelemetryLogPath()
 	if err != nil {

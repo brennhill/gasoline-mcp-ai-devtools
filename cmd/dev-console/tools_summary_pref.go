@@ -79,6 +79,9 @@ func (h *ToolHandler) maybeInjectSummary(args json.RawMessage) json.RawMessage {
 	if _, ok := m["full"]; ok {
 		return args
 	}
+	if m == nil {
+		m = make(map[string]json.RawMessage)
+	}
 
 	m["summary"] = json.RawMessage(`true`)
 	// Error impossible: simple map of JSON values

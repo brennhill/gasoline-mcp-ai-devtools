@@ -6,7 +6,12 @@ feature_type: feature
 owners: []
 last_reviewed: 2026-02-16
 code_paths:
-test_paths: []
+  - cmd/dev-console/tools_interact_state_capture.go
+  - cmd/dev-console/tools_interact_state_save_load.go
+  - cmd/dev-console/tools_interact_state_list_delete.go
+test_paths:
+  - cmd/dev-console/tools_interact_state_test.go
+  - cmd/dev-console/tools_interact_gate_test.go
 ---
 
 # State Time Travel
@@ -32,4 +37,12 @@ test_paths: []
 
 ## Code and Tests
 
-Add concrete implementation and test links here as this feature evolves.
+- State capture and restore queueing:
+  - `cmd/dev-console/tools_interact_state_capture.go`
+- Save/load handlers:
+  - `cmd/dev-console/tools_interact_state_save_load.go`
+- List/delete handlers:
+  - `cmd/dev-console/tools_interact_state_list_delete.go`
+- Tests:
+  - `cmd/dev-console/tools_interact_state_test.go`
+  - `cmd/dev-console/tools_interact_gate_test.go`

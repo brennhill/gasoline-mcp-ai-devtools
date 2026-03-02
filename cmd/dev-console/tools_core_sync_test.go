@@ -119,9 +119,11 @@ func TestToolObserveCommandResult_IncludesTraceTimeline(t *testing.T) {
 		}
 	}
 
-	events, ok := trace["events"].([]any)
-	if !ok || len(events) < 4 {
-		t.Fatalf("trace.events = %v, want at least 4 events", trace["events"])
+	if trace["last_stage"] != "resolved" {
+		t.Fatalf("trace.last_stage = %v, want resolved", trace["last_stage"])
+	}
+	if _, ok := trace["events"]; ok {
+		t.Fatalf("trace.events should be omitted in summary response, got %v", trace["events"])
 	}
 }
 

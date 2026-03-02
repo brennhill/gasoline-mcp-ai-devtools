@@ -187,18 +187,23 @@ func (s *SessionStore) backgroundFlush() {
 }
 
 func (s *SessionStore) flushDirty() {
-	s.dirtyMu.Lock()
-	if len(s.dirty) == 0 {
-		s.dirtyMu.Unlock()
+	toFlush := func() map[string][]byte {
+		s.dirtyMu.Lock()
+		defer s.dirtyMu.Unlock()
+		if len(s.dirty) == 0 {
+			return nil
+		}
+		// Copy dirty map and clear.
+		copied := make(map[string][]byte, len(s.dirty))
+		for k, v := range s.dirty {
+			copied[k] = v
+		}
+		s.dirty = make(map[string][]byte)
+		return copied
+	}()
+	if len(toFlush) == 0 {
 		return
 	}
-	// Copy dirty map and clear
-	toFlush := make(map[string][]byte, len(s.dirty))
-	for k, v := range s.dirty {
-		toFlush[k] = v
-	}
-	s.dirty = make(map[string][]byte)
-	s.dirtyMu.Unlock()
 
 	// Write each dirty entry
 	for key, data := range toFlush {
@@ -225,13 +230,18 @@ func (s *SessionStore) flushDirty() {
 
 // Shutdown flushes dirty data, saves meta, and stops the background goroutine.
 func (s *SessionStore) Shutdown() {
-	s.mu.Lock()
-	if s.stopped {
-		s.mu.Unlock()
+	shouldShutdown := func() bool {
+		s.mu.Lock()
+		defer s.mu.Unlock()
+		if s.stopped {
+			return false
+		}
+		s.stopped = true
+		return true
+	}()
+	if !shouldShutdown {
 		return
 	}
-	s.stopped = true
-	s.mu.Unlock()
 
 	// Stop background flush
 	close(s.stopCh)
@@ -240,10 +250,12 @@ func (s *SessionStore) Shutdown() {
 	s.flushDirty()
 
 	// Save final meta
-	s.mu.Lock()
-	s.meta.LastSession = time.Now()
-	_ = s.saveMeta()
-	s.mu.Unlock()
+	func() {
+		s.mu.Lock()
+		defer s.mu.Unlock()
+		s.meta.LastSession = time.Now()
+		_ = s.saveMeta()
+	}()
 }
 
 func (s *SessionStore) projectSize() (int64, error) {

@@ -63,12 +63,12 @@ func (r *elementIndexRegistry) store(clientID string, tabID int, generation stri
 	}
 
 	r.mu.Lock()
+	defer r.mu.Unlock()
 	r.byScope[scope] = elementIndexSnapshot{
 		generation: generation,
 		selectors:  cloned,
 		updatedAt:  time.Now(),
 	}
-	r.mu.Unlock()
 	return generation
 }
 

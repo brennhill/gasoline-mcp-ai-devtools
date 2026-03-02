@@ -22,7 +22,6 @@ package main
 
 import (
 	"encoding/json"
-	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"strings"
@@ -661,9 +660,7 @@ func newUploadTestEnv(t *testing.T) *uploadTestEnv {
 		t.Fatalf("NewServer failed: %v", err)
 	}
 	cap := newTestCapture()
-	syncReq := httptest.NewRequest("POST", "/sync", strings.NewReader(`{"ext_session_id":"test"}`))
-	syncReq.Header.Set("X-Gasoline-Client", "test-client")
-	cap.HandleSync(httptest.NewRecorder(), syncReq)
+	mockConnectedTrackedTab(t, cap)
 	mcpHandler := NewToolHandler(server, cap)
 	handler := mcpHandler.toolHandler.(*ToolHandler)
 

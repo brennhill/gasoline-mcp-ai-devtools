@@ -5,10 +5,7 @@ package main
 
 import (
 	"context"
-	"crypto/rand"
-	"encoding/binary"
 	"encoding/json"
-	"os"
 	"sync"
 	"time"
 
@@ -17,99 +14,10 @@ import (
 	"github.com/dev-console/dev-console/internal/audit"
 	"github.com/dev-console/dev-console/internal/capture"
 	"github.com/dev-console/dev-console/internal/mcp"
-	"github.com/dev-console/dev-console/internal/redaction"
 	"github.com/dev-console/dev-console/internal/security"
 	"github.com/dev-console/dev-console/internal/session"
 	"github.com/dev-console/dev-console/internal/streaming"
 )
-
-// defaultColdStartTimeout is how long requireExtension waits for the extension
-// to connect during a cold start before returning an error.
-// This eliminates "no_data" failures when the LLM sends a command before the
-// extension's first /sync heartbeat arrives.
-// Note: MaybeWaitForCommand does only an instant IsExtensionConnected() check;
-// the blocking wait is exclusively in requireExtension (P1-2: no double wait).
-const defaultColdStartTimeout = 5 * time.Second
-
-// ============================================
-// Shared Utilities
-// ============================================
-
-// randomInt63 generates a random int64 for correlation IDs using crypto/rand.
-func randomInt63() int64 {
-	var b [8]byte
-	if _, err := rand.Read(b[:]); err != nil {
-		// Fallback to time-based if rand fails (should never happen)
-		return time.Now().UnixNano()
-	}
-	return int64(binary.BigEndian.Uint64(b[:]) & 0x7FFFFFFFFFFFFFFF)
-}
-
-// ============================================
-// MCP Typed Response Structs (aliases to internal/mcp)
-// ============================================
-
-type MCPContentBlock = mcp.MCPContentBlock
-type MCPToolResult = mcp.MCPToolResult
-type MCPInitializeResult = mcp.MCPInitializeResult
-type MCPServerInfo = mcp.MCPServerInfo
-type MCPCapabilities = mcp.MCPCapabilities
-type MCPToolsCapability = mcp.MCPToolsCapability
-type MCPResourcesCapability = mcp.MCPResourcesCapability
-type MCPResource = mcp.MCPResource
-type MCPResourcesListResult = mcp.MCPResourcesListResult
-type MCPResourceContent = mcp.MCPResourceContent
-type MCPResourcesReadResult = mcp.MCPResourcesReadResult
-type MCPToolsListResult = mcp.MCPToolsListResult
-type MCPResourceTemplatesListResult = mcp.MCPResourceTemplatesListResult
-
-// ============================================
-// Tool Call Rate Limiter
-// ============================================
-
-// ToolCallLimiter implements a sliding window rate limiter for MCP tool calls.
-// Thread-safe: uses its own mutex independent of other locks.
-type ToolCallLimiter struct {
-	mu         sync.Mutex
-	timestamps []time.Time
-	maxCalls   int
-	window     time.Duration
-}
-
-// NewToolCallLimiter creates a rate limiter allowing maxCalls within the given window.
-func NewToolCallLimiter(maxCalls int, window time.Duration) *ToolCallLimiter {
-	return &ToolCallLimiter{
-		timestamps: make([]time.Time, 0, maxCalls),
-		maxCalls:   maxCalls,
-		window:     window,
-	}
-}
-
-// Allow checks if a new call is permitted. If allowed, records it and returns true.
-func (l *ToolCallLimiter) Allow() bool {
-	l.mu.Lock()
-	defer l.mu.Unlock()
-
-	now := time.Now()
-	cutoff := now.Add(-l.window)
-
-	// Compact: remove expired timestamps
-	valid := 0
-	for _, ts := range l.timestamps {
-		if ts.After(cutoff) {
-			l.timestamps[valid] = ts
-			valid++
-		}
-	}
-	l.timestamps = l.timestamps[:valid]
-
-	if len(l.timestamps) >= l.maxCalls {
-		return false
-	}
-
-	l.timestamps = append(l.timestamps, now)
-	return true
-}
 
 // Note: Response helpers, error codes, and validation functions have been moved to:
 // - tools_response.go — Response formatting helpers
@@ -231,141 +139,6 @@ type ToolHandler struct {
 	noiseFirstConnectFn func()
 }
 
-// Close cancels the shutdown context, unblocking any in-flight readiness gates.
-func (h *ToolHandler) Close() {
-	if h.shutdownCancel != nil {
-		h.shutdownCancel()
-	}
-}
-
-// GetCapture returns the capture instance
-func (h *ToolHandler) GetCapture() *capture.Capture {
-	return h.capture
-}
-
-// GetLogEntries returns a snapshot of the server's log entries and their timestamps.
-// The returned slices are copies — safe to use without holding the server lock.
-func (h *ToolHandler) GetLogEntries() ([]LogEntry, []time.Time) {
-	h.server.mu.RLock()
-	defer h.server.mu.RUnlock()
-	entries := make([]LogEntry, len(h.server.entries))
-	copy(entries, h.server.entries)
-	addedAt := make([]time.Time, len(h.server.logAddedAt))
-	copy(addedAt, h.server.logAddedAt)
-	return entries, addedAt
-}
-
-// GetLogTotalAdded returns the monotonic counter of total log entries ever added.
-func (h *ToolHandler) GetLogTotalAdded() int64 {
-	h.server.mu.RLock()
-	defer h.server.mu.RUnlock()
-	return h.server.logTotalAdded
-}
-
-// GetAnnotationStore returns the annotation store for draw mode data.
-func (h *ToolHandler) GetAnnotationStore() *AnnotationStore {
-	return h.annotationStore
-}
-
-// GetToolCallLimiter returns the tool call limiter
-func (h *ToolHandler) GetToolCallLimiter() RateLimiter {
-	return h.toolCallLimiter
-}
-
-// GetRedactionEngine returns the redaction engine
-func (h *ToolHandler) GetRedactionEngine() RedactionEngine {
-	return h.redactionEngine
-}
-
-// newPlaybackSessionsMap returns an initialized playback sessions map.
-// Separated to avoid the parameter name "capture" shadowing the package import.
-func newPlaybackSessionsMap() map[string]*capture.PlaybackSession {
-	return make(map[string]*capture.PlaybackSession)
-}
-
-// NewToolHandler creates an MCP handler with composite tool capabilities
-func NewToolHandler(server *Server, capture *capture.Capture) *MCPHandler {
-	shutdownCtx, shutdownCancel := context.WithCancel(context.Background())
-	handler := &ToolHandler{
-		MCPHandler:           NewMCPHandler(server, version),
-		capture:              capture,
-		shutdownCtx:          shutdownCtx,
-		shutdownCancel:       shutdownCancel,
-		coldStartTimeout:     defaultColdStartTimeout,
-		playbackSessions:     newPlaybackSessionsMap(),
-		evidenceByCommand:    make(map[string]*commandEvidenceState),
-		retryByCommand:       make(map[string]*commandRetryState),
-		elementIndexRegistry: newElementIndexRegistry(),
-		networkRecording:     &networkRecordingState{},
-	}
-
-	// Initialize health metrics
-	handler.healthMetrics = NewHealthMetrics()
-	handler.toolCallLimiter = NewToolCallLimiter(500, time.Minute)
-	handler.alertBuffer = streaming.NewAlertBuffer()
-
-	// Initialize session store (use current working directory as project path)
-	cwd, err := os.Getwd()
-	if err == nil {
-		if store, err := ai.NewSessionStore(cwd); err == nil {
-			handler.sessionStoreImpl = store
-		}
-	}
-
-	// Initialize noise filtering with persistence support
-	if handler.sessionStoreImpl != nil {
-		handler.noiseConfig = ai.NewNoiseConfigWithStore(handler.sessionStoreImpl)
-	} else {
-		handler.noiseConfig = ai.NewNoiseConfig()
-	}
-	handler.redactionEngine = redaction.NewRedactionEngine("")
-
-	// Use server-scoped annotation store for draw mode.
-	handler.annotationStore = server.getAnnotationStore()
-
-	// Wire async annotation waiter → CommandTracker completion
-	if handler.capture != nil {
-		handler.annotationStore.SetCommandCompleter(func(correlationID string, result json.RawMessage) {
-			handler.capture.CompleteCommand(correlationID, result, "")
-		})
-	}
-
-	// Wire automatic noise detection after page navigations
-	wireNoiseAutoDetect(handler)
-
-	// Wire automatic noise detection on first extension connection (#264)
-	wireNoiseFirstConnect(handler)
-
-	// Initialize security tools (concrete types - interface signatures differ)
-	handler.securityScannerImpl = security.NewSecurityScanner()
-	handler.thirdPartyAuditorImpl = analysis.NewThirdPartyAuditor()
-	handler.apiContractValidator = analysis.NewAPIContractValidator()
-	handler.sessionManager = session.NewSessionManager(10, newToolCaptureStateReader(handler))
-	handler.auditTrail = audit.NewAuditTrail(audit.AuditConfig{
-		MaxEntries:   10000,
-		Enabled:      true,
-		RedactParams: true,
-	})
-	handler.auditSessionMap = make(map[string]string)
-
-	// Initialize upload security config from package-level var set by CLI
-	handler.uploadSecurity = uploadSecurityConfig
-
-	// Initialize dispatch modules and tool schemas once at startup.
-	handler.ensureToolModules()
-	handler.ensureToolSchemas()
-
-	// Wire error clustering: feed error-level log entries into the cluster manager.
-	// Use SetOnEntries for thread-safe assignment (avoids racing with addEntries).
-	// Error clustering disabled for now (not initialized)
-
-	// Return as MCPHandler but with overridden methods via the wrapper
-	return &MCPHandler{
-		server:      server,
-		toolHandler: handler,
-	}
-}
-
 // maybeWaitForCommand, formatCommandResult, and related async infrastructure
 // moved to tools_async.go
 
@@ -436,26 +209,4 @@ func (h *ToolHandler) ensureToolSchemas() {
 			h.toolSchemas[tool.Name] = tool.InputSchema
 		}
 	})
-}
-
-func parseToolResultForPostProcessing(raw json.RawMessage) (*MCPToolResult, bool) {
-	if len(raw) == 0 {
-		return nil, false
-	}
-	var result MCPToolResult
-	if err := json.Unmarshal(raw, &result); err != nil {
-		return nil, false
-	}
-	return &result, true
-}
-
-func isToolResultError(raw json.RawMessage) bool {
-	if len(raw) == 0 {
-		return false
-	}
-	var result MCPToolResult
-	if err := json.Unmarshal(raw, &result); err != nil {
-		return false
-	}
-	return result.IsError
 }

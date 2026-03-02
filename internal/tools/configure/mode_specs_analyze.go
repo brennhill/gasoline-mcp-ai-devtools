@@ -1,0 +1,101 @@
+// mode_specs_analyze.go — analyze tool per-mode parameter specs.
+// Docs: docs/features/describe_capabilities.md
+package configure
+
+var analyzeModeSpecs = map[string]modeParamSpec{
+	"dom": {
+		Hint:     "Query DOM structure and element properties",
+		Optional: []string{"selector", "frame", "tab_id"},
+	},
+	"performance": {
+		Hint: "Page load performance metrics and bottleneck analysis",
+	},
+	"accessibility": {
+		Hint:     "WCAG/axe accessibility audit with violation details. summary=true returns counts + top issues",
+		Optional: []string{"selector", "scope", "tags", "force_refresh", "frame", "summary"},
+	},
+	"error_clusters": {
+		Hint: "Group errors by pattern to identify systemic issues",
+	},
+	"history": {
+		Hint: "Analyze navigation history patterns",
+	},
+	"security_audit": {
+		Hint:     "Check for credential leaks, CSP, cookie, and header risks. summary=true returns counts + top issues",
+		Optional: []string{"checks", "severity_min", "summary"},
+	},
+	"third_party_audit": {
+		Hint:     "Audit third-party script origins and data exposure. summary=true returns counts + top origins",
+		Optional: []string{"first_party_origins", "include_static", "custom_lists", "summary"},
+	},
+	"link_health": {
+		Hint:     "Check all page links for broken URLs (404s, timeouts)",
+		Optional: []string{"domain", "max_workers", "timeout_ms"},
+	},
+	"link_validation": {
+		Hint:     "Validate specific URLs for reachability",
+		Optional: []string{"urls"},
+	},
+	"page_summary": {
+		Hint:     "AI-generated summary of page content and structure",
+		Optional: []string{"world", "tab_id", "timeout_ms"},
+	},
+	"annotations": {
+		Hint:     "List annotations from a draw/annotation session",
+		Optional: []string{"annot_session", "wait", "timeout_ms"},
+	},
+	"annotation_detail": {
+		Hint:     "Full DOM/style details for a specific annotation",
+		Optional: []string{"correlation_id"},
+	},
+	"api_validation": {
+		Hint:     "Validate API responses against contract/schema",
+		Optional: []string{"operation", "ignore_endpoints"},
+	},
+	"draw_history": {
+		Hint: "List saved annotation/draw sessions",
+	},
+	"draw_session": {
+		Hint:     "Load all annotations from a saved draw session file",
+		Optional: []string{"file"},
+	},
+	"computed_styles": {
+		Hint:     "CSS computed styles for an element",
+		Optional: []string{"selector", "frame"},
+	},
+	"forms": {
+		Hint:     "Analyze form structure, fields, and validation state",
+		Optional: []string{"selector", "frame"},
+	},
+	"form_validation": {
+		Hint:     "Check form validation rules and constraint violations. summary=true returns counts only",
+		Optional: []string{"summary"},
+	},
+	"visual_baseline": {
+		Hint:     "Capture a baseline screenshot for visual regression",
+		Optional: []string{"name"},
+	},
+	"visual_diff": {
+		Hint:     "Compare current page against a visual baseline",
+		Optional: []string{"baseline", "name", "threshold"},
+	},
+	"visual_baselines": {
+		Hint: "List all stored visual regression baselines",
+	},
+	"navigation": {
+		Hint:     "Discover navigable links grouped by page region (nav, header, footer, aside)",
+		Optional: []string{"tab_id"},
+	},
+	"page_structure": {
+		Hint:     "Detect frameworks, routing, scroll containers, modals, shadow DOM, and meta tags",
+		Optional: []string{"tab_id"},
+	},
+	"audit": {
+		Hint:     "Lighthouse-style combined audit: performance, accessibility, security, best practices",
+		Optional: []string{"categories", "summary"},
+	},
+	"feature_gates": {
+		Hint:     "Detect feature flags, A/B tests, and experiment gates in page JavaScript",
+		Optional: []string{"tab_id"},
+	},
+}

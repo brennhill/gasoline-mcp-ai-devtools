@@ -37,6 +37,7 @@ func newVideoTestEnv(t *testing.T) *videoTestEnv {
 	}
 	cap := capture.NewCapture()
 	cap.SetPilotEnabled(false) // explicit default for pilot-disabled recording tests
+	mockConnectedTrackedTab(t, cap)
 	mcp := NewToolHandler(srv, cap)
 	handler, ok := mcp.toolHandler.(*ToolHandler)
 	if !ok {

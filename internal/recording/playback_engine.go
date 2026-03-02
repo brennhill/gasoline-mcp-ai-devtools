@@ -18,7 +18,7 @@ type PlaybackResult struct {
 	Status          string // "ok", "error", "partial"
 	ActionIndex     int
 	ActionType      string
-	SelectorUsed    string      // Which selector strategy succeeded
+	SelectorUsed    string // Which selector strategy succeeded
 	ExecutedAt      time.Time
 	DurationMs      int64
 	Error           string
@@ -83,12 +83,15 @@ func (r *RecordingManager) ExecutePlayback(recordingID string) (*PlaybackSession
 		return nil, err
 	}
 
-	r.mu.Lock()
-	recording, exists := r.recordings[recordingID]
-	if !exists {
-		recording, _ = r.loadRecordingFromDisk(recordingID)
-	}
-	r.mu.Unlock()
+	recording := func() *Recording {
+		r.mu.Lock()
+		defer r.mu.Unlock()
+		current, exists := r.recordings[recordingID]
+		if !exists {
+			current, _ = r.loadRecordingFromDisk(recordingID)
+		}
+		return current
+	}()
 
 	if recording == nil {
 		return nil, fmt.Errorf("playback_load_failed: Could not load recording")
@@ -221,9 +224,9 @@ func (r *RecordingManager) tryClickSelector(selector string, action RecordingAct
 	// Simplified check: selector should be non-empty and contain expected format
 	validSelectors := []string{
 		"[data-testid=",
-		".",  // class selector
-		"#",  // id selector
-		"[",  // attribute selector
+		".", // class selector
+		"#", // id selector
+		"[", // attribute selector
 	}
 
 	for _, prefix := range validSelectors {

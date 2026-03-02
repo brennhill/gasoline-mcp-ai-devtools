@@ -20,6 +20,19 @@
           "description": "Extract JSON value from response_body using path, e.g. data.items[0].id (network_bodies)",
           "type": "string"
         },
+        "classification": {
+          "description": "Transient element classification filter (transients)",
+          "enum": [
+            "alert",
+            "toast",
+            "snackbar",
+            "notification",
+            "tooltip",
+            "banner",
+            "flash"
+          ],
+          "type": "string"
+        },
         "connection_id": {
           "description": "WebSocket connection ID filter",
           "type": "string"
@@ -69,6 +82,10 @@
         "include_internal": {
           "description": "Include daemon lifecycle/transport diagnostics in logs output (logs)",
           "type": "boolean"
+        },
+        "key": {
+          "description": "Filter by specific storage key or cookie name (storage)",
+          "type": "string"
         },
         "last_n": {
           "description": "Return last N items only",
@@ -128,6 +145,10 @@
           "description": "Auto-restart if cursor expired",
           "type": "boolean"
         },
+        "save_to": {
+          "description": "File path to save screenshot to disk (screenshot)",
+          "type": "string"
+        },
         "scope": {
           "description": "Filter scope: current_page (default) filters by tracked tab, all returns everything (errors, logs)",
           "enum": [
@@ -156,12 +177,21 @@
           "description": "Min HTTP status code",
           "type": "number"
         },
+        "storage_type": {
+          "description": "Storage type filter: local, session, or cookies (storage)",
+          "enum": [
+            "local",
+            "session",
+            "cookies"
+          ],
+          "type": "string"
+        },
         "store": {
           "description": "IndexedDB object store name (indexeddb)",
           "type": "string"
         },
         "summary": {
-          "description": "Return compact summary instead of full entries (errors, logs, network_waterfall, network_bodies, websocket_events, actions, error_bundles, timeline, history)",
+          "description": "Return compact summary instead of full entries (errors, logs, network_waterfall, network_bodies, websocket_events, actions, error_bundles, timeline, history, transients)",
           "type": "boolean"
         },
         "telemetry_mode": {
@@ -214,7 +244,9 @@
             "playback_results",
             "log_diff_report",
             "summarized_logs",
-            "page_inventory"
+            "page_inventory",
+            "transients",
+            "inbox"
           ],
           "type": "string"
         },
@@ -245,6 +277,13 @@
         "baseline": {
           "description": "Baseline name to compare against (visual_diff)",
           "type": "string"
+        },
+        "categories": {
+          "description": "Audit categories to include (audit). Valid: performance, accessibility, security, best_practices",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
         },
         "checks": {
           "description": "Checks to run (security_audit)",
@@ -340,7 +379,7 @@
           "type": "string"
         },
         "summary": {
-          "description": "Return compact summary instead of full details (accessibility, security_audit, third_party_audit, form_validation)",
+          "description": "Return compact summary instead of full details (accessibility, security_audit, third_party_audit, form_validation, audit)",
           "type": "boolean"
         },
         "sync": {
@@ -409,7 +448,10 @@
             "visual_baseline",
             "visual_diff",
             "visual_baselines",
-            "navigation"
+            "navigation",
+            "page_structure",
+            "audit",
+            "feature_gates"
           ],
           "type": "string"
         },
@@ -730,9 +772,15 @@
             "delete_sequence",
             "replay_sequence",
             "doctor",
-            "security_mode"
+            "security_mode",
+            "network_recording",
+            "action_jitter"
           ],
           "type": "string"
+        },
+        "action_jitter_ms": {
+          "description": "Max random delay (ms) before each interact action, 0 to disable (action_jitter)",
+          "type": "number"
         },
         "audit_session_id": {
           "description": "Filter by audit session ID",
@@ -784,6 +832,10 @@
         },
         "description": {
           "description": "Human-readable description for saved sequence",
+          "type": "string"
+        },
+        "domain": {
+          "description": "Domain filter for network_recording",
           "type": "string"
         },
         "events": {
@@ -862,7 +914,10 @@
           "enum": [
             "analyze",
             "report",
-            "clear"
+            "clear",
+            "start",
+            "stop",
+            "status"
           ],
           "type": "string"
         },
@@ -1051,7 +1106,9 @@
             "delete_sequence",
             "replay_sequence",
             "doctor",
-            "security_mode"
+            "security_mode",
+            "network_recording",
+            "action_jitter"
           ],
           "type": "string"
         }
@@ -1064,9 +1121,13 @@
   },
   {
     "name": "interact",
-    "description": "Browser actions. Requires AI Web Pilot.\n\nSynchronous Mode (Default): Tools now block until the extension returns a result (up to 15s). Set background:true to return immediately with a correlation_id.\n\nSelectors: CSS or semantic (text=Submit, role=button, placeholder=Email, label=Name, aria-label=Close). subtitle param composable with any action. analyze=true captures perf_diff. navigate/refresh auto-include perf_diff.\n\nDraw Mode: draw_mode_start activates annotation overlay — user draws rectangles and types feedback, presses ESC to finish. Use analyze({what:'annotations'}) to retrieve results.\n\nDispatch: 'what' is required. 'action' is a deprecated runtime alias accepted for backward compatibility — prefer 'what'.",
+    "description": "Browser actions. Requires AI Web Pilot. Dispatch key: 'what'.\n\nGetting started: Use explore_page for a complete page snapshot (screenshot, interactive elements, readable text, navigation links) in one call. Use list_interactive for element discovery. Use click/type/select for interaction.\n\nElement targeting: Prefer element_id (from list_interactive/explore_page) for reliability, selector for flexibility, or index (legacy). Add scope_selector to constrain to a page region.\n\nEnrichments: Add include_screenshot:true for visual feedback, observe_mutations:true for DOM change tracking, action_diff:true for structured mutation summary, wait_for_stable:true to wait for DOM to settle.\n\nPage understanding: explore_page (full snapshot), list_interactive, get_readable, get_markdown.\nInteraction: click, type, select, check, hover, focus, scroll_to, key_press, paste.\nNavigation: navigate, back, forward, refresh, new_tab, switch_tab, close_tab.\nForms: fill_form, fill_form_and_submit.\nAdvanced: execute_js, batch, upload, draw_mode_start.\n\nSynchronous Mode (Default): Tools block until result (up to 15s). Set background:true to return immediately.\n\nSelectors: CSS or semantic (text=Submit, role=button, placeholder=Email, label=Name, aria-label=Close).\n\nCall configure({what:'describe_capabilities', tool:'interact', mode:'click'}) for per-action param details.",
     "inputSchema": {
       "properties": {
+        "absent": {
+          "description": "Wait for element to disappear (wait_for)",
+          "type": "boolean"
+        },
         "action": {
           "description": "Deprecated alias for 'what'. Prefer 'what'.",
           "enum": [
@@ -1101,6 +1162,7 @@
             "get_text",
             "get_value",
             "get_attribute",
+            "query",
             "set_attribute",
             "focus",
             "scroll_to",
@@ -1127,9 +1189,16 @@
             "draw_mode_start",
             "hardware_click",
             "activate_tab",
-            "explore_page"
+            "explore_page",
+            "batch",
+            "clipboard_read",
+            "clipboard_write"
           ],
           "type": "string"
+        },
+        "action_diff": {
+          "description": "After the action completes, capture a structured mutation summary (overlays opened/closed, toasts, form errors, text changes). Composable with click, type, select, and other DOM-mutating actions.",
+          "type": "boolean"
         },
         "analyze": {
           "description": "Enable perf profiling (captures perf_diff)",
@@ -1142,6 +1211,13 @@
         "api_endpoint": {
           "description": "API endpoint for direct upload mode",
           "type": "string"
+        },
+        "attribute_names": {
+          "description": "Attribute names to read for query_type='attributes' (e.g., ['href', 'data-id'])",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
         },
         "audio": {
           "description": "Recording audio: tab, mic, both. Omit for video-only.",
@@ -1166,6 +1242,10 @@
         },
         "clear": {
           "description": "Clear before typing",
+          "type": "boolean"
+        },
+        "continue_on_error": {
+          "description": "Continue executing remaining steps after a failure (default true)",
           "type": "boolean"
         },
         "correlation_id": {
@@ -1196,6 +1276,10 @@
             "always"
           ],
           "type": "string"
+        },
+        "exclude_nav": {
+          "description": "Exclude elements inside navigation containers — nav, header, or role=navigation (list_interactive)",
+          "type": "boolean"
         },
         "fields": {
           "description": "Form fields to fill (fill_form, fill_form_and_submit)",
@@ -1237,6 +1321,10 @@
           "description": "Return page content with navigate response (url, title, text_content, vitals)",
           "type": "boolean"
         },
+        "include_interactive": {
+          "description": "Run list_interactive after the action and include results in the response",
+          "type": "boolean"
+        },
         "include_screenshot": {
           "description": "Capture a screenshot after the action completes and return it inline as an image content block",
           "type": "boolean"
@@ -1269,6 +1357,10 @@
           "description": "Open navigation URL in a background tab instead of replacing current tab (navigate)",
           "type": "boolean"
         },
+        "nth": {
+          "description": "Select the Nth matching element when a selector matches multiple. 0 = first visible match, 1 = second, etc. Negative values count from end (-1 = last). Prefers visible elements when available.",
+          "type": "number"
+        },
         "observe_mutations": {
           "description": "Track element-level DOM mutations during action execution",
           "type": "boolean"
@@ -1277,8 +1369,23 @@
           "description": "Cookie path (set_cookie/delete_cookie, default /)",
           "type": "string"
         },
+        "query_type": {
+          "description": "Query operation type for interact(what='query'): exists, count, text, text_all, attributes",
+          "enum": [
+            "exists",
+            "count",
+            "text",
+            "text_all",
+            "attributes"
+          ],
+          "type": "string"
+        },
         "reason": {
           "description": "Action reason (shown as toast)",
+          "type": "string"
+        },
+        "role": {
+          "description": "Filter list_interactive elements by element type or ARIA role (e.g., 'button', 'link', 'input', 'tab')",
           "type": "string"
         },
         "save_to": {
@@ -1309,6 +1416,21 @@
           "description": "Milliseconds of DOM quiet time required for wait_for_stable (default 500)",
           "type": "number"
         },
+        "step_timeout_ms": {
+          "description": "Timeout per step during batch execution (default 10000)",
+          "type": "number"
+        },
+        "steps": {
+          "description": "Ordered list of interact actions to execute sequentially (batch)",
+          "items": {
+            "type": "object"
+          },
+          "type": "array"
+        },
+        "stop_after_step": {
+          "description": "Stop batch execution after this many steps",
+          "type": "number"
+        },
         "storage_type": {
           "description": "Storage target for state mutation actions",
           "enum": [
@@ -1316,6 +1438,10 @@
             "sessionStorage"
           ],
           "type": "string"
+        },
+        "structured": {
+          "description": "Return nested/hierarchical text extraction (get_text)",
+          "type": "boolean"
         },
         "submit": {
           "description": "Submit form after upload",
@@ -1358,12 +1484,20 @@
           "description": "Text for type/subtitle. key_press keys: Enter, Tab, Escape, Backspace, ArrowDown, ArrowUp, Space.",
           "type": "string"
         },
+        "text_contains": {
+          "description": "Filter list_interactive elements whose label contains this substring (case-insensitive)",
+          "type": "string"
+        },
         "timeout_ms": {
           "description": "Timeout ms (default 5000)",
           "type": "number"
         },
         "url": {
           "description": "URL (navigate, new_tab)",
+          "type": "string"
+        },
+        "url_contains": {
+          "description": "Wait for URL to contain this substring (wait_for)",
           "type": "string"
         },
         "value": {
@@ -1419,6 +1553,7 @@
             "get_text",
             "get_value",
             "get_attribute",
+            "query",
             "set_attribute",
             "focus",
             "scroll_to",
@@ -1445,7 +1580,10 @@
             "draw_mode_start",
             "hardware_click",
             "activate_tab",
-            "explore_page"
+            "explore_page",
+            "batch",
+            "clipboard_read",
+            "clipboard_write"
           ],
           "type": "string"
         },
@@ -1457,6 +1595,14 @@
             "isolated"
           ],
           "type": "string"
+        },
+        "x": {
+          "description": "X coordinate in pixels from left edge (click, hardware_click)",
+          "type": "number"
+        },
+        "y": {
+          "description": "Y coordinate in pixels from top edge (click, hardware_click)",
+          "type": "number"
         }
       },
       "required": [

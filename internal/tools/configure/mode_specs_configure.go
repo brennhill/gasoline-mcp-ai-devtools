@@ -1,0 +1,115 @@
+// mode_specs_configure.go — configure tool per-mode parameter specs.
+// Docs: docs/features/describe_capabilities.md
+package configure
+
+var configureModeSpecs = map[string]modeParamSpec{
+	"store": {
+		Hint:     "Persist/retrieve session key-value data",
+		Optional: []string{"store_action", "namespace", "key", "data", "value"},
+	},
+	"load": {
+		Hint: "Load stored session data by namespace",
+	},
+	"noise_rule": {
+		Hint: "Suppress recurring console noise with pattern rules",
+		Optional: []string{
+			"noise_action", "rules", "rule_id", "pattern", "category", "classification",
+			"message_regex", "source_regex", "url_regex", "method", "status_min", "status_max", "level", "reason",
+		},
+	},
+	"clear": {
+		Hint:     "Reset capture buffers (network, logs, actions, all)",
+		Optional: []string{"buffer"},
+	},
+	"health": {
+		Hint: "Check daemon + extension connection status",
+	},
+	"tutorial": {
+		Hint: "Context-aware usage guidance and best practices",
+	},
+	"examples": {
+		Hint: "Quick code snippets for common operations",
+	},
+	"streaming": {
+		Hint:     "Enable/disable push notifications for browser events",
+		Optional: []string{"streaming_action", "events", "throttle_seconds", "severity_min"},
+	},
+	"test_boundary_start": {
+		Hint:     "Mark start of a test boundary for isolated captures",
+		Required: []string{"test_id"},
+		Optional: []string{"label"},
+	},
+	"test_boundary_end": {
+		Hint:     "Mark end of a test boundary",
+		Required: []string{"test_id"},
+	},
+	"recording_start": {
+		Hint:     "Start recording browser session (actions + video)",
+		Optional: []string{"name", "tab_id", "sensitive_data_enabled"},
+	},
+	"recording_stop": {
+		Hint:     "Stop an active browser recording",
+		Optional: []string{"recording_id"},
+	},
+	"playback": {
+		Hint:     "Replay a saved recording",
+		Optional: []string{"recording_id"},
+	},
+	"log_diff": {
+		Hint:     "Compare error logs between original and replay recordings",
+		Optional: []string{"original_id", "replay_id"},
+	},
+	"telemetry": {
+		Hint:     "Set telemetry metadata mode (off/auto/full)",
+		Optional: []string{"telemetry_mode"},
+	},
+	"describe_capabilities": {
+		Hint:     "List modes and per-mode params; filter by tool and mode",
+		Optional: []string{"tool", "mode"},
+	},
+	"diff_sessions": {
+		Hint:     "Compare two session snapshots to find state differences",
+		Optional: []string{"verif_session_action", "name", "compare_a", "compare_b", "url"},
+	},
+	"audit_log": {
+		Hint:     "View tool call audit trail with timing and results",
+		Optional: []string{"operation", "audit_session_id", "tool_name", "since", "limit"},
+	},
+	"restart": {
+		Hint: "Force-restart daemon when unresponsive",
+	},
+	"save_sequence": {
+		Hint:     "Save a named sequence of interact actions for replay",
+		Optional: []string{"name", "description", "steps", "tags"},
+	},
+	"get_sequence": {
+		Hint:     "Retrieve a saved action sequence by name",
+		Optional: []string{"name"},
+	},
+	"list_sequences": {
+		Hint: "List all saved action sequences",
+	},
+	"delete_sequence": {
+		Hint:     "Delete a saved action sequence",
+		Optional: []string{"name"},
+	},
+	"replay_sequence": {
+		Hint:     "Replay a saved action sequence with optional overrides",
+		Optional: []string{"name", "override_steps", "step_timeout_ms", "continue_on_error", "stop_after_step"},
+	},
+	"doctor": {
+		Hint: "System diagnostics: port, state directory, log health",
+	},
+	"security_mode": {
+		Hint:     "Toggle normal/insecure_proxy mode for debug environments",
+		Optional: []string{"mode", "confirm"},
+	},
+	"network_recording": {
+		Hint:     "Passive network traffic recording with start/stop capture",
+		Optional: []string{"operation", "domain", "method"},
+	},
+	"action_jitter": {
+		Hint:     "Randomized micro-delays before interact actions for human-like timing",
+		Optional: []string{"action_jitter_ms"},
+	},
+}

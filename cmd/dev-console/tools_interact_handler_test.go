@@ -9,7 +9,6 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"net/http/httptest"
 	"strings"
 	"testing"
 )
@@ -239,9 +238,7 @@ func TestToolsInteractHighlight_Success(t *testing.T) {
 	t.Parallel()
 	h, _, cap := makeToolHandler(t)
 	cap.SetPilotEnabled(true)
-	syncReq := httptest.NewRequest("POST", "/sync", strings.NewReader(`{"ext_session_id":"test"}`))
-	syncReq.Header.Set("X-Gasoline-Client", "test-client")
-	cap.HandleSync(httptest.NewRecorder(), syncReq)
+	mockConnectedTrackedTab(t, cap)
 
 	resp := callInteractRaw(h, `{"what":"highlight","selector":".btn"}`)
 	result := parseToolResult(t, resp)
@@ -356,6 +353,7 @@ func TestToolsInteractExecuteJS_Success(t *testing.T) {
 	t.Parallel()
 	h, _, cap := makeToolHandler(t)
 	cap.SetPilotEnabled(true)
+	mockConnectedTrackedTab(t, cap)
 
 	resp := callInteractRaw(h, `{"what":"execute_js","script":"document.title"}`)
 	result := parseToolResult(t, resp)
@@ -403,6 +401,7 @@ func TestToolsInteractNavigate_AssumedEnabledWhenPilotStatusUncertain(t *testing
 	t.Parallel()
 	h, _, cap := makeToolHandler(t)
 	cap.SetPilotUnknownForTest()
+	mockConnectedTrackedTab(t, cap)
 
 	resp := callInteractRaw(h, `{"what":"navigate","url":"https://example.com"}`)
 	result := parseToolResult(t, resp)
@@ -420,9 +419,7 @@ func TestToolsInteractNavigate_Success(t *testing.T) {
 	t.Parallel()
 	h, _, cap := makeToolHandler(t)
 	cap.SetPilotEnabled(true)
-	syncReq := httptest.NewRequest("POST", "/sync", strings.NewReader(`{"ext_session_id":"test"}`))
-	syncReq.Header.Set("X-Gasoline-Client", "test-client")
-	cap.HandleSync(httptest.NewRecorder(), syncReq)
+	mockConnectedTrackedTab(t, cap)
 
 	resp := callInteractRaw(h, `{"what":"navigate","url":"https://example.com"}`)
 	result := parseToolResult(t, resp)
@@ -478,6 +475,7 @@ func TestToolsInteractBrowserActions_SuccessWithPilot(t *testing.T) {
 	t.Parallel()
 	h, _, cap := makeToolHandler(t)
 	cap.SetPilotEnabled(true)
+	mockConnectedTrackedTab(t, cap)
 
 	actions := []struct {
 		name   string
@@ -588,7 +586,7 @@ func TestToolsInteractDOMPrimitives_MissingSelector(t *testing.T) {
 	h, _, _ := makeToolHandler(t)
 
 	actions := []string{"click", "type", "select", "check", "get_text", "get_value",
-		"get_attribute", "set_attribute", "focus", "scroll_to", "wait_for", "key_press"}
+		"get_attribute", "set_attribute", "focus", "scroll_to", "wait_for"}
 
 	for _, action := range actions {
 		t.Run(action, func(t *testing.T) {
@@ -661,8 +659,6 @@ func TestToolsInteractDOMPrimitives_ActionSpecificParams(t *testing.T) {
 
 func TestToolsInteractDOMPrimitives_SuccessWithPilot(t *testing.T) {
 	t.Parallel()
-	h, _, cap := makeToolHandler(t)
-	cap.SetPilotEnabled(true)
 
 	cases := []struct {
 		action string
@@ -688,6 +684,10 @@ func TestToolsInteractDOMPrimitives_SuccessWithPilot(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.action, func(t *testing.T) {
+			h, _, cap := makeToolHandler(t)
+			cap.SetPilotEnabled(true)
+			mockConnectedTrackedTab(t, cap)
+
 			resp := callInteractRaw(h, tc.args)
 			result := parseToolResult(t, resp)
 			if result.IsError {
@@ -719,6 +719,7 @@ func TestToolsInteractDOMPrimitive_AnnotationRectAliasMapsToScopeRect(t *testing
 	t.Parallel()
 	h, _, cap := makeToolHandler(t)
 	cap.SetPilotEnabled(true)
+	mockConnectedTrackedTab(t, cap)
 
 	resp := callInteractRaw(h, `{"what":"click","selector":".compose","annotation_rect":{"x":120,"y":240,"width":300,"height":180}}`)
 	result := parseToolResult(t, resp)
@@ -826,6 +827,7 @@ func TestToolsInteractListInteractive_ResponseFields(t *testing.T) {
 	t.Parallel()
 	h, _, cap := makeToolHandler(t)
 	cap.SetPilotEnabled(true)
+	mockConnectedTrackedTab(t, cap)
 
 	resp := callInteractRaw(h, `{"what":"list_interactive"}`)
 	result := parseToolResult(t, resp)

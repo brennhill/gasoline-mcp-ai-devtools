@@ -432,13 +432,13 @@ func TestRichAction_AnalyzeFieldsSurfacedTopLevel(t *testing.T) {
 		t.Errorf("analysis = %q, should mention 55ms", analysis)
 	}
 
-	// Fields must also still be in result (passthrough preserved)
+	// Enriched fields are de-duplicated from nested result payloads.
 	extResult, ok := responseData["result"].(map[string]any)
 	if !ok {
 		t.Fatal("result envelope must still exist")
 	}
-	if _, exists := extResult["timing"]; !exists {
-		t.Error("timing must also remain inside result (passthrough)")
+	if _, exists := extResult["timing"]; exists {
+		t.Error("timing should be stripped from nested result after top-level enrichment")
 	}
 }
 
@@ -493,6 +493,8 @@ func TestRichAction_TargetContextSurfacedTopLevel(t *testing.T) {
 		"action": "click",
 		"resolved_tab_id": 77,
 		"resolved_url": "https://example.com/form",
+		"effective_tab_id": 77,
+		"effective_url": "https://example.com/form",
 		"target_context": {
 			"source": "explicit_tab",
 			"requested_tab_id": 77,
@@ -514,27 +516,32 @@ func TestRichAction_TargetContextSurfacedTopLevel(t *testing.T) {
 		t.Fatalf("Failed to parse response JSON: %v", err)
 	}
 
-	if responseData["resolved_tab_id"] != float64(77) {
-		t.Fatalf("resolved_tab_id = %v, want 77", responseData["resolved_tab_id"])
+	if responseData["effective_tab_id"] != float64(77) {
+		t.Fatalf("effective_tab_id = %v, want 77", responseData["effective_tab_id"])
 	}
-	if responseData["resolved_url"] != "https://example.com/form" {
-		t.Fatalf("resolved_url = %v, want https://example.com/form", responseData["resolved_url"])
+	if responseData["effective_url"] != "https://example.com/form" {
+		t.Fatalf("effective_url = %v, want https://example.com/form", responseData["effective_url"])
 	}
 
-	targetContext, ok := responseData["target_context"].(map[string]any)
-	if !ok {
-		t.Fatal("target_context missing at top level")
+	// Routing-only context is stripped from successful responses to reduce tokens.
+	if _, exists := responseData["target_context"]; exists {
+		t.Fatal("target_context should be stripped from successful responses")
 	}
-	if targetContext["source"] != "explicit_tab" {
-		t.Fatalf("target_context.source = %v, want explicit_tab", targetContext["source"])
+	if _, exists := responseData["resolved_tab_id"]; exists {
+		t.Fatal("resolved_tab_id should be omitted when URL did not change")
+	}
+	if _, exists := responseData["resolved_url"]; exists {
+		t.Fatal("resolved_url should be omitted when URL did not change")
 	}
 
 	extResult, ok := responseData["result"].(map[string]any)
 	if !ok {
 		t.Fatal("result envelope missing")
 	}
-	if extResult["resolved_tab_id"] != float64(77) {
-		t.Fatalf("result.resolved_tab_id = %v, want 77", extResult["resolved_tab_id"])
+	for _, key := range []string{"target_context", "resolved_tab_id", "resolved_url", "effective_tab_id", "effective_url"} {
+		if _, exists := extResult[key]; exists {
+			t.Fatalf("%s should be stripped from nested result after enrichment", key)
+		}
 	}
 }
 
@@ -576,33 +583,29 @@ func TestRichAction_DomSummaryPassthrough(t *testing.T) {
 		t.Fatalf("Failed to parse response JSON: %v", err)
 	}
 
-	// Extension result fields should be inside the "result" envelope
+	// Enriched fields should be surfaced top-level.
+	if responseData["dom_summary"] != "2 added, 1 modified" {
+		t.Errorf("dom_summary = %q, want '2 added, 1 modified'", responseData["dom_summary"])
+	}
+	if responseData["analysis"] != "click completed in 42ms. 2 added, 1 modified." {
+		t.Errorf("analysis = %q, want 'click completed in 42ms. 2 added, 1 modified.'", responseData["analysis"])
+	}
+	timingTop, exists := responseData["timing"].(map[string]any)
+	if !exists {
+		t.Fatal("timing missing at top-level command result")
+	}
+	if totalMs, _ := timingTop["total_ms"].(float64); totalMs != 42 {
+		t.Errorf("timing.total_ms = %v, want 42", totalMs)
+	}
+
+	// Nested result should keep core result payload while dropping enriched duplicates.
 	extResult, ok := responseData["result"].(map[string]any)
 	if !ok {
 		t.Fatal("response should contain 'result' object with extension data")
 	}
-
-	domSummary, exists := extResult["dom_summary"]
-	if !exists {
-		t.Fatal("dom_summary missing from command result — extension field not passed through")
-	}
-	if domSummary != "2 added, 1 modified" {
-		t.Errorf("dom_summary = %q, want '2 added, 1 modified'", domSummary)
-	}
-
-	analysis, exists := extResult["analysis"]
-	if !exists {
-		t.Fatal("analysis missing from command result — extension field not passed through")
-	}
-	if analysis != "click completed in 42ms. 2 added, 1 modified." {
-		t.Errorf("analysis = %q, want 'click completed in 42ms. 2 added, 1 modified.'", analysis)
-	}
-
-	timing, exists := extResult["timing"].(map[string]any)
-	if !exists {
-		t.Fatal("timing missing from command result")
-	}
-	if totalMs, _ := timing["total_ms"].(float64); totalMs != 42 {
-		t.Errorf("timing.total_ms = %v, want 42", totalMs)
+	for _, key := range []string{"dom_summary", "analysis", "timing"} {
+		if _, exists := extResult[key]; exists {
+			t.Fatalf("%s should be stripped from nested result after top-level enrichment", key)
+		}
 	}
 }
