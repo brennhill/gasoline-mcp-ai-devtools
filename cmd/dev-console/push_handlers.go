@@ -66,12 +66,14 @@ func (s *Server) handlePushScreenshot(w http.ResponseWriter, r *http.Request) {
 	}
 
 	status := "queued"
+	deliveryMethod := string(push.DeliveredViaInbox)
 	if s.pushRouter != nil {
 		result, err := s.pushRouter.DeliverPush(ev)
 		if err != nil {
 			jsonResponse(w, http.StatusInternalServerError, map[string]string{"error": "push_screenshot: delivery failed. " + err.Error()})
 			return
 		}
+		deliveryMethod = string(result.Method)
 		if result.Method == push.DeliveredViaSampling {
 			status = "delivered"
 		}
@@ -80,8 +82,9 @@ func (s *Server) handlePushScreenshot(w http.ResponseWriter, r *http.Request) {
 	}
 
 	jsonResponse(w, http.StatusOK, map[string]any{
-		"status":   status,
-		"event_id": ev.ID,
+		"status":          status,
+		"event_id":        ev.ID,
+		"delivery_method": deliveryMethod,
 	})
 }
 
@@ -124,12 +127,14 @@ func (s *Server) handlePushMessage(w http.ResponseWriter, r *http.Request) {
 	}
 
 	status := "queued"
+	deliveryMethod := string(push.DeliveredViaInbox)
 	if s.pushRouter != nil {
 		result, err := s.pushRouter.DeliverPush(ev)
 		if err != nil {
 			jsonResponse(w, http.StatusInternalServerError, map[string]string{"error": "push_message: delivery failed. " + err.Error()})
 			return
 		}
+		deliveryMethod = string(result.Method)
 		if result.Method == push.DeliveredViaSampling {
 			status = "delivered"
 		}
@@ -138,8 +143,9 @@ func (s *Server) handlePushMessage(w http.ResponseWriter, r *http.Request) {
 	}
 
 	jsonResponse(w, http.StatusOK, map[string]any{
-		"status":   status,
-		"event_id": ev.ID,
+		"status":          status,
+		"event_id":        ev.ID,
+		"delivery_method": deliveryMethod,
 	})
 }
 
@@ -157,11 +163,11 @@ func (s *Server) handlePushCapabilities(w http.ResponseWriter, r *http.Request) 
 	}
 
 	jsonResponse(w, http.StatusOK, map[string]any{
-		"push_enabled":          caps.SupportsSampling || caps.SupportsNotifications,
-		"supports_sampling":     caps.SupportsSampling,
+		"push_enabled":           caps.SupportsSampling || caps.SupportsNotifications,
+		"supports_sampling":      caps.SupportsSampling,
 		"supports_notifications": caps.SupportsNotifications,
-		"client_name":           caps.ClientName,
-		"inbox_count":           inboxCount,
+		"client_name":            caps.ClientName,
+		"inbox_count":            inboxCount,
 	})
 }
 
