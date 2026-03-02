@@ -4,9 +4,13 @@ feature_id: feature-self-testing
 status: in-progress
 feature_type: feature
 owners: []
-last_reviewed: 2026-02-16
+last_reviewed: 2026-03-02
 code_paths:
-test_paths: []
+  - cmd/dev-console/server_routes.go
+  - cmd/dev-console/testpages_http.go
+  - cmd/dev-console/testpages_websocket.go
+test_paths:
+  - cmd/dev-console/testpages_test.go
 ---
 
 # Self Testing
@@ -23,6 +27,7 @@ test_paths: []
 - Product Spec: [product-spec.md](./product-spec.md)
 - Tech Spec: [tech-spec.md](./tech-spec.md)
 - QA Plan: [qa-plan.md](./qa-plan.md)
+- Flow Map: [flow-map.md](./flow-map.md)
 
 ## Requirement IDs
 
@@ -32,4 +37,6 @@ test_paths: []
 
 ## Code and Tests
 
-Add concrete implementation and test links here as this feature evolves.
+- HTTP fixtures and embedded test pages: `cmd/dev-console/testpages_http.go`
+- WebSocket harness and frame handling: `cmd/dev-console/testpages_websocket.go`
+- Behavior tests: `cmd/dev-console/testpages_test.go`

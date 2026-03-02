@@ -38,3 +38,4 @@ Each flow map should include:
 - [MCP Daemon Lifecycle](./mcp-daemon-lifecycle.md)
 - [Recording Control and Playback](./recording-control-and-playback.md)
 - [Tab Recording and Media Ingest](./tab-recording-and-media-ingest.md)
+- [Self-Testing Test Harness](./self-testing-test-harness.md)
