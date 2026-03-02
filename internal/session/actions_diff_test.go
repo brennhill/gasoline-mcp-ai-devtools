@@ -322,8 +322,8 @@ func TestComputeSummary_Unchanged(t *testing.T) {
 	sm := NewSessionManager(10, mock)
 
 	result := &SessionDiffResult{
-		Errors:  ErrorDiff{New: []SnapshotError{}, Resolved: []SnapshotError{}, Unchanged: []SnapshotError{{Message: "still here"}}},
-		Network: SessionNetworkDiff{NewErrors: []SnapshotNetworkRequest{}, StatusChanges: []SessionNetworkChange{}},
+		Errors:      ErrorDiff{New: []SnapshotError{}, Resolved: []SnapshotError{}, Unchanged: []SnapshotError{{Message: "still here"}}},
+		Network:     SessionNetworkDiff{NewErrors: []SnapshotNetworkRequest{}, StatusChanges: []SessionNetworkChange{}},
 		Performance: PerformanceDiff{},
 	}
 
@@ -346,8 +346,8 @@ func TestComputeSummary_Improved(t *testing.T) {
 	sm := NewSessionManager(10, mock)
 
 	result := &SessionDiffResult{
-		Errors:  ErrorDiff{New: []SnapshotError{}, Resolved: []SnapshotError{{Message: "fixed"}}, Unchanged: []SnapshotError{}},
-		Network: SessionNetworkDiff{NewErrors: []SnapshotNetworkRequest{}, StatusChanges: []SessionNetworkChange{}},
+		Errors:      ErrorDiff{New: []SnapshotError{}, Resolved: []SnapshotError{{Message: "fixed"}}, Unchanged: []SnapshotError{}},
+		Network:     SessionNetworkDiff{NewErrors: []SnapshotNetworkRequest{}, StatusChanges: []SessionNetworkChange{}},
 		Performance: PerformanceDiff{},
 	}
 
@@ -366,8 +366,8 @@ func TestComputeSummary_Regressed_NewErrors(t *testing.T) {
 	sm := NewSessionManager(10, mock)
 
 	result := &SessionDiffResult{
-		Errors:  ErrorDiff{New: []SnapshotError{{Message: "new err"}}, Resolved: []SnapshotError{}, Unchanged: []SnapshotError{}},
-		Network: SessionNetworkDiff{NewErrors: []SnapshotNetworkRequest{}, StatusChanges: []SessionNetworkChange{}},
+		Errors:      ErrorDiff{New: []SnapshotError{{Message: "new err"}}, Resolved: []SnapshotError{}, Unchanged: []SnapshotError{}},
+		Network:     SessionNetworkDiff{NewErrors: []SnapshotNetworkRequest{}, StatusChanges: []SessionNetworkChange{}},
 		Performance: PerformanceDiff{},
 	}
 
@@ -383,8 +383,8 @@ func TestComputeSummary_Regressed_NetworkErrors(t *testing.T) {
 	sm := NewSessionManager(10, mock)
 
 	result := &SessionDiffResult{
-		Errors:  ErrorDiff{New: []SnapshotError{}, Resolved: []SnapshotError{}, Unchanged: []SnapshotError{}},
-		Network: SessionNetworkDiff{NewErrors: []SnapshotNetworkRequest{{Status: 500}}, StatusChanges: []SessionNetworkChange{}},
+		Errors:      ErrorDiff{New: []SnapshotError{}, Resolved: []SnapshotError{}, Unchanged: []SnapshotError{}},
+		Network:     SessionNetworkDiff{NewErrors: []SnapshotNetworkRequest{{Status: 500}}, StatusChanges: []SessionNetworkChange{}},
 		Performance: PerformanceDiff{},
 	}
 
@@ -403,8 +403,8 @@ func TestComputeSummary_Regressed_PerfRegressions(t *testing.T) {
 	sm := NewSessionManager(10, mock)
 
 	result := &SessionDiffResult{
-		Errors:  ErrorDiff{New: []SnapshotError{}, Resolved: []SnapshotError{}, Unchanged: []SnapshotError{}},
-		Network: SessionNetworkDiff{NewErrors: []SnapshotNetworkRequest{}, StatusChanges: []SessionNetworkChange{}},
+		Errors:      ErrorDiff{New: []SnapshotError{}, Resolved: []SnapshotError{}, Unchanged: []SnapshotError{}},
+		Network:     SessionNetworkDiff{NewErrors: []SnapshotNetworkRequest{}, StatusChanges: []SessionNetworkChange{}},
 		Performance: PerformanceDiff{LoadTime: &MetricChange{Regression: true}},
 	}
 
@@ -624,15 +624,15 @@ func TestDiffPerformance_IntegrationWithCompare(t *testing.T) {
 	mock := &mockCaptureState{pageURL: "http://localhost:3000"}
 	sm := NewSessionManager(10, mock)
 
-	mock.performance = &performance.PerformanceSnapshot{
-		Timing:  performance.PerformanceTiming{Load: 500},
+	mock.performance = &performance.Snapshot{
+		Timing:  performance.Timing{Load: 500},
 		Network: performance.NetworkSummary{RequestCount: 5, TransferSize: 25000},
 	}
 	sm.Capture("baseline", "")
 
 	// Make it much worse
-	mock.performance = &performance.PerformanceSnapshot{
-		Timing:  performance.PerformanceTiming{Load: 5000},
+	mock.performance = &performance.Snapshot{
+		Timing:  performance.Timing{Load: 5000},
 		Network: performance.NetworkSummary{RequestCount: 50, TransferSize: 250000},
 	}
 	sm.Capture("degraded", "")

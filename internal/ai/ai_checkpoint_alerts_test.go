@@ -191,16 +191,16 @@ func TestCheckCLSRegression_NilValues(t *testing.T) {
 
 	// Nil CLS in snapshot
 	cm.checkCLSRegression(metrics,
-		performance.PerformanceSnapshot{CLS: nil},
-		performance.PerformanceBaseline{CLS: float64Ptr(0.05)})
+		performance.Snapshot{CLS: nil},
+		performance.Baseline{CLS: float64Ptr(0.05)})
 	if len(metrics) != 0 {
 		t.Error("nil snapshot CLS should not trigger")
 	}
 
 	// Nil CLS in baseline
 	cm.checkCLSRegression(metrics,
-		performance.PerformanceSnapshot{CLS: float64Ptr(0.3)},
-		performance.PerformanceBaseline{CLS: nil})
+		performance.Snapshot{CLS: float64Ptr(0.3)},
+		performance.Baseline{CLS: nil})
 	if len(metrics) != 0 {
 		t.Error("nil baseline CLS should not trigger")
 	}
@@ -218,8 +218,8 @@ func TestCheckCLSRegression_BelowThreshold(t *testing.T) {
 
 	// Delta = 0.05, threshold is 0.1
 	cm.checkCLSRegression(metrics,
-		performance.PerformanceSnapshot{CLS: float64Ptr(0.10)},
-		performance.PerformanceBaseline{CLS: float64Ptr(0.05)})
+		performance.Snapshot{CLS: float64Ptr(0.10)},
+		performance.Baseline{CLS: float64Ptr(0.05)})
 
 	if len(metrics) != 0 {
 		t.Error("CLS delta of 0.05 should not trigger threshold of 0.1")
@@ -238,8 +238,8 @@ func TestCheckCLSRegression_AboveThresholdZeroBaseline(t *testing.T) {
 
 	// Baseline CLS = 0, Snapshot CLS = 0.15 -> delta = 0.15 > 0.1
 	cm.checkCLSRegression(metrics,
-		performance.PerformanceSnapshot{CLS: float64Ptr(0.15)},
-		performance.PerformanceBaseline{CLS: float64Ptr(0.0)})
+		performance.Snapshot{CLS: float64Ptr(0.15)},
+		performance.Baseline{CLS: float64Ptr(0.0)})
 
 	if len(metrics) != 1 {
 		t.Fatalf("CLS delta > threshold should trigger, got %v", metrics)
@@ -268,8 +268,8 @@ func TestCheckTransferRegression_ZeroBaseline(t *testing.T) {
 	metrics := make(map[string]gasTypes.AlertMetricDelta)
 
 	cm.checkTransferRegression(metrics,
-		performance.PerformanceSnapshot{Network: performance.NetworkSummary{TransferSize: 5000}},
-		performance.PerformanceBaseline{Network: performance.BaselineNetwork{TransferSize: 0}})
+		performance.Snapshot{Network: performance.NetworkSummary{TransferSize: 5000}},
+		performance.Baseline{Network: performance.BaselineNetwork{TransferSize: 0}})
 
 	if len(metrics) != 0 {
 		t.Error("zero baseline transfer size should not trigger regression")
@@ -288,8 +288,8 @@ func TestCheckTransferRegression_BelowThreshold(t *testing.T) {
 
 	// 10% increase, threshold is 25%
 	cm.checkTransferRegression(metrics,
-		performance.PerformanceSnapshot{Network: performance.NetworkSummary{TransferSize: 1100}},
-		performance.PerformanceBaseline{Network: performance.BaselineNetwork{TransferSize: 1000}})
+		performance.Snapshot{Network: performance.NetworkSummary{TransferSize: 1100}},
+		performance.Baseline{Network: performance.BaselineNetwork{TransferSize: 1000}})
 
 	if len(metrics) != 0 {
 		t.Error("10%% increase should not trigger 25%% threshold")
@@ -308,8 +308,8 @@ func TestCheckTransferRegression_AboveThreshold(t *testing.T) {
 
 	// 30% increase, threshold is 25%
 	cm.checkTransferRegression(metrics,
-		performance.PerformanceSnapshot{Network: performance.NetworkSummary{TransferSize: 1300}},
-		performance.PerformanceBaseline{Network: performance.BaselineNetwork{TransferSize: 1000}})
+		performance.Snapshot{Network: performance.NetworkSummary{TransferSize: 1300}},
+		performance.Baseline{Network: performance.BaselineNetwork{TransferSize: 1000}})
 
 	if len(metrics) != 1 {
 		t.Fatalf("30%% increase should trigger 25%% threshold, got %v", metrics)
@@ -332,15 +332,15 @@ func TestDetectAndStoreAlerts_ResolvesBeforeAdding(t *testing.T) {
 
 	cm := NewCheckpointManager(&fakeLogReader{}, capture.NewCapture())
 
-	baseline := performance.PerformanceBaseline{
+	baseline := performance.Baseline{
 		SampleCount: 2,
 		Timing:      performance.BaselineTiming{Load: 1000},
 	}
 
 	// First regression
-	cm.DetectAndStoreAlerts(performance.PerformanceSnapshot{
+	cm.DetectAndStoreAlerts(performance.Snapshot{
 		URL:    "https://example.com/page",
-		Timing: performance.PerformanceTiming{Load: 1300},
+		Timing: performance.Timing{Load: 1300},
 	}, baseline)
 
 	if len(cm.pendingAlerts) != 1 {
@@ -349,9 +349,9 @@ func TestDetectAndStoreAlerts_ResolvesBeforeAdding(t *testing.T) {
 	firstID := cm.pendingAlerts[0].ID
 
 	// Second regression for same URL: replaces first
-	cm.DetectAndStoreAlerts(performance.PerformanceSnapshot{
+	cm.DetectAndStoreAlerts(performance.Snapshot{
 		URL:    "https://example.com/page",
-		Timing: performance.PerformanceTiming{Load: 1500},
+		Timing: performance.Timing{Load: 1500},
 	}, baseline)
 
 	if len(cm.pendingAlerts) != 1 {
@@ -372,7 +372,7 @@ func TestDetectAndStoreAlerts_FCPLCPNilPointers(t *testing.T) {
 	cm := NewCheckpointManager(&fakeLogReader{}, capture.NewCapture())
 
 	// Baseline has FCP/LCP, snapshot doesn't -> should still detect load regression
-	baseline := performance.PerformanceBaseline{
+	baseline := performance.Baseline{
 		SampleCount: 2,
 		Timing: performance.BaselineTiming{
 			Load:                   1000,
@@ -381,9 +381,9 @@ func TestDetectAndStoreAlerts_FCPLCPNilPointers(t *testing.T) {
 		},
 	}
 
-	snapshot := performance.PerformanceSnapshot{
+	snapshot := performance.Snapshot{
 		URL: "https://example.com/test",
-		Timing: performance.PerformanceTiming{
+		Timing: performance.Timing{
 			Load:                   1300,
 			FirstContentfulPaint:   nil, // nil FCP
 			LargestContentfulPaint: nil, // nil LCP
@@ -416,14 +416,14 @@ func TestDetectAndStoreAlerts_AlertFieldsPopulated(t *testing.T) {
 
 	cm := NewCheckpointManager(&fakeLogReader{}, capture.NewCapture())
 
-	baseline := performance.PerformanceBaseline{
+	baseline := performance.Baseline{
 		SampleCount: 2,
 		Timing:      performance.BaselineTiming{Load: 1000},
 	}
 
-	snapshot := performance.PerformanceSnapshot{
+	snapshot := performance.Snapshot{
 		URL:    "https://example.com/fields-test",
-		Timing: performance.PerformanceTiming{Load: 1300},
+		Timing: performance.Timing{Load: 1300},
 	}
 
 	cm.DetectAndStoreAlerts(snapshot, baseline)
@@ -509,9 +509,9 @@ func TestGetPendingAlerts_DeliveryTracking(t *testing.T) {
 
 	cm := NewCheckpointManager(&fakeLogReader{}, capture.NewCapture())
 	cm.pendingAlerts = []gasTypes.PerformanceAlert{
-		{ID: 1, DeliveredAt: 0},          // not delivered
-		{ID: 2, DeliveredAt: 5},          // delivered at counter 5
-		{ID: 3, DeliveredAt: 0},          // not delivered
+		{ID: 1, DeliveredAt: 0}, // not delivered
+		{ID: 2, DeliveredAt: 5}, // delivered at counter 5
+		{ID: 3, DeliveredAt: 0}, // not delivered
 	}
 
 	// Checkpoint delivery counter = 0: all non-delivered + those delivered after 0
@@ -574,15 +574,15 @@ func TestBuildTimingChecks_NilFCPAndLCP(t *testing.T) {
 
 	cm := NewCheckpointManager(&fakeLogReader{}, capture.NewCapture())
 
-	snapshot := performance.PerformanceSnapshot{
-		Timing: performance.PerformanceTiming{
+	snapshot := performance.Snapshot{
+		Timing: performance.Timing{
 			Load:                   1000,
 			TimeToFirstByte:        200,
 			FirstContentfulPaint:   nil,
 			LargestContentfulPaint: nil,
 		},
 	}
-	baseline := performance.PerformanceBaseline{
+	baseline := performance.Baseline{
 		SampleCount: 2,
 		Timing: performance.BaselineTiming{
 			Load:                   800,
@@ -607,15 +607,15 @@ func TestBuildTimingChecks_AllPresent(t *testing.T) {
 
 	cm := NewCheckpointManager(&fakeLogReader{}, capture.NewCapture())
 
-	snapshot := performance.PerformanceSnapshot{
-		Timing: performance.PerformanceTiming{
+	snapshot := performance.Snapshot{
+		Timing: performance.Timing{
 			Load:                   1000,
 			TimeToFirstByte:        200,
 			FirstContentfulPaint:   float64Ptr(800),
 			LargestContentfulPaint: float64Ptr(1200),
 		},
 	}
-	baseline := performance.PerformanceBaseline{
+	baseline := performance.Baseline{
 		SampleCount: 2,
 		Timing: performance.BaselineTiming{
 			Load:                   800,

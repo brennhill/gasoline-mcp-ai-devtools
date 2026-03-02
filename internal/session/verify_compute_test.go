@@ -476,7 +476,7 @@ func TestComputeLoadTimeDiff_BeforeNil(t *testing.T) {
 	t.Parallel()
 	result := computeLoadTimeDiff(
 		&VerifSnapshot{Performance: nil},
-		&VerifSnapshot{Performance: &performance.PerformanceSnapshot{Timing: performance.PerformanceTiming{Load: 1000}}},
+		&VerifSnapshot{Performance: &performance.Snapshot{Timing: performance.Timing{Load: 1000}}},
 	)
 	if result != nil {
 		t.Error("Expected nil when before performance is nil")
@@ -486,8 +486,8 @@ func TestComputeLoadTimeDiff_BeforeNil(t *testing.T) {
 func TestComputeLoadTimeDiff_ValidData(t *testing.T) {
 	t.Parallel()
 	result := computeLoadTimeDiff(
-		&VerifSnapshot{Performance: &performance.PerformanceSnapshot{Timing: performance.PerformanceTiming{Load: 1000}}},
-		&VerifSnapshot{Performance: &performance.PerformanceSnapshot{Timing: performance.PerformanceTiming{Load: 1500}}},
+		&VerifSnapshot{Performance: &performance.Snapshot{Timing: performance.Timing{Load: 1000}}},
+		&VerifSnapshot{Performance: &performance.Snapshot{Timing: performance.Timing{Load: 1500}}},
 	)
 	if result == nil {
 		t.Fatal("Expected non-nil result")
@@ -506,8 +506,8 @@ func TestComputeLoadTimeDiff_ValidData(t *testing.T) {
 func TestComputeLoadTimeDiff_ZeroBefore(t *testing.T) {
 	t.Parallel()
 	result := computeLoadTimeDiff(
-		&VerifSnapshot{Performance: &performance.PerformanceSnapshot{Timing: performance.PerformanceTiming{Load: 0}}},
-		&VerifSnapshot{Performance: &performance.PerformanceSnapshot{Timing: performance.PerformanceTiming{Load: 500}}},
+		&VerifSnapshot{Performance: &performance.Snapshot{Timing: performance.Timing{Load: 0}}},
+		&VerifSnapshot{Performance: &performance.Snapshot{Timing: performance.Timing{Load: 500}}},
 	)
 	if result == nil {
 		t.Fatal("Expected non-nil result")
@@ -521,8 +521,8 @@ func TestComputeLoadTimeDiff_ZeroBefore(t *testing.T) {
 func TestComputeLoadTimeDiff_Decrease(t *testing.T) {
 	t.Parallel()
 	result := computeLoadTimeDiff(
-		&VerifSnapshot{Performance: &performance.PerformanceSnapshot{Timing: performance.PerformanceTiming{Load: 2000}}},
-		&VerifSnapshot{Performance: &performance.PerformanceSnapshot{Timing: performance.PerformanceTiming{Load: 1000}}},
+		&VerifSnapshot{Performance: &performance.Snapshot{Timing: performance.Timing{Load: 2000}}},
+		&VerifSnapshot{Performance: &performance.Snapshot{Timing: performance.Timing{Load: 1000}}},
 	)
 	if result == nil {
 		t.Fatal("Expected non-nil result")

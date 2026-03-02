@@ -101,7 +101,7 @@ type Capture struct {
 	debug DebugLogger // Polling activity + HTTP debug circular buffers. Has own sync.Mutex — independent of Capture.mu.
 
 	// Redaction engine for scrubbing sensitive values from extension debug logs.
-	logRedactor *redaction.RedactionEngine
+	logRedactor *redaction.Engine
 
 	// Recording Management — delegates to RecordingManager sub-struct (aliased from internal/recording).
 	recordingManager *RecordingManager // Recording lifecycle, playback, and log-diff. Has own sync.Mutex — independent of Capture.mu.
@@ -163,14 +163,14 @@ func NewCapture() *Capture {
 			securityMode:            SecurityModeNormal,
 		},
 		perf: PerformanceStore{
-			snapshots:       make(map[string]performance.PerformanceSnapshot),
+			snapshots:       make(map[string]performance.Snapshot),
 			snapshotOrder:   make([]string, 0),
-			baselines:       make(map[string]performance.PerformanceBaseline),
+			baselines:       make(map[string]performance.Baseline),
 			baselineOrder:   make([]string, 0),
-			beforeSnapshots: make(map[string]performance.PerformanceSnapshot),
+			beforeSnapshots: make(map[string]performance.Snapshot),
 		},
 		session: SessionTracker{
-			FirstSnapshots: make(map[string]performance.PerformanceSnapshot),
+			FirstSnapshots: make(map[string]performance.Snapshot),
 		},
 		a11y: A11yCache{
 			cache:      make(map[string]*a11yCacheEntry),

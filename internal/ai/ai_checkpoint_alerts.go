@@ -35,7 +35,7 @@ const (
 // DetectAndStoreAlerts checks the given performance snapshot against the given baseline
 // and stores any regression alerts for delivery via get_changes_since.
 // The baseline should be the state BEFORE the snapshot was incorporated.
-func (cm *CheckpointManager) DetectAndStoreAlerts(snapshot performance.PerformanceSnapshot, baseline performance.PerformanceBaseline) {
+func (cm *CheckpointManager) DetectAndStoreAlerts(snapshot performance.Snapshot, baseline performance.Baseline) {
 	cm.mu.Lock()
 	defer cm.mu.Unlock()
 
@@ -88,7 +88,7 @@ func (cm *CheckpointManager) DetectAndStoreAlerts(snapshot performance.Performan
 
 // detectPushRegressions compares snapshot against baseline using the push-notification thresholds.
 // Returns only metrics that exceed their thresholds.
-func (cm *CheckpointManager) detectPushRegressions(snapshot performance.PerformanceSnapshot, baseline performance.PerformanceBaseline) map[string]gasTypes.AlertMetricDelta {
+func (cm *CheckpointManager) detectPushRegressions(snapshot performance.Snapshot, baseline performance.Baseline) map[string]gasTypes.AlertMetricDelta {
 	metrics := make(map[string]gasTypes.AlertMetricDelta)
 
 	// Percentage-based timing regressions (load, FCP, LCP, TTFB)
@@ -115,7 +115,7 @@ type timingCheck struct {
 }
 
 // buildTimingChecks returns the list of timing metrics to evaluate.
-func (cm *CheckpointManager) buildTimingChecks(snapshot performance.PerformanceSnapshot, baseline performance.PerformanceBaseline) []timingCheck {
+func (cm *CheckpointManager) buildTimingChecks(snapshot performance.Snapshot, baseline performance.Baseline) []timingCheck {
 	checks := []timingCheck{
 		{"load", snapshot.Timing.Load, baseline.Timing.Load, loadRegressionPct},
 		{"ttfb", snapshot.Timing.TimeToFirstByte, baseline.Timing.TimeToFirstByte, ttfbRegressionPct},
@@ -147,7 +147,7 @@ func checkPctRegression(metrics map[string]gasTypes.AlertMetricDelta, name strin
 }
 
 // checkCLSRegression checks for CLS absolute increase (>0.1).
-func (cm *CheckpointManager) checkCLSRegression(metrics map[string]gasTypes.AlertMetricDelta, snapshot performance.PerformanceSnapshot, baseline performance.PerformanceBaseline) {
+func (cm *CheckpointManager) checkCLSRegression(metrics map[string]gasTypes.AlertMetricDelta, snapshot performance.Snapshot, baseline performance.Baseline) {
 	if snapshot.CLS == nil || baseline.CLS == nil {
 		return
 	}
@@ -168,7 +168,7 @@ func (cm *CheckpointManager) checkCLSRegression(metrics map[string]gasTypes.Aler
 }
 
 // checkTransferRegression checks for total transfer size increase (>25%).
-func (cm *CheckpointManager) checkTransferRegression(metrics map[string]gasTypes.AlertMetricDelta, snapshot performance.PerformanceSnapshot, baseline performance.PerformanceBaseline) {
+func (cm *CheckpointManager) checkTransferRegression(metrics map[string]gasTypes.AlertMetricDelta, snapshot performance.Snapshot, baseline performance.Baseline) {
 	if baseline.Network.TransferSize <= 0 {
 		return
 	}

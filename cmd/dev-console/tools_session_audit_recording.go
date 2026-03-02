@@ -32,7 +32,7 @@ func (h *ToolHandler) recordAuditToolCall(
 	}
 
 	success := resp.Error == nil && !isToolResultError(resp.Result)
-	entry := audit.AuditEntry{
+	entry := audit.Entry{
 		AuditSessionID: sessionID,
 		ClientID:       normalizeAuditClientID(req.ClientID),
 		ToolName:       toolName,

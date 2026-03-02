@@ -18,8 +18,8 @@ import (
 
 func TestBuildSecuritySummary_Basic(t *testing.T) {
 	t.Parallel()
-	result := security.SecurityScanResult{
-		Findings: []security.SecurityFinding{
+	result := security.ScanResult{
+		Findings: []security.Finding{
 			{Check: "credentials", Severity: "critical", Title: "API key in response"},
 			{Check: "credentials", Severity: "high", Title: "Token in URL"},
 			{Check: "headers", Severity: "medium", Title: "Missing CSP"},
@@ -61,7 +61,7 @@ func TestBuildSecuritySummary_Basic(t *testing.T) {
 
 func TestBuildSecuritySummary_Empty(t *testing.T) {
 	t.Parallel()
-	result := security.SecurityScanResult{}
+	result := security.ScanResult{}
 	summary := buildSecurityAuditSummary(result)
 	if summary["total"] != 0 {
 		t.Errorf("total = %v, want 0", summary["total"])
@@ -74,11 +74,11 @@ func TestBuildSecuritySummary_Empty(t *testing.T) {
 
 func TestBuildSecuritySummary_LimitTo5(t *testing.T) {
 	t.Parallel()
-	findings := make([]security.SecurityFinding, 8)
+	findings := make([]security.Finding, 8)
 	for i := range findings {
-		findings[i] = security.SecurityFinding{Check: "headers", Severity: "medium", Title: "issue"}
+		findings[i] = security.Finding{Check: "headers", Severity: "medium", Title: "issue"}
 	}
-	result := security.SecurityScanResult{Findings: findings}
+	result := security.ScanResult{Findings: findings}
 	summary := buildSecurityAuditSummary(result)
 	topIssues := summary["top_issues"].([]map[string]any)
 	if len(topIssues) > 5 {

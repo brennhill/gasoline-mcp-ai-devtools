@@ -56,10 +56,10 @@ type ToolHandler struct {
 	// These are used directly by tool handlers rather than through the interface fields above.
 	noiseConfig           *ai.NoiseConfig
 	sessionStoreImpl      *ai.SessionStore
-	securityScannerImpl   *security.SecurityScanner
+	securityScannerImpl   *security.Scanner
 	thirdPartyAuditorImpl *analysis.ThirdPartyAuditor
-	sessionManager        *session.SessionManager
-	auditTrail            *audit.AuditTrail
+	sessionManager        *session.Manager
+	auditTrail            *audit.Trail
 
 	// Per-client audit session mapping (client_id -> session_id).
 	auditMu         sync.Mutex

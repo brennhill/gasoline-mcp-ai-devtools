@@ -116,7 +116,7 @@ func (r *toolCaptureStateReader) GetWSConnections() []session.SnapshotWSConnecti
 	return out
 }
 
-func (r *toolCaptureStateReader) GetPerformance() *performance.PerformanceSnapshot {
+func (r *toolCaptureStateReader) GetPerformance() *performance.Snapshot {
 	if r.h == nil || r.h.capture == nil {
 		return nil
 	}
@@ -125,7 +125,7 @@ func (r *toolCaptureStateReader) GetPerformance() *performance.PerformanceSnapsh
 		return nil
 	}
 
-	var best *performance.PerformanceSnapshot
+	var best *performance.Snapshot
 	var bestTS time.Time
 	for i := range snapshots {
 		s := snapshots[i]
