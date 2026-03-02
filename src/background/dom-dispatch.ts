@@ -310,7 +310,8 @@ async function executeStandardAction(
         scope_selector: params.scope_selector,
         scope_rect: params.scope_rect,
         nth: params.nth,
-        new_tab: params.new_tab
+        new_tab: params.new_tab,
+        structured: params.structured
       }
     ]
   })

@@ -28,6 +28,8 @@ code_paths:
   - cmd/dev-console/tools_interact_workflow_types.go
   - src/background/pending-queries.ts
   - src/background/query-execution.ts
+  - src/background/dom-dispatch.ts
+  - src/background/dom-types.ts
   - src/background/dom-primitives.ts
   - src/content/runtime-message-listener.ts
 test_paths:
@@ -36,6 +38,7 @@ test_paths:
   - cmd/dev-console/tools_interact_retry_contract_test.go
   - cmd/dev-console/tools_interact_evidence_test.go
   - cmd/dev-console/tools_interact_state_test.go
+  - extension/background/__tests__/dom-dispatch-structured.test.js
   - extension/background/dom-primitives.test.js
 ---
 
@@ -55,3 +58,5 @@ test_paths:
 
 ## Canonical Note
 This feature documents the shipped `interact` action surface (not a batched `interact.explore` action).
+
+`get_text` supports `structured:true` for hierarchical extraction (for example accordion/list sections), and this option must be forwarded through DOM dispatch into extension primitives.

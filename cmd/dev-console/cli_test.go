@@ -449,6 +449,21 @@ func TestParseInteractArgsScrollToDirection(t *testing.T) {
 	}
 }
 
+func TestParseInteractArgsGetTextStructured(t *testing.T) {
+	t.Parallel()
+
+	mcpArgs, err := parseInteractArgs("get_text", []string{"--selector", ".accordion", "--structured"})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if mcpArgs["selector"] != ".accordion" {
+		t.Errorf("expected selector '.accordion', got %v", mcpArgs["selector"])
+	}
+	if mcpArgs["structured"] != true {
+		t.Errorf("expected structured true, got %v", mcpArgs["structured"])
+	}
+}
+
 func TestParseInteractArgsExecuteJS(t *testing.T) {
 	t.Parallel()
 

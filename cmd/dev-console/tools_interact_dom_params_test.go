@@ -34,3 +34,13 @@ func TestParseDOMPrimitiveParams_ParsesScrollDirection(t *testing.T) {
 		t.Fatalf("Direction = %q, want %q", got, want)
 	}
 }
+
+func TestParseDOMPrimitiveParams_ParsesStructuredFlag(t *testing.T) {
+	params, err := parseDOMPrimitiveParams(json.RawMessage(`{"selector":".accordion","structured":true}`))
+	if err != nil {
+		t.Fatalf("parseDOMPrimitiveParams returned error: %v", err)
+	}
+	if !params.Structured {
+		t.Fatal("Structured should be true when provided")
+	}
+}

@@ -54,6 +54,7 @@ func parseInteractArgs(action string, args []string) (map[string]any, error) {
 		"--tab-id":                {mcpKey: "tab_id", kind: flagInt},
 		"--reason":                {mcpKey: "reason", kind: flagString},
 		"--correlation-id":        {mcpKey: "correlation_id", kind: flagString},
+		"--structured":            {mcpKey: "structured", kind: flagBool},
 		"--analyze":               {mcpKey: "analyze", kind: flagBool},
 		"--annot-session":         {mcpKey: "annot_session", kind: flagString},
 		"--file-path":             {mcpKey: "file_path", kind: flagString},
