@@ -154,6 +154,9 @@ func buildAnnotationSessionResult(session *AnnotationSession) map[string]any {
 	if session.ScreenshotPath != "" {
 		result["screenshot"] = session.ScreenshotPath
 	}
+	if len(session.Annotations) > 0 {
+		result["hints"] = buildSessionHints(session.ScreenshotPath)
+	}
 	return result
 }
 
@@ -174,12 +177,25 @@ func buildNamedAnnotationSessionResult(ns *NamedAnnotationSession) map[string]an
 		pages = append(pages, p)
 	}
 
-	return map[string]any{
+	// Find first screenshot for hints
+	var screenshotPath string
+	for _, page := range ns.Pages {
+		if page.ScreenshotPath != "" {
+			screenshotPath = page.ScreenshotPath
+			break
+		}
+	}
+
+	result := map[string]any{
 		"annot_session_name": ns.Name,
 		"pages":              pages,
 		"page_count":         len(ns.Pages),
 		"total_count":        totalCount,
 	}
+	if totalCount > 0 {
+		result["hints"] = buildSessionHints(screenshotPath)
+	}
+	return result
 }
 
 // toolFlushAnnotations forces completion of a pending annotation waiter.
@@ -317,6 +333,117 @@ func (h *ToolHandler) toolGetAnnotationDetail(req JSONRPCRequest, args json.RawM
 	if len(detail.IframeContent) > 0 {
 		result["iframe_content"] = detail.IframeContent
 	}
+	if len(detail.ParentContext) > 0 {
+		result["parent_context"] = detail.ParentContext
+	}
+	if len(detail.Siblings) > 0 {
+		result["siblings"] = detail.Siblings
+	}
+	if detail.CSSFramework != "" {
+		result["css_framework"] = detail.CSSFramework
+	}
+
+	// Error correlation: find console errors near the annotation's timestamp
+	hasCorrelatedErrors := false
+	if annotTS := h.annotationStore.FindAnnotationTimestamp(params.CorrelationID); annotTS > 0 {
+		correlatedErrors := h.findErrorsNearTimestamp(annotTS, 5*time.Second)
+		if len(correlatedErrors) > 0 {
+			result["correlated_errors"] = correlatedErrors
+			result["error_correlation_window_seconds"] = 5
+			hasCorrelatedErrors = true
+		}
+	}
+
+	// Detail-level LLM hints (context-aware)
+	if detailHints := buildDetailHints(detail.CSSFramework, detail.A11yFlags, hasCorrelatedErrors); detailHints != nil {
+		result["hints"] = detailHints
+	}
 
 	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Annotation detail", result)}
+}
+
+// findErrorsNearTimestamp returns up to 5 error-level log entries within ±window of the
+// given timestamp (millis). Returns a slice of maps with message and ts fields.
+func (h *ToolHandler) findErrorsNearTimestamp(tsMillis int64, window time.Duration) []map[string]string {
+	entries, _ := h.GetLogEntries()
+	annotTime := time.UnixMilli(tsMillis)
+	windowStart := annotTime.Add(-window)
+	windowEnd := annotTime.Add(window)
+
+	var matched []map[string]string
+	for i := len(entries) - 1; i >= 0 && len(matched) < 5; i-- {
+		entry := entries[i]
+		level, _ := entry["level"].(string)
+		if level != "error" {
+			continue
+		}
+		tsStr, _ := entry["ts"].(string)
+		if tsStr == "" {
+			continue
+		}
+		entryTime, err := time.Parse(time.RFC3339, tsStr)
+		if err != nil {
+			continue
+		}
+		if entryTime.Before(windowStart) || entryTime.After(windowEnd) {
+			continue
+		}
+		msg, _ := entry["message"].(string)
+		matched = append(matched, map[string]string{
+			"message": msg,
+			"ts":      tsStr,
+		})
+	}
+	return matched
+}
+
+// buildSessionHints returns LLM guidance hints for annotation session responses.
+func buildSessionHints(screenshotPath string) map[string]any {
+	hints := map[string]any{
+		"checklist": []string{
+			"Present annotations as a numbered checklist with suggested priority.",
+			"For each annotation, call analyze({what:'annotation_detail', correlation_id:'...'}) for DOM/style context.",
+			"If css_framework is detected, use framework-idiomatic code in fixes.",
+			"Check correlated_errors — errors near the annotation timestamp may explain visual issues.",
+			"After fixes, screenshot each page to compare against the baseline screenshot.",
+		},
+	}
+	if screenshotPath != "" {
+		hints["screenshot_baseline"] = "A pre-alteration screenshot was captured at " + screenshotPath + ". Compare after changes."
+	}
+	return hints
+}
+
+// buildDetailHints returns context-aware LLM hints for annotation detail responses.
+// Returns nil if no hints apply (no framework, no a11y flags, no correlated errors).
+func buildDetailHints(cssFramework string, a11yFlags []string, hasCorrelatedErrors bool) map[string]any {
+	hints := make(map[string]any)
+
+	if cssFramework != "" {
+		switch cssFramework {
+		case "tailwind":
+			hints["design_system"] = "This element uses Tailwind CSS. Prefer utility classes (e.g., bg-blue-500, p-4, text-sm) over custom CSS."
+		case "bootstrap":
+			hints["design_system"] = "This element uses Bootstrap. Use Bootstrap component classes (e.g., btn-primary, form-control) and grid system."
+		case "css-modules":
+			hints["design_system"] = "This element uses CSS Modules. Styles are scoped — modify the corresponding .module.css file."
+		case "styled-components":
+			hints["design_system"] = "This element uses styled-components/Emotion. Modify the component's styled template literal."
+		default:
+			hints["design_system"] = "CSS framework detected: " + cssFramework + ". Use framework-idiomatic patterns."
+		}
+	}
+
+	if len(a11yFlags) > 0 {
+		hints["accessibility"] = "Accessibility issues detected. Address a11y_flags before visual changes — screen reader compatibility and contrast ratios affect all users."
+	}
+
+	if hasCorrelatedErrors {
+		hints["error_context"] = "Console errors occurred near this annotation's timestamp. The visual issue may be caused by a JavaScript error — check correlated_errors first."
+	}
+
+	if len(hints) == 0 {
+		return nil
+	}
+	return hints
 }
