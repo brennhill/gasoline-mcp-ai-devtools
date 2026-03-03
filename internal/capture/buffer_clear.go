@@ -97,9 +97,5 @@ func (c *Capture) ClearAll() {
 	c.extensionState.activeTestIDs = make(map[string]bool)
 
 	// Reset performance data
-	c.perf.snapshots = make(map[string]PerformanceSnapshot)
-	c.perf.snapshotOrder = make([]string, 0)
-	c.perf.baselines = make(map[string]PerformanceBaseline)
-	c.perf.baselineOrder = make([]string, 0)
-	c.perf.beforeSnapshots = make(map[string]PerformanceSnapshot)
+	c.perf.clear()
 }
