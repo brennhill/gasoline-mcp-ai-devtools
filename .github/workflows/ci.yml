@@ -18,6 +18,49 @@ jobs:
     name: Version Consistency
     uses: ./.github/workflows/validate-versions.yml
 
+  verify-llm:
+    name: Verify LLM Fast Gate (Scoped PR)
+    if: github.event_name == 'pull_request'
+    needs: versions
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-go@7a3fe6cf4cb3a834922a1244abfce67bcef6a0c5 # v6
+        with:
+          go-version: "1.24"
+
+      - uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238 # v6
+        with:
+          node-version: "20"
+
+      - name: Detect verify-llm scope
+        id: scope
+        shell: bash
+        run: |
+          git fetch --no-tags origin "${{ github.base_ref }}"
+          CHANGED_FILES="$(git diff --name-only "origin/${{ github.base_ref }}"...HEAD || git diff --name-only "origin/${{ github.base_ref }}" HEAD)"
+          echo "Changed files:"
+          echo "$CHANGED_FILES"
+
+          if echo "$CHANGED_FILES" | grep -Eq '^(cmd/dev-console/|internal/schema/|internal/types/|internal/performance/|scripts/docs/|scripts/generate-wire-types\.js|docs/features/|docs/architecture/flow-maps/|package\.json|Makefile|\.github/workflows/ci\.yml)'; then
+            echo "run_gate=true" >> "$GITHUB_OUTPUT"
+            echo "verify-llm gate enabled for this PR."
+          else
+            echo "run_gate=false" >> "$GITHUB_OUTPUT"
+            echo "verify-llm gate not required for this PR."
+          fi
+
+      - name: Run verify-llm gate
+        if: steps.scope.outputs.run_gate == 'true'
+        run: make verify-llm
+
+      - name: Skip verify-llm gate
+        if: steps.scope.outputs.run_gate != 'true'
+        run: echo "Skipping verify-llm (out of scope for this PR)."
+
   upgrade-guards:
     name: Upgrade Guards (${{ matrix.os }})
     needs: versions
@@ -123,6 +166,9 @@ jobs:
 
       - name: Content contract (SEO + LLM legibility)
         run: npm run docs:lint:content-contract
+
+      - name: Feature docs strict gate (frontmatter + freshness)
+        run: npm run docs:check:strict
 
       - name: ESLint (errors only)
         run: |

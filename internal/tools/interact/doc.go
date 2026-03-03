@@ -14,6 +14,7 @@ Key functions:
   - ParseSelectorForReproduction: converts semantic selectors (text=, role=) into structured maps.
   - ValidateStateSaveParams: validates save_state parameters.
   - ValidateStateLoadParams: validates load_state parameters.
-  - NewWorkflowTrace: creates a workflow trace for multi-step execution tracking.
+  - BuildWorkflowTraceEnvelope: creates normalized stage-level trace metadata.
+  - WorkflowResult: wraps workflow responses with summary and trace metadata.
 */
 package interact

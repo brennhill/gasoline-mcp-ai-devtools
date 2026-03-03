@@ -16,15 +16,44 @@ import (
 	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/util"
 )
 
-// Tunable intervals — overridden in tests.
-var (
-	binaryWatchInterval  = 30 * time.Second
-	upgradeGracePeriod   = 5 * time.Second
-	versionVerifyTimeout = 5 * time.Second
+const (
+	defaultBinaryWatchInterval  = 30 * time.Second
+	defaultUpgradeGracePeriod   = 5 * time.Second
+	defaultVersionVerifyTimeout = 5 * time.Second
 )
 
-// getExecutablePath returns the path to the current binary. Overridable for tests.
-var getExecutablePath = os.Executable
+type binaryVersionVerifier func(path string, timeout time.Duration) (string, error)
+
+type binaryWatcherConfig struct {
+	resolveExecutablePath func() (string, error)
+	watchInterval         time.Duration
+	upgradeGracePeriod    time.Duration
+	versionCheckTimeout   time.Duration
+	verifyVersion         binaryVersionVerifier
+	now                   func() time.Time
+}
+
+func normalizedBinaryWatcherConfig(cfg binaryWatcherConfig) binaryWatcherConfig {
+	if cfg.resolveExecutablePath == nil {
+		cfg.resolveExecutablePath = os.Executable
+	}
+	if cfg.watchInterval <= 0 {
+		cfg.watchInterval = defaultBinaryWatchInterval
+	}
+	if cfg.upgradeGracePeriod <= 0 {
+		cfg.upgradeGracePeriod = defaultUpgradeGracePeriod
+	}
+	if cfg.versionCheckTimeout <= 0 {
+		cfg.versionCheckTimeout = defaultVersionVerifyTimeout
+	}
+	if cfg.verifyVersion == nil {
+		cfg.verifyVersion = verifyBinaryVersionWithTimeout
+	}
+	if cfg.now == nil {
+		cfg.now = time.Now
+	}
+	return cfg
+}
 
 // BinaryWatcherState tracks the on-disk binary state for upgrade detection.
 type BinaryWatcherState struct {
@@ -36,6 +65,8 @@ type BinaryWatcherState struct {
 	detectedVersion     string
 	detectedAt          time.Time
 	versionCheckTimeout time.Duration
+	verifyVersion       binaryVersionVerifier
+	now                 func() time.Time
 }
 
 // UpgradeInfo returns the current upgrade detection state (thread-safe).
@@ -77,7 +108,11 @@ func (s *BinaryWatcherState) binaryChanged() (bool, error) {
 // checkForUpgrade verifies whether the binary reports a newer version than current.
 // Returns true if an upgrade is detected and sets the upgrade-pending state.
 func (s *BinaryWatcherState) checkForUpgrade(currentVersion string) bool {
-	newVer, err := verifyBinaryVersionWithTimeout(s.execPath, s.versionCheckTimeout)
+	verifyVersion := s.verifyVersion
+	if verifyVersion == nil {
+		verifyVersion = verifyBinaryVersionWithTimeout
+	}
+	newVer, err := verifyVersion(s.execPath, s.versionCheckTimeout)
 	if err != nil {
 		return false
 	}
@@ -90,21 +125,25 @@ func (s *BinaryWatcherState) checkForUpgrade(currentVersion string) bool {
 	defer s.mu.Unlock()
 	s.upgradePending = true
 	s.detectedVersion = newVer
-	s.detectedAt = time.Now()
+	now := s.now
+	if now == nil {
+		now = time.Now
+	}
+	s.detectedAt = now()
 	return true
 }
 
 // verifyBinaryVersion executes the binary with --version and parses the output.
 // Expects output like "gasoline v0.8.0" or just "0.8.0".
 func verifyBinaryVersion(path string) (string, error) {
-	return verifyBinaryVersionWithTimeout(path, versionVerifyTimeout)
+	return verifyBinaryVersionWithTimeout(path, defaultVersionVerifyTimeout)
 }
 
 // verifyBinaryVersionWithTimeout executes the binary with --version and parses the output.
 // Timeout is injected for deterministic tests that should not mutate package globals.
 func verifyBinaryVersionWithTimeout(path string, timeout time.Duration) (string, error) {
 	if timeout <= 0 {
-		timeout = versionVerifyTimeout
+		timeout = defaultVersionVerifyTimeout
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
@@ -145,18 +184,32 @@ func parseVersionOutput(output string) (string, error) {
 //  3. If newer: set upgrade_pending, call onUpgrade
 //  4. After grace period: call triggerShutdown
 func startBinaryWatcher(ctx context.Context, currentVersion string, onUpgrade func(string), triggerShutdown func()) *BinaryWatcherState {
+	return startBinaryWatcherWithConfig(ctx, currentVersion, onUpgrade, triggerShutdown, binaryWatcherConfig{})
+}
+
+func startBinaryWatcherWithConfig(
+	ctx context.Context,
+	currentVersion string,
+	onUpgrade func(string),
+	triggerShutdown func(),
+	cfg binaryWatcherConfig,
+) *BinaryWatcherState {
 	if os.Getenv("GASOLINE_NO_AUTO_UPGRADE") == "1" {
 		return nil
 	}
 
-	execPath, err := getExecutablePath()
+	cfg = normalizedBinaryWatcherConfig(cfg)
+
+	execPath, err := cfg.resolveExecutablePath()
 	if err != nil {
 		return nil
 	}
 
 	state := &BinaryWatcherState{
 		execPath:            execPath,
-		versionCheckTimeout: versionVerifyTimeout,
+		versionCheckTimeout: cfg.versionCheckTimeout,
+		verifyVersion:       cfg.verifyVersion,
+		now:                 cfg.now,
 	}
 
 	util.SafeGo(func() {
@@ -165,7 +218,7 @@ func startBinaryWatcher(ctx context.Context, currentVersion string, onUpgrade fu
 			return
 		}
 
-		ticker := time.NewTicker(binaryWatchInterval)
+		ticker := time.NewTicker(cfg.watchInterval)
 		defer ticker.Stop()
 
 		for {
@@ -185,7 +238,7 @@ func startBinaryWatcher(ctx context.Context, currentVersion string, onUpgrade fu
 
 				// Grace period before shutdown
 				select {
-				case <-time.After(upgradeGracePeriod):
+				case <-time.After(cfg.upgradeGracePeriod):
 					triggerShutdown()
 					return
 				case <-ctx.Done():
