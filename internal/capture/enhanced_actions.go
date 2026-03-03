@@ -28,15 +28,15 @@ func (c *Capture) AddEnhancedActions(actions []EnhancedAction) {
 		defer c.mu.Unlock()
 
 		// Defensive: verify parallel arrays are in sync
-		if len(c.enhancedActions) != len(c.actionAddedAt) {
+		if len(c.buffers.enhancedActions) != len(c.buffers.actionAddedAt) {
 			fmt.Fprintf(os.Stderr, "[gasoline] WARNING: enhancedActions/actionAddedAt length mismatch: %d != %d (recovering by truncating)\n",
-				len(c.enhancedActions), len(c.actionAddedAt))
-			minLen := min(len(c.enhancedActions), len(c.actionAddedAt))
-			c.enhancedActions = c.enhancedActions[:minLen]
-			c.actionAddedAt = c.actionAddedAt[:minLen]
+				len(c.buffers.enhancedActions), len(c.buffers.actionAddedAt))
+			minLen := min(len(c.buffers.enhancedActions), len(c.buffers.actionAddedAt))
+			c.buffers.enhancedActions = c.buffers.enhancedActions[:minLen]
+			c.buffers.actionAddedAt = c.buffers.actionAddedAt[:minLen]
 		}
 
-		c.actionTotalAdded += int64(len(actions))
+		c.buffers.actionTotalAdded += int64(len(actions))
 		now := time.Now()
 
 		// Collect active test IDs for tagging
@@ -51,8 +51,8 @@ func (c *Capture) AddEnhancedActions(actions []EnhancedAction) {
 			actions[i].TestIDs = activeTestIDs
 
 			// Add to ring buffer
-			c.enhancedActions = append(c.enhancedActions, actions[i])
-			c.actionAddedAt = append(c.actionAddedAt, now)
+			c.buffers.enhancedActions = append(c.buffers.enhancedActions, actions[i])
+			c.buffers.actionAddedAt = append(c.buffers.actionAddedAt, now)
 
 			// Detect navigation actions
 			if actions[i].Type == "navigation" {
@@ -61,14 +61,14 @@ func (c *Capture) AddEnhancedActions(actions []EnhancedAction) {
 		}
 
 		// Enforce max count
-		if len(c.enhancedActions) > MaxEnhancedActions {
-			keep := len(c.enhancedActions) - MaxEnhancedActions
+		if len(c.buffers.enhancedActions) > MaxEnhancedActions {
+			keep := len(c.buffers.enhancedActions) - MaxEnhancedActions
 			newActions := make([]EnhancedAction, MaxEnhancedActions)
-			copy(newActions, c.enhancedActions[keep:])
-			c.enhancedActions = newActions
+			copy(newActions, c.buffers.enhancedActions[keep:])
+			c.buffers.enhancedActions = newActions
 			newAddedAt := make([]time.Time, MaxEnhancedActions)
-			copy(newAddedAt, c.actionAddedAt[keep:])
-			c.actionAddedAt = newAddedAt
+			copy(newAddedAt, c.buffers.actionAddedAt[keep:])
+			c.buffers.actionAddedAt = newAddedAt
 		}
 
 		if hasNavigation {
@@ -87,5 +87,5 @@ func (c *Capture) AddEnhancedActions(actions []EnhancedAction) {
 func (c *Capture) GetEnhancedActionCount() int {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
-	return len(c.enhancedActions)
+	return len(c.buffers.enhancedActions)
 }

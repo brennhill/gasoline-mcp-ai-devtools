@@ -161,7 +161,7 @@ func TestNewAddEnhancedActions_IncrementsTotalAdded(t *testing.T) {
 	c.AddEnhancedActions([]EnhancedAction{{Type: "navigate"}})
 
 	c.mu.RLock()
-	total := c.actionTotalAdded
+	total := c.buffers.actionTotalAdded
 	c.mu.RUnlock()
 
 	if total != 3 {
@@ -285,12 +285,12 @@ func TestNewAddEnhancedActions_MismatchRecovery(t *testing.T) {
 
 	// Simulate a mismatch between enhancedActions and actionAddedAt
 	c.mu.Lock()
-	c.enhancedActions = []EnhancedAction{
+	c.buffers.enhancedActions = []EnhancedAction{
 		{Type: "click"},
 		{Type: "type"},
 		{Type: "navigate"},
 	}
-	c.actionAddedAt = []time.Time{time.Now()} // Only 1 timestamp for 3 actions
+	c.buffers.actionAddedAt = []time.Time{time.Now()} // Only 1 timestamp for 3 actions
 	c.mu.Unlock()
 
 	// Adding should trigger recovery, truncating to min(3,1) = 1

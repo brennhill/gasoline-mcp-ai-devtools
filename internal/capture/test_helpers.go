@@ -18,11 +18,11 @@ func (c *Capture) AddNetworkBodiesForTest(bodies []NetworkBody) {
 
 	now := time.Now()
 	for _, body := range bodies {
-		c.networkBodies = append(c.networkBodies, body)
-		c.networkAddedAt = append(c.networkAddedAt, now)
-		c.networkTotalAdded++
+		c.buffers.networkBodies = append(c.buffers.networkBodies, body)
+		c.buffers.networkAddedAt = append(c.buffers.networkAddedAt, now)
+		c.buffers.networkTotalAdded++
 		if body.Status >= 400 {
-			c.networkErrorTotalAdded++
+			c.buffers.networkErrorTotalAdded++
 		}
 	}
 }
@@ -34,9 +34,9 @@ func (c *Capture) AddWebSocketEventsForTest(events []WebSocketEvent) {
 
 	now := time.Now()
 	for _, event := range events {
-		c.wsEvents = append(c.wsEvents, event)
-		c.wsAddedAt = append(c.wsAddedAt, now)
-		c.wsTotalAdded++
+		c.buffers.wsEvents = append(c.buffers.wsEvents, event)
+		c.buffers.wsAddedAt = append(c.buffers.wsAddedAt, now)
+		c.buffers.wsTotalAdded++
 	}
 }
 
@@ -47,9 +47,9 @@ func (c *Capture) AddEnhancedActionsForTest(actions []EnhancedAction) {
 
 	now := time.Now()
 	for _, action := range actions {
-		c.enhancedActions = append(c.enhancedActions, action)
-		c.actionAddedAt = append(c.actionAddedAt, now)
-		c.actionTotalAdded++
+		c.buffers.enhancedActions = append(c.buffers.enhancedActions, action)
+		c.buffers.actionAddedAt = append(c.buffers.actionAddedAt, now)
+		c.buffers.actionTotalAdded++
 	}
 }
 
@@ -99,7 +99,7 @@ func (c *Capture) SetWSParallelMismatchForTest(extraEvents int, extraAddedAt int
 	now := time.Now()
 	// Add extra wsEvents entries (without matching wsAddedAt)
 	for i := 0; i < extraEvents; i++ {
-		c.wsEvents = append(c.wsEvents, WebSocketEvent{
+		c.buffers.wsEvents = append(c.buffers.wsEvents, WebSocketEvent{
 			Event: "message",
 			Data:  "extra-event",
 			ID:    "ws-extra",
@@ -107,7 +107,7 @@ func (c *Capture) SetWSParallelMismatchForTest(extraEvents int, extraAddedAt int
 	}
 	// Add extra wsAddedAt entries (without matching wsEvents)
 	for i := 0; i < extraAddedAt; i++ {
-		c.wsAddedAt = append(c.wsAddedAt, now)
+		c.buffers.wsAddedAt = append(c.buffers.wsAddedAt, now)
 	}
 }
 
@@ -115,7 +115,7 @@ func (c *Capture) SetWSParallelMismatchForTest(extraEvents int, extraAddedAt int
 func (c *Capture) GetWSLengthsForTest() (events int, addedAt int, memoryTotal int64) {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
-	return len(c.wsEvents), len(c.wsAddedAt), c.wsMemoryTotal
+	return len(c.buffers.wsEvents), len(c.buffers.wsAddedAt), c.buffers.wsMemoryTotal
 }
 
 // SimulateExtensionConnectForTest marks the extension as connected by
@@ -134,6 +134,7 @@ func (c *Capture) SimulateExtensionDisconnectForTest() {
 	defer c.mu.Unlock()
 	c.extensionState.lastSyncSeen = time.Now().Add(-1 * time.Hour)
 }
+
 // SetTabStatusForTest sets the tracked tab status (TEST ONLY).
 // Valid values: "loading", "complete".
 func (c *Capture) SetTabStatusForTest(status string) {
