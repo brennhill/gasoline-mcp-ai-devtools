@@ -477,10 +477,11 @@ export function domPrimitiveListInteractive(
 
   // #366: Deduplicate responsive variants — when hidden and visible copies of the same
   // element exist (e.g., mobile + desktop nav links), keep only the visible one.
-  // Key includes tag, elementType, label, AND href (for links) to avoid collapsing distinct elements.
+  // Use a coarse semantic key (tag + type + normalized label) so hidden responsive
+  // variants with different hrefs still collapse into the visible copy.
+  const normalizeDedupLabel = (label: string): string => label.trim().replace(/\s+/g, ' ').toLowerCase()
   const dedupKey = (e: (typeof rawEntries)[0]) => {
-    const href = e.tag === 'a' ? e.el.getAttribute('href') || '' : ''
-    return `${e.tag}|${e.elementType}|${e.label}|${href}`
+    return `${e.tag}|${e.elementType}|${normalizeDedupLabel(e.label)}`
   }
   const dedupGroups = new Map<string, typeof rawEntries>()
   for (const entry of rawEntries) {
