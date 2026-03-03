@@ -92,7 +92,7 @@ func (h *MCPHandler) handleInitialize(req JSONRPCRequest) JSONRPCResponse {
 	result := MCPInitializeResult{
 		ProtocolVersion: negotiatedVersion,
 		ServerInfo: MCPServerInfo{
-			Name:    "gasoline-agentic-browser",
+			Name:    mcpServerName,
 			Version: h.version,
 		},
 		Capabilities: MCPCapabilities{

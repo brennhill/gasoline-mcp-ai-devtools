@@ -19,8 +19,8 @@ const {
 test('generateDefaultConfig returns valid MCP config', () => {
   const cfg = generateDefaultConfig();
   assert.ok(cfg.mcpServers);
-  assert.ok(cfg.mcpServers.gasoline);
-  assert.equal(cfg.mcpServers.gasoline.command, 'gasoline-mcp');
+  assert.ok(cfg.mcpServers['gasoline-browser-devtools']);
+  assert.equal(cfg.mcpServers['gasoline-browser-devtools'].command, 'gasoline-agentic-browser');
 });
 
 // --- buildMcpEntry ---
@@ -28,7 +28,7 @@ test('generateDefaultConfig returns valid MCP config', () => {
 test('buildMcpEntry returns JSON string for MCP entry', () => {
   const entry = buildMcpEntry();
   const parsed = JSON.parse(entry);
-  assert.equal(parsed.command, 'gasoline-mcp');
+  assert.equal(parsed.command, 'gasoline-agentic-browser');
   assert.deepEqual(parsed.args, []);
 });
 
@@ -58,8 +58,8 @@ test('installToClient creates new config for file-type client', () => {
   assert.equal(result.isNew, true);
 
   const written = JSON.parse(fs.readFileSync(cfgPath, 'utf8'));
-  assert.ok(written.mcpServers.gasoline);
-  assert.equal(written.mcpServers.gasoline.command, 'gasoline-mcp');
+  assert.ok(written.mcpServers['gasoline-browser-devtools']);
+  assert.equal(written.mcpServers['gasoline-browser-devtools'].command, 'gasoline-agentic-browser');
 
   fs.rmSync(tmp, { recursive: true });
 });
@@ -86,7 +86,7 @@ test('installToClient merges into existing file-type config', () => {
   assert.equal(result.isNew, false);
 
   const written = JSON.parse(fs.readFileSync(cfgPath, 'utf8'));
-  assert.ok(written.mcpServers.gasoline);
+  assert.ok(written.mcpServers['gasoline-browser-devtools']);
   assert.ok(written.mcpServers.other, 'should preserve existing server');
 
   fs.rmSync(tmp, { recursive: true });
@@ -125,7 +125,7 @@ test('installToClient adds env vars to file-type config', () => {
 
   installToClient(def, { dryRun: false, envVars: { DEBUG: '1' } });
   const written = JSON.parse(fs.readFileSync(cfgPath, 'utf8'));
-  assert.equal(written.mcpServers.gasoline.env.DEBUG, '1');
+  assert.equal(written.mcpServers['gasoline-browser-devtools'].env.DEBUG, '1');
 
   fs.rmSync(tmp, { recursive: true });
 });
@@ -138,7 +138,7 @@ test('installToClient handles CLI type with dry-run', () => {
     name: 'Claude Code',
     type: 'cli',
     detectCommand: 'claude',
-    installArgs: ['mcp', 'add-json', '--scope', 'user', 'gasoline'],
+    installArgs: ['mcp', 'add-json', '--scope', 'user', 'gasoline-browser-devtools'],
   };
 
   const result = installToClient(def, { dryRun: true, envVars: {} });
@@ -215,7 +215,7 @@ test('executeInstall with targetTool installs to specific client', () => {
   assert.equal(result.installed[0].name, 'Test Gemini');
 
   const written = JSON.parse(fs.readFileSync(path.join(tmp, '.gemini', 'settings.json'), 'utf8'));
-  assert.ok(written.mcpServers.gasoline);
+  assert.ok(written.mcpServers['gasoline-browser-devtools']);
 
   fs.rmSync(tmp, { recursive: true });
 });
@@ -246,7 +246,7 @@ test('installToClient creates OpenCode-format config with mcp key', () => {
     detectDir: { all: tmp },
     configKey: 'mcp',
     buildEntry: (envVars) => {
-      const entry = { type: 'local', command: ['gasoline-mcp'], enabled: true };
+      const entry = { type: 'local', command: ['gasoline-agentic-browser'], enabled: true };
       if (envVars && Object.keys(envVars).length > 0) entry.env = envVars;
       return entry;
     },
@@ -258,10 +258,10 @@ test('installToClient creates OpenCode-format config with mcp key', () => {
 
   const written = JSON.parse(fs.readFileSync(path.join(tmp, 'opencode.json'), 'utf8'));
   assert.ok(written.mcp, 'should have mcp key');
-  assert.ok(written.mcp.gasoline, 'should have gasoline under mcp');
-  assert.equal(written.mcp.gasoline.type, 'local');
-  assert.deepEqual(written.mcp.gasoline.command, ['gasoline-mcp']);
-  assert.equal(written.mcp.gasoline.enabled, true);
+  assert.ok(written.mcp['gasoline-browser-devtools'], 'should have gasoline under mcp');
+  assert.equal(written.mcp['gasoline-browser-devtools'].type, 'local');
+  assert.deepEqual(written.mcp['gasoline-browser-devtools'].command, ['gasoline-agentic-browser']);
+  assert.equal(written.mcp['gasoline-browser-devtools'].enabled, true);
   assert.equal(written.mcpServers, undefined, 'should not have mcpServers');
 
   fs.rmSync(tmp, { recursive: true });
@@ -284,14 +284,14 @@ test('installToClient merges OpenCode config preserving existing entries', () =>
     configPath: { all: cfgPath },
     detectDir: { all: tmp },
     configKey: 'mcp',
-    buildEntry: () => ({ type: 'local', command: ['gasoline-mcp'], enabled: true }),
+    buildEntry: () => ({ type: 'local', command: ['gasoline-agentic-browser'], enabled: true }),
   };
 
   const result = installToClient(def, { dryRun: false, envVars: {} });
   assert.equal(result.success, true);
 
   const written = JSON.parse(fs.readFileSync(cfgPath, 'utf8'));
-  assert.ok(written.mcp.gasoline, 'should have gasoline');
+  assert.ok(written.mcp['gasoline-browser-devtools'], 'should have gasoline');
   assert.ok(written.mcp.other, 'should preserve existing server');
   assert.equal(written.theme, 'dark', 'should preserve non-mcp keys');
 
@@ -311,7 +311,7 @@ test('installToClient creates Zed-format config with context_servers key', () =>
     detectDir: { all: tmp },
     configKey: 'context_servers',
     buildEntry: (envVars) => {
-      const entry = { source: 'custom', command: 'gasoline-mcp', args: [] };
+      const entry = { source: 'custom', command: 'gasoline-agentic-browser', args: [] };
       if (envVars && Object.keys(envVars).length > 0) entry.env = envVars;
       return entry;
     },
@@ -322,9 +322,9 @@ test('installToClient creates Zed-format config with context_servers key', () =>
 
   const written = JSON.parse(fs.readFileSync(path.join(tmp, 'settings.json'), 'utf8'));
   assert.ok(written.context_servers, 'should have context_servers key');
-  assert.ok(written.context_servers.gasoline);
-  assert.equal(written.context_servers.gasoline.source, 'custom');
-  assert.equal(written.context_servers.gasoline.command, 'gasoline-mcp');
+  assert.ok(written.context_servers['gasoline-browser-devtools']);
+  assert.equal(written.context_servers['gasoline-browser-devtools'].source, 'custom');
+  assert.equal(written.context_servers['gasoline-browser-devtools'].command, 'gasoline-agentic-browser');
   assert.equal(written.mcpServers, undefined, 'should not have mcpServers');
 
   fs.rmSync(tmp, { recursive: true });

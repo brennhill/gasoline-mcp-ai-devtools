@@ -20,7 +20,7 @@ Add to `~/.codeium/windsurf/mcp_config.json`:
 ```json
 {
   "mcpServers": {
-    "gasoline": {
+    "gasoline-browser-devtools": {
       "command": "npx",
       "args": ["gasoline-mcp"]
     }

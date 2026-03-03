@@ -13,7 +13,7 @@ const toLegacyMarkdownPath = (slug: string) => `/markdown/${slug === '' ? 'index
 const toHtmlPath = (slug: string) => (slug === '' ? '/' : `/${slug}/`)
 
 /**
- * Build canonical markdown (and optionally HTML) URLs for every docs and blog page.
+ * Build canonical markdown (and optionally HTML) URLs for every docs, blog, and articles page.
  */
 export const getAllMarkdownPaths = async ({
   includeHtml = false,

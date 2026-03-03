@@ -7,6 +7,7 @@ package main
 import (
 	"encoding/json"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -70,8 +71,14 @@ func TestToolExportHAR_SaveToFile(t *testing.T) {
 		{Timestamp: "2026-01-23T10:30:00.000Z", Method: "GET", URL: "https://example.com/api", Status: 200},
 	})
 
-	tmpFile := os.TempDir() + "/test-tool-export.har"
-	defer os.Remove(tmpFile)
+	tmpDir := filepath.Join(".tmp-har-export", strings.ReplaceAll(t.Name(), "/", "_"))
+	if err := os.MkdirAll(tmpDir, 0o755); err != nil {
+		t.Fatalf("failed to create temp dir: %v", err)
+	}
+	t.Cleanup(func() {
+		_ = os.RemoveAll(tmpDir)
+	})
+	tmpFile := filepath.Join(tmpDir, "test-tool-export.har")
 
 	args, _ := json.Marshal(map[string]any{"save_to": tmpFile})
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`2`), Method: "tools/call"}

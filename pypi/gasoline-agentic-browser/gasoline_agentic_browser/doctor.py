@@ -11,6 +11,12 @@ import subprocess
 from . import config
 
 
+def _known_server_names():
+    return [config.MCP_SERVER_NAME] + [
+        name for name in config.LEGACY_MCP_SERVER_NAMES if name != config.MCP_SERVER_NAME
+    ]
+
+
 def test_binary(get_binary_path=None):
     """Test if gasoline binary is available and working.
 
@@ -101,10 +107,17 @@ def _diagnose_file_client(definition, verbose):
         tool["suggestions"].append("Fix the JSON syntax or run: gasoline-agentic-browser --install")
         return tool
 
-    if not read_result["data"].get("mcpServers", {}).get("gasoline"):
-        tool["issues"].append("gasoline entry missing from mcpServers")
+    mcp_servers = read_result["data"].get("mcpServers", {})
+    matched_name = next((name for name in _known_server_names() if mcp_servers.get(name)), None)
+    if not matched_name:
+        tool["issues"].append(f"{config.MCP_SERVER_NAME} entry missing from mcpServers")
         tool["suggestions"].append("Run: gasoline-agentic-browser --install")
         return tool
+    if matched_name != config.MCP_SERVER_NAME:
+        tool["issues"].append(
+            f"Legacy MCP server name detected ({matched_name}); migrate to {config.MCP_SERVER_NAME}"
+        )
+        tool["suggestions"].append("Run: gasoline-agentic-browser --install")
 
     tool["status"] = "ok"
     return tool
@@ -133,23 +146,31 @@ def _diagnose_cli_client(definition, verbose):
         return tool
 
     # Try to check if gasoline is configured via CLI
-    try:
-        env = dict(os.environ)
-        env.pop("CLAUDECODE", None)
+    env = dict(os.environ)
+    env.pop("CLAUDECODE", None)
 
-        subprocess.run(
-            [definition["detectCommand"], "mcp", "get", "gasoline"],
-            capture_output=True,
-            text=True,
-            timeout=10,
-            check=True,
-            env=env,
-        )
-        tool["status"] = "ok"
-    except (subprocess.SubprocessError, OSError):
+    found = False
+    for server_name in _known_server_names():
+        try:
+            subprocess.run(
+                [definition["detectCommand"], "mcp", "get", server_name],
+                capture_output=True,
+                text=True,
+                timeout=10,
+                check=True,
+                env=env,
+            )
+            found = True
+            break
+        except (subprocess.SubprocessError, OSError):
+            pass
+
+    if not found:
         tool["status"] = "error"
-        tool["issues"].append("gasoline not configured")
+        tool["issues"].append(f"{config.MCP_SERVER_NAME} not configured")
         tool["suggestions"].append("Run: gasoline-agentic-browser --install")
+    else:
+        tool["status"] = "ok"
 
     return tool
 
@@ -162,12 +183,13 @@ def _check_legacy_paths():
         if os.path.exists(expanded):
             try:
                 read_result = config.read_config_file(expanded)
-                if (read_result["valid"]
-                        and read_result["data"].get("mcpServers", {}).get("gasoline")):
+                if read_result["valid"] and any(
+                        read_result["data"].get("mcpServers", {}).get(name)
+                        for name in _known_server_names()):
                     warnings.append({
                         "path": expanded,
                         "description": legacy["description"],
-                        "message": f"Orphaned gasoline config at old path: {expanded}",
+                        "message": f"Orphaned {config.MCP_SERVER_NAME} config at old path: {expanded}",
                     })
             except Exception:  # pylint: disable=broad-except
                 pass

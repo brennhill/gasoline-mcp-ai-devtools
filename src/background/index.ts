@@ -124,6 +124,8 @@ export function debugLog(category: string, message: string, data: unknown = null
   }
 }
 
+;(globalThis as { __GASOLINE_DEBUG_LOG__?: typeof debugLog }).__GASOLINE_DEBUG_LOG__ = debugLog
+
 /**
  * Get all debug log entries
  */

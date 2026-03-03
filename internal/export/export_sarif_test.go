@@ -905,11 +905,6 @@ func TestSaveSARIFToFile_SymlinkResolution(t *testing.T) {
 		t.Skipf("Cannot create symlinks: %v", err)
 	}
 
-	// Change to cwdDir
-	originalDir, _ := os.Getwd()
-	os.Chdir(cwdDir)
-	defer os.Chdir(originalDir)
-
 	// Verify resolveExistingPath follows the symlink correctly
 	filePath := filepath.Join(symlinkPath, "result.sarif")
 	resolvedFile := resolveExistingPath(filePath)

@@ -40,7 +40,7 @@ These parameters appear repeatedly across Gasoline tools:
 
 ## Agent-friendly Formats
 
-Each docs and blog route has a markdown endpoint:
+Each docs, blog, and articles route has a markdown endpoint:
 
 - HTML: `https://cookwithgasoline.com/guides/debug-webapps/`
 - Markdown: `https://cookwithgasoline.com/guides/debug-webapps.md`

@@ -47,7 +47,8 @@ export default defineConfig({
             { label: 'Quick Start', slug: 'getting-started' },
             { label: 'Features', slug: 'features' },
             { label: 'Discover Workflows', slug: 'discover-workflows' },
-            { label: 'Articles', slug: 'articles' }
+            { label: 'Articles', slug: 'articles' },
+            { label: 'Blog', link: '/blog/' }
           ]
         },
         {

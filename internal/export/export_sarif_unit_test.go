@@ -152,20 +152,11 @@ func TestSaveSARIFToFile_PathGuardsAndWrite(t *testing.T) {
 		Runs:    []SARIFRun{},
 	}
 
-	origWD, err := os.Getwd()
-	if err != nil {
-		t.Fatalf("getwd: %v", err)
-	}
-	cwd := t.TempDir()
-	if err := os.Chdir(cwd); err != nil {
-		t.Fatalf("chdir temp cwd: %v", err)
-	}
-	t.Cleanup(func() {
-		_ = os.Chdir(origWD)
-	})
-
 	// Allowed: under current working directory
-	cwdPath := filepath.Join("reports", "audit.sarif")
+	cwdPath := filepath.Join(".tmp-sarif-tests", strings.ReplaceAll(t.Name(), "/", "_"), "audit.sarif")
+	t.Cleanup(func() {
+		_ = os.RemoveAll(filepath.Dir(cwdPath))
+	})
 	if err := saveSARIFToFile(log, cwdPath); err != nil {
 		t.Fatalf("save under cwd should succeed: %v", err)
 	}

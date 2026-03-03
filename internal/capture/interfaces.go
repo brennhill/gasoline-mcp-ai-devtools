@@ -40,4 +40,6 @@ type ClientRegistry interface {
 	Register(cwd string) any
 	// Get returns a specific client by ID as *session.ClientState, or nil if not found.
 	Get(id string) any
+	// Unregister removes a client by ID and reports whether the client existed.
+	Unregister(id string) bool
 }

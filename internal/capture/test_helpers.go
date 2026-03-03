@@ -85,9 +85,7 @@ func (c *Capture) SetTrackingStatusForTest(tabID int, tabURL string) {
 
 // SetClientRegistryForTest sets the client registry (TEST ONLY)
 func (c *Capture) SetClientRegistryForTest(reg ClientRegistry) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	c.clientRegistry = reg
+	c.SetClientRegistry(reg)
 }
 
 // SetWSParallelMismatchForTest sets up mismatched wsEvents/wsAddedAt arrays (TEST ONLY)

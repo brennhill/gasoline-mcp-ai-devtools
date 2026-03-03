@@ -40,7 +40,7 @@ func TestFindMCPConfigResolutionClaudePath(t *testing.T) {
 
 	home := os.Getenv("HOME")
 	claudePath := filepath.Join(home, ".claude.json")
-	if err := os.WriteFile(claudePath, []byte(`{"mcpServers":{"gasoline":{"command":"gasoline-mcp"}}}`), 0o600); err != nil {
+	if err := os.WriteFile(claudePath, []byte(`{"mcpServers":{"gasoline-browser-devtools":{"command":"gasoline-mcp"}}}`), 0o600); err != nil {
 		t.Fatalf("WriteFile(%q) error = %v", claudePath, err)
 	}
 	if got := findMCPConfig(); got != claudePath {

@@ -11,11 +11,17 @@ const fs = require('fs');
 const { execFileSync } = require('child_process');
 const {
   CLIENT_DEFINITIONS,
+  MCP_SERVER_NAME,
+  LEGACY_MCP_SERVER_NAMES,
   getClientConfigPath,
   getDetectedClients,
   readConfigFile,
   writeConfigFile,
 } = require('./config');
+
+function knownServerNames() {
+  return [MCP_SERVER_NAME, ...LEGACY_MCP_SERVER_NAMES.filter((name) => name !== MCP_SERVER_NAME)];
+}
 
 /**
  * Uninstall from a CLI-type client (e.g. Claude Code via `claude mcp remove`)
@@ -26,57 +32,68 @@ const {
 function uninstallViaCli(def, options) {
   const { dryRun = false, verbose = false } = options;
   const cmd = def.detectCommand;
-  const args = [...def.removeArgs];
+  const canonicalArgs = [...def.removeArgs];
 
   if (dryRun) {
     if (verbose) {
-      console.log(`[DEBUG] Would run: ${cmd} ${args.join(' ')}`);
+      console.log(`[DEBUG] Would run: ${cmd} ${canonicalArgs.join(' ')}`);
     }
     return {
       status: 'removed',
       name: def.name,
       id: def.id,
       method: 'cli',
-      message: `Would run: ${cmd} ${args.join(' ')}`,
+      message: `Would run: ${cmd} ${canonicalArgs.join(' ')}`,
     };
   }
 
-  try {
-    const env = { ...process.env };
-    delete env.CLAUDECODE;
-
-    execFileSync(cmd, args, {
-      env,
-      stdio: ['pipe', 'pipe', 'pipe'],
-      timeout: 15000,
-    });
-
-    return {
-      status: 'removed',
-      name: def.name,
-      id: def.id,
-      method: 'cli',
-      message: `Removed via ${cmd} CLI`,
-    };
-  } catch (err) {
-    // If the command fails because gasoline isn't configured, treat as notConfigured
-    const stderr = err.stderr ? err.stderr.toString() : '';
-    if (stderr.includes('not found') || stderr.includes('does not exist')) {
+  const env = { ...process.env };
+  delete env.CLAUDECODE;
+  const serverNames = knownServerNames();
+  let lastErr = null;
+  for (const serverName of serverNames) {
+    const args = [...canonicalArgs];
+    if (args.length > 0) {
+      args[args.length - 1] = serverName;
+    }
+    try {
+      execFileSync(cmd, args, {
+        env,
+        stdio: ['pipe', 'pipe', 'pipe'],
+        timeout: 15000,
+      });
       return {
-        status: 'notConfigured',
+        status: 'removed',
         name: def.name,
         id: def.id,
         method: 'cli',
+        message: `Removed via ${cmd} CLI`,
       };
+    } catch (err) {
+      lastErr = err;
+      const stderr = err.stderr ? err.stderr.toString() : '';
+      const notConfigured = stderr.includes('not found') || stderr.includes('does not exist');
+      if (!notConfigured) {
+        break;
+      }
     }
+  }
+  const stderr = lastErr && lastErr.stderr ? lastErr.stderr.toString() : '';
+  if (stderr.includes('not found') || stderr.includes('does not exist')) {
     return {
-      status: 'error',
+      status: 'notConfigured',
       name: def.name,
       id: def.id,
       method: 'cli',
-      message: `CLI uninstall failed: ${err.message}`,
     };
   }
+  return {
+    status: 'error',
+    name: def.name,
+    id: def.id,
+    method: 'cli',
+    message: `CLI uninstall failed: ${lastErr ? lastErr.message : 'unknown error'}`,
+  };
 }
 
 /**
@@ -108,7 +125,9 @@ function uninstallViaFile(def, options) {
   }
 
   const configKey = def.configKey || 'mcpServers';
-  if (!readResult.data[configKey] || !readResult.data[configKey]['gasoline-agentic-browser']) {
+  const servers = readResult.data[configKey] || {};
+  const presentServerNames = knownServerNames().filter((name) => Object.prototype.hasOwnProperty.call(servers, name));
+  if (presentServerNames.length === 0) {
     return { status: 'notConfigured', name: def.name, id: def.id };
   }
 
@@ -126,7 +145,9 @@ function uninstallViaFile(def, options) {
   }
 
   const modified = structuredClone(readResult.data);
-  delete modified[configKey]['gasoline-agentic-browser'];
+  for (const name of knownServerNames()) {
+    delete modified[configKey][name];
+  }
 
   if (Object.keys(modified[configKey]).length > 0) {
     const skipValidation = configKey !== 'mcpServers';

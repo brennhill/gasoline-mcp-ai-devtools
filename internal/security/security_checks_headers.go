@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/capture"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/util"
 )
 
 // ============================================
@@ -65,7 +66,7 @@ func (s *SecurityScanner) checkSecurityHeaders(bodies []capture.NetworkBody) []S
 		if !isHTMLResponse(body) {
 			continue
 		}
-		origin := extractOrigin(body.URL)
+		origin := util.ExtractOrigin(body.URL)
 		if checkedOrigins[origin] {
 			continue
 		}

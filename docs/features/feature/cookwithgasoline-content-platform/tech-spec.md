@@ -15,6 +15,7 @@ owners:
 - `cookwithgasoline.com/src/components/WorkflowLibrary.astro`
 - `cookwithgasoline.com/src/components/ArticlesLibrary.astro`
 - `cookwithgasoline.com/src/styles/custom.css`
+- `cookwithgasoline.com/src/content/docs/articles/*.md`
 - `cookwithgasoline.com/src/content/docs/reference/*.md`
 - `cookwithgasoline.com/src/pages/[...slug].md.ts`
 - `cookwithgasoline.com/src/pages/markdown/[...slug].md.ts`

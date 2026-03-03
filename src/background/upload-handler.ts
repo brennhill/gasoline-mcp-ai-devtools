@@ -225,11 +225,14 @@ async function dismissFileDialog(serverUrl: string): Promise<void> {
   const controller = new AbortController()
   const timeoutId = setTimeout(() => controller.abort(), 5000)
   try {
-    await fetch(`${serverUrl}/api/os-automation/dismiss`, {
+    const response = await fetch(`${serverUrl}/api/os-automation/dismiss`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'X-Gasoline-Client': 'gasoline-extension' },
       signal: controller.signal
     })
+    if (!response.ok) {
+      return
+    }
   } catch {
     // Best-effort cleanup — ignore errors
   } finally {

@@ -4,11 +4,13 @@ feature_id: feature-sarif-export
 status: shipped
 feature_type: feature
 owners: []
-last_reviewed: 2026-02-16
+last_reviewed: 2026-03-03
 code_paths:
-  - internal/export/export_har.go
   - internal/export/export_sarif.go
-test_paths: []
+  - internal/export/export_sarif_file.go
+test_paths:
+  - internal/export/export_sarif_test.go
+  - internal/export/export_sarif_unit_test.go
 ---
 
 # Sarif Export

@@ -7,6 +7,7 @@ import (
 	"fmt"
 
 	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/capture"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/util"
 )
 
 // applyWhitelistOverrides appends session-scoped manual overrides to default-src.
@@ -58,7 +59,7 @@ func (g *CSPGenerator) applyWhitelistOverrides(response *CSPResponse, overrides 
 // RecordOriginFromBody extracts origin and resource type from a NetworkBody
 // and records it in the origin accumulator. Called from the network ingestion path.
 func (g *CSPGenerator) RecordOriginFromBody(body capture.NetworkBody, pageURL string) {
-	origin := extractOrigin(body.URL)
+	origin := util.ExtractOrigin(body.URL)
 	if origin == "" {
 		return
 	}

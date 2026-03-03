@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -143,9 +144,8 @@ func TestHandleGenerateTestClassify_FiltersOnlyDispatchWarnings(t *testing.T) {
 
 func makeProjectTempDir(t *testing.T) string {
 	t.Helper()
-
-	dir, err := os.MkdirTemp(".", "test-heal-")
-	if err != nil {
+	dir := filepath.Join(".tmp-test-heal", strings.ReplaceAll(t.Name(), "/", "_"))
+	if err := os.MkdirAll(dir, 0o755); err != nil {
 		t.Fatalf("failed to create project temp dir: %v", err)
 	}
 	t.Cleanup(func() {

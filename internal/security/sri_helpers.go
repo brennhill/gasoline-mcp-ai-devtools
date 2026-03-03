@@ -7,8 +7,6 @@ import (
 	"encoding/base64"
 	"fmt"
 	"strings"
-
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/util"
 )
 
 // computeSHA384 computes the SHA-384 hash of content and returns it in SRI format.
@@ -41,11 +39,6 @@ func sriResourceType(contentType string) string {
 	}
 
 	return ""
-}
-
-// extractOriginForSRI delegates to util.ExtractOrigin for URL origin extraction.
-func extractOriginForSRI(rawURL string) string {
-	return util.ExtractOrigin(rawURL)
 }
 
 // generateTagTemplate creates an HTML tag with SRI attributes.

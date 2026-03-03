@@ -12,6 +12,12 @@ import subprocess
 from . import config
 
 
+def _known_server_names():
+    return [config.MCP_SERVER_NAME] + [
+        name for name in config.LEGACY_MCP_SERVER_NAMES if name != config.MCP_SERVER_NAME
+    ]
+
+
 def _uninstall_via_cli(definition, options):
     """Uninstall from a CLI-type client."""
     dry_run = options.get("dryRun", False)
@@ -30,28 +36,55 @@ def _uninstall_via_cli(definition, options):
             "message": f"Would run: {cmd} {' '.join(args)}",
         }
 
-    try:
-        env = dict(os.environ)
-        env.pop("CLAUDECODE", None)
+    env = dict(os.environ)
+    env.pop("CLAUDECODE", None)
+    last_err = None
 
-        subprocess.run(
-            [cmd] + args,
-            env=env,
-            capture_output=True,
-            text=True,
-            timeout=15,
-            check=True,
-        )
+    for server_name in _known_server_names():
+        try_args = list(args)
+        if try_args:
+            try_args[-1] = server_name
+        try:
+            subprocess.run(
+                [cmd] + try_args,
+                env=env,
+                capture_output=True,
+                text=True,
+                timeout=15,
+                check=True,
+            )
 
-        return {
-            "status": "removed",
-            "name": definition["name"],
-            "id": definition["id"],
-            "method": "cli",
-            "message": f"Removed via {cmd} CLI",
-        }
-    except subprocess.CalledProcessError as err:
-        stderr = err.stderr or ""
+            return {
+                "status": "removed",
+                "name": definition["name"],
+                "id": definition["id"],
+                "method": "cli",
+                "message": f"Removed via {cmd} CLI",
+            }
+        except subprocess.CalledProcessError as err:
+            last_err = err
+            stderr = err.stderr or ""
+            if "not found" in stderr or "does not exist" in stderr:
+                continue
+            return {
+                "status": "error",
+                "name": definition["name"],
+                "id": definition["id"],
+                "method": "cli",
+                "message": f"CLI uninstall failed: {err}",
+            }
+        except (subprocess.SubprocessError, OSError) as err:
+            last_err = err
+            return {
+                "status": "error",
+                "name": definition["name"],
+                "id": definition["id"],
+                "method": "cli",
+                "message": f"CLI uninstall failed: {err}",
+            }
+
+    if isinstance(last_err, subprocess.CalledProcessError):
+        stderr = last_err.stderr or ""
         if "not found" in stderr or "does not exist" in stderr:
             return {
                 "status": "notConfigured",
@@ -59,21 +92,12 @@ def _uninstall_via_cli(definition, options):
                 "id": definition["id"],
                 "method": "cli",
             }
-        return {
-            "status": "error",
-            "name": definition["name"],
-            "id": definition["id"],
-            "method": "cli",
-            "message": f"CLI uninstall failed: {err}",
-        }
-    except (subprocess.SubprocessError, OSError) as err:
-        return {
-            "status": "error",
-            "name": definition["name"],
-            "id": definition["id"],
-            "method": "cli",
-            "message": f"CLI uninstall failed: {err}",
-        }
+    return {
+        "status": "notConfigured",
+        "name": definition["name"],
+        "id": definition["id"],
+        "method": "cli",
+    }
 
 
 def _uninstall_via_file(definition, options):
@@ -97,12 +121,14 @@ def _uninstall_via_file(definition, options):
             "message": f"{definition['name']}: Invalid JSON, cannot uninstall",
         }
 
-    if not read_result["data"].get("mcpServers", {}).get("gasoline"):
+    mcp_servers = read_result["data"].get("mcpServers", {})
+    present_keys = [name for name in _known_server_names() if mcp_servers.get(name)]
+    if not present_keys:
         return {"status": "notConfigured", "name": definition["name"], "id": definition["id"]}
 
     if dry_run:
         if verbose:
-            print(f"[DEBUG] Would remove gasoline from {cfg_path}")
+            print(f"[DEBUG] Would remove {config.MCP_SERVER_NAME} from {cfg_path}")
         return {
             "status": "removed",
             "name": definition["name"],
@@ -112,7 +138,8 @@ def _uninstall_via_file(definition, options):
         }
 
     modified = json.loads(json.dumps(read_result["data"]))
-    del modified["mcpServers"]["gasoline"]
+    for name in _known_server_names():
+        modified["mcpServers"].pop(name, None)
 
     if modified["mcpServers"]:
         config.write_config_file(cfg_path, modified, False)
@@ -120,7 +147,7 @@ def _uninstall_via_file(definition, options):
         os.remove(cfg_path)
 
     if verbose:
-        print(f"[DEBUG] Removed gasoline from {cfg_path}")
+        print(f"[DEBUG] Removed {config.MCP_SERVER_NAME} from {cfg_path}")
 
     return {
         "status": "removed",

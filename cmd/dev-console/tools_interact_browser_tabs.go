@@ -42,7 +42,7 @@ func (h *interactActionHandler) handleBrowserActionNewTabImpl(req JSONRPCRequest
 	h.armEvidenceForCommand(correlationID, "new_tab", args, req.ClientID)
 
 	actionParams := make(map[string]any)
-	_ = json.Unmarshal(args, &actionParams)
+	lenientUnmarshal(args, &actionParams)
 	actionParams["action"] = "new_tab"
 	if resolvedURL != "" {
 		actionParams["url"] = resolvedURL
@@ -107,7 +107,7 @@ func (h *interactActionHandler) handleBrowserActionSwitchTabImpl(req JSONRPCRequ
 	h.armEvidenceForCommand(correlationID, "switch_tab", args, req.ClientID)
 
 	actionParams := make(map[string]any)
-	_ = json.Unmarshal(args, &actionParams)
+	lenientUnmarshal(args, &actionParams)
 	actionParams["action"] = "switch_tab"
 	actionPayload, _ := json.Marshal(actionParams)
 
@@ -189,7 +189,7 @@ func (h *interactActionHandler) handleBrowserActionCloseTabImpl(req JSONRPCReque
 	h.armEvidenceForCommand(correlationID, "close_tab", args, req.ClientID)
 
 	actionParams := make(map[string]any)
-	_ = json.Unmarshal(args, &actionParams)
+	lenientUnmarshal(args, &actionParams)
 	actionParams["action"] = "close_tab"
 	actionPayload, _ := json.Marshal(actionParams)
 

@@ -10,6 +10,8 @@
 const { execFileSync } = require('child_process');
 const {
   CLIENT_DEFINITIONS,
+  MCP_SERVER_NAME,
+  LEGACY_MCP_SERVER_NAMES,
   getClientConfigPath,
   getDetectedClients,
   getClientByAlias,
@@ -26,7 +28,7 @@ const {
 function generateDefaultConfig() {
   return {
     mcpServers: {
-      'gasoline-agentic-browser': {
+      [MCP_SERVER_NAME]: {
         command: 'gasoline-agentic-browser',
         args: [],
       },
@@ -146,7 +148,12 @@ function installViaFile(def, options) {
 
   // Merge gasoline entry under the correct key
   if (!configData[configKey]) configData[configKey] = {};
-  configData[configKey]['gasoline-agentic-browser'] = gasolineEntry;
+  for (const legacyName of LEGACY_MCP_SERVER_NAMES) {
+    if (legacyName !== MCP_SERVER_NAME) {
+      delete configData[configKey][legacyName];
+    }
+  }
+  configData[configKey][MCP_SERVER_NAME] = gasolineEntry;
 
   const skipValidation = configKey !== 'mcpServers';
   writeConfigFile(cfgPath, configData, dryRun, { skipValidation });

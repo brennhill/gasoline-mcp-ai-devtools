@@ -7,7 +7,6 @@ import (
 	"strings"
 
 	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/capture"
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/util"
 )
 
 func isLocalhostURL(rawURL string) bool {
@@ -27,11 +26,6 @@ func isHTMLResponse(body capture.NetworkBody) bool {
 func isJavaScriptContent(contentType string) bool {
 	ct := strings.ToLower(contentType)
 	return strings.Contains(ct, "javascript")
-}
-
-// extractOrigin delegates to util.ExtractOrigin for origin extraction.
-func extractOrigin(rawURL string) string {
-	return util.ExtractOrigin(rawURL)
 }
 
 func isThirdPartyURL(requestURL string, pageURLs []string) bool {

@@ -187,7 +187,7 @@ If port 7890 is occupied:
 ```json
 {
   "mcpServers": {
-    "gasoline": {
+    "gasoline-browser-devtools": {
       "command": "npx",
       "args": ["gasoline-mcp", "--port", "7891"]
     }

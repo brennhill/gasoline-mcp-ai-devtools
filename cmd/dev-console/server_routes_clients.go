@@ -11,6 +11,17 @@ import (
 	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/capture"
 )
 
+func resolveClientRegistry(cap *capture.Store, w http.ResponseWriter) (capture.ClientRegistry, bool) {
+	reg := cap.GetClientRegistry()
+	if reg == nil {
+		jsonResponse(w, http.StatusServiceUnavailable, map[string]string{
+			"error": "client_registry_unavailable",
+		})
+		return nil, false
+	}
+	return reg, true
+}
+
 // registerClientRegistryRoutes binds the multi-client registry endpoints.
 func registerClientRegistryRoutes(mux *http.ServeMux, cap *capture.Store) {
 	mux.HandleFunc("/clients", corsMiddleware(extensionOnly(func(w http.ResponseWriter, r *http.Request) {
@@ -23,12 +34,17 @@ func registerClientRegistryRoutes(mux *http.ServeMux, cap *capture.Store) {
 
 // handleClientsList handles GET/POST on /clients for multi-client management.
 func handleClientsList(w http.ResponseWriter, r *http.Request, cap *capture.Store) {
+	reg, ok := resolveClientRegistry(cap, w)
+	if !ok {
+		return
+	}
+
 	switch r.Method {
 	case "GET":
-		clients := cap.GetClientRegistry().List()
+		clients := reg.List()
 		jsonResponse(w, http.StatusOK, map[string]any{
 			"clients": clients,
-			"count":   cap.GetClientRegistry().Count(),
+			"count":   reg.Count(),
 		})
 	case "POST":
 		r.Body = http.MaxBytesReader(w, r.Body, maxPostBodySize)
@@ -39,7 +55,7 @@ func handleClientsList(w http.ResponseWriter, r *http.Request, cap *capture.Stor
 			jsonResponse(w, http.StatusBadRequest, map[string]string{"error": "Invalid JSON"})
 			return
 		}
-		cs := cap.GetClientRegistry().Register(body.CWD)
+		cs := reg.Register(body.CWD)
 		jsonResponse(w, http.StatusOK, map[string]any{
 			"result": cs,
 		})
@@ -50,6 +66,11 @@ func handleClientsList(w http.ResponseWriter, r *http.Request, cap *capture.Stor
 
 // handleClientByID handles GET/DELETE on /clients/{id} for specific client operations.
 func handleClientByID(w http.ResponseWriter, r *http.Request, cap *capture.Store) {
+	reg, ok := resolveClientRegistry(cap, w)
+	if !ok {
+		return
+	}
+
 	clientID := strings.TrimPrefix(r.URL.Path, "/clients/")
 	if clientID == "" {
 		jsonResponse(w, http.StatusBadRequest, map[string]string{"error": "Missing client ID"})
@@ -58,14 +79,17 @@ func handleClientByID(w http.ResponseWriter, r *http.Request, cap *capture.Store
 
 	switch r.Method {
 	case "GET":
-		cs := cap.GetClientRegistry().Get(clientID)
+		cs := reg.Get(clientID)
 		if cs == nil {
 			jsonResponse(w, http.StatusNotFound, map[string]string{"error": "Client not found"})
 			return
 		}
 		jsonResponse(w, http.StatusOK, cs)
 	case "DELETE":
-		// Note: ClientRegistry interface doesn't expose Unregister method.
+		if !reg.Unregister(clientID) {
+			jsonResponse(w, http.StatusNotFound, map[string]string{"error": "Client not found"})
+			return
+		}
 		jsonResponse(w, http.StatusOK, map[string]bool{"unregistered": true})
 	default:
 		jsonResponse(w, http.StatusMethodNotAllowed, map[string]string{"error": "Method not allowed"})

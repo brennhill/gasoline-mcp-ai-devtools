@@ -11,5 +11,9 @@ const scriptPath = path.join(__dirname, 'install-upgrade-regression.mjs')
 test('upgrade regression script validates health service identity', () => {
   const source = fs.readFileSync(scriptPath, 'utf8')
   assert.match(source, /service-name/, 'expected service-name validation in health checks')
-  assert.match(source, /gasoline/i, 'expected service identity check to enforce gasoline')
+  assert.match(
+    source,
+    /gasoline-browser-devtools/i,
+    'expected service identity check to enforce gasoline-browser-devtools'
+  )
 })

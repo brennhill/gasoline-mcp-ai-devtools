@@ -95,7 +95,7 @@ Both wrappers must:
 ### 2. **Diagnostic Engine**
 - `runDiagnostics()`: Iterates through all client definitions, tests each one:
   - For file-type clients: config file exists, JSON valid, gasoline entry present
-  - For CLI-type clients: runs `claude mcp get gasoline` to check status
+  - For CLI-type clients: runs `claude mcp get gasoline-browser-devtools` to check status
   - Detects legacy config paths (orphaned configs at old incorrect locations)
   - Returns report object with health status for each client
 
@@ -104,7 +104,7 @@ Both wrappers must:
   - `{dryRun: bool}` - Preview mode
   - `{envVars: {KEY: VALUE}}` - Environment variables to inject
   - Installs to all detected clients by default (file-type via config write, CLI-type via subprocess)
-  - Claude Code: uses `claude mcp add-json --scope user gasoline` subprocess (unsets `CLAUDECODE` env var)
+  - Claude Code: uses `claude mcp add-json --scope user gasoline-browser-devtools` subprocess (unsets `CLAUDECODE` env var)
   - Returns `{success: bool, installed: [{name, method, path}], errors: [details]}`
 
 ### 4. **Uninstall Engine**
@@ -112,7 +112,7 @@ Both wrappers must:
   - `{dryRun: bool}` - Preview mode
   - Iterates all detected clients
   - For file-type: removes gasoline entry from mcpServers, preserves other servers
-  - For CLI-type: runs `claude mcp remove --scope user gasoline`
+  - For CLI-type: runs `claude mcp remove --scope user gasoline-browser-devtools`
   - Returns `{removed: [{name, method, path}], notConfigured, errors}`
 
 ### 5. **Output Formatters**
@@ -132,7 +132,7 @@ Build install options object {dryRun, envVars}
 Execute install:
   - Get detected clients (CLIENT_DEFINITIONS filtered by isClientInstalled)
   - For each detected client:
-    - If CLI-type: run subprocess (e.g., claude mcp add-json)
+    - If CLI-type: run subprocess (e.g., `claude mcp add-json --scope user gasoline-browser-devtools`)
     - If file-type: read existing config, merge gasoline entry + env vars, write
     - If dryRun: show what would be written, don't actually execute
   ↓
@@ -145,7 +145,7 @@ Parse CLI args (--doctor, --verbose)
   ↓
 For each client in CLIENT_DEFINITIONS:
   - If file-type: check config file exists, validate JSON, verify gasoline entry
-  - If CLI-type: run subprocess to check status (e.g., claude mcp get gasoline)
+  - If CLI-type: run subprocess to check status (e.g., `claude mcp get gasoline-browser-devtools`)
   - If not detected: report as "not detected" (info)
   ↓
 Check legacy paths for orphaned configs
@@ -192,7 +192,7 @@ Report results (clients removed, errors)
 3. For each candidate, run checks:
    - `fs.existsSync(path)` for file existence
    - `JSON.parse()` for JSON validity
-   - Check `data.mcpServers.gasoline` exists
+   - Check `data.mcpServers["gasoline-browser-devtools"]` exists
    - Check binary path exists and is executable
 4. Format output with emojis (✅/❌/⚠️) and recovery suggestions
 
@@ -212,7 +212,7 @@ Report results (clients removed, errors)
 1. Create `executeUninstall()` function
 2. For each candidate:
    - Read config
-   - Delete `data.mcpServers.gasoline`
+   - Delete `data.mcpServers["gasoline-browser-devtools"]` (and any legacy aliases during migration)
    - Write back (if changed)
 3. Report removed count and tool names
 

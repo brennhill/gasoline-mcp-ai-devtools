@@ -13,8 +13,8 @@ import (
 
 func (h *ToolHandler) generateTestImpl(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	var params gen.TestGenParams
-	if len(args) > 0 {
-		_ = json.Unmarshal(args, &params)
+	if err := json.Unmarshal(args, &params); err != nil {
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidJSON, "Invalid JSON arguments: "+err.Error(), "Fix JSON syntax and call again")}
 	}
 	if params.TestName == "" {
 		params.TestName = "generated test"

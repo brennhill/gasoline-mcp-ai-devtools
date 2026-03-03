@@ -14,7 +14,7 @@ def generate_default_config():
     """Generate default MCP config for gasoline."""
     return {
         "mcpServers": {
-            "gasoline": {
+            config.MCP_SERVER_NAME: {
                 "command": "gasoline-agentic-browser",
                 "args": [],
             },

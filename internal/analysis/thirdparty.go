@@ -112,7 +112,7 @@ func (a *ThirdPartyAuditor) Audit(bodies []capture.NetworkBody, pageURLs []strin
 
 	primaryFirstParty := ""
 	if len(pageURLs) > 0 {
-		primaryFirstParty = extractOrigin(pageURLs[0])
+		primaryFirstParty = util.ExtractOrigin(pageURLs[0])
 	}
 
 	return ThirdPartyResult{
@@ -134,9 +134,4 @@ func HandleAuditThirdParties(params json.RawMessage, bodies []capture.NetworkBod
 	auditor := NewThirdPartyAuditor()
 	result := auditor.Audit(bodies, pageURLs, p)
 	return result, nil
-}
-
-// extractOrigin delegates to util.ExtractOrigin for origin extraction.
-func extractOrigin(rawURL string) string {
-	return util.ExtractOrigin(rawURL)
 }
