@@ -4,7 +4,7 @@ import { getAllMarkdownPaths } from '../utils/markdownPaths';
 export const prerender = true;
 
 export const GET: APIRoute = async () => {
-  const urls = await getAllMarkdownPaths({ includeHtml: true });
+  const urls = await getAllMarkdownPaths({ includeHtml: true, includeLegacyMarkdown: true });
   return new Response(urls.join('\n') + '\n', {
     headers: {
       'Content-Type': 'text/plain; charset=utf-8',

@@ -1,24 +1,24 @@
 ---
-title: Enabling Full-stack Automated AI Debugging
-description: Gasoline MCP is an open-source browser extension + MCP server that streams real-time browser telemetry to AI coding assistants. Console logs, network errors, exceptions, WebSocket events — your AI sees it all. Zero dependencies. Localhost only. Enterprise safe.
+title: Browser Automation and Debugging for AI Teams
+description: Gasoline MCP gives AI agents browser visibility and browser control so teams can automate, debug, record demos, and verify releases faster.
 template: splash
 hero:
-  title: Enabling Full-stack Automated AI Debugging
-  tagline: Pouring fuel on the AI development fire
+  title: Build faster with browser-aware AI agents
+  tagline: Automate, debug, record demos, and verify fixes from one local-first workflow
   image:
-    html: '<img src="/images/sparky-working-laptop-web.webp" alt="Sparky coding" style="height:300px;width:auto;" />'
+    html: '<img src="/images/sparky-working-laptop-web.webp" alt="Sparky coding" style="height:320px;width:auto;" />'
   actions:
-    - text: Download Now
+    - text: Install Gasoline
       link: /downloads/
       icon: download
       variant: primary
+    - text: Discover Workflows
+      link: /discover-workflows/
+      icon: right-arrow
+      variant: secondary
     - text: Get Started
       link: /getting-started/
       icon: right-arrow
-      variant: secondary
-    - text: GitHub
-      link: https://github.com/brennhill/gasoline
-      icon: external
       variant: secondary
 pagefind: false
 sidebar:
@@ -26,8 +26,5 @@ sidebar:
 ---
 
 import Landing from '../../components/Landing.astro';
-import RotatingHero from '../../components/RotatingHero.astro';
 
-<RotatingHero>
-  <Landing />
-</RotatingHero>
+<Landing />
