@@ -24,6 +24,11 @@ export default [
       'pypi/**/build/',
       'pypi/**/dist/',
       'pypi/**/*.egg-info/',
+      // Generated framework smoke artifacts
+      'cmd/dev-console/testpages/frameworks/**',
+      'cmd/dev-console/testpages/_next/**',
+      'scripts/smoke-tests/framework-fixtures/next-app/.next/**',
+      'scripts/smoke-tests/framework-fixtures/next-app/out/**',
       // Compiled TypeScript output (linted at the .ts source level)
       'extension/background/',
       'extension/content/',
@@ -36,7 +41,9 @@ export default [
       'extension/content.bundled.js',
       'extension/inject.bundled.js',
       'extension/early-patch.bundled.js',
-      'extension/offscreen.bundled.js'
+      'extension/offscreen.bundled.js',
+      // Generated smoke fixture bundles
+      'cmd/dev-console/testpages/frameworks/*.bundle.js'
     ]
   },
 
