@@ -423,7 +423,7 @@ func TestSwitchTab_NoTabTracking_NotBlocked(t *testing.T) {
 
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`)}
 	args := json.RawMessage(`{"what":"switch_tab","tab_id":42,"sync":false}`)
-	resp := env.handler.handleBrowserActionSwitchTab(req, args)
+	resp := env.handler.interactAction().handleBrowserActionSwitchTabImpl(req, args)
 
 	// switch_tab should succeed (queued) even without tab tracking.
 	if !isSuccessOrQueued(t, resp) {
