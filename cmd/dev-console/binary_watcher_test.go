@@ -206,6 +206,54 @@ func TestCheckForUpgrade_IgnoresSame(t *testing.T) {
 	}
 }
 
+func TestCheckForUpgrade_TimeoutIsolationAcrossParallelStates(t *testing.T) {
+	t.Parallel()
+
+	timeouts := make(chan time.Duration, 2)
+	nowFn := func() time.Time { return time.Unix(1_700_000_000, 0) }
+
+	makeState := func(timeout time.Duration, reportedVersion string) *BinaryWatcherState {
+		return &BinaryWatcherState{
+			execPath:            "/tmp/ignored",
+			versionCheckTimeout: timeout,
+			verifyVersion: func(_ string, gotTimeout time.Duration) (string, error) {
+				timeouts <- gotTimeout
+				return reportedVersion, nil
+			},
+			now: nowFn,
+		}
+	}
+
+	fastState := makeState(75*time.Millisecond, "0.8.0")
+	slowState := makeState(2*time.Second, "0.9.0")
+
+	var wg sync.WaitGroup
+	wg.Add(2)
+	go func() {
+		defer wg.Done()
+		if !fastState.checkForUpgrade("0.7.0") {
+			t.Error("fastState should detect upgrade")
+		}
+	}()
+	go func() {
+		defer wg.Done()
+		if !slowState.checkForUpgrade("0.7.0") {
+			t.Error("slowState should detect upgrade")
+		}
+	}()
+	wg.Wait()
+
+	close(timeouts)
+	seen := map[time.Duration]int{}
+	for timeout := range timeouts {
+		seen[timeout]++
+	}
+
+	if seen[75*time.Millisecond] != 1 || seen[2*time.Second] != 1 {
+		t.Fatalf("expected isolated per-state timeouts {75ms:1, 2s:1}, got %v", seen)
+	}
+}
+
 func TestStartBinaryWatcher_ContextCancellation(t *testing.T) {
 	t.Parallel()
 	ctx, cancel := context.WithCancel(context.Background())
@@ -235,29 +283,12 @@ func TestStartBinaryWatcher_DisabledByEnvVar(t *testing.T) {
 }
 
 func TestStartBinaryWatcher_DetectsUpgrade(t *testing.T) {
-	// Not parallel: modifies package-level getExecutablePath, binaryWatchInterval, upgradeGracePeriod
+	t.Parallel()
 
 	tmp := filepath.Join(t.TempDir(), "fake-bin")
 	if err := os.WriteFile(tmp, []byte("#!/bin/sh\necho 'gasoline v0.7.5'\n"), 0o755); err != nil {
 		t.Fatal(err)
 	}
-
-	// Override executable path and poll interval for test
-	origGetExec := getExecutablePath
-	getExecutablePath = func() (string, error) { return tmp, nil }
-	defer func() { getExecutablePath = origGetExec }()
-
-	origInterval := binaryWatchInterval
-	binaryWatchInterval = 50 * time.Millisecond
-	defer func() { binaryWatchInterval = origInterval }()
-
-	origGrace := upgradeGracePeriod
-	upgradeGracePeriod = 50 * time.Millisecond
-	defer func() { upgradeGracePeriod = origGrace }()
-
-	origVerifyTimeout := versionVerifyTimeout
-	versionVerifyTimeout = testVersionCheckTimeout
-	defer func() { versionVerifyTimeout = origVerifyTimeout }()
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -266,7 +297,7 @@ func TestStartBinaryWatcher_DetectsUpgrade(t *testing.T) {
 	var upgradeVersion string
 	var shutdownCalled bool
 
-	s := startBinaryWatcher(ctx, "0.7.5",
+	s := startBinaryWatcherWithConfig(ctx, "0.7.5",
 		func(newVer string) {
 			upgradeMu.Lock()
 			upgradeVersion = newVer
@@ -276,6 +307,12 @@ func TestStartBinaryWatcher_DetectsUpgrade(t *testing.T) {
 			upgradeMu.Lock()
 			shutdownCalled = true
 			upgradeMu.Unlock()
+		},
+		binaryWatcherConfig{
+			resolveExecutablePath: func() (string, error) { return tmp, nil },
+			watchInterval:         50 * time.Millisecond,
+			upgradeGracePeriod:    50 * time.Millisecond,
+			versionCheckTimeout:   testVersionCheckTimeout,
 		},
 	)
 	if s == nil {
