@@ -40,6 +40,7 @@ Each flow map should include:
 - [Analyze Annotation Waiter and Flush Recovery](./analyze-annotations-waiter-and-flush.md)
 - [Checkpoint, Noise, and Persistence Split](./ai-domain-packages.md)
 - [Capture Buffer Store Extraction](./capture-buffer-store.md)
+- [Tracked Tab Hover Quick Actions](./tracked-tab-hover-quick-actions.md)
 - [Daemon Stop and Force Cleanup](./daemon-stop-and-force-cleanup.md)
 - [DOM Selector Resolution and Disambiguation](./dom-selector-resolution-and-disambiguation.md)
 - [MCP Daemon Lifecycle](./mcp-daemon-lifecycle.md)

@@ -4,9 +4,16 @@ feature_id: feature-tab-tracking-ux
 status: proposed
 feature_type: feature
 owners: []
-last_reviewed: 2026-02-16
+last_reviewed: 2026-03-03
 code_paths:
-test_paths: []
+  - src/content.ts
+  - src/content/tab-tracking.ts
+  - src/content/ui/tracked-hover-launcher.ts
+  - src/background/message-handlers.ts
+  - src/background/recording-listeners.ts
+test_paths:
+  - tests/extension/tracked-hover-launcher.test.js
+  - tests/extension/content.test.js
 ---
 
 # Tab Tracking Ux
@@ -23,6 +30,7 @@ test_paths: []
 - Product Spec: [product-spec.md](./product-spec.md)
 - Tech Spec: [tech-spec.md](./tech-spec.md)
 - QA Plan: [qa-plan.md](./qa-plan.md)
+- Flow Map: [flow-map.md](./flow-map.md)
 
 ## Requirement IDs
 
@@ -32,4 +40,4 @@ test_paths: []
 
 ## Code and Tests
 
-Add concrete implementation and test links here as this feature evolves.
+Concrete implementation and test paths are listed in frontmatter `code_paths` and `test_paths`.

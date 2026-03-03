@@ -22,6 +22,7 @@ import { initRequestTracking, getPendingRequestStats, clearPendingRequests, clea
 import { initWindowMessageListener } from './content/window-message-listener.js';
 import { initRuntimeMessageListener } from './content/runtime-message-listener.js';
 import { initFaviconReplacer } from './content/favicon-replacer.js';
+import { setTrackedHoverLauncherEnabled } from './content/ui/tracked-hover-launcher.js';
 // Export for testing
 export { getPendingRequestStats, clearPendingRequests, cleanupRequestTracking };
 // ============================================================================
@@ -35,6 +36,7 @@ initTabTracking((tracked) => {
         initScriptInjection();
         scriptsInjected = true;
     }
+    setTrackedHoverLauncherEnabled(tracked);
 });
 // Initialize request tracking (cleanup handlers)
 initRequestTracking();
