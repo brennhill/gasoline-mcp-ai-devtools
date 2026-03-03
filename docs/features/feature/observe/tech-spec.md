@@ -48,6 +48,9 @@ links:
 - Missing/unknown `what` yields structured errors.
 - Disconnect warning is prepended for extension-dependent modes.
 - Stale/expired command results are surfaced with explicit retry guidance.
+- `screenshot` with `full_page:true` expands nested scroll containers in the page context before CDP capture, then always restores original container styles in a `finally` path.
+- Full-page screenshot dimensions are derived from CDP layout metrics plus an expansion height hint, then clamped to Chrome texture limits.
+- If expansion script execution fails, screenshot capture degrades to CDP layout-only sizing; if CDP attach/capture fails, behavior degrades to viewport capture.
 
 ## Code Anchors
 - `cmd/dev-console/tools_observe.go`
@@ -56,3 +59,4 @@ links:
 - `cmd/dev-console/tools_observe_analysis.go`
 - `cmd/dev-console/tools_observe_bundling.go`
 - `internal/capture/queries.go`
+- `src/background/commands/observe.ts`

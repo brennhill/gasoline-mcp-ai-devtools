@@ -16,6 +16,7 @@ code_paths:
   - internal/a11ysummary/summary.go
   - internal/tools/observe/analysis_a11y.go
   - internal/tools/observe/analysis_screenshot.go
+  - src/background/commands/observe.ts
   - internal/capture/queries.go
   - internal/capture/sync.go
 test_paths:
@@ -24,6 +25,7 @@ test_paths:
   - cmd/dev-console/tools_observe_audit_test.go
   - cmd/dev-console/tools_observe_screenshot_test.go
   - cmd/dev-console/tools_observe_analysis_test.go
+  - extension/background/commands/observe.fullpage.test.js
   - internal/a11ysummary/summary_test.go
   - internal/tools/observe/analysis_test.go
   - internal/tools/observe/analysis_save_test.go

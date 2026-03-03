@@ -17,6 +17,7 @@ links:
 - `cmd/dev-console/tools_observe_handler_test.go`
 - `cmd/dev-console/tools_observe_blackbox_test.go`
 - `cmd/dev-console/tools_observe_audit_test.go`
+- `extension/background/commands/observe.fullpage.test.js`
 
 ## Required Scenarios
 1. Enum contract
@@ -35,6 +36,7 @@ links:
 
 5. Screenshot contract
 - `observe(what:"screenshot")` returns capture metadata or structured timeout/error.
+- `observe(what:"screenshot", full_page:true)` captures nested scroll-container content when available, restores container styles after capture, and degrades cleanly to viewport capture on CDP failure.
 
 ## Manual UAT
 1. Call `configure(action:"health")`.

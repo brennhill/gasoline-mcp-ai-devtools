@@ -56,7 +56,8 @@ class MockHTMLElement {
 
 globalThis.HTMLElement = MockHTMLElement
 
-const { screenshotExpandContainers, screenshotRestoreContainers } = await import('./observe.js')
+const { screenshotExpandContainers, screenshotRestoreContainers, computeFullPageCaptureDimensions } =
+  await import('./observe.js')
 
 describe('observe full-page helpers', () => {
   let htmlEl
@@ -125,5 +126,28 @@ describe('observe full-page helpers', () => {
     assert.strictEqual(mainScrollable.style.flex, '1 1 auto')
     assert.strictEqual(mainScrollable.style.contain, 'layout')
     assert.strictEqual(mainScrollable.getAttribute('data-gasoline-fpx'), null)
+  })
+
+  test('restores gracefully when stored expansion data is malformed', () => {
+    mainScrollable.setAttribute('data-gasoline-fpx', '{invalid-json')
+    screenshotRestoreContainers()
+    assert.strictEqual(mainScrollable.getAttribute('data-gasoline-fpx'), null)
+  })
+})
+
+describe('computeFullPageCaptureDimensions', () => {
+  test('uses expanded content hint and clamps to Chrome limits', () => {
+    const result = computeFullPageCaptureDimensions(20000, 1200, 18000)
+    assert.deepStrictEqual(result, { width: 16384, height: 16384 })
+  })
+
+  test('falls back to defaults for invalid metrics', () => {
+    const result = computeFullPageCaptureDimensions(NaN, 0, -10)
+    assert.deepStrictEqual(result, { width: 1280, height: 720 })
+  })
+
+  test('prefers hinted height when larger than content height', () => {
+    const result = computeFullPageCaptureDimensions(1400, 900, 2400)
+    assert.deepStrictEqual(result, { width: 1400, height: 2400 })
   })
 })
