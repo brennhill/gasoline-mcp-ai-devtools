@@ -34,6 +34,9 @@ code_paths:
   - internal/tools/configure/mode_specs_interact.go
   - src/background/pending-queries.ts
   - src/background/query-execution.ts
+  - src/background/commands/helpers.ts
+  - src/background/browser-actions.ts
+  - src/background/cdp-dispatch.ts
   - src/background/dom-dispatch.ts
   - src/background/dom-types.ts
   - src/background/dom-primitives.ts
@@ -49,6 +52,7 @@ test_paths:
   - cmd/dev-console/tools_interact_state_test.go
   - extension/background/__tests__/dom-dispatch-structured.test.js
   - extension/background/dom-primitives.test.js
+  - tests/extension/action-toast-labels.test.js
   - tests/extension/execute-js.test.js
 ---
 

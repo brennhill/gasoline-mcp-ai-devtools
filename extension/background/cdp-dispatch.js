@@ -63,7 +63,7 @@ function charToKeyInfo(char) {
         '/': { code: 'Slash', keyCode: 191 },
         '`': { code: 'Backquote', keyCode: 192 },
         // Shifted variants
-        '_': { code: 'Minus', keyCode: 189 },
+        _: { code: 'Minus', keyCode: 189 },
         '+': { code: 'Equal', keyCode: 187 },
         '{': { code: 'BracketLeft', keyCode: 219 },
         '}': { code: 'BracketRight', keyCode: 221 },
@@ -77,7 +77,7 @@ function charToKeyInfo(char) {
         '!': { code: 'Digit1', keyCode: 49 },
         '@': { code: 'Digit2', keyCode: 50 },
         '#': { code: 'Digit3', keyCode: 51 },
-        '$': { code: 'Digit4', keyCode: 52 },
+        $: { code: 'Digit4', keyCode: 52 },
         '%': { code: 'Digit5', keyCode: 53 },
         '^': { code: 'Digit6', keyCode: 54 },
         '&': { code: 'Digit7', keyCode: 55 },
@@ -109,10 +109,10 @@ async function resolveCoordinates(tabId, params) {
     const r = el.getBoundingClientRect();
     return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
   })()`;
-    const evalResult = await chrome.debugger.sendCommand({ tabId }, 'Runtime.evaluate', {
+    const evalResult = (await chrome.debugger.sendCommand({ tabId }, 'Runtime.evaluate', {
         expression,
         returnByValue: true
-    });
+    }));
     const coords = evalResult?.result?.value;
     if (!coords) {
         throw new Error(`Element not found: ${params.selector}`);
@@ -232,9 +232,7 @@ async function cdpKeyPress(tabId, params) {
 }
 function parseCDPParams(query) {
     try {
-        const raw = typeof query.params === 'string'
-            ? JSON.parse(query.params)
-            : query.params;
+        const raw = typeof query.params === 'string' ? JSON.parse(query.params) : query.params;
         if (!raw || typeof raw !== 'object' || !('action' in raw))
             return null;
         return raw;
@@ -565,7 +563,7 @@ export async function executeCDPAction(query, tabId, syncClient, sendAsyncResult
         sendAsyncResult(syncClient, query.id, query.correlation_id, 'error', null, 'missing_action');
         return;
     }
-    const toastLabel = `CDP ${action}`;
+    const toastLabel = action === 'key_press' ? 'Typing...' : `CDP ${action}`;
     actionToast(tabId, toastLabel, undefined, 'trying', 10000);
     try {
         await chrome.debugger.attach({ tabId }, CDP_VERSION);
