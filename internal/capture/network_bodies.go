@@ -21,14 +21,14 @@ import (
 // - On mismatch, keeps the common prefix and drops tail data to restore index alignment.
 // - Emits warning to stderr because truncated entries imply prior mutation bug.
 func (c *Capture) repairNBParallelArrays() {
-	if len(c.networkBodies) == len(c.networkAddedAt) {
+	if len(c.buffers.networkBodies) == len(c.buffers.networkAddedAt) {
 		return
 	}
 	fmt.Fprintf(os.Stderr, "[gasoline] WARNING: networkBodies/networkAddedAt length mismatch: %d != %d (recovering by truncating)\n",
-		len(c.networkBodies), len(c.networkAddedAt))
-	minLen := min(len(c.networkBodies), len(c.networkAddedAt))
-	c.networkBodies = c.networkBodies[:minLen]
-	c.networkAddedAt = c.networkAddedAt[:minLen]
+		len(c.buffers.networkBodies), len(c.buffers.networkAddedAt))
+	minLen := min(len(c.buffers.networkBodies), len(c.buffers.networkAddedAt))
+	c.buffers.networkBodies = c.buffers.networkBodies[:minLen]
+	c.buffers.networkAddedAt = c.buffers.networkAddedAt[:minLen]
 }
 
 // detectAndSetBinaryFormat infers payload format only when not already set.
@@ -57,24 +57,24 @@ func detectAndSetBinaryFormat(body *NetworkBody) {
 // evictNBByCount enforces count-based cap while preserving newest entries.
 //
 // Invariants:
-// - c.networkBodyMemoryTotal remains consistent with surviving entries after eviction.
+// - c.buffers.networkBodyMemoryTotal remains consistent with surviving entries after eviction.
 //
 // Failure semantics:
 // - Oldest entries are dropped first (FIFO eviction).
 func (c *Capture) evictNBByCount() {
-	if len(c.networkBodies) <= MaxNetworkBodies {
+	if len(c.buffers.networkBodies) <= MaxNetworkBodies {
 		return
 	}
-	keep := len(c.networkBodies) - MaxNetworkBodies
+	keep := len(c.buffers.networkBodies) - MaxNetworkBodies
 	for j := 0; j < keep; j++ {
-		c.networkBodyMemoryTotal -= nbEntryMemory(&c.networkBodies[j])
+		c.buffers.networkBodyMemoryTotal -= nbEntryMemory(&c.buffers.networkBodies[j])
 	}
 	newBodies := make([]NetworkBody, MaxNetworkBodies)
-	copy(newBodies, c.networkBodies[keep:])
-	c.networkBodies = newBodies
+	copy(newBodies, c.buffers.networkBodies[keep:])
+	c.buffers.networkBodies = newBodies
 	newAddedAt := make([]time.Time, MaxNetworkBodies)
-	copy(newAddedAt, c.networkAddedAt[keep:])
-	c.networkAddedAt = newAddedAt
+	copy(newAddedAt, c.buffers.networkAddedAt[keep:])
+	c.buffers.networkAddedAt = newAddedAt
 }
 
 // AddNetworkBodies ingests a batch into the network evidence ring buffer.
@@ -91,10 +91,10 @@ func (c *Capture) AddNetworkBodies(bodies []NetworkBody) {
 	defer c.mu.Unlock()
 
 	c.repairNBParallelArrays()
-	c.networkTotalAdded += int64(len(bodies))
+	c.buffers.networkTotalAdded += int64(len(bodies))
 	for i := range bodies {
 		if bodies[i].Status >= 400 {
-			c.networkErrorTotalAdded++
+			c.buffers.networkErrorTotalAdded++
 		}
 	}
 	now := time.Now()
@@ -107,9 +107,9 @@ func (c *Capture) AddNetworkBodies(bodies []NetworkBody) {
 	for i := range bodies {
 		bodies[i].TestIDs = activeTestIDs
 		detectAndSetBinaryFormat(&bodies[i])
-		c.networkBodies = append(c.networkBodies, bodies[i])
-		c.networkAddedAt = append(c.networkAddedAt, now)
-		c.networkBodyMemoryTotal += nbEntryMemory(&bodies[i])
+		c.buffers.networkBodies = append(c.buffers.networkBodies, bodies[i])
+		c.buffers.networkAddedAt = append(c.buffers.networkAddedAt, now)
+		c.buffers.networkBodyMemoryTotal += nbEntryMemory(&bodies[i])
 	}
 
 	c.evictNBByCount()
@@ -119,29 +119,29 @@ func (c *Capture) AddNetworkBodies(bodies []NetworkBody) {
 // evictNBForMemory enforces memory cap using oldest-first eviction.
 //
 // Invariants:
-// - c.networkBodyMemoryTotal is decremented by exact removed-entry estimates.
+// - c.buffers.networkBodyMemoryTotal is decremented by exact removed-entry estimates.
 //
 // Failure semantics:
 // - Drops enough leading entries to get under cap in one pass; may remove multiple recent appends.
 func (c *Capture) evictNBForMemory() {
-	excess := c.networkBodyMemoryTotal - nbBufferMemoryLimit
+	excess := c.buffers.networkBodyMemoryTotal - nbBufferMemoryLimit
 	if excess <= 0 {
 		return
 	}
 	drop := 0
-	for drop < len(c.networkBodies) && excess > 0 {
-		entryMem := nbEntryMemory(&c.networkBodies[drop])
+	for drop < len(c.buffers.networkBodies) && excess > 0 {
+		entryMem := nbEntryMemory(&c.buffers.networkBodies[drop])
 		excess -= entryMem
-		c.networkBodyMemoryTotal -= entryMem
+		c.buffers.networkBodyMemoryTotal -= entryMem
 		drop++
 	}
-	surviving := make([]NetworkBody, len(c.networkBodies)-drop)
-	copy(surviving, c.networkBodies[drop:])
-	c.networkBodies = surviving
-	if len(c.networkAddedAt) >= drop {
-		survivingAt := make([]time.Time, len(c.networkAddedAt)-drop)
-		copy(survivingAt, c.networkAddedAt[drop:])
-		c.networkAddedAt = survivingAt
+	surviving := make([]NetworkBody, len(c.buffers.networkBodies)-drop)
+	copy(surviving, c.buffers.networkBodies[drop:])
+	c.buffers.networkBodies = surviving
+	if len(c.buffers.networkAddedAt) >= drop {
+		survivingAt := make([]time.Time, len(c.buffers.networkAddedAt)-drop)
+		copy(survivingAt, c.buffers.networkAddedAt[drop:])
+		c.buffers.networkAddedAt = survivingAt
 	}
 }
 
@@ -149,5 +149,5 @@ func (c *Capture) evictNBForMemory() {
 func (c *Capture) GetNetworkBodyCount() int {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
-	return len(c.networkBodies)
+	return len(c.buffers.networkBodies)
 }

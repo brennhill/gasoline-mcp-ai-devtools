@@ -26,18 +26,18 @@ import (
 // Failure semantics:
 // - Corruption is healed by truncating to common prefix and recomputing memory total.
 func (c *Capture) repairWSParallelArrays() {
-	if len(c.wsEvents) == len(c.wsAddedAt) {
+	if len(c.buffers.wsEvents) == len(c.buffers.wsAddedAt) {
 		return
 	}
 	fmt.Fprintf(os.Stderr, "[gasoline] WARNING: wsEvents/wsAddedAt length mismatch: %d != %d (recovering by truncating)\n",
-		len(c.wsEvents), len(c.wsAddedAt))
-	minLen := min(len(c.wsEvents), len(c.wsAddedAt))
-	c.wsMemoryTotal = 0
+		len(c.buffers.wsEvents), len(c.buffers.wsAddedAt))
+	minLen := min(len(c.buffers.wsEvents), len(c.buffers.wsAddedAt))
+	c.buffers.wsMemoryTotal = 0
 	for i := 0; i < minLen; i++ {
-		c.wsMemoryTotal += wsEventMemory(&c.wsEvents[i])
+		c.buffers.wsMemoryTotal += wsEventMemory(&c.buffers.wsEvents[i])
 	}
-	c.wsEvents = c.wsEvents[:minLen]
-	c.wsAddedAt = c.wsAddedAt[:minLen]
+	c.buffers.wsEvents = c.buffers.wsEvents[:minLen]
+	c.buffers.wsAddedAt = c.buffers.wsAddedAt[:minLen]
 }
 
 // detectWSBinaryFormat best-effort classifies message payload format.
@@ -59,19 +59,19 @@ func detectWSBinaryFormat(event *WebSocketEvent) {
 // Invariants:
 // - wsMemoryTotal is decremented for each dropped entry before slice replacement.
 func (c *Capture) evictWSByCount() {
-	if len(c.wsEvents) <= MaxWSEvents {
+	if len(c.buffers.wsEvents) <= MaxWSEvents {
 		return
 	}
-	drop := len(c.wsEvents) - MaxWSEvents
+	drop := len(c.buffers.wsEvents) - MaxWSEvents
 	for j := 0; j < drop; j++ {
-		c.wsMemoryTotal -= wsEventMemory(&c.wsEvents[j])
+		c.buffers.wsMemoryTotal -= wsEventMemory(&c.buffers.wsEvents[j])
 	}
 	newEvents := make([]WebSocketEvent, MaxWSEvents)
-	copy(newEvents, c.wsEvents[drop:])
-	c.wsEvents = newEvents
+	copy(newEvents, c.buffers.wsEvents[drop:])
+	c.buffers.wsEvents = newEvents
 	newAddedAt := make([]time.Time, MaxWSEvents)
-	copy(newAddedAt, c.wsAddedAt[drop:])
-	c.wsAddedAt = newAddedAt
+	copy(newAddedAt, c.buffers.wsAddedAt[drop:])
+	c.buffers.wsAddedAt = newAddedAt
 }
 
 // AddWebSocketEvents ingests websocket telemetry and updates connection model.
@@ -89,7 +89,7 @@ func (c *Capture) AddWebSocketEvents(events []WebSocketEvent) {
 	defer c.mu.Unlock()
 
 	c.repairWSParallelArrays()
-	c.wsTotalAdded += int64(len(events))
+	c.buffers.wsTotalAdded += int64(len(events))
 	now := time.Now()
 
 	activeTestIDs := make([]string, 0)
@@ -101,9 +101,9 @@ func (c *Capture) AddWebSocketEvents(events []WebSocketEvent) {
 		events[i].TestIDs = activeTestIDs
 		detectWSBinaryFormat(&events[i])
 		c.trackConnection(events[i])
-		c.wsEvents = append(c.wsEvents, events[i])
-		c.wsAddedAt = append(c.wsAddedAt, now)
-		c.wsMemoryTotal += wsEventMemory(&events[i])
+		c.buffers.wsEvents = append(c.buffers.wsEvents, events[i])
+		c.buffers.wsAddedAt = append(c.buffers.wsAddedAt, now)
+		c.buffers.wsMemoryTotal += wsEventMemory(&events[i])
 	}
 
 	c.evictWSByCount()
@@ -119,24 +119,24 @@ func (c *Capture) AddWebSocketEvents(events []WebSocketEvent) {
 // - Can drop multiple oldest events in one pass; newer events are preserved.
 func (c *Capture) evictWSForMemory() {
 	c.repairWSParallelArrays()
-	excess := c.wsMemoryTotal - wsBufferMemoryLimit
+	excess := c.buffers.wsMemoryTotal - wsBufferMemoryLimit
 	if excess <= 0 {
 		return
 	}
 	drop := 0
-	for drop < len(c.wsEvents) && excess > 0 {
-		entryMem := wsEventMemory(&c.wsEvents[drop])
+	for drop < len(c.buffers.wsEvents) && excess > 0 {
+		entryMem := wsEventMemory(&c.buffers.wsEvents[drop])
 		excess -= entryMem
-		c.wsMemoryTotal -= entryMem
+		c.buffers.wsMemoryTotal -= entryMem
 		drop++
 	}
-	surviving := make([]WebSocketEvent, len(c.wsEvents)-drop)
-	copy(surviving, c.wsEvents[drop:])
-	c.wsEvents = surviving
-	if len(c.wsAddedAt) >= drop {
-		survivingAt := make([]time.Time, len(c.wsAddedAt)-drop)
-		copy(survivingAt, c.wsAddedAt[drop:])
-		c.wsAddedAt = survivingAt
+	surviving := make([]WebSocketEvent, len(c.buffers.wsEvents)-drop)
+	copy(surviving, c.buffers.wsEvents[drop:])
+	c.buffers.wsEvents = surviving
+	if len(c.buffers.wsAddedAt) >= drop {
+		survivingAt := make([]time.Time, len(c.buffers.wsAddedAt)-drop)
+		copy(survivingAt, c.buffers.wsAddedAt[drop:])
+		c.buffers.wsAddedAt = survivingAt
 	}
 }
 
@@ -144,7 +144,7 @@ func (c *Capture) evictWSForMemory() {
 func (c *Capture) GetWebSocketEventCount() int {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
-	return len(c.wsEvents)
+	return len(c.buffers.wsEvents)
 }
 
 // matchesWSEventFilter returns true if the event passes the filter criteria.
@@ -186,14 +186,14 @@ func (c *Capture) GetWebSocketEvents(filter WebSocketEventFilter) []WebSocketEve
 	}
 
 	filtered := make([]WebSocketEvent, 0, limit)
-	for i := len(c.wsEvents) - 1; i >= 0; i-- {
-		if c.TTL > 0 && i < len(c.wsAddedAt) && isExpiredByTTL(c.wsAddedAt[i], c.TTL) {
+	for i := len(c.buffers.wsEvents) - 1; i >= 0; i-- {
+		if c.TTL > 0 && i < len(c.buffers.wsAddedAt) && isExpiredByTTL(c.buffers.wsAddedAt[i], c.TTL) {
 			break
 		}
-		if !matchesWSEventFilter(&c.wsEvents[i], filter) {
+		if !matchesWSEventFilter(&c.buffers.wsEvents[i], filter) {
 			continue
 		}
-		filtered = append(filtered, c.wsEvents[i])
+		filtered = append(filtered, c.buffers.wsEvents[i])
 		if len(filtered) >= limit {
 			break
 		}

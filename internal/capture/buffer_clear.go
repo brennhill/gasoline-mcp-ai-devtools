@@ -24,18 +24,18 @@ func (c *Capture) ClearNetworkBuffers() BufferClearCounts {
 
 	counts := BufferClearCounts{
 		NetworkWaterfall: len(c.networkWaterfall.entries),
-		NetworkBodies:    len(c.networkBodies),
+		NetworkBodies:    len(c.buffers.networkBodies),
 	}
 
 	// Clear network waterfall buffer
 	c.networkWaterfall.entries = make([]NetworkWaterfallEntry, 0, c.networkWaterfall.capacity)
 
 	// Clear network bodies buffer and reset memory tracking
-	c.networkBodies = make([]NetworkBody, 0)
-	c.networkAddedAt = make([]time.Time, 0)
-	c.networkTotalAdded = 0
-	c.networkErrorTotalAdded = 0
-	c.networkBodyMemoryTotal = 0
+	c.buffers.networkBodies = make([]NetworkBody, 0)
+	c.buffers.networkAddedAt = make([]time.Time, 0)
+	c.buffers.networkTotalAdded = 0
+	c.buffers.networkErrorTotalAdded = 0
+	c.buffers.networkBodyMemoryTotal = 0
 
 	return counts
 }
@@ -49,15 +49,15 @@ func (c *Capture) ClearWebSocketBuffers() BufferClearCounts {
 	defer c.mu.Unlock()
 
 	counts := BufferClearCounts{
-		WebSocketEvents: len(c.wsEvents),
+		WebSocketEvents: len(c.buffers.wsEvents),
 		WebSocketStatus: len(c.wsConnections.connections),
 	}
 
 	// Clear WebSocket events buffer
-	c.wsEvents = make([]WebSocketEvent, 0)
-	c.wsAddedAt = make([]time.Time, 0)
-	c.wsTotalAdded = 0
-	c.wsMemoryTotal = 0
+	c.buffers.wsEvents = make([]WebSocketEvent, 0)
+	c.buffers.wsAddedAt = make([]time.Time, 0)
+	c.buffers.wsTotalAdded = 0
+	c.buffers.wsMemoryTotal = 0
 
 	// Clear WebSocket connections map
 	c.wsConnections.connections = make(map[string]*connectionState)
@@ -72,13 +72,13 @@ func (c *Capture) ClearActionBuffer() BufferClearCounts {
 	defer c.mu.Unlock()
 
 	counts := BufferClearCounts{
-		Actions: len(c.enhancedActions),
+		Actions: len(c.buffers.enhancedActions),
 	}
 
 	// Clear actions buffer
-	c.enhancedActions = make([]EnhancedAction, 0)
-	c.actionAddedAt = make([]time.Time, 0)
-	c.actionTotalAdded = 0
+	c.buffers.enhancedActions = make([]EnhancedAction, 0)
+	c.buffers.actionAddedAt = make([]time.Time, 0)
+	c.buffers.actionTotalAdded = 0
 
 	return counts
 }
@@ -106,15 +106,15 @@ func (c *Capture) ClearAll() {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	c.wsEvents = make([]WebSocketEvent, 0)
-	c.wsAddedAt = make([]time.Time, 0)
-	c.wsMemoryTotal = 0
-	c.networkBodies = make([]NetworkBody, 0)
-	c.networkAddedAt = make([]time.Time, 0)
-	c.networkBodyMemoryTotal = 0
+	c.buffers.wsEvents = make([]WebSocketEvent, 0)
+	c.buffers.wsAddedAt = make([]time.Time, 0)
+	c.buffers.wsMemoryTotal = 0
+	c.buffers.networkBodies = make([]NetworkBody, 0)
+	c.buffers.networkAddedAt = make([]time.Time, 0)
+	c.buffers.networkBodyMemoryTotal = 0
 	c.networkWaterfall.entries = make([]NetworkWaterfallEntry, 0, c.networkWaterfall.capacity)
-	c.enhancedActions = make([]EnhancedAction, 0)
-	c.actionAddedAt = make([]time.Time, 0)
+	c.buffers.enhancedActions = make([]EnhancedAction, 0)
+	c.buffers.actionAddedAt = make([]time.Time, 0)
 	c.wsConnections.connections = make(map[string]*connectionState)
 	c.wsConnections.closedConns = make([]WebSocketClosedConnection, 0)
 	c.wsConnections.connOrder = make([]string, 0)
