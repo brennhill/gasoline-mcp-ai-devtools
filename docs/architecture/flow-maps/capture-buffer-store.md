@@ -25,9 +25,10 @@ Refactor `internal/capture` to group websocket/network/action ring-buffer state 
 
 1. `NewCapture` initializes `buffers: newBufferStore()`.
 2. Ingestion methods append to `c.buffers.*` slices and bump `c.buffers.*TotalAdded`.
-3. Eviction methods trim `c.buffers.*` slices and keep memory counters in sync.
-4. Accessor/read APIs expose cloned snapshots from `c.buffers.*` data.
-5. Clear/reset APIs zero `c.buffers.*` slices and counters.
+3. WebSocket lifecycle state updates are delegated to `WSConnectionTracker.trackEvent`.
+4. Eviction methods trim `c.buffers.*` slices and keep memory counters in sync.
+5. Accessor/read APIs expose cloned snapshots from `c.buffers.*` data.
+6. Clear/reset APIs zero `c.buffers.*` slices and counters.
 
 ## Error and Recovery Paths
 
@@ -48,6 +49,7 @@ Refactor `internal/capture` to group websocket/network/action ring-buffer state 
 - `internal/capture/capture-struct.go`
 - `internal/capture/network_bodies.go`
 - `internal/capture/websocket.go`
+- `internal/capture/ws_connection_tracker.go`
 - `internal/capture/enhanced_actions.go`
 - `internal/capture/buffer_clear.go`
 - `internal/capture/accessor_*.go`
