@@ -121,6 +121,9 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Content contract (SEO + LLM legibility)
+        run: npm run docs:lint:content-contract
+
       - name: ESLint (errors only)
         run: |
           npx eslint extension/ tests/extension/ --max-warnings=50 || {

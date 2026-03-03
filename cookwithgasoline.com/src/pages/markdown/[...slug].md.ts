@@ -1,28 +1,40 @@
 import type { APIRoute, GetStaticPaths } from 'astro'
 import { getCollection } from 'astro:content'
+import { resolveDocSlug } from '../../utils/contentSlugs'
 
 export const prerender = true
 
 const contentSignal = 'ai-train=yes, search=yes, ai-input=yes'
 
-const slugToPath = (slug: string[] | undefined) => {
-  if (!slug || slug.length === 0) return 'index'
-  return slug.join('/')
+function toYamlString(value: unknown) {
+  const text = String(value ?? '').replace(/\r?\n/g, ' ').replace(/'/g, "''").trim()
+  return `'${text}'`
 }
+
+const slugToPath = (slug: string | undefined) => slug || 'index'
 
 function renderFrontmatter(entry: any) {
   const title = entry.data?.title ?? 'Gasoline MCP'
   const description = entry.data?.description ?? entry.data?.summary ?? ''
-  return `---\ntitle: ${title}\ndescription: ${description}\ncanonical: https://cookwithgasoline.com/${entry.slug}\n---`
+  const resolvedSlug = resolveDocSlug(entry)
+
+  return `---\ntitle: ${toYamlString(title)}\ndescription: ${toYamlString(description)}\ncanonical: https://cookwithgasoline.com${resolvedSlug === '' ? '/' : `/${resolvedSlug}/`}\n---`
 }
 
 export const GET: APIRoute = async ({ params }) => {
   const docs = await getCollection('docs')
-  const slugPath = slugToPath(params.slug as string[] | undefined)
+  const slugPath = slugToPath(params.slug as string | undefined)
+  const requestedSlug = slugPath === 'index' ? '' : slugPath
 
-  const entry = docs.find((doc) => (doc.slug === '' ? 'index' : doc.slug) === slugPath)
+  const entry = docs.find((doc) => resolveDocSlug(doc) === requestedSlug)
   if (!entry) {
-    return new Response('# Not found\n', { status: 404, headers: { 'Content-Type': 'text/markdown; charset=utf-8' } })
+    return new Response('# Not found\n', {
+      status: 404,
+      headers: {
+        'Content-Type': 'text/markdown; charset=utf-8',
+        'Content-Signal': contentSignal
+      }
+    })
   }
 
   const fm = renderFrontmatter(entry)
@@ -38,8 +50,9 @@ export const GET: APIRoute = async ({ params }) => {
 
 export const getStaticPaths: GetStaticPaths = async () => {
   const docs = await getCollection('docs')
-  return docs.map((doc) => {
-    const parts = doc.slug ? doc.slug.split('/') : undefined
-    return { params: { slug: parts } }
-  })
+
+  return docs
+    .map((doc) => resolveDocSlug(doc))
+    .map((slug) => (slug === '' ? 'index' : slug))
+    .map((slug) => ({ params: { slug } }))
 }
