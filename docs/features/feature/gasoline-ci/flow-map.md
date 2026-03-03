@@ -1,7 +1,7 @@
 ---
 doc_type: flow_map_pointer
 status: active
-last_reviewed: 2026-03-03
+last_reviewed: 2026-03-04
 canonical_flow_map: ../../../architecture/flow-maps/llm-fast-verify-gate.md
 ---
 

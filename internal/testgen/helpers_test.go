@@ -5,7 +5,6 @@
 package testgen
 
 import (
-	"regexp"
 	"strings"
 	"testing"
 	"time"
@@ -14,15 +13,6 @@ import (
 	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/reproduction"
 )
 
-func TestGenerateErrorID(t *testing.T) {
-	t.Parallel()
-
-	id := GenerateErrorID("boom", "stacktrace", "https://app.example.com")
-	re := regexp.MustCompile(`^err_\d+_[0-9a-f]{8}$`)
-	if !re.MatchString(id) {
-		t.Fatalf("GenerateErrorID() = %q, want err_{timestamp}_{8hex}", id)
-	}
-}
 
 func TestGenerateTestFilename(t *testing.T) {
 	t.Parallel()

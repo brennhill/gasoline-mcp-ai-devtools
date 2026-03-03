@@ -72,7 +72,7 @@ func extractClientCapabilities(rawParams json.RawMessage) push.ClientCapabilitie
 		} `json:"capabilities"`
 		ClientInfo struct {
 			Name string `json:"name"`
-		} `json:"clientInfo"`
+		} `json:"clientInfo"` // SPEC:MCP initialize params
 	}
 
 	if err := json.Unmarshal(rawParams, &params); err != nil {

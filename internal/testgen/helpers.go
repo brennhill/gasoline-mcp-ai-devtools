@@ -4,8 +4,6 @@
 package testgen
 
 import (
-	"crypto/sha256"
-	"encoding/hex"
 	"fmt"
 	"regexp"
 	"strings"
@@ -14,21 +12,6 @@ import (
 	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/capture"
 )
 
-// GenerateErrorID creates a deterministic error identifier from message, stack, and URL.
-func GenerateErrorID(message, stack, url string) string {
-	timestamp := time.Now().UnixMilli()
-
-	h := sha256.New()
-	h.Write([]byte(message))
-	h.Write([]byte(stack))
-	h.Write([]byte(url))
-	hashBytes := h.Sum(nil)
-	hashHex := hex.EncodeToString(hashBytes)
-
-	hash8 := hashHex[:8]
-
-	return fmt.Sprintf("err_%d_%s", timestamp, hash8)
-}
 
 // filenameAllowlistRe matches any character NOT in the safe set [a-z0-9-].
 var filenameAllowlistRe = regexp.MustCompile(`[^a-z0-9]+`)
@@ -124,44 +107,7 @@ func NormalizeTimestamp(tsStr string) int64 {
 	return t.UnixMilli()
 }
 
-// TargetSelector extracts the "target" selector from an action's selector map.
-func TargetSelector(action capture.EnhancedAction) (string, bool) {
-	if action.Selectors == nil {
-		return "", false
-	}
-	sel, ok := action.Selectors["target"].(string)
-	if !ok || sel == "" {
-		return "", false
-	}
-	return sel, true
-}
 
-// PlaywrightActionLine generates a single Playwright action line for a given action.
-func PlaywrightActionLine(action capture.EnhancedAction) string {
-	switch action.Type {
-	case "click":
-		sel, ok := TargetSelector(action)
-		if !ok {
-			return ""
-		}
-		return fmt.Sprintf("  await page.click('%s');\n", sel)
-	case "input":
-		sel, ok := TargetSelector(action)
-		if !ok {
-			return ""
-		}
-		return fmt.Sprintf("  await page.fill('%s', '%s');\n", sel, action.Value)
-	case "navigate":
-		if action.ToURL == "" {
-			return ""
-		}
-		return fmt.Sprintf("  await page.goto('%s');\n", action.ToURL)
-	case "wait":
-		return fmt.Sprintf("  await page.waitForTimeout(%d);\n", 100)
-	default:
-		return ""
-	}
-}
 
 // DeriveInteractionTestName derives a test name from the first action's URL or type.
 func DeriveInteractionTestName(actions []capture.EnhancedAction) string {

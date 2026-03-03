@@ -226,18 +226,41 @@ lint: lint-go lint-js
 
 lint-go:
 	go vet $(CMD_PKG)/
-	@command -v golangci-lint >/dev/null 2>&1 && golangci-lint run $(CMD_PKG)/... ./internal/... || echo "golangci-lint not installed (optional)"
+	@GOLANGCI=$$(command -v "$$(go env GOPATH)/bin/golangci-lint" 2>/dev/null || command -v golangci-lint 2>/dev/null || true); \
+	if [ -n "$$GOLANGCI" ]; then $$GOLANGCI run $(CMD_PKG)/... ./internal/...; else echo "golangci-lint not installed (optional)"; fi
 
 lint-dead-go:
-	@echo "=== Checking for dead Go code ==="
-	@command -v deadcode >/dev/null 2>&1 || { echo "Install: go install golang.org/x/tools/cmd/deadcode@latest"; exit 1; }
-	@deadcode $(CMD_PKG)/... ./internal/... 2>&1 | grep -v _test.go || echo "No dead code found"
+	@echo "=== Checking for dead Go code (advisory) ==="
+	@DEADCODE=$$(command -v "$$(go env GOPATH)/bin/deadcode" 2>/dev/null || command -v deadcode 2>/dev/null || true); \
+	if [ -z "$$DEADCODE" ]; then echo "Install: go install golang.org/x/tools/cmd/deadcode@latest"; exit 1; fi; \
+	RESULTS=$$($$DEADCODE -test $(CMD_PKG)/... ./internal/... 2>&1 | grep -v _test.go); \
+	if [ -n "$$RESULTS" ]; then \
+		COUNT=$$(echo "$$RESULTS" | wc -l | tr -d ' '); \
+		echo "$$RESULTS"; \
+		echo ""; \
+		echo "Found $$COUNT unreachable function(s). To clean up:"; \
+		echo "  1. Remove the dead function (and its doc comment)"; \
+		echo "  2. If the file has live types/vars/consts but no live funcs, move the live symbols to a neighboring file first"; \
+		echo "  3. Delete the file only when it has zero remaining symbols"; \
+		echo "  4. Run 'go build ./...' after each deletion to verify"; \
+	else \
+		echo "No dead code found"; \
+	fi
 
 lint-dead-ts:
 	@echo "=== Checking for dead TypeScript exports ==="
 	@npx knip --no-exit-code
 
 lint-dead: lint-dead-go lint-dead-ts
+
+lint-circular:
+	@bash scripts/check-circular-deps.sh
+
+lint-boundaries:
+	@bash scripts/check-import-boundaries.sh
+
+lint-json-casing:
+	@bash scripts/check-json-casing.sh
 
 lint-hardening:
 	@./scripts/lint-hardening.sh
@@ -257,7 +280,7 @@ format-fix:
 typecheck:
 	npx tsc --noEmit
 
-check: check-file-length lint format typecheck check-invariants
+check: check-file-length lint lint-boundaries lint-json-casing format typecheck check-invariants
 
 check-wire-drift:
 	@node scripts/generate-wire-types.js --check
@@ -364,6 +387,7 @@ verify-all: lint security-check test-cover test-js
 verify-llm:
 	@echo "Running verify-llm fast gate (schema + docs + core contracts)..."
 	@node scripts/generate-wire-types.js --check
+	@npm run docs:lint:integrity
 	@npm run docs:check:strict
 	@npm run docs:lint:content-contract
 	@npm run docs:lint:reference-schema-sync
@@ -371,7 +395,7 @@ verify-llm:
 	@echo "verify-llm passed"
 
 # Quality gate for top 1% standards (comprehensive)
-quality-gate: check-file-length lint lint-hardening lint-dead typecheck security-check test test-js validate-deps-versions
+quality-gate: check-file-length lint lint-hardening lint-dead lint-circular lint-boundaries lint-json-casing typecheck security-check test test-js validate-deps-versions
 	@echo ""
 	@echo "═══════════════════════════════════════════"
 	@echo "✅ QUALITY GATE PASSED - Top 1% Standards"
@@ -379,6 +403,10 @@ quality-gate: check-file-length lint lint-hardening lint-dead typecheck security
 	@echo "  ✓ File length limits enforced"
 	@echo "  ✓ Linting passed (ESLint + go vet)"
 	@echo "  ✓ Dead code checked (deadcode + knip)"
+	@echo "  ✓ No circular dependencies"
+	@echo "  ✓ Import boundaries enforced"
+	@echo "  ✓ JSON tags use snake_case"
+	@echo "  ✓ Go file headers present"
 	@echo "  ✓ Type safety verified (TypeScript)"
 	@echo "  ✓ Security checks passed"
 	@echo "  ✓ All Go tests passed"

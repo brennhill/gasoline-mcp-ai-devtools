@@ -71,9 +71,6 @@ func (h *testGenHandler) repairSelectors(req TestHealRequest, _ string) (*HealRe
 	return testgen.RepairSelectors(req)
 }
 
-func (h *testGenHandler) healSelector(oldSelector string) (*HealedSelector, error) {
-	return testgen.HealSelector(oldSelector)
-}
 
 func (h *testGenHandler) healTestBatch(req TestHealRequest, projectDir string) (*BatchHealResult, error) {
 	return testgen.HealTestBatch(req, projectDir)

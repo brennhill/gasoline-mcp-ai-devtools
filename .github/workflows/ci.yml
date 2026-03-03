@@ -117,6 +117,13 @@ jobs:
       - name: Validate Codex skill frontmatter
         run: ./scripts/validate-codex-skills.sh
 
+      - name: Install golangci-lint (for depguard gate)
+        run: go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.8.0
+
+      - name: Depguard import boundary gate
+        run: |
+          golangci-lint run --enable-only depguard ./cmd/dev-console/... ./internal/...
+
       - name: Go tests with race detection
         run: go test -race -v ./cmd/dev-console/...
 
@@ -161,8 +168,15 @@ jobs:
           node-version: "20"
           cache: "npm"
 
+      - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6
+        with:
+          python-version: "3.12"
+
       - name: Install dependencies
         run: npm ci
+
+      - name: Docs integrity gate (links + code refs)
+        run: npm run docs:lint:integrity
 
       - name: Content contract (SEO + LLM legibility)
         run: npm run docs:lint:content-contract
