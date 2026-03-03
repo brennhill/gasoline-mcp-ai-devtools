@@ -55,3 +55,4 @@ Each flow map should include:
 - [Cookwithgasoline Content Publishing and Agent Markdown](./cookwithgasoline-content-publishing-and-agent-markdown.md)
 - [Interact Navigate and Document](./interact-navigate-and-document.md)
 - [Interact Batch Sequences](./interact-batch-sequences.md)
+- [Framework Selector Resilience Smoke Flow](./framework-selector-resilience-smoke.md)

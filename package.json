@@ -16,6 +16,7 @@
     "docs:apply:source": "node scripts/docs/apply-source-headers.js",
     "docs:sync:code-paths": "node scripts/docs/sync-feature-code-paths.js",
     "generate:dom-primitives": "node scripts/generate-dom-primitives.js",
+    "smoke:build-framework-fixtures": "node scripts/smoke-tests/build-framework-fixtures.mjs",
     "docs:ci": "npm run docs:check:strict && npm run docs:lint:content-contract",
     "test:ext": "JS_TEST_SHARDS=4 JS_TEST_TIMEOUT=60000 JS_TEST_CONCURRENCY=6 ./scripts/test-js-sharded.sh",
     "test:go": "make test",
@@ -30,8 +31,13 @@
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-security": "^3.0.0",
     "globals": "^17.3.0",
+    "next": "^16.1.6",
     "prettier": "^3.3.0",
-    "typescript": "^5.5.0"
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4",
+    "svelte": "^5.53.6",
+    "typescript": "^5.5.0",
+    "vue": "^3.5.29"
   },
   "homepage": "https://cookwithgasoline.com",
   "repository": {

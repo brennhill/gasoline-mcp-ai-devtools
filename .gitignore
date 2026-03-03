@@ -73,3 +73,9 @@ docs/marketing-plan.md
 cookwithgasoline.com/node_modules/
 cookwithgasoline.com/dist/
 cookwithgasoline.com/.astro/
+
+# Generated framework smoke fixtures
+cmd/dev-console/testpages/frameworks/
+cmd/dev-console/testpages/_next/
+scripts/smoke-tests/framework-fixtures/next-app/.next/
+scripts/smoke-tests/framework-fixtures/next-app/out/

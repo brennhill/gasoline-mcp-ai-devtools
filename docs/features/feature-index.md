@@ -44,6 +44,7 @@ canonical: true
 | Dynamic Exposure | proposed | configure | (feature flags) | — | [feature/dynamic-exposure](feature/dynamic-exposure/) |
 | Enterprise Audit | shipped | analyze | security_audit | 5.0.0 | [feature/enterprise-audit](feature/enterprise-audit/) |
 | Error Clustering | shipped | analyze | error_clusters | 5.0.0 | [feature/error-clustering](feature/error-clustering/) |
+| Framework Selector Resilience | shipped | analyze, interact | page_structure, navigate/click/type/list_interactive/wait_for | 0.7.10 | [feature/framework-selector-resilience](feature/framework-selector-resilience/) |
 | Gasoline CI | proposed | observe, generate | CI integration | — | [feature/gasoline-ci](feature/gasoline-ci/) |
 | HAR Export | deprecated | — | — | 5.0.0 | [feature/har-export](feature/har-export/) |
 | In-Browser Agent Panel | proposed | observe, analyze, interact, configure | agent_panel, agent_watch (proposed) | — | [feature/in-browser-agent-panel](feature/in-browser-agent-panel/) |
@@ -74,11 +75,11 @@ canonical: true
 
 | Status | Count |
 |--------|-------|
-| Shipped | 23 |
+| Shipped | 24 |
 | In-Progress | 6 |
 | Proposed | 10 |
 | Deprecated | 4 |
-| **Total** | **43** |
+| **Total** | **44** |
 
 ## MCP Tool Distribution
 
