@@ -28,7 +28,7 @@ type interactHandler func(req JSONRPCRequest, args json.RawMessage) JSONRPCRespo
 func (h *interactActionHandler) interactDispatch() map[string]interactHandler {
 	h.once.Do(func() {
 		h.handlers = map[string]interactHandler{
-			"highlight":                 h.parent.handleHighlight,
+			"highlight":                 h.handleHighlightImpl,
 			"save_state":                h.parent.stateInteract().handleStateSave,
 			"state_save":                h.parent.stateInteract().handleStateSave, // backward-compatible alias
 			"load_state":                h.parent.stateInteract().handleStateLoad,
@@ -42,16 +42,16 @@ func (h *interactActionHandler) interactDispatch() map[string]interactHandler {
 			"clear_storage":             h.parent.handleClearStorage,
 			"set_cookie":                h.parent.handleSetCookie,
 			"delete_cookie":             h.parent.handleDeleteCookie,
-			"execute_js":                h.parent.handleExecuteJS,
-			"navigate":                  h.parent.handleBrowserActionNavigate,
-			"refresh":                   h.parent.handleBrowserActionRefresh,
-			"back":                      h.parent.handleBrowserActionBack,
-			"forward":                   h.parent.handleBrowserActionForward,
+			"execute_js":                h.handleExecuteJSImpl,
+			"navigate":                  h.handleBrowserActionNavigateImpl,
+			"refresh":                   h.handleBrowserActionRefreshImpl,
+			"back":                      h.handleBrowserActionBackImpl,
+			"forward":                   h.handleBrowserActionForwardImpl,
 			"new_tab":                   h.handleBrowserActionNewTabImpl,
 			"switch_tab":                h.handleBrowserActionSwitchTabImpl,
 			"close_tab":                 h.handleBrowserActionCloseTabImpl,
-			"screenshot":                h.parent.handleScreenshotAlias,
-			"subtitle":                  h.parent.handleSubtitle,
+			"screenshot":                h.handleScreenshotAliasImpl,
+			"subtitle":                  h.handleSubtitleImpl,
 			"list_interactive":          h.handleListInteractive,
 			"record_start":              h.parent.recordingInteractHandler.handleRecordStart,
 			"record_stop":               h.parent.recordingInteractHandler.handleRecordStop,

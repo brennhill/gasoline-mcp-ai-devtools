@@ -9,7 +9,6 @@ code_paths:
   - cmd/dev-console/tools_interact_action_handler.go
   - cmd/dev-console/tools_interact_entrypoint.go
   - cmd/dev-console/tools_interact_dispatch.go
-  - cmd/dev-console/tools_interact_browser.go
   - cmd/dev-console/tools_interact_browser_navigation_impl.go
   - cmd/dev-console/tools_interact_browser_script_impl.go
   - cmd/dev-console/tools_interact_browser_tabs.go

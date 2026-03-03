@@ -29,6 +29,7 @@ links:
 - DOM primitive selector resolution (`index`/`index_generation`) before queueing `dom_action`
 - browser action implementation internals (navigate/refresh/back/forward/new_tab/switch_tab/activate_tab/close_tab, highlight, execute_js, subtitle/screenshot aliases)
 - URL rewrite (`gasoline-insecure://`) and perf snapshot staging for `perf_diff`
+- interact dispatch map now points directly to `interactActionHandler` methods (ToolHandler browser wrappers removed)
 
 ## Query-Type Mapping
 - `navigate/refresh/back/forward/new_tab` -> `browser_action`

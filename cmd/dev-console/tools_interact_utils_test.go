@@ -163,7 +163,7 @@ func TestResolveNavigateURL_NormalURL_PassesThrough(t *testing.T) {
 			t.Parallel()
 			h, _, _ := makeToolHandler(t)
 
-			got, err := h.resolveNavigateURL(tt.url)
+			got, err := h.interactAction().resolveNavigateURLImpl(tt.url)
 			if err != nil {
 				t.Fatalf("resolveNavigateURL(%q) error: %v", tt.url, err)
 			}
@@ -183,7 +183,7 @@ func TestResolveNavigateURL_EmptyURL_ReturnsEmpty(t *testing.T) {
 	t.Parallel()
 	h, _, _ := makeToolHandler(t)
 
-	got, err := h.resolveNavigateURL("")
+	got, err := h.interactAction().resolveNavigateURLImpl("")
 	if err != nil {
 		t.Fatalf("resolveNavigateURL(\"\") unexpected error: %v", err)
 	}
@@ -201,7 +201,7 @@ func TestResolveNavigateURL_GasolineInsecure_NilCapture_ReturnsError(t *testing.
 	h, _, _ := makeToolHandler(t)
 	h.capture = nil
 
-	_, err := h.resolveNavigateURL("gasoline-insecure://https://example.com")
+	_, err := h.interactAction().resolveNavigateURLImpl("gasoline-insecure://https://example.com")
 	if err == nil {
 		t.Fatal("expected error when capture is nil")
 	}
@@ -217,7 +217,7 @@ func TestResolveNavigateURL_GasolineInsecure_WrongSecurityMode_ReturnsError(t *t
 	// Default security mode is "normal", not "insecure_proxy".
 	_ = cap
 
-	_, err := h.resolveNavigateURL("gasoline-insecure://https://example.com")
+	_, err := h.interactAction().resolveNavigateURLImpl("gasoline-insecure://https://example.com")
 	if err == nil {
 		t.Fatal("expected error when security mode is not insecure_proxy")
 	}
@@ -231,7 +231,7 @@ func TestResolveNavigateURL_GasolineInsecure_MissingTarget_ReturnsError(t *testi
 	h, _, cap := makeToolHandler(t)
 	cap.SetSecurityMode(capture.SecurityModeInsecureProxy, nil)
 
-	_, err := h.resolveNavigateURL("gasoline-insecure://")
+	_, err := h.interactAction().resolveNavigateURLImpl("gasoline-insecure://")
 	if err == nil {
 		t.Fatal("expected error for empty target URL")
 	}
@@ -245,7 +245,7 @@ func TestResolveNavigateURL_GasolineInsecure_InvalidScheme_ReturnsError(t *testi
 	h, _, cap := makeToolHandler(t)
 	cap.SetSecurityMode(capture.SecurityModeInsecureProxy, nil)
 
-	_, err := h.resolveNavigateURL("gasoline-insecure://ftp://files.example.com")
+	_, err := h.interactAction().resolveNavigateURLImpl("gasoline-insecure://ftp://files.example.com")
 	if err == nil {
 		t.Fatal("expected error for non-http/https target scheme")
 	}
@@ -259,7 +259,7 @@ func TestResolveNavigateURL_GasolineInsecure_MissingHost_ReturnsError(t *testing
 	h, _, cap := makeToolHandler(t)
 	cap.SetSecurityMode(capture.SecurityModeInsecureProxy, nil)
 
-	_, err := h.resolveNavigateURL("gasoline-insecure://http://")
+	_, err := h.interactAction().resolveNavigateURLImpl("gasoline-insecure://http://")
 	if err == nil {
 		t.Fatal("expected error for target URL missing host")
 	}
@@ -296,7 +296,7 @@ func TestResolveNavigateURL_GasolineInsecure_ValidTarget_ReturnsProxyURL(t *test
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			got, err := h.resolveNavigateURL(tt.input)
+			got, err := h.interactAction().resolveNavigateURLImpl(tt.input)
 			if err != nil {
 				t.Fatalf("resolveNavigateURL(%q) error: %v", tt.input, err)
 			}
@@ -326,7 +326,7 @@ func TestResolveNavigateURL_GasolineInsecure_CaseInsensitive(t *testing.T) {
 	cap.SetSecurityMode(capture.SecurityModeInsecureProxy, nil)
 
 	// The prefix check is case-insensitive.
-	got, err := h.resolveNavigateURL("GASOLINE-INSECURE://https://example.com")
+	got, err := h.interactAction().resolveNavigateURLImpl("GASOLINE-INSECURE://https://example.com")
 	if err != nil {
 		t.Fatalf("resolveNavigateURL with uppercase prefix error: %v", err)
 	}
