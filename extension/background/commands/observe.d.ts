@@ -7,4 +7,8 @@ export declare function screenshotExpandContainers(): {
     content_height_hint: number;
 };
 export declare function screenshotRestoreContainers(): void;
+export declare function computeFullPageCaptureDimensions(contentWidth: number, contentHeight: number, hintedHeight: number): {
+    width: number;
+    height: number;
+};
 //# sourceMappingURL=observe.d.ts.map

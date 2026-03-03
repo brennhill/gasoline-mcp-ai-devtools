@@ -125,4 +125,52 @@ describe('domPrimitiveListInteractive', () => {
     assert.strictEqual(result.elements[0].visible, true)
     assert.deepStrictEqual(result.elements[0].bbox, { x: 12, y: 160, width: 184, height: 32 })
   })
+
+  test('keeps all entries when duplicates are all hidden (no visible counterpart)', () => {
+    const hiddenHomeA = new MockHTMLElement('a', {
+      textContent: 'Home',
+      attrs: { href: '/mobile/home-a' }
+    })
+    hiddenHomeA.offsetParent = null
+    hiddenHomeA.getBoundingClientRect = () => ({
+      x: 0,
+      y: 0,
+      left: 0,
+      top: 0,
+      width: 0,
+      height: 0,
+      right: 0,
+      bottom: 0
+    })
+
+    const hiddenHomeB = new MockHTMLElement('a', {
+      textContent: 'Home',
+      attrs: { href: '/mobile/home-b' }
+    })
+    hiddenHomeB.offsetParent = null
+    hiddenHomeB.getBoundingClientRect = () => ({
+      x: 0,
+      y: 0,
+      left: 0,
+      top: 0,
+      width: 0,
+      height: 0,
+      right: 0,
+      bottom: 0
+    })
+
+    globalThis.document = {
+      querySelectorAll: (sel) => (sel === 'a[href]' ? [hiddenHomeA, hiddenHomeB] : []),
+      body: {
+        querySelectorAll: (sel) => (sel === 'a[href]' ? [hiddenHomeA, hiddenHomeB] : []),
+        children: { length: 0 }
+      },
+      documentElement: { children: { length: 0 } }
+    }
+
+    const result = domPrimitiveListInteractive('')
+    assert.strictEqual(result.success, true)
+    assert.strictEqual(result.elements.length, 2, 'hidden-only duplicates should not be collapsed')
+    assert.strictEqual(result.elements.every((el) => el.visible === false), true)
+  })
 })

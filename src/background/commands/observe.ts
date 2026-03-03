@@ -20,6 +20,8 @@ import { registerCommand } from './registry.js'
 const CDP_VERSION = '1.3'
 const MAX_CAPTURE_HEIGHT = 16384 // Chrome max texture size
 const MAX_CAPTURE_WIDTH = 16384 // Chrome max texture size
+const DEFAULT_CAPTURE_WIDTH = 1280
+const DEFAULT_CAPTURE_HEIGHT = 720
 
 /**
  * Self-contained function injected via chrome.scripting.executeScript.
@@ -115,6 +117,22 @@ export function screenshotRestoreContainers(): void {
   }
 }
 
+/** Derive bounded screenshot dimensions with fallback defaults and optional expanded-content hint. */
+export function computeFullPageCaptureDimensions(
+  contentWidth: number,
+  contentHeight: number,
+  hintedHeight: number
+): { width: number; height: number } {
+  const safeWidth = Number.isFinite(contentWidth) && contentWidth > 0 ? Math.ceil(contentWidth) : DEFAULT_CAPTURE_WIDTH
+  const safeHeight =
+    Number.isFinite(contentHeight) && contentHeight > 0 ? Math.ceil(contentHeight) : DEFAULT_CAPTURE_HEIGHT
+  const safeHint = Number.isFinite(hintedHeight) && hintedHeight > 0 ? Math.ceil(hintedHeight) : 0
+  return {
+    width: Math.max(1, Math.min(safeWidth, MAX_CAPTURE_WIDTH)),
+    height: Math.max(1, Math.min(Math.max(safeHeight, safeHint), MAX_CAPTURE_HEIGHT))
+  }
+}
+
 /** Post screenshot data to server for saving and query resolution. */
 async function postScreenshot(dataUrl: string, pageUrl: string | undefined, queryId: string): Promise<boolean> {
   try {
@@ -171,13 +189,21 @@ async function captureFullPage(
   quality: number
 ): Promise<void> {
   // Step 1: Expand scrollable containers in the page
-  const expansionResult = await chrome.scripting.executeScript({
-    target: { tabId: ctx.tabId },
-    world: 'MAIN',
-    func: screenshotExpandContainers
-  })
-  const expansionMeta = expansionResult[0]?.result as { content_height_hint?: number } | undefined
-  const hintedHeight = typeof expansionMeta?.content_height_hint === 'number' ? expansionMeta.content_height_hint : 0
+  let hintedHeight = 0
+  try {
+    const expansionResult = await chrome.scripting.executeScript({
+      target: { tabId: ctx.tabId },
+      world: 'MAIN',
+      func: screenshotExpandContainers
+    })
+    const expansionMeta = expansionResult[0]?.result as { content_height_hint?: number } | undefined
+    hintedHeight = typeof expansionMeta?.content_height_hint === 'number' ? expansionMeta.content_height_hint : 0
+  } catch (err) {
+    // Best effort only: continue with CDP dimensions if expansion script cannot run.
+    debugLog(DebugCategory.CAPTURE, 'Full-page expansion script failed; using CDP layout metrics only', {
+      error: (err as Error).message
+    })
+  }
 
   try {
     // Step 2: Attach CDP debugger
@@ -190,11 +216,15 @@ async function captureFullPage(
         contentSize?: { width: number; height: number }
       }
 
-      const contentSize = metrics.cssContentSize || metrics.contentSize || { width: 1280, height: 720 }
-      const captureWidth = Math.max(1, Math.min(Math.ceil(contentSize.width), MAX_CAPTURE_WIDTH))
-      const captureHeight = Math.max(
-        1,
-        Math.min(Math.max(Math.ceil(contentSize.height), Math.ceil(hintedHeight)), MAX_CAPTURE_HEIGHT)
+      const contentSize = metrics.cssContentSize ||
+        metrics.contentSize || {
+          width: DEFAULT_CAPTURE_WIDTH,
+          height: DEFAULT_CAPTURE_HEIGHT
+        }
+      const { width: captureWidth, height: captureHeight } = computeFullPageCaptureDimensions(
+        contentSize.width,
+        contentSize.height,
+        hintedHeight
       )
 
       // Step 4: Override viewport to full content size
@@ -204,29 +234,39 @@ async function captureFullPage(
         deviceScaleFactor: 1,
         mobile: false
       })
+      let metricsOverrideSet = true
 
-      // Brief pause for layout reflow after viewport resize
-      await new Promise((r) => setTimeout(r, 150))
+      try {
+        // Brief pause for layout reflow after viewport resize
+        await new Promise((r) => setTimeout(r, 150))
 
-      // Step 5: Capture full-page screenshot via CDP
-      const screenshotResult = (await chrome.debugger.sendCommand({ tabId: ctx.tabId }, 'Page.captureScreenshot', {
-        format,
-        quality: format === 'jpeg' ? quality : undefined,
-        captureBeyondViewport: true,
-        clip: { x: 0, y: 0, width: captureWidth, height: captureHeight, scale: 1 }
-      })) as { data: string }
+        // Step 5: Capture full-page screenshot via CDP
+        const screenshotResult = (await chrome.debugger.sendCommand({ tabId: ctx.tabId }, 'Page.captureScreenshot', {
+          format,
+          quality: format === 'jpeg' ? quality : undefined,
+          captureBeyondViewport: true,
+          clip: { x: 0, y: 0, width: captureWidth, height: captureHeight, scale: 1 }
+        })) as { data: string }
 
-      // Step 6: Clear device metrics override
-      await chrome.debugger.sendCommand({ tabId: ctx.tabId }, 'Emulation.clearDeviceMetricsOverride', {})
+        // Step 7: Build data URL and post to server
+        const mimeType = format === 'png' ? 'image/png' : 'image/jpeg'
+        const dataUrl = `data:${mimeType};base64,${screenshotResult.data}`
+        recordScreenshot(ctx.tabId)
 
-      // Step 7: Build data URL and post to server
-      const mimeType = format === 'png' ? 'image/png' : 'image/jpeg'
-      const dataUrl = `data:${mimeType};base64,${screenshotResult.data}`
-      recordScreenshot(ctx.tabId)
-
-      const ok = await postScreenshot(dataUrl, tab.url, ctx.query.id)
-      if (!ok) {
-        ctx.sendResult({ error: 'screenshot_upload_failed', message: 'Server rejected screenshot' })
+        const ok = await postScreenshot(dataUrl, tab.url, ctx.query.id)
+        if (!ok) {
+          ctx.sendResult({ error: 'screenshot_upload_failed', message: 'Server rejected screenshot' })
+        }
+      } finally {
+        if (metricsOverrideSet) {
+          try {
+            // Step 6: Clear device metrics override, even when capture fails.
+            await chrome.debugger.sendCommand({ tabId: ctx.tabId }, 'Emulation.clearDeviceMetricsOverride', {})
+          } catch {
+            /* best effort */
+          }
+          metricsOverrideSet = false
+        }
       }
     } finally {
       try {
@@ -240,7 +280,7 @@ async function captureFullPage(
     debugLog(DebugCategory.CAPTURE, 'Full-page CDP failed, falling back to viewport capture', {
       error: (err as Error).message
     })
-    const dataUrl = await chrome.tabs.captureVisibleTab(tab.windowId!, {
+    const dataUrl = await chrome.tabs.captureVisibleTab(tab.windowId, {
       format: format as 'jpeg' | 'png',
       quality
     })
