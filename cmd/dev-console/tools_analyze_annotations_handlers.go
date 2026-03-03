@@ -6,6 +6,8 @@ package main
 
 import (
 	"encoding/json"
+	"net/url"
+	"sort"
 	"strings"
 	"time"
 )
@@ -28,9 +30,16 @@ func (h *ToolHandler) toolGetAnnotations(req JSONRPCRequest, args json.RawMessag
 		Operation    string `json:"operation"`
 		Correlation  string `json:"correlation_id"`
 		TimeoutMs    int    `json:"timeout_ms"`
+		URL          string `json:"url"`
+		URLPattern   string `json:"url_pattern"`
 	}
 	if len(args) > 0 {
 		lenientUnmarshal(args, &params)
+	}
+
+	urlFilter, filterResp, hasFilterErr := resolveAnnotationURLFilter(req, params.URL, params.URLPattern)
+	if hasFilterErr {
+		return filterResp
 	}
 
 	operation := strings.ToLower(strings.TrimSpace(params.Operation))
@@ -47,9 +56,9 @@ func (h *ToolHandler) toolGetAnnotations(req JSONRPCRequest, args json.RawMessag
 
 	waitTimeout := annotationBlockingWaitDuration(params.TimeoutMs)
 	if params.AnnotSession != "" {
-		return h.getNamedAnnotations(req, params.AnnotSession, params.Wait, waitTimeout)
+		return h.getNamedAnnotations(req, params.AnnotSession, params.Wait, waitTimeout, urlFilter)
 	}
-	return h.getAnonymousAnnotations(req, params.Wait, waitTimeout)
+	return h.getAnonymousAnnotations(req, params.Wait, waitTimeout, urlFilter)
 }
 
 func annotationBlockingWaitDuration(timeoutMs int) time.Duration {
@@ -63,25 +72,26 @@ func annotationBlockingWaitDuration(timeoutMs int) time.Duration {
 	return waitDuration
 }
 
-func (h *ToolHandler) getAnonymousAnnotations(req JSONRPCRequest, wait bool, waitTimeout time.Duration) JSONRPCResponse {
+func (h *ToolHandler) getAnonymousAnnotations(req JSONRPCRequest, wait bool, waitTimeout time.Duration, urlFilter string) JSONRPCResponse {
 	if wait {
 		if session := h.annotationStore.GetLatestSessionSinceDraw(); session != nil {
-			return h.formatAnnotationSession(req, session)
+			return h.formatAnnotationSession(req, session, urlFilter)
 		}
 
 		if session, _ := h.annotationStore.WaitForSession(waitTimeout); session != nil {
-			return h.formatAnnotationSession(req, session)
+			return h.formatAnnotationSession(req, session, urlFilter)
 		}
 
 		corrID := newCorrelationID("ann")
 		h.capture.RegisterCommand(corrID, "", annotationWaitCommandTTL)
-		h.annotationStore.RegisterWaiter(corrID, "")
+		h.annotationStore.RegisterWaiter(corrID, "", urlFilter)
 
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Waiting for annotations", map[string]any{
 			"status":         "waiting_for_user",
 			"correlation_id": corrID,
 			"annotations":    []any{},
 			"count":          0,
+			"filter_applied": annotationFilterAppliedValue(urlFilter),
 			"message":        "Draw mode is active. The user is drawing annotations. Poll with observe({what: 'command_result', correlation_id: '" + corrID + "'}) to check for results.",
 		})}
 	}
@@ -89,32 +99,33 @@ func (h *ToolHandler) getAnonymousAnnotations(req JSONRPCRequest, wait bool, wai
 	session := h.annotationStore.GetLatestSession()
 	if session == nil {
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("No annotations", map[string]any{
-			"annotations": []any{},
-			"count":       0,
-			"message":     "No annotation session found. Use interact({action: 'draw_mode_start'}) to activate draw mode, then the user draws annotations and presses ESC to finish.",
+			"annotations":    []any{},
+			"count":          0,
+			"filter_applied": annotationFilterAppliedValue(urlFilter),
+			"message":        "No annotation session found. Use interact({action: 'draw_mode_start'}) to activate draw mode, then the user draws annotations and presses ESC to finish.",
 		})}
 	}
-	return h.formatAnnotationSession(req, session)
+	return h.formatAnnotationSession(req, session, urlFilter)
 }
 
-func (h *ToolHandler) formatAnnotationSession(req JSONRPCRequest, session *AnnotationSession) JSONRPCResponse {
-	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Annotations retrieved", buildAnnotationSessionResult(session))}
+func (h *ToolHandler) formatAnnotationSession(req JSONRPCRequest, session *AnnotationSession, urlFilter string) JSONRPCResponse {
+	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Annotations retrieved", buildAnnotationSessionResult(session, urlFilter))}
 }
 
 // #lizard forgives
-func (h *ToolHandler) getNamedAnnotations(req JSONRPCRequest, sessionName string, wait bool, waitTimeout time.Duration) JSONRPCResponse {
+func (h *ToolHandler) getNamedAnnotations(req JSONRPCRequest, sessionName string, wait bool, waitTimeout time.Duration, urlFilter string) JSONRPCResponse {
 	if wait {
 		if ns := h.annotationStore.GetNamedSessionSinceDraw(sessionName); ns != nil {
-			return h.formatNamedAnnotationSession(req, ns)
+			return h.formatNamedAnnotationSession(req, ns, urlFilter)
 		}
 
 		if ns, _ := h.annotationStore.WaitForNamedSession(sessionName, waitTimeout); ns != nil {
-			return h.formatNamedAnnotationSession(req, ns)
+			return h.formatNamedAnnotationSession(req, ns, urlFilter)
 		}
 
 		corrID := newCorrelationID("ann")
 		h.capture.RegisterCommand(corrID, "", annotationWaitCommandTTL)
-		h.annotationStore.RegisterWaiter(corrID, sessionName)
+		h.annotationStore.RegisterWaiter(corrID, sessionName, urlFilter)
 
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Waiting for annotations", map[string]any{
 			"status":             "waiting_for_user",
@@ -123,6 +134,7 @@ func (h *ToolHandler) getNamedAnnotations(req JSONRPCRequest, sessionName string
 			"pages":              []any{},
 			"page_count":         0,
 			"total_count":        0,
+			"filter_applied":     annotationFilterAppliedValue(urlFilter),
 			"message":            "Draw mode is active. The user is drawing annotations. Poll with observe({what: 'command_result', correlation_id: '" + corrID + "'}) to check for results.",
 		})}
 	}
@@ -134,36 +146,54 @@ func (h *ToolHandler) getNamedAnnotations(req JSONRPCRequest, sessionName string
 			"pages":              []any{},
 			"page_count":         0,
 			"total_count":        0,
+			"filter_applied":     annotationFilterAppliedValue(urlFilter),
 			"message":            "Named session '" + sessionName + "' not found. Use interact({action: 'draw_mode_start', annot_session: '" + sessionName + "'}) to start.",
 		})}
 	}
 
-	return h.formatNamedAnnotationSession(req, ns)
+	return h.formatNamedAnnotationSession(req, ns, urlFilter)
 }
 
-func (h *ToolHandler) formatNamedAnnotationSession(req JSONRPCRequest, ns *NamedAnnotationSession) JSONRPCResponse {
-	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Annotations retrieved", buildNamedAnnotationSessionResult(ns))}
+func (h *ToolHandler) formatNamedAnnotationSession(req JSONRPCRequest, ns *NamedAnnotationSession, urlFilter string) JSONRPCResponse {
+	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Annotations retrieved", buildNamedAnnotationSessionResult(ns, urlFilter))}
 }
 
-func buildAnnotationSessionResult(session *AnnotationSession) map[string]any {
-	result := map[string]any{
-		"annotations": session.Annotations,
-		"count":       len(session.Annotations),
-		"page_url":    session.PageURL,
+func buildAnnotationSessionResult(session *AnnotationSession, urlFilter string) map[string]any {
+	matched := annotationURLMatches(urlFilter, session.PageURL)
+	annotations := session.Annotations
+	if !matched {
+		annotations = []Annotation{}
 	}
-	if session.ScreenshotPath != "" {
+
+	result := map[string]any{
+		"annotations":    annotations,
+		"count":          len(annotations),
+		"page_url":       session.PageURL,
+		"filter_applied": annotationFilterAppliedValue(urlFilter),
+	}
+	if session.ScreenshotPath != "" && matched {
 		result["screenshot"] = session.ScreenshotPath
 	}
-	if len(session.Annotations) > 0 {
+	projects := buildProjectSummaries([]*AnnotationSession{session})
+	if len(projects) > 0 {
+		result["projects"] = projects
+	}
+	if !matched && urlFilter != "" {
+		result["message"] = "No annotations match the requested url filter."
+	}
+	if len(annotations) > 0 {
 		result["hints"] = buildSessionHints(session.ScreenshotPath)
 	}
 	return result
 }
 
-func buildNamedAnnotationSessionResult(ns *NamedAnnotationSession) map[string]any {
+func buildNamedAnnotationSessionResult(ns *NamedAnnotationSession, urlFilter string) map[string]any {
+	allProjects := buildProjectSummaries(ns.Pages)
+	filteredPages := filterAnnotationPages(ns.Pages, urlFilter)
+
 	totalCount := 0
-	pages := make([]map[string]any, 0, len(ns.Pages))
-	for _, page := range ns.Pages {
+	pages := make([]map[string]any, 0, len(filteredPages))
+	for _, page := range filteredPages {
 		totalCount += len(page.Annotations)
 		p := map[string]any{
 			"page_url":    page.PageURL,
@@ -179,7 +209,7 @@ func buildNamedAnnotationSessionResult(ns *NamedAnnotationSession) map[string]an
 
 	// Find first screenshot for hints
 	var screenshotPath string
-	for _, page := range ns.Pages {
+	for _, page := range filteredPages {
 		if page.ScreenshotPath != "" {
 			screenshotPath = page.ScreenshotPath
 			break
@@ -189,13 +219,181 @@ func buildNamedAnnotationSessionResult(ns *NamedAnnotationSession) map[string]an
 	result := map[string]any{
 		"annot_session_name": ns.Name,
 		"pages":              pages,
-		"page_count":         len(ns.Pages),
+		"page_count":         len(filteredPages),
 		"total_count":        totalCount,
+		"filter_applied":     annotationFilterAppliedValue(urlFilter),
+	}
+	if len(allProjects) > 0 {
+		result["projects"] = allProjects
+	}
+	if len(allProjects) > 1 && urlFilter == "" {
+		result["scope_ambiguous"] = true
+		result["scope_warning"] = buildScopeWarning(allProjects)
+	}
+	if len(filteredPages) == 0 && urlFilter != "" {
+		result["message"] = "No pages in this annotation session match the requested url filter."
 	}
 	if totalCount > 0 {
 		result["hints"] = buildSessionHints(screenshotPath)
 	}
 	return result
+}
+
+func resolveAnnotationURLFilter(req JSONRPCRequest, urlValue, urlPatternValue string) (string, JSONRPCResponse, bool) {
+	urlValue = strings.TrimSpace(urlValue)
+	urlPatternValue = strings.TrimSpace(urlPatternValue)
+	if urlValue != "" && urlPatternValue != "" && urlValue != urlPatternValue {
+		return "", JSONRPCResponse{
+			JSONRPC: "2.0",
+			ID:      req.ID,
+			Result: mcpStructuredError(
+				ErrInvalidParam,
+				"Conflicting annotation scope filters: 'url' and 'url_pattern' differ",
+				"Provide only one annotation scope filter, or set both to the same value.",
+				withParam("url"),
+				withParam("url_pattern"),
+			),
+		}, true
+	}
+	if urlPatternValue != "" {
+		return urlPatternValue, JSONRPCResponse{}, false
+	}
+	return urlValue, JSONRPCResponse{}, false
+}
+
+func annotationFilterAppliedValue(urlFilter string) string {
+	if strings.TrimSpace(urlFilter) == "" {
+		return "none"
+	}
+	return urlFilter
+}
+
+func filterAnnotationPages(pages []*AnnotationSession, urlFilter string) []*AnnotationSession {
+	if strings.TrimSpace(urlFilter) == "" {
+		return pages
+	}
+	filtered := make([]*AnnotationSession, 0, len(pages))
+	for _, page := range pages {
+		if annotationURLMatches(urlFilter, page.PageURL) {
+			filtered = append(filtered, page)
+		}
+	}
+	return filtered
+}
+
+func annotationURLMatches(urlFilter, pageURL string) bool {
+	urlFilter = strings.TrimSpace(urlFilter)
+	if urlFilter == "" {
+		return true
+	}
+	pageURL = strings.TrimSpace(pageURL)
+	if pageURL == "" {
+		return false
+	}
+
+	if strings.Contains(urlFilter, "*") {
+		prefix := strings.ReplaceAll(urlFilter, "*", "")
+		return strings.HasPrefix(pageURL, prefix)
+	}
+
+	if strings.HasSuffix(urlFilter, "/") {
+		prefix := strings.TrimSuffix(urlFilter, "/")
+		return strings.HasPrefix(pageURL, prefix)
+	}
+
+	parsed, err := url.Parse(urlFilter)
+	if err == nil && parsed.Scheme != "" && parsed.Host != "" && (parsed.Path == "" || parsed.Path == "/") {
+		base := strings.TrimSuffix(urlFilter, "/")
+		return strings.HasPrefix(pageURL, base)
+	}
+
+	return pageURL == urlFilter
+}
+
+func buildProjectSummaries(pages []*AnnotationSession) []map[string]any {
+	type projectAggregate struct {
+		pageSet         map[string]struct{}
+		annotationCount int
+	}
+	projects := make(map[string]*projectAggregate)
+	for _, page := range pages {
+		baseURL := annotationProjectBaseURL(page.PageURL)
+		if strings.TrimSpace(baseURL) == "" {
+			continue
+		}
+		agg, ok := projects[baseURL]
+		if !ok {
+			agg = &projectAggregate{
+				pageSet: make(map[string]struct{}),
+			}
+			projects[baseURL] = agg
+		}
+		agg.annotationCount += len(page.Annotations)
+		if strings.TrimSpace(page.PageURL) != "" {
+			agg.pageSet[page.PageURL] = struct{}{}
+		}
+	}
+
+	if len(projects) == 0 {
+		return nil
+	}
+	baseURLs := make([]string, 0, len(projects))
+	for baseURL := range projects {
+		baseURLs = append(baseURLs, baseURL)
+	}
+	sort.Strings(baseURLs)
+
+	summaries := make([]map[string]any, 0, len(baseURLs))
+	for _, baseURL := range baseURLs {
+		agg := projects[baseURL]
+		pageURLs := make([]string, 0, len(agg.pageSet))
+		for pageURL := range agg.pageSet {
+			pageURLs = append(pageURLs, pageURL)
+		}
+		sort.Strings(pageURLs)
+		summary := map[string]any{
+			"base_url":           baseURL,
+			"annotation_count":   agg.annotationCount,
+			"page_count":         len(pageURLs),
+			"recommended_filter": baseURL + "/*",
+		}
+		if len(pageURLs) > 0 {
+			summary["page_urls"] = pageURLs
+		}
+		summaries = append(summaries, summary)
+	}
+	return summaries
+}
+
+func buildScopeWarning(projects []map[string]any) map[string]any {
+	suggestedFilters := make([]string, 0, len(projects))
+	projectBaseURLs := make([]string, 0, len(projects))
+	for _, project := range projects {
+		if filter, ok := project["recommended_filter"].(string); ok && filter != "" {
+			suggestedFilters = append(suggestedFilters, filter)
+		}
+		if baseURL, ok := project["base_url"].(string); ok && baseURL != "" {
+			projectBaseURLs = append(projectBaseURLs, baseURL)
+		}
+	}
+	return map[string]any{
+		"warning":           "MULTI-PROJECT ANNOTATION SESSION DETECTED: annotations span multiple projects.",
+		"recommendation":    "Re-run analyze({what:'annotations'}) with 'url' or 'url_pattern' scoped to the active project before implementing changes.",
+		"suggested_filters": suggestedFilters,
+		"projects_detected": projectBaseURLs,
+	}
+}
+
+func annotationProjectBaseURL(rawURL string) string {
+	rawURL = strings.TrimSpace(rawURL)
+	if rawURL == "" {
+		return ""
+	}
+	parsed, err := url.Parse(rawURL)
+	if err != nil || parsed.Scheme == "" || parsed.Host == "" {
+		return rawURL
+	}
+	return parsed.Scheme + "://" + parsed.Host
 }
 
 // toolFlushAnnotations forces completion of a pending annotation waiter.
@@ -220,14 +418,14 @@ func (h *ToolHandler) toolFlushAnnotations(req JSONRPCRequest, correlationID str
 	}
 
 	// Remove waiter first so later session writes cannot re-complete the same flush target.
-	sessionName, _ := h.annotationStore.TakeWaiter(correlationID)
+	sessionName, waiterURLFilter, _ := h.annotationStore.TakeWaiter(correlationID)
 
 	// Idempotent behavior: if the command is already terminal, return current state.
 	if cmd, found := h.capture.GetCommandResult(correlationID); found && cmd != nil && cmd.Status != "pending" {
 		return h.formatCommandResult(req, *cmd, correlationID)
 	}
 
-	payload := h.buildFlushedAnnotationResult(sessionName)
+	payload := h.buildFlushedAnnotationResult(sessionName, waiterURLFilter)
 	h.capture.ApplyCommandResult(correlationID, "complete", payload, "")
 
 	// Normal path: return canonical command_result envelope.
@@ -246,10 +444,10 @@ func (h *ToolHandler) toolFlushAnnotations(req JSONRPCRequest, correlationID str
 	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Annotation flush completed", data)}
 }
 
-func (h *ToolHandler) buildFlushedAnnotationResult(sessionName string) json.RawMessage {
+func (h *ToolHandler) buildFlushedAnnotationResult(sessionName string, urlFilter string) json.RawMessage {
 	if sessionName != "" {
 		if ns := h.annotationStore.GetNamedSession(sessionName); ns != nil {
-			data := buildNamedAnnotationSessionResult(ns)
+			data := buildNamedAnnotationSessionResult(ns, urlFilter)
 			data["status"] = "complete"
 			data["terminal_reason"] = "flushed"
 			encoded, _ := json.Marshal(data)
@@ -262,6 +460,7 @@ func (h *ToolHandler) buildFlushedAnnotationResult(sessionName string) json.RawM
 			"pages":              []any{},
 			"page_count":         0,
 			"total_count":        0,
+			"filter_applied":     annotationFilterAppliedValue(urlFilter),
 			"terminal_reason":    "abandoned",
 			"message":            "Annotation waiter flushed with no named-session annotations available.",
 		})
@@ -269,7 +468,7 @@ func (h *ToolHandler) buildFlushedAnnotationResult(sessionName string) json.RawM
 	}
 
 	if session := h.annotationStore.GetLatestSession(); session != nil {
-		data := buildAnnotationSessionResult(session)
+		data := buildAnnotationSessionResult(session, urlFilter)
 		data["status"] = "complete"
 		data["terminal_reason"] = "flushed"
 		encoded, _ := json.Marshal(data)
@@ -280,6 +479,7 @@ func (h *ToolHandler) buildFlushedAnnotationResult(sessionName string) json.RawM
 		"status":          "complete",
 		"annotations":     []any{},
 		"count":           0,
+		"filter_applied":  annotationFilterAppliedValue(urlFilter),
 		"terminal_reason": "abandoned",
 		"message":         "Annotation waiter flushed with no captured annotations available.",
 	})

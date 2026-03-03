@@ -1458,18 +1458,21 @@ func TestStore_TakeWaiter_RemovesAndReturnsSessionName(t *testing.T) {
 	store := NewStore(10 * time.Minute)
 	defer store.Close()
 
-	store.RegisterWaiter("ann_1", "qa")
-	store.RegisterWaiter("ann_2", "")
+	store.RegisterWaiter("ann_1", "qa", "")
+	store.RegisterWaiter("ann_2", "", "")
 
-	sessionName, found := store.TakeWaiter("ann_1")
+	sessionName, urlFilter, found := store.TakeWaiter("ann_1")
 	if !found {
 		t.Fatal("expected waiter ann_1 to be found")
 	}
 	if sessionName != "qa" {
 		t.Fatalf("sessionName = %q, want qa", sessionName)
 	}
+	if urlFilter != "" {
+		t.Fatalf("urlFilter = %q, want empty", urlFilter)
+	}
 
-	_, found = store.TakeWaiter("ann_1")
+	_, _, found = store.TakeWaiter("ann_1")
 	if found {
 		t.Fatal("expected waiter ann_1 to be removed after first take")
 	}
