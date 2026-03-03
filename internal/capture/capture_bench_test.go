@@ -1,5 +1,4 @@
 // Purpose: Benchmark capture pipeline throughput and latency.
-// Why: Prevents silent regressions in critical behavior paths.
 // Docs: docs/features/feature/backend-log-streaming/index.md
 
 package capture

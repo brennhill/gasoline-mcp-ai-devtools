@@ -1,5 +1,4 @@
 // Purpose: Tests for checkpoint metric computation and aggregation.
-// Why: Prevents silent regressions in critical behavior paths.
 
 // ai_checkpoint_compute_test.go — Tests for checkpoint diff computation, severity, and summaries.
 package checkpoint

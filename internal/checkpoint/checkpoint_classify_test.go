@@ -1,5 +1,4 @@
 // Purpose: Tests for checkpoint error classification and severity assignment.
-// Why: Prevents silent regressions in critical behavior paths.
 
 // ai_checkpoint_classify_test.go — Tests for WS classification, log extraction, action diffs, and JSON serialization.
 package checkpoint

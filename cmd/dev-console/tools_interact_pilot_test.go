@@ -1,5 +1,4 @@
 // Purpose: Tests for interact pilot automation.
-// Why: Prevents silent regressions in critical behavior paths.
 // Docs: docs/features/feature/interact-explore/index.md
 
 // tools_interact_pilot_test.go — Coverage tests for navigate and executeJS success paths.

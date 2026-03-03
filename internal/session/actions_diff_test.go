@@ -1,10 +1,9 @@
 // Purpose: Tests for session actions diff computation.
-// Why: Prevents silent regressions in critical behavior paths.
 // Docs: docs/features/feature/pagination/index.md
 
 // actions_diff_test.go — Tests for actions-diff.go and helpers.go.
 // Covers: diffErrors, countPerfRegressions, hasStatusRegression, computeSummary,
-// validateName, removeFromOrder, ExtractURLPath.
+// validateName, removeFromOrder.
 package session
 
 import (
@@ -524,50 +523,6 @@ func TestValidateName_ValidName(t *testing.T) {
 	err := sm.validateName("my-snapshot-v2")
 	if err != nil {
 		t.Errorf("Expected no error for valid name, got: %v", err)
-	}
-}
-
-// ============================================
-// ExtractURLPath (helpers.go)
-// ============================================
-
-func TestExtractURLPath_NoQueryParams(t *testing.T) {
-	t.Parallel()
-	result := ExtractURLPath("/api/users")
-	if result != "/api/users" {
-		t.Errorf("Expected '/api/users', got %q", result)
-	}
-}
-
-func TestExtractURLPath_WithQueryParams(t *testing.T) {
-	t.Parallel()
-	result := ExtractURLPath("/api/users?page=1&limit=10")
-	if result != "/api/users" {
-		t.Errorf("Expected '/api/users', got %q", result)
-	}
-}
-
-func TestExtractURLPath_EmptyString(t *testing.T) {
-	t.Parallel()
-	result := ExtractURLPath("")
-	if result != "/" {
-		t.Errorf("Expected '/', got %q", result)
-	}
-}
-
-func TestExtractURLPath_OnlyQueryParams(t *testing.T) {
-	t.Parallel()
-	result := ExtractURLPath("?foo=bar")
-	if result != "/" {
-		t.Errorf("Expected '/', got %q", result)
-	}
-}
-
-func TestExtractURLPath_FullURL(t *testing.T) {
-	t.Parallel()
-	result := ExtractURLPath("https://example.com/api/v1/data?key=value")
-	if result != "/api/v1/data" {
-		t.Errorf("Expected '/api/v1/data', got %q", result)
 	}
 }
 

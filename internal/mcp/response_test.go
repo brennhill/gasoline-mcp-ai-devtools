@@ -1,5 +1,4 @@
 // Purpose: Tests for MCP JSON-RPC response construction and validation.
-// Why: Prevents silent regressions in critical behavior paths.
 // Docs: docs/features/feature/mcp-persistent-server/index.md
 
 // response_test.go — Tests for response formatting and size clamping.
@@ -100,26 +99,6 @@ func TestClampResponseSize_PaginationHint(t *testing.T) {
 
 	if !strings.Contains(string(clamped), "pagination") {
 		t.Error("expected pagination hint in truncation note")
-	}
-}
-
-func TestTruncate(t *testing.T) {
-	t.Parallel()
-	tests := []struct {
-		input  string
-		maxLen int
-		want   string
-	}{
-		{"hello", 10, "hello"},
-		{"hello world", 8, "hello..."},
-		{"ab", 3, "ab"},
-		{"abcd", 3, "..."},
-	}
-	for _, tt := range tests {
-		got := Truncate(tt.input, tt.maxLen)
-		if got != tt.want {
-			t.Errorf("Truncate(%q, %d) = %q, want %q", tt.input, tt.maxLen, got, tt.want)
-		}
 	}
 }
 

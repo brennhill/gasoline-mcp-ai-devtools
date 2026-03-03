@@ -1,5 +1,4 @@
 // Purpose: Tests for session state comparison and diff output.
-// Why: Prevents silent regressions in critical behavior paths.
 // Docs: docs/features/feature/pagination/index.md
 
 // comparison_test.go — Tests for comparison.go Compare function.

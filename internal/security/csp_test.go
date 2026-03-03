@@ -1,5 +1,4 @@
 // Purpose: Tests for CSP policy generation and directive validation.
-// Why: Prevents silent regressions in critical behavior paths.
 // Docs: docs/features/feature/security-hardening/index.md
 
 package security

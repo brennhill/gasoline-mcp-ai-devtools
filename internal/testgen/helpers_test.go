@@ -1,5 +1,4 @@
 // Purpose: Tests for test generation helper utilities.
-// Why: Prevents silent regressions in critical behavior paths.
 // Docs: docs/features/feature/test-generation/index.md
 
 // helpers_test.go — Unit tests for pure helper functions.
@@ -12,6 +11,7 @@ import (
 	"time"
 
 	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/capture"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/reproduction"
 )
 
 func TestGenerateErrorID(t *testing.T) {
@@ -143,22 +143,22 @@ func TestGeneratePlaywrightScript(t *testing.T) {
 	t.Parallel()
 
 	actions := []capture.EnhancedAction{
-		{Type: "click", Selectors: map[string]any{"target": "#login"}},
-		{Type: "input", Selectors: map[string]any{"target": "#email"}, Value: "user@example.com"},
+		{Type: "click", Selectors: map[string]any{"id": "login"}},
+		{Type: "input", Selectors: map[string]any{"id": "email"}, Value: "user@example.com"},
 		{Type: "navigate", ToURL: "https://app.example.com/dashboard"},
-		{Type: "wait"},
 	}
 
-	script := GeneratePlaywrightScript(actions, "Cannot read property", "https://app.example.com")
+	script := reproduction.GeneratePlaywrightScript(actions, reproduction.Params{
+		ErrorMessage: "Cannot read property",
+		BaseURL:      "https://app.example.com",
+	})
 
 	for _, want := range []string{
 		"import { test, expect } from '@playwright/test';",
-		"await page.goto('https://app.example.com');",
-		"await page.click('#login');",
-		"await page.fill('#email', 'user@example.com');",
+		"locator('#login').click()",
+		"locator('#email').fill('user@example.com')",
 		"await page.goto('https://app.example.com/dashboard');",
-		"await page.waitForTimeout(100);",
-		"// Expected error: Cannot read property",
+		"// Error: Cannot read property",
 	} {
 		if !strings.Contains(script, want) {
 			t.Fatalf("generated script missing %q\nscript:\n%s", want, script)

@@ -1,5 +1,4 @@
 // Purpose: Tests for on-demand waterfall data retrieval.
-// Why: Prevents silent regressions in critical behavior paths.
 // Docs: docs/features/feature/mcp-persistent-server/index.md
 
 // waterfall_ondemand_test.go — Tests for on-demand network waterfall fetching.

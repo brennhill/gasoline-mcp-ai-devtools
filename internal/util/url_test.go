@@ -1,5 +1,4 @@
 // Purpose: Tests for URL parsing and normalization utilities.
-// Why: Prevents silent regressions in critical behavior paths.
 
 // url_test.go — Tests for URL parsing utilities.
 package util

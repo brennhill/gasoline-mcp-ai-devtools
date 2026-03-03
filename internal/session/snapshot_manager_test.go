@@ -1,5 +1,4 @@
 // Purpose: Tests for session snapshot capture and restoration.
-// Why: Prevents silent regressions in critical behavior paths.
 // Docs: docs/features/feature/pagination/index.md
 
 // snapshot_manager_test.go — Tests for snapshot-manager.go.

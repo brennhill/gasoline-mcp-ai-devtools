@@ -66,7 +66,7 @@ func handleMCPConnection(server *Server, port int, apiKey string) {
 }
 
 // reportConnectionFailure logs the failure, prints user-facing messages, and exits.
-func reportConnectionFailure(server *Server, port int, lastErr error, diagnostics map[string]interface{}, dw *debugWriter) {
+func reportConnectionFailure(server *Server, port int, lastErr error, diagnostics map[string]any, dw *debugWriter) {
 	server.logLifecycle("connection_failed", port, map[string]any{
 		"error":       fmt.Sprintf("%v", lastErr),
 		"diagnostics": diagnostics,

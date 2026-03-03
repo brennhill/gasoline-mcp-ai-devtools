@@ -1,5 +1,4 @@
 // Purpose: Tests for action log pagination.
-// Why: Prevents silent regressions in critical behavior paths.
 // Docs: docs/features/feature/pagination/index.md
 
 // pagination_actions_test.go — Unit tests for action cursor-based pagination
@@ -491,7 +490,7 @@ func TestSerializeActionEntryWithSequence(t *testing.T) {
 				"testId": "submit-button",
 				"role":   "button",
 			},
-			TabId: 123,
+			TabID: 123,
 		},
 		Sequence:  5678,
 		Timestamp: "2026-01-30T10:15:23Z",
@@ -532,7 +531,7 @@ func TestSerializeActionEntryWithSequence(t *testing.T) {
 	}
 }
 
-func TestSerializeActionEntryWithSequence_NoTabId(t *testing.T) {
+func TestSerializeActionEntryWithSequence_NoTabID(t *testing.T) {
 	action := ActionEntryWithSequence{
 		Entry: EnhancedAction{
 			Type:      "navigate",

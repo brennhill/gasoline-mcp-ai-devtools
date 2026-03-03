@@ -1,5 +1,4 @@
 // Purpose: Tests for interact file upload action.
-// Why: Prevents silent regressions in critical behavior paths.
 // Docs: docs/features/feature/interact-explore/index.md
 
 // tools_interact_upload_test.go — Tests for file upload feature (4-stage escalation).

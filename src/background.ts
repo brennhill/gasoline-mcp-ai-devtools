@@ -172,8 +172,6 @@ export {
   shouldCaptureLog
 } from './background/communication.js'
 
-export { postQueryResult, pollPendingQueries } from './background/server.js'
-
 // =============================================================================
 // === PUBLIC API: STATE SNAPSHOTS (Initialization)
 // =============================================================================

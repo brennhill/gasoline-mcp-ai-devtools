@@ -1,5 +1,4 @@
 // Purpose: Tests for recording state transition paths.
-// Why: Prevents silent regressions in critical behavior paths.
 // Docs: docs/features/feature/playback-engine/index.md
 
 // state_path_test.go — Tests for recording storage directory migration and state location.

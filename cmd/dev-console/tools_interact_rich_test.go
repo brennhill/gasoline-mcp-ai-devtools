@@ -1,5 +1,4 @@
 // Purpose: Tests for interact rich response formatting.
-// Why: Prevents silent regressions in critical behavior paths.
 // Docs: docs/features/feature/interact-explore/index.md
 
 // tools_interact_rich_test.go — TDD tests for Rich Action Results.

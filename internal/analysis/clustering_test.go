@@ -1,5 +1,4 @@
 // Purpose: Tests for error clustering and deduplication.
-// Why: Prevents silent regressions in critical behavior paths.
 // Docs: docs/features/feature/api-schema/index.md
 
 package analysis

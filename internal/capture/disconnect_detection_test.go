@@ -1,5 +1,4 @@
 // Purpose: Tests for capture disconnect detection and reconnection.
-// Why: Prevents silent regressions in critical behavior paths.
 // Docs: docs/features/feature/backend-log-streaming/index.md
 
 // disconnect_detection_test.go — Tests for extension disconnect detection.

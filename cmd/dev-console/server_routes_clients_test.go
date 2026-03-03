@@ -1,5 +1,4 @@
 // Purpose: Tests for client management route handlers.
-// Why: Prevents silent regressions in critical behavior paths.
 // Docs: docs/features/feature/mcp-persistent-server/index.md
 
 // server_routes_clients_test.go — Tests for handleClientsList and handleClientByID.

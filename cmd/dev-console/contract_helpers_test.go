@@ -1,5 +1,4 @@
 // Purpose: Tests for contract test helper utilities.
-// Why: Prevents silent regressions in critical behavior paths.
 // Docs: docs/features/feature/mcp-persistent-server/index.md
 
 // contract_helpers_test.go — Response shape contract testing utilities.

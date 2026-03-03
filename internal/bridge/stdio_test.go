@@ -1,5 +1,4 @@
 // Purpose: Tests for bridge stdio transport framing and isolation.
-// Why: Prevents silent regressions in critical behavior paths.
 // Docs: docs/features/feature/bridge-restart/index.md
 
 // stdio_test.go — Tests for ReadStdioMessage.

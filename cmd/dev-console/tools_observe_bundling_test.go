@@ -1,5 +1,4 @@
 // Purpose: Tests for observe response bundling and batching.
-// Why: Prevents silent regressions in critical behavior paths.
 // Docs: docs/features/feature/mcp-persistent-server/index.md
 
 // tools_observe_bundling_test.go — Tests for error bundling observe mode.

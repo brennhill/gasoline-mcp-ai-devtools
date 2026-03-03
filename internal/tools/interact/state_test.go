@@ -1,5 +1,4 @@
 // Purpose: Tests for interact state save/load operations.
-// Why: Prevents silent regressions in critical behavior paths.
 // Docs: docs/features/feature/interact-explore/index.md
 
 // state_test.go — Tests for state management pure functions.

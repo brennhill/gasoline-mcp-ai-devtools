@@ -1,5 +1,4 @@
 // Purpose: Tests for configure test boundary markers.
-// Why: Prevents silent regressions in critical behavior paths.
 // Docs: docs/features/feature/enhanced-cli-config/index.md
 
 // boundaries_test.go — Tests for test boundary start/end pure functions.

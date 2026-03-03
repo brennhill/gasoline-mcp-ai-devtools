@@ -7,8 +7,6 @@ package session
 
 import (
 	"fmt"
-
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/util"
 )
 
 // validateName checks snapshot name constraints.
@@ -36,9 +34,4 @@ func (sm *SessionManager) removeFromOrder(name string) {
 			return
 		}
 	}
-}
-
-// ExtractURLPath delegates to util.ExtractURLPath for URL path extraction.
-func ExtractURLPath(rawURL string) string {
-	return util.ExtractURLPath(rawURL)
 }

@@ -1,5 +1,4 @@
 // Purpose: Tests for security issue flagging and severity classification.
-// Why: Prevents silent regressions in critical behavior paths.
 // Docs: docs/features/feature/security-hardening/index.md
 
 //go:build integration

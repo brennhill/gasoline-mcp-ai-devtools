@@ -1,5 +1,4 @@
 // Purpose: Tests for connection lifecycle helper utilities.
-// Why: Prevents silent regressions in critical behavior paths.
 // Docs: docs/features/feature/mcp-persistent-server/index.md
 
 // connection_lifecycle_helpers_test.go — Shared helper functions for connection lifecycle tests.

@@ -1,5 +1,4 @@
 // Purpose: Tests for analyze annotation processing.
-// Why: Prevents silent regressions in critical behavior paths.
 // Docs: docs/features/feature/analyze-tool/index.md
 
 // tools_analyze_annotations_test.go — Tests for analyze annotations handlers.

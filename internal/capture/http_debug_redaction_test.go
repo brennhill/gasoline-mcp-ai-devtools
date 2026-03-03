@@ -1,5 +1,4 @@
 // Purpose: Tests for capture HTTP debug logging with redaction.
-// Why: Prevents silent regressions in critical behavior paths.
 // Docs: docs/features/feature/backend-log-streaming/index.md
 
 package capture

@@ -1,5 +1,4 @@
 // Purpose: Tests for WebSocket event pagination.
-// Why: Prevents silent regressions in critical behavior paths.
 // Docs: docs/features/feature/pagination/index.md
 
 // pagination_websocket_test.go — Unit tests for websocket event cursor-based pagination
@@ -403,7 +402,7 @@ func TestSerializeWebSocketEntryWithSequence(t *testing.T) {
 			Direction: "incoming",
 			Data:      `{"type":"ping"}`,
 			Timestamp: "2026-01-30T10:15:23Z",
-			TabId:     123,
+			TabID:     123,
 		},
 		Sequence:  5678,
 		Timestamp: "2026-01-30T10:15:23Z",

@@ -1,5 +1,4 @@
 // Purpose: Tests for configure noise rule management.
-// Why: Prevents silent regressions in critical behavior paths.
 // Docs: docs/features/feature/mcp-persistent-server/index.md
 
 // tools_configure_noise_test.go — Coverage tests for noise and analyze(api_validation) handlers.

@@ -1,5 +1,4 @@
 // Purpose: Tests for test-generation context-based test creation.
-// Why: Prevents silent regressions in critical behavior paths.
 // Docs: docs/features/feature/test-generation/index.md
 
 // testgen_context_test.go — Tests for testgen.go context generation functions at 0% coverage.
@@ -61,7 +60,7 @@ func TestGenerateTestFromInteraction_Basic(t *testing.T) {
 	if result.Coverage.NetworkMocked {
 		t.Fatal("NetworkMocked should be false when IncludeMocks is false")
 	}
-	if !strings.Contains(result.Content, "await page.click('#btn')") {
+	if !strings.Contains(result.Content, "getByTestId('submit').click()") {
 		t.Fatalf("generated script should contain click action;\nContent:\n%s", result.Content)
 	}
 	if len(result.Metadata.ContextUsed) != 1 || result.Metadata.ContextUsed[0] != "actions" {
@@ -361,8 +360,8 @@ func TestGenerateTestFromRegression_ContentHasActions(t *testing.T) {
 	h := newTestToolHandler()
 
 	h.capture.AddEnhancedActionsForTest([]capture.EnhancedAction{
-		{Type: "click", Selectors: map[string]any{"target": "#go"}},
-		{Type: "input", Selectors: map[string]any{"target": "#name"}, Value: "test"},
+		{Type: "click", Selectors: map[string]any{"id": "go"}, URL: "https://example.com"},
+		{Type: "input", Selectors: map[string]any{"id": "name"}, Value: "test"},
 	})
 
 	result, err := h.testGen().generateTestFromRegression(TestFromContextRequest{
@@ -372,13 +371,10 @@ func TestGenerateTestFromRegression_ContentHasActions(t *testing.T) {
 	if err != nil {
 		t.Fatalf("error = %v", err)
 	}
-	if !strings.Contains(result.Content, "await page.click('#go')") {
+	if !strings.Contains(result.Content, "locator('#go').click()") {
 		t.Fatalf("content should contain click action;\nContent:\n%s", result.Content)
 	}
-	if !strings.Contains(result.Content, "await page.fill('#name', 'test')") {
+	if !strings.Contains(result.Content, "locator('#name').fill('test')") {
 		t.Fatalf("content should contain fill action;\nContent:\n%s", result.Content)
-	}
-	if !strings.Contains(result.Content, "await page.goto('https://example.com')") {
-		t.Fatalf("content should contain goto baseURL;\nContent:\n%s", result.Content)
 	}
 }

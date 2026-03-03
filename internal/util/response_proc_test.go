@@ -1,5 +1,4 @@
 // Purpose: Tests for HTTP response processing utilities.
-// Why: Prevents silent regressions in critical behavior paths.
 
 //go:build !windows
 

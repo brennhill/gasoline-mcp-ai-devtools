@@ -1,5 +1,4 @@
 // Purpose: Tests for Playwright test script generation.
-// Why: Prevents silent regressions in critical behavior paths.
 // Docs: docs/features/feature/test-generation/index.md
 
 // generate_test.go — Tests for test generation functions using mock DataProvider.
@@ -417,8 +416,8 @@ func TestGenerateTestFromInteraction_Basic(t *testing.T) {
 	if !result.Coverage.StateCaptured {
 		t.Fatal("StateCaptured should be true")
 	}
-	if !strings.Contains(result.Content, "await page.click('#btn')") {
-		t.Fatalf("script should contain click action")
+	if !strings.Contains(result.Content, "getByTestId('submit').click()") {
+		t.Fatalf("script should contain click action; got:\n%s", result.Content)
 	}
 	if len(result.Metadata.ContextUsed) != 1 || result.Metadata.ContextUsed[0] != "actions" {
 		t.Fatalf("ContextUsed = %v, want [actions]", result.Metadata.ContextUsed)

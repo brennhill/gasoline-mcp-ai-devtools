@@ -1,5 +1,4 @@
 // Purpose: Tests for security config path resolution.
-// Why: Prevents silent regressions in critical behavior paths.
 // Docs: docs/features/feature/security-hardening/index.md
 
 package security
