@@ -160,7 +160,9 @@ export function showSubtitle(text: string): void {
 
   // Auto-clear after 60s to prevent stale overlays from persisting indefinitely
   clearAutoTimer()
-  subtitleAutoTimer = setTimeout(() => { clearSubtitle() }, SUBTITLE_AUTO_TIMEOUT_MS)
+  subtitleAutoTimer = setTimeout(() => {
+    clearSubtitle()
+  }, SUBTITLE_AUTO_TIMEOUT_MS)
 }
 
 /**

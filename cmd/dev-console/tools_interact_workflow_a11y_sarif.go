@@ -12,7 +12,7 @@ import (
 
 // handleRunA11yAndExportSARIF runs accessibility audit then exports SARIF in one call.
 // Gates (requirePilot, requireExtension, requireTabTracking) are applied by the delegated handlers.
-func (h *ToolHandler) handleRunA11yAndExportSARIF(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+func (h *interactActionHandler) handleRunA11yAndExportSARIF(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	var params struct {
 		Scope  string `json:"scope,omitempty"`
 		SaveTo string `json:"save_to,omitempty"`
@@ -32,7 +32,7 @@ func (h *ToolHandler) handleRunA11yAndExportSARIF(req JSONRPCRequest, args json.
 		"tab_id": params.TabID,
 	})
 	stepStart := time.Now()
-	a11yResp := h.toolAnalyze(req, a11yArgs)
+	a11yResp := h.parent.toolAnalyze(req, a11yArgs)
 	trace = append(trace, WorkflowStep{
 		Action:   "analyze_accessibility",
 		Status:   responseStatus(a11yResp),
@@ -52,7 +52,7 @@ func (h *ToolHandler) handleRunA11yAndExportSARIF(req JSONRPCRequest, args json.
 	}
 	sarifArgs, _ := json.Marshal(sarifParams)
 	stepStart = time.Now()
-	sarifResp := h.toolExportSARIF(req, sarifArgs)
+	sarifResp := h.parent.toolExportSARIF(req, sarifArgs)
 	trace = append(trace, WorkflowStep{
 		Action:   "generate_sarif",
 		Status:   responseStatus(sarifResp),

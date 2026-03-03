@@ -64,7 +64,7 @@ func TestQueueComposableSubtitle_QueuesPendingQuery(t *testing.T) {
 	env := newInteractHelpersTestEnv(t)
 
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`)}
-	env.handler.queueComposableSubtitle(req, "Test subtitle text")
+	env.handler.interactAction().queueComposableSubtitle(req, "Test subtitle text")
 
 	// Verify a pending query was created
 	queries := env.capture.GetPendingQueries()
@@ -93,7 +93,7 @@ func TestQueueComposableSubtitle_CorrelationIDHasPrefix(t *testing.T) {
 	env := newInteractHelpersTestEnv(t)
 
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`)}
-	env.handler.queueComposableSubtitle(req, "text")
+	env.handler.interactAction().queueComposableSubtitle(req, "text")
 
 	queries := env.capture.GetPendingQueries()
 	for _, q := range queries {
@@ -113,7 +113,7 @@ func TestQueueComposableSubtitle_EmptyText(t *testing.T) {
 
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`)}
 	// Empty text is valid (clears the subtitle)
-	env.handler.queueComposableSubtitle(req, "")
+	env.handler.interactAction().queueComposableSubtitle(req, "")
 
 	queries := env.capture.GetPendingQueries()
 	found := false
@@ -139,8 +139,8 @@ func TestQueueComposableSubtitle_UniqueCorrelationIDs(t *testing.T) {
 	env := newInteractHelpersTestEnv(t)
 
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`)}
-	env.handler.queueComposableSubtitle(req, "first")
-	env.handler.queueComposableSubtitle(req, "second")
+	env.handler.interactAction().queueComposableSubtitle(req, "first")
+	env.handler.interactAction().queueComposableSubtitle(req, "second")
 
 	queries := env.capture.GetPendingQueries()
 	ids := make(map[string]bool)
@@ -166,7 +166,7 @@ func TestQueueComposableActionDiff_QueuesPendingQuery(t *testing.T) {
 	env := newInteractHelpersTestEnv(t)
 
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`)}
-	env.handler.queueComposableActionDiff(req)
+	env.handler.interactAction().queueComposableActionDiff(req)
 
 	// Verify a pending query was created with type "dom_action"
 	queries := env.capture.GetPendingQueries()
@@ -194,7 +194,7 @@ func TestQueueComposableActionDiff_CorrelationIDPrefix(t *testing.T) {
 	env := newInteractHelpersTestEnv(t)
 
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`)}
-	env.handler.queueComposableActionDiff(req)
+	env.handler.interactAction().queueComposableActionDiff(req)
 
 	queries := env.capture.GetPendingQueries()
 	for _, q := range queries {
@@ -220,7 +220,7 @@ func TestQueueComposableActionDiff_HasTimeoutParam(t *testing.T) {
 	env := newInteractHelpersTestEnv(t)
 
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`)}
-	env.handler.queueComposableActionDiff(req)
+	env.handler.interactAction().queueComposableActionDiff(req)
 
 	queries := env.capture.GetPendingQueries()
 	for _, q := range queries {
@@ -257,7 +257,7 @@ func TestQueueStateNavigation_QueuesBrowserAction(t *testing.T) {
 		"title": "Test Page",
 	}
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`)}
-	env.handler.queueStateNavigation(req, stateData)
+	env.handler.stateInteract().queueStateNavigation(req, stateData)
 
 	// Should have queued a browser_action query
 	queries := env.capture.GetPendingQueries()
@@ -301,7 +301,7 @@ func TestQueueStateNavigation_SkipsWhenPilotDisabled(t *testing.T) {
 		"title": "Test Page",
 	}
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`)}
-	env.handler.queueStateNavigation(req, stateData)
+	env.handler.stateInteract().queueStateNavigation(req, stateData)
 
 	queries := env.capture.GetPendingQueries()
 	for _, q := range queries {
@@ -325,7 +325,7 @@ func TestQueueStateNavigation_SkipsWhenURLEmpty(t *testing.T) {
 		"title": "No URL",
 	}
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`)}
-	env.handler.queueStateNavigation(req, stateData)
+	env.handler.stateInteract().queueStateNavigation(req, stateData)
 
 	queries := env.capture.GetPendingQueries()
 	for _, q := range queries {
@@ -344,7 +344,7 @@ func TestQueueStateNavigation_SkipsWhenURLMissing(t *testing.T) {
 		"title": "No URL key",
 	}
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`)}
-	env.handler.queueStateNavigation(req, stateData)
+	env.handler.stateInteract().queueStateNavigation(req, stateData)
 
 	queries := env.capture.GetPendingQueries()
 	for _, q := range queries {
@@ -363,7 +363,7 @@ func TestQueueStateNavigation_SkipsWhenURLNotString(t *testing.T) {
 		"url": 12345, // not a string
 	}
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`)}
-	env.handler.queueStateNavigation(req, stateData)
+	env.handler.stateInteract().queueStateNavigation(req, stateData)
 
 	queries := env.capture.GetPendingQueries()
 	for _, q := range queries {
@@ -383,7 +383,7 @@ func TestQueueStateNavigation_CorrelationIDHasNavPrefix(t *testing.T) {
 		"url": "https://example.com",
 	}
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`)}
-	env.handler.queueStateNavigation(req, stateData)
+	env.handler.stateInteract().queueStateNavigation(req, stateData)
 
 	corrID, ok := stateData["correlation_id"].(string)
 	if !ok {

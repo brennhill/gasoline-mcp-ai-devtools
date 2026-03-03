@@ -149,22 +149,35 @@ export async function getPageInfo() {
  */
 function loadAxeCore() {
     return new Promise((resolve, reject) => {
-        if (window.axe) {
+        const hasAxe = () => typeof window !== 'undefined' && !!window.axe;
+        if (hasAxe()) {
             resolve();
             return;
         }
+        let settled = false;
+        const finish = (fn) => {
+            if (settled)
+                return;
+            settled = true;
+            fn();
+        };
         // Wait for axe-core to be injected by content script (which has chrome.runtime API access)
         // Note: This function runs in page context (inject script), so we can't call chrome.runtime.getURL()
         const checkInterval = setInterval(() => {
-            if (window.axe) {
-                clearInterval(checkInterval);
-                resolve();
+            if (hasAxe()) {
+                finish(() => {
+                    clearInterval(checkInterval);
+                    clearTimeout(loadTimeout);
+                    resolve();
+                });
             }
         }, scaleTimeout(100));
         // Timeout after 5 seconds
-        setTimeout(() => {
-            clearInterval(checkInterval);
-            reject(new Error('Accessibility audit failed: axe-core library not loaded (5s timeout). The extension content script may not have been injected on this page. Try reloading the tab and re-running the audit.'));
+        const loadTimeout = setTimeout(() => {
+            finish(() => {
+                clearInterval(checkInterval);
+                reject(new Error('Accessibility audit failed: axe-core library not loaded (5s timeout). The extension content script may not have been injected on this page. Try reloading the tab and re-running the audit.'));
+            });
         }, scaleTimeout(5000));
     });
 }

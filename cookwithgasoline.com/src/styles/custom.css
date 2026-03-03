@@ -284,6 +284,38 @@ code:not(pre code) {
   text-decoration: none;
 }
 
+.landing-content pre {
+  background: #0a0a0a;
+  border: 1px solid #333333;
+  border-radius: 6px;
+  padding: 1rem;
+  overflow-x: auto;
+  margin: 1.5rem 0;
+}
+
+.landing-content code {
+  font-family: 'SF Mono', Monaco, 'Cascadia Code', monospace;
+  font-size: 0.9em;
+}
+
+.landing-content code:not(pre code) {
+  background: #1a1a1a;
+  color: #f39c12;
+  padding: 0.2em 0.4em;
+  border-radius: 3px;
+}
+
+.landing-content pre code {
+  background: none;
+  padding: 0;
+  color: #e8e8e8;
+}
+
+.landing-content a {
+  color: #f39c12;
+  text-decoration: none;
+}
+
 .soft-link:hover {
   text-decoration: underline;
 }

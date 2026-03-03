@@ -1,6 +1,6 @@
-import { defineConfig } from 'astro/config';
-import starlight from '@astrojs/starlight';
-import starlightBlog from 'starlight-blog';
+import { defineConfig } from 'astro/config'
+import starlight from '@astrojs/starlight'
+import starlightBlog from 'starlight-blog'
 
 export default defineConfig({
   site: 'https://cookwithgasoline.com',
@@ -11,19 +11,19 @@ export default defineConfig({
         'Browser automation, debugging, demo recording, and interactive web development for MCP-compatible AI agents.',
       logo: {
         src: './src/assets/logo.png',
-        alt: 'Gasoline MCP',
+        alt: 'Gasoline MCP'
       },
       favicon: '/images/logo.png',
       social: [
         {
           icon: 'github',
           label: 'GitHub',
-          href: 'https://github.com/brennhill/gasoline',
-        },
+          href: 'https://github.com/brennhill/gasoline'
+        }
       ],
       customCss: ['./src/styles/custom.css'],
       components: {
-        Footer: './src/components/Footer.astro',
+        Footer: './src/components/Footer.astro'
       },
       plugins: [
         starlightBlog({
@@ -32,13 +32,13 @@ export default defineConfig({
           postsPerPage: 50,
           authors: {
             brenn: {
-              name: 'Brenn Hill',
+              name: 'Brenn Hill'
             },
             brennhill: {
-              name: 'Brenn Hill',
-            },
-          },
-        }),
+              name: 'Brenn Hill'
+            }
+          }
+        })
       ],
       sidebar: [
         {
@@ -48,8 +48,8 @@ export default defineConfig({
             { label: 'Quick Start', slug: 'getting-started' },
             { label: 'Features', slug: 'features' },
             { label: 'Discover Workflows', slug: 'discover-workflows' },
-            { label: 'Articles', slug: 'articles' },
-          ],
+            { label: 'Articles', slug: 'articles' }
+          ]
         },
         {
           label: 'MCP Integration',
@@ -62,8 +62,8 @@ export default defineConfig({
             { label: 'Zed', slug: 'mcp-integration/zed' },
             { label: 'Gemini CLI', slug: 'mcp-integration/gemini' },
             { label: 'OpenCode', slug: 'mcp-integration/opencode' },
-            { label: 'Antigravity', slug: 'mcp-integration/antigravity' },
-          ],
+            { label: 'Antigravity', slug: 'mcp-integration/antigravity' }
+          ]
         },
         {
           label: 'Tool Reference',
@@ -74,8 +74,8 @@ export default defineConfig({
             { label: 'generate()', slug: 'reference/generate' },
             { label: 'configure()', slug: 'reference/configure' },
             { label: 'interact()', slug: 'reference/interact' },
-            { label: 'Script Execution', slug: 'execute-scripts' },
-          ],
+            { label: 'Script Execution', slug: 'execute-scripts' }
+          ]
         },
         {
           label: 'Guides',
@@ -91,8 +91,8 @@ export default defineConfig({
             { label: 'Noise Filtering', slug: 'guides/noise-filtering' },
             { label: 'Resilient UAT Scripts', slug: 'guides/resilient-uat' },
             { label: 'Replace Selenium', slug: 'guides/replace-selenium' },
-            { label: 'Automate & Notify', slug: 'guides/automate-and-notify' },
-          ],
+            { label: 'Automate & Notify', slug: 'guides/automate-and-notify' }
+          ]
         },
         {
           label: 'More',
@@ -101,10 +101,10 @@ export default defineConfig({
             { label: 'Security', slug: 'security' },
             { label: 'Troubleshooting', slug: 'troubleshooting' },
             { label: 'Agent Install Guide', slug: 'agent-install-guide' },
-            { label: 'Alternatives', slug: 'alternatives' },
-          ],
-        },
-      ],
-    }),
-  ],
-});
+            { label: 'Alternatives', slug: 'alternatives' }
+          ]
+        }
+      ]
+    })
+  ]
+})

@@ -223,7 +223,10 @@ async function expectDaemonIdentity(port, expectedVersion, timeoutMs = 20000) {
 
   const runningVersion = typeof health.version === 'string' ? health.version.trim() : ''
   if (runningVersion !== expectedVersion) {
-    fail(`daemon version mismatch on port ${port}`, `expected=${expectedVersion} actual=${runningVersion || '<missing>'}`)
+    fail(
+      `daemon version mismatch on port ${port}`,
+      `expected=${expectedVersion} actual=${runningVersion || '<missing>'}`
+    )
   }
 }
 

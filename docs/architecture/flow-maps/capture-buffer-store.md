@@ -11,7 +11,12 @@ owners:
 ## Scope
 
 Refactor `internal/capture` to group websocket/network/action ring-buffer state into
-`BufferStore`, reducing `Capture` field sprawl without changing behavior.
+`BufferStore`, and extension-log append/eviction/copy/clear behavior into
+`ExtensionLogBuffer` helpers, network-waterfall append/eviction/copy/clear behavior into
+`NetworkWaterfallBuffer` store methods, and websocket status/reset behavior into
+`WSConnectionTracker` store methods, plus performance snapshot/before-snapshot map behavior into
+`PerformanceStore` store methods. Also adds focused read-only sub-store interfaces so callers can
+depend on narrower contracts than the full `Capture` struct.
 
 ## Entrypoints
 
@@ -29,6 +34,17 @@ Refactor `internal/capture` to group websocket/network/action ring-buffer state 
 4. Eviction methods trim `c.buffers.*` slices and keep memory counters in sync.
 5. Accessor/read APIs expose cloned snapshots from `c.buffers.*` data.
 6. Clear/reset APIs zero `c.buffers.*` slices and counters.
+7. Extension log ingestion paths (`AddExtensionLogs`, sync ingest) call `ExtensionLogBuffer.append`.
+8. Extension log reads/clears use `ExtensionLogBuffer.snapshot` and `ExtensionLogBuffer.clear`.
+9. Network waterfall ingest/read/clear delegates to `NetworkWaterfallBuffer.appendEntries`, `snapshot`, and `clear`.
+10. WebSocket status/read/clear delegates to `WSConnectionTracker.status`, `connectionCount`, and `clear`.
+11. Performance snapshot ingest/read and before-snapshot consume-on-read delegates to `PerformanceStore` methods.
+12. `Capture` exposes focused sub-store views:
+    - `EventBuffers()`
+    - `NetworkWaterfallStore()`
+    - `ExtensionLogStore()`
+    - `WebSocketStatusStore()`
+    - `PerformanceSnapshotStore()`
 
 ## Error and Recovery Paths
 
@@ -46,12 +62,20 @@ Refactor `internal/capture` to group websocket/network/action ring-buffer state 
 ## Code Paths
 
 - `internal/capture/buffer_store.go`
+- `internal/capture/extension_log_store.go`
+- `internal/capture/network_waterfall_store.go`
+- `internal/capture/ws_connection_store.go`
+- `internal/capture/performance_store.go`
+- `internal/capture/store_views.go`
 - `internal/capture/capture-struct.go`
 - `internal/capture/network_bodies.go`
 - `internal/capture/websocket.go`
 - `internal/capture/ws_connection_tracker.go`
 - `internal/capture/enhanced_actions.go`
 - `internal/capture/buffer_clear.go`
+- `internal/capture/extension_logs.go`
+- `internal/capture/network_waterfall.go`
+- `internal/capture/sync_processing.go`
 - `internal/capture/accessor_*.go`
 - `internal/capture/memory.go`
 
@@ -61,12 +85,17 @@ Refactor `internal/capture` to group websocket/network/action ring-buffer state 
 - `internal/capture/network_bodies_test.go`
 - `internal/capture/websocket_test.go`
 - `internal/capture/enhanced_actions_test.go`
+- `internal/capture/extension_log_store_test.go`
+- `internal/capture/network_waterfall_store_test.go`
+- `internal/capture/ws_connection_store_test.go`
+- `internal/capture/performance_store_test.go`
+- `internal/capture/store_views_test.go`
 - `internal/capture/coverage_boost_unit_test.go`
 - `internal/capture/test_helpers.go`
 
 ## Edit Guardrails
 
 1. New buffer fields should be added to `BufferStore`, not directly to `Capture`.
-2. Keep all `BufferStore` reads/writes under `Capture.mu` lock discipline.
+2. Keep all `BufferStore` and `ExtensionLogBuffer` reads/writes under `Capture.mu` lock discipline.
 3. Any counter reset behavior must be explicitly tested in `buffer_clear` and `memory` tests.
 4. Preserve compatibility of `Capture` public methods; do not expose `BufferStore` directly.

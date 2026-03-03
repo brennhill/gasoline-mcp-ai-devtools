@@ -19,24 +19,56 @@ import { registerCommand } from './registry.js'
 
 const CDP_VERSION = '1.3'
 const MAX_CAPTURE_HEIGHT = 16384 // Chrome max texture size
+const MAX_CAPTURE_WIDTH = 16384 // Chrome max texture size
+const DEFAULT_CAPTURE_WIDTH = 1280
+const DEFAULT_CAPTURE_HEIGHT = 720
 
 /**
  * Self-contained function injected via chrome.scripting.executeScript.
  * Temporarily expands scrollable containers so CDP captures full content.
  * Stores original styles in data attributes for restoration.
  */
-function screenshotExpandContainers(): { expanded: number } {
+export function screenshotExpandContainers(): { expanded: number; content_height_hint: number } {
   let count = 0
+  let contentHeightHint = Math.max(document.documentElement?.scrollHeight || 0, document.body?.scrollHeight || 0)
   function tryExpand(el: HTMLElement): void {
     const style = getComputedStyle(el)
     const oy = style.overflowY || ''
-    if ((oy === 'auto' || oy === 'scroll' || oy === 'hidden') && el.scrollHeight > el.clientHeight + 1) {
-      el.setAttribute('data-gasoline-fpx', JSON.stringify({
-        o: el.style.overflow, h: el.style.height, m: el.style.maxHeight
-      }))
+    const ov = style.overflow || ''
+    const isScrollable =
+      oy === 'auto' ||
+      oy === 'scroll' ||
+      oy === 'hidden' ||
+      oy === 'clip' ||
+      ov === 'auto' ||
+      ov === 'scroll' ||
+      ov === 'hidden' ||
+      ov === 'clip'
+    if (isScrollable && el.scrollHeight > el.clientHeight + 1) {
+      const targetHeight = Math.max(el.scrollHeight, el.clientHeight)
+      el.setAttribute(
+        'data-gasoline-fpx',
+        JSON.stringify({
+          o: el.style.overflow,
+          oy: el.style.overflowY,
+          ox: el.style.overflowX,
+          h: el.style.height,
+          n: el.style.minHeight,
+          m: el.style.maxHeight,
+          f: el.style.flex,
+          c: el.style.contain
+        })
+      )
       el.style.overflow = 'visible'
-      el.style.height = 'auto'
+      el.style.overflowY = 'visible'
+      el.style.overflowX = 'visible'
+      el.style.height = `${targetHeight}px`
+      el.style.minHeight = `${targetHeight}px`
       el.style.maxHeight = 'none'
+      el.style.flex = 'none'
+      el.style.contain = 'none'
+      const top = (el.getBoundingClientRect().top || 0) + (window.scrollY || window.pageYOffset || 0)
+      contentHeightHint = Math.max(contentHeightHint, top + targetHeight)
       count++
     }
   }
@@ -46,20 +78,36 @@ function screenshotExpandContainers(): { expanded: number } {
   for (let i = 0; i < all.length; i++) {
     if (all[i] instanceof HTMLElement) tryExpand(all[i] as HTMLElement)
   }
-  return { expanded: count }
+  return { expanded: count, content_height_hint: Math.ceil(contentHeightHint) }
 }
 
 /** Self-contained: restore containers after full-page capture. */
-function screenshotRestoreContainers(): void {
+export function screenshotRestoreContainers(): void {
   function tryRestore(el: HTMLElement): void {
     const raw = el.getAttribute('data-gasoline-fpx')
     if (!raw) return
     try {
-      const s = JSON.parse(raw) as { o?: string; h?: string; m?: string }
+      const s = JSON.parse(raw) as {
+        o?: string
+        oy?: string
+        ox?: string
+        h?: string
+        n?: string
+        m?: string
+        f?: string
+        c?: string
+      }
       el.style.overflow = s.o || ''
+      el.style.overflowY = s.oy || ''
+      el.style.overflowX = s.ox || ''
       el.style.height = s.h || ''
+      el.style.minHeight = s.n || ''
       el.style.maxHeight = s.m || ''
-    } catch { /* ignore parse errors */ }
+      el.style.flex = s.f || ''
+      el.style.contain = s.c || ''
+    } catch {
+      /* ignore parse errors */
+    }
     el.removeAttribute('data-gasoline-fpx')
   }
   tryRestore(document.documentElement)
@@ -69,10 +117,24 @@ function screenshotRestoreContainers(): void {
   }
 }
 
+/** Derive bounded screenshot dimensions with fallback defaults and optional expanded-content hint. */
+export function computeFullPageCaptureDimensions(
+  contentWidth: number,
+  contentHeight: number,
+  hintedHeight: number
+): { width: number; height: number } {
+  const safeWidth = Number.isFinite(contentWidth) && contentWidth > 0 ? Math.ceil(contentWidth) : DEFAULT_CAPTURE_WIDTH
+  const safeHeight =
+    Number.isFinite(contentHeight) && contentHeight > 0 ? Math.ceil(contentHeight) : DEFAULT_CAPTURE_HEIGHT
+  const safeHint = Number.isFinite(hintedHeight) && hintedHeight > 0 ? Math.ceil(hintedHeight) : 0
+  return {
+    width: Math.max(1, Math.min(safeWidth, MAX_CAPTURE_WIDTH)),
+    height: Math.max(1, Math.min(Math.max(safeHeight, safeHint), MAX_CAPTURE_HEIGHT))
+  }
+}
+
 /** Post screenshot data to server for saving and query resolution. */
-async function postScreenshot(
-  dataUrl: string, pageUrl: string | undefined, queryId: string
-): Promise<boolean> {
+async function postScreenshot(dataUrl: string, pageUrl: string | undefined, queryId: string): Promise<boolean> {
   try {
     const response = await fetch(`${getServerUrl()}/screenshots`, {
       method: 'POST',
@@ -127,11 +189,21 @@ async function captureFullPage(
   quality: number
 ): Promise<void> {
   // Step 1: Expand scrollable containers in the page
-  await chrome.scripting.executeScript({
-    target: { tabId: ctx.tabId },
-    world: 'MAIN',
-    func: screenshotExpandContainers
-  })
+  let hintedHeight = 0
+  try {
+    const expansionResult = await chrome.scripting.executeScript({
+      target: { tabId: ctx.tabId },
+      world: 'MAIN',
+      func: screenshotExpandContainers
+    })
+    const expansionMeta = expansionResult[0]?.result as { content_height_hint?: number } | undefined
+    hintedHeight = typeof expansionMeta?.content_height_hint === 'number' ? expansionMeta.content_height_hint : 0
+  } catch (err) {
+    // Best effort only: continue with CDP dimensions if expansion script cannot run.
+    debugLog(DebugCategory.CAPTURE, 'Full-page expansion script failed; using CDP layout metrics only', {
+      error: (err as Error).message
+    })
+  }
 
   try {
     // Step 2: Attach CDP debugger
@@ -139,58 +211,76 @@ async function captureFullPage(
 
     try {
       // Step 3: Get full content dimensions
-      const metrics = await chrome.debugger.sendCommand(
-        { tabId: ctx.tabId }, 'Page.getLayoutMetrics', {}
-      ) as {
+      const metrics = (await chrome.debugger.sendCommand({ tabId: ctx.tabId }, 'Page.getLayoutMetrics', {})) as {
         cssContentSize?: { width: number; height: number }
         contentSize?: { width: number; height: number }
       }
 
-      const contentSize = metrics.cssContentSize || metrics.contentSize || { width: 1280, height: 720 }
-      const captureWidth = Math.ceil(contentSize.width)
-      const captureHeight = Math.min(Math.ceil(contentSize.height), MAX_CAPTURE_HEIGHT)
+      const contentSize = metrics.cssContentSize ||
+        metrics.contentSize || {
+          width: DEFAULT_CAPTURE_WIDTH,
+          height: DEFAULT_CAPTURE_HEIGHT
+        }
+      const { width: captureWidth, height: captureHeight } = computeFullPageCaptureDimensions(
+        contentSize.width,
+        contentSize.height,
+        hintedHeight
+      )
 
       // Step 4: Override viewport to full content size
-      await chrome.debugger.sendCommand(
-        { tabId: ctx.tabId }, 'Emulation.setDeviceMetricsOverride',
-        { width: captureWidth, height: captureHeight, deviceScaleFactor: 1, mobile: false }
-      )
+      await chrome.debugger.sendCommand({ tabId: ctx.tabId }, 'Emulation.setDeviceMetricsOverride', {
+        width: captureWidth,
+        height: captureHeight,
+        deviceScaleFactor: 1,
+        mobile: false
+      })
+      let metricsOverrideSet = true
 
-      // Brief pause for layout reflow after viewport resize
-      await new Promise((r) => setTimeout(r, 150))
+      try {
+        // Brief pause for layout reflow after viewport resize
+        await new Promise((r) => setTimeout(r, 150))
 
-      // Step 5: Capture full-page screenshot via CDP
-      const screenshotResult = await chrome.debugger.sendCommand(
-        { tabId: ctx.tabId }, 'Page.captureScreenshot', {
+        // Step 5: Capture full-page screenshot via CDP
+        const screenshotResult = (await chrome.debugger.sendCommand({ tabId: ctx.tabId }, 'Page.captureScreenshot', {
           format,
           quality: format === 'jpeg' ? quality : undefined,
+          captureBeyondViewport: true,
           clip: { x: 0, y: 0, width: captureWidth, height: captureHeight, scale: 1 }
+        })) as { data: string }
+
+        // Step 7: Build data URL and post to server
+        const mimeType = format === 'png' ? 'image/png' : 'image/jpeg'
+        const dataUrl = `data:${mimeType};base64,${screenshotResult.data}`
+        recordScreenshot(ctx.tabId)
+
+        const ok = await postScreenshot(dataUrl, tab.url, ctx.query.id)
+        if (!ok) {
+          ctx.sendResult({ error: 'screenshot_upload_failed', message: 'Server rejected screenshot' })
         }
-      ) as { data: string }
-
-      // Step 6: Clear device metrics override
-      await chrome.debugger.sendCommand(
-        { tabId: ctx.tabId }, 'Emulation.clearDeviceMetricsOverride', {}
-      )
-
-      // Step 7: Build data URL and post to server
-      const mimeType = format === 'png' ? 'image/png' : 'image/jpeg'
-      const dataUrl = `data:${mimeType};base64,${screenshotResult.data}`
-      recordScreenshot(ctx.tabId)
-
-      const ok = await postScreenshot(dataUrl, tab.url, ctx.query.id)
-      if (!ok) {
-        ctx.sendResult({ error: 'screenshot_upload_failed', message: 'Server rejected screenshot' })
+      } finally {
+        if (metricsOverrideSet) {
+          try {
+            // Step 6: Clear device metrics override, even when capture fails.
+            await chrome.debugger.sendCommand({ tabId: ctx.tabId }, 'Emulation.clearDeviceMetricsOverride', {})
+          } catch {
+            /* best effort */
+          }
+          metricsOverrideSet = false
+        }
       }
     } finally {
-      try { await chrome.debugger.detach({ tabId: ctx.tabId }) } catch { /* already detached */ }
+      try {
+        await chrome.debugger.detach({ tabId: ctx.tabId })
+      } catch {
+        /* already detached */
+      }
     }
   } catch (err) {
     // CDP unavailable — fall back to regular captureVisibleTab with warning
     debugLog(DebugCategory.CAPTURE, 'Full-page CDP failed, falling back to viewport capture', {
       error: (err as Error).message
     })
-    const dataUrl = await chrome.tabs.captureVisibleTab(tab.windowId!, {
+    const dataUrl = await chrome.tabs.captureVisibleTab(tab.windowId, {
       format: format as 'jpeg' | 'png',
       quality
     })
@@ -201,11 +291,15 @@ async function captureFullPage(
     }
   } finally {
     // Step 8: Always restore containers
-    await chrome.scripting.executeScript({
-      target: { tabId: ctx.tabId },
-      world: 'MAIN',
-      func: screenshotRestoreContainers
-    }).catch(() => { /* best effort */ })
+    await chrome.scripting
+      .executeScript({
+        target: { tabId: ctx.tabId },
+        world: 'MAIN',
+        func: screenshotRestoreContainers
+      })
+      .catch(() => {
+        /* best effort */
+      })
   }
 }
 
@@ -341,9 +435,8 @@ registerCommand('page_inventory', async (ctx) => {
     }
 
     // Apply limit if specified
-    const limit = typeof ctx.params.limit === 'number' && ctx.params.limit > 0
-      ? ctx.params.limit
-      : filteredElements.length
+    const limit =
+      typeof ctx.params.limit === 'number' && ctx.params.limit > 0 ? ctx.params.limit : filteredElements.length
     const finalElements = filteredElements.slice(0, limit)
 
     const payload: Record<string, unknown> = {

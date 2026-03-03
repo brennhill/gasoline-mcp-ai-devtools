@@ -18,6 +18,10 @@ func interactOutputAndBatchProperties() map[string]any {
 			"type":        "boolean",
 			"description": "Wait for DOM stability (no mutations) before returning. Composable with navigate and click.",
 		},
+		"wait_for_url_change": map[string]any{
+			"type":        "boolean",
+			"description": "For navigate_and_document: wait until tracked URL differs from the pre-click URL before returning.",
+		},
 		"stability_ms": map[string]any{
 			"type":        "number",
 			"description": "Milliseconds of DOM quiet time required for wait_for_stable (default 500)",

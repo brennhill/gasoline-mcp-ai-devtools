@@ -1458,18 +1458,21 @@ func TestStore_TakeWaiter_RemovesAndReturnsSessionName(t *testing.T) {
 	store := NewStore(10 * time.Minute)
 	defer store.Close()
 
-	store.RegisterWaiter("ann_1", "qa")
-	store.RegisterWaiter("ann_2", "")
+	store.RegisterWaiter("ann_1", "qa", "")
+	store.RegisterWaiter("ann_2", "", "")
 
-	sessionName, found := store.TakeWaiter("ann_1")
+	sessionName, urlFilter, found := store.TakeWaiter("ann_1")
 	if !found {
 		t.Fatal("expected waiter ann_1 to be found")
 	}
 	if sessionName != "qa" {
 		t.Fatalf("sessionName = %q, want qa", sessionName)
 	}
+	if urlFilter != "" {
+		t.Fatalf("urlFilter = %q, want empty", urlFilter)
+	}
 
-	_, found = store.TakeWaiter("ann_1")
+	_, _, found = store.TakeWaiter("ann_1")
 	if found {
 		t.Fatal("expected waiter ann_1 to be removed after first take")
 	}
@@ -1602,5 +1605,55 @@ func TestStore_FindAnnotationTimestamp_SkipsExpired(t *testing.T) {
 
 	if ts := store.FindAnnotationTimestamp("named_exp_corr"); ts != 0 {
 		t.Errorf("expected 0 for expired named session, got %d", ts)
+	}
+}
+
+func TestStore_ClearAll_ClearsAllAnnotationState(t *testing.T) {
+	store := NewStore(10 * time.Minute)
+	defer store.Close()
+
+	now := time.Now().UnixMilli()
+	store.StoreSession(1, &Session{
+		TabID:     1,
+		Timestamp: now,
+		Annotations: []Annotation{
+			{ID: "ann_1", CorrelationID: "detail_1", Timestamp: now},
+		},
+	})
+	store.StoreDetail("detail_1", Detail{CorrelationID: "detail_1", Selector: "#target"})
+	store.AppendToNamedSession("qa", &Session{
+		TabID:     1,
+		Timestamp: now,
+		Annotations: []Annotation{
+			{ID: "ann_named", CorrelationID: "detail_named", Timestamp: now},
+		},
+	})
+	store.RegisterWaiter("ann_wait", "")
+
+	counts := store.ClearAll()
+	if counts.Sessions != 1 {
+		t.Fatalf("cleared sessions = %d, want 1", counts.Sessions)
+	}
+	if counts.Details != 1 {
+		t.Fatalf("cleared details = %d, want 1", counts.Details)
+	}
+	if counts.NamedSessions != 1 {
+		t.Fatalf("cleared named sessions = %d, want 1", counts.NamedSessions)
+	}
+	if counts.Waiters != 1 {
+		t.Fatalf("cleared waiters = %d, want 1", counts.Waiters)
+	}
+
+	if got := store.GetLatestSession(); got != nil {
+		t.Fatalf("expected latest session cleared, got %+v", got)
+	}
+	if got := store.GetNamedSession("qa"); got != nil {
+		t.Fatalf("expected named session cleared, got %+v", got)
+	}
+	if _, found := store.GetDetail("detail_1"); found {
+		t.Fatal("expected detail cleared")
+	}
+	if _, found := store.TakeWaiter("ann_wait"); found {
+		t.Fatal("expected waiter cleared")
 	}
 }

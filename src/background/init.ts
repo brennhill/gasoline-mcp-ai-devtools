@@ -246,15 +246,7 @@ async function initializeExtensionAsync(): Promise<void> {
       handleLogMessage,
       handleClearLogs,
       captureScreenshot: (tabId, relatedErrorId) =>
-        captureScreenshot(
-          tabId,
-          getServerUrl(),
-          relatedErrorId,
-          null,
-          canTakeScreenshot,
-          recordScreenshot,
-          debugLog
-        ),
+        captureScreenshot(tabId, getServerUrl(), relatedErrorId, null, canTakeScreenshot, recordScreenshot, debugLog),
       checkConnectionAndUpdate,
       clearSourceMapCache,
 

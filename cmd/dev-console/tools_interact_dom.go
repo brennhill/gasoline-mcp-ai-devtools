@@ -43,7 +43,7 @@ func normalizeDOMActionArgs(args json.RawMessage, action string) json.RawMessage
 	return normalized
 }
 
-func (h *ToolHandler) handleDOMPrimitive(req JSONRPCRequest, args json.RawMessage, action string) JSONRPCResponse {
+func (h *interactActionHandler) handleDOMPrimitive(req JSONRPCRequest, args json.RawMessage, action string) JSONRPCResponse {
 	params, err := parseDOMPrimitiveParams(args)
 	if err != nil {
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidJSON, "Invalid JSON arguments: "+err.Error(), "Fix JSON syntax and call again")}
@@ -74,13 +74,13 @@ func (h *ToolHandler) handleDOMPrimitive(req JSONRPCRequest, args json.RawMessag
 	}
 
 	contextOpts := domActionContextOptions(action, params.Selector)
-	if resp, blocked := h.requirePilot(req, contextOpts...); blocked {
+	if resp, blocked := h.parent.requirePilot(req, contextOpts...); blocked {
 		return resp
 	}
-	if resp, blocked := h.requireExtension(req, contextOpts...); blocked {
+	if resp, blocked := h.parent.requireExtension(req, contextOpts...); blocked {
 		return resp
 	}
-	if resp, blocked := h.requireTabTracking(req, contextOpts...); blocked {
+	if resp, blocked := h.parent.requireTabTracking(req, contextOpts...); blocked {
 		return resp
 	}
 
@@ -95,9 +95,9 @@ func (h *ToolHandler) handleDOMPrimitive(req JSONRPCRequest, args json.RawMessag
 		TabID:         params.TabID,
 		CorrelationID: correlationID,
 	}
-	h.capture.CreatePendingQueryWithTimeout(query, queries.AsyncCommandTimeout, req.ClientID)
+	h.parent.capture.CreatePendingQueryWithTimeout(query, queries.AsyncCommandTimeout, req.ClientID)
 
-	h.recordDOMPrimitiveAction(action, params.Selector, params.Text, params.Value)
+	h.parent.recordDOMPrimitiveAction(action, params.Selector, params.Text, params.Value)
 
-	return h.MaybeWaitForCommand(req, correlationID, args, action+" queued")
+	return h.parent.MaybeWaitForCommand(req, correlationID, args, action+" queued")
 }

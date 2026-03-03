@@ -55,32 +55,49 @@ func securityConfigEditInstruction() string {
 	return "Edit " + path + " manually"
 }
 
+// AddToWhitelist is intentionally manual-only.
+// Security policy mutations must be reviewed and applied by a human editing the config file.
 func AddToWhitelist(origin string) error {
-	if IsMCPMode() {
-		return errors.New("security config updates require human review - " + securityConfigEditInstruction())
-	}
-	if !IsInteractiveTerminal() {
-		return errors.New("not in interactive mode - " + securityConfigEditInstruction())
-	}
-	return fmt.Errorf("AddToWhitelist not yet fully implemented for origin: %s", origin)
+	return blockSecurityConfigMutation("add_to_whitelist", origin, "")
 }
 
+// SetMinSeverity is intentionally manual-only.
+// Security policy mutations must be reviewed and applied by a human editing the config file.
 func SetMinSeverity(severity string) error {
-	if IsMCPMode() {
-		return errors.New("security config updates require human review - " + securityConfigEditInstruction())
-	}
-	if !IsInteractiveTerminal() {
-		return errors.New("not in interactive mode - " + securityConfigEditInstruction())
-	}
-	return fmt.Errorf("SetMinSeverity not yet fully implemented for severity: %s", severity)
+	return blockSecurityConfigMutation("set_min_severity", "", severity)
 }
 
+// ClearWhitelist is intentionally manual-only.
+// Security policy mutations must be reviewed and applied by a human editing the config file.
 func ClearWhitelist() error {
+	return blockSecurityConfigMutation("clear_whitelist", "", "")
+}
+
+func blockSecurityConfigMutation(action string, origin string, detail string) error {
+	reason := securityConfigMutationReason()
+	if detail != "" {
+		reason = fmt.Sprintf("%s (%s=%q)", reason, action, detail)
+	}
+	err := errors.New(reason + " - " + securityConfigEditInstruction())
+
+	LogSecurityEvent(SecurityAuditEvent{
+		Timestamp:  time.Now(),
+		Action:     "security_config_mutation_blocked",
+		Origin:     origin,
+		Reason:     err.Error(),
+		Persistent: false,
+		Source:     "security_config_policy",
+	})
+
+	return err
+}
+
+func securityConfigMutationReason() string {
 	if IsMCPMode() {
-		return errors.New("security config updates require human review - " + securityConfigEditInstruction())
+		return "security config updates are manual-only in MCP mode and require human review"
 	}
 	if !IsInteractiveTerminal() {
-		return errors.New("not in interactive mode - " + securityConfigEditInstruction())
+		return "security config updates are manual-only in non-interactive environments"
 	}
-	return errors.New("ClearWhitelist not yet fully implemented")
+	return "security config updates are manual-only; interactive mutation commands are intentionally disabled"
 }

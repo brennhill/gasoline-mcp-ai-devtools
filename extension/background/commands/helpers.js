@@ -139,6 +139,8 @@ const TARGETED_QUERY_TYPES = new Set([
     'cdp_action',
     'computed_styles',
     'form_discovery',
+    'form_state',
+    'data_table',
     'state_capture',
     'state_save',
     'state_load',

@@ -5,10 +5,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 
-import {
-  normalizeMainPyprojectContent,
-  validateMainPyprojectContent
-} from './normalize-pypi-main-pyproject.js'
+import { normalizeMainPyprojectContent, validateMainPyprojectContent } from './normalize-pypi-main-pyproject.js'
 
 const version = '0.7.2'
 const baseProject = `[project]
@@ -37,10 +34,7 @@ dependencies = [
   const result = normalizeMainPyprojectContent(input)
   assert.equal(result.changed, true)
   assert.match(result.content, /\[project\][\s\S]*dependencies = \[/)
-  assert.match(
-    result.content,
-    /\[project\.scripts\]\ngasoline-mcp = "gasoline_mcp\.__main__:main"\n?$/
-  )
+  assert.match(result.content, /\[project\.scripts\]\ngasoline-mcp = "gasoline_mcp\.__main__:main"\n?$/)
   assert.equal(
     result.content.match(/dependencies = \[/g)?.length ?? 0,
     1,

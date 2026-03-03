@@ -77,7 +77,9 @@ function normalizeFrameTarget(frame: unknown): string | number | undefined | nul
 async function resolveExecutionTarget(tabId: number, frame: unknown): Promise<DOMExecutionTarget> {
   const normalized = normalizeFrameTarget(frame)
   if (normalized === null) {
-    throw new Error('invalid_frame: frame parameter must be a CSS selector, 0-based index, or "all". Got unsupported type or value')
+    throw new Error(
+      'invalid_frame: frame parameter must be a CSS selector, 0-based index, or "all". Got unsupported type or value'
+    )
   }
 
   if (normalized === undefined || normalized === 'all') {
@@ -101,7 +103,9 @@ async function resolveExecutionTarget(tabId: number, frame: unknown): Promise<DO
   )
 
   if (frameIds.length === 0) {
-    throw new Error('frame_not_found: no iframe matched the given selector or index. Verify the iframe exists and is loaded on the page')
+    throw new Error(
+      'frame_not_found: no iframe matched the given selector or index. Verify the iframe exists and is loaded on the page'
+    )
   }
 
   return { tabId, frameIds }
@@ -123,9 +127,7 @@ function pickFrameResult(results: chrome.scripting.InjectionResult[]): { result:
 }
 
 /** Merge list_interactive results from all frames (up to 100 elements). */
-function mergeListInteractive(
-  results: chrome.scripting.InjectionResult[]
-): {
+function mergeListInteractive(results: chrome.scripting.InjectionResult[]): {
   success: boolean
   elements: unknown[]
   candidate_count?: number
@@ -196,10 +198,7 @@ function resolveWaitForAction(params: DOMActionParams): string {
   return 'wait_for'
 }
 
-async function executeWaitForURL(
-  tabId: number,
-  params: DOMActionParams
-): Promise<DOMResult> {
+async function executeWaitForURL(tabId: number, params: DOMActionParams): Promise<DOMResult> {
   const urlSubstring = params.url_contains!
   const timeoutMs = Math.max(1, params.timeout_ms ?? 5000)
   const startedAt = Date.now()
@@ -228,10 +227,7 @@ async function executeWaitForURL(
   }
 }
 
-async function executeWaitFor(
-  target: DOMExecutionTarget,
-  params: DOMActionParams
-): Promise<DOMResult> {
+async function executeWaitFor(target: DOMExecutionTarget, params: DOMActionParams): Promise<DOMResult> {
   const selector = params.selector || ''
   const timeoutMs = Math.max(1, params.timeout_ms ?? 5000)
   const domAction = resolveWaitForAction(params)
@@ -269,12 +265,16 @@ async function executeWaitFor(
     }
   }
 
-  const label = domAction === 'wait_for_text'
-    ? `Text "${params.text}" not found within ${timeoutMs}ms`
-    : domAction === 'wait_for_absent'
-      ? `Element still present within ${timeoutMs}ms: ${selector}`
-      : undefined
-  return lastResult ?? {
+  const label =
+    domAction === 'wait_for_text'
+      ? `Text "${params.text}" not found within ${timeoutMs}ms`
+      : domAction === 'wait_for_absent'
+        ? `Element still present within ${timeoutMs}ms: ${selector}`
+        : undefined
+  if (lastResult?.error === 'timeout') {
+    return lastResult
+  }
+  return {
     success: false,
     action: 'wait_for',
     selector,
@@ -446,7 +446,12 @@ async function enrichWithEffectiveContext(tabId: number, result: unknown): Promi
   try {
     const tab = await chrome.tabs.get(tabId)
     if (result && typeof result === 'object' && !Array.isArray(result)) {
-      return { ...(result as Record<string, unknown>), effective_tab_id: tabId, effective_url: tab.url, effective_title: tab.title }
+      return {
+        ...(result as Record<string, unknown>),
+        effective_tab_id: tabId,
+        effective_url: tab.url,
+        effective_title: tab.title
+      }
     }
     return result
   } catch {
@@ -477,17 +482,38 @@ export async function executeDOMAction(
     const hasSelector = !!(selector || params.element_id)
     const hasText = !!params.text
     const hasURL = !!params.url_contains
-    const condCount = ((hasSelector || params.absent) ? 1 : 0) + (hasText ? 1 : 0) + (hasURL ? 1 : 0)
+    const condCount = (hasSelector || params.absent ? 1 : 0) + (hasText ? 1 : 0) + (hasURL ? 1 : 0)
     if (condCount === 0) {
-      sendAsyncResult(syncClient, query.id, query.correlation_id!, 'error', null, 'wait_for requires selector, text, or url_contains')
+      sendAsyncResult(
+        syncClient,
+        query.id,
+        query.correlation_id!,
+        'error',
+        null,
+        'wait_for requires selector, text, or url_contains'
+      )
       return
     }
     if (condCount > 1) {
-      sendAsyncResult(syncClient, query.id, query.correlation_id!, 'error', null, 'wait_for conditions are mutually exclusive')
+      sendAsyncResult(
+        syncClient,
+        query.id,
+        query.correlation_id!,
+        'error',
+        null,
+        'wait_for conditions are mutually exclusive'
+      )
       return
     }
     if (params.absent && !hasSelector) {
-      sendAsyncResult(syncClient, query.id, query.correlation_id!, 'error', null, 'wait_for with absent requires a selector')
+      sendAsyncResult(
+        syncClient,
+        query.id,
+        query.correlation_id!,
+        'error',
+        null,
+        'wait_for with absent requires a selector'
+      )
       return
     }
   }
@@ -527,11 +553,11 @@ export async function executeDOMAction(
       try {
         const cdpResult = await tryCDPEscalation(tabId, action, params)
         if (cdpResult) {
-          const { result: reconciledResult, status, error } = deriveAsyncStatusFromDOMResult(
-            action,
-            selector || '',
-            cdpResult
-          )
+          const {
+            result: reconciledResult,
+            status,
+            error
+          } = deriveAsyncStatusFromDOMResult(action, selector || '', cdpResult)
           const domResult = toDOMResult(reconciledResult)
           if (domResult) {
             sendToastForResult(tabId, false, domResult, actionToast, toastLabel, toastDetail)
@@ -570,11 +596,11 @@ export async function executeDOMAction(
         return
       }
 
-      const { result: reconciledResult, status, error } = deriveAsyncStatusFromDOMResult(
-        action,
-        selector || '',
-        rawResult
-      )
+      const {
+        result: reconciledResult,
+        status,
+        error
+      } = deriveAsyncStatusFromDOMResult(action, selector || '', rawResult)
       const domResult = toDOMResult(reconciledResult)
       if (domResult) {
         sendToastForResult(tabId, readOnly, domResult, actionToast, toastLabel, toastDetail)
@@ -621,19 +647,19 @@ export async function executeDOMAction(
       let resultPayload: unknown
       if (picked) {
         const base: Record<string, unknown> = { ...(firstResult as Record<string, unknown>), frame_id: picked.frameId }
-        const matched = base["matched"]
+        const matched = base['matched']
         if (matched && typeof matched === 'object' && !Array.isArray(matched)) {
-          base["matched"] = { ...(matched as Record<string, unknown>), frame_id: picked.frameId }
+          base['matched'] = { ...(matched as Record<string, unknown>), frame_id: picked.frameId }
         }
         resultPayload = base
       } else {
         resultPayload = firstResult
       }
-      const { result: reconciledResult, status, error } = deriveAsyncStatusFromDOMResult(
-        action,
-        selector || '',
-        resultPayload
-      )
+      const {
+        result: reconciledResult,
+        status,
+        error
+      } = deriveAsyncStatusFromDOMResult(action, selector || '', resultPayload)
       const domResult = toDOMResult(reconciledResult)
       if (domResult) {
         sendToastForResult(tabId, readOnly, domResult, actionToast, toastLabel, toastDetail)

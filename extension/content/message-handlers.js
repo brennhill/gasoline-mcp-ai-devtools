@@ -303,6 +303,12 @@ export function handleComputedStylesQuery(params, sendResponse) {
 export function handleFormDiscoveryQuery(params, sendResponse) {
     return forwardInjectQuery('GASOLINE_FORM_DISCOVERY_QUERY', 'GASOLINE_FORM_DISCOVERY_RESPONSE', 'Form discovery', params, sendResponse);
 }
+export function handleFormStateQuery(params, sendResponse) {
+    return forwardInjectQuery('GASOLINE_FORM_STATE_QUERY', 'GASOLINE_FORM_STATE_RESPONSE', 'Form state', params, sendResponse);
+}
+export function handleDataTableQuery(params, sendResponse) {
+    return forwardInjectQuery('GASOLINE_DATA_TABLE_QUERY', 'GASOLINE_DATA_TABLE_RESPONSE', 'Data table extraction', params, sendResponse);
+}
 export function handleLinkHealthQuery(params, sendResponse) {
     return forwardInjectQuery('GASOLINE_LINK_HEALTH_QUERY', 'GASOLINE_LINK_HEALTH_RESPONSE', 'Link health check', params, sendResponse);
 }

@@ -79,7 +79,8 @@ export function analyzeFeatureGates(): {
 
   // --- Plan gate detection ---
 
-  const planPatterns = /\b(upgrade|unlock|premium|pro plan|enterprise|paid|subscribe|pricing|go pro|get started|start free trial)\b/i
+  const planPatterns =
+    /\b(upgrade|unlock|premium|pro plan|enterprise|paid|subscribe|pricing|go pro|get started|start free trial)\b/i
   const planNamePattern = /\b(free|starter|basic|pro|premium|plus|business|enterprise|creator|growth|team|scale)\b/i
 
   // Scan for elements with gate-related text
@@ -115,8 +116,10 @@ export function analyzeFeatureGates(): {
 
   // --- Auth gate detection ---
 
-  const authPatterns = /\b(connect your|authenticate with|sign in with|log in with|link your|authorize|oauth|connect .+ account)\b/i
-  const providerPattern = /\b(google|facebook|twitter|linkedin|github|slack|instagram|gumroad|stripe|shopify|zapier|hubspot|salesforce)\b/i
+  const authPatterns =
+    /\b(connect your|authenticate with|sign in with|log in with|link your|authorize|oauth|connect .+ account)\b/i
+  const providerPattern =
+    /\b(google|facebook|twitter|linkedin|github|slack|instagram|gumroad|stripe|shopify|zapier|hubspot|salesforce)\b/i
 
   const seenAuthTexts = new Set<string>()
   for (let i = 0; i < allElements.length && authGates.length < 20; i++) {

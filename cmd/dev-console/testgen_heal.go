@@ -10,7 +10,7 @@ import (
 	"strings"
 )
 
-func (h *ToolHandler) handleGenerateTestHeal(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+func (h *testGenHandler) handleGenerateTestHeal(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	var params TestHealRequest
 
 	warnings, err := unmarshalWithWarnings(args, &params)
@@ -81,7 +81,7 @@ func validateHealParams(req JSONRPCRequest, params TestHealRequest) (JSONRPCResp
 	return JSONRPCResponse{}, false
 }
 
-func (h *ToolHandler) dispatchHealAction(req JSONRPCRequest, params TestHealRequest, projectDir string) (any, JSONRPCResponse, bool) {
+func (h *testGenHandler) dispatchHealAction(req JSONRPCRequest, params TestHealRequest, projectDir string) (any, JSONRPCResponse, bool) {
 	switch params.Action {
 	case "analyze":
 		return h.handleHealAnalyze(req, params, projectDir)
@@ -93,7 +93,7 @@ func (h *ToolHandler) dispatchHealAction(req JSONRPCRequest, params TestHealRequ
 	return nil, JSONRPCResponse{}, false
 }
 
-func (h *ToolHandler) handleHealAnalyze(req JSONRPCRequest, params TestHealRequest, projectDir string) (any, JSONRPCResponse, bool) {
+func (h *testGenHandler) handleHealAnalyze(req JSONRPCRequest, params TestHealRequest, projectDir string) (any, JSONRPCResponse, bool) {
 	if params.TestFile == "" {
 		return nil, JSONRPCResponse{
 			JSONRPC: "2.0",
@@ -148,7 +148,7 @@ func mapAnalyzeError(req JSONRPCRequest, params TestHealRequest, err error) JSON
 	}
 }
 
-func (h *ToolHandler) handleHealRepair(req JSONRPCRequest, params TestHealRequest, projectDir string) (any, JSONRPCResponse, bool) {
+func (h *testGenHandler) handleHealRepair(req JSONRPCRequest, params TestHealRequest, projectDir string) (any, JSONRPCResponse, bool) {
 	if len(params.BrokenSelectors) == 0 {
 		return nil, JSONRPCResponse{
 			JSONRPC: "2.0",
@@ -172,7 +172,7 @@ func (h *ToolHandler) handleHealRepair(req JSONRPCRequest, params TestHealReques
 	return healResult, JSONRPCResponse{}, false
 }
 
-func (h *ToolHandler) handleHealBatch(req JSONRPCRequest, params TestHealRequest, projectDir string) (any, JSONRPCResponse, bool) {
+func (h *testGenHandler) handleHealBatch(req JSONRPCRequest, params TestHealRequest, projectDir string) (any, JSONRPCResponse, bool) {
 	if params.TestDir == "" {
 		return nil, JSONRPCResponse{
 			JSONRPC: "2.0",

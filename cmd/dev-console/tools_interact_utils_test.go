@@ -47,7 +47,7 @@ func TestApplyJitter_ReadOnlyActions_ReturnZero(t *testing.T) {
 			h.actionJitterMaxMs = 5000
 			h.jitterMu.Unlock()
 
-			got := h.applyJitter(action)
+			got := h.interactAction().applyJitter(action)
 			if got != 0 {
 				t.Errorf("applyJitter(%q) = %d, want 0 for read-only action", action, got)
 			}
@@ -79,7 +79,7 @@ func TestApplyJitter_ZeroMaxMs_ReturnsZero(t *testing.T) {
 			h, _, _ := makeToolHandler(t)
 
 			// Default actionJitterMaxMs is 0.
-			got := h.applyJitter(action)
+			got := h.interactAction().applyJitter(action)
 			if got != 0 {
 				t.Errorf("applyJitter(%q) = %d, want 0 when maxMs is 0", action, got)
 			}
@@ -102,7 +102,7 @@ func TestApplyJitter_PositiveMaxMs_ReturnsValueInRange(t *testing.T) {
 
 	// Run multiple iterations to gain confidence the value stays in range.
 	for i := 0; i < 100; i++ {
-		got := h.applyJitter("click")
+		got := h.interactAction().applyJitter("click")
 		if got < 0 || got >= maxMs {
 			t.Fatalf("applyJitter(\"click\") iteration %d = %d, want [0, %d)", i, got, maxMs)
 		}
@@ -118,7 +118,7 @@ func TestApplyJitter_UsesConfiguredJitter(t *testing.T) {
 	h, _, _ := makeToolHandler(t)
 
 	// Initially no jitter.
-	if got := h.applyJitter("click"); got != 0 {
+	if got := h.interactAction().applyJitter("click"); got != 0 {
 		t.Fatalf("applyJitter before configure = %d, want 0", got)
 	}
 
@@ -131,7 +131,7 @@ func TestApplyJitter_UsesConfiguredJitter(t *testing.T) {
 
 	// Now applyJitter should return values in [0, 100).
 	for i := 0; i < 50; i++ {
-		got := h.applyJitter("click")
+		got := h.interactAction().applyJitter("click")
 		if got < 0 || got >= 100 {
 			t.Fatalf("applyJitter after configure iteration %d = %d, want [0, 100)", i, got)
 		}
@@ -163,7 +163,7 @@ func TestResolveNavigateURL_NormalURL_PassesThrough(t *testing.T) {
 			t.Parallel()
 			h, _, _ := makeToolHandler(t)
 
-			got, err := h.resolveNavigateURL(tt.url)
+			got, err := h.interactAction().resolveNavigateURLImpl(tt.url)
 			if err != nil {
 				t.Fatalf("resolveNavigateURL(%q) error: %v", tt.url, err)
 			}
@@ -183,7 +183,7 @@ func TestResolveNavigateURL_EmptyURL_ReturnsEmpty(t *testing.T) {
 	t.Parallel()
 	h, _, _ := makeToolHandler(t)
 
-	got, err := h.resolveNavigateURL("")
+	got, err := h.interactAction().resolveNavigateURLImpl("")
 	if err != nil {
 		t.Fatalf("resolveNavigateURL(\"\") unexpected error: %v", err)
 	}
@@ -201,7 +201,7 @@ func TestResolveNavigateURL_GasolineInsecure_NilCapture_ReturnsError(t *testing.
 	h, _, _ := makeToolHandler(t)
 	h.capture = nil
 
-	_, err := h.resolveNavigateURL("gasoline-insecure://https://example.com")
+	_, err := h.interactAction().resolveNavigateURLImpl("gasoline-insecure://https://example.com")
 	if err == nil {
 		t.Fatal("expected error when capture is nil")
 	}
@@ -217,7 +217,7 @@ func TestResolveNavigateURL_GasolineInsecure_WrongSecurityMode_ReturnsError(t *t
 	// Default security mode is "normal", not "insecure_proxy".
 	_ = cap
 
-	_, err := h.resolveNavigateURL("gasoline-insecure://https://example.com")
+	_, err := h.interactAction().resolveNavigateURLImpl("gasoline-insecure://https://example.com")
 	if err == nil {
 		t.Fatal("expected error when security mode is not insecure_proxy")
 	}
@@ -231,7 +231,7 @@ func TestResolveNavigateURL_GasolineInsecure_MissingTarget_ReturnsError(t *testi
 	h, _, cap := makeToolHandler(t)
 	cap.SetSecurityMode(capture.SecurityModeInsecureProxy, nil)
 
-	_, err := h.resolveNavigateURL("gasoline-insecure://")
+	_, err := h.interactAction().resolveNavigateURLImpl("gasoline-insecure://")
 	if err == nil {
 		t.Fatal("expected error for empty target URL")
 	}
@@ -245,7 +245,7 @@ func TestResolveNavigateURL_GasolineInsecure_InvalidScheme_ReturnsError(t *testi
 	h, _, cap := makeToolHandler(t)
 	cap.SetSecurityMode(capture.SecurityModeInsecureProxy, nil)
 
-	_, err := h.resolveNavigateURL("gasoline-insecure://ftp://files.example.com")
+	_, err := h.interactAction().resolveNavigateURLImpl("gasoline-insecure://ftp://files.example.com")
 	if err == nil {
 		t.Fatal("expected error for non-http/https target scheme")
 	}
@@ -259,7 +259,7 @@ func TestResolveNavigateURL_GasolineInsecure_MissingHost_ReturnsError(t *testing
 	h, _, cap := makeToolHandler(t)
 	cap.SetSecurityMode(capture.SecurityModeInsecureProxy, nil)
 
-	_, err := h.resolveNavigateURL("gasoline-insecure://http://")
+	_, err := h.interactAction().resolveNavigateURLImpl("gasoline-insecure://http://")
 	if err == nil {
 		t.Fatal("expected error for target URL missing host")
 	}
@@ -296,7 +296,7 @@ func TestResolveNavigateURL_GasolineInsecure_ValidTarget_ReturnsProxyURL(t *test
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			got, err := h.resolveNavigateURL(tt.input)
+			got, err := h.interactAction().resolveNavigateURLImpl(tt.input)
 			if err != nil {
 				t.Fatalf("resolveNavigateURL(%q) error: %v", tt.input, err)
 			}
@@ -326,7 +326,7 @@ func TestResolveNavigateURL_GasolineInsecure_CaseInsensitive(t *testing.T) {
 	cap.SetSecurityMode(capture.SecurityModeInsecureProxy, nil)
 
 	// The prefix check is case-insensitive.
-	got, err := h.resolveNavigateURL("GASOLINE-INSECURE://https://example.com")
+	got, err := h.interactAction().resolveNavigateURLImpl("GASOLINE-INSECURE://https://example.com")
 	if err != nil {
 		t.Fatalf("resolveNavigateURL with uppercase prefix error: %v", err)
 	}

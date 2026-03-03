@@ -592,6 +592,25 @@ export function domPrimitive(
     return topDialog
   }
 
+  function describeBlockingOverlay(overlay: Element): string {
+    const overlayTag = overlay.tagName.toLowerCase()
+    const overlayRole = overlay.getAttribute('role') || ''
+    const overlayLabel = overlay.getAttribute('aria-label') || ''
+    if (overlayLabel) return `${overlayTag}[aria-label="${overlayLabel}"]`
+    if (overlayRole) return `${overlayTag}[role="${overlayRole}"]`
+    return overlayTag
+  }
+
+  function blockedByOverlayError(target: Element): DOMResult | null {
+    const blockingOverlay = detectBlockingOverlay(target)
+    if (!blockingOverlay) return null
+    const overlayDesc = describeBlockingOverlay(blockingOverlay)
+    return domError(
+      'blocked_by_overlay',
+      `Element is behind a modal overlay (${overlayDesc}). Use interact({what:"dismiss_top_overlay"}) to close it first.`
+    )
+  }
+
   function buildActionHandlers(node: Element): Record<string, ActionHandler> {
     return {
       click: () =>
@@ -603,14 +622,8 @@ export function domPrimitive(
           const clickTarget = (interactiveAncestor instanceof HTMLElement ? interactiveAncestor : node) as HTMLElement
 
           // Check if element is behind a modal overlay before clicking
-          const blockingOverlay = detectBlockingOverlay(node)
-          if (blockingOverlay) {
-            const overlayTag = blockingOverlay.tagName.toLowerCase()
-            const overlayRole = blockingOverlay.getAttribute('role') || ''
-            const overlayLabel = blockingOverlay.getAttribute('aria-label') || ''
-            const overlayDesc = overlayLabel ? `${overlayTag}[aria-label="${overlayLabel}"]` : overlayRole ? `${overlayTag}[role="${overlayRole}"]` : overlayTag
-            return domError('blocked_by_overlay', `Element is behind a modal overlay (${overlayDesc}). Use interact({what:"dismiss_top_overlay"}) to close it first.`)
-          }
+          const overlayErr = blockedByOverlayError(node)
+          if (overlayErr) return overlayErr
           if (options.new_tab) {
             const linkNode = (() => {
               const tag = clickTarget.tagName.toLowerCase()
@@ -661,6 +674,9 @@ export function domPrimitive(
 
       type: () =>
         withMutationTracking(() => {
+          const overlayErr = blockedByOverlayError(node)
+          if (overlayErr) return overlayErr
+
           // Normalize literal \n sequences to actual newlines (MCP parameter encoding)
           const text = (options.text || '').replace(/\\n/g, '\n')
 
@@ -718,6 +734,9 @@ export function domPrimitive(
 
       select: () =>
         withMutationTracking(() => {
+          const overlayErr = blockedByOverlayError(node)
+          if (overlayErr) return overlayErr
+
           if (!(node instanceof HTMLSelectElement)) return domError('not_select', `Element is not a <select>: ${node.tagName}`) // nosemgrep: html-in-template-string
           const nativeSelectSetter = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value')?.set
           if (nativeSelectSetter) {
@@ -731,6 +750,9 @@ export function domPrimitive(
 
       check: () =>
         withMutationTracking(() => {
+          const overlayErr = blockedByOverlayError(node)
+          if (overlayErr) return overlayErr
+
           if (!(node instanceof HTMLInputElement) || (node.type !== 'checkbox' && node.type !== 'radio')) {
             return domError('not_checkable', `Element is not a checkbox or radio: ${node.tagName} type=${(node as HTMLInputElement).type || 'N/A'}`)
           }
@@ -834,6 +856,9 @@ export function domPrimitive(
         }),
 
       focus: () => {
+        const overlayErr = blockedByOverlayError(node)
+        if (overlayErr) return overlayErr
+
         if (!(node instanceof HTMLElement)) return domError('not_focusable', `Element is not an HTMLElement: ${node.tagName}`)
         node.focus()
         return mutatingSuccess(node)
@@ -969,6 +994,9 @@ export function domPrimitive(
 
       paste: () =>
         withMutationTracking(() => {
+          const overlayErr = blockedByOverlayError(node)
+          if (overlayErr) return overlayErr
+
           if (!(node instanceof HTMLElement)) return domError('not_interactive', `Element is not an HTMLElement: ${node.tagName}`)
           node.focus()
           if (options.clear) {
@@ -1001,6 +1029,9 @@ export function domPrimitive(
 
       key_press: () =>
         withMutationTracking(() => {
+          const overlayErr = blockedByOverlayError(node)
+          if (overlayErr) return overlayErr
+
           if (!(node instanceof HTMLElement)) return domError('not_interactive', `Element is not an HTMLElement: ${node.tagName}`)
           const key = options.text || options.key || 'Enter'
 
@@ -1587,6 +1618,67 @@ export function domPrimitive(
     return { ...(rawResult as DOMResult), ambiguous_matches: resolvedAmbiguousMatches }
   }
   return rawResult
+}
+
+/**
+ * Backward-compatible wait helper used by unit tests and legacy call sites.
+ * Polls wait_for and listens for DOM mutations for fast resolution.
+ */
+export function domWaitFor(selector: string, timeoutMs: number = 5000): Promise<DOMResult> {
+  const timeout = Math.max(1, timeoutMs)
+  const startedAt = Date.now()
+  const pollIntervalMs = 50
+
+  return new Promise<DOMResult>((resolve) => {
+    let settled = false
+    let timer: ReturnType<typeof setTimeout> | null = null
+    let observer: MutationObserver | null = null
+
+    const done = (result: DOMResult) => {
+      if (settled) return
+      settled = true
+      if (timer) clearTimeout(timer)
+      if (observer) observer.disconnect()
+      resolve(result)
+    }
+
+    const check = () => {
+      const result = domPrimitive('wait_for', selector, { timeout_ms: timeout }) as DOMResult
+      if (result?.success) {
+        done(result)
+        return
+      }
+      if (Date.now() - startedAt >= timeout) {
+        done({
+          success: false,
+          action: 'wait_for',
+          selector,
+          error: 'timeout',
+          message: `Element not found within ${timeout}ms: ${selector}`
+        } as DOMResult)
+        return
+      }
+      timer = setTimeout(check, pollIntervalMs)
+    }
+
+    try {
+      observer = new MutationObserver(() => {
+        if (settled) return
+        const immediate = domPrimitive('wait_for', selector, { timeout_ms: timeout }) as DOMResult
+        if (immediate?.success) done(immediate)
+      })
+      observer.observe(document.body || document.documentElement, {
+        childList: true,
+        subtree: true,
+        attributes: true,
+        characterData: true
+      })
+    } catch {
+      // Best-effort optimization only; polling remains authoritative.
+    }
+
+    check()
+  })
 }
 
 // Dispatcher utilities (parseDOMParams, executeDOMAction, etc.) moved to ./dom-dispatch.ts

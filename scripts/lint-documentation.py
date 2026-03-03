@@ -27,6 +27,9 @@ LEGACY_CODE_PATH_MAP = {
     "cmd/dev-console/tools.go": "cmd/dev-console/tools_schema.go",
     "cmd/dev-console/codegen.go": "cmd/dev-console/testgen.go",
     "internal/session/sessions.go": "internal/session/types.go",
+    "internal/capture/queries.go": "internal/capture/query_dispatcher.go",
+    "internal/capture/recording.go": "internal/capture/recording_manager.go",
+    "internal/security/security_config.go": "internal/security/security_config_mode.go",
 }
 
 class DocumentLinter:

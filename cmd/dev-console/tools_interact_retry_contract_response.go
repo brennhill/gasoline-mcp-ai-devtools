@@ -24,7 +24,7 @@ func deriveRetryReason(responseData map[string]any, fallback string) string {
 	return "unknown"
 }
 
-func (h *ToolHandler) attachRetryContext(correlationID string, responseData map[string]any, status string, fallbackReason string) retryTerminalDecision {
+func (h *interactActionHandler) attachRetryContext(correlationID string, responseData map[string]any, status string, fallbackReason string) retryTerminalDecision {
 	if h == nil || correlationID == "" || responseData == nil {
 		return retryTerminalDecision{}
 	}

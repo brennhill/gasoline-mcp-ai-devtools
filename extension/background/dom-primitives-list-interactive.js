@@ -70,19 +70,27 @@ export function domPrimitiveListInteractive(scopeSelector, options) {
         return results;
     }
     // — Selector and classification helpers —
+    function cssEscape(raw) {
+        const maybeCSS = globalThis.CSS;
+        if (maybeCSS && typeof maybeCSS.escape === 'function') {
+            return maybeCSS.escape(raw);
+        }
+        // Minimal fallback for test/non-browser environments where CSS.escape is unavailable.
+        return raw.replace(/["\\]/g, '\\$&');
+    }
     function buildUniqueSelector(el, htmlEl, fallbackSelector) {
         if (el.id)
-            return `#${CSS.escape(el.id)}`;
+            return `#${cssEscape(el.id)}`;
         if (el instanceof HTMLInputElement && el.name)
-            return `input[name="${CSS.escape(el.name)}"]`;
+            return `input[name="${cssEscape(el.name)}"]`;
         const ariaLabel = el.getAttribute('aria-label');
         // Use CSS attribute selectors — these resolve via querySelectorAll directly,
         // avoiding semantic resolver ordering mismatches (#360).
         if (ariaLabel)
-            return `[aria-label="${CSS.escape(ariaLabel)}"]`;
+            return `[aria-label="${cssEscape(ariaLabel)}"]`;
         const placeholder = el.getAttribute('placeholder');
         if (placeholder)
-            return `[placeholder="${CSS.escape(placeholder)}"]`;
+            return `[placeholder="${cssEscape(placeholder)}"]`;
         const text = (htmlEl.textContent || '').trim().slice(0, 40);
         if (text)
             return `text=${text}`;
@@ -147,6 +155,8 @@ export function domPrimitiveListInteractive(scopeSelector, options) {
         let node = el;
         while (node && node !== document.documentElement) {
             if (node instanceof HTMLElement) {
+                if (typeof getComputedStyle !== 'function')
+                    return false;
                 const style = getComputedStyle(node);
                 const position = style.position || '';
                 if (position === 'fixed' || position === 'sticky') {
@@ -401,10 +411,11 @@ export function domPrimitiveListInteractive(scopeSelector, options) {
     }
     // #366: Deduplicate responsive variants — when hidden and visible copies of the same
     // element exist (e.g., mobile + desktop nav links), keep only the visible one.
-    // Key includes tag, elementType, label, AND href (for links) to avoid collapsing distinct elements.
+    // Use a coarse semantic key (tag + type + normalized label) so hidden responsive
+    // variants with different hrefs still collapse into the visible copy.
+    const normalizeDedupLabel = (label) => label.trim().replace(/\s+/g, ' ').toLowerCase();
     const dedupKey = (e) => {
-        const href = e.tag === 'a' ? (e.el.getAttribute('href') || '') : '';
-        return `${e.tag}|${e.elementType}|${e.label}|${href}`;
+        return `${e.tag}|${e.elementType}|${normalizeDedupLabel(e.label)}`;
     };
     const dedupGroups = new Map();
     for (const entry of rawEntries) {

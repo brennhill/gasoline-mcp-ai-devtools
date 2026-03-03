@@ -11,10 +11,7 @@
  * to batcher-instances.ts and sync client lifecycle to sync-manager.ts.
  */
 
-import type {
-  LogEntry,
-  ChromeMessageSender
-} from '../types/index.js'
+import type { LogEntry, ChromeMessageSender } from '../types/index.js'
 
 import {
   getServerUrl,
@@ -59,12 +56,7 @@ import {
 import { getTrackedTabInfo } from './event-listeners.js'
 import { DebugCategory } from './debug.js'
 import { getRequestHeaders } from './server.js'
-import {
-  saveStateSnapshot,
-  loadStateSnapshot,
-  listStateSnapshots,
-  deleteStateSnapshot
-} from './message-handlers.js'
+import { saveStateSnapshot, loadStateSnapshot, listStateSnapshots, deleteStateSnapshot } from './message-handlers.js'
 import {
   handlePendingQuery as handlePendingQueryImpl,
   handlePilotCommand as handlePilotCommandImpl

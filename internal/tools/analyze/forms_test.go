@@ -53,3 +53,37 @@ func TestParseFormsArgs_InvalidJSON(t *testing.T) {
 		t.Fatal("expected error for invalid JSON")
 	}
 }
+
+func TestParseDataTableArgs_WithSelectorAndLimits(t *testing.T) {
+	t.Parallel()
+	args, _ := json.Marshal(map[string]any{
+		"selector": "table.report",
+		"max_rows": 25,
+		"max_cols": 12,
+		"tab_id":   7,
+	})
+	parsed, err := ParseDataTableArgs(args)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if parsed.Selector != "table.report" {
+		t.Errorf("expected selector 'table.report', got %q", parsed.Selector)
+	}
+	if parsed.MaxRows != 25 {
+		t.Errorf("expected max_rows 25, got %d", parsed.MaxRows)
+	}
+	if parsed.MaxCols != 12 {
+		t.Errorf("expected max_cols 12, got %d", parsed.MaxCols)
+	}
+	if parsed.TabID != 7 {
+		t.Errorf("expected tab_id 7, got %d", parsed.TabID)
+	}
+}
+
+func TestParseDataTableArgs_InvalidJSON(t *testing.T) {
+	t.Parallel()
+	_, err := ParseDataTableArgs(json.RawMessage(`{bad`))
+	if err == nil {
+		t.Fatal("expected error for invalid JSON")
+	}
+}

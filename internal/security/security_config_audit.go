@@ -6,6 +6,9 @@ import (
 )
 
 var (
+	// securityAuditLog is intentionally in-memory only.
+	// Rationale: this log records ephemeral session decisions and blocked mutation attempts,
+	// and should not persist across restarts without explicit user opt-in.
 	securityAuditLog []SecurityAuditEvent
 	securityAuditMu  sync.Mutex
 )

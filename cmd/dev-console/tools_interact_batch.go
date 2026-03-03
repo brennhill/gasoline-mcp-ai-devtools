@@ -11,13 +11,13 @@ import (
 )
 
 // handleBatch executes a sequence of interact steps provided inline.
-func (h *ToolHandler) handleBatch(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+func (h *interactActionHandler) handleBatch(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	// Fail fast if pilot/extension are not available — avoids acquiring replayMu
 	// and iterating steps that would all fail individually (#9.R3.9).
-	if resp, blocked := h.requirePilot(req); blocked {
+	if resp, blocked := h.parent.requirePilot(req); blocked {
 		return resp
 	}
-	if resp, blocked := h.requireExtension(req); blocked {
+	if resp, blocked := h.parent.requireExtension(req); blocked {
 		return resp
 	}
 
@@ -67,7 +67,7 @@ func (h *ToolHandler) handleBatch(req JSONRPCRequest, args json.RawMessage) JSON
 	defer replayMu.Unlock()
 
 	// Record audit trail
-	h.recordAIAction("batch", "", map[string]any{"steps": len(params.Steps)})
+	h.parent.recordAIAction("batch", "", map[string]any{"steps": len(params.Steps)})
 
 	start := time.Now()
 	results := make([]SequenceStepResult, 0, len(params.Steps))
@@ -99,7 +99,7 @@ func (h *ToolHandler) handleBatch(req JSONRPCRequest, args json.RawMessage) JSON
 
 		replayStepArgs := forceReplayAsyncInteractStep(stepArgs)
 		stepStart := time.Now()
-		stepResp := h.toolInteract(req, replayStepArgs)
+		stepResp := h.parent.toolInteract(req, replayStepArgs)
 		stepDuration := time.Since(stepStart).Milliseconds()
 
 		stepResult := SequenceStepResult{
@@ -112,7 +112,7 @@ func (h *ToolHandler) handleBatch(req JSONRPCRequest, args json.RawMessage) JSON
 			stepResult.CorrelationID = corrID
 			timeout := time.Duration(params.StepTimeoutMs) * time.Millisecond
 			if timeout > 0 {
-				cmd, found := h.capture.WaitForCommand(corrID, timeout)
+				cmd, found := h.parent.capture.WaitForCommand(corrID, timeout)
 				if found {
 					switch cmd.Status {
 					case "pending":
