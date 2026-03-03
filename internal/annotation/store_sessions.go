@@ -60,8 +60,8 @@ func (s *Store) StoreSession(tabID int, session *Session) {
 
 	// Complete async waiters outside the lock.
 	if plan.completeFn != nil {
-		result := BuildSessionResult(session)
 		for _, w := range plan.toComplete {
+			result := BuildSessionResult(session, w.URLFilter)
 			plan.completeFn(w.CorrelationID, result)
 		}
 	}
