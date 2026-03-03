@@ -7,9 +7,8 @@
 // Handles: dom, a11y, link_health, draw_mode.
 // Includes frame routing helpers used by dom and a11y.
 
-import { isAiWebPilotEnabled } from '../state.js'
 import { registerCommand } from './registry.js'
-import { isContentScriptUnreachableError } from './helpers.js'
+import { isContentScriptUnreachableError, requireAiWebPilot } from './helpers.js'
 
 // =============================================================================
 // FRAME ROUTING TYPES
@@ -605,19 +604,8 @@ registerCommand('data_table', async (ctx) => {
 // =============================================================================
 
 registerCommand('draw_mode', async (ctx) => {
-  if (!isAiWebPilotEnabled()) {
-    ctx.sendResult({
-      error: 'ai_web_pilot_disabled',
-      message: 'AI Web Pilot is not enabled in the extension popup'
-    })
-    return
-  }
-  let params: { action?: string; annot_session?: string }
-  try {
-    params = typeof ctx.query.params === 'string' ? JSON.parse(ctx.query.params) : ctx.query.params
-  } catch {
-    params = {}
-  }
+  if (!requireAiWebPilot(ctx)) return
+  const params = ctx.params as { action?: string; annot_session?: string }
   if (params.action === 'start') {
     try {
       const result = await chrome.tabs.sendMessage(ctx.tabId, {

@@ -19,6 +19,8 @@ const {
 } = require('./errors');
 
 const MAX_CONFIG_SIZE = 1024 * 1024; // 1MB
+const MCP_SERVER_NAME = 'gasoline-browser-devtools';
+const LEGACY_MCP_SERVER_NAMES = ['gasoline-agentic-browser', 'gasoline'];
 
 /**
  * Client definitions for all supported AI assistant clients.
@@ -30,8 +32,8 @@ const CLIENT_DEFINITIONS = [
     name: 'Claude Code',
     type: 'cli',
     detectCommand: 'claude',
-    installArgs: ['mcp', 'add-json', '--scope', 'user', 'gasoline-agentic-browser'],
-    removeArgs: ['mcp', 'remove', '--scope', 'user', 'gasoline-agentic-browser'],
+    installArgs: ['mcp', 'add-json', '--scope', 'user', MCP_SERVER_NAME],
+    removeArgs: ['mcp', 'remove', '--scope', 'user', MCP_SERVER_NAME],
   },
   {
     id: 'claude-desktop',
@@ -464,15 +466,22 @@ function mergeGassolineConfig(existing, gassolineEntry, envVars = {}) {
     merged.mcpServers = {};
   }
 
+  // Remove legacy keys before writing canonical key.
+  for (const legacyName of LEGACY_MCP_SERVER_NAMES) {
+    if (legacyName !== MCP_SERVER_NAME) {
+      delete merged.mcpServers[legacyName];
+    }
+  }
+
   // Merge gasoline entry
-  merged.mcpServers['gasoline-agentic-browser'] = {
+  merged.mcpServers[MCP_SERVER_NAME] = {
     command: gassolineEntry.command,
     args: gassolineEntry.args || [],
   };
 
   // Add env vars if provided
   if (envVars && Object.keys(envVars).length > 0) {
-    merged.mcpServers['gasoline-agentic-browser'].env = envVars;
+    merged.mcpServers[MCP_SERVER_NAME].env = envVars;
   }
 
   return merged;
@@ -503,6 +512,8 @@ module.exports = {
   CLIENT_DEFINITIONS,
   CLIENT_ALIASES,
   LEGACY_PATHS,
+  MCP_SERVER_NAME,
+  LEGACY_MCP_SERVER_NAMES,
   expandPath,
   getClientConfigPath,
   getClientDetectDir,

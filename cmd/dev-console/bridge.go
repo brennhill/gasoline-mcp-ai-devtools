@@ -23,10 +23,18 @@ import (
 	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/util"
 )
 
-// isGasolineService accepts both the legacy "gasoline" and new "gasoline-agentic-browser" names.
+// isGasolineService accepts canonical and legacy server names for compatibility.
 func isGasolineService(name string) bool {
 	n := strings.ToLower(strings.TrimSpace(name))
-	return n == "gasoline" || n == "gasoline-agentic-browser"
+	if n == mcpServerName {
+		return true
+	}
+	for _, legacy := range legacyMCPServerNames {
+		if n == legacy {
+			return true
+		}
+	}
+	return false
 }
 
 // toolCallTimeout delegates to internal/bridge for per-request timeout logic.

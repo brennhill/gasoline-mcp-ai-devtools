@@ -10,6 +10,7 @@ import tempfile
 import shutil
 import unittest
 from gasoline_agentic_browser.uninstall import uninstall_from_client, execute_uninstall
+from gasoline_agentic_browser.config import MCP_SERVER_NAME
 
 
 class TestUninstallFromClient(unittest.TestCase):
@@ -20,7 +21,7 @@ class TestUninstallFromClient(unittest.TestCase):
             with open(cfg_path, "w") as f:
                 json.dump({
                     "mcpServers": {
-                        "gasoline": {"command": "gasoline-mcp", "args": []},
+                        MCP_SERVER_NAME: {"command": "gasoline-mcp", "args": []},
                         "other": {"command": "other", "args": []},
                     }
                 }, f)
@@ -35,7 +36,7 @@ class TestUninstallFromClient(unittest.TestCase):
 
             with open(cfg_path) as f:
                 written = json.load(f)
-            self.assertNotIn("gasoline", written["mcpServers"])
+            self.assertNotIn(MCP_SERVER_NAME, written["mcpServers"])
             self.assertIn("other", written["mcpServers"])
         finally:
             shutil.rmtree(tmp)
@@ -45,7 +46,7 @@ class TestUninstallFromClient(unittest.TestCase):
         try:
             cfg_path = os.path.join(tmp, "mcp.json")
             with open(cfg_path, "w") as f:
-                json.dump({"mcpServers": {"gasoline": {"command": "gasoline-mcp"}}}, f)
+                json.dump({"mcpServers": {MCP_SERVER_NAME: {"command": "gasoline-mcp"}}}, f)
 
             d = {
                 "id": "test", "name": "Test", "type": "file",
@@ -72,7 +73,7 @@ class TestUninstallFromClient(unittest.TestCase):
         try:
             cfg_path = os.path.join(tmp, "mcp.json")
             with open(cfg_path, "w") as f:
-                json.dump({"mcpServers": {"gasoline": {"command": "gasoline-mcp"}}}, f)
+                json.dump({"mcpServers": {MCP_SERVER_NAME: {"command": "gasoline-mcp"}}}, f)
 
             d = {
                 "id": "test", "name": "Test", "type": "file",
@@ -84,7 +85,7 @@ class TestUninstallFromClient(unittest.TestCase):
 
             with open(cfg_path) as f:
                 written = json.load(f)
-            self.assertIn("gasoline", written["mcpServers"])
+            self.assertIn(MCP_SERVER_NAME, written["mcpServers"])
         finally:
             shutil.rmtree(tmp)
 
@@ -92,7 +93,7 @@ class TestUninstallFromClient(unittest.TestCase):
         d = {
             "id": "claude-code", "name": "Claude Code", "type": "cli",
             "detectCommand": "claude",
-            "removeArgs": ["mcp", "remove", "--scope", "user", "gasoline"],
+            "removeArgs": ["mcp", "remove", "--scope", "user", MCP_SERVER_NAME],
         }
         result = uninstall_from_client(d, {"dryRun": True})
         self.assertEqual(result["status"], "removed")
@@ -107,7 +108,7 @@ class TestExecuteUninstall(unittest.TestCase):
             with open(cfg_path, "w") as f:
                 json.dump({
                     "mcpServers": {
-                        "gasoline": {"command": "gasoline-mcp"},
+                        MCP_SERVER_NAME: {"command": "gasoline-mcp"},
                         "other": {"command": "other"},
                     }
                 }, f)

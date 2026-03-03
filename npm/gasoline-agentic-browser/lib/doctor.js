@@ -13,12 +13,18 @@ const { execSync, execFileSync } = require('child_process');
 const {
   CLIENT_DEFINITIONS,
   LEGACY_PATHS,
+  MCP_SERVER_NAME,
+  LEGACY_MCP_SERVER_NAMES,
   getClientConfigPath,
   isClientInstalled,
   commandExistsOnPath,
   readConfigFile,
   expandPath,
 } = require('./config');
+
+function knownServerNames() {
+  return [MCP_SERVER_NAME, ...LEGACY_MCP_SERVER_NAMES.filter((name) => name !== MCP_SERVER_NAME)];
+}
 
 /**
  * Check if a port is available
@@ -208,10 +214,16 @@ function diagnoseFileClient(def, verbose) {
   }
 
   const configKey = def.configKey || 'mcpServers';
-  if (!readResult.data[configKey] || !readResult.data[configKey]['gasoline-agentic-browser']) {
-    tool.issues.push(`gasoline-agentic-browser entry missing from ${configKey}`);
+  const servers = readResult.data[configKey] || {};
+  const matchedName = knownServerNames().find((name) => Object.prototype.hasOwnProperty.call(servers, name));
+  if (!matchedName) {
+    tool.issues.push(`${MCP_SERVER_NAME} entry missing from ${configKey}`);
     tool.suggestions.push('Run: gasoline-agentic-browser --install');
     return tool;
+  }
+  if (matchedName !== MCP_SERVER_NAME) {
+    tool.issues.push(`Legacy MCP server name detected (${matchedName}); migrate to ${MCP_SERVER_NAME}`);
+    tool.suggestions.push('Run: gasoline-agentic-browser --install');
   }
 
   tool.status = 'ok';
@@ -248,16 +260,25 @@ function diagnoseCliClient(def, verbose) {
   }
 
   // Try to check if gasoline is configured via CLI
-  try {
-    execFileSync(def.detectCommand, ['mcp', 'get', 'gasoline-agentic-browser'], {
-      stdio: ['pipe', 'pipe', 'pipe'],
-      timeout: 10000,
-      env: { ...process.env, CLAUDECODE: undefined },
-    });
+  let found = false;
+  for (const serverName of knownServerNames()) {
+    try {
+      execFileSync(def.detectCommand, ['mcp', 'get', serverName], {
+        stdio: ['pipe', 'pipe', 'pipe'],
+        timeout: 10000,
+        env: { ...process.env, CLAUDECODE: undefined },
+      });
+      found = true;
+      break;
+    } catch {
+      // Try next known server name.
+    }
+  }
+  if (found) {
     tool.status = 'ok';
-  } catch {
+  } else {
     tool.status = 'error';
-    tool.issues.push('gasoline-agentic-browser not configured');
+    tool.issues.push(`${MCP_SERVER_NAME} not configured`);
     tool.suggestions.push('Run: gasoline-agentic-browser --install');
   }
 
@@ -275,12 +296,15 @@ function checkLegacyPaths() {
     if (fs.existsSync(expanded)) {
       try {
         const readResult = readConfigFile(expanded);
-        if (readResult.valid && readResult.data.mcpServers && readResult.data.mcpServers['gasoline-agentic-browser']) {
-          warnings.push({
-            path: expanded,
-            description: legacy.description,
-            message: `Orphaned gasoline-agentic-browser config at old path: ${expanded}`,
-          });
+        if (readResult.valid && readResult.data.mcpServers) {
+          const hasKnownEntry = knownServerNames().some((name) => Object.prototype.hasOwnProperty.call(readResult.data.mcpServers, name));
+          if (hasKnownEntry) {
+            warnings.push({
+              path: expanded,
+              description: legacy.description,
+              message: `Orphaned ${MCP_SERVER_NAME} config at old path: ${expanded}`,
+            });
+          }
         }
       } catch {
         // Ignore read errors on legacy paths

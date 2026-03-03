@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/capture"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/util"
 )
 
 // resolveCustomLists loads custom lists from file if needed.
@@ -31,7 +32,7 @@ func buildFirstPartySet(params ThirdPartyParams, pageURLs []string, customLists 
 		}
 	} else {
 		for _, pageURL := range pageURLs {
-			if origin := extractOrigin(pageURL); origin != "" {
+			if origin := util.ExtractOrigin(pageURL); origin != "" {
 				firstParty[origin] = true
 			}
 		}
@@ -50,7 +51,7 @@ func addInternalDomains(firstParty map[string]bool, customLists *CustomLists) {
 		if !strings.Contains(origin, "://") {
 			origin = "https://" + origin
 		}
-		if parsed := extractOrigin(origin); parsed != "" {
+		if parsed := util.ExtractOrigin(origin); parsed != "" {
 			firstParty[parsed] = true
 		}
 	}
@@ -60,7 +61,7 @@ func addInternalDomains(firstParty map[string]bool, customLists *CustomLists) {
 func groupByThirdPartyOrigin(bodies []capture.NetworkBody, firstParty map[string]bool) map[string]*originData {
 	originMap := make(map[string]*originData)
 	for _, body := range bodies {
-		origin := extractOrigin(body.URL)
+		origin := util.ExtractOrigin(body.URL)
 		if origin == "" || firstParty[origin] {
 			continue
 		}

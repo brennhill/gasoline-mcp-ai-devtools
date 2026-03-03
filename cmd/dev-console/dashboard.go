@@ -45,7 +45,7 @@ func (s *Server) handleDashboard(w http.ResponseWriter, r *http.Request) {
 	accept := r.Header.Get("Accept")
 	if accept == "application/json" || (!strings.Contains(accept, "text/html") && strings.Contains(accept, "application/json")) {
 		jsonResponse(w, http.StatusOK, map[string]string{
-			"name":    "gasoline-agentic-browser",
+			"name":    mcpServerName,
 			"version": version,
 			"health":  "/health",
 			"logs":    "/logs",

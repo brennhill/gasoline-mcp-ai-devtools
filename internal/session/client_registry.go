@@ -116,12 +116,17 @@ func (r *ClientRegistry) GetOrDefault(id string) *ClientState {
 }
 
 // Unregister removes a client by ID.
-func (r *ClientRegistry) Unregister(id string) {
+// Returns true when a client was removed, false when the ID was not registered.
+func (r *ClientRegistry) Unregister(id string) bool {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
+	if _, exists := r.clients[id]; !exists {
+		return false
+	}
 	delete(r.clients, id)
 	r.removeFromOrder(id)
+	return true
 }
 
 // List returns information about all registered clients.

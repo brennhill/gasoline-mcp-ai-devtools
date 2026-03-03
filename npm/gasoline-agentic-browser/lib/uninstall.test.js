@@ -34,6 +34,7 @@ test('uninstallFromClient removes gasoline from file-type config', () => {
   assert.equal(result.status, 'removed');
 
   const written = JSON.parse(fs.readFileSync(cfgPath, 'utf8'));
+  assert.equal(written.mcpServers['gasoline-browser-devtools'], undefined);
   assert.equal(written.mcpServers.gasoline, undefined);
   assert.ok(written.mcpServers.other, 'should preserve other servers');
 
@@ -132,7 +133,7 @@ test('uninstallFromClient handles CLI type with dry-run', () => {
     name: 'Claude Code',
     type: 'cli',
     detectCommand: 'claude',
-    removeArgs: ['mcp', 'remove', '--scope', 'user', 'gasoline'],
+    removeArgs: ['mcp', 'remove', '--scope', 'user', 'gasoline-browser-devtools'],
   };
 
   const result = uninstallFromClient(def, { dryRun: true });

@@ -15,6 +15,13 @@ import (
 	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/util"
 )
 
+// installerLegacyServerKeys are historical MCP config IDs that are migrated
+// to the canonical mcpServerName during install.
+var installerLegacyServerKeys = []string{
+	"gasoline-agentic-browser",
+	"gasoline",
+}
+
 // runNativeInstall detects and configures all supported MCP clients.
 func runNativeInstall() {
 	// 1. Silent Reset (Kill stale instances)
@@ -154,7 +161,7 @@ func installClaudeCode(exePath string) {
 	}
 	data, _ := json.Marshal(entry)
 
-	cmd := exec.Command("claude", "mcp", "add-json", "--scope", "user", "gasoline-agentic-browser")
+	cmd := exec.Command("claude", "mcp", "add-json", "--scope", "user", mcpServerName)
 	cmd.Stdin = strings.NewReader(string(data))
 	cmd.Env = append(os.Environ(), "CLAUDECODE=")
 	_ = cmd.Run()
@@ -174,23 +181,26 @@ func mergeJSONConfig(path, key, exePath string, isCustom bool) error {
 	if !ok {
 		return fmt.Errorf("unexpected format for key %q", key)
 	}
+	for _, legacy := range installerLegacyServerKeys {
+		delete(servers, legacy)
+	}
 
 	if isCustom {
 		if key == "mcp" { // OpenCode
-			servers["gasoline-agentic-browser"] = map[string]any{
+			servers[mcpServerName] = map[string]any{
 				"type":    "local",
 				"command": []string{exePath},
 				"enabled": true,
 			}
 		} else if key == "context_servers" { // Zed
-			servers["gasoline-agentic-browser"] = map[string]any{
+			servers[mcpServerName] = map[string]any{
 				"source":  "custom",
 				"command": exePath,
 				"args":    []string{},
 			}
 		}
 	} else {
-		servers["gasoline-agentic-browser"] = map[string]any{
+		servers[mcpServerName] = map[string]any{
 			"command": exePath,
 			"args":    []string{},
 		}

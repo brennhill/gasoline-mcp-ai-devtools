@@ -13,6 +13,7 @@ import (
 	"testing"
 
 	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/capture"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/util"
 )
 
 // ============================================
@@ -304,9 +305,9 @@ func TestLooksLikeCreditCard_ValidNumbers(t *testing.T) {
 func TestLooksLikeCreditCard_InvalidNumbers(t *testing.T) {
 	t.Parallel()
 	invalid := []string{
-		"1234567890123456",         // Fails Luhn
-		"1234",                     // Too short
-		"12345678901234567890",     // Too long
+		"1234567890123456",     // Fails Luhn
+		"1234",                 // Too short
+		"12345678901234567890", // Too long
 	}
 	for _, num := range invalid {
 		if looksLikeCreditCard(num) {
@@ -422,7 +423,7 @@ func TestScanURLForGenericSecrets_GenericSecretParam(t *testing.T) {
 
 func TestExtractOriginForSRI_ValidURL(t *testing.T) {
 	t.Parallel()
-	got := extractOriginForSRI("https://cdn.example.com/lib/app.js")
+	got := util.ExtractOrigin("https://cdn.example.com/lib/app.js")
 	if got != "https://cdn.example.com" {
 		t.Errorf("extractOriginForSRI = %q, want https://cdn.example.com", got)
 	}
@@ -430,7 +431,7 @@ func TestExtractOriginForSRI_ValidURL(t *testing.T) {
 
 func TestExtractOriginForSRI_NoHost(t *testing.T) {
 	t.Parallel()
-	got := extractOriginForSRI("/relative/path")
+	got := util.ExtractOrigin("/relative/path")
 	if got != "" {
 		t.Errorf("extractOriginForSRI(relative) = %q, want empty", got)
 	}
@@ -438,7 +439,7 @@ func TestExtractOriginForSRI_NoHost(t *testing.T) {
 
 func TestExtractOriginForSRI_InvalidURL(t *testing.T) {
 	t.Parallel()
-	got := extractOriginForSRI("://invalid")
+	got := util.ExtractOrigin("://invalid")
 	if got != "" {
 		t.Errorf("extractOriginForSRI(invalid) = %q, want empty", got)
 	}

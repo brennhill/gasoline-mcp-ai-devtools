@@ -94,8 +94,8 @@ func (r *recordingInteractHandler) handleRecordStop(req JSONRPCRequest, args jso
 	var params struct {
 		TabID int `json:"tab_id,omitempty"`
 	}
-	if len(args) > 0 {
-		_ = json.Unmarshal(args, &params)
+	if err := json.Unmarshal(args, &params); err != nil {
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidJSON, "Invalid JSON arguments: "+err.Error(), "Fix JSON syntax and call again")}
 	}
 
 	if resp, blocked := h.requirePilot(req); blocked {

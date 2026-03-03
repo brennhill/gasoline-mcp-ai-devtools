@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/capture"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/util"
 )
 
 // newSRIFilterConfig derives normalized filter state from params/page context.
@@ -21,7 +22,7 @@ func newSRIFilterConfig(pageURLs []string, params SRIParams) sriFilterConfig {
 		includeStyles:     true,
 	}
 	for _, pageURL := range pageURLs {
-		if origin := extractOriginForSRI(pageURL); origin != "" {
+		if origin := util.ExtractOrigin(pageURL); origin != "" {
 			cfg.firstPartyOrigins[origin] = true
 		}
 	}
@@ -78,7 +79,7 @@ func (g *SRIGenerator) evaluateBody(body capture.NetworkBody, cfg sriFilterConfi
 	if body.ResponseBody == "" {
 		return sriBodyOutcome{skip: true}
 	}
-	origin := extractOriginForSRI(body.URL)
+	origin := util.ExtractOrigin(body.URL)
 	if origin == "" || cfg.firstPartyOrigins[origin] {
 		return sriBodyOutcome{skip: true}
 	}

@@ -65,7 +65,14 @@ interface RecoveryAttempt {
 }
 
 export function debugLog(category: string, message: string, data: unknown = null): void {
-  // Keep helpers independent from index.ts to avoid circular imports during registry boot.
+  const globalLogger = (globalThis as { __GASOLINE_DEBUG_LOG__?: (c: string, m: string, d?: unknown) => void })
+    .__GASOLINE_DEBUG_LOG__
+  if (typeof globalLogger === 'function') {
+    globalLogger(category, message, data)
+    return
+  }
+
+  // Keep helpers usable before the main debug logger is initialized.
   const debugEnabled = (globalThis as { __GASOLINE_REGISTRY_DEBUG__?: boolean }).__GASOLINE_REGISTRY_DEBUG__ === true
   if (!debugEnabled) return
   if (data === null) {

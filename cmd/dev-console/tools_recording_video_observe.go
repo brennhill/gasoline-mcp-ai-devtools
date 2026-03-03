@@ -82,8 +82,8 @@ func (h *ToolHandler) toolObserveSavedVideos(req JSONRPCRequest, args json.RawMe
 		URL   string `json:"url"`
 		LastN int    `json:"last_n,omitempty"`
 	}
-	if len(args) > 0 {
-		_ = json.Unmarshal(args, &params)
+	if err := json.Unmarshal(args, &params); err != nil {
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidJSON, "Invalid JSON arguments: "+err.Error(), "Fix JSON syntax and call again")}
 	}
 
 	dirs := recordingsReadDirs()

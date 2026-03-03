@@ -19,8 +19,8 @@ func (h *ToolHandler) exportHARImpl(req JSONRPCRequest, args json.RawMessage) JS
 		StatusMax int    `json:"status_max"`
 		SaveTo    string `json:"save_to"`
 	}
-	if len(args) > 0 {
-		_ = json.Unmarshal(args, &params)
+	if err := json.Unmarshal(args, &params); err != nil {
+		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidJSON, "Invalid JSON arguments: "+err.Error(), "Fix JSON syntax and call again")}
 	}
 
 	bodies := h.capture.GetNetworkBodies()
@@ -46,9 +46,5 @@ func (h *ToolHandler) exportHARImpl(req JSONRPCRequest, args json.RawMessage) JS
 
 	harLog := export.ExportHARMerged(bodies, waterfall, filter, version)
 	summary := fmt.Sprintf("HAR export (%d entries)", len(harLog.Log.Entries))
-	// Convert to generic map for mcpJSONResponse.
-	harJSON, _ := json.Marshal(harLog)
-	var harMap map[string]any
-	_ = json.Unmarshal(harJSON, &harMap)
-	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse(summary, harMap)}
+	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse(summary, harLog)}
 }

@@ -6,11 +6,12 @@ package security
 
 import (
 	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/capture"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/util"
 )
 
 // analyzeNetworkSecurity runs the full set of origin/resource checks for one network entry.
 func analyzeNetworkSecurity(entry capture.NetworkWaterfallEntry, pageURL string) []capture.SecurityFlag {
-	origin := extractOrigin(entry.URL)
+	origin := util.ExtractOrigin(entry.URL)
 	if origin == "" {
 		return nil
 	}

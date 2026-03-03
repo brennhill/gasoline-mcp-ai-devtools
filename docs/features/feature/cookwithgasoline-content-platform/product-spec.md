@@ -18,13 +18,15 @@ Keep `cookwithgasoline.com` aligned with current product capabilities while pres
 - Homepage and discovery pages with modern rhythm and spacing.
 - Tool reference pages for `observe`, `analyze`, `interact`, `configure`, and `generate`.
 - Blog/article surfaces and markdown mirror routes for agent consumption.
+  - `/blog/*`: release-note chronology.
+  - `/articles/*`: evergreen, topic-organized guides.
 - Contract checks that prevent docs drift when tool modes/actions change in code.
 
 ## User Outcomes
 
 - Developers can scan homepage + solutions quickly and understand core capabilities.
 - Readers can find accurate, current tool parameters/actions in reference docs.
-- Agents can parse deterministic markdown endpoints for every docs/blog route.
+- Agents can parse deterministic markdown endpoints for every docs/blog/articles route.
 
 ## Non-Goals
 

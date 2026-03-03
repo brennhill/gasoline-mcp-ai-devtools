@@ -46,7 +46,7 @@ func (h *interactActionHandler) handleBrowserActionNavigateImpl(req JSONRPCReque
 	h.stashPerfSnapshotImpl(correlationID)
 
 	actionParams := make(map[string]any)
-	_ = json.Unmarshal(args, &actionParams)
+	lenientUnmarshal(args, &actionParams)
 	actionParams["action"] = "navigate"
 	// Ensure required URL is present even if caller used alias forms.
 	actionParams["url"] = resolvedURL

@@ -11,6 +11,9 @@ import os
 import shutil
 import sys
 
+MCP_SERVER_NAME = "gasoline-browser-devtools"
+LEGACY_MCP_SERVER_NAMES = ("gasoline-agentic-browser", "gasoline")
+
 
 class GasolineError(Exception):
     """Base class for Gasoline errors."""
@@ -76,8 +79,8 @@ CLIENT_DEFINITIONS = [
         "name": "Claude Code",
         "type": "cli",
         "detectCommand": "claude",
-        "installArgs": ["mcp", "add-json", "--scope", "user", "gasoline"],
-        "removeArgs": ["mcp", "remove", "--scope", "user", "gasoline"],
+        "installArgs": ["mcp", "add-json", "--scope", "user", MCP_SERVER_NAME],
+        "removeArgs": ["mcp", "remove", "--scope", "user", MCP_SERVER_NAME],
     },
     {
         "id": "claude-desktop",
@@ -353,10 +356,14 @@ def merge_gasoline_config(existing, gasoline_entry, env_vars):
     if "mcpServers" not in merged:
         merged["mcpServers"] = {}
 
-    merged["mcpServers"]["gasoline"] = copy.deepcopy(gasoline_entry)
+    for legacy_name in LEGACY_MCP_SERVER_NAMES:
+        if legacy_name != MCP_SERVER_NAME:
+            merged["mcpServers"].pop(legacy_name, None)
+
+    merged["mcpServers"][MCP_SERVER_NAME] = copy.deepcopy(gasoline_entry)
 
     if env_vars:
-        merged["mcpServers"]["gasoline"]["env"] = copy.deepcopy(env_vars)
+        merged["mcpServers"][MCP_SERVER_NAME]["env"] = copy.deepcopy(env_vars)
 
     return merged
 

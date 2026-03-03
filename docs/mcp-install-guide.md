@@ -27,7 +27,7 @@ If you prefer to configure your tools manually, point them to the `gasoline` bin
 
 Claude Code is configured via its own CLI. Run:
 ```bash
-claude mcp add-json --scope user gasoline <<< '{"command": "/Users/YOUR_USER/.gasoline/bin/gasoline", "args": []}'
+claude mcp add-json --scope user gasoline-browser-devtools <<< '{"command": "/Users/YOUR_USER/.gasoline/bin/gasoline", "args": []}'
 ```
 
 ### Claude Desktop
@@ -40,7 +40,7 @@ claude mcp add-json --scope user gasoline <<< '{"command": "/Users/YOUR_USER/.ga
 ```json
 {
   "mcpServers": {
-    "gasoline": {
+    "gasoline-browser-devtools": {
       "command": "/Users/YOUR_USER/.gasoline/bin/gasoline",
       "args": []
     }
@@ -57,7 +57,7 @@ claude mcp add-json --scope user gasoline <<< '{"command": "/Users/YOUR_USER/.ga
 ```json
 {
   "mcpServers": {
-    "gasoline": {
+    "gasoline-browser-devtools": {
       "command": "/Users/YOUR_USER/.gasoline/bin/gasoline",
       "args": []
     }
@@ -74,7 +74,7 @@ claude mcp add-json --scope user gasoline <<< '{"command": "/Users/YOUR_USER/.ga
 ```json
 {
   "mcpServers": {
-    "gasoline": {
+    "gasoline-browser-devtools": {
       "command": "/Users/YOUR_USER/.gasoline/bin/gasoline",
       "args": []
     }
@@ -93,7 +93,7 @@ claude mcp add-json --scope user gasoline <<< '{"command": "/Users/YOUR_USER/.ga
 ```json
 {
   "mcpServers": {
-    "gasoline": {
+    "gasoline-browser-devtools": {
       "command": "/Users/YOUR_USER/.gasoline/bin/gasoline",
       "args": []
     }
@@ -110,7 +110,7 @@ claude mcp add-json --scope user gasoline <<< '{"command": "/Users/YOUR_USER/.ga
 ```json
 {
   "mcpServers": {
-    "gasoline": {
+    "gasoline-browser-devtools": {
       "command": "/Users/YOUR_USER/.gasoline/bin/gasoline",
       "args": []
     }
@@ -129,7 +129,7 @@ OpenCode uses a different config format (`mcp` key with array-style commands):
 ```json
 {
   "mcp": {
-    "gasoline": {
+    "gasoline-browser-devtools": {
       "type": "local",
       "command": ["/Users/YOUR_USER/.gasoline/bin/gasoline"],
       "enabled": true
@@ -147,7 +147,7 @@ OpenCode uses a different config format (`mcp` key with array-style commands):
 ```json
 {
   "mcpServers": {
-    "gasoline": {
+    "gasoline-browser-devtools": {
       "command": "/Users/YOUR_USER/.gasoline/bin/gasoline",
       "args": []
     }
@@ -168,7 +168,7 @@ Zed uses the `context_servers` key:
 ```json
 {
   "context_servers": {
-    "gasoline": {
+    "gasoline-browser-devtools": {
       "source": "custom",
       "command": "/Users/YOUR_USER/.gasoline/bin/gasoline",
       "args": []

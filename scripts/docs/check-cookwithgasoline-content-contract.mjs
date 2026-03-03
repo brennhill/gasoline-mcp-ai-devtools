@@ -170,7 +170,7 @@ async function main() {
   const docsTargets = changed.filter((file) => file.startsWith(DOCS_PREFIX) && DOC_EXT_RE.test(file));
 
   if (docsTargets.length === 0) {
-    console.log('Content contract: no changed docs/blog files detected.');
+    console.log('Content contract: no changed docs/blog/articles files detected.');
     return;
   }
 
@@ -187,7 +187,7 @@ async function main() {
   }
 
   if (violations.length === 0) {
-    console.log(`Content contract: ${docsTargets.length} changed docs/blog file(s) passed.`);
+    console.log(`Content contract: ${docsTargets.length} changed docs/blog/articles file(s) passed.`);
     return;
   }
 

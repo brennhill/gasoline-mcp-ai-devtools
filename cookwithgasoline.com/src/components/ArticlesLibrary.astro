@@ -12,15 +12,31 @@ const stripMarkdown = (content: string) =>
     .replace(/\s+/g, ' ')
     .trim();
 
-const docs = await getCollection('docs');
-const blogEntries = docs.filter((entry) => resolveDocSlug(entry).startsWith('blog/'));
+const toTopicLabel = (topic: string) =>
+  topic
+    .replace(/[-_]/g, ' ')
+    .split(' ')
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(' ');
 
-const articles = blogEntries
+const topicAnchor = (topic: string) =>
+  `topic-${topic
+    .toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, '')
+    .trim()
+    .replace(/\s+/g, '-')}`;
+
+const docs = await getCollection('docs');
+const articleEntries = docs.filter((entry) => resolveDocSlug(entry).startsWith('articles/'));
+
+const articles = articleEntries
   .map((entry) => {
     const slug = resolveDocSlug(entry);
     const parsedDate = entry.data.date ? new Date(entry.data.date) : new Date(0);
-    const tags = Array.isArray(entry.data.tags) ? entry.data.tags.map((tag) => String(tag)) : [];
+    const tags = Array.isArray(entry.data.tags) ? entry.data.tags.map((tag) => String(tag).toLowerCase()) : [];
     const excerptSource = String(entry.data.description || '').trim() || stripMarkdown(entry.body).slice(0, 260);
+    const primaryTopic = tags[0] || 'general';
 
     return {
       slug: `/${slug}/`,
@@ -31,121 +47,79 @@ const articles = blogEntries
         ? 'Unknown date'
         : parsedDate.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }),
       tags,
-      primaryTag: tags[0] || 'update',
+      primaryTopic,
     };
   })
   .sort((a, b) => b.dateISO.localeCompare(a.dateISO));
 
-const allTags = ['all', ...new Set(articles.flatMap((article) => article.tags.map((tag) => tag.toLowerCase())))];
+const byTopic = new Map<string, typeof articles>();
+
+for (const article of articles) {
+  if (!byTopic.has(article.primaryTopic)) {
+    byTopic.set(article.primaryTopic, []);
+  }
+  byTopic.get(article.primaryTopic)?.push(article);
+}
+
+const topicSections = Array.from(byTopic.entries())
+  .map(([topic, topicArticles]) => ({
+    topic,
+    label: toTopicLabel(topic),
+    anchor: topicAnchor(topic),
+    count: topicArticles.length,
+    articles: topicArticles.sort((a, b) => b.dateISO.localeCompare(a.dateISO)),
+  }))
+  .sort((a, b) => a.label.localeCompare(b.label));
 ---
 
-<section class="articles-library-shell" data-articles-library>
+<section class="articles-library-shell">
   <div class="articles-library-hero">
     <p class="landing-eyebrow">ARTICLES</p>
-    <h2>Shipping notes, deep dives, and practical playbooks</h2>
+    <h2>Topic-first guides for building with Gasoline Agentic Devtools</h2>
     <p>
-      Keep the marketing voice and technical guidance in one place. Every article also gets an agent-friendly markdown route.
+      Articles are organized by topic so readers can follow a learning path. Each post still includes a publish date and an
+      agent-friendly markdown route.
     </p>
   </div>
 
-  <div class="articles-controls">
-    <label class="search-control">
-      <span class="sr-only">Search articles</span>
-      <input
-        type="search"
-        placeholder="Search articles..."
-        data-article-search
-        autocomplete="off"
-      />
-    </label>
-
-    <label>
-      <span class="sr-only">Filter tag</span>
-      <select data-article-tag>
-        {
-          allTags.map((tag) => (
-            <option value={tag}>{tag === 'all' ? 'All topics' : tag}</option>
-          ))
-        }
-      </select>
-    </label>
-
-    <p class="articles-count" data-article-count>
-      Showing {articles.length} of {articles.length} articles
-    </p>
-  </div>
-
-  <div class="articles-grid" data-articles-grid>
+  <div class="articles-topic-nav" aria-label="Article topics">
     {
-      articles.map((article) => (
-        <article
-          class="article-card"
-          data-article-card
-          data-date={article.dateISO}
-          data-search={`${article.title} ${article.excerpt} ${article.tags.join(' ')}`.toLowerCase()}
-          data-tags={article.tags.map((tag) => tag.toLowerCase()).join(',')}
-        >
-          <div class="article-card-top">
-            <span class="article-tag">{article.primaryTag}</span>
-            <time datetime={article.dateISO}>{article.dateLabel}</time>
-          </div>
-          <h2>{article.title}</h2>
-          <p>{article.excerpt}</p>
-          <div class="article-card-bottom">
-            <a href={article.slug}>Read article</a>
-            <a href={`${article.slug.replace(/\/$/, '')}.md`} class="article-md-link">Agent markdown</a>
-          </div>
-        </article>
+      topicSections.map((section) => (
+        <a href={`#${section.anchor}`} class="articles-topic-chip">
+          <span>{section.label}</span>
+          <small>{section.count}</small>
+        </a>
       ))
     }
   </div>
 
-  <p class="article-empty" data-article-empty hidden>No articles match this query. Try another term or tag.</p>
-</section>
+  {
+    topicSections.map((section) => (
+      <section id={section.anchor} class="articles-topic-section">
+        <header class="articles-topic-header">
+          <h3>{section.label}</h3>
+          <p>{section.count} article{section.count === 1 ? '' : 's'}</p>
+        </header>
 
-<script>
-  const root = document.querySelector('[data-articles-library]');
-
-  if (root) {
-    const searchInput = root.querySelector('[data-article-search]');
-    const tagFilter = root.querySelector('[data-article-tag]');
-    const cards = Array.from(root.querySelectorAll('[data-article-card]'));
-    const countLabel = root.querySelector('[data-article-count]');
-    const emptyState = root.querySelector('[data-article-empty]');
-
-    const applyFilters = () => {
-      if (!searchInput || !tagFilter || !countLabel || !emptyState) {
-        return;
-      }
-
-      const query = searchInput.value.trim().toLowerCase();
-      const selectedTag = tagFilter.value;
-
-      const visibleCards = cards.filter((card) => {
-        const searchBlob = card.dataset.search || '';
-        const tagBlob = card.dataset.tags || '';
-        const queryMatch = !query || searchBlob.includes(query);
-        const tagMatch = selectedTag === 'all' || tagBlob.split(',').includes(selectedTag);
-        return queryMatch && tagMatch;
-      });
-
-      visibleCards.sort((a, b) => (b.dataset.date || '').localeCompare(a.dataset.date || ''));
-
-      cards.forEach((card) => {
-        card.hidden = true;
-      });
-
-      visibleCards.forEach((card, index) => {
-        card.hidden = false;
-        card.style.order = String(index);
-      });
-
-      countLabel.textContent = `Showing ${visibleCards.length} of ${cards.length} articles`;
-      emptyState.hidden = visibleCards.length > 0;
-    };
-
-    searchInput?.addEventListener('input', applyFilters);
-    tagFilter?.addEventListener('change', applyFilters);
-    applyFilters();
+        <div class="articles-grid">
+          {
+            section.articles.map((article) => (
+              <article class="article-card">
+                <div class="article-card-top">
+                  <span class="article-tag">{toTopicLabel(article.primaryTopic)}</span>
+                  <time datetime={article.dateISO}>{article.dateLabel}</time>
+                </div>
+                <h4>{article.title}</h4>
+                <p>{article.excerpt}</p>
+                <div class="article-card-bottom">
+                  <a href={article.slug}>Read article</a>
+                  <a href={`${article.slug.replace(/\/$/, '')}.md`} class="article-md-link">Agent markdown</a>
+                </div>
+              </article>
+            ))
+          }
+        </div>
+      </section>
+    ))
   }
-</script>
+</section>

@@ -21,7 +21,7 @@ Add to your `claude_desktop_config.json`:
 ```json
 {
   "mcpServers": {
-    "gasoline": {
+    "gasoline-browser-devtools": {
       "type": "stdio",
       "command": "gasoline-agentic-browser"
     }
@@ -36,7 +36,7 @@ Add to your `.mcp.json`:
 ```json
 {
   "mcpServers": {
-    "gasoline": {
+    "gasoline-browser-devtools": {
       "type": "stdio",
       "command": "gasoline-agentic-browser"
     }

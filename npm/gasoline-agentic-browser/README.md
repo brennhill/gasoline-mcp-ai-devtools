@@ -18,7 +18,7 @@ Pick your tool and add the config:
 ```json
 {
   "mcpServers": {
-    "gasoline": {
+    "gasoline-browser-devtools": {
       "type": "stdio",
       "command": "npx",
       "args": ["-y", "gasoline-mcp", "--port", "7890", "--persist"]
@@ -32,7 +32,7 @@ Pick your tool and add the config:
 ```json
 {
   "mcpServers": {
-    "gasoline": {
+    "gasoline-browser-devtools": {
       "type": "stdio",
       "command": "npx",
       "args": ["-y", "gasoline-mcp", "--port", "7890", "--persist"]
@@ -41,7 +41,7 @@ Pick your tool and add the config:
 }
 ```
 
-After adding, restart Claude Code. You should see "gasoline" listed when you run `/mcp`.
+After adding, restart Claude Code. You should see "gasoline-browser-devtools" listed when you run `/mcp`.
 
 **Architecture note:** Your AI tool spawns a SINGLE Gasoline process that handles both:
 - HTTP server on port 7890 (for browser extension telemetry)
@@ -62,7 +62,7 @@ Edit your config file:
 ```json
 {
   "mcpServers": {
-    "gasoline": {
+    "gasoline-browser-devtools": {
       "type": "stdio",
       "command": "npx",
       "args": ["-y", "gasoline-mcp", "--port", "7890", "--persist"]
@@ -83,7 +83,7 @@ Go to Settings → MCP Servers → Add Server, or add to `~/.cursor/mcp.json`:
 ```json
 {
   "mcpServers": {
-    "gasoline": {
+    "gasoline-browser-devtools": {
       "type": "stdio",
       "command": "npx",
       "args": ["-y", "gasoline-mcp", "--port", "7890", "--persist"]
@@ -104,7 +104,7 @@ Add to `~/.codeium/windsurf/mcp_config.json`:
 ```json
 {
   "mcpServers": {
-    "gasoline": {
+    "gasoline-browser-devtools": {
       "type": "stdio",
       "command": "npx",
       "args": ["-y", "gasoline-mcp", "--port", "7890", "--persist"]
@@ -148,7 +148,7 @@ Add to `~/.config/zed/settings.json`:
 ```json
 {
   "context_servers": {
-    "gasoline": {
+    "gasoline-browser-devtools": {
       "command": {
         "path": "npx",
         "args": ["-y", "gasoline-mcp", "--port", "7890", "--persist"]
@@ -260,7 +260,7 @@ Environment variable equivalents:
 
 ## Troubleshooting
 
-**"gasoline" not showing up in my AI tool?**
+**"gasoline-browser-devtools" not showing up in my AI tool?**
 
 - Make sure you restarted the AI tool after adding the config
 - Check the config file path is correct for your tool

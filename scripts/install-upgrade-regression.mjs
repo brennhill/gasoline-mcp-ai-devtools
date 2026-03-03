@@ -217,8 +217,11 @@ async function expectDaemonIdentity(port, expectedVersion, timeoutMs = 20000) {
   }
 
   const serviceName = resolveServiceName(health)
-  if (serviceName.toLowerCase() !== 'gasoline') {
-    fail(`daemon service-name mismatch on port ${port}`, `expected=gasoline actual=${serviceName || '<missing>'}`)
+  if (serviceName.toLowerCase() !== 'gasoline-browser-devtools') {
+    fail(
+      `daemon service-name mismatch on port ${port}`,
+      `expected=gasoline-browser-devtools actual=${serviceName || '<missing>'}`
+    )
   }
 
   const runningVersion = typeof health.version === 'string' ? health.version.trim() : ''

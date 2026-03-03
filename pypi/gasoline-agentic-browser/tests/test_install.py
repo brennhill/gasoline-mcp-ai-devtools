@@ -15,14 +15,15 @@ from gasoline_agentic_browser.install import (
     install_to_client,
     execute_install,
 )
+from gasoline_agentic_browser.config import MCP_SERVER_NAME
 
 
 class TestGenerateDefaultConfig(unittest.TestCase):
     def test_returns_valid_config(self):
         cfg = generate_default_config()
         self.assertIn("mcpServers", cfg)
-        self.assertIn("gasoline", cfg["mcpServers"])
-        self.assertEqual(cfg["mcpServers"]["gasoline"]["command"], "gasoline-agentic-browser")
+        self.assertIn(MCP_SERVER_NAME, cfg["mcpServers"])
+        self.assertEqual(cfg["mcpServers"][MCP_SERVER_NAME]["command"], "gasoline-agentic-browser")
 
 
 class TestBuildMcpEntry(unittest.TestCase):
@@ -53,7 +54,7 @@ class TestInstallToClient(unittest.TestCase):
 
             with open(cfg_path) as f:
                 written = json.load(f)
-            self.assertIn("gasoline", written["mcpServers"])
+            self.assertIn(MCP_SERVER_NAME, written["mcpServers"])
         finally:
             shutil.rmtree(tmp)
 
@@ -75,7 +76,7 @@ class TestInstallToClient(unittest.TestCase):
 
             with open(cfg_path) as f:
                 written = json.load(f)
-            self.assertIn("gasoline", written["mcpServers"])
+            self.assertIn(MCP_SERVER_NAME, written["mcpServers"])
             self.assertIn("other", written["mcpServers"])
         finally:
             shutil.rmtree(tmp)
@@ -99,7 +100,7 @@ class TestInstallToClient(unittest.TestCase):
         d = {
             "id": "claude-code", "name": "Claude Code", "type": "cli",
             "detectCommand": "claude",
-            "installArgs": ["mcp", "add-json", "--scope", "user", "gasoline"],
+            "installArgs": ["mcp", "add-json", "--scope", "user", MCP_SERVER_NAME],
         }
         result = install_to_client(d, {"dryRun": True, "envVars": {}})
         self.assertTrue(result["success"])

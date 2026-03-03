@@ -22,13 +22,13 @@ owners:
 1. Verify homepage hero spacing/centering at desktop and mobile breakpoints.
 2. Verify light/dark theme readability for nav, sidebar, TOC, and body text.
 3. Verify `/reference/*` pages render all documented modes/actions.
-4. Verify `.md` mirrors resolve for docs and blog routes.
+4. Verify `.md` mirrors resolve for docs, blog, and articles routes.
 
 ## Regression Focus
 
 - Reference docs drift when schema enums change.
 - Visual regressions in top hero layout and section spacing.
-- Missing metadata/frontmatter on changed docs/blog files.
+- Missing metadata/frontmatter on changed docs/blog/articles files.
 
 ## Linked Architecture
 

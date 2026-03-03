@@ -15,6 +15,7 @@ entrypoints:
 code_paths:
   - cookwithgasoline.com/astro.config.mjs
   - cookwithgasoline.com/public/images/solutions-seo-signal.svg
+  - cookwithgasoline.com/src/content/docs/articles/*.md
   - cookwithgasoline.com/src/content/docs/reference/index.md
   - cookwithgasoline.com/src/content/docs/reference/observe.md
   - cookwithgasoline.com/src/content/docs/reference/analyze.md
@@ -46,7 +47,7 @@ test_paths:
 
 ## Scope
 
-Covers complete homepage theme/layout replacement and messaging updates (including centered hero flame-only favicon-style flicker, reference-page readability fixes, schema-synced tool-mode coverage, and section spacing/overflow hardening for full-page scroll rhythm), workflow discovery, article discovery, tool-reference navigation, and automatic per-route markdown mirrors for agent consumption.
+Covers complete homepage theme/layout replacement and messaging updates (including centered hero flame-only favicon-style flicker, reference-page readability fixes, schema-synced tool-mode coverage, and section spacing/overflow hardening for full-page scroll rhythm), workflow discovery, split discovery surfaces for date-driven release-note `blog` and topic-driven `articles`, tool-reference navigation, and automatic per-route markdown mirrors for agent consumption.
 
 ## Entrypoints
 
@@ -57,10 +58,10 @@ Covers complete homepage theme/layout replacement and messaging updates (includi
 
 ## Primary Flow
 
-1. Starlight loads docs/blog entries from `cookwithgasoline.com/src/content/docs/*` through `docsLoader()`.
+1. Starlight loads docs/blog/articles entries from `cookwithgasoline.com/src/content/docs/*` through `docsLoader()`.
 2. Site navigation and information architecture are defined in `cookwithgasoline.com/astro.config.mjs`.
 3. Splash pages render reusable components for marketing and discovery (`Landing.astro`, `WorkflowLibrary.astro`, `ArticlesLibrary.astro`).
-4. Every docs/blog slug is mirrored as `/<slug>.md` via `src/pages/[...slug].md.ts`.
+4. Every docs/blog/articles slug is mirrored as `/<slug>.md` via `src/pages/[...slug].md.ts`.
 5. `<link rel="alternate" type="text/markdown">` in `Head.astro` points each HTML route to its markdown mirror.
 6. `llms.txt` and `llms-full.txt` enumerate markdown/HTML URLs from `src/utils/markdownPaths.ts`.
 7. CI executes `docs:ci` to enforce feature bundle completeness, content contract compliance, and schema-to-reference mode coverage.
@@ -74,11 +75,13 @@ Covers complete homepage theme/layout replacement and messaging updates (includi
 | Reference page missing key sections | CI failure (`Quick Reference`, `Common Parameters`) |
 | Reference page missing a live schema mode/action | CI failure from `check-reference-schema-sync.mjs` |
 | Blog post missing date/authors/tags | CI failure with required key list |
+| Outdated evergreen content appears under `/blog/*` | IA violation; evergreen guides must live under `/articles/*` |
+| Articles page not grouped by topic | IA regression; `/articles/` no longer reflects tag-grouped sections |
 
 ## State and Contracts
 
-- **SEO contract:** Changed docs/blog files require `title` and `description` frontmatter.
-- **LLM contract:** Every docs/blog page has deterministic markdown at `*.md` and is discoverable in `llms.txt`.
+- **SEO contract:** Changed docs/blog/articles files require `title` and `description` frontmatter.
+- **LLM contract:** Every docs/blog/articles page has deterministic markdown at `*.md` and is discoverable in `llms.txt`.
 - **Reference contract:** Pages under `/reference/` keep predictable section anchors and cover live schema modes/actions.
 - **Backward compatibility:** Legacy `/markdown/<slug>.md` routes remain available.
 
@@ -109,7 +112,7 @@ Covers complete homepage theme/layout replacement and messaging updates (includi
 
 ## Edit Guardrails
 
-1. New docs/blog routes must resolve to both HTML and `*.md` outputs.
+1. New docs/blog/articles routes must resolve to both HTML and `*.md` outputs.
 2. Changes to markdown URL generation must update `llms.txt` and `llms-full.txt` behavior.
 3. Reference pages must preserve `## Quick Reference` and `## Common Parameters` headings.
 4. Reference pages must keep mode/action sections synchronized with `internal/schema/*`.

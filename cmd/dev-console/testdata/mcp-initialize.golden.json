@@ -1,7 +1,7 @@
 {
   "protocolVersion": "2024-11-05",
   "serverInfo": {
-    "name": "gasoline-agentic-browser",
+    "name": "gasoline-browser-devtools",
     "version": "VERSION"
   },
   "capabilities": {
