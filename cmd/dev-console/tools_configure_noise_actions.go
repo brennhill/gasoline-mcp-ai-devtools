@@ -7,7 +7,7 @@ package main
 import (
 	"encoding/json"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/ai"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/noise"
 	cfg "github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/tools/configure"
 )
 
@@ -78,12 +78,12 @@ func (h *ToolHandler) dispatchNoiseAction(req JSONRPCRequest, args noiseRuleArgs
 }
 
 func (h *ToolHandler) noiseActionAdd(req JSONRPCRequest, args noiseRuleArgs) (any, *JSONRPCResponse) {
-	rules := make([]ai.NoiseRule, len(args.Rules))
+	rules := make([]noise.NoiseRule, len(args.Rules))
 	for i, r := range args.Rules {
-		rules[i] = ai.NoiseRule{
+		rules[i] = noise.NoiseRule{
 			Category:       r.Category,
 			Classification: r.Classification,
-			MatchSpec: ai.NoiseMatchSpec{
+			MatchSpec: noise.NoiseMatchSpec{
 				MessageRegex: r.MatchSpec.MessageRegex,
 				SourceRegex:  r.MatchSpec.SourceRegex,
 				URLRegex:     r.MatchSpec.URLRegex,
@@ -142,9 +142,9 @@ func (h *ToolHandler) noiseActionReset() any {
 
 func (h *ToolHandler) noiseActionAutoDetect() any {
 	h.server.mu.RLock()
-	consoleEntries := make([]ai.LogEntry, len(h.server.entries))
+	consoleEntries := make([]noise.LogEntry, len(h.server.entries))
 	for i, e := range h.server.entries {
-		consoleEntries[i] = ai.LogEntry(e)
+		consoleEntries[i] = noise.LogEntry(e)
 	}
 	h.server.mu.RUnlock()
 

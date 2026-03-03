@@ -6,7 +6,7 @@ package main
 import (
 	"encoding/json"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/ai"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/persistence"
 )
 
 func (h *ToolHandler) configureStoreImpl(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
@@ -48,7 +48,7 @@ func (h *ToolHandler) configureStoreImpl(req JSONRPCRequest, args json.RawMessag
 	}
 
 	// Convert to SessionStoreArgs.
-	storeArgs := ai.SessionStoreArgs{
+	storeArgs := persistence.SessionStoreArgs{
 		Action:    action,
 		Namespace: namespace,
 		Key:       compositeArgs.Key,

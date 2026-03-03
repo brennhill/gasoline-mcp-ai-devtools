@@ -10,10 +10,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/ai"
 	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/analysis"
 	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/audit"
 	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/capture"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/noise"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/persistence"
 	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/redaction"
 	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/security"
 	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/session"
@@ -64,16 +65,16 @@ func NewToolHandler(server *Server, capture *capture.Store) *MCPHandler {
 	// Initialize session store (use current working directory as project path).
 	cwd, err := os.Getwd()
 	if err == nil {
-		if store, err := ai.NewSessionStore(cwd); err == nil {
+		if store, err := persistence.NewSessionStore(cwd); err == nil {
 			handler.sessionStoreImpl = store
 		}
 	}
 
 	// Initialize noise filtering with persistence support.
 	if handler.sessionStoreImpl != nil {
-		handler.noiseConfig = ai.NewNoiseConfigWithStore(handler.sessionStoreImpl)
+		handler.noiseConfig = noise.NewNoiseConfigWithStore(handler.sessionStoreImpl)
 	} else {
-		handler.noiseConfig = ai.NewNoiseConfig()
+		handler.noiseConfig = noise.NewNoiseConfig()
 	}
 	handler.redactionEngine = redaction.NewRedactionEngine("")
 

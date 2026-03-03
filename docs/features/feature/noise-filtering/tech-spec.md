@@ -246,4 +246,4 @@ These are non-negotiable safety rules:
 
 ## File Location
 
-Implementation goes in `cmd/dev-console/ai_noise.go` with tests in `cmd/dev-console/ai_noise_test.go`.
+Implementation lives in `internal/noise/*.go` and tool integration is in `cmd/dev-console/tools_configure_noise_actions.go` with tests in `internal/noise/*_test.go` and `cmd/dev-console/tools_configure_noise_actions_test.go`.

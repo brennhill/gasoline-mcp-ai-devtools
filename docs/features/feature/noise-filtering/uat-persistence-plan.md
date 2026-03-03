@@ -376,7 +376,7 @@ rm -rf "$TMPDIR" "$PROJECT_ROOT/.gasoline"
 
 3. **Run Persistence Tests Only:**
    ```bash
-   go test ./internal/ai -run TestPersistNoiseRules -v
+   go test ./internal/noise -run TestNoiseConfigWithStore -v
    ```
 
 4. **Manual UAT:**
@@ -404,4 +404,3 @@ rm -rf "$TMPDIR" "$PROJECT_ROOT/.gasoline"
 ✅ **Built-ins fresh** (not persisted, always loaded from code)
 ✅ **Backward compatible** (works without SessionStore)
 ✅ **Fully tested** (9 unit tests + 10 UAT scenarios)
-
