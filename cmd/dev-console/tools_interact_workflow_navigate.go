@@ -43,7 +43,7 @@ func (h *ToolHandler) handleNavigateAndWaitFor(req JSONRPCRequest, args json.Raw
 		"tab_id": params.TabID,
 	})
 	stepStart := time.Now()
-	navResp := h.handleBrowserActionNavigate(req, navArgs)
+	navResp := h.interactAction().handleBrowserActionNavigateImpl(req, navArgs)
 	trace = append(trace, WorkflowStep{
 		Action:   "navigate",
 		Status:   responseStatus(navResp),
