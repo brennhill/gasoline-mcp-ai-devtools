@@ -75,4 +75,54 @@ describe('domPrimitiveListInteractive', () => {
     assert.ok(first.bbox, 'bbox should be present on list_interactive elements')
     assert.deepStrictEqual(first.bbox, { x: 24, y: 48, width: 120, height: 36 })
   })
+
+  test('deduplicates hidden responsive nav variants even when href differs', () => {
+    const hiddenHome = new MockHTMLElement('a', {
+      textContent: 'Home',
+      attrs: { href: '/mobile/home' }
+    })
+    hiddenHome.offsetParent = null
+    hiddenHome.getBoundingClientRect = () => ({
+      x: 0,
+      y: 0,
+      left: 0,
+      top: 0,
+      width: 0,
+      height: 0,
+      right: 0,
+      bottom: 0
+    })
+
+    const visibleHome = new MockHTMLElement('a', {
+      textContent: 'Home',
+      attrs: { href: '/home' }
+    })
+    visibleHome.offsetParent = {}
+    visibleHome.getBoundingClientRect = () => ({
+      x: 12,
+      y: 160,
+      left: 12,
+      top: 160,
+      width: 184,
+      height: 32,
+      right: 196,
+      bottom: 192
+    })
+
+    globalThis.document = {
+      querySelectorAll: (sel) => (sel === 'a[href]' ? [hiddenHome, visibleHome] : []),
+      body: {
+        querySelectorAll: (sel) => (sel === 'a[href]' ? [hiddenHome, visibleHome] : []),
+        children: { length: 0 }
+      },
+      documentElement: { children: { length: 0 } }
+    }
+
+    const result = domPrimitiveListInteractive('')
+    assert.strictEqual(result.success, true)
+    assert.strictEqual(result.elements.length, 1, 'hidden+visible duplicate should collapse to visible copy')
+    assert.strictEqual(result.elements[0].label, 'Home')
+    assert.strictEqual(result.elements[0].visible, true)
+    assert.deepStrictEqual(result.elements[0].bbox, { x: 12, y: 160, width: 184, height: 32 })
+  })
 })

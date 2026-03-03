@@ -19,29 +19,54 @@ import { registerCommand } from './registry.js'
 
 const CDP_VERSION = '1.3'
 const MAX_CAPTURE_HEIGHT = 16384 // Chrome max texture size
+const MAX_CAPTURE_WIDTH = 16384 // Chrome max texture size
 
 /**
  * Self-contained function injected via chrome.scripting.executeScript.
  * Temporarily expands scrollable containers so CDP captures full content.
  * Stores original styles in data attributes for restoration.
  */
-function screenshotExpandContainers(): { expanded: number } {
+export function screenshotExpandContainers(): { expanded: number; content_height_hint: number } {
   let count = 0
+  let contentHeightHint = Math.max(document.documentElement?.scrollHeight || 0, document.body?.scrollHeight || 0)
   function tryExpand(el: HTMLElement): void {
     const style = getComputedStyle(el)
     const oy = style.overflowY || ''
-    if ((oy === 'auto' || oy === 'scroll' || oy === 'hidden') && el.scrollHeight > el.clientHeight + 1) {
+    const ov = style.overflow || ''
+    const isScrollable =
+      oy === 'auto' ||
+      oy === 'scroll' ||
+      oy === 'hidden' ||
+      oy === 'clip' ||
+      ov === 'auto' ||
+      ov === 'scroll' ||
+      ov === 'hidden' ||
+      ov === 'clip'
+    if (isScrollable && el.scrollHeight > el.clientHeight + 1) {
+      const targetHeight = Math.max(el.scrollHeight, el.clientHeight)
       el.setAttribute(
         'data-gasoline-fpx',
         JSON.stringify({
           o: el.style.overflow,
+          oy: el.style.overflowY,
+          ox: el.style.overflowX,
           h: el.style.height,
-          m: el.style.maxHeight
+          n: el.style.minHeight,
+          m: el.style.maxHeight,
+          f: el.style.flex,
+          c: el.style.contain
         })
       )
       el.style.overflow = 'visible'
-      el.style.height = 'auto'
+      el.style.overflowY = 'visible'
+      el.style.overflowX = 'visible'
+      el.style.height = `${targetHeight}px`
+      el.style.minHeight = `${targetHeight}px`
       el.style.maxHeight = 'none'
+      el.style.flex = 'none'
+      el.style.contain = 'none'
+      const top = (el.getBoundingClientRect().top || 0) + (window.scrollY || window.pageYOffset || 0)
+      contentHeightHint = Math.max(contentHeightHint, top + targetHeight)
       count++
     }
   }
@@ -51,19 +76,33 @@ function screenshotExpandContainers(): { expanded: number } {
   for (let i = 0; i < all.length; i++) {
     if (all[i] instanceof HTMLElement) tryExpand(all[i] as HTMLElement)
   }
-  return { expanded: count }
+  return { expanded: count, content_height_hint: Math.ceil(contentHeightHint) }
 }
 
 /** Self-contained: restore containers after full-page capture. */
-function screenshotRestoreContainers(): void {
+export function screenshotRestoreContainers(): void {
   function tryRestore(el: HTMLElement): void {
     const raw = el.getAttribute('data-gasoline-fpx')
     if (!raw) return
     try {
-      const s = JSON.parse(raw) as { o?: string; h?: string; m?: string }
+      const s = JSON.parse(raw) as {
+        o?: string
+        oy?: string
+        ox?: string
+        h?: string
+        n?: string
+        m?: string
+        f?: string
+        c?: string
+      }
       el.style.overflow = s.o || ''
+      el.style.overflowY = s.oy || ''
+      el.style.overflowX = s.ox || ''
       el.style.height = s.h || ''
+      el.style.minHeight = s.n || ''
       el.style.maxHeight = s.m || ''
+      el.style.flex = s.f || ''
+      el.style.contain = s.c || ''
     } catch {
       /* ignore parse errors */
     }
@@ -132,11 +171,13 @@ async function captureFullPage(
   quality: number
 ): Promise<void> {
   // Step 1: Expand scrollable containers in the page
-  await chrome.scripting.executeScript({
+  const expansionResult = await chrome.scripting.executeScript({
     target: { tabId: ctx.tabId },
     world: 'MAIN',
     func: screenshotExpandContainers
   })
+  const expansionMeta = expansionResult[0]?.result as { content_height_hint?: number } | undefined
+  const hintedHeight = typeof expansionMeta?.content_height_hint === 'number' ? expansionMeta.content_height_hint : 0
 
   try {
     // Step 2: Attach CDP debugger
@@ -150,8 +191,11 @@ async function captureFullPage(
       }
 
       const contentSize = metrics.cssContentSize || metrics.contentSize || { width: 1280, height: 720 }
-      const captureWidth = Math.ceil(contentSize.width)
-      const captureHeight = Math.min(Math.ceil(contentSize.height), MAX_CAPTURE_HEIGHT)
+      const captureWidth = Math.max(1, Math.min(Math.ceil(contentSize.width), MAX_CAPTURE_WIDTH))
+      const captureHeight = Math.max(
+        1,
+        Math.min(Math.max(Math.ceil(contentSize.height), Math.ceil(hintedHeight)), MAX_CAPTURE_HEIGHT)
+      )
 
       // Step 4: Override viewport to full content size
       await chrome.debugger.sendCommand({ tabId: ctx.tabId }, 'Emulation.setDeviceMetricsOverride', {
@@ -168,6 +212,7 @@ async function captureFullPage(
       const screenshotResult = (await chrome.debugger.sendCommand({ tabId: ctx.tabId }, 'Page.captureScreenshot', {
         format,
         quality: format === 'jpeg' ? quality : undefined,
+        captureBeyondViewport: true,
         clip: { x: 0, y: 0, width: captureWidth, height: captureHeight, scale: 1 }
       })) as { data: string }
 
