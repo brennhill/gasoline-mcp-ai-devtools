@@ -3,7 +3,11 @@
 
 package capture
 
-import "time"
+import (
+	"fmt"
+	"os"
+	"time"
+)
 
 // BufferStore owns the in-memory ring buffers used for event/body/action capture.
 // Access is synchronized by Capture.mu (this type has no independent lock).
@@ -104,6 +108,143 @@ func (s *BufferStore) clearAllEventBuffers() {
 	s.networkBodyMemoryTotal = 0
 	s.enhancedActions = make([]EnhancedAction, 0)
 	s.actionAddedAt = make([]time.Time, 0)
+}
+
+func (s *BufferStore) repairActionParallelArrays() {
+	if len(s.enhancedActions) == len(s.actionAddedAt) {
+		return
+	}
+	fmt.Fprintf(os.Stderr, "[gasoline] WARNING: enhancedActions/actionAddedAt length mismatch: %d != %d (recovering by truncating)\n",
+		len(s.enhancedActions), len(s.actionAddedAt))
+	minLen := min(len(s.enhancedActions), len(s.actionAddedAt))
+	s.enhancedActions = s.enhancedActions[:minLen]
+	s.actionAddedAt = s.actionAddedAt[:minLen]
+}
+
+func (s *BufferStore) appendEnhancedActions(actions []EnhancedAction, now time.Time) bool {
+	s.repairActionParallelArrays()
+	s.actionTotalAdded += int64(len(actions))
+	hasNavigation := false
+	for i := range actions {
+		s.enhancedActions = append(s.enhancedActions, actions[i])
+		s.actionAddedAt = append(s.actionAddedAt, now)
+		if actions[i].Type == "navigation" {
+			hasNavigation = true
+		}
+	}
+	if len(s.enhancedActions) > MaxEnhancedActions {
+		keep := len(s.enhancedActions) - MaxEnhancedActions
+		newActions := make([]EnhancedAction, MaxEnhancedActions)
+		copy(newActions, s.enhancedActions[keep:])
+		s.enhancedActions = newActions
+		newAddedAt := make([]time.Time, MaxEnhancedActions)
+		copy(newAddedAt, s.actionAddedAt[keep:])
+		s.actionAddedAt = newAddedAt
+	}
+	return hasNavigation
+}
+
+func (s *BufferStore) repairNetworkParallelArrays() {
+	if len(s.networkBodies) == len(s.networkAddedAt) {
+		return
+	}
+	fmt.Fprintf(os.Stderr, "[gasoline] WARNING: networkBodies/networkAddedAt length mismatch: %d != %d (recovering by truncating)\n",
+		len(s.networkBodies), len(s.networkAddedAt))
+	minLen := min(len(s.networkBodies), len(s.networkAddedAt))
+	s.networkBodies = s.networkBodies[:minLen]
+	s.networkAddedAt = s.networkAddedAt[:minLen]
+}
+
+func (s *BufferStore) evictNetworkByCount() {
+	if len(s.networkBodies) <= MaxNetworkBodies {
+		return
+	}
+	keep := len(s.networkBodies) - MaxNetworkBodies
+	for j := 0; j < keep; j++ {
+		s.networkBodyMemoryTotal -= nbEntryMemory(&s.networkBodies[j])
+	}
+	newBodies := make([]NetworkBody, MaxNetworkBodies)
+	copy(newBodies, s.networkBodies[keep:])
+	s.networkBodies = newBodies
+	newAddedAt := make([]time.Time, MaxNetworkBodies)
+	copy(newAddedAt, s.networkAddedAt[keep:])
+	s.networkAddedAt = newAddedAt
+}
+
+func (s *BufferStore) evictNetworkForMemory() {
+	excess := s.networkBodyMemoryTotal - nbBufferMemoryLimit
+	if excess <= 0 {
+		return
+	}
+	drop := 0
+	for drop < len(s.networkBodies) && excess > 0 {
+		entryMem := nbEntryMemory(&s.networkBodies[drop])
+		excess -= entryMem
+		s.networkBodyMemoryTotal -= entryMem
+		drop++
+	}
+	surviving := make([]NetworkBody, len(s.networkBodies)-drop)
+	copy(surviving, s.networkBodies[drop:])
+	s.networkBodies = surviving
+	if len(s.networkAddedAt) >= drop {
+		survivingAt := make([]time.Time, len(s.networkAddedAt)-drop)
+		copy(survivingAt, s.networkAddedAt[drop:])
+		s.networkAddedAt = survivingAt
+	}
+}
+
+func (s *BufferStore) repairWebSocketParallelArrays() {
+	if len(s.wsEvents) == len(s.wsAddedAt) {
+		return
+	}
+	fmt.Fprintf(os.Stderr, "[gasoline] WARNING: wsEvents/wsAddedAt length mismatch: %d != %d (recovering by truncating)\n",
+		len(s.wsEvents), len(s.wsAddedAt))
+	minLen := min(len(s.wsEvents), len(s.wsAddedAt))
+	s.wsMemoryTotal = 0
+	for i := 0; i < minLen; i++ {
+		s.wsMemoryTotal += wsEventMemory(&s.wsEvents[i])
+	}
+	s.wsEvents = s.wsEvents[:minLen]
+	s.wsAddedAt = s.wsAddedAt[:minLen]
+}
+
+func (s *BufferStore) evictWebSocketByCount() {
+	if len(s.wsEvents) <= MaxWSEvents {
+		return
+	}
+	drop := len(s.wsEvents) - MaxWSEvents
+	for j := 0; j < drop; j++ {
+		s.wsMemoryTotal -= wsEventMemory(&s.wsEvents[j])
+	}
+	newEvents := make([]WebSocketEvent, MaxWSEvents)
+	copy(newEvents, s.wsEvents[drop:])
+	s.wsEvents = newEvents
+	newAddedAt := make([]time.Time, MaxWSEvents)
+	copy(newAddedAt, s.wsAddedAt[drop:])
+	s.wsAddedAt = newAddedAt
+}
+
+func (s *BufferStore) evictWebSocketForMemory() {
+	s.repairWebSocketParallelArrays()
+	excess := s.wsMemoryTotal - wsBufferMemoryLimit
+	if excess <= 0 {
+		return
+	}
+	drop := 0
+	for drop < len(s.wsEvents) && excess > 0 {
+		entryMem := wsEventMemory(&s.wsEvents[drop])
+		excess -= entryMem
+		s.wsMemoryTotal -= entryMem
+		drop++
+	}
+	surviving := make([]WebSocketEvent, len(s.wsEvents)-drop)
+	copy(surviving, s.wsEvents[drop:])
+	s.wsEvents = surviving
+	if len(s.wsAddedAt) >= drop {
+		survivingAt := make([]time.Time, len(s.wsAddedAt)-drop)
+		copy(survivingAt, s.wsAddedAt[drop:])
+		s.wsAddedAt = survivingAt
+	}
 }
 
 func (s *BufferStore) networkTotal() int64 {
