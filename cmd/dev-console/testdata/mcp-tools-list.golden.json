@@ -342,6 +342,14 @@
           "description": "Include static-only origins (third_party_audit)",
           "type": "boolean"
         },
+        "max_cols": {
+          "description": "Max columns to return per table (data_table)",
+          "type": "number"
+        },
+        "max_rows": {
+          "description": "Max rows to return per table (data_table)",
+          "type": "number"
+        },
         "max_workers": {
           "description": "Max concurrent workers (link_health)",
           "type": "number"
@@ -365,7 +373,7 @@
           "type": "string"
         },
         "selector": {
-          "description": "CSS selector (dom, accessibility, computed_styles, forms)",
+          "description": "CSS selector (dom, accessibility, computed_styles, forms, form_state, data_table)",
           "type": "string"
         },
         "severity_min": {
@@ -453,7 +461,9 @@
             "draw_session",
             "computed_styles",
             "forms",
+            "form_state",
             "form_validation",
+            "data_table",
             "visual_baseline",
             "visual_diff",
             "visual_baselines",

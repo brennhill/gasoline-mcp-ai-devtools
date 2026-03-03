@@ -36,6 +36,7 @@ Each flow map should include:
 ## Current Maps
 
 - [Bridge Startup Contention and Convergence](./bridge-startup-contention-and-convergence.md)
+- [Analyze Structured Extraction](./analyze-structured-extraction.md)
 - [Analyze Annotation Waiter and Flush Recovery](./analyze-annotations-waiter-and-flush.md)
 - [Checkpoint, Noise, and Persistence Split](./ai-domain-packages.md)
 - [Capture Buffer Store Extraction](./capture-buffer-store.md)

@@ -7,12 +7,12 @@
 
 import type { BrowserStateSnapshot, StateAction, WebSocketCaptureMode } from '../types/index.js'
 
+import { setNetworkWaterfallEnabled, setNetworkBodyCaptureEnabled, setServerUrl } from '../lib/network.js'
 import {
-  setNetworkWaterfallEnabled,
-  setNetworkBodyCaptureEnabled,
-  setServerUrl
-} from '../lib/network.js'
-import { setPerformanceMarksEnabled, installPerformanceCapture, uninstallPerformanceCapture } from '../lib/performance.js'
+  setPerformanceMarksEnabled,
+  installPerformanceCapture,
+  uninstallPerformanceCapture
+} from '../lib/performance.js'
 import { setActionCaptureEnabled } from '../lib/actions.js'
 import {
   setWebSocketCaptureEnabled,
@@ -83,7 +83,8 @@ const SETTING_HANDLERS: Record<string, SettingHandler> = {
     if (data.enabled) installWebSocketCapture()
     else uninstallWebSocketCapture()
   },
-  [SettingName.WEBSOCKET_CAPTURE_MODE]: (data) => setWebSocketCaptureMode((data.mode || 'medium') as WebSocketCaptureMode),
+  [SettingName.WEBSOCKET_CAPTURE_MODE]: (data) =>
+    setWebSocketCaptureMode((data.mode || 'medium') as WebSocketCaptureMode),
   [SettingName.PERFORMANCE_SNAPSHOT]: (data) => setPerformanceSnapshotEnabled(data.enabled!),
   [SettingName.DEFERRAL]: (data) => setDeferralEnabled(data.enabled!),
   [SettingName.NETWORK_BODY_CAPTURE]: (data) => setNetworkBodyCaptureEnabled(data.enabled!),

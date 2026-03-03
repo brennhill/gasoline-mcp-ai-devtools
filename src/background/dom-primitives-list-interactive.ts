@@ -88,9 +88,10 @@ export function domPrimitiveListInteractive(
   ): Element[] {
     if (depth > 10) return results
     results.push(...Array.from(root.querySelectorAll(selector)))
-    const children = 'children' in root
-      ? (root as Element).children
-      : (root as Document).body?.children || (root as Document).documentElement?.children
+    const children =
+      'children' in root
+        ? (root as Element).children
+        : (root as Document).body?.children || (root as Document).documentElement?.children
     if (!children) return results
     for (let i = 0; i < children.length; i++) {
       const child = children[i]!
@@ -104,15 +105,24 @@ export function domPrimitiveListInteractive(
 
   // — Selector and classification helpers —
 
+  function cssEscape(raw: string): string {
+    const maybeCSS = (globalThis as typeof globalThis & { CSS?: { escape?: (value: string) => string } }).CSS
+    if (maybeCSS && typeof maybeCSS.escape === 'function') {
+      return maybeCSS.escape(raw)
+    }
+    // Minimal fallback for test/non-browser environments where CSS.escape is unavailable.
+    return raw.replace(/["\\]/g, '\\$&')
+  }
+
   function buildUniqueSelector(el: Element, htmlEl: HTMLElement, fallbackSelector: string): string {
-    if (el.id) return `#${CSS.escape(el.id)}`
-    if (el instanceof HTMLInputElement && el.name) return `input[name="${CSS.escape(el.name)}"]`
+    if (el.id) return `#${cssEscape(el.id)}`
+    if (el instanceof HTMLInputElement && el.name) return `input[name="${cssEscape(el.name)}"]`
     const ariaLabel = el.getAttribute('aria-label')
     // Use CSS attribute selectors — these resolve via querySelectorAll directly,
     // avoiding semantic resolver ordering mismatches (#360).
-    if (ariaLabel) return `[aria-label="${CSS.escape(ariaLabel)}"]`
+    if (ariaLabel) return `[aria-label="${cssEscape(ariaLabel)}"]`
     const placeholder = el.getAttribute('placeholder')
-    if (placeholder) return `[placeholder="${CSS.escape(placeholder)}"]`
+    if (placeholder) return `[placeholder="${cssEscape(placeholder)}"]`
     const text = (htmlEl.textContent || '').trim().slice(0, 40)
     if (text) return `text=${text}`
     return fallbackSelector
@@ -169,6 +179,7 @@ export function domPrimitiveListInteractive(
     let node: Element | null = el
     while (node && node !== document.documentElement) {
       if (node instanceof HTMLElement) {
+        if (typeof getComputedStyle !== 'function') return false
         const style = getComputedStyle(node)
         const position = style.position || ''
         if (position === 'fixed' || position === 'sticky') {
@@ -203,8 +214,8 @@ export function domPrimitiveListInteractive(
       return { x: 0, y: 0, width: 0, height: 0 }
     }
     const rect = htmlEl.getBoundingClientRect()
-    const x = typeof rect.left === 'number' ? rect.left : (typeof rect.x === 'number' ? rect.x : 0)
-    const y = typeof rect.top === 'number' ? rect.top : (typeof rect.y === 'number' ? rect.y : 0)
+    const x = typeof rect.left === 'number' ? rect.left : typeof rect.x === 'number' ? rect.x : 0
+    const y = typeof rect.top === 'number' ? rect.top : typeof rect.y === 'number' ? rect.y : 0
     const width = Number.isFinite(rect.width) ? rect.width : 0
     const height = Number.isFinite(rect.height) ? rect.height : 0
     return { x, y, width, height }
@@ -254,8 +265,8 @@ export function domPrimitiveListInteractive(
     const htmlEl = el as HTMLElement
     if (!htmlEl || typeof htmlEl.getBoundingClientRect !== 'function') return false
     const rect = htmlEl.getBoundingClientRect()
-    const left = typeof rect.left === 'number' ? rect.left : (typeof rect.x === 'number' ? rect.x : 0)
-    const top = typeof rect.top === 'number' ? rect.top : (typeof rect.y === 'number' ? rect.y : 0)
+    const left = typeof rect.left === 'number' ? rect.left : typeof rect.x === 'number' ? rect.x : 0
+    const top = typeof rect.top === 'number' ? rect.top : typeof rect.y === 'number' ? rect.y : 0
     const right = typeof rect.right === 'number' ? rect.right : left + rect.width
     const bottom = typeof rect.bottom === 'number' ? rect.bottom : top + rect.height
     const scopeRight = scopeRect.x + scopeRect.width
@@ -295,18 +306,17 @@ export function domPrimitiveListInteractive(
       const hiddenInteractive = Math.max(0, interactiveCandidates.length - visibleInteractive)
 
       const rect = (candidate as HTMLElement).getBoundingClientRect?.()
-      const areaScore = rect && rect.width > 0 && rect.height > 0
-        ? Math.min(20, Math.round((rect.width * rect.height) / 50000))
-        : 0
+      const areaScore =
+        rect && rect.width > 0 && rect.height > 0 ? Math.min(20, Math.round((rect.width * rect.height) / 50000)) : 0
 
       // Heuristic weighting:
       // - Visible textbox strongly indicates active editor/dialog.
       // - Submit-like visible controls indicate actionable composer.
       // - Prefer visible-rich over hidden-heavy containers.
       const score =
-        visibleTextboxes*1000 +
-        submitLikeButtons*250 +
-        visibleButtons*10 +
+        visibleTextboxes * 1000 +
+        submitLikeButtons * 250 +
+        visibleButtons * 10 +
         visibleInteractive -
         hiddenInteractive +
         areaScore
@@ -468,8 +478,8 @@ export function domPrimitiveListInteractive(
   // #366: Deduplicate responsive variants — when hidden and visible copies of the same
   // element exist (e.g., mobile + desktop nav links), keep only the visible one.
   // Key includes tag, elementType, label, AND href (for links) to avoid collapsing distinct elements.
-  const dedupKey = (e: typeof rawEntries[0]) => {
-    const href = e.tag === 'a' ? (e.el.getAttribute('href') || '') : ''
+  const dedupKey = (e: (typeof rawEntries)[0]) => {
+    const href = e.tag === 'a' ? e.el.getAttribute('href') || '' : ''
     return `${e.tag}|${e.elementType}|${e.label}|${href}`
   }
   const dedupGroups = new Map<string, typeof rawEntries>()

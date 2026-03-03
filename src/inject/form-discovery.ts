@@ -94,7 +94,9 @@ function buildFormSelector(form: HTMLFormElement): string {
 /**
  * Extract validation constraints from a form element.
  */
-function getValidationConstraints(el: HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement): Record<string, string | number | boolean> {
+function getValidationConstraints(
+  el: HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
+): Record<string, string | number | boolean> {
   const constraints: Record<string, string | number | boolean> = {}
   if (el.required) constraints.required = true
 

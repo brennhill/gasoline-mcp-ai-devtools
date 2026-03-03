@@ -43,7 +43,7 @@ const REJECTED_PATTERNS: Array<{ pattern: RegExp; reason: string }> = [
   { pattern: /^\s*function\s/, reason: 'Function declarations are not supported' },
   { pattern: /^\s*class\s/, reason: 'Class declarations are not supported' },
   { pattern: /=>/, reason: 'Arrow functions are not supported' },
-  { pattern: /\.\.\.[a-zA-Z_$]/, reason: 'Spread/rest syntax is not supported' },
+  { pattern: /\.\.\.[a-zA-Z_$]/, reason: 'Spread/rest syntax is not supported' }
 ]
 
 export function parseExpression(input: string): ParseResult {
@@ -306,16 +306,24 @@ class Parser {
     }
 
     // Check for spread
-    if (this.peek() === '.' && this.pos + 2 < this.source.length &&
-        this.source[this.pos + 1] === '.' && this.source[this.pos + 2] === '.') {
+    if (
+      this.peek() === '.' &&
+      this.pos + 2 < this.source.length &&
+      this.source[this.pos + 1] === '.' &&
+      this.source[this.pos + 2] === '.'
+    ) {
       throw new Error('Spread/rest syntax is not supported')
     }
 
     const elements: StructuredValue[] = []
     while (true) {
       this.skipWhitespace()
-      if (this.peek() === '.' && this.pos + 2 < this.source.length &&
-          this.source[this.pos + 1] === '.' && this.source[this.pos + 2] === '.') {
+      if (
+        this.peek() === '.' &&
+        this.pos + 2 < this.source.length &&
+        this.source[this.pos + 1] === '.' &&
+        this.source[this.pos + 2] === '.'
+      ) {
         throw new Error('Spread/rest syntax is not supported')
       }
       elements.push(this.parseExpression())

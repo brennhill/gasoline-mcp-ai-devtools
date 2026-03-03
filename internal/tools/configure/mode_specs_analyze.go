@@ -67,9 +67,17 @@ var analyzeModeSpecs = map[string]modeParamSpec{
 		Hint:     "Analyze form structure, fields, and validation state",
 		Optional: []string{"selector", "frame"},
 	},
+	"form_state": {
+		Hint:     "Extract current form values and field metadata as structured JSON",
+		Optional: []string{"selector", "frame"},
+	},
 	"form_validation": {
 		Hint:     "Check form validation rules and constraint violations. summary=true returns counts only",
 		Optional: []string{"summary"},
+	},
+	"data_table": {
+		Hint:     "Extract HTML table data into structured rows/columns",
+		Optional: []string{"selector", "max_rows", "max_cols"},
 	},
 	"visual_baseline": {
 		Hint:     "Capture a baseline screenshot for visual regression",

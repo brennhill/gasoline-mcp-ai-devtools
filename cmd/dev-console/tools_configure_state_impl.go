@@ -132,7 +132,20 @@ func (h *ToolHandler) clearConfiguredBuffer(buffer string) (any, bool) {
 	case "all":
 		h.capture.ClearAll()
 		h.server.clearEntries()
-		return map[string]any{"buffers": "all", "extension_logs_cleared": h.capture.ClearExtensionLogs()}, true
+		cleared := map[string]any{
+			"buffers":                "all",
+			"extension_logs_cleared": h.capture.ClearExtensionLogs(),
+		}
+		if h.annotationStore != nil {
+			annotationCleared := h.annotationStore.ClearAll()
+			cleared["annotations_cleared"] = map[string]int{
+				"sessions":       annotationCleared.Sessions,
+				"details":        annotationCleared.Details,
+				"named_sessions": annotationCleared.NamedSessions,
+				"waiters":        annotationCleared.Waiters,
+			}
+		}
+		return cleared, true
 	case "network":
 		counts := h.capture.ClearNetworkBuffers()
 		return map[string]int{"waterfall": counts.NetworkWaterfall, "bodies": counts.NetworkBodies}, true

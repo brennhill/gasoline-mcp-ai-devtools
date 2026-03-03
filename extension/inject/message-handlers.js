@@ -6,6 +6,7 @@ import { executeDOMQuery, runAxeAuditWithTimeout } from '../lib/dom-queries.js';
 import { checkLinkHealth } from '../lib/link-health.js';
 import { queryComputedStyles } from './computed-styles.js';
 import { discoverForms } from './form-discovery.js';
+import { extractDataTables } from './data-table.js';
 import { getNetworkWaterfall } from '../lib/network.js';
 import { executeJavaScript } from './execute-js.js';
 import { isValidSettingPayload, handleSetting, handleStateCommand } from './settings.js';
@@ -72,6 +73,8 @@ export function installMessageListener(captureStateFn, restoreStateFn) {
         GASOLINE_LINK_HEALTH_QUERY: (data) => handleLinkHealthMessage(data),
         GASOLINE_COMPUTED_STYLES_QUERY: (data) => handleComputedStylesMessage(data),
         GASOLINE_FORM_DISCOVERY_QUERY: (data) => handleFormDiscoveryMessage(data),
+        GASOLINE_FORM_STATE_QUERY: (data) => handleFormStateMessage(data),
+        GASOLINE_DATA_TABLE_QUERY: (data) => handleDataTableMessage(data),
         GASOLINE_INJECT_BRIDGE_PING: (data) => handleBridgePingMessage(data)
     };
     window.addEventListener('message', (event) => {
@@ -132,6 +135,49 @@ function handleFormDiscoveryMessage(data) {
             type: 'GASOLINE_FORM_DISCOVERY_RESPONSE',
             requestId: data.requestId,
             result: { error: 'form_discovery_error', message: err.message || 'Failed to discover forms' }
+        });
+    }
+}
+function handleFormStateMessage(data) {
+    try {
+        const params = (data.params || {});
+        const forms = discoverForms({
+            selector: params.selector,
+            mode: 'discover'
+        });
+        postResponse({
+            type: 'GASOLINE_FORM_STATE_RESPONSE',
+            requestId: data.requestId,
+            result: { forms, count: forms.length }
+        });
+    }
+    catch (err) {
+        postResponse({
+            type: 'GASOLINE_FORM_STATE_RESPONSE',
+            requestId: data.requestId,
+            result: { error: 'form_state_error', message: err.message || 'Failed to extract form state' }
+        });
+    }
+}
+function handleDataTableMessage(data) {
+    try {
+        const params = (data.params || {});
+        const result = extractDataTables({
+            selector: params.selector,
+            max_rows: params.max_rows,
+            max_cols: params.max_cols
+        });
+        postResponse({
+            type: 'GASOLINE_DATA_TABLE_RESPONSE',
+            requestId: data.requestId,
+            result
+        });
+    }
+    catch (err) {
+        postResponse({
+            type: 'GASOLINE_DATA_TABLE_RESPONSE',
+            requestId: data.requestId,
+            result: { error: 'data_table_error', message: err.message || 'Failed to extract table data' }
         });
     }
 }

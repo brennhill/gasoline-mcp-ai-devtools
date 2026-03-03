@@ -2198,6 +2198,119 @@ describe('intent-level composer and dialog primitives', () => {
   })
 })
 
+describe('overlay blocking guards', () => {
+  beforeEach(() => {
+    perfNowValue = 0
+    globalThis.MutationObserver = MockMutationObserver
+    globalThis.requestAnimationFrame = (cb) => cb()
+    globalThis.getComputedStyle = (el) => ({
+      visibility: 'visible',
+      display: 'block',
+      position: (el && el.style && el.style.position) || '',
+      zIndex: (el && el.style && el.style.zIndex) || '0',
+      opacity: (el && el.style && el.style.opacity) || '1'
+    })
+  })
+
+  test('type returns blocked_by_overlay when target input is behind modal dialog', async () => {
+    const target = new globalThis.HTMLInputElement('INPUT', { id: 'behind-modal' })
+    target.getBoundingClientRect = () => ({ left: 24, top: 120, right: 360, bottom: 160, width: 336, height: 40 })
+    target.getRootNode = () => globalThis.document
+    target.getAttribute = (name) => (name === 'type' ? 'text' : null)
+    target.value = ''
+    target.dispatchEvent = () => true
+
+    const modal = new MockHTMLElement('DIV', { id: 'modal' })
+    Object.setPrototypeOf(modal, MockHTMLElement.prototype)
+    modal.style.position = 'fixed'
+    modal.style.zIndex = '1200'
+    modal.getBoundingClientRect = () => ({ left: 0, top: 0, right: 1000, bottom: 800, width: 1000, height: 800 })
+    modal.getRootNode = () => globalThis.document
+    modal.getAttribute = (name) => (name === 'role' ? 'dialog' : null)
+    modal.querySelectorAll = () => []
+    modal.contains = (node) => node === modal
+    modal.children = { length: 0 }
+
+    globalThis.document = {
+      querySelector: (sel) => (sel === '#behind-modal' ? target : null),
+      querySelectorAll: (sel) => {
+        if (sel === '#behind-modal') return [target]
+        if (sel === '[role="dialog"]') return [modal]
+        return []
+      },
+      getElementById: (id) => (id === 'behind-modal' ? target : id === 'modal' ? modal : null),
+      body: {
+        querySelectorAll: (sel) => (sel === '[role="dialog"]' ? [modal] : []),
+        appendChild: () => {},
+        children: { length: 0 }
+      },
+      documentElement: { children: { length: 0 } },
+      createTreeWalker: () => ({ nextNode: () => null }),
+      getSelection: () => null,
+      execCommand: () => {}
+    }
+
+    const raw = domPrimitive('type', '#behind-modal', { text: 'hello' })
+    const result = raw instanceof Promise ? await raw : raw
+
+    assert.strictEqual(result.success, false)
+    assert.strictEqual(result.error, 'blocked_by_overlay')
+    assert.match(result.message, /dismiss_top_overlay/)
+    assert.strictEqual(target.value, '')
+  })
+
+  test('focus returns blocked_by_overlay when target is behind modal dialog', async () => {
+    const target = new globalThis.HTMLInputElement('INPUT', { id: 'focus-behind-modal' })
+    target.getBoundingClientRect = () => ({ left: 24, top: 180, right: 360, bottom: 220, width: 336, height: 40 })
+    target.getRootNode = () => globalThis.document
+    target.getAttribute = (name) => (name === 'type' ? 'text' : null)
+    target.dispatchEvent = () => true
+
+    let focusCalls = 0
+    target.focus = () => {
+      focusCalls++
+    }
+
+    const modal = new MockHTMLElement('DIV', { id: 'focus-modal' })
+    Object.setPrototypeOf(modal, MockHTMLElement.prototype)
+    modal.style.position = 'fixed'
+    modal.style.zIndex = '1400'
+    modal.getBoundingClientRect = () => ({ left: 0, top: 0, right: 1000, bottom: 800, width: 1000, height: 800 })
+    modal.getRootNode = () => globalThis.document
+    modal.getAttribute = (name) => (name === 'role' ? 'dialog' : null)
+    modal.querySelectorAll = () => []
+    modal.contains = (node) => node === modal
+    modal.children = { length: 0 }
+
+    globalThis.document = {
+      querySelector: (sel) => (sel === '#focus-behind-modal' ? target : null),
+      querySelectorAll: (sel) => {
+        if (sel === '#focus-behind-modal') return [target]
+        if (sel === '[role="dialog"]') return [modal]
+        return []
+      },
+      getElementById: (id) => (id === 'focus-behind-modal' ? target : id === 'focus-modal' ? modal : null),
+      body: {
+        querySelectorAll: (sel) => (sel === '[role="dialog"]' ? [modal] : []),
+        appendChild: () => {},
+        children: { length: 0 }
+      },
+      documentElement: { children: { length: 0 } },
+      createTreeWalker: () => ({ nextNode: () => null }),
+      getSelection: () => null,
+      execCommand: () => {}
+    }
+
+    const raw = domPrimitive('focus', '#focus-behind-modal', {})
+    const result = raw instanceof Promise ? await raw : raw
+
+    assert.strictEqual(result.success, false)
+    assert.strictEqual(result.error, 'blocked_by_overlay')
+    assert.match(result.message, /dismiss_top_overlay/)
+    assert.strictEqual(focusCalls, 0)
+  })
+})
+
 // ===========================================================================
 // key_press: key mapping and alias support (#331)
 // ===========================================================================

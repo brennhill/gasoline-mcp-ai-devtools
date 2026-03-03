@@ -41,11 +41,7 @@ export function domPrimitiveQuery(
 
   function resolveByText(text: string, root: ParentNode): Element[] {
     const results: Element[] = []
-    const walker = document.createTreeWalker(
-      root as Node,
-      NodeFilter.SHOW_ELEMENT,
-      null
-    )
+    const walker = document.createTreeWalker(root as Node, NodeFilter.SHOW_ELEMENT, null)
     let node: Node | null = walker.currentNode
     while (node) {
       if (node instanceof HTMLElement) {
@@ -98,7 +94,9 @@ export function domPrimitiveQuery(
     try {
       const scopeEl = document.querySelector(options.scope_selector)
       if (scopeEl) scopeRoot = scopeEl
-    } catch { /* use document */ }
+    } catch {
+      /* use document */
+    }
   }
 
   const elements = resolveElements(selector, scopeRoot)

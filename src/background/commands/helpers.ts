@@ -224,6 +224,8 @@ const TARGETED_QUERY_TYPES = new Set<string>([
   'cdp_action',
   'computed_styles',
   'form_discovery',
+  'form_state',
+  'data_table',
   'state_capture',
   'state_save',
   'state_load',
@@ -243,11 +245,7 @@ export function requiresTargetTab(queryType: string): boolean {
 export function isBrowserEscapeAction(queryType: string, paramsObj: QueryParamsObject): boolean {
   if (queryType !== 'browser_action') return false
   const action =
-    typeof paramsObj.action === 'string'
-      ? paramsObj.action
-      : typeof paramsObj.what === 'string'
-      ? paramsObj.what
-      : ''
+    typeof paramsObj.action === 'string' ? paramsObj.action : typeof paramsObj.what === 'string' ? paramsObj.what : ''
   return (
     action === 'navigate' ||
     action === 'refresh' ||
@@ -284,7 +282,11 @@ async function getActiveTab(): Promise<chrome.tabs.Tab | null> {
   return tab
 }
 
-function buildMissingTargetError(queryType: string, useActiveTab: boolean, trackedTabId: number | null): TargetResolutionError {
+function buildMissingTargetError(
+  queryType: string,
+  useActiveTab: boolean,
+  trackedTabId: number | null
+): TargetResolutionError {
   const message =
     "No target tab resolved. Provide 'tab_id', enable tab tracking, or set 'use_active_tab=true' explicitly."
   return {
@@ -336,8 +338,7 @@ function buildNoTrackableTabError(
       use_active_tab: useActiveTab,
       tracked_tab_id: trackedTabId,
       attempted_recovery: attempts,
-      retry:
-        'Open any normal web page tab (http/https), keep AI Web Pilot enabled, then retry the command.',
+      retry: 'Open any normal web page tab (http/https), keep AI Web Pilot enabled, then retry the command.',
       retryable: false
     }
   }
@@ -465,7 +466,10 @@ async function tryAutoTrackFallback(
   }
 }
 
-export async function resolveTargetTab(query: PendingQuery, paramsObj: QueryParamsObject): Promise<{
+export async function resolveTargetTab(
+  query: PendingQuery,
+  paramsObj: QueryParamsObject
+): Promise<{
   target?: TargetResolution
   error?: TargetResolutionError
 }> {

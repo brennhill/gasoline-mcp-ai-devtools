@@ -70,19 +70,27 @@ export function domPrimitiveListInteractive(scopeSelector, options) {
         return results;
     }
     // — Selector and classification helpers —
+    function cssEscape(raw) {
+        const maybeCSS = globalThis.CSS;
+        if (maybeCSS && typeof maybeCSS.escape === 'function') {
+            return maybeCSS.escape(raw);
+        }
+        // Minimal fallback for test/non-browser environments where CSS.escape is unavailable.
+        return raw.replace(/["\\]/g, '\\$&');
+    }
     function buildUniqueSelector(el, htmlEl, fallbackSelector) {
         if (el.id)
-            return `#${CSS.escape(el.id)}`;
+            return `#${cssEscape(el.id)}`;
         if (el instanceof HTMLInputElement && el.name)
-            return `input[name="${CSS.escape(el.name)}"]`;
+            return `input[name="${cssEscape(el.name)}"]`;
         const ariaLabel = el.getAttribute('aria-label');
         // Use CSS attribute selectors — these resolve via querySelectorAll directly,
         // avoiding semantic resolver ordering mismatches (#360).
         if (ariaLabel)
-            return `[aria-label="${CSS.escape(ariaLabel)}"]`;
+            return `[aria-label="${cssEscape(ariaLabel)}"]`;
         const placeholder = el.getAttribute('placeholder');
         if (placeholder)
-            return `[placeholder="${CSS.escape(placeholder)}"]`;
+            return `[placeholder="${cssEscape(placeholder)}"]`;
         const text = (htmlEl.textContent || '').trim().slice(0, 40);
         if (text)
             return `text=${text}`;
@@ -147,6 +155,8 @@ export function domPrimitiveListInteractive(scopeSelector, options) {
         let node = el;
         while (node && node !== document.documentElement) {
             if (node instanceof HTMLElement) {
+                if (typeof getComputedStyle !== 'function')
+                    return false;
                 const style = getComputedStyle(node);
                 const position = style.position || '';
                 if (position === 'fixed' || position === 'sticky') {

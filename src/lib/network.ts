@@ -507,8 +507,7 @@ export function wrapXHRWithBodies(): void {
 
   XMLHttpRequest.prototype.open = function (method: string, url: string | URL, ...rest: unknown[]) {
     ;(this as XMLHttpRequest & { __gasolineMethod: string }).__gasolineMethod = method
-    ;(this as XMLHttpRequest & { __gasolineUrl: string }).__gasolineUrl =
-      typeof url === 'string' ? url : url.toString()
+    ;(this as XMLHttpRequest & { __gasolineUrl: string }).__gasolineUrl = typeof url === 'string' ? url : url.toString()
     return originalXHROpen!.apply(this, [method, url, ...rest] as Parameters<typeof XMLHttpRequest.prototype.open>)
   }
 

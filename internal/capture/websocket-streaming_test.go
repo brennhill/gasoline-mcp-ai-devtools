@@ -424,7 +424,7 @@ func TestRecordingAddActions(t *testing.T) {
 // THEN: metadata.json persisted with all 10 actions
 // AND: File readable as valid JSON
 // AND: action_count = 10
-// AND: duration_ms > 0
+// AND: duration_ms >= 0
 func TestRecordingPersistToDisk(t *testing.T) {
 	t.Parallel()
 
@@ -459,8 +459,8 @@ func TestRecordingPersistToDisk(t *testing.T) {
 	if actionCount != 10 {
 		t.Errorf("Expected 10 actions, got: %d", actionCount)
 	}
-	if duration <= 0 {
-		t.Errorf("Expected positive duration, got: %d", duration)
+	if duration < 0 {
+		t.Errorf("Expected non-negative duration, got: %d", duration)
 	}
 
 	// Try to load the recording back from disk

@@ -69,23 +69,42 @@ function nodeToMarkdown(node: Node, depth: number, budget: { remaining: number }
   children = children.replace(/\n{3,}/g, '\n\n')
 
   switch (tag) {
-    case 'h1': return '\n# ' + children.trim() + '\n\n'
-    case 'h2': return '\n## ' + children.trim() + '\n\n'
-    case 'h3': return '\n### ' + children.trim() + '\n\n'
-    case 'h4': return '\n#### ' + children.trim() + '\n\n'
-    case 'h5': return '\n##### ' + children.trim() + '\n\n'
-    case 'h6': return '\n###### ' + children.trim() + '\n\n'
-    case 'p': return '\n' + children.trim() + '\n\n'
-    case 'br': return '\n'
-    case 'hr': return '\n---\n\n'
-    case 'strong': case 'b': return '**' + children.trim() + '**'
-    case 'em': case 'i': return '*' + children.trim() + '*'
-    case 'code': return '`' + children.trim() + '`'
-    case 'pre': return '\n```\n' + (el.innerText || '').trim() + '\n```\n\n'
+    case 'h1':
+      return '\n# ' + children.trim() + '\n\n'
+    case 'h2':
+      return '\n## ' + children.trim() + '\n\n'
+    case 'h3':
+      return '\n### ' + children.trim() + '\n\n'
+    case 'h4':
+      return '\n#### ' + children.trim() + '\n\n'
+    case 'h5':
+      return '\n##### ' + children.trim() + '\n\n'
+    case 'h6':
+      return '\n###### ' + children.trim() + '\n\n'
+    case 'p':
+      return '\n' + children.trim() + '\n\n'
+    case 'br':
+      return '\n'
+    case 'hr':
+      return '\n---\n\n'
+    case 'strong':
+    case 'b':
+      return '**' + children.trim() + '**'
+    case 'em':
+    case 'i':
+      return '*' + children.trim() + '*'
+    case 'code':
+      return '`' + children.trim() + '`'
+    case 'pre':
+      return '\n```\n' + (el.innerText || '').trim() + '\n```\n\n'
     case 'a': {
       let href = el.getAttribute('href') || ''
       if (href && href !== '#' && !href.startsWith('javascript:')) {
-        try { href = new URL(href, window.location.href).href } catch { /* keep original */ }
+        try {
+          href = new URL(href, window.location.href).href
+        } catch {
+          /* keep original */
+        }
         return '[' + children.trim() + '](' + href + ')'
       }
       return children
@@ -94,12 +113,18 @@ function nodeToMarkdown(node: Node, depth: number, budget: { remaining: number }
       let src = el.getAttribute('src') || ''
       const alt = el.getAttribute('alt') || ''
       if (src) {
-        try { src = new URL(src, window.location.href).href } catch { /* keep original */ }
+        try {
+          src = new URL(src, window.location.href).href
+        } catch {
+          /* keep original */
+        }
         return '![' + alt + '](' + src + ')'
       }
       return ''
     }
-    case 'ul': case 'ol': return '\n' + children + '\n'
+    case 'ul':
+    case 'ol':
+      return '\n' + children + '\n'
     case 'li': {
       const parent = el.parentElement
       if (parent && parent.tagName.toLowerCase() === 'ol') {
@@ -108,10 +133,17 @@ function nodeToMarkdown(node: Node, depth: number, budget: { remaining: number }
       }
       return '- ' + children.trim() + '\n'
     }
-    case 'blockquote': return '\n> ' + children.trim().replace(/\n/g, '\n> ') + '\n\n'
-    case 'table': return '\n' + tableToMarkdown(el) + '\n\n'
-    case 'div': case 'section': case 'article': case 'main': return children
-    default: return children
+    case 'blockquote':
+      return '\n> ' + children.trim().replace(/\n/g, '\n> ') + '\n\n'
+    case 'table':
+      return '\n' + tableToMarkdown(el) + '\n\n'
+    case 'div':
+    case 'section':
+    case 'article':
+    case 'main':
+      return children
+    default:
+      return children
   }
 }
 
@@ -128,7 +160,10 @@ export function extractMarkdown(): MarkdownResult {
   if (truncated) {
     markdown = markdown.slice(0, MAX_OUTPUT_CHARS) + '\n\n[...truncated]'
   }
-  const words = markdown.replace(/[#*[\]()`|>-]/g, ' ').split(/\s+/).filter(Boolean)
+  const words = markdown
+    .replace(/[#*[\]()`|>-]/g, ' ')
+    .split(/\s+/)
+    .filter(Boolean)
 
   return {
     title: document.title || '',

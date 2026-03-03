@@ -72,6 +72,10 @@ This map covers annotation retrieval through `analyze(what:"annotations")`, incl
      - `abandoned` when no annotations are available
 - Already terminal command:
   - Flush is idempotent and returns existing terminal command state unchanged.
+- Global reset path (`configure({what:"clear", buffer:"all"})`):
+  - Clears capture/log buffers and fully resets annotation store state (anonymous sessions, named sessions, details, waiters).
+  - Post-clear `analyze({what:"annotations"})` must return empty results until a new draw session is captured.
+  - Prevents replay of stale annotation IDs after session reset.
 
 ## State and Contracts
 
@@ -95,6 +99,7 @@ This map covers annotation retrieval through `analyze(what:"annotations")`, incl
 - `internal/schema/analyze.go`
 - `internal/tools/configure/mode_specs_analyze.go`
 - `internal/annotation/store.go`
+- `internal/annotation/store_clear.go`
 - `internal/annotation/store_sessions.go`
 - `internal/annotation/store_named.go`
 - `internal/annotation/store_wait.go`

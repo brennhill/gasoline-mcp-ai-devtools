@@ -2447,19 +2447,32 @@ async function getPageInfo() {
 }
 function loadAxeCore() {
   return new Promise((resolve, reject) => {
-    if (window.axe) {
+    const hasAxe = () => typeof window !== "undefined" && !!window.axe;
+    if (hasAxe()) {
       resolve();
       return;
     }
+    let settled = false;
+    const finish = (fn) => {
+      if (settled)
+        return;
+      settled = true;
+      fn();
+    };
     const checkInterval = setInterval(() => {
-      if (window.axe) {
-        clearInterval(checkInterval);
-        resolve();
+      if (hasAxe()) {
+        finish(() => {
+          clearInterval(checkInterval);
+          clearTimeout(loadTimeout);
+          resolve();
+        });
       }
     }, scaleTimeout(100));
-    setTimeout(() => {
-      clearInterval(checkInterval);
-      reject(new Error("Accessibility audit failed: axe-core library not loaded (5s timeout). The extension content script may not have been injected on this page. Try reloading the tab and re-running the audit."));
+    const loadTimeout = setTimeout(() => {
+      finish(() => {
+        clearInterval(checkInterval);
+        reject(new Error("Accessibility audit failed: axe-core library not loaded (5s timeout). The extension content script may not have been injected on this page. Try reloading the tab and re-running the audit."));
+      });
     }, scaleTimeout(5e3));
   });
 }
@@ -3541,6 +3554,108 @@ function discoverForms(params) {
   return results;
 }
 
+// extension/inject/data-table.js
+var MAX_TABLES = 20;
+var DEFAULT_MAX_ROWS = 100;
+var DEFAULT_MAX_COLS = 30;
+function normalizeText(input) {
+  return (input || "").replace(/\s+/g, " ").trim();
+}
+function buildTableSelector(table, index) {
+  if (table.id)
+    return `table#${table.id}`;
+  const name = table.getAttribute("name");
+  if (name)
+    return `table[name="${name}"]`;
+  const cls = normalizeText(table.className || "");
+  if (cls)
+    return `table.${cls.split(/\s+/)[0]}`;
+  return `table:nth-of-type(${index + 1})`;
+}
+function collectHeaders(table, maxCols) {
+  const headerCells = table.querySelectorAll("thead th");
+  const headers = [];
+  const seen = /* @__PURE__ */ new Set();
+  if (headerCells.length > 0) {
+    for (let i = 0; i < headerCells.length && headers.length < maxCols; i++) {
+      const label = normalizeText(headerCells[i]?.textContent || "") || `col_${headers.length + 1}`;
+      if (!seen.has(label)) {
+        seen.add(label);
+        headers.push(label);
+      }
+    }
+    return headers;
+  }
+  const firstRow = table.querySelector("tr");
+  if (!firstRow)
+    return headers;
+  const firstRowCells = firstRow.querySelectorAll("th,td");
+  for (let i = 0; i < firstRowCells.length && headers.length < maxCols; i++) {
+    const cell = firstRowCells[i];
+    const isHeader = cell?.tagName === "TH";
+    const label = isHeader ? normalizeText(cell?.textContent || "") || `col_${headers.length + 1}` : `col_${headers.length + 1}`;
+    if (!seen.has(label)) {
+      seen.add(label);
+      headers.push(label);
+    }
+  }
+  return headers;
+}
+function collectRows(table, headers, maxRows, maxCols) {
+  const rows = table.querySelectorAll("tbody tr, tr");
+  const out = [];
+  let skippedHeaderLikeRow = false;
+  for (let i = 0; i < rows.length && out.length < maxRows; i++) {
+    const row = rows[i];
+    if (!row)
+      continue;
+    const cells = row.querySelectorAll("th,td");
+    if (cells.length === 0)
+      continue;
+    const allHeaders = Array.from(cells).every((cell) => cell?.tagName === "TH");
+    if (!skippedHeaderLikeRow && allHeaders) {
+      skippedHeaderLikeRow = true;
+      continue;
+    }
+    const record = {};
+    let hasValue = false;
+    for (let col = 0; col < cells.length && col < maxCols; col++) {
+      const header = headers[col] || `col_${col + 1}`;
+      const value = normalizeText(cells[col]?.textContent || "");
+      record[header] = value;
+      if (value)
+        hasValue = true;
+    }
+    if (hasValue)
+      out.push(record);
+  }
+  return out;
+}
+function extractDataTables(params = {}) {
+  const selector = params.selector || "table";
+  const maxRows = Math.max(1, Math.min(params.max_rows || DEFAULT_MAX_ROWS, DEFAULT_MAX_ROWS));
+  const maxCols = Math.max(1, Math.min(params.max_cols || DEFAULT_MAX_COLS, DEFAULT_MAX_COLS));
+  const tables = document.querySelectorAll(selector);
+  const result = [];
+  for (let i = 0; i < tables.length && result.length < MAX_TABLES; i++) {
+    const el = tables[i];
+    if (!(el instanceof HTMLTableElement))
+      continue;
+    const headers = collectHeaders(el, maxCols);
+    const rows = collectRows(el, headers, maxRows, maxCols);
+    const caption = normalizeText(el.caption?.textContent || "");
+    result.push({
+      selector: buildTableSelector(el, i),
+      ...caption ? { caption } : {},
+      headers,
+      rows,
+      row_count: rows.length,
+      column_count: headers.length
+    });
+  }
+  return { tables: result, count: result.length };
+}
+
 // extension/lib/timeout-utils.js
 function createDeferredPromise() {
   let resolve;
@@ -3577,6 +3692,34 @@ function serializeObject2(obj, depth, seen) {
   }
   const result = {};
   const keys = Object.keys(obj).slice(0, 50);
+  if (keys.length === 0) {
+    try {
+      const proto = Object.getPrototypeOf(obj);
+      if (proto && proto !== Object.prototype) {
+        const hostResult = {};
+        const propNames = Object.getOwnPropertyNames(proto).slice(0, 120);
+        for (const key of propNames) {
+          if (key === "constructor")
+            continue;
+          try {
+            const hostValue = obj[key];
+            const hostType = typeof hostValue;
+            if (hostValue === void 0 || hostType === "function")
+              continue;
+            if (hostType === "string" || hostType === "number" || hostType === "boolean" || hostValue === null) {
+              hostResult[key] = hostValue;
+            }
+          } catch {
+          }
+          if (Object.keys(hostResult).length >= 50)
+            break;
+        }
+        if (Object.keys(hostResult).length > 0)
+          return hostResult;
+      }
+    } catch {
+    }
+  }
   for (const key of keys) {
     try {
       result[key] = safeSerializeForExecute(obj[key], depth + 1, seen);
@@ -3815,6 +3958,8 @@ function installMessageListener(captureStateFn, restoreStateFn) {
     GASOLINE_LINK_HEALTH_QUERY: (data) => handleLinkHealthMessage(data),
     GASOLINE_COMPUTED_STYLES_QUERY: (data) => handleComputedStylesMessage(data),
     GASOLINE_FORM_DISCOVERY_QUERY: (data) => handleFormDiscoveryMessage(data),
+    GASOLINE_FORM_STATE_QUERY: (data) => handleFormStateMessage(data),
+    GASOLINE_DATA_TABLE_QUERY: (data) => handleDataTableMessage(data),
     GASOLINE_INJECT_BRIDGE_PING: (data) => handleBridgePingMessage(data)
   };
   window.addEventListener("message", (event) => {
@@ -3873,6 +4018,47 @@ function handleFormDiscoveryMessage(data) {
       type: "GASOLINE_FORM_DISCOVERY_RESPONSE",
       requestId: data.requestId,
       result: { error: "form_discovery_error", message: err.message || "Failed to discover forms" }
+    });
+  }
+}
+function handleFormStateMessage(data) {
+  try {
+    const params = data.params || {};
+    const forms = discoverForms({
+      selector: params.selector,
+      mode: "discover"
+    });
+    postResponse({
+      type: "GASOLINE_FORM_STATE_RESPONSE",
+      requestId: data.requestId,
+      result: { forms, count: forms.length }
+    });
+  } catch (err) {
+    postResponse({
+      type: "GASOLINE_FORM_STATE_RESPONSE",
+      requestId: data.requestId,
+      result: { error: "form_state_error", message: err.message || "Failed to extract form state" }
+    });
+  }
+}
+function handleDataTableMessage(data) {
+  try {
+    const params = data.params || {};
+    const result = extractDataTables({
+      selector: params.selector,
+      max_rows: params.max_rows,
+      max_cols: params.max_cols
+    });
+    postResponse({
+      type: "GASOLINE_DATA_TABLE_RESPONSE",
+      requestId: data.requestId,
+      result
+    });
+  } catch (err) {
+    postResponse({
+      type: "GASOLINE_DATA_TABLE_RESPONSE",
+      requestId: data.requestId,
+      result: { error: "data_table_error", message: err.message || "Failed to extract table data" }
     });
   }
 }

@@ -50,6 +50,7 @@ test_paths:
 
 ### Go (store + handler)
 - `internal/annotation/store.go` — `Detail` struct with ParentContext, Siblings, CSSFramework fields; session TTL = 2 hours
+- `internal/annotation/store_clear.go` — `ClearAll()` resets anonymous sessions, named sessions, details, and waiters (used by `configure(what:"clear", buffer:"all")` to prevent stale replay)
 - `cmd/dev-console/tools_analyze_annotations_handlers.go` — detail response enrichment, error correlation, LLM hints, and cross-project scope safety metadata (`projects`, `scope_ambiguous`, `scope_warning`, `filter_applied`)
 - `internal/schema/analyze.go` + `internal/tools/configure/mode_specs_analyze.go` — analyze annotations schema/capability metadata for `url` / `url_pattern` filters
 

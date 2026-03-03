@@ -17,15 +17,43 @@ function isContentScriptUnreachableError(err: unknown): boolean {
  */
 function readableFallbackScript(): Record<string, unknown> {
   const MAIN_SELECTORS = [
-    'main', 'article', '[role="main"]', '#main', '.main',
-    '.post-content', '.entry-content', '.article-body', '.article-content',
-    '.story-body', '.article', '.post', '#content', '.content', '.results'
+    'main',
+    'article',
+    '[role="main"]',
+    '#main',
+    '.main',
+    '.post-content',
+    '.entry-content',
+    '.article-body',
+    '.article-content',
+    '.story-body',
+    '.article',
+    '.post',
+    '#content',
+    '.content',
+    '.results'
   ]
   const REMOVE_SELECTORS = [
-    'nav', 'header', 'footer', 'aside', 'script', 'style', 'noscript', 'svg',
-    '[role="navigation"]', '[role="banner"]', '[role="contentinfo"]', '[aria-hidden="true"]',
-    '.ad', '.ads', '.advertisement', '.social-share', '.comments', '.sidebar',
-    '.related-posts', '.newsletter'
+    'nav',
+    'header',
+    'footer',
+    'aside',
+    'script',
+    'style',
+    'noscript',
+    'svg',
+    '[role="navigation"]',
+    '[role="banner"]',
+    '[role="contentinfo"]',
+    '[aria-hidden="true"]',
+    '.ad',
+    '.ads',
+    '.advertisement',
+    '.social-share',
+    '.comments',
+    '.sidebar',
+    '.related-posts',
+    '.newsletter'
   ]
 
   let mainEl: Element = document.body || document.documentElement
@@ -33,7 +61,10 @@ function readableFallbackScript(): Record<string, unknown> {
     const el = document.querySelector(sel)
     if (!el) continue
     const text = ((el as HTMLElement).innerText || el.textContent || '').trim()
-    if (text.length > 100) { mainEl = el; break }
+    if (text.length > 100) {
+      mainEl = el
+      break
+    }
   }
 
   const clone = mainEl.cloneNode(true) as Element
@@ -47,7 +78,10 @@ function readableFallbackScript(): Record<string, unknown> {
     const el = document.querySelector(sel)
     if (el) {
       const text = (el.getAttribute('content') || (el as HTMLElement).innerText || '').trim()
-      if (text.length > 0 && text.length < 200) { byline = text; break }
+      if (text.length > 0 && text.length < 200) {
+        byline = text
+        break
+      }
     }
   }
 
@@ -70,12 +104,29 @@ function readableFallbackScript(): Record<string, unknown> {
 function markdownFallbackScript(): Record<string, unknown> {
   const MAX_OUTPUT = 200000
   const MAIN_SELECTORS = [
-    'main', 'article', '[role="main"]', '#main', '.main',
-    '.post-content', '.entry-content', '.article-body', '.article-content'
+    'main',
+    'article',
+    '[role="main"]',
+    '#main',
+    '.main',
+    '.post-content',
+    '.entry-content',
+    '.article-body',
+    '.article-content'
   ]
   const REMOVE_SELECTORS = [
-    'nav', 'header', 'footer', 'aside', 'script', 'style', 'noscript', 'svg',
-    '[role="navigation"]', '[role="banner"]', '[role="contentinfo"]', '[aria-hidden="true"]'
+    'nav',
+    'header',
+    'footer',
+    'aside',
+    'script',
+    'style',
+    'noscript',
+    'svg',
+    '[role="navigation"]',
+    '[role="banner"]',
+    '[role="contentinfo"]',
+    '[aria-hidden="true"]'
   ]
 
   let mainEl: Element = document.body || document.documentElement
@@ -83,7 +134,10 @@ function markdownFallbackScript(): Record<string, unknown> {
     const el = document.querySelector(sel)
     if (!el) continue
     const text = ((el as HTMLElement).innerText || el.textContent || '').trim()
-    if (text.length > 100) { mainEl = el; break }
+    if (text.length > 100) {
+      mainEl = el
+      break
+    }
   }
 
   const clone = mainEl.cloneNode(true) as Element
@@ -115,7 +169,10 @@ function pageSummaryFallbackScript(): Record<string, unknown> {
   const headings: string[] = []
   for (const heading of Array.from(document.querySelectorAll('h1, h2, h3'))) {
     if (headings.length >= 30) break
-    const text = ((heading as HTMLElement).innerText || heading.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 200)
+    const text = ((heading as HTMLElement).innerText || heading.textContent || '')
+      .replace(/\s+/g, ' ')
+      .trim()
+      .slice(0, 200)
     if (text) headings.push(heading.tagName.toLowerCase() + ': ' + text)
   }
 
@@ -125,9 +182,16 @@ function pageSummaryFallbackScript(): Record<string, unknown> {
   const seenNav: Record<string, boolean> = {}
   for (const link of Array.from(navCandidates)) {
     if (navLinks.length >= 25) break
-    const linkText = ((link as HTMLElement).innerText || link.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 80)
+    const linkText = ((link as HTMLElement).innerText || link.textContent || '')
+      .replace(/\s+/g, ' ')
+      .trim()
+      .slice(0, 80)
     let href = link.getAttribute('href') || ''
-    try { href = new URL(href, window.location.href).href } catch { /* keep as-is */ }
+    try {
+      href = new URL(href, window.location.href).href
+    } catch {
+      /* keep as-is */
+    }
     if (!href) continue
     const key = linkText + '|' + href
     if (seenNav[key]) continue
@@ -143,14 +207,23 @@ function pageSummaryFallbackScript(): Record<string, unknown> {
     const seenFields: Record<string, boolean> = {}
     for (const field of Array.from(form.querySelectorAll('input, select, textarea'))) {
       if (fields.length >= 25) break
-      const name = field.getAttribute('name') || field.getAttribute('id') || field.getAttribute('aria-label') || field.getAttribute('type') || field.tagName.toLowerCase()
+      const name =
+        field.getAttribute('name') ||
+        field.getAttribute('id') ||
+        field.getAttribute('aria-label') ||
+        field.getAttribute('type') ||
+        field.tagName.toLowerCase()
       const cleaned = (name || '').replace(/\s+/g, ' ').trim().slice(0, 60)
       if (!cleaned || seenFields[cleaned]) continue
       seenFields[cleaned] = true
       fields.push(cleaned)
     }
     let action = form.getAttribute('action') || window.location.href
-    try { action = new URL(action, window.location.href).href } catch { /* keep as-is */ }
+    try {
+      action = new URL(action, window.location.href).href
+    } catch {
+      /* keep as-is */
+    }
     forms.push({ action, method: (form.getAttribute('method') || 'GET').toUpperCase(), fields })
   }
 
@@ -161,9 +234,15 @@ function pageSummaryFallbackScript(): Record<string, unknown> {
     const el = document.querySelector(sel)
     if (!el) continue
     const text = ((el as HTMLElement).innerText || el.textContent || '').trim()
-    if (text.length > 120) { mainEl = el; break }
+    if (text.length > 120) {
+      mainEl = el
+      break
+    }
   }
-  const mainText = ((mainEl as HTMLElement).innerText || mainEl.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 20000)
+  const mainText = ((mainEl as HTMLElement).innerText || mainEl.textContent || '')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, 20000)
   const preview = mainText.slice(0, 500)
   const wordCount = mainText ? mainText.split(/\s+/).filter(Boolean).length : 0
 
@@ -175,7 +254,9 @@ function pageSummaryFallbackScript(): Record<string, unknown> {
   // Classification
   const linkCount = document.querySelectorAll('a[href]').length
   const paragraphCount = document.querySelectorAll('p').length
-  const hasSearchInput = !!document.querySelector('input[type="search"], input[name*="search" i], input[placeholder*="search" i]')
+  const hasSearchInput = !!document.querySelector(
+    'input[type="search"], input[name*="search" i], input[placeholder*="search" i]'
+  )
   const likelySearchURL = /[?&](q|query|search)=/i.test(window.location.search)
   const hasArticle = document.querySelectorAll('article').length > 0
   const hasTable = document.querySelectorAll('table').length > 0
@@ -252,7 +333,8 @@ function contentExtractorCommand(messageType: string, errorCode: string): Comman
         }
         ctx.sendResult({
           error: errorCode,
-          message: 'Content script not loaded on this page. Refresh the page first: interact({what: "refresh"}), then retry.'
+          message:
+            'Content script not loaded on this page. Refresh the page first: interact({what: "refresh"}), then retry.'
         })
         return
       }
