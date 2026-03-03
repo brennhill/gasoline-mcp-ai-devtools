@@ -1,11 +1,11 @@
 ---
-// Head.astro — Global head injection for analytics
+// Head.astro — Global head injection for analytics + markdown mirror discovery
 import Analytics from './Analytics.astro';
 
 const siteBase = Astro.site?.toString() ?? 'https://cookwithgasoline.com';
 const path = Astro.url?.pathname ?? '/';
-const normalizedPath = path === '/' ? 'index' : path.replace(/^\/|\/$/g, '') || 'index';
-const markdownUrl = new URL(`/markdown/${normalizedPath}.md`, siteBase).toString();
+const normalizedPath = path === '/' ? 'index' : path.replace(/^\/+|\/+$/g, '') || 'index';
+const markdownUrl = new URL(`/${normalizedPath}.md`, siteBase).toString();
 ---
 
 <meta name="robots" content="index,follow" />
