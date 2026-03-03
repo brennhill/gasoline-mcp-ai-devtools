@@ -257,7 +257,7 @@ func TestQueueStateNavigation_QueuesBrowserAction(t *testing.T) {
 		"title": "Test Page",
 	}
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`)}
-	env.handler.queueStateNavigation(req, stateData)
+	env.handler.stateInteract().queueStateNavigation(req, stateData)
 
 	// Should have queued a browser_action query
 	queries := env.capture.GetPendingQueries()
@@ -301,7 +301,7 @@ func TestQueueStateNavigation_SkipsWhenPilotDisabled(t *testing.T) {
 		"title": "Test Page",
 	}
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`)}
-	env.handler.queueStateNavigation(req, stateData)
+	env.handler.stateInteract().queueStateNavigation(req, stateData)
 
 	queries := env.capture.GetPendingQueries()
 	for _, q := range queries {
@@ -325,7 +325,7 @@ func TestQueueStateNavigation_SkipsWhenURLEmpty(t *testing.T) {
 		"title": "No URL",
 	}
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`)}
-	env.handler.queueStateNavigation(req, stateData)
+	env.handler.stateInteract().queueStateNavigation(req, stateData)
 
 	queries := env.capture.GetPendingQueries()
 	for _, q := range queries {
@@ -344,7 +344,7 @@ func TestQueueStateNavigation_SkipsWhenURLMissing(t *testing.T) {
 		"title": "No URL key",
 	}
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`)}
-	env.handler.queueStateNavigation(req, stateData)
+	env.handler.stateInteract().queueStateNavigation(req, stateData)
 
 	queries := env.capture.GetPendingQueries()
 	for _, q := range queries {
@@ -363,7 +363,7 @@ func TestQueueStateNavigation_SkipsWhenURLNotString(t *testing.T) {
 		"url": 12345, // not a string
 	}
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`)}
-	env.handler.queueStateNavigation(req, stateData)
+	env.handler.stateInteract().queueStateNavigation(req, stateData)
 
 	queries := env.capture.GetPendingQueries()
 	for _, q := range queries {
@@ -383,7 +383,7 @@ func TestQueueStateNavigation_CorrelationIDHasNavPrefix(t *testing.T) {
 		"url": "https://example.com",
 	}
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`)}
-	env.handler.queueStateNavigation(req, stateData)
+	env.handler.stateInteract().queueStateNavigation(req, stateData)
 
 	corrID, ok := stateData["correlation_id"].(string)
 	if !ok {

@@ -105,6 +105,7 @@ type ToolHandler struct {
 	recordingInteractHandler *recordingInteractHandler
 	uploadInteractHandler    *uploadInteractHandler
 	testGenHandler           *testGenHandler
+	stateInteractHandler     *stateInteractHandler
 
 	// Optional evidence capture state keyed by correlation_id.
 	// Tracks before/after screenshots for interact actions when evidence mode is enabled.

@@ -442,7 +442,7 @@ func TestSaveState_NoTabTracking_NoGate(t *testing.T) {
 
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`)}
 	args := json.RawMessage(`{"what":"save_state","snapshot_name":"test-state","sync":false}`)
-	resp := env.handler.handleStateSave(req, args)
+	resp := env.handler.stateInteract().handleStateSave(req, args)
 
 	// If it is an error, it must NOT be the tab tracking error (ErrNoData with "tab" message).
 	if !isSuccessOrQueued(t, resp) {
