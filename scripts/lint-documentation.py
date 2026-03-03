@@ -243,9 +243,50 @@ class DocumentLinter:
             print(f"  ... and {len(items) - 20} more {label.lower()}")
         print()
 
-    def lint_all(self):
-        """Lint all markdown files in docs"""
-        md_files = list(DOCS_DIR.rglob("*.md"))
+    def resolve_markdown_files(self, scope_paths=None):
+        """Resolve markdown files from optional scope paths.
+
+        When scope_paths is empty, lint all markdown files under docs/.
+        """
+        if not scope_paths:
+            return list(DOCS_DIR.rglob("*.md"))
+
+        docs_root = DOCS_DIR.resolve()
+        files = []
+        seen = set()
+
+        for raw_path in scope_paths:
+            candidate = (CODE_DIR / raw_path).resolve()
+            try:
+                candidate.relative_to(docs_root)
+            except ValueError:
+                self.error(
+                    f"scope path outside docs/: {raw_path}"
+                )
+                continue
+
+            if candidate.is_dir():
+                for md_file in candidate.rglob("*.md"):
+                    key = str(md_file)
+                    if key not in seen:
+                        seen.add(key)
+                        files.append(md_file)
+                continue
+
+            if candidate.is_file() and candidate.suffix.lower() == ".md":
+                key = str(candidate)
+                if key not in seen:
+                    seen.add(key)
+                    files.append(candidate)
+                continue
+
+            self.error(f"scope path not found or not markdown: {raw_path}")
+
+        return files
+
+    def lint_all(self, scope_paths=None):
+        """Lint markdown files in docs (optionally scoped)."""
+        md_files = self.resolve_markdown_files(scope_paths)
         print(f"Linting {len(md_files)} markdown files...\n")
 
         for md_file in md_files:
@@ -266,5 +307,6 @@ class DocumentLinter:
 
 if __name__ == "__main__":
     linter = DocumentLinter()
-    passed = linter.lint_all()
+    scopes = sys.argv[1:]
+    passed = linter.lint_all(scopes)
     sys.exit(0 if passed else 1)

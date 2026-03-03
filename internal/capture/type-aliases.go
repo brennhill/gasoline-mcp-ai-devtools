@@ -57,6 +57,3 @@ type (
 // NewCircuitBreaker is re-exported from internal/circuit for backward compatibility.
 var NewCircuitBreaker = circuit.NewCircuitBreaker
 
-// NewStore is the preferred constructor name for Store.
-// Backward compatibility: NewCapture remains available.
-func NewStore() *Store { return NewCapture() }

@@ -4,10 +4,11 @@ feature_id: feature-gasoline-ci
 status: proposed
 feature_type: feature
 owners: []
-last_reviewed: 2026-03-03
+last_reviewed: 2026-03-04
 code_paths:
   - Makefile
   - .github/workflows/ci.yml
+  - .golangci.yml
   - scripts/generate-wire-types.js
   - scripts/docs/check-feature-bundles.js
   - scripts/docs/check-cookwithgasoline-content-contract.mjs
@@ -30,6 +31,7 @@ test_paths:
 - Mode/Action: observe(errors, logs, network_waterfall, network_bodies, websocket_events, performance, timeline), generate(har, sarif)
 - Location: `docs/features/feature/gasoline-ci`
 - Fast Gate: `make verify-llm` (typical warm-cache runtime ~60-120s)
+- Added Gates: docs integrity (`docs:lint:integrity`) and Go import boundaries (`depguard`)
 
 ## Specs
 

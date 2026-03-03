@@ -59,25 +59,13 @@ var (
 // ToolHandler Delegation
 // ============================================
 
-// addAlert delegates to the AlertBuffer.
-func (h *ToolHandler) addAlert(a Alert) {
-	h.alertBuffer.AddAlert(a)
-}
 
 // drainAlerts delegates to the AlertBuffer.
 func (h *ToolHandler) drainAlerts() []Alert {
 	return h.alertBuffer.DrainAlerts()
 }
 
-// recordErrorForAnomaly delegates to the AlertBuffer.
-func (h *ToolHandler) recordErrorForAnomaly(t time.Time) {
-	h.alertBuffer.RecordErrorForAnomaly(t)
-}
 
-// buildCIAlert delegates to the streaming package.
-func (h *ToolHandler) buildCIAlert(ci CIResult) Alert {
-	return streaming.BuildCIAlert(ci)
-}
 
 // ============================================
 // CI/CD Webhook Handler

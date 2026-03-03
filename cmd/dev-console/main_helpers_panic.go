@@ -57,14 +57,3 @@ func handlePanicRecovery(r any) {
 	os.Exit(1)
 }
 
-// resolveCrashFile returns the best available crash log file path.
-func resolveCrashFile() string {
-	crashFile, err := state.CrashLogFile()
-	if err == nil {
-		return crashFile
-	}
-	if legacy, legacyErr := state.LegacyCrashLogFile(); legacyErr == nil {
-		return legacy
-	}
-	return filepath.Join(os.TempDir(), "gasoline-crash.log")
-}

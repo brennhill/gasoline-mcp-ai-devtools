@@ -2,7 +2,7 @@
 doc_type: flow_map
 flow_id: llm-fast-verify-gate
 status: active
-last_reviewed: 2026-03-03
+last_reviewed: 2026-03-04
 owners:
   - Brenn
 entrypoints:
@@ -12,6 +12,7 @@ code_paths:
   - Makefile
   - .github/workflows/ci.yml
   - scripts/generate-wire-types.js
+  - scripts/lint-documentation.py
   - scripts/docs/check-feature-bundles.js
   - scripts/docs/check-cookwithgasoline-content-contract.mjs
   - scripts/docs/check-reference-schema-sync.mjs
@@ -39,10 +40,11 @@ Covers the fast, high-signal `verify-llm` quality gate for LLM maintenance loops
 ## Primary Flow
 
 1. Check wire-schema drift via `scripts/generate-wire-types.js --check`.
-2. Enforce strict feature docs bundle checks (`docs:check:strict`).
-3. Enforce docs content contract and reference/schema sync.
-4. Run focused Go tests for schema parity and key interact workflow contracts.
-5. Return fast pass/fail signal for maintainers before full CI.
+2. Enforce scoped docs integrity lint (`docs:lint:integrity` for `docs/features` + `docs/architecture`).
+3. Enforce strict feature docs bundle checks (`docs:check:strict`).
+4. Enforce docs content contract and reference/schema sync.
+5. Run focused Go tests for schema parity and key interact workflow contracts.
+6. Return fast pass/fail signal for maintainers before full CI.
 
 ## Scoped CI Flow
 
@@ -67,6 +69,7 @@ Covers the fast, high-signal `verify-llm` quality gate for LLM maintenance loops
 - `Makefile`
 - `.github/workflows/ci.yml`
 - `scripts/generate-wire-types.js`
+- `scripts/lint-documentation.py`
 - `scripts/docs/check-feature-bundles.js`
 - `scripts/docs/check-cookwithgasoline-content-contract.mjs`
 - `scripts/docs/check-reference-schema-sync.mjs`

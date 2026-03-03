@@ -16,6 +16,7 @@ linters:
     - dupl           # Copy-paste detection (catches duplicated function blocks)
     - unconvert      # Unnecessary type conversions
     - misspell       # Typos in comments and strings
+    - depguard       # Import boundary guardrails
 
   settings:
     errcheck:
@@ -34,6 +35,16 @@ linters:
         - all
         - "-ST1003"   # Allow Go naming convention violations (TabId, sinceTs, etc. — changing breaks JSON API)
         - "-ST1005"   # Allow capitalized error strings (we use structured error messages)
+
+    depguard:
+      rules:
+        module_path_hygiene:
+          list-mode: lax
+          files:
+            - "$all"
+          deny:
+            - pkg: github.com/dev-console/dev-console
+              desc: "Use module-local imports under github.com/brennhill/gasoline-agentic-browser-devtools-mcp."
 
   exclusions:
     rules:
