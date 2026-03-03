@@ -649,7 +649,7 @@ export async function executeCDPAction(
     return
   }
 
-  const toastLabel = `CDP ${action}`
+  const toastLabel = action === 'key_press' ? 'Typing...' : `CDP ${action}`
   actionToast(tabId, toastLabel, undefined, 'trying', 10000)
 
   try {
