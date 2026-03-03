@@ -37,13 +37,13 @@ var generateHandlers = map[string]GenerateHandler{
 		return h.toolGenerateSRI(req, args)
 	},
 	"test_from_context": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-		return h.handleGenerateTestFromContext(req, args)
+		return h.testGen().handleGenerateTestFromContext(req, args)
 	},
 	"test_heal": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-		return h.handleGenerateTestHeal(req, args)
+		return h.testGen().handleGenerateTestHeal(req, args)
 	},
 	"test_classify": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-		return h.handleGenerateTestClassify(req, args)
+		return h.testGen().handleGenerateTestClassify(req, args)
 	},
 	"visual_test": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 		return h.toolGenerateVisualTest(req, args)

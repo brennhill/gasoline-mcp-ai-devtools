@@ -11,78 +11,78 @@ import (
 
 // toolHandlerDataProvider adapts *ToolHandler to testgen.DataProvider.
 type toolHandlerDataProvider struct {
-	h *ToolHandler
+	h *testGenHandler
 }
 
 func (a *toolHandlerDataProvider) GetLogEntries() []map[string]any {
-	a.h.server.mu.RLock()
-	entries := make([]LogEntry, len(a.h.server.entries))
-	copy(entries, a.h.server.entries)
-	a.h.server.mu.RUnlock()
+	a.h.parent.server.mu.RLock()
+	entries := make([]LogEntry, len(a.h.parent.server.entries))
+	copy(entries, a.h.parent.server.entries)
+	a.h.parent.server.mu.RUnlock()
 	return entries
 }
 
 func (a *toolHandlerDataProvider) GetAllEnhancedActions() []capture.EnhancedAction {
-	return a.h.capture.GetAllEnhancedActions()
+	return a.h.parent.capture.GetAllEnhancedActions()
 }
 
 func (a *toolHandlerDataProvider) GetNetworkBodies() []capture.NetworkBody {
-	return a.h.capture.GetNetworkBodies()
+	return a.h.parent.capture.GetNetworkBodies()
 }
 
-// dataProvider returns a testgen.DataProvider backed by this ToolHandler.
-func (h *ToolHandler) dataProvider() testgen.DataProvider {
+// dataProvider returns a testgen.DataProvider backed by this test-generation handler.
+func (h *testGenHandler) dataProvider() testgen.DataProvider {
 	return &toolHandlerDataProvider{h: h}
 }
 
-func (h *ToolHandler) findTargetError(errorID string) (LogEntry, string, int64) {
+func (h *testGenHandler) findTargetError(errorID string) (LogEntry, string, int64) {
 	return testgen.FindTargetError(h.dataProvider(), errorID)
 }
 
-func (h *ToolHandler) getActionsInTimeWindow(centerTimestamp int64, windowMs int64) ([]capture.EnhancedAction, error) {
+func (h *testGenHandler) getActionsInTimeWindow(centerTimestamp int64, windowMs int64) ([]capture.EnhancedAction, error) {
 	return testgen.GetActionsInTimeWindow(h.dataProvider(), centerTimestamp, windowMs)
 }
 
-func (h *ToolHandler) countNetworkAssertions() int {
+func (h *testGenHandler) countNetworkAssertions() int {
 	return testgen.CountNetworkAssertions(h.dataProvider())
 }
 
-func (h *ToolHandler) collectErrorMessages(limit int) []string {
+func (h *testGenHandler) collectErrorMessages(limit int) []string {
 	return testgen.CollectErrorMessages(h.dataProvider(), limit)
 }
 
-func (h *ToolHandler) generateTestFromError(req TestFromContextRequest) (*GeneratedTest, error) {
+func (h *testGenHandler) generateTestFromError(req TestFromContextRequest) (*GeneratedTest, error) {
 	return testgen.GenerateTestFromError(h.dataProvider(), req)
 }
 
-func (h *ToolHandler) generateTestFromInteraction(req TestFromContextRequest) (*GeneratedTest, error) {
+func (h *testGenHandler) generateTestFromInteraction(req TestFromContextRequest) (*GeneratedTest, error) {
 	return testgen.GenerateTestFromInteraction(h.dataProvider(), req)
 }
 
-func (h *ToolHandler) generateTestFromRegression(req TestFromContextRequest) (*GeneratedTest, error) {
+func (h *testGenHandler) generateTestFromRegression(req TestFromContextRequest) (*GeneratedTest, error) {
 	return testgen.GenerateTestFromRegression(h.dataProvider(), req)
 }
 
-func (h *ToolHandler) analyzeTestFile(req TestHealRequest, projectDir string) ([]string, error) {
+func (h *testGenHandler) analyzeTestFile(req TestHealRequest, projectDir string) ([]string, error) {
 	return testgen.AnalyzeTestFile(req, projectDir)
 }
 
-func (h *ToolHandler) repairSelectors(req TestHealRequest, _ string) (*HealResult, error) {
+func (h *testGenHandler) repairSelectors(req TestHealRequest, _ string) (*HealResult, error) {
 	return testgen.RepairSelectors(req)
 }
 
-func (h *ToolHandler) healSelector(oldSelector string) (*HealedSelector, error) {
+func (h *testGenHandler) healSelector(oldSelector string) (*HealedSelector, error) {
 	return testgen.HealSelector(oldSelector)
 }
 
-func (h *ToolHandler) healTestBatch(req TestHealRequest, projectDir string) (*BatchHealResult, error) {
+func (h *testGenHandler) healTestBatch(req TestHealRequest, projectDir string) (*BatchHealResult, error) {
 	return testgen.HealTestBatch(req, projectDir)
 }
 
-func (h *ToolHandler) classifyFailure(failure *TestFailure) *FailureClassification {
+func (h *testGenHandler) classifyFailure(failure *TestFailure) *FailureClassification {
 	return testgen.ClassifyFailure(failure)
 }
 
-func (h *ToolHandler) classifyFailureBatch(failures []TestFailure) *BatchClassifyResult {
+func (h *testGenHandler) classifyFailureBatch(failures []TestFailure) *BatchClassifyResult {
 	return testgen.ClassifyFailureBatch(failures)
 }

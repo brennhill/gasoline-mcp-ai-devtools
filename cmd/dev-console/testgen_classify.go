@@ -9,7 +9,7 @@ import (
 	"fmt"
 )
 
-func (h *ToolHandler) handleGenerateTestClassify(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+func (h *testGenHandler) handleGenerateTestClassify(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	var params TestClassifyRequest
 
 	warnings, err := unmarshalWithWarnings(args, &params)
@@ -44,7 +44,7 @@ func (h *ToolHandler) handleGenerateTestClassify(req JSONRPCRequest, args json.R
 	return appendWarningsToResponse(resp, warnings)
 }
 
-func (h *ToolHandler) dispatchClassifyAction(reqID any, params TestClassifyRequest) (any, string, *JSONRPCResponse) {
+func (h *testGenHandler) dispatchClassifyAction(reqID any, params TestClassifyRequest) (any, string, *JSONRPCResponse) {
 	switch params.Action {
 	case "failure":
 		result, summary, errResp, ok := h.classifySingleFailure(reqID, params)
@@ -94,7 +94,7 @@ func validateClassifyParams(reqID any, params TestClassifyRequest) (JSONRPCRespo
 	return JSONRPCResponse{}, true
 }
 
-func (h *ToolHandler) classifySingleFailure(reqID any, params TestClassifyRequest) (any, string, JSONRPCResponse, bool) {
+func (h *testGenHandler) classifySingleFailure(reqID any, params TestClassifyRequest) (any, string, JSONRPCResponse, bool) {
 	if params.Failure == nil {
 		return nil, "", JSONRPCResponse{
 			JSONRPC: "2.0",
@@ -135,7 +135,7 @@ func (h *ToolHandler) classifySingleFailure(reqID any, params TestClassifyReques
 	return data, summary, JSONRPCResponse{}, true
 }
 
-func (h *ToolHandler) classifyBatchFailures(reqID any, params TestClassifyRequest) (any, string, JSONRPCResponse, bool) {
+func (h *testGenHandler) classifyBatchFailures(reqID any, params TestClassifyRequest) (any, string, JSONRPCResponse, bool) {
 	if len(params.Failures) == 0 {
 		return nil, "", JSONRPCResponse{
 			JSONRPC: "2.0",
