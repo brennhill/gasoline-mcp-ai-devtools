@@ -1,6 +1,6 @@
 ---
-title: "analyze() — Active Analysis"
-description: "Complete reference for the analyze tool. 25 modes for DOM queries, accessibility audits, security scans, link health, visual annotations, visual regression, form analysis, performance snapshots, and more."
+title: "Analyze — Active Analysis"
+description: "Complete reference for the analyze tool. 27 modes for DOM queries, accessibility audits, security scans, link health, visual annotations, visual regression, form analysis, performance snapshots, and more."
 ---
 
 The `analyze` tool triggers active analysis — DOM queries, accessibility audits, security scans, link health checks, and visual annotations. Unlike `observe` (which reads passive buffers), `analyze` dispatches work to the browser extension and returns results.
@@ -19,7 +19,7 @@ analyze({what: "link_health", domain: "example.com"})               // Check all
 analyze({what: "performance"})                                       // Performance snapshot
 analyze({what: "error_clusters"})                                    // Group similar errors
 analyze({what: "page_summary"})                                      // Page structure
-analyze({what: "annotations", session: "review"})                   // Draw mode results
+analyze({what: "annotations", annot_session: "review"})             // Draw mode results
 ```
 
 ## Common Parameters
@@ -289,6 +289,19 @@ analyze({what: "forms", selector: "#checkout-form"})
 |-----------|------|-------------|
 | `selector` | string | CSS selector to scope the analysis |
 
+### `form_state`
+
+Capture current form values, touched/dirty state, and validation metadata for debugging complex form behavior.
+
+```js
+analyze({what: "form_state"})
+analyze({what: "form_state", selector: "#checkout-form"})
+```
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `selector` | string | CSS selector to scope form-state extraction |
+
 ### `form_validation`
 
 Validate form configuration — checks for missing labels, incorrect input types, accessibility issues in form structure.
@@ -301,6 +314,21 @@ analyze({what: "form_validation", summary: true})
 | Parameter | Type | Description |
 |-----------|------|-------------|
 | `summary` | boolean | Return compact summary |
+
+### `data_table`
+
+Extract structured data-table snapshots (headers, rows, and cell mappings) for dashboard and reporting UIs.
+
+```js
+analyze({what: "data_table"})
+analyze({what: "data_table", selector: "#orders", max_rows: 100, max_cols: 20})
+```
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `selector` | string | CSS selector for a specific table |
+| `max_rows` | number | Maximum rows to return |
+| `max_cols` | number | Maximum columns to return |
 
 ---
 

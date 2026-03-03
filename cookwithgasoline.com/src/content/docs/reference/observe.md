@@ -1,6 +1,6 @@
 ---
-title: "observe() — Read Browser State"
-description: "Complete reference for the observe tool. 29 modes for reading errors, network traffic, WebSocket messages, user actions, recordings, storage, page inventory, and more."
+title: "Observe — Read Browser State"
+description: "Complete reference for the observe tool. 30 modes for reading errors, network traffic, WebSocket messages, user actions, recordings, storage, page inventory, inbox messages, and more."
 ---
 
 The `observe` tool reads the current browser state. It's your AI's eyes into the browser — errors, network traffic, WebSocket messages, performance metrics, visual state, and more.
@@ -427,6 +427,15 @@ observe({what: "transients", last_n: 5})
 | Parameter | Type | Description |
 |-----------|------|-------------|
 | `classification` | string | Filter by type: `alert`, `toast`, `snackbar`, `notification`, `tooltip`, `banner`, `flash` |
+
+### `inbox`
+
+Read queued push notifications and alert events emitted by streaming workflows.
+
+```js
+observe({what: "inbox"})
+observe({what: "inbox", limit: 20})
+```
 
 ---
 

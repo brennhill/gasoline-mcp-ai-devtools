@@ -1,5 +1,5 @@
 ---
-title: "generate() — Create Artifacts"
+title: "Generate — Create Artifacts"
 description: "Complete reference for the generate tool. 13 formats for producing Playwright tests, reproduction scripts, HAR exports, SARIF reports, CSP headers, SRI hashes, PR summaries, visual tests, annotation reports, test healing, and failure classification."
 ---
 
@@ -20,6 +20,18 @@ generate({what: "test_from_context", context: "error"}) // Test from error conte
 generate({what: "test_heal", action: "analyze", test_file: "tests/login.spec.ts"})  // Heal broken selectors
 generate({what: "test_classify", action: "failure", failure: {error: "timeout"}})    // Classify failure
 ```
+
+## Common Parameters
+
+These parameters are used across multiple generate modes:
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `what` | string (required) | Artifact type to generate |
+| `format` | string | Deprecated alias for `what` |
+| `telemetry_mode` | string | Telemetry metadata mode: `off`, `auto`, `full` |
+| `save_to` | string | Output file path when writing artifacts to disk |
+| `test_name` | string | Optional name for generated test artifacts |
 
 ---
 

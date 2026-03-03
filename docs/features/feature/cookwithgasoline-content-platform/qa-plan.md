@@ -1,33 +1,35 @@
 ---
-doc_type: qa-plan
+doc_type: qa_plan
 feature_id: feature-cookwithgasoline-content-platform
 status: in_progress
 last_reviewed: 2026-03-03
+owners:
+  - Brenn
 ---
 
-# Cookwithgasoline Content Platform QA Plan
+# QA Plan
 
 ## Automated Gates
 
-1. `npm run docs:lint:content-contract`
-2. `npm run docs:ci`
-3. Site quality gates in `npm run check`
+1. `npm run docs:check:strict`
+2. `npm run docs:lint:content-contract`
+3. `npm run docs:lint:reference-schema-sync`
+4. `npm run docs:ci`
+5. `(cd cookwithgasoline.com && npm run build)`
 
-## Required Scenarios
+## Manual Checks
 
-1. Homepage renders core messaging and workflow/article discovery sections.
-2. Workflow and article index components resolve expected content links.
-3. Markdown routes return valid content with canonical metadata:
-   - `/index.md`
-   - `/[...slug].md`
-   - `/markdown/[...slug].md`
-4. LLM exports are reachable and generated from current content:
-   - `/llms.txt`
-   - `/llms-full.txt`
-5. Content contract linter fails on malformed/invalid changed content.
+1. Verify homepage hero spacing/centering at desktop and mobile breakpoints.
+2. Verify light/dark theme readability for nav, sidebar, TOC, and body text.
+3. Verify `/reference/*` pages render all documented modes/actions.
+4. Verify `.md` mirrors resolve for docs and blog routes.
 
-## Regression Checklist
+## Regression Focus
 
-1. Verify slug resolution and canonical path handling after route/content changes.
-2. Verify markdown route handlers keep frontmatter/content signal headers intact.
-3. Verify CI blocks merges on content-contract violations.
+- Reference docs drift when schema enums change.
+- Visual regressions in top hero layout and section spacing.
+- Missing metadata/frontmatter on changed docs/blog files.
+
+## Linked Architecture
+
+- Canonical flow map: [flow-map.md](./flow-map.md)

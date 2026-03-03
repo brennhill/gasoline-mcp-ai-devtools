@@ -3,19 +3,17 @@ title: API and Tool Reference
 description: Readthedocs-style entry point for Gasoline MCP tool APIs, request shapes, and common usage patterns.
 ---
 
-# API and Tool Reference
-
 Use this page as the structured starting point for all MCP tool docs.
 
 ## Quick Reference
 
 | Tool | Primary Purpose | Entry Doc |
 | --- | --- | --- |
-| `observe()` | Read browser logs, requests, errors, and captured state | [observe()](/reference/observe/) |
-| `analyze()` | Run audits and deeper analyses (performance, accessibility, security) | [analyze()](/reference/analyze/) |
-| `interact()` | Navigate pages and perform browser actions | [interact()](/reference/interact/) |
-| `configure()` | Manage sessions, noise rules, persistence, and recorder settings | [configure()](/reference/configure/) |
-| `generate()` | Produce reproductions, reports, and tests from captured data | [generate()](/reference/generate/) |
+| `Observe` | Read browser logs, requests, errors, and captured state | [Observe](/reference/observe/) |
+| `Analyze` | Run audits and deeper analyses (performance, accessibility, security) | [Analyze](/reference/analyze/) |
+| `Interact` | Navigate pages and perform browser actions | [Interact](/reference/interact/) |
+| `Configure` | Manage sessions, noise rules, persistence, and recorder settings | [Configure](/reference/configure/) |
+| `Generate` | Produce reproductions, reports, and tests from captured data | [Generate](/reference/generate/) |
 
 ## Common Parameters
 

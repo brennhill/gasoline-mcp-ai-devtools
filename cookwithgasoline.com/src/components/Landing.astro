@@ -1,141 +1,156 @@
 ---
-import { workflowPresets } from '../data/workflows';
+const logos = ['Claude Code', 'Cursor', 'Windsurf', 'Gemini CLI', 'Zed', 'OpenCode', 'Claude Desktop', 'Antigravity']
 
-const featuredWorkflows = workflowPresets.slice(0, 6);
+const transformationCards = [
+  {
+    role: 'Engineering',
+    from: 'Manual browser bug reproduction across tools',
+    to: 'Single-loop triage with logs, network traces, and DOM evidence'
+  },
+  {
+    role: 'Product',
+    from: 'Specs detached from real UI behavior',
+    to: 'Annotated sessions and replayable evidence attached to every change'
+  },
+  {
+    role: 'QA',
+    from: 'Flaky scripts and brittle selectors',
+    to: 'Deterministic interact flows with reusable sequences and playback'
+  },
+  {
+    role: 'Security & Accessibility',
+    from: 'Late-cycle checks and scattered findings',
+    to: 'Shift-left audits with SARIF and actionable remediations'
+  }
+]
+
+const solutions = [
+  {
+    id: 'seo',
+    title: 'SEO',
+    copy: 'Validate canonical tags, metadata, heading structure, and crawl pathways from rendered pages before release.',
+    bullets: ['DOM extraction for metadata parity', 'Link-health checks for broken journeys', 'Agent-readable markdown mirrors for indexing'],
+    href: '/guides/api-validation/',
+    cta: 'View SEO flow',
+    bgClass: 'gmodern-solution--cream',
+    image: '/images/solutions-seo-signal.svg'
+  },
+  {
+    id: 'product',
+    title: 'Product Development',
+    copy: 'Capture annotation sessions to align design intent, implementation, and acceptance criteria in one visual narrative.',
+    bullets: ['Annotation sessions across multi-page flows', 'Visual issue rollups', 'Diff-backed release reviews'],
+    href: '/reference/analyze/',
+    cta: 'Inspect annotations',
+    bgClass: 'gmodern-solution--sand'
+  },
+  {
+    id: 'debug',
+    title: 'Debugging',
+    copy: 'Correlate console errors, network bodies, and DOM mutations so root cause is obvious and reproducible.',
+    bullets: ['Observe error bundles and timelines', 'Inspect network waterfall + payloads', 'Verify fixes in replay'],
+    href: '/guides/debug-webapps/',
+    cta: 'Start debugging',
+    bgClass: 'gmodern-solution--rose'
+  },
+  {
+    id: 'a11y',
+    title: 'Accessibility',
+    copy: 'Run a11y audits with scope and tags, export SARIF, and keep accessibility checks first-class in delivery.',
+    bullets: ['WCAG-tagged audits', 'Scoped accessibility checks', 'SARIF export for CI pipelines'],
+    href: '/guides/accessibility/',
+    cta: 'Run accessibility checks',
+    bgClass: 'gmodern-solution--mint'
+  },
+  {
+    id: 'automation',
+    title: 'Automation',
+    copy: 'Automate browser tasks with robust selectors, batch actions, and reusable workflows that scale with your team.',
+    bullets: ['interact actions across web surfaces', 'Batch/replay sequence support', 'Demo + regression artifact generation'],
+    href: '/guides/automate-and-notify/',
+    cta: 'Build automations',
+    bgClass: 'gmodern-solution--sky'
+  }
+]
 ---
 
-<div class="landing-shell">
-  <section class="landing-banner" aria-label="Capability tags">
-    <p class="landing-eyebrow">BROWSER REALITY FOR AI BUILDERS</p>
-    <div class="landing-tags">
-      <span>Automation</span>
-      <span>Debugging</span>
-      <span>Demo Recording</span>
-      <span>Interactive Development</span>
-      <span>Performance</span>
-      <span>Security</span>
-    </div>
-  </section>
-
-  <section class="section-grid section-grid--hero-followup" id="why-gasoline">
-    <div>
-      <h2>Why screen actions beat prompt-only web agents</h2>
-      <p>
-        Most AI coding workflows stop at code suggestions. Gasoline closes the loop by streaming what the browser is actually doing,
-        then letting your agent interact, verify, and document the result.
-      </p>
-      <ul class="value-list">
-        <li>Observe real console, network, and WebSocket failures from the live session.</li>
-        <li>Act in the browser with deterministic interactions, not screenshot guessing.</li>
-        <li>Generate reusable demos and tests from the exact path users took.</li>
-      </ul>
-      <a href="/guides/debug-webapps/" class="soft-link">See debugging guide</a>
-    </div>
-
-    <div class="signal-graphic" role="img" aria-label="Live browser telemetry graphic">
-      <div class="graphic-header">
-        <span></span><span></span><span></span>
-        <p>Browser Session Feed</p>
+<div class="gmodern-page">
+  <section class="gmodern-showcase" aria-label="Product visual">
+    <div class="gmodern-showcase-frame">
+      <img src="/images/sparky-working-laptop-web.webp" alt="Gasoline mascot automating browser workflows" loading="lazy" />
+      <div class="gmodern-float gmodern-float--one">
+        <strong>observe()</strong>
+        <span>console + network + errors</span>
       </div>
-      <div class="signal-row row-error">
-        <strong>TypeError</strong>
-        <span>checkout.tsx:341</span>
+      <div class="gmodern-float gmodern-float--two">
+        <strong>interact()</strong>
+        <span>browser control + replay</span>
       </div>
-      <div class="signal-row row-warn">
-        <strong>502 /api/pricing</strong>
-        <span>retry in 1.5s</span>
-      </div>
-      <div class="signal-row row-info">
-        <strong>WS reconnect</strong>
-        <span>socket reopened</span>
-      </div>
-      <div class="signal-row row-ok">
-        <strong>fix verified</strong>
-        <span>green across checks</span>
-      </div>
-      <div class="wave-bars" aria-hidden="true">
-        <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+      <div class="gmodern-float gmodern-float--three">
+        <strong>analyze()</strong>
+        <span>a11y + security + visual checks</span>
       </div>
     </div>
   </section>
 
-  <section class="section-block" id="closed-loop">
-    <h2>Record. Diagnose. Patch. Verify.</h2>
-    <p class="section-lead">
-      The same interface handles capture, analysis, and verification so your team can move from "something is broken" to "fix confirmed" in one pass.
-    </p>
-    <div class="loop-grid">
-      <article class="loop-card">
-        <span class="loop-step">01</span>
-        <h3>Record browser truth</h3>
-        <p>Capture user actions, network payloads, logs, and visual state from the exact environment where issues happen.</p>
-      </article>
-      <article class="loop-card">
-        <span class="loop-step">02</span>
-        <h3>Debug with context</h3>
-        <p>Cluster errors, inspect response bodies, and follow timeline signals that connect cause and symptom.</p>
-      </article>
-      <article class="loop-card">
-        <span class="loop-step">03</span>
-        <h3>Ship with evidence</h3>
-        <p>Replay flows, generate tests, and attach screenshots or SARIF output so releases are defensible.</p>
-      </article>
+  <section class="gmodern-logos" aria-label="Integrations">
+    <h2>Compatible with modern agentic workflows</h2>
+    <div class="gmodern-marquee" aria-hidden="true">
+      <div class="gmodern-marquee-track">
+        {logos.concat(logos).map((logo) => <span>{logo}</span>)}
+      </div>
     </div>
   </section>
 
-  <section class="section-block" id="use-cases">
-    <h2>Built for real web delivery work</h2>
-    <div class="use-case-grid">
-      <article class="use-case-card">
-        <h3>Automation</h3>
-        <p>Run smoke paths, repetitive QA steps, and cross-page checks through stable selectors and scripted actions.</p>
-      </article>
-      <article class="use-case-card">
-        <h3>Debugging</h3>
-        <p>Triage incidents with one timeline that includes logs, fetch bodies, and UI state mutations.</p>
-      </article>
-      <article class="use-case-card">
-        <h3>Demo recording</h3>
-        <p>Turn PM walkthroughs into repeatable scripted demos and regression-ready artifacts for launch reviews.</p>
-      </article>
-      <article class="use-case-card">
-        <h3>Interactive development</h3>
-        <p>Ask your agent to query DOM state, trigger interactions, and validate behavior while coding.</p>
-      </article>
-    </div>
-  </section>
+  <section class="gmodern-transform" aria-label="Transformation">
+    <p class="gmodern-eyebrow">TRANSFORMATION</p>
+    <h2>Turn ideas into instant automations</h2>
+    <p>See how real tasks in your role transform into agents that work for you.</p>
 
-  <section class="section-block" id="workflow-preview">
-    <div class="section-headline-row">
-      <h2>Workflow Library</h2>
-      <a href="/discover-workflows/" class="soft-link">Explore all workflows</a>
-    </div>
-    <p class="section-lead">Prebuilt flows you can run as-is or adapt to your own product stack.</p>
-    <div class="workflow-preview-grid">
+    <div class="gmodern-transform-grid">
       {
-        featuredWorkflows.map((workflow) => (
-          <article class="workflow-preview-card">
-            <div class="workflow-preview-top">
-              <span class="workflow-category">{workflow.category}</span>
-              <span class="workflow-runtime">{workflow.runtime}</span>
-            </div>
-            <h3>{workflow.title}</h3>
-            <p>{workflow.summary}</p>
-            <a href={workflow.docPath}>Open playbook</a>
+        transformationCards.map((card) => (
+          <article>
+            <h3>{card.role}</h3>
+            <p class="gmodern-before">Before: {card.from}</p>
+            <p class="gmodern-after">After: {card.to}</p>
           </article>
         ))
       }
     </div>
   </section>
 
-  <section class="theme-callout" aria-label="Theme support">
-    <img src="/images/sparky-thumbs-up-transparent.png" alt="Sparky giving a thumbs up" class="theme-callout-image" loading="lazy" />
+  <section class="gmodern-solutions" id="solutions" aria-label="Solutions">
+    <header>
+      <p class="gmodern-eyebrow">SOLUTIONS</p>
+      <h2>See how Gasoline Agentic Devtool ACCELERATES all your development needs.</h2>
+    </header>
+
+    <div class="gmodern-solutions-grid">
+      {
+        solutions.map((solution) => (
+          <article class={`gmodern-solution ${solution.bgClass}`}>
+            <div class="gmodern-solution-head">
+              <h3>{solution.title}</h3>
+              {solution.image ? <img src={solution.image} alt="SEO capability graphic" loading="lazy" /> : null}
+            </div>
+            <p>{solution.copy}</p>
+            <ul>
+              {solution.bullets.map((bullet) => <li>{bullet}</li>)}
+            </ul>
+            <a href={solution.href}>{solution.cta}</a>
+          </article>
+        ))
+      }
+    </div>
+  </section>
+
+  <section class="gmodern-cta" aria-label="Call to action">
+    <h2>Your browser workflows, supercharged.</h2>
+    <p>Debug faster. Automate confidently. Ship with evidence your whole team can trust.</p>
     <div>
-      <h3>Light and dark theme support is enabled</h3>
-      <p>
-        Use the theme switch in the header to review the full landing and workflow library in both modes.
-      </p>
-      <a class="btn" href="/getting-started/">Get started in under five minutes</a>
+      <a href="/downloads/" class="gmodern-btn gmodern-btn--solid">Install Agentic Devtool</a>
+      <a href="/reference/" class="gmodern-btn gmodern-btn--outline">Browse API reference</a>
     </div>
   </section>
 </div>

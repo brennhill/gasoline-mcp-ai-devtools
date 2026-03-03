@@ -8,6 +8,13 @@ owners:
 last_reviewed: 2026-03-03
 code_paths:
   - cookwithgasoline.com/astro.config.mjs
+  - cookwithgasoline.com/public/images/solutions-seo-signal.svg
+  - cookwithgasoline.com/src/content/docs/reference/index.md
+  - cookwithgasoline.com/src/content/docs/reference/observe.md
+  - cookwithgasoline.com/src/content/docs/reference/analyze.md
+  - cookwithgasoline.com/src/content/docs/reference/interact.md
+  - cookwithgasoline.com/src/content/docs/reference/configure.md
+  - cookwithgasoline.com/src/content/docs/reference/generate.md
   - cookwithgasoline.com/src/components/Head.astro
   - cookwithgasoline.com/src/components/Landing.astro
   - cookwithgasoline.com/src/components/WorkflowLibrary.astro
@@ -21,9 +28,13 @@ code_paths:
   - cookwithgasoline.com/src/styles/custom.css
   - cookwithgasoline.com/src/utils/markdownPaths.ts
   - scripts/docs/check-cookwithgasoline-content-contract.mjs
+  - scripts/docs/check-reference-schema-sync.mjs
+  - scripts/docs/check-feature-bundles.js
   - .github/workflows/ci.yml
 test_paths:
+  - scripts/docs/check-feature-bundles.js
   - scripts/docs/check-cookwithgasoline-content-contract.mjs
+  - scripts/docs/check-reference-schema-sync.mjs
 ---
 
 # Cookwithgasoline Content Platform
@@ -31,8 +42,8 @@ test_paths:
 ## TL;DR
 
 - Status: in_progress
-- Scope: homepage redesign, workflow discovery page, articles index, and automated markdown mirrors for all docs/blog pages
-- Primary guardrail: CI content-contract linter for changed docs/blog files
+- Scope: full homepage theme reset to a update theme to more modern layout, plus hero flame-only favicon-style flicker, reference-page readability fixes (heading dedupe + contrast), schema-synced reference mode/action coverage, scroll-rhythm spacing/overflow hardening, workflow discovery, articles index, and automated markdown mirrors for docs/blog pages
+- Primary guardrail: CI docs contracts (`content-contract` + reference schema sync + feature bundle strict check)
 
 ## Specs
 
@@ -40,8 +51,11 @@ test_paths:
 - Tech Spec: [tech-spec.md](./tech-spec.md)
 - QA Plan: [qa-plan.md](./qa-plan.md)
 - Flow Map: [flow-map.md](./flow-map.md)
+- Product Spec: [product-spec.md](./product-spec.md)
+- Tech Spec: [tech-spec.md](./tech-spec.md)
+- QA Plan: [qa-plan.md](./qa-plan.md)
 
 ## Code and Tests
 
 - Content and layout code paths are listed in frontmatter.
-- CI gate is enforced through `docs:lint:content-contract` in `.github/workflows/ci.yml`.
+- CI gate is enforced through `docs:ci` in `.github/workflows/ci.yml`.

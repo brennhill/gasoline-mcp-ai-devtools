@@ -1,6 +1,6 @@
 ---
-title: "configure() — Customize the Session"
-description: "Complete reference for the configure tool. 28 modes for noise filtering, persistent storage, recording, playback, streaming, log diff, session diffs, macro sequences, audit log, diagnostics, and more."
+title: "Configure — Customize the Session"
+description: "Complete reference for the configure tool. 29 modes for noise filtering, persistent storage, recording, playback, streaming, log diff, session diffs, macro sequences, audit log, diagnostics, issue reporting, and more."
 ---
 
 The `configure` tool manages your Gasoline session — filter noise, store data, manage recordings, compare error states, diff sessions, control streaming, and view audit logs.
@@ -16,9 +16,22 @@ configure({what:"recording_start"})                               // Start recor
 configure({what:"recording_stop", recording_id: "rec-123"})      // Stop recording
 configure({what:"playback", recording_id: "rec-123"})            // Replay recording
 configure({what:"log_diff", original_id: "rec-1", replay_id: "rec-2"})  // Compare error states
-configure({what:"diff_sessions", session_action: "capture", name: "v1"})  // Session snapshot
+configure({what:"diff_sessions", verif_session_action: "capture", name: "v1"})  // Session snapshot
 configure({what:"audit_log", tool_name: "observe"})               // View tool usage history
 ```
+
+## Common Parameters
+
+These parameters are shared across many `configure` modes:
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `what` | string (required) | Mode to execute (`noise_rule`, `store`, `diff_sessions`, etc.) |
+| `action` | string | Deprecated alias for `what` |
+| `telemetry_mode` | string | Telemetry metadata mode: `off`, `auto`, `full` |
+| `tab_id` | number | Optional target tab ID for tab-aware modes |
+| `operation` | string | Secondary operation selector used by mode-specific flows |
+| `limit` | number | Max entries returned for list/report modes |
 
 ---
 
@@ -121,6 +134,14 @@ configure({what:"store", store_action: "stats"})
 | `namespace` | string | Logical grouping for keys |
 | `key` | string | Storage key |
 | `data` | object | JSON data to persist (for `save`) |
+
+## load — Load Session Context
+
+Load the saved session context snapshot (project ID, baseline list, noise config, schema hints, and performance summary) from the server-side session store.
+
+```js
+configure({what: "load"})
+```
 
 ---
 
@@ -269,14 +290,14 @@ Capture named snapshots of the current session state and compare them to detect 
 ### Capture a snapshot
 
 ```js
-configure({what:"diff_sessions", session_action: "capture", name: "before-deploy"})
+configure({what:"diff_sessions", verif_session_action: "capture", name: "before-deploy"})
 ```
 
 ### Compare two snapshots
 
 ```js
 configure({what:"diff_sessions",
-           session_action: "compare",
+           verif_session_action: "compare",
            compare_a: "before-deploy",
            compare_b: "after-deploy"})
 ```
@@ -284,18 +305,18 @@ configure({what:"diff_sessions",
 ### List snapshots
 
 ```js
-configure({what:"diff_sessions", session_action: "list"})
+configure({what:"diff_sessions", verif_session_action: "list"})
 ```
 
 ### Delete a snapshot
 
 ```js
-configure({what:"diff_sessions", session_action: "delete", name: "old-snapshot"})
+configure({what:"diff_sessions", verif_session_action: "delete", name: "old-snapshot"})
 ```
 
 | Parameter | Type | Description |
 |-----------|------|-------------|
-| `session_action` | string | `capture`, `compare`, `list`, `delete` |
+| `verif_session_action` | string | `capture`, `compare`, `list`, `delete` |
 | `name` | string | Snapshot name |
 | `compare_a` | string | First snapshot (baseline) |
 | `compare_b` | string | Second snapshot (comparison target) |
@@ -315,7 +336,7 @@ configure({what:"audit_log", since: "2026-02-07T10:00:00Z"})
 | Parameter | Type | Description |
 |-----------|------|-------------|
 | `tool_name` | string | Filter by tool name |
-| `session_id` | string | Filter by MCP session ID |
+| `audit_session_id` | string | Filter by audit session ID |
 | `since` | string | Only entries after this ISO 8601 timestamp |
 | `limit` | number | Maximum entries to return |
 
@@ -464,3 +485,22 @@ configure({what: "action_jitter", action_jitter_ms: 0})  // Disable
 | Parameter | Type | Description |
 |-----------|------|-------------|
 | `action_jitter_ms` | number | Maximum random delay in milliseconds (0 to disable) |
+
+---
+
+## report_issue — Submit a GitHub Issue
+
+Create or preview a structured issue report directly from the running session. This bundles environment context, recent diagnostics, and your notes.
+
+```js
+configure({what: "report_issue", operation: "list_templates"})
+configure({what: "report_issue", operation: "preview", template: "bug", user_context: "Daemon disconnected while replaying"})
+configure({what: "report_issue", operation: "submit", template: "bug", title: "Replay disconnects intermittently", user_context: "Happens after ~20 actions"})
+```
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `operation` | string | `list_templates`, `preview`, or `submit` |
+| `template` | string | Issue template name |
+| `title` | string | Issue title (required for `submit`) |
+| `user_context` | string | Your repro notes/context attached to the report |
