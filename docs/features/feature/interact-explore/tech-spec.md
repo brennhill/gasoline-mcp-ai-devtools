@@ -35,6 +35,7 @@ links:
 - content extraction handlers (`get_readable`, `get_markdown`, `page_summary` delegation), `explore_page`, `batch`, `clipboard_read/write`, and composable standalone handlers (`wait_for_stable`, `auto_dismiss_overlays`)
 - retry/evidence policy state machine (`retry_context`, terminal guidance, evidence before/after capture + attach) now owned by `interactActionHandler`
 - draw mode start, CDP/hardware click path, and post-switch tracked-tab sync update are now owned by `interactActionHandler`
+- composable side-effect queue helpers and response enrichers (`include_screenshot`, `include_interactive`) are owned by `interactActionHandler`
 
 ## Query-Type Mapping
 - `navigate/refresh/back/forward/new_tab` -> `browser_action`
