@@ -22,6 +22,7 @@ PLATFORMS := \
 	release-check install-hooks bench-baseline sync-version \
 	pypi-binaries pypi-build pypi-publish pypi-test-publish pypi-clean \
 	security-check pre-commit verify-all npm-binaries validate-semver \
+	verify-llm \
 	test-upgrade-guards release-gate clean-test-daemons \
 	generate-wire-types generate-dom-primitives \
 	site-dev site-build site-preview \
@@ -346,6 +347,17 @@ pre-commit: lint security-check
 # Full verification (lint + security + tests with coverage)
 verify-all: lint security-check test-cover test-js
 	@echo "All verification checks passed"
+
+# Fast, high-signal verification loop for LLM-driven maintenance.
+# Typical runtime target: ~60-120 seconds on a warm cache.
+verify-llm:
+	@echo "Running verify-llm fast gate (schema + docs + core contracts)..."
+	@node scripts/generate-wire-types.js --check
+	@npm run docs:check:strict
+	@npm run docs:lint:content-contract
+	@npm run docs:lint:reference-schema-sync
+	@go test ./cmd/dev-console -run 'TestSchemaParity_|TestInteract_NavigateAndDocument_.*|TestNavigateAndDocument_.*|TestContractEnforcement_ErrorsHaveRetryableField|TestContractEnforcement_CommandResult_HasElapsedMs' -count=1
+	@echo "verify-llm passed"
 
 # Quality gate for top 1% standards (comprehensive)
 quality-gate: check-file-length lint lint-hardening typecheck security-check test test-js validate-deps-versions

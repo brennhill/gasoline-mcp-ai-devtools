@@ -6,7 +6,9 @@ package main
 import (
 	"encoding/json"
 	"strings"
+	"time"
 
+	act "github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/tools/interact"
 	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/tools/observe"
 )
 
@@ -164,11 +166,43 @@ func (h *interactActionHandler) appendPageContextToResponse(resp JSONRPCResponse
 	if err := json.Unmarshal(resp.Result, &result); err != nil {
 		return resp
 	}
+	if result.Metadata == nil {
+		result.Metadata = map[string]any{}
+	}
+	result.Metadata["page_context"] = pageCtx
 
 	result.Content = append(result.Content, MCPContentBlock{
 		Type: "text",
 		Text: "\n--- Page Context ---\n" + string(ctxJSON),
 	})
+	resultJSON, err := json.Marshal(result)
+	if err != nil {
+		return resp
+	}
+	resp.Result = json.RawMessage(resultJSON)
+	return resp
+}
+
+// appendWorkflowTraceToResponse appends a normalized workflow trace envelope
+// into MCP metadata while preserving the existing response shape/content.
+func (h *interactActionHandler) appendWorkflowTraceToResponse(
+	resp JSONRPCResponse,
+	workflow string,
+	trace []WorkflowStep,
+	start time.Time,
+	status string,
+) JSONRPCResponse {
+	var result MCPToolResult
+	if err := json.Unmarshal(resp.Result, &result); err != nil {
+		return resp
+	}
+	envelope := act.BuildWorkflowTraceEnvelope(workflow, trace, start, time.Now(), status)
+	if result.Metadata == nil {
+		result.Metadata = map[string]any{}
+	}
+	result.Metadata["trace_id"] = envelope.TraceID
+	result.Metadata["workflow_trace"] = envelope
+
 	resultJSON, err := json.Marshal(result)
 	if err != nil {
 		return resp

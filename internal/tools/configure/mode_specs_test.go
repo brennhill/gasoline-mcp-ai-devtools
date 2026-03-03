@@ -177,3 +177,40 @@ func TestBuildCapabilitiesSummary_ObserveHints(t *testing.T) {
 		t.Errorf("screenshot hint = %q", modes["screenshot"])
 	}
 }
+
+func TestInteractModeSpecs_DerivedFromSchemaRegistry(t *testing.T) {
+	t.Parallel()
+
+	actionSpecs := schema.InteractActionSpecs()
+	if len(actionSpecs) == 0 {
+		t.Fatal("schema.InteractActionSpecs() should be non-empty")
+	}
+
+	for _, spec := range actionSpecs {
+		modeSpec, ok := interactModeSpecs[spec.Name]
+		if !ok {
+			t.Fatalf("interact mode spec missing action %q", spec.Name)
+		}
+		if modeSpec.Hint != spec.Hint {
+			t.Fatalf("hint mismatch for %q: got=%q want=%q", spec.Name, modeSpec.Hint, spec.Hint)
+		}
+		if !equalStringSlices(modeSpec.Required, spec.Required) {
+			t.Fatalf("required params mismatch for %q: got=%v want=%v", spec.Name, modeSpec.Required, spec.Required)
+		}
+		if !equalStringSlices(modeSpec.Optional, spec.Optional) {
+			t.Fatalf("optional params mismatch for %q: got=%v want=%v", spec.Name, modeSpec.Optional, spec.Optional)
+		}
+	}
+}
+
+func equalStringSlices(a, b []string) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if a[i] != b[i] {
+			return false
+		}
+	}
+	return true
+}
