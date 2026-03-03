@@ -14,7 +14,8 @@ Refactor `internal/capture` to group websocket/network/action ring-buffer state 
 `BufferStore`, and extension-log append/eviction/copy/clear behavior into
 `ExtensionLogBuffer` helpers, network-waterfall append/eviction/copy/clear behavior into
 `NetworkWaterfallBuffer` store methods, and websocket status/reset behavior into
-`WSConnectionTracker` store methods, reducing `Capture` field sprawl without changing behavior.
+`WSConnectionTracker` store methods, plus performance snapshot/before-snapshot map behavior into
+`PerformanceStore` store methods, reducing `Capture` field sprawl without changing behavior.
 
 ## Entrypoints
 
@@ -36,6 +37,7 @@ Refactor `internal/capture` to group websocket/network/action ring-buffer state 
 8. Extension log reads/clears use `ExtensionLogBuffer.snapshot` and `ExtensionLogBuffer.clear`.
 9. Network waterfall ingest/read/clear delegates to `NetworkWaterfallBuffer.appendEntries`, `snapshot`, and `clear`.
 10. WebSocket status/read/clear delegates to `WSConnectionTracker.status`, `connectionCount`, and `clear`.
+11. Performance snapshot ingest/read and before-snapshot consume-on-read delegates to `PerformanceStore` methods.
 
 ## Error and Recovery Paths
 
@@ -56,6 +58,7 @@ Refactor `internal/capture` to group websocket/network/action ring-buffer state 
 - `internal/capture/extension_log_store.go`
 - `internal/capture/network_waterfall_store.go`
 - `internal/capture/ws_connection_store.go`
+- `internal/capture/performance_store.go`
 - `internal/capture/capture-struct.go`
 - `internal/capture/network_bodies.go`
 - `internal/capture/websocket.go`
@@ -77,6 +80,7 @@ Refactor `internal/capture` to group websocket/network/action ring-buffer state 
 - `internal/capture/extension_log_store_test.go`
 - `internal/capture/network_waterfall_store_test.go`
 - `internal/capture/ws_connection_store_test.go`
+- `internal/capture/performance_store_test.go`
 - `internal/capture/coverage_boost_unit_test.go`
 - `internal/capture/test_helpers.go`
 
