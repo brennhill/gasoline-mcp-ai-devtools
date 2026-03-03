@@ -17,20 +17,20 @@ import (
 // handleContentExtraction is the shared handler for get_readable, get_markdown, and page_summary.
 // All three use the same pattern: gate checks, timeout validation, create a pending query with
 // the dedicated query type, and wait for the content script to respond.
-func (h *ToolHandler) handleContentExtraction(req JSONRPCRequest, args json.RawMessage, queryType string, correlationPrefix string) JSONRPCResponse {
+func (h *interactActionHandler) handleContentExtraction(req JSONRPCRequest, args json.RawMessage, queryType string, correlationPrefix string) JSONRPCResponse {
 	var params struct {
 		TabID     int `json:"tab_id,omitempty"`
 		TimeoutMs int `json:"timeout_ms,omitempty"`
 	}
 	lenientUnmarshal(args, &params)
 
-	if resp, blocked := h.requirePilot(req); blocked {
+	if resp, blocked := h.parent.requirePilot(req); blocked {
 		return resp
 	}
-	if resp, blocked := h.requireExtension(req); blocked {
+	if resp, blocked := h.parent.requireExtension(req); blocked {
 		return resp
 	}
-	if resp, blocked := h.requireTabTracking(req); blocked {
+	if resp, blocked := h.parent.requireTabTracking(req); blocked {
 		return resp
 	}
 
@@ -42,7 +42,7 @@ func (h *ToolHandler) handleContentExtraction(req JSONRPCRequest, args json.RawM
 	}
 
 	correlationID := newCorrelationID(correlationPrefix)
-	h.armEvidenceForCommand(correlationID, queryType, args, req.ClientID)
+	h.parent.armEvidenceForCommand(correlationID, queryType, args, req.ClientID)
 
 	// Structured params — no embedded script. The content script handles extraction directly.
 	queryParams, _ := json.Marshal(map[string]any{
@@ -55,16 +55,16 @@ func (h *ToolHandler) handleContentExtraction(req JSONRPCRequest, args json.RawM
 		TabID:         params.TabID,
 		CorrelationID: correlationID,
 	}
-	h.capture.CreatePendingQueryWithTimeout(query, queries.AsyncCommandTimeout, req.ClientID)
+	h.parent.capture.CreatePendingQueryWithTimeout(query, queries.AsyncCommandTimeout, req.ClientID)
 
-	return h.MaybeWaitForCommand(req, correlationID, args, queryType+" queued")
+	return h.parent.MaybeWaitForCommand(req, correlationID, args, queryType+" queued")
 }
 
-func (h *ToolHandler) handleGetReadable(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+func (h *interactActionHandler) handleGetReadable(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	return h.handleContentExtraction(req, args, "get_readable", "readable")
 }
 
-func (h *ToolHandler) handleGetMarkdown(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+func (h *interactActionHandler) handleGetMarkdown(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	return h.handleContentExtraction(req, args, "get_markdown", "markdown")
 }
 
