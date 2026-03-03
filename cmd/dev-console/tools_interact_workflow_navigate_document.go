@@ -41,6 +41,7 @@ func (h *interactActionHandler) handleNavigateAndDocument(req JSONRPCRequest, ar
 		return resp
 	}
 
+	workflowStart := time.Now()
 	beforeURL := h.currentTrackedURL(req)
 
 	clickArgs := filterNavigateAndDocumentClickArgs(args)
@@ -51,7 +52,13 @@ func (h *interactActionHandler) handleNavigateAndDocument(req JSONRPCRequest, ar
 
 	if waitForURLChange && beforeURL != "" {
 		timeoutMs := params.TimeoutMs
-		if timeoutMs <= 0 {
+		if params.TimeoutMs > 0 {
+			var ok bool
+			timeoutMs, ok = remainingNavigateAndDocumentTimeoutMs(workflowStart, params.TimeoutMs)
+			if !ok {
+				return navigateAndDocumentTimeoutBudgetExceeded(req, "wait_for_url_change")
+			}
+		} else if timeoutMs <= 0 {
 			timeoutMs = 5000
 		}
 		if _, changed := h.waitForTrackedURLChange(req, beforeURL, timeoutMs); !changed {
@@ -76,7 +83,11 @@ func (h *interactActionHandler) handleNavigateAndDocument(req JSONRPCRequest, ar
 			waitArgsMap["stability_ms"] = params.StabilityMs
 		}
 		if params.TimeoutMs > 0 {
-			waitArgsMap["timeout_ms"] = params.TimeoutMs
+			timeoutMs, ok := remainingNavigateAndDocumentTimeoutMs(workflowStart, params.TimeoutMs)
+			if !ok {
+				return navigateAndDocumentTimeoutBudgetExceeded(req, "wait_for_stable")
+			}
+			waitArgsMap["timeout_ms"] = timeoutMs
 		}
 		waitArgs, _ := json.Marshal(waitArgsMap)
 		waitResp := h.handleWaitForStable(req, waitArgs)
@@ -165,4 +176,30 @@ func (h *interactActionHandler) validateNavigateAndDocumentTab(req JSONRPCReques
 			withParam("tab_id"),
 		),
 	}, true
+}
+
+// remainingNavigateAndDocumentTimeoutMs converts total workflow timeout into
+// remaining stage timeout. Returns false when budget is exhausted.
+func remainingNavigateAndDocumentTimeoutMs(workflowStart time.Time, totalTimeoutMs int) (int, bool) {
+	if totalTimeoutMs <= 0 {
+		return 0, false
+	}
+	remaining := totalTimeoutMs - int(time.Since(workflowStart).Milliseconds())
+	if remaining <= 0 {
+		return 0, false
+	}
+	return remaining, true
+}
+
+func navigateAndDocumentTimeoutBudgetExceeded(req JSONRPCRequest, stage string) JSONRPCResponse {
+	return JSONRPCResponse{
+		JSONRPC: "2.0",
+		ID:      req.ID,
+		Result: mcpStructuredError(
+			ErrExtTimeout,
+			fmt.Sprintf("timeout_ms exhausted before %s stage", stage),
+			"Increase timeout_ms or disable one of the workflow wait stages.",
+			withParam("timeout_ms"),
+		),
+	}
 }

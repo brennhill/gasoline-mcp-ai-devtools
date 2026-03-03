@@ -178,6 +178,56 @@ func TestNavigateAndDocument_TabIDMismatchReturnsError(t *testing.T) {
 	}
 }
 
+func TestNavigateAndDocument_TimeoutBudgetExhaustedBeforeStable(t *testing.T) {
+	t.Parallel()
+	env := newToolTestEnv(t)
+	env.capture.SetPilotEnabled(true)
+	env.capture.SimulateExtensionConnectForTest()
+	env.capture.SetTrackingStatusForTest(42, "https://example.com/old")
+
+	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`)}
+	args := json.RawMessage(`{"selector":"a.nav","timeout_ms":40,"wait_for_url_change":false,"wait_for_stable":true}`)
+
+	var resp JSONRPCResponse
+	done := make(chan struct{})
+	go func() {
+		resp = env.handler.interactAction().handleNavigateAndDocument(req, args)
+		close(done)
+	}()
+
+	clickQuery := waitForPendingQuery(t, env.capture, func(q queries.PendingQueryResponse) bool {
+		if q.Type != "dom_action" {
+			return false
+		}
+		var payload map[string]any
+		_ = json.Unmarshal(q.Params, &payload)
+		return payload["action"] == "click"
+	})
+
+	// Consume the entire workflow budget before click completes.
+	time.Sleep(90 * time.Millisecond)
+	env.capture.ApplyCommandResult(clickQuery.CorrelationID, "complete", json.RawMessage(`{"success":true}`), "")
+
+	select {
+	case <-done:
+	case <-time.After(3 * time.Second):
+		t.Fatal("handleNavigateAndDocument timed out")
+	}
+
+	assertIsError(t, resp, "timeout_ms exhausted before wait_for_stable")
+
+	for _, q := range env.capture.GetPendingQueries() {
+		if q.Type != "dom_action" {
+			continue
+		}
+		var payload map[string]any
+		_ = json.Unmarshal(q.Params, &payload)
+		if payload["action"] == "wait_for_stable" {
+			t.Fatal("wait_for_stable should not be queued when workflow timeout budget is exhausted")
+		}
+	}
+}
+
 func TestInteract_NavigateAndDocument_IncludeScreenshot(t *testing.T) {
 	t.Parallel()
 	env := newToolTestEnv(t)

@@ -52,6 +52,7 @@ Covers `interact(what:"navigate_and_document")`: click-driven navigation with op
 
 - URL-change detection reads tracked tab URL from capture state, falling back to observe page context when needed.
 - If `tab_id` is provided, it must match tracked tab for deterministic workflow postconditions.
+- If `timeout_ms` is provided, wait stages consume a shared remaining-budget window (not independent full timeouts per stage).
 - Workflow defaults are conservative for navigation use-cases: URL-change wait enabled, stability wait enabled.
 - Response enrichment is additive: base action result is preserved and page context is appended.
 
