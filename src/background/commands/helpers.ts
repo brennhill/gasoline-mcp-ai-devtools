@@ -130,10 +130,53 @@ const PRETTY_LABELS: Record<string, string> = {
   focus: 'Focus',
   scroll_to: 'Scroll to',
   wait_for: 'Wait for',
+  wait_for_stable: 'Waiting for page to stabilize...',
   key_press: 'Key press',
   highlight: 'Highlight',
   subtitle: 'Subtitle',
   upload: 'Upload file'
+}
+
+const PRETTY_TRYING_LABELS: Record<string, string> = {
+  scroll_to: 'Scrolling to',
+  open_composer: 'Opening composer',
+  submit_active_composer: 'Submitting active composer',
+  confirm_top_dialog: 'Confirming top dialog',
+  dismiss_top_overlay: 'Dismissing top overlay',
+  auto_dismiss_overlays: 'Dismissing overlays'
+}
+
+function humanizeActionLabel(action: string): string {
+  const explicit = PRETTY_LABELS[action]
+  if (explicit) return explicit
+  if (!/^[a-z0-9]+(?:_[a-z0-9]+)+$/.test(action)) return action
+  const sentence = action.replaceAll('_', ' ')
+  return sentence.charAt(0).toUpperCase() + sentence.slice(1)
+}
+
+function inferWaitTarget(detail?: string): string | undefined {
+  if (!detail) return undefined
+  const trimmed = detail.trim()
+  if (!trimmed || trimmed.toLowerCase() === 'page') return undefined
+  return trimmed
+}
+
+function resolveToastCopy(
+  action: string,
+  detail: string | undefined,
+  state: 'trying' | 'success' | 'warning' | 'error'
+): { text: string; detail?: string } {
+  if (state !== 'trying') return { text: humanizeActionLabel(action), detail }
+
+  if (action === 'wait_for') {
+    const waitTarget = inferWaitTarget(detail)
+    if (waitTarget) return { text: `Waiting for ${waitTarget}` }
+    return { text: 'Waiting for condition...' }
+  }
+
+  const tryingText = PRETTY_TRYING_LABELS[action]
+  if (tryingText) return { text: tryingText, detail }
+  return { text: humanizeActionLabel(action), detail }
 }
 
 /** Show a visual action toast on the tracked tab */
@@ -144,11 +187,12 @@ export function actionToast(
   state: 'trying' | 'success' | 'warning' | 'error' = 'success',
   durationMs = 3000
 ): void {
+  const toastCopy = resolveToastCopy(action, detail, state)
   chrome.tabs
     .sendMessage(tabId, {
       type: 'GASOLINE_ACTION_TOAST',
-      text: PRETTY_LABELS[action] || action,
-      detail,
+      text: toastCopy.text,
+      detail: toastCopy.detail,
       state,
       duration_ms: durationMs
     })

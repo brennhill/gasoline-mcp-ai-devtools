@@ -14,3 +14,4 @@ Canonical flow map:
 Related flow maps:
 
 - [DOM Selector Resolution and Disambiguation](../../../architecture/flow-maps/dom-selector-resolution-and-disambiguation.md)
+- [Interact Action Toast Label Normalization](../../../architecture/flow-maps/interact-action-toast-label-normalization.md)
