@@ -9,47 +9,47 @@ import (
 )
 
 func (h *ToolHandler) handleHighlight(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-	return h.handleHighlightImpl(req, args)
+	return h.interactAction().handleHighlightImpl(req, args)
 }
 
 func (h *ToolHandler) handleExecuteJS(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-	return h.handleExecuteJSImpl(req, args)
+	return h.interactAction().handleExecuteJSImpl(req, args)
 }
 
 func (h *ToolHandler) handleBrowserActionNavigate(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-	return h.handleBrowserActionNavigateImpl(req, args)
+	return h.interactAction().handleBrowserActionNavigateImpl(req, args)
 }
 
 // enrichNavigateResponse moved to tools_interact_content.go
 
 func (h *ToolHandler) handleBrowserActionRefresh(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-	return h.handleBrowserActionRefreshImpl(req, args)
+	return h.interactAction().handleBrowserActionRefreshImpl(req, args)
 }
 
 // stashPerfSnapshot saves the current performance snapshot as a "before" baseline
 // for perf_diff computation, keyed by correlation ID.
 func (h *ToolHandler) stashPerfSnapshot(correlationID string) {
-	h.stashPerfSnapshotImpl(correlationID)
+	h.interactAction().stashPerfSnapshotImpl(correlationID)
 }
 
 func (h *ToolHandler) handleBrowserActionBack(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-	return h.handleBrowserActionBackImpl(req, args)
+	return h.interactAction().handleBrowserActionBackImpl(req, args)
 }
 
 func (h *ToolHandler) handleBrowserActionForward(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-	return h.handleBrowserActionForwardImpl(req, args)
+	return h.interactAction().handleBrowserActionForwardImpl(req, args)
 }
 
 func (h *ToolHandler) resolveNavigateURL(rawURL string) (string, error) {
-	return h.resolveNavigateURLImpl(rawURL)
+	return h.interactAction().resolveNavigateURLImpl(rawURL)
 }
 
 // handleScreenshotAlias provides backward compatibility for clients that call
 // interact({action:"screenshot"}). The canonical API remains observe({what:"screenshot"}).
 func (h *ToolHandler) handleScreenshotAlias(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-	return h.handleScreenshotAliasImpl(req, args)
+	return h.interactAction().handleScreenshotAliasImpl(req, args)
 }
 
 func (h *ToolHandler) handleSubtitle(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-	return h.handleSubtitleImpl(req, args)
+	return h.interactAction().handleSubtitleImpl(req, args)
 }
