@@ -11,7 +11,7 @@ import (
 )
 
 // toolDiffSessionsWrapper repackages verif_session_action -> action for toolDiffSessions.
-func (h *ToolHandler) toolDiffSessionsWrapper(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+func (h *configureSessionHandler) toolDiffSessionsWrapper(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	rewritten, err := cfg.RewriteDiffSessionsArgs(args)
 	if err != nil {
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidJSON, "Invalid JSON arguments: "+err.Error(), "Fix JSON syntax and call again")}
@@ -19,8 +19,8 @@ func (h *ToolHandler) toolDiffSessionsWrapper(req JSONRPCRequest, args json.RawM
 	return h.toolDiffSessions(req, rewritten)
 }
 
-func (h *ToolHandler) toolDiffSessions(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-	if h.sessionManager == nil {
+func (h *configureSessionHandler) toolDiffSessions(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+	if h.parent.sessionManager == nil {
 		return JSONRPCResponse{
 			JSONRPC: "2.0",
 			ID:      req.ID,
@@ -28,7 +28,7 @@ func (h *ToolHandler) toolDiffSessions(req JSONRPCRequest, args json.RawMessage)
 		}
 	}
 
-	result, err := h.sessionManager.HandleTool(args)
+	result, err := h.parent.sessionManager.HandleTool(args)
 	if err != nil {
 		return JSONRPCResponse{
 			JSONRPC: "2.0",

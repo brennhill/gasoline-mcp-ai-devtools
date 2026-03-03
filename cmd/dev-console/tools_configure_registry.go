@@ -18,10 +18,10 @@ const defaultStoreNamespace = "session"
 // configureHandlers maps configure action names to their handler functions.
 var configureHandlers = map[string]ConfigureHandler{
 	"store": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-		return h.toolConfigureStore(req, args)
+		return h.configureSession().toolConfigureStore(req, args)
 	},
 	"load": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-		return h.toolLoadSessionContext(req, args)
+		return h.configureSession().toolLoadSessionContext(req, args)
 	},
 	"noise_rule": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 		return h.toolConfigureNoiseRule(req, args)
@@ -30,7 +30,7 @@ var configureHandlers = map[string]ConfigureHandler{
 		return h.toolConfigureClear(req, args)
 	},
 	"diff_sessions": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-		return h.toolDiffSessionsWrapper(req, args)
+		return h.configureSession().toolDiffSessionsWrapper(req, args)
 	},
 	"audit_log": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 		return h.toolGetAuditLog(req, args)
