@@ -12,7 +12,6 @@
 import {
   debugLog,
   DebugCategory,
-  diagnosticLog,
   setDebugMode,
   resetSyncClientConnection,
   sharedServerCircuitBreaker,
@@ -73,11 +72,9 @@ import {
   installRecordingShortcutCommandListener,
   saveSetting,
   forwardToAllContentScripts,
-  getTrackedTabInfo,
   handleTrackedTabClosed,
   handleTrackedTabUrlChange
 } from './event-listeners.js'
-import { handlePendingQuery } from './pending-queries.js'
 import { installPushCommandListener, installChatCommandListener } from './push-handler.js'
 import { isRecording, startRecording, stopRecording } from './recording.js'
 import type { MessageHandlerDependencies } from './message-handlers.js'

@@ -18,11 +18,6 @@ type AnnotationSession = annotation.Session
 type NamedAnnotationSession = annotation.NamedSession
 type AnnotationStore = annotation.Store
 
-// Constant aliases for tests.
-const maxSessions = annotation.MaxSessions
-const maxNamedSessions = annotation.MaxNamedSessions
-const maxDetails = annotation.MaxDetails
-
 // globalAnnotationStore is a legacy fallback store used by direct helper tests.
 // Runtime HTTP/tool paths use a server-scoped store via Server.getAnnotationStore().
 var globalAnnotationStore = annotation.NewStore(10 * time.Minute)

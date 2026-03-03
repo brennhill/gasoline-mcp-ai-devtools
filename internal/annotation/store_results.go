@@ -13,7 +13,7 @@ import (
 // BuildSessionResult serializes an annotation session for the CommandTracker.
 func BuildSessionResult(session *Session, urlFilter string) json.RawMessage {
 	annotations := session.Annotations
-	if !annotationURLMatches(urlFilter, session.PageURL) {
+	if !URLMatches(urlFilter, session.PageURL) {
 		annotations = []Annotation{}
 	}
 	result := map[string]any{
@@ -22,7 +22,7 @@ func BuildSessionResult(session *Session, urlFilter string) json.RawMessage {
 		"count":           len(annotations),
 		"page_url":        session.PageURL,
 		"terminal_reason": "completed",
-		"filter_applied":  annotationFilterAppliedValue(urlFilter),
+		"filter_applied":  FilterAppliedValue(urlFilter),
 	}
 	if session.ScreenshotPath != "" && len(annotations) > 0 {
 		result["screenshot"] = session.ScreenshotPath
@@ -57,14 +57,16 @@ func BuildNamedSessionResult(ns *NamedSession, urlFilter string) json.RawMessage
 		"page_count":         len(filteredPages),
 		"total_count":        totalCount,
 		"terminal_reason":    "completed",
-		"filter_applied":     annotationFilterAppliedValue(urlFilter),
+		"filter_applied":     FilterAppliedValue(urlFilter),
 	}
 	// Error impossible: map of primitive types.
 	data, _ := json.Marshal(result)
 	return data
 }
 
-func annotationFilterAppliedValue(urlFilter string) string {
+// FilterAppliedValue returns the effective filter label for annotation responses.
+// Returns "none" when no filter is applied (empty/whitespace input).
+func FilterAppliedValue(urlFilter string) string {
 	if strings.TrimSpace(urlFilter) == "" {
 		return "none"
 	}
@@ -77,14 +79,16 @@ func filterPagesByURL(pages []*Session, urlFilter string) []*Session {
 	}
 	filtered := make([]*Session, 0, len(pages))
 	for _, page := range pages {
-		if annotationURLMatches(urlFilter, page.PageURL) {
+		if URLMatches(urlFilter, page.PageURL) {
 			filtered = append(filtered, page)
 		}
 	}
 	return filtered
 }
 
-func annotationURLMatches(urlFilter, pageURL string) bool {
+// URLMatches checks whether pageURL matches the given URL filter.
+// Supports exact match, wildcard, path-prefix, and origin-only patterns.
+func URLMatches(urlFilter, pageURL string) bool {
 	urlFilter = strings.TrimSpace(urlFilter)
 	if urlFilter == "" {
 		return true
@@ -96,7 +100,7 @@ func annotationURLMatches(urlFilter, pageURL string) bool {
 
 	// Support wildcard suffix filters like http://localhost:3000/*.
 	if strings.HasSuffix(urlFilter, "/*") {
-		return annotationURLMatches(strings.TrimSuffix(urlFilter, "*"), pageURL)
+		return URLMatches(strings.TrimSuffix(urlFilter, "*"), pageURL)
 	}
 	if strings.Contains(urlFilter, "*") {
 		prefix := strings.ReplaceAll(urlFilter, "*", "")

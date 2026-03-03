@@ -10,6 +10,8 @@ import (
 	"sort"
 	"strings"
 	"time"
+
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/annotation"
 )
 
 // annotationWaitCommandTTL is how long pending annotation commands remain active.
@@ -91,7 +93,7 @@ func (h *ToolHandler) getAnonymousAnnotations(req JSONRPCRequest, wait bool, wai
 			"correlation_id": corrID,
 			"annotations":    []any{},
 			"count":          0,
-			"filter_applied": annotationFilterAppliedValue(urlFilter),
+			"filter_applied": annotation.FilterAppliedValue(urlFilter),
 			"message":        "Draw mode is active. The user is drawing annotations. Poll with observe({what: 'command_result', correlation_id: '" + corrID + "'}) to check for results.",
 		})}
 	}
@@ -101,7 +103,7 @@ func (h *ToolHandler) getAnonymousAnnotations(req JSONRPCRequest, wait bool, wai
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("No annotations", map[string]any{
 			"annotations":    []any{},
 			"count":          0,
-			"filter_applied": annotationFilterAppliedValue(urlFilter),
+			"filter_applied": annotation.FilterAppliedValue(urlFilter),
 			"message":        "No annotation session found. Use interact({action: 'draw_mode_start'}) to activate draw mode, then the user draws annotations and presses ESC to finish.",
 		})}
 	}
@@ -134,7 +136,7 @@ func (h *ToolHandler) getNamedAnnotations(req JSONRPCRequest, sessionName string
 			"pages":              []any{},
 			"page_count":         0,
 			"total_count":        0,
-			"filter_applied":     annotationFilterAppliedValue(urlFilter),
+			"filter_applied":     annotation.FilterAppliedValue(urlFilter),
 			"message":            "Draw mode is active. The user is drawing annotations. Poll with observe({what: 'command_result', correlation_id: '" + corrID + "'}) to check for results.",
 		})}
 	}
@@ -146,7 +148,7 @@ func (h *ToolHandler) getNamedAnnotations(req JSONRPCRequest, sessionName string
 			"pages":              []any{},
 			"page_count":         0,
 			"total_count":        0,
-			"filter_applied":     annotationFilterAppliedValue(urlFilter),
+			"filter_applied":     annotation.FilterAppliedValue(urlFilter),
 			"message":            "Named session '" + sessionName + "' not found. Use interact({action: 'draw_mode_start', annot_session: '" + sessionName + "'}) to start.",
 		})}
 	}
@@ -159,7 +161,7 @@ func (h *ToolHandler) formatNamedAnnotationSession(req JSONRPCRequest, ns *Named
 }
 
 func buildAnnotationSessionResult(session *AnnotationSession, urlFilter string) map[string]any {
-	matched := annotationURLMatches(urlFilter, session.PageURL)
+	matched := annotation.URLMatches(urlFilter,session.PageURL)
 	annotations := session.Annotations
 	if !matched {
 		annotations = []Annotation{}
@@ -169,7 +171,7 @@ func buildAnnotationSessionResult(session *AnnotationSession, urlFilter string) 
 		"annotations":    annotations,
 		"count":          len(annotations),
 		"page_url":       session.PageURL,
-		"filter_applied": annotationFilterAppliedValue(urlFilter),
+		"filter_applied": annotation.FilterAppliedValue(urlFilter),
 	}
 	if session.ScreenshotPath != "" && matched {
 		result["screenshot"] = session.ScreenshotPath
@@ -221,7 +223,7 @@ func buildNamedAnnotationSessionResult(ns *NamedAnnotationSession, urlFilter str
 		"pages":              pages,
 		"page_count":         len(filteredPages),
 		"total_count":        totalCount,
-		"filter_applied":     annotationFilterAppliedValue(urlFilter),
+		"filter_applied":     annotation.FilterAppliedValue(urlFilter),
 	}
 	if len(allProjects) > 0 {
 		result["projects"] = allProjects
@@ -261,82 +263,17 @@ func resolveAnnotationURLFilter(req JSONRPCRequest, urlValue, urlPatternValue st
 	return urlValue, JSONRPCResponse{}, false
 }
 
-func annotationFilterAppliedValue(urlFilter string) string {
-	if strings.TrimSpace(urlFilter) == "" {
-		return "none"
-	}
-	return urlFilter
-}
-
 func filterAnnotationPages(pages []*AnnotationSession, urlFilter string) []*AnnotationSession {
 	if strings.TrimSpace(urlFilter) == "" {
 		return pages
 	}
 	filtered := make([]*AnnotationSession, 0, len(pages))
 	for _, page := range pages {
-		if annotationURLMatches(urlFilter, page.PageURL) {
+		if annotation.URLMatches(urlFilter, page.PageURL) {
 			filtered = append(filtered, page)
 		}
 	}
 	return filtered
-}
-
-func annotationURLMatches(urlFilter, pageURL string) bool {
-	urlFilter = strings.TrimSpace(urlFilter)
-	if urlFilter == "" {
-		return true
-	}
-	pageURL = strings.TrimSpace(pageURL)
-	if pageURL == "" {
-		return false
-	}
-
-	// Support wildcard suffix filters like http://localhost:3000/*.
-	if strings.HasSuffix(urlFilter, "/*") {
-		return annotationURLMatches(strings.TrimSuffix(urlFilter, "*"), pageURL)
-	}
-	if strings.Contains(urlFilter, "*") {
-		prefix := strings.ReplaceAll(urlFilter, "*", "")
-		return strings.HasPrefix(pageURL, prefix)
-	}
-
-	filterURL, filterErr := url.Parse(urlFilter)
-	page, pageErr := url.Parse(pageURL)
-	if filterErr == nil && pageErr == nil &&
-		filterURL.Scheme != "" && filterURL.Host != "" &&
-		page.Scheme != "" && page.Host != "" {
-		if !strings.EqualFold(filterURL.Scheme, page.Scheme) || !strings.EqualFold(filterURL.Host, page.Host) {
-			return false
-		}
-
-		filterPath := strings.TrimSpace(filterURL.Path)
-		switch {
-		case filterPath == "", filterPath == "/":
-			// Base URL filter: match any path on the same origin.
-			return true
-		case strings.HasSuffix(filterPath, "/"):
-			// Path prefix filter.
-			return strings.HasPrefix(page.Path, filterPath)
-		default:
-			// Exact path filter. Query/fragment are optional constraints when provided.
-			if page.Path != filterPath {
-				return false
-			}
-			if filterURL.RawQuery != "" && page.RawQuery != filterURL.RawQuery {
-				return false
-			}
-			if filterURL.Fragment != "" && page.Fragment != filterURL.Fragment {
-				return false
-			}
-			return true
-		}
-	}
-
-	if strings.HasSuffix(urlFilter, "/") {
-		return strings.HasPrefix(pageURL, urlFilter)
-	}
-
-	return pageURL == urlFilter
 }
 
 func buildProjectSummaries(pages []*AnnotationSession) []map[string]any {
@@ -494,7 +431,7 @@ func (h *ToolHandler) buildFlushedAnnotationResult(sessionName string, urlFilter
 			"pages":              []any{},
 			"page_count":         0,
 			"total_count":        0,
-			"filter_applied":     annotationFilterAppliedValue(urlFilter),
+			"filter_applied":     annotation.FilterAppliedValue(urlFilter),
 			"terminal_reason":    "abandoned",
 			"message":            "Annotation waiter flushed with no named-session annotations available.",
 		})
@@ -513,7 +450,7 @@ func (h *ToolHandler) buildFlushedAnnotationResult(sessionName string, urlFilter
 		"status":          "complete",
 		"annotations":     []any{},
 		"count":           0,
-		"filter_applied":  annotationFilterAppliedValue(urlFilter),
+		"filter_applied":  annotation.FilterAppliedValue(urlFilter),
 		"terminal_reason": "abandoned",
 		"message":         "Annotation waiter flushed with no captured annotations available.",
 	})
