@@ -37,11 +37,11 @@ func (h *interactActionHandler) interactDispatch() map[string]interactHandler {
 			"state_list":                h.parent.stateInteract().handleStateList, // backward-compatible alias
 			"delete_state":              h.parent.stateInteract().handleStateDelete,
 			"state_delete":              h.parent.stateInteract().handleStateDelete, // backward-compatible alias
-			"set_storage":               h.parent.handleSetStorage,
-			"delete_storage":            h.parent.handleDeleteStorage,
-			"clear_storage":             h.parent.handleClearStorage,
-			"set_cookie":                h.parent.handleSetCookie,
-			"delete_cookie":             h.parent.handleDeleteCookie,
+			"set_storage":               h.handleSetStorage,
+			"delete_storage":            h.handleDeleteStorage,
+			"clear_storage":             h.handleClearStorage,
+			"set_cookie":                h.handleSetCookie,
+			"delete_cookie":             h.handleDeleteCookie,
 			"execute_js":                h.handleExecuteJSImpl,
 			"navigate":                  h.handleBrowserActionNavigateImpl,
 			"refresh":                   h.handleBrowserActionRefreshImpl,

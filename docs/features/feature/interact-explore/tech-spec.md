@@ -30,6 +30,7 @@ links:
 - browser action implementation internals (navigate/refresh/back/forward/new_tab/switch_tab/activate_tab/close_tab, highlight, execute_js, subtitle/screenshot aliases)
 - URL rewrite (`gasoline-insecure://`) and perf snapshot staging for `perf_diff`
 - interact dispatch map now points directly to `interactActionHandler` methods (ToolHandler browser wrappers removed)
+- storage/cookie mutation handlers (`set/delete/clear_storage`, `set/delete_cookie`) and execute-script queueing helper
 
 ## Query-Type Mapping
 - `navigate/refresh/back/forward/new_tab` -> `browser_action`
