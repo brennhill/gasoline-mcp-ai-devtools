@@ -2,13 +2,14 @@
 doc_type: flow_map
 flow_id: mcp-daemon-lifecycle
 status: active
-last_reviewed: 2026-03-02
+last_reviewed: 2026-03-03
 owners:
   - Brenn
 entrypoints:
   - cmd/dev-console/main.go:dispatchMode
   - cmd/dev-console/main_connection_mcp.go:runMCPMode
 code_paths:
+  - cmd/dev-console/mcp_identity.go
   - cmd/dev-console/main_connection_mcp.go
   - cmd/dev-console/main_connection_mcp_bootstrap.go
   - cmd/dev-console/main_connection_mcp_upgrade.go
@@ -16,6 +17,7 @@ code_paths:
   - cmd/dev-console/daemon_lifecycle.go
   - cmd/dev-console/daemon_lock_file.go
   - cmd/dev-console/server_routes.go
+  - internal/identity/mcp.go
 test_paths:
   - cmd/dev-console/main_connection_coverage_test.go
   - cmd/dev-console/main_connection_diag_test.go
@@ -46,6 +48,7 @@ Covers daemon startup, HTTP bind, PID/lock persistence, upgrade watcher wiring, 
 7. HTTP server is created and bound (`startHTTPServer`).
 8. PID file and daemon lock are persisted.
 9. Runtime blocks on `awaitShutdownSignal`.
+10. Runtime identity surfaces resolve canonical server naming from shared identity constants.
 
 ## Error and Recovery Paths
 
@@ -60,15 +63,18 @@ Covers daemon startup, HTTP bind, PID/lock persistence, upgrade watcher wiring, 
 - PID file + daemon lock reflect active owner and are cleared on shutdown.
 - `httpDone` channel is the listener liveness signal.
 - Launch-mode classification is surfaced in health/diagnostics for operator visibility.
+- Canonical server name (`gasoline-browser-devtools`) is sourced from `internal/identity` to avoid cross-package drift.
 
 ## Code Paths
 
+- `cmd/dev-console/mcp_identity.go`
 - `cmd/dev-console/main_connection_mcp.go`
 - `cmd/dev-console/main_connection_mcp_bootstrap.go`
 - `cmd/dev-console/main_connection_mcp_upgrade.go`
 - `cmd/dev-console/main_connection_mcp_shutdown.go`
 - `cmd/dev-console/daemon_lifecycle.go`
 - `cmd/dev-console/daemon_lock_file.go`
+- `internal/identity/mcp.go`
 
 ## Test Paths
 

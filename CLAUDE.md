@@ -120,7 +120,7 @@ No code-only refactor is considered complete until this documentation contract i
 <!-- gitnexus:start -->
 # GitNexus MCP
 
-This project is indexed by GitNexus as **gasoline** (17507 symbols, 48952 relationships, 300 execution flows).
+This project is indexed by GitNexus as **gasoline** (17432 symbols, 49028 relationships, 300 execution flows).
 
 ## Always Start Here
 

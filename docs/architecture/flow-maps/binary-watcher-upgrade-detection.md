@@ -11,6 +11,7 @@ entrypoints:
 code_paths:
   - cmd/dev-console/main_connection_mcp_upgrade.go
   - cmd/dev-console/binary_watcher.go
+  - cmd/dev-console/config_modes.go
   - cmd/dev-console/binary_watcher_marker.go
   - cmd/dev-console/health_response_builders.go
   - cmd/dev-console/server_routes_health_diagnostics.go
@@ -32,7 +33,7 @@ Covers daemon self-upgrade detection based on on-disk binary changes, version ve
 ## Primary Flow
 
 1. Resolve executable path and cache baseline file metadata (mtime + size).
-2. Poll at configured watch interval; when metadata changes, verify `--version`.
+2. Poll at configured watch interval; when metadata changes, verify `--version` and parse version from stdout or stderr.
 3. If detected version is newer than current daemon version, set `upgradePending` state and detected timestamp.
 4. Emit upgrade warning callback; write marker file for restart handoff.
 5. After grace period, trigger controlled shutdown to allow process replacement.
@@ -41,7 +42,7 @@ Covers daemon self-upgrade detection based on on-disk binary changes, version ve
 ## Error and Recovery Paths
 
 1. Missing/invalid executable path: watcher initialization returns `nil` (feature silently disabled).
-2. Version command failures/timeouts: change is ignored, watcher continues polling.
+2. Version command failures/timeouts/invalid output: change is ignored, watcher continues polling.
 3. Marker parse failures: invalid marker is discarded and removed to avoid repeated failure loops.
 
 ## State and Contracts
@@ -49,11 +50,13 @@ Covers daemon self-upgrade detection based on on-disk binary changes, version ve
 1. `BinaryWatcherState` is mutex-protected and exposes thread-safe `UpgradeInfo()`.
 2. Per-watcher timing/version dependencies are injected via config to avoid package-global test coupling.
 3. `checkForUpgrade` accepts per-state verifier + timeout injection for deterministic tests.
+4. Version verification accepts canonical version lines from either stdout or stderr to match CLI `--version` behavior.
 
 ## Code Paths
 
 - `cmd/dev-console/main_connection_mcp_upgrade.go`
 - `cmd/dev-console/binary_watcher.go`
+- `cmd/dev-console/config_modes.go`
 - `cmd/dev-console/binary_watcher_marker.go`
 - `cmd/dev-console/health_response_builders.go`
 - `cmd/dev-console/server_routes_health_diagnostics.go`

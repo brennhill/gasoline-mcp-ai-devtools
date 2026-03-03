@@ -3,13 +3,11 @@
 
 package main
 
+import "github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/identity"
+
 const (
 	// mcpServerName is the canonical MCP server identity shown to clients and LLMs.
-	mcpServerName = "gasoline-browser-devtools"
+	mcpServerName = identity.MCPServerName
 )
 
-var legacyMCPServerNames = []string{
-	"gasoline-agentic-browser",
-	"gasoline",
-}
-
+var legacyMCPServerNames = append([]string(nil), identity.LegacyMCPServerNames...)

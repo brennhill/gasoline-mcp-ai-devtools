@@ -8,6 +8,7 @@ last_reviewed: 2026-03-03
 code_paths:
   - cmd/dev-console/main_connection_mcp_upgrade.go
   - cmd/dev-console/binary_watcher.go
+  - cmd/dev-console/config_modes.go
   - cmd/dev-console/binary_watcher_marker.go
   - cmd/dev-console/health_response_builders.go
   - cmd/dev-console/server_routes_health_diagnostics.go

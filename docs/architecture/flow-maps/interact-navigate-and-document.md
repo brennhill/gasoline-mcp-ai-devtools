@@ -46,6 +46,7 @@ Covers `interact(what:"navigate_and_document")`: click-driven navigation with op
 
 - Invalid JSON returns `ErrInvalidJSON`.
 - Missing click target propagates existing click validation error (`selector`/`element_id`/`index` required).
+- Explicit `tab_id` without active tracking returns `ErrInvalidParam`; the workflow requires tracked-tab context for deterministic waits.
 - `tab_id` mismatch (different from tracked tab) returns `ErrInvalidParam`; workflow waits/context are tracked-tab scoped.
 - URL-change timeout returns `ErrExtTimeout` with guidance to increase timeout or disable URL-change waiting.
 - Stability wait failure propagates the structured `wait_for_stable` error.
@@ -54,7 +55,7 @@ Covers `interact(what:"navigate_and_document")`: click-driven navigation with op
 ## State and Contracts
 
 - URL-change detection reads tracked tab URL from capture state, falling back to observe page context when needed.
-- If `tab_id` is provided, it must match tracked tab for deterministic workflow postconditions.
+- If `tab_id` is provided, an active tracked tab is required and it must match the tracked tab for deterministic workflow postconditions.
 - If `timeout_ms` is provided, wait stages consume a shared remaining-budget window (not independent full timeouts per stage).
 - Workflow defaults are conservative for navigation use-cases: URL-change wait enabled, stability wait enabled.
 - Response enrichment is additive: base action result is preserved and page context text block is appended for backward compatibility.

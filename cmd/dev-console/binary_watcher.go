@@ -5,6 +5,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"os"
@@ -151,12 +152,16 @@ func verifyBinaryVersionWithTimeout(path string, timeout time.Duration) (string,
 
 	cmd := exec.CommandContext(ctx, path, "--version") // #nosec G204 -- path is a verified binary from resolveCanonicalBinary
 	cmd.Env = append(os.Environ(), "GASOLINE_VERSION_CHECK=1")
-	out, err := cmd.Output()
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+	err := cmd.Run()
 	if err != nil {
 		return "", fmt.Errorf("exec --version: %w", err)
 	}
 
-	return parseVersionOutput(strings.TrimSpace(string(out)))
+	return parseVersionCommandOutput(stdout.String(), stderr.String())
 }
 
 // parseVersionOutput extracts a version string from --version output.
@@ -173,6 +178,34 @@ func parseVersionOutput(output string) (string, error) {
 		return "", fmt.Errorf("invalid version output: %q", output)
 	}
 	return output, nil
+}
+
+func parseVersionCommandOutput(stdout string, stderr string) (string, error) {
+	candidates := make([]string, 0, 6)
+	appendLines := func(raw string) {
+		for _, line := range strings.Split(raw, "\n") {
+			trimmed := strings.TrimSpace(line)
+			if trimmed != "" {
+				candidates = append(candidates, trimmed)
+			}
+		}
+	}
+
+	appendLines(stdout)
+	appendLines(stderr)
+
+	for _, candidate := range candidates {
+		if versionValue, err := parseVersionOutput(candidate); err == nil {
+			return versionValue, nil
+		}
+	}
+
+	trimmedStdout := strings.TrimSpace(stdout)
+	trimmedStderr := strings.TrimSpace(stderr)
+	if trimmedStdout == "" && trimmedStderr == "" {
+		return "", fmt.Errorf("empty version output")
+	}
+	return "", fmt.Errorf("invalid version output: stdout=%q stderr=%q", trimmedStdout, trimmedStderr)
 }
 
 // startBinaryWatcher starts a background goroutine that watches the daemon binary for changes.
