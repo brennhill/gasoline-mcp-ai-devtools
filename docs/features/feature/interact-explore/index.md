@@ -87,5 +87,6 @@ This feature documents the shipped `interact` action surface (not a batched `int
 `navigate_and_document` now returns structured metadata for machine consumers:
 1. `metadata.page_context` (`url`, `title`, `tab_id`) while preserving the legacy text block.
 2. `metadata.workflow_trace` (`trace_id`, `status`, stage-level timing/status envelope).
+3. Explicit `tab_id` now requires an actively tracked tab and must match tracked context before click dispatch.
 
 Interact action metadata now has a single canonical registry in `internal/schema/interact_actions.go`, consumed by both schema enum generation and `describe_capabilities` mode specs.

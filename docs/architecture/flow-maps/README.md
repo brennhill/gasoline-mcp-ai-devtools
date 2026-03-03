@@ -63,3 +63,4 @@ Each flow map should include:
 - [Interact Batch Sequences](./interact-batch-sequences.md)
 - [Framework Selector Resilience Smoke Flow](./framework-selector-resilience-smoke.md)
 - [Request Session Client Registry and `/clients` Routes](./request-session-client-registry-and-clients-routes.md)
+- [Push Alert Notification Emission](./push-alert-notification-emission.md)

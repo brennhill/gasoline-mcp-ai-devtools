@@ -222,6 +222,23 @@ func TestNavigateAndDocument_TabIDMismatchReturnsError(t *testing.T) {
 	}
 }
 
+func TestNavigateAndDocument_TabIDRequiresTracking(t *testing.T) {
+	t.Parallel()
+	env := newToolTestEnv(t)
+	env.capture.SetPilotEnabled(true)
+	env.capture.SimulateExtensionConnectForTest()
+
+	req := JSONRPCRequest{JSONRPC: "2.0", ID: json.RawMessage(`1`)}
+	args := json.RawMessage(`{"selector":"a.nav","tab_id":42,"wait_for_url_change":true,"wait_for_stable":false}`)
+
+	resp := env.handler.interactAction().handleNavigateAndDocument(req, args)
+	assertIsError(t, resp, "requires an actively tracked tab")
+
+	if len(env.capture.GetPendingQueries()) != 0 {
+		t.Fatalf("missing tracked tab should fail before dispatching click, pending=%d", len(env.capture.GetPendingQueries()))
+	}
+}
+
 func TestNavigateAndDocument_TimeoutBudgetExhaustedBeforeStable(t *testing.T) {
 	t.Parallel()
 	env := newToolTestEnv(t)

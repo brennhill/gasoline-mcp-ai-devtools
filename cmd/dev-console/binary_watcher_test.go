@@ -132,6 +132,22 @@ func TestVerifyBinaryVersion_NoPrefix(t *testing.T) {
 	}
 }
 
+func TestVerifyBinaryVersion_StderrOutput(t *testing.T) {
+	t.Parallel()
+	tmp := filepath.Join(t.TempDir(), "fake-bin")
+	if err := os.WriteFile(tmp, []byte("#!/bin/sh\necho 'gasoline v0.8.0' 1>&2\n"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	ver, err := verifyBinaryVersionWithTimeout(tmp, testVersionCheckTimeout)
+	if err != nil {
+		t.Fatalf("verifyBinaryVersion() error = %v", err)
+	}
+	if ver != "0.8.0" {
+		t.Fatalf("verifyBinaryVersion() = %q, want %q", ver, "0.8.0")
+	}
+}
+
 func TestVerifyBinaryVersion_InvalidOutput(t *testing.T) {
 	t.Parallel()
 	tmp := filepath.Join(t.TempDir(), "fake-bin")

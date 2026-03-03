@@ -230,7 +230,19 @@ func (h *interactActionHandler) validateNavigateAndDocumentTab(req JSONRPCReques
 	}
 
 	enabled, trackedTabID, _ := h.parent.capture.GetTrackingStatus()
-	if !enabled || trackedTabID <= 0 || trackedTabID == tabID {
+	if !enabled || trackedTabID <= 0 {
+		return JSONRPCResponse{
+			JSONRPC: "2.0",
+			ID:      req.ID,
+			Result: mcpStructuredError(
+				ErrInvalidParam,
+				fmt.Sprintf("navigate_and_document with tab_id=%d requires an actively tracked tab", tabID),
+				"Switch tracking to the target tab first (interact what=switch_tab), then retry navigate_and_document.",
+				withParam("tab_id"),
+			),
+		}, true
+	}
+	if trackedTabID == tabID {
 		return JSONRPCResponse{}, false
 	}
 

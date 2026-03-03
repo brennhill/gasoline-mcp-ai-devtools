@@ -6,8 +6,10 @@ feature_type: feature
 owners: []
 last_reviewed: 2026-03-03
 code_paths:
+  - cmd/dev-console/mcp_identity.go
   - cmd/dev-console/bridge.go
   - cmd/dev-console/bridge_startup_orchestration.go
+  - internal/identity/mcp.go
   - internal/util/proc_unix.go
   - internal/util/proc_windows.go
 test_paths:
