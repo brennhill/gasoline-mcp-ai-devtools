@@ -1,7 +1,7 @@
 ---
 doc_type: flow_map_index
 status: active
-last_reviewed: 2026-03-02
+last_reviewed: 2026-03-03
 owners:
   - Brenn
 ---
@@ -37,6 +37,7 @@ Each flow map should include:
 
 - [Bridge Startup Contention and Convergence](./bridge-startup-contention-and-convergence.md)
 - [Analyze Annotation Waiter and Flush Recovery](./analyze-annotations-waiter-and-flush.md)
+- [Checkpoint, Noise, and Persistence Split](./ai-domain-packages.md)
 - [Daemon Stop and Force Cleanup](./daemon-stop-and-force-cleanup.md)
 - [DOM Selector Resolution and Disambiguation](./dom-selector-resolution-and-disambiguation.md)
 - [MCP Daemon Lifecycle](./mcp-daemon-lifecycle.md)

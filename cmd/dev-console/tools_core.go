@@ -9,12 +9,13 @@ import (
 	"sync"
 	"time"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/ai"
 	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/analysis"
 	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/audit"
 	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/capture"
 	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/issuereport"
 	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/mcp"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/noise"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/persistence"
 	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/security"
 	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/session"
 	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/streaming"
@@ -54,8 +55,8 @@ type ToolHandler struct {
 
 	// Concrete implementations (interface signatures differ from types package)
 	// These are used directly by tool handlers rather than through the interface fields above.
-	noiseConfig           *ai.NoiseConfig
-	sessionStoreImpl      *ai.SessionStore
+	noiseConfig           *noise.NoiseConfig
+	sessionStoreImpl      *persistence.SessionStore
 	securityScannerImpl   *security.Scanner
 	thirdPartyAuditorImpl *analysis.ThirdPartyAuditor
 	sessionManager        *session.Manager

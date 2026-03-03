@@ -10,7 +10,7 @@ import (
 	"path/filepath"
 	"time"
 
-	ai "github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/ai"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/persistence"
 	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/state"
 	az "github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/tools/analyze"
 	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/tools/observe"
@@ -48,7 +48,7 @@ func (h *ToolHandler) toolVisualBaseline(req JSONRPCRequest, args json.RawMessag
 	metadataJSON, _ := json.Marshal(metadata)
 
 	if h.sessionStoreImpl != nil {
-		storeArgs := ai.SessionStoreArgs{
+		storeArgs := persistence.SessionStoreArgs{
 			Action:    "save",
 			Namespace: "visual_baselines",
 			Key:       parsed.Name,
@@ -78,7 +78,7 @@ func (h *ToolHandler) toolVisualDiff(req JSONRPCRequest, args json.RawMessage) J
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrNotInitialized, "Session store not initialized", "Internal error — do not retry")}
 	}
 
-	loadArgs := ai.SessionStoreArgs{
+	loadArgs := persistence.SessionStoreArgs{
 		Action:    "load",
 		Namespace: "visual_baselines",
 		Key:       parsed.Baseline,
@@ -161,7 +161,7 @@ func (h *ToolHandler) toolListVisualBaselines(req JSONRPCRequest, _ json.RawMess
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrNotInitialized, "Session store not initialized", "Internal error — do not retry")}
 	}
 
-	listArgs := ai.SessionStoreArgs{
+	listArgs := persistence.SessionStoreArgs{
 		Action:    "list",
 		Namespace: "visual_baselines",
 	}
