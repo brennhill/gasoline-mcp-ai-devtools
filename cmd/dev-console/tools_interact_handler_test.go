@@ -856,6 +856,47 @@ func TestToolsInteractListInteractive_ResponseFields(t *testing.T) {
 }
 
 // ============================================
+// interact(action:"get_text", structured:true) — Regression (#390)
+// ============================================
+
+func TestToolsInteractGetText_StructuredPassthrough(t *testing.T) {
+	t.Parallel()
+	h, _, cap := makeToolHandler(t)
+	cap.SetPilotEnabled(true)
+	mockConnectedTrackedTab(t, cap)
+
+	resp := callInteractRaw(h, `{"what":"get_text","selector":".accordion","structured":true}`)
+	result := parseToolResult(t, resp)
+	if result.IsError {
+		t.Fatalf("get_text should succeed, got: %s", result.Content[0].Text)
+	}
+
+	data := extractResultJSON(t, result)
+	if data["status"] != "queued" {
+		t.Errorf("status = %v, want 'queued'", data["status"])
+	}
+	corr, _ := data["correlation_id"].(string)
+	if !strings.HasPrefix(corr, "dom_get_text_") {
+		t.Errorf("correlation_id should start with 'dom_get_text_', got: %s", corr)
+	}
+
+	pq := cap.GetLastPendingQuery()
+	if pq == nil {
+		t.Fatal("expected pending query for get_text")
+	}
+	var params map[string]any
+	if err := json.Unmarshal(pq.Params, &params); err != nil {
+		t.Fatalf("pending query params should be valid JSON: %v", err)
+	}
+	if got, _ := params["action"].(string); got != "get_text" {
+		t.Fatalf("pending query action = %#v, want get_text", params["action"])
+	}
+	if got, _ := params["structured"].(bool); !got {
+		t.Fatalf("pending query should include structured=true, got: %#v", params["structured"])
+	}
+}
+
+// ============================================
 // validateDOMActionParams Tests
 // ============================================
 

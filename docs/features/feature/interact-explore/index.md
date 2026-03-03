@@ -34,6 +34,7 @@ code_paths:
   - src/inject/execute-js.ts
   - src/content/runtime-message-listener.ts
 test_paths:
+  - cmd/dev-console/tools_interact_handler_test.go
   - cmd/dev-console/tools_interact_rich_test.go
   - cmd/dev-console/tools_interact_upload_test.go
   - cmd/dev-console/tools_interact_retry_contract_test.go
