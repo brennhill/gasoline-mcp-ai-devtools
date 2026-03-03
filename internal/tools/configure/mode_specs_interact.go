@@ -73,7 +73,7 @@ var interactModeSpecs = map[string]modeParamSpec{
 	},
 	"navigate_and_document": {
 		Hint:     "Click to navigate, optionally wait for URL change/stability, then return page context",
-		Optional: []string{"selector", "element_id", "index", "index_generation", "nth", "scope_selector", "scope_rect", "frame", "reason", "timeout_ms", "wait_for_url_change", "wait_for_stable", "stability_ms", "include_screenshot", "include_interactive"},
+		Optional: []string{"selector", "element_id", "index", "index_generation", "nth", "scope_selector", "scope_rect", "frame", "tab_id", "reason", "timeout_ms", "wait_for_url_change", "wait_for_stable", "stability_ms", "include_screenshot", "include_interactive"},
 	},
 	"refresh": {
 		Hint:     "Reload the current page",

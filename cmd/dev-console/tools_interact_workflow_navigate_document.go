@@ -6,6 +6,7 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"time"
 )
 
@@ -15,6 +16,7 @@ func (h *interactActionHandler) handleNavigateAndDocument(req JSONRPCRequest, ar
 	var params struct {
 		TimeoutMs        int   `json:"timeout_ms,omitempty"`
 		StabilityMs      int   `json:"stability_ms,omitempty"`
+		TabID            int   `json:"tab_id,omitempty"`
 		WaitForURLChange *bool `json:"wait_for_url_change,omitempty"`
 		WaitForStable    *bool `json:"wait_for_stable,omitempty"`
 	}
@@ -33,6 +35,10 @@ func (h *interactActionHandler) handleNavigateAndDocument(req JSONRPCRequest, ar
 	waitForStable := true
 	if params.WaitForStable != nil {
 		waitForStable = *params.WaitForStable
+	}
+
+	if resp, blocked := h.validateNavigateAndDocumentTab(req, params.TabID); blocked {
+		return resp
 	}
 
 	beforeURL := h.currentTrackedURL(req)
@@ -94,7 +100,7 @@ func filterNavigateAndDocumentClickArgs(args json.RawMessage) json.RawMessage {
 		"selector", "scope_selector", "scope_rect", "annotation_rect",
 		"element_id", "index", "index_generation", "nth",
 		"x", "y",
-		"tab_id", "frame", "timeout_ms", "reason", "new_tab",
+		"tab_id", "frame", "timeout_ms", "reason",
 	} {
 		if v, ok := raw[key]; ok {
 			click[key] = v
@@ -134,4 +140,29 @@ func (h *interactActionHandler) waitForTrackedURLChange(req JSONRPCRequest, befo
 		time.Sleep(100 * time.Millisecond)
 	}
 	return lastURL, false
+}
+
+// validateNavigateAndDocumentTab ensures workflow-level waits and page context are
+// scoped to the currently tracked tab. Unlike plain click, this workflow derives
+// post-action state from tracked page metadata.
+func (h *interactActionHandler) validateNavigateAndDocumentTab(req JSONRPCRequest, tabID int) (JSONRPCResponse, bool) {
+	if tabID <= 0 {
+		return JSONRPCResponse{}, false
+	}
+
+	enabled, trackedTabID, _ := h.parent.capture.GetTrackingStatus()
+	if !enabled || trackedTabID <= 0 || trackedTabID == tabID {
+		return JSONRPCResponse{}, false
+	}
+
+	return JSONRPCResponse{
+		JSONRPC: "2.0",
+		ID:      req.ID,
+		Result: mcpStructuredError(
+			ErrInvalidParam,
+			fmt.Sprintf("navigate_and_document requires tracked tab_id=%d; got tab_id=%d", trackedTabID, tabID),
+			"Switch tracking to the target tab first (interact what=switch_tab) or omit tab_id.",
+			withParam("tab_id"),
+		),
+	}, true
 }
