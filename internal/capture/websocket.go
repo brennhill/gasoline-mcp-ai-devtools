@@ -55,7 +55,7 @@ func (c *Capture) AddWebSocketEvents(events []WebSocketEvent) {
 	for i := range events {
 		events[i].TestIDs = activeTestIDs
 		detectWSBinaryFormat(&events[i])
-		c.trackConnection(events[i])
+		c.wsConnections.trackEvent(events[i])
 		c.buffers.wsEvents = append(c.buffers.wsEvents, events[i])
 		c.buffers.wsAddedAt = append(c.buffers.wsAddedAt, now)
 		c.buffers.wsMemoryTotal += wsEventMemory(&events[i])
