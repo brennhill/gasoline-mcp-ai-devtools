@@ -38,7 +38,7 @@ func TestGetActionsInTimeWindow_NoActions(t *testing.T) {
 	t.Parallel()
 	h := newTestToolHandler()
 
-	_, err := h.getActionsInTimeWindow(1000, 500)
+	_, err := h.testGen().getActionsInTimeWindow(1000, 500)
 	if err == nil {
 		t.Fatal("getActionsInTimeWindow should return error when no actions captured")
 	}
@@ -56,7 +56,7 @@ func TestGetActionsInTimeWindow_NoneInWindow(t *testing.T) {
 		{Type: "input", Timestamp: 2000},
 	})
 
-	_, err := h.getActionsInTimeWindow(10000, 500)
+	_, err := h.testGen().getActionsInTimeWindow(10000, 500)
 	if err == nil {
 		t.Fatal("getActionsInTimeWindow should return error when no actions in window")
 	}
@@ -75,7 +75,7 @@ func TestGetActionsInTimeWindow_AllInWindow(t *testing.T) {
 		{Type: "navigate", Timestamp: 1100},
 	})
 
-	result, err := h.getActionsInTimeWindow(1000, 500)
+	result, err := h.testGen().getActionsInTimeWindow(1000, 500)
 	if err != nil {
 		t.Fatalf("getActionsInTimeWindow error = %v", err)
 	}
@@ -96,7 +96,7 @@ func TestGetActionsInTimeWindow_PartialMatch(t *testing.T) {
 		{Type: "wait", Timestamp: 2000},     // outside window (diff = 1000)
 	})
 
-	result, err := h.getActionsInTimeWindow(1000, 500)
+	result, err := h.testGen().getActionsInTimeWindow(1000, 500)
 	if err != nil {
 		t.Fatalf("getActionsInTimeWindow error = %v", err)
 	}
@@ -124,7 +124,7 @@ func TestGetActionsInTimeWindow_ExactBoundary(t *testing.T) {
 		{Type: "input", Timestamp: 1500}, // center + window = exactly at upper bound
 	})
 
-	result, err := h.getActionsInTimeWindow(1000, 500)
+	result, err := h.testGen().getActionsInTimeWindow(1000, 500)
 	if err != nil {
 		t.Fatalf("getActionsInTimeWindow error = %v", err)
 	}
@@ -147,7 +147,7 @@ func TestGetActionsInTimeWindow_PreservesActionFields(t *testing.T) {
 		},
 	})
 
-	result, err := h.getActionsInTimeWindow(1000, 500)
+	result, err := h.testGen().getActionsInTimeWindow(1000, 500)
 	if err != nil {
 		t.Fatalf("getActionsInTimeWindow error = %v", err)
 	}
@@ -239,7 +239,7 @@ func TestCountNetworkAssertions_Empty(t *testing.T) {
 	t.Parallel()
 	h := newTestToolHandler()
 
-	count := h.countNetworkAssertions()
+	count := h.testGen().countNetworkAssertions()
 	if count != 0 {
 		t.Fatalf("countNetworkAssertions(empty) = %d, want 0", count)
 	}
@@ -255,7 +255,7 @@ func TestCountNetworkAssertions_WithBodies(t *testing.T) {
 		{Method: "GET", URL: "/api/data", Status: 0}, // status 0 should not count
 	})
 
-	count := h.countNetworkAssertions()
+	count := h.testGen().countNetworkAssertions()
 	if count != 2 {
 		t.Fatalf("countNetworkAssertions = %d, want 2 (skip status 0)", count)
 	}
@@ -270,7 +270,7 @@ func TestCountNetworkAssertions_AllZeroStatus(t *testing.T) {
 		{Method: "GET", URL: "/api/b", Status: 0},
 	})
 
-	count := h.countNetworkAssertions()
+	count := h.testGen().countNetworkAssertions()
 	if count != 0 {
 		t.Fatalf("countNetworkAssertions(all zero) = %d, want 0", count)
 	}
@@ -284,7 +284,7 @@ func TestCountNetworkAssertions_NegativeStatusIgnored(t *testing.T) {
 		{Method: "GET", URL: "/api/a", Status: -1},
 	})
 
-	count := h.countNetworkAssertions()
+	count := h.testGen().countNetworkAssertions()
 	if count != 0 {
 		t.Fatalf("countNetworkAssertions(negative) = %d, want 0", count)
 	}
@@ -298,7 +298,7 @@ func TestCollectErrorMessages_NoEntries(t *testing.T) {
 	t.Parallel()
 	h := newTestToolHandler()
 
-	msgs := h.collectErrorMessages(5)
+	msgs := h.testGen().collectErrorMessages(5)
 	if len(msgs) != 0 {
 		t.Fatalf("collectErrorMessages(empty) len = %d, want 0", len(msgs))
 	}
@@ -315,7 +315,7 @@ func TestCollectErrorMessages_NoErrors(t *testing.T) {
 	}
 	h.server.mu.Unlock()
 
-	msgs := h.collectErrorMessages(5)
+	msgs := h.testGen().collectErrorMessages(5)
 	if len(msgs) != 0 {
 		t.Fatalf("collectErrorMessages(no errors) len = %d, want 0", len(msgs))
 	}
@@ -335,7 +335,7 @@ func TestCollectErrorMessages_MixedLevels(t *testing.T) {
 	}
 	h.server.mu.Unlock()
 
-	msgs := h.collectErrorMessages(5)
+	msgs := h.testGen().collectErrorMessages(5)
 	if len(msgs) != 3 {
 		t.Fatalf("collectErrorMessages len = %d, want 3", len(msgs))
 	}
@@ -364,7 +364,7 @@ func TestCollectErrorMessages_RespectsLimit(t *testing.T) {
 	}
 	h.server.mu.Unlock()
 
-	msgs := h.collectErrorMessages(3)
+	msgs := h.testGen().collectErrorMessages(3)
 	if len(msgs) != 3 {
 		t.Fatalf("collectErrorMessages(limit=3) len = %d, want 3", len(msgs))
 	}
@@ -385,7 +385,7 @@ func TestCollectErrorMessages_SkipsEmptyMessages(t *testing.T) {
 	}
 	h.server.mu.Unlock()
 
-	msgs := h.collectErrorMessages(5)
+	msgs := h.testGen().collectErrorMessages(5)
 	if len(msgs) != 1 {
 		t.Fatalf("collectErrorMessages len = %d, want 1 (skip empty msgs)", len(msgs))
 	}
@@ -404,7 +404,7 @@ func TestCollectErrorMessages_LimitZero(t *testing.T) {
 	}
 	h.server.mu.Unlock()
 
-	msgs := h.collectErrorMessages(0)
+	msgs := h.testGen().collectErrorMessages(0)
 	if len(msgs) != 0 {
 		t.Fatalf("collectErrorMessages(limit=0) len = %d, want 0", len(msgs))
 	}

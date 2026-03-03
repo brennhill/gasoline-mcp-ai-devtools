@@ -2,16 +2,17 @@
 doc_type: flow_map
 flow_id: test-generation-dispatch
 status: active
-last_reviewed: 2026-03-02
+last_reviewed: 2026-03-03
 owners:
   - Brenn
 entrypoints:
   - cmd/dev-console/tools_generate.go:handleGenerate
-  - cmd/dev-console/testgen.go:handleGenerateTestFromContext
-  - cmd/dev-console/testgen_heal.go:handleGenerateTestHeal
-  - cmd/dev-console/testgen_classify.go:handleGenerateTestClassify
+  - cmd/dev-console/testgen.go:testGenHandler.handleGenerateTestFromContext
+  - cmd/dev-console/testgen_heal.go:testGenHandler.handleGenerateTestHeal
+  - cmd/dev-console/testgen_classify.go:testGenHandler.handleGenerateTestClassify
 code_paths:
   - cmd/dev-console/tools_generate.go
+  - cmd/dev-console/tools_generate_testgen_handler.go
   - cmd/dev-console/testgen.go
   - cmd/dev-console/testgen_aliases.go
   - cmd/dev-console/testgen_provider_adapter.go
@@ -37,19 +38,19 @@ Covers MCP `generate` test-related modes: `test_from_context`, `test_heal`, and 
 ## Entrypoints
 
 - `handleGenerate` dispatches `generate` calls to test handlers.
-- `handleGenerateTestFromContext` handles contextual test generation.
-- `handleGenerateTestHeal` handles selector healing workflows.
-- `handleGenerateTestClassify` handles failure classification workflows.
+- `testGenHandler.handleGenerateTestFromContext` handles contextual test generation.
+- `testGenHandler.handleGenerateTestHeal` handles selector healing workflows.
+- `testGenHandler.handleGenerateTestClassify` handles failure classification workflows.
 
 ## Primary Flow
 
 1. MCP client calls `tools/call` with `name: "generate"`.
-2. `handleGenerate` normalizes params and dispatches to test handlers by mode.
-3. `handleGenerateTestFromContext` validates context and picks generator:
+2. `handleGenerate` normalizes params and dispatches to `h.testGen()` sub-handler by mode.
+3. `testGenHandler.handleGenerateTestFromContext` validates context and picks generator:
 4. `error` context uses captured logs + actions to reproduce failures.
 5. `interaction` context converts action history to Playwright script.
 6. `regression` context adds baseline assertions.
-7. Data access is mediated through `toolHandlerDataProvider`.
+7. Data access is mediated through `toolHandlerDataProvider` bound to `testGenHandler`.
 8. Internal logic lives in `internal/testgen/*`.
 9. Response is returned through structured MCP JSON + warnings.
 
@@ -68,6 +69,7 @@ Covers MCP `generate` test-related modes: `test_from_context`, `test_heal`, and 
 
 ## Code Paths
 
+- `cmd/dev-console/tools_generate_testgen_handler.go`
 - `cmd/dev-console/testgen.go`
 - `cmd/dev-console/testgen_aliases.go`
 - `cmd/dev-console/testgen_provider_adapter.go`

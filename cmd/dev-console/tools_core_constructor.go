@@ -108,6 +108,7 @@ func NewToolHandler(server *Server, capture *capture.Store) *MCPHandler {
 	handler.uploadSecurity = uploadSecurityConfig
 	handler.recordingInteractHandler = newRecordingInteractHandler(handler)
 	handler.uploadInteractHandler = newUploadInteractHandler(handler)
+	handler.testGenHandler = newTestGenHandler(handler)
 
 	// Initialize dispatch modules and tool schemas once at startup.
 	handler.ensureToolModules()
