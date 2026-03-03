@@ -2,7 +2,7 @@
 doc_type: flow_map
 flow_id: tab-recording-and-media-ingest
 status: active
-last_reviewed: 2026-03-02
+last_reviewed: 2026-03-03
 owners:
   - Brenn
 entrypoints:
@@ -14,6 +14,7 @@ entrypoints:
   - cmd/dev-console/tools_observe.go (saved_videos)
 code_paths:
   - cmd/dev-console/tools_recording_video.go
+  - cmd/dev-console/tools_recording_interact_handler.go
   - cmd/dev-console/tools_recording_video_paths.go
   - cmd/dev-console/tools_recording_video_state.go
   - cmd/dev-console/tools_recording_video_handlers.go
@@ -53,9 +54,9 @@ Covers interact record_start/record_stop state machine, popup/manual recording c
 
 ## Primary Flow
 
-1. `handleRecordStart` validates extension readiness, clamps FPS/audio, resolves path, and queues extension command.
-2. Recording state transitions are derived from command results in `resolveInteractRecordingState`.
-3. `handleRecordStop` enforces valid state before queueing stop command.
+1. `recordingInteractHandler.handleRecordStart` validates extension readiness, clamps FPS/audio, resolves path, and queues extension command.
+2. Recording state transitions are derived from command results in `recordingInteractHandler.resolveInteractRecordingState`.
+3. `recordingInteractHandler.handleRecordStop` enforces valid state before queueing stop command.
 4. Popup row and recording shortcut both call extension `startRecording(..., fromPopup=true, targetTabId=activeTab)` for direct local start.
 5. Shortcut toggle checks current recording state: active -> `stopRecording`; idle -> `startRecording`.
 6. `/screenshots` validates rate limits and data URLs, then persists image and optional query result payload.
@@ -79,6 +80,7 @@ Covers interact record_start/record_stop state machine, popup/manual recording c
 ## Code Paths
 
 - `cmd/dev-console/tools_recording_video.go`
+- `cmd/dev-console/tools_recording_interact_handler.go`
 - `cmd/dev-console/tools_recording_video_paths.go`
 - `cmd/dev-console/tools_recording_video_state.go`
 - `cmd/dev-console/tools_recording_video_handlers.go`

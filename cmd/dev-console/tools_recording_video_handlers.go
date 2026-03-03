@@ -12,7 +12,8 @@ import (
 )
 
 // queueRecordStart creates the pending query and returns the response for a record_start action.
-func (h *ToolHandler) queueRecordStart(req JSONRPCRequest, fullName, audio, videoPath string, fps, tabID int) JSONRPCResponse {
+func (r *recordingInteractHandler) queueRecordStart(req JSONRPCRequest, fullName, audio, videoPath string, fps, tabID int) JSONRPCResponse {
+	h := r.parent
 	correlationID := newCorrelationID("rec")
 
 	extParams := map[string]any{"action": "record_start", "name": fullName, "fps": fps, "audio": audio}
@@ -26,7 +27,7 @@ func (h *ToolHandler) queueRecordStart(req JSONRPCRequest, fullName, audio, vide
 		CorrelationID: correlationID,
 	}
 	h.capture.CreatePendingQueryWithTimeout(query, recordStartCommandTimeout, req.ClientID)
-	h.setInteractRecordingStart(correlationID)
+	r.setInteractRecordingStart(correlationID)
 
 	h.recordAIAction("record_start", "", map[string]any{"name": fullName, "fps": fps, "audio": audio})
 
@@ -47,7 +48,8 @@ func (h *ToolHandler) queueRecordStart(req JSONRPCRequest, fullName, audio, vide
 // handleRecordStart processes interact({action: "record_start"}).
 // Generates the filename, forwards to extension via PendingQuery.
 // Recording targets the browser, not a specific tab -- no requireTabTracking gate needed.
-func (h *ToolHandler) handleRecordStart(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+func (r *recordingInteractHandler) handleRecordStart(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+	h := r.parent
 	var params struct {
 		Name  string `json:"name"`
 		FPS   int    `json:"fps,omitempty"`
@@ -82,12 +84,13 @@ func (h *ToolHandler) handleRecordStart(req JSONRPCRequest, args json.RawMessage
 	}
 
 	fullName, videoPath := resolveRecordingPath(dir, name)
-	return h.queueRecordStart(req, fullName, params.Audio, videoPath, fps, params.TabID)
+	return r.queueRecordStart(req, fullName, params.Audio, videoPath, fps, params.TabID)
 }
 
 // handleRecordStop processes interact({action: "record_stop"}).
 // Recording targets the browser, not a specific tab -- no requireTabTracking gate needed.
-func (h *ToolHandler) handleRecordStop(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+func (r *recordingInteractHandler) handleRecordStop(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+	h := r.parent
 	var params struct {
 		TabID int `json:"tab_id,omitempty"`
 	}
@@ -102,7 +105,7 @@ func (h *ToolHandler) handleRecordStop(req JSONRPCRequest, args json.RawMessage)
 		return resp
 	}
 
-	recordingState := h.resolveInteractRecordingState()
+	recordingState := r.resolveInteractRecordingState()
 	if recordingState.State != recordingStateRecording {
 		retry := "Run interact(action:'record_start') and wait for observe(what:'command_result') to report status 'recording' before stopping."
 		if recordingState.State == recordingStateAwaitingGesture {
@@ -137,7 +140,7 @@ func (h *ToolHandler) handleRecordStop(req JSONRPCRequest, args json.RawMessage)
 		CorrelationID: correlationID,
 	}
 	h.capture.CreatePendingQueryWithTimeout(query, recordStopCommandTimeout, req.ClientID)
-	h.setInteractRecordingStopping(correlationID)
+	r.setInteractRecordingStopping(correlationID)
 
 	h.recordAIAction("record_stop", "", nil)
 

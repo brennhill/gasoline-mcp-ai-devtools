@@ -26,7 +26,8 @@ func extractRecordingLifecycleStatus(result json.RawMessage) string {
 }
 
 // resolveInteractRecordingState refreshes state using latest command results.
-func (h *ToolHandler) resolveInteractRecordingState() interactRecordingState {
+func (r *recordingInteractHandler) resolveInteractRecordingState() interactRecordingState {
+	h := r.parent
 	h.recordInteractMu.Lock()
 	defer h.recordInteractMu.Unlock()
 
@@ -90,7 +91,8 @@ func (h *ToolHandler) resolveInteractRecordingState() interactRecordingState {
 	return state
 }
 
-func (h *ToolHandler) setInteractRecordingStart(correlationID string) {
+func (r *recordingInteractHandler) setInteractRecordingStart(correlationID string) {
+	h := r.parent
 	h.recordInteractMu.Lock()
 	defer h.recordInteractMu.Unlock()
 	h.recordInteract = interactRecordingState{
@@ -100,7 +102,8 @@ func (h *ToolHandler) setInteractRecordingStart(correlationID string) {
 	}
 }
 
-func (h *ToolHandler) setInteractRecordingStopping(correlationID string) {
+func (r *recordingInteractHandler) setInteractRecordingStopping(correlationID string) {
+	h := r.parent
 	h.recordInteractMu.Lock()
 	defer h.recordInteractMu.Unlock()
 	state := h.recordInteract
