@@ -4,6 +4,7 @@
  * Docs: docs/features/feature/backend-log-streaming/index.md
  * Docs: docs/features/feature/interact-explore/index.md
  * Docs: docs/features/feature/query-dom/index.md
+ * Docs: docs/features/feature/tab-tracking-ux/index.md
  */
 /**
  * @fileoverview content.ts - Message bridge between page and extension contexts.

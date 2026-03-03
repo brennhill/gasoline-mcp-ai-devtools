@@ -1926,13 +1926,20 @@
   var ROOT_ID = "gasoline-tracked-hover-launcher";
   var PANEL_ID = "gasoline-tracked-hover-panel";
   var TOGGLE_ID = "gasoline-tracked-hover-toggle";
+  var SETTINGS_MENU_ID = "gasoline-tracked-hover-settings-menu";
+  var RESHOW_MESSAGE_TYPE = "GASOLINE_SHOW_TRACKED_HOVER_LAUNCHER";
   var rootEl = null;
   var panelEl = null;
+  var settingsMenuEl = null;
   var recordButtonEl = null;
   var recordingActive = false;
   var panelPinned = false;
+  var settingsMenuOpen = false;
+  var trackedEnabled = false;
+  var hiddenUntilPopupOpen = false;
   var hideTimer = null;
   var recordingStorageListener = null;
+  var runtimeListenerInstalled = false;
   function clearHideTimer() {
     if (!hideTimer)
       return;
@@ -1943,8 +1950,16 @@
     if (!panelEl)
       return;
     panelEl.style.opacity = open ? "1" : "0";
-    panelEl.style.transform = open ? "translateX(0)" : "translateX(8px)";
+    panelEl.style.transform = open ? "translateX(0) scale(1)" : "translateX(12px) scale(0.96)";
     panelEl.style.pointerEvents = open ? "auto" : "none";
+  }
+  function setSettingsMenuOpen(open) {
+    settingsMenuOpen = open;
+    if (!settingsMenuEl)
+      return;
+    settingsMenuEl.style.opacity = open ? "1" : "0";
+    settingsMenuEl.style.transform = open ? "translateY(0) scale(1)" : "translateY(-8px) scale(0.96)";
+    settingsMenuEl.style.pointerEvents = open ? "auto" : "none";
   }
   function updateRecordButtonState(active) {
     recordingActive = active;
@@ -1984,6 +1999,29 @@
       return;
     chrome.storage.onChanged.removeListener(recordingStorageListener);
     recordingStorageListener = null;
+  }
+  function hideLauncherUntilPopupReopen() {
+    hiddenUntilPopupOpen = true;
+    setSettingsMenuOpen(false);
+    unmountLauncher();
+  }
+  function handleReshowRequest() {
+    hiddenUntilPopupOpen = false;
+    if (trackedEnabled)
+      mountLauncher();
+  }
+  function installRuntimeListener() {
+    if (runtimeListenerInstalled)
+      return;
+    runtimeListenerInstalled = true;
+    chrome.runtime.onMessage.addListener((message, sender) => {
+      if (sender.id !== chrome.runtime.id)
+        return false;
+      if (message.type !== RESHOW_MESSAGE_TYPE)
+        return false;
+      handleReshowRequest();
+      return false;
+    });
   }
   async function startDrawMode() {
     try {
@@ -2044,7 +2082,16 @@
       fontSize: "12px",
       fontWeight: "600",
       cursor: "pointer",
-      padding: "0 10px"
+      padding: "0 10px",
+      transition: "transform 140ms cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 160ms ease, background-color 160ms ease, border-color 160ms ease, color 160ms ease"
+    });
+    button.addEventListener("mouseenter", () => {
+      button.style.transform = "translateY(-1px)";
+      button.style.boxShadow = "0 4px 12px rgba(15, 23, 42, 0.12)";
+    });
+    button.addEventListener("mouseleave", () => {
+      button.style.transform = "translateY(0)";
+      button.style.boxShadow = "none";
     });
     button.addEventListener("click", (event) => {
       event.preventDefault();
@@ -2052,6 +2099,38 @@
       onClick();
     });
     return button;
+  }
+  function createSettingsMenuLink(label, href) {
+    const link = document.createElement("a");
+    link.textContent = label;
+    link.href = href;
+    link.target = "_blank";
+    link.rel = "noopener noreferrer";
+    Object.assign(link.style, {
+      display: "block",
+      color: "#111827",
+      textDecoration: "none",
+      fontSize: "12px",
+      fontWeight: "600",
+      padding: "8px 10px",
+      borderRadius: "8px",
+      background: "#f9fafb",
+      transition: "transform 120ms ease, background-color 140ms ease"
+    });
+    link.addEventListener("mouseenter", () => {
+      link.style.transform = "translateX(1px)";
+      link.style.background = "#f3f4f6";
+    });
+    link.addEventListener("mouseleave", () => {
+      link.style.transform = "translateX(0)";
+      link.style.background = "#f9fafb";
+    });
+    link.addEventListener("click", () => {
+      panelPinned = false;
+      setPanelOpen(false);
+      setSettingsMenuOpen(false);
+    });
+    return link;
   }
   function createLauncherUi() {
     const root = document.createElement("div");
@@ -2078,9 +2157,12 @@
       border: "1px solid rgba(15, 23, 42, 0.12)",
       boxShadow: "0 8px 24px rgba(15, 23, 42, 0.2)",
       opacity: "0",
-      transform: "translateX(8px)",
-      transition: "opacity 0.16s ease, transform 0.16s ease",
-      pointerEvents: "none"
+      transform: "translateX(12px) scale(0.96)",
+      transformOrigin: "right center",
+      transition: "opacity 220ms cubic-bezier(0.16, 1, 0.3, 1), transform 220ms cubic-bezier(0.16, 1, 0.3, 1)",
+      pointerEvents: "none",
+      backdropFilter: "saturate(160%) blur(6px)",
+      willChange: "opacity, transform"
     });
     const drawButton = createActionButton("Draw", "Start annotation draw mode", () => {
       panelPinned = false;
@@ -2097,9 +2179,48 @@
       setPanelOpen(false);
       runScreenshotCapture();
     });
+    const settingsButton = createActionButton("\u2699", "Launcher settings", () => {
+      panelPinned = true;
+      setSettingsMenuOpen(!settingsMenuOpen);
+    });
+    settingsButton.style.minWidth = "38px";
+    settingsButton.style.padding = "0";
     panel.appendChild(drawButton);
     panel.appendChild(recordButton);
     panel.appendChild(screenshotButton);
+    panel.appendChild(settingsButton);
+    const settingsMenu = document.createElement("div");
+    settingsMenu.id = SETTINGS_MENU_ID;
+    Object.assign(settingsMenu.style, {
+      position: "absolute",
+      top: "52px",
+      right: "0",
+      minWidth: "220px",
+      display: "flex",
+      flexDirection: "column",
+      gap: "6px",
+      padding: "10px",
+      borderRadius: "12px",
+      background: "#ffffff",
+      border: "1px solid rgba(15, 23, 42, 0.12)",
+      boxShadow: "0 10px 30px rgba(15, 23, 42, 0.18)",
+      opacity: "0",
+      transform: "translateY(-8px) scale(0.96)",
+      transformOrigin: "top right",
+      transition: "opacity 180ms cubic-bezier(0.2, 0.8, 0.2, 1), transform 180ms cubic-bezier(0.2, 0.8, 0.2, 1)",
+      pointerEvents: "none",
+      willChange: "opacity, transform"
+    });
+    const docsLink = createSettingsMenuLink("Docs", "https://cookwithgasoline.com/docs");
+    const repoLink = createSettingsMenuLink("GitHub Repository", "https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp");
+    const hideButton = createActionButton("Hide Gasoline Devtool", "Hide launcher until popup is opened again", () => {
+      hideLauncherUntilPopupReopen();
+    });
+    hideButton.style.width = "100%";
+    hideButton.style.justifyContent = "center";
+    settingsMenu.appendChild(docsLink);
+    settingsMenu.appendChild(repoLink);
+    settingsMenu.appendChild(hideButton);
     const toggle = document.createElement("button");
     toggle.id = TOGGLE_ID;
     toggle.type = "button";
@@ -2115,7 +2236,16 @@
       fontSize: "16px",
       fontWeight: "700",
       cursor: "pointer",
-      boxShadow: "0 8px 24px rgba(15, 23, 42, 0.25)"
+      boxShadow: "0 8px 24px rgba(15, 23, 42, 0.25)",
+      transition: "transform 180ms cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 180ms ease"
+    });
+    toggle.addEventListener("mouseenter", () => {
+      toggle.style.transform = "translateY(-1px)";
+      toggle.style.boxShadow = "0 10px 26px rgba(15, 23, 42, 0.28)";
+    });
+    toggle.addEventListener("mouseleave", () => {
+      toggle.style.transform = "translateY(0)";
+      toggle.style.boxShadow = "0 8px 24px rgba(15, 23, 42, 0.25)";
     });
     toggle.addEventListener("click", (event) => {
       event.preventDefault();
@@ -2123,24 +2253,33 @@
       panelPinned = !panelPinned;
       clearHideTimer();
       setPanelOpen(panelPinned);
+      if (!panelPinned)
+        setSettingsMenuOpen(false);
     });
     root.addEventListener("mouseenter", () => {
       clearHideTimer();
       setPanelOpen(true);
     });
     root.addEventListener("mouseleave", () => {
-      if (panelPinned)
+      if (panelPinned || settingsMenuOpen)
         return;
       clearHideTimer();
-      hideTimer = setTimeout(() => setPanelOpen(false), 120);
+      hideTimer = setTimeout(() => {
+        setPanelOpen(false);
+        setSettingsMenuOpen(false);
+      }, 120);
     });
     root.appendChild(panel);
     root.appendChild(toggle);
+    root.appendChild(settingsMenu);
     panelEl = panel;
+    settingsMenuEl = settingsMenu;
     syncRecordingStateFromStorage();
     return root;
   }
   function mountLauncher() {
+    if (hiddenUntilPopupOpen)
+      return;
     if (rootEl || document.getElementById(ROOT_ID))
       return;
     rootEl = createLauncherUi();
@@ -2153,7 +2292,9 @@
   function unmountLauncher() {
     clearHideTimer();
     panelPinned = false;
+    setSettingsMenuOpen(false);
     panelEl = null;
+    settingsMenuEl = null;
     recordButtonEl = null;
     if (rootEl) {
       rootEl.remove();
@@ -2162,7 +2303,9 @@
     uninstallRecordingStorageSync();
   }
   function setTrackedHoverLauncherEnabled(enabled) {
-    if (enabled) {
+    trackedEnabled = enabled;
+    installRuntimeListener();
+    if (enabled && !hiddenUntilPopupOpen) {
       mountLauncher();
       return;
     }
