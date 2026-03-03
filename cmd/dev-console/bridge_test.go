@@ -1,6 +1,6 @@
-// Purpose: Validate bridge_test.go behavior and guard against regressions.
+// Purpose: Tests for bridge tool action extraction and routing.
 // Why: Prevents silent regressions in critical behavior paths.
-// Docs: docs/features/feature/observe/index.md
+// Docs: docs/features/feature/mcp-persistent-server/index.md
 
 // bridge_test.go — Tests for bridge-layer helpers.
 package main

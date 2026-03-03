@@ -1,3 +1,5 @@
+// Purpose: Defines built-in noise rules for React, Angular, and Next.js framework warnings.
+// Why: Separates framework-specific rules from analytics, browser, and devtooling categories.
 package noise
 
 func builtinFrameworkRuleSpecs() []builtinRuleSpec {

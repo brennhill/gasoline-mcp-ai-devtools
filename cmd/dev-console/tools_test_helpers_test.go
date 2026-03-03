@@ -1,6 +1,6 @@
-// Purpose: Validate tools_test_helpers_test.go behavior and guard against regressions.
+// Purpose: Tests for tool test helper utilities.
 // Why: Prevents silent regressions in critical behavior paths.
-// Docs: docs/features/feature/observe/index.md
+// Docs: docs/features/feature/mcp-persistent-server/index.md
 
 // tools_test_helpers_test.go — Shared test helpers for all tool tests.
 // Consolidates duplicated factories, parsers, JSON extractors, and assertion helpers.

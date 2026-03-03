@@ -1,3 +1,6 @@
+// Purpose: Defines evidence mode types and command-level evidence state structures.
+// Why: Separates evidence type definitions from behavior to keep evidence files focused.
+
 package main
 
 type evidenceMode string

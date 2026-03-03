@@ -1,6 +1,6 @@
-// Purpose: Validate dispatcher_test.go behavior and guard against regressions.
+// Purpose: Tests for query dispatcher routing and timeout enforcement.
 // Why: Prevents silent regressions in critical behavior paths.
-// Docs: docs/features/feature/observe/index.md
+// Docs: docs/features/feature/query-service/index.md
 
 // dispatcher_test.go — Tests for QueryDispatcher init, pending queries, results, and waiting.
 package queries

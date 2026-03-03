@@ -1,3 +1,5 @@
+// Purpose: Matches incoming errors to existing clusters using signal-counting heuristics.
+// Why: Isolates cluster matching logic from cluster lifecycle management.
 package analysis
 
 import (

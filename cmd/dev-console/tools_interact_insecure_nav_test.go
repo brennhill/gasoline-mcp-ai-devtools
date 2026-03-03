@@ -1,4 +1,4 @@
-// Purpose: Validate tools_interact_insecure_nav_test.go behavior and guard against regressions.
+// Purpose: Tests for interact navigation in insecure proxy mode.
 // Why: Prevents silent regressions in critical behavior paths.
 // Docs: docs/features/feature/interact-explore/index.md
 

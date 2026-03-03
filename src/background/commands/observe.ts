@@ -457,20 +457,12 @@ registerCommand('page_inventory', async (ctx) => {
       payload.interactive_error = firstError
     }
 
-    if (ctx.query.correlation_id) {
-      ctx.sendAsyncResult(ctx.syncClient, ctx.query.id, ctx.query.correlation_id, 'complete', payload)
-    } else {
-      ctx.sendResult(payload)
-    }
+    ctx.sendResult(payload)
   } catch (err) {
     const message = (err as Error).message || 'Page inventory failed'
-    if (ctx.query.correlation_id) {
-      ctx.sendAsyncResult(ctx.syncClient, ctx.query.id, ctx.query.correlation_id, 'error', null, message)
-    } else {
-      ctx.sendResult({
-        error: 'page_inventory_failed',
-        message
-      })
-    }
+    ctx.sendResult({
+      error: 'page_inventory_failed',
+      message
+    })
   }
 })

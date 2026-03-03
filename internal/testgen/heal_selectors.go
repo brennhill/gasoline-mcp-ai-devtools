@@ -1,3 +1,5 @@
+// Purpose: Detects dangerous patterns in selectors and finds selectors in test file content.
+// Why: Separates selector scanning and safety checks from repair and batch logic.
 package testgen
 
 import (

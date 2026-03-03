@@ -1,3 +1,5 @@
+// Purpose: Detects MessagePack binary format by matching type markers and structure patterns.
+// Why: Separates MessagePack detection heuristics from other binary format detectors.
 package util
 
 type binaryMarker struct {

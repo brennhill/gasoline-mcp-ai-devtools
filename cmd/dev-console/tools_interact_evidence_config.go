@@ -1,3 +1,6 @@
+// Purpose: Parses and validates evidence configuration from interact command parameters.
+// Why: Centralizes evidence mode resolution so all interact handlers share consistent config logic.
+
 package main
 
 import (

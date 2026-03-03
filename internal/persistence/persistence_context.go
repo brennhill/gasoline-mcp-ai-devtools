@@ -1,3 +1,5 @@
+// Purpose: Loads JSON files from persistence directories into generic map structures.
+// Why: Isolates raw file I/O from CRUD operations and store lifecycle.
 package persistence
 
 import (

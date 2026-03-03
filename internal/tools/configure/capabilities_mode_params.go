@@ -1,3 +1,5 @@
+// Purpose: Builds per-mode parameter maps for the describe_capabilities tool response.
+// Why: Separates mode-parameter mapping from schema inference and param detail extraction.
 package configure
 
 import "sort"

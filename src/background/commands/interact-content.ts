@@ -5,11 +5,7 @@
 
 import { registerCommand } from './registry.js'
 import type { CommandHandler } from './registry.js'
-
-function isContentScriptUnreachableError(err: unknown): boolean {
-  const message = (err as Error)?.message || ''
-  return message.includes('Receiving end does not exist') || message.includes('Could not establish connection')
-}
+import { isContentScriptUnreachableError } from './helpers.js'
 
 /**
  * Inline readable extractor for chrome.scripting.executeScript fallback.

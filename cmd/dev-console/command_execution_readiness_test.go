@@ -1,6 +1,6 @@
-// Purpose: Validate command_execution_readiness_test.go behavior and guard against regressions.
+// Purpose: Tests for command execution readiness gating.
 // Why: Prevents silent regressions in critical behavior paths.
-// Docs: docs/features/feature/observe/index.md
+// Docs: docs/features/feature/mcp-persistent-server/index.md
 
 package main
 

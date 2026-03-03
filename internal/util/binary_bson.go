@@ -1,3 +1,5 @@
+// Purpose: Detects BSON binary format by validating document length and element types.
+// Why: Separates BSON detection heuristics from other binary format detectors.
 package util
 
 func bsonDocLen(data []byte) int {

@@ -1,11 +1,14 @@
+// Purpose: Computes SHA-384 hashes and provides URL/origin helper functions for SRI generation.
+// Why: Isolates cryptographic and URL utilities from SRI generation and tooling logic.
 package security
 
 import (
 	"crypto/sha512"
 	"encoding/base64"
 	"fmt"
-	"net/url"
 	"strings"
+
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/util"
 )
 
 // computeSHA384 computes the SHA-384 hash of content and returns it in SRI format.
@@ -40,13 +43,9 @@ func sriResourceType(contentType string) string {
 	return ""
 }
 
-// extractOriginForSRI extracts scheme://host[:port] from a URL string.
+// extractOriginForSRI delegates to util.ExtractOrigin for URL origin extraction.
 func extractOriginForSRI(rawURL string) string {
-	parsed, err := url.Parse(rawURL)
-	if err != nil || parsed.Host == "" {
-		return ""
-	}
-	return parsed.Scheme + "://" + parsed.Host
+	return util.ExtractOrigin(rawURL)
 }
 
 // generateTagTemplate creates an HTML tag with SRI attributes.

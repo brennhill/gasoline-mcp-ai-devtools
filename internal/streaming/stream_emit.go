@@ -1,3 +1,5 @@
+// Purpose: Atomically checks all filters and emits MCP notifications for qualifying alerts.
+// Why: Separates the emit path from dedup, filter, and rate-limit logic.
 package streaming
 
 import (

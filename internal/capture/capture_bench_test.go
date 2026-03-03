@@ -1,4 +1,4 @@
-// Purpose: Validate capture_bench_test.go behavior and guard against regressions.
+// Purpose: Benchmark capture pipeline throughput and latency.
 // Why: Prevents silent regressions in critical behavior paths.
 // Docs: docs/features/feature/backend-log-streaming/index.md
 

@@ -72,7 +72,9 @@ export function domPrimitiveQuery(selector, options) {
             if (scopeEl)
                 scopeRoot = scopeEl;
         }
-        catch { /* use document */ }
+        catch {
+            /* use document */
+        }
     }
     const elements = resolveElements(selector, scopeRoot);
     switch (queryType) {

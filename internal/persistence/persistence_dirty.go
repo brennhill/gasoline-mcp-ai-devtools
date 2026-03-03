@@ -1,3 +1,5 @@
+// Purpose: Implements dirty-write tracking and background flush for deferred persistence writes.
+// Why: Separates write-coalescing logic from immediate CRUD operations.
 package persistence
 
 import (

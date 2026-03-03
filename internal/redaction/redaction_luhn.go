@@ -1,3 +1,5 @@
+// Purpose: Validates credit card numbers using the Luhn checksum algorithm.
+// Why: Isolates Luhn validation from pattern matching to keep credit-card detection self-contained.
 package redaction
 
 import "strings"

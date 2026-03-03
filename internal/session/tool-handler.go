@@ -1,5 +1,5 @@
 // Purpose: Dispatches diff_sessions MCP tool calls to capture, compare, list, and delete actions.
-// Docs: docs/features/feature/observe/index.md
+// Docs: docs/features/feature/request-session-correlation/index.md
 
 // tool-handler.go — Tool handler for diff_sessions MCP tool.
 // HandleTool function dispatches capture, compare, list, delete actions.

@@ -1,3 +1,5 @@
+// Purpose: Reports CSP restriction levels and determines which actions are blocked by page security policy.
+// Why: Separates CSP state queries from other extension state to keep security concerns isolated.
 package capture
 
 // GetCSPStatus returns the last reported CSP restriction level for the tracked page.

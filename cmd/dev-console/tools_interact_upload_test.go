@@ -1,4 +1,4 @@
-// Purpose: Validate tools_interact_upload_test.go behavior and guard against regressions.
+// Purpose: Tests for interact file upload action.
 // Why: Prevents silent regressions in critical behavior paths.
 // Docs: docs/features/feature/interact-explore/index.md
 
@@ -652,8 +652,8 @@ type uploadTestEnv struct {
 func newUploadTestEnv(t *testing.T) *uploadTestEnv {
 	t.Helper()
 	// Allow private IPs in tests (httptest.NewServer uses 127.0.0.1)
-	upload.SkipSSRFCheck = true
-	t.Cleanup(func() { upload.SkipSSRFCheck = false })
+	upload.SetSkipSSRFCheck(true)
+	t.Cleanup(func() { upload.SetSkipSSRFCheck(false) })
 
 	server, err := NewServer(filepath.Join(t.TempDir(), "test-upload.jsonl"), 100)
 	if err != nil {

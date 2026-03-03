@@ -1,6 +1,6 @@
-// Purpose: Validate paths_coverage_test.go behavior and guard against regressions.
+// Purpose: Coverage-expansion tests for state management edge cases and branch paths.
 // Why: Prevents silent regressions in critical behavior paths.
-// Docs: docs/features/feature/observe/index.md
+// Docs: docs/features/feature/state-time-travel/index.md
 
 // paths_coverage_test.go — Additional tests targeting uncovered branches in paths.go.
 // Covers InRoot error propagation, ProjectDir error paths, Legacy* function

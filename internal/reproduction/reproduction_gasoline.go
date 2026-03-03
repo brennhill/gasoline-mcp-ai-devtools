@@ -1,3 +1,5 @@
+// Purpose: Generates numbered human-readable reproduction steps from captured browser actions.
+// Why: Separates the Gasoline-native output format from Playwright script generation.
 package reproduction
 
 import (

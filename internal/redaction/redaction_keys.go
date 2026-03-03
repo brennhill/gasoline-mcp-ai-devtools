@@ -1,3 +1,5 @@
+// Purpose: Defines sensitive key names and provides key-based value redaction for JSON fields.
+// Why: Separates key-name matching from regex-pattern redaction to keep each strategy independent.
 package redaction
 
 import "strings"

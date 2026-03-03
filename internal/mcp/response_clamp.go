@@ -1,3 +1,5 @@
+// Purpose: Truncates oversized MCP tool result payloads with JSON-aware clamping.
+// Why: Prevents token budget exhaustion by enforcing a safety-net size limit on responses.
 package mcp
 
 import (

@@ -1,3 +1,5 @@
+// Purpose: Handles HTTP POST ingestion of WebSocket events from the browser extension.
+// Why: Separates WebSocket event ingestion HTTP handler from storage and query logic.
 package capture
 
 import (

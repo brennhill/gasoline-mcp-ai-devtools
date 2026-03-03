@@ -1,6 +1,6 @@
-// Purpose: Validate audit_test.go behavior and guard against regressions.
+// Purpose: Tests for configure audit log handler.
 // Why: Prevents silent regressions in critical behavior paths.
-// Docs: docs/features/feature/observe/index.md
+// Docs: docs/features/feature/enhanced-cli-config/index.md
 
 // audit_test.go — Tests for audit log summarization.
 package configure

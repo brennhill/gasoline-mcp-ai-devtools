@@ -1,6 +1,6 @@
-// Purpose: Validate server_validate_test.go behavior and guard against regressions.
+// Purpose: Tests for server request validation.
 // Why: Prevents silent regressions in critical behavior paths.
-// Docs: docs/features/feature/observe/index.md
+// Docs: docs/features/feature/mcp-persistent-server/index.md
 
 // server_validate_test.go — Unit tests for server log entry validation.
 package main

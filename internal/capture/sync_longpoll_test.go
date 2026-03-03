@@ -1,4 +1,4 @@
-// Purpose: Validate sync_longpoll_test.go behavior and guard against regressions.
+// Purpose: Tests for long-poll synchronization of captured data.
 // Why: Prevents silent regressions in critical behavior paths.
 // Docs: docs/features/feature/backend-log-streaming/index.md
 

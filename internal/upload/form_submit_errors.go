@@ -1,3 +1,5 @@
+// Purpose: Defines error helpers and HTTP status error messages for form submission failures.
+// Why: Separates error formatting from form submission streaming and validation.
 package upload
 
 import (

@@ -1,3 +1,5 @@
+// Purpose: Compares original and replay recordings to produce a regression diff report.
+// Why: Separates high-level diff orchestration from helper utilities and report formatting.
 package recording
 
 import "fmt"

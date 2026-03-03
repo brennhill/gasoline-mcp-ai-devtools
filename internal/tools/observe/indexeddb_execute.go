@@ -1,3 +1,5 @@
+// Purpose: Executes IndexedDB listing and entry queries via extension script dispatch.
+// Why: Separates query execution and result parsing from script generation.
 package observe
 
 import (

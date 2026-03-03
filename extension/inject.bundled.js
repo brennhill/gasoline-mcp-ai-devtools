@@ -3267,7 +3267,13 @@ async function checkLink(url, timeout_ms) {
     };
   }
 }
-var FAILED_RESPONSE = { status: 0, ok: false, redirected: false, url: "", headers: new Headers() };
+var FAILED_RESPONSE = {
+  status: 0,
+  ok: false,
+  redirected: false,
+  url: "",
+  headers: new Headers()
+};
 async function tryFetch(url, method, signal) {
   try {
     const response = await fetch(url, { method, signal, redirect: "follow" });

@@ -1,6 +1,6 @@
-// Purpose: Validate handler_consistency_test.go behavior and guard against regressions.
+// Purpose: Tests for handler response structure consistency.
 // Why: Prevents silent regressions in critical behavior paths.
-// Docs: docs/features/feature/observe/index.md
+// Docs: docs/features/feature/mcp-persistent-server/index.md
 
 // handler_consistency_test.go — Verifies consistent HTTP error responses across all endpoints.
 // Every error response MUST: have Content-Type: application/json, contain parseable JSON with "error" key.

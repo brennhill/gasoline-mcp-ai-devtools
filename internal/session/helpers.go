@@ -1,5 +1,5 @@
 // Purpose: Provides snapshot name validation, insertion-order removal, and URL path extraction helpers.
-// Docs: docs/features/feature/observe/index.md
+// Docs: docs/features/feature/request-session-correlation/index.md
 
 // helpers.go — Helper functions for session package.
 // validateName, removeFromOrder, extractPath functions.

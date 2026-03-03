@@ -1,4 +1,4 @@
-// Purpose: Validate tools_interact_evidence_test.go behavior and guard against regressions.
+// Purpose: Tests for interact action evidence capture.
 // Why: Prevents silent regressions in critical behavior paths.
 // Docs: docs/features/feature/interact-explore/index.md
 

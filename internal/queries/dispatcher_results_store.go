@@ -1,3 +1,5 @@
+// Purpose: Stores query results from extension callbacks and broadcasts to waiting callers.
+// Why: Separates result write-path from cleanup and wait-for-result blocking logic.
 package queries
 
 import (

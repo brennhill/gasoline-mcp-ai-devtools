@@ -8,52 +8,23 @@ import (
 	"encoding/json"
 )
 
-type configureModeParams struct {
-	What   string `json:"what"`
-	Action string `json:"action"`
-}
-
-func parseConfigureModeParams(args json.RawMessage) (configureModeParams, error) {
-	params := configureModeParams{}
-	if len(args) == 0 {
-		return params, nil
-	}
-	if err := json.Unmarshal(args, &params); err != nil {
-		return configureModeParams{}, err
-	}
-	return params, nil
-}
-
-func resolveConfigureAction(req JSONRPCRequest, params configureModeParams) (what string, usedAliasParam string, errResp *JSONRPCResponse) {
-	what = params.What
-	if what != "" && params.Action != "" && params.Action != what {
-		if _, isTopLevelConfigureAction := configureHandlers[params.Action]; isTopLevelConfigureAction {
-			resp := whatAliasConflictResponse(req, "action", what, params.Action, getValidConfigureActions())
-			return "", "", &resp
-		}
-	}
-	if what == "" {
-		what = params.Action
-		if what != "" {
-			usedAliasParam = "action"
-		}
-	}
-	if what == "" {
-		validActions := getValidConfigureActions()
-		resp := JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrMissingParam, "Required parameter 'what' is missing", "Add the 'what' parameter and call again", withParam("what"), withHint("Valid values: "+validActions))}
-		return "", usedAliasParam, &resp
-	}
-	return what, usedAliasParam, nil
+// configureAliasParams defines the deprecated alias parameters for the configure tool.
+// ConflictFn gates conflict detection: only flag a what/action conflict when the action value
+// is a known top-level configure mode (since "action" also serves as a sub-action field).
+// FallbackFn is nil so any action value is accepted as a mode fallback when what is absent.
+var configureAliasParams = []modeAlias{
+	{JSONField: "action", ConflictFn: func(v string) bool {
+		_, ok := configureHandlers[v]
+		return ok
+	}},
 }
 
 // toolConfigure dispatches configure requests based on the 'what' parameter.
 func (h *ToolHandler) toolConfigure(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-	params, err := parseConfigureModeParams(args)
-	if err != nil {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidJSON, "Invalid JSON arguments: "+err.Error(), "Fix JSON syntax and call again")}
-	}
-
-	what, usedAliasParam, errResp := resolveConfigureAction(req, params)
+	what, usedAliasParam, errResp := resolveToolMode(req, args, configureAliasParams, modeResolution{
+		ToolName:   "configure",
+		ValidModes: getValidConfigureActions(),
+	})
 	if errResp != nil {
 		return *errResp
 	}
@@ -99,11 +70,6 @@ func (h *ToolHandler) toolConfigureClear(req JSONRPCRequest, args json.RawMessag
 	return h.configureClearImpl(req, args)
 }
 
-// clearBuffer performs the actual buffer clearing and returns what was cleared.
-// Returns (cleared, true) on success, or (nil, false) for an unknown buffer name.
-func (h *ToolHandler) clearBuffer(buffer string) (any, bool) {
-	return h.clearConfiguredBuffer(buffer)
-}
 
 // toolConfigureStreamingWrapper repackages streaming_action -> action for toolConfigureStreaming.
 func (h *ToolHandler) toolConfigureStreamingWrapper(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
@@ -120,7 +86,7 @@ func (h *ToolHandler) toolConfigureTestBoundaryEnd(req JSONRPCRequest, args json
 
 // toolConfigureDescribeCapabilities returns machine-readable tool metadata derived from ToolsList().
 // Supports filtering by tool name and mode to reduce payload size.
-// When summary=true, returns only tool name → { description, dispatch_param, modes }.
+// When summary=true, returns only tool name -> { description, dispatch_param, modes }.
 func (h *ToolHandler) toolConfigureDescribeCapabilities(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	return h.configureDescribeCapabilitiesImpl(req, args)
 }

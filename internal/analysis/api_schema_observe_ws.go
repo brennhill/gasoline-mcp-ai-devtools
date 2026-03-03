@@ -1,3 +1,5 @@
+// Purpose: Records WebSocket event observations for API schema inference.
+// Why: Isolates WebSocket observation ingestion from HTTP and schema building logic.
 package analysis
 
 import (

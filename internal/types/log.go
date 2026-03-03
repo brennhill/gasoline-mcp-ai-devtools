@@ -17,7 +17,7 @@ import (
 // Implemented as a map to allow flexible field addition without schema changes.
 // any: Console log entries have dynamic fields (level, message, source, tabId, stack, etc.)
 // that vary by log type. A typed struct would require many optional fields.
-type LogEntry map[string]any
+type LogEntry = map[string]any
 
 // ============================================
 // Extension Logging

@@ -1,6 +1,6 @@
-// Purpose: Validate security_config_path_test.go behavior and guard against regressions.
+// Purpose: Tests for security config path resolution.
 // Why: Prevents silent regressions in critical behavior paths.
-// Docs: docs/features/feature/observe/index.md
+// Docs: docs/features/feature/security-hardening/index.md
 
 package security
 

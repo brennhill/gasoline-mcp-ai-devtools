@@ -1,3 +1,5 @@
+// Purpose: Executes individual recording actions (navigate, click, type) during playback.
+// Why: Separates per-action execution from session lifecycle and fragile-selector detection.
 package recording
 
 import (

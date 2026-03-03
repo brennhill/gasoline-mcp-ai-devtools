@@ -1,4 +1,4 @@
-// Purpose: Validate export_har_golden_test.go behavior and guard against regressions.
+// Purpose: Golden-file snapshot tests for HAR/SARIF export output stability.
 // Why: Prevents silent regressions in critical behavior paths.
 // Docs: docs/features/feature/har-export/index.md
 

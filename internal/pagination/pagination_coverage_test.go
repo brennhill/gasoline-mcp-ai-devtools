@@ -1,4 +1,4 @@
-// Purpose: Validate pagination_coverage_test.go behavior and guard against regressions.
+// Purpose: Coverage-expansion tests for pagination and cursor edge cases and branch paths.
 // Why: Prevents silent regressions in critical behavior paths.
 // Docs: docs/features/feature/pagination/index.md
 

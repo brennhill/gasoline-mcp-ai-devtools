@@ -1,6 +1,6 @@
-// Purpose: Validate server_reliability_test.go behavior and guard against regressions.
+// Purpose: Tests for server reliability and error recovery.
 // Why: Prevents silent regressions in critical behavior paths.
-// Docs: docs/features/feature/observe/index.md
+// Docs: docs/features/feature/mcp-persistent-server/index.md
 
 // server_reliability_test.go — Stress, resource leak, and recovery tests.
 //

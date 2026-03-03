@@ -4,18 +4,7 @@
  */
 import { initReady } from '../state.js';
 import { DebugCategory } from '../debug.js';
-import { sendResult, sendAsyncResult, requiresTargetTab, resolveTargetTab, parseQueryParamsObject, withTargetContext, actionToast, isRestrictedUrl, isBrowserEscapeAction } from './helpers.js';
-function debugLog(category, message, data = null) {
-    // Keep registry independent from index.ts to avoid circular imports during command registration.
-    const debugEnabled = globalThis.__GASOLINE_REGISTRY_DEBUG__ === true;
-    if (!debugEnabled)
-        return;
-    if (data === null) {
-        console.debug(`[Gasoline:${category}] ${message}`);
-        return;
-    }
-    console.debug(`[Gasoline:${category}] ${message}`, data);
-}
+import { debugLog, sendResult, sendAsyncResult, requiresTargetTab, resolveTargetTab, parseQueryParamsObject, withTargetContext, actionToast, isRestrictedUrl, isBrowserEscapeAction } from './helpers.js';
 // =============================================================================
 // REGISTRY
 // =============================================================================

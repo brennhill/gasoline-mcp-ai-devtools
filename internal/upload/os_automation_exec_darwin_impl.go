@@ -1,3 +1,5 @@
+// Purpose: Injects file paths into macOS native file dialogs via AppleScript automation.
+// Why: Provides the macOS-specific implementation of OS-level upload automation.
 package upload
 
 import (

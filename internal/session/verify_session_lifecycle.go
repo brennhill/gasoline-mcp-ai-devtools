@@ -1,6 +1,6 @@
 // Purpose: Manages verification session ordering and TTL-based cleanup behavior.
 // Why: Keeps session-lifecycle housekeeping logic focused and reusable across actions.
-// Docs: docs/features/feature/observe/index.md
+// Docs: docs/features/feature/request-session-correlation/index.md
 
 package session
 

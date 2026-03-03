@@ -18,8 +18,18 @@ function readableContentScript() {
             return '';
         const clone = el.cloneNode(true);
         const removeTags = [
-            'nav', 'header', 'footer', 'aside', 'script', 'style', 'noscript', 'svg',
-            '[role="navigation"]', '[role="banner"]', '[role="contentinfo"]', '[aria-hidden="true"]',
+            'nav',
+            'header',
+            'footer',
+            'aside',
+            'script',
+            'style',
+            'noscript',
+            'svg',
+            '[role="navigation"]',
+            '[role="banner"]',
+            '[role="contentinfo"]',
+            '[aria-hidden="true"]',
             '.ad,.ads,.advertisement,.social-share,.comments,.sidebar,.related-posts,.newsletter'
         ];
         for (const sel of removeTags) {
@@ -31,8 +41,16 @@ function readableContentScript() {
     }
     function findMainContent() {
         const candidates = [
-            'article', 'main', '[role="main"]', '.post-content', '.entry-content',
-            '.article-body', '.article-content', '.story-body', '#content', '.content'
+            'article',
+            'main',
+            '[role="main"]',
+            '.post-content',
+            '.entry-content',
+            '.article-body',
+            '.article-content',
+            '.story-body',
+            '#content',
+            '.content'
         ];
         for (const sel of candidates) {
             const el = document.querySelector(sel);
@@ -108,24 +126,32 @@ registerCommand('explore_page', async (ctx) => {
         // 2. Run all data collection in parallel — capture errors for _errors array (#9.7.4)
         const [interactiveResults, readableResults, navResults] = await Promise.all([
             // Interactive elements
-            chrome.scripting.executeScript({
+            chrome.scripting
+                .executeScript({
                 target: { tabId: ctx.tabId, allFrames: true },
                 world: 'MAIN',
                 func: domPrimitiveListInteractive,
                 args: ['']
-            }).catch((err) => [{ result: { success: false, error: err.message, _source: 'interactive' } }]),
+            })
+                .catch((err) => [{ result: { success: false, error: err.message, _source: 'interactive' } }]),
             // Readable content
-            chrome.scripting.executeScript({
+            chrome.scripting
+                .executeScript({
                 target: { tabId: ctx.tabId },
                 world: 'ISOLATED',
                 func: readableContentScript
-            }).catch((err) => [{ result: { error: 'extraction_failed', _reason: err.message, _source: 'readable' } }]),
+            })
+                .catch((err) => [{ result: { error: 'extraction_failed', _reason: err.message, _source: 'readable' } }]),
             // Navigation links (uses shared dom-primitives-nav-discovery)
-            chrome.scripting.executeScript({
+            chrome.scripting
+                .executeScript({
                 target: { tabId: ctx.tabId },
                 world: 'ISOLATED',
                 func: domPrimitiveNavDiscovery
-            }).catch((err) => [{ result: { error: 'extraction_failed', _reason: err.message, _source: 'navigation' } }])
+            })
+                .catch((err) => [
+                { result: { error: 'extraction_failed', _reason: err.message, _source: 'navigation' } }
+            ])
         ]);
         // Process interactive elements (capped at 100)
         const elements = [];
@@ -152,20 +178,14 @@ registerCommand('explore_page', async (ctx) => {
             });
         }
         // Apply limit if specified
-        const limit = typeof ctx.params.limit === 'number' && ctx.params.limit > 0
-            ? ctx.params.limit
-            : cappedElements.length;
+        const limit = typeof ctx.params.limit === 'number' && ctx.params.limit > 0 ? ctx.params.limit : cappedElements.length;
         const finalElements = cappedElements.slice(0, limit);
         // Process readable content
         const readableFirst = readableResults?.[0]?.result;
-        const readable = readableFirst && typeof readableFirst === 'object'
-            ? readableFirst
-            : null;
+        const readable = readableFirst && typeof readableFirst === 'object' ? readableFirst : null;
         // Process navigation links
         const navFirst = navResults?.[0]?.result;
-        const navigation = navFirst && typeof navFirst === 'object'
-            ? navFirst
-            : null;
+        const navigation = navFirst && typeof navFirst === 'object' ? navFirst : null;
         // Build composite payload
         const payload = {
             // Page metadata
@@ -202,24 +222,14 @@ registerCommand('explore_page', async (ctx) => {
         if (errors.length > 0) {
             payload._errors = errors;
         }
-        if (ctx.query.correlation_id) {
-            ctx.sendAsyncResult(ctx.syncClient, ctx.query.id, ctx.query.correlation_id, 'complete', payload);
-        }
-        else {
-            ctx.sendResult(payload);
-        }
+        ctx.sendResult(payload);
     }
     catch (err) {
         const message = err.message || 'Explore page failed';
-        if (ctx.query.correlation_id) {
-            ctx.sendAsyncResult(ctx.syncClient, ctx.query.id, ctx.query.correlation_id, 'error', null, message);
-        }
-        else {
-            ctx.sendResult({
-                error: 'explore_page_failed',
-                message
-            });
-        }
+        ctx.sendResult({
+            error: 'explore_page_failed',
+            message
+        });
     }
 });
 //# sourceMappingURL=interact-explore.js.map

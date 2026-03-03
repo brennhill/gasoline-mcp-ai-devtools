@@ -1,6 +1,6 @@
-// Purpose: Validate tools_observe_blackbox_test.go behavior and guard against regressions.
+// Purpose: Black-box tests for observe tool end-to-end behavior.
 // Why: Prevents silent regressions in critical behavior paths.
-// Docs: docs/features/feature/observe/index.md
+// Docs: docs/features/feature/mcp-persistent-server/index.md
 
 // tools_observe_blackbox_test.go — Black box tests for observe tool data flow.
 // These tests simulate the full browser extension → server → MCP tool flow.
@@ -94,7 +94,7 @@ func TestObserveErrors_EndToEnd(t *testing.T) {
 	t.Parallel()
 
 	// Setup server with capture
-	server, err := NewServer("/tmp/test-errors-e2e.jsonl", 1000)
+	server, err := NewServer(t.TempDir()+"/test-errors-e2e.jsonl", 1000)
 	if err != nil {
 		t.Fatalf("Failed to create server: %v", err)
 	}
@@ -170,7 +170,7 @@ func TestObserveErrors_EndToEnd(t *testing.T) {
 func TestObserveLogs_EndToEnd(t *testing.T) {
 	t.Parallel()
 
-	server, err := NewServer("/tmp/test-logs-e2e.jsonl", 1000)
+	server, err := NewServer(t.TempDir()+"/test-logs-e2e.jsonl", 1000)
 	if err != nil {
 		t.Fatalf("Failed to create server: %v", err)
 	}
@@ -207,7 +207,7 @@ func TestObserveLogs_EndToEnd(t *testing.T) {
 func TestObserveLogs_LevelFilter(t *testing.T) {
 	t.Parallel()
 
-	server, err := NewServer("/tmp/test-logs-filter.jsonl", 1000)
+	server, err := NewServer(t.TempDir()+"/test-logs-filter.jsonl", 1000)
 	if err != nil {
 		t.Fatalf("Failed to create server: %v", err)
 	}
@@ -241,7 +241,7 @@ func TestObserveLogs_LevelFilter(t *testing.T) {
 func TestObserveNetworkWaterfall_EndToEnd(t *testing.T) {
 	t.Parallel()
 
-	server, err := NewServer("/tmp/test-waterfall-e2e.jsonl", 1000)
+	server, err := NewServer(t.TempDir()+"/test-waterfall-e2e.jsonl", 1000)
 	if err != nil {
 		t.Fatalf("Failed to create server: %v", err)
 	}
@@ -281,7 +281,7 @@ func TestObserveNetworkWaterfall_EndToEnd(t *testing.T) {
 func TestObserveNetworkWaterfall_URLFilter(t *testing.T) {
 	t.Parallel()
 
-	server, err := NewServer("/tmp/test-waterfall-filter.jsonl", 1000)
+	server, err := NewServer(t.TempDir()+"/test-waterfall-filter.jsonl", 1000)
 	if err != nil {
 		t.Fatalf("Failed to create server: %v", err)
 	}
@@ -319,7 +319,7 @@ func TestObserveNetworkWaterfall_URLFilter(t *testing.T) {
 func TestObserveExtensionLogs_EndToEnd(t *testing.T) {
 	t.Parallel()
 
-	server, err := NewServer("/tmp/test-extlogs-e2e.jsonl", 1000)
+	server, err := NewServer(t.TempDir()+"/test-extlogs-e2e.jsonl", 1000)
 	if err != nil {
 		t.Fatalf("Failed to create server: %v", err)
 	}
@@ -359,7 +359,7 @@ func TestObserveExtensionLogs_EndToEnd(t *testing.T) {
 func TestObservePage_ExtractsFromWaterfall(t *testing.T) {
 	t.Parallel()
 
-	server, err := NewServer("/tmp/test-page-e2e.jsonl", 1000)
+	server, err := NewServer(t.TempDir()+"/test-page-e2e.jsonl", 1000)
 	if err != nil {
 		t.Fatalf("Failed to create server: %v", err)
 	}
@@ -395,7 +395,7 @@ func TestObservePage_ExtractsFromWaterfall(t *testing.T) {
 func TestObservePage_PrioritizesTrackedURL(t *testing.T) {
 	t.Parallel()
 
-	server, err := NewServer("/tmp/test-page-priority.jsonl", 1000)
+	server, err := NewServer(t.TempDir()+"/test-page-priority.jsonl", 1000)
 	if err != nil {
 		t.Fatalf("Failed to create server: %v", err)
 	}
@@ -460,7 +460,7 @@ func TestObservePage_PrioritizesTrackedURL(t *testing.T) {
 func TestObserveNetworkBodies_EndToEnd(t *testing.T) {
 	t.Parallel()
 
-	server, err := NewServer("/tmp/test-bodies-e2e.jsonl", 1000)
+	server, err := NewServer(t.TempDir()+"/test-bodies-e2e.jsonl", 1000)
 	if err != nil {
 		t.Fatalf("Failed to create server: %v", err)
 	}
@@ -502,7 +502,7 @@ func TestObserveNetworkBodies_EndToEnd(t *testing.T) {
 func TestObserveWebSocketEvents_EndToEnd(t *testing.T) {
 	t.Parallel()
 
-	server, err := NewServer("/tmp/test-ws-e2e.jsonl", 1000)
+	server, err := NewServer(t.TempDir()+"/test-ws-e2e.jsonl", 1000)
 	if err != nil {
 		t.Fatalf("Failed to create server: %v", err)
 	}
@@ -556,7 +556,7 @@ func TestObserveWebSocketEvents_EndToEnd(t *testing.T) {
 func TestMCPToolsCall_ObserveErrors_FullFlow(t *testing.T) {
 	t.Parallel()
 
-	server, err := NewServer("/tmp/test-mcp-flow.jsonl", 1000)
+	server, err := NewServer(t.TempDir()+"/test-mcp-flow.jsonl", 1000)
 	if err != nil {
 		t.Fatalf("Failed to create server: %v", err)
 	}

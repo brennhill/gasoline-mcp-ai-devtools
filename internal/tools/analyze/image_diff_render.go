@@ -1,3 +1,5 @@
+// Purpose: Renders side-by-side diff images with highlighted change regions to PNG files.
+// Why: Separates visual output rendering from grid construction, region detection, and I/O.
 package analyze
 
 import (
@@ -7,11 +9,8 @@ import (
 	"os"
 )
 
-func WriteDiffImagePublic(baseline, current image.Image, changed [][]bool, path string) error {
-	return writeDiffImage(baseline, current, changed, path)
-}
-
-func writeDiffImage(baseline, current image.Image, changed [][]bool, path string) error {
+// WriteDiffImage renders a side-by-side diff image highlighting changed pixels and saves it to path.
+func WriteDiffImage(baseline, current image.Image, changed [][]bool, path string) error {
 	bBounds := baseline.Bounds()
 	h := len(changed)
 	w := 0

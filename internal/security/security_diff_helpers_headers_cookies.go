@@ -1,3 +1,5 @@
+// Purpose: Compares security headers and cookies between snapshots to detect regressions.
+// Why: Separates header/cookie diff logic from URL, transport, and summary diff helpers.
 package security
 
 import "fmt"

@@ -1,4 +1,4 @@
-// Purpose: Validate tools_interact_audit_test.go behavior and guard against regressions.
+// Purpose: Tests for interact audit trail integration.
 // Why: Prevents silent regressions in critical behavior paths.
 // Docs: docs/features/feature/interact-explore/index.md
 
@@ -43,7 +43,7 @@ type interactTestEnv struct {
 
 func newInteractTestEnv(t *testing.T) *interactTestEnv {
 	t.Helper()
-	server, err := NewServer("/tmp/test-interact-audit.jsonl", 100)
+	server, err := NewServer(t.TempDir()+"/test-interact-audit.jsonl", 100)
 	if err != nil {
 		t.Fatalf("NewServer failed: %v", err)
 	}

@@ -1,3 +1,5 @@
+// Purpose: Generates Subresource Integrity hashes with origin filtering and output formatting.
+// Why: Separates SRI generation logic from tooling integration and type definitions.
 package security
 
 import (

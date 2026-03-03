@@ -1,3 +1,5 @@
+// Purpose: Defines core MCP schema properties for the configure tool (what, action, mode, tool).
+// Why: Separates core dispatch properties from runtime configuration properties.
 package schema
 
 func configureCoreProperties() map[string]any {

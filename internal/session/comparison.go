@@ -1,5 +1,5 @@
 // Purpose: Orchestrates full diff between two named snapshots (errors, network, performance, summary).
-// Docs: docs/features/feature/observe/index.md
+// Docs: docs/features/feature/request-session-correlation/index.md
 
 // comparison.go — Main comparison logic.
 // Compare function and related comparison orchestration.

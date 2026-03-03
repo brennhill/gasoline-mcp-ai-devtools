@@ -1,6 +1,6 @@
-// Purpose: Validate server_persistence_test.go behavior and guard against regressions.
+// Purpose: Tests for server persistence endpoints.
 // Why: Prevents silent regressions in critical behavior paths.
-// Docs: docs/features/feature/observe/index.md
+// Docs: docs/features/feature/mcp-persistent-server/index.md
 
 // server_persistence_test.go — Server persistence invariant tests.
 //

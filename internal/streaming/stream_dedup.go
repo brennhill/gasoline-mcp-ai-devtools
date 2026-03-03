@@ -1,3 +1,5 @@
+// Purpose: Deduplicates streaming notifications by tracking recently-seen message keys.
+// Why: Separates dedup state management from emission, filtering, and rate limiting.
 package streaming
 
 import "time"

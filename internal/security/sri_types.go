@@ -1,3 +1,5 @@
+// Purpose: Defines types for SRI generator, parameters, and output entries.
+// Why: Centralizes SRI type definitions so generation, helpers, and tooling share one schema.
 package security
 
 // SRIGenerator generates Subresource Integrity hashes for third-party resources.

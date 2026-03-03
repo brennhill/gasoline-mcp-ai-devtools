@@ -1,3 +1,5 @@
+// Purpose: Creates and initializes the session persistence store with project directory resolution.
+// Why: Separates store construction and directory setup from CRUD and maintenance logic.
 package persistence
 
 import (

@@ -1,6 +1,5 @@
-// Purpose: Validate ai_checkpoint_classify_test.go behavior and guard against regressions.
+// Purpose: Tests for checkpoint error classification and severity assignment.
 // Why: Prevents silent regressions in critical behavior paths.
-// Docs: docs/features/feature/observe/index.md
 
 // ai_checkpoint_classify_test.go — Tests for WS classification, log extraction, action diffs, and JSON serialization.
 package checkpoint

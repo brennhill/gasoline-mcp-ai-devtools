@@ -1,6 +1,6 @@
 // Purpose: Defines verify_fix verification session types, manager state, and constructors.
 // Why: Keeps core verification model centralized while action/snapshot logic is split into focused modules.
-// Docs: docs/features/feature/observe/index.md
+// Docs: docs/features/feature/request-session-correlation/index.md
 
 // verify.go — Verification Loop (verify_fix) MCP tool.
 // Provides before/after session comparison for fix verification.

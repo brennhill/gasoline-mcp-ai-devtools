@@ -1,3 +1,5 @@
+// Purpose: Provides URL parsing, localhost detection, and origin extraction utilities for security checks.
+// Why: Centralizes URL helper functions used across multiple security scanning modules.
 package security
 
 import (

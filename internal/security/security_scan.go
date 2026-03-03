@@ -1,3 +1,5 @@
+// Purpose: Orchestrates security checks by dispatching to credential, header, cookie, and transport scanners.
+// Why: Separates scan orchestration from individual check implementations.
 package security
 
 import (

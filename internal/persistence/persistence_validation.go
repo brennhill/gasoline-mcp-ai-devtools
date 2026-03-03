@@ -1,3 +1,5 @@
+// Purpose: Validates namespace and key inputs against path traversal and separator injection.
+// Why: Isolates input validation from CRUD operations to keep security checks centralized.
 package persistence
 
 import (

@@ -1,4 +1,4 @@
-// Purpose: Validate diff_test.go behavior and guard against regressions.
+// Purpose: Tests for performance diff computation and regression detection.
 // Why: Prevents silent regressions in critical behavior paths.
 // Docs: docs/features/feature/performance-audit/index.md
 

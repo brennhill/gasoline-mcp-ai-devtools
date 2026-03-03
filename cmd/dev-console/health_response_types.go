@@ -1,6 +1,6 @@
 // Purpose: Defines stable schemas returned by get_health.
 // Why: Keeps response contracts centralized and separate from runtime collection logic.
-// Docs: docs/features/feature/observe/index.md
+// Docs: docs/features/feature/mcp-persistent-server/index.md
 
 package main
 

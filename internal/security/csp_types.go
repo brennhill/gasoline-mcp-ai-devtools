@@ -1,3 +1,5 @@
+// Purpose: Defines types for CSP origin entries, responses, and the CSP generator state.
+// Why: Centralizes CSP type definitions so store, generate, and tooling modules share one schema.
 package security
 
 import (

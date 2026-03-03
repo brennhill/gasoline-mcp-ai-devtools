@@ -1,3 +1,5 @@
+// Purpose: Describes target elements using the most human-readable selector available.
+// Why: Separates element description heuristics from script generation logic.
 package reproduction
 
 import (

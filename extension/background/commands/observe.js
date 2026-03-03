@@ -89,7 +89,9 @@ export function screenshotRestoreContainers() {
             el.style.flex = s.f || '';
             el.style.contain = s.c || '';
         }
-        catch { /* ignore parse errors */ }
+        catch {
+            /* ignore parse errors */
+        }
         el.removeAttribute('data-gasoline-fpx');
     }
     tryRestore(document.documentElement);
@@ -176,25 +178,31 @@ async function captureFullPage(ctx, tab, format, quality) {
         await chrome.debugger.attach({ tabId: ctx.tabId }, CDP_VERSION);
         try {
             // Step 3: Get full content dimensions
-            const metrics = await chrome.debugger.sendCommand({ tabId: ctx.tabId }, 'Page.getLayoutMetrics', {});
-            const contentSize = metrics.cssContentSize || metrics.contentSize || {
+            const metrics = (await chrome.debugger.sendCommand({ tabId: ctx.tabId }, 'Page.getLayoutMetrics', {}));
+            const contentSize = metrics.cssContentSize ||
+                metrics.contentSize || {
                 width: DEFAULT_CAPTURE_WIDTH,
                 height: DEFAULT_CAPTURE_HEIGHT
             };
             const { width: captureWidth, height: captureHeight } = computeFullPageCaptureDimensions(contentSize.width, contentSize.height, hintedHeight);
             // Step 4: Override viewport to full content size
-            await chrome.debugger.sendCommand({ tabId: ctx.tabId }, 'Emulation.setDeviceMetricsOverride', { width: captureWidth, height: captureHeight, deviceScaleFactor: 1, mobile: false });
+            await chrome.debugger.sendCommand({ tabId: ctx.tabId }, 'Emulation.setDeviceMetricsOverride', {
+                width: captureWidth,
+                height: captureHeight,
+                deviceScaleFactor: 1,
+                mobile: false
+            });
             let metricsOverrideSet = true;
             try {
                 // Brief pause for layout reflow after viewport resize
                 await new Promise((r) => setTimeout(r, 150));
                 // Step 5: Capture full-page screenshot via CDP
-                const screenshotResult = await chrome.debugger.sendCommand({ tabId: ctx.tabId }, 'Page.captureScreenshot', {
+                const screenshotResult = (await chrome.debugger.sendCommand({ tabId: ctx.tabId }, 'Page.captureScreenshot', {
                     format,
                     quality: format === 'jpeg' ? quality : undefined,
                     captureBeyondViewport: true,
                     clip: { x: 0, y: 0, width: captureWidth, height: captureHeight, scale: 1 }
-                });
+                }));
                 // Step 7: Build data URL and post to server
                 const mimeType = format === 'png' ? 'image/png' : 'image/jpeg';
                 const dataUrl = `data:${mimeType};base64,${screenshotResult.data}`;
@@ -210,7 +218,9 @@ async function captureFullPage(ctx, tab, format, quality) {
                         // Step 6: Clear device metrics override, even when capture fails.
                         await chrome.debugger.sendCommand({ tabId: ctx.tabId }, 'Emulation.clearDeviceMetricsOverride', {});
                     }
-                    catch { /* best effort */ }
+                    catch {
+                        /* best effort */
+                    }
                     metricsOverrideSet = false;
                 }
             }
@@ -219,7 +229,9 @@ async function captureFullPage(ctx, tab, format, quality) {
             try {
                 await chrome.debugger.detach({ tabId: ctx.tabId });
             }
-            catch { /* already detached */ }
+            catch {
+                /* already detached */
+            }
         }
     }
     catch (err) {
@@ -239,11 +251,15 @@ async function captureFullPage(ctx, tab, format, quality) {
     }
     finally {
         // Step 8: Always restore containers
-        await chrome.scripting.executeScript({
+        await chrome.scripting
+            .executeScript({
             target: { tabId: ctx.tabId },
             world: 'MAIN',
             func: screenshotRestoreContainers
-        }).catch(() => { });
+        })
+            .catch(() => {
+            /* best effort */
+        });
     }
 }
 // =============================================================================
@@ -366,9 +382,7 @@ registerCommand('page_inventory', async (ctx) => {
             });
         }
         // Apply limit if specified
-        const limit = typeof ctx.params.limit === 'number' && ctx.params.limit > 0
-            ? ctx.params.limit
-            : filteredElements.length;
+        const limit = typeof ctx.params.limit === 'number' && ctx.params.limit > 0 ? ctx.params.limit : filteredElements.length;
         const finalElements = filteredElements.slice(0, limit);
         const payload = {
             url: tab.url || '',
@@ -386,24 +400,14 @@ registerCommand('page_inventory', async (ctx) => {
         if (firstError && finalElements.length === 0) {
             payload.interactive_error = firstError;
         }
-        if (ctx.query.correlation_id) {
-            ctx.sendAsyncResult(ctx.syncClient, ctx.query.id, ctx.query.correlation_id, 'complete', payload);
-        }
-        else {
-            ctx.sendResult(payload);
-        }
+        ctx.sendResult(payload);
     }
     catch (err) {
         const message = err.message || 'Page inventory failed';
-        if (ctx.query.correlation_id) {
-            ctx.sendAsyncResult(ctx.syncClient, ctx.query.id, ctx.query.correlation_id, 'error', null, message);
-        }
-        else {
-            ctx.sendResult({
-                error: 'page_inventory_failed',
-                message
-            });
-        }
+        ctx.sendResult({
+            error: 'page_inventory_failed',
+            message
+        });
     }
 });
 //# sourceMappingURL=observe.js.map

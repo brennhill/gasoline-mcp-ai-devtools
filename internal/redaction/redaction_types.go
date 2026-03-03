@@ -1,3 +1,5 @@
+// Purpose: Defines MCP content block and tool result types duplicated to avoid circular imports.
+// Why: Provides local type definitions so the redaction engine can re-marshal responses without importing cmd/.
 package redaction
 
 import "regexp"

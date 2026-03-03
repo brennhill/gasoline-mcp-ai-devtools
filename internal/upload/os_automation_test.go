@@ -1,6 +1,6 @@
-// Purpose: Validate os_automation_test.go behavior and guard against regressions.
+// Purpose: Tests for OS-level upload automation and file dialog handling.
 // Why: Prevents silent regressions in critical behavior paths.
-// Docs: docs/features/feature/observe/index.md
+// Docs: docs/features/feature/file-upload/index.md
 
 // os_automation_test.go — Tests for Chrome PID auto-detection and OS automation.
 package upload

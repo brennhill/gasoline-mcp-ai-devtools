@@ -1,6 +1,6 @@
 // Purpose: Hosts MCP entrypoint for get_health requests.
 // Why: Keeps transport-layer request/response wiring separate from health state and composition.
-// Docs: docs/features/feature/observe/index.md
+// Docs: docs/features/feature/mcp-persistent-server/index.md
 
 package main
 

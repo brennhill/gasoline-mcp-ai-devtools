@@ -19,7 +19,7 @@ import (
 var UploadHTTPClient = &http.Client{
 	Timeout: 10 * time.Minute, // Large file uploads can take a while
 	Transport: NewSSRFSafeTransport(func() bool {
-		return SkipSSRFCheck
+		return SkipSSRFCheckEnabled()
 	}),
 	CheckRedirect: func(req *http.Request, via []*http.Request) error {
 		// Prevent redirect to private IPs (SSRF via redirect)

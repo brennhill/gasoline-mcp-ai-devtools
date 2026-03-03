@@ -1,4 +1,4 @@
-// Purpose: Validate tools_analyze_link_health_test.go behavior and guard against regressions.
+// Purpose: Tests for analyze link-health endpoint checking.
 // Why: Prevents silent regressions in critical behavior paths.
 // Docs: docs/features/feature/analyze-tool/index.md
 
@@ -29,7 +29,7 @@ type analyzeTestEnv struct {
 
 func newAnalyzeTestEnv(t *testing.T) *analyzeTestEnv {
 	t.Helper()
-	server, err := NewServer("/tmp/test-analyze-link-health.jsonl", 100)
+	server, err := NewServer(t.TempDir()+"/test-analyze-link-health.jsonl", 100)
 	if err != nil {
 		t.Fatalf("NewServer failed: %v", err)
 	}

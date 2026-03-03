@@ -1,3 +1,5 @@
+// Purpose: Manages capture store lifecycle including shutdown and callback registration.
+// Why: Separates lifecycle concerns (Close, SetNavigationCallback) from data ingestion and access.
 package capture
 
 // Close shuts down capture-owned background goroutines.

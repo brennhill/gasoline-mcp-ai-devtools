@@ -202,7 +202,11 @@ export function installStartupListener(logFn) {
                 catch {
                     if (logFn)
                         logFn('[Gasoline] Browser restarted - tracked tab gone, clearing tracking state');
-                    chrome.storage.local.remove([StorageKey.TRACKED_TAB_ID, StorageKey.TRACKED_TAB_URL, StorageKey.TRACKED_TAB_TITLE]);
+                    chrome.storage.local.remove([
+                        StorageKey.TRACKED_TAB_ID,
+                        StorageKey.TRACKED_TAB_URL,
+                        StorageKey.TRACKED_TAB_TITLE
+                    ]);
                 }
             }
         }

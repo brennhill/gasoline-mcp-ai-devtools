@@ -1,3 +1,5 @@
+// Purpose: Converts axe-core violations and passes into SARIF 2.1.0 result entries.
+// Why: Separates violation-to-result conversion from SARIF file I/O and type definitions.
 package export
 
 import "strings"

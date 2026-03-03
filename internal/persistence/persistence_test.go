@@ -1,6 +1,6 @@
-// Purpose: Validate ai_persistence_test.go behavior and guard against regressions.
+// Purpose: Tests for data persistence read, write, and file management.
 // Why: Prevents silent regressions in critical behavior paths.
-// Docs: docs/features/feature/observe/index.md
+// Docs: docs/features/feature/persistent-memory/index.md
 
 package persistence
 

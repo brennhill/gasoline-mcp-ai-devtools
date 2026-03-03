@@ -1,3 +1,5 @@
+// Purpose: Polls for extension connection readiness with timeout and context cancellation.
+// Why: Isolates connection-wait logic from other extension state accessors.
 package capture
 
 import (

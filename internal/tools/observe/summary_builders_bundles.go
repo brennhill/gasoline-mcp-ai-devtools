@@ -1,3 +1,5 @@
+// Purpose: Builds compact summary objects for error bundles in summary-mode responses.
+// Why: Separates bundle summary construction from error, log, and network summary builders.
 package observe
 
 import "time"

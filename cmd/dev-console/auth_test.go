@@ -1,6 +1,6 @@
-// Purpose: Validate auth_test.go behavior and guard against regressions.
+// Purpose: Tests for API key authentication middleware.
 // Why: Prevents silent regressions in critical behavior paths.
-// Docs: docs/features/feature/observe/index.md
+// Docs: docs/features/feature/mcp-persistent-server/index.md
 
 // auth_test.go — Tests for API key authentication middleware.
 // Covers: correct key acceptance, incorrect key rejection, missing key,

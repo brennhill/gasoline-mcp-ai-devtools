@@ -1,3 +1,5 @@
+// Purpose: Resolves named or auto checkpoints by client ID and handles checkpoint namespace isolation.
+// Why: Isolates checkpoint lookup and namespace logic from diff computation.
 package checkpoint
 
 import (

@@ -4,7 +4,7 @@
 import { getTrackedTabInfo, clearTrackedTab } from '../event-listeners.js';
 import { DebugCategory } from '../debug.js';
 import { isAiWebPilotEnabled } from '../state.js';
-function debugLog(category, message, data = null) {
+export function debugLog(category, message, data = null) {
     // Keep helpers independent from index.ts to avoid circular imports during registry boot.
     const debugEnabled = globalThis.__GASOLINE_REGISTRY_DEBUG__ === true;
     if (!debugEnabled)
@@ -545,5 +545,24 @@ export function isRestrictedUrl(url) {
         return true;
     const blocked = ['chrome://', 'chrome-extension://', 'about:', 'edge://', 'brave://', 'devtools://'];
     return blocked.some((p) => url.startsWith(p));
+}
+// =============================================================================
+// CONTENT SCRIPT ERROR DETECTION
+// =============================================================================
+/** Check if an error indicates the content script is not loaded on the target page. */
+export function isContentScriptUnreachableError(err) {
+    const message = err?.message || '';
+    return message.includes('Receiving end does not exist') || message.includes('Could not establish connection');
+}
+/**
+ * Guard that checks AI Web Pilot is enabled.
+ * Returns true if enabled and the caller should proceed.
+ * Returns false if disabled — the error response has already been sent.
+ */
+export function requireAiWebPilot(ctx) {
+    if (isAiWebPilotEnabled())
+        return true;
+    ctx.sendResult({ error: 'ai_web_pilot_disabled' });
+    return false;
 }
 //# sourceMappingURL=helpers.js.map

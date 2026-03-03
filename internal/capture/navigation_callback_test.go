@@ -1,4 +1,4 @@
-// Purpose: Validate navigation_callback_test.go behavior and guard against regressions.
+// Purpose: Tests for capture navigation callback handling.
 // Why: Prevents silent regressions in critical behavior paths.
 // Docs: docs/features/feature/backend-log-streaming/index.md
 

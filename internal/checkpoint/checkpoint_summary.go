@@ -1,3 +1,5 @@
+// Purpose: Determines checkpoint diff severity and builds human-readable summary strings.
+// Why: Separates severity determination and summary formatting from diff data computation.
 package checkpoint
 
 import (

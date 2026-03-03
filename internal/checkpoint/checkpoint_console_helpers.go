@@ -1,3 +1,5 @@
+// Purpose: Classifies log entries by severity into fingerprinted error and warning maps for checkpoint diffs.
+// Why: Separates console log classification from the main checkpoint diff computation.
 package checkpoint
 
 import gasTypes "github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/types"

@@ -1,5 +1,5 @@
 // Purpose: Compares network requests between two snapshots by endpoint key to find new, missing, and status-changed entries.
-// Docs: docs/features/feature/observe/index.md
+// Docs: docs/features/feature/request-session-correlation/index.md
 
 // network-diff.go — Network diff computation.
 // diffNetwork function compares network requests between two snapshots.

@@ -5,6 +5,7 @@ package main
 
 import (
 	"encoding/json"
+	"sort"
 
 	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/analysis"
 	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/security"
@@ -14,7 +15,7 @@ import (
 // Security Tool Implementations
 // ============================================
 
-func (h *ToolHandler) handleAnalyzeSecurityAudit(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+func (h *ToolHandler) toolAnalyzeSecurityAudit(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	var params struct {
 		SeverityMin string   `json:"severity_min"`
 		Checks      []string `json:"checks"`
@@ -119,13 +120,9 @@ func buildSecurityAuditSummary(result security.ScanResult) map[string]any {
 	// Sort findings by severity (critical first)
 	sorted := make([]security.Finding, len(result.Findings))
 	copy(sorted, result.Findings)
-	for i := 0; i < len(sorted)-1; i++ {
-		for j := i + 1; j < len(sorted); j++ {
-			if severityOrder[sorted[j].Severity] < severityOrder[sorted[i].Severity] {
-				sorted[i], sorted[j] = sorted[j], sorted[i]
-			}
-		}
-	}
+	sort.Slice(sorted, func(i, j int) bool {
+		return severityOrder[sorted[i].Severity] < severityOrder[sorted[j].Severity]
+	})
 
 	topIssues := make([]map[string]any, topN)
 	for i := 0; i < topN; i++ {
@@ -159,13 +156,9 @@ func buildThirdPartySummary(result analysis.ThirdPartyResult) map[string]any {
 	// Sort by risk (critical first)
 	sorted := make([]analysis.ThirdPartyEntry, len(result.ThirdParties))
 	copy(sorted, result.ThirdParties)
-	for i := 0; i < len(sorted)-1; i++ {
-		for j := i + 1; j < len(sorted); j++ {
-			if severityOrder[sorted[j].RiskLevel] < severityOrder[sorted[i].RiskLevel] {
-				sorted[i], sorted[j] = sorted[j], sorted[i]
-			}
-		}
-	}
+	sort.Slice(sorted, func(i, j int) bool {
+		return severityOrder[sorted[i].RiskLevel] < severityOrder[sorted[j].RiskLevel]
+	})
 
 	top := make([]map[string]any, topN)
 	for i := 0; i < topN; i++ {

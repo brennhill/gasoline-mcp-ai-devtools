@@ -1,4 +1,4 @@
-// Purpose: Validate enhanced_actions_test.go behavior and guard against regressions.
+// Purpose: Tests for enhanced action capture with mutation tracking.
 // Why: Prevents silent regressions in critical behavior paths.
 // Docs: docs/features/feature/backend-log-streaming/index.md
 

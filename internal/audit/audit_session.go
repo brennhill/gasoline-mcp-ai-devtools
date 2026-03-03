@@ -1,3 +1,5 @@
+// Purpose: Manages per-client audit sessions including client identification and session lifecycle.
+// Why: Separates session tracking from entry recording to keep client normalization self-contained.
 package audit
 
 import (

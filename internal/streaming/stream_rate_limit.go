@@ -1,3 +1,5 @@
+// Purpose: Enforces per-second throttle limits on streaming notifications with burst tracking.
+// Why: Separates rate-limit state from dedup, filter matching, and emission logic.
 package streaming
 
 import (

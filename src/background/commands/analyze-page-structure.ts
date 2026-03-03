@@ -270,20 +270,12 @@ registerCommand('page_structure', async (ctx) => {
     const first = results?.[0]?.result
     const payload = first && typeof first === 'object' ? (first as unknown as Record<string, unknown>) : {}
 
-    if (ctx.query.correlation_id) {
-      ctx.sendAsyncResult(ctx.syncClient, ctx.query.id, ctx.query.correlation_id, 'complete', payload)
-    } else {
-      ctx.sendResult(payload)
-    }
+    ctx.sendResult(payload)
   } catch (err) {
     const message = (err as Error).message || 'Page structure analysis failed'
-    if (ctx.query.correlation_id) {
-      ctx.sendAsyncResult(ctx.syncClient, ctx.query.id, ctx.query.correlation_id, 'error', null, message)
-    } else {
-      ctx.sendResult({
-        error: 'page_structure_failed',
-        message
-      })
-    }
+    ctx.sendResult({
+      error: 'page_structure_failed',
+      message
+    })
   }
 })

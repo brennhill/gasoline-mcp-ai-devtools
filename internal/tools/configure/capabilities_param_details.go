@@ -1,3 +1,5 @@
+// Purpose: Extracts parameter metadata (type, enum, default, description) from tool schemas.
+// Why: Separates parameter detail extraction from mode mapping and schema inference.
 package configure
 
 import (

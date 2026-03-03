@@ -1,6 +1,6 @@
 // Purpose: Tracks connected MCP clients and registry-level LRU ordering.
 // Why: Keeps registry operations isolated from per-client cursor/state methods.
-// Docs: docs/features/feature/observe/index.md
+// Docs: docs/features/feature/request-session-correlation/index.md
 
 // client_registry.go — Multi-client session registry management.
 // Tracks connected MCP clients with LRU eviction and lookup behavior.

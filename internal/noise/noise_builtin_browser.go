@@ -1,3 +1,5 @@
+// Purpose: Defines built-in noise rules for browser extensions, favicons, and internal errors.
+// Why: Separates browser-environment rules from analytics, framework, and devtooling categories.
 package noise
 
 func builtinBrowserRuleSpecs() []builtinRuleSpec {

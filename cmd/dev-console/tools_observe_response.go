@@ -1,6 +1,6 @@
 // Purpose: Observe response decoration helpers (disconnect warnings + alert blocks).
 // Why: Keeps post-dispatch response shaping reusable and independent from mode parsing/dispatch.
-// Docs: docs/features/feature/observe/index.md
+// Docs: docs/features/feature/mcp-persistent-server/index.md
 
 package main
 

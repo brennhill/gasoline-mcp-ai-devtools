@@ -1,3 +1,5 @@
+// Purpose: Detects Protocol Buffers binary format by validating wire types and varint encoding.
+// Why: Separates Protobuf detection heuristics from other binary format detectors.
 package util
 
 import "fmt"

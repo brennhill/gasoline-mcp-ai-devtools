@@ -1,3 +1,5 @@
+// Purpose: Generates JavaScript scripts for querying IndexedDB databases and object stores.
+// Why: Separates script templates from query execution and result handling.
 package observe
 
 import (

@@ -12,7 +12,10 @@ export function domPrimitiveNavDiscovery() {
     const MAX_LINKS_PER_REGION = 50;
     const MAX_REGIONS = 20;
     function cleanText(value, maxLen) {
-        const text = (value || '').replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '').replace(/\s+/g, ' ').trim();
+        const text = (value || '')
+            .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '')
+            .replace(/\s+/g, ' ')
+            .trim();
         if (maxLen > 0 && text.length > maxLen)
             return text.slice(0, maxLen);
         return text;
@@ -68,8 +71,14 @@ export function domPrimitiveNavDiscovery() {
         return 'main';
     }
     const regionSelectors = [
-        'nav', '[role="navigation"]', 'header', 'footer', 'aside',
-        '[role="banner"]', '[role="contentinfo"]', '[role="complementary"]'
+        'nav',
+        '[role="navigation"]',
+        'header',
+        'footer',
+        'aside',
+        '[role="banner"]',
+        '[role="contentinfo"]',
+        '[role="complementary"]'
     ];
     const seenRegions = new Set();
     const regions = [];
@@ -134,7 +143,12 @@ export function domPrimitiveNavDiscovery() {
     return {
         regions,
         unregioned_links: unregionedLinks,
-        summary: { total_regions: regions.length, total_links: totalLinks, internal_links: internalLinks, external_links: totalLinks - internalLinks }
+        summary: {
+            total_regions: regions.length,
+            total_links: totalLinks,
+            internal_links: internalLinks,
+            external_links: totalLinks - internalLinks
+        }
     };
 }
 //# sourceMappingURL=dom-primitives-nav-discovery.js.map

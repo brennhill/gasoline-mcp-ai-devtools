@@ -1,6 +1,6 @@
-// Purpose: Validate ring_buffer_stress_test.go behavior and guard against regressions.
+// Purpose: Stress tests for ring buffer under concurrent load.
 // Why: Prevents silent regressions in critical behavior paths.
-// Docs: docs/features/feature/observe/index.md
+// Docs: docs/features/feature/ring-buffer/index.md
 
 // ring_buffer_stress_test.go — Concurrent stress tests for ring buffer.
 package buffers

@@ -3,7 +3,10 @@
 // Issue #257: Replaces the IIFE string that was embedded in the Go handler.
 import { findMainContentElement } from './shared.js';
 function cleanText(value, maxLen) {
-    let text = (value || '').replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '').replace(/\s+/g, ' ').trim();
+    let text = (value || '')
+        .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '')
+        .replace(/\s+/g, ' ')
+        .trim();
     if (maxLen > 0 && text.length > maxLen) {
         text = text.slice(0, maxLen);
     }

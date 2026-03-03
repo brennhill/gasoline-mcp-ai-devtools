@@ -100,14 +100,9 @@ func (s *BufferStore) clearActionBuffers() {
 }
 
 func (s *BufferStore) clearAllEventBuffers() {
-	s.wsEvents = make([]WebSocketEvent, 0)
-	s.wsAddedAt = make([]time.Time, 0)
-	s.wsMemoryTotal = 0
-	s.networkBodies = make([]NetworkBody, 0)
-	s.networkAddedAt = make([]time.Time, 0)
-	s.networkBodyMemoryTotal = 0
-	s.enhancedActions = make([]EnhancedAction, 0)
-	s.actionAddedAt = make([]time.Time, 0)
+	s.clearNetworkBuffers()
+	s.clearWebSocketBuffers()
+	s.clearActionBuffers()
 }
 
 func (s *BufferStore) repairActionParallelArrays() {

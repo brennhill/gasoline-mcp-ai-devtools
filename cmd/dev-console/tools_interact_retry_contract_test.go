@@ -1,4 +1,4 @@
-// Purpose: Validate tools_interact_retry_contract_test.go behavior and guard against regressions.
+// Purpose: Tests for interact retry contract and backoff.
 // Why: Prevents silent regressions in critical behavior paths.
 // Docs: docs/features/feature/interact-explore/index.md
 

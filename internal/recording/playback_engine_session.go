@@ -1,3 +1,5 @@
+// Purpose: Manages playback session lifecycle including start, result collection, and completion.
+// Why: Separates session orchestration from individual action execution.
 package recording
 
 import (

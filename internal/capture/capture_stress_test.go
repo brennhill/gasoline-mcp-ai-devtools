@@ -1,4 +1,4 @@
-// Purpose: Validate capture_stress_test.go behavior and guard against regressions.
+// Purpose: Stress tests for capture pipeline under concurrent load.
 // Why: Prevents silent regressions in critical behavior paths.
 // Docs: docs/features/feature/backend-log-streaming/index.md
 

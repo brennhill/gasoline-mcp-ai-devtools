@@ -1,3 +1,5 @@
+// Purpose: Repairs individual broken CSS selectors using heuristic rewrite strategies.
+// Why: Separates single-selector repair logic from batch processing and path validation.
 package testgen
 
 import (

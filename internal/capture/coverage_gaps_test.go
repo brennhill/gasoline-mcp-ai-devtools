@@ -1,4 +1,4 @@
-// Purpose: Validate coverage_gaps_test.go behavior and guard against regressions.
+// Purpose: Coverage-expansion tests for capture pipeline edge cases and branch paths.
 // Why: Prevents silent regressions in critical behavior paths.
 // Docs: docs/features/feature/backend-log-streaming/index.md
 

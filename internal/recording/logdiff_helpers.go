@@ -1,3 +1,5 @@
+// Purpose: Counts action types and builds type-value maps for recording diff analysis.
+// Why: Provides reusable helper functions shared by diff comparison and report generation.
 package recording
 
 func CountActionTypes(actions []RecordingAction) (errors, clicks, types, navigates int) {

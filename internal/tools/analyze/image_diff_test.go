@@ -1,6 +1,6 @@
-// Purpose: Validate image_diff_test.go behavior and guard against regressions.
+// Purpose: Tests for image pixel-diff computation.
 // Why: Prevents silent regressions in critical behavior paths.
-// Docs: docs/features/feature/observe/index.md
+// Docs: docs/features/feature/analyze-tool/index.md
 
 // image_diff_test.go — Tests for pure Go pixel-diff comparison.
 package analyze
@@ -158,7 +158,7 @@ func TestWriteDiffImage_OutputValid(t *testing.T) {
 	changed[5][5] = true
 
 	outPath := filepath.Join(dir, "diff.png")
-	err := writeDiffImage(baseline, current, changed, outPath)
+	err := WriteDiffImage(baseline, current, changed, outPath)
 	if err != nil {
 		t.Fatalf("writeDiffImage error: %v", err)
 	}

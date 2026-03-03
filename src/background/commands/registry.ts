@@ -12,6 +12,7 @@ import { initReady } from '../state.js'
 import { DebugCategory } from '../debug.js'
 import type { SendAsyncResultFn, QueryParamsObject, TargetResolution } from './helpers.js'
 import {
+  debugLog,
   sendResult,
   sendAsyncResult,
   requiresTargetTab,
@@ -22,17 +23,6 @@ import {
   isRestrictedUrl,
   isBrowserEscapeAction
 } from './helpers.js'
-
-function debugLog(category: string, message: string, data: unknown = null): void {
-  // Keep registry independent from index.ts to avoid circular imports during command registration.
-  const debugEnabled = (globalThis as { __GASOLINE_REGISTRY_DEBUG__?: boolean }).__GASOLINE_REGISTRY_DEBUG__ === true
-  if (!debugEnabled) return
-  if (data === null) {
-    console.debug(`[Gasoline:${category}] ${message}`)
-    return
-  }
-  console.debug(`[Gasoline:${category}] ${message}`, data)
-}
 
 // =============================================================================
 // COMMAND CONTEXT

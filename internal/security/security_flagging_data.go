@@ -1,3 +1,5 @@
+// Purpose: Defines TLD reputation data and suspicious domain lists for security flagging.
+// Why: Separates static flagging data from detector logic and distance calculations.
 package security
 
 // TLDReputation defines risk level for a TLD.

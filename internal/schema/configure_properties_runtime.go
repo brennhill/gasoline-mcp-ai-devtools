@@ -1,3 +1,5 @@
+// Purpose: Defines runtime MCP schema properties for the configure tool (buffer, streaming, sequences).
+// Why: Separates runtime-specific properties from core dispatch properties.
 package schema
 
 func configureRuntimeProperties() map[string]any {

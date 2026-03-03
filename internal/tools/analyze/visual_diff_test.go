@@ -1,6 +1,6 @@
-// Purpose: Validate visual_diff_test.go behavior and guard against regressions.
+// Purpose: Tests for visual diff baseline comparison.
 // Why: Prevents silent regressions in critical behavior paths.
-// Docs: docs/features/feature/observe/index.md
+// Docs: docs/features/feature/analyze-tool/index.md
 
 // visual_diff_test.go — Tests for visual baseline/diff handler functions.
 package analyze

@@ -1,4 +1,4 @@
-// Purpose: Validate sync_security_mode_test.go behavior and guard against regressions.
+// Purpose: Tests for capture sync behavior in security mode.
 // Why: Prevents silent regressions in critical behavior paths.
 // Docs: docs/features/feature/backend-log-streaming/index.md
 

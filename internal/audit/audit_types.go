@@ -1,3 +1,5 @@
+// Purpose: Defines types for audit entries, sessions, filters, configs, and redaction patterns.
+// Why: Centralizes audit type definitions so recording, query, and redaction modules share a single source of truth.
 package audit
 
 import (

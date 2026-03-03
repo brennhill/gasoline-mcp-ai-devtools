@@ -1,6 +1,6 @@
-// Purpose: Validate platform_errors_netstat_test.go behavior and guard against regressions.
+// Purpose: Tests for platform error diagnostics with netstat.
 // Why: Prevents silent regressions in critical behavior paths.
-// Docs: docs/features/feature/observe/index.md
+// Docs: docs/features/feature/mcp-persistent-server/index.md
 
 // platform_errors_netstat_test.go — Tests for parseNetstatPIDs function.
 package main

@@ -1,6 +1,6 @@
-// Purpose: Validate tools_configure_audit_test.go behavior and guard against regressions.
+// Purpose: Tests for configure audit log handler.
 // Why: Prevents silent regressions in critical behavior paths.
-// Docs: docs/features/feature/observe/index.md
+// Docs: docs/features/feature/mcp-persistent-server/index.md
 
 // tools_configure_audit_test.go — Behavioral tests for configure tool
 //

@@ -1,3 +1,5 @@
+// Purpose: Defines compiled regex patterns for detecting credentials in network traffic.
+// Why: Centralizes credential pattern definitions separate from scanning and helper logic.
 package security
 
 import "regexp"

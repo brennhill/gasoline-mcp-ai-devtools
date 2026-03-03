@@ -1,6 +1,6 @@
-// Purpose: Validate test_script_test.go behavior and guard against regressions.
+// Purpose: Tests for Playwright test script generation from recordings.
 // Why: Prevents silent regressions in critical behavior paths.
-// Docs: docs/features/feature/observe/index.md
+// Docs: docs/features/feature/test-generation/index.md
 
 // test_script_test.go — Tests for Playwright test script generation.
 package generate

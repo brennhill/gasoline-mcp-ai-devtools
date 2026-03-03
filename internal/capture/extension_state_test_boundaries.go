@@ -1,3 +1,5 @@
+// Purpose: Manages active test boundary IDs for event tagging during test runs.
+// Why: Separates test-boundary lifecycle from other extension state to keep CI concerns isolated.
 package capture
 
 // GetActiveTestIDs returns the list of currently active test IDs.

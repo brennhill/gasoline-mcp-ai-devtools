@@ -2,7 +2,8 @@
  * Purpose: Timeout scaling helpers that read GASOLINE_TEST_TIMEOUT_SCALE to accelerate timeouts during automated tests.
  */
 function readTestScale() {
-    const globalScale = typeof globalThis !== 'undefined' && typeof globalThis.GASOLINE_TEST_TIMEOUT_SCALE === 'number'
+    const globalScale = typeof globalThis !== 'undefined' &&
+        typeof globalThis.GASOLINE_TEST_TIMEOUT_SCALE === 'number'
         ? globalThis.GASOLINE_TEST_TIMEOUT_SCALE
         : null;
     if (globalScale !== null)

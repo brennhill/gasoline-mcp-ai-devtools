@@ -1,3 +1,6 @@
+// Purpose: Manages per-command evidence state lifecycle (store, retrieve, clear).
+// Why: Isolates evidence state mutations behind helpers to prevent lock ordering bugs.
+
 package main
 
 func (h *interactActionHandler) clearEvidenceState(correlationID string) {

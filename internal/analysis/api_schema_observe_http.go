@@ -1,3 +1,5 @@
+// Purpose: Records HTTP network body observations for API schema inference.
+// Why: Isolates HTTP observation ingestion from WebSocket and schema building logic.
 package analysis
 
 import (

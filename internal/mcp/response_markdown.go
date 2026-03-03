@@ -1,3 +1,5 @@
+// Purpose: Renders tabular data as pipe-delimited Markdown tables for MCP text content blocks.
+// Why: Separates Markdown formatting from JSON and content-block construction.
 package mcp
 
 import "strings"

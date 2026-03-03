@@ -1,3 +1,5 @@
+// Purpose: Derives Content Security Policy directives from accumulated origin observations.
+// Why: Separates CSP generation logic from origin storage and tooling integration.
 package security
 
 import (

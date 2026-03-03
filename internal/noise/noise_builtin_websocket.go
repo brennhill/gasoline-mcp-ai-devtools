@@ -1,3 +1,5 @@
+// Purpose: Defines built-in noise rules for HMR WebSockets and devtools inspector connections.
+// Why: Separates WebSocket noise rules from console and network noise categories.
 package noise
 
 func builtinWebSocketRuleSpecs() []builtinRuleSpec {

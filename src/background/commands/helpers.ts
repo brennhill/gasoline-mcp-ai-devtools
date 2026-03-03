@@ -64,7 +64,7 @@ interface RecoveryAttempt {
   detail: string
 }
 
-function debugLog(category: string, message: string, data: unknown = null): void {
+export function debugLog(category: string, message: string, data: unknown = null): void {
   // Keep helpers independent from index.ts to avoid circular imports during registry boot.
   const debugEnabled = (globalThis as { __GASOLINE_REGISTRY_DEBUG__?: boolean }).__GASOLINE_REGISTRY_DEBUG__ === true
   if (!debugEnabled) return
@@ -679,4 +679,37 @@ export function isRestrictedUrl(url: string | undefined): boolean {
   if (!url) return true
   const blocked = ['chrome://', 'chrome-extension://', 'about:', 'edge://', 'brave://', 'devtools://']
   return blocked.some((p) => url.startsWith(p))
+}
+
+// =============================================================================
+// CONTENT SCRIPT ERROR DETECTION
+// =============================================================================
+
+/** Check if an error indicates the content script is not loaded on the target page. */
+export function isContentScriptUnreachableError(err: unknown): boolean {
+  const message = (err as Error)?.message || ''
+  return message.includes('Receiving end does not exist') || message.includes('Could not establish connection')
+}
+
+// =============================================================================
+// AI WEB PILOT GUARD
+// =============================================================================
+
+/**
+ * Minimal context shape needed by requireAiWebPilot.
+ * Avoids circular import with registry.ts (which defines CommandContext).
+ */
+interface AiWebPilotGuardContext {
+  sendResult: (result: unknown) => void
+}
+
+/**
+ * Guard that checks AI Web Pilot is enabled.
+ * Returns true if enabled and the caller should proceed.
+ * Returns false if disabled — the error response has already been sent.
+ */
+export function requireAiWebPilot(ctx: AiWebPilotGuardContext): boolean {
+  if (isAiWebPilotEnabled()) return true
+  ctx.sendResult({ error: 'ai_web_pilot_disabled' })
+  return false
 }

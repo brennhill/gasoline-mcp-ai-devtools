@@ -1,3 +1,5 @@
+// Purpose: Defines output enrichment and batch execution properties for the interact tool.
+// Why: Separates output/batch properties from targeting, form, and core action properties.
 package schema
 
 func interactOutputAndBatchProperties() map[string]any {

@@ -1,3 +1,5 @@
+// Purpose: Defines always-active regex patterns for redacting secrets (AWS keys, tokens, private keys).
+// Why: Centralizes built-in credential patterns separate from engine initialization and key-based redaction.
 package redaction
 
 // builtinPatterns defines the always-active redaction rules.

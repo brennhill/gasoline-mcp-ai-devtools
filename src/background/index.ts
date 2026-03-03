@@ -304,7 +304,8 @@ async function maybeAutoScreenshot(errorEntry: LogEntry, sender: ChromeMessageSe
 
 export async function handleClearLogs(): Promise<{ success: boolean; error?: string }> {
   try {
-    await fetch(`${getServerUrl()}/logs`, { method: 'DELETE', headers: getRequestHeaders() })
+    const response = await fetch(`${getServerUrl()}/logs`, { method: 'DELETE', headers: getRequestHeaders() })
+    if (!response.ok) return { success: false, error: `HTTP ${response.status}` }
     setConnectionStatus({ entries: 0, errorCount: 0 })
     updateBadge(getConnectionStatus())
     return { success: true }

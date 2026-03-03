@@ -1,6 +1,6 @@
-// Purpose: Validate ai_noise_persistence_test.go behavior and guard against regressions.
+// Purpose: Tests for noise rule persistence across sessions.
 // Why: Prevents silent regressions in critical behavior paths.
-// Docs: docs/features/feature/observe/index.md
+// Docs: docs/features/feature/noise-filtering/index.md
 
 package noise
 

@@ -1,6 +1,6 @@
-// Purpose: Validate main_handlers_test.go behavior and guard against regressions.
+// Purpose: Tests for HTTP server request routing and response formatting.
 // Why: Prevents silent regressions in critical behavior paths.
-// Docs: docs/features/feature/observe/index.md
+// Docs: docs/features/feature/backend-log-streaming/index.md
 
 package server
 

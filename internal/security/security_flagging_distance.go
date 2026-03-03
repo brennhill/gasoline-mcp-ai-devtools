@@ -1,3 +1,5 @@
+// Purpose: Computes Levenshtein edit distance for typosquatting detection.
+// Why: Isolates string-distance calculation from detector logic and flagging data.
 package security
 
 func levenshteinDistance(a, b string) int {

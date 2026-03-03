@@ -1,8 +1,11 @@
+// Purpose: Builds severity-categorized summaries from security diff regressions and improvements.
+// Why: Separates summary construction from individual diff comparison helpers.
 package security
 
 import (
-	"fmt"
 	"time"
+
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/util"
 )
 
 func buildDiffSummary(regressions, improvements []SecurityChange) SecurityDiffSummary {
@@ -22,25 +25,7 @@ func buildDiffSummary(regressions, improvements []SecurityChange) SecurityDiffSu
 	}
 }
 
+// formatDuration delegates to util.FormatDuration for human-readable duration formatting.
 func formatDuration(d time.Duration) string {
-	if d < time.Second {
-		return fmt.Sprintf("%.1fs", d.Seconds())
-	}
-	if d < time.Minute {
-		return fmt.Sprintf("%ds", int(d.Seconds()))
-	}
-	if d < time.Hour {
-		mins := int(d.Minutes())
-		secs := int(d.Seconds()) % 60
-		if secs == 0 {
-			return fmt.Sprintf("%dm", mins)
-		}
-		return fmt.Sprintf("%dm%02ds", mins, secs)
-	}
-	hours := int(d.Hours())
-	mins := int(d.Minutes()) % 60
-	if mins == 0 {
-		return fmt.Sprintf("%dh", hours)
-	}
-	return fmt.Sprintf("%dh%dm", hours, mins)
+	return util.FormatDuration(d)
 }

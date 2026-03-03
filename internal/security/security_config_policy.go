@@ -1,3 +1,5 @@
+// Purpose: Manages persistent security configuration including whitelisted origins and flagging severity.
+// Why: Separates policy persistence and loading from runtime security mode management.
 package security
 
 import (

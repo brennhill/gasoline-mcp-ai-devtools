@@ -1,6 +1,6 @@
 // Purpose: Dispatches observe tool modes and coordinates alias resolution, validation, and response augmentation.
 // Why: Keeps observe entrypoint behavior explicit while mode registry and response helpers live in focused companion files.
-// Docs: docs/features/feature/observe/index.md
+// Docs: docs/features/feature/mcp-persistent-server/index.md
 
 package main
 
@@ -8,63 +8,19 @@ import (
 	"encoding/json"
 )
 
-// observeModeParams captures accepted observe mode selectors.
-// `mode`/`action` are deprecated aliases for `what` and remain for compatibility.
-type observeModeParams struct {
-	What   string `json:"what"`
-	Mode   string `json:"mode"`
-	Action string `json:"action"`
-}
-
-func parseObserveModeParams(args json.RawMessage) (observeModeParams, error) {
-	params := observeModeParams{}
-	if len(args) == 0 {
-		return params, nil
-	}
-	if err := json.Unmarshal(args, &params); err != nil {
-		return observeModeParams{}, err
-	}
-	return params, nil
-}
-
-func resolveObserveMode(req JSONRPCRequest, params observeModeParams) (what string, usedAliasParam string, errResp *JSONRPCResponse) {
-	what = params.What
-	if what != "" && params.Mode != "" && params.Mode != what {
-		resp := whatAliasConflictResponse(req, "mode", what, params.Mode, getValidObserveModes())
-		return "", "", &resp
-	}
-	if what != "" && params.Action != "" && params.Action != what {
-		resp := whatAliasConflictResponse(req, "action", what, params.Action, getValidObserveModes())
-		return "", "", &resp
-	}
-	if what == "" {
-		if params.Mode != "" {
-			what = params.Mode
-			usedAliasParam = "mode"
-		} else if params.Action != "" {
-			what = params.Action
-			usedAliasParam = "action"
-		}
-	}
-	if what == "" {
-		validModes := getValidObserveModes()
-		resp := JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrMissingParam, "Required parameter 'what' is missing", "Add the 'what' parameter and call again", withParam("what"), withHint("Valid values: "+validModes))}
-		return "", usedAliasParam, &resp
-	}
-	if alias, ok := observeAliases[what]; ok {
-		what = alias
-	}
-	return what, usedAliasParam, nil
+// observeAliasParams defines the deprecated alias parameters for the observe tool.
+var observeAliasParams = []modeAlias{
+	{JSONField: "mode"},
+	{JSONField: "action"},
 }
 
 // toolObserve dispatches observe requests based on the 'what' parameter.
 func (h *ToolHandler) toolObserve(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-	params, err := parseObserveModeParams(args)
-	if err != nil {
-		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidJSON, "Invalid JSON arguments: "+err.Error(), "Fix JSON syntax and call again")}
-	}
-
-	what, usedAliasParam, errResp := resolveObserveMode(req, params)
+	what, usedAliasParam, errResp := resolveToolMode(req, args, observeAliasParams, modeResolution{
+		ToolName:   "observe",
+		ValidModes: getValidObserveModes(),
+		Aliases:    observeAliases,
+	})
 	if errResp != nil {
 		return *errResp
 	}

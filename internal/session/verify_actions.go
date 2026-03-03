@@ -1,6 +1,6 @@
 // Purpose: Implements verify_fix session actions (start/watch/compare/cancel/status).
 // Why: Separates action orchestration from shared types and snapshot helper logic.
-// Docs: docs/features/feature/observe/index.md
+// Docs: docs/features/feature/request-session-correlation/index.md
 
 package session
 

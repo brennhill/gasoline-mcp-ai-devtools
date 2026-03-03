@@ -1,3 +1,5 @@
+// Purpose: Builds a per-pixel boolean grid marking changed regions between baseline and current images.
+// Why: Separates grid construction from region detection, rendering, and I/O.
 package analyze
 
 import "image"
@@ -40,4 +42,17 @@ func RebuildChangedGrid(baseline, current image.Image, threshold int) [][]bool {
 	}
 
 	return changed
+}
+
+// countChanged returns the number of true cells in a changed grid.
+func countChanged(changed [][]bool) int {
+	n := 0
+	for _, row := range changed {
+		for _, c := range row {
+			if c {
+				n++
+			}
+		}
+	}
+	return n
 }

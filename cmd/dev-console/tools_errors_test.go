@@ -1,6 +1,6 @@
-// Purpose: Validate tools_errors_test.go behavior and guard against regressions.
+// Purpose: Tests for tool error response formatting.
 // Why: Prevents silent regressions in critical behavior paths.
-// Docs: docs/features/feature/observe/index.md
+// Docs: docs/features/feature/mcp-persistent-server/index.md
 
 // tools_errors_test.go — Tests for structured error retryable field and retry_after_ms.
 package main

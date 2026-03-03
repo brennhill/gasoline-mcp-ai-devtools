@@ -1,4 +1,4 @@
-// Purpose: Validate tools_generate_har_test.go behavior and guard against regressions.
+// Purpose: Tests for generate HAR export output.
 // Why: Prevents silent regressions in critical behavior paths.
 // Docs: docs/features/feature/test-generation/index.md
 
@@ -18,7 +18,7 @@ import (
 
 func setupHARTestHandler(t *testing.T) *ToolHandler {
 	t.Helper()
-	srv, err := NewServer("/tmp/test-har-export.jsonl", 10)
+	srv, err := NewServer(t.TempDir()+"/test-har-export.jsonl", 10)
 	if err != nil {
 		t.Fatalf("Failed to create server: %v", err)
 	}

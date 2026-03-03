@@ -1,3 +1,5 @@
+// Purpose: Normalizes error messages for stable cluster fingerprinting by replacing dynamic tokens.
+// Why: Separates message normalization regexes from cluster matching to keep both focused.
 package analysis
 
 import "regexp"
