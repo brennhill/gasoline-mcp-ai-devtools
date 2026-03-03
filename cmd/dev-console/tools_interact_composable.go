@@ -13,7 +13,7 @@ import (
 // handleWaitForStable is the named handler for the standalone wait_for_stable action.
 // It injects default stability_ms and timeout_ms if not provided, then delegates
 // to the standard DOM primitive dispatch.
-func (h *ToolHandler) handleWaitForStable(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+func (h *interactActionHandler) handleWaitForStable(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	var params struct {
 		StabilityMs int `json:"stability_ms,omitempty"`
 		TimeoutMs   int `json:"timeout_ms,omitempty"`
@@ -38,14 +38,14 @@ func (h *ToolHandler) handleWaitForStable(req JSONRPCRequest, args json.RawMessa
 	rawArgs["timeout_ms"] = params.TimeoutMs
 	enrichedArgs, _ := json.Marshal(rawArgs)
 
-	return h.interactAction().handleDOMPrimitive(req, enrichedArgs, "wait_for_stable")
+	return h.handleDOMPrimitive(req, enrichedArgs, "wait_for_stable")
 }
 
 // handleAutoDismissOverlays is the named handler for the standalone auto_dismiss_overlays action.
 // It delegates to the DOM primitive dispatch, which runs consent framework selectors
 // followed by the existing dismiss_top_overlay multi-strategy approach on the extension side.
-func (h *ToolHandler) handleAutoDismissOverlays(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-	return h.interactAction().handleDOMPrimitive(req, args, "auto_dismiss_overlays")
+func (h *interactActionHandler) handleAutoDismissOverlays(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+	return h.handleDOMPrimitive(req, args, "auto_dismiss_overlays")
 }
 
 // queueComposableAutoDismiss queues an auto_dismiss_overlays command as a side effect.

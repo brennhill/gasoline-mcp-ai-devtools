@@ -112,7 +112,7 @@ var analyzeHandlers = map[string]AnalyzeHandler{
 
 	// Feature gate detection (#345)
 	"feature_gates": func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-		return h.handleContentExtraction(req, args, "feature_gates", "feature_gates")
+		return h.interactAction().handleContentExtraction(req, args, "feature_gates", "feature_gates")
 	},
 }
 
