@@ -1,5 +1,4 @@
 // Purpose: Tests for interact multi-step workflow execution.
-// Why: Prevents silent regressions in critical behavior paths.
 // Docs: docs/features/feature/interact-explore/index.md
 
 // tools_interact_workflows_test.go — Tests for high-level workflow primitives.

@@ -1,5 +1,4 @@
 // Purpose: Unit tests for dev-console tools core logic.
-// Why: Prevents silent regressions in critical behavior paths.
 // Docs: docs/features/feature/mcp-persistent-server/index.md
 
 // tools_core_unit_test.go — Unit tests for ToolHandler getters.

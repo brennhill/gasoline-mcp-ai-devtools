@@ -1,5 +1,4 @@
 // Purpose: Tests for capture synchronization protocol and data delivery.
-// Why: Prevents silent regressions in critical behavior paths.
 // Docs: docs/features/feature/backend-log-streaming/index.md
 
 package capture

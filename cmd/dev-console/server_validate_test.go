@@ -1,5 +1,4 @@
 // Purpose: Tests for server request validation.
-// Why: Prevents silent regressions in critical behavior paths.
 // Docs: docs/features/feature/mcp-persistent-server/index.md
 
 // server_validate_test.go — Unit tests for server log entry validation.

@@ -1,5 +1,4 @@
 // Purpose: Fuzz file upload operations for edge-case inputs and panics.
-// Why: Prevents silent regressions in critical behavior paths.
 // Docs: docs/features/feature/file-upload/index.md
 
 // validators_fuzz_test.go — Fuzz tests for OS automation path validation and sanitizers.

@@ -18,13 +18,13 @@ type debugWriter struct {
 }
 
 // write appends a debug entry to the debug file, creating it on first call.
-func (d *debugWriter) write(phase string, err error, details map[string]interface{}) {
+func (d *debugWriter) write(phase string, err error, details map[string]any) {
 	if d.path == "" {
 		timestamp := time.Now().Format("20060102-150405")
 		d.path = filepath.Join(os.TempDir(), fmt.Sprintf("gasoline-debug-%s.log", timestamp))
 	}
 
-	info := map[string]interface{}{
+	info := map[string]any{
 		"timestamp": time.Now().UTC().Format(time.RFC3339),
 		"phase":     phase,
 		"error":     fmt.Sprintf("%v", err),

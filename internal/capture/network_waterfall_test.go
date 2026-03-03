@@ -1,5 +1,4 @@
 // Purpose: Tests for network waterfall capture and timing data.
-// Why: Prevents silent regressions in critical behavior paths.
 // Docs: docs/features/feature/backend-log-streaming/index.md
 
 // Package capture provides telemetry capture functionality

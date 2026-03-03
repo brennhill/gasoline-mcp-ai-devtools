@@ -26,7 +26,7 @@ func connectWithRetries(server *Server, healthURL string, mcpEndpoint string, dw
 				"attempt": attempt,
 				"error":   fmt.Sprintf("%v", lastErr),
 			})
-			dw.write(fmt.Sprintf("connection_attempt_%d", attempt), lastErr, map[string]interface{}{"health_url": healthURL})
+			dw.write(fmt.Sprintf("connection_attempt_%d", attempt), lastErr, map[string]any{"health_url": healthURL})
 			time.Sleep(1 * time.Second)
 		}
 

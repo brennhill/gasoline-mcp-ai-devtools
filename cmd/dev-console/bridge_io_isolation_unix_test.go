@@ -1,5 +1,4 @@
 // Purpose: Tests for bridge I/O isolation and file descriptor management.
-// Why: Prevents silent regressions in critical behavior paths.
 // Docs: docs/features/feature/mcp-persistent-server/index.md
 
 //go:build !windows

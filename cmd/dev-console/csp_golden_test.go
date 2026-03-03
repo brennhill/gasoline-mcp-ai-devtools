@@ -1,5 +1,4 @@
 // Purpose: Golden-file snapshot tests for dev-console output stability.
-// Why: Prevents silent regressions in critical behavior paths.
 // Docs: docs/features/feature/mcp-persistent-server/index.md
 
 // csp_golden_test.go — Golden file validation for CSP directive generation.

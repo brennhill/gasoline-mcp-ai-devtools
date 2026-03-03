@@ -1,5 +1,4 @@
 // Purpose: Tests for pagination slicing, limits, and offset correctness.
-// Why: Prevents silent regressions in critical behavior paths.
 // Docs: docs/features/feature/pagination/index.md
 
 // pagination_test.go — Unit tests for cursor pagination helpers

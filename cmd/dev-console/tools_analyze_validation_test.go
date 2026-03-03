@@ -1,5 +1,4 @@
 // Purpose: Tests for analyze tool input validation.
-// Why: Prevents silent regressions in critical behavior paths.
 // Docs: docs/features/feature/analyze-tool/index.md
 
 package main

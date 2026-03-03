@@ -1,5 +1,4 @@
 // Purpose: Tests for interact audit trail integration.
-// Why: Prevents silent regressions in critical behavior paths.
 // Docs: docs/features/feature/interact-explore/index.md
 
 // tools_interact_audit_test.go — Behavioral tests for interact tool

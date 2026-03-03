@@ -1,5 +1,4 @@
 // Purpose: Tests for typed buffer operations and capacity management.
-// Why: Prevents silent regressions in critical behavior paths.
 // Docs: docs/features/feature/normalized-event-schema/index.md
 
 package types

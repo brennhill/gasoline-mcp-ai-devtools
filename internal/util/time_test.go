@@ -1,5 +1,4 @@
 // Purpose: Tests for time formatting and duration utilities.
-// Why: Prevents silent regressions in critical behavior paths.
 
 // time_test.go — Tests for timestamp parsing utilities.
 package util

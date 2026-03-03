@@ -1,5 +1,4 @@
 // Purpose: Coverage-expansion tests for utility edge cases and branch paths.
-// Why: Prevents silent regressions in critical behavior paths.
 
 // binary_coverage_test.go — Coverage tests for isLikelyText, CBOR, and MessagePack detection.
 // Targets uncovered branches in text threshold, CBOR major types, tagged values,

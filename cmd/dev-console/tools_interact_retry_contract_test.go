@@ -1,5 +1,4 @@
 // Purpose: Tests for interact retry contract and backoff.
-// Why: Prevents silent regressions in critical behavior paths.
 // Docs: docs/features/feature/interact-explore/index.md
 
 // tools_interact_retry_contract_test.go — TDD tests for deterministic retry contract.

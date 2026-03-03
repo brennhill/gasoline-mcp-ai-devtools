@@ -1,5 +1,4 @@
 // Purpose: Tests for capture helper functions.
-// Why: Prevents silent regressions in critical behavior paths.
 // Docs: docs/features/feature/backend-log-streaming/index.md
 
 // helpers_test.go — Tests for shared utility functions: URL path extraction, slice helpers, ingest body reading.
@@ -14,7 +13,7 @@ import (
 )
 
 // ============================================
-// extractURLPath / ExtractURLPath Tests
+// ExtractURLPath Tests
 // ============================================
 
 func TestNewExtractURLPath_FullURL(t *testing.T) {
@@ -60,7 +59,7 @@ func TestNewExtractURLPath_RootPath(t *testing.T) {
 func TestNewExtractURLPath_NoPath(t *testing.T) {
 	t.Parallel()
 
-	// When URL has no path component, extractURLPath returns "/"
+	// When URL has no path component, ExtractURLPath returns "/"
 	got := ExtractURLPath("https://example.com")
 	want := "/"
 	if got != want {
@@ -96,18 +95,6 @@ func TestNewExtractURLPath_JustPath(t *testing.T) {
 	want := "/api/health"
 	if got != want {
 		t.Errorf("ExtractURLPath(just path) = %q, want %q", got, want)
-	}
-}
-
-func TestNewExtractURLPath_UnparseableURL(t *testing.T) {
-	t.Parallel()
-
-	// url.Parse returns error for control characters
-	input := string([]byte{0x7f})
-	got := extractURLPath(input)
-	// Should return input unchanged on parse error
-	if got != input {
-		t.Errorf("extractURLPath(unparseable) = %q, want original input %q", got, input)
 	}
 }
 
@@ -151,85 +138,6 @@ func TestNewExtractURLPath_URLWithEncodedChars(t *testing.T) {
 	// Accept either encoded or decoded form:
 	if got != want && got != "/path with spaces" {
 		t.Errorf("ExtractURLPath(encoded chars) = %q, want %q or decoded form", got, want)
-	}
-}
-
-// ============================================
-// reverseSlice Tests
-// ============================================
-
-func TestNewReverseSlice_Integers(t *testing.T) {
-	t.Parallel()
-
-	s := []int{1, 2, 3, 4, 5}
-	reverseSlice(s)
-
-	want := []int{5, 4, 3, 2, 1}
-	for i := range s {
-		if s[i] != want[i] {
-			t.Errorf("reverseSlice[%d] = %d, want %d", i, s[i], want[i])
-		}
-	}
-}
-
-func TestNewReverseSlice_Strings(t *testing.T) {
-	t.Parallel()
-
-	s := []string{"a", "b", "c"}
-	reverseSlice(s)
-
-	want := []string{"c", "b", "a"}
-	for i := range s {
-		if s[i] != want[i] {
-			t.Errorf("reverseSlice[%d] = %q, want %q", i, s[i], want[i])
-		}
-	}
-}
-
-func TestNewReverseSlice_SingleElement(t *testing.T) {
-	t.Parallel()
-
-	s := []int{42}
-	reverseSlice(s)
-
-	if s[0] != 42 {
-		t.Errorf("reverseSlice(single element) = %d, want 42", s[0])
-	}
-}
-
-func TestNewReverseSlice_Empty(t *testing.T) {
-	t.Parallel()
-
-	s := []int{}
-	reverseSlice(s) // should not panic
-
-	if len(s) != 0 {
-		t.Errorf("reverseSlice(empty) len = %d, want 0", len(s))
-	}
-}
-
-func TestNewReverseSlice_TwoElements(t *testing.T) {
-	t.Parallel()
-
-	s := []string{"first", "second"}
-	reverseSlice(s)
-
-	if s[0] != "second" || s[1] != "first" {
-		t.Errorf("reverseSlice(two elements) = %v, want [second, first]", s)
-	}
-}
-
-func TestNewReverseSlice_EvenCount(t *testing.T) {
-	t.Parallel()
-
-	s := []int{10, 20, 30, 40}
-	reverseSlice(s)
-
-	want := []int{40, 30, 20, 10}
-	for i := range s {
-		if s[i] != want[i] {
-			t.Errorf("reverseSlice(even count)[%d] = %d, want %d", i, s[i], want[i])
-		}
 	}
 }
 

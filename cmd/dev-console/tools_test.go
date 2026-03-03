@@ -1,5 +1,4 @@
 // Purpose: Tests for dev-console tools.
-// Why: Prevents silent regressions in critical behavior paths.
 // Docs: docs/features/feature/mcp-persistent-server/index.md
 
 // tools_test.go — Tests for MCP tool handlers.

@@ -1,5 +1,4 @@
 // Purpose: Tests for playback log-diff comparison and anomaly detection.
-// Why: Prevents silent regressions in critical behavior paths.
 // Docs: docs/features/feature/playback-engine/index.md
 
 // playback_logdiff_test.go — Tests for playback status, log diff, and helper functions.

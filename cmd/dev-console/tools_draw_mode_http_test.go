@@ -1,5 +1,4 @@
 // Purpose: Tests for draw-mode HTTP endpoint handling.
-// Why: Prevents silent regressions in critical behavior paths.
 // Docs: docs/features/feature/mcp-persistent-server/index.md
 
 // tools_draw_mode_http_test.go — HTTP endpoint tests for draw mode completion.

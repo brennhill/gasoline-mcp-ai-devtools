@@ -6,7 +6,7 @@
  * @fileoverview Server Communication - HTTP functions for sending data to
  * the Gasoline server.
  */
-import type { LogEntry, WebSocketEvent, NetworkBodyPayload, EnhancedAction, PerformanceSnapshot, ConnectionStatus, WaterfallEntry } from '../types/index.js';
+import type { LogEntry, WebSocketEvent, NetworkBodyPayload, EnhancedAction, PerformanceSnapshot, ConnectionStatus } from '../types/index.js';
 /**
  * Server health response
  */
@@ -41,13 +41,6 @@ export declare function sendWSEventsToServer(serverUrl: string, events: WebSocke
  */
 export declare function sendNetworkBodiesToServer(serverUrl: string, bodies: NetworkBodyPayload[], debugLogFn?: (category: string, message: string, data?: unknown) => void): Promise<void>;
 /**
- * Send network waterfall data to server
- */
-export declare function sendNetworkWaterfallToServer(serverUrl: string, payload: {
-    entries: WaterfallEntry[];
-    page_url: string;
-}, debugLogFn?: (category: string, message: string, data?: unknown) => void): Promise<void>;
-/**
  * Send enhanced actions to server
  */
 export declare function sendEnhancedActionsToServer(serverUrl: string, actions: EnhancedAction[], debugLogFn?: (category: string, message: string, data?: unknown) => void): Promise<void>;
@@ -66,25 +59,6 @@ export declare function checkServerHealth(serverUrl: string): Promise<ServerHeal
  */
 export declare function updateBadge(status: ConnectionStatus): void;
 /**
- * Post query results back to the server
- */
-export declare function postQueryResult(serverUrl: string, queryId: string, type: string, result: unknown, debugLogFn?: (category: string, message: string, data?: unknown) => void): Promise<void>;
-/**
- * POST async command result to server using correlation_id
- */
-export declare function postAsyncCommandResult(serverUrl: string, correlationId: string, status: 'pending' | 'complete' | 'timeout', result?: unknown, error?: string | null, debugLogFn?: (category: string, message: string, data?: unknown) => void): Promise<void>;
-/**
- * Post extension logs to server
- */
-export declare function postExtensionLogs(serverUrl: string, logs: Array<{
-    timestamp: string;
-    level: string;
-    message: string;
-    source: string;
-    category: string;
-    data?: unknown;
-}>): Promise<void>;
-/**
  * Send status ping to server
  */
 export declare function sendStatusPing(serverUrl: string, statusMessage: {
@@ -96,13 +70,4 @@ export declare function sendStatusPing(serverUrl: string, statusMessage: {
     extension_connected: boolean;
     timestamp: string;
 }, diagnosticLogFn?: (message: string) => void): Promise<void>;
-/**
- * Poll server for pending queries
- */
-export declare function pollPendingQueries(serverUrl: string, extSessionId: string, pilotState: '0' | '1', diagnosticLogFn?: (message: string) => void, debugLogFn?: (category: string, message: string, data?: unknown) => void): Promise<Array<{
-    id: string;
-    type: string;
-    params: string | Record<string, unknown>;
-    correlation_id?: string;
-}>>;
 //# sourceMappingURL=server.d.ts.map

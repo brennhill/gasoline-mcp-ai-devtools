@@ -1,5 +1,4 @@
 // Purpose: Tests for generate CSP policy output.
-// Why: Prevents silent regressions in critical behavior paths.
 // Docs: docs/features/feature/test-generation/index.md
 
 // tools_generate_csp_test.go — Coverage tests for toolGenerateCSP handler.

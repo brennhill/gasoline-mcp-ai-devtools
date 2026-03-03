@@ -14,8 +14,7 @@ import type {
   NetworkBodyPayload,
   EnhancedAction,
   PerformanceSnapshot,
-  ConnectionStatus,
-  WaterfallEntry
+  ConnectionStatus
 } from '../types/index.js'
 import { getExtensionVersion } from './version-check.js'
 
@@ -122,31 +121,6 @@ export async function sendNetworkBodiesToServer(
   }
 
   if (debugLogFn) debugLogFn('connection', `Server accepted ${bodies.length} network bodies`)
-}
-
-/**
- * Send network waterfall data to server
- */
-export async function sendNetworkWaterfallToServer(
-  serverUrl: string,
-  payload: { entries: WaterfallEntry[]; page_url: string },
-  debugLogFn?: (category: string, message: string, data?: unknown) => void
-): Promise<void> {
-  if (debugLogFn) debugLogFn('connection', `Sending ${payload.entries.length} waterfall entries to server`)
-
-  const response = await fetch(`${serverUrl}/network-waterfall`, {
-    method: 'POST',
-    headers: getRequestHeaders(),
-    body: JSON.stringify(payload)
-  })
-
-  if (!response.ok) {
-    const error = `Server error (network waterfall): ${response.status} ${response.statusText}`
-    if (debugLogFn) debugLogFn('error', error)
-    throw new Error(error)
-  }
-
-  if (debugLogFn) debugLogFn('connection', `Server accepted ${payload.entries.length} waterfall entries`)
 }
 
 /**
@@ -265,135 +239,6 @@ export function updateBadge(status: ConnectionStatus): void {
 }
 
 /**
- * Post query results back to the server
- */
-export async function postQueryResult(
-  serverUrl: string,
-  queryId: string,
-  type: string,
-  result: unknown,
-  debugLogFn?: (category: string, message: string, data?: unknown) => void
-): Promise<void> {
-  const endpoint = '/query-result'
-
-  const body = JSON.stringify({ id: queryId, result })
-  const logData = { queryId, type, endpoint, resultSize: body.length }
-  if (debugLogFn) debugLogFn('api', `POST ${endpoint}`, logData)
-  console.log(`[Gasoline API] POST ${endpoint}`, logData) // nosemgrep: javascript.lang.security.audit.unsafe-formatstring.unsafe-formatstring -- console.log with internal server state, not user-controlled format string
-
-  try {
-    const response = await fetch(`${serverUrl}${endpoint}`, {
-      method: 'POST',
-      headers: getRequestHeaders(),
-      body
-    })
-
-    if (!response.ok) {
-      const errMsg = `Failed to post query result: HTTP ${response.status}`
-      if (debugLogFn) debugLogFn('api', errMsg, { queryId, type, endpoint })
-      console.error(`[Gasoline API] ${errMsg}`, { queryId, type, endpoint }) // nosemgrep: javascript.lang.security.audit.unsafe-formatstring.unsafe-formatstring -- console.log with internal server state, not user-controlled format string
-    } else {
-      if (debugLogFn) debugLogFn('api', `POST ${endpoint} success`, { queryId })
-      console.log(`[Gasoline API] POST ${endpoint} success`, { queryId }) // nosemgrep: javascript.lang.security.audit.unsafe-formatstring.unsafe-formatstring -- console.log with internal server state, not user-controlled format string
-    }
-  } catch (err) {
-    const errMsg = (err as Error).message
-    if (debugLogFn) debugLogFn('api', `POST ${endpoint} error: ${errMsg}`, { queryId, type })
-    console.error('[Gasoline API] Error posting query result:', { queryId, type, endpoint, error: errMsg })
-  }
-}
-
-/**
- * POST async command result to server using correlation_id
- */
-export async function postAsyncCommandResult(
-  serverUrl: string,
-  correlationId: string,
-  status: 'pending' | 'complete' | 'timeout',
-  result: unknown = null,
-  error: string | null = null,
-  debugLogFn?: (category: string, message: string, data?: unknown) => void
-): Promise<void> {
-  const payload: {
-    correlation_id: string
-    status: string
-    result?: unknown
-    error?: string
-  } = {
-    correlation_id: correlationId,
-    status: status
-  }
-  if (result !== null) {
-    payload.result = result
-  }
-  if (error !== null) {
-    payload.error = error
-  }
-
-  try {
-    const response = await fetch(`${serverUrl}/query-result`, {
-      method: 'POST',
-      headers: getRequestHeaders(),
-      body: JSON.stringify(payload)
-    })
-
-    if (!response.ok) {
-      console.error(`[Gasoline] Failed to post async command result: HTTP ${response.status}`, {
-        // nosemgrep: javascript.lang.security.audit.unsafe-formatstring.unsafe-formatstring -- console.log with internal server state, not user-controlled format string
-        correlationId,
-        status
-      })
-    }
-  } catch (err) {
-    console.error('[Gasoline] Error posting async command result:', {
-      correlationId,
-      status,
-      error: (err as Error).message
-    })
-    if (debugLogFn) {
-      debugLogFn('connection', 'Failed to post async command result', {
-        correlationId,
-        status,
-        error: (err as Error).message
-      })
-    }
-  }
-}
-
-// NOTE: postSettings and pollCaptureSettings removed - use /sync for all communication
-
-/**
- * Post extension logs to server
- */
-export async function postExtensionLogs(
-  serverUrl: string,
-  logs: Array<{
-    timestamp: string
-    level: string
-    message: string
-    source: string
-    category: string
-    data?: unknown
-  }>
-): Promise<void> {
-  if (logs.length === 0) return
-
-  try {
-    const response = await fetch(`${serverUrl}/extension-logs`, {
-      method: 'POST',
-      headers: getRequestHeaders(),
-      body: JSON.stringify({ logs })
-    })
-
-    if (!response.ok) {
-      console.error(`[Gasoline] Failed to post extension logs: HTTP ${response.status}`, { count: logs.length }) // nosemgrep: javascript.lang.security.audit.unsafe-formatstring.unsafe-formatstring -- console.log with internal server state, not user-controlled format string
-    }
-  } catch (err) {
-    console.error('[Gasoline] Error posting extension logs:', { count: logs.length, error: (err as Error).message })
-  }
-}
-
-/**
  * Send status ping to server
  */
 export async function sendStatusPing(
@@ -424,57 +269,5 @@ export async function sendStatusPing(
     if (diagnosticLogFn) {
       diagnosticLogFn('[Gasoline] Status ping error: ' + (err as Error).message)
     }
-  }
-}
-
-/**
- * Poll server for pending queries
- */
-export async function pollPendingQueries(
-  serverUrl: string,
-  extSessionId: string,
-  pilotState: '0' | '1',
-  diagnosticLogFn?: (message: string) => void,
-  debugLogFn?: (category: string, message: string, data?: unknown) => void
-): Promise<
-  Array<{
-    id: string
-    type: string
-    params: string | Record<string, unknown>
-    correlation_id?: string
-  }>
-> {
-  try {
-    if (diagnosticLogFn) {
-      diagnosticLogFn(`[Diagnostic] Poll request: header=${pilotState}`)
-    }
-
-    const response = await fetch(`${serverUrl}/pending-queries`, {
-      headers: {
-        ...getRequestHeaders({ 'X-Gasoline-Ext-Session': extSessionId, 'X-Gasoline-Pilot': pilotState })
-      }
-    })
-
-    if (!response.ok) {
-      if (debugLogFn) debugLogFn('connection', 'Poll pending-queries failed', { status: response.status })
-      return []
-    }
-
-    const data = (await response.json()) as {
-      queries?: Array<{
-        id: string
-        type: string
-        params: string | Record<string, unknown>
-        correlation_id?: string
-      }>
-    }
-
-    if (!data.queries || data.queries.length === 0) return []
-
-    if (debugLogFn) debugLogFn('connection', 'Got pending queries', { count: data.queries.length })
-    return data.queries
-  } catch (err) {
-    if (debugLogFn) debugLogFn('connection', 'Poll pending-queries error', { error: (err as Error).message })
-    return []
   }
 }

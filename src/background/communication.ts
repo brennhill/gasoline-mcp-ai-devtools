@@ -24,21 +24,15 @@ export {
 } from './batchers.js'
 
 // Re-export server communication functions
-// NOTE: postSettings and pollCaptureSettings removed - use /sync for all communication
 export {
   sendLogsToServer,
   sendWSEventsToServer,
   sendNetworkBodiesToServer,
-  sendNetworkWaterfallToServer,
   sendEnhancedActionsToServer,
   sendPerformanceSnapshotsToServer,
   checkServerHealth,
   updateBadge,
-  postQueryResult,
-  postAsyncCommandResult,
-  postExtensionLogs,
   sendStatusPing,
-  pollPendingQueries,
   type ServerHealthResponse
 } from './server.js'
 

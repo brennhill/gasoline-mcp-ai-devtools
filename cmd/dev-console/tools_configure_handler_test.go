@@ -1,5 +1,4 @@
 // Purpose: Tests for configure tool handler dispatch.
-// Why: Prevents silent regressions in critical behavior paths.
 // Docs: docs/features/feature/mcp-persistent-server/index.md
 
 // tools_configure_handler_test.go — Comprehensive unit tests for configure tool dispatch and response fields.

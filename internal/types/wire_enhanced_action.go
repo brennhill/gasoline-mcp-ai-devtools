@@ -19,7 +19,7 @@ type WireEnhancedAction struct {
 	SelectedValue string         `json:"selected_value,omitempty"`
 	SelectedText  string         `json:"selected_text,omitempty"`
 	ScrollY        int            `json:"scroll_y,omitempty"`
-	TabId          int            `json:"tab_id,omitempty"`
+	TabID          int            `json:"tab_id,omitempty"`
 	Classification string         `json:"classification,omitempty"`
 	DurationMs     int            `json:"duration_ms,omitempty"`
 	Role           string         `json:"role,omitempty"`

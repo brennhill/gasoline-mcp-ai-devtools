@@ -77,26 +77,6 @@ export async function sendNetworkBodiesToServer(serverUrl, bodies, debugLogFn) {
         debugLogFn('connection', `Server accepted ${bodies.length} network bodies`);
 }
 /**
- * Send network waterfall data to server
- */
-export async function sendNetworkWaterfallToServer(serverUrl, payload, debugLogFn) {
-    if (debugLogFn)
-        debugLogFn('connection', `Sending ${payload.entries.length} waterfall entries to server`);
-    const response = await fetch(`${serverUrl}/network-waterfall`, {
-        method: 'POST',
-        headers: getRequestHeaders(),
-        body: JSON.stringify(payload)
-    });
-    if (!response.ok) {
-        const error = `Server error (network waterfall): ${response.status} ${response.statusText}`;
-        if (debugLogFn)
-            debugLogFn('error', error);
-        throw new Error(error);
-    }
-    if (debugLogFn)
-        debugLogFn('connection', `Server accepted ${payload.entries.length} waterfall entries`);
-}
-/**
  * Send enhanced actions to server
  */
 export async function sendEnhancedActionsToServer(serverUrl, actions, debugLogFn) {
@@ -200,105 +180,6 @@ export function updateBadge(status) {
     }
 }
 /**
- * Post query results back to the server
- */
-export async function postQueryResult(serverUrl, queryId, type, result, debugLogFn) {
-    const endpoint = '/query-result';
-    const body = JSON.stringify({ id: queryId, result });
-    const logData = { queryId, type, endpoint, resultSize: body.length };
-    if (debugLogFn)
-        debugLogFn('api', `POST ${endpoint}`, logData);
-    console.log(`[Gasoline API] POST ${endpoint}`, logData); // nosemgrep: javascript.lang.security.audit.unsafe-formatstring.unsafe-formatstring -- console.log with internal server state, not user-controlled format string
-    try {
-        const response = await fetch(`${serverUrl}${endpoint}`, {
-            method: 'POST',
-            headers: getRequestHeaders(),
-            body
-        });
-        if (!response.ok) {
-            const errMsg = `Failed to post query result: HTTP ${response.status}`;
-            if (debugLogFn)
-                debugLogFn('api', errMsg, { queryId, type, endpoint });
-            console.error(`[Gasoline API] ${errMsg}`, { queryId, type, endpoint }); // nosemgrep: javascript.lang.security.audit.unsafe-formatstring.unsafe-formatstring -- console.log with internal server state, not user-controlled format string
-        }
-        else {
-            if (debugLogFn)
-                debugLogFn('api', `POST ${endpoint} success`, { queryId });
-            console.log(`[Gasoline API] POST ${endpoint} success`, { queryId }); // nosemgrep: javascript.lang.security.audit.unsafe-formatstring.unsafe-formatstring -- console.log with internal server state, not user-controlled format string
-        }
-    }
-    catch (err) {
-        const errMsg = err.message;
-        if (debugLogFn)
-            debugLogFn('api', `POST ${endpoint} error: ${errMsg}`, { queryId, type });
-        console.error('[Gasoline API] Error posting query result:', { queryId, type, endpoint, error: errMsg });
-    }
-}
-/**
- * POST async command result to server using correlation_id
- */
-export async function postAsyncCommandResult(serverUrl, correlationId, status, result = null, error = null, debugLogFn) {
-    const payload = {
-        correlation_id: correlationId,
-        status: status
-    };
-    if (result !== null) {
-        payload.result = result;
-    }
-    if (error !== null) {
-        payload.error = error;
-    }
-    try {
-        const response = await fetch(`${serverUrl}/query-result`, {
-            method: 'POST',
-            headers: getRequestHeaders(),
-            body: JSON.stringify(payload)
-        });
-        if (!response.ok) {
-            console.error(`[Gasoline] Failed to post async command result: HTTP ${response.status}`, {
-                // nosemgrep: javascript.lang.security.audit.unsafe-formatstring.unsafe-formatstring -- console.log with internal server state, not user-controlled format string
-                correlationId,
-                status
-            });
-        }
-    }
-    catch (err) {
-        console.error('[Gasoline] Error posting async command result:', {
-            correlationId,
-            status,
-            error: err.message
-        });
-        if (debugLogFn) {
-            debugLogFn('connection', 'Failed to post async command result', {
-                correlationId,
-                status,
-                error: err.message
-            });
-        }
-    }
-}
-// NOTE: postSettings and pollCaptureSettings removed - use /sync for all communication
-/**
- * Post extension logs to server
- */
-export async function postExtensionLogs(serverUrl, logs) {
-    if (logs.length === 0)
-        return;
-    try {
-        const response = await fetch(`${serverUrl}/extension-logs`, {
-            method: 'POST',
-            headers: getRequestHeaders(),
-            body: JSON.stringify({ logs })
-        });
-        if (!response.ok) {
-            console.error(`[Gasoline] Failed to post extension logs: HTTP ${response.status}`, { count: logs.length }); // nosemgrep: javascript.lang.security.audit.unsafe-formatstring.unsafe-formatstring -- console.log with internal server state, not user-controlled format string
-        }
-    }
-    catch (err) {
-        console.error('[Gasoline] Error posting extension logs:', { count: logs.length, error: err.message });
-    }
-}
-/**
  * Send status ping to server
  */
 export async function sendStatusPing(serverUrl, statusMessage, diagnosticLogFn) {
@@ -317,37 +198,6 @@ export async function sendStatusPing(serverUrl, statusMessage, diagnosticLogFn) 
         if (diagnosticLogFn) {
             diagnosticLogFn('[Gasoline] Status ping error: ' + err.message);
         }
-    }
-}
-/**
- * Poll server for pending queries
- */
-export async function pollPendingQueries(serverUrl, extSessionId, pilotState, diagnosticLogFn, debugLogFn) {
-    try {
-        if (diagnosticLogFn) {
-            diagnosticLogFn(`[Diagnostic] Poll request: header=${pilotState}`);
-        }
-        const response = await fetch(`${serverUrl}/pending-queries`, {
-            headers: {
-                ...getRequestHeaders({ 'X-Gasoline-Ext-Session': extSessionId, 'X-Gasoline-Pilot': pilotState })
-            }
-        });
-        if (!response.ok) {
-            if (debugLogFn)
-                debugLogFn('connection', 'Poll pending-queries failed', { status: response.status });
-            return [];
-        }
-        const data = (await response.json());
-        if (!data.queries || data.queries.length === 0)
-            return [];
-        if (debugLogFn)
-            debugLogFn('connection', 'Got pending queries', { count: data.queries.length });
-        return data.queries;
-    }
-    catch (err) {
-        if (debugLogFn)
-            debugLogFn('connection', 'Poll pending-queries error', { error: err.message });
-        return [];
     }
 }
 //# sourceMappingURL=server.js.map

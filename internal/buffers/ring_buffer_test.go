@@ -1,5 +1,4 @@
 // Purpose: Tests for ring buffer append, eviction, and iteration correctness.
-// Why: Prevents silent regressions in critical behavior paths.
 // Docs: docs/features/feature/ring-buffer/index.md
 
 package buffers

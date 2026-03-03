@@ -1,5 +1,4 @@
 // Purpose: Tests for PII and credential redaction correctness.
-// Why: Prevents silent regressions in critical behavior paths.
 // Docs: docs/features/feature/redaction-patterns/index.md
 
 //go:build integration

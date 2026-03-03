@@ -1,5 +1,4 @@
 // Purpose: Tests for generate tool audit trail integration.
-// Why: Prevents silent regressions in critical behavior paths.
 // Docs: docs/features/feature/test-generation/index.md
 
 // tools_generate_audit_test.go — Behavioral tests for generate tool

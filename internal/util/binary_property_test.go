@@ -1,5 +1,4 @@
 // Purpose: Property-based tests for utility invariants.
-// Why: Prevents silent regressions in critical behavior paths.
 
 // binary_property_test.go — Property-based tests for binary format detection.
 

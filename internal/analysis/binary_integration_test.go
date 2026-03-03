@@ -1,5 +1,4 @@
 // Purpose: Integration tests for error clustering and API schema analysis end-to-end flows.
-// Why: Prevents silent regressions in critical behavior paths.
 // Docs: docs/features/feature/api-schema/index.md
 
 //go:build integration

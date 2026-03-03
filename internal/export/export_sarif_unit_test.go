@@ -1,5 +1,4 @@
 // Purpose: Unit tests for HAR/SARIF export export sarif logic.
-// Why: Prevents silent regressions in critical behavior paths.
 // Docs: docs/features/feature/har-export/index.md
 
 package export

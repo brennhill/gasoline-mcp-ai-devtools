@@ -1,5 +1,4 @@
 // Purpose: Tests for observe tool scope filtering.
-// Why: Prevents silent regressions in critical behavior paths.
 // Docs: docs/features/feature/mcp-persistent-server/index.md
 
 // tools_observe_scope_test.go — Tests for scope filtering in errors/logs observe handlers.

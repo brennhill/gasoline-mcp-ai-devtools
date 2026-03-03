@@ -1,5 +1,4 @@
 // Purpose: Extended tests for bridge fast-start client compatibility.
-// Why: Prevents silent regressions in critical behavior paths.
 // Docs: docs/features/feature/mcp-persistent-server/index.md
 
 // bridge_faststart_extended_test.go — Extended fast-start tests for MCP bridge mode.

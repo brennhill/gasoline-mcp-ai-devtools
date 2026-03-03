@@ -1,5 +1,4 @@
 // Purpose: Coverage-expansion tests for capture pipeline edge cases and branch paths.
-// Why: Prevents silent regressions in critical behavior paths.
 // Docs: docs/features/feature/backend-log-streaming/index.md
 
 // coverage_gaps_part2_test.go — Targeted tests for uncovered capture paths (part 2).

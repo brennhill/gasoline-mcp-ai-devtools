@@ -1,5 +1,4 @@
 // Purpose: Tests for generate HAR export output.
-// Why: Prevents silent regressions in critical behavior paths.
 // Docs: docs/features/feature/test-generation/index.md
 
 // tools_generate_har_test.go — MCP integration tests for HAR export.

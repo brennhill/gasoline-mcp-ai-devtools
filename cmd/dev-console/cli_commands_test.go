@@ -1,5 +1,4 @@
 // Purpose: Tests for CLI command parsing and dispatch.
-// Why: Prevents silent regressions in critical behavior paths.
 // Docs: docs/features/feature/mcp-persistent-server/index.md
 
 // cli_commands_test.go — Tests for uncovered CLI argument parser branches.

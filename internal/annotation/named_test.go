@@ -1,5 +1,4 @@
 // Purpose: Tests for named annotation sessions and multi-page accumulation.
-// Why: Prevents silent regressions in critical behavior paths.
 // Docs: docs/features/feature/annotated-screenshots/index.md
 
 // named_test.go — Tests for named annotation sessions.

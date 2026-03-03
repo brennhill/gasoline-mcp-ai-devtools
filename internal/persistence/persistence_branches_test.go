@@ -1,5 +1,4 @@
 // Purpose: Tests for persistence branch path coverage.
-// Why: Prevents silent regressions in critical behavior paths.
 // Docs: docs/features/feature/persistent-memory/index.md
 
 package persistence

@@ -1,5 +1,4 @@
 // Purpose: Tests for test-generation classify dispatch routing.
-// Why: Prevents silent regressions in critical behavior paths.
 // Docs: docs/features/feature/test-generation/index.md
 
 // testgen_classify_dispatch_test.go — Tests for classify dispatch functions at 0% coverage.

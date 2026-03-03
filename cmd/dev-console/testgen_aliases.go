@@ -4,7 +4,10 @@
 
 package main
 
-import "github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/testgen"
+import (
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/reproduction"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/testgen"
+)
 
 type TestFromContextRequest = testgen.TestFromContextRequest
 type GeneratedTest = testgen.GeneratedTest
@@ -58,7 +61,7 @@ var (
 	normalizeTimestamp           = testgen.NormalizeTimestamp
 	targetSelector               = testgen.TargetSelector
 	playwrightActionLine         = testgen.PlaywrightActionLine
-	generatePlaywrightScript     = testgen.GeneratePlaywrightScript
+	generatePlaywrightScript     = reproduction.GeneratePlaywrightScript
 	deriveInteractionTestName    = testgen.DeriveInteractionTestName
 	buildRegressionAssertions    = testgen.BuildRegressionAssertions
 	insertAssertionsBeforeClose  = testgen.InsertAssertionsBeforeClose

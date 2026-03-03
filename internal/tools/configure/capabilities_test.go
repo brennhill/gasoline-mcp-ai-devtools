@@ -1,5 +1,4 @@
 // Purpose: Tests for describe_capabilities schema generation.
-// Why: Prevents silent regressions in critical behavior paths.
 // Docs: docs/features/feature/enhanced-cli-config/index.md
 
 // capabilities_test.go — Tests for capability map building.

@@ -5,8 +5,6 @@
 package capture
 
 import (
-	"fmt"
-	"os"
 	"sync"
 )
 
@@ -62,17 +60,4 @@ func (dl *DebugLogger) GetHTTPDebugLog() []HTTPDebugEntry {
 	result := make([]HTTPDebugEntry, len(dl.httpDebugLog))
 	copy(result, dl.httpDebugLog)
 	return result
-}
-
-// PrintHTTPDebug prints an HTTP debug entry to stderr.
-// Must be called WITHOUT holding any lock.
-// Quiet mode: only errors (non-2xx status codes) are printed.
-func PrintHTTPDebug(entry HTTPDebugEntry) {
-	if entry.ResponseStatus >= 400 {
-		fmt.Fprintf(os.Stderr, "[gasoline] HTTP %s %s | status=%d\n",
-			entry.Method, entry.Endpoint, entry.ResponseStatus)
-		if entry.Error != "" {
-			fmt.Fprintf(os.Stderr, "[gasoline]   Error: %s\n", entry.Error)
-		}
-	}
 }

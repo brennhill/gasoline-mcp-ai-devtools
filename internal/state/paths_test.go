@@ -1,5 +1,4 @@
 // Purpose: Tests for state save, load, list, and delete operations.
-// Why: Prevents silent regressions in critical behavior paths.
 // Docs: docs/features/feature/state-time-travel/index.md
 
 package state

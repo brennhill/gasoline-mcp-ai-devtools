@@ -1,5 +1,4 @@
 // Purpose: Tests for configure session store/load operations.
-// Why: Prevents silent regressions in critical behavior paths.
 // Docs: docs/features/feature/mcp-persistent-server/index.md
 
 // tools_configure_session_test.go — Coverage tests for load session and test boundary handlers.
