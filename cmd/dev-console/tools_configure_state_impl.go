@@ -9,7 +9,7 @@ import (
 	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/persistence"
 )
 
-func (h *ToolHandler) configureStoreImpl(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+func (h *configureSessionHandler) toolConfigureStore(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	var compositeArgs struct {
 		StoreAction string          `json:"store_action"`
 		Action      string          `json:"action"`
@@ -43,7 +43,7 @@ func (h *ToolHandler) configureStoreImpl(req JSONRPCRequest, args json.RawMessag
 	}
 
 	// Ensure session store is initialized.
-	if h.sessionStoreImpl == nil {
+	if h.parent.sessionStoreImpl == nil {
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrNotInitialized, "Session store not initialized", "Internal error — do not retry")}
 	}
 
@@ -55,14 +55,14 @@ func (h *ToolHandler) configureStoreImpl(req JSONRPCRequest, args json.RawMessag
 		Data:      data,
 	}
 
-	result, err := h.sessionStoreImpl.HandleSessionStore(storeArgs)
+	result, err := h.parent.sessionStoreImpl.HandleSessionStore(storeArgs)
 	if err != nil {
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidParam, err.Error(), "Fix the request parameters and try again")}
 	}
 
 	// Invalidate summary preference cache when response_mode is written.
 	if namespace == "session" && compositeArgs.Key == "response_mode" {
-		h.invalidateSummaryPref()
+		h.parent.invalidateSummaryPref()
 	}
 
 	// Parse result back to map for response.
@@ -74,10 +74,10 @@ func (h *ToolHandler) configureStoreImpl(req JSONRPCRequest, args json.RawMessag
 	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpJSONResponse("Store operation complete", responseData)}
 }
 
-func (h *ToolHandler) configureLoadSessionContextImpl(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+func (h *configureSessionHandler) toolLoadSessionContext(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	// If session store is initialized, use it.
-	if h.sessionStoreImpl != nil {
-		ctx := h.sessionStoreImpl.LoadSessionContext()
+	if h.parent.sessionStoreImpl != nil {
+		ctx := h.parent.sessionStoreImpl.LoadSessionContext()
 		responseData := map[string]any{
 			"status":        "ok",
 			"project_id":    ctx.ProjectID,
