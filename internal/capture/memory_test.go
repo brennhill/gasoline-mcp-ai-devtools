@@ -103,7 +103,7 @@ func TestMemory_CalcWSMemory_PerEventEstimate(t *testing.T) {
 	c.mu.Unlock()
 
 	c.mu.RLock()
-	mem := c.calcWSMemory()
+	mem := c.buffers.calcWSMemory()
 	c.mu.RUnlock()
 
 	expectedMin := int64(dataSize + 100)
@@ -127,7 +127,7 @@ func TestMemory_CalcNBMemory_PerEntryEstimate(t *testing.T) {
 	c.mu.Unlock()
 
 	c.mu.RLock()
-	mem := c.calcNBMemory()
+	mem := c.buffers.calcNBMemory()
 	c.mu.RUnlock()
 
 	expectedMin := int64(reqSize + respSize + 50)
@@ -149,7 +149,7 @@ func TestMemory_CalcActionMemory_PerEntryEstimate(t *testing.T) {
 	c.mu.Unlock()
 
 	c.mu.RLock()
-	mem := c.calcActionMemory()
+	mem := c.buffers.calcActionMemory()
 	c.mu.RUnlock()
 
 	expected := int64(500)
@@ -163,9 +163,9 @@ func TestMemory_EmptyBuffers_ZeroMemory(t *testing.T) {
 	c := NewCapture()
 
 	c.mu.RLock()
-	ws := c.calcWSMemory()
-	nb := c.calcNBMemory()
-	actions := c.calcActionMemory()
+	ws := c.buffers.calcWSMemory()
+	nb := c.buffers.calcNBMemory()
+	actions := c.buffers.calcActionMemory()
 	c.mu.RUnlock()
 
 	if ws != 0 || nb != 0 || actions != 0 {
@@ -352,7 +352,7 @@ func TestMemory_CalcWSMemory_ReturnsRunningTotal(t *testing.T) {
 	c.AddWebSocketEvents([]WebSocketEvent{makeWSEvent(500), makeWSEvent(1000)})
 
 	c.mu.RLock()
-	calcResult := c.calcWSMemory()
+	calcResult := c.buffers.calcWSMemory()
 	runningTotal := c.buffers.wsMemoryTotal
 	c.mu.RUnlock()
 
@@ -368,7 +368,7 @@ func TestMemory_CalcNBMemory_ReturnsRunningTotal(t *testing.T) {
 	c.AddNetworkBodies([]NetworkBody{makeNetworkBody(500, 500)})
 
 	c.mu.RLock()
-	calcResult := c.calcNBMemory()
+	calcResult := c.buffers.calcNBMemory()
 	runningTotal := c.buffers.networkBodyMemoryTotal
 	c.mu.RUnlock()
 
