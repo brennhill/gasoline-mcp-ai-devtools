@@ -1,5 +1,4 @@
 // Purpose: Tests for interact DOM query operations.
-// Why: Prevents silent regressions in critical behavior paths.
 // Docs: docs/features/feature/interact-explore/index.md
 
 // tools_interact_dom_test.go — Tests for DOM interaction primitives.

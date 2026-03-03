@@ -1,5 +1,4 @@
 // Purpose: Tests for SSRF protection in upload endpoints.
-// Why: Prevents silent regressions in critical behavior paths.
 // Docs: docs/features/feature/file-upload/index.md
 
 // ssrf_test.go — Tests for SSRF-safe transport and dialer helpers.

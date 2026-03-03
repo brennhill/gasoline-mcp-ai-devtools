@@ -1,5 +1,4 @@
 // Purpose: Tests for protobuf and BSON binary format detection.
-// Why: Prevents silent regressions in critical behavior paths.
 
 // binary_protobuf_bson_test.go — Coverage tests for protobuf, BSON, and varint detection.
 // Targets uncovered branches in wire types, field validation, length-delimited

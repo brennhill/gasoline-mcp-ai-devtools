@@ -1,5 +1,4 @@
 // Purpose: Tests for generate tool warning message filtering.
-// Why: Prevents silent regressions in critical behavior paths.
 // Docs: docs/features/feature/test-generation/index.md
 
 // tools_generate_warning_filter_test.go — Regression tests for generate dispatch warnings.

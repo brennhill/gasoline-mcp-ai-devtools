@@ -1,5 +1,4 @@
 // Purpose: Tests for session state verification and integrity checks.
-// Why: Prevents silent regressions in critical behavior paths.
 // Docs: docs/features/feature/pagination/index.md
 
 // verify_test.go — Tests for the verify_fix MCP tool.

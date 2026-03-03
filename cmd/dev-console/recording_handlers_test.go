@@ -1,5 +1,4 @@
 // Purpose: Tests for recording HTTP handler endpoints.
-// Why: Prevents silent regressions in critical behavior paths.
 // Docs: docs/features/feature/mcp-persistent-server/index.md
 
 // recording_handlers_test.go — Coverage tests for recording handler functions.

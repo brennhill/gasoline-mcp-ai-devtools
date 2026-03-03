@@ -16,8 +16,8 @@ import (
 
 // gatherConnectionDiagnostics collects detailed information about why connection failed.
 // Returns a map with diagnostic data for debug logging and user error messages.
-func gatherConnectionDiagnostics(port int, serverURL string, healthURL string) map[string]interface{} {
-	diagnostics := make(map[string]interface{})
+func gatherConnectionDiagnostics(port int, serverURL string, healthURL string) map[string]any {
+	diagnostics := make(map[string]any)
 
 	diagnosePortStatus(diagnostics, port)
 	diagnoseProcessOnPort(diagnostics, port)
@@ -29,7 +29,7 @@ func gatherConnectionDiagnostics(port int, serverURL string, healthURL string) m
 }
 
 // diagnosePortStatus checks whether the port is accepting TCP connections.
-func diagnosePortStatus(diagnostics map[string]interface{}, port int) {
+func diagnosePortStatus(diagnostics map[string]any, port int) {
 	conn, err := net.DialTimeout("tcp", fmt.Sprintf("127.0.0.1:%d", port), 500*time.Millisecond)
 	if err != nil {
 		diagnostics["port_status"] = "not listening"
@@ -41,7 +41,7 @@ func diagnosePortStatus(diagnostics map[string]interface{}, port int) {
 }
 
 // diagnoseProcessOnPort identifies what process is using the port.
-func diagnoseProcessOnPort(diagnostics map[string]interface{}, port int) {
+func diagnoseProcessOnPort(diagnostics map[string]any, port int) {
 	pids, err := findProcessOnPort(port)
 	if err != nil || len(pids) == 0 {
 		diagnostics["process_info"] = "no process found on port"
@@ -68,7 +68,7 @@ func diagnoseProcessOnPort(diagnostics map[string]interface{}, port int) {
 }
 
 // diagnoseHealthEndpoint probes the /health endpoint and classifies the failure mode.
-func diagnoseHealthEndpoint(diagnostics map[string]interface{}, healthURL string) {
+func diagnoseHealthEndpoint(diagnostics map[string]any, healthURL string) {
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
 
@@ -122,7 +122,7 @@ func classifyHealthError(err error) string {
 }
 
 // diagnoseMCPEndpoint probes the /mcp endpoint with a minimal JSON-RPC initialize request.
-func diagnoseMCPEndpoint(diagnostics map[string]interface{}, serverURL string) {
+func diagnoseMCPEndpoint(diagnostics map[string]any, serverURL string) {
 	mcpURL := serverURL + "/mcp"
 	mcpReq := `{"jsonrpc":"2.0","id":0,"method":"initialize","params":{}}`
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
@@ -145,7 +145,7 @@ func diagnoseMCPEndpoint(diagnostics map[string]interface{}, serverURL string) {
 }
 
 // summarizeDiagnosis produces a top-level diagnosis and recommended action from gathered data.
-func summarizeDiagnosis(diagnostics map[string]interface{}, port int) {
+func summarizeDiagnosis(diagnostics map[string]any, port int) {
 	switch {
 	case diagnostics["port_status"] == "not listening":
 		diagnostics["diagnosis"] = "No server running on port"

@@ -1,5 +1,4 @@
 // Purpose: Tests for tool contract enforcement and validation.
-// Why: Prevents silent regressions in critical behavior paths.
 // Docs: docs/features/feature/mcp-persistent-server/index.md
 
 // tools_contract_enforcement_test.go — Contract enforcement tests, async bridge round-trip,

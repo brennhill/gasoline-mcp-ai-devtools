@@ -1,5 +1,4 @@
 // Purpose: Integration tests for capture pipeline end-to-end flows.
-// Why: Prevents silent regressions in critical behavior paths.
 // Docs: docs/features/feature/backend-log-streaming/index.md
 
 // async_queue_integration_test.go — Integration test for full async queue-and-poll flow

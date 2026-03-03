@@ -1,5 +1,4 @@
 // Purpose: Tests for JSON persistence serialization and deserialization.
-// Why: Prevents silent regressions in critical behavior paths.
 // Docs: docs/features/feature/persistent-memory/index.md
 
 // ai_persistence_json_test.go — Tests for persistence JSON serialization, file utilities, and namespace helpers.

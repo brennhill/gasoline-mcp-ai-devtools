@@ -1,5 +1,4 @@
 // Purpose: Tests for SSRF bypass prevention in upload URL validation.
-// Why: Prevents silent regressions in critical behavior paths.
 // Docs: docs/features/feature/file-upload/index.md
 
 // ssrf_bypass_test.go — Tests for SSRF bypass resistance.

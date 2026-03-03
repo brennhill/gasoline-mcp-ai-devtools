@@ -1,5 +1,4 @@
 // Purpose: Edge-case tests for dev-console boundary conditions.
-// Why: Prevents silent regressions in critical behavior paths.
 // Docs: docs/features/feature/mcp-persistent-server/index.md
 
 // upload_handlers_edge_test.go — Security, sanitization, MIME, and edge-case tests for file upload.

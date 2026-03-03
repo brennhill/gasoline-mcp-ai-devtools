@@ -1,5 +1,4 @@
 // Purpose: Tests for SARIF accessibility report export.
-// Why: Prevents silent regressions in critical behavior paths.
 // Docs: docs/features/feature/har-export/index.md
 
 //go:build integration

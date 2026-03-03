@@ -1,5 +1,4 @@
 // Purpose: Tests for handler warning message injection.
-// Why: Prevents silent regressions in critical behavior paths.
 // Docs: docs/features/feature/mcp-persistent-server/index.md
 
 // handler_warning_test.go — Tests for upgrade/update warning injection into MCP tool responses.

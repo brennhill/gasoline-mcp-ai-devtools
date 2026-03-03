@@ -1,5 +1,4 @@
 // Purpose: Tests for capture recording delegation to recording manager.
-// Why: Prevents silent regressions in critical behavior paths.
 // Docs: docs/features/feature/backend-log-streaming/index.md
 
 // recording_delegation_test.go — Tests for Capture delegation to RecordingManager.

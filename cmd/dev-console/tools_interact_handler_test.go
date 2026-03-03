@@ -1,5 +1,4 @@
 // Purpose: Tests for interact tool handler dispatch.
-// Why: Prevents silent regressions in critical behavior paths.
 // Docs: docs/features/feature/interact-explore/index.md
 
 // tools_interact_handler_test.go — Comprehensive unit tests for interact tool dispatch and response fields.

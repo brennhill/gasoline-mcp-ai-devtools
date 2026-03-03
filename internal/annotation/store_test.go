@@ -1,5 +1,4 @@
 // Purpose: Tests for annotation store CRUD operations.
-// Why: Prevents silent regressions in critical behavior paths.
 // Docs: docs/features/feature/annotated-screenshots/index.md
 
 // store_test.go — Tests for the annotation store.

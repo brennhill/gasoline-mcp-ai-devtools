@@ -1,5 +1,4 @@
 // Purpose: Tests for enhanced action capture with mutation tracking.
-// Why: Prevents silent regressions in critical behavior paths.
 // Docs: docs/features/feature/backend-log-streaming/index.md
 
 // enhanced_actions_test.go — Tests for enhanced action buffering, enrichment, and ring buffer eviction.
@@ -25,7 +24,7 @@ func TestNewAddEnhancedActions_SingleAction(t *testing.T) {
 		Timestamp: time.Now().UnixMilli(),
 		URL:       "https://example.com/page",
 		Selectors: map[string]any{"css": "#submit-btn"},
-		TabId:     1,
+		TabID:     1,
 		Source:    "human",
 	}
 
@@ -47,8 +46,8 @@ func TestNewAddEnhancedActions_SingleAction(t *testing.T) {
 	if stored.URL != "https://example.com/page" {
 		t.Errorf("URL = %q, want %q", stored.URL, "https://example.com/page")
 	}
-	if stored.TabId != 1 {
-		t.Errorf("TabId = %d, want 1", stored.TabId)
+	if stored.TabID != 1 {
+		t.Errorf("TabID = %d, want 1", stored.TabID)
 	}
 	if stored.Source != "human" {
 		t.Errorf("Source = %q, want %q", stored.Source, "human")
@@ -357,7 +356,7 @@ func TestNewAddEnhancedActions_AllFieldsPreserved(t *testing.T) {
 		SelectedValue: "option-1",
 		SelectedText:  "Option 1",
 		ScrollY:       500,
-		TabId:         42,
+		TabID:         42,
 		Source:        "ai",
 	}
 
@@ -397,8 +396,8 @@ func TestNewAddEnhancedActions_AllFieldsPreserved(t *testing.T) {
 	if stored.ScrollY != 500 {
 		t.Errorf("ScrollY = %d, want 500", stored.ScrollY)
 	}
-	if stored.TabId != 42 {
-		t.Errorf("TabId = %d, want 42", stored.TabId)
+	if stored.TabID != 42 {
+		t.Errorf("TabID = %d, want 42", stored.TabID)
 	}
 	if stored.Source != "ai" {
 		t.Errorf("Source = %q, want ai", stored.Source)

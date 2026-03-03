@@ -1,5 +1,4 @@
 // Purpose: Tests for annotation store parsing and persistence.
-// Why: Prevents silent regressions in critical behavior paths.
 // Docs: docs/features/feature/mcp-persistent-server/index.md
 
 // annotation_store_test.go — Tests for annotation HTTP route helpers.

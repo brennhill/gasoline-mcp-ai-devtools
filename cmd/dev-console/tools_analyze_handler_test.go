@@ -1,5 +1,4 @@
 // Purpose: Tests for analyze tool handler dispatch.
-// Why: Prevents silent regressions in critical behavior paths.
 // Docs: docs/features/feature/analyze-tool/index.md
 
 // tools_analyze_handler_test.go — Comprehensive unit tests for analyze tool dispatch and response fields.

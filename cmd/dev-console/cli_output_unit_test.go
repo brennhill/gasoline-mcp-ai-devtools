@@ -1,5 +1,4 @@
 // Purpose: Unit tests for dev-console cli output logic.
-// Why: Prevents silent regressions in critical behavior paths.
 // Docs: docs/features/feature/mcp-persistent-server/index.md
 
 // cli_output_unit_test.go — Unit tests for CLI output formatters.

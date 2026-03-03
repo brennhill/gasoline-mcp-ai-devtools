@@ -1,5 +1,4 @@
 // Purpose: Tests for runtime mode detection and switching.
-// Why: Prevents silent regressions in critical behavior paths.
 // Docs: docs/features/feature/mcp-persistent-server/index.md
 
 package main

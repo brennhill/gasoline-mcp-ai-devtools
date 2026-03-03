@@ -1,5 +1,4 @@
 // Purpose: Coverage-expansion tests for redaction edge cases and branch paths.
-// Why: Prevents silent regressions in critical behavior paths.
 // Docs: docs/features/feature/redaction-patterns/index.md
 
 // redaction_coverage_test.go — Targeted tests for uncovered branches in redaction package.

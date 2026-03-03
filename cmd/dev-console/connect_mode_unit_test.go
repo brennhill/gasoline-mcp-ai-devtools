@@ -1,5 +1,4 @@
 // Purpose: Unit tests for dev-console connect mode logic.
-// Why: Prevents silent regressions in critical behavior paths.
 // Docs: docs/features/feature/mcp-persistent-server/index.md
 
 // connect_mode_unit_test.go — Unit tests for connect mode helpers.

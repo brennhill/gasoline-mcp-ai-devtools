@@ -1,5 +1,4 @@
 // Purpose: Tests for configure audit log handler.
-// Why: Prevents silent regressions in critical behavior paths.
 // Docs: docs/features/feature/enhanced-cli-config/index.md
 
 // audit_test.go — Tests for audit log summarization.

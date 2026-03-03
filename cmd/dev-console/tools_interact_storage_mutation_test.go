@@ -1,5 +1,4 @@
 // Purpose: Tests for interact storage mutation actions.
-// Why: Prevents silent regressions in critical behavior paths.
 // Docs: docs/features/feature/interact-explore/index.md
 
 // tools_interact_storage_mutation_test.go — TDD coverage for granular storage/cookie mutation actions.

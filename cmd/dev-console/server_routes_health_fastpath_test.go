@@ -1,5 +1,4 @@
 // Purpose: Tests for health endpoint fast-path response.
-// Why: Prevents silent regressions in critical behavior paths.
 // Docs: docs/features/feature/mcp-persistent-server/index.md
 
 package main

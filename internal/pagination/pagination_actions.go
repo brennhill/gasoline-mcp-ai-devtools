@@ -80,8 +80,8 @@ func SerializeActionEntryWithSequence(enriched ActionEntryWithSequence) map[stri
 	if enriched.Entry.ScrollY != 0 {
 		result["scroll_y"] = enriched.Entry.ScrollY
 	}
-	if enriched.Entry.TabId > 0 {
-		result["tab_id"] = enriched.Entry.TabId
+	if enriched.Entry.TabID > 0 {
+		result["tab_id"] = enriched.Entry.TabID
 	}
 
 	return result

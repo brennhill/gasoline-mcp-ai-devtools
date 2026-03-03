@@ -1,5 +1,4 @@
 // Purpose: Stress tests for capture pipeline under concurrent load.
-// Why: Prevents silent regressions in critical behavior paths.
 // Docs: docs/features/feature/backend-log-streaming/index.md
 
 // capture_stress_test.go — Concurrent stress tests for capture system.

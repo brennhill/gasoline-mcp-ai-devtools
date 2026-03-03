@@ -1,5 +1,4 @@
 // Purpose: Tests for data persistence read, write, and file management.
-// Why: Prevents silent regressions in critical behavior paths.
 // Docs: docs/features/feature/persistent-memory/index.md
 
 package persistence

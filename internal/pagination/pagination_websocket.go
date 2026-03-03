@@ -85,8 +85,8 @@ func SerializeWebSocketEntryWithSequence(enriched WebSocketEntryWithSequence) ma
 	if enriched.Entry.Sampled != nil {
 		result["sampled"] = enriched.Entry.Sampled
 	}
-	if enriched.Entry.TabId > 0 {
-		result["tab_id"] = enriched.Entry.TabId
+	if enriched.Entry.TabID > 0 {
+		result["tab_id"] = enriched.Entry.TabID
 	}
 
 	return result

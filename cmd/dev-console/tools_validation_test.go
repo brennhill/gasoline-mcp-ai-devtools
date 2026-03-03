@@ -1,5 +1,4 @@
 // Purpose: Tests for tool input validation and error formatting.
-// Why: Prevents silent regressions in critical behavior paths.
 // Docs: docs/features/feature/mcp-persistent-server/index.md
 
 // tools_validation_test.go — Unit tests for validation helpers.

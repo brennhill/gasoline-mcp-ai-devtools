@@ -1,5 +1,4 @@
 // Purpose: Golden-file snapshot tests for reproduction script generation output stability.
-// Why: Prevents silent regressions in critical behavior paths.
 // Docs: docs/features/feature/reproduction-scripts/index.md
 
 // golden_test.go — Golden file validation for Playwright reproduction scripts.

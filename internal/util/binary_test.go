@@ -1,5 +1,4 @@
 // Purpose: Tests for binary content detection heuristics.
-// Why: Prevents silent regressions in critical behavior paths.
 
 // binary_test.go — Tests for binary format detection via magic bytes.
 // Verifies detection of MessagePack, protobuf, CBOR, BSON formats

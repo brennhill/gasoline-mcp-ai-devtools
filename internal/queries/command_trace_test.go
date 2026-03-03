@@ -1,5 +1,4 @@
 // Purpose: Tests for query command tracing and correlation.
-// Why: Prevents silent regressions in critical behavior paths.
 // Docs: docs/features/feature/query-service/index.md
 
 package queries

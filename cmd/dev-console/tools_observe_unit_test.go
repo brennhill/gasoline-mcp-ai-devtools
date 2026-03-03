@@ -1,5 +1,4 @@
 // Purpose: Unit tests for dev-console tools observe logic.
-// Why: Prevents silent regressions in critical behavior paths.
 // Docs: docs/features/feature/mcp-persistent-server/index.md
 
 // tools_observe_unit_test.go — Unit tests for observe tool helpers.

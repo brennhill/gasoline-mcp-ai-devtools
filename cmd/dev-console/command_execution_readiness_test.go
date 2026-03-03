@@ -1,5 +1,4 @@
 // Purpose: Tests for command execution readiness gating.
-// Why: Prevents silent regressions in critical behavior paths.
 // Docs: docs/features/feature/mcp-persistent-server/index.md
 
 package main

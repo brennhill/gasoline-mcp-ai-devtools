@@ -1,5 +1,4 @@
 // Purpose: Fuzz utility operations for edge-case inputs and panics.
-// Why: Prevents silent regressions in critical behavior paths.
 
 // binary_fuzz_test.go — Fuzz tests for binary format detection.
 

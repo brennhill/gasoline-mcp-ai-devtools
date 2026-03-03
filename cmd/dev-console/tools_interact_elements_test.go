@@ -1,5 +1,4 @@
 // Purpose: Tests for interact element listing and discovery.
-// Why: Prevents silent regressions in critical behavior paths.
 // Docs: docs/features/feature/interact-explore/index.md
 
 // tools_interact_elements_test.go — Tests for element index store and resolution.

@@ -1,5 +1,4 @@
 // Purpose: Additional tests for state save/load path coverage.
-// Why: Prevents silent regressions in critical behavior paths.
 // Docs: docs/features/feature/state-time-travel/index.md
 
 package state

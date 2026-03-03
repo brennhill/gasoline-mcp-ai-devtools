@@ -163,29 +163,6 @@ func PlaywrightActionLine(action capture.EnhancedAction) string {
 	}
 }
 
-// GeneratePlaywrightScript generates a complete Playwright test script from actions.
-func GeneratePlaywrightScript(actions []capture.EnhancedAction, errorMessage string, baseURL string) string {
-	var script strings.Builder
-	script.WriteString("import { test, expect } from '@playwright/test';\n\n")
-	script.WriteString("test('Reproduce issue', async ({ page }) => {\n")
-
-	if baseURL != "" {
-		script.WriteString(fmt.Sprintf("  await page.goto('%s');\n", baseURL))
-	}
-
-	for _, action := range actions {
-		script.WriteString(PlaywrightActionLine(action))
-	}
-
-	if errorMessage != "" {
-		script.WriteString(fmt.Sprintf("  // Expected error: %s\n", errorMessage))
-		script.WriteString("  // TODO: Add specific assertion for this error\n")
-	}
-
-	script.WriteString("});\n")
-	return script.String()
-}
-
 // DeriveInteractionTestName derives a test name from the first action's URL or type.
 func DeriveInteractionTestName(actions []capture.EnhancedAction) string {
 	if len(actions) == 0 {

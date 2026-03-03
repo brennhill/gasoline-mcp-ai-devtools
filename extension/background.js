@@ -74,7 +74,6 @@ export { SOURCE_MAP_CACHE_SIZE, setSourceMapCacheEntry, getSourceMapCacheEntry, 
 // === PUBLIC API: COMMUNICATION (Tests)
 // =============================================================================
 export { createCircuitBreaker, createBatcherWithCircuitBreaker, createLogBatcher, sendLogsToServer, sendEnhancedActionsToServer, checkServerHealth, updateBadge, formatLogEntry, shouldCaptureLog } from './background/communication.js';
-export { postQueryResult, pollPendingQueries } from './background/server.js';
 // =============================================================================
 // === PUBLIC API: STATE SNAPSHOTS (Initialization)
 // =============================================================================

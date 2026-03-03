@@ -1,5 +1,4 @@
 // Purpose: Tests for observe audit trail integration.
-// Why: Prevents silent regressions in critical behavior paths.
 // Docs: docs/features/feature/mcp-persistent-server/index.md
 
 // tools_observe_audit_test.go — Behavioral tests for observe tool

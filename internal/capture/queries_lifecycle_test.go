@@ -1,5 +1,4 @@
 // Purpose: Tests for capture query lifecycle management.
-// Why: Prevents silent regressions in critical behavior paths.
 // Docs: docs/features/feature/backend-log-streaming/index.md
 
 // queries_lifecycle_test.go — Tests for query goroutine lifecycle fixes.

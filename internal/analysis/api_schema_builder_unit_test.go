@@ -1,5 +1,4 @@
 // Purpose: Unit tests for error clustering and API schema analysis api schema builder logic.
-// Why: Prevents silent regressions in critical behavior paths.
 // Docs: docs/features/feature/api-schema/index.md
 
 package analysis
