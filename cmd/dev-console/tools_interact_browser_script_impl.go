@@ -17,7 +17,7 @@ var validWorldValues = act.ValidWorldValues
 // truncateToLen delegates to the interact package.
 var truncateToLen = act.TruncateToLen
 
-func (h *ToolHandler) handleHighlightImpl(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+func (h *interactActionHandler) handleHighlightImpl(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	var params struct {
 		Selector   string `json:"selector"`
 		DurationMs int    `json:"duration_ms,omitempty"`
@@ -31,19 +31,19 @@ func (h *ToolHandler) handleHighlightImpl(req JSONRPCRequest, args json.RawMessa
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrMissingParam, "Required parameter 'selector' is missing", "Add the 'selector' parameter", withParam("selector"))}
 	}
 
-	if resp, blocked := h.requirePilot(req); blocked {
+	if resp, blocked := h.parent.requirePilot(req); blocked {
 		return resp
 	}
-	if resp, blocked := h.requireExtension(req); blocked {
+	if resp, blocked := h.parent.requireExtension(req); blocked {
 		return resp
 	}
-	if resp, blocked := h.requireTabTracking(req); blocked {
+	if resp, blocked := h.parent.requireTabTracking(req); blocked {
 		return resp
 	}
 
 	// Queue highlight command for extension.
 	correlationID := newCorrelationID("highlight")
-	h.armEvidenceForCommand(correlationID, "highlight", args, req.ClientID)
+	h.parent.armEvidenceForCommand(correlationID, "highlight", args, req.ClientID)
 
 	query := queries.PendingQuery{
 		Type:          "highlight",
@@ -51,15 +51,15 @@ func (h *ToolHandler) handleHighlightImpl(req JSONRPCRequest, args json.RawMessa
 		TabID:         params.TabID,
 		CorrelationID: correlationID,
 	}
-	h.capture.CreatePendingQueryWithTimeout(query, queries.AsyncCommandTimeout, req.ClientID)
+	h.parent.capture.CreatePendingQueryWithTimeout(query, queries.AsyncCommandTimeout, req.ClientID)
 
 	// Record AI action.
-	h.recordAIAction("highlight", "", map[string]any{"selector": params.Selector})
+	h.parent.recordAIAction("highlight", "", map[string]any{"selector": params.Selector})
 
-	return h.MaybeWaitForCommand(req, correlationID, args, "Highlight queued")
+	return h.parent.MaybeWaitForCommand(req, correlationID, args, "Highlight queued")
 }
 
-func (h *ToolHandler) handleExecuteJSImpl(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+func (h *interactActionHandler) handleExecuteJSImpl(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	var params struct {
 		Script    string `json:"script"`
 		TimeoutMs int    `json:"timeout_ms,omitempty"`
@@ -81,21 +81,21 @@ func (h *ToolHandler) handleExecuteJSImpl(req JSONRPCRequest, args json.RawMessa
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrInvalidParam, "Invalid 'world' value: "+params.World, "Use 'auto' (default, tries main then isolated), 'main' (page JS access), or 'isolated' (bypasses CSP, DOM only)", withParam("world"))}
 	}
 
-	if resp, blocked := h.requirePilot(req); blocked {
+	if resp, blocked := h.parent.requirePilot(req); blocked {
 		return resp
 	}
-	if resp, blocked := h.requireExtension(req); blocked {
+	if resp, blocked := h.parent.requireExtension(req); blocked {
 		return resp
 	}
-	if resp, blocked := h.requireTabTracking(req); blocked {
+	if resp, blocked := h.parent.requireTabTracking(req); blocked {
 		return resp
 	}
-	if resp, blocked := h.requireCSPClear(req, params.World); blocked {
+	if resp, blocked := h.parent.requireCSPClear(req, params.World); blocked {
 		return resp
 	}
 
 	correlationID := newCorrelationID("exec")
-	h.armEvidenceForCommand(correlationID, "execute_js", args, req.ClientID)
+	h.parent.armEvidenceForCommand(correlationID, "execute_js", args, req.ClientID)
 
 	query := queries.PendingQuery{
 		Type:          "execute",
@@ -103,9 +103,9 @@ func (h *ToolHandler) handleExecuteJSImpl(req JSONRPCRequest, args json.RawMessa
 		TabID:         params.TabID,
 		CorrelationID: correlationID,
 	}
-	h.capture.CreatePendingQueryWithTimeout(query, queries.AsyncCommandTimeout, req.ClientID)
+	h.parent.capture.CreatePendingQueryWithTimeout(query, queries.AsyncCommandTimeout, req.ClientID)
 
-	h.recordAIAction("execute_js", "", map[string]any{"script_preview": truncateToLen(params.Script, 100)})
+	h.parent.recordAIAction("execute_js", "", map[string]any{"script_preview": truncateToLen(params.Script, 100)})
 
-	return h.MaybeWaitForCommand(req, correlationID, args, "Command queued")
+	return h.parent.MaybeWaitForCommand(req, correlationID, args, "Command queued")
 }
