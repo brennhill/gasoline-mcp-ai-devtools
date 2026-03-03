@@ -1,16 +1,20 @@
 ---
 doc_type: feature_index
 feature_id: feature-batch-sequences
-status: proposed
+status: shipped
 feature_type: feature
 owners: []
 last_reviewed: 2026-03-03
 code_paths:
   - cmd/dev-console/tools_interact_batch.go
+  - cmd/dev-console/tools_interact_dispatch.go
   - cmd/dev-console/tools_configure_sequence.go
   - cmd/dev-console/tools_configure_sequence_replay.go
   - cmd/dev-console/tools_configure_sequence_replay_steps.go
+  - cmd/dev-console/tools_configure_sequence_types.go
+  - internal/schema/interact_actions.go
   - internal/schema/interact_properties_output_batch.go
+  - internal/tools/configure/mode_specs_interact.go
 test_paths:
   - cmd/dev-console/tools_interact_batch_test.go
   - cmd/dev-console/tools_configure_sequence_test.go
@@ -19,7 +23,7 @@ test_paths:
 # Batch Sequences
 
 ## TL;DR
-- Status: proposed
+- Status: shipped
 - Tools: `interact`, `configure`
 - Actions: `batch`, `save_sequence`, `replay_sequence`
 
@@ -28,6 +32,7 @@ test_paths:
 - Tech Spec: [tech-spec.md](./tech-spec.md)
 - QA Plan: [qa-plan.md](./qa-plan.md)
 - Design Reference: [design-spec.md](./design-spec.md)
+- Flow Map Pointer: [flow-map.md](./flow-map.md)
 
 ## Canonical Note
 Batch execution and reusable configure sequences share step semantics; sequence replay should remain a thin layer over the core batch runner to keep behavior DRY and predictable.
