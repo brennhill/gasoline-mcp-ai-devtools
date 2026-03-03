@@ -1,0 +1,7 @@
+{
+  "name": "gasoline-next-fixture",
+  "private": true,
+  "scripts": {
+    "build": "next build"
+  }
+}
