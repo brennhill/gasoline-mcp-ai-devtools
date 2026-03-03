@@ -15,7 +15,7 @@ var validStorageTypes = map[string]string{
 	"sessionStorage": "sessionStorage",
 }
 
-func (h *ToolHandler) handleSetStorage(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+func (h *interactActionHandler) handleSetStorage(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	var params struct {
 		StorageType string  `json:"storage_type"`
 		Key         string  `json:"key"`
@@ -44,7 +44,7 @@ func (h *ToolHandler) handleSetStorage(req JSONRPCRequest, args json.RawMessage)
 	return h.queueExecuteScript(req, args, "storage_set", params.TabID, params.TimeoutMs, params.World, script, "set_storage", "set_storage queued")
 }
 
-func (h *ToolHandler) handleDeleteStorage(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+func (h *interactActionHandler) handleDeleteStorage(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	var params struct {
 		StorageType string `json:"storage_type"`
 		Key         string `json:"key"`
@@ -69,7 +69,7 @@ func (h *ToolHandler) handleDeleteStorage(req JSONRPCRequest, args json.RawMessa
 	return h.queueExecuteScript(req, args, "storage_del", params.TabID, params.TimeoutMs, params.World, script, "delete_storage", "delete_storage queued")
 }
 
-func (h *ToolHandler) handleClearStorage(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+func (h *interactActionHandler) handleClearStorage(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	var params struct {
 		StorageType string `json:"storage_type"`
 		TabID       int    `json:"tab_id,omitempty"`
@@ -90,7 +90,7 @@ func (h *ToolHandler) handleClearStorage(req JSONRPCRequest, args json.RawMessag
 	return h.queueExecuteScript(req, args, "storage_clear", params.TabID, params.TimeoutMs, params.World, script, "clear_storage", "clear_storage queued")
 }
 
-func (h *ToolHandler) handleSetCookie(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+func (h *interactActionHandler) handleSetCookie(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	var params struct {
 		Name      string  `json:"name"`
 		Value     *string `json:"value"`
@@ -125,7 +125,7 @@ func (h *ToolHandler) handleSetCookie(req JSONRPCRequest, args json.RawMessage) 
 	return h.queueExecuteScript(req, args, "cookie_set", params.TabID, params.TimeoutMs, params.World, script, "set_cookie", "set_cookie queued")
 }
 
-func (h *ToolHandler) handleDeleteCookie(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+func (h *interactActionHandler) handleDeleteCookie(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	var params struct {
 		Name      string `json:"name"`
 		Domain    string `json:"domain,omitempty"`
@@ -156,27 +156,27 @@ func (h *ToolHandler) handleDeleteCookie(req JSONRPCRequest, args json.RawMessag
 	return h.queueExecuteScript(req, args, "cookie_del", params.TabID, params.TimeoutMs, params.World, script, "delete_cookie", "delete_cookie queued")
 }
 
-func (h *ToolHandler) queueExecuteScript(
+func (h *interactActionHandler) queueExecuteScript(
 	req JSONRPCRequest,
 	waitArgs json.RawMessage,
 	correlationPrefix string,
 	tabID, timeoutMs int,
 	world, script, reason, queuedMsg string,
 ) JSONRPCResponse {
-	if resp, blocked := h.requirePilot(req); blocked {
+	if resp, blocked := h.parent.requirePilot(req); blocked {
 		return resp
 	}
-	if resp, blocked := h.requireExtension(req); blocked {
+	if resp, blocked := h.parent.requireExtension(req); blocked {
 		return resp
 	}
-	if resp, blocked := h.requireTabTracking(req); blocked {
+	if resp, blocked := h.parent.requireTabTracking(req); blocked {
 		return resp
 	}
 
 	if world == "" {
 		world = "auto"
 	}
-	if resp, blocked := h.requireCSPClear(req, world); blocked {
+	if resp, blocked := h.parent.requireCSPClear(req, world); blocked {
 		return resp
 	}
 
@@ -188,7 +188,7 @@ func (h *ToolHandler) queueExecuteScript(
 	}
 
 	correlationID := newCorrelationID(correlationPrefix)
-	h.armEvidenceForCommand(correlationID, reason, waitArgs, req.ClientID)
+	h.parent.armEvidenceForCommand(correlationID, reason, waitArgs, req.ClientID)
 	execParams, _ := json.Marshal(map[string]any{
 		"script":     script,
 		"timeout_ms": timeoutMs,
@@ -202,9 +202,9 @@ func (h *ToolHandler) queueExecuteScript(
 		TabID:         tabID,
 		CorrelationID: correlationID,
 	}
-	h.capture.CreatePendingQueryWithTimeout(query, queries.AsyncCommandTimeout, req.ClientID)
+	h.parent.capture.CreatePendingQueryWithTimeout(query, queries.AsyncCommandTimeout, req.ClientID)
 
-	return h.MaybeWaitForCommand(req, correlationID, waitArgs, queuedMsg)
+	return h.parent.MaybeWaitForCommand(req, correlationID, waitArgs, queuedMsg)
 }
 
 func jsQuote(v string) string {
