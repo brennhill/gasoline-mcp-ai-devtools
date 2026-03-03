@@ -55,7 +55,7 @@ func (h *ToolHandler) interactDispatch() map[string]interactHandler {
 			"list_interactive":          h.handleListInteractive,
 			"record_start":              h.recordingInteractHandler.handleRecordStart,
 			"record_stop":               h.recordingInteractHandler.handleRecordStop,
-			"upload":                    h.handleUpload,
+			"upload":                    h.uploadInteractHandler.handleUpload,
 			"draw_mode_start":           h.handleDrawModeStart,
 			"hardware_click":            h.handleHardwareClick,
 			"activate_tab":              h.handleActivateTab,

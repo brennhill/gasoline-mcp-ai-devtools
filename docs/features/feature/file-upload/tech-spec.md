@@ -8,7 +8,8 @@ last_reviewed: 2026-03-03
 # File Upload Tech Spec
 
 ## Architecture
-- Tool handler: `cmd/dev-console/tools_interact_upload.go`
+- Interact upload sub-handler: `cmd/dev-console/tools_interact_upload_handler.go`
+- Upload action implementation: `cmd/dev-console/tools_interact_upload.go`
 - Validation/security layer: `internal/upload/security*.go`, `internal/upload/validators.go`
 - OS automation: `internal/upload/os_automation*.go`
 - Form submit follow-up: `internal/upload/form_submit*.go`
