@@ -19,6 +19,7 @@ code_paths:
 test_paths:
   - tests/extension/tracked-hover-launcher.test.js
   - tests/extension/content.test.js
+  - tests/extension/popup-status.test.js
 ---
 
 # Tracked Tab Hover Quick Actions
@@ -45,9 +46,10 @@ Related feature docs:
 4. `Draw` action dynamically loads `content/draw-mode.js` and calls `activateDrawMode('user')`.
 5. `Rec` or `Stop` action sends `record_start` or `record_stop` to background recording listeners.
 6. `Shot` action sends `captureScreenshot` to background message handlers.
-7. `Hide Gasoline Devtool` sets a local hidden flag and unmounts the launcher.
-8. On next popup open, `initPopup` sends `GASOLINE_SHOW_TRACKED_HOVER_LAUNCHER` to active tab and content script remounts launcher if tracking is still enabled.
-9. Record button state stays aligned with `chrome.storage.local[gasoline_recording]` via initial read plus `chrome.storage.onChanged`.
+7. `Hide Gasoline Devtool` sets `StorageKey.TRACKED_HOVER_LAUNCHER_HIDDEN=true` and unmounts the launcher.
+8. On next popup open, `initPopup` sends `GASOLINE_SHOW_TRACKED_HOVER_LAUNCHER` to active tab.
+9. Content script clears persisted hidden state and remounts launcher if tracking is still enabled.
+10. Record button state stays aligned with `chrome.storage.local[gasoline_recording]` via initial read plus `chrome.storage.onChanged`.
 
 ## Error and Recovery Paths
 
@@ -60,7 +62,8 @@ Related feature docs:
 
 - Launcher is tab-local content UI and only mounts for tracked tabs.
 - `StorageKey.RECORDING` is the source of truth for active recording UI state.
-- `hiddenUntilPopupOpen` suppresses launcher remounts until popup sends reshow message.
+- `StorageKey.TRACKED_HOVER_LAUNCHER_HIDDEN` persists hidden-state across page reloads.
+- `hiddenUntilPopupOpen` mirrors persisted hidden-state in memory and suppresses remounts until popup sends reshow message.
 - Action message contracts:
   - Draw: `GASOLINE_DRAW_MODE_START` equivalent behavior via direct module activation.
   - Record: `record_start` / `record_stop`.
@@ -80,6 +83,7 @@ Related feature docs:
 
 - `tests/extension/tracked-hover-launcher.test.js`
 - `tests/extension/content.test.js`
+- `tests/extension/popup-status.test.js`
 
 ## Edit Guardrails
 

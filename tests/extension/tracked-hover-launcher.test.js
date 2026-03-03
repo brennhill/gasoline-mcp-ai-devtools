@@ -12,6 +12,8 @@ let storageChangeListener
 let runtimeSendMessage
 let runtimeOnMessageListeners
 let setTrackedHoverLauncherEnabled
+let sharedStorageKey
+let sharedReshowMessageType
 let importCounter = 0
 
 function registerElement(el) {
@@ -130,6 +132,19 @@ function resetGlobals() {
         get: mock.fn((_keys, callback) => {
           callback?.(storageData)
           return Promise.resolve(storageData)
+        }),
+        set: mock.fn((value, callback) => {
+          storageData = { ...storageData, ...(value || {}) }
+          callback?.()
+          return Promise.resolve()
+        }),
+        remove: mock.fn((keys, callback) => {
+          const keyList = Array.isArray(keys) ? keys : [keys]
+          for (const key of keyList) {
+            delete storageData[key]
+          }
+          callback?.()
+          return Promise.resolve()
         })
       },
       onChanged: {
@@ -165,6 +180,9 @@ describe('tracked hover launcher', () => {
   beforeEach(async () => {
     mock.reset()
     resetGlobals()
+    const constants = await import(`../../extension/lib/constants.js?v=${++importCounter}`)
+    sharedStorageKey = constants.StorageKey.TRACKED_HOVER_LAUNCHER_HIDDEN
+    sharedReshowMessageType = constants.RuntimeMessageName.SHOW_TRACKED_HOVER_LAUNCHER
     ;({ setTrackedHoverLauncherEnabled } = await import(
       `../../extension/content/ui/tracked-hover-launcher.js?v=${++importCounter}`
     ))
@@ -240,8 +258,23 @@ describe('tracked hover launcher', () => {
     hideButton.dispatch('click')
 
     assert.strictEqual(elementsById['gasoline-tracked-hover-launcher'], undefined)
+    assert.strictEqual(storageData[sharedStorageKey], true, 'hide state should persist in storage')
 
-    dispatchRuntimeMessage({ type: 'GASOLINE_SHOW_TRACKED_HOVER_LAUNCHER' })
+    dispatchRuntimeMessage({ type: sharedReshowMessageType })
+    assert.ok(elementsById['gasoline-tracked-hover-launcher'], 'launcher should remount after popup signal')
+    assert.strictEqual(storageData[sharedStorageKey], undefined, 'reshow should clear persisted hidden state')
+  })
+
+  test('persisted hidden state suppresses launcher after module reload until popup signal', async () => {
+    storageData[sharedStorageKey] = true
+    ;({ setTrackedHoverLauncherEnabled } = await import(
+      `../../extension/content/ui/tracked-hover-launcher.js?v=${++importCounter}`
+    ))
+
+    setTrackedHoverLauncherEnabled(true)
+    assert.strictEqual(elementsById['gasoline-tracked-hover-launcher'], undefined)
+
+    dispatchRuntimeMessage({ type: sharedReshowMessageType })
     assert.ok(elementsById['gasoline-tracked-hover-launcher'], 'launcher should remount after popup signal')
   })
 

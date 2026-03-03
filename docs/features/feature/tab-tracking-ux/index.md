@@ -1,11 +1,13 @@
 ---
 doc_type: feature_index
 feature_id: feature-tab-tracking-ux
-status: proposed
+status: shipped
 feature_type: feature
 owners: []
 last_reviewed: 2026-03-03
 code_paths:
+  - src/lib/constants.ts
+  - src/types/runtime-messages.ts
   - src/content.ts
   - src/content/tab-tracking.ts
   - src/content/ui/tracked-hover-launcher.ts
@@ -21,7 +23,7 @@ test_paths:
 
 ## TL;DR
 
-- Status: proposed
+- Status: shipped
 - Tool: null
 - Mode/Action: null
 - Location: `docs/features/feature/tab-tracking-ux`

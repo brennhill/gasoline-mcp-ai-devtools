@@ -17,7 +17,8 @@
 
 import type { WebSocketCaptureMode } from './types/index.js'
 import type { PopupConnectionStatus, ToggleWarningConfig } from './popup/types.js'
-import { StorageKey } from './lib/constants.js'
+import type { ShowTrackedHoverLauncherMessage } from './types/runtime-messages.js'
+import { RuntimeMessageName, StorageKey } from './lib/constants.js'
 import { updateConnectionStatus } from './popup/status-display.js'
 import { setupRecordingUI } from './popup/recording.js'
 import { setupDrawModeButton } from './popup/draw-mode.js'
@@ -43,7 +44,9 @@ export { initWebSocketModeSelector } from './popup/settings.js'
 export { isInternalUrl } from './popup/ui-utils.js'
 
 const DEFAULT_MAX_ENTRIES = 1000
-const RESHOW_TRACKED_HOVER_LAUNCHER_MESSAGE = { type: 'GASOLINE_SHOW_TRACKED_HOVER_LAUNCHER' }
+const RESHOW_TRACKED_HOVER_LAUNCHER_MESSAGE: ShowTrackedHoverLauncherMessage = {
+  type: RuntimeMessageName.SHOW_TRACKED_HOVER_LAUNCHER
+}
 
 /**
  * Bind a toggle element to show/hide a target element based on a condition.
