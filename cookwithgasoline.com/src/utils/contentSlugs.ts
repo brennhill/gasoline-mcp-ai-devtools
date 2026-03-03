@@ -1,7 +1,7 @@
 interface ContentEntryLike {
-  id?: unknown;
-  slug?: unknown;
-  data?: Record<string, unknown>;
+  id?: unknown
+  slug?: unknown
+  data?: Record<string, unknown>
 }
 
 /**
@@ -10,11 +10,11 @@ interface ContentEntryLike {
  */
 export function resolveDocSlug(entry: ContentEntryLike): string {
   if (typeof entry.slug === 'string') {
-    return entry.slug;
+    return entry.slug
   }
 
   if (typeof entry.data?.slug === 'string') {
-    return entry.data.slug;
+    return entry.data.slug
   }
 
   if (typeof entry.id === 'string' && entry.id.length > 0) {
@@ -22,14 +22,14 @@ export function resolveDocSlug(entry: ContentEntryLike): string {
       .replace(/\\/g, '/')
       .replace(/^docs\//, '')
       .replace(/\.(md|mdx)$/i, '')
-      .replace(/\/index$/i, '');
+      .replace(/\/index$/i, '')
 
     if (normalized === 'index') {
-      return '';
+      return ''
     }
 
-    return normalized;
+    return normalized
   }
 
-  return '';
+  return ''
 }

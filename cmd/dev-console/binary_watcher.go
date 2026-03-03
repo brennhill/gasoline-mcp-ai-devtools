@@ -28,13 +28,14 @@ var getExecutablePath = os.Executable
 
 // BinaryWatcherState tracks the on-disk binary state for upgrade detection.
 type BinaryWatcherState struct {
-	mu              sync.Mutex
-	execPath        string
-	lastModTime     time.Time
-	lastSize        int64
-	upgradePending  bool
-	detectedVersion string
-	detectedAt      time.Time
+	mu                  sync.Mutex
+	execPath            string
+	lastModTime         time.Time
+	lastSize            int64
+	upgradePending      bool
+	detectedVersion     string
+	detectedAt          time.Time
+	versionCheckTimeout time.Duration
 }
 
 // UpgradeInfo returns the current upgrade detection state (thread-safe).
@@ -76,7 +77,7 @@ func (s *BinaryWatcherState) binaryChanged() (bool, error) {
 // checkForUpgrade verifies whether the binary reports a newer version than current.
 // Returns true if an upgrade is detected and sets the upgrade-pending state.
 func (s *BinaryWatcherState) checkForUpgrade(currentVersion string) bool {
-	newVer, err := verifyBinaryVersion(s.execPath)
+	newVer, err := verifyBinaryVersionWithTimeout(s.execPath, s.versionCheckTimeout)
 	if err != nil {
 		return false
 	}
@@ -96,7 +97,17 @@ func (s *BinaryWatcherState) checkForUpgrade(currentVersion string) bool {
 // verifyBinaryVersion executes the binary with --version and parses the output.
 // Expects output like "gasoline v0.8.0" or just "0.8.0".
 func verifyBinaryVersion(path string) (string, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), versionVerifyTimeout)
+	return verifyBinaryVersionWithTimeout(path, versionVerifyTimeout)
+}
+
+// verifyBinaryVersionWithTimeout executes the binary with --version and parses the output.
+// Timeout is injected for deterministic tests that should not mutate package globals.
+func verifyBinaryVersionWithTimeout(path string, timeout time.Duration) (string, error) {
+	if timeout <= 0 {
+		timeout = versionVerifyTimeout
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 
 	cmd := exec.CommandContext(ctx, path, "--version") // #nosec G204 -- path is a verified binary from resolveCanonicalBinary
@@ -143,7 +154,10 @@ func startBinaryWatcher(ctx context.Context, currentVersion string, onUpgrade fu
 		return nil
 	}
 
-	state := &BinaryWatcherState{execPath: execPath}
+	state := &BinaryWatcherState{
+		execPath:            execPath,
+		versionCheckTimeout: versionVerifyTimeout,
+	}
 
 	util.SafeGo(func() {
 		// Cache initial binary state

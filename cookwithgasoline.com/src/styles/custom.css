@@ -86,7 +86,8 @@
 
 :root body {
   font-family: var(--gas-font-body);
-  background: radial-gradient(circle at 10% -20%, color-mix(in srgb, var(--gas-flame-500) 8%, transparent), transparent 30%),
+  background:
+    radial-gradient(circle at 10% -20%, color-mix(in srgb, var(--gas-flame-500) 8%, transparent), transparent 30%),
     radial-gradient(circle at 100% 0%, color-mix(in srgb, var(--gas-red-500) 8%, transparent), transparent 35%),
     var(--gas-bg);
   color: var(--gas-text);
@@ -104,7 +105,11 @@
   border: 1px solid var(--gas-border);
   border-radius: var(--gas-radius-lg);
   margin-top: 1rem;
-  background: linear-gradient(145deg, color-mix(in srgb, var(--gas-surface) 82%, var(--gas-flame-500) 18%), var(--gas-surface));
+  background: linear-gradient(
+    145deg,
+    color-mix(in srgb, var(--gas-surface) 82%, var(--gas-flame-500) 18%),
+    var(--gas-surface)
+  );
   box-shadow: var(--gas-shadow);
 }
 
@@ -323,7 +328,11 @@ code:not(pre code) {
 .signal-graphic {
   border-radius: var(--gas-radius-md);
   border: 1px solid var(--gas-border);
-  background: linear-gradient(180deg, color-mix(in srgb, var(--gas-surface) 94%, transparent), color-mix(in srgb, var(--gas-bg-muted) 60%, transparent));
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--gas-surface) 94%, transparent),
+    color-mix(in srgb, var(--gas-bg-muted) 60%, transparent)
+  );
   padding: 1rem;
   display: grid;
   gap: 0.6rem;
@@ -503,7 +512,11 @@ code:not(pre code) {
   border: 1px solid var(--gas-border);
   border-radius: var(--gas-radius-sm);
   padding: 0.95rem;
-  background: linear-gradient(140deg, color-mix(in srgb, var(--gas-surface) 90%, transparent), color-mix(in srgb, var(--gas-bg-muted) 55%, transparent));
+  background: linear-gradient(
+    140deg,
+    color-mix(in srgb, var(--gas-surface) 90%, transparent),
+    color-mix(in srgb, var(--gas-bg-muted) 55%, transparent)
+  );
 }
 
 .use-case-card h3 {
