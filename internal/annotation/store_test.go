@@ -1628,7 +1628,7 @@ func TestStore_ClearAll_ClearsAllAnnotationState(t *testing.T) {
 			{ID: "ann_named", CorrelationID: "detail_named", Timestamp: now},
 		},
 	})
-	store.RegisterWaiter("ann_wait", "")
+	store.RegisterWaiter("ann_wait", "", "")
 
 	counts := store.ClearAll()
 	if counts.Sessions != 1 {
@@ -1653,7 +1653,7 @@ func TestStore_ClearAll_ClearsAllAnnotationState(t *testing.T) {
 	if _, found := store.GetDetail("detail_1"); found {
 		t.Fatal("expected detail cleared")
 	}
-	if _, found := store.TakeWaiter("ann_wait"); found {
+	if _, _, found := store.TakeWaiter("ann_wait"); found {
 		t.Fatal("expected waiter cleared")
 	}
 }

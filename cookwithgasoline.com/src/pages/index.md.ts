@@ -7,7 +7,10 @@ export const prerender = true
 const contentSignal = 'ai-train=yes, search=yes, ai-input=yes'
 
 function toYamlString(value: unknown) {
-  const text = String(value ?? '').replace(/\r?\n/g, ' ').replace(/'/g, "''").trim()
+  const text = String(value ?? '')
+    .replace(/\r?\n/g, ' ')
+    .replace(/'/g, "''")
+    .trim()
   return `'${text}'`
 }
 

@@ -4,18 +4,18 @@ export type WorkflowCategory =
   | 'Demo Recording'
   | 'Interactive Development'
   | 'Reliability'
-  | 'Quality';
+  | 'Quality'
 
 export interface WorkflowPreset {
-  id: string;
-  title: string;
-  category: WorkflowCategory;
-  summary: string;
-  highlights: string[];
-  docPath: string;
-  updatedAt: string;
-  impactScore: number;
-  runtime: string;
+  id: string
+  title: string
+  category: WorkflowCategory
+  summary: string
+  highlights: string[]
+  docPath: string
+  updatedAt: string
+  impactScore: number
+  runtime: string
 }
 
 export const workflowPresets: WorkflowPreset[] = [
@@ -29,7 +29,7 @@ export const workflowPresets: WorkflowPreset[] = [
     docPath: '/guides/debug-webapps/',
     updatedAt: '2026-03-01',
     impactScore: 98,
-    runtime: '4-8 min',
+    runtime: '4-8 min'
   },
   {
     id: 'api-contract-watchdog',
@@ -41,7 +41,7 @@ export const workflowPresets: WorkflowPreset[] = [
     docPath: '/guides/api-validation/',
     updatedAt: '2026-02-25',
     impactScore: 92,
-    runtime: '6-12 min',
+    runtime: '6-12 min'
   },
   {
     id: 'replay-to-test',
@@ -53,7 +53,7 @@ export const workflowPresets: WorkflowPreset[] = [
     docPath: '/guides/demo-scripts/',
     updatedAt: '2026-02-28',
     impactScore: 95,
-    runtime: '5-10 min',
+    runtime: '5-10 min'
   },
   {
     id: 'demo-readiness-check',
@@ -65,7 +65,7 @@ export const workflowPresets: WorkflowPreset[] = [
     docPath: '/guides/product-demos/',
     updatedAt: '2026-02-27',
     impactScore: 87,
-    runtime: '3-7 min',
+    runtime: '3-7 min'
   },
   {
     id: 'interactive-dom-triage',
@@ -77,7 +77,7 @@ export const workflowPresets: WorkflowPreset[] = [
     docPath: '/reference/interact/',
     updatedAt: '2026-02-23',
     impactScore: 84,
-    runtime: '2-6 min',
+    runtime: '2-6 min'
   },
   {
     id: 'performance-regression-scan',
@@ -89,43 +89,40 @@ export const workflowPresets: WorkflowPreset[] = [
     docPath: '/guides/performance/',
     updatedAt: '2026-03-02',
     impactScore: 90,
-    runtime: '6-9 min',
+    runtime: '6-9 min'
   },
   {
     id: 'security-redaction-audit',
     title: 'Security Redaction Audit',
     category: 'Quality',
-    summary:
-      'Audit captured traffic for leaked secrets, missing headers, and risky patterns with exportable findings.',
+    summary: 'Audit captured traffic for leaked secrets, missing headers, and risky patterns with exportable findings.',
     highlights: ['analyze(security)', 'redaction checks', 'SARIF export'],
     docPath: '/guides/security-auditing/',
     updatedAt: '2026-02-26',
     impactScore: 89,
-    runtime: '5-11 min',
+    runtime: '5-11 min'
   },
   {
     id: 'accessibility-sweep',
     title: 'Accessibility Sweep',
     category: 'Quality',
-    summary:
-      'Run WCAG scans, inspect violations in context, and generate issue reports your team can triage fast.',
+    summary: 'Run WCAG scans, inspect violations in context, and generate issue reports your team can triage fast.',
     highlights: ['analyze(accessibility)', 'annotation detail', 'report generation'],
     docPath: '/guides/accessibility/',
     updatedAt: '2026-02-21',
     impactScore: 82,
-    runtime: '4-8 min',
+    runtime: '4-8 min'
   },
   {
     id: 'noise-aware-observability',
     title: 'Noise-aware Observability',
     category: 'Debugging',
-    summary:
-      'Reduce recurring console noise with rules so high-signal errors stand out during incident response.',
+    summary: 'Reduce recurring console noise with rules so high-signal errors stand out during incident response.',
     highlights: ['configure(noise_rule)', 'observe(logs)', 'persistent filters'],
     docPath: '/guides/noise-filtering/',
     updatedAt: '2026-02-20',
     impactScore: 80,
-    runtime: '3-6 min',
+    runtime: '3-6 min'
   },
   {
     id: 'browser-automation-smoke',
@@ -137,7 +134,7 @@ export const workflowPresets: WorkflowPreset[] = [
     docPath: '/guides/automate-and-notify/',
     updatedAt: '2026-03-03',
     impactScore: 91,
-    runtime: '4-9 min',
+    runtime: '4-9 min'
   },
   {
     id: 'websocket-incident-replay',
@@ -149,7 +146,7 @@ export const workflowPresets: WorkflowPreset[] = [
     docPath: '/guides/websocket-debugging/',
     updatedAt: '2026-02-24',
     impactScore: 88,
-    runtime: '7-14 min',
+    runtime: '7-14 min'
   },
   {
     id: 'uat-walkthrough-capture',
@@ -161,6 +158,6 @@ export const workflowPresets: WorkflowPreset[] = [
     docPath: '/guides/resilient-uat/',
     updatedAt: '2026-02-22',
     impactScore: 86,
-    runtime: '8-15 min',
-  },
-];
+    runtime: '8-15 min'
+  }
+]

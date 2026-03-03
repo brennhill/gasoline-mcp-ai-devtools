@@ -17,7 +17,7 @@ const toHtmlPath = (slug: string) => (slug === '' ? '/' : `/${slug}/`)
  */
 export const getAllMarkdownPaths = async ({
   includeHtml = false,
-  includeLegacyMarkdown = false,
+  includeLegacyMarkdown = false
 }: Options = {}): Promise<string[]> => {
   const docs = await getCollection('docs')
   const slugs = docs.map((entry) => resolveDocSlug(entry))

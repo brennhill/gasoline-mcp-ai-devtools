@@ -14,6 +14,8 @@ import (
 	"time"
 )
 
+const testVersionCheckTimeout = 5 * time.Second
+
 func TestBinaryWatcherState_UpgradeInfo_Default(t *testing.T) {
 	t.Parallel()
 	s := &BinaryWatcherState{}
@@ -56,8 +58,7 @@ func TestBinaryChanged_DetectsModtime(t *testing.T) {
 		t.Fatal("first call should return false (initial cache)")
 	}
 
-	// Touch the file with new modtime and different size
-	time.Sleep(10 * time.Millisecond)
+	// Overwrite with different size to guarantee change detection.
 	if err := os.WriteFile(tmp, []byte("v2-longer"), 0o755); err != nil {
 		t.Fatal(err)
 	}
@@ -107,7 +108,7 @@ func TestVerifyBinaryVersion_ValidOutput(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	ver, err := verifyBinaryVersion(tmp)
+	ver, err := verifyBinaryVersionWithTimeout(tmp, testVersionCheckTimeout)
 	if err != nil {
 		t.Fatalf("verifyBinaryVersion() error = %v", err)
 	}
@@ -123,7 +124,7 @@ func TestVerifyBinaryVersion_NoPrefix(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	ver, err := verifyBinaryVersion(tmp)
+	ver, err := verifyBinaryVersionWithTimeout(tmp, testVersionCheckTimeout)
 	if err != nil {
 		t.Fatalf("verifyBinaryVersion() error = %v", err)
 	}
@@ -146,18 +147,13 @@ func TestVerifyBinaryVersion_InvalidOutput(t *testing.T) {
 }
 
 func TestVerifyBinaryVersion_Timeout(t *testing.T) {
-	// Not parallel: modifies package-level versionVerifyTimeout
+	t.Parallel()
 	tmp := filepath.Join(t.TempDir(), "fake-bin")
 	if err := os.WriteFile(tmp, []byte("#!/bin/sh\nsleep 30\n"), 0o755); err != nil {
 		t.Fatal(err)
 	}
 
-	// Override timeout for test
-	origTimeout := versionVerifyTimeout
-	versionVerifyTimeout = 100 * time.Millisecond
-	defer func() { versionVerifyTimeout = origTimeout }()
-
-	_, err := verifyBinaryVersion(tmp)
+	_, err := verifyBinaryVersionWithTimeout(tmp, 100*time.Millisecond)
 	if err == nil {
 		t.Fatal("expected timeout error")
 	}
@@ -171,7 +167,7 @@ func TestCheckForUpgrade_DetectsNewer(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	s := &BinaryWatcherState{execPath: tmp}
+	s := &BinaryWatcherState{execPath: tmp, versionCheckTimeout: testVersionCheckTimeout}
 	got := s.checkForUpgrade("0.7.5")
 	if !got {
 		t.Fatal("checkForUpgrade should detect newer version")
@@ -189,7 +185,7 @@ func TestCheckForUpgrade_IgnoresOlder(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	s := &BinaryWatcherState{execPath: tmp}
+	s := &BinaryWatcherState{execPath: tmp, versionCheckTimeout: testVersionCheckTimeout}
 	got := s.checkForUpgrade("0.7.5")
 	if got {
 		t.Fatal("checkForUpgrade should not detect older version")
@@ -203,7 +199,7 @@ func TestCheckForUpgrade_IgnoresSame(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	s := &BinaryWatcherState{execPath: tmp}
+	s := &BinaryWatcherState{execPath: tmp, versionCheckTimeout: testVersionCheckTimeout}
 	got := s.checkForUpgrade("0.7.5")
 	if got {
 		t.Fatal("checkForUpgrade should not detect same version")
