@@ -39,7 +39,7 @@ func (h *interactActionHandler) handleBrowserActionNewTabImpl(req JSONRPCRequest
 	}
 
 	correlationID := newCorrelationID("newtab")
-	h.parent.armEvidenceForCommand(correlationID, "new_tab", args, req.ClientID)
+	h.armEvidenceForCommand(correlationID, "new_tab", args, req.ClientID)
 
 	actionParams := make(map[string]any)
 	_ = json.Unmarshal(args, &actionParams)
@@ -104,7 +104,7 @@ func (h *interactActionHandler) handleBrowserActionSwitchTabImpl(req JSONRPCRequ
 	// for an existing tab. The handler calls applySwitchTabTracking on success.
 
 	correlationID := newCorrelationID("switchtab")
-	h.parent.armEvidenceForCommand(correlationID, "switch_tab", args, req.ClientID)
+	h.armEvidenceForCommand(correlationID, "switch_tab", args, req.ClientID)
 
 	actionParams := make(map[string]any)
 	_ = json.Unmarshal(args, &actionParams)
@@ -151,7 +151,7 @@ func (h *interactActionHandler) handleActivateTabImpl(req JSONRPCRequest, args j
 	}
 
 	correlationID := newCorrelationID("activate")
-	h.parent.armEvidenceForCommand(correlationID, "activate_tab", args, req.ClientID)
+	h.armEvidenceForCommand(correlationID, "activate_tab", args, req.ClientID)
 
 	query := queries.PendingQuery{
 		Type:          "browser_action",
@@ -186,7 +186,7 @@ func (h *interactActionHandler) handleBrowserActionCloseTabImpl(req JSONRPCReque
 	}
 
 	correlationID := newCorrelationID("closetab")
-	h.parent.armEvidenceForCommand(correlationID, "close_tab", args, req.ClientID)
+	h.armEvidenceForCommand(correlationID, "close_tab", args, req.ClientID)
 
 	actionParams := make(map[string]any)
 	_ = json.Unmarshal(args, &actionParams)

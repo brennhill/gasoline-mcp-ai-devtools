@@ -105,7 +105,7 @@ func (u *uploadInteractHandler) queueUpload(req JSONRPCRequest, args json.RawMes
 	fileSize := info.Size()
 	progressTier := getProgressTier(fileSize)
 	correlationID := newCorrelationID("upload")
-	h.armEvidenceForCommand(correlationID, "upload", args, req.ClientID)
+	h.interactAction().armEvidenceForCommand(correlationID, "upload", args, req.ClientID)
 
 	uploadPayload := map[string]any{
 		"action": "upload", "selector": params.Selector,

@@ -35,7 +35,7 @@ func (h *interactActionHandler) handleListInteractive(req JSONRPCRequest, args j
 	args = normalizeDOMActionArgs(args, "list_interactive")
 
 	correlationID := newCorrelationID("dom_list")
-	h.parent.armEvidenceForCommand(correlationID, "list_interactive", args, req.ClientID)
+	h.armEvidenceForCommand(correlationID, "list_interactive", args, req.ClientID)
 
 	query := queries.PendingQuery{
 		Type:          "dom_action",

@@ -84,7 +84,7 @@ func (h *interactActionHandler) handleSubtitleImpl(req JSONRPCRequest, args json
 	}
 
 	correlationID := newCorrelationID("subtitle")
-	h.parent.armEvidenceForCommand(correlationID, "subtitle", args, req.ClientID)
+	h.armEvidenceForCommand(correlationID, "subtitle", args, req.ClientID)
 
 	query := queries.PendingQuery{
 		Type:          "subtitle",

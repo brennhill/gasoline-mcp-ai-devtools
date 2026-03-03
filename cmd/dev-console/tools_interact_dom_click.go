@@ -41,7 +41,7 @@ func (h *ToolHandler) handleCDPClick(req JSONRPCRequest, args json.RawMessage, a
 	}
 
 	correlationID := newCorrelationID("cdp_click")
-	h.armEvidenceForCommand(correlationID, action, args, req.ClientID)
+	h.interactAction().armEvidenceForCommand(correlationID, action, args, req.ClientID)
 
 	cdpParams, _ := json.Marshal(map[string]any{
 		"action": "click",
