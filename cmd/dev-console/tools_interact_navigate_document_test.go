@@ -208,6 +208,14 @@ func TestNavigateAndDocument_TabIDMismatchReturnsError(t *testing.T) {
 
 	resp := env.handler.interactAction().handleNavigateAndDocument(req, args)
 	assertIsError(t, resp, "tracked tab_id")
+	result := parseToolResult(t, resp)
+	traceMeta, ok := result.Metadata["workflow_trace"].(map[string]any)
+	if !ok {
+		t.Fatalf("expected workflow_trace metadata on tab mismatch response, got: %#v", result.Metadata)
+	}
+	if traceMeta["status"] != "failed" {
+		t.Fatalf("workflow_trace.status = %v, want failed", traceMeta["status"])
+	}
 
 	if len(env.capture.GetPendingQueries()) != 0 {
 		t.Fatalf("tab mismatch should fail before dispatching click, pending=%d", len(env.capture.GetPendingQueries()))
@@ -251,6 +259,14 @@ func TestNavigateAndDocument_TimeoutBudgetExhaustedBeforeStable(t *testing.T) {
 	}
 
 	assertIsError(t, resp, "timeout_ms exhausted before wait_for_stable")
+	result := parseToolResult(t, resp)
+	traceMeta, ok := result.Metadata["workflow_trace"].(map[string]any)
+	if !ok {
+		t.Fatalf("expected workflow_trace metadata on timeout response, got: %#v", result.Metadata)
+	}
+	if traceMeta["status"] != "failed" {
+		t.Fatalf("workflow_trace.status = %v, want failed", traceMeta["status"])
+	}
 
 	for _, q := range env.capture.GetPendingQueries() {
 		if q.Type != "dom_action" {
