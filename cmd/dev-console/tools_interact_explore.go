@@ -66,7 +66,7 @@ func (h *interactActionHandler) handleExplorePage(req JSONRPCRequest, args json.
 
 	// Append inline screenshot only if the command completed (not queued or error)
 	if !isErrorResponse(resp) && !isResponseQueued(resp) {
-		resp = h.parent.appendScreenshotToResponse(resp, req)
+		resp = h.appendScreenshotToResponse(resp, req)
 	}
 
 	return resp

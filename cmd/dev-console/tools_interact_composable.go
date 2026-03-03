@@ -50,7 +50,7 @@ func (h *interactActionHandler) handleAutoDismissOverlays(req JSONRPCRequest, ar
 
 // queueComposableAutoDismiss queues an auto_dismiss_overlays command as a side effect.
 // Used when auto_dismiss=true is passed as a composable param on navigate.
-func (h *ToolHandler) queueComposableAutoDismiss(req JSONRPCRequest) {
+func (h *interactActionHandler) queueComposableAutoDismiss(req JSONRPCRequest) {
 	dismissArgs, _ := json.Marshal(map[string]string{"action": "auto_dismiss_overlays"})
 	correlationID := newCorrelationID("dom_auto_dismiss_overlays")
 
@@ -59,14 +59,14 @@ func (h *ToolHandler) queueComposableAutoDismiss(req JSONRPCRequest) {
 		Params:        dismissArgs,
 		CorrelationID: correlationID,
 	}
-	h.capture.CreatePendingQueryWithTimeout(query, queries.AsyncCommandTimeout, req.ClientID)
+	h.parent.capture.CreatePendingQueryWithTimeout(query, queries.AsyncCommandTimeout, req.ClientID)
 }
 
 // queueComposableActionDiff queues an action_diff command as a side effect.
 // Used when action_diff=true is passed as a composable param on any mutating action.
 // The extension instruments a MutationObserver after the main action, captures mutations,
 // and returns a structured summary of what changed (overlays, toasts, form errors, etc.).
-func (h *ToolHandler) queueComposableActionDiff(req JSONRPCRequest) {
+func (h *interactActionHandler) queueComposableActionDiff(req JSONRPCRequest) {
 	diffArgs, _ := json.Marshal(map[string]any{
 		"action":     "action_diff",
 		"timeout_ms": 3000,
@@ -78,12 +78,12 @@ func (h *ToolHandler) queueComposableActionDiff(req JSONRPCRequest) {
 		Params:        diffArgs,
 		CorrelationID: correlationID,
 	}
-	h.capture.CreatePendingQueryWithTimeout(query, queries.AsyncCommandTimeout, req.ClientID)
+	h.parent.capture.CreatePendingQueryWithTimeout(query, queries.AsyncCommandTimeout, req.ClientID)
 }
 
 // queueComposableWaitForStable queues a wait_for_stable command as a side effect.
 // Used when wait_for_stable=true is passed as a composable param on navigate or click.
-func (h *ToolHandler) queueComposableWaitForStable(req JSONRPCRequest, stabilityMs int) {
+func (h *interactActionHandler) queueComposableWaitForStable(req JSONRPCRequest, stabilityMs int) {
 	if stabilityMs <= 0 {
 		stabilityMs = 500
 	}
@@ -101,16 +101,16 @@ func (h *ToolHandler) queueComposableWaitForStable(req JSONRPCRequest, stability
 		Params:        stableArgs,
 		CorrelationID: correlationID,
 	}
-	h.capture.CreatePendingQueryWithTimeout(query, queries.AsyncCommandTimeout, req.ClientID)
+	h.parent.capture.CreatePendingQueryWithTimeout(query, queries.AsyncCommandTimeout, req.ClientID)
 }
 
 // queueComposableSubtitle queues a subtitle command as a side effect of another action.
-func (h *ToolHandler) queueComposableSubtitle(req JSONRPCRequest, text string) {
+func (h *interactActionHandler) queueComposableSubtitle(req JSONRPCRequest, text string) {
 	subtitleArgs, _ := json.Marshal(map[string]string{"text": text})
 	subtitleQuery := queries.PendingQuery{
 		Type:          "subtitle",
 		Params:        subtitleArgs,
 		CorrelationID: newCorrelationID("subtitle"),
 	}
-	h.capture.CreatePendingQueryWithTimeout(subtitleQuery, queries.AsyncCommandTimeout, req.ClientID)
+	h.parent.capture.CreatePendingQueryWithTimeout(subtitleQuery, queries.AsyncCommandTimeout, req.ClientID)
 }
