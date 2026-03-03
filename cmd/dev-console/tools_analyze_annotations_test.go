@@ -412,6 +412,9 @@ func TestToolGetAnnotations_Flush_CompletesPendingCommand_WithEmptyResultReason(
 	if resultPayload["count"] != float64(0) {
 		t.Fatalf("result.count = %v, want 0", resultPayload["count"])
 	}
+	if resultPayload["filter_applied"] != "none" {
+		t.Fatalf("result.filter_applied = %v, want none", resultPayload["filter_applied"])
+	}
 
 	cmd, found := h.capture.GetCommandResult(corrID)
 	if !found || cmd == nil {
@@ -637,6 +640,95 @@ func TestToolGetAnnotations_WaitTrue_WaiterCompletedOnStore(t *testing.T) {
 	}
 }
 
+func TestToolGetAnnotations_WaitTrue_WaiterCompletedOnStore_UsesURLFilter(t *testing.T) {
+	h := createTestToolHandler(t)
+	h.annotationStore = NewAnnotationStore(10 * time.Minute)
+	defer h.annotationStore.Close()
+
+	var completedResult json.RawMessage
+	h.annotationStore.SetCommandCompleter(func(_ string, result json.RawMessage) {
+		completedResult = result
+	})
+
+	h.annotationStore.MarkDrawStarted()
+
+	req := JSONRPCRequest{JSONRPC: "2.0", ID: float64(1)}
+	args := json.RawMessage(`{"what":"annotations","wait":true,"timeout_ms":10,"url":"http://localhost:3000/*"}`)
+	resp := h.toolGetAnnotations(req, args)
+
+	text := unmarshalMCPText(t, resp.Result)
+	jsonText := extractJSONFromText(text)
+	var data map[string]any
+	_ = json.Unmarshal([]byte(jsonText), &data)
+	if data["status"] != "waiting_for_user" {
+		t.Fatalf("expected waiting response, got %v", data["status"])
+	}
+
+	h.annotationStore.StoreSession(1, &AnnotationSession{
+		TabID:       1,
+		Timestamp:   time.Now().UnixMilli(),
+		PageURL:     "http://localhost:5173/dashboard",
+		Annotations: []Annotation{{Text: "not-in-scope"}},
+	})
+
+	var completed map[string]any
+	if err := json.Unmarshal(completedResult, &completed); err != nil {
+		t.Fatalf("failed to unmarshal completed result: %v", err)
+	}
+	if completed["count"] != float64(0) {
+		t.Fatalf("expected filtered async result count 0, got %v", completed["count"])
+	}
+	if completed["filter_applied"] != "http://localhost:3000/*" {
+		t.Fatalf("expected filter_applied in async result, got %v", completed["filter_applied"])
+	}
+}
+
+func TestToolGetAnnotations_WaitTrue_NamedWaiterCompletedOnStore_UsesURLFilter(t *testing.T) {
+	h := createTestToolHandler(t)
+	h.annotationStore = NewAnnotationStore(10 * time.Minute)
+	defer h.annotationStore.Close()
+
+	var completedResult json.RawMessage
+	h.annotationStore.SetCommandCompleter(func(_ string, result json.RawMessage) {
+		completedResult = result
+	})
+
+	h.annotationStore.MarkDrawStarted()
+
+	req := JSONRPCRequest{JSONRPC: "2.0", ID: float64(1)}
+	args := json.RawMessage(`{"what":"annotations","annot_session":"qa","wait":true,"timeout_ms":10,"url_pattern":"http://localhost:3000/*"}`)
+	resp := h.toolGetAnnotations(req, args)
+
+	text := unmarshalMCPText(t, resp.Result)
+	jsonText := extractJSONFromText(text)
+	var data map[string]any
+	_ = json.Unmarshal([]byte(jsonText), &data)
+	if data["status"] != "waiting_for_user" {
+		t.Fatalf("expected waiting response, got %v", data["status"])
+	}
+
+	h.annotationStore.AppendToNamedSession("qa", &AnnotationSession{
+		TabID:       2,
+		Timestamp:   time.Now().UnixMilli(),
+		PageURL:     "http://localhost:5173/settings",
+		Annotations: []Annotation{{Text: "wrong-project"}},
+	})
+
+	var completed map[string]any
+	if err := json.Unmarshal(completedResult, &completed); err != nil {
+		t.Fatalf("failed to unmarshal completed result: %v", err)
+	}
+	if completed["page_count"] != float64(0) {
+		t.Fatalf("expected filtered named async page_count 0, got %v", completed["page_count"])
+	}
+	if completed["total_count"] != float64(0) {
+		t.Fatalf("expected filtered named async total_count 0, got %v", completed["total_count"])
+	}
+	if completed["filter_applied"] != "http://localhost:3000/*" {
+		t.Fatalf("expected filter_applied in named async result, got %v", completed["filter_applied"])
+	}
+}
+
 func TestToolGetAnnotations_WaitFalse_DefaultBehavior(t *testing.T) {
 	h := createTestToolHandler(t)
 	h.annotationStore = NewAnnotationStore(10 * time.Minute)
@@ -722,6 +814,195 @@ func TestToolGetAnnotations_NamedSession_NotFound(t *testing.T) {
 
 	if !strings.Contains(text, "not found") {
 		t.Errorf("expected not found message, got %q", text)
+	}
+}
+
+func TestToolGetAnnotations_NamedSession_MultiProjectScopeWarningWithoutFilter(t *testing.T) {
+	h := createTestToolHandler(t)
+	h.annotationStore = NewAnnotationStore(10 * time.Minute)
+	defer h.annotationStore.Close()
+
+	h.annotationStore.AppendToNamedSession("qa", &AnnotationSession{
+		TabID:       1,
+		Timestamp:   100,
+		PageURL:     "http://localhost:3000/dashboard",
+		Annotations: []Annotation{{Text: "fix dashboard spacing"}},
+	})
+	h.annotationStore.AppendToNamedSession("qa", &AnnotationSession{
+		TabID:       2,
+		Timestamp:   200,
+		PageURL:     "http://localhost:5173/settings",
+		Annotations: []Annotation{{Text: "fix settings contrast"}},
+	})
+
+	req := JSONRPCRequest{JSONRPC: "2.0", ID: float64(1)}
+	resp := h.toolGetAnnotations(req, json.RawMessage(`{"what":"annotations","annot_session":"qa"}`))
+	text := unmarshalMCPText(t, resp.Result)
+	jsonText := extractJSONFromText(text)
+
+	var data map[string]any
+	if err := json.Unmarshal([]byte(jsonText), &data); err != nil {
+		t.Fatalf("Failed to parse: %v", err)
+	}
+
+	if data["scope_ambiguous"] != true {
+		t.Fatalf("expected scope_ambiguous=true, got %v", data["scope_ambiguous"])
+	}
+	if _, ok := data["scope_warning"].(map[string]any); !ok {
+		t.Fatalf("expected scope_warning object, got %T", data["scope_warning"])
+	}
+	projects, ok := data["projects"].([]any)
+	if !ok || len(projects) != 2 {
+		t.Fatalf("expected 2 project summaries, got %v", data["projects"])
+	}
+}
+
+func TestToolGetAnnotations_NamedSession_URLFilterScoped(t *testing.T) {
+	h := createTestToolHandler(t)
+	h.annotationStore = NewAnnotationStore(10 * time.Minute)
+	defer h.annotationStore.Close()
+
+	h.annotationStore.AppendToNamedSession("qa", &AnnotationSession{
+		TabID:       1,
+		Timestamp:   100,
+		PageURL:     "http://localhost:3000/dashboard",
+		Annotations: []Annotation{{Text: "fix dashboard spacing"}},
+	})
+	h.annotationStore.AppendToNamedSession("qa", &AnnotationSession{
+		TabID:       2,
+		Timestamp:   200,
+		PageURL:     "http://localhost:5173/settings",
+		Annotations: []Annotation{{Text: "fix settings contrast"}, {Text: "fix settings tooltip"}},
+	})
+
+	req := JSONRPCRequest{JSONRPC: "2.0", ID: float64(1)}
+	resp := h.toolGetAnnotations(req, json.RawMessage(`{"what":"annotations","annot_session":"qa","url":"http://localhost:5173/*"}`))
+	text := unmarshalMCPText(t, resp.Result)
+	jsonText := extractJSONFromText(text)
+
+	var data map[string]any
+	if err := json.Unmarshal([]byte(jsonText), &data); err != nil {
+		t.Fatalf("Failed to parse: %v", err)
+	}
+
+	if data["filter_applied"] != "http://localhost:5173/*" {
+		t.Fatalf("expected filter_applied, got %v", data["filter_applied"])
+	}
+	if data["scope_ambiguous"] == true {
+		t.Fatalf("scope_ambiguous should be false when filter is applied")
+	}
+	if data["page_count"] != float64(1) {
+		t.Fatalf("expected page_count=1, got %v", data["page_count"])
+	}
+	if data["total_count"] != float64(2) {
+		t.Fatalf("expected total_count=2 for filtered page, got %v", data["total_count"])
+	}
+}
+
+func TestToolGetAnnotations_AnonymousURLFilterNoMatch(t *testing.T) {
+	h := createTestToolHandler(t)
+	h.annotationStore = NewAnnotationStore(10 * time.Minute)
+	defer h.annotationStore.Close()
+
+	h.annotationStore.StoreSession(1, &AnnotationSession{
+		TabID:       1,
+		Timestamp:   time.Now().UnixMilli(),
+		PageURL:     "http://localhost:3000/dashboard",
+		Annotations: []Annotation{{Text: "fix dashboard spacing"}},
+	})
+
+	req := JSONRPCRequest{JSONRPC: "2.0", ID: float64(1)}
+	resp := h.toolGetAnnotations(req, json.RawMessage(`{"what":"annotations","url":"http://localhost:5173/*"}`))
+	text := unmarshalMCPText(t, resp.Result)
+	jsonText := extractJSONFromText(text)
+
+	var data map[string]any
+	if err := json.Unmarshal([]byte(jsonText), &data); err != nil {
+		t.Fatalf("Failed to parse: %v", err)
+	}
+
+	if data["count"] != float64(0) {
+		t.Fatalf("expected filtered count=0, got %v", data["count"])
+	}
+	if _, ok := data["message"].(string); !ok {
+		t.Fatalf("expected no-match message when url filter does not match")
+	}
+}
+
+func TestToolGetAnnotations_AnonymousBaseURLFilter_DoesNotCrossPortPrefix(t *testing.T) {
+	h := createTestToolHandler(t)
+	h.annotationStore = NewAnnotationStore(10 * time.Minute)
+	defer h.annotationStore.Close()
+
+	h.annotationStore.StoreSession(1, &AnnotationSession{
+		TabID:       1,
+		Timestamp:   time.Now().UnixMilli(),
+		PageURL:     "http://localhost:30001/dashboard",
+		Annotations: []Annotation{{Text: "wrong project by port"}},
+	})
+
+	req := JSONRPCRequest{JSONRPC: "2.0", ID: float64(1)}
+	resp := h.toolGetAnnotations(req, json.RawMessage(`{"what":"annotations","url":"http://localhost:3000"}`))
+	text := unmarshalMCPText(t, resp.Result)
+	jsonText := extractJSONFromText(text)
+
+	var data map[string]any
+	if err := json.Unmarshal([]byte(jsonText), &data); err != nil {
+		t.Fatalf("Failed to parse: %v", err)
+	}
+
+	if data["count"] != float64(0) {
+		t.Fatalf("expected base-url filter to reject different port, got count %v", data["count"])
+	}
+}
+
+func TestToolGetAnnotations_ConflictingURLFilterParams(t *testing.T) {
+	h := createTestToolHandler(t)
+	h.annotationStore = NewAnnotationStore(10 * time.Minute)
+	defer h.annotationStore.Close()
+
+	req := JSONRPCRequest{JSONRPC: "2.0", ID: float64(1)}
+	resp := h.toolGetAnnotations(req, json.RawMessage(`{"what":"annotations","url":"http://localhost:3000/*","url_pattern":"http://localhost:5173/*"}`))
+	text := unmarshalMCPText(t, resp.Result)
+
+	if !strings.Contains(text, "Conflicting annotation scope filters") {
+		t.Fatalf("expected conflicting filter validation error, got: %s", text)
+	}
+}
+
+func TestToolGetAnnotations_Flush_UsesExplicitURLFilterWhenWaiterMissing(t *testing.T) {
+	h := createTestToolHandler(t)
+	h.annotationStore = NewAnnotationStore(10 * time.Minute)
+	defer h.annotationStore.Close()
+
+	h.annotationStore.StoreSession(1, &AnnotationSession{
+		TabID:       1,
+		Timestamp:   time.Now().UnixMilli(),
+		PageURL:     "http://localhost:5173/dashboard",
+		Annotations: []Annotation{{Text: "wrong project"}},
+	})
+
+	corrID := "ann_flush_filter_fallback"
+	h.capture.RegisterCommand(corrID, "", annotationWaitCommandTTL)
+
+	req := JSONRPCRequest{JSONRPC: "2.0", ID: float64(1)}
+	resp := h.toolGetAnnotations(req, json.RawMessage(`{"what":"annotations","operation":"flush","correlation_id":"`+corrID+`","url":"http://localhost:3000/*"}`))
+	text := unmarshalMCPText(t, resp.Result)
+	jsonText := extractJSONFromText(text)
+
+	var data map[string]any
+	if err := json.Unmarshal([]byte(jsonText), &data); err != nil {
+		t.Fatalf("failed to parse flush response: %v", err)
+	}
+	resultPayload, ok := data["result"].(map[string]any)
+	if !ok {
+		t.Fatalf("expected result payload object, got: %T", data["result"])
+	}
+	if resultPayload["count"] != float64(0) {
+		t.Fatalf("expected explicit flush filter to scope result, got count %v", resultPayload["count"])
+	}
+	if resultPayload["filter_applied"] != "http://localhost:3000/*" {
+		t.Fatalf("expected filter_applied from explicit flush filter, got %v", resultPayload["filter_applied"])
 	}
 }
 
@@ -881,10 +1162,10 @@ func TestToolGetAnnotationDetail_ErrorCorrelation(t *testing.T) {
 
 	// Store the detail
 	detail := AnnotationDetail{
-		CorrelationID: "detail_corr",
-		Selector:      "button.broken",
-		Tag:           "button",
-		Classes:       []string{"broken"},
+		CorrelationID:  "detail_corr",
+		Selector:       "button.broken",
+		Tag:            "button",
+		Classes:        []string{"broken"},
 		ComputedStyles: map[string]string{},
 	}
 	h.annotationStore.StoreDetail("detail_corr", detail)
@@ -894,7 +1175,7 @@ func TestToolGetAnnotationDetail_ErrorCorrelation(t *testing.T) {
 	h.server.entries = append(h.server.entries,
 		LogEntry{"level": "error", "message": "TypeError: Cannot read property 'click'", "ts": annotTS.Add(-2 * time.Second).UTC().Format(time.RFC3339)},
 		LogEntry{"level": "error", "message": "Uncaught ReferenceError: x is not defined", "ts": annotTS.Add(3 * time.Second).UTC().Format(time.RFC3339)},
-		LogEntry{"level": "info", "message": "page loaded", "ts": annotTS.Add(-1 * time.Second).UTC().Format(time.RFC3339)},          // not error
+		LogEntry{"level": "info", "message": "page loaded", "ts": annotTS.Add(-1 * time.Second).UTC().Format(time.RFC3339)},      // not error
 		LogEntry{"level": "error", "message": "far away error", "ts": annotTS.Add(-30 * time.Second).UTC().Format(time.RFC3339)}, // outside window
 	)
 	h.server.logAddedAt = append(h.server.logAddedAt,
@@ -935,10 +1216,10 @@ func TestToolGetAnnotationDetail_ErrorCorrelation_NoErrors(t *testing.T) {
 	h := createTestToolHandler(t)
 
 	detail := AnnotationDetail{
-		CorrelationID: "detail_no_err",
-		Selector:      "div.clean",
-		Tag:           "div",
-		Classes:       []string{},
+		CorrelationID:  "detail_no_err",
+		Selector:       "div.clean",
+		Tag:            "div",
+		Classes:        []string{},
 		ComputedStyles: map[string]string{},
 	}
 	h.annotationStore.StoreDetail("detail_no_err", detail)

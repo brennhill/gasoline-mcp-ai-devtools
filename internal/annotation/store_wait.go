@@ -7,8 +7,8 @@ package annotation
 import "time"
 
 // TakeWaiter removes and returns a pending async annotation waiter by correlation_id.
-// Returns (sessionName, true) when found, or ("", false) when missing.
-func (s *Store) TakeWaiter(correlationID string) (string, bool) {
+// Returns (sessionName, urlFilter, true) when found, or ("", "", false) when missing.
+func (s *Store) TakeWaiter(correlationID string) (string, string, bool) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	for i, w := range s.waiters {
@@ -16,9 +16,9 @@ func (s *Store) TakeWaiter(correlationID string) (string, bool) {
 			continue
 		}
 		s.waiters = append(s.waiters[:i], s.waiters[i+1:]...)
-		return w.AnnotSessionName, true
+		return w.AnnotSessionName, w.URLFilter, true
 	}
-	return "", false
+	return "", "", false
 }
 
 // waitForCondition blocks until checker returns non-nil, timeout, or store close.

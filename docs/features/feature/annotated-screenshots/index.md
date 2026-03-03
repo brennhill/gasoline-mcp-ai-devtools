@@ -10,6 +10,8 @@ code_paths:
   - internal/annotation/store.go
   - cmd/dev-console/tools_analyze_annotations_handlers.go
   - cmd/dev-console/annotation_store.go
+  - internal/schema/analyze.go
+  - internal/tools/configure/mode_specs_analyze.go
 test_paths:
   - tests/extension/draw-mode.test.js
   - internal/annotation/store_test.go
@@ -48,7 +50,8 @@ test_paths:
 
 ### Go (store + handler)
 - `internal/annotation/store.go` — `Detail` struct with ParentContext, Siblings, CSSFramework fields; session TTL = 2 hours
-- `cmd/dev-console/tools_analyze_annotations_handlers.go` — detail response enrichment, error correlation, LLM hints
+- `cmd/dev-console/tools_analyze_annotations_handlers.go` — detail response enrichment, error correlation, LLM hints, and cross-project scope safety metadata (`projects`, `scope_ambiguous`, `scope_warning`, `filter_applied`)
+- `internal/schema/analyze.go` + `internal/tools/configure/mode_specs_analyze.go` — analyze annotations schema/capability metadata for `url` / `url_pattern` filters
 
 ### Tests
 - `tests/extension/draw-mode.test.js` — "Element Detail Enrichment" describe block
