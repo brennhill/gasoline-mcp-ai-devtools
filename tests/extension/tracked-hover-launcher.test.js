@@ -7,11 +7,12 @@ import { beforeEach, describe, mock, test } from 'node:test'
 import assert from 'node:assert'
 
 let elementsById
-let appendedToBody
 let storageData
 let storageChangeListener
 let runtimeSendMessage
+let runtimeOnMessageListeners
 let setTrackedHoverLauncherEnabled
+let importCounter = 0
 
 function registerElement(el) {
   if (el && el.id) {
@@ -29,6 +30,9 @@ function createMockElement(tag) {
     textContent: '',
     className: '',
     disabled: false,
+    href: '',
+    target: '',
+    rel: '',
     dataset: {},
     style: {},
     children: [],
@@ -56,21 +60,37 @@ function createMockElement(tag) {
   return el
 }
 
-function findButtonByTitle(element, title) {
+function findElementByTitle(element, title) {
   if (!element) return null
-  if (element.tag === 'button' && element.title === title) return element
+  if (element.title === title) return element
   for (const child of element.children || []) {
-    const found = findButtonByTitle(child, title)
+    const found = findElementByTitle(child, title)
     if (found) return found
   }
   return null
 }
 
+function findLinkByText(element, text) {
+  if (!element) return null
+  if (element.tag === 'a' && element.textContent === text) return element
+  for (const child of element.children || []) {
+    const found = findLinkByText(child, text)
+    if (found) return found
+  }
+  return null
+}
+
+function dispatchRuntimeMessage(message) {
+  for (const listener of runtimeOnMessageListeners) {
+    listener(message, { id: 'test-extension-id' }, () => {})
+  }
+}
+
 function resetGlobals() {
   elementsById = {}
-  appendedToBody = []
   storageData = { gasoline_recording: { active: false } }
   storageChangeListener = null
+  runtimeOnMessageListeners = []
 
   runtimeSendMessage = mock.fn((message, callback) => {
     if (message?.type === 'captureScreenshot') {
@@ -93,8 +113,17 @@ function resetGlobals() {
 
   globalThis.chrome = {
     runtime: {
+      id: 'test-extension-id',
       getURL: mock.fn((path) => `chrome-extension://test/${path}`),
-      sendMessage: runtimeSendMessage
+      sendMessage: runtimeSendMessage,
+      onMessage: {
+        addListener: mock.fn((listener) => {
+          runtimeOnMessageListeners.push(listener)
+        }),
+        removeListener: mock.fn((listener) => {
+          runtimeOnMessageListeners = runtimeOnMessageListeners.filter((item) => item !== listener)
+        })
+      }
     },
     storage: {
       local: {
@@ -119,7 +148,6 @@ function resetGlobals() {
     createElement: mock.fn((tag) => createMockElement(tag)),
     body: {
       appendChild: mock.fn((el) => {
-        appendedToBody.push(el)
         registerElement(el)
         return el
       })
@@ -137,9 +165,9 @@ describe('tracked hover launcher', () => {
   beforeEach(async () => {
     mock.reset()
     resetGlobals()
-    if (!setTrackedHoverLauncherEnabled) {
-      ;({ setTrackedHoverLauncherEnabled } = await import('../../extension/content/ui/tracked-hover-launcher.js'))
-    }
+    ;({ setTrackedHoverLauncherEnabled } = await import(
+      `../../extension/content/ui/tracked-hover-launcher.js?v=${++importCounter}`
+    ))
     setTrackedHoverLauncherEnabled(false)
   })
 
@@ -155,7 +183,7 @@ describe('tracked hover launcher', () => {
     setTrackedHoverLauncherEnabled(true)
 
     const root = elementsById['gasoline-tracked-hover-launcher']
-    const screenshotButton = findButtonByTitle(root, 'Capture screenshot')
+    const screenshotButton = findElementByTitle(root, 'Capture screenshot')
     assert.ok(screenshotButton, 'expected screenshot button')
 
     screenshotButton.dispatch('click')
@@ -168,7 +196,7 @@ describe('tracked hover launcher', () => {
     setTrackedHoverLauncherEnabled(true)
 
     const root = elementsById['gasoline-tracked-hover-launcher']
-    const recordButton = findButtonByTitle(root, 'Start recording')
+    const recordButton = findElementByTitle(root, 'Start recording')
     assert.ok(recordButton, 'expected record button')
 
     recordButton.dispatch('click')
@@ -180,6 +208,41 @@ describe('tracked hover launcher', () => {
     const sentTypes = runtimeSendMessage.mock.calls.map((call) => call.arguments[0]?.type)
     assert.ok(sentTypes.includes('record_start'))
     assert.ok(sentTypes.includes('record_stop'))
+  })
+
+  test('settings menu exposes docs and github links', () => {
+    setTrackedHoverLauncherEnabled(true)
+
+    const root = elementsById['gasoline-tracked-hover-launcher']
+    const settingsButton = findElementByTitle(root, 'Launcher settings')
+    assert.ok(settingsButton, 'expected settings button')
+    settingsButton.dispatch('click')
+
+    const docsLink = findLinkByText(root, 'Docs')
+    const repoLink = findLinkByText(root, 'GitHub Repository')
+
+    assert.ok(docsLink, 'expected docs link')
+    assert.ok(repoLink, 'expected repo link')
+    assert.strictEqual(docsLink.href, 'https://cookwithgasoline.com/docs')
+    assert.strictEqual(repoLink.href, 'https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp')
+  })
+
+  test('hide action removes launcher until popup show message arrives', () => {
+    setTrackedHoverLauncherEnabled(true)
+
+    const root = elementsById['gasoline-tracked-hover-launcher']
+    const settingsButton = findElementByTitle(root, 'Launcher settings')
+    assert.ok(settingsButton)
+    settingsButton.dispatch('click')
+
+    const hideButton = findElementByTitle(root, 'Hide launcher until popup is opened again')
+    assert.ok(hideButton, 'expected hide button')
+    hideButton.dispatch('click')
+
+    assert.strictEqual(elementsById['gasoline-tracked-hover-launcher'], undefined)
+
+    dispatchRuntimeMessage({ type: 'GASOLINE_SHOW_TRACKED_HOVER_LAUNCHER' })
+    assert.ok(elementsById['gasoline-tracked-hover-launcher'], 'launcher should remount after popup signal')
   })
 
   test('unmount removes launcher and storage listener', () => {

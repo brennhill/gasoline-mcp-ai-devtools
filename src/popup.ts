@@ -43,6 +43,7 @@ export { initWebSocketModeSelector } from './popup/settings.js'
 export { isInternalUrl } from './popup/ui-utils.js'
 
 const DEFAULT_MAX_ENTRIES = 1000
+const RESHOW_TRACKED_HOVER_LAUNCHER_MESSAGE = { type: 'GASOLINE_SHOW_TRACKED_HOVER_LAUNCHER' }
 
 /**
  * Bind a toggle element to show/hide a target element based on a condition.
@@ -98,10 +99,24 @@ function setupToggleWarnings(): void {
   }
 }
 
+function requestTrackedHoverLauncherReshow(): void {
+  if (!chrome.tabs?.query || !chrome.tabs?.sendMessage) return
+  chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+    const tabId = tabs[0]?.id
+    if (!tabId) return
+    chrome.tabs.sendMessage(tabId, RESHOW_TRACKED_HOVER_LAUNCHER_MESSAGE, () => {
+      void chrome.runtime.lastError
+    })
+  })
+}
+
 /**
  * Initialize the popup
  */
 export async function initPopup(): Promise<void> {
+  // Re-show tracked-tab quick launcher if user hid it from the page UI.
+  requestTrackedHoverLauncherReshow()
+
   // Request current status from background - may fail if service worker is inactive
   try {
     chrome.runtime.sendMessage({ type: 'getStatus' }, (status: PopupConnectionStatus | undefined) => {

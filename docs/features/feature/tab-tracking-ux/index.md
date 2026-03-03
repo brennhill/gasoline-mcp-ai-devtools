@@ -9,6 +9,7 @@ code_paths:
   - src/content.ts
   - src/content/tab-tracking.ts
   - src/content/ui/tracked-hover-launcher.ts
+  - src/popup.ts
   - src/background/message-handlers.ts
   - src/background/recording-listeners.ts
 test_paths:
