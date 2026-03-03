@@ -144,6 +144,40 @@ func (s *BufferStore) appendEnhancedActions(actions []EnhancedAction, now time.T
 	return hasNavigation
 }
 
+func (s *BufferStore) appendNetworkBodies(bodies []NetworkBody, testIDs []string, now time.Time) {
+	s.repairNetworkParallelArrays()
+	s.networkTotalAdded += int64(len(bodies))
+	for i := range bodies {
+		if bodies[i].Status >= 400 {
+			s.networkErrorTotalAdded++
+		}
+		bodies[i].TestIDs = testIDs
+		detectAndSetBinaryFormat(&bodies[i])
+		s.networkBodies = append(s.networkBodies, bodies[i])
+		s.networkAddedAt = append(s.networkAddedAt, now)
+		s.networkBodyMemoryTotal += nbEntryMemory(&bodies[i])
+	}
+	s.evictNetworkByCount()
+	s.evictNetworkForMemory()
+}
+
+func (s *BufferStore) appendWebSocketEvents(events []WebSocketEvent, testIDs []string, now time.Time, onEvent func(WebSocketEvent)) {
+	s.repairWebSocketParallelArrays()
+	s.wsTotalAdded += int64(len(events))
+	for i := range events {
+		events[i].TestIDs = testIDs
+		detectWSBinaryFormat(&events[i])
+		if onEvent != nil {
+			onEvent(events[i])
+		}
+		s.wsEvents = append(s.wsEvents, events[i])
+		s.wsAddedAt = append(s.wsAddedAt, now)
+		s.wsMemoryTotal += wsEventMemory(&events[i])
+	}
+	s.evictWebSocketByCount()
+	s.evictWebSocketForMemory()
+}
+
 func (s *BufferStore) repairNetworkParallelArrays() {
 	if len(s.networkBodies) == len(s.networkAddedAt) {
 		return

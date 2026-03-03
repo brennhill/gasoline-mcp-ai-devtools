@@ -43,8 +43,6 @@ func (c *Capture) AddWebSocketEvents(events []WebSocketEvent) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	c.buffers.repairWebSocketParallelArrays()
-	c.buffers.wsTotalAdded += int64(len(events))
 	now := time.Now()
 
 	activeTestIDs := make([]string, 0)
@@ -52,17 +50,7 @@ func (c *Capture) AddWebSocketEvents(events []WebSocketEvent) {
 		activeTestIDs = append(activeTestIDs, testID)
 	}
 
-	for i := range events {
-		events[i].TestIDs = activeTestIDs
-		detectWSBinaryFormat(&events[i])
-		c.wsConnections.trackEvent(events[i])
-		c.buffers.wsEvents = append(c.buffers.wsEvents, events[i])
-		c.buffers.wsAddedAt = append(c.buffers.wsAddedAt, now)
-		c.buffers.wsMemoryTotal += wsEventMemory(&events[i])
-	}
-
-	c.buffers.evictWebSocketByCount()
-	c.buffers.evictWebSocketForMemory()
+	c.buffers.appendWebSocketEvents(events, activeTestIDs, now, c.wsConnections.trackEvent)
 }
 
 // GetWebSocketEventCount returns the current number of buffered events
