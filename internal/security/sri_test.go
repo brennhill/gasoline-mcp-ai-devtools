@@ -1,5 +1,4 @@
 // Purpose: Tests for Subresource Integrity hash generation.
-// Why: Prevents silent regressions in critical behavior paths.
 // Docs: docs/features/feature/security-hardening/index.md
 
 // sri_test.go — Tests for SRI Hash Generator (generate_sri) MCP tool.

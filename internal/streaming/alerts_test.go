@@ -1,5 +1,4 @@
 // Purpose: Tests for streaming alert event generation and throttling.
-// Why: Prevents silent regressions in critical behavior paths.
 // Docs: docs/features/feature/context-streaming/index.md
 
 // alerts_test.go — Unit tests for AlertBuffer methods and pure alert processing functions.

@@ -1,5 +1,4 @@
 // Purpose: Tests for configure tutorial content delivery.
-// Why: Prevents silent regressions in critical behavior paths.
 // Docs: docs/features/feature/mcp-persistent-server/index.md
 
 // tools_configure_tutorial_test.go — Tests for configure tutorial/examples mode.

@@ -1,5 +1,4 @@
 // Purpose: Tests for session performance diff computation.
-// Why: Prevents silent regressions in critical behavior paths.
 // Docs: docs/features/feature/pagination/index.md
 
 // performance_diff_test.go — Tests for performance-diff.go.

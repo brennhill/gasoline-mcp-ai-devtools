@@ -1,5 +1,4 @@
 // Purpose: Validate describe_capabilities handler behavior and guard against regressions.
-// Why: Prevents silent regressions in critical behavior paths.
 // Docs: docs/features/describe_capabilities.md
 
 // tools_configure_capabilities_test.go — Tests for describe_capabilities handler.

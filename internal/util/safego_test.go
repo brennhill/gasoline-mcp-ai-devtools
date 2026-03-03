@@ -1,5 +1,4 @@
 // Purpose: Tests for safe goroutine launch and panic recovery.
-// Why: Prevents silent regressions in critical behavior paths.
 
 // safego_test.go — Tests for SafeGo panic recovery wrapper.
 package util

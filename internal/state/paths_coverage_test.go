@@ -1,5 +1,4 @@
 // Purpose: Coverage-expansion tests for state management edge cases and branch paths.
-// Why: Prevents silent regressions in critical behavior paths.
 // Docs: docs/features/feature/state-time-travel/index.md
 
 // paths_coverage_test.go — Additional tests targeting uncovered branches in paths.go.

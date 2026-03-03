@@ -1,5 +1,4 @@
 // Purpose: Tests for image pixel-diff computation.
-// Why: Prevents silent regressions in critical behavior paths.
 // Docs: docs/features/feature/analyze-tool/index.md
 
 // image_diff_test.go — Tests for pure Go pixel-diff comparison.

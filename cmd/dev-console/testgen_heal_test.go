@@ -1,5 +1,4 @@
 // Purpose: Tests for test-generation self-healing repair.
-// Why: Prevents silent regressions in critical behavior paths.
 // Docs: docs/features/feature/test-generation/index.md
 
 // testgen_heal_test.go — Tests for testgen_heal.go functions at 0% coverage.

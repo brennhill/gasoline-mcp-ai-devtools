@@ -1,5 +1,4 @@
 // Purpose: Coverage-expansion tests for pagination and cursor edge cases and branch paths.
-// Why: Prevents silent regressions in critical behavior paths.
 // Docs: docs/features/feature/pagination/index.md
 
 // pagination_coverage_test.go — Targeted tests for uncovered branches in pagination package.
@@ -316,7 +315,7 @@ func TestSerializeActionEntryWithSequence_AllOptionalFields(t *testing.T) {
 			SelectedValue: "option1",
 			SelectedText:  "Option 1",
 			ScrollY:       500,
-			TabId:         42,
+			TabID:         42,
 		},
 		Sequence:  10,
 		Timestamp: "2026-01-30T10:15:23Z",
@@ -398,7 +397,7 @@ func TestSerializeWebSocketEntryWithSequence_AllOptionalFields(t *testing.T) {
 			BinaryFormat:     "protobuf",
 			FormatConfidence: 0.95,
 			Sampled:          sampled,
-			TabId:            7,
+			TabID:            7,
 			Timestamp:        "2026-01-30T10:15:23Z",
 		},
 		Sequence:  100,
@@ -489,7 +488,7 @@ func TestSerializeWebSocketEntryWithSequence_NoOptionalFields(t *testing.T) {
 // SerializeLogEntryWithSequence — no tabId
 // ============================================
 
-func TestSerializeLogEntryWithSequence_NoTabId(t *testing.T) {
+func TestSerializeLogEntryWithSequence_NoTabID(t *testing.T) {
 	t.Parallel()
 	enriched := LogEntryWithSequence{
 		Entry: LogEntry{
@@ -510,7 +509,7 @@ func TestSerializeLogEntryWithSequence_NoTabId(t *testing.T) {
 // SerializeLogEntryWithSequence — tabId as int (entryDisplay int branch)
 // ============================================
 
-func TestSerializeLogEntryWithSequence_TabIdAsInt(t *testing.T) {
+func TestSerializeLogEntryWithSequence_TabIDAsInt(t *testing.T) {
 	t.Parallel()
 	enriched := LogEntryWithSequence{
 		Entry: LogEntry{
@@ -528,7 +527,7 @@ func TestSerializeLogEntryWithSequence_TabIdAsInt(t *testing.T) {
 	}
 }
 
-func TestSerializeLogEntryWithSequence_TabIdAsInt64(t *testing.T) {
+func TestSerializeLogEntryWithSequence_TabIDAsInt64(t *testing.T) {
 	t.Parallel()
 	enriched := LogEntryWithSequence{
 		Entry: LogEntry{

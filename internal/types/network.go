@@ -26,7 +26,7 @@ type WebSocketEvent struct {
 	Sampled          *SamplingInfo `json:"sampled,omitempty"`          // server-only enrichment
 	BinaryFormat     string        `json:"binary_format,omitempty"`   // server-only enrichment
 	FormatConfidence float64       `json:"format_confidence,omitempty"` // server-only enrichment
-	TabId            int           `json:"tab_id,omitempty"`          // Chrome tab ID that produced this event
+	TabID            int           `json:"tab_id,omitempty"`          // Chrome tab ID that produced this event
 	TestIDs          []string      `json:"test_ids,omitempty"`        // Test IDs this event belongs to
 }
 
@@ -148,7 +148,7 @@ type NetworkBody struct {
 	HasAuthHeader      bool              `json:"has_auth_header,omitempty"` // server-only enrichment
 	BinaryFormat       string            `json:"binary_format,omitempty"`   // server-only enrichment
 	FormatConfidence   float64           `json:"format_confidence,omitempty"` // server-only enrichment
-	TabId              int               `json:"tab_id,omitempty"` // Chrome tab ID that produced this request
+	TabID              int               `json:"tab_id,omitempty"` // Chrome tab ID that produced this request
 	TestIDs            []string          `json:"test_ids,omitempty"` // Test IDs this entry belongs to
 }
 
@@ -207,7 +207,7 @@ type EnhancedAction struct {
 	SelectedValue  string         `json:"selected_value,omitempty"`
 	SelectedText   string         `json:"selected_text,omitempty"`
 	ScrollY        int            `json:"scroll_y,omitempty"`
-	TabId          int            `json:"tab_id,omitempty"`    // Chrome tab ID that produced this action
+	TabID          int            `json:"tab_id,omitempty"`    // Chrome tab ID that produced this action
 	TestIDs        []string       `json:"test_ids,omitempty"` // Test IDs this action belongs to
 	Source         string         `json:"source,omitempty"`         // "human" for user actions, "ai" for AI-driven actions via interact tool
 	Classification string         `json:"classification,omitempty"` // Transient classification: toast, alert, snackbar, notification, tooltip, banner, flash

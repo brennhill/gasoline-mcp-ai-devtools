@@ -1,5 +1,4 @@
 // Purpose: Fuzz redaction operations for edge-case inputs and panics.
-// Why: Prevents silent regressions in critical behavior paths.
 // Docs: docs/features/feature/redaction-patterns/index.md
 
 // redaction_fuzz_test.go — Fuzz tests for redaction engine.

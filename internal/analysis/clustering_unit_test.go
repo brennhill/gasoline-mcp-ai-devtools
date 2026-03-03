@@ -1,5 +1,4 @@
 // Purpose: Unit tests for error clustering and API schema analysis clustering logic.
-// Why: Prevents silent regressions in critical behavior paths.
 // Docs: docs/features/feature/api-schema/index.md
 
 // clustering_unit_test.go — Unit tests for addUnclustered FIFO eviction.

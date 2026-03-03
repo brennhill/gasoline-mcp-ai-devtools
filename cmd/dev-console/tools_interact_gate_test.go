@@ -1,5 +1,4 @@
 // Purpose: Tests for interact feature-gate enforcement.
-// Why: Prevents silent regressions in critical behavior paths.
 // Docs: docs/features/feature/interact-explore/index.md
 //
 // tools_interact_gate_test.go — Tests for pre-dispatch fast-fail gates on interact commands.

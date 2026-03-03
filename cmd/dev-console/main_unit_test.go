@@ -1,5 +1,4 @@
 // Purpose: Unit tests for dev-console main logic.
-// Why: Prevents silent regressions in critical behavior paths.
 // Docs: docs/features/feature/mcp-persistent-server/index.md
 
 // main_unit_test.go — Unit tests for pure functions in main.go.

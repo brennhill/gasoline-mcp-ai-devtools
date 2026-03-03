@@ -1,5 +1,4 @@
 // Purpose: Tests for recording playback replay fidelity.
-// Why: Prevents silent regressions in critical behavior paths.
 // Docs: docs/features/feature/playback-engine/index.md
 
 package recording

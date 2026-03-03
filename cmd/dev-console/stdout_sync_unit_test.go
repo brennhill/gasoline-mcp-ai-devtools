@@ -1,5 +1,4 @@
 // Purpose: Unit tests for dev-console stdout sync logic.
-// Why: Prevents silent regressions in critical behavior paths.
 // Docs: docs/features/feature/mcp-persistent-server/index.md
 
 package main

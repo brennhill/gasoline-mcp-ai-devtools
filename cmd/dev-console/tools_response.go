@@ -8,6 +8,7 @@ import (
 
 	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/capture"
 	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/mcp"
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/util"
 )
 
 func safeMarshal(v any, fallback string) json.RawMessage {
@@ -51,7 +52,7 @@ func markdownTable(headers []string, rows [][]string) string {
 }
 
 func truncate(s string, maxLen int) string {
-	return mcp.Truncate(s, maxLen)
+	return util.Truncate(s, maxLen)
 }
 
 func appendWarningsToResponse(resp JSONRPCResponse, warnings []string) JSONRPCResponse {

@@ -1,5 +1,4 @@
 // Purpose: Tests for session network diff computation.
-// Why: Prevents silent regressions in critical behavior paths.
 // Docs: docs/features/feature/pagination/index.md
 
 // network_diff_test.go — Tests for network-diff.go.

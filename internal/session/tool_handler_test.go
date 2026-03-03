@@ -1,5 +1,4 @@
 // Purpose: Tests for session tool handler dispatch.
-// Why: Prevents silent regressions in critical behavior paths.
 // Docs: docs/features/feature/pagination/index.md
 
 // tool_handler_test.go — Tests for tool-handler.go (SessionManager.HandleTool).

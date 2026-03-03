@@ -1,5 +1,4 @@
 // Purpose: Black-box tests for observe tool end-to-end behavior.
-// Why: Prevents silent regressions in critical behavior paths.
 // Docs: docs/features/feature/mcp-persistent-server/index.md
 
 // tools_observe_blackbox_test.go — Black box tests for observe tool data flow.

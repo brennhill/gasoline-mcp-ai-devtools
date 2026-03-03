@@ -1,5 +1,4 @@
 // Purpose: Tests for checkpoint resolution tracking and lifecycle.
-// Why: Prevents silent regressions in critical behavior paths.
 
 // ai_checkpoint_resolution_test.go — Tests for checkpoint resolution, namespacing, and multi-client isolation.
 package checkpoint

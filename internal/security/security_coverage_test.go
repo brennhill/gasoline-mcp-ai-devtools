@@ -1,5 +1,4 @@
 // Purpose: Coverage-expansion tests for security edge cases and branch paths.
-// Why: Prevents silent regressions in critical behavior paths.
 // Docs: docs/features/feature/security-hardening/index.md
 
 // security_coverage_test.go — Targeted coverage tests for uncovered security paths (part 1).

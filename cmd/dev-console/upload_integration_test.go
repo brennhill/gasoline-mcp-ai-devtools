@@ -1,5 +1,4 @@
 // Purpose: Integration tests for dev-console end-to-end flows.
-// Why: Prevents silent regressions in critical behavior paths.
 // Docs: docs/features/feature/mcp-persistent-server/index.md
 
 // upload_integration_test.go — Integration and edge case tests for upload feature.

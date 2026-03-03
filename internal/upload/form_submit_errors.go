@@ -5,6 +5,8 @@ package upload
 import (
 	"fmt"
 	"net/http"
+
+	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/util"
 )
 
 func formSubmitStage3Error(msg string) StageResponse {
@@ -15,18 +17,6 @@ var httpStatusErrors = map[int]string{
 	401: "User not logged into platform (HTTP 401). Please log in and retry.",
 	403: "CSRF token mismatch or forbidden (HTTP 403). Token may be expired.",
 	422: "Form validation failed (HTTP 422). Check required fields.",
-}
-
-// Truncate returns s unchanged if len(s) <= maxLen. Otherwise, it truncates
-// and appends "..." so the total output length equals maxLen.
-func Truncate(s string, maxLen int) string {
-	if len(s) <= maxLen {
-		return s
-	}
-	if maxLen <= 3 {
-		return "..."[:maxLen]
-	}
-	return s[:maxLen-3] + "..."
 }
 
 func buildHTTPErrorResponse(resp *http.Response, fileName string, fileSize int64, elapsed int64) StageResponse {
@@ -46,6 +36,6 @@ func buildHTTPErrorResponse(resp *http.Response, fileName string, fileSize int64
 		FileName:      fileName,
 		FileSizeBytes: fileSize,
 		DurationMs:    elapsed,
-		Suggestions:   []string{"Check authentication", "Verify CSRF token", "Response: " + Truncate(bodyPreview, 200)},
+		Suggestions:   []string{"Check authentication", "Verify CSRF token", "Response: " + util.Truncate(bodyPreview, 200)},
 	}
 }

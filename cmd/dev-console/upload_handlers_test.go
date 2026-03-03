@@ -1,5 +1,4 @@
 // Purpose: Tests for upload HTTP handler request processing.
-// Why: Prevents silent regressions in critical behavior paths.
 // Docs: docs/features/feature/mcp-persistent-server/index.md
 
 // upload_handlers_test.go — HTTP endpoint and happy-path tests for file upload.

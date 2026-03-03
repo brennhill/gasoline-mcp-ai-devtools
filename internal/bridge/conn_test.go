@@ -1,5 +1,4 @@
 // Purpose: Tests for bridge connection management and lifecycle.
-// Why: Prevents silent regressions in critical behavior paths.
 // Docs: docs/features/feature/bridge-restart/index.md
 
 // conn_test.go — Tests for IsConnectionError helper function.

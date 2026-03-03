@@ -1,5 +1,4 @@
 // Purpose: Tests for query command construction and validation.
-// Why: Prevents silent regressions in critical behavior paths.
 // Docs: docs/features/feature/query-service/index.md
 
 // commands_test.go — Tests for command lifecycle, expiration, and status normalization.

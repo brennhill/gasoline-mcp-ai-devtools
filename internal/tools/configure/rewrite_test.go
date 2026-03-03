@@ -1,5 +1,4 @@
 // Purpose: Tests for configure rule rewrite logic.
-// Why: Prevents silent regressions in critical behavior paths.
 // Docs: docs/features/feature/enhanced-cli-config/index.md
 
 // rewrite_test.go — Tests for argument rewriting functions.

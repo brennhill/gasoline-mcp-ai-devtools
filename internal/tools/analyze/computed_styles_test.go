@@ -1,5 +1,4 @@
 // Purpose: Tests for computed styles extraction.
-// Why: Prevents silent regressions in critical behavior paths.
 // Docs: docs/features/feature/analyze-tool/index.md
 
 // computed_styles_test.go — Tests for computed styles handler argument parsing.

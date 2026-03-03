@@ -1,5 +1,4 @@
 // Purpose: Tests for capture query command dispatch and response routing.
-// Why: Prevents silent regressions in critical behavior paths.
 // Docs: docs/features/feature/backend-log-streaming/index.md
 
 // query_commands_test.go — Tests for Capture delegation of command methods and disconnect detection.

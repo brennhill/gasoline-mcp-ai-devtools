@@ -1,5 +1,4 @@
 // Purpose: Tests for API key authentication middleware.
-// Why: Prevents silent regressions in critical behavior paths.
 // Docs: docs/features/feature/mcp-persistent-server/index.md
 
 // auth_test.go — Tests for API key authentication middleware.

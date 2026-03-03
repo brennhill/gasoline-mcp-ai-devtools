@@ -1,5 +1,4 @@
 // Purpose: Tests for capture API contract compliance.
-// Why: Prevents silent regressions in critical behavior paths.
 // Docs: docs/features/feature/backend-log-streaming/index.md
 
 // api_contract_test.go — API contract tests for Extension ↔ Server communication.

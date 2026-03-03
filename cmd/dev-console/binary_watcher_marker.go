@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"path/filepath"
 	"time"
 )
 
@@ -28,7 +29,7 @@ func writeUpgradeMarker(fromVersion, toVersion, path string) error {
 	if err != nil {
 		return fmt.Errorf("marshal upgrade marker: %w", err)
 	}
-	if err := os.MkdirAll(parentDir(path), 0o755); err != nil {
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		return fmt.Errorf("create marker dir: %w", err)
 	}
 	return os.WriteFile(path, data, 0o644)
@@ -56,14 +57,4 @@ func readAndClearUpgradeMarker(path string) (*upgradeMarker, error) {
 		return nil, nil
 	}
 	return &marker, nil
-}
-
-// parentDir returns the parent directory of a path.
-func parentDir(path string) string {
-	for i := len(path) - 1; i >= 0; i-- {
-		if path[i] == '/' || path[i] == '\\' {
-			return path[:i]
-		}
-	}
-	return "."
 }

@@ -1,5 +1,4 @@
 // Purpose: Tests for log summarization and grouping.
-// Why: Prevents silent regressions in critical behavior paths.
 // Docs: docs/features/feature/observe/index.md
 
 // summarized_logs_test.go — Tests for log aggregation fingerprinting and grouping.

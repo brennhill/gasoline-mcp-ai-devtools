@@ -1,5 +1,4 @@
 // Purpose: Tests for security audit analysis and finding generation.
-// Why: Prevents silent regressions in critical behavior paths.
 // Docs: docs/features/feature/security-hardening/index.md
 
 //go:build integration

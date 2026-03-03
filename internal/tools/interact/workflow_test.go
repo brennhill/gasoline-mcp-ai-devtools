@@ -1,5 +1,4 @@
 // Purpose: Tests for interact workflow orchestration.
-// Why: Prevents silent regressions in critical behavior paths.
 // Docs: docs/features/feature/interact-explore/index.md
 
 // workflow_test.go — Tests for workflow helper functions.

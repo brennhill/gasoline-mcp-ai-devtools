@@ -1,5 +1,4 @@
 // Purpose: Tests for SSE streaming connection and event delivery.
-// Why: Prevents silent regressions in critical behavior paths.
 // Docs: docs/features/feature/context-streaming/index.md
 
 // stream_test.go — Unit tests for StreamState: config, filters, throttle, dedup, emission.

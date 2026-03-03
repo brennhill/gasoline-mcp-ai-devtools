@@ -1,10 +1,9 @@
 // Purpose: Coverage-expansion tests for capture pipeline edge cases and branch paths.
-// Why: Prevents silent regressions in critical behavior paths.
 // Docs: docs/features/feature/backend-log-streaming/index.md
 
 // coverage_gaps_test.go — Targeted tests for uncovered capture paths (part 1).
 // Covers: SetLifecycleCallback, emitLifecycleEvent, SetServerVersion,
-// GetVersionMismatch, majorMinor, PrintHTTPDebug, detectAndSetBinaryFormat,
+// GetVersionMismatch, majorMinor, detectAndSetBinaryFormat,
 // redactExtensionLog edge cases, circuit breaker, and HTTP handlers.
 package capture
 
@@ -182,25 +181,6 @@ func TestGetVersionMismatch_InvalidVersionFormat(t *testing.T) {
 	if mismatch {
 		t.Error("mismatch = true, want false for invalid version format")
 	}
-}
-
-// ============================================
-// PrintHTTPDebug
-// ============================================
-
-func TestPrintHTTPDebug_ErrorStatus(t *testing.T) {
-	t.Parallel()
-	PrintHTTPDebug(HTTPDebugEntry{Method: "GET", Endpoint: "/test", ResponseStatus: 500, Error: "internal error"})
-}
-
-func TestPrintHTTPDebug_SuccessStatus(t *testing.T) {
-	t.Parallel()
-	PrintHTTPDebug(HTTPDebugEntry{Method: "GET", Endpoint: "/test", ResponseStatus: 200})
-}
-
-func TestPrintHTTPDebug_ErrorWithNoMessage(t *testing.T) {
-	t.Parallel()
-	PrintHTTPDebug(HTTPDebugEntry{Method: "POST", Endpoint: "/data", ResponseStatus: 404, Error: ""})
 }
 
 // ============================================

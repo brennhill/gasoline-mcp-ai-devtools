@@ -1,5 +1,4 @@
 // Purpose: Tests for automatic noise rule detection on connect.
-// Why: Prevents silent regressions in critical behavior paths.
 // Docs: docs/features/feature/mcp-persistent-server/index.md
 
 // noise_autorun_test.go — Tests for automatic noise detection after navigation.

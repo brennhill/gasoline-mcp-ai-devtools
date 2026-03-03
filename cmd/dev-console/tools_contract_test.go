@@ -1,5 +1,4 @@
 // Purpose: Tests for tool response contract compliance.
-// Why: Prevents silent regressions in critical behavior paths.
 // Docs: docs/features/feature/mcp-persistent-server/index.md
 
 // tools_contract_test.go — Response shape contracts for configure, generate, and interact tools.

@@ -1,5 +1,4 @@
 // Purpose: Unit tests for checkpoint logic.
-// Why: Prevents silent regressions in critical behavior paths.
 
 package checkpoint
 

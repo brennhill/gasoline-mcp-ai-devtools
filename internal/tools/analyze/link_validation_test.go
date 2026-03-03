@@ -1,5 +1,4 @@
 // Purpose: Tests for link validation and health checking.
-// Why: Prevents silent regressions in critical behavior paths.
 // Docs: docs/features/feature/analyze-tool/index.md
 
 // link_validation_test.go — Tests for link validation pure functions.

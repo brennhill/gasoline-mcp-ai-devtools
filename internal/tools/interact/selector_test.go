@@ -1,5 +1,4 @@
 // Purpose: Tests for CSS and semantic selector resolution.
-// Why: Prevents silent regressions in critical behavior paths.
 // Docs: docs/features/feature/interact-explore/index.md
 
 // selector_test.go — Tests for selector parsing and DOM action utilities.

@@ -1,5 +1,4 @@
 // Purpose: Tests for automatic noise pattern detection.
-// Why: Prevents silent regressions in critical behavior paths.
 // Docs: docs/features/feature/noise-filtering/index.md
 
 // ai_noise_detect_test.go — Tests for auto-detection of noise patterns from browser telemetry.

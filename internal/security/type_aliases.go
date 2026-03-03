@@ -18,6 +18,3 @@ type (
 	ScanResult         = SecurityScanResult
 	Scanner            = SecurityScanner
 )
-
-func NewDiffManager() *DiffManager { return NewSecurityDiffManager() }
-func NewScanner() *Scanner         { return NewSecurityScanner() }

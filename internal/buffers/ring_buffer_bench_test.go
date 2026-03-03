@@ -1,5 +1,4 @@
 // Purpose: Benchmark ring buffer throughput and latency.
-// Why: Prevents silent regressions in critical behavior paths.
 // Docs: docs/features/feature/ring-buffer/index.md
 
 package buffers

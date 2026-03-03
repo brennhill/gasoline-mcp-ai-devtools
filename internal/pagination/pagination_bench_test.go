@@ -1,5 +1,4 @@
 // Purpose: Benchmark pagination and cursor throughput and latency.
-// Why: Prevents silent regressions in critical behavior paths.
 // Docs: docs/features/feature/pagination/index.md
 
 package pagination

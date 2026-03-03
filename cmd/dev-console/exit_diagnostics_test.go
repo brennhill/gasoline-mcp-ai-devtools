@@ -1,5 +1,4 @@
 // Purpose: Tests for exit diagnostic output on shutdown.
-// Why: Prevents silent regressions in critical behavior paths.
 // Docs: docs/features/feature/mcp-persistent-server/index.md
 
 package main

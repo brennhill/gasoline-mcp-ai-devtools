@@ -1,5 +1,4 @@
 // Purpose: Tests for audit trail append, query, and retention.
-// Why: Prevents silent regressions in critical behavior paths.
 // Docs: docs/features/feature/enterprise-audit/index.md
 
 // audit_trail_test.go — TDD tests for Enterprise Audit Trail (Tier 1).

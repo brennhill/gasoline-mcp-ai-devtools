@@ -1,5 +1,4 @@
 // Purpose: Tests for interact navigation action.
-// Why: Prevents silent regressions in critical behavior paths.
 // Docs: docs/features/feature/interact-explore/index.md
 
 // tools_interact_nav_test.go — Coverage tests for back/forward/newTab success paths.
