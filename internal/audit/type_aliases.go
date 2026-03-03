@@ -11,5 +11,3 @@ type (
 	Config         = AuditConfig
 	RedactionEntry = RedactionEvent
 )
-
-func NewTrail(config Config) *Trail { return NewAuditTrail(config) }

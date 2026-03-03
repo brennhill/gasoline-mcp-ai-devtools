@@ -10,20 +10,14 @@
 
 import {
   installPerformanceCapture,
-  uninstallPerformanceCapture,
-  setPerformanceMarksEnabled
+  uninstallPerformanceCapture
 } from '../lib/performance.js'
 import { installPerfObservers } from '../lib/perf-snapshot.js'
 import {
   installWebSocketCapture,
-  setWebSocketCaptureMode,
-  setWebSocketCaptureEnabled,
   uninstallWebSocketCapture
 } from '../lib/websocket.js'
 import {
-  setNetworkWaterfallEnabled,
-  setNetworkBodyCaptureEnabled,
-  setServerUrl,
   wrapFetchWithBodies,
   wrapXHRWithBodies,
   unwrapXHR,
@@ -40,7 +34,6 @@ import {
 import { installTransientCapture, uninstallTransientCapture } from '../lib/transient-capture.js'
 import { postLog } from '../lib/bridge.js'
 import { MAX_RESPONSE_LENGTH, SENSITIVE_HEADERS, MEMORY_SOFT_LIMIT_MB, MEMORY_HARD_LIMIT_MB } from '../lib/constants.js'
-import { createDeferredPromise } from '../lib/timeout-utils.js'
 
 // Store original fetch for restoration
 let originalFetch: typeof fetch | null = null
