@@ -487,6 +487,27 @@ func TestBuildSessionResult_URLFilterNoMatch_ExcludesAnnotationsAndScreenshot(t 
 	}
 }
 
+func TestBuildSessionResult_BaseURLFilter_DoesNotCrossPortPrefix(t *testing.T) {
+	t.Parallel()
+	session := &Session{
+		Annotations: []Annotation{
+			{ID: "a1", Text: "wrong port"},
+		},
+		PageURL: "http://localhost:30001/page",
+	}
+
+	raw := BuildSessionResult(session, "http://localhost:3000")
+
+	var result map[string]any
+	if err := json.Unmarshal(raw, &result); err != nil {
+		t.Fatalf("failed to unmarshal: %v", err)
+	}
+
+	if result["count"] != float64(0) {
+		t.Errorf("expected host/port-aware base URL filter to reject non-matching origin, got %v", result["count"])
+	}
+}
+
 func TestBuildNamedSessionResult_URLFilterScopesPages(t *testing.T) {
 	t.Parallel()
 	ns := &NamedSession{

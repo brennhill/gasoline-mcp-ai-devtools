@@ -94,20 +94,49 @@ func annotationURLMatches(urlFilter, pageURL string) bool {
 		return false
 	}
 
+	// Support wildcard suffix filters like http://localhost:3000/*.
+	if strings.HasSuffix(urlFilter, "/*") {
+		return annotationURLMatches(strings.TrimSuffix(urlFilter, "*"), pageURL)
+	}
 	if strings.Contains(urlFilter, "*") {
 		prefix := strings.ReplaceAll(urlFilter, "*", "")
 		return strings.HasPrefix(pageURL, prefix)
 	}
 
-	if strings.HasSuffix(urlFilter, "/") {
-		prefix := strings.TrimSuffix(urlFilter, "/")
-		return strings.HasPrefix(pageURL, prefix)
+	filterURL, filterErr := url.Parse(urlFilter)
+	page, pageErr := url.Parse(pageURL)
+	if filterErr == nil && pageErr == nil &&
+		filterURL.Scheme != "" && filterURL.Host != "" &&
+		page.Scheme != "" && page.Host != "" {
+		if !strings.EqualFold(filterURL.Scheme, page.Scheme) || !strings.EqualFold(filterURL.Host, page.Host) {
+			return false
+		}
+
+		filterPath := strings.TrimSpace(filterURL.Path)
+		switch {
+		case filterPath == "", filterPath == "/":
+			// Base URL filter: match any path on the same origin.
+			return true
+		case strings.HasSuffix(filterPath, "/"):
+			// Path prefix filter.
+			return strings.HasPrefix(page.Path, filterPath)
+		default:
+			// Exact path filter. Query/fragment are optional constraints when provided.
+			if page.Path != filterPath {
+				return false
+			}
+			if filterURL.RawQuery != "" && page.RawQuery != filterURL.RawQuery {
+				return false
+			}
+			if filterURL.Fragment != "" && page.Fragment != filterURL.Fragment {
+				return false
+			}
+			return true
+		}
 	}
 
-	parsed, err := url.Parse(urlFilter)
-	if err == nil && parsed.Scheme != "" && parsed.Host != "" && (parsed.Path == "" || parsed.Path == "/") {
-		base := strings.TrimSuffix(urlFilter, "/")
-		return strings.HasPrefix(pageURL, base)
+	if strings.HasSuffix(urlFilter, "/") {
+		return strings.HasPrefix(pageURL, urlFilter)
 	}
 
 	return pageURL == urlFilter

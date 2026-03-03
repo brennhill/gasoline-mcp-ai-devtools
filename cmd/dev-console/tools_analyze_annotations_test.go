@@ -929,6 +929,33 @@ func TestToolGetAnnotations_AnonymousURLFilterNoMatch(t *testing.T) {
 	}
 }
 
+func TestToolGetAnnotations_AnonymousBaseURLFilter_DoesNotCrossPortPrefix(t *testing.T) {
+	h := createTestToolHandler(t)
+	h.annotationStore = NewAnnotationStore(10 * time.Minute)
+	defer h.annotationStore.Close()
+
+	h.annotationStore.StoreSession(1, &AnnotationSession{
+		TabID:       1,
+		Timestamp:   time.Now().UnixMilli(),
+		PageURL:     "http://localhost:30001/dashboard",
+		Annotations: []Annotation{{Text: "wrong project by port"}},
+	})
+
+	req := JSONRPCRequest{JSONRPC: "2.0", ID: float64(1)}
+	resp := h.toolGetAnnotations(req, json.RawMessage(`{"what":"annotations","url":"http://localhost:3000"}`))
+	text := unmarshalMCPText(t, resp.Result)
+	jsonText := extractJSONFromText(text)
+
+	var data map[string]any
+	if err := json.Unmarshal([]byte(jsonText), &data); err != nil {
+		t.Fatalf("Failed to parse: %v", err)
+	}
+
+	if data["count"] != float64(0) {
+		t.Fatalf("expected base-url filter to reject different port, got count %v", data["count"])
+	}
+}
+
 func TestToolGetAnnotations_ConflictingURLFilterParams(t *testing.T) {
 	h := createTestToolHandler(t)
 	h.annotationStore = NewAnnotationStore(10 * time.Minute)
@@ -940,6 +967,42 @@ func TestToolGetAnnotations_ConflictingURLFilterParams(t *testing.T) {
 
 	if !strings.Contains(text, "Conflicting annotation scope filters") {
 		t.Fatalf("expected conflicting filter validation error, got: %s", text)
+	}
+}
+
+func TestToolGetAnnotations_Flush_UsesExplicitURLFilterWhenWaiterMissing(t *testing.T) {
+	h := createTestToolHandler(t)
+	h.annotationStore = NewAnnotationStore(10 * time.Minute)
+	defer h.annotationStore.Close()
+
+	h.annotationStore.StoreSession(1, &AnnotationSession{
+		TabID:       1,
+		Timestamp:   time.Now().UnixMilli(),
+		PageURL:     "http://localhost:5173/dashboard",
+		Annotations: []Annotation{{Text: "wrong project"}},
+	})
+
+	corrID := "ann_flush_filter_fallback"
+	h.capture.RegisterCommand(corrID, "", annotationWaitCommandTTL)
+
+	req := JSONRPCRequest{JSONRPC: "2.0", ID: float64(1)}
+	resp := h.toolGetAnnotations(req, json.RawMessage(`{"what":"annotations","operation":"flush","correlation_id":"`+corrID+`","url":"http://localhost:3000/*"}`))
+	text := unmarshalMCPText(t, resp.Result)
+	jsonText := extractJSONFromText(text)
+
+	var data map[string]any
+	if err := json.Unmarshal([]byte(jsonText), &data); err != nil {
+		t.Fatalf("failed to parse flush response: %v", err)
+	}
+	resultPayload, ok := data["result"].(map[string]any)
+	if !ok {
+		t.Fatalf("expected result payload object, got: %T", data["result"])
+	}
+	if resultPayload["count"] != float64(0) {
+		t.Fatalf("expected explicit flush filter to scope result, got count %v", resultPayload["count"])
+	}
+	if resultPayload["filter_applied"] != "http://localhost:3000/*" {
+		t.Fatalf("expected filter_applied from explicit flush filter, got %v", resultPayload["filter_applied"])
 	}
 }
 

@@ -51,7 +51,7 @@ func (h *ToolHandler) toolGetAnnotations(req JSONRPCRequest, args json.RawMessag
 				Result:  mcpStructuredError(ErrInvalidParam, "Invalid annotations operation: "+params.Operation, "Use operation='flush' for annotation waiter recovery.", withParam("operation"), withHint("flush")),
 			}
 		}
-		return h.toolFlushAnnotations(req, params.Correlation)
+		return h.toolFlushAnnotations(req, params.Correlation, urlFilter)
 	}
 
 	waitTimeout := annotationBlockingWaitDuration(params.TimeoutMs)
@@ -291,20 +291,49 @@ func annotationURLMatches(urlFilter, pageURL string) bool {
 		return false
 	}
 
+	// Support wildcard suffix filters like http://localhost:3000/*.
+	if strings.HasSuffix(urlFilter, "/*") {
+		return annotationURLMatches(strings.TrimSuffix(urlFilter, "*"), pageURL)
+	}
 	if strings.Contains(urlFilter, "*") {
 		prefix := strings.ReplaceAll(urlFilter, "*", "")
 		return strings.HasPrefix(pageURL, prefix)
 	}
 
-	if strings.HasSuffix(urlFilter, "/") {
-		prefix := strings.TrimSuffix(urlFilter, "/")
-		return strings.HasPrefix(pageURL, prefix)
+	filterURL, filterErr := url.Parse(urlFilter)
+	page, pageErr := url.Parse(pageURL)
+	if filterErr == nil && pageErr == nil &&
+		filterURL.Scheme != "" && filterURL.Host != "" &&
+		page.Scheme != "" && page.Host != "" {
+		if !strings.EqualFold(filterURL.Scheme, page.Scheme) || !strings.EqualFold(filterURL.Host, page.Host) {
+			return false
+		}
+
+		filterPath := strings.TrimSpace(filterURL.Path)
+		switch {
+		case filterPath == "", filterPath == "/":
+			// Base URL filter: match any path on the same origin.
+			return true
+		case strings.HasSuffix(filterPath, "/"):
+			// Path prefix filter.
+			return strings.HasPrefix(page.Path, filterPath)
+		default:
+			// Exact path filter. Query/fragment are optional constraints when provided.
+			if page.Path != filterPath {
+				return false
+			}
+			if filterURL.RawQuery != "" && page.RawQuery != filterURL.RawQuery {
+				return false
+			}
+			if filterURL.Fragment != "" && page.Fragment != filterURL.Fragment {
+				return false
+			}
+			return true
+		}
 	}
 
-	parsed, err := url.Parse(urlFilter)
-	if err == nil && parsed.Scheme != "" && parsed.Host != "" && (parsed.Path == "" || parsed.Path == "/") {
-		base := strings.TrimSuffix(urlFilter, "/")
-		return strings.HasPrefix(pageURL, base)
+	if strings.HasSuffix(urlFilter, "/") {
+		return strings.HasPrefix(pageURL, urlFilter)
 	}
 
 	return pageURL == urlFilter
@@ -398,7 +427,7 @@ func annotationProjectBaseURL(rawURL string) string {
 
 // toolFlushAnnotations forces completion of a pending annotation waiter.
 // This is a recovery path for stuck waiters that would otherwise remain pending.
-func (h *ToolHandler) toolFlushAnnotations(req JSONRPCRequest, correlationID string) JSONRPCResponse {
+func (h *ToolHandler) toolFlushAnnotations(req JSONRPCRequest, correlationID string, fallbackURLFilter string) JSONRPCResponse {
 	correlationID = strings.TrimSpace(correlationID)
 	if correlationID == "" {
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(
@@ -425,7 +454,12 @@ func (h *ToolHandler) toolFlushAnnotations(req JSONRPCRequest, correlationID str
 		return h.formatCommandResult(req, *cmd, correlationID)
 	}
 
-	payload := h.buildFlushedAnnotationResult(sessionName, waiterURLFilter)
+	effectiveURLFilter := waiterURLFilter
+	if strings.TrimSpace(effectiveURLFilter) == "" {
+		effectiveURLFilter = fallbackURLFilter
+	}
+
+	payload := h.buildFlushedAnnotationResult(sessionName, effectiveURLFilter)
 	h.capture.ApplyCommandResult(correlationID, "complete", payload, "")
 
 	// Normal path: return canonical command_result envelope.

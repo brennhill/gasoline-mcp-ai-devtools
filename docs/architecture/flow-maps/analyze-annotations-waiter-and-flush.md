@@ -52,6 +52,7 @@ This map covers annotation retrieval through `analyze(what:"annotations")`, incl
    - exact URL
    - base URL (e.g. `http://localhost:3000`)
    - wildcard/prefix patterns (e.g. `http://localhost:3000/*`)
+   - origin-aware checks use parsed scheme/host equality, preventing prefix collisions (for example `:3000` does not match `:30001`)
 3. Server builds project grouping metadata (`projects`) from page URLs.
 4. If multiple projects are detected and no scope filter is provided:
    - response includes `scope_ambiguous: true`
