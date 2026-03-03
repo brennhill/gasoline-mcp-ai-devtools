@@ -24,7 +24,7 @@ func (h *ToolHandler) toolInteract(req JSONRPCRequest, args json.RawMessage) JSO
 	what := params.What
 	usedAliasParam := ""
 	if what != "" && params.Action != "" && params.Action != what {
-		return whatAliasConflictResponse(req, "action", what, params.Action, h.getValidInteractActions())
+		return whatAliasConflictResponse(req, "action", what, params.Action, h.interactAction().getValidInteractActions())
 	}
 	if what == "" {
 		what = params.Action
@@ -34,7 +34,7 @@ func (h *ToolHandler) toolInteract(req JSONRPCRequest, args json.RawMessage) JSO
 	}
 
 	if what == "" {
-		validActions := h.getValidInteractActions()
+		validActions := h.interactAction().getValidInteractActions()
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(
 			ErrMissingParam,
 			"Required dispatch parameter is missing: provide 'what' (or deprecated alias 'action')",
@@ -65,7 +65,7 @@ func (h *ToolHandler) toolInteract(req JSONRPCRequest, args json.RawMessage) JSO
 	}
 	lenientUnmarshal(args, &composableParams)
 
-	resp := h.dispatchInteractAction(req, args, what)
+	resp := h.interactAction().dispatchInteractAction(req, args, what)
 
 	if composableParams.Subtitle != nil && what != "subtitle" && resp.Error == nil {
 		h.queueComposableSubtitle(req, *composableParams.Subtitle)

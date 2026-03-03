@@ -6,6 +6,8 @@ feature_type: feature
 owners: []
 last_reviewed: 2026-03-03
 code_paths:
+  - cmd/dev-console/tools_interact_action_handler.go
+  - cmd/dev-console/tools_interact_entrypoint.go
   - cmd/dev-console/tools_interact_dispatch.go
   - cmd/dev-console/tools_interact_browser.go
   - cmd/dev-console/tools_interact_browser_navigation_impl.go

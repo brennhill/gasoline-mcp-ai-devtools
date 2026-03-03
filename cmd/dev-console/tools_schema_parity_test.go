@@ -95,7 +95,7 @@ func sortedKeysObserveHandlers() []string {
 
 func sortedInteractRuntimeActions(h *ToolHandler) []string {
 	actions := make(map[string]bool)
-	for action := range h.interactDispatch() {
+	for action := range h.interactAction().interactDispatch() {
 		actions[action] = true
 	}
 	for action := range domPrimitiveActions {

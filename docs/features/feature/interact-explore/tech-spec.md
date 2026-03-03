@@ -3,7 +3,7 @@ doc_type: tech-spec
 feature_id: feature-interact-explore
 status: shipped
 owners: []
-last_reviewed: 2026-02-17
+last_reviewed: 2026-03-03
 links:
   product: ./product-spec.md
   tech: ./tech-spec.md
@@ -14,10 +14,17 @@ links:
 # Interact Tech Spec (TARGET)
 
 ## Dispatcher
-- Entry: `toolInteract` in `cmd/dev-console/tools_interact.go`
+- Entry: `toolInteract` in `cmd/dev-console/tools_interact_entrypoint.go`
 - Action routing:
-- named action handlers (`interactDispatch` map)
+- named action handlers (`interactActionHandler.interactDispatch` map in `cmd/dev-console/tools_interact_dispatch.go`)
 - DOM primitives (`domPrimitiveActions` -> `handleDOMPrimitive`)
+
+### Handler Decomposition (Issue #402)
+- `ToolHandler` remains the MCP entrypoint for `interact`, then delegates to `interactActionHandler` for:
+- dispatch map construction/caching
+- action list generation for schema/error hints
+- jitter application policy
+- named vs DOM-primitive action routing
 
 ## Query-Type Mapping
 - `navigate/refresh/back/forward/new_tab` -> `browser_action`
@@ -42,7 +49,9 @@ links:
 - Performance diff enrichment is attached at command-result formatting time.
 
 ## Code Anchors
-- `cmd/dev-console/tools_interact.go`
+- `cmd/dev-console/tools_interact_action_handler.go`
+- `cmd/dev-console/tools_interact_entrypoint.go`
+- `cmd/dev-console/tools_interact_dispatch.go`
 - `cmd/dev-console/tools_interact_draw.go`
 - `cmd/dev-console/tools_interact_upload.go`
 - `src/background/pending-queries.ts`
