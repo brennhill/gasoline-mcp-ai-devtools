@@ -102,6 +102,18 @@ func TestNavigateAndDocument_URLChangeTimeout(t *testing.T) {
 	}
 
 	assertIsError(t, resp, "URL did not change")
+	result := parseToolResult(t, resp)
+	traceMeta, ok := result.Metadata["workflow_trace"].(map[string]any)
+	if !ok {
+		t.Fatalf("expected workflow_trace metadata on URL timeout response, got: %#v", result.Metadata)
+	}
+	if traceMeta["status"] != "failed" {
+		t.Fatalf("workflow_trace.status = %v, want failed", traceMeta["status"])
+	}
+	stages, _ := traceMeta["stages"].([]any)
+	if len(stages) < 2 {
+		t.Fatalf("expected >=2 stages in workflow_trace, got: %#v", traceMeta["stages"])
+	}
 }
 
 func TestNavigateAndDocument_AppendsPageContext(t *testing.T) {
@@ -157,6 +169,30 @@ func TestNavigateAndDocument_AppendsPageContext(t *testing.T) {
 	}
 	if !hasPageContext {
 		t.Fatalf("expected page context block with new url/title, got blocks: %#v", result.Content)
+	}
+	pageCtx, ok := result.Metadata["page_context"].(map[string]any)
+	if !ok {
+		t.Fatalf("expected metadata.page_context map, got: %#v", result.Metadata["page_context"])
+	}
+	if got := pageCtx["url"]; got != "https://example.com/new" {
+		t.Fatalf("metadata.page_context.url = %v, want https://example.com/new", got)
+	}
+	if got := pageCtx["title"]; got != "New" {
+		t.Fatalf("metadata.page_context.title = %v, want New", got)
+	}
+	traceMeta, ok := result.Metadata["workflow_trace"].(map[string]any)
+	if !ok {
+		t.Fatalf("expected metadata.workflow_trace map, got: %#v", result.Metadata["workflow_trace"])
+	}
+	if _, ok := traceMeta["trace_id"].(string); !ok {
+		t.Fatalf("workflow_trace.trace_id missing: %#v", traceMeta)
+	}
+	if traceMeta["status"] != "success" {
+		t.Fatalf("workflow_trace.status = %v, want success", traceMeta["status"])
+	}
+	stages, _ := traceMeta["stages"].([]any)
+	if len(stages) < 3 {
+		t.Fatalf("expected >=3 stages in workflow trace, got: %#v", traceMeta["stages"])
 	}
 }
 

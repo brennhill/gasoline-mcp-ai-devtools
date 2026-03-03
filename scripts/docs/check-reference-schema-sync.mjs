@@ -36,8 +36,8 @@ const TOOL_SPECS = [
     tool: 'interact',
     schemaPath: 'internal/schema/interact_actions.go',
     docPath: 'cookwithgasoline.com/src/content/docs/reference/interact.md',
-    enumType: 'arrayVar',
-    arrayVar: 'interactActions',
+    enumType: 'interactSpecs',
+    specsVar: 'interactActionSpecs',
     ignore: INTERACT_ALIAS_ACTIONS
   }
 ]
@@ -69,6 +69,16 @@ function extractArrayVar(schemaSource, varName) {
     throw new Error(`Could not find string array variable ${varName}`)
   }
   return dedupe(extractQuotedStrings(match[1]))
+}
+
+function extractInteractSpecs(schemaSource, varName) {
+  const pattern = new RegExp(`var\\s+${escapeRegExp(varName)}\\s*=\\s*\\[\\]InteractActionSpec\\{([\\s\\S]*?)\\n\\}`, 'm')
+  const match = schemaSource.match(pattern)
+  if (!match) {
+    throw new Error(`Could not find interact specs variable ${varName}`)
+  }
+  const names = [...match[1].matchAll(/Name:\s*"([^"]+)"/g)].map((item) => item[1])
+  return dedupe(names)
 }
 
 function extractHeadingLines(markdown) {
@@ -112,6 +122,8 @@ async function main() {
     let expectedModes = []
     if (spec.enumType === 'what') {
       expectedModes = extractWhatEnum(schemaSource)
+    } else if (spec.enumType === 'interactSpecs') {
+      expectedModes = extractInteractSpecs(schemaSource, spec.specsVar)
     } else {
       expectedModes = extractArrayVar(schemaSource, spec.arrayVar)
     }

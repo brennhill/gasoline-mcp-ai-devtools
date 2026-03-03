@@ -28,10 +28,12 @@ code_paths:
   - cmd/dev-console/tools_interact_workflow_forms.go
   - cmd/dev-console/tools_interact_workflow_a11y_sarif.go
   - cmd/dev-console/tools_interact_workflow_types.go
+  - internal/tools/interact/workflow.go
   - internal/schema/interact_actions.go
   - internal/schema/interact_properties_targeting.go
   - internal/schema/interact_properties_output_batch.go
   - internal/tools/configure/mode_specs_interact.go
+  - scripts/docs/check-reference-schema-sync.mjs
   - src/background/pending-queries.ts
   - src/background/query-execution.ts
   - src/background/commands/helpers.ts
@@ -47,6 +49,7 @@ test_paths:
   - cmd/dev-console/tools_interact_rich_test.go
   - cmd/dev-console/tools_interact_upload_test.go
   - cmd/dev-console/tools_interact_navigate_document_test.go
+  - cmd/dev-console/tools_schema_parity_test.go
   - cmd/dev-console/tools_interact_retry_contract_test.go
   - cmd/dev-console/tools_interact_evidence_test.go
   - cmd/dev-console/tools_interact_state_test.go
@@ -54,6 +57,8 @@ test_paths:
   - extension/background/dom-primitives.test.js
   - tests/extension/action-toast-labels.test.js
   - tests/extension/execute-js.test.js
+  - internal/tools/interact/workflow_test.go
+  - internal/tools/configure/mode_specs_test.go
 ---
 
 # Interact Tool
@@ -78,3 +83,9 @@ This feature documents the shipped `interact` action surface (not a batched `int
 `execute_js` host-object serialization must preserve prototype-backed values (for example `DOMRect`) so return payloads remain structured and parse-safe.
 
 `navigate_and_document` combines click-driven navigation, optional URL-change/stability waits, and page-context enrichment (`url`, `title`, `tab_id`) in a single interact workflow.
+
+`navigate_and_document` now returns structured metadata for machine consumers:
+1. `metadata.page_context` (`url`, `title`, `tab_id`) while preserving the legacy text block.
+2. `metadata.workflow_trace` (`trace_id`, `status`, stage-level timing/status envelope).
+
+Interact action metadata now has a single canonical registry in `internal/schema/interact_actions.go`, consumed by both schema enum generation and `describe_capabilities` mode specs.
