@@ -17,6 +17,8 @@ import (
 	"strings"
 	"sync"
 	"testing"
+
+	statecfg "github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/state"
 )
 
 // Helper functions
@@ -36,6 +38,9 @@ var (
 	testBinaryOnce sync.Once
 	testBinaryPath string
 	testBinaryErr  error
+	testStateOnce  sync.Once
+	testStateDir   string
+	testStateErr   error
 	// testCoverDir is set from GOCOVERDIR env var; when non-empty, instrumented
 	// binaries spawned via startServerCmd write coverage data to this directory.
 	testCoverDir string
@@ -62,6 +67,20 @@ func buildTestBinary(t *testing.T) string {
 	return testBinaryPath
 }
 
+func getTestStateDir(t *testing.T) string {
+	t.Helper()
+	testStateOnce.Do(func() {
+		testStateDir, testStateErr = os.MkdirTemp("", "gasoline-test-state-*")
+		if testStateErr != nil {
+			testStateErr = fmt.Errorf("failed to create isolated test state dir: %w", testStateErr)
+		}
+	})
+	if testStateErr != nil {
+		t.Fatalf("getTestStateDir: %v", testStateErr)
+	}
+	return testStateDir
+}
+
 // startServerCmd creates an exec.Cmd for the test binary with GOCOVERDIR
 // set in the environment when coverage collection is active.
 //
@@ -70,16 +89,18 @@ func buildTestBinary(t *testing.T) string {
 // runs `--stop --port` to prevent daemon accumulation between test runs.
 func startServerCmd(t *testing.T, binary string, args ...string) *exec.Cmd {
 	t.Helper()
+	stateDir := getTestStateDir(t)
 
 	if port := parsePortArg(args); port > 0 {
 		t.Cleanup(func() {
-			stopTestServer(binary, port)
+			stopTestServer(binary, port, stateDir)
 		})
 	}
 
 	cmd := exec.Command(binary, args...) // #nosec G204 -- test-only: binary is from buildTestBinary(t) // nosemgrep: go.lang.security.audit.dangerous-exec-command.dangerous-exec-command, go_subproc_rule-subproc -- test spawns own binary
+	cmd.Env = append(os.Environ(), statecfg.StateDirEnv+"="+stateDir)
 	if testCoverDir != "" {
-		cmd.Env = append(os.Environ(), "GOCOVERDIR="+testCoverDir)
+		cmd.Env = append(cmd.Env, "GOCOVERDIR="+testCoverDir)
 	}
 	return cmd
 }
@@ -103,8 +124,9 @@ func parsePortArg(args []string) int {
 	return 0
 }
 
-func stopTestServer(binary string, port int) {
+func stopTestServer(binary string, port int, stateDir string) {
 	stopCmd := exec.Command(binary, "--stop", "--port", strconv.Itoa(port))
+	stopCmd.Env = append(os.Environ(), statecfg.StateDirEnv+"="+stateDir)
 	stopCmd.Stdout = io.Discard
 	stopCmd.Stderr = io.Discard
 	_ = stopCmd.Run()

@@ -18,7 +18,7 @@
     "generate:dom-primitives": "node scripts/generate-dom-primitives.js",
     "smoke:build-framework-fixtures": "node scripts/smoke-tests/build-framework-fixtures.mjs",
     "docs:ci": "npm run docs:check:strict && npm run docs:lint:content-contract",
-    "test:ext": "JS_TEST_SHARDS=4 JS_TEST_TIMEOUT=60000 JS_TEST_CONCURRENCY=6 ./scripts/test-js-sharded.sh",
+    "test:ext": "JS_TEST_SHARDS=4 JS_TEST_TIMEOUT=60000 JS_TEST_CONCURRENCY=1 ./scripts/test-js-sharded.sh",
     "test:go": "make test",
     "test": "npm run test:go && npm run test:ext",
     "check": "npm run lint && npm run typecheck && npm run format"

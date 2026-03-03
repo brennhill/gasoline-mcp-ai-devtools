@@ -36,6 +36,9 @@ test_paths:
 
 ## Specs
 
+- Product Spec: [product-spec.md](./product-spec.md)
+- Tech Spec: [tech-spec.md](./tech-spec.md)
+- QA Plan: [qa-plan.md](./qa-plan.md)
 - Flow Map: [flow-map.md](./flow-map.md)
 
 ## Code and Tests
