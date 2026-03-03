@@ -6,21 +6,21 @@ import "time"
 func (c *Capture) GetNetworkTimestamps() []time.Time {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
-	return cloneTimes(c.buffers.networkAddedAt)
+	return c.buffers.networkTimestamps()
 }
 
 // GetWebSocketTimestamps returns a copy of the WebSocket event timestamps
 func (c *Capture) GetWebSocketTimestamps() []time.Time {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
-	return cloneTimes(c.buffers.wsAddedAt)
+	return c.buffers.webSocketTimestamps()
 }
 
 // GetActionTimestamps returns a copy of the action timestamps
 func (c *Capture) GetActionTimestamps() []time.Time {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
-	return cloneTimes(c.buffers.actionAddedAt)
+	return c.buffers.actionTimestamps()
 }
 
 func cloneTimes(src []time.Time) []time.Time {
@@ -36,40 +36,19 @@ func cloneTimes(src []time.Time) []time.Time {
 func (c *Capture) GetNetworkBodies() []NetworkBody {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
-
-	if len(c.buffers.networkBodies) == 0 {
-		return []NetworkBody{}
-	}
-
-	out := make([]NetworkBody, len(c.buffers.networkBodies))
-	copy(out, c.buffers.networkBodies)
-	return out
+	return c.buffers.networkBodiesCopy()
 }
 
 // GetAllWebSocketEvents returns a copy of all WebSocket events slice (thread-safe)
 func (c *Capture) GetAllWebSocketEvents() []WebSocketEvent {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
-
-	if len(c.buffers.wsEvents) == 0 {
-		return []WebSocketEvent{}
-	}
-
-	out := make([]WebSocketEvent, len(c.buffers.wsEvents))
-	copy(out, c.buffers.wsEvents)
-	return out
+	return c.buffers.webSocketEventsCopy()
 }
 
 // GetAllEnhancedActions returns a copy of all enhanced actions slice (thread-safe)
 func (c *Capture) GetAllEnhancedActions() []EnhancedAction {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
-
-	if len(c.buffers.enhancedActions) == 0 {
-		return []EnhancedAction{}
-	}
-
-	out := make([]EnhancedAction, len(c.buffers.enhancedActions))
-	copy(out, c.buffers.enhancedActions)
-	return out
+	return c.buffers.enhancedActionsCopy()
 }

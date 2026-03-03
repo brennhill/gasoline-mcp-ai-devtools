@@ -5,8 +5,6 @@
 package capture
 
 import (
-	"time"
-
 	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/types"
 )
 
@@ -31,11 +29,7 @@ func (c *Capture) ClearNetworkBuffers() BufferClearCounts {
 	c.networkWaterfall.entries = make([]NetworkWaterfallEntry, 0, c.networkWaterfall.capacity)
 
 	// Clear network bodies buffer and reset memory tracking
-	c.buffers.networkBodies = make([]NetworkBody, 0)
-	c.buffers.networkAddedAt = make([]time.Time, 0)
-	c.buffers.networkTotalAdded = 0
-	c.buffers.networkErrorTotalAdded = 0
-	c.buffers.networkBodyMemoryTotal = 0
+	c.buffers.clearNetworkBuffers()
 
 	return counts
 }
@@ -54,10 +48,7 @@ func (c *Capture) ClearWebSocketBuffers() BufferClearCounts {
 	}
 
 	// Clear WebSocket events buffer
-	c.buffers.wsEvents = make([]WebSocketEvent, 0)
-	c.buffers.wsAddedAt = make([]time.Time, 0)
-	c.buffers.wsTotalAdded = 0
-	c.buffers.wsMemoryTotal = 0
+	c.buffers.clearWebSocketBuffers()
 
 	// Clear WebSocket connections map
 	c.wsConnections.connections = make(map[string]*connectionState)
@@ -76,9 +67,7 @@ func (c *Capture) ClearActionBuffer() BufferClearCounts {
 	}
 
 	// Clear actions buffer
-	c.buffers.enhancedActions = make([]EnhancedAction, 0)
-	c.buffers.actionAddedAt = make([]time.Time, 0)
-	c.buffers.actionTotalAdded = 0
+	c.buffers.clearActionBuffers()
 
 	return counts
 }
@@ -106,15 +95,8 @@ func (c *Capture) ClearAll() {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	c.buffers.wsEvents = make([]WebSocketEvent, 0)
-	c.buffers.wsAddedAt = make([]time.Time, 0)
-	c.buffers.wsMemoryTotal = 0
-	c.buffers.networkBodies = make([]NetworkBody, 0)
-	c.buffers.networkAddedAt = make([]time.Time, 0)
-	c.buffers.networkBodyMemoryTotal = 0
+	c.buffers.clearAllEventBuffers()
 	c.networkWaterfall.entries = make([]NetworkWaterfallEntry, 0, c.networkWaterfall.capacity)
-	c.buffers.enhancedActions = make([]EnhancedAction, 0)
-	c.buffers.actionAddedAt = make([]time.Time, 0)
 	c.wsConnections.connections = make(map[string]*connectionState)
 	c.wsConnections.closedConns = make([]WebSocketClosedConnection, 0)
 	c.wsConnections.connOrder = make([]string, 0)
