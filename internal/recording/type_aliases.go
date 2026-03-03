@@ -9,5 +9,3 @@ type (
 	Metadata = RecordingMetadata
 	Manager  = RecordingManager
 )
-
-func NewManager() *Manager { return NewRecordingManager() }

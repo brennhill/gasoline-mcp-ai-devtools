@@ -8,7 +8,6 @@ import (
 	"encoding/json"
 	"time"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/a11ysummary"
 	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/queries"
 )
 
@@ -50,9 +49,4 @@ func (h *ToolHandler) ExecuteA11yQuery(scope string, tags []string, frame any, f
 		return nil, qerr
 	}
 	return h.capture.WaitForResult(queryID, 30*time.Second)
-}
-
-// ensureA11ySummary adds a summary section to a11y audit results if not already present.
-func ensureA11ySummary(auditResult map[string]any) {
-	a11ysummary.EnsureAuditSummary(auditResult)
 }

@@ -8,5 +8,3 @@ type (
 	Config  = RedactionConfig
 	Engine  = RedactionEngine
 )
-
-func NewEngine(configPath string) *Engine { return NewRedactionEngine(configPath) }

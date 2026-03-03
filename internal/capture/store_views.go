@@ -22,11 +22,6 @@ type ExtensionLogStore interface {
 	Entries() []ExtensionLog
 }
 
-// WebSocketStatusStore exposes websocket connection status snapshots.
-type WebSocketStatusStore interface {
-	Status(filter WebSocketStatusFilter) WebSocketStatusResponse
-}
-
 // PerformanceSnapshotStore exposes performance snapshots keyed by URL.
 type PerformanceSnapshotStore interface {
 	Snapshots() []PerformanceSnapshot
@@ -69,14 +64,6 @@ func (v extensionLogView) Entries() []ExtensionLog {
 	return v.capture.GetExtensionLogs()
 }
 
-type webSocketStatusView struct {
-	capture *Capture
-}
-
-func (v webSocketStatusView) Status(filter WebSocketStatusFilter) WebSocketStatusResponse {
-	return v.capture.GetWebSocketStatus(filter)
-}
-
 type performanceSnapshotView struct {
 	capture *Capture
 }
@@ -102,11 +89,6 @@ func (c *Capture) NetworkWaterfallStore() NetworkWaterfallStore {
 // ExtensionLogStore returns a read-only sub-store view for extension logs.
 func (c *Capture) ExtensionLogStore() ExtensionLogStore {
 	return extensionLogView{capture: c}
-}
-
-// WebSocketStatusStore returns a read-only sub-store view for websocket connection state.
-func (c *Capture) WebSocketStatusStore() WebSocketStatusStore {
-	return webSocketStatusView{capture: c}
 }
 
 // PerformanceSnapshotStore returns a read-only sub-store view for performance snapshots.
