@@ -40,6 +40,9 @@
     SERVER_URL: "setServerUrl"
   };
   var VALID_SETTING_NAMES = new Set(Object.values(SettingName));
+  var RuntimeMessageName = {
+    SHOW_TRACKED_HOVER_LAUNCHER: "GASOLINE_SHOW_TRACKED_HOVER_LAUNCHER"
+  };
   var INJECT_FORWARDED_SETTINGS = /* @__PURE__ */ new Set([
     SettingName.NETWORK_WATERFALL,
     SettingName.PERFORMANCE_MARKS,
@@ -72,6 +75,7 @@
     ACTION_TOASTS_ENABLED: "actionToastsEnabled",
     SUBTITLES_ENABLED: "subtitlesEnabled",
     RECORDING: "gasoline_recording",
+    TRACKED_HOVER_LAUNCHER_HIDDEN: "gasoline_tracked_hover_launcher_hidden",
     PENDING_RECORDING: "gasoline_pending_recording",
     PENDING_MIC_RECORDING: "gasoline_pending_mic_recording",
     MIC_GRANTED: "gasoline_mic_granted",
@@ -1927,7 +1931,7 @@
   var PANEL_ID = "gasoline-tracked-hover-panel";
   var TOGGLE_ID = "gasoline-tracked-hover-toggle";
   var SETTINGS_MENU_ID = "gasoline-tracked-hover-settings-menu";
-  var RESHOW_MESSAGE_TYPE = "GASOLINE_SHOW_TRACKED_HOVER_LAUNCHER";
+  var STORAGE_AREA_LOCAL = "local";
   var rootEl = null;
   var panelEl = null;
   var settingsMenuEl = null;
@@ -1981,11 +1985,28 @@
       updateRecordButtonState(readRecordingActive(result[StorageKey.RECORDING]));
     });
   }
+  function syncHiddenStateFromStorage(onSynced) {
+    chrome.storage.local.get([StorageKey.TRACKED_HOVER_LAUNCHER_HIDDEN], (result) => {
+      hiddenUntilPopupOpen = Boolean(result[StorageKey.TRACKED_HOVER_LAUNCHER_HIDDEN]);
+      onSynced();
+    });
+  }
+  function persistHiddenState(hidden) {
+    if (hidden) {
+      chrome.storage.local.set({ [StorageKey.TRACKED_HOVER_LAUNCHER_HIDDEN]: true }, () => {
+        void chrome.runtime.lastError;
+      });
+      return;
+    }
+    chrome.storage.local.remove(StorageKey.TRACKED_HOVER_LAUNCHER_HIDDEN, () => {
+      void chrome.runtime.lastError;
+    });
+  }
   function installRecordingStorageSync() {
     if (recordingStorageListener)
       return;
     recordingStorageListener = (changes, areaName) => {
-      if (areaName !== "local")
+      if (areaName !== STORAGE_AREA_LOCAL)
         return;
       const recordingChange = changes[StorageKey.RECORDING];
       if (!recordingChange)
@@ -2002,13 +2023,14 @@
   }
   function hideLauncherUntilPopupReopen() {
     hiddenUntilPopupOpen = true;
+    persistHiddenState(true);
     setSettingsMenuOpen(false);
     unmountLauncher();
   }
   function handleReshowRequest() {
     hiddenUntilPopupOpen = false;
-    if (trackedEnabled)
-      mountLauncher();
+    persistHiddenState(false);
+    applyVisibilityFromState();
   }
   function installRuntimeListener() {
     if (runtimeListenerInstalled)
@@ -2017,11 +2039,18 @@
     chrome.runtime.onMessage.addListener((message, sender) => {
       if (sender.id !== chrome.runtime.id)
         return false;
-      if (message.type !== RESHOW_MESSAGE_TYPE)
+      if (message.type !== RuntimeMessageName.SHOW_TRACKED_HOVER_LAUNCHER)
         return false;
       handleReshowRequest();
       return false;
     });
+  }
+  function applyVisibilityFromState() {
+    if (trackedEnabled && !hiddenUntilPopupOpen) {
+      mountLauncher();
+      return;
+    }
+    unmountLauncher();
   }
   async function startDrawMode() {
     try {
@@ -2305,11 +2334,7 @@
   function setTrackedHoverLauncherEnabled(enabled) {
     trackedEnabled = enabled;
     installRuntimeListener();
-    if (enabled && !hiddenUntilPopupOpen) {
-      mountLauncher();
-      return;
-    }
-    unmountLauncher();
+    syncHiddenStateFromStorage(applyVisibilityFromState);
   }
 
   // extension/content.js

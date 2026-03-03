@@ -4,17 +4,16 @@
  * Docs: docs/features/feature/tab-tracking-ux/index.md
  */
 
-import { StorageKey } from '../../lib/constants.js'
+import type { ShowTrackedHoverLauncherMessage } from '../../types/runtime-messages.js'
+import { RuntimeMessageName, StorageKey } from '../../lib/constants.js'
 
 const ROOT_ID = 'gasoline-tracked-hover-launcher'
 const PANEL_ID = 'gasoline-tracked-hover-panel'
 const TOGGLE_ID = 'gasoline-tracked-hover-toggle'
 const SETTINGS_MENU_ID = 'gasoline-tracked-hover-settings-menu'
-const RESHOW_MESSAGE_TYPE = 'GASOLINE_SHOW_TRACKED_HOVER_LAUNCHER'
+const STORAGE_AREA_LOCAL = 'local'
 
 type RecordingStorageValue = { active?: boolean }
-
-type HoverRuntimeMessage = { type?: string }
 
 let rootEl: HTMLDivElement | null = null
 let panelEl: HTMLDivElement | null = null
@@ -73,10 +72,30 @@ function syncRecordingStateFromStorage(): void {
   })
 }
 
+function syncHiddenStateFromStorage(onSynced: () => void): void {
+  chrome.storage.local.get([StorageKey.TRACKED_HOVER_LAUNCHER_HIDDEN], (result: Record<string, unknown>) => {
+    hiddenUntilPopupOpen = Boolean(result[StorageKey.TRACKED_HOVER_LAUNCHER_HIDDEN])
+    onSynced()
+  })
+}
+
+function persistHiddenState(hidden: boolean): void {
+  if (hidden) {
+    chrome.storage.local.set({ [StorageKey.TRACKED_HOVER_LAUNCHER_HIDDEN]: true }, () => {
+      void chrome.runtime.lastError
+    })
+    return
+  }
+
+  chrome.storage.local.remove(StorageKey.TRACKED_HOVER_LAUNCHER_HIDDEN, () => {
+    void chrome.runtime.lastError
+  })
+}
+
 function installRecordingStorageSync(): void {
   if (recordingStorageListener) return
   recordingStorageListener = (changes, areaName) => {
-    if (areaName !== 'local') return
+    if (areaName !== STORAGE_AREA_LOCAL) return
     const recordingChange = changes[StorageKey.RECORDING]
     if (!recordingChange) return
     updateRecordButtonState(readRecordingActive(recordingChange.newValue))
@@ -92,25 +111,37 @@ function uninstallRecordingStorageSync(): void {
 
 function hideLauncherUntilPopupReopen(): void {
   hiddenUntilPopupOpen = true
+  persistHiddenState(true)
   setSettingsMenuOpen(false)
   unmountLauncher()
 }
 
 function handleReshowRequest(): void {
   hiddenUntilPopupOpen = false
-  if (trackedEnabled) mountLauncher()
+  persistHiddenState(false)
+  applyVisibilityFromState()
 }
 
 function installRuntimeListener(): void {
   if (runtimeListenerInstalled) return
   runtimeListenerInstalled = true
 
-  chrome.runtime.onMessage.addListener((message: HoverRuntimeMessage, sender: chrome.runtime.MessageSender) => {
-    if (sender.id !== chrome.runtime.id) return false
-    if (message.type !== RESHOW_MESSAGE_TYPE) return false
-    handleReshowRequest()
-    return false
-  })
+  chrome.runtime.onMessage.addListener(
+    (message: ShowTrackedHoverLauncherMessage, sender: chrome.runtime.MessageSender) => {
+      if (sender.id !== chrome.runtime.id) return false
+      if (message.type !== RuntimeMessageName.SHOW_TRACKED_HOVER_LAUNCHER) return false
+      handleReshowRequest()
+      return false
+    }
+  )
+}
+
+function applyVisibilityFromState(): void {
+  if (trackedEnabled && !hiddenUntilPopupOpen) {
+    mountLauncher()
+    return
+  }
+  unmountLauncher()
 }
 
 async function startDrawMode(): Promise<void> {
@@ -425,9 +456,5 @@ function unmountLauncher(): void {
 export function setTrackedHoverLauncherEnabled(enabled: boolean): void {
   trackedEnabled = enabled
   installRuntimeListener()
-  if (enabled && !hiddenUntilPopupOpen) {
-    mountLauncher()
-    return
-  }
-  unmountLauncher()
+  syncHiddenStateFromStorage(applyVisibilityFromState)
 }

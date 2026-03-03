@@ -15,6 +15,7 @@ import type { PerformanceSnapshot } from './performance.js';
 import type { LogLevelFilter } from './telemetry.js';
 import type { ConnectionStatus } from './state.js';
 import type { BrowserStateSnapshot, StateAction } from './state.js';
+import type { RuntimeMessageName } from '../lib/constants.js';
 /**
  * Message to get current tab ID
  */
@@ -370,9 +371,15 @@ export interface RecordingWatermarkMessage {
     readonly visible: boolean;
 }
 /**
+ * Request content launcher re-show after user reopens popup.
+ */
+export interface ShowTrackedHoverLauncherMessage {
+    readonly type: typeof RuntimeMessageName.SHOW_TRACKED_HOVER_LAUNCHER;
+}
+/**
  * Union of all content-script-bound messages
  */
-export type ContentMessage = ContentPingMessage | HighlightMessage | ExecuteJsMessage | ExecuteQueryMessage | DomQueryMessage | A11yQueryMessage | GetNetworkWaterfallMessage | LinkHealthMessage | ComputedStylesQueryMessage | FormDiscoveryQueryMessage | FormStateQueryMessage | DataTableQueryMessage | ManageStateMessage | ActionToastMessage | SubtitleMessage | RecordingWatermarkMessage | DrawModeStartMessage | DrawModeStopMessage | GetAnnotationsMessage | TrackingStateChangedMessage | ToggleChatMessage | SetBooleanSettingMessage | SetWebSocketCaptureModeMessage | SetServerUrlMessage;
+export type ContentMessage = ContentPingMessage | HighlightMessage | ExecuteJsMessage | ExecuteQueryMessage | DomQueryMessage | A11yQueryMessage | GetNetworkWaterfallMessage | LinkHealthMessage | ComputedStylesQueryMessage | FormDiscoveryQueryMessage | FormStateQueryMessage | DataTableQueryMessage | ManageStateMessage | ActionToastMessage | SubtitleMessage | RecordingWatermarkMessage | ShowTrackedHoverLauncherMessage | DrawModeStartMessage | DrawModeStopMessage | GetAnnotationsMessage | TrackingStateChangedMessage | ToggleChatMessage | SetBooleanSettingMessage | SetWebSocketCaptureModeMessage | SetServerUrlMessage;
 /**
  * Page to content script messages (postMessage types)
  */

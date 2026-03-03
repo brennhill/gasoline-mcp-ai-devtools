@@ -3,12 +3,12 @@
  * Why: Reduces popup churn by exposing common capture actions directly on tracked pages.
  * Docs: docs/features/feature/tab-tracking-ux/index.md
  */
-import { StorageKey } from '../../lib/constants.js';
+import { RuntimeMessageName, StorageKey } from '../../lib/constants.js';
 const ROOT_ID = 'gasoline-tracked-hover-launcher';
 const PANEL_ID = 'gasoline-tracked-hover-panel';
 const TOGGLE_ID = 'gasoline-tracked-hover-toggle';
 const SETTINGS_MENU_ID = 'gasoline-tracked-hover-settings-menu';
-const RESHOW_MESSAGE_TYPE = 'GASOLINE_SHOW_TRACKED_HOVER_LAUNCHER';
+const STORAGE_AREA_LOCAL = 'local';
 let rootEl = null;
 let panelEl = null;
 let settingsMenuEl = null;
@@ -62,11 +62,28 @@ function syncRecordingStateFromStorage() {
         updateRecordButtonState(readRecordingActive(result[StorageKey.RECORDING]));
     });
 }
+function syncHiddenStateFromStorage(onSynced) {
+    chrome.storage.local.get([StorageKey.TRACKED_HOVER_LAUNCHER_HIDDEN], (result) => {
+        hiddenUntilPopupOpen = Boolean(result[StorageKey.TRACKED_HOVER_LAUNCHER_HIDDEN]);
+        onSynced();
+    });
+}
+function persistHiddenState(hidden) {
+    if (hidden) {
+        chrome.storage.local.set({ [StorageKey.TRACKED_HOVER_LAUNCHER_HIDDEN]: true }, () => {
+            void chrome.runtime.lastError;
+        });
+        return;
+    }
+    chrome.storage.local.remove(StorageKey.TRACKED_HOVER_LAUNCHER_HIDDEN, () => {
+        void chrome.runtime.lastError;
+    });
+}
 function installRecordingStorageSync() {
     if (recordingStorageListener)
         return;
     recordingStorageListener = (changes, areaName) => {
-        if (areaName !== 'local')
+        if (areaName !== STORAGE_AREA_LOCAL)
             return;
         const recordingChange = changes[StorageKey.RECORDING];
         if (!recordingChange)
@@ -83,13 +100,14 @@ function uninstallRecordingStorageSync() {
 }
 function hideLauncherUntilPopupReopen() {
     hiddenUntilPopupOpen = true;
+    persistHiddenState(true);
     setSettingsMenuOpen(false);
     unmountLauncher();
 }
 function handleReshowRequest() {
     hiddenUntilPopupOpen = false;
-    if (trackedEnabled)
-        mountLauncher();
+    persistHiddenState(false);
+    applyVisibilityFromState();
 }
 function installRuntimeListener() {
     if (runtimeListenerInstalled)
@@ -98,11 +116,18 @@ function installRuntimeListener() {
     chrome.runtime.onMessage.addListener((message, sender) => {
         if (sender.id !== chrome.runtime.id)
             return false;
-        if (message.type !== RESHOW_MESSAGE_TYPE)
+        if (message.type !== RuntimeMessageName.SHOW_TRACKED_HOVER_LAUNCHER)
             return false;
         handleReshowRequest();
         return false;
     });
+}
+function applyVisibilityFromState() {
+    if (trackedEnabled && !hiddenUntilPopupOpen) {
+        mountLauncher();
+        return;
+    }
+    unmountLauncher();
 }
 async function startDrawMode() {
     try {
@@ -385,10 +410,6 @@ function unmountLauncher() {
 export function setTrackedHoverLauncherEnabled(enabled) {
     trackedEnabled = enabled;
     installRuntimeListener();
-    if (enabled && !hiddenUntilPopupOpen) {
-        mountLauncher();
-        return;
-    }
-    unmountLauncher();
+    syncHiddenStateFromStorage(applyVisibilityFromState);
 }
 //# sourceMappingURL=tracked-hover-launcher.js.map
