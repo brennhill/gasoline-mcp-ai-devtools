@@ -1488,3 +1488,119 @@ func TestStore_TakeWaiter_RemovesAndReturnsSessionName(t *testing.T) {
 		t.Fatalf("remaining waiter = %q, want ann_2", remainingID)
 	}
 }
+
+func TestStore_SessionTTL_Is2Hours(t *testing.T) {
+	store := NewStore(10 * time.Minute)
+	defer store.Close()
+
+	// Verify the default TTL is 2 hours
+	if store.sessionTTL != 2*time.Hour {
+		t.Fatalf("expected sessionTTL = 2h, got %v", store.sessionTTL)
+	}
+
+	// Session stored with a manually backdated expiry at 90 minutes should still be live
+	store.StoreSession(1, &Session{
+		TabID:     1,
+		Timestamp: time.Now().UnixMilli(),
+		PageURL:   "https://example.com",
+	})
+
+	// Simulate 90 minutes elapsed by adjusting the session entry's ExpiresAt
+	store.mu.Lock()
+	entry := store.sessions[1]
+	entry.ExpiresAt = time.Now().Add(30 * time.Minute) // 120min TTL - 90min elapsed = 30min remaining
+	store.mu.Unlock()
+
+	got := store.GetSession(1)
+	if got == nil {
+		t.Error("expected session to still be retrievable after 90 minutes (within 2h TTL)")
+	}
+}
+
+func TestStore_FindAnnotationTimestamp_Anonymous(t *testing.T) {
+	store := NewStore(10 * time.Minute)
+	defer store.Close()
+
+	store.StoreSession(1, &Session{
+		TabID: 1, Timestamp: 1000, PageURL: "https://a.com",
+		Annotations: []Annotation{
+			{ID: "a1", CorrelationID: "corr_1", Timestamp: 111},
+			{ID: "a2", CorrelationID: "corr_2", Timestamp: 222},
+		},
+	})
+	store.StoreSession(2, &Session{
+		TabID: 2, Timestamp: 2000, PageURL: "https://b.com",
+		Annotations: []Annotation{
+			{ID: "b1", CorrelationID: "corr_3", Timestamp: 333},
+		},
+	})
+
+	// Found in first session
+	if ts := store.FindAnnotationTimestamp("corr_1"); ts != 111 {
+		t.Errorf("expected 111, got %d", ts)
+	}
+	// Found in second session
+	if ts := store.FindAnnotationTimestamp("corr_3"); ts != 333 {
+		t.Errorf("expected 333, got %d", ts)
+	}
+	// Not found
+	if ts := store.FindAnnotationTimestamp("nonexistent"); ts != 0 {
+		t.Errorf("expected 0, got %d", ts)
+	}
+}
+
+func TestStore_FindAnnotationTimestamp_Named(t *testing.T) {
+	store := NewStore(10 * time.Minute)
+	defer store.Close()
+
+	store.AppendToNamedSession("review", &Session{
+		TabID: 3, PageURL: "https://c.com", Timestamp: 3000,
+		Annotations: []Annotation{
+			{ID: "n1", CorrelationID: "named_corr_1", Timestamp: 444},
+		},
+	})
+
+	if ts := store.FindAnnotationTimestamp("named_corr_1"); ts != 444 {
+		t.Errorf("expected 444, got %d", ts)
+	}
+	// Not found in named
+	if ts := store.FindAnnotationTimestamp("wrong_id"); ts != 0 {
+		t.Errorf("expected 0, got %d", ts)
+	}
+}
+
+func TestStore_FindAnnotationTimestamp_SkipsExpired(t *testing.T) {
+	store := NewStore(10 * time.Minute)
+	defer store.Close()
+
+	store.StoreSession(1, &Session{
+		TabID: 1, Timestamp: 1000, PageURL: "https://expired.com",
+		Annotations: []Annotation{
+			{ID: "e1", CorrelationID: "exp_corr", Timestamp: 555},
+		},
+	})
+
+	// Expire the session
+	store.mu.Lock()
+	store.sessions[1].ExpiresAt = time.Now().Add(-1 * time.Second)
+	store.mu.Unlock()
+
+	if ts := store.FindAnnotationTimestamp("exp_corr"); ts != 0 {
+		t.Errorf("expected 0 for expired session, got %d", ts)
+	}
+
+	// Named session expired
+	store.AppendToNamedSession("old", &Session{
+		TabID: 4, PageURL: "https://old.com", Timestamp: 4000,
+		Annotations: []Annotation{
+			{ID: "n_exp", CorrelationID: "named_exp_corr", Timestamp: 666},
+		},
+	})
+	store.mu.Lock()
+	store.named["old"].ExpiresAt = time.Now().Add(-1 * time.Second)
+	store.mu.Unlock()
+
+	if ts := store.FindAnnotationTimestamp("named_exp_corr"); ts != 0 {
+		t.Errorf("expected 0 for expired named session, got %d", ts)
+	}
+}

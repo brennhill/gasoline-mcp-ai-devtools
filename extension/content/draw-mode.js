@@ -762,7 +762,7 @@ function captureElementsUnderRect(rect) {
       tag: el.tagName.toLowerCase(),
       selector: buildCSSSelector(el),
       text: (el.textContent || '').trim().slice(0, 100),
-      classes: Array.from(el.classList).slice(0, 5)
+      classes: Array.from(el.classList).slice(0, 10)
     }))
 
     const detail = {
@@ -999,6 +999,65 @@ function buildElementDetail(el) {
     // Shadow DOM access may fail
   }
 
+  // Build parent_context: structured 2-level ancestry
+  let parentContext = null
+  try {
+    const parent = el.parentElement
+    if (parent && parent !== document.body && parent !== document.documentElement) {
+      const parentInfo = {
+        tag: parent.tagName.toLowerCase(),
+        classes: Array.from(parent.classList).slice(0, 5),
+        id: parent.id || '',
+        role: (parent.getAttribute && parent.getAttribute('role')) || ''
+      }
+      const grandparent = parent.parentElement
+      let grandparentInfo = null
+      if (grandparent && grandparent !== document.body && grandparent !== document.documentElement) {
+        grandparentInfo = {
+          tag: grandparent.tagName.toLowerCase(),
+          classes: Array.from(grandparent.classList).slice(0, 5),
+          id: grandparent.id || '',
+          role: (grandparent.getAttribute && grandparent.getAttribute('role')) || ''
+        }
+      }
+      parentContext = { parent: parentInfo, grandparent: grandparentInfo }
+    }
+  } catch {
+    // Ignore parent context build errors
+  }
+
+  // Build siblings: up to 2 before and 2 after the target element
+  let siblings = []
+  try {
+    const parent = el.parentElement
+    if (parent) {
+      const children = Array.from(parent.children)
+      const idx = children.indexOf(el)
+      if (idx >= 0) {
+        const before = children.slice(Math.max(0, idx - 2), idx)
+        const after = children.slice(idx + 1, idx + 3)
+        for (const sib of before) {
+          siblings.push({
+            tag: sib.tagName.toLowerCase(),
+            classes: Array.from(sib.classList).slice(0, 5),
+            text: (sib.textContent || '').trim().slice(0, 60),
+            position: 'before'
+          })
+        }
+        for (const sib of after) {
+          siblings.push({
+            tag: sib.tagName.toLowerCase(),
+            classes: Array.from(sib.classList).slice(0, 5),
+            text: (sib.textContent || '').trim().slice(0, 60),
+            position: 'after'
+          })
+        }
+      }
+    }
+  } catch {
+    // Ignore sibling capture errors
+  }
+
   const detail = {
     selector: buildCSSSelector(el),
     tag: el.tagName.toLowerCase(),
@@ -1015,6 +1074,17 @@ function buildElementDetail(el) {
       height: Math.round(boundingRect.height)
     },
     a11y_flags: runA11yChecks(el, computed)
+  }
+
+  if (parentContext) {
+    detail.parent_context = parentContext
+  }
+  if (siblings.length > 0) {
+    detail.siblings = siblings
+  }
+  const cssFramework = detectCSSFramework(el)
+  if (cssFramework) {
+    detail.css_framework = cssFramework
   }
 
   if (shadowInfo) {
@@ -1034,6 +1104,56 @@ function buildElementDetail(el) {
   }
 
   return detail
+}
+
+/**
+ * Detect CSS framework from element class names.
+ * Returns framework name string or empty string if no confident match.
+ */
+function detectCSSFramework(el) {
+  try {
+    const classes = Array.from(el.classList)
+    if (classes.length === 0) return ''
+
+    // Tailwind: utility class patterns (require at least 1 dash-pattern for confidence)
+    const tailwindSpecific = /^(p-\d|m-\d|px-\d|py-\d|mx-\d|my-\d|pt-\d|pb-\d|pl-\d|pr-\d|mt-\d|mb-\d|ml-\d|mr-\d|text-(xs|sm|base|lg|xl|2xl|3xl)|font-(thin|light|normal|medium|semibold|bold)|bg-[a-z]+-\d{2,3}|w-\d|h-\d|gap-\d|space-[xy]-\d|max-w-|min-w-|max-h-|min-h-|justify-|items-|self-|z-\d|opacity-|duration-|ease-)$/
+    const tailwindGeneric = /^(flex|grid|block|inline|hidden|rounded|border|shadow|overflow-|transition)$/
+    let tailwindHits = 0
+    let tailwindSpecificHits = 0
+    for (const cls of classes) {
+      if (tailwindSpecific.test(cls)) { tailwindHits++; tailwindSpecificHits++ }
+      else if (tailwindGeneric.test(cls)) tailwindHits++
+    }
+    if (tailwindHits >= 3 && tailwindSpecificHits >= 1) return 'tailwind'
+
+    // Bootstrap: component/grid patterns
+    const bootstrapPatterns = /^(col-(xs|sm|md|lg|xl)-\d+|col-\d+|btn-[a-z]+|form-control|form-group|form-check|input-group|card|container|row|navbar|nav-|modal|badge|alert|dropdown|table|pagination)$/
+    let bootstrapHits = 0
+    for (const cls of classes) {
+      if (bootstrapPatterns.test(cls)) bootstrapHits++
+    }
+    if (bootstrapHits >= 2) return 'bootstrap'
+
+    // CSS Modules: hash-suffixed classes like Component_name__hash
+    const cssModulesPattern = /^[A-Z][a-zA-Z]*_[a-zA-Z]+__[a-zA-Z0-9]{5,}$/
+    let modulesHits = 0
+    for (const cls of classes) {
+      if (cssModulesPattern.test(cls)) modulesHits++
+    }
+    if (modulesHits >= 1) return 'css-modules'
+
+    // Styled-components/Emotion: css-* or sc-* prefixed classes
+    const styledPattern = /^(css-[a-z0-9]+|sc-[a-zA-Z]+)$/
+    let styledHits = 0
+    for (const cls of classes) {
+      if (styledPattern.test(cls)) styledHits++
+    }
+    if (styledHits >= 2) return 'styled-components'
+
+    return ''
+  } catch {
+    return ''
+  }
 }
 
 /**

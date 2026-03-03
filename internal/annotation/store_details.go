@@ -34,6 +34,43 @@ func (s *Store) GetDetail(correlationID string) (*Detail, bool) {
 	return &entry.Detail, true
 }
 
+// FindAnnotationTimestamp searches all sessions (anonymous and named) for an
+// annotation with the given correlationID. Returns the annotation's timestamp
+// in milliseconds, or 0 if not found.
+func (s *Store) FindAnnotationTimestamp(correlationID string) int64 {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	now := time.Now()
+
+	// Search all anonymous sessions
+	for _, entry := range s.sessions {
+		if now.After(entry.ExpiresAt) {
+			continue
+		}
+		for _, ann := range entry.Session.Annotations {
+			if ann.CorrelationID == correlationID {
+				return ann.Timestamp
+			}
+		}
+	}
+
+	// Search all named sessions
+	for _, entry := range s.named {
+		if now.After(entry.ExpiresAt) {
+			continue
+		}
+		for _, page := range entry.Session.Pages {
+			for _, ann := range page.Annotations {
+				if ann.CorrelationID == correlationID {
+					return ann.Timestamp
+				}
+			}
+		}
+	}
+
+	return 0
+}
+
 // evictOldestDetailLocked removes the detail entry closest to expiration.
 // Must be called with s.mu held.
 func (s *Store) evictOldestDetailLocked() {

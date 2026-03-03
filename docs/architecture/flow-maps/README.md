@@ -49,3 +49,4 @@ Each flow map should include:
 - [Self-Testing Test Harness](./self-testing-test-harness.md)
 - [Test Generation Dispatch](./test-generation-dispatch.md)
 - [Issue Reporting Submission](./issue-reporting-submission.md)
+- [Annotation Detail Enrichment](./annotation-detail-enrichment.md)
