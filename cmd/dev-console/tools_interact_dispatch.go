@@ -25,59 +25,59 @@ type interactHandler func(req JSONRPCRequest, args json.RawMessage) JSONRPCRespo
 
 // interactDispatch returns the dispatch map for interact actions.
 // Initialized once via sync.Once; safe for concurrent use.
-func (h *ToolHandler) interactDispatch() map[string]interactHandler {
-	h.interactOnce.Do(func() {
-		h.interactHandlers = map[string]interactHandler{
-			"highlight":                 h.handleHighlight,
-			"save_state":                h.stateInteract().handleStateSave,
-			"state_save":                h.stateInteract().handleStateSave, // backward-compatible alias
-			"load_state":                h.stateInteract().handleStateLoad,
-			"state_load":                h.stateInteract().handleStateLoad, // backward-compatible alias
-			"list_states":               h.stateInteract().handleStateList,
-			"state_list":                h.stateInteract().handleStateList, // backward-compatible alias
-			"delete_state":              h.stateInteract().handleStateDelete,
-			"state_delete":              h.stateInteract().handleStateDelete, // backward-compatible alias
-			"set_storage":               h.handleSetStorage,
-			"delete_storage":            h.handleDeleteStorage,
-			"clear_storage":             h.handleClearStorage,
-			"set_cookie":                h.handleSetCookie,
-			"delete_cookie":             h.handleDeleteCookie,
-			"execute_js":                h.handleExecuteJS,
-			"navigate":                  h.handleBrowserActionNavigate,
-			"refresh":                   h.handleBrowserActionRefresh,
-			"back":                      h.handleBrowserActionBack,
-			"forward":                   h.handleBrowserActionForward,
-			"new_tab":                   h.handleBrowserActionNewTab,
-			"switch_tab":                h.handleBrowserActionSwitchTab,
-			"close_tab":                 h.handleBrowserActionCloseTab,
-			"screenshot":                h.handleScreenshotAlias,
-			"subtitle":                  h.handleSubtitle,
-			"list_interactive":          h.handleListInteractive,
-			"record_start":              h.recordingInteractHandler.handleRecordStart,
-			"record_stop":               h.recordingInteractHandler.handleRecordStop,
-			"upload":                    h.uploadInteractHandler.handleUpload,
-			"draw_mode_start":           h.handleDrawModeStart,
-			"hardware_click":            h.handleHardwareClick,
-			"activate_tab":              h.handleActivateTab,
-			"get_readable":              h.handleGetReadable,
-			"get_markdown":              h.handleGetMarkdown,
-			"navigate_and_wait_for":     h.handleNavigateAndWaitFor,
-			"fill_form_and_submit":      h.handleFillFormAndSubmit,
-			"fill_form":                 h.handleFillForm,
-			"run_a11y_and_export_sarif": h.handleRunA11yAndExportSARIF,
-			"explore_page":              h.handleExplorePage,
-			"wait_for_stable":           h.handleWaitForStable,
-			"auto_dismiss_overlays":     h.handleAutoDismissOverlays,
-			"batch":                     h.handleBatch,
-			"clipboard_read":            h.handleClipboardRead,
-			"clipboard_write":           h.handleClipboardWrite,
+func (h *interactActionHandler) interactDispatch() map[string]interactHandler {
+	h.once.Do(func() {
+		h.handlers = map[string]interactHandler{
+			"highlight":                 h.parent.handleHighlight,
+			"save_state":                h.parent.stateInteract().handleStateSave,
+			"state_save":                h.parent.stateInteract().handleStateSave, // backward-compatible alias
+			"load_state":                h.parent.stateInteract().handleStateLoad,
+			"state_load":                h.parent.stateInteract().handleStateLoad, // backward-compatible alias
+			"list_states":               h.parent.stateInteract().handleStateList,
+			"state_list":                h.parent.stateInteract().handleStateList, // backward-compatible alias
+			"delete_state":              h.parent.stateInteract().handleStateDelete,
+			"state_delete":              h.parent.stateInteract().handleStateDelete, // backward-compatible alias
+			"set_storage":               h.parent.handleSetStorage,
+			"delete_storage":            h.parent.handleDeleteStorage,
+			"clear_storage":             h.parent.handleClearStorage,
+			"set_cookie":                h.parent.handleSetCookie,
+			"delete_cookie":             h.parent.handleDeleteCookie,
+			"execute_js":                h.parent.handleExecuteJS,
+			"navigate":                  h.parent.handleBrowserActionNavigate,
+			"refresh":                   h.parent.handleBrowserActionRefresh,
+			"back":                      h.parent.handleBrowserActionBack,
+			"forward":                   h.parent.handleBrowserActionForward,
+			"new_tab":                   h.parent.handleBrowserActionNewTab,
+			"switch_tab":                h.parent.handleBrowserActionSwitchTab,
+			"close_tab":                 h.parent.handleBrowserActionCloseTab,
+			"screenshot":                h.parent.handleScreenshotAlias,
+			"subtitle":                  h.parent.handleSubtitle,
+			"list_interactive":          h.parent.handleListInteractive,
+			"record_start":              h.parent.recordingInteractHandler.handleRecordStart,
+			"record_stop":               h.parent.recordingInteractHandler.handleRecordStop,
+			"upload":                    h.parent.uploadInteractHandler.handleUpload,
+			"draw_mode_start":           h.parent.handleDrawModeStart,
+			"hardware_click":            h.parent.handleHardwareClick,
+			"activate_tab":              h.parent.handleActivateTab,
+			"get_readable":              h.parent.handleGetReadable,
+			"get_markdown":              h.parent.handleGetMarkdown,
+			"navigate_and_wait_for":     h.parent.handleNavigateAndWaitFor,
+			"fill_form_and_submit":      h.parent.handleFillFormAndSubmit,
+			"fill_form":                 h.parent.handleFillForm,
+			"run_a11y_and_export_sarif": h.parent.handleRunA11yAndExportSARIF,
+			"explore_page":              h.parent.handleExplorePage,
+			"wait_for_stable":           h.parent.handleWaitForStable,
+			"auto_dismiss_overlays":     h.parent.handleAutoDismissOverlays,
+			"batch":                     h.parent.handleBatch,
+			"clipboard_read":            h.parent.handleClipboardRead,
+			"clipboard_write":           h.parent.handleClipboardWrite,
 		}
 	})
-	return h.interactHandlers
+	return h.handlers
 }
 
 // getValidInteractActions returns a sorted, comma-separated list of valid interact actions.
-func (h *ToolHandler) getValidInteractActions() string {
+func (h *interactActionHandler) getValidInteractActions() string {
 	actions := make(map[string]bool)
 	for action := range h.interactDispatch() {
 		actions[action] = true
@@ -117,13 +117,13 @@ var readOnlyInteractActions = map[string]bool{
 }
 
 // applyJitter sleeps for a random duration up to maxMs if jitter is configured.
-func (h *ToolHandler) applyJitter(action string) int {
+func (h *interactActionHandler) applyJitter(action string) int {
 	if readOnlyInteractActions[action] {
 		return 0
 	}
-	h.jitterMu.RLock()
-	maxMs := h.actionJitterMaxMs
-	h.jitterMu.RUnlock()
+	h.parent.jitterMu.RLock()
+	maxMs := h.parent.actionJitterMaxMs
+	h.parent.jitterMu.RUnlock()
 	if maxMs <= 0 {
 		return 0
 	}
@@ -135,13 +135,13 @@ func (h *ToolHandler) applyJitter(action string) int {
 }
 
 // dispatchInteractAction routes an action to the correct named or DOM-primitive handler.
-func (h *ToolHandler) dispatchInteractAction(req JSONRPCRequest, args json.RawMessage, action string) JSONRPCResponse {
+func (h *interactActionHandler) dispatchInteractAction(req JSONRPCRequest, args json.RawMessage, action string) JSONRPCResponse {
 	h.applyJitter(action)
 	if handler, ok := h.interactDispatch()[action]; ok {
 		return handler(req, args)
 	}
 	if domPrimitiveActions[action] {
-		return h.handleDOMPrimitive(req, args, action)
+		return h.parent.handleDOMPrimitive(req, args, action)
 	}
 	return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: mcpStructuredError(ErrUnknownMode, "Unknown interact action: "+action, "Use a valid action from the 'what' enum", withParam("what"))}
 }

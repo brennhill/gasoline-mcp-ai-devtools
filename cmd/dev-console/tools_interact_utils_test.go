@@ -47,7 +47,7 @@ func TestApplyJitter_ReadOnlyActions_ReturnZero(t *testing.T) {
 			h.actionJitterMaxMs = 5000
 			h.jitterMu.Unlock()
 
-			got := h.applyJitter(action)
+			got := h.interactAction().applyJitter(action)
 			if got != 0 {
 				t.Errorf("applyJitter(%q) = %d, want 0 for read-only action", action, got)
 			}
@@ -79,7 +79,7 @@ func TestApplyJitter_ZeroMaxMs_ReturnsZero(t *testing.T) {
 			h, _, _ := makeToolHandler(t)
 
 			// Default actionJitterMaxMs is 0.
-			got := h.applyJitter(action)
+			got := h.interactAction().applyJitter(action)
 			if got != 0 {
 				t.Errorf("applyJitter(%q) = %d, want 0 when maxMs is 0", action, got)
 			}
@@ -102,7 +102,7 @@ func TestApplyJitter_PositiveMaxMs_ReturnsValueInRange(t *testing.T) {
 
 	// Run multiple iterations to gain confidence the value stays in range.
 	for i := 0; i < 100; i++ {
-		got := h.applyJitter("click")
+		got := h.interactAction().applyJitter("click")
 		if got < 0 || got >= maxMs {
 			t.Fatalf("applyJitter(\"click\") iteration %d = %d, want [0, %d)", i, got, maxMs)
 		}
@@ -118,7 +118,7 @@ func TestApplyJitter_UsesConfiguredJitter(t *testing.T) {
 	h, _, _ := makeToolHandler(t)
 
 	// Initially no jitter.
-	if got := h.applyJitter("click"); got != 0 {
+	if got := h.interactAction().applyJitter("click"); got != 0 {
 		t.Fatalf("applyJitter before configure = %d, want 0", got)
 	}
 
@@ -131,7 +131,7 @@ func TestApplyJitter_UsesConfiguredJitter(t *testing.T) {
 
 	// Now applyJitter should return values in [0, 100).
 	for i := 0; i < 50; i++ {
-		got := h.applyJitter("click")
+		got := h.interactAction().applyJitter("click")
 		if got < 0 || got >= 100 {
 			t.Fatalf("applyJitter after configure iteration %d = %d, want [0, 100)", i, got)
 		}

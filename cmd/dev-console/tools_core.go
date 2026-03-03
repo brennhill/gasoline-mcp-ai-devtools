@@ -83,9 +83,8 @@ type ToolHandler struct {
 	// Default: 5s. Set to 0 in tests to restore instant-fail behavior.
 	coldStartTimeout time.Duration
 
-	// Cached interact dispatch map (initialized once via sync.Once)
-	interactOnce     sync.Once
-	interactHandlers map[string]interactHandler
+	// Dedicated interact action routing/jitter sub-handler.
+	interactActionHandler *interactActionHandler
 
 	// Scoped element index registry used by list_interactive/index follow-up actions.
 	elementIndexRegistry *elementIndexRegistry

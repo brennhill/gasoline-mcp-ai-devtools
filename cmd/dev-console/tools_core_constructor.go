@@ -110,6 +110,7 @@ func NewToolHandler(server *Server, capture *capture.Store) *MCPHandler {
 	handler.uploadInteractHandler = newUploadInteractHandler(handler)
 	handler.testGenHandler = newTestGenHandler(handler)
 	handler.stateInteractHandler = newStateInteractHandler(handler)
+	handler.interactActionHandler = newInteractActionHandler(handler)
 	handler.configureSessionHandler = newConfigureSessionHandler(handler)
 
 	// Initialize dispatch modules and tool schemas once at startup.
