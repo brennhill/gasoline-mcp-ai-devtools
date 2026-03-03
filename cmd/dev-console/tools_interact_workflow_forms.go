@@ -13,7 +13,7 @@ import (
 
 // handleFillFormAndSubmit fills multiple form fields and clicks a submit button.
 // Gates (requirePilot, requireExtension, requireTabTracking) are applied by the delegated handlers.
-func (h *ToolHandler) handleFillFormAndSubmit(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+func (h *interactActionHandler) handleFillFormAndSubmit(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	var params struct {
 		Fields         []FormField `json:"fields"`
 		SubmitSelector string      `json:"submit_selector"`
@@ -54,7 +54,7 @@ func (h *ToolHandler) handleFillFormAndSubmit(req JSONRPCRequest, args json.RawM
 	clickJSON, _ := json.Marshal(clickArgs)
 
 	stepStart := time.Now()
-	clickResp := h.interactAction().handleDOMPrimitive(req, clickJSON, "click")
+	clickResp := h.handleDOMPrimitive(req, clickJSON, "click")
 	trace = append(trace, WorkflowStep{
 		Action:   "click_submit",
 		Status:   responseStatus(clickResp),
@@ -67,7 +67,7 @@ func (h *ToolHandler) handleFillFormAndSubmit(req JSONRPCRequest, args json.RawM
 
 // handleFillForm fills multiple form fields without submitting.
 // Gates (requirePilot, requireExtension, requireTabTracking) are applied by the delegated handlers.
-func (h *ToolHandler) handleFillForm(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+func (h *interactActionHandler) handleFillForm(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	var params struct {
 		Fields    []FormField `json:"fields"`
 		TabID     int         `json:"tab_id,omitempty"`
@@ -99,7 +99,7 @@ func (h *ToolHandler) handleFillForm(req JSONRPCRequest, args json.RawMessage) J
 }
 
 // fillWorkflowFields executes all field entry steps for fill_form* workflows.
-func (h *ToolHandler) fillWorkflowFields(req JSONRPCRequest, workflowName string, fields []FormField, tabID int, trace []WorkflowStep, workflowStart time.Time) ([]WorkflowStep, *JSONRPCResponse) {
+func (h *interactActionHandler) fillWorkflowFields(req JSONRPCRequest, workflowName string, fields []FormField, tabID int, trace []WorkflowStep, workflowStart time.Time) ([]WorkflowStep, *JSONRPCResponse) {
 	for i, field := range fields {
 		if field.Selector == "" && field.Index == nil {
 			trace = append(trace, WorkflowStep{
@@ -133,7 +133,7 @@ func (h *ToolHandler) fillWorkflowFields(req JSONRPCRequest, workflowName string
 }
 
 // executeFillFieldStep sends a type action and falls back to select for non-typeable elements.
-func (h *ToolHandler) executeFillFieldStep(req JSONRPCRequest, field FormField, tabID int) (string, JSONRPCResponse) {
+func (h *interactActionHandler) executeFillFieldStep(req JSONRPCRequest, field FormField, tabID int) (string, JSONRPCResponse) {
 	typeArgs := map[string]any{
 		"action": "type",
 		"text":   field.Value,
@@ -146,7 +146,7 @@ func (h *ToolHandler) executeFillFieldStep(req JSONRPCRequest, field FormField, 
 		typeArgs["selector"] = field.Selector
 	}
 	argsJSON, _ := json.Marshal(typeArgs)
-	typeResp := h.interactAction().handleDOMPrimitive(req, argsJSON, "type")
+	typeResp := h.handleDOMPrimitive(req, argsJSON, "type")
 	actionUsed := "type"
 
 	// Fallback: if the element is a <select>, retry with "select" action.
@@ -162,7 +162,7 @@ func (h *ToolHandler) executeFillFieldStep(req JSONRPCRequest, field FormField, 
 			selectArgs["selector"] = field.Selector
 		}
 		selectJSON, _ := json.Marshal(selectArgs)
-		typeResp = h.interactAction().handleDOMPrimitive(req, selectJSON, "select")
+		typeResp = h.handleDOMPrimitive(req, selectJSON, "select")
 		actionUsed = "select"
 	}
 

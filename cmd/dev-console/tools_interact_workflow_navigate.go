@@ -12,7 +12,7 @@ import (
 // handleNavigateAndWaitFor navigates to a URL, waits for a CSS selector to appear,
 // and optionally returns page content — all in one call.
 // Gates (requirePilot, requireExtension, requireTabTracking) are applied by the delegated handlers.
-func (h *ToolHandler) handleNavigateAndWaitFor(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+func (h *interactActionHandler) handleNavigateAndWaitFor(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 	var params struct {
 		URL            string `json:"url"`
 		WaitFor        string `json:"wait_for"`
@@ -43,7 +43,7 @@ func (h *ToolHandler) handleNavigateAndWaitFor(req JSONRPCRequest, args json.Raw
 		"tab_id": params.TabID,
 	})
 	stepStart := time.Now()
-	navResp := h.interactAction().handleBrowserActionNavigateImpl(req, navArgs)
+	navResp := h.handleBrowserActionNavigateImpl(req, navArgs)
 	trace = append(trace, WorkflowStep{
 		Action:   "navigate",
 		Status:   responseStatus(navResp),
@@ -67,7 +67,7 @@ func (h *ToolHandler) handleNavigateAndWaitFor(req JSONRPCRequest, args json.Raw
 		"tab_id":     params.TabID,
 	})
 	stepStart = time.Now()
-	waitResp := h.interactAction().handleDOMPrimitive(req, waitArgs, "wait_for")
+	waitResp := h.handleDOMPrimitive(req, waitArgs, "wait_for")
 	trace = append(trace, WorkflowStep{
 		Action:   "wait_for",
 		Status:   responseStatus(waitResp),
@@ -81,7 +81,7 @@ func (h *ToolHandler) handleNavigateAndWaitFor(req JSONRPCRequest, args json.Raw
 	// Step 3: Optional content enrichment.
 	if params.IncludeContent {
 		stepStart = time.Now()
-		navResp = h.enrichNavigateResponse(navResp, req, params.TabID)
+		navResp = h.parent.enrichNavigateResponse(navResp, req, params.TabID)
 		trace = append(trace, WorkflowStep{
 			Action:   "get_content",
 			Status:   "success",
